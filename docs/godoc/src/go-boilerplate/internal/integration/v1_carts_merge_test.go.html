@@ -1,0 +1,214 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>integration - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../src/go-boilerplate/internal/integration">integration</a>/<span class="text-muted">v1_carts_merge_test.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../go-boilerplate/internal/integration">go-boilerplate/internal/integration</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package integration
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;context&#34;
+<span id="L5" class="ln">     5  </span>	&#34;net/http&#34;
+<span id="L6" class="ln">     6  </span>	&#34;testing&#34;
+<span id="L7" class="ln">     7  </span>
+<span id="L8" class="ln">     8  </span>	mergehandler &#34;go-boilerplate/internal/controller/handler/v1/carts/merge&#34;
+<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/controller/handler/v1/carts/merge/gen&#34;
+<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/observability&#34;
+<span id="L11" class="ln">    11  </span>	cartuc &#34;go-boilerplate/internal/usecase/cart&#34;
+<span id="L12" class="ln">    12  </span>	mock_cartuc &#34;go-boilerplate/internal/usecase/cart/mock&#34;
+<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/internal/usecase/idempotency&#34;
+<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/pkg/uuid&#34;
+<span id="L15" class="ln">    15  </span>	uuidtestkit &#34;go-boilerplate/pkg/uuid/testkit&#34;
+<span id="L16" class="ln">    16  </span>
+<span id="L17" class="ln">    17  </span>	&#34;github.com/labstack/echo/v5&#34;
+<span id="L18" class="ln">    18  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L19" class="ln">    19  </span>	&#34;go.uber.org/mock/gomock&#34;
+<span id="L20" class="ln">    20  </span>)
+<span id="L21" class="ln">    21  </span>
+<span id="L22" class="ln">    22  </span><span class="comment">// meCartMergePath は、引き継ぎのエンドポイントのパス。</span>
+<span id="L23" class="ln">    23  </span>const meCartMergePath = &#34;/v1/carts/me/merge&#34;
+<span id="L24" class="ln">    24  </span>
+<span id="L25" class="ln">    25  </span><span class="comment">// echoWithMergeHandler は、モックしたユースケースを結線した Echo を返します。</span>
+<span id="L26" class="ln">    26  </span>func echoWithMergeHandler(t *testing.T, expect func(*mock_cartuc.MockUsecase)) *echo.Echo {
+<span id="L27" class="ln">    27  </span>	t.Helper()
+<span id="L28" class="ln">    28  </span>
+<span id="L29" class="ln">    29  </span>	e := echo.New()
+<span id="L30" class="ln">    30  </span>	uc := mock_cartuc.NewMockUsecase(gomock.NewController(t))
+<span id="L31" class="ln">    31  </span>	expect(uc)
+<span id="L32" class="ln">    32  </span>	mergehandler.BindHandler(e, observability.NewNoopTracerFactory(t), uc, idempotency.Deps{})
+<span id="L33" class="ln">    33  </span>	return e
+<span id="L34" class="ln">    34  </span>}
+<span id="L35" class="ln">    35  </span>
+<span id="L36" class="ln">    36  </span>func TestV1CartsMeMerge_Integration(t *testing.T) {
+<span id="L37" class="ln">    37  </span>	t.Parallel()
+<span id="L38" class="ln">    38  </span>
+<span id="L39" class="ln">    39  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L40" class="ln">    40  </span>		t.Parallel()
+<span id="L41" class="ln">    41  </span>
+<span id="L42" class="ln">    42  </span>		t.Run(&#34;認証済みで引き継ぐと失われた分がCartMergeResponseで返る&#34;, func(t *testing.T) {
+<span id="L43" class="ln">    43  </span>			t.Parallel()
+<span id="L44" class="ln">    44  </span>
+<span id="L45" class="ln">    45  </span>			clamped := uuidtestkit.NewTestFromSalt(t, &#34;int_mg_clamped&#34;)
+<span id="L46" class="ln">    46  </span>			e := echoWithMergeHandler(t, func(uc *mock_cartuc.MockUsecase) {
+<span id="L47" class="ln">    47  </span>				uc.EXPECT().MergeOnLogin(gomock.Any(), gomock.Any()).
+<span id="L48" class="ln">    48  </span>					Return(cartuc.MergeCartResult{Clamped: []uuid.UUID{clamped}}, nil)
+<span id="L49" class="ln">    49  </span>			})
+<span id="L50" class="ln">    50  </span>
+<span id="L51" class="ln">    51  </span>			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, &#34;int_mg_user&#34;))
+<span id="L52" class="ln">    52  </span>			headers.Set(cartSessionHeader, guestSessionToken)
+<span id="L53" class="ln">    53  </span>			actual := StartServer(t, e).DoJSON(http.MethodPost, meCartMergePath, nil, headers)
+<span id="L54" class="ln">    54  </span>
+<span id="L55" class="ln">    55  </span>			assert.Equal(t, http.StatusOK, actual.StatusCode)
+<span id="L56" class="ln">    56  </span>			AssertJSONResponseType[gen.CartMergeResponse](t, actual)
+<span id="L57" class="ln">    57  </span>		})
+<span id="L58" class="ln">    58  </span>
+<span id="L59" class="ln">    59  </span>		t.Run(&#34;引き継ぎ元のトークンがユースケースへ渡る&#34;, func(t *testing.T) {
+<span id="L60" class="ln">    60  </span>			t.Parallel()
+<span id="L61" class="ln">    61  </span>
+<span id="L62" class="ln">    62  </span>			var captured cartuc.MergeOnLoginParams
+<span id="L63" class="ln">    63  </span>			userID := uuidtestkit.NewTestFromSalt(t, &#34;int_mg_owner&#34;)
+<span id="L64" class="ln">    64  </span>			e := echoWithMergeHandler(t, func(uc *mock_cartuc.MockUsecase) {
+<span id="L65" class="ln">    65  </span>				uc.EXPECT().MergeOnLogin(gomock.Any(), gomock.Any()).DoAndReturn(
+<span id="L66" class="ln">    66  </span>					func(_ context.Context, params cartuc.MergeOnLoginParams) (cartuc.MergeCartResult, error) {
+<span id="L67" class="ln">    67  </span>						captured = params
+<span id="L68" class="ln">    68  </span>						return cartuc.MergeCartResult{}, nil
+<span id="L69" class="ln">    69  </span>					},
+<span id="L70" class="ln">    70  </span>				)
+<span id="L71" class="ln">    71  </span>			})
+<span id="L72" class="ln">    72  </span>
+<span id="L73" class="ln">    73  </span>			headers := MakeAvailableUserID(t, e, userID)
+<span id="L74" class="ln">    74  </span>			headers.Set(cartSessionHeader, guestSessionToken)
+<span id="L75" class="ln">    75  </span>			actual := StartServer(t, e).DoJSON(http.MethodPost, meCartMergePath, nil, headers)
+<span id="L76" class="ln">    76  </span>
+<span id="L77" class="ln">    77  </span>			assert.Equal(t, http.StatusOK, actual.StatusCode)
+<span id="L78" class="ln">    78  </span>			assert.Equal(t, userID, captured.UserID)
+<span id="L79" class="ln">    79  </span>			assert.Equal(t, guestSessionToken, captured.SessionToken)
+<span id="L80" class="ln">    80  </span>		})
+<span id="L81" class="ln">    81  </span>	})
+<span id="L82" class="ln">    82  </span>
+<span id="L83" class="ln">    83  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L84" class="ln">    84  </span>		t.Parallel()
+<span id="L85" class="ln">    85  </span>
+<span id="L86" class="ln">    86  </span>		t.Run(&#34;未認証は401を返しUsecaseは呼ばれない&#34;, func(t *testing.T) {
+<span id="L87" class="ln">    87  </span>			t.Parallel()
+<span id="L88" class="ln">    88  </span>
+<span id="L89" class="ln">    89  </span>			<span class="comment">// この operation だけ認証必須で、任意認証の 4 本とは security の宣言が異なる。</span>
+<span id="L90" class="ln">    90  </span>			<span class="comment">// 認証失敗を強制するヘルパーは使わない。それは spec の security 検査を先に踏ませるため、</span>
+<span id="L91" class="ln">    91  </span>			<span class="comment">// 認証必須の op では 403 になり、本番の経路（ハンドラが主体の不在を検出して 401）と違う。</span>
+<span id="L92" class="ln">    92  </span>			e := echoWithMergeHandler(t, func(uc *mock_cartuc.MockUsecase) {
+<span id="L93" class="ln">    93  </span>				uc.EXPECT().MergeOnLogin(gomock.Any(), gomock.Any()).Times(0)
+<span id="L94" class="ln">    94  </span>			})
+<span id="L95" class="ln">    95  </span>			UseAppErrorHandler(t, e)
+<span id="L96" class="ln">    96  </span>
+<span id="L97" class="ln">    97  </span>			headers := http.Header{cartSessionHeader: []string{guestSessionToken}}
+<span id="L98" class="ln">    98  </span>			actual := StartServer(t, e).DoJSON(http.MethodPost, meCartMergePath, nil, headers)
+<span id="L99" class="ln">    99  </span>
+<span id="L100" class="ln">   100  </span>			AssertErrorResponse(t, actual, http.StatusUnauthorized)
+<span id="L101" class="ln">   101  </span>		})
+<span id="L102" class="ln">   102  </span>
+<span id="L103" class="ln">   103  </span>		t.Run(&#34;X-Cart-Sessionが無ければ400で弾かれUsecaseは呼ばれない&#34;, func(t *testing.T) {
+<span id="L104" class="ln">   104  </span>			t.Parallel()
+<span id="L105" class="ln">   105  </span>
+<span id="L106" class="ln">   106  </span>			<span class="comment">// 引き継ぎ元を指定しない引き継ぎは要求として成り立たないため、ヘッダは必須。</span>
+<span id="L107" class="ln">   107  </span>			e := echoWithMergeHandler(t, func(uc *mock_cartuc.MockUsecase) {
+<span id="L108" class="ln">   108  </span>				uc.EXPECT().MergeOnLogin(gomock.Any(), gomock.Any()).Times(0)
+<span id="L109" class="ln">   109  </span>			})
+<span id="L110" class="ln">   110  </span>			UseAppErrorHandler(t, e)
+<span id="L111" class="ln">   111  </span>			useOpenAPIValidation(t, e)
+<span id="L112" class="ln">   112  </span>
+<span id="L113" class="ln">   113  </span>			actual := StartServer(t, e).DoJSON(http.MethodPost, meCartMergePath, nil, nil)
+<span id="L114" class="ln">   114  </span>
+<span id="L115" class="ln">   115  </span>			AssertErrorResponse(t, actual, http.StatusBadRequest)
+<span id="L116" class="ln">   116  </span>		})
+<span id="L117" class="ln">   117  </span>
+<span id="L118" class="ln">   118  </span>		t.Run(&#34;ユースケースのエラーは応答へ写る&#34;, func(t *testing.T) {
+<span id="L119" class="ln">   119  </span>			t.Parallel()
+<span id="L120" class="ln">   120  </span>
+<span id="L121" class="ln">   121  </span>			e := echoWithMergeHandler(t, func(uc *mock_cartuc.MockUsecase) {
+<span id="L122" class="ln">   122  </span>				uc.EXPECT().MergeOnLogin(gomock.Any(), gomock.Any()).
+<span id="L123" class="ln">   123  </span>					Return(cartuc.MergeCartResult{}, cartuc.ErrUnavailableProduct)
+<span id="L124" class="ln">   124  </span>			})
+<span id="L125" class="ln">   125  </span>			UseAppErrorHandler(t, e)
+<span id="L126" class="ln">   126  </span>
+<span id="L127" class="ln">   127  </span>			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, &#34;int_mg_err&#34;))
+<span id="L128" class="ln">   128  </span>			headers.Set(cartSessionHeader, guestSessionToken)
+<span id="L129" class="ln">   129  </span>			actual := StartServer(t, e).DoJSON(http.MethodPost, meCartMergePath, nil, headers)
+<span id="L130" class="ln">   130  </span>
+<span id="L131" class="ln">   131  </span>			AssertErrorResponse(t, actual, http.StatusUnprocessableEntity)
+<span id="L132" class="ln">   132  </span>		})
+<span id="L133" class="ln">   133  </span>
+<span id="L134" class="ln">   134  </span>		t.Run(&#34;GETは405を返しUsecaseは呼ばれない&#34;, func(t *testing.T) {
+<span id="L135" class="ln">   135  </span>			t.Parallel()
+<span id="L136" class="ln">   136  </span>
+<span id="L137" class="ln">   137  </span>			e := echoWithMergeHandler(t, func(uc *mock_cartuc.MockUsecase) {
+<span id="L138" class="ln">   138  </span>				uc.EXPECT().MergeOnLogin(gomock.Any(), gomock.Any()).Times(0)
+<span id="L139" class="ln">   139  </span>			})
+<span id="L140" class="ln">   140  </span>			UseAppErrorHandler(t, e)
+<span id="L141" class="ln">   141  </span>
+<span id="L142" class="ln">   142  </span>			actual := StartServer(t, e).DoJSON(http.MethodGet, meCartMergePath, nil, nil)
+<span id="L143" class="ln">   143  </span>
+<span id="L144" class="ln">   144  </span>			AssertErrorResponse(t, actual, http.StatusMethodNotAllowed)
+<span id="L145" class="ln">   145  </span>		})
+<span id="L146" class="ln">   146  </span>	})
+<span id="L147" class="ln">   147  </span>}
+<span id="L148" class="ln">   148  </span>
+</pre><p><a href="../../../../src/go-boilerplate/internal/integration/v1_carts_merge_test.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

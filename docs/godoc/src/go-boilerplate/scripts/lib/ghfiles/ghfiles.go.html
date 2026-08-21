@@ -1,0 +1,123 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>ghfiles - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../src/go-boilerplate/scripts">scripts</a>/<a href="../../../../../src/go-boilerplate/scripts/lib">lib</a>/<a href="../../../../../src/go-boilerplate/scripts/lib/ghfiles">ghfiles</a>/<span class="text-muted">ghfiles.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../go-boilerplate/scripts/lib/ghfiles">go-boilerplate/scripts/lib/ghfiles</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span><span class="comment">// Package ghfiles は `uses:` を書ける GitHub Actions の定義ファイルの列挙を 1 箇所へ集める。</span>
+<span id="L2" class="ln">     2  </span><span class="comment">//</span>
+<span id="L3" class="ln">     3  </span><span class="comment">// 呼び出し側は 2 つある。`uses: owner/repo@&lt;sha&gt;` を SHA へ固定する pin-actions と、</span>
+<span id="L4" class="ln">     4  </span><span class="comment">// `uses: docker://&lt;image&gt;:&lt;tag&gt;` を digest へ固定する pin-images である。同じ行が両者から</span>
+<span id="L5" class="ln">     5  </span><span class="comment">// 見えている必要は無いが、**同じファイル集合が見えている必要はある**——片方だけが見る</span>
+<span id="L6" class="ln">     6  </span><span class="comment">// ディレクトリができると、そこに置かれた参照がどちらの網からも外れる。</span>
+<span id="L7" class="ln">     7  </span><span class="comment">//</span>
+<span id="L8" class="ln">     8  </span><span class="comment">// composite action は `uses: ./.github/actions/&lt;group&gt;/&lt;name&gt;` のように入れ子へ置けるため走査は</span>
+<span id="L9" class="ln">     9  </span><span class="comment">// 再帰する。1 階層で打ち切ると入れ子の定義が検査されないまま通る。</span>
+<span id="L10" class="ln">    10  </span>package ghfiles
+<span id="L11" class="ln">    11  </span>
+<span id="L12" class="ln">    12  </span>import (
+<span id="L13" class="ln">    13  </span>	&#34;io/fs&#34;
+<span id="L14" class="ln">    14  </span>	&#34;os&#34;
+<span id="L15" class="ln">    15  </span>	&#34;path/filepath&#34;
+<span id="L16" class="ln">    16  </span>	&#34;slices&#34;
+<span id="L17" class="ln">    17  </span>	&#34;sort&#34;
+<span id="L18" class="ln">    18  </span>
+<span id="L19" class="ln">    19  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L20" class="ln">    20  </span>)
+<span id="L21" class="ln">    21  </span>
+<span id="L22" class="ln">    22  </span><span class="comment">// actionFilenames は composite action の定義ファイル名。</span>
+<span id="L23" class="ln">    23  </span>var actionFilenames = []string{&#34;action.yml&#34;, &#34;action.yaml&#34;}
+<span id="L24" class="ln">    24  </span>
+<span id="L25" class="ln">    25  </span><span class="comment">// workflowPatterns は root からの相対で workflow 定義を指すパターン。</span>
+<span id="L26" class="ln">    26  </span>var workflowPatterns = []string{&#34;.github/workflows/*.yaml&#34;, &#34;.github/workflows/*.yml&#34;}
+<span id="L27" class="ln">    27  </span>
+<span id="L28" class="ln">    28  </span><span class="comment">// Collect は workflow 定義とリポジトリ内 composite action 定義のパスを名前順で返す。</span>
+<span id="L29" class="ln">    29  </span><span class="comment">// `.github/actions` が無いリポジトリは空として扱い、それ以外の走査失敗は握り潰さず返す。</span>
+<span id="L30" class="ln">    30  </span>func Collect(root string) ([]string, error) {
+<span id="L31" class="ln">    31  </span>	var files []string
+<span id="L32" class="ln">    32  </span>	for _, pat := range workflowPatterns {
+<span id="L33" class="ln">    33  </span>		m, err := filepath.Glob(filepath.Join(root, pat))
+<span id="L34" class="ln">    34  </span>		if err != nil {
+<span id="L35" class="ln">    35  </span>			return nil, xerrors.Wrap(err, &#34;glob &#34;+pat)
+<span id="L36" class="ln">    36  </span>		}
+<span id="L37" class="ln">    37  </span>		files = append(files, m...)
+<span id="L38" class="ln">    38  </span>	}
+<span id="L39" class="ln">    39  </span>
+<span id="L40" class="ln">    40  </span>	actionsDir := filepath.Join(root, &#34;.github&#34;, &#34;actions&#34;)
+<span id="L41" class="ln">    41  </span>	err := filepath.WalkDir(actionsDir, func(path string, d fs.DirEntry, err error) error {
+<span id="L42" class="ln">    42  </span>		if err != nil {
+<span id="L43" class="ln">    43  </span>			return err
+<span id="L44" class="ln">    44  </span>		}
+<span id="L45" class="ln">    45  </span>		if !d.IsDir() &amp;&amp; slices.Contains(actionFilenames, d.Name()) {
+<span id="L46" class="ln">    46  </span>			files = append(files, path)
+<span id="L47" class="ln">    47  </span>		}
+<span id="L48" class="ln">    48  </span>		return nil
+<span id="L49" class="ln">    49  </span>	})
+<span id="L50" class="ln">    50  </span>	if err != nil &amp;&amp; !xerrors.Is(err, os.ErrNotExist) {
+<span id="L51" class="ln">    51  </span>		return nil, xerrors.Wrap(err, &#34;walk .github/actions&#34;)
+<span id="L52" class="ln">    52  </span>	}
+<span id="L53" class="ln">    53  </span>
+<span id="L54" class="ln">    54  </span>	sort.Strings(files)
+<span id="L55" class="ln">    55  </span>	return files, nil
+<span id="L56" class="ln">    56  </span>}
+<span id="L57" class="ln">    57  </span>
+</pre><p><a href="../../../../../src/go-boilerplate/scripts/lib/ghfiles/ghfiles.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

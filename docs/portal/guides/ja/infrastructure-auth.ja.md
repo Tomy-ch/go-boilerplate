@@ -48,20 +48,6 @@ Infrastructure は **Boundary を実装するのみ** であり、Usecase から
 - `local` — 署名検証を行わず、トークン文字列から subject を抽出する。CI / test 用のスタブのみ。
 - `jwt` — JWT 検証（デファクト標準のコア）。署名鍵は固定公開鍵か JWKS エンドポイントのいずれかから解決する。本番向けの方式。
 
-```txt
-internal/infrastructure/auth
-├── README.md
-├── local
-│   └── auth_local.go
-└── jwt
-    └── auth_jwt.go
-```
-
-|ディレクトリ|検証方式|
-|---|---|
-|`local`|開発用スタブ — 署名検証なし|
-|`jwt`|JWT 検証（標準コア）。鍵は固定公開鍵または JWKS から取得|
-
 環境 → 方式の対応付けは DI で適用されます（「DI への登録」を参照）。CI / test は `local` スタブを使い、`jwt` はローカル開発（mock 認証サーバーの実 JWT を検証）と、実トークン検証を配線する環境を担当します。
 
 ## local 実装
@@ -135,6 +121,17 @@ prd
 ```
 
 に応じて **検証方式** が選択されます（例: CI / test は `local` スタブ、local / development は `jwt`）。
+
+## Test Strategy
+
+このディレクトリに単一の基盤はありません。テストが何を立ち上げる必要があるかは、ディレクトリではなく検証方式が決めます。したがって infrastructure 層の実 DB 戦略がここ全体を統治することはありません。以下の各実装が、自分が何で閉じるかを述べます。本当に DB を要する実装だけが、そう述べます。
+
+- **`local`** — 代替物を必要としない文字列パース。受理する / 拒否するトークン形に対する素のユニットテストです。署名検証を省くスタブである以上、受理よりも拒否のほうが重要です。不正なトークンは sentinel を返さねばならず、途中まで組み立てた `Authn` を返してはなりません。
+- **`jwt`** — 外部依存を持つ唯一の実装であり、その依存は `httpclient.Client` Boundary のみを経由します。したがって JWKS / discovery の応答は生成モックで組み立て、ネットワークには一切触れません。署名材料はフィクスチャとしてコミットするのではなく、テストごとに新しい鍵ペアを in-process で生成します（`go-jose`）。未知の `kid`・鍵ローテーション・allowlist 外のアルゴリズムに到達できるのは、これによります。時刻依存のクレーム（`exp` / `nbf` / leeway）は注入した `clock` testkit を通します。トークンの失効を実時間の経過で待つテストは、構造的に flaky です。
+- **`identity`** — 分岐を持たない passthrough です。そのテストは、これが passthrough の **ままである** ことを固定するために存在します。resolver は内部 UserID に値を捏造せず、未解決のまま通さねばなりません。
+- **`useridentity`** — このディレクトリにおける例外です。RDB driver を通じて `user_identities` を読むため、[`../README.ja.md`](../README.ja.md) の実 DB 戦略が統治します。実 DB・`rdb/testkit`・トランザクション rollback による状態隔離です。読み取る identity は seed 由来で、その issuer は環境依存であるため、素の `go test` ではなく `make test` 経由で実行します。
+
+どの環境がどの方式を受け取るかは DI 層のスコープであり、検証もそちらで行います。ここでは行いません。
 
 ## 設計方針
 

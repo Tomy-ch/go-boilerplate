@@ -125,6 +125,11 @@
 			
 			
 				
+				<dd><a href="#Drainer">type Drainer</a></dd>
+				
+				
+			
+				
 				<dd><a href="#JWKSParams">type JWKSParams</a></dd>
 				
 				
@@ -173,6 +178,8 @@
     <span class="comment">// ErrJWTAuthenticatorInvalidToken は、トークン検証に失敗した場合に返す認証エラーです。</span>
     <span class="comment">// 検証失敗はすべてこのセンチネル（= apperror.ErrUnauthenticated）へ正規化し（fail-closed）、</span>
     <span class="comment">// 原因（署名不一致 / exp / iss / aud / typ 等）はエラーチェーンに保持して運用側で切り分け可能にします。</span>
+    <span class="comment">// 検証を遂行できなかった場合（署名鍵を取得できない / 予算切れ）はトークンへの結論ではないため対象外で、</span>
+    <span class="comment">// apperror.ErrCanceled / apperror.ErrUnavailable のまま返ります。</span>
     <span id="ErrJWTAuthenticatorInvalidToken">ErrJWTAuthenticatorInvalidToken</span> = <a href="../../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../../go-boilerplate/internal/apperror/#ErrUnauthenticated">ErrUnauthenticated</a>, &#34;jwt authenticator: invalid token&#34;)
 
     <span class="comment">// ErrJWTAuthenticatorInvalidPublicKey は、コンストラクタで公開鍵 PEM のパースに失敗した場合の設定エラーです。</span>
@@ -185,7 +192,7 @@
 		
 			
 			
-			<h2 id="New">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=5941:5994#L102">New</a>
+			<h2 id="New">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=7076:7129#L118">New</a>
 				<a class="permalink" href="#New">¶</a>
 				
 				
@@ -200,7 +207,7 @@
 		
 			
 			
-			</p><h2 id="NewDownstreamProfile">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/jwks.go.html?s=4078:4158#L68">NewDownstreamProfile</a>
+			</p><h2 id="NewDownstreamProfile">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/jwks.go.html?s=5191:5271#L80">NewDownstreamProfile</a>
 				<a class="permalink" href="#NewDownstreamProfile">¶</a>
 				
 				
@@ -217,15 +224,14 @@ allowPrivateNetwork は private 網宛て接続の可否で、環境に応じた
 		
 			
 			
-			</p><h2 id="NewJWKS">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=7115:7202#L124">NewJWKS</a>
+			</p><h2 id="NewJWKS">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=8085:8172#L139">NewJWKS</a>
 				<a class="permalink" href="#NewJWKS">¶</a>
 				
 				
 			</h2>
 			<pre>func NewJWKS(params <a href="#JWKSParams">JWKSParams</a>, client <a href="../../../../../go-boilerplate/internal/infrastructure/httpclient/">httpclient</a>.<a href="../../../../../go-boilerplate/internal/infrastructure/httpclient/#Client">Client</a>) (<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/">authbd</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/#Authenticator">Authenticator</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
 			<p>NewJWKS は、JWKS エンドポイントから kid で公開鍵を解決する JWT Authenticator を生成します。
-JWKSURL を明示した場合はそれを直接用い、空の場合は Issuer から OIDC discovery で jwks_uri を導出します。
-JWKS / discovery の取得は httpclient substrate（timeout / retry / breaker / budget / o11y）に委ね、遅延取得します。
+URL 解決方式（静的指定 / OIDC discovery）と取得方式は README を参照してください。
 
 			
 			
@@ -233,7 +239,7 @@ JWKS / discovery の取得は httpclient substrate（timeout / retry / breaker /
 		
 			
 			
-			</p><h2 id="NewWithKeyResolver">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=6452:6545#L113">NewWithKeyResolver</a>
+			</p><h2 id="NewWithKeyResolver">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=7587:7680#L129">NewWithKeyResolver</a>
 				<a class="permalink" href="#NewWithKeyResolver">¶</a>
 				
 				
@@ -248,7 +254,7 @@ JWKS backed の鍵解決を注入するために使用します。
 		
 			
 			
-			</p><h2 id="RequiredDownstream">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/jwks.go.html?s=4637:4684#L80">RequiredDownstream</a>
+			</p><h2 id="RequiredDownstream">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/jwks.go.html?s=5750:5797#L92">RequiredDownstream</a>
 				<a class="permalink" href="#RequiredDownstream">¶</a>
 				
 				
@@ -264,7 +270,34 @@ required_downstreams へ供給することで、起動失敗になることを�
 		
 			
 			
-			</p><h2 id="JWKSParams">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=3577:4528#L56">JWKSParams</a>
+			</p><h2 id="Drainer">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=5968:6178#L92">Drainer</a>
+				<a class="permalink" href="#Drainer">¶</a>
+				
+				
+			</h2>
+			<p>Drainer は、リクエストから切り離して走っている作業の完了を待てることを表します。
+停止手順がその完了を待てるようにするための口で、そうした作業を持たない実装は満たしません。
+
+			</p><pre>type Drainer interface {
+    <span class="comment">// Drain は、切り離して走っている作業の完了を待ちます。ctx が先に終わったらその時点で待つのをやめます。</span>
+    Drain(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>) <a href="../../../../../builtin/#error">error</a>
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="JWKSParams">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=4038:5192#L62">JWKSParams</a>
 				<a class="permalink" href="#JWKSParams">¶</a>
 				
 				
@@ -287,6 +320,9 @@ required_downstreams へ供給することで、起動失敗になることを�
     AllowInsecureURL <a href="../../../../../builtin/#bool">bool</a>
 <span id="JWKSParams.UnknownKidCooldown"></span>    <span class="comment">// UnknownKidCooldown は未知 kid での JWKS 再取得の最小間隔です（0 以下は既定 jwksRefreshCooldown）。</span>
     UnknownKidCooldown <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Duration">Duration</a>
+<span id="JWKSParams.TracerFactory"></span>    <span class="comment">// TracerFactory は JWKS / discovery の取得に application-level span を張るための factory です。</span>
+    <span class="comment">// nil の場合は span を張りません。</span>
+    TracerFactory <a href="../../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../../go-boilerplate/internal/observability/#TracerFactory">TracerFactory</a>
 }
 </pre>
 
@@ -304,7 +340,7 @@ required_downstreams へ供給することで、起動失敗になることを�
 		
 			
 			
-			<h2 id="KeyResolver">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=4859:5043#L76">KeyResolver</a>
+			<h2 id="KeyResolver">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=5523:5707#L85">KeyResolver</a>
 				<a class="permalink" href="#KeyResolver">¶</a>
 				
 				
@@ -332,7 +368,7 @@ required_downstreams へ供給することで、起動失敗になることを�
 		
 			
 			
-			<h2 id="Params">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=2447:3356#L37">Params</a>
+			<h2 id="Params">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/auth_jwt.go.html?s=2908:3817#L43">Params</a>
 				<a class="permalink" href="#Params">¶</a>
 				
 				

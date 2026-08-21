@@ -8,7 +8,7 @@ English | [日本語](README.ja.md)
 
 |Package|Description|Details|
 |---|---|---|
-|`paging/`|Pagination (page/perPage → limit/offset conversion)|[README](paging/README.md)|
+|`paging/`|Pagination (page/perPage → limit/offset conversion) and the shared fetch-count policy, top-N reads included|[README](paging/README.md)|
 |`search/`|Search keyword tokenization (split, dedup, limit)|[README](search/README.md)|
 |`money/`|Money arithmetic (integer minor-unit, half-up rate application)|[README](money/README.md)|
 

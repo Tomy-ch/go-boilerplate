@@ -1,0 +1,529 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>mock - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package mock_cart
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/domain/cart/mock&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package mock_cart is a generated GoMock package.
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#MockRepository">type MockRepository</a></dd>
+				
+					
+					<dd>    <a href="#NewMockRepository">func NewMockRepository(ctrl *gomock.Controller) *MockRepository</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockRepository.Create">func (m *MockRepository) Create(ctx context.Context, c *cart.Cart) error</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.CreateOwnerIfAbsent">func (m *MockRepository) CreateOwnerIfAbsent(ctx context.Context, c *cart.Cart) (*cart.Cart, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.Delete">func (m *MockRepository) Delete(ctx context.Context, id uuid.UUID) error</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.DeleteExpired">func (m *MockRepository) DeleteExpired(ctx context.Context, now time.Time, limit int32) (int, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.EXPECT">func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.FindByOwnerID">func (m *MockRepository) FindByOwnerID(ctx context.Context, userID uuid.UUID) (*cart.Cart, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.FindBySessionToken">func (m *MockRepository) FindBySessionToken(ctx context.Context, token cart.SessionToken) (*cart.Cart, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.LockByID">func (m *MockRepository) LockByID(ctx context.Context, id uuid.UUID) (*cart.Cart, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.LockByIDs">func (m *MockRepository) LockByIDs(ctx context.Context, ids []uuid.UUID) (cart.Carts, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockRepository.Update">func (m *MockRepository) Update(ctx context.Context, c *cart.Cart) error</a></dd>
+				
+			
+				
+				<dd><a href="#MockRepositoryMockRecorder">type MockRepositoryMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.Create">func (mr *MockRepositoryMockRecorder) Create(ctx, c any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.CreateOwnerIfAbsent">func (mr *MockRepositoryMockRecorder) CreateOwnerIfAbsent(ctx, c any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.Delete">func (mr *MockRepositoryMockRecorder) Delete(ctx, id any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.DeleteExpired">func (mr *MockRepositoryMockRecorder) DeleteExpired(ctx, now, limit any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.FindByOwnerID">func (mr *MockRepositoryMockRecorder) FindByOwnerID(ctx, userID any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.FindBySessionToken">func (mr *MockRepositoryMockRecorder) FindBySessionToken(ctx, token any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.LockByID">func (mr *MockRepositoryMockRecorder) LockByID(ctx, id any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.LockByIDs">func (mr *MockRepositoryMockRecorder) LockByIDs(ctx, ids any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.Update">func (mr *MockRepositoryMockRecorder) Update(ctx, c any) *gomock.Call</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/domain/cart/mock/mock_cart_repository.go.gen.go.html">mock_cart_repository.go.gen.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="MockRepository">type <a href="../../../../../src/go-boilerplate/internal/domain/cart/mock/mock_cart_repository.go.gen.go.html?s=517:633#L13">MockRepository</a>
+				<a class="permalink" href="#MockRepository">¶</a>
+				
+				
+			</h2>
+			<p>MockRepository is a mock of Repository interface.
+
+			</p><pre>type MockRepository struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockRepository">func <a href="../../../../../src/go-boilerplate/internal/domain/cart/mock/mock_cart_repository.go.gen.go.html?s=822:885#L25">NewMockRepository</a>
+					<a class="permalink" href="#NewMockRepository">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockRepository(ctrl *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockRepository">MockRepository</a></pre>
+				<p>NewMockRepository creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockRepository.Create">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/cart/mock/mock_cart_repository.go.gen.go.html?s=1184:1256#L37">Create</a>
+					<a class="permalink" href="#MockRepository.Create">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) Create(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, c *<a href="../../../../../go-boilerplate/internal/domain/cart/">cart</a>.<a href="../../../../../go-boilerplate/internal/domain/cart/#Cart">Cart</a>) <a href="../../../../../builtin/#error">error</a></pre>
+				<p>Create mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.CreateOwnerIfAbsent">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/cart/mock/mock_cart_repository.go.gen.go.html?s=1672:1771#L51">CreateOwnerIfAbsent</a>
+					<a class="permalink" href="#MockRepository.CreateOwnerIfAbsent">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) CreateOwnerIfAbsent(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, c *<a href="../../../../../go-boilerplate/internal/domain/cart/">cart</a>.<a href="../../../../../go-boilerplate/internal/domain/cart/#Cart">Cart</a>) (*<a href="../../../../../go-boilerplate/internal/domain/cart/">cart</a>.<a href="../../../../../go-boilerplate/internal/domain/cart/#Cart">Cart</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>CreateOwnerIfAbsent mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.Delete">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/cart/mock/mock_cart_repository.go.gen.go.html?s=2290:2362#L66">Delete</a>
+					<a class="permalink" href="#MockRepository.Delete">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) Delete(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, id <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) <a href="../../../../../builtin/#error">error</a></pre>
+				<p>Delete mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.DeleteExpired">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/cart/mock/mock_cart_repository.go.gen.go.html?s=2775:2875#L80">DeleteExpired</a>
+					<a class="permalink" href="#MockRepository.DeleteExpired">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) DeleteExpired(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, now <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Time">Time</a>, limit <a href="../../../../../builtin/#int32">int32</a>) (<a href="../../../../../builtin/#int">int</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>DeleteExpired mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.EXPECT">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/cart/mock/mock_cart_repository.go.gen.go.html?s=1069:1130#L32">EXPECT</a>
+					<a class="permalink" href="#MockRepository.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) EXPECT() *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.FindByOwnerID">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/cart/mock/mock_cart_repository.go.gen.go.html?s=3385:3482#L95">FindByOwnerID</a>
+					<a class="permalink" href="#MockRepository.FindByOwnerID">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) FindByOwnerID(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, userID <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (*<a href="../../../../../go-boilerplate/internal/domain/cart/">cart</a>.<a href="../../../../../go-boilerplate/internal/domain/cart/#Cart">Cart</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>FindByOwnerID mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.FindBySessionToken">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/cart/mock/mock_cart_repository.go.gen.go.html?s=3992:4101#L110">FindBySessionToken</a>
+					<a class="permalink" href="#MockRepository.FindBySessionToken">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) FindBySessionToken(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, token <a href="../../../../../go-boilerplate/internal/domain/cart/">cart</a>.<a href="../../../../../go-boilerplate/internal/domain/cart/#SessionToken">SessionToken</a>) (*<a href="../../../../../go-boilerplate/internal/domain/cart/">cart</a>.<a href="../../../../../go-boilerplate/internal/domain/cart/#Cart">Cart</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>FindBySessionToken mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.LockByID">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/cart/mock/mock_cart_repository.go.gen.go.html?s=4628:4716#L125">LockByID</a>
+					<a class="permalink" href="#MockRepository.LockByID">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) LockByID(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, id <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (*<a href="../../../../../go-boilerplate/internal/domain/cart/">cart</a>.<a href="../../../../../go-boilerplate/internal/domain/cart/#Cart">Cart</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>LockByID mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.LockByIDs">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/cart/mock/mock_cart_repository.go.gen.go.html?s=5175:5267#L140">LockByIDs</a>
+					<a class="permalink" href="#MockRepository.LockByIDs">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) LockByIDs(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, ids []<a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (<a href="../../../../../go-boilerplate/internal/domain/cart/">cart</a>.<a href="../../../../../go-boilerplate/internal/domain/cart/#Carts">Carts</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>LockByIDs mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.Update">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/cart/mock/mock_cart_repository.go.gen.go.html?s=5732:5804#L155">Update</a>
+					<a class="permalink" href="#MockRepository.Update">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) Update(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, c *<a href="../../../../../go-boilerplate/internal/domain/cart/">cart</a>.<a href="../../../../../go-boilerplate/internal/domain/cart/#Cart">Cart</a>) <a href="../../../../../builtin/#error">error</a></pre>
+				<p>Update mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockRepositoryMockRecorder">type <a href="../../../../../src/go-boilerplate/internal/domain/cart/mock/mock_cart_repository.go.gen.go.html?s=706:770#L20">MockRepositoryMockRecorder</a>
+				<a class="permalink" href="#MockRepositoryMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockRepositoryMockRecorder is the mock recorder for MockRepository.
+
+			</p><pre>type MockRepositoryMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockRepositoryMockRecorder.Create">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/cart/mock/mock_cart_repository.go.gen.go.html?s=1410:1479#L45">Create</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.Create">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) Create(ctx, c <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Create indicates an expected call of Create.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.CreateOwnerIfAbsent">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/cart/mock/mock_cart_repository.go.gen.go.html?s=2002:2084#L60">CreateOwnerIfAbsent</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.CreateOwnerIfAbsent">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) CreateOwnerIfAbsent(ctx, c <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>CreateOwnerIfAbsent indicates an expected call of CreateOwnerIfAbsent.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.Delete">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/cart/mock/mock_cart_repository.go.gen.go.html?s=2517:2587#L74">Delete</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.Delete">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) Delete(ctx, id <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Delete indicates an expected call of Delete.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.DeleteExpired">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/cart/mock/mock_cart_repository.go.gen.go.html?s=3090:3175#L89">DeleteExpired</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.DeleteExpired">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) DeleteExpired(ctx, now, limit <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>DeleteExpired indicates an expected call of DeleteExpired.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.FindByOwnerID">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/cart/mock/mock_cart_repository.go.gen.go.html?s=3700:3781#L104">FindByOwnerID</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.FindByOwnerID">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) FindByOwnerID(ctx, userID <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>FindByOwnerID indicates an expected call of FindByOwnerID.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.FindBySessionToken">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/cart/mock/mock_cart_repository.go.gen.go.html?s=4333:4418#L119">FindBySessionToken</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.FindBySessionToken">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) FindBySessionToken(ctx, token <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>FindBySessionToken indicates an expected call of FindBySessionToken.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.LockByID">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/cart/mock/mock_cart_repository.go.gen.go.html?s=4915:4987#L134">LockByID</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.LockByID">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) LockByID(ctx, id <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>LockByID indicates an expected call of LockByID.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.LockByIDs">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/cart/mock/mock_cart_repository.go.gen.go.html?s=5470:5544#L149">LockByIDs</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.LockByIDs">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) LockByIDs(ctx, ids <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>LockByIDs indicates an expected call of LockByIDs.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.Update">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/cart/mock/mock_cart_repository.go.gen.go.html?s=5958:6027#L163">Update</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.Update">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) Update(ctx, c <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Update indicates an expected call of Update.
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

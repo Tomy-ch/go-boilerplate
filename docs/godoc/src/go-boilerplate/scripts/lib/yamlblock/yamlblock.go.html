@@ -1,0 +1,110 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>yamlblock - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../src/go-boilerplate/scripts">scripts</a>/<a href="../../../../../src/go-boilerplate/scripts/lib">lib</a>/<a href="../../../../../src/go-boilerplate/scripts/lib/yamlblock">yamlblock</a>/<span class="text-muted">yamlblock.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../go-boilerplate/scripts/lib/yamlblock">go-boilerplate/scripts/lib/yamlblock</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span><span class="comment">// Package yamlblock は YAML のブロックスカラー（`key: |` / `key: &gt;-`）の中身の判定を 1 箇所へ集める。</span>
+<span id="L2" class="ln">     2  </span><span class="comment">//</span>
+<span id="L3" class="ln">     3  </span><span class="comment">// 呼び出し側は 2 つある。`uses: owner/repo@&lt;sha&gt;` の取りこぼしを検出する pin-actions と、</span>
+<span id="L4" class="ln">     4  </span><span class="comment">// `uses: docker://&lt;image&gt;:&lt;tag&gt;` の取りこぼしを検出する pin-images である。どちらも</span>
+<span id="L5" class="ln">     5  </span><span class="comment">// 「厳格なパターンで潰した残り」を行単位で走査するため、ブロックスカラーの中身を外さなければ</span>
+<span id="L6" class="ln">     6  </span><span class="comment">// `run:` スクリプトが `uses:` を含む文字列を出力するだけで検出が誤爆する。</span>
+<span id="L7" class="ln">     7  </span><span class="comment">//</span>
+<span id="L8" class="ln">     8  </span><span class="comment">// 片方だけが除外すると、同じ workflow が経路によって違う判定を受ける。</span>
+<span id="L9" class="ln">     9  </span>package yamlblock
+<span id="L10" class="ln">    10  </span>
+<span id="L11" class="ln">    11  </span>import (
+<span id="L12" class="ln">    12  </span>	&#34;regexp&#34;
+<span id="L13" class="ln">    13  </span>	&#34;strings&#34;
+<span id="L14" class="ln">    14  </span>)
+<span id="L15" class="ln">    15  </span>
+<span id="L16" class="ln">    16  </span><span class="comment">// headerRe は値がブロックスカラー（`|` / `&gt;`）で始まる行。</span>
+<span id="L17" class="ln">    17  </span><span class="comment">// 字下げ指示子と chomp 指示子は YAML がどちらの順序も許すため（`|2-` / `|-2`）両方を受ける。</span>
+<span id="L18" class="ln">    18  </span>var headerRe = regexp.MustCompile(`:[ \t]*[|&gt;][+-]?\d?[+-]?[ \t]*(?:#.*)?$`)
+<span id="L19" class="ln">    19  </span>
+<span id="L20" class="ln">    20  </span><span class="comment">// ContentLines は data のうちブロックスカラーの中身に当たる行番号（1 始まり）を返す。</span>
+<span id="L21" class="ln">    21  </span><span class="comment">//</span>
+<span id="L22" class="ln">    22  </span><span class="comment">// 中身の範囲は字下げで決まる。ヘッダ行より深い字下げの行と、その途中の空行が中身で、</span>
+<span id="L23" class="ln">    23  </span><span class="comment">// 字下げがヘッダ以下へ戻った行で終わる。ヘッダ行そのものは中身に含めない。</span>
+<span id="L24" class="ln">    24  </span>func ContentLines(data string) map[int]bool {
+<span id="L25" class="ln">    25  </span>	content := map[int]bool{}
+<span id="L26" class="ln">    26  </span>	headerIndent := -1
+<span id="L27" class="ln">    27  </span>
+<span id="L28" class="ln">    28  </span>	for i, line := range strings.Split(data, &#34;\n&#34;) {
+<span id="L29" class="ln">    29  </span>		indent := len(line) - len(strings.TrimLeft(line, &#34; \t&#34;))
+<span id="L30" class="ln">    30  </span>		if headerIndent &gt;= 0 {
+<span id="L31" class="ln">    31  </span>			if strings.TrimSpace(line) == &#34;&#34; || indent &gt; headerIndent {
+<span id="L32" class="ln">    32  </span>				content[i+1] = true
+<span id="L33" class="ln">    33  </span>				continue
+<span id="L34" class="ln">    34  </span>			}
+<span id="L35" class="ln">    35  </span>			headerIndent = -1
+<span id="L36" class="ln">    36  </span>		}
+<span id="L37" class="ln">    37  </span>		if headerRe.MatchString(line) {
+<span id="L38" class="ln">    38  </span>			headerIndent = indent
+<span id="L39" class="ln">    39  </span>		}
+<span id="L40" class="ln">    40  </span>	}
+<span id="L41" class="ln">    41  </span>
+<span id="L42" class="ln">    42  </span>	return content
+<span id="L43" class="ln">    43  </span>}
+<span id="L44" class="ln">    44  </span>
+</pre><p><a href="../../../../../src/go-boilerplate/scripts/lib/yamlblock/yamlblock.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

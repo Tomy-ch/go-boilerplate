@@ -68,7 +68,7 @@
 <span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/pkg/uuid&#34;
 <span id="L12" class="ln">    12  </span>)
 <span id="L13" class="ln">    13  </span>
-<span id="L14" class="ln">    14  </span><span class="comment">// Message は、publish 先非依存のメッセージ封筒です。outbox 行から構築され、</span>
+<span id="L14" class="ln">    14  </span><span class="comment">// Message は、publish 先非依存のメッセージ封筒です。outbox のエントリから構築され、</span>
 <span id="L15" class="ln">    15  </span><span class="comment">// substrate（HTTP 等）へ載せ替える際の中立表現です。net/http 等の型は露出しません。</span>
 <span id="L16" class="ln">    16  </span>type Message struct {
 <span id="L17" class="ln">    17  </span>	<span class="comment">// MessageID は dedup の安定キーです。受信側へ Idempotency-Key として伝搬されます。</span>

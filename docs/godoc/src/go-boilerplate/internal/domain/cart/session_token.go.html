@@ -1,0 +1,122 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>cart - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../src/go-boilerplate/internal/domain">domain</a>/<a href="../../../../../src/go-boilerplate/internal/domain/cart">cart</a>/<span class="text-muted">session_token.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../go-boilerplate/internal/domain/cart">go-boilerplate/internal/domain/cart</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package cart
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;fmt&#34;
+<span id="L5" class="ln">     5  </span>
+<span id="L6" class="ln">     6  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L7" class="ln">     7  </span>)
+<span id="L8" class="ln">     8  </span>
+<span id="L9" class="ln">     9  </span><span class="comment">// SessionToken は、所有者が確定していないカートを追跡するための値オブジェクトです。</span>
+<span id="L10" class="ln">    10  </span><span class="comment">// 値の生成は外側の層が行い、ドメインは受け取った値の形式のみを検証します。</span>
+<span id="L11" class="ln">    11  </span>type SessionToken struct {
+<span id="L12" class="ln">    12  </span>	value string
+<span id="L13" class="ln">    13  </span>}
+<span id="L14" class="ln">    14  </span>
+<span id="L15" class="ln">    15  </span><span class="comment">// NewSessionToken は、セッショントークンを生成します。</span>
+<span id="L16" class="ln">    16  </span><span class="comment">// 長さが規定と異なる場合、または URL-safe でない文字を含む場合は ErrInvalidSessionToken を返します。</span>
+<span id="L17" class="ln">    17  </span>func NewSessionToken(value string) (SessionToken, error) {
+<span id="L18" class="ln">    18  </span>	if len(value) != sessionTokenLength {
+<span id="L19" class="ln">    19  </span>		return SessionToken{}, xerrors.Wrap(
+<span id="L20" class="ln">    20  </span>			ErrInvalidSessionToken,
+<span id="L21" class="ln">    21  </span>			fmt.Sprintf(&#34;length must be %d, got %d&#34;, sessionTokenLength, len(value)),
+<span id="L22" class="ln">    22  </span>		)
+<span id="L23" class="ln">    23  </span>	}
+<span id="L24" class="ln">    24  </span>	for _, r := range value {
+<span id="L25" class="ln">    25  </span>		if !isURLSafe(r) {
+<span id="L26" class="ln">    26  </span>			return SessionToken{}, xerrors.Wrap(
+<span id="L27" class="ln">    27  </span>				ErrInvalidSessionToken, fmt.Sprintf(&#34;contains a character that is not URL-safe: %q&#34;, r),
+<span id="L28" class="ln">    28  </span>			)
+<span id="L29" class="ln">    29  </span>		}
+<span id="L30" class="ln">    30  </span>	}
+<span id="L31" class="ln">    31  </span>	return SessionToken{value: value}, nil
+<span id="L32" class="ln">    32  </span>}
+<span id="L33" class="ln">    33  </span>
+<span id="L34" class="ln">    34  </span><span class="comment">// isURLSafe は、base64url のアルファベット（RFC 4648 §5）に含まれる文字かどうかを返します。</span>
+<span id="L35" class="ln">    35  </span>func isURLSafe(r rune) bool {
+<span id="L36" class="ln">    36  </span>	switch {
+<span id="L37" class="ln">    37  </span>	case r &gt;= &#39;A&#39; &amp;&amp; r &lt;= &#39;Z&#39;:
+<span id="L38" class="ln">    38  </span>		return true
+<span id="L39" class="ln">    39  </span>	case r &gt;= &#39;a&#39; &amp;&amp; r &lt;= &#39;z&#39;:
+<span id="L40" class="ln">    40  </span>		return true
+<span id="L41" class="ln">    41  </span>	case r &gt;= &#39;0&#39; &amp;&amp; r &lt;= &#39;9&#39;:
+<span id="L42" class="ln">    42  </span>		return true
+<span id="L43" class="ln">    43  </span>	case r == &#39;-&#39; || r == &#39;_&#39;:
+<span id="L44" class="ln">    44  </span>		return true
+<span id="L45" class="ln">    45  </span>	default:
+<span id="L46" class="ln">    46  </span>		return false
+<span id="L47" class="ln">    47  </span>	}
+<span id="L48" class="ln">    48  </span>}
+<span id="L49" class="ln">    49  </span>
+<span id="L50" class="ln">    50  </span><span class="comment">// IsZero は、生成を経ていないゼロ値かどうかを返します。</span>
+<span id="L51" class="ln">    51  </span><span class="comment">// 複合リテラルは検証を通らずに組み立てられるため、値を受け取る側はこれで拒否できます。</span>
+<span id="L52" class="ln">    52  </span>func (t SessionToken) IsZero() bool { return t.value == &#34;&#34; }
+<span id="L53" class="ln">    53  </span>
+<span id="L54" class="ln">    54  </span><span class="comment">// Value は、セッショントークンの文字列表現を返します。</span>
+<span id="L55" class="ln">    55  </span>func (t SessionToken) Value() string { return t.value }
+<span id="L56" class="ln">    56  </span>
+</pre><p><a href="../../../../../src/go-boilerplate/internal/domain/cart/session_token.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

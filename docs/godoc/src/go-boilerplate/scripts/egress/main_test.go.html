@@ -1,0 +1,977 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>egress - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../src/go-boilerplate/scripts">scripts</a>/<a href="../../../../src/go-boilerplate/scripts/egress">egress</a>/<span class="text-muted">main_test.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../go-boilerplate/scripts/egress">go-boilerplate/scripts/egress</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package main
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;os&#34;
+<span id="L5" class="ln">     5  </span>	&#34;path/filepath&#34;
+<span id="L6" class="ln">     6  </span>	&#34;strings&#34;
+<span id="L7" class="ln">     7  </span>	&#34;testing&#34;
+<span id="L8" class="ln">     8  </span>
+<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L10" class="ln">    10  </span>
+<span id="L11" class="ln">    11  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L12" class="ln">    12  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L13" class="ln">    13  </span>)
+<span id="L14" class="ln">    14  </span>
+<span id="L15" class="ln">    15  </span>const testSSOT = `# comment
+<span id="L16" class="ln">    16  </span>[class.base]
+<span id="L17" class="ln">    17  </span>hosts = [&#34;b1:443&#34;, &#34;b2:443&#34;]
+<span id="L18" class="ln">    18  </span>
+<span id="L19" class="ln">    19  </span>[class.mise]
+<span id="L20" class="ln">    20  </span>hosts = [
+<span id="L21" class="ln">    21  </span>  &#34;m1:443&#34;,
+<span id="L22" class="ln">    22  </span>  &#34;m2:443&#34;,
+<span id="L23" class="ln">    23  </span>]
+<span id="L24" class="ln">    24  </span>
+<span id="L25" class="ln">    25  </span>[class.image]
+<span id="L26" class="ln">    26  </span>includes = [&#34;mise&#34;]
+<span id="L27" class="ln">    27  </span>hosts = [&#34;i1:443&#34;]
+<span id="L28" class="ln">    28  </span>
+<span id="L29" class="ln">    29  </span>[job.&#34;a.yaml:one&#34;]
+<span id="L30" class="ln">    30  </span>classes = [&#34;image&#34;]
+<span id="L31" class="ln">    31  </span>extra = [&#34;x1:443&#34;]
+<span id="L32" class="ln">    32  </span>
+<span id="L33" class="ln">    33  </span>[job.&#34;b.yaml:two&#34;]
+<span id="L34" class="ln">    34  </span>classes = []
+<span id="L35" class="ln">    35  </span>
+<span id="L36" class="ln">    36  </span>[job.&#34;b.yaml:audited&#34;]
+<span id="L37" class="ln">    37  </span>egress_policy = &#34;audit&#34;
+<span id="L38" class="ln">    38  </span>`
+<span id="L39" class="ln">    39  </span>
+<span id="L40" class="ln">    40  </span><span class="comment">// bYAML は testSSOT が宣言する b.yaml 側の 2 ジョブ（block と audit）を持つ workflow。</span>
+<span id="L41" class="ln">    41  </span>const bYAML = `name: T
+<span id="L42" class="ln">    42  </span>
+<span id="L43" class="ln">    43  </span>jobs:
+<span id="L44" class="ln">    44  </span>  two:
+<span id="L45" class="ln">    45  </span>    steps:
+<span id="L46" class="ln">    46  </span>      - with:
+<span id="L47" class="ln">    47  </span>          egress-policy: block
+<span id="L48" class="ln">    48  </span>          allowed-endpoints: &gt;
+<span id="L49" class="ln">    49  </span>            b1:443
+<span id="L50" class="ln">    50  </span>            b2:443
+<span id="L51" class="ln">    51  </span>
+<span id="L52" class="ln">    52  </span>  audited:
+<span id="L53" class="ln">    53  </span>    steps:
+<span id="L54" class="ln">    54  </span>      - with:
+<span id="L55" class="ln">    55  </span>          egress-policy: audit
+<span id="L56" class="ln">    56  </span>`
+<span id="L57" class="ln">    57  </span>
+<span id="L58" class="ln">    58  </span><span class="comment">// errWD は、作業ディレクトリの取得失敗の伝播を検証するためのセンチネルです。</span>
+<span id="L59" class="ln">    59  </span>var errWD = xerrors.New(&#34;getwd failed&#34;)
+<span id="L60" class="ln">    60  </span>
+<span id="L61" class="ln">    61  </span><span class="comment">// testWorkflow は allowed-endpoints ブロックを 1 つ持つ workflow の雛形を返す。</span>
+<span id="L62" class="ln">    62  </span>func testWorkflow(jobID string, hosts ...string) string {
+<span id="L63" class="ln">    63  </span>	var b strings.Builder
+<span id="L64" class="ln">    64  </span>	b.WriteString(&#34;name: T\n\njobs:\n  &#34; + jobID + &#34;:\n    steps:\n&#34;)
+<span id="L65" class="ln">    65  </span>	b.WriteString(&#34;      - name: Harden the runner\n        uses: step-security/harden-runner@x\n&#34;)
+<span id="L66" class="ln">    66  </span>	b.WriteString(&#34;        with:\n          egress-policy: block\n          allowed-endpoints: &gt;\n&#34;)
+<span id="L67" class="ln">    67  </span>	for _, h := range hosts {
+<span id="L68" class="ln">    68  </span>		b.WriteString(&#34;            &#34; + h + &#34;\n&#34;)
+<span id="L69" class="ln">    69  </span>	}
+<span id="L70" class="ln">    70  </span>	b.WriteString(&#34;\n      - name: Checkout\n&#34;)
+<span id="L71" class="ln">    71  </span>	return b.String()
+<span id="L72" class="ln">    72  </span>}
+<span id="L73" class="ln">    73  </span>
+<span id="L74" class="ln">    74  </span><span class="comment">// newTestRepo は SSOT と workflow を持つ一時リポジトリを作り、その root を返す。</span>
+<span id="L75" class="ln">    75  </span>func newTestRepo(t *testing.T, workflows map[string]string) string {
+<span id="L76" class="ln">    76  </span>	t.Helper()
+<span id="L77" class="ln">    77  </span>	root := t.TempDir()
+<span id="L78" class="ln">    78  </span>	require.NoError(t, os.MkdirAll(filepath.Join(root, &#34;.github&#34;, &#34;workflows&#34;), 0o750))
+<span id="L79" class="ln">    79  </span>	require.NoError(t, os.WriteFile(filepath.Join(root, ssotFile), []byte(testSSOT), filePerm))
+<span id="L80" class="ln">    80  </span>	for name, body := range workflows {
+<span id="L81" class="ln">    81  </span>		require.NoError(t, os.WriteFile(filepath.Join(root, &#34;.github&#34;, &#34;workflows&#34;, name), []byte(body), filePerm))
+<span id="L82" class="ln">    82  </span>	}
+<span id="L83" class="ln">    83  </span>	return root
+<span id="L84" class="ln">    84  </span>}
+<span id="L85" class="ln">    85  </span>
+<span id="L86" class="ln">    86  </span>func mustParse(t *testing.T, body string) *ssot {
+<span id="L87" class="ln">    87  </span>	t.Helper()
+<span id="L88" class="ln">    88  </span>	s, err := parseSSOT(body)
+<span id="L89" class="ln">    89  </span>	require.NoError(t, err)
+<span id="L90" class="ln">    90  </span>	return s
+<span id="L91" class="ln">    91  </span>}
+<span id="L92" class="ln">    92  </span>
+<span id="L93" class="ln">    93  </span>func Test_run(t *testing.T) {
+<span id="L94" class="ln">    94  </span>	t.Parallel()
+<span id="L95" class="ln">    95  </span>
+<span id="L96" class="ln">    96  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L97" class="ln">    97  </span>		t.Parallel()
+<span id="L98" class="ln">    98  </span>
+<span id="L99" class="ln">    99  </span>		t.Run(&#34;apply はブロックを SSOT の内容へ書き換える&#34;, func(t *testing.T) {
+<span id="L100" class="ln">   100  </span>			t.Parallel()
+<span id="L101" class="ln">   101  </span>			root := newTestRepo(t, map[string]string{
+<span id="L102" class="ln">   102  </span>				&#34;a.yaml&#34;: testWorkflow(&#34;one&#34;, &#34;stale:443&#34;),
+<span id="L103" class="ln">   103  </span>				&#34;b.yaml&#34;: bYAML,
+<span id="L104" class="ln">   104  </span>			})
+<span id="L105" class="ln">   105  </span>			require.NoError(t, run([]string{&#34;apply&#34;}, func() (string, error) { return root, nil }))
+<span id="L106" class="ln">   106  </span>			got, err := os.ReadFile(filepath.Join(root, &#34;.github&#34;, &#34;workflows&#34;, &#34;a.yaml&#34;)) <span class="comment">//nolint:gosec // path from t.TempDir</span>
+<span id="L107" class="ln">   107  </span>			require.NoError(t, err)
+<span id="L108" class="ln">   108  </span>			assert.Contains(t, string(got), &#34;            b1:443\n&#34;)
+<span id="L109" class="ln">   109  </span>			assert.NotContains(t, string(got), &#34;stale:443&#34;)
+<span id="L110" class="ln">   110  </span>		})
+<span id="L111" class="ln">   111  </span>
+<span id="L112" class="ln">   112  </span>		t.Run(&#34;check はドリフトが無ければ成功する&#34;, func(t *testing.T) {
+<span id="L113" class="ln">   113  </span>			t.Parallel()
+<span id="L114" class="ln">   114  </span>			root := newTestRepo(t, map[string]string{
+<span id="L115" class="ln">   115  </span>				&#34;a.yaml&#34;: testWorkflow(&#34;one&#34;, &#34;b1:443&#34;, &#34;b2:443&#34;, &#34;m1:443&#34;, &#34;m2:443&#34;, &#34;i1:443&#34;, &#34;x1:443&#34;),
+<span id="L116" class="ln">   116  </span>				&#34;b.yaml&#34;: bYAML,
+<span id="L117" class="ln">   117  </span>			})
+<span id="L118" class="ln">   118  </span>			assert.NoError(t, run([]string{&#34;check&#34;}, func() (string, error) { return root, nil }))
+<span id="L119" class="ln">   119  </span>		})
+<span id="L120" class="ln">   120  </span>	})
+<span id="L121" class="ln">   121  </span>
+<span id="L122" class="ln">   122  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L123" class="ln">   123  </span>		t.Parallel()
+<span id="L124" class="ln">   124  </span>
+<span id="L125" class="ln">   125  </span>		t.Run(&#34;サブコマンドが無ければ usage を返す&#34;, func(t *testing.T) {
+<span id="L126" class="ln">   126  </span>			t.Parallel()
+<span id="L127" class="ln">   127  </span>			err := run(nil, func() (string, error) { return &#34;&#34;, nil })
+<span id="L128" class="ln">   128  </span>			require.ErrorIs(t, err, errUsage)
+<span id="L129" class="ln">   129  </span>		})
+<span id="L130" class="ln">   130  </span>
+<span id="L131" class="ln">   131  </span>		t.Run(&#34;未知のサブコマンドは usage を返す&#34;, func(t *testing.T) {
+<span id="L132" class="ln">   132  </span>			t.Parallel()
+<span id="L133" class="ln">   133  </span>			err := run([]string{&#34;resolve&#34;}, func() (string, error) { return &#34;&#34;, nil })
+<span id="L134" class="ln">   134  </span>			require.ErrorIs(t, err, errUsage)
+<span id="L135" class="ln">   135  </span>		})
+<span id="L136" class="ln">   136  </span>
+<span id="L137" class="ln">   137  </span>		t.Run(&#34;作業ディレクトリの取得失敗を伝播する&#34;, func(t *testing.T) {
+<span id="L138" class="ln">   138  </span>			t.Parallel()
+<span id="L139" class="ln">   139  </span>			err := run([]string{&#34;check&#34;}, func() (string, error) { return &#34;&#34;, errWD })
+<span id="L140" class="ln">   140  </span>			require.ErrorIs(t, err, errWD)
+<span id="L141" class="ln">   141  </span>		})
+<span id="L142" class="ln">   142  </span>	})
+<span id="L143" class="ln">   143  </span>}
+<span id="L144" class="ln">   144  </span>
+<span id="L145" class="ln">   145  </span>func Test_parseSSOT(t *testing.T) {
+<span id="L146" class="ln">   146  </span>	t.Parallel()
+<span id="L147" class="ln">   147  </span>
+<span id="L148" class="ln">   148  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L149" class="ln">   149  </span>		t.Parallel()
+<span id="L150" class="ln">   150  </span>
+<span id="L151" class="ln">   151  </span>		t.Run(&#34;クラスとジョブを宣言順で読む&#34;, func(t *testing.T) {
+<span id="L152" class="ln">   152  </span>			t.Parallel()
+<span id="L153" class="ln">   153  </span>			s := mustParse(t, testSSOT)
+<span id="L154" class="ln">   154  </span>			assert.Len(t, s.classes, 3)
+<span id="L155" class="ln">   155  </span>			assert.Equal(t, []string{&#34;a.yaml:one&#34;, &#34;b.yaml:two&#34;, &#34;b.yaml:audited&#34;}, s.jobOrder)
+<span id="L156" class="ln">   156  </span>			assert.Equal(t, []string{&#34;b1:443&#34;, &#34;b2:443&#34;}, s.baseHosts)
+<span id="L157" class="ln">   157  </span>			assert.Equal(t, []string{&#34;mise&#34;}, s.classes[&#34;image&#34;].includes)
+<span id="L158" class="ln">   158  </span>			assert.Equal(t, policyAudit, s.jobs[&#34;b.yaml:audited&#34;].policy)
+<span id="L159" class="ln">   159  </span>		})
+<span id="L160" class="ln">   160  </span>
+<span id="L161" class="ln">   161  </span>		t.Run(&#34;egress_policy 未指定は block とみなす&#34;, func(t *testing.T) {
+<span id="L162" class="ln">   162  </span>			t.Parallel()
+<span id="L163" class="ln">   163  </span>			s := mustParse(t, testSSOT)
+<span id="L164" class="ln">   164  </span>			assert.Equal(t, policyBlock, s.jobs[&#34;a.yaml:one&#34;].policy)
+<span id="L165" class="ln">   165  </span>		})
+<span id="L166" class="ln">   166  </span>	})
+<span id="L167" class="ln">   167  </span>
+<span id="L168" class="ln">   168  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L169" class="ln">   169  </span>		t.Parallel()
+<span id="L170" class="ln">   170  </span>
+<span id="L171" class="ln">   171  </span>		t.Run(&#34;セクションの外の値を弾く&#34;, func(t *testing.T) {
+<span id="L172" class="ln">   172  </span>			t.Parallel()
+<span id="L173" class="ln">   173  </span>			_, err := parseSSOT(`hosts = [&#34;x:443&#34;]`)
+<span id="L174" class="ln">   174  </span>			require.ErrorIs(t, err, errSSOTSyntax)
+<span id="L175" class="ln">   175  </span>		})
+<span id="L176" class="ln">   176  </span>
+<span id="L177" class="ln">   177  </span>		t.Run(&#34;解釈できない行を弾く&#34;, func(t *testing.T) {
+<span id="L178" class="ln">   178  </span>			t.Parallel()
+<span id="L179" class="ln">   179  </span>			_, err := parseSSOT(&#34;[class.base]\nhosts\n&#34;)
+<span id="L180" class="ln">   180  </span>			require.ErrorIs(t, err, errSSOTSyntax)
+<span id="L181" class="ln">   181  </span>		})
+<span id="L182" class="ln">   182  </span>
+<span id="L183" class="ln">   183  </span>		t.Run(&#34;同一セクション内のキー重複を弾く&#34;, func(t *testing.T) {
+<span id="L184" class="ln">   184  </span>			t.Parallel()
+<span id="L185" class="ln">   185  </span>			_, err := parseSSOT(&#34;[class.base]\nhosts = [\&#34;a:443\&#34;]\nhosts = [\&#34;b:443\&#34;]\n&#34;)
+<span id="L186" class="ln">   186  </span>			require.ErrorIs(t, err, errSSOTDuplicate)
+<span id="L187" class="ln">   187  </span>		})
+<span id="L188" class="ln">   188  </span>	})
+<span id="L189" class="ln">   189  </span>}
+<span id="L190" class="ln">   190  </span>
+<span id="L191" class="ln">   191  </span>func Test_stripComment(t *testing.T) {
+<span id="L192" class="ln">   192  </span>	t.Parallel()
+<span id="L193" class="ln">   193  </span>
+<span id="L194" class="ln">   194  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L195" class="ln">   195  </span>		t.Parallel()
+<span id="L196" class="ln">   196  </span>
+<span id="L197" class="ln">   197  </span>		t.Run(&#34;行末コメントを落とす&#34;, func(t *testing.T) {
+<span id="L198" class="ln">   198  </span>			t.Parallel()
+<span id="L199" class="ln">   199  </span>			assert.Equal(t, `hosts = [&#34;a:443&#34;] `, stripComment(`hosts = [&#34;a:443&#34;] # note`))
+<span id="L200" class="ln">   200  </span>		})
+<span id="L201" class="ln">   201  </span>
+<span id="L202" class="ln">   202  </span>		t.Run(&#34;コメントが無い行はそのまま返す&#34;, func(t *testing.T) {
+<span id="L203" class="ln">   203  </span>			t.Parallel()
+<span id="L204" class="ln">   204  </span>			assert.Equal(t, &#34;[class.base]&#34;, stripComment(&#34;[class.base]&#34;))
+<span id="L205" class="ln">   205  </span>		})
+<span id="L206" class="ln">   206  </span>	})
+<span id="L207" class="ln">   207  </span>}
+<span id="L208" class="ln">   208  </span>
+<span id="L209" class="ln">   209  </span>func Test_parseAssignment(t *testing.T) {
+<span id="L210" class="ln">   210  </span>	t.Parallel()
+<span id="L211" class="ln">   211  </span>
+<span id="L212" class="ln">   212  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L213" class="ln">   213  </span>		t.Parallel()
+<span id="L214" class="ln">   214  </span>
+<span id="L215" class="ln">   215  </span>		t.Run(&#34;スカラーを読む&#34;, func(t *testing.T) {
+<span id="L216" class="ln">   216  </span>			t.Parallel()
+<span id="L217" class="ln">   217  </span>			key, values, next, err := parseAssignment([]string{`egress_policy = &#34;audit&#34;`}, 0)
+<span id="L218" class="ln">   218  </span>			require.NoError(t, err)
+<span id="L219" class="ln">   219  </span>			assert.Equal(t, &#34;egress_policy&#34;, key)
+<span id="L220" class="ln">   220  </span>			assert.Equal(t, []string{&#34;audit&#34;}, values)
+<span id="L221" class="ln">   221  </span>			assert.Equal(t, 0, next)
+<span id="L222" class="ln">   222  </span>		})
+<span id="L223" class="ln">   223  </span>
+<span id="L224" class="ln">   224  </span>		t.Run(&#34;1 行の配列を読む&#34;, func(t *testing.T) {
+<span id="L225" class="ln">   225  </span>			t.Parallel()
+<span id="L226" class="ln">   226  </span>			key, values, next, err := parseAssignment([]string{`hosts = [&#34;a:443&#34;, &#34;b:80&#34;]`}, 0)
+<span id="L227" class="ln">   227  </span>			require.NoError(t, err)
+<span id="L228" class="ln">   228  </span>			assert.Equal(t, &#34;hosts&#34;, key)
+<span id="L229" class="ln">   229  </span>			assert.Equal(t, []string{&#34;a:443&#34;, &#34;b:80&#34;}, values)
+<span id="L230" class="ln">   230  </span>			assert.Equal(t, 0, next)
+<span id="L231" class="ln">   231  </span>		})
+<span id="L232" class="ln">   232  </span>
+<span id="L233" class="ln">   233  </span>		t.Run(&#34;複数行の配列は閉じ括弧まで取り込む&#34;, func(t *testing.T) {
+<span id="L234" class="ln">   234  </span>			t.Parallel()
+<span id="L235" class="ln">   235  </span>			lines := []string{&#34;hosts = [&#34;, `  &#34;a:443&#34;,`, `  &#34;b:80&#34;, # note`, &#34;]&#34;}
+<span id="L236" class="ln">   236  </span>			key, values, next, err := parseAssignment(lines, 0)
+<span id="L237" class="ln">   237  </span>			require.NoError(t, err)
+<span id="L238" class="ln">   238  </span>			assert.Equal(t, &#34;hosts&#34;, key)
+<span id="L239" class="ln">   239  </span>			assert.Equal(t, []string{&#34;a:443&#34;, &#34;b:80&#34;}, values)
+<span id="L240" class="ln">   240  </span>			assert.Equal(t, 3, next)
+<span id="L241" class="ln">   241  </span>		})
+<span id="L242" class="ln">   242  </span>
+<span id="L243" class="ln">   243  </span>		t.Run(&#34;空配列を読む&#34;, func(t *testing.T) {
+<span id="L244" class="ln">   244  </span>			t.Parallel()
+<span id="L245" class="ln">   245  </span>			key, values, _, err := parseAssignment([]string{&#34;classes = []&#34;}, 0)
+<span id="L246" class="ln">   246  </span>			require.NoError(t, err)
+<span id="L247" class="ln">   247  </span>			assert.Equal(t, &#34;classes&#34;, key)
+<span id="L248" class="ln">   248  </span>			assert.Empty(t, values)
+<span id="L249" class="ln">   249  </span>		})
+<span id="L250" class="ln">   250  </span>	})
+<span id="L251" class="ln">   251  </span>
+<span id="L252" class="ln">   252  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L253" class="ln">   253  </span>		t.Parallel()
+<span id="L254" class="ln">   254  </span>
+<span id="L255" class="ln">   255  </span>		t.Run(&#34;代入として読めない行を弾く&#34;, func(t *testing.T) {
+<span id="L256" class="ln">   256  </span>			t.Parallel()
+<span id="L257" class="ln">   257  </span>			_, _, _, err := parseAssignment([]string{&#34;hosts:&#34;}, 0)
+<span id="L258" class="ln">   258  </span>			require.ErrorIs(t, err, errSSOTSyntax)
+<span id="L259" class="ln">   259  </span>		})
+<span id="L260" class="ln">   260  </span>
+<span id="L261" class="ln">   261  </span>		t.Run(&#34;閉じられていない配列を弾く&#34;, func(t *testing.T) {
+<span id="L262" class="ln">   262  </span>			t.Parallel()
+<span id="L263" class="ln">   263  </span>			_, _, _, err := parseAssignment([]string{&#34;hosts = [&#34;, `  &#34;a:443&#34;,`}, 0)
+<span id="L264" class="ln">   264  </span>			require.ErrorIs(t, err, errSSOTSyntax)
+<span id="L265" class="ln">   265  </span>		})
+<span id="L266" class="ln">   266  </span>	})
+<span id="L267" class="ln">   267  </span>}
+<span id="L268" class="ln">   268  </span>
+<span id="L269" class="ln">   269  </span>func Test_assign(t *testing.T) {
+<span id="L270" class="ln">   270  </span>	t.Parallel()
+<span id="L271" class="ln">   271  </span>
+<span id="L272" class="ln">   272  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L273" class="ln">   273  </span>		t.Parallel()
+<span id="L274" class="ln">   274  </span>
+<span id="L275" class="ln">   275  </span>		t.Run(&#34;クラスのキーを載せる&#34;, func(t *testing.T) {
+<span id="L276" class="ln">   276  </span>			t.Parallel()
+<span id="L277" class="ln">   277  </span>			c := &amp;class{}
+<span id="L278" class="ln">   278  </span>			require.NoError(t, assign(c, nil, &#34;includes&#34;, []string{&#34;mise&#34;}))
+<span id="L279" class="ln">   279  </span>			require.NoError(t, assign(c, nil, &#34;hosts&#34;, []string{&#34;a:443&#34;}))
+<span id="L280" class="ln">   280  </span>			assert.Equal(t, []string{&#34;mise&#34;}, c.includes)
+<span id="L281" class="ln">   281  </span>			assert.Equal(t, []string{&#34;a:443&#34;}, c.hosts)
+<span id="L282" class="ln">   282  </span>		})
+<span id="L283" class="ln">   283  </span>
+<span id="L284" class="ln">   284  </span>		t.Run(&#34;ジョブのキーを載せる&#34;, func(t *testing.T) {
+<span id="L285" class="ln">   285  </span>			t.Parallel()
+<span id="L286" class="ln">   286  </span>			j := &amp;jobSpec{}
+<span id="L287" class="ln">   287  </span>			require.NoError(t, assign(nil, j, &#34;classes&#34;, []string{&#34;image&#34;}))
+<span id="L288" class="ln">   288  </span>			require.NoError(t, assign(nil, j, &#34;extra&#34;, []string{&#34;a:443&#34;}))
+<span id="L289" class="ln">   289  </span>			require.NoError(t, assign(nil, j, &#34;egress_policy&#34;, []string{policyAudit}))
+<span id="L290" class="ln">   290  </span>			assert.Equal(t, []string{&#34;image&#34;}, j.classes)
+<span id="L291" class="ln">   291  </span>			assert.Equal(t, []string{&#34;a:443&#34;}, j.extra)
+<span id="L292" class="ln">   292  </span>			assert.Equal(t, policyAudit, j.policy)
+<span id="L293" class="ln">   293  </span>		})
+<span id="L294" class="ln">   294  </span>	})
+<span id="L295" class="ln">   295  </span>
+<span id="L296" class="ln">   296  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L297" class="ln">   297  </span>		t.Parallel()
+<span id="L298" class="ln">   298  </span>
+<span id="L299" class="ln">   299  </span>		t.Run(&#34;未知のキーを弾く&#34;, func(t *testing.T) {
+<span id="L300" class="ln">   300  </span>			t.Parallel()
+<span id="L301" class="ln">   301  </span>			require.ErrorIs(t, assign(&amp;class{}, nil, &#34;endpoints&#34;, []string{&#34;a:443&#34;}), errSSOTSyntax)
+<span id="L302" class="ln">   302  </span>		})
+<span id="L303" class="ln">   303  </span>
+<span id="L304" class="ln">   304  </span>		t.Run(&#34;クラスのキーをジョブへ書けない&#34;, func(t *testing.T) {
+<span id="L305" class="ln">   305  </span>			t.Parallel()
+<span id="L306" class="ln">   306  </span>			require.ErrorIs(t, assign(nil, &amp;jobSpec{}, &#34;includes&#34;, []string{&#34;mise&#34;}), errSSOTSyntax)
+<span id="L307" class="ln">   307  </span>		})
+<span id="L308" class="ln">   308  </span>
+<span id="L309" class="ln">   309  </span>		t.Run(&#34;リスト内の重複を弾く&#34;, func(t *testing.T) {
+<span id="L310" class="ln">   310  </span>			t.Parallel()
+<span id="L311" class="ln">   311  </span>			require.ErrorIs(t, assign(&amp;class{}, nil, &#34;hosts&#34;, []string{&#34;a:443&#34;, &#34;a:443&#34;}), errSSOTDuplicate)
+<span id="L312" class="ln">   312  </span>		})
+<span id="L313" class="ln">   313  </span>	})
+<span id="L314" class="ln">   314  </span>}
+<span id="L315" class="ln">   315  </span>
+<span id="L316" class="ln">   316  </span>func Test_requireUnique(t *testing.T) {
+<span id="L317" class="ln">   317  </span>	t.Parallel()
+<span id="L318" class="ln">   318  </span>
+<span id="L319" class="ln">   319  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L320" class="ln">   320  </span>		t.Parallel()
+<span id="L321" class="ln">   321  </span>
+<span id="L322" class="ln">   322  </span>		t.Run(&#34;重複が無ければ成功する&#34;, func(t *testing.T) {
+<span id="L323" class="ln">   323  </span>			t.Parallel()
+<span id="L324" class="ln">   324  </span>			assert.NoError(t, requireUnique([]string{&#34;a&#34;, &#34;b&#34;}))
+<span id="L325" class="ln">   325  </span>		})
+<span id="L326" class="ln">   326  </span>	})
+<span id="L327" class="ln">   327  </span>
+<span id="L328" class="ln">   328  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L329" class="ln">   329  </span>		t.Parallel()
+<span id="L330" class="ln">   330  </span>
+<span id="L331" class="ln">   331  </span>		t.Run(&#34;重複を弾く&#34;, func(t *testing.T) {
+<span id="L332" class="ln">   332  </span>			t.Parallel()
+<span id="L333" class="ln">   333  </span>			require.ErrorIs(t, requireUnique([]string{&#34;a&#34;, &#34;b&#34;, &#34;a&#34;}), errSSOTDuplicate)
+<span id="L334" class="ln">   334  </span>		})
+<span id="L335" class="ln">   335  </span>	})
+<span id="L336" class="ln">   336  </span>}
+<span id="L337" class="ln">   337  </span>
+<span id="L338" class="ln">   338  </span>func Test_ssot_openSection(t *testing.T) {
+<span id="L339" class="ln">   339  </span>	t.Parallel()
+<span id="L340" class="ln">   340  </span>
+<span id="L341" class="ln">   341  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L342" class="ln">   342  </span>		t.Parallel()
+<span id="L343" class="ln">   343  </span>
+<span id="L344" class="ln">   344  </span>		t.Run(&#34;クラスとジョブを登録する&#34;, func(t *testing.T) {
+<span id="L345" class="ln">   345  </span>			t.Parallel()
+<span id="L346" class="ln">   346  </span>			s := &amp;ssot{classes: map[string]*class{}, jobs: map[string]*jobSpec{}}
+<span id="L347" class="ln">   347  </span>			require.NoError(t, s.openSection(&#34;class&#34;, &#34;base&#34;))
+<span id="L348" class="ln">   348  </span>			require.NoError(t, s.openSection(&#34;job&#34;, &#34;a.yaml:one&#34;))
+<span id="L349" class="ln">   349  </span>			assert.NotNil(t, s.classes[&#34;base&#34;])
+<span id="L350" class="ln">   350  </span>			assert.Equal(t, []string{&#34;a.yaml:one&#34;}, s.jobOrder)
+<span id="L351" class="ln">   351  </span>		})
+<span id="L352" class="ln">   352  </span>	})
+<span id="L353" class="ln">   353  </span>
+<span id="L354" class="ln">   354  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L355" class="ln">   355  </span>		t.Parallel()
+<span id="L356" class="ln">   356  </span>
+<span id="L357" class="ln">   357  </span>		t.Run(&#34;クラスの重複を弾く&#34;, func(t *testing.T) {
+<span id="L358" class="ln">   358  </span>			t.Parallel()
+<span id="L359" class="ln">   359  </span>			s := &amp;ssot{classes: map[string]*class{}, jobs: map[string]*jobSpec{}}
+<span id="L360" class="ln">   360  </span>			require.NoError(t, s.openSection(&#34;class&#34;, &#34;base&#34;))
+<span id="L361" class="ln">   361  </span>			require.ErrorIs(t, s.openSection(&#34;class&#34;, &#34;base&#34;), errSSOTDuplicate)
+<span id="L362" class="ln">   362  </span>		})
+<span id="L363" class="ln">   363  </span>
+<span id="L364" class="ln">   364  </span>		t.Run(&#34;ジョブの重複を弾く&#34;, func(t *testing.T) {
+<span id="L365" class="ln">   365  </span>			t.Parallel()
+<span id="L366" class="ln">   366  </span>			s := &amp;ssot{classes: map[string]*class{}, jobs: map[string]*jobSpec{}}
+<span id="L367" class="ln">   367  </span>			require.NoError(t, s.openSection(&#34;job&#34;, &#34;a.yaml:one&#34;))
+<span id="L368" class="ln">   368  </span>			require.ErrorIs(t, s.openSection(&#34;job&#34;, &#34;a.yaml:one&#34;), errSSOTDuplicate)
+<span id="L369" class="ln">   369  </span>		})
+<span id="L370" class="ln">   370  </span>	})
+<span id="L371" class="ln">   371  </span>}
+<span id="L372" class="ln">   372  </span>
+<span id="L373" class="ln">   373  </span>func Test_ssot_validate(t *testing.T) {
+<span id="L374" class="ln">   374  </span>	t.Parallel()
+<span id="L375" class="ln">   375  </span>
+<span id="L376" class="ln">   376  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L377" class="ln">   377  </span>		t.Parallel()
+<span id="L378" class="ln">   378  </span>
+<span id="L379" class="ln">   379  </span>		t.Run(&#34;base クラスの hosts を暗黙適用分として取り出す&#34;, func(t *testing.T) {
+<span id="L380" class="ln">   380  </span>			t.Parallel()
+<span id="L381" class="ln">   381  </span>			s := mustParse(t, testSSOT)
+<span id="L382" class="ln">   382  </span>			assert.Equal(t, []string{&#34;b1:443&#34;, &#34;b2:443&#34;}, s.baseHosts)
+<span id="L383" class="ln">   383  </span>		})
+<span id="L384" class="ln">   384  </span>	})
+<span id="L385" class="ln">   385  </span>
+<span id="L386" class="ln">   386  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L387" class="ln">   387  </span>		t.Parallel()
+<span id="L388" class="ln">   388  </span>
+<span id="L389" class="ln">   389  </span>		t.Run(&#34;未定義クラスの includes を弾く&#34;, func(t *testing.T) {
+<span id="L390" class="ln">   390  </span>			t.Parallel()
+<span id="L391" class="ln">   391  </span>			_, err := parseSSOT(&#34;[class.image]\nincludes = [\&#34;nope\&#34;]\n&#34;)
+<span id="L392" class="ln">   392  </span>			require.ErrorIs(t, err, errSSOTUnknownClass)
+<span id="L393" class="ln">   393  </span>		})
+<span id="L394" class="ln">   394  </span>
+<span id="L395" class="ln">   395  </span>		t.Run(&#34;クラスの循環継承を弾く&#34;, func(t *testing.T) {
+<span id="L396" class="ln">   396  </span>			t.Parallel()
+<span id="L397" class="ln">   397  </span>			body := &#34;[class.a]\nincludes = [\&#34;b\&#34;]\n\n[class.b]\nincludes = [\&#34;a\&#34;]\n\n&#34; +
+<span id="L398" class="ln">   398  </span>				&#34;[job.\&#34;w.yaml:j\&#34;]\nclasses = [\&#34;a\&#34;]\n&#34;
+<span id="L399" class="ln">   399  </span>			_, err := parseSSOT(body)
+<span id="L400" class="ln">   400  </span>			require.ErrorIs(t, err, errSSOTClassCycle)
+<span id="L401" class="ln">   401  </span>		})
+<span id="L402" class="ln">   402  </span>	})
+<span id="L403" class="ln">   403  </span>}
+<span id="L404" class="ln">   404  </span>
+<span id="L405" class="ln">   405  </span>func Test_ssot_validateJob(t *testing.T) {
+<span id="L406" class="ln">   406  </span>	t.Parallel()
+<span id="L407" class="ln">   407  </span>
+<span id="L408" class="ln">   408  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L409" class="ln">   409  </span>		t.Parallel()
+<span id="L410" class="ln">   410  </span>
+<span id="L411" class="ln">   411  </span>		t.Run(&#34;未知の egress_policy を弾く&#34;, func(t *testing.T) {
+<span id="L412" class="ln">   412  </span>			t.Parallel()
+<span id="L413" class="ln">   413  </span>			_, err := parseSSOT(&#34;[job.\&#34;w.yaml:j\&#34;]\negress_policy = \&#34;warn\&#34;\n&#34;)
+<span id="L414" class="ln">   414  </span>			require.ErrorIs(t, err, errSSOTPolicy)
+<span id="L415" class="ln">   415  </span>		})
+<span id="L416" class="ln">   416  </span>
+<span id="L417" class="ln">   417  </span>		t.Run(&#34;audit ジョブが許可リストを持つことを弾く&#34;, func(t *testing.T) {
+<span id="L418" class="ln">   418  </span>			t.Parallel()
+<span id="L419" class="ln">   419  </span>			body := &#34;[job.\&#34;w.yaml:j\&#34;]\negress_policy = \&#34;audit\&#34;\nextra = [\&#34;a:443\&#34;]\n&#34;
+<span id="L420" class="ln">   420  </span>			_, err := parseSSOT(body)
+<span id="L421" class="ln">   421  </span>			require.ErrorIs(t, err, errSSOTPolicy)
+<span id="L422" class="ln">   422  </span>		})
+<span id="L423" class="ln">   423  </span>
+<span id="L424" class="ln">   424  </span>		t.Run(&#34;base の明示宣言を弾く&#34;, func(t *testing.T) {
+<span id="L425" class="ln">   425  </span>			t.Parallel()
+<span id="L426" class="ln">   426  </span>			body := &#34;[class.base]\nhosts = [\&#34;b:443\&#34;]\n\n[job.\&#34;w.yaml:j\&#34;]\nclasses = [\&#34;base\&#34;]\n&#34;
+<span id="L427" class="ln">   427  </span>			_, err := parseSSOT(body)
+<span id="L428" class="ln">   428  </span>			require.ErrorIs(t, err, errSSOTBaseClass)
+<span id="L429" class="ln">   429  </span>		})
+<span id="L430" class="ln">   430  </span>
+<span id="L431" class="ln">   431  </span>		t.Run(&#34;未定義クラスの宣言を弾く&#34;, func(t *testing.T) {
+<span id="L432" class="ln">   432  </span>			t.Parallel()
+<span id="L433" class="ln">   433  </span>			_, err := parseSSOT(&#34;[job.\&#34;w.yaml:j\&#34;]\nclasses = [\&#34;nope\&#34;]\n&#34;)
+<span id="L434" class="ln">   434  </span>			require.ErrorIs(t, err, errSSOTUnknownClass)
+<span id="L435" class="ln">   435  </span>		})
+<span id="L436" class="ln">   436  </span>	})
+<span id="L437" class="ln">   437  </span>}
+<span id="L438" class="ln">   438  </span>
+<span id="L439" class="ln">   439  </span>func Test_ssot_hostsFor(t *testing.T) {
+<span id="L440" class="ln">   440  </span>	t.Parallel()
+<span id="L441" class="ln">   441  </span>
+<span id="L442" class="ln">   442  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L443" class="ln">   443  </span>		t.Parallel()
+<span id="L444" class="ln">   444  </span>
+<span id="L445" class="ln">   445  </span>		t.Run(&#34;base → クラス（継承込み）→ extra の順で並べる&#34;, func(t *testing.T) {
+<span id="L446" class="ln">   446  </span>			t.Parallel()
+<span id="L447" class="ln">   447  </span>			hosts, err := mustParse(t, testSSOT).hostsFor(&#34;a.yaml:one&#34;)
+<span id="L448" class="ln">   448  </span>			require.NoError(t, err)
+<span id="L449" class="ln">   449  </span>			assert.Equal(t, []string{&#34;b1:443&#34;, &#34;b2:443&#34;, &#34;m1:443&#34;, &#34;m2:443&#34;, &#34;i1:443&#34;, &#34;x1:443&#34;}, hosts)
+<span id="L450" class="ln">   450  </span>		})
+<span id="L451" class="ln">   451  </span>
+<span id="L452" class="ln">   452  </span>		t.Run(&#34;クラス宣言が無いジョブは base だけを持つ&#34;, func(t *testing.T) {
+<span id="L453" class="ln">   453  </span>			t.Parallel()
+<span id="L454" class="ln">   454  </span>			hosts, err := mustParse(t, testSSOT).hostsFor(&#34;b.yaml:two&#34;)
+<span id="L455" class="ln">   455  </span>			require.NoError(t, err)
+<span id="L456" class="ln">   456  </span>			assert.Equal(t, []string{&#34;b1:443&#34;, &#34;b2:443&#34;}, hosts)
+<span id="L457" class="ln">   457  </span>		})
+<span id="L458" class="ln">   458  </span>
+<span id="L459" class="ln">   459  </span>		t.Run(&#34;audit ジョブは許可リストを持たない&#34;, func(t *testing.T) {
+<span id="L460" class="ln">   460  </span>			t.Parallel()
+<span id="L461" class="ln">   461  </span>			hosts, err := mustParse(t, testSSOT).hostsFor(&#34;b.yaml:audited&#34;)
+<span id="L462" class="ln">   462  </span>			require.NoError(t, err)
+<span id="L463" class="ln">   463  </span>			assert.Empty(t, hosts)
+<span id="L464" class="ln">   464  </span>		})
+<span id="L465" class="ln">   465  </span>
+<span id="L466" class="ln">   466  </span>		t.Run(&#34;クラス間で重複するホストは初出だけを残す&#34;, func(t *testing.T) {
+<span id="L467" class="ln">   467  </span>			t.Parallel()
+<span id="L468" class="ln">   468  </span>			body := &#34;[class.base]\nhosts = [\&#34;b:443\&#34;]\n\n[class.x]\nhosts = [\&#34;b:443\&#34;, \&#34;x:443\&#34;]\n\n&#34; +
+<span id="L469" class="ln">   469  </span>				&#34;[job.\&#34;w.yaml:j\&#34;]\nclasses = [\&#34;x\&#34;]\nextra = [\&#34;x:443\&#34;]\n&#34;
+<span id="L470" class="ln">   470  </span>			hosts, err := mustParse(t, body).hostsFor(&#34;w.yaml:j&#34;)
+<span id="L471" class="ln">   471  </span>			require.NoError(t, err)
+<span id="L472" class="ln">   472  </span>			assert.Equal(t, []string{&#34;b:443&#34;, &#34;x:443&#34;}, hosts)
+<span id="L473" class="ln">   473  </span>		})
+<span id="L474" class="ln">   474  </span>	})
+<span id="L475" class="ln">   475  </span>}
+<span id="L476" class="ln">   476  </span>
+<span id="L477" class="ln">   477  </span>func Test_ssot_expandClass(t *testing.T) {
+<span id="L478" class="ln">   478  </span>	t.Parallel()
+<span id="L479" class="ln">   479  </span>
+<span id="L480" class="ln">   480  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L481" class="ln">   481  </span>		t.Parallel()
+<span id="L482" class="ln">   482  </span>
+<span id="L483" class="ln">   483  </span>		t.Run(&#34;継承元を先に展開する&#34;, func(t *testing.T) {
+<span id="L484" class="ln">   484  </span>			t.Parallel()
+<span id="L485" class="ln">   485  </span>			out := &amp;orderedHosts{seen: map[string]bool{}}
+<span id="L486" class="ln">   486  </span>			require.NoError(t, mustParse(t, testSSOT).expandClass(&#34;image&#34;, out, map[string]bool{}))
+<span id="L487" class="ln">   487  </span>			assert.Equal(t, []string{&#34;m1:443&#34;, &#34;m2:443&#34;, &#34;i1:443&#34;}, out.list)
+<span id="L488" class="ln">   488  </span>		})
+<span id="L489" class="ln">   489  </span>	})
+<span id="L490" class="ln">   490  </span>
+<span id="L491" class="ln">   491  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L492" class="ln">   492  </span>		t.Parallel()
+<span id="L493" class="ln">   493  </span>
+<span id="L494" class="ln">   494  </span>		t.Run(&#34;未定義クラスを弾く&#34;, func(t *testing.T) {
+<span id="L495" class="ln">   495  </span>			t.Parallel()
+<span id="L496" class="ln">   496  </span>			out := &amp;orderedHosts{seen: map[string]bool{}}
+<span id="L497" class="ln">   497  </span>			err := mustParse(t, testSSOT).expandClass(&#34;nope&#34;, out, map[string]bool{})
+<span id="L498" class="ln">   498  </span>			require.ErrorIs(t, err, errSSOTUnknownClass)
+<span id="L499" class="ln">   499  </span>		})
+<span id="L500" class="ln">   500  </span>
+<span id="L501" class="ln">   501  </span>		t.Run(&#34;循環を弾く&#34;, func(t *testing.T) {
+<span id="L502" class="ln">   502  </span>			t.Parallel()
+<span id="L503" class="ln">   503  </span>			s := &amp;ssot{classes: map[string]*class{&#34;a&#34;: {includes: []string{&#34;a&#34;}}}, jobs: map[string]*jobSpec{}}
+<span id="L504" class="ln">   504  </span>			out := &amp;orderedHosts{seen: map[string]bool{}}
+<span id="L505" class="ln">   505  </span>			require.ErrorIs(t, s.expandClass(&#34;a&#34;, out, map[string]bool{}), errSSOTClassCycle)
+<span id="L506" class="ln">   506  </span>		})
+<span id="L507" class="ln">   507  </span>	})
+<span id="L508" class="ln">   508  </span>}
+<span id="L509" class="ln">   509  </span>
+<span id="L510" class="ln">   510  </span>func Test_orderedHosts_add(t *testing.T) {
+<span id="L511" class="ln">   511  </span>	t.Parallel()
+<span id="L512" class="ln">   512  </span>
+<span id="L513" class="ln">   513  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L514" class="ln">   514  </span>		t.Parallel()
+<span id="L515" class="ln">   515  </span>
+<span id="L516" class="ln">   516  </span>		t.Run(&#34;初出順を保ったまま重複を落とす&#34;, func(t *testing.T) {
+<span id="L517" class="ln">   517  </span>			t.Parallel()
+<span id="L518" class="ln">   518  </span>			o := &amp;orderedHosts{seen: map[string]bool{}}
+<span id="L519" class="ln">   519  </span>			o.add([]string{&#34;a&#34;, &#34;b&#34;})
+<span id="L520" class="ln">   520  </span>			o.add([]string{&#34;b&#34;, &#34;c&#34;})
+<span id="L521" class="ln">   521  </span>			assert.Equal(t, []string{&#34;a&#34;, &#34;b&#34;, &#34;c&#34;}, o.list)
+<span id="L522" class="ln">   522  </span>		})
+<span id="L523" class="ln">   523  </span>	})
+<span id="L524" class="ln">   524  </span>}
+<span id="L525" class="ln">   525  </span>
+<span id="L526" class="ln">   526  </span>func Test_scanWorkflow(t *testing.T) {
+<span id="L527" class="ln">   527  </span>	t.Parallel()
+<span id="L528" class="ln">   528  </span>
+<span id="L529" class="ln">   529  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L530" class="ln">   530  </span>		t.Parallel()
+<span id="L531" class="ln">   531  </span>
+<span id="L532" class="ln">   532  </span>		t.Run(&#34;ジョブごとの policy とブロックを返す&#34;, func(t *testing.T) {
+<span id="L533" class="ln">   533  </span>			t.Parallel()
+<span id="L534" class="ln">   534  </span>			body := testWorkflow(&#34;one&#34;, &#34;a:443&#34;, &#34;b:443&#34;)
+<span id="L535" class="ln">   535  </span>			policies, blocks, err := scanWorkflow(&#34;a.yaml&#34;, strings.Split(body, &#34;\n&#34;))
+<span id="L536" class="ln">   536  </span>			require.NoError(t, err)
+<span id="L537" class="ln">   537  </span>			assert.Equal(t, map[string]string{&#34;a.yaml:one&#34;: policyBlock}, policies)
+<span id="L538" class="ln">   538  </span>			require.Len(t, blocks, 1)
+<span id="L539" class="ln">   539  </span>			assert.Equal(t, &#34;a.yaml:one&#34;, blocks[0].jobKey)
+<span id="L540" class="ln">   540  </span>			assert.Equal(t, []string{&#34;a:443&#34;, &#34;b:443&#34;}, blocks[0].hosts)
+<span id="L541" class="ln">   541  </span>			assert.Equal(t, 10, blocks[0].indent)
+<span id="L542" class="ln">   542  </span>		})
+<span id="L543" class="ln">   543  </span>
+<span id="L544" class="ln">   544  </span>		t.Run(&#34;複数ジョブを job id で識別する&#34;, func(t *testing.T) {
+<span id="L545" class="ln">   545  </span>			t.Parallel()
+<span id="L546" class="ln">   546  </span>			body := testWorkflow(&#34;one&#34;, &#34;a:443&#34;) + &#34;\n&#34; +
+<span id="L547" class="ln">   547  </span>				strings.TrimPrefix(testWorkflow(&#34;two&#34;, &#34;b:443&#34;), &#34;name: T\n\njobs:\n&#34;)
+<span id="L548" class="ln">   548  </span>			policies, blocks, err := scanWorkflow(&#34;a.yaml&#34;, strings.Split(body, &#34;\n&#34;))
+<span id="L549" class="ln">   549  </span>			require.NoError(t, err)
+<span id="L550" class="ln">   550  </span>			assert.Len(t, policies, 2)
+<span id="L551" class="ln">   551  </span>			require.Len(t, blocks, 2)
+<span id="L552" class="ln">   552  </span>			assert.Equal(t, &#34;a.yaml:two&#34;, blocks[1].jobKey)
+<span id="L553" class="ln">   553  </span>		})
+<span id="L554" class="ln">   554  </span>
+<span id="L555" class="ln">   555  </span>		t.Run(&#34;harden-runner を持たないジョブは policy を持たない&#34;, func(t *testing.T) {
+<span id="L556" class="ln">   556  </span>			t.Parallel()
+<span id="L557" class="ln">   557  </span>			body := &#34;name: T\n\njobs:\n  notify-failure:\n    uses: ./.github/workflows/notify.yaml\n&#34;
+<span id="L558" class="ln">   558  </span>			policies, blocks, err := scanWorkflow(&#34;a.yaml&#34;, strings.Split(body, &#34;\n&#34;))
+<span id="L559" class="ln">   559  </span>			require.NoError(t, err)
+<span id="L560" class="ln">   560  </span>			assert.Empty(t, policies)
+<span id="L561" class="ln">   561  </span>			assert.Empty(t, blocks)
+<span id="L562" class="ln">   562  </span>		})
+<span id="L563" class="ln">   563  </span>	})
+<span id="L564" class="ln">   564  </span>
+<span id="L565" class="ln">   565  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L566" class="ln">   566  </span>		t.Parallel()
+<span id="L567" class="ln">   567  </span>
+<span id="L568" class="ln">   568  </span>		t.Run(&#34;ジョブに属さない allowed-endpoints を弾く&#34;, func(t *testing.T) {
+<span id="L569" class="ln">   569  </span>			t.Parallel()
+<span id="L570" class="ln">   570  </span>			body := &#34;name: T\n\nx:\n  with:\n    allowed-endpoints: &gt;\n      a:443\n&#34;
+<span id="L571" class="ln">   571  </span>			_, _, err := scanWorkflow(&#34;a.yaml&#34;, strings.Split(body, &#34;\n&#34;))
+<span id="L572" class="ln">   572  </span>			require.ErrorIs(t, err, errWorkflowJobless)
+<span id="L573" class="ln">   573  </span>		})
+<span id="L574" class="ln">   574  </span>
+<span id="L575" class="ln">   575  </span>		t.Run(&#34;ジョブに属さない egress-policy を弾く&#34;, func(t *testing.T) {
+<span id="L576" class="ln">   576  </span>			t.Parallel()
+<span id="L577" class="ln">   577  </span>			body := &#34;name: T\n\nx:\n  with:\n    egress-policy: block\n&#34;
+<span id="L578" class="ln">   578  </span>			_, _, err := scanWorkflow(&#34;a.yaml&#34;, strings.Split(body, &#34;\n&#34;))
+<span id="L579" class="ln">   579  </span>			require.ErrorIs(t, err, errWorkflowJobless)
+<span id="L580" class="ln">   580  </span>		})
+<span id="L581" class="ln">   581  </span>	})
+<span id="L582" class="ln">   582  </span>}
+<span id="L583" class="ln">   583  </span>
+<span id="L584" class="ln">   584  </span>func Test_workflowJobs(t *testing.T) {
+<span id="L585" class="ln">   585  </span>	t.Parallel()
+<span id="L586" class="ln">   586  </span>
+<span id="L587" class="ln">   587  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L588" class="ln">   588  </span>		t.Parallel()
+<span id="L589" class="ln">   589  </span>
+<span id="L590" class="ln">   590  </span>		t.Run(&#34;jobs 直下の job id を行ごとに割り当てる&#34;, func(t *testing.T) {
+<span id="L591" class="ln">   591  </span>			t.Parallel()
+<span id="L592" class="ln">   592  </span>			lines := []string{&#34;name: T&#34;, &#34;on:&#34;, &#34;  push:&#34;, &#34;jobs:&#34;, &#34;  one:&#34;, &#34;    steps: []&#34;, &#34;  two:&#34;, &#34;    steps: []&#34;}
+<span id="L593" class="ln">   593  </span>			assert.Equal(t, []string{&#34;&#34;, &#34;&#34;, &#34;&#34;, &#34;&#34;, &#34;one&#34;, &#34;one&#34;, &#34;two&#34;, &#34;two&#34;}, workflowJobs(lines))
+<span id="L594" class="ln">   594  </span>		})
+<span id="L595" class="ln">   595  </span>
+<span id="L596" class="ln">   596  </span>		t.Run(&#34;jobs の外は空文字にする&#34;, func(t *testing.T) {
+<span id="L597" class="ln">   597  </span>			t.Parallel()
+<span id="L598" class="ln">   598  </span>			lines := []string{&#34;jobs:&#34;, &#34;  one:&#34;, &#34;on:&#34;, &#34;  push:&#34;}
+<span id="L599" class="ln">   599  </span>			assert.Equal(t, []string{&#34;&#34;, &#34;one&#34;, &#34;&#34;, &#34;&#34;}, workflowJobs(lines))
+<span id="L600" class="ln">   600  </span>		})
+<span id="L601" class="ln">   601  </span>
+<span id="L602" class="ln">   602  </span>		t.Run(&#34;桁 0 のコメント行は所属を変えない&#34;, func(t *testing.T) {
+<span id="L603" class="ln">   603  </span>			t.Parallel()
+<span id="L604" class="ln">   604  </span>			lines := []string{&#34;jobs:&#34;, &#34;  one:&#34;, &#34;# note&#34;, &#34;    steps: []&#34;}
+<span id="L605" class="ln">   605  </span>			assert.Equal(t, []string{&#34;&#34;, &#34;one&#34;, &#34;one&#34;, &#34;one&#34;}, workflowJobs(lines))
+<span id="L606" class="ln">   606  </span>		})
+<span id="L607" class="ln">   607  </span>	})
+<span id="L608" class="ln">   608  </span>}
+<span id="L609" class="ln">   609  </span>
+<span id="L610" class="ln">   610  </span>func Test_readBlock(t *testing.T) {
+<span id="L611" class="ln">   611  </span>	t.Parallel()
+<span id="L612" class="ln">   612  </span>
+<span id="L613" class="ln">   613  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L614" class="ln">   614  </span>		t.Parallel()
+<span id="L615" class="ln">   615  </span>
+<span id="L616" class="ln">   616  </span>		t.Run(&#34;字下げが戻るまでをホスト行として読む&#34;, func(t *testing.T) {
+<span id="L617" class="ln">   617  </span>			t.Parallel()
+<span id="L618" class="ln">   618  </span>			lines := []string{&#34;          allowed-endpoints: &gt;&#34;, &#34;            a:443&#34;, &#34;            b:80&#34;, &#34;&#34;, &#34;      - name: X&#34;}
+<span id="L619" class="ln">   619  </span>			b, err := readBlock(&#34;a.yaml&#34;, lines, 0, 10)
+<span id="L620" class="ln">   620  </span>			require.NoError(t, err)
+<span id="L621" class="ln">   621  </span>			assert.Equal(t, []string{&#34;a:443&#34;, &#34;b:80&#34;}, b.hosts)
+<span id="L622" class="ln">   622  </span>			assert.Equal(t, 3, b.endLine)
+<span id="L623" class="ln">   623  </span>		})
+<span id="L624" class="ln">   624  </span>
+<span id="L625" class="ln">   625  </span>		t.Run(&#34;ホスト行が無いブロックを空として読む&#34;, func(t *testing.T) {
+<span id="L626" class="ln">   626  </span>			t.Parallel()
+<span id="L627" class="ln">   627  </span>			b, err := readBlock(&#34;a.yaml&#34;, []string{&#34;          allowed-endpoints: &gt;&#34;, &#34;&#34;}, 0, 10)
+<span id="L628" class="ln">   628  </span>			require.NoError(t, err)
+<span id="L629" class="ln">   629  </span>			assert.Empty(t, b.hosts)
+<span id="L630" class="ln">   630  </span>			assert.Equal(t, 1, b.endLine)
+<span id="L631" class="ln">   631  </span>		})
+<span id="L632" class="ln">   632  </span>	})
+<span id="L633" class="ln">   633  </span>
+<span id="L634" class="ln">   634  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L635" class="ln">   635  </span>		t.Parallel()
+<span id="L636" class="ln">   636  </span>
+<span id="L637" class="ln">   637  </span>		t.Run(&#34;コメント行を弾く&#34;, func(t *testing.T) {
+<span id="L638" class="ln">   638  </span>			t.Parallel()
+<span id="L639" class="ln">   639  </span>			lines := []string{&#34;          allowed-endpoints: &gt;&#34;, &#34;            # note&#34;, &#34;            a:443&#34;}
+<span id="L640" class="ln">   640  </span>			_, err := readBlock(&#34;a.yaml&#34;, lines, 0, 10)
+<span id="L641" class="ln">   641  </span>			require.ErrorIs(t, err, errBlockComment)
+<span id="L642" class="ln">   642  </span>		})
+<span id="L643" class="ln">   643  </span>
+<span id="L644" class="ln">   644  </span>		t.Run(&#34;1 行に複数トークンある行を弾く&#34;, func(t *testing.T) {
+<span id="L645" class="ln">   645  </span>			t.Parallel()
+<span id="L646" class="ln">   646  </span>			lines := []string{&#34;          allowed-endpoints: &gt;&#34;, &#34;            a:443 b:443&#34;}
+<span id="L647" class="ln">   647  </span>			_, err := readBlock(&#34;a.yaml&#34;, lines, 0, 10)
+<span id="L648" class="ln">   648  </span>			require.ErrorIs(t, err, errBlockComment)
+<span id="L649" class="ln">   649  </span>		})
+<span id="L650" class="ln">   650  </span>	})
+<span id="L651" class="ln">   651  </span>}
+<span id="L652" class="ln">   652  </span>
+<span id="L653" class="ln">   653  </span>func Test_renderBlock(t *testing.T) {
+<span id="L654" class="ln">   654  </span>	t.Parallel()
+<span id="L655" class="ln">   655  </span>
+<span id="L656" class="ln">   656  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L657" class="ln">   657  </span>		t.Parallel()
+<span id="L658" class="ln">   658  </span>
+<span id="L659" class="ln">   659  </span>		t.Run(&#34;キーより 2 段深い字下げで並べる&#34;, func(t *testing.T) {
+<span id="L660" class="ln">   660  </span>			t.Parallel()
+<span id="L661" class="ln">   661  </span>			assert.Equal(t, []string{&#34;            a:443&#34;, &#34;            b:80&#34;}, renderBlock([]string{&#34;a:443&#34;, &#34;b:80&#34;}, 10))
+<span id="L662" class="ln">   662  </span>		})
+<span id="L663" class="ln">   663  </span>
+<span id="L664" class="ln">   664  </span>		t.Run(&#34;ホストが無ければ空を返す&#34;, func(t *testing.T) {
+<span id="L665" class="ln">   665  </span>			t.Parallel()
+<span id="L666" class="ln">   666  </span>			assert.Empty(t, renderBlock(nil, 10))
+<span id="L667" class="ln">   667  </span>		})
+<span id="L668" class="ln">   668  </span>	})
+<span id="L669" class="ln">   669  </span>}
+<span id="L670" class="ln">   670  </span>
+<span id="L671" class="ln">   671  </span>func Test_ssot_rewriteFile(t *testing.T) {
+<span id="L672" class="ln">   672  </span>	t.Parallel()
+<span id="L673" class="ln">   673  </span>
+<span id="L674" class="ln">   674  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L675" class="ln">   675  </span>		t.Parallel()
+<span id="L676" class="ln">   676  </span>
+<span id="L677" class="ln">   677  </span>		t.Run(&#34;ブロックを SSOT 由来の内容へ差し替える&#34;, func(t *testing.T) {
+<span id="L678" class="ln">   678  </span>			t.Parallel()
+<span id="L679" class="ln">   679  </span>			used := map[string]bool{}
+<span id="L680" class="ln">   680  </span>			out, err := mustParse(t, testSSOT).rewriteFile(&#34;a.yaml&#34;, testWorkflow(&#34;one&#34;, &#34;stale:443&#34;), used)
+<span id="L681" class="ln">   681  </span>			require.NoError(t, err)
+<span id="L682" class="ln">   682  </span>			assert.Contains(t, out, &#34;            b1:443\n            b2:443\n            m1:443\n&#34;)
+<span id="L683" class="ln">   683  </span>			assert.NotContains(t, out, &#34;stale:443&#34;)
+<span id="L684" class="ln">   684  </span>			assert.True(t, used[&#34;a.yaml:one&#34;])
+<span id="L685" class="ln">   685  </span>		})
+<span id="L686" class="ln">   686  </span>
+<span id="L687" class="ln">   687  </span>		t.Run(&#34;audit ジョブのブロック無しを許す&#34;, func(t *testing.T) {
+<span id="L688" class="ln">   688  </span>			t.Parallel()
+<span id="L689" class="ln">   689  </span>			body := &#34;name: T\n\njobs:\n  audited:\n    steps:\n      - with:\n          egress-policy: audit\n&#34;
+<span id="L690" class="ln">   690  </span>			used := map[string]bool{}
+<span id="L691" class="ln">   691  </span>			out, err := mustParse(t, testSSOT).rewriteFile(&#34;b.yaml&#34;, body, used)
+<span id="L692" class="ln">   692  </span>			require.NoError(t, err)
+<span id="L693" class="ln">   693  </span>			assert.Equal(t, body, out)
+<span id="L694" class="ln">   694  </span>			assert.True(t, used[&#34;b.yaml:audited&#34;])
+<span id="L695" class="ln">   695  </span>		})
+<span id="L696" class="ln">   696  </span>	})
+<span id="L697" class="ln">   697  </span>
+<span id="L698" class="ln">   698  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L699" class="ln">   699  </span>		t.Parallel()
+<span id="L700" class="ln">   700  </span>
+<span id="L701" class="ln">   701  </span>		t.Run(&#34;SSOT に未登録のジョブを弾く&#34;, func(t *testing.T) {
+<span id="L702" class="ln">   702  </span>			t.Parallel()
+<span id="L703" class="ln">   703  </span>			_, err := mustParse(t, testSSOT).rewriteFile(&#34;z.yaml&#34;, testWorkflow(&#34;nope&#34;, &#34;a:443&#34;), map[string]bool{})
+<span id="L704" class="ln">   704  </span>			require.ErrorIs(t, err, errJobMissing)
+<span id="L705" class="ln">   705  </span>		})
+<span id="L706" class="ln">   706  </span>	})
+<span id="L707" class="ln">   707  </span>}
+<span id="L708" class="ln">   708  </span>
+<span id="L709" class="ln">   709  </span>func Test_ssot_checkPolicy(t *testing.T) {
+<span id="L710" class="ln">   710  </span>	t.Parallel()
+<span id="L711" class="ln">   711  </span>
+<span id="L712" class="ln">   712  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L713" class="ln">   713  </span>		t.Parallel()
+<span id="L714" class="ln">   714  </span>
+<span id="L715" class="ln">   715  </span>		t.Run(&#34;block とブロック有りが揃う&#34;, func(t *testing.T) {
+<span id="L716" class="ln">   716  </span>			t.Parallel()
+<span id="L717" class="ln">   717  </span>			assert.NoError(t, mustParse(t, testSSOT).checkPolicy(&#34;a.yaml:one&#34;, policyBlock, true))
+<span id="L718" class="ln">   718  </span>		})
+<span id="L719" class="ln">   719  </span>
+<span id="L720" class="ln">   720  </span>		t.Run(&#34;audit とブロック無しが揃う&#34;, func(t *testing.T) {
+<span id="L721" class="ln">   721  </span>			t.Parallel()
+<span id="L722" class="ln">   722  </span>			assert.NoError(t, mustParse(t, testSSOT).checkPolicy(&#34;b.yaml:audited&#34;, policyAudit, false))
+<span id="L723" class="ln">   723  </span>		})
+<span id="L724" class="ln">   724  </span>	})
+<span id="L725" class="ln">   725  </span>
+<span id="L726" class="ln">   726  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L727" class="ln">   727  </span>		t.Parallel()
+<span id="L728" class="ln">   728  </span>
+<span id="L729" class="ln">   729  </span>		t.Run(&#34;未登録のジョブを弾く&#34;, func(t *testing.T) {
+<span id="L730" class="ln">   730  </span>			t.Parallel()
+<span id="L731" class="ln">   731  </span>			err := mustParse(t, testSSOT).checkPolicy(&#34;z.yaml:none&#34;, policyBlock, true)
+<span id="L732" class="ln">   732  </span>			require.ErrorIs(t, err, errJobMissing)
+<span id="L733" class="ln">   733  </span>		})
+<span id="L734" class="ln">   734  </span>
+<span id="L735" class="ln">   735  </span>		t.Run(&#34;policy の食い違いを弾く&#34;, func(t *testing.T) {
+<span id="L736" class="ln">   736  </span>			t.Parallel()
+<span id="L737" class="ln">   737  </span>			err := mustParse(t, testSSOT).checkPolicy(&#34;a.yaml:one&#34;, policyAudit, false)
+<span id="L738" class="ln">   738  </span>			require.ErrorIs(t, err, errPolicyMismatch)
+<span id="L739" class="ln">   739  </span>		})
+<span id="L740" class="ln">   740  </span>
+<span id="L741" class="ln">   741  </span>		t.Run(&#34;block なのにブロックが無い状態を弾く&#34;, func(t *testing.T) {
+<span id="L742" class="ln">   742  </span>			t.Parallel()
+<span id="L743" class="ln">   743  </span>			err := mustParse(t, testSSOT).checkPolicy(&#34;a.yaml:one&#34;, policyBlock, false)
+<span id="L744" class="ln">   744  </span>			require.ErrorIs(t, err, errPolicyMismatch)
+<span id="L745" class="ln">   745  </span>		})
+<span id="L746" class="ln">   746  </span>
+<span id="L747" class="ln">   747  </span>		t.Run(&#34;audit なのにブロックがある状態を弾く&#34;, func(t *testing.T) {
+<span id="L748" class="ln">   748  </span>			t.Parallel()
+<span id="L749" class="ln">   749  </span>			err := mustParse(t, testSSOT).checkPolicy(&#34;b.yaml:audited&#34;, policyAudit, true)
+<span id="L750" class="ln">   750  </span>			require.ErrorIs(t, err, errPolicyMismatch)
+<span id="L751" class="ln">   751  </span>		})
+<span id="L752" class="ln">   752  </span>	})
+<span id="L753" class="ln">   753  </span>}
+<span id="L754" class="ln">   754  </span>
+<span id="L755" class="ln">   755  </span>func Test_ssot_planFiles(t *testing.T) {
+<span id="L756" class="ln">   756  </span>	t.Parallel()
+<span id="L757" class="ln">   757  </span>
+<span id="L758" class="ln">   758  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L759" class="ln">   759  </span>		t.Parallel()
+<span id="L760" class="ln">   760  </span>
+<span id="L761" class="ln">   761  </span>		t.Run(&#34;差分のあるファイルだけを返す&#34;, func(t *testing.T) {
+<span id="L762" class="ln">   762  </span>			t.Parallel()
+<span id="L763" class="ln">   763  </span>			root := newTestRepo(t, map[string]string{
+<span id="L764" class="ln">   764  </span>				&#34;a.yaml&#34;: testWorkflow(&#34;one&#34;, &#34;stale:443&#34;),
+<span id="L765" class="ln">   765  </span>				&#34;b.yaml&#34;: testWorkflow(&#34;two&#34;, &#34;b1:443&#34;, &#34;b2:443&#34;),
+<span id="L766" class="ln">   766  </span>			})
+<span id="L767" class="ln">   767  </span>			files, err := filepath.Glob(filepath.Join(root, &#34;.github&#34;, &#34;workflows&#34;, &#34;*.yaml&#34;))
+<span id="L768" class="ln">   768  </span>			require.NoError(t, err)
+<span id="L769" class="ln">   769  </span>			changes, used, err := mustParse(t, testSSOT).planFiles(files)
+<span id="L770" class="ln">   770  </span>			require.NoError(t, err)
+<span id="L771" class="ln">   771  </span>			assert.Len(t, changes, 1)
+<span id="L772" class="ln">   772  </span>			assert.True(t, used[&#34;a.yaml:one&#34;])
+<span id="L773" class="ln">   773  </span>			assert.True(t, used[&#34;b.yaml:two&#34;])
+<span id="L774" class="ln">   774  </span>		})
+<span id="L775" class="ln">   775  </span>	})
+<span id="L776" class="ln">   776  </span>
+<span id="L777" class="ln">   777  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L778" class="ln">   778  </span>		t.Parallel()
+<span id="L779" class="ln">   779  </span>
+<span id="L780" class="ln">   780  </span>		t.Run(&#34;読めないファイルを弾く&#34;, func(t *testing.T) {
+<span id="L781" class="ln">   781  </span>			t.Parallel()
+<span id="L782" class="ln">   782  </span>			_, _, err := mustParse(t, testSSOT).planFiles([]string{filepath.Join(t.TempDir(), &#34;missing.yaml&#34;)})
+<span id="L783" class="ln">   783  </span>			require.ErrorIs(t, err, os.ErrNotExist)
+<span id="L784" class="ln">   784  </span>		})
+<span id="L785" class="ln">   785  </span>	})
+<span id="L786" class="ln">   786  </span>}
+<span id="L787" class="ln">   787  </span>
+<span id="L788" class="ln">   788  </span>func Test_orphanJobs(t *testing.T) {
+<span id="L789" class="ln">   789  </span>	t.Parallel()
+<span id="L790" class="ln">   790  </span>
+<span id="L791" class="ln">   791  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L792" class="ln">   792  </span>		t.Parallel()
+<span id="L793" class="ln">   793  </span>
+<span id="L794" class="ln">   794  </span>		t.Run(&#34;参照されなかったジョブキーを返す&#34;, func(t *testing.T) {
+<span id="L795" class="ln">   795  </span>			t.Parallel()
+<span id="L796" class="ln">   796  </span>			s := mustParse(t, testSSOT)
+<span id="L797" class="ln">   797  </span>			assert.Equal(t, []string{&#34;b.yaml:audited&#34;, &#34;b.yaml:two&#34;}, orphanJobs(s, map[string]bool{&#34;a.yaml:one&#34;: true}))
+<span id="L798" class="ln">   798  </span>		})
+<span id="L799" class="ln">   799  </span>
+<span id="L800" class="ln">   800  </span>		t.Run(&#34;全て参照済みなら空を返す&#34;, func(t *testing.T) {
+<span id="L801" class="ln">   801  </span>			t.Parallel()
+<span id="L802" class="ln">   802  </span>			s := mustParse(t, testSSOT)
+<span id="L803" class="ln">   803  </span>			used := map[string]bool{&#34;a.yaml:one&#34;: true, &#34;b.yaml:two&#34;: true, &#34;b.yaml:audited&#34;: true}
+<span id="L804" class="ln">   804  </span>			assert.Empty(t, orphanJobs(s, used))
+<span id="L805" class="ln">   805  </span>		})
+<span id="L806" class="ln">   806  </span>	})
+<span id="L807" class="ln">   807  </span>}
+<span id="L808" class="ln">   808  </span>
+<span id="L809" class="ln">   809  </span>func Test_applyOrCheck(t *testing.T) {
+<span id="L810" class="ln">   810  </span>	t.Parallel()
+<span id="L811" class="ln">   811  </span>
+<span id="L812" class="ln">   812  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L813" class="ln">   813  </span>		t.Parallel()
+<span id="L814" class="ln">   814  </span>
+<span id="L815" class="ln">   815  </span>		t.Run(&#34;apply は workflow を書き換える&#34;, func(t *testing.T) {
+<span id="L816" class="ln">   816  </span>			t.Parallel()
+<span id="L817" class="ln">   817  </span>			root := newTestRepo(t, map[string]string{
+<span id="L818" class="ln">   818  </span>				&#34;a.yaml&#34;: testWorkflow(&#34;one&#34;, &#34;stale:443&#34;),
+<span id="L819" class="ln">   819  </span>				&#34;b.yaml&#34;: bYAML,
+<span id="L820" class="ln">   820  </span>			})
+<span id="L821" class="ln">   821  </span>			require.NoError(t, applyOrCheck(root, false))
+<span id="L822" class="ln">   822  </span>			assert.NoError(t, applyOrCheck(root, true))
+<span id="L823" class="ln">   823  </span>		})
+<span id="L824" class="ln">   824  </span>	})
+<span id="L825" class="ln">   825  </span>
+<span id="L826" class="ln">   826  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L827" class="ln">   827  </span>		t.Parallel()
+<span id="L828" class="ln">   828  </span>
+<span id="L829" class="ln">   829  </span>		t.Run(&#34;SSOT が無ければ弾く&#34;, func(t *testing.T) {
+<span id="L830" class="ln">   830  </span>			t.Parallel()
+<span id="L831" class="ln">   831  </span>			require.ErrorIs(t, applyOrCheck(t.TempDir(), true), os.ErrNotExist)
+<span id="L832" class="ln">   832  </span>		})
+<span id="L833" class="ln">   833  </span>
+<span id="L834" class="ln">   834  </span>		t.Run(&#34;check はドリフトを非ゼロ終了で報告する&#34;, func(t *testing.T) {
+<span id="L835" class="ln">   835  </span>			t.Parallel()
+<span id="L836" class="ln">   836  </span>			root := newTestRepo(t, map[string]string{
+<span id="L837" class="ln">   837  </span>				&#34;a.yaml&#34;: testWorkflow(&#34;one&#34;, &#34;stale:443&#34;),
+<span id="L838" class="ln">   838  </span>				&#34;b.yaml&#34;: bYAML,
+<span id="L839" class="ln">   839  </span>			})
+<span id="L840" class="ln">   840  </span>			require.ErrorIs(t, applyOrCheck(root, true), errEgressDrift)
+<span id="L841" class="ln">   841  </span>		})
+<span id="L842" class="ln">   842  </span>
+<span id="L843" class="ln">   843  </span>		t.Run(&#34;workflow に現れないジョブ宣言を弾く&#34;, func(t *testing.T) {
+<span id="L844" class="ln">   844  </span>			t.Parallel()
+<span id="L845" class="ln">   845  </span>			root := newTestRepo(t, map[string]string{&#34;a.yaml&#34;: testWorkflow(&#34;one&#34;, &#34;stale:443&#34;)})
+<span id="L846" class="ln">   846  </span>			require.ErrorIs(t, applyOrCheck(root, true), errJobOrphan)
+<span id="L847" class="ln">   847  </span>		})
+<span id="L848" class="ln">   848  </span>	})
+<span id="L849" class="ln">   849  </span>}
+<span id="L850" class="ln">   850  </span>
+<span id="L851" class="ln">   851  </span>func Test_writeChanges(t *testing.T) {
+<span id="L852" class="ln">   852  </span>	t.Parallel()
+<span id="L853" class="ln">   853  </span>
+<span id="L854" class="ln">   854  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L855" class="ln">   855  </span>		t.Parallel()
+<span id="L856" class="ln">   856  </span>
+<span id="L857" class="ln">   857  </span>		t.Run(&#34;差分が無ければ dry-run は成功する&#34;, func(t *testing.T) {
+<span id="L858" class="ln">   858  </span>			t.Parallel()
+<span id="L859" class="ln">   859  </span>			assert.NoError(t, writeChanges(t.TempDir(), map[string]string{}, true))
+<span id="L860" class="ln">   860  </span>		})
+<span id="L861" class="ln">   861  </span>
+<span id="L862" class="ln">   862  </span>		t.Run(&#34;内容を書き出す&#34;, func(t *testing.T) {
+<span id="L863" class="ln">   863  </span>			t.Parallel()
+<span id="L864" class="ln">   864  </span>			root := t.TempDir()
+<span id="L865" class="ln">   865  </span>			path := filepath.Join(root, &#34;a.yaml&#34;)
+<span id="L866" class="ln">   866  </span>			require.NoError(t, writeChanges(root, map[string]string{path: &#34;body&#34;}, false))
+<span id="L867" class="ln">   867  </span>			got, err := os.ReadFile(path) <span class="comment">//nolint:gosec // path from t.TempDir</span>
+<span id="L868" class="ln">   868  </span>			require.NoError(t, err)
+<span id="L869" class="ln">   869  </span>			assert.Equal(t, &#34;body&#34;, string(got))
+<span id="L870" class="ln">   870  </span>		})
+<span id="L871" class="ln">   871  </span>	})
+<span id="L872" class="ln">   872  </span>
+<span id="L873" class="ln">   873  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L874" class="ln">   874  </span>		t.Parallel()
+<span id="L875" class="ln">   875  </span>
+<span id="L876" class="ln">   876  </span>		t.Run(&#34;dry-run は差分をドリフトとして報告する&#34;, func(t *testing.T) {
+<span id="L877" class="ln">   877  </span>			t.Parallel()
+<span id="L878" class="ln">   878  </span>			root := t.TempDir()
+<span id="L879" class="ln">   879  </span>			err := writeChanges(root, map[string]string{filepath.Join(root, &#34;a.yaml&#34;): &#34;body&#34;}, true)
+<span id="L880" class="ln">   880  </span>			require.ErrorIs(t, err, errEgressDrift)
+<span id="L881" class="ln">   881  </span>			assert.Contains(t, err.Error(), &#34;a.yaml&#34;)
+<span id="L882" class="ln">   882  </span>		})
+<span id="L883" class="ln">   883  </span>
+<span id="L884" class="ln">   884  </span>		t.Run(&#34;書き込み失敗を伝播する&#34;, func(t *testing.T) {
+<span id="L885" class="ln">   885  </span>			t.Parallel()
+<span id="L886" class="ln">   886  </span>			root := t.TempDir()
+<span id="L887" class="ln">   887  </span>			err := writeChanges(root, map[string]string{filepath.Join(root, &#34;missing&#34;, &#34;a.yaml&#34;): &#34;body&#34;}, false)
+<span id="L888" class="ln">   888  </span>			require.ErrorIs(t, err, os.ErrNotExist)
+<span id="L889" class="ln">   889  </span>		})
+<span id="L890" class="ln">   890  </span>	})
+<span id="L891" class="ln">   891  </span>}
+<span id="L892" class="ln">   892  </span>
+<span id="L893" class="ln">   893  </span>func Test_relTo(t *testing.T) {
+<span id="L894" class="ln">   894  </span>	t.Parallel()
+<span id="L895" class="ln">   895  </span>
+<span id="L896" class="ln">   896  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L897" class="ln">   897  </span>		t.Parallel()
+<span id="L898" class="ln">   898  </span>
+<span id="L899" class="ln">   899  </span>		t.Run(&#34;root からの相対パスを返す&#34;, func(t *testing.T) {
+<span id="L900" class="ln">   900  </span>			t.Parallel()
+<span id="L901" class="ln">   901  </span>			assert.Equal(t, filepath.Join(&#34;.github&#34;, &#34;workflows&#34;, &#34;a.yaml&#34;),
+<span id="L902" class="ln">   902  </span>				relTo(&#34;/repo&#34;, filepath.Join(&#34;/repo&#34;, &#34;.github&#34;, &#34;workflows&#34;, &#34;a.yaml&#34;)))
+<span id="L903" class="ln">   903  </span>		})
+<span id="L904" class="ln">   904  </span>
+<span id="L905" class="ln">   905  </span>		t.Run(&#34;相対化できなければ元のパスを返す&#34;, func(t *testing.T) {
+<span id="L906" class="ln">   906  </span>			t.Parallel()
+<span id="L907" class="ln">   907  </span>			assert.Equal(t, &#34;a.yaml&#34;, relTo(&#34;/repo&#34;, &#34;a.yaml&#34;))
+<span id="L908" class="ln">   908  </span>		})
+<span id="L909" class="ln">   909  </span>	})
+<span id="L910" class="ln">   910  </span>}
+<span id="L911" class="ln">   911  </span>
+</pre><p><a href="../../../../src/go-boilerplate/scripts/egress/main_test.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

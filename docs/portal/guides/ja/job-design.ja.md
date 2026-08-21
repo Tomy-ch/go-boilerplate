@@ -1,6 +1,6 @@
 # Job サブシステム設計リファレンス
 
-[Job README（日本語）](../../../internal/controller/job/README.ja.md) | English: [job.md](../../design/job.md)
+[Job README（日本語）](../../internal/controller/job/README.ja.md) | English: [job.md](job.md)
 
 本書は job scaffold の **役割論・状態遷移・実装箇所・integrator が書く箇所・用語** を、実装を精査して 1 枚にまとめた参照資料です。概要は README、非同期の兄弟である worker は [worker.ja.md](worker.ja.md) を参照。
 
@@ -36,8 +36,8 @@ stateDiagram-v2
     Started --> Running: RegisterJobHooks OnStart が runJobAndShutdown goroutine を起動
     Running --> Completed: runner.Run(name, args) → Job.Execute 復帰、結果を done へ送出
     Running --> TimedOut: timeout>0 かつ waitCtx が先に完了（DeadlineExceeded / 親 Canceled）
-    Completed --> Stopping: gracefulStop → app.Stop（stopTimeout 30s）
-    TimedOut --> Stopping: gracefulStop → app.Stop（stopTimeout 30s）
+    Completed --> Stopping: gracefulStop → app.Stop（grace = APP_SHUTDOWN_TIMEOUT）
+    TimedOut --> Stopping: gracefulStop → app.Stop（grace = APP_SHUTDOWN_TIMEOUT）
     Stopping --> Stopped: sd.Shutdown 要求 ＋ app.Stop 完了
     Stopped --> [*]: runJob が err を返す（ジョブ結果 / waitCtx.Err()）
 
@@ -97,7 +97,7 @@ flowchart TD
         CMD["cmd/job.go<br/>newJobCommand / args[0]=name ＋ args[1:] / --timeout"]
     end
     subgraph cliL["internal/cli/job"]
-        CLI["job.go: RunJobWith / runJob<br/>timeout 分岐 ＋ gracefulStop(30s)"]
+        CLI["job.go: RunJobWith / runJob<br/>timeout 分岐 ＋ gracefulStop(grace)"]
     end
     subgraph diL["internal/di"]
         DIJ["job.go: RunJob / NewJobCore<br/>実行ごとの fx.App, state.Set, start/stop 関数"]
@@ -144,7 +144,7 @@ flowchart TD
     class CMD,CLI,DIJ,DIR,DIH,DIM,RUN,STATE,UC,GC,PORT,MOCK,SD,CFG,LOG,OTEL done;
 ```
 
-> 緑＝scaffold 実装済み。依存方向は常に内向き（`controller→usecase/boundary`）。runner/state は業務ロジックも infra import も持たず、ジョブはデータへ usecase 層経由でのみ到達する。
+> 緑＝本プロジェクトの実装済み。依存方向は常に内向き（`controller→usecase/boundary`）。runner/state は業務ロジックも infra import も持たず、ジョブはデータへ usecase 層経由でのみ到達する。
 
 ### 3.2 実行 1 回の作用シーケンス
 
@@ -167,15 +167,15 @@ sequenceDiagram
     Run-->>Hook: result
     Hook->>Hook: done <- result, close(done), sd.Shutdown()
     CLI->>CLI: err := <-done（timeout 時は waitCtx.Done()）
-    CLI->>DI: gracefulStop → stop(ctx) ＝ app.Stop（≤30s）
+    CLI->>DI: gracefulStop → stop(ctx) ＝ app.Stop（≤ grace）
     CLI-->>Cobra: return err（終了コード）
 ```
 
 ---
 
-## 4. integrator が実装する箇所（scaffold が用意しない部分）
+## 4. integrator が実装する箇所（本プロジェクトが用意しない部分）
 
-scaffold は **runner・state・lifecycle hook・DI 配線・2 つの参考ジョブ**（`usercount`・`idempotencygc`）を提供する。ジョブを追加するには次を用意する（ジョブは明示登録・自動検出なし）。
+本プロジェクトは **runner・state・lifecycle hook・DI 配線・2 つの参考ジョブ**（`usercount`・`idempotencygc`）を提供する。ジョブを追加するには次を用意する（ジョブは明示登録・自動検出なし）。
 
 ```mermaid
 flowchart LR
@@ -213,7 +213,7 @@ flowchart LR
 | **runJobAndShutdown** | `RegisterJobHooks` OnStart が起動する detached goroutine。state を Snapshot し、ジョブを実行、結果送出、停止を要求。 |
 | **context.WithoutCancel** | fx OnStart フック復帰でジョブの context がキャンセルされないようにする（ジョブは OnStart を超えて走る）。 |
 | **timeout（`--timeout`）** | 任意の CLI 期限。`>0` ならジョブ完了か期限の早い方を待ち、`≤0` なら無期限に待つ。 |
-| **gracefulStop / stopTimeout** | 完了・timeout 後、`app.Stop` に（期限切れでない）新規 30s context を与えて後始末させる。 |
+| **gracefulStop / stopTimeout** | 完了・timeout 後、`app.Stop` に（期限切れでない）新規 context を与え、停止猶予（`APP_SHUTDOWN_TIMEOUT`、既定 65s）の範囲で後始末させる。 |
 | **Shutdowner** | ジョブ完了後に hook が呼ぶ fx の停止要求器。これでアプリが終了する。 |
 | **provideJobs / `group:"jobs"`** | 全ジョブコンストラクタを `NewRunner` が食うスライスへ束ねる Fx 集約。 |
 | **ErrUnknownJob / ErrDuplicateJob** | ディスパッチ時の未知名エラー（available 一覧付き）／構築時の同名エラー。 |

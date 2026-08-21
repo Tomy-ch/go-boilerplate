@@ -10,8 +10,6 @@
 - router - ルーティングの登録とHTTPサーバーの起動を担います。
 - middleware - ロギング/リクエストID/トレーシングなど、HTTPリクエストの前後で共通処理を行います。
 
-HTTPリクエストを受け取り、Usecase層へ処理を委譲する責務を持ちます。
-
 Controllerは **アプリケーションの入出力境界** です。
 
 ## このプロジェクトでの役割
@@ -36,6 +34,8 @@ handler は 1 アクションにつき **単一の Usecase 操作へ委譲**し�
 Presenterとは`Usecase DTO → OpenAPIレスポンス型`への変換処理です。
 
 同一の変換を複数のハンドラーメソッドで再利用する場合は、ハンドラーパッケージ内に private な `toXxxResponse(dto …) gen.XxxResponse` ヘルパー（例: `toItemResponse`）として定義します。単発の変換はハンドラー本体にインラインで書いてかまいません。
+
+Presenter は**ハンドラーパッケージをまたいで共有しません**。2 つのパッケージが同じ Usecase DTO を同一のコードで変換する場合でも共有しません。レスポンス型はハンドラーパッケージごとに生成される（OpenAPI タグ 1 つにつき `gen` パッケージ 1 つ）ため、2 つのパッケージにある同名のレスポンス型は互いに無関係な 2 つの Go 型です。共有ヘルパーにすると、それらに対してジェネリックにするか、あるパッケージの型を別のパッケージへ返すことになります。**この重複は意図的です。** コピーは独立に保ち、Usecase DTO が変わったときにまとめて更新します。
 
 ## アーキテクチャ
 
@@ -225,23 +225,25 @@ Handler --> Usecase
 
 - 生成する際には、[openapi/openapi.yaml](../../../openapi/openapi.yaml)に定義したルーティングに沿う形で、
   `internal/controller/handler/`の先のディレクトリをURIとして再現してハンドラファイルを生成してください。
-  1. [openapi/openapi.yaml](../../../openapi/openapi.yaml)などにAPI定義を作成
-     - [生成を前提としたOpenAPIガイドライン](../../../openapi/README.ja.md)を参照
-  2. `internal/controller/handler/`の先のディレクトリをURIとして再現
-     - 例1: `/v1/<resource>` → `internal/controller/handler/v1/<resource>/`
-     - 例2: `/v1/<resource>/{id}` → `internal/controller/handler/v1/<resource>/detail/`
-  3. 作成したファイルの先頭に生成用のコメントを追加
 
-     ```go
-     //go:generate oapi-codegen --include-tags=v1/<resource> --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-     //go:generate oapi-codegen --include-tags=v1/<resource> --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
-     ```
+1. [openapi/openapi.yaml](../../../openapi/openapi.yaml)などにAPI定義を作成
+   - [生成を前提としたOpenAPIガイドライン](../../../openapi/README.ja.md)を参照
+2. `internal/controller/handler/`の先のディレクトリをURIとして再現
+   - 例1: `/v1/<resource>` → `internal/controller/handler/v1/<resource>/`
+   - 例2: `/v1/<resource>/{id}` → `internal/controller/handler/v1/<resource>/detail/`
+3. 作成したファイルの先頭に生成用のコメントを追加
 
-  4. `swagger-cli`でOpenAPIを結合・検証し、`oapi-codegen`で生成
-     - `make gen` で一括生成可能
-  5. `internal/controller/handler/<version>/<resource>/gen`に生成物が出力される。
-  6. 生成物をもとにコントローラーを実装する。
-  7. 実装したコントローラーの`BindHandler`を[コントローラー層のDIモジュール](../../di/module/controller.go)に登録する。
+```go
+//go:generate oapi-codegen --include-tags=v1/<resource> --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/<resource> --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+```
+
+1. `swagger-cli`でOpenAPIを結合・検証し、`oapi-codegen`で生成
+   - `make gen` で一括生成可能
+2. `internal/controller/handler/<version>/<resource>/gen`に生成物が出力される。
+3. 生成物をもとにコントローラーを実装する。
+4. 実装したコントローラーの`BindHandler`を[コントローラー層のDIモジュール](../../di/module/controller.go)に登録する。
+
 - 入出力の型（パラメータ・ボディ・レスポンス）は生成物を使用し、**Usecase の DTO と明確に分離**。  
 - スキーマ変更は **OpenAPI → 再生成 → 実装調整**の一方向。生成物は**編集禁止**。
 
@@ -276,6 +278,21 @@ dto, err := s.uc.GetItem(ctx, id)
 OpenAPI → `make gen` → 再生成
 
 の順序で修正してください。
+
+### すべてのルートは OpenAPI に存在しなければならない
+
+Echo に登録するルートは、必ず OpenAPI spec の operation（メソッド + パス）と対応していなければなりません。例外のための許可リストは持ちません。許可リスト自体がドリフト源になるためです。規約そのものの正本は [OpenAPI-first ルール](../../../docs/rules.ja.md#openapi-first-ルール)にあり、この節はハンドラを書くうえで何を意味するかを扱います。
+
+この規約があるのは、HTTP スタックの複数の機能が「登録されたルート = spec の operation」を明示しないまま前提にしているからです。
+
+- **405 の `Allow` ヘッダー** — このヘッダーはそのパスが実際に受け付けるメソッドを広告する必要があり、その一覧は登録ルートと spec の operation が一致している間だけ解決できる。
+- **リクエストバリデーション** — spec に無いパスはバリデーションを受けない。
+- **`details` の opt-in ゲート** — `DetailPolicy` は spec から operation を解決する fail-closed な仕組みのため、未解決のパスでは `details` が静かに落ちる。
+- **404 / 405 の判定** — OpenAPI バリデーションミドルウェアは自前のルータで判定するため、spec に無いパスは 404 になる。
+
+いずれもテストが緑のまま実行時の挙動だけが変わるため、この対応関係は `internal/architest` の `TestRouteSpecParity` で機械検証しています。除外されるのは `/_internal/` 配下の operation だけで、これは spec 自身が「実装・公開されないコード生成用のアンカー」と宣言しているためです。
+
+したがって手書きのルート登録は、spec が既に宣言している operation に対してのみ許されます（[Handler 構造体のルール](#handler-構造体のルール)の `/metrics` の例外を参照）。メソッドとパスをソースから確定できない登録形（`Any` / `Match` / `Static` / `Group` / `AddRoute`、実行時にメソッドを決めるか `Route` リテラルを渡す `Add`、パスが文字列リテラルでない登録）は spec と突き合わせられないため、同じテストが拒否します。
 
 ## Observability
 
@@ -428,7 +445,7 @@ type server struct {
 - new を使って内部で依存生成しない
 - interface（Usecase）に依存する
 
-例外：OpenAPI に定義されない運用エンドポイント（例: Prometheus の `/metrics` ハンドラー）は生成された `ServerInterface` を持たないため、`server` struct + `gen.NewStrictHandler` パターンに従いません。`BindHandler` 内で独自の `echo.HandlerFunc`（例: `echo.WrapHandler(promhttp.Handler())`）を直接登録します。この例外は非 OpenAPI の運用エンドポイントに限ります。
+例外：レスポンスを外部ライブラリのハンドラーが生成する運用エンドポイント（例: Prometheus の `/metrics` ハンドラー）は、そのパッケージで oapi-codegen を走らせないため生成された `ServerInterface` を持たず、`server` struct + `gen.NewStrictHandler` パターンに従いません。`BindHandler` 内で独自の `echo.HandlerFunc`（例: `echo.WrapHandler(promhttp.Handler())`）を直接登録します。この例外はコード生成についてのものであって **OpenAPI 定義についてではありません** — [すべてのルートは OpenAPI に存在しなければならない](#すべてのルートは-openapi-に存在しなければならない)が要求するとおり、operation は spec に宣言されています。
 
 ### なぜ fx.Invoke を使うのか
 
@@ -438,7 +455,7 @@ type server struct {
 
 ### AI / 開発者向けルール
 
-- 新しい Handler を追加する場合は `internal/di/module/controller.go` の `fx.Invoke(...)` に追加すること
+- 新しい Handler を追加する場合は `internal/di/module/controller.go` の `fx.Invoke(...)` に追加すること — 生成されたルート登録は配線の有無に関わらず存在するため、追加を忘れると実行時に 404 になる。この漏れは `internal/architest` の `TestBindHandlerDIParity` が検出する
 - Handler 内で new して依存を生成しないこと
 - 必ず constructor（BindHandler）経由で依存を受け取ること
 - Usecase は interface を受け取り、具象型に依存しないこと
@@ -471,47 +488,29 @@ type server struct {
   - `ErrUnauthenticated` → 401
   - `ErrUnimplemented` → 501
   - `ErrUnavailable` → 503
-- 0件リストは**正常**（200 + 空配列）。**NotFound は単体取得のみ**。  
+- 0件リストは**正常**（200 + 空配列）。  
+- **NotFound は単体取得のみ**。
 
 #### トランザクション
 
-- Controller は Tx を知らない。Tx 境界は Usecase（`TxManager`）が握る。
+- Controller は Tx を知らない。  
+- Tx 境界は Usecase（`TxManager`）が握る。
 
 ### 依存関係ポリシー
 
-Controller層は次の依存のみ許可されます。
+許可される依存・禁止される依存の一覧は上記の[依存関係ルール](#依存関係ルール)を参照してください。
 
-これらのルールは **Controller → Usecase → Domain/Infra** の一方向で、Controller層が下位層を直接呼び出すことはできません。
-`make lint` で依存関係のルール違反を検出できます。
+## Do / Don’t
 
-Allowed:
-
-Controller → Usecase
-Controller → Presenter
-Controller → apperror
-
-- **Controller → Usecase のみ**（＋生成物`gen`、DTO/Presenter、`apperror`/`errorresponse`）。  
-- DI（`fx`）で `handler` は `usecase.Service` を受け取る。
-
-Forbidden:
-
-Controller → Domain
-Controller → Infrastructure
-Controller → Database
-
-- **Infra / Domain を直接呼ばない**。
-
-### やっていいこと / いけないこと(まとめ)
-
-#### Do
+### Do
 
 - `Get...Params` → **VO/DTO（Page, Filters など）**へ変換
 - DTO → `gen` レスポンスへ **Presenter** として詰め替え
 - `httptest` + `testify` で **エンドツーエンド風** にハンドラを検証
 
-#### Don’t
+### Don’t
 
-- Usecase に `http.Status`, `echo.Context`, `*http.Request` などの HTTP 要素を渡す
+- Usecase に `http.Status`, `*echo.Context`, `*http.Request` などの HTTP 要素を渡す
 - Usecase で `limit/offset` を直に決めるために **HTTP のパラメータ生値**を渡す  
 - `sqlc` 生成型やDB列名をControllerにそのまま持ち込む
 - 一覧0件で `ErrNotFound` を返して404にする  
@@ -553,57 +552,20 @@ Controller のテストは次の構成で実装します。
 
 ```go
 func TestBindHandler(t *testing.T) {
-    // Test implementation
 }
 
 func Test_server_<Operation>(t *testing.T) {
-    // Test implementation
-}
-```
-
-例：
-
-```go
-func TestBindHandler(t *testing.T) {
-    // Routerへの登録を検証
-}
-func Test_server_<Operation>(t *testing.T) {
-    // Handlerの振る舞いを検証（operationId ごとに1つ）
-}
-func Test_server_GetHealth(t *testing.T) {
-    // Handlerの振る舞いを検証
-}
-func Test_server_GetReady(t *testing.T) {
-    // Handlerの振る舞いを検証
-}
-func Test_server_GetVersion(t *testing.T) {
-    // Handlerの振る舞いを検証
 }
 ```
 
 ### Router テスト
-
-Router テストでは **ルーティングの登録結果**を検証します。
-
-確認対象：
-
-- path
-- method
-
-例：
 
 ```go
 testassert.AssertEchoRouterPath(t, targetPath, e.Routes())
 testassert.AssertEchoRouterMethods(t, expectedMethods, e.Routes())
 ```
 
-このテストでは、ハンドラが **正しい URI / HTTP Method** で公開されていることを確認します。
-
 ### Handler テスト
-
-Handler テストでは **Usecase を mock 化**し、Controller の責務のみを検証します。
-
-例：
 
 ```go
 mockApp := mock_item.NewMockUsecase(ctrl)
@@ -612,18 +574,7 @@ mockApp.EXPECT().
     Return(mockDTO, nil)
 ```
 
-検証対象：
-
-- パラメータの正規化
-- DTO の組み立て
-- Usecase の呼び出し
-- OpenAPI レスポンスへの詰め替え
-
 ### Response 検証
-
-Response は **OpenAPI 生成型** を通して検証します。
-
-例：
 
 ```go
 actual, ok := resp.(gen.ListItems200JSONResponse)
@@ -632,27 +583,12 @@ require.True(t, ok)
 require.Equal(t, expectedResponse, gen.ItemsResponse(actual))
 ```
 
-Controller テストでは **HTTPレスポンス境界の型変換**が正しいことを確認します。
-
 ### エラー系テスト
-
-Controller は **Usecase や前段処理のエラーをそのまま返す**ことを基本とします。
-
-例：
 
 ```go
 require.Nil(t, resp)
 require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 ```
-
-確認対象：
-
-- ページング変換エラー
-- 認証情報不足エラー
-- Usecase エラー
-- BuildInfo / Config / Usecase の返却エラー
-
-Controller 層では **ビジネスロジックとしてエラーを解釈し直さない**ことを確認します。
 
 ### Thin Controller 原則のテスト
 
@@ -696,33 +632,10 @@ tf := observability.NewNoopTracerFactory(t)
 
 ### テスト設計ポリシー
 
-#### 1. Usecase は mock にする
-
-Controller の責務は Usecase 呼び出しまでであるため、  
-**Usecase 実装そのものは Controller テストの対象外**とします。
-
-#### 2. Infrastructure は使用しない
-
-Controller テストでは DB / SQL / 外部API などは使用しません。
-
-#### 3. OpenAPI 型で検証する
-
-レスポンスは OpenAPI 生成型に変換された結果を検証します。
-
-#### 4. Fail Fast
-
-アサーションは `require` を基本とします。
-
-例：
-
-```go
-require.NoError(t, err)
-require.True(t, ok)
-require.Equal(t, expected, actual)
-```
-
-前提条件が崩れた時点で即座にテストを失敗させ、  
-テストの意図を明確に保ちます。
+- Usecase は mock にする
+- Infrastructure は使用しない
+- OpenAPI 型で検証する
+- `require` で Fail Fast させる
 
 ### テストで扱わないもの
 
@@ -788,14 +701,14 @@ rec := testecho.NewEchoTestClient(t, e).
 |`AuthBearer`|Bearer トークンを設定|
 |`PathParams`|パスパラメータを設定|
 |`QueryParams`|クエリパラメータを設定|
-|`Build`|Request / ResponseRecorder / echo.Context を返す|
+|`Build`|Request / ResponseRecorder / *echo.Context を返す|
 |`Serve`|Echo にリクエストを送信し ResponseRecorder を返す|
 
 ### testspan
 
 |関数|説明|
 |---|---|
-|`StartTestSpanForEcho`|echo.Context にテスト用 span を埋め込み、終了関数を返す|
+|`StartTestSpanForEcho`|*echo.Context にテスト用 span を埋め込み、終了関数を返す|
 
 ### testuuid
 
@@ -809,7 +722,7 @@ rec := testecho.NewEchoTestClient(t, e).
 
 ```go
 //go:generate oapi-codegen --include-tags=v1/items --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/items --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/items --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
 
 package items
 
@@ -819,7 +732,7 @@ import (
     "go-boilerplate/internal/observability"
     // それぞれ実装で使うパッケージをimport
 
-    "github.com/labstack/echo/v4"
+    "github.com/labstack/echo/v5"
 )
 
 type server struct {

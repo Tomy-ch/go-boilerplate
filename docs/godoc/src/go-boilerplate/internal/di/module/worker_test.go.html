@@ -61,67 +61,166 @@
 <span id="L4" class="ln">     4  </span>	&#34;testing&#34;
 <span id="L5" class="ln">     5  </span>
 <span id="L6" class="ln">     6  </span>	&#34;github.com/stretchr/testify/assert&#34;
-<span id="L7" class="ln">     7  </span>
-<span id="L8" class="ln">     8  </span>	queuemetrics &#34;go-boilerplate/internal/observability/metrics/queue&#34;
-<span id="L9" class="ln">     9  </span>	workerboundary &#34;go-boilerplate/internal/usecase/boundary/worker&#34;
-<span id="L10" class="ln">    10  </span>)
-<span id="L11" class="ln">    11  </span>
-<span id="L12" class="ln">    12  </span>func TestWorkerModule_GraphIsValid(t *testing.T) {
-<span id="L13" class="ln">    13  </span>	t.Parallel()
+<span id="L7" class="ln">     7  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L8" class="ln">     8  </span>	&#34;go.uber.org/fx&#34;
+<span id="L9" class="ln">     9  </span>
+<span id="L10" class="ln">    10  </span>	workercontroller &#34;go-boilerplate/internal/controller/worker&#34;
+<span id="L11" class="ln">    11  </span>	queuemetrics &#34;go-boilerplate/internal/observability/metrics/queue&#34;
+<span id="L12" class="ln">    12  </span>	workerboundary &#34;go-boilerplate/internal/usecase/boundary/worker&#34;
+<span id="L13" class="ln">    13  </span>)
 <span id="L14" class="ln">    14  </span>
-<span id="L15" class="ln">    15  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L16" class="ln">    16  </span>		t.Parallel()
-<span id="L17" class="ln">    17  </span>
-<span id="L18" class="ln">    18  </span>		t.Run(&#34;worker未登録でも engine とフックが欠落なく結線される&#34;, func(t *testing.T) {
-<span id="L19" class="ln">    19  </span>			t.Parallel()
-<span id="L20" class="ln">    20  </span>
-<span id="L21" class="ln">    21  </span>			<span class="comment">// 個々の worker の振る舞いは controller 層のテストに任せ、ここでは engine と</span>
-<span id="L22" class="ln">    22  </span>			<span class="comment">// そのフック（ValidateShutdownGrace / RegisterWorkerHooks / RegisterStatsCollector）が</span>
-<span id="L23" class="ln">    23  </span>			<span class="comment">// 依存と欠落なく結線されることを確認する。</span>
-<span id="L24" class="ln">    24  </span>			opts := append(commonDeps(), InfrastructureModule(), UsecaseModule(), WorkerModule())
-<span id="L25" class="ln">    25  </span>			validateGraph(t, opts...)
-<span id="L26" class="ln">    26  </span>		})
-<span id="L27" class="ln">    27  </span>
-<span id="L28" class="ln">    28  </span>		t.Run(&#34;workerとqueue_stats_targetを登録してもグラフが結線される&#34;, func(t *testing.T) {
-<span id="L29" class="ln">    29  </span>			t.Parallel()
-<span id="L30" class="ln">    30  </span>
-<span id="L31" class="ln">    31  </span>			<span class="comment">// provideWorkers / provideQueueStatsTargets で実際に group へ登録した場合も</span>
-<span id="L32" class="ln">    32  </span>			<span class="comment">// グラフが成立することを確認する（登録経路の結線検証）。</span>
-<span id="L33" class="ln">    33  </span>			opts := append(commonDeps(), InfrastructureModule(), UsecaseModule(),
-<span id="L34" class="ln">    34  </span>				WorkerModule(),
-<span id="L35" class="ln">    35  </span>				provideWorkers(func() workerboundary.Worker { return nil }),
-<span id="L36" class="ln">    36  </span>				provideQueueStatsTargets(func() queuemetrics.Target { return queuemetrics.Target{} }),
-<span id="L37" class="ln">    37  </span>			)
-<span id="L38" class="ln">    38  </span>			validateGraph(t, opts...)
-<span id="L39" class="ln">    39  </span>		})
-<span id="L40" class="ln">    40  </span>	})
-<span id="L41" class="ln">    41  </span>}
+<span id="L15" class="ln">    15  </span><span class="comment">// fakeWorker は、名前だけを返す最小の Worker 実装です（group へ集約された個々の寄与を識別するために使う）。</span>
+<span id="L16" class="ln">    16  </span>type fakeWorker struct {
+<span id="L17" class="ln">    17  </span>	workerboundary.Worker
+<span id="L18" class="ln">    18  </span>
+<span id="L19" class="ln">    19  </span>	name string
+<span id="L20" class="ln">    20  </span>}
+<span id="L21" class="ln">    21  </span>
+<span id="L22" class="ln">    22  </span>func (w fakeWorker) Name() string { return w.name }
+<span id="L23" class="ln">    23  </span>
+<span id="L24" class="ln">    24  </span>func TestWorkerModule_GraphIsValid(t *testing.T) {
+<span id="L25" class="ln">    25  </span>	t.Parallel()
+<span id="L26" class="ln">    26  </span>
+<span id="L27" class="ln">    27  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L28" class="ln">    28  </span>		t.Parallel()
+<span id="L29" class="ln">    29  </span>
+<span id="L30" class="ln">    30  </span>		t.Run(&#34;engine とフックが欠落なく結線される&#34;, func(t *testing.T) {
+<span id="L31" class="ln">    31  </span>			t.Parallel()
+<span id="L32" class="ln">    32  </span>
+<span id="L33" class="ln">    33  </span>			<span class="comment">// 個々の worker の振る舞いは controller 層のテストに任せ、ここでは engine と</span>
+<span id="L34" class="ln">    34  </span>			<span class="comment">// そのフック（ValidateShutdownGrace / RegisterWorkerHooks / RegisterStatsCollector）が</span>
+<span id="L35" class="ln">    35  </span>			<span class="comment">// 依存と欠落なく結線されることを確認する。</span>
+<span id="L36" class="ln">    36  </span>			opts := append(commonDeps(), InfrastructureModule(), UsecaseModule(), WorkerModule())
+<span id="L37" class="ln">    37  </span>			validateGraph(t, opts...)
+<span id="L38" class="ln">    38  </span>		})
+<span id="L39" class="ln">    39  </span>
+<span id="L40" class="ln">    40  </span>		t.Run(&#34;workerとqueue_stats_targetを登録してもグラフが結線される&#34;, func(t *testing.T) {
+<span id="L41" class="ln">    41  </span>			t.Parallel()
 <span id="L42" class="ln">    42  </span>
-<span id="L43" class="ln">    43  </span>func Test_provideQueueStatsCollector(t *testing.T) {
-<span id="L44" class="ln">    44  </span>	t.Parallel()
-<span id="L45" class="ln">    45  </span>
-<span id="L46" class="ln">    46  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L47" class="ln">    47  </span>		t.Parallel()
-<span id="L48" class="ln">    48  </span>
-<span id="L49" class="ln">    49  </span>		t.Run(&#34;収集対象が無くても nil でない収集器を返す&#34;, func(t *testing.T) {
-<span id="L50" class="ln">    50  </span>			t.Parallel()
-<span id="L51" class="ln">    51  </span>
-<span id="L52" class="ln">    52  </span>			c := provideQueueStatsCollector(queueStatsTargetsIn{})
-<span id="L53" class="ln">    53  </span>			assert.NotNil(t, c)
-<span id="L54" class="ln">    54  </span>		})
-<span id="L55" class="ln">    55  </span>	})
-<span id="L56" class="ln">    56  </span>}
+<span id="L43" class="ln">    43  </span>			<span class="comment">// provideWorkers / provideQueueStatsTargets で実際に group へ登録した場合も</span>
+<span id="L44" class="ln">    44  </span>			<span class="comment">// グラフが成立することを確認する（登録経路の結線検証）。</span>
+<span id="L45" class="ln">    45  </span>			opts := append(commonDeps(), InfrastructureModule(), UsecaseModule(),
+<span id="L46" class="ln">    46  </span>				WorkerModule(),
+<span id="L47" class="ln">    47  </span>				provideWorkers(func() workerboundary.Worker { return nil }),
+<span id="L48" class="ln">    48  </span>				provideQueueStatsTargets(func() queuemetrics.Target { return queuemetrics.Target{} }),
+<span id="L49" class="ln">    49  </span>			)
+<span id="L50" class="ln">    50  </span>			validateGraph(t, opts...)
+<span id="L51" class="ln">    51  </span>		})
+<span id="L52" class="ln">    52  </span>	})
+<span id="L53" class="ln">    53  </span>}
+<span id="L54" class="ln">    54  </span>
+<span id="L55" class="ln">    55  </span>func Test_provideQueueStatsCollector(t *testing.T) {
+<span id="L56" class="ln">    56  </span>	t.Parallel()
 <span id="L57" class="ln">    57  </span>
-<span id="L58" class="ln">    58  </span>func Test_provideWorkers(t *testing.T) {
-<span id="L59" class="ln">    59  </span>	t.Parallel()
-<span id="L60" class="ln">    60  </span>	t.Skip(&#34;TestWorkerModule_GraphIsValid の登録経路ケースで workers group への登録分岐を検証済み&#34;)
-<span id="L61" class="ln">    61  </span>}
-<span id="L62" class="ln">    62  </span>
-<span id="L63" class="ln">    63  </span>func Test_provideQueueStatsTargets(t *testing.T) {
-<span id="L64" class="ln">    64  </span>	t.Parallel()
-<span id="L65" class="ln">    65  </span>	t.Skip(&#34;TestWorkerModule_GraphIsValid の登録経路ケースで queue_stats_targets group への登録分岐を検証済み&#34;)
-<span id="L66" class="ln">    66  </span>}
-<span id="L67" class="ln">    67  </span>
+<span id="L58" class="ln">    58  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L59" class="ln">    59  </span>		t.Parallel()
+<span id="L60" class="ln">    60  </span>
+<span id="L61" class="ln">    61  </span>		t.Run(&#34;収集対象が無くても nil でない収集器を返す&#34;, func(t *testing.T) {
+<span id="L62" class="ln">    62  </span>			t.Parallel()
+<span id="L63" class="ln">    63  </span>
+<span id="L64" class="ln">    64  </span>			c := provideQueueStatsCollector(queueStatsTargetsIn{})
+<span id="L65" class="ln">    65  </span>			assert.NotNil(t, c)
+<span id="L66" class="ln">    66  </span>		})
+<span id="L67" class="ln">    67  </span>	})
+<span id="L68" class="ln">    68  </span>}
+<span id="L69" class="ln">    69  </span>
+<span id="L70" class="ln">    70  </span>func Test_provideWorkers(t *testing.T) {
+<span id="L71" class="ln">    71  </span>	t.Parallel()
+<span id="L72" class="ln">    72  </span>
+<span id="L73" class="ln">    73  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L74" class="ln">    74  </span>		t.Parallel()
+<span id="L75" class="ln">    75  </span>
+<span id="L76" class="ln">    76  </span>		t.Run(&#34;渡した全コンストラクタの Worker が workers グループへ集まる&#34;, func(t *testing.T) {
+<span id="L77" class="ln">    77  </span>			t.Parallel()
+<span id="L78" class="ln">    78  </span>
+<span id="L79" class="ln">    79  </span>			got := collectGroup[workerboundary.Worker](t, `group:&#34;workers&#34;`, provideWorkers(
+<span id="L80" class="ln">    80  </span>				func() workerboundary.Worker { return fakeWorker{name: &#34;a&#34;} },
+<span id="L81" class="ln">    81  </span>				func() workerboundary.Worker { return fakeWorker{name: &#34;b&#34;} },
+<span id="L82" class="ln">    82  </span>			))
+<span id="L83" class="ln">    83  </span>
+<span id="L84" class="ln">    84  </span>			names := make([]string, 0, len(got))
+<span id="L85" class="ln">    85  </span>			for _, w := range got {
+<span id="L86" class="ln">    86  </span>				names = append(names, w.Name())
+<span id="L87" class="ln">    87  </span>			}
+<span id="L88" class="ln">    88  </span>			assert.ElementsMatch(t, []string{&#34;a&#34;, &#34;b&#34;}, names)
+<span id="L89" class="ln">    89  </span>		})
+<span id="L90" class="ln">    90  </span>
+<span id="L91" class="ln">    91  </span>		t.Run(&#34;コンストラクタが 0 個の場合は何も登録しない&#34;, func(t *testing.T) {
+<span id="L92" class="ln">    92  </span>			t.Parallel()
+<span id="L93" class="ln">    93  </span>
+<span id="L94" class="ln">    94  </span>			<span class="comment">// WorkerModule は既定で worker を 1 つも登録しないため、空呼び出しが成立することが前提条件になる。</span>
+<span id="L95" class="ln">    95  </span>			assert.Empty(t, collectGroup[workerboundary.Worker](t, `group:&#34;workers&#34;`, provideWorkers()))
+<span id="L96" class="ln">    96  </span>		})
+<span id="L97" class="ln">    97  </span>	})
+<span id="L98" class="ln">    98  </span>}
+<span id="L99" class="ln">    99  </span>
+<span id="L100" class="ln">   100  </span>func Test_provideQueueStatsTargets(t *testing.T) {
+<span id="L101" class="ln">   101  </span>	t.Parallel()
+<span id="L102" class="ln">   102  </span>
+<span id="L103" class="ln">   103  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L104" class="ln">   104  </span>		t.Parallel()
+<span id="L105" class="ln">   105  </span>
+<span id="L106" class="ln">   106  </span>		t.Run(&#34;渡した全コンストラクタの Target が queue_stats_targets グループへ集まる&#34;, func(t *testing.T) {
+<span id="L107" class="ln">   107  </span>			t.Parallel()
+<span id="L108" class="ln">   108  </span>
+<span id="L109" class="ln">   109  </span>			got := collectGroup[queuemetrics.Target](t, `group:&#34;worker.queue_stats_targets&#34;`, provideQueueStatsTargets(
+<span id="L110" class="ln">   110  </span>				func() queuemetrics.Target { return queuemetrics.Target{WorkerName: &#34;a&#34;} },
+<span id="L111" class="ln">   111  </span>				func() queuemetrics.Target { return queuemetrics.Target{WorkerName: &#34;b&#34;} },
+<span id="L112" class="ln">   112  </span>			))
+<span id="L113" class="ln">   113  </span>
+<span id="L114" class="ln">   114  </span>			names := make([]string, 0, len(got))
+<span id="L115" class="ln">   115  </span>			for _, target := range got {
+<span id="L116" class="ln">   116  </span>				names = append(names, target.WorkerName)
+<span id="L117" class="ln">   117  </span>			}
+<span id="L118" class="ln">   118  </span>			assert.ElementsMatch(t, []string{&#34;a&#34;, &#34;b&#34;}, names)
+<span id="L119" class="ln">   119  </span>		})
+<span id="L120" class="ln">   120  </span>
+<span id="L121" class="ln">   121  </span>		t.Run(&#34;コンストラクタが 0 個の場合は何も登録しない&#34;, func(t *testing.T) {
+<span id="L122" class="ln">   122  </span>			t.Parallel()
+<span id="L123" class="ln">   123  </span>
+<span id="L124" class="ln">   124  </span>			assert.Empty(t, collectGroup[queuemetrics.Target](t, `group:&#34;worker.queue_stats_targets&#34;`, provideQueueStatsTargets()))
+<span id="L125" class="ln">   125  </span>		})
+<span id="L126" class="ln">   126  </span>	})
+<span id="L127" class="ln">   127  </span>}
+<span id="L128" class="ln">   128  </span>
+<span id="L129" class="ln">   129  </span>func TestWorkerModule(t *testing.T) {
+<span id="L130" class="ln">   130  </span>	t.Parallel()
+<span id="L131" class="ln">   131  </span>
+<span id="L132" class="ln">   132  </span>	workerDeps := func() []fx.Option {
+<span id="L133" class="ln">   133  </span>		return append(commonDeps(), InfrastructureModule(), UsecaseModule())
+<span id="L134" class="ln">   134  </span>	}
+<span id="L135" class="ln">   135  </span>
+<span id="L136" class="ln">   136  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L137" class="ln">   137  </span>		t.Parallel()
+<span id="L138" class="ln">   138  </span>
+<span id="L139" class="ln">   139  </span>		t.Run(&#34;worker engine / State / queue 統計収集器を提供する&#34;, func(t *testing.T) {
+<span id="L140" class="ln">   140  </span>			t.Parallel()
+<span id="L141" class="ln">   141  </span>
+<span id="L142" class="ln">   142  </span>			var (
+<span id="L143" class="ln">   143  </span>				engine    *workercontroller.Engine
+<span id="L144" class="ln">   144  </span>				state     workerboundary.State
+<span id="L145" class="ln">   145  </span>				collector *queuemetrics.StatsCollector
+<span id="L146" class="ln">   146  </span>			)
+<span id="L147" class="ln">   147  </span>
+<span id="L148" class="ln">   148  </span>			validateGraph(t, append(workerDeps(), WorkerModule(),
+<span id="L149" class="ln">   149  </span>				fx.Populate(&amp;engine, &amp;state, &amp;collector))...)
+<span id="L150" class="ln">   150  </span>		})
+<span id="L151" class="ln">   151  </span>	})
+<span id="L152" class="ln">   152  </span>
+<span id="L153" class="ln">   153  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L154" class="ln">   154  </span>		t.Parallel()
+<span id="L155" class="ln">   155  </span>
+<span id="L156" class="ln">   156  </span>		t.Run(&#34;未配線では worker engine が解決できずグラフ検証に失敗する&#34;, func(t *testing.T) {
+<span id="L157" class="ln">   157  </span>			t.Parallel()
+<span id="L158" class="ln">   158  </span>
+<span id="L159" class="ln">   159  </span>			var engine *workercontroller.Engine
+<span id="L160" class="ln">   160  </span>
+<span id="L161" class="ln">   161  </span>			opts := append(workerDeps(), fx.Populate(&amp;engine), fx.NopLogger)
+<span id="L162" class="ln">   162  </span>			require.Error(t, fx.ValidateApp(opts...))
+<span id="L163" class="ln">   163  </span>		})
+<span id="L164" class="ln">   164  </span>	})
+<span id="L165" class="ln">   165  </span>}
+<span id="L166" class="ln">   166  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/di/module/worker_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
