@@ -174,29 +174,60 @@ Three workflows open a pull request of their own — [`auto-generate-docs.yaml`]
 workflow run for an event a workflow raised with its own `GITHUB_TOKEN`, which is what stops a
 workflow from triggering itself. A pull request opened with that token therefore reports no check at
 all, and a required context that never reports is the case the warning above describes: the merge
-waits with nothing to wait for, and no amount of re-running fixes it.
+waits with nothing to wait for, and re-running fixes nothing. An app token is a separate identity, so
+the events it raises are ordinary ones.
 
-An app token is a separate identity, so the events it raises are ordinary ones. Create a GitHub App,
-install it on the repository, and register two secrets:
+Skip this whole step if you require no status checks. Otherwise do it **before** `make setup-repo`
+applies the ruleset, so the first auto-PR is mergeable rather than the first one to get stuck.
 
-| Secret | Value |
+#### Create the app (by hand)
+
+This cannot be automated: the REST API has no endpoint that creates an app, and the private key is
+shown once, at generation.
+
+Create it at <https://github.com/settings/apps/new>.
+
+| Field | Value |
 | --- | --- |
-| `AUTO_PR_APP_ID` | the app's **App ID** |
-| `AUTO_PR_APP_PRIVATE_KEY` | the contents of the private key `.pem` the app issued |
+| GitHub App name | `<this repository's name>-auto-pr-app` (**unique across all of GitHub**) |
+| Description | `Opens the generated-artifact pull requests for <this repository's name>` |
+| Homepage URL | `https://github.com/<owner>/<this repository's name>` |
+| Webhook | **clear the Active checkbox** |
+| Repository permissions → Contents | **Read and write** |
+| Repository permissions → Pull requests | **Read and write** |
+| Every other permission | leave at No access |
+| Where can this GitHub App be installed? | **Only on this account** |
 
-The app needs two repository permissions and no more: **Contents `write`** to push the branch, and
-**Pull requests `write`** to open the pull request. The workflows narrow the installation token to
-exactly those two, so a wider app grants nothing extra.
+Contents write pushes the `auto/*` branch and Pull requests write opens the pull request; that is the
+whole job, and the workflows narrow the installation token to exactly those two, so a wider app
+grants nothing extra. A common repository name may already be taken — prefix the owner name if so.
+The name can be changed later.
+
+Three things follow, in the order the **General** page presents them after creation:
+
+1. **Note the App ID** — a number at the top of the General page
+2. **General → Private keys → Generate a private key** — downloads a `.pem`
+3. **Install App → Only select repositories** — this repository, and nothing else
+
+#### Register the secrets
+
+```bash
+gh secret set AUTO_PR_APP_ID --body '<the App ID from step 1>'
+gh secret set AUTO_PR_APP_PRIVATE_KEY < ~/Downloads/<the downloaded>.pem
+```
+
+**Delete the `.pem` once it is registered.** What the browser downloaded is a live private key sitting
+in a directory nothing protects.
+
+```bash
+gh secret list   # AUTO_PR_APP_ID / AUTO_PR_APP_PRIVATE_KEY are listed
+```
 
 Nothing breaks while the app is missing. Each workflow warns and falls back to `GITHUB_TOKEN`, so the
 pull request still opens — it just carries no checks, which means it cannot be merged while any check
-is required. Skip this whole step if you require no status checks; otherwise do it **before**
-`make setup-repo` applies the ruleset, so the first auto-PR is mergeable rather than the first one to
-get stuck.
-
-A pull request already opened with `GITHUB_TOKEN` cannot be rescued by registering the app: the head
-commit is what an event would be raised for, and none was. Close it and let the workflow open a fresh
-one.
+is required. A pull request already opened that way cannot be rescued by registering the app
+afterwards: an event is raised for a head commit, and none was. Close it and let the workflow open a
+fresh one.
 
 ### When starting from a GitHub template
 
