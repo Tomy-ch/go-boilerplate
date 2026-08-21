@@ -98,6 +98,14 @@ jobs:
             deb.debian.org:80
             security.debian.org:443
             security.debian.org:80
+            apt.postgresql.org:443
+            apt.postgresql.org:80
+            www.postgresql.org:443
+            archive.ubuntu.com:80
+            azure.archive.ubuntu.com:80
+            security.ubuntu.com:80
+            esm.ubuntu.com:443
+            motd.ubuntu.com:443
 
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -241,10 +249,10 @@ jobs:
           # it just carries no checks. A skipped step leaves an empty output, which is falsy, so the
           # fallback is reached exactly when the token was not minted.
           token: ${{ steps.app-token.outputs.token || github.token }}
-          commit-message: "chore(docs): auto update docs"
+          commit-message: "Chore: 生成ドキュメントを自動更新する"
           branch: auto/docs-update/${{ github.ref_name }}
           base: ${{ github.ref_name }}
-          title: "chore(docs): sync generated artifacts"
+          title: "Chore: 生成ドキュメントを同期する"
           body: |
             ## 🤖 Auto-generated Docs Sync
 
