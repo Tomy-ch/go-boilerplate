@@ -168,7 +168,7 @@ jobs:
           commit-message: "Chore: コードグラフを同期する"
           branch: auto/graphify-update/${{ github.ref_name }}
           base: ${{ github.ref_name }}
-          title: "Chore: コードグラフを同期する"
+          title: "chore(graphify): sync code graph"
           body: |
             ## 🤖 Auto-generated Graph Sync
 

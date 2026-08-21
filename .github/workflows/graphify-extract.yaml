@@ -174,7 +174,7 @@ jobs:
           commit-message: "Chore: セマンティックグラフを同期する"
           branch: auto/graphify-update/${{ github.ref_name }}
           base: ${{ github.ref_name }}
-          title: "Chore: セマンティックグラフを同期する"
+          title: "chore(graphify): sync semantic graph"
           body: |
             ## 🤖 Semantic Graph Sync
 

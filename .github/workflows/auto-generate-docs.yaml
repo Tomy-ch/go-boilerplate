@@ -252,7 +252,7 @@ jobs:
           commit-message: "Chore: 生成ドキュメントを自動更新する"
           branch: auto/docs-update/${{ github.ref_name }}
           base: ${{ github.ref_name }}
-          title: "Chore: 生成ドキュメントを同期する"
+          title: "chore(docs): sync generated artifacts"
           body: |
             ## 🤖 Auto-generated Docs Sync
 
