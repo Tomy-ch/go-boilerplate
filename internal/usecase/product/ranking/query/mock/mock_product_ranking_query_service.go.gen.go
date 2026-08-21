@@ -41,17 +41,32 @@ func (m *MockProductRankingQueryService) EXPECT() *MockProductRankingQueryServic
 	return m.recorder
 }
 
-// ListRanking mocks base method.
-func (m *MockProductRankingQueryService) ListRanking(ctx context.Context, params query.RankingQueryParams) ([]query.RankingResult, error) {
+// ListAmountRanking mocks base method.
+func (m *MockProductRankingQueryService) ListAmountRanking(ctx context.Context, params query.RankingQueryParams) ([]query.AmountRankingResult, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListRanking", ctx, params)
-	ret0, _ := ret[0].([]query.RankingResult)
+	ret := m.ctrl.Call(m, "ListAmountRanking", ctx, params)
+	ret0, _ := ret[0].([]query.AmountRankingResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// ListRanking indicates an expected call of ListRanking.
-func (mr *MockProductRankingQueryServiceMockRecorder) ListRanking(ctx, params any) *gomock.Call {
+// ListAmountRanking indicates an expected call of ListAmountRanking.
+func (mr *MockProductRankingQueryServiceMockRecorder) ListAmountRanking(ctx, params any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRanking", reflect.TypeOf((*MockProductRankingQueryService)(nil).ListRanking), ctx, params)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAmountRanking", reflect.TypeOf((*MockProductRankingQueryService)(nil).ListAmountRanking), ctx, params)
+}
+
+// ListQuantityRanking mocks base method.
+func (m *MockProductRankingQueryService) ListQuantityRanking(ctx context.Context, params query.RankingQueryParams) ([]query.QuantityRankingResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListQuantityRanking", ctx, params)
+	ret0, _ := ret[0].([]query.QuantityRankingResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListQuantityRanking indicates an expected call of ListQuantityRanking.
+func (mr *MockProductRankingQueryServiceMockRecorder) ListQuantityRanking(ctx, params any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListQuantityRanking", reflect.TypeOf((*MockProductRankingQueryService)(nil).ListQuantityRanking), ctx, params)
 }

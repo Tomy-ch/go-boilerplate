@@ -1,6 +1,6 @@
 name: limit
 in: query
-description: 取得する上位件数。売上数量の降順で上位 limit 件を返します。
+description: 取得する上位件数。その口の軸（販売数量または売上金額）の降順で上位 limit 件を返します。
 required: false
 schema:
   type: integer

@@ -28,10 +28,10 @@ func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc rankinguc.Usec
 	}, nil))
 }
 
-// GetProductsRanking は、購入明細を集計した商品売上ランキングを販売数量の降順で返します。認証不要の公開エンドポイントです。
-func (s *server) GetProductsRanking(
-	ctx context.Context, request gen.GetProductsRankingRequestObject,
-) (gen.GetProductsRankingResponseObject, error) {
+// GetProductsRankingQuantity は、購入明細を集計した商品ランキングを販売数量の降順で返します。認証不要の公開エンドポイントです。
+func (s *server) GetProductsRankingQuantity(
+	ctx context.Context, request gen.GetProductsRankingQuantityRequestObject,
+) (gen.GetProductsRankingQuantityResponseObject, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
@@ -43,7 +43,7 @@ func (s *server) GetProductsRanking(
 		return nil, err
 	}
 
-	view, err := s.uc.GetProductsRanking(ctx, rankinguc.GetRankingParams{
+	view, err := s.uc.GetQuantityRanking(ctx, rankinguc.GetRankingParams{
 		Window: window,
 		Limit:  limitParam(request.Params.Limit),
 	})
@@ -51,7 +51,33 @@ func (s *server) GetProductsRanking(
 		return nil, err
 	}
 
-	return gen.GetProductsRanking200JSONResponse(toProductRankingResponse(view)), nil
+	return gen.GetProductsRankingQuantity200JSONResponse(toQuantityRankingResponse(view)), nil
+}
+
+// GetProductsRankingAmount は、購入明細を集計した商品ランキングを売上金額の降順で返します。認証不要の公開エンドポイントです。
+func (s *server) GetProductsRankingAmount(
+	ctx context.Context, request gen.GetProductsRankingAmountRequestObject,
+) (gen.GetProductsRankingAmountResponseObject, error) {
+	ctx, endSpan := s.tracer.Start(ctx)
+	defer endSpan()
+
+	window, err := timewindow.New(timewindow.Bounds{
+		After:  request.Params.OrderedAfter,
+		Before: request.Params.OrderedBefore,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	view, err := s.uc.GetAmountRanking(ctx, rankinguc.GetRankingParams{
+		Window: window,
+		Limit:  limitParam(request.Params.Limit),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return gen.GetProductsRankingAmount200JSONResponse(toAmountRankingResponse(view)), nil
 }
 
 // limitParam は、任意指定の limit クエリパラメータを usecase 入力の件数へ変換します。未指定は 0（既定件数）として扱います。
@@ -62,16 +88,30 @@ func limitParam(limit *int) int {
 	return *limit
 }
 
-// toProductRankingResponse は、ユースケースの DTO を HTTP レスポンスへ変換します。
-func toProductRankingResponse(view rankinguc.RankingView) gen.ProductRankingResponse {
-	items := make([]gen.ProductRankingItem, len(view.Rankings))
+// toQuantityRankingResponse は、ユースケースの DTO を HTTP レスポンスへ変換します。
+func toQuantityRankingResponse(view rankinguc.QuantityRankingView) gen.ProductQuantityRankingResponse {
+	items := make([]gen.ProductQuantityRankingItem, len(view.Rankings))
 	for i, r := range view.Rankings {
-		items[i] = gen.ProductRankingItem{
+		items[i] = gen.ProductQuantityRankingItem{
 			ProductId:    r.ProductID.ToPrimitive(),
 			Name:         r.Name,
 			Price:        r.Price.String(),
 			SoldQuantity: r.SoldQuantity,
 		}
 	}
-	return gen.ProductRankingResponse{Rankings: items}
+	return gen.ProductQuantityRankingResponse{Rankings: items}
+}
+
+// toAmountRankingResponse は、ユースケースの DTO を HTTP レスポンスへ変換します。
+func toAmountRankingResponse(view rankinguc.AmountRankingView) gen.ProductAmountRankingResponse {
+	items := make([]gen.ProductAmountRankingItem, len(view.Rankings))
+	for i, r := range view.Rankings {
+		items[i] = gen.ProductAmountRankingItem{
+			ProductId:   r.ProductID.ToPrimitive(),
+			Name:        r.Name,
+			Price:       r.Price.String(),
+			SalesAmount: r.SalesAmount.String(),
+		}
+	}
+	return gen.ProductAmountRankingResponse{Rankings: items}
 }

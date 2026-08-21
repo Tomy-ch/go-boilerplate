@@ -13,7 +13,98 @@ import (
 	uuid "go-boilerplate/pkg/uuid"
 )
 
-const listProductRanking = `-- name: ListProductRanking :many
+const listProductAmountRanking = `-- name: ListProductAmountRanking :many
+SELECT
+    p.id AS product_id,
+    p.name,
+    p.price,
+    p.published_at,
+    SUM(pd.unit_price * pd.quantity)::NUMERIC AS sales_amount
+FROM purchase_details AS pd
+INNER JOIN purchases AS pur ON pd.purchase_id = pur.id AND pur.canceled_at IS NULL
+INNER JOIN products AS p ON pd.product_id = p.id AND p.published_at IS NOT NULL
+WHERE
+    (
+        pur.ordered_at >= $1
+        OR $1 IS NULL
+    )
+    AND (
+        pur.ordered_at < $2
+        OR $2 IS NULL
+    )
+GROUP BY p.id
+ORDER BY sales_amount DESC, p.id ASC
+LIMIT $3
+`
+
+type ListProductAmountRankingParams struct {
+	OrderedAfter  *time.Time
+	OrderedBefore *time.Time
+	LimitCount    int32
+}
+
+type ListProductAmountRankingRow struct {
+	ProductID   uuid.UUID
+	Name        string
+	Price       decimal.Decimal
+	PublishedAt *time.Time
+	SalesAmount decimal.Decimal
+}
+
+// 購入明細を商品単位で集計し、売上金額（単価 × 数量の総和）の降順で上位 limit_count 件を返します。
+// 母集団は ListProductQuantityRanking と逐語的に同一で、集計する指標と並び順だけが異なります
+// （同じ期間を指定した 2 つの口が同じ母集団を集計することの担保）。
+// 金額は価格スケールの正確な decimal で、決済スケールへは丸めません（ADR-0038）。
+// 同一売上金額は商品 ID の昇順で安定的に並べます。
+//
+//	SELECT
+//	    p.id AS product_id,
+//	    p.name,
+//	    p.price,
+//	    p.published_at,
+//	    SUM(pd.unit_price * pd.quantity)::NUMERIC AS sales_amount
+//	FROM purchase_details AS pd
+//	INNER JOIN purchases AS pur ON pd.purchase_id = pur.id AND pur.canceled_at IS NULL
+//	INNER JOIN products AS p ON pd.product_id = p.id AND p.published_at IS NOT NULL
+//	WHERE
+//	    (
+//	        pur.ordered_at >= $1
+//	        OR $1 IS NULL
+//	    )
+//	    AND (
+//	        pur.ordered_at < $2
+//	        OR $2 IS NULL
+//	    )
+//	GROUP BY p.id
+//	ORDER BY sales_amount DESC, p.id ASC
+//	LIMIT $3
+func (q *Queries) ListProductAmountRanking(ctx context.Context, arg *ListProductAmountRankingParams) ([]*ListProductAmountRankingRow, error) {
+	rows, err := q.db.Query(ctx, listProductAmountRanking, arg.OrderedAfter, arg.OrderedBefore, arg.LimitCount)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListProductAmountRankingRow
+	for rows.Next() {
+		var i ListProductAmountRankingRow
+		if err := rows.Scan(
+			&i.ProductID,
+			&i.Name,
+			&i.Price,
+			&i.PublishedAt,
+			&i.SalesAmount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProductQuantityRanking = `-- name: ListProductQuantityRanking :many
 SELECT
     p.id AS product_id,
     p.name,
@@ -37,13 +128,13 @@ ORDER BY sold_quantity DESC, p.id ASC
 LIMIT $3
 `
 
-type ListProductRankingParams struct {
+type ListProductQuantityRankingParams struct {
 	OrderedAfter  *time.Time
 	OrderedBefore *time.Time
 	LimitCount    int32
 }
 
-type ListProductRankingRow struct {
+type ListProductQuantityRankingRow struct {
 	ProductID    uuid.UUID
 	Name         string
 	Price        decimal.Decimal
@@ -82,15 +173,15 @@ type ListProductRankingRow struct {
 //	GROUP BY p.id
 //	ORDER BY sold_quantity DESC, p.id ASC
 //	LIMIT $3
-func (q *Queries) ListProductRanking(ctx context.Context, arg *ListProductRankingParams) ([]*ListProductRankingRow, error) {
-	rows, err := q.db.Query(ctx, listProductRanking, arg.OrderedAfter, arg.OrderedBefore, arg.LimitCount)
+func (q *Queries) ListProductQuantityRanking(ctx context.Context, arg *ListProductQuantityRankingParams) ([]*ListProductQuantityRankingRow, error) {
+	rows, err := q.db.Query(ctx, listProductQuantityRanking, arg.OrderedAfter, arg.OrderedBefore, arg.LimitCount)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []*ListProductRankingRow
+	var items []*ListProductQuantityRankingRow
 	for rows.Next() {
-		var i ListProductRankingRow
+		var i ListProductQuantityRankingRow
 		if err := rows.Scan(
 			&i.ProductID,
 			&i.Name,

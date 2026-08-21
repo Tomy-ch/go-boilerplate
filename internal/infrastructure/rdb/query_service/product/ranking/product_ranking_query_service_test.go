@@ -94,9 +94,19 @@ func insertPurchase(ctx context.Context, t *testing.T, db driver.DBTX, id uuid.U
 // insertDetail は、購入明細を数量指定で挿入します。
 func insertDetail(ctx context.Context, t *testing.T, db driver.DBTX, id, purchaseID, productID uuid.UUID, quantity int) {
 	t.Helper()
+	insertDetailPriced(ctx, t, db, id, purchaseID, productID, quantity, "10")
+}
+
+// insertDetailPriced は、単価を指定して明細を投入します。金額軸の集計はサブセントの桁で結果が変わるため、
+// 数量軸のテストが使う固定単価とは別に単価を差し替えられる形が要ります。
+func insertDetailPriced(
+	ctx context.Context, t *testing.T, db driver.DBTX,
+	id, purchaseID, productID uuid.UUID, quantity int, unitPrice string,
+) {
+	t.Helper()
 	_, err := db.Exec(ctx,
 		"INSERT INTO purchase_details (id, purchase_id, product_id, quantity, unit_price) VALUES ($1,$2,$3,$4,$5::numeric)",
-		id, purchaseID, productID, quantity, "10",
+		id, purchaseID, productID, quantity, unitPrice,
 	)
 	require.NoError(t, err)
 }
@@ -109,7 +119,7 @@ func mustWindow(t *testing.T, bounds timewindow.Bounds) timewindow.Window {
 	return w
 }
 
-func Test_service_ListRanking(t *testing.T) {
+func Test_service_ListQuantityRanking(t *testing.T) {
 	t.Parallel()
 
 	testDB := testkit.NewTestDB(t)
@@ -140,7 +150,7 @@ func Test_service_ListRanking(t *testing.T) {
 				insertDetail(ctx, t, drv, mustParse(t, "a1000000-0000-4000-8000-0000000000d2"), purchase2, productA, 5)
 				insertDetail(ctx, t, drv, mustParse(t, "a1000000-0000-4000-8000-0000000000d3"), purchase1, productB, 4)
 
-				got, err := svc.ListRanking(ctx, query.RankingQueryParams{Limit: 10})
+				got, err := svc.ListQuantityRanking(ctx, query.RankingQueryParams{Limit: 10})
 				require.NoError(t, err)
 
 				require.Len(t, got, 2)
@@ -176,7 +186,7 @@ func Test_service_ListRanking(t *testing.T) {
 				insertDetail(ctx, t, drv, mustParse(t, "b1000000-0000-4000-8000-0000000000d2"), unpaidPurchase, productC, 2)
 				insertDetail(ctx, t, drv, mustParse(t, "b1000000-0000-4000-8000-0000000000d3"), normalPurchase, productD, 1)
 
-				got, err := svc.ListRanking(ctx, query.RankingQueryParams{Limit: 10})
+				got, err := svc.ListQuantityRanking(ctx, query.RankingQueryParams{Limit: 10})
 				require.NoError(t, err)
 
 				require.Len(t, got, 2)
@@ -203,7 +213,7 @@ func Test_service_ListRanking(t *testing.T) {
 				insertDetail(ctx, t, drv, mustParse(t, "c1000000-0000-4000-8000-0000000000d1"), purchase, productLow, 5)
 				insertDetail(ctx, t, drv, mustParse(t, "c1000000-0000-4000-8000-0000000000d2"), purchase, productHigh, 5)
 
-				got, err := svc.ListRanking(ctx, query.RankingQueryParams{Limit: 10})
+				got, err := svc.ListQuantityRanking(ctx, query.RankingQueryParams{Limit: 10})
 				require.NoError(t, err)
 
 				require.Len(t, got, 2)
@@ -228,12 +238,12 @@ func Test_service_ListRanking(t *testing.T) {
 				insertDetail(ctx, t, drv, mustParse(t, "d1000000-0000-4000-8000-0000000000d1"), recentPurchase, product, 7)
 				insertDetail(ctx, t, drv, mustParse(t, "d1000000-0000-4000-8000-0000000000d2"), oldPurchase, product, 50)
 
-				gotAll, err := svc.ListRanking(ctx, query.RankingQueryParams{Limit: 10})
+				gotAll, err := svc.ListQuantityRanking(ctx, query.RankingQueryParams{Limit: 10})
 				require.NoError(t, err)
 				require.Len(t, gotAll, 1)
 				assert.Equal(t, int64(57), gotAll[0].SoldQuantity)
 
-				got30d, err := svc.ListRanking(ctx, query.RankingQueryParams{
+				got30d, err := svc.ListQuantityRanking(ctx, query.RankingQueryParams{
 					Window: mustWindow(t, timewindow.Bounds{After: ptr.To(now.Add(-30 * 24 * time.Hour))}),
 					Limit:  10,
 				})
@@ -260,7 +270,7 @@ func Test_service_ListRanking(t *testing.T) {
 				insertDetail(ctx, t, drv, mustParse(t, "aa100000-0000-4000-8000-0000000000d1"), insidePurchase, product, 3)
 				insertDetail(ctx, t, drv, mustParse(t, "aa100000-0000-4000-8000-0000000000d2"), outsidePurchase, product, 40)
 
-				got, err := svc.ListRanking(ctx, query.RankingQueryParams{
+				got, err := svc.ListQuantityRanking(ctx, query.RankingQueryParams{
 					Window: mustWindow(t, timewindow.Bounds{After: &boundary}),
 					Limit:  10,
 				})
@@ -288,7 +298,7 @@ func Test_service_ListRanking(t *testing.T) {
 				insertDetail(ctx, t, drv, mustParse(t, "aa200000-0000-4000-8000-0000000000d1"), insidePurchase, product, 5)
 				insertDetail(ctx, t, drv, mustParse(t, "aa200000-0000-4000-8000-0000000000d2"), onBoundaryPurchase, product, 60)
 
-				got, err := svc.ListRanking(ctx, query.RankingQueryParams{
+				got, err := svc.ListQuantityRanking(ctx, query.RankingQueryParams{
 					Window: mustWindow(t, timewindow.Bounds{Before: &boundary}),
 					Limit:  10,
 				})
@@ -321,7 +331,7 @@ func Test_service_ListRanking(t *testing.T) {
 				insertDetail(ctx, t, drv, mustParse(t, "aa300000-0000-4000-8000-0000000000d2"), inRange, product, 4)
 				insertDetail(ctx, t, drv, mustParse(t, "aa300000-0000-4000-8000-0000000000d3"), afterRange, product, 80)
 
-				got, err := svc.ListRanking(ctx, query.RankingQueryParams{
+				got, err := svc.ListQuantityRanking(ctx, query.RankingQueryParams{
 					Window: mustWindow(t, timewindow.Bounds{After: &after, Before: &before}),
 					Limit:  10,
 				})
@@ -351,7 +361,7 @@ func Test_service_ListRanking(t *testing.T) {
 				insertDetail(ctx, t, drv, mustParse(t, "e1000000-0000-4000-8000-0000000000d2"), purchase, productMid, 5)
 				insertDetail(ctx, t, drv, mustParse(t, "e1000000-0000-4000-8000-0000000000d3"), purchase, productLow, 1)
 
-				got, err := svc.ListRanking(ctx, query.RankingQueryParams{Limit: 2})
+				got, err := svc.ListQuantityRanking(ctx, query.RankingQueryParams{Limit: 2})
 				require.NoError(t, err)
 
 				require.Len(t, got, 2)
@@ -376,7 +386,7 @@ func Test_service_ListRanking(t *testing.T) {
 				insertDetail(ctx, t, drv, mustParse(t, "f1000000-0000-4000-8000-0000000000d1"), purchase, publishedProduct, 1)
 				insertDetail(ctx, t, drv, mustParse(t, "f1000000-0000-4000-8000-0000000000d2"), purchase, unpublishedProduct, 99)
 
-				got, err := svc.ListRanking(ctx, query.RankingQueryParams{Limit: 10})
+				got, err := svc.ListQuantityRanking(ctx, query.RankingQueryParams{Limit: 10})
 				require.NoError(t, err)
 
 				require.Len(t, got, 1)
@@ -391,7 +401,7 @@ func Test_service_ListRanking(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				clearSeededPurchases(ctx, t, driver.New(ctx, testDB))
 
-				got, err := svc.ListRanking(ctx, query.RankingQueryParams{Limit: 10})
+				got, err := svc.ListQuantityRanking(ctx, query.RankingQueryParams{Limit: 10})
 				require.NoError(t, err)
 				assert.Empty(t, got)
 			})
@@ -404,7 +414,7 @@ func Test_service_ListRanking(t *testing.T) {
 		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化して返す", func(t *testing.T) {
 			t.Parallel()
 
-			got, err := svc.ListRanking(canceledContext(t), query.RankingQueryParams{Limit: 10})
+			got, err := svc.ListQuantityRanking(canceledContext(t), query.RankingQueryParams{Limit: 10})
 			require.ErrorIs(t, err, apperror.ErrCanceled)
 			assert.Nil(t, got)
 		})
@@ -412,11 +422,284 @@ func Test_service_ListRanking(t *testing.T) {
 		t.Run("limitがint32に収まらない場合、クエリを発行せずオーバーフローエラーを返す", func(t *testing.T) {
 			t.Parallel()
 
-			got, err := svc.ListRanking(
+			got, err := svc.ListQuantityRanking(
 				context.Background(),
 				query.RankingQueryParams{Limit: math.MaxInt32 + 1},
 			)
 			require.ErrorIs(t, err, safecast.ErrOverflow)
+			assert.Nil(t, got)
+		})
+	})
+}
+
+func Test_service_ListAmountRanking(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	lt := observability.NewMockInfraLayerTracer(t)
+	txm := testkit.NewTestTransactionRunner(t)
+	now := time.Now()
+	svc := &service{db: testDB, tracer: lt}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("単価と数量の積を合算し金額の降順でサブセントを丸めずに返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
+				cheapMany := mustParse(t, "ab100000-0000-4000-8000-000000000001")
+				pricyFew := mustParse(t, "ab100000-0000-4000-8000-000000000002")
+				insertProduct(ctx, t, drv, cheapMany, "1", "安い商品")
+				insertProduct(ctx, t, drv, pricyFew, "100", "高い商品")
+
+				pur := mustParse(t, "ab100000-0000-4000-8000-0000000000f1")
+				insertPurchase(ctx, t, drv, pur, now, nil)
+				// 数量は安い商品が多いが、金額では高い商品が上位に来る（軸が違えば順位が変わる）。
+				insertDetailPriced(ctx, t, drv, mustParse(t, "ab100000-0000-4000-8000-0000000000d1"), pur, cheapMany, 50, "1.005")
+				insertDetailPriced(ctx, t, drv, mustParse(t, "ab100000-0000-4000-8000-0000000000d2"), pur, pricyFew, 2, "100.5")
+
+				got, err := svc.ListAmountRanking(ctx, query.RankingQueryParams{Limit: 10})
+				require.NoError(t, err)
+
+				require.Len(t, got, 2)
+				assert.Equal(t, pricyFew, got[0].ProductID)
+				assert.Equal(t, "201", got[0].SalesAmount.String())
+				assert.Equal(t, cheapMany, got[1].ProductID)
+				// 50 × 1.005 = 50.25。決済スケールへ丸めればここが 50 になり、この assert が赤くなる。
+				assert.Equal(t, "50.25", got[1].SalesAmount.String())
+			})
+		})
+
+		t.Run("キャンセル済みの購入は金額に含めない", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
+				product := mustParse(t, "ab200000-0000-4000-8000-000000000001")
+				insertProduct(ctx, t, drv, product, "10", "対象商品")
+
+				canceledAt := now
+				live := mustParse(t, "ab200000-0000-4000-8000-0000000000f1")
+				dead := mustParse(t, "ab200000-0000-4000-8000-0000000000f2")
+				insertPurchase(ctx, t, drv, live, now, nil)
+				insertPurchase(ctx, t, drv, dead, now, &canceledAt)
+				insertDetailPriced(ctx, t, drv, mustParse(t, "ab200000-0000-4000-8000-0000000000d1"), live, product, 2, "10")
+				insertDetailPriced(ctx, t, drv, mustParse(t, "ab200000-0000-4000-8000-0000000000d2"), dead, product, 90, "10")
+
+				got, err := svc.ListAmountRanking(ctx, query.RankingQueryParams{Limit: 10})
+				require.NoError(t, err)
+
+				require.Len(t, got, 1)
+				assert.Equal(t, "20", got[0].SalesAmount.String())
+			})
+		})
+
+		t.Run("対象期間の外に注文された明細は金額に含めない", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
+				product := mustParse(t, "ab300000-0000-4000-8000-000000000001")
+				insertProduct(ctx, t, drv, product, "10", "期間商品")
+
+				boundary := now.Add(-24 * time.Hour)
+				inside := mustParse(t, "ab300000-0000-4000-8000-0000000000f1")
+				outside := mustParse(t, "ab300000-0000-4000-8000-0000000000f2")
+				insertPurchase(ctx, t, drv, inside, boundary, nil)
+				insertPurchase(ctx, t, drv, outside, boundary.Add(-time.Second), nil)
+				insertDetailPriced(ctx, t, drv, mustParse(t, "ab300000-0000-4000-8000-0000000000d1"), inside, product, 3, "10")
+				insertDetailPriced(ctx, t, drv, mustParse(t, "ab300000-0000-4000-8000-0000000000d2"), outside, product, 70, "10")
+
+				got, err := svc.ListAmountRanking(ctx, query.RankingQueryParams{
+					Window: mustWindow(t, timewindow.Bounds{After: &boundary}),
+					Limit:  10,
+				})
+				require.NoError(t, err)
+
+				require.Len(t, got, 1)
+				assert.Equal(t, "30", got[0].SalesAmount.String())
+			})
+		})
+
+		t.Run("非公開の商品は金額ランキングに現れない", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
+				published := mustParse(t, "ab400000-0000-4000-8000-000000000001")
+				insertProduct(ctx, t, drv, published, "10", "公開商品")
+				unpublished := mustParse(t, "ab400000-0000-4000-8000-000000000002")
+				insertUnpublishedProduct(ctx, t, drv, unpublished, "10", "非公開商品")
+
+				pur := mustParse(t, "ab400000-0000-4000-8000-0000000000f1")
+				insertPurchase(ctx, t, drv, pur, now, nil)
+				insertDetailPriced(ctx, t, drv, mustParse(t, "ab400000-0000-4000-8000-0000000000d1"), pur, published, 1, "10")
+				insertDetailPriced(ctx, t, drv, mustParse(t, "ab400000-0000-4000-8000-0000000000d2"), pur, unpublished, 99, "10")
+
+				got, err := svc.ListAmountRanking(ctx, query.RankingQueryParams{Limit: 10})
+				require.NoError(t, err)
+
+				require.Len(t, got, 1)
+				assert.Equal(t, published, got[0].ProductID)
+			})
+		})
+		t.Run("上限は境界ちょうどの注文を除外し境界より前の注文を含む", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
+				product := mustParse(t, "ab500000-0000-4000-8000-000000000001")
+				insertProduct(ctx, t, drv, product, "10", "上限境界商品")
+
+				boundary := now.Add(-24 * time.Hour)
+				inside := mustParse(t, "ab500000-0000-4000-8000-0000000000f1")
+				onBoundary := mustParse(t, "ab500000-0000-4000-8000-0000000000f2")
+				insertPurchase(ctx, t, drv, inside, boundary.Add(-time.Second), nil)
+				insertPurchase(ctx, t, drv, onBoundary, boundary, nil)
+				insertDetailPriced(ctx, t, drv, mustParse(t, "ab500000-0000-4000-8000-0000000000d1"), inside, product, 2, "10")
+				insertDetailPriced(ctx, t, drv, mustParse(t, "ab500000-0000-4000-8000-0000000000d2"), onBoundary, product, 90, "10")
+
+				got, err := svc.ListAmountRanking(ctx, query.RankingQueryParams{
+					Window: mustWindow(t, timewindow.Bounds{Before: &boundary}),
+					Limit:  10,
+				})
+				require.NoError(t, err)
+
+				// 上限ちょうどの 900 が混ざれば金額が変わるため、< が <= に化けた場合ここが赤くなる。
+				require.Len(t, got, 1)
+				assert.Equal(t, "20", got[0].SalesAmount.String())
+			})
+		})
+
+		t.Run("両端を指定した場合はその半開区間の注文だけを集計する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
+				product := mustParse(t, "ab600000-0000-4000-8000-000000000001")
+				insertProduct(ctx, t, drv, product, "10", "両端境界商品")
+
+				after := now.Add(-48 * time.Hour)
+				before := now.Add(-24 * time.Hour)
+				beforeRange := mustParse(t, "ab600000-0000-4000-8000-0000000000f1")
+				inRange := mustParse(t, "ab600000-0000-4000-8000-0000000000f2")
+				afterRange := mustParse(t, "ab600000-0000-4000-8000-0000000000f3")
+				insertPurchase(ctx, t, drv, beforeRange, after.Add(-time.Second), nil)
+				insertPurchase(ctx, t, drv, inRange, after, nil)
+				insertPurchase(ctx, t, drv, afterRange, before, nil)
+				insertDetailPriced(ctx, t, drv, mustParse(t, "ab600000-0000-4000-8000-0000000000d1"), beforeRange, product, 70, "10")
+				insertDetailPriced(ctx, t, drv, mustParse(t, "ab600000-0000-4000-8000-0000000000d2"), inRange, product, 4, "10")
+				insertDetailPriced(ctx, t, drv, mustParse(t, "ab600000-0000-4000-8000-0000000000d3"), afterRange, product, 80, "10")
+
+				got, err := svc.ListAmountRanking(ctx, query.RankingQueryParams{
+					Window: mustWindow(t, timewindow.Bounds{After: &after, Before: &before}),
+					Limit:  10,
+				})
+				require.NoError(t, err)
+
+				require.Len(t, got, 1)
+				assert.Equal(t, "40", got[0].SalesAmount.String())
+			})
+		})
+
+		t.Run("同一売上金額は商品IDの昇順で安定的に並ぶ", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
+				lowerID := mustParse(t, "ab700000-0000-4000-8000-000000000001")
+				higherID := mustParse(t, "ab700000-0000-4000-8000-000000000002")
+				insertProduct(ctx, t, drv, lowerID, "10", "同額商品A")
+				insertProduct(ctx, t, drv, higherID, "10", "同額商品B")
+
+				pur := mustParse(t, "ab700000-0000-4000-8000-0000000000f1")
+				insertPurchase(ctx, t, drv, pur, now, nil)
+				// 単価と数量の組は違うが積は等しい。金額が同じときの並びだけを見る。
+				insertDetailPriced(ctx, t, drv, mustParse(t, "ab700000-0000-4000-8000-0000000000d1"), pur, lowerID, 4, "5")
+				insertDetailPriced(ctx, t, drv, mustParse(t, "ab700000-0000-4000-8000-0000000000d2"), pur, higherID, 2, "10")
+
+				got, err := svc.ListAmountRanking(ctx, query.RankingQueryParams{Limit: 10})
+				require.NoError(t, err)
+
+				require.Len(t, got, 2)
+				assert.Equal(t, lowerID, got[0].ProductID)
+				assert.Equal(t, higherID, got[1].ProductID)
+				assert.Equal(t, got[0].SalesAmount.String(), got[1].SalesAmount.String())
+			})
+		})
+
+		t.Run("limitで売上金額上位N件に絞る", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
+				top := mustParse(t, "ab800000-0000-4000-8000-000000000001")
+				mid := mustParse(t, "ab800000-0000-4000-8000-000000000002")
+				low := mustParse(t, "ab800000-0000-4000-8000-000000000003")
+				insertProduct(ctx, t, drv, top, "10", "金額Top")
+				insertProduct(ctx, t, drv, mid, "10", "金額Mid")
+				insertProduct(ctx, t, drv, low, "10", "金額Low")
+
+				pur := mustParse(t, "ab800000-0000-4000-8000-0000000000f1")
+				insertPurchase(ctx, t, drv, pur, now, nil)
+				insertDetailPriced(ctx, t, drv, mustParse(t, "ab800000-0000-4000-8000-0000000000d1"), pur, top, 9, "10")
+				insertDetailPriced(ctx, t, drv, mustParse(t, "ab800000-0000-4000-8000-0000000000d2"), pur, mid, 5, "10")
+				insertDetailPriced(ctx, t, drv, mustParse(t, "ab800000-0000-4000-8000-0000000000d3"), pur, low, 1, "10")
+
+				got, err := svc.ListAmountRanking(ctx, query.RankingQueryParams{Limit: 2})
+				require.NoError(t, err)
+
+				require.Len(t, got, 2)
+				assert.Equal(t, top, got[0].ProductID)
+				assert.Equal(t, mid, got[1].ProductID)
+			})
+		})
+
+		t.Run("集計対象の購入が無い場合は空を返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
+
+				got, err := svc.ListAmountRanking(ctx, query.RankingQueryParams{Limit: 10})
+				require.NoError(t, err)
+
+				assert.NotNil(t, got)
+				assert.Empty(t, got)
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("limitがint32に収まらない場合、クエリを発行せずオーバーフローエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			got, err := svc.ListAmountRanking(
+				context.Background(),
+				query.RankingQueryParams{Limit: math.MaxInt32 + 1},
+			)
+			require.ErrorIs(t, err, safecast.ErrOverflow)
+			assert.Nil(t, got)
+		})
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化して返す", func(t *testing.T) {
+			t.Parallel()
+
+			got, err := svc.ListAmountRanking(canceledContext(t), query.RankingQueryParams{Limit: 10})
+			require.ErrorIs(t, err, apperror.ErrCanceled)
 			assert.Nil(t, got)
 		})
 	})

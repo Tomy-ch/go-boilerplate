@@ -27,8 +27,37 @@ type ErrorResponse struct {
 	RequestId string `json:"requestId"`
 }
 
-// ProductRankingItem 売上ランキング 1 商品分の項目です。
-type ProductRankingItem struct {
+// ProductAmountRankingItem 売上金額ランキング 1 商品分の項目です。
+type ProductAmountRankingItem struct {
+	// Name 商品名
+	//
+	// Example: ワイヤレスイヤホン
+	Name string `json:"name"`
+
+	// Price 商品の単価。サブセント精度を保持する decimal 文字列で表します（例 "19.99" は 19.99 ドル）。 JSON number は IEEE754 double として復元され精度を失うため、文字列で表現します。 集計値ではなく商品の属性であり、salesAmount とは役割が異なります。
+	//
+	// Example: 19.99
+	Price string `json:"price"`
+
+	// ProductId 商品ID
+	//
+	// Example: b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f
+	ProductId openapi_types.UUID `json:"productId"`
+
+	// SalesAmount 集計期間内の売上金額（明細の単価 × 数量の総和、キャンセル済みの購入を除く）。 価格スケールの正確な decimal 文字列で、決済スケール（セント整数）へは丸めません （丸めは決済確定の 1 箇所のみ・ADR-0038）。順位はこの正確な値で決まります。
+	//
+	// Example: 839.58
+	SalesAmount string `json:"salesAmount"`
+}
+
+// ProductAmountRankingResponse 売上金額ランキングのレスポンススキーマ。売上金額の降順（同額は商品 ID 昇順）で並びます。
+type ProductAmountRankingResponse struct {
+	// Rankings 売上金額の降順で並んだ商品ランキングです。
+	Rankings []ProductAmountRankingItem `json:"rankings"`
+}
+
+// ProductQuantityRankingItem 販売数量ランキング 1 商品分の項目です。
+type ProductQuantityRankingItem struct {
 	// Name 商品名
 	//
 	// Example: ワイヤレスイヤホン
@@ -50,10 +79,10 @@ type ProductRankingItem struct {
 	SoldQuantity int64 `json:"soldQuantity"`
 }
 
-// ProductRankingResponse 売上ランキングのレスポンススキーマ。販売数量の降順（同数量は商品 ID 昇順）で並びます。
-type ProductRankingResponse struct {
+// ProductQuantityRankingResponse 販売数量ランキングのレスポンススキーマ。販売数量の降順（同数量は商品 ID 昇順）で並びます。
+type ProductQuantityRankingResponse struct {
 	// Rankings 販売数量の降順で並んだ商品ランキングです。
-	Rankings []ProductRankingItem `json:"rankings"`
+	Rankings []ProductQuantityRankingItem `json:"rankings"`
 }
 
 // OrderedAfterParam Example: 2026-07-01T00:00:00+09:00
@@ -77,8 +106,11 @@ type MethodNotAllowed405 = ErrorResponse
 // ServiceUnavailable503 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type ServiceUnavailable503 = ErrorResponse
 
-// GetProductsRankingParams defines parameters for GetProductsRanking.
-type GetProductsRankingParams struct {
+// Unauthorized401 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
+type Unauthorized401 = ErrorResponse
+
+// GetProductsRankingAmountParams defines parameters for GetProductsRankingAmount.
+type GetProductsRankingAmountParams struct {
 	// OrderedAfter 集計対象期間の下限となる瞬時（RFC3339）。**この瞬時を含みます**。
 	// 対象は半開区間 `[orderedAfter, orderedBefore)` で、注文日時がこの区間に入る購入だけを集計します。
 	// 省略すると下限を設けません。`orderedBefore` と併せて省略すると全期間が対象になります。
@@ -92,6 +124,25 @@ type GetProductsRankingParams struct {
 	// `orderedBefore` が `orderedAfter` 以前（同値を含む）の場合は 400 を返します。
 	OrderedBefore *OrderedBeforeParam `form:"orderedBefore,omitempty" json:"orderedBefore,omitempty"`
 
-	// Limit 取得する上位件数。売上数量の降順で上位 limit 件を返します。
+	// Limit 取得する上位件数。その口の軸（販売数量または売上金額）の降順で上位 limit 件を返します。
+	Limit *RankingLimitParam `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// GetProductsRankingQuantityParams defines parameters for GetProductsRankingQuantity.
+type GetProductsRankingQuantityParams struct {
+	// OrderedAfter 集計対象期間の下限となる瞬時（RFC3339）。**この瞬時を含みます**。
+	// 対象は半開区間 `[orderedAfter, orderedBefore)` で、注文日時がこの区間に入る購入だけを集計します。
+	// 省略すると下限を設けません。`orderedBefore` と併せて省略すると全期間が対象になります。
+	// `orderedBefore` が `orderedAfter` 以前（同値を含む）の場合は 400 を返します。
+	// cursor ページネーションの `after` とは別のパラメータです。
+	OrderedAfter *OrderedAfterParam `form:"orderedAfter,omitempty" json:"orderedAfter,omitempty"`
+
+	// OrderedBefore 集計対象期間の上限となる瞬時（RFC3339）。**この瞬時を含みません**。
+	// 対象は半開区間 `[orderedAfter, orderedBefore)` で、注文日時がこの区間に入る購入だけを集計します。
+	// 省略すると上限を設けません。`orderedAfter` と併せて省略すると全期間が対象になります。
+	// `orderedBefore` が `orderedAfter` 以前（同値を含む）の場合は 400 を返します。
+	OrderedBefore *OrderedBeforeParam `form:"orderedBefore,omitempty" json:"orderedBefore,omitempty"`
+
+	// Limit 取得する上位件数。その口の軸（販売数量または売上金額）の降順で上位 limit 件を返します。
 	Limit *RankingLimitParam `form:"limit,omitempty" json:"limit,omitempty"`
 }

@@ -41,17 +41,32 @@ func (m *MockUsecase) EXPECT() *MockUsecaseMockRecorder {
 	return m.recorder
 }
 
-// GetProductsRanking mocks base method.
-func (m *MockUsecase) GetProductsRanking(ctx context.Context, params ranking.GetRankingParams) (ranking.RankingView, error) {
+// GetAmountRanking mocks base method.
+func (m *MockUsecase) GetAmountRanking(ctx context.Context, params ranking.GetRankingParams) (ranking.AmountRankingView, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetProductsRanking", ctx, params)
-	ret0, _ := ret[0].(ranking.RankingView)
+	ret := m.ctrl.Call(m, "GetAmountRanking", ctx, params)
+	ret0, _ := ret[0].(ranking.AmountRankingView)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetProductsRanking indicates an expected call of GetProductsRanking.
-func (mr *MockUsecaseMockRecorder) GetProductsRanking(ctx, params any) *gomock.Call {
+// GetAmountRanking indicates an expected call of GetAmountRanking.
+func (mr *MockUsecaseMockRecorder) GetAmountRanking(ctx, params any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProductsRanking", reflect.TypeOf((*MockUsecase)(nil).GetProductsRanking), ctx, params)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAmountRanking", reflect.TypeOf((*MockUsecase)(nil).GetAmountRanking), ctx, params)
+}
+
+// GetQuantityRanking mocks base method.
+func (m *MockUsecase) GetQuantityRanking(ctx context.Context, params ranking.GetRankingParams) (ranking.QuantityRankingView, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetQuantityRanking", ctx, params)
+	ret0, _ := ret[0].(ranking.QuantityRankingView)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetQuantityRanking indicates an expected call of GetQuantityRanking.
+func (mr *MockUsecaseMockRecorder) GetQuantityRanking(ctx, params any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetQuantityRanking", reflect.TypeOf((*MockUsecase)(nil).GetQuantityRanking), ctx, params)
 }

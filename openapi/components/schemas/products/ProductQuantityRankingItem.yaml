@@ -1,5 +1,5 @@
 type: object
-description: 売上ランキング 1 商品分の項目です。
+description: 販売数量ランキング 1 商品分の項目です。
 required:
   - productId
   - name

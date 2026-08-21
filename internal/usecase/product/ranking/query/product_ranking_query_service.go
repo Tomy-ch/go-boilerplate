@@ -13,9 +13,14 @@ import (
 )
 
 // ProductRankingQueryService は、購入明細を集計した商品売上ランキングの参照を提供するクエリサービスです。
+// 2 つのメソッドは母集団（公開中の商品 × キャンセルされていない購入の明細）が同一で、集計する指標と
+// 並び順だけが異なります。
 type ProductRankingQueryService interface {
-	// ListRanking は、販売数量の降順（同数量は商品 ID 昇順）で上位 params.Limit 件のランキングを返します。
-	ListRanking(ctx context.Context, params RankingQueryParams) ([]RankingResult, error)
+	// ListQuantityRanking は、販売数量の降順（同数量は商品 ID 昇順）で上位 params.Limit 件を返します。
+	ListQuantityRanking(ctx context.Context, params RankingQueryParams) ([]QuantityRankingResult, error)
+	// ListAmountRanking は、売上金額の降順（同額は商品 ID 昇順）で上位 params.Limit 件を返します。
+	// 金額は価格スケールの正確な decimal で、決済スケールへは丸めません。
+	ListAmountRanking(ctx context.Context, params RankingQueryParams) ([]AmountRankingResult, error)
 }
 
 // RankingQueryParams は、ランキング集計の入力パラメータです。
@@ -26,8 +31,8 @@ type RankingQueryParams struct {
 	Limit int
 }
 
-// RankingResult は、ランキング 1 商品分の集計結果です。
-type RankingResult struct {
+// QuantityRankingResult は、販売数量ランキング 1 商品分の集計結果です。
+type QuantityRankingResult struct {
 	ProductID uuid.UUID
 	Name      string
 	Price     decimal.Decimal
@@ -35,4 +40,15 @@ type RankingResult struct {
 	// 満たすかを呼び出し側がドメインの定義で確かめるために保持します。出力 DTO へは写しません。
 	PublishedAt  *time.Time
 	SoldQuantity int64
+}
+
+// AmountRankingResult は、売上金額ランキング 1 商品分の集計結果です。
+// SalesAmount は明細の単価 × 数量の総和で、価格スケールの正確な decimal です。
+type AmountRankingResult struct {
+	ProductID uuid.UUID
+	Name      string
+	Price     decimal.Decimal
+	// PublishedAt の役割は QuantityRankingResult を参照。
+	PublishedAt *time.Time
+	SalesAmount decimal.Decimal
 }
