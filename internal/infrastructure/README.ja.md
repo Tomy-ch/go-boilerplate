@@ -134,7 +134,9 @@ flowchart TB
     Queue["queue/"]
     RDB["rdb/"]
     Sys["system/"]
+    %% sample-api:begin
     Token["token/"]
+    %% sample-api:end
     Web["webapi/"]
 
     Root --> Auth
@@ -146,7 +148,9 @@ flowchart TB
     Root --> Queue
     Root --> RDB
     Root --> Sys
+    %% sample-api:begin
     Root --> Token
+    %% sample-api:end
     Root --> Web
 ```
 
@@ -163,7 +167,7 @@ flowchart TB
 |`queue/`|メッセージキューの worker seam 実装（AWS SQS による `worker.Consumer` / `FailureHandler` 実装）|Usecase boundary（worker seam）|[README](queue/sqs/README.ja.md)|
 |`rdb/`|RDB サブシステム（Repository / QueryService / driver / sqlc 等）|Domain / Usecase|[README](rdb/README.ja.md)|
 |`system/`|システム依存処理（時刻取得等）|Usecase boundary|[README](system/README.ja.md)|
-|`token/`|OS の乱数源による不透明なトークン生成（`boundary/token.Generator` の実装）|Usecase boundary|[README](token/README.ja.md)|
+|`token/`|OS の乱数源による不透明なトークン生成（`boundary/token.Generator` の実装）|Usecase boundary|[README](token/README.ja.md)| <!-- sample-api:line -->
 |`webapi/`|外部 Web API gateway（為替レート等、`boundary.Gateway` の実装）|Usecase boundary|[README](webapi/README.ja.md)|
 
 ## テスト戦略

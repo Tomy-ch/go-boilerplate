@@ -141,9 +141,15 @@ and the token it returns has the same shape as the one the login flow produces. 
 for the bespoke test hatch the previous provider carried.
 
 The `sub` is whatever `username` the login form (or the password grant) was given, so it has to be one
+<!-- sample-api:replace-begin -->
 the seed registered in `user_identities` — otherwise verification succeeds and identity resolution then
 refuses it. **Roles are not carried in the token.** They live in this service's database (`user_roles`)
 and are served by `GET /v1/users/me/roles`; an IdP that happens to know them is a property of one
+<!-- sample-api:replace-with -->
+<!-- = the seed registered as an identity — otherwise verification succeeds and identity resolution then -->
+<!-- = refuses it. **Roles are not carried in the token.** They live in this service's database -->
+<!-- = and are served by its own API; an IdP that happens to know them is a property of one -->
+<!-- sample-api:replace-end -->
 deployment, not of the contract, so a client deciding what to show an administrator reads the API.
 
 ### 3.3.1 Why `aud` is multi-valued

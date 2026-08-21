@@ -39,14 +39,22 @@ schema:
 ```
 
 `uniqueItems` and `maxItems` are wire limits: they bound the URL length and the size of the resulting `IN`
+<!-- sample-api:replace-begin -->
 list. Existing examples: `product/CategoryCodesParam.yaml`, `product/StatusCodesParam.yaml`, and
 `purchase/PurchaseGroupByParam.yaml` (a string `enum` array whose order is significant — repetition
 preserves it).
+<!-- sample-api:replace-with -->
+<!-- = list. A string `enum` array whose order is significant keeps that order across repetitions. -->
+<!-- sample-api:replace-end -->
 
 ### Free-text input is never an array
 
 A parameter that carries text the user typed is a single `string` with a `maxLength`, never an array —
+<!-- sample-api:replace-begin -->
 `search/KeywordParam.yaml` is the shape to copy. Only a reference to a row (`code`) or a fixed `enum` may
+<!-- sample-api:replace-with -->
+<!-- = Only a reference to a row (`code`) or a fixed `enum` may -->
+<!-- sample-api:replace-end -->
 be multi-valued.
 
 This is what keeps the rule above cheap. Percent-encoded UTF-8 costs up to 9 characters per character, so
@@ -89,8 +97,13 @@ parameters:
 
 |Element|Convention|Example|
 |---|---|---|
+<!-- sample-api:replace-begin -->
 |Directory|lowercase by concern|`pagination/`, `search/`, `user/`|
 |File name|PascalCase + `Param`|`PageParam.yaml`, `UserIdParam.yaml`|
+<!-- sample-api:replace-with -->
+<!-- = |Directory|lowercase by concern|`pagination/`, `<resource>/`| -->
+<!-- = |File name|PascalCase + `Param`|`PageParam.yaml`, `<Resource>IdParam.yaml`| -->
+<!-- sample-api:replace-end -->
 
 ## Rules
 

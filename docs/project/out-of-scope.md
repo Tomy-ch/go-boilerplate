@@ -19,8 +19,13 @@
     `concurrencyPolicy`, advisory locks) is left to the scheduler
   - No application-level mutual exclusion is provided because the bundled
     jobs are already concurrency-safe by design: `outbox-gc` and
+<!-- sample-api:replace-begin -->
     `idempotency-gc` are age-predicate, idempotent batch deletes,
     `usercount` is read-only, and the outbox relay claims rows with
+<!-- sample-api:replace-with -->
+<!-- =     `idempotency-gc` are age-predicate, idempotent batch deletes, -->
+<!-- =     and the outbox relay claims rows with -->
+<!-- sample-api:replace-end -->
     `FOR UPDATE SKIP LOCKED`
   - If you require strict single-run semantics, set
     `concurrencyPolicy: Forbid` at the scheduler

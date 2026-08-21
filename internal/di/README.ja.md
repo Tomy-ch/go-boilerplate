@@ -219,6 +219,7 @@ case config.EnvLocal:
   で登録したときにのみ結線され、depth/DLQ メトリクスは `queuemetrics.Target` を
   `provideQueueStatsTargets` で登録したときのみ出力されます。既定の worker グラフは
   adapter なしで動作します。
+<!-- sample-api:replace-begin -->
 - **環境ゲート付きのスタブ** — `authzModule` と `core.AuthnModule` は環境ごとに実装を
   選択し、自身の `switch` が名前を挙げていない環境に対しては **fail closed**（エラーを
   返す）ことで、未設定の環境が寛容なデフォルトのまま起動するのを防ぎます。どの環境を
@@ -229,6 +230,17 @@ case config.EnvLocal:
   `core.provideAuthenticator` はこれとは独立にゲートされ、CI / test はスタブ、
   local / development は JWKS authenticator、staging / production は fail-closed です。
   共通の境界を前提とせず `switch` を読んでください。
+<!-- sample-api:replace-with -->
+<!-- = - **環境ゲート付きのスタブ** — `authzModule` と `core.AuthnModule` は環境ごとに実装を -->
+<!-- =   選択し、自身の `switch` が名前を挙げていない環境に対しては **fail closed**（エラーを -->
+<!-- =   返す）ことで、未設定の環境が寛容なデフォルトのまま起動するのを防ぎます。どの環境を -->
+<!-- =   名前で挙げるかは両者で異なり、認可実装の増減で境界が動きます。現状 `provideAuthorizer` -->
+<!-- =   は local / CI / test に allow-all を結線し、本番相当の環境は実際の RBAC / ポリシー -->
+<!-- =   adapter を結線するまで fail-closed です。 -->
+<!-- =   `core.provideAuthenticator` はこれとは独立にゲートされ、CI / test はスタブ、 -->
+<!-- =   local / development は JWKS authenticator、staging / production は fail-closed です。 -->
+<!-- =   共通の境界を前提とせず `switch` を読んでください。 -->
+<!-- sample-api:replace-end -->
 - 本リポジトリがボイラープレートとして頒布されている間は、認可ゲートがどの環境を名前で挙げるかはサンプル API の撤去でも動きます。[`docs/get-started/boilerplate-only-conventions.ja.md`](../../docs/get-started/boilerplate-only-conventions.ja.md) を参照してください。ここから作られたプロジェクトには当てはまりません。 <!-- boilerplate-only:line -->
 
 ## Do / Don't

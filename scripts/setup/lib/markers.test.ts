@@ -30,6 +30,26 @@ describe("stripMarkers", () => {
       expect(stripMarkers(content, "setup-localize").content).toBe("keep");
     });
 
+    // mermaid のコードフェンス内は `%%` しかコメントにできない。ここを外すと図のノードだけが
+    // 撤去の網から漏れ、消えたディレクトリが図に残る。
+    it("mermaid コメントのマーカーも拾う", () => {
+      const content = doc("flowchart TB", "  %% m:begin", '  Node["gone/"]', "  %% m:end", "  Keep");
+
+      expect(stripMarkers(content, "m").content).toBe(doc("flowchart TB", "  Keep"));
+    });
+
+    it("mermaid コメントの退避行をアンコメントして残す", () => {
+      const content = doc(
+        "  %% m:replace-begin",
+        '  Node["sample/"]',
+        "  %% m:replace-with",
+        '  %% = Node["yours/"]',
+        "  %% m:replace-end",
+      );
+
+      expect(stripMarkers(content, "m").content).toBe('  Node["yours/"]');
+    });
+
     it("入れ子のブロックを深さで数える", () => {
       const content = doc(
         "keep",
