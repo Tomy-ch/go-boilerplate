@@ -165,10 +165,10 @@ jobs:
           # it just carries no checks. A skipped step leaves an empty output, which is falsy, so the
           # fallback is reached exactly when the token was not minted.
           token: ${{ steps.app-token.outputs.token || github.token }}
-          commit-message: "Chore: コードグラフを同期する"
+          commit-message: "Chore: sync code graph"
           branch: auto/graphify-update/${{ github.ref_name }}
           base: ${{ github.ref_name }}
-          title: "chore(graphify): sync code graph"
+          title: "Chore: sync code graph"
           body: |
             ## 🤖 Auto-generated Graph Sync
 
