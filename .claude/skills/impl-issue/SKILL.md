@@ -313,22 +313,19 @@ make serve                                    # API on 8080+N, mock-auth on 2010
 
 TOKEN=$(curl -s -X POST http://localhost:201N/bypass/token \
   -H 'Content-Type: application/json' \
-  -d '{"subject":"user-john-doe","profile":"valid"}' \
+  -d '{"subject":"<seeded-subject>","profile":"valid"}' \
   | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
 
 curl -s -o /dev/null -w '%{http_code}\n' -H "Authorization: Bearer $TOKEN" http://localhost:808N/v1/...
 ```
 
-The token subject must be the `user_identities.subject` string (`user-john-doe` form), not a user
-UUID — the seeded UUID rows belong to a different issuer than the one the slot's port produces, so a
-UUID yields a confusing 401. Resolve real subjects from the DB when unsure:
+The token subject must be the identity `subject` string the seed registered, not an internal UUID —
+the seeded UUID rows belong to a different issuer than the one the slot's port produces, so a UUID
+yields a confusing 401. Resolve real subjects from the identity table when unsure:
 
 ```bash
 docker exec gobp-shared-database-1 psql -U postgres -d wt<N>_local -c \
-  "select ui.subject, r.name from user_identities ui
-     left join user_roles ur on ur.user_id = ui.user_id
-     left join roles r on r.id = ur.role_id
-   where ui.issuer = 'http://localhost:201N';"
+  "select subject from <identity table> where issuer = 'http://localhost:201N';"
 ```
 
 Check the happy path, the error paths the change introduces, and — for a protected operation — that

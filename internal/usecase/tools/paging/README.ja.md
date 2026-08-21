@@ -7,7 +7,11 @@
 - **オフセット方式（`Page`）** — 1ベースの page/perPage を limit/offset に変換。単純で任意ページへのランダムアクセスが可能だが、深いページで `OFFSET` のスキャンが増えて劣化する。
 - **カーソル方式 / keyset（`Cursor`）** — 不透明カーソル（直前ページ末尾行のソートキー）を受け取り、`WHERE (sort_keys) < (:cursor)` クエリに用いる。深いページでも安定して高速で、大規模データや無限スクロールに推奨。本パッケージは**輸送（エンコード/デコード）・検証・件数ポリシー**のみを担い、キーを型付きのソート列へ解釈し直す処理（例: RFC3339 → time、UUID 文字列 → uuid）は**クエリ層**の責務。
 
+<!-- sample-api:replace-begin -->
 本パッケージは**件数ポリシーそのもの**（`Limit` / `LimitPolicy`）も担います。これにより、ページネーションを一切持たない読み取り — ランキングや在庫僅少カードのような top-N 一覧 — も「未指定なら既定値、上限超過ならクランプ」という同じ規約を再実装せずに共有できます。`Page` / `Cursor` は本パッケージ自身の `defaultPerPage` / `maxPerPage` を与えて `Limit` の上に構築されており、top-N の呼び出し元は自前の `LimitPolicy` を渡します（フィールド名を持つため、既定値と上限を呼び出し側で取り違えることがありません）。
+<!-- sample-api:replace-with -->
+<!-- = 本パッケージは**件数ポリシーそのもの**（`Limit` / `LimitPolicy`）も担います。これにより、ページネーションを一切持たない読み取り — top-N 一覧 — も「未指定なら既定値、上限超過ならクランプ」という同じ規約を再実装せずに共有できます。`Page` / `Cursor` は本パッケージ自身の `defaultPerPage` / `maxPerPage` を与えて `Limit` の上に構築されており、top-N の呼び出し元は自前の `LimitPolicy` を渡します（フィールド名を持つため、既定値と上限を呼び出し側で取り違えることがありません）。 -->
+<!-- sample-api:replace-end -->
 
 ## 定数
 
@@ -48,9 +52,9 @@
 ### top-N（ページネーションなし）
 
 ```go
-var lowStockLimitPolicy = paging.LimitPolicy{Default: 20, Max: 100}
+var topNLimitPolicy = paging.LimitPolicy{Default: 20, Max: 100}
 
-limit := paging.NewLimit(req.Limit, lowStockLimitPolicy)
+limit := paging.NewLimit(req.Limit, topNLimitPolicy)
 // req.Limit が nil なら limit.Value() == 20。limit.Value32() を SQL の LIMIT に渡す。
 ```
 

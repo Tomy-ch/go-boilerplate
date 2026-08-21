@@ -164,13 +164,13 @@ make slot-acquire && make serve            # API on 8080+N, mock-auth on 2010+N
 
 TOKEN=$(curl -s -X POST http://localhost:201N/bypass/token \
   -H 'Content-Type: application/json' \
-  -d '{"subject":"user-john-doe","profile":"valid"}' \
+  -d '{"subject":"<seeded-subject>","profile":"valid"}' \
   | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
 
 curl -s -o /dev/null -w '%{http_code}\n' -H "Authorization: Bearer $TOKEN" http://localhost:808N/v1/...
 ```
 
-The token subject must be the `user_identities.subject` string (`user-john-doe` form), not a user
+The token subject must be the identity `subject` string the seed registered, not an internal
 UUID — the seeded UUID rows belong to a different issuer than the slot's port produces, so a UUID
 yields a confusing 401.
 

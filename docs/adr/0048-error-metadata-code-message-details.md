@@ -117,7 +117,7 @@ explosion for field-level reporting, and still cannot express request-specific d
 
 - Source: `internal/apperror/README.md` — Error Metadata (`Meta`) section;
   `internal/controller/error/response/README.md` — `apperror.Meta` Overrides section.
-- Prefecture-name resolution failures on user update remain `ErrNotFound` (404) via the
+- A failure to resolve a referenced master row remains `ErrNotFound` (404) via the
   repository path and are out of scope for field `details`; folding them into 422 is a
   separate decision if ever needed.
 - PATCH validates the merged full profile, so in theory a field the client did not send

@@ -44,8 +44,7 @@ The name carries the admission question: what belongs there is a **word of the b
 something used twice. Admission is deliberately narrow — a type belongs there only when **all** hold:
 
 - it is a **value object / domain concept**, not an aggregate or a service tied to one aggregate;
-- it is genuinely used by **two or more aggregates** (or is imminently so, like `money` for
-  `product` + `purchases`) — not "might be reused someday";
+- it is genuinely used by **two or more aggregates** (or is imminently so) — not "might be reused someday";
 - it carries **business semantics** that bar it from `pkg/` (currency, non-negativity,
   minor-unit, tax rules, …);
 - adding it is a **jointly-owned** decision — a change here ripples to every aggregate that
@@ -69,7 +68,7 @@ fallback would make `pkg/` the junk drawer instead. A type that clears neither s
   prompted this ADR).
 - depguard now both **permits** the lexicon and **forbids** ad-hoc aggregate-to-aggregate
   coupling — a stricter, clearer boundary than the previous lax domain→domain.
-- `money` semantics live once, in the domain, reused by `product` and later `purchases` without
+- `money` semantics live once, in the domain, reused across aggregates without
   duplication and without leaking business logic into `pkg/`.
 
 ### Negative Consequences

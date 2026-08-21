@@ -75,7 +75,7 @@
 
 handler `gen` の各 operationId について:
 
-- HTTP メソッド + パス（例 `GET /v1/users/{user_id}`）
+- HTTP メソッド + パス（例 `GET /v1/<リソース>/{<id>}`）
 - handler が呼ぶ usecase メソッド（`<feature>_handler.go` から読む）→ 設定する mock `EXPECT()`
 - 認証が必要か → 必要なら認証ヘッダ付与ヘルパーを使う
 - 正常系の期待（status + 最小の JSON ボディ形状）と、安価に書ける範囲で代表的なエラー系 1 つ（例: usecase が `apperror.ErrNotFound` を返す → 404 を期待）で、HTTP 経路上の errorhandler middleware マッピングを確認

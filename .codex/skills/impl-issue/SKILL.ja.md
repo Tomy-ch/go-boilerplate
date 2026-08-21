@@ -233,20 +233,17 @@ make serve                                    # API は 8080+N、mock-auth は 2
 
 TOKEN=$(curl -s -X POST http://localhost:201N/bypass/token \
   -H 'Content-Type: application/json' \
-  -d '{"subject":"user-john-doe","profile":"valid"}' \
+  -d '{"subject":"<seeded-subject>","profile":"valid"}' \
   | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
 
 curl -s -o /dev/null -w '%{http_code}\n' -H "Authorization: Bearer $TOKEN" http://localhost:808N/v1/...
 ```
 
-token の subject は `user_identities.subject` の文字列（`user-john-doe` 形式）でなければならない。ユーザー UUID ではない — シードの UUID 行はスロットのポートが発行する issuer とは別の issuer に属するため、UUID を渡すと紛らわしい 401 になる。実在する subject は DB から引く:
+token の subject は seed が登録した identity の `subject` 文字列でなければならない。内部の UUID ではない — シードの UUID 行はスロットのポートが発行する issuer とは別の issuer に属するため、UUID を渡すと紛らわしい 401 になる。実在する subject は DB から引く:
 
 ```bash
 docker exec gobp-shared-database-1 psql -U postgres -d wt<N>_local -c \
-  "select ui.subject, r.name from user_identities ui
-     left join user_roles ur on ur.user_id = ui.user_id
-     left join roles r on r.id = ur.role_id
-   where ui.issuer = 'http://localhost:201N';"
+  "select subject from <identity テーブル> where issuer = 'http://localhost:201N';"
 ```
 
 正常系、変更が持ち込むエラー経路、そして保護された操作ならトークン無しで 401 になることを確認する。その上で **LGTM スタックのトレースを読み、リクエストが想定どおりの経路（controller → usecase → infrastructure、意図した SQL）を通ったことを確認する**。ステータスコードだけでは、そのリクエストが変更した層に届いたことの証明にならない — 間違ったが尤もらしい経路は、間違った理由で正しいステータスを返す。

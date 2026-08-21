@@ -735,8 +735,13 @@ QueryService か CommandService か——は
 **すべての条件が基準なのではない。** 条件が基準であるのは、業務を知る者がそれを業務についての言明
 だと認めるとき——それが決める語に、その人が使う名前があるときである。ID 一致・ページネーション・
 並び順・外部キー結合は業務について何も決めておらず、この規則は及ばない。署名がすでに条件を丸ごと
+<!-- sample-api:replace-begin -->
 言っている Repository メソッドも同様で、`FindDeletedBefore(ctx, cutoff, …)` は自身の基準を述べて
 いるが `FindAllLowStock` は述べていない。確認は 1 つの問いで足りる——その語の意味を、ドメイン
+<!-- sample-api:replace-with -->
+<!-- = 言っている Repository メソッドも同様で、`FindDeletedBefore(ctx, cutoff, …)` は自身の基準を述べて -->
+<!-- = いるが、業務語を名前に持つメソッドは述べていない。確認は 1 つの問いで足りる——その語の意味を、ドメイン -->
+<!-- sample-api:replace-end -->
 パッケージだけを読んで答えられるか。答えられないなら作者性が出ていっている。
 
 同じ規律は書き込み側に既に課されている。CommandService が強制してよいのはドメインの不変条件から
@@ -980,6 +985,7 @@ Fixtureを推奨。
 - Invariant保証
 - テスト簡潔化
 
+<!-- sample-api:replace-begin -->
 ```go
 func newTestUser(t *testing.T)*User {
     baseTime := time.Date(2025,1,1,0,0,0,0,time.UTC)
@@ -1007,6 +1013,28 @@ func newTestUser(t *testing.T)*User {
     return user
 }
 ```
+<!-- sample-api:replace-with -->
+<!-- = ```go -->
+<!-- = func newTest<集約>(t *testing.T)*<集約> { -->
+<!-- =     baseTime := time.Date(2025,1,1,0,0,0,0,time.UTC) -->
+<!-- = -->
+<!-- =     id := uuid.NewTestFromSalt(t,"<集約>") -->
+<!-- =     relatedID := uuid.NewTestFromSalt(t,"<関連集約>") -->
+<!-- = -->
+<!-- =     entity, err := New( -->
+<!-- =         id, -->
+<!-- =         relatedID, -->
+<!-- =         // ... 残りの属性 -->
+<!-- =         baseTime, -->
+<!-- =         baseTime.Add(time.Hour), -->
+<!-- =         nil, -->
+<!-- =     ) -->
+<!-- = -->
+<!-- =     require.NoError(t, err) -->
+<!-- =     return entity -->
+<!-- = } -->
+<!-- = ``` -->
+<!-- sample-api:replace-end -->
 
 ### 不変条件保持テスト
 

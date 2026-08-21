@@ -322,10 +322,18 @@ Per-layer application: `internal/domain/README.md` (attribute structs on entitie
     (e.g. `internal/domain/product/category` → package `category`,
     `internal/domain/product/status` → package `status`).
   - **Concatenation** — a standalone multi-word aggregate with no grouping context concatenates
+    <!-- sample-api:replace-begin -->
     into one word (e.g. `useridentity`, `exchangerate`). Existing concatenated packages stay
+    <!-- sample-api:replace-with -->
+    <!-- = into one word (e.g. `<noun><noun>`). Existing concatenated packages stay -->
+    <!-- sample-api:replace-end -->
     as-is; prefer context nesting once a context gains a second sub-aggregate.
 - Database DML and sqlc-generated directories use **snake_case matching the table name**
+  <!-- sample-api:replace-begin -->
   (`product_category`, `user_identity`), independent of the Go package layout.
+  <!-- sample-api:replace-with -->
+  <!-- = (`<noun>_<noun>`), independent of the Go package layout. -->
+  <!-- sample-api:replace-end -->
 - Controller handler directories match the **HTTP resource (route) name**, not the Go package
   layout.
   <!-- 撤去後にこの箇所へ自分の例を置くための指針。
@@ -336,7 +344,11 @@ Per-layer application: `internal/domain/README.md` (attribute structs on entitie
   例: `product-categories` / `prefectures`。
   <!-- sample-api:end -->
 - Type names may keep the aggregate noun inside a same-named package
+  <!-- sample-api:replace-begin -->
   (`category.Category`, `prefecture.Prefecture`).
+  <!-- sample-api:replace-with -->
+  <!-- = (`<aggregate>.<Aggregate>`). -->
+  <!-- sample-api:replace-end -->
 
 ## New Type Derivation
 

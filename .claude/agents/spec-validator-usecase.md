@@ -44,7 +44,7 @@ Read `docs/spec/<feature>/domain.md` and build the inventory: `domain.repository
 - `<thisFeatureAggregate>.Repository.<Method>` **or** `<thisFeature>_repository.<Method>` → must exist in `domain.repository_methods` → else `violation`
 - `<thisFeatureAggregate>.<BehaviorMethod>` or `<thisFeatureAggregate>.New` → must exist in `domain.behavior_methods` or `domain.factory` → else `violation`
 - `<boundary>.<Method>` (e.g. `clock.Now`, `tx_manager.Do`) → the boundary must appear in `usecase.dependencies` → else `violation` (the method itself is compile-time).
-- **Cross-aggregate** call (e.g. `prefecture_repository.<Method>` when the feature is `user`) → resolve like a boundary: the dependency name must be declared in `usecase.dependencies` → else `violation`. Do **not** flag the method as missing — it belongs to another aggregate's domain spec that is out of scope here (compile-time / cross-aggregate). Only the in-scope feature's `domain.md` is loaded.
+- **Cross-aggregate** call (e.g. `<other_aggregate>_repository.<Method>`) → resolve like a boundary: the dependency name must be declared in `usecase.dependencies` → else `violation`. Do **not** flag the method as missing — it belongs to another aggregate's domain spec that is out of scope here (compile-time / cross-aggregate). Only the in-scope feature's `domain.md` is loaded.
 
 For a **展開形** section there is no `calls:`, so resolve its section-scoped `dependencies:` instead — at dependency granularity only, never method granularity:
 
@@ -93,7 +93,7 @@ spec-validator-usecase 結果（feature: <feature>）
   - usecase.md 展開形節「GET 発送待ち一覧」dependencies 'domain/service/dispatch' が domain.md Domain Service に存在しない
 
 [interface coverage] J 件
-  - Interface の `ShipPurchase` に対応する手順が Workflow にも展開形節にも無い
+  - Interface の `<Method>` に対応する手順が Workflow にも展開形節にも無い
   - 展開形節「GET 集計」が記述するメソッドが Interface に無い（suggestion / 別パッケージ usecase の可能性）
 
 [naming convention] K 件（suggestion）

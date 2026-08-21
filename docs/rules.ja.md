@@ -300,10 +300,18 @@ Repository は読み・書きの両方向で既定である。QueryService と C
     束ねる場合、コンテキストディレクトリ配下にネストする：`internal/<layer>/<context>/<sub>/`（package `<sub>`）。
     例: `internal/domain/product/category`（package `category`）、`internal/domain/product/status`（package `status`）。
   - **連結** — 束ねるコンテキストを持たない単独の多語アグリゲートは 1 語に連結する
+    <!-- sample-api:replace-begin -->
     （例: `useridentity`、`exchangerate`）。既存の連結パッケージは現状維持とし、コンテキストに 2 つ目の
+    <!-- sample-api:replace-with -->
+    <!-- = （例: `<名詞><名詞>`）。既存の連結パッケージは現状維持とし、コンテキストに 2 つ目の -->
+    <!-- sample-api:replace-end -->
     サブアグリゲートが加わった時点でネストを優先する。
 - データベース DML と sqlc 生成物のディレクトリは、Go パッケージ構成とは独立に、**テーブル名準拠の snake_case**
+  <!-- sample-api:replace-begin -->
   を用いる（`product_category`、`user_identity`）。
+  <!-- sample-api:replace-with -->
+  <!-- = を用いる（`<名詞>_<名詞>`）。 -->
+  <!-- sample-api:replace-end -->
 - Controller ハンドラのディレクトリは Go パッケージ構成ではなく **HTTP リソース（route）名**に一致させる。
   <!-- 撤去後にこの箇所へ自分の例を置くための指針。
        目的: ルート名と Go パッケージ名がずれる実例が無いと、規則が空文に見える。
@@ -312,7 +320,11 @@ Repository は読み・書きの両方向で既定である。QueryService と C
   <!-- sample-api:begin -->
   例: `product-categories`、`prefectures`。
   <!-- sample-api:end -->
+<!-- sample-api:replace-begin -->
 - 型名は同名パッケージ内でもアグリゲート名詞を保持してよい（`category.Category`、`prefecture.Prefecture`）。
+<!-- sample-api:replace-with -->
+<!-- = - 型名は同名パッケージ内でもアグリゲート名詞を保持してよい（`<集約>.<集約>`）。 -->
+<!-- sample-api:replace-end -->
 
 ## 新しい型の導出
 

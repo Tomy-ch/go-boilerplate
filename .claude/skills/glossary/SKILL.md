@@ -129,8 +129,8 @@ a term the business uses need not cross the API boundary, so a blank there is no
 is not evidence of anything until someone reads both.
 
 Search the whole of `openapi/`, not a chosen directory. A published name can be a schema, a property
-inside a response body, a parameter, or **a path segment** — the verbs of this repo's purchase API
-are path segments and appear in no schema at all. Each narrowing of the search reads as "this term
+inside a response body, a parameter, or **a path segment** — a verb-shaped operation name is a path
+segment and appears in no schema at all. Each narrowing of the search reads as "this term
 is not published" when the term is on the wire, and that is the one wrong answer this column can
 give.
 
@@ -164,7 +164,7 @@ alone is too narrow to work — a getter may copy before returning, may delegate
 and may spell the field in an abbreviated form. The question is whether the body reaches one field
 and returns it; if it does, it is an accessor whatever it is called.
 
-What survives carries a verb or a judgement: `Cancel`, `IsCanceled`, `IsLowStock`, `UpdateEmail`.
+What survives carries a verb or a judgement: `Cancel`, `IsCanceled`, `Update<Attribute>`.
 
 Take the verbs as seriously as the nouns; they are the easier half to lose. **A vocabulary of nouns
 can name what the business has and cannot say what happens to it** — and the rules live in what

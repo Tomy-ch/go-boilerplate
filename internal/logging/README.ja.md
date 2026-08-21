@@ -169,7 +169,11 @@ HTTP リクエスト / レスポンスログは以下のフィールドを出力
 
 - `event_type=start`
 - `method=GET`
+<!-- sample-api:replace-begin -->
 - `path=/v1/users`
+<!-- sample-api:replace-with -->
+<!-- = - `path=/v1/<リソース>` -->
+<!-- sample-api:replace-end -->
 - `remote_ip=...`
 - `trace_id=...`
 - `span_id=...`
