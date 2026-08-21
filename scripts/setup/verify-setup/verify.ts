@@ -148,6 +148,20 @@ export const SETUP_SHARED_DIR = "lib";
 /** サンプル削除ツール。まだ残っていれば `setup/lib` を使い続けている。 */
 export const SAMPLE_REMOVER_DIR = "remove-sample-api";
 
+/**
+ * 初期化ツールを実際に起動する CI（リポジトリルートからの相対）。
+ *
+ * @remarks
+ * `setup-scripts-check.yaml` は `replace-*` と `verify-setup` を叩いて初期化が主張どおりに
+ * 動くことを検証します。ツールが自消滅した後も残ると、消えた入口を叩き続けて作成先で恒久的に
+ * 赤くなります。`remove-boilerplate-identity` 側も同じパスを消します。あちらも同じ CI に
+ * 依存しており、2 つの撤去はどちらが先に走るか決まっていないためです。先に走ったほうが持って
+ * 行き、後から走ったほうの削除は空振りします。
+ */
+export const LOCALIZATION_CI_PATHS: readonly string[] = [
+  ".github/workflows/setup-scripts-check.yaml",
+];
+
 /** 初期化ツール（`replace-*`）のディレクトリ名。 */
 export const LOCALIZATION_TOOL_DIRS: readonly string[] = [
   "replace-module",
