@@ -130,11 +130,11 @@ individually falsifiable statement with the evidence behind it:
 ```markdown
 ## 前提
 
-- `POST /v1/purchases` reaches the usecase for a withdrawn user — **verified**: `useridentity.Resolver`
+- `POST /v1/<resource>` reaches the usecase for a deactivated identity — **verified**: the resolver
   only rejects on `deleted_at`, and the identity is resolved before the handler runs
-  (`internal/infrastructure/auth/useridentity/resolver.go`, read at `abc1234`)
-- `user.withdrawn.v1` has no consumer — **verified**: no handler matches the event type
-  (`rg 'TypeWithdrawn' internal/controller/worker/`, at `abc1234`)
+  (`internal/infrastructure/auth/<impl>/resolver.go`, read at `abc1234`)
+- `<aggregate>.<event>.v1` has no consumer — **verified**: no handler matches the event type
+  (`rg 'Type<Event>' internal/controller/worker/`, at `abc1234`)
 ```
 
 `impl-issue` reads this section when the issue is picked up and reports every premise that no longer

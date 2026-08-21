@@ -22,7 +22,11 @@ middleware が各センチネルを固定の HTTP ステータス・固定のエ
 API クライアントへ動的な情報を伝えられない — 例えば、ユーザー更新リクエストの*どの*
 フィールドが検証に失敗したか、を伝えられない。
 
+<!-- sample-api:replace-begin -->
 具体的なニーズ: `PUT/PATCH /v1/users/{id}` は不正なフィールドをレスポンスで指摘すべき
+<!-- sample-api:replace-with -->
+<!-- = 具体的なニーズ: 更新操作は不正なフィールドをレスポンスで指摘すべき -->
+<!-- sample-api:replace-end -->
 （`details: ["firstName", "email"]`）だが、各フィールドが**なぜ**失敗したかは公開しない
 （理由はログ専用）。加えて、ドメインの検証は最初に失敗したフィールドしか収集していなかった
 （`validateProfileFields` は first-error return）ため、複数同時違反をまとめて報告できなかった。
@@ -57,7 +61,11 @@ ADR-0047 を不変に保つための3つの制約:
 フィールドごとのセンチネルエラーを結合（`xerrors.Join`）した上で、収集したフィールド識別子を
 `WithDetails` で付与する。サーバ内部の不変条件（id / updatedAt / deletedAt）は
 first-error return のまま — ユーザーが修正できる入力ではないため。副次効果として
+<!-- sample-api:replace-begin -->
 `POST /v1/users`（作成）でも不正フィールドが `details` に載るようになる。これは意図された改善。
+<!-- sample-api:replace-with -->
+<!-- = 対応する作成操作でも不正フィールドが `details` に載るようになる。これは意図された改善。 -->
+<!-- sample-api:replace-end -->
 
 ## 帰結
 

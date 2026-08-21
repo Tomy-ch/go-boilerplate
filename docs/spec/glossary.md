@@ -104,13 +104,16 @@ findings** — 業務が使っていてモデルが使っていない語は、�
 
 | 名前 | 業務語でない理由 |
 | --- | --- |
-| `Attributes` / `Profile` / `PurchaseDetailAttributes` | 位置引数の取り違えを防ぐための引数の束 |
-| `Repository` / `LockRepository` / `RoleRepository` | 永続化の抽象。業務はリポジトリを持たない |
-| `ListParams` / `ListFeedParams` / `Counts` / `FeedCursor` / `FeedItem` | 読み取り経路の問い合わせとページングの形 |
-| `DetailInput` / `LockedProduct` | コンストラクタの入力であって、業務が名前を付けるものではない |
+| `Attributes` / `Profile` | 位置引数の取り違えを防ぐための引数の束 |
+| `PurchaseDetailAttributes` | 位置引数の取り違えを防ぐための引数の束 | <!-- sample-api:line -->
+| `Repository` / `LockRepository` | 永続化の抽象。業務はリポジトリを持たない |
+| `RoleRepository` | 永続化の抽象。業務はリポジトリを持たない | <!-- sample-api:line -->
+| `ListParams` / `Counts` | 読み取り経路の問い合わせとページングの形 |
+| `ListFeedParams` / `FeedCursor` / `FeedItem` | 読み取り経路の問い合わせとページングの形 | <!-- sample-api:line -->
+| `DetailInput` / `LockedProduct` | コンストラクタの入力であって、業務が名前を付けるものではない | <!-- sample-api:line -->
 | `Event` / `EventType` | 事実の封筒。事実の**名前**は語だが、封筒は語ではない |
-| `StatusRef` / `CategoryRef` | 同一性に表示用の属性を添えた集約横断参照 |
-| `Detail` | 購入 1 件の読み取り形。業務が呼ぶ語は書き込み側の集約が既に持っている（購入・購入明細） |
+| `StatusRef` / `CategoryRef` | 同一性に表示用の属性を添えた集約横断参照 | <!-- sample-api:line -->
+| `Detail` | 購入 1 件の読み取り形。業務が呼ぶ語は書き込み側の集約が既に持っている（購入・購入明細） | <!-- sample-api:line -->
 | `DBHealth` / `Ok` / `Degraded` / `Unhealthy` | 稼働の観測点。業務ではなく運用が見るもの |
 | `New` / `New<VO>` | 構築の入口。名前は規約であって業務の語ではない。業務が同じ行為を別の名前で呼ぶなら、その語のほうが行になる |
 | `Reconstruct` | 永続化からの再構成。業務は既に起きた事実を作り直さない。復元は保存の裏返しであって行為ではない |
@@ -170,6 +173,7 @@ findings** — 業務が使っていてモデルが使っていない語は、�
 
 ### 同音異義（未決）
 
+<!-- sample-api:replace-begin -->
 **どちらの名前が勝つかも、2 つが本当に別概念かも、ここでは決めない。** 決めるのは業務がどう話すかの
 決定であり、人のものである。
 
@@ -184,9 +188,16 @@ findings** — 業務が使っていてモデルが使っていない語は、�
   （単価 × 数量）を価格スケールの正確な decimal で合計し、公開済み商品に限る。**母集団もスケールも
   違うのに、公開名が同じ `salesAmount` である。**両者が一致しないことは各 op の description に
   書かれているが、名前を分けるかは業務がどう話すかの決定である
+<!-- sample-api:replace-with -->
+<!-- = **どちらの名前が勝つかも、2 つが本当に別概念かも、ここでは決めない。** 決めるのは業務がどう話すかの -->
+<!-- = 決定であり、人のものである。 -->
+<!-- = -->
+<!-- = 現在エントリなし。 -->
+<!-- sample-api:replace-end -->
 
 ### 行にするかが未決
 
+<!-- sample-api:replace-begin -->
 同義は現在エントリなし。以下は**行にするかどうかが未決**の語である。
 
 - **購入の成立** — 支払い・発送・配達・キャンセルは行為の側が行を得たが、購入そのものの成立だけ
@@ -195,6 +206,9 @@ findings** — 業務が使っていてモデルが使っていない語は、�
   `purchase.EventCreated` という名前が既にあり、担い手の候補はそちらである。**行を立てるかは、この
   成立を「購入」という既存の行が兼ねてよいかの判断**であり、兼ねさせるなら 1 語が集約と出来事の
   2 つを指すことになる。
+<!-- sample-api:replace-with -->
+<!-- = 同義・行にするかどうかが未決の語は、いずれも現在エントリなし。 -->
+<!-- sample-api:replace-end -->
 
 ## What this document is not
 
