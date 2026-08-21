@@ -27,6 +27,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// testCreatedAt は、テスト用の商品の登録日時です。公開日時と取り違えを検出できるよう異なる値にします。
+var testCreatedAt = time.Date(2025, time.December, 31, 23, 59, 58, 0, time.UTC)
+
 // 既存 seed に含まれるカテゴリ / ステータス ID（FK 制約を満たすために使用）。
 const (
 	categoryElectronics = "5dd52d84-78eb-4a52-ba0b-2e11c95c2af2"
@@ -59,6 +62,23 @@ func insertProduct(
 			"(id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at) "+
 			"VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)",
 		id, name, description, price, 10, nil, statusID, categoryID, publishedAt,
+	)
+	require.NoError(t, err)
+}
+
+// insertProductAt は、登録日時を明示して商品を挿入します。
+// 未公開込みの一覧は登録日時で並ぶため、DEFAULT now() 任せでは順序を検証できません。
+func insertProductAt(
+	ctx context.Context, t *testing.T, db driver.DBTX,
+	id, name string, price int, statusID, categoryID string, publishedAt *time.Time, createdAt time.Time,
+) {
+	t.Helper()
+	_, err := db.Exec(ctx,
+		"INSERT INTO products "+
+			"(id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, "+
+			"published_at, created_at) "+
+			"VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
+		id, name, nil, price, 10, nil, statusID, categoryID, publishedAt, createdAt,
 	)
 	require.NoError(t, err)
 }
@@ -1064,7 +1084,7 @@ func Test_repository_Create(t *testing.T) {
 							domainproduct.ImageAttributes{ImagePath: "products/created-sub.png", DisplaySort: 2},
 						),
 					},
-				})
+				}, testCreatedAt)
 				require.NoError(t, err)
 
 				require.NoError(t, repo.Create(ctx, entity))
@@ -1101,7 +1121,7 @@ func Test_repository_Create(t *testing.T) {
 					Quantity: 0,
 					Status:   statusRef,
 					Category: categoryRef,
-				})
+				}, testCreatedAt)
 				require.NoError(t, err)
 
 				require.NoError(t, repo.Create(ctx, entity))
@@ -1144,7 +1164,7 @@ func Test_repository_Create(t *testing.T) {
 				Quantity: 1,
 				Status:   statusRef,
 				Category: categoryRef,
-			})
+			}, testCreatedAt)
 			require.NoError(t, err)
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -1308,7 +1328,7 @@ func Test_repository_Update(t *testing.T) {
 					Status:                statusRef,
 					Category:              categoryRef,
 					PublishedAt:           ptr.To(base),
-				})
+				}, testCreatedAt)
 				require.NoError(t, err)
 				require.NoError(t, repo.Create(ctx, entity))
 
@@ -1474,7 +1494,7 @@ func Test_repository_Update(t *testing.T) {
 				Quantity: 1,
 				Status:   statusRef,
 				Category: categoryRef,
-			})
+			}, testCreatedAt)
 			require.NoError(t, err)
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -1515,7 +1535,7 @@ func reconstructWithVersion(t *testing.T, salt string, version int) *domainprodu
 		Quantity: 1,
 		Status:   statusRef,
 		Category: categoryRef,
-	}, version)
+	}, version, testCreatedAt)
 	require.NoError(t, err)
 	return entity
 }
@@ -1847,7 +1867,7 @@ func Test_repository_UpdateStock(t *testing.T) {
 				Quantity: 1,
 				Status:   statusRef,
 				Category: categoryRef,
-			})
+			}, testCreatedAt)
 			require.NoError(t, err)
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -2306,6 +2326,186 @@ func Test_nilIfEmpty(t *testing.T) {
 			t.Parallel()
 
 			assert.Nil(t, nilIfEmpty[int16](nil))
+		})
+	})
+}
+
+func Test_repository_FindAllList(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	lt := observability.NewMockInfraLayerTracer(t)
+	txm := testkit.NewTestTransactionRunner(t)
+
+	repo := &repository{tracer: lt, db: testDB}
+
+	// seed より確実に新しい固定時刻。id の大小でタイブレークを検証するため tie ペアを含む。
+	base := time.Date(2099, time.February, 1, 0, 0, 0, 0, time.UTC)
+	tieHigh := "eeeeeeee-1111-4000-8000-000000000002"
+	tieLow := "eeeeeeee-1111-4000-8000-000000000001"
+	mid := "eeeeeeee-1111-4000-8000-000000000003"    // base-1h・未公開
+	oldest := "eeeeeeee-1111-4000-8000-000000000004" // base-2h
+	allKeyword := "findalllist-probe"
+
+	insertProbeSet := func(ctx context.Context, t *testing.T, drv driver.DBTX) {
+		t.Helper()
+		insertProductAt(ctx, t, drv, tieHigh, allKeyword+"-A", 1000, statusInStock, categoryElectronics, ptr.To(base), base)
+		insertProductAt(ctx, t, drv, tieLow, allKeyword+"-B", 1000, statusInStock, categoryElectronics, nil, base)
+		insertProductAt(ctx, t, drv, mid, allKeyword+"-C", 1000, statusInStock, categoryElectronics, nil, base.Add(-time.Hour))
+		insertProductAt(ctx, t, drv, oldest, allKeyword+"-D", 1000, statusInStock, categoryElectronics, ptr.To(base), base.Add(-2*time.Hour))
+	}
+
+	probeFilter := func(t *testing.T) domainproduct.SearchFilter {
+		t.Helper()
+		price := mustPriceFilter(t)
+		quantity := int32(10)
+		return domainproduct.SearchFilter{
+			Keyword:     ptr.To(allKeyword),
+			MinPrice:    &price,
+			MaxPrice:    &price,
+			MinQuantity: &quantity,
+			MaxQuantity: &quantity,
+		}
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("降順で先頭ページとafter境界がkeyset安定順に次ページを返し未公開行も含まれる", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertProbeSet(ctx, t, drv)
+
+				// 先頭ページ(limit=2): 登録日時降順・id降順で tieHigh, tieLow。
+				firstPage, err := repo.FindAllList(ctx, domainproduct.AllListParams{
+					SearchFilter: probeFilter(t),
+					Limit:        2,
+					Ascending:    false,
+				})
+				require.NoError(t, err)
+				require.Len(t, firstPage, 2)
+				assert.Equal(t, mustParse(t, tieHigh), firstPage[0].ID())
+				assert.Equal(t, mustParse(t, tieLow), firstPage[1].ID())
+				// 2 件目は published_at=NULL であり、公開済み限定の一覧では現れない行。
+				assert.Nil(t, firstPage[1].PublishedAt())
+
+				// 次ページ: 直前ページ末尾 (created_at, id) を境界に mid, oldest。
+				afterCreatedAt := firstPage[1].CreatedAt()
+				afterID := firstPage[1].ID()
+				nextPage, err := repo.FindAllList(ctx, domainproduct.AllListParams{
+					SearchFilter:   probeFilter(t),
+					Limit:          2,
+					Ascending:      false,
+					AfterCreatedAt: &afterCreatedAt,
+					AfterID:        &afterID,
+				})
+				require.NoError(t, err)
+				require.Len(t, nextPage, 2)
+				assert.Equal(t, mustParse(t, mid), nextPage[0].ID())
+				assert.Equal(t, mustParse(t, oldest), nextPage[1].ID())
+			})
+		})
+
+		t.Run("昇順は降順の逆順で同じ母集団を返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertProbeSet(ctx, t, drv)
+
+				asc, err := repo.FindAllList(ctx, domainproduct.AllListParams{
+					SearchFilter: probeFilter(t),
+					Limit:        4,
+					Ascending:    true,
+				})
+				require.NoError(t, err)
+				require.Len(t, asc, 4)
+				assert.Equal(t, mustParse(t, oldest), asc[0].ID())
+				assert.Equal(t, mustParse(t, mid), asc[1].ID())
+				assert.Equal(t, mustParse(t, tieLow), asc[2].ID())
+				assert.Equal(t, mustParse(t, tieHigh), asc[3].ID())
+			})
+		})
+
+		t.Run("絞り込み条件に一致しない行は返さない", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertProbeSet(ctx, t, drv)
+
+				filter := probeFilter(t)
+				filter.Keyword = ptr.To(allKeyword + "-C")
+				actual, err := repo.FindAllList(ctx, domainproduct.AllListParams{
+					SearchFilter: filter,
+					Limit:        10,
+					Ascending:    false,
+				})
+				require.NoError(t, err)
+				require.Len(t, actual, 1)
+				assert.Equal(t, mustParse(t, mid), actual[0].ID())
+			})
+		})
+	})
+}
+
+func Test_repository_CountAll(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	lt := observability.NewMockInfraLayerTracer(t)
+	txm := testkit.NewTestTransactionRunner(t)
+
+	repo := &repository{tracer: lt, db: testDB}
+
+	base := time.Date(2099, time.March, 1, 0, 0, 0, 0, time.UTC)
+	countKeyword := "countall-probe"
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未公開を含めて数え、公開済み限定の件数より多くなる", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertProductAt(ctx, t, drv, "eeeeeeee-2222-4000-8000-000000000001",
+					countKeyword+"-A", 1000, statusInStock, categoryElectronics, ptr.To(base), base)
+				insertProductAt(ctx, t, drv, "eeeeeeee-2222-4000-8000-000000000002",
+					countKeyword+"-B", 1000, statusInStock, categoryElectronics, nil, base)
+
+				price := mustPriceFilter(t)
+				quantity := int32(10)
+				filter := domainproduct.SearchFilter{
+					Keyword:     ptr.To(countKeyword),
+					MinPrice:    &price,
+					MaxPrice:    &price,
+					MinQuantity: &quantity,
+					MaxQuantity: &quantity,
+				}
+
+				all, err := repo.CountAll(ctx, filter)
+				require.NoError(t, err)
+				assert.Equal(t, int64(2), all)
+
+				published, err := repo.CountPublished(ctx, filter)
+				require.NoError(t, err)
+				assert.Equal(t, int64(1), published)
+			})
+		})
+
+		t.Run("一致する行が無い場合は0を返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				actual, err := repo.CountAll(ctx, domainproduct.SearchFilter{
+					Keyword: ptr.To("countall-no-such-keyword"),
+				})
+				require.NoError(t, err)
+				assert.Equal(t, int64(0), actual)
+			})
 		})
 	})
 }

@@ -177,6 +177,35 @@ func TestRequireAuthn(t *testing.T) {
 	})
 }
 
+func TestOptionalAuthn(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("設定済みなら同じAuthnを指すポインタを返す", func(t *testing.T) {
+			t.Parallel()
+			ctx := WithAuthn(context.Background())
+			expected := newTestAuthn(t, "optional-authn")
+			require.True(t, SetAuthn(ctx, expected))
+
+			actual := OptionalAuthn(ctx)
+			require.NotNil(t, actual)
+			assert.Equal(t, expected, *actual)
+		})
+
+		t.Run("スロット未仕込みならnilを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Nil(t, OptionalAuthn(context.Background()))
+		})
+
+		t.Run("スロットはあるが未設定ならnilを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Nil(t, OptionalAuthn(WithAuthn(context.Background())))
+		})
+	})
+}
+
 func TestRequireUserID(t *testing.T) {
 	t.Parallel()
 

@@ -216,6 +216,8 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "database/migrations/000011_create_product_images.down.sql",
       "database/migrations/000018_add_products_keyword_search_index.up.sql",
       "database/migrations/000018_add_products_keyword_search_index.down.sql",
+      "database/migrations/000019_add_products_created_at_id_index.up.sql",
+      "database/migrations/000019_add_products_created_at_id_index.down.sql",
       "database/seed/000007_products_electronic_equipment_01.sql",
       "database/seed/000008_products_electronic_equipment_02.sql",
       "database/seed/000009_products_electronic_equipment_03.sql",

@@ -225,6 +225,9 @@ type ProductStockPatchRequest struct {
 	Delta int32 `json:"delta"`
 }
 
+// IncludeUnpublishedParam Example: false
+type IncludeUnpublishedParam = bool
+
 // ProductIdParam Example: b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f
 type ProductIdParam = openapi_types.UUID
 
@@ -254,6 +257,15 @@ type Unauthorized401 = ErrorResponse
 
 // UnprocessableEntity422 詳細識別子付きエラーレスポンススキーマ。 この schema を error レスポンスに宣言したエンドポイントだけが details を返せる（opt-in）。 未宣言のエンドポイントでは errorhandler が details を fail-closed で落とす。
 type UnprocessableEntity422 = ErrorResponseWithDetails
+
+// GetProductsDetailParams defines parameters for GetProductsDetail.
+type GetProductsDetailParams struct {
+	// IncludeUnpublished 未公開（公開日時が未設定）の商品を母集団に含める場合は true を指定します。既定は false で、
+	// 指定しない場合の母集団は公開済みの商品のみです。
+	// true を指定できるのは管理者（admin）だけで、未認証は 401、管理者でなければ 403 で拒否します。
+	// false を明示した場合は認証を要しません（指定しない場合と同じ扱いです）。
+	IncludeUnpublished *IncludeUnpublishedParam `form:"includeUnpublished,omitempty" json:"includeUnpublished,omitempty"`
+}
 
 // PatchProductsDetailJSONRequestBody defines body for PatchProductsDetail for application/json ContentType.
 type PatchProductsDetailJSONRequestBody = ProductPatchRequest

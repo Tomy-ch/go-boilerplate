@@ -95,6 +95,13 @@ func (w *ServerInterfaceWrapper) GetProductsCount(ctx *echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter maxQuantity: %s", err))
 	}
 
+	// ------------- Optional query parameter "includeUnpublished" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "includeUnpublished", ctx.QueryParams(), &params.IncludeUnpublished, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter includeUnpublished: %s", err))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetProductsCount(ctx, params)
 	return err
@@ -153,11 +160,15 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 
 type BadRequest400JSONResponse ErrorResponse
 
+type Forbidden403JSONResponse ErrorResponse
+
 type InternalServerError500JSONResponse ErrorResponse
 
 type MethodNotAllowed405JSONResponse ErrorResponse
 
 type ServiceUnavailable503JSONResponse ErrorResponse
+
+type Unauthorized401JSONResponse ErrorResponse
 
 type GetProductsCountRequestObject struct {
 	Params GetProductsCountParams
@@ -191,6 +202,34 @@ func (response GetProductsCount400JSONResponse) VisitGetProductsCountResponse(w 
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProductsCount401JSONResponse struct{ Unauthorized401JSONResponse }
+
+func (response GetProductsCount401JSONResponse) VisitGetProductsCountResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProductsCount403JSONResponse struct{ Forbidden403JSONResponse }
+
+func (response GetProductsCount403JSONResponse) VisitGetProductsCountResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }

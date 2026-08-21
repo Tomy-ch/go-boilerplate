@@ -15,6 +15,7 @@ import (
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/internal/usecase/boundary/authz"
+	"go-boilerplate/internal/usecase/boundary/clock"
 	"go-boilerplate/internal/usecase/boundary/objectstorage"
 	"go-boilerplate/internal/usecase/boundary/tx"
 	"go-boilerplate/internal/usecase/tools/paging"
@@ -71,8 +72,29 @@ type ListProductsParams struct {
 
 	// Cursor は、cursor ページネーションの取得件数と境界を表します。
 	Cursor *paging.Cursor
-	// Ascending は、公開日時の昇順で取得する場合に true、降順の場合に false です。
+	// Ascending は、並び順を昇順で取得する場合に true、降順の場合に false です。
+	// 並び順の軸は IncludeUnpublished により変わります（公開日時 / 登録日時）。
 	Ascending bool
+	// IncludeUnpublished は、未公開の商品も母集団に含める場合に true です。
+	// true は admin だけが指定でき、その判定は Authorizer に委ねます。
+	IncludeUnpublished bool
+}
+
+// CountProductsParams は、商品一致件数取得の入力パラメータです。
+// 一覧と母集団を揃えるため、絞り込み条件と可視範囲の両方を一覧と同じ形で受け取ります。
+type CountProductsParams struct {
+	SearchFilter
+
+	// IncludeUnpublished は、未公開の商品も母集団に含める場合に true です。
+	IncludeUnpublished bool
+}
+
+// GetProductParams は、単一商品取得の入力パラメータです。
+type GetProductParams struct {
+	// ID は、取得する商品の ID です。
+	ID uuid.UUID
+	// IncludeUnpublished は、未公開の商品も取得対象に含める場合に true です。
+	IncludeUnpublished bool
 }
 
 // SearchFilter は、公開商品の絞り込み条件です。一覧と一致件数は同じ母集団を指すため双方がこれを
@@ -116,12 +138,17 @@ type productListRange struct {
 
 // Usecase は、商品に関するアプリケーションユースケースを定義します。
 type Usecase interface {
-	// ListProducts は、公開済み商品を公開日時順（cursor ページネーション）で取得します。
-	ListProducts(ctx context.Context, params ListProductsParams) (ProductListView, error)
-	// CountProducts は、公開済み商品のうち検索条件に一致する件数を取得します。
-	CountProducts(ctx context.Context, filter SearchFilter) (ProductCountView, error)
-	// GetProduct は、ID から公開中の単一商品を取得します。未存在・非公開はいずれも NotFound を返します（存在秘匿）。
-	GetProduct(ctx context.Context, id uuid.UUID) (ProductView, error)
+	// ListProducts は、商品を cursor ページネーションで取得します。
+	// 既定は公開済みのみを公開日時順で返し、params.IncludeUnpublished が true のときは未公開も含めて
+	// 登録日時順で返します。true の指定は admin のみが通り、未認証は 401、非 admin は 403 を返します。
+	ListProducts(ctx context.Context, authn *auth.Authn, params ListProductsParams) (ProductListView, error)
+	// CountProducts は、検索条件に一致する商品の件数を取得します。母集団の定義は ListProducts と同一です。
+	// params.IncludeUnpublished の指定は admin のみが通り、未認証は 401、非 admin は 403 を返します。
+	CountProducts(ctx context.Context, authn *auth.Authn, params CountProductsParams) (ProductCountView, error)
+	// GetProduct は、ID から単一商品を取得します。既定では未存在・非公開はいずれも NotFound を返します（存在秘匿）。
+	// params.IncludeUnpublished が true のときは未公開も取得でき、その指定は admin のみが通ります
+	// （未認証は 401、非 admin は 403）。拒否は商品の存在を調べる前に判定します。
+	GetProduct(ctx context.Context, authn *auth.Authn, params GetProductParams) (ProductView, error)
 	// UploadProductImage は、admin が商品画像をアップロードし、格納先のオブジェクトパスを返します。
 	// 非 admin は 403、非対応形式は 415、サイズ超過は 413、空データは 422 を返します。
 	UploadProductImage(ctx context.Context, authn *auth.Authn, params UploadProductImageParams) (ProductImageView, error)
@@ -151,6 +178,7 @@ type usecase struct {
 	statusRepo     status.Repository
 	storage        objectstorage.Storage
 	authorizer     authz.Authorizer
+	clock          clock.Clock
 	maxUploadBytes int64
 }
 
@@ -162,6 +190,7 @@ func New(
 	statusRepo status.Repository,
 	storage objectstorage.Storage,
 	authorizer authz.Authorizer,
+	clk clock.Clock,
 	maxUploadBytes int64,
 	tf observability.TracerFactory,
 ) Usecase {
@@ -173,6 +202,7 @@ func New(
 		statusRepo:     statusRepo,
 		storage:        storage,
 		authorizer:     authorizer,
+		clock:          clk,
 		maxUploadBytes: maxUploadBytes,
 	}
 }
@@ -240,22 +270,29 @@ func parseProductListRange(filter SearchFilter) (productListRange, error) {
 	return result, nil
 }
 
-func (u *usecase) ListProducts(ctx context.Context, params ListProductsParams) (ProductListView, error) {
-	if params.Cursor == nil {
-		return ProductListView{}, xerrors.Wrap(apperror.ErrInvalidArgument, "cursor must not be nil")
+// authorizeUnpublishedRead は、未公開商品を含む参照の可否を判定します。
+// 既定の可視範囲（公開済みのみ）は認証を要さないため、includeUnpublished が false のときは何も課しません。
+// 一覧・一致件数・詳細はいずれも同じ能力を要求するため、判定はこの 1 箇所に集約します。
+func (u *usecase) authorizeUnpublishedRead(ctx context.Context, authn *auth.Authn, includeUnpublished bool) error {
+	if !includeUnpublished {
+		return nil
+	}
+	if authn == nil {
+		return apperror.ErrUnauthenticated
 	}
 
-	rangeFilter, err := parseProductListRange(params.SearchFilter)
-	if err != nil {
-		return ProductListView{}, err
-	}
+	return u.authorizer.Authorize(
+		ctx, authn, authz.ActionProductReadUnpublished, authz.NewResource("product", nil),
+	)
+}
 
-	ctx, endSpan := u.tracer.Start(ctx)
-	defer endSpan()
-
+// findPublishedPage は、公開済み商品のページを (published_at, id) の keyset で取得します。
+func (u *usecase) findPublishedPage(
+	ctx context.Context, params ListProductsParams, rangeFilter productListRange,
+) (product.Products, error) {
 	after, err := decodeProductCursor(params.Cursor)
 	if err != nil {
-		return ProductListView{}, err
+		return nil, err
 	}
 
 	domainParams := product.ListParams{
@@ -272,9 +309,68 @@ func (u *usecase) ListProducts(ctx context.Context, params ListProductsParams) (
 
 	products, err := u.repo.FindPublishedList(ctx, domainParams)
 	if err != nil {
-		return ProductListView{}, err
+		return nil, err
 	}
 	if err := ensurePublished(products); err != nil {
+		return nil, err
+	}
+
+	return products, nil
+}
+
+// findAllPage は、公開状態を問わない商品のページを (created_at, id) の keyset で取得します。
+// 未公開の商品は公開日時を持たないため、ensurePublished による検算は行いません。
+func (u *usecase) findAllPage(
+	ctx context.Context, params ListProductsParams, rangeFilter productListRange,
+) (product.Products, error) {
+	after, err := decodeAllProductCursor(params.Cursor)
+	if err != nil {
+		return nil, err
+	}
+
+	domainParams := product.AllListParams{
+		SearchFilter: toDomainSearchFilter(params.SearchFilter, rangeFilter),
+		Limit:        params.Cursor.Limit32() + 1,
+		Ascending:    params.Ascending,
+	}
+	if after != nil {
+		createdAt := after.createdAt
+		id := after.id
+		domainParams.AfterCreatedAt = &createdAt
+		domainParams.AfterID = &id
+	}
+
+	return u.repo.FindAllList(ctx, domainParams)
+}
+
+func (u *usecase) ListProducts(
+	ctx context.Context, authn *auth.Authn, params ListProductsParams,
+) (ProductListView, error) {
+	if params.Cursor == nil {
+		return ProductListView{}, xerrors.Wrap(apperror.ErrInvalidArgument, "cursor must not be nil")
+	}
+
+	rangeFilter, err := parseProductListRange(params.SearchFilter)
+	if err != nil {
+		return ProductListView{}, err
+	}
+
+	ctx, endSpan := u.tracer.Start(ctx)
+	defer endSpan()
+
+	if err := u.authorizeUnpublishedRead(ctx, authn, params.IncludeUnpublished); err != nil {
+		return ProductListView{}, err
+	}
+
+	// 母集団が変わると並び順の軸も変わるため、取得とカーソル生成は同じ枝で揃えます。
+	products, encode := product.Products(nil), encodeProductCursor
+	if params.IncludeUnpublished {
+		products, err = u.findAllPage(ctx, params, rangeFilter)
+		encode = encodeAllProductCursor
+	} else {
+		products, err = u.findPublishedPage(ctx, params, rangeFilter)
+	}
+	if err != nil {
 		return ProductListView{}, err
 	}
 
@@ -293,15 +389,17 @@ func (u *usecase) ListProducts(ctx context.Context, params ListProductsParams) (
 	if hasNext && len(products) > 0 {
 		// len 判定は防御的な安全弁。hasNext は len > limit なので limit >= 1 の下では冗長だが、
 		// limit の下限保証は paging.NewCursor 依存であり、ゼロ値 Cursor 混入時の products[-1] panic を防ぐ。
-		encoded := encodeProductCursor(products[len(products)-1])
+		encoded := encode(products[len(products)-1])
 		nextCursor = &encoded
 	}
 
 	return ProductListView{Items: items, NextCursor: nextCursor}, nil
 }
 
-func (u *usecase) CountProducts(ctx context.Context, filter SearchFilter) (ProductCountView, error) {
-	rangeFilter, err := parseProductListRange(filter)
+func (u *usecase) CountProducts(
+	ctx context.Context, authn *auth.Authn, params CountProductsParams,
+) (ProductCountView, error) {
+	rangeFilter, err := parseProductListRange(params.SearchFilter)
 	if err != nil {
 		return ProductCountView{}, err
 	}
@@ -309,10 +407,22 @@ func (u *usecase) CountProducts(ctx context.Context, filter SearchFilter) (Produ
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 
-	count, err := u.repo.CountPublished(ctx, toDomainSearchFilter(filter, rangeFilter))
+	if err := u.authorizeUnpublishedRead(ctx, authn, params.IncludeUnpublished); err != nil {
+		return ProductCountView{}, err
+	}
+
+	filter := toDomainSearchFilter(params.SearchFilter, rangeFilter)
+
+	var count int64
+	if params.IncludeUnpublished {
+		count, err = u.repo.CountAll(ctx, filter)
+	} else {
+		count, err = u.repo.CountPublished(ctx, filter)
+	}
 	if err != nil {
 		return ProductCountView{}, err
 	}
+
 	return ProductCountView{Count: count}, nil
 }
 
@@ -335,11 +445,27 @@ func toDomainSearchFilter(filter SearchFilter, r productListRange) product.Searc
 
 // GetProduct は、存在秘匿を Repository が返す NotFound に委ね、usecase 側では公開判定を再実装しません。
 // Repository のエラーをそのまま伝播させることで、未存在と非公開が 404 として区別不能に保たれます。
-func (u *usecase) GetProduct(ctx context.Context, id uuid.UUID) (ProductView, error) {
+// 未公開を含める指定の可否は商品を引く前に判定するため、拒否から商品の存在有無は分かりません。
+func (u *usecase) GetProduct(
+	ctx context.Context, authn *auth.Authn, params GetProductParams,
+) (ProductView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 
-	p, err := u.repo.FindPublishedByID(ctx, id)
+	if err := u.authorizeUnpublishedRead(ctx, authn, params.IncludeUnpublished); err != nil {
+		return ProductView{}, err
+	}
+
+	if params.IncludeUnpublished {
+		p, err := u.repo.FindByID(ctx, params.ID)
+		if err != nil {
+			return ProductView{}, err
+		}
+
+		return toProductView(p), nil
+	}
+
+	p, err := u.repo.FindPublishedByID(ctx, params.ID)
 	if err != nil {
 		return ProductView{}, err
 	}

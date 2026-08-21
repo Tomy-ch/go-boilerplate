@@ -16,6 +16,7 @@ import (
 	"go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/internal/usecase/boundary/authz"
 	mock_authz "go-boilerplate/internal/usecase/boundary/authz/mock"
+	mock_clock "go-boilerplate/internal/usecase/boundary/clock/mock"
 	"go-boilerplate/internal/usecase/boundary/objectstorage"
 	mock_objectstorage "go-boilerplate/internal/usecase/boundary/objectstorage/mock"
 	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
@@ -29,6 +30,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
+
+// testCreatedAt は、テスト用の商品の登録日時です。公開日時と取り違えを検出できるよう異なる値にします。
+var testCreatedAt = time.Date(2025, time.December, 31, 23, 59, 58, 0, time.UTC)
 
 // mustPrice は、テスト用に十進文字列から非負の money.Price を構築します。
 func mustPrice(t *testing.T, s string) money.Price {
@@ -53,7 +57,29 @@ func newTestProduct(t *testing.T, salt string, publishedAt time.Time) *domainpro
 		Status:                status,
 		Category:              category,
 		PublishedAt:           ptr.To(publishedAt),
-	})
+	}, testCreatedAt)
+	require.NoError(t, err)
+	return p
+}
+
+// newTestUnpublishedProduct は、未公開（公開日時なし）の商品エンティティを生成するテストヘルパーです。
+// createdAt を引数に取るのは、未公開込みの一覧が登録日時で並ぶためです。
+func newTestUnpublishedProduct(t *testing.T, salt string, createdAt time.Time) *domainproduct.Product {
+	t.Helper()
+	status, err := domainproduct.NewStatusRef(uuidtestkit.NewTestFromSalt(t, salt+"_status"), "検討中")
+	require.NoError(t, err)
+	category, err := domainproduct.NewCategoryRef(uuidtestkit.NewTestFromSalt(t, salt+"_category"), "電子機器")
+	require.NoError(t, err)
+	p, err := domainproduct.New(uuidtestkit.NewTestFromSalt(t, salt), domainproduct.Attributes{
+		Name:                  "未公開商品-" + salt,
+		Description:           ptr.To("説明-" + salt),
+		Price:                 mustPrice(t, "10.00"),
+		Quantity:              5,
+		StockWarningThreshold: ptr.To(2),
+		Status:                status,
+		Category:              category,
+		PublishedAt:           nil,
+	}, createdAt)
 	require.NoError(t, err)
 	return p
 }
@@ -81,6 +107,7 @@ func TestNew(t *testing.T) {
 		statusRepo := mock_status.NewMockRepository(ctrl)
 		storage := mock_objectstorage.NewMockStorage(ctrl)
 		authorizer := mock_authz.NewMockAuthorizer(ctrl)
+		clk := mock_clock.NewMockClock(ctrl)
 
 		expected := &usecase{
 			tracer:         tf.Usecase(),
@@ -90,9 +117,10 @@ func TestNew(t *testing.T) {
 			statusRepo:     statusRepo,
 			storage:        storage,
 			authorizer:     authorizer,
+			clock:          clk,
 			maxUploadBytes: 5242880,
 		}
-		actual := New(txm, repo, categoryRepo, statusRepo, storage, authorizer, 5242880, tf)
+		actual := New(txm, repo, categoryRepo, statusRepo, storage, authorizer, clk, 5242880, tf)
 
 		assert.Equal(t, expected, actual)
 	})
@@ -528,14 +556,51 @@ func Test_usecase_CountProducts(t *testing.T) {
 				})
 
 			u := &usecase{tracer: observability.NewMockUsecaseLayerTracer(t), repo: repo}
-			actual, err := u.CountProducts(context.Background(), SearchFilter{
+			actual, err := u.CountProducts(context.Background(), nil, CountProductsParams{SearchFilter: SearchFilter{
 				CategoryID: &categoryID, StatusID: &statusID, Keyword: ptr.To("イヤホン"),
 				MinPrice: ptr.To("10.50"), MaxPrice: ptr.To("99.99"),
 				MinQuantity: ptr.To[int32](2), MaxQuantity: ptr.To[int32](20),
-			})
+			}})
 
 			require.NoError(t, err)
 			assert.Equal(t, ProductCountView{Count: 7}, actual)
+		})
+
+		t.Run("未公開を含める指定は認可を通してからCountAllを呼ぶ", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			authorizer := mock_authz.NewMockAuthorizer(ctrl)
+			authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			repo := mock_product.NewMockRepository(ctrl)
+			repo.EXPECT().CountPublished(gomock.Any(), gomock.Any()).Times(0)
+			repo.EXPECT().CountAll(gomock.Any(), gomock.Any()).Return(int64(11), nil)
+
+			u := &usecase{
+				tracer: observability.NewMockUsecaseLayerTracer(t), repo: repo, authorizer: authorizer,
+			}
+			actual, err := u.CountProducts(context.Background(), &auth.Authn{},
+				CountProductsParams{IncludeUnpublished: true})
+			require.NoError(t, err)
+			assert.Equal(t, ProductCountView{Count: 11}, actual)
+		})
+
+		t.Run("未公開を含めない場合、認可を要求せずCountPublishedを呼ぶ", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			authorizer := mock_authz.NewMockAuthorizer(ctrl)
+			authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			repo := mock_product.NewMockRepository(ctrl)
+			repo.EXPECT().CountAll(gomock.Any(), gomock.Any()).Times(0)
+			repo.EXPECT().CountPublished(gomock.Any(), gomock.Any()).Return(int64(4), nil)
+
+			u := &usecase{
+				tracer: observability.NewMockUsecaseLayerTracer(t), repo: repo, authorizer: authorizer,
+			}
+			actual, err := u.CountProducts(context.Background(), nil, CountProductsParams{})
+			require.NoError(t, err)
+			assert.Equal(t, ProductCountView{Count: 4}, actual)
 		})
 	})
 
@@ -549,9 +614,9 @@ func Test_usecase_CountProducts(t *testing.T) {
 				tracer: observability.NewMockUsecaseLayerTracer(t),
 				repo:   mock_product.NewMockRepository(gomock.NewController(t)),
 			}
-			actual, err := u.CountProducts(context.Background(), SearchFilter{
+			actual, err := u.CountProducts(context.Background(), nil, CountProductsParams{SearchFilter: SearchFilter{
 				MinPrice: ptr.To("20"), MaxPrice: ptr.To("10"),
-			})
+			}})
 
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 			assert.Empty(t, actual)
@@ -565,7 +630,7 @@ func Test_usecase_CountProducts(t *testing.T) {
 			repo.EXPECT().CountPublished(gomock.Any(), gomock.Any()).Return(int64(0), expectedErr)
 			u := &usecase{tracer: observability.NewMockUsecaseLayerTracer(t), repo: repo}
 
-			actual, err := u.CountProducts(context.Background(), SearchFilter{})
+			actual, err := u.CountProducts(context.Background(), nil, CountProductsParams{SearchFilter: SearchFilter{}})
 
 			require.ErrorIs(t, err, expectedErr)
 			assert.Empty(t, actual)
@@ -601,7 +666,7 @@ func Test_usecase_ListProducts(t *testing.T) {
 				})
 
 			u := &usecase{tracer: lt, repo: repo}
-			actual, err := u.ListProducts(ctx, ListProductsParams{Cursor: newDefaultCursor(t)})
+			actual, err := u.ListProducts(ctx, nil, ListProductsParams{Cursor: newDefaultCursor(t)})
 			require.NoError(t, err)
 			require.Len(t, actual.Items, 2)
 			assert.Equal(t, p1.ID(), actual.Items[0].ID)
@@ -617,6 +682,62 @@ func Test_usecase_ListProducts(t *testing.T) {
 			assert.Equal(t, p2.ID(), decoded.id)
 		})
 
+		t.Run("未公開を含める指定は認可を通してからFindAllListを呼ぶ", func(t *testing.T) {
+			t.Parallel()
+
+			base := time.Date(2025, time.December, 31, 23, 59, 58, 0, time.UTC)
+			unpublished := newTestUnpublishedProduct(t, "list_all_p1", base)
+
+			ctrl := gomock.NewController(t)
+			authorizer := mock_authz.NewMockAuthorizer(ctrl)
+			authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			repo := mock_product.NewMockRepository(ctrl)
+			repo.EXPECT().FindPublishedList(gomock.Any(), gomock.Any()).Times(0)
+			repo.EXPECT().FindAllList(gomock.Any(), gomock.Any()).
+				Return(domainproduct.Products{unpublished}, nil)
+
+			u := &usecase{
+				tracer: observability.NewMockUsecaseLayerTracer(t), repo: repo, authorizer: authorizer,
+			}
+			actual, err := u.ListProducts(context.Background(), &auth.Authn{}, ListProductsParams{
+				Cursor: newDefaultCursor(t), IncludeUnpublished: true,
+			})
+			require.NoError(t, err)
+			require.Len(t, actual.Items, 1)
+			assert.Nil(t, actual.Items[0].PublishedAt)
+		})
+
+		t.Run("未公開を含める指定で次ページがある場合、未公開込みモードのカーソルを返す", func(t *testing.T) {
+			t.Parallel()
+
+			base := time.Date(2025, time.December, 31, 23, 59, 58, 0, time.UTC)
+			p1 := newTestUnpublishedProduct(t, "list_all_c1", base)
+			p2 := newTestUnpublishedProduct(t, "list_all_c2", base.Add(-time.Hour))
+			p3 := newTestUnpublishedProduct(t, "list_all_c3", base.Add(-2*time.Hour))
+
+			ctrl := gomock.NewController(t)
+			authorizer := mock_authz.NewMockAuthorizer(ctrl)
+			authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			repo := mock_product.NewMockRepository(ctrl)
+			repo.EXPECT().FindAllList(gomock.Any(), gomock.Any()).
+				Return(domainproduct.Products{p1, p2, p3}, nil)
+
+			u := &usecase{
+				tracer: observability.NewMockUsecaseLayerTracer(t), repo: repo, authorizer: authorizer,
+			}
+			actual, err := u.ListProducts(context.Background(), &auth.Authn{}, ListProductsParams{
+				Cursor: newDefaultCursor(t), IncludeUnpublished: true,
+			})
+			require.NoError(t, err)
+			require.NotNil(t, actual.NextCursor)
+
+			cursor, curErr := paging.NewCursor(actual.NextCursor, nil)
+			require.NoError(t, curErr)
+			decoded, decErr := decodeAllProductCursor(cursor)
+			require.NoError(t, decErr)
+			assert.Equal(t, p2.ID(), decoded.id)
+		})
+
 		t.Run("取得件数がlimit以下の場合、NextCursorはnilになる", func(t *testing.T) {
 			t.Parallel()
 
@@ -628,7 +749,7 @@ func Test_usecase_ListProducts(t *testing.T) {
 			repo.EXPECT().FindPublishedList(gomock.Any(), gomock.Any()).Return(domainproduct.Products{p1}, nil)
 
 			u := &usecase{tracer: lt, repo: repo}
-			actual, err := u.ListProducts(ctx, ListProductsParams{Cursor: newDefaultCursor(t)})
+			actual, err := u.ListProducts(ctx, nil, ListProductsParams{Cursor: newDefaultCursor(t)})
 			require.NoError(t, err)
 			require.Len(t, actual.Items, 1)
 			assert.Nil(t, actual.NextCursor)
@@ -644,7 +765,7 @@ func Test_usecase_ListProducts(t *testing.T) {
 			repo.EXPECT().FindPublishedList(gomock.Any(), gomock.Any()).Return(domainproduct.Products{}, nil)
 
 			u := &usecase{tracer: lt, repo: repo}
-			actual, err := u.ListProducts(ctx, ListProductsParams{Cursor: newDefaultCursor(t)})
+			actual, err := u.ListProducts(ctx, nil, ListProductsParams{Cursor: newDefaultCursor(t)})
 			require.NoError(t, err)
 			assert.Empty(t, actual.Items)
 			assert.Nil(t, actual.NextCursor)
@@ -664,7 +785,7 @@ func Test_usecase_ListProducts(t *testing.T) {
 			)
 
 			u := &usecase{tracer: lt, repo: repo}
-			actual, err := u.ListProducts(ctx, ListProductsParams{Cursor: &paging.Cursor{}})
+			actual, err := u.ListProducts(ctx, nil, ListProductsParams{Cursor: &paging.Cursor{}})
 			require.NoError(t, err)
 			assert.Empty(t, actual.Items)
 			assert.Nil(t, actual.NextCursor)
@@ -701,7 +822,7 @@ func Test_usecase_ListProducts(t *testing.T) {
 			require.NoError(t, err)
 
 			u := &usecase{tracer: lt, repo: repo}
-			_, err = u.ListProducts(ctx, ListProductsParams{
+			_, err = u.ListProducts(ctx, nil, ListProductsParams{
 				SearchFilter: SearchFilter{
 					CategoryID:  &categoryID,
 					StatusID:    &statusID,
@@ -741,6 +862,45 @@ func Test_usecase_ListProducts(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
+		t.Run("未公開を含める指定で認証情報がnilの場合、ErrUnauthenticatedを返しRepositoryを呼ばない", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			authorizer := mock_authz.NewMockAuthorizer(ctrl)
+			authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			repo := mock_product.NewMockRepository(ctrl)
+			repo.EXPECT().FindAllList(gomock.Any(), gomock.Any()).Times(0)
+			repo.EXPECT().FindPublishedList(gomock.Any(), gomock.Any()).Times(0)
+
+			u := &usecase{
+				tracer: observability.NewMockUsecaseLayerTracer(t), repo: repo, authorizer: authorizer,
+			}
+			_, err := u.ListProducts(context.Background(), nil, ListProductsParams{
+				Cursor: newDefaultCursor(t), IncludeUnpublished: true,
+			})
+			require.ErrorIs(t, err, apperror.ErrUnauthenticated)
+		})
+
+		t.Run("未公開を含める指定を認可が拒否した場合、Repositoryを呼ばない", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			authorizer := mock_authz.NewMockAuthorizer(ctrl)
+			authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(apperror.ErrPermissionDenied)
+			repo := mock_product.NewMockRepository(ctrl)
+			repo.EXPECT().FindAllList(gomock.Any(), gomock.Any()).Times(0)
+			repo.EXPECT().FindPublishedList(gomock.Any(), gomock.Any()).Times(0)
+
+			u := &usecase{
+				tracer: observability.NewMockUsecaseLayerTracer(t), repo: repo, authorizer: authorizer,
+			}
+			_, err := u.ListProducts(context.Background(), &auth.Authn{}, ListProductsParams{
+				Cursor: newDefaultCursor(t), IncludeUnpublished: true,
+			})
+			require.ErrorIs(t, err, apperror.ErrPermissionDenied)
+		})
+
 		t.Run("cursorがnilの場合、ErrInvalidArgumentを返す", func(t *testing.T) {
 			t.Parallel()
 
@@ -748,7 +908,7 @@ func Test_usecase_ListProducts(t *testing.T) {
 			repo := mock_product.NewMockRepository(gomock.NewController(t))
 
 			u := &usecase{tracer: lt, repo: repo}
-			actual, err := u.ListProducts(context.Background(), ListProductsParams{Cursor: nil})
+			actual, err := u.ListProducts(context.Background(), nil, ListProductsParams{Cursor: nil})
 			assert.Empty(t, actual)
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 		})
@@ -760,7 +920,7 @@ func Test_usecase_ListProducts(t *testing.T) {
 				tracer: observability.NewMockUsecaseLayerTracer(t),
 				repo:   mock_product.NewMockRepository(gomock.NewController(t)),
 			}
-			actual, err := u.ListProducts(context.Background(), ListProductsParams{
+			actual, err := u.ListProducts(context.Background(), nil, ListProductsParams{
 				SearchFilter: SearchFilter{MinPrice: ptr.To("20"), MaxPrice: ptr.To("10")},
 				Cursor:       newDefaultCursor(t),
 			})
@@ -780,7 +940,7 @@ func Test_usecase_ListProducts(t *testing.T) {
 			require.NoError(t, err)
 
 			u := &usecase{tracer: lt, repo: repo}
-			actual, err := u.ListProducts(context.Background(), ListProductsParams{Cursor: cursor})
+			actual, err := u.ListProducts(context.Background(), nil, ListProductsParams{Cursor: cursor})
 			assert.Empty(t, actual)
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 		})
@@ -795,7 +955,7 @@ func Test_usecase_ListProducts(t *testing.T) {
 			repo.EXPECT().FindPublishedList(gomock.Any(), gomock.Any()).Return(nil, expectedErr)
 
 			u := &usecase{tracer: lt, repo: repo}
-			actual, err := u.ListProducts(context.Background(), ListProductsParams{Cursor: newDefaultCursor(t)})
+			actual, err := u.ListProducts(context.Background(), nil, ListProductsParams{Cursor: newDefaultCursor(t)})
 			require.ErrorIs(t, err, expectedErr)
 			assert.Empty(t, actual)
 		})
@@ -820,7 +980,7 @@ func Test_usecase_GetProduct(t *testing.T) {
 			repo.EXPECT().FindPublishedByID(gomock.Any(), p.ID()).Return(p, nil)
 
 			u := &usecase{tracer: lt, repo: repo}
-			actual, err := u.GetProduct(context.Background(), p.ID())
+			actual, err := u.GetProduct(context.Background(), nil, GetProductParams{ID: p.ID()})
 			require.NoError(t, err)
 			assert.Equal(t, p.ID(), actual.ID)
 			assert.Equal(t, p.Name(), actual.Name)
@@ -834,6 +994,48 @@ func Test_usecase_GetProduct(t *testing.T) {
 			assert.Equal(t, p.Category().Name(), actual.CategoryName)
 			assert.Equal(t, p.PublishedAt(), actual.PublishedAt)
 			assert.Equal(t, p.Version(), actual.Version)
+		})
+
+		t.Run("未公開を含める指定は認可を通してからFindByIDを呼ぶ", func(t *testing.T) {
+			t.Parallel()
+
+			base := time.Date(2025, time.December, 31, 23, 59, 58, 0, time.UTC)
+			unpublished := newTestUnpublishedProduct(t, "get_all_p1", base)
+
+			ctrl := gomock.NewController(t)
+			authorizer := mock_authz.NewMockAuthorizer(ctrl)
+			authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			repo := mock_product.NewMockRepository(ctrl)
+			repo.EXPECT().FindPublishedByID(gomock.Any(), gomock.Any()).Times(0)
+			repo.EXPECT().FindByID(gomock.Any(), unpublished.ID()).Return(unpublished, nil)
+
+			u := &usecase{
+				tracer: observability.NewMockUsecaseLayerTracer(t), repo: repo, authorizer: authorizer,
+			}
+			actual, err := u.GetProduct(context.Background(), &auth.Authn{},
+				GetProductParams{ID: unpublished.ID(), IncludeUnpublished: true})
+			require.NoError(t, err)
+			assert.Equal(t, unpublished.ID(), actual.ID)
+			assert.Nil(t, actual.PublishedAt)
+		})
+
+		t.Run("未公開を含める指定を認可が拒否した場合、商品を引かずに拒否する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			authorizer := mock_authz.NewMockAuthorizer(ctrl)
+			authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(apperror.ErrPermissionDenied)
+			repo := mock_product.NewMockRepository(ctrl)
+			repo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Times(0)
+			repo.EXPECT().FindPublishedByID(gomock.Any(), gomock.Any()).Times(0)
+
+			u := &usecase{
+				tracer: observability.NewMockUsecaseLayerTracer(t), repo: repo, authorizer: authorizer,
+			}
+			_, err := u.GetProduct(context.Background(), &auth.Authn{},
+				GetProductParams{ID: uuidtestkit.NewTestFromSalt(t, "get_all_denied"), IncludeUnpublished: true})
+			require.ErrorIs(t, err, apperror.ErrPermissionDenied)
 		})
 	})
 
@@ -850,7 +1052,7 @@ func Test_usecase_GetProduct(t *testing.T) {
 			repo.EXPECT().FindPublishedByID(gomock.Any(), id).Return(nil, apperror.ErrNotFound)
 
 			u := &usecase{tracer: lt, repo: repo}
-			actual, err := u.GetProduct(context.Background(), id)
+			actual, err := u.GetProduct(context.Background(), nil, GetProductParams{ID: id})
 			require.ErrorIs(t, err, apperror.ErrNotFound)
 			assert.Equal(t, ProductView{}, actual)
 		})
@@ -887,7 +1089,7 @@ func Test_toProductView(t *testing.T) {
 						domainproduct.ImageAttributes{ImagePath: "products/to_view.png", DisplaySort: 1},
 					),
 				},
-			}, 7)
+			}, 7, testCreatedAt)
 			require.NoError(t, err)
 
 			actual := toProductView(p)
@@ -925,7 +1127,7 @@ func Test_toProductView(t *testing.T) {
 				Quantity: 0,
 				Status:   status,
 				Category: category,
-			})
+			}, testCreatedAt)
 			require.NoError(t, err)
 
 			actual := toProductView(p)
@@ -955,7 +1157,7 @@ func newUnpublishedTestProduct(t *testing.T, salt string) *domainproduct.Product
 		Status:                status,
 		Category:              category,
 		PublishedAt:           nil,
-	})
+	}, testCreatedAt)
 	require.NoError(t, err)
 	return p
 }
@@ -1156,6 +1358,215 @@ func Test_toDomainSearchFilter(t *testing.T) {
 			actual := toDomainSearchFilter(SearchFilter{CategoryCodes: []int16{7}}, productListRange{})
 
 			assert.Equal(t, domainproduct.SearchFilter{CategoryCodes: []int16{7}}, actual)
+		})
+	})
+}
+
+func Test_usecase_authorizeUnpublishedRead(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未公開を含めない場合、認証も認可も要求しない", func(t *testing.T) {
+			t.Parallel()
+
+			authorizer := mock_authz.NewMockAuthorizer(gomock.NewController(t))
+			authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+
+			u := &usecase{authorizer: authorizer}
+			require.NoError(t, u.authorizeUnpublishedRead(context.Background(), nil, false))
+		})
+
+		t.Run("未公開を含める場合、所有者なしリソースでAuthorizerへ委ねる", func(t *testing.T) {
+			t.Parallel()
+
+			authorizer := mock_authz.NewMockAuthorizer(gomock.NewController(t))
+			authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, _ *auth.Authn, action authz.Action, resource authz.Resource) error {
+					assert.Equal(t, authz.ActionProductReadUnpublished, action)
+					assert.Equal(t, authz.NewResource("product", nil), resource)
+					return nil
+				})
+
+			u := &usecase{authorizer: authorizer}
+			require.NoError(t, u.authorizeUnpublishedRead(context.Background(), &auth.Authn{}, true))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未公開を含める指定で認証情報がnilの場合、ErrUnauthenticatedを返し認可を呼ばない", func(t *testing.T) {
+			t.Parallel()
+
+			authorizer := mock_authz.NewMockAuthorizer(gomock.NewController(t))
+			authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+
+			u := &usecase{authorizer: authorizer}
+			require.ErrorIs(t,
+				u.authorizeUnpublishedRead(context.Background(), nil, true), apperror.ErrUnauthenticated)
+		})
+
+		t.Run("Authorizerが拒否した場合、その理由をそのまま返す", func(t *testing.T) {
+			t.Parallel()
+
+			authorizer := mock_authz.NewMockAuthorizer(gomock.NewController(t))
+			authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(apperror.ErrPermissionDenied)
+
+			u := &usecase{authorizer: authorizer}
+			require.ErrorIs(t,
+				u.authorizeUnpublishedRead(context.Background(), &auth.Authn{}, true), apperror.ErrPermissionDenied)
+		})
+	})
+}
+
+func Test_usecase_findPublishedPage(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("カーソル境界を公開日時とIDでRepositoryへ渡す", func(t *testing.T) {
+			t.Parallel()
+
+			base := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
+			p1 := newTestProduct(t, "find_pub_p1", base)
+
+			encoded := encodeProductCursor(p1)
+			cursor, err := paging.NewCursor(&encoded, ptr.To(2))
+			require.NoError(t, err)
+
+			repo := mock_product.NewMockRepository(gomock.NewController(t))
+			repo.EXPECT().FindPublishedList(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, params domainproduct.ListParams) (domainproduct.Products, error) {
+					require.NotNil(t, params.AfterPublishedAt)
+					assert.Equal(t, base, *params.AfterPublishedAt)
+					require.NotNil(t, params.AfterID)
+					assert.Equal(t, p1.ID(), *params.AfterID)
+					assert.Equal(t, int32(3), params.Limit)
+					return domainproduct.Products{p1}, nil
+				})
+
+			u := &usecase{repo: repo}
+			actual, findErr := u.findPublishedPage(
+				context.Background(), ListProductsParams{Cursor: cursor}, productListRange{})
+			require.NoError(t, findErr)
+			assert.Equal(t, domainproduct.Products{p1}, actual)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未公開込みモードのカーソルを渡された場合、ErrInvalidArgumentを返す", func(t *testing.T) {
+			t.Parallel()
+
+			base := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
+			encoded := encodeAllProductCursor(newTestUnpublishedProduct(t, "find_pub_cross", base))
+			cursor, err := paging.NewCursor(&encoded, ptr.To(2))
+			require.NoError(t, err)
+
+			repo := mock_product.NewMockRepository(gomock.NewController(t))
+			repo.EXPECT().FindPublishedList(gomock.Any(), gomock.Any()).Times(0)
+
+			u := &usecase{repo: repo}
+			_, findErr := u.findPublishedPage(
+				context.Background(), ListProductsParams{Cursor: cursor}, productListRange{})
+			require.ErrorIs(t, findErr, apperror.ErrInvalidArgument)
+		})
+
+		t.Run("Repositoryが返した公開済み一覧に未公開が混ざる場合、整合性異常を返す", func(t *testing.T) {
+			t.Parallel()
+
+			cursor := newDefaultCursor(t)
+			base := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
+			unpublished := newTestUnpublishedProduct(t, "find_pub_leak", base)
+
+			repo := mock_product.NewMockRepository(gomock.NewController(t))
+			repo.EXPECT().FindPublishedList(gomock.Any(), gomock.Any()).
+				Return(domainproduct.Products{unpublished}, nil)
+
+			u := &usecase{repo: repo}
+			_, findErr := u.findPublishedPage(
+				context.Background(), ListProductsParams{Cursor: cursor}, productListRange{})
+			require.ErrorIs(t, findErr, apperror.ErrInternal)
+		})
+	})
+}
+
+func Test_usecase_findAllPage(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("カーソル境界を登録日時とIDでRepositoryへ渡す", func(t *testing.T) {
+			t.Parallel()
+
+			base := time.Date(2025, time.December, 31, 23, 59, 58, 0, time.UTC)
+			p1 := newTestUnpublishedProduct(t, "find_all_p1", base)
+
+			encoded := encodeAllProductCursor(p1)
+			cursor, err := paging.NewCursor(&encoded, ptr.To(2))
+			require.NoError(t, err)
+
+			repo := mock_product.NewMockRepository(gomock.NewController(t))
+			repo.EXPECT().FindAllList(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, params domainproduct.AllListParams) (domainproduct.Products, error) {
+					require.NotNil(t, params.AfterCreatedAt)
+					assert.Equal(t, base, *params.AfterCreatedAt)
+					require.NotNil(t, params.AfterID)
+					assert.Equal(t, p1.ID(), *params.AfterID)
+					assert.Equal(t, int32(3), params.Limit)
+					return domainproduct.Products{p1}, nil
+				})
+
+			u := &usecase{repo: repo}
+			actual, findErr := u.findAllPage(
+				context.Background(), ListProductsParams{Cursor: cursor}, productListRange{})
+			require.NoError(t, findErr)
+			assert.Equal(t, domainproduct.Products{p1}, actual)
+		})
+
+		t.Run("未公開の商品を除外せずそのまま返す", func(t *testing.T) {
+			t.Parallel()
+
+			base := time.Date(2025, time.December, 31, 23, 59, 58, 0, time.UTC)
+			unpublished := newTestUnpublishedProduct(t, "find_all_keep", base)
+
+			repo := mock_product.NewMockRepository(gomock.NewController(t))
+			repo.EXPECT().FindAllList(gomock.Any(), gomock.Any()).
+				Return(domainproduct.Products{unpublished}, nil)
+
+			u := &usecase{repo: repo}
+			actual, findErr := u.findAllPage(
+				context.Background(), ListProductsParams{Cursor: newDefaultCursor(t)}, productListRange{})
+			require.NoError(t, findErr)
+			require.Len(t, actual, 1)
+			assert.Nil(t, actual[0].PublishedAt())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("既定モードのカーソルを渡された場合、ErrInvalidArgumentを返す", func(t *testing.T) {
+			t.Parallel()
+
+			base := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
+			encoded := encodeProductCursor(newTestProduct(t, "find_all_cross", base))
+			cursor, err := paging.NewCursor(&encoded, ptr.To(2))
+			require.NoError(t, err)
+
+			repo := mock_product.NewMockRepository(gomock.NewController(t))
+			repo.EXPECT().FindAllList(gomock.Any(), gomock.Any()).Times(0)
+
+			u := &usecase{repo: repo}
+			_, findErr := u.findAllPage(
+				context.Background(), ListProductsParams{Cursor: cursor}, productListRange{})
+			require.ErrorIs(t, findErr, apperror.ErrInvalidArgument)
 		})
 	})
 }

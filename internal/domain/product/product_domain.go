@@ -30,6 +30,7 @@ type Product struct {
 	category              CategoryRef
 	publishedAt           *time.Time
 	images                []Image
+	createdAt             time.Time
 	version               int
 }
 
@@ -51,20 +52,21 @@ type Attributes struct {
 // Quantity と StockWarningThreshold（指定時）は、いずれも在庫が保持できる範囲に収まる必要があります。
 // PublishedAt は nil（未公開）を許容し、Images は空（画像未設定）を許容します。
 // id が nil、Name が長さ制約外、Status / Category がゼロ値の場合はそれぞれ検証エラーを返します。
+// createdAt は商品が登録された日時で、ゼロ値は検証エラーです。
 // 生成直後のバージョンは initialVersion です。
-func New(id uuid.UUID, attrs Attributes) (*Product, error) {
-	return newProduct(id, attrs, initialVersion)
+func New(id uuid.UUID, attrs Attributes, createdAt time.Time) (*Product, error) {
+	return newProduct(id, attrs, initialVersion, createdAt)
 }
 
 // Reconstruct は、永続化済みの商品を再構築します。
 // version は永続化されている楽観ロックのバージョンで、initialVersion 未満の場合は検証エラーを返します。
-// その他の検証は New と同一です。
-func Reconstruct(id uuid.UUID, attrs Attributes, version int) (*Product, error) {
-	return newProduct(id, attrs, version)
+// createdAt は永続化されている登録日時です。その他の検証は New と同一です。
+func Reconstruct(id uuid.UUID, attrs Attributes, version int, createdAt time.Time) (*Product, error) {
+	return newProduct(id, attrs, version, createdAt)
 }
 
 // newProduct は、生成・再構築に共通の検証を行い商品エンティティを構築します。
-func newProduct(id uuid.UUID, attrs Attributes, version int) (*Product, error) {
+func newProduct(id uuid.UUID, attrs Attributes, version int, createdAt time.Time) (*Product, error) {
 	if id.IsNil() {
 		return nil, xerrors.Wrap(ErrInvalidID, "id is required")
 	}
@@ -76,6 +78,9 @@ func newProduct(id uuid.UUID, attrs Attributes, version int) (*Product, error) {
 			ErrInvalidVersion,
 			fmt.Sprintf("version must be %d or greater, got %d", initialVersion, version),
 		)
+	}
+	if createdAt.IsZero() {
+		return nil, xerrors.Wrap(ErrInvalidCreatedAt, "createdAt is required")
 	}
 
 	return &Product{
@@ -89,6 +94,7 @@ func newProduct(id uuid.UUID, attrs Attributes, version int) (*Product, error) {
 		category:              attrs.Category,
 		publishedAt:           ptr.Copy(attrs.PublishedAt),
 		images:                sortImagesByDisplaySort(attrs.Images),
+		createdAt:             createdAt,
 		version:               version,
 	}, nil
 }
@@ -214,6 +220,9 @@ func (p *Product) Category() CategoryRef { return p.category }
 
 // PublishedAt は、公開日時を返します。未公開の場合は nil です。
 func (p *Product) PublishedAt() *time.Time { return ptr.Copy(p.publishedAt) }
+
+// CreatedAt は、商品が登録された日時を返します。
+func (p *Product) CreatedAt() time.Time { return p.createdAt }
 
 // Images は、商品画像を表示順の昇順で返します。画像未設定の場合は空です。
 func (p *Product) Images() []Image { return slices.Clone(p.images) }

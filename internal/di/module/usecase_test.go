@@ -8,12 +8,13 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/mock/gomock" // sample-api:line
 
-	"go-boilerplate/internal/config"                                                 // sample-api:line
-	mock_category "go-boilerplate/internal/domain/product/category/mock"             // sample-api:line
-	mock_product "go-boilerplate/internal/domain/product/mock"                       // sample-api:line
-	mock_status "go-boilerplate/internal/domain/product/status/mock"                 // sample-api:line
-	"go-boilerplate/internal/observability"                                          // sample-api:line
-	mock_authz "go-boilerplate/internal/usecase/boundary/authz/mock"                 // sample-api:line
+	"go-boilerplate/internal/config"                                     // sample-api:line
+	mock_category "go-boilerplate/internal/domain/product/category/mock" // sample-api:line
+	mock_product "go-boilerplate/internal/domain/product/mock"           // sample-api:line
+	mock_status "go-boilerplate/internal/domain/product/status/mock"     // sample-api:line
+	"go-boilerplate/internal/observability"                              // sample-api:line
+	mock_authz "go-boilerplate/internal/usecase/boundary/authz/mock"
+	mock_clock "go-boilerplate/internal/usecase/boundary/clock/mock"                 // sample-api:line
 	mock_objectstorage "go-boilerplate/internal/usecase/boundary/objectstorage/mock" // sample-api:line
 	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"                       // sample-api:line
 	"go-boilerplate/internal/usecase/healthcheck"
@@ -85,10 +86,11 @@ func Test_provideProductUsecase(t *testing.T) {
 			authorizer := mock_authz.NewMockAuthorizer(ctrl)
 			cfg := config.NewObjectStorageConfig(config.MockConfigForTest(t))
 			tf := observability.NewNoopTracerFactory(t)
+			clk := mock_clock.NewMockClock(ctrl)
 
-			got := provideProductUsecase(txm, repo, categoryRepo, statusRepo, storage, authorizer, cfg, tf)
+			got := provideProductUsecase(txm, repo, categoryRepo, statusRepo, storage, authorizer, clk, cfg, tf)
 
-			assert.Equal(t, productuc.New(txm, repo, categoryRepo, statusRepo, storage, authorizer,
+			assert.Equal(t, productuc.New(txm, repo, categoryRepo, statusRepo, storage, authorizer, clk,
 				cfg.MaxUploadBytes(), tf), got)
 		})
 	})

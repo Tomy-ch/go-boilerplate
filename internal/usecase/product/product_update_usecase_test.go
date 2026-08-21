@@ -63,7 +63,7 @@ func newUpdateTarget(t *testing.T, version int) *domainproduct.Product {
 				domainproduct.ImageAttributes{ImagePath: "products/current.png", DisplaySort: 1},
 			),
 		},
-	}, version)
+	}, version, testCreatedAt)
 	require.NoError(t, err)
 
 	return p

@@ -44,18 +44,18 @@ func (m *MockUsecase) EXPECT() *MockUsecaseMockRecorder {
 }
 
 // CountProducts mocks base method.
-func (m *MockUsecase) CountProducts(ctx context.Context, filter product.SearchFilter) (product.ProductCountView, error) {
+func (m *MockUsecase) CountProducts(ctx context.Context, authn *auth.Authn, params product.CountProductsParams) (product.ProductCountView, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CountProducts", ctx, filter)
+	ret := m.ctrl.Call(m, "CountProducts", ctx, authn, params)
 	ret0, _ := ret[0].(product.ProductCountView)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CountProducts indicates an expected call of CountProducts.
-func (mr *MockUsecaseMockRecorder) CountProducts(ctx, filter any) *gomock.Call {
+func (mr *MockUsecaseMockRecorder) CountProducts(ctx, authn, params any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountProducts", reflect.TypeOf((*MockUsecase)(nil).CountProducts), ctx, filter)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountProducts", reflect.TypeOf((*MockUsecase)(nil).CountProducts), ctx, authn, params)
 }
 
 // CreateProduct mocks base method.
@@ -74,18 +74,18 @@ func (mr *MockUsecaseMockRecorder) CreateProduct(ctx, authn, params any) *gomock
 }
 
 // GetProduct mocks base method.
-func (m *MockUsecase) GetProduct(ctx context.Context, id uuid.UUID) (product.ProductView, error) {
+func (m *MockUsecase) GetProduct(ctx context.Context, authn *auth.Authn, params product.GetProductParams) (product.ProductView, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetProduct", ctx, id)
+	ret := m.ctrl.Call(m, "GetProduct", ctx, authn, params)
 	ret0, _ := ret[0].(product.ProductView)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetProduct indicates an expected call of GetProduct.
-func (mr *MockUsecaseMockRecorder) GetProduct(ctx, id any) *gomock.Call {
+func (mr *MockUsecaseMockRecorder) GetProduct(ctx, authn, params any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProduct", reflect.TypeOf((*MockUsecase)(nil).GetProduct), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProduct", reflect.TypeOf((*MockUsecase)(nil).GetProduct), ctx, authn, params)
 }
 
 // ListLowStockProducts mocks base method.
@@ -104,18 +104,18 @@ func (mr *MockUsecaseMockRecorder) ListLowStockProducts(ctx, authn, params any) 
 }
 
 // ListProducts mocks base method.
-func (m *MockUsecase) ListProducts(ctx context.Context, params product.ListProductsParams) (product.ProductListView, error) {
+func (m *MockUsecase) ListProducts(ctx context.Context, authn *auth.Authn, params product.ListProductsParams) (product.ProductListView, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListProducts", ctx, params)
+	ret := m.ctrl.Call(m, "ListProducts", ctx, authn, params)
 	ret0, _ := ret[0].(product.ProductListView)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListProducts indicates an expected call of ListProducts.
-func (mr *MockUsecaseMockRecorder) ListProducts(ctx, params any) *gomock.Call {
+func (mr *MockUsecaseMockRecorder) ListProducts(ctx, authn, params any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListProducts", reflect.TypeOf((*MockUsecase)(nil).ListProducts), ctx, params)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListProducts", reflect.TypeOf((*MockUsecase)(nil).ListProducts), ctx, authn, params)
 }
 
 // UpdateProduct mocks base method.

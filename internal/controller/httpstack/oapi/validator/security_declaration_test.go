@@ -41,9 +41,6 @@ var publicOperations = map[string]string{
 	"GET /v1/prefectures":                 "都道府県マスタの公開 API",
 	"GET /v1/products/statuses":           "商品ステータスマスタの公開 API",
 	"GET /v1/products/categories":         "商品カテゴリマスタの公開 API",
-	"GET /v1/products":                    "商品一覧の公開 API",
-	"GET /v1/products/count":              "商品検索の一致件数を返す公開 API",
-	"GET /v1/products/{productId}":        "商品詳細の公開 API",
 	"GET /v1/products/ranking/quantity":   "商品の販売数量ランキングの公開 API",
 	"GET /v1/exchange-rates":              "為替レート換算の公開 API",
 	"GET /v1/addresses":                   "郵便番号からの住所補完の公開 API",
@@ -63,6 +60,12 @@ var optionalAuthOperations = map[string]string{
 	"DELETE /v1/carts/me/items/{productId}": "ゲストも自分の明細を取り除ける" +
 		"（未認証でも 204、無効な資格情報は 401）",
 	"DELETE /v1/carts/me": "ゲストも自分のカートを空にできる（未認証でも 204、無効な資格情報は 401）",
+	"GET /v1/products": "既定は公開済みのみを返す公開 API だが、admin は includeUnpublished で未公開を含められる" +
+		"（未認証でも 200、無効な資格情報は 401）",
+	"GET /v1/products/count": "一覧と母集団を揃えるため includeUnpublished を同じ姿勢で受ける" +
+		"（未認証でも 200、無効な資格情報は 401）",
+	"GET /v1/products/{productId}": "admin は includeUnpublished で未公開商品の詳細を引ける" +
+		"（未認証でも 200、無効な資格情報は 401）",
 }
 
 // securityKind は、security 要件が表す認証の姿勢。

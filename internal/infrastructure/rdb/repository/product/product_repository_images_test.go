@@ -38,7 +38,7 @@ func newProductWithImages(t *testing.T, id uuid.UUID, images []domainproduct.Ima
 		Status:   statusRef,
 		Category: categoryRef,
 		Images:   images,
-	})
+	}, testCreatedAt)
 	require.NoError(t, err)
 
 	return entity

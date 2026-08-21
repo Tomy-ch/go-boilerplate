@@ -18,7 +18,7 @@ import (
 type ServerInterface interface {
 	// GetProductsDetail 単一商品の取得
 	// (GET /v1/products/{productId})
-	GetProductsDetail(ctx *echo.Context, productId ProductIdParam) error
+	GetProductsDetail(ctx *echo.Context, productId ProductIdParam, params GetProductsDetailParams) error
 	// PatchProductsDetail 単一商品の部分更新
 	// (PATCH /v1/products/{productId})
 	PatchProductsDetail(ctx *echo.Context, productId ProductIdParam) error
@@ -43,8 +43,17 @@ func (w *ServerInterfaceWrapper) GetProductsDetail(ctx *echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter productId: %s", err))
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetProductsDetailParams
+	// ------------- Optional query parameter "includeUnpublished" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "includeUnpublished", ctx.QueryParams(), &params.IncludeUnpublished, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter includeUnpublished: %s", err))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetProductsDetail(ctx, productId)
+	err = w.Handler.GetProductsDetail(ctx, productId, params)
 	return err
 }
 
@@ -153,6 +162,7 @@ type UnprocessableEntity422JSONResponse ErrorResponseWithDetails
 
 type GetProductsDetailRequestObject struct {
 	ProductId ProductIdParam `json:"productId"`
+	Params    GetProductsDetailParams
 }
 
 type GetProductsDetailResponseObject interface {
@@ -183,6 +193,34 @@ func (response GetProductsDetail400JSONResponse) VisitGetProductsDetailResponse(
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProductsDetail401JSONResponse struct{ Unauthorized401JSONResponse }
+
+func (response GetProductsDetail401JSONResponse) VisitGetProductsDetailResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProductsDetail403JSONResponse struct{ Forbidden403JSONResponse }
+
+func (response GetProductsDetail403JSONResponse) VisitGetProductsDetailResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }
@@ -589,10 +627,11 @@ type strictHandler struct {
 }
 
 // GetProductsDetail operation middleware
-func (sh *strictHandler) GetProductsDetail(ctx *echo.Context, productId ProductIdParam) error {
+func (sh *strictHandler) GetProductsDetail(ctx *echo.Context, productId ProductIdParam, params GetProductsDetailParams) error {
 	var request GetProductsDetailRequestObject
 
 	request.ProductId = productId
+	request.Params = params
 
 	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.GetProductsDetail(ctx.Request().Context(), request.(GetProductsDetailRequestObject))
