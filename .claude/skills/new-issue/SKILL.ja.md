@@ -96,11 +96,11 @@ middleware は最も飛ばされやすく、最も決定的な区間である。
 ```markdown
 ## 前提
 
-- 退会済みユーザーでも `POST /v1/purchases` は usecase まで到達する — **検証済み**: `useridentity.Resolver`
+- 無効化済みの identity でも `POST /v1/<リソース>` は usecase まで到達する — **検証済み**: resolver
   は `deleted_at` でのみ拒否し、identity 解決は handler より前に走る
-  （`internal/infrastructure/auth/useridentity/resolver.go`、`abc1234` 時点で確認）
-- `user.withdrawn.v1` に consumer は無い — **検証済み**: 該当イベント種別に一致する handler が無い
-  （`rg 'TypeWithdrawn' internal/controller/worker/`、`abc1234` 時点）
+  （`internal/infrastructure/auth/<実装>/resolver.go`、`abc1234` 時点で確認）
+- `<集約>.<イベント>.v1` に consumer は無い — **検証済み**: 該当イベント種別に一致する handler が無い
+  （`rg 'Type<イベント>' internal/controller/worker/`、`abc1234` 時点）
 ```
 
 `impl-issue` は issue に着手するときこのセクションを読み、成り立たなくなった前提をすべて報告する。前提が散文に埋まっていると、その突合ができない —— 上記 3 件の誤りが実装まで生き延びたのは、まさにそれが理由。

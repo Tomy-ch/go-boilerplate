@@ -59,7 +59,11 @@ opt-in の2ステップ（未採用のエンドポイントは挙動不変）：
 
 `T` は JSON として保存され replay 時に JSON から復元されるため、**`T` の全フィールドが JSON 往復に耐える必要があります**。非公開フィールドのみを持ち `MarshalJSON` を実装しない値オブジェクトは黙って `{}` へ縮退し、replay ではゼロ値になります（`pkg/uuid` / `pkg/decimal` が対を実装しているのはこのためです）。
 
+<!-- sample-api:replace-begin -->
 `PostUsers`（`internal/controller/handler/v1/users/v1_users_handler.go`）が参照採用です。middleware は `Idempotency-Key` ヘッダがある時だけ反応し、無ければ `Run` は `businessFn` を素通し実行します（非破壊）。
+<!-- sample-api:replace-with -->
+<!-- = middleware は `Idempotency-Key` ヘッダがある時だけ反応し、無ければ `Run` は `businessFn` を素通し実行します（非破壊）。 -->
+<!-- sample-api:replace-end -->
 
 ## 4. クライアント向け契約
 
@@ -82,7 +86,11 @@ opt-in の2ステップ（未採用のエンドポイントは挙動不変）：
   - `GCUsecase` は `GCMetrics` へ計上する: バッチ成功ごとに `IncExpiredCleanup(count)`、削除エラー時に `IncExpiredCleanupFailure()`。
   - 配線済みの実装は `observability.NewIdempotencyMetrics`（`internal/di/module/usecase.go` で両 interface として提供）。OpenTelemetry カウンタ `idempotency.requests{operation_id,result}` / `idempotency.failures{operation_id,phase}`（per-request 失敗: `phase=claim/complete`）/ `idempotency.expired_cleanup{job}` / `idempotency.expired_cleanup_failure{job}`（GC バッチ失敗 — per-request の `failures` に畳まず GC 成功と同じく `job` ラベルで対称に保つ）を出力する。高カーディナリティ・秘匿値（Idempotency-Key・scope・fingerprint・PII・raw error）は**ラベルにしない**。空の `operation_id` は `unknown` に丸める。
   - `Deps.Metrics` も `GCMetrics` 引数も任意のまま: `nil` は **no-op**（観測性バックエンド無しでも `Run`/`GC` は動作する）。
+<!-- sample-api:replace-begin -->
 - **オペレーションごとに成功ステータスは1つ**: `Run[T]` は `successStatus` を1つ記録し、`PostUsers` は常に 201 を返す。成功ステータスが複数あり得る（例: 200 と 201）エンドポイントに `Run[T]` を採用する場合は、保存ステータスで分岐するようハンドラを拡張すること（現状の replay はハンドラ固定のレスポンス型で再描画する）。
+<!-- sample-api:replace-with -->
+<!-- = - **オペレーションごとに成功ステータスは1つ**: `Run[T]` は `successStatus` を1つ記録するため、採用したハンドラは常に同じステータスを返す。成功ステータスが複数あり得る（例: 200 と 201）エンドポイントに `Run[T]` を採用する場合は、保存ステータスで分岐するようハンドラを拡張すること（現状の replay はハンドラ固定のレスポンス型で再描画する）。 -->
+<!-- sample-api:replace-end -->
 
 ## セキュリティ / 保存の注意
 

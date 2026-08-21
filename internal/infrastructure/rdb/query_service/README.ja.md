@@ -37,6 +37,19 @@ flowchart TB
 
 QS が返すのは **Aggregate の完全な再構成ではなく、ユースケースが必要とする射影（projection）** です。これは Domain の関心事ではなく Usecase の関心事であるため、interface は Usecase 層（`internal/usecase/<aggregate>/query`）に配置します。
 
+> **注記（Repository も小さな read model を返しうる）。** 上表の「返却型 = DTO」は*典型的な*切り分けで
+> あって絶対ではありません。*固定の参照マスタ*を JOIN する Repository の読み取りは、解決済みの表示値を
+> 持つ小さな read model を返しても、なお単一 Aggregate の Repository 読み取り（QS ではない）です。
+> <!-- 撤去後にこの箇所へ自分の例を置くための指針。
+>      目的: どの表からどの表への JOIN かが見えないと、例外の範囲が伝わらない。
+>      意義: 効くのは「参照マスタであること」で、JOIN の向きや表の数ではない。
+>      書き方: 集約の表 → 参照マスタの表、を矢印 1 本で示す。 -->
+> <!-- sample-api:begin -->
+> （サンプルでの例は `purchases` → `purchase_statuses`）
+> <!-- sample-api:end -->
+> 読み取りを QS へ動かすのは、*独立した* Aggregate をまたぐことや派生した射影であって、単に Entity 以外を
+> 返すことではありません。`docs/rules.md` の「Repository / QueryService Rules」節を参照してください。
+
 ### CQRS との関係
 
 QS の導入は **軽量 CQRS（Command Query Responsibility Segregation）** のアプローチです。

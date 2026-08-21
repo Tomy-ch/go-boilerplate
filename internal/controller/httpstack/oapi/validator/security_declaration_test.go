@@ -38,15 +38,17 @@ var publicOperations = map[string]string{
 	"GET /ready":                          "readiness チェック（監視系は認証不要）",
 	"GET /version":                        "バージョン情報の公開エンドポイント",
 	"GET /_internal/types/error-response": "ErrorResponse 型生成用の内部エンドポイント（コード生成専用）",
-	"GET /v1/prefectures":                 "都道府県マスタの公開 API",
-	"GET /v1/products/statuses":           "商品ステータスマスタの公開 API",
-	"GET /v1/products/categories":         "商品カテゴリマスタの公開 API",
-	"GET /v1/products":                    "商品一覧の公開 API",
-	"GET /v1/products/count":              "商品検索の一致件数を返す公開 API",
-	"GET /v1/products/{productId}":        "商品詳細の公開 API",
-	"GET /v1/products/ranking/quantity":   "商品の販売数量ランキングの公開 API",
-	"GET /v1/exchange-rates":              "為替レート換算の公開 API",
-	"GET /v1/addresses":                   "郵便番号からの住所補完の公開 API",
+	// sample-api:begin
+	"GET /v1/prefectures":               "都道府県マスタの公開 API",
+	"GET /v1/products/statuses":         "商品ステータスマスタの公開 API",
+	"GET /v1/products/categories":       "商品カテゴリマスタの公開 API",
+	"GET /v1/products":                  "商品一覧の公開 API",
+	"GET /v1/products/count":            "商品検索の一致件数を返す公開 API",
+	"GET /v1/products/{productId}":      "商品詳細の公開 API",
+	"GET /v1/products/ranking/quantity": "商品の販売数量ランキングの公開 API",
+	"GET /v1/exchange-rates":            "為替レート換算の公開 API",
+	"GET /v1/addresses":                 "郵便番号からの住所補完の公開 API",
+	// sample-api:end
 }
 
 // optionalAuthOperations は任意認証（security に BearerAuth と空要件の両方を宣言）が
@@ -56,13 +58,18 @@ var publicOperations = map[string]string{
 // それが無効なら 401」であり、完全公開とは失敗時の意味論が異なる
 // （ADR-0021 (optional-authentication-fail-closed)）。
 // 同じ一覧に並べると security の宣言を読んでも姿勢が読み取れなくなるため、リストを分けている。
+//
+// 任意認証の operation が 1 つも無ければ空になる。空であることは壊れている合図ではなく、
+// 「この API に任意認証の面が無い」という事実である。
 var optionalAuthOperations = map[string]string{
+	// sample-api:begin
 	"GET /v1/carts/me": "カートはゲストと認証済みユーザーの双方が主体になれる（未認証でも 200、無効な資格情報は 401）",
 	"PUT /v1/carts/me/items/{productId}": "ゲストも明細を投入でき、その場でカートとセッショントークンが作られる" +
 		"（未認証でも 200、無効な資格情報は 401）",
 	"DELETE /v1/carts/me/items/{productId}": "ゲストも自分の明細を取り除ける" +
 		"（未認証でも 204、無効な資格情報は 401）",
 	"DELETE /v1/carts/me": "ゲストも自分のカートを空にできる（未認証でも 204、無効な資格情報は 401）",
+	// sample-api:end
 }
 
 // securityKind は、security 要件が表す認証の姿勢。

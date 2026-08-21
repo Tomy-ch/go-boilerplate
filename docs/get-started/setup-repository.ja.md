@@ -380,10 +380,10 @@ make gen-query
 
 補足:
 
-- 基盤マスタデータ `prefecture`（マイグレーション `000001` など）は**残します**。
+- core の `idempotency_keys`（マイグレーション `000001`）と `outbox`（`000002`）は**残します**。それ以外のマイグレーションは、`prefecture` を含めて所属するサンプルと一緒に消えます。
 - `gen-query` は**ライブ** DB の `pg_dump` から Go モデルを再生成します。上記の DB 再構築を省くと、残存する `users` テーブルが再ダンプされ `models.gen.go` に古い `Users` 型が再生成されます。再構築＋再 `gen-query` が実際に型を消す手順です。
-- 共有生成物（`*.gen.go` / `openapi.gen.yaml` など）は直接削除せず、再生成ステップで更新されます。
-- サンプルは3ドメイン構成です。`user` はフルスタック、`product` / `order` は現状 DB スタブ（マイグレーション＋商品 seed）のみです。`product` / `order` を本格的な API に拡張したら、`sample-manifest.ts` の該当ドメインブロックに新しいパスを追記し、共有ファイル内に混在するサンプル行を `// sample-api:begin` … `// sample-api:end`（または行末の `// sample-api:line`）で囲んでください。同じコマンドで自動的に削除対象に含まれます。
+- 共有生成物（`*.gen.go` / `openapi.gen.yaml` など）は直接削除せず、再生成ステップで更新されます。公開ドキュメント（`docs/openapi/**` / `docs/godoc/**` / `docs/coverage/**` / `docs/portal/**`）とコードグラフ（`graphify-out/**`）はこのステップの対象外で、再生成（`make gen-all-docs`）するまでサンプルを記述したままです。
+- サンプルは複数のフルスタックドメインからなり、それぞれが `sample-manifest.ts` の 1 ブロックとして宣言されています。拡張したら該当ブロックへ新しいパスを追記し、共有ファイル内に混在するサンプル行を `// sample-api:begin` … `// sample-api:end`（行末なら `// sample-api:line`、mermaid フェンス内は `%%`、Markdown 散文は `<!-- -->`）で囲んでください。同じコマンドで自動的に削除対象に含まれます。
 
 ### 規則から例が消えるので、自分の例を置き直す
 

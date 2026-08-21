@@ -20,14 +20,24 @@ advisory database lock (e.g. `pg_try_advisory_lock`) or a distributed lock (e.g.
 `SET NX`). These mechanisms add infrastructure dependencies and coordination logic that must
 be tested, operated, and kept in sync with the job lifecycle.
 
+<!-- sample-api:replace-begin -->
 Three scheduled one-shot jobs are bundled — `outbox-gc`, `idempotency-gc`, and
 `usercount` — plus the continuously running outbox relay process (a resident engine, not a
 scheduled job; see [ADR-0061](0061-relay-resident-gc-oneshot.md)). Each is designed to be
 concurrency-safe without application-level locking:
+<!-- sample-api:replace-with -->
+<!-- = Two scheduled one-shot jobs are bundled — `outbox-gc` and `idempotency-gc` — plus the -->
+<!-- = continuously running outbox relay process (a resident engine, not a scheduled job; see -->
+<!-- = [ADR-0061](0061-relay-resident-gc-oneshot.md)). Each is designed to be concurrency-safe -->
+<!-- = without application-level locking: -->
+<!-- sample-api:replace-end -->
 
 - `outbox-gc` and `idempotency-gc` are age-predicate, idempotent batch deletes — running
   them concurrently produces the same result as running them once.
+<!-- sample-api:replace-begin -->
 - `usercount` is read-only.
+<!-- sample-api:replace-with -->
+<!-- sample-api:replace-end -->
 - The outbox relay claims rows with `SELECT … FOR UPDATE SKIP LOCKED`, so concurrent
   relays process disjoint sets of rows.
 

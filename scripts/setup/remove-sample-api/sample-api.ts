@@ -62,6 +62,31 @@ export function isWithinRoot(absolutePath: string, rootDir: string, separator: s
   return absolutePath !== rootDir && absolutePath.startsWith(rootWithSeparator);
 }
 
+/**
+ * 削除した各パスの祖先ディレクトリを、深い順に重複なく返す。空になった殻の掃除に使う。
+ *
+ * @remarks
+ * git はディレクトリを追跡しないので、殻が残っても差分には出ません。それでも掃除するのは、
+ * 利用者の作業ツリーには残り続け、`internal/domain/service` のように「置き場だけある空の層」が
+ * 規約の一部なのか消し忘れなのかを、見た人が判別できなくなるためです。
+ *
+ * 深い順に返すのは、子を消して初めて親が空になるからです。実際に空かどうかは見ません。
+ * ここは候補の順序だけを決め、在否と空判定は呼び出し元（fs を持つ側）が行います。
+ */
+export function emptyDirectoryCandidates(relativePaths: readonly string[]): string[] {
+  const candidates = new Set<string>();
+
+  for (const relativePath of relativePaths) {
+    const segments = relativePath.replaceAll("\\", "/").split("/").filter((s) => s !== "");
+
+    for (let i = segments.length - 1; i > 0; i--) {
+      candidates.add(segments.slice(0, i).join("/"));
+    }
+  }
+
+  return [...candidates].sort((a, b) => b.split("/").length - a.split("/").length);
+}
+
 /** 初期化ツールの検証器。まだ残っていれば `setup/lib` を使い続けている。 */
 export const SETUP_VERIFIER_DIR = "verify-setup";
 

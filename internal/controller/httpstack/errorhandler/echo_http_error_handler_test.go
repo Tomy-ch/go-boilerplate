@@ -4,15 +4,15 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"strings"
+	"strings" // sample-api:line
 	"testing"
 
 	"go-boilerplate/internal/controller/error/response"
-	"go-boilerplate/internal/controller/httpstack/oapi"
-	"go-boilerplate/internal/controller/httpstack/oapi/validator"
+	"go-boilerplate/internal/controller/httpstack/oapi"           // sample-api:line
+	"go-boilerplate/internal/controller/httpstack/oapi/validator" // sample-api:line
 	"go-boilerplate/pkg/xerrors"
 
-	"github.com/getkin/kin-openapi/openapi3filter"
+	"github.com/getkin/kin-openapi/openapi3filter" // sample-api:line
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -83,6 +83,10 @@ func Test_normalizeEchoHTTPError(t *testing.T) {
 			assert.Equal(t, "METHOD_NOT_ALLOWED", actual.Code)
 		})
 
+		// sample-api:begin
+		// 実 spec を通す唯一の観点で、リクエストボディを持つ operation が要る。撤去後に残るのは
+		// health / version 系の GET だけで、400 を起こせる operation が spec 上に無くなるため
+		// 差し替えられない。同関数の他の観点は合成した echo エラーで撤去後も成立する。
 		t.Run("OpenAPIバリデーション失敗の場合、ミドルウェアが決めた400が解決される", func(t *testing.T) {
 			t.Parallel()
 
@@ -112,6 +116,7 @@ func Test_normalizeEchoHTTPError(t *testing.T) {
 			assert.Equal(t, expectedBase.Code, actual.Code)
 			require.ErrorIs(t, actual.Internal, validationErr)
 		})
+		// sample-api:end
 	})
 
 	t.Run("異常系", func(t *testing.T) {

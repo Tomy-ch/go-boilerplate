@@ -161,7 +161,7 @@ Scripts for configuring the boilerplate when creating a new project from this te
 All setup scripts support `--dry-run` for preview.
 <!-- sample-api:begin -->
 
-The deletion targets are declared in [`sample-manifest.ts`](setup/remove-sample-api/sample-manifest.ts) and the marker-stripping rules in [`sample-api.ts`](setup/remove-sample-api/sample-api.ts). The sample spans three domains (`user` is full-stack; `product`/`order` are DB stubs to be expanded), so expanding the sample only requires appending paths to the matching domain block and wrapping interleaved lines with the `sample-api:begin … sample-api:end` markers (or `sample-api:line`).
+The deletion targets are declared in [`sample-manifest.ts`](setup/remove-sample-api/sample-manifest.ts) and the marker-stripping rules in [`sample-api.ts`](setup/remove-sample-api/sample-api.ts). The sample spans several full-stack domains, so expanding it only requires appending paths to the matching domain block and wrapping interleaved lines with the `sample-api:begin … sample-api:end` markers (or `sample-api:line`).
 <!-- sample-api:end -->
 
 ## Test Strategy

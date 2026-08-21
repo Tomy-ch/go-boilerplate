@@ -480,14 +480,23 @@ func Test_newTestDetailPolicy(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
+		// sample-api:replace-begin
 		t.Run("実specからdetails公開をopt-inしたoperationを許可するポリシーを返す", func(t *testing.T) {
+			// sample-api:replace-with
+			// = t.Run("実specから構築したポリシーが未opt-inのoperationを拒否する", func(t *testing.T) {
+			// sample-api:replace-end
 			t.Parallel()
 
 			policy := newTestDetailPolicy(t)
 
 			require.NotNil(t, policy)
+			// sample-api:replace-begin
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/v1/users", nil)
 			assert.True(t, policy.Allows(req))
+			// sample-api:replace-with
+			// = req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/health", nil)
+			// = assert.False(t, policy.Allows(req))
+			// sample-api:replace-end
 		})
 	})
 }
@@ -504,7 +513,11 @@ func Test_newTestAllowPolicy(t *testing.T) {
 			policy := newTestAllowPolicy(t)
 
 			require.NotNil(t, policy)
+			// sample-api:replace-begin
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodDelete, "/v1/prefectures", nil)
+			// sample-api:replace-with
+			// = req := httptest.NewRequestWithContext(context.Background(), http.MethodDelete, "/health", nil)
+			// sample-api:replace-end
 			assert.Equal(t, "OPTIONS, GET", policy.Allow(req))
 		})
 	})
