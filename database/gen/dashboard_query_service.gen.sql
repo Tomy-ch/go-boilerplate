@@ -25,7 +25,7 @@ ORDER BY ps.sort_key ASC;
 -- 指定期間に注文された購入の売上合計と件数を返します。
 -- 期間は半開区間 [ordered_after, ordered_before)（internal/usecase/tools/timewindow/README.md）です。
 -- キャンセル済み（canceled_at 設定済み）の購入は除外し、未払い（paid_at 未設定）の購入は含めます
--- （商品売上ランキングと同一の母集団）。
+-- （購入レベルの絞りは商品売上ランキングと同じだが、ランキングはさらに公開済み商品に限る）。
 -- Purchase.IsCanceled と同値（database/dml/query_service/README.md 参照）。
 -- 対象が 0 件のとき SUM は NULL を返すため、COALESCE でゼロ値へ畳み込みます。
 SELECT

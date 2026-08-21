@@ -66,7 +66,7 @@ tags:
   - name: v1/products/detail
     description: 単一商品（認証不要・公開商品の詳細取得。未存在・非公開は 404 で存在を秘匿）。
   - name: v1/products/ranking
-    description: 商品売上ランキング（認証不要・購入明細の集計 / query_service サンプル）。
+    description: 商品売上ランキング（認証不要・購入明細の集計。販売数量と売上金額の 2 軸を別の口で提供 / query_service サンプル）。
   - name: v1/products/low-stock
     description: 在庫僅少商品一覧（admin のみ・在庫警告閾値以下の top-N・非 admin は 403）。
   - name: v1/exchange-rates
@@ -905,15 +905,19 @@ paths:
           $ref: '#/components/responses/InternalServerError500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
-  /v1/products/ranking:
+  /v1/products/ranking/quantity:
     get:
-      operationId: GetProductsRanking
+      operationId: GetProductsRankingQuantity
       tags:
         - v1/products/ranking
-      summary: 商品売上ランキングの取得
+      summary: 販売数量による商品ランキングの取得
       description: |
-        購入明細を集計し、販売数量の多い順に商品ランキングを返します。認証不要の公開エンドポイントです。
-        キャンセル済みの購入は集計から除外します。未払いの購入は集計に含みます。
+        購入明細を商品単位で集計し、販売数量の多い順に商品ランキングを返します。認証不要の公開エンドポイントです。
+        集計の母集団は「公開済み（published_at 非 NULL）の商品」×「キャンセルされていない購入」の明細です。
+        未払いの購入は集計に含みます。
+        この母集団は GET /v1/dashboard/summary の salesAmount とは一致しません。salesAmount は購入の
+        支払金額（小計 + 税額 + 送料）を商品の公開状態に関わらず合計するのに対し、こちらは明細を
+        公開済み商品に限って集計するためです。
         集計対象期間は orderedAfter / orderedBefore が指す半開区間 [orderedAfter, orderedBefore) です。
         いずれも省略でき、両方省略した場合は全期間を集計します。orderedBefore が orderedAfter 以前
         （同値を含む）の場合は 400 を返します。
@@ -929,9 +933,51 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProductRankingResponse'
+                $ref: '#/components/schemas/ProductQuantityRankingResponse'
         '400':
           $ref: '#/components/responses/BadRequest400'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/products/ranking/amount:
+    get:
+      operationId: GetProductsRankingAmount
+      tags:
+        - v1/products/ranking
+      summary: 売上金額による商品ランキングの取得
+      description: |
+        購入明細を商品単位で集計し、売上金額（単価 × 数量の総和）の多い順に商品ランキングを返します。
+        認証必須です。販売数量と違い実売上額を露出するため、認証なしでは引けません
+        （GET /v1/dashboard/summary の salesAmount と同じ扱い）。
+        集計の母集団は「公開済み（published_at 非 NULL）の商品」×「キャンセルされていない購入」の明細です。
+        未払いの購入は集計に含みます。
+        この母集団は GET /v1/dashboard/summary の salesAmount とは一致しません。salesAmount は購入の
+        支払金額（小計 + 税額 + 送料）を商品の公開状態に関わらず合計するのに対し、こちらは明細を
+        公開済み商品に限って集計するためです。
+        集計対象期間は orderedAfter / orderedBefore が指す半開区間 [orderedAfter, orderedBefore) です。
+        いずれも省略でき、両方省略した場合は全期間を集計します。orderedBefore が orderedAfter 以前
+        （同値を含む）の場合は 400 を返します。
+        同一売上金額の商品は商品 ID の昇順で安定的に並びます。
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OrderedAfterParam'
+        - $ref: '#/components/parameters/OrderedBeforeParam'
+        - $ref: '#/components/parameters/RankingLimitParam'
+      responses:
+        '200':
+          description: 売上金額の降順で取得した商品ランキング
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductAmountRankingResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
         '405':
           $ref: '#/components/responses/MethodNotAllowed405'
         '500':
@@ -2014,7 +2060,7 @@ components:
     RankingLimitParam:
       name: limit
       in: query
-      description: 取得する上位件数。売上数量の降順で上位 limit 件を返します。
+      description: 取得する上位件数。その口の軸（販売数量または売上金額）の降順で上位 limit 件を返します。
       required: false
       schema:
         type: integer
@@ -2471,9 +2517,9 @@ components:
           minimum: 0
           description: 検索条件に一致する公開商品の件数。対象がない場合は 0 です。
           example: 42
-    ProductRankingItem:
+    ProductQuantityRankingItem:
       type: object
-      description: 売上ランキング 1 商品分の項目です。
+      description: 販売数量ランキング 1 商品分の項目です。
       required:
         - productId
         - name
@@ -2500,9 +2546,38 @@ components:
           format: int64
           description: 集計期間内の販売数量（キャンセル済みの購入を除く合算値）。
           example: 42
-    ProductRankingResponse:
+    ProductAmountRankingItem:
       type: object
-      description: 売上ランキングのレスポンススキーマ。販売数量の降順（同数量は商品 ID 昇順）で並びます。
+      description: 売上金額ランキング 1 商品分の項目です。
+      required:
+        - productId
+        - name
+        - price
+        - salesAmount
+      properties:
+        productId:
+          type: string
+          format: uuid
+          description: 商品ID
+          example: b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f
+        name:
+          type: string
+          description: 商品名
+          maxLength: 255
+          example: ワイヤレスイヤホン
+        price:
+          type: string
+          pattern: ^\d+(\.\d+)?$
+          description: 商品の単価。サブセント精度を保持する decimal 文字列で表します（例 "19.99" は 19.99 ドル）。 JSON number は IEEE754 double として復元され精度を失うため、文字列で表現します。 集計値ではなく商品の属性であり、salesAmount とは役割が異なります。
+          example: '19.99'
+        salesAmount:
+          type: string
+          pattern: ^\d+(\.\d+)?$
+          description: 集計期間内の売上金額（明細の単価 × 数量の総和、キャンセル済みの購入を除く）。 価格スケールの正確な decimal 文字列で、決済スケール（セント整数）へは丸めません （丸めは決済確定の 1 箇所のみ・ADR-0038）。順位はこの正確な値で決まります。
+          example: '839.58'
+    ProductQuantityRankingResponse:
+      type: object
+      description: 販売数量ランキングのレスポンススキーマ。販売数量の降順（同数量は商品 ID 昇順）で並びます。
       required:
         - rankings
       properties:
@@ -2510,7 +2585,18 @@ components:
           type: array
           description: 販売数量の降順で並んだ商品ランキングです。
           items:
-            $ref: '#/components/schemas/ProductRankingItem'
+            $ref: '#/components/schemas/ProductQuantityRankingItem'
+    ProductAmountRankingResponse:
+      type: object
+      description: 売上金額ランキングのレスポンススキーマ。売上金額の降順（同額は商品 ID 昇順）で並びます。
+      required:
+        - rankings
+      properties:
+        rankings:
+          type: array
+          description: 売上金額の降順で並んだ商品ランキングです。
+          items:
+            $ref: '#/components/schemas/ProductAmountRankingItem'
     ProductLowStockResponse:
       type: object
       description: 在庫僅少商品一覧のレスポンススキーマ。在庫数の昇順（同数は商品 ID 昇順）で並びます。
@@ -3026,7 +3112,7 @@ components:
           format: int64
           description: |
             集計対象期間の売上合計。USD セント単位の整数です。キャンセル済みの購入は除外し、未払いの購入は含みます
-            （商品売上ランキングと同一の母集団）。対象がない場合は 0 です。
+            （購入レベルの絞りは商品売上ランキングと同じですが、ランキングはさらに公開済み商品に限るため合計は一致しません）。対象がない場合は 0 です。
           example: 2118000
         salesCount:
           type: integer

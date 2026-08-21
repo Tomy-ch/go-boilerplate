@@ -16,9 +16,12 @@ import (
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// GetProductsRanking 商品売上ランキングの取得
-	// (GET /v1/products/ranking)
-	GetProductsRanking(ctx *echo.Context, params GetProductsRankingParams) error
+	// GetProductsRankingAmount 売上金額による商品ランキングの取得
+	// (GET /v1/products/ranking/amount)
+	GetProductsRankingAmount(ctx *echo.Context, params GetProductsRankingAmountParams) error
+	// GetProductsRankingQuantity 販売数量による商品ランキングの取得
+	// (GET /v1/products/ranking/quantity)
+	GetProductsRankingQuantity(ctx *echo.Context, params GetProductsRankingQuantityParams) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -26,12 +29,12 @@ type ServerInterfaceWrapper struct {
 	Handler ServerInterface
 }
 
-// GetProductsRanking converts echo context to params.
-func (w *ServerInterfaceWrapper) GetProductsRanking(ctx *echo.Context) error {
+// GetProductsRankingAmount converts echo context to params.
+func (w *ServerInterfaceWrapper) GetProductsRankingAmount(ctx *echo.Context) error {
 	var err error
 
 	// Parameter object where we will unmarshal all parameters from the context
-	var params GetProductsRankingParams
+	var params GetProductsRankingAmountParams
 	// ------------- Optional query parameter "orderedAfter" -------------
 
 	err = runtime.BindQueryParameterWithOptions("form", true, false, "orderedAfter", ctx.QueryParams(), &params.OrderedAfter, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
@@ -54,7 +57,39 @@ func (w *ServerInterfaceWrapper) GetProductsRanking(ctx *echo.Context) error {
 	}
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetProductsRanking(ctx, params)
+	err = w.Handler.GetProductsRankingAmount(ctx, params)
+	return err
+}
+
+// GetProductsRankingQuantity converts echo context to params.
+func (w *ServerInterfaceWrapper) GetProductsRankingQuantity(ctx *echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetProductsRankingQuantityParams
+	// ------------- Optional query parameter "orderedAfter" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "orderedAfter", ctx.QueryParams(), &params.OrderedAfter, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter orderedAfter: %s", err))
+	}
+
+	// ------------- Optional query parameter "orderedBefore" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "orderedBefore", ctx.QueryParams(), &params.OrderedBefore, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter orderedBefore: %s", err))
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", ctx.QueryParams(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetProductsRankingQuantity(ctx, params)
 	return err
 }
 
@@ -105,7 +140,8 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 		Handler: si,
 	}
 
-	router.GET(options.BaseURL+"/v1/products/ranking", wrapper.GetProductsRanking, options.OperationMiddlewares["GetProductsRanking"]...)
+	router.GET(options.BaseURL+"/v1/products/ranking/quantity", wrapper.GetProductsRankingQuantity, options.OperationMiddlewares["GetProductsRankingQuantity"]...)
+	router.GET(options.BaseURL+"/v1/products/ranking/amount", wrapper.GetProductsRankingAmount, options.OperationMiddlewares["GetProductsRankingAmount"]...)
 
 }
 
@@ -117,17 +153,19 @@ type MethodNotAllowed405JSONResponse ErrorResponse
 
 type ServiceUnavailable503JSONResponse ErrorResponse
 
-type GetProductsRankingRequestObject struct {
-	Params GetProductsRankingParams
+type Unauthorized401JSONResponse ErrorResponse
+
+type GetProductsRankingAmountRequestObject struct {
+	Params GetProductsRankingAmountParams
 }
 
-type GetProductsRankingResponseObject interface {
-	VisitGetProductsRankingResponse(w http.ResponseWriter) error
+type GetProductsRankingAmountResponseObject interface {
+	VisitGetProductsRankingAmountResponse(w http.ResponseWriter) error
 }
 
-type GetProductsRanking200JSONResponse ProductRankingResponse
+type GetProductsRankingAmount200JSONResponse ProductAmountRankingResponse
 
-func (response GetProductsRanking200JSONResponse) VisitGetProductsRankingResponse(w http.ResponseWriter) error {
+func (response GetProductsRankingAmount200JSONResponse) VisitGetProductsRankingAmountResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -139,9 +177,9 @@ func (response GetProductsRanking200JSONResponse) VisitGetProductsRankingRespons
 	return err
 }
 
-type GetProductsRanking400JSONResponse struct{ BadRequest400JSONResponse }
+type GetProductsRankingAmount400JSONResponse struct{ BadRequest400JSONResponse }
 
-func (response GetProductsRanking400JSONResponse) VisitGetProductsRankingResponse(w http.ResponseWriter) error {
+func (response GetProductsRankingAmount400JSONResponse) VisitGetProductsRankingAmountResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -153,11 +191,25 @@ func (response GetProductsRanking400JSONResponse) VisitGetProductsRankingRespons
 	return err
 }
 
-type GetProductsRanking405JSONResponse struct {
+type GetProductsRankingAmount401JSONResponse struct{ Unauthorized401JSONResponse }
+
+func (response GetProductsRankingAmount401JSONResponse) VisitGetProductsRankingAmountResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProductsRankingAmount405JSONResponse struct {
 	MethodNotAllowed405JSONResponse
 }
 
-func (response GetProductsRanking405JSONResponse) VisitGetProductsRankingResponse(w http.ResponseWriter) error {
+func (response GetProductsRankingAmount405JSONResponse) VisitGetProductsRankingAmountResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -169,11 +221,11 @@ func (response GetProductsRanking405JSONResponse) VisitGetProductsRankingRespons
 	return err
 }
 
-type GetProductsRanking500JSONResponse struct {
+type GetProductsRankingAmount500JSONResponse struct {
 	InternalServerError500JSONResponse
 }
 
-func (response GetProductsRanking500JSONResponse) VisitGetProductsRankingResponse(w http.ResponseWriter) error {
+func (response GetProductsRankingAmount500JSONResponse) VisitGetProductsRankingAmountResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -185,11 +237,95 @@ func (response GetProductsRanking500JSONResponse) VisitGetProductsRankingRespons
 	return err
 }
 
-type GetProductsRanking503JSONResponse struct {
+type GetProductsRankingAmount503JSONResponse struct {
 	ServiceUnavailable503JSONResponse
 }
 
-func (response GetProductsRanking503JSONResponse) VisitGetProductsRankingResponse(w http.ResponseWriter) error {
+func (response GetProductsRankingAmount503JSONResponse) VisitGetProductsRankingAmountResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(503)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProductsRankingQuantityRequestObject struct {
+	Params GetProductsRankingQuantityParams
+}
+
+type GetProductsRankingQuantityResponseObject interface {
+	VisitGetProductsRankingQuantityResponse(w http.ResponseWriter) error
+}
+
+type GetProductsRankingQuantity200JSONResponse ProductQuantityRankingResponse
+
+func (response GetProductsRankingQuantity200JSONResponse) VisitGetProductsRankingQuantityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProductsRankingQuantity400JSONResponse struct{ BadRequest400JSONResponse }
+
+func (response GetProductsRankingQuantity400JSONResponse) VisitGetProductsRankingQuantityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProductsRankingQuantity405JSONResponse struct {
+	MethodNotAllowed405JSONResponse
+}
+
+func (response GetProductsRankingQuantity405JSONResponse) VisitGetProductsRankingQuantityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(405)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProductsRankingQuantity500JSONResponse struct {
+	InternalServerError500JSONResponse
+}
+
+func (response GetProductsRankingQuantity500JSONResponse) VisitGetProductsRankingQuantityResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetProductsRankingQuantity503JSONResponse struct {
+	ServiceUnavailable503JSONResponse
+}
+
+func (response GetProductsRankingQuantity503JSONResponse) VisitGetProductsRankingQuantityResponse(w http.ResponseWriter) error {
 
 	var buf bytes.Buffer
 	if err := json.NewEncoder(&buf).Encode(response); err != nil {
@@ -203,9 +339,12 @@ func (response GetProductsRanking503JSONResponse) VisitGetProductsRankingRespons
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
-	// GetProductsRanking 商品売上ランキングの取得
-	// (GET /v1/products/ranking)
-	GetProductsRanking(ctx context.Context, request GetProductsRankingRequestObject) (GetProductsRankingResponseObject, error)
+	// GetProductsRankingAmount 売上金額による商品ランキングの取得
+	// (GET /v1/products/ranking/amount)
+	GetProductsRankingAmount(ctx context.Context, request GetProductsRankingAmountRequestObject) (GetProductsRankingAmountResponseObject, error)
+	// GetProductsRankingQuantity 販売数量による商品ランキングの取得
+	// (GET /v1/products/ranking/quantity)
+	GetProductsRankingQuantity(ctx context.Context, request GetProductsRankingQuantityRequestObject) (GetProductsRankingQuantityResponseObject, error)
 }
 
 type StrictHandlerFunc func(ctx *echo.Context, request any) (any, error)
@@ -220,25 +359,50 @@ type strictHandler struct {
 	middlewares []StrictMiddlewareFunc
 }
 
-// GetProductsRanking operation middleware
-func (sh *strictHandler) GetProductsRanking(ctx *echo.Context, params GetProductsRankingParams) error {
-	var request GetProductsRankingRequestObject
+// GetProductsRankingAmount operation middleware
+func (sh *strictHandler) GetProductsRankingAmount(ctx *echo.Context, params GetProductsRankingAmountParams) error {
+	var request GetProductsRankingAmountRequestObject
 
 	request.Params = params
 
 	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.GetProductsRanking(ctx.Request().Context(), request.(GetProductsRankingRequestObject))
+		return sh.ssi.GetProductsRankingAmount(ctx.Request().Context(), request.(GetProductsRankingAmountRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetProductsRanking")
+		handler = middleware(handler, "GetProductsRankingAmount")
 	}
 
 	response, err := handler(ctx, request)
 
 	if err != nil {
 		return err
-	} else if validResponse, ok := response.(GetProductsRankingResponseObject); ok {
-		return validResponse.VisitGetProductsRankingResponse(ctx.Response())
+	} else if validResponse, ok := response.(GetProductsRankingAmountResponseObject); ok {
+		return validResponse.VisitGetProductsRankingAmountResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// GetProductsRankingQuantity operation middleware
+func (sh *strictHandler) GetProductsRankingQuantity(ctx *echo.Context, params GetProductsRankingQuantityParams) error {
+	var request GetProductsRankingQuantityRequestObject
+
+	request.Params = params
+
+	handler := func(ctx *echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetProductsRankingQuantity(ctx.Request().Context(), request.(GetProductsRankingQuantityRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetProductsRankingQuantity")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(GetProductsRankingQuantityResponseObject); ok {
+		return validResponse.VisitGetProductsRankingQuantityResponse(ctx.Response())
 	} else if response != nil {
 		return fmt.Errorf("unexpected response type: %T", response)
 	}
