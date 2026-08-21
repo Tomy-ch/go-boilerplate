@@ -16,9 +16,8 @@ import (
 	checkoutuc "go-boilerplate/internal/usecase/checkout"
 	"go-boilerplate/internal/usecase/idempotency"
 	purchaseuc "go-boilerplate/internal/usecase/purchase"
-	"go-boilerplate/internal/usecase/purchase/period"
 	"go-boilerplate/internal/usecase/tools/paging"
-	"go-boilerplate/pkg/ptr"
+	"go-boilerplate/internal/usecase/tools/timewindow"
 	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/xerrors"
 
@@ -32,7 +31,7 @@ type server struct {
 	idem     idempotency.Deps
 }
 
-// BindHandler は、購入作成のハンドラを Echo に登録します。冪等ミドルウェアを併用します。
+// BindHandler は、購入の一覧取得・作成のハンドラを Echo に登録します。作成には冪等ミドルウェアを併用します。
 func BindHandler(
 	e *echo.Echo,
 	tf observability.TracerFactory,
@@ -63,7 +62,15 @@ func (s *server) GetPurchases(ctx context.Context, request gen.GetPurchasesReque
 		return nil, err
 	}
 
-	list, err := s.uc.GetPurchases(ctx, userID, cursor, toPeriodSpec(request.Params))
+	window, err := timewindow.New(timewindow.Bounds{
+		After:  request.Params.OrderedAfter,
+		Before: request.Params.OrderedBefore,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	list, err := s.uc.GetPurchases(ctx, userID, cursor, window)
 	if err != nil {
 		return nil, err
 	}
@@ -78,21 +85,6 @@ func (s *server) GetPurchases(ctx context.Context, request gen.GetPurchasesReque
 		NextCursor: list.NextCursor,
 		HasNext:    list.NextCursor != nil,
 	}), nil
-}
-
-// toPeriodSpec は、期間絞り込みのクエリパラメータをユースケースの期間指定へ変換します。
-// 区分名の妥当性は OpenAPI の enum が、区分ごとの必須指定の有無はユースケースが判定します。
-func toPeriodSpec(params gen.GetPurchasesParams) period.Spec {
-	spec := period.Spec{
-		From:  conv.DatePtr(params.From),
-		To:    conv.DatePtr(params.To),
-		Month: params.Month,
-		Days:  ptr.Map(params.Days, func(v int32) int { return int(v) }),
-	}
-	if params.Period != nil {
-		spec.Kind = period.Kind(*params.Period)
-	}
-	return spec
 }
 
 // toPurchaseSummaryResponse は、購入履歴一覧のユースケース DTO を HTTP レスポンスへ変換します。

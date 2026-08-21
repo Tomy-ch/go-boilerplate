@@ -13,6 +13,7 @@ import (
 	context "context"
 	auth "go-boilerplate/internal/usecase/boundary/auth"
 	dashboard "go-boilerplate/internal/usecase/dashboard"
+	timewindow "go-boilerplate/internal/usecase/tools/timewindow"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
@@ -43,16 +44,16 @@ func (m *MockUsecase) EXPECT() *MockUsecaseMockRecorder {
 }
 
 // GetDashboardSummary mocks base method.
-func (m *MockUsecase) GetDashboardSummary(ctx context.Context, authn *auth.Authn, params dashboard.GetSummaryParams) (dashboard.SummaryView, error) {
+func (m *MockUsecase) GetDashboardSummary(ctx context.Context, authn *auth.Authn, window timewindow.Window) (dashboard.SummaryView, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetDashboardSummary", ctx, authn, params)
+	ret := m.ctrl.Call(m, "GetDashboardSummary", ctx, authn, window)
 	ret0, _ := ret[0].(dashboard.SummaryView)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetDashboardSummary indicates an expected call of GetDashboardSummary.
-func (mr *MockUsecaseMockRecorder) GetDashboardSummary(ctx, authn, params any) *gomock.Call {
+func (mr *MockUsecaseMockRecorder) GetDashboardSummary(ctx, authn, window any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDashboardSummary", reflect.TypeOf((*MockUsecase)(nil).GetDashboardSummary), ctx, authn, params)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDashboardSummary", reflect.TypeOf((*MockUsecase)(nil).GetDashboardSummary), ctx, authn, window)
 }

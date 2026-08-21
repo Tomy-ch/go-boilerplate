@@ -13,6 +13,7 @@ import (
 	"go-boilerplate/internal/usecase/boundary/auth"
 	dashboarduc "go-boilerplate/internal/usecase/dashboard"
 	mock_dashboarduc "go-boilerplate/internal/usecase/dashboard/mock"
+	"go-boilerplate/internal/usecase/tools/timewindow"
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/labstack/echo/v5"
@@ -63,26 +64,51 @@ func TestV1DashboardSummary_Integration(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			tf := observability.NewNoopTracerFactory(t)
 
-			var captured dashboarduc.GetSummaryParams
+			var captured timewindow.Window
 			uc := mock_dashboarduc.NewMockUsecase(ctrl)
 			uc.EXPECT().GetDashboardSummary(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ context.Context, _ *auth.Authn, p dashboarduc.GetSummaryParams) (dashboarduc.SummaryView, error) {
-					captured = p
+				func(_ context.Context, _ *auth.Authn, w timewindow.Window) (dashboarduc.SummaryView, error) {
+					captured = w
 					return dashboarduc.SummaryView{}, nil
 				})
 
 			dashboardhandler.BindHandler(e, tf, uc)
 
 			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "int_dash_period"))
-			path := dashboardSummaryPath + "?period=range&from=2026-07-01&to=2026-07-31"
+			path := dashboardSummaryPath + "?orderedAfter=2026-07-01T00:00:00%2B09:00&orderedBefore=2026-08-01T00:00:00%2B09:00"
 			actual := StartServer(t, e).DoJSON(http.MethodGet, path, nil, headers)
 			require.Equal(t, http.StatusOK, actual.StatusCode)
 
-			assert.Equal(t, "range", captured.Period)
-			require.NotNil(t, captured.From)
-			require.NotNil(t, captured.To)
-			assert.Equal(t, "2026-07-01", captured.From.Format(time.DateOnly))
-			assert.Equal(t, "2026-07-31", captured.To.Format(time.DateOnly))
+			require.NotNil(t, captured.After())
+			require.NotNil(t, captured.Before())
+			assert.True(t, time.Date(2026, time.July, 1, 0, 0, 0, 0, time.FixedZone("", 9*60*60)).Equal(*captured.After()))
+			assert.True(t, time.Date(2026, time.August, 1, 0, 0, 0, 0, time.FixedZone("", 9*60*60)).Equal(*captured.Before()))
+		})
+
+		t.Run("廃止したperiod/from/toを送っても無視され全期間として扱われる", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			var captured timewindow.Window
+			uc := mock_dashboarduc.NewMockUsecase(ctrl)
+			uc.EXPECT().GetDashboardSummary(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, _ *auth.Authn, w timewindow.Window) (dashboarduc.SummaryView, error) {
+					captured = w
+					return dashboarduc.SummaryView{}, nil
+				})
+
+			dashboardhandler.BindHandler(e, tf, uc)
+
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "int_dash_legacy"))
+			path := dashboardSummaryPath + "?period=month&from=2026-07-01&to=2026-07-31"
+			actual := StartServer(t, e).DoJSON(http.MethodGet, path, nil, headers)
+			require.Equal(t, http.StatusOK, actual.StatusCode)
+
+			assert.Nil(t, captured.After())
+			assert.Nil(t, captured.Before())
 		})
 
 		t.Run("集計対象が無くてもゼロ値の集計を200で返す", func(t *testing.T) {
@@ -143,7 +169,7 @@ func TestV1DashboardSummary_Integration(t *testing.T) {
 			AssertErrorResponse(t, actual, http.StatusForbidden)
 		})
 
-		t.Run("period=rangeでfrom/toが欠落する場合400を返す", func(t *testing.T) {
+		t.Run("orderedBeforeがorderedAfter以前の場合400を返す", func(t *testing.T) {
 			t.Parallel()
 
 			e := echo.New()
@@ -152,13 +178,13 @@ func TestV1DashboardSummary_Integration(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 
 			uc := mock_dashboarduc.NewMockUsecase(ctrl)
-			uc.EXPECT().GetDashboardSummary(gomock.Any(), gomock.Any(), gomock.Any()).
-				Return(dashboarduc.SummaryView{}, apperror.ErrInvalidArgument)
+			uc.EXPECT().GetDashboardSummary(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 			dashboardhandler.BindHandler(e, tf, uc)
 
 			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "int_dash_badreq"))
-			actual := StartServer(t, e).DoJSON(http.MethodGet, dashboardSummaryPath+"?period=range", nil, headers)
+			path := dashboardSummaryPath + "?orderedAfter=2026-08-01T00:00:00Z&orderedBefore=2026-07-01T00:00:00Z"
+			actual := StartServer(t, e).DoJSON(http.MethodGet, path, nil, headers)
 			AssertErrorResponse(t, actual, http.StatusBadRequest)
 		})
 

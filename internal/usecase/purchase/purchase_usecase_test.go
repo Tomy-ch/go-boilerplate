@@ -147,8 +147,6 @@ func TestNew(t *testing.T) {
 			emit := mock_outbox.NewMockEmitUsecase(ctrl)
 			authorizer := mock_authz.NewMockAuthorizer(ctrl)
 			clk := clocktestkit.NewMockClock(t, time.Date(2026, time.July, 25, 0, 0, 0, 0, time.UTC))
-			loc := time.FixedZone("TEST+09", 9*60*60)
-
 			expected := &usecase{
 				tracer:      tf.Usecase(),
 				txm:         txm,
@@ -160,10 +158,9 @@ func TestNew(t *testing.T) {
 				feedQS:      feedQS,
 				emit:        emit,
 				clock:       clk,
-				loc:         loc,
 				authorizer:  authorizer,
 			}
-			actual := New(txm, cmd, repo, productRepo, userLock, detailQS, feedQS, emit, clk, loc, authorizer, tf)
+			actual := New(txm, cmd, repo, productRepo, userLock, detailQS, feedQS, emit, clk, authorizer, tf)
 			assert.Equal(t, expected, actual)
 		})
 	})

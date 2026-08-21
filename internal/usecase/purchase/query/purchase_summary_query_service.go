@@ -5,7 +5,7 @@ package query
 import (
 	"context"
 
-	"go-boilerplate/internal/usecase/purchase/period"
+	"go-boilerplate/internal/usecase/tools/timewindow"
 	"go-boilerplate/pkg/decimal"
 	"go-boilerplate/pkg/uuid"
 )
@@ -19,15 +19,15 @@ import (
 type PurchaseSummaryQueryService interface {
 	// SummarizeByUserID は、認証主体（userID）の購入をステータス単位に集計し、購入ステータスマスタの表示順で返します。
 	// 母集団・対象なし時の扱いは PurchaseSummaryQueryService の doc コメントを参照。
-	SummarizeByUserID(ctx context.Context, userID uuid.UUID, window period.Window) ([]PurchaseStatusSummaryReadModel, error)
+	SummarizeByUserID(ctx context.Context, userID uuid.UUID, window timewindow.Window) ([]PurchaseStatusSummaryReadModel, error)
 	// SumItemsByUserID は、認証主体（userID）の購入明細の金額合計（単価 × 数量の総和）を返します。
 	// 価格スケールの正確な decimal で、決済スケール（セント整数）へは丸めません（ADR-0038 (two-scale-quantity-model)）。
 	// 対象なし時の扱いは PurchaseSummaryQueryService の doc コメントを参照。
-	SumItemsByUserID(ctx context.Context, userID uuid.UUID, window period.Window) (decimal.Decimal, error)
+	SumItemsByUserID(ctx context.Context, userID uuid.UUID, window timewindow.Window) (decimal.Decimal, error)
 	// SummarizeItemsByProductByUserID は、認証主体（userID）の購入明細を商品単位に集計し、商品が属する
 	// カテゴリを添えて返します。カテゴリ単位の集計は呼び出し側がこの結果を畳み込んで得ます。
 	// 対象なし時の扱いは PurchaseSummaryQueryService の doc コメントを参照。
-	SummarizeItemsByProductByUserID(ctx context.Context, userID uuid.UUID, window period.Window) ([]PurchaseItemSummaryReadModel, error)
+	SummarizeItemsByProductByUserID(ctx context.Context, userID uuid.UUID, window timewindow.Window) ([]PurchaseItemSummaryReadModel, error)
 }
 
 // PurchaseStatusSummaryReadModel は、1 ステータス分の購入集計の読み取りモデルです。

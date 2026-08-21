@@ -73,7 +73,7 @@ findings** — 業務が使っていてモデルが使っていない語は、�
 | 金額 | 売り買いでやり取りされる貨幣の量。商品の売値も購入明細の単価もこれで表す | lexicon | `money.Price` | — |
 | 住所候補 | 郵便番号から引ける住所のうち、その番号が指しうるもの | address | `address.Candidate` | `AddressCandidate` |
 | 売上 | ある期間に成立した購入の金額の合計 | dashboard | `dashboard/query.SalesResult` | `salesAmount` |
-| 集計期間 | 集計の対象として区切る時間の範囲 | dashboard | `dashboard/query.Period` | — |
+| 集計期間 | 集計の対象として区切る時間の範囲 | 横断（dashboard / purchase / product-ranking） | `timewindow.Window` | `orderedAfter` / `orderedBefore` |
 | 為替レート | ある通貨を別の通貨へ換算するときの比率 | exchange-rate | `exchangerate.Rate` | — |
 | 参考換算額 | 表示のために別通貨へ換算した金額。支払いに使う値ではない | exchange-rate | `exchangerate.ReferenceAmount` | `ReferenceAmount` |
 | 商品ランキング | 売れた数の多い順に商品を並べたもの | product-ranking | `ranking.RankingView` | `ProductRankingItem` |
@@ -177,9 +177,6 @@ findings** — 業務が使っていてモデルが使っていない語は、�
   進行段階を表す値オブジェクト（許可遷移と終端性を内蔵し、doc は「符号の大小で判定してはならない」と
   明言）。**片方は集約、片方は値オブジェクトで、指しているものが違う。**用語表は前者にだけ
   「商品ステータス」の行を与えており、後者は個々の状態（未処理・支払い済み…）の行だけを持つ
-- **`Period`** — `dashboard/query.Period` は区分と日付境界を持つ構造体、`ranking/query.Period` は
-  `all` / `30d` の文字列区分。どちらも集計期間だが、dashboard は区分を `PeriodKind` に分けており、
-  **2 つの feature で `Period` という語の役割が入れ替わっている**
 
 ### 行にするかが未決
 

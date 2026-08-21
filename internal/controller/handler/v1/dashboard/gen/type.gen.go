@@ -4,50 +4,10 @@
 package gen
 
 import (
+	"time"
+
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
-
-// Defines values for DashboardPeriodParam.
-const (
-	DashboardPeriodParamMonth DashboardPeriodParam = "month"
-	DashboardPeriodParamRange DashboardPeriodParam = "range"
-	DashboardPeriodParamToday DashboardPeriodParam = "today"
-)
-
-// Valid indicates whether the value is a known member of the DashboardPeriodParam enum.
-func (e DashboardPeriodParam) Valid() bool {
-	switch e {
-	case DashboardPeriodParamMonth:
-		return true
-	case DashboardPeriodParamRange:
-		return true
-	case DashboardPeriodParamToday:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetDashboardSummaryParamsPeriod.
-const (
-	GetDashboardSummaryParamsPeriodMonth GetDashboardSummaryParamsPeriod = "month"
-	GetDashboardSummaryParamsPeriodRange GetDashboardSummaryParamsPeriod = "range"
-	GetDashboardSummaryParamsPeriodToday GetDashboardSummaryParamsPeriod = "today"
-)
-
-// Valid indicates whether the value is a known member of the GetDashboardSummaryParamsPeriod enum.
-func (e GetDashboardSummaryParamsPeriod) Valid() bool {
-	switch e {
-	case GetDashboardSummaryParamsPeriodMonth:
-		return true
-	case GetDashboardSummaryParamsPeriodRange:
-		return true
-	case GetDashboardSummaryParamsPeriodToday:
-		return true
-	default:
-		return false
-	}
-}
 
 // DashboardPurchaseStatusCountResponse 購入ステータス別件数の 1 要素。status は ID・名称を事前解決済みで、別途の名称解決は不要です。
 type DashboardPurchaseStatusCountResponse struct {
@@ -132,14 +92,11 @@ type PurchaseStatusRef struct {
 	Name string `json:"name"`
 }
 
-// DashboardFromParam Example: 2026-07-01
-type DashboardFromParam = openapi_types.Date
+// OrderedAfterParam Example: 2026-07-01T00:00:00+09:00
+type OrderedAfterParam = time.Time
 
-// DashboardPeriodParam Example: today
-type DashboardPeriodParam string
-
-// DashboardToParam Example: 2026-07-31
-type DashboardToParam = openapi_types.Date
+// OrderedBeforeParam Example: 2026-08-01T00:00:00+09:00
+type OrderedBeforeParam = time.Time
 
 // BadRequest400 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type BadRequest400 = ErrorResponse
@@ -161,19 +118,16 @@ type Unauthorized401 = ErrorResponse
 
 // GetDashboardSummaryParams defines parameters for GetDashboardSummary.
 type GetDashboardSummaryParams struct {
-	// Period 集計対象期間の区分。`today`（既定）は今日、`month` は今月、`range` は `from` / `to` で指定した期間を集計します。
-	// `today` / `month` の境界はサーバのタイムゾーン（Asia/Tokyo）基準で算出します。
-	// `range` を指定した場合は `from` / `to` が必須で、欠落時は 400 を返します。
-	Period *GetDashboardSummaryParamsPeriod `form:"period,omitempty" json:"period,omitempty"`
+	// OrderedAfter 集計対象期間の下限となる瞬時（RFC3339）。**この瞬時を含みます**。
+	// 対象は半開区間 `[orderedAfter, orderedBefore)` で、注文日時がこの区間に入る購入だけを集計します。
+	// 省略すると下限を設けません。`orderedBefore` と併せて省略すると全期間が対象になります。
+	// `orderedBefore` が `orderedAfter` 以前（同値を含む）の場合は 400 を返します。
+	// cursor ページネーションの `after` とは別のパラメータです。
+	OrderedAfter *OrderedAfterParam `form:"orderedAfter,omitempty" json:"orderedAfter,omitempty"`
 
-	// From 集計対象期間の開始日（この日を含みます）。`period=range` のときのみ必須で、それ以外の区分では無視します。
-	// 日付はサーバのタイムゾーン（Asia/Tokyo）の暦日として解釈します。
-	From *DashboardFromParam `form:"from,omitempty" json:"from,omitempty"`
-
-	// To 集計対象期間の終了日（この日を含みます）。`period=range` のときのみ必須で、それ以外の区分では無視します。
-	// 日付はサーバのタイムゾーン（Asia/Tokyo）の暦日として解釈します。`from` より前の日付を指定した場合は 400 を返します。
-	To *DashboardToParam `form:"to,omitempty" json:"to,omitempty"`
+	// OrderedBefore 集計対象期間の上限となる瞬時（RFC3339）。**この瞬時を含みません**。
+	// 対象は半開区間 `[orderedAfter, orderedBefore)` で、注文日時がこの区間に入る購入だけを集計します。
+	// 省略すると上限を設けません。`orderedAfter` と併せて省略すると全期間が対象になります。
+	// `orderedBefore` が `orderedAfter` 以前（同値を含む）の場合は 400 を返します。
+	OrderedBefore *OrderedBeforeParam `form:"orderedBefore,omitempty" json:"orderedBefore,omitempty"`
 }
-
-// GetDashboardSummaryParamsPeriod defines parameters for GetDashboardSummary.
-type GetDashboardSummaryParamsPeriod string

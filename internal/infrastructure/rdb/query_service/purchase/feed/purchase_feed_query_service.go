@@ -46,7 +46,7 @@ func New(
 // FindFeedByUserID は、指定ユーザーの購入履歴を (ordered_at DESC, id DESC) の安定順で
 // keyset ページネーション取得します。ステータスは購入ステータスマスタ、明細の要約は商品との結合で
 // 解決します。params.AfterOrderedAt / AfterID が nil の場合は先頭ページを、それ以外は境界より過去の行を返します。
-// params.OrderedAfter / OrderedBefore が揃っている場合は、その半開区間に注文された購入だけを返します。
+// params.Window が境界を持つ場合は、その半開区間に注文された購入だけを返します。
 func (s *service) FindFeedByUserID(
 	ctx context.Context, userID uuid.UUID, params query.ListFeedParams,
 ) ([]query.PurchaseFeedReadModel, error) {
@@ -54,15 +54,12 @@ func (s *service) FindFeedByUserID(
 	defer endSpan()
 
 	db := gen.New(driver.New(ctx, s.db))
-	filterByPeriod := params.OrderedAfter != nil && params.OrderedBefore != nil
-
 	if params.AfterOrderedAt == nil || params.AfterID == nil {
 		rows, err := db.ListPurchasesFeedFirst(ctx, &gen.ListPurchasesFeedFirstParams{
-			UserID:         userID,
-			FilterByPeriod: filterByPeriod,
-			OrderedAfter:   params.OrderedAfter,
-			OrderedBefore:  params.OrderedBefore,
-			LimitParam:     params.Limit,
+			UserID:        userID,
+			OrderedAfter:  params.Window.After(),
+			OrderedBefore: params.Window.Before(),
+			LimitParam:    params.Limit,
 		})
 		if err != nil {
 			return nil, pgerror.NormalizeError(err)
@@ -80,9 +77,8 @@ func (s *service) FindFeedByUserID(
 		UserID:         userID,
 		AfterOrderedAt: *params.AfterOrderedAt,
 		AfterID:        *params.AfterID,
-		FilterByPeriod: filterByPeriod,
-		OrderedAfter:   params.OrderedAfter,
-		OrderedBefore:  params.OrderedBefore,
+		OrderedAfter:   params.Window.After(),
+		OrderedBefore:  params.Window.Before(),
 		LimitParam:     params.Limit,
 	})
 	if err != nil {
@@ -97,8 +93,7 @@ func (s *service) FindFeedByUserID(
 	}), nil
 }
 
-// toFeedReadModels は、sqlc が先頭ページと keyset 境界で別々に生成する行型を、呼び出し側が渡す
-// 変換関数で feedRow へ揃えてから読み取りモデルの列へ写像します。
+// toFeedReadModels は、呼び出し側が渡す変換関数で各行を feedRow へ揃えてから読み取りモデルの列へ写像します。
 func toFeedReadModels[T any](rows []T, toRow func(T) feedRow) []query.PurchaseFeedReadModel {
 	items := make([]query.PurchaseFeedReadModel, len(rows))
 	for i, row := range rows {

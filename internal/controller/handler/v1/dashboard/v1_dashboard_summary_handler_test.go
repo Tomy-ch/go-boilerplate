@@ -13,10 +13,9 @@ import (
 	"go-boilerplate/internal/usecase/boundary/auth"
 	dashboarduc "go-boilerplate/internal/usecase/dashboard"
 	mock_dashboarduc "go-boilerplate/internal/usecase/dashboard/mock"
+	"go-boilerplate/internal/usecase/tools/timewindow"
 	"go-boilerplate/pkg/uuid"
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
-
-	openapi_types "github.com/oapi-codegen/runtime/types"
 
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
@@ -93,7 +92,7 @@ func Test_server_GetDashboardSummary(t *testing.T) {
 			userID := uuidtestkit.NewTestFromSalt(t, "hd_user")
 			view := summaryViewFixture(t)
 			uc.EXPECT().GetDashboardSummary(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ context.Context, authn *auth.Authn, _ dashboarduc.GetSummaryParams) (dashboarduc.SummaryView, error) {
+				func(_ context.Context, authn *auth.Authn, _ timewindow.Window) (dashboarduc.SummaryView, error) {
 					uid, uerr := authn.UserID()
 					require.NoError(t, uerr)
 					assert.Equal(t, userID, uid)
@@ -114,42 +113,84 @@ func Test_server_GetDashboardSummary(t *testing.T) {
 			assert.Equal(t, int64(2), r.PurchaseStatusCounts[0].Count)
 		})
 
-		t.Run("period・from・toのクエリパラメータをユースケース入力へそのまま渡す", func(t *testing.T) {
+		t.Run("orderedAfter・orderedBeforeのクエリパラメータを対象期間へ変換して渡す", func(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
 			uc := mock_dashboarduc.NewMockUsecase(ctrl)
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
 
-			period := gen.GetDashboardSummaryParamsPeriodRange
-			from := openapi_types.Date{Time: time.Date(2026, time.July, 1, 0, 0, 0, 0, time.UTC)}
-			to := openapi_types.Date{Time: time.Date(2026, time.July, 31, 0, 0, 0, 0, time.UTC)}
+			after := time.Date(2026, time.July, 1, 0, 0, 0, 0, time.UTC)
+			before := time.Date(2026, time.August, 1, 0, 0, 0, 0, time.UTC)
 
-			var captured dashboarduc.GetSummaryParams
+			var captured timewindow.Window
 			uc.EXPECT().GetDashboardSummary(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ context.Context, _ *auth.Authn, p dashboarduc.GetSummaryParams) (dashboarduc.SummaryView, error) {
-					captured = p
+				func(_ context.Context, _ *auth.Authn, w timewindow.Window) (dashboarduc.SummaryView, error) {
+					captured = w
 					return dashboarduc.SummaryView{}, nil
 				})
 
 			_, err := s.GetDashboardSummary(
 				authnContext(t, uuidtestkit.NewTestFromSalt(t, "hd_params")),
 				gen.GetDashboardSummaryRequestObject{
-					Params: gen.GetDashboardSummaryParams{Period: &period, From: &from, To: &to},
+					Params: gen.GetDashboardSummaryParams{OrderedAfter: &after, OrderedBefore: &before},
 				},
 			)
 			require.NoError(t, err)
 
-			assert.Equal(t, "range", captured.Period)
-			require.NotNil(t, captured.From)
-			require.NotNil(t, captured.To)
-			assert.Equal(t, from.Time, *captured.From)
-			assert.Equal(t, to.Time, *captured.To)
+			require.NotNil(t, captured.After())
+			require.NotNil(t, captured.Before())
+			assert.Equal(t, after, *captured.After())
+			assert.Equal(t, before, *captured.Before())
+		})
+
+		t.Run("期間のクエリパラメータ未指定は境界を持たない対象期間として渡す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			uc := mock_dashboarduc.NewMockUsecase(ctrl)
+			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
+
+			var captured timewindow.Window
+			uc.EXPECT().GetDashboardSummary(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, _ *auth.Authn, w timewindow.Window) (dashboarduc.SummaryView, error) {
+					captured = w
+					return dashboarduc.SummaryView{}, nil
+				})
+
+			_, err := s.GetDashboardSummary(
+				authnContext(t, uuidtestkit.NewTestFromSalt(t, "hd_noparams")),
+				gen.GetDashboardSummaryRequestObject{},
+			)
+			require.NoError(t, err)
+
+			assert.Nil(t, captured.After())
+			assert.Nil(t, captured.Before())
 		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
+
+		t.Run("orderedBeforeがorderedAfter以前の場合、ユースケースを呼ばずErrInvalidArgumentを返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			uc := mock_dashboarduc.NewMockUsecase(ctrl)
+			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
+			uc.EXPECT().GetDashboardSummary(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+
+			after := time.Date(2026, time.August, 1, 0, 0, 0, 0, time.UTC)
+			before := time.Date(2026, time.July, 1, 0, 0, 0, 0, time.UTC)
+
+			_, err := s.GetDashboardSummary(
+				authnContext(t, uuidtestkit.NewTestFromSalt(t, "hd_badwindow")),
+				gen.GetDashboardSummaryRequestObject{
+					Params: gen.GetDashboardSummaryParams{OrderedAfter: &after, OrderedBefore: &before},
+				},
+			)
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+		})
 
 		t.Run("認証情報が無い場合、ErrUnauthenticatedUserを返す", func(t *testing.T) {
 			t.Parallel()
@@ -177,42 +218,6 @@ func Test_server_GetDashboardSummary(t *testing.T) {
 				gen.GetDashboardSummaryRequestObject{},
 			)
 			require.ErrorIs(t, err, apperror.ErrPermissionDenied)
-		})
-	})
-}
-
-func Test_periodParam(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("未指定は空文字、指定時はその文字列を返す", func(t *testing.T) {
-			t.Parallel()
-
-			month := gen.GetDashboardSummaryParamsPeriodMonth
-
-			assert.Empty(t, periodParam(nil))
-			assert.Equal(t, "month", periodParam(&month))
-		})
-	})
-}
-
-func Test_dateParam(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("未指定はnil、指定時は暦日の時刻を返す", func(t *testing.T) {
-			t.Parallel()
-
-			date := openapi_types.Date{Time: time.Date(2026, time.July, 1, 0, 0, 0, 0, time.UTC)}
-
-			assert.Nil(t, dateParam(nil))
-			got := dateParam(&date)
-			require.NotNil(t, got)
-			assert.Equal(t, date.Time, *got)
 		})
 	})
 }

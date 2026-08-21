@@ -1,6 +1,7 @@
 // サンプルAPI削除の対象を宣言する manifest（データ定義）。マーカー除去ロジックは sample-api.ts を参照。
 // 拡張手順は scripts/README.md（sample-api マーカーブロック）を参照。
 // core 基盤の idempotency_keys（migration 000001）と outbox（migration 000002）はこのマニフェストの削除対象に含まれない。
+// internal/usecase/tools/ 配下の汎用 usecase ツール（paging / search / money / timewindow）もサンプル固有ではなく対象に含まれない。
 
 /** 1 ドメイン分の削除宣言。`paths` はリポジトリルートからの相対パス。 */
 export type SampleDomain = {
@@ -304,6 +305,12 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "openapi/components/requests/purchases",
       "openapi/components/responses/purchases",
       "openapi/components/parameters/purchase",
+      // orderedAfter / orderedBefore は購入の orderedAt に由来する名前で、
+      // dashboard / purchases / product-ranking が共有するがサンプル固有である
+      // （ドメイン中立な pagination / idempotency とは異なり、削除対象に含める）。
+      // 一方 internal/usecase/tools/timewindow は対象外（半開区間の形そのものは注文日時に
+      // 依存しない。汎用ツールの扱いは冒頭参照）。
+      "openapi/components/parameters/period",
       "openapi/components/schemas/PurchaseResponse.yaml",
       "openapi/components/schemas/PurchaseCancelResponse.yaml",
       "openapi/components/schemas/PurchasePayResponse.yaml",
@@ -316,7 +323,6 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "openapi/components/schemas/PurchaseDetailInput.yaml",
       "openapi/components/schemas/PurchaseStatusRef.yaml",
       "openapi/components/schemas/PurchaseStatusBreakdownResponse.yaml",
-      "openapi/components/schemas/PurchasePeriodResponse.yaml",
       "openapi/components/schemas/PurchaseGroupResponse.yaml",
       "openapi/components/schemas/PurchaseSubGroupResponse.yaml",
       // spec
@@ -346,7 +352,7 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "internal/di/module/token.go",
       "internal/di/module/token_test.go",
 
-      // OpenAPI（components/ 直下はディレクトリ指定では消えないため個別に挙げる）
+      // OpenAPI（components/ 直下は個別列挙。理由は userRole エントリの RoleRef.yaml 注記を参照）
       "openapi/paths/v1/carts",
       "openapi/components/parameters/cart",
       "openapi/components/requests/carts",
@@ -377,8 +383,8 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "openapi/components/responses/exchange-rates",
       "openapi/components/schemas/exchange-rates",
 
-      // internal/usecase/tools/money は paging/search と同様の汎用 usecase ツールであり
-      // サンプル削除対象に含めない（後続 purchases も再利用する恒久ヘルパ）。
+      // internal/usecase/tools/money は対象外（後続 purchases も再利用する恒久ヘルパ。
+      // 汎用ツールの扱いは冒頭参照）。
 
       // spec
       "docs/spec/exchange-rate",
@@ -414,12 +420,11 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "internal/integration/v1_dashboard_summary_test.go",
       // DML
       "database/dml/query_service/dashboard",
-      // 生成物（sqlc。openapi.yaml / DI 各ファイルの登録はマーカーで除去される）
+      // 生成物（sqlc。詳細は order エントリ参照）
       "internal/infrastructure/rdb/sqlc/gen/dashboard_query_service.gen.sql.go",
       "database/gen/dashboard_query_service.gen.sql",
       // OpenAPI
       "openapi/paths/v1/dashboard",
-      "openapi/components/parameters/dashboard",
       "openapi/components/responses/dashboard",
       "openapi/components/schemas/dashboard",
 

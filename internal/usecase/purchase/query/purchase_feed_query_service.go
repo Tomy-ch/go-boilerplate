@@ -6,6 +6,7 @@ import (
 	"context"
 	"time"
 
+	"go-boilerplate/internal/usecase/tools/timewindow"
 	"go-boilerplate/pkg/uuid"
 )
 
@@ -17,7 +18,7 @@ type PurchaseFeedQueryService interface {
 	// keyset ページネーション取得します。ステータスは購入ステータスマスタ、明細の要約は商品との
 	// 結合で解決します。所有権は本サービス側の絞り込みで担保します。
 	// params.AfterOrderedAt / AfterID が nil の場合は先頭ページを返します。
-	// params.OrderedAfter / OrderedBefore が揃っている場合は、その半開区間に注文された購入だけを返します。
+	// params.Window が境界を持つ場合は、その半開区間に注文された購入だけを返します。
 	FindFeedByUserID(ctx context.Context, userID uuid.UUID, params ListFeedParams) ([]PurchaseFeedReadModel, error)
 }
 
@@ -30,10 +31,8 @@ type ListFeedParams struct {
 	AfterOrderedAt *time.Time
 	// AfterID は、keyset 境界となる購入 ID です。先頭ページでは nil です。
 	AfterID *uuid.UUID
-	// OrderedAfter / OrderedBefore は、注文日時で絞り込む半開区間 [OrderedAfter, OrderedBefore) です。
-	// 期間で絞り込まない場合はいずれも nil で、片方だけを指定した場合も絞り込みません。
-	OrderedAfter  *time.Time
-	OrderedBefore *time.Time
+	// Window は、注文日時で絞り込む対象期間です。境界を持たない側には制限を設けません。
+	Window timewindow.Window
 }
 
 // PurchaseFeedReadModel は、購入履歴一覧の 1 件分の読み取りモデルです。

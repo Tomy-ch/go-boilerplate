@@ -12,6 +12,7 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/purchase/query"
+	"go-boilerplate/internal/usecase/tools/timewindow"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/stretchr/testify/assert"
@@ -109,6 +110,14 @@ func insertPurchase(ctx context.Context, t *testing.T, db driver.DBTX, id, userI
 	insertFeedProduct(ctx, t, db, defaultProductID, defaultProductName)
 	detailSeq++
 	insertPurchaseDetail(ctx, t, db, id, defaultProductID, detailSeq)
+}
+
+// mustWindow は、境界の指定から検証済みの対象期間を組み立てます。
+func mustWindow(t *testing.T, bounds timewindow.Bounds) timewindow.Window {
+	t.Helper()
+	w, err := timewindow.New(bounds)
+	require.NoError(t, err)
+	return w
 }
 
 func Test_service_FindFeedByUserID(t *testing.T) {
@@ -228,9 +237,8 @@ func Test_service_FindFeedByUserID(t *testing.T) {
 				after := base.Add(-time.Hour)
 				before := base.Add(time.Hour)
 				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{
-					Limit:         10,
-					OrderedAfter:  &after,
-					OrderedBefore: &before,
+					Limit:  10,
+					Window: mustWindow(t, timewindow.Bounds{After: &after, Before: &before}),
 				})
 				require.NoError(t, err)
 				require.Len(t, got, 1)
@@ -257,8 +265,7 @@ func Test_service_FindFeedByUserID(t *testing.T) {
 					Limit:          10,
 					AfterOrderedAt: &orderedAt,
 					AfterID:        &id,
-					OrderedAfter:   &after,
-					OrderedBefore:  &before,
+					Window:         mustWindow(t, timewindow.Bounds{After: &after, Before: &before}),
 				})
 				require.NoError(t, err)
 				require.Len(t, got, 1)
@@ -266,7 +273,7 @@ func Test_service_FindFeedByUserID(t *testing.T) {
 			})
 		})
 
-		t.Run("開始日だけを指定した場合は絞り込まない", func(t *testing.T) {
+		t.Run("下限だけを指定した場合はその瞬時以降だけを返す", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
@@ -275,18 +282,22 @@ func Test_service_FindFeedByUserID(t *testing.T) {
 				insertPurchase(ctx, t, drv, tieHigh, owner, statusCompletedID, 100, base)
 				insertPurchase(ctx, t, drv, old, owner, statusCompletedID, 400, base.Add(-24*time.Hour))
 
-				// 片側だけの指定は絞り込みなしとして扱う契約。境界が NULL のまま述語へ入ると全件が消える。
+				// 下限ちょうどの行を置くことで >= が > に化けた場合もここが赤くなる。
 				after := base.Add(-time.Hour)
+				insertPurchase(ctx, t, drv, mid, owner, statusCompletedID, 200, after)
+
 				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{
-					Limit:        10,
-					OrderedAfter: &after,
+					Limit:  10,
+					Window: mustWindow(t, timewindow.Bounds{After: &after}),
 				})
 				require.NoError(t, err)
-				assert.Len(t, got, 2)
+				require.Len(t, got, 2)
+				assert.Equal(t, mustParse(tieHigh), got[0].ID)
+				assert.Equal(t, mustParse(mid), got[1].ID)
 			})
 		})
 
-		t.Run("終了日だけを指定した場合も絞り込まない", func(t *testing.T) {
+		t.Run("上限だけを指定した場合はその瞬時より前だけを返す", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
@@ -295,14 +306,18 @@ func Test_service_FindFeedByUserID(t *testing.T) {
 				insertPurchase(ctx, t, drv, tieHigh, owner, statusCompletedID, 100, base)
 				insertPurchase(ctx, t, drv, old, owner, statusCompletedID, 400, base.Add(-24*time.Hour))
 
-				// 開始日側と対称であることを固定する。片側判定が非対称に壊れてもここが赤くなる。
+				// 下限側と対称であることを固定する。片側の述語だけが壊れてもここが赤くなる。
+				// 上限ちょうどの行を置くことで < が <= に化けた場合もここが赤くなる。
 				before := base.Add(-time.Hour)
+				insertPurchase(ctx, t, drv, mid, owner, statusCompletedID, 200, before)
+
 				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{
-					Limit:         10,
-					OrderedBefore: &before,
+					Limit:  10,
+					Window: mustWindow(t, timewindow.Bounds{Before: &before}),
 				})
 				require.NoError(t, err)
-				assert.Len(t, got, 2)
+				require.Len(t, got, 1)
+				assert.Equal(t, mustParse(old), got[0].ID)
 			})
 		})
 

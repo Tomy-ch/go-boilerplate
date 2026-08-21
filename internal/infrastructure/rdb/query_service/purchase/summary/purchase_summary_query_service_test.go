@@ -10,7 +10,8 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
-	"go-boilerplate/internal/usecase/purchase/period"
+	"go-boilerplate/internal/usecase/tools/timewindow"
+	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/stretchr/testify/assert"
@@ -32,7 +33,6 @@ const (
 // テスト基準日。seed が投入する購入履歴は削除するため、実時刻から離れた固定日でよい。
 var (
 	testBaseDay = time.Date(2026, time.January, 25, 12, 0, 0, 0, time.UTC)
-	testLoc     = time.FixedZone("TEST+09", 9*60*60)
 )
 
 func mustParse(t *testing.T, s string) uuid.UUID {
@@ -42,10 +42,10 @@ func mustParse(t *testing.T, s string) uuid.UUID {
 	return id
 }
 
-// testWindow は、両端を含む暦日から絞り込み済みの対象期間を組み立てます。
-func testWindow(t *testing.T, from, to time.Time) period.Window {
+// testWindow は、境界の指定から検証済みの対象期間を組み立てます。
+func testWindow(t *testing.T, bounds timewindow.Bounds) timewindow.Window {
 	t.Helper()
-	w, err := period.Resolve(period.Spec{Kind: period.KindRange, From: &from, To: &to}, time.Time{}, testLoc)
+	w, err := timewindow.New(bounds)
 	require.NoError(t, err)
 	return w
 }
@@ -129,7 +129,7 @@ func Test_service_SummarizeByUserID(t *testing.T) {
 				insertPurchase(ctx, t, drv, userA, mustParse(t, seedUnprocessedSID), "sm-unproc-1", 150)
 				insertPurchase(ctx, t, drv, userA, mustParse(t, seedUnprocessedSID), "sm-unproc-2", 250)
 
-				got, err := svc.SummarizeByUserID(ctx, userA, period.Window{})
+				got, err := svc.SummarizeByUserID(ctx, userA, timewindow.Window{})
 				require.NoError(t, err)
 				require.Len(t, got, 2)
 
@@ -159,7 +159,7 @@ func Test_service_SummarizeByUserID(t *testing.T) {
 				insertPurchase(ctx, t, drv, userB, mustParse(t, seedUnprocessedSID), "sm-other-1", 999)
 				insertPurchase(ctx, t, drv, userB, mustParse(t, seedPaidSID), "sm-other-2", 999)
 
-				got, err := svc.SummarizeByUserID(ctx, userA, period.Window{})
+				got, err := svc.SummarizeByUserID(ctx, userA, timewindow.Window{})
 				require.NoError(t, err)
 				require.Len(t, got, 1)
 				assert.Equal(t, int64(1), got[0].Count)
@@ -178,7 +178,7 @@ func Test_service_SummarizeByUserID(t *testing.T) {
 				insertPurchaseAt(ctx, t, drv, userA, mustParse(t, seedCanceledSID), "sm-canceled-1", 400, testBaseDay, &canceledAt)
 				insertPurchase(ctx, t, drv, userA, mustParse(t, seedUnprocessedSID), "sm-live-1", 100)
 
-				got, err := svc.SummarizeByUserID(ctx, userA, period.Window{})
+				got, err := svc.SummarizeByUserID(ctx, userA, timewindow.Window{})
 				require.NoError(t, err)
 				// キャンセルは 1 要素としても現れないため、内訳の総和は総件数と常に一致する。
 				require.Len(t, got, 1)
@@ -201,7 +201,9 @@ func Test_service_SummarizeByUserID(t *testing.T) {
 				insertPurchaseAt(ctx, t, drv, userA, statusID, "sm-inside", 200, testBaseDay, nil)
 				insertPurchaseAt(ctx, t, drv, userA, statusID, "sm-after", 400, testBaseDay.AddDate(0, 0, 10), nil)
 
-				window := testWindow(t, testBaseDay.AddDate(0, 0, -1), testBaseDay.AddDate(0, 0, 1))
+				window := testWindow(t, timewindow.Bounds{
+					After: ptr.To(testBaseDay.AddDate(0, 0, -1)), Before: ptr.To(testBaseDay.AddDate(0, 0, 1)),
+				})
 				got, err := svc.SummarizeByUserID(ctx, userA, window)
 				require.NoError(t, err)
 				require.Len(t, got, 1)
@@ -210,22 +212,62 @@ func Test_service_SummarizeByUserID(t *testing.T) {
 			})
 		})
 
-		t.Run("対象期間は終了日の当日中に注文された購入も含む", func(t *testing.T) {
+		t.Run("下限の瞬時ちょうどに注文された購入を含み上限の瞬時ちょうどは含まない", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
 				clearSeededPurchases(ctx, t, drv)
 				userA := mustParse(t, seedUserA)
-				// loc の暦日で終了日の 23:00 に相当する時刻。上限が終了日 00:00 だと取りこぼす境界。
-				lateOnEndDay := time.Date(2026, time.January, 25, 23, 0, 0, 0, testLoc)
-				insertPurchaseAt(ctx, t, drv, userA, mustParse(t, seedUnprocessedSID), "sm-late", 700, lateOnEndDay, nil)
+				statusID := mustParse(t, seedUnprocessedSID)
+				upper := testBaseDay.AddDate(0, 0, 1)
+				insertPurchaseAt(ctx, t, drv, userA, statusID, "sm-lower", 700, testBaseDay, nil)
+				insertPurchaseAt(ctx, t, drv, userA, statusID, "sm-upper", 900, upper, nil)
 
-				window := testWindow(t, testBaseDay, testBaseDay)
+				window := testWindow(t, timewindow.Bounds{After: &testBaseDay, Before: &upper})
 				got, err := svc.SummarizeByUserID(ctx, userA, window)
 				require.NoError(t, err)
 				require.Len(t, got, 1)
 				assert.Equal(t, int64(700), got[0].TotalAmount)
+			})
+		})
+
+		t.Run("下限だけを指定した場合はその瞬時以降だけを集計する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
+				userA := mustParse(t, seedUserA)
+				statusID := mustParse(t, seedUnprocessedSID)
+				insertPurchaseAt(ctx, t, drv, userA, statusID, "sm-old", 100, testBaseDay.AddDate(0, 0, -10), nil)
+				insertPurchaseAt(ctx, t, drv, userA, statusID, "sm-new", 200, testBaseDay, nil)
+
+				window := testWindow(t, timewindow.Bounds{After: &testBaseDay})
+				got, err := svc.SummarizeByUserID(ctx, userA, window)
+				require.NoError(t, err)
+				require.Len(t, got, 1)
+				assert.Equal(t, int64(200), got[0].TotalAmount)
+			})
+		})
+
+		t.Run("上限だけを指定した場合はその瞬時より前だけを集計する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
+				userA := mustParse(t, seedUserA)
+				statusID := mustParse(t, seedUnprocessedSID)
+				insertPurchaseAt(ctx, t, drv, userA, statusID, "sm-before", 300, testBaseDay.AddDate(0, 0, -1), nil)
+				insertPurchaseAt(ctx, t, drv, userA, statusID, "sm-onbound", 400, testBaseDay, nil)
+
+				// 下限側と対称であることを固定する。片側の述語だけが壊れてもここが赤くなる。
+				window := testWindow(t, timewindow.Bounds{Before: &testBaseDay})
+				got, err := svc.SummarizeByUserID(ctx, userA, window)
+				require.NoError(t, err)
+				require.Len(t, got, 1)
+				assert.Equal(t, int64(300), got[0].TotalAmount)
 			})
 		})
 
@@ -235,7 +277,7 @@ func Test_service_SummarizeByUserID(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				clearSeededPurchases(ctx, t, driver.New(ctx, testDB))
 
-				got, err := svc.SummarizeByUserID(ctx, mustParse(t, seedUserB), period.Window{})
+				got, err := svc.SummarizeByUserID(ctx, mustParse(t, seedUserB), timewindow.Window{})
 				require.NoError(t, err)
 				assert.Empty(t, got)
 			})
@@ -248,7 +290,7 @@ func Test_service_SummarizeByUserID(t *testing.T) {
 		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化して返す", func(t *testing.T) {
 			t.Parallel()
 
-			got, err := svc.SummarizeByUserID(canceledContext(t), mustParse(t, seedUserA), period.Window{})
+			got, err := svc.SummarizeByUserID(canceledContext(t), mustParse(t, seedUserA), timewindow.Window{})
 			require.ErrorIs(t, err, apperror.ErrCanceled)
 			assert.Nil(t, got)
 		})
@@ -278,7 +320,7 @@ func Test_service_SumItemsByUserID(t *testing.T) {
 				insertPurchaseDetail(ctx, t, drv, purchaseID, mustParse(t, seedLaptopPID), 1, "800.005")
 				insertPurchaseDetail(ctx, t, drv, purchaseID, mustParse(t, seedBookPID), 3, "10.00")
 
-				got, err := svc.SumItemsByUserID(ctx, userA, period.Window{})
+				got, err := svc.SumItemsByUserID(ctx, userA, timewindow.Window{})
 				require.NoError(t, err)
 				// セントへ切り捨てると 830.00 になる値。丸めを挟まないことを 0.005 の残存で固定する。
 				assert.Equal(t, "830.005", got.String())
@@ -308,10 +350,54 @@ func Test_service_SumItemsByUserID(t *testing.T) {
 				outside := insertPurchaseAt(ctx, t, drv, userA, statusID, "si-outside", 0, testBaseDay.AddDate(0, 0, 10), nil)
 				insertPurchaseDetail(ctx, t, drv, outside, mustParse(t, seedBookPID), 9, "10.00")
 
-				window := testWindow(t, testBaseDay.AddDate(0, 0, -1), testBaseDay.AddDate(0, 0, 1))
+				window := testWindow(t, timewindow.Bounds{
+					After: ptr.To(testBaseDay.AddDate(0, 0, -1)), Before: ptr.To(testBaseDay.AddDate(0, 0, 1)),
+				})
 				got, err := svc.SumItemsByUserID(ctx, userA, window)
 				require.NoError(t, err)
 				assert.Equal(t, "10", got.String())
+			})
+		})
+
+		t.Run("下限だけを指定した場合はその瞬時以降の明細だけを合計する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
+				userA := mustParse(t, seedUserA)
+				statusID := mustParse(t, seedUnprocessedSID)
+
+				old := insertPurchaseAt(ctx, t, drv, userA, statusID, "si-lower-old", 0, testBaseDay.AddDate(0, 0, -10), nil)
+				insertPurchaseDetail(ctx, t, drv, old, mustParse(t, seedBookPID), 9, "10.00")
+				onBound := insertPurchaseAt(ctx, t, drv, userA, statusID, "si-lower-on", 0, testBaseDay, nil)
+				insertPurchaseDetail(ctx, t, drv, onBound, mustParse(t, seedBookPID), 2, "10.00")
+
+				window := testWindow(t, timewindow.Bounds{After: &testBaseDay})
+				got, err := svc.SumItemsByUserID(ctx, userA, window)
+				require.NoError(t, err)
+				assert.Equal(t, "20", got.String())
+			})
+		})
+
+		t.Run("上限だけを指定した場合はその瞬時より前の明細だけを合計する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
+				userA := mustParse(t, seedUserA)
+				statusID := mustParse(t, seedUnprocessedSID)
+
+				before := insertPurchaseAt(ctx, t, drv, userA, statusID, "si-upper-before", 0, testBaseDay.AddDate(0, 0, -1), nil)
+				insertPurchaseDetail(ctx, t, drv, before, mustParse(t, seedBookPID), 3, "10.00")
+				onBound := insertPurchaseAt(ctx, t, drv, userA, statusID, "si-upper-on", 0, testBaseDay, nil)
+				insertPurchaseDetail(ctx, t, drv, onBound, mustParse(t, seedBookPID), 8, "10.00")
+
+				window := testWindow(t, timewindow.Bounds{Before: &testBaseDay})
+				got, err := svc.SumItemsByUserID(ctx, userA, window)
+				require.NoError(t, err)
+				assert.Equal(t, "30", got.String())
 			})
 		})
 
@@ -321,7 +407,7 @@ func Test_service_SumItemsByUserID(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				clearSeededPurchases(ctx, t, driver.New(ctx, testDB))
 
-				got, err := svc.SumItemsByUserID(ctx, mustParse(t, seedUserB), period.Window{})
+				got, err := svc.SumItemsByUserID(ctx, mustParse(t, seedUserB), timewindow.Window{})
 				require.NoError(t, err)
 				assert.True(t, got.IsZero())
 			})
@@ -334,7 +420,7 @@ func Test_service_SumItemsByUserID(t *testing.T) {
 		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化して返す", func(t *testing.T) {
 			t.Parallel()
 
-			got, err := svc.SumItemsByUserID(canceledContext(t), mustParse(t, seedUserA), period.Window{})
+			got, err := svc.SumItemsByUserID(canceledContext(t), mustParse(t, seedUserA), timewindow.Window{})
 			require.ErrorIs(t, err, apperror.ErrCanceled)
 			assert.True(t, got.IsZero())
 		})
@@ -369,7 +455,7 @@ func Test_service_SummarizeItemsByProductByUserID(t *testing.T) {
 				second := insertPurchaseAt(ctx, t, drv, userA, statusID, "sp-2", 0, testBaseDay, nil)
 				insertPurchaseDetail(ctx, t, drv, second, mustParse(t, seedLaptopPID), 2, "800.00")
 
-				got, err := svc.SummarizeItemsByProductByUserID(ctx, userA, period.Window{})
+				got, err := svc.SummarizeItemsByProductByUserID(ctx, userA, timewindow.Window{})
 				require.NoError(t, err)
 				require.Len(t, got, 2)
 
@@ -395,7 +481,7 @@ func Test_service_SummarizeItemsByProductByUserID(t *testing.T) {
 				insertPurchaseDetail(ctx, t, drv, purchaseID, mustParse(t, seedLaptopPID), 1, "800.00")
 				insertPurchaseDetail(ctx, t, drv, purchaseID, mustParse(t, seedTabletPID), 1, "400.00")
 
-				got, err := svc.SummarizeItemsByProductByUserID(ctx, userA, period.Window{})
+				got, err := svc.SummarizeItemsByProductByUserID(ctx, userA, timewindow.Window{})
 				require.NoError(t, err)
 				require.Len(t, got, 2)
 				assert.Equal(t, "電子機器", got[0].CategoryName)
@@ -427,7 +513,9 @@ func Test_service_SummarizeItemsByProductByUserID(t *testing.T) {
 				outside := insertPurchaseAt(ctx, t, drv, userA, statusID, "sp-outside", 0, testBaseDay.AddDate(0, 0, 10), nil)
 				insertPurchaseDetail(ctx, t, drv, outside, mustParse(t, seedTabletPID), 1, "400.00")
 
-				window := testWindow(t, testBaseDay.AddDate(0, 0, -1), testBaseDay.AddDate(0, 0, 1))
+				window := testWindow(t, timewindow.Bounds{
+					After: ptr.To(testBaseDay.AddDate(0, 0, -1)), Before: ptr.To(testBaseDay.AddDate(0, 0, 1)),
+				})
 				got, err := svc.SummarizeItemsByProductByUserID(ctx, userA, window)
 				require.NoError(t, err)
 				require.Len(t, got, 1)
@@ -446,10 +534,54 @@ func Test_service_SummarizeItemsByProductByUserID(t *testing.T) {
 				// Lenovo Tab P12 は published_at が NULL。売上ランキングと違い購入実績は現在の公開状態に依存しない。
 				insertPurchaseDetail(ctx, t, drv, purchaseID, mustParse(t, seedTabletPID), 1, "400.00")
 
-				got, err := svc.SummarizeItemsByProductByUserID(ctx, userA, period.Window{})
+				got, err := svc.SummarizeItemsByProductByUserID(ctx, userA, timewindow.Window{})
 				require.NoError(t, err)
 				require.Len(t, got, 1)
 				assert.Equal(t, mustParse(t, seedTabletPID), got[0].ProductID)
+			})
+		})
+
+		t.Run("下限だけを指定した場合はその瞬時以降の明細だけを集計する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
+				userA := mustParse(t, seedUserA)
+				statusID := mustParse(t, seedUnprocessedSID)
+
+				old := insertPurchaseAt(ctx, t, drv, userA, statusID, "sp-lower-old", 0, testBaseDay.AddDate(0, 0, -10), nil)
+				insertPurchaseDetail(ctx, t, drv, old, mustParse(t, seedBookPID), 9, "10.00")
+				onBound := insertPurchaseAt(ctx, t, drv, userA, statusID, "sp-lower-on", 0, testBaseDay, nil)
+				insertPurchaseDetail(ctx, t, drv, onBound, mustParse(t, seedBookPID), 2, "10.00")
+
+				window := testWindow(t, timewindow.Bounds{After: &testBaseDay})
+				got, err := svc.SummarizeItemsByProductByUserID(ctx, userA, window)
+				require.NoError(t, err)
+				require.Len(t, got, 1)
+				assert.Equal(t, "20", got[0].ItemsTotal.String())
+			})
+		})
+
+		t.Run("上限だけを指定した場合はその瞬時より前の明細だけを集計する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
+				userA := mustParse(t, seedUserA)
+				statusID := mustParse(t, seedUnprocessedSID)
+
+				before := insertPurchaseAt(ctx, t, drv, userA, statusID, "sp-upper-before", 0, testBaseDay.AddDate(0, 0, -1), nil)
+				insertPurchaseDetail(ctx, t, drv, before, mustParse(t, seedBookPID), 3, "10.00")
+				onBound := insertPurchaseAt(ctx, t, drv, userA, statusID, "sp-upper-on", 0, testBaseDay, nil)
+				insertPurchaseDetail(ctx, t, drv, onBound, mustParse(t, seedBookPID), 8, "10.00")
+
+				window := testWindow(t, timewindow.Bounds{Before: &testBaseDay})
+				got, err := svc.SummarizeItemsByProductByUserID(ctx, userA, window)
+				require.NoError(t, err)
+				require.Len(t, got, 1)
+				assert.Equal(t, "30", got[0].ItemsTotal.String())
 			})
 		})
 
@@ -459,7 +591,7 @@ func Test_service_SummarizeItemsByProductByUserID(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				clearSeededPurchases(ctx, t, driver.New(ctx, testDB))
 
-				got, err := svc.SummarizeItemsByProductByUserID(ctx, mustParse(t, seedUserB), period.Window{})
+				got, err := svc.SummarizeItemsByProductByUserID(ctx, mustParse(t, seedUserB), timewindow.Window{})
 				require.NoError(t, err)
 				assert.Empty(t, got)
 			})
@@ -472,42 +604,9 @@ func Test_service_SummarizeItemsByProductByUserID(t *testing.T) {
 		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化して返す", func(t *testing.T) {
 			t.Parallel()
 
-			got, err := svc.SummarizeItemsByProductByUserID(canceledContext(t), mustParse(t, seedUserA), period.Window{})
+			got, err := svc.SummarizeItemsByProductByUserID(canceledContext(t), mustParse(t, seedUserA), timewindow.Window{})
 			require.ErrorIs(t, err, apperror.ErrCanceled)
 			assert.Nil(t, got)
-		})
-	})
-}
-
-func Test_bounds(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("絞り込む期間は半開区間の両端をポインタで渡す", func(t *testing.T) {
-			t.Parallel()
-
-			window := testWindow(t, testBaseDay, testBaseDay)
-			filter, after, before := bounds(window)
-
-			assert.True(t, filter)
-			require.NotNil(t, after)
-			require.NotNil(t, before)
-			expectedAfter, expectedBefore := window.Bounds()
-			assert.True(t, expectedAfter.Equal(*after))
-			assert.True(t, expectedBefore.Equal(*before))
-		})
-
-		t.Run("絞り込まない期間は境界をNULLのまま渡しフラグだけで述語を無効にする", func(t *testing.T) {
-			t.Parallel()
-
-			// 境界に値を入れてフラグだけ false にすると、SQL 側の OR 短絡が壊れたときに気づけない。
-			filter, after, before := bounds(period.Window{})
-
-			assert.False(t, filter)
-			assert.Nil(t, after)
-			assert.Nil(t, before)
 		})
 	})
 }

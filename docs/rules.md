@@ -338,6 +338,30 @@ Per-layer application: `internal/domain/README.md` (attribute structs on entitie
 - Type names may keep the aggregate noun inside a same-named package
   (`category.Category`, `prefecture.Prefecture`).
 
+## New Type Derivation
+
+Before placing a new type or package, find the existing one that plays the **same mechanical role** —
+not the one with a similar name, the one with the same shape — and derive from it. A precedent of the
+same shape has already settled where it lives, how it is constructed, and who calls it; re-deciding
+those turns a derivable answer into an open design question, and lets one mechanism acquire two
+different forms in the same repository.
+
+Search by role, not by name: *normalizing request input*, *converting at a boundary*, *identifying a
+row*, *carrying a quantity*. `paging.Page` and `timewindow.Window` are the worked example — both
+normalize a request parameter into a Usecase-tier value object with unexported fields, a validating
+constructor returning `apperror.ErrInvalidArgument`, and a call site in the handler. Deriving the
+second from the first fixes all four properties at once, including the negative one:
+`internal/controller/conv` wraps neither, so neither is wrapped.
+
+The derivation also answers questions the new type never asked. `internal/usecase/tools/money`
+carries a written note that it is kept out of sample removal because it is a generic Usecase tool
+like `paging` / `search`; a new `tools/` package inherits that disposition rather than re-arguing it.
+
+Open placement as a design question only when no isomorphic mechanism exists. This is a different
+question from the duplicate check in the task protocol ("verify no existing implementation already
+covers it"): that one asks whether the thing already exists, this one asks what shape it must take
+when it does not.
+
 ## Layer Responsibility Rules
 
 Each layer has a clear responsibility.

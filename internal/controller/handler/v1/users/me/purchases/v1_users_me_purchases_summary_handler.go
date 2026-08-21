@@ -7,16 +7,13 @@ package usersmepurchases
 import (
 	"context"
 
-	"go-boilerplate/internal/controller/conv"
 	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/handler/v1/users/me/purchases/gen"
 	"go-boilerplate/internal/observability"
-	"go-boilerplate/internal/usecase/purchase/period"
 	summaryuc "go-boilerplate/internal/usecase/purchase/summary"
-	"go-boilerplate/pkg/ptr"
+	"go-boilerplate/internal/usecase/tools/timewindow"
 
 	"github.com/labstack/echo/v5"
-	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 type server struct {
@@ -44,8 +41,16 @@ func (s *server) GetUsersMePurchasesSummary(
 		return nil, err
 	}
 
+	window, err := timewindow.New(timewindow.Bounds{
+		After:  request.Params.OrderedAfter,
+		Before: request.Params.OrderedBefore,
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	view, err := s.uc.GetPurchaseSummary(ctx, &authn, summaryuc.GetSummaryParams{
-		Period:  toPeriodSpec(request.Params),
+		Window:  window,
 		GroupBy: toGroupKinds(request.Params.GroupBy),
 	})
 	if err != nil {
@@ -53,21 +58,6 @@ func (s *server) GetUsersMePurchasesSummary(
 	}
 
 	return gen.GetUsersMePurchasesSummary200JSONResponse(toPurchaseAggregateResponse(view)), nil
-}
-
-// toPeriodSpec は、期間指定のクエリパラメータをユースケースの期間指定へ変換します。
-// 区分名の妥当性は OpenAPI の enum が、区分ごとの必須指定の有無はユースケースが判定します。
-func toPeriodSpec(params gen.GetUsersMePurchasesSummaryParams) period.Spec {
-	spec := period.Spec{
-		From:  conv.DatePtr(params.From),
-		To:    conv.DatePtr(params.To),
-		Month: params.Month,
-		Days:  ptr.Map(params.Days, func(v int32) int { return int(v) }),
-	}
-	if params.Period != nil {
-		spec.Kind = period.Kind(*params.Period)
-	}
-	return spec
 }
 
 // toGroupKinds は、グループ化単位のクエリパラメータをユースケースの指定へ変換します。
@@ -99,24 +89,12 @@ func toPurchaseAggregateResponse(view summaryuc.SummaryView) gen.PurchaseAggrega
 	}
 
 	return gen.PurchaseAggregateResponse{
-		Period:          toPurchasePeriodResponse(view.Period),
 		TotalCount:      view.TotalCount,
 		TotalAmount:     view.TotalAmount,
 		ItemsTotal:      view.ItemsTotal.String(),
 		StatusBreakdown: breakdown,
 		Groups:          toGroupsResponse(view.Groups),
 	}
-}
-
-// toPurchasePeriodResponse は、集計に用いた対象期間を HTTP レスポンスへ変換します。
-// 期間で絞り込まなかった場合は、開始日・終了日をいずれも null として返します。
-func toPurchasePeriodResponse(window period.Window) gen.PurchasePeriodResponse {
-	if !window.Filtered() {
-		return gen.PurchasePeriodResponse{}
-	}
-	from := openapi_types.Date{Time: window.From()}
-	to := openapi_types.Date{Time: window.To()}
-	return gen.PurchasePeriodResponse{From: &from, To: &to}
 }
 
 // toGroupsResponse は、グループ化した集計の最上位ノードを HTTP レスポンスへ変換します。

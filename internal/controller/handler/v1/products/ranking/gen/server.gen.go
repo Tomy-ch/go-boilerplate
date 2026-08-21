@@ -32,11 +32,18 @@ func (w *ServerInterfaceWrapper) GetProductsRanking(ctx *echo.Context) error {
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GetProductsRankingParams
-	// ------------- Optional query parameter "period" -------------
+	// ------------- Optional query parameter "orderedAfter" -------------
 
-	err = runtime.BindQueryParameterWithOptions("form", true, false, "period", ctx.QueryParams(), &params.Period, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "orderedAfter", ctx.QueryParams(), &params.OrderedAfter, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter period: %s", err))
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter orderedAfter: %s", err))
+	}
+
+	// ------------- Optional query parameter "orderedBefore" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "orderedBefore", ctx.QueryParams(), &params.OrderedBefore, runtime.BindQueryParameterOptions{Type: "string", Format: "date-time"})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter orderedBefore: %s", err))
 	}
 
 	// ------------- Optional query parameter "limit" -------------

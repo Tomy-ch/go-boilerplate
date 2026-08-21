@@ -10,7 +10,7 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
-	"go-boilerplate/internal/usecase/dashboard/query"
+	"go-boilerplate/internal/usecase/tools/timewindow"
 	"go-boilerplate/pkg/uuid"
 
 	"github.com/stretchr/testify/assert"
@@ -82,11 +82,15 @@ func insertPurchase(
 	require.NoError(t, err)
 }
 
-// todayWindow は、fixedNow が属する暦日 1 日分（testLoc 基準）を表す解決済みの集計対象期間を返します。
-// 期間の解決自体は usecase 層の責務なので、ここでは解決済みの境界を直接組み立てます。
-func todayWindow() query.Window {
+// todayWindow は、fixedNow が属する暦日 1 日分（testLoc 基準）を表す集計対象期間を返します。
+// 相対指定の解決は呼び出し側の責務なので、ここでは境界の瞬時を直接組み立てます。
+func todayWindow(t *testing.T) timewindow.Window {
+	t.Helper()
 	start := time.Date(2026, time.July, 15, 0, 0, 0, 0, testLoc)
-	return query.Window{After: start, Before: start.AddDate(0, 0, 1)}
+	end := start.AddDate(0, 0, 1)
+	w, err := timewindow.New(timewindow.Bounds{After: &start, Before: &end})
+	require.NoError(t, err)
+	return w
 }
 
 func TestNew(t *testing.T) {
@@ -133,7 +137,7 @@ func Test_service_SummarizeSales(t *testing.T) {
 				insertPurchase(ctx, t, drv, mustParse(t, "b1000000-0000-4000-8000-000000000002"),
 					fixedNow, 2500, seedCompletedSID, nil)
 
-				got, err := svc.SummarizeSales(ctx, todayWindow())
+				got, err := svc.SummarizeSales(ctx, todayWindow(t))
 				require.NoError(t, err)
 
 				assert.Equal(t, int64(4000), got.Amount)
@@ -153,7 +157,7 @@ func Test_service_SummarizeSales(t *testing.T) {
 				insertPurchase(ctx, t, drv, mustParse(t, "b2000000-0000-4000-8000-000000000002"),
 					fixedNow, 9999, seedCanceledSID, &canceledAt)
 
-				got, err := svc.SummarizeSales(ctx, todayWindow())
+				got, err := svc.SummarizeSales(ctx, todayWindow(t))
 				require.NoError(t, err)
 
 				assert.Equal(t, int64(1000), got.Amount)
@@ -175,7 +179,7 @@ func Test_service_SummarizeSales(t *testing.T) {
 				insertPurchase(ctx, t, drv, mustParse(t, "b3000000-0000-4000-8000-000000000003"),
 					startOfToday.Add(-time.Nanosecond), 400, seedUnprocessedSID, nil)
 
-				got, err := svc.SummarizeSales(ctx, todayWindow())
+				got, err := svc.SummarizeSales(ctx, todayWindow(t))
 				require.NoError(t, err)
 
 				assert.Equal(t, int64(100), got.Amount)
@@ -183,7 +187,7 @@ func Test_service_SummarizeSales(t *testing.T) {
 			})
 		})
 
-		t.Run("range指定は開始日と終了日の暦日を両端とも集計対象に含める", func(t *testing.T) {
+		t.Run("両端を指定した場合はその半開区間の購入だけを集計する", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
@@ -198,7 +202,75 @@ func Test_service_SummarizeSales(t *testing.T) {
 				insertPurchase(ctx, t, drv, mustParse(t, "b4000000-0000-4000-8000-000000000003"),
 					to.AddDate(0, 0, 1), 400, seedUnprocessedSID, nil)
 
-				got, err := svc.SummarizeSales(ctx, query.Window{After: from, Before: to.AddDate(0, 0, 1)})
+				end := to.AddDate(0, 0, 1)
+				window, werr := timewindow.New(timewindow.Bounds{After: &from, Before: &end})
+				require.NoError(t, werr)
+				got, err := svc.SummarizeSales(ctx, window)
+				require.NoError(t, err)
+
+				assert.Equal(t, int64(300), got.Amount)
+				assert.Equal(t, int64(2), got.Count)
+			})
+		})
+
+		t.Run("下限だけを指定した場合はその瞬時以降だけを集計する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
+				boundary := time.Date(2026, time.July, 15, 0, 0, 0, 0, testLoc)
+				insertPurchase(ctx, t, drv, mustParse(t, "b5000000-0000-4000-8000-000000000001"),
+					boundary, 100, seedUnprocessedSID, nil)
+				insertPurchase(ctx, t, drv, mustParse(t, "b5000000-0000-4000-8000-000000000002"),
+					boundary.Add(-time.Nanosecond), 400, seedUnprocessedSID, nil)
+
+				window, werr := timewindow.New(timewindow.Bounds{After: &boundary})
+				require.NoError(t, werr)
+				got, err := svc.SummarizeSales(ctx, window)
+				require.NoError(t, err)
+
+				assert.Equal(t, int64(100), got.Amount)
+				assert.Equal(t, int64(1), got.Count)
+			})
+		})
+
+		t.Run("上限だけを指定した場合はその瞬時より前だけを集計する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
+				boundary := time.Date(2026, time.July, 15, 0, 0, 0, 0, testLoc)
+				insertPurchase(ctx, t, drv, mustParse(t, "b6000000-0000-4000-8000-000000000001"),
+					boundary.Add(-time.Nanosecond), 100, seedUnprocessedSID, nil)
+				insertPurchase(ctx, t, drv, mustParse(t, "b6000000-0000-4000-8000-000000000002"),
+					boundary, 400, seedUnprocessedSID, nil)
+
+				// 下限側と対称であることを固定する。片側の述語だけが壊れてもここが赤くなる。
+				window, werr := timewindow.New(timewindow.Bounds{Before: &boundary})
+				require.NoError(t, werr)
+				got, err := svc.SummarizeSales(ctx, window)
+				require.NoError(t, err)
+
+				assert.Equal(t, int64(100), got.Amount)
+				assert.Equal(t, int64(1), got.Count)
+			})
+		})
+
+		t.Run("境界を持たない対象期間はすべての購入を集計する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
+				base := time.Date(2026, time.July, 15, 0, 0, 0, 0, testLoc)
+				insertPurchase(ctx, t, drv, mustParse(t, "b7000000-0000-4000-8000-000000000001"),
+					base.AddDate(-1, 0, 0), 100, seedUnprocessedSID, nil)
+				insertPurchase(ctx, t, drv, mustParse(t, "b7000000-0000-4000-8000-000000000002"),
+					base.AddDate(1, 0, 0), 200, seedUnprocessedSID, nil)
+
+				got, err := svc.SummarizeSales(ctx, timewindow.Window{})
 				require.NoError(t, err)
 
 				assert.Equal(t, int64(300), got.Amount)
@@ -212,7 +284,7 @@ func Test_service_SummarizeSales(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				clearSeededPurchases(ctx, t, driver.New(ctx, testDB))
 
-				got, err := svc.SummarizeSales(ctx, todayWindow())
+				got, err := svc.SummarizeSales(ctx, todayWindow(t))
 				require.NoError(t, err)
 
 				assert.Zero(t, got.Amount)
@@ -227,7 +299,7 @@ func Test_service_SummarizeSales(t *testing.T) {
 		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化して返す", func(t *testing.T) {
 			t.Parallel()
 
-			got, err := svc.SummarizeSales(canceledContext(t), todayWindow())
+			got, err := svc.SummarizeSales(canceledContext(t), todayWindow(t))
 			require.ErrorIs(t, err, apperror.ErrCanceled)
 			assert.Zero(t, got.Amount)
 		})
@@ -258,7 +330,7 @@ func Test_service_CountPurchasesByStatus(t *testing.T) {
 				insertPurchase(ctx, t, drv, mustParse(t, "c1000000-0000-4000-8000-000000000003"),
 					fixedNow, 100, seedUnprocessedSID, nil)
 
-				got, err := svc.CountPurchasesByStatus(ctx, todayWindow())
+				got, err := svc.CountPurchasesByStatus(ctx, todayWindow(t))
 				require.NoError(t, err)
 
 				require.Len(t, got, 2)
@@ -283,7 +355,7 @@ func Test_service_CountPurchasesByStatus(t *testing.T) {
 				insertPurchase(ctx, t, drv, mustParse(t, "c2000000-0000-4000-8000-000000000001"),
 					fixedNow, 100, seedCanceledSID, &canceledAt)
 
-				got, err := svc.CountPurchasesByStatus(ctx, todayWindow())
+				got, err := svc.CountPurchasesByStatus(ctx, todayWindow(t))
 				require.NoError(t, err)
 
 				require.Len(t, got, 1)
@@ -303,10 +375,74 @@ func Test_service_CountPurchasesByStatus(t *testing.T) {
 				insertPurchase(ctx, t, drv, mustParse(t, "c3000000-0000-4000-8000-000000000001"),
 					fixedNow.AddDate(0, 0, -1), 100, seedUnprocessedSID, nil)
 
-				got, err := svc.CountPurchasesByStatus(ctx, todayWindow())
+				got, err := svc.CountPurchasesByStatus(ctx, todayWindow(t))
 				require.NoError(t, err)
 
 				assert.Empty(t, got)
+			})
+		})
+
+		t.Run("下限だけを指定した場合はその瞬時以降だけを集計する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
+				boundary := time.Date(2026, time.July, 15, 0, 0, 0, 0, testLoc)
+				insertPurchase(ctx, t, drv, mustParse(t, "b8000000-0000-4000-8000-000000000001"),
+					boundary, 100, seedUnprocessedSID, nil)
+				insertPurchase(ctx, t, drv, mustParse(t, "b8000000-0000-4000-8000-000000000002"),
+					boundary.Add(-time.Nanosecond), 400, seedUnprocessedSID, nil)
+
+				window, werr := timewindow.New(timewindow.Bounds{After: &boundary})
+				require.NoError(t, werr)
+				got, err := svc.CountPurchasesByStatus(ctx, window)
+				require.NoError(t, err)
+
+				require.Len(t, got, 1)
+				assert.Equal(t, int64(1), got[0].Count)
+			})
+		})
+
+		t.Run("上限だけを指定した場合はその瞬時より前だけを集計する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
+				boundary := time.Date(2026, time.July, 15, 0, 0, 0, 0, testLoc)
+				insertPurchase(ctx, t, drv, mustParse(t, "b9000000-0000-4000-8000-000000000001"),
+					boundary.Add(-time.Nanosecond), 100, seedUnprocessedSID, nil)
+				insertPurchase(ctx, t, drv, mustParse(t, "b9000000-0000-4000-8000-000000000002"),
+					boundary, 400, seedUnprocessedSID, nil)
+
+				window, werr := timewindow.New(timewindow.Bounds{Before: &boundary})
+				require.NoError(t, werr)
+				got, err := svc.CountPurchasesByStatus(ctx, window)
+				require.NoError(t, err)
+
+				require.Len(t, got, 1)
+				assert.Equal(t, int64(1), got[0].Count)
+			})
+		})
+
+		t.Run("境界を持たない対象期間はすべての購入を集計する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				clearSeededPurchases(ctx, t, drv)
+				base := time.Date(2026, time.July, 15, 0, 0, 0, 0, testLoc)
+				insertPurchase(ctx, t, drv, mustParse(t, "ba000000-0000-4000-8000-000000000001"),
+					base.AddDate(-1, 0, 0), 100, seedUnprocessedSID, nil)
+				insertPurchase(ctx, t, drv, mustParse(t, "ba000000-0000-4000-8000-000000000002"),
+					base.AddDate(1, 0, 0), 200, seedUnprocessedSID, nil)
+
+				got, err := svc.CountPurchasesByStatus(ctx, timewindow.Window{})
+				require.NoError(t, err)
+
+				require.Len(t, got, 1)
+				assert.Equal(t, int64(2), got[0].Count)
 			})
 		})
 
@@ -316,7 +452,7 @@ func Test_service_CountPurchasesByStatus(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				clearSeededPurchases(ctx, t, driver.New(ctx, testDB))
 
-				got, err := svc.CountPurchasesByStatus(ctx, todayWindow())
+				got, err := svc.CountPurchasesByStatus(ctx, todayWindow(t))
 				require.NoError(t, err)
 
 				assert.Empty(t, got)
@@ -330,7 +466,7 @@ func Test_service_CountPurchasesByStatus(t *testing.T) {
 		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化して返す", func(t *testing.T) {
 			t.Parallel()
 
-			got, err := svc.CountPurchasesByStatus(canceledContext(t), todayWindow())
+			got, err := svc.CountPurchasesByStatus(canceledContext(t), todayWindow(t))
 			require.ErrorIs(t, err, apperror.ErrCanceled)
 			assert.Nil(t, got)
 		})

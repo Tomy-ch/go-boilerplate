@@ -21,9 +21,9 @@ import (
 	"go-boilerplate/internal/usecase/outbox"
 	"go-boilerplate/internal/usecase/purchase/command"
 	"go-boilerplate/internal/usecase/purchase/event"
-	"go-boilerplate/internal/usecase/purchase/period"
 	"go-boilerplate/internal/usecase/purchase/query"
 	"go-boilerplate/internal/usecase/tools/paging"
+	"go-boilerplate/internal/usecase/tools/timewindow"
 	"go-boilerplate/pkg/decimal"
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
@@ -159,8 +159,10 @@ type Usecase interface {
 	CreatePurchase(ctx context.Context, params CreatePurchaseParams) (PurchaseView, error)
 	// GetPurchases は、認証主体（userID）の購入履歴を注文日時降順（cursor ページネーション）で取得します。
 	// 一覧は概要（code / totalAmount / status / orderedAt）のみを返し、他ユーザーの購入は返しません。
-	// spec で注文日時の対象期間を絞り込めます（ゼロ値は全期間）。期間指定が不正な場合は InvalidArgument を返します。
-	GetPurchases(ctx context.Context, userID uuid.UUID, cursor *paging.Cursor, spec period.Spec) (*PurchaseListView, error)
+	// window で注文日時の対象期間を絞り込めます（ゼロ値は全期間）。
+	GetPurchases(
+		ctx context.Context, userID uuid.UUID, cursor *paging.Cursor, window timewindow.Window,
+	) (*PurchaseListView, error)
 	// CancelPurchase は、本人の購入をキャンセルし、明細分の在庫を復元します。キャンセル・在庫復元・
 	// イベント発行は単一 tx で原子的に成立します。他ユーザーの購入・不存在はいずれも存在秘匿のため
 	// NotFound（404）、不正遷移は 409 を返します。
@@ -198,7 +200,6 @@ type usecase struct {
 	feedQS      query.PurchaseFeedQueryService
 	emit        outbox.EmitUsecase
 	clock       clock.Clock
-	loc         *time.Location
 	authorizer  authz.Authorizer
 }
 
@@ -221,7 +222,6 @@ func New(
 	feedQS query.PurchaseFeedQueryService,
 	emit outbox.EmitUsecase,
 	clock clock.Clock,
-	loc *time.Location,
 	authorizer authz.Authorizer,
 	tf observability.TracerFactory,
 ) Usecase {
@@ -236,7 +236,6 @@ func New(
 		feedQS:      feedQS,
 		emit:        emit,
 		clock:       clock,
-		loc:         loc,
 		authorizer:  authorizer,
 	}
 }
@@ -282,7 +281,7 @@ func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParam
 	var created *purchase.Purchase
 	// 最外 tx は idempotency.Run が所有する。ここは nested で同一 tx に乗り、部分適用を防ぐ。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
-		// ロックはユーザー行 → 商品行（id 昇順）の順で取り、順序を全 tx で固定してデッドロックを避ける。
+		// ロック順序（ユーザー行 → 商品行、id 昇順）は docs/spec/purchase/usecase.md の Workflow を参照。
 		if uerr := u.ensurePurchaserActive(ctx, params.UserID); uerr != nil {
 			return uerr
 		}

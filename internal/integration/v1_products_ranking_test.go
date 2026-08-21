@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"testing"
+	"time"
 
 	"go-boilerplate/internal/apperror"
 	productsrankinghandler "go-boilerplate/internal/controller/handler/v1/products/ranking"
@@ -67,7 +68,7 @@ func TestV1ProductsRanking_Integration(t *testing.T) {
 
 			productsrankinghandler.BindHandler(e, tf, mockUC)
 
-			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/products/ranking?period=all&limit=10", nil, nil)
+			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/products/ranking?limit=10", nil, nil)
 			AssertJSONResponseType[gen.ProductRankingResponse](t, actual)
 		})
 
@@ -84,11 +85,11 @@ func TestV1ProductsRanking_Integration(t *testing.T) {
 			productsrankinghandler.BindHandler(e, tf, mockUC)
 			useOpenAPIValidation(t, e)
 
-			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/products/ranking?period=30d&limit=100", nil, nil)
+			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/products/ranking?orderedAfter=2026-01-21T00:00:00Z&limit=100", nil, nil)
 			AssertJSONResponseType[gen.ProductRankingResponse](t, actual)
 		})
 
-		t.Run("GET /v1/products/ranking?limit=3 が limit を usecase へ伝える", func(t *testing.T) {
+		t.Run("GET /v1/products/ranking?limit=3 が limit と対象期間を usecase へ伝える", func(t *testing.T) {
 			t.Parallel()
 
 			e := echo.New()
@@ -99,13 +100,37 @@ func TestV1ProductsRanking_Integration(t *testing.T) {
 			mockUC.EXPECT().GetProductsRanking(gomock.Any(), gomock.Any()).DoAndReturn(
 				func(_ context.Context, params rankinguc.GetRankingParams) (rankinguc.RankingView, error) {
 					assert.Equal(t, 3, params.Limit)
-					assert.Equal(t, "30d", params.Period)
+					require.NotNil(t, params.Window.After())
+					assert.True(t, time.Date(2026, time.January, 21, 0, 0, 0, 0, time.UTC).Equal(*params.Window.After()))
 					return sampleView(t), nil
 				})
 
 			productsrankinghandler.BindHandler(e, tf, mockUC)
 
-			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/products/ranking?period=30d&limit=3", nil, nil)
+			actual := StartServer(t, e).DoJSON(
+				http.MethodGet, "/v1/products/ranking?orderedAfter=2026-01-21T00:00:00Z&limit=3", nil, nil)
+			AssertJSONResponseType[gen.ProductRankingResponse](t, actual)
+		})
+
+		t.Run("廃止したperiodを送っても無視され全期間として扱われる", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			mockUC := mock_ranking.NewMockUsecase(ctrl)
+			mockUC.EXPECT().GetProductsRanking(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, params rankinguc.GetRankingParams) (rankinguc.RankingView, error) {
+					assert.Nil(t, params.Window.After())
+					assert.Nil(t, params.Window.Before())
+					return sampleView(t), nil
+				})
+
+			productsrankinghandler.BindHandler(e, tf, mockUC)
+			useOpenAPIValidation(t, e)
+
+			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/products/ranking?period=30d", nil, nil)
 			AssertJSONResponseType[gen.ProductRankingResponse](t, actual)
 		})
 	})
@@ -134,9 +159,10 @@ func TestV1ProductsRanking_Integration(t *testing.T) {
 			t.Parallel()
 
 			cases := map[string]string{
-				"limitが下限未満(0)":      "/v1/products/ranking?limit=0",
-				"limitが上限超過(101)":    "/v1/products/ranking?limit=101",
-				"periodが列挙外(weekly)": "/v1/products/ranking?period=weekly",
+				"limitが下限未満(0)":         "/v1/products/ranking?limit=0",
+				"limitが上限超過(101)":       "/v1/products/ranking?limit=101",
+				"orderedAfterが日時形式でない":  "/v1/products/ranking?orderedAfter=2026-01-21",
+				"orderedBeforeが日時形式でない": "/v1/products/ranking?orderedBefore=yesterday",
 			}
 			for name, path := range cases {
 				t.Run(name, func(t *testing.T) {

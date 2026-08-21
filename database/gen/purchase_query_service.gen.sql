@@ -40,12 +40,11 @@ ORDER BY d.id;
 -- name: SummarizePurchasesByUserID :many
 -- 指定ユーザーの購入をステータス単位に集計し、購入ステータスマスタの表示順（sort_key 昇順）で返します。
 -- 所有権は user_id の等値条件で閉じるため、他ユーザーの購入は集計に混入しません。
--- 既存の複合インデックス purchases (user_id, ordered_at DESC, id DESC) を使う。filter_by_period=false
--- のときは先頭列（user_id）のみが絞り込みに効きます。
+-- 既存の複合インデックス purchases (user_id, ordered_at DESC, id DESC) を使う。境界を 1 つも指定しない
+-- ときは先頭列（user_id）のみが絞り込みに効きます。
 -- キャンセル済み（canceled_at 設定済み）の購入は除外します。
--- 「キャンセル済み」の定義はドメイン（Purchase.IsCanceled）が持ち、この条件はその実行形です。
--- 述語が見るのは canceled_at ですが、両者は再構築時の不変条件で等価に縛られています。
--- filter_by_period=true の場合は注文日時が半開区間 [ordered_after, ordered_before) の購入だけを集計します。
+-- Purchase.IsCanceled と同値（database/dml/query_service/README.md 参照）。
+-- 注文日時は半開区間 [ordered_after, ordered_before)（internal/usecase/tools/timewindow/README.md）で絞り込みます。
 -- 総件数・合計金額はこの結果行を畳み込んで算出します（単一スナップショットで整合させるため）。
 SELECT
     ps.id AS status_id,
@@ -58,11 +57,12 @@ INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
 WHERE p.user_id = sqlc.arg('user_id')
     AND p.canceled_at IS NULL
     AND (
-        NOT sqlc.arg('filter_by_period')::BOOLEAN
-        OR (
-            p.ordered_at >= sqlc.narg('ordered_after')
-            AND p.ordered_at < sqlc.narg('ordered_before')
-        )
+        p.ordered_at >= sqlc.narg('ordered_after')
+        OR sqlc.narg('ordered_after') IS NULL
+    )
+    AND (
+        p.ordered_at < sqlc.narg('ordered_before')
+        OR sqlc.narg('ordered_before') IS NULL
     )
 GROUP BY ps.id, ps.code, ps.name, ps.sort_key
 ORDER BY ps.sort_key ASC;
@@ -79,18 +79,19 @@ INNER JOIN purchases AS p ON pd.purchase_id = p.id
 WHERE p.user_id = sqlc.arg('user_id')
     AND p.canceled_at IS NULL
     AND (
-        NOT sqlc.arg('filter_by_period')::BOOLEAN
-        OR (
-            p.ordered_at >= sqlc.narg('ordered_after')
-            AND p.ordered_at < sqlc.narg('ordered_before')
-        )
+        p.ordered_at >= sqlc.narg('ordered_after')
+        OR sqlc.narg('ordered_after') IS NULL
+    )
+    AND (
+        p.ordered_at < sqlc.narg('ordered_before')
+        OR sqlc.narg('ordered_before') IS NULL
     );
 
 -- name: SummarizePurchaseItemsByProductByUserID :many
 -- 指定ユーザーの購入明細を商品単位に集計し、商品が属するカテゴリを添えて返します。
 -- 商品は必ず 1 カテゴリに属する（products.category_id は NOT NULL）ため、行は商品単位で一意です。
 -- カテゴリ単位だけを要求された場合も、呼び出し側はこの行をカテゴリで畳み込めば得られます。
--- 金額は価格スケールの正確な decimal で、決済スケールへは丸めません（ADR-0038）。
+-- 金額は価格スケールの正確な decimal です（丸めの扱いは SumPurchaseItemsByUserID と同じ）。
 -- 母集団は SummarizePurchasesByUserID と同一（所有権・キャンセル除外・期間）です。
 -- ランキングと異なり非公開商品も除外しません（購入時点の実績であり、現在の公開状態には依存しないため）。
 -- 並びはカテゴリの表示順・商品名の昇順で安定させます（同名商品は商品 ID で分かれます）。
@@ -106,11 +107,12 @@ INNER JOIN product_categories AS pc ON pr.category_id = pc.id
 WHERE p.user_id = sqlc.arg('user_id')
     AND p.canceled_at IS NULL
     AND (
-        NOT sqlc.arg('filter_by_period')::BOOLEAN
-        OR (
-            p.ordered_at >= sqlc.narg('ordered_after')
-            AND p.ordered_at < sqlc.narg('ordered_before')
-        )
+        p.ordered_at >= sqlc.narg('ordered_after')
+        OR sqlc.narg('ordered_after') IS NULL
+    )
+    AND (
+        p.ordered_at < sqlc.narg('ordered_before')
+        OR sqlc.narg('ordered_before') IS NULL
     )
 GROUP BY pc.id, pc.name, pc.sort_key, pr.id, pr.name
 ORDER BY pc.sort_key ASC, pr.name ASC, pr.id ASC;
@@ -121,7 +123,7 @@ ORDER BY pc.sort_key ASC, pr.name ASC, pr.id ASC;
 -- ページを CTE で先に閉じてから結合するのは、明細の要約を解決する LATERAL が LIMIT 前の候補行すべてに
 -- 対して評価されるのを防ぐため。
 -- 明細 1 件以上は Purchase 集約の生成不変条件（docs/spec/purchase/domain.md）のため、LATERAL は INNER で結合する。
--- filter_by_period=true の場合は注文日時が半開区間 [ordered_after, ordered_before) の購入だけを返す。
+-- 注文日時は半開区間 [ordered_after, ordered_before)（internal/usecase/tools/timewindow/README.md）で絞り込む。
 WITH page AS (
     SELECT
         p.id,
@@ -132,11 +134,12 @@ WITH page AS (
     FROM purchases AS p
     WHERE p.user_id = sqlc.arg('user_id')
         AND (
-            NOT sqlc.arg('filter_by_period')::BOOLEAN
-            OR (
-                p.ordered_at >= sqlc.narg('ordered_after')
-                AND p.ordered_at < sqlc.narg('ordered_before')
-            )
+            p.ordered_at >= sqlc.narg('ordered_after')
+            OR sqlc.narg('ordered_after') IS NULL
+        )
+        AND (
+            p.ordered_at < sqlc.narg('ordered_before')
+            OR sqlc.narg('ordered_before') IS NULL
         )
     ORDER BY p.ordered_at DESC, p.id DESC
     LIMIT sqlc.arg('limit_param')
@@ -188,11 +191,12 @@ WITH page AS (
             OR (p.ordered_at = sqlc.arg('after_ordered_at') AND p.id < sqlc.arg('after_id'))
         )
         AND (
-            NOT sqlc.arg('filter_by_period')::BOOLEAN
-            OR (
-                p.ordered_at >= sqlc.narg('ordered_after')
-                AND p.ordered_at < sqlc.narg('ordered_before')
-            )
+            p.ordered_at >= sqlc.narg('ordered_after')
+            OR sqlc.narg('ordered_after') IS NULL
+        )
+        AND (
+            p.ordered_at < sqlc.narg('ordered_before')
+            OR sqlc.narg('ordered_before') IS NULL
         )
     ORDER BY p.ordered_at DESC, p.id DESC
     LIMIT sqlc.arg('limit_param')

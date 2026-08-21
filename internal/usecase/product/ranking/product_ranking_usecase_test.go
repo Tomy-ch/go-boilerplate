@@ -9,6 +9,7 @@ import (
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/product/ranking/query"
 	mock_query "go-boilerplate/internal/usecase/product/ranking/query/mock"
+	"go-boilerplate/internal/usecase/tools/timewindow"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
@@ -46,17 +47,22 @@ func Test_usecase_GetProductsRanking(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("正規化した期間と件数でQSを呼び集計結果をRankingViewへ写像して返す", func(t *testing.T) {
+		t.Run("対象期間と正規化した件数でQSを呼び集計結果をRankingViewへ写像して返す", func(t *testing.T) {
 			t.Parallel()
 
 			productID, err := uuid.Parse("a1000000-0000-4000-8000-000000000001")
 			require.NoError(t, err)
 			publishedAt := time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC)
 
+			after := time.Date(2026, time.July, 1, 0, 0, 0, 0, time.UTC)
+			window, err := timewindow.New(timewindow.Bounds{After: &after})
+			require.NoError(t, err)
+
 			u, mockQS := newUsecase(t)
 			mockQS.EXPECT().ListRanking(gomock.Any(), gomock.Any()).DoAndReturn(
 				func(_ context.Context, params query.RankingQueryParams) ([]query.RankingResult, error) {
-					assert.Equal(t, query.Period30d, params.Period)
+					assert.Equal(t, after, *params.Window.After())
+					assert.Nil(t, params.Window.Before())
 					assert.Equal(t, defaultLimit, params.Limit)
 					return []query.RankingResult{
 						{
@@ -69,7 +75,7 @@ func Test_usecase_GetProductsRanking(t *testing.T) {
 					}, nil
 				})
 
-			got, err := u.GetProductsRanking(context.Background(), GetRankingParams{Period: "30d", Limit: 0})
+			got, err := u.GetProductsRanking(context.Background(), GetRankingParams{Window: window, Limit: 0})
 			require.NoError(t, err)
 
 			require.Len(t, got.Rankings, 1)
@@ -89,7 +95,7 @@ func Test_usecase_GetProductsRanking(t *testing.T) {
 					return []query.RankingResult{}, nil
 				})
 
-			_, err := u.GetProductsRanking(context.Background(), GetRankingParams{Period: "all", Limit: 1000})
+			_, err := u.GetProductsRanking(context.Background(), GetRankingParams{Limit: 1000})
 			require.NoError(t, err)
 		})
 
@@ -99,7 +105,7 @@ func Test_usecase_GetProductsRanking(t *testing.T) {
 			u, mockQS := newUsecase(t)
 			mockQS.EXPECT().ListRanking(gomock.Any(), gomock.Any()).Return([]query.RankingResult{}, nil)
 
-			got, err := u.GetProductsRanking(context.Background(), GetRankingParams{Period: "all", Limit: 10})
+			got, err := u.GetProductsRanking(context.Background(), GetRankingParams{Limit: 10})
 			require.NoError(t, err)
 
 			assert.NotNil(t, got.Rankings)
@@ -116,7 +122,7 @@ func Test_usecase_GetProductsRanking(t *testing.T) {
 			u, mockQS := newUsecase(t)
 			mockQS.EXPECT().ListRanking(gomock.Any(), gomock.Any()).Return(nil, apperror.ErrInternal)
 
-			got, err := u.GetProductsRanking(context.Background(), GetRankingParams{Period: "all", Limit: 10})
+			got, err := u.GetProductsRanking(context.Background(), GetRankingParams{Limit: 10})
 			require.ErrorIs(t, err, apperror.ErrInternal)
 			assert.Empty(t, got.Rankings)
 		})
@@ -146,27 +152,10 @@ func Test_usecase_GetProductsRanking(t *testing.T) {
 				},
 			}, nil)
 
-			got, err := u.GetProductsRanking(context.Background(), GetRankingParams{Period: "all", Limit: 10})
+			got, err := u.GetProductsRanking(context.Background(), GetRankingParams{Limit: 10})
 			require.ErrorIs(t, err, apperror.ErrInternal)
 			assert.Contains(t, err.Error(), productID.String())
 			assert.Empty(t, got.Rankings)
-		})
-	})
-}
-
-func Test_normalizePeriod(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("30dは集計区分30dへ、それ以外は全期間へ正規化する", func(t *testing.T) {
-			t.Parallel()
-
-			assert.Equal(t, query.Period30d, normalizePeriod("30d"))
-			assert.Equal(t, query.PeriodAll, normalizePeriod("all"))
-			assert.Equal(t, query.PeriodAll, normalizePeriod(""))
-			assert.Equal(t, query.PeriodAll, normalizePeriod("weekly"))
 		})
 	})
 }

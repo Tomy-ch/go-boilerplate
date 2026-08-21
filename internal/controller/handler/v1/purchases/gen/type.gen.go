@@ -24,54 +24,6 @@ func (e DisplayCurrencyParam) Valid() bool {
 	}
 }
 
-// Defines values for PurchasePeriodParam.
-const (
-	PurchasePeriodParamAll    PurchasePeriodParam = "all"
-	PurchasePeriodParamMonth  PurchasePeriodParam = "month"
-	PurchasePeriodParamRange  PurchasePeriodParam = "range"
-	PurchasePeriodParamRecent PurchasePeriodParam = "recent"
-)
-
-// Valid indicates whether the value is a known member of the PurchasePeriodParam enum.
-func (e PurchasePeriodParam) Valid() bool {
-	switch e {
-	case PurchasePeriodParamAll:
-		return true
-	case PurchasePeriodParamMonth:
-		return true
-	case PurchasePeriodParamRange:
-		return true
-	case PurchasePeriodParamRecent:
-		return true
-	default:
-		return false
-	}
-}
-
-// Defines values for GetPurchasesParamsPeriod.
-const (
-	GetPurchasesParamsPeriodAll    GetPurchasesParamsPeriod = "all"
-	GetPurchasesParamsPeriodMonth  GetPurchasesParamsPeriod = "month"
-	GetPurchasesParamsPeriodRange  GetPurchasesParamsPeriod = "range"
-	GetPurchasesParamsPeriodRecent GetPurchasesParamsPeriod = "recent"
-)
-
-// Valid indicates whether the value is a known member of the GetPurchasesParamsPeriod enum.
-func (e GetPurchasesParamsPeriod) Valid() bool {
-	switch e {
-	case GetPurchasesParamsPeriodAll:
-		return true
-	case GetPurchasesParamsPeriodMonth:
-		return true
-	case GetPurchasesParamsPeriodRange:
-		return true
-	case GetPurchasesParamsPeriodRecent:
-		return true
-	default:
-		return false
-	}
-}
-
 // Defines values for PostPurchasesParamsDisplayCurrency.
 const (
 	PostPurchasesParamsDisplayCurrencyJPY PostPurchasesParamsDisplayCurrency = "JPY"
@@ -340,20 +292,11 @@ type DisplayCurrencyParam string
 // IdempotencyKeyParam Example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
 type IdempotencyKeyParam = string
 
-// PurchaseFromParam Example: 2026-01-21
-type PurchaseFromParam = openapi_types.Date
+// OrderedAfterParam Example: 2026-07-01T00:00:00+09:00
+type OrderedAfterParam = time.Time
 
-// PurchaseMonthParam Example: 2026-01
-type PurchaseMonthParam = string
-
-// PurchasePeriodParam Example: recent
-type PurchasePeriodParam string
-
-// PurchaseRecentDaysParam Example: 10
-type PurchaseRecentDaysParam = int32
-
-// PurchaseToParam Example: 2026-01-31
-type PurchaseToParam = openapi_types.Date
+// OrderedBeforeParam Example: 2026-08-01T00:00:00+09:00
+type OrderedBeforeParam = time.Time
 
 // BadRequest400 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type BadRequest400 = ErrorResponse
@@ -384,33 +327,19 @@ type GetPurchasesParams struct {
 	// First 取得件数の上限
 	First *CursorFirstParam `form:"first,omitempty" json:"first,omitempty"`
 
-	// Period 集計・絞り込み対象期間の区分。`all`（既定）は全期間、`month` は `month` で指定した暦月、
-	// `range` は `from` / `to` で指定した期間、`recent` は今日から `days` 日前までを対象とします。
-	// 各区分の境界はサーバのタイムゾーン（Asia/Tokyo）の暦日基準で算出し、両端の暦日を含みます。
-	// 区分ごとの必須パラメータ（`month` / `from` と `to` / `days`）が欠落している場合は 400 を返します。
-	Period *GetPurchasesParamsPeriod `form:"period,omitempty" json:"period,omitempty"`
+	// OrderedAfter 集計対象期間の下限となる瞬時（RFC3339）。**この瞬時を含みます**。
+	// 対象は半開区間 `[orderedAfter, orderedBefore)` で、注文日時がこの区間に入る購入だけを集計します。
+	// 省略すると下限を設けません。`orderedBefore` と併せて省略すると全期間が対象になります。
+	// `orderedBefore` が `orderedAfter` 以前（同値を含む）の場合は 400 を返します。
+	// cursor ページネーションの `after` とは別のパラメータです。
+	OrderedAfter *OrderedAfterParam `form:"orderedAfter,omitempty" json:"orderedAfter,omitempty"`
 
-	// From 対象期間の開始日（この日を含みます）。`period=range` のときのみ必須で、それ以外の区分では無視します。
-	// 日付はサーバのタイムゾーン（Asia/Tokyo）の暦日として解釈します。
-	From *PurchaseFromParam `form:"from,omitempty" json:"from,omitempty"`
-
-	// To 対象期間の終了日（この日を含みます）。`period=range` のときのみ必須で、それ以外の区分では無視します。
-	// 日付はサーバのタイムゾーン（Asia/Tokyo）の暦日として解釈します。`from` より前の日付を指定した場合は 400 を返します。
-	To *PurchaseToParam `form:"to,omitempty" json:"to,omitempty"`
-
-	// Month 対象とする暦月（`YYYY-MM`）。`period=month` のときのみ必須で、それ以外の区分では無視します。
-	// 月初日から月末日までを、サーバのタイムゾーン（Asia/Tokyo）の暦日基準で対象とします。
-	Month *PurchaseMonthParam `form:"month,omitempty" json:"month,omitempty"`
-
-	// Days 今日から遡る日数。`period=recent` のときのみ必須で、それ以外の区分では無視します。
-	// 今日を終了日、今日の `days` 日前を開始日とし、両端の暦日を含みます
-	// （2026-01-31 に `days=10` を指定した場合の対象は 2026-01-21 〜 2026-01-31 です）。
-	// 暦日はサーバのタイムゾーン（Asia/Tokyo）基準です。
-	Days *PurchaseRecentDaysParam `form:"days,omitempty" json:"days,omitempty"`
+	// OrderedBefore 集計対象期間の上限となる瞬時（RFC3339）。**この瞬時を含みません**。
+	// 対象は半開区間 `[orderedAfter, orderedBefore)` で、注文日時がこの区間に入る購入だけを集計します。
+	// 省略すると上限を設けません。`orderedAfter` と併せて省略すると全期間が対象になります。
+	// `orderedBefore` が `orderedAfter` 以前（同値を含む）の場合は 400 を返します。
+	OrderedBefore *OrderedBeforeParam `form:"orderedBefore,omitempty" json:"orderedBefore,omitempty"`
 }
-
-// GetPurchasesParamsPeriod defines parameters for GetPurchases.
-type GetPurchasesParamsPeriod string
 
 // PostPurchasesParams defines parameters for PostPurchases.
 type PostPurchasesParams struct {

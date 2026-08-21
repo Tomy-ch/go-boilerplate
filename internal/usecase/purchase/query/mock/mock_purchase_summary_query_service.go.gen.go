@@ -11,8 +11,8 @@ package mock_query
 
 import (
 	context "context"
-	period "go-boilerplate/internal/usecase/purchase/period"
 	query "go-boilerplate/internal/usecase/purchase/query"
+	timewindow "go-boilerplate/internal/usecase/tools/timewindow"
 	decimal "go-boilerplate/pkg/decimal"
 	uuid "go-boilerplate/pkg/uuid"
 	reflect "reflect"
@@ -45,7 +45,7 @@ func (m *MockPurchaseSummaryQueryService) EXPECT() *MockPurchaseSummaryQueryServ
 }
 
 // SumItemsByUserID mocks base method.
-func (m *MockPurchaseSummaryQueryService) SumItemsByUserID(ctx context.Context, userID uuid.UUID, window period.Window) (decimal.Decimal, error) {
+func (m *MockPurchaseSummaryQueryService) SumItemsByUserID(ctx context.Context, userID uuid.UUID, window timewindow.Window) (decimal.Decimal, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SumItemsByUserID", ctx, userID, window)
 	ret0, _ := ret[0].(decimal.Decimal)
@@ -60,7 +60,7 @@ func (mr *MockPurchaseSummaryQueryServiceMockRecorder) SumItemsByUserID(ctx, use
 }
 
 // SummarizeByUserID mocks base method.
-func (m *MockPurchaseSummaryQueryService) SummarizeByUserID(ctx context.Context, userID uuid.UUID, window period.Window) ([]query.PurchaseStatusSummaryReadModel, error) {
+func (m *MockPurchaseSummaryQueryService) SummarizeByUserID(ctx context.Context, userID uuid.UUID, window timewindow.Window) ([]query.PurchaseStatusSummaryReadModel, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SummarizeByUserID", ctx, userID, window)
 	ret0, _ := ret[0].([]query.PurchaseStatusSummaryReadModel)
@@ -75,7 +75,7 @@ func (mr *MockPurchaseSummaryQueryServiceMockRecorder) SummarizeByUserID(ctx, us
 }
 
 // SummarizeItemsByProductByUserID mocks base method.
-func (m *MockPurchaseSummaryQueryService) SummarizeItemsByProductByUserID(ctx context.Context, userID uuid.UUID, window period.Window) ([]query.PurchaseItemSummaryReadModel, error) {
+func (m *MockPurchaseSummaryQueryService) SummarizeItemsByProductByUserID(ctx context.Context, userID uuid.UUID, window timewindow.Window) ([]query.PurchaseItemSummaryReadModel, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SummarizeItemsByProductByUserID", ctx, userID, window)
 	ret0, _ := ret[0].([]query.PurchaseItemSummaryReadModel)

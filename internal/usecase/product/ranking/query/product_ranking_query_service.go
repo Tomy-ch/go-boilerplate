@@ -7,19 +7,10 @@ import (
 	"context"
 	"time"
 
+	"go-boilerplate/internal/usecase/tools/timewindow"
 	"go-boilerplate/pkg/decimal"
 	"go-boilerplate/pkg/uuid"
 )
-
-const (
-	// PeriodAll は、全期間を集計対象とする区分です。
-	PeriodAll Period = "all"
-	// Period30d は、直近30日を集計対象とする区分です。
-	Period30d Period = "30d"
-)
-
-// Period は、ランキング集計の対象期間区分です。実際の境界時刻はインフラ層が現在時刻から算出します。
-type Period string
 
 // ProductRankingQueryService は、購入明細を集計した商品売上ランキングの参照を提供するクエリサービスです。
 type ProductRankingQueryService interface {
@@ -29,8 +20,8 @@ type ProductRankingQueryService interface {
 
 // RankingQueryParams は、ランキング集計の入力パラメータです。
 type RankingQueryParams struct {
-	// Period は、集計対象期間の区分です。境界時刻の算出はインフラ層に閉じます。
-	Period Period
+	// Window は、集計対象期間です。境界を持たない側には制限を設けません。
+	Window timewindow.Window
 	// Limit は、取得する上位件数です。
 	Limit int
 }

@@ -6,13 +6,13 @@ import (
 	"io"
 	"net/http"
 	"testing"
+	"time"
 
 	"go-boilerplate/internal/apperror"
 	usersmepurchases "go-boilerplate/internal/controller/handler/v1/users/me/purchases"
 	"go-boilerplate/internal/controller/handler/v1/users/me/purchases/gen"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/auth"
-	"go-boilerplate/internal/usecase/purchase/period"
 	summaryuc "go-boilerplate/internal/usecase/purchase/summary"
 	mock_summaryuc "go-boilerplate/internal/usecase/purchase/summary/mock"
 	"go-boilerplate/pkg/decimal"
@@ -105,12 +105,17 @@ func TestV1UsersMePurchasesSummary_Integration(t *testing.T) {
 
 			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "int_sm_query"))
 			actual := StartServer(t, e).DoJSON(
-				http.MethodGet, purchaseSummaryPath+"?period=recent&days=10&groupBy=category&groupBy=product", nil, headers)
+				http.MethodGet,
+				purchaseSummaryPath+
+					"?orderedAfter=2026-01-21T00:00:00Z&orderedBefore=2026-02-01T00:00:00Z"+
+					"&groupBy=category&groupBy=product",
+				nil, headers)
 			assert.Equal(t, http.StatusOK, actual.StatusCode)
 
-			assert.Equal(t, period.KindRecent, captured.Period.Kind)
-			require.NotNil(t, captured.Period.Days)
-			assert.Equal(t, 10, *captured.Period.Days)
+			require.NotNil(t, captured.Window.After())
+			require.NotNil(t, captured.Window.Before())
+			assert.True(t, time.Date(2026, time.January, 21, 0, 0, 0, 0, time.UTC).Equal(*captured.Window.After()))
+			assert.True(t, time.Date(2026, time.February, 1, 0, 0, 0, 0, time.UTC).Equal(*captured.Window.Before()))
 			// 繰り返し指定の配列がその順序のまま bind されることを HTTP 経路で固定する。
 			assert.Equal(t, []summaryuc.GroupKind{summaryuc.GroupByCategory, summaryuc.GroupByProduct}, captured.GroupBy)
 		})
