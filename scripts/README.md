@@ -181,6 +181,7 @@ Below, `<marker>` stands for the marker name and suffix (`sample-api` + `:begin`
 |Markdown list item|Marker lines indented to the item's continuation indent|A comment at column 0 splits the list (MD032 / MD007)|
 |Fenced code|The fence language's own comment (`//` for Go)|An HTML comment inside a fence renders as text|
 |mermaid fence|`%%`, and **block form only**|mermaid takes comments on their own line, so there is no trailing form. Mark the edges and the `class` line that name the node too, not just the node|
+|YAML block scalar|Nothing works inside it — wrap the whole key from outside with `replace`|YAML has `#` comments, but inside a block scalar (`>-`, `\|`) a `#` line is part of the string, so the marker becomes the value's own text and the scalar keeps it after the removal|
 |Go declaration|`:begin` goes **above the doc comment**|A doc comment left outside survives alone at end of file, and `gofmt` does not remove it|
 |Go import|The `:line` form on the import line|An import used only inside a marked region fails `typecheck` once the region is gone|
 
