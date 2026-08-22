@@ -118,7 +118,7 @@ usecase spec も必要なら new-spec-usecase または統合 new-spec を使っ
 ```
 
 **`new-spec-usecase` has no equivalent step, deliberately.** A usecase spec declares an Interface,
-DTOs and a Workflow — application-layer names like `CreatePurchase` or `PurchaseView`, which do not
+DTOs and a Workflow — application-layer names like `Create<Aggregate>` or `<Aggregate>View`, which do not
 pass the glossary's bar (would someone who knows the business recognise it as a word of the
 business?). The domain layer introduces terms; the usecase layer uses them.
 

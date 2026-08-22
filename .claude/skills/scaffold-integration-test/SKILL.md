@@ -81,7 +81,7 @@ This skill **MUST call `AskUserQuestion` immediately after invocation** (unless 
 
 For each operationId in the handler `gen`:
 
-- HTTP method + path (e.g. `GET /v1/users/{user_id}`)
+- HTTP method + path (e.g. `GET /v1/<resources>/{<id>}`)
 - the usecase method the handler calls (read from `<feature>_handler.go`) → the mock `EXPECT()` to set
 - whether the operation requires authentication → if so, use `MakeAvailableUserID`
 - happy-path expectation (status + minimal JSON body shape) and, where cheap, one representative error path (e.g. usecase returns `apperror.ErrNotFound` → expect 404) to confirm the errorhandler middleware mapping on the HTTP path

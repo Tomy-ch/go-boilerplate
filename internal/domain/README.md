@@ -783,8 +783,13 @@ a change in meaning breaks no unit test.
 recognise it as a statement about the business — when the term it decides has a name they use.
 Identity lookup, pagination, ordering, and foreign-key joins decide nothing about the business and
 this rule does not reach them. Nor does a Repository method whose signature already says the whole
+<!-- sample-api:replace-begin -->
 condition: `FindDeletedBefore(ctx, cutoff, …)` states its own criterion, while `FindAllLowStock` does
 not. The check is one question — can the meaning of the term be answered by reading the domain
+<!-- sample-api:replace-with -->
+<!-- = condition: `FindDeletedBefore(ctx, cutoff, …)` states its own criterion, while a method named after -->
+<!-- = a business term does not. The check is one question — can the meaning of the term be answered by reading the domain -->
+<!-- sample-api:replace-end -->
 package alone? If not, its authorship has left.
 
 The same discipline is already imposed on the write side, where a CommandService may only enforce
@@ -1041,6 +1046,7 @@ Reasons:
 - guarantee invariants
 - simplify tests
 
+<!-- sample-api:replace-begin -->
 ```go
 func newTestUser(t *testing.T)*User {
     baseTime := time.Date(2025,1,1,0,0,0,0,time.UTC)
@@ -1068,6 +1074,28 @@ func newTestUser(t *testing.T)*User {
     return user
 }
 ```
+<!-- sample-api:replace-with -->
+<!-- = ```go -->
+<!-- = func newTest<Aggregate>(t *testing.T)*<Aggregate> { -->
+<!-- =     baseTime := time.Date(2025,1,1,0,0,0,0,time.UTC) -->
+<!-- = -->
+<!-- =     id := uuid.NewTestFromSalt(t,"<aggregate>") -->
+<!-- =     relatedID := uuid.NewTestFromSalt(t,"<related>") -->
+<!-- = -->
+<!-- =     entity, err := New( -->
+<!-- =         id, -->
+<!-- =         relatedID, -->
+<!-- =         // ... the remaining attributes -->
+<!-- =         baseTime, -->
+<!-- =         baseTime.Add(time.Hour), -->
+<!-- =         nil, -->
+<!-- =     ) -->
+<!-- = -->
+<!-- =     require.NoError(t, err) -->
+<!-- =     return entity -->
+<!-- = } -->
+<!-- = ``` -->
+<!-- sample-api:replace-end -->
 
 ### Invariant preservation test
 

@@ -101,7 +101,11 @@ Two routers can decide a 405, so the value has two sources, tried in order:
    skip OpenAPI validation entirely).
 2. **The OpenAPI spec** (`AllowPolicy`, `allow_methods.go`) — a startup-built map from path template
    to `Allow` value. This covers the case Echo cannot answer: where a static path and a parameterized
+   <!-- sample-api:replace-begin -->
    path overlap (`/v1/users/me` vs `/v1/users/{userId}`), a method missing from the static path may
+   <!-- sample-api:replace-with -->
+   <!-- = path overlap (`/v1/<resources>/me` vs `/v1/<resources>/{<id>}`), a method missing from the static path may -->
+   <!-- sample-api:replace-end -->
    still match the parameterized route, so Echo never takes its 405 branch and only the OpenAPI router
    reports 405. Because a 405 request resolves to no route by definition, the policy probes the router
    with the other methods to recover the path template, then looks up the precomputed value.

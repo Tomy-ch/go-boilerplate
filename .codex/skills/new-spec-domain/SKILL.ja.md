@@ -106,7 +106,7 @@ usecase spec も必要なら new-spec-usecase または統合 new-spec を使っ
 （lean A 構成: controller / infra spec は不要、OpenAPI gen + sqlc gen から導出されます）。
 ```
 
-**`new-spec-usecase` に同じステップは無い。意図的である。** usecase spec が宣言するのは Interface・DTO・Workflow であり、`CreatePurchase` や `PurchaseView` のようなアプリケーション層の名前は用語表の基準（業務を知っている人がこれは業務の語だと認めるか）を通らない。ドメイン層が用語を導入し、usecase 層はそれを使う。
+**`new-spec-usecase` に同じステップは無い。意図的である。** usecase spec が宣言するのは Interface・DTO・Workflow であり、`Create<集約>` や `<集約>View` のようなアプリケーション層の名前は用語表の基準（業務を知っている人がこれは業務の語だと認めるか）を通らない。ドメイン層が用語を導入し、usecase 層はそれを使う。
 
 ## AI 修正スコープ
 

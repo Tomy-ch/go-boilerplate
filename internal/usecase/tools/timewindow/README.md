@@ -7,9 +7,15 @@ Provides the half-open interval that bounds an aggregation or filter by ordered 
 ## Role
 
 This package holds the one shape every period-bounded read shares: a lower bound that is included, an
+<!-- sample-api:replace-begin -->
 upper bound that is not, and the rule that rejects an empty interval. Centralizing it means the dashboard,
 purchase, purchase-summary, and product-ranking reads all agree on what "no bound" and "this instant"
 mean, instead of each usecase deciding separately.
+<!-- sample-api:replace-with -->
+<!-- = upper bound that is not, and the rule that rejects an empty interval. Centralizing it means every -->
+<!-- = period-bounded read agrees on what "no bound" and "this instant" mean, instead of each usecase -->
+<!-- = deciding separately. -->
+<!-- sample-api:replace-end -->
 
 It resolves nothing. A relative period — "today", "this month", "the last 30 days" — is resolved by the
 caller into instants before it reaches this package, so the server holds neither a clock nor a calendar and

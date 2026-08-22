@@ -111,7 +111,7 @@ usecase spec も必要なら new-spec-usecase または統合 new-spec を使っ
 ```
 
 **`new-spec-usecase` に同じステップは無い。意図的である。** usecase spec が宣言するのは Interface・
-DTO・Workflow であり、`CreatePurchase` や `PurchaseView` のようなアプリケーション層の名前は
+DTO・Workflow であり、`Create<集約>` や `<集約>View` のようなアプリケーション層の名前は
 用語表の基準（業務を知っている人がこれは業務の語だと認めるか）を通らない。ドメイン層が用語を導入し、
 usecase 層はそれを使う。
 

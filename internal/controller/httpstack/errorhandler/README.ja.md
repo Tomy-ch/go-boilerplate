@@ -100,7 +100,11 @@ router が `ErrMethodNotAllowed` を返した時点で 405 を返す。そのた
    値がある場合はそれが正しい（OpenAPI バリデーションを丸ごとスキップする運用系パスは常にこちら）。
 2. **OpenAPI spec**（`AllowPolicy` / `allow_methods.go`）— 起動時に組み立てたパステンプレート →
    `Allow` 値のマップ。Echo が答えを持てないケースを埋める：静的パスと可変パスが重なる位置
+   <!-- sample-api:replace-begin -->
    （`/v1/users/me` と `/v1/users/{userId}`）では、静的パス側に無いメソッドが可変パス側のルートへ
+   <!-- sample-api:replace-with -->
+   <!-- = （`/v1/<リソース>/me` と `/v1/<リソース>/{<id>}`）では、静的パス側に無いメソッドが可変パス側のルートへ -->
+   <!-- sample-api:replace-end -->
    マッチし得るため、Echo は 405 branch に入らず、405 と判断するのは OpenAPI の router だけになる。
    405 のリクエストは定義上どのルートにも解決しないので、他メソッドで探索してパステンプレートを
    特定し、事前計算した値を引く。

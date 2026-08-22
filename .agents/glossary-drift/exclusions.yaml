@@ -75,6 +75,7 @@ exclusions:
 #                  Never empty — an entry that leaves nothing usable is a deletion in disguise,
 #                  and should be argued for as one.
 
+# sample-api:replace-begin
 collisions:
   - identifier: user
     collides_with: >-
@@ -105,3 +106,7 @@ collisions:
       DML の system CQRS category（ADR ファイル名 `*-dml-category.md` へのリンクが
       qualifier 形に当たる）。素の語も一般名詞として頻出。
     usable_forms: [path, public-name]
+# sample-api:replace-with
+# = collisions: []
+# sample-api:replace-end
+

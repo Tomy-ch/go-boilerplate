@@ -42,7 +42,7 @@ Read `.codex/scaffold-spec/domain-spec.md` at runtime to learn the domain-spec Y
   so no inventory grep reveals them. Judge the body, not its name: drop a method when it reaches one
   field and returns it, including after a copy, through an embedded value, or with an abbreviated
   field name. The remainder expresses a verb or a judgement, for example `Cancel`, `IsCanceled`,
-  `IsLowStock`, or `UpdateEmail`.
+  or `Update<Attribute>`.
 - exported package-level values in `internal/domain/**`, for example with:
 
   ```sh

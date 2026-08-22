@@ -200,9 +200,14 @@ Repository / QueryService とは異なり、ビジネスドメインに属さな
 インターフェースは QueryService と並んで Usecase 層に、実装はここに置きます。単一トランザクションでの
 原子性を要する複数集約への書き込みのために予約されています
 （[ADR-0032 (lightweight-cqrs)](../../../docs/adr/0032-lightweight-cqrs.md) /
+<!-- sample-api:replace-begin -->
 [ADR-0034 (commandservice-atomicity-criterion)](../../../docs/adr/0034-commandservice-atomicity-criterion.md)）。最初の実装は
 `command_service/purchase`（在庫減算 + 購入 / 明細 INSERT。
 [ADR-0036 (ordered-pessimistic-row-locks)](../../../docs/adr/0036-ordered-pessimistic-row-locks.md) 参照）です。
+<!-- sample-api:replace-with -->
+<!-- = [ADR-0034 (commandservice-atomicity-criterion)](../../../docs/adr/0034-commandservice-atomicity-criterion.md)）。書き込み順序は -->
+<!-- = [ADR-0036 (ordered-pessimistic-row-locks)](../../../docs/adr/0036-ordered-pessimistic-row-locks.md) に従います。 -->
+<!-- sample-api:replace-end -->
 
 CommandService は `ctx` で渡されたトランザクション上で書き込みを実行し（自前では開かない。境界は
 Usecase が所有し、`idempotency.Run` の内側に入る）、outbox イベントは発行しません（Usecase の責務で
@@ -295,8 +300,13 @@ Repository / QueryService / CommandService テストは
 
 CommandService テストは加えて次を検証します:
 
+<!-- sample-api:replace-begin -->
 - 触れた全テーブルへの atomic な書き込み効果（例: 在庫の減算、purchase / detail 行の挿入、
   業務コードから解決された `status_id`）を書き込み後の `SELECT` で確認する
+<!-- sample-api:replace-with -->
+<!-- = - 触れた全テーブルへの atomic な書き込み効果（業務コードから解決された id を含む）を -->
+<!-- =   書き込み後の `SELECT` で確認する -->
+<!-- sample-api:replace-end -->
 - fail-closed のガード（例: 防御的な `WHERE quantity >= :qty` → 0 行 → `ErrConflict`）を、
   ドメイン検査は通るが DB 述語が弾くよう stale なロック値を使って確認する
 - 制約違反の正規化（`pgerror.NormalizeError`: FK `23503` → `ErrInvalidArgument`、
@@ -323,5 +333,10 @@ CommandService テストは加えて次を検証します:
 |`repository/product/product_repository.go`|`syncImages`|`safecast.IntToInt16(img.SortKey())` のエラー|同上|
 
 同じメソッド内の `version` 変換は例外ではありません。ドメインが課すのは `version >= 1` だけで
+<!-- sample-api:replace-begin -->
 範囲外の version は到達可能なため、テストで被覆しています。purchase の `statusCode` / 明細数量の
 変換も同様です。
+<!-- sample-api:replace-with -->
+<!-- = 範囲外の version は到達可能なため、テストで被覆しています。ドメイン型が列より狭い範囲しか許さない -->
+<!-- = 変換も同様です。 -->
+<!-- sample-api:replace-end -->

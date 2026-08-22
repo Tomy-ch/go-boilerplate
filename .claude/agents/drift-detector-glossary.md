@@ -62,7 +62,7 @@ shapes prose actually uses, in this order:
    "the product" cannot match a path.
 2. **As a package qualifier** — `<agg>.` as a prefix, so `<agg>.Anything` is caught rather than only
    the one type the table recorded.
-3. **As the Public name, word-bounded and capitalised** — `Product`, `PurchaseDetail`,
+3. **As the Public name, word-bounded and capitalised** — `<Aggregate>`, `<Aggregate><Part>`,
    `ProductCategory`. Requiring the capital drops the ordinary-noun sense of the same word.
 4. **As a bare word inside backticks** — `` `product` ``. Code spans separate a named thing from the
    same word used in a sentence.

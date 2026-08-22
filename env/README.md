@@ -213,7 +213,7 @@ Access-token (JWT) verification settings. CI / test wire a non-signature stub; `
 
 |Variable Name|Description|Type|Example|Notes|
 |---|---|---|---|---|
-|AUTH_ISSUER|Expected `iss` claim value (also the OIDC issuer)|string|`http://localhost:2010/default`|Code default empty. Per-environment value — `local` / `ci` / `dast` point at the mock auth server, and every deploy environment keeps the empty default until it wires the JWT authenticator. `db-seed` also expands it into the `user_identities` seed, so an environment that seeds needs it even when it stubs authentication (CI)|
+|AUTH_ISSUER|Expected `iss` claim value (also the OIDC issuer)|string|`http://localhost:2010/default`|Code default empty. Per-environment value — `local` / `ci` / `dast` point at the mock auth server, and every deploy environment keeps the empty default until it wires the JWT authenticator. `db-seed` also expands it into the identity seed, so an environment that seeds needs it even when it stubs authentication (CI)|
 |AUTH_AUDIENCE|Expected `aud` claim value|string|go-boilerplate-api|Code default empty. Required together with the issuer. Per-environment value — only `local` / `dast` declare the mock audience; everywhere else keeps the empty default until the authenticator is wired|
 |AUTH_ALLOWED_ALGORITHMS|Allowlist of signing algorithms (comma-separated, asymmetric only)|csv|RS256|Code default `RS256`. `none` / symmetric algorithms are always rejected|
 |AUTH_CLOCK_SKEW|Clock-skew tolerance for `exp` / `nbf`|duration|60s|Code default `60s`|

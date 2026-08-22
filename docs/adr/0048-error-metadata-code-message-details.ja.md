@@ -112,7 +112,7 @@ controller で再マップすればよい。
 
 - 出典: `internal/apperror/README.ja.md` — エラーメタ情報（`Meta`）節;
   `internal/controller/error/response/README.ja.md` — `apperror.Meta` による上書き節。
-- ユーザー更新時の都道府県名の解決失敗は repository 経路の `ErrNotFound`（404）のままで、
+- 参照先のマスタ行を解決できなかった場合は repository 経路の `ErrNotFound`（404）のままで、
   フィールド `details` の対象外。422 へ寄せるかは必要になった時点で別途決定する。
 - PATCH はマージ後の全量を検証するため、保存済みデータが不変条件からズレた場合に限り、
   クライアントが送っていないフィールドが理論上 `details` に載り得る。実運用では想定しない。

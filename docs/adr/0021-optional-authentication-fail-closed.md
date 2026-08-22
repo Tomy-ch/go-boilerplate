@@ -18,9 +18,15 @@ enforces the security requirements declared in the spec, and [ADR-0020](0020-met
 records the one endpoint that sits outside that pipeline. Both assume an operation is either
 protected or public.
 
+<!-- sample-api:replace-begin -->
 Some resources are neither. A cart belongs to a signed-in user when there is one and to an
 anonymous session otherwise, and the same operation must serve both. OpenAPI expresses this as
 several security requirements where one is empty:
+<!-- sample-api:replace-with -->
+<!-- = Some resources are neither: the same operation must serve a signed-in subject and an anonymous -->
+<!-- = one, and the resource belongs to whichever is present. OpenAPI expresses this as several -->
+<!-- = security requirements where one is empty: -->
+<!-- sample-api:replace-end -->
 
 ```yaml
 security:
@@ -119,11 +125,18 @@ enforces this against the spec, so the ordering cannot be lost by editing a `sec
 
 ### Split each such operation into a protected one and a public one
 
+<!-- sample-api:replace-begin -->
 `/v1/carts/me` and `/v1/carts/guest`, each with a single security form. The conflict disappears
 because the optional form is never written. Rejected: it turns five endpoints into eight or nine,
 and it puts the caller's authentication state into the URL, so a client must know which one it
 is before choosing a path. Optional authentication can be made safe, so there is no reason to pay
 for it in API shape.
+<!-- sample-api:replace-with -->
+<!-- = Two paths per resource, each with a single security form. The conflict disappears because the -->
+<!-- = optional form is never written. Rejected: it nearly doubles the endpoint count, and it puts the -->
+<!-- = caller's authentication state into the URL, so a client must know which one it is before choosing -->
+<!-- = a path. Optional authentication can be made safe, so there is no reason to pay for it in API shape. -->
+<!-- sample-api:replace-end -->
 
 ### Short-circuit inside the authentication function's return value
 
@@ -131,11 +144,19 @@ Return a distinguished error that stops requirement evaluation. Rejected after r
 implementation: `ValidateSecurityRequirements` has no hook for it. Every error is collected and
 evaluation continues to the next requirement.
 
+<!-- sample-api:replace-begin -->
 ### Require authentication everywhere and drop anonymous carts
 
 Simplest, and the fail-closed question never arises. Rejected: it removes the ownership
 transition on login, authorization of an anonymous subject, and the merge rules — three of the
 four things the cart sample exists to demonstrate.
+<!-- sample-api:replace-with -->
+<!-- = ### Require authentication everywhere and drop anonymous subjects -->
+<!-- = -->
+<!-- = Simplest, and the fail-closed question never arises. Rejected: it removes the ownership -->
+<!-- = transition on login, authorization of an anonymous subject, and whatever merge rules the -->
+<!-- = resource needs — the behaviors optional authentication exists to make possible. -->
+<!-- sample-api:replace-end -->
 
 ## Notes
 
@@ -143,8 +164,8 @@ four things the cart sample exists to demonstrate.
 - Failure recording: [`internal/controller/httpstack/oapi/auth/auth.go`](../../internal/controller/httpstack/oapi/auth/auth.go).
 - The slot itself: [`internal/controller/ctxhelper/authn.go`](../../internal/controller/ctxhelper/authn.go).
 - The behavior is fixed by a middleware test driving a synthetic spec that declares all three
-  security forms. `GET /v1/carts/me` is the first operation in the shipped spec to use the optional
-  form.
+  security forms.
+- `GET /v1/carts/me` is the first operation in the shipped spec to use the optional form. <!-- sample-api:line -->
 - Related decision: [ADR-0016](0016-spec-driven-request-validation.md) (spec-driven request validation).
 - Related decision: [ADR-0020](0020-metrics-endpoint-auth-exception.md) (the other named authentication exception).
 - Posture this upholds: `docs/design/auth.md` (fail-closed), `docs/design/security.md` (deny by default).

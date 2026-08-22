@@ -123,13 +123,13 @@ make slot-acquire && make serve            # API は 8080+N、mock-auth は 2010
 
 TOKEN=$(curl -s -X POST http://localhost:201N/bypass/token \
   -H 'Content-Type: application/json' \
-  -d '{"subject":"user-john-doe","profile":"valid"}' \
+  -d '{"subject":"<seeded-subject>","profile":"valid"}' \
   | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
 
 curl -s -o /dev/null -w '%{http_code}\n' -H "Authorization: Bearer $TOKEN" http://localhost:808N/v1/...
 ```
 
-token の subject は `user_identities.subject` の文字列（`user-john-doe` 形式）でなければならない。ユーザー UUID ではない —— シードの UUID 行はスロットのポートが発行する issuer とは別の issuer に属するため、UUID を渡すと紛らわしい 401 になる。
+token の subject は seed が登録した identity の `subject` 文字列でなければならない。内部の UUID ではない —— シードの UUID 行はスロットのポートが発行する issuer とは別の issuer に属するため、UUID を渡すと紛らわしい 401 になる。
 
 ステータスだけでなくトレースも読む。どの層が実際に走ったかが見え、それこそが上記の誤った主張が間違えた点だから。
 
