@@ -177,6 +177,7 @@ func staleDocuments(manifestPath, ignorePath string, read func(name string) ([]b
 			// ないので数えません。
 			continue
 		}
+		// nosemgrep: go.lang.security.audit.crypto.use_of_weak_crypto.use-of-md5
 		if entry.SemanticHash != fmt.Sprintf("%x", md5.Sum(body)) { //nolint:gosec // 変更検出のみで、graphify の manifest と同じ選択 // DevSkim: ignore DS126858
 			stale = append(stale, file)
 		}
