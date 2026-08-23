@@ -123,13 +123,16 @@ fields:
     購入を支払い済み状態へ遷移させる（PATCH /v1/purchases/{purchaseId}/pay の状態遷移・擬似決済）。
     遷移可否は statusCode を一次判定とし、status enum に現れないイベント既発生は timestamps ガードで補完する:
       - 既に支払い済み（statusCode == 7）→ ErrAlreadyPaid（409。二重支払い）
-      - キャンセル済み（statusCode == 6）・完了（statusCode == 5）・配達済み（statusCode == 9）・発送済み（shippedAt != nil）→ ErrPayNotAllowed（409）
-      - それ以外（未処理 / 受付中 / 確認中 / 処理中）→ 許可
+      - 処理中（statusCode == 4）・キャンセル済み（statusCode == 6）・完了（statusCode == 5）・配達済み（statusCode == 9）・発送済み（shippedAt != nil）→ ErrPayNotAllowed（409）
+      - 未払い相当でも paidAt != nil → ErrAlreadyPaid（409。受付中 / 確認中 へはアプリから遷移せず、
+        これらは外部運用が書く行であるため、支払い済みの事実が status ではなく paidAt にだけ現れることがある）
+      - それ以外（未処理 / 受付中 / 確認中）→ 許可
     許可時は statusCode を支払い済み（7）へ、paidAt を now へ同時にセットする。now は時刻境界（clock）から供給する。
     決済 SDK / PSP 連携・金額検証は行わず、paidAt とステータスの記録のみを担う。
     遷移に成功したときだけ支払いの事実（Event）を返す。
   invariants:
     - 支払い済み status（statusCode == 7）は paidAt を必須とする（一方向。paidAt は支払い後も残り、以降の遷移で status が変わっても保持されるためキャンセルのような双条件にはしない）
+    - 既にセット済みの paidAt は不変（NULL → 値 の単調セットのみ）。上書きは記録済みの支払い日時を失わせるため、遷移そのものを拒否して守る
 
 - name: Ship
   signature: Ship(now time.Time) (Event, error)
@@ -137,7 +140,7 @@ fields:
     購入を発送済み状態へ遷移させる（PATCH /v1/purchases/{purchaseId}/ship の状態遷移）。遷移可否は statusCode の等値比較のみで判定する:
       - 既に発送済み（statusCode == 8）→ ErrAlreadyShipped（409。二重発送）
       - 支払い済み（statusCode == 7）→ 許可
-      - それ以外（未払い相当 / 完了 / キャンセル済み / 配達済み）→ ErrShipNotAllowed（409）
+      - それ以外（未払い相当 / 処理中 / 完了 / キャンセル済み / 配達済み）→ ErrShipNotAllowed（409）
     許可時は statusCode を発送済み（8）へ、shippedAt を now へ同時にセットする。now は時刻境界（clock）から供給する。
     配送追跡（追跡番号 / 配送業者 / 追跡 URL）は扱わず、shippedAt とステータスの記録のみを担う。
     遷移に成功したときだけ発送の事実（Event）を返す。
@@ -152,7 +155,7 @@ fields:
     購入を配達済み状態へ遷移させる（PATCH /v1/purchases/{purchaseId}/deliver の状態遷移）。遷移可否は statusCode の等値比較のみで判定する:
       - 既に配達済み（statusCode == 9）→ ErrAlreadyDelivered（409。二重配達）
       - 発送済み（statusCode == 8）→ 許可
-      - それ以外（未払い相当 / 支払い済み / 完了 / キャンセル済み）→ ErrDeliverNotAllowed（409）
+      - それ以外（未払い相当 / 処理中 / 支払い済み / 完了 / キャンセル済み）→ ErrDeliverNotAllowed（409）
     許可時は statusCode を配達済み（9）へ、deliveredAt を now へ同時にセットする。now は時刻境界（clock）から供給する。
     配達確認の証跡（署名 / 受領写真 / GPS 位置）は扱わず、deliveredAt とステータスの記録のみを担う。
     遷移に成功したときだけ配達の事実（Event）を返す。

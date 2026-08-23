@@ -495,7 +495,7 @@ workflow:
   errors:
     - ErrForbidden → 403（非 admin）
     - ErrAlreadyShipped → 409（二重発送）
-    - ErrShipNotAllowed → 409（未払い相当・完了・キャンセル済み・配達済みからの不正遷移）
+    - ErrShipNotAllowed → 409（未払い相当・処理中・完了・キャンセル済み・配達済みからの不正遷移）
     - ErrNotFound → 404（不存在。所有権による秘匿はしない）
     - 未認証は controller で 401（Authn 不在）
 ```
@@ -560,7 +560,7 @@ workflow:
   errors:
     - ErrForbidden → 403（非 admin）
     - ErrAlreadyDelivered → 409（二重配達）
-    - ErrDeliverNotAllowed → 409（未払い相当・支払い済み・完了・キャンセル済みからの不正遷移）
+    - ErrDeliverNotAllowed → 409（未払い相当・処理中・支払い済み・完了・キャンセル済みからの不正遷移）
     - ErrNotFound → 404（不存在。所有権による秘匿はしない）
     - 未認証は controller で 401（Authn 不在）
 ```
