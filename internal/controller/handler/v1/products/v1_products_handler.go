@@ -36,7 +36,7 @@ func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc productuc.Usec
 }
 
 // GetProducts は、商品を cursor ページネーションで取得します。認証は任意です。
-// includeUnpublished の指定時のみ未公開を含み、その可否はユースケースが Authorizer へ委ねます。
+// includeUnpublished の指定時のみ未公開を含みます。
 func (s *server) GetProducts(ctx context.Context, request gen.GetProductsRequestObject) (gen.GetProductsResponseObject, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()

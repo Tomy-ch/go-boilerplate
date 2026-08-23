@@ -279,7 +279,7 @@ fields:
 
 - 定数（`taxRatePercent` / `shippingFeeCents` は sample の placeholder。実要件が立った時点で config / マスタへ移す。
   送料を 0 ではなく固定の非 0 値にしているのは、`shipping_fee` 列・`total` の計算経路・レスポンス項目を
-  実際に通すため）: `StatusCodeUnprocessed = 1` / `StatusCodeCompleted = 5` / `StatusCodeCanceled = 6` / `StatusCodePaid = 7` / `StatusCodeShipped = 8` / `StatusCodeDelivered = 9` / `taxRatePercent = 10` / `shippingFeeCents = 500`。ステータス UUID は焼き込まず、code から infra で解決する（支払い済み=7 / 発送済み=8 / 配達済み=9 を含め、購入ステータスマスタで定義）。code 値は状態の到達順序を意味しないため、遷移判定は等値比較のみで行う。
+  実際に通すため）: `statusCodeUnprocessed = 1` / `statusCodeAccepted = 2` / `statusCodeConfirming = 3` / `statusCodeProcessing = 4` / `statusCodeCompleted = 5` / `statusCodeCanceled = 6` / `statusCodePaid = 7` / `statusCodeShipped = 8` / `statusCodeDelivered = 9` / `taxRatePercent = 10` / `shippingFeeCents = 500`。ステータス UUID は焼き込まず、code から infra で解決する（支払い済み=7 / 発送済み=8 / 配達済み=9 を含め、購入ステータスマスタで定義）。code 値は状態の到達順序を意味しないため、遷移判定は等値比較のみで行う。
 - エラー写像: `ErrInsufficientStock` / `ErrAlreadyCanceled` / `ErrCancelNotAllowed` / `ErrAlreadyPaid` / `ErrPayNotAllowed` / `ErrAlreadyShipped` / `ErrShipNotAllowed` / `ErrAlreadyDelivered` / `ErrDeliverNotAllowed` → `apperror.ErrConflict`（409）、その他検証系 → `apperror.ErrValidation`（422）。
 
 [ADR-0032 (lightweight-cqrs)]: ../../adr/0032-lightweight-cqrs.md

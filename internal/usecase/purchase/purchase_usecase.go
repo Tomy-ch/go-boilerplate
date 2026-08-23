@@ -1,6 +1,6 @@
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 
-// Package purchase は、購入の作成ユースケースを提供します。単価は価格スケール（ドル decimal）、
+// Package purchase は、購入の作成と状態遷移のユースケースを提供します。単価は価格スケール（ドル decimal）、
 // 決済額は決済スケール（整数セント）で扱います（ADR-0038 (two-scale-quantity-model)）。
 package purchase
 
@@ -150,7 +150,7 @@ type DeliverPurchaseView struct {
 	DeliveredAt    *time.Time
 }
 
-// Usecase は、購入の作成ユースケースを定義します。
+// Usecase は、購入の作成・参照・状態遷移のユースケースを定義します。
 type Usecase interface {
 	// CreatePurchase は、明細から購入を作成します。在庫の引当・購入の成立・イベント発行は単一 tx で
 	// 原子的に成立し、売り越しは 409 で成立させません。

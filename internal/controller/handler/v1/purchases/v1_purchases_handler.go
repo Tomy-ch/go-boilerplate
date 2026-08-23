@@ -49,7 +49,7 @@ func BindHandler(
 }
 
 // GetPurchases は、購入履歴を注文日時降順（cursor ページネーション）で取得します。認証必須です。
-// includeOtherUsers の指定時のみ他ユーザーの購入を含み、その可否はユースケースが Authorizer へ委ねます。
+// includeOtherUsers の指定時のみ他ユーザーの購入を含みます。
 func (s *server) GetPurchases(ctx context.Context, request gen.GetPurchasesRequestObject) (gen.GetPurchasesResponseObject, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()

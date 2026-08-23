@@ -36,7 +36,7 @@ func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc productuc.Usec
 
 // GetProductsDetail は、指定された UUID に該当する商品の詳細情報を取得します。認証は任意です。
 // 既定では未存在・非公開はいずれもユースケースが NotFound を返し、404 で存在を秘匿します。
-// includeUnpublished の指定時のみ未公開も引け、その可否はユースケースが Authorizer へ委ねます。
+// includeUnpublished の指定時のみ未公開も引けます。
 func (s *server) GetProductsDetail(ctx context.Context, request gen.GetProductsDetailRequestObject) (gen.GetProductsDetailResponseObject, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()

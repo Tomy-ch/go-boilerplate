@@ -322,8 +322,8 @@ func Reconstruct(id uuid.UUID, attrs Attributes) (*Purchase, error) {
 	}, nil
 }
 
-// validateStatusTimestamps は、statusCode と各イベント日時の組み合わせが状態遷移で到達し得るかを検証します。
-// 到達し得ない組み合わせ（発送後のキャンセル、発送を伴わない配達 等）の場合は ErrInvalidStatusID を返します。
+// validateStatusTimestamps は、statusCode と各イベント日時の組み合わせの到達可能性を検証します
+// （個々の理由は各分岐のコメント、契約は Reconstruct を参照）。
 func validateStatusTimestamps(status Status, paidAt, canceledAt, shippedAt, deliveredAt *time.Time) error {
 	// キャンセルと canceledAt は同時セット（双条件。docs/spec/purchase/domain.md Cancel invariants）。
 	if (status == StatusCanceled) != (canceledAt != nil) {
