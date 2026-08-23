@@ -10,6 +10,9 @@ import (
 // （完了=5 / キャンセル=6 より支払い済み=7 のほうが大きい）。
 const (
 	statusCodeUnprocessed = 1
+	statusCodeAccepted    = 2
+	statusCodeConfirming  = 3
+	statusCodeProcessing  = 4
 	statusCodeCompleted   = 5
 	statusCodeCanceled    = 6
 	statusCodePaid        = 7
@@ -22,6 +25,12 @@ const (
 var (
 	// StatusUnprocessed は、購入作成直後に設定される「未処理」です。
 	StatusUnprocessed = Status{code: statusCodeUnprocessed, name: "unprocessed"}
+	// StatusAccepted は、注文を受け付けた「受付中」です。未払い相当として扱います。
+	StatusAccepted = Status{code: statusCodeAccepted, name: "accepted"}
+	// StatusConfirming は、注文内容を確認している「確認中」です。未払い相当として扱います。
+	StatusConfirming = Status{code: statusCodeConfirming, name: "confirming"}
+	// StatusProcessing は、注文を処理している「処理中」です。未払い相当として扱います。
+	StatusProcessing = Status{code: statusCodeProcessing, name: "processing"}
 	// StatusCompleted は、購入完了です。完了後はキャンセルできません。
 	StatusCompleted = Status{code: statusCodeCompleted, name: "completed"}
 	// StatusCanceled は、購入キャンセルです。発送前にのみ到達します。
@@ -46,7 +55,8 @@ type Status struct {
 // allStatuses は、既知のステータス一覧です。code からの解決に用います。
 func allStatuses() []Status {
 	return []Status{
-		StatusUnprocessed, StatusCompleted, StatusCanceled,
+		StatusUnprocessed, StatusAccepted, StatusConfirming, StatusProcessing,
+		StatusCompleted, StatusCanceled,
 		StatusPaid, StatusShipped, StatusDelivered,
 	}
 }
@@ -93,8 +103,9 @@ func (s Status) CanTransitionTo(next Status) bool {
 		// キャンセルは進行中からのみ。発送済みからのキャンセル不可は集約が発送記録で併せて弾く。
 		return true
 	case StatusPaid:
-		// 支払いは未払い相当からのみ。
-		return s == StatusUnprocessed
+		// 支払いは未払い相当（未処理 / 受付中 / 確認中 / 処理中）からのみ。
+		return s == StatusUnprocessed || s == StatusAccepted ||
+			s == StatusConfirming || s == StatusProcessing
 	case StatusShipped:
 		return s == StatusPaid
 	case StatusDelivered:

@@ -31,7 +31,7 @@ func TestNewStatus(t *testing.T) {
 			t.Parallel()
 
 			// 0（未設定）と、既知の code の範囲外を両方弾くことを固定する。
-			for _, code := range []int{0, 2, 99, -1} {
+			for _, code := range []int{0, 10, 99, -1} {
 				_, err := NewStatus(code)
 				require.ErrorIs(t, err, ErrInvalidStatusID)
 			}
@@ -49,6 +49,9 @@ func TestStatus_Code(t *testing.T) {
 			t.Parallel()
 
 			assert.Equal(t, 1, StatusUnprocessed.Code())
+			assert.Equal(t, 2, StatusAccepted.Code())
+			assert.Equal(t, 3, StatusConfirming.Code())
+			assert.Equal(t, 4, StatusProcessing.Code())
 			assert.Equal(t, 5, StatusCompleted.Code())
 			assert.Equal(t, 6, StatusCanceled.Code())
 			assert.Equal(t, 7, StatusPaid.Code())
@@ -68,6 +71,9 @@ func TestStatus_Name(t *testing.T) {
 			t.Parallel()
 
 			assert.Equal(t, "unprocessed", StatusUnprocessed.Name())
+			assert.Equal(t, "accepted", StatusAccepted.Name())
+			assert.Equal(t, "confirming", StatusConfirming.Name())
+			assert.Equal(t, "processing", StatusProcessing.Name())
 			assert.Equal(t, "completed", StatusCompleted.Name())
 			assert.Equal(t, "canceled", StatusCanceled.Name())
 			assert.Equal(t, "paid", StatusPaid.Name())
@@ -118,6 +124,9 @@ func TestStatus_IsTerminal(t *testing.T) {
 			assert.True(t, StatusCanceled.IsTerminal())
 			assert.True(t, StatusDelivered.IsTerminal())
 			assert.False(t, StatusUnprocessed.IsTerminal())
+			assert.False(t, StatusAccepted.IsTerminal())
+			assert.False(t, StatusConfirming.IsTerminal())
+			assert.False(t, StatusProcessing.IsTerminal())
 			assert.False(t, StatusPaid.IsTerminal())
 			assert.False(t, StatusShipped.IsTerminal())
 		})
@@ -130,10 +139,13 @@ func TestStatus_CanTransitionTo(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("支払いは未処理からのみ到達する", func(t *testing.T) {
+		t.Run("支払いは未払い相当からのみ到達する", func(t *testing.T) {
 			t.Parallel()
 
 			assert.True(t, StatusUnprocessed.CanTransitionTo(StatusPaid))
+			assert.True(t, StatusAccepted.CanTransitionTo(StatusPaid))
+			assert.True(t, StatusConfirming.CanTransitionTo(StatusPaid))
+			assert.True(t, StatusProcessing.CanTransitionTo(StatusPaid))
 			assert.False(t, StatusShipped.CanTransitionTo(StatusPaid))
 		})
 
@@ -142,6 +154,7 @@ func TestStatus_CanTransitionTo(t *testing.T) {
 
 			assert.True(t, StatusPaid.CanTransitionTo(StatusShipped))
 			assert.False(t, StatusUnprocessed.CanTransitionTo(StatusShipped))
+			assert.False(t, StatusProcessing.CanTransitionTo(StatusShipped))
 		})
 
 		t.Run("配達は発送済みからのみ到達する", func(t *testing.T) {
@@ -155,6 +168,9 @@ func TestStatus_CanTransitionTo(t *testing.T) {
 			t.Parallel()
 
 			assert.True(t, StatusUnprocessed.CanTransitionTo(StatusCanceled))
+			assert.True(t, StatusAccepted.CanTransitionTo(StatusCanceled))
+			assert.True(t, StatusConfirming.CanTransitionTo(StatusCanceled))
+			assert.True(t, StatusProcessing.CanTransitionTo(StatusCanceled))
 			assert.True(t, StatusPaid.CanTransitionTo(StatusCanceled))
 		})
 	})
@@ -202,7 +218,7 @@ func Test_allStatuses(t *testing.T) {
 			t.Parallel()
 
 			all := allStatuses()
-			require.Len(t, all, 6)
+			require.Len(t, all, 9)
 
 			seen := map[int]struct{}{}
 			for _, s := range all {
