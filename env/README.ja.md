@@ -61,7 +61,7 @@
 |---|---|---|---|---|
 |APP_MODE|実行モード（`development` または `production`）|string|development|ログや挙動切り替え。Per-environment value — `stg` 以降は `production` とし、本番前の環境を本番と同じログ形式・挙動で動かす。local / ci / dev は `development`|
 |APP_LOG_LEVEL|ログ出力レベル（`debug` / `info` / `warn` / `error`）|string|debug|出力方式は Mode が決定。Per-environment value — `stg` までは本番前の調査のため `debug`、`prd` は本番のログ量を抑えるため `info`|
-|APP_NAME|アプリケーション名|string|Boilerplate|ログ・メトリクス識別|
+|APP_NAME|アプリケーション名|string|Boilerplate API|ログ・メトリクス識別|
 |APP_ENV|環境識別子（`local` / `ci` / `dast` / `dev` / `stg` / `prd`）|string|local|環境区別用。埋め込み env の出所ガードにも使う（補足を参照）。Per-environment value — 環境識別子そのものであり、定義上すべて異なる。`dast` は DAST スキャンの実行文脈で、`ci` と違い JWKS backed の実 authenticator を配線して mock 認証サーバーが実際に署名したトークンを検証する。また worktree の DB スロットプールには参加しない（`IsLocalClassEnv` は false を返す）|
 |APP_SHUTDOWN_TIMEOUT|Graceful shutdown時間|duration|65s|Code default `65s`。SIGTERM時の待機時間。HTTP サーバーでは `SERVER_REQUEST_TIMEOUT` 以上でなければならない（未満だとサーバー起動失敗）ため、drain が予算内のリクエストを打ち切ることはない|
 

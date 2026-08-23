@@ -61,7 +61,7 @@ All three are needed: dropping the first would leave the application at the clus
 |---|---|---|---|---|
 |APP_MODE|Execution mode (`development` or `production`)|string|development|Switch logs and behavior. Per-environment value — `production` from `stg` onward so pre-production runs on the same log format and behavior as production; `development` in local / ci / dev|
 |APP_LOG_LEVEL|Log output level (`debug` / `info` / `warn` / `error`)|string|debug|Output format follows Mode. Per-environment value — `debug` through `stg` for pre-production diagnosis, `info` in `prd` to hold production log volume down|
-|APP_NAME|Application name|string|Boilerplate|Used for log / metrics identification|
+|APP_NAME|Application name|string|Boilerplate API|Used for log / metrics identification|
 |APP_ENV|Environment identifier (`local` / `ci` / `dast` / `dev` / `stg` / `prd`)|string|local|For environment distinction. Also used as the embedded-env provenance guard (see Notes). Per-environment value — the environment identifier itself, so it differs by definition. `dast` is the execution context of the DAST scan: unlike `ci` it wires the real JWKS-backed authenticator and verifies tokens the mock auth server actually signed, and it stays out of the worktree DB slot pool (`IsLocalClassEnv` returns false for it)|
 |APP_SHUTDOWN_TIMEOUT|Graceful shutdown duration|duration|65s|Code default `65s`. Wait time on SIGTERM. On the HTTP server it must be `>= SERVER_REQUEST_TIMEOUT` (server startup fails otherwise) so drain never truncates an in-budget request|
 
