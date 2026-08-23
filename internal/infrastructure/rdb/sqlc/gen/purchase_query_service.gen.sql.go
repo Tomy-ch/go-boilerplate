@@ -353,7 +353,7 @@ type ListAllPurchasesFeedFirstRow struct {
 // === source: database/dml/query_service/purchase/select_all_purchases_feed.sql ===
 // 購入者を問わず購入履歴を (ordered_at DESC, id DESC) の安定順で先頭ページ取得する（admin の可視範囲）。
 // 所有権で閉じる ListPurchasesFeedFirst と母集団だけが異なり、並び順・要約の解決・期間とステータスの
-// 絞り込みは同一である。所有権の有無をクエリの別名で表し、呼び出し側の分岐なしに母集団が混ざらないようにする。
+// 絞り込みは同一である。母集団ごとにクエリを分ける理由は docs/spec/purchase/usecase.md GET 一覧 を参照。
 // ページを CTE で先に閉じてから結合する理由、LATERAL を INNER で結合する理由は
 // database/dml/query_service/purchase/select_purchases_feed.sql と同じ。
 //
@@ -769,7 +769,6 @@ type ListPurchasesFeedFirstRow struct {
 // 対して評価されるのを防ぐため。
 // 明細 1 件以上は Purchase 集約の生成不変条件（docs/spec/purchase/domain.md）のため、LATERAL は INNER で結合する。
 // 注文日時は半開区間 [ordered_after, ordered_before)（internal/usecase/tools/timewindow/README.md）で絞り込む。
-// status_codes は指定時のみ絞り込み、いずれかのコードに一致する購入を対象とする。
 //
 //	WITH page AS (
 //	    SELECT
