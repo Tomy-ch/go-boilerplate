@@ -1172,6 +1172,16 @@ func TestPurchase_Pay(t *testing.T) {
 			require.NotNil(t, p.PaidAt())
 			assert.Equal(t, now, *p.PaidAt())
 		})
+
+		t.Run("未処理以外の未払い相当からも支払える", func(t *testing.T) {
+			t.Parallel()
+			for _, status := range []Status{StatusAccepted, StatusConfirming} {
+				p := build(t, status, nil, nil, nil, nil)
+				_, err := p.Pay(now)
+				require.NoError(t, err, status.Name())
+				assert.Equal(t, StatusPaid, p.Status(), status.Name())
+			}
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -1210,6 +1220,29 @@ func TestPurchase_Pay(t *testing.T) {
 			p := build(t, StatusDelivered, &now, nil, &now, &now)
 			_, err := p.Pay(now)
 			require.ErrorIs(t, err, ErrPayNotAllowed)
+		})
+
+		t.Run("処理中の場合、ErrPayNotAllowedを返す", func(t *testing.T) {
+			t.Parallel()
+			// 処理中は支払いを終えた後の段階であり、未払い相当ではない。
+			p := build(t, StatusProcessing, &now, nil, nil, nil)
+			_, err := p.Pay(now)
+			require.ErrorIs(t, err, ErrPayNotAllowed)
+		})
+
+		t.Run("未払い相当でもpaidAtが記録済みの場合、ErrAlreadyPaidを返しpaidAtを上書きしない", func(t *testing.T) {
+			t.Parallel()
+			// 受付中 / 確認中 はアプリからは遷移せず、外部運用が支払いを記録した行が入り得る。
+			// 遷移させると paidAt が now で潰れるため、記録済みの日時が保たれることまで固定する。
+			paidAt := time.Date(2026, time.July, 24, 9, 0, 0, 0, time.UTC)
+			for _, status := range []Status{StatusUnprocessed, StatusAccepted, StatusConfirming} {
+				p := build(t, status, &paidAt, nil, nil, nil)
+				_, err := p.Pay(now)
+				require.ErrorIs(t, err, ErrAlreadyPaid, status.Name())
+				assert.Equal(t, status, p.Status(), status.Name())
+				require.NotNil(t, p.PaidAt())
+				assert.Equal(t, paidAt, *p.PaidAt(), status.Name())
+			}
 		})
 	})
 }

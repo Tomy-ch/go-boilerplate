@@ -145,7 +145,8 @@ func TestStatus_CanTransitionTo(t *testing.T) {
 			assert.True(t, StatusUnprocessed.CanTransitionTo(StatusPaid))
 			assert.True(t, StatusAccepted.CanTransitionTo(StatusPaid))
 			assert.True(t, StatusConfirming.CanTransitionTo(StatusPaid))
-			assert.True(t, StatusProcessing.CanTransitionTo(StatusPaid))
+			// 処理中は支払いを終えた後の段階であり、未払い相当には含まない。
+			assert.False(t, StatusProcessing.CanTransitionTo(StatusPaid))
 			assert.False(t, StatusShipped.CanTransitionTo(StatusPaid))
 		})
 

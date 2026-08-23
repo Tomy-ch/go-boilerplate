@@ -459,11 +459,11 @@ func (p *Purchase) Cancel(now time.Time) (Event, error) {
 	return newEvent(EventCanceled, p.id, now), nil
 }
 
-// Pay は、購入を支払い済み状態へ遷移させます。未払い相当（未処理 / 受付中 / 確認中 / 処理中）からのみ遷移でき、
-// statusCode を支払い済み（7）へ、paidAt を now へ同時に更新します。既に支払い済みなら ErrAlreadyPaid、
-// キャンセル済み・完了・配達済み・発送済み（shippedAt）なら ErrPayNotAllowed をそれぞれ返します
-// （いずれも 409）。決済 SDK / PSP 連携は行わず、paidAt とステータスの記録のみを担う擬似決済です。
-// 遷移に成功したときだけ支払いの事実（Event）を返します。
+// Pay は、購入を支払い済み状態へ遷移させます。未払い相当（未処理 / 受付中 / 確認中）からのみ遷移でき、
+// statusCode を支払い済み（7）へ、paidAt を now へ同時に更新します。支払い済み、または未払い相当でも
+// paidAt が記録済みなら ErrAlreadyPaid、処理中・キャンセル済み・完了・配達済み・発送済み（shippedAt）なら
+// ErrPayNotAllowed をそれぞれ返します（いずれも 409）。決済 SDK / PSP 連携は行わず、paidAt とステータスの
+// 記録のみを担う擬似決済です。遷移に成功したときだけ支払いの事実（Event）を返します。
 func (p *Purchase) Pay(now time.Time) (Event, error) {
 	if p.status == StatusPaid {
 		return Event{}, ErrAlreadyPaid
@@ -472,6 +472,12 @@ func (p *Purchase) Pay(now time.Time) (Event, error) {
 	if !p.status.CanTransitionTo(StatusPaid) || p.shippedAt != nil {
 		return Event{}, ErrPayNotAllowed
 	}
+	// 未払い相当でも paidAt を持つ購入は、外部運用が支払いを記録済みである（受付中 / 確認中 へはアプリからは
+	// 遷移せず、これらの行は外部から書かれる）。ここで遷移させると paidAt を now で上書きし、記録済みの
+	// 支払い日時が失われるため、二重支払いとして拒否する。
+	if p.paidAt != nil {
+		return Event{}, ErrAlreadyPaid
+	}
 	p.status = StatusPaid
 	p.paidAt = &now
 	return newEvent(EventPaid, p.id, now), nil
@@ -479,7 +485,7 @@ func (p *Purchase) Pay(now time.Time) (Event, error) {
 
 // Ship は、購入を発送済み状態へ遷移させます。支払い済みからのみ遷移でき、statusCode を発送済み（8）へ、
 // shippedAt を now へ同時に更新します。既に発送済みなら ErrAlreadyShipped、それ以外の状態
-// （未払い相当・完了・キャンセル済み・配達済み）なら ErrShipNotAllowed をそれぞれ返します（いずれも 409）。
+// （未払い相当・処理中・完了・キャンセル済み・配達済み）なら ErrShipNotAllowed をそれぞれ返します（いずれも 409）。
 // 配送追跡（追跡番号 / 配送業者）は扱わず、shippedAt とステータスの記録のみを担います。
 // 遷移に成功したときだけ発送の事実（Event）を返します。
 func (p *Purchase) Ship(now time.Time) (Event, error) {
@@ -496,7 +502,7 @@ func (p *Purchase) Ship(now time.Time) (Event, error) {
 
 // Deliver は、購入を配達済み状態へ遷移させます。発送済みからのみ遷移でき、statusCode を配達済み（9）へ、
 // deliveredAt を now へ同時に更新します。既に配達済みなら ErrAlreadyDelivered、それ以外の状態
-// （未払い相当・支払い済み・完了・キャンセル済み）なら ErrDeliverNotAllowed をそれぞれ返します（いずれも 409）。
+// （未払い相当・処理中・支払い済み・完了・キャンセル済み）なら ErrDeliverNotAllowed をそれぞれ返します（いずれも 409）。
 // 配達確認の証跡（署名 / 受領写真 / GPS 位置）は扱わず、deliveredAt とステータスの記録のみを担います。
 // 遷移に成功したときだけ配達の事実（Event）を返します。
 func (p *Purchase) Deliver(now time.Time) (Event, error) {

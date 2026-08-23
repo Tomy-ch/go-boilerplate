@@ -29,7 +29,7 @@ var (
 	StatusAccepted = Status{code: statusCodeAccepted, name: "accepted"}
 	// StatusConfirming は、注文内容を確認している「確認中」です。未払い相当として扱います。
 	StatusConfirming = Status{code: statusCodeConfirming, name: "confirming"}
-	// StatusProcessing は、注文を処理している「処理中」です。未払い相当として扱います。
+	// StatusProcessing は、支払いを終え、発送に向けた処理を進めている「処理中」です。未払いではありません。
 	StatusProcessing = Status{code: statusCodeProcessing, name: "processing"}
 	// StatusCompleted は、購入完了です。完了後はキャンセルできません。
 	StatusCompleted = Status{code: statusCodeCompleted, name: "completed"}
@@ -103,9 +103,8 @@ func (s Status) CanTransitionTo(next Status) bool {
 		// キャンセルは進行中からのみ。発送済みからのキャンセル不可は集約が発送記録で併せて弾く。
 		return true
 	case StatusPaid:
-		// 支払いは未払い相当（未処理 / 受付中 / 確認中 / 処理中）からのみ。
-		return s == StatusUnprocessed || s == StatusAccepted ||
-			s == StatusConfirming || s == StatusProcessing
+		// 支払いは未払い相当（未処理 / 受付中 / 確認中）からのみ。処理中は支払いを終えた後の段階である。
+		return s == StatusUnprocessed || s == StatusAccepted || s == StatusConfirming
 	case StatusShipped:
 		return s == StatusPaid
 	case StatusDelivered:
