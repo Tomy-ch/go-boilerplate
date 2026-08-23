@@ -6,10 +6,12 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
-// 既知のステータスの業務キー。**到達順序を意味しません**
-// （完了=5 / キャンセル=6 より支払い済み=7 のほうが大きい）。
+// 既知のステータスの業務キー（大小は到達順序を意味しない。Status 型のコメント参照）。
 const (
 	statusCodeUnprocessed = 1
+	statusCodeAccepted    = 2
+	statusCodeConfirming  = 3
+	statusCodeProcessing  = 4
 	statusCodeCompleted   = 5
 	statusCodeCanceled    = 6
 	statusCodePaid        = 7
@@ -17,11 +19,16 @@ const (
 	statusCodeDelivered   = 9
 )
 
-// 既知のステータス。ステータスの UUID はドメインに焼き込まず、永続化時に code から解決します
-// （seed との二重管理を避けるため）。
+// 既知のステータス（UUID はここに焼き込まない。docs/spec/purchase/domain.md Overview 参照）。
 var (
 	// StatusUnprocessed は、購入作成直後に設定される「未処理」です。
 	StatusUnprocessed = Status{code: statusCodeUnprocessed, name: "unprocessed"}
+	// StatusAccepted は、注文を受け付けた「受付中」です。未払い相当として扱います。
+	StatusAccepted = Status{code: statusCodeAccepted, name: "accepted"}
+	// StatusConfirming は、注文内容を確認している「確認中」です。未払い相当として扱います。
+	StatusConfirming = Status{code: statusCodeConfirming, name: "confirming"}
+	// StatusProcessing は、支払いを終え、発送に向けた処理を進めている「処理中」です。未払いではありません。
+	StatusProcessing = Status{code: statusCodeProcessing, name: "processing"}
 	// StatusCompleted は、購入完了です。完了後はキャンセルできません。
 	StatusCompleted = Status{code: statusCodeCompleted, name: "completed"}
 	// StatusCanceled は、購入キャンセルです。発送前にのみ到達します。
@@ -46,7 +53,8 @@ type Status struct {
 // allStatuses は、既知のステータス一覧です。code からの解決に用います。
 func allStatuses() []Status {
 	return []Status{
-		StatusUnprocessed, StatusCompleted, StatusCanceled,
+		StatusUnprocessed, StatusAccepted, StatusConfirming, StatusProcessing,
+		StatusCompleted, StatusCanceled,
 		StatusPaid, StatusShipped, StatusDelivered,
 	}
 }
@@ -62,7 +70,7 @@ func NewStatus(code int) (Status, error) {
 	return Status{}, xerrors.Wrap(ErrInvalidStatusID, fmt.Sprintf("unknown status code: %d", code))
 }
 
-// Code は、永続化と外部公開に用いる業務キーを返します。到達順序の比較には使えません。
+// Code は、永続化と外部公開に用いる業務キーを返します。
 func (s Status) Code() int { return s.code }
 
 // Name は、ステータスの名前を返します。外部へ状態を伝えるときは code ではなくこちらを用います。
@@ -93,8 +101,8 @@ func (s Status) CanTransitionTo(next Status) bool {
 		// キャンセルは進行中からのみ。発送済みからのキャンセル不可は集約が発送記録で併せて弾く。
 		return true
 	case StatusPaid:
-		// 支払いは未払い相当からのみ。
-		return s == StatusUnprocessed
+		// 処理中は支払いを終えた後の段階であり対象外。
+		return s == StatusUnprocessed || s == StatusAccepted || s == StatusConfirming
 	case StatusShipped:
 		return s == StatusPaid
 	case StatusDelivered:

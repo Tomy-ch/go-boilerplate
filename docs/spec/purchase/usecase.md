@@ -17,7 +17,7 @@ methods:
   - name: CreatePurchase
     signature: CreatePurchase(ctx context.Context, params CreatePurchaseParams) (PurchaseView, error)
   - name: GetPurchases   # GET /v1/purchases（購入履歴一覧・cursor）。詳細は「## GET 一覧（購入履歴）」
-    signature: GetPurchases(ctx context.Context, userID uuid.UUID, cursor *paging.Cursor, window timewindow.Window) (*PurchaseListView, error)
+    signature: GetPurchases(ctx context.Context, authn *auth.Authn, params ListPurchasesParams) (*PurchaseListView, error)
   - name: GetPurchaseDetail # GET /v1/purchases/{purchaseCode}（購入詳細・集約跨ぎ QS）。詳細は「## GET 詳細（購入詳細）」
     signature: GetPurchaseDetail(ctx context.Context, authn *auth.Authn, purchaseCode string) (PurchaseGetDetailView, error)
   - name: CancelPurchase # PATCH /v1/purchases/{purchaseCode}/cancel。詳細は「## PATCH キャンセル」
@@ -26,6 +26,10 @@ methods:
     signature: PayPurchase(ctx context.Context, params PayPurchaseParams) (PayPurchaseView, error)
   - name: ShipPurchase  # PATCH /v1/purchases/{purchaseCode}/ship（admin のみ）。詳細は「## PATCH 発送」
     signature: ShipPurchase(ctx context.Context, authn *auth.Authn, purchaseCode string) (ShipPurchaseView, error)
+  - name: DeliverPurchase # PATCH /v1/purchases/{purchaseCode}/deliver（admin のみ）。詳細は「## PATCH 配達完了」
+    signature: DeliverPurchase(ctx context.Context, authn *auth.Authn, purchaseCode string) (DeliverPurchaseView, error)
+  - name: ListShippablePurchases # GET /v1/purchases/shippable（admin のみ）。詳細は「## GET 発送待ち一覧」
+    signature: ListShippablePurchases(ctx context.Context, authn *auth.Authn, params ListShippablePurchasesParams) (PurchaseShippableListView, error)
 ```
 
 ## DTOs
@@ -131,7 +135,9 @@ output:
 
 ## GET 一覧（購入履歴・cursor）
 
-`GET /v1/purchases`。認証主体（`userID`）の購入履歴を注文日時降順で cursor（keyset）ページネーション取得する読み取り経路。
+`GET /v1/purchases`。購入履歴を注文日時降順で cursor（keyset）ページネーション取得する読み取り経路。
+既定の母集団は認証主体（`authn` が解決する内部ユーザー ID）の購入のみで、`IncludeOtherUsers` を指定したときだけ
+購入者を問わない母集団へ切り替わる（admin 限定。商品の未公開可視範囲と同形）。
 一覧は概要のみ（明細の配列は含まない）だが、行を見分けるための要約 2 項目（先頭商品名・明細の点数）を持つ。
 先頭商品名は独立集約である商品（`products`）との結合で解決するため、この経路は子参照マスタ例外に収まらず
 **QueryService**（`internal/usecase/purchase/query`）に置く（[ADR-0032 (lightweight-cqrs)]。購入詳細と同じ扱い）。
@@ -140,9 +146,17 @@ output:
 
 ```yaml
 input:
-  - userID: uuid.UUID          # #583 が解決する認証主体の内部ユーザー ID（所有権フィルタ）
-  - cursor: "*paging.Cursor"   # first（件数上限）+ after（不透明カーソル）
-  - window: timewindow.Window  # 注文日時の対象期間（瞬時の半開区間）。ゼロ値は全期間
+  - authn: "*auth.Authn"       # 認証主体。既定の母集団では #583 が解決した内部ユーザー ID を所有権フィルタに用いる
+  - params: ListPurchasesParams
+    fields:
+      - name: Cursor
+        type: "*paging.Cursor"     # first（件数上限）+ after（不透明カーソル）
+      - name: Window
+        type: timewindow.Window    # 注文日時の対象期間（瞬時の半開区間）。ゼロ値は全期間
+      - name: StatusCodes
+        type: "[]int16"            # 購入ステータスの業務キーによる絞り込み。空は全ステータス
+      - name: IncludeOtherUsers
+        type: bool                 # 他ユーザーの購入も母集団に含める（admin のみ）
 
 output:
   struct: PurchaseListView
@@ -157,7 +171,8 @@ cursor:
   keys: [ordered_at(RFC3339Nano), id(UUID)]
 
 dependencies:
-  - query.PurchaseFeedQueryService  # FindFeedByUserID（所有権フィルタ + 期間絞り込み + ステータス / 商品の結合、[]PurchaseFeedReadModel を返す）
+  - query.PurchaseFeedQueryService  # FindFeedByUserID（所有権フィルタ）/ FindFeedAll（所有権で閉じない）。いずれも期間・ステータスの絞り込みとステータス / 商品の結合を伴い []PurchaseFeedReadModel を返す
+  - authz.Authorizer               # ActionPurchaseReadAll（他ユーザーを含める指定の可否）
   - tools/paging                   # Cursor（decode/encode・件数ポリシー）
   - tools/timewindow               # Window（半開区間 [After, Before)・空区間の拒否）
 
@@ -165,17 +180,23 @@ workflow:
   tx_required: false               # read-only
   steps:
     - cursor を decode し keyset 境界（ordered_at, id）へ解釈（不正は ErrInvalidArgument → 400）
-    - window の境界をそのまま params へ載せる（境界を持たない側には条件を付けない）
-    - feedQS.FindFeedByUserID(userID, Limit+1) で所有者の購入を注文日時降順に取得（要約 2 項目込み）
+    - window の境界と StatusCodes をそのまま params へ載せる（境界を持たない側・空の指定には条件を付けない）
+    - IncludeOtherUsers が false なら authn から内部ユーザー ID を解決し feedQS.FindFeedByUserID(userID, Limit+1)
+    - IncludeOtherUsers が true なら ActionPurchaseReadAll を認可したうえで feedQS.FindFeedAll(Limit+1)
     - 取得件数 > limit なら hasNext=true とし末尾を切り詰め、末尾行から nextCursor を encode
-    - PurchaseSummaryView へ写像（他ユーザーの購入は SQL の所有権フィルタで空扱い）
+    - PurchaseSummaryView へ写像（既定の母集団では他ユーザーの購入は SQL の所有権フィルタで空扱い）
   errors:
     - ErrInvalidArgument → 400（不正 cursor。区間の相関検証は controller の timewindow.New が済ませている）
-    - 未認証は controller で 401（Authn 不在）
+    - ErrUnauthenticated → 401（Authn 不在）
+    - ErrPermissionDenied → 403（非 admin による IncludeOtherUsers の指定）
 ```
 
-期間の絞り込みは keyset ページネーションと直交する。絞り込み条件はページ間で不変である前提で、
-呼び出し側はページ送りの間も同じ期間を渡す（条件が変われば keyset 境界の意味も変わるため連続性は保証しない）。
+母集団の選択と認可は 1 つの private メソッド（`findFeedPage`）に閉じる。認可を経ずに所有権で閉じない
+クエリへ到達する経路を作らないためで、SQL も母集団ごとに別クエリとして分けてある。
+
+期間・ステータス・可視範囲の絞り込みは keyset ページネーションと直交する。絞り込み条件はページ間で不変である前提で、
+呼び出し側はページ送りの間も同じ条件を渡す（条件が変われば keyset 境界の意味も変わるため連続性は保証しない）。
+母集団が変わってもソートキーは (ordered_at, id) のままであるため、可視範囲ごとにカーソルを作り分けることはしない。
 一覧は対象期間をレスポンスに含めない（相対指定の解決結果を必要とするのは集計側だけで、一覧はカーソルが継続の
 責務を負っているため）。
 
@@ -474,7 +495,7 @@ workflow:
   errors:
     - ErrForbidden → 403（非 admin）
     - ErrAlreadyShipped → 409（二重発送）
-    - ErrShipNotAllowed → 409（未払い相当・完了・キャンセル済み・配達済みからの不正遷移）
+    - ErrShipNotAllowed → 409（未払い相当・処理中・完了・キャンセル済み・配達済みからの不正遷移）
     - ErrNotFound → 404（不存在。所有権による秘匿はしない）
     - 未認証は controller で 401（Authn 不在）
 ```
@@ -539,7 +560,7 @@ workflow:
   errors:
     - ErrForbidden → 403（非 admin）
     - ErrAlreadyDelivered → 409（二重配達）
-    - ErrDeliverNotAllowed → 409（未払い相当・支払い済み・完了・キャンセル済みからの不正遷移）
+    - ErrDeliverNotAllowed → 409（未払い相当・処理中・支払い済み・完了・キャンセル済みからの不正遷移）
     - ErrNotFound → 404（不存在。所有権による秘匿はしない）
     - 未認証は controller で 401（Authn 不在）
 ```

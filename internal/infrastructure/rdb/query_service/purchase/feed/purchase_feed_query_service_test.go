@@ -36,6 +36,10 @@ const (
 	defaultProductName = "ワイヤレスイヤホン"
 	// statusUnprocessedCode は、purchase_statuses.code（SMALLINT）と同じ幅で「未処理」を表す値です。
 	statusUnprocessedCode int16 = 1
+	// statusCompletedCode は、同じ幅で「完了」を表す値です。ステータス絞り込みの検証に用います。
+	statusCompletedCode int16 = 5
+	// unknownStatusCode は、購入ステータスマスタに存在しないコードです。既知でない指定の扱いの検証に用います。
+	unknownStatusCode int16 = 99
 )
 
 // detailSeq は、insertPurchaseDetail が採番する明細 ID を一意に保つための連番です。
@@ -321,6 +325,57 @@ func Test_service_FindFeedByUserID(t *testing.T) {
 			})
 		})
 
+		t.Run("ステータスの指定に一致する購入だけを返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertFeedUser(ctx, t, drv, owner)
+				insertPurchase(ctx, t, drv, tieHigh, owner, statusCompletedID, 100, base)
+				insertPurchase(ctx, t, drv, mid, owner, statusUnprocessedID, 200, base.Add(-time.Hour))
+
+				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{
+					Limit:       10,
+					StatusCodes: []int16{statusUnprocessedCode},
+				})
+				require.NoError(t, err)
+				require.Len(t, got, 1)
+				assert.Equal(t, mustParse(mid), got[0].ID)
+			})
+		})
+
+		t.Run("ステータスを指定しない場合は全ステータスが対象になる", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertFeedUser(ctx, t, drv, owner)
+				insertPurchase(ctx, t, drv, tieHigh, owner, statusCompletedID, 100, base)
+				insertPurchase(ctx, t, drv, mid, owner, statusUnprocessedID, 200, base.Add(-time.Hour))
+
+				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{Limit: 10})
+				require.NoError(t, err)
+				assert.Len(t, got, 2)
+			})
+		})
+
+		t.Run("既知でないステータスコードの指定は0件になる", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertFeedUser(ctx, t, drv, owner)
+				insertPurchase(ctx, t, drv, tieHigh, owner, statusCompletedID, 100, base)
+
+				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{
+					Limit:       10,
+					StatusCodes: []int16{unknownStatusCode},
+				})
+				require.NoError(t, err)
+				assert.Empty(t, got)
+			})
+		})
+
 		t.Run("statusが購入ごとにマスタ名称で解決され金額とコードも一致して返る", func(t *testing.T) {
 			t.Parallel()
 
@@ -449,6 +504,208 @@ func Test_service_FindFeedByUserID(t *testing.T) {
 				orderedAt := base
 				id := mustParse(tieHigh)
 				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{
+					Limit:          -1,
+					AfterOrderedAt: &orderedAt,
+					AfterID:        &id,
+				})
+				assert.Nil(t, got)
+				require.ErrorIs(t, err, apperror.ErrInternal)
+			})
+		})
+	})
+}
+
+func Test_service_FindFeedAll(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	lt := observability.NewMockInfraLayerTracer(t)
+	txm := testkit.NewTestTransactionRunner(t)
+
+	svc := &service{tracer: lt, db: testDB}
+
+	// seed データより必ず後ろ（新しい）に来るよう十分未来を基準にする。
+	base := time.Date(2099, time.June, 1, 0, 0, 0, 0, time.UTC)
+
+	// 母集団が所有権で閉じないことを見るため、購入者を 2 人置く。
+	userA := "ffffffff-5555-4000-8000-000000000001"
+	userB := "ffffffff-5555-4000-8000-000000000002"
+
+	// ordered_at は newer > older。同一 ordered_at の tie は id 降順で並ぶ。
+	newer := "ffffffff-6666-4000-8000-000000000002"
+	older := "ffffffff-6666-4000-8000-000000000001"
+	oldest := "ffffffff-6666-4000-8000-000000000003"
+
+	mustParse := func(s string) uuid.UUID {
+		id, err := uuid.Parse(s)
+		require.NoError(t, err)
+		return id
+	}
+
+	// 母集団が所有権で閉じないため、seed の購入も対象に入る。fixture だけを見るには期間で切り出す必要があり、
+	// base は seed より十分未来にとってあるので下限 1 つで足りる。
+	isolate := func(t *testing.T) timewindow.Window {
+		t.Helper()
+		after := base.Add(-3 * time.Hour)
+		return mustWindow(t, timewindow.Bounds{After: &after})
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("購入者を問わず購入がkeyset安定順に返る", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertFeedUser(ctx, t, drv, userA)
+				insertFeedUser(ctx, t, drv, userB)
+				insertPurchase(ctx, t, drv, newer, userA, statusCompletedID, 100, base)
+				insertPurchase(ctx, t, drv, older, userB, statusCompletedID, 200, base.Add(-time.Hour))
+
+				got, err := svc.FindFeedAll(ctx, query.ListFeedParams{Limit: 10, Window: isolate(t)})
+				require.NoError(t, err)
+				require.Len(t, got, 2)
+				assert.Equal(t, mustParse(newer), got[0].ID)
+				assert.Equal(t, mustParse(older), got[1].ID)
+			})
+		})
+
+		t.Run("afterカーソルで境界より過去の購入を購入者を問わず返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertFeedUser(ctx, t, drv, userA)
+				insertFeedUser(ctx, t, drv, userB)
+				insertPurchase(ctx, t, drv, newer, userA, statusCompletedID, 100, base)
+				insertPurchase(ctx, t, drv, older, userB, statusCompletedID, 200, base.Add(-time.Hour))
+
+				orderedAt := base
+				id := mustParse(newer)
+				got, err := svc.FindFeedAll(ctx, query.ListFeedParams{
+					Limit:          10,
+					AfterOrderedAt: &orderedAt,
+					AfterID:        &id,
+					Window:         isolate(t),
+				})
+				require.NoError(t, err)
+				require.Len(t, got, 1)
+				assert.Equal(t, mustParse(older), got[0].ID)
+			})
+		})
+
+		t.Run("期間の絞り込みが所有権で閉じる読み取りと同じく効く", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertFeedUser(ctx, t, drv, userA)
+				insertFeedUser(ctx, t, drv, userB)
+				insertPurchase(ctx, t, drv, newer, userA, statusCompletedID, 100, base)
+				insertPurchase(ctx, t, drv, oldest, userB, statusCompletedID, 300, base.Add(-24*time.Hour))
+
+				// 半開区間 [base-1h, base+1h) は base の 1 件だけを含む。
+				after := base.Add(-time.Hour)
+				before := base.Add(time.Hour)
+				got, err := svc.FindFeedAll(ctx, query.ListFeedParams{
+					Limit:  10,
+					Window: mustWindow(t, timewindow.Bounds{After: &after, Before: &before}),
+				})
+				require.NoError(t, err)
+				require.Len(t, got, 1)
+				assert.Equal(t, mustParse(newer), got[0].ID)
+			})
+		})
+
+		t.Run("ステータスの指定に一致する購入だけを購入者を問わず返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertFeedUser(ctx, t, drv, userA)
+				insertFeedUser(ctx, t, drv, userB)
+				insertPurchase(ctx, t, drv, newer, userA, statusUnprocessedID, 100, base)
+				insertPurchase(ctx, t, drv, older, userB, statusCompletedID, 200, base.Add(-time.Hour))
+
+				got, err := svc.FindFeedAll(ctx, query.ListFeedParams{
+					Limit:       10,
+					StatusCodes: []int16{statusCompletedCode},
+					Window:      isolate(t),
+				})
+				require.NoError(t, err)
+				require.Len(t, got, 1)
+				assert.Equal(t, mustParse(older), got[0].ID)
+			})
+		})
+
+		t.Run("keyset境界が片方だけ指定された場合は先頭ページとして扱う", func(t *testing.T) {
+			t.Parallel()
+
+			// 境界は (ordered_at, id) の対で意味を持つため、片方だけでは keyset を進められない。
+			// 半端な指定で境界の片側だけを効かせるのではなく、先頭ページへ落ちることを固定する。
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertFeedUser(ctx, t, drv, userA)
+				insertPurchase(ctx, t, drv, newer, userA, statusCompletedID, 100, base)
+				insertPurchase(ctx, t, drv, older, userA, statusCompletedID, 200, base.Add(-time.Hour))
+
+				orderedAt := base
+				got, err := svc.FindFeedAll(ctx, query.ListFeedParams{
+					Limit:          10,
+					AfterOrderedAt: &orderedAt,
+					AfterID:        nil,
+					Window:         isolate(t),
+				})
+				require.NoError(t, err)
+				// 境界が効いていれば newer は落ちる。先頭ページ扱いなので 2 件とも返る。
+				require.Len(t, got, 2)
+				assert.Equal(t, mustParse(newer), got[0].ID)
+			})
+		})
+
+		t.Run("statusと明細の要約が所有権で閉じる読み取りと同じ形で解決される", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertFeedUser(ctx, t, drv, userA)
+				insertPurchase(ctx, t, drv, newer, userA, statusCompletedID, 176500, base)
+
+				got, err := svc.FindFeedAll(ctx, query.ListFeedParams{Limit: 10, Window: isolate(t)})
+				require.NoError(t, err)
+				require.Len(t, got, 1)
+				assert.Equal(t, mustParse(statusCompletedID), got[0].StatusID)
+				assert.Equal(t, statusCompletedName, got[0].StatusName)
+				assert.Equal(t, domainpurchase.StatusCompleted.Code(), got[0].StatusCode)
+				assert.Equal(t, 176500, got[0].TotalAmount)
+				assert.Equal(t, "code-"+newer, got[0].Code)
+				assert.Equal(t, defaultProductName, got[0].FirstItemName)
+				assert.Equal(t, 1, got[0].ItemCount)
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("先頭ページでlimitが負数の場合、ErrInternalへ正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				got, err := svc.FindFeedAll(ctx, query.ListFeedParams{Limit: -1})
+				assert.Nil(t, got)
+				require.ErrorIs(t, err, apperror.ErrInternal)
+			})
+		})
+
+		t.Run("afterカーソル指定でlimitが負数の場合、ErrInternalへ正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				orderedAt := base
+				id := mustParse(newer)
+				got, err := svc.FindFeedAll(ctx, query.ListFeedParams{
 					Limit:          -1,
 					AfterOrderedAt: &orderedAt,
 					AfterID:        &id,

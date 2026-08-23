@@ -38,6 +38,11 @@ func TestAction_String(t *testing.T) {
 			assert.Equal(t, "product:create", ActionProductCreate.String())
 		})
 
+		t.Run("ActionPurchaseReadAllの文字列表現を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "purchase:all:read", ActionPurchaseReadAll.String())
+		})
+
 		t.Run("ActionPurchaseShipの文字列表現を返す", func(t *testing.T) {
 			t.Parallel()
 			assert.Equal(t, "purchase:ship", ActionPurchaseShip.String())

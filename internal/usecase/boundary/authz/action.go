@@ -24,6 +24,8 @@ const (
 	// ActionProductReadUnpublished は、未公開商品を含む商品の参照操作（admin）を表します。
 	// 一覧・一致件数・詳細が同じ能力を共有するため、3 つの経路で同一の Action を用います。
 	ActionProductReadUnpublished Action = "product:unpublished:read"
+	// ActionPurchaseReadAll は、購入者を問わない購入の参照操作（admin）を表します。
+	ActionPurchaseReadAll Action = "purchase:all:read"
 	// ActionPurchaseListShippable は、発送待ち購入一覧の参照操作（admin）を表します。
 	ActionPurchaseListShippable Action = "purchase:shippable:list"
 	// ActionPurchaseShip は、購入の発送操作（admin）を表します。

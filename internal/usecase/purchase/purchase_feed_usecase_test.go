@@ -8,10 +8,14 @@ import (
 	"go-boilerplate/internal/apperror"
 	domainpurchase "go-boilerplate/internal/domain/purchase"
 	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/boundary/auth"
+	"go-boilerplate/internal/usecase/boundary/authz"
+	mock_authz "go-boilerplate/internal/usecase/boundary/authz/mock"
 	"go-boilerplate/internal/usecase/purchase/query"
 	mock_query "go-boilerplate/internal/usecase/purchase/query/mock"
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/internal/usecase/tools/timewindow"
+	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/uuid"
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
@@ -47,6 +51,22 @@ func Test_usecase_GetPurchases(t *testing.T) {
 		return c
 	}
 
+	statusCodeOf := func(t *testing.T, status domainpurchase.Status) int16 {
+		t.Helper()
+		code, err := safecast.IntToInt16(status.Code())
+		require.NoError(t, err)
+		return code
+	}
+
+	authnOf := func(t *testing.T, userID uuid.UUID) *auth.Authn {
+		t.Helper()
+		a, err := auth.New("feed-uc-subject", "feed-uc-issuer", nil, nil)
+		require.NoError(t, err)
+		resolved, err := a.WithUserID(userID)
+		require.NoError(t, err)
+		return resolved
+	}
+
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
@@ -65,7 +85,11 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			feedQS.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Return(items, nil)
 
 			u := &usecase{tracer: lt, feedQS: feedQS}
-			got, err := u.GetPurchases(context.Background(), uuidtestkit.NewTestFromSalt(t, "user"), firstCursor(t, 2), timewindow.Window{})
+			got, err := u.GetPurchases(
+				context.Background(),
+				authnOf(t, uuidtestkit.NewTestFromSalt(t, "user")),
+				ListPurchasesParams{Cursor: firstCursor(t, 2)},
+			)
 			require.NoError(t, err)
 			require.Len(t, got.Items, 2)
 			// FeedItem の全フィールドが漏れなく PurchaseSummaryView へ写像されることを固定する。
@@ -94,7 +118,11 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			feedQS.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Return(items, nil)
 
 			u := &usecase{tracer: lt, feedQS: feedQS}
-			got, err := u.GetPurchases(context.Background(), uuidtestkit.NewTestFromSalt(t, "user"), firstCursor(t, 2), timewindow.Window{})
+			got, err := u.GetPurchases(
+				context.Background(),
+				authnOf(t, uuidtestkit.NewTestFromSalt(t, "user")),
+				ListPurchasesParams{Cursor: firstCursor(t, 2)},
+			)
 			require.NoError(t, err)
 			require.Len(t, got.Items, 1)
 			assert.Nil(t, got.NextCursor)
@@ -112,7 +140,11 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			feedQS.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Return(items, nil)
 
 			u := &usecase{tracer: lt, feedQS: feedQS}
-			got, err := u.GetPurchases(context.Background(), uuidtestkit.NewTestFromSalt(t, "user"), firstCursor(t, 2), timewindow.Window{})
+			got, err := u.GetPurchases(
+				context.Background(),
+				authnOf(t, uuidtestkit.NewTestFromSalt(t, "user")),
+				ListPurchasesParams{Cursor: firstCursor(t, 2)},
+			)
 			require.NoError(t, err)
 			require.Len(t, got.Items, 2)
 			assert.Nil(t, got.NextCursor)
@@ -127,7 +159,11 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			feedQS.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Return([]query.PurchaseFeedReadModel{}, nil)
 
 			u := &usecase{tracer: lt, feedQS: feedQS}
-			got, err := u.GetPurchases(context.Background(), uuidtestkit.NewTestFromSalt(t, "user"), firstCursor(t, 2), timewindow.Window{})
+			got, err := u.GetPurchases(
+				context.Background(),
+				authnOf(t, uuidtestkit.NewTestFromSalt(t, "user")),
+				ListPurchasesParams{Cursor: firstCursor(t, 2)},
+			)
 			require.NoError(t, err)
 			assert.Empty(t, got.Items)
 			assert.Nil(t, got.NextCursor)
@@ -145,7 +181,11 @@ func Test_usecase_GetPurchases(t *testing.T) {
 				[]query.PurchaseFeedReadModel{feedItem(t, "a", base)}, nil)
 
 			u := &usecase{tracer: lt, feedQS: feedQS}
-			got, err := u.GetPurchases(context.Background(), uuidtestkit.NewTestFromSalt(t, "user"), &paging.Cursor{}, timewindow.Window{})
+			got, err := u.GetPurchases(
+				context.Background(),
+				authnOf(t, uuidtestkit.NewTestFromSalt(t, "user")),
+				ListPurchasesParams{Cursor: &paging.Cursor{}},
+			)
 			require.NoError(t, err)
 			assert.Empty(t, got.Items)
 			assert.Nil(t, got.NextCursor)
@@ -175,7 +215,7 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			)
 
 			u := &usecase{tracer: lt, feedQS: feedQS}
-			_, err = u.GetPurchases(context.Background(), userID, cursor, timewindow.Window{})
+			_, err = u.GetPurchases(context.Background(), authnOf(t, userID), ListPurchasesParams{Cursor: cursor})
 			require.NoError(t, err)
 
 			assert.Equal(t, userID, capturedUserID)
@@ -210,7 +250,9 @@ func Test_usecase_GetPurchases(t *testing.T) {
 
 			u := &usecase{tracer: lt, feedQS: feedQS}
 			_, err = u.GetPurchases(
-				context.Background(), uuidtestkit.NewTestFromSalt(t, "user"), firstCursor(t, 2), window,
+				context.Background(),
+				authnOf(t, uuidtestkit.NewTestFromSalt(t, "user")),
+				ListPurchasesParams{Cursor: firstCursor(t, 2), Window: window},
 			)
 			require.NoError(t, err)
 
@@ -240,13 +282,43 @@ func Test_usecase_GetPurchases(t *testing.T) {
 
 			u := &usecase{tracer: lt, feedQS: feedQS}
 			_, err = u.GetPurchases(
-				context.Background(), uuidtestkit.NewTestFromSalt(t, "user"), firstCursor(t, 2), window,
+				context.Background(),
+				authnOf(t, uuidtestkit.NewTestFromSalt(t, "user")),
+				ListPurchasesParams{Cursor: firstCursor(t, 2), Window: window},
 			)
 			require.NoError(t, err)
 
 			require.NotNil(t, captured.Window.After())
 			assert.True(t, after.Equal(*captured.Window.After()))
 			assert.Nil(t, captured.Window.Before())
+		})
+
+		t.Run("ステータスの絞り込みがそのままQueryServiceへ渡る", func(t *testing.T) {
+			t.Parallel()
+
+			lt := observability.NewMockUsecaseLayerTracer(t)
+			feedQS := mock_query.NewMockPurchaseFeedQueryService(gomock.NewController(t))
+
+			var captured query.ListFeedParams
+			feedQS.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, _ uuid.UUID, params query.ListFeedParams) ([]query.PurchaseFeedReadModel, error) {
+					captured = params
+					return []query.PurchaseFeedReadModel{}, nil
+				},
+			)
+
+			u := &usecase{tracer: lt, feedQS: feedQS}
+			_, err := u.GetPurchases(
+				context.Background(),
+				authnOf(t, uuidtestkit.NewTestFromSalt(t, "user")),
+				ListPurchasesParams{
+					Cursor:      firstCursor(t, 2),
+					StatusCodes: []int16{statusCodeOf(t, domainpurchase.StatusShipped)},
+				},
+			)
+			require.NoError(t, err)
+
+			assert.Equal(t, []int16{statusCodeOf(t, domainpurchase.StatusShipped)}, captured.StatusCodes)
 		})
 	})
 
@@ -261,7 +333,11 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			feedQS.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 			u := &usecase{tracer: lt, feedQS: feedQS}
-			got, err := u.GetPurchases(context.Background(), uuidtestkit.NewTestFromSalt(t, "user"), nil, timewindow.Window{})
+			got, err := u.GetPurchases(
+				context.Background(),
+				authnOf(t, uuidtestkit.NewTestFromSalt(t, "user")),
+				ListPurchasesParams{},
+			)
 			assert.Nil(t, got)
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 		})
@@ -280,7 +356,11 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			require.NoError(t, err)
 
 			u := &usecase{tracer: lt, feedQS: feedQS}
-			got, err := u.GetPurchases(context.Background(), uuidtestkit.NewTestFromSalt(t, "user"), cursor, timewindow.Window{})
+			got, err := u.GetPurchases(
+				context.Background(),
+				authnOf(t, uuidtestkit.NewTestFromSalt(t, "user")),
+				ListPurchasesParams{Cursor: cursor},
+			)
 			assert.Nil(t, got)
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 		})
@@ -293,9 +373,154 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			feedQS.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, apperror.ErrInternal)
 
 			u := &usecase{tracer: lt, feedQS: feedQS}
-			got, err := u.GetPurchases(context.Background(), uuidtestkit.NewTestFromSalt(t, "user"), firstCursor(t, 2), timewindow.Window{})
+			got, err := u.GetPurchases(
+				context.Background(),
+				authnOf(t, uuidtestkit.NewTestFromSalt(t, "user")),
+				ListPurchasesParams{Cursor: firstCursor(t, 2)},
+			)
 			assert.Nil(t, got)
 			require.ErrorIs(t, err, apperror.ErrInternal)
+		})
+
+		t.Run("authnがnilのときErrUnauthenticatedを返しQueryServiceを呼ばない", func(t *testing.T) {
+			t.Parallel()
+
+			lt := observability.NewMockUsecaseLayerTracer(t)
+			feedQS := mock_query.NewMockPurchaseFeedQueryService(gomock.NewController(t))
+			feedQS.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			feedQS.EXPECT().FindFeedAll(gomock.Any(), gomock.Any()).Times(0)
+
+			u := &usecase{tracer: lt, feedQS: feedQS}
+			got, err := u.GetPurchases(context.Background(), nil, ListPurchasesParams{Cursor: firstCursor(t, 2)})
+			assert.Nil(t, got)
+			require.ErrorIs(t, err, apperror.ErrUnauthenticated)
+		})
+	})
+}
+
+func Test_usecase_findFeedPage(t *testing.T) {
+	t.Parallel()
+
+	authnOf := func(t *testing.T, salt string) *auth.Authn {
+		t.Helper()
+		a, err := auth.New("feed-page-subject", "feed-page-issuer", nil, nil)
+		require.NoError(t, err)
+		resolved, err := a.WithUserID(uuidtestkit.NewTestFromSalt(t, salt))
+		require.NoError(t, err)
+		return resolved
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("既定では認可を求めず認証主体の購入だけを読む", func(t *testing.T) {
+			t.Parallel()
+
+			lt := observability.NewMockUsecaseLayerTracer(t)
+			ctrl := gomock.NewController(t)
+			feedQS := mock_query.NewMockPurchaseFeedQueryService(ctrl)
+			authorizer := mock_authz.NewMockAuthorizer(ctrl)
+
+			// 自分の購入を読むのに admin の能力は要らない。
+			authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			feedQS.EXPECT().FindFeedAll(gomock.Any(), gomock.Any()).Times(0)
+
+			userID := uuidtestkit.NewTestFromSalt(t, "owner")
+			var capturedUserID uuid.UUID
+			feedQS.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, uid uuid.UUID, _ query.ListFeedParams) ([]query.PurchaseFeedReadModel, error) {
+					capturedUserID = uid
+					return []query.PurchaseFeedReadModel{}, nil
+				},
+			)
+
+			u := &usecase{tracer: lt, feedQS: feedQS, authorizer: authorizer}
+			authn, err := auth.New("feed-page-subject", "feed-page-issuer", nil, nil)
+			require.NoError(t, err)
+			resolved, err := authn.WithUserID(userID)
+			require.NoError(t, err)
+
+			got, err := u.findFeedPage(context.Background(), resolved, false, query.ListFeedParams{Limit: 3})
+			require.NoError(t, err)
+			assert.Empty(t, got)
+			assert.Equal(t, userID, capturedUserID)
+		})
+
+		t.Run("他ユーザーを含める指定はadmin認可のうえ所有権で閉じない読み取りへ切り替わる", func(t *testing.T) {
+			t.Parallel()
+
+			lt := observability.NewMockUsecaseLayerTracer(t)
+			ctrl := gomock.NewController(t)
+			feedQS := mock_query.NewMockPurchaseFeedQueryService(ctrl)
+			authorizer := mock_authz.NewMockAuthorizer(ctrl)
+
+			// 所有権で閉じる読み取りは呼ばれない（母集団が混ざらないことの固定）。
+			feedQS.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			authorizer.EXPECT().Authorize(
+				gomock.Any(), gomock.Any(), authz.ActionPurchaseReadAll, gomock.Any(),
+			).Return(nil)
+
+			var captured query.ListFeedParams
+			feedQS.EXPECT().FindFeedAll(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, params query.ListFeedParams) ([]query.PurchaseFeedReadModel, error) {
+					captured = params
+					return []query.PurchaseFeedReadModel{}, nil
+				},
+			)
+
+			u := &usecase{tracer: lt, feedQS: feedQS, authorizer: authorizer}
+			got, err := u.findFeedPage(
+				context.Background(), authnOf(t, "admin"), true,
+				query.ListFeedParams{Limit: 3, StatusCodes: []int16{8}},
+			)
+			require.NoError(t, err)
+			assert.Empty(t, got)
+			// 母集団が変わっても件数と絞り込みの条件はそのまま渡る。
+			assert.Equal(t, int32(3), captured.Limit)
+			assert.Equal(t, []int16{8}, captured.StatusCodes)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("他ユーザーを含める指定が認可されないとき所有権で閉じない読み取りを呼ばない", func(t *testing.T) {
+			t.Parallel()
+
+			lt := observability.NewMockUsecaseLayerTracer(t)
+			ctrl := gomock.NewController(t)
+			feedQS := mock_query.NewMockPurchaseFeedQueryService(ctrl)
+			authorizer := mock_authz.NewMockAuthorizer(ctrl)
+
+			feedQS.EXPECT().FindFeedAll(gomock.Any(), gomock.Any()).Times(0)
+			// 拒否された指定が自分の購入一覧へ降格しないことも同時に固定する。
+			feedQS.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			authorizer.EXPECT().Authorize(
+				gomock.Any(), gomock.Any(), authz.ActionPurchaseReadAll, gomock.Any(),
+			).Return(apperror.ErrPermissionDenied)
+
+			u := &usecase{tracer: lt, feedQS: feedQS, authorizer: authorizer}
+			got, err := u.findFeedPage(context.Background(), authnOf(t, "user"), true, query.ListFeedParams{Limit: 3})
+			assert.Nil(t, got)
+			require.ErrorIs(t, err, apperror.ErrPermissionDenied)
+		})
+
+		t.Run("認証主体のUserIDが未解決のときQueryServiceを呼ばずエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			// 認証は済んでいるが内部ユーザーが解決できていない Authn では、所有権の絞り込みに渡す
+			// userID が定まらない。ゼロ値で全件を引きに行かないことを固定する。
+			lt := observability.NewMockUsecaseLayerTracer(t)
+			feedQS := mock_query.NewMockPurchaseFeedQueryService(gomock.NewController(t))
+			feedQS.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+
+			unresolved, err := auth.New("feed-page-subject", "feed-page-issuer", nil, nil)
+			require.NoError(t, err)
+
+			u := &usecase{tracer: lt, feedQS: feedQS}
+			got, err := u.findFeedPage(context.Background(), unresolved, false, query.ListFeedParams{Limit: 3})
+			assert.Nil(t, got)
+			require.ErrorIs(t, err, auth.ErrUserIDUnresolved)
 		})
 	})
 }

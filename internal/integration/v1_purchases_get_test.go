@@ -12,6 +12,7 @@ import (
 	"go-boilerplate/internal/controller/handler/v1/purchases/gen"
 	domainpurchase "go-boilerplate/internal/domain/purchase"
 	"go-boilerplate/internal/observability"
+	authbd "go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/internal/usecase/idempotency"
 	purchaseuc "go-boilerplate/internal/usecase/purchase"
 	mock_purchaseuc "go-boilerplate/internal/usecase/purchase/mock"
@@ -54,7 +55,7 @@ func TestV1PurchasesGet_Integration(t *testing.T) {
 
 			nextCursor := "next-opaque-cursor"
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 				&purchaseuc.PurchaseListView{Items: []purchaseuc.PurchaseSummaryView{summaryFixture()}, NextCursor: &nextCursor}, nil,
 			)
 
@@ -73,7 +74,7 @@ func TestV1PurchasesGet_Integration(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 				&purchaseuc.PurchaseListView{Items: []purchaseuc.PurchaseSummaryView{summaryFixture()}}, nil,
 			)
 
@@ -98,7 +99,7 @@ func TestV1PurchasesGet_Integration(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 				&purchaseuc.PurchaseListView{Items: []purchaseuc.PurchaseSummaryView{summaryFixture()}}, nil,
 			)
 
@@ -125,10 +126,12 @@ func TestV1PurchasesGet_Integration(t *testing.T) {
 			var capturedUserID uuid.UUID
 			var capturedCursor *paging.Cursor
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ context.Context, userID uuid.UUID, cursor *paging.Cursor, _ timewindow.Window) (*purchaseuc.PurchaseListView, error) {
-					capturedUserID = userID
-					capturedCursor = cursor
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, authn *authbd.Authn, params purchaseuc.ListPurchasesParams) (*purchaseuc.PurchaseListView, error) {
+					uid, err := authn.UserID()
+					require.NoError(t, err)
+					capturedUserID = uid
+					capturedCursor = params.Cursor
 					return &purchaseuc.PurchaseListView{Items: []purchaseuc.PurchaseSummaryView{}, NextCursor: nil}, nil
 				},
 			)
@@ -157,9 +160,9 @@ func TestV1PurchasesGet_Integration(t *testing.T) {
 
 			var captured timewindow.Window
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ context.Context, _ uuid.UUID, _ *paging.Cursor, w timewindow.Window) (*purchaseuc.PurchaseListView, error) {
-					captured = w
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, _ *authbd.Authn, params purchaseuc.ListPurchasesParams) (*purchaseuc.PurchaseListView, error) {
+					captured = params.Window
 					return &purchaseuc.PurchaseListView{Items: []purchaseuc.PurchaseSummaryView{}, NextCursor: nil}, nil
 				},
 			)
@@ -188,10 +191,10 @@ func TestV1PurchasesGet_Integration(t *testing.T) {
 			var capturedCursor *paging.Cursor
 			var capturedWindow timewindow.Window
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ context.Context, _ uuid.UUID, cursor *paging.Cursor, w timewindow.Window) (*purchaseuc.PurchaseListView, error) {
-					capturedCursor = cursor
-					capturedWindow = w
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, _ *authbd.Authn, params purchaseuc.ListPurchasesParams) (*purchaseuc.PurchaseListView, error) {
+					capturedCursor = params.Cursor
+					capturedWindow = params.Window
 					return &purchaseuc.PurchaseListView{Items: []purchaseuc.PurchaseSummaryView{}, NextCursor: nil}, nil
 				},
 			)
@@ -211,6 +214,35 @@ func TestV1PurchasesGet_Integration(t *testing.T) {
 			assert.True(t, time.Date(2026, time.January, 21, 0, 0, 0, 0, time.UTC).Equal(*capturedWindow.After()))
 		})
 
+		t.Run("statusCodesとincludeOtherUsersのクエリがUsecaseへバインドされる", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			var captured purchaseuc.ListPurchasesParams
+			uc := mock_purchaseuc.NewMockUsecase(ctrl)
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, _ *authbd.Authn, params purchaseuc.ListPurchasesParams) (*purchaseuc.PurchaseListView, error) {
+					captured = params
+					return &purchaseuc.PurchaseListView{Items: []purchaseuc.PurchaseSummaryView{}, NextCursor: nil}, nil
+				},
+			)
+
+			v1purchases.BindHandler(e, tf, uc, nil, idempotency.Deps{})
+
+			headers := availablePurchaseUser(t, e)
+			// 同じ名前を繰り返す形（explode）で複数のステータスを渡す。
+			actual := StartServer(t, e).DoJSON(
+				http.MethodGet,
+				"/v1/purchases?statusCodes=7&statusCodes=8&includeOtherUsers=true", nil, headers)
+			require.Equal(t, http.StatusOK, actual.StatusCode)
+
+			assert.Equal(t, []int16{7, 8}, captured.StatusCodes)
+			assert.True(t, captured.IncludeOtherUsers)
+		})
+
 		t.Run("購入ゼロで200かつitemsが空配列でnextCursorがnull", func(t *testing.T) {
 			t.Parallel()
 
@@ -219,7 +251,7 @@ func TestV1PurchasesGet_Integration(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 				&purchaseuc.PurchaseListView{Items: []purchaseuc.PurchaseSummaryView{}, NextCursor: nil}, nil,
 			)
 
@@ -249,7 +281,7 @@ func TestV1PurchasesGet_Integration(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 			v1purchases.BindHandler(e, tf, uc, nil, idempotency.Deps{})
 
@@ -267,12 +299,30 @@ func TestV1PurchasesGet_Integration(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 			v1purchases.BindHandler(e, tf, uc, nil, idempotency.Deps{})
 
 			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/purchases", nil, nil)
 			AssertErrorResponse(t, actual, http.StatusUnauthorized)
+		})
+
+		t.Run("他ユーザーを含める指定が認可されないとき403を返す", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			UseAppErrorHandler(t, e)
+			ctrl := gomock.NewController(t)
+			tf := observability.NewNoopTracerFactory(t)
+
+			uc := mock_purchaseuc.NewMockUsecase(ctrl)
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, apperror.ErrPermissionDenied)
+
+			v1purchases.BindHandler(e, tf, uc, nil, idempotency.Deps{})
+
+			headers := availablePurchaseUser(t, e)
+			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/purchases?includeOtherUsers=true", nil, headers)
+			AssertErrorResponse(t, actual, http.StatusForbidden)
 		})
 
 		t.Run("ErrInternalで500を返す", func(t *testing.T) {
@@ -284,7 +334,7 @@ func TestV1PurchasesGet_Integration(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, apperror.ErrInternal)
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, apperror.ErrInternal)
 
 			v1purchases.BindHandler(e, tf, uc, nil, idempotency.Deps{})
 

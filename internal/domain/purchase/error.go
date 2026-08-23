@@ -47,14 +47,14 @@ var (
 	// ErrAlreadyShipped は、既に発送済みの購入を再度発送しようとした場合のエラーです（二重発送）。
 	ErrAlreadyShipped = xerrors.Wrap(apperror.ErrConflict, "purchase already shipped")
 
-	// ErrShipNotAllowed は、発送不可の状態（未払い相当・完了・キャンセル済み・配達済み）から発送しようとした
+	// ErrShipNotAllowed は、発送不可の状態（未払い相当・処理中・完了・キャンセル済み・配達済み）から発送しようとした
 	// 場合のエラーです。
 	ErrShipNotAllowed = xerrors.Wrap(apperror.ErrConflict, "purchase cannot be shipped in the current state")
 
 	// ErrAlreadyDelivered は、既に配達済みの購入を再度配達完了にしようとした場合のエラーです（二重配達）。
 	ErrAlreadyDelivered = xerrors.Wrap(apperror.ErrConflict, "purchase already delivered")
 
-	// ErrDeliverNotAllowed は、配達不可の状態（未払い相当・支払い済み・完了・キャンセル済み）から配達完了に
+	// ErrDeliverNotAllowed は、配達不可の状態（未払い相当・処理中・支払い済み・完了・キャンセル済み）から配達完了に
 	// しようとした場合のエラーです。
 	ErrDeliverNotAllowed = xerrors.Wrap(apperror.ErrConflict, "purchase cannot be delivered in the current state")
 )

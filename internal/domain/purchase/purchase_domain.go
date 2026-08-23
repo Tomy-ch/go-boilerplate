@@ -138,11 +138,8 @@ func validateDetails(details []PurchaseDetail) error {
 	return nil
 }
 
-// buildDetails は、明細の入力をロック済み在庫と突き合わせて購入明細を組み立て、単価スナップショット
-// による小計を価格スケールで返します。
-// 明細 ID が未設定、数量が最小値未満、同一商品 ID が重複、入力に対応するロック済み商品が無い場合は
-// それぞれ検証エラー（422）を、要求数量がロック済み在庫を超える場合は ErrInsufficientStock（409）を
-// 返します。単価は対応するロック済み商品の価格とし、入力の順序を保った明細を返します。
+// buildDetails は、明細の入力をロック済み在庫と突き合わせて購入明細を組み立て、単価スナップショットに
+// よる小計を価格スケールで返します（検証条件は New を参照）。入力の順序を保った明細を返します。
 func buildDetails(inputs []DetailInput, locked []LockedProduct) ([]PurchaseDetail, decimal.Decimal, error) {
 	lockedByID := make(map[uuid.UUID]LockedProduct, len(locked))
 	for _, l := range locked {
@@ -325,8 +322,8 @@ func Reconstruct(id uuid.UUID, attrs Attributes) (*Purchase, error) {
 	}, nil
 }
 
-// validateStatusTimestamps は、statusCode と各イベント日時の組み合わせが状態遷移で到達し得るかを検証します。
-// 到達し得ない組み合わせ（発送後のキャンセル、発送を伴わない配達 等）の場合は ErrInvalidStatusID を返します。
+// validateStatusTimestamps は、statusCode と各イベント日時の組み合わせの到達可能性を検証します
+// （個々の理由は各分岐のコメント、契約は Reconstruct を参照）。
 func validateStatusTimestamps(status Status, paidAt, canceledAt, shippedAt, deliveredAt *time.Time) error {
 	// キャンセルと canceledAt は同時セット（双条件。docs/spec/purchase/domain.md Cancel invariants）。
 	if (status == StatusCanceled) != (canceledAt != nil) {
@@ -459,11 +456,11 @@ func (p *Purchase) Cancel(now time.Time) (Event, error) {
 	return newEvent(EventCanceled, p.id, now), nil
 }
 
-// Pay は、購入を支払い済み状態へ遷移させます。未払い相当（未処理 / 受付中 / 確認中 / 処理中）からのみ遷移でき、
-// statusCode を支払い済み（7）へ、paidAt を now へ同時に更新します。既に支払い済みなら ErrAlreadyPaid、
-// キャンセル済み・完了・配達済み・発送済み（shippedAt）なら ErrPayNotAllowed をそれぞれ返します
-// （いずれも 409）。決済 SDK / PSP 連携は行わず、paidAt とステータスの記録のみを担う擬似決済です。
-// 遷移に成功したときだけ支払いの事実（Event）を返します。
+// Pay は、購入を支払い済み状態へ遷移させます。未払い相当（未処理 / 受付中 / 確認中）からのみ遷移でき、
+// statusCode を支払い済み（7）へ、paidAt を now へ同時に更新します。支払い済み、または未払い相当でも
+// paidAt が記録済みなら ErrAlreadyPaid、処理中・キャンセル済み・完了・配達済み・発送済み（shippedAt）なら
+// ErrPayNotAllowed をそれぞれ返します（いずれも 409）。決済 SDK / PSP 連携は行わず、paidAt とステータスの
+// 記録のみを担う擬似決済です。遷移に成功したときだけ支払いの事実（Event）を返します。
 func (p *Purchase) Pay(now time.Time) (Event, error) {
 	if p.status == StatusPaid {
 		return Event{}, ErrAlreadyPaid
@@ -472,6 +469,10 @@ func (p *Purchase) Pay(now time.Time) (Event, error) {
 	if !p.status.CanTransitionTo(StatusPaid) || p.shippedAt != nil {
 		return Event{}, ErrPayNotAllowed
 	}
+	// 記録済みの paidAt を上書きしないためのガード（二重支払い防止。docs/spec/purchase/domain.md Pay invariants）。
+	if p.paidAt != nil {
+		return Event{}, ErrAlreadyPaid
+	}
 	p.status = StatusPaid
 	p.paidAt = &now
 	return newEvent(EventPaid, p.id, now), nil
@@ -479,7 +480,7 @@ func (p *Purchase) Pay(now time.Time) (Event, error) {
 
 // Ship は、購入を発送済み状態へ遷移させます。支払い済みからのみ遷移でき、statusCode を発送済み（8）へ、
 // shippedAt を now へ同時に更新します。既に発送済みなら ErrAlreadyShipped、それ以外の状態
-// （未払い相当・完了・キャンセル済み・配達済み）なら ErrShipNotAllowed をそれぞれ返します（いずれも 409）。
+// （未払い相当・処理中・完了・キャンセル済み・配達済み）なら ErrShipNotAllowed をそれぞれ返します（いずれも 409）。
 // 配送追跡（追跡番号 / 配送業者）は扱わず、shippedAt とステータスの記録のみを担います。
 // 遷移に成功したときだけ発送の事実（Event）を返します。
 func (p *Purchase) Ship(now time.Time) (Event, error) {
@@ -496,7 +497,7 @@ func (p *Purchase) Ship(now time.Time) (Event, error) {
 
 // Deliver は、購入を配達済み状態へ遷移させます。発送済みからのみ遷移でき、statusCode を配達済み（9）へ、
 // deliveredAt を now へ同時に更新します。既に配達済みなら ErrAlreadyDelivered、それ以外の状態
-// （未払い相当・支払い済み・完了・キャンセル済み）なら ErrDeliverNotAllowed をそれぞれ返します（いずれも 409）。
+// （未払い相当・処理中・支払い済み・完了・キャンセル済み）なら ErrDeliverNotAllowed をそれぞれ返します（いずれも 409）。
 // 配達確認の証跡（署名 / 受領写真 / GPS 位置）は扱わず、deliveredAt とステータスの記録のみを担います。
 // 遷移に成功したときだけ配達の事実（Event）を返します。
 func (p *Purchase) Deliver(now time.Time) (Event, error) {

@@ -80,6 +80,9 @@ findings** — 業務が使っていてモデルが使っていない語は、�
 | 売上金額ランキング | 売れた金額の多い順に商品を並べたもの。母集団は販売数量ランキングと同一で、指標と並び順だけが違う | product-ranking | `ranking.AmountRankingView` | `ProductAmountRankingItem` |
 | ユーザー検索 | 条件に当てはまるユーザーを探し出すこと | user-search | `search.UserSearchResult` | — |
 | 未処理 | 購入が成立した直後の、まだ何も進んでいない状態 | purchase / Purchase | `purchase.StatusUnprocessed` | — |
+| 受付中 | 購入の注文を受け付け、内容の確認に入る前の状態 | purchase / Purchase | `purchase.StatusAccepted` | — |
+| 確認中 | 受け付けた注文の内容を確認している状態 | purchase / Purchase | `purchase.StatusConfirming` | — |
+| 処理中 | 支払いを終え、発送に向けた処理を進めている状態 | purchase / Purchase | `purchase.StatusProcessing` | — |
 | 支払い済み | 購入の代金が支払われた状態 | purchase / Purchase | `purchase.StatusPaid` | — |
 | 発送済み | 購入された商品が顧客へ向けて送り出された状態 | purchase / Purchase | `purchase.StatusShipped` | — |
 | 配達済み | 購入された商品が顧客に届いた状態。ここから先へは進まない | purchase / Purchase | `purchase.StatusDelivered` | — |

@@ -97,6 +97,354 @@ func (q *Queries) GetPurchaseDetailForUser(ctx context.Context, arg *GetPurchase
 	return &i, err
 }
 
+const listAllPurchasesFeedAfter = `-- name: ListAllPurchasesFeedAfter :many
+WITH page AS (
+    SELECT
+        p.id,
+        p.code,
+        p.total_amount,
+        p.ordered_at,
+        p.status_id
+    FROM purchases AS p
+    WHERE (
+        p.ordered_at < $1
+        OR (p.ordered_at = $1 AND p.id < $2)
+    )
+    AND (
+        p.ordered_at >= $3
+        OR $3 IS NULL
+    )
+    AND (
+        p.ordered_at < $4
+        OR $4 IS NULL
+    )
+    AND (
+        $5::SMALLINT[] IS NULL
+        OR p.status_id IN (
+            SELECT s.id FROM purchase_statuses AS s
+            WHERE s.code = ANY($5::SMALLINT[])
+        )
+    )
+    ORDER BY p.ordered_at DESC, p.id DESC
+    LIMIT $6
+)
+
+SELECT
+    page.id,
+    page.code,
+    page.total_amount,
+    page.ordered_at,
+    ps.id AS status_id,
+    ps.code AS status_code,
+    ps.name AS status_name,
+    first_item.product_name AS first_item_name,
+    item_agg.item_count
+FROM page
+INNER JOIN purchase_statuses AS ps ON page.status_id = ps.id
+INNER JOIN LATERAL (
+    SELECT pr.name AS product_name
+    FROM purchase_details AS d
+    INNER JOIN products AS pr ON d.product_id = pr.id
+    WHERE d.purchase_id = page.id
+    ORDER BY d.id
+    LIMIT 1
+) AS first_item ON TRUE
+INNER JOIN LATERAL (
+    SELECT COUNT(*)::BIGINT AS item_count
+    FROM purchase_details AS d
+    WHERE d.purchase_id = page.id
+) AS item_agg ON TRUE
+ORDER BY page.ordered_at DESC, page.id DESC
+`
+
+type ListAllPurchasesFeedAfterParams struct {
+	AfterOrderedAt time.Time
+	AfterID        uuid.UUID
+	OrderedAfter   *time.Time
+	OrderedBefore  *time.Time
+	StatusCodes    []int16
+	LimitParam     int32
+}
+
+type ListAllPurchasesFeedAfterRow struct {
+	ID            uuid.UUID
+	Code          string
+	TotalAmount   int64
+	OrderedAt     time.Time
+	StatusID      uuid.UUID
+	StatusCode    int16
+	StatusName    string
+	FirstItemName string
+	ItemCount     int64
+}
+
+// 購入者を問わず (ordered_at DESC, id DESC) の keyset 境界より過去の購入履歴を返す（admin の可視範囲）。
+// 境界の解釈は ListPurchasesFeedAfter と同一で、母集団だけが異なる。
+//
+//	WITH page AS (
+//	    SELECT
+//	        p.id,
+//	        p.code,
+//	        p.total_amount,
+//	        p.ordered_at,
+//	        p.status_id
+//	    FROM purchases AS p
+//	    WHERE (
+//	        p.ordered_at < $1
+//	        OR (p.ordered_at = $1 AND p.id < $2)
+//	    )
+//	    AND (
+//	        p.ordered_at >= $3
+//	        OR $3 IS NULL
+//	    )
+//	    AND (
+//	        p.ordered_at < $4
+//	        OR $4 IS NULL
+//	    )
+//	    AND (
+//	        $5::SMALLINT[] IS NULL
+//	        OR p.status_id IN (
+//	            SELECT s.id FROM purchase_statuses AS s
+//	            WHERE s.code = ANY($5::SMALLINT[])
+//	        )
+//	    )
+//	    ORDER BY p.ordered_at DESC, p.id DESC
+//	    LIMIT $6
+//	)
+//
+//	SELECT
+//	    page.id,
+//	    page.code,
+//	    page.total_amount,
+//	    page.ordered_at,
+//	    ps.id AS status_id,
+//	    ps.code AS status_code,
+//	    ps.name AS status_name,
+//	    first_item.product_name AS first_item_name,
+//	    item_agg.item_count
+//	FROM page
+//	INNER JOIN purchase_statuses AS ps ON page.status_id = ps.id
+//	INNER JOIN LATERAL (
+//	    SELECT pr.name AS product_name
+//	    FROM purchase_details AS d
+//	    INNER JOIN products AS pr ON d.product_id = pr.id
+//	    WHERE d.purchase_id = page.id
+//	    ORDER BY d.id
+//	    LIMIT 1
+//	) AS first_item ON TRUE
+//	INNER JOIN LATERAL (
+//	    SELECT COUNT(*)::BIGINT AS item_count
+//	    FROM purchase_details AS d
+//	    WHERE d.purchase_id = page.id
+//	) AS item_agg ON TRUE
+//	ORDER BY page.ordered_at DESC, page.id DESC
+func (q *Queries) ListAllPurchasesFeedAfter(ctx context.Context, arg *ListAllPurchasesFeedAfterParams) ([]*ListAllPurchasesFeedAfterRow, error) {
+	rows, err := q.db.Query(ctx, listAllPurchasesFeedAfter,
+		arg.AfterOrderedAt,
+		arg.AfterID,
+		arg.OrderedAfter,
+		arg.OrderedBefore,
+		arg.StatusCodes,
+		arg.LimitParam,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListAllPurchasesFeedAfterRow
+	for rows.Next() {
+		var i ListAllPurchasesFeedAfterRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Code,
+			&i.TotalAmount,
+			&i.OrderedAt,
+			&i.StatusID,
+			&i.StatusCode,
+			&i.StatusName,
+			&i.FirstItemName,
+			&i.ItemCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAllPurchasesFeedFirst = `-- name: ListAllPurchasesFeedFirst :many
+WITH page AS (
+    SELECT
+        p.id,
+        p.code,
+        p.total_amount,
+        p.ordered_at,
+        p.status_id
+    FROM purchases AS p
+    WHERE (
+        p.ordered_at >= $1
+        OR $1 IS NULL
+    )
+    AND (
+        p.ordered_at < $2
+        OR $2 IS NULL
+    )
+    AND (
+        $3::SMALLINT[] IS NULL
+        OR p.status_id IN (
+            SELECT s.id FROM purchase_statuses AS s
+            WHERE s.code = ANY($3::SMALLINT[])
+        )
+    )
+    ORDER BY p.ordered_at DESC, p.id DESC
+    LIMIT $4
+)
+
+SELECT
+    page.id,
+    page.code,
+    page.total_amount,
+    page.ordered_at,
+    ps.id AS status_id,
+    ps.code AS status_code,
+    ps.name AS status_name,
+    first_item.product_name AS first_item_name,
+    item_agg.item_count
+FROM page
+INNER JOIN purchase_statuses AS ps ON page.status_id = ps.id
+INNER JOIN LATERAL (
+    SELECT pr.name AS product_name
+    FROM purchase_details AS d
+    INNER JOIN products AS pr ON d.product_id = pr.id
+    WHERE d.purchase_id = page.id
+    ORDER BY d.id
+    LIMIT 1
+) AS first_item ON TRUE
+INNER JOIN LATERAL (
+    SELECT COUNT(*)::BIGINT AS item_count
+    FROM purchase_details AS d
+    WHERE d.purchase_id = page.id
+) AS item_agg ON TRUE
+ORDER BY page.ordered_at DESC, page.id DESC
+`
+
+type ListAllPurchasesFeedFirstParams struct {
+	OrderedAfter  *time.Time
+	OrderedBefore *time.Time
+	StatusCodes   []int16
+	LimitParam    int32
+}
+
+type ListAllPurchasesFeedFirstRow struct {
+	ID            uuid.UUID
+	Code          string
+	TotalAmount   int64
+	OrderedAt     time.Time
+	StatusID      uuid.UUID
+	StatusCode    int16
+	StatusName    string
+	FirstItemName string
+	ItemCount     int64
+}
+
+// === source: database/dml/query_service/purchase/select_all_purchases_feed.sql ===
+// 購入者を問わず購入履歴を (ordered_at DESC, id DESC) の安定順で先頭ページ取得する（admin の可視範囲）。
+// 所有権で閉じる ListPurchasesFeedFirst と母集団だけが異なり、並び順・要約の解決・期間とステータスの
+// 絞り込みは同一である。母集団ごとにクエリを分ける理由は docs/spec/purchase/usecase.md GET 一覧 を参照。
+// ページを CTE で先に閉じてから結合する理由、LATERAL を INNER で結合する理由は
+// database/dml/query_service/purchase/select_purchases_feed.sql と同じ。
+//
+//	WITH page AS (
+//	    SELECT
+//	        p.id,
+//	        p.code,
+//	        p.total_amount,
+//	        p.ordered_at,
+//	        p.status_id
+//	    FROM purchases AS p
+//	    WHERE (
+//	        p.ordered_at >= $1
+//	        OR $1 IS NULL
+//	    )
+//	    AND (
+//	        p.ordered_at < $2
+//	        OR $2 IS NULL
+//	    )
+//	    AND (
+//	        $3::SMALLINT[] IS NULL
+//	        OR p.status_id IN (
+//	            SELECT s.id FROM purchase_statuses AS s
+//	            WHERE s.code = ANY($3::SMALLINT[])
+//	        )
+//	    )
+//	    ORDER BY p.ordered_at DESC, p.id DESC
+//	    LIMIT $4
+//	)
+//
+//	SELECT
+//	    page.id,
+//	    page.code,
+//	    page.total_amount,
+//	    page.ordered_at,
+//	    ps.id AS status_id,
+//	    ps.code AS status_code,
+//	    ps.name AS status_name,
+//	    first_item.product_name AS first_item_name,
+//	    item_agg.item_count
+//	FROM page
+//	INNER JOIN purchase_statuses AS ps ON page.status_id = ps.id
+//	INNER JOIN LATERAL (
+//	    SELECT pr.name AS product_name
+//	    FROM purchase_details AS d
+//	    INNER JOIN products AS pr ON d.product_id = pr.id
+//	    WHERE d.purchase_id = page.id
+//	    ORDER BY d.id
+//	    LIMIT 1
+//	) AS first_item ON TRUE
+//	INNER JOIN LATERAL (
+//	    SELECT COUNT(*)::BIGINT AS item_count
+//	    FROM purchase_details AS d
+//	    WHERE d.purchase_id = page.id
+//	) AS item_agg ON TRUE
+//	ORDER BY page.ordered_at DESC, page.id DESC
+func (q *Queries) ListAllPurchasesFeedFirst(ctx context.Context, arg *ListAllPurchasesFeedFirstParams) ([]*ListAllPurchasesFeedFirstRow, error) {
+	rows, err := q.db.Query(ctx, listAllPurchasesFeedFirst,
+		arg.OrderedAfter,
+		arg.OrderedBefore,
+		arg.StatusCodes,
+		arg.LimitParam,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*ListAllPurchasesFeedFirstRow
+	for rows.Next() {
+		var i ListAllPurchasesFeedFirstRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Code,
+			&i.TotalAmount,
+			&i.OrderedAt,
+			&i.StatusID,
+			&i.StatusCode,
+			&i.StatusName,
+			&i.FirstItemName,
+			&i.ItemCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPurchaseDetailItemsForUser = `-- name: ListPurchaseDetailItemsForUser :many
 SELECT
     d.product_id,
@@ -176,8 +524,15 @@ WITH page AS (
             p.ordered_at < $5
             OR $5 IS NULL
         )
+        AND (
+            $6::SMALLINT[] IS NULL
+            OR p.status_id IN (
+                SELECT s.id FROM purchase_statuses AS s
+                WHERE s.code = ANY($6::SMALLINT[])
+            )
+        )
     ORDER BY p.ordered_at DESC, p.id DESC
-    LIMIT $6
+    LIMIT $7
 )
 
 SELECT
@@ -214,6 +569,7 @@ type ListPurchasesFeedAfterParams struct {
 	AfterID        uuid.UUID
 	OrderedAfter   *time.Time
 	OrderedBefore  *time.Time
+	StatusCodes    []int16
 	LimitParam     int32
 }
 
@@ -231,7 +587,7 @@ type ListPurchasesFeedAfterRow struct {
 
 // (ordered_at DESC, id DESC) の keyset 境界より過去の購入履歴を返す。境界は直前ページ末尾行の
 // (ordered_at, id) で、ordered_at 同値は id で安定にタイブレークする。
-// 期間の絞り込みは先頭ページと同一条件で、ページ送りの間も呼び出し側が同じ期間を渡す前提である。
+// 期間とステータスの絞り込みは先頭ページと同一条件で、ページ送りの間も呼び出し側が同じ条件を渡す前提である。
 // ページを CTE で閉じてから要約を結合する形も先頭ページと同一。
 //
 //	WITH page AS (
@@ -255,8 +611,15 @@ type ListPurchasesFeedAfterRow struct {
 //	            p.ordered_at < $5
 //	            OR $5 IS NULL
 //	        )
+//	        AND (
+//	            $6::SMALLINT[] IS NULL
+//	            OR p.status_id IN (
+//	                SELECT s.id FROM purchase_statuses AS s
+//	                WHERE s.code = ANY($6::SMALLINT[])
+//	            )
+//	        )
 //	    ORDER BY p.ordered_at DESC, p.id DESC
-//	    LIMIT $6
+//	    LIMIT $7
 //	)
 //
 //	SELECT
@@ -292,6 +655,7 @@ func (q *Queries) ListPurchasesFeedAfter(ctx context.Context, arg *ListPurchases
 		arg.AfterID,
 		arg.OrderedAfter,
 		arg.OrderedBefore,
+		arg.StatusCodes,
 		arg.LimitParam,
 	)
 	if err != nil {
@@ -340,8 +704,15 @@ WITH page AS (
             p.ordered_at < $3
             OR $3 IS NULL
         )
+        AND (
+            $4::SMALLINT[] IS NULL
+            OR p.status_id IN (
+                SELECT s.id FROM purchase_statuses AS s
+                WHERE s.code = ANY($4::SMALLINT[])
+            )
+        )
     ORDER BY p.ordered_at DESC, p.id DESC
-    LIMIT $4
+    LIMIT $5
 )
 
 SELECT
@@ -376,6 +747,7 @@ type ListPurchasesFeedFirstParams struct {
 	UserID        uuid.UUID
 	OrderedAfter  *time.Time
 	OrderedBefore *time.Time
+	StatusCodes   []int16
 	LimitParam    int32
 }
 
@@ -415,8 +787,15 @@ type ListPurchasesFeedFirstRow struct {
 //	            p.ordered_at < $3
 //	            OR $3 IS NULL
 //	        )
+//	        AND (
+//	            $4::SMALLINT[] IS NULL
+//	            OR p.status_id IN (
+//	                SELECT s.id FROM purchase_statuses AS s
+//	                WHERE s.code = ANY($4::SMALLINT[])
+//	            )
+//	        )
 //	    ORDER BY p.ordered_at DESC, p.id DESC
-//	    LIMIT $4
+//	    LIMIT $5
 //	)
 //
 //	SELECT
@@ -450,6 +829,7 @@ func (q *Queries) ListPurchasesFeedFirst(ctx context.Context, arg *ListPurchases
 		arg.UserID,
 		arg.OrderedAfter,
 		arg.OrderedBefore,
+		arg.StatusCodes,
 		arg.LimitParam,
 	)
 	if err != nil {

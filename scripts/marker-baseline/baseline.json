@@ -168,5 +168,6 @@
   "scripts/setup/lib/markers.test.ts": 1,
   "scripts/setup/remove-boilerplate-identity/targets.test.ts": 2,
   "scripts/setup/remove-sample-api/sample-api.test.ts": 28,
-  "scripts/setup/remove-sample-api/sample-manifest.ts": 2
+  "scripts/setup/remove-sample-api/sample-manifest.ts": 2,
+  "sonar-project.properties": 3
 }

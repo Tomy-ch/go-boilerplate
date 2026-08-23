@@ -292,17 +292,26 @@ type DisplayCurrencyParam string
 // IdempotencyKeyParam Example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
 type IdempotencyKeyParam = string
 
+// IncludeOtherUsersParam Example: false
+type IncludeOtherUsersParam = bool
+
 // OrderedAfterParam Example: 2026-07-01T00:00:00+09:00
 type OrderedAfterParam = time.Time
 
 // OrderedBeforeParam Example: 2026-08-01T00:00:00+09:00
 type OrderedBeforeParam = time.Time
 
+// PurchaseStatusCodesParam Example: [8]
+type PurchaseStatusCodesParam = []int32
+
 // BadRequest400 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type BadRequest400 = ErrorResponse
 
 // Conflict409 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type Conflict409 = ErrorResponse
+
+// Forbidden403 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
+type Forbidden403 = ErrorResponse
 
 // InternalServerError500 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
 type InternalServerError500 = ErrorResponse
@@ -339,6 +348,20 @@ type GetPurchasesParams struct {
 	// 省略すると上限を設けません。`orderedAfter` と併せて省略すると全期間が対象になります。
 	// `orderedBefore` が `orderedAfter` 以前（同値を含む）の場合は 400 を返します。
 	OrderedBefore *OrderedBeforeParam `form:"orderedBefore,omitempty" json:"orderedBefore,omitempty"`
+
+	// StatusCodes 購入ステータスコードでフィルタします（複数指定は同じ名前を繰り返します: `statusCodes=7&statusCodes=8`）。
+	// 指定したコードのいずれかに一致する購入を返します。
+	// 指定しない場合は全ステータスを対象とします。存在しないコードは 0 件として扱い、エラーにはしません。
+	// コードは購入ステータスの業務キーで、値は到達順序を意味しません。
+	// ページ送りの間は同じ絞り込み条件を渡してください（条件が変わると keyset の連続性は保証されません）。
+	StatusCodes *PurchaseStatusCodesParam `form:"statusCodes,omitempty" json:"statusCodes,omitempty"`
+
+	// IncludeOtherUsers 他ユーザーの購入も母集団に含める場合は true を指定します。既定は false で、
+	// 指定しない場合の母集団は認証主体（自分）の購入のみです。
+	// true を指定できるのは管理者（admin）だけで、管理者でなければ 403 で拒否します。
+	// 並び順・ページ送りの規則は母集団によらず同一（注文日時の降順）です。
+	// ページ送りの間は同じ指定を渡してください（母集団が変わると keyset の連続性は保証されません）。
+	IncludeOtherUsers *IncludeOtherUsersParam `form:"includeOtherUsers,omitempty" json:"includeOtherUsers,omitempty"`
 }
 
 // PostPurchasesParams defines parameters for PostPurchases.

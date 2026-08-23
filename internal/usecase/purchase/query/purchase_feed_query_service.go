@@ -10,16 +10,19 @@ import (
 	"go-boilerplate/pkg/uuid"
 )
 
-// PurchaseFeedQueryService は、購入履歴一覧の集約跨ぎ read 投影を提供する QueryService です。
-// 一覧は購入ステータスマスタに加えて別集約である商品（products）を結合して明細の要約を解決するため、
-// 単一集約の Repository read ではなく読み取り側に置きます（ADR-0032 (lightweight-cqrs)）。
+// PurchaseFeedQueryService は、購入履歴一覧の集約跨ぎ read 投影を提供する QueryService です
+// （配置根拠: docs/spec/purchase/usecase.md § GET 一覧）。
 type PurchaseFeedQueryService interface {
 	// FindFeedByUserID は、指定ユーザーの購入履歴を注文日時の降順（同時刻は ID 降順）の安定順で
 	// keyset ページネーション取得します。ステータスは購入ステータスマスタ、明細の要約は商品との
 	// 結合で解決します。所有権は本サービス側の絞り込みで担保します。
 	// params.AfterOrderedAt / AfterID が nil の場合は先頭ページを返します。
 	// params.Window が境界を持つ場合は、その半開区間に注文された購入だけを返します。
+	// params.StatusCodes が空でない場合は、いずれかのステータスの購入だけを返します。
 	FindFeedByUserID(ctx context.Context, userID uuid.UUID, params ListFeedParams) ([]PurchaseFeedReadModel, error)
+	// FindFeedAll は、購入者を問わず購入履歴を FindFeedByUserID と同じ順序・同じ絞り込みで取得します。
+	// 所有権で閉じないため、呼び出し側が可視範囲を認可したうえで用います。
+	FindFeedAll(ctx context.Context, params ListFeedParams) ([]PurchaseFeedReadModel, error)
 }
 
 // ListFeedParams は、購入履歴フィード（keyset ページネーション）の取得条件です。
@@ -33,6 +36,9 @@ type ListFeedParams struct {
 	AfterID *uuid.UUID
 	// Window は、注文日時で絞り込む対象期間です。境界を持たない側には制限を設けません。
 	Window timewindow.Window
+	// StatusCodes は、購入ステータスの業務キーによる絞り込みです。いずれかに一致する購入を対象とし、
+	// 空の場合は全ステータスを対象とします。既知でないコードは 0 件として扱います。
+	StatusCodes []int16
 }
 
 // PurchaseFeedReadModel は、購入履歴一覧の 1 件分の読み取りモデルです。
