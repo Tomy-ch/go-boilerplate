@@ -61,9 +61,9 @@ type ListPurchasesParams struct {
 }
 
 // GetPurchases は、既定では所有権の絞り込みを QueryService に委ね、usecase 側では所有者を再判定しません。
-// 対象が無い場合は QueryService が空一覧を返すため、他ユーザーの購入が混ざる経路は存在しません。
-// params.IncludeOtherUsers が true のときだけ所有権で閉じない読み取りへ切り替わり、その指定は
-// admin のみが通ります。母集団が変わっても並び順の軸は変わらないため、カーソルの解釈は共通です。
+// 対象が無い場合は QueryService が空一覧を返すため、他ユーザーの購入が混ざる経路は存在しません
+// （母集団の切り替え条件は Usecase.GetPurchases のインターフェース doc を参照）。
+// 母集団が変わっても並び順の軸は変わらないため、カーソルの解釈は共通です。
 // 注文日時の対象期間は params.Window をそのまま QueryService へ渡し、境界を持たない側には条件を付けません。
 func (u *usecase) GetPurchases(
 	ctx context.Context, authn *auth.Authn, params ListPurchasesParams,
@@ -130,10 +130,9 @@ func (u *usecase) GetPurchases(
 	return &PurchaseListView{Items: items, NextCursor: nextCursor}, nil
 }
 
-// findFeedPage は、可視範囲に応じた読み取りでフィードの 1 ページを取得します。
-// 既定（自分の購入のみ）は認証済みであること以上を要求せず、他ユーザーを含める指定のときだけ
-// admin の能力を要求します。母集団の選択と認可を 1 箇所に置き、認可を経ずに全件クエリへ到達する
-// 経路を作らないようにしています。
+// findFeedPage は、可視範囲に応じた読み取りでフィードの 1 ページを取得します。既定（自分の購入のみ）は
+// 認証済みであること以上を要求せず、他ユーザーを含める指定のときだけ admin の能力を要求します
+// （設計意図: docs/spec/purchase/usecase.md § GET 一覧）。
 func (u *usecase) findFeedPage(
 	ctx context.Context, authn *auth.Authn, includeOtherUsers bool, params query.ListFeedParams,
 ) ([]query.PurchaseFeedReadModel, error) {

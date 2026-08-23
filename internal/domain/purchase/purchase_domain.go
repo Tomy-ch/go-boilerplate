@@ -138,11 +138,8 @@ func validateDetails(details []PurchaseDetail) error {
 	return nil
 }
 
-// buildDetails は、明細の入力をロック済み在庫と突き合わせて購入明細を組み立て、単価スナップショット
-// による小計を価格スケールで返します。
-// 明細 ID が未設定、数量が最小値未満、同一商品 ID が重複、入力に対応するロック済み商品が無い場合は
-// それぞれ検証エラー（422）を、要求数量がロック済み在庫を超える場合は ErrInsufficientStock（409）を
-// 返します。単価は対応するロック済み商品の価格とし、入力の順序を保った明細を返します。
+// buildDetails は、明細の入力をロック済み在庫と突き合わせて購入明細を組み立て、単価スナップショットに
+// よる小計を価格スケールで返します（検証条件は New を参照）。入力の順序を保った明細を返します。
 func buildDetails(inputs []DetailInput, locked []LockedProduct) ([]PurchaseDetail, decimal.Decimal, error) {
 	lockedByID := make(map[uuid.UUID]LockedProduct, len(locked))
 	for _, l := range locked {
@@ -472,9 +469,7 @@ func (p *Purchase) Pay(now time.Time) (Event, error) {
 	if !p.status.CanTransitionTo(StatusPaid) || p.shippedAt != nil {
 		return Event{}, ErrPayNotAllowed
 	}
-	// 未払い相当でも paidAt を持つ購入は、外部運用が支払いを記録済みである（受付中 / 確認中 へはアプリからは
-	// 遷移せず、これらの行は外部から書かれる）。ここで遷移させると paidAt を now で上書きし、記録済みの
-	// 支払い日時が失われるため、二重支払いとして拒否する。
+	// 記録済みの paidAt を上書きしないためのガード（二重支払い防止。docs/spec/purchase/domain.md Pay invariants）。
 	if p.paidAt != nil {
 		return Event{}, ErrAlreadyPaid
 	}

@@ -278,7 +278,7 @@ func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParam
 	}
 
 	var created *purchase.Purchase
-	// 最外 tx は idempotency.Run が所有する。ここは nested で同一 tx に乗り、部分適用を防ぐ。
+	// nested で最外 tx に乗る（tx 所有については docs/spec/purchase/usecase.md 冒頭を参照）。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
 		// ロック順序（ユーザー行 → 商品行、id 昇順）は docs/spec/purchase/usecase.md の Workflow を参照。
 		if uerr := u.ensurePurchaserActive(ctx, params.UserID); uerr != nil {
@@ -338,8 +338,8 @@ func (u *usecase) CancelPurchase(ctx context.Context, params CancelPurchaseParam
 	now := u.clock.Now()
 
 	var detail *purchase.Detail
-	// tx 境界は PayPurchase のコメントを参照。ここは在庫復元を伴うため CommandService（cmd）で完結する。
-	// 二重キャンセルは購入のロック + 状態チェック（ErrAlreadyCanceled）で安全化する。
+	// tx 境界は PayPurchase のコメントを参照。CommandService（cmd）を使う理由・二重キャンセル対策は
+	// docs/spec/purchase/usecase.md § PATCH キャンセル を参照。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
 		locked, lerr := u.cmd.LockPurchase(ctx, params.PurchaseCode)
 		if lerr != nil {
@@ -397,9 +397,8 @@ func (u *usecase) PayPurchase(ctx context.Context, params PayPurchaseParams) (Pa
 	now := u.clock.Now()
 
 	var detail *purchase.Detail
-	// この Do が最外 tx（本エンドポイントは Idempotency-Key 冪等化を配線しない）。単一集約の更新のため
-	// Repository で完結する（ADR-0034 (commandservice-atomicity-criterion)）。
-	// 二重支払いは購入のロック + 状態チェック（ErrAlreadyPaid）で安全化する。
+	// この Do が最外 tx（本経路は Idempotency-Key を配線しない）。CommandService を使わない理由・
+	// 二重支払い対策は docs/spec/purchase/usecase.md § PATCH 支払い を参照。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
 		locked, lerr := u.repo.LockByCode(ctx, params.PurchaseCode)
 		if lerr != nil {
@@ -469,8 +468,8 @@ func (u *usecase) ShipPurchase(
 	now := u.clock.Now()
 
 	var detail *purchase.Detail
-	// tx 境界・ADR-0034 の根拠は PayPurchase のコメントを参照。
-	// 二重発送は購入行ロック + 状態チェック（ErrAlreadyShipped）で安全化する。
+	// tx 境界・ADR-0034 の根拠は PayPurchase のコメントを参照。二重発送対策は
+	// docs/spec/purchase/usecase.md § PATCH 発送 を参照。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
 		locked, lerr := u.repo.LockByCode(ctx, purchaseCode)
 		if lerr != nil {
@@ -535,8 +534,8 @@ func (u *usecase) DeliverPurchase(
 	now := u.clock.Now()
 
 	var detail *purchase.Detail
-	// tx 境界・ADR-0034 の根拠は PayPurchase のコメントを参照。
-	// 二重配達は購入行ロック + 状態チェック（ErrAlreadyDelivered）で安全化する。
+	// tx 境界・ADR-0034 の根拠は PayPurchase のコメントを参照。二重配達対策は
+	// docs/spec/purchase/usecase.md § PATCH 配達完了 を参照。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
 		locked, lerr := u.repo.LockByCode(ctx, purchaseCode)
 		if lerr != nil {

@@ -96,7 +96,7 @@ func (s *service) FindFeedByUserID(
 }
 
 // FindFeedAll は、購入者を問わず購入履歴を FindFeedByUserID と同じ順序・同じ絞り込みで取得します。
-// 所有権で閉じないクエリを用いるため、可視範囲の認可は呼び出し側が済ませている前提です。
+// 所有権で閉じないため、可視範囲の認可は呼び出し側の責務です（docs/spec/purchase/usecase.md 参照）。
 func (s *service) FindFeedAll(
 	ctx context.Context, params query.ListFeedParams,
 ) ([]query.PurchaseFeedReadModel, error) {
