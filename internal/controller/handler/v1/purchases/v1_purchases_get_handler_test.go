@@ -14,6 +14,7 @@ import (
 	purchaseuc "go-boilerplate/internal/usecase/purchase"
 	mock_purchaseuc "go-boilerplate/internal/usecase/purchase/mock"
 	"go-boilerplate/internal/usecase/tools/timewindow"
+	"go-boilerplate/pkg/safecast"
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
@@ -255,6 +256,26 @@ func Test_server_GetPurchases(t *testing.T) {
 			resp, err := s.GetPurchases(context.Background(), gen.GetPurchasesRequestObject{Params: gen.GetPurchasesParams{}})
 			assert.Nil(t, resp)
 			require.ErrorIs(t, err, apperror.ErrUnauthenticated)
+		})
+
+		t.Run("statusCodesがint16の範囲を超えるときErrOverflowを返しUsecaseを呼ばない", func(t *testing.T) {
+			t.Parallel()
+
+			// OpenAPI の maximum が int16 の上限と一致するため通常のリクエストでは到達しないが、
+			// 契約側の上限が動いたときに黙って切り捨てへ倒れないことを固定する防御的な分岐である。
+			ctrl := gomock.NewController(t)
+			uc := mock_purchaseuc.NewMockUsecase(ctrl)
+			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc, idem: idempotency.Deps{}}
+
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+
+			statusCodes := []int32{40000}
+			resp, err := s.GetPurchases(
+				authnContext(t, uuidtestkit.NewTestFromSalt(t, "get_overflow")),
+				gen.GetPurchasesRequestObject{Params: gen.GetPurchasesParams{StatusCodes: &statusCodes}},
+			)
+			assert.Nil(t, resp)
+			require.ErrorIs(t, err, safecast.ErrOverflow)
 		})
 
 		t.Run("不正なcursorのときErrInvalidArgumentを返しUsecaseを呼ばない", func(t *testing.T) {

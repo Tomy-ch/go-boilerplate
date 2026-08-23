@@ -639,6 +639,31 @@ func Test_service_FindFeedAll(t *testing.T) {
 			})
 		})
 
+		t.Run("keyset境界が片方だけ指定された場合は先頭ページとして扱う", func(t *testing.T) {
+			t.Parallel()
+
+			// 境界は (ordered_at, id) の対で意味を持つため、片方だけでは keyset を進められない。
+			// 半端な指定で境界の片側だけを効かせるのではなく、先頭ページへ落ちることを固定する。
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				insertFeedUser(ctx, t, drv, userA)
+				insertPurchase(ctx, t, drv, newer, userA, statusCompletedID, 100, base)
+				insertPurchase(ctx, t, drv, older, userA, statusCompletedID, 200, base.Add(-time.Hour))
+
+				orderedAt := base
+				got, err := svc.FindFeedAll(ctx, query.ListFeedParams{
+					Limit:          10,
+					AfterOrderedAt: &orderedAt,
+					AfterID:        nil,
+					Window:         isolate(t),
+				})
+				require.NoError(t, err)
+				// 境界が効いていれば newer は落ちる。先頭ページ扱いなので 2 件とも返る。
+				require.Len(t, got, 2)
+				assert.Equal(t, mustParse(newer), got[0].ID)
+			})
+		})
+
 		t.Run("statusと明細の要約が所有権で閉じる読み取りと同じ形で解決される", func(t *testing.T) {
 			t.Parallel()
 

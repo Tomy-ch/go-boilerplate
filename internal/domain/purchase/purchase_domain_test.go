@@ -1099,9 +1099,14 @@ func TestPurchase_Cancel(t *testing.T) {
 
 		t.Run("既にキャンセル済み（statusCode）の場合、ErrAlreadyCanceledを返す", func(t *testing.T) {
 			t.Parallel()
-			p := build(t, StatusCanceled, &now, nil, nil)
+			canceledAt := time.Date(2026, time.July, 24, 9, 0, 0, 0, time.UTC)
+			p := build(t, StatusCanceled, &canceledAt, nil, nil)
 			_, err := p.Cancel(now)
 			require.ErrorIs(t, err, ErrAlreadyCanceled)
+			// ガードが代入より手前で効いていること（拒否後に状態が動かないこと）まで固定する。
+			assert.Equal(t, StatusCanceled, p.Status())
+			require.NotNil(t, p.CanceledAt())
+			assert.Equal(t, canceledAt, *p.CanceledAt())
 		})
 
 		t.Run("完了の場合、ErrCancelNotAllowedを返す", func(t *testing.T) {
@@ -1173,14 +1178,24 @@ func TestPurchase_Pay(t *testing.T) {
 			assert.Equal(t, now, *p.PaidAt())
 		})
 
-		t.Run("未処理以外の未払い相当からも支払える", func(t *testing.T) {
+		t.Run("受付中から支払うと、statusCodeが支払い済みになりpaidAtがセットされる", func(t *testing.T) {
 			t.Parallel()
-			for _, status := range []Status{StatusAccepted, StatusConfirming} {
-				p := build(t, status, nil, nil, nil, nil)
-				_, err := p.Pay(now)
-				require.NoError(t, err, status.Name())
-				assert.Equal(t, StatusPaid, p.Status(), status.Name())
-			}
+			p := build(t, StatusAccepted, nil, nil, nil, nil)
+			_, err := p.Pay(now)
+			require.NoError(t, err)
+			assert.Equal(t, StatusPaid, p.Status())
+			require.NotNil(t, p.PaidAt())
+			assert.Equal(t, now, *p.PaidAt())
+		})
+
+		t.Run("確認中から支払うと、statusCodeが支払い済みになりpaidAtがセットされる", func(t *testing.T) {
+			t.Parallel()
+			p := build(t, StatusConfirming, nil, nil, nil, nil)
+			_, err := p.Pay(now)
+			require.NoError(t, err)
+			assert.Equal(t, StatusPaid, p.Status())
+			require.NotNil(t, p.PaidAt())
+			assert.Equal(t, now, *p.PaidAt())
 		})
 	})
 
@@ -1189,9 +1204,14 @@ func TestPurchase_Pay(t *testing.T) {
 
 		t.Run("既に支払い済み（statusCode）の場合、ErrAlreadyPaidを返す", func(t *testing.T) {
 			t.Parallel()
-			p := build(t, StatusPaid, &now, nil, nil, nil)
+			paidAt := time.Date(2026, time.July, 24, 9, 0, 0, 0, time.UTC)
+			p := build(t, StatusPaid, &paidAt, nil, nil, nil)
 			_, err := p.Pay(now)
 			require.ErrorIs(t, err, ErrAlreadyPaid)
+			// ガードが代入より手前で効いていること（拒否後に状態が動かないこと）まで固定する。
+			assert.Equal(t, StatusPaid, p.Status())
+			require.NotNil(t, p.PaidAt())
+			assert.Equal(t, paidAt, *p.PaidAt())
 		})
 
 		t.Run("キャンセル済みの場合、ErrPayNotAllowedを返す", func(t *testing.T) {
@@ -1230,19 +1250,39 @@ func TestPurchase_Pay(t *testing.T) {
 			require.ErrorIs(t, err, ErrPayNotAllowed)
 		})
 
-		t.Run("未払い相当でもpaidAtが記録済みの場合、ErrAlreadyPaidを返しpaidAtを上書きしない", func(t *testing.T) {
+		t.Run("未処理でpaidAtが記録済みの場合、ErrAlreadyPaidを返しpaidAtを上書きしない", func(t *testing.T) {
 			t.Parallel()
 			// 受付中 / 確認中 はアプリからは遷移せず、外部運用が支払いを記録した行が入り得る。
 			// 遷移させると paidAt が now で潰れるため、記録済みの日時が保たれることまで固定する。
-			paidAt := time.Date(2026, time.July, 24, 9, 0, 0, 0, time.UTC)
-			for _, status := range []Status{StatusUnprocessed, StatusAccepted, StatusConfirming} {
-				p := build(t, status, &paidAt, nil, nil, nil)
-				_, err := p.Pay(now)
-				require.ErrorIs(t, err, ErrAlreadyPaid, status.Name())
-				assert.Equal(t, status, p.Status(), status.Name())
-				require.NotNil(t, p.PaidAt())
-				assert.Equal(t, paidAt, *p.PaidAt(), status.Name())
-			}
+			recorded := time.Date(2026, time.July, 24, 9, 0, 0, 0, time.UTC)
+			p := build(t, StatusUnprocessed, &recorded, nil, nil, nil)
+			_, err := p.Pay(now)
+			require.ErrorIs(t, err, ErrAlreadyPaid)
+			assert.Equal(t, StatusUnprocessed, p.Status())
+			require.NotNil(t, p.PaidAt())
+			assert.Equal(t, recorded, *p.PaidAt())
+		})
+
+		t.Run("受付中でpaidAtが記録済みの場合、ErrAlreadyPaidを返しpaidAtを上書きしない", func(t *testing.T) {
+			t.Parallel()
+			recorded := time.Date(2026, time.July, 24, 9, 0, 0, 0, time.UTC)
+			p := build(t, StatusAccepted, &recorded, nil, nil, nil)
+			_, err := p.Pay(now)
+			require.ErrorIs(t, err, ErrAlreadyPaid)
+			assert.Equal(t, StatusAccepted, p.Status())
+			require.NotNil(t, p.PaidAt())
+			assert.Equal(t, recorded, *p.PaidAt())
+		})
+
+		t.Run("確認中でpaidAtが記録済みの場合、ErrAlreadyPaidを返しpaidAtを上書きしない", func(t *testing.T) {
+			t.Parallel()
+			recorded := time.Date(2026, time.July, 24, 9, 0, 0, 0, time.UTC)
+			p := build(t, StatusConfirming, &recorded, nil, nil, nil)
+			_, err := p.Pay(now)
+			require.ErrorIs(t, err, ErrAlreadyPaid)
+			assert.Equal(t, StatusConfirming, p.Status())
+			require.NotNil(t, p.PaidAt())
+			assert.Equal(t, recorded, *p.PaidAt())
 		})
 	})
 }
@@ -1869,6 +1909,19 @@ func TestPurchase_CanceledAt(t *testing.T) {
 			assert.Equal(t, canceledAt, *p.CanceledAt())
 		})
 
+		t.Run("再構築時に渡したポインタを変更しても購入のcanceledAtは変わらない", func(t *testing.T) {
+			t.Parallel()
+
+			canceledAt := time.Date(2026, time.July, 26, 7, 8, 9, 0, time.UTC)
+			p := accessorPurchaseWith(t, StatusCanceled, nil, &canceledAt)
+
+			original := canceledAt
+			canceledAt = time.Date(2026, time.December, 31, 0, 0, 0, 0, time.UTC)
+
+			require.NotNil(t, p.CanceledAt())
+			assert.Equal(t, original, *p.CanceledAt())
+		})
+
 		t.Run("返り値のポインタを書き換えても購入のcanceledAtは変わらない", func(t *testing.T) {
 			t.Parallel()
 
@@ -1995,6 +2048,19 @@ func TestPurchase_PaidAt(t *testing.T) {
 
 			require.NotNil(t, p.PaidAt())
 			assert.Equal(t, paidAt, *p.PaidAt())
+		})
+
+		t.Run("再構築時に渡したポインタを変更しても購入のpaidAtは変わらない", func(t *testing.T) {
+			t.Parallel()
+
+			paidAt := time.Date(2026, time.July, 25, 4, 5, 6, 0, time.UTC)
+			p := accessorPurchaseWith(t, StatusPaid, &paidAt, nil)
+
+			original := paidAt
+			paidAt = time.Date(2026, time.December, 31, 0, 0, 0, 0, time.UTC)
+
+			require.NotNil(t, p.PaidAt())
+			assert.Equal(t, original, *p.PaidAt())
 		})
 
 		t.Run("返り値のポインタを書き換えても購入のpaidAtは変わらない", func(t *testing.T) {
