@@ -59,6 +59,7 @@ func (s *service) FindFeedByUserID(
 			UserID:        userID,
 			OrderedAfter:  params.Window.After(),
 			OrderedBefore: params.Window.Before(),
+			StatusCodes:   params.StatusCodes,
 			LimitParam:    params.Limit,
 		})
 		if err != nil {
@@ -79,12 +80,61 @@ func (s *service) FindFeedByUserID(
 		AfterID:        *params.AfterID,
 		OrderedAfter:   params.Window.After(),
 		OrderedBefore:  params.Window.Before(),
+		StatusCodes:    params.StatusCodes,
 		LimitParam:     params.Limit,
 	})
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)
 	}
 	return toFeedReadModels(rows, func(row *gen.ListPurchasesFeedAfterRow) feedRow {
+		return feedRow{
+			ID: row.ID, Code: row.Code, TotalAmount: row.TotalAmount, OrderedAt: row.OrderedAt,
+			StatusID: row.StatusID, StatusCode: row.StatusCode, StatusName: row.StatusName,
+			FirstItemName: row.FirstItemName, ItemCount: row.ItemCount,
+		}
+	}), nil
+}
+
+// FindFeedAll は、購入者を問わず購入履歴を FindFeedByUserID と同じ順序・同じ絞り込みで取得します。
+// 所有権で閉じないクエリを用いるため、可視範囲の認可は呼び出し側が済ませている前提です。
+func (s *service) FindFeedAll(
+	ctx context.Context, params query.ListFeedParams,
+) ([]query.PurchaseFeedReadModel, error) {
+	ctx, endSpan := s.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, s.db))
+	if params.AfterOrderedAt == nil || params.AfterID == nil {
+		rows, err := db.ListAllPurchasesFeedFirst(ctx, &gen.ListAllPurchasesFeedFirstParams{
+			OrderedAfter:  params.Window.After(),
+			OrderedBefore: params.Window.Before(),
+			StatusCodes:   params.StatusCodes,
+			LimitParam:    params.Limit,
+		})
+		if err != nil {
+			return nil, pgerror.NormalizeError(err)
+		}
+		return toFeedReadModels(rows, func(row *gen.ListAllPurchasesFeedFirstRow) feedRow {
+			return feedRow{
+				ID: row.ID, Code: row.Code, TotalAmount: row.TotalAmount, OrderedAt: row.OrderedAt,
+				StatusID: row.StatusID, StatusCode: row.StatusCode, StatusName: row.StatusName,
+				FirstItemName: row.FirstItemName, ItemCount: row.ItemCount,
+			}
+		}), nil
+	}
+
+	rows, err := db.ListAllPurchasesFeedAfter(ctx, &gen.ListAllPurchasesFeedAfterParams{
+		AfterOrderedAt: *params.AfterOrderedAt,
+		AfterID:        *params.AfterID,
+		OrderedAfter:   params.Window.After(),
+		OrderedBefore:  params.Window.Before(),
+		StatusCodes:    params.StatusCodes,
+		LimitParam:     params.Limit,
+	})
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
+	}
+	return toFeedReadModels(rows, func(row *gen.ListAllPurchasesFeedAfterRow) feedRow {
 		return feedRow{
 			ID: row.ID, Code: row.Code, TotalAmount: row.TotalAmount, OrderedAt: row.OrderedAt,
 			StatusID: row.StatusID, StatusCode: row.StatusCode, StatusName: row.StatusName,

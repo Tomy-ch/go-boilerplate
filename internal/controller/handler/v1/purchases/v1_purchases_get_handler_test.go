@@ -13,9 +13,7 @@ import (
 	"go-boilerplate/internal/usecase/idempotency"
 	purchaseuc "go-boilerplate/internal/usecase/purchase"
 	mock_purchaseuc "go-boilerplate/internal/usecase/purchase/mock"
-	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/internal/usecase/tools/timewindow"
-	"go-boilerplate/pkg/uuid"
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
@@ -53,8 +51,11 @@ func Test_server_GetPurchases(t *testing.T) {
 			userID := uuidtestkit.NewTestFromSalt(t, "get_user")
 			view := newTestSummaryView(t)
 			nextCursor := "next-opaque-cursor"
-			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-				DoAndReturn(func(_ context.Context, uid uuid.UUID, _ *paging.Cursor, _ timewindow.Window) (*purchaseuc.PurchaseListView, error) {
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, authn *auth.Authn, _ purchaseuc.ListPurchasesParams) (*purchaseuc.PurchaseListView, error) {
+					require.NotNil(t, authn)
+					uid, err := authn.UserID()
+					require.NoError(t, err)
 					assert.Equal(t, userID, uid)
 					return &purchaseuc.PurchaseListView{Items: []purchaseuc.PurchaseSummaryView{view}, NextCursor: &nextCursor}, nil
 				})
@@ -90,7 +91,7 @@ func Test_server_GetPurchases(t *testing.T) {
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc, idem: idempotency.Deps{}}
 
 			userID := uuidtestkit.NewTestFromSalt(t, "get_user")
-			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(&purchaseuc.PurchaseListView{Items: []purchaseuc.PurchaseSummaryView{}, NextCursor: nil}, nil)
 
 			resp, err := s.GetPurchases(authnContext(t, userID), gen.GetPurchasesRequestObject{Params: gen.GetPurchasesParams{}})
@@ -113,11 +114,11 @@ func Test_server_GetPurchases(t *testing.T) {
 			before := time.Date(2026, time.February, 1, 0, 0, 0, 0, time.UTC)
 
 			var captured timewindow.Window
-			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).
 				DoAndReturn(func(
-					_ context.Context, _ uuid.UUID, _ *paging.Cursor, w timewindow.Window,
+					_ context.Context, _ *auth.Authn, params purchaseuc.ListPurchasesParams,
 				) (*purchaseuc.PurchaseListView, error) {
-					captured = w
+					captured = params.Window
 					return &purchaseuc.PurchaseListView{Items: []purchaseuc.PurchaseSummaryView{}}, nil
 				})
 
@@ -132,6 +133,90 @@ func Test_server_GetPurchases(t *testing.T) {
 			assert.Equal(t, after, *captured.After())
 			assert.Equal(t, before, *captured.Before())
 		})
+
+		t.Run("statusCodesとincludeOtherUsersをユースケースへ渡す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			uc := mock_purchaseuc.NewMockUsecase(ctrl)
+			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc, idem: idempotency.Deps{}}
+
+			var captured purchaseuc.ListPurchasesParams
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(
+					_ context.Context, _ *auth.Authn, params purchaseuc.ListPurchasesParams,
+				) (*purchaseuc.PurchaseListView, error) {
+					captured = params
+					return &purchaseuc.PurchaseListView{Items: []purchaseuc.PurchaseSummaryView{}}, nil
+				})
+
+			statusCodes := []int32{7, 8}
+			includeOtherUsers := true
+			_, err := s.GetPurchases(
+				authnContext(t, uuidtestkit.NewTestFromSalt(t, "get_admin")),
+				gen.GetPurchasesRequestObject{
+					Params: gen.GetPurchasesParams{StatusCodes: &statusCodes, IncludeOtherUsers: &includeOtherUsers},
+				},
+			)
+			require.NoError(t, err)
+
+			assert.Equal(t, []int16{7, 8}, captured.StatusCodes)
+			assert.True(t, captured.IncludeOtherUsers)
+		})
+
+		t.Run("statusCodesとincludeOtherUsersの未指定は絞り込みなし・自分の購入のみになる", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			uc := mock_purchaseuc.NewMockUsecase(ctrl)
+			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc, idem: idempotency.Deps{}}
+
+			var captured purchaseuc.ListPurchasesParams
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(
+					_ context.Context, _ *auth.Authn, params purchaseuc.ListPurchasesParams,
+				) (*purchaseuc.PurchaseListView, error) {
+					captured = params
+					return &purchaseuc.PurchaseListView{Items: []purchaseuc.PurchaseSummaryView{}}, nil
+				})
+
+			_, err := s.GetPurchases(
+				authnContext(t, uuidtestkit.NewTestFromSalt(t, "get_default")),
+				gen.GetPurchasesRequestObject{Params: gen.GetPurchasesParams{}},
+			)
+			require.NoError(t, err)
+
+			assert.Nil(t, captured.StatusCodes)
+			assert.False(t, captured.IncludeOtherUsers)
+		})
+
+		t.Run("内部UserIDが未解決でもハンドラは認証主体をそのままユースケースへ渡す", func(t *testing.T) {
+			t.Parallel()
+
+			// 母集団の決定はユースケースが行い、他ユーザーを含める指定では認証主体の内部 UserID を
+			// 必要としない。ハンドラが手前で弾かないことを固定する。
+			ctrl := gomock.NewController(t)
+			uc := mock_purchaseuc.NewMockUsecase(ctrl)
+			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc, idem: idempotency.Deps{}}
+
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(
+					_ context.Context, authn *auth.Authn, _ purchaseuc.ListPurchasesParams,
+				) (*purchaseuc.PurchaseListView, error) {
+					require.NotNil(t, authn)
+					assert.False(t, authn.HasUserID())
+					return &purchaseuc.PurchaseListView{Items: []purchaseuc.PurchaseSummaryView{}}, nil
+				})
+
+			// WithUserID を呼ばず内部 UserID を未解決のまま Authn を載せる（JWT 検証済みだが DB ユーザー未解決の状態）。
+			ctx := ctxhelper.WithAuthn(context.Background())
+			authn, err := auth.New("subject", "issuer", nil, nil)
+			require.NoError(t, err)
+			require.True(t, ctxhelper.SetAuthn(ctx, *authn))
+
+			_, err = s.GetPurchases(ctx, gen.GetPurchasesRequestObject{Params: gen.GetPurchasesParams{}})
+			require.NoError(t, err)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -143,7 +228,7 @@ func Test_server_GetPurchases(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc, idem: idempotency.Deps{}}
-			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 			after := time.Date(2026, time.February, 1, 0, 0, 0, 0, time.UTC)
 			before := time.Date(2026, time.January, 21, 0, 0, 0, 0, time.UTC)
@@ -164,32 +249,12 @@ func Test_server_GetPurchases(t *testing.T) {
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc, idem: idempotency.Deps{}}
 
-			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 			// 認証情報を仕込まない context のため GetAuthn が false を返す。
 			resp, err := s.GetPurchases(context.Background(), gen.GetPurchasesRequestObject{Params: gen.GetPurchasesParams{}})
 			assert.Nil(t, resp)
 			require.ErrorIs(t, err, apperror.ErrUnauthenticated)
-		})
-
-		t.Run("内部UserIDが未解決のときErrUserIDUnresolvedを返しUsecaseを呼ばない", func(t *testing.T) {
-			t.Parallel()
-
-			ctrl := gomock.NewController(t)
-			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc, idem: idempotency.Deps{}}
-
-			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
-
-			// WithUserID を呼ばず内部 UserID を未解決のまま Authn を載せる（JWT 検証済みだが DB ユーザー未解決の状態）。
-			ctx := ctxhelper.WithAuthn(context.Background())
-			authn, err := auth.New("subject", "issuer", nil, nil)
-			require.NoError(t, err)
-			require.True(t, ctxhelper.SetAuthn(ctx, *authn))
-
-			resp, err := s.GetPurchases(ctx, gen.GetPurchasesRequestObject{Params: gen.GetPurchasesParams{}})
-			assert.Nil(t, resp)
-			require.ErrorIs(t, err, auth.ErrUserIDUnresolved)
 		})
 
 		t.Run("不正なcursorのときErrInvalidArgumentを返しUsecaseを呼ばない", func(t *testing.T) {
@@ -199,7 +264,7 @@ func Test_server_GetPurchases(t *testing.T) {
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc, idem: idempotency.Deps{}}
 
-			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 			bad := "!!!"
 			resp, err := s.GetPurchases(authnContext(t, uuidtestkit.NewTestFromSalt(t, "get_user")), gen.GetPurchasesRequestObject{
@@ -217,7 +282,7 @@ func Test_server_GetPurchases(t *testing.T) {
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc, idem: idempotency.Deps{}}
 
 			userID := uuidtestkit.NewTestFromSalt(t, "get_user")
-			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, apperror.ErrInternal)
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, apperror.ErrInternal)
 
 			resp, err := s.GetPurchases(authnContext(t, userID), gen.GetPurchasesRequestObject{Params: gen.GetPurchasesParams{}})
 			assert.Nil(t, resp)

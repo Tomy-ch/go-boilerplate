@@ -111,7 +111,7 @@ func TestV1PurchasesCodeContract_Integration(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 				&purchaseuc.PurchaseListView{
 					Items: []purchaseuc.PurchaseSummaryView{{
 						Code:        feedCode,
@@ -195,7 +195,7 @@ func TestV1PurchasesCodeContract_Integration(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(
+			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 				&purchaseuc.PurchaseListView{
 					Items: []purchaseuc.PurchaseSummaryView{{
 						Code: feedCode, TotalAmount: 176500, StatusID: statusID, StatusName: "支払い済み", OrderedAt: orderedAt,

@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/usecase/boundary/auth"
+	"go-boilerplate/internal/usecase/boundary/authz"
 	"go-boilerplate/internal/usecase/purchase/query"
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/internal/usecase/tools/timewindow"
@@ -46,31 +48,53 @@ type purchaseCursor struct {
 	id        uuid.UUID
 }
 
-// GetPurchases は、所有権の絞り込みを QueryService に委ね、usecase 側では所有者を再判定しません。
+// ListPurchasesParams は、購入履歴一覧取得の入力パラメータです。
+type ListPurchasesParams struct {
+	// Cursor は、keyset ページネーションの位置と件数です。nil は不正な入力として扱います。
+	Cursor *paging.Cursor
+	// Window は、注文日時で絞り込む対象期間です。境界を持たない側には条件を付けません。
+	Window timewindow.Window
+	// StatusCodes は、購入ステータスの業務キーによる絞り込みです。空の場合は全ステータスが対象です。
+	StatusCodes []int16
+	// IncludeOtherUsers は、他ユーザーの購入も母集団に含める場合に true です。指定は admin のみが通ります。
+	IncludeOtherUsers bool
+}
+
+// GetPurchases は、既定では所有権の絞り込みを QueryService に委ね、usecase 側では所有者を再判定しません。
 // 対象が無い場合は QueryService が空一覧を返すため、他ユーザーの購入が混ざる経路は存在しません。
-// 注文日時の対象期間は window をそのまま QueryService へ渡し、境界を持たない側には条件を付けません。
+// params.IncludeOtherUsers が true のときだけ所有権で閉じない読み取りへ切り替わり、その指定は
+// admin のみが通ります。母集団が変わっても並び順の軸は変わらないため、カーソルの解釈は共通です。
+// 注文日時の対象期間は params.Window をそのまま QueryService へ渡し、境界を持たない側には条件を付けません。
 func (u *usecase) GetPurchases(
-	ctx context.Context, userID uuid.UUID, cursor *paging.Cursor, window timewindow.Window,
+	ctx context.Context, authn *auth.Authn, params ListPurchasesParams,
 ) (*PurchaseListView, error) {
-	if cursor == nil {
+	if params.Cursor == nil {
 		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "cursor must not be nil")
+	}
+	if authn == nil {
+		return nil, apperror.ErrUnauthenticated
 	}
 
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 
+	cursor := params.Cursor
 	after, err := decodePurchaseCursor(cursor)
 	if err != nil {
 		return nil, err
 	}
 
-	params := query.ListFeedParams{Limit: cursor.Limit32() + 1, Window: window}
+	feedParams := query.ListFeedParams{
+		Limit:       cursor.Limit32() + 1,
+		Window:      params.Window,
+		StatusCodes: params.StatusCodes,
+	}
 	if after != nil {
-		params.AfterOrderedAt = &after.orderedAt
-		params.AfterID = &after.id
+		feedParams.AfterOrderedAt = &after.orderedAt
+		feedParams.AfterID = &after.id
 	}
 
-	feed, err := u.feedQS.FindFeedByUserID(ctx, userID, params)
+	feed, err := u.findFeedPage(ctx, authn, params.IncludeOtherUsers, feedParams)
 	if err != nil {
 		return nil, err
 	}
@@ -104,6 +128,30 @@ func (u *usecase) GetPurchases(
 	}
 
 	return &PurchaseListView{Items: items, NextCursor: nextCursor}, nil
+}
+
+// findFeedPage は、可視範囲に応じた読み取りでフィードの 1 ページを取得します。
+// 既定（自分の購入のみ）は認証済みであること以上を要求せず、他ユーザーを含める指定のときだけ
+// admin の能力を要求します。母集団の選択と認可を 1 箇所に置き、認可を経ずに全件クエリへ到達する
+// 経路を作らないようにしています。
+func (u *usecase) findFeedPage(
+	ctx context.Context, authn *auth.Authn, includeOtherUsers bool, params query.ListFeedParams,
+) ([]query.PurchaseFeedReadModel, error) {
+	if !includeOtherUsers {
+		userID, err := authn.UserID()
+		if err != nil {
+			return nil, xerrors.Wrap(err, "failed to get user ID from authn")
+		}
+		return u.feedQS.FindFeedByUserID(ctx, userID, params)
+	}
+
+	if err := u.authorizer.Authorize(
+		ctx, authn, authz.ActionPurchaseReadAll, authz.NewResource("purchase", nil),
+	); err != nil {
+		return nil, err
+	}
+
+	return u.feedQS.FindFeedAll(ctx, params)
 }
 
 // decodePurchaseCursor は、cursor の不透明キー列を keyset 境界（purchaseCursor）へ解釈します。

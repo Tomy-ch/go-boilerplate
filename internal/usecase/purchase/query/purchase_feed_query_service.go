@@ -19,7 +19,11 @@ type PurchaseFeedQueryService interface {
 	// 結合で解決します。所有権は本サービス側の絞り込みで担保します。
 	// params.AfterOrderedAt / AfterID が nil の場合は先頭ページを返します。
 	// params.Window が境界を持つ場合は、その半開区間に注文された購入だけを返します。
+	// params.StatusCodes が空でない場合は、いずれかのステータスの購入だけを返します。
 	FindFeedByUserID(ctx context.Context, userID uuid.UUID, params ListFeedParams) ([]PurchaseFeedReadModel, error)
+	// FindFeedAll は、購入者を問わず購入履歴を FindFeedByUserID と同じ順序・同じ絞り込みで取得します。
+	// 所有権で閉じないため、呼び出し側が可視範囲を認可したうえで用います。
+	FindFeedAll(ctx context.Context, params ListFeedParams) ([]PurchaseFeedReadModel, error)
 }
 
 // ListFeedParams は、購入履歴フィード（keyset ページネーション）の取得条件です。
@@ -33,6 +37,9 @@ type ListFeedParams struct {
 	AfterID *uuid.UUID
 	// Window は、注文日時で絞り込む対象期間です。境界を持たない側には制限を設けません。
 	Window timewindow.Window
+	// StatusCodes は、購入ステータスの業務キーによる絞り込みです。いずれかに一致する購入を対象とし、
+	// 空の場合は全ステータスを対象とします。既知でないコードは 0 件として扱います。
+	StatusCodes []int16
 }
 
 // PurchaseFeedReadModel は、購入履歴一覧の 1 件分の読み取りモデルです。

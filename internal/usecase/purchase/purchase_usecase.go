@@ -22,8 +22,6 @@ import (
 	"go-boilerplate/internal/usecase/purchase/command"
 	"go-boilerplate/internal/usecase/purchase/event"
 	"go-boilerplate/internal/usecase/purchase/query"
-	"go-boilerplate/internal/usecase/tools/paging"
-	"go-boilerplate/internal/usecase/tools/timewindow"
 	"go-boilerplate/pkg/decimal"
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
@@ -157,12 +155,13 @@ type Usecase interface {
 	// CreatePurchase は、明細から購入を作成します。在庫の引当・購入の成立・イベント発行は単一 tx で
 	// 原子的に成立し、売り越しは 409 で成立させません。
 	CreatePurchase(ctx context.Context, params CreatePurchaseParams) (PurchaseView, error)
-	// GetPurchases は、認証主体（userID）の購入履歴を注文日時降順（cursor ページネーション）で取得します。
-	// 一覧は概要（code / totalAmount / status / orderedAt）のみを返し、他ユーザーの購入は返しません。
-	// window で注文日時の対象期間を絞り込めます（ゼロ値は全期間）。
-	GetPurchases(
-		ctx context.Context, userID uuid.UUID, cursor *paging.Cursor, window timewindow.Window,
-	) (*PurchaseListView, error)
+	// GetPurchases は、購入履歴を注文日時降順（cursor ページネーション）で取得します。
+	// 一覧は概要（code / totalAmount / status / orderedAt）のみを返します。
+	// 既定の母集団は認証主体の購入のみで、params.IncludeOtherUsers が true のときだけ他ユーザーの購入も
+	// 含みます。その指定は管理者のみが通り、管理者でない場合は 403 を返します。
+	// params.Window で注文日時の対象期間を、params.StatusCodes でステータスを絞り込めます
+	// （いずれもゼロ値は絞り込みなし）。
+	GetPurchases(ctx context.Context, authn *auth.Authn, params ListPurchasesParams) (*PurchaseListView, error)
 	// CancelPurchase は、本人の購入をキャンセルし、明細分の在庫を復元します。キャンセル・在庫復元・
 	// イベント発行は単一 tx で原子的に成立します。他ユーザーの購入・不存在はいずれも存在秘匿のため
 	// NotFound（404）、不正遷移は 409 を返します。

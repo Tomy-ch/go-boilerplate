@@ -42,6 +42,21 @@ func (m *MockPurchaseFeedQueryService) EXPECT() *MockPurchaseFeedQueryServiceMoc
 	return m.recorder
 }
 
+// FindFeedAll mocks base method.
+func (m *MockPurchaseFeedQueryService) FindFeedAll(ctx context.Context, params query.ListFeedParams) ([]query.PurchaseFeedReadModel, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindFeedAll", ctx, params)
+	ret0, _ := ret[0].([]query.PurchaseFeedReadModel)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindFeedAll indicates an expected call of FindFeedAll.
+func (mr *MockPurchaseFeedQueryServiceMockRecorder) FindFeedAll(ctx, params any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindFeedAll", reflect.TypeOf((*MockPurchaseFeedQueryService)(nil).FindFeedAll), ctx, params)
+}
+
 // FindFeedByUserID mocks base method.
 func (m *MockPurchaseFeedQueryService) FindFeedByUserID(ctx context.Context, userID uuid.UUID, params query.ListFeedParams) ([]query.PurchaseFeedReadModel, error) {
 	m.ctrl.T.Helper()

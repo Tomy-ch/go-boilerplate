@@ -63,6 +63,20 @@ func (w *ServerInterfaceWrapper) GetPurchases(ctx *echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter orderedBefore: %s", err))
 	}
 
+	// ------------- Optional query parameter "statusCodes" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "statusCodes", ctx.QueryParams(), &params.StatusCodes, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter statusCodes: %s", err))
+	}
+
+	// ------------- Optional query parameter "includeOtherUsers" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "includeOtherUsers", ctx.QueryParams(), &params.IncludeOtherUsers, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter includeOtherUsers: %s", err))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetPurchases(ctx, params)
 	return err
@@ -159,6 +173,8 @@ type BadRequest400JSONResponse ErrorResponse
 
 type Conflict409JSONResponse ErrorResponse
 
+type Forbidden403JSONResponse ErrorResponse
+
 type InternalServerError500JSONResponse ErrorResponse
 
 type MethodNotAllowed405JSONResponse ErrorResponse
@@ -215,6 +231,20 @@ func (response GetPurchases401JSONResponse) VisitGetPurchasesResponse(w http.Res
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(401)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetPurchases403JSONResponse struct{ Forbidden403JSONResponse }
+
+func (response GetPurchases403JSONResponse) VisitGetPurchasesResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(403)
 	_, err := buf.WriteTo(w)
 	return err
 }

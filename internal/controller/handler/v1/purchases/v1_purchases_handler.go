@@ -18,6 +18,7 @@ import (
 	purchaseuc "go-boilerplate/internal/usecase/purchase"
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/internal/usecase/tools/timewindow"
+	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/xerrors"
 
@@ -47,12 +48,13 @@ func BindHandler(
 	}, []gen.StrictMiddlewareFunc{idempotencymw.StrictMiddleware[gen.StrictHandlerFunc]()}))
 }
 
-// GetPurchases は、認証主体（自分）の購入履歴を注文日時降順（cursor ページネーション）で取得します。認証必須です。
+// GetPurchases は、購入履歴を注文日時降順（cursor ページネーション）で取得します。認証必須です。
+// includeOtherUsers の指定時のみ他ユーザーの購入を含み、その可否はユースケースが Authorizer へ委ねます。
 func (s *server) GetPurchases(ctx context.Context, request gen.GetPurchasesRequestObject) (gen.GetPurchasesResponseObject, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	userID, err := ctxhelper.RequireUserID(ctx)
+	authn, err := ctxhelper.RequireAuthn(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +72,17 @@ func (s *server) GetPurchases(ctx context.Context, request gen.GetPurchasesReque
 		return nil, err
 	}
 
-	list, err := s.uc.GetPurchases(ctx, userID, cursor, window)
+	statusCodes, err := conv.Int16sPtr(request.Params.StatusCodes)
+	if err != nil {
+		return nil, err
+	}
+
+	list, err := s.uc.GetPurchases(ctx, &authn, purchaseuc.ListPurchasesParams{
+		Cursor:            cursor,
+		Window:            window,
+		StatusCodes:       statusCodes,
+		IncludeOtherUsers: ptr.Deref(request.Params.IncludeOtherUsers, false),
+	})
 	if err != nil {
 		return nil, err
 	}
