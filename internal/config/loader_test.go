@@ -24,7 +24,7 @@ func TestLoad(t *testing.T) {
 			_ = os.Unsetenv("APP_NAME")
 
 			require.NoError(t, Load())
-			assert.Equal(t, "Boilerplate", os.Getenv("APP_NAME"))
+			assert.Equal(t, "Boilerplate API", os.Getenv("APP_NAME"))
 		})
 
 		t.Run("既存の環境変数は上書きしない", func(t *testing.T) {
