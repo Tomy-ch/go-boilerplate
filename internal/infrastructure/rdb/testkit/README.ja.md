@@ -148,7 +148,7 @@ deadlock しうる）。
 
 ```go
 txm.WithinTxE(func(ctx context.Context) error {
-    if _, err := driver.New(ctx, testDB).Exec(ctx, "TRUNCATE product_statuses CASCADE"); err != nil {
+    if _, err := driver.New(ctx, testDB).Exec(ctx, "TRUNCATE some_table CASCADE"); err != nil {
         return err // ここでの 40P01 は再試行される。テストは赤くならない
     }
 

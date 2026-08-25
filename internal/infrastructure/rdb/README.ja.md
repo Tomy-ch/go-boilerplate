@@ -219,7 +219,7 @@ Usecase が所有し、`idempotency.Run` の内側に入る）、outbox イベ�
 この線引きが無いと、このパッケージは「SQL を直接書きたいときの置き場」になります。
 
 **条件は導出であって独立の著作ではない。** ここで SQL に書くガードは、既に存在するドメインの不変条件を
-言い換えたものでなければなりません。在庫減算のガードはドメインの売り越し判定を言い換えたもので、返す
+言い換えたものでなければなりません。相対更新の文の中のガードはドメインが既に検査した条件を言い換えたもので、返す
 sentinel も同じものです。つまり下流であり、ドメインの規則が変わればこちらも変わりますが、逆はありません。
 1 つの規則を独立に 2 度書くと、片方だけが動いた瞬間に黙って乖離します。
 [ADR-0032 (lightweight-cqrs)](../../../docs/adr/0032-lightweight-cqrs.md) § Derivation を参照。
@@ -322,6 +322,7 @@ CommandService テストは加えて次を検証します:
 エラープラミングだけなので、[`testing-conventions.md` §9](../../../docs/testing-conventions.md)
 に従い作為的なテストで色を付けるのではなくここに記録します。
 
+<!-- sample-api:replace-begin -->
 |ファイル|関数|未被覆の分岐|到達不能な理由|
 |---|---|---|---|
 |`repository/product/product_repository.go`|`Create`|`safecast.IntToInt32(p.Quantity())` のエラー|`product` が `quantity` を `[0, math.MaxInt32]` に検証済み|
@@ -331,8 +332,13 @@ CommandService テストは加えて次を検証します:
 |`repository/product/product_repository.go`|`UpdateStock`|`safecast.IntToInt32(p.Quantity())` のエラー|同上|
 |`repository/product/product_repository.go`|`insertImages`|`safecast.IntToInt16(img.SortKey())` のエラー|`product` が `sortKey` を `[1, math.MaxInt16]` に検証済み|
 |`repository/product/product_repository.go`|`syncImages`|`safecast.IntToInt16(img.SortKey())` のエラー|同上|
+<!-- sample-api:replace-with -->
+<!-- = |ファイル|関数|未被覆の分岐|到達不能な理由| -->
+<!-- = |---|---|---|---| -->
+<!-- = |（まだ記録なし）|||| -->
+<!-- sample-api:replace-end -->
 
-同じメソッド内の `version` 変換は例外ではありません。ドメインが課すのは `version >= 1` だけで
+そうした呼び出し箇所の `version` 変換は例外ではありません。ドメインが課すのは `version >= 1` だけで
 <!-- sample-api:replace-begin -->
 範囲外の version は到達可能なため、テストで被覆しています。purchase の `statusCode` / 明細数量の
 変換も同様です。

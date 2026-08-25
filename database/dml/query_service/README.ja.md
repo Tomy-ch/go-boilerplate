@@ -42,7 +42,7 @@
 
 ## 命名規則
 
-- ファイル名: 動詞 + 対象名（例: `list_published_products.sql`）
+- ファイル名: 動詞 + 対象名（例: `list_published_<noun>s.sql`）
 - 全てのクエリに `-- name:` アノテーションが必須
 
 ## コード生成

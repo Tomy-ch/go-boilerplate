@@ -298,7 +298,11 @@ Repository は読み・書きの両方向で既定である。QueryService と C
 - 多語アグリゲートは次の 2 形式のいずれか：
   - **コンテキストによるネスト** — 1 つの境界づけられたコンテキストが複数のサブアグリゲート / マスタを
     束ねる場合、コンテキストディレクトリ配下にネストする：`internal/<layer>/<context>/<sub>/`（package `<sub>`）。
+    <!-- sample-api:replace-begin -->
     例: `internal/domain/product/category`（package `category`）、`internal/domain/product/status`（package `status`）。
+    <!-- sample-api:replace-with -->
+    <!-- = 例: `internal/domain/<context>/<sub>`（package `<sub>`）。 -->
+    <!-- sample-api:replace-end -->
   - **連結** — 束ねるコンテキストを持たない単独の多語アグリゲートは 1 語に連結する
     <!-- sample-api:replace-begin -->
     （例: `useridentity`、`exchangerate`）。既存の連結パッケージは現状維持とし、コンテキストに 2 つ目の

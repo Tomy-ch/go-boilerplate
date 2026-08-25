@@ -358,7 +358,7 @@ AI駆動開発を活用する場合は、サンプルAPIを残しておくと、
 
 ### 削除手順
 
-自動コマンドを使用します。[scripts/setup/remove-sample-api/sample-manifest.ts](../../scripts/setup/remove-sample-api/sample-manifest.ts) に宣言されたサンプルAPI（`user` / `product` / `order`）を削除し、共有ファイル（DI 4 モジュール＋ `openapi.yaml`）の `sample-api` マーカーブロックを除去したうえで、再生成・整形・Lint まで実行します。
+自動コマンドを使用します。`scripts/setup/remove-sample-api/sample-manifest.ts`（削除がこのファイル自身を持って行くため、手順が成功した瞬間にリンクが切れる。だからリンクにせず名前だけ挙げる）に宣言されたサンプルAPI（`user` / `product` / `order`）を削除し、共有ファイル（DI 4 モジュール＋ `openapi.yaml`）の `sample-api` マーカーブロックを除去したうえで、再生成・整形・Lint まで実行します。
 
 > 実行前に **DB コンテナが起動している必要があります** — 末尾の `gen-query` は `pg_dump` で**ライブ**スキーマをダンプするため、DB 停止状態では `connection refused` で失敗します。
 

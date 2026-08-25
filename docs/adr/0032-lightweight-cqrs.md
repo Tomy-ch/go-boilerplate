@@ -225,8 +225,8 @@ without taking a lock. Anything that can be read-modify-saved goes on the Reposi
 line the seam degrades into "where I put SQL I want to write directly".
 
 **Derivation.** Any condition CommandService enforces must be *derived from* a domain invariant, never
-authored independently. The stock guard in the decrement statement restates the domain's
-insufficient-stock rule as a fail-closed second net ([ADR-0036](0036-ordered-pessimistic-row-locks.md));
+authored independently. A guard in a relative-update statement restates the condition the domain has
+already checked, as a fail-closed second net ([ADR-0036](0036-ordered-pessimistic-row-locks.md));
 it is downstream of that rule, so a change to the domain rule obliges a change here, and never the
 reverse. Two independently written copies of one rule diverge silently the first time only one moves.
 

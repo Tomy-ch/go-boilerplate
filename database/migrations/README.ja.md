@@ -79,7 +79,7 @@ id UUID, name VARCHAR(100), code SMALLINT, sort_key SMALLINT, created_at TIMESTA
 2 つの役割が癒着し、表示順を変える唯一の手段が `code` の振り直しになります。それは `code` を定数として
 持つ全クライアントと、`database/dml/` の `WHERE ... code = ...` を同時に、しかも静かに壊します。
 
-参照マスタの並び順ではなく、**利用者が決めて API が返す**順序（商品画像など）はこのどちらでもありません。
+参照マスタの並び順ではなく、**利用者が決めて API が返す**順序は、このどちらでもありません。
 上の対から外すために `display_sort` と名付けます。
 
 ## CI チェック
