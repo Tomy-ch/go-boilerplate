@@ -113217,6 +113217,441 @@
       }
     },
     {
+      "source": "github_release_v2_2_0",
+      "target": "github_release_v2_2_0_不具合修正",
+      "relation": "contains",
+      "source_location": {
+        "file": ".github/release/v2.2.0.md",
+        "location": "L370"
+      },
+      "attributes": {
+        "_origin": "ast",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "weight": 1.0
+      }
+    },
+    {
+      "source": "github_release_v2_2_0",
+      "target": "github_release_v2_2_0_動作確認手順",
+      "relation": "contains",
+      "source_location": {
+        "file": ".github/release/v2.2.0.md",
+        "location": "L281"
+      },
+      "attributes": {
+        "_origin": "ast",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "weight": 1.0
+      }
+    },
+    {
+      "source": "github_release_v2_2_0",
+      "target": "github_release_v2_2_0_変更内容",
+      "relation": "contains",
+      "source_location": {
+        "file": ".github/release/v2.2.0.md",
+        "location": "L34"
+      },
+      "attributes": {
+        "_origin": "ast",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "weight": 1.0
+      }
+    },
+    {
+      "source": "github_release_v2_2_0",
+      "target": "github_release_v2_2_0_影響_想定されるメリット_注意点",
+      "relation": "contains",
+      "source_location": {
+        "file": ".github/release/v2.2.0.md",
+        "location": "L309"
+      },
+      "attributes": {
+        "_origin": "ast",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "weight": 1.0
+      }
+    },
+    {
+      "source": "github_release_v2_2_0",
+      "target": "github_release_v2_2_0_概要",
+      "relation": "contains",
+      "source_location": {
+        "file": ".github/release/v2.2.0.md",
+        "location": "L2"
+      },
+      "attributes": {
+        "_origin": "ast",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "weight": 1.0
+      }
+    },
+    {
+      "source": "github_release_v2_2_0",
+      "target": "github_release_v2_2_0_補足_備考",
+      "relation": "contains",
+      "source_location": {
+        "file": ".github/release/v2.2.0.md",
+        "location": "L443"
+      },
+      "attributes": {
+        "_origin": "ast",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "weight": 1.0
+      }
+    },
+    {
+      "source": "github_release_v2_2_0",
+      "target": "github_release_v2_2_0_追加ライブラリ",
+      "relation": "contains",
+      "source_location": {
+        "file": ".github/release/v2.2.0.md",
+        "location": "L346"
+      },
+      "attributes": {
+        "_origin": "ast",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "weight": 1.0
+      }
+    },
+    {
+      "source": "github_release_v2_2_0_不具合修正",
+      "target": "github_release_v2_2_0_ci_ツールチェーン",
+      "relation": "contains",
+      "source_location": {
+        "file": ".github/release/v2.2.0.md",
+        "location": "L420"
+      },
+      "attributes": {
+        "_origin": "ast",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "weight": 1.0
+      }
+    },
+    {
+      "source": "github_release_v2_2_0_不具合修正",
+      "target": "github_release_v2_2_0_http_エラー応答",
+      "relation": "contains",
+      "source_location": {
+        "file": ".github/release/v2.2.0.md",
+        "location": "L383"
+      },
+      "attributes": {
+        "_origin": "ast",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "weight": 1.0
+      }
+    },
+    {
+      "source": "github_release_v2_2_0_不具合修正",
+      "target": "github_release_v2_2_0_ドメイン_データ整合性",
+      "relation": "contains",
+      "source_location": {
+        "file": ".github/release/v2.2.0.md",
+        "location": "L392"
+      },
+      "attributes": {
+        "_origin": "ast",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "weight": 1.0
+      }
+    },
+    {
+      "source": "github_release_v2_2_0_不具合修正",
+      "target": "github_release_v2_2_0_ローカル環境_db",
+      "relation": "contains",
+      "source_location": {
+        "file": ".github/release/v2.2.0.md",
+        "location": "L409"
+      },
+      "attributes": {
+        "_origin": "ast",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "weight": 1.0
+      }
+    },
+    {
+      "source": "github_release_v2_2_0_不具合修正",
+      "target": "github_release_v2_2_0_認証_認可",
+      "relation": "contains",
+      "source_location": {
+        "file": ".github/release/v2.2.0.md",
+        "location": "L374"
+      },
+      "attributes": {
+        "_origin": "ast",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "weight": 1.0
+      }
+    },
+    {
+      "source": "github_release_v2_2_0_不具合修正",
+      "target": "github_release_v2_2_0_起動_ジョブ_worker",
+      "relation": "contains",
+      "source_location": {
+        "file": ".github/release/v2.2.0.md",
+        "location": "L402"
+      },
+      "attributes": {
+        "_origin": "ast",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "weight": 1.0
+      }
+    },
+    {
+      "source": "github_release_v2_2_0_変更内容",
+      "target": "github_release_v2_2_0_新機能_改善",
+      "relation": "contains",
+      "source_location": {
+        "file": ".github/release/v2.2.0.md",
+        "location": "L36"
+      },
+      "attributes": {
+        "_origin": "ast",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "weight": 1.0
+      }
+    },
+    {
+      "source": "github_release_v2_2_0_新機能_改善",
+      "target": "github_release_v2_2_0_ai_開発環境の整備",
+      "relation": "contains",
+      "source_location": {
+        "file": ".github/release/v2.2.0.md",
+        "location": "L215"
+      },
+      "attributes": {
+        "_origin": "ast",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "weight": 1.0
+      }
+    },
+    {
+      "source": "github_release_v2_2_0_新機能_改善",
+      "target": "github_release_v2_2_0_db_スキーマ",
+      "relation": "contains",
+      "source_location": {
+        "file": ".github/release/v2.2.0.md",
+        "location": "L134"
+      },
+      "attributes": {
+        "_origin": "ast",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "weight": 1.0
+      }
+    },
+    {
+      "source": "github_release_v2_2_0_新機能_改善",
+      "target": "github_release_v2_2_0_echo_v5_への移行とフレームワーク周辺",
+      "relation": "contains",
+      "source_location": {
+        "file": ".github/release/v2.2.0.md",
+        "location": "L125"
+      },
+      "attributes": {
+        "_origin": "ast",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "weight": 1.0
+      }
+    },
+    {
+      "source": "github_release_v2_2_0_新機能_改善",
+      "target": "github_release_v2_2_0_worktree_並列開発基盤_db_スロットプール",
+      "relation": "contains",
+      "source_location": {
+        "file": ".github/release/v2.2.0.md",
+        "location": "L203"
+      },
+      "attributes": {
+        "_origin": "ast",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "weight": 1.0
+      }
+    },
+    {
+      "source": "github_release_v2_2_0_新機能_改善",
+      "target": "github_release_v2_2_0_オブジェクトストレージ基盤と画像",
+      "relation": "contains",
+      "source_location": {
+        "file": ".github/release/v2.2.0.md",
+        "location": "L106"
+      },
+      "attributes": {
+        "_origin": "ast",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "weight": 1.0
+      }
+    },
+    {
+      "source": "github_release_v2_2_0_新機能_改善",
+      "target": "github_release_v2_2_0_サプライチェーン対策",
+      "relation": "contains",
+      "source_location": {
+        "file": ".github/release/v2.2.0.md",
+        "location": "L166"
+      },
+      "attributes": {
+        "_origin": "ast",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "weight": 1.0
+      }
+    },
+    {
+      "source": "github_release_v2_2_0_新機能_改善",
+      "target": "github_release_v2_2_0_セキュリティ_ci_の多層化",
+      "relation": "contains",
+      "source_location": {
+        "file": ".github/release/v2.2.0.md",
+        "location": "L147"
+      },
+      "attributes": {
+        "_origin": "ast",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "weight": 1.0
+      }
+    },
+    {
+      "source": "github_release_v2_2_0_新機能_改善",
+      "target": "github_release_v2_2_0_テンプレート化_サンプル撤去機構",
+      "relation": "contains",
+      "source_location": {
+        "file": ".github/release/v2.2.0.md",
+        "location": "L255"
+      },
+      "attributes": {
+        "_origin": "ast",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "weight": 1.0
+      }
+    },
+    {
+      "source": "github_release_v2_2_0_新機能_改善",
+      "target": "github_release_v2_2_0_ドキュメント体系の再編",
+      "relation": "contains",
+      "source_location": {
+        "file": ".github/release/v2.2.0.md",
+        "location": "L236"
+      },
+      "attributes": {
+        "_origin": "ast",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "weight": 1.0
+      }
+    },
+    {
+      "source": "github_release_v2_2_0_新機能_改善",
+      "target": "github_release_v2_2_0_ドメイン実装例を_ec_ドメインへ全面拡充",
+      "relation": "contains",
+      "source_location": {
+        "file": ".github/release/v2.2.0.md",
+        "location": "L64"
+      },
+      "attributes": {
+        "_origin": "ast",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "weight": 1.0
+      }
+    },
+    {
+      "source": "github_release_v2_2_0_新機能_改善",
+      "target": "github_release_v2_2_0_規約の機械検証_architest_lint_群",
+      "relation": "contains",
+      "source_location": {
+        "file": ".github/release/v2.2.0.md",
+        "location": "L180"
+      },
+      "attributes": {
+        "_origin": "ast",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "weight": 1.0
+      }
+    },
+    {
+      "source": "github_release_v2_2_0_新機能_改善",
+      "target": "github_release_v2_2_0_認証_認可基盤を外部_idp_oidc_jwt_前提へ刷新",
+      "relation": "contains",
+      "source_location": {
+        "file": ".github/release/v2.2.0.md",
+        "location": "L38"
+      },
+      "attributes": {
+        "_origin": "ast",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "weight": 1.0
+      }
+    },
+    {
+      "source": "github_release_v2_2_0_新機能_改善",
+      "target": "github_release_v2_2_0_金額_数量の厳密化と共有型の整備",
+      "relation": "contains",
+      "source_location": {
+        "file": ".github/release/v2.2.0.md",
+        "location": "L93"
+      },
+      "attributes": {
+        "_origin": "ast",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "weight": 1.0
+      }
+    },
+    {
+      "source": "github_release_v2_2_0_新機能_改善",
+      "target": "github_release_v2_2_0_開発ツールチェーンの同期",
+      "relation": "contains",
+      "source_location": {
+        "file": ".github/release/v2.2.0.md",
+        "location": "L268"
+      },
+      "attributes": {
+        "_origin": "ast",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "weight": 1.0
+      }
+    },
+    {
+      "source": "github_release_v2_2_0_新機能_改善",
+      "target": "github_release_v2_2_0_非同期基盤_outbox_の両端接続_worker_job",
+      "relation": "contains",
+      "source_location": {
+        "file": ".github/release/v2.2.0.md",
+        "location": "L114"
+      },
+      "attributes": {
+        "_origin": "ast",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "weight": 1.0
+      }
+    },
+    {
       "source": "github_security",
       "target": "github_security_security_policy",
       "relation": "contains",
