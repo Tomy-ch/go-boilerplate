@@ -125,6 +125,10 @@ setup-remove-boilerplate-identity:
 # サンプル削除で未使用になる直接依存が go.mod に残ると、後日 go.mod を触った無関係な PR で
 # tidy-check が落ちる。tidy-lib は import が確定する gen の後、整理後の状態を lint で検証して
 # 終えられるよう fix/lint の前に置く。各手順は && で連鎖し、途中の失敗が完了メッセージに隠れない。
+# 最後の検証はツールランナーを経由しない。git status と make help を読むため、ホストの git と
+# この makefile 自身が要る（worktree では .git がマウント外の実体を指すファイルで辿れない）。
+# ここに置くのは、検証器が通ったときだけ自分と snapshot を撤去する設計だからで、呼ばずに終えると
+# 削除ツールの片割れと、削除対象パスを全て書き出した記録が作成先へ居座る。
 setup-remove-sample-api:
 	@docker compose run --rm node_tool_runner $(TSX) scripts/setup/remove-sample-api $(SETUP_DRY_RUN_FLAG)
 	@if [ -n "$(DRY_RUN)" ]; then \
@@ -135,6 +139,7 @@ setup-remove-sample-api:
 		$(MAKE) gen-api gen-query && \
 		$(MAKE) tidy-lib && \
 		$(MAKE) fix lint && \
+		$(TSX) scripts/setup/verify-sample-removal && \
 		echo "✅ サンプルAPIの削除・再生成・検証が完了しました。"; \
 	fi
 # sample-api:end

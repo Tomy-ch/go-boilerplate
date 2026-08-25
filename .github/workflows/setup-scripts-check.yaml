@@ -262,8 +262,13 @@ jobs:
           fi
           echo "identity removal self-destruct: OK"
 
+      # sample-api:begin
       # The sample remover still needs the shared modules, so they must survive here. The
       # symmetric case (remover gone first) is covered by Sample Removal Check.
+      #
+      # The whole step leaves with the sample. It asserts that the remover's directory is still
+      # present, which is exactly what stops being true once the remover has run — left behind,
+      # it fails on every pull request in the created project, for a tool that is gone on purpose.
       - name: Verify shared modules survive while the sample remover needs them
         run: |
           set -euo pipefail
@@ -274,3 +279,4 @@ jobs:
             fi
           done
           echo "shared modules retained: OK"
+      # sample-api:end
