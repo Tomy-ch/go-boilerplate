@@ -28,7 +28,7 @@ type Storage interface {
 
 // PutObject は、保存対象オブジェクトの入力 DTO です。
 type PutObject struct {
-	// Key は、保存先のオブジェクトキー（例 "products/{uuid}.png"）です。呼び出し側が採番します。
+	// Key は、保存先のオブジェクトキー（例 "<接頭辞>/{uuid}.png"）です。呼び出し側が採番します。
 	Key string
 	// Body は、保存するバイト列です。長さがそのままオブジェクトサイズになります。
 	Body []byte
@@ -41,7 +41,7 @@ type PutObject struct {
 
 // ListQuery は、オブジェクト列挙の条件です。
 type ListQuery struct {
-	// Prefix は、列挙対象を絞り込むキーの接頭辞（例 "products/"）です。空なら全件が対象になります。
+	// Prefix は、列挙対象を絞り込むキーの接頭辞（例 "<接頭辞>/"）です。空なら全件が対象になります。
 	Prefix string
 	// Cursor は、続きから列挙するための境界です。空なら先頭から列挙します。
 	// 直前の ListResult.NextCursor をそのまま渡す想定で、中身は adapter 依存の不透明な文字列です。
@@ -60,7 +60,7 @@ type ListResult struct {
 
 // Object は、列挙されたオブジェクトの中立表現です。
 type Object struct {
-	// Key は、オブジェクトキー（例 "products/{uuid}.png"）です。
+	// Key は、オブジェクトキー（例 "<接頭辞>/{uuid}.png"）です。
 	Key string
 	// ModifiedAt は、オブジェクトの最終更新時刻です。
 	ModifiedAt time.Time

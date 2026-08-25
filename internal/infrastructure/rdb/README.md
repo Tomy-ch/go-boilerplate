@@ -222,8 +222,8 @@ Anything that can be read-modify-saved belongs on the Repository. Without that l
 becomes "where I put SQL I want to write directly".
 
 **Conditions are derived, never authored.** A guard enforced in SQL here must restate a domain
-invariant that already exists — the stock guard in the decrement statement restates the domain's
-insufficient-stock rule, and returns that same domain sentinel. It is downstream: a change to the
+invariant that already exists — a guard in a relative-update statement restates the condition the
+domain has already checked, and returns that same domain sentinel. It is downstream: a change to the
 domain rule obliges a change here, never the reverse. Two independently written copies of one rule
 diverge silently the first time only one of them moves. See
 [ADR-0032 (lightweight-cqrs)](../../../docs/adr/0032-lightweight-cqrs.md) § Derivation.
@@ -324,6 +324,7 @@ call site is error plumbing, and per
 [`testing-conventions.md` §9](../../../docs/testing-conventions.md) it is recorded here rather
 than covered with a contrived test.
 
+<!-- sample-api:replace-begin -->
 |File|Function|Uncovered branch|Why unreachable|
 |---|---|---|---|
 |`repository/product/product_repository.go`|`Create`|`safecast.IntToInt32(p.Quantity())` error|`product` validates `quantity` into `[0, math.MaxInt32]`|
@@ -333,8 +334,13 @@ than covered with a contrived test.
 |`repository/product/product_repository.go`|`UpdateStock`|`safecast.IntToInt32(p.Quantity())` error|同上|
 |`repository/product/product_repository.go`|`insertImages`|`safecast.IntToInt16(img.SortKey())` error|`product` validates `sortKey` into `[1, math.MaxInt16]`|
 |`repository/product/product_repository.go`|`syncImages`|`safecast.IntToInt16(img.SortKey())` error|同上|
+<!-- sample-api:replace-with -->
+<!-- = |File|Function|Uncovered branch|Why unreachable| -->
+<!-- = |---|---|---|---| -->
+<!-- = |(none recorded yet)|||| -->
+<!-- sample-api:replace-end -->
 
-The `version` conversions in the same methods are **not** exempt: the domain only requires
+A `version` conversion at such a call site is **not** exempt: the domain only requires
 `version >= 1`, so an out-of-range version is reachable and is covered by a test. The same applies
 <!-- sample-api:replace-begin -->
 to the purchase `statusCode` / detail-quantity conversions.

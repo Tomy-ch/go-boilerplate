@@ -43,7 +43,7 @@ One directory per read model, named after the aggregate the projection is read f
 
 ## Naming Convention
 
-- Files: verb + target (e.g., `list_published_products.sql`)
+- Files: verb + target (e.g., `list_published_<noun>s.sql`)
 - `-- name:` annotation required on all queries
 
 ## Code Generation

@@ -8,9 +8,13 @@ English | [日本語](README.ja.md)
 
 Used to insert **initial data** needed to verify application behavior in development, test, and demo environments.
 
+<!-- sample-api:replace-begin -->
 - User data
 - Product data
 - Other business data
+<!-- sample-api:replace-with -->
+<!-- = - Business data -->
+<!-- sample-api:replace-end -->
 
 Targets **transactional data**, not master data.
 

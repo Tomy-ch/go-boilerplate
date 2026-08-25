@@ -223,7 +223,7 @@ Access-token (JWT) verification settings. CI / test wire a non-signature stub; `
 
 ### Object Storage
 
-S3-compatible object storage for uploaded assets (product images). The usecase depends on the vendor-neutral `objectstorage.Storage` boundary; the infrastructure implementation is an S3 adapter (AWS SDK v2 S3), so `local` connects to a Garage container while deploy environments target AWS S3 by leaving `ENDPOINT_OBJECT_STORAGE` empty. The env names stay vendor-neutral even though the adapter is S3. Values are declared per environment (no code defaults); credentials are injected at deploy time.
+S3-compatible object storage for uploaded assets. The usecase depends on the vendor-neutral `objectstorage.Storage` boundary; the infrastructure implementation is an S3 adapter (AWS SDK v2 S3), so `local` connects to a Garage container while deploy environments target AWS S3 by leaving `ENDPOINT_OBJECT_STORAGE` empty. The env names stay vendor-neutral even though the adapter is S3. Values are declared per environment (no code defaults); credentials are injected at deploy time.
 
 |Variable Name|Description|Type|Example|Notes|
 |---|---|---|---|---|

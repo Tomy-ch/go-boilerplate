@@ -319,8 +319,12 @@ Per-layer application: `internal/domain/README.md` (attribute structs on entitie
 - A multi-word aggregate uses one of two forms:
   - **Context nesting** — when a bounded context groups several sub-aggregates / masters, nest
     under the context directory: `internal/<layer>/<context>/<sub>/` with package `<sub>`
+    <!-- sample-api:replace-begin -->
     (e.g. `internal/domain/product/category` → package `category`,
     `internal/domain/product/status` → package `status`).
+    <!-- sample-api:replace-with -->
+    <!-- = (e.g. `internal/domain/<context>/<sub>` → package `<sub>`). -->
+    <!-- sample-api:replace-end -->
   - **Concatenation** — a standalone multi-word aggregate with no grouping context concatenates
     <!-- sample-api:replace-begin -->
     into one word (e.g. `useridentity`, `exchangerate`). Existing concatenated packages stay

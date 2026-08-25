@@ -79,8 +79,8 @@ Both are `UNIQUE`. The consequence worth stating: **never order by `code`**. Ord
 roles, so the only way to change the display order becomes renumbering `code` — which silently breaks every
 client holding it as a constant and every `WHERE ... code = ...` in `database/dml/`.
 
-A column that is not a reference master's ordering, but an order the *user* chooses and the API returns
-(product images, for example), is neither of these — it is named `display_sort` to keep it out of the pair
+A column that is not a reference master's ordering, but an order the *user* chooses and the API returns,
+is neither of these — it is named `display_sort` to keep it out of the pair
 above.
 
 ## CI Check
