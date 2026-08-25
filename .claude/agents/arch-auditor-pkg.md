@@ -64,7 +64,7 @@ arch-auditor-pkg 結果（スコープ: <scope>）
 
 [internal/ 依存] K 件
   pkg/foo/foo.go:5
-    violation: "go-boilerplate/internal/domain/user" を import している
+    violation: "go-boilerplate/internal/domain/<aggregate>" を import している
     source: CLAUDE.md "pkg must not depend on infrastructure or framework-specific packages"
 
 [framework 依存] M 件

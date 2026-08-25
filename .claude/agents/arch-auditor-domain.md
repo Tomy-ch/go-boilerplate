@@ -86,7 +86,7 @@ arch-auditor-domain 結果（スコープ: <scope>）
     source: internal/domain/README.md "domain 層は logging framework を直接利用しない"
 
 [entity ↔ SQL] K 件（suggestion only）
-  internal/domain/user/user.go vs database/migrations/0003_users.sql
+  internal/domain/<aggregate>/<aggregate>.go vs database/migrations/0003_<aggregates>.sql
     suggestion: User 構造体に `phoneNumber` フィールドあり、SQL カラム未定義
     remediation: 計算値ならメソッド形式、永続化必要なら migration 追加、VO ラップなら型変更を検討
 

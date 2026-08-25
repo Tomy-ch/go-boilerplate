@@ -50,7 +50,7 @@ TODO: aggregate の purpose を 1〜2 段落で記述。
 ## Entity
 
 \`\`\`yaml
-package: internal/domain/user
+package: internal/domain/<aggregate>
 struct: User
 fields:
   - name: TODO  # field name (camelCase)

@@ -98,7 +98,7 @@ For each Repository method WITHOUT a derivable sqlc gen match:
 
       // TODO: CountByActive に対応する sqlc gen 関数が見当たりません。
       // 解決方法:
-      //   1. database/dml/repository/user/*.sql に CountByActive query を追加
+      //   1. database/dml/repository/<aggregate>/*.sql に CountByActive query を追加
       //   2. make gen-query を実行
       //   3. 本 TODO を消して sqlc gen を呼ぶ実装に置き換え
       return 0, errors.New("not implemented")

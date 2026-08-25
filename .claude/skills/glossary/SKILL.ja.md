@@ -264,10 +264,12 @@ port は丸ごと落とす。`Usecase`・`Gateway`・`QueryService`・`Repositor
 `docs/spec/glossary.md` のみを書く。spec のツリーは英語見出しの日本語単一ファイルで、**`.ja.md`
 ペアを持たない**——作らないこと、`canonicalize-doc` へ繋がないこと。
 
+<!-- sample-api:begin -->
 サンプル由来の行は `sample-api:begin` / `sample-api:end` マーカーの内側に置き、サンプルとともに去る
 ようにする。サンプル撤去後も残る語の行はマーカーの外側へ。ここを誤ると、ページはもう存在しない語を
 説明しはじめる。
 
+<!-- sample-api:end -->
 feature spec・README・ADR・DDD 台帳・ソースには触れない。コード側の改名が要る語は、ここで行う編集
 ではなく、表に出すべき follow-up である。
 

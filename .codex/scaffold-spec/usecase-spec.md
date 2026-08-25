@@ -65,7 +65,7 @@ TODO: usecase の purpose を 1〜2 段落。
 ## Interface
 
 \`\`\`yaml
-package: internal/usecase/user
+package: internal/usecase/<aggregate>
 name: Usecase
 methods:
   - name: TODO
