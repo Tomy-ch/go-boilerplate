@@ -262,7 +262,6 @@ model）と `CommandService`（読み込み・変更・保存の形では表現�
 - [docs/development-flow.md](docs/development-flow.md) — 変更の進め方（API / DB / ロジック）
 - [docs/adr/](docs/adr/README.md) — アーキテクチャ決定記録（ADR）。技術選定の根拠
 - [docs/testing-conventions.md](docs/testing-conventions.md) — テスト規約
-- [docs/tutorial/build-user-feature.md](docs/tutorial/build-user-feature.md) — 実例: 1 つの機能を端から端まで作る <!-- sample-api:line -->
 - [docs/spec/glossary.md](docs/spec/glossary.md) — 業務語彙（ユビキタス言語）
 - [CONTRIBUTING.ja.md](CONTRIBUTING.ja.md) — 変更の提案から着地まで（ブランチ・コミット・ゲート・レビュー）
 - [docs/get-started/troubleshooting.md](docs/get-started/troubleshooting.md) — セットアップとローカル実行の失敗、およびそれが実際に意味するもの

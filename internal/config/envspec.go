@@ -38,10 +38,6 @@ type Endpoint struct {
 	OutboxQueue string `env:"OUTBOX_QUEUE,required"`
 	// ConsumerQueue は consume 端の SQS 互換エンドポイントです。空なら SDK 既定の解決に委ねます。
 	ConsumerQueue string `env:"CONSUMER_QUEUE,required"`
-	// sample-api:begin
-	// ExchangeRate は外部為替レートサービスのベース URL です。空ならこの機能を使いません。
-	ExchangeRate string `env:"EXCHANGE_RATE,required"`
-	// sample-api:end
 }
 
 // ObjectStorage は、画像等を格納する S3 互換オブジェクトストレージ（ローカルは Garage）の接続設定と

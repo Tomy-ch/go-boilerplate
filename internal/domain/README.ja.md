@@ -575,11 +575,6 @@ usecase 層のバッチ取得で解決します。外部から与えられアプ
 同じ区別が読み取り経路に及ぼす帰結は [`docs/rules.md`](../../docs/rules.ja.md) の
 Repository / QueryService Rules を参照してください。
 
-<!-- sample-api:begin -->
-`internal/domain/prefecture` が対比すべき事例です — 外部から与えられアプリケーションが書き込むことは
-ありませんが、それ自体の条件で問い合わせ・一覧されるため、参照マスタではなく独立した集約です。
-<!-- sample-api:end -->
-
 ### ルールをどこに置くか
 
 3 つの問いを、この順で。**最初に答えが出た問いが決める** — 後の問いが前の問いを覆すことはない。
@@ -604,23 +599,9 @@ Repository / QueryService Rules を参照してください。
 [`../usecase/README.md`](../usecase/README.ja.md) がそれを禁じている Usecase へ押し込むかのどちらかになり、
 明らかに業務ルールである操作をこの層のどこにも置けなくしてしまう。
 
-<!-- sample-api:begin -->
-対になる実例: `Purchase.IsShippable` が答えるのは*この購入は発送可能か*で、1 件の購入自身の状態だけで
-決まるので `Purchase` のメソッドである。`dispatch.GroupForDispatch` が答えるのは*これらのうちどれとどれを
-1 便にまとめてよいか*で、ある 1 件についての答えが集合に他のどれが含まれるかに依存するので、どの
-`Purchase` 1 件にも置けない。どちらも購入集約だけを語っている。
-<!-- sample-api:end -->
-
 #### 2. 1 つのエンティティに載るか、どれにも載らないか
 
 どのエンティティ・値オブジェクトの自然な責務でもないルールは **Domain Service** に属する。Usecase ではない。
-
-<!-- sample-api:begin -->
-```text
-退会       ← 進行中の購入
-まとめ発送 ← 発送待ちの購入
-```
-<!-- sample-api:end -->
 
 #### 3. 導出か写像か
 
@@ -695,17 +676,6 @@ import できないため、これはルールを Usecase へ押し出す壁の�
 状態を受け取って、導出した値またはドメインのエラーを返す。その状態の取得・呼び出し順序・
 トランザクションの所有は Usecase の責務のままである。
 
-<!-- sample-api:begin -->
-**[`service/membership`](service/membership) は 2 つの集約に跨る。** 一つの不変条件を両側から
-表している——ユーザーと進行中の購入を切り離してはならない。`EnsurePurchasable` は在籍していない
-ユーザーの購入を拒み、`EnsureWithdrawable` は進行中の購入が残っている間の退会を拒む。どちらの集約にも
-置けない。ユーザー集約は購入を知らず、購入集約は在籍を知らないからである。
-
-**[`service/dispatch`](service/dispatch) は 1 つの集約に閉じている。** `GroupForDispatch` は発送待ちの
-購入を、購入者ごとに、まとめて発送してよい組へ分ける。import するのは `domain/purchase` だけであり、
-ここに置く理由は上のとおりである。答えが集合についてのものなので、購入集約にはその置き場が無い。
-<!-- sample-api:end -->
-
 ### Query と Aggregate
 
 Aggregate は **Write Model**。ある集計・レポート・複雑検索をどの構成要素が実行するか——Repository か
@@ -735,13 +705,8 @@ QueryService か CommandService か——は
 **すべての条件が基準なのではない。** 条件が基準であるのは、業務を知る者がそれを業務についての言明
 だと認めるとき——それが決める語に、その人が使う名前があるときである。ID 一致・ページネーション・
 並び順・外部キー結合は業務について何も決めておらず、この規則は及ばない。署名がすでに条件を丸ごと
-<!-- sample-api:replace-begin -->
 言っている Repository メソッドも同様で、`FindDeletedBefore(ctx, cutoff, …)` は自身の基準を述べて
-いるが `FindAllLowStock` は述べていない。確認は 1 つの問いで足りる——その語の意味を、ドメイン
-<!-- sample-api:replace-with -->
-<!-- = 言っている Repository メソッドも同様で、`FindDeletedBefore(ctx, cutoff, …)` は自身の基準を述べて -->
-<!-- = いるが、業務語を名前に持つメソッドは述べていない。確認は 1 つの問いで足りる——その語の意味を、ドメイン -->
-<!-- sample-api:replace-end -->
+いるが、業務語を名前に持つメソッドは述べていない。確認は 1 つの問いで足りる——その語の意味を、ドメイン
 パッケージだけを読んで答えられるか。答えられないなら作者性が出ていっている。
 
 同じ規律は書き込み側に既に課されている。CommandService が強制してよいのはドメインの不変条件から
@@ -855,9 +820,6 @@ detail、および本ルールの元になった
        目的: ドメイン名とテーブル名の対比が無いと、何を避けよという規則なのか分からない。
        意義: 避けるのはテーブル名の持ち込みであって、名前の長さや語形ではない。
        書き方: 同じマスタをドメイン名とテーブル名の両方で書き、対比させる。 -->
-  <!-- sample-api:begin -->
-  例: 商品ステータスのマスタは「商品ステータス」と呼び、`product_statuses` とは呼びません。
-  <!-- sample-api:end -->
 - **単一取得系メソッドは not-found 時の挙動を明記します** — `FindByID` は、対象が存在しない場合に
   NotFound を返すことを doc に書きます。呼び出し側はそれで分岐するため、実装詳細ではなく保証の一部です。
 
@@ -985,56 +947,26 @@ Fixtureを推奨。
 - Invariant保証
 - テスト簡潔化
 
-<!-- sample-api:replace-begin -->
 ```go
-func newTestUser(t *testing.T)*User {
+func newTest<集約>(t *testing.T)*<集約> {
     baseTime := time.Date(2025,1,1,0,0,0,0,time.UTC)
 
-    id := uuid.NewTestFromSalt(t,"user")
-    prefectureID := uuid.NewTestFromSalt(t,"prefecture")
+    id := uuid.NewTestFromSalt(t,"<集約>")
+    relatedID := uuid.NewTestFromSalt(t,"<関連集約>")
 
-    user, err := New(
+    entity, err := New(
         id,
-        "John",
-        "Doe",
-        "john@example.com",
-        "1234567890",
-        prefectureID,
-        "Shibuya",
-        "1-2-3",
-        nil,
-        "1500001",
+        relatedID,
+        // ... 残りの属性
         baseTime,
         baseTime.Add(time.Hour),
         nil,
     )
 
     require.NoError(t, err)
-    return user
+    return entity
 }
 ```
-<!-- sample-api:replace-with -->
-<!-- = ```go -->
-<!-- = func newTest<集約>(t *testing.T)*<集約> { -->
-<!-- =     baseTime := time.Date(2025,1,1,0,0,0,0,time.UTC) -->
-<!-- = -->
-<!-- =     id := uuid.NewTestFromSalt(t,"<集約>") -->
-<!-- =     relatedID := uuid.NewTestFromSalt(t,"<関連集約>") -->
-<!-- = -->
-<!-- =     entity, err := New( -->
-<!-- =         id, -->
-<!-- =         relatedID, -->
-<!-- =         // ... 残りの属性 -->
-<!-- =         baseTime, -->
-<!-- =         baseTime.Add(time.Hour), -->
-<!-- =         nil, -->
-<!-- =     ) -->
-<!-- = -->
-<!-- =     require.NoError(t, err) -->
-<!-- =     return entity -->
-<!-- = } -->
-<!-- = ``` -->
-<!-- sample-api:replace-end -->
 
 ### 不変条件保持テスト
 
@@ -1087,241 +1019,3 @@ require.ErrorIs(t, err, ErrInvalidUpdatedAt)
 - setter
 - DB主導設計
 - Domainでtime.Now()
-
-<!-- sample-api:begin -->
-## 実例としての集約
-
-以下のファイルは 1 つの集約を端から端まで書き出したもので、上の規則を具体物に当てて読めるようにしている。
-**サンプル**であり、サンプル API と共に撤去される。上の記述はこれに依存しない。
-
-```go
-// constant.go
-package user
-
-const (
-    minLength           = 1
-    maxFirstNameLength  = 100
-    maxLastNameLength   = 100
-    maxEmailLength      = 100
-    maxPhoneLength      = 20
-    maxCityLength       = 100
-    maxStreetLength     = 255
-    maxBuildingLength   = 255
-    maxPostalCodeLength = 8
-)
-
-// 項目識別子。API のリクエストプロパティ名と一致させ、どの項目が不正かを呼び出し側へ返す。
-const (
-    FieldFirstName    = "firstName"
-    FieldPrefectureID = "prefectureId"
-    FieldBuilding     = "building"
-    // lastName / email / phone / city / street / postalCode も同様
-)
-```
-
-```go
-// error.go
-package user
-
-import (
-    "go-boilerplate/internal/apperror"
-    "go-boilerplate/pkg/xerrors"
-)
-
-var (
-    // フィールド検証エラー（errInvalid を基底に分類）
-    errInvalid             = xerrors.Wrap(apperror.ErrValidation, "invalid user")
-    ErrInvalidID           = xerrors.Wrap(errInvalid, "id failed")
-    ErrInvalidFirstName    = xerrors.Wrap(errInvalid, "first name failed")
-    ErrInvalidLastName     = xerrors.Wrap(errInvalid, "last name failed")
-    ErrInvalidEmail        = xerrors.Wrap(errInvalid, "email failed")
-    ErrInvalidPhone        = xerrors.Wrap(errInvalid, "phone failed")
-    ErrInvalidPrefectureID = xerrors.Wrap(errInvalid, "prefecture id failed")
-    ErrInvalidCity         = xerrors.Wrap(errInvalid, "city failed")
-    ErrInvalidStreet       = xerrors.Wrap(errInvalid, "street failed")
-    ErrInvalidBuilding     = xerrors.Wrap(errInvalid, "building failed")
-    ErrInvalidPostalCode   = xerrors.Wrap(errInvalid, "postal code failed")
-    ErrInvalidUpdatedAt    = xerrors.Wrap(errInvalid, "updated at failed")
-    ErrInvalidDeletedAt    = xerrors.Wrap(errInvalid, "deleted at failed")
-
-    // ビジネスルール違反
-    ErrAlreadyDeleted = xerrors.Wrap(apperror.ErrConflict, "user is already deleted")
-)
-```
-
-```go
-// user_domain.go
-package user
-
-import (
-    "time"
-
-    "go-boilerplate/pkg/ptr"
-    "go-boilerplate/pkg/stringkit"
-    "go-boilerplate/pkg/uuid"
-    "go-boilerplate/pkg/xerrors"
-)
-
-type Users []*User
-
-// エンティティ（集約ルート）
-// 形式そのものが不変条件になる値（email / postalCode）は値オブジェクトとして持つ。
-// 素の string で持つと、その形式を守る責任が呼び出し側へ散る（Value Object の節を参照）。
-type User struct {
-    id           uuid.UUID
-    firstName    string
-    lastName     string
-    email        Email
-    phone        string
-    prefectureID uuid.UUID
-    city         string
-    street       string
-    building     *string
-    postalCode   PostalCode
-    createdAt    time.Time
-    updatedAt    time.Time
-    deletedAt    *time.Time
-}
-
-// 置き換え可能な属性の部分集合（New / UpdateProfile で共有）。
-// firstName / lastName / phone / city / street は同型のため、フィールド名指定を要求する。
-type Profile struct {
-    FirstName    string
-    LastName     string
-    Email        string
-    Phone        string
-    PrefectureID uuid.UUID
-    City         string
-    Street       string
-    Building     *string
-    PostalCode   string
-}
-
-// 生成に必要な属性一式。createdAt / updatedAt も同型のため同じ扱いとする。
-type Attributes struct {
-    Profile
-
-    CreatedAt time.Time
-    UpdatedAt time.Time
-    DeletedAt *time.Time
-}
-
-// ファクトリ: 不変条件を満たすときだけ実体を生成
-func New(id uuid.UUID, attrs Attributes) (*User, error) {
-    if id.IsNil() {
-        return nil, xerrors.Wrap(ErrInvalidID, "id is required")
-    }
-    // フィールド検証（New / UpdateProfile で共有）
-    if err := validateProfileFields(attrs.Profile); err != nil {
-        return nil, err
-    }
-    if attrs.UpdatedAt.Before(attrs.CreatedAt) {
-        return nil, xerrors.Wrap(ErrInvalidUpdatedAt, "updatedAt must be after or equal to createdAt")
-    }
-    if attrs.DeletedAt != nil {
-        if err := validateDeletedAt(*attrs.DeletedAt, attrs.CreatedAt, attrs.UpdatedAt); err != nil {
-            return nil, err
-        }
-    }
-
-    // building / deletedAt は防御コピー（不変性）。他フィールドはそのまま設定。
-    return &User{
-        id:        id,
-        building:  ptr.Copy(attrs.Building),
-        deletedAt: ptr.Copy(attrs.DeletedAt),
-        // ↑以外の全フィールド（firstName / lastName / 連絡先 / 住所 / 監査時刻）も attrs から設定（例示のため省略）
-    }, nil
-}
-
-// アクセサ（building / deletedAt は防御コピーを返す）
-func (u *User) ID() uuid.UUID     { return u.id }
-func (u *User) Email() string     { return u.email }
-func (u *User) Building() *string { return ptr.Copy(u.building) }
-// 氏名 / 連絡先 / 住所 / 監査時刻（createdAt, updatedAt, deletedAt）のアクセサも同様
-
-// ビジネスロジック（振る舞い）: プロフィール一括更新
-func (u *User) UpdateProfile(profile Profile, updatedAt time.Time) error {
-    if err := u.ensureNotDeleted(); err != nil {
-        return err
-    }
-    if err := validateProfileFields(profile); err != nil {
-        return err
-    }
-    if err := u.ensureUpdatedAt(updatedAt); err != nil {
-        return err
-    }
-
-    // 検証通過後に各フィールドと updatedAt を置換（building は防御コピー）
-    u.updatedAt = updatedAt
-    return nil
-}
-
-// 振る舞いの兄弟（UpdateProfile と同じ ensure → 検証 → 置換 の idiom）。シグネチャのみ示す。
-func (u *User) MarkAsDeleted(deletedAt time.Time) error // 論理削除（既に削除済みなら ErrAlreadyDeleted）
-
-// 不変条件ガード（例示）: updatedAt は createdAt 以降かつ単調非減少
-func (u *User) ensureUpdatedAt(updatedAt time.Time) error {
-    if updatedAt.Before(u.createdAt) {
-        return xerrors.Wrap(ErrInvalidUpdatedAt, "updatedAt must be after or equal to createdAt")
-    }
-    if updatedAt.Before(u.updatedAt) {
-        return xerrors.Wrap(ErrInvalidUpdatedAt, "updatedAt must be after or equal to current updatedAt")
-    }
-    return nil
-}
-func (u *User) ensureNotDeleted() error // 削除済みなら ErrAlreadyDeleted（変更を拒否）
-
-// バリデーション（例示・New / UpdateProfile で共有）
-// 利用者が直せる入力項目なので、最初の失敗で止めず全項目を検証し、項目識別子を添えて結合する
-// （エラーの節を参照）。1 往復で全部の誤りを返せないと、利用者は 1 項目ずつ直しに来ることになる。
-func validateProfileFields(profile Profile) error {
-    var (
-        errs   []error
-        fields []string
-    )
-    if ok, msg := stringkit.ValidateInRange(profile.FirstName, minLength, maxFirstNameLength); !ok {
-        errs = append(errs, xerrors.Wrap(ErrInvalidFirstName, msg))
-        fields = append(fields, FieldFirstName)
-    }
-    // lastName / email / phone / city / street / postalCode も同様に検証し、
-    // 対応する ErrInvalidXxx と Field 定数を積む
-    if profile.PrefectureID.IsNil() {
-        errs = append(errs, xerrors.Wrap(ErrInvalidPrefectureID, "prefectureID is required"))
-        fields = append(fields, FieldPrefectureID)
-    }
-    if profile.Building != nil { // building は任意
-        if ok, msg := stringkit.ValidateInRange(*profile.Building, minLength, maxBuildingLength); !ok {
-            errs = append(errs, xerrors.Wrap(ErrInvalidBuilding, msg))
-            fields = append(fields, FieldBuilding)
-        }
-    }
-    if len(errs) > 0 {
-        return apperror.WithDetails(xerrors.Join(errs...), fields...)
-    }
-    return nil
-}
-func validateDeletedAt(deletedAt, createdAt, updatedAt time.Time) error // createdAt / updatedAt 以降
-```
-
-```go
-// user_repository.go
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
-package user
-
-import (
-    "context"
-
-    "go-boilerplate/pkg/uuid"
-)
-
-// Repository: 単一集約の永続化と単純な読み取り（fetch by ID / 自集約属性での filter・list・count）。
-// keyword 検索など集約跨ぎ・複雑クエリは QueryService（CQRS read side）が担う。
-type Repository interface {
-    FindByActive(ctx context.Context, active *bool, limit, offset int32) (Users, error)
-    FindByID(ctx context.Context, id uuid.UUID) (*User, error)
-    Create(ctx context.Context, user *User) error
-    Update(ctx context.Context, user *User) error
-    CountByActive(ctx context.Context, active *bool) (int64, error)
-}
-```
-<!-- sample-api:end -->

@@ -64,12 +64,6 @@ Every route from this package into a running binary carries a `sample-api` marke
 side that is the outbox publisher's `sqs` branch. On the consuming side, a worker's adapters are
 always assembled in DI, because the controller layer cannot import this package.
 
-<!-- sample-api:begin -->
-`internal/di/module/withdrawalarchive.go` is that assembly point for the bundled sample worker: it
-builds `NewConsumer`, `NewDeadLetter`, and `NewQueueStatsProvider` from `CONSUMER_QUEUE_*` and hands
-them to a `worker.Worker` registered in `WorkerModule`.
-<!-- sample-api:end -->
-
 ## Port mapping
 
 | seam | SQS |

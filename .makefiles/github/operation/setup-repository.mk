@@ -11,7 +11,6 @@
 # boilerplate-only:begin
 .PHONY: setup-remove-boilerplate-identity ## テンプレート自身を語る記述を落としボイラープレートの顔を消す
 # boilerplate-only:end
-.PHONY: setup-remove-sample-api ## サンプルAPI(user/product/order)を一括削除し再生成・検証まで実行 # sample-api:line
 .PHONY: setup-remove-licensed-scanners ## 資格情報/課金を要するスキャナ2件を撤去し製品ごとにコミット
 
 SETUP_DRY_RUN_FLAG := $(if $(DRY_RUN),--dry-run,)
@@ -115,37 +114,6 @@ setup-remove-boilerplate-identity:
 	@docker compose run --rm node_tool_runner $(TSX) scripts/setup/remove-boilerplate-identity $(SETUP_DRY_RUN_FLAG)
 
 # boilerplate-only:end
-# sample-api:begin
-
-# サンプルAPIの削除はコンテナ内（node_tool_runner）で行い、削除後の再生成・整形・検証・DB 再構築は
-# Go ツールチェーンが必要なためホスト側の make ターゲットを連鎖させる。
-# プレビューは DRY_RUN=1 を付ける（削除も再生成も行わない）。
-# make は起動時に makefile を全読込するため、手順1のスクリプトがこの .mk からターゲットを strip（自消滅）
-# しても、実行中のレシピは継続し regen まで走る。
-# サンプル削除で未使用になる直接依存が go.mod に残ると、後日 go.mod を触った無関係な PR で
-# tidy-check が落ちる。tidy-lib は import が確定する gen の後、整理後の状態を lint で検証して
-# 終えられるよう fix/lint の前に置く。各手順は && で連鎖し、途中の失敗が完了メッセージに隠れない。
-# 最後の検証はツールランナーを経由しない。git status と make help を読むため、ホストの git と
-# この makefile 自身が要る（worktree では .git がマウント外の実体を指すファイルで辿れない）。
-# ここに置くのは、検証器が通ったときだけ自分と snapshot を撤去する設計だからで、呼ばずに終えると
-# 削除ツールの片割れと、削除対象パスを全て書き出した記録が作成先へ居座る。
-# ホストで走らせる以上、scripts の依存もホスト側に要る。無いと pnpm が依存の鮮度を判定できず、
-# 削除は済んだのに検証だけ走らないという、検証の失敗と区別が付かない状態で止まる。
-setup-remove-sample-api:
-	@docker compose run --rm node_tool_runner $(TSX) scripts/setup/remove-sample-api $(SETUP_DRY_RUN_FLAG)
-	@if [ -n "$(DRY_RUN)" ]; then \
-		echo "🟡 DRY_RUN のため再生成・整形・検証はスキップしました。"; \
-	else \
-		echo "🔧 再生成・整形・検証・DB 再構築を実行します..." && \
-		$(MAKE) db-local-reinit db-test-reinit && \
-		$(MAKE) gen-api gen-query && \
-		$(MAKE) tidy-lib && \
-		$(MAKE) fix lint && \
-		pnpm install --dir scripts --frozen-lockfile && \
-		$(TSX) scripts/setup/verify-sample-removal && \
-		echo "✅ サンプルAPIの削除・再生成・検証が完了しました。"; \
-	fi
-# sample-api:end
 
 # 資格情報 / ライセンス費用を要するスキャナ 2 件の撤去。
 # 他の setup ターゲットと違いツールランナーを経由せずホストで走らせる。このスクリプトは

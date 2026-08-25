@@ -103,12 +103,6 @@ Draft the definition from the feature and aggregate names and **say plainly that
 definition nobody edited is a definition nobody agreed to; the row is worth more empty than
 plausibly wrong.
 
-<!-- sample-api:begin -->
-Place the row inside the `sample-api:begin` / `sample-api:end` markers when the feature is
-sample-derived, outside them otherwise. A row on the wrong side of a marker either vanishes with the
-sample or outlives it.
-
-<!-- sample-api:end -->
 ## Step 5. Closing
 
 ```text

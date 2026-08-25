@@ -45,9 +45,6 @@ QS returns **projections that a usecase needs, not complete Aggregate reconstruc
 >      目的: どの表からどの表への JOIN かが見えないと、例外の範囲が伝わらない。
 >      意義: 効くのは「参照マスタであること」で、JOIN の向きや表の数ではない。
 >      書き方: 集約の表 → 参照マスタの表、を矢印 1 本で示す。 -->
-> <!-- sample-api:begin -->
-> （サンプルでの例は `purchases` → `purchase_statuses`）
-> <!-- sample-api:end -->
 > What moves a read to QS is crossing
 > *independent* Aggregates / a derived projection, not merely returning a non-Entity. See
 > `docs/rules.md` § "Repository / QueryService Rules".

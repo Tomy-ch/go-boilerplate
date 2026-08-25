@@ -269,7 +269,6 @@ The source of truth lives close to the code. Start here and follow the link that
 - [docs/development-flow.md](docs/development-flow.md) — how to perform a change (API / DB / logic)
 - [docs/adr/](docs/adr/README.md) — architecture decision records (ADR); technology rationale
 - [docs/testing-conventions.md](docs/testing-conventions.md) — testing conventions
-- [docs/tutorial/build-user-feature.md](docs/tutorial/build-user-feature.md) — worked example: one feature end to end <!-- sample-api:line -->
 - [docs/spec/glossary.md](docs/spec/glossary.md) — business vocabulary (ubiquitous language)
 - [CONTRIBUTING.md](CONTRIBUTING.md) — how to propose and land a change (branch, commit, gates, review)
 - [docs/get-started/troubleshooting.md](docs/get-started/troubleshooting.md) — setup & local-run failures, and what each one actually means

@@ -221,11 +221,7 @@ flowchart LR
 | ⑥ | env（`WORKER_*` は既定あり・上書き任意）／broker 認証／DLQ・redrive(IaC) | `env/` ・IaC | `CONSUMER_QUEUE_*` / `WorkerConfig` 既定 |
 
 > `CONSUMER_QUEUE_*` が指すのは *the* consumer キューではなく *a* consumer キューであり、同梱する 1 つの worker に合わせた大きさになっている。別のキューを消費する 2 つ目の worker には、worker 名を含む独自の接頭辞（`<WORKER_NAME>_QUEUE_*`）を与えること。既存のものを兼用しない。`WORKER_*` は engine-core 設定でありプロセス単位・broker 非依存なので共有のままでよい。
-
-<!-- sample-api:begin -->
-> ①〜⑥ すべての実例が、削除可能なサンプル群の一部として同梱されている。`internal/controller/worker/withdrawalarchive` が outbox の emit する退会イベントを消費し、オブジェクトストレージへ証跡を書き出す。`make setup-remove-sample-api` はそれを削除し、`provideWorkers()` を再び空へ戻す。
-<!-- sample-api:end -->
-
+>
 > ブローカー adapter を配線すると、その SDK はバイナリに入る。`serve` / `worker` / `outbox-relay` は同一バイナリのため、リンクをキューを消費する役割へ絞ることはできない。したがって分離は**結合**で定義する。具体的なブローカーを名指すのは、その adapter のパッケージと、それを選ぶ配線だけである（E3、[ADR-0053](../adr/0053-broker-sdk-isolation-measured-as-coupling.ja.md)）。
 
 ---

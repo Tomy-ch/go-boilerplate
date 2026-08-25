@@ -47,59 +47,6 @@ findings** — 業務が使っていてモデルが使っていない語は、�
 
 ## Terms
 
-<!-- sample-api:begin -->
-以下の行はサンプル機能一式に由来し、**サンプルを撤去すると消える**。残るのはこのページと、ここに書かれた
-規則のほうである。言語はこのプロジェクトを運用する側のものである。
-
-| 用語 | 定義 | 所有 | コードシンボル | 公開名 |
-| --- | --- | --- | --- | --- |
-| 商品 | 顧客が購入できる品目。売値と在庫を持ち、公開されている間だけ顧客の目に触れる | product / Product | `product.Product` | `ProductResponse` |
-| 商品カテゴリ | 顧客が商品を探すときの分類。商品はちょうど 1 つに属する | product-category / ProductCategory | `category.Category` | `ProductCategoryResponse` |
-| 商品ステータス | 商品を今どう取り扱っているかの区分 | product-status / ProductStatus | `status.Status` | `ProductStatusResponse` |
-| 公開中 | 顧客がその商品を見つけて購入できる状態 | product / Product | `product.IsPublished` | — |
-| 在庫僅少 | 補充しなければ品切れが近い水準まで在庫が減っている状態 | product / Product | `product.Product.IsLowStock` | — |
-| 代表画像 | 商品を 1 枚で表すときに使う画像。出品者が並べた表示順の先頭がこれにあたる | product / Product | `product.Product.PrimaryImage` | `imagePath` |
-| 購入 | 顧客が商品を買った事実。何をいくらで買ったかが確定している | purchase / Purchase | `purchase.Purchase` | `PurchaseResponse` |
-| 購入明細 | 購入 1 件に含まれる商品ごとの行。単価は買った時点の値で確定し、後の値上げに追随しない | purchase / Purchase | `purchase.PurchaseDetail` | `PurchaseDetailResponse` |
-| 購入コード | 顧客との問い合わせでその購入を指し示すための符号 | purchase / Purchase | `purchase.Purchase.Code` | `code` |
-| キャンセル済み | 購入が取り消され、履行されないことが確定した状態 | purchase / Purchase | `purchase.Purchase.IsCanceled` | — |
-| 発送可能 | 購入が発送してよい状態。支払いを終え、まだ発送していないことを指す | purchase / Purchase | `purchase.Purchase.IsShippable` | — |
-| まとめ発送 | 発送待ちの購入のうち、1 便にまとめて発送してよい組 | purchase / Purchase | `dispatch.GroupForDispatch` | — |
-| ユーザー | このサービスで商品を購入する人 | user / User | `user.User` | `UserResponse` |
-| 在籍 | ユーザーがこのサービスの利用を続けている状態 | user / User | `user.User.IsActive` | — |
-| 都道府県 | 住所を広域で区分する単位 | prefecture / Prefecture | `prefecture.Prefecture` | `PrefectureResponse` |
-| メールアドレス | このサービスがそのユーザーへ連絡を届けるための宛先。1 人に 1 つ | user / User | `user.Email` | `email` |
-| 郵便番号 | 住所を配達の区域まで絞り込む符号 | user / User | `user.PostalCode` | `postalCode` |
-| 金額 | 売り買いでやり取りされる貨幣の量。商品の売値も購入明細の単価もこれで表す | lexicon | `money.Price` | — |
-| 住所候補 | 郵便番号から引ける住所のうち、その番号が指しうるもの | address | `address.Candidate` | `AddressCandidate` |
-| 売上 | ある期間に成立した購入の金額の合計 | dashboard | `dashboard/query.SalesResult` | `salesAmount` |
-| 集計期間 | 集計の対象として区切る時間の範囲 | 横断（dashboard / purchase / product-ranking） | `timewindow.Window` | `orderedAfter` / `orderedBefore` |
-| 為替レート | ある通貨を別の通貨へ換算するときの比率 | exchange-rate | `exchangerate.Rate` | — |
-| 参考換算額 | 表示のために別通貨へ換算した金額。支払いに使う値ではない | exchange-rate | `exchangerate.ReferenceAmount` | `ReferenceAmount` |
-| 販売数量ランキング | 売れた数の多い順に商品を並べたもの | product-ranking | `ranking.QuantityRankingView` | `ProductQuantityRankingItem` |
-| 売上金額ランキング | 売れた金額の多い順に商品を並べたもの。母集団は販売数量ランキングと同一で、指標と並び順だけが違う | product-ranking | `ranking.AmountRankingView` | `ProductAmountRankingItem` |
-| ユーザー検索 | 条件に当てはまるユーザーを探し出すこと | user-search | `search.UserSearchResult` | — |
-| 未処理 | 購入が成立した直後の、まだ何も進んでいない状態 | purchase / Purchase | `purchase.StatusUnprocessed` | — |
-| 受付中 | 購入の注文を受け付け、内容の確認に入る前の状態 | purchase / Purchase | `purchase.StatusAccepted` | — |
-| 確認中 | 受け付けた注文の内容を確認している状態 | purchase / Purchase | `purchase.StatusConfirming` | — |
-| 処理中 | 支払いを終え、発送に向けた処理を進めている状態 | purchase / Purchase | `purchase.StatusProcessing` | — |
-| 支払い済み | 購入の代金が支払われた状態 | purchase / Purchase | `purchase.StatusPaid` | — |
-| 発送済み | 購入された商品が顧客へ向けて送り出された状態 | purchase / Purchase | `purchase.StatusShipped` | — |
-| 配達済み | 購入された商品が顧客に届いた状態。ここから先へは進まない | purchase / Purchase | `purchase.StatusDelivered` | — |
-| 購入完了 | 購入が果たされた状態。以後は取り消せない | purchase / Purchase | `purchase.StatusCompleted` | — |
-| 進行中 | 購入が成立してから、まだ決着していない状態。購入完了・配達済み・キャンセル済みのいずれにも至っておらず、この先の状態がまだあり得る。担い手は決着済みかを問う述語で、進行中はその否定である | purchase / Purchase | `purchase.Status.IsTerminal` | — |
-| 支払い | 顧客が購入の代金を払うこと。これが起きた購入は支払い済みになる | purchase / Purchase | `purchase.Purchase.Pay` | `pay` |
-| 発送 | 購入された商品を顧客へ向けて送り出すこと。これが起きた購入は発送済みになる | purchase / Purchase | `purchase.Purchase.Ship` | `ship` |
-| 配達 | 購入された商品が顧客の手元に届くこと。これが起きた購入は配達済みになる | purchase / Purchase | `purchase.Purchase.Deliver` | `deliver` |
-| キャンセル | 購入を取り消し、履行しないと決めること。これが起きた購入はキャンセル済みになる | purchase / Purchase | `purchase.Purchase.Cancel` | `cancel` |
-| 管理者 | 一般の利用者には許されない操作を行える役割 | user / User | `user.RoleCodeAdmin` | `admin` |
-| 退会 | ユーザーがこのサービスの利用をやめること | user / User | `user.User.MarkAsDeleted` | — |
-| 購入可能 | 在籍しているユーザーにだけ認められる、購入を受け付けてよい状態 | membership | `membership.EnsurePurchasable` | — |
-| 退会可能 | 進行中の購入を残していないユーザーにだけ認められる、退会してよい状態 | membership | `membership.EnsureWithdrawable` | — |
-| 在庫の増減 | 購入の成立や取り消しによらず、補充または差し引きとして商品の在庫数を増減させること | product / Product | `product.Product.AdjustStock` | — |
-| カート | 顧客が買うつもりの商品を、購入を確定させるまで入れておく控え。入れても商品は取り置かれない | cart / Cart | `cart.Cart` | `CartResponse` |
-<!-- sample-api:end -->
-
 ## Mechanism vocabulary
 
 以下の公開名は業務語**ではない**。生成器が提案し続けないため、そして読者がコード上の目立ちを業務上の
@@ -108,15 +55,9 @@ findings** — 業務が使っていてモデルが使っていない語は、�
 | 名前 | 業務語でない理由 |
 | --- | --- |
 | `Attributes` / `Profile` | 位置引数の取り違えを防ぐための引数の束 |
-| `PurchaseDetailAttributes` | 位置引数の取り違えを防ぐための引数の束   <!-- sample-api:line --> |
 | `Repository` / `LockRepository` | 永続化の抽象。業務はリポジトリを持たない |
-| `RoleRepository` | 永続化の抽象。業務はリポジトリを持たない   <!-- sample-api:line --> |
 | `ListParams` / `Counts` | 読み取り経路の問い合わせとページングの形 |
-| `ListFeedParams` / `FeedCursor` / `FeedItem` | 読み取り経路の問い合わせとページングの形   <!-- sample-api:line --> |
-| `DetailInput` / `LockedProduct` | コンストラクタの入力であって、業務が名前を付けるものではない   <!-- sample-api:line --> |
 | `Event` / `EventType` | 事実の封筒。事実の**名前**は語だが、封筒は語ではない |
-| `StatusRef` / `CategoryRef` | 同一性に表示用の属性を添えた集約横断参照   <!-- sample-api:line --> |
-| `Detail` | 購入 1 件の読み取り形。業務が呼ぶ語は書き込み側の集約が既に持っている（購入・購入明細）   <!-- sample-api:line --> |
 | `DBHealth` / `Ok` / `Degraded` / `Unhealthy` | 稼働の観測点。業務ではなく運用が見るもの |
 | `New` / `New<VO>` | 構築の入口。名前は規約であって業務の語ではない。業務が同じ行為を別の名前で呼ぶなら、その語のほうが行になる |
 | `Reconstruct` | 永続化からの再構成。業務は既に起きた事実を作り直さない。復元は保存の裏返しであって行為ではない |
@@ -176,42 +117,14 @@ findings** — 業務が使っていてモデルが使っていない語は、�
 
 ### 同音異義（未決）
 
-<!-- sample-api:replace-begin -->
 **どちらの名前が勝つかも、2 つが本当に別概念かも、ここでは決めない。** 決めるのは業務がどう話すかの
 決定であり、人のものである。
 
-- **`Status`** — `product/status.Status` は商品の取扱区分を表す参照マスタの実体（`id` / `name` /
-  `code` / `sortKey` を持ち、表示順があり、書き込み API を持たない）。`purchase.Status` は購入の
-  進行段階を表す値オブジェクト（許可遷移と終端性を内蔵し、doc は「符号の大小で判定してはならない」と
-  明言）。**片方は集約、片方は値オブジェクトで、指しているものが違う。**用語表は前者にだけ
-  「商品ステータス」の行を与えており、後者は個々の状態（未処理・支払い済み…）の行だけを持つ
-
-- **`salesAmount`** — `dashboard/query.SalesResult` は購入の支払金額（小計 + 税額 + 送料）を決済スケールの
-  セント整数で合計し、商品の公開状態を見ない。`ranking.AmountRankingItemView.SalesAmount` は明細
-  （単価 × 数量）を価格スケールの正確な decimal で合計し、公開済み商品に限る。**母集団もスケールも
-  違うのに、公開名が同じ `salesAmount` である。**両者が一致しないことは各 op の description に
-  書かれているが、名前を分けるかは業務がどう話すかの決定である
-<!-- sample-api:replace-with -->
-<!-- = **どちらの名前が勝つかも、2 つが本当に別概念かも、ここでは決めない。** 決めるのは業務がどう話すかの -->
-<!-- = 決定であり、人のものである。 -->
-<!-- = -->
-<!-- = 現在エントリなし。 -->
-<!-- sample-api:replace-end -->
+現在エントリなし。
 
 ### 行にするかが未決
 
-<!-- sample-api:replace-begin -->
-同義は現在エントリなし。以下は**行にするかどうかが未決**の語である。
-
-- **購入の成立** — 支払い・発送・配達・キャンセルは行為の側が行を得たが、購入そのものの成立だけ
-  行が無い。構築子（`purchase.New`）は担い手になれない——名前が規約であり、集約によって新規発生と
-  復元の両方を意味するからである（[Mechanism vocabulary](#mechanism-vocabulary) 参照）。事実の側には
-  `purchase.EventCreated` という名前が既にあり、担い手の候補はそちらである。**行を立てるかは、この
-  成立を「購入」という既存の行が兼ねてよいかの判断**であり、兼ねさせるなら 1 語が集約と出来事の
-  2 つを指すことになる。
-<!-- sample-api:replace-with -->
-<!-- = 同義・行にするかどうかが未決の語は、いずれも現在エントリなし。 -->
-<!-- sample-api:replace-end -->
+同義・行にするかどうかが未決の語は、いずれも現在エントリなし。
 
 ## What this document is not
 

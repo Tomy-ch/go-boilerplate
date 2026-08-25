@@ -5,11 +5,7 @@
 meta:
   groups:
     - title: Get Started
-      # sample-api:replace-begin
-      sections: [overview, get-started, make_commands, environment_variables, tutorial]
-      # sample-api:replace-with
-      # = sections: [overview, get-started, make_commands, environment_variables]
-      # sample-api:replace-end
+      sections: [overview, get-started, make_commands, environment_variables]
     - title: Architecture
       # boilerplate-only:replace-begin
       sections: [architecture, project, reference, plan]

@@ -8,11 +8,7 @@ Provides common pagination value objects. Two strategies are offered as **equall
 - **Cursor-based / keyset (`Cursor`)** — carries an opaque cursor (the previous page's last-row sort keys) for `WHERE (sort_keys) < (:cursor)` queries. Stable and fast even on deep pages; recommended for large datasets and infinite scroll. The package owns only **transport (encode/decode), validation, and limit policy**; interpreting the keys back into typed sort columns (e.g. RFC3339 → time, UUID string → uuid) is the **query layer's** responsibility.
 
 The package also owns the **fetch-count policy on its own** (`Limit` / `LimitPolicy`), so a read
-<!-- sample-api:replace-begin -->
-with no pagination at all — a top-N list such as a ranking or a low-stock dashboard card — shares
-<!-- sample-api:replace-with -->
-<!-- = with no pagination at all — a top-N list — shares -->
-<!-- sample-api:replace-end -->
+with no pagination at all — a top-N list — shares
 the same "unspecified → default, over the ceiling → clamp" rule instead of re-implementing it.
 `Page` and `Cursor` are built on `Limit` with the package's own `defaultPerPage` / `maxPerPage`;
 top-N callers pass their own `LimitPolicy` (its named fields keep the default and the ceiling from

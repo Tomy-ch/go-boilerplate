@@ -1540,21 +1540,6 @@ func TestEndpointConfig_ConsumerQueue(t *testing.T) {
 	})
 }
 
-// sample-api:begin
-func TestEndpointConfig_ExchangeRate(t *testing.T) {
-	t.Parallel()
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-		t.Run("為替レートサービスのベースURLを取得できる", func(t *testing.T) {
-			t.Parallel()
-			endpoint := MockConfigForTest(t).endpoint
-			assert.Equal(t, expectedEndpointExchangeRate, endpoint.ExchangeRate())
-		})
-	})
-}
-
-// sample-api:end
-
 func TestNewEndpointConfig(t *testing.T) {
 	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {

@@ -167,9 +167,6 @@ func New() (*Config, error) {
 			outbox:        cfg.Endpoint.Outbox,
 			outboxQueue:   cfg.Endpoint.OutboxQueue,
 			consumerQueue: cfg.Endpoint.ConsumerQueue,
-			// sample-api:begin
-			exchangeRate: cfg.Endpoint.ExchangeRate,
-			// sample-api:end
 		},
 	}, nil
 }

@@ -9,11 +9,7 @@ import (
 	"go-boilerplate/internal/infrastructure/auth/local"
 	"go-boilerplate/internal/infrastructure/httpclient"
 
-	// sample-api:replace-begin
-	"go-boilerplate/internal/infrastructure/auth/useridentity"
-	// sample-api:replace-with
-	// = "go-boilerplate/internal/infrastructure/auth/identity"
-	// sample-api:replace-end
+	"go-boilerplate/internal/infrastructure/auth/identity"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
 
@@ -56,11 +52,7 @@ func AuthnModule() fx.Option {
 		"core.authn",
 		fx.Provide(
 			provideAuthenticator,
-			// sample-api:replace-begin
-			useridentity.New,
-			// sample-api:replace-with
-			// = identity.New,
-			// sample-api:replace-end
+			identity.New,
 			auth.NewAuthenticator,
 		),
 	)

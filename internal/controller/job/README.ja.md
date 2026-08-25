@@ -15,11 +15,6 @@ internal/controller/job は、CLI（Cobra）から起動される **バッチ/�
 
 「ビジネスロジック」「DBアクセス」「ドメインモデルの操作」は Usecase / Domain / Infra に寄せ、Controller は薄く保ちます。
 
-<!-- sample-api:begin -->
-配下の `usercount/` / `userpurge/` / `productimagegc/` はサンプル実装です。実際のサービス構築時には参考にした上で、不要であれば削除してください。
-
-<!-- sample-api:end -->
-
 ## アーキテクチャ
 
 ### ジョブ実行時の処理フロー
@@ -203,11 +198,7 @@ flowchart TB
 
 命名は以下の方針が安定します。
 
-<!-- sample-api:replace-begin -->
-- パッケージ名：lower_snake ではなく Go 流儀の lower（例：usercount, fixcollation）
-<!-- sample-api:replace-with -->
-<!-- = - パッケージ名：lower_snake ではなく Go 流儀の lower（例：idempotencygc, fixcollation） -->
-<!-- sample-api:replace-end -->
+- パッケージ名：lower_snake ではなく Go 流儀の lower（例：idempotencygc, fixcollation）
 - Job 名（Runner が引くキー）：kebab-case を推奨
   - 例：user-count / fix-collation / dump-schema
 - Cobra の job <name> と一致させやすく、README にも書きやすい
@@ -367,11 +358,7 @@ Job は `group:"jobs"` にまとめられ、Runner に集約されます。
 
 ```mermaid
 flowchart TB
-    %% sample-api:replace-begin
-    A["fx.Provide(usercount.New)"]
-    %% sample-api:replace-with
-    %% = A["fx.Provide(someJob.New)"]
-    %% sample-api:replace-end
+    A["fx.Provide(someJob.New)"]
     B["fx.Provide(otherJob.New)"]
     Group["group:”jobs”"]
     Jobs["[]job.Job"]
@@ -391,9 +378,6 @@ func JobModule() fx.Option {
             // ここにジョブのコンストラクタを追加します。
             idempotencygc.New,
             outboxgc.New,
-            usercount.New,      // sample-api:line
-            userpurge.New,      // sample-api:line
-            productimagegc.New, // sample-api:line
         ),
         fx.Provide(
             dijob.ProvideRunner,
@@ -514,11 +498,7 @@ observability層がtracerの生成ルール（レイヤー名やパッケージ�
 ## 参考スニペット
 
 ```go
-// sample-api:replace-begin
-package usercount
-// sample-api:replace-with
-// = package somejob
-// sample-api:replace-end
+package somejob
 
 import (
     "context"

@@ -181,10 +181,7 @@ var (
 	expectedAuthUnknownKidCooldown = 60 * time.Second
 
 	// object storage（Endpoint は空文字＝SDK 既定解決の意味を持つため空。他は required,notEmpty のため実値）
-	expectedEndpointObjectStorage = ""
-	// sample-api:begin
-	expectedEndpointExchangeRate = "https://exchange-rate.example.test"
-	// sample-api:end
+	expectedEndpointObjectStorage                = ""
 	expectedObjectStorageRegion                  = "us-east-1"
 	expectedObjectStorageBucket                  = "test-bucket"
 	expectedObjectStorageAccessKeyID             = "test-access-key"
@@ -333,9 +330,6 @@ func MockConfigForTest(tb testing.TB) *Config {
 			outbox:        expectedEndpointOutbox,
 			outboxQueue:   expectedEndpointOutboxQueue,
 			consumerQueue: expectedEndpointConsumerQueue,
-			// sample-api:begin
-			exchangeRate: expectedEndpointExchangeRate,
-			// sample-api:end
 		},
 	}
 }
@@ -376,9 +370,6 @@ func mockLoader(tb testing.TB) Loader {
 			Outbox:        expectedEndpointOutbox,
 			OutboxQueue:   expectedEndpointOutboxQueue,
 			ConsumerQueue: expectedEndpointConsumerQueue,
-			// sample-api:begin
-			ExchangeRate: expectedEndpointExchangeRate,
-			// sample-api:end
 		},
 		Server: Server{
 			Host:              expectedServerHost,
@@ -498,9 +489,6 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // テスト用の環�
 	t.Setenv("ENDPOINT_OUTBOX", expectedEndpointOutbox)
 	t.Setenv("ENDPOINT_OUTBOX_QUEUE", expectedEndpointOutboxQueue)
 	t.Setenv("ENDPOINT_CONSUMER_QUEUE", expectedEndpointConsumerQueue)
-	// sample-api:begin
-	t.Setenv("ENDPOINT_EXCHANGE_RATE", expectedEndpointExchangeRate)
-	// sample-api:end
 	// Secure Cookie
 	t.Setenv("SECURE_COOKIE_SECURE", strconv.FormatBool(*expectedSecureCookieSecure))
 	t.Setenv("SECURE_COOKIE_SAME_SITE", expectedSecureCookieSameSite)

@@ -108,17 +108,6 @@ The two ends meet at the transport, not in code: `relay` hands `publisher.Messag
 which puts the payload in the message body and the event type and `message_id` in named metadata, and
 a `worker.Handler` reads them back from `worker.Message`. Neither end imports the other.
 
-<!-- sample-api:begin -->
-The sample wires both ends so the path can actually be run:
-
-| Stage | Where |
-| --- | --- |
-| emit `user.withdrawn.v1` in the withdrawal transaction | `internal/usecase/user` |
-| relay → publish | `outbox-relay` + `internal/infrastructure/queue/sqs` (`OUTBOX_PUBLISHER=sqs`) |
-| consume → archive the withdrawal | [`internal/controller/worker/withdrawalarchive`](../../controller/worker/withdrawalarchive/README.md) |
-
-<!-- sample-api:end -->
-
 ## Layout
 
 | Concern | Path |

@@ -9,25 +9,13 @@
 - `schemas/` — 小さく再利用できる部品（例：`UserBaseInputRequest.yaml`）。
 - `requests/` — **エンドポイント固有**の形。多くは `allOf` で基底部品を合成し、操作固有の制約（例：`required` リスト）を足す。
 
-<!-- sample-api:replace-begin -->
 ```yaml
-# requests/users/UsersPostRequest.yaml
+# requests/<リソース>/<リソース>PostRequest.yaml
 allOf:
-  - $ref: '../../schemas/UserBaseInputRequest.yaml'
-  - required:          # 「ユーザー作成」で必須となるフィールド
-      - firstName
-      - lastName
-      - email
+  - $ref: '../../schemas/<リソース>BaseInputRequest.yaml'
+  - required:          # 作成操作で必須になるフィールド
+      - <フィールド>
 ```
-<!-- sample-api:replace-with -->
-<!-- = ```yaml -->
-<!-- = # requests/<リソース>/<リソース>PostRequest.yaml -->
-<!-- = allOf: -->
-<!-- =   - $ref: '../../schemas/<リソース>BaseInputRequest.yaml' -->
-<!-- =   - required:          # 作成操作で必須になるフィールド -->
-<!-- =       - <フィールド> -->
-<!-- = ``` -->
-<!-- sample-api:replace-end -->
 
 ## ディレクトリ内容
 
@@ -37,13 +25,8 @@ allOf:
 
 |要素|規則|例|
 |---|---|---|
-<!-- sample-api:replace-begin -->
-|ディレクトリ|リソース別に小文字|`users/`|
-|ファイル名|PascalCase ＋ `Request`|`UsersPostRequest.yaml`|
-<!-- sample-api:replace-with -->
-<!-- = |ディレクトリ|リソース別に小文字|`<リソース>/`| -->
-<!-- = |ファイル名|PascalCase ＋ `Request`|`<リソース>PostRequest.yaml`| -->
-<!-- sample-api:replace-end -->
+|ディレクトリ|リソース別に小文字|`<リソース>/`|
+|ファイル名|PascalCase ＋ `Request`|`<リソース>PostRequest.yaml`|
 
 ## ルール
 

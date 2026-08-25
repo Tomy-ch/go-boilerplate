@@ -3,24 +3,12 @@ package module
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert" // sample-api:line
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
-	"go.uber.org/mock/gomock" // sample-api:line
 
-	"go-boilerplate/internal/config"                                                 // sample-api:line
-	mock_category "go-boilerplate/internal/domain/product/category/mock"             // sample-api:line
-	mock_product "go-boilerplate/internal/domain/product/mock"                       // sample-api:line
-	mock_status "go-boilerplate/internal/domain/product/status/mock"                 // sample-api:line
-	"go-boilerplate/internal/observability"                                          // sample-api:line
-	mock_authz "go-boilerplate/internal/usecase/boundary/authz/mock"                 // sample-api:line
-	mock_clock "go-boilerplate/internal/usecase/boundary/clock/mock"                 // sample-api:line
-	mock_objectstorage "go-boilerplate/internal/usecase/boundary/objectstorage/mock" // sample-api:line
-	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"                       // sample-api:line
 	"go-boilerplate/internal/usecase/healthcheck"
 	"go-boilerplate/internal/usecase/idempotency"
 	"go-boilerplate/internal/usecase/outbox"
-	productuc "go-boilerplate/internal/usecase/product" // sample-api:line
 )
 
 func TestUsecaseModule_GraphIsValid(t *testing.T) {
@@ -66,34 +54,3 @@ func TestUsecaseModule(t *testing.T) {
 		})
 	})
 }
-
-// sample-api:begin
-func Test_provideProductUsecase(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("アップロード上限を設定から解決したユースケースを構築する", func(t *testing.T) {
-			t.Parallel()
-
-			ctrl := gomock.NewController(t)
-			txm := mock_tx.NewMockManager(ctrl)
-			repo := mock_product.NewMockRepository(ctrl)
-			categoryRepo := mock_category.NewMockRepository(ctrl)
-			statusRepo := mock_status.NewMockRepository(ctrl)
-			storage := mock_objectstorage.NewMockStorage(ctrl)
-			authorizer := mock_authz.NewMockAuthorizer(ctrl)
-			cfg := config.NewObjectStorageConfig(config.MockConfigForTest(t))
-			tf := observability.NewNoopTracerFactory(t)
-			clk := mock_clock.NewMockClock(ctrl)
-
-			got := provideProductUsecase(txm, repo, categoryRepo, statusRepo, storage, authorizer, clk, cfg, tf)
-
-			assert.Equal(t, productuc.New(txm, repo, categoryRepo, statusRepo, storage, authorizer, clk,
-				cfg.MaxUploadBytes(), tf), got)
-		})
-	})
-}
-
-// sample-api:end

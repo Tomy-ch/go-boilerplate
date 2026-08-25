@@ -147,9 +147,6 @@ func TestNew(t *testing.T) {
 					outbox:        expectedEndpointOutbox,
 					outboxQueue:   expectedEndpointOutboxQueue,
 					consumerQueue: expectedEndpointConsumerQueue,
-					// sample-api:begin
-					exchangeRate: expectedEndpointExchangeRate,
-					// sample-api:end
 				},
 			}
 

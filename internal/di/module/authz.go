@@ -4,9 +4,7 @@ import (
 	"context"
 
 	"go-boilerplate/internal/config"
-	"go-boilerplate/internal/domain/user" // sample-api:line
 	"go-boilerplate/internal/infrastructure/authz/allowall"
-	"go-boilerplate/internal/infrastructure/authz/userrole" // sample-api:line
 	"go-boilerplate/internal/logging"
 
 	authzbd "go-boilerplate/internal/usecase/boundary/authz"
@@ -23,13 +21,11 @@ const callerSkipCount = 1
 var errNoAuthorizerForEnv = xerrors.New("no authorizer configured for environment")
 
 // authorizerParams は、provideAuthorizer の依存を集約する fx パラメータです。
-// RoleRepo はサンプル（user_roles）依存で、サンプル削除時にフィールドとプロバイダが対で除去されます。 // sample-api:line
 type authorizerParams struct {
 	fx.In
 
-	AppCfg   *config.ApplicationConfig
-	Logger   logging.Logger
-	RoleRepo user.RoleRepository // sample-api:line
+	AppCfg *config.ApplicationConfig
+	Logger logging.Logger
 }
 
 // authzModule は、認可（Authorizer）の依存を提供するfx.Moduleです。
@@ -49,11 +45,7 @@ func provideAuthorizer(p authorizerParams) (authzbd.Authorizer, error) {
 	logger := p.Logger.Named("authz").CallerSkip(callerSkipCount)
 
 	switch p.AppCfg.Env() {
-	// sample-api:replace-begin
-	case config.EnvCI, config.EnvTest:
-		// sample-api:replace-with
-		// = case config.EnvLocal, config.EnvCI, config.EnvTest, config.EnvDast:
-		// sample-api:replace-end
+	case config.EnvLocal, config.EnvCI, config.EnvTest, config.EnvDast:
 		authorizer, err := allowall.New(p.AppCfg)
 		if err != nil {
 			logger.Error(
@@ -72,16 +64,6 @@ func provideAuthorizer(p authorizerParams) (authzbd.Authorizer, error) {
 		)
 
 		return authorizer, nil
-	// sample-api:begin
-	case config.EnvLocal, config.EnvDast, config.EnvDevelopment, config.EnvStaging, config.EnvProduction:
-		logger.Info(
-			context.Background(),
-			"user_roles-based authorizer wired",
-			logging.String("env", p.AppCfg.Env()),
-		)
-
-		return userrole.New(p.RoleRepo), nil
-	// sample-api:end
 	default:
 		logger.Error(
 			context.Background(),

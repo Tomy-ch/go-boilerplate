@@ -155,53 +155,9 @@ Scripts for configuring the boilerplate when creating a new project from this te
 |`replace-license-copyright/`|Replace LICENSE copyright holder and year <!-- setup-localize:line -->|
 |`replace-repository-reference/`|Replace GitHub repository references in READMEs and OpenAPI <!-- setup-localize:line -->|
 |`replace-codeowners/`|Replace the owner of every rule in `.github/CODEOWNERS`. Comment lines keep their example owner, and a rule whose owner field is unrecognizable is reported instead of rewritten. <!-- setup-localize:line -->|
-|`remove-sample-api/`|Remove the sample API (`user`/`prefecture`/`product`/`order`): deletes paths declared in `sample-manifest.ts` and strips `sample-api` marker blocks from the shared DI modules and `openapi.yaml`. Run via `make setup-remove-sample-api` to also regenerate/format/lint. <!-- sample-api:line -->|
 |`repo-setup/`|The git / gh half of initialising this boilerplate as your own repository: `preflight` refuses to proceed when a `v0.0.0` tag is present, `bootstrap` recreates the tags, prepares `develop` / `staging` / `production` and moves the default branch, and `prune-release-notes` deletes every release note but `v0.0.0.md`. Labels, rulesets and workflow enablement stay in `setup-repository.mk`, which owns the overall chain. Here too the steps are Go because deleting tags in bulk and moving the default branch cannot be rehearsed without breaking a real repository.|
 
 All setup scripts support `--dry-run` for preview.
-<!-- sample-api:begin -->
-
-The deletion targets are declared in [`sample-manifest.ts`](setup/remove-sample-api/sample-manifest.ts) and the marker-stripping rules in [`sample-api.ts`](setup/remove-sample-api/sample-api.ts). The sample spans several full-stack domains, so expanding it only requires appending paths to the matching domain block and wrapping interleaved lines with the `sample-api:begin … sample-api:end` markers (or `sample-api:line`).
-
-#### Where a marker may sit
-
-A marker only fires inside a comment, and which comment forms are available is decided by where the
-line lives, not by the file's extension. Getting this wrong fails in two directions: the marker is
-not recognised and the line survives the removal, or it is recognised but its own presence breaks
-the document while the sample is still there. Both are silent until a lint or a post-removal build
-catches them, and only `sample-removal-check` sees the second half of that.
-
-Below, `<marker>` stands for the marker name and suffix (`sample-api` + `:begin` / `:end` / `:line` /
-`:replace-*`) — spelled out here with its comment prefix, this page would become a marker itself.
-
-|Context|Form that works|Why the others do not|
-|---|---|---|
-|Markdown prose|`<marker>` in an HTML comment, `:begin` and `:end` on their own lines|Nothing else is a comment here|
-|Markdown table row|The `:line` form **inside the last cell**, before the closing `\|`|A comment on its own line ends the table. Match the table's own spacing: a tight table (`\|a\|b\|`) takes the comment with no surrounding space, a loose one (`\| a \| b \|`) with it — otherwise MD060|
-|Markdown list item|Marker lines indented to the item's continuation indent|A comment at column 0 splits the list (MD032 / MD007)|
-|Fenced code|The fence language's own comment (`//` for Go)|An HTML comment inside a fence renders as text|
-|mermaid fence|`%%`, and **block form only**|mermaid takes comments on their own line, so there is no trailing form. Mark the edges and the `class` line that name the node too, not just the node|
-|YAML block scalar|Nothing works inside it — wrap the whole key from outside with `replace`|YAML has `#` comments, but inside a block scalar (`>-`, `\|`) a `#` line is part of the string, so the marker becomes the value's own text and the scalar keeps it after the removal|
-|Go declaration|`:begin` goes **above the doc comment**|A doc comment left outside survives alone at end of file, and `gofmt` does not remove it|
-|Go import|The `:line` form on the import line|An import used only inside a marked region fails `typecheck` once the region is gone|
-
-Two rules for the `replace` escrow (the lines beginning `=`):
-
-- The resulting indentation is the escrow line's own leading whitespace **plus** whatever the content
-  carries. Write the indent once, not twice.
-- Never put an HTML comment inside an HTML-comment escrow. The first `-->` closes the outer comment
-  and the remainder leaks into the rendered page. Keep such a comment outside the `replace` block —
-  which is where a guidance comment belongs anyway, since it has to survive the removal.
-
-A whole construct that cannot hold a marker — a `sql` or `text` fence, a table the change restructures
-— is wrapped from the outside with `replace`, substituting the entire construct rather than a line
-inside it.
-
-Adding or removing a marker line moves the count `scripts/marker-baseline/baseline.json` pins, so
-regenerate it (`tsx scripts/marker-baseline --write`) in the same change. A file that carries the
-marker form as *data* rather than as an instruction goes in `MARKER_LITERAL_FILES` instead — but only
-a file with no real markers of its own, since that declaration removes it from the scan entirely.
-<!-- sample-api:end -->
 
 ## Test Strategy
 

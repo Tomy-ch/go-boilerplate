@@ -13,22 +13,13 @@ accepted
 
 ## Context
 
-<!-- sample-api:replace-begin -->
-Introducing `money.Price` ([ADR-0038](0038-two-scale-quantity-model.md)) surfaced a gap in the
-layer rules. `Price` is a business-semantic value object (non-negativity, minor-unit conversion)
-shared by **more than one aggregate**.
-<!-- sample-api:replace-with -->
-<!-- = Introducing a settlement-scale value object ([ADR-0038](0038-two-scale-quantity-model.md)) -->
-<!-- = surfaced a gap in the layer rules. It carries business semantics of its own and is shared by -->
-<!-- = **more than one aggregate**. -->
-<!-- sample-api:replace-end -->
+Introducing a settlement-scale value object ([ADR-0038](0038-two-scale-quantity-model.md))
+surfaced a gap in the layer rules. It carries business semantics of its own and is shared by
+**more than one aggregate**.
 <!-- 撤去後にこの箇所へ自分の例を置くための指針。
      目的: 「複数の集約から使われる」が抽象のままだと、入場基準を満たす実例が示せない。
      意義: 効くのは利用者が 2 つ以上あることで、型そのものの複雑さではない。
      書き方: その値オブジェクトを使う集約側のフィールドを 2 つ以上挙げる。 -->
-<!-- sample-api:begin -->
-サンプルでの利用者は `product.price` と `purchase_details.unit_price` / `purchases.*_amount`。
-<!-- sample-api:end -->
 It therefore cannot live in a single
 aggregate package (that would force other aggregates to reach into it, or duplicate the VO), and
 it cannot live in `pkg/` (which forbids business logic and must stay context-independent).
@@ -118,11 +109,7 @@ Rejected: `pkg/` forbids business logic and must be context-independent. Currenc
 
 ## Notes
 
-<!-- sample-api:replace-begin -->
-- Lexicon package: `internal/domain/lexicon/money` (`Price`).
-<!-- sample-api:replace-with -->
-<!-- = - Lexicon package: none admitted yet; `internal/domain/lexicon/` holds only its admission bar. -->
-<!-- sample-api:replace-end -->
+- Lexicon package: none admitted yet; `internal/domain/lexicon/` holds only its admission bar.
 - Enforcement: depguard `maintain_a_sound_domain` in `.golangci-full.yaml` (deny
   `internal/domain/`, allow `internal/domain/lexicon`).
 - Admission bar: `internal/domain/lexicon/README.md`; layer rule: `docs/rules.md`.

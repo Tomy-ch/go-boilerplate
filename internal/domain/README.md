@@ -532,10 +532,6 @@ the branch this principle describes without exception.
 > still holds. What it would otherwise permit by default, and what this model refuses, is deciding a
 > cross-aggregate question from a read that nothing holds.
 >
-> <!-- sample-api:begin -->
-> The worked instance is purchase creation: the purchaser is locked to guard membership, the products
-> are locked to reserve stock, and the purchase is written.
-> <!-- sample-api:end -->
 
 ### Cross-aggregate reference
 
@@ -603,12 +599,6 @@ data's origin, not its place in another aggregate's semantic set. See
 [`docs/rules.md`](../../docs/rules.md) § Repository / QueryService Rules for the read-path
 consequences of the same distinction.
 
-<!-- sample-api:begin -->
-`internal/domain/prefecture` is the case to compare against — externally given and never written by
-the application, yet queried and listed on its own terms, so an independent aggregate rather than a
-reference master.
-<!-- sample-api:end -->
-
 ### Where a rule goes
 
 Three questions, asked in this order. **The first one that answers, decides** — a later question
@@ -636,24 +626,10 @@ that required spanning aggregates would send a set-shaped rule back to an instan
 be written, or into Usecase, where [`../usecase/README.md`](../usecase/README.md) forbids it —
 leaving an operation that is plainly a business rule with nowhere in the layer to go.
 
-<!-- sample-api:begin -->
-Worked pair: `Purchase.IsShippable` answers *is this purchase ready to ship*, decided from one
-purchase's own state, so it is a method on `Purchase`. `dispatch.GroupForDispatch` answers *which of
-these purchases may go out together*, and the answer for any one of them depends on which others are
-in the set, so no single `Purchase` can host it. Both speak only of the purchase aggregate.
-<!-- sample-api:end -->
-
 #### 2. On one entity, or on none
 
 A rule that is the natural responsibility of no entity and no value object belongs to a **Domain
 Service** — not to Usecase.
-
-<!-- sample-api:begin -->
-```text
-Withdrawal        ← in-progress purchase
-Dispatch grouping ← purchases awaiting shipment
-```
-<!-- sample-api:end -->
 
 #### 3. Derivation or mapping
 
@@ -737,19 +713,6 @@ A service here holds no I/O: no Repository, no `context.Context`. It receives st
 already loaded, and returns a derived value or a domain error. Acquiring that state, ordering the
 calls, and owning the transaction remain the Usecase's job.
 
-<!-- sample-api:begin -->
-**[`service/membership`](service/membership) spans two aggregates.** It carries one invariant seen
-from both sides — a user and their in-progress purchases must not be separated. `EnsurePurchasable`
-refuses a purchase by a user who is no longer active; `EnsureWithdrawable` refuses a withdrawal while
-any of that user's purchases is still in progress. Neither aggregate can host it: the user aggregate
-knows nothing about purchases, and the purchase aggregate knows nothing about membership.
-
-**[`service/dispatch`](service/dispatch) stays inside one.** `GroupForDispatch` divides purchases
-awaiting shipment into the sets that may go out together, by buyer. It imports `domain/purchase` and
-nothing else, and it is here for the reason above: the answer is about the set, so the purchase
-aggregate has no place to put it.
-<!-- sample-api:end -->
-
 ### Query and Aggregate
 
 Aggregate is a **Write Model**. Which construct executes a given aggregation, report, or complex
@@ -783,13 +746,8 @@ a change in meaning breaks no unit test.
 recognise it as a statement about the business — when the term it decides has a name they use.
 Identity lookup, pagination, ordering, and foreign-key joins decide nothing about the business and
 this rule does not reach them. Nor does a Repository method whose signature already says the whole
-<!-- sample-api:replace-begin -->
-condition: `FindDeletedBefore(ctx, cutoff, …)` states its own criterion, while `FindAllLowStock` does
-not. The check is one question — can the meaning of the term be answered by reading the domain
-<!-- sample-api:replace-with -->
-<!-- = condition: `FindDeletedBefore(ctx, cutoff, …)` states its own criterion, while a method named after -->
-<!-- = a business term does not. The check is one question — can the meaning of the term be answered by reading the domain -->
-<!-- sample-api:replace-end -->
+condition: `FindDeletedBefore(ctx, cutoff, …)` states its own criterion, while a method named after
+a business term does not. The check is one question — can the meaning of the term be answered by reading the domain
 package alone? If not, its authorship has left.
 
 The same discipline is already imposed on the write side, where a CommandService may only enforce
@@ -911,9 +869,6 @@ Three consequences are specific to Domain:
        目的: ドメイン名とテーブル名の対比が無いと、何を避けよという規則なのか分からない。
        意義: 避けるのはテーブル名の持ち込みであって、名前の長さや語形ではない。
        書き方: 同じマスタをドメイン名とテーブル名の両方で書き、対比させる。 -->
-  <!-- sample-api:begin -->
-  例: 商品ステータスのマスタは「商品ステータス」と呼び、`product_statuses` とは呼ばない。
-  <!-- sample-api:end -->
 - **A single-fetch method states its not-found behavior** — `FindByID` documents that it returns
   NotFound when the target is absent. The caller branches on that, so it is part of the guarantee,
   not an implementation detail.
@@ -1046,56 +1001,26 @@ Reasons:
 - guarantee invariants
 - simplify tests
 
-<!-- sample-api:replace-begin -->
 ```go
-func newTestUser(t *testing.T)*User {
+func newTest<Aggregate>(t *testing.T)*<Aggregate> {
     baseTime := time.Date(2025,1,1,0,0,0,0,time.UTC)
 
-    id := uuid.NewTestFromSalt(t,"user")
-    prefectureID := uuid.NewTestFromSalt(t,"prefecture")
+    id := uuid.NewTestFromSalt(t,"<aggregate>")
+    relatedID := uuid.NewTestFromSalt(t,"<related>")
 
-    user, err := New(
+    entity, err := New(
         id,
-        "John",
-        "Doe",
-        "john@example.com",
-        "1234567890",
-        prefectureID,
-        "Shibuya",
-        "1-2-3",
-        nil,
-        "1500001",
+        relatedID,
+        // ... the remaining attributes
         baseTime,
         baseTime.Add(time.Hour),
         nil,
     )
 
     require.NoError(t, err)
-    return user
+    return entity
 }
 ```
-<!-- sample-api:replace-with -->
-<!-- = ```go -->
-<!-- = func newTest<Aggregate>(t *testing.T)*<Aggregate> { -->
-<!-- =     baseTime := time.Date(2025,1,1,0,0,0,0,time.UTC) -->
-<!-- = -->
-<!-- =     id := uuid.NewTestFromSalt(t,"<aggregate>") -->
-<!-- =     relatedID := uuid.NewTestFromSalt(t,"<related>") -->
-<!-- = -->
-<!-- =     entity, err := New( -->
-<!-- =         id, -->
-<!-- =         relatedID, -->
-<!-- =         // ... the remaining attributes -->
-<!-- =         baseTime, -->
-<!-- =         baseTime.Add(time.Hour), -->
-<!-- =         nil, -->
-<!-- =     ) -->
-<!-- = -->
-<!-- =     require.NoError(t, err) -->
-<!-- =     return entity -->
-<!-- = } -->
-<!-- = ``` -->
-<!-- sample-api:replace-end -->
 
 ### Invariant preservation test
 
@@ -1148,242 +1073,3 @@ Forbidden:
 - setter
 - DB-driven design
 - time.Now() in Domain
-
-<!-- sample-api:begin -->
-## Worked aggregate
-
-The files below are one aggregate written out end to end, so the rules above can be read against
-something concrete. They are a **sample** and are removed with the sample APIs; nothing above depends
-on them.
-
-```go
-// constant.go
-package user
-
-const (
-    minLength           = 1
-    maxFirstNameLength  = 100
-    maxLastNameLength   = 100
-    maxEmailLength      = 100
-    maxPhoneLength      = 20
-    maxCityLength       = 100
-    maxStreetLength     = 255
-    maxBuildingLength   = 255
-    maxPostalCodeLength = 8
-)
-
-// 項目識別子。API のリクエストプロパティ名と一致させ、どの項目が不正かを呼び出し側へ返す。
-const (
-    FieldFirstName    = "firstName"
-    FieldPrefectureID = "prefectureId"
-    FieldBuilding     = "building"
-    // lastName / email / phone / city / street / postalCode も同様
-)
-```
-
-```go
-// error.go
-package user
-
-import (
-    "go-boilerplate/internal/apperror"
-    "go-boilerplate/pkg/xerrors"
-)
-
-var (
-    // フィールド検証エラー（errInvalid を基底に分類）
-    errInvalid             = xerrors.Wrap(apperror.ErrValidation, "invalid user")
-    ErrInvalidID           = xerrors.Wrap(errInvalid, "id failed")
-    ErrInvalidFirstName    = xerrors.Wrap(errInvalid, "first name failed")
-    ErrInvalidLastName     = xerrors.Wrap(errInvalid, "last name failed")
-    ErrInvalidEmail        = xerrors.Wrap(errInvalid, "email failed")
-    ErrInvalidPhone        = xerrors.Wrap(errInvalid, "phone failed")
-    ErrInvalidPrefectureID = xerrors.Wrap(errInvalid, "prefecture id failed")
-    ErrInvalidCity         = xerrors.Wrap(errInvalid, "city failed")
-    ErrInvalidStreet       = xerrors.Wrap(errInvalid, "street failed")
-    ErrInvalidBuilding     = xerrors.Wrap(errInvalid, "building failed")
-    ErrInvalidPostalCode   = xerrors.Wrap(errInvalid, "postal code failed")
-    ErrInvalidUpdatedAt    = xerrors.Wrap(errInvalid, "updated at failed")
-    ErrInvalidDeletedAt    = xerrors.Wrap(errInvalid, "deleted at failed")
-
-    // ビジネスルール違反
-    ErrAlreadyDeleted = xerrors.Wrap(apperror.ErrConflict, "user is already deleted")
-)
-```
-
-```go
-// user_domain.go
-package user
-
-import (
-    "time"
-
-    "go-boilerplate/pkg/ptr"
-    "go-boilerplate/pkg/stringkit"
-    "go-boilerplate/pkg/uuid"
-    "go-boilerplate/pkg/xerrors"
-)
-
-type Users []*User
-
-// エンティティ（集約ルート）
-// 形式そのものが不変条件になる値（email / postalCode）は値オブジェクトとして持つ。
-// 素の string で持つと、その形式を守る責任が呼び出し側へ散る（Value Object 節を参照）。
-type User struct {
-    id           uuid.UUID
-    firstName    string
-    lastName     string
-    email        Email
-    phone        string
-    prefectureID uuid.UUID
-    city         string
-    street       string
-    building     *string
-    postalCode   PostalCode
-    createdAt    time.Time
-    updatedAt    time.Time
-    deletedAt    *time.Time
-}
-
-// 置き換え可能な属性の部分集合（New / UpdateProfile で共有）。
-// firstName / lastName / phone / city / street は同型のため、フィールド名指定を要求する。
-type Profile struct {
-    FirstName    string
-    LastName     string
-    Email        string
-    Phone        string
-    PrefectureID uuid.UUID
-    City         string
-    Street       string
-    Building     *string
-    PostalCode   string
-}
-
-// 生成に必要な属性一式。createdAt / updatedAt も同型のため同じ扱いとする。
-type Attributes struct {
-    Profile
-
-    CreatedAt time.Time
-    UpdatedAt time.Time
-    DeletedAt *time.Time
-}
-
-// ファクトリ: 不変条件を満たすときだけ実体を生成
-func New(id uuid.UUID, attrs Attributes) (*User, error) {
-    if id.IsNil() {
-        return nil, xerrors.Wrap(ErrInvalidID, "id is required")
-    }
-    // フィールド検証（New / UpdateProfile で共有）
-    if err := validateProfileFields(attrs.Profile); err != nil {
-        return nil, err
-    }
-    if attrs.UpdatedAt.Before(attrs.CreatedAt) {
-        return nil, xerrors.Wrap(ErrInvalidUpdatedAt, "updatedAt must be after or equal to createdAt")
-    }
-    if attrs.DeletedAt != nil {
-        if err := validateDeletedAt(*attrs.DeletedAt, attrs.CreatedAt, attrs.UpdatedAt); err != nil {
-            return nil, err
-        }
-    }
-
-    // building / deletedAt は防御コピー（不変性）。他フィールドはそのまま設定。
-    return &User{
-        id:        id,
-        building:  ptr.Copy(attrs.Building),
-        deletedAt: ptr.Copy(attrs.DeletedAt),
-        // ↑以外の全フィールド（firstName / lastName / 連絡先 / 住所 / 監査時刻）も attrs から設定（例示のため省略）
-    }, nil
-}
-
-// アクセサ（building / deletedAt は防御コピーを返す）
-func (u *User) ID() uuid.UUID     { return u.id }
-func (u *User) Email() string     { return u.email }
-func (u *User) Building() *string { return ptr.Copy(u.building) }
-// 氏名 / 連絡先 / 住所 / 監査時刻（createdAt, updatedAt, deletedAt）のアクセサも同様
-
-// ビジネスロジック（振る舞い）: プロフィール一括更新
-func (u *User) UpdateProfile(profile Profile, updatedAt time.Time) error {
-    if err := u.ensureNotDeleted(); err != nil {
-        return err
-    }
-    if err := validateProfileFields(profile); err != nil {
-        return err
-    }
-    if err := u.ensureUpdatedAt(updatedAt); err != nil {
-        return err
-    }
-
-    // 検証通過後に各フィールドと updatedAt を置換（building は防御コピー）
-    u.updatedAt = updatedAt
-    return nil
-}
-
-// 振る舞いの兄弟（UpdateProfile と同じ ensure → 検証 → 置換 の idiom）。シグネチャのみ示す。
-func (u *User) MarkAsDeleted(deletedAt time.Time) error // 論理削除（既に削除済みなら ErrAlreadyDeleted）
-
-// 不変条件ガード（例示）: updatedAt は createdAt 以降かつ単調非減少
-func (u *User) ensureUpdatedAt(updatedAt time.Time) error {
-    if updatedAt.Before(u.createdAt) {
-        return xerrors.Wrap(ErrInvalidUpdatedAt, "updatedAt must be after or equal to createdAt")
-    }
-    if updatedAt.Before(u.updatedAt) {
-        return xerrors.Wrap(ErrInvalidUpdatedAt, "updatedAt must be after or equal to current updatedAt")
-    }
-    return nil
-}
-func (u *User) ensureNotDeleted() error // 削除済みなら ErrAlreadyDeleted（変更を拒否）
-
-// バリデーション（例示・New / UpdateProfile で共有）
-// 利用者が直せる入力項目なので、最初の失敗で止めず全項目を検証し、項目識別子を添えて結合する
-// （Errors 節を参照）。1 往復で全部の誤りを返せないと、利用者は 1 項目ずつ直しに来ることになる。
-func validateProfileFields(profile Profile) error {
-    var (
-        errs   []error
-        fields []string
-    )
-    if ok, msg := stringkit.ValidateInRange(profile.FirstName, minLength, maxFirstNameLength); !ok {
-        errs = append(errs, xerrors.Wrap(ErrInvalidFirstName, msg))
-        fields = append(fields, FieldFirstName)
-    }
-    // lastName / email / phone / city / street / postalCode も同様に検証し、
-    // 対応する ErrInvalidXxx と Field 定数を積む
-    if profile.PrefectureID.IsNil() {
-        errs = append(errs, xerrors.Wrap(ErrInvalidPrefectureID, "prefectureID is required"))
-        fields = append(fields, FieldPrefectureID)
-    }
-    if profile.Building != nil { // building は任意
-        if ok, msg := stringkit.ValidateInRange(*profile.Building, minLength, maxBuildingLength); !ok {
-            errs = append(errs, xerrors.Wrap(ErrInvalidBuilding, msg))
-            fields = append(fields, FieldBuilding)
-        }
-    }
-    if len(errs) > 0 {
-        return apperror.WithDetails(xerrors.Join(errs...), fields...)
-    }
-    return nil
-}
-func validateDeletedAt(deletedAt, createdAt, updatedAt time.Time) error // createdAt / updatedAt 以降
-```
-
-```go
-// user_repository.go
-//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
-package user
-
-import (
-    "context"
-
-    "go-boilerplate/pkg/uuid"
-)
-
-// Repository: 単一集約の永続化と単純な読み取り（fetch by ID / 自集約属性での filter・list・count）。
-// keyword 検索など集約跨ぎ・複雑クエリは QueryService（CQRS read side）が担う。
-type Repository interface {
-    FindByActive(ctx context.Context, active *bool, limit, offset int32) (Users, error)
-    FindByID(ctx context.Context, id uuid.UUID) (*User, error)
-    Create(ctx context.Context, user *User) error
-    Update(ctx context.Context, user *User) error
-    CountByActive(ctx context.Context, active *bool) (int64, error)
-}
-```
-<!-- sample-api:end -->

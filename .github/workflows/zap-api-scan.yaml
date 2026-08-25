@@ -53,19 +53,11 @@ jobs:
       # deployed environment does. `ci` cannot: it wires the stub, which accepts any
       # `debug:<subject>` bearer token without a signature and never reaches that code.
       APP_ENV: dast
-      # sample-api:replace-begin
-      # The identity the scan authenticates as. Under a real issuer the seeded
-      # `user_identities` rows are the `${AUTH_ISSUER}` ones, and the provider copies whatever
-      # `username` it is handed onto `sub` — so this has to be one of the `user-<name>` subjects
-      # the seed registers, not the internal user UUID that only the stub issuer keys on.
-      SCAN_SUBJECT: user-john-doe
-      # sample-api:replace-with
-      # = # The identity the scan authenticates as. Under a real issuer it has to be a subject the
-      # = # seed registered as an identity: the provider copies whatever `username` it is handed
-      # = # onto `sub`, and identity resolution matches on `(issuer, subject)`. Empty means the scan
-      # = # runs unauthenticated, which is what it does until this API has an identity to scan as.
-      # = SCAN_SUBJECT: ''
-      # sample-api:replace-end
+      # The identity the scan authenticates as. Under a real issuer it has to be a subject the
+      # seed registered as an identity: the provider copies whatever `username` it is handed
+      # onto `sub`, and identity resolution matches on `(issuer, subject)`. Empty means the scan
+      # runs unauthenticated, which is what it does until this API has an identity to scan as.
+      SCAN_SUBJECT: ''
     services:
       database:
         image: postgres:18.4-trixie
@@ -244,31 +236,6 @@ jobs:
       - name: Build server
         run: go build -o ./bin/server ./cmd/
 
-      # sample-api:begin
-      # Started before the server so the first scan request already has something to reach.
-      # The address it listens on is declared in `env/.env.dast` beside every other endpoint,
-      # so the per-environment difference is visible where the endpoints live.
-      # Loopback is why `provideExchangeRateDownstreamProfile` has to allow the private network
-      # under `dast`; every deployed tier still refuses it.
-      - name: Start the exchange-rate stub
-        run: |
-          python3 .github/zap/exchange-rate-stub.py > exchange-rate-stub.log 2>&1 &
-          echo $! > exchange-rate-stub.pid
-
-          for i in {1..15}; do
-            if curl -fsS "http://127.0.0.1:9401/rates?base=USD&quote=JPY" > /dev/null; then
-              echo "exchange-rate stub is up"
-              exit 0
-            fi
-            echo "Waiting for the exchange-rate stub... ($i)"
-            sleep 1
-          done
-
-          echo "::error::the exchange-rate stub did not become ready"
-          cat exchange-rate-stub.log || true
-          exit 1
-      # sample-api:end
-
       - name: Start server
         run: |
           ./bin/server serve > server.log 2>&1 &
@@ -325,11 +292,7 @@ jobs:
       # Re-point it at a protected operation that does exist.
       - name: Verify the scan credential authenticates
         env:
-          # sample-api:replace-begin
-          PROBE_PATH: /v1/users/me
-          # sample-api:replace-with
-          # = PROBE_PATH: /health
-          # sample-api:replace-end
+          PROBE_PATH: /health
         run: |
           set -euo pipefail
 
