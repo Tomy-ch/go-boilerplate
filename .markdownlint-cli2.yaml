@@ -18,8 +18,6 @@ ignores:
   - "docs/coverage/**"
   - "docs/db-schema/**"
   - "graphify-out/**"
-  # graphify のスキル本体。.gitignore 済みだが markdownlint-cli2 は .gitignore を見ないため、
-  # 展開済みのマシンでだけ上流パッケージの Markdown が走査され、ローカルの md-lint が赤くなる。
   - ".claude/skills/graphify/**"
   - ".codex/skills/graphify/**"
   # Markdown ではないのに Markdown と誤認され誤検知されるファイル。
