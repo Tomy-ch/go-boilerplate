@@ -200,6 +200,16 @@ describe("stripMarkers", () => {
       expect(() => stripMarkers(doc("# m:replace-end"), "m")).toThrow(/replace-begin/);
     });
 
+    it("replace-begin の無い replace-with を拒否する", () => {
+      expect(() => stripMarkers(doc("# m:replace-with"), "m")).toThrow(/m:replace-begin がありません/);
+    });
+
+    it("閉じられていない replace ブロックを検出する", () => {
+      const content = doc("# m:replace-begin", "x", "# m:replace-with", "# = x");
+
+      expect(() => stripMarkers(content, "m")).toThrow(/m:replace-end が見つかりません/);
+    });
+
     it("退避側に退避コメント以外の行があれば拒否する", () => {
       const content = doc("# m:replace-begin", "# m:replace-with", "  raw()", "# m:replace-end");
 

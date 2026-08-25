@@ -175,18 +175,21 @@ export const LOCALIZATION_TOOL_DIRS: readonly string[] = [
  * 検証成功後に消す対象（`setup/` からの相対）を返す。
  *
  * @remarks
- * `setup/lib` は共有なので、使う側が全て消えたときにだけ道連れにします。サンプル削除は
- * 初期化と独立した任意手順（`setup-repository.md` の Phase 15）なので、サンプルを残した
- * 利用者では削除ツールが生き残り、`lib` もまだ要ります。逆順のときは削除ツール側が同じ規則で
- * `lib` を持っていくため、どちらの順序でも残骸が出ません。
+ * `setup/lib` は共有なので、使う側が全て消えたときにだけ道連れにします。判定は「今 `setup/`
+ * に在るディレクトリのうち、この撤去で消えないものが残るか」で行い、利用者の名前は列挙しません。
+ * 名前を挙げる形だと、`lib` を使うツールを足すたびにこちらへも足す必要があり、漏らしても
+ * 静かに壊れます——実際 `lib` の利用者は 10 ディレクトリありながら、宣言は 1 つだけを見ていました。
  *
  * ディレクトリ単位で挙げるのは、ファイルを列挙すると判定モジュールを足したときに漏れ、
  * 消えたはずのツールの一部だけが利用者のリポジトリへ居座るためです。
  */
-export function selfDestructTargets(selfDir: string, sampleRemoverExists: boolean): string[] {
+export function selfDestructTargets(selfDir: string, setupEntries: readonly string[]): string[] {
   const targets = [...LOCALIZATION_TOOL_DIRS, selfDir];
+  const survives = setupEntries.some(
+    (entry) => entry !== SETUP_SHARED_DIR && !targets.includes(entry),
+  );
 
-  return sampleRemoverExists ? targets : [...targets, SETUP_SHARED_DIR];
+  return survives ? targets : [...targets, SETUP_SHARED_DIR];
 }
 
 function escapeForRegExp(value: string): string {

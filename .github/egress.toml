@@ -312,8 +312,10 @@ classes = ["image"]
 [job."portal-check.yaml:portal-check"]
 classes = ["mise"]
 
+# sample-api:begin
 [job."sample-removal-check.yaml:sample-removal-check"]
 classes = ["image", "db"]
+# sample-api:end
 
 [job."scorecard.yaml:scorecard"]
 classes = []
