@@ -104,14 +104,14 @@
 <span id="L47" class="ln">    47  </span>	<span class="comment">// ErrAlreadyShipped は、既に発送済みの購入を再度発送しようとした場合のエラーです（二重発送）。</span>
 <span id="L48" class="ln">    48  </span>	ErrAlreadyShipped = xerrors.Wrap(apperror.ErrConflict, &#34;purchase already shipped&#34;)
 <span id="L49" class="ln">    49  </span>
-<span id="L50" class="ln">    50  </span>	<span class="comment">// ErrShipNotAllowed は、発送不可の状態（未払い相当・完了・キャンセル済み・配達済み）から発送しようとした</span>
+<span id="L50" class="ln">    50  </span>	<span class="comment">// ErrShipNotAllowed は、発送不可の状態（未払い相当・処理中・完了・キャンセル済み・配達済み）から発送しようとした</span>
 <span id="L51" class="ln">    51  </span>	<span class="comment">// 場合のエラーです。</span>
 <span id="L52" class="ln">    52  </span>	ErrShipNotAllowed = xerrors.Wrap(apperror.ErrConflict, &#34;purchase cannot be shipped in the current state&#34;)
 <span id="L53" class="ln">    53  </span>
 <span id="L54" class="ln">    54  </span>	<span class="comment">// ErrAlreadyDelivered は、既に配達済みの購入を再度配達完了にしようとした場合のエラーです（二重配達）。</span>
 <span id="L55" class="ln">    55  </span>	ErrAlreadyDelivered = xerrors.Wrap(apperror.ErrConflict, &#34;purchase already delivered&#34;)
 <span id="L56" class="ln">    56  </span>
-<span id="L57" class="ln">    57  </span>	<span class="comment">// ErrDeliverNotAllowed は、配達不可の状態（未払い相当・支払い済み・完了・キャンセル済み）から配達完了に</span>
+<span id="L57" class="ln">    57  </span>	<span class="comment">// ErrDeliverNotAllowed は、配達不可の状態（未払い相当・処理中・支払い済み・完了・キャンセル済み）から配達完了に</span>
 <span id="L58" class="ln">    58  </span>	<span class="comment">// しようとした場合のエラーです。</span>
 <span id="L59" class="ln">    59  </span>	ErrDeliverNotAllowed = xerrors.Wrap(apperror.ErrConflict, &#34;purchase cannot be delivered in the current state&#34;)
 <span id="L60" class="ln">    60  </span>)

@@ -97,7 +97,7 @@
 <span id="L40" class="ln">    40  </span><span class="comment">// 黙って受け取るため、クライアント側のタイポや古いフィールド名が無視される。</span>
 <span id="L41" class="ln">    41  </span><span class="comment">//</span>
 <span id="L42" class="ln">    42  </span><span class="comment">// 検査は requestBody 直下で止めず properties / items / allOf を再帰する。ネストした要素スキーマ</span>
-<span id="L43" class="ln">    43  </span><span class="comment">// （購入明細・商品画像）はトップレベルの宣言に守られず、そこだけ素通りが残るためである。</span>
+<span id="L43" class="ln">    43  </span><span class="comment">// （配列要素やネストした object）はトップレベルの宣言に守られず、そこだけ素通りが残るためである。</span>
 <span id="L44" class="ln">    44  </span><span class="comment">//</span>
 <span id="L45" class="ln">    45  </span><span class="comment">// 読み出すのは生成物ではなく手書き正本の openapi.yaml で、理由は TestRouteSpecParity と同じ。</span>
 <span id="L46" class="ln">    46  </span><span class="comment">//</span>

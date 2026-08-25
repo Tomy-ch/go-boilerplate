@@ -134,7 +134,9 @@ flowchart TB
     Queue["queue/"]
     RDB["rdb/"]
     Sys["system/"]
+    %% sample-api:begin
     Token["token/"]
+    %% sample-api:end
     Web["webapi/"]
 
     Root --> Auth
@@ -146,7 +148,9 @@ flowchart TB
     Root --> Queue
     Root --> RDB
     Root --> Sys
+    %% sample-api:begin
     Root --> Token
+    %% sample-api:end
     Root --> Web
 ```
 
@@ -163,14 +167,18 @@ flowchart TB
 |`queue/`|メッセージキューの worker seam 実装（AWS SQS による `worker.Consumer` / `FailureHandler` 実装）|Usecase boundary（worker seam）|[README](queue/sqs/README.ja.md)|
 |`rdb/`|RDB サブシステム（Repository / QueryService / driver / sqlc 等）|Domain / Usecase|[README](rdb/README.ja.md)|
 |`system/`|システム依存処理（時刻取得等）|Usecase boundary|[README](system/README.ja.md)|
-|`token/`|OS の乱数源による不透明なトークン生成（`boundary/token.Generator` の実装）|Usecase boundary|[README](token/README.ja.md)|
-|`webapi/`|外部 Web API gateway（為替レート等、`boundary.Gateway` の実装）|Usecase boundary|[README](webapi/README.ja.md)|
+|`token/`|OS の乱数源による不透明なトークン生成（`boundary/token.Generator` の実装）|Usecase boundary|[README](token/README.ja.md)<!-- sample-api:line -->|
+|`webapi/`|外部 Web API gateway（`boundary.Gateway` の実装）|Usecase boundary|[README](webapi/README.ja.md)|
 
 ## テスト戦略
 
 以下の項目が統治するのは、基盤が **DB そのもの** であるサブシステムです。別の基盤の上に build されたサブシステムや、実 I/O を一切持たないサブシステムは、自身のパッケージ README で *Test Strategy* を宣言します。そうしたパッケージから本節へ walk して到達することは、そちらで閉じるべきドキュメントギャップであって、実 DB を要求してよい根拠ではありません。非 DB サブシステムは現在すべて自前の節を宣言済みであり、本節へ到達するのは本節が書かれた対象のサブシステムだけです。新しい基盤の上にサブシステムを追加する場合も、既定で本項目を継承するのではなく自前の節を宣言することが期待されます。
 
+<!-- sample-api:replace-begin -->
 より下位から本節へ到達する唯一のパッケージは `auth/useridentity` で、RDB driver を通じて `user_identities` を読みます。`auth/` 自身の節がこれを名指ししているため、walk して初めて分かるのではなく、両方向から carve-out が見える状態になっています。
+<!-- sample-api:replace-with -->
+<!-- = より下位から本節へ到達するパッケージは、自身の節でも carve-out を名指しします。walk して初めて分かるのではなく、両方向から見える状態にするためです。 -->
+<!-- sample-api:replace-end -->
 
 - 実DBを用いた Integration Test
 - トランザクション rollback による状態隔離

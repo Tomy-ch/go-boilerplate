@@ -143,7 +143,7 @@
 <span id="L86" class="ln">    86  </span>
 <span id="L87" class="ln">    87  </span>			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{
 <span id="L88" class="ln">    88  </span>				MessageID: newTestUUID(t),
-<span id="L89" class="ln">    89  </span>				EventType: &#34;user.withdrawn.v1&#34;,
+<span id="L89" class="ln">    89  </span>				EventType: &#34;resource.deleted.v1&#34;,
 <span id="L90" class="ln">    90  </span>				Payload:   []byte(`{&#34;userId&#34;:&#34;u1&#34;}`),
 <span id="L91" class="ln">    91  </span>			})
 <span id="L92" class="ln">    92  </span>
@@ -162,7 +162,7 @@
 <span id="L105" class="ln">   105  </span>
 <span id="L106" class="ln">   106  </span>			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{
 <span id="L107" class="ln">   107  </span>				MessageID: messageID,
-<span id="L108" class="ln">   108  </span>				EventType: &#34;user.withdrawn.v1&#34;,
+<span id="L108" class="ln">   108  </span>				EventType: &#34;resource.deleted.v1&#34;,
 <span id="L109" class="ln">   109  </span>			})
 <span id="L110" class="ln">   110  </span>
 <span id="L111" class="ln">   111  </span>			require.NoError(t, err)
@@ -183,7 +183,7 @@
 <span id="L126" class="ln">   126  </span>
 <span id="L127" class="ln">   127  </span>			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{
 <span id="L128" class="ln">   128  </span>				MessageID: newTestUUID(t),
-<span id="L129" class="ln">   129  </span>				EventType: &#34;user.withdrawn.v1&#34;,
+<span id="L129" class="ln">   129  </span>				EventType: &#34;resource.deleted.v1&#34;,
 <span id="L130" class="ln">   130  </span>				Headers:   headers,
 <span id="L131" class="ln">   131  </span>			})
 <span id="L132" class="ln">   132  </span>
@@ -205,7 +205,7 @@
 <span id="L148" class="ln">   148  </span>
 <span id="L149" class="ln">   149  </span>			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{
 <span id="L150" class="ln">   150  </span>				MessageID: newTestUUID(t),
-<span id="L151" class="ln">   151  </span>				EventType: &#34;user.withdrawn.v1&#34;,
+<span id="L151" class="ln">   151  </span>				EventType: &#34;resource.deleted.v1&#34;,
 <span id="L152" class="ln">   152  </span>			})
 <span id="L153" class="ln">   153  </span>
 <span id="L154" class="ln">   154  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
@@ -236,7 +236,7 @@
 <span id="L179" class="ln">   179  </span>
 <span id="L180" class="ln">   180  </span>			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{
 <span id="L181" class="ln">   181  </span>				MessageID: newTestUUID(t),
-<span id="L182" class="ln">   182  </span>				EventType: &#34;user.withdrawn.v1&#34;,
+<span id="L182" class="ln">   182  </span>				EventType: &#34;resource.deleted.v1&#34;,
 <span id="L183" class="ln">   183  </span>				Headers:   headers,
 <span id="L184" class="ln">   184  </span>			})
 <span id="L185" class="ln">   185  </span>
@@ -254,7 +254,7 @@
 <span id="L197" class="ln">   197  </span>
 <span id="L198" class="ln">   198  </span>			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{
 <span id="L199" class="ln">   199  </span>				MessageID: newTestUUID(t),
-<span id="L200" class="ln">   200  </span>				EventType: &#34;user.withdrawn.v1&#34;,
+<span id="L200" class="ln">   200  </span>				EventType: &#34;resource.deleted.v1&#34;,
 <span id="L201" class="ln">   201  </span>			})
 <span id="L202" class="ln">   202  </span>
 <span id="L203" class="ln">   203  </span>			require.ErrorIs(t, err, apperror.ErrCanceled)
@@ -286,10 +286,10 @@
 <span id="L229" class="ln">   229  </span>
 <span id="L230" class="ln">   230  </span>			got := p.messageAttributes(boundary.Message{
 <span id="L231" class="ln">   231  </span>				MessageID: newTestUUID(t),
-<span id="L232" class="ln">   232  </span>				EventType: &#34;user.withdrawn.v1&#34;,
+<span id="L232" class="ln">   232  </span>				EventType: &#34;resource.deleted.v1&#34;,
 <span id="L233" class="ln">   233  </span>			})
 <span id="L234" class="ln">   234  </span>
-<span id="L235" class="ln">   235  </span>			assert.Equal(t, &#34;user.withdrawn.v1&#34;, aws.ToString(got[AttrEventType].StringValue))
+<span id="L235" class="ln">   235  </span>			assert.Equal(t, &#34;resource.deleted.v1&#34;, aws.ToString(got[AttrEventType].StringValue))
 <span id="L236" class="ln">   236  </span>			assert.Equal(t, &#34;String&#34;, aws.ToString(got[AttrEventType].DataType))
 <span id="L237" class="ln">   237  </span>		})
 <span id="L238" class="ln">   238  </span>
@@ -354,11 +354,11 @@
 <span id="L297" class="ln">   297  </span>
 <span id="L298" class="ln">   298  </span>			got := p.messageAttributes(boundary.Message{
 <span id="L299" class="ln">   299  </span>				MessageID: newTestUUID(t),
-<span id="L300" class="ln">   300  </span>				EventType: &#34;user.withdrawn.v1&#34;,
-<span id="L301" class="ln">   301  </span>				Headers:   map[string]string{AttrEventType: &#34;purchase.created.v1&#34;},
+<span id="L300" class="ln">   300  </span>				EventType: &#34;resource.deleted.v1&#34;,
+<span id="L301" class="ln">   301  </span>				Headers:   map[string]string{AttrEventType: &#34;resource.created.v1&#34;},
 <span id="L302" class="ln">   302  </span>			})
 <span id="L303" class="ln">   303  </span>
-<span id="L304" class="ln">   304  </span>			assert.Equal(t, &#34;user.withdrawn.v1&#34;, aws.ToString(got[AttrEventType].StringValue))
+<span id="L304" class="ln">   304  </span>			assert.Equal(t, &#34;resource.deleted.v1&#34;, aws.ToString(got[AttrEventType].StringValue))
 <span id="L305" class="ln">   305  </span>		})
 <span id="L306" class="ln">   306  </span>	})
 <span id="L307" class="ln">   307  </span>}

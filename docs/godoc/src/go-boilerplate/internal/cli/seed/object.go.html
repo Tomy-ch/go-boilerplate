@@ -98,7 +98,7 @@
 <span id="L41" class="ln">    41  </span>
 <span id="L42" class="ln">    42  </span><span class="comment">// RunObjectSeed は、objectSeedPlace 配下のファイルをオブジェクトストレージへ保存します。</span>
 <span id="L43" class="ln">    43  </span><span class="comment">// objectSeedPlace からの相対パスがそのままオブジェクトキーになるため、置いたディレクトリ構造が</span>
-<span id="L44" class="ln">    44  </span><span class="comment">// キーの構造になります（例 storage/seed/products/a.webp → products/a.webp）。</span>
+<span id="L44" class="ln">    44  </span><span class="comment">// キーの構造になります（例 storage/seed/&lt;接頭辞&gt;/a.webp → &lt;接頭辞&gt;/a.webp）。</span>
 <span id="L45" class="ln">    45  </span><span class="comment">//</span>
 <span id="L46" class="ln">    46  </span><span class="comment">// endpoint が空の環境では何もしません。対象が 1 件も無い場合も同様で、いずれも成功として扱います。</span>
 <span id="L47" class="ln">    47  </span>func RunObjectSeed(logger logging.Logger, fsys fs.FS, endpoint string, put PutObjectFunc) error {

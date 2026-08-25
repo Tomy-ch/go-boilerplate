@@ -127,30 +127,12 @@
 				
 			
 				
-				<dd><a href="#DashboardFromParam">type DashboardFromParam</a></dd>
-				
-				
-			
-				
-				<dd><a href="#DashboardPeriodParam">type DashboardPeriodParam</a></dd>
-				
-				
-					
-					<dd>    <a href="#DashboardPeriodParam.Valid">func (e DashboardPeriodParam) Valid() bool</a></dd>
-				
-			
-				
 				<dd><a href="#DashboardPurchaseStatusCountResponse">type DashboardPurchaseStatusCountResponse</a></dd>
 				
 				
 			
 				
 				<dd><a href="#DashboardSummaryResponse">type DashboardSummaryResponse</a></dd>
-				
-				
-			
-				
-				<dd><a href="#DashboardToParam">type DashboardToParam</a></dd>
 				
 				
 			
@@ -236,14 +218,6 @@
 				
 			
 				
-				<dd><a href="#GetDashboardSummaryParamsPeriod">type GetDashboardSummaryParamsPeriod</a></dd>
-				
-				
-					
-					<dd>    <a href="#GetDashboardSummaryParamsPeriod.Valid">func (e GetDashboardSummaryParamsPeriod) Valid() bool</a></dd>
-				
-			
-				
 				<dd><a href="#GetDashboardSummaryRequestObject">type GetDashboardSummaryRequestObject</a></dd>
 				
 				
@@ -270,6 +244,16 @@
 			
 				
 				<dd><a href="#MethodNotAllowed405JSONResponse">type MethodNotAllowed405JSONResponse</a></dd>
+				
+				
+			
+				
+				<dd><a href="#OrderedAfterParam">type OrderedAfterParam</a></dd>
+				
+				
+			
+				
+				<dd><a href="#OrderedBeforeParam">type OrderedBeforeParam</a></dd>
 				
 				
 			
@@ -362,7 +346,7 @@
 		
 			
 			
-			<h2 id="RegisterHandlers">func <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=3847:3907#L80">RegisterHandlers</a>
+			<h2 id="RegisterHandlers">func <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=3560:3620#L73">RegisterHandlers</a>
 				<a class="permalink" href="#RegisterHandlers">¶</a>
 				
 				
@@ -376,7 +360,7 @@
 		
 			
 			
-			</p><h2 id="RegisterHandlersWithBaseURL">func <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=4109:4196#L86">RegisterHandlersWithBaseURL</a>
+			</p><h2 id="RegisterHandlersWithBaseURL">func <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=3822:3909#L79">RegisterHandlersWithBaseURL</a>
 				<a class="permalink" href="#RegisterHandlersWithBaseURL">¶</a>
 				
 				
@@ -391,7 +375,7 @@ paths so the API can be served under a prefix.
 		
 			
 			
-			</p><h2 id="RegisterHandlersWithOptions">func <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=4407:4511#L92">RegisterHandlersWithOptions</a>
+			</p><h2 id="RegisterHandlersWithOptions">func <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=4120:4224#L85">RegisterHandlersWithOptions</a>
 				<a class="permalink" href="#RegisterHandlersWithOptions">¶</a>
 				
 				
@@ -407,7 +391,7 @@ including any per-operation middleware.
 		
 			
 			
-			</p><h2 id="BadRequest400">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/type.gen.go.html?s=5928:5962#L135">BadRequest400</a>
+			</p><h2 id="BadRequest400">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/type.gen.go.html?s=4766:4800#L92">BadRequest400</a>
 				<a class="permalink" href="#BadRequest400">¶</a>
 				
 				
@@ -430,7 +414,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="BadRequest400JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=4712:4756#L102">BadRequest400JSONResponse</a>
+			<h2 id="BadRequest400JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=4425:4469#L95">BadRequest400JSONResponse</a>
 				<a class="permalink" href="#BadRequest400JSONResponse">¶</a>
 				
 				
@@ -452,74 +436,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="DashboardFromParam">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/type.gen.go.html?s=5537:5581#L126">DashboardFromParam</a>
-				<a class="permalink" href="#DashboardFromParam">¶</a>
-				
-				
-			</h2>
-			<p>DashboardFromParam Example: 2026-07-01
-
-			</p><pre>type DashboardFromParam = <a href="../../../../../../../github.com/oapi-codegen/runtime/types/">openapi_types</a>.<a href="../../../../../../../github.com/oapi-codegen/runtime/types/#Date">Date</a></pre>
-
-			
-
-			
-
-			
-			
-			
-
-			
-
-			
-		
-			
-			
-			<h2 id="DashboardPeriodParam">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/type.gen.go.html?s=5622:5654#L129">DashboardPeriodParam</a>
-				<a class="permalink" href="#DashboardPeriodParam">¶</a>
-				
-				
-			</h2>
-			<p>DashboardPeriodParam Example: today
-
-			</p><pre>type DashboardPeriodParam <a href="../../../../../../../builtin/#string">string</a></pre>
-
-			
-				<p>Defines values for DashboardPeriodParam.
-
-				</p><pre>const (
-    <span id="DashboardPeriodParamMonth">DashboardPeriodParamMonth</span> <a href="#DashboardPeriodParam">DashboardPeriodParam</a> = &#34;month&#34;
-    <span id="DashboardPeriodParamRange">DashboardPeriodParamRange</span> <a href="#DashboardPeriodParam">DashboardPeriodParam</a> = &#34;range&#34;
-    <span id="DashboardPeriodParamToday">DashboardPeriodParamToday</span> <a href="#DashboardPeriodParam">DashboardPeriodParam</a> = &#34;today&#34;
-)</pre>
-			
-
-			
-
-			
-			
-			
-
-			
-
-			
-				
-				<h3 id="DashboardPeriodParam.Valid">func (DashboardPeriodParam) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/type.gen.go.html?s=564:606#L8">Valid</a>
-					<a class="permalink" href="#DashboardPeriodParam.Valid">¶</a>
-					
-					
-				</h3>
-				<pre>func (e <a href="#DashboardPeriodParam">DashboardPeriodParam</a>) Valid() <a href="../../../../../../../builtin/#bool">bool</a></pre>
-				<p>Valid indicates whether the value is a known member of the DashboardPeriodParam enum.
-
-				
-				
-				
-			
-		
-			
-			
-			</p><h2 id="DashboardPurchaseStatusCountResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/type.gen.go.html?s=1646:2143#L43">DashboardPurchaseStatusCountResponse</a>
+			<h2 id="DashboardPurchaseStatusCountResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/type.gen.go.html?s=429:926#L3">DashboardPurchaseStatusCountResponse</a>
 				<a class="permalink" href="#DashboardPurchaseStatusCountResponse">¶</a>
 				
 				
@@ -552,7 +469,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="DashboardSummaryResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/type.gen.go.html?s=2569:4191#L57">DashboardSummaryResponse</a>
+			<h2 id="DashboardSummaryResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/type.gen.go.html?s=1352:3088#L17">DashboardSummaryResponse</a>
 				<a class="permalink" href="#DashboardSummaryResponse">¶</a>
 				
 				
@@ -573,7 +490,7 @@ including any per-operation middleware.
     PurchaseStatusCounts []<a href="#DashboardPurchaseStatusCountResponse">DashboardPurchaseStatusCountResponse</a> `json:&#34;purchaseStatusCounts&#34;`
 
 <span id="DashboardSummaryResponse.SalesAmount"></span>    <span class="comment">// SalesAmount 集計対象期間の売上合計。USD セント単位の整数です。キャンセル済みの購入は除外し、未払いの購入は含みます</span>
-    <span class="comment">// （商品売上ランキングと同一の母集団）。対象がない場合は 0 です。</span>
+    <span class="comment">// （購入レベルの絞りは商品売上ランキングと同じですが、ランキングはさらに公開済み商品に限るため合計は一致しません）。対象がない場合は 0 です。</span>
     <span class="comment">//</span>
     <span class="comment">//</span>
     <span class="comment">// Example: 2118000</span>
@@ -607,30 +524,7 @@ including any per-operation middleware.
 		
 			
 			
-			<h2 id="DashboardToParam">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/type.gen.go.html?s=5696:5738#L132">DashboardToParam</a>
-				<a class="permalink" href="#DashboardToParam">¶</a>
-				
-				
-			</h2>
-			<p>DashboardToParam Example: 2026-07-31
-
-			</p><pre>type DashboardToParam = <a href="../../../../../../../github.com/oapi-codegen/runtime/types/">openapi_types</a>.<a href="../../../../../../../github.com/oapi-codegen/runtime/types/#Date">Date</a></pre>
-
-			
-
-			
-
-			
-			
-			
-
-			
-
-			
-		
-			
-			
-			<h2 id="EchoRouter">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=2412:3169#L54">EchoRouter</a>
+			<h2 id="EchoRouter">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=2125:2882#L47">EchoRouter</a>
 				<a class="permalink" href="#EchoRouter">¶</a>
 				
 				
@@ -665,7 +559,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="ErrorResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/type.gen.go.html?s=4381:4783#L89">ErrorResponse</a>
+			<h2 id="ErrorResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/type.gen.go.html?s=3278:3680#L49">ErrorResponse</a>
 				<a class="permalink" href="#ErrorResponse">¶</a>
 				
 				
@@ -704,7 +598,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="Forbidden403">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/type.gen.go.html?s=6151:6184#L138">Forbidden403</a>
+			<h2 id="Forbidden403">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/type.gen.go.html?s=4989:5022#L95">Forbidden403</a>
 				<a class="permalink" href="#Forbidden403">¶</a>
 				
 				
@@ -727,7 +621,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="Forbidden403JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=4758:4801#L104">Forbidden403JSONResponse</a>
+			<h2 id="Forbidden403JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=4471:4514#L97">Forbidden403JSONResponse</a>
 				<a class="permalink" href="#Forbidden403JSONResponse">¶</a>
 				
 				
@@ -749,7 +643,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetDashboardSummary200JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=5213:5277#L122">GetDashboardSummary200JSONResponse</a>
+			<h2 id="GetDashboardSummary200JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=4926:4990#L115">GetDashboardSummary200JSONResponse</a>
 				<a class="permalink" href="#GetDashboardSummary200JSONResponse">¶</a>
 				
 				
@@ -769,7 +663,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetDashboardSummary200JSONResponse.VisitGetDashboardSummaryResponse">func (GetDashboardSummary200JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=5279:5391#L124">VisitGetDashboardSummaryResponse</a>
+				<h3 id="GetDashboardSummary200JSONResponse.VisitGetDashboardSummaryResponse">func (GetDashboardSummary200JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=4992:5104#L117">VisitGetDashboardSummaryResponse</a>
 					<a class="permalink" href="#GetDashboardSummary200JSONResponse.VisitGetDashboardSummaryResponse">¶</a>
 					
 					
@@ -783,7 +677,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetDashboardSummary400JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=5610:5685#L136">GetDashboardSummary400JSONResponse</a>
+			<h2 id="GetDashboardSummary400JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=5323:5398#L129">GetDashboardSummary400JSONResponse</a>
 				<a class="permalink" href="#GetDashboardSummary400JSONResponse">¶</a>
 				
 				
@@ -804,7 +698,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetDashboardSummary400JSONResponse.VisitGetDashboardSummaryResponse">func (GetDashboardSummary400JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=5687:5799#L138">VisitGetDashboardSummaryResponse</a>
+				<h3 id="GetDashboardSummary400JSONResponse.VisitGetDashboardSummaryResponse">func (GetDashboardSummary400JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=5400:5512#L131">VisitGetDashboardSummaryResponse</a>
 					<a class="permalink" href="#GetDashboardSummary400JSONResponse.VisitGetDashboardSummaryResponse">¶</a>
 					
 					
@@ -818,7 +712,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetDashboardSummary401JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=6018:6095#L150">GetDashboardSummary401JSONResponse</a>
+			<h2 id="GetDashboardSummary401JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=5731:5808#L143">GetDashboardSummary401JSONResponse</a>
 				<a class="permalink" href="#GetDashboardSummary401JSONResponse">¶</a>
 				
 				
@@ -839,7 +733,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetDashboardSummary401JSONResponse.VisitGetDashboardSummaryResponse">func (GetDashboardSummary401JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=6097:6209#L152">VisitGetDashboardSummaryResponse</a>
+				<h3 id="GetDashboardSummary401JSONResponse.VisitGetDashboardSummaryResponse">func (GetDashboardSummary401JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=5810:5922#L145">VisitGetDashboardSummaryResponse</a>
 					<a class="permalink" href="#GetDashboardSummary401JSONResponse.VisitGetDashboardSummaryResponse">¶</a>
 					
 					
@@ -853,7 +747,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetDashboardSummary403JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=6428:6502#L164">GetDashboardSummary403JSONResponse</a>
+			<h2 id="GetDashboardSummary403JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=6141:6215#L157">GetDashboardSummary403JSONResponse</a>
 				<a class="permalink" href="#GetDashboardSummary403JSONResponse">¶</a>
 				
 				
@@ -874,7 +768,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetDashboardSummary403JSONResponse.VisitGetDashboardSummaryResponse">func (GetDashboardSummary403JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=6504:6616#L166">VisitGetDashboardSummaryResponse</a>
+				<h3 id="GetDashboardSummary403JSONResponse.VisitGetDashboardSummaryResponse">func (GetDashboardSummary403JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=6217:6329#L159">VisitGetDashboardSummaryResponse</a>
 					<a class="permalink" href="#GetDashboardSummary403JSONResponse.VisitGetDashboardSummaryResponse">¶</a>
 					
 					
@@ -888,7 +782,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetDashboardSummary405JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=6835:6918#L178">GetDashboardSummary405JSONResponse</a>
+			<h2 id="GetDashboardSummary405JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=6548:6631#L171">GetDashboardSummary405JSONResponse</a>
 				<a class="permalink" href="#GetDashboardSummary405JSONResponse">¶</a>
 				
 				
@@ -911,7 +805,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetDashboardSummary405JSONResponse.VisitGetDashboardSummaryResponse">func (GetDashboardSummary405JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=6920:7032#L182">VisitGetDashboardSummaryResponse</a>
+				<h3 id="GetDashboardSummary405JSONResponse.VisitGetDashboardSummaryResponse">func (GetDashboardSummary405JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=6633:6745#L175">VisitGetDashboardSummaryResponse</a>
 					<a class="permalink" href="#GetDashboardSummary405JSONResponse.VisitGetDashboardSummaryResponse">¶</a>
 					
 					
@@ -925,7 +819,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetDashboardSummary500JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=7251:7337#L194">GetDashboardSummary500JSONResponse</a>
+			<h2 id="GetDashboardSummary500JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=6964:7050#L187">GetDashboardSummary500JSONResponse</a>
 				<a class="permalink" href="#GetDashboardSummary500JSONResponse">¶</a>
 				
 				
@@ -948,7 +842,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetDashboardSummary500JSONResponse.VisitGetDashboardSummaryResponse">func (GetDashboardSummary500JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=7339:7451#L198">VisitGetDashboardSummaryResponse</a>
+				<h3 id="GetDashboardSummary500JSONResponse.VisitGetDashboardSummaryResponse">func (GetDashboardSummary500JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=7052:7164#L191">VisitGetDashboardSummaryResponse</a>
 					<a class="permalink" href="#GetDashboardSummary500JSONResponse.VisitGetDashboardSummaryResponse">¶</a>
 					
 					
@@ -962,7 +856,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetDashboardSummary503JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=7670:7755#L210">GetDashboardSummary503JSONResponse</a>
+			<h2 id="GetDashboardSummary503JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=7383:7468#L203">GetDashboardSummary503JSONResponse</a>
 				<a class="permalink" href="#GetDashboardSummary503JSONResponse">¶</a>
 				
 				
@@ -985,7 +879,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="GetDashboardSummary503JSONResponse.VisitGetDashboardSummaryResponse">func (GetDashboardSummary503JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=7757:7869#L214">VisitGetDashboardSummaryResponse</a>
+				<h3 id="GetDashboardSummary503JSONResponse.VisitGetDashboardSummaryResponse">func (GetDashboardSummary503JSONResponse) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=7470:7582#L207">VisitGetDashboardSummaryResponse</a>
 					<a class="permalink" href="#GetDashboardSummary503JSONResponse.VisitGetDashboardSummaryResponse">¶</a>
 					
 					
@@ -999,7 +893,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetDashboardSummaryParams">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/type.gen.go.html?s=7205:8428#L153">GetDashboardSummaryParams</a>
+			<h2 id="GetDashboardSummaryParams">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/type.gen.go.html?s=6043:7310#L110">GetDashboardSummaryParams</a>
 				<a class="permalink" href="#GetDashboardSummaryParams">¶</a>
 				
 				
@@ -1007,18 +901,18 @@ either of them for path registration
 			<p>GetDashboardSummaryParams defines parameters for GetDashboardSummary.
 
 			</p><pre>type GetDashboardSummaryParams struct {
-<span id="GetDashboardSummaryParams.Period"></span>    <span class="comment">// Period 集計対象期間の区分。`today`（既定）は今日、`month` は今月、`range` は `from` / `to` で指定した期間を集計します。</span>
-    <span class="comment">// `today` / `month` の境界はサーバのタイムゾーン（Asia/Tokyo）基準で算出します。</span>
-    <span class="comment">// `range` を指定した場合は `from` / `to` が必須で、欠落時は 400 を返します。</span>
-    Period *<a href="#GetDashboardSummaryParamsPeriod">GetDashboardSummaryParamsPeriod</a> `form:&#34;period,omitempty&#34; json:&#34;period,omitempty&#34;`
+<span id="GetDashboardSummaryParams.OrderedAfter"></span>    <span class="comment">// OrderedAfter 集計対象期間の下限となる瞬時（RFC3339）。**この瞬時を含みます**。</span>
+    <span class="comment">// 対象は半開区間 `[orderedAfter, orderedBefore)` で、注文日時がこの区間に入る購入だけを集計します。</span>
+    <span class="comment">// 省略すると下限を設けません。`orderedBefore` と併せて省略すると全期間が対象になります。</span>
+    <span class="comment">// `orderedBefore` が `orderedAfter` 以前（同値を含む）の場合は 400 を返します。</span>
+    <span class="comment">// cursor ページネーションの `after` とは別のパラメータです。</span>
+    OrderedAfter *<a href="#OrderedAfterParam">OrderedAfterParam</a> `form:&#34;orderedAfter,omitempty&#34; json:&#34;orderedAfter,omitempty&#34;`
 
-<span id="GetDashboardSummaryParams.From"></span>    <span class="comment">// From 集計対象期間の開始日（この日を含みます）。`period=range` のときのみ必須で、それ以外の区分では無視します。</span>
-    <span class="comment">// 日付はサーバのタイムゾーン（Asia/Tokyo）の暦日として解釈します。</span>
-    From *<a href="#DashboardFromParam">DashboardFromParam</a> `form:&#34;from,omitempty&#34; json:&#34;from,omitempty&#34;`
-
-<span id="GetDashboardSummaryParams.To"></span>    <span class="comment">// To 集計対象期間の終了日（この日を含みます）。`period=range` のときのみ必須で、それ以外の区分では無視します。</span>
-    <span class="comment">// 日付はサーバのタイムゾーン（Asia/Tokyo）の暦日として解釈します。`from` より前の日付を指定した場合は 400 を返します。</span>
-    To *<a href="#DashboardToParam">DashboardToParam</a> `form:&#34;to,omitempty&#34; json:&#34;to,omitempty&#34;`
+<span id="GetDashboardSummaryParams.OrderedBefore"></span>    <span class="comment">// OrderedBefore 集計対象期間の上限となる瞬時（RFC3339）。**この瞬時を含みません**。</span>
+    <span class="comment">// 対象は半開区間 `[orderedAfter, orderedBefore)` で、注文日時がこの区間に入る購入だけを集計します。</span>
+    <span class="comment">// 省略すると上限を設けません。`orderedAfter` と併せて省略すると全期間が対象になります。</span>
+    <span class="comment">// `orderedBefore` が `orderedAfter` 以前（同値を含む）の場合は 400 を返します。</span>
+    OrderedBefore *<a href="#OrderedBeforeParam">OrderedBeforeParam</a> `form:&#34;orderedBefore,omitempty&#34; json:&#34;orderedBefore,omitempty&#34;`
 }
 </pre>
 
@@ -1036,51 +930,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetDashboardSummaryParamsPeriod">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/type.gen.go.html?s=8509:8552#L169">GetDashboardSummaryParamsPeriod</a>
-				<a class="permalink" href="#GetDashboardSummaryParamsPeriod">¶</a>
-				
-				
-			</h2>
-			<p>GetDashboardSummaryParamsPeriod defines parameters for GetDashboardSummary.
-
-			</p><pre>type GetDashboardSummaryParamsPeriod <a href="../../../../../../../builtin/#string">string</a></pre>
-
-			
-				<p>Defines values for GetDashboardSummaryParamsPeriod.
-
-				</p><pre>const (
-    <span id="GetDashboardSummaryParamsPeriodMonth">GetDashboardSummaryParamsPeriodMonth</span> <a href="#GetDashboardSummaryParamsPeriod">GetDashboardSummaryParamsPeriod</a> = &#34;month&#34;
-    <span id="GetDashboardSummaryParamsPeriodRange">GetDashboardSummaryParamsPeriodRange</span> <a href="#GetDashboardSummaryParamsPeriod">GetDashboardSummaryParamsPeriod</a> = &#34;range&#34;
-    <span id="GetDashboardSummaryParamsPeriodToday">GetDashboardSummaryParamsPeriodToday</span> <a href="#GetDashboardSummaryParamsPeriod">GetDashboardSummaryParamsPeriod</a> = &#34;today&#34;
-)</pre>
-			
-
-			
-
-			
-			
-			
-
-			
-
-			
-				
-				<h3 id="GetDashboardSummaryParamsPeriod.Valid">func (GetDashboardSummaryParamsPeriod) <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/type.gen.go.html?s=1199:1252#L29">Valid</a>
-					<a class="permalink" href="#GetDashboardSummaryParamsPeriod.Valid">¶</a>
-					
-					
-				</h3>
-				<pre>func (e <a href="#GetDashboardSummaryParamsPeriod">GetDashboardSummaryParamsPeriod</a>) Valid() <a href="../../../../../../../builtin/#bool">bool</a></pre>
-				<p>Valid indicates whether the value is a known member of the GetDashboardSummaryParamsPeriod enum.
-
-				
-				
-				
-			
-		
-			
-			
-			</p><h2 id="GetDashboardSummaryRequestObject">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=5012:5094#L114">GetDashboardSummaryRequestObject</a>
+			<h2 id="GetDashboardSummaryRequestObject">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=4725:4807#L107">GetDashboardSummaryRequestObject</a>
 				<a class="permalink" href="#GetDashboardSummaryRequestObject">¶</a>
 				
 				
@@ -1105,7 +955,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="GetDashboardSummaryResponseObject">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=5096:5211#L118">GetDashboardSummaryResponseObject</a>
+			<h2 id="GetDashboardSummaryResponseObject">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=4809:4924#L111">GetDashboardSummaryResponseObject</a>
 				<a class="permalink" href="#GetDashboardSummaryResponseObject">¶</a>
 				
 				
@@ -1129,7 +979,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="InternalServerError500">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/type.gen.go.html?s=6383:6426#L141">InternalServerError500</a>
+			<h2 id="InternalServerError500">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/type.gen.go.html?s=5221:5264#L98">InternalServerError500</a>
 				<a class="permalink" href="#InternalServerError500">¶</a>
 				
 				
@@ -1152,7 +1002,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="InternalServerError500JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=4803:4856#L106">InternalServerError500JSONResponse</a>
+			<h2 id="InternalServerError500JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=4516:4569#L99">InternalServerError500JSONResponse</a>
 				<a class="permalink" href="#InternalServerError500JSONResponse">¶</a>
 				
 				
@@ -1174,7 +1024,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="MethodNotAllowed405">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/type.gen.go.html?s=6622:6662#L144">MethodNotAllowed405</a>
+			<h2 id="MethodNotAllowed405">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/type.gen.go.html?s=5460:5500#L101">MethodNotAllowed405</a>
 				<a class="permalink" href="#MethodNotAllowed405">¶</a>
 				
 				
@@ -1197,7 +1047,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="MethodNotAllowed405JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=4858:4908#L108">MethodNotAllowed405JSONResponse</a>
+			<h2 id="MethodNotAllowed405JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=4571:4621#L101">MethodNotAllowed405JSONResponse</a>
 				<a class="permalink" href="#MethodNotAllowed405JSONResponse">¶</a>
 				
 				
@@ -1219,7 +1069,53 @@ either of them for path registration
 		
 			
 			
-			<h2 id="PurchaseStatusRef">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/type.gen.go.html?s=5063:5493#L108">PurchaseStatusRef</a>
+			<h2 id="OrderedAfterParam">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/type.gen.go.html?s=4448:4482#L86">OrderedAfterParam</a>
+				<a class="permalink" href="#OrderedAfterParam">¶</a>
+				
+				
+			</h2>
+			<p>OrderedAfterParam Example: 2026-07-01T00:00:00+09:00
+
+			</p><pre>type OrderedAfterParam = <a href="../../../../../../../time/">time</a>.<a href="../../../../../../../time/#Time">Time</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="OrderedBeforeParam">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/type.gen.go.html?s=4541:4576#L89">OrderedBeforeParam</a>
+				<a class="permalink" href="#OrderedBeforeParam">¶</a>
+				
+				
+			</h2>
+			<p>OrderedBeforeParam Example: 2026-08-01T00:00:00+09:00
+
+			</p><pre>type OrderedBeforeParam = <a href="../../../../../../../time/">time</a>.<a href="../../../../../../../time/#Time">Time</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="PurchaseStatusRef">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/type.gen.go.html?s=3960:4390#L68">PurchaseStatusRef</a>
 				<a class="permalink" href="#PurchaseStatusRef">¶</a>
 				
 				
@@ -1259,7 +1155,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="RegisterHandlersOptions">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=3238:3783#L67">RegisterHandlersOptions</a>
+			<h2 id="RegisterHandlersOptions">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=2951:3496#L60">RegisterHandlersOptions</a>
 				<a class="permalink" href="#RegisterHandlersOptions">¶</a>
 				
 				
@@ -1316,7 +1212,7 @@ either of them for path registration
 
 			
 				
-				<h3 id="NewStrictHandler">func <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=8586:8686#L236">NewStrictHandler</a>
+				<h3 id="NewStrictHandler">func <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=8299:8399#L229">NewStrictHandler</a>
 					<a class="permalink" href="#NewStrictHandler">¶</a>
 					
 					
@@ -1370,7 +1266,7 @@ either of them for path registration
 		
 			
 			
-			</p><h2 id="ServiceUnavailable503">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/type.gen.go.html?s=6860:6902#L147">ServiceUnavailable503</a>
+			</p><h2 id="ServiceUnavailable503">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/type.gen.go.html?s=5698:5740#L104">ServiceUnavailable503</a>
 				<a class="permalink" href="#ServiceUnavailable503">¶</a>
 				
 				
@@ -1393,7 +1289,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="ServiceUnavailable503JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=4910:4962#L110">ServiceUnavailable503JSONResponse</a>
+			<h2 id="ServiceUnavailable503JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=4623:4675#L103">ServiceUnavailable503JSONResponse</a>
 				<a class="permalink" href="#ServiceUnavailable503JSONResponse">¶</a>
 				
 				
@@ -1415,7 +1311,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="StrictHandlerFunc">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=8422:8494#L233">StrictHandlerFunc</a>
+			<h2 id="StrictHandlerFunc">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=8135:8207#L226">StrictHandlerFunc</a>
 				<a class="permalink" href="#StrictHandlerFunc">¶</a>
 				
 				
@@ -1437,7 +1333,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="StrictMiddlewareFunc">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=8495:8584#L234">StrictMiddlewareFunc</a>
+			<h2 id="StrictMiddlewareFunc">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=8208:8297#L227">StrictMiddlewareFunc</a>
 				<a class="permalink" href="#StrictMiddlewareFunc">¶</a>
 				
 				
@@ -1459,7 +1355,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="StrictServerInterface">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=8145:8420#L227">StrictServerInterface</a>
+			<h2 id="StrictServerInterface">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=7858:8133#L220">StrictServerInterface</a>
 				<a class="permalink" href="#StrictServerInterface">¶</a>
 				
 				
@@ -1486,7 +1382,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="Unauthorized401">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/type.gen.go.html?s=7094:7130#L150">Unauthorized401</a>
+			<h2 id="Unauthorized401">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/type.gen.go.html?s=5932:5968#L107">Unauthorized401</a>
 				<a class="permalink" href="#Unauthorized401">¶</a>
 				
 				
@@ -1509,7 +1405,7 @@ either of them for path registration
 		
 			
 			
-			<h2 id="Unauthorized401JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=4964:5010#L112">Unauthorized401JSONResponse</a>
+			<h2 id="Unauthorized401JSONResponse">type <a href="../../../../../../../src/go-boilerplate/internal/controller/handler/v1/dashboard/gen/server.gen.go.html?s=4677:4723#L105">Unauthorized401JSONResponse</a>
 				<a class="permalink" href="#Unauthorized401JSONResponse">¶</a>
 				
 				

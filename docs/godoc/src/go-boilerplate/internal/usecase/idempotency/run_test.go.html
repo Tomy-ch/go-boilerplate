@@ -241,7 +241,7 @@
 <span id="L184" class="ln">   184  </span>			t.Parallel()
 <span id="L185" class="ln">   185  </span>			ctrl := gomock.NewController(t)
 <span id="L186" class="ln">   186  </span>			store := mock_idempotency.NewMockStore(ctrl)
-<span id="L187" class="ln">   187  </span>			want := uuidPayload{ID: uuidtestkit.NewTestFromSalt(t, &#34;purchase-1&#34;)}
+<span id="L187" class="ln">   187  </span>			want := uuidPayload{ID: uuidtestkit.NewTestFromSalt(t, &#34;payload-1&#34;)}
 <span id="L188" class="ln">   188  </span>			fp := []byte(&#34;fingerprint&#34;)
 <span id="L189" class="ln">   189  </span>
 <span id="L190" class="ln">   190  </span>			var stored []byte

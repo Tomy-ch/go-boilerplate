@@ -171,7 +171,7 @@
 <span id="L114" class="ln">   114  </span>			ctrl := gomock.NewController(t)
 <span id="L115" class="ln">   115  </span>			fsys := mock_fs.NewMockFS(ctrl)
 <span id="L116" class="ln">   116  </span>			db := mock_driver.NewMockDatabaseDriver(ctrl)
-<span id="L117" class="ln">   117  </span>			vars := map[string]string{&#34;AUTH_ISSUER&#34;: &#34;&#39;); DROP TABLE user_identities; --&#34;}
+<span id="L117" class="ln">   117  </span>			vars := map[string]string{&#34;AUTH_ISSUER&#34;: &#34;&#39;); DROP TABLE outbox; --&#34;}
 <span id="L118" class="ln">   118  </span>			fsys.EXPECT().ReadFile(path).Return([]byte(&#34;INSERT ... VALUES (&#39;${AUTH_ISSUER}&#39;);&#34;), nil)
 <span id="L119" class="ln">   119  </span>
 <span id="L120" class="ln">   120  </span>			err := execSeedFile(context.Background(), fsys, db, logging.NewTestLogger(t), vars, path)
@@ -257,7 +257,7 @@
 <span id="L200" class="ln">   200  </span>
 <span id="L201" class="ln">   201  </span>		t.Run(&#34;単一引用符を含む値は展開せずエラーになる&#34;, func(t *testing.T) {
 <span id="L202" class="ln">   202  </span>			t.Parallel()
-<span id="L203" class="ln">   203  </span>			vars := map[string]string{&#34;AUTH_ISSUER&#34;: &#34;&#39;); DROP TABLE user_identities; --&#34;}
+<span id="L203" class="ln">   203  </span>			vars := map[string]string{&#34;AUTH_ISSUER&#34;: &#34;&#39;); DROP TABLE outbox; --&#34;}
 <span id="L204" class="ln">   204  </span>
 <span id="L205" class="ln">   205  </span>			_, err := expandPlaceholders(&#34;(&#39;${AUTH_ISSUER}&#39;);&#34;, vars)
 <span id="L206" class="ln">   206  </span>			require.ErrorIs(t, err, errUnsafePlaceholderValue)

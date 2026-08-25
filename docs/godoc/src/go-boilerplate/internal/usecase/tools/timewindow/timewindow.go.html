@@ -1,0 +1,120 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>timewindow - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../../src/go-boilerplate/internal/usecase">usecase</a>/<a href="../../../../../../src/go-boilerplate/internal/usecase/tools">tools</a>/<a href="../../../../../../src/go-boilerplate/internal/usecase/tools/timewindow">timewindow</a>/<span class="text-muted">timewindow.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../../go-boilerplate/internal/usecase/tools/timewindow">go-boilerplate/internal/usecase/tools/timewindow</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span><span class="comment">// Package timewindow は、集計・絞り込みの対象期間を表す半開区間を提供します。</span>
+<span id="L2" class="ln">     2  </span>package timewindow
+<span id="L3" class="ln">     3  </span>
+<span id="L4" class="ln">     4  </span>import (
+<span id="L5" class="ln">     5  </span>	&#34;time&#34;
+<span id="L6" class="ln">     6  </span>
+<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/apperror&#34;
+<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L9" class="ln">     9  </span>)
+<span id="L10" class="ln">    10  </span>
+<span id="L11" class="ln">    11  </span><span class="comment">// Window は、対象期間を表す半開区間 [After, Before) です。</span>
+<span id="L12" class="ln">    12  </span><span class="comment">//</span>
+<span id="L13" class="ln">    13  </span><span class="comment">//	下限は含み、上限は含みません（半開である理由は README の Role を参照）。</span>
+<span id="L14" class="ln">    14  </span><span class="comment">//	いずれの境界も省略でき、境界を持たない側には制限を設けません。ゼロ値は全期間を表します。</span>
+<span id="L15" class="ln">    15  </span>type Window struct {
+<span id="L16" class="ln">    16  </span>	after  *time.Time
+<span id="L17" class="ln">    17  </span>	before *time.Time
+<span id="L18" class="ln">    18  </span>}
+<span id="L19" class="ln">    19  </span>
+<span id="L20" class="ln">    20  </span><span class="comment">// Bounds は、Window の境界指定です。nil の境界は、その側に制限を設けないことを表します。</span>
+<span id="L21" class="ln">    21  </span>type Bounds struct {
+<span id="L22" class="ln">    22  </span>	<span class="comment">// After は、対象期間の下限です。この瞬時を含みます。</span>
+<span id="L23" class="ln">    23  </span>	After *time.Time
+<span id="L24" class="ln">    24  </span>	<span class="comment">// Before は、対象期間の上限です。この瞬時を含みません。</span>
+<span id="L25" class="ln">    25  </span>	Before *time.Time
+<span id="L26" class="ln">    26  </span>}
+<span id="L27" class="ln">    27  </span>
+<span id="L28" class="ln">    28  </span><span class="comment">// New は、境界指定から Window を生成します。</span>
+<span id="L29" class="ln">    29  </span><span class="comment">//</span>
+<span id="L30" class="ln">    30  </span><span class="comment">//	両方の境界が指定され、かつ Before が After 以前（同値を含む）の場合は</span>
+<span id="L31" class="ln">    31  </span><span class="comment">//	apperror.ErrInvalidArgument を返します（拒否する理由は README の Behavior を参照）。</span>
+<span id="L32" class="ln">    32  </span>func New(bounds Bounds) (Window, error) {
+<span id="L33" class="ln">    33  </span>	if bounds.After != nil &amp;&amp; bounds.Before != nil &amp;&amp; !bounds.Before.After(*bounds.After) {
+<span id="L34" class="ln">    34  </span>		return Window{}, xerrors.Wrap(apperror.ErrInvalidArgument, &#34;orderedBefore must be after orderedAfter&#34;)
+<span id="L35" class="ln">    35  </span>	}
+<span id="L36" class="ln">    36  </span>
+<span id="L37" class="ln">    37  </span>	return Window{after: copyTime(bounds.After), before: copyTime(bounds.Before)}, nil
+<span id="L38" class="ln">    38  </span>}
+<span id="L39" class="ln">    39  </span>
+<span id="L40" class="ln">    40  </span><span class="comment">// After は、対象期間の下限（この瞬時を含む）を返します。下限を設けない場合は nil です。</span>
+<span id="L41" class="ln">    41  </span>func (w Window) After() *time.Time { return copyTime(w.after) }
+<span id="L42" class="ln">    42  </span>
+<span id="L43" class="ln">    43  </span><span class="comment">// Before は、対象期間の上限（この瞬時を含まない）を返します。上限を設けない場合は nil です。</span>
+<span id="L44" class="ln">    44  </span>func (w Window) Before() *time.Time { return copyTime(w.before) }
+<span id="L45" class="ln">    45  </span>
+<span id="L46" class="ln">    46  </span><span class="comment">// copyTime は、境界の複製を返します。呼び出し元と Window が同じ時刻を共有しないようにするためです。</span>
+<span id="L47" class="ln">    47  </span>func copyTime(t *time.Time) *time.Time {
+<span id="L48" class="ln">    48  </span>	if t == nil {
+<span id="L49" class="ln">    49  </span>		return nil
+<span id="L50" class="ln">    50  </span>	}
+<span id="L51" class="ln">    51  </span>	copied := *t
+<span id="L52" class="ln">    52  </span>	return &amp;copied
+<span id="L53" class="ln">    53  </span>}
+<span id="L54" class="ln">    54  </span>
+</pre><p><a href="../../../../../../src/go-boilerplate/internal/usecase/tools/timewindow/timewindow.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

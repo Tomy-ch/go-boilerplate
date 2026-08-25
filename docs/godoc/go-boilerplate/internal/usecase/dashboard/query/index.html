@@ -121,11 +121,6 @@
 				
 				
 			
-				
-				<dd><a href="#Window">type Window</a></dd>
-				
-				
-			
 			
 			</dl>
 			</div><!-- #manual-nav -->
@@ -153,7 +148,7 @@
 		
 			
 			
-			<h2 id="DashboardQueryService">type <a href="../../../../../src/go-boilerplate/internal/usecase/dashboard/query/dashboard_query_service.go.html?s=1170:1992#L15">DashboardQueryService</a>
+			<h2 id="DashboardQueryService">type <a href="../../../../../src/go-boilerplate/internal/usecase/dashboard/query/dashboard_query_service.go.html?s=635:1479#L5">DashboardQueryService</a>
 				<a class="permalink" href="#DashboardQueryService">¶</a>
 				
 				
@@ -162,13 +157,13 @@
 各集計は独立した投影であり、単一のスナップショットで整合することは保証しません。
 
 			</p><pre>type DashboardQueryService interface {
-    <span class="comment">// SummarizeSales は、指定期間に注文された購入の売上合計と件数を返します。</span>
+    <span class="comment">// SummarizeSales は、対象期間に注文された購入の売上合計と件数を返します。</span>
     <span class="comment">// キャンセル済みの購入は除外し、未払いの購入は含みます。対象がない場合はゼロ値を返します。</span>
-    SummarizeSales(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, window <a href="#Window">Window</a>) (<a href="#SalesResult">SalesResult</a>, <a href="../../../../../builtin/#error">error</a>)
-    <span class="comment">// CountPurchasesByStatus は、指定期間に注文された購入のステータス別件数を購入ステータスマスタの表示順で返します。</span>
+    SummarizeSales(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, window <a href="../../../../../go-boilerplate/internal/usecase/tools/timewindow/">timewindow</a>.<a href="../../../../../go-boilerplate/internal/usecase/tools/timewindow/#Window">Window</a>) (<a href="#SalesResult">SalesResult</a>, <a href="../../../../../builtin/#error">error</a>)
+    <span class="comment">// CountPurchasesByStatus は、対象期間に注文された購入のステータス別件数を購入ステータスマスタの表示順で返します。</span>
     <span class="comment">// SummarizeSales と異なりキャンセル済みも 1 ステータスとして含みます。</span>
     <span class="comment">// 期間内に購入が存在しない場合は空スライスを返します（エラーとしません）。</span>
-    CountPurchasesByStatus(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, window <a href="#Window">Window</a>) ([]<a href="#PurchaseStatusCountResult">PurchaseStatusCountResult</a>, <a href="../../../../../builtin/#error">error</a>)
+    CountPurchasesByStatus(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, window <a href="../../../../../go-boilerplate/internal/usecase/tools/timewindow/">timewindow</a>.<a href="../../../../../go-boilerplate/internal/usecase/tools/timewindow/#Window">Window</a>) ([]<a href="#PurchaseStatusCountResult">PurchaseStatusCountResult</a>, <a href="../../../../../builtin/#error">error</a>)
 }</pre>
 
 			
@@ -185,7 +180,7 @@
 		
 			
 			
-			<h2 id="PurchaseStatusCountResult">type <a href="../../../../../src/go-boilerplate/internal/usecase/dashboard/query/dashboard_query_service.go.html?s=2448:2564#L34">PurchaseStatusCountResult</a>
+			<h2 id="PurchaseStatusCountResult">type <a href="../../../../../src/go-boilerplate/internal/usecase/dashboard/query/dashboard_query_service.go.html?s=1935:2051#L24">PurchaseStatusCountResult</a>
 				<a class="permalink" href="#PurchaseStatusCountResult">¶</a>
 				
 				
@@ -216,7 +211,7 @@ StatusCode は、購入ステータスの業務キー（Status.Code）です。
 		
 			
 			
-			<h2 id="SalesResult">type <a href="../../../../../src/go-boilerplate/internal/usecase/dashboard/query/dashboard_query_service.go.html?s=2111:2166#L26">SalesResult</a>
+			<h2 id="SalesResult">type <a href="../../../../../src/go-boilerplate/internal/usecase/dashboard/query/dashboard_query_service.go.html?s=1598:1653#L16">SalesResult</a>
 				<a class="permalink" href="#SalesResult">¶</a>
 				
 				
@@ -226,37 +221,6 @@ StatusCode は、購入ステータスの業務キー（Status.Code）です。
 			</p><pre>type SalesResult struct {
 <span id="SalesResult.Amount"></span>    Amount <a href="../../../../../builtin/#int64">int64</a>
 <span id="SalesResult.Count"></span>    Count  <a href="../../../../../builtin/#int64">int64</a>
-}
-</pre>
-
-			
-
-			
-
-			
-			
-			
-
-			
-
-			
-		
-			
-			
-			<h2 id="Window">type <a href="../../../../../src/go-boilerplate/internal/usecase/dashboard/query/dashboard_query_service.go.html?s=628:888#L6">Window</a>
-				<a class="permalink" href="#Window">¶</a>
-				
-				
-			</h2>
-			<p>Window は、解決済みの集計対象期間です。半開区間 [After, Before) で表し、Before は終了日の翌日です。
-相対指定や暦月指定から暦日への解決は usecase 層が済ませているため、クエリサービスは境界をそのまま
-SQL の述語へ渡します。
-
-			</p><pre>type Window struct {
-<span id="Window.After"></span>    <span class="comment">// After は、集計対象に含める最初の時刻です（この時刻を含みます）。</span>
-    After <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Time">Time</a>
-<span id="Window.Before"></span>    <span class="comment">// Before は、集計対象に含めない最初の時刻です（この時刻を含みません）。</span>
-    Before <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Time">Time</a>
 }
 </pre>
 

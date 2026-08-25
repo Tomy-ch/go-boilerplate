@@ -138,7 +138,7 @@
 <span id="L81" class="ln">    81  </span>			tf := observability.NewNoopTracerFactory(t)
 <span id="L82" class="ln">    82  </span>
 <span id="L83" class="ln">    83  </span>			mockUC := mock_product.NewMockUsecase(ctrl)
-<span id="L84" class="ln">    84  </span>			mockUC.EXPECT().GetProduct(gomock.Any(), gomock.Any()).Return(sampleView(t), nil)
+<span id="L84" class="ln">    84  </span>			mockUC.EXPECT().GetProduct(gomock.Any(), gomock.Any(), gomock.Any()).Return(sampleView(t), nil)
 <span id="L85" class="ln">    85  </span>
 <span id="L86" class="ln">    86  </span>			productsdetail.BindHandler(e, tf, mockUC)
 <span id="L87" class="ln">    87  </span>
@@ -328,7 +328,7 @@
 <span id="L271" class="ln">   271  </span>			tf := observability.NewNoopTracerFactory(t)
 <span id="L272" class="ln">   272  </span>
 <span id="L273" class="ln">   273  </span>			mockUC := mock_product.NewMockUsecase(ctrl)
-<span id="L274" class="ln">   274  </span>			mockUC.EXPECT().GetProduct(gomock.Any(), gomock.Any()).Return(productuc.ProductView{}, apperror.ErrNotFound)
+<span id="L274" class="ln">   274  </span>			mockUC.EXPECT().GetProduct(gomock.Any(), gomock.Any(), gomock.Any()).Return(productuc.ProductView{}, apperror.ErrNotFound)
 <span id="L275" class="ln">   275  </span>
 <span id="L276" class="ln">   276  </span>			productsdetail.BindHandler(e, tf, mockUC)
 <span id="L277" class="ln">   277  </span>
@@ -359,7 +359,7 @@
 <span id="L302" class="ln">   302  </span>			tf := observability.NewNoopTracerFactory(t)
 <span id="L303" class="ln">   303  </span>
 <span id="L304" class="ln">   304  </span>			mockUC := mock_product.NewMockUsecase(ctrl)
-<span id="L305" class="ln">   305  </span>			mockUC.EXPECT().GetProduct(gomock.Any(), gomock.Any()).Return(productuc.ProductView{}, apperror.ErrInternal)
+<span id="L305" class="ln">   305  </span>			mockUC.EXPECT().GetProduct(gomock.Any(), gomock.Any(), gomock.Any()).Return(productuc.ProductView{}, apperror.ErrInternal)
 <span id="L306" class="ln">   306  </span>
 <span id="L307" class="ln">   307  </span>			productsdetail.BindHandler(e, tf, mockUC)
 <span id="L308" class="ln">   308  </span>
@@ -531,7 +531,7 @@
 <span id="L474" class="ln">   474  </span>	tf := observability.NewNoopTracerFactory(t)
 <span id="L475" class="ln">   475  </span>
 <span id="L476" class="ln">   476  </span>	mockUC := mock_product.NewMockUsecase(ctrl)
-<span id="L477" class="ln">   477  </span>	mockUC.EXPECT().GetProduct(gomock.Any(), gomock.Any()).Return(productuc.ProductView{}, apperror.ErrNotFound)
+<span id="L477" class="ln">   477  </span>	mockUC.EXPECT().GetProduct(gomock.Any(), gomock.Any(), gomock.Any()).Return(productuc.ProductView{}, apperror.ErrNotFound)
 <span id="L478" class="ln">   478  </span>
 <span id="L479" class="ln">   479  </span>	productsdetail.BindHandler(e, tf, mockUC)
 <span id="L480" class="ln">   480  </span>

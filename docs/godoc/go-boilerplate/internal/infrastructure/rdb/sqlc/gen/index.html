@@ -130,6 +130,11 @@
 				
 			
 				
+				<dd><a href="#CountAllProductsByFilterParams">type CountAllProductsByFilterParams</a></dd>
+				
+				
+			
+				
 				<dd><a href="#CountDashboardPurchasesByStatusParams">type CountDashboardPurchasesByStatusParams</a></dd>
 				
 				
@@ -370,6 +375,66 @@
 				
 			
 				
+				<dd><a href="#ListAllProductsAscAfterParams">type ListAllProductsAscAfterParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ListAllProductsAscAfterRow">type ListAllProductsAscAfterRow</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ListAllProductsAscFirstParams">type ListAllProductsAscFirstParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ListAllProductsAscFirstRow">type ListAllProductsAscFirstRow</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ListAllProductsDescAfterParams">type ListAllProductsDescAfterParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ListAllProductsDescAfterRow">type ListAllProductsDescAfterRow</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ListAllProductsDescFirstParams">type ListAllProductsDescFirstParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ListAllProductsDescFirstRow">type ListAllProductsDescFirstRow</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ListAllPurchasesFeedAfterParams">type ListAllPurchasesFeedAfterParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ListAllPurchasesFeedAfterRow">type ListAllPurchasesFeedAfterRow</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ListAllPurchasesFeedFirstParams">type ListAllPurchasesFeedFirstParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ListAllPurchasesFeedFirstRow">type ListAllPurchasesFeedFirstRow</a></dd>
+				
+				
+			
+				
 				<dd><a href="#ListCartItemsByCartIDRow">type ListCartItemsByCartIDRow</a></dd>
 				
 				
@@ -390,17 +455,27 @@
 				
 			
 				
+				<dd><a href="#ListProductAmountRankingParams">type ListProductAmountRankingParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ListProductAmountRankingRow">type ListProductAmountRankingRow</a></dd>
+				
+				
+			
+				
 				<dd><a href="#ListProductImagesByProductIDsRow">type ListProductImagesByProductIDsRow</a></dd>
 				
 				
 			
 				
-				<dd><a href="#ListProductRankingParams">type ListProductRankingParams</a></dd>
+				<dd><a href="#ListProductQuantityRankingParams">type ListProductQuantityRankingParams</a></dd>
 				
 				
 			
 				
-				<dd><a href="#ListProductRankingRow">type ListProductRankingRow</a></dd>
+				<dd><a href="#ListProductQuantityRankingRow">type ListProductQuantityRankingRow</a></dd>
 				
 				
 			
@@ -629,6 +704,9 @@
 					<dd>    <a href="#Queries.CountActiveUsers">func (q *Queries) CountActiveUsers(ctx context.Context) (int64, error)</a></dd>
 				
 					
+					<dd>    <a href="#Queries.CountAllProductsByFilter">func (q *Queries) CountAllProductsByFilter(ctx context.Context, arg *CountAllProductsByFilterParams) (int64, error)</a></dd>
+				
+					
 					<dd>    <a href="#Queries.CountDashboardPurchasesByStatus">func (q *Queries) CountDashboardPurchasesByStatus(ctx context.Context, arg *CountDashboardPurchasesByStatusParams) ([]*CountDashboardPurchasesByStatusRow, error)</a></dd>
 				
 					
@@ -779,6 +857,24 @@
 					<dd>    <a href="#Queries.ListActiveUsers">func (q *Queries) ListActiveUsers(ctx context.Context, arg *ListActiveUsersParams) ([]*ListActiveUsersRow, error)</a></dd>
 				
 					
+					<dd>    <a href="#Queries.ListAllProductsAscAfter">func (q *Queries) ListAllProductsAscAfter(ctx context.Context, arg *ListAllProductsAscAfterParams) ([]*ListAllProductsAscAfterRow, error)</a></dd>
+				
+					
+					<dd>    <a href="#Queries.ListAllProductsAscFirst">func (q *Queries) ListAllProductsAscFirst(ctx context.Context, arg *ListAllProductsAscFirstParams) ([]*ListAllProductsAscFirstRow, error)</a></dd>
+				
+					
+					<dd>    <a href="#Queries.ListAllProductsDescAfter">func (q *Queries) ListAllProductsDescAfter(ctx context.Context, arg *ListAllProductsDescAfterParams) ([]*ListAllProductsDescAfterRow, error)</a></dd>
+				
+					
+					<dd>    <a href="#Queries.ListAllProductsDescFirst">func (q *Queries) ListAllProductsDescFirst(ctx context.Context, arg *ListAllProductsDescFirstParams) ([]*ListAllProductsDescFirstRow, error)</a></dd>
+				
+					
+					<dd>    <a href="#Queries.ListAllPurchasesFeedAfter">func (q *Queries) ListAllPurchasesFeedAfter(ctx context.Context, arg *ListAllPurchasesFeedAfterParams) ([]*ListAllPurchasesFeedAfterRow, error)</a></dd>
+				
+					
+					<dd>    <a href="#Queries.ListAllPurchasesFeedFirst">func (q *Queries) ListAllPurchasesFeedFirst(ctx context.Context, arg *ListAllPurchasesFeedFirstParams) ([]*ListAllPurchasesFeedFirstRow, error)</a></dd>
+				
+					
 					<dd>    <a href="#Queries.ListCartItemsByCartID">func (q *Queries) ListCartItemsByCartID(ctx context.Context, cartID uuid.UUID) ([]*ListCartItemsByCartIDRow, error)</a></dd>
 				
 					
@@ -791,10 +887,13 @@
 					<dd>    <a href="#Queries.ListLowStockProducts">func (q *Queries) ListLowStockProducts(ctx context.Context, limitParam int32) ([]*ListLowStockProductsRow, error)</a></dd>
 				
 					
+					<dd>    <a href="#Queries.ListProductAmountRanking">func (q *Queries) ListProductAmountRanking(ctx context.Context, arg *ListProductAmountRankingParams) ([]*ListProductAmountRankingRow, error)</a></dd>
+				
+					
 					<dd>    <a href="#Queries.ListProductImagesByProductIDs">func (q *Queries) ListProductImagesByProductIDs(ctx context.Context, productIds []uuid.UUID) ([]*ListProductImagesByProductIDsRow, error)</a></dd>
 				
 					
-					<dd>    <a href="#Queries.ListProductRanking">func (q *Queries) ListProductRanking(ctx context.Context, arg *ListProductRankingParams) ([]*ListProductRankingRow, error)</a></dd>
+					<dd>    <a href="#Queries.ListProductQuantityRanking">func (q *Queries) ListProductQuantityRanking(ctx context.Context, arg *ListProductQuantityRankingParams) ([]*ListProductQuantityRankingRow, error)</a></dd>
 				
 					
 					<dd>    <a href="#Queries.ListProductsByIDs">func (q *Queries) ListProductsByIDs(ctx context.Context, productIdsParam []uuid.UUID) ([]*ListProductsByIDsRow, error)</a></dd>
@@ -1320,15 +1419,22 @@
 		
 			
 			
-			<h2 id="CountDashboardPurchasesByStatusParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/dashboard_query_service.gen.sql.go.html?s=616:719#L20">CountDashboardPurchasesByStatusParams</a>
-				<a class="permalink" href="#CountDashboardPurchasesByStatusParams">¶</a>
+			<h2 id="CountAllProductsByFilterParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=1141:1416#L36">CountAllProductsByFilterParams</a>
+				<a class="permalink" href="#CountAllProductsByFilterParams">¶</a>
 				
 				
 			</h2>
 			
-			<pre>type CountDashboardPurchasesByStatusParams struct {
-<span id="CountDashboardPurchasesByStatusParams.OrderedAfter"></span>    OrderedAfter  <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
-<span id="CountDashboardPurchasesByStatusParams.OrderedBefore"></span>    OrderedBefore <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+			<pre>type CountAllProductsByFilterParams struct {
+<span id="CountAllProductsByFilterParams.CategoryID"></span>    CategoryID    *<a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="CountAllProductsByFilterParams.StatusID"></span>    StatusID      *<a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="CountAllProductsByFilterParams.CategoryCodes"></span>    CategoryCodes []<a href="../../../../../../builtin/#int16">int16</a>
+<span id="CountAllProductsByFilterParams.StatusCodes"></span>    StatusCodes   []<a href="../../../../../../builtin/#int16">int16</a>
+<span id="CountAllProductsByFilterParams.MinPrice"></span>    MinPrice      *<a href="../../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
+<span id="CountAllProductsByFilterParams.MaxPrice"></span>    MaxPrice      *<a href="../../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
+<span id="CountAllProductsByFilterParams.MinQuantity"></span>    MinQuantity   *<a href="../../../../../../builtin/#int32">int32</a>
+<span id="CountAllProductsByFilterParams.MaxQuantity"></span>    MaxQuantity   *<a href="../../../../../../builtin/#int32">int32</a>
+<span id="CountAllProductsByFilterParams.Keyword"></span>    Keyword       *<a href="../../../../../../builtin/#string">string</a>
 }
 </pre>
 
@@ -1346,7 +1452,33 @@
 		
 			
 			
-			<h2 id="CountDashboardPurchasesByStatusRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/dashboard_query_service.gen.sql.go.html?s=721:860#L25">CountDashboardPurchasesByStatusRow</a>
+			<h2 id="CountDashboardPurchasesByStatusParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/dashboard_query_service.gen.sql.go.html?s=670:775#L23">CountDashboardPurchasesByStatusParams</a>
+				<a class="permalink" href="#CountDashboardPurchasesByStatusParams">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type CountDashboardPurchasesByStatusParams struct {
+<span id="CountDashboardPurchasesByStatusParams.OrderedAfter"></span>    OrderedAfter  *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="CountDashboardPurchasesByStatusParams.OrderedBefore"></span>    OrderedBefore *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="CountDashboardPurchasesByStatusRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/dashboard_query_service.gen.sql.go.html?s=777:916#L28">CountDashboardPurchasesByStatusRow</a>
 				<a class="permalink" href="#CountDashboardPurchasesByStatusRow">¶</a>
 				
 				
@@ -1374,7 +1506,7 @@
 		
 			
 			
-			<h2 id="CountProductsRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=419:495#L13">CountProductsRow</a>
+			<h2 id="CountProductsRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=3198:3274#L102">CountProductsRow</a>
 				<a class="permalink" href="#CountProductsRow">¶</a>
 				
 				
@@ -1400,7 +1532,7 @@
 		
 			
 			
-			<h2 id="CountPublishedProductsByFilterParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=2133:2414#L64">CountPublishedProductsByFilterParams</a>
+			<h2 id="CountPublishedProductsByFilterParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=4912:5193#L153">CountPublishedProductsByFilterParams</a>
 				<a class="permalink" href="#CountPublishedProductsByFilterParams">¶</a>
 				
 				
@@ -1543,7 +1675,7 @@
 		
 			
 			
-			<h2 id="CreateProductImageParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=5405:5530#L214">CreateProductImageParams</a>
+			<h2 id="CreateProductImageParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=8290:8415#L309">CreateProductImageParams</a>
 				<a class="permalink" href="#CreateProductImageParams">¶</a>
 				
 				
@@ -1571,7 +1703,7 @@
 		
 			
 			
-			<h2 id="CreateProductImagesIfAbsentParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=6681:6825#L268">CreateProductImagesIfAbsentParams</a>
+			<h2 id="CreateProductImagesIfAbsentParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=9566:9710#L363">CreateProductImagesIfAbsentParams</a>
 				<a class="permalink" href="#CreateProductImagesIfAbsentParams">¶</a>
 				
 				
@@ -1599,7 +1731,7 @@
 		
 			
 			
-			<h2 id="CreateProductParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=4199:4526#L148">CreateProductParams</a>
+			<h2 id="CreateProductParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=7003:7363#L239">CreateProductParams</a>
 				<a class="permalink" href="#CreateProductParams">¶</a>
 				
 				
@@ -1615,6 +1747,7 @@
 <span id="CreateProductParams.StatusID"></span>    StatusID              <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
 <span id="CreateProductParams.CategoryID"></span>    CategoryID            <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
 <span id="CreateProductParams.PublishedAt"></span>    PublishedAt           *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="CreateProductParams.CreatedAt"></span>    CreatedAt             <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
 }
 </pre>
 
@@ -2036,7 +2169,7 @@
 		
 			
 			
-			<h2 id="GetProductByIDForUpdateRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=10286:10393#L372">GetProductByIDForUpdateRow</a>
+			<h2 id="GetProductByIDForUpdateRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=13171:13278#L467">GetProductByIDForUpdateRow</a>
 				<a class="permalink" href="#GetProductByIDForUpdateRow">¶</a>
 				
 				
@@ -2063,7 +2196,7 @@
 		
 			
 			
-			<h2 id="GetProductByIDRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=8197:8295#L317">GetProductByIDRow</a>
+			<h2 id="GetProductByIDRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=11082:11180#L412">GetProductByIDRow</a>
 				<a class="permalink" href="#GetProductByIDRow">¶</a>
 				
 				
@@ -2202,7 +2335,7 @@
 		
 			
 			
-			<h2 id="GetPublishedProductByIDRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=12576:12683#L428">GetPublishedProductByIDRow</a>
+			<h2 id="GetPublishedProductByIDRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=15461:15568#L523">GetPublishedProductByIDRow</a>
 				<a class="permalink" href="#GetPublishedProductByIDRow">¶</a>
 				
 				
@@ -2677,6 +2810,378 @@
 		
 			
 			
+			<h2 id="ListAllProductsAscAfterParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=18553:18910#L608">ListAllProductsAscAfterParams</a>
+				<a class="permalink" href="#ListAllProductsAscAfterParams">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type ListAllProductsAscAfterParams struct {
+<span id="ListAllProductsAscAfterParams.CategoryID"></span>    CategoryID     *<a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ListAllProductsAscAfterParams.StatusID"></span>    StatusID       *<a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ListAllProductsAscAfterParams.CategoryCodes"></span>    CategoryCodes  []<a href="../../../../../../builtin/#int16">int16</a>
+<span id="ListAllProductsAscAfterParams.StatusCodes"></span>    StatusCodes    []<a href="../../../../../../builtin/#int16">int16</a>
+<span id="ListAllProductsAscAfterParams.MinPrice"></span>    MinPrice       *<a href="../../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
+<span id="ListAllProductsAscAfterParams.MaxPrice"></span>    MaxPrice       *<a href="../../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
+<span id="ListAllProductsAscAfterParams.MinQuantity"></span>    MinQuantity    *<a href="../../../../../../builtin/#int32">int32</a>
+<span id="ListAllProductsAscAfterParams.MaxQuantity"></span>    MaxQuantity    *<a href="../../../../../../builtin/#int32">int32</a>
+<span id="ListAllProductsAscAfterParams.Keyword"></span>    Keyword        *<a href="../../../../../../builtin/#string">string</a>
+<span id="ListAllProductsAscAfterParams.AfterCreatedAt"></span>    AfterCreatedAt <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="ListAllProductsAscAfterParams.AfterID"></span>    AfterID        <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ListAllProductsAscAfterParams.LimitParam"></span>    LimitParam     <a href="../../../../../../builtin/#int32">int32</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ListAllProductsAscAfterRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=18912:19019#L623">ListAllProductsAscAfterRow</a>
+				<a class="permalink" href="#ListAllProductsAscAfterRow">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type ListAllProductsAscAfterRow struct {
+<span id="ListAllProductsAscAfterRow.StatusName"></span>    StatusName   <a href="../../../../../../builtin/#string">string</a>
+<span id="ListAllProductsAscAfterRow.CategoryName"></span>    CategoryName <a href="../../../../../../builtin/#string">string</a>
+<span id="ListAllProductsAscAfterRow.Products"></span>    Products     <a href="#Products">Products</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ListAllProductsAscFirstParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=23773:24068#L762">ListAllProductsAscFirstParams</a>
+				<a class="permalink" href="#ListAllProductsAscFirstParams">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type ListAllProductsAscFirstParams struct {
+<span id="ListAllProductsAscFirstParams.CategoryID"></span>    CategoryID    *<a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ListAllProductsAscFirstParams.StatusID"></span>    StatusID      *<a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ListAllProductsAscFirstParams.CategoryCodes"></span>    CategoryCodes []<a href="../../../../../../builtin/#int16">int16</a>
+<span id="ListAllProductsAscFirstParams.StatusCodes"></span>    StatusCodes   []<a href="../../../../../../builtin/#int16">int16</a>
+<span id="ListAllProductsAscFirstParams.MinPrice"></span>    MinPrice      *<a href="../../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
+<span id="ListAllProductsAscFirstParams.MaxPrice"></span>    MaxPrice      *<a href="../../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
+<span id="ListAllProductsAscFirstParams.MinQuantity"></span>    MinQuantity   *<a href="../../../../../../builtin/#int32">int32</a>
+<span id="ListAllProductsAscFirstParams.MaxQuantity"></span>    MaxQuantity   *<a href="../../../../../../builtin/#int32">int32</a>
+<span id="ListAllProductsAscFirstParams.Keyword"></span>    Keyword       *<a href="../../../../../../builtin/#string">string</a>
+<span id="ListAllProductsAscFirstParams.LimitParam"></span>    LimitParam    <a href="../../../../../../builtin/#int32">int32</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ListAllProductsAscFirstRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=24070:24177#L775">ListAllProductsAscFirstRow</a>
+				<a class="permalink" href="#ListAllProductsAscFirstRow">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type ListAllProductsAscFirstRow struct {
+<span id="ListAllProductsAscFirstRow.StatusName"></span>    StatusName   <a href="../../../../../../builtin/#string">string</a>
+<span id="ListAllProductsAscFirstRow.CategoryName"></span>    CategoryName <a href="../../../../../../builtin/#string">string</a>
+<span id="ListAllProductsAscFirstRow.Products"></span>    Products     <a href="#Products">Products</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ListAllProductsDescAfterParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=28874:29232#L912">ListAllProductsDescAfterParams</a>
+				<a class="permalink" href="#ListAllProductsDescAfterParams">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type ListAllProductsDescAfterParams struct {
+<span id="ListAllProductsDescAfterParams.CategoryID"></span>    CategoryID     *<a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ListAllProductsDescAfterParams.StatusID"></span>    StatusID       *<a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ListAllProductsDescAfterParams.CategoryCodes"></span>    CategoryCodes  []<a href="../../../../../../builtin/#int16">int16</a>
+<span id="ListAllProductsDescAfterParams.StatusCodes"></span>    StatusCodes    []<a href="../../../../../../builtin/#int16">int16</a>
+<span id="ListAllProductsDescAfterParams.MinPrice"></span>    MinPrice       *<a href="../../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
+<span id="ListAllProductsDescAfterParams.MaxPrice"></span>    MaxPrice       *<a href="../../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
+<span id="ListAllProductsDescAfterParams.MinQuantity"></span>    MinQuantity    *<a href="../../../../../../builtin/#int32">int32</a>
+<span id="ListAllProductsDescAfterParams.MaxQuantity"></span>    MaxQuantity    *<a href="../../../../../../builtin/#int32">int32</a>
+<span id="ListAllProductsDescAfterParams.Keyword"></span>    Keyword        *<a href="../../../../../../builtin/#string">string</a>
+<span id="ListAllProductsDescAfterParams.AfterCreatedAt"></span>    AfterCreatedAt <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="ListAllProductsDescAfterParams.AfterID"></span>    AfterID        <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ListAllProductsDescAfterParams.LimitParam"></span>    LimitParam     <a href="../../../../../../builtin/#int32">int32</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ListAllProductsDescAfterRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=29234:29342#L927">ListAllProductsDescAfterRow</a>
+				<a class="permalink" href="#ListAllProductsDescAfterRow">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type ListAllProductsDescAfterRow struct {
+<span id="ListAllProductsDescAfterRow.StatusName"></span>    StatusName   <a href="../../../../../../builtin/#string">string</a>
+<span id="ListAllProductsDescAfterRow.CategoryName"></span>    CategoryName <a href="../../../../../../builtin/#string">string</a>
+<span id="ListAllProductsDescAfterRow.Products"></span>    Products     <a href="#Products">Products</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ListAllProductsDescFirstParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=34110:34406#L1066">ListAllProductsDescFirstParams</a>
+				<a class="permalink" href="#ListAllProductsDescFirstParams">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type ListAllProductsDescFirstParams struct {
+<span id="ListAllProductsDescFirstParams.CategoryID"></span>    CategoryID    *<a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ListAllProductsDescFirstParams.StatusID"></span>    StatusID      *<a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ListAllProductsDescFirstParams.CategoryCodes"></span>    CategoryCodes []<a href="../../../../../../builtin/#int16">int16</a>
+<span id="ListAllProductsDescFirstParams.StatusCodes"></span>    StatusCodes   []<a href="../../../../../../builtin/#int16">int16</a>
+<span id="ListAllProductsDescFirstParams.MinPrice"></span>    MinPrice      *<a href="../../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
+<span id="ListAllProductsDescFirstParams.MaxPrice"></span>    MaxPrice      *<a href="../../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
+<span id="ListAllProductsDescFirstParams.MinQuantity"></span>    MinQuantity   *<a href="../../../../../../builtin/#int32">int32</a>
+<span id="ListAllProductsDescFirstParams.MaxQuantity"></span>    MaxQuantity   *<a href="../../../../../../builtin/#int32">int32</a>
+<span id="ListAllProductsDescFirstParams.Keyword"></span>    Keyword       *<a href="../../../../../../builtin/#string">string</a>
+<span id="ListAllProductsDescFirstParams.LimitParam"></span>    LimitParam    <a href="../../../../../../builtin/#int32">int32</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ListAllProductsDescFirstRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=34408:34516#L1079">ListAllProductsDescFirstRow</a>
+				<a class="permalink" href="#ListAllProductsDescFirstRow">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type ListAllProductsDescFirstRow struct {
+<span id="ListAllProductsDescFirstRow.StatusName"></span>    StatusName   <a href="../../../../../../builtin/#string">string</a>
+<span id="ListAllProductsDescFirstRow.CategoryName"></span>    CategoryName <a href="../../../../../../builtin/#string">string</a>
+<span id="ListAllProductsDescFirstRow.Products"></span>    Products     <a href="#Products">Products</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ListAllPurchasesFeedAfterParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=3870:4069#L150">ListAllPurchasesFeedAfterParams</a>
+				<a class="permalink" href="#ListAllPurchasesFeedAfterParams">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type ListAllPurchasesFeedAfterParams struct {
+<span id="ListAllPurchasesFeedAfterParams.AfterOrderedAt"></span>    AfterOrderedAt <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="ListAllPurchasesFeedAfterParams.AfterID"></span>    AfterID        <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ListAllPurchasesFeedAfterParams.OrderedAfter"></span>    OrderedAfter   *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="ListAllPurchasesFeedAfterParams.OrderedBefore"></span>    OrderedBefore  *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="ListAllPurchasesFeedAfterParams.StatusCodes"></span>    StatusCodes    []<a href="../../../../../../builtin/#int16">int16</a>
+<span id="ListAllPurchasesFeedAfterParams.LimitParam"></span>    LimitParam     <a href="../../../../../../builtin/#int32">int32</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ListAllPurchasesFeedAfterRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=4071:4319#L159">ListAllPurchasesFeedAfterRow</a>
+				<a class="permalink" href="#ListAllPurchasesFeedAfterRow">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type ListAllPurchasesFeedAfterRow struct {
+<span id="ListAllPurchasesFeedAfterRow.ID"></span>    ID            <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ListAllPurchasesFeedAfterRow.Code"></span>    Code          <a href="../../../../../../builtin/#string">string</a>
+<span id="ListAllPurchasesFeedAfterRow.TotalAmount"></span>    TotalAmount   <a href="../../../../../../builtin/#int64">int64</a>
+<span id="ListAllPurchasesFeedAfterRow.OrderedAt"></span>    OrderedAt     <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="ListAllPurchasesFeedAfterRow.StatusID"></span>    StatusID      <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ListAllPurchasesFeedAfterRow.StatusCode"></span>    StatusCode    <a href="../../../../../../builtin/#int16">int16</a>
+<span id="ListAllPurchasesFeedAfterRow.StatusName"></span>    StatusName    <a href="../../../../../../builtin/#string">string</a>
+<span id="ListAllPurchasesFeedAfterRow.FirstItemName"></span>    FirstItemName <a href="../../../../../../builtin/#string">string</a>
+<span id="ListAllPurchasesFeedAfterRow.ItemCount"></span>    ItemCount     <a href="../../../../../../builtin/#int64">int64</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ListAllPurchasesFeedFirstParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=8175:8318#L324">ListAllPurchasesFeedFirstParams</a>
+				<a class="permalink" href="#ListAllPurchasesFeedFirstParams">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type ListAllPurchasesFeedFirstParams struct {
+<span id="ListAllPurchasesFeedFirstParams.OrderedAfter"></span>    OrderedAfter  *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="ListAllPurchasesFeedFirstParams.OrderedBefore"></span>    OrderedBefore *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="ListAllPurchasesFeedFirstParams.StatusCodes"></span>    StatusCodes   []<a href="../../../../../../builtin/#int16">int16</a>
+<span id="ListAllPurchasesFeedFirstParams.LimitParam"></span>    LimitParam    <a href="../../../../../../builtin/#int32">int32</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ListAllPurchasesFeedFirstRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=8320:8568#L331">ListAllPurchasesFeedFirstRow</a>
+				<a class="permalink" href="#ListAllPurchasesFeedFirstRow">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type ListAllPurchasesFeedFirstRow struct {
+<span id="ListAllPurchasesFeedFirstRow.ID"></span>    ID            <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ListAllPurchasesFeedFirstRow.Code"></span>    Code          <a href="../../../../../../builtin/#string">string</a>
+<span id="ListAllPurchasesFeedFirstRow.TotalAmount"></span>    TotalAmount   <a href="../../../../../../builtin/#int64">int64</a>
+<span id="ListAllPurchasesFeedFirstRow.OrderedAt"></span>    OrderedAt     <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="ListAllPurchasesFeedFirstRow.StatusID"></span>    StatusID      <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ListAllPurchasesFeedFirstRow.StatusCode"></span>    StatusCode    <a href="../../../../../../builtin/#int16">int16</a>
+<span id="ListAllPurchasesFeedFirstRow.StatusName"></span>    StatusName    <a href="../../../../../../builtin/#string">string</a>
+<span id="ListAllPurchasesFeedFirstRow.FirstItemName"></span>    FirstItemName <a href="../../../../../../builtin/#string">string</a>
+<span id="ListAllPurchasesFeedFirstRow.ItemCount"></span>    ItemCount     <a href="../../../../../../builtin/#int64">int64</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
 			<h2 id="ListCartItemsByCartIDRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/cart_repository.gen.sql.go.html?s=9273:9334#L322">ListCartItemsByCartIDRow</a>
 				<a class="permalink" href="#ListCartItemsByCartIDRow">¶</a>
 				
@@ -2753,7 +3258,7 @@
 		
 			
 			
-			<h2 id="ListLowStockProductsRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=16234:16338#L523">ListLowStockProductsRow</a>
+			<h2 id="ListLowStockProductsRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=39860:39964#L1227">ListLowStockProductsRow</a>
 				<a class="permalink" href="#ListLowStockProductsRow">¶</a>
 				
 				
@@ -2780,7 +3285,63 @@
 		
 			
 			
-			<h2 id="ListProductImagesByProductIDsRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=18761:18838#L591">ListProductImagesByProductIDsRow</a>
+			<h2 id="ListProductAmountRankingParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_query_service.gen.sql.go.html?s=829:948#L30">ListProductAmountRankingParams</a>
+				<a class="permalink" href="#ListProductAmountRankingParams">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type ListProductAmountRankingParams struct {
+<span id="ListProductAmountRankingParams.OrderedAfter"></span>    OrderedAfter  *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="ListProductAmountRankingParams.OrderedBefore"></span>    OrderedBefore *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="ListProductAmountRankingParams.LimitCount"></span>    LimitCount    <a href="../../../../../../builtin/#int32">int32</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ListProductAmountRankingRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_query_service.gen.sql.go.html?s=950:1118#L36">ListProductAmountRankingRow</a>
+				<a class="permalink" href="#ListProductAmountRankingRow">¶</a>
+				
+				
+			</h2>
+			
+			<pre>type ListProductAmountRankingRow struct {
+<span id="ListProductAmountRankingRow.ProductID"></span>    ProductID   <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ListProductAmountRankingRow.Name"></span>    Name        <a href="../../../../../../builtin/#string">string</a>
+<span id="ListProductAmountRankingRow.Price"></span>    Price       <a href="../../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
+<span id="ListProductAmountRankingRow.PublishedAt"></span>    PublishedAt *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="ListProductAmountRankingRow.SalesAmount"></span>    SalesAmount <a href="../../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ListProductImagesByProductIDsRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=42387:42464#L1295">ListProductImagesByProductIDsRow</a>
 				<a class="permalink" href="#ListProductImagesByProductIDsRow">¶</a>
 				
 				
@@ -2805,16 +3366,16 @@
 		
 			
 			
-			<h2 id="ListProductRankingParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_query_service.gen.sql.go.html?s=721:831#L24">ListProductRankingParams</a>
-				<a class="permalink" href="#ListProductRankingParams">¶</a>
+			<h2 id="ListProductQuantityRankingParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_query_service.gen.sql.go.html?s=3515:3636#L121">ListProductQuantityRankingParams</a>
+				<a class="permalink" href="#ListProductQuantityRankingParams">¶</a>
 				
 				
 			</h2>
 			
-			<pre>type ListProductRankingParams struct {
-<span id="ListProductRankingParams.FilterByPeriod"></span>    FilterByPeriod <a href="../../../../../../builtin/#bool">bool</a>
-<span id="ListProductRankingParams.OrderedAfter"></span>    OrderedAfter   *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
-<span id="ListProductRankingParams.LimitCount"></span>    LimitCount     <a href="../../../../../../builtin/#int32">int32</a>
+			<pre>type ListProductQuantityRankingParams struct {
+<span id="ListProductQuantityRankingParams.OrderedAfter"></span>    OrderedAfter  *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="ListProductQuantityRankingParams.OrderedBefore"></span>    OrderedBefore *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="ListProductQuantityRankingParams.LimitCount"></span>    LimitCount    <a href="../../../../../../builtin/#int32">int32</a>
 }
 </pre>
 
@@ -2832,18 +3393,18 @@
 		
 			
 			
-			<h2 id="ListProductRankingRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_query_service.gen.sql.go.html?s=833:990#L30">ListProductRankingRow</a>
-				<a class="permalink" href="#ListProductRankingRow">¶</a>
+			<h2 id="ListProductQuantityRankingRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_query_service.gen.sql.go.html?s=3638:3803#L127">ListProductQuantityRankingRow</a>
+				<a class="permalink" href="#ListProductQuantityRankingRow">¶</a>
 				
 				
 			</h2>
 			
-			<pre>type ListProductRankingRow struct {
-<span id="ListProductRankingRow.ProductID"></span>    ProductID    <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
-<span id="ListProductRankingRow.Name"></span>    Name         <a href="../../../../../../builtin/#string">string</a>
-<span id="ListProductRankingRow.Price"></span>    Price        <a href="../../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
-<span id="ListProductRankingRow.PublishedAt"></span>    PublishedAt  *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
-<span id="ListProductRankingRow.SoldQuantity"></span>    SoldQuantity <a href="../../../../../../builtin/#int64">int64</a>
+			<pre>type ListProductQuantityRankingRow struct {
+<span id="ListProductQuantityRankingRow.ProductID"></span>    ProductID    <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ListProductQuantityRankingRow.Name"></span>    Name         <a href="../../../../../../builtin/#string">string</a>
+<span id="ListProductQuantityRankingRow.Price"></span>    Price        <a href="../../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
+<span id="ListProductQuantityRankingRow.PublishedAt"></span>    PublishedAt  *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="ListProductQuantityRankingRow.SoldQuantity"></span>    SoldQuantity <a href="../../../../../../builtin/#int64">int64</a>
 }
 </pre>
 
@@ -2861,7 +3422,7 @@
 		
 			
 			
-			<h2 id="ListProductsByIDsForUpdateRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=23399:23509#L716">ListProductsByIDsForUpdateRow</a>
+			<h2 id="ListProductsByIDsForUpdateRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=47025:47135#L1420">ListProductsByIDsForUpdateRow</a>
 				<a class="permalink" href="#ListProductsByIDsForUpdateRow">¶</a>
 				
 				
@@ -2888,7 +3449,7 @@
 		
 			
 			
-			<h2 id="ListProductsByIDsRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=20797:20898#L645">ListProductsByIDsRow</a>
+			<h2 id="ListProductsByIDsRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=44423:44524#L1349">ListProductsByIDsRow</a>
 				<a class="permalink" href="#ListProductsByIDsRow">¶</a>
 				
 				
@@ -2915,7 +3476,7 @@
 		
 			
 			
-			<h2 id="ListPublishedProductsAscAfterParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=27141:27529#L817">ListPublishedProductsAscAfterParams</a>
+			<h2 id="ListPublishedProductsAscAfterParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=50767:51155#L1521">ListPublishedProductsAscAfterParams</a>
 				<a class="permalink" href="#ListPublishedProductsAscAfterParams">¶</a>
 				
 				
@@ -2951,7 +3512,7 @@
 		
 			
 			
-			<h2 id="ListPublishedProductsAscAfterRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=27531:27644#L832">ListPublishedProductsAscAfterRow</a>
+			<h2 id="ListPublishedProductsAscAfterRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=51157:51270#L1536">ListPublishedProductsAscAfterRow</a>
 				<a class="permalink" href="#ListPublishedProductsAscAfterRow">¶</a>
 				
 				
@@ -2978,7 +3539,7 @@
 		
 			
 			
-			<h2 id="ListPublishedProductsAscFirstParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=32403:32704#L972">ListPublishedProductsAscFirstParams</a>
+			<h2 id="ListPublishedProductsAscFirstParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=56029:56330#L1676">ListPublishedProductsAscFirstParams</a>
 				<a class="permalink" href="#ListPublishedProductsAscFirstParams">¶</a>
 				
 				
@@ -3012,7 +3573,7 @@
 		
 			
 			
-			<h2 id="ListPublishedProductsAscFirstRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=32706:32819#L985">ListPublishedProductsAscFirstRow</a>
+			<h2 id="ListPublishedProductsAscFirstRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=56332:56445#L1689">ListPublishedProductsAscFirstRow</a>
 				<a class="permalink" href="#ListPublishedProductsAscFirstRow">¶</a>
 				
 				
@@ -3039,7 +3600,7 @@
 		
 			
 			
-			<h2 id="ListPublishedProductsDescAfterParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=37519:37908#L1123">ListPublishedProductsDescAfterParams</a>
+			<h2 id="ListPublishedProductsDescAfterParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=61145:61534#L1827">ListPublishedProductsDescAfterParams</a>
 				<a class="permalink" href="#ListPublishedProductsDescAfterParams">¶</a>
 				
 				
@@ -3075,7 +3636,7 @@
 		
 			
 			
-			<h2 id="ListPublishedProductsDescAfterRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=37910:38024#L1138">ListPublishedProductsDescAfterRow</a>
+			<h2 id="ListPublishedProductsDescAfterRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=61536:61650#L1842">ListPublishedProductsDescAfterRow</a>
 				<a class="permalink" href="#ListPublishedProductsDescAfterRow">¶</a>
 				
 				
@@ -3102,7 +3663,7 @@
 		
 			
 			
-			<h2 id="ListPublishedProductsDescFirstParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=42797:43099#L1278">ListPublishedProductsDescFirstParams</a>
+			<h2 id="ListPublishedProductsDescFirstParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=66423:66725#L1982">ListPublishedProductsDescFirstParams</a>
 				<a class="permalink" href="#ListPublishedProductsDescFirstParams">¶</a>
 				
 				
@@ -3136,7 +3697,7 @@
 		
 			
 			
-			<h2 id="ListPublishedProductsDescFirstRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=43101:43215#L1291">ListPublishedProductsDescFirstRow</a>
+			<h2 id="ListPublishedProductsDescFirstRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=66727:66841#L1995">ListPublishedProductsDescFirstRow</a>
 				<a class="permalink" href="#ListPublishedProductsDescFirstRow">¶</a>
 				
 				
@@ -3163,7 +3724,7 @@
 		
 			
 			
-			<h2 id="ListPurchaseDetailItemsForUserRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=2752:2892#L102">ListPurchaseDetailItemsForUserRow</a>
+			<h2 id="ListPurchaseDetailItemsForUserRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=11719:11859#L450">ListPurchaseDetailItemsForUserRow</a>
 				<a class="permalink" href="#ListPurchaseDetailItemsForUserRow">¶</a>
 				
 				
@@ -3241,7 +3802,7 @@
 		
 			
 			
-			<h2 id="ListPurchasesFeedAfterParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=5371:5590#L200">ListPurchasesFeedAfterParams</a>
+			<h2 id="ListPurchasesFeedAfterParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=14555:14777#L556">ListPurchasesFeedAfterParams</a>
 				<a class="permalink" href="#ListPurchasesFeedAfterParams">¶</a>
 				
 				
@@ -3251,9 +3812,9 @@
 <span id="ListPurchasesFeedAfterParams.UserID"></span>    UserID         <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
 <span id="ListPurchasesFeedAfterParams.AfterOrderedAt"></span>    AfterOrderedAt <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
 <span id="ListPurchasesFeedAfterParams.AfterID"></span>    AfterID        <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
-<span id="ListPurchasesFeedAfterParams.FilterByPeriod"></span>    FilterByPeriod <a href="../../../../../../builtin/#bool">bool</a>
 <span id="ListPurchasesFeedAfterParams.OrderedAfter"></span>    OrderedAfter   *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
 <span id="ListPurchasesFeedAfterParams.OrderedBefore"></span>    OrderedBefore  *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="ListPurchasesFeedAfterParams.StatusCodes"></span>    StatusCodes    []<a href="../../../../../../builtin/#int16">int16</a>
 <span id="ListPurchasesFeedAfterParams.LimitParam"></span>    LimitParam     <a href="../../../../../../builtin/#int32">int32</a>
 }
 </pre>
@@ -3272,7 +3833,7 @@
 		
 			
 			
-			<h2 id="ListPurchasesFeedAfterRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=5592:5837#L210">ListPurchasesFeedAfterRow</a>
+			<h2 id="ListPurchasesFeedAfterRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=14779:15024#L566">ListPurchasesFeedAfterRow</a>
 				<a class="permalink" href="#ListPurchasesFeedAfterRow">¶</a>
 				
 				
@@ -3305,18 +3866,18 @@
 		
 			
 			
-			<h2 id="ListPurchasesFeedFirstParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=9637:9804#L364">ListPurchasesFeedFirstParams</a>
+			<h2 id="ListPurchasesFeedFirstParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=19297:19462#L736">ListPurchasesFeedFirstParams</a>
 				<a class="permalink" href="#ListPurchasesFeedFirstParams">¶</a>
 				
 				
 			</h2>
 			
 			<pre>type ListPurchasesFeedFirstParams struct {
-<span id="ListPurchasesFeedFirstParams.UserID"></span>    UserID         <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
-<span id="ListPurchasesFeedFirstParams.FilterByPeriod"></span>    FilterByPeriod <a href="../../../../../../builtin/#bool">bool</a>
-<span id="ListPurchasesFeedFirstParams.OrderedAfter"></span>    OrderedAfter   *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
-<span id="ListPurchasesFeedFirstParams.OrderedBefore"></span>    OrderedBefore  *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
-<span id="ListPurchasesFeedFirstParams.LimitParam"></span>    LimitParam     <a href="../../../../../../builtin/#int32">int32</a>
+<span id="ListPurchasesFeedFirstParams.UserID"></span>    UserID        <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="ListPurchasesFeedFirstParams.OrderedAfter"></span>    OrderedAfter  *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="ListPurchasesFeedFirstParams.OrderedBefore"></span>    OrderedBefore *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="ListPurchasesFeedFirstParams.StatusCodes"></span>    StatusCodes   []<a href="../../../../../../builtin/#int16">int16</a>
+<span id="ListPurchasesFeedFirstParams.LimitParam"></span>    LimitParam    <a href="../../../../../../builtin/#int32">int32</a>
 }
 </pre>
 
@@ -3334,7 +3895,7 @@
 		
 			
 			
-			<h2 id="ListPurchasesFeedFirstRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=9806:10051#L372">ListPurchasesFeedFirstRow</a>
+			<h2 id="ListPurchasesFeedFirstRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=19464:19709#L744">ListPurchasesFeedFirstRow</a>
 				<a class="permalink" href="#ListPurchasesFeedFirstRow">¶</a>
 				
 				
@@ -4264,7 +4825,49 @@ WHERE u.deleted_at IS NULL
 				
 			
 				
-				<h3 id="Queries.CountDashboardPurchasesByStatus">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/dashboard_query_service.gen.sql.go.html?s=1667:1828#L49">CountDashboardPurchasesByStatus</a>
+				<h3 id="Queries.CountAllProductsByFilter">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=2607:2722#L78">CountAllProductsByFilter</a>
+					<a class="permalink" href="#Queries.CountAllProductsByFilter">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) CountAllProductsByFilter(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#CountAllProductsByFilterParams">CountAllProductsByFilterParams</a>) (<a href="../../../../../../builtin/#int64">int64</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>公開状態を問わない商品のうち、商品一覧と同じ検索条件に一致する件数を返します。
+絞り込みの条件は CountPublishedProductsByFilter と逐語的に同一に保ちます。母集団の差は公開状態だけです。
+</p><pre>SELECT COUNT(*)::BIGINT AS count
+FROM products AS p
+WHERE ($1::UUID IS NULL OR p.category_id = $1)
+    AND ($2::UUID IS NULL OR p.status_id = $2)
+    AND (
+        $3::SMALLINT[] IS NULL
+        OR p.category_id IN (
+            SELECT c.id FROM product_categories AS c
+            WHERE c.code = ANY($3::SMALLINT[])
+        )
+    )
+    AND (
+        $4::SMALLINT[] IS NULL
+        OR p.status_id IN (
+            SELECT s.id FROM product_statuses AS s
+            WHERE s.code = ANY($4::SMALLINT[])
+        )
+    )
+    AND ($5::NUMERIC IS NULL OR p.price &gt;= $5)
+    AND ($6::NUMERIC IS NULL OR p.price &lt;= $6)
+    AND ($7::INTEGER IS NULL OR p.quantity &gt;= $7)
+    AND ($8::INTEGER IS NULL OR p.quantity &lt;= $8)
+    AND (
+        $9::TEXT IS NULL
+        OR p.name ILIKE &#39;%&#39; || $9 || &#39;%&#39;
+        OR p.description ILIKE &#39;%&#39; || $9 || &#39;%&#39;
+    )
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.CountDashboardPurchasesByStatus">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/dashboard_query_service.gen.sql.go.html?s=1831:1992#L55">CountDashboardPurchasesByStatus</a>
 					<a class="permalink" href="#Queries.CountDashboardPurchasesByStatus">¶</a>
 					
 					
@@ -4272,7 +4875,7 @@ WHERE u.deleted_at IS NULL
 				<pre>func (q *<a href="#Queries">Queries</a>) CountDashboardPurchasesByStatus(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#CountDashboardPurchasesByStatusParams">CountDashboardPurchasesByStatusParams</a>) ([]*<a href="#CountDashboardPurchasesByStatusRow">CountDashboardPurchasesByStatusRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
 				<p>=== source: database/dml/query_service/dashboard/select_dashboard_purchase_status_counts.sql ===
 指定期間に注文された購入をステータス単位に集計し、購入ステータスマスタの表示順（sort_key 昇順）で返します。
-期間は [ordered_after, ordered_before) の半開区間です。
+期間は半開区間 [ordered_after, ordered_before)（internal/usecase/tools/timewindow/README.md）です。
 売上集計と異なりキャンセル済みの購入も 1 ステータスとして含めます。
 </p><pre>SELECT
     ps.id AS status_id,
@@ -4282,8 +4885,11 @@ WHERE u.deleted_at IS NULL
 FROM purchases AS p
 INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
 WHERE
-    p.ordered_at &gt;= $1
-    AND p.ordered_at &lt; $2
+    (p.ordered_at &gt;= $1 OR $1 IS NULL)
+    AND (
+        p.ordered_at &lt; $2
+        OR $2 IS NULL
+    )
 GROUP BY ps.id, ps.code, ps.name, ps.sort_key
 ORDER BY ps.sort_key ASC
 </pre>
@@ -4310,7 +4916,7 @@ WHERE u.deleted_at IS NOT NULL
 				
 			
 				
-				<h3 id="Queries.CountProducts">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=952:1031#L26">CountProducts</a>
+				<h3 id="Queries.CountProducts">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=3731:3810#L115">CountProducts</a>
 					<a class="permalink" href="#Queries.CountProducts">¶</a>
 					
 					
@@ -4330,7 +4936,7 @@ FROM products
 				
 			
 				
-				<h3 id="Queries.CountPublishedProductsByFilter">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=3484:3611#L106">CountPublishedProductsByFilter</a>
+				<h3 id="Queries.CountPublishedProductsByFilter">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=6263:6390#L195">CountPublishedProductsByFilter</a>
 					<a class="permalink" href="#Queries.CountPublishedProductsByFilter">¶</a>
 					
 					
@@ -4533,7 +5139,7 @@ RETURNING carts.id, carts.user_id, carts.session_token, carts.expires_at, carts.
 				
 			
 				
-				<h3 id="Queries.CreateProduct">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=4912:4996#L184">CreateProduct</a>
+				<h3 id="Queries.CreateProduct">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=7780:7864#L278">CreateProduct</a>
 					<a class="permalink" href="#Queries.CreateProduct">¶</a>
 					
 					
@@ -4549,7 +5155,8 @@ RETURNING carts.id, carts.user_id, carts.session_token, carts.expires_at, carts.
     stock_warning_threshold,
     status_id,
     category_id,
-    published_at
+    published_at,
+    created_at
 ) VALUES
 (
     $1,
@@ -4560,7 +5167,8 @@ RETURNING carts.id, carts.user_id, carts.session_token, carts.expires_at, carts.
     $6,
     $7,
     $8,
-    $9
+    $9,
+    $10
 )
 </pre>
 
@@ -4569,7 +5177,7 @@ RETURNING carts.id, carts.user_id, carts.session_token, carts.expires_at, carts.
 				
 			
 				
-				<h3 id="Queries.CreateProductImage">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=6005:6099#L237">CreateProductImage</a>
+				<h3 id="Queries.CreateProductImage">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=8890:8984#L332">CreateProductImage</a>
 					<a class="permalink" href="#Queries.CreateProductImage">¶</a>
 					
 					
@@ -4597,7 +5205,7 @@ RETURNING carts.id, carts.user_id, carts.session_token, carts.expires_at, carts.
 				
 			
 				
-				<h3 id="Queries.CreateProductImagesIfAbsent">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=7501:7613#L296">CreateProductImagesIfAbsent</a>
+				<h3 id="Queries.CreateProductImagesIfAbsent">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=10386:10498#L391">CreateProductImagesIfAbsent</a>
 					<a class="permalink" href="#Queries.CreateProductImagesIfAbsent">¶</a>
 					
 					
@@ -5027,7 +5635,7 @@ WHERE p.name = $1
 				
 			
 				
-				<h3 id="Queries.GetProductByID">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=9239:9346#L338">GetProductByID</a>
+				<h3 id="Queries.GetProductByID">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=12124:12231#L433">GetProductByID</a>
 					<a class="permalink" href="#Queries.GetProductByID">¶</a>
 					
 					
@@ -5054,7 +5662,7 @@ WHERE p.id = $1
 				
 			
 				
-				<h3 id="Queries.GetProductByIDForUpdate">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=11474:11599#L394">GetProductByIDForUpdate</a>
+				<h3 id="Queries.GetProductByIDForUpdate">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=14359:14484#L489">GetProductByIDForUpdate</a>
 					<a class="permalink" href="#Queries.GetProductByIDForUpdate">¶</a>
 					
 					
@@ -5166,7 +5774,7 @@ ORDER BY ps.sort_key ASC
 				
 			
 				
-				<h3 id="Queries.GetPublishedProductByID">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=13692:13817#L450">GetPublishedProductByID</a>
+				<h3 id="Queries.GetPublishedProductByID">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=16577:16702#L545">GetPublishedProductByID</a>
 					<a class="permalink" href="#Queries.GetPublishedProductByID">¶</a>
 					
 					
@@ -5485,6 +6093,383 @@ LIMIT $2 OFFSET $1
 				
 			
 				
+				<h3 id="Queries.ListAllProductsAscAfter">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=21404:21541#L677">ListAllProductsAscAfter</a>
+					<a class="permalink" href="#Queries.ListAllProductsAscAfter">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) ListAllProductsAscAfter(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#ListAllProductsAscAfterParams">ListAllProductsAscAfterParams</a>) ([]*<a href="#ListAllProductsAscAfterRow">ListAllProductsAscAfterRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>公開状態を問わない商品を (created_at ASC, id ASC) の安定順で keyset ページネーション取得します。
+status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
+category_id / status_id / category_codes / status_codes / keyword / price・quantity の上下限は
+指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは
+usecase の validateMasterFilter が拒否します。
+並び順が公開日時でなく登録日時なのは、未公開商品が published_at を持たないためです。
+絞り込みの条件は対の ListPublishedProducts* と逐語的に同一に保ちます。母集団の差は公開状態だけです。
+カーソル以降のページを返します。先頭ページは対の First クエリが担います。
+</p><pre>SELECT
+    ps.name AS status_name,
+    pc.name AS category_name,
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+FROM products AS p
+INNER JOIN product_statuses AS ps ON p.status_id = ps.id
+INNER JOIN product_categories AS pc ON p.category_id = pc.id
+WHERE ($1::UUID IS NULL OR p.category_id = $1)
+    AND ($2::UUID IS NULL OR p.status_id = $2)
+    AND (
+        $3::SMALLINT[] IS NULL
+        OR p.category_id IN (
+            SELECT c.id FROM product_categories AS c
+            WHERE c.code = ANY($3::SMALLINT[])
+        )
+    )
+    AND (
+        $4::SMALLINT[] IS NULL
+        OR p.status_id IN (
+            SELECT s.id FROM product_statuses AS s
+            WHERE s.code = ANY($4::SMALLINT[])
+        )
+    )
+    AND ($5::NUMERIC IS NULL OR p.price &gt;= $5)
+    AND ($6::NUMERIC IS NULL OR p.price &lt;= $6)
+    AND ($7::INTEGER IS NULL OR p.quantity &gt;= $7)
+    AND ($8::INTEGER IS NULL OR p.quantity &lt;= $8)
+    AND (
+        $9::TEXT IS NULL
+        OR p.name ILIKE &#39;%&#39; || $9 || &#39;%&#39;
+        OR p.description ILIKE &#39;%&#39; || $9 || &#39;%&#39;
+    )
+    AND (
+        p.created_at &gt; $10
+        OR (p.created_at = $10 AND p.id &gt; $11)
+    )
+ORDER BY p.created_at ASC, p.id ASC
+LIMIT $12
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.ListAllProductsAscFirst">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=26448:26585#L825">ListAllProductsAscFirst</a>
+					<a class="permalink" href="#Queries.ListAllProductsAscFirst">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) ListAllProductsAscFirst(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#ListAllProductsAscFirstParams">ListAllProductsAscFirstParams</a>) ([]*<a href="#ListAllProductsAscFirstRow">ListAllProductsAscFirstRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>公開状態を問わない商品を (created_at ASC, id ASC) の安定順で keyset ページネーション取得します。
+status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
+category_id / status_id / category_codes / status_codes / keyword / price・quantity の上下限は
+指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは
+usecase の validateMasterFilter が拒否します。
+並び順が公開日時でなく登録日時なのは、未公開商品が published_at を持たないためです。
+絞り込みの条件は対の ListPublishedProducts* と逐語的に同一に保ちます。母集団の差は公開状態だけです。
+先頭ページを返します。カーソル以降は対の After クエリが担います。
+</p><pre>SELECT
+    ps.name AS status_name,
+    pc.name AS category_name,
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+FROM products AS p
+INNER JOIN product_statuses AS ps ON p.status_id = ps.id
+INNER JOIN product_categories AS pc ON p.category_id = pc.id
+WHERE ($1::UUID IS NULL OR p.category_id = $1)
+    AND ($2::UUID IS NULL OR p.status_id = $2)
+    AND (
+        $3::SMALLINT[] IS NULL
+        OR p.category_id IN (
+            SELECT c.id FROM product_categories AS c
+            WHERE c.code = ANY($3::SMALLINT[])
+        )
+    )
+    AND (
+        $4::SMALLINT[] IS NULL
+        OR p.status_id IN (
+            SELECT s.id FROM product_statuses AS s
+            WHERE s.code = ANY($4::SMALLINT[])
+        )
+    )
+    AND ($5::NUMERIC IS NULL OR p.price &gt;= $5)
+    AND ($6::NUMERIC IS NULL OR p.price &lt;= $6)
+    AND ($7::INTEGER IS NULL OR p.quantity &gt;= $7)
+    AND ($8::INTEGER IS NULL OR p.quantity &lt;= $8)
+    AND (
+        $9::TEXT IS NULL
+        OR p.name ILIKE &#39;%&#39; || $9 || &#39;%&#39;
+        OR p.description ILIKE &#39;%&#39; || $9 || &#39;%&#39;
+    )
+ORDER BY p.created_at ASC, p.id ASC
+LIMIT $10
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.ListAllProductsDescAfter">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=31731:31871#L981">ListAllProductsDescAfter</a>
+					<a class="permalink" href="#Queries.ListAllProductsDescAfter">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) ListAllProductsDescAfter(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#ListAllProductsDescAfterParams">ListAllProductsDescAfterParams</a>) ([]*<a href="#ListAllProductsDescAfterRow">ListAllProductsDescAfterRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>公開状態を問わない商品を (created_at DESC, id DESC) の安定順で keyset ページネーション取得します。
+status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
+category_id / status_id / category_codes / status_codes / keyword / price・quantity の上下限は
+指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは
+usecase の validateMasterFilter が拒否します。
+並び順が公開日時でなく登録日時なのは、未公開商品が published_at を持たないためです。
+絞り込みの条件は対の ListPublishedProducts* と逐語的に同一に保ちます。母集団の差は公開状態だけです。
+カーソル以降のページを返します。先頭ページは対の First クエリが担います。
+</p><pre>SELECT
+    ps.name AS status_name,
+    pc.name AS category_name,
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+FROM products AS p
+INNER JOIN product_statuses AS ps ON p.status_id = ps.id
+INNER JOIN product_categories AS pc ON p.category_id = pc.id
+WHERE ($1::UUID IS NULL OR p.category_id = $1)
+    AND ($2::UUID IS NULL OR p.status_id = $2)
+    AND (
+        $3::SMALLINT[] IS NULL
+        OR p.category_id IN (
+            SELECT c.id FROM product_categories AS c
+            WHERE c.code = ANY($3::SMALLINT[])
+        )
+    )
+    AND (
+        $4::SMALLINT[] IS NULL
+        OR p.status_id IN (
+            SELECT s.id FROM product_statuses AS s
+            WHERE s.code = ANY($4::SMALLINT[])
+        )
+    )
+    AND ($5::NUMERIC IS NULL OR p.price &gt;= $5)
+    AND ($6::NUMERIC IS NULL OR p.price &lt;= $6)
+    AND ($7::INTEGER IS NULL OR p.quantity &gt;= $7)
+    AND ($8::INTEGER IS NULL OR p.quantity &lt;= $8)
+    AND (
+        $9::TEXT IS NULL
+        OR p.name ILIKE &#39;%&#39; || $9 || &#39;%&#39;
+        OR p.description ILIKE &#39;%&#39; || $9 || &#39;%&#39;
+    )
+    AND (
+        p.created_at &lt; $10
+        OR (p.created_at = $10 AND p.id &lt; $11)
+    )
+ORDER BY p.created_at DESC, p.id DESC
+LIMIT $12
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.ListAllProductsDescFirst">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=36866:37006#L1130">ListAllProductsDescFirst</a>
+					<a class="permalink" href="#Queries.ListAllProductsDescFirst">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) ListAllProductsDescFirst(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#ListAllProductsDescFirstParams">ListAllProductsDescFirstParams</a>) ([]*<a href="#ListAllProductsDescFirstRow">ListAllProductsDescFirstRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>=== source: database/dml/repository/product/select_all_products.sql ===
+公開状態を問わない商品を (created_at DESC, id DESC) の安定順で keyset ページネーション取得します。
+status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
+internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
+category_id / status_id / category_codes / status_codes / keyword / price・quantity の上下限は
+指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは
+usecase の validateMasterFilter が拒否します。
+並び順が公開日時でなく登録日時なのは、未公開商品が published_at を持たないためです。
+絞り込みの条件は対の ListPublishedProducts* と逐語的に同一に保ちます。母集団の差は公開状態だけです。
+先頭ページを返します。カーソル以降は対の After クエリが担います。
+</p><pre>SELECT
+    ps.name AS status_name,
+    pc.name AS category_name,
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+FROM products AS p
+INNER JOIN product_statuses AS ps ON p.status_id = ps.id
+INNER JOIN product_categories AS pc ON p.category_id = pc.id
+WHERE ($1::UUID IS NULL OR p.category_id = $1)
+    AND ($2::UUID IS NULL OR p.status_id = $2)
+    AND (
+        $3::SMALLINT[] IS NULL
+        OR p.category_id IN (
+            SELECT c.id FROM product_categories AS c
+            WHERE c.code = ANY($3::SMALLINT[])
+        )
+    )
+    AND (
+        $4::SMALLINT[] IS NULL
+        OR p.status_id IN (
+            SELECT s.id FROM product_statuses AS s
+            WHERE s.code = ANY($4::SMALLINT[])
+        )
+    )
+    AND ($5::NUMERIC IS NULL OR p.price &gt;= $5)
+    AND ($6::NUMERIC IS NULL OR p.price &lt;= $6)
+    AND ($7::INTEGER IS NULL OR p.quantity &gt;= $7)
+    AND ($8::INTEGER IS NULL OR p.quantity &lt;= $8)
+    AND (
+        $9::TEXT IS NULL
+        OR p.name ILIKE &#39;%&#39; || $9 || &#39;%&#39;
+        OR p.description ILIKE &#39;%&#39; || $9 || &#39;%&#39;
+    )
+ORDER BY p.created_at DESC, p.id DESC
+LIMIT $10
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.ListAllPurchasesFeedAfter">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=6052:6195#L231">ListAllPurchasesFeedAfter</a>
+					<a class="permalink" href="#Queries.ListAllPurchasesFeedAfter">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) ListAllPurchasesFeedAfter(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#ListAllPurchasesFeedAfterParams">ListAllPurchasesFeedAfterParams</a>) ([]*<a href="#ListAllPurchasesFeedAfterRow">ListAllPurchasesFeedAfterRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>購入者を問わず (ordered_at DESC, id DESC) の keyset 境界より過去の購入履歴を返す（admin の可視範囲）。
+境界の解釈は ListPurchasesFeedAfter と同一で、母集団だけが異なる。
+</p><pre>WITH page AS (
+    SELECT
+        p.id,
+        p.code,
+        p.total_amount,
+        p.ordered_at,
+        p.status_id
+    FROM purchases AS p
+    WHERE (
+        p.ordered_at &lt; $1
+        OR (p.ordered_at = $1 AND p.id &lt; $2)
+    )
+    AND (
+        p.ordered_at &gt;= $3
+        OR $3 IS NULL
+    )
+    AND (
+        p.ordered_at &lt; $4
+        OR $4 IS NULL
+    )
+    AND (
+        $5::SMALLINT[] IS NULL
+        OR p.status_id IN (
+            SELECT s.id FROM purchase_statuses AS s
+            WHERE s.code = ANY($5::SMALLINT[])
+        )
+    )
+    ORDER BY p.ordered_at DESC, p.id DESC
+    LIMIT $6
+)
+
+SELECT
+    page.id,
+    page.code,
+    page.total_amount,
+    page.ordered_at,
+    ps.id AS status_id,
+    ps.code AS status_code,
+    ps.name AS status_name,
+    first_item.product_name AS first_item_name,
+    item_agg.item_count
+FROM page
+INNER JOIN purchase_statuses AS ps ON page.status_id = ps.id
+INNER JOIN LATERAL (
+    SELECT pr.name AS product_name
+    FROM purchase_details AS d
+    INNER JOIN products AS pr ON d.product_id = pr.id
+    WHERE d.purchase_id = page.id
+    ORDER BY d.id
+    LIMIT 1
+) AS first_item ON TRUE
+INNER JOIN LATERAL (
+    SELECT COUNT(*)::BIGINT AS item_count
+    FROM purchase_details AS d
+    WHERE d.purchase_id = page.id
+) AS item_agg ON TRUE
+ORDER BY page.ordered_at DESC, page.id DESC
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.ListAllPurchasesFeedFirst">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=10664:10807#L403">ListAllPurchasesFeedFirst</a>
+					<a class="permalink" href="#Queries.ListAllPurchasesFeedFirst">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) ListAllPurchasesFeedFirst(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#ListAllPurchasesFeedFirstParams">ListAllPurchasesFeedFirstParams</a>) ([]*<a href="#ListAllPurchasesFeedFirstRow">ListAllPurchasesFeedFirstRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>=== source: database/dml/query_service/purchase/select_all_purchases_feed.sql ===
+購入者を問わず購入履歴を (ordered_at DESC, id DESC) の安定順で先頭ページ取得する（admin の可視範囲）。
+所有権で閉じる ListPurchasesFeedFirst と母集団だけが異なり、並び順・要約の解決・期間とステータスの
+絞り込みは同一である。母集団ごとにクエリを分ける理由は docs/spec/purchase/usecase.md GET 一覧 を参照。
+ページを CTE で先に閉じてから結合する理由、LATERAL を INNER で結合する理由は
+database/dml/query_service/purchase/select_purchases_feed.sql と同じ。
+</p><pre>WITH page AS (
+    SELECT
+        p.id,
+        p.code,
+        p.total_amount,
+        p.ordered_at,
+        p.status_id
+    FROM purchases AS p
+    WHERE (
+        p.ordered_at &gt;= $1
+        OR $1 IS NULL
+    )
+    AND (
+        p.ordered_at &lt; $2
+        OR $2 IS NULL
+    )
+    AND (
+        $3::SMALLINT[] IS NULL
+        OR p.status_id IN (
+            SELECT s.id FROM purchase_statuses AS s
+            WHERE s.code = ANY($3::SMALLINT[])
+        )
+    )
+    ORDER BY p.ordered_at DESC, p.id DESC
+    LIMIT $4
+)
+
+SELECT
+    page.id,
+    page.code,
+    page.total_amount,
+    page.ordered_at,
+    ps.id AS status_id,
+    ps.code AS status_code,
+    ps.name AS status_name,
+    first_item.product_name AS first_item_name,
+    item_agg.item_count
+FROM page
+INNER JOIN purchase_statuses AS ps ON page.status_id = ps.id
+INNER JOIN LATERAL (
+    SELECT pr.name AS product_name
+    FROM purchase_details AS d
+    INNER JOIN products AS pr ON d.product_id = pr.id
+    WHERE d.purchase_id = page.id
+    ORDER BY d.id
+    LIMIT 1
+) AS first_item ON TRUE
+INNER JOIN LATERAL (
+    SELECT COUNT(*)::BIGINT AS item_count
+    FROM purchase_details AS d
+    WHERE d.purchase_id = page.id
+) AS item_agg ON TRUE
+ORDER BY page.ordered_at DESC, page.id DESC
+</pre>
+
+				
+				
+				
+			
+				
 				<h3 id="Queries.ListCartItemsByCartID">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/cart_repository.gen.sql.go.html?s=9879:9994#L334">ListCartItemsByCartID</a>
 					<a class="permalink" href="#Queries.ListCartItemsByCartID">¶</a>
 					
@@ -5524,7 +6509,7 @@ LIMIT $2 OFFSET $1
 				
 			
 				
-				<h3 id="Queries.ListExistingProductImagePaths">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=15166:15273#L489">ListExistingProductImagePaths</a>
+				<h3 id="Queries.ListExistingProductImagePaths">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=38792:38899#L1193">ListExistingProductImagePaths</a>
 					<a class="permalink" href="#Queries.ListExistingProductImagePaths">¶</a>
 					
 					
@@ -5546,7 +6531,7 @@ WHERE pi.image_path = ANY($1::TEXT[])
 				
 			
 				
-				<h3 id="Queries.ListLowStockProducts">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=17583:17696#L548">ListLowStockProducts</a>
+				<h3 id="Queries.ListLowStockProducts">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=41209:41322#L1252">ListLowStockProducts</a>
 					<a class="permalink" href="#Queries.ListLowStockProducts">¶</a>
 					
 					
@@ -5577,7 +6562,46 @@ LIMIT $1
 				
 			
 				
-				<h3 id="Queries.ListProductImagesByProductIDs">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=19557:19694#L605">ListProductImagesByProductIDs</a>
+				<h3 id="Queries.ListProductAmountRanking">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_query_service.gen.sql.go.html?s=2264:2404#L71">ListProductAmountRanking</a>
+					<a class="permalink" href="#Queries.ListProductAmountRanking">¶</a>
+					
+					
+				</h3>
+				<pre>func (q *<a href="#Queries">Queries</a>) ListProductAmountRanking(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#ListProductAmountRankingParams">ListProductAmountRankingParams</a>) ([]*<a href="#ListProductAmountRankingRow">ListProductAmountRankingRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>購入明細を商品単位で集計し、売上金額（単価 × 数量の総和）の降順で上位 limit_count 件を返します。
+母集団は ListProductQuantityRanking と逐語的に同一で、集計する指標と並び順だけが異なります
+（同じ期間を指定した 2 つの口が同じ母集団を集計することの担保）。
+金額は価格スケールの正確な decimal で、決済スケールへは丸めません（ADR-0038）。
+同一売上金額は商品 ID の昇順で安定的に並べます。
+</p><pre>SELECT
+    p.id AS product_id,
+    p.name,
+    p.price,
+    p.published_at,
+    SUM(pd.unit_price * pd.quantity)::NUMERIC AS sales_amount
+FROM purchase_details AS pd
+INNER JOIN purchases AS pur ON pd.purchase_id = pur.id AND pur.canceled_at IS NULL
+INNER JOIN products AS p ON pd.product_id = p.id AND p.published_at IS NOT NULL
+WHERE
+    (
+        pur.ordered_at &gt;= $1
+        OR $1 IS NULL
+    )
+    AND (
+        pur.ordered_at &lt; $2
+        OR $2 IS NULL
+    )
+GROUP BY p.id
+ORDER BY sales_amount DESC, p.id ASC
+LIMIT $3
+</pre>
+
+				
+				
+				
+			
+				
+				<h3 id="Queries.ListProductImagesByProductIDs">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=43183:43320#L1309">ListProductImagesByProductIDs</a>
 					<a class="permalink" href="#Queries.ListProductImagesByProductIDs">¶</a>
 					
 					
@@ -5599,21 +6623,20 @@ ORDER BY pi.product_id, pi.display_sort
 				
 			
 				
-				<h3 id="Queries.ListProductRanking">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_query_service.gen.sql.go.html?s=2607:2729#L64">ListProductRanking</a>
-					<a class="permalink" href="#Queries.ListProductRanking">¶</a>
+				<h3 id="Queries.ListProductQuantityRanking">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_query_service.gen.sql.go.html?s=5333:5479#L166">ListProductQuantityRanking</a>
+					<a class="permalink" href="#Queries.ListProductQuantityRanking">¶</a>
 					
 					
 				</h3>
-				<pre>func (q *<a href="#Queries">Queries</a>) ListProductRanking(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#ListProductRankingParams">ListProductRankingParams</a>) ([]*<a href="#ListProductRankingRow">ListProductRankingRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<pre>func (q *<a href="#Queries">Queries</a>) ListProductQuantityRanking(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#ListProductQuantityRankingParams">ListProductQuantityRankingParams</a>) ([]*<a href="#ListProductQuantityRankingRow">ListProductQuantityRankingRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
 				<p>=== source: database/dml/query_service/product/select_product_ranking.sql ===
 購入明細を商品単位で集計し、販売数量の降順で上位 limit_count 件を返します。
 公開済み（published_at 非 NULL）の商品のみを対象とし、非公開・未存在は集計から除外します。
-「公開中」の定義はドメイン（product.IsPublished）が持ち、この JOIN 条件はその実行形です。
+product.IsPublished と同値（database/dml/query_service/README.md 参照）。
 published_at を返すのは呼び出し側が返却行を同じ定義で突き合わせるためで、表示には用いません。
 キャンセル済み（canceled_at 設定済み）の購入は除外し、未払いの購入は含みます。
-「キャンセル済み」の定義はドメイン（Purchase.IsCanceled）が持ち、この条件はその実行形です。
-述語が見るのは status ですが、両者は再構築時の不変条件で等価に縛られています。
-filter_by_period=true の場合は注文日時が ordered_after 以降の購入のみを集計対象にします。
+Purchase.IsCanceled と同値（database/dml/query_service/README.md 参照）。
+注文日時は半開区間 [ordered_after, ordered_before)（internal/usecase/tools/timewindow/README.md）で絞り込みます。
 同一販売数量は商品 ID の昇順で安定的に並べます。
 </p><pre>SELECT
     p.id AS product_id,
@@ -5625,8 +6648,14 @@ FROM purchase_details AS pd
 INNER JOIN purchases AS pur ON pd.purchase_id = pur.id AND pur.canceled_at IS NULL
 INNER JOIN products AS p ON pd.product_id = p.id AND p.published_at IS NOT NULL
 WHERE
-    NOT $1::BOOLEAN
-    OR pur.ordered_at &gt;= $2
+    (
+        pur.ordered_at &gt;= $1
+        OR $1 IS NULL
+    )
+    AND (
+        pur.ordered_at &lt; $2
+        OR $2 IS NULL
+    )
 GROUP BY p.id
 ORDER BY sold_quantity DESC, p.id ASC
 LIMIT $3
@@ -5637,7 +6666,7 @@ LIMIT $3
 				
 			
 				
-				<h3 id="Queries.ListProductsByIDs">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=22036:22154#L668">ListProductsByIDs</a>
+				<h3 id="Queries.ListProductsByIDs">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=45662:45780#L1372">ListProductsByIDs</a>
 					<a class="permalink" href="#Queries.ListProductsByIDs">¶</a>
 					
 					
@@ -5666,7 +6695,7 @@ ORDER BY p.id
 				
 			
 				
-				<h3 id="Queries.ListProductsByIDsForUpdate">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=24821:24957#L740">ListProductsByIDsForUpdate</a>
+				<h3 id="Queries.ListProductsByIDsForUpdate">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=48447:48583#L1444">ListProductsByIDsForUpdate</a>
 					<a class="permalink" href="#Queries.ListProductsByIDsForUpdate">¶</a>
 					
 					
@@ -5696,7 +6725,7 @@ FOR UPDATE OF p
 				
 			
 				
-				<h3 id="Queries.ListPublishedProductsAscAfter">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=29947:30102#L886">ListPublishedProductsAscAfter</a>
+				<h3 id="Queries.ListPublishedProductsAscAfter">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=53573:53728#L1590">ListPublishedProductsAscAfter</a>
 					<a class="permalink" href="#Queries.ListPublishedProductsAscAfter">¶</a>
 					
 					
@@ -5756,7 +6785,7 @@ LIMIT $12
 				
 			
 				
-				<h3 id="Queries.ListPublishedProductsAscFirst">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=35004:35159#L1035">ListPublishedProductsAscFirst</a>
+				<h3 id="Queries.ListPublishedProductsAscFirst">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=58630:58785#L1739">ListPublishedProductsAscFirst</a>
 					<a class="permalink" href="#Queries.ListPublishedProductsAscFirst">¶</a>
 					
 					
@@ -5812,7 +6841,7 @@ LIMIT $10
 				
 			
 				
-				<h3 id="Queries.ListPublishedProductsDescAfter">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=40331:40489#L1192">ListPublishedProductsDescAfter</a>
+				<h3 id="Queries.ListPublishedProductsDescAfter">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=63957:64115#L1896">ListPublishedProductsDescAfter</a>
 					<a class="permalink" href="#Queries.ListPublishedProductsDescAfter">¶</a>
 					
 					
@@ -5872,7 +6901,7 @@ LIMIT $12
 				
 			
 				
-				<h3 id="Queries.ListPublishedProductsDescFirst">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=45475:45633#L1342">ListPublishedProductsDescFirst</a>
+				<h3 id="Queries.ListPublishedProductsDescFirst">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=69101:69259#L2046">ListPublishedProductsDescFirst</a>
 					<a class="permalink" href="#Queries.ListPublishedProductsDescFirst">¶</a>
 					
 					
@@ -5929,7 +6958,7 @@ LIMIT $10
 				
 			
 				
-				<h3 id="Queries.ListPurchaseDetailItemsForUser">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=3451:3593#L122">ListPurchaseDetailItemsForUser</a>
+				<h3 id="Queries.ListPurchaseDetailItemsForUser">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=12418:12560#L470">ListPurchaseDetailItemsForUser</a>
 					<a class="permalink" href="#Queries.ListPurchaseDetailItemsForUser">¶</a>
 					
 					
@@ -5991,7 +7020,7 @@ ORDER BY d.purchase_id, d.id
 				
 			
 				
-				<h3 id="Queries.ListPurchasesFeedAfter">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=7655:7789#L277">ListPurchasesFeedAfter</a>
+				<h3 id="Queries.ListPurchasesFeedAfter">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=17101:17235#L641">ListPurchasesFeedAfter</a>
 					<a class="permalink" href="#Queries.ListPurchasesFeedAfter">¶</a>
 					
 					
@@ -5999,7 +7028,7 @@ ORDER BY d.purchase_id, d.id
 				<pre>func (q *<a href="#Queries">Queries</a>) ListPurchasesFeedAfter(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#ListPurchasesFeedAfterParams">ListPurchasesFeedAfterParams</a>) ([]*<a href="#ListPurchasesFeedAfterRow">ListPurchasesFeedAfterRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
 				<p>(ordered_at DESC, id DESC) の keyset 境界より過去の購入履歴を返す。境界は直前ページ末尾行の
 (ordered_at, id) で、ordered_at 同値は id で安定にタイブレークする。
-期間の絞り込みは先頭ページと同一条件で、ページ送りの間も呼び出し側が同じ期間を渡す前提である。
+期間とステータスの絞り込みは先頭ページと同一条件で、ページ送りの間も呼び出し側が同じ条件を渡す前提である。
 ページを CTE で閉じてから要約を結合する形も先頭ページと同一。
 </p><pre>WITH page AS (
     SELECT
@@ -6015,10 +7044,18 @@ ORDER BY d.purchase_id, d.id
             OR (p.ordered_at = $2 AND p.id &lt; $3)
         )
         AND (
-            NOT $4::BOOLEAN
-            OR (
-                p.ordered_at &gt;= $5
-                AND p.ordered_at &lt; $6
+            p.ordered_at &gt;= $4
+            OR $4 IS NULL
+        )
+        AND (
+            p.ordered_at &lt; $5
+            OR $5 IS NULL
+        )
+        AND (
+            $6::SMALLINT[] IS NULL
+            OR p.status_id IN (
+                SELECT s.id FROM purchase_statuses AS s
+                WHERE s.code = ANY($6::SMALLINT[])
             )
         )
     ORDER BY p.ordered_at DESC, p.id DESC
@@ -6058,7 +7095,7 @@ ORDER BY page.ordered_at DESC, page.id DESC
 				
 			
 				
-				<h3 id="Queries.ListPurchasesFeedFirst">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=11957:12091#L437">ListPurchasesFeedFirst</a>
+				<h3 id="Queries.ListPurchasesFeedFirst">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=21861:21995#L817">ListPurchasesFeedFirst</a>
 					<a class="permalink" href="#Queries.ListPurchasesFeedFirst">¶</a>
 					
 					
@@ -6069,7 +7106,7 @@ ORDER BY page.ordered_at DESC, page.id DESC
 ページを CTE で先に閉じてから結合するのは、明細の要約を解決する LATERAL が LIMIT 前の候補行すべてに
 対して評価されるのを防ぐため。
 明細 1 件以上は Purchase 集約の生成不変条件（docs/spec/purchase/domain.md）のため、LATERAL は INNER で結合する。
-filter_by_period=true の場合は注文日時が半開区間 [ordered_after, ordered_before) の購入だけを返す。
+注文日時は半開区間 [ordered_after, ordered_before)（internal/usecase/tools/timewindow/README.md）で絞り込む。
 </p><pre>WITH page AS (
     SELECT
         p.id,
@@ -6080,10 +7117,18 @@ filter_by_period=true の場合は注文日時が半開区間 [ordered_after, or
     FROM purchases AS p
     WHERE p.user_id = $1
         AND (
-            NOT $2::BOOLEAN
-            OR (
-                p.ordered_at &gt;= $3
-                AND p.ordered_at &lt; $4
+            p.ordered_at &gt;= $2
+            OR $2 IS NULL
+        )
+        AND (
+            p.ordered_at &lt; $3
+            OR $3 IS NULL
+        )
+        AND (
+            $4::SMALLINT[] IS NULL
+            OR p.status_id IN (
+                SELECT s.id FROM purchase_statuses AS s
+                WHERE s.code = ANY($4::SMALLINT[])
             )
         )
     ORDER BY p.ordered_at DESC, p.id DESC
@@ -6594,7 +7639,7 @@ WHERE p.user_id = $1
 				
 			
 				
-				<h3 id="Queries.SoftDeleteProductImagesNotIn">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=47665:47779#L1416">SoftDeleteProductImagesNotIn</a>
+				<h3 id="Queries.SoftDeleteProductImagesNotIn">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=71291:71405#L2120">SoftDeleteProductImagesNotIn</a>
 					<a class="permalink" href="#Queries.SoftDeleteProductImagesNotIn">¶</a>
 					
 					
@@ -6618,7 +7663,7 @@ WHERE product_images.product_id = $1
 				
 			
 				
-				<h3 id="Queries.SumPurchaseItemsByUserID">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=14270:14395#L513">SumPurchaseItemsByUserID</a>
+				<h3 id="Queries.SumPurchaseItemsByUserID">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=24152:24277#L894">SumPurchaseItemsByUserID</a>
 					<a class="permalink" href="#Queries.SumPurchaseItemsByUserID">¶</a>
 					
 					
@@ -6635,11 +7680,12 @@ INNER JOIN purchases AS p ON pd.purchase_id = p.id
 WHERE p.user_id = $1
     AND p.canceled_at IS NULL
     AND (
-        NOT $2::BOOLEAN
-        OR (
-            p.ordered_at &gt;= $3
-            AND p.ordered_at &lt; $4
-        )
+        p.ordered_at &gt;= $2
+        OR $2 IS NULL
+    )
+    AND (
+        p.ordered_at &lt; $3
+        OR $3 IS NULL
     )
 </pre>
 
@@ -6648,7 +7694,7 @@ WHERE p.user_id = $1
 				
 			
 				
-				<h3 id="Queries.SummarizeDashboardSales">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/dashboard_query_service.gen.sql.go.html?s=3807:3942#L112">SummarizeDashboardSales</a>
+				<h3 id="Queries.SummarizeDashboardSales">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/dashboard_query_service.gen.sql.go.html?s=4084:4219#L127">SummarizeDashboardSales</a>
 					<a class="permalink" href="#Queries.SummarizeDashboardSales">¶</a>
 					
 					
@@ -6656,11 +7702,10 @@ WHERE p.user_id = $1
 				<pre>func (q *<a href="#Queries">Queries</a>) SummarizeDashboardSales(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, arg *<a href="#SummarizeDashboardSalesParams">SummarizeDashboardSalesParams</a>) (*<a href="#SummarizeDashboardSalesRow">SummarizeDashboardSalesRow</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
 				<p>=== source: database/dml/query_service/dashboard/select_dashboard_sales.sql ===
 指定期間に注文された購入の売上合計と件数を返します。
-期間は [ordered_after, ordered_before) の半開区間です。
+期間は半開区間 [ordered_after, ordered_before)（internal/usecase/tools/timewindow/README.md）です。
 キャンセル済み（canceled_at 設定済み）の購入は除外し、未払い（paid_at 未設定）の購入は含めます
-（商品売上ランキングと同一の母集団）。
-「キャンセル済み」の定義はドメイン（Purchase.IsCanceled）が持ち、この条件はその実行形です。
-述語が見るのは status ですが、両者は再構築時の不変条件で等価に縛られています。
+（購入レベルの絞りは商品売上ランキングと同じだが、ランキングはさらに公開済み商品に限る）。
+Purchase.IsCanceled と同値（database/dml/query_service/README.md 参照）。
 対象が 0 件のとき SUM は NULL を返すため、COALESCE でゼロ値へ畳み込みます。
 </p><pre>SELECT
     COALESCE(SUM(total_amount), 0)::BIGINT AS sales_amount,
@@ -6668,8 +7713,13 @@ WHERE p.user_id = $1
 FROM purchases
 WHERE
     canceled_at IS NULL
-    AND ordered_at &gt;= $1
-    AND ordered_at &lt; $2
+    AND (
+        ordered_at &gt;= $1 OR $1 IS NULL
+    )
+    AND (
+        ordered_at &lt; $2
+        OR $2 IS NULL
+    )
 </pre>
 
 				
@@ -6677,7 +7727,7 @@ WHERE
 				
 			
 				
-				<h3 id="Queries.SummarizePurchaseItemsByProductByUserID">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=17265:17450#L590">SummarizePurchaseItemsByProductByUserID</a>
+				<h3 id="Queries.SummarizePurchaseItemsByProductByUserID">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=27103:27288#L967">SummarizePurchaseItemsByProductByUserID</a>
 					<a class="permalink" href="#Queries.SummarizePurchaseItemsByProductByUserID">¶</a>
 					
 					
@@ -6686,7 +7736,7 @@ WHERE
 				<p>指定ユーザーの購入明細を商品単位に集計し、商品が属するカテゴリを添えて返します。
 商品は必ず 1 カテゴリに属する（products.category_id は NOT NULL）ため、行は商品単位で一意です。
 カテゴリ単位だけを要求された場合も、呼び出し側はこの行をカテゴリで畳み込めば得られます。
-金額は価格スケールの正確な decimal で、決済スケールへは丸めません（ADR-0038）。
+金額は価格スケールの正確な decimal です（丸めの扱いは SumPurchaseItemsByUserID と同じ）。
 母集団は SummarizePurchasesByUserID と同一（所有権・キャンセル除外・期間）です。
 ランキングと異なり非公開商品も除外しません（購入時点の実績であり、現在の公開状態には依存しないため）。
 並びはカテゴリの表示順・商品名の昇順で安定させます（同名商品は商品 ID で分かれます）。
@@ -6702,11 +7752,12 @@ INNER JOIN product_categories AS pc ON pr.category_id = pc.id
 WHERE p.user_id = $1
     AND p.canceled_at IS NULL
     AND (
-        NOT $2::BOOLEAN
-        OR (
-            p.ordered_at &gt;= $3
-            AND p.ordered_at &lt; $4
-        )
+        p.ordered_at &gt;= $2
+        OR $2 IS NULL
+    )
+    AND (
+        p.ordered_at &lt; $3
+        OR $3 IS NULL
     )
 GROUP BY pc.id, pc.name, pc.sort_key, pr.id, pr.name
 ORDER BY pc.sort_key ASC, pr.name ASC, pr.id ASC
@@ -6717,7 +7768,7 @@ ORDER BY pc.sort_key ASC, pr.name ASC, pr.id ASC
 				
 			
 				
-				<h3 id="Queries.SummarizePurchasesByUserID">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=20685:20831#L687">SummarizePurchasesByUserID</a>
+				<h3 id="Queries.SummarizePurchasesByUserID">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=30315:30461#L1059">SummarizePurchasesByUserID</a>
 					<a class="permalink" href="#Queries.SummarizePurchasesByUserID">¶</a>
 					
 					
@@ -6726,12 +7777,11 @@ ORDER BY pc.sort_key ASC, pr.name ASC, pr.id ASC
 				<p>=== source: database/dml/query_service/purchase/select_purchase_summary.sql ===
 指定ユーザーの購入をステータス単位に集計し、購入ステータスマスタの表示順（sort_key 昇順）で返します。
 所有権は user_id の等値条件で閉じるため、他ユーザーの購入は集計に混入しません。
-既存の複合インデックス purchases (user_id, ordered_at DESC, id DESC) を使う。filter_by_period=false
-のときは先頭列（user_id）のみが絞り込みに効きます。
+既存の複合インデックス purchases (user_id, ordered_at DESC, id DESC) を使う。境界を 1 つも指定しない
+ときは先頭列（user_id）のみが絞り込みに効きます。
 キャンセル済み（canceled_at 設定済み）の購入は除外します。
-「キャンセル済み」の定義はドメイン（Purchase.IsCanceled）が持ち、この条件はその実行形です。
-述語が見るのは canceled_at ですが、両者は再構築時の不変条件で等価に縛られています。
-filter_by_period=true の場合は注文日時が半開区間 [ordered_after, ordered_before) の購入だけを集計します。
+Purchase.IsCanceled と同値（database/dml/query_service/README.md 参照）。
+注文日時は半開区間 [ordered_after, ordered_before)（internal/usecase/tools/timewindow/README.md）で絞り込みます。
 総件数・合計金額はこの結果行を畳み込んで算出します（単一スナップショットで整合させるため）。
 </p><pre>SELECT
     ps.id AS status_id,
@@ -6744,11 +7794,12 @@ INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
 WHERE p.user_id = $1
     AND p.canceled_at IS NULL
     AND (
-        NOT $2::BOOLEAN
-        OR (
-            p.ordered_at &gt;= $3
-            AND p.ordered_at &lt; $4
-        )
+        p.ordered_at &gt;= $2
+        OR $2 IS NULL
+    )
+    AND (
+        p.ordered_at &lt; $3
+        OR $3 IS NULL
     )
 GROUP BY ps.id, ps.code, ps.name, ps.sort_key
 ORDER BY ps.sort_key ASC
@@ -6782,7 +7833,7 @@ WHERE carts.id = $4
 				
 			
 				
-				<h3 id="Queries.UpdateProduct">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=49563:49656#L1473">UpdateProduct</a>
+				<h3 id="Queries.UpdateProduct">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=73189:73282#L2177">UpdateProduct</a>
 					<a class="permalink" href="#Queries.UpdateProduct">¶</a>
 					
 					
@@ -6815,7 +7866,7 @@ RETURNING products.lock_version
 				
 			
 				
-				<h3 id="Queries.UpdateProductStock">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=51261:51364#L1525">UpdateProductStock</a>
+				<h3 id="Queries.UpdateProductStock">func (*Queries) <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=74887:74990#L2229">UpdateProductStock</a>
 					<a class="permalink" href="#Queries.UpdateProductStock">¶</a>
 					
 					
@@ -7298,7 +8349,7 @@ ON CONFLICT ON CONSTRAINT cart_items_cart_id_product_id_unique DO UPDATE
 		
 			
 			
-			<h2 id="SoftDeleteProductImagesNotInParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=46858:46952#L1399">SoftDeleteProductImagesNotInParams</a>
+			<h2 id="SoftDeleteProductImagesNotInParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=70484:70578#L2103">SoftDeleteProductImagesNotInParams</a>
 				<a class="permalink" href="#SoftDeleteProductImagesNotInParams">¶</a>
 				
 				
@@ -7324,17 +8375,16 @@ ON CONFLICT ON CONSTRAINT cart_items_cart_id_product_id_unique DO UPDATE
 		
 			
 			
-			<h2 id="SumPurchaseItemsByUserIDParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=13130:13277#L488">SumPurchaseItemsByUserIDParams</a>
+			<h2 id="SumPurchaseItemsByUserIDParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=23032:23155#L869">SumPurchaseItemsByUserIDParams</a>
 				<a class="permalink" href="#SumPurchaseItemsByUserIDParams">¶</a>
 				
 				
 			</h2>
 			
 			<pre>type SumPurchaseItemsByUserIDParams struct {
-<span id="SumPurchaseItemsByUserIDParams.UserID"></span>    UserID         <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
-<span id="SumPurchaseItemsByUserIDParams.FilterByPeriod"></span>    FilterByPeriod <a href="../../../../../../builtin/#bool">bool</a>
-<span id="SumPurchaseItemsByUserIDParams.OrderedAfter"></span>    OrderedAfter   *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
-<span id="SumPurchaseItemsByUserIDParams.OrderedBefore"></span>    OrderedBefore  *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="SumPurchaseItemsByUserIDParams.UserID"></span>    UserID        <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="SumPurchaseItemsByUserIDParams.OrderedAfter"></span>    OrderedAfter  *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="SumPurchaseItemsByUserIDParams.OrderedBefore"></span>    OrderedBefore *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
 }
 </pre>
 
@@ -7352,15 +8402,15 @@ ON CONFLICT ON CONSTRAINT cart_items_cart_id_product_id_unique DO UPDATE
 		
 			
 			
-			<h2 id="SummarizeDashboardSalesParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/dashboard_query_service.gen.sql.go.html?s=2619:2714#L85">SummarizeDashboardSalesParams</a>
+			<h2 id="SummarizeDashboardSalesParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/dashboard_query_service.gen.sql.go.html?s=2851:2948#L96">SummarizeDashboardSalesParams</a>
 				<a class="permalink" href="#SummarizeDashboardSalesParams">¶</a>
 				
 				
 			</h2>
 			
 			<pre>type SummarizeDashboardSalesParams struct {
-<span id="SummarizeDashboardSalesParams.OrderedAfter"></span>    OrderedAfter  <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
-<span id="SummarizeDashboardSalesParams.OrderedBefore"></span>    OrderedBefore <a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="SummarizeDashboardSalesParams.OrderedAfter"></span>    OrderedAfter  *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="SummarizeDashboardSalesParams.OrderedBefore"></span>    OrderedBefore *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
 }
 </pre>
 
@@ -7378,7 +8428,7 @@ ON CONFLICT ON CONSTRAINT cart_items_cart_id_product_id_unique DO UPDATE
 		
 			
 			
-			<h2 id="SummarizeDashboardSalesRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/dashboard_query_service.gen.sql.go.html?s=2716:2796#L90">SummarizeDashboardSalesRow</a>
+			<h2 id="SummarizeDashboardSalesRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/dashboard_query_service.gen.sql.go.html?s=2950:3030#L101">SummarizeDashboardSalesRow</a>
 				<a class="permalink" href="#SummarizeDashboardSalesRow">¶</a>
 				
 				
@@ -7404,17 +8454,16 @@ ON CONFLICT ON CONSTRAINT cart_items_cart_id_product_id_unique DO UPDATE
 		
 			
 			
-			<h2 id="SummarizePurchaseItemsByProductByUserIDParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=15355:15517#L548">SummarizePurchaseItemsByProductByUserIDParams</a>
+			<h2 id="SummarizePurchaseItemsByProductByUserIDParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=25207:25345#L925">SummarizePurchaseItemsByProductByUserIDParams</a>
 				<a class="permalink" href="#SummarizePurchaseItemsByProductByUserIDParams">¶</a>
 				
 				
 			</h2>
 			
 			<pre>type SummarizePurchaseItemsByProductByUserIDParams struct {
-<span id="SummarizePurchaseItemsByProductByUserIDParams.UserID"></span>    UserID         <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
-<span id="SummarizePurchaseItemsByProductByUserIDParams.FilterByPeriod"></span>    FilterByPeriod <a href="../../../../../../builtin/#bool">bool</a>
-<span id="SummarizePurchaseItemsByProductByUserIDParams.OrderedAfter"></span>    OrderedAfter   *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
-<span id="SummarizePurchaseItemsByProductByUserIDParams.OrderedBefore"></span>    OrderedBefore  *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="SummarizePurchaseItemsByProductByUserIDParams.UserID"></span>    UserID        <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="SummarizePurchaseItemsByProductByUserIDParams.OrderedAfter"></span>    OrderedAfter  *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="SummarizePurchaseItemsByProductByUserIDParams.OrderedBefore"></span>    OrderedBefore *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
 }
 </pre>
 
@@ -7432,7 +8481,7 @@ ON CONFLICT ON CONSTRAINT cart_items_cart_id_product_id_unique DO UPDATE
 		
 			
 			
-			<h2 id="SummarizePurchaseItemsByProductByUserIDRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=15519:15673#L555">SummarizePurchaseItemsByProductByUserIDRow</a>
+			<h2 id="SummarizePurchaseItemsByProductByUserIDRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=25347:25501#L931">SummarizePurchaseItemsByProductByUserIDRow</a>
 				<a class="permalink" href="#SummarizePurchaseItemsByProductByUserIDRow">¶</a>
 				
 				
@@ -7460,17 +8509,16 @@ ON CONFLICT ON CONSTRAINT cart_items_cart_id_product_id_unique DO UPDATE
 		
 			
 			
-			<h2 id="SummarizePurchasesByUserIDParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=18637:18786#L642">SummarizePurchasesByUserIDParams</a>
+			<h2 id="SummarizePurchasesByUserIDParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=28445:28570#L1015">SummarizePurchasesByUserIDParams</a>
 				<a class="permalink" href="#SummarizePurchasesByUserIDParams">¶</a>
 				
 				
 			</h2>
 			
 			<pre>type SummarizePurchasesByUserIDParams struct {
-<span id="SummarizePurchasesByUserIDParams.UserID"></span>    UserID         <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
-<span id="SummarizePurchasesByUserIDParams.FilterByPeriod"></span>    FilterByPeriod <a href="../../../../../../builtin/#bool">bool</a>
-<span id="SummarizePurchasesByUserIDParams.OrderedAfter"></span>    OrderedAfter   *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
-<span id="SummarizePurchasesByUserIDParams.OrderedBefore"></span>    OrderedBefore  *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="SummarizePurchasesByUserIDParams.UserID"></span>    UserID        <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="SummarizePurchasesByUserIDParams.OrderedAfter"></span>    OrderedAfter  *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="SummarizePurchasesByUserIDParams.OrderedBefore"></span>    OrderedBefore *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
 }
 </pre>
 
@@ -7488,7 +8536,7 @@ ON CONFLICT ON CONSTRAINT cart_items_cart_id_product_id_unique DO UPDATE
 		
 			
 			
-			<h2 id="SummarizePurchasesByUserIDRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=18788:18943#L649">SummarizePurchasesByUserIDRow</a>
+			<h2 id="SummarizePurchasesByUserIDRow">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go.html?s=28572:28727#L1021">SummarizePurchasesByUserIDRow</a>
 				<a class="permalink" href="#SummarizePurchasesByUserIDRow">¶</a>
 				
 				
@@ -7545,7 +8593,7 @@ ON CONFLICT ON CONSTRAINT cart_items_cart_id_product_id_unique DO UPDATE
 		
 			
 			
-			<h2 id="UpdateProductParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=48287:48643#L1439">UpdateProductParams</a>
+			<h2 id="UpdateProductParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=71913:72269#L2143">UpdateProductParams</a>
 				<a class="permalink" href="#UpdateProductParams">¶</a>
 				
 				
@@ -7579,7 +8627,7 @@ ON CONFLICT ON CONSTRAINT cart_items_cart_id_product_id_unique DO UPDATE
 		
 			
 			
-			<h2 id="UpdateProductStockParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=50225:50335#L1502">UpdateProductStockParams</a>
+			<h2 id="UpdateProductStockParams">type <a href="../../../../../../src/go-boilerplate/internal/infrastructure/rdb/sqlc/gen/product_repository.gen.sql.go.html?s=73851:73961#L2206">UpdateProductStockParams</a>
 				<a class="permalink" href="#UpdateProductStockParams">¶</a>
 				
 				

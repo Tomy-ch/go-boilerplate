@@ -61,7 +61,7 @@ All three are needed: dropping the first would leave the application at the clus
 |---|---|---|---|---|
 |APP_MODE|Execution mode (`development` or `production`)|string|development|Switch logs and behavior. Per-environment value — `production` from `stg` onward so pre-production runs on the same log format and behavior as production; `development` in local / ci / dev|
 |APP_LOG_LEVEL|Log output level (`debug` / `info` / `warn` / `error`)|string|debug|Output format follows Mode. Per-environment value — `debug` through `stg` for pre-production diagnosis, `info` in `prd` to hold production log volume down|
-|APP_NAME|Application name|string|Boilerplate|Used for log / metrics identification|
+|APP_NAME|Application name|string|Boilerplate API|Used for log / metrics identification|
 |APP_ENV|Environment identifier (`local` / `ci` / `dast` / `dev` / `stg` / `prd`)|string|local|For environment distinction. Also used as the embedded-env provenance guard (see Notes). Per-environment value — the environment identifier itself, so it differs by definition. `dast` is the execution context of the DAST scan: unlike `ci` it wires the real JWKS-backed authenticator and verifies tokens the mock auth server actually signed, and it stays out of the worktree DB slot pool (`IsLocalClassEnv` returns false for it)|
 |APP_SHUTDOWN_TIMEOUT|Graceful shutdown duration|duration|65s|Code default `65s`. Wait time on SIGTERM. On the HTTP server it must be `>= SERVER_REQUEST_TIMEOUT` (server startup fails otherwise) so drain never truncates an in-budget request|
 
@@ -213,7 +213,7 @@ Access-token (JWT) verification settings. CI / test wire a non-signature stub; `
 
 |Variable Name|Description|Type|Example|Notes|
 |---|---|---|---|---|
-|AUTH_ISSUER|Expected `iss` claim value (also the OIDC issuer)|string|`http://localhost:2010/default`|Code default empty. Per-environment value — `local` / `ci` / `dast` point at the mock auth server, and every deploy environment keeps the empty default until it wires the JWT authenticator. `db-seed` also expands it into the `user_identities` seed, so an environment that seeds needs it even when it stubs authentication (CI)|
+|AUTH_ISSUER|Expected `iss` claim value (also the OIDC issuer)|string|`http://localhost:2010/default`|Code default empty. Per-environment value — `local` / `ci` / `dast` point at the mock auth server, and every deploy environment keeps the empty default until it wires the JWT authenticator. `db-seed` also expands it into the identity seed, so an environment that seeds needs it even when it stubs authentication (CI)|
 |AUTH_AUDIENCE|Expected `aud` claim value|string|go-boilerplate-api|Code default empty. Required together with the issuer. Per-environment value — only `local` / `dast` declare the mock audience; everywhere else keeps the empty default until the authenticator is wired|
 |AUTH_ALLOWED_ALGORITHMS|Allowlist of signing algorithms (comma-separated, asymmetric only)|csv|RS256|Code default `RS256`. `none` / symmetric algorithms are always rejected|
 |AUTH_CLOCK_SKEW|Clock-skew tolerance for `exp` / `nbf`|duration|60s|Code default `60s`|
@@ -223,7 +223,7 @@ Access-token (JWT) verification settings. CI / test wire a non-signature stub; `
 
 ### Object Storage
 
-S3-compatible object storage for uploaded assets (product images). The usecase depends on the vendor-neutral `objectstorage.Storage` boundary; the infrastructure implementation is an S3 adapter (AWS SDK v2 S3), so `local` connects to a Garage container while deploy environments target AWS S3 by leaving `ENDPOINT_OBJECT_STORAGE` empty. The env names stay vendor-neutral even though the adapter is S3. Values are declared per environment (no code defaults); credentials are injected at deploy time.
+S3-compatible object storage for uploaded assets. The usecase depends on the vendor-neutral `objectstorage.Storage` boundary; the infrastructure implementation is an S3 adapter (AWS SDK v2 S3), so `local` connects to a Garage container while deploy environments target AWS S3 by leaving `ENDPOINT_OBJECT_STORAGE` empty. The env names stay vendor-neutral even though the adapter is S3. Values are declared per environment (no code defaults); credentials are injected at deploy time.
 
 |Variable Name|Description|Type|Example|Notes|
 |---|---|---|---|---|
@@ -248,7 +248,7 @@ Where this deployment connects. "Where do we point" is an axis of its own — it
 |ENDPOINT_OUTBOX|Destination endpoint URL for relayed messages|string||Code default empty. Required when `OUTBOX_PUBLISHER=http`|
 |ENDPOINT_OUTBOX_QUEUE|SQS-compatible endpoint|string|`http://elasticmq:9324`|Code default empty. Empty defers to the SDK's default resolution (real AWS SQS). **Per-environment value**: set only in local, where the broker runs in compose. Other environments leave it empty because the queue is a per-deployment resource|
 |ENDPOINT_CONSUMER_QUEUE|SQS-compatible endpoint|string|`http://elasticmq:9324`|Code default empty. Empty defers to the SDK's default resolution (real AWS SQS). **Per-environment value**: set only in local, where the broker runs in compose. Other environments leave it empty because the queue is a per-deployment resource|
-|ENDPOINT_EXCHANGE_RATE|Base URL of the exchange-rate service|string||Sample API. Empty means the feature is not used, and the endpoint answers 503. **Per-environment value**: only `dast` points at the stub the scan starts, so the scan does not train itself to accept 5xx. Removed together with the sample API|
+|ENDPOINT_EXCHANGE_RATE|Base URL of the exchange-rate service|string||Sample API. Empty means the feature is not used, and the endpoint answers 503. **Per-environment value**: only `dast` points at the stub the scan starts, so the scan does not train itself to accept 5xx. Removed together with the sample API<!-- sample-api:line -->|
 
 ## Notes
 

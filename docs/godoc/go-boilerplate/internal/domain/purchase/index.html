@@ -378,14 +378,14 @@
     <span class="comment">// ErrAlreadyShipped は、既に発送済みの購入を再度発送しようとした場合のエラーです（二重発送）。</span>
     <span id="ErrAlreadyShipped">ErrAlreadyShipped</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../go-boilerplate/internal/apperror/#ErrConflict">ErrConflict</a>, &#34;purchase already shipped&#34;)
 
-    <span class="comment">// ErrShipNotAllowed は、発送不可の状態（未払い相当・完了・キャンセル済み・配達済み）から発送しようとした</span>
+    <span class="comment">// ErrShipNotAllowed は、発送不可の状態（未払い相当・処理中・完了・キャンセル済み・配達済み）から発送しようとした</span>
     <span class="comment">// 場合のエラーです。</span>
     <span id="ErrShipNotAllowed">ErrShipNotAllowed</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../go-boilerplate/internal/apperror/#ErrConflict">ErrConflict</a>, &#34;purchase cannot be shipped in the current state&#34;)
 
     <span class="comment">// ErrAlreadyDelivered は、既に配達済みの購入を再度配達完了にしようとした場合のエラーです（二重配達）。</span>
     <span id="ErrAlreadyDelivered">ErrAlreadyDelivered</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../go-boilerplate/internal/apperror/#ErrConflict">ErrConflict</a>, &#34;purchase already delivered&#34;)
 
-    <span class="comment">// ErrDeliverNotAllowed は、配達不可の状態（未払い相当・支払い済み・完了・キャンセル済み）から配達完了に</span>
+    <span class="comment">// ErrDeliverNotAllowed は、配達不可の状態（未払い相当・処理中・支払い済み・完了・キャンセル済み）から配達完了に</span>
     <span class="comment">// しようとした場合のエラーです。</span>
     <span id="ErrDeliverNotAllowed">ErrDeliverNotAllowed</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../go-boilerplate/internal/apperror/#ErrConflict">ErrConflict</a>, &#34;purchase cannot be delivered in the current state&#34;)
 )</pre>
@@ -405,12 +405,17 @@
     <span id="EventDelivered">EventDelivered</span> = <a href="#EventType">EventType</a>{<span class="comment">/* contains filtered or unexported fields */</span>}
 )</pre>
 			
-				<p>既知のステータス。ステータスの UUID はドメインに焼き込まず、永続化時に code から解決します
-（seed との二重管理を避けるため）。
+				<p>既知のステータス（UUID はここに焼き込まない。docs/spec/purchase/domain.md Overview 参照）。
 
 				</p><pre>var (
     <span class="comment">// StatusUnprocessed は、購入作成直後に設定される「未処理」です。</span>
     <span id="StatusUnprocessed">StatusUnprocessed</span> = <a href="#Status">Status</a>{<span class="comment">/* contains filtered or unexported fields */</span>}
+    <span class="comment">// StatusAccepted は、注文を受け付けた「受付中」です。未払い相当として扱います。</span>
+    <span id="StatusAccepted">StatusAccepted</span> = <a href="#Status">Status</a>{<span class="comment">/* contains filtered or unexported fields */</span>}
+    <span class="comment">// StatusConfirming は、注文内容を確認している「確認中」です。未払い相当として扱います。</span>
+    <span id="StatusConfirming">StatusConfirming</span> = <a href="#Status">Status</a>{<span class="comment">/* contains filtered or unexported fields */</span>}
+    <span class="comment">// StatusProcessing は、支払いを終え、発送に向けた処理を進めている「処理中」です。未払いではありません。</span>
+    <span id="StatusProcessing">StatusProcessing</span> = <a href="#Status">Status</a>{<span class="comment">/* contains filtered or unexported fields */</span>}
     <span class="comment">// StatusCompleted は、購入完了です。完了後はキャンセルできません。</span>
     <span id="StatusCompleted">StatusCompleted</span> = <a href="#Status">Status</a>{<span class="comment">/* contains filtered or unexported fields */</span>}
     <span class="comment">// StatusCanceled は、購入キャンセルです。発送前にのみ到達します。</span>
@@ -705,7 +710,7 @@ version 付き文字列や JSON のフィールド名は転送契約（Published
 
 			
 				
-				</p><h3 id="LockedProduct.ID">func (LockedProduct) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=15431:15468#L355">ID</a>
+				</p><h3 id="LockedProduct.ID">func (LockedProduct) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=15021:15058#L352">ID</a>
 					<a class="permalink" href="#LockedProduct.ID">¶</a>
 					
 					
@@ -718,7 +723,7 @@ version 付き文字列や JSON のフィールド名は転送契約（Published
 				
 			
 				
-				</p><h3 id="LockedProduct.Price">func (LockedProduct) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=15567:15609#L358">Price</a>
+				</p><h3 id="LockedProduct.Price">func (LockedProduct) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=15157:15199#L355">Price</a>
 					<a class="permalink" href="#LockedProduct.Price">¶</a>
 					
 					
@@ -731,7 +736,7 @@ version 付き文字列や JSON のフィールド名は転送契約（Published
 				
 			
 				
-				</p><h3 id="LockedProduct.Quantity">func (LockedProduct) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=15694:15731#L361">Quantity</a>
+				</p><h3 id="LockedProduct.Quantity">func (LockedProduct) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=15284:15321#L358">Quantity</a>
 					<a class="permalink" href="#LockedProduct.Quantity">¶</a>
 					
 					
@@ -770,7 +775,7 @@ version 付き文字列や JSON のフィールド名は転送契約（Published
 
 			
 				
-				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=8966:9092#L204">New</a>
+				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=8642:8768#L201">New</a>
 					<a class="permalink" href="#New">¶</a>
 					
 					
@@ -792,7 +797,7 @@ version 付き文字列や JSON のフィールド名は転送契約（Published
 				
 			
 				
-				</p><h3 id="Reconstruct">func <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=11365:11432#L264">Reconstruct</a>
+				</p><h3 id="Reconstruct">func <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=11041:11108#L261">Reconstruct</a>
 					<a class="permalink" href="#Reconstruct">¶</a>
 					
 					
@@ -811,7 +816,7 @@ attrs.StatusCode は購入ステータスマスタで解決した現在状態、
 
 			
 				
-				</p><h3 id="Purchase.Cancel">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=19943:19998#L438">Cancel</a>
+				</p><h3 id="Purchase.Cancel">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=19533:19588#L435">Cancel</a>
 					<a class="permalink" href="#Purchase.Cancel">¶</a>
 					
 					
@@ -828,7 +833,7 @@ ErrCancelNotAllowed をそれぞれ返します（いずれも 409）。
 				
 			
 				
-				</p><h3 id="Purchase.CanceledAt">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=18245:18287#L413">CanceledAt</a>
+				</p><h3 id="Purchase.CanceledAt">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=17835:17877#L410">CanceledAt</a>
 					<a class="permalink" href="#Purchase.CanceledAt">¶</a>
 					
 					
@@ -841,7 +846,7 @@ ErrCancelNotAllowed をそれぞれ返します（いずれも 409）。
 				
 			
 				
-				</p><h3 id="Purchase.Code">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=16424:16456#L379">Code</a>
+				</p><h3 id="Purchase.Code">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=16014:16046#L376">Code</a>
 					<a class="permalink" href="#Purchase.Code">¶</a>
 					
 					
@@ -854,7 +859,7 @@ ErrCancelNotAllowed をそれぞれ返します（いずれも 409）。
 				
 			
 				
-				</p><h3 id="Purchase.Deliver">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=23117:23173#L492">Deliver</a>
+				</p><h3 id="Purchase.Deliver">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=22980:23036#L493">Deliver</a>
 					<a class="permalink" href="#Purchase.Deliver">¶</a>
 					
 					
@@ -862,7 +867,7 @@ ErrCancelNotAllowed をそれぞれ返します（いずれも 409）。
 				<pre>func (p *<a href="#Purchase">Purchase</a>) Deliver(now <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>) (<a href="#Event">Event</a>, <a href="../../../../builtin/#error">error</a>)</pre>
 				<p>Deliver は、購入を配達済み状態へ遷移させます。発送済みからのみ遷移でき、statusCode を配達済み（9）へ、
 deliveredAt を now へ同時に更新します。既に配達済みなら ErrAlreadyDelivered、それ以外の状態
-（未払い相当・支払い済み・完了・キャンセル済み）なら ErrDeliverNotAllowed をそれぞれ返します（いずれも 409）。
+（未払い相当・処理中・支払い済み・完了・キャンセル済み）なら ErrDeliverNotAllowed をそれぞれ返します（いずれも 409）。
 配達確認の証跡（署名 / 受領写真 / GPS 位置）は扱わず、deliveredAt とステータスの記録のみを担います。
 遷移に成功したときだけ配達の事実（Event）を返します。
 
@@ -871,7 +876,7 @@ deliveredAt を now へ同時に更新します。既に配達済みなら ErrAl
 				
 			
 				
-				</p><h3 id="Purchase.DeliveredAt">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=18943:18986#L425">DeliveredAt</a>
+				</p><h3 id="Purchase.DeliveredAt">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=18533:18576#L422">DeliveredAt</a>
 					<a class="permalink" href="#Purchase.DeliveredAt">¶</a>
 					
 					
@@ -884,7 +889,7 @@ deliveredAt を now へ同時に更新します。既に配達済みなら ErrAl
 				
 			
 				
-				</p><h3 id="Purchase.Details">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=23579:23624#L505">Details</a>
+				</p><h3 id="Purchase.Details">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=23442:23487#L506">Details</a>
 					<a class="permalink" href="#Purchase.Details">¶</a>
 					
 					
@@ -897,7 +902,7 @@ deliveredAt を now へ同時に更新します。既に配達済みなら ErrAl
 				
 			
 				
-				</p><h3 id="Purchase.ID">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=16303:16336#L376">ID</a>
+				</p><h3 id="Purchase.ID">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=15893:15926#L373">ID</a>
 					<a class="permalink" href="#Purchase.ID">¶</a>
 					
 					
@@ -910,7 +915,7 @@ deliveredAt を now へ同時に更新します。既に配達済みなら ErrAl
 				
 			
 				
-				</p><h3 id="Purchase.IsCanceled">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=18619:18655#L419">IsCanceled</a>
+				</p><h3 id="Purchase.IsCanceled">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=18209:18245#L416">IsCanceled</a>
 					<a class="permalink" href="#Purchase.IsCanceled">¶</a>
 					
 					
@@ -925,7 +930,7 @@ SQL 述語との関係は internal/domain/README.md § Query and Aggregate）。
 				
 			
 				
-				</p><h3 id="Purchase.IsShippable">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=19283:19320#L431">IsShippable</a>
+				</p><h3 id="Purchase.IsShippable">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=18873:18910#L428">IsShippable</a>
 					<a class="permalink" href="#Purchase.IsShippable">¶</a>
 					
 					
@@ -940,7 +945,7 @@ internal/domain/README.md § Query and Aggregate）。
 				
 			
 				
-				</p><h3 id="Purchase.OrderedAt">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=17918:17958#L407">OrderedAt</a>
+				</p><h3 id="Purchase.OrderedAt">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=17508:17548#L404">OrderedAt</a>
 					<a class="permalink" href="#Purchase.OrderedAt">¶</a>
 					
 					
@@ -953,7 +958,7 @@ internal/domain/README.md § Query and Aggregate）。
 				
 			
 				
-				</p><h3 id="Purchase.PaidAt">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=18071:18109#L410">PaidAt</a>
+				</p><h3 id="Purchase.PaidAt">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=17661:17699#L407">PaidAt</a>
 					<a class="permalink" href="#Purchase.PaidAt">¶</a>
 					
 					
@@ -966,24 +971,24 @@ internal/domain/README.md § Query and Aggregate）。
 				
 			
 				
-				</p><h3 id="Purchase.Pay">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=21157:21209#L457">Pay</a>
+				</p><h3 id="Purchase.Pay">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=20795:20847#L454">Pay</a>
 					<a class="permalink" href="#Purchase.Pay">¶</a>
 					
 					
 				</h3>
 				<pre>func (p *<a href="#Purchase">Purchase</a>) Pay(now <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>) (<a href="#Event">Event</a>, <a href="../../../../builtin/#error">error</a>)</pre>
-				<p>Pay は、購入を支払い済み状態へ遷移させます。未払い相当（未処理 / 受付中 / 確認中 / 処理中）からのみ遷移でき、
-statusCode を支払い済み（7）へ、paidAt を now へ同時に更新します。既に支払い済みなら ErrAlreadyPaid、
-キャンセル済み・完了・配達済み・発送済み（shippedAt）なら ErrPayNotAllowed をそれぞれ返します
-（いずれも 409）。決済 SDK / PSP 連携は行わず、paidAt とステータスの記録のみを担う擬似決済です。
-遷移に成功したときだけ支払いの事実（Event）を返します。
+				<p>Pay は、購入を支払い済み状態へ遷移させます。未払い相当（未処理 / 受付中 / 確認中）からのみ遷移でき、
+statusCode を支払い済み（7）へ、paidAt を now へ同時に更新します。支払い済み、または未払い相当でも
+paidAt が記録済みなら ErrAlreadyPaid、処理中・キャンセル済み・完了・配達済み・発送済み（shippedAt）なら
+ErrPayNotAllowed をそれぞれ返します（いずれも 409）。決済 SDK / PSP 連携は行わず、paidAt とステータスの
+記録のみを担う擬似決済です。遷移に成功したときだけ支払いの事実（Event）を返します。
 
 				
 				
 				
 			
 				
-				</p><h3 id="Purchase.Ship">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=22159:22212#L475">Ship</a>
+				</p><h3 id="Purchase.Ship">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=22010:22063#L476">Ship</a>
 					<a class="permalink" href="#Purchase.Ship">¶</a>
 					
 					
@@ -991,7 +996,7 @@ statusCode を支払い済み（7）へ、paidAt を now へ同時に更新し�
 				<pre>func (p *<a href="#Purchase">Purchase</a>) Ship(now <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>) (<a href="#Event">Event</a>, <a href="../../../../builtin/#error">error</a>)</pre>
 				<p>Ship は、購入を発送済み状態へ遷移させます。支払い済みからのみ遷移でき、statusCode を発送済み（8）へ、
 shippedAt を now へ同時に更新します。既に発送済みなら ErrAlreadyShipped、それ以外の状態
-（未払い相当・完了・キャンセル済み・配達済み）なら ErrShipNotAllowed をそれぞれ返します（いずれも 409）。
+（未払い相当・処理中・完了・キャンセル済み・配達済み）なら ErrShipNotAllowed をそれぞれ返します（いずれも 409）。
 配送追跡（追跡番号 / 配送業者）は扱わず、shippedAt とステータスの記録のみを担います。
 遷移に成功したときだけ発送の事実（Event）を返します。
 
@@ -1000,7 +1005,7 @@ shippedAt を now へ同時に更新します。既に発送済みなら ErrAlre
 				
 			
 				
-				</p><h3 id="Purchase.ShippedAt">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=18780:18821#L422">ShippedAt</a>
+				</p><h3 id="Purchase.ShippedAt">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=18370:18411#L419">ShippedAt</a>
 					<a class="permalink" href="#Purchase.ShippedAt">¶</a>
 					
 					
@@ -1013,7 +1018,7 @@ shippedAt を now へ同時に更新します。既に発送済みなら ErrAlre
 				
 			
 				
-				</p><h3 id="Purchase.ShippingFee">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=17595:17631#L401">ShippingFee</a>
+				</p><h3 id="Purchase.ShippingFee">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=17185:17221#L398">ShippingFee</a>
 					<a class="permalink" href="#Purchase.ShippingFee">¶</a>
 					
 					
@@ -1026,7 +1031,7 @@ shippedAt を now へ同時に更新します。既に発送済みなら ErrAlre
 				
 			
 				
-				</p><h3 id="Purchase.Status">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=17064:17098#L389">Status</a>
+				</p><h3 id="Purchase.Status">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=16654:16688#L386">Status</a>
 					<a class="permalink" href="#Purchase.Status">¶</a>
 					
 					
@@ -1040,7 +1045,7 @@ shippedAt を now へ同時に更新します。既に発送済みなら ErrAlre
 				
 			
 				
-				</p><h3 id="Purchase.StatusCode">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=17207:17242#L392">StatusCode</a>
+				</p><h3 id="Purchase.StatusCode">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=16797:16832#L389">StatusCode</a>
 					<a class="permalink" href="#Purchase.StatusCode">¶</a>
 					
 					
@@ -1053,7 +1058,7 @@ shippedAt を now へ同時に更新します。既に発送済みなら ErrAlre
 				
 			
 				
-				</p><h3 id="Purchase.StatusID">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=16745:16784#L385">StatusID</a>
+				</p><h3 id="Purchase.StatusID">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=16335:16374#L382">StatusID</a>
 					<a class="permalink" href="#Purchase.StatusID">¶</a>
 					
 					
@@ -1066,7 +1071,7 @@ shippedAt を now へ同時に更新します。既に発送済みなら ErrAlre
 				
 			
 				
-				</p><h3 id="Purchase.SubtotalAmount">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=17339:17378#L395">SubtotalAmount</a>
+				</p><h3 id="Purchase.SubtotalAmount">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=16929:16968#L392">SubtotalAmount</a>
 					<a class="permalink" href="#Purchase.SubtotalAmount">¶</a>
 					
 					
@@ -1079,7 +1084,7 @@ shippedAt を now へ同時に更新します。既に発送済みなら ErrAlre
 				
 			
 				
-				</p><h3 id="Purchase.TaxAmount">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=17471:17505#L398">TaxAmount</a>
+				</p><h3 id="Purchase.TaxAmount">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=17061:17095#L395">TaxAmount</a>
 					<a class="permalink" href="#Purchase.TaxAmount">¶</a>
 					
 					
@@ -1092,7 +1097,7 @@ shippedAt を now へ同時に更新します。既に発送済みなら ErrAlre
 				
 			
 				
-				</p><h3 id="Purchase.TotalAmount">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=17723:17759#L404">TotalAmount</a>
+				</p><h3 id="Purchase.TotalAmount">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=17313:17349#L401">TotalAmount</a>
 					<a class="permalink" href="#Purchase.TotalAmount">¶</a>
 					
 					
@@ -1105,7 +1110,7 @@ shippedAt を now へ同時に更新します。既に発送済みなら ErrAlre
 				
 			
 				
-				</p><h3 id="Purchase.UserID">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=16542:16579#L382">UserID</a>
+				</p><h3 id="Purchase.UserID">func (*Purchase) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=16132:16169#L379">UserID</a>
 					<a class="permalink" href="#Purchase.UserID">¶</a>
 					
 					
@@ -1158,7 +1163,7 @@ shippedAt を now へ同時に更新します。既に発送済みなら ErrAlre
 
 			
 				
-				</p><h3 id="PurchaseDetail.ID">func (PurchaseDetail) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=15796:15834#L364">ID</a>
+				</p><h3 id="PurchaseDetail.ID">func (PurchaseDetail) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=15386:15424#L361">ID</a>
 					<a class="permalink" href="#PurchaseDetail.ID">¶</a>
 					
 					
@@ -1171,7 +1176,7 @@ shippedAt を now へ同時に更新します。既に発送済みなら ErrAlre
 				
 			
 				
-				</p><h3 id="PurchaseDetail.ProductID">func (PurchaseDetail) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=15900:15945#L367">ProductID</a>
+				</p><h3 id="PurchaseDetail.ProductID">func (PurchaseDetail) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=15490:15535#L364">ProductID</a>
 					<a class="permalink" href="#PurchaseDetail.ProductID">¶</a>
 					
 					
@@ -1184,7 +1189,7 @@ shippedAt を now へ同時に更新します。既に発送済みなら ErrAlre
 				
 			
 				
-				</p><h3 id="PurchaseDetail.Quantity">func (PurchaseDetail) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=16019:16057#L370">Quantity</a>
+				</p><h3 id="PurchaseDetail.Quantity">func (PurchaseDetail) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=15609:15647#L367">Quantity</a>
 					<a class="permalink" href="#PurchaseDetail.Quantity">¶</a>
 					
 					
@@ -1197,7 +1202,7 @@ shippedAt を now へ同時に更新します。既に発送済みなら ErrAlre
 				
 			
 				
-				</p><h3 id="PurchaseDetail.UnitPrice">func (PurchaseDetail) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=16190:16237#L373">UnitPrice</a>
+				</p><h3 id="PurchaseDetail.UnitPrice">func (PurchaseDetail) <a href="../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?s=15780:15827#L370">UnitPrice</a>
 					<a class="permalink" href="#PurchaseDetail.UnitPrice">¶</a>
 					
 					
@@ -1317,7 +1322,7 @@ shippedAt を now へ同時に更新します。既に発送済みなら ErrAlre
 		
 			
 			
-			<h2 id="Status">type <a href="../../../../src/go-boilerplate/internal/domain/purchase/status.go.html?s=1928:1973#L31">Status</a>
+			<h2 id="Status">type <a href="../../../../src/go-boilerplate/internal/domain/purchase/status.go.html?s=2500:2545#L38">Status</a>
 				<a class="permalink" href="#Status">¶</a>
 				
 				
@@ -1341,7 +1346,7 @@ shippedAt を now へ同時に更新します。既に発送済みなら ErrAlre
 
 			
 				
-				<h3 id="NewStatus">func <a href="../../../../src/go-boilerplate/internal/domain/purchase/status.go.html?s=2446:2486#L46">NewStatus</a>
+				<h3 id="NewStatus">func <a href="../../../../src/go-boilerplate/internal/domain/purchase/status.go.html?s=3072:3112#L54">NewStatus</a>
 					<a class="permalink" href="#NewStatus">¶</a>
 					
 					
@@ -1356,7 +1361,7 @@ shippedAt を now へ同時に更新します。既に発送済みなら ErrAlre
 
 			
 				
-				</p><h3 id="Status.CanTransitionTo">func (Status) <a href="../../../../src/go-boilerplate/internal/domain/purchase/status.go.html?s=3741:3790#L77">CanTransitionTo</a>
+				</p><h3 id="Status.CanTransitionTo">func (Status) <a href="../../../../src/go-boilerplate/internal/domain/purchase/status.go.html?s=4322:4371#L85">CanTransitionTo</a>
 					<a class="permalink" href="#Status.CanTransitionTo">¶</a>
 					
 					
@@ -1370,20 +1375,20 @@ shippedAt を now へ同時に更新します。既に発送済みなら ErrAlre
 				
 			
 				
-				</p><h3 id="Status.Code">func (Status) <a href="../../../../src/go-boilerplate/internal/domain/purchase/status.go.html?s=2796:2822#L56">Code</a>
+				</p><h3 id="Status.Code">func (Status) <a href="../../../../src/go-boilerplate/internal/domain/purchase/status.go.html?s=3377:3403#L64">Code</a>
 					<a class="permalink" href="#Status.Code">¶</a>
 					
 					
 				</h3>
 				<pre>func (s <a href="#Status">Status</a>) Code() <a href="../../../../builtin/#int">int</a></pre>
-				<p>Code は、永続化と外部公開に用いる業務キーを返します。到達順序の比較には使えません。
+				<p>Code は、永続化と外部公開に用いる業務キーを返します。
 
 				
 				
 				
 			
 				
-				</p><h3 id="Status.IsTerminal">func (Status) <a href="../../../../src/go-boilerplate/internal/domain/purchase/status.go.html?s=3341:3374#L66">IsTerminal</a>
+				</p><h3 id="Status.IsTerminal">func (Status) <a href="../../../../src/go-boilerplate/internal/domain/purchase/status.go.html?s=3922:3955#L74">IsTerminal</a>
 					<a class="permalink" href="#Status.IsTerminal">¶</a>
 					
 					
@@ -1397,7 +1402,7 @@ shippedAt を now へ同時に更新します。既に発送済みなら ErrAlre
 				
 			
 				
-				</p><h3 id="Status.IsZero">func (Status) <a href="../../../../src/go-boilerplate/internal/domain/purchase/status.go.html?s=3103:3132#L62">IsZero</a>
+				</p><h3 id="Status.IsZero">func (Status) <a href="../../../../src/go-boilerplate/internal/domain/purchase/status.go.html?s=3684:3713#L70">IsZero</a>
 					<a class="permalink" href="#Status.IsZero">¶</a>
 					
 					
@@ -1410,7 +1415,7 @@ shippedAt を now へ同時に更新します。既に発送済みなら ErrAlre
 				
 			
 				
-				</p><h3 id="Status.Name">func (Status) <a href="../../../../src/go-boilerplate/internal/domain/purchase/status.go.html?s=2980:3009#L59">Name</a>
+				</p><h3 id="Status.Name">func (Status) <a href="../../../../src/go-boilerplate/internal/domain/purchase/status.go.html?s=3561:3590#L67">Name</a>
 					<a class="permalink" href="#Status.Name">¶</a>
 					
 					

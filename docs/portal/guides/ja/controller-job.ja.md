@@ -203,7 +203,11 @@ flowchart TB
 
 命名は以下の方針が安定します。
 
+<!-- sample-api:replace-begin -->
 - パッケージ名：lower_snake ではなく Go 流儀の lower（例：usercount, fixcollation）
+<!-- sample-api:replace-with -->
+<!-- = - パッケージ名：lower_snake ではなく Go 流儀の lower（例：idempotencygc, fixcollation） -->
+<!-- sample-api:replace-end -->
 - Job 名（Runner が引くキー）：kebab-case を推奨
   - 例：user-count / fix-collation / dump-schema
 - Cobra の job <name> と一致させやすく、README にも書きやすい
@@ -363,7 +367,11 @@ Job は `group:"jobs"` にまとめられ、Runner に集約されます。
 
 ```mermaid
 flowchart TB
+    %% sample-api:replace-begin
     A["fx.Provide(usercount.New)"]
+    %% sample-api:replace-with
+    %% = A["fx.Provide(someJob.New)"]
+    %% sample-api:replace-end
     B["fx.Provide(otherJob.New)"]
     Group["group:”jobs”"]
     Jobs["[]job.Job"]
@@ -506,7 +514,11 @@ observability層がtracerの生成ルール（レイヤー名やパッケージ�
 ## 参考スニペット
 
 ```go
+// sample-api:replace-begin
 package usercount
+// sample-api:replace-with
+// = package somejob
+// sample-api:replace-end
 
 import (
     "context"

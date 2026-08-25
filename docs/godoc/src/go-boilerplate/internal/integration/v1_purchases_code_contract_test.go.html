@@ -168,7 +168,7 @@
 <span id="L111" class="ln">   111  </span>			ctrl := gomock.NewController(t)
 <span id="L112" class="ln">   112  </span>
 <span id="L113" class="ln">   113  </span>			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-<span id="L114" class="ln">   114  </span>			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(
+<span id="L114" class="ln">   114  </span>			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 <span id="L115" class="ln">   115  </span>				&amp;purchaseuc.PurchaseListView{
 <span id="L116" class="ln">   116  </span>					Items: []purchaseuc.PurchaseSummaryView{{
 <span id="L117" class="ln">   117  </span>						Code:        feedCode,
@@ -252,7 +252,7 @@
 <span id="L195" class="ln">   195  </span>			ctrl := gomock.NewController(t)
 <span id="L196" class="ln">   196  </span>
 <span id="L197" class="ln">   197  </span>			uc := mock_purchaseuc.NewMockUsecase(ctrl)
-<span id="L198" class="ln">   198  </span>			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(
+<span id="L198" class="ln">   198  </span>			uc.EXPECT().GetPurchases(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 <span id="L199" class="ln">   199  </span>				&amp;purchaseuc.PurchaseListView{
 <span id="L200" class="ln">   200  </span>					Items: []purchaseuc.PurchaseSummaryView{{
 <span id="L201" class="ln">   201  </span>						Code: feedCode, TotalAmount: 176500, StatusID: statusID, StatusName: &#34;支払い済み&#34;, OrderedAt: orderedAt,

@@ -234,48 +234,77 @@
 <span id="L177" class="ln">   177  </span>	})
 <span id="L178" class="ln">   178  </span>}
 <span id="L179" class="ln">   179  </span>
-<span id="L180" class="ln">   180  </span>func TestRequireUserID(t *testing.T) {
+<span id="L180" class="ln">   180  </span>func TestOptionalAuthn(t *testing.T) {
 <span id="L181" class="ln">   181  </span>	t.Parallel()
 <span id="L182" class="ln">   182  </span>
 <span id="L183" class="ln">   183  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
 <span id="L184" class="ln">   184  </span>		t.Parallel()
 <span id="L185" class="ln">   185  </span>
-<span id="L186" class="ln">   186  </span>		t.Run(&#34;UserID解決済みならそのIDを返す&#34;, func(t *testing.T) {
+<span id="L186" class="ln">   186  </span>		t.Run(&#34;設定済みなら同じAuthnを指すポインタを返す&#34;, func(t *testing.T) {
 <span id="L187" class="ln">   187  </span>			t.Parallel()
 <span id="L188" class="ln">   188  </span>			ctx := WithAuthn(context.Background())
-<span id="L189" class="ln">   189  </span>			expected := uuidtestkit.NewTestFromSalt(t, &#34;require_user_id&#34;)
-<span id="L190" class="ln">   190  </span>			base := newTestAuthn(t, &#34;require-user-id&#34;)
-<span id="L191" class="ln">   191  </span>			resolved, err := base.WithUserID(expected)
-<span id="L192" class="ln">   192  </span>			require.NoError(t, err)
-<span id="L193" class="ln">   193  </span>			require.True(t, SetAuthn(ctx, *resolved))
-<span id="L194" class="ln">   194  </span>
-<span id="L195" class="ln">   195  </span>			actual, uerr := RequireUserID(ctx)
-<span id="L196" class="ln">   196  </span>			require.NoError(t, uerr)
-<span id="L197" class="ln">   197  </span>			assert.Equal(t, expected, actual)
-<span id="L198" class="ln">   198  </span>		})
-<span id="L199" class="ln">   199  </span>	})
-<span id="L200" class="ln">   200  </span>
-<span id="L201" class="ln">   201  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L202" class="ln">   202  </span>		t.Parallel()
-<span id="L203" class="ln">   203  </span>
-<span id="L204" class="ln">   204  </span>		t.Run(&#34;Authn未設定ならErrUnauthenticatedUserを返す&#34;, func(t *testing.T) {
-<span id="L205" class="ln">   205  </span>			t.Parallel()
-<span id="L206" class="ln">   206  </span>			_, err := RequireUserID(context.Background())
-<span id="L207" class="ln">   207  </span>			require.ErrorIs(t, err, ErrUnauthenticatedUser)
-<span id="L208" class="ln">   208  </span>		})
-<span id="L209" class="ln">   209  </span>
-<span id="L210" class="ln">   210  </span>		t.Run(&#34;UserID未解決なら解決失敗の原因を返す&#34;, func(t *testing.T) {
-<span id="L211" class="ln">   211  </span>			t.Parallel()
-<span id="L212" class="ln">   212  </span>			ctx := WithAuthn(context.Background())
-<span id="L213" class="ln">   213  </span>			require.True(t, SetAuthn(ctx, newTestAuthn(t, &#34;unresolved&#34;)))
+<span id="L189" class="ln">   189  </span>			expected := newTestAuthn(t, &#34;optional-authn&#34;)
+<span id="L190" class="ln">   190  </span>			require.True(t, SetAuthn(ctx, expected))
+<span id="L191" class="ln">   191  </span>
+<span id="L192" class="ln">   192  </span>			actual := OptionalAuthn(ctx)
+<span id="L193" class="ln">   193  </span>			require.NotNil(t, actual)
+<span id="L194" class="ln">   194  </span>			assert.Equal(t, expected, *actual)
+<span id="L195" class="ln">   195  </span>		})
+<span id="L196" class="ln">   196  </span>
+<span id="L197" class="ln">   197  </span>		t.Run(&#34;スロット未仕込みならnilを返す&#34;, func(t *testing.T) {
+<span id="L198" class="ln">   198  </span>			t.Parallel()
+<span id="L199" class="ln">   199  </span>			assert.Nil(t, OptionalAuthn(context.Background()))
+<span id="L200" class="ln">   200  </span>		})
+<span id="L201" class="ln">   201  </span>
+<span id="L202" class="ln">   202  </span>		t.Run(&#34;スロットはあるが未設定ならnilを返す&#34;, func(t *testing.T) {
+<span id="L203" class="ln">   203  </span>			t.Parallel()
+<span id="L204" class="ln">   204  </span>			assert.Nil(t, OptionalAuthn(WithAuthn(context.Background())))
+<span id="L205" class="ln">   205  </span>		})
+<span id="L206" class="ln">   206  </span>	})
+<span id="L207" class="ln">   207  </span>}
+<span id="L208" class="ln">   208  </span>
+<span id="L209" class="ln">   209  </span>func TestRequireUserID(t *testing.T) {
+<span id="L210" class="ln">   210  </span>	t.Parallel()
+<span id="L211" class="ln">   211  </span>
+<span id="L212" class="ln">   212  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L213" class="ln">   213  </span>		t.Parallel()
 <span id="L214" class="ln">   214  </span>
-<span id="L215" class="ln">   215  </span>			_, err := RequireUserID(ctx)
-<span id="L216" class="ln">   216  </span>			require.Error(t, err)
-<span id="L217" class="ln">   217  </span>			assert.NotErrorIs(t, err, ErrUnauthenticatedUser)
-<span id="L218" class="ln">   218  </span>		})
-<span id="L219" class="ln">   219  </span>	})
-<span id="L220" class="ln">   220  </span>}
-<span id="L221" class="ln">   221  </span>
+<span id="L215" class="ln">   215  </span>		t.Run(&#34;UserID解決済みならそのIDを返す&#34;, func(t *testing.T) {
+<span id="L216" class="ln">   216  </span>			t.Parallel()
+<span id="L217" class="ln">   217  </span>			ctx := WithAuthn(context.Background())
+<span id="L218" class="ln">   218  </span>			expected := uuidtestkit.NewTestFromSalt(t, &#34;require_user_id&#34;)
+<span id="L219" class="ln">   219  </span>			base := newTestAuthn(t, &#34;require-user-id&#34;)
+<span id="L220" class="ln">   220  </span>			resolved, err := base.WithUserID(expected)
+<span id="L221" class="ln">   221  </span>			require.NoError(t, err)
+<span id="L222" class="ln">   222  </span>			require.True(t, SetAuthn(ctx, *resolved))
+<span id="L223" class="ln">   223  </span>
+<span id="L224" class="ln">   224  </span>			actual, uerr := RequireUserID(ctx)
+<span id="L225" class="ln">   225  </span>			require.NoError(t, uerr)
+<span id="L226" class="ln">   226  </span>			assert.Equal(t, expected, actual)
+<span id="L227" class="ln">   227  </span>		})
+<span id="L228" class="ln">   228  </span>	})
+<span id="L229" class="ln">   229  </span>
+<span id="L230" class="ln">   230  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L231" class="ln">   231  </span>		t.Parallel()
+<span id="L232" class="ln">   232  </span>
+<span id="L233" class="ln">   233  </span>		t.Run(&#34;Authn未設定ならErrUnauthenticatedUserを返す&#34;, func(t *testing.T) {
+<span id="L234" class="ln">   234  </span>			t.Parallel()
+<span id="L235" class="ln">   235  </span>			_, err := RequireUserID(context.Background())
+<span id="L236" class="ln">   236  </span>			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+<span id="L237" class="ln">   237  </span>		})
+<span id="L238" class="ln">   238  </span>
+<span id="L239" class="ln">   239  </span>		t.Run(&#34;UserID未解決なら解決失敗の原因を返す&#34;, func(t *testing.T) {
+<span id="L240" class="ln">   240  </span>			t.Parallel()
+<span id="L241" class="ln">   241  </span>			ctx := WithAuthn(context.Background())
+<span id="L242" class="ln">   242  </span>			require.True(t, SetAuthn(ctx, newTestAuthn(t, &#34;unresolved&#34;)))
+<span id="L243" class="ln">   243  </span>
+<span id="L244" class="ln">   244  </span>			_, err := RequireUserID(ctx)
+<span id="L245" class="ln">   245  </span>			require.Error(t, err)
+<span id="L246" class="ln">   246  </span>			assert.NotErrorIs(t, err, ErrUnauthenticatedUser)
+<span id="L247" class="ln">   247  </span>		})
+<span id="L248" class="ln">   248  </span>	})
+<span id="L249" class="ln">   249  </span>}
+<span id="L250" class="ln">   250  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/controller/ctxhelper/authn_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

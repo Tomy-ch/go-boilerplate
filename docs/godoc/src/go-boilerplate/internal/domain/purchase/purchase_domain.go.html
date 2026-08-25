@@ -195,386 +195,387 @@
 <span id="L138" class="ln">   138  </span>	return nil
 <span id="L139" class="ln">   139  </span>}
 <span id="L140" class="ln">   140  </span>
-<span id="L141" class="ln">   141  </span><span class="comment">// buildDetails は、明細の入力をロック済み在庫と突き合わせて購入明細を組み立て、単価スナップショット</span>
-<span id="L142" class="ln">   142  </span><span class="comment">// による小計を価格スケールで返します。</span>
-<span id="L143" class="ln">   143  </span><span class="comment">// 明細 ID が未設定、数量が最小値未満、同一商品 ID が重複、入力に対応するロック済み商品が無い場合は</span>
-<span id="L144" class="ln">   144  </span><span class="comment">// それぞれ検証エラー（422）を、要求数量がロック済み在庫を超える場合は ErrInsufficientStock（409）を</span>
-<span id="L145" class="ln">   145  </span><span class="comment">// 返します。単価は対応するロック済み商品の価格とし、入力の順序を保った明細を返します。</span>
-<span id="L146" class="ln">   146  </span>func buildDetails(inputs []DetailInput, locked []LockedProduct) ([]PurchaseDetail, decimal.Decimal, error) {
-<span id="L147" class="ln">   147  </span>	lockedByID := make(map[uuid.UUID]LockedProduct, len(locked))
-<span id="L148" class="ln">   148  </span>	for _, l := range locked {
-<span id="L149" class="ln">   149  </span>		lockedByID[l.id] = l
-<span id="L150" class="ln">   150  </span>	}
-<span id="L151" class="ln">   151  </span>
-<span id="L152" class="ln">   152  </span>	seen := make(map[uuid.UUID]struct{}, len(inputs))
-<span id="L153" class="ln">   153  </span>	details := make([]PurchaseDetail, 0, len(inputs))
-<span id="L154" class="ln">   154  </span>	subtotalDollars := decimal.FromInt(0)
-<span id="L155" class="ln">   155  </span>	for _, in := range inputs {
-<span id="L156" class="ln">   156  </span>		l, err := resolveLocked(in, lockedByID, seen)
-<span id="L157" class="ln">   157  </span>		if err != nil {
-<span id="L158" class="ln">   158  </span>			return nil, decimal.FromInt(0), err
-<span id="L159" class="ln">   159  </span>		}
-<span id="L160" class="ln">   160  </span>		seen[in.ProductID] = struct{}{}
-<span id="L161" class="ln">   161  </span>
-<span id="L162" class="ln">   162  </span>		details = append(details, PurchaseDetail{
-<span id="L163" class="ln">   163  </span>			id:        in.ID,
-<span id="L164" class="ln">   164  </span>			productID: in.ProductID,
-<span id="L165" class="ln">   165  </span>			quantity:  in.Quantity,
-<span id="L166" class="ln">   166  </span>			unitPrice: l.price,
-<span id="L167" class="ln">   167  </span>		})
-<span id="L168" class="ln">   168  </span>		subtotalDollars = subtotalDollars.Add(l.price.Decimal().Mul(decimal.FromInt(int64(in.Quantity))))
-<span id="L169" class="ln">   169  </span>	}
+<span id="L141" class="ln">   141  </span><span class="comment">// buildDetails は、明細の入力をロック済み在庫と突き合わせて購入明細を組み立て、単価スナップショットに</span>
+<span id="L142" class="ln">   142  </span><span class="comment">// よる小計を価格スケールで返します（検証条件は New を参照）。入力の順序を保った明細を返します。</span>
+<span id="L143" class="ln">   143  </span>func buildDetails(inputs []DetailInput, locked []LockedProduct) ([]PurchaseDetail, decimal.Decimal, error) {
+<span id="L144" class="ln">   144  </span>	lockedByID := make(map[uuid.UUID]LockedProduct, len(locked))
+<span id="L145" class="ln">   145  </span>	for _, l := range locked {
+<span id="L146" class="ln">   146  </span>		lockedByID[l.id] = l
+<span id="L147" class="ln">   147  </span>	}
+<span id="L148" class="ln">   148  </span>
+<span id="L149" class="ln">   149  </span>	seen := make(map[uuid.UUID]struct{}, len(inputs))
+<span id="L150" class="ln">   150  </span>	details := make([]PurchaseDetail, 0, len(inputs))
+<span id="L151" class="ln">   151  </span>	subtotalDollars := decimal.FromInt(0)
+<span id="L152" class="ln">   152  </span>	for _, in := range inputs {
+<span id="L153" class="ln">   153  </span>		l, err := resolveLocked(in, lockedByID, seen)
+<span id="L154" class="ln">   154  </span>		if err != nil {
+<span id="L155" class="ln">   155  </span>			return nil, decimal.FromInt(0), err
+<span id="L156" class="ln">   156  </span>		}
+<span id="L157" class="ln">   157  </span>		seen[in.ProductID] = struct{}{}
+<span id="L158" class="ln">   158  </span>
+<span id="L159" class="ln">   159  </span>		details = append(details, PurchaseDetail{
+<span id="L160" class="ln">   160  </span>			id:        in.ID,
+<span id="L161" class="ln">   161  </span>			productID: in.ProductID,
+<span id="L162" class="ln">   162  </span>			quantity:  in.Quantity,
+<span id="L163" class="ln">   163  </span>			unitPrice: l.price,
+<span id="L164" class="ln">   164  </span>		})
+<span id="L165" class="ln">   165  </span>		subtotalDollars = subtotalDollars.Add(l.price.Decimal().Mul(decimal.FromInt(int64(in.Quantity))))
+<span id="L166" class="ln">   166  </span>	}
+<span id="L167" class="ln">   167  </span>
+<span id="L168" class="ln">   168  </span>	return details, subtotalDollars, nil
+<span id="L169" class="ln">   169  </span>}
 <span id="L170" class="ln">   170  </span>
-<span id="L171" class="ln">   171  </span>	return details, subtotalDollars, nil
-<span id="L172" class="ln">   172  </span>}
-<span id="L173" class="ln">   173  </span>
-<span id="L174" class="ln">   174  </span><span class="comment">// resolveLocked は、明細 1 件の入力を検証し、対応するロック済み商品を返します。</span>
-<span id="L175" class="ln">   175  </span><span class="comment">// seen は既出の商品 ID の集合で、呼び出し元が返却後に in.ProductID を追加します。</span>
-<span id="L176" class="ln">   176  </span>func resolveLocked(
-<span id="L177" class="ln">   177  </span>	in DetailInput,
-<span id="L178" class="ln">   178  </span>	lockedByID map[uuid.UUID]LockedProduct,
-<span id="L179" class="ln">   179  </span>	seen map[uuid.UUID]struct{},
-<span id="L180" class="ln">   180  </span>) (LockedProduct, error) {
-<span id="L181" class="ln">   181  </span>	if in.ID.IsNil() {
-<span id="L182" class="ln">   182  </span>		return LockedProduct{}, xerrors.Wrap(ErrInvalidID, &#34;detail id is required&#34;)
-<span id="L183" class="ln">   183  </span>	}
-<span id="L184" class="ln">   184  </span>	if in.Quantity &lt; minQuantity {
-<span id="L185" class="ln">   185  </span>		return LockedProduct{}, xerrors.Wrap(
-<span id="L186" class="ln">   186  </span>			ErrInvalidQuantity, fmt.Sprintf(&#34;quantity must be %d or greater, got %d&#34;, minQuantity, in.Quantity),
-<span id="L187" class="ln">   187  </span>		)
-<span id="L188" class="ln">   188  </span>	}
-<span id="L189" class="ln">   189  </span>	if _, dup := seen[in.ProductID]; dup {
-<span id="L190" class="ln">   190  </span>		return LockedProduct{}, xerrors.Wrap(
-<span id="L191" class="ln">   191  </span>			ErrDuplicateProductID, fmt.Sprintf(&#34;product %s appears more than once&#34;, in.ProductID),
-<span id="L192" class="ln">   192  </span>		)
-<span id="L193" class="ln">   193  </span>	}
-<span id="L194" class="ln">   194  </span>
-<span id="L195" class="ln">   195  </span>	l, ok := lockedByID[in.ProductID]
-<span id="L196" class="ln">   196  </span>	if !ok {
-<span id="L197" class="ln">   197  </span>		return LockedProduct{}, xerrors.Wrap(ErrProductNotFound, fmt.Sprintf(&#34;product %s is not available&#34;, in.ProductID))
-<span id="L198" class="ln">   198  </span>	}
-<span id="L199" class="ln">   199  </span>	if in.Quantity &gt; l.quantity {
-<span id="L200" class="ln">   200  </span>		return LockedProduct{}, xerrors.Wrap(
-<span id="L201" class="ln">   201  </span>			ErrInsufficientStock,
-<span id="L202" class="ln">   202  </span>			fmt.Sprintf(&#34;product %s: requested %d, in stock %d&#34;, in.ProductID, in.Quantity, l.quantity),
-<span id="L203" class="ln">   203  </span>		)
-<span id="L204" class="ln">   204  </span>	}
+<span id="L171" class="ln">   171  </span><span class="comment">// resolveLocked は、明細 1 件の入力を検証し、対応するロック済み商品を返します。</span>
+<span id="L172" class="ln">   172  </span><span class="comment">// seen は既出の商品 ID の集合で、呼び出し元が返却後に in.ProductID を追加します。</span>
+<span id="L173" class="ln">   173  </span>func resolveLocked(
+<span id="L174" class="ln">   174  </span>	in DetailInput,
+<span id="L175" class="ln">   175  </span>	lockedByID map[uuid.UUID]LockedProduct,
+<span id="L176" class="ln">   176  </span>	seen map[uuid.UUID]struct{},
+<span id="L177" class="ln">   177  </span>) (LockedProduct, error) {
+<span id="L178" class="ln">   178  </span>	if in.ID.IsNil() {
+<span id="L179" class="ln">   179  </span>		return LockedProduct{}, xerrors.Wrap(ErrInvalidID, &#34;detail id is required&#34;)
+<span id="L180" class="ln">   180  </span>	}
+<span id="L181" class="ln">   181  </span>	if in.Quantity &lt; minQuantity {
+<span id="L182" class="ln">   182  </span>		return LockedProduct{}, xerrors.Wrap(
+<span id="L183" class="ln">   183  </span>			ErrInvalidQuantity, fmt.Sprintf(&#34;quantity must be %d or greater, got %d&#34;, minQuantity, in.Quantity),
+<span id="L184" class="ln">   184  </span>		)
+<span id="L185" class="ln">   185  </span>	}
+<span id="L186" class="ln">   186  </span>	if _, dup := seen[in.ProductID]; dup {
+<span id="L187" class="ln">   187  </span>		return LockedProduct{}, xerrors.Wrap(
+<span id="L188" class="ln">   188  </span>			ErrDuplicateProductID, fmt.Sprintf(&#34;product %s appears more than once&#34;, in.ProductID),
+<span id="L189" class="ln">   189  </span>		)
+<span id="L190" class="ln">   190  </span>	}
+<span id="L191" class="ln">   191  </span>
+<span id="L192" class="ln">   192  </span>	l, ok := lockedByID[in.ProductID]
+<span id="L193" class="ln">   193  </span>	if !ok {
+<span id="L194" class="ln">   194  </span>		return LockedProduct{}, xerrors.Wrap(ErrProductNotFound, fmt.Sprintf(&#34;product %s is not available&#34;, in.ProductID))
+<span id="L195" class="ln">   195  </span>	}
+<span id="L196" class="ln">   196  </span>	if in.Quantity &gt; l.quantity {
+<span id="L197" class="ln">   197  </span>		return LockedProduct{}, xerrors.Wrap(
+<span id="L198" class="ln">   198  </span>			ErrInsufficientStock,
+<span id="L199" class="ln">   199  </span>			fmt.Sprintf(&#34;product %s: requested %d, in stock %d&#34;, in.ProductID, in.Quantity, l.quantity),
+<span id="L200" class="ln">   200  </span>		)
+<span id="L201" class="ln">   201  </span>	}
+<span id="L202" class="ln">   202  </span>
+<span id="L203" class="ln">   203  </span>	return l, nil
+<span id="L204" class="ln">   204  </span>}
 <span id="L205" class="ln">   205  </span>
-<span id="L206" class="ln">   206  </span>	return l, nil
-<span id="L207" class="ln">   207  </span>}
-<span id="L208" class="ln">   208  </span>
-<span id="L209" class="ln">   209  </span><span class="comment">// New は、購入明細の入力とロック済み在庫から購入集約を生成します。</span>
-<span id="L210" class="ln">   210  </span><span class="comment">// 明細が空、同一 productID が重複、数量が最小値未満、明細に対応するロック済み商品が無い場合はそれぞれ</span>
-<span id="L211" class="ln">   211  </span><span class="comment">// 検証エラー（422）を返し、要求数量がロック済み在庫を超える場合は ErrInsufficientStock（409）を返します。</span>
-<span id="L212" class="ln">   212  </span><span class="comment">// 単価は対応するロック済み商品の価格スナップショットとし、金額（小計・税・送料・合計）を整数で計算します</span>
-<span id="L213" class="ln">   213  </span><span class="comment">// （税・送料の丸めは切り捨てで本メソッド内 1 箇所に集約）。ステータスは「未処理」で生成します。</span>
-<span id="L214" class="ln">   214  </span>func New(
-<span id="L215" class="ln">   215  </span>	id uuid.UUID,
-<span id="L216" class="ln">   216  </span>	code string,
-<span id="L217" class="ln">   217  </span>	userID uuid.UUID,
-<span id="L218" class="ln">   218  </span>	inputs []DetailInput,
-<span id="L219" class="ln">   219  </span>	locked []LockedProduct,
-<span id="L220" class="ln">   220  </span>) (*Purchase, error) {
-<span id="L221" class="ln">   221  </span>	if id.IsNil() {
-<span id="L222" class="ln">   222  </span>		return nil, xerrors.Wrap(ErrInvalidID, &#34;id is required&#34;)
+<span id="L206" class="ln">   206  </span><span class="comment">// New は、購入明細の入力とロック済み在庫から購入集約を生成します。</span>
+<span id="L207" class="ln">   207  </span><span class="comment">// 明細が空、同一 productID が重複、数量が最小値未満、明細に対応するロック済み商品が無い場合はそれぞれ</span>
+<span id="L208" class="ln">   208  </span><span class="comment">// 検証エラー（422）を返し、要求数量がロック済み在庫を超える場合は ErrInsufficientStock（409）を返します。</span>
+<span id="L209" class="ln">   209  </span><span class="comment">// 単価は対応するロック済み商品の価格スナップショットとし、金額（小計・税・送料・合計）を整数で計算します</span>
+<span id="L210" class="ln">   210  </span><span class="comment">// （税・送料の丸めは切り捨てで本メソッド内 1 箇所に集約）。ステータスは「未処理」で生成します。</span>
+<span id="L211" class="ln">   211  </span>func New(
+<span id="L212" class="ln">   212  </span>	id uuid.UUID,
+<span id="L213" class="ln">   213  </span>	code string,
+<span id="L214" class="ln">   214  </span>	userID uuid.UUID,
+<span id="L215" class="ln">   215  </span>	inputs []DetailInput,
+<span id="L216" class="ln">   216  </span>	locked []LockedProduct,
+<span id="L217" class="ln">   217  </span>) (*Purchase, error) {
+<span id="L218" class="ln">   218  </span>	if id.IsNil() {
+<span id="L219" class="ln">   219  </span>		return nil, xerrors.Wrap(ErrInvalidID, &#34;id is required&#34;)
+<span id="L220" class="ln">   220  </span>	}
+<span id="L221" class="ln">   221  </span>	if code == &#34;&#34; {
+<span id="L222" class="ln">   222  </span>		return nil, xerrors.Wrap(ErrInvalidCode, &#34;code is required&#34;)
 <span id="L223" class="ln">   223  </span>	}
-<span id="L224" class="ln">   224  </span>	if code == &#34;&#34; {
-<span id="L225" class="ln">   225  </span>		return nil, xerrors.Wrap(ErrInvalidCode, &#34;code is required&#34;)
+<span id="L224" class="ln">   224  </span>	if userID.IsNil() {
+<span id="L225" class="ln">   225  </span>		return nil, xerrors.Wrap(ErrInvalidUserID, &#34;userID is required&#34;)
 <span id="L226" class="ln">   226  </span>	}
-<span id="L227" class="ln">   227  </span>	if userID.IsNil() {
-<span id="L228" class="ln">   228  </span>		return nil, xerrors.Wrap(ErrInvalidUserID, &#34;userID is required&#34;)
+<span id="L227" class="ln">   227  </span>	if len(inputs) == 0 {
+<span id="L228" class="ln">   228  </span>		return nil, ErrEmptyDetails
 <span id="L229" class="ln">   229  </span>	}
-<span id="L230" class="ln">   230  </span>	if len(inputs) == 0 {
-<span id="L231" class="ln">   231  </span>		return nil, ErrEmptyDetails
-<span id="L232" class="ln">   232  </span>	}
-<span id="L233" class="ln">   233  </span>
-<span id="L234" class="ln">   234  </span>	details, subtotalDollars, err := buildDetails(inputs, locked)
-<span id="L235" class="ln">   235  </span>	if err != nil {
-<span id="L236" class="ln">   236  </span>		return nil, err
-<span id="L237" class="ln">   237  </span>	}
-<span id="L238" class="ln">   238  </span>
-<span id="L239" class="ln">   239  </span>	<span class="comment">// 価格スケール→決済スケールの丸め（切り捨て）。以降は整数セントで計算する（ADR-0038 (two-scale-quantity-model)）。</span>
-<span id="L240" class="ln">   240  </span>	subtotalCents, err := subtotalDollars.Truncate(minorUnitDigits).ToScaledInt64(minorUnitDigits)
-<span id="L241" class="ln">   241  </span>	if err != nil {
-<span id="L242" class="ln">   242  </span>		return nil, xerrors.Join(ErrInvalidAmount, xerrors.Wrap(err, &#34;subtotal exceeds the settlement range&#34;))
-<span id="L243" class="ln">   243  </span>	}
-<span id="L244" class="ln">   244  </span>	if subtotalCents &gt; maxSubtotalCents {
-<span id="L245" class="ln">   245  </span>		return nil, xerrors.Wrap(
-<span id="L246" class="ln">   246  </span>			ErrInvalidAmount,
-<span id="L247" class="ln">   247  </span>			fmt.Sprintf(&#34;subtotal %d exceeds the maximum that can carry tax and shipping (%d)&#34;, subtotalCents, maxSubtotalCents),
-<span id="L248" class="ln">   248  </span>		)
-<span id="L249" class="ln">   249  </span>	}
-<span id="L250" class="ln">   250  </span>	subtotal := int(subtotalCents)
-<span id="L251" class="ln">   251  </span>	tax := subtotal * taxRatePercent / percentDivisor
-<span id="L252" class="ln">   252  </span>	shipping := shippingFeeCents
-<span id="L253" class="ln">   253  </span>	total := subtotal + tax + shipping
-<span id="L254" class="ln">   254  </span>
-<span id="L255" class="ln">   255  </span>	return &amp;Purchase{
-<span id="L256" class="ln">   256  </span>		id:             id,
-<span id="L257" class="ln">   257  </span>		code:           code,
-<span id="L258" class="ln">   258  </span>		userID:         userID,
-<span id="L259" class="ln">   259  </span>		status:         StatusUnprocessed,
-<span id="L260" class="ln">   260  </span>		subtotalAmount: subtotal,
-<span id="L261" class="ln">   261  </span>		taxAmount:      tax,
-<span id="L262" class="ln">   262  </span>		shippingFee:    shipping,
-<span id="L263" class="ln">   263  </span>		totalAmount:    total,
-<span id="L264" class="ln">   264  </span>		details:        details,
-<span id="L265" class="ln">   265  </span>	}, nil
-<span id="L266" class="ln">   266  </span>}
-<span id="L267" class="ln">   267  </span>
-<span id="L268" class="ln">   268  </span><span class="comment">// Reconstruct は、永続化済みの購入を再構築します（Repository の読み出し・書き込み後の再検証で使用）。</span>
-<span id="L269" class="ln">   269  </span><span class="comment">// attrs.StatusCode は購入ステータスマスタで解決した現在状態、PaidAt / CanceledAt / ShippedAt / DeliveredAt</span>
-<span id="L270" class="ln">   270  </span><span class="comment">// は各イベントの発生日時（未発生は nil）です。ID / Code / UserID / StatusID が nil、StatusCode が不正、</span>
-<span id="L271" class="ln">   271  </span><span class="comment">// 金額が負、明細が空の場合は検証エラーを返します。StatusCode と timestamps の組み合わせが状態遷移では</span>
-<span id="L272" class="ln">   272  </span><span class="comment">// 到達し得ないもの（発送後のキャンセル、発送を伴わない配達 等）の場合も ErrInvalidStatusID を返します。</span>
-<span id="L273" class="ln">   273  </span><span class="comment">// 明細は New と同じ不変条件（ID / 商品 ID が設定済み、数量が最小値以上、同一商品 ID が重複しない）を課します。</span>
-<span id="L274" class="ln">   274  </span>func Reconstruct(id uuid.UUID, attrs Attributes) (*Purchase, error) {
-<span id="L275" class="ln">   275  </span>	if id.IsNil() {
-<span id="L276" class="ln">   276  </span>		return nil, xerrors.Wrap(ErrInvalidID, &#34;id is required&#34;)
+<span id="L230" class="ln">   230  </span>
+<span id="L231" class="ln">   231  </span>	details, subtotalDollars, err := buildDetails(inputs, locked)
+<span id="L232" class="ln">   232  </span>	if err != nil {
+<span id="L233" class="ln">   233  </span>		return nil, err
+<span id="L234" class="ln">   234  </span>	}
+<span id="L235" class="ln">   235  </span>
+<span id="L236" class="ln">   236  </span>	<span class="comment">// 価格スケール→決済スケールの丸め（切り捨て）。以降は整数セントで計算する（ADR-0038 (two-scale-quantity-model)）。</span>
+<span id="L237" class="ln">   237  </span>	subtotalCents, err := subtotalDollars.Truncate(minorUnitDigits).ToScaledInt64(minorUnitDigits)
+<span id="L238" class="ln">   238  </span>	if err != nil {
+<span id="L239" class="ln">   239  </span>		return nil, xerrors.Join(ErrInvalidAmount, xerrors.Wrap(err, &#34;subtotal exceeds the settlement range&#34;))
+<span id="L240" class="ln">   240  </span>	}
+<span id="L241" class="ln">   241  </span>	if subtotalCents &gt; maxSubtotalCents {
+<span id="L242" class="ln">   242  </span>		return nil, xerrors.Wrap(
+<span id="L243" class="ln">   243  </span>			ErrInvalidAmount,
+<span id="L244" class="ln">   244  </span>			fmt.Sprintf(&#34;subtotal %d exceeds the maximum that can carry tax and shipping (%d)&#34;, subtotalCents, maxSubtotalCents),
+<span id="L245" class="ln">   245  </span>		)
+<span id="L246" class="ln">   246  </span>	}
+<span id="L247" class="ln">   247  </span>	subtotal := int(subtotalCents)
+<span id="L248" class="ln">   248  </span>	tax := subtotal * taxRatePercent / percentDivisor
+<span id="L249" class="ln">   249  </span>	shipping := shippingFeeCents
+<span id="L250" class="ln">   250  </span>	total := subtotal + tax + shipping
+<span id="L251" class="ln">   251  </span>
+<span id="L252" class="ln">   252  </span>	return &amp;Purchase{
+<span id="L253" class="ln">   253  </span>		id:             id,
+<span id="L254" class="ln">   254  </span>		code:           code,
+<span id="L255" class="ln">   255  </span>		userID:         userID,
+<span id="L256" class="ln">   256  </span>		status:         StatusUnprocessed,
+<span id="L257" class="ln">   257  </span>		subtotalAmount: subtotal,
+<span id="L258" class="ln">   258  </span>		taxAmount:      tax,
+<span id="L259" class="ln">   259  </span>		shippingFee:    shipping,
+<span id="L260" class="ln">   260  </span>		totalAmount:    total,
+<span id="L261" class="ln">   261  </span>		details:        details,
+<span id="L262" class="ln">   262  </span>	}, nil
+<span id="L263" class="ln">   263  </span>}
+<span id="L264" class="ln">   264  </span>
+<span id="L265" class="ln">   265  </span><span class="comment">// Reconstruct は、永続化済みの購入を再構築します（Repository の読み出し・書き込み後の再検証で使用）。</span>
+<span id="L266" class="ln">   266  </span><span class="comment">// attrs.StatusCode は購入ステータスマスタで解決した現在状態、PaidAt / CanceledAt / ShippedAt / DeliveredAt</span>
+<span id="L267" class="ln">   267  </span><span class="comment">// は各イベントの発生日時（未発生は nil）です。ID / Code / UserID / StatusID が nil、StatusCode が不正、</span>
+<span id="L268" class="ln">   268  </span><span class="comment">// 金額が負、明細が空の場合は検証エラーを返します。StatusCode と timestamps の組み合わせが状態遷移では</span>
+<span id="L269" class="ln">   269  </span><span class="comment">// 到達し得ないもの（発送後のキャンセル、発送を伴わない配達 等）の場合も ErrInvalidStatusID を返します。</span>
+<span id="L270" class="ln">   270  </span><span class="comment">// 明細は New と同じ不変条件（ID / 商品 ID が設定済み、数量が最小値以上、同一商品 ID が重複しない）を課します。</span>
+<span id="L271" class="ln">   271  </span>func Reconstruct(id uuid.UUID, attrs Attributes) (*Purchase, error) {
+<span id="L272" class="ln">   272  </span>	if id.IsNil() {
+<span id="L273" class="ln">   273  </span>		return nil, xerrors.Wrap(ErrInvalidID, &#34;id is required&#34;)
+<span id="L274" class="ln">   274  </span>	}
+<span id="L275" class="ln">   275  </span>	if attrs.Code == &#34;&#34; {
+<span id="L276" class="ln">   276  </span>		return nil, xerrors.Wrap(ErrInvalidCode, &#34;code is required&#34;)
 <span id="L277" class="ln">   277  </span>	}
-<span id="L278" class="ln">   278  </span>	if attrs.Code == &#34;&#34; {
-<span id="L279" class="ln">   279  </span>		return nil, xerrors.Wrap(ErrInvalidCode, &#34;code is required&#34;)
+<span id="L278" class="ln">   278  </span>	if attrs.UserID.IsNil() {
+<span id="L279" class="ln">   279  </span>		return nil, xerrors.Wrap(ErrInvalidUserID, &#34;userID is required&#34;)
 <span id="L280" class="ln">   280  </span>	}
-<span id="L281" class="ln">   281  </span>	if attrs.UserID.IsNil() {
-<span id="L282" class="ln">   282  </span>		return nil, xerrors.Wrap(ErrInvalidUserID, &#34;userID is required&#34;)
+<span id="L281" class="ln">   281  </span>	if attrs.StatusID.IsNil() {
+<span id="L282" class="ln">   282  </span>		return nil, xerrors.Wrap(ErrInvalidStatusID, &#34;statusID is required&#34;)
 <span id="L283" class="ln">   283  </span>	}
-<span id="L284" class="ln">   284  </span>	if attrs.StatusID.IsNil() {
-<span id="L285" class="ln">   285  </span>		return nil, xerrors.Wrap(ErrInvalidStatusID, &#34;statusID is required&#34;)
-<span id="L286" class="ln">   286  </span>	}
-<span id="L287" class="ln">   287  </span>	status, err := NewStatus(attrs.StatusCode)
-<span id="L288" class="ln">   288  </span>	if err != nil {
-<span id="L289" class="ln">   289  </span>		return nil, err
-<span id="L290" class="ln">   290  </span>	}
-<span id="L291" class="ln">   291  </span>	if err := validateStatusTimestamps(
-<span id="L292" class="ln">   292  </span>		status, attrs.PaidAt, attrs.CanceledAt, attrs.ShippedAt, attrs.DeliveredAt,
-<span id="L293" class="ln">   293  </span>	); err != nil {
-<span id="L294" class="ln">   294  </span>		return nil, err
+<span id="L284" class="ln">   284  </span>	status, err := NewStatus(attrs.StatusCode)
+<span id="L285" class="ln">   285  </span>	if err != nil {
+<span id="L286" class="ln">   286  </span>		return nil, err
+<span id="L287" class="ln">   287  </span>	}
+<span id="L288" class="ln">   288  </span>	if err := validateStatusTimestamps(
+<span id="L289" class="ln">   289  </span>		status, attrs.PaidAt, attrs.CanceledAt, attrs.ShippedAt, attrs.DeliveredAt,
+<span id="L290" class="ln">   290  </span>	); err != nil {
+<span id="L291" class="ln">   291  </span>		return nil, err
+<span id="L292" class="ln">   292  </span>	}
+<span id="L293" class="ln">   293  </span>	if attrs.SubtotalAmount &lt; 0 || attrs.TaxAmount &lt; 0 || attrs.ShippingFee &lt; 0 || attrs.TotalAmount &lt; 0 {
+<span id="L294" class="ln">   294  </span>		return nil, xerrors.Wrap(ErrInvalidAmount, &#34;amounts must not be negative&#34;)
 <span id="L295" class="ln">   295  </span>	}
-<span id="L296" class="ln">   296  </span>	if attrs.SubtotalAmount &lt; 0 || attrs.TaxAmount &lt; 0 || attrs.ShippingFee &lt; 0 || attrs.TotalAmount &lt; 0 {
-<span id="L297" class="ln">   297  </span>		return nil, xerrors.Wrap(ErrInvalidAmount, &#34;amounts must not be negative&#34;)
+<span id="L296" class="ln">   296  </span>	if len(attrs.Details) == 0 {
+<span id="L297" class="ln">   297  </span>		return nil, ErrEmptyDetails
 <span id="L298" class="ln">   298  </span>	}
-<span id="L299" class="ln">   299  </span>	if len(attrs.Details) == 0 {
-<span id="L300" class="ln">   300  </span>		return nil, ErrEmptyDetails
-<span id="L301" class="ln">   301  </span>	}
-<span id="L302" class="ln">   302  </span>
-<span id="L303" class="ln">   303  </span>	copied := make([]PurchaseDetail, len(attrs.Details))
-<span id="L304" class="ln">   304  </span>	copy(copied, attrs.Details)
-<span id="L305" class="ln">   305  </span>	if err := validateDetails(copied); err != nil {
-<span id="L306" class="ln">   306  </span>		return nil, err
-<span id="L307" class="ln">   307  </span>	}
-<span id="L308" class="ln">   308  </span>
-<span id="L309" class="ln">   309  </span>	return &amp;Purchase{
-<span id="L310" class="ln">   310  </span>		id:             id,
-<span id="L311" class="ln">   311  </span>		code:           attrs.Code,
-<span id="L312" class="ln">   312  </span>		userID:         attrs.UserID,
-<span id="L313" class="ln">   313  </span>		statusID:       attrs.StatusID,
-<span id="L314" class="ln">   314  </span>		status:         status,
-<span id="L315" class="ln">   315  </span>		subtotalAmount: attrs.SubtotalAmount,
-<span id="L316" class="ln">   316  </span>		taxAmount:      attrs.TaxAmount,
-<span id="L317" class="ln">   317  </span>		shippingFee:    attrs.ShippingFee,
-<span id="L318" class="ln">   318  </span>		totalAmount:    attrs.TotalAmount,
-<span id="L319" class="ln">   319  </span>		details:        copied,
-<span id="L320" class="ln">   320  </span>		orderedAt:      attrs.OrderedAt,
-<span id="L321" class="ln">   321  </span>		paidAt:         ptr.Copy(attrs.PaidAt),
-<span id="L322" class="ln">   322  </span>		canceledAt:     ptr.Copy(attrs.CanceledAt),
-<span id="L323" class="ln">   323  </span>		shippedAt:      ptr.Copy(attrs.ShippedAt),
-<span id="L324" class="ln">   324  </span>		deliveredAt:    ptr.Copy(attrs.DeliveredAt),
-<span id="L325" class="ln">   325  </span>	}, nil
-<span id="L326" class="ln">   326  </span>}
-<span id="L327" class="ln">   327  </span>
-<span id="L328" class="ln">   328  </span><span class="comment">// validateStatusTimestamps は、statusCode と各イベント日時の組み合わせが状態遷移で到達し得るかを検証します。</span>
-<span id="L329" class="ln">   329  </span><span class="comment">// 到達し得ない組み合わせ（発送後のキャンセル、発送を伴わない配達 等）の場合は ErrInvalidStatusID を返します。</span>
-<span id="L330" class="ln">   330  </span>func validateStatusTimestamps(status Status, paidAt, canceledAt, shippedAt, deliveredAt *time.Time) error {
-<span id="L331" class="ln">   331  </span>	<span class="comment">// キャンセルと canceledAt は同時セット（双条件。docs/spec/purchase/domain.md Cancel invariants）。</span>
-<span id="L332" class="ln">   332  </span>	if (status == StatusCanceled) != (canceledAt != nil) {
-<span id="L333" class="ln">   333  </span>		return xerrors.Wrap(ErrInvalidStatusID, &#34;canceled status and canceledAt must be consistent&#34;)
-<span id="L334" class="ln">   334  </span>	}
-<span id="L335" class="ln">   335  </span>	<span class="comment">// 支払い済みは paidAt 必須（一方向。docs/spec/purchase/domain.md Pay invariants）。</span>
-<span id="L336" class="ln">   336  </span>	if status == StatusPaid &amp;&amp; paidAt == nil {
-<span id="L337" class="ln">   337  </span>		return xerrors.Wrap(ErrInvalidStatusID, &#34;paid status requires paidAt&#34;)
-<span id="L338" class="ln">   338  </span>	}
-<span id="L339" class="ln">   339  </span>	<span class="comment">// 発送済みは shippedAt 必須（一方向。docs/spec/purchase/domain.md Ship invariants）。</span>
-<span id="L340" class="ln">   340  </span>	if status == StatusShipped &amp;&amp; shippedAt == nil {
-<span id="L341" class="ln">   341  </span>		return xerrors.Wrap(ErrInvalidStatusID, &#34;shipped status requires shippedAt&#34;)
-<span id="L342" class="ln">   342  </span>	}
-<span id="L343" class="ln">   343  </span>	<span class="comment">// キャンセルは発送前にしか行えない（Cancel が発送済み・配達済みを拒否する）ため、キャンセル status と</span>
-<span id="L344" class="ln">   344  </span>	<span class="comment">// 発送の記録は同居しない。支払い後のキャンセルは正常なので paidAt は対象外。</span>
-<span id="L345" class="ln">   345  </span>	if status == StatusCanceled &amp;&amp; shippedAt != nil {
-<span id="L346" class="ln">   346  </span>		return xerrors.Wrap(ErrInvalidStatusID, &#34;canceled status must not have shippedAt&#34;)
-<span id="L347" class="ln">   347  </span>	}
-<span id="L348" class="ln">   348  </span>	<span class="comment">// 発送済みへは支払い済みからのみ遷移し、支払い済みは paidAt を必須とするため、paidAt を欠く発送済みは</span>
-<span id="L349" class="ln">   349  </span>	<span class="comment">// 到達不能な状態である。</span>
-<span id="L350" class="ln">   350  </span>	if status == StatusShipped &amp;&amp; paidAt == nil {
-<span id="L351" class="ln">   351  </span>		return xerrors.Wrap(ErrInvalidStatusID, &#34;shipped status requires paidAt&#34;)
-<span id="L352" class="ln">   352  </span>	}
-<span id="L353" class="ln">   353  </span>	<span class="comment">// 配達は発送済みからのみ到達するため、shippedAt を欠く deliveredAt は到達不能な状態である。</span>
-<span id="L354" class="ln">   354  </span>	if deliveredAt != nil &amp;&amp; shippedAt == nil {
-<span id="L355" class="ln">   355  </span>		return xerrors.Wrap(ErrInvalidStatusID, &#34;deliveredAt requires shippedAt&#34;)
-<span id="L356" class="ln">   356  </span>	}
-<span id="L357" class="ln">   357  </span>	<span class="comment">// 配達済みと deliveredAt は同時セット（双条件。docs/spec/purchase/domain.md Deliver invariants）。</span>
-<span id="L358" class="ln">   358  </span>	if (status == StatusDelivered) != (deliveredAt != nil) {
-<span id="L359" class="ln">   359  </span>		return xerrors.Wrap(ErrInvalidStatusID, &#34;delivered status and deliveredAt must be consistent&#34;)
-<span id="L360" class="ln">   360  </span>	}
-<span id="L361" class="ln">   361  </span>	return nil
-<span id="L362" class="ln">   362  </span>}
+<span id="L299" class="ln">   299  </span>
+<span id="L300" class="ln">   300  </span>	copied := make([]PurchaseDetail, len(attrs.Details))
+<span id="L301" class="ln">   301  </span>	copy(copied, attrs.Details)
+<span id="L302" class="ln">   302  </span>	if err := validateDetails(copied); err != nil {
+<span id="L303" class="ln">   303  </span>		return nil, err
+<span id="L304" class="ln">   304  </span>	}
+<span id="L305" class="ln">   305  </span>
+<span id="L306" class="ln">   306  </span>	return &amp;Purchase{
+<span id="L307" class="ln">   307  </span>		id:             id,
+<span id="L308" class="ln">   308  </span>		code:           attrs.Code,
+<span id="L309" class="ln">   309  </span>		userID:         attrs.UserID,
+<span id="L310" class="ln">   310  </span>		statusID:       attrs.StatusID,
+<span id="L311" class="ln">   311  </span>		status:         status,
+<span id="L312" class="ln">   312  </span>		subtotalAmount: attrs.SubtotalAmount,
+<span id="L313" class="ln">   313  </span>		taxAmount:      attrs.TaxAmount,
+<span id="L314" class="ln">   314  </span>		shippingFee:    attrs.ShippingFee,
+<span id="L315" class="ln">   315  </span>		totalAmount:    attrs.TotalAmount,
+<span id="L316" class="ln">   316  </span>		details:        copied,
+<span id="L317" class="ln">   317  </span>		orderedAt:      attrs.OrderedAt,
+<span id="L318" class="ln">   318  </span>		paidAt:         ptr.Copy(attrs.PaidAt),
+<span id="L319" class="ln">   319  </span>		canceledAt:     ptr.Copy(attrs.CanceledAt),
+<span id="L320" class="ln">   320  </span>		shippedAt:      ptr.Copy(attrs.ShippedAt),
+<span id="L321" class="ln">   321  </span>		deliveredAt:    ptr.Copy(attrs.DeliveredAt),
+<span id="L322" class="ln">   322  </span>	}, nil
+<span id="L323" class="ln">   323  </span>}
+<span id="L324" class="ln">   324  </span>
+<span id="L325" class="ln">   325  </span><span class="comment">// validateStatusTimestamps は、statusCode と各イベント日時の組み合わせの到達可能性を検証します</span>
+<span id="L326" class="ln">   326  </span><span class="comment">// （個々の理由は各分岐のコメント、契約は Reconstruct を参照）。</span>
+<span id="L327" class="ln">   327  </span>func validateStatusTimestamps(status Status, paidAt, canceledAt, shippedAt, deliveredAt *time.Time) error {
+<span id="L328" class="ln">   328  </span>	<span class="comment">// キャンセルと canceledAt は同時セット（双条件。docs/spec/purchase/domain.md Cancel invariants）。</span>
+<span id="L329" class="ln">   329  </span>	if (status == StatusCanceled) != (canceledAt != nil) {
+<span id="L330" class="ln">   330  </span>		return xerrors.Wrap(ErrInvalidStatusID, &#34;canceled status and canceledAt must be consistent&#34;)
+<span id="L331" class="ln">   331  </span>	}
+<span id="L332" class="ln">   332  </span>	<span class="comment">// 支払い済みは paidAt 必須（一方向。docs/spec/purchase/domain.md Pay invariants）。</span>
+<span id="L333" class="ln">   333  </span>	if status == StatusPaid &amp;&amp; paidAt == nil {
+<span id="L334" class="ln">   334  </span>		return xerrors.Wrap(ErrInvalidStatusID, &#34;paid status requires paidAt&#34;)
+<span id="L335" class="ln">   335  </span>	}
+<span id="L336" class="ln">   336  </span>	<span class="comment">// 発送済みは shippedAt 必須（一方向。docs/spec/purchase/domain.md Ship invariants）。</span>
+<span id="L337" class="ln">   337  </span>	if status == StatusShipped &amp;&amp; shippedAt == nil {
+<span id="L338" class="ln">   338  </span>		return xerrors.Wrap(ErrInvalidStatusID, &#34;shipped status requires shippedAt&#34;)
+<span id="L339" class="ln">   339  </span>	}
+<span id="L340" class="ln">   340  </span>	<span class="comment">// キャンセルは発送前にしか行えない（Cancel が発送済み・配達済みを拒否する）ため、キャンセル status と</span>
+<span id="L341" class="ln">   341  </span>	<span class="comment">// 発送の記録は同居しない。支払い後のキャンセルは正常なので paidAt は対象外。</span>
+<span id="L342" class="ln">   342  </span>	if status == StatusCanceled &amp;&amp; shippedAt != nil {
+<span id="L343" class="ln">   343  </span>		return xerrors.Wrap(ErrInvalidStatusID, &#34;canceled status must not have shippedAt&#34;)
+<span id="L344" class="ln">   344  </span>	}
+<span id="L345" class="ln">   345  </span>	<span class="comment">// 発送済みへは支払い済みからのみ遷移し、支払い済みは paidAt を必須とするため、paidAt を欠く発送済みは</span>
+<span id="L346" class="ln">   346  </span>	<span class="comment">// 到達不能な状態である。</span>
+<span id="L347" class="ln">   347  </span>	if status == StatusShipped &amp;&amp; paidAt == nil {
+<span id="L348" class="ln">   348  </span>		return xerrors.Wrap(ErrInvalidStatusID, &#34;shipped status requires paidAt&#34;)
+<span id="L349" class="ln">   349  </span>	}
+<span id="L350" class="ln">   350  </span>	<span class="comment">// 配達は発送済みからのみ到達するため、shippedAt を欠く deliveredAt は到達不能な状態である。</span>
+<span id="L351" class="ln">   351  </span>	if deliveredAt != nil &amp;&amp; shippedAt == nil {
+<span id="L352" class="ln">   352  </span>		return xerrors.Wrap(ErrInvalidStatusID, &#34;deliveredAt requires shippedAt&#34;)
+<span id="L353" class="ln">   353  </span>	}
+<span id="L354" class="ln">   354  </span>	<span class="comment">// 配達済みと deliveredAt は同時セット（双条件。docs/spec/purchase/domain.md Deliver invariants）。</span>
+<span id="L355" class="ln">   355  </span>	if (status == StatusDelivered) != (deliveredAt != nil) {
+<span id="L356" class="ln">   356  </span>		return xerrors.Wrap(ErrInvalidStatusID, &#34;delivered status and deliveredAt must be consistent&#34;)
+<span id="L357" class="ln">   357  </span>	}
+<span id="L358" class="ln">   358  </span>	return nil
+<span id="L359" class="ln">   359  </span>}
+<span id="L360" class="ln">   360  </span>
+<span id="L361" class="ln">   361  </span><span class="comment">// ID は、商品 ID を返します。</span>
+<span id="L362" class="ln">   362  </span>func (l LockedProduct) ID() uuid.UUID { return l.id }
 <span id="L363" class="ln">   363  </span>
-<span id="L364" class="ln">   364  </span><span class="comment">// ID は、商品 ID を返します。</span>
-<span id="L365" class="ln">   365  </span>func (l LockedProduct) ID() uuid.UUID { return l.id }
+<span id="L364" class="ln">   364  </span><span class="comment">// Price は、単価（価格スケール・ドル decimal）を返します。</span>
+<span id="L365" class="ln">   365  </span>func (l LockedProduct) Price() money.Price { return l.price }
 <span id="L366" class="ln">   366  </span>
-<span id="L367" class="ln">   367  </span><span class="comment">// Price は、単価（価格スケール・ドル decimal）を返します。</span>
-<span id="L368" class="ln">   368  </span>func (l LockedProduct) Price() money.Price { return l.price }
+<span id="L367" class="ln">   367  </span><span class="comment">// Quantity は、ロック時点の在庫数を返します。</span>
+<span id="L368" class="ln">   368  </span>func (l LockedProduct) Quantity() int { return l.quantity }
 <span id="L369" class="ln">   369  </span>
-<span id="L370" class="ln">   370  </span><span class="comment">// Quantity は、ロック時点の在庫数を返します。</span>
-<span id="L371" class="ln">   371  </span>func (l LockedProduct) Quantity() int { return l.quantity }
+<span id="L370" class="ln">   370  </span><span class="comment">// ID は、明細 ID を返します。</span>
+<span id="L371" class="ln">   371  </span>func (d PurchaseDetail) ID() uuid.UUID { return d.id }
 <span id="L372" class="ln">   372  </span>
-<span id="L373" class="ln">   373  </span><span class="comment">// ID は、明細 ID を返します。</span>
-<span id="L374" class="ln">   374  </span>func (d PurchaseDetail) ID() uuid.UUID { return d.id }
+<span id="L373" class="ln">   373  </span><span class="comment">// ProductID は、商品 ID を返します。</span>
+<span id="L374" class="ln">   374  </span>func (d PurchaseDetail) ProductID() uuid.UUID { return d.productID }
 <span id="L375" class="ln">   375  </span>
-<span id="L376" class="ln">   376  </span><span class="comment">// ProductID は、商品 ID を返します。</span>
-<span id="L377" class="ln">   377  </span>func (d PurchaseDetail) ProductID() uuid.UUID { return d.productID }
+<span id="L376" class="ln">   376  </span><span class="comment">// Quantity は、購入数量を返します。</span>
+<span id="L377" class="ln">   377  </span>func (d PurchaseDetail) Quantity() int { return d.quantity }
 <span id="L378" class="ln">   378  </span>
-<span id="L379" class="ln">   379  </span><span class="comment">// Quantity は、購入数量を返します。</span>
-<span id="L380" class="ln">   380  </span>func (d PurchaseDetail) Quantity() int { return d.quantity }
+<span id="L379" class="ln">   379  </span><span class="comment">// UnitPrice は、単価スナップショット（価格スケール・ドル decimal）を返します。</span>
+<span id="L380" class="ln">   380  </span>func (d PurchaseDetail) UnitPrice() money.Price { return d.unitPrice }
 <span id="L381" class="ln">   381  </span>
-<span id="L382" class="ln">   382  </span><span class="comment">// UnitPrice は、単価スナップショット（価格スケール・ドル decimal）を返します。</span>
-<span id="L383" class="ln">   383  </span>func (d PurchaseDetail) UnitPrice() money.Price { return d.unitPrice }
+<span id="L382" class="ln">   382  </span><span class="comment">// ID は、購入 ID を返します。</span>
+<span id="L383" class="ln">   383  </span>func (p *Purchase) ID() uuid.UUID { return p.id }
 <span id="L384" class="ln">   384  </span>
-<span id="L385" class="ln">   385  </span><span class="comment">// ID は、購入 ID を返します。</span>
-<span id="L386" class="ln">   386  </span>func (p *Purchase) ID() uuid.UUID { return p.id }
+<span id="L385" class="ln">   385  </span><span class="comment">// Code は、購入コード（UUIDv7 文字列）を返します。</span>
+<span id="L386" class="ln">   386  </span>func (p *Purchase) Code() string { return p.code }
 <span id="L387" class="ln">   387  </span>
-<span id="L388" class="ln">   388  </span><span class="comment">// Code は、購入コード（UUIDv7 文字列）を返します。</span>
-<span id="L389" class="ln">   389  </span>func (p *Purchase) Code() string { return p.code }
+<span id="L388" class="ln">   388  </span><span class="comment">// UserID は、購入したユーザーの ID を返します。</span>
+<span id="L389" class="ln">   389  </span>func (p *Purchase) UserID() uuid.UUID { return p.userID }
 <span id="L390" class="ln">   390  </span>
-<span id="L391" class="ln">   391  </span><span class="comment">// UserID は、購入したユーザーの ID を返します。</span>
-<span id="L392" class="ln">   392  </span>func (p *Purchase) UserID() uuid.UUID { return p.userID }
+<span id="L391" class="ln">   391  </span><span class="comment">// StatusID は、購入ステータス ID を返します。New で生成した集約ではゼロ値で、再構築時に設定されます。</span>
+<span id="L392" class="ln">   392  </span>func (p *Purchase) StatusID() uuid.UUID { return p.statusID }
 <span id="L393" class="ln">   393  </span>
-<span id="L394" class="ln">   394  </span><span class="comment">// StatusID は、購入ステータス ID を返します。New で生成した集約ではゼロ値で、再構築時に設定されます。</span>
-<span id="L395" class="ln">   395  </span>func (p *Purchase) StatusID() uuid.UUID { return p.statusID }
-<span id="L396" class="ln">   396  </span>
-<span id="L397" class="ln">   397  </span><span class="comment">// Status は、購入のステータスを返します。New で生成した集約は未処理、再構築時は購入ステータス</span>
-<span id="L398" class="ln">   398  </span><span class="comment">// マスタで解決した現在状態です。名前・終端性・遷移可否はこの値に問い合わせます。</span>
-<span id="L399" class="ln">   399  </span>func (p *Purchase) Status() Status { return p.status }
+<span id="L394" class="ln">   394  </span><span class="comment">// Status は、購入のステータスを返します。New で生成した集約は未処理、再構築時は購入ステータス</span>
+<span id="L395" class="ln">   395  </span><span class="comment">// マスタで解決した現在状態です。名前・終端性・遷移可否はこの値に問い合わせます。</span>
+<span id="L396" class="ln">   396  </span>func (p *Purchase) Status() Status { return p.status }
+<span id="L397" class="ln">   397  </span>
+<span id="L398" class="ln">   398  </span><span class="comment">// StatusCode は、永続化と外部公開に用いる業務キーを返します。</span>
+<span id="L399" class="ln">   399  </span>func (p *Purchase) StatusCode() int { return p.status.Code() }
 <span id="L400" class="ln">   400  </span>
-<span id="L401" class="ln">   401  </span><span class="comment">// StatusCode は、永続化と外部公開に用いる業務キーを返します。</span>
-<span id="L402" class="ln">   402  </span>func (p *Purchase) StatusCode() int { return p.status.Code() }
+<span id="L401" class="ln">   401  </span><span class="comment">// SubtotalAmount は、小計（USD セント）を返します。</span>
+<span id="L402" class="ln">   402  </span>func (p *Purchase) SubtotalAmount() int { return p.subtotalAmount }
 <span id="L403" class="ln">   403  </span>
-<span id="L404" class="ln">   404  </span><span class="comment">// SubtotalAmount は、小計（USD セント）を返します。</span>
-<span id="L405" class="ln">   405  </span>func (p *Purchase) SubtotalAmount() int { return p.subtotalAmount }
+<span id="L404" class="ln">   404  </span><span class="comment">// TaxAmount は、税額（USD セント）を返します。</span>
+<span id="L405" class="ln">   405  </span>func (p *Purchase) TaxAmount() int { return p.taxAmount }
 <span id="L406" class="ln">   406  </span>
-<span id="L407" class="ln">   407  </span><span class="comment">// TaxAmount は、税額（USD セント）を返します。</span>
-<span id="L408" class="ln">   408  </span>func (p *Purchase) TaxAmount() int { return p.taxAmount }
+<span id="L407" class="ln">   407  </span><span class="comment">// ShippingFee は、送料（USD セント）を返します。</span>
+<span id="L408" class="ln">   408  </span>func (p *Purchase) ShippingFee() int { return p.shippingFee }
 <span id="L409" class="ln">   409  </span>
-<span id="L410" class="ln">   410  </span><span class="comment">// ShippingFee は、送料（USD セント）を返します。</span>
-<span id="L411" class="ln">   411  </span>func (p *Purchase) ShippingFee() int { return p.shippingFee }
+<span id="L410" class="ln">   410  </span><span class="comment">// TotalAmount は、合計（USD セント）を返します。</span>
+<span id="L411" class="ln">   411  </span>func (p *Purchase) TotalAmount() int { return p.totalAmount }
 <span id="L412" class="ln">   412  </span>
-<span id="L413" class="ln">   413  </span><span class="comment">// TotalAmount は、合計（USD セント）を返します。</span>
-<span id="L414" class="ln">   414  </span>func (p *Purchase) TotalAmount() int { return p.totalAmount }
+<span id="L413" class="ln">   413  </span><span class="comment">// OrderedAt は、注文日時を返します。New で生成した集約ではゼロ値で、再構築時に設定されます。</span>
+<span id="L414" class="ln">   414  </span>func (p *Purchase) OrderedAt() time.Time { return p.orderedAt }
 <span id="L415" class="ln">   415  </span>
-<span id="L416" class="ln">   416  </span><span class="comment">// OrderedAt は、注文日時を返します。New で生成した集約ではゼロ値で、再構築時に設定されます。</span>
-<span id="L417" class="ln">   417  </span>func (p *Purchase) OrderedAt() time.Time { return p.orderedAt }
+<span id="L416" class="ln">   416  </span><span class="comment">// PaidAt は、支払い日時を返します。未支払いの場合は nil です。</span>
+<span id="L417" class="ln">   417  </span>func (p *Purchase) PaidAt() *time.Time { return ptr.Copy(p.paidAt) }
 <span id="L418" class="ln">   418  </span>
-<span id="L419" class="ln">   419  </span><span class="comment">// PaidAt は、支払い日時を返します。未支払いの場合は nil です。</span>
-<span id="L420" class="ln">   420  </span>func (p *Purchase) PaidAt() *time.Time { return ptr.Copy(p.paidAt) }
+<span id="L419" class="ln">   419  </span><span class="comment">// CanceledAt は、キャンセル日時を返します。未キャンセルの場合は nil です。</span>
+<span id="L420" class="ln">   420  </span>func (p *Purchase) CanceledAt() *time.Time { return ptr.Copy(p.canceledAt) }
 <span id="L421" class="ln">   421  </span>
-<span id="L422" class="ln">   422  </span><span class="comment">// CanceledAt は、キャンセル日時を返します。未キャンセルの場合は nil です。</span>
-<span id="L423" class="ln">   423  </span>func (p *Purchase) CanceledAt() *time.Time { return ptr.Copy(p.canceledAt) }
-<span id="L424" class="ln">   424  </span>
-<span id="L425" class="ln">   425  </span><span class="comment">// IsCanceled は、購入がキャンセル済みかどうかを返します。</span>
-<span id="L426" class="ln">   426  </span><span class="comment">//</span>
-<span id="L427" class="ln">   427  </span><span class="comment">// 判定に用いるのは source of truth である statusCode のみで、canceledAt は見ません（読み取り経路の</span>
-<span id="L428" class="ln">   428  </span><span class="comment">// SQL 述語との関係は internal/domain/README.md § Query and Aggregate）。</span>
-<span id="L429" class="ln">   429  </span>func (p *Purchase) IsCanceled() bool { return p.status == StatusCanceled }
+<span id="L422" class="ln">   422  </span><span class="comment">// IsCanceled は、購入がキャンセル済みかどうかを返します。</span>
+<span id="L423" class="ln">   423  </span><span class="comment">//</span>
+<span id="L424" class="ln">   424  </span><span class="comment">// 判定に用いるのは source of truth である statusCode のみで、canceledAt は見ません（読み取り経路の</span>
+<span id="L425" class="ln">   425  </span><span class="comment">// SQL 述語との関係は internal/domain/README.md § Query and Aggregate）。</span>
+<span id="L426" class="ln">   426  </span>func (p *Purchase) IsCanceled() bool { return p.status == StatusCanceled }
+<span id="L427" class="ln">   427  </span>
+<span id="L428" class="ln">   428  </span><span class="comment">// ShippedAt は、発送日時を返します。未発送の場合は nil です。</span>
+<span id="L429" class="ln">   429  </span>func (p *Purchase) ShippedAt() *time.Time { return ptr.Copy(p.shippedAt) }
 <span id="L430" class="ln">   430  </span>
-<span id="L431" class="ln">   431  </span><span class="comment">// ShippedAt は、発送日時を返します。未発送の場合は nil です。</span>
-<span id="L432" class="ln">   432  </span>func (p *Purchase) ShippedAt() *time.Time { return ptr.Copy(p.shippedAt) }
+<span id="L431" class="ln">   431  </span><span class="comment">// DeliveredAt は、配達日時を返します。未配達の場合は nil です。</span>
+<span id="L432" class="ln">   432  </span>func (p *Purchase) DeliveredAt() *time.Time { return ptr.Copy(p.deliveredAt) }
 <span id="L433" class="ln">   433  </span>
-<span id="L434" class="ln">   434  </span><span class="comment">// DeliveredAt は、配達日時を返します。未配達の場合は nil です。</span>
-<span id="L435" class="ln">   435  </span>func (p *Purchase) DeliveredAt() *time.Time { return ptr.Copy(p.deliveredAt) }
-<span id="L436" class="ln">   436  </span>
-<span id="L437" class="ln">   437  </span><span class="comment">// IsShippable は、購入が発送可能な状態にあるかどうかを返します。</span>
-<span id="L438" class="ln">   438  </span><span class="comment">//</span>
-<span id="L439" class="ln">   439  </span><span class="comment">// 可否は Status.CanTransitionTo から導出します（読み取り経路の SQL 述語との関係は</span>
-<span id="L440" class="ln">   440  </span><span class="comment">// internal/domain/README.md § Query and Aggregate）。</span>
-<span id="L441" class="ln">   441  </span>func (p *Purchase) IsShippable() bool { return p.status.CanTransitionTo(StatusShipped) }
-<span id="L442" class="ln">   442  </span>
-<span id="L443" class="ln">   443  </span><span class="comment">// Cancel は、購入をキャンセル状態へ遷移させます。キャンセル可能状態（未処理 / 受付中 / 確認中 / 処理中 /</span>
-<span id="L444" class="ln">   444  </span><span class="comment">// 支払い済み）からのみ遷移でき、statusCode をキャンセル（6）へ、canceledAt を now へ同時に更新します。</span>
-<span id="L445" class="ln">   445  </span><span class="comment">// 既にキャンセル済みなら ErrAlreadyCanceled、完了・配達済み・発送済み（shippedAt）なら</span>
-<span id="L446" class="ln">   446  </span><span class="comment">// ErrCancelNotAllowed をそれぞれ返します（いずれも 409）。</span>
-<span id="L447" class="ln">   447  </span><span class="comment">// 遷移に成功したときだけキャンセルの事実（Event）を返します。</span>
-<span id="L448" class="ln">   448  </span>func (p *Purchase) Cancel(now time.Time) (Event, error) {
-<span id="L449" class="ln">   449  </span>	if p.IsCanceled() {
-<span id="L450" class="ln">   450  </span>		return Event{}, ErrAlreadyCanceled
-<span id="L451" class="ln">   451  </span>	}
-<span id="L452" class="ln">   452  </span>	<span class="comment">// 配達済みも deliveredAt と同値なので status で判定する。発送済みは status が配達済みへ進んでも</span>
-<span id="L453" class="ln">   453  </span>	<span class="comment">// 遷移不可であり続けるため、status ではなく残り続ける shippedAt で判定する。</span>
-<span id="L454" class="ln">   454  </span>	if !p.status.CanTransitionTo(StatusCanceled) || p.shippedAt != nil {
-<span id="L455" class="ln">   455  </span>		return Event{}, ErrCancelNotAllowed
-<span id="L456" class="ln">   456  </span>	}
-<span id="L457" class="ln">   457  </span>	p.status = StatusCanceled
-<span id="L458" class="ln">   458  </span>	p.canceledAt = &amp;now
-<span id="L459" class="ln">   459  </span>	return newEvent(EventCanceled, p.id, now), nil
-<span id="L460" class="ln">   460  </span>}
-<span id="L461" class="ln">   461  </span>
-<span id="L462" class="ln">   462  </span><span class="comment">// Pay は、購入を支払い済み状態へ遷移させます。未払い相当（未処理 / 受付中 / 確認中 / 処理中）からのみ遷移でき、</span>
-<span id="L463" class="ln">   463  </span><span class="comment">// statusCode を支払い済み（7）へ、paidAt を now へ同時に更新します。既に支払い済みなら ErrAlreadyPaid、</span>
-<span id="L464" class="ln">   464  </span><span class="comment">// キャンセル済み・完了・配達済み・発送済み（shippedAt）なら ErrPayNotAllowed をそれぞれ返します</span>
-<span id="L465" class="ln">   465  </span><span class="comment">// （いずれも 409）。決済 SDK / PSP 連携は行わず、paidAt とステータスの記録のみを担う擬似決済です。</span>
-<span id="L466" class="ln">   466  </span><span class="comment">// 遷移に成功したときだけ支払いの事実（Event）を返します。</span>
-<span id="L467" class="ln">   467  </span>func (p *Purchase) Pay(now time.Time) (Event, error) {
-<span id="L468" class="ln">   468  </span>	if p.status == StatusPaid {
-<span id="L469" class="ln">   469  </span>		return Event{}, ErrAlreadyPaid
-<span id="L470" class="ln">   470  </span>	}
-<span id="L471" class="ln">   471  </span>	<span class="comment">// status と shippedAt を併用する理由は Cancel を参照。</span>
-<span id="L472" class="ln">   472  </span>	if !p.status.CanTransitionTo(StatusPaid) || p.shippedAt != nil {
-<span id="L473" class="ln">   473  </span>		return Event{}, ErrPayNotAllowed
-<span id="L474" class="ln">   474  </span>	}
-<span id="L475" class="ln">   475  </span>	p.status = StatusPaid
-<span id="L476" class="ln">   476  </span>	p.paidAt = &amp;now
-<span id="L477" class="ln">   477  </span>	return newEvent(EventPaid, p.id, now), nil
-<span id="L478" class="ln">   478  </span>}
-<span id="L479" class="ln">   479  </span>
-<span id="L480" class="ln">   480  </span><span class="comment">// Ship は、購入を発送済み状態へ遷移させます。支払い済みからのみ遷移でき、statusCode を発送済み（8）へ、</span>
-<span id="L481" class="ln">   481  </span><span class="comment">// shippedAt を now へ同時に更新します。既に発送済みなら ErrAlreadyShipped、それ以外の状態</span>
-<span id="L482" class="ln">   482  </span><span class="comment">// （未払い相当・完了・キャンセル済み・配達済み）なら ErrShipNotAllowed をそれぞれ返します（いずれも 409）。</span>
-<span id="L483" class="ln">   483  </span><span class="comment">// 配送追跡（追跡番号 / 配送業者）は扱わず、shippedAt とステータスの記録のみを担います。</span>
-<span id="L484" class="ln">   484  </span><span class="comment">// 遷移に成功したときだけ発送の事実（Event）を返します。</span>
-<span id="L485" class="ln">   485  </span>func (p *Purchase) Ship(now time.Time) (Event, error) {
-<span id="L486" class="ln">   486  </span>	if p.status == StatusShipped {
-<span id="L487" class="ln">   487  </span>		return Event{}, ErrAlreadyShipped
-<span id="L488" class="ln">   488  </span>	}
-<span id="L489" class="ln">   489  </span>	if !p.status.CanTransitionTo(StatusShipped) {
-<span id="L490" class="ln">   490  </span>		return Event{}, ErrShipNotAllowed
-<span id="L491" class="ln">   491  </span>	}
-<span id="L492" class="ln">   492  </span>	p.status = StatusShipped
-<span id="L493" class="ln">   493  </span>	p.shippedAt = &amp;now
-<span id="L494" class="ln">   494  </span>	return newEvent(EventShipped, p.id, now), nil
-<span id="L495" class="ln">   495  </span>}
-<span id="L496" class="ln">   496  </span>
-<span id="L497" class="ln">   497  </span><span class="comment">// Deliver は、購入を配達済み状態へ遷移させます。発送済みからのみ遷移でき、statusCode を配達済み（9）へ、</span>
-<span id="L498" class="ln">   498  </span><span class="comment">// deliveredAt を now へ同時に更新します。既に配達済みなら ErrAlreadyDelivered、それ以外の状態</span>
-<span id="L499" class="ln">   499  </span><span class="comment">// （未払い相当・支払い済み・完了・キャンセル済み）なら ErrDeliverNotAllowed をそれぞれ返します（いずれも 409）。</span>
-<span id="L500" class="ln">   500  </span><span class="comment">// 配達確認の証跡（署名 / 受領写真 / GPS 位置）は扱わず、deliveredAt とステータスの記録のみを担います。</span>
-<span id="L501" class="ln">   501  </span><span class="comment">// 遷移に成功したときだけ配達の事実（Event）を返します。</span>
-<span id="L502" class="ln">   502  </span>func (p *Purchase) Deliver(now time.Time) (Event, error) {
-<span id="L503" class="ln">   503  </span>	if p.status == StatusDelivered {
-<span id="L504" class="ln">   504  </span>		return Event{}, ErrAlreadyDelivered
-<span id="L505" class="ln">   505  </span>	}
-<span id="L506" class="ln">   506  </span>	if !p.status.CanTransitionTo(StatusDelivered) {
-<span id="L507" class="ln">   507  </span>		return Event{}, ErrDeliverNotAllowed
-<span id="L508" class="ln">   508  </span>	}
-<span id="L509" class="ln">   509  </span>	p.status = StatusDelivered
-<span id="L510" class="ln">   510  </span>	p.deliveredAt = &amp;now
-<span id="L511" class="ln">   511  </span>	return newEvent(EventDelivered, p.id, now), nil
-<span id="L512" class="ln">   512  </span>}
-<span id="L513" class="ln">   513  </span>
-<span id="L514" class="ln">   514  </span><span class="comment">// Details は、購入明細のスライスを返します（内部スライスの変更を防ぐためコピーを返します）。</span>
-<span id="L515" class="ln">   515  </span>func (p *Purchase) Details() []PurchaseDetail {
-<span id="L516" class="ln">   516  </span>	copied := make([]PurchaseDetail, len(p.details))
-<span id="L517" class="ln">   517  </span>	copy(copied, p.details)
-<span id="L518" class="ln">   518  </span>	return copied
-<span id="L519" class="ln">   519  </span>}
-<span id="L520" class="ln">   520  </span>
+<span id="L434" class="ln">   434  </span><span class="comment">// IsShippable は、購入が発送可能な状態にあるかどうかを返します。</span>
+<span id="L435" class="ln">   435  </span><span class="comment">//</span>
+<span id="L436" class="ln">   436  </span><span class="comment">// 可否は Status.CanTransitionTo から導出します（読み取り経路の SQL 述語との関係は</span>
+<span id="L437" class="ln">   437  </span><span class="comment">// internal/domain/README.md § Query and Aggregate）。</span>
+<span id="L438" class="ln">   438  </span>func (p *Purchase) IsShippable() bool { return p.status.CanTransitionTo(StatusShipped) }
+<span id="L439" class="ln">   439  </span>
+<span id="L440" class="ln">   440  </span><span class="comment">// Cancel は、購入をキャンセル状態へ遷移させます。キャンセル可能状態（未処理 / 受付中 / 確認中 / 処理中 /</span>
+<span id="L441" class="ln">   441  </span><span class="comment">// 支払い済み）からのみ遷移でき、statusCode をキャンセル（6）へ、canceledAt を now へ同時に更新します。</span>
+<span id="L442" class="ln">   442  </span><span class="comment">// 既にキャンセル済みなら ErrAlreadyCanceled、完了・配達済み・発送済み（shippedAt）なら</span>
+<span id="L443" class="ln">   443  </span><span class="comment">// ErrCancelNotAllowed をそれぞれ返します（いずれも 409）。</span>
+<span id="L444" class="ln">   444  </span><span class="comment">// 遷移に成功したときだけキャンセルの事実（Event）を返します。</span>
+<span id="L445" class="ln">   445  </span>func (p *Purchase) Cancel(now time.Time) (Event, error) {
+<span id="L446" class="ln">   446  </span>	if p.IsCanceled() {
+<span id="L447" class="ln">   447  </span>		return Event{}, ErrAlreadyCanceled
+<span id="L448" class="ln">   448  </span>	}
+<span id="L449" class="ln">   449  </span>	<span class="comment">// 配達済みも deliveredAt と同値なので status で判定する。発送済みは status が配達済みへ進んでも</span>
+<span id="L450" class="ln">   450  </span>	<span class="comment">// 遷移不可であり続けるため、status ではなく残り続ける shippedAt で判定する。</span>
+<span id="L451" class="ln">   451  </span>	if !p.status.CanTransitionTo(StatusCanceled) || p.shippedAt != nil {
+<span id="L452" class="ln">   452  </span>		return Event{}, ErrCancelNotAllowed
+<span id="L453" class="ln">   453  </span>	}
+<span id="L454" class="ln">   454  </span>	p.status = StatusCanceled
+<span id="L455" class="ln">   455  </span>	p.canceledAt = &amp;now
+<span id="L456" class="ln">   456  </span>	return newEvent(EventCanceled, p.id, now), nil
+<span id="L457" class="ln">   457  </span>}
+<span id="L458" class="ln">   458  </span>
+<span id="L459" class="ln">   459  </span><span class="comment">// Pay は、購入を支払い済み状態へ遷移させます。未払い相当（未処理 / 受付中 / 確認中）からのみ遷移でき、</span>
+<span id="L460" class="ln">   460  </span><span class="comment">// statusCode を支払い済み（7）へ、paidAt を now へ同時に更新します。支払い済み、または未払い相当でも</span>
+<span id="L461" class="ln">   461  </span><span class="comment">// paidAt が記録済みなら ErrAlreadyPaid、処理中・キャンセル済み・完了・配達済み・発送済み（shippedAt）なら</span>
+<span id="L462" class="ln">   462  </span><span class="comment">// ErrPayNotAllowed をそれぞれ返します（いずれも 409）。決済 SDK / PSP 連携は行わず、paidAt とステータスの</span>
+<span id="L463" class="ln">   463  </span><span class="comment">// 記録のみを担う擬似決済です。遷移に成功したときだけ支払いの事実（Event）を返します。</span>
+<span id="L464" class="ln">   464  </span>func (p *Purchase) Pay(now time.Time) (Event, error) {
+<span id="L465" class="ln">   465  </span>	if p.status == StatusPaid {
+<span id="L466" class="ln">   466  </span>		return Event{}, ErrAlreadyPaid
+<span id="L467" class="ln">   467  </span>	}
+<span id="L468" class="ln">   468  </span>	<span class="comment">// status と shippedAt を併用する理由は Cancel を参照。</span>
+<span id="L469" class="ln">   469  </span>	if !p.status.CanTransitionTo(StatusPaid) || p.shippedAt != nil {
+<span id="L470" class="ln">   470  </span>		return Event{}, ErrPayNotAllowed
+<span id="L471" class="ln">   471  </span>	}
+<span id="L472" class="ln">   472  </span>	<span class="comment">// 記録済みの paidAt を上書きしないためのガード（二重支払い防止。docs/spec/purchase/domain.md Pay invariants）。</span>
+<span id="L473" class="ln">   473  </span>	if p.paidAt != nil {
+<span id="L474" class="ln">   474  </span>		return Event{}, ErrAlreadyPaid
+<span id="L475" class="ln">   475  </span>	}
+<span id="L476" class="ln">   476  </span>	p.status = StatusPaid
+<span id="L477" class="ln">   477  </span>	p.paidAt = &amp;now
+<span id="L478" class="ln">   478  </span>	return newEvent(EventPaid, p.id, now), nil
+<span id="L479" class="ln">   479  </span>}
+<span id="L480" class="ln">   480  </span>
+<span id="L481" class="ln">   481  </span><span class="comment">// Ship は、購入を発送済み状態へ遷移させます。支払い済みからのみ遷移でき、statusCode を発送済み（8）へ、</span>
+<span id="L482" class="ln">   482  </span><span class="comment">// shippedAt を now へ同時に更新します。既に発送済みなら ErrAlreadyShipped、それ以外の状態</span>
+<span id="L483" class="ln">   483  </span><span class="comment">// （未払い相当・処理中・完了・キャンセル済み・配達済み）なら ErrShipNotAllowed をそれぞれ返します（いずれも 409）。</span>
+<span id="L484" class="ln">   484  </span><span class="comment">// 配送追跡（追跡番号 / 配送業者）は扱わず、shippedAt とステータスの記録のみを担います。</span>
+<span id="L485" class="ln">   485  </span><span class="comment">// 遷移に成功したときだけ発送の事実（Event）を返します。</span>
+<span id="L486" class="ln">   486  </span>func (p *Purchase) Ship(now time.Time) (Event, error) {
+<span id="L487" class="ln">   487  </span>	if p.status == StatusShipped {
+<span id="L488" class="ln">   488  </span>		return Event{}, ErrAlreadyShipped
+<span id="L489" class="ln">   489  </span>	}
+<span id="L490" class="ln">   490  </span>	if !p.status.CanTransitionTo(StatusShipped) {
+<span id="L491" class="ln">   491  </span>		return Event{}, ErrShipNotAllowed
+<span id="L492" class="ln">   492  </span>	}
+<span id="L493" class="ln">   493  </span>	p.status = StatusShipped
+<span id="L494" class="ln">   494  </span>	p.shippedAt = &amp;now
+<span id="L495" class="ln">   495  </span>	return newEvent(EventShipped, p.id, now), nil
+<span id="L496" class="ln">   496  </span>}
+<span id="L497" class="ln">   497  </span>
+<span id="L498" class="ln">   498  </span><span class="comment">// Deliver は、購入を配達済み状態へ遷移させます。発送済みからのみ遷移でき、statusCode を配達済み（9）へ、</span>
+<span id="L499" class="ln">   499  </span><span class="comment">// deliveredAt を now へ同時に更新します。既に配達済みなら ErrAlreadyDelivered、それ以外の状態</span>
+<span id="L500" class="ln">   500  </span><span class="comment">// （未払い相当・処理中・支払い済み・完了・キャンセル済み）なら ErrDeliverNotAllowed をそれぞれ返します（いずれも 409）。</span>
+<span id="L501" class="ln">   501  </span><span class="comment">// 配達確認の証跡（署名 / 受領写真 / GPS 位置）は扱わず、deliveredAt とステータスの記録のみを担います。</span>
+<span id="L502" class="ln">   502  </span><span class="comment">// 遷移に成功したときだけ配達の事実（Event）を返します。</span>
+<span id="L503" class="ln">   503  </span>func (p *Purchase) Deliver(now time.Time) (Event, error) {
+<span id="L504" class="ln">   504  </span>	if p.status == StatusDelivered {
+<span id="L505" class="ln">   505  </span>		return Event{}, ErrAlreadyDelivered
+<span id="L506" class="ln">   506  </span>	}
+<span id="L507" class="ln">   507  </span>	if !p.status.CanTransitionTo(StatusDelivered) {
+<span id="L508" class="ln">   508  </span>		return Event{}, ErrDeliverNotAllowed
+<span id="L509" class="ln">   509  </span>	}
+<span id="L510" class="ln">   510  </span>	p.status = StatusDelivered
+<span id="L511" class="ln">   511  </span>	p.deliveredAt = &amp;now
+<span id="L512" class="ln">   512  </span>	return newEvent(EventDelivered, p.id, now), nil
+<span id="L513" class="ln">   513  </span>}
+<span id="L514" class="ln">   514  </span>
+<span id="L515" class="ln">   515  </span><span class="comment">// Details は、購入明細のスライスを返します（内部スライスの変更を防ぐためコピーを返します）。</span>
+<span id="L516" class="ln">   516  </span>func (p *Purchase) Details() []PurchaseDetail {
+<span id="L517" class="ln">   517  </span>	copied := make([]PurchaseDetail, len(p.details))
+<span id="L518" class="ln">   518  </span>	copy(copied, p.details)
+<span id="L519" class="ln">   519  </span>	return copied
+<span id="L520" class="ln">   520  </span>}
+<span id="L521" class="ln">   521  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/domain/purchase/purchase_domain.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

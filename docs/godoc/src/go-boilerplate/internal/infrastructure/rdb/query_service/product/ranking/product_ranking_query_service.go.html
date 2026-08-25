@@ -60,81 +60,99 @@
 <span id="L3" class="ln">     3  </span>
 <span id="L4" class="ln">     4  </span>import (
 <span id="L5" class="ln">     5  </span>	&#34;context&#34;
-<span id="L6" class="ln">     6  </span>	&#34;time&#34;
-<span id="L7" class="ln">     7  </span>
-<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/driver&#34;
-<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/pgerror&#34;
-<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/sqlc/gen&#34;
-<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/observability&#34;
-<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/usecase/boundary/clock&#34;
-<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/internal/usecase/product/ranking/query&#34;
-<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/pkg/safecast&#34;
-<span id="L15" class="ln">    15  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
-<span id="L16" class="ln">    16  </span>)
-<span id="L17" class="ln">    17  </span>
-<span id="L18" class="ln">    18  </span><span class="comment">// rankingWindow30d は、period=30d の集計対象とする直近期間の長さです。</span>
-<span id="L19" class="ln">    19  </span>const rankingWindow30d = 30 * 24 * time.Hour
+<span id="L6" class="ln">     6  </span>
+<span id="L7" class="ln">     7  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/driver&#34;
+<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/pgerror&#34;
+<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/sqlc/gen&#34;
+<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/observability&#34;
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/usecase/product/ranking/query&#34;
+<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/pkg/safecast&#34;
+<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L14" class="ln">    14  </span>)
+<span id="L15" class="ln">    15  </span>
+<span id="L16" class="ln">    16  </span>type service struct {
+<span id="L17" class="ln">    17  </span>	db     driver.DatabaseDriver
+<span id="L18" class="ln">    18  </span>	tracer observability.LayerTracer
+<span id="L19" class="ln">    19  </span>}
 <span id="L20" class="ln">    20  </span>
-<span id="L21" class="ln">    21  </span>type service struct {
-<span id="L22" class="ln">    22  </span>	db     driver.DatabaseDriver
-<span id="L23" class="ln">    23  </span>	clk    clock.Clock
-<span id="L24" class="ln">    24  </span>	tracer observability.LayerTracer
-<span id="L25" class="ln">    25  </span>}
-<span id="L26" class="ln">    26  </span>
-<span id="L27" class="ln">    27  </span><span class="comment">// New は、商品売上ランキングのクエリサービス実装を生成して返します。</span>
-<span id="L28" class="ln">    28  </span>func New(db driver.DatabaseDriver, clk clock.Clock, tf observability.TracerFactory) query.ProductRankingQueryService {
-<span id="L29" class="ln">    29  </span>	return &amp;service{
-<span id="L30" class="ln">    30  </span>		db:     db,
-<span id="L31" class="ln">    31  </span>		clk:    clk,
-<span id="L32" class="ln">    32  </span>		tracer: tf.Infra(),
-<span id="L33" class="ln">    33  </span>	}
-<span id="L34" class="ln">    34  </span>}
+<span id="L21" class="ln">    21  </span><span class="comment">// New は、商品売上ランキングのクエリサービス実装を生成して返します。</span>
+<span id="L22" class="ln">    22  </span>func New(db driver.DatabaseDriver, tf observability.TracerFactory) query.ProductRankingQueryService {
+<span id="L23" class="ln">    23  </span>	return &amp;service{
+<span id="L24" class="ln">    24  </span>		db:     db,
+<span id="L25" class="ln">    25  </span>		tracer: tf.Infra(),
+<span id="L26" class="ln">    26  </span>	}
+<span id="L27" class="ln">    27  </span>}
+<span id="L28" class="ln">    28  </span>
+<span id="L29" class="ln">    29  </span><span class="comment">// ListQuantityRanking は、購入明細を集計した販売数量ランキングを降順で返します。</span>
+<span id="L30" class="ln">    30  </span>func (s *service) ListQuantityRanking(
+<span id="L31" class="ln">    31  </span>	ctx context.Context, params query.RankingQueryParams,
+<span id="L32" class="ln">    32  </span>) ([]query.QuantityRankingResult, error) {
+<span id="L33" class="ln">    33  </span>	ctx, endSpan := s.tracer.Start(ctx)
+<span id="L34" class="ln">    34  </span>	defer endSpan()
 <span id="L35" class="ln">    35  </span>
-<span id="L36" class="ln">    36  </span><span class="comment">// ListRanking は、購入明細を集計した商品売上ランキングを販売数量の降順で返します。</span>
-<span id="L37" class="ln">    37  </span>func (s *service) ListRanking(ctx context.Context, params query.RankingQueryParams) ([]query.RankingResult, error) {
-<span id="L38" class="ln">    38  </span>	ctx, endSpan := s.tracer.Start(ctx)
-<span id="L39" class="ln">    39  </span>	defer endSpan()
+<span id="L36" class="ln">    36  </span>	limitCount, err := safecast.IntToInt32(params.Limit)
+<span id="L37" class="ln">    37  </span>	if err != nil {
+<span id="L38" class="ln">    38  </span>		return nil, xerrors.Wrap(err, &#34;invalid ranking limit&#34;)
+<span id="L39" class="ln">    39  </span>	}
 <span id="L40" class="ln">    40  </span>
-<span id="L41" class="ln">    41  </span>	filterByPeriod, orderedAfter := resolvePeriod(params.Period, s.clk.Now())
-<span id="L42" class="ln">    42  </span>
-<span id="L43" class="ln">    43  </span>	limitCount, err := safecast.IntToInt32(params.Limit)
-<span id="L44" class="ln">    44  </span>	if err != nil {
-<span id="L45" class="ln">    45  </span>		return nil, xerrors.Wrap(err, &#34;invalid ranking limit&#34;)
-<span id="L46" class="ln">    46  </span>	}
-<span id="L47" class="ln">    47  </span>
-<span id="L48" class="ln">    48  </span>	db := gen.New(driver.New(ctx, s.db))
-<span id="L49" class="ln">    49  </span>	rows, err := db.ListProductRanking(ctx, &amp;gen.ListProductRankingParams{
-<span id="L50" class="ln">    50  </span>		FilterByPeriod: filterByPeriod,
-<span id="L51" class="ln">    51  </span>		OrderedAfter:   orderedAfter,
-<span id="L52" class="ln">    52  </span>		LimitCount:     limitCount,
-<span id="L53" class="ln">    53  </span>	})
-<span id="L54" class="ln">    54  </span>	if err != nil {
-<span id="L55" class="ln">    55  </span>		return nil, pgerror.NormalizeError(err)
-<span id="L56" class="ln">    56  </span>	}
-<span id="L57" class="ln">    57  </span>
-<span id="L58" class="ln">    58  </span>	results := make([]query.RankingResult, len(rows))
-<span id="L59" class="ln">    59  </span>	for i, row := range rows {
-<span id="L60" class="ln">    60  </span>		results[i] = query.RankingResult{
-<span id="L61" class="ln">    61  </span>			ProductID:    row.ProductID,
-<span id="L62" class="ln">    62  </span>			Name:         row.Name,
-<span id="L63" class="ln">    63  </span>			Price:        row.Price,
-<span id="L64" class="ln">    64  </span>			PublishedAt:  row.PublishedAt,
-<span id="L65" class="ln">    65  </span>			SoldQuantity: row.SoldQuantity,
-<span id="L66" class="ln">    66  </span>		}
-<span id="L67" class="ln">    67  </span>	}
-<span id="L68" class="ln">    68  </span>	return results, nil
-<span id="L69" class="ln">    69  </span>}
+<span id="L41" class="ln">    41  </span>	db := gen.New(driver.New(ctx, s.db))
+<span id="L42" class="ln">    42  </span>	rows, err := db.ListProductQuantityRanking(ctx, &amp;gen.ListProductQuantityRankingParams{
+<span id="L43" class="ln">    43  </span>		OrderedAfter:  params.Window.After(),
+<span id="L44" class="ln">    44  </span>		OrderedBefore: params.Window.Before(),
+<span id="L45" class="ln">    45  </span>		LimitCount:    limitCount,
+<span id="L46" class="ln">    46  </span>	})
+<span id="L47" class="ln">    47  </span>	if err != nil {
+<span id="L48" class="ln">    48  </span>		return nil, pgerror.NormalizeError(err)
+<span id="L49" class="ln">    49  </span>	}
+<span id="L50" class="ln">    50  </span>
+<span id="L51" class="ln">    51  </span>	results := make([]query.QuantityRankingResult, len(rows))
+<span id="L52" class="ln">    52  </span>	for i, row := range rows {
+<span id="L53" class="ln">    53  </span>		results[i] = query.QuantityRankingResult{
+<span id="L54" class="ln">    54  </span>			ProductID:    row.ProductID,
+<span id="L55" class="ln">    55  </span>			Name:         row.Name,
+<span id="L56" class="ln">    56  </span>			Price:        row.Price,
+<span id="L57" class="ln">    57  </span>			PublishedAt:  row.PublishedAt,
+<span id="L58" class="ln">    58  </span>			SoldQuantity: row.SoldQuantity,
+<span id="L59" class="ln">    59  </span>		}
+<span id="L60" class="ln">    60  </span>	}
+<span id="L61" class="ln">    61  </span>	return results, nil
+<span id="L62" class="ln">    62  </span>}
+<span id="L63" class="ln">    63  </span>
+<span id="L64" class="ln">    64  </span><span class="comment">// ListAmountRanking は、購入明細を集計した売上金額ランキングを降順で返します。</span>
+<span id="L65" class="ln">    65  </span>func (s *service) ListAmountRanking(
+<span id="L66" class="ln">    66  </span>	ctx context.Context, params query.RankingQueryParams,
+<span id="L67" class="ln">    67  </span>) ([]query.AmountRankingResult, error) {
+<span id="L68" class="ln">    68  </span>	ctx, endSpan := s.tracer.Start(ctx)
+<span id="L69" class="ln">    69  </span>	defer endSpan()
 <span id="L70" class="ln">    70  </span>
-<span id="L71" class="ln">    71  </span><span class="comment">// resolvePeriod は、集計期間区分を SQL パラメータ（期間フィルタ有無と境界時刻）へ変換します。</span>
-<span id="L72" class="ln">    72  </span><span class="comment">// period=30d のときのみ now を基準に直近30日の境界を算出します。</span>
-<span id="L73" class="ln">    73  </span>func resolvePeriod(period query.Period, now time.Time) (bool, *time.Time) {
-<span id="L74" class="ln">    74  </span>	if period != query.Period30d {
-<span id="L75" class="ln">    75  </span>		return false, nil
-<span id="L76" class="ln">    76  </span>	}
-<span id="L77" class="ln">    77  </span>	after := now.Add(-rankingWindow30d)
-<span id="L78" class="ln">    78  </span>	return true, &amp;after
-<span id="L79" class="ln">    79  </span>}
-<span id="L80" class="ln">    80  </span>
+<span id="L71" class="ln">    71  </span>	limitCount, err := safecast.IntToInt32(params.Limit)
+<span id="L72" class="ln">    72  </span>	if err != nil {
+<span id="L73" class="ln">    73  </span>		return nil, xerrors.Wrap(err, &#34;invalid ranking limit&#34;)
+<span id="L74" class="ln">    74  </span>	}
+<span id="L75" class="ln">    75  </span>
+<span id="L76" class="ln">    76  </span>	db := gen.New(driver.New(ctx, s.db))
+<span id="L77" class="ln">    77  </span>	rows, err := db.ListProductAmountRanking(ctx, &amp;gen.ListProductAmountRankingParams{
+<span id="L78" class="ln">    78  </span>		OrderedAfter:  params.Window.After(),
+<span id="L79" class="ln">    79  </span>		OrderedBefore: params.Window.Before(),
+<span id="L80" class="ln">    80  </span>		LimitCount:    limitCount,
+<span id="L81" class="ln">    81  </span>	})
+<span id="L82" class="ln">    82  </span>	if err != nil {
+<span id="L83" class="ln">    83  </span>		return nil, pgerror.NormalizeError(err)
+<span id="L84" class="ln">    84  </span>	}
+<span id="L85" class="ln">    85  </span>
+<span id="L86" class="ln">    86  </span>	results := make([]query.AmountRankingResult, len(rows))
+<span id="L87" class="ln">    87  </span>	for i, row := range rows {
+<span id="L88" class="ln">    88  </span>		results[i] = query.AmountRankingResult{
+<span id="L89" class="ln">    89  </span>			ProductID:   row.ProductID,
+<span id="L90" class="ln">    90  </span>			Name:        row.Name,
+<span id="L91" class="ln">    91  </span>			Price:       row.Price,
+<span id="L92" class="ln">    92  </span>			PublishedAt: row.PublishedAt,
+<span id="L93" class="ln">    93  </span>			SalesAmount: row.SalesAmount,
+<span id="L94" class="ln">    94  </span>		}
+<span id="L95" class="ln">    95  </span>	}
+<span id="L96" class="ln">    96  </span>	return results, nil
+<span id="L97" class="ln">    97  </span>}
+<span id="L98" class="ln">    98  </span>
 </pre><p><a href="../../../../../../../../src/go-boilerplate/internal/infrastructure/rdb/query_service/product/ranking/product_ranking_query_service.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

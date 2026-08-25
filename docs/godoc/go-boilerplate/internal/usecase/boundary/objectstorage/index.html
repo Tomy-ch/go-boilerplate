@@ -166,7 +166,7 @@ continuation token 等の vendor 語彙は境界に露出しません。
 		
 			
 			
-			<h2 id="ListQuery">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/objectstorage/objectstorage.go.html?s=2513:3068#L33">ListQuery</a>
+			<h2 id="ListQuery">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/objectstorage/objectstorage.go.html?s=2516:3074#L33">ListQuery</a>
 				<a class="permalink" href="#ListQuery">¶</a>
 				
 				
@@ -174,7 +174,7 @@ continuation token 等の vendor 語彙は境界に露出しません。
 			<p>ListQuery は、オブジェクト列挙の条件です。
 
 			</p><pre>type ListQuery struct {
-<span id="ListQuery.Prefix"></span>    <span class="comment">// Prefix は、列挙対象を絞り込むキーの接頭辞（例 &#34;products/&#34;）です。空なら全件が対象になります。</span>
+<span id="ListQuery.Prefix"></span>    <span class="comment">// Prefix は、列挙対象を絞り込むキーの接頭辞（例 &#34;&lt;接頭辞&gt;/&#34;）です。空なら全件が対象になります。</span>
     Prefix <a href="../../../../../builtin/#string">string</a>
 <span id="ListQuery.Cursor"></span>    <span class="comment">// Cursor は、続きから列挙するための境界です。空なら先頭から列挙します。</span>
     <span class="comment">// 直前の ListResult.NextCursor をそのまま渡す想定で、中身は adapter 依存の不透明な文字列です。</span>
@@ -198,7 +198,7 @@ continuation token 等の vendor 語彙は境界に露出しません。
 		
 			
 			
-			<h2 id="ListResult">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/objectstorage/objectstorage.go.html?s=3129:3386#L44">ListResult</a>
+			<h2 id="ListResult">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/objectstorage/objectstorage.go.html?s=3135:3392#L44">ListResult</a>
 				<a class="permalink" href="#ListResult">¶</a>
 				
 				
@@ -227,7 +227,7 @@ continuation token 等の vendor 語彙は境界に露出しません。
 		
 			
 			
-			<h2 id="Object">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/objectstorage/objectstorage.go.html?s=3462:3667#L52">Object</a>
+			<h2 id="Object">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/objectstorage/objectstorage.go.html?s=3468:3676#L52">Object</a>
 				<a class="permalink" href="#Object">¶</a>
 				
 				
@@ -235,7 +235,7 @@ continuation token 等の vendor 語彙は境界に露出しません。
 			<p>Object は、列挙されたオブジェクトの中立表現です。
 
 			</p><pre>type Object struct {
-<span id="Object.Key"></span>    <span class="comment">// Key は、オブジェクトキー（例 &#34;products/{uuid}.png&#34;）です。</span>
+<span id="Object.Key"></span>    <span class="comment">// Key は、オブジェクトキー（例 &#34;&lt;接頭辞&gt;/{uuid}.png&#34;）です。</span>
     Key <a href="../../../../../builtin/#string">string</a>
 <span id="Object.ModifiedAt"></span>    <span class="comment">// ModifiedAt は、オブジェクトの最終更新時刻です。</span>
     ModifiedAt <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Time">Time</a>
@@ -256,7 +256,7 @@ continuation token 等の vendor 語彙は境界に露出しません。
 		
 			
 			
-			<h2 id="Path">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/objectstorage/objectstorage.go.html?s=3747:3763#L60">Path</a>
+			<h2 id="Path">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/objectstorage/objectstorage.go.html?s=3756:3772#L60">Path</a>
 				<a class="permalink" href="#Path">¶</a>
 				
 				
@@ -279,7 +279,7 @@ continuation token 等の vendor 語彙は境界に露出しません。
 		
 			
 			
-			<h2 id="PutObject">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/objectstorage/objectstorage.go.html?s=1775:2449#L20">PutObject</a>
+			<h2 id="PutObject">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/objectstorage/objectstorage.go.html?s=1775:2452#L20">PutObject</a>
 				<a class="permalink" href="#PutObject">¶</a>
 				
 				
@@ -287,7 +287,7 @@ continuation token 等の vendor 語彙は境界に露出しません。
 			<p>PutObject は、保存対象オブジェクトの入力 DTO です。
 
 			</p><pre>type PutObject struct {
-<span id="PutObject.Key"></span>    <span class="comment">// Key は、保存先のオブジェクトキー（例 &#34;products/{uuid}.png&#34;）です。呼び出し側が採番します。</span>
+<span id="PutObject.Key"></span>    <span class="comment">// Key は、保存先のオブジェクトキー（例 &#34;&lt;接頭辞&gt;/{uuid}.png&#34;）です。呼び出し側が採番します。</span>
     Key <a href="../../../../../builtin/#string">string</a>
 <span id="PutObject.Body"></span>    <span class="comment">// Body は、保存するバイト列です。長さがそのままオブジェクトサイズになります。</span>
     Body []<a href="../../../../../builtin/#byte">byte</a>

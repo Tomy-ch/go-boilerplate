@@ -40,17 +40,17 @@ Domain Repository abstracts "how to persist Aggregates", while Usecase Boundary 
 
 |Package|Interface|Description|Implementation|
 |---|---|---|---|
-|`address`|`Gateway`|Semantic gateway to an external postal-address lookup service (sample of the `<service>.Gateway` pattern)|`internal/infrastructure/webapi/address/`|
+|`address`|`Gateway`|Semantic gateway to an external postal-address lookup service (sample of the `<service>.Gateway` pattern)|`internal/infrastructure/webapi/address/`<!-- sample-api:line -->|
 |`auth`|`Authenticator`|Obtain auth info (`Authn`) from token|`internal/infrastructure/auth/`|
 |`authz`|`Authorizer`|Decide whether a subject may perform an action on a resource|`internal/infrastructure/authz/`|
 |`clock`|`Clock`|Retrieve current time|`internal/infrastructure/system/`|
-|`exchangerate`|`Gateway`|Semantic gateway to an external exchange-rate service (sample of the `<service>.Gateway` pattern)|`internal/infrastructure/webapi/exchangerate/`|
+|`exchangerate`|`Gateway`|Semantic gateway to an external exchange-rate service (sample of the `<service>.Gateway` pattern)|`internal/infrastructure/webapi/exchangerate/`<!-- sample-api:line -->|
 |`idempotency`|`Store`|Idempotency-key persistence boundary (claim / replay / conflict)|`internal/infrastructure/rdb/system_cqrs/idempotency/`|
 |`job`|`Job`, `Runner`, `State`|Job definition, execution, state management|`internal/controller/job/`|
 |`objectstorage`|`Storage`|Substrate-agnostic object-storage boundary (`Put` / `List` / `Delete` objects by key)|`internal/infrastructure/objectstorage/s3/`|
 |`outbox`|`Store`|Transactional outbox table persistence boundary|`internal/infrastructure/rdb/system_cqrs/outbox/`|
 |`publisher`|`Publisher`|Substrate-agnostic outbound message publish boundary|`internal/infrastructure/publisher/`|
-|`token`|`Generator`|Generate unguessable opaque token strings|`internal/infrastructure/token/`|
+|`token`|`Generator`|Generate unguessable opaque token strings|`internal/infrastructure/token/`<!-- sample-api:line -->|
 |`tx`|`Manager`|Transaction boundary management|`internal/infrastructure/rdb/driver/`|
 |`worker`|`Consumer`, `Handler`, `FailureHandler`, `Worker`, `State`|Broker-agnostic worker seam (pull-ack)|`internal/infrastructure/queue/sqs/`|
 
@@ -116,6 +116,7 @@ type Sleeper interface {
 
 Abstraction to prevent Domain / Usecase from depending directly on `time.Now()`. Allows mock substitution in tests. `Sleeper` does the same for waiting, so backoff and retry can be exercised without real sleeping.
 
+<!-- sample-api:begin -->
 ### exchangerate
 
 Sample Gateway boundary: a semantic port to an external exchange-rate service (`<service>.Gateway` pattern). Keeps Usecase depending on a semantic port rather than `net/http` or a vendor SDK, and translates transport failures into `apperror` sentinels at the boundary.
@@ -124,6 +125,7 @@ Sample Gateway boundary: a semantic port to an external exchange-rate service (`
 |---|---|
 |`Gateway`|Fetch a conversion rate via `GetRate(ctx, base, quote)`|
 |`Rate`|Output DTO (`Base` / `Quote` / `Value`)|
+<!-- sample-api:end -->
 
 ### idempotency
 
@@ -154,7 +156,7 @@ Substrate-agnostic object-storage boundary. Usecase depends only on this port; t
 |Type / Function|Description|
 |---|---|
 |`Storage`|`Put(ctx, PutObject) (Path, error)` stores an object under its key. `List(ctx, ListQuery) (ListResult, error)` enumerates one page of matching objects. `Delete(ctx, keys []string) error` removes objects in bulk — an empty slice is a no-op, absent keys are not an error, and re-running with the same keys changes nothing. Failures return an `apperror` sentinel (e.g. `ErrUnavailable`)|
-|`PutObject`|Input DTO (`Key` / `Body` / `ContentType` / `CacheControl`); the caller assigns `Key` (e.g. `products/{uuid}.png`) and decides `CacheControl`, since cacheability follows from how the caller numbers keys (empty leaves it unset)|
+|`PutObject`|Input DTO (`Key` / `Body` / `ContentType` / `CacheControl`); the caller assigns `Key` (e.g. `<prefix>/{uuid}.png`) and decides `CacheControl`, since cacheability follows from how the caller numbers keys (empty leaves it unset)|
 |`ListQuery`|Input DTO (`Prefix` / `Cursor` / `Limit`); an empty `Prefix` enumerates everything, `Cursor` is the opaque, adapter-defined boundary taken from a previous `ListResult.NextCursor`, and a `Limit` of zero or less leaves the page size to the adapter's default|
 |`ListResult`|One page of objects plus `NextCursor`; a non-empty `NextCursor` means more remain and is fed back as the next `ListQuery.Cursor`|
 |`Object`|A single enumerated object as the boundary describes it|
@@ -188,6 +190,7 @@ Outbound publish boundary for domain events plus a substrate-agnostic message en
 |`Publish(ctx, m)`|Send `m` to the destination; on failure returns an error and the relay re-sends on its next poll (at-least-once)|
 |`Message`|Substrate-agnostic message envelope built from an outbox row (exposes no `net/http` types)|
 
+<!-- sample-api:begin -->
 ### token
 
 ```go
@@ -200,6 +203,7 @@ Produces an unguessable, opaque token string. Randomness is an effect, so a call
 for it directly stops being reproducible — the same reason `clock` exists for time. The value's
 length and alphabet belong to the implementation; whether a string is acceptable as a particular
 kind of token is a rule of the type that holds it.
+<!-- sample-api:end -->
 
 ### tx
 

@@ -127,7 +127,7 @@
 					<dd>    <a href="#MockUsecase.GetPurchaseDetail">func (m *MockUsecase) GetPurchaseDetail(ctx context.Context, authn *auth.Authn, purchaseCode string) (purchase.PurchaseGetDetailView, error)</a></dd>
 				
 					
-					<dd>    <a href="#MockUsecase.GetPurchases">func (m *MockUsecase) GetPurchases(ctx context.Context, userID uuid.UUID, cursor *paging.Cursor, spec period.Spec) (*purchase.PurchaseListView, error)</a></dd>
+					<dd>    <a href="#MockUsecase.GetPurchases">func (m *MockUsecase) GetPurchases(ctx context.Context, authn *auth.Authn, params purchase.ListPurchasesParams) (*purchase.PurchaseListView, error)</a></dd>
 				
 					
 					<dd>    <a href="#MockUsecase.ListShippablePurchases">func (m *MockUsecase) ListShippablePurchases(ctx context.Context, authn *auth.Authn, params purchase.ListShippablePurchasesParams) (purchase.PurchaseShippableListView, error)</a></dd>
@@ -156,7 +156,7 @@
 					<dd>    <a href="#MockUsecaseMockRecorder.GetPurchaseDetail">func (mr *MockUsecaseMockRecorder) GetPurchaseDetail(ctx, authn, purchaseCode any) *gomock.Call</a></dd>
 				
 					
-					<dd>    <a href="#MockUsecaseMockRecorder.GetPurchases">func (mr *MockUsecaseMockRecorder) GetPurchases(ctx, userID, cursor, spec any) *gomock.Call</a></dd>
+					<dd>    <a href="#MockUsecaseMockRecorder.GetPurchases">func (mr *MockUsecaseMockRecorder) GetPurchases(ctx, authn, params any) *gomock.Call</a></dd>
 				
 					
 					<dd>    <a href="#MockUsecaseMockRecorder.ListShippablePurchases">func (mr *MockUsecaseMockRecorder) ListShippablePurchases(ctx, authn, params any) *gomock.Call</a></dd>
@@ -195,7 +195,7 @@
 		
 			
 			
-			<h2 id="MockUsecase">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=689:799#L15">MockUsecase</a>
+			<h2 id="MockUsecase">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=544:654#L12">MockUsecase</a>
 				<a class="permalink" href="#MockUsecase">¶</a>
 				
 				
@@ -217,7 +217,7 @@
 
 			
 				
-				<h3 id="NewMockUsecase">func <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=973:1030#L27">NewMockUsecase</a>
+				<h3 id="NewMockUsecase">func <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=828:885#L24">NewMockUsecase</a>
 					<a class="permalink" href="#NewMockUsecase">¶</a>
 					
 					
@@ -231,7 +231,7 @@
 
 			
 				
-				</p><h3 id="MockUsecase.CancelPurchase">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=1325:1457#L39">CancelPurchase</a>
+				</p><h3 id="MockUsecase.CancelPurchase">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=1180:1312#L36">CancelPurchase</a>
 					<a class="permalink" href="#MockUsecase.CancelPurchase">¶</a>
 					
 					
@@ -244,7 +244,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecase.CreatePurchase">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=1980:2106#L54">CreatePurchase</a>
+				</p><h3 id="MockUsecase.CreatePurchase">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=1835:1961#L51">CreatePurchase</a>
 					<a class="permalink" href="#MockUsecase.CreatePurchase">¶</a>
 					
 					
@@ -257,7 +257,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecase.DeliverPurchase">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=2624:2760#L69">DeliverPurchase</a>
+				</p><h3 id="MockUsecase.DeliverPurchase">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=2479:2615#L66">DeliverPurchase</a>
 					<a class="permalink" href="#MockUsecase.DeliverPurchase">¶</a>
 					
 					
@@ -270,7 +270,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecase.EXPECT">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=1208:1263#L34">EXPECT</a>
+				</p><h3 id="MockUsecase.EXPECT">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=1063:1118#L31">EXPECT</a>
 					<a class="permalink" href="#MockUsecase.EXPECT">¶</a>
 					
 					
@@ -283,7 +283,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecase.GetPurchaseDetail">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=3332:3472#L84">GetPurchaseDetail</a>
+				</p><h3 id="MockUsecase.GetPurchaseDetail">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=3187:3327#L81">GetPurchaseDetail</a>
 					<a class="permalink" href="#MockUsecase.GetPurchaseDetail">¶</a>
 					
 					
@@ -296,12 +296,12 @@
 				
 			
 				
-				</p><h3 id="MockUsecase.GetPurchases">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=4053:4203#L99">GetPurchases</a>
+				</p><h3 id="MockUsecase.GetPurchases">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=3908:4055#L96">GetPurchases</a>
 					<a class="permalink" href="#MockUsecase.GetPurchases">¶</a>
 					
 					
 				</h3>
-				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) GetPurchases(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, userID <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, cursor *<a href="../../../../../go-boilerplate/internal/usecase/tools/paging/">paging</a>.<a href="../../../../../go-boilerplate/internal/usecase/tools/paging/#Cursor">Cursor</a>, spec <a href="../../../../../go-boilerplate/internal/usecase/purchase/period/">period</a>.<a href="../../../../../go-boilerplate/internal/usecase/purchase/period/#Spec">Spec</a>) (*<a href="../../../../../go-boilerplate/internal/usecase/purchase/">purchase</a>.<a href="../../../../../go-boilerplate/internal/usecase/purchase/#PurchaseListView">PurchaseListView</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) GetPurchases(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, authn *<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, params <a href="../../../../../go-boilerplate/internal/usecase/purchase/">purchase</a>.<a href="../../../../../go-boilerplate/internal/usecase/purchase/#ListPurchasesParams">ListPurchasesParams</a>) (*<a href="../../../../../go-boilerplate/internal/usecase/purchase/">purchase</a>.<a href="../../../../../go-boilerplate/internal/usecase/purchase/#PurchaseListView">PurchaseListView</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
 				<p>GetPurchases mocks base method.
 
 				
@@ -309,7 +309,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecase.ListShippablePurchases">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=4763:4937#L114">ListShippablePurchases</a>
+				</p><h3 id="MockUsecase.ListShippablePurchases">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=4594:4768#L111">ListShippablePurchases</a>
 					<a class="permalink" href="#MockUsecase.ListShippablePurchases">¶</a>
 					
 					
@@ -322,7 +322,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecase.PayPurchase">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=5533:5656#L129">PayPurchase</a>
+				</p><h3 id="MockUsecase.PayPurchase">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=5364:5487#L126">PayPurchase</a>
 					<a class="permalink" href="#MockUsecase.PayPurchase">¶</a>
 					
 					
@@ -335,7 +335,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecase.ShipPurchase">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=6156:6286#L144">ShipPurchase</a>
+				</p><h3 id="MockUsecase.ShipPurchase">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=5987:6117#L141">ShipPurchase</a>
 					<a class="permalink" href="#MockUsecase.ShipPurchase">¶</a>
 					
 					
@@ -350,7 +350,7 @@
 		
 			
 			
-			</p><h2 id="MockUsecaseMockRecorder">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=866:924#L22">MockUsecaseMockRecorder</a>
+			</p><h2 id="MockUsecaseMockRecorder">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=721:779#L19">MockUsecaseMockRecorder</a>
 				<a class="permalink" href="#MockUsecaseMockRecorder">¶</a>
 				
 				
@@ -374,7 +374,7 @@
 
 			
 				
-				<h3 id="MockUsecaseMockRecorder.CancelPurchase">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=1695:1774#L48">CancelPurchase</a>
+				<h3 id="MockUsecaseMockRecorder.CancelPurchase">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=1550:1629#L45">CancelPurchase</a>
 					<a class="permalink" href="#MockUsecaseMockRecorder.CancelPurchase">¶</a>
 					
 					
@@ -387,7 +387,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecaseMockRecorder.CreatePurchase">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=2338:2417#L63">CreatePurchase</a>
+				</p><h3 id="MockUsecaseMockRecorder.CreatePurchase">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=2193:2272#L60">CreatePurchase</a>
 					<a class="permalink" href="#MockUsecaseMockRecorder.CreatePurchase">¶</a>
 					
 					
@@ -400,7 +400,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecaseMockRecorder.DeliverPurchase">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=3015:3108#L78">DeliverPurchase</a>
+				</p><h3 id="MockUsecaseMockRecorder.DeliverPurchase">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=2870:2963#L75">DeliverPurchase</a>
 					<a class="permalink" href="#MockUsecaseMockRecorder.DeliverPurchase">¶</a>
 					
 					
@@ -413,7 +413,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecaseMockRecorder.GetPurchaseDetail">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=3735:3830#L93">GetPurchaseDetail</a>
+				</p><h3 id="MockUsecaseMockRecorder.GetPurchaseDetail">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=3590:3685#L90">GetPurchaseDetail</a>
 					<a class="permalink" href="#MockUsecaseMockRecorder.GetPurchaseDetail">¶</a>
 					
 					
@@ -426,12 +426,12 @@
 				
 			
 				
-				</p><h3 id="MockUsecaseMockRecorder.GetPurchases">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=4448:4539#L108">GetPurchases</a>
+				</p><h3 id="MockUsecaseMockRecorder.GetPurchases">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=4293:4377#L105">GetPurchases</a>
 					<a class="permalink" href="#MockUsecaseMockRecorder.GetPurchases">¶</a>
 					
 					
 				</h3>
-				<pre>func (mr *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a>) GetPurchases(ctx, userID, cursor, spec <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<pre>func (mr *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a>) GetPurchases(ctx, authn, params <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
 				<p>GetPurchases indicates an expected call of GetPurchases.
 
 				
@@ -439,7 +439,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecaseMockRecorder.ListShippablePurchases">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=5213:5307#L123">ListShippablePurchases</a>
+				</p><h3 id="MockUsecaseMockRecorder.ListShippablePurchases">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=5044:5138#L120">ListShippablePurchases</a>
 					<a class="permalink" href="#MockUsecaseMockRecorder.ListShippablePurchases">¶</a>
 					
 					
@@ -452,7 +452,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecaseMockRecorder.PayPurchase">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=5882:5958#L138">PayPurchase</a>
+				</p><h3 id="MockUsecaseMockRecorder.PayPurchase">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=5713:5789#L135">PayPurchase</a>
 					<a class="permalink" href="#MockUsecaseMockRecorder.PayPurchase">¶</a>
 					
 					
@@ -465,7 +465,7 @@
 				
 			
 				
-				</p><h3 id="MockUsecaseMockRecorder.ShipPurchase">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=6529:6619#L153">ShipPurchase</a>
+				</p><h3 id="MockUsecaseMockRecorder.ShipPurchase">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/mock/mock_purchase_usecase.go.gen.go.html?s=6360:6450#L150">ShipPurchase</a>
 					<a class="permalink" href="#MockUsecaseMockRecorder.ShipPurchase">¶</a>
 					
 					

@@ -101,18 +101,18 @@
 <span id="L44" class="ln">    44  </span>}
 <span id="L45" class="ln">    45  </span>
 <span id="L46" class="ln">    46  </span><span class="comment">// CountProducts mocks base method.</span>
-<span id="L47" class="ln">    47  </span>func (m *MockUsecase) CountProducts(ctx context.Context, filter product.SearchFilter) (product.ProductCountView, error) {
+<span id="L47" class="ln">    47  </span>func (m *MockUsecase) CountProducts(ctx context.Context, authn *auth.Authn, params product.CountProductsParams) (product.ProductCountView, error) {
 <span id="L48" class="ln">    48  </span>	m.ctrl.T.Helper()
-<span id="L49" class="ln">    49  </span>	ret := m.ctrl.Call(m, &#34;CountProducts&#34;, ctx, filter)
+<span id="L49" class="ln">    49  </span>	ret := m.ctrl.Call(m, &#34;CountProducts&#34;, ctx, authn, params)
 <span id="L50" class="ln">    50  </span>	ret0, _ := ret[0].(product.ProductCountView)
 <span id="L51" class="ln">    51  </span>	ret1, _ := ret[1].(error)
 <span id="L52" class="ln">    52  </span>	return ret0, ret1
 <span id="L53" class="ln">    53  </span>}
 <span id="L54" class="ln">    54  </span>
 <span id="L55" class="ln">    55  </span><span class="comment">// CountProducts indicates an expected call of CountProducts.</span>
-<span id="L56" class="ln">    56  </span>func (mr *MockUsecaseMockRecorder) CountProducts(ctx, filter any) *gomock.Call {
+<span id="L56" class="ln">    56  </span>func (mr *MockUsecaseMockRecorder) CountProducts(ctx, authn, params any) *gomock.Call {
 <span id="L57" class="ln">    57  </span>	mr.mock.ctrl.T.Helper()
-<span id="L58" class="ln">    58  </span>	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, &#34;CountProducts&#34;, reflect.TypeOf((*MockUsecase)(nil).CountProducts), ctx, filter)
+<span id="L58" class="ln">    58  </span>	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, &#34;CountProducts&#34;, reflect.TypeOf((*MockUsecase)(nil).CountProducts), ctx, authn, params)
 <span id="L59" class="ln">    59  </span>}
 <span id="L60" class="ln">    60  </span>
 <span id="L61" class="ln">    61  </span><span class="comment">// CreateProduct mocks base method.</span>
@@ -131,18 +131,18 @@
 <span id="L74" class="ln">    74  </span>}
 <span id="L75" class="ln">    75  </span>
 <span id="L76" class="ln">    76  </span><span class="comment">// GetProduct mocks base method.</span>
-<span id="L77" class="ln">    77  </span>func (m *MockUsecase) GetProduct(ctx context.Context, id uuid.UUID) (product.ProductView, error) {
+<span id="L77" class="ln">    77  </span>func (m *MockUsecase) GetProduct(ctx context.Context, authn *auth.Authn, params product.GetProductParams) (product.ProductView, error) {
 <span id="L78" class="ln">    78  </span>	m.ctrl.T.Helper()
-<span id="L79" class="ln">    79  </span>	ret := m.ctrl.Call(m, &#34;GetProduct&#34;, ctx, id)
+<span id="L79" class="ln">    79  </span>	ret := m.ctrl.Call(m, &#34;GetProduct&#34;, ctx, authn, params)
 <span id="L80" class="ln">    80  </span>	ret0, _ := ret[0].(product.ProductView)
 <span id="L81" class="ln">    81  </span>	ret1, _ := ret[1].(error)
 <span id="L82" class="ln">    82  </span>	return ret0, ret1
 <span id="L83" class="ln">    83  </span>}
 <span id="L84" class="ln">    84  </span>
 <span id="L85" class="ln">    85  </span><span class="comment">// GetProduct indicates an expected call of GetProduct.</span>
-<span id="L86" class="ln">    86  </span>func (mr *MockUsecaseMockRecorder) GetProduct(ctx, id any) *gomock.Call {
+<span id="L86" class="ln">    86  </span>func (mr *MockUsecaseMockRecorder) GetProduct(ctx, authn, params any) *gomock.Call {
 <span id="L87" class="ln">    87  </span>	mr.mock.ctrl.T.Helper()
-<span id="L88" class="ln">    88  </span>	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, &#34;GetProduct&#34;, reflect.TypeOf((*MockUsecase)(nil).GetProduct), ctx, id)
+<span id="L88" class="ln">    88  </span>	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, &#34;GetProduct&#34;, reflect.TypeOf((*MockUsecase)(nil).GetProduct), ctx, authn, params)
 <span id="L89" class="ln">    89  </span>}
 <span id="L90" class="ln">    90  </span>
 <span id="L91" class="ln">    91  </span><span class="comment">// ListLowStockProducts mocks base method.</span>
@@ -161,18 +161,18 @@
 <span id="L104" class="ln">   104  </span>}
 <span id="L105" class="ln">   105  </span>
 <span id="L106" class="ln">   106  </span><span class="comment">// ListProducts mocks base method.</span>
-<span id="L107" class="ln">   107  </span>func (m *MockUsecase) ListProducts(ctx context.Context, params product.ListProductsParams) (product.ProductListView, error) {
+<span id="L107" class="ln">   107  </span>func (m *MockUsecase) ListProducts(ctx context.Context, authn *auth.Authn, params product.ListProductsParams) (product.ProductListView, error) {
 <span id="L108" class="ln">   108  </span>	m.ctrl.T.Helper()
-<span id="L109" class="ln">   109  </span>	ret := m.ctrl.Call(m, &#34;ListProducts&#34;, ctx, params)
+<span id="L109" class="ln">   109  </span>	ret := m.ctrl.Call(m, &#34;ListProducts&#34;, ctx, authn, params)
 <span id="L110" class="ln">   110  </span>	ret0, _ := ret[0].(product.ProductListView)
 <span id="L111" class="ln">   111  </span>	ret1, _ := ret[1].(error)
 <span id="L112" class="ln">   112  </span>	return ret0, ret1
 <span id="L113" class="ln">   113  </span>}
 <span id="L114" class="ln">   114  </span>
 <span id="L115" class="ln">   115  </span><span class="comment">// ListProducts indicates an expected call of ListProducts.</span>
-<span id="L116" class="ln">   116  </span>func (mr *MockUsecaseMockRecorder) ListProducts(ctx, params any) *gomock.Call {
+<span id="L116" class="ln">   116  </span>func (mr *MockUsecaseMockRecorder) ListProducts(ctx, authn, params any) *gomock.Call {
 <span id="L117" class="ln">   117  </span>	mr.mock.ctrl.T.Helper()
-<span id="L118" class="ln">   118  </span>	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, &#34;ListProducts&#34;, reflect.TypeOf((*MockUsecase)(nil).ListProducts), ctx, params)
+<span id="L118" class="ln">   118  </span>	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, &#34;ListProducts&#34;, reflect.TypeOf((*MockUsecase)(nil).ListProducts), ctx, authn, params)
 <span id="L119" class="ln">   119  </span>}
 <span id="L120" class="ln">   120  </span>
 <span id="L121" class="ln">   121  </span><span class="comment">// UpdateProduct mocks base method.</span>

@@ -69,548 +69,820 @@
 <span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/infrastructure/rdb/testkit&#34;
 <span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/internal/observability&#34;
 <span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/internal/usecase/purchase/query&#34;
-<span id="L15" class="ln">    15  </span>	&#34;go-boilerplate/pkg/uuid&#34;
-<span id="L16" class="ln">    16  </span>
-<span id="L17" class="ln">    17  </span>	&#34;github.com/stretchr/testify/assert&#34;
-<span id="L18" class="ln">    18  </span>	&#34;github.com/stretchr/testify/require&#34;
-<span id="L19" class="ln">    19  </span>)
-<span id="L20" class="ln">    20  </span>
-<span id="L21" class="ln">    21  </span>const (
-<span id="L22" class="ln">    22  </span>	<span class="comment">// statusCompletedID / statusCompletedName は、購入ステータスマスタ（seed 済み）の「完了」です。</span>
-<span id="L23" class="ln">    23  </span>	<span class="comment">// JOIN によるステータス名解決の検証に用います。</span>
-<span id="L24" class="ln">    24  </span>	statusCompletedID   = &#34;1904bf76-7d37-4288-bc15-359d2512ac91&#34;
-<span id="L25" class="ln">    25  </span>	statusCompletedName = &#34;完了&#34;
-<span id="L26" class="ln">    26  </span>	<span class="comment">// statusUnprocessedID / statusUnprocessedName は、購入ステータスマスタ（seed 済み）の「未処理」です。</span>
-<span id="L27" class="ln">    27  </span>	<span class="comment">// ステータスごとに名称が正しく解決されることの検証に用います。</span>
-<span id="L28" class="ln">    28  </span>	statusUnprocessedID   = &#34;a66c996c-86b2-41d8-9bdd-9b685fb7c47d&#34;
-<span id="L29" class="ln">    29  </span>	statusUnprocessedName = &#34;未処理&#34;
-<span id="L30" class="ln">    30  </span>	<span class="comment">// seedStatusInStock / seedCategory は、明細から結合する商品の FK を満たすための seed 済みマスタです。</span>
-<span id="L31" class="ln">    31  </span>	seedStatusInStock = &#34;093170fb-83a2-4864-a2b3-53236eaf3597&#34;
-<span id="L32" class="ln">    32  </span>	seedCategory      = &#34;5dd52d84-78eb-4a52-ba0b-2e11c95c2af2&#34;
-<span id="L33" class="ln">    33  </span>	<span class="comment">// defaultProductID / defaultProductName は、要約を検証しないケースが使う既定の商品です。</span>
-<span id="L34" class="ln">    34  </span>	defaultProductID   = &#34;ffffffff-3333-4000-8000-000000000001&#34;
-<span id="L35" class="ln">    35  </span>	defaultProductName = &#34;ワイヤレスイヤホン&#34;
-<span id="L36" class="ln">    36  </span>	<span class="comment">// statusUnprocessedCode は、purchase_statuses.code（SMALLINT）と同じ幅で「未処理」を表す値です。</span>
-<span id="L37" class="ln">    37  </span>	statusUnprocessedCode int16 = 1
-<span id="L38" class="ln">    38  </span>)
-<span id="L39" class="ln">    39  </span>
-<span id="L40" class="ln">    40  </span><span class="comment">// detailSeq は、insertPurchaseDetail が採番する明細 ID を一意に保つための連番です。</span>
-<span id="L41" class="ln">    41  </span><span class="comment">// テストは WithinTx で直列化されるため、単純な加算で足ります。</span>
-<span id="L42" class="ln">    42  </span>var detailSeq int
-<span id="L43" class="ln">    43  </span>
-<span id="L44" class="ln">    44  </span><span class="comment">// insertFeedUser は、購入の FK 制約（user_id → users.id）を満たすためのユーザーを挿入するヘルパーです。</span>
-<span id="L45" class="ln">    45  </span>func insertFeedUser(ctx context.Context, t *testing.T, db driver.DBTX, id string) {
-<span id="L46" class="ln">    46  </span>	t.Helper()
-<span id="L47" class="ln">    47  </span>	_, err := db.Exec(ctx,
-<span id="L48" class="ln">    48  </span>		&#34;INSERT INTO users &#34;+
-<span id="L49" class="ln">    49  </span>			&#34;(id, first_name, last_name, email, phone, prefecture_id, city, street, postal_code, created_at, updated_at) &#34;+
-<span id="L50" class="ln">    50  </span>			&#34;VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW(),NOW())&#34;,
-<span id="L51" class="ln">    51  </span>		id,
-<span id="L52" class="ln">    52  </span>		&#34;Feed&#34;,
-<span id="L53" class="ln">    53  </span>		&#34;User&#34;,
-<span id="L54" class="ln">    54  </span>		&#34;feed-&#34;+id+&#34;@example.com&#34;,
-<span id="L55" class="ln">    55  </span>		&#34;0000000000&#34;,
-<span id="L56" class="ln">    56  </span>		&#34;a03aaec4-3bd6-4bfb-8e47-2fbfa026d344&#34;, <span class="comment">// 既存 seed の都道府県ID</span>
-<span id="L57" class="ln">    57  </span>		&#34;City&#34;,
-<span id="L58" class="ln">    58  </span>		&#34;Street&#34;,
-<span id="L59" class="ln">    59  </span>		&#34;000-0000&#34;,
-<span id="L60" class="ln">    60  </span>	)
-<span id="L61" class="ln">    61  </span>	require.NoError(t, err)
-<span id="L62" class="ln">    62  </span>}
-<span id="L63" class="ln">    63  </span>
-<span id="L64" class="ln">    64  </span><span class="comment">// insertFeedProduct は、明細から結合される商品を挿入するヘルパーです。</span>
-<span id="L65" class="ln">    65  </span>func insertFeedProduct(ctx context.Context, t *testing.T, db driver.DBTX, id, name string) {
-<span id="L66" class="ln">    66  </span>	t.Helper()
-<span id="L67" class="ln">    67  </span>	_, err := db.Exec(ctx,
-<span id="L68" class="ln">    68  </span>		&#34;INSERT INTO products &#34;+
-<span id="L69" class="ln">    69  </span>			&#34;(id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at) &#34;+
-<span id="L70" class="ln">    70  </span>			&#34;VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW()) ON CONFLICT (id) DO NOTHING&#34;,
-<span id="L71" class="ln">    71  </span>		id, name, nil, 80000, 20, nil, seedStatusInStock, seedCategory,
-<span id="L72" class="ln">    72  </span>	)
-<span id="L73" class="ln">    73  </span>	require.NoError(t, err)
-<span id="L74" class="ln">    74  </span>}
-<span id="L75" class="ln">    75  </span>
-<span id="L76" class="ln">    76  </span><span class="comment">// insertPurchaseDetail は、購入へ明細を 1 件足すヘルパーです。明細 ID は seq の昇順で並ぶよう組み立てるため、</span>
-<span id="L77" class="ln">    77  </span><span class="comment">// 先頭商品（明細 ID 昇順の先頭）がどれになるかを呼び出し側が決められます。</span>
-<span id="L78" class="ln">    78  </span>func insertPurchaseDetail(ctx context.Context, t *testing.T, db driver.DBTX, purchaseID, productID string, seq int) {
-<span id="L79" class="ln">    79  </span>	t.Helper()
-<span id="L80" class="ln">    80  </span>	detailID := fmt.Sprintf(&#34;ffffffff-4444-4000-8000-%012d&#34;, seq)
-<span id="L81" class="ln">    81  </span>	_, err := db.Exec(ctx,
-<span id="L82" class="ln">    82  </span>		&#34;INSERT INTO purchase_details (id, purchase_id, product_id, quantity, unit_price) VALUES ($1,$2,$3,$4,$5)&#34;,
-<span id="L83" class="ln">    83  </span>		detailID, purchaseID, productID, 2, 80000,
-<span id="L84" class="ln">    84  </span>	)
-<span id="L85" class="ln">    85  </span>	require.NoError(t, err)
-<span id="L86" class="ln">    86  </span>}
-<span id="L87" class="ln">    87  </span>
-<span id="L88" class="ln">    88  </span><span class="comment">// insertPurchase は、keyset 検証用に user_id / ordered_at / id / status_id / total_amount を明示した購入を挿入します。</span>
-<span id="L89" class="ln">    89  </span><span class="comment">// 一覧は明細の要約を INNER LATERAL で解決するため、購入は必ず明細を 1 件伴います</span>
-<span id="L90" class="ln">    90  </span><span class="comment">// （明細を持たない購入は購入集約の不変条件により存在しません）。</span>
-<span id="L91" class="ln">    91  </span>func insertPurchase(ctx context.Context, t *testing.T, db driver.DBTX, id, userID, statusID string, total int64, orderedAt time.Time) {
-<span id="L92" class="ln">    92  </span>	t.Helper()
-<span id="L93" class="ln">    93  </span>	_, err := db.Exec(ctx,
-<span id="L94" class="ln">    94  </span>		&#34;INSERT INTO purchases &#34;+
-<span id="L95" class="ln">    95  </span>			&#34;(id, code, user_id, status_id, subtotal_amount, tax_amount, shipping_fee, total_amount, ordered_at, created_at, updated_at) &#34;+
-<span id="L96" class="ln">    96  </span>			&#34;VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW(),NOW())&#34;,
-<span id="L97" class="ln">    97  </span>		id,
-<span id="L98" class="ln">    98  </span>		&#34;code-&#34;+id,
-<span id="L99" class="ln">    99  </span>		userID,
-<span id="L100" class="ln">   100  </span>		statusID,
-<span id="L101" class="ln">   101  </span>		total,
-<span id="L102" class="ln">   102  </span>		0,
-<span id="L103" class="ln">   103  </span>		0,
-<span id="L104" class="ln">   104  </span>		total,
-<span id="L105" class="ln">   105  </span>		orderedAt,
-<span id="L106" class="ln">   106  </span>	)
-<span id="L107" class="ln">   107  </span>	require.NoError(t, err)
-<span id="L108" class="ln">   108  </span>
-<span id="L109" class="ln">   109  </span>	insertFeedProduct(ctx, t, db, defaultProductID, defaultProductName)
-<span id="L110" class="ln">   110  </span>	detailSeq++
-<span id="L111" class="ln">   111  </span>	insertPurchaseDetail(ctx, t, db, id, defaultProductID, detailSeq)
-<span id="L112" class="ln">   112  </span>}
+<span id="L15" class="ln">    15  </span>	&#34;go-boilerplate/internal/usecase/tools/timewindow&#34;
+<span id="L16" class="ln">    16  </span>	&#34;go-boilerplate/pkg/uuid&#34;
+<span id="L17" class="ln">    17  </span>
+<span id="L18" class="ln">    18  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L19" class="ln">    19  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L20" class="ln">    20  </span>)
+<span id="L21" class="ln">    21  </span>
+<span id="L22" class="ln">    22  </span>const (
+<span id="L23" class="ln">    23  </span>	<span class="comment">// statusCompletedID / statusCompletedName は、購入ステータスマスタ（seed 済み）の「完了」です。</span>
+<span id="L24" class="ln">    24  </span>	<span class="comment">// JOIN によるステータス名解決の検証に用います。</span>
+<span id="L25" class="ln">    25  </span>	statusCompletedID   = &#34;1904bf76-7d37-4288-bc15-359d2512ac91&#34;
+<span id="L26" class="ln">    26  </span>	statusCompletedName = &#34;完了&#34;
+<span id="L27" class="ln">    27  </span>	<span class="comment">// statusUnprocessedID / statusUnprocessedName は、購入ステータスマスタ（seed 済み）の「未処理」です。</span>
+<span id="L28" class="ln">    28  </span>	<span class="comment">// ステータスごとに名称が正しく解決されることの検証に用います。</span>
+<span id="L29" class="ln">    29  </span>	statusUnprocessedID   = &#34;a66c996c-86b2-41d8-9bdd-9b685fb7c47d&#34;
+<span id="L30" class="ln">    30  </span>	statusUnprocessedName = &#34;未処理&#34;
+<span id="L31" class="ln">    31  </span>	<span class="comment">// seedStatusInStock / seedCategory は、明細から結合する商品の FK を満たすための seed 済みマスタです。</span>
+<span id="L32" class="ln">    32  </span>	seedStatusInStock = &#34;093170fb-83a2-4864-a2b3-53236eaf3597&#34;
+<span id="L33" class="ln">    33  </span>	seedCategory      = &#34;5dd52d84-78eb-4a52-ba0b-2e11c95c2af2&#34;
+<span id="L34" class="ln">    34  </span>	<span class="comment">// defaultProductID / defaultProductName は、要約を検証しないケースが使う既定の商品です。</span>
+<span id="L35" class="ln">    35  </span>	defaultProductID   = &#34;ffffffff-3333-4000-8000-000000000001&#34;
+<span id="L36" class="ln">    36  </span>	defaultProductName = &#34;ワイヤレスイヤホン&#34;
+<span id="L37" class="ln">    37  </span>	<span class="comment">// statusUnprocessedCode は、purchase_statuses.code（SMALLINT）と同じ幅で「未処理」を表す値です。</span>
+<span id="L38" class="ln">    38  </span>	statusUnprocessedCode int16 = 1
+<span id="L39" class="ln">    39  </span>	<span class="comment">// statusCompletedCode は、同じ幅で「完了」を表す値です。ステータス絞り込みの検証に用います。</span>
+<span id="L40" class="ln">    40  </span>	statusCompletedCode int16 = 5
+<span id="L41" class="ln">    41  </span>	<span class="comment">// unknownStatusCode は、購入ステータスマスタに存在しないコードです。既知でない指定の扱いの検証に用います。</span>
+<span id="L42" class="ln">    42  </span>	unknownStatusCode int16 = 99
+<span id="L43" class="ln">    43  </span>)
+<span id="L44" class="ln">    44  </span>
+<span id="L45" class="ln">    45  </span><span class="comment">// detailSeq は、insertPurchaseDetail が採番する明細 ID を一意に保つための連番です。</span>
+<span id="L46" class="ln">    46  </span><span class="comment">// テストは WithinTx で直列化されるため、単純な加算で足ります。</span>
+<span id="L47" class="ln">    47  </span>var detailSeq int
+<span id="L48" class="ln">    48  </span>
+<span id="L49" class="ln">    49  </span><span class="comment">// insertFeedUser は、購入の FK 制約（user_id → users.id）を満たすためのユーザーを挿入するヘルパーです。</span>
+<span id="L50" class="ln">    50  </span>func insertFeedUser(ctx context.Context, t *testing.T, db driver.DBTX, id string) {
+<span id="L51" class="ln">    51  </span>	t.Helper()
+<span id="L52" class="ln">    52  </span>	_, err := db.Exec(ctx,
+<span id="L53" class="ln">    53  </span>		&#34;INSERT INTO users &#34;+
+<span id="L54" class="ln">    54  </span>			&#34;(id, first_name, last_name, email, phone, prefecture_id, city, street, postal_code, created_at, updated_at) &#34;+
+<span id="L55" class="ln">    55  </span>			&#34;VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW(),NOW())&#34;,
+<span id="L56" class="ln">    56  </span>		id,
+<span id="L57" class="ln">    57  </span>		&#34;Feed&#34;,
+<span id="L58" class="ln">    58  </span>		&#34;User&#34;,
+<span id="L59" class="ln">    59  </span>		&#34;feed-&#34;+id+&#34;@example.com&#34;,
+<span id="L60" class="ln">    60  </span>		&#34;0000000000&#34;,
+<span id="L61" class="ln">    61  </span>		&#34;a03aaec4-3bd6-4bfb-8e47-2fbfa026d344&#34;, <span class="comment">// 既存 seed の都道府県ID</span>
+<span id="L62" class="ln">    62  </span>		&#34;City&#34;,
+<span id="L63" class="ln">    63  </span>		&#34;Street&#34;,
+<span id="L64" class="ln">    64  </span>		&#34;000-0000&#34;,
+<span id="L65" class="ln">    65  </span>	)
+<span id="L66" class="ln">    66  </span>	require.NoError(t, err)
+<span id="L67" class="ln">    67  </span>}
+<span id="L68" class="ln">    68  </span>
+<span id="L69" class="ln">    69  </span><span class="comment">// insertFeedProduct は、明細から結合される商品を挿入するヘルパーです。</span>
+<span id="L70" class="ln">    70  </span>func insertFeedProduct(ctx context.Context, t *testing.T, db driver.DBTX, id, name string) {
+<span id="L71" class="ln">    71  </span>	t.Helper()
+<span id="L72" class="ln">    72  </span>	_, err := db.Exec(ctx,
+<span id="L73" class="ln">    73  </span>		&#34;INSERT INTO products &#34;+
+<span id="L74" class="ln">    74  </span>			&#34;(id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at) &#34;+
+<span id="L75" class="ln">    75  </span>			&#34;VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW()) ON CONFLICT (id) DO NOTHING&#34;,
+<span id="L76" class="ln">    76  </span>		id, name, nil, 80000, 20, nil, seedStatusInStock, seedCategory,
+<span id="L77" class="ln">    77  </span>	)
+<span id="L78" class="ln">    78  </span>	require.NoError(t, err)
+<span id="L79" class="ln">    79  </span>}
+<span id="L80" class="ln">    80  </span>
+<span id="L81" class="ln">    81  </span><span class="comment">// insertPurchaseDetail は、購入へ明細を 1 件足すヘルパーです。明細 ID は seq の昇順で並ぶよう組み立てるため、</span>
+<span id="L82" class="ln">    82  </span><span class="comment">// 先頭商品（明細 ID 昇順の先頭）がどれになるかを呼び出し側が決められます。</span>
+<span id="L83" class="ln">    83  </span>func insertPurchaseDetail(ctx context.Context, t *testing.T, db driver.DBTX, purchaseID, productID string, seq int) {
+<span id="L84" class="ln">    84  </span>	t.Helper()
+<span id="L85" class="ln">    85  </span>	detailID := fmt.Sprintf(&#34;ffffffff-4444-4000-8000-%012d&#34;, seq)
+<span id="L86" class="ln">    86  </span>	_, err := db.Exec(ctx,
+<span id="L87" class="ln">    87  </span>		&#34;INSERT INTO purchase_details (id, purchase_id, product_id, quantity, unit_price) VALUES ($1,$2,$3,$4,$5)&#34;,
+<span id="L88" class="ln">    88  </span>		detailID, purchaseID, productID, 2, 80000,
+<span id="L89" class="ln">    89  </span>	)
+<span id="L90" class="ln">    90  </span>	require.NoError(t, err)
+<span id="L91" class="ln">    91  </span>}
+<span id="L92" class="ln">    92  </span>
+<span id="L93" class="ln">    93  </span><span class="comment">// insertPurchase は、keyset 検証用に user_id / ordered_at / id / status_id / total_amount を明示した購入を挿入します。</span>
+<span id="L94" class="ln">    94  </span><span class="comment">// 一覧は明細の要約を INNER LATERAL で解決するため、購入は必ず明細を 1 件伴います</span>
+<span id="L95" class="ln">    95  </span><span class="comment">// （明細を持たない購入は購入集約の不変条件により存在しません）。</span>
+<span id="L96" class="ln">    96  </span>func insertPurchase(ctx context.Context, t *testing.T, db driver.DBTX, id, userID, statusID string, total int64, orderedAt time.Time) {
+<span id="L97" class="ln">    97  </span>	t.Helper()
+<span id="L98" class="ln">    98  </span>	_, err := db.Exec(ctx,
+<span id="L99" class="ln">    99  </span>		&#34;INSERT INTO purchases &#34;+
+<span id="L100" class="ln">   100  </span>			&#34;(id, code, user_id, status_id, subtotal_amount, tax_amount, shipping_fee, total_amount, ordered_at, created_at, updated_at) &#34;+
+<span id="L101" class="ln">   101  </span>			&#34;VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW(),NOW())&#34;,
+<span id="L102" class="ln">   102  </span>		id,
+<span id="L103" class="ln">   103  </span>		&#34;code-&#34;+id,
+<span id="L104" class="ln">   104  </span>		userID,
+<span id="L105" class="ln">   105  </span>		statusID,
+<span id="L106" class="ln">   106  </span>		total,
+<span id="L107" class="ln">   107  </span>		0,
+<span id="L108" class="ln">   108  </span>		0,
+<span id="L109" class="ln">   109  </span>		total,
+<span id="L110" class="ln">   110  </span>		orderedAt,
+<span id="L111" class="ln">   111  </span>	)
+<span id="L112" class="ln">   112  </span>	require.NoError(t, err)
 <span id="L113" class="ln">   113  </span>
-<span id="L114" class="ln">   114  </span>func Test_service_FindFeedByUserID(t *testing.T) {
-<span id="L115" class="ln">   115  </span>	t.Parallel()
-<span id="L116" class="ln">   116  </span>
-<span id="L117" class="ln">   117  </span>	testDB := testkit.NewTestDB(t)
-<span id="L118" class="ln">   118  </span>	lt := observability.NewMockInfraLayerTracer(t)
-<span id="L119" class="ln">   119  </span>	txm := testkit.NewTestTransactionRunner(t)
-<span id="L120" class="ln">   120  </span>
-<span id="L121" class="ln">   121  </span>	svc := &amp;service{tracer: lt, db: testDB}
-<span id="L122" class="ln">   122  </span>
-<span id="L123" class="ln">   123  </span>	<span class="comment">// seed データより必ず後ろ（新しい）に来るよう十分未来を基準にする。</span>
-<span id="L124" class="ln">   124  </span>	base := time.Date(2099, time.January, 1, 0, 0, 0, 0, time.UTC)
-<span id="L125" class="ln">   125  </span>
-<span id="L126" class="ln">   126  </span>	<span class="comment">// 所有者と、所有権フィルタ検証用の別ユーザー。</span>
-<span id="L127" class="ln">   127  </span>	owner := &#34;ffffffff-1111-4000-8000-000000000001&#34;
-<span id="L128" class="ln">   128  </span>	other := &#34;ffffffff-1111-4000-8000-0000000000ff&#34;
+<span id="L114" class="ln">   114  </span>	insertFeedProduct(ctx, t, db, defaultProductID, defaultProductName)
+<span id="L115" class="ln">   115  </span>	detailSeq++
+<span id="L116" class="ln">   116  </span>	insertPurchaseDetail(ctx, t, db, id, defaultProductID, detailSeq)
+<span id="L117" class="ln">   117  </span>}
+<span id="L118" class="ln">   118  </span>
+<span id="L119" class="ln">   119  </span><span class="comment">// mustWindow は、境界の指定から検証済みの対象期間を組み立てます。</span>
+<span id="L120" class="ln">   120  </span>func mustWindow(t *testing.T, bounds timewindow.Bounds) timewindow.Window {
+<span id="L121" class="ln">   121  </span>	t.Helper()
+<span id="L122" class="ln">   122  </span>	w, err := timewindow.New(bounds)
+<span id="L123" class="ln">   123  </span>	require.NoError(t, err)
+<span id="L124" class="ln">   124  </span>	return w
+<span id="L125" class="ln">   125  </span>}
+<span id="L126" class="ln">   126  </span>
+<span id="L127" class="ln">   127  </span>func Test_service_FindFeedByUserID(t *testing.T) {
+<span id="L128" class="ln">   128  </span>	t.Parallel()
 <span id="L129" class="ln">   129  </span>
-<span id="L130" class="ln">   130  </span>	<span class="comment">// 所有者の購入: tie ペア（同一 ordered_at・id 差）+ より古い 2 件。</span>
-<span id="L131" class="ln">   131  </span>	<span class="comment">// ORDER BY ordered_at DESC, id DESC のため、同一 ordered_at では id が大きい tieHigh が先に来る。</span>
-<span id="L132" class="ln">   132  </span>	tieHigh := &#34;ffffffff-2222-4000-8000-000000000002&#34;
-<span id="L133" class="ln">   133  </span>	tieLow := &#34;ffffffff-2222-4000-8000-000000000001&#34;
-<span id="L134" class="ln">   134  </span>	mid := &#34;ffffffff-2222-4000-8000-000000000003&#34; <span class="comment">// base-1h</span>
-<span id="L135" class="ln">   135  </span>	old := &#34;ffffffff-2222-4000-8000-000000000004&#34; <span class="comment">// base-2h</span>
-<span id="L136" class="ln">   136  </span>
-<span id="L137" class="ln">   137  </span>	mustParse := func(s string) uuid.UUID {
-<span id="L138" class="ln">   138  </span>		id, err := uuid.Parse(s)
-<span id="L139" class="ln">   139  </span>		require.NoError(t, err)
-<span id="L140" class="ln">   140  </span>		return id
-<span id="L141" class="ln">   141  </span>	}
+<span id="L130" class="ln">   130  </span>	testDB := testkit.NewTestDB(t)
+<span id="L131" class="ln">   131  </span>	lt := observability.NewMockInfraLayerTracer(t)
+<span id="L132" class="ln">   132  </span>	txm := testkit.NewTestTransactionRunner(t)
+<span id="L133" class="ln">   133  </span>
+<span id="L134" class="ln">   134  </span>	svc := &amp;service{tracer: lt, db: testDB}
+<span id="L135" class="ln">   135  </span>
+<span id="L136" class="ln">   136  </span>	<span class="comment">// seed データより必ず後ろ（新しい）に来るよう十分未来を基準にする。</span>
+<span id="L137" class="ln">   137  </span>	base := time.Date(2099, time.January, 1, 0, 0, 0, 0, time.UTC)
+<span id="L138" class="ln">   138  </span>
+<span id="L139" class="ln">   139  </span>	<span class="comment">// 所有者と、所有権フィルタ検証用の別ユーザー。</span>
+<span id="L140" class="ln">   140  </span>	owner := &#34;ffffffff-1111-4000-8000-000000000001&#34;
+<span id="L141" class="ln">   141  </span>	other := &#34;ffffffff-1111-4000-8000-0000000000ff&#34;
 <span id="L142" class="ln">   142  </span>
-<span id="L143" class="ln">   143  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L144" class="ln">   144  </span>		t.Parallel()
-<span id="L145" class="ln">   145  </span>
-<span id="L146" class="ln">   146  </span>		t.Run(&#34;先頭ページとafterカーソルで所有者の購入がkeyset安定順に次ページを返す&#34;, func(t *testing.T) {
-<span id="L147" class="ln">   147  </span>			t.Parallel()
-<span id="L148" class="ln">   148  </span>
-<span id="L149" class="ln">   149  </span>			txm.WithinTx(func(ctx context.Context) {
-<span id="L150" class="ln">   150  </span>				drv := driver.New(ctx, testDB)
-<span id="L151" class="ln">   151  </span>				insertFeedUser(ctx, t, drv, owner)
-<span id="L152" class="ln">   152  </span>				insertPurchase(ctx, t, drv, tieHigh, owner, statusCompletedID, 100, base)
-<span id="L153" class="ln">   153  </span>				insertPurchase(ctx, t, drv, tieLow, owner, statusCompletedID, 200, base)
-<span id="L154" class="ln">   154  </span>				insertPurchase(ctx, t, drv, mid, owner, statusCompletedID, 300, base.Add(-time.Hour))
-<span id="L155" class="ln">   155  </span>				insertPurchase(ctx, t, drv, old, owner, statusCompletedID, 400, base.Add(-2*time.Hour))
-<span id="L156" class="ln">   156  </span>
-<span id="L157" class="ln">   157  </span>				<span class="comment">// 先頭ページ（after=nil, limit=2）: 最新の tie ペア。id DESC で tieHigh が先。</span>
-<span id="L158" class="ln">   158  </span>				first, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{Limit: 2})
-<span id="L159" class="ln">   159  </span>				require.NoError(t, err)
-<span id="L160" class="ln">   160  </span>				require.Len(t, first, 2)
-<span id="L161" class="ln">   161  </span>				assert.Equal(t, mustParse(tieHigh), first[0].ID)
-<span id="L162" class="ln">   162  </span>				assert.Equal(t, mustParse(tieLow), first[1].ID)
-<span id="L163" class="ln">   163  </span>
-<span id="L164" class="ln">   164  </span>				<span class="comment">// 次ページ: 先頭ページ末尾行(tieLow)を境界に keyset を進める。</span>
-<span id="L165" class="ln">   165  </span>				<span class="comment">// (ordered_at, id) &lt; (base, tieLow) のため同一 ordered_at の tieHigh は除外され mid → old が返る。</span>
-<span id="L166" class="ln">   166  </span>				last := first[len(first)-1]
-<span id="L167" class="ln">   167  </span>				second, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{
-<span id="L168" class="ln">   168  </span>					Limit:          2,
-<span id="L169" class="ln">   169  </span>					AfterOrderedAt: &amp;last.OrderedAt,
-<span id="L170" class="ln">   170  </span>					AfterID:        &amp;last.ID,
-<span id="L171" class="ln">   171  </span>				})
+<span id="L143" class="ln">   143  </span>	<span class="comment">// 所有者の購入: tie ペア（同一 ordered_at・id 差）+ より古い 2 件。</span>
+<span id="L144" class="ln">   144  </span>	<span class="comment">// ORDER BY ordered_at DESC, id DESC のため、同一 ordered_at では id が大きい tieHigh が先に来る。</span>
+<span id="L145" class="ln">   145  </span>	tieHigh := &#34;ffffffff-2222-4000-8000-000000000002&#34;
+<span id="L146" class="ln">   146  </span>	tieLow := &#34;ffffffff-2222-4000-8000-000000000001&#34;
+<span id="L147" class="ln">   147  </span>	mid := &#34;ffffffff-2222-4000-8000-000000000003&#34; <span class="comment">// base-1h</span>
+<span id="L148" class="ln">   148  </span>	old := &#34;ffffffff-2222-4000-8000-000000000004&#34; <span class="comment">// base-2h</span>
+<span id="L149" class="ln">   149  </span>
+<span id="L150" class="ln">   150  </span>	mustParse := func(s string) uuid.UUID {
+<span id="L151" class="ln">   151  </span>		id, err := uuid.Parse(s)
+<span id="L152" class="ln">   152  </span>		require.NoError(t, err)
+<span id="L153" class="ln">   153  </span>		return id
+<span id="L154" class="ln">   154  </span>	}
+<span id="L155" class="ln">   155  </span>
+<span id="L156" class="ln">   156  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L157" class="ln">   157  </span>		t.Parallel()
+<span id="L158" class="ln">   158  </span>
+<span id="L159" class="ln">   159  </span>		t.Run(&#34;先頭ページとafterカーソルで所有者の購入がkeyset安定順に次ページを返す&#34;, func(t *testing.T) {
+<span id="L160" class="ln">   160  </span>			t.Parallel()
+<span id="L161" class="ln">   161  </span>
+<span id="L162" class="ln">   162  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L163" class="ln">   163  </span>				drv := driver.New(ctx, testDB)
+<span id="L164" class="ln">   164  </span>				insertFeedUser(ctx, t, drv, owner)
+<span id="L165" class="ln">   165  </span>				insertPurchase(ctx, t, drv, tieHigh, owner, statusCompletedID, 100, base)
+<span id="L166" class="ln">   166  </span>				insertPurchase(ctx, t, drv, tieLow, owner, statusCompletedID, 200, base)
+<span id="L167" class="ln">   167  </span>				insertPurchase(ctx, t, drv, mid, owner, statusCompletedID, 300, base.Add(-time.Hour))
+<span id="L168" class="ln">   168  </span>				insertPurchase(ctx, t, drv, old, owner, statusCompletedID, 400, base.Add(-2*time.Hour))
+<span id="L169" class="ln">   169  </span>
+<span id="L170" class="ln">   170  </span>				<span class="comment">// 先頭ページ（after=nil, limit=2）: 最新の tie ペア。id DESC で tieHigh が先。</span>
+<span id="L171" class="ln">   171  </span>				first, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{Limit: 2})
 <span id="L172" class="ln">   172  </span>				require.NoError(t, err)
-<span id="L173" class="ln">   173  </span>				require.Len(t, second, 2)
-<span id="L174" class="ln">   174  </span>				assert.Equal(t, mustParse(mid), second[0].ID)
-<span id="L175" class="ln">   175  </span>				assert.Equal(t, mustParse(old), second[1].ID)
-<span id="L176" class="ln">   176  </span>			})
-<span id="L177" class="ln">   177  </span>		})
-<span id="L178" class="ln">   178  </span>
-<span id="L179" class="ln">   179  </span>		t.Run(&#34;afterの境界がtieペアの先頭行の場合、同一ordered_atのもう一方が次ページ先頭に来る&#34;, func(t *testing.T) {
-<span id="L180" class="ln">   180  </span>			t.Parallel()
-<span id="L181" class="ln">   181  </span>
-<span id="L182" class="ln">   182  </span>			txm.WithinTx(func(ctx context.Context) {
-<span id="L183" class="ln">   183  </span>				drv := driver.New(ctx, testDB)
-<span id="L184" class="ln">   184  </span>				insertFeedUser(ctx, t, drv, owner)
-<span id="L185" class="ln">   185  </span>				insertPurchase(ctx, t, drv, tieHigh, owner, statusCompletedID, 100, base)
-<span id="L186" class="ln">   186  </span>				insertPurchase(ctx, t, drv, tieLow, owner, statusCompletedID, 200, base)
-<span id="L187" class="ln">   187  </span>
-<span id="L188" class="ln">   188  </span>				<span class="comment">// 境界を tieHigh（同一 ordered_at の大きい id）にすると tieLow のみが残る = id タイブレークの検証。</span>
-<span id="L189" class="ln">   189  </span>				orderedAt := base
-<span id="L190" class="ln">   190  </span>				id := mustParse(tieHigh)
-<span id="L191" class="ln">   191  </span>				page, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{
-<span id="L192" class="ln">   192  </span>					Limit:          10,
-<span id="L193" class="ln">   193  </span>					AfterOrderedAt: &amp;orderedAt,
-<span id="L194" class="ln">   194  </span>					AfterID:        &amp;id,
-<span id="L195" class="ln">   195  </span>				})
-<span id="L196" class="ln">   196  </span>				require.NoError(t, err)
-<span id="L197" class="ln">   197  </span>				require.Len(t, page, 1)
-<span id="L198" class="ln">   198  </span>				assert.Equal(t, mustParse(tieLow), page[0].ID)
-<span id="L199" class="ln">   199  </span>			})
-<span id="L200" class="ln">   200  </span>		})
-<span id="L201" class="ln">   201  </span>
-<span id="L202" class="ln">   202  </span>		t.Run(&#34;別ユーザーの購入は所有権フィルタで返らない&#34;, func(t *testing.T) {
-<span id="L203" class="ln">   203  </span>			t.Parallel()
-<span id="L204" class="ln">   204  </span>
-<span id="L205" class="ln">   205  </span>			txm.WithinTx(func(ctx context.Context) {
-<span id="L206" class="ln">   206  </span>				drv := driver.New(ctx, testDB)
-<span id="L207" class="ln">   207  </span>				insertFeedUser(ctx, t, drv, owner)
-<span id="L208" class="ln">   208  </span>				insertFeedUser(ctx, t, drv, other)
-<span id="L209" class="ln">   209  </span>				<span class="comment">// 別ユーザーの購入のみ存在する状況。</span>
-<span id="L210" class="ln">   210  </span>				insertPurchase(ctx, t, drv, tieHigh, other, statusCompletedID, 100, base)
-<span id="L211" class="ln">   211  </span>
-<span id="L212" class="ln">   212  </span>				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{Limit: 10})
-<span id="L213" class="ln">   213  </span>				require.NoError(t, err)
-<span id="L214" class="ln">   214  </span>				assert.Empty(t, got)
-<span id="L215" class="ln">   215  </span>			})
-<span id="L216" class="ln">   216  </span>		})
+<span id="L173" class="ln">   173  </span>				require.Len(t, first, 2)
+<span id="L174" class="ln">   174  </span>				assert.Equal(t, mustParse(tieHigh), first[0].ID)
+<span id="L175" class="ln">   175  </span>				assert.Equal(t, mustParse(tieLow), first[1].ID)
+<span id="L176" class="ln">   176  </span>
+<span id="L177" class="ln">   177  </span>				<span class="comment">// 次ページ: 先頭ページ末尾行(tieLow)を境界に keyset を進める。</span>
+<span id="L178" class="ln">   178  </span>				<span class="comment">// (ordered_at, id) &lt; (base, tieLow) のため同一 ordered_at の tieHigh は除外され mid → old が返る。</span>
+<span id="L179" class="ln">   179  </span>				last := first[len(first)-1]
+<span id="L180" class="ln">   180  </span>				second, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{
+<span id="L181" class="ln">   181  </span>					Limit:          2,
+<span id="L182" class="ln">   182  </span>					AfterOrderedAt: &amp;last.OrderedAt,
+<span id="L183" class="ln">   183  </span>					AfterID:        &amp;last.ID,
+<span id="L184" class="ln">   184  </span>				})
+<span id="L185" class="ln">   185  </span>				require.NoError(t, err)
+<span id="L186" class="ln">   186  </span>				require.Len(t, second, 2)
+<span id="L187" class="ln">   187  </span>				assert.Equal(t, mustParse(mid), second[0].ID)
+<span id="L188" class="ln">   188  </span>				assert.Equal(t, mustParse(old), second[1].ID)
+<span id="L189" class="ln">   189  </span>			})
+<span id="L190" class="ln">   190  </span>		})
+<span id="L191" class="ln">   191  </span>
+<span id="L192" class="ln">   192  </span>		t.Run(&#34;afterの境界がtieペアの先頭行の場合、同一ordered_atのもう一方が次ページ先頭に来る&#34;, func(t *testing.T) {
+<span id="L193" class="ln">   193  </span>			t.Parallel()
+<span id="L194" class="ln">   194  </span>
+<span id="L195" class="ln">   195  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L196" class="ln">   196  </span>				drv := driver.New(ctx, testDB)
+<span id="L197" class="ln">   197  </span>				insertFeedUser(ctx, t, drv, owner)
+<span id="L198" class="ln">   198  </span>				insertPurchase(ctx, t, drv, tieHigh, owner, statusCompletedID, 100, base)
+<span id="L199" class="ln">   199  </span>				insertPurchase(ctx, t, drv, tieLow, owner, statusCompletedID, 200, base)
+<span id="L200" class="ln">   200  </span>
+<span id="L201" class="ln">   201  </span>				<span class="comment">// 境界を tieHigh（同一 ordered_at の大きい id）にすると tieLow のみが残る = id タイブレークの検証。</span>
+<span id="L202" class="ln">   202  </span>				orderedAt := base
+<span id="L203" class="ln">   203  </span>				id := mustParse(tieHigh)
+<span id="L204" class="ln">   204  </span>				page, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{
+<span id="L205" class="ln">   205  </span>					Limit:          10,
+<span id="L206" class="ln">   206  </span>					AfterOrderedAt: &amp;orderedAt,
+<span id="L207" class="ln">   207  </span>					AfterID:        &amp;id,
+<span id="L208" class="ln">   208  </span>				})
+<span id="L209" class="ln">   209  </span>				require.NoError(t, err)
+<span id="L210" class="ln">   210  </span>				require.Len(t, page, 1)
+<span id="L211" class="ln">   211  </span>				assert.Equal(t, mustParse(tieLow), page[0].ID)
+<span id="L212" class="ln">   212  </span>			})
+<span id="L213" class="ln">   213  </span>		})
+<span id="L214" class="ln">   214  </span>
+<span id="L215" class="ln">   215  </span>		t.Run(&#34;別ユーザーの購入は所有権フィルタで返らない&#34;, func(t *testing.T) {
+<span id="L216" class="ln">   216  </span>			t.Parallel()
 <span id="L217" class="ln">   217  </span>
-<span id="L218" class="ln">   218  </span>		t.Run(&#34;先頭ページで期間外に注文された購入は返らない&#34;, func(t *testing.T) {
-<span id="L219" class="ln">   219  </span>			t.Parallel()
-<span id="L220" class="ln">   220  </span>
-<span id="L221" class="ln">   221  </span>			txm.WithinTx(func(ctx context.Context) {
-<span id="L222" class="ln">   222  </span>				drv := driver.New(ctx, testDB)
-<span id="L223" class="ln">   223  </span>				insertFeedUser(ctx, t, drv, owner)
-<span id="L224" class="ln">   224  </span>				insertPurchase(ctx, t, drv, tieHigh, owner, statusCompletedID, 100, base)
-<span id="L225" class="ln">   225  </span>				insertPurchase(ctx, t, drv, mid, owner, statusCompletedID, 300, base.Add(-24*time.Hour))
-<span id="L226" class="ln">   226  </span>
-<span id="L227" class="ln">   227  </span>				<span class="comment">// 半開区間 [base-1h, base+1h) は base の 1 件だけを含む。</span>
-<span id="L228" class="ln">   228  </span>				after := base.Add(-time.Hour)
-<span id="L229" class="ln">   229  </span>				before := base.Add(time.Hour)
-<span id="L230" class="ln">   230  </span>				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{
-<span id="L231" class="ln">   231  </span>					Limit:         10,
-<span id="L232" class="ln">   232  </span>					OrderedAfter:  &amp;after,
-<span id="L233" class="ln">   233  </span>					OrderedBefore: &amp;before,
-<span id="L234" class="ln">   234  </span>				})
-<span id="L235" class="ln">   235  </span>				require.NoError(t, err)
-<span id="L236" class="ln">   236  </span>				require.Len(t, got, 1)
-<span id="L237" class="ln">   237  </span>				assert.Equal(t, mustParse(tieHigh), got[0].ID)
-<span id="L238" class="ln">   238  </span>			})
-<span id="L239" class="ln">   239  </span>		})
-<span id="L240" class="ln">   240  </span>
-<span id="L241" class="ln">   241  </span>		t.Run(&#34;afterページでも期間の絞り込みが効く&#34;, func(t *testing.T) {
-<span id="L242" class="ln">   242  </span>			t.Parallel()
-<span id="L243" class="ln">   243  </span>
-<span id="L244" class="ln">   244  </span>			txm.WithinTx(func(ctx context.Context) {
-<span id="L245" class="ln">   245  </span>				drv := driver.New(ctx, testDB)
-<span id="L246" class="ln">   246  </span>				insertFeedUser(ctx, t, drv, owner)
-<span id="L247" class="ln">   247  </span>				insertPurchase(ctx, t, drv, tieHigh, owner, statusCompletedID, 100, base)
-<span id="L248" class="ln">   248  </span>				insertPurchase(ctx, t, drv, mid, owner, statusCompletedID, 300, base.Add(-time.Hour))
-<span id="L249" class="ln">   249  </span>				insertPurchase(ctx, t, drv, old, owner, statusCompletedID, 400, base.Add(-24*time.Hour))
-<span id="L250" class="ln">   250  </span>
-<span id="L251" class="ln">   251  </span>				<span class="comment">// keyset 境界は tieHigh。期間を [base-2h, base+1h) に絞ると old は範囲外で mid だけが残る。</span>
-<span id="L252" class="ln">   252  </span>				orderedAt := base
-<span id="L253" class="ln">   253  </span>				id := mustParse(tieHigh)
-<span id="L254" class="ln">   254  </span>				after := base.Add(-2 * time.Hour)
-<span id="L255" class="ln">   255  </span>				before := base.Add(time.Hour)
-<span id="L256" class="ln">   256  </span>				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{
-<span id="L257" class="ln">   257  </span>					Limit:          10,
-<span id="L258" class="ln">   258  </span>					AfterOrderedAt: &amp;orderedAt,
-<span id="L259" class="ln">   259  </span>					AfterID:        &amp;id,
-<span id="L260" class="ln">   260  </span>					OrderedAfter:   &amp;after,
-<span id="L261" class="ln">   261  </span>					OrderedBefore:  &amp;before,
-<span id="L262" class="ln">   262  </span>				})
-<span id="L263" class="ln">   263  </span>				require.NoError(t, err)
-<span id="L264" class="ln">   264  </span>				require.Len(t, got, 1)
-<span id="L265" class="ln">   265  </span>				assert.Equal(t, mustParse(mid), got[0].ID)
-<span id="L266" class="ln">   266  </span>			})
-<span id="L267" class="ln">   267  </span>		})
-<span id="L268" class="ln">   268  </span>
-<span id="L269" class="ln">   269  </span>		t.Run(&#34;開始日だけを指定した場合は絞り込まない&#34;, func(t *testing.T) {
-<span id="L270" class="ln">   270  </span>			t.Parallel()
-<span id="L271" class="ln">   271  </span>
-<span id="L272" class="ln">   272  </span>			txm.WithinTx(func(ctx context.Context) {
-<span id="L273" class="ln">   273  </span>				drv := driver.New(ctx, testDB)
-<span id="L274" class="ln">   274  </span>				insertFeedUser(ctx, t, drv, owner)
-<span id="L275" class="ln">   275  </span>				insertPurchase(ctx, t, drv, tieHigh, owner, statusCompletedID, 100, base)
-<span id="L276" class="ln">   276  </span>				insertPurchase(ctx, t, drv, old, owner, statusCompletedID, 400, base.Add(-24*time.Hour))
-<span id="L277" class="ln">   277  </span>
-<span id="L278" class="ln">   278  </span>				<span class="comment">// 片側だけの指定は絞り込みなしとして扱う契約。境界が NULL のまま述語へ入ると全件が消える。</span>
-<span id="L279" class="ln">   279  </span>				after := base.Add(-time.Hour)
-<span id="L280" class="ln">   280  </span>				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{
-<span id="L281" class="ln">   281  </span>					Limit:        10,
-<span id="L282" class="ln">   282  </span>					OrderedAfter: &amp;after,
-<span id="L283" class="ln">   283  </span>				})
-<span id="L284" class="ln">   284  </span>				require.NoError(t, err)
-<span id="L285" class="ln">   285  </span>				assert.Len(t, got, 2)
-<span id="L286" class="ln">   286  </span>			})
-<span id="L287" class="ln">   287  </span>		})
+<span id="L218" class="ln">   218  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L219" class="ln">   219  </span>				drv := driver.New(ctx, testDB)
+<span id="L220" class="ln">   220  </span>				insertFeedUser(ctx, t, drv, owner)
+<span id="L221" class="ln">   221  </span>				insertFeedUser(ctx, t, drv, other)
+<span id="L222" class="ln">   222  </span>				<span class="comment">// 別ユーザーの購入のみ存在する状況。</span>
+<span id="L223" class="ln">   223  </span>				insertPurchase(ctx, t, drv, tieHigh, other, statusCompletedID, 100, base)
+<span id="L224" class="ln">   224  </span>
+<span id="L225" class="ln">   225  </span>				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{Limit: 10})
+<span id="L226" class="ln">   226  </span>				require.NoError(t, err)
+<span id="L227" class="ln">   227  </span>				assert.Empty(t, got)
+<span id="L228" class="ln">   228  </span>			})
+<span id="L229" class="ln">   229  </span>		})
+<span id="L230" class="ln">   230  </span>
+<span id="L231" class="ln">   231  </span>		t.Run(&#34;先頭ページで期間外に注文された購入は返らない&#34;, func(t *testing.T) {
+<span id="L232" class="ln">   232  </span>			t.Parallel()
+<span id="L233" class="ln">   233  </span>
+<span id="L234" class="ln">   234  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L235" class="ln">   235  </span>				drv := driver.New(ctx, testDB)
+<span id="L236" class="ln">   236  </span>				insertFeedUser(ctx, t, drv, owner)
+<span id="L237" class="ln">   237  </span>				insertPurchase(ctx, t, drv, tieHigh, owner, statusCompletedID, 100, base)
+<span id="L238" class="ln">   238  </span>				insertPurchase(ctx, t, drv, mid, owner, statusCompletedID, 300, base.Add(-24*time.Hour))
+<span id="L239" class="ln">   239  </span>
+<span id="L240" class="ln">   240  </span>				<span class="comment">// 半開区間 [base-1h, base+1h) は base の 1 件だけを含む。</span>
+<span id="L241" class="ln">   241  </span>				after := base.Add(-time.Hour)
+<span id="L242" class="ln">   242  </span>				before := base.Add(time.Hour)
+<span id="L243" class="ln">   243  </span>				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{
+<span id="L244" class="ln">   244  </span>					Limit:  10,
+<span id="L245" class="ln">   245  </span>					Window: mustWindow(t, timewindow.Bounds{After: &amp;after, Before: &amp;before}),
+<span id="L246" class="ln">   246  </span>				})
+<span id="L247" class="ln">   247  </span>				require.NoError(t, err)
+<span id="L248" class="ln">   248  </span>				require.Len(t, got, 1)
+<span id="L249" class="ln">   249  </span>				assert.Equal(t, mustParse(tieHigh), got[0].ID)
+<span id="L250" class="ln">   250  </span>			})
+<span id="L251" class="ln">   251  </span>		})
+<span id="L252" class="ln">   252  </span>
+<span id="L253" class="ln">   253  </span>		t.Run(&#34;afterページでも期間の絞り込みが効く&#34;, func(t *testing.T) {
+<span id="L254" class="ln">   254  </span>			t.Parallel()
+<span id="L255" class="ln">   255  </span>
+<span id="L256" class="ln">   256  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L257" class="ln">   257  </span>				drv := driver.New(ctx, testDB)
+<span id="L258" class="ln">   258  </span>				insertFeedUser(ctx, t, drv, owner)
+<span id="L259" class="ln">   259  </span>				insertPurchase(ctx, t, drv, tieHigh, owner, statusCompletedID, 100, base)
+<span id="L260" class="ln">   260  </span>				insertPurchase(ctx, t, drv, mid, owner, statusCompletedID, 300, base.Add(-time.Hour))
+<span id="L261" class="ln">   261  </span>				insertPurchase(ctx, t, drv, old, owner, statusCompletedID, 400, base.Add(-24*time.Hour))
+<span id="L262" class="ln">   262  </span>
+<span id="L263" class="ln">   263  </span>				<span class="comment">// keyset 境界は tieHigh。期間を [base-2h, base+1h) に絞ると old は範囲外で mid だけが残る。</span>
+<span id="L264" class="ln">   264  </span>				orderedAt := base
+<span id="L265" class="ln">   265  </span>				id := mustParse(tieHigh)
+<span id="L266" class="ln">   266  </span>				after := base.Add(-2 * time.Hour)
+<span id="L267" class="ln">   267  </span>				before := base.Add(time.Hour)
+<span id="L268" class="ln">   268  </span>				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{
+<span id="L269" class="ln">   269  </span>					Limit:          10,
+<span id="L270" class="ln">   270  </span>					AfterOrderedAt: &amp;orderedAt,
+<span id="L271" class="ln">   271  </span>					AfterID:        &amp;id,
+<span id="L272" class="ln">   272  </span>					Window:         mustWindow(t, timewindow.Bounds{After: &amp;after, Before: &amp;before}),
+<span id="L273" class="ln">   273  </span>				})
+<span id="L274" class="ln">   274  </span>				require.NoError(t, err)
+<span id="L275" class="ln">   275  </span>				require.Len(t, got, 1)
+<span id="L276" class="ln">   276  </span>				assert.Equal(t, mustParse(mid), got[0].ID)
+<span id="L277" class="ln">   277  </span>			})
+<span id="L278" class="ln">   278  </span>		})
+<span id="L279" class="ln">   279  </span>
+<span id="L280" class="ln">   280  </span>		t.Run(&#34;下限だけを指定した場合はその瞬時以降だけを返す&#34;, func(t *testing.T) {
+<span id="L281" class="ln">   281  </span>			t.Parallel()
+<span id="L282" class="ln">   282  </span>
+<span id="L283" class="ln">   283  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L284" class="ln">   284  </span>				drv := driver.New(ctx, testDB)
+<span id="L285" class="ln">   285  </span>				insertFeedUser(ctx, t, drv, owner)
+<span id="L286" class="ln">   286  </span>				insertPurchase(ctx, t, drv, tieHigh, owner, statusCompletedID, 100, base)
+<span id="L287" class="ln">   287  </span>				insertPurchase(ctx, t, drv, old, owner, statusCompletedID, 400, base.Add(-24*time.Hour))
 <span id="L288" class="ln">   288  </span>
-<span id="L289" class="ln">   289  </span>		t.Run(&#34;終了日だけを指定した場合も絞り込まない&#34;, func(t *testing.T) {
-<span id="L290" class="ln">   290  </span>			t.Parallel()
-<span id="L291" class="ln">   291  </span>
-<span id="L292" class="ln">   292  </span>			txm.WithinTx(func(ctx context.Context) {
-<span id="L293" class="ln">   293  </span>				drv := driver.New(ctx, testDB)
-<span id="L294" class="ln">   294  </span>				insertFeedUser(ctx, t, drv, owner)
-<span id="L295" class="ln">   295  </span>				insertPurchase(ctx, t, drv, tieHigh, owner, statusCompletedID, 100, base)
-<span id="L296" class="ln">   296  </span>				insertPurchase(ctx, t, drv, old, owner, statusCompletedID, 400, base.Add(-24*time.Hour))
-<span id="L297" class="ln">   297  </span>
-<span id="L298" class="ln">   298  </span>				<span class="comment">// 開始日側と対称であることを固定する。片側判定が非対称に壊れてもここが赤くなる。</span>
-<span id="L299" class="ln">   299  </span>				before := base.Add(-time.Hour)
-<span id="L300" class="ln">   300  </span>				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{
-<span id="L301" class="ln">   301  </span>					Limit:         10,
-<span id="L302" class="ln">   302  </span>					OrderedBefore: &amp;before,
-<span id="L303" class="ln">   303  </span>				})
-<span id="L304" class="ln">   304  </span>				require.NoError(t, err)
-<span id="L305" class="ln">   305  </span>				assert.Len(t, got, 2)
-<span id="L306" class="ln">   306  </span>			})
-<span id="L307" class="ln">   307  </span>		})
-<span id="L308" class="ln">   308  </span>
-<span id="L309" class="ln">   309  </span>		t.Run(&#34;statusが購入ごとにマスタ名称で解決され金額とコードも一致して返る&#34;, func(t *testing.T) {
-<span id="L310" class="ln">   310  </span>			t.Parallel()
-<span id="L311" class="ln">   311  </span>
-<span id="L312" class="ln">   312  </span>			txm.WithinTx(func(ctx context.Context) {
-<span id="L313" class="ln">   313  </span>				drv := driver.New(ctx, testDB)
-<span id="L314" class="ln">   314  </span>				insertFeedUser(ctx, t, drv, owner)
-<span id="L315" class="ln">   315  </span>				<span class="comment">// 異なるステータスの購入を 2 件（新: 完了 / 旧: 未処理）挿入し、それぞれ名称解決されることを検証する。</span>
-<span id="L316" class="ln">   316  </span>				insertPurchase(ctx, t, drv, tieHigh, owner, statusCompletedID, 176500, base)
-<span id="L317" class="ln">   317  </span>				insertPurchase(ctx, t, drv, mid, owner, statusUnprocessedID, 500, base.Add(-time.Hour))
-<span id="L318" class="ln">   318  </span>
-<span id="L319" class="ln">   319  </span>				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{Limit: 10})
-<span id="L320" class="ln">   320  </span>				require.NoError(t, err)
-<span id="L321" class="ln">   321  </span>				require.Len(t, got, 2)
-<span id="L322" class="ln">   322  </span>				<span class="comment">// ordered_at 降順: 完了(base) → 未処理(base-1h)。ステータス ID / 名称ともに JOIN で解決される。</span>
-<span id="L323" class="ln">   323  </span>				assert.Equal(t, mustParse(statusCompletedID), got[0].StatusID)
-<span id="L324" class="ln">   324  </span>				assert.Equal(t, statusCompletedName, got[0].StatusName)
-<span id="L325" class="ln">   325  </span>				assert.Equal(t, domainpurchase.StatusCompleted.Code(), got[0].StatusCode)
-<span id="L326" class="ln">   326  </span>				assert.Equal(t, 176500, got[0].TotalAmount)
-<span id="L327" class="ln">   327  </span>				assert.Equal(t, &#34;code-&#34;+tieHigh, got[0].Code)
-<span id="L328" class="ln">   328  </span>				assert.Equal(t, mustParse(statusUnprocessedID), got[1].StatusID)
-<span id="L329" class="ln">   329  </span>				assert.Equal(t, statusUnprocessedName, got[1].StatusName)
-<span id="L330" class="ln">   330  </span>				assert.Equal(t, domainpurchase.StatusUnprocessed.Code(), got[1].StatusCode)
-<span id="L331" class="ln">   331  </span>			})
-<span id="L332" class="ln">   332  </span>		})
-<span id="L333" class="ln">   333  </span>
-<span id="L334" class="ln">   334  </span>		t.Run(&#34;明細が1件の購入は先頭商品名を返しitemCountが1になる&#34;, func(t *testing.T) {
-<span id="L335" class="ln">   335  </span>			t.Parallel()
+<span id="L289" class="ln">   289  </span>				<span class="comment">// 下限ちょうどの行を置くことで &gt;= が &gt; に化けた場合もここが赤くなる。</span>
+<span id="L290" class="ln">   290  </span>				after := base.Add(-time.Hour)
+<span id="L291" class="ln">   291  </span>				insertPurchase(ctx, t, drv, mid, owner, statusCompletedID, 200, after)
+<span id="L292" class="ln">   292  </span>
+<span id="L293" class="ln">   293  </span>				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{
+<span id="L294" class="ln">   294  </span>					Limit:  10,
+<span id="L295" class="ln">   295  </span>					Window: mustWindow(t, timewindow.Bounds{After: &amp;after}),
+<span id="L296" class="ln">   296  </span>				})
+<span id="L297" class="ln">   297  </span>				require.NoError(t, err)
+<span id="L298" class="ln">   298  </span>				require.Len(t, got, 2)
+<span id="L299" class="ln">   299  </span>				assert.Equal(t, mustParse(tieHigh), got[0].ID)
+<span id="L300" class="ln">   300  </span>				assert.Equal(t, mustParse(mid), got[1].ID)
+<span id="L301" class="ln">   301  </span>			})
+<span id="L302" class="ln">   302  </span>		})
+<span id="L303" class="ln">   303  </span>
+<span id="L304" class="ln">   304  </span>		t.Run(&#34;上限だけを指定した場合はその瞬時より前だけを返す&#34;, func(t *testing.T) {
+<span id="L305" class="ln">   305  </span>			t.Parallel()
+<span id="L306" class="ln">   306  </span>
+<span id="L307" class="ln">   307  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L308" class="ln">   308  </span>				drv := driver.New(ctx, testDB)
+<span id="L309" class="ln">   309  </span>				insertFeedUser(ctx, t, drv, owner)
+<span id="L310" class="ln">   310  </span>				insertPurchase(ctx, t, drv, tieHigh, owner, statusCompletedID, 100, base)
+<span id="L311" class="ln">   311  </span>				insertPurchase(ctx, t, drv, old, owner, statusCompletedID, 400, base.Add(-24*time.Hour))
+<span id="L312" class="ln">   312  </span>
+<span id="L313" class="ln">   313  </span>				<span class="comment">// 下限側と対称であることを固定する。片側の述語だけが壊れてもここが赤くなる。</span>
+<span id="L314" class="ln">   314  </span>				<span class="comment">// 上限ちょうどの行を置くことで &lt; が &lt;= に化けた場合もここが赤くなる。</span>
+<span id="L315" class="ln">   315  </span>				before := base.Add(-time.Hour)
+<span id="L316" class="ln">   316  </span>				insertPurchase(ctx, t, drv, mid, owner, statusCompletedID, 200, before)
+<span id="L317" class="ln">   317  </span>
+<span id="L318" class="ln">   318  </span>				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{
+<span id="L319" class="ln">   319  </span>					Limit:  10,
+<span id="L320" class="ln">   320  </span>					Window: mustWindow(t, timewindow.Bounds{Before: &amp;before}),
+<span id="L321" class="ln">   321  </span>				})
+<span id="L322" class="ln">   322  </span>				require.NoError(t, err)
+<span id="L323" class="ln">   323  </span>				require.Len(t, got, 1)
+<span id="L324" class="ln">   324  </span>				assert.Equal(t, mustParse(old), got[0].ID)
+<span id="L325" class="ln">   325  </span>			})
+<span id="L326" class="ln">   326  </span>		})
+<span id="L327" class="ln">   327  </span>
+<span id="L328" class="ln">   328  </span>		t.Run(&#34;ステータスの指定に一致する購入だけを返す&#34;, func(t *testing.T) {
+<span id="L329" class="ln">   329  </span>			t.Parallel()
+<span id="L330" class="ln">   330  </span>
+<span id="L331" class="ln">   331  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L332" class="ln">   332  </span>				drv := driver.New(ctx, testDB)
+<span id="L333" class="ln">   333  </span>				insertFeedUser(ctx, t, drv, owner)
+<span id="L334" class="ln">   334  </span>				insertPurchase(ctx, t, drv, tieHigh, owner, statusCompletedID, 100, base)
+<span id="L335" class="ln">   335  </span>				insertPurchase(ctx, t, drv, mid, owner, statusUnprocessedID, 200, base.Add(-time.Hour))
 <span id="L336" class="ln">   336  </span>
-<span id="L337" class="ln">   337  </span>			txm.WithinTx(func(ctx context.Context) {
-<span id="L338" class="ln">   338  </span>				drv := driver.New(ctx, testDB)
-<span id="L339" class="ln">   339  </span>				insertFeedUser(ctx, t, drv, owner)
-<span id="L340" class="ln">   340  </span>				<span class="comment">// insertPurchase が既定商品の明細を 1 件だけ伴わせる。</span>
-<span id="L341" class="ln">   341  </span>				insertPurchase(ctx, t, drv, tieHigh, owner, statusCompletedID, 176500, base)
-<span id="L342" class="ln">   342  </span>
-<span id="L343" class="ln">   343  </span>				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{Limit: 10})
-<span id="L344" class="ln">   344  </span>				require.NoError(t, err)
-<span id="L345" class="ln">   345  </span>				require.Len(t, got, 1)
-<span id="L346" class="ln">   346  </span>				assert.Equal(t, defaultProductName, got[0].FirstItemName)
-<span id="L347" class="ln">   347  </span>				assert.Equal(t, 1, got[0].ItemCount)
-<span id="L348" class="ln">   348  </span>			})
-<span id="L349" class="ln">   349  </span>		})
-<span id="L350" class="ln">   350  </span>
-<span id="L351" class="ln">   351  </span>		t.Run(&#34;明細が複数の購入は明細IDの先頭の商品名と行数を返す&#34;, func(t *testing.T) {
-<span id="L352" class="ln">   352  </span>			t.Parallel()
-<span id="L353" class="ln">   353  </span>
-<span id="L354" class="ln">   354  </span>			txm.WithinTx(func(ctx context.Context) {
-<span id="L355" class="ln">   355  </span>				drv := driver.New(ctx, testDB)
-<span id="L356" class="ln">   356  </span>				insertFeedUser(ctx, t, drv, owner)
-<span id="L357" class="ln">   357  </span>				insertPurchase(ctx, t, drv, tieHigh, owner, statusCompletedID, 176500, base)
-<span id="L358" class="ln">   358  </span>
-<span id="L359" class="ln">   359  </span>				<span class="comment">// 既定明細（先頭）の後ろへ 2 件足す。先頭商品名は既定商品のままで、点数だけが 3 になる。</span>
-<span id="L360" class="ln">   360  </span>				secondProduct := &#34;ffffffff-3333-4000-8000-000000000002&#34;
-<span id="L361" class="ln">   361  </span>				thirdProduct := &#34;ffffffff-3333-4000-8000-000000000003&#34;
-<span id="L362" class="ln">   362  </span>				insertFeedProduct(ctx, t, drv, secondProduct, &#34;モバイルバッテリー&#34;)
-<span id="L363" class="ln">   363  </span>				insertFeedProduct(ctx, t, drv, thirdProduct, &#34;USB-C ケーブル&#34;)
-<span id="L364" class="ln">   364  </span>				detailSeq++
-<span id="L365" class="ln">   365  </span>				insertPurchaseDetail(ctx, t, drv, tieHigh, secondProduct, detailSeq)
-<span id="L366" class="ln">   366  </span>				detailSeq++
-<span id="L367" class="ln">   367  </span>				insertPurchaseDetail(ctx, t, drv, tieHigh, thirdProduct, detailSeq)
-<span id="L368" class="ln">   368  </span>
-<span id="L369" class="ln">   369  </span>				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{Limit: 10})
-<span id="L370" class="ln">   370  </span>				require.NoError(t, err)
-<span id="L371" class="ln">   371  </span>				require.Len(t, got, 1)
-<span id="L372" class="ln">   372  </span>				assert.Equal(t, defaultProductName, got[0].FirstItemName)
-<span id="L373" class="ln">   373  </span>				assert.Equal(t, 3, got[0].ItemCount)
-<span id="L374" class="ln">   374  </span>			})
-<span id="L375" class="ln">   375  </span>		})
-<span id="L376" class="ln">   376  </span>
-<span id="L377" class="ln">   377  </span>		t.Run(&#34;複数購入の要約が購入ごとに解決される&#34;, func(t *testing.T) {
-<span id="L378" class="ln">   378  </span>			t.Parallel()
-<span id="L379" class="ln">   379  </span>
-<span id="L380" class="ln">   380  </span>			txm.WithinTx(func(ctx context.Context) {
-<span id="L381" class="ln">   381  </span>				drv := driver.New(ctx, testDB)
-<span id="L382" class="ln">   382  </span>				insertFeedUser(ctx, t, drv, owner)
-<span id="L383" class="ln">   383  </span>				insertPurchase(ctx, t, drv, tieHigh, owner, statusCompletedID, 100, base)
-<span id="L384" class="ln">   384  </span>				insertPurchase(ctx, t, drv, mid, owner, statusCompletedID, 300, base.Add(-time.Hour))
-<span id="L385" class="ln">   385  </span>
-<span id="L386" class="ln">   386  </span>				<span class="comment">// 新しい方にだけ明細を足し、要約が購入をまたいで混ざらないことを確かめる。</span>
-<span id="L387" class="ln">   387  </span>				extraProduct := &#34;ffffffff-3333-4000-8000-000000000004&#34;
-<span id="L388" class="ln">   388  </span>				insertFeedProduct(ctx, t, drv, extraProduct, &#34;スマホスタンド&#34;)
-<span id="L389" class="ln">   389  </span>				detailSeq++
-<span id="L390" class="ln">   390  </span>				insertPurchaseDetail(ctx, t, drv, tieHigh, extraProduct, detailSeq)
-<span id="L391" class="ln">   391  </span>
-<span id="L392" class="ln">   392  </span>				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{Limit: 10})
-<span id="L393" class="ln">   393  </span>				require.NoError(t, err)
-<span id="L394" class="ln">   394  </span>				require.Len(t, got, 2)
-<span id="L395" class="ln">   395  </span>				assert.Equal(t, 2, got[0].ItemCount)
-<span id="L396" class="ln">   396  </span>				assert.Equal(t, 1, got[1].ItemCount)
-<span id="L397" class="ln">   397  </span>				assert.Equal(t, defaultProductName, got[0].FirstItemName)
-<span id="L398" class="ln">   398  </span>				assert.Equal(t, defaultProductName, got[1].FirstItemName)
-<span id="L399" class="ln">   399  </span>			})
-<span id="L400" class="ln">   400  </span>		})
-<span id="L401" class="ln">   401  </span>
-<span id="L402" class="ln">   402  </span>		t.Run(&#34;購入ゼロのユーザーは空一覧になる&#34;, func(t *testing.T) {
-<span id="L403" class="ln">   403  </span>			t.Parallel()
-<span id="L404" class="ln">   404  </span>
-<span id="L405" class="ln">   405  </span>			txm.WithinTx(func(ctx context.Context) {
-<span id="L406" class="ln">   406  </span>				drv := driver.New(ctx, testDB)
-<span id="L407" class="ln">   407  </span>				insertFeedUser(ctx, t, drv, owner)
-<span id="L408" class="ln">   408  </span>
-<span id="L409" class="ln">   409  </span>				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{Limit: 10})
-<span id="L410" class="ln">   410  </span>				require.NoError(t, err)
-<span id="L411" class="ln">   411  </span>				assert.Empty(t, got)
-<span id="L412" class="ln">   412  </span>			})
-<span id="L413" class="ln">   413  </span>		})
-<span id="L414" class="ln">   414  </span>	})
-<span id="L415" class="ln">   415  </span>
-<span id="L416" class="ln">   416  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L417" class="ln">   417  </span>		t.Parallel()
-<span id="L418" class="ln">   418  </span>
-<span id="L419" class="ln">   419  </span>		t.Run(&#34;先頭ページでlimitが負数の場合、ErrInternalへ正規化される&#34;, func(t *testing.T) {
-<span id="L420" class="ln">   420  </span>			t.Parallel()
-<span id="L421" class="ln">   421  </span>
-<span id="L422" class="ln">   422  </span>			txm.WithinTx(func(ctx context.Context) {
-<span id="L423" class="ln">   423  </span>				<span class="comment">// 負数 LIMIT は PostgreSQL の 2201W（map 未定義）となり ErrInternal へ写像される。</span>
-<span id="L424" class="ln">   424  </span>				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{Limit: -1})
-<span id="L425" class="ln">   425  </span>				assert.Nil(t, got)
-<span id="L426" class="ln">   426  </span>				require.ErrorIs(t, err, apperror.ErrInternal)
-<span id="L427" class="ln">   427  </span>			})
-<span id="L428" class="ln">   428  </span>		})
-<span id="L429" class="ln">   429  </span>
-<span id="L430" class="ln">   430  </span>		t.Run(&#34;afterカーソル指定でlimitが負数の場合、ErrInternalへ正規化される&#34;, func(t *testing.T) {
-<span id="L431" class="ln">   431  </span>			t.Parallel()
-<span id="L432" class="ln">   432  </span>
-<span id="L433" class="ln">   433  </span>			txm.WithinTx(func(ctx context.Context) {
-<span id="L434" class="ln">   434  </span>				orderedAt := base
-<span id="L435" class="ln">   435  </span>				id := mustParse(tieHigh)
-<span id="L436" class="ln">   436  </span>				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{
-<span id="L437" class="ln">   437  </span>					Limit:          -1,
-<span id="L438" class="ln">   438  </span>					AfterOrderedAt: &amp;orderedAt,
-<span id="L439" class="ln">   439  </span>					AfterID:        &amp;id,
-<span id="L440" class="ln">   440  </span>				})
-<span id="L441" class="ln">   441  </span>				assert.Nil(t, got)
-<span id="L442" class="ln">   442  </span>				require.ErrorIs(t, err, apperror.ErrInternal)
-<span id="L443" class="ln">   443  </span>			})
-<span id="L444" class="ln">   444  </span>		})
-<span id="L445" class="ln">   445  </span>	})
-<span id="L446" class="ln">   446  </span>}
-<span id="L447" class="ln">   447  </span>
-<span id="L448" class="ln">   448  </span>func TestNew(t *testing.T) {
-<span id="L449" class="ln">   449  </span>	t.Parallel()
-<span id="L450" class="ln">   450  </span>
-<span id="L451" class="ln">   451  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L452" class="ln">   452  </span>		t.Parallel()
-<span id="L453" class="ln">   453  </span>
-<span id="L454" class="ln">   454  </span>		t.Run(&#34;依存を注入したクエリサービス実装を生成する&#34;, func(t *testing.T) {
-<span id="L455" class="ln">   455  </span>			t.Parallel()
-<span id="L456" class="ln">   456  </span>
-<span id="L457" class="ln">   457  </span>			testDB := testkit.NewTestDB(t)
-<span id="L458" class="ln">   458  </span>			tf := observability.NewNoopTracerFactory(t)
-<span id="L459" class="ln">   459  </span>
-<span id="L460" class="ln">   460  </span>			svc, ok := New(testDB, tf).(*service)
-<span id="L461" class="ln">   461  </span>			require.True(t, ok)
-<span id="L462" class="ln">   462  </span>			assert.Equal(t, testDB, svc.db)
-<span id="L463" class="ln">   463  </span>			assert.NotNil(t, svc.tracer)
-<span id="L464" class="ln">   464  </span>		})
-<span id="L465" class="ln">   465  </span>	})
-<span id="L466" class="ln">   466  </span>}
-<span id="L467" class="ln">   467  </span>
-<span id="L468" class="ln">   468  </span>func Test_toFeedReadModel(t *testing.T) {
-<span id="L469" class="ln">   469  </span>	t.Parallel()
-<span id="L470" class="ln">   470  </span>
-<span id="L471" class="ln">   471  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L472" class="ln">   472  </span>		t.Parallel()
-<span id="L473" class="ln">   473  </span>
-<span id="L474" class="ln">   474  </span>		t.Run(&#34;購入履歴フィードの行を読み取りモデルの各フィールドへ写像する&#34;, func(t *testing.T) {
-<span id="L475" class="ln">   475  </span>			t.Parallel()
-<span id="L476" class="ln">   476  </span>
-<span id="L477" class="ln">   477  </span>			id := mustParseUUID(t, &#34;e3000000-0000-4000-8000-000000000001&#34;)
-<span id="L478" class="ln">   478  </span>			statusID := mustParseUUID(t, &#34;e3000000-0000-4000-8000-0000000000a1&#34;)
-<span id="L479" class="ln">   479  </span>			orderedAt := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
-<span id="L480" class="ln">   480  </span>
-<span id="L481" class="ln">   481  </span>			item := toFeedReadModel(feedRow{
-<span id="L482" class="ln">   482  </span>				ID:            id,
-<span id="L483" class="ln">   483  </span>				Code:          &#34;feed-code-1&#34;,
-<span id="L484" class="ln">   484  </span>				TotalAmount:   176500,
-<span id="L485" class="ln">   485  </span>				OrderedAt:     orderedAt,
-<span id="L486" class="ln">   486  </span>				StatusID:      statusID,
-<span id="L487" class="ln">   487  </span>				StatusCode:    statusUnprocessedCode,
-<span id="L488" class="ln">   488  </span>				StatusName:    statusUnprocessedName,
-<span id="L489" class="ln">   489  </span>				FirstItemName: &#34;ワイヤレスイヤホン&#34;,
-<span id="L490" class="ln">   490  </span>				ItemCount:     3,
-<span id="L491" class="ln">   491  </span>			})
-<span id="L492" class="ln">   492  </span>
-<span id="L493" class="ln">   493  </span>			assert.Equal(t, query.PurchaseFeedReadModel{
-<span id="L494" class="ln">   494  </span>				Code:          &#34;feed-code-1&#34;,
-<span id="L495" class="ln">   495  </span>				TotalAmount:   176500,
-<span id="L496" class="ln">   496  </span>				StatusID:      statusID,
-<span id="L497" class="ln">   497  </span>				StatusCode:    domainpurchase.StatusUnprocessed.Code(),
-<span id="L498" class="ln">   498  </span>				StatusName:    statusUnprocessedName,
-<span id="L499" class="ln">   499  </span>				FirstItemName: &#34;ワイヤレスイヤホン&#34;,
-<span id="L500" class="ln">   500  </span>				ItemCount:     3,
-<span id="L501" class="ln">   501  </span>				OrderedAt:     orderedAt,
-<span id="L502" class="ln">   502  </span>				ID:            id,
-<span id="L503" class="ln">   503  </span>			}, item)
-<span id="L504" class="ln">   504  </span>		})
-<span id="L505" class="ln">   505  </span>	})
-<span id="L506" class="ln">   506  </span>}
-<span id="L507" class="ln">   507  </span>
-<span id="L508" class="ln">   508  </span><span class="comment">// mustParseUUID は、テスト定数の UUID 文字列を解決するヘルパーです。</span>
-<span id="L509" class="ln">   509  </span>func mustParseUUID(t *testing.T, s string) uuid.UUID {
-<span id="L510" class="ln">   510  </span>	t.Helper()
-<span id="L511" class="ln">   511  </span>	id, err := uuid.Parse(s)
-<span id="L512" class="ln">   512  </span>	require.NoError(t, err)
-<span id="L513" class="ln">   513  </span>	return id
-<span id="L514" class="ln">   514  </span>}
-<span id="L515" class="ln">   515  </span>
-<span id="L516" class="ln">   516  </span>func Test_toFeedReadModels(t *testing.T) {
-<span id="L517" class="ln">   517  </span>	t.Parallel()
-<span id="L518" class="ln">   518  </span>
-<span id="L519" class="ln">   519  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L520" class="ln">   520  </span>		t.Parallel()
-<span id="L521" class="ln">   521  </span>
-<span id="L522" class="ln">   522  </span>		t.Run(&#34;行の並びを保ったまま変換関数を各行へ適用する&#34;, func(t *testing.T) {
-<span id="L523" class="ln">   523  </span>			t.Parallel()
+<span id="L337" class="ln">   337  </span>				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{
+<span id="L338" class="ln">   338  </span>					Limit:       10,
+<span id="L339" class="ln">   339  </span>					StatusCodes: []int16{statusUnprocessedCode},
+<span id="L340" class="ln">   340  </span>				})
+<span id="L341" class="ln">   341  </span>				require.NoError(t, err)
+<span id="L342" class="ln">   342  </span>				require.Len(t, got, 1)
+<span id="L343" class="ln">   343  </span>				assert.Equal(t, mustParse(mid), got[0].ID)
+<span id="L344" class="ln">   344  </span>			})
+<span id="L345" class="ln">   345  </span>		})
+<span id="L346" class="ln">   346  </span>
+<span id="L347" class="ln">   347  </span>		t.Run(&#34;ステータスを指定しない場合は全ステータスが対象になる&#34;, func(t *testing.T) {
+<span id="L348" class="ln">   348  </span>			t.Parallel()
+<span id="L349" class="ln">   349  </span>
+<span id="L350" class="ln">   350  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L351" class="ln">   351  </span>				drv := driver.New(ctx, testDB)
+<span id="L352" class="ln">   352  </span>				insertFeedUser(ctx, t, drv, owner)
+<span id="L353" class="ln">   353  </span>				insertPurchase(ctx, t, drv, tieHigh, owner, statusCompletedID, 100, base)
+<span id="L354" class="ln">   354  </span>				insertPurchase(ctx, t, drv, mid, owner, statusUnprocessedID, 200, base.Add(-time.Hour))
+<span id="L355" class="ln">   355  </span>
+<span id="L356" class="ln">   356  </span>				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{Limit: 10})
+<span id="L357" class="ln">   357  </span>				require.NoError(t, err)
+<span id="L358" class="ln">   358  </span>				assert.Len(t, got, 2)
+<span id="L359" class="ln">   359  </span>			})
+<span id="L360" class="ln">   360  </span>		})
+<span id="L361" class="ln">   361  </span>
+<span id="L362" class="ln">   362  </span>		t.Run(&#34;既知でないステータスコードの指定は0件になる&#34;, func(t *testing.T) {
+<span id="L363" class="ln">   363  </span>			t.Parallel()
+<span id="L364" class="ln">   364  </span>
+<span id="L365" class="ln">   365  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L366" class="ln">   366  </span>				drv := driver.New(ctx, testDB)
+<span id="L367" class="ln">   367  </span>				insertFeedUser(ctx, t, drv, owner)
+<span id="L368" class="ln">   368  </span>				insertPurchase(ctx, t, drv, tieHigh, owner, statusCompletedID, 100, base)
+<span id="L369" class="ln">   369  </span>
+<span id="L370" class="ln">   370  </span>				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{
+<span id="L371" class="ln">   371  </span>					Limit:       10,
+<span id="L372" class="ln">   372  </span>					StatusCodes: []int16{unknownStatusCode},
+<span id="L373" class="ln">   373  </span>				})
+<span id="L374" class="ln">   374  </span>				require.NoError(t, err)
+<span id="L375" class="ln">   375  </span>				assert.Empty(t, got)
+<span id="L376" class="ln">   376  </span>			})
+<span id="L377" class="ln">   377  </span>		})
+<span id="L378" class="ln">   378  </span>
+<span id="L379" class="ln">   379  </span>		t.Run(&#34;statusが購入ごとにマスタ名称で解決され金額とコードも一致して返る&#34;, func(t *testing.T) {
+<span id="L380" class="ln">   380  </span>			t.Parallel()
+<span id="L381" class="ln">   381  </span>
+<span id="L382" class="ln">   382  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L383" class="ln">   383  </span>				drv := driver.New(ctx, testDB)
+<span id="L384" class="ln">   384  </span>				insertFeedUser(ctx, t, drv, owner)
+<span id="L385" class="ln">   385  </span>				<span class="comment">// 異なるステータスの購入を 2 件（新: 完了 / 旧: 未処理）挿入し、それぞれ名称解決されることを検証する。</span>
+<span id="L386" class="ln">   386  </span>				insertPurchase(ctx, t, drv, tieHigh, owner, statusCompletedID, 176500, base)
+<span id="L387" class="ln">   387  </span>				insertPurchase(ctx, t, drv, mid, owner, statusUnprocessedID, 500, base.Add(-time.Hour))
+<span id="L388" class="ln">   388  </span>
+<span id="L389" class="ln">   389  </span>				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{Limit: 10})
+<span id="L390" class="ln">   390  </span>				require.NoError(t, err)
+<span id="L391" class="ln">   391  </span>				require.Len(t, got, 2)
+<span id="L392" class="ln">   392  </span>				<span class="comment">// ordered_at 降順: 完了(base) → 未処理(base-1h)。ステータス ID / 名称ともに JOIN で解決される。</span>
+<span id="L393" class="ln">   393  </span>				assert.Equal(t, mustParse(statusCompletedID), got[0].StatusID)
+<span id="L394" class="ln">   394  </span>				assert.Equal(t, statusCompletedName, got[0].StatusName)
+<span id="L395" class="ln">   395  </span>				assert.Equal(t, domainpurchase.StatusCompleted.Code(), got[0].StatusCode)
+<span id="L396" class="ln">   396  </span>				assert.Equal(t, 176500, got[0].TotalAmount)
+<span id="L397" class="ln">   397  </span>				assert.Equal(t, &#34;code-&#34;+tieHigh, got[0].Code)
+<span id="L398" class="ln">   398  </span>				assert.Equal(t, mustParse(statusUnprocessedID), got[1].StatusID)
+<span id="L399" class="ln">   399  </span>				assert.Equal(t, statusUnprocessedName, got[1].StatusName)
+<span id="L400" class="ln">   400  </span>				assert.Equal(t, domainpurchase.StatusUnprocessed.Code(), got[1].StatusCode)
+<span id="L401" class="ln">   401  </span>			})
+<span id="L402" class="ln">   402  </span>		})
+<span id="L403" class="ln">   403  </span>
+<span id="L404" class="ln">   404  </span>		t.Run(&#34;明細が1件の購入は先頭商品名を返しitemCountが1になる&#34;, func(t *testing.T) {
+<span id="L405" class="ln">   405  </span>			t.Parallel()
+<span id="L406" class="ln">   406  </span>
+<span id="L407" class="ln">   407  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L408" class="ln">   408  </span>				drv := driver.New(ctx, testDB)
+<span id="L409" class="ln">   409  </span>				insertFeedUser(ctx, t, drv, owner)
+<span id="L410" class="ln">   410  </span>				<span class="comment">// insertPurchase が既定商品の明細を 1 件だけ伴わせる。</span>
+<span id="L411" class="ln">   411  </span>				insertPurchase(ctx, t, drv, tieHigh, owner, statusCompletedID, 176500, base)
+<span id="L412" class="ln">   412  </span>
+<span id="L413" class="ln">   413  </span>				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{Limit: 10})
+<span id="L414" class="ln">   414  </span>				require.NoError(t, err)
+<span id="L415" class="ln">   415  </span>				require.Len(t, got, 1)
+<span id="L416" class="ln">   416  </span>				assert.Equal(t, defaultProductName, got[0].FirstItemName)
+<span id="L417" class="ln">   417  </span>				assert.Equal(t, 1, got[0].ItemCount)
+<span id="L418" class="ln">   418  </span>			})
+<span id="L419" class="ln">   419  </span>		})
+<span id="L420" class="ln">   420  </span>
+<span id="L421" class="ln">   421  </span>		t.Run(&#34;明細が複数の購入は明細IDの先頭の商品名と行数を返す&#34;, func(t *testing.T) {
+<span id="L422" class="ln">   422  </span>			t.Parallel()
+<span id="L423" class="ln">   423  </span>
+<span id="L424" class="ln">   424  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L425" class="ln">   425  </span>				drv := driver.New(ctx, testDB)
+<span id="L426" class="ln">   426  </span>				insertFeedUser(ctx, t, drv, owner)
+<span id="L427" class="ln">   427  </span>				insertPurchase(ctx, t, drv, tieHigh, owner, statusCompletedID, 176500, base)
+<span id="L428" class="ln">   428  </span>
+<span id="L429" class="ln">   429  </span>				<span class="comment">// 既定明細（先頭）の後ろへ 2 件足す。先頭商品名は既定商品のままで、点数だけが 3 になる。</span>
+<span id="L430" class="ln">   430  </span>				secondProduct := &#34;ffffffff-3333-4000-8000-000000000002&#34;
+<span id="L431" class="ln">   431  </span>				thirdProduct := &#34;ffffffff-3333-4000-8000-000000000003&#34;
+<span id="L432" class="ln">   432  </span>				insertFeedProduct(ctx, t, drv, secondProduct, &#34;モバイルバッテリー&#34;)
+<span id="L433" class="ln">   433  </span>				insertFeedProduct(ctx, t, drv, thirdProduct, &#34;USB-C ケーブル&#34;)
+<span id="L434" class="ln">   434  </span>				detailSeq++
+<span id="L435" class="ln">   435  </span>				insertPurchaseDetail(ctx, t, drv, tieHigh, secondProduct, detailSeq)
+<span id="L436" class="ln">   436  </span>				detailSeq++
+<span id="L437" class="ln">   437  </span>				insertPurchaseDetail(ctx, t, drv, tieHigh, thirdProduct, detailSeq)
+<span id="L438" class="ln">   438  </span>
+<span id="L439" class="ln">   439  </span>				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{Limit: 10})
+<span id="L440" class="ln">   440  </span>				require.NoError(t, err)
+<span id="L441" class="ln">   441  </span>				require.Len(t, got, 1)
+<span id="L442" class="ln">   442  </span>				assert.Equal(t, defaultProductName, got[0].FirstItemName)
+<span id="L443" class="ln">   443  </span>				assert.Equal(t, 3, got[0].ItemCount)
+<span id="L444" class="ln">   444  </span>			})
+<span id="L445" class="ln">   445  </span>		})
+<span id="L446" class="ln">   446  </span>
+<span id="L447" class="ln">   447  </span>		t.Run(&#34;複数購入の要約が購入ごとに解決される&#34;, func(t *testing.T) {
+<span id="L448" class="ln">   448  </span>			t.Parallel()
+<span id="L449" class="ln">   449  </span>
+<span id="L450" class="ln">   450  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L451" class="ln">   451  </span>				drv := driver.New(ctx, testDB)
+<span id="L452" class="ln">   452  </span>				insertFeedUser(ctx, t, drv, owner)
+<span id="L453" class="ln">   453  </span>				insertPurchase(ctx, t, drv, tieHigh, owner, statusCompletedID, 100, base)
+<span id="L454" class="ln">   454  </span>				insertPurchase(ctx, t, drv, mid, owner, statusCompletedID, 300, base.Add(-time.Hour))
+<span id="L455" class="ln">   455  </span>
+<span id="L456" class="ln">   456  </span>				<span class="comment">// 新しい方にだけ明細を足し、要約が購入をまたいで混ざらないことを確かめる。</span>
+<span id="L457" class="ln">   457  </span>				extraProduct := &#34;ffffffff-3333-4000-8000-000000000004&#34;
+<span id="L458" class="ln">   458  </span>				insertFeedProduct(ctx, t, drv, extraProduct, &#34;スマホスタンド&#34;)
+<span id="L459" class="ln">   459  </span>				detailSeq++
+<span id="L460" class="ln">   460  </span>				insertPurchaseDetail(ctx, t, drv, tieHigh, extraProduct, detailSeq)
+<span id="L461" class="ln">   461  </span>
+<span id="L462" class="ln">   462  </span>				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{Limit: 10})
+<span id="L463" class="ln">   463  </span>				require.NoError(t, err)
+<span id="L464" class="ln">   464  </span>				require.Len(t, got, 2)
+<span id="L465" class="ln">   465  </span>				assert.Equal(t, 2, got[0].ItemCount)
+<span id="L466" class="ln">   466  </span>				assert.Equal(t, 1, got[1].ItemCount)
+<span id="L467" class="ln">   467  </span>				assert.Equal(t, defaultProductName, got[0].FirstItemName)
+<span id="L468" class="ln">   468  </span>				assert.Equal(t, defaultProductName, got[1].FirstItemName)
+<span id="L469" class="ln">   469  </span>			})
+<span id="L470" class="ln">   470  </span>		})
+<span id="L471" class="ln">   471  </span>
+<span id="L472" class="ln">   472  </span>		t.Run(&#34;購入ゼロのユーザーは空一覧になる&#34;, func(t *testing.T) {
+<span id="L473" class="ln">   473  </span>			t.Parallel()
+<span id="L474" class="ln">   474  </span>
+<span id="L475" class="ln">   475  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L476" class="ln">   476  </span>				drv := driver.New(ctx, testDB)
+<span id="L477" class="ln">   477  </span>				insertFeedUser(ctx, t, drv, owner)
+<span id="L478" class="ln">   478  </span>
+<span id="L479" class="ln">   479  </span>				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{Limit: 10})
+<span id="L480" class="ln">   480  </span>				require.NoError(t, err)
+<span id="L481" class="ln">   481  </span>				assert.Empty(t, got)
+<span id="L482" class="ln">   482  </span>			})
+<span id="L483" class="ln">   483  </span>		})
+<span id="L484" class="ln">   484  </span>	})
+<span id="L485" class="ln">   485  </span>
+<span id="L486" class="ln">   486  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L487" class="ln">   487  </span>		t.Parallel()
+<span id="L488" class="ln">   488  </span>
+<span id="L489" class="ln">   489  </span>		t.Run(&#34;先頭ページでlimitが負数の場合、ErrInternalへ正規化される&#34;, func(t *testing.T) {
+<span id="L490" class="ln">   490  </span>			t.Parallel()
+<span id="L491" class="ln">   491  </span>
+<span id="L492" class="ln">   492  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L493" class="ln">   493  </span>				<span class="comment">// 負数 LIMIT は PostgreSQL の 2201W（map 未定義）となり ErrInternal へ写像される。</span>
+<span id="L494" class="ln">   494  </span>				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{Limit: -1})
+<span id="L495" class="ln">   495  </span>				assert.Nil(t, got)
+<span id="L496" class="ln">   496  </span>				require.ErrorIs(t, err, apperror.ErrInternal)
+<span id="L497" class="ln">   497  </span>			})
+<span id="L498" class="ln">   498  </span>		})
+<span id="L499" class="ln">   499  </span>
+<span id="L500" class="ln">   500  </span>		t.Run(&#34;afterカーソル指定でlimitが負数の場合、ErrInternalへ正規化される&#34;, func(t *testing.T) {
+<span id="L501" class="ln">   501  </span>			t.Parallel()
+<span id="L502" class="ln">   502  </span>
+<span id="L503" class="ln">   503  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L504" class="ln">   504  </span>				orderedAt := base
+<span id="L505" class="ln">   505  </span>				id := mustParse(tieHigh)
+<span id="L506" class="ln">   506  </span>				got, err := svc.FindFeedByUserID(ctx, mustParse(owner), query.ListFeedParams{
+<span id="L507" class="ln">   507  </span>					Limit:          -1,
+<span id="L508" class="ln">   508  </span>					AfterOrderedAt: &amp;orderedAt,
+<span id="L509" class="ln">   509  </span>					AfterID:        &amp;id,
+<span id="L510" class="ln">   510  </span>				})
+<span id="L511" class="ln">   511  </span>				assert.Nil(t, got)
+<span id="L512" class="ln">   512  </span>				require.ErrorIs(t, err, apperror.ErrInternal)
+<span id="L513" class="ln">   513  </span>			})
+<span id="L514" class="ln">   514  </span>		})
+<span id="L515" class="ln">   515  </span>	})
+<span id="L516" class="ln">   516  </span>}
+<span id="L517" class="ln">   517  </span>
+<span id="L518" class="ln">   518  </span>func Test_service_FindFeedAll(t *testing.T) {
+<span id="L519" class="ln">   519  </span>	t.Parallel()
+<span id="L520" class="ln">   520  </span>
+<span id="L521" class="ln">   521  </span>	testDB := testkit.NewTestDB(t)
+<span id="L522" class="ln">   522  </span>	lt := observability.NewMockInfraLayerTracer(t)
+<span id="L523" class="ln">   523  </span>	txm := testkit.NewTestTransactionRunner(t)
 <span id="L524" class="ln">   524  </span>
-<span id="L525" class="ln">   525  </span>			orderedAt := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
-<span id="L526" class="ln">   526  </span>			rows := []string{&#34;feed-code-1&#34;, &#34;feed-code-2&#34;}
-<span id="L527" class="ln">   527  </span>
-<span id="L528" class="ln">   528  </span>			got := toFeedReadModels(rows, func(code string) feedRow {
-<span id="L529" class="ln">   529  </span>				return feedRow{
-<span id="L530" class="ln">   530  </span>					Code:          code,
-<span id="L531" class="ln">   531  </span>					TotalAmount:   176500,
-<span id="L532" class="ln">   532  </span>					OrderedAt:     orderedAt,
-<span id="L533" class="ln">   533  </span>					StatusCode:    statusUnprocessedCode,
-<span id="L534" class="ln">   534  </span>					StatusName:    statusUnprocessedName,
-<span id="L535" class="ln">   535  </span>					FirstItemName: defaultProductName,
-<span id="L536" class="ln">   536  </span>					ItemCount:     1,
-<span id="L537" class="ln">   537  </span>				}
-<span id="L538" class="ln">   538  </span>			})
-<span id="L539" class="ln">   539  </span>
-<span id="L540" class="ln">   540  </span>			require.Len(t, got, 2)
-<span id="L541" class="ln">   541  </span>			assert.Equal(t, &#34;feed-code-1&#34;, got[0].Code)
-<span id="L542" class="ln">   542  </span>			assert.Equal(t, &#34;feed-code-2&#34;, got[1].Code)
-<span id="L543" class="ln">   543  </span>			assert.Equal(t, domainpurchase.StatusUnprocessed.Code(), got[0].StatusCode)
-<span id="L544" class="ln">   544  </span>			assert.Equal(t, defaultProductName, got[0].FirstItemName)
-<span id="L545" class="ln">   545  </span>		})
-<span id="L546" class="ln">   546  </span>
-<span id="L547" class="ln">   547  </span>		t.Run(&#34;行が空の場合は空スライスを返す&#34;, func(t *testing.T) {
-<span id="L548" class="ln">   548  </span>			t.Parallel()
-<span id="L549" class="ln">   549  </span>
-<span id="L550" class="ln">   550  </span>			got := toFeedReadModels(nil, func(string) feedRow { return feedRow{} })
-<span id="L551" class="ln">   551  </span>
-<span id="L552" class="ln">   552  </span>			assert.Empty(t, got)
-<span id="L553" class="ln">   553  </span>		})
-<span id="L554" class="ln">   554  </span>	})
-<span id="L555" class="ln">   555  </span>}
-<span id="L556" class="ln">   556  </span>
+<span id="L525" class="ln">   525  </span>	svc := &amp;service{tracer: lt, db: testDB}
+<span id="L526" class="ln">   526  </span>
+<span id="L527" class="ln">   527  </span>	<span class="comment">// seed データより必ず後ろ（新しい）に来るよう十分未来を基準にする。</span>
+<span id="L528" class="ln">   528  </span>	base := time.Date(2099, time.June, 1, 0, 0, 0, 0, time.UTC)
+<span id="L529" class="ln">   529  </span>
+<span id="L530" class="ln">   530  </span>	<span class="comment">// 母集団が所有権で閉じないことを見るため、購入者を 2 人置く。</span>
+<span id="L531" class="ln">   531  </span>	userA := &#34;ffffffff-5555-4000-8000-000000000001&#34;
+<span id="L532" class="ln">   532  </span>	userB := &#34;ffffffff-5555-4000-8000-000000000002&#34;
+<span id="L533" class="ln">   533  </span>
+<span id="L534" class="ln">   534  </span>	<span class="comment">// ordered_at は newer &gt; older。同一 ordered_at の tie は id 降順で並ぶ。</span>
+<span id="L535" class="ln">   535  </span>	newer := &#34;ffffffff-6666-4000-8000-000000000002&#34;
+<span id="L536" class="ln">   536  </span>	older := &#34;ffffffff-6666-4000-8000-000000000001&#34;
+<span id="L537" class="ln">   537  </span>	oldest := &#34;ffffffff-6666-4000-8000-000000000003&#34;
+<span id="L538" class="ln">   538  </span>
+<span id="L539" class="ln">   539  </span>	mustParse := func(s string) uuid.UUID {
+<span id="L540" class="ln">   540  </span>		id, err := uuid.Parse(s)
+<span id="L541" class="ln">   541  </span>		require.NoError(t, err)
+<span id="L542" class="ln">   542  </span>		return id
+<span id="L543" class="ln">   543  </span>	}
+<span id="L544" class="ln">   544  </span>
+<span id="L545" class="ln">   545  </span>	<span class="comment">// 母集団が所有権で閉じないため、seed の購入も対象に入る。fixture だけを見るには期間で切り出す必要があり、</span>
+<span id="L546" class="ln">   546  </span>	<span class="comment">// base は seed より十分未来にとってあるので下限 1 つで足りる。</span>
+<span id="L547" class="ln">   547  </span>	isolate := func(t *testing.T) timewindow.Window {
+<span id="L548" class="ln">   548  </span>		t.Helper()
+<span id="L549" class="ln">   549  </span>		after := base.Add(-3 * time.Hour)
+<span id="L550" class="ln">   550  </span>		return mustWindow(t, timewindow.Bounds{After: &amp;after})
+<span id="L551" class="ln">   551  </span>	}
+<span id="L552" class="ln">   552  </span>
+<span id="L553" class="ln">   553  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L554" class="ln">   554  </span>		t.Parallel()
+<span id="L555" class="ln">   555  </span>
+<span id="L556" class="ln">   556  </span>		t.Run(&#34;購入者を問わず購入がkeyset安定順に返る&#34;, func(t *testing.T) {
+<span id="L557" class="ln">   557  </span>			t.Parallel()
+<span id="L558" class="ln">   558  </span>
+<span id="L559" class="ln">   559  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L560" class="ln">   560  </span>				drv := driver.New(ctx, testDB)
+<span id="L561" class="ln">   561  </span>				insertFeedUser(ctx, t, drv, userA)
+<span id="L562" class="ln">   562  </span>				insertFeedUser(ctx, t, drv, userB)
+<span id="L563" class="ln">   563  </span>				insertPurchase(ctx, t, drv, newer, userA, statusCompletedID, 100, base)
+<span id="L564" class="ln">   564  </span>				insertPurchase(ctx, t, drv, older, userB, statusCompletedID, 200, base.Add(-time.Hour))
+<span id="L565" class="ln">   565  </span>
+<span id="L566" class="ln">   566  </span>				got, err := svc.FindFeedAll(ctx, query.ListFeedParams{Limit: 10, Window: isolate(t)})
+<span id="L567" class="ln">   567  </span>				require.NoError(t, err)
+<span id="L568" class="ln">   568  </span>				require.Len(t, got, 2)
+<span id="L569" class="ln">   569  </span>				assert.Equal(t, mustParse(newer), got[0].ID)
+<span id="L570" class="ln">   570  </span>				assert.Equal(t, mustParse(older), got[1].ID)
+<span id="L571" class="ln">   571  </span>			})
+<span id="L572" class="ln">   572  </span>		})
+<span id="L573" class="ln">   573  </span>
+<span id="L574" class="ln">   574  </span>		t.Run(&#34;afterカーソルで境界より過去の購入を購入者を問わず返す&#34;, func(t *testing.T) {
+<span id="L575" class="ln">   575  </span>			t.Parallel()
+<span id="L576" class="ln">   576  </span>
+<span id="L577" class="ln">   577  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L578" class="ln">   578  </span>				drv := driver.New(ctx, testDB)
+<span id="L579" class="ln">   579  </span>				insertFeedUser(ctx, t, drv, userA)
+<span id="L580" class="ln">   580  </span>				insertFeedUser(ctx, t, drv, userB)
+<span id="L581" class="ln">   581  </span>				insertPurchase(ctx, t, drv, newer, userA, statusCompletedID, 100, base)
+<span id="L582" class="ln">   582  </span>				insertPurchase(ctx, t, drv, older, userB, statusCompletedID, 200, base.Add(-time.Hour))
+<span id="L583" class="ln">   583  </span>
+<span id="L584" class="ln">   584  </span>				orderedAt := base
+<span id="L585" class="ln">   585  </span>				id := mustParse(newer)
+<span id="L586" class="ln">   586  </span>				got, err := svc.FindFeedAll(ctx, query.ListFeedParams{
+<span id="L587" class="ln">   587  </span>					Limit:          10,
+<span id="L588" class="ln">   588  </span>					AfterOrderedAt: &amp;orderedAt,
+<span id="L589" class="ln">   589  </span>					AfterID:        &amp;id,
+<span id="L590" class="ln">   590  </span>					Window:         isolate(t),
+<span id="L591" class="ln">   591  </span>				})
+<span id="L592" class="ln">   592  </span>				require.NoError(t, err)
+<span id="L593" class="ln">   593  </span>				require.Len(t, got, 1)
+<span id="L594" class="ln">   594  </span>				assert.Equal(t, mustParse(older), got[0].ID)
+<span id="L595" class="ln">   595  </span>			})
+<span id="L596" class="ln">   596  </span>		})
+<span id="L597" class="ln">   597  </span>
+<span id="L598" class="ln">   598  </span>		t.Run(&#34;期間の絞り込みが所有権で閉じる読み取りと同じく効く&#34;, func(t *testing.T) {
+<span id="L599" class="ln">   599  </span>			t.Parallel()
+<span id="L600" class="ln">   600  </span>
+<span id="L601" class="ln">   601  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L602" class="ln">   602  </span>				drv := driver.New(ctx, testDB)
+<span id="L603" class="ln">   603  </span>				insertFeedUser(ctx, t, drv, userA)
+<span id="L604" class="ln">   604  </span>				insertFeedUser(ctx, t, drv, userB)
+<span id="L605" class="ln">   605  </span>				insertPurchase(ctx, t, drv, newer, userA, statusCompletedID, 100, base)
+<span id="L606" class="ln">   606  </span>				insertPurchase(ctx, t, drv, oldest, userB, statusCompletedID, 300, base.Add(-24*time.Hour))
+<span id="L607" class="ln">   607  </span>
+<span id="L608" class="ln">   608  </span>				<span class="comment">// 半開区間 [base-1h, base+1h) は base の 1 件だけを含む。</span>
+<span id="L609" class="ln">   609  </span>				after := base.Add(-time.Hour)
+<span id="L610" class="ln">   610  </span>				before := base.Add(time.Hour)
+<span id="L611" class="ln">   611  </span>				got, err := svc.FindFeedAll(ctx, query.ListFeedParams{
+<span id="L612" class="ln">   612  </span>					Limit:  10,
+<span id="L613" class="ln">   613  </span>					Window: mustWindow(t, timewindow.Bounds{After: &amp;after, Before: &amp;before}),
+<span id="L614" class="ln">   614  </span>				})
+<span id="L615" class="ln">   615  </span>				require.NoError(t, err)
+<span id="L616" class="ln">   616  </span>				require.Len(t, got, 1)
+<span id="L617" class="ln">   617  </span>				assert.Equal(t, mustParse(newer), got[0].ID)
+<span id="L618" class="ln">   618  </span>			})
+<span id="L619" class="ln">   619  </span>		})
+<span id="L620" class="ln">   620  </span>
+<span id="L621" class="ln">   621  </span>		t.Run(&#34;ステータスの指定に一致する購入だけを購入者を問わず返す&#34;, func(t *testing.T) {
+<span id="L622" class="ln">   622  </span>			t.Parallel()
+<span id="L623" class="ln">   623  </span>
+<span id="L624" class="ln">   624  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L625" class="ln">   625  </span>				drv := driver.New(ctx, testDB)
+<span id="L626" class="ln">   626  </span>				insertFeedUser(ctx, t, drv, userA)
+<span id="L627" class="ln">   627  </span>				insertFeedUser(ctx, t, drv, userB)
+<span id="L628" class="ln">   628  </span>				insertPurchase(ctx, t, drv, newer, userA, statusUnprocessedID, 100, base)
+<span id="L629" class="ln">   629  </span>				insertPurchase(ctx, t, drv, older, userB, statusCompletedID, 200, base.Add(-time.Hour))
+<span id="L630" class="ln">   630  </span>
+<span id="L631" class="ln">   631  </span>				got, err := svc.FindFeedAll(ctx, query.ListFeedParams{
+<span id="L632" class="ln">   632  </span>					Limit:       10,
+<span id="L633" class="ln">   633  </span>					StatusCodes: []int16{statusCompletedCode},
+<span id="L634" class="ln">   634  </span>					Window:      isolate(t),
+<span id="L635" class="ln">   635  </span>				})
+<span id="L636" class="ln">   636  </span>				require.NoError(t, err)
+<span id="L637" class="ln">   637  </span>				require.Len(t, got, 1)
+<span id="L638" class="ln">   638  </span>				assert.Equal(t, mustParse(older), got[0].ID)
+<span id="L639" class="ln">   639  </span>			})
+<span id="L640" class="ln">   640  </span>		})
+<span id="L641" class="ln">   641  </span>
+<span id="L642" class="ln">   642  </span>		t.Run(&#34;keyset境界が片方だけ指定された場合は先頭ページとして扱う&#34;, func(t *testing.T) {
+<span id="L643" class="ln">   643  </span>			t.Parallel()
+<span id="L644" class="ln">   644  </span>
+<span id="L645" class="ln">   645  </span>			<span class="comment">// 境界は (ordered_at, id) の対で意味を持つため、片方だけでは keyset を進められない。</span>
+<span id="L646" class="ln">   646  </span>			<span class="comment">// 半端な指定で境界の片側だけを効かせるのではなく、先頭ページへ落ちることを固定する。</span>
+<span id="L647" class="ln">   647  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L648" class="ln">   648  </span>				drv := driver.New(ctx, testDB)
+<span id="L649" class="ln">   649  </span>				insertFeedUser(ctx, t, drv, userA)
+<span id="L650" class="ln">   650  </span>				insertPurchase(ctx, t, drv, newer, userA, statusCompletedID, 100, base)
+<span id="L651" class="ln">   651  </span>				insertPurchase(ctx, t, drv, older, userA, statusCompletedID, 200, base.Add(-time.Hour))
+<span id="L652" class="ln">   652  </span>
+<span id="L653" class="ln">   653  </span>				orderedAt := base
+<span id="L654" class="ln">   654  </span>				got, err := svc.FindFeedAll(ctx, query.ListFeedParams{
+<span id="L655" class="ln">   655  </span>					Limit:          10,
+<span id="L656" class="ln">   656  </span>					AfterOrderedAt: &amp;orderedAt,
+<span id="L657" class="ln">   657  </span>					AfterID:        nil,
+<span id="L658" class="ln">   658  </span>					Window:         isolate(t),
+<span id="L659" class="ln">   659  </span>				})
+<span id="L660" class="ln">   660  </span>				require.NoError(t, err)
+<span id="L661" class="ln">   661  </span>				<span class="comment">// 境界が効いていれば newer は落ちる。先頭ページ扱いなので 2 件とも返る。</span>
+<span id="L662" class="ln">   662  </span>				require.Len(t, got, 2)
+<span id="L663" class="ln">   663  </span>				assert.Equal(t, mustParse(newer), got[0].ID)
+<span id="L664" class="ln">   664  </span>			})
+<span id="L665" class="ln">   665  </span>		})
+<span id="L666" class="ln">   666  </span>
+<span id="L667" class="ln">   667  </span>		t.Run(&#34;statusと明細の要約が所有権で閉じる読み取りと同じ形で解決される&#34;, func(t *testing.T) {
+<span id="L668" class="ln">   668  </span>			t.Parallel()
+<span id="L669" class="ln">   669  </span>
+<span id="L670" class="ln">   670  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L671" class="ln">   671  </span>				drv := driver.New(ctx, testDB)
+<span id="L672" class="ln">   672  </span>				insertFeedUser(ctx, t, drv, userA)
+<span id="L673" class="ln">   673  </span>				insertPurchase(ctx, t, drv, newer, userA, statusCompletedID, 176500, base)
+<span id="L674" class="ln">   674  </span>
+<span id="L675" class="ln">   675  </span>				got, err := svc.FindFeedAll(ctx, query.ListFeedParams{Limit: 10, Window: isolate(t)})
+<span id="L676" class="ln">   676  </span>				require.NoError(t, err)
+<span id="L677" class="ln">   677  </span>				require.Len(t, got, 1)
+<span id="L678" class="ln">   678  </span>				assert.Equal(t, mustParse(statusCompletedID), got[0].StatusID)
+<span id="L679" class="ln">   679  </span>				assert.Equal(t, statusCompletedName, got[0].StatusName)
+<span id="L680" class="ln">   680  </span>				assert.Equal(t, domainpurchase.StatusCompleted.Code(), got[0].StatusCode)
+<span id="L681" class="ln">   681  </span>				assert.Equal(t, 176500, got[0].TotalAmount)
+<span id="L682" class="ln">   682  </span>				assert.Equal(t, &#34;code-&#34;+newer, got[0].Code)
+<span id="L683" class="ln">   683  </span>				assert.Equal(t, defaultProductName, got[0].FirstItemName)
+<span id="L684" class="ln">   684  </span>				assert.Equal(t, 1, got[0].ItemCount)
+<span id="L685" class="ln">   685  </span>			})
+<span id="L686" class="ln">   686  </span>		})
+<span id="L687" class="ln">   687  </span>	})
+<span id="L688" class="ln">   688  </span>
+<span id="L689" class="ln">   689  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L690" class="ln">   690  </span>		t.Parallel()
+<span id="L691" class="ln">   691  </span>
+<span id="L692" class="ln">   692  </span>		t.Run(&#34;先頭ページでlimitが負数の場合、ErrInternalへ正規化される&#34;, func(t *testing.T) {
+<span id="L693" class="ln">   693  </span>			t.Parallel()
+<span id="L694" class="ln">   694  </span>
+<span id="L695" class="ln">   695  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L696" class="ln">   696  </span>				got, err := svc.FindFeedAll(ctx, query.ListFeedParams{Limit: -1})
+<span id="L697" class="ln">   697  </span>				assert.Nil(t, got)
+<span id="L698" class="ln">   698  </span>				require.ErrorIs(t, err, apperror.ErrInternal)
+<span id="L699" class="ln">   699  </span>			})
+<span id="L700" class="ln">   700  </span>		})
+<span id="L701" class="ln">   701  </span>
+<span id="L702" class="ln">   702  </span>		t.Run(&#34;afterカーソル指定でlimitが負数の場合、ErrInternalへ正規化される&#34;, func(t *testing.T) {
+<span id="L703" class="ln">   703  </span>			t.Parallel()
+<span id="L704" class="ln">   704  </span>
+<span id="L705" class="ln">   705  </span>			txm.WithinTx(func(ctx context.Context) {
+<span id="L706" class="ln">   706  </span>				orderedAt := base
+<span id="L707" class="ln">   707  </span>				id := mustParse(newer)
+<span id="L708" class="ln">   708  </span>				got, err := svc.FindFeedAll(ctx, query.ListFeedParams{
+<span id="L709" class="ln">   709  </span>					Limit:          -1,
+<span id="L710" class="ln">   710  </span>					AfterOrderedAt: &amp;orderedAt,
+<span id="L711" class="ln">   711  </span>					AfterID:        &amp;id,
+<span id="L712" class="ln">   712  </span>				})
+<span id="L713" class="ln">   713  </span>				assert.Nil(t, got)
+<span id="L714" class="ln">   714  </span>				require.ErrorIs(t, err, apperror.ErrInternal)
+<span id="L715" class="ln">   715  </span>			})
+<span id="L716" class="ln">   716  </span>		})
+<span id="L717" class="ln">   717  </span>	})
+<span id="L718" class="ln">   718  </span>}
+<span id="L719" class="ln">   719  </span>
+<span id="L720" class="ln">   720  </span>func TestNew(t *testing.T) {
+<span id="L721" class="ln">   721  </span>	t.Parallel()
+<span id="L722" class="ln">   722  </span>
+<span id="L723" class="ln">   723  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L724" class="ln">   724  </span>		t.Parallel()
+<span id="L725" class="ln">   725  </span>
+<span id="L726" class="ln">   726  </span>		t.Run(&#34;依存を注入したクエリサービス実装を生成する&#34;, func(t *testing.T) {
+<span id="L727" class="ln">   727  </span>			t.Parallel()
+<span id="L728" class="ln">   728  </span>
+<span id="L729" class="ln">   729  </span>			testDB := testkit.NewTestDB(t)
+<span id="L730" class="ln">   730  </span>			tf := observability.NewNoopTracerFactory(t)
+<span id="L731" class="ln">   731  </span>
+<span id="L732" class="ln">   732  </span>			svc, ok := New(testDB, tf).(*service)
+<span id="L733" class="ln">   733  </span>			require.True(t, ok)
+<span id="L734" class="ln">   734  </span>			assert.Equal(t, testDB, svc.db)
+<span id="L735" class="ln">   735  </span>			assert.NotNil(t, svc.tracer)
+<span id="L736" class="ln">   736  </span>		})
+<span id="L737" class="ln">   737  </span>	})
+<span id="L738" class="ln">   738  </span>}
+<span id="L739" class="ln">   739  </span>
+<span id="L740" class="ln">   740  </span>func Test_toFeedReadModel(t *testing.T) {
+<span id="L741" class="ln">   741  </span>	t.Parallel()
+<span id="L742" class="ln">   742  </span>
+<span id="L743" class="ln">   743  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L744" class="ln">   744  </span>		t.Parallel()
+<span id="L745" class="ln">   745  </span>
+<span id="L746" class="ln">   746  </span>		t.Run(&#34;購入履歴フィードの行を読み取りモデルの各フィールドへ写像する&#34;, func(t *testing.T) {
+<span id="L747" class="ln">   747  </span>			t.Parallel()
+<span id="L748" class="ln">   748  </span>
+<span id="L749" class="ln">   749  </span>			id := mustParseUUID(t, &#34;e3000000-0000-4000-8000-000000000001&#34;)
+<span id="L750" class="ln">   750  </span>			statusID := mustParseUUID(t, &#34;e3000000-0000-4000-8000-0000000000a1&#34;)
+<span id="L751" class="ln">   751  </span>			orderedAt := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
+<span id="L752" class="ln">   752  </span>
+<span id="L753" class="ln">   753  </span>			item := toFeedReadModel(feedRow{
+<span id="L754" class="ln">   754  </span>				ID:            id,
+<span id="L755" class="ln">   755  </span>				Code:          &#34;feed-code-1&#34;,
+<span id="L756" class="ln">   756  </span>				TotalAmount:   176500,
+<span id="L757" class="ln">   757  </span>				OrderedAt:     orderedAt,
+<span id="L758" class="ln">   758  </span>				StatusID:      statusID,
+<span id="L759" class="ln">   759  </span>				StatusCode:    statusUnprocessedCode,
+<span id="L760" class="ln">   760  </span>				StatusName:    statusUnprocessedName,
+<span id="L761" class="ln">   761  </span>				FirstItemName: &#34;ワイヤレスイヤホン&#34;,
+<span id="L762" class="ln">   762  </span>				ItemCount:     3,
+<span id="L763" class="ln">   763  </span>			})
+<span id="L764" class="ln">   764  </span>
+<span id="L765" class="ln">   765  </span>			assert.Equal(t, query.PurchaseFeedReadModel{
+<span id="L766" class="ln">   766  </span>				Code:          &#34;feed-code-1&#34;,
+<span id="L767" class="ln">   767  </span>				TotalAmount:   176500,
+<span id="L768" class="ln">   768  </span>				StatusID:      statusID,
+<span id="L769" class="ln">   769  </span>				StatusCode:    domainpurchase.StatusUnprocessed.Code(),
+<span id="L770" class="ln">   770  </span>				StatusName:    statusUnprocessedName,
+<span id="L771" class="ln">   771  </span>				FirstItemName: &#34;ワイヤレスイヤホン&#34;,
+<span id="L772" class="ln">   772  </span>				ItemCount:     3,
+<span id="L773" class="ln">   773  </span>				OrderedAt:     orderedAt,
+<span id="L774" class="ln">   774  </span>				ID:            id,
+<span id="L775" class="ln">   775  </span>			}, item)
+<span id="L776" class="ln">   776  </span>		})
+<span id="L777" class="ln">   777  </span>	})
+<span id="L778" class="ln">   778  </span>}
+<span id="L779" class="ln">   779  </span>
+<span id="L780" class="ln">   780  </span><span class="comment">// mustParseUUID は、テスト定数の UUID 文字列を解決するヘルパーです。</span>
+<span id="L781" class="ln">   781  </span>func mustParseUUID(t *testing.T, s string) uuid.UUID {
+<span id="L782" class="ln">   782  </span>	t.Helper()
+<span id="L783" class="ln">   783  </span>	id, err := uuid.Parse(s)
+<span id="L784" class="ln">   784  </span>	require.NoError(t, err)
+<span id="L785" class="ln">   785  </span>	return id
+<span id="L786" class="ln">   786  </span>}
+<span id="L787" class="ln">   787  </span>
+<span id="L788" class="ln">   788  </span>func Test_toFeedReadModels(t *testing.T) {
+<span id="L789" class="ln">   789  </span>	t.Parallel()
+<span id="L790" class="ln">   790  </span>
+<span id="L791" class="ln">   791  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L792" class="ln">   792  </span>		t.Parallel()
+<span id="L793" class="ln">   793  </span>
+<span id="L794" class="ln">   794  </span>		t.Run(&#34;行の並びを保ったまま変換関数を各行へ適用する&#34;, func(t *testing.T) {
+<span id="L795" class="ln">   795  </span>			t.Parallel()
+<span id="L796" class="ln">   796  </span>
+<span id="L797" class="ln">   797  </span>			orderedAt := time.Date(2026, time.July, 1, 12, 0, 0, 0, time.UTC)
+<span id="L798" class="ln">   798  </span>			rows := []string{&#34;feed-code-1&#34;, &#34;feed-code-2&#34;}
+<span id="L799" class="ln">   799  </span>
+<span id="L800" class="ln">   800  </span>			got := toFeedReadModels(rows, func(code string) feedRow {
+<span id="L801" class="ln">   801  </span>				return feedRow{
+<span id="L802" class="ln">   802  </span>					Code:          code,
+<span id="L803" class="ln">   803  </span>					TotalAmount:   176500,
+<span id="L804" class="ln">   804  </span>					OrderedAt:     orderedAt,
+<span id="L805" class="ln">   805  </span>					StatusCode:    statusUnprocessedCode,
+<span id="L806" class="ln">   806  </span>					StatusName:    statusUnprocessedName,
+<span id="L807" class="ln">   807  </span>					FirstItemName: defaultProductName,
+<span id="L808" class="ln">   808  </span>					ItemCount:     1,
+<span id="L809" class="ln">   809  </span>				}
+<span id="L810" class="ln">   810  </span>			})
+<span id="L811" class="ln">   811  </span>
+<span id="L812" class="ln">   812  </span>			require.Len(t, got, 2)
+<span id="L813" class="ln">   813  </span>			assert.Equal(t, &#34;feed-code-1&#34;, got[0].Code)
+<span id="L814" class="ln">   814  </span>			assert.Equal(t, &#34;feed-code-2&#34;, got[1].Code)
+<span id="L815" class="ln">   815  </span>			assert.Equal(t, domainpurchase.StatusUnprocessed.Code(), got[0].StatusCode)
+<span id="L816" class="ln">   816  </span>			assert.Equal(t, defaultProductName, got[0].FirstItemName)
+<span id="L817" class="ln">   817  </span>		})
+<span id="L818" class="ln">   818  </span>
+<span id="L819" class="ln">   819  </span>		t.Run(&#34;行が空の場合は空スライスを返す&#34;, func(t *testing.T) {
+<span id="L820" class="ln">   820  </span>			t.Parallel()
+<span id="L821" class="ln">   821  </span>
+<span id="L822" class="ln">   822  </span>			got := toFeedReadModels(nil, func(string) feedRow { return feedRow{} })
+<span id="L823" class="ln">   823  </span>
+<span id="L824" class="ln">   824  </span>			assert.Empty(t, got)
+<span id="L825" class="ln">   825  </span>		})
+<span id="L826" class="ln">   826  </span>	})
+<span id="L827" class="ln">   827  </span>}
+<span id="L828" class="ln">   828  </span>
 </pre><p><a href="../../../../../../../../src/go-boilerplate/internal/infrastructure/rdb/query_service/purchase/feed/purchase_feed_query_service_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

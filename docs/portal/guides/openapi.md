@@ -159,7 +159,7 @@ Two things this shape is easy to get wrong:
 
 ### Versioning
 
-URL path versioning: `/v1/users`
+URL path versioning: `/v1/<resources>`
 
 Breaking changes → create `/v2/` alongside `/v1/`
 

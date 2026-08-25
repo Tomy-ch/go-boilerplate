@@ -537,36 +537,49 @@
 <span id="L480" class="ln">   480  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
 <span id="L481" class="ln">   481  </span>		t.Parallel()
 <span id="L482" class="ln">   482  </span>
-<span id="L483" class="ln">   483  </span>		t.Run(&#34;実specからdetails公開をopt-inしたoperationを許可するポリシーを返す&#34;, func(t *testing.T) {
-<span id="L484" class="ln">   484  </span>			t.Parallel()
-<span id="L485" class="ln">   485  </span>
-<span id="L486" class="ln">   486  </span>			policy := newTestDetailPolicy(t)
-<span id="L487" class="ln">   487  </span>
-<span id="L488" class="ln">   488  </span>			require.NotNil(t, policy)
-<span id="L489" class="ln">   489  </span>			req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, &#34;/v1/users&#34;, nil)
-<span id="L490" class="ln">   490  </span>			assert.True(t, policy.Allows(req))
-<span id="L491" class="ln">   491  </span>		})
-<span id="L492" class="ln">   492  </span>	})
-<span id="L493" class="ln">   493  </span>}
-<span id="L494" class="ln">   494  </span>
-<span id="L495" class="ln">   495  </span>func Test_newTestAllowPolicy(t *testing.T) {
-<span id="L496" class="ln">   496  </span>	t.Parallel()
-<span id="L497" class="ln">   497  </span>
-<span id="L498" class="ln">   498  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L499" class="ln">   499  </span>		t.Parallel()
-<span id="L500" class="ln">   500  </span>
-<span id="L501" class="ln">   501  </span>		t.Run(&#34;実specからパスごとの許可メソッドを解決するポリシーを返す&#34;, func(t *testing.T) {
-<span id="L502" class="ln">   502  </span>			t.Parallel()
+<span id="L483" class="ln">   483  </span>		<span class="comment">// sample-api:replace-begin</span>
+<span id="L484" class="ln">   484  </span>		t.Run(&#34;実specからdetails公開をopt-inしたoperationを許可するポリシーを返す&#34;, func(t *testing.T) {
+<span id="L485" class="ln">   485  </span>			<span class="comment">// sample-api:replace-with</span>
+<span id="L486" class="ln">   486  </span>			<span class="comment">// = t.Run(&#34;実specから構築したポリシーが未opt-inのoperationを拒否する&#34;, func(t *testing.T) {</span>
+<span id="L487" class="ln">   487  </span>			<span class="comment">// sample-api:replace-end</span>
+<span id="L488" class="ln">   488  </span>			t.Parallel()
+<span id="L489" class="ln">   489  </span>
+<span id="L490" class="ln">   490  </span>			policy := newTestDetailPolicy(t)
+<span id="L491" class="ln">   491  </span>
+<span id="L492" class="ln">   492  </span>			require.NotNil(t, policy)
+<span id="L493" class="ln">   493  </span>			<span class="comment">// sample-api:replace-begin</span>
+<span id="L494" class="ln">   494  </span>			req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, &#34;/v1/users&#34;, nil)
+<span id="L495" class="ln">   495  </span>			assert.True(t, policy.Allows(req))
+<span id="L496" class="ln">   496  </span>			<span class="comment">// sample-api:replace-with</span>
+<span id="L497" class="ln">   497  </span>			<span class="comment">// = req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, &#34;/health&#34;, nil)</span>
+<span id="L498" class="ln">   498  </span>			<span class="comment">// = assert.False(t, policy.Allows(req))</span>
+<span id="L499" class="ln">   499  </span>			<span class="comment">// sample-api:replace-end</span>
+<span id="L500" class="ln">   500  </span>		})
+<span id="L501" class="ln">   501  </span>	})
+<span id="L502" class="ln">   502  </span>}
 <span id="L503" class="ln">   503  </span>
-<span id="L504" class="ln">   504  </span>			policy := newTestAllowPolicy(t)
-<span id="L505" class="ln">   505  </span>
-<span id="L506" class="ln">   506  </span>			require.NotNil(t, policy)
-<span id="L507" class="ln">   507  </span>			req := httptest.NewRequestWithContext(context.Background(), http.MethodDelete, &#34;/v1/prefectures&#34;, nil)
-<span id="L508" class="ln">   508  </span>			assert.Equal(t, &#34;OPTIONS, GET&#34;, policy.Allow(req))
-<span id="L509" class="ln">   509  </span>		})
-<span id="L510" class="ln">   510  </span>	})
-<span id="L511" class="ln">   511  </span>}
+<span id="L504" class="ln">   504  </span>func Test_newTestAllowPolicy(t *testing.T) {
+<span id="L505" class="ln">   505  </span>	t.Parallel()
+<span id="L506" class="ln">   506  </span>
+<span id="L507" class="ln">   507  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L508" class="ln">   508  </span>		t.Parallel()
+<span id="L509" class="ln">   509  </span>
+<span id="L510" class="ln">   510  </span>		t.Run(&#34;実specからパスごとの許可メソッドを解決するポリシーを返す&#34;, func(t *testing.T) {
+<span id="L511" class="ln">   511  </span>			t.Parallel()
 <span id="L512" class="ln">   512  </span>
+<span id="L513" class="ln">   513  </span>			policy := newTestAllowPolicy(t)
+<span id="L514" class="ln">   514  </span>
+<span id="L515" class="ln">   515  </span>			require.NotNil(t, policy)
+<span id="L516" class="ln">   516  </span>			<span class="comment">// sample-api:replace-begin</span>
+<span id="L517" class="ln">   517  </span>			req := httptest.NewRequestWithContext(context.Background(), http.MethodDelete, &#34;/v1/prefectures&#34;, nil)
+<span id="L518" class="ln">   518  </span>			<span class="comment">// sample-api:replace-with</span>
+<span id="L519" class="ln">   519  </span>			<span class="comment">// = req := httptest.NewRequestWithContext(context.Background(), http.MethodDelete, &#34;/health&#34;, nil)</span>
+<span id="L520" class="ln">   520  </span>			<span class="comment">// sample-api:replace-end</span>
+<span id="L521" class="ln">   521  </span>			assert.Equal(t, &#34;OPTIONS, GET&#34;, policy.Allow(req))
+<span id="L522" class="ln">   522  </span>		})
+<span id="L523" class="ln">   523  </span>	})
+<span id="L524" class="ln">   524  </span>}
+<span id="L525" class="ln">   525  </span>
 </pre><p><a href="../../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

@@ -139,12 +139,18 @@
 					<dd>    <a href="#MockPurchaseFeedQueryService.EXPECT">func (m *MockPurchaseFeedQueryService) EXPECT() *MockPurchaseFeedQueryServiceMockRecorder</a></dd>
 				
 					
+					<dd>    <a href="#MockPurchaseFeedQueryService.FindFeedAll">func (m *MockPurchaseFeedQueryService) FindFeedAll(ctx context.Context, params query.ListFeedParams) ([]query.PurchaseFeedReadModel, error)</a></dd>
+				
+					
 					<dd>    <a href="#MockPurchaseFeedQueryService.FindFeedByUserID">func (m *MockPurchaseFeedQueryService) FindFeedByUserID(ctx context.Context, userID uuid.UUID, params query.ListFeedParams) ([]query.PurchaseFeedReadModel, error)</a></dd>
 				
 			
 				
 				<dd><a href="#MockPurchaseFeedQueryServiceMockRecorder">type MockPurchaseFeedQueryServiceMockRecorder</a></dd>
 				
+				
+					
+					<dd>    <a href="#MockPurchaseFeedQueryServiceMockRecorder.FindFeedAll">func (mr *MockPurchaseFeedQueryServiceMockRecorder) FindFeedAll(ctx, params any) *gomock.Call</a></dd>
 				
 					
 					<dd>    <a href="#MockPurchaseFeedQueryServiceMockRecorder.FindFeedByUserID">func (mr *MockPurchaseFeedQueryServiceMockRecorder) FindFeedByUserID(ctx, userID, params any) *gomock.Call</a></dd>
@@ -161,13 +167,13 @@
 					<dd>    <a href="#MockPurchaseSummaryQueryService.EXPECT">func (m *MockPurchaseSummaryQueryService) EXPECT() *MockPurchaseSummaryQueryServiceMockRecorder</a></dd>
 				
 					
-					<dd>    <a href="#MockPurchaseSummaryQueryService.SumItemsByUserID">func (m *MockPurchaseSummaryQueryService) SumItemsByUserID(ctx context.Context, userID uuid.UUID, window period.Window) (decimal.Decimal, error)</a></dd>
+					<dd>    <a href="#MockPurchaseSummaryQueryService.SumItemsByUserID">func (m *MockPurchaseSummaryQueryService) SumItemsByUserID(ctx context.Context, userID uuid.UUID, window timewindow.Window) (decimal.Decimal, error)</a></dd>
 				
 					
-					<dd>    <a href="#MockPurchaseSummaryQueryService.SummarizeByUserID">func (m *MockPurchaseSummaryQueryService) SummarizeByUserID(ctx context.Context, userID uuid.UUID, window period.Window) ([]query.PurchaseStatusSummaryReadModel, error)</a></dd>
+					<dd>    <a href="#MockPurchaseSummaryQueryService.SummarizeByUserID">func (m *MockPurchaseSummaryQueryService) SummarizeByUserID(ctx context.Context, userID uuid.UUID, window timewindow.Window) ([]query.PurchaseStatusSummaryReadModel, error)</a></dd>
 				
 					
-					<dd>    <a href="#MockPurchaseSummaryQueryService.SummarizeItemsByProductByUserID">func (m *MockPurchaseSummaryQueryService) SummarizeItemsByProductByUserID(ctx context.Context, userID uuid.UUID, window period.Window) ([]query.PurchaseItemSummaryReadModel, error)</a></dd>
+					<dd>    <a href="#MockPurchaseSummaryQueryService.SummarizeItemsByProductByUserID">func (m *MockPurchaseSummaryQueryService) SummarizeItemsByProductByUserID(ctx context.Context, userID uuid.UUID, window timewindow.Window) ([]query.PurchaseItemSummaryReadModel, error)</a></dd>
 				
 			
 				
@@ -367,7 +373,20 @@
 				
 			
 				
-				</p><h3 id="MockPurchaseFeedQueryService.FindFeedByUserID">func (*MockPurchaseFeedQueryService) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_feed_query_service.go.gen.go.html?s=1442:1604#L36">FindFeedByUserID</a>
+				</p><h3 id="MockPurchaseFeedQueryService.FindFeedAll">func (*MockPurchaseFeedQueryService) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_feed_query_service.go.gen.go.html?s=1437:1576#L36">FindFeedAll</a>
+					<a class="permalink" href="#MockPurchaseFeedQueryService.FindFeedAll">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockPurchaseFeedQueryService">MockPurchaseFeedQueryService</a>) FindFeedAll(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, params <a href="../../../../../../go-boilerplate/internal/usecase/purchase/query/">query</a>.<a href="../../../../../../go-boilerplate/internal/usecase/purchase/query/#ListFeedParams">ListFeedParams</a>) ([]<a href="../../../../../../go-boilerplate/internal/usecase/purchase/query/">query</a>.<a href="../../../../../../go-boilerplate/internal/usecase/purchase/query/#PurchaseFeedReadModel">PurchaseFeedReadModel</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>FindFeedAll mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockPurchaseFeedQueryService.FindFeedByUserID">func (*MockPurchaseFeedQueryService) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_feed_query_service.go.gen.go.html?s=2119:2281#L51">FindFeedByUserID</a>
 					<a class="permalink" href="#MockPurchaseFeedQueryService.FindFeedByUserID">¶</a>
 					
 					
@@ -406,7 +425,20 @@
 
 			
 				
-				<h3 id="MockPurchaseFeedQueryServiceMockRecorder.FindFeedByUserID">func (*MockPurchaseFeedQueryServiceMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_feed_query_service.go.gen.go.html?s=1858:1964#L45">FindFeedByUserID</a>
+				<h3 id="MockPurchaseFeedQueryServiceMockRecorder.FindFeedAll">func (*MockPurchaseFeedQueryServiceMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_feed_query_service.go.gen.go.html?s=1807:1900#L45">FindFeedAll</a>
+					<a class="permalink" href="#MockPurchaseFeedQueryServiceMockRecorder.FindFeedAll">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockPurchaseFeedQueryServiceMockRecorder">MockPurchaseFeedQueryServiceMockRecorder</a>) FindFeedAll(ctx, params <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>FindFeedAll indicates an expected call of FindFeedAll.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockPurchaseFeedQueryServiceMockRecorder.FindFeedByUserID">func (*MockPurchaseFeedQueryServiceMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_feed_query_service.go.gen.go.html?s=2535:2641#L60">FindFeedByUserID</a>
 					<a class="permalink" href="#MockPurchaseFeedQueryServiceMockRecorder.FindFeedByUserID">¶</a>
 					
 					
@@ -421,7 +453,7 @@
 		
 			
 			
-			</p><h2 id="MockPurchaseSummaryQueryService">type <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_summary_query_service.go.gen.go.html?s=694:844#L14">MockPurchaseSummaryQueryService</a>
+			</p><h2 id="MockPurchaseSummaryQueryService">type <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_summary_query_service.go.gen.go.html?s=699:849#L14">MockPurchaseSummaryQueryService</a>
 				<a class="permalink" href="#MockPurchaseSummaryQueryService">¶</a>
 				
 				
@@ -443,7 +475,7 @@
 
 			
 				
-				<h3 id="NewMockPurchaseSummaryQueryService">func <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_summary_query_service.go.gen.go.html?s=1118:1215#L26">NewMockPurchaseSummaryQueryService</a>
+				<h3 id="NewMockPurchaseSummaryQueryService">func <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_summary_query_service.go.gen.go.html?s=1123:1220#L26">NewMockPurchaseSummaryQueryService</a>
 					<a class="permalink" href="#NewMockPurchaseSummaryQueryService">¶</a>
 					
 					
@@ -457,7 +489,7 @@
 
 			
 				
-				</p><h3 id="MockPurchaseSummaryQueryService.EXPECT">func (*MockPurchaseSummaryQueryService) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_summary_query_service.go.gen.go.html?s=1433:1528#L33">EXPECT</a>
+				</p><h3 id="MockPurchaseSummaryQueryService.EXPECT">func (*MockPurchaseSummaryQueryService) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_summary_query_service.go.gen.go.html?s=1438:1533#L33">EXPECT</a>
 					<a class="permalink" href="#MockPurchaseSummaryQueryService.EXPECT">¶</a>
 					
 					
@@ -470,12 +502,12 @@
 				
 			
 				
-				</p><h3 id="MockPurchaseSummaryQueryService.SumItemsByUserID">func (*MockPurchaseSummaryQueryService) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_summary_query_service.go.gen.go.html?s=1592:1736#L38">SumItemsByUserID</a>
+				</p><h3 id="MockPurchaseSummaryQueryService.SumItemsByUserID">func (*MockPurchaseSummaryQueryService) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_summary_query_service.go.gen.go.html?s=1597:1745#L38">SumItemsByUserID</a>
 					<a class="permalink" href="#MockPurchaseSummaryQueryService.SumItemsByUserID">¶</a>
 					
 					
 				</h3>
-				<pre>func (m *<a href="#MockPurchaseSummaryQueryService">MockPurchaseSummaryQueryService</a>) SumItemsByUserID(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, userID <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, window <a href="../../../../../../go-boilerplate/internal/usecase/purchase/period/">period</a>.<a href="../../../../../../go-boilerplate/internal/usecase/purchase/period/#Window">Window</a>) (<a href="../../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<pre>func (m *<a href="#MockPurchaseSummaryQueryService">MockPurchaseSummaryQueryService</a>) SumItemsByUserID(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, userID <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, window <a href="../../../../../../go-boilerplate/internal/usecase/tools/timewindow/">timewindow</a>.<a href="../../../../../../go-boilerplate/internal/usecase/tools/timewindow/#Window">Window</a>) (<a href="../../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
 				<p>SumItemsByUserID mocks base method.
 
 				
@@ -483,12 +515,12 @@
 				
 			
 				
-				</p><h3 id="MockPurchaseSummaryQueryService.SummarizeByUserID">func (*MockPurchaseSummaryQueryService) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_summary_query_service.go.gen.go.html?s=2326:2494#L53">SummarizeByUserID</a>
+				</p><h3 id="MockPurchaseSummaryQueryService.SummarizeByUserID">func (*MockPurchaseSummaryQueryService) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_summary_query_service.go.gen.go.html?s=2335:2507#L53">SummarizeByUserID</a>
 					<a class="permalink" href="#MockPurchaseSummaryQueryService.SummarizeByUserID">¶</a>
 					
 					
 				</h3>
-				<pre>func (m *<a href="#MockPurchaseSummaryQueryService">MockPurchaseSummaryQueryService</a>) SummarizeByUserID(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, userID <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, window <a href="../../../../../../go-boilerplate/internal/usecase/purchase/period/">period</a>.<a href="../../../../../../go-boilerplate/internal/usecase/purchase/period/#Window">Window</a>) ([]<a href="../../../../../../go-boilerplate/internal/usecase/purchase/query/">query</a>.<a href="../../../../../../go-boilerplate/internal/usecase/purchase/query/#PurchaseStatusSummaryReadModel">PurchaseStatusSummaryReadModel</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<pre>func (m *<a href="#MockPurchaseSummaryQueryService">MockPurchaseSummaryQueryService</a>) SummarizeByUserID(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, userID <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, window <a href="../../../../../../go-boilerplate/internal/usecase/tools/timewindow/">timewindow</a>.<a href="../../../../../../go-boilerplate/internal/usecase/tools/timewindow/#Window">Window</a>) ([]<a href="../../../../../../go-boilerplate/internal/usecase/purchase/query/">query</a>.<a href="../../../../../../go-boilerplate/internal/usecase/purchase/query/#PurchaseStatusSummaryReadModel">PurchaseStatusSummaryReadModel</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
 				<p>SummarizeByUserID mocks base method.
 
 				
@@ -496,12 +528,12 @@
 				
 			
 				
-				</p><h3 id="MockPurchaseSummaryQueryService.SummarizeItemsByProductByUserID">func (*MockPurchaseSummaryQueryService) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_summary_query_service.go.gen.go.html?s=3127:3307#L68">SummarizeItemsByProductByUserID</a>
+				</p><h3 id="MockPurchaseSummaryQueryService.SummarizeItemsByProductByUserID">func (*MockPurchaseSummaryQueryService) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_summary_query_service.go.gen.go.html?s=3140:3324#L68">SummarizeItemsByProductByUserID</a>
 					<a class="permalink" href="#MockPurchaseSummaryQueryService.SummarizeItemsByProductByUserID">¶</a>
 					
 					
 				</h3>
-				<pre>func (m *<a href="#MockPurchaseSummaryQueryService">MockPurchaseSummaryQueryService</a>) SummarizeItemsByProductByUserID(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, userID <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, window <a href="../../../../../../go-boilerplate/internal/usecase/purchase/period/">period</a>.<a href="../../../../../../go-boilerplate/internal/usecase/purchase/period/#Window">Window</a>) ([]<a href="../../../../../../go-boilerplate/internal/usecase/purchase/query/">query</a>.<a href="../../../../../../go-boilerplate/internal/usecase/purchase/query/#PurchaseItemSummaryReadModel">PurchaseItemSummaryReadModel</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<pre>func (m *<a href="#MockPurchaseSummaryQueryService">MockPurchaseSummaryQueryService</a>) SummarizeItemsByProductByUserID(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, userID <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, window <a href="../../../../../../go-boilerplate/internal/usecase/tools/timewindow/">timewindow</a>.<a href="../../../../../../go-boilerplate/internal/usecase/tools/timewindow/#Window">Window</a>) ([]<a href="../../../../../../go-boilerplate/internal/usecase/purchase/query/">query</a>.<a href="../../../../../../go-boilerplate/internal/usecase/purchase/query/#PurchaseItemSummaryReadModel">PurchaseItemSummaryReadModel</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
 				<p>SummarizeItemsByProductByUserID mocks base method.
 
 				
@@ -511,7 +543,7 @@
 		
 			
 			
-			</p><h2 id="MockPurchaseSummaryQueryServiceMockRecorder">type <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_summary_query_service.go.gen.go.html?s=951:1049#L21">MockPurchaseSummaryQueryServiceMockRecorder</a>
+			</p><h2 id="MockPurchaseSummaryQueryServiceMockRecorder">type <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_summary_query_service.go.gen.go.html?s=956:1054#L21">MockPurchaseSummaryQueryServiceMockRecorder</a>
 				<a class="permalink" href="#MockPurchaseSummaryQueryServiceMockRecorder">¶</a>
 				
 				
@@ -535,7 +567,7 @@
 
 			
 				
-				<h3 id="MockPurchaseSummaryQueryServiceMockRecorder.SumItemsByUserID">func (*MockPurchaseSummaryQueryServiceMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_summary_query_service.go.gen.go.html?s=1976:2085#L47">SumItemsByUserID</a>
+				<h3 id="MockPurchaseSummaryQueryServiceMockRecorder.SumItemsByUserID">func (*MockPurchaseSummaryQueryServiceMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_summary_query_service.go.gen.go.html?s=1985:2094#L47">SumItemsByUserID</a>
 					<a class="permalink" href="#MockPurchaseSummaryQueryServiceMockRecorder.SumItemsByUserID">¶</a>
 					
 					
@@ -548,7 +580,7 @@
 				
 			
 				
-				</p><h3 id="MockPurchaseSummaryQueryServiceMockRecorder.SummarizeByUserID">func (*MockPurchaseSummaryQueryServiceMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_summary_query_service.go.gen.go.html?s=2760:2870#L62">SummarizeByUserID</a>
+				</p><h3 id="MockPurchaseSummaryQueryServiceMockRecorder.SummarizeByUserID">func (*MockPurchaseSummaryQueryServiceMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_summary_query_service.go.gen.go.html?s=2773:2883#L62">SummarizeByUserID</a>
 					<a class="permalink" href="#MockPurchaseSummaryQueryServiceMockRecorder.SummarizeByUserID">¶</a>
 					
 					
@@ -561,7 +593,7 @@
 				
 			
 				
-				</p><h3 id="MockPurchaseSummaryQueryServiceMockRecorder.SummarizeItemsByProductByUserID">func (*MockPurchaseSummaryQueryServiceMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_summary_query_service.go.gen.go.html?s=3613:3737#L77">SummarizeItemsByProductByUserID</a>
+				</p><h3 id="MockPurchaseSummaryQueryServiceMockRecorder.SummarizeItemsByProductByUserID">func (*MockPurchaseSummaryQueryServiceMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_summary_query_service.go.gen.go.html?s=3630:3754#L77">SummarizeItemsByProductByUserID</a>
 					<a class="permalink" href="#MockPurchaseSummaryQueryServiceMockRecorder.SummarizeItemsByProductByUserID">¶</a>
 					
 					
