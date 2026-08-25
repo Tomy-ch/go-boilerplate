@@ -15,9 +15,9 @@ import {
   BOILERPLATE_MODULE,
   type ExpectedIdentity,
   LOCALIZATION_CI_PATHS,
+  SETUP_SHARED_DIR,
   LOCALIZATION_MARKER,
   LOCALIZATION_MARKER_FILES,
-  SAMPLE_REMOVER_DIR,
   collectFailures,
   selfDestructTargets,
 } from "./verify";
@@ -100,9 +100,12 @@ function stripDeclarations(): void {
 }
 
 function selfDestruct(): void {
-  const sampleRemoverExists = fs.existsSync(path.join(SETUP_DIR, SAMPLE_REMOVER_DIR));
+  const setupEntries = fs
+    .readdirSync(SETUP_DIR, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
 
-  for (const target of selfDestructTargets(path.basename(SELF_DIR), sampleRemoverExists)) {
+  for (const target of selfDestructTargets(path.basename(SELF_DIR), setupEntries)) {
     fs.rmSync(path.join(SETUP_DIR, target), { force: true, recursive: true });
   }
 
@@ -111,8 +114,8 @@ function selfDestruct(): void {
     fs.rmSync(path.join(ROOT_DIR, relativePath), { force: true, recursive: true });
   }
 
-  if (!sampleRemoverExists) {
-    console.log("🧹 サンプル削除ツールは既に消えているため、setup/lib も撤去しました。");
+  if (!fs.existsSync(path.join(SETUP_DIR, SETUP_SHARED_DIR))) {
+    console.log("🧹 setup/lib を使うツールが他に残っていないため、setup/lib も撤去しました。");
   }
 }
 

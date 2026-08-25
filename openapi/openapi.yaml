@@ -217,8 +217,10 @@ components:
       $ref: './components/parameters/cart/CartSessionParam.yaml'
     # sample-api:end
   securitySchemes:
+    # sample-api:begin
     BearerAuth:
       $ref: './components/schemas/BearerAuth.yaml'
+    # sample-api:end
     BasicAuth:
       $ref: './components/schemas/BasicAuth.yaml'
   schemas:

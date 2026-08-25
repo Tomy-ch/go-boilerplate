@@ -9,7 +9,6 @@ import { BASELINE_PATH, scanRepository } from "../../marker-baseline/scan";
 import { listFilesRecursive, toAbsolutePath, toRelativePath, updateFile } from "../lib/file-utils";
 import { ROOT_DIR, type SetupOptions, newSetupCommand } from "../lib/runtime";
 import {
-  SETUP_SHARED_DIR_USERS,
   emptyDirectoryCandidates,
   isScanTarget,
   isWithinRoot,
@@ -194,11 +193,12 @@ function removeEmptyDirectories(relativePaths: readonly string[]): string[] {
  */
 function removeSharedModules(): void {
   const setupDir = path.join(ROOT_DIR, "scripts/setup");
-  const anyUserExists = SETUP_SHARED_DIR_USERS.some((dir) =>
-    fs.existsSync(path.join(setupDir, dir)),
-  );
+  const setupEntries = fs
+    .readdirSync(setupDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
 
-  for (const target of sharedModuleTargets(anyUserExists)) {
+  for (const target of sharedModuleTargets(setupEntries)) {
     fs.rmSync(path.join(setupDir, target), { force: true, recursive: true });
     console.log(`🧹 初期化ツールは既に消えているため、setup/${target} も撤去しました。`);
   }

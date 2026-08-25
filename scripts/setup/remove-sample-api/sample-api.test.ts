@@ -4,9 +4,8 @@ import { describe, expect, it } from "vitest";
 
 import { ROOT_DIR } from "../lib/runtime";
 import {
+  SAMPLE_REMOVAL_DIRS,
   SETUP_SHARED_DIR,
-  SETUP_SHARED_DIR_USERS,
-  SETUP_VERIFIER_DIR,
   containsSampleMarker,
   emptyDirectoryCandidates,
   isScanTarget,
@@ -240,31 +239,30 @@ describe("emptyDirectoryCandidates", () => {
 
 describe("sharedModuleTargets", () => {
   describe("正常系", () => {
-    it("共有モジュールを使う他のツールが残っていれば消さない", () => {
-      expect(sharedModuleTargets(true)).toEqual([]);
+    // 判定を誤ると、先にサンプル削除を実行した利用者の手元で共有モジュールごと壊れる。
+    // 壊れ方が「まだ実行していない手順が実行できない」なので、その手順に来るまで気づけない。
+    it("サンプル削除以外のツールが残るなら lib を残す", () => {
+      expect(sharedModuleTargets(["remove-boilerplate-identity", "lib"])).toEqual([]);
     });
 
-    it("使う側が全て消えていれば共有モジュールを道連れにする", () => {
-      expect(sharedModuleTargets(false)).toEqual([SETUP_SHARED_DIR]);
+    it("残るのが自分と lib だけなら lib も持っていく", () => {
+      expect(sharedModuleTargets([...SAMPLE_REMOVAL_DIRS, "lib"])).toEqual([SETUP_SHARED_DIR]);
+    });
+
+    // 名前を挙げる判定はツールが増えるたびに漏れる。実在するディレクトリで判定を確かめる。
+    it("実ツリーでは lib を残す", () => {
+      const entries = fs
+        .readdirSync(path.join(ROOT_DIR, "scripts/setup"), { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => entry.name);
+
+      expect(sharedModuleTargets(entries)).toEqual([]);
     });
   });
-});
 
-describe("SETUP_SHARED_DIR_USERS", () => {
-  describe("正常系", () => {
-    // 挙げ漏らしたツールは、先にサンプル削除を実行した利用者の手元で共有モジュールごと壊れる。
-    // 壊れ方が「まだ実行していない手順が実行できない」なので、その手順に来るまで気づけない。
-    // 初期化ツール群（Phase 5）は検証器と一緒に消えるため、検証器 1 つで代表できる。
-    it("サンプル削除と独立して残りうるツールを挙げている", () => {
-      expect(SETUP_SHARED_DIR_USERS).toContain(SETUP_VERIFIER_DIR);
-    });
-
-    it("挙げたツールが実在する", () => {
-      for (const user of SETUP_SHARED_DIR_USERS) {
-        const dir = path.join(ROOT_DIR, "scripts/setup", user);
-
-        expect(fs.existsSync(dir), user).toBe(true);
-      }
+  describe("異常系", () => {
+    it("ディレクトリが 1 つも無ければ lib を持っていく", () => {
+      expect(sharedModuleTargets([])).toEqual([SETUP_SHARED_DIR]);
     });
   });
 });

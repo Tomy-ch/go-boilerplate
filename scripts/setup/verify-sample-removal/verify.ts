@@ -98,6 +98,7 @@ export function findDanglingReferences(danglingHits: string): string[] {
  * schemas/README.md がその定義を汎用ブロックとして宣言していることを根拠にすること。
  */
 export const ORPHAN_EXCLUDED_PATHS: readonly string[] = [
+  "openapi/components/schemas/BearerAuth.yaml",
   "openapi/components/schemas/errors/",
   "openapi/components/schemas/PaginationMetadataResponse.yaml",
   "openapi/components/schemas/CursorPaginationMetadataResponse.yaml",

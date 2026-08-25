@@ -188,7 +188,7 @@ describe("collectFailures", () => {
 describe("selfDestructTargets", () => {
   describe("正常系", () => {
     it("初期化ツール一式と自身を対象にする", () => {
-      const targets = selfDestructTargets("verify-setup", true);
+      const targets = selfDestructTargets("verify-setup", ["remove-sample-api", "lib"]);
 
       for (const dir of LOCALIZATION_TOOL_DIRS) {
         expect(targets).toContain(dir);
@@ -197,15 +197,15 @@ describe("selfDestructTargets", () => {
     });
 
     it("サンプル削除ツールが残っていれば共有モジュールは残す", () => {
-      expect(selfDestructTargets("verify-setup", true)).not.toContain(SETUP_SHARED_DIR);
+      expect(selfDestructTargets("verify-setup", ["remove-sample-api", "lib"])).not.toContain(SETUP_SHARED_DIR);
     });
 
     it("サンプル削除ツールが既に消えていれば共有モジュールも道連れにする", () => {
-      expect(selfDestructTargets("verify-setup", false)).toContain(SETUP_SHARED_DIR);
+      expect(selfDestructTargets("verify-setup", ["lib"])).toContain(SETUP_SHARED_DIR);
     });
 
     it("ディレクトリ単位で挙げ、個別ファイルを列挙しない", () => {
-      expect(selfDestructTargets("verify-setup", false).some((t) => t.endsWith(".ts"))).toBe(false);
+      expect(selfDestructTargets("verify-setup", ["lib"]).some((t) => t.endsWith(".ts"))).toBe(false);
     });
   });
 });
@@ -242,7 +242,7 @@ describe("LOCALIZATION_CI_PATHS", () => {
   describe("異常系", () => {
     // setup 相対の一覧と混ざると、片方が誤った基点で解決されて消し漏れる。
     it("setup 配下のディレクトリ名と重ならない", () => {
-      const setupRelative = selfDestructTargets("verify-setup", false);
+      const setupRelative = selfDestructTargets("verify-setup", ["lib"]);
 
       for (const relativePath of LOCALIZATION_CI_PATHS) {
         expect(setupRelative, relativePath).not.toContain(relativePath);

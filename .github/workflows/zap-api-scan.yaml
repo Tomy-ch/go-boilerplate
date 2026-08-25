@@ -296,7 +296,12 @@ jobs:
       # the credential the scan carries is minted the same way a real client mints one. The
       # provider maps `username` onto the `sub` claim, which is what the seed matches on.
       # `iss` is derived from the Host the token was requested through, hence localhost here.
+      # Skipped when SCAN_SUBJECT is empty. That is the declared shape of an unauthenticated
+      # scan (see the SCAN_SUBJECT declaration above), and without the guard the provider is
+      # asked to mint a token for an empty subject and answers 400 — a hard failure for the
+      # one configuration the declaration says is expected.
       - name: Mint the scan credential
+        if: env.SCAN_SUBJECT != ''
         run: |
           set -euo pipefail
 
@@ -324,6 +329,7 @@ jobs:
       # anything while still reporting green — the exact failure this step exists to catch.
       # Re-point it at a protected operation that does exist.
       - name: Verify the scan credential authenticates
+        if: env.SCAN_SUBJECT != ''
         env:
           # sample-api:replace-begin
           PROBE_PATH: /v1/users/me

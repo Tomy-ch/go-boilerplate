@@ -87,28 +87,26 @@ export function emptyDirectoryCandidates(relativePaths: readonly string[]): stri
   return [...candidates].sort((a, b) => b.split("/").length - a.split("/").length);
 }
 
-/** 初期化ツールの検証器。まだ残っていれば `setup/lib` を使い続けている。 */
-export const SETUP_VERIFIER_DIR = "verify-setup";
-
 /** `setup/` 配下の共有モジュール。使う側が全て消えたときだけ道連れにする。 */
 export const SETUP_SHARED_DIR = "lib";
 
-/**
- * `setup/lib` を使い続ける、サンプル削除以外のツール（`setup/` からの相対）。
- *
- * @remarks
- * どれも独立した任意手順で、実行順は利用者が決めます。1 つでも残っているうちに `lib` を
- * 消すと、まだ実行していない手順が実行できなくなるため、在否を見てから判断します。
- */
-export const SETUP_SHARED_DIR_USERS: readonly string[] = [SETUP_VERIFIER_DIR];
+/** サンプル削除ツール自身のディレクトリ（`setup/` からの相対）。この撤去で消える側。 */
+export const SAMPLE_REMOVAL_DIRS: readonly string[] = ["remove-sample-api", "verify-sample-removal"];
 
 /**
  * サンプル削除ツール自身の撤去に、共有モジュールを含めるか。
  *
  * @remarks
- * `setup/lib` は他の任意手順のツールとも共有です。それらがまだ残っていれば `lib` も要ります。
- * 逆順のときは残った側が同じ規則で `lib` を持っていくため、どちらの順序でも残骸が出ません。
+ * `setup/lib` は他の任意手順のツールとも共有なので、それらがまだ残っていれば `lib` も要ります。
+ * 判定は「今 `setup/` に在るディレクトリのうち、この撤去で消えないものが残るか」で行い、
+ * 利用者の名前は列挙しません。名前を挙げる形だと、`lib` を使うツールを足すたびにこちらへも
+ * 足す必要があり、漏らしても静かに壊れます——実際 `lib` の利用者は 10 ディレクトリありながら、
+ * 宣言は 1 つだけを見ていました。
  */
-export function sharedModuleTargets(anyUserExists: boolean): string[] {
-  return anyUserExists ? [] : [SETUP_SHARED_DIR];
+export function sharedModuleTargets(setupEntries: readonly string[]): string[] {
+  const survives = setupEntries.some(
+    (entry) => entry !== SETUP_SHARED_DIR && !SAMPLE_REMOVAL_DIRS.includes(entry),
+  );
+
+  return survives ? [] : [SETUP_SHARED_DIR];
 }
