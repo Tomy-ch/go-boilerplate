@@ -58,9 +58,9 @@ func Test_emitUsecase_Emit(t *testing.T) {
 
 			store.EXPECT().
 				Insert(gomock.Any(), outboxbndry.EmitParams{
-					AggregateType: "Purchase",
+					AggregateType: "Resource",
 					AggregateID:   "p-1",
-					EventType:     "purchase.created.v1",
+					EventType:     "resource.created.v1",
 					Payload:       []byte(`{"v":1}`),
 					Headers:       nil,
 				}).
@@ -68,9 +68,9 @@ func Test_emitUsecase_Emit(t *testing.T) {
 
 			got, err := outbox.NewEmit(store, observability.NewNoopTracerFactory(t)).
 				Emit(context.Background(), outbox.EmitInput{
-					AggregateType: "Purchase",
+					AggregateType: "Resource",
 					AggregateID:   "p-1",
-					EventType:     "purchase.created.v1",
+					EventType:     "resource.created.v1",
 					Payload:       []byte(`{"v":1}`),
 				})
 
