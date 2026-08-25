@@ -32,8 +32,7 @@ func webapiModule() fx.Option {
 		),
 		// sample-api:replace-with
 		// = // gateway を足すときは、コンストラクタを fx.Provide へ、HTTP クライアントの
-		// = // プロファイルと必須 downstream をそれぞれのグループ提供子へ渡す。引数ゼロの
-		// = // 呼び出しは fx.Options() を返すだけの no-op なので、雛形として残さない。
+		// = // プロファイルと必須 downstream をそれぞれのグループ提供子へ渡す。
 		// sample-api:replace-end
 	)
 }

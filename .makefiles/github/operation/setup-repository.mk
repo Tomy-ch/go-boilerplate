@@ -129,10 +129,8 @@ setup-remove-boilerplate-identity:
 # この makefile 自身が要る（worktree では .git がマウント外の実体を指すファイルで辿れない）。
 # ここに置くのは、検証器が通ったときだけ自分と snapshot を撤去する設計だからで、呼ばずに終えると
 # 削除ツールの片割れと、削除対象パスを全て書き出した記録が作成先へ居座る。
-# ホストで走らせる以上、scripts の依存もホスト側に要る。sample-removal-check が検証器の手前で
-# 同じ同期を挟んでいるのと揃えた。無いと pnpm が依存の鮮度を判定できず、削除は済んだのに検証
-# だけ走らなかったという中途半端な状態で止まる（検証の失敗と区別が付かない）。--frozen-lockfile
-# なので入るのは lockfile が既に宣言しているものだけで、依存を増やす操作にはならない。
+# ホストで走らせる以上、scripts の依存もホスト側に要る。無いと pnpm が依存の鮮度を判定できず、
+# 削除は済んだのに検証だけ走らないという、検証の失敗と区別が付かない状態で止まる。
 setup-remove-sample-api:
 	@docker compose run --rm node_tool_runner $(TSX) scripts/setup/remove-sample-api $(SETUP_DRY_RUN_FLAG)
 	@if [ -n "$(DRY_RUN)" ]; then \
