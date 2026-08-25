@@ -9,25 +9,13 @@ English | [日本語](README.ja.md)
 - `schemas/` — small, reusable building blocks (e.g. `UserBaseInputRequest.yaml`).
 - `requests/` — the **per-endpoint** shape, usually composing a base block via `allOf` and adding operation-specific constraints (e.g. a `required` list).
 
-<!-- sample-api:replace-begin -->
 ```yaml
-# requests/users/UsersPostRequest.yaml
+# requests/<resources>/<Resources>PostRequest.yaml
 allOf:
-  - $ref: '../../schemas/UserBaseInputRequest.yaml'
-  - required:          # fields mandatory for "create user"
-      - firstName
-      - lastName
-      - email
+  - $ref: '../../schemas/<Resource>BaseInputRequest.yaml'
+  - required:          # fields mandatory for the create operation
+      - <field>
 ```
-<!-- sample-api:replace-with -->
-<!-- = ```yaml -->
-<!-- = # requests/<resources>/<Resources>PostRequest.yaml -->
-<!-- = allOf: -->
-<!-- =   - $ref: '../../schemas/<Resource>BaseInputRequest.yaml' -->
-<!-- =   - required:          # fields mandatory for the create operation -->
-<!-- =       - <field> -->
-<!-- = ``` -->
-<!-- sample-api:replace-end -->
 
 ## Directory Contents
 
@@ -37,13 +25,8 @@ One directory per resource, named after it; each holds that resource's request b
 
 |Element|Convention|Example|
 |---|---|---|
-<!-- sample-api:replace-begin -->
-|Directory|lowercase by resource|`users/`|
-|File name|PascalCase + `Request`|`UsersPostRequest.yaml`|
-<!-- sample-api:replace-with -->
-<!-- = |Directory|lowercase by resource|`<resources>/`| -->
-<!-- = |File name|PascalCase + `Request`|`<Resources>PostRequest.yaml`| -->
-<!-- sample-api:replace-end -->
+|Directory|lowercase by resource|`<resources>/`|
+|File name|PascalCase + `Request`|`<Resources>PostRequest.yaml`|
 
 ## Rules
 

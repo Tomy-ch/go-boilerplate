@@ -11,11 +11,7 @@ Scope split (do not duplicate across these):
 - [`rules.md` → *Testing & Definition of Done*](rules.md) — the non-negotiable *when is it done* (per-layer testing, the 90 % bar, "compiles ≠ done", runtime DI verification, live-app smoke tests, unreachable-branch policy).
 - Each layer `README` → *Test Strategy* — the per-layer **viewpoints** (what to exercise for that layer).
 
-<!-- sample-api:replace-begin -->
-The canonical reference test is [`internal/domain/user/user_domain_test.go`](../internal/domain/user/user_domain_test.go).
-<!-- sample-api:replace-with -->
-<!-- = The canonical reference test is the domain test of an aggregate in `internal/domain/`. -->
-<!-- sample-api:replace-end -->
+The canonical reference test is the domain test of an aggregate in `internal/domain/`.
 
 <!-- 撤去後にこの箇所へ自分の例を置くための指針。
      目的: 規約の文章だけでは、どの粒度まで守った実物が「canonical」なのかが読み手に伝わらない。

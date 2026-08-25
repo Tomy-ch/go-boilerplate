@@ -137,9 +137,6 @@ flowchart TB
     Queue["queue/"]
     RDB["rdb/"]
     Sys["system/"]
-    %% sample-api:begin
-    Token["token/"]
-    %% sample-api:end
     Web["webapi/"]
 
     Root --> Auth
@@ -151,9 +148,6 @@ flowchart TB
     Root --> Queue
     Root --> RDB
     Root --> Sys
-    %% sample-api:begin
-    Root --> Token
-    %% sample-api:end
     Root --> Web
 ```
 
@@ -170,18 +164,13 @@ flowchart TB
 |`queue/`|Message queue worker seam impl (AWS SQS impl of `worker.Consumer` / `FailureHandler`)|Usecase boundary (worker seam)|[README](queue/sqs/README.md)|
 |`rdb/`|RDB subsystem (Repository / QueryService / driver / sqlc, etc.)|Domain / Usecase|[README](rdb/README.md)|
 |`system/`|System-dependent operations (time retrieval, etc.)|Usecase boundary|[README](system/README.md)|
-|`token/`|Opaque token generation from the OS randomness source (impl of `boundary/token.Generator`)|Usecase boundary|[README](token/README.md)<!-- sample-api:line -->|
 |`webapi/`|External web API gateways (impl of `boundary.Gateway`)|Usecase boundary|[README](webapi/README.md)|
 
 ## Test Strategy
 
 These bullets govern the subsystems whose substrate **is** the database. A subsystem built on a different substrate, or with no real I/O at all, declares its own *Test Strategy* in its package README; walking up to this section from such a package is a documentation gap to close there, not a licence to require a real database of it. Every non-database subsystem now declares one, so this section is reached only by the subsystems it was written for, and a subsystem added on a new substrate is expected to declare its own rather than inherit these bullets by default.
 
-<!-- sample-api:replace-begin -->
-The one package that reaches this section from further down is `auth/useridentity`, which reads `user_identities` through the RDB driver. `auth/`'s own section names it explicitly, so the carve-out is visible from both directions rather than only by walking up.
-<!-- sample-api:replace-with -->
-<!-- = A package further down that reaches this section names the carve-out in its own section too, so it is visible from both directions rather than only by walking up. -->
-<!-- sample-api:replace-end -->
+A package further down that reaches this section names the carve-out in its own section too, so it is visible from both directions rather than only by walking up.
 
 - Integration Test using real DB
 - State isolation using transaction rollback

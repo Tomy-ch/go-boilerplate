@@ -20,11 +20,7 @@ error-handler middleware maps each sentinel to a fixed HTTP status with a fixed 
 cannot communicate anything dynamic to the API client — for example, *which* fields of a
 user-update request failed validation.
 
-<!-- sample-api:replace-begin -->
-The concrete need: `PUT/PATCH /v1/users/{id}` should report the invalid fields in the
-<!-- sample-api:replace-with -->
-<!-- = The concrete need: an update operation should report the invalid fields in the -->
-<!-- sample-api:replace-end -->
+The concrete need: an update operation should report the invalid fields in the
 response (`details: ["firstName", "email"]`) **without** exposing the reason each field
 failed (reasons remain log-only). Additionally, domain validation collected only the
 first failing field (`validateProfileFields` returned on the first error), so multiple
@@ -63,11 +59,7 @@ Supporting change: `user.validateProfileFields` now validates **all** profile fi
 and joins the per-field sentinel errors (`xerrors.Join`), attaching the collected field
 identifiers via `WithDetails`. Server-internal invariants (id, updatedAt, deletedAt)
 keep first-error return — they are not user-correctable input. As a
-<!-- sample-api:replace-begin -->
-side effect, `POST /v1/users` (creation) also reports invalid fields in `details`;
-<!-- sample-api:replace-with -->
-<!-- = side effect, the matching create operation also reports invalid fields in `details`; -->
-<!-- sample-api:replace-end -->
+side effect, the matching create operation also reports invalid fields in `details`;
 this is an intended improvement.
 
 ## Consequences

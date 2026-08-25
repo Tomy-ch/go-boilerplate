@@ -113,51 +113,9 @@ Node の設定とパッケージ横断のゲートは直下に置く。各ツー
 |`replace-license-copyright/`|LICENSE の著作権者名と年を置換 <!-- setup-localize:line -->|
 |`replace-repository-reference/`|README と OpenAPI の GitHub リポジトリ参照を置換 <!-- setup-localize:line -->|
 |`replace-codeowners/`|`.github/CODEOWNERS` の全ルールの所有者を置換。コメント行は記載例を保つため対象外で、所有者欄を判定できないルール行は書き換えずに報告する。 <!-- setup-localize:line -->|
-|`remove-sample-api/`|サンプルAPI(`user`/`prefecture`/`product`/`order`)を削除。`sample-manifest.ts` に宣言したパスを削除し、共有 DI モジュールと `openapi.yaml` の `sample-api` マーカーブロックを除去する。再生成・整形・Lint まで行うには `make setup-remove-sample-api` 経由で実行する。 <!-- sample-api:line -->|
 |`repo-setup/`|boilerplate を自分のリポジトリとして初期化する際の git / gh 側の手順。`preflight` は `v0.0.0` タグがあれば中止し、`bootstrap` はタグを作り直して develop / staging / production を用意しデフォルトブランチを移し、`prune-release-notes` は `v0.0.0.md` 以外のリリースノートを削除する。ラベル・ルールセット・ワークフローの有効化は全体の連鎖を持つ `setup-repository.mk` に残る。ここも Go なのは、タグの一括削除やデフォルトブランチの移動が、実物のリポジトリを壊さずには試せないためである。|
 
 すべての setup スクリプトはプレビュー用の `--dry-run` をサポートしています。
-<!-- sample-api:begin -->
-
-削除対象は [`sample-manifest.ts`](setup/remove-sample-api/sample-manifest.ts) に、マーカー除去の規則は [`sample-api.ts`](setup/remove-sample-api/sample-api.ts) に宣言されています。サンプルは複数のフルスタックドメインからなり、拡張時は該当ドメインブロックにパスを追記し、混在行を `sample-api:begin … sample-api:end`（または `sample-api:line`）で囲むだけで対象に含まれます。
-
-#### マーカーを置ける場所
-
-マーカーはコメントの中でしか効かず、どのコメント形が使えるかは拡張子ではなく**その行が置かれている
-文脈**で決まります。取り違えると失敗は 2 方向に出ます。認識されずに撤去後まで行が残るか、認識される
-代わりにマーカー自身がサンプル在中の文書を壊すかです。どちらも lint か撤去後のビルドまで黙っており、
-後者を見るのは `sample-removal-check` だけです。
-
-以下の `<marker>` はマーカー名と接尾辞（`sample-api` ＋ `:begin` / `:end` / `:line` / `:replace-*`）を
-指します。コメント接頭辞まで書くと、この頁自身がマーカーになるためです。
-
-|文脈|効く形|他が使えない理由|
-|---|---|---|
-|Markdown 散文|HTML コメント内の `<marker>`。`:begin` と `:end` は独立行|ここではこれ以外がコメントにならない|
-|Markdown の表の行|`:line` 形を**最後のセルの中**（閉じ `\|` の手前）へ|独立行のコメントは表を切る。空白はその表の記法に合わせる。詰めた表（`\|a\|b\|`）は前後に空白を置かず、緩い表（`\| a \| b \|`）は置く。違えると MD060|
-|Markdown の箇条書き|マーカー行をその項目の継続インデントに揃える|列 0 のコメントは箇条書きを分断する（MD032 / MD007）|
-|コードフェンス|フェンスの言語自身のコメント（Go なら `//`）|フェンス内の HTML コメントは本文として描画される|
-|mermaid フェンス|`%%`、かつ**ブロック形のみ**|mermaid のコメントは独立行なので行末形が無い。ノードだけでなく、それを名指す辺と `class` 行にも付ける|
-|YAML のブロックスカラー|中には置けない。キーごと外側から `replace` で囲む|YAML には `#` コメントがあるが、ブロックスカラー（`>-` / `\|`）の中では `#` 行が文字列の一部になる。マーカーが値の本文そのものになり、撤去後もスカラーに残る|
-|Go の宣言|`:begin` を **doc コメントより前**へ|外に残った doc コメントはファイル末尾へ孤児として残り、`gofmt` でも消えない|
-|Go の import|import 行に `:line` 形|マーカー領域の中でしか使われない import は、領域が消えた時点で `typecheck` に落ちる|
-
-`replace` の退避行（`=` で始まる行）については 2 点:
-
-- 結果のインデントは、退避行自身の先頭空白と本文が持つ空白の**合計**になります。インデントは二重に
-  書かないこと。
-- HTML コメントの退避行の中に HTML コメントを入れないこと。最初の `-->` が外側を閉じ、残りが本文として
-  描画されます。そうしたコメントは `replace` ブロックの外へ置きます——撤去後も残る必要がある指針
-  コメントは、そもそもそこが置き場です。
-
-マーカーを持てない構造そのもの（`sql` / `text` フェンス、変更が組み替える表など）は、中の 1 行ではなく
-構造ごと外側から `replace` で囲んで差し替えます。
-
-マーカー行の増減は `scripts/marker-baseline/baseline.json` が固定している件数を動かすので、同じ変更の中で
-再生成（`tsx scripts/marker-baseline --write`）してください。マーカーの形を指示ではなく**データ**として
-持つファイルは、代わりに `MARKER_LITERAL_FILES` へ宣言します——ただしその宣言は走査から丸ごと外すので、
-本物のマーカーを 1 つも持たないファイルに限ります。
-<!-- sample-api:end -->
 
 ## テスト戦略
 

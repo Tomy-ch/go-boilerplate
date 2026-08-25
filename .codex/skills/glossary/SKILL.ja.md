@@ -94,10 +94,6 @@ kebab-case の feature は 1 語に連結されたパッケージにも親の下
 
 書き込むのは **`docs/spec/glossary.md` のみ** です。feature spec、README、ADR、DDD ledger、ソース、生成ファイルは編集しません。用語集には `.ja.md` ペアを作りません。この spec ツリーは英語見出しを持つ単一の日本語ファイルです。
 
-<!-- sample-api:begin -->
-サンプル由来の行は `sample-api:begin` と `sample-api:end` の間に置きます。サンプル撤去後も残る用語は、これらのマーカーの外に置きます。
-
-<!-- sample-api:end -->
 追加行、orphan の分類、解決しない参照、未解決の同音異義、他スキルが担当する follow-up を日本語で報告して終了します。commit と push はしません。
 
 ## 制約

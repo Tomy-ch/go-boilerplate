@@ -27,21 +27,12 @@
 
 **URL バージョニング戦略**に従うビジネス API エンドポイントです。
 
-<!-- sample-api:replace-begin -->
 ```text
-/v1/users             → users.yaml
-/v1/users/{userId}    → users/userId.yaml
-/v1/users/me          → users/me.yaml
-/v1/users/search      → users/search.yaml
+/v1/<resources>             → <resources>.yaml
+/v1/<resources>/{<id>}      → <resources>/<id>.yaml
+/v1/<resources>/me          → <resources>/me.yaml
+/v1/<resources>/search      → <resources>/search.yaml
 ```
-<!-- sample-api:replace-with -->
-<!-- = ```text -->
-<!-- = /v1/<resources>             → <resources>.yaml -->
-<!-- = /v1/<resources>/{<id>}      → <resources>/<id>.yaml -->
-<!-- = /v1/<resources>/me          → <resources>/me.yaml -->
-<!-- = /v1/<resources>/search      → <resources>/search.yaml -->
-<!-- = ``` -->
-<!-- sample-api:replace-end -->
 
 > `v1/` の内容は**サンプル実装**です。サービス構築時には独自のリソースに置き換えてください。
 
@@ -62,45 +53,25 @@
 
 ## 命名・構造ルール
 
-<!-- sample-api:replace-begin -->
 |要素|規則|例|
 |---|---|---|
-|ファイル名|URL セグメントに一致（小文字）／パスパラメータファイルは param の `camelCase` 名に一致|`search.yaml`, `userId.yaml`|
-|ディレクトリ構成|URL パスをミラー（1 path item = 1 ファイル）|`/v1/users/search` → `v1/users/search.yaml`|
-|leaf と親|leaf = フラットな `<segment>.yaml`／エンドポイント＋子あり = `<segment>.yaml` と `<segment>/` を併存|`users.yaml` ＋ `users/`|
-|パスパラメータ|param の `camelCase` 名に一致するファイル名（波括弧なし）|`{userId}` → `userId.yaml`|
-|operationId|`{HTTPメソッド}{リソース名}`（PascalCase・動詞始まり）|`GetUsers`, `PostUsers`|
-|tags|パスベースのグルーピング|`v1/users`, `health`|
-<!-- sample-api:replace-with -->
-<!-- = |要素|規則|例| -->
-<!-- = |---|---|---| -->
-<!-- = |ファイル名|URL セグメントに一致（小文字）／パスパラメータファイルは param の `camelCase` 名に一致|`search.yaml`, `<id>.yaml`| -->
-<!-- = |ディレクトリ構成|URL パスをミラー（1 path item = 1 ファイル）|`/v1/<リソース>/search` → `v1/<リソース>/search.yaml`| -->
-<!-- = |leaf と親|leaf = フラットな `<segment>.yaml`／エンドポイント＋子あり = `<segment>.yaml` と `<segment>/` を併存|`<リソース>.yaml` ＋ `<リソース>/`| -->
-<!-- = |パスパラメータ|param の `camelCase` 名に一致するファイル名（波括弧なし）|`{<id>}` → `<id>.yaml`| -->
-<!-- = |operationId|`{HTTPメソッド}{リソース名}`（PascalCase・動詞始まり）|`Get<リソース>`, `Post<リソース>`| -->
-<!-- = |tags|パスベースのグルーピング|`v1/<リソース>`, `health`| -->
-<!-- sample-api:replace-end -->
+|ファイル名|URL セグメントに一致（小文字）／パスパラメータファイルは param の `camelCase` 名に一致|`search.yaml`, `<id>.yaml`|
+|ディレクトリ構成|URL パスをミラー（1 path item = 1 ファイル）|`/v1/<リソース>/search` → `v1/<リソース>/search.yaml`|
+|leaf と親|leaf = フラットな `<segment>.yaml`／エンドポイント＋子あり = `<segment>.yaml` と `<segment>/` を併存|`<リソース>.yaml` ＋ `<リソース>/`|
+|パスパラメータ|param の `camelCase` 名に一致するファイル名（波括弧なし）|`{<id>}` → `<id>.yaml`|
+|operationId|`{HTTPメソッド}{リソース名}`（PascalCase・動詞始まり）|`Get<リソース>`, `Post<リソース>`|
+|tags|パスベースのグルーピング|`v1/<リソース>`, `health`|
 
 ## パスとハンドラの対応
 
 パス定義はハンドラ実装と対応します：
 
-<!-- sample-api:replace-begin -->
 ```text
-paths/v1/users.yaml             → handler/v1/users/
-paths/v1/users/userId.yaml      → handler/v1/users/detail/
-paths/v1/users/me.yaml          → handler/v1/users/detail/
-paths/v1/users/search.yaml      → handler/v1/users/search/
+paths/v1/<resources>.yaml             → handler/v1/<resources>/
+paths/v1/<resources>/<id>.yaml        → handler/v1/<resources>/detail/
+paths/v1/<resources>/me.yaml          → handler/v1/<resources>/detail/
+paths/v1/<resources>/search.yaml      → handler/v1/<resources>/search/
 ```
-<!-- sample-api:replace-with -->
-<!-- = ```text -->
-<!-- = paths/v1/<resources>.yaml             → handler/v1/<resources>/ -->
-<!-- = paths/v1/<resources>/<id>.yaml        → handler/v1/<resources>/detail/ -->
-<!-- = paths/v1/<resources>/me.yaml          → handler/v1/<resources>/detail/ -->
-<!-- = paths/v1/<resources>/search.yaml      → handler/v1/<resources>/search/ -->
-<!-- = ``` -->
-<!-- sample-api:replace-end -->
 
 ## ルール
 

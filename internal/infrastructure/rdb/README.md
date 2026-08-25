@@ -203,13 +203,8 @@ See details below.
 (interface in the Usecase layer alongside QueryService, implementation here). It is reserved for multi-aggregate writes
 that require single-transaction atomicity (see [ADR-0032 (lightweight-cqrs)](../../../docs/adr/0032-lightweight-cqrs.md)
 / [ADR-0034 (commandservice-atomicity-criterion)](../../../docs/adr/0034-commandservice-atomicity-criterion.md)); the first implementation
-<!-- sample-api:replace-begin -->
-is `command_service/purchase` (stock decrement + purchase / detail INSERT — see
-[ADR-0036 (ordered-pessimistic-row-locks)](../../../docs/adr/0036-ordered-pessimistic-row-locks.md)).
-<!-- sample-api:replace-with -->
-<!-- = and the write ordering follows -->
-<!-- = [ADR-0036 (ordered-pessimistic-row-locks)](../../../docs/adr/0036-ordered-pessimistic-row-locks.md). -->
-<!-- sample-api:replace-end -->
+and the write ordering follows
+[ADR-0036 (ordered-pessimistic-row-locks)](../../../docs/adr/0036-ordered-pessimistic-row-locks.md).
 
 A CommandService executes writes on the transaction supplied via the `ctx` (it never opens its own —
 the Usecase owns the boundary, nested under `idempotency.Run`) and does **not** emit outbox events
@@ -301,13 +296,8 @@ Each Repository / QueryService test verifies:
 
 A CommandService test additionally verifies:
 
-<!-- sample-api:replace-begin -->
-- the atomic write effect on every touched table (e.g. stock decremented, purchase / detail rows
-  inserted, `status_id` resolved from a business code) via post-write `SELECT`
-<!-- sample-api:replace-with -->
-<!-- = - the atomic write effect on every touched table (including any id resolved from a business code) -->
-<!-- =   via post-write `SELECT` -->
-<!-- sample-api:replace-end -->
+- the atomic write effect on every touched table (including any id resolved from a business code)
+  via post-write `SELECT`
 - the fail-closed guard (e.g. defensive `WHERE quantity >= :qty` → 0 rows → `ErrConflict`) using a
   stale lock value so the domain check passes but the DB predicate rejects
 - constraint-violation normalization (`pgerror.NormalizeError`: FK `23503` → `ErrInvalidArgument`,
@@ -324,26 +314,10 @@ call site is error plumbing, and per
 [`testing-conventions.md` §9](../../../docs/testing-conventions.md) it is recorded here rather
 than covered with a contrived test.
 
-<!-- sample-api:replace-begin -->
 |File|Function|Uncovered branch|Why unreachable|
 |---|---|---|---|
-|`repository/product/product_repository.go`|`Create`|`safecast.IntToInt32(p.Quantity())` error|`product` validates `quantity` into `[0, math.MaxInt32]`|
-|`repository/product/product_repository.go`|`Create`|`safecast.IntPtrToInt32Ptr(p.StockWarningThreshold())` error|`product` validates the threshold into `[0, math.MaxInt32]`|
-|`repository/product/product_repository.go`|`Update`|`safecast.IntToInt32(p.Quantity())` error|同上|
-|`repository/product/product_repository.go`|`Update`|`safecast.IntPtrToInt32Ptr(p.StockWarningThreshold())` error|同上|
-|`repository/product/product_repository.go`|`UpdateStock`|`safecast.IntToInt32(p.Quantity())` error|同上|
-|`repository/product/product_repository.go`|`insertImages`|`safecast.IntToInt16(img.SortKey())` error|`product` validates `sortKey` into `[1, math.MaxInt16]`|
-|`repository/product/product_repository.go`|`syncImages`|`safecast.IntToInt16(img.SortKey())` error|同上|
-<!-- sample-api:replace-with -->
-<!-- = |File|Function|Uncovered branch|Why unreachable| -->
-<!-- = |---|---|---|---| -->
-<!-- = |(none recorded yet)|||| -->
-<!-- sample-api:replace-end -->
+|(none recorded yet)||||
 
 A `version` conversion at such a call site is **not** exempt: the domain only requires
 `version >= 1`, so an out-of-range version is reachable and is covered by a test. The same applies
-<!-- sample-api:replace-begin -->
-to the purchase `statusCode` / detail-quantity conversions.
-<!-- sample-api:replace-with -->
-<!-- = to any other conversion whose domain type admits a narrower range than the column. -->
-<!-- sample-api:replace-end -->
+to any other conversion whose domain type admits a narrower range than the column.

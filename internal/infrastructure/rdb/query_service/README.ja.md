@@ -44,9 +44,6 @@ QS が返すのは **Aggregate の完全な再構成ではなく、ユースケ�
 >      目的: どの表からどの表への JOIN かが見えないと、例外の範囲が伝わらない。
 >      意義: 効くのは「参照マスタであること」で、JOIN の向きや表の数ではない。
 >      書き方: 集約の表 → 参照マスタの表、を矢印 1 本で示す。 -->
-> <!-- sample-api:begin -->
-> （サンプルでの例は `purchases` → `purchase_statuses`）
-> <!-- sample-api:end -->
 > 読み取りを QS へ動かすのは、*独立した* Aggregate をまたぐことや派生した射影であって、単に Entity 以外を
 > 返すことではありません。`docs/rules.md` の「Repository / QueryService Rules」節を参照してください。
 

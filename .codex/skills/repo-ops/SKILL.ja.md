@@ -21,7 +21,6 @@
 | `make slot-acquire` 後にテスト・マイグレーションが別 DB を見る | §5 |
 | ブランチ切り替え直後に統合テストが落ちる | §5 |
 | pre-push の `secret-scan` が自分の追加していない秘密を検出する | §6 |
-| `sample-removal-check` が CI で落ちる | §21 <!-- sample-api:line --> |
 | 触っていないのに `env/.env` が dirty | §7 |
 | ローカル golangci-lint が CI と食い違う / `golangci-lint: not found` | §8 |
 | `commitlint: not found` / `orval: not found` / ツールが古い | §9 |
@@ -376,18 +375,6 @@ backend ごとに決めており、影響範囲からではありません。定
 `verifyLocks` からの違反です。`make py-lock` を回して両方をコミットしてください。ピンと lockfile は
 1 つの変更です。
 
-<!-- sample-api:begin -->
-## 21. `sample-removal-check` が CI で落ちる
-
-`scripts/setup/remove-sample-api/sample-manifest.ts` は、テンプレート利用者がサンプル API を剥がすときに `make setup-remove-sample-api` が削除する全パスを宣言している。サンプルドメイン（user / product / purchase / …）配下でファイルを追加・移動・改名したのに登録しないと、削除後に参照が宙に浮く。CI はこれを、実際に削除を実行してから build / lint / test することで検出する。ローカルでは何も落ちない＝自分で走らせない限り CI 専用で見つかる。 <!-- skill-lint-ignore -->
-
-サンプルドメインにファイルを足したら（handler / usecase / domain / repository / DML / migration / seed / spec / 統合テスト / サンプル専用の生成物）、該当ドメインのエントリにパスを追記する。共有ファイルに混ざった行はパスではなく `sample-api` マーカーコメントで囲って扱う。削除せずに影響だけ見るには:
-
-```bash
-DRY_RUN=1 make setup-remove-sample-api
-```
-
-<!-- sample-api:end -->
 ## 制約
 
 - ✅ 知識提供（read-only）: 正確なコマンドを提示し、実行はユーザーに依頼されたときだけ行う。

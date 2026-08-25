@@ -285,7 +285,6 @@ patterns:
     scope: core
     status: interpreted
     verdict: 差異なし
-    # sample-api:replace-begin
     gap: >-
       ステートレス性と Evans の基準（Entity/VO の自然な責務として収まらない操作か）が明記され、
       Domain Service と Usecase の選択基準も「導出か写像か」として定義された。並列列挙による矛盾は解消。
@@ -295,21 +294,7 @@ patterns:
       適用範囲の差異も解消した。以前は入場条件 1 が「集約に跨ること」を必須としており、Evans の基準
       （Entity/VO の自然な責務に収まらない操作か。集約跨ぎを定義要件とするのは Vernon 以降の後発の整理）
       より狭い限定を宣言なしに置いていた。入場条件から集約数の要件を外して 2 条件へ改め、置き場は
-      集約数に関わらず internal/domain/service/<name>/ の 1 箇所に統一した。単一集約に閉じた占有者
-      （service/dispatch。GroupForDispatch は集合についての問いでどの Purchase 1 件のメソッドにもなり得ない）
-      を実装し、規約と実体の両方で範囲が Evans の基準に一致することを示している。
-    # sample-api:replace-with
-    # = gap: >-
-    # =   ステートレス性と Evans の基準（Entity/VO の自然な責務として収まらない操作か）が明記され、
-    # =   Domain Service と Usecase の選択基準も「導出か写像か」として定義された。並列列挙による矛盾は解消。
-    # =   配置は集約パッケージ配下ではなく internal/domain/service/<name>/ と規定し直したため、他集約 import を
-    # =   禁じる depguard 規則との構造的矛盾も解消。冒頭 Role in this project 節が旧配置のまま残っていた
-    # =   食い違いも解消済み。
-    # =   適用範囲の差異も解消した。以前は入場条件 1 が「集約に跨ること」を必須としており、Evans の基準
-    # =   （Entity/VO の自然な責務に収まらない操作か。集約跨ぎを定義要件とするのは Vernon 以降の後発の整理）
-    # =   より狭い限定を宣言なしに置いていた。入場条件から集約数の要件を外して 2 条件へ改め、置き場は
-    # =   集約数に関わらず internal/domain/service/<name>/ の 1 箇所に統一した。
-    # sample-api:replace-end
+      集約数に関わらず internal/domain/service/<name>/ の 1 箇所に統一した。
     interpreted_by:
       - kind: readme
         path: internal/domain/README.md
@@ -841,11 +826,7 @@ patterns:
     interpreted_by:
       - kind: readme
         path: internal/usecase/boundary/README.md
-        # sample-api:replace-begin
-        section: "exchangerate / objectstorage"
-        # sample-api:replace-with
-        # = section: "objectstorage"
-        # sample-api:replace-end
+        section: "objectstorage"
       - kind: readme
         path: internal/infrastructure/README.md
         section: "Error Handling"

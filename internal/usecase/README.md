@@ -670,19 +670,10 @@ Observability layer hides SDK details.
 
 ## Implementation Example
 
-<!-- sample-api:replace-begin -->
-> The example below uses a sample `<aggregate>` (`user`, with a related `prefecture`)
-> **only to illustrate the permanent patterns** — span start/end via the tracer,
-> `clock.Now()` for time, `txm.Do` for the transaction boundary, and Domain → DTO
-> conversion. These sample aggregates are removed by `make setup-remove-sample-api`,
-> so read `user` / `prefecture` as stand-ins for your own aggregate; the load-bearing
-> content is the patterns, not the concrete names.
-<!-- sample-api:replace-with -->
-<!-- = > The example below uses one `<aggregate>` with a related aggregate **only to illustrate the -->
-<!-- = > permanent patterns** — span start/end via the tracer, `clock.Now()` for time, `txm.Do` for the -->
-<!-- = > transaction boundary, and Domain → DTO conversion. Read the concrete names as stand-ins for your -->
-<!-- = > own aggregate; the load-bearing content is the patterns, not the names. -->
-<!-- sample-api:replace-end -->
+> The example below uses one `<aggregate>` with a related aggregate **only to illustrate the
+> permanent patterns** — span start/end via the tracer, `clock.Now()` for time, `txm.Do` for the
+> transaction boundary, and Domain → DTO conversion. Read the concrete names as stand-ins for your
+> own aggregate; the load-bearing content is the patterns, not the names.
 
 ```go
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE

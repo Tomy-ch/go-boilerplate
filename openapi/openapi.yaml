@@ -6,21 +6,11 @@ info:
     name: TomyC258460
     url: https://x.com/TomyC258460
   version: 2.2.0
-  # sample-api:replace-begin
   description: |
-    Reference specification for the sample API (users, products, purchases). It exercises every layer
-    of the Onion Architecture end to end: cursor and offset pagination, creation and partial update,
-    soft delete, idempotency keys, and role-based authorization.
-
     Handlers (oapi-codegen) and the published reference documentation are both generated from this
     file, so every endpoint change starts here.
-  # sample-api:replace-with
-  # = description: |
-  # =   Handlers (oapi-codegen) and the published reference documentation are both generated from this
-  # =   file, so every endpoint change starts here.
-  # =   Replace this text with a description of the API you are shipping: it is published to your API
-  # =   consumers exactly as written.
-  # sample-api:replace-end
+    Replace this text with a description of the API you are shipping: it is published to your API
+    consumers exactly as written.
   license:
     name: MIT License
     url: https://opensource.org/licenses/MIT
@@ -48,62 +38,6 @@ tags:
     description: アプリケーションのバージョン情報。
   - name: metrics
     description: Prometheus メトリクス。
-  # sample-api:begin
-  - name: v1/users
-    description: ユーザーリソース（一覧取得・作成）。
-  - name: v1/users/detail
-    description: 単一ユーザー（取得・更新・部分更新・削除）。
-  - name: v1/users/feed
-    description: ユーザーフィード（cursor ページネーション）。
-  - name: v1/users/search
-    description: ユーザー検索（キーワード）。
-  - name: v1/users/me/purchases
-    description: 認証主体自身の購入集計（認証必須・自分絞り込み / query_service サンプル）。
-  - name: v1/users/me/roles
-    description: 認証主体自身のロール（認証必須・自分絞り込み / クライアントの楽観的な権限分岐用）。
-  - name: v1/prefectures
-    description: 都道府県マスタ一覧（認証不要の参照系サンプル）。
-  - name: v1/products
-    description: 商品一覧（認証不要・cursor ページネーション + フィルタ + キーワード検索 + 並び替え）。
-  - name: v1/products/count
-    description: 公開商品検索の一致件数（認証不要・商品一覧と同じ検索条件）。
-  - name: v1/products/statuses
-    description: 商品ステータスマスタ一覧（認証不要の参照系サンプル）。
-  - name: v1/products/categories
-    description: 商品カテゴリマスタ一覧（認証不要の参照系サンプル）。
-  - name: v1/products/detail
-    description: 単一商品（認証不要・公開商品の詳細取得。未存在・非公開は 404 で存在を秘匿）。
-  - name: v1/products/ranking
-    description: 商品売上ランキング（認証不要・購入明細の集計。販売数量と売上金額の 2 軸を別の口で提供 / query_service サンプル）。
-  - name: v1/products/low-stock
-    description: 在庫僅少商品一覧（admin のみ・在庫警告閾値以下の top-N・非 admin は 403）。
-  - name: v1/exchange-rates
-    description: 為替レート換算（外部 gateway 利用サンプル）。
-  - name: v1/addresses
-    description: 郵便番号→住所補完（外部 gateway 利用サンプル・degrade）。
-  - name: v1/purchases
-    description: 購入作成（CommandService 正例・原子性/売り越し禁止・冪等）。
-  - name: v1/purchases/shippable
-    description: 発送待ち購入のまとめ発送一覧（admin のみ・単一集約 Domain Service サンプル・非 admin は 403）。
-  - name: v1/purchases/detail
-    description: 単一購入の詳細取得（本人のみ・集約跨ぎ QueryService・明細に商品名/未存在は 404 で秘匿）。
-  - name: v1/purchases/detail/cancel
-    description: 購入のキャンセル（本人のみ・状態機械/不正遷移 409・在庫復元）。
-  - name: v1/purchases/detail/pay
-    description: 購入の支払い（本人のみ・状態機械/不正遷移 409・擬似決済）。
-  - name: v1/purchases/detail/ship
-    description: 購入の発送（admin のみ・状態機械/不正遷移 409・非 admin は 403）。
-  - name: v1/purchases/detail/deliver
-    description: 購入の配達完了（admin のみ・状態機械/不正遷移 409・非 admin は 403）。
-  - name: v1/dashboard
-    description: admin ダッシュボードの横断集計（admin のみ・backend 合成/1画面1API・非 admin は 403）。
-  - name: v1/carts
-    description: 自分のカート（任意認証サンプル・ゲストと認証済みの双方が主体になれる / 明細ごとの再評価）。
-  - name: v1/carts/items
-    description: カート明細の設定と削除（任意認証・自然キー upsert による冪等サンプル・Idempotency-Key を要さない）。
-  - name: v1/carts/merge
-    description: ログイン時のカート引き継ぎ（認証必須・所有権の遷移サンプル・Idempotency-Key を採る）。
-  # sample-api:end
   - name: internal/types/error-response
     description: （内部用）型生成専用のタグ。実エンドポイントではない。
 security: []
@@ -120,70 +54,6 @@ paths:
     $ref: './paths/version.yaml'
   /_internal/types/error-response:
     $ref: './paths/internal/types/error_response.yaml'
-  # sample-api:begin
-  /v1/users:
-    $ref: './paths/v1/users.yaml'
-  /v1/users/{userId}:
-    $ref: './paths/v1/users/userId.yaml'
-  /v1/users/me:
-    $ref: './paths/v1/users/me.yaml'
-  /v1/users/me/purchases/summary:
-    $ref: './paths/v1/users/me/purchases/summary.yaml'
-  /v1/users/me/roles:
-    $ref: './paths/v1/users/me/roles.yaml'
-  /v1/users/search:
-    $ref: './paths/v1/users/search.yaml'
-  /v1/users/feed:
-    $ref: './paths/v1/users/feed.yaml'
-  /v1/prefectures:
-    $ref: './paths/v1/prefectures.yaml'
-  /v1/products/statuses:
-    $ref: './paths/v1/products/statuses.yaml'
-  /v1/products/categories:
-    $ref: './paths/v1/products/categories.yaml'
-  /v1/products:
-    $ref: './paths/v1/products.yaml'
-  /v1/products/count:
-    $ref: './paths/v1/products/count.yaml'
-  /v1/products/{productId}:
-    $ref: './paths/v1/products/productId.yaml'
-  /v1/products/{productId}/stock:
-    $ref: './paths/v1/products/productId/stock.yaml'
-  /v1/products/ranking/quantity:
-    $ref: './paths/v1/products/ranking/quantity.yaml'
-  /v1/products/ranking/amount:
-    $ref: './paths/v1/products/ranking/amount.yaml'
-  /v1/products/low-stock:
-    $ref: './paths/v1/products/low-stock.yaml'
-  /v1/products/images:
-    $ref: './paths/v1/products/images.yaml'
-  /v1/exchange-rates:
-    $ref: './paths/v1/exchange-rates.yaml'
-  /v1/addresses:
-    $ref: './paths/v1/addresses.yaml'
-  /v1/purchases:
-    $ref: './paths/v1/purchases.yaml'
-  /v1/purchases/shippable:
-    $ref: './paths/v1/purchases/shippable.yaml'
-  /v1/purchases/{purchaseCode}:
-    $ref: './paths/v1/purchases/purchaseCode.yaml'
-  /v1/purchases/{purchaseCode}/cancel:
-    $ref: './paths/v1/purchases/purchaseCode/cancel.yaml'
-  /v1/purchases/{purchaseCode}/pay:
-    $ref: './paths/v1/purchases/purchaseCode/pay.yaml'
-  /v1/purchases/{purchaseCode}/ship:
-    $ref: './paths/v1/purchases/purchaseCode/ship.yaml'
-  /v1/purchases/{purchaseCode}/deliver:
-    $ref: './paths/v1/purchases/purchaseCode/deliver.yaml'
-  /v1/dashboard/summary:
-    $ref: './paths/v1/dashboard/summary.yaml'
-  /v1/carts/me:
-    $ref: './paths/v1/carts/me.yaml'
-  /v1/carts/me/items/{productId}:
-    $ref: './paths/v1/carts/me/items/productId.yaml'
-  /v1/carts/me/merge:
-    $ref: './paths/v1/carts/me/merge.yaml'
-  # sample-api:end
 components:
   parameters:
     PageParam:
@@ -196,31 +66,7 @@ components:
       $ref: './components/parameters/pagination/CursorFirstParam.yaml'
     IdempotencyKeyParam:
       $ref: './components/parameters/idempotency/IdempotencyKeyParam.yaml'
-    # sample-api:begin
-    KeywordParam:
-      $ref: './components/parameters/search/KeywordParam.yaml'
-    ActiveParam:
-      $ref: './components/parameters/search/ActiveParam.yaml'
-    UserIdParam:
-      $ref: './components/parameters/user/UserIdParam.yaml'
-    CategoryIdParam:
-      $ref: './components/parameters/product/CategoryIdParam.yaml'
-    StatusIdParam:
-      $ref: './components/parameters/product/StatusIdParam.yaml'
-    SortParam:
-      $ref: './components/parameters/product/SortParam.yaml'
-    PostalCodeParam:
-      $ref: './components/parameters/address/PostalCodeParam.yaml'
-    DisplayCurrencyParam:
-      $ref: './components/parameters/purchase/DisplayCurrencyParam.yaml'
-    CartSessionParam:
-      $ref: './components/parameters/cart/CartSessionParam.yaml'
-    # sample-api:end
   securitySchemes:
-    # sample-api:begin
-    BearerAuth:
-      $ref: './components/schemas/BearerAuth.yaml'
-    # sample-api:end
     BasicAuth:
       $ref: './components/schemas/BasicAuth.yaml'
   schemas:
@@ -232,105 +78,3 @@ components:
       $ref: './components/responses/health-check/ReadyResponse.yaml'
     ResponseVersion:
       $ref: './components/responses/version/VersionResponse.yaml'
-    # sample-api:begin
-    UserBaseInputRequest:
-      $ref: './components/schemas/UserBaseInputRequest.yaml'
-    UserResponse:
-      $ref: './components/schemas/UserResponse.yaml'
-    UsersSearchResponse:
-      $ref: './components/responses/users/UsersSearchResponse.yaml'
-    UsersFeedResponse:
-      $ref: './components/responses/users/UsersFeedResponse.yaml'
-    CursorPaginationMetadataResponse:
-      $ref: './components/schemas/CursorPaginationMetadataResponse.yaml'
-    UserSearchResponseItem:
-      $ref: './components/responses/users/UsersSearchResponseItem.yaml'
-    ResponseV1User:
-      $ref: './components/schemas/UserResponse.yaml'
-    ResponseV1Users:
-      $ref: './components/responses/users/UsersResponse.yaml'
-    RequestPostV1Users:
-      $ref: './components/requests/users/UsersPostRequest.yaml'
-    RequestPutV1User:
-      $ref: './components/requests/users/UserPutRequest.yaml'
-    RequestPatchV1User:
-      $ref: './components/requests/users/UserPatchRequest.yaml'
-    ResponseV1ExchangeRate:
-      $ref: './components/responses/exchange-rates/ExchangeRateResponse.yaml'
-    PrefectureResponse:
-      $ref: './components/schemas/PrefectureResponse.yaml'
-    ResponseV1Prefectures:
-      $ref: './components/responses/prefecture/PrefecturesResponse.yaml'
-    ProductStatusRef:
-      $ref: './components/schemas/ProductStatusRef.yaml'
-    ProductStatusResponse:
-      $ref: './components/schemas/ProductStatusResponse.yaml'
-    ResponseV1ProductsStatuses:
-      $ref: './components/responses/products/status/ProductsStatusesResponse.yaml'
-    ProductCategoryRef:
-      $ref: './components/schemas/ProductCategoryRef.yaml'
-    ProductCategoryResponse:
-      $ref: './components/schemas/ProductCategoryResponse.yaml'
-    ResponseV1ProductsCategories:
-      $ref: './components/responses/products/category/ProductsCategoriesResponse.yaml'
-    ProductResponse:
-      $ref: './components/schemas/ProductResponse.yaml'
-    ProductListResponse:
-      $ref: './components/responses/products/ProductListResponse.yaml'
-    ProductCountResponse:
-      $ref: './components/responses/products/ProductCountResponse.yaml'
-    ProductQuantityRankingItem:
-      $ref: './components/schemas/products/ProductQuantityRankingItem.yaml'
-    ProductAmountRankingItem:
-      $ref: './components/schemas/products/ProductAmountRankingItem.yaml'
-    ProductQuantityRankingResponse:
-      $ref: './components/responses/products/ranking/ProductQuantityRankingResponse.yaml'
-    ProductAmountRankingResponse:
-      $ref: './components/responses/products/ranking/ProductAmountRankingResponse.yaml'
-    ProductLowStockResponse:
-      $ref: './components/responses/products/lowstock/ProductLowStockResponse.yaml'
-    ProductImageResponse:
-      $ref: './components/schemas/ProductImageResponse.yaml'
-    RequestPostV1ProductImages:
-      $ref: './components/requests/products/ProductImagePostRequest.yaml'
-    RequestPostV1Products:
-      $ref: './components/requests/products/ProductsPostRequest.yaml'
-    AddressCandidate:
-      $ref: './components/schemas/addresses/AddressCandidate.yaml'
-    ResponseV1Addresses:
-      $ref: './components/responses/addresses/AddressCandidatesResponse.yaml'
-    PurchaseResponse:
-      $ref: './components/schemas/PurchaseResponse.yaml'
-    PurchaseStatusRef:
-      $ref: './components/schemas/PurchaseStatusRef.yaml'
-    PurchaseSummaryResponse:
-      $ref: './components/schemas/PurchaseSummaryResponse.yaml'
-    PurchaseListResponse:
-      $ref: './components/responses/purchases/PurchaseListResponse.yaml'
-    PurchaseDetailResponse:
-      $ref: './components/schemas/PurchaseDetailResponse.yaml'
-    PurchaseGetDetailResponse:
-      $ref: './components/schemas/PurchaseGetDetailResponse.yaml'
-    PurchaseDetailItemResponse:
-      $ref: './components/schemas/PurchaseDetailItemResponse.yaml'
-    PurchaseDetailInput:
-      $ref: './components/schemas/PurchaseDetailInput.yaml'
-    RequestPostV1Purchases:
-      $ref: './components/requests/purchases/PurchasesPostRequest.yaml'
-    PurchaseCancelResponse:
-      $ref: './components/schemas/PurchaseCancelResponse.yaml'
-    PurchaseStatusBreakdownResponse:
-      $ref: './components/schemas/PurchaseStatusBreakdownResponse.yaml'
-    PurchaseAggregateResponse:
-      $ref: './components/responses/purchases/PurchaseAggregateResponse.yaml'
-    DashboardPurchaseStatusCountResponse:
-      $ref: './components/schemas/dashboard/DashboardPurchaseStatusCountResponse.yaml'
-    DashboardSummaryResponse:
-      $ref: './components/responses/dashboard/DashboardSummaryResponse.yaml'
-    CartItemIssue:
-      $ref: './components/schemas/carts/CartItemIssue.yaml'
-    CartItemResponse:
-      $ref: './components/schemas/carts/CartItemResponse.yaml'
-    CartResponse:
-      $ref: './components/responses/carts/CartResponse.yaml'
-    # sample-api:end

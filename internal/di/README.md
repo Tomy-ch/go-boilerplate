@@ -213,32 +213,17 @@ are opt-in through the Optional seams above.
   registered via `provideWorkers`, and its depth/DLQ metrics only when a
   `queuemetrics.Target` is registered via `provideQueueStatsTargets`. The
   default worker graph runs with no adapter.
-<!-- sample-api:replace-begin -->
 - **Environment-gated stubs** — `authzModule` and `core.AuthnModule` select an
   implementation per environment and **fail closed** (return an error) for any
   environment their `switch` does not name, so an unconfigured environment
   cannot start with a permissive default. Which environments are named differs
   between the two, and adding or removing an authorization implementation moves
   the boundary: `provideAuthorizer` currently wires the allow-all authorizer for
-  CI / test and the `user_roles` authorizer for local through production, and
-  dropping that implementation leaves local / CI / test on allow-all with every
-  production-like environment fail-closed until a real RBAC / policy adapter is
-  wired. `core.provideAuthenticator` is gated independently: CI / test get the
-  stub, local / development get the JWKS authenticator, and staging / production
-  are fail-closed. Read the `switch` rather than assuming a shared boundary.
-<!-- sample-api:replace-with -->
-<!-- = - **Environment-gated stubs** — `authzModule` and `core.AuthnModule` select an -->
-<!-- =   implementation per environment and **fail closed** (return an error) for any -->
-<!-- =   environment their `switch` does not name, so an unconfigured environment -->
-<!-- =   cannot start with a permissive default. Which environments are named differs -->
-<!-- =   between the two, and adding or removing an authorization implementation moves -->
-<!-- =   the boundary: `provideAuthorizer` currently wires the allow-all authorizer for -->
-<!-- =   local / CI / test and leaves every production-like environment fail-closed -->
-<!-- =   until a real RBAC / policy adapter is wired. `core.provideAuthenticator` is -->
-<!-- =   gated independently: CI / test get the stub, local / development get the JWKS -->
-<!-- =   authenticator, and staging / production are fail-closed. Read the `switch` -->
-<!-- =   rather than assuming a shared boundary. -->
-<!-- sample-api:replace-end -->
+  local / CI / test and leaves every production-like environment fail-closed
+  until a real RBAC / policy adapter is wired. `core.provideAuthenticator` is
+  gated independently: CI / test get the stub, local / development get the JWKS
+  authenticator, and staging / production are fail-closed. Read the `switch`
+  rather than assuming a shared boundary.
 - While this repository is distributed as a boilerplate, which environments the authorization gate names is additionally moved by the sample-API removal; see [`docs/get-started/boilerplate-only-conventions.md`](../../docs/get-started/boilerplate-only-conventions.md). It does not apply to a project built from it. <!-- boilerplate-only:line -->
 
 ## Do / Don't

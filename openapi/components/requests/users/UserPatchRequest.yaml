@@ -1,3 +1,0 @@
-description: ユーザー情報の部分更新
-allOf:
-  - $ref: '../../schemas/UserBaseInputRequest.yaml'

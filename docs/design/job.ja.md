@@ -108,9 +108,6 @@ flowchart TD
     subgraph ctrlL["internal/controller/job  ＝ runner ＋ state"]
         RUN["runner.go: Runner, dispatch, Names, 同名ガード"]
         STATE["state.go: State, mutex 保護の name/args/done"]
-        %% sample-api:begin
-        UC["usercount/: サンプル Job (sample-api)"]
-        %% sample-api:end
         GC["idempotencygc/: サンプル Job (冪等性 GC)"]
     end
     subgraph seamL["internal/usecase/boundary/job  ＝ seam"]
@@ -133,25 +130,15 @@ flowchart TD
     DIR --> RUN
     RUN --> PORT
     STATE --> PORT
-    %% sample-api:begin
-    UC --> PORT
-    %% sample-api:end
     GC --> PORT
     DIH --> SD
     DIH --> STATE
     RUN --> LOG
-    %% sample-api:begin
-    UC --> OTEL
-    %% sample-api:end
     GC --> OTEL
     DIH --> CFG
 
     classDef done fill:#e6ffed,stroke:#2da44e;
-    %% sample-api:replace-begin
-    class CMD,CLI,DIJ,DIR,DIH,DIM,RUN,STATE,UC,GC,PORT,MOCK,SD,CFG,LOG,OTEL done;
-    %% sample-api:replace-with
-    %% = class CMD,CLI,DIJ,DIR,DIH,DIM,RUN,STATE,GC,PORT,MOCK,SD,CFG,LOG,OTEL done;
-    %% sample-api:replace-end
+    class CMD,CLI,DIJ,DIR,DIH,DIM,RUN,STATE,GC,PORT,MOCK,SD,CFG,LOG,OTEL done;
 ```
 
 > 緑＝本プロジェクトの実装済み。依存方向は常に内向き（`controller→usecase/boundary`）。runner/state は業務ロジックも infra import も持たず、ジョブはデータへ usecase 層経由でのみ到達する。
@@ -185,11 +172,7 @@ sequenceDiagram
 
 ## 4. integrator が実装する箇所（本プロジェクトが用意しない部分）
 
-<!-- sample-api:replace-begin -->
-本プロジェクトは **runner・state・lifecycle hook・DI 配線・2 つの参考ジョブ**（`usercount`・`idempotencygc`）を提供する。ジョブを追加するには次を用意する（ジョブは明示登録・自動検出なし）。
-<!-- sample-api:replace-with -->
-<!-- = 本プロジェクトは **runner・state・lifecycle hook・DI 配線・参考ジョブ**（`idempotencygc`）を提供する。ジョブを追加するには次を用意する（ジョブは明示登録・自動検出なし）。 -->
-<!-- sample-api:replace-end -->
+本プロジェクトは **runner・state・lifecycle hook・DI 配線・参考ジョブ**（`idempotencygc`）を提供する。ジョブを追加するには次を用意する（ジョブは明示登録・自動検出なし）。
 
 ```mermaid
 flowchart LR
@@ -203,13 +186,8 @@ flowchart LR
 
 | # | 必要な実装 | 置き場（推奨） | 参考 |
 | --- | --- | --- | --- |
-<!-- sample-api:replace-begin -->
-| ① | 業務 `Job`：`Name()`（kebab-case）＋ `Execute(ctx, args)`（引数解釈・usecase 呼び出し・ログ） | `internal/controller/job/<name>/` | `usercount` / `idempotencygc` |
-| ② | `New(...) job.Job` DI コンストラクタ（logging / tracer factory / usecase を受け取る） | ①と同じファイル | `usercount.New` |
-<!-- sample-api:replace-with -->
-<!-- = | ① | 業務 `Job`：`Name()`（kebab-case）＋ `Execute(ctx, args)`（引数解釈・usecase 呼び出し・ログ） | `internal/controller/job/<name>/` | `idempotencygc` | -->
-<!-- = | ② | `New(...) job.Job` DI コンストラクタ（logging / tracer factory / usecase を受け取る） | ①と同じファイル | `idempotencygc.New` | -->
-<!-- sample-api:replace-end -->
+| ① | 業務 `Job`：`Name()`（kebab-case）＋ `Execute(ctx, args)`（引数解釈・usecase 呼び出し・ログ） | `internal/controller/job/<name>/` | `idempotencygc` |
+| ② | `New(...) job.Job` DI コンストラクタ（logging / tracer factory / usecase を受け取る） | ①と同じファイル | `idempotencygc.New` |
 | ③ | `JobModule()` の `provideJobs(...)` に コンストラクタ追加 | `internal/di/module/job.go` | `provideWorkers` と同形 |
 | ④ | ジョブが必要とする追加依存の `fx.Provide`（usecase は提供済み） | `internal/di/module/` | 既存の usecase provider |
 

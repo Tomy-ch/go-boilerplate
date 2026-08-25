@@ -12,16 +12,8 @@ Read-only SQL for search and list optimization, bypassing the domain layer.
 
 ## Predicates That Mirror a Domain Invariant
 
-<!-- sample-api:replace-begin -->
-Some predicates restate, in SQL, a condition an aggregate already guarantees. `canceled_at IS NULL`
-is the negation of `Purchase.IsCanceled()` (`status == StatusCanceled`), and `published_at IS NOT NULL`
-is `product.IsPublished()`. The two forms stay equivalent because the aggregate validates that
-correspondence when it is reconstructed — `(status == StatusCanceled) != (canceledAt != nil)` in
-`internal/domain/purchase`.
-<!-- sample-api:replace-with -->
-<!-- = Some predicates restate, in SQL, a condition an aggregate already guarantees. The two forms stay -->
-<!-- = equivalent because the aggregate validates that correspondence when it is reconstructed. -->
-<!-- sample-api:replace-end -->
+Some predicates restate, in SQL, a condition an aggregate already guarantees. The two forms stay
+equivalent because the aggregate validates that correspondence when it is reconstructed.
 
 <!-- 撤去後にこの箇所へ自分の例を置くための指針。
      目的: 具体の対応が 1 組も無いと、どの述語がどのメソッドを写したものかを読み手が判別できない。

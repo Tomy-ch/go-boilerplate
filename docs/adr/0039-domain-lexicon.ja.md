@@ -15,18 +15,11 @@ accepted
 
 ## 背景
 
-<!-- sample-api:replace-begin -->
-`money.Price`（[ADR-0038](0038-two-scale-quantity-model.ja.md)）の導入により、レイヤールールの欠落が表面化した。`Price` はビジネス上の意味を持つ値オブジェクト（非負性、最小単位への換算）であり、**複数の集約**で共有される。
-<!-- sample-api:replace-with -->
-<!-- = 決済スケールの値オブジェクト（[ADR-0038](0038-two-scale-quantity-model.ja.md)）の導入により、レイヤールールの欠落が表面化した。それ自身がビジネス上の意味を持ち、**複数の集約**で共有される。 -->
-<!-- sample-api:replace-end -->
+決済スケールの値オブジェクト（[ADR-0038](0038-two-scale-quantity-model.ja.md)）の導入により、レイヤールールの欠落が表面化した。それ自身がビジネス上の意味を持ち、**複数の集約**で共有される。
 <!-- 撤去後にこの箇所へ自分の例を置くための指針。
      目的: 「複数の集約から使われる」が抽象のままだと、入場基準を満たす実例が示せない。
      意義: 効くのは利用者が 2 つ以上あることで、型そのものの複雑さではない。
      書き方: その値オブジェクトを使う集約側のフィールドを 2 つ以上挙げる。 -->
-<!-- sample-api:begin -->
-サンプルでの利用者は `product.price` と `purchase_details.unit_price` / `purchases.*_amount`。
-<!-- sample-api:end -->
 したがって単一の集約パッケージに置くことはできず（他の集約がそこへ手を伸ばすか、VO を重複させることになる）、`pkg/` にも置けない（`pkg/` はビジネスロジックを禁じ、コンテキスト非依存を保たなければならない）。
 
 既存のルール——「ドメイン層に許可された `internal/` 依存は `internal/apperror` のみ」——は、*ドメイン集約をまたいで*共有される値オブジェクトを想定していなかった。文字どおり読めば自然な配置を禁じてしまう。加えて depguard のルールは domain→domain について `lax` だったため、*任意の*集約横断 import（ある集約が別の集約へ直接手を伸ばす形）をサイレントに許してしまう、潜在的な結合の穴があった。こうした共有値オブジェクトをどこに置き、境界をどう強制するかの決定が必要である。
@@ -79,11 +72,7 @@ accepted
 
 ## 補足
 
-<!-- sample-api:replace-begin -->
-- lexicon パッケージ: `internal/domain/lexicon/money`（`Price`）。
-<!-- sample-api:replace-with -->
-<!-- = - lexicon パッケージ: まだ受け入れたものは無い。`internal/domain/lexicon/` は受け入れバーだけを持つ。 -->
-<!-- sample-api:replace-end -->
+- lexicon パッケージ: まだ受け入れたものは無い。`internal/domain/lexicon/` は受け入れバーだけを持つ。
 - 強制: `.golangci-full.yaml` の depguard `maintain_a_sound_domain`（`internal/domain/` を deny、`internal/domain/lexicon` を allow）。
 - 受け入れバー: `internal/domain/lexicon/README.md`、レイヤールール: `docs/rules.md`。
 - これが可能にする 2 スケール数量モデル: [ADR-0038](0038-two-scale-quantity-model.ja.md)。

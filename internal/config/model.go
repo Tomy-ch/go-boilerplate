@@ -189,9 +189,6 @@ type EndpointConfig struct {
 	outbox        string
 	outboxQueue   string
 	consumerQueue string
-	// sample-api:begin
-	exchangeRate string
-	// sample-api:end
 }
 
 // NewOperatingSystemConfig は、OSの設定を返します。
@@ -592,10 +589,3 @@ func (e *EndpointConfig) OutboxQueue() string { return e.outboxQueue }
 
 // ConsumerQueue は、consume 端の SQS 互換エンドポイントを返します。空なら SDK 既定の解決に委ねます。
 func (e *EndpointConfig) ConsumerQueue() string { return e.consumerQueue }
-
-// sample-api:begin
-
-// ExchangeRate は、外部為替レートサービスのベース URL を返します。空ならこの機能を使いません。
-func (e *EndpointConfig) ExchangeRate() string { return e.exchangeRate }
-
-// sample-api:end

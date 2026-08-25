@@ -9,33 +9,18 @@
 - `schemas/` — 小さく再利用できる部品（`UserResponse.yaml`, `PaginationMetadataResponse.yaml`, `CursorPaginationMetadataResponse.yaml`, `ErrorResponse.yaml`）。
 - `responses/` — **エンドポイント固有**の形。多くはそれらを `allOf` で合成する（例：items 配列 ＋ ページネーションメタ）。
 
-<!-- sample-api:replace-begin -->
 ```yaml
-# responses/users/UsersResponse.yaml
+# responses/<リソース>/<リソース>Response.yaml
 allOf:
   - type: object
-    required: [users]
+    required: [<リソース>]
     properties:
-      users:
+      <リソース>:
         type: array
         items:
-          $ref: '../../schemas/UserResponse.yaml'
+          $ref: '../../schemas/<リソース>Response.yaml'
   - $ref: '../../schemas/PaginationMetadataResponse.yaml'
 ```
-<!-- sample-api:replace-with -->
-<!-- = ```yaml -->
-<!-- = # responses/<リソース>/<リソース>Response.yaml -->
-<!-- = allOf: -->
-<!-- =   - type: object -->
-<!-- =     required: [<リソース>] -->
-<!-- =     properties: -->
-<!-- =       <リソース>: -->
-<!-- =         type: array -->
-<!-- =         items: -->
-<!-- =           $ref: '../../schemas/<リソース>Response.yaml' -->
-<!-- =   - $ref: '../../schemas/PaginationMetadataResponse.yaml' -->
-<!-- = ``` -->
-<!-- sample-api:replace-end -->
 
 ## ディレクトリ内容
 
@@ -45,13 +30,8 @@ allOf:
 
 |要素|規則|例|
 |---|---|---|
-<!-- sample-api:replace-begin -->
-|ディレクトリ|リソース／関心事別に小文字|`users/`, `health-check/`, `version/`|
-|ファイル名|PascalCase ＋ `Response`|`UsersResponse.yaml`, `VersionResponse.yaml`|
-<!-- sample-api:replace-with -->
-<!-- = |ディレクトリ|リソース／関心事別に小文字|`<リソース>/`, `health-check/`, `version/`| -->
-<!-- = |ファイル名|PascalCase ＋ `Response`|`<リソース>Response.yaml`, `VersionResponse.yaml`| -->
-<!-- sample-api:replace-end -->
+|ディレクトリ|リソース／関心事別に小文字|`<リソース>/`, `health-check/`, `version/`|
+|ファイル名|PascalCase ＋ `Response`|`<リソース>Response.yaml`, `VersionResponse.yaml`|
 
 ## ルール
 

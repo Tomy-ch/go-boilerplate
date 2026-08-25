@@ -40,17 +40,14 @@ Domain Repository abstracts "how to persist Aggregates", while Usecase Boundary 
 
 |Package|Interface|Description|Implementation|
 |---|---|---|---|
-|`address`|`Gateway`|Semantic gateway to an external postal-address lookup service (sample of the `<service>.Gateway` pattern)|`internal/infrastructure/webapi/address/`<!-- sample-api:line -->|
 |`auth`|`Authenticator`|Obtain auth info (`Authn`) from token|`internal/infrastructure/auth/`|
 |`authz`|`Authorizer`|Decide whether a subject may perform an action on a resource|`internal/infrastructure/authz/`|
 |`clock`|`Clock`|Retrieve current time|`internal/infrastructure/system/`|
-|`exchangerate`|`Gateway`|Semantic gateway to an external exchange-rate service (sample of the `<service>.Gateway` pattern)|`internal/infrastructure/webapi/exchangerate/`<!-- sample-api:line -->|
 |`idempotency`|`Store`|Idempotency-key persistence boundary (claim / replay / conflict)|`internal/infrastructure/rdb/system_cqrs/idempotency/`|
 |`job`|`Job`, `Runner`, `State`|Job definition, execution, state management|`internal/controller/job/`|
 |`objectstorage`|`Storage`|Substrate-agnostic object-storage boundary (`Put` / `List` / `Delete` objects by key)|`internal/infrastructure/objectstorage/s3/`|
 |`outbox`|`Store`|Transactional outbox table persistence boundary|`internal/infrastructure/rdb/system_cqrs/outbox/`|
 |`publisher`|`Publisher`|Substrate-agnostic outbound message publish boundary|`internal/infrastructure/publisher/`|
-|`token`|`Generator`|Generate unguessable opaque token strings|`internal/infrastructure/token/`<!-- sample-api:line -->|
 |`tx`|`Manager`|Transaction boundary management|`internal/infrastructure/rdb/driver/`|
 |`worker`|`Consumer`, `Handler`, `FailureHandler`, `Worker`, `State`|Broker-agnostic worker seam (pull-ack)|`internal/infrastructure/queue/sqs/`|
 
@@ -116,17 +113,6 @@ type Sleeper interface {
 
 Abstraction to prevent Domain / Usecase from depending directly on `time.Now()`. Allows mock substitution in tests. `Sleeper` does the same for waiting, so backoff and retry can be exercised without real sleeping.
 
-<!-- sample-api:begin -->
-### exchangerate
-
-Sample Gateway boundary: a semantic port to an external exchange-rate service (`<service>.Gateway` pattern). Keeps Usecase depending on a semantic port rather than `net/http` or a vendor SDK, and translates transport failures into `apperror` sentinels at the boundary.
-
-|Type / Function|Description|
-|---|---|
-|`Gateway`|Fetch a conversion rate via `GetRate(ctx, base, quote)`|
-|`Rate`|Output DTO (`Base` / `Quote` / `Value`)|
-<!-- sample-api:end -->
-
 ### idempotency
 
 Persistence boundary for idempotency keys. Every method requires a `scope` (no id-only lookup, to prevent cross-boundary access).
@@ -189,21 +175,6 @@ Outbound publish boundary for domain events plus a substrate-agnostic message en
 |`Publisher`|Boundary that sends a message to its destination|
 |`Publish(ctx, m)`|Send `m` to the destination; on failure returns an error and the relay re-sends on its next poll (at-least-once)|
 |`Message`|Substrate-agnostic message envelope built from an outbox row (exposes no `net/http` types)|
-
-<!-- sample-api:begin -->
-### token
-
-```go
-type Generator interface {
-    Generate() (string, error)
-}
-```
-
-Produces an unguessable, opaque token string. Randomness is an effect, so a caller that reaches
-for it directly stops being reproducible — the same reason `clock` exists for time. The value's
-length and alphabet belong to the implementation; whether a string is acceptable as a particular
-kind of token is a rule of the type that holds it.
-<!-- sample-api:end -->
 
 ### tx
 

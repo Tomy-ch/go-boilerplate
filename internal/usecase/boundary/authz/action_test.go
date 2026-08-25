@@ -16,37 +16,5 @@ func TestAction_String(t *testing.T) {
 			t.Parallel()
 			assert.Equal(t, "resource:operation", Action("resource:operation").String())
 		})
-
-		// sample-api:begin
-		t.Run("ActionUserGetの文字列表現を返す", func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, "user:get", ActionUserGet.String())
-		})
-
-		t.Run("ActionUserUpdateの文字列表現を返す", func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, "user:update", ActionUserUpdate.String())
-		})
-
-		t.Run("ActionUserDeleteの文字列表現を返す", func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, "user:delete", ActionUserDelete.String())
-		})
-
-		t.Run("ActionProductCreateの文字列表現を返す", func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, "product:create", ActionProductCreate.String())
-		})
-
-		t.Run("ActionPurchaseReadAllの文字列表現を返す", func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, "purchase:all:read", ActionPurchaseReadAll.String())
-		})
-
-		t.Run("ActionPurchaseShipの文字列表現を返す", func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, "purchase:ship", ActionPurchaseShip.String())
-		})
-		// sample-api:end
 	})
 }

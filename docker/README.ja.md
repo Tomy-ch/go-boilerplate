@@ -94,11 +94,7 @@ DB スロットでずれるのは app 層のホスト公開ポート（`8080+N` 
 
 ### 公開配信（匿名 read）
 
-<!-- sample-api:replace-begin -->
-Web API（`3902`、Garage の `[s3_web]`）はバケットのオブジェクトを**資格情報なしで**配信します。本番で CDN が S3 の前段に立つのと同じ形で、ブラウザがオブジェクトストレージから直接商品画像を読み込めます。書き込みは `POST /v1/products/images`（BearerAuth + admin）のままで、開くのは read だけです。
-<!-- sample-api:replace-with -->
-<!-- = Web API（`3902`、Garage の `[s3_web]`）はバケットのオブジェクトを**資格情報なしで**配信します。本番で CDN が S3 の前段に立つのと同じ形で、ブラウザがオブジェクトストレージから直接オブジェクトを読み込めます。書き込みは認証付きのアップロードエンドポイント経由のままで、開くのは read だけです。 -->
-<!-- sample-api:replace-end -->
+Web API（`3902`、Garage の `[s3_web]`）はバケットのオブジェクトを**資格情報なしで**配信します。本番で CDN が S3 の前段に立つのと同じ形で、ブラウザがオブジェクトストレージから直接オブジェクトを読み込めます。書き込みは認証付きのアップロードエンドポイント経由のままで、開くのは read だけです。
 
 - 配信オリジン: `http://gobp-local.web.garage.localhost:3902` — オブジェクトは `<オリジン>/<オブジェクトキー>` で、例えば `http://gobp-local.web.garage.localhost:3902/<接頭辞>/{uuid}.png` です。フロントはこの値を配信オリジンの設定に入れます。API はフル URL を返さず、オブジェクトキーだけを返します
 - **virtual-host 形式のみ。** Garage の web エンドポイントは `Host` ヘッダ（`<bucket>.<root_domain>` または `<bucket>`）からバケットを解決するため、パス形式（`localhost:3902/<bucket>/<key>`）は動きません。macOS と主要ブラウザは `*.localhost` を自前で `127.0.0.1` に解決するので `/etc/hosts` への追記は不要です。解決しない glibc の Linux コンテナ内からは、ヘッダを明示するか（`curl -H 'Host: gobp-local' http://<host>:3902/<接頭辞>/...`）、`/etc/hosts` へ `127.0.0.1 gobp-local.web.garage.localhost` を追記してください

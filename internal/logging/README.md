@@ -179,11 +179,7 @@ Example (Request)
 
 - `event_type=start`
 - `method=GET`
-<!-- sample-api:replace-begin -->
-- `path=/v1/users`
-<!-- sample-api:replace-with -->
-<!-- = - `path=/v1/<resources>` -->
-<!-- sample-api:replace-end -->
+- `path=/v1/<resources>`
 - `remote_ip=...`
 - `trace_id=...`
 - `span_id=...`

@@ -17,17 +17,9 @@ accepted
 
 マルチインスタンス環境で動作するスケジュールジョブは、前回の実行が終わる前に新たな実行が開始したり、複数インスタンスが同じウォールクロックのティックで同じジョブを起動したりすることがある。従来の対処策はアプリケーションレベルの相互排除メカニズムであり、通常はアドバイザリデータベースロック（例: `pg_try_advisory_lock`）や分散ロック（例: Redis `SET NX`）が使われる。これらのメカニズムはインフラ依存と調整ロジックを追加し、テスト・運用・ジョブライフサイクルとの同期管理が必要になる。
 
-<!-- sample-api:replace-begin -->
-3 つのスケジュール（one-shot）ジョブ（`outbox-gc`、`idempotency-gc`、`usercount`）と、常駐する outbox リレープロセス（スケジュールジョブではなく常駐エンジン。[ADR-0061](0061-relay-resident-gc-oneshot.ja.md) 参照）を含んでいる。各々はアプリケーションレベルのロックなしに並行安全となるよう設計されている:
-<!-- sample-api:replace-with -->
-<!-- = 2 つのスケジュール（one-shot）ジョブ（`outbox-gc`、`idempotency-gc`）と、常駐する outbox リレープロセス（スケジュールジョブではなく常駐エンジン。[ADR-0061](0061-relay-resident-gc-oneshot.ja.md) 参照）を含んでいる。各々はアプリケーションレベルのロックなしに並行安全となるよう設計されている: -->
-<!-- sample-api:replace-end -->
+2 つのスケジュール（one-shot）ジョブ（`outbox-gc`、`idempotency-gc`）と、常駐する outbox リレープロセス（スケジュールジョブではなく常駐エンジン。[ADR-0061](0061-relay-resident-gc-oneshot.ja.md) 参照）を含んでいる。各々はアプリケーションレベルのロックなしに並行安全となるよう設計されている:
 
 - `outbox-gc` と `idempotency-gc` は年齢述語による冪等なバッチ削除であり、並行実行しても 1 回の実行と同じ結果になる。
-<!-- sample-api:replace-begin -->
-- `usercount` は読み取り専用である。
-<!-- sample-api:replace-with -->
-<!-- sample-api:replace-end -->
 - outbox リレーは `SELECT … FOR UPDATE SKIP LOCKED` で行を確保するため、並行するリレーは互いに素な行セットを処理する。
 
 この設計のもとでは、アプリケーションレベルの相互排除を追加しても、バンドルされたジョブに対して正確性上の利益をもたらさず、複雑さを増すだけである。

@@ -59,11 +59,7 @@ Two steps (opt-in; an endpoint without the steps is unchanged):
 
 `T` is stored as JSON and rebuilt from JSON on replay, so **every field of `T` must survive a JSON round-trip**. A value object with only unexported fields and no `MarshalJSON` silently degrades to `{}` and replays as a zero value — `pkg/uuid` and `pkg/decimal` implement the pair for this reason.
 
-<!-- sample-api:replace-begin -->
-`PostUsers` (`internal/controller/handler/v1/users/v1_users_handler.go`) is the reference adoption. The middleware only triggers when the `Idempotency-Key` header is present; without it `Run` just runs `businessFn` (non-breaking).
-<!-- sample-api:replace-with -->
-<!-- = The middleware only triggers when the `Idempotency-Key` header is present; without it `Run` just runs `businessFn` (non-breaking). -->
-<!-- sample-api:replace-end -->
+The middleware only triggers when the `Idempotency-Key` header is present; without it `Run` just runs `businessFn` (non-breaking).
 
 ## 4. Client contract
 
@@ -86,11 +82,7 @@ Default scope = principal. To isolate keys per endpoint as well (`scope = princi
   - `GCUsecase` reports `GCMetrics`: `IncExpiredCleanup(count)` per successful batch and `IncExpiredCleanupFailure()` on a delete error.
   - The wired implementation is `observability.NewIdempotencyMetrics` (provided in `internal/di/module/usecase.go`, annotated as both interfaces). It emits OpenTelemetry counters `idempotency.requests{operation_id,result}`, `idempotency.failures{operation_id,phase}` (per-request failures: `phase=claim/complete`), `idempotency.expired_cleanup{job}`, and `idempotency.expired_cleanup_failure{job}` (GC batch failures — kept symmetric with GC success under the `job` label rather than folded into the per-request `failures` counter). High-cardinality / sensitive values (Idempotency-Key, scope, fingerprint, PII, raw error) are **never** labels; an empty `operation_id` is normalized to `unknown`.
   - Both `Deps.Metrics` and the `GCMetrics` argument remain optional: a `nil` value is **no-op** (so `Run`/`GC` work without an observability backend).
-<!-- sample-api:replace-begin -->
-- **Single success status per operation**: `Run[T]` records one `successStatus` and `PostUsers` always returns 201. If you adopt `Run[T]` on an endpoint that can return multiple success statuses (e.g. 200 vs 201), extend the handler to dispatch on the stored status — replay currently re-renders via the handler's fixed response type.
-<!-- sample-api:replace-with -->
-<!-- = - **Single success status per operation**: `Run[T]` records one `successStatus`, so an adopting handler always returns the same status. If you adopt `Run[T]` on an endpoint that can return multiple success statuses (e.g. 200 vs 201), extend the handler to dispatch on the stored status — replay currently re-renders via the handler's fixed response type. -->
-<!-- sample-api:replace-end -->
+- **Single success status per operation**: `Run[T]` records one `successStatus`, so an adopting handler always returns the same status. If you adopt `Run[T]` on an endpoint that can return multiple success statuses (e.g. 200 vs 201), extend the handler to dispatch on the stored status — replay currently re-renders via the handler's fixed response type.
 
 ## Security / storage notes
 

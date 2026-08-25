@@ -53,9 +53,6 @@ Repository は **Aggregate の永続化（CRUD）** を担います。検索・�
 >      目的: 具体の JOIN と解決される表示値が無いと、どこまでが例外なのか読めない。
 >      意義: 効くのは「参照マスタを必須 FK でたどること」で、返る型の小ささではない。
 >      書き方: 集約の表が参照マスタを JOIN する形と、解決される表示値のフィールド名を挙げる。 -->
-> <!-- sample-api:begin -->
-> （サンプルでの例は `purchases` が `purchase_statuses` を JOIN し `StatusName` を返す形）
-> <!-- sample-api:end -->
 > これは依然として単一 Aggregate の Repository 読み取りであり、Aggregate をまたぐ QueryService では
 > ありません。判断の基準は JOIN したデータの性質であって、Go 上のモデリングではありません。
 > `docs/rules.md` の「Repository / QueryService Rules」節を参照してください。

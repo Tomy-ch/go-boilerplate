@@ -37,7 +37,6 @@ Three facts explain almost everything below:
 | Tests / migrations hit the wrong database after `make slot-acquire` | §5 |
 | Integration tests fail right after switching branches | §5 |
 | pre-push `secret-scan` flags a secret you did not add | §6 |
-| `sample-removal-check` fails in CI | §21 <!-- sample-api:line --> |
 | `env/.env` is dirty and you did not edit it | §7 |
 | Local golangci-lint disagrees with CI, or `golangci-lint: not found` | §8 |
 | `commitlint: not found`, `orval: not found`, stale tool version | §9 |
@@ -542,25 +541,6 @@ Raising a `python/*.in` pin without regenerating its `.txt` fails too, from `ver
 than from the window. Run `make py-lock` and commit both files; the pin and its lockfile are one
 change.
 
-<!-- sample-api:begin -->
-## 21. `sample-removal-check` fails in CI
-
-`scripts/setup/remove-sample-api/sample-manifest.ts` declares every path that `make setup-remove-sample-api` <!-- skill-lint-ignore -->
-deletes when a template user strips the sample APIs. Adding, moving, or renaming files under a sample
-domain (user / product / purchase / …) without registering them leaves dangling references after
-removal, which the CI job catches by actually performing the removal and then building, linting, and
-testing. Nothing local fails — this is CI-only unless you run it yourself.
-
-When you add sample-domain files (handler, usecase, domain, repository, DML, migration, seed, spec,
-integration test, sample-only generated output), add their paths to the matching domain entry. Lines
-mixed into shared files are handled with `sample-api` marker comments instead of paths. Preview the
-effect without deleting anything:
-
-```bash
-DRY_RUN=1 make setup-remove-sample-api
-```
-
-<!-- sample-api:end -->
 ## Constraints
 
 - ✅ Read-only knowledge: surface the exact command; run it only when the user asked you to perform

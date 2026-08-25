@@ -32,11 +32,7 @@ func TestNewOpenAPIAllowPolicy(t *testing.T) {
 			policy, err := NewOpenAPIAllowPolicy(spec)
 			require.NoError(t, err)
 
-			// sample-api:replace-begin
-			req := httptest.NewRequestWithContext(context.Background(), http.MethodDelete, "/v1/prefectures", nil)
-			// sample-api:replace-with
-			// = req := httptest.NewRequestWithContext(context.Background(), http.MethodDelete, "/health", nil)
-			// sample-api:replace-end
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodDelete, "/health", nil)
 			assert.Equal(t, "OPTIONS, GET", policy.Allow(req))
 		})
 
@@ -122,28 +118,6 @@ func Test_openAPIAllowPolicy_Allow(t *testing.T) {
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodDelete, "/items/probe", nil)
 			assert.Equal(t, "OPTIONS, HEAD", newPolicy(t).Allow(req))
 		})
-
-		// sample-api:begin
-		// 実 spec 側の観点はサンプル撤去とともに消える。撤去後に残る operation は全て GET で、
-		// 差し替えられる題材が spec 上に存在しないため。観点自体は直前 2 つの合成 spec
-		// （/items/upload・/items/probe）が撤去後も持ち続ける。
-		t.Run("実specのGETを持たないパスも解決される", func(t *testing.T) {
-			t.Parallel()
-
-			spec, err := validator.GetValidator()
-			require.NoError(t, err)
-			policy, err := NewOpenAPIAllowPolicy(spec)
-			require.NoError(t, err)
-
-			req := httptest.NewRequestWithContext(
-				context.Background(),
-				http.MethodGet,
-				"/v1/purchases/123e4567-e89b-12d3-a456-426614174000/cancel",
-				nil,
-			)
-			assert.Equal(t, "OPTIONS, PATCH", policy.Allow(req))
-		})
-		// sample-api:end
 	})
 
 	t.Run("異常系", func(t *testing.T) {

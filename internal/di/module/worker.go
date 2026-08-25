@@ -21,19 +21,15 @@ type queueStatsTargetsIn struct {
 // 既定では worker を 1 つも登録しません。
 func WorkerModule() fx.Option {
 	return fx.Module("worker",
-		provideWorkers(
-			provideWithdrawalArchiveWorker, // sample-api:line
-		),
+		provideWorkers(),
 		provideQueueStatsTargets(
-			// SQS など QueueStatsProvider を実装する adapter を使う worker のときだけ任意登録します。
-			provideWithdrawalArchiveQueueStats, // sample-api:line
+		// SQS など QueueStatsProvider を実装する adapter を使う worker のときだけ任意登録します。
 		),
 		fx.Provide(
 			observability.NewWorkerMetrics,
 			diworker.ProvideEngine,
 			workercontroller.NewState,
 			provideQueueStatsCollector,
-			provideWithdrawalArchiveQueue, // sample-api:line
 		),
 		// 起動時に DrainTimeout < grace を検証する。違反時は app.Start が失敗する。
 		fx.Invoke(diworker.ValidateShutdownGrace),
