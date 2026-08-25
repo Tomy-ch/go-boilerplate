@@ -175,7 +175,7 @@
 		
 			
 			
-			<h2 id="Action">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/action.go.html?s=2071:2089#L27">Action</a>
+			<h2 id="Action">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/action.go.html?s=2536:2554#L32">Action</a>
 				<a class="permalink" href="#Action">¶</a>
 				
 				
@@ -207,6 +207,11 @@
     <span id="ActionProductStockUpdate">ActionProductStockUpdate</span> <a href="#Action">Action</a> = &#34;product:stock:update&#34;
     <span class="comment">// ActionProductListLowStock は、在庫僅少商品一覧の参照操作（admin）を表します。</span>
     <span id="ActionProductListLowStock">ActionProductListLowStock</span> <a href="#Action">Action</a> = &#34;product:low-stock:list&#34;
+    <span class="comment">// ActionProductReadUnpublished は、未公開商品を含む商品の参照操作（admin）を表します。</span>
+    <span class="comment">// 一覧・一致件数・詳細が同じ能力を共有するため、3 つの経路で同一の Action を用います。</span>
+    <span id="ActionProductReadUnpublished">ActionProductReadUnpublished</span> <a href="#Action">Action</a> = &#34;product:unpublished:read&#34;
+    <span class="comment">// ActionPurchaseReadAll は、購入者を問わない購入の参照操作（admin）を表します。</span>
+    <span id="ActionPurchaseReadAll">ActionPurchaseReadAll</span> <a href="#Action">Action</a> = &#34;purchase:all:read&#34;
     <span class="comment">// ActionPurchaseListShippable は、発送待ち購入一覧の参照操作（admin）を表します。</span>
     <span id="ActionPurchaseListShippable">ActionPurchaseListShippable</span> <a href="#Action">Action</a> = &#34;purchase:shippable:list&#34;
     <span class="comment">// ActionPurchaseShip は、購入の発送操作（admin）を表します。</span>
@@ -228,7 +233,7 @@
 
 			
 				
-				<h3 id="Action.String">func (Action) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/action.go.html?s=2151:2182#L30">String</a>
+				<h3 id="Action.String">func (Action) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/action.go.html?s=2616:2647#L35">String</a>
 					<a class="permalink" href="#Action.String">¶</a>
 					
 					

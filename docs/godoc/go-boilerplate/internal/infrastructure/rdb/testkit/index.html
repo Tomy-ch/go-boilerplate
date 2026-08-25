@@ -144,7 +144,7 @@
 		
 			
 			
-			<h2 id="HoldSuiteSerialization">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/testkit/test_kit.go.html?s=3920:3987#L100">HoldSuiteSerialization</a>
+			<h2 id="HoldSuiteSerialization">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/testkit/test_kit.go.html?s=5090:5157#L121">HoldSuiteSerialization</a>
 				<a class="permalink" href="#HoldSuiteSerialization">¶</a>
 				
 				
@@ -165,7 +165,7 @@
 		
 			
 			
-			</p><h2 id="NewTestDB">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/testkit/test_kit.go.html?s=1699:1749#L38">NewTestDB</a>
+			</p><h2 id="NewTestDB">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/testkit/test_kit.go.html?s=1746:1796#L39">NewTestDB</a>
 				<a class="permalink" href="#NewTestDB">¶</a>
 				
 				
@@ -180,7 +180,7 @@
 		
 			
 			
-			</p><h2 id="TransactionRunner">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/testkit/test_kit.go.html?s=1318:1394#L26">TransactionRunner</a>
+			</p><h2 id="TransactionRunner">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/testkit/test_kit.go.html?s=1318:1441#L26">TransactionRunner</a>
 				<a class="permalink" href="#TransactionRunner">¶</a>
 				
 				
@@ -189,6 +189,7 @@
 
 			</p><pre>type TransactionRunner interface {
     WithinTx(fn func(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>))
+    WithinTxE(fn func(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>) <a href="../../../../../builtin/#error">error</a>)
 }</pre>
 
 			
@@ -201,7 +202,7 @@
 
 			
 				
-				<h3 id="NewTestTransactionRunner">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/testkit/test_kit.go.html?s=1895:1956#L44">NewTestTransactionRunner</a>
+				<h3 id="NewTestTransactionRunner">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/rdb/testkit/test_kit.go.html?s=1942:2003#L45">NewTestTransactionRunner</a>
 					<a class="permalink" href="#NewTestTransactionRunner">¶</a>
 					
 					

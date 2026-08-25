@@ -68,413 +68,342 @@
 <span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/controller/handler/v1/users/me/purchases/gen&#34;
 <span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/observability&#34;
 <span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/internal/usecase/boundary/auth&#34;
-<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/internal/usecase/purchase/period&#34;
-<span id="L15" class="ln">    15  </span>	summaryuc &#34;go-boilerplate/internal/usecase/purchase/summary&#34;
-<span id="L16" class="ln">    16  </span>	mock_summaryuc &#34;go-boilerplate/internal/usecase/purchase/summary/mock&#34;
-<span id="L17" class="ln">    17  </span>	&#34;go-boilerplate/pkg/decimal&#34;
-<span id="L18" class="ln">    18  </span>	&#34;go-boilerplate/pkg/uuid&#34;
-<span id="L19" class="ln">    19  </span>	uuidtestkit &#34;go-boilerplate/pkg/uuid/testkit&#34;
-<span id="L20" class="ln">    20  </span>
-<span id="L21" class="ln">    21  </span>	&#34;github.com/labstack/echo/v5&#34;
-<span id="L22" class="ln">    22  </span>	openapi_types &#34;github.com/oapi-codegen/runtime/types&#34;
-<span id="L23" class="ln">    23  </span>	&#34;github.com/stretchr/testify/assert&#34;
-<span id="L24" class="ln">    24  </span>	&#34;github.com/stretchr/testify/require&#34;
-<span id="L25" class="ln">    25  </span>	&#34;go.uber.org/mock/gomock&#34;
-<span id="L26" class="ln">    26  </span>)
-<span id="L27" class="ln">    27  </span>
-<span id="L28" class="ln">    28  </span><span class="comment">// testLoc は、注入されたロケーションが使われることを設定値と独立に固定するための、UTC から離れた固定ゾーンです。</span>
-<span id="L29" class="ln">    29  </span>var testLoc = time.FixedZone(&#34;TEST+09&#34;, 9*60*60)
-<span id="L30" class="ln">    30  </span>
-<span id="L31" class="ln">    31  </span><span class="comment">// authnContext は、内部ユーザー ID を解決済みの認証コンテキストを返すテストヘルパーです。</span>
-<span id="L32" class="ln">    32  </span>func authnContext(t *testing.T, userID uuid.UUID) context.Context {
-<span id="L33" class="ln">    33  </span>	t.Helper()
-<span id="L34" class="ln">    34  </span>	ctx := ctxhelper.WithAuthn(context.Background())
-<span id="L35" class="ln">    35  </span>	authn, err := auth.New(&#34;subject&#34;, &#34;issuer&#34;, nil, nil)
-<span id="L36" class="ln">    36  </span>	require.NoError(t, err)
-<span id="L37" class="ln">    37  </span>
-<span id="L38" class="ln">    38  </span>	resolved, err := authn.WithUserID(userID)
-<span id="L39" class="ln">    39  </span>	require.NoError(t, err)
-<span id="L40" class="ln">    40  </span>	require.True(t, ctxhelper.SetAuthn(ctx, *resolved))
-<span id="L41" class="ln">    41  </span>	return ctx
-<span id="L42" class="ln">    42  </span>}
-<span id="L43" class="ln">    43  </span>
-<span id="L44" class="ln">    44  </span>func dec(t *testing.T, s string) decimal.Decimal {
-<span id="L45" class="ln">    45  </span>	t.Helper()
-<span id="L46" class="ln">    46  </span>	d, err := decimal.Parse(s)
-<span id="L47" class="ln">    47  </span>	require.NoError(t, err)
-<span id="L48" class="ln">    48  </span>	return d
-<span id="L49" class="ln">    49  </span>}
-<span id="L50" class="ln">    50  </span>
-<span id="L51" class="ln">    51  </span><span class="comment">// testWindow は、両端を含む暦日から絞り込み済みの対象期間を組み立てるテストヘルパーです。</span>
-<span id="L52" class="ln">    52  </span>func testWindow(t *testing.T, from, to time.Time) period.Window {
-<span id="L53" class="ln">    53  </span>	t.Helper()
-<span id="L54" class="ln">    54  </span>	w, err := period.Resolve(period.Spec{Kind: period.KindRange, From: &amp;from, To: &amp;to}, time.Time{}, testLoc)
-<span id="L55" class="ln">    55  </span>	require.NoError(t, err)
-<span id="L56" class="ln">    56  </span>	return w
-<span id="L57" class="ln">    57  </span>}
-<span id="L58" class="ln">    58  </span>
-<span id="L59" class="ln">    59  </span><span class="comment">// summaryViewFixture は、購入集計ビューを生成するテストヘルパーです。</span>
-<span id="L60" class="ln">    60  </span>func summaryViewFixture(t *testing.T) summaryuc.SummaryView {
-<span id="L61" class="ln">    61  </span>	t.Helper()
-<span id="L62" class="ln">    62  </span>	return summaryuc.SummaryView{
-<span id="L63" class="ln">    63  </span>		Period: testWindow(t,
-<span id="L64" class="ln">    64  </span>			time.Date(2026, time.January, 21, 0, 0, 0, 0, time.UTC),
-<span id="L65" class="ln">    65  </span>			time.Date(2026, time.January, 31, 0, 0, 0, 0, time.UTC),
-<span id="L66" class="ln">    66  </span>		),
-<span id="L67" class="ln">    67  </span>		TotalCount:  3,
-<span id="L68" class="ln">    68  </span>		TotalAmount: 450,
-<span id="L69" class="ln">    69  </span>		ItemsTotal:  dec(t, &#34;4.50&#34;),
-<span id="L70" class="ln">    70  </span>		StatusBreakdown: []summaryuc.StatusCountView{
-<span id="L71" class="ln">    71  </span>			{
-<span id="L72" class="ln">    72  </span>				StatusID:    uuidtestkit.NewTestFromSalt(t, &#34;hs_unprocessed&#34;),
-<span id="L73" class="ln">    73  </span>				StatusCode:  1,
-<span id="L74" class="ln">    74  </span>				StatusName:  &#34;未処理&#34;,
-<span id="L75" class="ln">    75  </span>				Count:       2,
-<span id="L76" class="ln">    76  </span>				TotalAmount: 300,
-<span id="L77" class="ln">    77  </span>			},
-<span id="L78" class="ln">    78  </span>			{
-<span id="L79" class="ln">    79  </span>				StatusID:    uuidtestkit.NewTestFromSalt(t, &#34;hs_paid&#34;),
-<span id="L80" class="ln">    80  </span>				StatusCode:  7,
-<span id="L81" class="ln">    81  </span>				StatusName:  &#34;支払い済み&#34;,
-<span id="L82" class="ln">    82  </span>				Count:       1,
-<span id="L83" class="ln">    83  </span>				TotalAmount: 150,
-<span id="L84" class="ln">    84  </span>			},
-<span id="L85" class="ln">    85  </span>		},
-<span id="L86" class="ln">    86  </span>	}
-<span id="L87" class="ln">    87  </span>}
-<span id="L88" class="ln">    88  </span>
-<span id="L89" class="ln">    89  </span>func TestBindHandler(t *testing.T) {
-<span id="L90" class="ln">    90  </span>	t.Parallel()
-<span id="L91" class="ln">    91  </span>
-<span id="L92" class="ln">    92  </span>	e := echo.New()
-<span id="L93" class="ln">    93  </span>	tf := observability.NewNoopTracerFactory(t)
-<span id="L94" class="ln">    94  </span>	uc := mock_summaryuc.NewMockUsecase(gomock.NewController(t))
+<span id="L14" class="ln">    14  </span>	summaryuc &#34;go-boilerplate/internal/usecase/purchase/summary&#34;
+<span id="L15" class="ln">    15  </span>	mock_summaryuc &#34;go-boilerplate/internal/usecase/purchase/summary/mock&#34;
+<span id="L16" class="ln">    16  </span>	&#34;go-boilerplate/pkg/decimal&#34;
+<span id="L17" class="ln">    17  </span>	&#34;go-boilerplate/pkg/uuid&#34;
+<span id="L18" class="ln">    18  </span>	uuidtestkit &#34;go-boilerplate/pkg/uuid/testkit&#34;
+<span id="L19" class="ln">    19  </span>
+<span id="L20" class="ln">    20  </span>	&#34;github.com/labstack/echo/v5&#34;
+<span id="L21" class="ln">    21  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L22" class="ln">    22  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L23" class="ln">    23  </span>	&#34;go.uber.org/mock/gomock&#34;
+<span id="L24" class="ln">    24  </span>)
+<span id="L25" class="ln">    25  </span>
+<span id="L26" class="ln">    26  </span><span class="comment">// authnContext は、内部ユーザー ID を解決済みの認証コンテキストを返すテストヘルパーです。</span>
+<span id="L27" class="ln">    27  </span>func authnContext(t *testing.T, userID uuid.UUID) context.Context {
+<span id="L28" class="ln">    28  </span>	t.Helper()
+<span id="L29" class="ln">    29  </span>	ctx := ctxhelper.WithAuthn(context.Background())
+<span id="L30" class="ln">    30  </span>	authn, err := auth.New(&#34;subject&#34;, &#34;issuer&#34;, nil, nil)
+<span id="L31" class="ln">    31  </span>	require.NoError(t, err)
+<span id="L32" class="ln">    32  </span>
+<span id="L33" class="ln">    33  </span>	resolved, err := authn.WithUserID(userID)
+<span id="L34" class="ln">    34  </span>	require.NoError(t, err)
+<span id="L35" class="ln">    35  </span>	require.True(t, ctxhelper.SetAuthn(ctx, *resolved))
+<span id="L36" class="ln">    36  </span>	return ctx
+<span id="L37" class="ln">    37  </span>}
+<span id="L38" class="ln">    38  </span>
+<span id="L39" class="ln">    39  </span>func dec(t *testing.T, s string) decimal.Decimal {
+<span id="L40" class="ln">    40  </span>	t.Helper()
+<span id="L41" class="ln">    41  </span>	d, err := decimal.Parse(s)
+<span id="L42" class="ln">    42  </span>	require.NoError(t, err)
+<span id="L43" class="ln">    43  </span>	return d
+<span id="L44" class="ln">    44  </span>}
+<span id="L45" class="ln">    45  </span>
+<span id="L46" class="ln">    46  </span><span class="comment">// summaryViewFixture は、購入集計ビューを生成するテストヘルパーです。</span>
+<span id="L47" class="ln">    47  </span>func summaryViewFixture(t *testing.T) summaryuc.SummaryView {
+<span id="L48" class="ln">    48  </span>	t.Helper()
+<span id="L49" class="ln">    49  </span>	return summaryuc.SummaryView{
+<span id="L50" class="ln">    50  </span>		TotalCount:  3,
+<span id="L51" class="ln">    51  </span>		TotalAmount: 450,
+<span id="L52" class="ln">    52  </span>		ItemsTotal:  dec(t, &#34;4.50&#34;),
+<span id="L53" class="ln">    53  </span>		StatusBreakdown: []summaryuc.StatusCountView{
+<span id="L54" class="ln">    54  </span>			{
+<span id="L55" class="ln">    55  </span>				StatusID:    uuidtestkit.NewTestFromSalt(t, &#34;hs_unprocessed&#34;),
+<span id="L56" class="ln">    56  </span>				StatusCode:  1,
+<span id="L57" class="ln">    57  </span>				StatusName:  &#34;未処理&#34;,
+<span id="L58" class="ln">    58  </span>				Count:       2,
+<span id="L59" class="ln">    59  </span>				TotalAmount: 300,
+<span id="L60" class="ln">    60  </span>			},
+<span id="L61" class="ln">    61  </span>			{
+<span id="L62" class="ln">    62  </span>				StatusID:    uuidtestkit.NewTestFromSalt(t, &#34;hs_paid&#34;),
+<span id="L63" class="ln">    63  </span>				StatusCode:  7,
+<span id="L64" class="ln">    64  </span>				StatusName:  &#34;支払い済み&#34;,
+<span id="L65" class="ln">    65  </span>				Count:       1,
+<span id="L66" class="ln">    66  </span>				TotalAmount: 150,
+<span id="L67" class="ln">    67  </span>			},
+<span id="L68" class="ln">    68  </span>		},
+<span id="L69" class="ln">    69  </span>	}
+<span id="L70" class="ln">    70  </span>}
+<span id="L71" class="ln">    71  </span>
+<span id="L72" class="ln">    72  </span>func TestBindHandler(t *testing.T) {
+<span id="L73" class="ln">    73  </span>	t.Parallel()
+<span id="L74" class="ln">    74  </span>
+<span id="L75" class="ln">    75  </span>	e := echo.New()
+<span id="L76" class="ln">    76  </span>	tf := observability.NewNoopTracerFactory(t)
+<span id="L77" class="ln">    77  </span>	uc := mock_summaryuc.NewMockUsecase(gomock.NewController(t))
+<span id="L78" class="ln">    78  </span>
+<span id="L79" class="ln">    79  </span>	BindHandler(e, tf, uc)
+<span id="L80" class="ln">    80  </span>
+<span id="L81" class="ln">    81  </span>	routes := e.Router().Routes()
+<span id="L82" class="ln">    82  </span>	require.Len(t, routes, 1)
+<span id="L83" class="ln">    83  </span>	assert.Equal(t, http.MethodGet, routes[0].Method)
+<span id="L84" class="ln">    84  </span>	assert.Equal(t, &#34;/v1/users/me/purchases/summary&#34;, routes[0].Path)
+<span id="L85" class="ln">    85  </span>}
+<span id="L86" class="ln">    86  </span>
+<span id="L87" class="ln">    87  </span>func Test_server_GetUsersMePurchasesSummary(t *testing.T) {
+<span id="L88" class="ln">    88  </span>	t.Parallel()
+<span id="L89" class="ln">    89  </span>
+<span id="L90" class="ln">    90  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L91" class="ln">    91  </span>		t.Parallel()
+<span id="L92" class="ln">    92  </span>
+<span id="L93" class="ln">    93  </span>		t.Run(&#34;認証主体のAuthnをユースケースへ渡し集計を200で返す&#34;, func(t *testing.T) {
+<span id="L94" class="ln">    94  </span>			t.Parallel()
 <span id="L95" class="ln">    95  </span>
-<span id="L96" class="ln">    96  </span>	BindHandler(e, tf, uc)
-<span id="L97" class="ln">    97  </span>
-<span id="L98" class="ln">    98  </span>	routes := e.Router().Routes()
-<span id="L99" class="ln">    99  </span>	require.Len(t, routes, 1)
-<span id="L100" class="ln">   100  </span>	assert.Equal(t, http.MethodGet, routes[0].Method)
-<span id="L101" class="ln">   101  </span>	assert.Equal(t, &#34;/v1/users/me/purchases/summary&#34;, routes[0].Path)
-<span id="L102" class="ln">   102  </span>}
-<span id="L103" class="ln">   103  </span>
-<span id="L104" class="ln">   104  </span>func Test_server_GetUsersMePurchasesSummary(t *testing.T) {
-<span id="L105" class="ln">   105  </span>	t.Parallel()
-<span id="L106" class="ln">   106  </span>
-<span id="L107" class="ln">   107  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L108" class="ln">   108  </span>		t.Parallel()
+<span id="L96" class="ln">    96  </span>			ctrl := gomock.NewController(t)
+<span id="L97" class="ln">    97  </span>			uc := mock_summaryuc.NewMockUsecase(ctrl)
+<span id="L98" class="ln">    98  </span>			s := &amp;server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
+<span id="L99" class="ln">    99  </span>
+<span id="L100" class="ln">   100  </span>			userID := uuidtestkit.NewTestFromSalt(t, &#34;hs_user&#34;)
+<span id="L101" class="ln">   101  </span>			view := summaryViewFixture(t)
+<span id="L102" class="ln">   102  </span>			uc.EXPECT().GetPurchaseSummary(gomock.Any(), gomock.Any(), gomock.Any()).
+<span id="L103" class="ln">   103  </span>				DoAndReturn(func(_ context.Context, authn *auth.Authn, _ summaryuc.GetSummaryParams) (summaryuc.SummaryView, error) {
+<span id="L104" class="ln">   104  </span>					uid, uerr := authn.UserID()
+<span id="L105" class="ln">   105  </span>					require.NoError(t, uerr)
+<span id="L106" class="ln">   106  </span>					assert.Equal(t, userID, uid)
+<span id="L107" class="ln">   107  </span>					return view, nil
+<span id="L108" class="ln">   108  </span>				})
 <span id="L109" class="ln">   109  </span>
-<span id="L110" class="ln">   110  </span>		t.Run(&#34;認証主体のAuthnをユースケースへ渡し集計を200で返す&#34;, func(t *testing.T) {
-<span id="L111" class="ln">   111  </span>			t.Parallel()
+<span id="L110" class="ln">   110  </span>			resp, err := s.GetUsersMePurchasesSummary(authnContext(t, userID), gen.GetUsersMePurchasesSummaryRequestObject{})
+<span id="L111" class="ln">   111  </span>			require.NoError(t, err)
 <span id="L112" class="ln">   112  </span>
-<span id="L113" class="ln">   113  </span>			ctrl := gomock.NewController(t)
-<span id="L114" class="ln">   114  </span>			uc := mock_summaryuc.NewMockUsecase(ctrl)
-<span id="L115" class="ln">   115  </span>			s := &amp;server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
-<span id="L116" class="ln">   116  </span>
-<span id="L117" class="ln">   117  </span>			userID := uuidtestkit.NewTestFromSalt(t, &#34;hs_user&#34;)
-<span id="L118" class="ln">   118  </span>			view := summaryViewFixture(t)
-<span id="L119" class="ln">   119  </span>			uc.EXPECT().GetPurchaseSummary(gomock.Any(), gomock.Any(), gomock.Any()).
-<span id="L120" class="ln">   120  </span>				DoAndReturn(func(_ context.Context, authn *auth.Authn, _ summaryuc.GetSummaryParams) (summaryuc.SummaryView, error) {
-<span id="L121" class="ln">   121  </span>					uid, uerr := authn.UserID()
-<span id="L122" class="ln">   122  </span>					require.NoError(t, uerr)
-<span id="L123" class="ln">   123  </span>					assert.Equal(t, userID, uid)
-<span id="L124" class="ln">   124  </span>					return view, nil
-<span id="L125" class="ln">   125  </span>				})
+<span id="L113" class="ln">   113  </span>			r, ok := resp.(gen.GetUsersMePurchasesSummary200JSONResponse)
+<span id="L114" class="ln">   114  </span>			require.True(t, ok)
+<span id="L115" class="ln">   115  </span>			assert.Equal(t, int64(3), r.TotalCount)
+<span id="L116" class="ln">   116  </span>			assert.Equal(t, int64(450), r.TotalAmount)
+<span id="L117" class="ln">   117  </span>			assert.Equal(t, &#34;4.5&#34;, r.ItemsTotal)
+<span id="L118" class="ln">   118  </span>			require.Len(t, r.StatusBreakdown, 2)
+<span id="L119" class="ln">   119  </span>			assert.Equal(t, &#34;未処理&#34;, r.StatusBreakdown[0].Status.Name)
+<span id="L120" class="ln">   120  </span>			assert.Equal(t, int64(2), r.StatusBreakdown[0].Count)
+<span id="L121" class="ln">   121  </span>			assert.Equal(t, int64(300), r.StatusBreakdown[0].TotalAmount)
+<span id="L122" class="ln">   122  </span>		})
+<span id="L123" class="ln">   123  </span>
+<span id="L124" class="ln">   124  </span>		t.Run(&#34;期間とグループ化のパラメータがユースケースへ渡る&#34;, func(t *testing.T) {
+<span id="L125" class="ln">   125  </span>			t.Parallel()
 <span id="L126" class="ln">   126  </span>
-<span id="L127" class="ln">   127  </span>			resp, err := s.GetUsersMePurchasesSummary(authnContext(t, userID), gen.GetUsersMePurchasesSummaryRequestObject{})
-<span id="L128" class="ln">   128  </span>			require.NoError(t, err)
-<span id="L129" class="ln">   129  </span>
-<span id="L130" class="ln">   130  </span>			r, ok := resp.(gen.GetUsersMePurchasesSummary200JSONResponse)
-<span id="L131" class="ln">   131  </span>			require.True(t, ok)
-<span id="L132" class="ln">   132  </span>			assert.Equal(t, int64(3), r.TotalCount)
-<span id="L133" class="ln">   133  </span>			assert.Equal(t, int64(450), r.TotalAmount)
-<span id="L134" class="ln">   134  </span>			assert.Equal(t, &#34;4.5&#34;, r.ItemsTotal)
-<span id="L135" class="ln">   135  </span>			require.Len(t, r.StatusBreakdown, 2)
-<span id="L136" class="ln">   136  </span>			assert.Equal(t, &#34;未処理&#34;, r.StatusBreakdown[0].Status.Name)
-<span id="L137" class="ln">   137  </span>			assert.Equal(t, int64(2), r.StatusBreakdown[0].Count)
-<span id="L138" class="ln">   138  </span>			assert.Equal(t, int64(300), r.StatusBreakdown[0].TotalAmount)
-<span id="L139" class="ln">   139  </span>		})
-<span id="L140" class="ln">   140  </span>
-<span id="L141" class="ln">   141  </span>		t.Run(&#34;期間とグループ化のパラメータがユースケースへ渡る&#34;, func(t *testing.T) {
-<span id="L142" class="ln">   142  </span>			t.Parallel()
-<span id="L143" class="ln">   143  </span>
-<span id="L144" class="ln">   144  </span>			ctrl := gomock.NewController(t)
-<span id="L145" class="ln">   145  </span>			uc := mock_summaryuc.NewMockUsecase(ctrl)
-<span id="L146" class="ln">   146  </span>			s := &amp;server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
-<span id="L147" class="ln">   147  </span>
-<span id="L148" class="ln">   148  </span>			kind := gen.GetUsersMePurchasesSummaryParamsPeriod(period.KindRecent)
-<span id="L149" class="ln">   149  </span>			days := int32(10)
-<span id="L150" class="ln">   150  </span>			groupBy := gen.PurchaseGroupByParam{&#34;category&#34;, &#34;product&#34;}
+<span id="L127" class="ln">   127  </span>			ctrl := gomock.NewController(t)
+<span id="L128" class="ln">   128  </span>			uc := mock_summaryuc.NewMockUsecase(ctrl)
+<span id="L129" class="ln">   129  </span>			s := &amp;server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
+<span id="L130" class="ln">   130  </span>
+<span id="L131" class="ln">   131  </span>			after := time.Date(2026, time.January, 21, 0, 0, 0, 0, time.UTC)
+<span id="L132" class="ln">   132  </span>			before := time.Date(2026, time.February, 1, 0, 0, 0, 0, time.UTC)
+<span id="L133" class="ln">   133  </span>			groupBy := gen.PurchaseGroupByParam{&#34;category&#34;, &#34;product&#34;}
+<span id="L134" class="ln">   134  </span>
+<span id="L135" class="ln">   135  </span>			var captured summaryuc.GetSummaryParams
+<span id="L136" class="ln">   136  </span>			uc.EXPECT().GetPurchaseSummary(gomock.Any(), gomock.Any(), gomock.Any()).
+<span id="L137" class="ln">   137  </span>				DoAndReturn(func(_ context.Context, _ *auth.Authn, params summaryuc.GetSummaryParams) (summaryuc.SummaryView, error) {
+<span id="L138" class="ln">   138  </span>					captured = params
+<span id="L139" class="ln">   139  </span>					return summaryuc.SummaryView{}, nil
+<span id="L140" class="ln">   140  </span>				})
+<span id="L141" class="ln">   141  </span>
+<span id="L142" class="ln">   142  </span>			_, err := s.GetUsersMePurchasesSummary(
+<span id="L143" class="ln">   143  </span>				authnContext(t, uuidtestkit.NewTestFromSalt(t, &#34;hs_params_user&#34;)),
+<span id="L144" class="ln">   144  </span>				gen.GetUsersMePurchasesSummaryRequestObject{
+<span id="L145" class="ln">   145  </span>					Params: gen.GetUsersMePurchasesSummaryParams{
+<span id="L146" class="ln">   146  </span>						OrderedAfter: &amp;after, OrderedBefore: &amp;before, GroupBy: &amp;groupBy,
+<span id="L147" class="ln">   147  </span>					},
+<span id="L148" class="ln">   148  </span>				},
+<span id="L149" class="ln">   149  </span>			)
+<span id="L150" class="ln">   150  </span>			require.NoError(t, err)
 <span id="L151" class="ln">   151  </span>
-<span id="L152" class="ln">   152  </span>			var captured summaryuc.GetSummaryParams
-<span id="L153" class="ln">   153  </span>			uc.EXPECT().GetPurchaseSummary(gomock.Any(), gomock.Any(), gomock.Any()).
-<span id="L154" class="ln">   154  </span>				DoAndReturn(func(_ context.Context, _ *auth.Authn, params summaryuc.GetSummaryParams) (summaryuc.SummaryView, error) {
-<span id="L155" class="ln">   155  </span>					captured = params
-<span id="L156" class="ln">   156  </span>					return summaryuc.SummaryView{}, nil
-<span id="L157" class="ln">   157  </span>				})
+<span id="L152" class="ln">   152  </span>			assert.Equal(t, after, *captured.Window.After())
+<span id="L153" class="ln">   153  </span>			assert.Equal(t, before, *captured.Window.Before())
+<span id="L154" class="ln">   154  </span>			<span class="comment">// 指定順がネストの階層順になるため、並びが保たれることを固定する。</span>
+<span id="L155" class="ln">   155  </span>			assert.Equal(t, []summaryuc.GroupKind{summaryuc.GroupByCategory, summaryuc.GroupByProduct}, captured.GroupBy)
+<span id="L156" class="ln">   156  </span>		})
+<span id="L157" class="ln">   157  </span>	})
 <span id="L158" class="ln">   158  </span>
-<span id="L159" class="ln">   159  </span>			_, err := s.GetUsersMePurchasesSummary(
-<span id="L160" class="ln">   160  </span>				authnContext(t, uuidtestkit.NewTestFromSalt(t, &#34;hs_params_user&#34;)),
-<span id="L161" class="ln">   161  </span>				gen.GetUsersMePurchasesSummaryRequestObject{
-<span id="L162" class="ln">   162  </span>					Params: gen.GetUsersMePurchasesSummaryParams{Period: &amp;kind, Days: &amp;days, GroupBy: &amp;groupBy},
-<span id="L163" class="ln">   163  </span>				},
-<span id="L164" class="ln">   164  </span>			)
-<span id="L165" class="ln">   165  </span>			require.NoError(t, err)
-<span id="L166" class="ln">   166  </span>
-<span id="L167" class="ln">   167  </span>			assert.Equal(t, period.KindRecent, captured.Period.Kind)
-<span id="L168" class="ln">   168  </span>			require.NotNil(t, captured.Period.Days)
-<span id="L169" class="ln">   169  </span>			assert.Equal(t, 10, *captured.Period.Days)
-<span id="L170" class="ln">   170  </span>			<span class="comment">// 指定順がネストの階層順になるため、並びが保たれることを固定する。</span>
-<span id="L171" class="ln">   171  </span>			assert.Equal(t, []summaryuc.GroupKind{summaryuc.GroupByCategory, summaryuc.GroupByProduct}, captured.GroupBy)
-<span id="L172" class="ln">   172  </span>		})
-<span id="L173" class="ln">   173  </span>	})
-<span id="L174" class="ln">   174  </span>
-<span id="L175" class="ln">   175  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L176" class="ln">   176  </span>		t.Parallel()
-<span id="L177" class="ln">   177  </span>
-<span id="L178" class="ln">   178  </span>		t.Run(&#34;認証情報が無い場合、ErrUnauthenticatedUserを返す&#34;, func(t *testing.T) {
-<span id="L179" class="ln">   179  </span>			t.Parallel()
-<span id="L180" class="ln">   180  </span>
-<span id="L181" class="ln">   181  </span>			ctrl := gomock.NewController(t)
-<span id="L182" class="ln">   182  </span>			uc := mock_summaryuc.NewMockUsecase(ctrl)
-<span id="L183" class="ln">   183  </span>			s := &amp;server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
+<span id="L159" class="ln">   159  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L160" class="ln">   160  </span>		t.Parallel()
+<span id="L161" class="ln">   161  </span>
+<span id="L162" class="ln">   162  </span>		t.Run(&#34;orderedBeforeがorderedAfter以前の場合、ユースケースを呼ばずErrInvalidArgumentを返す&#34;, func(t *testing.T) {
+<span id="L163" class="ln">   163  </span>			t.Parallel()
+<span id="L164" class="ln">   164  </span>
+<span id="L165" class="ln">   165  </span>			ctrl := gomock.NewController(t)
+<span id="L166" class="ln">   166  </span>			uc := mock_summaryuc.NewMockUsecase(ctrl)
+<span id="L167" class="ln">   167  </span>			s := &amp;server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
+<span id="L168" class="ln">   168  </span>			uc.EXPECT().GetPurchaseSummary(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+<span id="L169" class="ln">   169  </span>
+<span id="L170" class="ln">   170  </span>			after := time.Date(2026, time.February, 1, 0, 0, 0, 0, time.UTC)
+<span id="L171" class="ln">   171  </span>			before := time.Date(2026, time.January, 21, 0, 0, 0, 0, time.UTC)
+<span id="L172" class="ln">   172  </span>
+<span id="L173" class="ln">   173  </span>			_, err := s.GetUsersMePurchasesSummary(
+<span id="L174" class="ln">   174  </span>				authnContext(t, uuidtestkit.NewTestFromSalt(t, &#34;hs_badwindow_user&#34;)),
+<span id="L175" class="ln">   175  </span>				gen.GetUsersMePurchasesSummaryRequestObject{
+<span id="L176" class="ln">   176  </span>					Params: gen.GetUsersMePurchasesSummaryParams{OrderedAfter: &amp;after, OrderedBefore: &amp;before},
+<span id="L177" class="ln">   177  </span>				},
+<span id="L178" class="ln">   178  </span>			)
+<span id="L179" class="ln">   179  </span>			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+<span id="L180" class="ln">   180  </span>		})
+<span id="L181" class="ln">   181  </span>
+<span id="L182" class="ln">   182  </span>		t.Run(&#34;認証情報が無い場合、ErrUnauthenticatedUserを返す&#34;, func(t *testing.T) {
+<span id="L183" class="ln">   183  </span>			t.Parallel()
 <span id="L184" class="ln">   184  </span>
-<span id="L185" class="ln">   185  </span>			_, err := s.GetUsersMePurchasesSummary(context.Background(), gen.GetUsersMePurchasesSummaryRequestObject{})
-<span id="L186" class="ln">   186  </span>			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
-<span id="L187" class="ln">   187  </span>		})
+<span id="L185" class="ln">   185  </span>			ctrl := gomock.NewController(t)
+<span id="L186" class="ln">   186  </span>			uc := mock_summaryuc.NewMockUsecase(ctrl)
+<span id="L187" class="ln">   187  </span>			s := &amp;server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
 <span id="L188" class="ln">   188  </span>
-<span id="L189" class="ln">   189  </span>		t.Run(&#34;ユースケースがエラーを返した場合はそのまま伝播する&#34;, func(t *testing.T) {
-<span id="L190" class="ln">   190  </span>			t.Parallel()
-<span id="L191" class="ln">   191  </span>
-<span id="L192" class="ln">   192  </span>			ctrl := gomock.NewController(t)
-<span id="L193" class="ln">   193  </span>			uc := mock_summaryuc.NewMockUsecase(ctrl)
-<span id="L194" class="ln">   194  </span>			s := &amp;server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
+<span id="L189" class="ln">   189  </span>			_, err := s.GetUsersMePurchasesSummary(context.Background(), gen.GetUsersMePurchasesSummaryRequestObject{})
+<span id="L190" class="ln">   190  </span>			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
+<span id="L191" class="ln">   191  </span>		})
+<span id="L192" class="ln">   192  </span>
+<span id="L193" class="ln">   193  </span>		t.Run(&#34;ユースケースがエラーを返した場合はそのまま伝播する&#34;, func(t *testing.T) {
+<span id="L194" class="ln">   194  </span>			t.Parallel()
 <span id="L195" class="ln">   195  </span>
-<span id="L196" class="ln">   196  </span>			uc.EXPECT().GetPurchaseSummary(gomock.Any(), gomock.Any(), gomock.Any()).
-<span id="L197" class="ln">   197  </span>				Return(summaryuc.SummaryView{}, apperror.ErrInternal)
-<span id="L198" class="ln">   198  </span>
-<span id="L199" class="ln">   199  </span>			_, err := s.GetUsersMePurchasesSummary(authnContext(t, uuidtestkit.NewTestFromSalt(t, &#34;hs_user_err&#34;)),
-<span id="L200" class="ln">   200  </span>				gen.GetUsersMePurchasesSummaryRequestObject{})
-<span id="L201" class="ln">   201  </span>			require.ErrorIs(t, err, apperror.ErrInternal)
-<span id="L202" class="ln">   202  </span>		})
-<span id="L203" class="ln">   203  </span>	})
-<span id="L204" class="ln">   204  </span>}
-<span id="L205" class="ln">   205  </span>
-<span id="L206" class="ln">   206  </span>func Test_toPurchaseAggregateResponse(t *testing.T) {
-<span id="L207" class="ln">   207  </span>	t.Parallel()
-<span id="L208" class="ln">   208  </span>
-<span id="L209" class="ln">   209  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L210" class="ln">   210  </span>		t.Parallel()
-<span id="L211" class="ln">   211  </span>
-<span id="L212" class="ln">   212  </span>		t.Run(&#34;集計ビューをステータス別内訳込みのレスポンスへ写像する&#34;, func(t *testing.T) {
-<span id="L213" class="ln">   213  </span>			t.Parallel()
-<span id="L214" class="ln">   214  </span>
-<span id="L215" class="ln">   215  </span>			view := summaryViewFixture(t)
-<span id="L216" class="ln">   216  </span>			r := toPurchaseAggregateResponse(view)
-<span id="L217" class="ln">   217  </span>
-<span id="L218" class="ln">   218  </span>			assert.Equal(t, view.TotalCount, r.TotalCount)
-<span id="L219" class="ln">   219  </span>			assert.Equal(t, view.TotalAmount, r.TotalAmount)
-<span id="L220" class="ln">   220  </span>			assert.Equal(t, view.ItemsTotal.String(), r.ItemsTotal)
-<span id="L221" class="ln">   221  </span>			<span class="comment">// 対象期間の写像そのものは Test_toPurchasePeriodResponse が持つため、ここでは配線だけを固定する。</span>
-<span id="L222" class="ln">   222  </span>			assert.NotNil(t, r.Period.From)
-<span id="L223" class="ln">   223  </span>			require.Len(t, r.StatusBreakdown, len(view.StatusBreakdown))
-<span id="L224" class="ln">   224  </span>			for i, b := range view.StatusBreakdown {
-<span id="L225" class="ln">   225  </span>				assert.Equal(t, b.StatusID.ToPrimitive(), r.StatusBreakdown[i].Status.Id)
-<span id="L226" class="ln">   226  </span>				assert.Equal(t, b.StatusName, r.StatusBreakdown[i].Status.Name)
-<span id="L227" class="ln">   227  </span>				assert.EqualValues(t, b.StatusCode, r.StatusBreakdown[i].Status.Code)
-<span id="L228" class="ln">   228  </span>				assert.Equal(t, b.Count, r.StatusBreakdown[i].Count)
-<span id="L229" class="ln">   229  </span>				assert.Equal(t, b.TotalAmount, r.StatusBreakdown[i].TotalAmount)
-<span id="L230" class="ln">   230  </span>			}
-<span id="L231" class="ln">   231  </span>		})
-<span id="L232" class="ln">   232  </span>
-<span id="L233" class="ln">   233  </span>		t.Run(&#34;内訳が空の場合はnilではない空配列のレスポンスを返す&#34;, func(t *testing.T) {
-<span id="L234" class="ln">   234  </span>			t.Parallel()
-<span id="L235" class="ln">   235  </span>
-<span id="L236" class="ln">   236  </span>			r := toPurchaseAggregateResponse(summaryuc.SummaryView{})
+<span id="L196" class="ln">   196  </span>			ctrl := gomock.NewController(t)
+<span id="L197" class="ln">   197  </span>			uc := mock_summaryuc.NewMockUsecase(ctrl)
+<span id="L198" class="ln">   198  </span>			s := &amp;server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
+<span id="L199" class="ln">   199  </span>
+<span id="L200" class="ln">   200  </span>			uc.EXPECT().GetPurchaseSummary(gomock.Any(), gomock.Any(), gomock.Any()).
+<span id="L201" class="ln">   201  </span>				Return(summaryuc.SummaryView{}, apperror.ErrInternal)
+<span id="L202" class="ln">   202  </span>
+<span id="L203" class="ln">   203  </span>			_, err := s.GetUsersMePurchasesSummary(authnContext(t, uuidtestkit.NewTestFromSalt(t, &#34;hs_user_err&#34;)),
+<span id="L204" class="ln">   204  </span>				gen.GetUsersMePurchasesSummaryRequestObject{})
+<span id="L205" class="ln">   205  </span>			require.ErrorIs(t, err, apperror.ErrInternal)
+<span id="L206" class="ln">   206  </span>		})
+<span id="L207" class="ln">   207  </span>	})
+<span id="L208" class="ln">   208  </span>}
+<span id="L209" class="ln">   209  </span>
+<span id="L210" class="ln">   210  </span>func Test_toPurchaseAggregateResponse(t *testing.T) {
+<span id="L211" class="ln">   211  </span>	t.Parallel()
+<span id="L212" class="ln">   212  </span>
+<span id="L213" class="ln">   213  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L214" class="ln">   214  </span>		t.Parallel()
+<span id="L215" class="ln">   215  </span>
+<span id="L216" class="ln">   216  </span>		t.Run(&#34;集計ビューをステータス別内訳込みのレスポンスへ写像する&#34;, func(t *testing.T) {
+<span id="L217" class="ln">   217  </span>			t.Parallel()
+<span id="L218" class="ln">   218  </span>
+<span id="L219" class="ln">   219  </span>			view := summaryViewFixture(t)
+<span id="L220" class="ln">   220  </span>			r := toPurchaseAggregateResponse(view)
+<span id="L221" class="ln">   221  </span>
+<span id="L222" class="ln">   222  </span>			assert.Equal(t, view.TotalCount, r.TotalCount)
+<span id="L223" class="ln">   223  </span>			assert.Equal(t, view.TotalAmount, r.TotalAmount)
+<span id="L224" class="ln">   224  </span>			assert.Equal(t, view.ItemsTotal.String(), r.ItemsTotal)
+<span id="L225" class="ln">   225  </span>			require.Len(t, r.StatusBreakdown, len(view.StatusBreakdown))
+<span id="L226" class="ln">   226  </span>			for i, b := range view.StatusBreakdown {
+<span id="L227" class="ln">   227  </span>				assert.Equal(t, b.StatusID.ToPrimitive(), r.StatusBreakdown[i].Status.Id)
+<span id="L228" class="ln">   228  </span>				assert.Equal(t, b.StatusName, r.StatusBreakdown[i].Status.Name)
+<span id="L229" class="ln">   229  </span>				assert.EqualValues(t, b.StatusCode, r.StatusBreakdown[i].Status.Code)
+<span id="L230" class="ln">   230  </span>				assert.Equal(t, b.Count, r.StatusBreakdown[i].Count)
+<span id="L231" class="ln">   231  </span>				assert.Equal(t, b.TotalAmount, r.StatusBreakdown[i].TotalAmount)
+<span id="L232" class="ln">   232  </span>			}
+<span id="L233" class="ln">   233  </span>		})
+<span id="L234" class="ln">   234  </span>
+<span id="L235" class="ln">   235  </span>		t.Run(&#34;内訳が空の場合はnilではない空配列のレスポンスを返す&#34;, func(t *testing.T) {
+<span id="L236" class="ln">   236  </span>			t.Parallel()
 <span id="L237" class="ln">   237  </span>
-<span id="L238" class="ln">   238  </span>			assert.Equal(t, int64(0), r.TotalCount)
-<span id="L239" class="ln">   239  </span>			assert.Equal(t, int64(0), r.TotalAmount)
-<span id="L240" class="ln">   240  </span>			assert.Equal(t, &#34;0&#34;, r.ItemsTotal)
-<span id="L241" class="ln">   241  </span>			assert.NotNil(t, r.StatusBreakdown)
-<span id="L242" class="ln">   242  </span>			assert.Empty(t, r.StatusBreakdown)
-<span id="L243" class="ln">   243  </span>		})
-<span id="L244" class="ln">   244  </span>	})
-<span id="L245" class="ln">   245  </span>}
-<span id="L246" class="ln">   246  </span>
-<span id="L247" class="ln">   247  </span>func Test_toPurchasePeriodResponse(t *testing.T) {
-<span id="L248" class="ln">   248  </span>	t.Parallel()
-<span id="L249" class="ln">   249  </span>
-<span id="L250" class="ln">   250  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L251" class="ln">   251  </span>		t.Parallel()
-<span id="L252" class="ln">   252  </span>
-<span id="L253" class="ln">   253  </span>		t.Run(&#34;解決済みの対象期間を両端の暦日で返す&#34;, func(t *testing.T) {
-<span id="L254" class="ln">   254  </span>			t.Parallel()
-<span id="L255" class="ln">   255  </span>
-<span id="L256" class="ln">   256  </span>			r := toPurchasePeriodResponse(testWindow(t,
-<span id="L257" class="ln">   257  </span>				time.Date(2026, time.January, 21, 0, 0, 0, 0, time.UTC),
-<span id="L258" class="ln">   258  </span>				time.Date(2026, time.January, 31, 0, 0, 0, 0, time.UTC),
-<span id="L259" class="ln">   259  </span>			))
+<span id="L238" class="ln">   238  </span>			r := toPurchaseAggregateResponse(summaryuc.SummaryView{})
+<span id="L239" class="ln">   239  </span>
+<span id="L240" class="ln">   240  </span>			assert.Equal(t, int64(0), r.TotalCount)
+<span id="L241" class="ln">   241  </span>			assert.Equal(t, int64(0), r.TotalAmount)
+<span id="L242" class="ln">   242  </span>			assert.Equal(t, &#34;0&#34;, r.ItemsTotal)
+<span id="L243" class="ln">   243  </span>			assert.NotNil(t, r.StatusBreakdown)
+<span id="L244" class="ln">   244  </span>			assert.Empty(t, r.StatusBreakdown)
+<span id="L245" class="ln">   245  </span>		})
+<span id="L246" class="ln">   246  </span>	})
+<span id="L247" class="ln">   247  </span>}
+<span id="L248" class="ln">   248  </span>
+<span id="L249" class="ln">   249  </span>func Test_toGroupsResponse(t *testing.T) {
+<span id="L250" class="ln">   250  </span>	t.Parallel()
+<span id="L251" class="ln">   251  </span>
+<span id="L252" class="ln">   252  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L253" class="ln">   253  </span>		t.Parallel()
+<span id="L254" class="ln">   254  </span>
+<span id="L255" class="ln">   255  </span>		t.Run(&#34;グループ化していない場合はnilを返しレスポンスにgroupsを含めない&#34;, func(t *testing.T) {
+<span id="L256" class="ln">   256  </span>			t.Parallel()
+<span id="L257" class="ln">   257  </span>
+<span id="L258" class="ln">   258  </span>			assert.Nil(t, toGroupsResponse(nil))
+<span id="L259" class="ln">   259  </span>		})
 <span id="L260" class="ln">   260  </span>
-<span id="L261" class="ln">   261  </span>			require.NotNil(t, r.From)
-<span id="L262" class="ln">   262  </span>			require.NotNil(t, r.To)
-<span id="L263" class="ln">   263  </span>			assert.Equal(t, &#34;2026-01-21&#34;, r.From.Format(time.DateOnly))
-<span id="L264" class="ln">   264  </span>			assert.Equal(t, &#34;2026-01-31&#34;, r.To.Format(time.DateOnly))
-<span id="L265" class="ln">   265  </span>		})
-<span id="L266" class="ln">   266  </span>
-<span id="L267" class="ln">   267  </span>		t.Run(&#34;全期間を集計した場合は両端をnullで返す&#34;, func(t *testing.T) {
-<span id="L268" class="ln">   268  </span>			t.Parallel()
+<span id="L261" class="ln">   261  </span>		t.Run(&#34;グループ化を指定して対象が無い場合は空オブジェクトを返す&#34;, func(t *testing.T) {
+<span id="L262" class="ln">   262  </span>			t.Parallel()
+<span id="L263" class="ln">   263  </span>
+<span id="L264" class="ln">   264  </span>			r := toGroupsResponse(map[string]summaryuc.GroupNodeView{})
+<span id="L265" class="ln">   265  </span>
+<span id="L266" class="ln">   266  </span>			require.NotNil(t, r)
+<span id="L267" class="ln">   267  </span>			assert.Empty(t, *r)
+<span id="L268" class="ln">   268  </span>		})
 <span id="L269" class="ln">   269  </span>
-<span id="L270" class="ln">   270  </span>			r := toPurchasePeriodResponse(period.Window{})
-<span id="L271" class="ln">   271  </span>
-<span id="L272" class="ln">   272  </span>			assert.Nil(t, r.From)
-<span id="L273" class="ln">   273  </span>			assert.Nil(t, r.To)
-<span id="L274" class="ln">   274  </span>		})
-<span id="L275" class="ln">   275  </span>	})
-<span id="L276" class="ln">   276  </span>}
-<span id="L277" class="ln">   277  </span>
-<span id="L278" class="ln">   278  </span>func Test_toGroupsResponse(t *testing.T) {
-<span id="L279" class="ln">   279  </span>	t.Parallel()
-<span id="L280" class="ln">   280  </span>
-<span id="L281" class="ln">   281  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L282" class="ln">   282  </span>		t.Parallel()
+<span id="L270" class="ln">   270  </span>		t.Run(&#34;入れ子の集計を階層を保ったまま写像する&#34;, func(t *testing.T) {
+<span id="L271" class="ln">   271  </span>			t.Parallel()
+<span id="L272" class="ln">   272  </span>
+<span id="L273" class="ln">   273  </span>			productID := uuidtestkit.NewTestFromSalt(t, &#34;hs_product&#34;).String()
+<span id="L274" class="ln">   274  </span>			r := toGroupsResponse(map[string]summaryuc.GroupNodeView{
+<span id="L275" class="ln">   275  </span>				&#34;電子機器&#34;: {
+<span id="L276" class="ln">   276  </span>					Name:       &#34;電子機器&#34;,
+<span id="L277" class="ln">   277  </span>					ItemsTotal: dec(t, &#34;980.00&#34;),
+<span id="L278" class="ln">   278  </span>					Groups: map[string]summaryuc.GroupNodeView{
+<span id="L279" class="ln">   279  </span>						productID: {Name: &#34;ノートPC&#34;, ItemsTotal: dec(t, &#34;980.00&#34;)},
+<span id="L280" class="ln">   280  </span>					},
+<span id="L281" class="ln">   281  </span>				},
+<span id="L282" class="ln">   282  </span>			})
 <span id="L283" class="ln">   283  </span>
-<span id="L284" class="ln">   284  </span>		t.Run(&#34;グループ化していない場合はnilを返しレスポンスにgroupsを含めない&#34;, func(t *testing.T) {
-<span id="L285" class="ln">   285  </span>			t.Parallel()
-<span id="L286" class="ln">   286  </span>
-<span id="L287" class="ln">   287  </span>			assert.Nil(t, toGroupsResponse(nil))
-<span id="L288" class="ln">   288  </span>		})
+<span id="L284" class="ln">   284  </span>			require.NotNil(t, r)
+<span id="L285" class="ln">   285  </span>			groups := *r
+<span id="L286" class="ln">   286  </span>			require.Contains(t, groups, &#34;電子機器&#34;)
+<span id="L287" class="ln">   287  </span>			assert.Equal(t, &#34;電子機器&#34;, groups[&#34;電子機器&#34;].Name)
+<span id="L288" class="ln">   288  </span>			assert.Equal(t, &#34;980&#34;, groups[&#34;電子機器&#34;].ItemsTotal)
 <span id="L289" class="ln">   289  </span>
-<span id="L290" class="ln">   290  </span>		t.Run(&#34;グループ化を指定して対象が無い場合は空オブジェクトを返す&#34;, func(t *testing.T) {
-<span id="L291" class="ln">   291  </span>			t.Parallel()
-<span id="L292" class="ln">   292  </span>
-<span id="L293" class="ln">   293  </span>			r := toGroupsResponse(map[string]summaryuc.GroupNodeView{})
-<span id="L294" class="ln">   294  </span>
-<span id="L295" class="ln">   295  </span>			require.NotNil(t, r)
-<span id="L296" class="ln">   296  </span>			assert.Empty(t, *r)
-<span id="L297" class="ln">   297  </span>		})
-<span id="L298" class="ln">   298  </span>
-<span id="L299" class="ln">   299  </span>		t.Run(&#34;入れ子の集計を階層を保ったまま写像する&#34;, func(t *testing.T) {
-<span id="L300" class="ln">   300  </span>			t.Parallel()
-<span id="L301" class="ln">   301  </span>
-<span id="L302" class="ln">   302  </span>			productID := uuidtestkit.NewTestFromSalt(t, &#34;hs_product&#34;).String()
-<span id="L303" class="ln">   303  </span>			r := toGroupsResponse(map[string]summaryuc.GroupNodeView{
-<span id="L304" class="ln">   304  </span>				&#34;電子機器&#34;: {
-<span id="L305" class="ln">   305  </span>					Name:       &#34;電子機器&#34;,
-<span id="L306" class="ln">   306  </span>					ItemsTotal: dec(t, &#34;980.00&#34;),
-<span id="L307" class="ln">   307  </span>					Groups: map[string]summaryuc.GroupNodeView{
-<span id="L308" class="ln">   308  </span>						productID: {Name: &#34;ノートPC&#34;, ItemsTotal: dec(t, &#34;980.00&#34;)},
-<span id="L309" class="ln">   309  </span>					},
-<span id="L310" class="ln">   310  </span>				},
-<span id="L311" class="ln">   311  </span>			})
+<span id="L290" class="ln">   290  </span>			require.NotNil(t, groups[&#34;電子機器&#34;].Groups)
+<span id="L291" class="ln">   291  </span>			children := *groups[&#34;電子機器&#34;].Groups
+<span id="L292" class="ln">   292  </span>			require.Contains(t, children, productID)
+<span id="L293" class="ln">   293  </span>			assert.Equal(t, &#34;ノートPC&#34;, children[productID].Name)
+<span id="L294" class="ln">   294  </span>		})
+<span id="L295" class="ln">   295  </span>	})
+<span id="L296" class="ln">   296  </span>}
+<span id="L297" class="ln">   297  </span>
+<span id="L298" class="ln">   298  </span>func Test_toSubGroupsResponse(t *testing.T) {
+<span id="L299" class="ln">   299  </span>	t.Parallel()
+<span id="L300" class="ln">   300  </span>
+<span id="L301" class="ln">   301  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L302" class="ln">   302  </span>		t.Parallel()
+<span id="L303" class="ln">   303  </span>
+<span id="L304" class="ln">   304  </span>		t.Run(&#34;下位単位の指定が無い場合はnilを返しgroupsを含めない&#34;, func(t *testing.T) {
+<span id="L305" class="ln">   305  </span>			t.Parallel()
+<span id="L306" class="ln">   306  </span>
+<span id="L307" class="ln">   307  </span>			assert.Nil(t, toSubGroupsResponse(nil))
+<span id="L308" class="ln">   308  </span>		})
+<span id="L309" class="ln">   309  </span>
+<span id="L310" class="ln">   310  </span>		t.Run(&#34;下位ノードを表示名と金額へ写像する&#34;, func(t *testing.T) {
+<span id="L311" class="ln">   311  </span>			t.Parallel()
 <span id="L312" class="ln">   312  </span>
-<span id="L313" class="ln">   313  </span>			require.NotNil(t, r)
-<span id="L314" class="ln">   314  </span>			groups := *r
-<span id="L315" class="ln">   315  </span>			require.Contains(t, groups, &#34;電子機器&#34;)
-<span id="L316" class="ln">   316  </span>			assert.Equal(t, &#34;電子機器&#34;, groups[&#34;電子機器&#34;].Name)
-<span id="L317" class="ln">   317  </span>			assert.Equal(t, &#34;980&#34;, groups[&#34;電子機器&#34;].ItemsTotal)
-<span id="L318" class="ln">   318  </span>
-<span id="L319" class="ln">   319  </span>			require.NotNil(t, groups[&#34;電子機器&#34;].Groups)
-<span id="L320" class="ln">   320  </span>			children := *groups[&#34;電子機器&#34;].Groups
-<span id="L321" class="ln">   321  </span>			require.Contains(t, children, productID)
-<span id="L322" class="ln">   322  </span>			assert.Equal(t, &#34;ノートPC&#34;, children[productID].Name)
-<span id="L323" class="ln">   323  </span>		})
-<span id="L324" class="ln">   324  </span>	})
-<span id="L325" class="ln">   325  </span>}
-<span id="L326" class="ln">   326  </span>
-<span id="L327" class="ln">   327  </span>func Test_toSubGroupsResponse(t *testing.T) {
-<span id="L328" class="ln">   328  </span>	t.Parallel()
-<span id="L329" class="ln">   329  </span>
-<span id="L330" class="ln">   330  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L331" class="ln">   331  </span>		t.Parallel()
-<span id="L332" class="ln">   332  </span>
-<span id="L333" class="ln">   333  </span>		t.Run(&#34;下位単位の指定が無い場合はnilを返しgroupsを含めない&#34;, func(t *testing.T) {
-<span id="L334" class="ln">   334  </span>			t.Parallel()
-<span id="L335" class="ln">   335  </span>
-<span id="L336" class="ln">   336  </span>			assert.Nil(t, toSubGroupsResponse(nil))
-<span id="L337" class="ln">   337  </span>		})
-<span id="L338" class="ln">   338  </span>
-<span id="L339" class="ln">   339  </span>		t.Run(&#34;下位ノードを表示名と金額へ写像する&#34;, func(t *testing.T) {
-<span id="L340" class="ln">   340  </span>			t.Parallel()
-<span id="L341" class="ln">   341  </span>
-<span id="L342" class="ln">   342  </span>			productID := uuidtestkit.NewTestFromSalt(t, &#34;hs_subgroup_product&#34;).String()
-<span id="L343" class="ln">   343  </span>			r := toSubGroupsResponse(map[string]summaryuc.GroupNodeView{
-<span id="L344" class="ln">   344  </span>				productID: {Name: &#34;ノートPC&#34;, ItemsTotal: dec(t, &#34;980.00&#34;)},
-<span id="L345" class="ln">   345  </span>			})
-<span id="L346" class="ln">   346  </span>
-<span id="L347" class="ln">   347  </span>			require.NotNil(t, r)
-<span id="L348" class="ln">   348  </span>			require.Contains(t, *r, productID)
-<span id="L349" class="ln">   349  </span>			assert.Equal(t, &#34;ノートPC&#34;, (*r)[productID].Name)
-<span id="L350" class="ln">   350  </span>			assert.Equal(t, &#34;980&#34;, (*r)[productID].ItemsTotal)
-<span id="L351" class="ln">   351  </span>		})
-<span id="L352" class="ln">   352  </span>	})
-<span id="L353" class="ln">   353  </span>}
-<span id="L354" class="ln">   354  </span>
-<span id="L355" class="ln">   355  </span>func Test_toPeriodSpec(t *testing.T) {
-<span id="L356" class="ln">   356  </span>	t.Parallel()
-<span id="L357" class="ln">   357  </span>
-<span id="L358" class="ln">   358  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L359" class="ln">   359  </span>		t.Parallel()
-<span id="L360" class="ln">   360  </span>
-<span id="L361" class="ln">   361  </span>		t.Run(&#34;期間パラメータが漏れなくユースケースの期間指定へ写像される&#34;, func(t *testing.T) {
-<span id="L362" class="ln">   362  </span>			t.Parallel()
-<span id="L363" class="ln">   363  </span>
-<span id="L364" class="ln">   364  </span>			kind := gen.GetUsersMePurchasesSummaryParamsPeriod(period.KindRange)
-<span id="L365" class="ln">   365  </span>			from := openapi_types.Date{Time: time.Date(2026, time.January, 21, 0, 0, 0, 0, time.UTC)}
-<span id="L366" class="ln">   366  </span>			to := openapi_types.Date{Time: time.Date(2026, time.January, 31, 0, 0, 0, 0, time.UTC)}
-<span id="L367" class="ln">   367  </span>			month := &#34;2026-01&#34;
-<span id="L368" class="ln">   368  </span>			days := int32(10)
-<span id="L369" class="ln">   369  </span>
-<span id="L370" class="ln">   370  </span>			actual := toPeriodSpec(gen.GetUsersMePurchasesSummaryParams{
-<span id="L371" class="ln">   371  </span>				Period: &amp;kind,
-<span id="L372" class="ln">   372  </span>				From:   &amp;from,
-<span id="L373" class="ln">   373  </span>				To:     &amp;to,
-<span id="L374" class="ln">   374  </span>				Month:  &amp;month,
-<span id="L375" class="ln">   375  </span>				Days:   &amp;days,
-<span id="L376" class="ln">   376  </span>			})
-<span id="L377" class="ln">   377  </span>
-<span id="L378" class="ln">   378  </span>			assert.Equal(t, period.KindRange, actual.Kind)
-<span id="L379" class="ln">   379  </span>			require.NotNil(t, actual.From)
-<span id="L380" class="ln">   380  </span>			require.NotNil(t, actual.To)
-<span id="L381" class="ln">   381  </span>			assert.True(t, from.Equal(*actual.From))
-<span id="L382" class="ln">   382  </span>			assert.True(t, to.Equal(*actual.To))
-<span id="L383" class="ln">   383  </span>			assert.Equal(t, &amp;month, actual.Month)
-<span id="L384" class="ln">   384  </span>			require.NotNil(t, actual.Days)
-<span id="L385" class="ln">   385  </span>			assert.Equal(t, 10, *actual.Days)
-<span id="L386" class="ln">   386  </span>		})
-<span id="L387" class="ln">   387  </span>
-<span id="L388" class="ln">   388  </span>		t.Run(&#34;パラメータ未指定のときゼロ値の期間指定になる&#34;, func(t *testing.T) {
-<span id="L389" class="ln">   389  </span>			t.Parallel()
-<span id="L390" class="ln">   390  </span>
-<span id="L391" class="ln">   391  </span>			<span class="comment">// ゼロ値は全期間を意味するため、既定の呼び出しが期間で絞り込まれないことを固定する。</span>
-<span id="L392" class="ln">   392  </span>			assert.Equal(t, period.Spec{}, toPeriodSpec(gen.GetUsersMePurchasesSummaryParams{}))
-<span id="L393" class="ln">   393  </span>		})
-<span id="L394" class="ln">   394  </span>	})
-<span id="L395" class="ln">   395  </span>}
-<span id="L396" class="ln">   396  </span>
-<span id="L397" class="ln">   397  </span>func Test_toGroupKinds(t *testing.T) {
-<span id="L398" class="ln">   398  </span>	t.Parallel()
-<span id="L399" class="ln">   399  </span>
-<span id="L400" class="ln">   400  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L401" class="ln">   401  </span>		t.Parallel()
-<span id="L402" class="ln">   402  </span>
-<span id="L403" class="ln">   403  </span>		t.Run(&#34;未指定のときnilを返しグループ化しないことを表す&#34;, func(t *testing.T) {
-<span id="L404" class="ln">   404  </span>			t.Parallel()
-<span id="L405" class="ln">   405  </span>
-<span id="L406" class="ln">   406  </span>			assert.Nil(t, toGroupKinds(nil))
-<span id="L407" class="ln">   407  </span>		})
-<span id="L408" class="ln">   408  </span>
-<span id="L409" class="ln">   409  </span>		t.Run(&#34;指定順を保ったままユースケースの指定へ写像する&#34;, func(t *testing.T) {
-<span id="L410" class="ln">   410  </span>			t.Parallel()
-<span id="L411" class="ln">   411  </span>
-<span id="L412" class="ln">   412  </span>			groupBy := gen.PurchaseGroupByParam{&#34;product&#34;, &#34;category&#34;}
-<span id="L413" class="ln">   413  </span>			assert.Equal(t,
-<span id="L414" class="ln">   414  </span>				[]summaryuc.GroupKind{summaryuc.GroupByProduct, summaryuc.GroupByCategory},
-<span id="L415" class="ln">   415  </span>				toGroupKinds(&amp;groupBy),
-<span id="L416" class="ln">   416  </span>			)
-<span id="L417" class="ln">   417  </span>		})
-<span id="L418" class="ln">   418  </span>	})
-<span id="L419" class="ln">   419  </span>}
-<span id="L420" class="ln">   420  </span>
+<span id="L313" class="ln">   313  </span>			productID := uuidtestkit.NewTestFromSalt(t, &#34;hs_subgroup_product&#34;).String()
+<span id="L314" class="ln">   314  </span>			r := toSubGroupsResponse(map[string]summaryuc.GroupNodeView{
+<span id="L315" class="ln">   315  </span>				productID: {Name: &#34;ノートPC&#34;, ItemsTotal: dec(t, &#34;980.00&#34;)},
+<span id="L316" class="ln">   316  </span>			})
+<span id="L317" class="ln">   317  </span>
+<span id="L318" class="ln">   318  </span>			require.NotNil(t, r)
+<span id="L319" class="ln">   319  </span>			require.Contains(t, *r, productID)
+<span id="L320" class="ln">   320  </span>			assert.Equal(t, &#34;ノートPC&#34;, (*r)[productID].Name)
+<span id="L321" class="ln">   321  </span>			assert.Equal(t, &#34;980&#34;, (*r)[productID].ItemsTotal)
+<span id="L322" class="ln">   322  </span>		})
+<span id="L323" class="ln">   323  </span>	})
+<span id="L324" class="ln">   324  </span>}
+<span id="L325" class="ln">   325  </span>
+<span id="L326" class="ln">   326  </span>func Test_toGroupKinds(t *testing.T) {
+<span id="L327" class="ln">   327  </span>	t.Parallel()
+<span id="L328" class="ln">   328  </span>
+<span id="L329" class="ln">   329  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L330" class="ln">   330  </span>		t.Parallel()
+<span id="L331" class="ln">   331  </span>
+<span id="L332" class="ln">   332  </span>		t.Run(&#34;未指定のときnilを返しグループ化しないことを表す&#34;, func(t *testing.T) {
+<span id="L333" class="ln">   333  </span>			t.Parallel()
+<span id="L334" class="ln">   334  </span>
+<span id="L335" class="ln">   335  </span>			assert.Nil(t, toGroupKinds(nil))
+<span id="L336" class="ln">   336  </span>		})
+<span id="L337" class="ln">   337  </span>
+<span id="L338" class="ln">   338  </span>		t.Run(&#34;指定順を保ったままユースケースの指定へ写像する&#34;, func(t *testing.T) {
+<span id="L339" class="ln">   339  </span>			t.Parallel()
+<span id="L340" class="ln">   340  </span>
+<span id="L341" class="ln">   341  </span>			groupBy := gen.PurchaseGroupByParam{&#34;product&#34;, &#34;category&#34;}
+<span id="L342" class="ln">   342  </span>			assert.Equal(t,
+<span id="L343" class="ln">   343  </span>				[]summaryuc.GroupKind{summaryuc.GroupByProduct, summaryuc.GroupByCategory},
+<span id="L344" class="ln">   344  </span>				toGroupKinds(&amp;groupBy),
+<span id="L345" class="ln">   345  </span>			)
+<span id="L346" class="ln">   346  </span>		})
+<span id="L347" class="ln">   347  </span>	})
+<span id="L348" class="ln">   348  </span>}
+<span id="L349" class="ln">   349  </span>
 </pre><p><a href="../../../../../../../../../src/go-boilerplate/internal/controller/handler/v1/users/me/purchases/v1_users_me_purchases_summary_handler_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

@@ -223,6 +223,12 @@
          <index name="products_category_id_idx" unique="false">
             <column ascending="true" name="category_id"/>
          </index>
+         <index name="products_created_at_id_idx" unique="false">
+            <column ascending="false" name="created_at"/>
+            <column ascending="false" name="id"/>
+            <column ascending="true" name="price"/>
+            <column ascending="true" name="quantity"/>
+         </index>
          <index name="products_description_trgm_idx" unique="false">
             <column ascending="true" name="description"/>
          </index>

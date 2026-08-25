@@ -183,7 +183,7 @@
 		
 			
 			
-			<h2 id="ListFeedParams">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/query/purchase_feed_query_service.go.html?s=1556:2187#L16">ListFeedParams</a>
+			<h2 id="ListFeedParams">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/query/purchase_feed_query_service.go.html?s=1837:2602#L20">ListFeedParams</a>
 				<a class="permalink" href="#ListFeedParams">¶</a>
 				
 				
@@ -198,10 +198,11 @@
     AfterOrderedAt *<a href="../../../../../time/">time</a>.<a href="../../../../../time/#Time">Time</a>
 <span id="ListFeedParams.AfterID"></span>    <span class="comment">// AfterID は、keyset 境界となる購入 ID です。先頭ページでは nil です。</span>
     AfterID *<a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
-<span id="ListFeedParams.OrderedAfter"></span>    <span class="comment">// OrderedAfter / OrderedBefore は、注文日時で絞り込む半開区間 [OrderedAfter, OrderedBefore) です。</span>
-    <span class="comment">// 期間で絞り込まない場合はいずれも nil で、片方だけを指定した場合も絞り込みません。</span>
-    OrderedAfter  *<a href="../../../../../time/">time</a>.<a href="../../../../../time/#Time">Time</a>
-<span id="ListFeedParams.OrderedBefore"></span>    OrderedBefore *<a href="../../../../../time/">time</a>.<a href="../../../../../time/#Time">Time</a>
+<span id="ListFeedParams.Window"></span>    <span class="comment">// Window は、注文日時で絞り込む対象期間です。境界を持たない側には制限を設けません。</span>
+    Window <a href="../../../../../go-boilerplate/internal/usecase/tools/timewindow/">timewindow</a>.<a href="../../../../../go-boilerplate/internal/usecase/tools/timewindow/#Window">Window</a>
+<span id="ListFeedParams.StatusCodes"></span>    <span class="comment">// StatusCodes は、購入ステータスの業務キーによる絞り込みです。いずれかに一致する購入を対象とし、</span>
+    <span class="comment">// 空の場合は全ステータスを対象とします。既知でないコードは 0 件として扱います。</span>
+    StatusCodes []<a href="../../../../../builtin/#int16">int16</a>
 }
 </pre>
 
@@ -317,22 +318,25 @@ UnitPrice は購入時点の単価スナップショット（価格スケール�
 		
 			
 			
-			<h2 id="PurchaseFeedQueryService">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/query/purchase_feed_query_service.go.html?s=555:1299#L5">PurchaseFeedQueryService</a>
+			<h2 id="PurchaseFeedQueryService">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/query/purchase_feed_query_service.go.html?s=413:1580#L5">PurchaseFeedQueryService</a>
 				<a class="permalink" href="#PurchaseFeedQueryService">¶</a>
 				
 				
 			</h2>
-			<p>PurchaseFeedQueryService は、購入履歴一覧の集約跨ぎ read 投影を提供する QueryService です。
-一覧は購入ステータスマスタに加えて別集約である商品（products）を結合して明細の要約を解決するため、
-単一集約の Repository read ではなく読み取り側に置きます（ADR-0032 (lightweight-cqrs)）。
+			<p>PurchaseFeedQueryService は、購入履歴一覧の集約跨ぎ read 投影を提供する QueryService です
+（配置根拠: docs/spec/purchase/usecase.md § GET 一覧）。
 
 			</p><pre>type PurchaseFeedQueryService interface {
     <span class="comment">// FindFeedByUserID は、指定ユーザーの購入履歴を注文日時の降順（同時刻は ID 降順）の安定順で</span>
     <span class="comment">// keyset ページネーション取得します。ステータスは購入ステータスマスタ、明細の要約は商品との</span>
     <span class="comment">// 結合で解決します。所有権は本サービス側の絞り込みで担保します。</span>
     <span class="comment">// params.AfterOrderedAt / AfterID が nil の場合は先頭ページを返します。</span>
-    <span class="comment">// params.OrderedAfter / OrderedBefore が揃っている場合は、その半開区間に注文された購入だけを返します。</span>
+    <span class="comment">// params.Window が境界を持つ場合は、その半開区間に注文された購入だけを返します。</span>
+    <span class="comment">// params.StatusCodes が空でない場合は、いずれかのステータスの購入だけを返します。</span>
     FindFeedByUserID(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, userID <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, params <a href="#ListFeedParams">ListFeedParams</a>) ([]<a href="#PurchaseFeedReadModel">PurchaseFeedReadModel</a>, <a href="../../../../../builtin/#error">error</a>)
+    <span class="comment">// FindFeedAll は、購入者を問わず購入履歴を FindFeedByUserID と同じ順序・同じ絞り込みで取得します。</span>
+    <span class="comment">// 所有権で閉じないため、呼び出し側が可視範囲を認可したうえで用います。</span>
+    FindFeedAll(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, params <a href="#ListFeedParams">ListFeedParams</a>) ([]<a href="#PurchaseFeedReadModel">PurchaseFeedReadModel</a>, <a href="../../../../../builtin/#error">error</a>)
 }</pre>
 
 			
@@ -349,7 +353,7 @@ UnitPrice は購入時点の単価スナップショット（価格スケール�
 		
 			
 			
-			<h2 id="PurchaseFeedReadModel">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/query/purchase_feed_query_service.go.html?s=2408:3603#L31">PurchaseFeedReadModel</a>
+			<h2 id="PurchaseFeedReadModel">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/query/purchase_feed_query_service.go.html?s=2823:4018#L36">PurchaseFeedReadModel</a>
 				<a class="permalink" href="#PurchaseFeedReadModel">¶</a>
 				
 				
@@ -393,7 +397,7 @@ UnitPrice は購入時点の単価スナップショット（価格スケール�
 		
 			
 			
-			<h2 id="PurchaseItemSummaryReadModel">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/query/purchase_summary_query_service.go.html?s=3255:3703#L39">PurchaseItemSummaryReadModel</a>
+			<h2 id="PurchaseItemSummaryReadModel">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/query/purchase_summary_query_service.go.html?s=3268:3716#L39">PurchaseItemSummaryReadModel</a>
 				<a class="permalink" href="#PurchaseItemSummaryReadModel">¶</a>
 				
 				
@@ -426,7 +430,7 @@ ItemsTotal は価格スケールの正確な decimal（USD ドル）です。
 		
 			
 			
-			<h2 id="PurchaseStatusSummaryReadModel">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/query/purchase_summary_query_service.go.html?s=2607:3068#L25">PurchaseStatusSummaryReadModel</a>
+			<h2 id="PurchaseStatusSummaryReadModel">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/query/purchase_summary_query_service.go.html?s=2620:3081#L25">PurchaseStatusSummaryReadModel</a>
 				<a class="permalink" href="#PurchaseStatusSummaryReadModel">¶</a>
 				
 				
@@ -461,7 +465,7 @@ ItemsTotal は価格スケールの正確な decimal（USD ドル）です。
 		
 			
 			
-			<h2 id="PurchaseSummaryQueryService">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/query/purchase_summary_query_service.go.html?s=1021:2428#L9">PurchaseSummaryQueryService</a>
+			<h2 id="PurchaseSummaryQueryService">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/query/purchase_summary_query_service.go.html?s=1022:2441#L9">PurchaseSummaryQueryService</a>
 				<a class="permalink" href="#PurchaseSummaryQueryService">¶</a>
 				
 				
@@ -476,15 +480,15 @@ ItemsTotal は価格スケールの正確な decimal（USD ドル）です。
 			</p><pre>type PurchaseSummaryQueryService interface {
     <span class="comment">// SummarizeByUserID は、認証主体（userID）の購入をステータス単位に集計し、購入ステータスマスタの表示順で返します。</span>
     <span class="comment">// 母集団・対象なし時の扱いは PurchaseSummaryQueryService の doc コメントを参照。</span>
-    SummarizeByUserID(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, userID <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, window <a href="../../../../../go-boilerplate/internal/usecase/purchase/period/">period</a>.<a href="../../../../../go-boilerplate/internal/usecase/purchase/period/#Window">Window</a>) ([]<a href="#PurchaseStatusSummaryReadModel">PurchaseStatusSummaryReadModel</a>, <a href="../../../../../builtin/#error">error</a>)
+    SummarizeByUserID(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, userID <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, window <a href="../../../../../go-boilerplate/internal/usecase/tools/timewindow/">timewindow</a>.<a href="../../../../../go-boilerplate/internal/usecase/tools/timewindow/#Window">Window</a>) ([]<a href="#PurchaseStatusSummaryReadModel">PurchaseStatusSummaryReadModel</a>, <a href="../../../../../builtin/#error">error</a>)
     <span class="comment">// SumItemsByUserID は、認証主体（userID）の購入明細の金額合計（単価 × 数量の総和）を返します。</span>
     <span class="comment">// 価格スケールの正確な decimal で、決済スケール（セント整数）へは丸めません（ADR-0038 (two-scale-quantity-model)）。</span>
     <span class="comment">// 対象なし時の扱いは PurchaseSummaryQueryService の doc コメントを参照。</span>
-    SumItemsByUserID(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, userID <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, window <a href="../../../../../go-boilerplate/internal/usecase/purchase/period/">period</a>.<a href="../../../../../go-boilerplate/internal/usecase/purchase/period/#Window">Window</a>) (<a href="../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>, <a href="../../../../../builtin/#error">error</a>)
+    SumItemsByUserID(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, userID <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, window <a href="../../../../../go-boilerplate/internal/usecase/tools/timewindow/">timewindow</a>.<a href="../../../../../go-boilerplate/internal/usecase/tools/timewindow/#Window">Window</a>) (<a href="../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>, <a href="../../../../../builtin/#error">error</a>)
     <span class="comment">// SummarizeItemsByProductByUserID は、認証主体（userID）の購入明細を商品単位に集計し、商品が属する</span>
     <span class="comment">// カテゴリを添えて返します。カテゴリ単位の集計は呼び出し側がこの結果を畳み込んで得ます。</span>
     <span class="comment">// 対象なし時の扱いは PurchaseSummaryQueryService の doc コメントを参照。</span>
-    SummarizeItemsByProductByUserID(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, userID <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, window <a href="../../../../../go-boilerplate/internal/usecase/purchase/period/">period</a>.<a href="../../../../../go-boilerplate/internal/usecase/purchase/period/#Window">Window</a>) ([]<a href="#PurchaseItemSummaryReadModel">PurchaseItemSummaryReadModel</a>, <a href="../../../../../builtin/#error">error</a>)
+    SummarizeItemsByProductByUserID(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, userID <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, window <a href="../../../../../go-boilerplate/internal/usecase/tools/timewindow/">timewindow</a>.<a href="../../../../../go-boilerplate/internal/usecase/tools/timewindow/#Window">Window</a>) ([]<a href="#PurchaseItemSummaryReadModel">PurchaseItemSummaryReadModel</a>, <a href="../../../../../builtin/#error">error</a>)
 }</pre>
 
 			

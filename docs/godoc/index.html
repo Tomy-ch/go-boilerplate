@@ -1535,7 +1535,7 @@
 		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/usecase/purchase">purchase</a></td>
 			<td class="pkg-synopsis">
-				Package purchase は、購入の作成ユースケースを提供します。
+				Package purchase は、購入の作成と状態遷移のユースケースを提供します。
 			</td>
 		</tr>
 
@@ -1550,13 +1550,6 @@
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/purchase/event">event</a></td>
 			<td class="pkg-synopsis">
 				Package event は、購入ユースケースが発行する outbox イベントの本文（自己完結 snapshot）と その marshal を提供します。
-			</td>
-		</tr>
-
-		<tr>
-			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/purchase/period">period</a></td>
-			<td class="pkg-synopsis">
-				Package period は、購入の集計・絞り込みで用いる対象期間の指定と、その暦日境界への解決を提供します。
 			</td>
 		</tr>
 
@@ -1606,6 +1599,13 @@
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/tools/search">search</a></td>
 			<td class="pkg-synopsis">
 				Package search は、検索関連のユースケースをサポートするユーティリティを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/tools/timewindow">timewindow</a></td>
+			<td class="pkg-synopsis">
+				Package timewindow は、集計・絞り込みの対象期間を表す半開区間を提供します。
 			</td>
 		</tr>
 

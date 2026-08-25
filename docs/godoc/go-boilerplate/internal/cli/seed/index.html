@@ -169,7 +169,7 @@ vars は seed ファイル中の `${NAME}` に対応する値で、値の無い�
 		
 			
 			
-			</p><h2 id="RunObjectSeed">func <a href="../../../../src/go-boilerplate/internal/cli/seed/object.go.html?s=1877:1972#L37">RunObjectSeed</a>
+			</p><h2 id="RunObjectSeed">func <a href="../../../../src/go-boilerplate/internal/cli/seed/object.go.html?s=1883:1978#L37">RunObjectSeed</a>
 				<a class="permalink" href="#RunObjectSeed">¶</a>
 				
 				
@@ -177,7 +177,7 @@ vars は seed ファイル中の `${NAME}` に対応する値で、値の無い�
 			<pre>func RunObjectSeed(logger <a href="../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../go-boilerplate/internal/logging/#Logger">Logger</a>, fsys <a href="../../../../go-boilerplate/pkg/fs/">fs</a>.<a href="../../../../go-boilerplate/pkg/fs/#FS">FS</a>, endpoint <a href="../../../../builtin/#string">string</a>, put <a href="#PutObjectFunc">PutObjectFunc</a>) <a href="../../../../builtin/#error">error</a></pre>
 			<p>RunObjectSeed は、objectSeedPlace 配下のファイルをオブジェクトストレージへ保存します。
 objectSeedPlace からの相対パスがそのままオブジェクトキーになるため、置いたディレクトリ構造が
-キーの構造になります（例 storage/seed/products/a.webp → products/a.webp）。
+キーの構造になります（例 storage/seed/&lt;接頭辞&gt;/a.webp → &lt;接頭辞&gt;/a.webp）。
 </p><p>endpoint が空の環境では何もしません。対象が 1 件も無い場合も同様で、いずれも成功として扱います。
 
 			

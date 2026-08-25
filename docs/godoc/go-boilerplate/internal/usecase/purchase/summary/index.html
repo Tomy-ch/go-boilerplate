@@ -135,7 +135,7 @@
 				<dd><a href="#Usecase">type Usecase</a></dd>
 				
 					
-					<dd>    <a href="#New">func New(qs query.PurchaseSummaryQueryService, clk clock.Clock, loc *time.Location, tf observability.TracerFactory) Usecase</a></dd>
+					<dd>    <a href="#New">func New(qs query.PurchaseSummaryQueryService, tf observability.TracerFactory) Usecase</a></dd>
 				
 				
 			
@@ -166,7 +166,7 @@
 		
 			
 			
-			<h2 id="GetSummaryParams">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/summary/purchase_summary_usecase.go.html?s=1234:1554#L29">GetSummaryParams</a>
+			<h2 id="GetSummaryParams">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/summary/purchase_summary_usecase.go.html?s=1177:1494#L27">GetSummaryParams</a>
 				<a class="permalink" href="#GetSummaryParams">¶</a>
 				
 				
@@ -174,8 +174,8 @@
 			<p>GetSummaryParams は、購入集計取得ユースケースの入力パラメータです。
 
 			</p><pre>type GetSummaryParams struct {
-<span id="GetSummaryParams.Period"></span>    <span class="comment">// Period は、集計対象期間の指定です。ゼロ値は全期間を意味します。</span>
-    Period <a href="../../../../../go-boilerplate/internal/usecase/purchase/period/">period</a>.<a href="../../../../../go-boilerplate/internal/usecase/purchase/period/#Spec">Spec</a>
+<span id="GetSummaryParams.Window"></span>    <span class="comment">// Window は、集計対象期間です。ゼロ値は全期間を意味します。</span>
+    Window <a href="../../../../../go-boilerplate/internal/usecase/tools/timewindow/">timewindow</a>.<a href="../../../../../go-boilerplate/internal/usecase/tools/timewindow/#Window">Window</a>
 <span id="GetSummaryParams.GroupBy"></span>    <span class="comment">// GroupBy は、グループ化単位を適用順（先頭が最上位の階層）に並べたものです。空ならグループ化しません。</span>
     GroupBy []<a href="#GroupKind">GroupKind</a>
 }
@@ -195,7 +195,7 @@
 		
 			
 			
-			<h2 id="GroupKind">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/summary/purchase_summary_usecase.go.html?s=944:965#L20">GroupKind</a>
+			<h2 id="GroupKind">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/summary/purchase_summary_usecase.go.html?s=887:908#L18">GroupKind</a>
 				<a class="permalink" href="#GroupKind">¶</a>
 				
 				
@@ -226,7 +226,7 @@
 		
 			
 			
-			<h2 id="GroupNodeView">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/summary/purchase_summary_usecase.go.html?s=2191:2571#L48">GroupNodeView</a>
+			<h2 id="GroupNodeView">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/summary/purchase_summary_usecase.go.html?s=2131:2511#L46">GroupNodeView</a>
 				<a class="permalink" href="#GroupNodeView">¶</a>
 				
 				
@@ -258,7 +258,7 @@ ItemsTotal は価格スケールの正確な decimal（USD ドル）で、下位
 		
 			
 			
-			<h2 id="StatusCountView">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/summary/purchase_summary_usecase.go.html?s=1809:1938#L38">StatusCountView</a>
+			<h2 id="StatusCountView">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/summary/purchase_summary_usecase.go.html?s=1749:1878#L36">StatusCountView</a>
 				<a class="permalink" href="#StatusCountView">¶</a>
 				
 				
@@ -289,7 +289,7 @@ ItemsTotal は価格スケールの正確な decimal（USD ドル）で、下位
 		
 			
 			
-			<h2 id="SummaryView">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/summary/purchase_summary_usecase.go.html?s=2807:3821#L59">SummaryView</a>
+			<h2 id="SummaryView">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/summary/purchase_summary_usecase.go.html?s=2747:3604#L57">SummaryView</a>
 				<a class="permalink" href="#SummaryView">¶</a>
 				
 				
@@ -298,8 +298,6 @@ ItemsTotal は価格スケールの正確な decimal（USD ドル）で、下位
 同一の母集団から算出されるため、フィールド間で不整合は生じません。
 
 			</p><pre>type SummaryView struct {
-<span id="SummaryView.Period"></span>    <span class="comment">// Period は、集計に実際に用いた対象期間です。全期間を集計した場合は絞り込みなしを表します。</span>
-    Period <a href="../../../../../go-boilerplate/internal/usecase/purchase/period/">period</a>.<a href="../../../../../go-boilerplate/internal/usecase/purchase/period/#Window">Window</a>
 <span id="SummaryView.TotalCount"></span>    <span class="comment">// TotalCount / TotalAmount は、購入件数と支払金額（小計 + 税額 + 送料）の合計です。</span>
     <span class="comment">// 対象がない場合はいずれも 0 で、TotalAmount は USD セント単位の整数です。</span>
     TotalCount  <a href="../../../../../builtin/#int64">int64</a>
@@ -328,7 +326,7 @@ ItemsTotal は価格スケールの正確な decimal（USD ドル）で、下位
 		
 			
 			
-			<h2 id="Usecase">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/summary/purchase_summary_usecase.go.html?s=3922:4616#L76">Usecase</a>
+			<h2 id="Usecase">type <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/summary/purchase_summary_usecase.go.html?s=3705:4384#L72">Usecase</a>
 				<a class="permalink" href="#Usecase">¶</a>
 				
 				
@@ -339,7 +337,7 @@ ItemsTotal は価格スケールの正確な decimal（USD ドル）で、下位
     <span class="comment">// GetPurchaseSummary は、認証主体自身の購入の件数・支払金額・明細金額・ステータス別内訳を返します。</span>
     <span class="comment">// 集計は認証主体の userID に限定され、他ユーザーの購入は含みません。キャンセル済みの購入は除外します。</span>
     <span class="comment">// params.GroupBy を指定した場合は、明細金額をその単位へ分解した内訳も返します。</span>
-    <span class="comment">// 対象の購入がない場合はゼロ値を返します。期間指定・グループ化指定が不正な場合は InvalidArgument を返します。</span>
+    <span class="comment">// 対象の購入がない場合はゼロ値を返します。グループ化指定が不正な場合は InvalidArgument を返します。</span>
     GetPurchaseSummary(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, authn *<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, params <a href="#GetSummaryParams">GetSummaryParams</a>) (<a href="#SummaryView">SummaryView</a>, <a href="../../../../../builtin/#error">error</a>)
 }</pre>
 
@@ -353,15 +351,13 @@ ItemsTotal は価格スケールの正確な decimal（USD ドル）で、下位
 
 			
 				
-				<h3 id="New">func <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/summary/purchase_summary_usecase.go.html?s=4836:4966#L92">New</a>
+				<h3 id="New">func <a href="../../../../../src/go-boilerplate/internal/usecase/purchase/summary/purchase_summary_usecase.go.html?s=4561:4652#L86">New</a>
 					<a class="permalink" href="#New">¶</a>
 					
 					
 				</h3>
 				<pre>func New(
     qs <a href="../../../../../go-boilerplate/internal/usecase/purchase/query/">query</a>.<a href="../../../../../go-boilerplate/internal/usecase/purchase/query/#PurchaseSummaryQueryService">PurchaseSummaryQueryService</a>,
-    clk <a href="../../../../../go-boilerplate/internal/usecase/boundary/clock/">clock</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/clock/#Clock">Clock</a>,
-    loc *<a href="../../../../../time/">time</a>.<a href="../../../../../time/#Location">Location</a>,
     tf <a href="../../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../../go-boilerplate/internal/observability/#TracerFactory">TracerFactory</a>,
 ) <a href="#Usecase">Usecase</a></pre>
 				<p>New は、購入集計の参照ユースケースを生成します。

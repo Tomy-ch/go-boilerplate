@@ -112,13 +112,13 @@
 				
 				
 					
-					<dd>    <a href="#MockDashboardQueryService.CountPurchasesByStatus">func (m *MockDashboardQueryService) CountPurchasesByStatus(ctx context.Context, window query.Window) ([]query.PurchaseStatusCountResult, error)</a></dd>
+					<dd>    <a href="#MockDashboardQueryService.CountPurchasesByStatus">func (m *MockDashboardQueryService) CountPurchasesByStatus(ctx context.Context, window timewindow.Window) ([]query.PurchaseStatusCountResult, error)</a></dd>
 				
 					
 					<dd>    <a href="#MockDashboardQueryService.EXPECT">func (m *MockDashboardQueryService) EXPECT() *MockDashboardQueryServiceMockRecorder</a></dd>
 				
 					
-					<dd>    <a href="#MockDashboardQueryService.SummarizeSales">func (m *MockDashboardQueryService) SummarizeSales(ctx context.Context, window query.Window) (query.SalesResult, error)</a></dd>
+					<dd>    <a href="#MockDashboardQueryService.SummarizeSales">func (m *MockDashboardQueryService) SummarizeSales(ctx context.Context, window timewindow.Window) (query.SalesResult, error)</a></dd>
 				
 			
 				
@@ -159,7 +159,7 @@
 		
 			
 			
-			<h2 id="MockDashboardQueryService">type <a href="../../../../../../src/go-boilerplate/internal/usecase/dashboard/query/mock/mock_dashboard_query_service.go.gen.go.html?s=534:672#L11">MockDashboardQueryService</a>
+			<h2 id="MockDashboardQueryService">type <a href="../../../../../../src/go-boilerplate/internal/usecase/dashboard/query/mock/mock_dashboard_query_service.go.gen.go.html?s=597:735#L12">MockDashboardQueryService</a>
 				<a class="permalink" href="#MockDashboardQueryService">¶</a>
 				
 				
@@ -181,7 +181,7 @@
 
 			
 				
-				<h3 id="NewMockDashboardQueryService">func <a href="../../../../../../src/go-boilerplate/internal/usecase/dashboard/query/mock/mock_dashboard_query_service.go.gen.go.html?s=916:1001#L23">NewMockDashboardQueryService</a>
+				<h3 id="NewMockDashboardQueryService">func <a href="../../../../../../src/go-boilerplate/internal/usecase/dashboard/query/mock/mock_dashboard_query_service.go.gen.go.html?s=979:1064#L24">NewMockDashboardQueryService</a>
 					<a class="permalink" href="#NewMockDashboardQueryService">¶</a>
 					
 					
@@ -195,12 +195,12 @@
 
 			
 				
-				</p><h3 id="MockDashboardQueryService.CountPurchasesByStatus">func (*MockDashboardQueryService) <a href="../../../../../../src/go-boilerplate/internal/usecase/dashboard/query/mock/mock_dashboard_query_service.go.gen.go.html?s=1360:1503#L35">CountPurchasesByStatus</a>
+				</p><h3 id="MockDashboardQueryService.CountPurchasesByStatus">func (*MockDashboardQueryService) <a href="../../../../../../src/go-boilerplate/internal/usecase/dashboard/query/mock/mock_dashboard_query_service.go.gen.go.html?s=1423:1571#L36">CountPurchasesByStatus</a>
 					<a class="permalink" href="#MockDashboardQueryService.CountPurchasesByStatus">¶</a>
 					
 					
 				</h3>
-				<pre>func (m *<a href="#MockDashboardQueryService">MockDashboardQueryService</a>) CountPurchasesByStatus(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, window <a href="../../../../../../go-boilerplate/internal/usecase/dashboard/query/">query</a>.<a href="../../../../../../go-boilerplate/internal/usecase/dashboard/query/#Window">Window</a>) ([]<a href="../../../../../../go-boilerplate/internal/usecase/dashboard/query/">query</a>.<a href="../../../../../../go-boilerplate/internal/usecase/dashboard/query/#PurchaseStatusCountResult">PurchaseStatusCountResult</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<pre>func (m *<a href="#MockDashboardQueryService">MockDashboardQueryService</a>) CountPurchasesByStatus(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, window <a href="../../../../../../go-boilerplate/internal/usecase/tools/timewindow/">timewindow</a>.<a href="../../../../../../go-boilerplate/internal/usecase/tools/timewindow/#Window">Window</a>) ([]<a href="../../../../../../go-boilerplate/internal/usecase/dashboard/query/">query</a>.<a href="../../../../../../go-boilerplate/internal/usecase/dashboard/query/#PurchaseStatusCountResult">PurchaseStatusCountResult</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
 				<p>CountPurchasesByStatus mocks base method.
 
 				
@@ -208,7 +208,7 @@
 				
 			
 				
-				</p><h3 id="MockDashboardQueryService.EXPECT">func (*MockDashboardQueryService) <a href="../../../../../../src/go-boilerplate/internal/usecase/dashboard/query/mock/mock_dashboard_query_service.go.gen.go.html?s=1207:1290#L30">EXPECT</a>
+				</p><h3 id="MockDashboardQueryService.EXPECT">func (*MockDashboardQueryService) <a href="../../../../../../src/go-boilerplate/internal/usecase/dashboard/query/mock/mock_dashboard_query_service.go.gen.go.html?s=1270:1353#L31">EXPECT</a>
 					<a class="permalink" href="#MockDashboardQueryService.EXPECT">¶</a>
 					
 					
@@ -221,12 +221,12 @@
 				
 			
 				
-				</p><h3 id="MockDashboardQueryService.SummarizeSales">func (*MockDashboardQueryService) <a href="../../../../../../src/go-boilerplate/internal/usecase/dashboard/query/mock/mock_dashboard_query_service.go.gen.go.html?s=2108:2227#L50">SummarizeSales</a>
+				</p><h3 id="MockDashboardQueryService.SummarizeSales">func (*MockDashboardQueryService) <a href="../../../../../../src/go-boilerplate/internal/usecase/dashboard/query/mock/mock_dashboard_query_service.go.gen.go.html?s=2176:2300#L51">SummarizeSales</a>
 					<a class="permalink" href="#MockDashboardQueryService.SummarizeSales">¶</a>
 					
 					
 				</h3>
-				<pre>func (m *<a href="#MockDashboardQueryService">MockDashboardQueryService</a>) SummarizeSales(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, window <a href="../../../../../../go-boilerplate/internal/usecase/dashboard/query/">query</a>.<a href="../../../../../../go-boilerplate/internal/usecase/dashboard/query/#Window">Window</a>) (<a href="../../../../../../go-boilerplate/internal/usecase/dashboard/query/">query</a>.<a href="../../../../../../go-boilerplate/internal/usecase/dashboard/query/#SalesResult">SalesResult</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<pre>func (m *<a href="#MockDashboardQueryService">MockDashboardQueryService</a>) SummarizeSales(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, window <a href="../../../../../../go-boilerplate/internal/usecase/tools/timewindow/">timewindow</a>.<a href="../../../../../../go-boilerplate/internal/usecase/tools/timewindow/#Window">Window</a>) (<a href="../../../../../../go-boilerplate/internal/usecase/dashboard/query/">query</a>.<a href="../../../../../../go-boilerplate/internal/usecase/dashboard/query/#SalesResult">SalesResult</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
 				<p>SummarizeSales mocks base method.
 
 				
@@ -236,7 +236,7 @@
 		
 			
 			
-			</p><h2 id="MockDashboardQueryServiceMockRecorder">type <a href="../../../../../../src/go-boilerplate/internal/usecase/dashboard/query/mock/mock_dashboard_query_service.go.gen.go.html?s=767:853#L18">MockDashboardQueryServiceMockRecorder</a>
+			</p><h2 id="MockDashboardQueryServiceMockRecorder">type <a href="../../../../../../src/go-boilerplate/internal/usecase/dashboard/query/mock/mock_dashboard_query_service.go.gen.go.html?s=830:916#L19">MockDashboardQueryServiceMockRecorder</a>
 				<a class="permalink" href="#MockDashboardQueryServiceMockRecorder">¶</a>
 				
 				
@@ -260,7 +260,7 @@
 
 			
 				
-				<h3 id="MockDashboardQueryServiceMockRecorder.CountPurchasesByStatus">func (*MockDashboardQueryServiceMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/dashboard/query/mock/mock_dashboard_query_service.go.gen.go.html?s=1771:1872#L44">CountPurchasesByStatus</a>
+				<h3 id="MockDashboardQueryServiceMockRecorder.CountPurchasesByStatus">func (*MockDashboardQueryServiceMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/dashboard/query/mock/mock_dashboard_query_service.go.gen.go.html?s=1839:1940#L45">CountPurchasesByStatus</a>
 					<a class="permalink" href="#MockDashboardQueryServiceMockRecorder.CountPurchasesByStatus">¶</a>
 					
 					
@@ -273,7 +273,7 @@
 				
 			
 				
-				</p><h3 id="MockDashboardQueryServiceMockRecorder.SummarizeSales">func (*MockDashboardQueryServiceMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/dashboard/query/mock/mock_dashboard_query_service.go.gen.go.html?s=2455:2548#L59">SummarizeSales</a>
+				</p><h3 id="MockDashboardQueryServiceMockRecorder.SummarizeSales">func (*MockDashboardQueryServiceMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/dashboard/query/mock/mock_dashboard_query_service.go.gen.go.html?s=2528:2621#L60">SummarizeSales</a>
 					<a class="permalink" href="#MockDashboardQueryServiceMockRecorder.SummarizeSales">¶</a>
 					
 					

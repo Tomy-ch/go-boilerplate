@@ -107,11 +107,6 @@
 			
 			
 				
-				<dd><a href="#GetSummaryParams">type GetSummaryParams</a></dd>
-				
-				
-			
-				
 				<dd><a href="#StatusCountView">type StatusCountView</a></dd>
 				
 				
@@ -125,7 +120,7 @@
 				<dd><a href="#Usecase">type Usecase</a></dd>
 				
 					
-					<dd>    <a href="#New">func New(qs query.DashboardQueryService, productRepo product.Repository, authorizer authz.Authorizer, clk clock.Clock, loc *time.Location, tf observability.TracerFactory) Usecase</a></dd>
+					<dd>    <a href="#New">func New(qs query.DashboardQueryService, productRepo product.Repository, authorizer authz.Authorizer, tf observability.TracerFactory) Usecase</a></dd>
 				
 				
 			
@@ -156,38 +151,7 @@
 		
 			
 			
-			<h2 id="GetSummaryParams">type <a href="../../../../src/go-boilerplate/internal/usecase/dashboard/dashboard_usecase.go.html?s=1205:1644#L24">GetSummaryParams</a>
-				<a class="permalink" href="#GetSummaryParams">¶</a>
-				
-				
-			</h2>
-			<p>GetSummaryParams は、ダッシュボード集計取得ユースケースの入力パラメータです。
-
-			</p><pre>type GetSummaryParams struct {
-<span id="GetSummaryParams.Period"></span>    <span class="comment">// Period は、集計対象期間の区分（&#34;today&#34; / &#34;month&#34; / &#34;range&#34;）です。未知値・空は today として扱います。</span>
-    Period <a href="../../../../builtin/#string">string</a>
-<span id="GetSummaryParams.From"></span>    <span class="comment">// From / To は、Period が &#34;range&#34; のときに必須の開始日・終了日です（両端を含みます）。</span>
-    <span class="comment">// 暦日としての年月日のみが意味を持ちます。他の区分では参照しません。</span>
-    From *<a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
-<span id="GetSummaryParams.To"></span>    To   *<a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
-}
-</pre>
-
-			
-
-			
-
-			
-			
-			
-
-			
-
-			
-		
-			
-			
-			<h2 id="StatusCountView">type <a href="../../../../src/go-boilerplate/internal/usecase/dashboard/dashboard_usecase.go.html?s=1858:1964#L35">StatusCountView</a>
+			<h2 id="StatusCountView">type <a href="../../../../src/go-boilerplate/internal/usecase/dashboard/dashboard_usecase.go.html?s=970:1076#L15">StatusCountView</a>
 				<a class="permalink" href="#StatusCountView">¶</a>
 				
 				
@@ -217,7 +181,7 @@
 		
 			
 			
-			<h2 id="SummaryView">type <a href="../../../../src/go-boilerplate/internal/usecase/dashboard/dashboard_usecase.go.html?s=2115:2949#L43">SummaryView</a>
+			<h2 id="SummaryView">type <a href="../../../../src/go-boilerplate/internal/usecase/dashboard/dashboard_usecase.go.html?s=1227:2061#L23">SummaryView</a>
 				<a class="permalink" href="#SummaryView">¶</a>
 				
 				
@@ -252,7 +216,7 @@
 		
 			
 			
-			<h2 id="Usecase">type <a href="../../../../src/go-boilerplate/internal/usecase/dashboard/dashboard_usecase.go.html?s=3059:3446#L57">Usecase</a>
+			<h2 id="Usecase">type <a href="../../../../src/go-boilerplate/internal/usecase/dashboard/dashboard_usecase.go.html?s=2171:2559#L37">Usecase</a>
 				<a class="permalink" href="#Usecase">¶</a>
 				
 				
@@ -262,7 +226,7 @@
 			</p><pre>type Usecase interface {
     <span class="comment">// GetDashboardSummary は、集計対象期間の売上・購入ステータス別件数と、商品数を 1 つの DTO に合成して返します。</span>
     <span class="comment">// 管理者以外は拒否します。対象データがない場合はゼロ値を返します。</span>
-    GetDashboardSummary(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, authn *<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, params <a href="#GetSummaryParams">GetSummaryParams</a>) (<a href="#SummaryView">SummaryView</a>, <a href="../../../../builtin/#error">error</a>)
+    GetDashboardSummary(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, authn *<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, window <a href="../../../../go-boilerplate/internal/usecase/tools/timewindow/">timewindow</a>.<a href="../../../../go-boilerplate/internal/usecase/tools/timewindow/#Window">Window</a>) (<a href="#SummaryView">SummaryView</a>, <a href="../../../../builtin/#error">error</a>)
 }</pre>
 
 			
@@ -275,7 +239,7 @@
 
 			
 				
-				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/usecase/dashboard/dashboard_usecase.go.html?s=3772:3959#L73">New</a>
+				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/usecase/dashboard/dashboard_usecase.go.html?s=2832:2980#L51">New</a>
 					<a class="permalink" href="#New">¶</a>
 					
 					
@@ -284,8 +248,6 @@
     qs <a href="../../../../go-boilerplate/internal/usecase/dashboard/query/">query</a>.<a href="../../../../go-boilerplate/internal/usecase/dashboard/query/#DashboardQueryService">DashboardQueryService</a>,
     productRepo <a href="../../../../go-boilerplate/internal/domain/product/">product</a>.<a href="../../../../go-boilerplate/internal/domain/product/#Repository">Repository</a>,
     authorizer <a href="../../../../go-boilerplate/internal/usecase/boundary/authz/">authz</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/authz/#Authorizer">Authorizer</a>,
-    clk <a href="../../../../go-boilerplate/internal/usecase/boundary/clock/">clock</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/clock/#Clock">Clock</a>,
-    loc *<a href="../../../../time/">time</a>.<a href="../../../../time/#Location">Location</a>,
     tf <a href="../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../go-boilerplate/internal/observability/#TracerFactory">TracerFactory</a>,
 ) <a href="#Usecase">Usecase</a></pre>
 				<p>New は、admin ダッシュボードの横断集計の参照ユースケースを生成します。

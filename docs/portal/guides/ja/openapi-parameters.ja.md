@@ -39,13 +39,21 @@ schema:
 ```
 
 `uniqueItems` と `maxItems` はワイヤ側の上限で、URL 長と生成される `IN` リストの大きさを抑えます。
+<!-- sample-api:replace-begin -->
 既存の例は `product/CategoryCodesParam.yaml` / `product/StatusCodesParam.yaml` と、
 文字列 enum 配列の `purchase/PurchaseGroupByParam.yaml`（指定順に意味があり、繰り返しは順序を保ちます）。
+<!-- sample-api:replace-with -->
+<!-- = 指定順に意味のある文字列 enum 配列では、繰り返しても順序が保たれます。 -->
+<!-- sample-api:replace-end -->
 
 ### 自由入力のテキストは配列にしない
 
 利用者が入力したテキストを運ぶパラメータは、配列ではなく `maxLength` を持つ単一の `string` にします。
+<!-- sample-api:replace-begin -->
 `search/KeywordParam.yaml` がその形です。複数値を取ってよいのは、行への参照（`code`）と固定の `enum`
+<!-- sample-api:replace-with -->
+<!-- = 複数値を取ってよいのは、行への参照（`code`）と固定の `enum` -->
+<!-- sample-api:replace-end -->
 だけです。
 
 上の規約が安く済むのはこの制限があるからです。percent-encode された UTF-8 は 1 文字あたり最大 9 文字に
@@ -87,8 +95,13 @@ parameters:
 
 |要素|規則|例|
 |---|---|---|
+<!-- sample-api:replace-begin -->
 |ディレクトリ|小文字・関心事別|`pagination/`, `search/`, `user/`|
 |ファイル名|PascalCase + `Param`|`PageParam.yaml`, `UserIdParam.yaml`|
+<!-- sample-api:replace-with -->
+<!-- = |ディレクトリ|小文字・関心事別|`pagination/`, `<リソース>/`| -->
+<!-- = |ファイル名|PascalCase + `Param`|`PageParam.yaml`, `<リソース>IdParam.yaml`| -->
+<!-- sample-api:replace-end -->
 
 ## ルール
 

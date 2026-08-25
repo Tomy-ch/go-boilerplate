@@ -62,7 +62,7 @@
 <span id="L5" class="ln">     5  </span>import (
 <span id="L6" class="ln">     6  </span>	&#34;context&#34;
 <span id="L7" class="ln">     7  </span>
-<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/usecase/purchase/period&#34;
+<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/usecase/tools/timewindow&#34;
 <span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/pkg/decimal&#34;
 <span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/pkg/uuid&#34;
 <span id="L11" class="ln">    11  </span>)
@@ -76,15 +76,15 @@
 <span id="L19" class="ln">    19  </span>type PurchaseSummaryQueryService interface {
 <span id="L20" class="ln">    20  </span>	<span class="comment">// SummarizeByUserID は、認証主体（userID）の購入をステータス単位に集計し、購入ステータスマスタの表示順で返します。</span>
 <span id="L21" class="ln">    21  </span>	<span class="comment">// 母集団・対象なし時の扱いは PurchaseSummaryQueryService の doc コメントを参照。</span>
-<span id="L22" class="ln">    22  </span>	SummarizeByUserID(ctx context.Context, userID uuid.UUID, window period.Window) ([]PurchaseStatusSummaryReadModel, error)
+<span id="L22" class="ln">    22  </span>	SummarizeByUserID(ctx context.Context, userID uuid.UUID, window timewindow.Window) ([]PurchaseStatusSummaryReadModel, error)
 <span id="L23" class="ln">    23  </span>	<span class="comment">// SumItemsByUserID は、認証主体（userID）の購入明細の金額合計（単価 × 数量の総和）を返します。</span>
 <span id="L24" class="ln">    24  </span>	<span class="comment">// 価格スケールの正確な decimal で、決済スケール（セント整数）へは丸めません（ADR-0038 (two-scale-quantity-model)）。</span>
 <span id="L25" class="ln">    25  </span>	<span class="comment">// 対象なし時の扱いは PurchaseSummaryQueryService の doc コメントを参照。</span>
-<span id="L26" class="ln">    26  </span>	SumItemsByUserID(ctx context.Context, userID uuid.UUID, window period.Window) (decimal.Decimal, error)
+<span id="L26" class="ln">    26  </span>	SumItemsByUserID(ctx context.Context, userID uuid.UUID, window timewindow.Window) (decimal.Decimal, error)
 <span id="L27" class="ln">    27  </span>	<span class="comment">// SummarizeItemsByProductByUserID は、認証主体（userID）の購入明細を商品単位に集計し、商品が属する</span>
 <span id="L28" class="ln">    28  </span>	<span class="comment">// カテゴリを添えて返します。カテゴリ単位の集計は呼び出し側がこの結果を畳み込んで得ます。</span>
 <span id="L29" class="ln">    29  </span>	<span class="comment">// 対象なし時の扱いは PurchaseSummaryQueryService の doc コメントを参照。</span>
-<span id="L30" class="ln">    30  </span>	SummarizeItemsByProductByUserID(ctx context.Context, userID uuid.UUID, window period.Window) ([]PurchaseItemSummaryReadModel, error)
+<span id="L30" class="ln">    30  </span>	SummarizeItemsByProductByUserID(ctx context.Context, userID uuid.UUID, window timewindow.Window) ([]PurchaseItemSummaryReadModel, error)
 <span id="L31" class="ln">    31  </span>}
 <span id="L32" class="ln">    32  </span>
 <span id="L33" class="ln">    33  </span><span class="comment">// PurchaseStatusSummaryReadModel は、1 ステータス分の購入集計の読み取りモデルです。</span>

@@ -203,7 +203,11 @@ The recommended structure is "1 job type = 1 package (1 directory)".
 
 The following naming policy is stable.
 
+<!-- sample-api:replace-begin -->
 - Package name: Go style lower (not lower_snake) (e.g., usercount, fixcollation)
+<!-- sample-api:replace-with -->
+<!-- = - Package name: Go style lower (not lower_snake) (e.g., idempotencygc, fixcollation) -->
+<!-- sample-api:replace-end -->
 - Job name (key used by Runner): kebab-case is recommended
   - e.g., user-count / fix-collation / dump-schema
 - Makes it easy to match with Cobra's job <name> and to document in README
@@ -363,7 +367,11 @@ Jobs are grouped into `group:"jobs"` and aggregated in Runner.
 
 ```mermaid
 flowchart TB
+    %% sample-api:replace-begin
     A["fx.Provide(usercount.New)"]
+    %% sample-api:replace-with
+    %% = A["fx.Provide(someJob.New)"]
+    %% sample-api:replace-end
     B["fx.Provide(otherJob.New)"]
     Group["group:\"jobs\""]
     Jobs["[]job.Job"]
@@ -507,7 +515,11 @@ A job that sweeps rows or objects in batches follows two conventions beyond the 
 ## Reference Snippet
 
 ```go
+// sample-api:replace-begin
 package usercount
+// sample-api:replace-with
+// = package somejob
+// sample-api:replace-end
 
 import (
     "context"

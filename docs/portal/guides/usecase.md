@@ -122,8 +122,8 @@ These belong to the **Domain layer**.
 ### Examples of Application Policy
 
 ```txt
-Execute user creation inside a transaction
-Fetch prefecture information when retrieving user list
+Execute aggregate creation inside a transaction
+Fetch a related aggregate's attributes when assembling a list
 ```
 
 These belong to the **Usecase layer**.
@@ -352,7 +352,7 @@ each other.
 - **Implementation doc = for the next implementer.** It may go **one step more concrete** than the
   contract, still in application vocabulary: which collaborator carries a guarantee, why the
   transaction boundary sits where it does, what degrades instead of failing, why a conflict is not
-  retryable. `UpdateProduct` in `product/product_update_usecase.go` is the reference example.
+  retryable.
 - **Never restate the interface doc verbatim.** A duplicate adds nothing and rots in two places. When
   there is no concrete detail worth adding, **omit the implementation doc entirely** — the
   implementation type is unexported, so `revive`'s `exported` rule does not require one.
@@ -365,7 +365,7 @@ below is what differs per layer; the no-verbatim-duplicate part is repository-wi
 The same application-vocabulary rule governs the **port interfaces this layer owns** — Boundary,
 CommandService, QueryService. A port is the seam to the outside, which is exactly why it must be
 stated in technology-neutral terms: contract the *guarantee*, not the mechanism that currently
-delivers it. `LockPurchase` says it takes a pessimistic lock and what that lock serializes — the
+delivers it. A `Lock<Aggregate>` port says it takes a pessimistic lock and what that lock serializes — the
 caller depends on both — but not that the lock is a `SELECT … FOR UPDATE`. A `QueryService` says
 ownership is enforced by its own filtering, not by a SQL `WHERE` predicate. The mechanism belongs to
 the Infrastructure implementation's doc comment, which is free to name it (see
@@ -670,12 +670,19 @@ Observability layer hides SDK details.
 
 ## Implementation Example
 
+<!-- sample-api:replace-begin -->
 > The example below uses a sample `<aggregate>` (`user`, with a related `prefecture`)
 > **only to illustrate the permanent patterns** — span start/end via the tracer,
 > `clock.Now()` for time, `txm.Do` for the transaction boundary, and Domain → DTO
 > conversion. These sample aggregates are removed by `make setup-remove-sample-api`,
 > so read `user` / `prefecture` as stand-ins for your own aggregate; the load-bearing
 > content is the patterns, not the concrete names.
+<!-- sample-api:replace-with -->
+<!-- = > The example below uses one `<aggregate>` with a related aggregate **only to illustrate the -->
+<!-- = > permanent patterns** — span start/end via the tracer, `clock.Now()` for time, `txm.Do` for the -->
+<!-- = > transaction boundary, and Domain → DTO conversion. Read the concrete names as stand-ins for your -->
+<!-- = > own aggregate; the load-bearing content is the patterns, not the names. -->
+<!-- sample-api:replace-end -->
 
 ```go
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE

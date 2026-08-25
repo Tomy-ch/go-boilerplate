@@ -115,9 +115,9 @@
 <span id="L58" class="ln">    58  </span>
 <span id="L59" class="ln">    59  </span>			store.EXPECT().
 <span id="L60" class="ln">    60  </span>				Insert(gomock.Any(), outboxbndry.EmitParams{
-<span id="L61" class="ln">    61  </span>					AggregateType: &#34;Purchase&#34;,
+<span id="L61" class="ln">    61  </span>					AggregateType: &#34;Resource&#34;,
 <span id="L62" class="ln">    62  </span>					AggregateID:   &#34;p-1&#34;,
-<span id="L63" class="ln">    63  </span>					EventType:     &#34;purchase.created.v1&#34;,
+<span id="L63" class="ln">    63  </span>					EventType:     &#34;resource.created.v1&#34;,
 <span id="L64" class="ln">    64  </span>					Payload:       []byte(`{&#34;v&#34;:1}`),
 <span id="L65" class="ln">    65  </span>					Headers:       nil,
 <span id="L66" class="ln">    66  </span>				}).
@@ -125,9 +125,9 @@
 <span id="L68" class="ln">    68  </span>
 <span id="L69" class="ln">    69  </span>			got, err := outbox.NewEmit(store, observability.NewNoopTracerFactory(t)).
 <span id="L70" class="ln">    70  </span>				Emit(context.Background(), outbox.EmitInput{
-<span id="L71" class="ln">    71  </span>					AggregateType: &#34;Purchase&#34;,
+<span id="L71" class="ln">    71  </span>					AggregateType: &#34;Resource&#34;,
 <span id="L72" class="ln">    72  </span>					AggregateID:   &#34;p-1&#34;,
-<span id="L73" class="ln">    73  </span>					EventType:     &#34;purchase.created.v1&#34;,
+<span id="L73" class="ln">    73  </span>					EventType:     &#34;resource.created.v1&#34;,
 <span id="L74" class="ln">    74  </span>					Payload:       []byte(`{&#34;v&#34;:1}`),
 <span id="L75" class="ln">    75  </span>				})
 <span id="L76" class="ln">    76  </span>

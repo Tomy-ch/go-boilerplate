@@ -61,7 +61,7 @@
 |---|---|---|---|---|
 |APP_MODE|実行モード（`development` または `production`）|string|development|ログや挙動切り替え。Per-environment value — `stg` 以降は `production` とし、本番前の環境を本番と同じログ形式・挙動で動かす。local / ci / dev は `development`|
 |APP_LOG_LEVEL|ログ出力レベル（`debug` / `info` / `warn` / `error`）|string|debug|出力方式は Mode が決定。Per-environment value — `stg` までは本番前の調査のため `debug`、`prd` は本番のログ量を抑えるため `info`|
-|APP_NAME|アプリケーション名|string|Boilerplate|ログ・メトリクス識別|
+|APP_NAME|アプリケーション名|string|Boilerplate API|ログ・メトリクス識別|
 |APP_ENV|環境識別子（`local` / `ci` / `dast` / `dev` / `stg` / `prd`）|string|local|環境区別用。埋め込み env の出所ガードにも使う（補足を参照）。Per-environment value — 環境識別子そのものであり、定義上すべて異なる。`dast` は DAST スキャンの実行文脈で、`ci` と違い JWKS backed の実 authenticator を配線して mock 認証サーバーが実際に署名したトークンを検証する。また worktree の DB スロットプールには参加しない（`IsLocalClassEnv` は false を返す）|
 |APP_SHUTDOWN_TIMEOUT|Graceful shutdown時間|duration|65s|Code default `65s`。SIGTERM時の待機時間。HTTP サーバーでは `SERVER_REQUEST_TIMEOUT` 以上でなければならない（未満だとサーバー起動失敗）ため、drain が予算内のリクエストを打ち切ることはない|
 
@@ -211,7 +211,7 @@ access token（JWT）検証の設定。CI / test は署名検証なしのスタ�
 
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|AUTH_ISSUER|検証する `iss` クレームの期待値（OIDC issuer 兼用）|string|`http://localhost:2010/default`|Code default は空。Per-environment value — `local` / `ci` / `dast` は mock auth server を指し、deploy 環境は JWT authenticator を配線するまで既定の空のまま。`db-seed` が `user_identities` の seed へ展開するため、認証を stub する環境（CI）でも seed するなら必要|
+|AUTH_ISSUER|検証する `iss` クレームの期待値（OIDC issuer 兼用）|string|`http://localhost:2010/default`|Code default は空。Per-environment value — `local` / `ci` / `dast` は mock auth server を指し、deploy 環境は JWT authenticator を配線するまで既定の空のまま。`db-seed` が identity の seed へ展開するため、認証を stub する環境（CI）でも seed するなら必要|
 |AUTH_AUDIENCE|検証する `aud` クレームの期待値|string|go-boilerplate-api|Code default は空。issuer と対で必須。Per-environment value — mock の audience を宣言するのは `local` / `dast` だけで、他は authenticator を配線するまで既定の空のまま|
 |AUTH_ALLOWED_ALGORITHMS|許可する署名アルゴリズムの allowlist（カンマ区切り・非対称のみ）|csv|RS256|Code default `RS256`。`none` / 対称鍵は常に拒否|
 |AUTH_CLOCK_SKEW|`exp` / `nbf` 検証のクロックずれ許容幅|duration|60s|Code default `60s`|
@@ -221,7 +221,7 @@ access token（JWT）検証の設定。CI / test は署名検証なしのスタ�
 
 ### Object Storage
 
-アップロード資産（商品画像）用の S3 互換オブジェクトストレージ。usecase は vendor 中立の `objectstorage.Storage` 境界に依存し、infrastructure 実装は S3 アダプタ（AWS SDK v2 S3）。`local` は Garage コンテナへ接続し、deploy 環境は `ENDPOINT_OBJECT_STORAGE` を空にして AWS S3 を対象にする。アダプタは S3 だが env 名は vendor 中立に保つ。値は環境ごとに宣言（code default を持たない）し、資格情報はデプロイ時に注入する。
+アップロード資産用の S3 互換オブジェクトストレージ。usecase は vendor 中立の `objectstorage.Storage` 境界に依存し、infrastructure 実装は S3 アダプタ（AWS SDK v2 S3）。`local` は Garage コンテナへ接続し、deploy 環境は `ENDPOINT_OBJECT_STORAGE` を空にして AWS S3 を対象にする。アダプタは S3 だが env 名は vendor 中立に保つ。値は環境ごとに宣言（code default を持たない）し、資格情報はデプロイ時に注入する。
 
 |変数名|説明|型|例|備考|
 |---|---|---|---|---|
@@ -246,7 +246,7 @@ access token（JWT）検証の設定。CI / test は署名検証なしのスタ�
 |ENDPOINT_OUTBOX|メッセージの送信先エンドポイント URL|string||Code default は空。`OUTBOX_PUBLISHER=http` のとき必須|
 |ENDPOINT_OUTBOX_QUEUE|SQS 互換エンドポイント|string|`http://elasticmq:9324`|Code default は空。空なら SDK 既定の解決に委ねる（本番 AWS SQS 等）。**Per-environment value**: ブローカーが compose で動く local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま|
 |ENDPOINT_CONSUMER_QUEUE|SQS 互換エンドポイント|string|`http://elasticmq:9324`|Code default は空。空なら SDK 既定の解決（本番 AWS SQS）に委ねる。**Per-environment value**: ブローカーが compose で動く local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま|
-|ENDPOINT_EXCHANGE_RATE|為替レートサービスのベースURL|string||サンプルAPI。空はこの機能を使わないことを表し、当該エンドポイントは 503 を返します。**環境ごとの値**: 検査が立てる疑似サービスを指すのは `dast` だけで、これにより検査が 5xx を常態として学習しません。サンプルAPI削除時に一緒に消えます|
+|ENDPOINT_EXCHANGE_RATE|為替レートサービスのベースURL|string||サンプルAPI。空はこの機能を使わないことを表し、当該エンドポイントは 503 を返します。**環境ごとの値**: 検査が立てる疑似サービスを指すのは `dast` だけで、これにより検査が 5xx を常態として学習しません。サンプルAPI削除時に一緒に消えます<!-- sample-api:line -->|
 
 ## 補足
 

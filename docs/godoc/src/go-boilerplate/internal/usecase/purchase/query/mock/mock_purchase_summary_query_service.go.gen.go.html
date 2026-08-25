@@ -68,8 +68,8 @@
 <span id="L11" class="ln">    11  </span>
 <span id="L12" class="ln">    12  </span>import (
 <span id="L13" class="ln">    13  </span>	context &#34;context&#34;
-<span id="L14" class="ln">    14  </span>	period &#34;go-boilerplate/internal/usecase/purchase/period&#34;
-<span id="L15" class="ln">    15  </span>	query &#34;go-boilerplate/internal/usecase/purchase/query&#34;
+<span id="L14" class="ln">    14  </span>	query &#34;go-boilerplate/internal/usecase/purchase/query&#34;
+<span id="L15" class="ln">    15  </span>	timewindow &#34;go-boilerplate/internal/usecase/tools/timewindow&#34;
 <span id="L16" class="ln">    16  </span>	decimal &#34;go-boilerplate/pkg/decimal&#34;
 <span id="L17" class="ln">    17  </span>	uuid &#34;go-boilerplate/pkg/uuid&#34;
 <span id="L18" class="ln">    18  </span>	reflect &#34;reflect&#34;
@@ -102,7 +102,7 @@
 <span id="L45" class="ln">    45  </span>}
 <span id="L46" class="ln">    46  </span>
 <span id="L47" class="ln">    47  </span><span class="comment">// SumItemsByUserID mocks base method.</span>
-<span id="L48" class="ln">    48  </span>func (m *MockPurchaseSummaryQueryService) SumItemsByUserID(ctx context.Context, userID uuid.UUID, window period.Window) (decimal.Decimal, error) {
+<span id="L48" class="ln">    48  </span>func (m *MockPurchaseSummaryQueryService) SumItemsByUserID(ctx context.Context, userID uuid.UUID, window timewindow.Window) (decimal.Decimal, error) {
 <span id="L49" class="ln">    49  </span>	m.ctrl.T.Helper()
 <span id="L50" class="ln">    50  </span>	ret := m.ctrl.Call(m, &#34;SumItemsByUserID&#34;, ctx, userID, window)
 <span id="L51" class="ln">    51  </span>	ret0, _ := ret[0].(decimal.Decimal)
@@ -117,7 +117,7 @@
 <span id="L60" class="ln">    60  </span>}
 <span id="L61" class="ln">    61  </span>
 <span id="L62" class="ln">    62  </span><span class="comment">// SummarizeByUserID mocks base method.</span>
-<span id="L63" class="ln">    63  </span>func (m *MockPurchaseSummaryQueryService) SummarizeByUserID(ctx context.Context, userID uuid.UUID, window period.Window) ([]query.PurchaseStatusSummaryReadModel, error) {
+<span id="L63" class="ln">    63  </span>func (m *MockPurchaseSummaryQueryService) SummarizeByUserID(ctx context.Context, userID uuid.UUID, window timewindow.Window) ([]query.PurchaseStatusSummaryReadModel, error) {
 <span id="L64" class="ln">    64  </span>	m.ctrl.T.Helper()
 <span id="L65" class="ln">    65  </span>	ret := m.ctrl.Call(m, &#34;SummarizeByUserID&#34;, ctx, userID, window)
 <span id="L66" class="ln">    66  </span>	ret0, _ := ret[0].([]query.PurchaseStatusSummaryReadModel)
@@ -132,7 +132,7 @@
 <span id="L75" class="ln">    75  </span>}
 <span id="L76" class="ln">    76  </span>
 <span id="L77" class="ln">    77  </span><span class="comment">// SummarizeItemsByProductByUserID mocks base method.</span>
-<span id="L78" class="ln">    78  </span>func (m *MockPurchaseSummaryQueryService) SummarizeItemsByProductByUserID(ctx context.Context, userID uuid.UUID, window period.Window) ([]query.PurchaseItemSummaryReadModel, error) {
+<span id="L78" class="ln">    78  </span>func (m *MockPurchaseSummaryQueryService) SummarizeItemsByProductByUserID(ctx context.Context, userID uuid.UUID, window timewindow.Window) ([]query.PurchaseItemSummaryReadModel, error) {
 <span id="L79" class="ln">    79  </span>	m.ctrl.T.Helper()
 <span id="L80" class="ln">    80  </span>	ret := m.ctrl.Call(m, &#34;SummarizeItemsByProductByUserID&#34;, ctx, userID, window)
 <span id="L81" class="ln">    81  </span>	ret0, _ := ret[0].([]query.PurchaseItemSummaryReadModel)

@@ -106,9 +106,6 @@ OpenAPI 生成型を import するのは controller 層のみであり、本パ�
 			
 			
 				
-				<dd><a href="#DatePtr">func DatePtr(p *openapi_types.Date) *time.Time</a></dd>
-			
-				
 				<dd><a href="#Email">func Email(e openapi_types.Email) string</a></dd>
 			
 				
@@ -135,8 +132,6 @@ OpenAPI 生成型を import するのは controller 層のみであり、本パ�
 			<p>
 			<span style="font-size:90%">
 			
-				<a href="../../../../src/go-boilerplate/internal/controller/conv/date.go.html">date.go</a>
-			
 				<a href="../../../../src/go-boilerplate/internal/controller/conv/email.go.html">email.go</a>
 			
 				<a href="../../../../src/go-boilerplate/internal/controller/conv/int16.go.html">int16.go</a>
@@ -156,23 +151,7 @@ OpenAPI 生成型を import するのは controller 層のみであり、本パ�
 		
 			
 			
-			<h2 id="DatePtr">func <a href="../../../../src/go-boilerplate/internal/controller/conv/date.go.html?s=393:439#L2">DatePtr</a>
-				<a class="permalink" href="#DatePtr">¶</a>
-				
-				
-			</h2>
-			<pre>func DatePtr(p *<a href="../../../../github.com/oapi-codegen/runtime/types/">openapi_types</a>.<a href="../../../../github.com/oapi-codegen/runtime/types/#Date">Date</a>) *<a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a></pre>
-			<p>DatePtr は、任意指定の日付クエリパラメータを *time.Time へ変換します。
-nil の場合はそのまま nil を返します。openapi_types.Date は暦日のみを表す検証済みの値型で、
-時刻成分は持たないため、変換は無条件に成功します。
-
-			
-			
-
-		
-			
-			
-			</p><h2 id="Email">func <a href="../../../../src/go-boilerplate/internal/controller/conv/email.go.html?s=154:194#L1">Email</a>
+			<h2 id="Email">func <a href="../../../../src/go-boilerplate/internal/controller/conv/email.go.html?s=154:194#L1">Email</a>
 				<a class="permalink" href="#Email">¶</a>
 				
 				

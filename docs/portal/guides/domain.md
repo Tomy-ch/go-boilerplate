@@ -144,8 +144,8 @@ parameters — the remedy this repository uses is bundling into an attribute str
 struct-bundling section below.
 
 **When a value carries business meaning, give the domain the question, not the type.** Callers rarely
-want the value; they want to know whether something is in a state — published, low on stock, still
-active, able to move to the next status. Put that predicate on whatever owns the value and let the
+want the value; they want to know whether something is in a state — published, still active, able
+to move to the next status. Put that predicate on whatever owns the value and let the
 representation stay inside. The caller then reads in the language of the model, and the value is free
 to change shape without touching anything that asks about it.
 
@@ -758,8 +758,8 @@ search — Repository, QueryService, or CommandService — is decided by
 here. What this section owns is the question that criterion does not answer: **who authors the
 business condition** such a query executes.
 
-**What moves out is the implementation, never the criterion.** "Which products count as low on
-stock", "which users count as inactive" — the rule that decides membership is domain vocabulary and
+**What moves out is the implementation, never the criterion.** "Which records count as stale",
+"which users count as inactive" — the rule that decides membership is domain vocabulary and
 stays in the domain layer, expressed as domain constants and domain predicates. When that rule lives
 only in a `WHERE` clause, the domain has lost a business rule to infrastructure, and nothing in this
 layer can tell you what the rule is any more.
@@ -783,8 +783,13 @@ a change in meaning breaks no unit test.
 recognise it as a statement about the business — when the term it decides has a name they use.
 Identity lookup, pagination, ordering, and foreign-key joins decide nothing about the business and
 this rule does not reach them. Nor does a Repository method whose signature already says the whole
+<!-- sample-api:replace-begin -->
 condition: `FindDeletedBefore(ctx, cutoff, …)` states its own criterion, while `FindAllLowStock` does
 not. The check is one question — can the meaning of the term be answered by reading the domain
+<!-- sample-api:replace-with -->
+<!-- = condition: `FindDeletedBefore(ctx, cutoff, …)` states its own criterion, while a method named after -->
+<!-- = a business term does not. The check is one question — can the meaning of the term be answered by reading the domain -->
+<!-- sample-api:replace-end -->
 package alone? If not, its authorship has left.
 
 The same discipline is already imposed on the write side, where a CommandService may only enforce
@@ -1041,6 +1046,7 @@ Reasons:
 - guarantee invariants
 - simplify tests
 
+<!-- sample-api:replace-begin -->
 ```go
 func newTestUser(t *testing.T)*User {
     baseTime := time.Date(2025,1,1,0,0,0,0,time.UTC)
@@ -1068,6 +1074,28 @@ func newTestUser(t *testing.T)*User {
     return user
 }
 ```
+<!-- sample-api:replace-with -->
+<!-- = ```go -->
+<!-- = func newTest<Aggregate>(t *testing.T)*<Aggregate> { -->
+<!-- =     baseTime := time.Date(2025,1,1,0,0,0,0,time.UTC) -->
+<!-- = -->
+<!-- =     id := uuid.NewTestFromSalt(t,"<aggregate>") -->
+<!-- =     relatedID := uuid.NewTestFromSalt(t,"<related>") -->
+<!-- = -->
+<!-- =     entity, err := New( -->
+<!-- =         id, -->
+<!-- =         relatedID, -->
+<!-- =         // ... the remaining attributes -->
+<!-- =         baseTime, -->
+<!-- =         baseTime.Add(time.Hour), -->
+<!-- =         nil, -->
+<!-- =     ) -->
+<!-- = -->
+<!-- =     require.NoError(t, err) -->
+<!-- =     return entity -->
+<!-- = } -->
+<!-- = ``` -->
+<!-- sample-api:replace-end -->
 
 ### Invariant preservation test
 

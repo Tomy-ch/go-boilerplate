@@ -124,6 +124,9 @@
 				<dd><a href="#GetRecoveredFromEcho">func GetRecoveredFromEcho(c *echo.Context) (bool, bool)</a></dd>
 			
 				
+				<dd><a href="#OptionalAuthn">func OptionalAuthn(ctx context.Context) *auth.Authn</a></dd>
+			
+				
 				<dd><a href="#RequireAuthn">func RequireAuthn(ctx context.Context) (auth.Authn, error)</a></dd>
 			
 				
@@ -271,7 +274,24 @@
 		
 			
 			
-			<h2 id="RequireAuthn">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/authn.go.html?s=2457:2515#L62">RequireAuthn</a>
+			<h2 id="OptionalAuthn">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/authn.go.html?s=3091:3142#L74">OptionalAuthn</a>
+				<a class="permalink" href="#OptionalAuthn">¶</a>
+				
+				
+			</h2>
+			<pre>func OptionalAuthn(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>) *<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a></pre>
+			<p>OptionalAuthn は、ctx のスロットから Authn を読み、未設定なら nil を返します。
+認証を任意とする operation のハンドラが、認証済みかどうかをそのままユースケースへ渡すために使います
+（ADR-0021 (optional-authentication-fail-closed)）。無効な資格情報はハンドラへ到達しないため、
+nil は「資格情報が提示されなかった」ことだけを意味します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="RequireAuthn">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/authn.go.html?s=2457:2515#L62">RequireAuthn</a>
 				<a class="permalink" href="#RequireAuthn">¶</a>
 				
 				
@@ -286,7 +306,7 @@
 		
 			
 			
-			</p><h2 id="RequireUserID">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/authn.go.html?s=2849:2907#L72">RequireUserID</a>
+			</p><h2 id="RequireUserID">func <a href="../../../../src/go-boilerplate/internal/controller/ctxhelper/authn.go.html?s=3439:3497#L84">RequireUserID</a>
 				<a class="permalink" href="#RequireUserID">¶</a>
 				
 				

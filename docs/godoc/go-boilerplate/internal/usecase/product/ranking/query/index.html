@@ -107,7 +107,7 @@
 			
 			
 				
-				<dd><a href="#Period">type Period</a></dd>
+				<dd><a href="#AmountRankingResult">type AmountRankingResult</a></dd>
 				
 				
 			
@@ -117,12 +117,12 @@
 				
 			
 				
-				<dd><a href="#RankingQueryParams">type RankingQueryParams</a></dd>
+				<dd><a href="#QuantityRankingResult">type QuantityRankingResult</a></dd>
 				
 				
 			
 				
-				<dd><a href="#RankingResult">type RankingResult</a></dd>
+				<dd><a href="#RankingQueryParams">type RankingQueryParams</a></dd>
 				
 				
 			
@@ -153,75 +153,21 @@
 		
 			
 			
-			<h2 id="Period">type <a href="../../../../../../src/go-boilerplate/internal/usecase/product/ranking/query/product_ranking_query_service.go.html?s=675:693#L12">Period</a>
-				<a class="permalink" href="#Period">¶</a>
+			<h2 id="AmountRankingResult">type <a href="../../../../../../src/go-boilerplate/internal/usecase/product/ranking/query/product_ranking_query_service.go.html?s=2334:2552#L37">AmountRankingResult</a>
+				<a class="permalink" href="#AmountRankingResult">¶</a>
 				
 				
 			</h2>
-			<p>Period は、ランキング集計の対象期間区分です。実際の境界時刻はインフラ層が現在時刻から算出します。
+			<p>AmountRankingResult は、売上金額ランキング 1 商品分の集計結果です。
+SalesAmount は明細の単価 × 数量の総和で、価格スケールの正確な decimal です。
 
-			</p><pre>type Period <a href="../../../../../../builtin/#string">string</a></pre>
-
-			
-				
-				<pre>const (
-    <span class="comment">// PeriodAll は、全期間を集計対象とする区分です。</span>
-    <span id="PeriodAll">PeriodAll</span> <a href="#Period">Period</a> = &#34;all&#34;
-    <span class="comment">// Period30d は、直近30日を集計対象とする区分です。</span>
-    <span id="Period30d">Period30d</span> <a href="#Period">Period</a> = &#34;30d&#34;
-)</pre>
-			
-
-			
-
-			
-			
-			
-
-			
-
-			
-		
-			
-			
-			<h2 id="ProductRankingQueryService">type <a href="../../../../../../src/go-boilerplate/internal/usecase/product/ranking/query/product_ranking_query_service.go.html?s=840:1111#L15">ProductRankingQueryService</a>
-				<a class="permalink" href="#ProductRankingQueryService">¶</a>
-				
-				
-			</h2>
-			<p>ProductRankingQueryService は、購入明細を集計した商品売上ランキングの参照を提供するクエリサービスです。
-
-			</p><pre>type ProductRankingQueryService interface {
-    <span class="comment">// ListRanking は、販売数量の降順（同数量は商品 ID 昇順）で上位 params.Limit 件のランキングを返します。</span>
-    ListRanking(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, params <a href="#RankingQueryParams">RankingQueryParams</a>) ([]<a href="#RankingResult">RankingResult</a>, <a href="../../../../../../builtin/#error">error</a>)
-}</pre>
-
-			
-
-			
-
-			
-			
-			
-
-			
-
-			
-		
-			
-			
-			<h2 id="RankingQueryParams">type <a href="../../../../../../src/go-boilerplate/internal/usecase/product/ranking/query/product_ranking_query_service.go.html?s=1196:1417#L21">RankingQueryParams</a>
-				<a class="permalink" href="#RankingQueryParams">¶</a>
-				
-				
-			</h2>
-			<p>RankingQueryParams は、ランキング集計の入力パラメータです。
-
-			</p><pre>type RankingQueryParams struct {
-<span id="RankingQueryParams.Period"></span>    <span class="comment">// Period は、集計対象期間の区分です。境界時刻の算出はインフラ層に閉じます。</span>
-    Period <a href="#Period">Period</a>
-<span id="RankingQueryParams.Limit"></span>    <span class="comment">// Limit は、取得する上位件数です。</span>
-    Limit <a href="../../../../../../builtin/#int">int</a>
+			</p><pre>type AmountRankingResult struct {
+<span id="AmountRankingResult.ProductID"></span>    ProductID <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="AmountRankingResult.Name"></span>    Name      <a href="../../../../../../builtin/#string">string</a>
+<span id="AmountRankingResult.Price"></span>    Price     <a href="../../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
+<span id="AmountRankingResult.PublishedAt"></span>    <span class="comment">// PublishedAt の役割は QuantityRankingResult を参照。</span>
+    PublishedAt *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
+<span id="AmountRankingResult.SalesAmount"></span>    SalesAmount <a href="../../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
 }
 </pre>
 
@@ -239,21 +185,81 @@
 		
 			
 			
-			<h2 id="RankingResult">type <a href="../../../../../../src/go-boilerplate/internal/usecase/product/ranking/query/product_ranking_query_service.go.html?s=1494:1901#L29">RankingResult</a>
-				<a class="permalink" href="#RankingResult">¶</a>
+			<h2 id="ProductRankingQueryService">type <a href="../../../../../../src/go-boilerplate/internal/usecase/product/ranking/query/product_ranking_query_service.go.html?s=711:1312#L8">ProductRankingQueryService</a>
+				<a class="permalink" href="#ProductRankingQueryService">¶</a>
 				
 				
 			</h2>
-			<p>RankingResult は、ランキング 1 商品分の集計結果です。
+			<p>ProductRankingQueryService は、購入明細を集計した商品売上ランキングの参照を提供するクエリサービスです。
+2 つのメソッドは母集団（公開中の商品 × キャンセルされていない購入の明細）が同一で、集計する指標と
+並び順だけが異なります。
 
-			</p><pre>type RankingResult struct {
-<span id="RankingResult.ProductID"></span>    ProductID <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
-<span id="RankingResult.Name"></span>    Name      <a href="../../../../../../builtin/#string">string</a>
-<span id="RankingResult.Price"></span>    Price     <a href="../../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
-<span id="RankingResult.PublishedAt"></span>    <span class="comment">// PublishedAt は、公開日時です。集計は公開中の商品に絞られており、返却行が本当にその条件を</span>
+			</p><pre>type ProductRankingQueryService interface {
+    <span class="comment">// ListQuantityRanking は、販売数量の降順（同数量は商品 ID 昇順）で上位 params.Limit 件を返します。</span>
+    ListQuantityRanking(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, params <a href="#RankingQueryParams">RankingQueryParams</a>) ([]<a href="#QuantityRankingResult">QuantityRankingResult</a>, <a href="../../../../../../builtin/#error">error</a>)
+    <span class="comment">// ListAmountRanking は、売上金額の降順（同額は商品 ID 昇順）で上位 params.Limit 件を返します。</span>
+    <span class="comment">// 金額は価格スケールの正確な decimal で、決済スケールへは丸めません。</span>
+    ListAmountRanking(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, params <a href="#RankingQueryParams">RankingQueryParams</a>) ([]<a href="#AmountRankingResult">AmountRankingResult</a>, <a href="../../../../../../builtin/#error">error</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="QuantityRankingResult">type <a href="../../../../../../src/go-boilerplate/internal/usecase/product/ranking/query/product_ranking_query_service.go.html?s=1717:2132#L25">QuantityRankingResult</a>
+				<a class="permalink" href="#QuantityRankingResult">¶</a>
+				
+				
+			</h2>
+			<p>QuantityRankingResult は、販売数量ランキング 1 商品分の集計結果です。
+
+			</p><pre>type QuantityRankingResult struct {
+<span id="QuantityRankingResult.ProductID"></span>    ProductID <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="QuantityRankingResult.Name"></span>    Name      <a href="../../../../../../builtin/#string">string</a>
+<span id="QuantityRankingResult.Price"></span>    Price     <a href="../../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
+<span id="QuantityRankingResult.PublishedAt"></span>    <span class="comment">// PublishedAt は、公開日時です。集計は公開中の商品に絞られており、返却行が本当にその条件を</span>
     <span class="comment">// 満たすかを呼び出し側がドメインの定義で確かめるために保持します。出力 DTO へは写しません。</span>
     PublishedAt  *<a href="../../../../../../time/">time</a>.<a href="../../../../../../time/#Time">Time</a>
-<span id="RankingResult.SoldQuantity"></span>    SoldQuantity <a href="../../../../../../builtin/#int64">int64</a>
+<span id="QuantityRankingResult.SoldQuantity"></span>    SoldQuantity <a href="../../../../../../builtin/#int64">int64</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="RankingQueryParams">type <a href="../../../../../../src/go-boilerplate/internal/usecase/product/ranking/query/product_ranking_query_service.go.html?s=1397:1620#L17">RankingQueryParams</a>
+				<a class="permalink" href="#RankingQueryParams">¶</a>
+				
+				
+			</h2>
+			<p>RankingQueryParams は、ランキング集計の入力パラメータです。
+
+			</p><pre>type RankingQueryParams struct {
+<span id="RankingQueryParams.Window"></span>    <span class="comment">// Window は、集計対象期間です。境界を持たない側には制限を設けません。</span>
+    Window <a href="../../../../../../go-boilerplate/internal/usecase/tools/timewindow/">timewindow</a>.<a href="../../../../../../go-boilerplate/internal/usecase/tools/timewindow/#Window">Window</a>
+<span id="RankingQueryParams.Limit"></span>    <span class="comment">// Limit は、取得する上位件数です。</span>
+    Limit <a href="../../../../../../builtin/#int">int</a>
 }
 </pre>
 

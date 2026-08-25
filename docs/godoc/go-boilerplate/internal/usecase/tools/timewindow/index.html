@@ -1,0 +1,266 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>timewindow - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package timewindow
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/usecase/tools/timewindow&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package timewindow は、集計・絞り込みの対象期間を表す半開区間を提供します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#Bounds">type Bounds</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Window">type Window</a></dd>
+				
+					
+					<dd>    <a href="#New">func New(bounds Bounds) (Window, error)</a></dd>
+				
+				
+					
+					<dd>    <a href="#Window.After">func (w Window) After() *time.Time</a></dd>
+				
+					
+					<dd>    <a href="#Window.Before">func (w Window) Before() *time.Time</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/tools/timewindow/timewindow.go.html">timewindow.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="Bounds">type <a href="../../../../../src/go-boilerplate/internal/usecase/tools/timewindow/timewindow.go.html?s=720:937#L11">Bounds</a>
+				<a class="permalink" href="#Bounds">¶</a>
+				
+				
+			</h2>
+			<p>Bounds は、Window の境界指定です。nil の境界は、その側に制限を設けないことを表します。
+
+			</p><pre>type Bounds struct {
+<span id="Bounds.After"></span>    <span class="comment">// After は、対象期間の下限です。この瞬時を含みます。</span>
+    After *<a href="../../../../../time/">time</a>.<a href="../../../../../time/#Time">Time</a>
+<span id="Bounds.Before"></span>    <span class="comment">// Before は、対象期間の上限です。この瞬時を含みません。</span>
+    Before *<a href="../../../../../time/">time</a>.<a href="../../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Window">type <a href="../../../../../src/go-boilerplate/internal/usecase/tools/timewindow/timewindow.go.html?s=534:594#L5">Window</a>
+				<a class="permalink" href="#Window">¶</a>
+				
+				
+			</h2>
+			<p>Window は、対象期間を表す半開区間 [After, Before) です。
+</p><pre>下限は含み、上限は含みません（半開である理由は README の Role を参照）。
+いずれの境界も省略でき、境界を持たない側には制限を設けません。ゼロ値は全期間を表します。
+</pre>
+
+			<pre>type Window struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="New">func <a href="../../../../../src/go-boilerplate/internal/usecase/tools/timewindow/timewindow.go.html?s=1210:1249#L22">New</a>
+					<a class="permalink" href="#New">¶</a>
+					
+					
+				</h3>
+				<pre>func New(bounds <a href="#Bounds">Bounds</a>) (<a href="#Window">Window</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>New は、境界指定から Window を生成します。
+</p><pre>両方の境界が指定され、かつ Before が After 以前（同値を含む）の場合は
+apperror.ErrInvalidArgument を返します（拒否する理由は README の Behavior を参照）。
+</pre>
+
+				
+				
+			
+
+			
+				
+				<h3 id="Window.After">func (Window) <a href="../../../../../src/go-boilerplate/internal/usecase/tools/timewindow/timewindow.go.html?s=1663:1697#L31">After</a>
+					<a class="permalink" href="#Window.After">¶</a>
+					
+					
+				</h3>
+				<pre>func (w <a href="#Window">Window</a>) After() *<a href="../../../../../time/">time</a>.<a href="../../../../../time/#Time">Time</a></pre>
+				<p>After は、対象期間の下限（この瞬時を含む）を返します。下限を設けない場合は nil です。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Window.Before">func (Window) <a href="../../../../../src/go-boilerplate/internal/usecase/tools/timewindow/timewindow.go.html?s=1861:1896#L34">Before</a>
+					<a class="permalink" href="#Window.Before">¶</a>
+					
+					
+				</h3>
+				<pre>func (w <a href="#Window">Window</a>) Before() *<a href="../../../../../time/">time</a>.<a href="../../../../../time/#Time">Time</a></pre>
+				<p>Before は、対象期間の上限（この瞬時を含まない）を返します。上限を設けない場合は nil です。
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

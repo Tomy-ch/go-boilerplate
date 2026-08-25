@@ -115,7 +115,7 @@
 					<dd>    <a href="#MockUsecase.EXPECT">func (m *MockUsecase) EXPECT() *MockUsecaseMockRecorder</a></dd>
 				
 					
-					<dd>    <a href="#MockUsecase.GetDashboardSummary">func (m *MockUsecase) GetDashboardSummary(ctx context.Context, authn *auth.Authn, params dashboard.GetSummaryParams) (dashboard.SummaryView, error)</a></dd>
+					<dd>    <a href="#MockUsecase.GetDashboardSummary">func (m *MockUsecase) GetDashboardSummary(ctx context.Context, authn *auth.Authn, window timewindow.Window) (dashboard.SummaryView, error)</a></dd>
 				
 			
 				
@@ -123,7 +123,7 @@
 				
 				
 					
-					<dd>    <a href="#MockUsecaseMockRecorder.GetDashboardSummary">func (mr *MockUsecaseMockRecorder) GetDashboardSummary(ctx, authn, params any) *gomock.Call</a></dd>
+					<dd>    <a href="#MockUsecaseMockRecorder.GetDashboardSummary">func (mr *MockUsecaseMockRecorder) GetDashboardSummary(ctx, authn, window any) *gomock.Call</a></dd>
 				
 			
 			
@@ -153,7 +153,7 @@
 		
 			
 			
-			<h2 id="MockUsecase">type <a href="../../../../../src/go-boilerplate/internal/usecase/dashboard/mock/mock_dashboard_usecase.go.gen.go.html?s=552:662#L12">MockUsecase</a>
+			<h2 id="MockUsecase">type <a href="../../../../../src/go-boilerplate/internal/usecase/dashboard/mock/mock_dashboard_usecase.go.gen.go.html?s=615:725#L13">MockUsecase</a>
 				<a class="permalink" href="#MockUsecase">¶</a>
 				
 				
@@ -175,7 +175,7 @@
 
 			
 				
-				<h3 id="NewMockUsecase">func <a href="../../../../../src/go-boilerplate/internal/usecase/dashboard/mock/mock_dashboard_usecase.go.gen.go.html?s=836:893#L24">NewMockUsecase</a>
+				<h3 id="NewMockUsecase">func <a href="../../../../../src/go-boilerplate/internal/usecase/dashboard/mock/mock_dashboard_usecase.go.gen.go.html?s=899:956#L25">NewMockUsecase</a>
 					<a class="permalink" href="#NewMockUsecase">¶</a>
 					
 					
@@ -189,7 +189,7 @@
 
 			
 				
-				</p><h3 id="MockUsecase.EXPECT">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/dashboard/mock/mock_dashboard_usecase.go.gen.go.html?s=1071:1126#L31">EXPECT</a>
+				</p><h3 id="MockUsecase.EXPECT">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/dashboard/mock/mock_dashboard_usecase.go.gen.go.html?s=1134:1189#L32">EXPECT</a>
 					<a class="permalink" href="#MockUsecase.EXPECT">¶</a>
 					
 					
@@ -202,12 +202,12 @@
 				
 			
 				
-				</p><h3 id="MockUsecase.GetDashboardSummary">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/dashboard/mock/mock_dashboard_usecase.go.gen.go.html?s=1193:1340#L36">GetDashboardSummary</a>
+				</p><h3 id="MockUsecase.GetDashboardSummary">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/dashboard/mock/mock_dashboard_usecase.go.gen.go.html?s=1256:1394#L37">GetDashboardSummary</a>
 					<a class="permalink" href="#MockUsecase.GetDashboardSummary">¶</a>
 					
 					
 				</h3>
-				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) GetDashboardSummary(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, authn *<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, params <a href="../../../../../go-boilerplate/internal/usecase/dashboard/">dashboard</a>.<a href="../../../../../go-boilerplate/internal/usecase/dashboard/#GetSummaryParams">GetSummaryParams</a>) (<a href="../../../../../go-boilerplate/internal/usecase/dashboard/">dashboard</a>.<a href="../../../../../go-boilerplate/internal/usecase/dashboard/#SummaryView">SummaryView</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) GetDashboardSummary(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, authn *<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, window <a href="../../../../../go-boilerplate/internal/usecase/tools/timewindow/">timewindow</a>.<a href="../../../../../go-boilerplate/internal/usecase/tools/timewindow/#Window">Window</a>) (<a href="../../../../../go-boilerplate/internal/usecase/dashboard/">dashboard</a>.<a href="../../../../../go-boilerplate/internal/usecase/dashboard/#SummaryView">SummaryView</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
 				<p>GetDashboardSummary mocks base method.
 
 				
@@ -217,7 +217,7 @@
 		
 			
 			
-			</p><h2 id="MockUsecaseMockRecorder">type <a href="../../../../../src/go-boilerplate/internal/usecase/dashboard/mock/mock_dashboard_usecase.go.gen.go.html?s=729:787#L19">MockUsecaseMockRecorder</a>
+			</p><h2 id="MockUsecaseMockRecorder">type <a href="../../../../../src/go-boilerplate/internal/usecase/dashboard/mock/mock_dashboard_usecase.go.gen.go.html?s=792:850#L20">MockUsecaseMockRecorder</a>
 				<a class="permalink" href="#MockUsecaseMockRecorder">¶</a>
 				
 				
@@ -241,12 +241,12 @@
 
 			
 				
-				<h3 id="MockUsecaseMockRecorder.GetDashboardSummary">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/dashboard/mock/mock_dashboard_usecase.go.gen.go.html?s=1594:1685#L45">GetDashboardSummary</a>
+				<h3 id="MockUsecaseMockRecorder.GetDashboardSummary">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/dashboard/mock/mock_dashboard_usecase.go.gen.go.html?s=1648:1739#L46">GetDashboardSummary</a>
 					<a class="permalink" href="#MockUsecaseMockRecorder.GetDashboardSummary">¶</a>
 					
 					
 				</h3>
-				<pre>func (mr *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a>) GetDashboardSummary(ctx, authn, params <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<pre>func (mr *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a>) GetDashboardSummary(ctx, authn, window <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
 				<p>GetDashboardSummary indicates an expected call of GetDashboardSummary.
 
 				
