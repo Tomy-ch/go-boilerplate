@@ -11,8 +11,8 @@
     "multigraph": false
   },
   "counts": {
-    "nodes": 16587,
-    "edges": 34092
+    "nodes": 16585,
+    "edges": 34247
   },
   "source_attributes": {
     "graph": {
@@ -220,19 +220,6 @@
           ],
           "relation": "form",
           "source_file": "openapi/components/schemas/CursorPaginationMetadataResponse.yaml"
-        },
-        {
-          "confidence": "EXTRACTED",
-          "confidence_score": 1.0,
-          "id": "dashboard_period_parameter_set",
-          "label": "Dashboard Period Parameter Set",
-          "nodes": [
-            "openapi_components_parameters_dashboard_dashboardperiodparam_dashboard_period_parameter",
-            "openapi_components_parameters_dashboard_dashboardfromparam_dashboard_from_parameter",
-            "openapi_components_parameters_dashboard_dashboardtoparam_dashboard_to_parameter"
-          ],
-          "relation": "form",
-          "source_file": "openapi/components/parameters/dashboard/DashboardPeriodParam.yaml"
         },
         {
           "confidence": "EXTRACTED",
@@ -629,21 +616,6 @@
           ],
           "relation": "participate_in",
           "source_file": ".github/workflows/README.md"
-        },
-        {
-          "confidence": "EXTRACTED",
-          "confidence_score": 1.0,
-          "id": "purchase_period_parameter_family",
-          "label": "Purchase period parameter family",
-          "nodes": [
-            "openapi_components_parameters_purchase_purchaseperiodparam_purchase_period",
-            "openapi_components_parameters_purchase_purchasemonthparam_purchase_month",
-            "openapi_components_parameters_purchase_purchasefromparam_purchase_from",
-            "openapi_components_parameters_purchase_purchasetoparam_purchase_to",
-            "openapi_components_parameters_purchase_purchaserecentdaysparam_purchase_recent_days"
-          ],
-          "relation": "participate_in",
-          "source_file": "openapi/components/parameters/purchase/PurchasePeriodParam.yaml"
         },
         {
           "confidence": "EXTRACTED",
@@ -1091,19 +1063,6 @@
           ],
           "relation": "participate_in",
           "source_file": "internal/controller/httpstack/errorhandler/README.md"
-        },
-        {
-          "confidence": "INFERRED",
-          "confidence_score": 0.85,
-          "id": "product_query_endpoints",
-          "label": "Product Query Endpoints",
-          "nodes": [
-            "openapi_paths_v1_products_count_get_products_count",
-            "openapi_paths_v1_products_low_stock_get_low_stock_products",
-            "openapi_paths_v1_products_ranking_get_product_ranking"
-          ],
-          "relation": "form",
-          "source_file": "openapi/paths/v1/products/count.yaml"
         },
         {
           "confidence": "INFERRED",
@@ -1817,19 +1776,6 @@
       {
         "confidence": "EXTRACTED",
         "confidence_score": 1.0,
-        "id": "dashboard_period_parameter_set",
-        "label": "Dashboard Period Parameter Set",
-        "nodes": [
-          "openapi_components_parameters_dashboard_dashboardperiodparam_dashboard_period_parameter",
-          "openapi_components_parameters_dashboard_dashboardfromparam_dashboard_from_parameter",
-          "openapi_components_parameters_dashboard_dashboardtoparam_dashboard_to_parameter"
-        ],
-        "relation": "form",
-        "source_file": "openapi/components/parameters/dashboard/DashboardPeriodParam.yaml"
-      },
-      {
-        "confidence": "EXTRACTED",
-        "confidence_score": 1.0,
         "id": "database_dml_role_partition",
         "label": "Database DML Role Partition",
         "nodes": [
@@ -2222,21 +2168,6 @@
         ],
         "relation": "participate_in",
         "source_file": ".github/workflows/README.md"
-      },
-      {
-        "confidence": "EXTRACTED",
-        "confidence_score": 1.0,
-        "id": "purchase_period_parameter_family",
-        "label": "Purchase period parameter family",
-        "nodes": [
-          "openapi_components_parameters_purchase_purchaseperiodparam_purchase_period",
-          "openapi_components_parameters_purchase_purchasemonthparam_purchase_month",
-          "openapi_components_parameters_purchase_purchasefromparam_purchase_from",
-          "openapi_components_parameters_purchase_purchasetoparam_purchase_to",
-          "openapi_components_parameters_purchase_purchaserecentdaysparam_purchase_recent_days"
-        ],
-        "relation": "participate_in",
-        "source_file": "openapi/components/parameters/purchase/PurchasePeriodParam.yaml"
       },
       {
         "confidence": "EXTRACTED",
@@ -2684,19 +2615,6 @@
         ],
         "relation": "participate_in",
         "source_file": "internal/controller/httpstack/errorhandler/README.md"
-      },
-      {
-        "confidence": "INFERRED",
-        "confidence_score": 0.85,
-        "id": "product_query_endpoints",
-        "label": "Product Query Endpoints",
-        "nodes": [
-          "openapi_paths_v1_products_count_get_products_count",
-          "openapi_paths_v1_products_low_stock_get_low_stock_products",
-          "openapi_paths_v1_products_ranking_get_product_ranking"
-        ],
-        "relation": "form",
-        "source_file": "openapi/paths/v1/products/count.yaml"
       },
       {
         "confidence": "INFERRED",
