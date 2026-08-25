@@ -156,7 +156,7 @@ Domain / Usecase が `time.Now()` に直接依存しないための抽象。テ�
 |型 / 関数|説明|
 |---|---|
 |`Storage`|`Put(ctx, PutObject) (Path, error)` でオブジェクトをキー配下へ保存する。`List(ctx, ListQuery) (ListResult, error)` で条件に一致するオブジェクトを 1 ページ分列挙する。`Delete(ctx, keys []string) error` でまとめて削除する（空スライスは何もせず、存在しないキーもエラーにならず、同じキーで再実行しても結果は変わらない）。失敗時は `apperror` sentinel（例 `ErrUnavailable`）を返す|
-|`PutObject`|入力 DTO（`Key` / `Body` / `ContentType` / `CacheControl`）。`Key` は呼び出し側が採番し（例 `products/{uuid}.png`）、`CacheControl` も呼び出し側が決める。キャッシュ可否はキーの採番方針から導かれるため（空なら未設定）|
+|`PutObject`|入力 DTO（`Key` / `Body` / `ContentType` / `CacheControl`）。`Key` は呼び出し側が採番し（例 `<接頭辞>/{uuid}.png`）、`CacheControl` も呼び出し側が決める。キャッシュ可否はキーの採番方針から導かれるため（空なら未設定）|
 |`ListQuery`|入力 DTO（`Prefix` / `Cursor` / `Limit`）。`Prefix` が空なら全件が対象。`Cursor` は直前の `ListResult.NextCursor` をそのまま渡す adapter 依存の不透明な境界で、`Limit` が 0 以下ならページサイズは adapter の既定値に委ねられる|
 |`ListResult`|1 ページ分のオブジェクトと `NextCursor`。`NextCursor` が非空なら続きがあり、次の `ListQuery.Cursor` に渡す|
 |`Object`|列挙されたオブジェクト 1 件を境界の語彙で表したもの|

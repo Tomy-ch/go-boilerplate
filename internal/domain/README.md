@@ -144,8 +144,8 @@ parameters — the remedy this repository uses is bundling into an attribute str
 struct-bundling section below.
 
 **When a value carries business meaning, give the domain the question, not the type.** Callers rarely
-want the value; they want to know whether something is in a state — published, low on stock, still
-active, able to move to the next status. Put that predicate on whatever owns the value and let the
+want the value; they want to know whether something is in a state — published, still active, able
+to move to the next status. Put that predicate on whatever owns the value and let the
 representation stay inside. The caller then reads in the language of the model, and the value is free
 to change shape without touching anything that asks about it.
 
@@ -758,8 +758,8 @@ search — Repository, QueryService, or CommandService — is decided by
 here. What this section owns is the question that criterion does not answer: **who authors the
 business condition** such a query executes.
 
-**What moves out is the implementation, never the criterion.** "Which products count as low on
-stock", "which users count as inactive" — the rule that decides membership is domain vocabulary and
+**What moves out is the implementation, never the criterion.** "Which records count as stale",
+"which users count as inactive" — the rule that decides membership is domain vocabulary and
 stays in the domain layer, expressed as domain constants and domain predicates. When that rule lives
 only in a `WHERE` clause, the domain has lost a business rule to infrastructure, and nothing in this
 layer can tell you what the rule is any more.

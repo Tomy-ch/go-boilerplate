@@ -29,7 +29,7 @@ agent as well as by a person; see [ADR-0007 (agents-md-operational-contract)](ad
 |[adr/](adr/README.md)|Architecture Decision Records — one record per decision, with the technology rationale|
 |[design/](design/README.md)|Subsystem design references — rest / worker / job / outbox / idempotency / observability / auth / security / context-map / agent-environment|
 |[get-started/](get-started/setup-repository.md)|Setup performed once before development starts, and the troubleshooting index for when it does not go smoothly|
-|[tutorial/](tutorial/build-user-feature.md)|Worked example — one feature built end to end|
+|[tutorial/](tutorial/build-user-feature.md)|Worked example — one feature built end to end <!-- sample-api:line -->|
 |[spec/](spec/glossary.md)|Feature specifications and the business-vocabulary glossary|
 |[project/](project/scope.md)|Scope, out-of-scope, maintenance policy, versioning, direction|
 |[plan/](plan/distributed-ready-architecture.md)|Requirements for a release line that has not been built yet <!-- boilerplate-only:line -->|
@@ -48,7 +48,11 @@ output rather than documents to read. The rules that keep this layout generatabl
 
 ```mermaid
 flowchart TB
+    %% sample-api:replace-begin
     A["get-started/"] --> B["architecture.md"] --> C["development-flow.md"] --> D["tutorial/"] --> E["rules.md"] --> F["adr/"]
+    %% sample-api:replace-with
+    %% = A["get-started/"] --> B["architecture.md"] --> C["development-flow.md"] --> D["rules.md"] --> E["adr/"]
+    %% sample-api:replace-end
 ```
 
 ### Maintainers / Contributors

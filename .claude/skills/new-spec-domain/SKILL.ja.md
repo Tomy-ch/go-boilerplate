@@ -97,9 +97,11 @@ H1 `<FeatureName Display> — Domain Spec`、続けて各節:
 定義文は feature 名と集約名から草案を起こし、**草案であることを明言する**。誰も編集していない定義は
 誰も合意していない定義であり、もっともらしく誤っている行より空の行のほうが価値がある。
 
+<!-- sample-api:begin -->
 feature がサンプル由来なら行を `sample-api:begin` / `sample-api:end` の内側へ、そうでなければ外側へ
 置く。マーカーの反対側に置かれた行は、サンプルと共に消えるか、サンプルより長生きするかのどちらかになる。
 
+<!-- sample-api:end -->
 ## Step 5. クロージング
 
 ```text

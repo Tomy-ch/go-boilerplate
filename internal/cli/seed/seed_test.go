@@ -114,7 +114,7 @@ func Test_execSeedFile(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			fsys := mock_fs.NewMockFS(ctrl)
 			db := mock_driver.NewMockDatabaseDriver(ctrl)
-			vars := map[string]string{"AUTH_ISSUER": "'); DROP TABLE user_identities; --"}
+			vars := map[string]string{"AUTH_ISSUER": "'); DROP TABLE outbox; --"}
 			fsys.EXPECT().ReadFile(path).Return([]byte("INSERT ... VALUES ('${AUTH_ISSUER}');"), nil)
 
 			err := execSeedFile(context.Background(), fsys, db, logging.NewTestLogger(t), vars, path)
@@ -200,7 +200,7 @@ func Test_expandPlaceholders(t *testing.T) {
 
 		t.Run("単一引用符を含む値は展開せずエラーになる", func(t *testing.T) {
 			t.Parallel()
-			vars := map[string]string{"AUTH_ISSUER": "'); DROP TABLE user_identities; --"}
+			vars := map[string]string{"AUTH_ISSUER": "'); DROP TABLE outbox; --"}
 
 			_, err := expandPlaceholders("('${AUTH_ISSUER}');", vars)
 			require.ErrorIs(t, err, errUnsafePlaceholderValue)

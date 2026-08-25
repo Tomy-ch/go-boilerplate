@@ -102,9 +102,11 @@ Read `docs/spec/glossary.md` and compare the aggregate name against the existing
 Draft the definition from the feature and aggregate names. A definition nobody edited is a
 definition nobody agreed to; the row is worth more empty than plausibly wrong.
 
+<!-- sample-api:begin -->
 Place the row inside the `sample-api:begin` / `sample-api:end` markers when the feature is
 sample-derived, outside them otherwise. A row on the wrong side of a marker either vanishes with the
 sample or outlives it.
+<!-- sample-api:end -->
 
 This responsibility exists only when a domain layer introduces the terms. A projection-only feature
 with no aggregate or `domain.md` — only a QueryService — would otherwise have nobody to introduce

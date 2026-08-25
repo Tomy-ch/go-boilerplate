@@ -148,7 +148,7 @@ a transaction running outside the suite serialization:
 
 ```go
 txm.WithinTxE(func(ctx context.Context) error {
-    if _, err := driver.New(ctx, testDB).Exec(ctx, "TRUNCATE product_statuses CASCADE"); err != nil {
+    if _, err := driver.New(ctx, testDB).Exec(ctx, "TRUNCATE some_table CASCADE"); err != nil {
         return err // 40P01 here is retried, not a red test
     }
 

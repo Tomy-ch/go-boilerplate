@@ -40,7 +40,7 @@ type requestSchemaSubject struct {
 // 黙って受け取るため、クライアント側のタイポや古いフィールド名が無視される。
 //
 // 検査は requestBody 直下で止めず properties / items / allOf を再帰する。ネストした要素スキーマ
-// （購入明細・商品画像）はトップレベルの宣言に守られず、そこだけ素通りが残るためである。
+// （配列要素やネストした object）はトップレベルの宣言に守られず、そこだけ素通りが残るためである。
 //
 // 読み出すのは生成物ではなく手書き正本の openapi.yaml で、理由は TestRouteSpecParity と同じ。
 //

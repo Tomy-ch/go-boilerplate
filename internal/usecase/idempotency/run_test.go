@@ -184,7 +184,7 @@ func TestRun(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			store := mock_idempotency.NewMockStore(ctrl)
-			want := uuidPayload{ID: uuidtestkit.NewTestFromSalt(t, "purchase-1")}
+			want := uuidPayload{ID: uuidtestkit.NewTestFromSalt(t, "payload-1")}
 			fp := []byte("fingerprint")
 
 			var stored []byte

@@ -113,7 +113,7 @@ has no `style` for it — expressing it means writing the brackets into the para
 and letting tooling treat them as opaque. It is also the longest of the three forms, since
 `[]` percent-encodes to six characters on every occurrence.
 
-### Matrix parameters or path segments (`/products;categoryCodes=1,2`)
+### Matrix parameters or path segments (`/<resource>;<param>=1,2`)
 
 Rejected. OpenAPI's `matrix` and `label` styles apply to **path** parameters, and a path
 parameter must be `required: true`. Optional filters cannot be expressed there at all.

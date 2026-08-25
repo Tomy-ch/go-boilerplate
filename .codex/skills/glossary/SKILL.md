@@ -133,8 +133,10 @@ make the code follow it.
 
 Write **only** `docs/spec/glossary.md`; do not edit feature specs, READMEs, ADRs, the DDD ledger, source, or generated files. Do not create a `.ja.md` pair for the glossary: this spec tree uses one Japanese file with English headings.
 
+<!-- sample-api:begin -->
 Put sample-derived rows between `sample-api:begin` and `sample-api:end`. Put terms that survive sample removal outside those markers.
 
+<!-- sample-api:end -->
 Close in Japanese with the rows added, orphan classifications, unresolved references, homonyms left open, and follow-ups owned by other skills. Do not commit or push.
 
 ## Constraints

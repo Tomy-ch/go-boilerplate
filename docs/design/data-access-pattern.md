@@ -127,8 +127,8 @@ If the write can be expressed as loading an aggregate, mutating it, and saving i
 
 CommandService exists for the writes that *cannot* be expressed that way without changing their
 concurrency properties: **relative updates, set-based operations, and operations that obtain atomicity
-without taking a lock**. Returning a reserved quantity when an order is cancelled is the shape — a
-relative update that takes no lock on the inventory row at all; expressing it as load-add-save would
+without taking a lock**. Returning a reserved quantity when a reservation is released is the shape — a
+relative update that takes no lock on the counted row at all; expressing it as load-add-save would
 introduce a lock the cancel path does not take, adding contention and a deadlock surface that does not
 exist today.
 
@@ -220,7 +220,7 @@ conclusion and an incomplete answer.
 ## 6. Derivation: what a CommandService may enforce
 
 Any condition a CommandService enforces must be **derived from a domain invariant, never authored
-independently**. A stock guard in a decrement statement restates the domain's insufficient-stock rule as
+independently**. A guard in a decrement statement restates the domain's own sufficiency rule as
 a fail-closed second net; it is downstream of that rule, so a change to the domain rule obliges a change
 here and never the reverse. Two independently written copies of one rule diverge silently the first time
 only one of them moves.

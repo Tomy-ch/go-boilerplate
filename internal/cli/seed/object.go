@@ -41,7 +41,7 @@ type PutObjectFunc func(ctx context.Context, obj ObjectToPut) error
 
 // RunObjectSeed は、objectSeedPlace 配下のファイルをオブジェクトストレージへ保存します。
 // objectSeedPlace からの相対パスがそのままオブジェクトキーになるため、置いたディレクトリ構造が
-// キーの構造になります（例 storage/seed/products/a.webp → products/a.webp）。
+// キーの構造になります（例 storage/seed/<接頭辞>/a.webp → <接頭辞>/a.webp）。
 //
 // endpoint が空の環境では何もしません。対象が 1 件も無い場合も同様で、いずれも成功として扱います。
 func RunObjectSeed(logger logging.Logger, fsys fs.FS, endpoint string, put PutObjectFunc) error {

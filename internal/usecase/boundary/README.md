@@ -156,7 +156,7 @@ Substrate-agnostic object-storage boundary. Usecase depends only on this port; t
 |Type / Function|Description|
 |---|---|
 |`Storage`|`Put(ctx, PutObject) (Path, error)` stores an object under its key. `List(ctx, ListQuery) (ListResult, error)` enumerates one page of matching objects. `Delete(ctx, keys []string) error` removes objects in bulk — an empty slice is a no-op, absent keys are not an error, and re-running with the same keys changes nothing. Failures return an `apperror` sentinel (e.g. `ErrUnavailable`)|
-|`PutObject`|Input DTO (`Key` / `Body` / `ContentType` / `CacheControl`); the caller assigns `Key` (e.g. `products/{uuid}.png`) and decides `CacheControl`, since cacheability follows from how the caller numbers keys (empty leaves it unset)|
+|`PutObject`|Input DTO (`Key` / `Body` / `ContentType` / `CacheControl`); the caller assigns `Key` (e.g. `<prefix>/{uuid}.png`) and decides `CacheControl`, since cacheability follows from how the caller numbers keys (empty leaves it unset)|
 |`ListQuery`|Input DTO (`Prefix` / `Cursor` / `Limit`); an empty `Prefix` enumerates everything, `Cursor` is the opaque, adapter-defined boundary taken from a previous `ListResult.NextCursor`, and a `Limit` of zero or less leaves the page size to the adapter's default|
 |`ListResult`|One page of objects plus `NextCursor`; a non-empty `NextCursor` means more remain and is fed back as the next `ListQuery.Cursor`|
 |`Object`|A single enumerated object as the boundary describes it|

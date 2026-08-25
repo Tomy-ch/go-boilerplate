@@ -37,23 +37,23 @@ Three facts explain almost everything below:
 | Tests / migrations hit the wrong database after `make slot-acquire` | §5 |
 | Integration tests fail right after switching branches | §5 |
 | pre-push `secret-scan` flags a secret you did not add | §6 |
-| `sample-removal-check` fails in CI | §7 |
-| `env/.env` is dirty and you did not edit it | §8 |
-| Local golangci-lint disagrees with CI, or `golangci-lint: not found` | §9 |
-| `commitlint: not found`, `orval: not found`, stale tool version | §10 |
-| `ERR_PNPM_VERIFY_DEPS_BEFORE_RUN` in a containerized gate, or one gate fails only inside Docker | §10 |
-| A containerized gate reports missing dependencies for a package you never touched, or `make` fails where a bare `docker compose run` passes | §10 |
-| A hook fails for something outside your change | §11 |
-| A gate fails / crawls for reasons unrelated to the change while several worktrees are open | §20 |
-| Want to know why `make lint` skipped, throttled, or deferred itself to CI | §20 |
-| `pin-images-check` / `pin-actions-check` errors (未固定 / 未登録) | §12 |
-| `tool-cooldown` / `go-cooldown` refuses a version you just declared | §21 |
-| A runtime bump breaks a gate through a tool that cannot be upgraded yet | §21 |
-| "Migration version gap / duplicate" from pre-commit | §13 |
-| S3 calls return 503 locally | §14 |
-| Building an image for a specific environment | §15 |
-| `sync-versions` drift in CI | §16 |
-| `go: inconsistent vendoring` from air or the image build in a fresh worktree (`vendor/` absent) | §19 |
+| `sample-removal-check` fails in CI | §21 <!-- sample-api:line --> |
+| `env/.env` is dirty and you did not edit it | §7 |
+| Local golangci-lint disagrees with CI, or `golangci-lint: not found` | §8 |
+| `commitlint: not found`, `orval: not found`, stale tool version | §9 |
+| `ERR_PNPM_VERIFY_DEPS_BEFORE_RUN` in a containerized gate, or one gate fails only inside Docker | §9 |
+| A containerized gate reports missing dependencies for a package you never touched, or `make` fails where a bare `docker compose run` passes | §9 |
+| A hook fails for something outside your change | §10 |
+| A gate fails / crawls for reasons unrelated to the change while several worktrees are open | §19 |
+| Want to know why `make lint` skipped, throttled, or deferred itself to CI | §19 |
+| `pin-images-check` / `pin-actions-check` errors (未固定 / 未登録) | §11 |
+| `tool-cooldown` / `go-cooldown` refuses a version you just declared | §20 |
+| A runtime bump breaks a gate through a tool that cannot be upgraded yet | §20 |
+| "Migration version gap / duplicate" from pre-commit | §12 |
+| S3 calls return 503 locally | §13 |
+| Building an image for a specific environment | §14 |
+| `sync-versions` drift in CI | §15 |
+| `go: inconsistent vendoring` from air or the image build in a fresh worktree (`vendor/` absent) | §18 |
 | Cannot tell which document decides an answer / `grep` drowns in mirrors and generated copies | §0 |
 
 ## 0. Finding the authoritative source
@@ -80,7 +80,7 @@ Of roughly 1,000 tracked `*.md`, **over 40% are `*.ja.md` translations** and **7
 | Per-package detail and design intent | the nearest `internal/**/README.md` / `pkg/**/README.md` (100+ of them) | a skill body — skills follow READMEs, not the reverse |
 | An environment variable | `internal/config/envspec.go` + `model.go`, table in `env/README.md` | a value in `env/.env*` alone |
 | What a CI gate or hook actually checks | `.github/workflows/*.yaml`, `.lefthook.yaml` | — |
-| Tool / runtime versions | `mise.toml` (everything else is derived — §16) | `go.mod`, Dockerfiles, READMEs — all derived |
+| Tool / runtime versions | `mise.toml` (everything else is derived — §15) | `go.mod`, Dockerfiles, READMEs — all derived |
 | Generated artifacts, protected paths, scope | `AGENTS.md` | — |
 
 ### Searching without the noise
@@ -219,24 +219,7 @@ Then update the matching line in `.gitleaksignore` to the new number, keeping th
 Only do this for entries already documented there as intentional (the JWKS rotation test's signing keys, Garage dev
 credentials) — a genuinely new finding is a real secret and must be removed from the tree instead.
 
-## 7. `sample-removal-check` fails in CI
-
-`scripts/setup/remove-sample-api/sample-manifest.ts` declares every path that `make setup-remove-sample-api` <!-- skill-lint-ignore -->
-deletes when a template user strips the sample APIs. Adding, moving, or renaming files under a sample
-domain (user / product / purchase / …) without registering them leaves dangling references after
-removal, which the CI job catches by actually performing the removal and then building, linting, and
-testing. Nothing local fails — this is CI-only unless you run it yourself.
-
-When you add sample-domain files (handler, usecase, domain, repository, DML, migration, seed, spec,
-integration test, sample-only generated output), add their paths to the matching domain entry. Lines
-mixed into shared files are handled with `sample-api` marker comments instead of paths. Preview the
-effect without deleting anything:
-
-```bash
-DRY_RUN=1 make setup-remove-sample-api
-```
-
-## 8. `env/.env` is dirty and you did not edit it
+## 7. `env/.env` is dirty and you did not edit it
 
 `env/.env` is committed, and `make materialize-env` overwrites it with `env/.env.$(APP_ENV)` (default
 `ci`) so the value set can be embedded at build time. CI and image builds do this, and an interrupted
@@ -249,7 +232,7 @@ make restore-env          # git restore env/.env
 Never commit a materialized `env/.env`. Note that editing this file also shifts the gitleaks
 fingerprint in §6.
 
-## 9. Host-side lint / format / test, and the two golangci configs
+## 8. Host-side lint / format / test, and the two golangci configs
 
 `make lint` / `make fix` resolve golangci-lint through mise on the **host** (`mise which golangci-lint`),
 and `make test` runs `go test` on the host too. If the binary is missing, `mise install` — do not
@@ -265,7 +248,7 @@ golangci-lint run --config .golangci-full.yaml     # equivalent, when you need e
 
 Always reproduce CI failures with the full config.
 
-## 10. `commitlint: not found` / `orval: not found` / `ERR_PNPM_VERIFY_DEPS_BEFORE_RUN` / a stale tool version
+## 9. `commitlint: not found` / `orval: not found` / `ERR_PNPM_VERIFY_DEPS_BEFORE_RUN` / a stale tool version
 
 The tool-runner images are **build artifacts of `docker/tools/Dockerfile`, `mise.toml`, and the
 `package.json` + `pnpm-lock.yaml` + `pnpm-workspace.yaml` triple of every package the node runner
@@ -331,7 +314,7 @@ the usual cause of a failing commit. `commitlint.config.js` deliberately disable
 repo prefixes are Cap-first `Feat`/`Fix`/… while CI messages are upper-case, so no single case can be
 enforced) and pins `type-enum` to the project prefixes; `Merge` / `Revert` are ignored by default.
 
-## 11. Hook map — what runs when, and what to do when it fails for reasons outside your change
+## 10. Hook map — what runs when, and what to do when it fails for reasons outside your change
 
 `.lefthook.yaml`, by trigger:
 
@@ -343,16 +326,16 @@ enforced) and pins `type-enum` to the project prefixes; `Merge` / `Revert` are i
 
 The Go gates are **bundled** into `gate-go` / `gate-go-push` rather than listed one per command,
 because lefthook runs a hook's commands in parallel and a per-gate entry multiplies host load by the
-number of gates on top of the number of open windows. How hard they run is decided by §20.
+number of gates on top of the number of open windows. How hard they run is decided by §19.
 
 The pre-push `gen-go-check` regenerates in Docker and fails on any diff — the fix is to commit the
 regenerated output (§2, §4), not to re-run it. When a hook is red for a reason unrelated to your
 change (a pre-existing failure on the base branch, an environment problem), push with `--no-verify`
 and fix the cause separately rather than reshaping your change around it. Rule out a stale
-tool-runner image (§10) before calling it pre-existing — the failure text alone does not tell the two
+tool-runner image (§9) before calling it pre-existing — the failure text alone does not tell the two
 apart.
 
-## 12. `pin-images-check` / `pin-actions-check` — fail-closed lockfiles
+## 11. `pin-images-check` / `pin-actions-check` — fail-closed lockfiles
 
 Both checks are fail-closed: every `FROM` in `docker/*/Dockerfile`, every `image:` in
 `docker-compose*.yaml`, and every `uses:` in `.github/workflows/**` must be pinned *and* registered in
@@ -363,7 +346,7 @@ Do not hand-edit the pinned digest or SHA. Use the dedicated skills — `images-
 `actions-pin` for actions — which own the supply-chain cooldown (a freshly published digest is
 refused, not adopted) and the `resolve` → `apply` → `check` sequence.
 
-## 13. "Migration version gap / duplicate" from pre-commit
+## 12. "Migration version gap / duplicate" from pre-commit
 
 `make check-migration-{up,down}-{version,gap}` require the `database/migrations/**` sequence numbers
 to be unique and contiguous for both directions. The usual trigger is merging an advanced base branch
@@ -371,7 +354,7 @@ that already added your number. Renumber *your* new files (both `.up.sql` and `.
 an existing committed migration, per `AGENTS.md`. Scaffold new ones with
 `make new-migrate-<name>` so numbering comes from the tool.
 
-## 14. Local S3 calls return 503
+## 13. Local S3 calls return 503
 
 The `garage` bucket, layout, and access key are provisioned by a **one-shot `garage_init`** container.
 `make infra-up` starts it and waits for it to finish, because compose's `depends_on` cannot express it
@@ -385,13 +368,13 @@ The bucket is shared by every checkout (unlike databases, it has no schema to br
 To isolate a branch, point it at a different `OBJECT_STORAGE_BUCKET`. Go tests do not touch garage —
 they use in-process gofakes3.
 
-## 15. Per-environment Docker images
+## 14. Per-environment Docker images
 
 The runtime image bakes a single `env/.env.<env>` chosen at build time via `--build-arg APP_ENV=<env>`
 (the deploy workflow injects it). There is no single image switched by a runtime ENV.
 
 ```bash
-go mod vendor   # the builder stage is vendor-mode + GOPROXY=off; skip this and it fails (§19)
+go mod vendor   # the builder stage is vendor-mode + GOPROXY=off; skip this and it fails (§18)
 docker build --build-arg APP_ENV=stg --target runtime -t <img> -f docker/server/Dockerfile .
 # verify only .env.stg was baked in
 ```
@@ -399,7 +382,7 @@ docker build --build-arg APP_ENV=stg --target runtime -t <img> -f docker/server/
 There is no separate migration image: `env/` and `database/migrations` are embedded in the binary, so
 migrations run from the same `runtime` image via a command override (`./server migrate-up`).
 
-## 16. `sync-versions` drift
+## 15. `sync-versions` drift
 
 `mise.toml` is the source of truth for tool versions; `go.mod`, the Dockerfiles, and the `docker/**`
 READMEs are derived. Editing a derived file directly, or bumping `mise.toml` without propagating,
@@ -411,7 +394,7 @@ make sync-versions                # propagate from mise.toml, then commit the re
 
 For a Go version bump use the `go-upgrade` skill, which owns the full procedure.
 
-## 17. Generated mocks — never hand-write, regenerate via Docker
+## 16. Generated mocks — never hand-write, regenerate via Docker
 
 Each source declares
 `//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE`
@@ -424,14 +407,14 @@ interface file), and `make gen-go-code` runs them in `go_tool_runner` with the p
 make gen-go-code
 ```
 
-## 18. The `.makefiles` DRY_RUN convention
+## 17. The `.makefiles` DRY_RUN convention
 
 Setup / teardown targets gate dry-run on `$(if $(DRY_RUN),--dry-run,)` plus `[ -n "$(DRY_RUN)" ]`,
 which treat **any non-empty value as truthy** — `DRY_RUN=0 make <target>` is still a dry-run. To
 actually run, omit the variable entirely; to preview, `DRY_RUN=1 make <target>`. `setup-repo` rejects
 `DRY_RUN` outright because it cannot be previewed.
 
-## 19. `go: inconsistent vendoring` in a fresh worktree — `make serve` reports success but the API never answers
+## 18. `go: inconsistent vendoring` in a fresh worktree — `make serve` reports success but the API never answers
 
 `vendor/` is untracked (`.gitignore`) — deliberately, for the supply-chain reason recorded in
 `docs/design/security.md` — so a fresh worktree or clone starts without it. Exactly two build paths
@@ -461,10 +444,10 @@ make serve
 prefer the bare `go mod vendor` when you only need to populate a missing `vendor/`. Nothing guards
 this state: no hook or CI check inspects `vendor/` (`tidy-check.yaml` says so explicitly), and the
 workflows that build the image regenerate it first, so they never fail on it. Re-run the command
-yourself after a base merge that changes dependencies. The same trap hits a manual image build (§15),
+yourself after a base merge that changes dependencies. The same trap hits a manual image build (§14),
 which drives the vendor-mode `Dockerfile` directly.
 
-## 20. A gate failed for a reason unrelated to the change — check how many windows are open
+## 19. A gate failed for a reason unrelated to the change — check how many windows are open
 
 When several worktrees each run a gate sized for the whole host, the host saturates and gates start
 failing in ways that look like defects in the change: a test you did not touch times out, `make lint`
@@ -501,12 +484,12 @@ commit and push are throttled — one-shot heavy work (image builds, codegen, Tr
 because nobody runs it in a loop.
 
 **Do not reach for `make lint` locally to reproduce a CI lint failure when windows are many.** Read the
-CI log and apply the single formatter or linter it named (§9 has the config choice); a full local run
+CI log and apply the single formatter or linter it named (§8 has the config choice); a full local run
 costs minutes of saturated host to rediscover what CI already printed.
 
-For a hook already red for an outside reason, §11 covers the `--no-verify` carve-out.
+For a hook already red for an outside reason, §10 covers the `--no-verify` carve-out.
 
-## 21. A cooldown gate refused a version you just declared
+## 20. A cooldown gate refused a version you just declared
 
 `make tool-cooldown-gate` (declarations in `mise.toml` and `python/*.in`) and `make go-cooldown-gate`
 (direct modules in `go.mod`) fail closed when a version you added is younger than its window:
@@ -515,7 +498,7 @@ For a hook already red for an outside reason, §11 covers the `--no-verify` carv
 ❌ uv@0.12.2（aqua:astral-sh/uv）は公開 13 日で cooldown 14 日を満たしていません
 ```
 
-These are a different mechanism from §12's pin checks. `pin-actions` / `pin-images` build the
+These are a different mechanism from §11's pin checks. `pin-actions` / `pin-images` build the
 step-back into `resolve` and simply keep the old pin; these two gates have no such fallback, so the
 declaration is yours to correct.
 
@@ -559,6 +542,25 @@ Raising a `python/*.in` pin without regenerating its `.txt` fails too, from `ver
 than from the window. Run `make py-lock` and commit both files; the pin and its lockfile are one
 change.
 
+<!-- sample-api:begin -->
+## 21. `sample-removal-check` fails in CI
+
+`scripts/setup/remove-sample-api/sample-manifest.ts` declares every path that `make setup-remove-sample-api` <!-- skill-lint-ignore -->
+deletes when a template user strips the sample APIs. Adding, moving, or renaming files under a sample
+domain (user / product / purchase / …) without registering them leaves dangling references after
+removal, which the CI job catches by actually performing the removal and then building, linting, and
+testing. Nothing local fails — this is CI-only unless you run it yourself.
+
+When you add sample-domain files (handler, usecase, domain, repository, DML, migration, seed, spec,
+integration test, sample-only generated output), add their paths to the matching domain entry. Lines
+mixed into shared files are handled with `sample-api` marker comments instead of paths. Preview the
+effect without deleting anything:
+
+```bash
+DRY_RUN=1 make setup-remove-sample-api
+```
+
+<!-- sample-api:end -->
 ## Constraints
 
 - ✅ Read-only knowledge: surface the exact command; run it only when the user asked you to perform
@@ -571,4 +573,4 @@ change.
 - ❌ Do not hand-edit generated artifacts (`*.gen.go`, `*.sql.go`, `*_mock.go`, `openapi.gen.yaml`,
   `schema.gen.sql`, `docs/portal/guides/**`, pinned digests/SHAs) — regenerate or use the owning skill.
 - ❌ Do not commit a schema- or DML-affecting change without its regenerated artifacts (§2), and do
-  not commit a materialized `env/.env` (§8).
+  not commit a materialized `env/.env` (§7).

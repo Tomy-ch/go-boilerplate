@@ -291,10 +291,12 @@ through the order the page requires — the language moves first and the code fo
 Write `docs/spec/glossary.md` only. The spec tree is Japanese single-file with English headings and
 has **no `.ja.md` pair** — do not create one, and do not chain `canonicalize-doc`.
 
+<!-- sample-api:begin -->
 Sample-derived rows live between the `sample-api:begin` / `sample-api:end` markers so they leave with
 the sample; a row for a term that survives sample removal goes outside them. Getting this wrong is
 how the page starts describing terms that no longer exist.
 
+<!-- sample-api:end -->
 Do not touch feature specs, READMEs, ADRs, the DDD ledger, or source. A term that needs renaming in
 code is a follow-up to surface, not an edit to make here.
 

@@ -72,7 +72,7 @@ OpenAPI はクエリ配列の直列化を `style` と `explode` の組で複数�
 
 却下。PHP / Rails の慣習であり jQuery の `$.param()` の既定でもあるが、OpenAPI にこの `style` は存在しない。表現するにはブラケットをパラメータ**名**に書き込み、ツール側にはそれを不透明な名前として扱わせることになる。`[]` は出現ごとに 6 文字へ percent-encode されるため、3 つの形式のうち最も長くもなる。
 
-### matrix パラメータやパスセグメント（`/products;categoryCodes=1,2`）
+### matrix パラメータやパスセグメント（`/<resource>;<param>=1,2`）
 
 却下。OpenAPI の `matrix` / `label` style は **path** パラメータに適用され、path パラメータは `required: true` でなければならない。任意の絞り込みはそこに載せられない。
 

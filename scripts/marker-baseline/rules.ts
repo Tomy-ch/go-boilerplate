@@ -3,7 +3,7 @@
 // 撤去マーカー（`boilerplate-only` / `sample-api`）は、本物として発火してほしい行と、規約を
 // 説明するための例示とが、**同じ形**をしている。位置でも構文でも区別できない——`internal/
 // controller/job/README.md` の ```go フェンス内マーカーは発火してほしい本物であり、
-// `docs/tutorial/build-user-feature.md` の同じ形は例示である。
+// `scripts/setup/lib/markers.test.ts` の同じ形は例示である。
 //
 // 区別できるのは書き手の意図だけなので、除去側は「例示だ」という宣言（各撤去ツールの
 // `MARKER_LITERAL_FILES`）を持つ。問題はその宣言を**忘れたとき**で、

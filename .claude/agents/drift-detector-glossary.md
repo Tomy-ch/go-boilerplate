@@ -38,7 +38,9 @@ business word" would make every run disagree with the last one.**
 - `.agents/glossary-drift/exclusions.yaml` — two lists. `exclusions` are declared paths; apply them
   and carry them into your report. `collisions` narrows which probe forms are usable per identifier.
 - `scripts/setup/remove-sample-api/sample-manifest.ts` — the paths that leave with the sample. Read it and treat a <!-- skill-lint-ignore -->
-  file under any of them exactly as you treat a `sample-api` region: **not a leak.**
+  file under any of them exactly as you treat a `sample-api` region: **not a leak.** The file is
+  itself removed with the sample; its absence means there is no sample left to exclude, so carry on
+  with the remaining inputs rather than reporting the read as a failure.
 - The prose corpus: `internal/**/README.md`, `pkg/**/README.md`, `docs/adr/*.md`, `docs/rules.md`,
   `docs/architecture.md`. Exclude `*.ja.md` — a translation mirrors its canonical file, so a finding
   there is the same finding twice.
@@ -63,7 +65,7 @@ shapes prose actually uses, in this order:
 2. **As a package qualifier** — `<agg>.` as a prefix, so `<agg>.Anything` is caught rather than only
    the one type the table recorded.
 3. **As the Public name, word-bounded and capitalised** — `<Aggregate>`, `<Aggregate><Part>`,
-   `ProductCategory`. Requiring the capital drops the ordinary-noun sense of the same word.
+   a capitalized compound. Requiring the capital drops the ordinary-noun sense of the same word.
 4. **As a bare word inside backticks** — `` `product` ``. Code spans separate a named thing from the
    same word used in a sentence.
 

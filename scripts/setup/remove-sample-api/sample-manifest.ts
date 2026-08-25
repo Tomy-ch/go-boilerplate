@@ -512,6 +512,8 @@ export const MARKER_LITERAL_FILES: readonly string[] = [
   // 前提検査もマーカー除去を行うため、両名前空間を入力として持つ。あちらは撤去の契機が違う
   // （ボイラープレート撤去で丸ごと消える）ので、こちらからは通常のファイルとして見える。
   "scripts/premise-lint/rules.test.ts",
+  // マーカー行の分布を数える判定のテスト。全接尾辞を入力の配列リテラルとして持つ。
+  "scripts/marker-baseline/rules.test.ts",
   // Go の文字列リテラルとして `// sample-api:line` を組み立て、走査器の挙動を検査している。
   "internal/architest/bindhandler_di_parity_test.go",
   // マーカーの書き方を説明している散文。1 行に begin と end が同居するため、

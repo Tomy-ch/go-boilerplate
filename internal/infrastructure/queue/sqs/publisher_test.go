@@ -86,7 +86,7 @@ func Test_publisher_Publish(t *testing.T) {
 
 			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{
 				MessageID: newTestUUID(t),
-				EventType: "user.withdrawn.v1",
+				EventType: "resource.deleted.v1",
 				Payload:   []byte(`{"userId":"u1"}`),
 			})
 
@@ -105,7 +105,7 @@ func Test_publisher_Publish(t *testing.T) {
 
 			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{
 				MessageID: messageID,
-				EventType: "user.withdrawn.v1",
+				EventType: "resource.deleted.v1",
 			})
 
 			require.NoError(t, err)
@@ -126,7 +126,7 @@ func Test_publisher_Publish(t *testing.T) {
 
 			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{
 				MessageID: newTestUUID(t),
-				EventType: "user.withdrawn.v1",
+				EventType: "resource.deleted.v1",
 				Headers:   headers,
 			})
 
@@ -148,7 +148,7 @@ func Test_publisher_Publish(t *testing.T) {
 
 			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{
 				MessageID: newTestUUID(t),
-				EventType: "user.withdrawn.v1",
+				EventType: "resource.deleted.v1",
 			})
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
@@ -179,7 +179,7 @@ func Test_publisher_Publish(t *testing.T) {
 
 			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{
 				MessageID: newTestUUID(t),
-				EventType: "user.withdrawn.v1",
+				EventType: "resource.deleted.v1",
 				Headers:   headers,
 			})
 
@@ -197,7 +197,7 @@ func Test_publisher_Publish(t *testing.T) {
 
 			err := newPublisher(t, api).Publish(context.Background(), boundary.Message{
 				MessageID: newTestUUID(t),
-				EventType: "user.withdrawn.v1",
+				EventType: "resource.deleted.v1",
 			})
 
 			require.ErrorIs(t, err, apperror.ErrCanceled)
@@ -229,10 +229,10 @@ func Test_publisher_messageAttributes(t *testing.T) {
 
 			got := p.messageAttributes(boundary.Message{
 				MessageID: newTestUUID(t),
-				EventType: "user.withdrawn.v1",
+				EventType: "resource.deleted.v1",
 			})
 
-			assert.Equal(t, "user.withdrawn.v1", aws.ToString(got[AttrEventType].StringValue))
+			assert.Equal(t, "resource.deleted.v1", aws.ToString(got[AttrEventType].StringValue))
 			assert.Equal(t, "String", aws.ToString(got[AttrEventType].DataType))
 		})
 
@@ -297,11 +297,11 @@ func Test_publisher_messageAttributes(t *testing.T) {
 
 			got := p.messageAttributes(boundary.Message{
 				MessageID: newTestUUID(t),
-				EventType: "user.withdrawn.v1",
-				Headers:   map[string]string{AttrEventType: "purchase.created.v1"},
+				EventType: "resource.deleted.v1",
+				Headers:   map[string]string{AttrEventType: "resource.created.v1"},
 			})
 
-			assert.Equal(t, "user.withdrawn.v1", aws.ToString(got[AttrEventType].StringValue))
+			assert.Equal(t, "resource.deleted.v1", aws.ToString(got[AttrEventType].StringValue))
 		})
 	})
 }

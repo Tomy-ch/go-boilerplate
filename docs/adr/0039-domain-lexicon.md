@@ -13,9 +13,15 @@ accepted
 
 ## Context
 
+<!-- sample-api:replace-begin -->
 Introducing `money.Price` ([ADR-0038](0038-two-scale-quantity-model.md)) surfaced a gap in the
 layer rules. `Price` is a business-semantic value object (non-negativity, minor-unit conversion)
 shared by **more than one aggregate**.
+<!-- sample-api:replace-with -->
+<!-- = Introducing a settlement-scale value object ([ADR-0038](0038-two-scale-quantity-model.md)) -->
+<!-- = surfaced a gap in the layer rules. It carries business semantics of its own and is shared by -->
+<!-- = **more than one aggregate**. -->
+<!-- sample-api:replace-end -->
 <!-- 撤去後にこの箇所へ自分の例を置くための指針。
      目的: 「複数の集約から使われる」が抽象のままだと、入場基準を満たす実例が示せない。
      意義: 効くのは利用者が 2 つ以上あることで、型そのものの複雑さではない。
@@ -30,7 +36,8 @@ it cannot live in `pkg/` (which forbids business logic and must stay context-ind
 The existing rule — "the domain layer's only permitted `internal/` dependency is
 `internal/apperror`" — did not anticipate a value object shared *across domain aggregates*.
 Read literally it forbids the natural placement; and the depguard rule was `lax` about
-domain→domain, so it silently permitted *any* cross-aggregate import (e.g. `product` → `user`),
+domain→domain, so it silently permitted *any* cross-aggregate import (one aggregate reaching
+directly into another),
 a latent coupling hole. A decision is needed on where such shared value objects live and how the
 boundary is enforced.
 
@@ -63,7 +70,7 @@ fallback would make `pkg/` the junk drawer instead. A type that clears neither s
 
 ### Positive Consequences
 
-- The path itself signals intent: `internal/domain/lexicon/money` reads as "shared, importable",
+- The path itself signals intent: `internal/domain/lexicon/<vo>` reads as "shared, importable",
   so a cross-aggregate import no longer looks like a violation (the review confusion that
   prompted this ADR).
 - depguard now both **permits** the lexicon and **forbids** ad-hoc aggregate-to-aggregate
@@ -73,7 +80,7 @@ fallback would make `pkg/` the junk drawer instead. A type that clears neither s
 
 ### Negative Consequences
 
-- A shared lexicon is a coupling point: a change to `lexicon/money` can affect every dependent
+- A shared lexicon is a coupling point: a change to a lexicon package can affect every dependent
   aggregate, so it must be evolved conservatively (this is the cost the admission bar manages).
 - One more placement concept for contributors to learn (aggregate vs. lexicon), documented here,
   in `docs/rules.md`, and in `internal/domain/lexicon/README.md`.
@@ -111,7 +118,11 @@ Rejected: `pkg/` forbids business logic and must be context-independent. Currenc
 
 ## Notes
 
+<!-- sample-api:replace-begin -->
 - Lexicon package: `internal/domain/lexicon/money` (`Price`).
+<!-- sample-api:replace-with -->
+<!-- = - Lexicon package: none admitted yet; `internal/domain/lexicon/` holds only its admission bar. -->
+<!-- sample-api:replace-end -->
 - Enforcement: depguard `maintain_a_sound_domain` in `.golangci-full.yaml` (deny
   `internal/domain/`, allow `internal/domain/lexicon`).
 - Admission bar: `internal/domain/lexicon/README.md`; layer rule: `docs/rules.md`.

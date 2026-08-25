@@ -15,20 +15,25 @@ import (
 // webapiModule は、外部 Web API クライアント（gateway）を提供するfx.Moduleです。
 func webapiModule() fx.Option {
 	return fx.Module("webapi",
+		// sample-api:replace-begin
 		fx.Provide(
-			exchangerateext.NewEndpoint,      // sample-api:line
-			provideCachedExchangeRateGateway, // sample-api:line
-			addressext.NewEndpoint,           // sample-api:line
-			addressext.New,                   // sample-api:line
+			exchangerateext.NewEndpoint,
+			provideCachedExchangeRateGateway,
+			addressext.NewEndpoint,
+			addressext.New,
 		),
 		provideHTTPClientProfiles(
-			provideExchangeRateDownstreamProfile, // sample-api:line
-			addressext.NewDownstreamProfile,      // sample-api:line
+			provideExchangeRateDownstreamProfile,
+			addressext.NewDownstreamProfile,
 		),
 		provideRequiredDownstreams(
-			exchangerateext.RequiredDownstream, // sample-api:line
-			addressext.RequiredDownstream,      // sample-api:line
+			exchangerateext.RequiredDownstream,
+			addressext.RequiredDownstream,
 		),
+		// sample-api:replace-with
+		// = // gateway を足すときは、コンストラクタを fx.Provide へ、HTTP クライアントの
+		// = // プロファイルと必須 downstream をそれぞれのグループ提供子へ渡す。
+		// sample-api:replace-end
 	)
 }
 

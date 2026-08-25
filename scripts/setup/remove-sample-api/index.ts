@@ -5,6 +5,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { BASELINE_PATH, scanRepository } from "../../marker-baseline/scan";
 import { listFilesRecursive, toAbsolutePath, toRelativePath, updateFile } from "../lib/file-utils";
 import { ROOT_DIR, type SetupOptions, newSetupCommand } from "../lib/runtime";
 import {
@@ -40,6 +41,21 @@ type StrippedFile = {
 function writeSnapshot(): void {
   const registeredPaths = Object.values(SAMPLE_DOMAINS).flatMap((def) => def.paths);
   fs.writeFileSync(SNAPSHOT_PATH, `${JSON.stringify({ registeredPaths }, null, 2)}\n`);
+}
+
+/**
+ * マーカー行の分布のベースラインを、除去後のツリーで引き直す。
+ *
+ * @remarks
+ * ベースラインはマーカー行が増えていないかを見張る固定値なので、正当に減るこの撤去の後は
+ * 引き直さない限り `scripts/marker-baseline/scan.test.ts` が鳴り続けます。
+ *
+ * 呼ぶ位置は動かせません。この後に走る再生成・整形はマーカー行を動かさないため実態と一致する
+ * 最初の地点であり、かつこのツールが自消滅する前の最後の地点でもあります。
+ */
+function rewriteMarkerBaseline(): void {
+  fs.writeFileSync(BASELINE_PATH, `${JSON.stringify(scanRepository(), null, 2)}\n`);
+  console.log("🧹 マーカー行のベースラインを撤去後のツリーで引き直しました。");
 }
 
 function assertWithinRoot(absolutePath: string, relativePath: string): void {
@@ -210,6 +226,7 @@ function run({ dryRun }: SetupOptions): void {
   }
 
   writeSnapshot();
+  rewriteMarkerBaseline();
 
   const emptied = removeEmptyDirectories(deletion.deleted.map((d) => d.relativePath));
   if (emptied.length > 0) {

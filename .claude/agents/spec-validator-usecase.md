@@ -90,7 +90,7 @@ spec-validator-usecase 結果（feature: <feature>）
 [cross-spec] M 件
   - usecase.md CreateUser calls 'user.Repository.Save' が domain.md Repository Methods に存在しない
   - usecase.md ActivateUser calls 'clock.Now' だが Dependencies に clock 無し
-  - usecase.md 展開形節「GET 発送待ち一覧」dependencies 'domain/service/dispatch' が domain.md Domain Service に存在しない
+  - usecase.md 展開形節「GET <一覧名>」dependencies 'domain/service/<name>' が domain.md Domain Service に存在しない
 
 [interface coverage] J 件
   - Interface の `<Method>` に対応する手順が Workflow にも展開形節にも無い
