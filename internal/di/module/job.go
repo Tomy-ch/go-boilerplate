@@ -4,9 +4,6 @@ import (
 	"go-boilerplate/internal/controller/job"
 	"go-boilerplate/internal/controller/job/idempotencygc"
 	"go-boilerplate/internal/controller/job/outboxgc"
-	"go-boilerplate/internal/controller/job/productimagegc" // sample-api:line
-	"go-boilerplate/internal/controller/job/usercount"      // sample-api:line
-	"go-boilerplate/internal/controller/job/userpurge"      // sample-api:line
 	dijob "go-boilerplate/internal/di/job"
 	"go-boilerplate/internal/di/job/hook"
 
@@ -19,9 +16,6 @@ func JobModule() fx.Option {
 		provideJobs(
 			idempotencygc.New,
 			outboxgc.New,
-			productimagegc.New, // sample-api:line
-			usercount.New,      // sample-api:line
-			userpurge.New,      // sample-api:line
 		),
 		fx.Provide(
 			dijob.ProvideRunner,

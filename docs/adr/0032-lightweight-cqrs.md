@@ -68,21 +68,12 @@ three responsibilities:
 
 - Interface defined in the **usecase layer** (`internal/usecase/<workflow>/command/`). Ownership of a
   cross-aggregate write port is decided on the **workflow** axis, not the aggregate axis. Trying to
-<!-- sample-api:replace-begin -->
-  pick an owning aggregate does not generalize: one real write (a coupon redemption, say) can enforce
-  the invariants of user, product and purchase at once, so "the aggregate whose invariant it enforces"
-  is a relation, not a function. A transaction, by contrast, always has exactly one initiator, and
+  pick an owning aggregate does not generalize: one real write can enforce the invariants of several
+  aggregates at once, so "the aggregate whose invariant it enforces" is a relation, not a function.
+  A transaction, by contrast, always has exactly one initiator, and
   [`docs/rules.md`](../rules.md) already gives the usecase layer ownership of transaction boundaries.
-  `internal/usecase/purchase/command/` names a workflow, not an aggregate, so "why purchase and not
-  product?" does not arise.
-<!-- sample-api:replace-with -->
-<!-- =   pick an owning aggregate does not generalize: one real write can enforce the invariants of several -->
-<!-- =   aggregates at once, so "the aggregate whose invariant it enforces" is a relation, not a function. -->
-<!-- =   A transaction, by contrast, always has exactly one initiator, and -->
-<!-- =   [`docs/rules.md`](../rules.md) already gives the usecase layer ownership of transaction boundaries. -->
-<!-- =   `internal/usecase/<workflow>/command/` names a workflow, not an aggregate, so "why this aggregate -->
-<!-- =   and not that one?" does not arise. -->
-<!-- sample-api:replace-end -->
+  `internal/usecase/<workflow>/command/` names a workflow, not an aggregate, so "why this aggregate
+  and not that one?" does not arise.
 - Domain Service and CommandService therefore diverge deliberately: a Domain Service is a *rule* and
   owns no transaction; a CommandService is a *transaction tool* and is owned by whoever opens the
   transaction. That every condition a CommandService enforces is derived from a domain invariant is
@@ -198,16 +189,9 @@ shape Evans describes, and it would remove the asymmetry of having a read seam a
 different owners.
 
 Rejected because some writes cannot be expressed that way without changing their concurrency
-<!-- sample-api:replace-begin -->
-properties. Restoring stock on cancellation is a relative update that takes no lock on the product
-row at all; expressing it as "load the product, add back, save" would require introducing a lock the
-cancel path does not currently take, adding contention and a deadlock surface that does not exist
-today. The same holds for any set-based or counter-style write. The seam exists for that class of
-<!-- sample-api:replace-with -->
-<!-- = properties. A relative counter update takes no row lock at all; expressing it as "load the row, adjust, -->
-<!-- = save" would require introducing a lock the current path does not take, adding contention and a -->
-<!-- = deadlock surface that does not exist today. The same holds for any set-based write. The seam exists for that class of -->
-<!-- sample-api:replace-end -->
+properties. A relative counter update takes no row lock at all; expressing it as "load the row, adjust,
+save" would require introducing a lock the current path does not take, adding contention and a
+deadlock surface that does not exist today. The same holds for any set-based write. The seam exists for that class of
 write and for nothing else — the eligibility rule below is what keeps it from becoming a general
 escape hatch.
 

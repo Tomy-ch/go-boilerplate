@@ -107,17 +107,6 @@ worker サブシステムの関心であり、両端を配線するのは integr
 payload を本文へ、イベント種別と `message_id` を名前付きのメタデータへ載せ、`worker.Handler` が
 `worker.Message` からそれらを読み戻します。どちらの端も相手を import しません。
 
-<!-- sample-api:begin -->
-サンプルは、この経路を実際に動かせるよう両端を配線しています。
-
-| 段 | 場所 |
-| --- | --- |
-| 退会トランザクション内で `user.withdrawn.v1` を emit | `internal/usecase/user` |
-| relay → publish | `outbox-relay` + `internal/infrastructure/queue/sqs`（`OUTBOX_PUBLISHER=sqs`） |
-| consume → 退会証跡の保存 | [`internal/controller/worker/withdrawalarchive`](../../controller/worker/withdrawalarchive/README.ja.md) |
-
-<!-- sample-api:end -->
-
 ## レイアウト
 
 | 関心事 | パス |

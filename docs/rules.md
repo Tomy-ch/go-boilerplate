@@ -322,33 +322,18 @@ Per-layer application: `internal/domain/README.md` (attribute structs on entitie
     (e.g. `internal/domain/product/category` → package `category`,
     `internal/domain/product/status` → package `status`).
   - **Concatenation** — a standalone multi-word aggregate with no grouping context concatenates
-    <!-- sample-api:replace-begin -->
-    into one word (e.g. `useridentity`, `exchangerate`). Existing concatenated packages stay
-    <!-- sample-api:replace-with -->
-    <!-- = into one word (e.g. `<noun><noun>`). Existing concatenated packages stay -->
-    <!-- sample-api:replace-end -->
+    into one word (e.g. `<noun><noun>`). Existing concatenated packages stay
     as-is; prefer context nesting once a context gains a second sub-aggregate.
 - Database DML and sqlc-generated directories use **snake_case matching the table name**
-  <!-- sample-api:replace-begin -->
-  (`product_category`, `user_identity`), independent of the Go package layout.
-  <!-- sample-api:replace-with -->
-  <!-- = (`<noun>_<noun>`), independent of the Go package layout. -->
-  <!-- sample-api:replace-end -->
+  (`<noun>_<noun>`), independent of the Go package layout.
 - Controller handler directories match the **HTTP resource (route) name**, not the Go package
   layout.
   <!-- 撤去後にこの箇所へ自分の例を置くための指針。
        目的: ルート名と Go パッケージ名がずれる実例が無いと、規則が空文に見える。
        意義: ずれる典型は複数形とハイフンで、Go 側の単数・アンダースコアと形が違う点にある。
        書き方: 実在するルートを 1〜2 個、バッククォートで挙げる。 -->
-  <!-- sample-api:begin -->
-  例: `product-categories` / `prefectures`。
-  <!-- sample-api:end -->
 - Type names may keep the aggregate noun inside a same-named package
-  <!-- sample-api:replace-begin -->
-  (`category.Category`, `prefecture.Prefecture`).
-  <!-- sample-api:replace-with -->
-  <!-- = (`<aggregate>.<Aggregate>`). -->
-  <!-- sample-api:replace-end -->
+  (`<aggregate>.<Aggregate>`).
 
 ## New Type Derivation
 

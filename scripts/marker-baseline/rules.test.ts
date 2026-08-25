@@ -13,17 +13,12 @@ describe("countMarkerLines", () => {
       const content = [
         "<!-- boilerplate-only:begin -->",
         "<!-- boilerplate-only:end -->",
-        "x // sample-api:line",
-        "# sample-api:replace-begin",
-        "# sample-api:replace-with",
-        "# sample-api:replace-end",
       ].join("\n");
 
       expect(countMarkerLines(content)).toBe(6);
     });
 
     it("コードフェンスの中でも数える", () => {
-      const content = ["```go", "usercount.New, // sample-api:line", "```"].join("\n");
 
       expect(countMarkerLines(content)).toBe(1);
     });

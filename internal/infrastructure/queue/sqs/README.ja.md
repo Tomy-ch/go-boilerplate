@@ -60,12 +60,6 @@ SSRF ガード付き transport を渡すため、link-local（クラウドメタ
 送出側は outbox publisher の `sqs` 分岐です。受信側は、controller 層が本パッケージを import できない
 ため、worker の adapter が常に DI で組み立てられます。
 
-<!-- sample-api:begin -->
-同梱サンプルにとってのその組み立て箇所が `internal/di/module/withdrawalarchive.go` で、
-`CONSUMER_QUEUE_*` から `NewConsumer` / `NewDeadLetter` / `NewQueueStatsProvider` を作り、
-`WorkerModule` へ登録された `worker.Worker` へ渡します。
-<!-- sample-api:end -->
-
 ## ポート対応
 
 | seam | SQS |

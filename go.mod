@@ -22,7 +22,6 @@ require (
 	github.com/labstack/echo-opentelemetry v0.0.3
 	github.com/labstack/echo/v5 v5.3.1
 	github.com/oapi-codegen/echo-v5-middleware v0.1.1
-	github.com/oapi-codegen/nullable v1.2.0
 	github.com/oapi-codegen/runtime v1.6.0
 	github.com/prometheus/client_golang v1.24.1
 	github.com/prometheus/client_model v0.6.2
@@ -52,7 +51,6 @@ require (
 )
 
 require (
-	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.18 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.36 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.36 // indirect

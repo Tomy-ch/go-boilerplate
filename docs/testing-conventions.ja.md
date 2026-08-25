@@ -10,11 +10,7 @@
 - [`rules.md` → *Testing & Definition of Done*](rules.ja.md) — 非交渉の *どうなれば完了か*(層ごとのテスト・90% ライン・「compiles ≠ done」・実行時 DI 検証・実アプリの smoke test・到達不能分岐の方針)。
 - 各層 `README` → *Test Strategy* — 層ごとの **観点**(その層で何を検証するか)。
 
-<!-- sample-api:replace-begin -->
-canonical な参照テストは [`internal/domain/user/user_domain_test.go`](../internal/domain/user/user_domain_test.go) です。
-<!-- sample-api:replace-with -->
-<!-- = canonical な参照テストは `internal/domain/` 配下の集約のドメインテストです。 -->
-<!-- sample-api:replace-end -->
+canonical な参照テストは `internal/domain/` 配下の集約のドメインテストです。
 
 <!-- 撤去後にこの箇所へ自分の例を置くための指針。
      目的: 規約の文章だけでは、どの粒度まで守った実物が「canonical」なのかが読み手に伝わらない。

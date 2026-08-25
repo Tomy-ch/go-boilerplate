@@ -92,7 +92,6 @@ IdP-specific dialects (Cognito `token_use`, Azure AD `scp`, opaque tokens, EC ke
 Besides `Authenticator`, this directory also holds implementations of the `IdentityResolver` boundary (resolving an authenticated external identity — issuer + subject — to an internal user):
 
 - `identity` — the substrate default (`passthrough`) that leaves the internal UserID unresolved; wired when no user store is present.
-- `useridentity` — resolves the internal user from the `user_identities` table (sample; removed together with the user sample, after which DI falls back to `identity`). <!-- sample-api:line -->
 
 ## Registration to DI
 
@@ -136,12 +135,6 @@ implementation below states what it closes over; the one that genuinely needs a 
   `clock` testkit — a test that waits on wall time for a token to expire is flaky by construction.
 - **`identity`** — a passthrough with no branch. Its test exists to pin that it *stays* one: the resolver
   must leave the internal UserID unresolved rather than inventing a value for it.
-<!-- sample-api:begin -->
-- **`useridentity`** — the exception here. It reads `user_identities` through the RDB driver, so the
-  real-DB strategy in [`../README.md`](../README.md) governs it: a real database, `rdb/testkit`, and
-  transaction rollback for state isolation. The identities it reads come from the seed, whose issuer is
-  environment-dependent, so it runs through `make test` rather than a bare `go test`.
-<!-- sample-api:end -->
 
 Which method a given environment receives is DI-layer scope and is verified there, not here.
 

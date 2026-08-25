@@ -12,15 +12,8 @@
 
 ## ドメインの不変条件を写した述語
 
-<!-- sample-api:replace-begin -->
-一部の述語は、集約が既に保証している条件を SQL で言い直したものである。`canceled_at IS NULL` は
-`Purchase.IsCanceled()`（`status == StatusCanceled`）の否定であり、`published_at IS NOT NULL` は
-`product.IsPublished()` に当たる。両者が等価であり続けるのは、集約が再構築時にその対応を検証するため
-である（`internal/domain/purchase` の `(status == StatusCanceled) != (canceledAt != nil)`）。
-<!-- sample-api:replace-with -->
-<!-- = 一部の述語は、集約が既に保証している条件を SQL で言い直したものである。両者が等価であり続けるのは、 -->
-<!-- = 集約が再構築時にその対応を検証するためである。 -->
-<!-- sample-api:replace-end -->
+一部の述語は、集約が既に保証している条件を SQL で言い直したものである。両者が等価であり続けるのは、
+集約が再構築時にその対応を検証するためである。
 
 <!-- 撤去後にこの箇所へ自分の例を置くための指針。
      目的: 具体の対応が 1 組も無いと、どの述語がどのメソッドを写したものかを読み手が判別できない。

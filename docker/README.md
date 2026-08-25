@@ -95,13 +95,8 @@ S3-compatible object storage for local development (tests use in-process gofakes
 ### Public delivery (anonymous read)
 
 The Web API (`3902`, Garage's `[s3_web]`) serves bucket objects **without credentials**, so a browser can load
-<!-- sample-api:replace-begin -->
-product images straight from the object storage, the way a CDN fronts S3 in production. Writing still goes through
-`POST /v1/products/images` (BearerAuth + admin); only reading is open.
-<!-- sample-api:replace-with -->
-<!-- = objects straight from the object storage, the way a CDN fronts S3 in production. Writing still goes through -->
-<!-- = an authenticated upload endpoint; only reading is open. -->
-<!-- sample-api:replace-end -->
+objects straight from the object storage, the way a CDN fronts S3 in production. Writing still goes through
+an authenticated upload endpoint; only reading is open.
 
 - Delivery origin: `http://gobp-local.web.garage.localhost:3902` — an object is `<origin>/<object key>`, e.g.
   `http://gobp-local.web.garage.localhost:3902/products/{uuid}.png`. This is the value the frontend puts in its

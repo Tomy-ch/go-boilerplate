@@ -123,70 +123,24 @@ than left implicit:
      意義: 効くのは「どの分岐に当たったか」ではなく「なぜその分岐だと判断したか」を残すこと。
      書き方: 自分の書き込み操作から分岐 1 / 2 / 3 に当たる例を 1 件ずつ挙げ、それぞれ
              『何が同時に書かれるか』『途中状態が観測されてよいか』を明記する。 -->
-<!-- sample-api:replace-begin -->
-- **Purchase creation — branch 2 and branch 3 together.** Stock validation and decrement must be
-  atomic with purchase confirmation: a state where "a purchase succeeded without stock" must never
-  be observable, even momentarily (no overselling). The writes across the aggregates involved
-  (written together: `purchases`, `purchase_details`, `products`)
-  therefore require single-transaction atomicity (branch 3), and the outbox insert joins
-  that same transaction as usual per [ADR-0054](0054-transactional-outbox.md). The outbox insert is
-  not what justifies the CommandService — a regular usecase also writes the outbox in its own
-  transaction; the justification is the stock/purchase atomicity. Independently, the same
-  transaction guards on the purchaser still being a member, and that condition can be invalidated by
-  a concurrent withdrawal, so the user row is locked first (branch 2). The transaction consequently
-  spans three aggregates — user, product, purchase — for two different reasons, which is why the two
-  branches are asked separately. Specified in `docs/spec/purchase/usecase.md`.
-- **User withdrawal — branch 2 for the guard, branch 1 for the cascade.** The core of withdrawal is
-  a single-aggregate write to `users.deleted_at`. The cascade — cancelling pending purchases and
-  restoring stock — requires no immediacy and is eventually consistent via outbox events (branch 1).
-  The check "cannot withdraw with purchases in progress" spans aggregates and is a read, so branch 3
-  does not apply and the operation stays a usecase; but a concurrent purchase creation would
-  invalidate it, so branch 2 does apply and the user row is locked exclusively before the check.
-  This is the shape the two-way procedure could not describe: a usecase that nonetheless takes a
-  lock. Specified in `docs/spec/user/usecase.md`.
-- **Product unpublication — branch 1, with no guard at all.** Clearing a product's publication date
-  is a single-aggregate write, and the cross-aggregate condition it might appear to threaten — the
-  in-progress purchases that reference the product — is deliberately not guarded. A purchase records
-  a unit-price snapshot when it is created, and no step of its lifecycle re-reads the product's
-  publication state, so the product going unpublished cannot make the purchase wrong. The condition
-  is therefore allowed to go stale, and the update takes no lock on any purchase row. This is the
-  contrasting instance to the withdrawal guard: same shape (one aggregate's write, another
-  aggregate's state), opposite answer to question 1. Specified in `docs/spec/purchase/usecase.md`.
-<!-- sample-api:replace-with -->
-<!-- = No instance has been recorded for this project yet. -->
-<!-- sample-api:replace-end -->
+No instance has been recorded for this project yet.
 
 ### Recording discipline
 
 This classification depends on **requirements**, not on the structure of the operation. The
-<!-- sample-api:replace-begin -->
-same operation changes classification when requirements change (e.g., if "stock restored by
-response time" becomes a requirement, withdrawal moves to CommandService).
-<!-- sample-api:replace-with -->
-<!-- = same operation changes classification when requirements change: a tolerance that used to be -->
-<!-- = acceptable becoming a requirement moves the operation to CommandService. -->
-<!-- sample-api:replace-end -->
+same operation changes classification when requirements change: a tolerance that used to be
+acceptable becoming a requirement moves the operation to CommandService.
 
 Therefore, record the **tolerance judgment as the rationale**, not the conclusion alone. Both
 questions are recorded, because an operation that answers them differently is a different operation:
 
-<!-- sample-api:replace-begin -->
-- Bad — "Withdrawal is a usecase."
-- Good — "The withdrawal cascade tolerates eventual consistency; therefore it is a usecase."
-- Bad — "Withdrawal locks the user row."
-- Good — "A concurrent purchase would invalidate the withdrawal guard; therefore the user row is
-  locked before the check."
-- Good — "A product going unpublished cannot invalidate a purchase that already snapshotted its unit
-  price; therefore that condition is left unguarded."
-<!-- sample-api:replace-with -->
-<!-- = - Bad — "<operation> is a usecase." -->
-<!-- = - Good — "<operation>'s cascade tolerates eventual consistency; therefore it is a usecase." -->
-<!-- = - Bad — "<operation> locks the <aggregate> row." -->
-<!-- = - Good — "A concurrent <other operation> would invalidate <operation>'s guard; therefore the -->
-<!-- =   <aggregate> row is locked before the check." -->
-<!-- = - Good — "<other operation> cannot invalidate what <operation> already snapshotted; therefore -->
-<!-- =   that condition is left unguarded." -->
-<!-- sample-api:replace-end -->
+- Bad — "<operation> is a usecase."
+- Good — "<operation>'s cascade tolerates eventual consistency; therefore it is a usecase."
+- Bad — "<operation> locks the <aggregate> row."
+- Good — "A concurrent <other operation> would invalidate <operation>'s guard; therefore the
+  <aggregate> row is locked before the check."
+- Good — "<other operation> cannot invalidate what <operation> already snapshotted; therefore
+  that condition is left unguarded."
 
 ## Consequences
 
@@ -229,14 +183,8 @@ questions are recorded, because an operation that answers them differently is a 
 
 Classifying by "whether the change to secondary aggregates is derivable as a consequence of
 the primary operation." This inserts a subjective judgment about inter-aggregate semantics,
-<!-- sample-api:replace-begin -->
-so decisions vary by implementer. It also classifies purchase creation as a regular usecase
-and withdrawal as a CommandService — the reverse of what the atomicity criterion yields —
-evidence that the criterion is not grounded in requirements. Rejected.
-<!-- sample-api:replace-with -->
-<!-- = so decisions vary by implementer. It also inverts the classification the atomicity criterion -->
-<!-- = yields on real operations — evidence that the criterion is not grounded in requirements. Rejected. -->
-<!-- sample-api:replace-end -->
+so decisions vary by implementer. It also inverts the classification the atomicity criterion
+yields on real operations — evidence that the criterion is not grounded in requirements. Rejected.
 
 ### Classifying every multi-aggregate write as CommandService
 
@@ -290,15 +238,8 @@ Rejected for now; not excluded as a future evolution.
   cross-aggregate condition needs to be held; ADR-0036 decides *how* it is held — lock order,
   acquisition point, lock mode, and who is allowed to author the guarded condition. Branch 2 is the
   entry point into it, and nothing in branch 2 overrides it.
-<!-- sample-api:replace-begin -->
 - Which rows a given workflow locks, and which business rule each lock protects, is feature content
-  rather than an architectural decision, so it is specified with the feature — in this repository the
-  removable sample set (`docs/spec/purchase/`, `docs/spec/user/`), referenced by path rather than
-  linked, because those files are deleted by `make setup-remove-sample-api` while this ADR stays.
-<!-- sample-api:replace-with -->
-<!-- = - Which rows a given workflow locks, and which business rule each lock protects, is feature content -->
-<!-- =   rather than an architectural decision, so it is specified with the feature. -->
-<!-- sample-api:replace-end -->
+  rather than an architectural decision, so it is specified with the feature.
 - Related: [ADR-0033](0033-system-cqrs-dml-category.md) (`system_cqrs` category that carries
   the outbox DML, outside the CQRS split); [ADR-0054](0054-transactional-outbox.md) (the
   outbox pattern that the default decomposition path relies on);

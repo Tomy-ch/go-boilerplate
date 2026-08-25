@@ -28,10 +28,6 @@ Implements the `publisher.Publisher` interface (`internal/usecase/boundary/publi
 
 Each branch resolves its own settings, so a deployment that publishes to a queue is never asked for `ENDPOINT_OUTBOX`, and vice versa. Both resolutions fail at relay startup rather than at the first publish — an unset target would otherwise dead-letter every message silently.
 
-<!-- sample-api:begin -->
-The `sqs` branch — the only branch besides `http` — is wiring from the removable sample set (see [ADR-0053 (broker-sdk-isolation-measured-as-coupling)](../../../docs/adr/0053-broker-sdk-isolation-measured-as-coupling.md)); after `make setup-remove-sample-api` only the HTTP branch remains, while the SQS adapter itself stays as an unwired reference implementation.
-<!-- sample-api:end -->
-
 ## Design Policy
 
 - Transport retry is disabled (`MaxAttempts = 1`): the relay poll loop is itself the at-least-once retry body, so substrate-level retry would double up (D10). Redelivery is owned by the next relay poll.

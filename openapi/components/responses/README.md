@@ -9,33 +9,18 @@ English | [日本語](README.ja.md)
 - `schemas/` — small, reusable building blocks (`UserResponse.yaml`, `PaginationMetadataResponse.yaml`, `CursorPaginationMetadataResponse.yaml`, `ErrorResponse.yaml`).
 - `responses/` — the **per-endpoint** shape, usually composing those blocks via `allOf` (e.g. an item array + pagination metadata).
 
-<!-- sample-api:replace-begin -->
 ```yaml
-# responses/users/UsersResponse.yaml
+# responses/<resources>/<Resources>Response.yaml
 allOf:
   - type: object
-    required: [users]
+    required: [<resources>]
     properties:
-      users:
+      <resources>:
         type: array
         items:
-          $ref: '../../schemas/UserResponse.yaml'
+          $ref: '../../schemas/<Resource>Response.yaml'
   - $ref: '../../schemas/PaginationMetadataResponse.yaml'
 ```
-<!-- sample-api:replace-with -->
-<!-- = ```yaml -->
-<!-- = # responses/<resources>/<Resources>Response.yaml -->
-<!-- = allOf: -->
-<!-- =   - type: object -->
-<!-- =     required: [<resources>] -->
-<!-- =     properties: -->
-<!-- =       <resources>: -->
-<!-- =         type: array -->
-<!-- =         items: -->
-<!-- =           $ref: '../../schemas/<Resource>Response.yaml' -->
-<!-- =   - $ref: '../../schemas/PaginationMetadataResponse.yaml' -->
-<!-- = ``` -->
-<!-- sample-api:replace-end -->
 
 ## Directory Contents
 
@@ -45,13 +30,8 @@ One directory per resource or concern, named after it; each holds that unit's re
 
 |Element|Convention|Example|
 |---|---|---|
-<!-- sample-api:replace-begin -->
-|Directory|lowercase by resource / concern|`users/`, `health-check/`, `version/`|
-|File name|PascalCase + `Response`|`UsersResponse.yaml`, `VersionResponse.yaml`|
-<!-- sample-api:replace-with -->
-<!-- = |Directory|lowercase by resource / concern|`<resources>/`, `health-check/`, `version/`| -->
-<!-- = |File name|PascalCase + `Response`|`<Resources>Response.yaml`, `VersionResponse.yaml`| -->
-<!-- sample-api:replace-end -->
+|Directory|lowercase by resource / concern|`<resources>/`, `health-check/`, `version/`|
+|File name|PascalCase + `Response`|`<Resources>Response.yaml`, `VersionResponse.yaml`|
 
 ## Rules
 

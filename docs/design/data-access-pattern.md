@@ -93,9 +93,6 @@ of its own qualifies just as one that also has a sub-package.
      目的: 「参照マスタ」だけでは読者が自分のテーブルを当てはめられない。
      意義: 判定は独立した書き込みライフサイクルの有無で決まり、テーブルの名前や規模ではない。
      書き方: 列挙型に相当する固定テーブルを 1〜2 個挙げる。 -->
-<!-- sample-api:begin -->
-（サンプルでの例は `purchase_statuses` / `product_statuses`）
-<!-- sample-api:end -->
 
 ### 3.3 Would decomposition materialize an aggregate the operation does not need?
 
@@ -192,14 +189,6 @@ Three consequences follow, and the third is where the rule is most often misread
      当てはめられない。適合と違反の両方が要る。
      書き方: 適合例は「単独で完結する部分更新」と「状態遷移ごとのメソッド」を 1 つずつ、違反例は
      「doc コメントが呼び出し順序を課していた分割」を 1 つ、いずれもメソッド名で挙げる。 -->
-<!-- sample-api:begin -->
-Examples in the sample set: `product.UpdateStock` (a single-column update that is consistent on its
-own) and `purchase.UpdatePaid` / `UpdateShipped` / `UpdateDelivered` (one method per state transition)
-are compliant. `product.Update` writes its images in the same call, and `cart.Update` its items —
-both by keyed synchronization. The shape this rule rejects would be splitting that product write in
-two: an `Update` that excludes the images, plus a separate `ReplaceImages` the caller has to invoke
-afterwards in the same transaction.
-<!-- sample-api:end -->
 
 ## 5. The guard branch
 
@@ -256,9 +245,6 @@ Each of these has been mistaken for the criterion at least once. None decides an
        目的: 行数の多さが集約横断の証拠だと読まれやすいため、単一テーブル全件の具体例が要る。
        意義: 効くのは「1 つのテーブルに閉じていること」であって、返る行数ではない。
        書き方: 全件取得が自然な参照マスタを 1 つ選び、SELECT 文の形で示す。 -->
-  <!-- sample-api:begin -->
-  Example: `SELECT * FROM prefectures ORDER BY code`.
-  <!-- sample-api:end -->
 
 ## 8. Where each construct lives
 
