@@ -38,9 +38,8 @@ gitleaks = "8.30.1"
 "go:github.com/go-delve/delve/cmd/dlv" = "1.27.1"
 # 最新は v0.74.0 だが公開 5 日でクールダウン 14 日に満たないため 1 つ前を採る。
 "aqua:aquasecurity/trivy" = "0.73.0"
-# 最新は v2.5.1 だが公開 2 日、その前の v2.5.0 も公開 12 日で、いずれもクールダウン
-# 14 日に満たない。窓を満たす最新はこの版である。
-"aqua:google/osv-scanner" = "2.4.0"
+# 最新は v2.5.1 だが公開 9 日でクールダウン 14 日に満たないため 1 つ前を採る。
+"aqua:google/osv-scanner" = "2.5.0"
 # 最新は v0.117.0 だが公開 9 日でクールダウン 14 日に満たないため 1 つ前を採る。
 "aqua:anchore/grype" = "0.116.1"
 "aqua:Bearer/bearer" = "2.1.0"
