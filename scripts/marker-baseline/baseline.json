@@ -3,7 +3,7 @@
   ".agents/glossary-drift/exclusions.yaml": 3,
   ".claude/agents/drift-detector-glossary.md": 1,
   ".codex/agents/drift-detector-glossary.toml": 1,
-  ".github/workflows/setup-scripts-check.yaml": 2,
+  ".github/workflows/setup-scripts-check.yaml": 4,
   ".github/workflows/zap-api-scan.yaml": 8,
   ".gitleaksignore": 2,
   ".makefiles/app/job.mk": 3,

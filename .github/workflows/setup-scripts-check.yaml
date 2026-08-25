@@ -206,13 +206,19 @@ jobs:
           fi
           echo "make targets removed: OK"
 
+      # sample-api:begin
       # The sample removal targets are wrapped in their own markers and must survive, otherwise
       # a user who kept the sample can no longer remove it.
+      #
+      # The step leaves with the sample for the same reason as the one above: it asserts the
+      # target is still listed, which stops being true the moment the sample is removed. The
+      # two checks are the mirror of each other and neither survives its own subject.
       - name: Verify the sample removal target survived
         run: |
           set -euo pipefail
           pnpm --dir scripts run --silent tsx scripts/make-help | grep -q 'setup-remove-sample-api'
           echo "sample removal target retained: OK"
+      # sample-api:end
 
       # The identity removal is the other half of instantiation: it strips the prose that calls
       # this repository a boilerplate. It runs after the localization because the repo-name

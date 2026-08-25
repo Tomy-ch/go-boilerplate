@@ -173,7 +173,7 @@ jobs:
       # env/.env.dast is the single source of truth for the issuer, so both the value and the
       # port the provider must listen on are read back out of the materialized env rather than
       # restated here. The issuer has to match in three places at once — the `iss` the tokens
-      # carry, the issuer the seed expands into user_identities, and the issuer the server
+      # carry, the issuer the seed expands into its identity records, and the issuer the server
       # verifies against — and any pair of those drifting apart shows up only as a uniform 401,
       # which is indistinguishable from a scan that was never authenticated.
       - name: Resolve the issuer and the provider port from the materialized env
