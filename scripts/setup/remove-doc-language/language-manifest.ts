@@ -322,7 +322,7 @@ export const DOC_REPLACEMENTS: readonly DocReplacement[] = [
     ["      - 'docker/**/README.ja.md'\n"],
   ]),
   ...forFile(".github/workflows/setup-scripts-check.yaml", [
-    [" README.md README.ja.md ", " README.md "],
+    ["grep -ril 'boilerplate' README.md README.ja.md", "grep -ril 'boilerplate' README.md"],
   ]),
   ...forFile(".gitleaksignore", [
     ["env/README.ja.md:generic-api-key:242\n"],
