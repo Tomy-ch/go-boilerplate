@@ -416,6 +416,10 @@ export const DOC_REPLACEMENTS: readonly DocReplacement[] = [
   ...forFile("docs-viewer/src/portal-app/portal-app.tsx", [
     ["            <ToggleGroupNative aria-label=\"表示言語\">\n              <ToggleGroupNativeItem\n                checked={lang === \"EN\"}\n                name=\"lang\"\n                onChange={selectEnglish}\n                value=\"EN\"\n              >\n                EN\n              </ToggleGroupNativeItem>\n              <ToggleGroupNativeItem\n                checked={lang === \"JA\"}\n                name=\"lang\"\n                onChange={selectJapanese}\n                value=\"JA\"\n              >\n                JA\n              </ToggleGroupNativeItem>\n            </ToggleGroupNative>\n"],
   ]),
+  ...forFile("sonar-project.properties", [
+    ["# language-manifest.ts は撤去の宣言台帳で、1 エントリが「ファイル・置換前・置換後」の同じ形を\n# 取る。重なるのはその形式であって判断ではない。まとめる抽象（両環境を 1 行で書く等）は入れられる\n# が、そうすると「どちらの AI 環境に対する宣言か」が読み取れなくなり、完全一致で照合する台帳と\n# しての性質を損なう。行の重複だけを外し、静的解析の他の観点は対象に残す。\n"],
+    ["scripts/setup/remove-doc-language/language-manifest.ts,"],
+  ]),
 ];
 
 /**

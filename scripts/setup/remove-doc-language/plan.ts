@@ -43,8 +43,17 @@ const MARKED_EXTENSIONS: readonly string[] = [
   ".mk",
 ];
 
-/** 拡張子を持たないが対訳を名指すファイル。無視リストは畳んだ後も指し先を持ち続ける。 */
-const MARKED_FILES: readonly string[] = [".gitleaksignore", ".graphifyignore"];
+/**
+ * 拡張子で拾えないが、撤去後に指し先を失う宣言を持つファイル。
+ *
+ * 無視リストと解析除外は、消えたパスを指したまま残っても止まらない。止まらないからこそ、
+ * 誰も直さないまま作成先へ渡る。
+ */
+const MARKED_FILES: readonly string[] = [
+  ".gitleaksignore",
+  ".graphifyignore",
+  "sonar-project.properties",
+];
 
 /** 撤去で行う 1 手。 */
 export type Operation =

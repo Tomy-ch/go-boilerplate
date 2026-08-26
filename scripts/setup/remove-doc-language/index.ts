@@ -135,6 +135,9 @@ function removeDeclaredPaths(dryRun: boolean): string[] {
  * @remarks
  * ベースラインはマーカー行が増えていないかを見張る固定値なので、正当に減るこの撤去の後は
  * 引き直さない限り `scripts/marker-baseline/scan.test.ts` が鳴り続けます。
+ *
+ * 呼ぶ位置は自消滅の後です。このツール自身のテストはマーカーの形を入力として持つので、
+ * 先に引くと消える予定のファイルを数え、消えた後に食い違います。
  */
 function rewriteMarkerBaseline(dryRun: boolean): string[] {
   if (dryRun) {
@@ -182,7 +185,6 @@ function run(choice: LanguageChoice, dryRun: boolean): void {
 
   const touched = plan.operations.flatMap((operation) => applyOperation(operation, dryRun));
   const declared = removeDeclaredPaths(dryRun);
-  const baseline = rewriteMarkerBaseline(dryRun);
   const subject = COMMIT_SUBJECTS[choice];
 
   console.log(`▶ ${plan.operations.length} 件のファイルを畳みました（${choice}）`);
@@ -206,6 +208,10 @@ function run(choice: LanguageChoice, dryRun: boolean): void {
   for (const relativePath of selfDestruct) {
     fs.rmSync(toAbsolutePath(relativePath), { recursive: true, force: true });
   }
+
+  // ベースラインは最後に引く。このツール自身のテストがマーカーの形を入力として持つため、
+  // 自消滅より先に引くと「在るはずのマーカーが無くなった」と鳴り続ける。
+  const baseline = rewriteMarkerBaseline(dryRun);
 
   if (commitPaths([...touched, ...declared, ...baseline, ...selfDestruct], subject)) {
     console.log(`  → コミットしました: ${subject}`);
