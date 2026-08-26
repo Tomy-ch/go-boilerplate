@@ -14,13 +14,60 @@ SELECT COUNT(*)
 FROM users AS u
 WHERE u.deleted_at IS NOT NULL;
 
+-- === source: database/dml/repository/user/count_users_by_keyword.sql ===
+-- name: CountSearchUsers :one
+SELECT COUNT(*)
+FROM users AS u
+WHERE u.search_text ILIKE ANY(sqlc.arg('patterns_param')::TEXT[]);
+
+-- name: CountSearchActiveUsers :one
+SELECT COUNT(*)
+FROM users AS u
+WHERE u.search_text ILIKE ANY(sqlc.arg('patterns_param')::TEXT[])
+    AND u.deleted_at IS NULL;
+
+-- name: CountSearchDeletedUsers :one
+SELECT COUNT(*)
+FROM users AS u
+WHERE u.search_text ILIKE ANY(sqlc.arg('patterns_param')::TEXT[])
+    AND u.deleted_at IS NOT NULL;
+
+-- === source: database/dml/repository/user/delete_purged_users.sql ===
+-- name: DeleteUserIdentitiesByUserIDs :exec
+-- users より先に呼ぶこと（FK 違反を避ける）。論理削除済みに限る条件は DeleteUsersByIDs の
+-- WHERE と揃えること — ずれると、削除されないユーザーの従属行だけが失われる。
+DELETE FROM user_identities
+WHERE user_id IN (
+        SELECT u.id
+        FROM users AS u
+        WHERE u.id = ANY(sqlc.arg('user_ids')::UUID[])
+            AND u.deleted_at IS NOT NULL
+    );
+
+-- name: DeleteUserRolesByUserIDs :exec
+-- users より先に呼ぶこと（FK 違反を避ける）。論理削除済みに限る理由は
+-- DeleteUserIdentitiesByUserIDs と同じ。
+DELETE FROM user_roles
+WHERE user_id IN (
+        SELECT u.id
+        FROM users AS u
+        WHERE u.id = ANY(sqlc.arg('user_ids')::UUID[])
+            AND u.deleted_at IS NOT NULL
+    );
+
+-- name: DeleteUsersByIDs :execrows
+-- 削除件数を返す。従属行の削除後に呼ぶこと（参照の残存はここでは検査しない）。
+-- 論理削除済みを永続化側でも検査する理由は docs/spec/user/domain.md の PurgeByIDs を参照。
+DELETE FROM users
+WHERE id = ANY(sqlc.arg('ids')::UUID[])
+    AND deleted_at IS NOT NULL;
+
 -- === source: database/dml/repository/user/insert_user.sql ===
 -- name: CreateUser :exec
 INSERT INTO users (
     id,
     first_name,
     last_name,
-    password_hash,
     email,
     phone,
     prefecture_id,
@@ -35,7 +82,6 @@ INSERT INTO users (
     sqlc.arg('id'),
     sqlc.arg('first_name'),
     sqlc.arg('last_name'),
-    sqlc.arg('password_hash'),
     sqlc.arg('email'),
     sqlc.arg('phone'),
     sqlc.arg('prefecture_id'),
@@ -46,6 +92,61 @@ INSERT INTO users (
     sqlc.arg('created_at'),
     sqlc.arg('updated_at')
 );
+
+-- === source: database/dml/repository/user/lock_user_by_id.sql ===
+-- name: LockUserByID :one
+-- ID から未削除のユーザーを 1 件、悲観ロック（FOR UPDATE）して取得する。
+-- 論理削除済み・不存在はいずれも 0 行（NotFound）。
+-- 取得位置の不変条件は docs/spec/user/usecase.md の DeleteUser を参照（ADR-0036 (ordered-pessimistic-row-locks)）。
+SELECT sqlc.embed(u)
+FROM users AS u
+WHERE u.id = sqlc.arg('user_id_param')
+    AND u.deleted_at IS NULL
+FOR UPDATE;
+
+-- === source: database/dml/repository/user/lock_user_share_by_id.sql ===
+-- name: LockUserShareByID :one
+-- ID からユーザーを 1 件、悲観ロック（FOR SHARE）して取得する。不存在は 0 行（NotFound）。
+-- 退会済みを除外しないこと — ロックは機構で、在籍かどうかの判定はドメイン（User.IsActive）が持つ。
+-- 退会との直列化は docs/spec/purchase/usecase.md の CreatePurchase を参照。
+-- ADR-0036 (ordered-pessimistic-row-locks)。
+SELECT sqlc.embed(u)
+FROM users AS u
+WHERE u.id = sqlc.arg('user_id_param')
+FOR SHARE;
+
+-- === source: database/dml/repository/user/select_purge_candidate_users.sql ===
+-- name: ListPurgeCandidateUserIDsFirst :many
+-- 論理削除日時が cutoff より古いユーザーの ID を、ID 昇順の keyset で最大 limit_param 件取得する（先頭ページ）。
+SELECT id
+FROM users
+WHERE deleted_at IS NOT NULL
+    AND deleted_at < sqlc.arg('cutoff')
+ORDER BY id ASC
+LIMIT sqlc.arg('limit_param');
+
+-- name: ListPurgeCandidateUserIDsAfter :many
+-- 論理削除日時が cutoff より古いユーザーの ID を、ID 昇順の keyset で最大 limit_param 件取得する（after_id 以降）。
+-- 境界を offset でなく ID で受け取る理由は docs/spec/user/domain.md の FindDeletedBefore を参照。
+SELECT id
+FROM users
+WHERE deleted_at IS NOT NULL
+    AND deleted_at < sqlc.arg('cutoff')
+    AND id > sqlc.arg('after_id')
+ORDER BY id ASC
+LIMIT sqlc.arg('limit_param');
+
+-- === source: database/dml/repository/user/select_roles_by_user_id.sql ===
+-- name: GetUserRolesByUserID :many
+-- 指定ユーザーのロールをマスタの表示順（sort_key 昇順）で返す。並び順の出所は code ではない。
+SELECT
+    r.id,
+    r.name,
+    r.code
+FROM user_roles AS ur
+INNER JOIN roles AS r ON ur.role_id = r.id
+WHERE ur.user_id = sqlc.arg('user_id_param')
+ORDER BY r.sort_key;
 
 -- === source: database/dml/repository/user/select_user_by_id.sql ===
 -- name: GetUserByID :one
@@ -75,6 +176,30 @@ WHERE u.deleted_at IS NOT NULL
 ORDER BY u.created_at DESC
 LIMIT sqlc.arg('limit_param') OFFSET sqlc.arg('offset_param');
 
+-- === source: database/dml/repository/user/select_users_by_keyword.sql ===
+-- name: SearchUsers :many
+SELECT sqlc.embed(u)
+FROM users AS u
+WHERE u.search_text ILIKE ANY(sqlc.arg('patterns_param')::TEXT[])
+ORDER BY u.created_at DESC
+LIMIT sqlc.arg('limit_param') OFFSET sqlc.arg('offset_param');
+
+-- name: SearchActiveUsers :many
+SELECT sqlc.embed(u)
+FROM users AS u
+WHERE u.search_text ILIKE ANY(sqlc.arg('patterns_param')::TEXT[])
+    AND u.deleted_at IS NULL
+ORDER BY u.created_at DESC
+LIMIT sqlc.arg('limit_param') OFFSET sqlc.arg('offset_param');
+
+-- name: SearchDeletedUsers :many
+SELECT sqlc.embed(u)
+FROM users AS u
+WHERE u.search_text ILIKE ANY(sqlc.arg('patterns_param')::TEXT[])
+    AND u.deleted_at IS NOT NULL
+ORDER BY u.created_at DESC
+LIMIT sqlc.arg('limit_param') OFFSET sqlc.arg('offset_param');
+
 -- === source: database/dml/repository/user/select_users_feed.sql ===
 -- name: ListUsersFeedFirst :many
 SELECT sqlc.embed(u)
@@ -101,7 +226,6 @@ UPDATE users
 SET
     first_name = sqlc.arg('first_name'),
     last_name = sqlc.arg('last_name'),
-    password_hash = sqlc.arg('password_hash'),
     email = sqlc.arg('email'),
     phone = sqlc.arg('phone'),
     prefecture_id = sqlc.arg('prefecture_id'),

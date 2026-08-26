@@ -7,16 +7,20 @@ on:
       - staging
       - develop
   schedule:
-    - cron: '0 0 * * 1'
+    - cron: '30 1 * * 1'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
       security-events: write
@@ -24,21 +28,77 @@ jobs:
       pull-requests: write
 
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+            docker.io:443
+            index.docker.io:443
+            registry-1.docker.io:443
+            auth.docker.io:443
+            *.docker.io:443
+            production.cloudflare.docker.com:443
+            production.cloudfront.docker.com:443
+            mirror.gcr.io:443
+            ghcr.io:443
+            pkg-containers.githubusercontent.com:443
+            dl-cdn.alpinelinux.org:443
+            dl-cdn.alpinelinux.org:80
+            deb.debian.org:443
+            deb.debian.org:80
+            security.debian.org:443
+            security.debian.org:80
+
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version-file: go.mod
-          cache: true
+          # cache: false — this job holds security-events: write. See README.md § Cache safety.
+          cache: false
 
       - name: Prepare vendor
         run: |
           go mod vendor
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
 
       - name: Define image tag
         id: meta
@@ -47,7 +107,7 @@ jobs:
           echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
 
       - name: Build
-        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
         with:
           context: .
           file: ./docker/server/Dockerfile
@@ -59,7 +119,9 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Generate SBOM
+      # Neither format is spare. The summary below is built from the SPDX one, and the
+      # CycloneDX one is what the `trivy sbom` step further down reads.
+      - name: Generate SBOM (SPDX)
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
         with:
           image: ${{ steps.meta.outputs.image }}
@@ -68,7 +130,17 @@ jobs:
           artifact-name: sbom-spdx.json
           upload-artifact: true
 
+      - name: Generate SBOM (CycloneDX)
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          image: ${{ steps.meta.outputs.image }}
+          format: cyclonedx-json
+          output-file: sbom-cyclonedx.json
+          artifact-name: sbom-cyclonedx.json
+          upload-artifact: true
+
       - name: Summarize SBOM (Markdown)
+        id: sbom
         run: |
           set -euo pipefail
           FILE=sbom-spdx.json
@@ -76,13 +148,74 @@ jobs:
             echo "SBOM not found: $FILE" >&2
             exit 1
           fi
+          # Every value below is read out of the SBOM, and a pull request decides what goes into the
+          # image the SBOM describes, so a package name, a version or a licence string is text an
+          # author chose. This body reaches upsert-pr-comment with no `details-summary`, which
+          # leaves the fencing here, and the answer the other pass-through callers use — wrap the
+          # whole body — is not available: the headings and the bold label are meant to render, as
+          # an inventory a reviewer reads. The template is therefore literal Markdown and every
+          # value reaches it through one of the two helpers below.
+          # `-a`: without it a single NUL byte makes grep report a binary match and print nothing,
+          # collapsing the fence back to three backticks.
+          fence_for() {
+            local longest len
+            longest="$({ grep -a -o '`\{1,\}' "$1" || true; } | awk '{ if (length($0) > n) n = length($0) } END { print n + 0 }')"
+            len=$(( longest + 1 ))
+            if [ "$len" -lt 3 ]; then len=3; fi
+            printf '%*s' "$len" '' | tr ' ' '\140'
+          }
+
+          # An inline code span is a fence of length one, so a scalar is delimited by one more
+          # backtick than its own longest run, on the same terms. The space at each end is the one
+          # CommonMark strips back off, and it is what holds a value that begins or ends with a
+          # backtick inside the span instead of closing it early.
+          # A scalar is capped and its long runs elided for the same reason the lists are, and the
+          # cap is what makes the span survive at all: the action trims the body to `max-length`
+          # with no regard for Markdown, so a value long enough to push the closing delimiter past
+          # that point would leave the span open and everything inside it live.
+          scalar_limit=200
+          code_span() {
+            local value longest len delim
+            value="$(printf '%s' "$1" | tr -d '\r\n' | cut -c "1-$scalar_limit" | sed -E 's/`{10,}/[long backtick run elided]/g')"
+            if [ -z "$value" ]; then value="unknown"; fi
+            longest="$(printf '%s' "$value" | { grep -a -o '`\{1,\}' || true; } | awk '{ if (length($0) > n) n = length($0) } END { print n + 0 }')"
+            len=$(( longest + 1 ))
+            delim="$(printf '%*s' "$len" '' | tr ' ' '\140')"
+            printf '%s %s %s' "$delim" "$value" "$delim"
+          }
+
+          # The two lists are fenced rather than spanned, so they need trimming before the fence is
+          # sized, exactly as the gen-*-artifacts checks do. What does not carry over is the reason
+          # their fence cannot run away: an SBOM string is bounded by nothing, so a run long enough
+          # to price the fence out of the body budget is reachable and is elided first. No module
+          # path or licence identifier holds ten backticks.
+          # Two lists at this limit plus five capped scalars stay well inside the action's 45000
+          # character default, which is what keeps the trim above from ever reaching this body.
+          list_limit=12000
+          prepare_list() {
+            local src="$1" dst="$2"
+            # head cuts on a byte boundary, so it can split a trailing multi-byte character. `-c`
+            # drops an invalid sequence mid-stream but not a truncated one at the end: iconv exits
+            # non-zero there, which under `set -euo pipefail` would fail this step over a cut that
+            # landed one byte off. It writes the converted prefix before exiting, which is the
+            # wanted result, so the failure is absorbed rather than propagated.
+            { head -c "$list_limit" "$src" | iconv -f UTF-8 -t UTF-8 -c || true; } \
+              | sed -E 's/`{10,}/[long backtick run elided]/g' > "$dst"
+            if [ "$(wc -c < "$src")" -gt "$list_limit" ]; then
+              printf '\n... (list truncated)\n' >> "$dst"
+            fi
+          }
+
           NAME=$(jq -r '.name // "unknown"' "$FILE")
           CREATED=$(jq -r '.creationInfo.created // "unknown"' "$FILE")
+          # `length` is a number whatever the SBOM holds, so this is the one value that reaches the
+          # body unescaped.
           TOTAL_PKGS=$(jq -r '.packages | length' "$FILE")
           DIGEST=$(jq -r '[.packages[] | select(.primaryPackagePurpose=="CONTAINER") | .checksums[]? | select(.algorithm=="SHA256") | .checksumValue][0] // "unknown"' "$FILE")
+          # A SHA256 digest has exactly one shape; anything else in that field is not one.
+          if ! printf '%s' "$DIGEST" | grep -Eq '^[0-9a-f]{64}$'; then DIGEST="unknown"; fi
           DISTRO=$(jq -r '[.packages[]?.externalRefs[]? | select(.referenceType=="purl") | .referenceLocator | capture("distro=(?<distro>[^&]+)").distro] | .[0] // "unknown"' "$FILE")
           GOVERSION=$(jq -r '(.packages[] | select(.name=="stdlib") | .versionInfo) // "unknown"' "$FILE")
-          # Top 50 Go modules with versions
           jq -r '
             [ .packages[]
               | select(.name|type=="string")
@@ -90,10 +223,9 @@ jobs:
               | {n:.name, v:(.versionInfo // "UNKNOWN")} ]
             | sort_by(.n)
             | .[0:50]
-            | map("- `" + .n + "@" + .v + "`")
+            | map("- " + .n + "@" + .v)
             | join("\n")
-          ' "$FILE" > _gomods.md
-          # Declared licenses histogram (top 25)
+          ' "$FILE" > _gomods_raw.md
           jq -r '
             [ .packages[] | .licenseDeclared? | select(. != null and . != "NOASSERTION") ]
             | reduce .[] as $l ({}; .[$l] = ( .[$l] // 0 ) + 1)
@@ -101,30 +233,50 @@ jobs:
             | map("- " + .key + ": " + (.value|tostring))
             | if length>0 then . else ["- (none)"] end
             | join("\n")
-          ' "$FILE" > _licenses.md
-          cat > sbom-summary.md << MD
-          ## SBOM Summary (SPDX)
-          **Image**: ${NAME}
-          - Created: ${CREATED}
-          - Image Digest (SHA256): \`${DIGEST}\`
-          - Distro: ${DISTRO}
-          - Total Packages: ${TOTAL_PKGS}
-          - Go Toolchain: ${GOVERSION}
-          ### Key Go Modules (top 50)
-          $(cat _gomods.md)
-          ### Declared Licenses (top 25)
-          $(cat _licenses.md)
-          MD
+          ' "$FILE" > _licenses_raw.md
+          prepare_list _gomods_raw.md _gomods.md
+          prepare_list _licenses_raw.md _licenses.md
+          gomods_fence="$(fence_for _gomods.md)"
+          licenses_fence="$(fence_for _licenses.md)"
+
+          {
+            echo "## SBOM Summary (SPDX)"
+            printf '%s\n' "**Image**: $(code_span "$NAME")"
+            printf '%s\n' "- Created: $(code_span "$CREATED")"
+            printf '%s\n' "- Image Digest (SHA256): $(code_span "$DIGEST")"
+            printf '%s\n' "- Distro: $(code_span "$DISTRO")"
+            printf '%s\n' "- Total Packages: ${TOTAL_PKGS}"
+            printf '%s\n' "- Go Toolchain: $(code_span "$GOVERSION")"
+            # A constant, so it needs neither helper. Deliberately not a code span:
+            # the filename is plain text here, which keeps this line out of the
+            # backtick-balancing the two helpers above exist for.
+            echo "- CycloneDX view of the same image: see the sbom-cyclonedx.json artifact on this run"
+            echo "### Key Go Modules (top 50)"
+            echo "${gomods_fence}text"
+            cat _gomods.md
+            echo "${gomods_fence}"
+            echo "### Declared Licenses (top 25)"
+            echo "${licenses_fence}text"
+            cat _licenses.md
+            echo "${licenses_fence}"
+          } > sbom-summary.md
           echo "Generated sbom-summary.md" && wc -c sbom-summary.md
 
       - name: Comment SBOM result on PR
-        if: ${{ github.event_name == 'pull_request' }}
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- sbom-summary-spdx -->'
+          # An inventory, not a verdict: there is no state of this body that means "nothing to
+          # say", so it is posted on every run. This job only runs for a pull request into a
+          # deploy branch, where what went into the image is the thing being reviewed.
+          status: report
           body-file: sbom-summary.md
+          # Negated on purpose: `cond && '' || X` always yields X, since an empty string is falsy.
+          # The heading has to sit in the truthy branch, so the cut-off case is what gets tested.
+          title: "${{ steps.sbom.outcome != 'success' && '## ⚠️ Image Scan (SBOM): CUT OFF (no result produced)' || '' }}"
 
       - name: Upload SBOM summary artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -132,31 +284,28 @@ jobs:
           name: sbom-summary.md
           path: sbom-summary.md
 
-      - name: Trivy image scan
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
         with:
-          image-ref: ${{ steps.meta.outputs.image }}
-          scanners: 'vuln'
-          format: table
-          ignore-unfixed: false
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH,MEDIUM'
-          output: trivy-image-scan.txt
+          tools: aqua:aquasecurity/trivy
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trivy image scan
+        id: trivy
+        env:
+          IMAGE: ${{ steps.meta.outputs.image }}
+        run: make -s trivy-image-ci TRIVY_IMAGE="${IMAGE}" TRIVY_FORMAT=table > trivy-image-scan.txt
+        shell: bash
 
       - name: Trivy image scan (SARIF)
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          image-ref: ${{ steps.meta.outputs.image }}
-          scanners: 'vuln'
-          format: sarif
-          ignore-unfixed: false
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH,MEDIUM'
-          output: trivy-image-scan.sarif
+        env:
+          IMAGE: ${{ steps.meta.outputs.image }}
+        run: make -s trivy-image-ci TRIVY_IMAGE="${IMAGE}" TRIVY_FORMAT=sarif > trivy-image-scan.sarif
+        shell: bash
 
       - name: Upload Trivy image SARIF to code scanning
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4
+        uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
         with:
           sarif_file: trivy-image-scan.sarif
           category: trivy-image
@@ -168,24 +317,167 @@ jobs:
           path: trivy-image-scan.txt
 
       - name: Comment Trivy image scan result on PR
-        if: ${{ github.event_name == 'pull_request' }}
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- trivy-image-scan -->'
+          # The scan writes a table rather than a count, so this step has no clean signal to be
+          # quiet on; the gate step below is what turns a finding into a red check.
+          status: report
           body-file: trivy-image-scan.txt
-          title: '## Trivy Image Scan (table)'
+          title: "${{ steps.trivy.outcome == 'success' && '## Trivy Image Scan (table)' || '## ⚠️ Image Scan (Trivy): CUT OFF (no result produced)' }}"
           details-summary: 'Image Scan Results'
 
+
+      # On PRs this blocks promotion; on the weekly schedule it surfaces newly published fixable
+      # CRITICAL/HIGH findings on already-merged images as a red scheduled run.
+      # workflow_dispatch is exploratory, so it is not gated.
       - name: Trivy image scan (gate - fixable CRITICAL/HIGH)
-        if: ${{ github.event_name == 'pull_request' }}
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        if: ${{ github.event_name != 'workflow_dispatch' }}
+        env:
+          IMAGE: ${{ steps.meta.outputs.image }}
+        run: make trivy-image-gate-ci TRIVY_IMAGE="${IMAGE}"
+        shell: bash
+
+      # Everything from here down is report-only and sits after the gate, so a scanner that
+      # falls over cannot stop the vulnerability verdict from being reached. Each step needs
+      # its own always(): the gate above fails on a finding, and an `if:` carrying no
+      # status-check function would inherit an implicit success() and skip.
+      #
+      # Dockle reads the built image for CIS-benchmark practice — root execution, stray
+      # setuid bits, credentials left in the layers — which is a different question from the
+      # vulnerability scan above and from hadolint's reading of the Dockerfile.
+      - name: Install dockle
+        if: always()
+        run: mise install aqua:goodwithtech/dockle
+
+      # --exit-code 0 is the default and is passed explicitly: the verdict on this image
+      # belongs to the gate above.
+      #
+      # CIS-DI-0005 asks for DOCKER_CONTENT_TRUST=1, which is Notary v1 — the mechanism
+      # Docker has moved away from. The question it asks, "can the provenance of what this
+      # build pulled and produced be verified", is answered twice here by newer means: every
+      # base image is pinned to a digest in docker/images-pin.toml with `make
+      # pin-images-check` holding the tag↔digest pair, and the published image is signed and
+      # attested with cosign in deploy-app.yaml. Turning the check on would not add a third
+      # answer; it would ask for a signature format nothing in this pipeline produces.
+      - name: Dockle scan
+        id: dockle
+        if: always()
+        env:
+          IMAGE: ${{ steps.meta.outputs.image }}
+          DOCKLE_IGNORES: CIS-DI-0005
+        run: |
+          set -euo pipefail
+          dockle --exit-code 0 --format json --output dockle.json "${IMAGE}"
+          dockle --exit-code 0 --format sarif --output dockle.sarif "${IMAGE}"
+        shell: bash
+
+      - name: Create Dockle summary (Markdown)
+        id: dockle-summary
+        if: always()
+        run: |
+          set -euo pipefail
+
+          # INFO is excluded from the count: dockle reports it for checks that passed with a
+          # remark, so counting it would leave the comment permanently non-zero.
+          COUNT=$(jq '[(.details // [])[] | select(.level == "FATAL" or .level == "WARN")] | length' dockle.json)
+          echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
+
+          if [ "$COUNT" -eq 0 ]; then
+            echo "title=## ✅ Dockle: PASS (no FATAL/WARN)" >> "$GITHUB_OUTPUT"
+            echo "No FATAL or WARN finding." > dockle-summary.md
+            exit 0
+          fi
+
+          echo "title=## 🚨 Dockle: FOUND (${COUNT})" >> "$GITHUB_OUTPUT"
+
+          jq -r '
+            (.details // [])[]
+            | select(.level == "FATAL" or .level == "WARN")
+            | "- [\(.level)] \(.code) — \(.title)\n" + ((.alerts // []) | map("  - " + .) | join("\n"))
+          ' dockle.json > dockle-summary.md
+        shell: bash
+
+      - name: Upload Dockle SARIF to code scanning
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
         with:
-          image-ref: ${{ steps.meta.outputs.image }}
-          scanners: 'vuln'
-          format: table
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
-          exit-code: '1'
+          sarif_file: dockle.sarif
+          category: dockle
+
+      - name: Comment Dockle result on PR
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- dockle-result -->'
+          status: "${{ steps.dockle-summary.outputs.count == '0' && 'success' || 'findings' }}"
+          title: "${{ steps.dockle-summary.outputs.title || '## ⚠️ Image Scan (Dockle): CUT OFF (no result produced)' }}"
+          body-file: dockle-summary.md
+          details-summary: '📄 Summary'
+
+      # The same image the scans above read, but the package list comes from the CycloneDX
+      # SBOM syft wrote rather than from Trivy's own cataloguer, so a package one of them
+      # identifies and the other does not shows up as a difference between the two results.
+      #
+      # A malformed or unreadable SBOM fails this step, and that is the point: the SBOM is
+      # published as an artifact, and nothing else here checks that it can be consumed.
+      - name: Trivy SBOM scan
+        id: trivy-sbom
+        if: always()
+        run: make -s trivy-sbom-ci TRIVY_SBOM_FILE=sbom-cyclonedx.json TRIVY_FORMAT=table > trivy-sbom-scan.txt
+        shell: bash
+
+      - name: Trivy SBOM scan (SARIF)
+        if: always()
+        run: make -s trivy-sbom-ci TRIVY_SBOM_FILE=sbom-cyclonedx.json TRIVY_FORMAT=sarif > trivy-sbom-scan.sarif
+        shell: bash
+
+      - name: Upload Trivy SBOM SARIF to code scanning
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
+        with:
+          sarif_file: trivy-sbom-scan.sarif
+          category: trivy-sbom
+
+      - name: Comment Trivy SBOM scan result on PR
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- trivy-sbom-scan -->'
+          # A table rather than a count, so this step has no clean signal to be quiet on —
+          # the same reason the image scan above passes a constant.
+          status: report
+          body-file: trivy-sbom-scan.txt
+          title: "${{ steps.trivy-sbom.outcome == 'success' && '## Trivy SBOM Scan (table)' || '## ⚠️ Image Scan (Trivy SBOM): CUT OFF (no result produced)' }}"
+          details-summary: 'SBOM Scan Results'
+
+      - name: Upload Dockle and SBOM scan artifacts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: image-practice-scan
+          path: |
+            dockle.json
+            dockle.sarif
+            dockle-summary.md
+            trivy-sbom-scan.txt
+            trivy-sbom-scan.sarif
+
+  # See README.md § Notification triggers (why only scheduled runs notify, and why cancelled counts).
+  notify-failure:
+    needs: build
+    if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.build.result) }}
+    uses: ./.github/workflows/notify.yaml
+    with:
+      failed-job: build
+    secrets:
+      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}

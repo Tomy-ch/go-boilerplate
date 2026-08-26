@@ -1,5 +1,5 @@
 //go:generate oapi-codegen --include-tags=v1/users/feed --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/users/feed --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/users/feed --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
 
 // Package feed は、/v1/users/feed エンドポイントに関連するハンドラを提供します。
 package feed
@@ -7,12 +7,13 @@ package feed
 import (
 	"context"
 
+	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/handler/v1/users/feed/gen"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/internal/usecase/user"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/runtime/types"
 )
 
@@ -34,13 +35,17 @@ func (s *server) GetUsersFeed(ctx context.Context, request gen.GetUsersFeedReque
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	// WARN: このエンドポイントは認可チェックを実施していません。
+	authn, err := ctxhelper.RequireAuthn(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	cursor, err := paging.NewCursor(request.Params.After, request.Params.First)
 	if err != nil {
 		return nil, err
 	}
 
-	feed, err := s.uc.ListUsersFeed(ctx, cursor)
+	feed, err := s.uc.ListUsersFeed(ctx, &authn, cursor)
 	if err != nil {
 		return nil, err
 	}
@@ -62,6 +67,7 @@ func (s *server) GetUsersFeed(ctx context.Context, request gen.GetUsersFeedReque
 // toUserResponse は、ユースケースのDTOをHTTPレスポンスへ変換します。
 func toUserResponse(dto user.UserView) gen.UserResponse {
 	return gen.UserResponse{
+		Id:         dto.ID.ToPrimitive(),
 		FirstName:  dto.FirstName,
 		LastName:   dto.LastName,
 		Email:      types.Email(dto.Email),

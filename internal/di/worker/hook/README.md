@@ -8,8 +8,27 @@ English | [日本語](README.ja.md)
 
 `RegisterWorkerHooks` registers a Start hook and a Stop hook with `lifecycle.Registrar`:
 
+```mermaid
+flowchart TB
+    Start["OnStart hook"]
+    Health["startHealth()"]
+    Snapshot["state.Snapshot()"]
+    Check{"done == nil?"}
+    NoWorker["log → engine not started"]
+    RunWorker["engine.Run() in a goroutine"]
+    Done["done <- err"]
+    Stop["OnStop hook"]
+    Cancel["cancel() → await drain"]
+    StopHealth["stopHealth()"]
+
+    Start --> Health --> Snapshot --> Check
+    Check -- yes --> NoWorker
+    Check -- no --> RunWorker --> Done
+    Stop --> Cancel --> StopHealth
+```
+
 1. On Start: starts the health listener, then calls `state.Snapshot()` to get the worker name and done channel
-2. If `done == nil`: logs "No worker to run" and closes the internal done channel (engine is not started)
+2. If `done == nil`: logs "No worker to run" and returns without starting the engine
 3. Otherwise: runs `engine.Run(engineCtx, name)` in a detached goroutine and sends the result to `done`
 4. On Stop: cancels `engineCtx`, waits for the engine to drain within `stopCtx`, then stops the health listener
 
@@ -28,6 +47,4 @@ err := <-done
 
 - The Start/Stop plumbing (detached goroutine, cancel-on-stop, grace-bounded drain) is delegated to `lifecycle.SupervisedRunner`; the health listener is passed as its `OnStartAux` / `OnStopAux`
 - `state.Set(name, args, done)` must be called before application startup
-- The engine runs in a detached goroutine; the run context is cancelled only on `OnStop` (not by `startCtx` cancellation after Start completes)
-- On Stop, drain is bounded by `stopCtx`; work unfinished past the deadline is not Acked and is redelivered
-- The health listener is started on `OnStart` and stopped on `OnStop`
+- Work unfinished past the drain deadline is not Acked and is redelivered

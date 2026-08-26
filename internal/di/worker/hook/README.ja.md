@@ -27,9 +27,10 @@ flowchart TB
     Stop --> Cancel --> StopHealth
 ```
 
-- `done` が `nil` の場合：実行する worker なしと判断し、engine を起動しない
-- `done` が存在する場合：detached goroutine で worker を実行し、結果を `done` チャネルに送信
-- `OnStop`：`engineCtx` をキャンセルし、`stopCtx` の範囲で drain 完了を待ってから health listener を停止
+1. Start 時: health listener を起動し、`state.Snapshot()` で worker 名と done チャネルを取得する
+2. `done == nil` の場合: 「実行する worker なし」をログに出し、engine を起動せず戻る
+3. それ以外: detached goroutine で `engine.Run(engineCtx, name)` を実行し、結果を `done` へ送る
+4. Stop 時: `engineCtx` をキャンセルし、`stopCtx` の範囲で engine の drain を待ってから health listener を停止する
 
 ## 使用フロー
 
@@ -46,6 +47,4 @@ err := <-done
 
 - Start/Stop 配線（detached goroutine・停止時キャンセル・grace 内 drain）は `lifecycle.SupervisedRunner` に委譲し、health listener をその `OnStartAux` / `OnStopAux` として渡す
 - `state.Set(name, args, done)` をアプリケーション起動前に行う必要がある
-- engine は detached goroutine で動作し、実行 context は `OnStop` でのみキャンセルされる（Start 完了後の `startCtx` キャンセルには巻き込まれない）
-- `OnStop` の drain は `stopCtx` で制限され、猶予切れの未完了処理は Ack されず再配送される
-- health listener は `OnStart` で起動し、`OnStop` で停止する
+- drain 期限を超えた未完了処理は Ack されず再配送される

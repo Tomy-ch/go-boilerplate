@@ -35,7 +35,7 @@ func TestNewLoggerProvider(t *testing.T) {
 		t.Run("log有効(http)でLoggerProviderを構築する", func(t *testing.T) {
 			t.Parallel()
 
-			lp, err := NewLoggerProvider(newTestObsCfg(t), newTestResource(t))
+			lp, err := NewLoggerProvider(newTestObsCfg(t), newTestEndpointCfg(t), newTestResource(t))
 
 			require.NoError(t, err)
 			require.NotNil(t, lp)
@@ -48,7 +48,7 @@ func TestNewLoggerProvider(t *testing.T) {
 			obsCfg := newTestObsCfg(t)
 			obsCfg.SetObservabilityOTLPProtocol(t, protocolGRPC)
 
-			lp, err := NewLoggerProvider(obsCfg, newTestResource(t))
+			lp, err := NewLoggerProvider(obsCfg, newTestEndpointCfg(t), newTestResource(t))
 
 			require.NoError(t, err)
 			require.NotNil(t, lp)
@@ -61,7 +61,7 @@ func TestNewLoggerProvider(t *testing.T) {
 			obsCfg := newTestObsCfg(t)
 			obsCfg.SetObservabilityLogsExporter(t, "")
 
-			lp, err := NewLoggerProvider(obsCfg, newTestResource(t))
+			lp, err := NewLoggerProvider(obsCfg, newTestEndpointCfg(t), newTestResource(t))
 
 			require.NoError(t, err)
 			require.NotNil(t, lp)
@@ -78,7 +78,7 @@ func TestNewLoggerProvider(t *testing.T) {
 			obsCfg := newTestObsCfg(t)
 			obsCfg.SetObservabilityOTLPProtocol(t, "invalid-protocol")
 
-			lp, err := NewLoggerProvider(obsCfg, newTestResource(t))
+			lp, err := NewLoggerProvider(obsCfg, newTestEndpointCfg(t), newTestResource(t))
 
 			require.Error(t, err)
 			assert.Nil(t, lp)
@@ -97,9 +97,10 @@ func Test_newLogExporter(t *testing.T) {
 
 			obsCfg := newTestObsCfg(t)
 			obsCfg.SetObservabilityOTLPProtocol(t, protocolHTTP)
-			obsCfg.SetObservabilityOTLPEndpoint(t, "")
+			epCfg := newTestEndpointCfg(t)
+			epCfg.SetEndpointOTLP(t, "")
 
-			exp, err := newLogExporter(context.Background(), obsCfg)
+			exp, err := newLogExporter(context.Background(), obsCfg, epCfg)
 
 			require.NoError(t, err)
 			require.NotNil(t, exp)
@@ -111,9 +112,10 @@ func Test_newLogExporter(t *testing.T) {
 
 			obsCfg := newTestObsCfg(t)
 			obsCfg.SetObservabilityOTLPProtocol(t, protocolGRPC)
-			obsCfg.SetObservabilityOTLPEndpoint(t, "")
+			epCfg := newTestEndpointCfg(t)
+			epCfg.SetEndpointOTLP(t, "")
 
-			exp, err := newLogExporter(context.Background(), obsCfg)
+			exp, err := newLogExporter(context.Background(), obsCfg, epCfg)
 
 			require.NoError(t, err)
 			require.NotNil(t, exp)

@@ -4,10 +4,91 @@ vendor/
 
 # Node ライブラリの依存解決ディレクトリ（docker ビルド時/ローカルとも生成物）
 node_modules/
+# pnpm がコンテナ実行時にリポジトリ直下へ作る内容アドレス store。
+.pnpm-store/
 
 # ビルド済みのバイナリファイル
 tmp/
 
+# scripts 配下ツールのビルド出力（make build-scripts）。出力先をここへ固定することで、
+# リポジトリ直下に go build の成果物が散らばるのを防ぐ
+scripts/bin/
+
+# graphify の出力。追跡するのは、どの checkout で開いても同じ意味を持つ成果物だけに限る。
+# 無視する側を列挙すると、上流が出力ファイルを増やすたびに黙って穴が開く。抽出キャッシュは
+# ノード ID を渡されたパスから組み立てるため絶対パスを焼き込み、.graphify_root /
+# .graphify_python はホストのパスそのものを持つので、穴が開いた分だけマシン固有の情報が
+# 公開リポジトリへ流れる。既定を「追跡しない」に倒し、許可する側を列挙する。
+# この一覧は scripts/graphify-check の artifacts と対であり、食い違えば make graphify-check が落ちる。
+graphify-out/*
+!graphify-out/GRAPH_REPORT.md
+!graphify-out/cost.json
+!graphify-out/edges.json
+!graphify-out/graph.html
+!graphify-out/graph.json
+!graphify-out/manifest.json
+!graphify-out/metadata.json
+!graphify-out/nodes.json
+# セマンティック抽出のキャッシュだけは共有する。フルリビルド時に LLM 抽出をやり直さずに済み、
+# 内容もマシン非依存（キーはファイル内容 + リポジトリ相対パスの SHA-256）だからである。
+# 一方 cache/ast/ は全件が絶対パス由来のノード ID を抱え、stat-index.json は絶対パスと mtime_ns
+# を持つため共有できない。除外されたディレクトリの中は再包含できないので、cache/ を一度開けて
+# から中を閉じ直す。どのプロンプトで焼いたキャッシュかは .agents/graphify/spec-pin.toml が固定する。
+!graphify-out/cache/
+graphify-out/cache/*
+!graphify-out/cache/semantic/
+
+# graphify のスキル本体。書いているのは graphifyy パッケージで、版だけを python/graphify.in が
+# 固定し、.claude/scripts/bootstrap-external-skills.sh がそこから展開する。vendor/ や
+# node_modules/ と同じく、レビュー対象ではなくマシンごとに作り直す依存物として扱う
+.claude/skills/graphify/
+.codex/skills/graphify/
+
+# .agents/ 配下でここだけがマシンローカル。Closed Loop の索引など、GitHub から再生成できる
+# キャッシュを置く。コミット対象の共有状態と混ざらないよう private/ に隔離している
+.agents/private/
+
+# Codex が issue ごとに作成する linked worktree。親 checkout から未追跡に見えるため、
+# worktree 自身を含めて除外する。
+.codex/worktrees/
+
+# vitest のカバレッジ出力。各 vitest.config は reporter に html を含めていないが、
+# --coverage.reporter=html を直に指定した実行が生む書き出しをコミット対象から外す。
+# 裸の coverage/ は追跡・公開している docs/coverage/（Go 側）にも一致してしまうため、
+# パッケージごとに列挙する。
+docs-viewer/coverage/
+scripts/coverage/
+
+# ビルド済みのドキュメント。docs-viewer(Vite) の出力で、index.html は dist/ のハッシュ付き資産を
+# 参照する対になっているため片方だけ追跡しない。deploy-docs.yaml が公開前に再ビルドする
+docs/portal/dist/**
+docs/portal/index.html
+
 # -----ファイル-----
 # ディレクトリの表示管理ファイル
 .DS_Store
+
+# DB スロットプールがworktree毎に書き出す占有情報（internal/cli/dbslot）
+.gobp-db-slot
+
+# scripts/ 配下の Go ツールを `go build` した実行ファイル。`-o` を省くとツール名のままリポジトリ
+# 直下へ落ちるため `git add -A` に巻き込まれる。実行は全て `go run ./scripts/<name>` で行うので、
+# 追跡してよい実行ファイルはここに 1 つも無い。一覧は `scripts/*/main.go` の親ディレクトリ名で、
+# ツールを足したらここにも足す（総当たりで無視すると、拡張子を持たない makefile まで巻き込む）。
+/actions-shellcheck
+/base-branch
+/cover-gate
+/egress
+/genctxkey
+/go-cooldown
+/graphify-check
+/graphify-export
+/load-band
+/migration-lint
+/pin-actions
+/pin-images
+/release
+/repo-setup
+/shell-lint
+/sync-versions
+/tool-cooldown

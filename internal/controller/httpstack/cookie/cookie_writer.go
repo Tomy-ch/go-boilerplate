@@ -5,7 +5,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"strings"
 )
 
 const headerSetCookie = "Set-Cookie"
@@ -14,7 +13,6 @@ type cookieRewriteWriter struct {
 	orig http.ResponseWriter
 	cfg  *SecurityCookie
 
-	hdr      http.Header
 	wroteHdr bool
 }
 
@@ -23,13 +21,14 @@ func newCookieRewriteWriter(orig http.ResponseWriter, cfg *SecurityCookie) *cook
 	return &cookieRewriteWriter{
 		orig: orig,
 		cfg:  cfg,
-		hdr:  make(http.Header),
 	}
 }
 
-// Header はヘッダを返します。
+// Header は元の ResponseWriter が持つヘッダをそのまま返します。
+// 独自のヘッダを持たせると、ラップより前に書かれた値（X-Request-Id など）が読み出せなくなり、
+// ワイヤ上のヘッダと、それを参照して組み立てるレスポンスボディとが食い違います。
 func (w *cookieRewriteWriter) Header() http.Header {
-	return w.hdr
+	return w.orig.Header()
 }
 
 // WriteHeader はステータスコードを設定します。
@@ -39,8 +38,7 @@ func (w *cookieRewriteWriter) WriteHeader(code int) {
 	}
 	w.wroteHdr = true
 
-	// Set-Cookie を書き換え
-	w.flushHeadersWithRewrite()
+	w.rewriteSetCookies()
 
 	w.orig.WriteHeader(code)
 }
@@ -65,19 +63,13 @@ func (w *cookieRewriteWriter) Flush() {
 
 // Hijack はコネクションをハイジャックします。
 func (w *cookieRewriteWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	// WebSocket 等は WriteHeader を経由せずに Hijack されることがあるため、w.hdr 上で
+	// WebSocket 等は WriteHeader を経由せずに Hijack されることがあるため、ここで
 	// Set-Cookie rewrite を確定させる。これは w.Header() を参照するタイプの Upgrade 実装にのみ
 	// 効く防御であり、生バッファへ直書きする通常の hijack 経路では配線に出ない。
 	if !w.wroteHdr {
 		w.wroteHdr = true
 
-		rawCookies := w.hdr.Values(headerSetCookie)
-		if len(rawCookies) > 0 {
-			w.hdr.Del(headerSetCookie)
-			for _, raw := range rawCookies {
-				w.hdr.Add(headerSetCookie, w.rewriteOrKeep(raw))
-			}
-		}
+		w.rewriteSetCookies()
 	}
 
 	// WebSocket などで http.Hijacker を透過する
@@ -126,19 +118,22 @@ func (w *cookieRewriteWriter) rewriteOrKeep(raw string) string {
 	return raw
 }
 
-// flushHeadersWithRewrite はヘッダを書き込みます（Set-Cookie を書き換え）。
-func (w *cookieRewriteWriter) flushHeadersWithRewrite() {
-	for k, vv := range w.hdr {
-		if strings.EqualFold(k, headerSetCookie) {
-			continue
-		}
-		for _, v := range vv {
-			w.orig.Header().Add(k, v)
-		}
+// rewriteSetCookies は、ヘッダ上の Set-Cookie をセキュリティ属性の適用後の値へ置き換えます。
+func (w *cookieRewriteWriter) rewriteSetCookies() {
+	hdr := w.orig.Header()
+
+	raws := hdr.Values(headerSetCookie)
+	if len(raws) == 0 {
+		return
 	}
 
-	// Set-Cookie を rewrite してから追加
-	for _, raw := range w.hdr.Values(headerSetCookie) {
-		w.orig.Header().Add(headerSetCookie, w.rewriteOrKeep(raw))
+	hdr.Del(headerSetCookie)
+	w.addRewrittenCookies(hdr, raws)
+}
+
+// addRewrittenCookies は、raws の各 Set-Cookie を書き換えて dst へ追加します。
+func (w *cookieRewriteWriter) addRewrittenCookies(dst http.Header, raws []string) {
+	for _, raw := range raws {
+		dst.Add(headerSetCookie, w.rewriteOrKeep(raw))
 	}
 }

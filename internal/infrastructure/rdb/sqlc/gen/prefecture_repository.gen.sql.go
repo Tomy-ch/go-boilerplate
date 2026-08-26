@@ -11,6 +11,51 @@ import (
 	uuid "go-boilerplate/pkg/uuid"
 )
 
+const getPrefectureDomainAll = `-- name: GetPrefectureDomainAll :many
+SELECT
+    p.id,
+    p.name,
+    p.code
+FROM prefectures AS p
+ORDER BY p.sort_key ASC
+`
+
+type GetPrefectureDomainAllRow struct {
+	ID   uuid.UUID
+	Name string
+	Code int16
+}
+
+// === source: database/dml/repository/prefecture/select_all_prefectures.sql ===
+// 全都道府県をマスタの表示順（sort_key 昇順）で返す。code は外部が行を指す静的な別名であり、
+// 並び順の出所ではない。
+//
+//	SELECT
+//	    p.id,
+//	    p.name,
+//	    p.code
+//	FROM prefectures AS p
+//	ORDER BY p.sort_key ASC
+func (q *Queries) GetPrefectureDomainAll(ctx context.Context) ([]*GetPrefectureDomainAllRow, error) {
+	rows, err := q.db.Query(ctx, getPrefectureDomainAll)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*GetPrefectureDomainAllRow
+	for rows.Next() {
+		var i GetPrefectureDomainAllRow
+		if err := rows.Scan(&i.ID, &i.Name, &i.Code); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getPrefectureDomainByID = `-- name: GetPrefectureDomainByID :one
 SELECT
     p.id,
@@ -47,8 +92,8 @@ SELECT
     p.name,
     p.code
 FROM prefectures AS p
-WHERE p.id = ANY($1::UUID [])
-ORDER BY p.code
+WHERE p.id = ANY($1::UUID[])
+ORDER BY p.sort_key
 `
 
 type GetPrefectureDomainByIDsRow struct {
@@ -58,14 +103,15 @@ type GetPrefectureDomainByIDsRow struct {
 }
 
 // === source: database/dml/repository/prefecture/select_prefecture_by_ids.sql ===
+// 指定 ID の都道府県をマスタの表示順（sort_key 昇順）で返す。並び順の出所は code ではない。
 //
 //	SELECT
 //	    p.id,
 //	    p.name,
 //	    p.code
 //	FROM prefectures AS p
-//	WHERE p.id = ANY($1::UUID [])
-//	ORDER BY p.code
+//	WHERE p.id = ANY($1::UUID[])
+//	ORDER BY p.sort_key
 func (q *Queries) GetPrefectureDomainByIDs(ctx context.Context, idsParam []uuid.UUID) ([]*GetPrefectureDomainByIDsRow, error) {
 	rows, err := q.db.Query(ctx, getPrefectureDomainByIDs, idsParam)
 	if err != nil {

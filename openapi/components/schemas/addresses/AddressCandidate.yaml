@@ -1,0 +1,28 @@
+type: object
+description: |
+  郵便番号 lookup による住所候補 1 件です。都道府県名は prefectures マスタで解決し、
+  解決できた場合のみ prefectureId を埋めます（解決不能時は null で、市区町村・町域の部分補完は生かします）。
+required:
+  - prefectureId
+  - prefectureName
+  - city
+  - town
+properties:
+  prefectureId:
+    type: string
+    format: uuid
+    nullable: true
+    description: 都道府県ID。県名を prefectures マスタで完全一致解決できなかった場合は null。
+    example: "101caa1e-84e7-4ceb-9108-50d40b6be1a3"
+  prefectureName:
+    type: string
+    description: 都道府県名（外部 lookup が返すフル表記、例 "東京都"）
+    example: "東京都"
+  city:
+    type: string
+    description: 市区町村
+    example: "千代田区"
+  town:
+    type: string
+    description: 町域
+    example: "千代田"

@@ -2,7 +2,8 @@ package retry
 
 import (
 	"math"
-	"math/rand/v2"
+	// jitter は thundering herd の分散が目的で暗号強度は不要なため crypto/rand は使わない。
+	"math/rand/v2" // nosemgrep: go.lang.security.audit.crypto.math_random.math-random-used
 	"time"
 )
 

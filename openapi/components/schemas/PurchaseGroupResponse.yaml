@@ -1,0 +1,28 @@
+type: object
+description: |
+  グループ化した購入集計の最上位ノード（groupBy の 1 番目の単位）。groupBy に 2 番目の単位が
+  指定されている場合のみ groups に下位ノードを持ちます。階層はグループ化単位の上限（2）と同じ深さで、
+  再帰はしません。マップのキーはグループ化単位の識別子（category はカテゴリ名称、product は商品 ID）で、
+  表示名は常に name で返すため、キーの形に関わらず name をそのまま表示できます。
+required:
+  - name
+  - itemsTotal
+properties:
+  name:
+    type: string
+    description: グループの表示名（カテゴリ名称・商品名称）
+    example: "電子機器"
+  itemsTotal:
+    type: string
+    description: |
+      当該グループの明細金額の合計（単価 × 数量の総和）。税額・送料は明細に按分できないため含みません。
+      価格スケール（USD ドルの正確な decimal）を文字列で表現します。決済スケール（セント整数）へは
+      丸めません（丸めは決済確定の 1 箇所のみ）。下位グループを持つ場合、その itemsTotal の総和と正確に一致します。
+    example: "1200.50"
+  groups:
+    type: object
+    description: |
+      下位のグループ化単位ごとのノード。groupBy に 2 番目の単位が指定されている場合のみ含みます。
+      キーはグループ化単位の識別子（category はカテゴリ名称、product は商品 ID）です。
+    additionalProperties:
+      $ref: './PurchaseSubGroupResponse.yaml'

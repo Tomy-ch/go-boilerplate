@@ -69,35 +69,34 @@
 <span id="L12" class="ln">    12  </span>var ErrInvalidEndpoint = xerrors.Wrap(apperror.ErrInvalidArgument, &#34;invalid outbox endpoint&#34;)
 <span id="L13" class="ln">    13  </span>
 <span id="L14" class="ln">    14  </span><span class="comment">// NewEndpoint は、config からメッセージ送信先エンドポイント URL を解決して返します。</span>
-<span id="L15" class="ln">    15  </span><span class="comment">// 空・不正な URL は relay 起動時点で弾きます（未設定のまま起動すると全 publish が失敗し</span>
-<span id="L16" class="ln">    16  </span><span class="comment">// 気付かぬうちに全メッセージが dead 化するため、サイレント障害を防ぐ）。</span>
-<span id="L17" class="ln">    17  </span>func NewEndpoint(cfg *config.OutboxConfig) (Endpoint, error) {
-<span id="L18" class="ln">    18  </span>	return parseEndpoint(cfg.Endpoint())
-<span id="L19" class="ln">    19  </span>}
-<span id="L20" class="ln">    20  </span>
-<span id="L21" class="ln">    21  </span><span class="comment">// parseEndpoint は、エンドポイント文字列を検証して Endpoint へ変換します。</span>
-<span id="L22" class="ln">    22  </span>func parseEndpoint(raw string) (Endpoint, error) {
-<span id="L23" class="ln">    23  </span>	if raw == &#34;&#34; {
-<span id="L24" class="ln">    24  </span>		return &#34;&#34;, xerrors.Wrap(ErrInvalidEndpoint, &#34;OUTBOX_ENDPOINT must not be empty&#34;)
-<span id="L25" class="ln">    25  </span>	}
-<span id="L26" class="ln">    26  </span>
-<span id="L27" class="ln">    27  </span>	u, err := url.Parse(raw)
-<span id="L28" class="ln">    28  </span>	if err != nil {
-<span id="L29" class="ln">    29  </span>		return &#34;&#34;, xerrors.Join(ErrInvalidEndpoint, xerrors.Wrap(err, &#34;OUTBOX_ENDPOINT is not a valid URL&#34;))
-<span id="L30" class="ln">    30  </span>	}
-<span id="L31" class="ln">    31  </span>	if u.Scheme != &#34;http&#34; &amp;&amp; u.Scheme != &#34;https&#34; {
-<span id="L32" class="ln">    32  </span>		return &#34;&#34;, xerrors.Wrap(ErrInvalidEndpoint, &#34;OUTBOX_ENDPOINT scheme must be http or https&#34;)
-<span id="L33" class="ln">    33  </span>	}
-<span id="L34" class="ln">    34  </span>	if u.Host == &#34;&#34; {
-<span id="L35" class="ln">    35  </span>		return &#34;&#34;, xerrors.Wrap(ErrInvalidEndpoint, &#34;OUTBOX_ENDPOINT must include a host&#34;)
-<span id="L36" class="ln">    36  </span>	}
-<span id="L37" class="ln">    37  </span>	if u.Hostname() == &#34;&#34; {
-<span id="L38" class="ln">    38  </span>		return &#34;&#34;, xerrors.Wrap(ErrInvalidEndpoint, &#34;OUTBOX_ENDPOINT must include a hostname&#34;)
-<span id="L39" class="ln">    39  </span>	}
-<span id="L40" class="ln">    40  </span>
-<span id="L41" class="ln">    41  </span>	return Endpoint(raw), nil
-<span id="L42" class="ln">    42  </span>}
-<span id="L43" class="ln">    43  </span>
+<span id="L15" class="ln">    15  </span><span class="comment">// 空・不正な URL は relay 起動時点で弾きます（理由は README.md の Choosing an implementation）。</span>
+<span id="L16" class="ln">    16  </span>func NewEndpoint(epCfg *config.EndpointConfig) (Endpoint, error) {
+<span id="L17" class="ln">    17  </span>	return parseEndpoint(epCfg.Outbox())
+<span id="L18" class="ln">    18  </span>}
+<span id="L19" class="ln">    19  </span>
+<span id="L20" class="ln">    20  </span><span class="comment">// parseEndpoint は、エンドポイント文字列を検証して Endpoint へ変換します。</span>
+<span id="L21" class="ln">    21  </span>func parseEndpoint(raw string) (Endpoint, error) {
+<span id="L22" class="ln">    22  </span>	if raw == &#34;&#34; {
+<span id="L23" class="ln">    23  </span>		return &#34;&#34;, xerrors.Wrap(ErrInvalidEndpoint, &#34;ENDPOINT_OUTBOX must not be empty&#34;)
+<span id="L24" class="ln">    24  </span>	}
+<span id="L25" class="ln">    25  </span>
+<span id="L26" class="ln">    26  </span>	u, err := url.Parse(raw)
+<span id="L27" class="ln">    27  </span>	if err != nil {
+<span id="L28" class="ln">    28  </span>		return &#34;&#34;, xerrors.Join(ErrInvalidEndpoint, xerrors.Wrap(err, &#34;ENDPOINT_OUTBOX is not a valid URL&#34;))
+<span id="L29" class="ln">    29  </span>	}
+<span id="L30" class="ln">    30  </span>	if u.Scheme != &#34;http&#34; &amp;&amp; u.Scheme != &#34;https&#34; {
+<span id="L31" class="ln">    31  </span>		return &#34;&#34;, xerrors.Wrap(ErrInvalidEndpoint, &#34;ENDPOINT_OUTBOX scheme must be http or https&#34;)
+<span id="L32" class="ln">    32  </span>	}
+<span id="L33" class="ln">    33  </span>	if u.Host == &#34;&#34; {
+<span id="L34" class="ln">    34  </span>		return &#34;&#34;, xerrors.Wrap(ErrInvalidEndpoint, &#34;ENDPOINT_OUTBOX must include a host&#34;)
+<span id="L35" class="ln">    35  </span>	}
+<span id="L36" class="ln">    36  </span>	if u.Hostname() == &#34;&#34; {
+<span id="L37" class="ln">    37  </span>		return &#34;&#34;, xerrors.Wrap(ErrInvalidEndpoint, &#34;ENDPOINT_OUTBOX must include a hostname&#34;)
+<span id="L38" class="ln">    38  </span>	}
+<span id="L39" class="ln">    39  </span>
+<span id="L40" class="ln">    40  </span>	return Endpoint(raw), nil
+<span id="L41" class="ln">    41  </span>}
+<span id="L42" class="ln">    42  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/infrastructure/publisher/config.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

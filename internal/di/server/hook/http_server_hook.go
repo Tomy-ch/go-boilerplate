@@ -14,8 +14,6 @@ import (
 	"go-boilerplate/internal/di/server/extension"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/xerrors"
-
-	"github.com/labstack/echo/v4"
 )
 
 // serverCallerSkip は、fx ライフサイクル経由のクロージャ呼び出しで挟まるフレームを飛ばしログの caller を実呼び出し位置へ合わせる段数です。
@@ -23,7 +21,7 @@ const serverCallerSkip = 3
 
 // RegisterHTTPServerHooks は、HTTPサーバーの起動・停止フックをライフサイクルに登録します。
 func RegisterHTTPServerHooks(
-	e *echo.Echo,
+	srv *http.Server,
 	reg lifecycle.Registrar,
 	log logging.Logger,
 	appCfg *config.ApplicationConfig,
@@ -33,13 +31,13 @@ func RegisterHTTPServerHooks(
 	// 下記はサーバー機能の拡張が適用されたことを示すトークン
 	_ *extension.AppliedServerExtends,
 ) {
-	reg.RegisterStart(newStartServerFunc(e, log, appCfg, secCfg, srvCfg, osCfg))
-	reg.RegisterStop(newStopServerFunc(e, log, osCfg))
+	reg.RegisterStart(newStartServerFunc(srv, log, appCfg, secCfg, srvCfg, osCfg))
+	reg.RegisterStop(newStopServerFunc(srv, log, osCfg))
 }
 
 // newStartServerFunc は、HTTPサーバーを起動する関数を生成します。
 func newStartServerFunc(
-	e *echo.Echo,
+	srv *http.Server,
 	log logging.Logger,
 	appCfg *config.ApplicationConfig,
 	secCfg *config.SecurityConfig,
@@ -54,13 +52,8 @@ func newStartServerFunc(
 		if err != nil {
 			return xerrors.Wrap(err, fmt.Sprintf("failed to listen on port %d", port))
 		}
-		e.Listener = ln
+		go serveHTTP(ctx, srv, ln, log)
 
-		go func() {
-			if err := e.Start(""); err != nil && !xerrors.Is(err, http.ErrServerClosed) {
-				log.Named("server.Start").Error(ctx, "failed to start http server", logging.Error(logging.ErrorKey, err))
-			}
-		}()
 		fields := append(lifecycleEventFields(logging.EventTypeStart, osCfg.TimeZone()),
 			logging.String("port", strconv.Itoa(port)),
 			logging.Strings("allowed_origins", secCfg.AllowedOrigins()),
@@ -72,14 +65,22 @@ func newStartServerFunc(
 	}
 }
 
+// serveHTTP は、ln 上で HTTP サーバーを稼働させます。
+// 正常停止（[http.ErrServerClosed]）以外で終了した場合はエラーログを残します。
+func serveHTTP(ctx context.Context, srv *http.Server, ln net.Listener, log logging.Logger) {
+	if err := srv.Serve(ln); err != nil && !xerrors.Is(err, http.ErrServerClosed) {
+		log.Named("server.Start").Error(ctx, "failed to start http server", logging.Error(logging.ErrorKey, err))
+	}
+}
+
 // newStopServerFunc は、HTTPサーバーを停止する関数を生成します。
 func newStopServerFunc(
-	e *echo.Echo, log logging.Logger, osCfg *config.OperatingSystemConfig,
+	srv *http.Server, log logging.Logger, osCfg *config.OperatingSystemConfig,
 ) func(context.Context) error {
 	return func(ctx context.Context) error {
 		l := log.Named("server.Stop").CallerSkip(serverCallerSkip)
 		l.Info(ctx, "http stopping", lifecycleEventFields(logging.EventTypeEnd, osCfg.TimeZone())...)
-		if err := e.Shutdown(ctx); err != nil {
+		if err := srv.Shutdown(ctx); err != nil {
 			l.Error(ctx, "failed to shutdown http server", logging.Error(logging.ErrorKey, err))
 			return err
 		}

@@ -26,6 +26,7 @@ func ObservabilityModule() fx.Option {
 			observability.NewTextMapPropagator,
 			observability.NewHTTPClientTransport,
 			observability.NewHTTPClientMetrics,
+			provideOutboundHTTPClient,
 			buildinfo.NewCollector,
 		),
 		fx.Invoke(

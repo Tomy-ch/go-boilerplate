@@ -115,6 +115,11 @@ func Test_isRetryableOutcome(t *testing.T) {
 			t.Parallel()
 			assert.True(t, isRetryableOutcome(nil, errCircuitOpen))
 		})
+
+		t.Run("レスポンス上限超過(errResponseTooLarge=ErrUnavailable内包)は決定的失敗なので対象外", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, isRetryableOutcome(nil, errResponseTooLarge))
+		})
 	})
 }
 

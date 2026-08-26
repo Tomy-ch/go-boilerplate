@@ -136,17 +136,16 @@
 		
 			
 			
-			<h2 id="ExtractFunctionName">func <a href="../../../src/go-boilerplate/pkg/fnmeta/fnmeta.go.html?s=988:1032#L28">ExtractFunctionName</a>
+			<h2 id="ExtractFunctionName">func <a href="../../../src/go-boilerplate/pkg/fnmeta/fnmeta.go.html?s=919:963#L27">ExtractFunctionName</a>
 				<a class="permalink" href="#ExtractFunctionName">¶</a>
 				
 				
 			</h2>
 			<pre>func ExtractFunctionName(full <a href="../../../builtin/#string">string</a>) <a href="../../../builtin/#string">string</a></pre>
-			<p>ExtractFunctionName は、runtime.Func のフルネームから span 名として使いやすい
-メソッド名のみを抽出します。
+			<p>ExtractFunctionName は、runtime.Func のフルネームからメソッド名のみを抽出します。
 例:
-</p><pre>&#34;github.com/org/proj/internal/usecase/user.(*UserUsecase).GetUser&#34;
-  → &#34;GetUser&#34;
+</p><pre>&#34;github.com/org/proj/foo/bar.(*Baz).Do&#34;
+  → &#34;Do&#34;
 </pre>
 
 			
@@ -155,18 +154,17 @@
 		
 			
 			
-			<h2 id="ExtractPackageName">func <a href="../../../src/go-boilerplate/pkg/fnmeta/fnmeta.go.html?s=1614:1657#L43">ExtractPackageName</a>
+			<h2 id="ExtractPackageName">func <a href="../../../src/go-boilerplate/pkg/fnmeta/fnmeta.go.html?s=1397:1440#L41">ExtractPackageName</a>
 				<a class="permalink" href="#ExtractPackageName">¶</a>
 				
 				
 			</h2>
 			<pre>func ExtractPackageName(full <a href="../../../builtin/#string">string</a>) <a href="../../../builtin/#string">string</a></pre>
 			<p>ExtractPackageName は、runtime.Func のフルネームからパッケージ名を抽出します。
-パッケージ名は lhs の先頭セグメント（最初の &#34;.&#34; より前）なので、ポインタ／値
-レシーバ・通常関数・ジェネリックのいずれの形式でも一貫して抽出できる。
+ポインタ／値レシーバ・通常関数・ジェネリックのいずれの形式でも一貫して抽出できます。
 例:
-</p><pre>&#34;github.com/org/proj/internal/usecase/user.(*UserUsecase).GetUser&#34; → &#34;user&#34;
-&#34;github.com/org/proj/internal/usecase/user.UserUsecase.GetUser&#34;    → &#34;user&#34;
+</p><pre>&#34;github.com/org/proj/foo/bar.(*Baz).Do&#34; → &#34;bar&#34;
+&#34;github.com/org/proj/foo/bar.Baz.Do&#34;    → &#34;bar&#34;
 </pre>
 
 			

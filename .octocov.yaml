@@ -3,7 +3,7 @@ coverage:
     - coverage.out
 codeToTestRatio:
   # production code 判定は .makefiles/go/test.mk の除外集合
-  # (gen|cmd|mock|apperror|scripts) と一致させる。cli はコア純粋層としてテスト対象に含めるため除外しない。
+  # (gen|cmd|mock|apperror|scripts|node_modules) と一致させる。cli はコア純粋層としてテスト対象に含めるため除外しない。
   # ディレクトリ除外はセグメント横断のため '**/<dir>/**/*.go' 形に統一する。
   code:
     - '**/*.go'
@@ -15,6 +15,7 @@ codeToTestRatio:
     - '!**/mock/**/*.go'
     - '!**/apperror/**/*.go'
     - '!**/scripts/**/*.go'
+    - '!**/node_modules/**/*.go'
   test:
     - '**/*_test.go'
 testExecutionTime:
@@ -22,7 +23,11 @@ testExecutionTime:
 comment:
   if: is_pull_request
 report:
-  if: is_default_branch
+  # 比較元 baseline は production 宛ての PR（= 次に production へ入る状態）実行時に保存する。
+  # octocov は diff 時にブランチを問わず最新の同名 artifact を取得するため、全 PR の比較元は
+  # 常に直近の「production 宛て PR」時点の coverage になる。GITHUB_REF は PR では merge ref に
+  # なるため、宛先で判定する GITHUB_BASE_REF を使う。
+  if: env.GITHUB_BASE_REF == 'production'
   datastores:
     - artifact://${GITHUB_REPOSITORY}
 diff:

@@ -19,7 +19,7 @@ func main() {
 		Long: applicationName + "は、開発・マイグレーション・コード生成などを行うためのコマンドラインツールです。\n" +
 			"用途に応じて、\"serve\", \"migrate-up\", \"seed\"などのサブコマンドを使用します。",
 		Version: system.Version + " (rev: " + system.Revision + ", built at: " + system.BuildDate + ")",
-		// 出力は main 側へ一本化する（cobra 既定の Error/usage 出力との二重表示を抑止）。
+		// 出力は main 側へ一本化する。
 		SilenceErrors: true,
 		SilenceUsage:  true,
 	}

@@ -26,7 +26,8 @@ func newFixCollationCommand() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&database, "database", "local", "対象データベース名（例: local）")
+	cmd.Flags().StringVar(&database, "database", "local",
+		"対象データベース名（local / test / template1 / wt<N>_local / wt<N>_test）")
 
 	return cmd
 }

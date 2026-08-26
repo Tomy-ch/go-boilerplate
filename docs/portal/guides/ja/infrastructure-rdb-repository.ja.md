@@ -28,7 +28,7 @@ flowchart TB
 |原則|Repository での実現|
 |---|---|
 |依存性逆転|Domain が interface を定義し、Infrastructure が実装する|
-|Aggregate 境界の保護|永続化の単位は Aggregate 単位で行う|
+|Aggregate 境界の保護|永続化の単位は Aggregate 単位で行う。各書き込みメソッドが何を保証すべきかは [data-access-pattern](../../../../docs/design/data-access-pattern.ja.md) § 書き側 が決める|
 |Domain の純粋性維持|Domain は DB / SQL / フレームワークを知らない|
 |不変条件の検証|Domain constructor 経由でのみ Entity を再構成する|
 
@@ -45,6 +45,20 @@ Repository は **Aggregate の永続化（CRUD）** を担います。検索・�
 |トランザクション|Usecase が制御（`tx.Manager`）|原則 読み取り専用|
 
 この分離により、Repository は Aggregate の整合性に集中でき、検索パフォーマンスの最適化は QS に委ねることができます。
+
+> **参照マスタの例外（返却型 / JOIN）。** Repository の読み取りは、*固定の参照マスタ*（独立した書き込み
+> ライフサイクルを持たない enum 相当の参照データで、必須かつ一意に定まる FK からたどれるもの）を JOIN し、
+> Domain Entity そのものではなく解決済みの表示値を持つ小さな read model を返してよいものとします。
+> <!-- 撤去後にこの箇所へ自分の例を置くための指針。
+>      目的: 具体の JOIN と解決される表示値が無いと、どこまでが例外なのか読めない。
+>      意義: 効くのは「参照マスタを必須 FK でたどること」で、返る型の小ささではない。
+>      書き方: 集約の表が参照マスタを JOIN する形と、解決される表示値のフィールド名を挙げる。 -->
+> <!-- sample-api:begin -->
+> （サンプルでの例は `purchases` が `purchase_statuses` を JOIN し `StatusName` を返す形）
+> <!-- sample-api:end -->
+> これは依然として単一 Aggregate の Repository 読み取りであり、Aggregate をまたぐ QueryService では
+> ありません。判断の基準は JOIN したデータの性質であって、Go 上のモデリングではありません。
+> `docs/rules.md` の「Repository / QueryService Rules」節を参照してください。
 
 ## 役割
 
@@ -163,6 +177,23 @@ entity, err := <aggregate>.New(
 - `sqlc` 型をそのまま上位層へ返さない
 - Domain constructor を利用する
 - Repository は Row / Model を Domain エンティティへ詰め替えて返す
+- 変換がコンストラクタの直呼び以上になる場合、または複数のメソッドで再利用する場合は、非公開ヘルパーへ
+  切り出し `rowToXxx`（単体）/ `rowsToXxx`（スライス）と命名する。名前を固定しておくことで、周囲にある
+  取得系ヘルパーと変換処理を読み分けられる。
+
+## keyset ページング
+
+keyset ページングは、オプショナルな述語を持つ 1 本のクエリではなく、**並び順ごとに 2 本の固定 sqlc
+クエリ**として表現する。カーソル述語を持たない先頭ページ用と、順序キーの組を受け取るカーソル以降用の
+2 本である。カーソルの有無で Go 側が分岐し、対応するクエリを呼ぶ。1 本に畳むと、実行計画が入力に
+依存する単一のステートメントになる。
+
+## 従属コレクションを持つ集約の再構築
+
+ルートが従属エンティティの集合を所有する集約は、単一の JOIN ではなく**2 本の固定クエリ**——ルート行用と
+従属行用——から再構築し、Go 側で結合する。従属行が何件あってもクエリ数は固定なので N+1 が起きず、
+ルート行が従属行ごとに繰り返されることもない。従属行のクエリは、その集約を再構築する全ての入口で
+共有する。
 
 ## Domain constructor error
 
@@ -749,7 +780,7 @@ Repository は **HTTP 層に依存しません。**
 NG例
 
 ```go
-func (r *repository) Create(ctx echo.Context)
+func (r *repository) Create(ctx *echo.Context)
 ```
 
 Repository は **純粋な Go インターフェース**で実装します。

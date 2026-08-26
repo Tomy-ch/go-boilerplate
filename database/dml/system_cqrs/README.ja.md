@@ -16,16 +16,7 @@
 
 ## ディレクトリ構成
 
-```text
-system_cqrs/
-├── health_check/
-│   ├── select_system_health.sql
-│   └── ...
-├── metrics/
-│   ├── select_system_metrics.sql
-│   └── ...
-└── ...
-```
+運用上の関心事ごとに 1 つのディレクトリを置き、その名前を付ける。いずれも業務の集約ではない。
 
 ## 命名規則
 

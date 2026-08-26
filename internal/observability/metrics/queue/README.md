@@ -48,5 +48,7 @@ and adapter kind are sufficient for aggregation and alerting.
 - Scrape calls the broker API directly (no cache). A TTL cache may be added later to bound API
   rate / cost.
 - Each scrape is bounded by a 5s timeout (`collectTimeout`) covering all targets; without it an
-  unresponsive broker would let scrape goroutines accumulate and exhaust resources.
+  unresponsive broker would let scrape goroutines accumulate and exhaust resources. Targets are
+  collected **concurrently** under that shared deadline, so one slow provider cannot consume the
+  budget and drag healthy queues into false collection failures.
 - Safely skips duplicate registration by ignoring `prometheus.AlreadyRegisteredError`.

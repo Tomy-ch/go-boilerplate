@@ -1,7 +1,7 @@
 ---
 name: spec-validator-domain
 description: >-
-  Read-only domain-spec validator. Validates `docs/spec/<feature>/domain.md` for format correctness and entity ↔ SQL migration correspondence, reading `.claude/scaffold-spec/domain-spec.md` (required section list + YAML schema) + `.claude/scaffold-spec/verify-rules.md` (verification scope) + `database/migrations/*.sql` at runtime as the source of truth — hardcodes no rules. Performs: (1) format check (required H2 sections present, every YAML block parses, required keys per Entity / Behavior Method / Repository Method), (2) entity ↔ SQL soft check (snake↔camel, method-form values / VO wrapping auto-recognized as legitimate → suggestion not violation), (3) internal consistency. Per-layer worker for the `verify-spec` integrator, invoked once by the `verify-spec` integrator (or standalone via the Agent tool) so per-spec validation fans out in parallel. STRICTLY read-only — never edits the spec or any source file; no auto-fix. Default model `sonnet`; the orchestrator may override.
+  Read-only domain-spec validator. Validates `docs/spec/<feature>/domain.md` for format correctness and entity ↔ SQL migration correspondence, reading `.claude/scaffold-spec/domain-spec.md` (required section list + YAML schema) + `.claude/scaffold-spec/verify-rules.md` (verification scope) + `database/migrations/*.sql` at runtime as the source of truth — hardcodes no rules. Performs: (1) format check (required H2 sections present, every YAML block parses, required keys per Entity / Behavior Method / Repository Method, plus the optional `## Domain Service` when present), (2) entity ↔ SQL soft check (snake↔camel, method-form values / VO wrapping auto-recognized as legitimate → suggestion not violation), (3) internal consistency. Per-layer worker for the `verify-spec` integrator, invoked once by the `verify-spec` integrator (or standalone via the Agent tool) so per-spec validation fans out in parallel. STRICTLY read-only — never edits the spec or any source file; no auto-fix. Default model `sonnet`; the orchestrator may override.
 tools: Read, Grep, Glob
 model: sonnet
 ---
@@ -34,6 +34,7 @@ If `docs/spec/<feature>/domain.md` is missing, say so and return cleanly (the in
 2. Verify every required H2 section is present in `domain.md`. Missing → `violation`.
 3. Parse every fenced YAML code block. Any YAML parse error → `violation`.
 4. Entity field YAML: required keys (`name`, `type`). Behavior Method YAML: (`name`, `signature`). Repository Method YAML: (`name`, `signature`). Missing key → `violation`.
+5. `## Domain Service` is optional and absent from most features — check its YAML only when the section exists (same required keys as a Behavior Method). Whether a rule *belongs* there is a design call the repo makes in `internal/domain/README.md`, not something to adjudicate here.
 
 ## Step 2. Entity ↔ SQL Soft Check
 
@@ -48,6 +49,7 @@ Read `database/migrations/*.sql`, find `CREATE TABLE <aggregate_plural>` matchin
 - Behavior Method signatures referencing Entity fields → the field must exist in Entity.
 - Value Object factories referencing other VOs → that VO must be defined.
 - Cross-field Invariants mentioning a field → the field must exist in Entity.
+- Domain Service signatures referencing the Entity or a collection type of it → that type must be defined in Entity or Value Objects.
 
 Missing reference → `violation`.
 

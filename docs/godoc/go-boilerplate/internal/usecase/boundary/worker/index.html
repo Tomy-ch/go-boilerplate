@@ -193,13 +193,18 @@ broker adapter（infrastructure 層）の双方が依存する境界です。
 			
 				
 				<pre>const (
-    <span class="comment">// ReservedKeyPrefix は、Attributes のうち engine が解釈せず素通しする</span>
-    <span class="comment">// broker 固有値（lease/handle 等）の予約キーに付ける接頭辞です。</span>
+    <span class="comment">// ReservedKeyPrefix は、engine が解釈も伝播もしない adapter 専用の broker 固有値</span>
+    <span class="comment">// （receipt handle / lease 等）を、traceparent 等の伝播対象属性と区別して隔離するための予約キー接頭辞です。</span>
     <span id="ReservedKeyPrefix">ReservedKeyPrefix</span> = &#34;_&#34;
 
     <span class="comment">// AttrReceiptHandle は、broker のメッセージ識別子（SQS の receipt handle 等）を</span>
     <span class="comment">// Attributes に隔離するための予約キーです。adapter が設定し、Ack/Nack/Extend 時に読み戻します。</span>
     <span id="AttrReceiptHandle">AttrReceiptHandle</span> = <a href="#ReservedKeyPrefix">ReservedKeyPrefix</a> + &#34;receipt_handle&#34;
+
+    <span class="comment">// AttrEventType は、イベント種別（version 込み）を運ぶ属性キーです。1 つのキューには複数種別が</span>
+    <span class="comment">// 流れるため、Handler は本文を解釈する前にこの属性で自分の処理対象かを判定します。</span>
+    <span class="comment">// 予約キーではなく、publish 側 adapter が載せ consume 側 adapter が素通しする伝播対象の値です。</span>
+    <span id="AttrEventType">AttrEventType</span> = &#34;event_type&#34;
 )</pre>
 			
 		
@@ -208,16 +213,12 @@ broker adapter（infrastructure 層）の双方が依存する境界です。
 		
 			
 			
-			<h2 id="Consumer">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/consumer.go.html?s=637:1669#L6">Consumer</a>
+			<h2 id="Consumer">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/consumer.go.html?s=225:1257#L1">Consumer</a>
 				<a class="permalink" href="#Consumer">¶</a>
 				
 				
 			</h2>
 			<p>Consumer は、pull-ack クラスのキューに対する seam です。
-</p><p>per-message の再配送遅延は first-class な port capability です。engine が
-再配送 backoff の policy（ReceiveCount からの指数 + jitter）を決め、adapter は native 機構
-（SQS ChangeMessageVisibility 等）でそれを honor します。これは broker 非依存の
-circuit（poll ループ全体の intake throttle）とは別レイヤで、両者は併存します。
 
 			</p><pre>type Consumer interface {
     <span class="comment">// Receive は long-poll で最大 limit 件を取得します。ctx 完了 or メッセージ到着までブロックします。</span>
@@ -302,7 +303,7 @@ engine は Permanent と分類したメッセージを Fail へ流してから�
 		
 			
 			
-			<h2 id="Message">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/message.go.html?s=855:1568#L7">Message</a>
+			<h2 id="Message">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/message.go.html?s=1336:2049#L12">Message</a>
 				<a class="permalink" href="#Message">¶</a>
 				
 				
@@ -339,7 +340,7 @@ engine は Permanent と分類したメッセージを Fail へ流してから�
 		
 			
 			
-			<h2 id="QueueDepth">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/queue_stats.go.html?s=1403:1713#L18">QueueDepth</a>
+			<h2 id="QueueDepth">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/queue_stats.go.html?s=1231:1541#L17">QueueDepth</a>
 				<a class="permalink" href="#QueueDepth">¶</a>
 				
 				
@@ -371,7 +372,7 @@ broker 非依存の語彙で表現し、SQS 固有の attribute 名は持ち込�
 		
 			
 			
-			<h2 id="QueueStats">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/queue_stats.go.html?s=923:1216#L8">QueueStats</a>
+			<h2 id="QueueStats">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/queue_stats.go.html?s=751:1044#L7">QueueStats</a>
 				<a class="permalink" href="#QueueStats">¶</a>
 				
 				
@@ -401,15 +402,14 @@ broker 非依存の語彙で表現し、SQS 固有の attribute 名は持ち込�
 		
 			
 			
-			<h2 id="QueueStatsProvider">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/queue_stats.go.html?s=632:818#L2">QueueStatsProvider</a>
+			<h2 id="QueueStatsProvider">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/queue_stats.go.html?s=460:646#L1">QueueStatsProvider</a>
 				<a class="permalink" href="#QueueStatsProvider">¶</a>
 				
 				
 			</h2>
 			<p>QueueStatsProvider は、broker queue の滞留量（depth / DLQ count）を取得する任意 capability seam です。
-</p><p>Consumer の必須 interface には含めません。queue depth は broker ごとに意味・取得方法が異なり、
-SQS の値も approximate（強整合でない）ためです。engine はこの capability を知らないまま動作し、
-observability collector だけがこの capability を実装する adapter から滞留量を収集します。
+</p><p>Consumer の必須 interface には含めません（理由は README の Optional capabilities）。
+SQS の値は approximate（強整合でない）ため、そのまま公開します。
 
 			</p><pre>type QueueStatsProvider interface {
     <span class="comment">// QueueStats は、source queue と（あれば）DLQ の現在の滞留量を返します。</span>
@@ -430,7 +430,7 @@ observability collector だけがこの capability を実装する adapter か�
 		
 			
 			
-			<h2 id="State">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/state.go.html?s=245:709#L1">State</a>
+			<h2 id="State">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/worker/state.go.html?s=245:777#L1">State</a>
 				<a class="permalink" href="#State">¶</a>
 				
 				
@@ -439,7 +439,8 @@ observability collector だけがこの capability を実装する adapter か�
 
 			</p><pre>type State interface {
     <span class="comment">// Set は、起動対象の worker 名・引数と done チャネルを設定します。</span>
-    <span class="comment">// done はバッファ付き（cap≥1）であること。engine 停止時に結果を 1 度送って close します。</span>
+    <span class="comment">// done はバッファ付き（cap≥1）であること。送信・close は受け手（Snapshot 側）が所有し、</span>
+    <span class="comment">// engine の実行結果を 1 度だけ送って close します。</span>
     Set(name <a href="../../../../../builtin/#string">string</a>, args []<a href="../../../../../builtin/#string">string</a>, done chan <a href="../../../../../builtin/#error">error</a>)
     <span class="comment">// Snapshot は、現在の起動対象と done チャネルをスナップショットとして取得します。</span>
     Snapshot() (name <a href="../../../../../builtin/#string">string</a>, args []<a href="../../../../../builtin/#string">string</a>, done chan <a href="../../../../../builtin/#error">error</a>)

@@ -1,0 +1,89 @@
+name: Claude
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.issue.number || github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  claude:
+    # Pre-gate on the github context only, so unrelated comments never start a runner. It
+    # grants no authority — that is the action's own write-permission check.
+    # See README.md Notes ("`claude.yaml` authorization").
+    if: >-
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request != null &&
+       contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' &&
+       contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review' &&
+       contains(github.event.review.body, '@claude'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      # contents stays read-only: it is the blast radius of a prompt injection carried in a
+      # fork PR. See README.md Notes ("`claude.yaml` authorization").
+      contents: read
+      pull-requests: write
+      issues: write
+      actions: read
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            api.anthropic.com:443
+            *.anthropic.com:443
+            statsig.anthropic.com:443
+            sentry.io:443
+            *.ingest.sentry.io:443
+
+      # A fork inherits this workflow but not the secret, so skip quietly rather
+      # than failing red. The secrets context is unavailable in `if:`, hence the
+      # detour through a run step output.
+      - name: Check configuration
+        id: config
+        env:
+          CLAUDE_CODE_TOKEN: ${{ secrets.CLAUDE_CODE_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -n "${CLAUDE_CODE_TOKEN}" ]; then
+            echo 'configured=true' >> "${GITHUB_OUTPUT}"
+          else
+            echo '::notice::CLAUDE_CODE_TOKEN is not configured; skipping.'
+            echo 'configured=false' >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Checkout
+        if: steps.config.outputs.configured == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Run Claude
+        if: steps.config.outputs.configured == 'true'
+        uses: anthropics/claude-code-action@be7b93b1907a4abad570368f3c74b6fe3807510b # v1.0.183
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_TOKEN }}
+          claude_args: "--max-turns 15"

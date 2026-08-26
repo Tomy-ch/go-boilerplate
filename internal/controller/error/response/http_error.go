@@ -16,10 +16,16 @@ const (
 	codeAccessDenied = "ACCESS_DENIED"
 	// codeNotFound は、指定されたリソースが存在しない場合に使用されるエラーコードです。
 	codeNotFound = "NOT_FOUND"
+	// codeMethodNotAllowed は、パスに対して許可されていないHTTPメソッドが使われた場合に使用されるエラーコードです。
+	codeMethodNotAllowed = "METHOD_NOT_ALLOWED"
 	// codeResourceConflict は、既に存在するリソースとの競合が発生した場合に使用されるエラーコードです。
 	codeResourceConflict = "RESOURCE_CONFLICT"
 	// codeValidationFailed は、入力値の検証に失敗した場合に使用されるエラーコードです。
 	codeValidationFailed = "VALIDATION_FAILED"
+	// codeUnsupportedMediaType は、サポートされていない Content-Type / メディア形式の場合に使用されるエラーコードです。
+	codeUnsupportedMediaType = "UNSUPPORTED_MEDIA_TYPE"
+	// codePayloadTooLarge は、リクエストペイロードが許容サイズを超える場合に使用されるエラーコードです。
+	codePayloadTooLarge = "PAYLOAD_TOO_LARGE"
 	// codeTooManyRequests は、リクエストが多すぎる場合に使用されるエラーコードです。
 	codeTooManyRequests = "TOO_MANY_REQUESTS"
 	// codeClientClosedRequest は、クライアントがリクエストをキャンセル/切断した場合に使用されるエラーコードです。
@@ -44,10 +50,16 @@ const (
 	errorMessageAccessDenied = "この操作を行う権限がありません。"
 	// errorMessageNotFound は、指定されたリソースが存在しない場合に使用されるエラーメッセージです。
 	errorMessageNotFound = "お探しの情報が見つかりませんでした。"
+	// errorMessageMethodNotAllowed は、パスに対して許可されていないHTTPメソッドが使われた場合のエラーメッセージです。
+	errorMessageMethodNotAllowed = "許可されていないリクエスト方法です。"
 	// errorMessageResourceConflict は、既に存在するリソースとの競合が発生した場合に使用されるエラーメッセージです。
 	errorMessageResourceConflict = "既に同じ情報が登録されています。"
 	// errorMessageValidationFailed は、入力値の検証に失敗した場合のエラーメッセージです。
 	errorMessageValidationFailed = "入力内容の検証に失敗しました。修正して再度お試しください。"
+	// errorMessageUnsupportedMediaType は、サポートされていないファイル形式・Content-Type の場合のエラーメッセージです。
+	errorMessageUnsupportedMediaType = "サポートされていないファイル形式です。形式をご確認のうえ再度お試しください。"
+	// errorMessagePayloadTooLarge は、リクエストペイロードが許容サイズを超える場合のエラーメッセージです。
+	errorMessagePayloadTooLarge = "ファイルサイズが大きすぎます。上限を超えないファイルで再度お試しください。"
 	// errorMessageTooManyRequests は、リクエストが多すぎる場合に使用されるエラーメッセージです。
 	errorMessageTooManyRequests = "リクエストが多すぎます。しばらくしてから再度お試しください。"
 	// errorMessageClientClosedRequest は、クライアントがリクエストをキャンセル/切断した場合に使用されるエラーメッセージです。
@@ -81,6 +93,12 @@ var errorMeta = map[int]httpErrorMeta{
 		Code:    codeNotFound,
 		Message: errorMessageNotFound,
 	},
+	// 405 は apperror sentinel を持たず、ルーティングで解決される(echo.ErrMethodNotAllowed)。
+	http.StatusMethodNotAllowed: {
+		Status:  http.StatusMethodNotAllowed,
+		Code:    codeMethodNotAllowed,
+		Message: errorMessageMethodNotAllowed,
+	},
 	http.StatusConflict: {
 		Status:  http.StatusConflict,
 		Code:    codeResourceConflict,
@@ -90,6 +108,16 @@ var errorMeta = map[int]httpErrorMeta{
 		Status:  http.StatusUnprocessableEntity,
 		Code:    codeValidationFailed,
 		Message: errorMessageValidationFailed,
+	},
+	http.StatusUnsupportedMediaType: {
+		Status:  http.StatusUnsupportedMediaType,
+		Code:    codeUnsupportedMediaType,
+		Message: errorMessageUnsupportedMediaType,
+	},
+	http.StatusRequestEntityTooLarge: {
+		Status:  http.StatusRequestEntityTooLarge,
+		Code:    codePayloadTooLarge,
+		Message: errorMessagePayloadTooLarge,
 	},
 	http.StatusTooManyRequests: {
 		Status:  http.StatusTooManyRequests,
@@ -141,6 +169,10 @@ func lookupErrorMetaByAppError(err error) httpErrorMeta {
 		return lookupErrorMetaByHTTPStatus(http.StatusBadRequest)
 	case xerrors.Is(err, apperror.ErrValidation): // 422
 		return lookupErrorMetaByHTTPStatus(http.StatusUnprocessableEntity)
+	case xerrors.Is(err, apperror.ErrUnsupportedMediaType): // 415
+		return lookupErrorMetaByHTTPStatus(http.StatusUnsupportedMediaType)
+	case xerrors.Is(err, apperror.ErrPayloadTooLarge): // 413
+		return lookupErrorMetaByHTTPStatus(http.StatusRequestEntityTooLarge)
 	case xerrors.Is(err, apperror.ErrUnauthenticated): // 401
 		return lookupErrorMetaByHTTPStatus(http.StatusUnauthorized)
 	case xerrors.Is(err, apperror.ErrPermissionDenied): // 403

@@ -1,0 +1,129 @@
+name: Fuzz
+
+# Go native fuzzing over the parsers that accept externally supplied text.
+#
+# Unit tests assert the cases someone thought of; fuzzing asks what happens on the
+# ones nobody did. That distinction already paid for itself: the first run of
+# FuzzParse found that pkg/decimal accepted "00E100044400" instantly and then hung
+# for minutes inside String(), materializing ~100 million digits.
+#
+# Weekly rather than per-PR: a fuzz run explores a random corpus, so the same code
+# can pass today and fail tomorrow. Gating a PR on it would make merges depend on
+# a coin flip, while a scheduled run turns the same randomness into coverage that
+# accumulates over time.
+
+on:
+  schedule:
+    # The schedule is the only trigger: the cases that break a parser are the ones nobody
+    # imagined, so there is no change that would announce them.
+    - cron: '45 2 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    strategy:
+      # One target per job so a crash in one does not mask the others, and so the
+      # failing target is identifiable from the job name alone.
+      fail-fast: false
+      matrix:
+        include:
+          - package: ./pkg/decimal
+            target: FuzzParse
+          - package: ./pkg/uuid
+            target: FuzzParse
+          - package: ./internal/usecase/tools/paging
+            target: FuzzNewCursor
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # 3 minutes per target keeps the whole matrix around 10 minutes of runner
+      # time. The committed corpus under testdata/fuzz is replayed first as a plain
+      # regression test, so previously found crashes are caught immediately even
+      # when the random exploration finds nothing new.
+      - name: Fuzz ${{ matrix.target }}
+        env:
+          PACKAGE: ${{ matrix.package }}
+          TARGET: ${{ matrix.target }}
+        run: go test "${PACKAGE}" -run "${TARGET}" -fuzz "${TARGET}" -fuzztime 180s
+        shell: bash
+
+      # A crash leaves its reproducer in testdata/fuzz/<target>/. Keeping it is the
+      # whole point: it is the input needed to reproduce and, once fixed, the
+      # regression test that keeps the bug closed.
+      - name: Upload crash corpus
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: fuzz-corpus-${{ matrix.target }}-${{ strategy.job-index }}
+          path: |
+            **/testdata/fuzz/**
+          if-no-files-found: warn
+
+  # See README.md § Notification triggers (why only scheduled runs notify, and why cancelled counts).
+  notify-failure:
+    needs: fuzz
+    if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.fuzz.result) }}
+    uses: ./.github/workflows/notify.yaml
+    with:
+      failed-job: fuzz
+    secrets:
+      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}

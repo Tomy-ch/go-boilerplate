@@ -125,7 +125,7 @@ optional here. After the canonical `SKILL.md` is finalized (create) or changed (
 The official process writes a `<skill-name>-workspace/` with iteration/eval dirs, benchmarks, and
 viewer output. A sibling of the skill directory would land inside the tracked `.claude/skills/**`.
 **Override the location**: put the workspace under the repo's gitignored `tmp/` (e.g.
-`tmp/manage-skill/<skill-name>-workspace/`), consistent with this repo's work-artifact convention
+`tmp/skills/manage-skill/<skill-name>-workspace/`), consistent with this repo's work-artifact convention
 (plans/artifacts live outside git; `tmp/` is ignored). Never commit eval runs, benchmarks, feedback
 JSON, or viewer HTML.
 
@@ -172,3 +172,10 @@ powering this session (see the environment/system prompt) so triggering matches 
 - No eval artifacts committed (workspace under gitignored `tmp/`).
 - No hard-protected path touched; only `.claude/skills/**` modified.
 - The user has reviewed outputs (viewer or inline) and is satisfied, per the official loop.
+- For every new or materially changed skill that is not platform-only, invoke `sync-ai` after local
+  validation with this environment as the source. Pass the transfer contract to the receiving
+  environment's `manage-skill`. When this invocation is itself the receiving child operation, do
+  not invoke `sync-ai` again.
+- `make md-skill-lint` passes. It enforces the previous item's existence half — a skill present in
+  only one environment fails. To declare one deliberately platform-only, follow the Skill Lint
+  section of `scripts/README.md`.

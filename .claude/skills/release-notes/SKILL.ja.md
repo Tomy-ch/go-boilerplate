@@ -8,8 +8,8 @@
 
 正式な書式の参照例は以下を参照すること。
 
-- `.github/release/v1.1.0.md`
-- `.github/release/v1.0.0.md`
+- `.github/release/v2.1.0.md`
+- `.github/release/v2.0.0.md`
 
 ## 最初に行うこと: FROM タグと新バージョンの確認
 
@@ -35,15 +35,15 @@
 1. リポジトリ内のヘルパーで bump 候補を計算する:
 
     ```sh
-    node scripts/semver.mjs <FROM_TAG> patch
-    node scripts/semver.mjs <FROM_TAG> minor
-    node scripts/semver.mjs <FROM_TAG> major
+    tsx scripts/semver <FROM_TAG> patch
+    tsx scripts/semver <FROM_TAG> minor
+    tsx scripts/semver <FROM_TAG> major
     ```
 
 2. 現在ブランチ名から推測値も取得する（`git rev-parse --abbrev-ref HEAD`）。`release/v[0-9]+\.[0-9]+\.[0-9]+` にマッチする場合は、その値も追加候補として提示する。
 3. `AskUserQuestion` を呼び出す:
     - 質問: 「新しいリリースのバージョン (NEW_VERSION) を指定してください。」
-    - 選択肢: `scripts/semver.mjs` の patch / minor / major 候補と、存在すればブランチ由来候補。
+    - 選択肢: `scripts/semver/index.ts` の patch / minor / major 候補と、存在すればブランチ由来候補。
 4. 受け取った回答が `^v[0-9]+\.[0-9]+\.[0-9]+$` にマッチすることを検証する。値を `<NEW_VERSION>` として後段で使用する。
 
 両方の値が確定するまで、git 履歴の解析やファイル書き込みは一切行わないこと。
@@ -120,7 +120,7 @@ git log --no-merges --pretty=format:'%h%n%s%n%b%n---' <FROM_TAG>..HEAD
 
 ### 4. リリースノートを作成する
 
-`.github/release/<NEW_VERSION>.md` を**日本語で**、`v1.1.0` 形式に従って書き出す。必須のトップレベル構造は以下:
+`.github/release/<NEW_VERSION>.md` を**日本語で**、`v2.1.0` 形式に従って書き出す。必須のトップレベル構造は以下:
 
 ```markdown
 <!-- markdownlint-disable MD041 -->
@@ -170,9 +170,9 @@ git log --no-merges --pretty=format:'%h%n%s%n%b%n---' <FROM_TAG>..HEAD
 
 - **コミット subject の貼り付けで済ませない。** 読んで理解できる粒度の日本語文に要約する。
 - **時系列ではなくテーマでグルーピングする。**
-- **具体のファイルパス／コンポーネント名を引用する**と、読者が変更箇所に辿りやすい（例: `scripts/semver.mjs`、`internal/controller/handler/...`）。
+- **具体のファイルパス／コンポーネント名を引用する**と、読者が変更箇所に辿りやすい（例: `scripts/semver/index.ts`、`internal/controller/handler/...`）。
 - **空セクションを捏造しない。** 該当する変更がなければ `- 該当なし` と書く。
-- **既存のトーンに合わせる。** `.github/release/v1.1.0.md` の文体を比較対象として参考にする。
+- **既存のトーンに合わせる。** `.github/release/v2.1.0.md` の文体を比較対象として参考にする。
 
 ### 5. 書き込み前にプレビューを提示する
 
@@ -192,7 +192,7 @@ make md-fix
 make md-lint
 ```
 
-`make md-fix` はリポジトリ全体に対して `markdownlint-cli2 --fix` を実行し、よくある違反（見出し / リスト / コードブロック周辺の空行、行末空白、ファイル末尾の改行など）を自動修正する。続けて `make md-lint` で `.markdownlint.yaml` 準拠かを検証する。
+`make md-fix` はリポジトリ全体に対して `markdownlint-cli2 --fix` を実行し、よくある違反（見出し / リスト / コードブロック周辺の空行、行末空白、ファイル末尾の改行など）を自動修正する。続けて `make md-lint` で `.markdownlint-cli2.yaml` 準拠かを検証する。
 
 `make md-lint` がエラーを報告する場合:
 
@@ -219,7 +219,7 @@ make md-lint
 - [ ] `<NEW_VERSION>` を `AskUserQuestion` で確認し、SemVer に対して検証した
 - [ ] `.github/release/<NEW_VERSION>.md` がまだ存在しない
 - [ ] 差分メタデータ（コミット数 / ファイル数 / +/- 行数）を `git` から取得した
-- [ ] コミットを `v1.1.0` 形式のセクションに分類した
+- [ ] コミットを `v2.1.0` 形式のセクションに分類した
 - [ ] リリースノートを日本語で、正規フォーマットに沿って起草した
 - [ ] プレビューをユーザーが承認した
 - [ ] `.github/release/<NEW_VERSION>.md` を書き出した

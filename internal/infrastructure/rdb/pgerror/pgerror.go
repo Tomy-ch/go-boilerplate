@@ -20,10 +20,12 @@ var sqlstateToAppError = map[string]error{
 	"23502": apperror.ErrInvalidArgument,
 	"23514": apperror.ErrInvalidArgument,
 	"22001": apperror.ErrInvalidArgument,
+	"22021": apperror.ErrInvalidArgument,
 	"22P02": apperror.ErrInvalidArgument,
 	"42501": apperror.ErrPermissionDenied,
 	"40001": apperror.ErrUnavailable,
 	"40P01": apperror.ErrUnavailable,
+	"55P03": apperror.ErrUnavailable,
 	"57014": apperror.ErrUnavailable,
 }
 
@@ -62,10 +64,8 @@ func NormalizeError(err error) error {
 
 // NormalizeReconstructError は、DB 行からのエンティティ再構築（ドメインコンストラクタ）が
 // 返したエラーをデータ不整合として ErrInternal へ平坦化します。
-// 保存済みデータがドメイン不変条件を満たさないのはサーバ内部障害であり、入力検証エラー
-// （422 / details 付き）としてクライアントへ露出させないため、元エラーの分類センチネルと
-// apperror.Meta を意図的にチェーンから消します（load-bearing flatten）。理由文はメッセージに
-// 残るためログには出ます。err が nil の場合は nil を返します。
+// 元エラーの分類センチネルと apperror.Meta を意図的にチェーンから消します（load-bearing flatten）。
+// 理由文はメッセージに残るためログには出ます。背景は README を参照。err が nil の場合は nil を返します。
 func NormalizeReconstructError(err error) error {
 	if err == nil {
 		return nil
@@ -111,6 +111,13 @@ func isPgConnectionError(err error) bool {
 		return false
 	}
 	return strings.HasPrefix(pgErr.Code, "08")
+}
+
+// IsNoRows は、クエリが 1 行も返さなかったことを示すエラーかを判定します。
+// 条件付き UPDATE（楽観ロック等）では対象行なしが「未存在」ではなく「条件不一致」を意味するため、
+// NormalizeError による ErrNotFound への一律の写像に代えて、呼び出し側が固有の意味を与えるための述語です。
+func IsNoRows(err error) bool {
+	return xerrors.Is(err, pgx.ErrNoRows)
 }
 
 // IsLockNotAvailable は、lock_timeout 失効によるエラーであるかを判定します。

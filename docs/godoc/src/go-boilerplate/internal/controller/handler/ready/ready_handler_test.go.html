@@ -72,7 +72,7 @@
 <span id="L15" class="ln">    15  </span>	&#34;go-boilerplate/internal/usecase/healthcheck/query&#34;
 <span id="L16" class="ln">    16  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
 <span id="L17" class="ln">    17  </span>
-<span id="L18" class="ln">    18  </span>	&#34;github.com/labstack/echo/v4&#34;
+<span id="L18" class="ln">    18  </span>	&#34;github.com/labstack/echo/v5&#34;
 <span id="L19" class="ln">    19  </span>	&#34;github.com/stretchr/testify/assert&#34;
 <span id="L20" class="ln">    20  </span>	&#34;github.com/stretchr/testify/require&#34;
 <span id="L21" class="ln">    21  </span>	&#34;go.uber.org/mock/gomock&#34;
@@ -94,10 +94,10 @@
 <span id="L37" class="ln">    37  </span>	expectedMethods := []string{http.MethodGet}
 <span id="L38" class="ln">    38  </span>
 <span id="L39" class="ln">    39  </span>	testassert.AssertEchoRouterPath(
-<span id="L40" class="ln">    40  </span>		t, targetPath, e.Routes(),
+<span id="L40" class="ln">    40  </span>		t, targetPath, e.Router().Routes(),
 <span id="L41" class="ln">    41  </span>	)
 <span id="L42" class="ln">    42  </span>	testassert.AssertEchoRouterMethods(
-<span id="L43" class="ln">    43  </span>		t, expectedMethods, e.Routes(),
+<span id="L43" class="ln">    43  </span>		t, expectedMethods, e.Router().Routes(),
 <span id="L44" class="ln">    44  </span>	)
 <span id="L45" class="ln">    45  </span>}
 <span id="L46" class="ln">    46  </span>

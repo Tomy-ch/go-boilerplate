@@ -21,7 +21,7 @@ flowchart TB
     Usecase["Usecase (Application Service)"]
     Domain1["Domain (Business Rule)"]
     Repo["Repository (Persistence)"]
-    Boundary["Boundary (Tx / Clock / Security / Auth)"]
+    Boundary["Boundary (Tx / Clock / Auth)"]
     Domain2["Domain (Re-evaluation / Composition)"]
     DTO_out["DTO (Output)"]
 
@@ -115,7 +115,7 @@ Domain と Usecase の責務は次のように分離されます。
 ```mermaid
 flowchart TB
     A["ユーザー名の制約"]
-    B["パスワード形式ルール"]
+    B["メール形式ルール"]
     C["状態遷移"]
 ```
 
@@ -125,9 +125,8 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-    A["パスワードをハッシュ化"]
-    B["トランザクション内で実行"]
-    C["都道府県情報を取得"]
+    A["トランザクション内で実行"]
+    B["関連集約の属性を取得"]
 ```
 
 これらは **Usecase 層に実装します。**
@@ -151,12 +150,13 @@ Usecase はこれらの **interface のみ参照**し、実装は Infrastructure
 
 ### 代表的な Boundary
 
-- `Transaction Manager`
-- `Clock`
-- `Security (PasswordHasher 等)`
-- `Auth Context`
-- `Messaging / EventPublisher`
-- `Observability`
+```txt
+Transaction Manager
+Clock
+Auth Context
+Messaging / EventPublisher
+Observability
+```
 
 ### 時刻の扱い
 
@@ -189,8 +189,10 @@ userEntity, err := user.New(..., now, now, nil)
 
 Usecase 層では以下を守ります。
 
-- 禁止: `time.Now()`
-- 許可: `clock.Clock.Now()`
+```txt
+Forbidden: time.Now()
+Allowed:   clock.Clock.Now()
+```
 
 時刻の取得は **Usecase → Domain へ渡す**形で扱い、
 Domain 側では新たに時刻を取得しない設計を推奨します。
@@ -238,10 +240,11 @@ Infrastructure --> BoundaryInterface
 
 例
 
-- `CreateUser`
-- `UpdateUser`
-- `DeleteUser`
-- `ChangePassword`
+```txt
+CreateUser
+UpdateUser
+DeleteUser
+```
 
 特徴
 
@@ -255,9 +258,11 @@ Infrastructure --> BoundaryInterface
 
 例
 
-- `GetUser`
-- `ListUsers`
-- `SearchUsers`
+```txt
+GetUser
+ListUsers
+SearchUsers
+```
 
 特徴
 
@@ -267,34 +272,23 @@ Infrastructure --> BoundaryInterface
 
 ### Repository に許可する Query
 
-```mermaid
-flowchart TB
-    A["FindAll"]
-    B["FindByID"]
-    C["CountAll"]
-    D["CountByActive"]
+```txt
+FindAll
+FindByID
+FindByKeyword
+CountAll
+CountByActive
 ```
-
-検索や複雑な条件検索（キーワード検索など）は **QueryService** に分離します。
-
-例：
-
-- `FindByKeyword`
-- `SearchUsers`
-- `ListUsersByCondition`
-
-QueryService は **読み取り最適化レイヤー**として扱い、DTO または Domain Entity を返すことを許容します。
 
 JOIN は **ドメイン境界を壊さない範囲で許可**します。
 
 ### Repository に含めないもの
 
-```mermaid
-flowchart TB
-    A["GROUP BY"]
-    B["集計関数"]
-    C["WITH句"]
-    D["複雑な分析クエリ"]
+```txt
+GROUP BY
+集計関数
+WITH 句
+複雑な分析クエリ
 ```
 
 これらは
@@ -305,20 +299,42 @@ flowchart TB
 
 など別レイヤーで扱います。
 
+### インフラをドメインで検証する
+
+**実行するのはインフラ、定義するのはドメイン。両者を突き合わせる場所が Usecase です。** これは
+双方向に成り立ち、同じ規則を 2 回言っているにすぎません。
+
+- **書き込み** — インフラが書き込みを実行し、その後 Usecase が対象集約を Repository 経由で読み直し、
+  集約自身に検証させます（[ADR-0032 (lightweight-cqrs)](../../docs/adr/0032-lightweight-cqrs.ja.md)）。
+- **読み取り** — インフラが絞り込みを実行し、その後 Usecase が返ったエンティティを、基準を定義する
+  ドメインの述語で確かめます。インフラは基準を**実行**するのであって**著作**しません
+  （[`internal/domain/README.md`](../domain/README.ja.md) の Query and Aggregate 節を参照）。
+  述語を満たさない行は、両者が乖離したことを意味します。
+
+乖離は握り潰さずエラーとして表に出します。黙って落とすと、欠陥が観測可能になったまさにその瞬間に
+それを隠すことになり、読み取りは自ら掲げた定義と一致しない結果を返し続けます。
+
+**この検証の限界を決めるのは、結果の形ではなく基準の形です。** 返ってくる行について何かを述べる基準は
+検証できます——結果にドメインの述語を当てれば、ずれはそこに現れる。行を取り除く基準は検証できません。
+取り除かれた行は結果に存在せず、不在は観測できないからです。確かめるにはフィルタ無しでもう一度引く
+ことになり、それはその読み取りが避けるために最適化された作業そのものです。
+
+したがって射影であることが免除の理由にはなりません。QueryService が基準の対象そのものを返すなら、
+集約を再構築しなくても、述語が必要とするフィールドを載せて確かめます。定義はドメインに留まり、
+インフラは実行するだけ、という形が保たれます。エンティティに対する述語とは別に、値に対する述語も
+ドメインへ置き、両方の経路が 1 つの定義を共有するようにします——クエリ層に 2 つ目の写しを育てない
+ためです。「レビューだけが支える」は、除外とその上の集計——**取り除く側の基準**——のためにとっておき、
+それはクエリを書く場所に明記します。何が落とされたかを読者が見られるのはそこだけだからです。
+
 ## このプロジェクトでの役割
 
-```mermaid
-flowchart TB
-    Command["Command (Create/Update/Delete)"]
-    Query["Query (Read)"]
-    Policy["Pagination / Validation"]
-    Error["Error Handling"]
-
-    Command --> Usecase
-    Query --> Usecase
-    Policy --> Usecase
-    Error --> Usecase
-```
+- Command / Query のサービスは `internal/usecase/<feature>/`（例: `user/`）配下に置く。
+  - Command: 作成 / 更新 / 削除（Tx を開始し、Domain の不変条件を担保する）。
+  - Query (QS): 読み取り最適化。DTO を直接返すことを許容する。
+  - ページング / バリデーションなど、プロトコルに依存しないポリシーを集約する。
+    - 例: `paging.NewPageFrom1Based(page, perPage)`
+- エラーは `apperror.ErrXXX` で包み、Controller が HTTP レスポンスへ写像できるようにする。
+- DI (fx) が Repository インターフェース / TxManager / Config などの依存を注入する。
 
 ## サードパーティを最小限に抑える
 
@@ -329,124 +345,45 @@ flowchart TB
 - テストも`testify`/`mock`程度に留め、モックはinterfaceベースで注入。
 - どうしても必要な場合は、[pkg/](../../pkg/)で薄いラッパーを作成する。
 
-## DI（Dependency Injection）の仕組み（Usecase）
-
-Usecase は **Uber Fx による DI** で生成されます。  
-Usecase は **Repository / QueryService / Boundary を interface 経由で受け取る**ことが原則です。
-
-### 全体構成
-
-Usecase は `fx.Provide` により登録され、Controller / Job に注入されます。
-
-```mermaid
-flowchart TB
-    Module["UsecaseModule"]
-    Provide["fx.Provide(user.New)"]
-    Interface["user.Usecase (interface)"]
-    Consumer["Controller / Job"]
-
-    Module --> Provide
-    Provide --> Interface
-    Interface --> Consumer
-```
-
-### internal/di/module/usecase.go の役割
-
-```go
-func UsecaseModule() fx.Option {
-    return fx.Module("usecase",
-        fx.Provide(
-            healthcheck.New,
-            user.New,
-        ),
-    )
-}
-```
-
-- `fx.Provide`
-  - Usecase のコンストラクタを登録
-- 戻り値は **Usecase interface**
-  - 例: `user.Usecase`
-
-### Usecase のコンストラクタ設計
-
-```go
-func New(
-    tf observability.TracerFactory,
-    txm tx.Manager,
-    clock clock.Clock,
-    hasher security.Hasher,
-    userRepo user.Repository,
-    userQS query.UserQueryService,
-) Usecase {
-    return &usecase{
-        tracer:    tf.Usecase(),
-        txm:       txm,
-        clock:     clock,
-        hasher:    hasher,
-        userRepo:  userRepo,
-        userQS:    userQS,
-    }
-}
-```
-
-ポイント：
-
-- 戻り値は **interface（Usecase定義）**
-- 依存はすべて引数で受け取る（new禁止）
-- Repository / QueryService は interface 経由で受け取る
-- Boundary（tx / clock / security 等）も interface で受け取る
-
-### DI の流れ
-
-```mermaid
-flowchart TB
-    Provide["fx.Provide(user.New)"]
-    Interface["user.Usecase"]
-    Consumer["Controller / Job (依存)"]
-
-    Provide --> Interface
-    Interface --> Consumer
-```
-
-### なぜ interface を返すのか
-
-- Controller / Job は Usecase の抽象にのみ依存する
-- 実装の差し替えが可能（mock / feature切替）
-- Onion Architecture の依存逆転を維持する
-
-### Repository / QueryService との関係
-
-```mermaid
-flowchart TB
-    Usecase["Usecase"]
-
-    Repo["Repository（domain interface）"]
-    QS["QueryService（usecase interface）"]
-    Boundary["Boundary（外部依存の抽象）"]
-
-    Usecase --> Repo
-    Usecase --> QS
-    Usecase --> Boundary
-```
-
-- Repository は **永続化**
-- QueryService は **検索**
-- Usecase はそれらを **組み合わせる**
-
-### AI / 開発者向けルール
-
-- Usecase の constructor は必ず `New` で定義すること
-- 戻り値は Usecase interface にすること
-- Usecase 内で依存を new しないこと
-- DI登録は `internal/di/module/usecase.go` に追加すること
-
 ## 実装上の注意点
 
 ### 命名/構造
 
 - インターフェイスは`Usecase`（例：`user.Usecase`）で統一。
 - インスタンスの生成関数名は `New` で統一し、[di/module/usecase.go](../di/module/usecase.go) で登録する。
+
+### doc コメント：インターフェイス側と実装側
+
+本リポジトリではインターフェイスとその実装が同一パッケージに同居する（`Usecase` と非 export の
+`usecase`）ため、双方が doc コメントを持つ。両者は**読み手が異なる**ので、互いの複製にしてはならない。
+
+- **インターフェイス側 doc ＝ 呼出側契約**（`docs/rules.md` § Comment Rules に準拠）。記述は
+  **アプリケーション語彙**に留めること。Repository / QueryService / Boundary の名指しは可（Usecase が正当に
+  所有する内向きの抽象のため）だが、**インフラ語彙は層を漏らす**ため禁止 — SQL の断片
+  （`SELECT … FOR UPDATE`）、テーブル名、カラム名、keyset の仕組みなど。それらは既にそう書いてある
+  Infrastructure 側の doc コメントの担当である。
+- **実装側 doc ＝ 次にここを触る実装者向け。** アプリケーション語彙のまま、契約より**一段具体**に踏み込ん
+  でよい。どの協力者が保証を担っているか、なぜトランザクション境界がそこにあるか、何が失敗ではなく
+  degrade するか、なぜその競合はリトライで解消しないか、など。
+- **インターフェイス側 doc の逐語複製は書かない。** 複製は何も足さず、2 箇所で腐る。足す価値のある具体が
+  無いなら**実装側 doc は省略してよい** — 実装型は非 export のため `revive` の `exported` ルールの対象外。
+
+このインターフェイスと実装の書き分けは**この層固有ではない**。インターフェイスとその非 export な実装が同一
+パッケージに同居する箇所すべてに適用され、`internal/logging` の `Logger` や `internal/observability` の
+provider factory も同じ規則の下にある。層ごとに異なるのは下記の語彙の部分であり、逐語複製を書かないという
+部分はリポジトリ全体の規則である。
+
+同じアプリケーション語彙の規則は、**この層が所有する port インターフェイス** — Boundary / CommandService /
+QueryService — にも適用される。port は外部との接ぎ目であり、だからこそ技術中立に記述しなければならない。
+契約すべきは*保証*であって、現時点でそれを実現している機構ではない。`Lock<Aggregate>` の port は悲観ロックを取ること、
+そのロックが何を直列化するかを述べる（呼出側はその両方に依存する）が、そのロックが `SELECT … FOR UPDATE`
+であることは述べない。`QueryService` は所有権を自身の絞り込みで担保すると述べ、SQL の `WHERE` 述語とは
+書かない。機構は Infrastructure 実装側の doc コメントの担当であり、そちらでは名指ししてよい
+（[`internal/infrastructure/README.md`](../infrastructure/README.md) § Doc comments may name technical
+detail を参照）。
+
+コメントの内容基準そのもの（契約 + 非自明な Why、How のナレーション / 経緯 / 言い換えは書かない）は
+`docs/rules.md` § Comment Rules にある。本節は**どの doc コメントが何を担うか**だけを定める。
 
 ### ビジネスロジックを実装しない？ → 誤解を避けて明確化
 
@@ -455,48 +392,98 @@ flowchart TB
 
 ### HTTP/DBの要素は持ち込まない
 
-- `http.*`, `echo.Context`, `sqlc` 型、`sql.Null*`、DB列名、OpenAPI生成型…を引数/戻り値に使わない。
-- 代わりに DTO/VO（Page/Filters/Actor） で表現。
+引数 / 戻り値に使ってはいけない型:
+
+- `http.*`
+- `*echo.Context`
+- `sqlc` 生成型
+- `sql.Null*`
+- DB のカラム名
+- OpenAPI 生成型
+
+代わりに DTO / VO（Page / Filters / Actor）で表現する。
 
 ### エラー方針
 
-- 入力の意味的な不正:
-  - `apperror.ErrValidation` → 422
-  - `apperror.ErrInvalidArgument` → 400
-- 存在しない:
-  - `apperror.ErrNotFound` → 404
-- 競合:
-  - `apperror.ErrConflict` → 409
-- 一時的不可:
-  - `apperror.ErrUnavailable` → 503
-- 想定外:
-  - そのまま or `apperror.ErrInternal` に包む → 500
+操作の結果に応じて `internal/apperror` のセンチネルでラップする。`ErrXXX` から HTTP ステータスへの
+対応表は [`internal/apperror/README.ja.md`](../apperror/README.ja.md) の対応表を参照。想定外のエラーは
+そのまま返すか `apperror.ErrInternal` に包む。
 
 `apperror.ErrXXX` センチネルでラップする場合は、標準の `fmt.Errorf("%w", ...)` ではなく
 `pkg/xerrors.Wrap(apperror.ErrXXX, "context")` を使う。スタックトレースを保持しつつ
 `xerrors.Is` でセンチネル判定が可能になる。
 
+### GC / バッチ掃除
+
+行やオブジェクトをバッチで掃除する Usecase は、決まった形に従う。
+
+- 既定のバッチサイズは公開定数（`Default<Feature>BatchSize`）として公開し、呼び出し側から見えて上書きも
+  できるようにする。0 以下の引数はエラーではなく「既定値を使う」と解釈する。フラグ無しで起動される
+  ジョブは異常ではなく通常だからである。
+- 1 バッチずつループし、返ってきた件数が要求したサイズを下回ったら終了する。
+- **エラーを返す場合でも件数は返す。** 完了したバッチは既にコミット済みでロールバックできないため、
+  失敗時に 0 を報告する `Result` は嘘になる。呼び出し側はそこまで通った分をログに出す（上記「出力 DTO
+  の命名」の `Result` 側を参照）。
+
+### 出力 DTO の命名
+
+Usecase の戻り値 DTO は、そのメソッドが何を返すかによって 2 つのサフィックスを使い分ける。
+
+- **`<概念>View`** — 呼び出し側向けに組み立てた状態の射影であって、集約そのものではない。射影が単一
+  フィールドしか持たない場合でもサフィックスは落とさない。落とすと外向きの射影とドメイン型を一目で
+  区別できなくなる。
+- **`<概念>Result`** — 何かを変更した操作の結末。処理した件数、スキップした件数、バッチが停止するまでに
+  通した件数など。「何であるか」ではなく「何が起きたか」を報告する。
+
+この区別を保つのは、両者で失敗時の意味論が違うためである。`View` は返るか返らないかのどちらかだが、
+`Result` は**メソッドがエラーも返す場合にこそ意味を持つ** — 途中で失敗したバッチも、停止するまでに
+コミットした分を報告しなければならない。
+
+唯一の例外が `healthcheck.CheckHealth` で、素の `DTO` を返す。ヘルスは集約の射影でも変更の結果でもなく、
+プローブ自身の読み取りであり、接頭辞にすべき概念をこの型は持たない。ここで接尾辞を付けると、パッケージが
+持たないものを名前で主張することになる。他の箇所で接尾辞を省く根拠にはしないこと。
+
 ### ページング
 
 - NewPageFrom1Based(page, perPage) で既定値/上限/1→0変換を統一。
 - ページ番号が許容最大を超えたら `apperror.ErrInvalidArgument` を返す（offset は int32 変換時にクランプ）。
+- keyset（カーソル）ページングは `tools/paging.Cursor` を土台にし、フィーチャごとに
+  `encode<Feature>Cursor` / `decode<Feature>Cursor` のコーデック対を実装する。カーソルは呼び出し側に
+  とって不透明で、順序キーの組を符号化したものである。形式不正やキー数不一致は
+  `apperror.ErrInvalidArgument` として返す。
 
 ## 呼び出せる層 / 呼び出せない層
 
 ### 呼び出せる層
 
 - Domain（エンティティ/ドメインサービス/Repositoryインタフェース）
-- Boundary（tx / clock / security / auth 等）
+- Boundary（tx / clock / auth 等）
 - QueryService（必要な場合）
 
 ### 呼び出せない層
 
-- 他のUsecaseからの呼び出しは基本禁止（循環・肥大化を避ける。必要なら“アプリサービス（`Orchestrator`）”を別モジュールとして明示）。
+- 他の**業務** Usecase を直接呼ばない（後述）。
 - UsecaseからInfra/Controller/HTTP/OpenAPI/SQL"実装"は呼ばない。
+
+#### なぜ業務 Usecase 同士を繋がないのか
+
+禁じているのは呼ばれること自体ではなく、**連鎖**である。A が B を呼べる規則の下では、やがて C が A を
+呼び、D が C を呼ぶ。どこまでが 1 つの業務操作なのかを誰も言えなくなり、トランザクション境界も
+追跡できなくなる。
+
+したがって A の業務と B の業務を組み合わせる必要があるときは、A から B を呼ばない。両者を**合成**する
+Usecase D を導入する。D は両者の上位に立って業務操作を繋ぐため、形が連鎖ではなく合成になる。
+
+**技術 Usecase はこの規則の対象外である。** それ自体は業務操作ではないが、どの業務操作からも同じ形で
+必要になるもの——outbox への emit など——は、この規則が防ごうとしている連鎖を作りようがないため、
+直接呼んでよい。
 
 Usecaseは **Infrastructureに依存してはいけません。**
 
-Infrastructureへのアクセスは **Repository interface または Boundary interface** を経由します。
+Infrastructureへのアクセスは次を経由します。
+
+- Repository interface
+- Boundary interface
 
 ## Test戦略
 
@@ -513,7 +500,6 @@ Usecase のテストでは次の依存関係を採用します。
 |---|---|
 |Domain|実装を使用|
 |Repository|mock|
-|QueryService|mock|
 |Boundary|mock|
 |Infrastructure|使用しない|
 
@@ -548,21 +534,18 @@ ctrl := gomock.NewController(t)
 
 userRepo := mock_user.NewMockRepository(ctrl)
 clock := mock_clock.NewMockClock(ctrl)
-hasher := mock_security.NewMockHasher(ctrl)
 ```
 
 ### テスト対象
 
-Usecase テストでは主に次の観点を扱います。
-
-#### 正常系
+正常系:
 
 - 想定通りの DTO が返る
 - Repository が正しく呼ばれる
 - Boundary が正しく呼ばれる
 - Transaction が正しく使われる
 
-#### 異常系
+異常系:
 
 - Boundary のエラーが返る
 - Repository のエラーが返る
@@ -582,15 +565,6 @@ TestListUsers
   ├ 正常系
   └ 異常系
 ```
-
-異常系では、失敗ポイントごとにケースを分けます。
-
-例：
-
-- Password hash error
-- Repository error
-- Domain validation error
-- Prefecture lookup error
 
 ### Deterministic
 
@@ -627,6 +601,24 @@ Usecase テストでは以下を扱いません。
 
 これらは **Infrastructure / Controller の責務**です。
 
+### まとめ
+
+```txt
+Usecase
+ ├ Domain         -> real
+ ├ Repository     -> mock
+ ├ Boundary       -> mock
+ └ Infrastructure -> not used
+```
+
+これにより、次を高速かつ安定して検証できます。
+
+- ワークフロー
+- アプリケーションポリシー
+- トランザクション境界
+- エラーの伝播
+- DTO 変換
+
 ## やっていいこと / いけないこと(まとめ)
 
 ### Do
@@ -636,12 +628,11 @@ Usecase テストでは以下を扱いません。
 - Usecase層で初出の`apperror`でエラー分類を付与（errors.Is で Controller が判定しやすく）
 - QSはRow→DTOに最短でマップ、CommandはDomainを介す。
 - 表駆動テストでユースケースの分岐とTxの挙動を確認（testify）
-- 読み取り最適化が必要な場合は QueryService を利用する
 
 ### Don’t
 
 - DomainのEntityを直接返す
-- `http.Status` や `echo.Context` を引数に取る/返す
+- `http.Status` や `*echo.Context` を引数に取る/返す
 - `sqlc`生成型や`sql.Null*`を引数/戻り値に使う
 - `openapi/gen`の型を直接返す（DTOに詰め替えるのはControllerの責務）
 - Listで0件をエラー化（`apperror.ErrNotFound`(404)は単体取得のみ）
@@ -704,11 +695,18 @@ observability層がtracerの生成ルール（レイヤー名やパッケージ�
 
 ## 実装例
 
+<!-- sample-api:replace-begin -->
 > 以下の例は、恒久的なパターン（tracer による span の開始/終了、`clock.Now()` による時刻取得、
 > `txm.Do` によるトランザクション境界、Domain → DTO 変換）**を示すためだけに**、サンプルの
 > `<aggregate>`（`user` と関連する `prefecture`）を用いています。これらのサンプル集約は
 > `make setup-remove-sample-api` で削除されるため、`user` / `prefecture` は各自の集約の
 > 代替として読み替えてください。要点は具体名ではなくパターンです。
+<!-- sample-api:replace-with -->
+<!-- = > 以下の例は、恒久的なパターン（tracer による span の開始/終了、`clock.Now()` による時刻取得、 -->
+<!-- = > `txm.Do` によるトランザクション境界、Domain → DTO 変換）**を示すためだけに**、1 つの -->
+<!-- = > `<aggregate>` と関連する集約を用いています。具体名は各自の集約の代替として読み替えて -->
+<!-- = > ください。要点は具体名ではなくパターンです。 -->
+<!-- sample-api:replace-end -->
 
 ```go
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
@@ -722,8 +720,7 @@ import (
     // それぞれ実装で使うパッケージをimport
 )
 
-
-// 下位の層とやり取りするためのDTO
+// 入力と出力が共有する可変属性一式。
 type UserMutableFields struct {
     FirstName      string
     LastName       string
@@ -736,20 +733,25 @@ type UserMutableFields struct {
     Building       *string
 }
 
+// 入力 DTO。
 type CreateUserParamsDTO struct {
-    UserID   uuid.UUID
-    Password string
+    UserID uuid.UUID
 
     UserMutableFields
 }
 
+// 出力 DTO。`View` サフィックスが、呼び出し側へ返す射影であることを示す。
+type UserView struct {
+    UserID uuid.UUID
+
+    UserMutableFields
+}
 
 // usecaseという名称は固定
 type usecase struct {
     tracer    observability.LayerTracer
     txm       tx.Manager
     clock     clock.Clock
-    hasher    security.Hasher
     userRepo  user.Repository
     pftRepo   prefecture.Repository
     userQS    query.UserQueryService
@@ -758,9 +760,9 @@ type usecase struct {
 // Usecase は、ユーザーに関するユースケースを定義します。
 type Usecase interface {
     // ListUsersByKeyword は、ユーザー一覧を取得します。
-    ListUsersByKeyword(ctx context.Context, params *GetParamsDTO, page *paging.Page) ([]MutableFields, error)
+    ListUsersByKeyword(ctx context.Context, params *ListUsersByKeywordParams, page *paging.Page) ([]UserView, error)
     // CreateUser は、ユーザーを作成します。
-    CreateUser(ctx context.Context, dto *CreateParamsDTO) (MutableFields, error)
+    CreateUser(ctx context.Context, dto *CreateUserParamsDTO) (UserView, error)
     // CountUsers は、ユーザーの総件数を返します。
     CountUsers(ctx context.Context, active *bool) (int64, error)
 }
@@ -770,7 +772,6 @@ func New(
     tf observability.TracerFactory,
     txm tx.Manager,
     clock clock.Clock,
-    hasher security.Hasher,
     userRepo user.Repository,
     prefectureRepo prefecture.Repository,
     userQueryService query.UserQueryService,
@@ -779,14 +780,13 @@ func New(
         tracer:    tf.Usecase(),
         txm:       txm,
         clock:     clock,
-        hasher:    hasher,
         userRepo:  userRepo,
         pftRepo:   prefectureRepo,
         userQS:    userQueryService,
     }
 }
 
-func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKeywordParams, page paging.Page) ([]DTO, error) {
+func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKeywordParams, page paging.Page) ([]UserView, error) {
     // Spanの開始・終了呼び出して設定
     ctx, endSpan := u.tracer.Start(ctx)
     defer endSpan()
@@ -807,7 +807,6 @@ func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKey
     if err != nil {
         return nil, err
     }
-
 
     // オプション: observability.RunWithSpanで処理単位のspanを作成
     // 可観測性を高めるために、Domain層の処理もspanとして切り出すことができます。
@@ -842,12 +841,12 @@ func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKey
     }
 
     // ctxは、後続でobservability.RunWithSpanを使わない場合は不要
-    _, dtos, err := observability.RunWithSpan(
-        ctx, u.tracer, "usecase", "user", "buildDTOs", func(ctx context.Context) ([]UserMutableFields, error) {
+    _, views, err := observability.RunWithSpan(
+        ctx, u.tracer, "usecase", "user", "buildViews", func(ctx context.Context) ([]UserView, error) {
             // 結果をDTOに詰め替え
-            dtos := make([]UserMutableFields, len(us))
+            views := make([]UserView, len(us))
             for i, u := range us {
-                dtos[i] = UserMutableFields{
+                views[i] = UserView{
                     FirstName:  u.FirstName(),
                     LastName:   u.LastName(),
                     Email:      u.Email(),
@@ -859,40 +858,29 @@ func (u *usecase) ListUsersByKeyword(ctx context.Context, params *ListUsersByKey
                 }
                 // 都道府県名をマップから取得してセット
                 if p, ok := prefectureMap[us[i].PrefectureID()]; ok {
-                    dtos[i].PrefectureName = p.Name()
+                    views[i].PrefectureName = p.Name()
                 }
             }
-            return dtos, nil
+            return views, nil
         })
 
-    return dtos, err
+    return views, err
 }
 
 // CreateUser は、ユーザーを作成するユースケースです。
-func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (MutableFields, error) {
+func (u *usecase) CreateUser(ctx context.Context, dto *CreateUserParamsDTO) (UserView, error) {
     ctx, endSpan := u.tracer.Start(ctx)
     defer endSpan()
 
     // 時刻の取得はUsecase層で一元管理するルールに従う
     now := u.clock.Now()
-    // パスワードのハッシュ化などはDomain層で定義したルールを呼び出す
-    rawPassword, err := user.NewRawPassword(dto.RawPassword)
-    if err != nil {
-        return MutableFields{}, err
-    }
-
-    // パスワードのハッシュ化はセキュリティのルールなので、Boundaryで提供されるhasherを使う
-    passwordHash, err := u.hasher.Hash(rawPassword.Value())
-    if err != nil {
-        return MutableFields{}, err
-    }
 
     var (
         userEntity *user.User
         pftDomain  *prefecture.Entity
     )
     // トランザクションの開始と終了をTxManagerに任せる
-    err = u.txm.Do(ctx, func(ctx context.Context) error {
+    err := u.txm.Do(ctx, func(ctx context.Context) error {
         var err error
         pftDomain, err = u.pftRepo.FindByName(ctx, dto.PrefectureName)
         if err != nil {
@@ -903,7 +891,6 @@ func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (Mutable
             dto.UserID,
             dto.FirstName,
             dto.LastName,
-            passwordHash,
             dto.Email,
             dto.Phone,
             pftDomain.ID(),
@@ -926,10 +913,10 @@ func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (Mutable
         return nil
     })
     if err != nil {
-      return MutableFields{}, err
+      return UserView{}, err
     }
 
-    return MutableFields{
+    return UserView{
       FirstName:      userEntity.FirstName(),
       LastName:       userEntity.LastName(),
       Email:          userEntity.Email(),
@@ -941,6 +928,5 @@ func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (Mutable
       Building:       userEntity.Building(),
     }, nil
 }
-
 
 ```

@@ -1,0 +1,422 @@
+name: OSV Scan
+
+# Cross-ecosystem dependency scan against the OSV database (Go modules + npm lockfiles).
+# Complements the Go-only scanners: govulncheck (reachability) and Trivy FS (Go deps).
+#
+# Developer-facing half of the double gate: it reports (code scanning + PR comment) and
+# never fails, the same shape trivy-fs.yaml has. Blocking is osv-release-gate.yaml's job,
+# on PRs into a deploy branch — where a finding is a promotion decision rather than noise
+# a feature PR happened to inherit.
+on:
+  push:
+    branches:
+      - develop
+      - staging
+      - production
+      - 'release/*'
+    paths:
+      - '.github/workflows/osv-scanner.yaml'
+      - 'go.mod'
+      - 'go.sum'
+      - 'vendor/**'
+      - 'scripts/pnpm-lock.yaml'
+      - 'docs-viewer/pnpm-lock.yaml'
+  pull_request:
+  schedule:
+    - cron: '45 0 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # The pull-request half of this workflow's trigger, moved out of `on:` and into a job. A `paths:`
+  # filter that excludes a pull request starts no run at all, and a required context that is never
+  # reported is not read as "not applicable" — the merge waits with nothing to wait for. A job the
+  # filter skips reports `skipped` instead, which a required check counts as success.
+  # The `push` filter above is left where it is: that half reports no context, so it blocks nothing.
+  changes:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      relevant: ${{ steps.filter.outputs.relevant }}
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+
+      - name: Filter the changed paths
+        id: filter
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
+        with:
+          filters: |
+            relevant:
+              - '.github/workflows/osv-scanner.yaml'
+              - 'go.mod'
+              - 'go.sum'
+              - 'vendor/**'
+              - 'scripts/pnpm-lock.yaml'
+              - 'docs-viewer/pnpm-lock.yaml'
+
+  osv-scanner:
+    needs: changes
+    # Fail open, as on `osv-diff` below. This job reports no required context, so a skip here only
+    # saves a scan the pull request could not have changed the result of.
+    if: ${{ !cancelled() && needs.changes.outputs.relevant != 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+      pull-requests: write
+    outputs:
+      gating: ${{ steps.scan.outputs.gating }}
+      detail: ${{ steps.detail.outputs.markdown }}
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+            api.osv.dev:443
+            api.deps.dev:443
+            osv-vulnerabilities.storage.googleapis.com:443
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
+        with:
+          tools: aqua:google/osv-scanner
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # The scanner version is declared in mise.toml (SSOT) — never pinned here.
+
+      - name: Scan with osv-scanner
+        id: scan
+        uses: ./.github/actions/osv-scan
+
+      - name: Run osv-scanner (SARIF)
+        if: always()
+        shell: bash
+        run: |
+          set -uo pipefail
+          set +e
+          osv-scanner scan source -r . --format sarif --output-file osv-scanner.sarif
+          code=$?
+          set -e
+
+          if [ "${code}" -ne 0 ] && [ "${code}" -ne 1 ]; then
+            echo "::error::osv-scanner exited with ${code}"
+            exit "${code}"
+          fi
+
+          # osv-scanner emits absolute file:// URIs; code scanning needs paths
+          # relative to the repository root to annotate the manifest files.
+          jq --arg prefix "file://${GITHUB_WORKSPACE}/" '
+            .runs[]?.results[]?.locations[]?.physicalLocation.artifactLocation.uri |= ltrimstr($prefix)
+          ' osv-scanner.sarif > osv-scanner.sarif.tmp
+          mv osv-scanner.sarif.tmp osv-scanner.sarif
+
+      # Gating findings only. The reported-only ones are what the promotion gate has
+      # already decided are acceptable to carry, so pushing them to a human weekly
+      # would report a standing state rather than an event.
+      - name: Build detection detail
+        id: detail
+        if: ${{ steps.scan.outputs.gating != '0' }}
+        uses: ./.github/actions/notify-detail
+        with:
+          summary-file: osv-gating.md
+
+      - name: Upload osv-scanner report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: osv-scanner
+          path: |
+            osv-scanner.json
+            osv-scanner.sarif
+            osv-scanner.log
+            osv-findings.json
+            osv-scanner-summary.md
+
+      - name: Comment OSV Scan result on PR
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- osv-scanner-result -->'
+          status: ${{ steps.scan.outputs.status }}
+          title: "${{ steps.scan.outputs.title || '## ⚠️ OSV Scan: CUT OFF (no result produced)' }}"
+          body-file: osv-scanner-summary.md
+          details-summary: '📄 Summary'
+
+      - name: Upload osv-scanner SARIF to code scanning
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
+        with:
+          sarif_file: osv-scanner.sarif
+          category: osv-scanner
+
+  # Report-only by design (blocking is osv-release-gate.yaml's job), so a finding
+  # leaves this job green and the failure notification below can never fire for one.
+  # On a PR the finding is already in a comment addressed to the author; on the weekly
+  # run nobody is watching, and a finding there means a newly published advisory now
+  # blocks the next promotion of code that has not changed.
+  notify-detection:
+    needs: osv-scanner
+    if: ${{ github.event_name == 'schedule' && needs.osv-scanner.outputs.gating != '' && needs.osv-scanner.outputs.gating != '0' }}
+    uses: ./.github/workflows/notify.yaml
+    with:
+      detected: OSV Scan found ${{ needs.osv-scanner.outputs.gating }} promotion-blocking vulnerabilities
+      details: ${{ needs.osv-scanner.outputs.detail }}
+    secrets:
+      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # See README.md § Notification triggers (why only scheduled runs notify, and why cancelled counts).
+  notify-failure:
+    needs: osv-scanner
+    if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.osv-scanner.result) }}
+    uses: ./.github/workflows/notify.yaml
+    with:
+      failed-job: osv-scanner
+    secrets:
+      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Whether this PR ADDS a vulnerable dependency, as opposed to inheriting one.
+  # The job above reports the whole tree and defers blocking to osv-release-gate;
+  # this one blocks immediately, because a vulnerability the PR itself introduces is
+  # the author's to answer for. It is the GHAS-independent equivalent of
+  # dependency-review.yaml.
+  #
+  # No severity or fixability filter on purpose: the release gate needs a threshold
+  # because it judges an inherited backlog, whereas here the question is only
+  # "did this change add something that was not there before".
+  #
+  # The normalizing jq in .github/actions/osv-scan is deliberately NOT reused — it
+  # exists to apply the severity policy, and this gate has none. A set difference
+  # over (package, advisory) pairs is the whole verdict.
+  osv-diff:
+    needs: changes
+    # Fail open. `relevant` is empty wherever the filter reached no verdict — skipped on a
+    # non-pull-request event, or failed outright — and an empty value is not `false`, so the work
+    # runs and reports what it finds. Skipping there would hand the required context a green it
+    # never earned, and a broken filter is exactly when that matters.
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.changes.outputs.relevant != 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+            api.osv.dev:443
+            api.deps.dev:443
+            osv-vulnerabilities.storage.googleapis.com:443
+
+      # fetch-depth: 0 so the base commit is present locally; the base tree is then
+      # materialized with git worktree rather than a second actions/checkout, which
+      # can only place a tree inside the workspace where the head scan would walk it.
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
+        with:
+          tools: aqua:google/osv-scanner
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Scan both trees
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+
+          # Resolved here, in the workspace, and invoked by absolute path below.
+          # mise reads its config from the working directory, so letting the base
+          # worktree resolve its own shim would run whatever version that commit
+          # pinned — and a set difference between two scanner versions reports
+          # version drift as "newly introduced".
+          OSV_SCANNER="$(mise which osv-scanner)"
+
+          scan() {
+            local dir="$1" out="$2" code=0
+            (cd "${dir}" && "${OSV_SCANNER}" scan source -r . --format json --output-file "${out}") || code=$?
+            if [ "${code}" -ne 0 ] && [ "${code}" -ne 1 ]; then
+              echo "::error::osv-scanner exited with ${code} while scanning ${dir}"
+              exit "${code}"
+            fi
+          }
+
+          git worktree add --detach "${RUNNER_TEMP}/osv-base" "${BASE_SHA}"
+
+          scan "${GITHUB_WORKSPACE}" "${GITHUB_WORKSPACE}/osv-head.json"
+          scan "${RUNNER_TEMP}/osv-base" "${GITHUB_WORKSPACE}/osv-base.json"
+        shell: bash
+
+      - name: Diff the two finding sets
+        id: diff
+        run: |
+          set -euo pipefail
+
+          # One key per (package, advisory). Version is excluded on purpose: bumping
+          # a package to another still-vulnerable version is not a NEW advisory, and
+          # the reporting job already covers it.
+          keys() {
+            jq -r '
+              [ .results[]?
+                | .packages[]?
+                | .package.name as $name
+                | .vulnerabilities[]?
+                | "\($name)\t\(.id)"
+              ] | unique | .[]
+            ' "$1"
+          }
+
+          keys osv-head.json > head.keys
+          keys osv-base.json > base.keys
+
+          # comm needs sorted input; jq's `unique` already sorts, but LC_ALL is
+          # pinned so the shell and jq agree on collation.
+          LC_ALL=C comm -23 head.keys base.keys > introduced.keys
+
+          COUNT=$(wc -l < introduced.keys | tr -d ' ')
+          echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
+
+          if [ "${COUNT}" -eq 0 ]; then
+            echo "title=## ✅ OSV Diff: PASS (no newly introduced advisory)" >> "$GITHUB_OUTPUT"
+            echo "This PR introduces no dependency advisory that the base branch did not already have." > osv-diff-summary.md
+          else
+            echo "title=## 🚨 OSV Diff: ${COUNT} newly introduced advisory(ies)" >> "$GITHUB_OUTPUT"
+            {
+              echo "Advisories present in this PR but not on the base branch:"
+              echo
+              while IFS=$'\t' read -r name id; do
+                echo "- \`${name}\` — [${id}](https://osv.dev/vulnerability/${id})"
+              done < introduced.keys
+            } > osv-diff-summary.md
+          fi
+
+          cat osv-diff-summary.md >> "${GITHUB_STEP_SUMMARY}"
+        shell: bash
+
+      - name: Upload OSV diff report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: osv-diff
+          path: |
+            osv-head.json
+            osv-base.json
+            osv-diff-summary.md
+
+      - name: Comment OSV diff result on PR
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- osv-diff-result -->'
+          status: "${{ steps.diff.outputs.count == '0' && 'success' || 'introduced' }}"
+          title: "${{ steps.diff.outputs.title || '## ⚠️ OSV Diff: CUT OFF (no result produced)' }}"
+          body-file: osv-diff-summary.md
+          details-summary: '📄 Summary'
+
+      - name: Fail if the PR introduces an advisory
+        if: always() && steps.diff.outputs.count != '0'
+        run: exit 1

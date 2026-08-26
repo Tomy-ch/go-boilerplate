@@ -2,7 +2,7 @@
 
 English | [日本語](README.ja.md)
 
-A bounded-retry behavior layer that *consumes* a failure classification: `classify → bounded attempts → backoff + full jitter → deadline-aware`. Implemented once and shared by callers such as transaction retries and resilient outbound HTTP.
+A bounded-retry behavior layer that *consumes* a failure classification: `classify → bounded attempts → backoff + full jitter → deadline-aware`. Implemented once and shared by any caller that classifies its own failures as retryable.
 
 ## Why this package
 
@@ -17,14 +17,14 @@ A bounded-retry behavior layer that *consumes* a failure classification: `classi
 |`Do(ctx, sleeper, policy, isRetryable, fn)`|Run `fn` with bounded retries; retry while `isRetryable(err)` holds, sleeping `policy.Backoff` (+ full jitter) between attempts|
 |`Full(d)`|Return a uniform random duration in `[0, d]` (full jitter); `0` when `d <= 0`|
 |`Policy` (struct)|`MaxAttempts` + `Backoff` (a `func(attempt int) time.Duration`; `nil` means no wait)|
-|`Sleeper` (interface)|`Sleep(ctx, d) error` — wait abstraction; structurally satisfied by `internal/usecase/boundary/clock.Sleeper`|
+|`Sleeper` (interface)|`Sleep(ctx, d) error` — wait abstraction, satisfied structurally by any caller's own sleeper type|
 
 ## Notes
 
 - `Do` runs `fn` at least once (`MaxAttempts < 1` is treated as `1`) and returns the last observed error (`nil` on success).
 - `isRetryable` is only consulted for a non-nil `fn` error.
 - When `sleeper.Sleep` returns an error (ctx canceled / deadline), `Do` returns the **preceding `fn` error**, not the sleep error — the original retryable failure is surfaced to the caller.
-- `Sleeper` is defined locally so `pkg/` stays free of `internal/` dependencies; the boundary `clock.Sleeper` satisfies it structurally.
+- `Sleeper` is defined locally so `pkg/` stays free of `internal/` dependencies; a caller's own sleeper type satisfies it structurally without importing this package's interface.
 
 ## Wraps
 

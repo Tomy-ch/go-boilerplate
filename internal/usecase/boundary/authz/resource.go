@@ -13,8 +13,8 @@ type Resource struct {
 }
 
 // NewResource は、種別と所有者 ID から Resource を生成します。
-// ownerID は防御的にコピーして保持するため、呼出元が渡したポインタの後続変更や
-// スタック寿命に Resource は影響されません（Authorize が非同期実装でも安全）。
+// ownerID は防御的にコピーして保持するため、呼出元が渡したポインタを事後に変更しても
+// Resource の所有者 ID は変化しません。
 func NewResource(kind string, ownerID *uuid.UUID) *Resource {
 	return &Resource{kind: kind, ownerID: ptr.Copy(ownerID)}
 }

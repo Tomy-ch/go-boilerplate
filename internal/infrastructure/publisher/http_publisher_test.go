@@ -9,7 +9,7 @@ import (
 	"go-boilerplate/internal/infrastructure/publisher"
 	"go-boilerplate/internal/observability"
 	pubbndry "go-boilerplate/internal/usecase/boundary/publisher"
-	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
@@ -17,9 +17,13 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
+// spacedAuthorization は、前後空白付きの機微ヘッダ名です。map リテラルのキーに空白を書くと
+// gocritic が誤記として弾くため、定数を経由して与えます。
+const spacedAuthorization = " Authorization"
+
 const testEndpoint = "https://receiver.example.com/events"
 
-func TestNew(t *testing.T) {
+func TestNewHTTP(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -31,7 +35,7 @@ func TestNew(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			client := mock_httpclient.NewMockClient(ctrl)
 
-			p := publisher.New(publisher.Endpoint(testEndpoint), client, observability.NewNoopTracerFactory(t))
+			p := publisher.NewHTTP(publisher.Endpoint(testEndpoint), client, observability.NewNoopTracerFactory(t))
 
 			assert.NotNil(t, p)
 		})
@@ -48,7 +52,7 @@ func Test_httpPublisher_Publish(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			client := mock_httpclient.NewMockClient(ctrl)
-			msgID := uuid.NewTestFromSalt(t, "msg")
+			msgID := uuidtestkit.NewTestFromSalt(t, "msg")
 
 			client.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
 				func(_ context.Context, req *httpclient.Request) (*httpclient.Response, error) {
@@ -62,12 +66,50 @@ func Test_httpPublisher_Publish(t *testing.T) {
 					return &httpclient.Response{StatusCode: 200}, nil
 				})
 
-			err := publisher.New(publisher.Endpoint(testEndpoint), client, observability.NewNoopTracerFactory(t)).
+			err := publisher.NewHTTP(publisher.Endpoint(testEndpoint), client, observability.NewNoopTracerFactory(t)).
 				Publish(context.Background(), pubbndry.Message{
 					MessageID: msgID,
 					EventType: "e.v1",
 					Payload:   []byte(`{"v":1}`),
 					Headers:   map[string]string{"traceparent": "00-x"},
+				})
+
+			require.NoError(t, err)
+		})
+
+		t.Run("機微ヘッダ(Authorization/Cookie等)は前後空白付きでも egress で落とし通常ヘッダは伝搬する", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			client := mock_httpclient.NewMockClient(ctrl)
+			msgID := uuidtestkit.NewTestFromSalt(t, "msg")
+
+			client.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, req *httpclient.Request) (*httpclient.Response, error) {
+					assert.NotContains(t, req.Header(), "Authorization")
+					assert.NotContains(t, req.Header(), "authorization")
+					assert.NotContains(t, req.Header(), "Cookie")
+					assert.NotContains(t, req.Header(), "Proxy-Authorization")
+					assert.NotContains(t, req.Header(), "Set-Cookie")
+					assert.NotContains(t, req.Header(), spacedAuthorization)
+					assert.Equal(t, []string{"00-x"}, req.Header()["traceparent"])
+					return &httpclient.Response{StatusCode: 200}, nil
+				})
+
+			headers := map[string]string{
+				"traceparent":         "00-x",
+				"Authorization":       "Bearer secret",
+				"Cookie":              "session=abc",
+				"Proxy-Authorization": "Basic zzz",
+				"Set-Cookie":          "a=b",
+			}
+			headers[spacedAuthorization] = "Bearer secret"
+
+			err := publisher.NewHTTP(publisher.Endpoint(testEndpoint), client, observability.NewNoopTracerFactory(t)).
+				Publish(context.Background(), pubbndry.Message{
+					MessageID: msgID,
+					EventType: "e.v1",
+					Payload:   []byte(`{"v":1}`),
+					Headers:   headers,
 				})
 
 			require.NoError(t, err)
@@ -85,9 +127,9 @@ func Test_httpPublisher_Publish(t *testing.T) {
 
 			client.EXPECT().Do(gomock.Any(), gomock.Any()).Return(nil, wantErr)
 
-			err := publisher.New(publisher.Endpoint(testEndpoint), client, observability.NewNoopTracerFactory(t)).
+			err := publisher.NewHTTP(publisher.Endpoint(testEndpoint), client, observability.NewNoopTracerFactory(t)).
 				Publish(context.Background(), pubbndry.Message{
-					MessageID: uuid.NewTestFromSalt(t, "msg"),
+					MessageID: uuidtestkit.NewTestFromSalt(t, "msg"),
 					EventType: "e.v1",
 					Payload:   []byte(`{}`),
 				})
@@ -109,4 +151,22 @@ func TestNewDownstreamProfile(t *testing.T) {
 	// 送信先は外部エンドポイントのため private/loopback 宛ては拒否する。
 	assert.False(t, p.Profile.AllowPrivateNetwork)
 	assert.Equal(t, httpclient.Downstream("outbox"), p.Name)
+}
+
+func TestRequiredDownstream(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("outbox downstream を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, httpclient.Downstream("outbox"), publisher.RequiredDownstream())
+		})
+
+		t.Run("NewDownstreamProfile が登録する profile 名と一致する", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, publisher.NewDownstreamProfile().Name, publisher.RequiredDownstream())
+		})
+	})
 }

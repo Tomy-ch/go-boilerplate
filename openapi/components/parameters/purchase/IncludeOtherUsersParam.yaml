@@ -1,0 +1,13 @@
+name: includeOtherUsers
+in: query
+description: |
+  他ユーザーの購入も母集団に含める場合は true を指定します。既定は false で、
+  指定しない場合の母集団は認証主体（自分）の購入のみです。
+  true を指定できるのは管理者（admin）だけで、管理者でなければ 403 で拒否します。
+  並び順・ページ送りの規則は母集団によらず同一（注文日時の降順）です。
+  ページ送りの間は同じ指定を渡してください（母集団が変わると keyset の連続性は保証されません）。
+required: false
+schema:
+  type: boolean
+  default: false
+  example: false

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Canonical Document Sync"
+  short_description: "英語正典と日本語訳のMarkdownペアを安全に同期する"
+  default_prompt: "$canonicalize-doc を使い、このMarkdownの英語正典と日本語訳を同期して。"

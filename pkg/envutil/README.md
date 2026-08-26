@@ -7,15 +7,15 @@ Small utilities for working with environment variables.
 ## Usage
 
 ```go
-restore, err := envutil.Override("DB_NAME", "test")
+restore, err := envutil.Override("SOME_KEY", "value")
 if err != nil {
     return err
 }
 defer restore()
-// ... read config while DB_NAME is "test" ...
+// ... read config while SOME_KEY is "value" ...
 ```
 
 ## Notes
 
-- Useful for swapping a single env var (e.g. `DB_NAME`) only during config loading, avoiding lingering global state and keeping the operation idempotent.
+- Useful for swapping a single env var only during config loading, avoiding lingering global state and keeping the operation idempotent.
 - `pkg/` may not depend on `internal/` or other `pkg/` packages except `pkg/xerrors` (enforced by depguard); this package uses `os` and `pkg/xerrors`.

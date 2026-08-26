@@ -43,7 +43,6 @@ func TestRegisterRelayHooks(t *testing.T) {
 				observability.NewNoopTracerFactory(t),
 				outboxengine.Settings{BatchSize: 100, PollInterval: time.Second, ErrorBackoff: time.Second})
 
-			// RegisterRelayHooks が登録する start / stop 関数を生成 mock 経由で捕捉する。
 			var start, stop func(context.Context) error
 			reg := mock_lifecycle.NewMockRegistrar(ctrl)
 			reg.EXPECT().RegisterStart(gomock.AssignableToTypeOf(start)).

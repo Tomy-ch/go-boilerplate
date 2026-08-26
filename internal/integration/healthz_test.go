@@ -8,7 +8,7 @@ import (
 	"go-boilerplate/internal/controller/handler/healthz"
 	"go-boilerplate/internal/observability"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 func TestHealthz_Integration(t *testing.T) {

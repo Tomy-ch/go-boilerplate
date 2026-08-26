@@ -23,7 +23,8 @@ type GCMetrics interface {
 
 // GCUsecase は、TTL 失効した冪等性キーを掃除するユースケースです。
 type GCUsecase interface {
-	// SweepExpired は、失効行を batchSize 件ずつ削除し、合計削除件数を返します。
+	// SweepExpired は、失効したエントリを batchSize 件ずつ削除し、合計削除件数を返します。
+	// エラーを返す場合もコミット済みの件数を返します（README の GC / batch sweeps）。
 	SweepExpired(ctx context.Context, batchSize int32) (int64, error)
 }
 
@@ -41,7 +42,6 @@ func NewGC(store idempotencybndry.Store, clk clock.Clock, metrics GCMetrics) GCU
 	return &gcUsecase{store: store, clock: clk, metricsImpl: metrics}
 }
 
-// SweepExpired は、失効行を batchSize 件ずつ削除し、合計削除件数を返します。
 func (g *gcUsecase) SweepExpired(ctx context.Context, batchSize int32) (int64, error) {
 	if batchSize <= 0 {
 		batchSize = DefaultGCBatchSize
@@ -59,7 +59,6 @@ func (g *gcUsecase) SweepExpired(ctx context.Context, batchSize int32) (int64, e
 			g.metrics().IncExpiredCleanup(ctx, deleted)
 		}
 		total += deleted
-		// バッチが満たなかった = もう失効行は無い。
 		if deleted < int64(batchSize) {
 			return total, nil
 		}

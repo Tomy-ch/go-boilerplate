@@ -10,6 +10,7 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -44,7 +45,7 @@ func Test_repository_FindByID(t *testing.T) {
 		t.Run("存在しないIDの場合_NotFoundが返る", func(t *testing.T) {
 			t.Parallel()
 			txm.WithinTx(func(ctx context.Context) {
-				missing := uuid.NewTestFromSalt(t, "missing-user")
+				missing := uuidtestkit.NewTestFromSalt(t, "missing-user")
 				_, err := repo.FindByID(ctx, missing)
 				require.ErrorIs(t, err, apperror.ErrNotFound)
 			})
@@ -75,8 +76,17 @@ func Test_repository_Update(t *testing.T) {
 				u, err := repo.FindByID(ctx, firstID)
 				require.NoError(t, err)
 
-				err = u.UpdateProfile("UpdatedFirst", u.LastName(), u.Email(), u.Phone(),
-					u.PrefectureID(), u.City(), u.Street(), u.Building(), u.PostalCode(), time.Now())
+				err = u.UpdateProfile(user.Profile{
+					FirstName:    "UpdatedFirst",
+					LastName:     u.LastName(),
+					Email:        u.Email(),
+					Phone:        u.Phone(),
+					PrefectureID: u.PrefectureID(),
+					City:         u.City(),
+					Street:       u.Street(),
+					Building:     u.Building(),
+					PostalCode:   u.PostalCode(),
+				}, time.Now())
 				require.NoError(t, err)
 				require.NoError(t, repo.Update(ctx, u))
 
@@ -109,8 +119,17 @@ func Test_repository_Update(t *testing.T) {
 				require.NoError(t, err)
 
 				// 別ユーザーのメールアドレスへ更新 → unique 制約違反
-				err = target.UpdateProfile(target.FirstName(), target.LastName(), other.Email(), target.Phone(),
-					target.PrefectureID(), target.City(), target.Street(), target.Building(), target.PostalCode(), time.Now())
+				err = target.UpdateProfile(user.Profile{
+					FirstName:    target.FirstName(),
+					LastName:     target.LastName(),
+					Email:        other.Email(),
+					Phone:        target.Phone(),
+					PrefectureID: target.PrefectureID(),
+					City:         target.City(),
+					Street:       target.Street(),
+					Building:     target.Building(),
+					PostalCode:   target.PostalCode(),
+				}, time.Now())
 				require.NoError(t, err)
 
 				err = repo.Update(ctx, target)
@@ -125,11 +144,20 @@ func Test_repository_Update(t *testing.T) {
 				now := time.Now()
 
 				// DB に存在しない ID のエンティティ
-				u, err := user.New(
-					uuid.NewTestFromSalt(t, "missing-update"),
-					"X", "Y", "hashed_password", "missing-update@example.com", "09000000000",
-					prefID, "City", "Street", nil, "100-0001", now, now, nil,
-				)
+				u, err := user.New(uuidtestkit.NewTestFromSalt(t, "missing-update"), user.Attributes{
+					Profile: user.Profile{
+						FirstName:    "X",
+						LastName:     "Y",
+						Email:        "missing-update@example.com",
+						Phone:        "09000000000",
+						PrefectureID: prefID,
+						City:         "City",
+						Street:       "Street",
+						PostalCode:   "100-0001",
+					},
+					CreatedAt: now,
+					UpdatedAt: now,
+				})
 				require.NoError(t, err)
 
 				err = repo.Update(ctx, u)

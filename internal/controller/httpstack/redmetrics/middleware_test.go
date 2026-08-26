@@ -6,7 +6,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
 	mock_redmetrics "go-boilerplate/internal/controller/httpstack/redmetrics/mock"
@@ -37,7 +39,7 @@ func serve(t *testing.T, rec Recorder, cfg serveCfg) {
 
 // okHandler は、After フックを発火させるためボディ付きで応答するハンドラを返します。
 func okHandler() echo.HandlerFunc {
-	return func(c echo.Context) error {
+	return func(c *echo.Context) error {
 		return c.String(http.StatusOK, "ok")
 	}
 }
@@ -88,7 +90,7 @@ func TestMiddleware(t *testing.T) {
 			serve(t, rec, serveCfg{
 				registerPath: "/stream",
 				requestPath:  "/stream",
-				handler: func(c echo.Context) error {
+				handler: func(c *echo.Context) error {
 					c.Response().WriteHeader(http.StatusOK)
 					for range 3 {
 						if _, err := c.Response().Write([]byte("chunk")); err != nil {
@@ -110,7 +112,7 @@ func TestMiddleware(t *testing.T) {
 			serve(t, rec, serveCfg{
 				registerPath: "/no-content",
 				requestPath:  "/no-content",
-				handler: func(c echo.Context) error {
+				handler: func(c *echo.Context) error {
 					return c.NoContent(http.StatusNoContent)
 				},
 			})
@@ -125,6 +127,80 @@ func TestMiddleware(t *testing.T) {
 
 			serve(t, rec, serveCfg{
 				requestPath: "/no-such-path",
+			})
+		})
+
+		t.Run("運用系パスは計測対象外", func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("/metricsは計測されない", func(t *testing.T) {
+				t.Parallel()
+
+				ctrl := gomock.NewController(t)
+				rec := mock_redmetrics.NewMockRecorder(ctrl)
+				// Observe の EXPECT を設定しない＝呼び出されれば失敗。
+
+				serve(t, rec, serveCfg{
+					registerPath: "/metrics",
+					requestPath:  "/metrics",
+					handler:      okHandler(),
+				})
+			})
+
+			t.Run("/healthは計測されない", func(t *testing.T) {
+				t.Parallel()
+
+				ctrl := gomock.NewController(t)
+				rec := mock_redmetrics.NewMockRecorder(ctrl)
+				// Observe の EXPECT を設定しない＝呼び出されれば失敗。
+
+				serve(t, rec, serveCfg{
+					registerPath: "/health",
+					requestPath:  "/health",
+					handler:      okHandler(),
+				})
+			})
+
+			t.Run("/healthzは計測されない", func(t *testing.T) {
+				t.Parallel()
+
+				ctrl := gomock.NewController(t)
+				rec := mock_redmetrics.NewMockRecorder(ctrl)
+				// Observe の EXPECT を設定しない＝呼び出されれば失敗。
+
+				serve(t, rec, serveCfg{
+					registerPath: "/healthz",
+					requestPath:  "/healthz",
+					handler:      okHandler(),
+				})
+			})
+
+			t.Run("/readyは計測されない", func(t *testing.T) {
+				t.Parallel()
+
+				ctrl := gomock.NewController(t)
+				rec := mock_redmetrics.NewMockRecorder(ctrl)
+				// Observe の EXPECT を設定しない＝呼び出されれば失敗。
+
+				serve(t, rec, serveCfg{
+					registerPath: "/ready",
+					requestPath:  "/ready",
+					handler:      okHandler(),
+				})
+			})
+
+			t.Run("/versionは計測されない", func(t *testing.T) {
+				t.Parallel()
+
+				ctrl := gomock.NewController(t)
+				rec := mock_redmetrics.NewMockRecorder(ctrl)
+				// Observe の EXPECT を設定しない＝呼び出されれば失敗。
+
+				serve(t, rec, serveCfg{
+					registerPath: "/version",
+					requestPath:  "/version",
+					handler:      okHandler(),
+				})
 			})
 		})
 	})
@@ -142,84 +218,33 @@ func TestMiddleware(t *testing.T) {
 			serve(t, rec, serveCfg{
 				registerPath: "/boom",
 				requestPath:  "/boom",
-				handler: func(_ echo.Context) error {
-					return echo.NewHTTPError(http.StatusInternalServerError)
+				handler: func(_ *echo.Context) error {
+					return echo.NewHTTPError(http.StatusInternalServerError, "")
 				},
 			})
 		})
-	})
 
-	t.Run("運用系パスは計測対象外", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("/metricsは計測されない", func(t *testing.T) {
+		t.Run("レスポンスを取り出せない場合は計測せず素通しする", func(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
 			rec := mock_redmetrics.NewMockRecorder(ctrl)
 			// Observe の EXPECT を設定しない＝呼び出されれば失敗。
 
-			serve(t, rec, serveCfg{
-				registerPath: "/metrics",
-				requestPath:  "/metrics",
-				handler:      okHandler(),
+			e := echo.New()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/boom", nil)
+			c := e.NewContext(req, httptest.NewRecorder())
+			// Echo のレスポンスへ辿れないライタへ差し替える。
+			c.SetResponse(httptest.NewRecorder())
+
+			called := false
+			handler := Middleware(rec)(func(_ *echo.Context) error {
+				called = true
+				return nil
 			})
-		})
 
-		t.Run("/healthは計測されない", func(t *testing.T) {
-			t.Parallel()
-
-			ctrl := gomock.NewController(t)
-			rec := mock_redmetrics.NewMockRecorder(ctrl)
-			// Observe の EXPECT を設定しない＝呼び出されれば失敗。
-
-			serve(t, rec, serveCfg{
-				registerPath: "/health",
-				requestPath:  "/health",
-				handler:      okHandler(),
-			})
-		})
-
-		t.Run("/healthzは計測されない", func(t *testing.T) {
-			t.Parallel()
-
-			ctrl := gomock.NewController(t)
-			rec := mock_redmetrics.NewMockRecorder(ctrl)
-			// Observe の EXPECT を設定しない＝呼び出されれば失敗。
-
-			serve(t, rec, serveCfg{
-				registerPath: "/healthz",
-				requestPath:  "/healthz",
-				handler:      okHandler(),
-			})
-		})
-
-		t.Run("/readyは計測されない", func(t *testing.T) {
-			t.Parallel()
-
-			ctrl := gomock.NewController(t)
-			rec := mock_redmetrics.NewMockRecorder(ctrl)
-			// Observe の EXPECT を設定しない＝呼び出されれば失敗。
-
-			serve(t, rec, serveCfg{
-				registerPath: "/ready",
-				requestPath:  "/ready",
-				handler:      okHandler(),
-			})
-		})
-
-		t.Run("/versionは計測されない", func(t *testing.T) {
-			t.Parallel()
-
-			ctrl := gomock.NewController(t)
-			rec := mock_redmetrics.NewMockRecorder(ctrl)
-			// Observe の EXPECT を設定しない＝呼び出されれば失敗。
-
-			serve(t, rec, serveCfg{
-				registerPath: "/version",
-				requestPath:  "/version",
-				handler:      okHandler(),
-			})
+			require.NoError(t, handler(c))
+			assert.True(t, called, "計測できなくても後続ハンドラは実行される")
 		})
 	})
 }

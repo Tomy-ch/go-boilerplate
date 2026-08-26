@@ -2,13 +2,6 @@ name: Go Lint
 
 on:
   pull_request:
-    paths:
-      - '.github/workflows/go-lint.yaml'
-      - '**/*.go'
-      - 'go.mod'
-      - 'go.sum'
-      - '.golangci.yaml'
-      - '.golangci-full.yaml'
 
 permissions:
   contents: read
@@ -18,14 +11,122 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  go-lint:
+  # The pull-request half of this workflow's trigger, moved out of `on:` and into a job. A `paths:`
+  # filter that excludes a pull request starts no run at all, and a required context that is never
+  # reported is not read as "not applicable" — the merge waits with nothing to wait for. A job the
+  # filter skips reports `skipped` instead, which a required check counts as success.
+  changes:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      relevant: ${{ steps.filter.outputs.relevant }}
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+
+      - name: Filter the changed paths
+        id: filter
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
+        with:
+          filters: |
+            relevant:
+              - '.github/workflows/go-lint.yaml'
+              - '**/*.go'
+              - 'go.mod'
+              - 'go.sum'
+              - '.golangci.yaml'
+              - '.golangci-full.yaml'
+              - 'makefile'
+              - '.makefiles/go/golangci-lint.mk'
+
+  go-lint:
+    needs: changes
+    # Fail open. `relevant` is empty wherever the filter reached no verdict — skipped on a
+    # non-pull-request event, or failed outright — and an empty value is not `false`, so the work
+    # runs and reports what it finds. Skipping there would hand the required context a green it
+    # never earned, and a broken filter is exactly when that matters.
+    if: ${{ !cancelled() && needs.changes.outputs.relevant != 'false' }}
+    runs-on: ubuntu-latest
+    # The only cutoff for this job: golangci-lint itself runs with its timeout disabled.
+    # Measured setup ~2-4m + lint ~2.5m, so 30m leaves room for the repository to grow.
+    timeout-minutes: 30
     permissions:
       contents: read
       pull-requests: write
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+            docker.io:443
+            index.docker.io:443
+            registry-1.docker.io:443
+            auth.docker.io:443
+            *.docker.io:443
+            production.cloudflare.docker.com:443
+            production.cloudfront.docker.com:443
+            mirror.gcr.io:443
+            ghcr.io:443
+            pkg-containers.githubusercontent.com:443
+            dl-cdn.alpinelinux.org:443
+            dl-cdn.alpinelinux.org:80
+            deb.debian.org:443
+            deb.debian.org:80
+            security.debian.org:443
+            security.debian.org:80
+
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
@@ -33,15 +134,11 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.6.0
-          install: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Install golangci-lint
-        run: mise install golangci-lint
+          tools: golangci-lint
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check Go / golangci-lint version
         run: |
@@ -54,10 +151,9 @@ jobs:
         run: |
           set +e
 
-          golangci-lint run --config=.golangci-full.yaml \
-            --output.text.print-issued-lines=true \
-            --output.text.print-linter-name=true \
-            2>&1 | tee /tmp/golangci-lint.log
+          # Go through make so the timeout budget lives in one place (see timeout-minutes above).
+          # print-issued-lines / print-linter-name default to true in golangci-lint v2.
+          make lint GOLANGCI_LINT_TIMEOUT=0 2>&1 | tee /tmp/golangci-lint.log
 
           code=${PIPESTATUS[0]}
 
@@ -74,21 +170,31 @@ jobs:
           exit 0
 
       - name: Comment Go lint result on PR
-        if: github.event_name == 'pull_request'
+        # always() is needed for the timeout case: a plain `if:` is implicitly `success() &&`,
+        # so a cut-off job would skip this step and leave the partial log unreachable.
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- golangci-lint-result -->'
-          title: ${{ steps.golangci.outputs.title }}
+          status: ${{ steps.golangci.outputs.status }}
+          title: "${{ steps.golangci.outputs.title || '## ⚠️ Go Lint: CUT OFF (no result produced)' }}"
           body-file: /tmp/golangci-lint.log
           details-summary: 'golangci-lint log'
 
       - name: Fail if golangci-lint failed
         if: always()
         shell: bash
+        env:
+          EXIT_CODE: ${{ steps.golangci.outputs.exit_code }}
         run: |
-          code='${{ steps.golangci.outputs.exit_code }}'
+          code="${EXIT_CODE-}"
+          # Empty means the run never reached its own exit: the job was cut off.
+          if [ -z "$code" ]; then
+            echo "golangci-lint did not finish; the job was cut off (see timeout-minutes)"
+            exit 1
+          fi
           if [ "$code" != "0" ]; then
             echo "golangci-lint failed with exit code $code"
             exit 1

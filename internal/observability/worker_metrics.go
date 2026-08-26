@@ -4,8 +4,6 @@ import (
 	"context"
 
 	"go.opentelemetry.io/otel/metric"
-
-	"go-boilerplate/pkg/xerrors"
 )
 
 // workerMeterName は、worker engine 計装の meter 名です。
@@ -22,12 +20,6 @@ type WorkerMetrics struct {
 	extendErrors metric.Int64Counter
 	latencyMs    metric.Float64Histogram
 	inFlight     metric.Int64UpDownCounter
-}
-
-// meterBuilder は、計装生成の最初のエラーを保持しつつ宣言的に組み立てます。
-type meterBuilder struct {
-	m   metric.Meter
-	err error
 }
 
 // NewWorkerMetrics は、注入された MeterProvider から worker engine の計装一式を生成します。
@@ -77,39 +69,3 @@ func (m *WorkerMetrics) RecordLatencyMs(ctx context.Context, ms float64) { m.lat
 
 // InFlightAdd は、処理中(受信済み・未確定)のメッセージ数を増減します。
 func (m *WorkerMetrics) InFlightAdd(ctx context.Context, delta int64) { m.inFlight.Add(ctx, delta) }
-
-func (b *meterBuilder) counter(name, desc string) metric.Int64Counter {
-	if b.err != nil {
-		return nil
-	}
-	c, err := b.m.Int64Counter(name, metric.WithDescription(desc))
-	if err != nil {
-		b.err = xerrors.Wrap(err, name)
-		return nil
-	}
-	return c
-}
-
-func (b *meterBuilder) histogram(name, desc string) metric.Float64Histogram {
-	if b.err != nil {
-		return nil
-	}
-	h, err := b.m.Float64Histogram(name, metric.WithDescription(desc), metric.WithUnit("ms"))
-	if err != nil {
-		b.err = xerrors.Wrap(err, name)
-		return nil
-	}
-	return h
-}
-
-func (b *meterBuilder) upDownCounter(name, desc string) metric.Int64UpDownCounter {
-	if b.err != nil {
-		return nil
-	}
-	c, err := b.m.Int64UpDownCounter(name, metric.WithDescription(desc))
-	if err != nil {
-		b.err = xerrors.Wrap(err, name)
-		return nil
-	}
-	return c
-}

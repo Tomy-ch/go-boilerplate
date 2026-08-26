@@ -112,9 +112,6 @@ func TestNew(t *testing.T) {
 	})
 }
 
-// (*Engine).Run は 1 subject = 1 TestXxx の規約に従い単一のテスト関数へ集約している。
-// Run の多数の挙動シナリオは正常系/異常系のサブテストとして束ね、各サブテスト本体は
-// トップレベルのヘルパー関数へ抽出することで本関数の認知的複雑度を閾値未満に保つ。
 func TestEngine_Run(t *testing.T) {
 	t.Parallel()
 

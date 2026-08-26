@@ -26,9 +26,9 @@ var errRollbackForTest = xerrors.New("rollback tx for test")
 
 func emitParams() outboxbndry.EmitParams {
 	return outboxbndry.EmitParams{
-		AggregateType: "Purchase",
+		AggregateType: "Resource",
 		AggregateID:   "p-1",
-		EventType:     "purchase.created.v1",
+		EventType:     "resource.created.v1",
 		Payload:       []byte(`{"v":1}`),
 	}
 }
@@ -121,7 +121,7 @@ func Test_store_ClaimPending(t *testing.T) {
 				require.NoError(t, err)
 				require.Len(t, msgs, 1)
 				assert.Equal(t, msgID, msgs[0].MessageID)
-				assert.Equal(t, "purchase.created.v1", msgs[0].EventType)
+				assert.Equal(t, "resource.created.v1", msgs[0].EventType)
 				assert.JSONEq(t, `{"v":1}`, string(msgs[0].Payload))
 				assert.Equal(t, int32(0), msgs[0].Attempts)
 			})
@@ -165,7 +165,7 @@ func Test_store_ClaimPending(t *testing.T) {
 	})
 }
 
-// Test_store_ClaimPending_concurrentSkipLocked は、ADR-0047 の核である多インスタンス排他
+// Test_store_ClaimPending_concurrentSkipLocked は、ADR-0056 (skip-locked-outbox-relay) の核である多インスタンス排他
 // （FOR UPDATE SKIP LOCKED により別々の並行 tx が同一 pending 行を二重 claim しない）を、
 // 2 コネクション（= 2 tx）を並行させて DB レベルで検証します。
 //

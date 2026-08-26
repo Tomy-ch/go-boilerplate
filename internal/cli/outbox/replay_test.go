@@ -6,6 +6,7 @@ import (
 
 	outboxcli "go-boilerplate/internal/cli/outbox"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
@@ -38,7 +39,7 @@ func TestRunReplayWith(t *testing.T) {
 		t.Run("messageID 指定時は parse して渡す", func(t *testing.T) {
 			t.Parallel()
 
-			want := uuid.NewTestFromSalt(t, "dead")
+			want := uuidtestkit.NewTestFromSalt(t, "dead")
 			var got *uuid.UUID
 			replay := func(_ context.Context, id *uuid.UUID) (int64, error) {
 				got = id

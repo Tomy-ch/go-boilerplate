@@ -1,7 +1,9 @@
 name: keyword
 in: query
-description: 全文検索キーワード
+description: 全文検索キーワード。商品名・商品説明への部分一致で絞り込みます。
 required: false
 schema:
   type: string
+  minLength: 1
+  maxLength: 255
   example: "example keyword"

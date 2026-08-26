@@ -12,9 +12,13 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-// ExpectedDBError は、データベースエラーを表すテスト用のエラーを生成します。
+// errExpectedDB は、テストが注入するデータベースエラーです。
+var errExpectedDB = xerrors.New("database error")
+
+// ExpectedDBError は、データベースエラーを表すテスト用のエラーを返します。
+// 呼び出しごとに同一のエラーを返すため、注入先の検証は errors.Is で行えます。
 func ExpectedDBError() error {
-	return xerrors.New("database error")
+	return errExpectedDB
 }
 
 // NewMockTransactionManager は、テスト用のトランザクションマネージャーを生成します。

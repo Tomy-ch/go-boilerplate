@@ -1,0 +1,388 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>ranking - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package ranking
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/usecase/product/ranking&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package ranking は、商品売上ランキングの参照ユースケースを提供します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#AmountRankingItemView">type AmountRankingItemView</a></dd>
+				
+				
+			
+				
+				<dd><a href="#AmountRankingView">type AmountRankingView</a></dd>
+				
+				
+			
+				
+				<dd><a href="#GetRankingParams">type GetRankingParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#QuantityRankingItemView">type QuantityRankingItemView</a></dd>
+				
+				
+			
+				
+				<dd><a href="#QuantityRankingView">type QuantityRankingView</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Usecase">type Usecase</a></dd>
+				
+					
+					<dd>    <a href="#New">func New(qs query.ProductRankingQueryService, tf observability.TracerFactory) Usecase</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/product/ranking/product_ranking_usecase.go.html">product_ranking_usecase.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="AmountRankingItemView">type <a href="../../../../../src/go-boilerplate/internal/usecase/product/ranking/product_ranking_usecase.go.html?s=2797:2935#L56">AmountRankingItemView</a>
+				<a class="permalink" href="#AmountRankingItemView">¶</a>
+				
+				
+			</h2>
+			<p>AmountRankingItemView は、売上金額ランキング 1 商品分の出力 DTO です。
+SalesAmount は明細金額の合計で、価格スケールの正確な十進量です（決済スケールへ丸めません）。
+
+			</p><pre>type AmountRankingItemView struct {
+<span id="AmountRankingItemView.ProductID"></span>    ProductID   <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="AmountRankingItemView.Name"></span>    Name        <a href="../../../../../builtin/#string">string</a>
+<span id="AmountRankingItemView.Price"></span>    Price       <a href="../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
+<span id="AmountRankingItemView.SalesAmount"></span>    SalesAmount <a href="../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="AmountRankingView">type <a href="../../../../../src/go-boilerplate/internal/usecase/product/ranking/product_ranking_usecase.go.html?s=2393:2565#L49">AmountRankingView</a>
+				<a class="permalink" href="#AmountRankingView">¶</a>
+				
+				
+			</h2>
+			<p>AmountRankingView は、売上金額ランキングのユースケース出力 DTO です。
+
+			</p><pre>type AmountRankingView struct {
+<span id="AmountRankingView.Rankings"></span>    <span class="comment">// Rankings は、売上金額の降順（同額は商品 ID 昇順）で並んだ項目一覧です。</span>
+    Rankings []<a href="#AmountRankingItemView">AmountRankingItemView</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="GetRankingParams">type <a href="../../../../../src/go-boilerplate/internal/usecase/product/ranking/product_ranking_usecase.go.html?s=1418:1717#L26">GetRankingParams</a>
+				<a class="permalink" href="#GetRankingParams">¶</a>
+				
+				
+			</h2>
+			<p>GetRankingParams は、ランキング取得ユースケースの入力パラメータです。
+
+			</p><pre>type GetRankingParams struct {
+<span id="GetRankingParams.Window"></span>    <span class="comment">// Window は、集計対象期間です。ゼロ値は全期間を意味します。</span>
+    Window <a href="../../../../../go-boilerplate/internal/usecase/tools/timewindow/">timewindow</a>.<a href="../../../../../go-boilerplate/internal/usecase/tools/timewindow/#Window">Window</a>
+<span id="GetRankingParams.Limit"></span>    <span class="comment">// Limit は、取得する上位件数です。0 以下は既定値 10 を適用し、100 を超える値は 100 にクランプします。</span>
+    Limit <a href="../../../../../builtin/#int">int</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="QuantityRankingItemView">type <a href="../../../../../src/go-boilerplate/internal/usecase/product/ranking/product_ranking_usecase.go.html?s=2161:2295#L41">QuantityRankingItemView</a>
+				<a class="permalink" href="#QuantityRankingItemView">¶</a>
+				
+				
+			</h2>
+			<p>QuantityRankingItemView は、販売数量ランキング 1 商品分の出力 DTO です。
+Price はサブセント精度を保持する十進量です。
+
+			</p><pre>type QuantityRankingItemView struct {
+<span id="QuantityRankingItemView.ProductID"></span>    ProductID    <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="QuantityRankingItemView.Name"></span>    Name         <a href="../../../../../builtin/#string">string</a>
+<span id="QuantityRankingItemView.Price"></span>    Price        <a href="../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
+<span id="QuantityRankingItemView.SoldQuantity"></span>    SoldQuantity <a href="../../../../../builtin/#int64">int64</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="QuantityRankingView">type <a href="../../../../../src/go-boilerplate/internal/usecase/product/ranking/product_ranking_usecase.go.html?s=1817:1996#L34">QuantityRankingView</a>
+				<a class="permalink" href="#QuantityRankingView">¶</a>
+				
+				
+			</h2>
+			<p>QuantityRankingView は、販売数量ランキングのユースケース出力 DTO です。
+
+			</p><pre>type QuantityRankingView struct {
+<span id="QuantityRankingView.Rankings"></span>    <span class="comment">// Rankings は、販売数量の降順（同数量は商品 ID 昇順）で並んだ項目一覧です。</span>
+    Rankings []<a href="#QuantityRankingItemView">QuantityRankingItemView</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Usecase">type <a href="../../../../../src/go-boilerplate/internal/usecase/product/ranking/product_ranking_usecase.go.html?s=3138:3564#L65">Usecase</a>
+				<a class="permalink" href="#Usecase">¶</a>
+				
+				
+			</h2>
+			<p>Usecase は、商品売上ランキングの参照ユースケースを定義します。
+2 つのメソッドは母集団が同一で、集計する指標と並び順だけが異なります。
+
+			</p><pre>type Usecase interface {
+    <span class="comment">// GetQuantityRanking は、集計期間と件数に基づく販売数量ランキングを返します。</span>
+    GetQuantityRanking(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, params <a href="#GetRankingParams">GetRankingParams</a>) (<a href="#QuantityRankingView">QuantityRankingView</a>, <a href="../../../../../builtin/#error">error</a>)
+    <span class="comment">// GetAmountRanking は、集計期間と件数に基づく売上金額ランキングを返します。</span>
+    GetAmountRanking(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, params <a href="#GetRankingParams">GetRankingParams</a>) (<a href="#AmountRankingView">AmountRankingView</a>, <a href="../../../../../builtin/#error">error</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="New">func <a href="../../../../../src/go-boilerplate/internal/usecase/product/ranking/product_ranking_usecase.go.html?s=3755:3840#L78">New</a>
+					<a class="permalink" href="#New">¶</a>
+					
+					
+				</h3>
+				<pre>func New(qs <a href="../../../../../go-boilerplate/internal/usecase/product/ranking/query/">query</a>.<a href="../../../../../go-boilerplate/internal/usecase/product/ranking/query/#ProductRankingQueryService">ProductRankingQueryService</a>, tf <a href="../../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../../go-boilerplate/internal/observability/#TracerFactory">TracerFactory</a>) <a href="#Usecase">Usecase</a></pre>
+				<p>New は、商品売上ランキングの参照ユースケースを生成します。
+
+				
+				
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+	
+	
+		</p><h2 id="pkg-subdirectories">Subdirectories</h2>
+	
+	<div class="pkg-dir">
+		<table>
+			<tbody><tr>
+				<th class="pkg-name">Name</th>
+				<th class="pkg-synopsis">Synopsis</th>
+			</tr>
+
+			
+			<tr>
+				<td colspan="2"><a href="..">..</a></td>
+			</tr>
+			
+
+			
+		</tbody></table>
+	</div>
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

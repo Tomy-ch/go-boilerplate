@@ -34,10 +34,10 @@
   },
 
   "material-icon-theme.folders.associations": {
-    "testkit": "test",
     "actions": "gh-workflows",
     "internal": "private",
     "apperror": "error",
+    "testkit": "test",
     "ctxhelper": "context",
     "httpstack": "middleware",
     "di": "interceptor",
@@ -49,7 +49,6 @@
     "integration": "test",
     "observability": "meta",
     "usecase": "tasks",
-    "support": "tools",
     "tx": "taskfile",
     "openapi": "api",
     "paths": "routes",

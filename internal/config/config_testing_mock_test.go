@@ -17,6 +17,7 @@ func TestMockConfigForTest(t *testing.T) {
 
 		t.Run("MockConfigForTest は、テスト用の Config を返す", func(t *testing.T) {
 			t.Parallel()
+			//nolint:dupl // Config の全フィールドを網羅比較するための構造体リテラルであり、production 側期待値との重複は不可避
 			expected := &Config{
 				os: OperatingSystemConfig{
 					timezone: expectedOSTimeZone,
@@ -48,7 +49,6 @@ func TestMockConfigForTest(t *testing.T) {
 					tracesExporter:      expectedObservabilityTracesExporter,
 					metricsExporter:     expectedObservabilityMetricsExporter,
 					logsExporter:        expectedObservabilityLogsExporter,
-					otlpEndpoint:        expectedObservabilityOTLPEndpoint,
 					otlpProtocol:        expectedObservabilityOTLPProtocol,
 					maskedDBQueryArgs:   expectedObservabilityMaskedDBQueryArgs,
 					targetStatusCodeSet: expectedObservabilityTargetStatusCodeSet,
@@ -76,25 +76,20 @@ func TestMockConfigForTest(t *testing.T) {
 					maxIdleTime: expectedDBMaxIdleTime,
 				},
 				security: SecurityConfig{
-					allowedOrigins:        strings.Split(expectedAllowedOrigins, ","),
-					cidr:                  expectedCIDR,
-					contentTypeNosniff:    expectedContentTypeNosniff,
-					xFrameOptions:         expectedXFrameOptions,
-					hstsMaxAge:            expectedHSTSMaxAge,
-					hstsExcludeSubdomains: expectedHSTSExcludeSubdomains,
-					hstsPreloadEnabled:    expectedHSTSPreloadEnabled,
-					referrerPolicy:        expectedReferrerPolicy,
-					bcryptCost:            expectedBcryptCost,
+					allowedOrigins:            strings.Split(expectedAllowedOrigins, ","),
+					cidr:                      expectedCIDR,
+					contentTypeNosniff:        expectedContentTypeNosniff,
+					xFrameOptions:             expectedXFrameOptions,
+					hstsMaxAge:                expectedHSTSMaxAge,
+					hstsExcludeSubdomains:     expectedHSTSExcludeSubdomains,
+					hstsPreloadEnabled:        expectedHSTSPreloadEnabled,
+					referrerPolicy:            expectedReferrerPolicy,
+					crossOriginResourcePolicy: expectedCrossOriginResourcePolicy,
 				},
 				secureCookie: SecureCookieConfig{
 					secure:   expectedSecureCookieSecure,
 					sameSite: expectedSecureCookieSameSite,
 					domain:   expectedSecureCookieDomain,
-				},
-				auth: AuthConfig{
-					cookieName:          expectedAuthCookieName,
-					headerName:          expectedAuthHeaderName,
-					allowedHeaderBearer: expectedAuthAllowedHeaderBearer,
 				},
 				worker: WorkerConfig{
 					concurrency:               expectedWorkerConcurrency,
@@ -112,17 +107,65 @@ func TestMockConfigForTest(t *testing.T) {
 					nackBackoffInitial:        expectedWorkerNackBackoffInitial,
 					nackBackoffMax:            expectedWorkerNackBackoffMax,
 				},
+				consumerQueue: ConsumerQueueConfig{
+					region:            expectedConsumerQueueRegion,
+					url:               expectedConsumerQueueURL,
+					dlqURL:            expectedConsumerQueueDLQURL,
+					accessKeyID:       expectedConsumerQueueAccessKeyID,
+					secretAccessKey:   expectedConsumerQueueSecretAccessKey,
+					maxMessages:       expectedConsumerQueueMaxMessagesInt32,
+					waitTimeSeconds:   expectedConsumerQueueWaitTimeSecondsInt32,
+					visibilityTimeout: expectedConsumerQueueVisibilityTimeoutInt32,
+				},
 				outbox: OutboxConfig{
-					endpoint:     expectedOutboxEndpoint,
-					pollInterval: expectedOutboxPollInterval,
-					errorBackoff: expectedOutboxErrorBackoff,
-					batchSize:    expectedOutboxBatchSize,
+					publisher:            expectedOutboxPublisher,
+					pollInterval:         expectedOutboxPollInterval,
+					errorBackoff:         expectedOutboxErrorBackoff,
+					batchSize:            expectedOutboxBatchSize,
+					queueRegion:          expectedOutboxQueueRegion,
+					queueURL:             expectedOutboxQueueURL,
+					queueAccessKeyID:     expectedOutboxQueueAccessKeyID,
+					queueSecretAccessKey: expectedOutboxQueueSecretAccessKey,
+				},
+				auth: AuthConfig{
+					issuer:             expectedAuthIssuer,
+					audience:           expectedAuthAudience,
+					allowedAlgorithms:  expectedAuthAllowedAlgorithms,
+					clockSkew:          expectedAuthClockSkew,
+					jwksCacheTTL:       expectedAuthJWKSCacheTTL,
+					discoveryTTL:       expectedAuthDiscoveryTTL,
+					unknownKidCooldown: expectedAuthUnknownKidCooldown,
+				},
+				objectStorage: ObjectStorageConfig{
+					region:          expectedObjectStorageRegion,
+					bucket:          expectedObjectStorageBucket,
+					accessKeyID:     expectedObjectStorageAccessKeyID,
+					secretAccessKey: expectedObjectStorageSecretAccessKey,
+					usePathStyle:    expectedObjectStorageUsePathStyle,
+					maxUploadBytes:  expectedObjectStorageMaxUploadBytes,
+				},
+				endpoint: EndpointConfig{
+					otlp:          expectedEndpointOTLP,
+					jwks:          expectedEndpointJWKS,
+					objectStorage: expectedEndpointObjectStorage,
+					outbox:        expectedEndpointOutbox,
+					outboxQueue:   expectedEndpointOutboxQueue,
+					consumerQueue: expectedEndpointConsumerQueue,
+					// sample-api:begin
+					exchangeRate: expectedEndpointExchangeRate,
+					// sample-api:end
 				},
 			}
 
 			actual := MockConfigForTest(t)
 
 			assert.Equal(t, expected, actual)
+		})
+
+		t.Run("コネクションプールの最小接続数は 0 で、生成直後の一斉確立が起きない", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Zero(t, NewDBConnectionConfig(MockConfigForTest(t)).MinConns())
 		})
 	})
 }
@@ -166,10 +209,20 @@ func Test_mockLoader(t *testing.T) {
 					TracesExporter:    expectedObservabilityTracesExporter,
 					MetricsExporter:   expectedObservabilityMetricsExporter,
 					LogsExporter:      expectedObservabilityLogsExporter,
-					OTLPEndpoint:      expectedObservabilityOTLPEndpoint,
 					OTLPProtocol:      expectedObservabilityOTLPProtocol,
 					MaskedDBQueryArgs: expectedObservabilityMaskedDBQueryArgs,
 					TargetStatusCodes: expectedObservabilityTargetStatusCodes,
+				},
+				Endpoint: Endpoint{
+					OTLP:          expectedEndpointOTLP,
+					JWKS:          expectedEndpointJWKS,
+					ObjectStorage: expectedEndpointObjectStorage,
+					Outbox:        expectedEndpointOutbox,
+					OutboxQueue:   expectedEndpointOutboxQueue,
+					ConsumerQueue: expectedEndpointConsumerQueue,
+					// sample-api:begin
+					ExchangeRate: expectedEndpointExchangeRate,
+					// sample-api:end
 				},
 				Database: Database{
 					Host:                   expectedDBHost,
@@ -193,25 +246,20 @@ func Test_mockLoader(t *testing.T) {
 					MaxIdleTime: expectedDBMaxIdleTime,
 				},
 				Security: Security{
-					AllowedOrigins:        strings.Split(expectedAllowedOrigins, ","),
-					CIDR:                  expectedCIDRStr,
-					ContentTypeNosniff:    expectedContentTypeNosniff,
-					XFrameOptions:         expectedXFrameOptions,
-					HSTSMaxAge:            expectedHSTSMaxAge,
-					HSTSExcludeSubdomains: expectedHSTSExcludeSubdomains,
-					HSTSPreloadEnabled:    expectedHSTSPreloadEnabled,
-					ReferrerPolicy:        expectedReferrerPolicy,
-					BcryptCost:            expectedBcryptCost,
+					AllowedOrigins:            strings.Split(expectedAllowedOrigins, ","),
+					CIDR:                      expectedCIDRStr,
+					ContentTypeNosniff:        expectedContentTypeNosniff,
+					XFrameOptions:             expectedXFrameOptions,
+					HSTSMaxAge:                expectedHSTSMaxAge,
+					HSTSExcludeSubdomains:     expectedHSTSExcludeSubdomains,
+					HSTSPreloadEnabled:        expectedHSTSPreloadEnabled,
+					ReferrerPolicy:            expectedReferrerPolicy,
+					CrossOriginResourcePolicy: expectedCrossOriginResourcePolicy,
 				},
 				SecureCookie: SecureCookie{
 					Secure:   expectedSecureCookieSecure,
 					SameSite: expectedSecureCookieSameSite,
 					Domain:   expectedSecureCookieDomain,
-				},
-				Auth: Auth{
-					CookieName:          expectedAuthCookieName,
-					HeaderName:          expectedAuthHeaderName,
-					AllowedHeaderBearer: expectedAuthAllowedHeaderBearer,
 				},
 			}
 
@@ -225,7 +273,6 @@ func Test_mockLoader(t *testing.T) {
 func Test_setEnv(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
 	t.Run("正常系", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
 		t.Run("setEnvVarsForTesting の環境変数設定は、テスト内で正しく反映される", func(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用のため並列化不可
-			// setEnvVarsForTesting が t.Setenv を使うため、本テストは t.Parallel() を付けられない。
 			setEnvVarsForTesting(t)
 			// OS
 			assert.Equal(t, expectedOSTimeZone, os.Getenv("OS_TZ"))
@@ -251,7 +298,7 @@ func Test_setEnv(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用
 			assert.Equal(t, expectedObservabilityTracesExporter, os.Getenv("OBS_TRACES_EXPORTER"))
 			assert.Equal(t, expectedObservabilityMetricsExporter, os.Getenv("OBS_METRICS_EXPORTER"))
 			assert.Equal(t, expectedObservabilityLogsExporter, os.Getenv("OBS_LOGS_EXPORTER"))
-			assert.Equal(t, expectedObservabilityOTLPEndpoint, os.Getenv("OBS_OTLP_ENDPOINT"))
+			assert.Equal(t, expectedEndpointOTLP, os.Getenv("ENDPOINT_OTLP"))
 			assert.Equal(t, expectedObservabilityOTLPProtocol, os.Getenv("OBS_OTLP_PROTOCOL"))
 			assert.Equal(t, strconv.FormatBool(expectedObservabilityMaskedDBQueryArgs), os.Getenv("OBS_MASKED_DB_QUERY_ARGS"))
 			assert.Equal(t, expectedObservabilityTargetStatusCodesStr, os.Getenv("OBS_TARGET_STATUS_CODES"))
@@ -279,15 +326,11 @@ func Test_setEnv(t *testing.T) { //nolint:paralleltest // t.Setenv/t.Chdir使用
 			assert.Equal(t, strconv.FormatBool(expectedHSTSExcludeSubdomains), os.Getenv("SECURITY_HSTS_EXCLUDE_SUBDOMAINS"))
 			assert.Equal(t, strconv.FormatBool(expectedHSTSPreloadEnabled), os.Getenv("SECURITY_HSTS_PRELOAD_ENABLED"))
 			assert.Equal(t, expectedReferrerPolicy, os.Getenv("SECURITY_REFERRER_POLICY"))
-			assert.Equal(t, strconv.Itoa(expectedBcryptCost), os.Getenv("SECURITY_BCRYPT_COST"))
+			assert.Equal(t, expectedCrossOriginResourcePolicy, os.Getenv("SECURITY_CROSS_ORIGIN_RESOURCE_POLICY"))
 			// Secure Cookie
 			assert.Equal(t, strconv.FormatBool(*expectedSecureCookieSecure), os.Getenv("SECURE_COOKIE_SECURE"))
 			assert.Equal(t, expectedSecureCookieSameSite, os.Getenv("SECURE_COOKIE_SAME_SITE"))
 			assert.Equal(t, expectedSecureCookieDomain, os.Getenv("SECURE_COOKIE_DOMAIN"))
-			// Auth
-			assert.Equal(t, expectedAuthCookieName, os.Getenv("AUTH_COOKIE_NAME"))
-			assert.Equal(t, expectedAuthHeaderName, os.Getenv("AUTH_HEADER_NAME"))
-			assert.Equal(t, strconv.FormatBool(expectedAuthAllowedHeaderBearer), os.Getenv("AUTH_ALLOWED_HEADER_BEARER"))
 		})
 	})
 }

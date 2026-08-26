@@ -9,6 +9,9 @@ import (
 	"go.uber.org/fx"
 )
 
+// errRequiredProfileMissing は、gateway が required 宣言した Downstream の Profile が欠けている場合のエラーです。
+var errRequiredProfileMissing = xerrors.New("httpclient profile missing for required downstreams")
+
 // HTTPClientProfilesIn は、httpclient_profiles グループに集まった各 Downstream の Profile と、
 // required_downstreams グループに集まった「登録が必須な Downstream」を集約する入力です。
 type HTTPClientProfilesIn struct {
@@ -23,7 +26,7 @@ type HTTPClientProfilesIn struct {
 // 登録漏れが silent な DefaultProfile fallback へ流れるのを防ぎます。
 func provideHTTPClientRegistry(in HTTPClientProfilesIn) (httpclient.Registry, error) {
 	if missing := httpclient.MissingDownstreams(in.Profiles, in.Required); len(missing) > 0 {
-		return nil, xerrors.New(fmt.Sprintf("httpclient profile missing for required downstreams: %v", missing))
+		return nil, xerrors.Wrap(errRequiredProfileMissing, fmt.Sprintf("%v", missing))
 	}
 	return httpclient.NewRegistryFromProfiles(in.Profiles)
 }

@@ -1,0 +1,51 @@
+patch:
+  operationId: PatchProductsStock
+  tags:
+    - v1/products/detail
+  summary: 商品在庫の補充
+  description: |
+    指定された UUID に該当する商品の在庫を増減します。認証必須で、管理者（admin）のみ実行できます（非 admin は 403）。
+    delta は符号付きで、正の値で補充、負の値で差し引きます。
+    増減後の在庫が保持できる範囲（0 以上、32bit 整数の上限以下）を外れる要求は 422 で拒否します。
+    在庫は相対値で更新するため、同一商品への並行更新は失われず合成されます。
+    購入による在庫減算と同じ行を更新するため、更新は直列化されます。競合はサーバ側で解消され、
+    解消できなかった場合のみ一時的な失敗として 503 を返します（クライアントは時間を空けて再送できます）。
+    直列化を経ても取得後に他の更新が入ったことを検出した場合は 409 を返します。
+    409 は同じ内容の再送では解消しないため、最新を取得し直してからやり直してください。
+    在庫更新はバージョンを進めるため、更新前のバージョンを持つ部分更新（PATCH /v1/products/{productId}）は
+    409 で拒否されます。
+  security:
+    - BearerAuth: []
+  parameters:
+    - $ref: '../../../../components/parameters/product/ProductIdParam.yaml'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../../../../components/requests/products/ProductStockPatchRequest.yaml'
+  responses:
+    '200':
+      description: 商品在庫の補充に成功しました
+      content:
+        application/json:
+          schema:
+            $ref: '../../../../components/schemas/ProductResponse.yaml'
+    '400':
+      $ref: '../../../../components/schemas/errors/BadRequest400.yaml'
+    '401':
+      $ref: '../../../../components/schemas/errors/Unauthorized401.yaml'
+    '403':
+      $ref: '../../../../components/schemas/errors/Forbidden403.yaml'
+    '404':
+      $ref: '../../../../components/schemas/errors/NotFound404.yaml'
+    '405':
+      $ref: '../../../../components/schemas/errors/MethodNotAllowed405.yaml'
+    '409':
+      $ref: '../../../../components/schemas/errors/Conflict409.yaml'
+    '422':
+      $ref: '../../../../components/schemas/errors/UnprocessableEntity422.yaml'
+    '500':
+      $ref: '../../../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../../../components/schemas/errors/ServiceUnavailable503.yaml'

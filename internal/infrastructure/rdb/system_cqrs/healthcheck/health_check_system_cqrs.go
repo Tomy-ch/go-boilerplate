@@ -28,7 +28,8 @@ func New(
 	}
 }
 
-// CheckDBHealth は、データベースの健全性をチェックします。
+// CheckDBHealth は、軽量クエリを 1 本発行して往復レイテンシを計測し、応答があれば Ready=true と
+// 応答時刻・レイテンシを返します。
 func (s *systemQuery) CheckDBHealth(ctx context.Context) (query.DBHealth, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()

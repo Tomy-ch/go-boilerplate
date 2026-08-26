@@ -1,0 +1,20 @@
+type: object
+description: 都道府県マスタ 1 件分のレスポンスです。
+required:
+  - id
+  - code
+  - name
+properties:
+  id:
+    type: string
+    format: uuid
+    description: 都道府県ID
+    example: "101caa1e-84e7-4ceb-9108-50d40b6be1a3"
+  code:
+    type: integer
+    description: JIS X 0401 都道府県コード（1〜47）
+    example: 13
+  name:
+    type: string
+    description: 都道府県名
+    example: "東京都"

@@ -81,7 +81,7 @@ This skill **MUST call `AskUserQuestion` immediately after invocation** (unless 
 
 For each operationId in the handler `gen`:
 
-- HTTP method + path (e.g. `GET /v1/users/{user_id}`)
+- HTTP method + path (e.g. `GET /v1/<resources>/{<id>}`)
 - the usecase method the handler calls (read from `<feature>_handler.go`) → the mock `EXPECT()` to set
 - whether the operation requires authentication → if so, use `MakeAvailableUserID`
 - happy-path expectation (status + minimal JSON body shape) and, where cheap, one representative error path (e.g. usecase returns `apperror.ErrNotFound` → expect 404) to confirm the errorhandler middleware mapping on the HTTP path
@@ -129,7 +129,7 @@ make fix
 make test
 ```
 
-> **Environment note:** `make test` requires the dev environment to be running for the DB-backed suites in the same run; bring it up with the dedicated make targets (`make serve` → **`make db-init`**, which migrates **and seeds** both local & test DBs — seed data is assumed by the suite), **not raw `docker compose`** and not a bare `db-*-migrate-up`. If `make fix` / `make test` fails on a tool version mismatch (e.g. `golangci-lint` v1/v2 config error), realign with `make install-tools` (`make sync-tools` first if `tools.yaml` changed) rather than hand-editing `PATH`.
+> **Environment note:** `make test` requires the dev environment to be running for the DB-backed suites in the same run; bring it up with the dedicated make targets (`make serve` → **`make db-init`**, which migrates **and seeds** both local & test DBs — seed data is assumed by the suite), **not raw `docker compose`** and not a bare `db-*-migrate-up`. If `make fix` / `make test` fails on a tool version mismatch (e.g. `golangci-lint` v1/v2 config error), realign with `make install-tools` (`make sync-versions` first if `mise.toml` changed) rather than hand-editing `PATH`.
 
 On failure: surface the failing test output + leave a `// TODO:` at the problem case + FB summary. No auto-rollback.
 

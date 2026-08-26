@@ -1,6 +1,6 @@
 ---
 name: review-verifier
-description: Read-only skeptic that independently verifies ONE code-review finding and classifies it CONFIRMED / PLAUSIBLE / REFUTED. Re-derives the conclusion from the code itself rather than trusting the finder, and defaults to skepticism so plausible-but-wrong findings get filtered out. Invoked once per surviving finding by the `local-review` skill. Default model is `sonnet`; the orchestrator may override it to keep the verifier on a different model than the finder where useful.
+description: Read-only skeptic that independently verifies ONE code-review finding and classifies it CONFIRMED / PLAUSIBLE / REFUTED. Re-derives the conclusion from the code itself rather than trusting the finder, and defaults to skepticism so plausible-but-wrong findings get filtered out. Invoked once per surviving finding by the `impl-review` skill. Default model is `sonnet`; the orchestrator may override it to keep the verifier on a different model than the finder where useful.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---

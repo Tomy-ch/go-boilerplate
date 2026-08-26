@@ -1,0 +1,34 @@
+type: object
+description: 売上金額ランキング 1 商品分の項目です。
+required:
+  - productId
+  - name
+  - price
+  - salesAmount
+properties:
+  productId:
+    type: string
+    format: uuid
+    description: 商品ID
+    example: "b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f"
+  name:
+    type: string
+    description: 商品名
+    maxLength: 255
+    example: "ワイヤレスイヤホン"
+  price:
+    type: string
+    pattern: '^\d+(\.\d+)?$'
+    description: >-
+      商品の単価。サブセント精度を保持する decimal 文字列で表します（例 "19.99" は 19.99 ドル）。
+      JSON number は IEEE754 double として復元され精度を失うため、文字列で表現します。
+      集計値ではなく商品の属性であり、salesAmount とは役割が異なります。
+    example: "19.99"
+  salesAmount:
+    type: string
+    pattern: '^\d+(\.\d+)?$'
+    description: >-
+      集計期間内の売上金額（明細の単価 × 数量の総和、キャンセル済みの購入を除く）。
+      価格スケールの正確な decimal 文字列で、決済スケール（セント整数）へは丸めません
+      （丸めは決済確定の 1 箇所のみ・ADR-0038）。順位はこの正確な値で決まります。
+    example: "839.58"

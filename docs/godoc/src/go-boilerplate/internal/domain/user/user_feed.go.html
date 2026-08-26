@@ -64,7 +64,7 @@
 <span id="L7" class="ln">     7  </span>)
 <span id="L8" class="ln">     8  </span>
 <span id="L9" class="ln">     9  </span><span class="comment">// FeedCursor は、ユーザーフィード（keyset ページネーション）の境界キーを表す値オブジェクトです。</span>
-<span id="L10" class="ln">    10  </span><span class="comment">// 直前ページ末尾行の作成日時と ID を保持し、次ページ取得時の keyset 比較の境界として用います。</span>
+<span id="L10" class="ln">    10  </span><span class="comment">// 直前ページ末尾の作成日時と ID を保持し、次ページ取得時の境界として用います。</span>
 <span id="L11" class="ln">    11  </span>type FeedCursor struct {
 <span id="L12" class="ln">    12  </span>	createdAt time.Time
 <span id="L13" class="ln">    13  </span>	id        uuid.UUID

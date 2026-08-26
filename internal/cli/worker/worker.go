@@ -44,11 +44,7 @@ func runWorker(ctx context.Context, name string, args []string, grace time.Durat
 
 	gracefulStop(ctx, grace, stop)
 
-	// SIGTERM 経路では engine の実際の終了結果を必ず待ち切る。
-	// grace が engine の drain 完了より先に満了して OnStop が早期 return しても、
-	// engine goroutine は drain 後に必ず done へ結果を書く（DrainTimeout で有界。
-	// 起動時 validation で DrainTimeout < grace を保証）。
-	// 非ブロッキングで default を取ると、その間に発生した Fatal を取りこぼし exit 0 になってしまう。
+	// 非ブロッキングで default を取ると、drain 中に発生した Fatal を取りこぼし exit 0 になる。
 	if !selfStopped {
 		runErr = <-done
 	}

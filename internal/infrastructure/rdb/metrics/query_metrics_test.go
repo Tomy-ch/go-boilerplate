@@ -38,6 +38,29 @@ func labelValue(m *dto.Metric, name string) string {
 	return ""
 }
 
+func Test_collectorFQNames(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("コレクタの FQName を含む descriptor 文字列を返す", func(t *testing.T) {
+			t.Parallel()
+
+			c := prometheus.NewCounter(prometheus.CounterOpts{
+				Namespace: "rdb",
+				Subsystem: "query",
+				Name:      "test_total",
+				Help:      "テスト用カウンタ",
+			})
+
+			got := collectorFQNames(c)
+
+			assert.Contains(t, got, "rdb_query_test_total")
+		})
+	})
+}
+
 func TestNewQueryRecorder(t *testing.T) {
 	t.Parallel()
 
@@ -161,12 +184,37 @@ func Test_registerOrExisting(t *testing.T) {
 			// 別インスタンス経由でも同一メトリクスに 2 回記録される。
 			assert.Equal(t, uint64(2), duration.GetMetric()[0].GetHistogram().GetSampleCount())
 		})
+
+		t.Run("未登録のコレクタは生成したものをそのまま返す", func(t *testing.T) {
+			t.Parallel()
+
+			reg := prometheus.NewRegistry()
+			counter := prometheus.NewCounterVec(
+				prometheus.CounterOpts{Name: "register_or_existing_fresh", Help: "h"}, []string{"l"})
+
+			got := registerOrExisting(reg, counter)
+			assert.Same(t, counter, got)
+		})
+
+		t.Run("同名で型一致の既存コレクタがあれば既存を返す", func(t *testing.T) {
+			t.Parallel()
+
+			reg := prometheus.NewRegistry()
+			opts := prometheus.CounterOpts{Name: "register_or_existing_same_type", Help: "h"}
+
+			first := prometheus.NewCounterVec(opts, []string{"l"})
+			require.Same(t, first, registerOrExisting(reg, first))
+
+			second := prometheus.NewCounterVec(opts, []string{"l"})
+			// 2 度目は AlreadyRegistered を吸収し、既存(first)を返す。
+			assert.Same(t, first, registerOrExisting(reg, second))
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("既存コレクタが異なる型なら新規生成したコレクタを返す", func(t *testing.T) {
+		t.Run("同名だが既存コレクタの型が一致しなければpanicする", func(t *testing.T) {
 			t.Parallel()
 
 			reg := prometheus.NewRegistry()
@@ -175,9 +223,91 @@ func Test_registerOrExisting(t *testing.T) {
 			counter := prometheus.NewCounterVec(prometheus.CounterOpts{Name: name, Help: "h"}, []string{"l"})
 			require.NoError(t, reg.Register(counter))
 
+			// 同名・同 descriptor だが型が *HistogramVec のため型アサーションが失敗し panic する。
 			hist := prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: name, Help: "h"}, []string{"l"})
-			got := registerOrExisting(reg, hist)
-			assert.Same(t, hist, got)
+			var recovered any
+			func() {
+				defer func() { recovered = recover() }()
+				registerOrExisting(reg, hist)
+			}()
+			panicErr, ok := recovered.(error)
+			require.True(t, ok)
+			require.ErrorIs(t, panicErr, errIncompatibleCollector)
+		})
+
+		t.Run("AlreadyRegistered以外の登録失敗はpanicする", func(t *testing.T) {
+			t.Parallel()
+
+			reg := prometheus.NewRegistry()
+			const name = "register_or_existing_dim_conflict"
+
+			// 同名だが help 文字列が異なるため dimHash が衝突し、AlreadyRegistered ではない登録エラーになる。
+			require.NoError(t, reg.Register(
+				prometheus.NewCounterVec(prometheus.CounterOpts{Name: name, Help: "h1"}, []string{"l"})))
+
+			conflict := prometheus.NewCounterVec(prometheus.CounterOpts{Name: name, Help: "h2"}, []string{"l"})
+			var recovered any
+			func() {
+				defer func() { recovered = recover() }()
+				registerOrExisting(reg, conflict)
+			}()
+			panicErr, ok := recovered.(error)
+			require.True(t, ok)
+			require.ErrorContains(t, panicErr, "failed to register collector")
+		})
+	})
+}
+
+func Test_queryMetrics_Observe(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ErrorClassが空の場合はdurationのみ記録しerror counterを増やさない", func(t *testing.T) {
+			t.Parallel()
+
+			reg := prometheus.NewRegistry()
+			recorder := NewQueryRecorder(reg)
+
+			recorder.Observe(context.Background(), driver.QueryAttrs{
+				QueryName: "user.find_by_id",
+				Operation: "select",
+				Status:    "success",
+				Duration:  time.Millisecond,
+			})
+
+			duration := findMetricFamily(t, reg, "rdb_query_duration_seconds")
+			require.NotNil(t, duration)
+			require.Len(t, duration.GetMetric(), 1)
+			assert.Equal(t, uint64(1), duration.GetMetric()[0].GetHistogram().GetSampleCount())
+
+			assert.Nil(t, findMetricFamily(t, reg, "rdb_query_errors_total"))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ErrorClassが非空の場合はerror counterをerror_class付きで増分する", func(t *testing.T) {
+			t.Parallel()
+
+			reg := prometheus.NewRegistry()
+			recorder := NewQueryRecorder(reg)
+
+			recorder.Observe(context.Background(), driver.QueryAttrs{
+				QueryName:  "user.create",
+				Operation:  "insert",
+				Status:     "error",
+				ErrorClass: "constraint",
+				Duration:   time.Millisecond,
+			})
+
+			errs := findMetricFamily(t, reg, "rdb_query_errors_total")
+			require.NotNil(t, errs)
+			require.Len(t, errs.GetMetric(), 1)
+			assert.InDelta(t, 1.0, errs.GetMetric()[0].GetCounter().GetValue(), 0)
+			assert.Equal(t, "constraint", labelValue(errs.GetMetric()[0], "error_class"))
 		})
 	})
 }

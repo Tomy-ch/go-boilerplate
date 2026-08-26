@@ -53,10 +53,6 @@ func TestParseSearchTokens(t *testing.T) {
 			actual := ParseSearchTokens(nil, 10)
 			require.Empty(t, actual)
 		})
-	})
-
-	t.Run("境界ケース", func(t *testing.T) {
-		t.Parallel()
 
 		t.Run("連続する区切り文字は無視される", func(t *testing.T) {
 			t.Parallel()
@@ -86,57 +82,69 @@ func TestParseSearchTokens(t *testing.T) {
 func Test_splitIntoTerms(t *testing.T) {
 	t.Parallel()
 
-	t.Run("アンダースコアで分割", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		actual := splitIntoTerms("a_b_c")
-		assert.Equal(t, []string{"a", "b", "c"}, actual)
-	})
 
-	t.Run("空白で分割", func(t *testing.T) {
-		t.Parallel()
-		actual := splitIntoTerms("a b\tc\n d")
-		assert.Equal(t, []string{"a", "b", "c", "d"}, actual)
-	})
+		t.Run("アンダースコアで分割", func(t *testing.T) {
+			t.Parallel()
+			actual := splitIntoTerms("a_b_c")
+			assert.Equal(t, []string{"a", "b", "c"}, actual)
+		})
 
-	t.Run("連続する区切り文字は無視される", func(t *testing.T) {
-		t.Parallel()
-		actual := splitIntoTerms("a__  _b")
-		assert.Equal(t, []string{"a", "b"}, actual)
+		t.Run("空白で分割", func(t *testing.T) {
+			t.Parallel()
+			actual := splitIntoTerms("a b\tc\n d")
+			assert.Equal(t, []string{"a", "b", "c", "d"}, actual)
+		})
+
+		t.Run("連続する区切り文字は無視される", func(t *testing.T) {
+			t.Parallel()
+			actual := splitIntoTerms("a__  _b")
+			assert.Equal(t, []string{"a", "b"}, actual)
+		})
 	})
 }
 
 func Test_dedupePreserveOrder(t *testing.T) {
 	t.Parallel()
 
-	t.Run("重複を先頭出現順で除去", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		in := []string{"a", "b", "a", "c", "b"}
-		actual := dedupePreserveOrder(in)
-		assert.Equal(t, []string{"a", "b", "c"}, actual)
-	})
 
-	t.Run("重複なしはそのまま返る", func(t *testing.T) {
-		t.Parallel()
-		in := []string{"x", "y", "z"}
-		actual := dedupePreserveOrder(in)
-		assert.Equal(t, in, actual)
+		t.Run("重複を先頭出現順で除去", func(t *testing.T) {
+			t.Parallel()
+			in := []string{"a", "b", "a", "c", "b"}
+			actual := dedupePreserveOrder(in)
+			assert.Equal(t, []string{"a", "b", "c"}, actual)
+		})
+
+		t.Run("重複なしはそのまま返る", func(t *testing.T) {
+			t.Parallel()
+			in := []string{"x", "y", "z"}
+			actual := dedupePreserveOrder(in)
+			assert.Equal(t, in, actual)
+		})
 	})
 }
 
 func Test_limit(t *testing.T) {
 	t.Parallel()
 
-	t.Run("要素数が上限以下", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		in := []string{"a", "b"}
-		actual := limit(in, 5)
-		assert.Equal(t, in, actual)
-	})
 
-	t.Run("要素数が上限を超える", func(t *testing.T) {
-		t.Parallel()
-		in := []string{"a", "b", "c", "d"}
-		actual := limit(in, 2)
-		assert.Equal(t, []string{"a", "b"}, actual)
+		t.Run("要素数が上限以下", func(t *testing.T) {
+			t.Parallel()
+			in := []string{"a", "b"}
+			actual := limit(in, 5)
+			assert.Equal(t, in, actual)
+		})
+
+		t.Run("要素数が上限を超える", func(t *testing.T) {
+			t.Parallel()
+			in := []string{"a", "b", "c", "d"}
+			actual := limit(in, 2)
+			assert.Equal(t, []string{"a", "b"}, actual)
+		})
 	})
 }

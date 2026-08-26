@@ -74,7 +74,8 @@ For each repository file (`internal/infrastructure/rdb/repository/**/*_repositor
    - **`suggestion`**: function > 50 lines (switch dispatch excluded); tracer span missing.
 5. **Observability**: `tracer.Start` missing in a Repository method → `suggestion`.
 
-Apply the same rules to `query_service/` and `system_query/` directories.
+Apply the same rules to the sibling data-access directories: `query_service/`, `command_service/`,
+and `system_cqrs/` (the latter was renamed from `system_query` once it also took writes).
 
 ## Output (Japanese — this IS the return value)
 
@@ -85,7 +86,7 @@ arch-auditor-infra 結果（スコープ: <scope>）
   - <file:line>: <linter>: <message>
 
 [Repository ↔ sqlc gen] K 件（suggestion only）
-  internal/infrastructure/rdb/repository/user/user_repository.go
+  internal/infrastructure/rdb/repository/<aggregate>/<aggregate>_repository.go
     suggestion: Save メソッドが sqlc gen 関数を呼んでいません
     remediation: 対応 query 追加 or 実装の見直し
 

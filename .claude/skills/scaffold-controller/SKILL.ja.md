@@ -70,7 +70,7 @@ skill が書き込み前に検証:
 2. `internal/usecase/<package>/<package>_usecase.go` を読んで `Usecase` Interface メソッド一覧抽出（signature）
 3. `internal/usecase/README.md` と（必要なら）1〜2 個の sibling usecase パッケージから命名規約（このコードベースで使われている動詞接頭辞）を取得
 4. `internal/controller/README.md` + `internal/controller/handler/README.md` から layer 規約取得
-5. 1 個の sibling handler（`internal/controller/handler/v1/users/v1_users_handler.go` 等）を構造 template として参照
+5. 1 個の sibling handler（`internal/controller/handler/v1/<sibling>/v1_<sibling>_handler.go` 等）を構造 template として参照 <!-- skill-lint-ignore -->
 
 ## Step 2. mapping 導出（lean A の核）
 
@@ -138,18 +138,7 @@ Agent tool を起動して controller 層 test 観点を実装前に列挙:
 実装ファイル規約（`internal/controller/handler/README.md` の reference snippet 準拠 — README が canonical）:
 
 - `package <handler-package>`（lowercase）
-- `type server struct { tracer observability.LayerTracer; <usecase-deps...> }`（struct 名は `server`、README 規約）
-- **Constructor 名**: `BindHandler`（`New` ではない）:
-
-  ```go
-  func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc <pkg>.Usecase) {
-      gen.RegisterHandlers(e, gen.NewStrictHandler(&server{
-          tracer: tf.Controller(),
-          uc:     uc,
-      }, nil))
-  }
-  ```
-
+- `server` 構造体 + `BindHandler(e, tf, uc)` コンストラクタ + `gen.RegisterHandlers(e, gen.NewStrictHandler(&server{...}, nil))` の登録 — 形は `internal/controller/handler/README.md` の reference snippet に厳密に従う（canonical。ここでは再掲しない）。コンストラクタ名は `BindHandler` であり `New` ではない。
 - 各 method:
   - 生成 `ServerInterface` signature と完全一致
   - 冒頭で `ctx, endSpan := s.tracer.Start(ctx); defer endSpan()`（tracer span）
@@ -193,7 +182,7 @@ HTTP 境界 integration テストも internal/integration/<feature>_test.go に�
 全層が揃いました — `make serve` + curl での実機ランタイム確認に進めます。
 ```
 
-> **ランタイム curl 確認の位置づけ:** 認証（`security:`）・DI 配線・実 DB を通した curl + o11y の確認は、全層が揃う `scaffold-endpoint` の Runtime Verification（Step 3.5）が正式な実施場所。controller を**単独**で scaffold した場合も、下位層（usecase / domain / infra）と DI が既に存在していれば同様に curl 確認できる。下位層が未整備のうちは curl しても Fx が組み上がらず失敗するため、curl は全層が揃ってから行う。
+> **ランタイム curl 確認の位置づけ:** 認証（`security:`）・DI 配線・実 DB を通した curl + o11y の確認は、全層が揃う `scaffold-endpoint` の Phase 7（Integration Verification）が正式な実施場所。controller を**単独**で scaffold した場合も、下位層（usecase / domain / infra）と DI が既に存在していれば同様に curl 確認できる。下位層が未整備のうちは curl しても Fx が組み上がらず失敗するため、curl は全層が揃ってから行う。
 
 commit しない。
 
@@ -212,7 +201,7 @@ commit しない。
 
 ## 制約事項
 
-- ❌ コードを言い換える／*なぜ*その設計にしたかを説明するコメントを足す — コードコメントは最小（振る舞い・契約のみ）。理由は commit message / README に置きコードに書かない。宣言の godoc（unexported 含む）は1行で残す。
+- ❌ コードを言い換える／*なぜ*その設計にしたかを説明するコメントを足す — コードコメントは最小（振る舞い・契約のみ）。理由は commit message / README に置きコードに書かない。宣言の godoc（unexported 含む）は1行で残す。**分量も対象**: このスキルが生成する面は構造上すべて慣用的であり、コンストラクタ / Params 構造体 / 行→エンティティ変換 / handler テンプレートに複数行の説明を付けるのはノイズ。契約を1行で述べて止める。`docs/rules.md` にある repo 全体のルールを書き写さない。抑制であって根絶ではなく、真に非自明な Why は残す。
 - ❌ handler に業務ロジック含める（usecase or domain の責務）
 - ❌ unmapped operationId に handler stub 生成（hand-off で中断）
 - ❌ mapping gap を自動解決（dummy usecase method 作成等）

@@ -8,7 +8,7 @@ import (
 )
 
 //nolint:paralleltest // SetUpConfig は os.Setenv でグローバル環境を変更するため並列化不可
-func TestSetUpConfig_Succeeds(t *testing.T) {
+func TestSetUpConfig(t *testing.T) {
 	restoreEnvAfterTest(t)
 
 	t.Run("正常系", func(t *testing.T) {

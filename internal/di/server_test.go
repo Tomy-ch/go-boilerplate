@@ -2,6 +2,7 @@ package di
 
 import (
 	"context"
+	"net/http"
 	"testing"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	mock_driver "go-boilerplate/internal/infrastructure/rdb/driver/mock"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
@@ -23,9 +25,7 @@ func TestNewApplicationCore(t *testing.T) {
 		t.Run("依存グラフの結線が検証を通る", func(t *testing.T) {
 			t.Parallel()
 
-			// ValidateApp は依存グラフの結線（型の充足）を検証する。ハンドラ・ユースケース・
-			// リポジトリを追加した際に結線漏れがあればここで検出される。本番と同じ
-			// fx.WithLogger(NewFxEventLogger) を渡し、ロガー構成子の依存解決も併せて検証する。
+			// 本番と同じ fx.WithLogger(NewFxEventLogger) を渡し、ロガー構成子の依存解決も併せて検証する。
 			opts := append(applicationCoreOptions(), fx.WithLogger(NewFxEventLogger))
 			require.NoError(t, fx.ValidateApp(opts...))
 		})
@@ -34,7 +34,6 @@ func TestNewApplicationCore(t *testing.T) {
 		t.Run("モック DB で全コンストラクタとライフサイクルが起動・停止する", func(t *testing.T) {
 			// 実 DB とポート衝突を避けつつ、全コンストラクタの実行とライフサイクル(OnStart/OnStop)を検証する。
 			// DB ドライバを IF レベルでモックに差し替えて実 Ping を回避し、サーバポートは 0（エフェメラル）にする。
-			// EnsureRepoRootAndEnv が cwd を変更するため t.Parallel() は付けない。
 			config.EnsureRepoRootAndEnv(t, config.TestingEnvValue)
 
 			ctrl := gomock.NewController(t)
@@ -70,33 +69,80 @@ func TestNewApplicationCore(t *testing.T) {
 	})
 }
 
-func TestNewApplicationServer_WrapsAppStartStop(t *testing.T) {
+func TestNewApplicationServer(t *testing.T) {
 	t.Parallel()
 
 	// ライフサイクルフックの発火有無で、ラッパーが実際に app.Start / app.Stop を駆動したことを検証する。
 	// 空アプリだと start/stop が常に nil を返し、駆動していなくても通ってしまうため。
-	var started, stopped bool
-	app := fx.New(
-		fx.Invoke(func(lc fx.Lifecycle) {
-			lc.Append(fx.Hook{
-				OnStart: func(context.Context) error { started = true; return nil },
-				OnStop:  func(context.Context) error { stopped = true; return nil },
-			})
-		}),
-		fx.NopLogger,
-	)
+	newHookedApp := func(started, stopped *bool) *fx.App {
+		return fx.New(
+			fx.Invoke(func(lc fx.Lifecycle) {
+				lc.Append(fx.Hook{
+					OnStart: func(context.Context) error { *started = true; return nil },
+					OnStop:  func(context.Context) error { *stopped = true; return nil },
+				})
+			}),
+			fx.NopLogger,
+		)
+	}
 
-	start, stop := NewApplicationServer(app)
-	require.NotNil(t, start)
-	require.NotNil(t, stop)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-	require.NoError(t, start(ctx))
-	assert.True(t, started, "start ラッパーが app.Start を呼びライフサイクルが起動すること")
+		t.Run("返した start/stop が app のライフサイクルを起動・停止する", func(t *testing.T) {
+			t.Parallel()
 
-	stopCtx, stopCancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer stopCancel()
-	require.NoError(t, stop(stopCtx))
-	assert.True(t, stopped, "stop ラッパーが app.Stop を呼びライフサイクルが停止すること")
+			var started, stopped bool
+			start, stop := NewApplicationServer(newHookedApp(&started, &stopped))
+			require.NotNil(t, start)
+			require.NotNil(t, stop)
+
+			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+			require.NoError(t, start(ctx))
+			assert.True(t, started, "start ラッパーが app.Start を呼びライフサイクルが起動すること")
+
+			stopCtx, stopCancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer stopCancel()
+			require.NoError(t, stop(stopCtx))
+			assert.True(t, stopped, "stop ラッパーが app.Stop を呼びライフサイクルが停止すること")
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストの start は app.Start のエラーをそのまま返す", func(t *testing.T) {
+			t.Parallel()
+
+			var started, stopped bool
+			start, _ := NewApplicationServer(newHookedApp(&started, &stopped))
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			require.ErrorIs(t, start(ctx), context.Canceled)
+			assert.False(t, started, "起動前に中断されフックへ到達しないこと")
+		})
+	})
+}
+
+func Test_applicationCoreOptions(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("server プロファイル固有のHTTPスタックを結線する", func(t *testing.T) {
+			t.Parallel()
+
+			var (
+				e   *echo.Echo
+				srv *http.Server
+			)
+
+			opts := append(applicationCoreOptions(), fx.Populate(&e, &srv), fx.NopLogger)
+			require.NoError(t, fx.ValidateApp(opts...))
+		})
+	})
 }

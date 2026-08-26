@@ -5,4 +5,6 @@ description: ユーザーのUUID
 schema:
   type: string
   format: uuid
+  pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+  maxLength: 36
   example: "123e4567-e89b-12d3-a456-426614174000"

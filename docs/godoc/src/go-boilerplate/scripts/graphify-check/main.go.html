@@ -1,0 +1,579 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>graphify-check - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../src/go-boilerplate/scripts">scripts</a>/<a href="../../../../src/go-boilerplate/scripts/graphify-check">graphify-check</a>/<span class="text-muted">main.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../go-boilerplate/scripts/graphify-check">go-boilerplate/scripts/graphify-check</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span><span class="comment">// Package main は、追跡対象の graphify 成果物にマシン固有の情報が残っていないかを検査するツール。</span>
+<span id="L2" class="ln">     2  </span><span class="comment">//</span>
+<span id="L3" class="ln">     3  </span><span class="comment">//	-dir:  検査する graphify の出力ディレクトリ（既定 graphify-out）</span>
+<span id="L4" class="ln">     4  </span><span class="comment">//	-pin:  抽出プロンプトの pin ファイル（既定 .agents/graphify/spec-pin.toml）</span>
+<span id="L5" class="ln">     5  </span><span class="comment">//	-spec: これから抽出に使う extraction-spec.md。与えると pin と一致するか照合する</span>
+<span id="L6" class="ln">     6  </span><span class="comment">//	-base: この ref からの差分に出力ディレクトリが含まれていないか検査する</span>
+<span id="L7" class="ln">     7  </span><span class="comment">//</span>
+<span id="L8" class="ln">     8  </span><span class="comment">// graphify の出力ディレクトリには、生成したマシンでしか意味を持たないファイルが同居する。</span>
+<span id="L9" class="ln">     9  </span><span class="comment">// 抽出キャッシュの AST 側はノード ID を渡されたパスから組み立てるため絶対パスを焼き込み、</span>
+<span id="L10" class="ln">    10  </span><span class="comment">// `.graphify_root` / `.graphify_python` はホストのパスそのものを保持する。相対パスへ直す</span>
+<span id="L11" class="ln">    11  </span><span class="comment">// 後処理は最終グラフにしか効かないので、キャッシュ側は絶対パスを抱えたまま残る。これらが</span>
+<span id="L12" class="ln">    12  </span><span class="comment">// 追跡対象に入ると、他の checkout では意味を成さない差分が出続けるうえ、公開リポジトリに</span>
+<span id="L13" class="ln">    13  </span><span class="comment">// マシンの利用者名が残る。編集で消せない公開でもあるため、混入は入る前に止める。</span>
+<span id="L14" class="ln">    14  </span><span class="comment">//</span>
+<span id="L15" class="ln">    15  </span><span class="comment">// 検査は 4 つ。</span>
+<span id="L16" class="ln">    16  </span><span class="comment">//</span>
+<span id="L17" class="ln">    17  </span><span class="comment">//  1. 追跡してよい成果物の一覧から外れたものが追跡されていないか。.gitignore のホワイトリスト</span>
+<span id="L18" class="ln">    18  </span><span class="comment">//     が破れた、あるいは意図しない add が起きた場合に当たる。</span>
+<span id="L19" class="ln">    19  </span><span class="comment">//  2. 追跡してよい成果物自身にホストの絶対パスが混ざっていないか。上流が新しい経路で漏らし</span>
+<span id="L20" class="ln">    20  </span><span class="comment">//     始めた場合に当たる。1 だけでは回帰を捉えられず、2 だけでは絶対パスを含まないマシン</span>
+<span id="L21" class="ln">    21  </span><span class="comment">//     ローカルなファイルを見逃すので、両方が要る。</span>
+<span id="L22" class="ln">    22  </span><span class="comment">//  3. セマンティックキャッシュの名前空間が pin と一致するか。名前空間は抽出プロンプトの</span>
+<span id="L23" class="ln">    23  </span><span class="comment">//     fingerprint で決まるが、そのプロンプトはリポジトリ管理外のファイルなので、キャッシュ</span>
+<span id="L24" class="ln">    24  </span><span class="comment">//     だけをコミットすると素性が追えなくなる。-spec を与えれば、これから使うプロンプトが</span>
+<span id="L25" class="ln">    25  </span><span class="comment">//     pin と同じものかも同時に照合する。</span>
+<span id="L26" class="ln">    26  </span><span class="comment">//  4. -base を与えたとき、その ref からの差分に出力ディレクトリが含まれていないか。グラフは</span>
+<span id="L27" class="ln">    27  </span><span class="comment">//     1 ファイル 45 万行の塊で、コードを 1 行触るだけで全面が書き換わるため、並行するブランチ</span>
+<span id="L28" class="ln">    28  </span><span class="comment">//     が同時に更新すると必ず衝突する。しかも生成物の衝突を再生成で解くという通常の逃げ道は、</span>
+<span id="L29" class="ln">    29  </span><span class="comment">//     意味論抽出にモデルが要る以上ここでは使えない。だから更新はデフォルトブランチ側に寄せ、</span>
+<span id="L30" class="ln">    30  </span><span class="comment">//     feature ブランチからは持ち込ませない。発火させる条件は呼び出し側が決める。</span>
+<span id="L31" class="ln">    31  </span><span class="comment">//     ただし base 側に出力がまだ無い場合だけは通す。寄せ先が存在しないので衝突しようが無く、</span>
+<span id="L32" class="ln">    32  </span><span class="comment">//     ここで止めると出力を最初に置く経路そのものが無くなるためである。</span>
+<span id="L33" class="ln">    33  </span><span class="comment">//</span>
+<span id="L34" class="ln">    34  </span><span class="comment">// このツールは lefthook と CI のゲートから呼ばれる。壊れ方が「何も検査しなくなる」方向に</span>
+<span id="L35" class="ln">    35  </span><span class="comment">// 出るため、判定ロジックはシェルの中ではなくテストの当たる Go 側に置く。</span>
+<span id="L36" class="ln">    36  </span>package main
+<span id="L37" class="ln">    37  </span>
+<span id="L38" class="ln">    38  </span>import (
+<span id="L39" class="ln">    39  </span>	&#34;bufio&#34;
+<span id="L40" class="ln">    40  </span>	&#34;bytes&#34;
+<span id="L41" class="ln">    41  </span>	&#34;context&#34;
+<span id="L42" class="ln">    42  </span>	&#34;crypto/sha256&#34;
+<span id="L43" class="ln">    43  </span>	&#34;encoding/hex&#34;
+<span id="L44" class="ln">    44  </span>	&#34;flag&#34;
+<span id="L45" class="ln">    45  </span>	&#34;fmt&#34;
+<span id="L46" class="ln">    46  </span>	&#34;log&#34;
+<span id="L47" class="ln">    47  </span>	&#34;maps&#34;
+<span id="L48" class="ln">    48  </span>	&#34;os&#34;
+<span id="L49" class="ln">    49  </span>	&#34;os/exec&#34;
+<span id="L50" class="ln">    50  </span>	&#34;regexp&#34;
+<span id="L51" class="ln">    51  </span>	&#34;slices&#34;
+<span id="L52" class="ln">    52  </span>	&#34;sort&#34;
+<span id="L53" class="ln">    53  </span>	&#34;strconv&#34;
+<span id="L54" class="ln">    54  </span>	&#34;strings&#34;
+<span id="L55" class="ln">    55  </span>	&#34;unicode&#34;
+<span id="L56" class="ln">    56  </span>
+<span id="L57" class="ln">    57  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L58" class="ln">    58  </span>)
+<span id="L59" class="ln">    59  </span>
+<span id="L60" class="ln">    60  </span>const (
+<span id="L61" class="ln">    61  </span>	<span class="comment">// defaultDir は graphify の既定の出力ディレクトリ。上流の既定値（GRAPHIFY_OUT 未設定時）</span>
+<span id="L62" class="ln">    62  </span>	<span class="comment">// と揃えてある。</span>
+<span id="L63" class="ln">    63  </span>	defaultDir = &#34;graphify-out&#34;
+<span id="L64" class="ln">    64  </span>	<span class="comment">// defaultPin は抽出プロンプトの pin ファイル。</span>
+<span id="L65" class="ln">    65  </span>	defaultPin = &#34;.agents/graphify/spec-pin.toml&#34;
+<span id="L66" class="ln">    66  </span>	<span class="comment">// semanticCache は出力ディレクトリからの、セマンティックキャッシュの相対位置。</span>
+<span id="L67" class="ln">    67  </span>	semanticCache = &#34;cache/semantic&#34;
+<span id="L68" class="ln">    68  </span>	<span class="comment">// excerptRadius は違反箇所の前後に何バイト添えて報告するか。graph.json は minify された</span>
+<span id="L69" class="ln">    69  </span>	<span class="comment">// 1 行 15MB の JSON なので、行番号ではなく抜粋でしか位置を伝えられない。</span>
+<span id="L70" class="ln">    70  </span>	excerptRadius = 40
+<span id="L71" class="ln">    71  </span>	<span class="comment">// fingerprintLength は fingerprint の hex 桁数（graphify の _PROMPT_FP_LEN と同じ）。</span>
+<span id="L72" class="ln">    72  </span>	fingerprintLength = 12
+<span id="L73" class="ln">    73  </span>	<span class="comment">// maxListedChanges は差分の列挙上限。グラフ更新は 8 ファイル前後だが、全件出すと</span>
+<span id="L74" class="ln">    74  </span>	<span class="comment">// 肝心の「どう戻すか」が流れる。</span>
+<span id="L75" class="ln">    75  </span>	maxListedChanges = 10
+<span id="L76" class="ln">    76  </span>	<span class="comment">// msgUnreadable は、パスに続けて読み取り失敗を伝える定型句。</span>
+<span id="L77" class="ln">    77  </span>	msgUnreadable = &#34; を読み込めません&#34;
+<span id="L78" class="ln">    78  </span>)
+<span id="L79" class="ln">    79  </span>
+<span id="L80" class="ln">    80  </span><span class="comment">// artifacts は graphify の出力直下で追跡してよいファイル。どの checkout で開いても同じ意味を</span>
+<span id="L81" class="ln">    81  </span><span class="comment">// 持つものだけを挙げる。.gitignore の graphify 節は同じ一覧をホワイトリストとして書いており、</span>
+<span id="L82" class="ln">    82  </span><span class="comment">// 片方だけを増やすと本ツールが追跡対象外として検出する。</span>
+<span id="L83" class="ln">    83  </span>var artifacts = []string{
+<span id="L84" class="ln">    84  </span>	&#34;GRAPH_REPORT.md&#34;,
+<span id="L85" class="ln">    85  </span>	&#34;cost.json&#34;,
+<span id="L86" class="ln">    86  </span>	&#34;edges.json&#34;,
+<span id="L87" class="ln">    87  </span>	&#34;graph.html&#34;,
+<span id="L88" class="ln">    88  </span>	&#34;graph.json&#34;,
+<span id="L89" class="ln">    89  </span>	&#34;manifest.json&#34;,
+<span id="L90" class="ln">    90  </span>	&#34;metadata.json&#34;,
+<span id="L91" class="ln">    91  </span>	&#34;nodes.json&#34;,
+<span id="L92" class="ln">    92  </span>}
+<span id="L93" class="ln">    93  </span>
+<span id="L94" class="ln">    94  </span><span class="comment">// homePrefixes は成果物を生成したマシンのホームディレクトリを表す接頭辞。大文字の `/Users/` を</span>
+<span id="L95" class="ln">    95  </span><span class="comment">// 見るので、この API が持つ `/users` のような小文字のパスとは衝突しない。</span>
+<span id="L96" class="ln">    96  </span>var homePrefixes = []string{&#34;/Users/&#34;, &#34;/home/&#34;, &#34;/root/&#34;, `C:\Users\`}
+<span id="L97" class="ln">    97  </span>
+<span id="L98" class="ln">    98  </span><span class="comment">// pinLine は pin ファイルの `key = &#34;value&#34;` 行。</span>
+<span id="L99" class="ln">    99  </span>var pinLine = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*&#34;([^&#34;]*)&#34;$`)
+<span id="L100" class="ln">   100  </span>
+<span id="L101" class="ln">   101  </span>var (
+<span id="L102" class="ln">   102  </span>	<span class="comment">// errUnexpectedTracked は、追跡してよい成果物の一覧に無いものが追跡されていることを表す。</span>
+<span id="L103" class="ln">   103  </span>	errUnexpectedTracked = xerrors.New(&#34;unexpected tracked file under graphify output&#34;)
+<span id="L104" class="ln">   104  </span>	<span class="comment">// errMachineLocalPath は、成果物がマシン固有の絶対パスを含むことを表す。</span>
+<span id="L105" class="ln">   105  </span>	errMachineLocalPath = xerrors.New(&#34;machine-local absolute path in graphify artifact&#34;)
+<span id="L106" class="ln">   106  </span>	<span class="comment">// errSpecPinMismatch は、抽出プロンプトの fingerprint が pin と食い違うことを表す。</span>
+<span id="L107" class="ln">   107  </span>	errSpecPinMismatch = xerrors.New(&#34;extraction prompt fingerprint differs from the pin&#34;)
+<span id="L108" class="ln">   108  </span>	<span class="comment">// errPinInvalidLine は、pin ファイルに代入として解釈できない行があることを表す。</span>
+<span id="L109" class="ln">   109  </span>	errPinInvalidLine = xerrors.New(&#34;invalid line in the spec pin&#34;)
+<span id="L110" class="ln">   110  </span>	<span class="comment">// errPinDuplicateKey は、pin ファイルで同じキーが二度定義されていることを表す。</span>
+<span id="L111" class="ln">   111  </span>	errPinDuplicateKey = xerrors.New(&#34;duplicate key in the spec pin&#34;)
+<span id="L112" class="ln">   112  </span>	<span class="comment">// errPinMissingKey は、pin ファイルに必須キーが無いことを表す。</span>
+<span id="L113" class="ln">   113  </span>	errPinMissingKey = xerrors.New(&#34;missing key in the spec pin&#34;)
+<span id="L114" class="ln">   114  </span>	<span class="comment">// errArtifactInDiff は、base からの差分に graphify の出力が含まれていることを表す。</span>
+<span id="L115" class="ln">   115  </span>	errArtifactInDiff = xerrors.New(&#34;graphify output changed relative to the base branch&#34;)
+<span id="L116" class="ln">   116  </span>)
+<span id="L117" class="ln">   117  </span>
+<span id="L118" class="ln">   118  </span><span class="comment">// pathLister は ref と出力ディレクトリを受けてパスの一覧を返す手段。</span>
+<span id="L119" class="ln">   119  </span>type pathLister func(base, dir string) ([]string, error)
+<span id="L120" class="ln">   120  </span>
+<span id="L121" class="ln">   121  </span><span class="comment">// violation は 1 件の検出結果。kind は判定の種類、detail は人が読む説明。</span>
+<span id="L122" class="ln">   122  </span>type violation struct {
+<span id="L123" class="ln">   123  </span>	path   string
+<span id="L124" class="ln">   124  </span>	kind   error
+<span id="L125" class="ln">   125  </span>	detail string
+<span id="L126" class="ln">   126  </span>}
+<span id="L127" class="ln">   127  </span>
+<span id="L128" class="ln">   128  </span><span class="comment">// hit は成果物 1 ファイル内で見つかった絶対パスの 1 件。</span>
+<span id="L129" class="ln">   129  </span>type hit struct {
+<span id="L130" class="ln">   130  </span>	prefix  string
+<span id="L131" class="ln">   131  </span>	offset  int
+<span id="L132" class="ln">   132  </span>	excerpt string
+<span id="L133" class="ln">   133  </span>}
+<span id="L134" class="ln">   134  </span>
+<span id="L135" class="ln">   135  </span><span class="comment">// main は 1:1 テスト規約の対象外で分岐を検査できないため、判断は run に置きます。</span>
+<span id="L136" class="ln">   136  </span>func main() {
+<span id="L137" class="ln">   137  </span>	log.SetFlags(0)
+<span id="L138" class="ln">   138  </span>
+<span id="L139" class="ln">   139  </span>	if err := run(os.Args[1:], listTracked, os.ReadFile, diffAgainst, treeAt); err != nil {
+<span id="L140" class="ln">   140  </span>		log.Fatalf(&#34;%v&#34;, err)
+<span id="L141" class="ln">   141  </span>	}
+<span id="L142" class="ln">   142  </span>}
+<span id="L143" class="ln">   143  </span>
+<span id="L144" class="ln">   144  </span><span class="comment">// run は、追跡中の graphify 成果物を検査して違反を報告します。</span>
+<span id="L145" class="ln">   145  </span><span class="comment">// list は追跡パスの列挙手段、read はファイルの読み出し手段、diff は base ref からの変更パスの</span>
+<span id="L146" class="ln">   146  </span><span class="comment">// 列挙手段、atBase は base 時点の追跡内容の列挙手段で、いずれも差し替えられるよう引数で受けます。</span>
+<span id="L147" class="ln">   147  </span>func run(
+<span id="L148" class="ln">   148  </span>	args []string,
+<span id="L149" class="ln">   149  </span>	list func(dir string) ([]string, error),
+<span id="L150" class="ln">   150  </span>	read func(name string) ([]byte, error),
+<span id="L151" class="ln">   151  </span>	diff pathLister,
+<span id="L152" class="ln">   152  </span>	atBase pathLister,
+<span id="L153" class="ln">   153  </span>) error {
+<span id="L154" class="ln">   154  </span>	fs := flag.NewFlagSet(&#34;graphify-check&#34;, flag.ContinueOnError)
+<span id="L155" class="ln">   155  </span>	dir := fs.String(&#34;dir&#34;, defaultDir, &#34;検査する graphify の出力ディレクトリ&#34;)
+<span id="L156" class="ln">   156  </span>	pin := fs.String(&#34;pin&#34;, defaultPin, &#34;抽出プロンプトの pin ファイル&#34;)
+<span id="L157" class="ln">   157  </span>	spec := fs.String(&#34;spec&#34;, &#34;&#34;, &#34;これから抽出に使う extraction-spec.md（省略時は照合しない）&#34;)
+<span id="L158" class="ln">   158  </span>	base := fs.String(&#34;base&#34;, &#34;&#34;, &#34;この ref からの差分に出力が含まれていないか検査する（省略時は検査しない）&#34;)
+<span id="L159" class="ln">   159  </span>
+<span id="L160" class="ln">   160  </span>	if err := fs.Parse(args); err != nil {
+<span id="L161" class="ln">   161  </span>		<span class="comment">// ヘルプ要求は失敗ではないので 0 で終える。usage は flag が既に出力している。</span>
+<span id="L162" class="ln">   162  </span>		if xerrors.Is(err, flag.ErrHelp) {
+<span id="L163" class="ln">   163  </span>			return nil
+<span id="L164" class="ln">   164  </span>		}
+<span id="L165" class="ln">   165  </span>
+<span id="L166" class="ln">   166  </span>		return xerrors.Wrap(err, &#34;failed to parse flags&#34;)
+<span id="L167" class="ln">   167  </span>	}
+<span id="L168" class="ln">   168  </span>
+<span id="L169" class="ln">   169  </span>	fingerprint, err := readPinnedFingerprint(*pin, read)
+<span id="L170" class="ln">   170  </span>	if err != nil {
+<span id="L171" class="ln">   171  </span>		return err
+<span id="L172" class="ln">   172  </span>	}
+<span id="L173" class="ln">   173  </span>
+<span id="L174" class="ln">   174  </span>	if *spec != &#34;&#34; {
+<span id="L175" class="ln">   175  </span>		if err := verifySpec(*spec, fingerprint, read); err != nil {
+<span id="L176" class="ln">   176  </span>			return err
+<span id="L177" class="ln">   177  </span>		}
+<span id="L178" class="ln">   178  </span>	}
+<span id="L179" class="ln">   179  </span>
+<span id="L180" class="ln">   180  </span>	if *base != &#34;&#34; {
+<span id="L181" class="ln">   181  </span>		if err := verifyBase(*base, *dir, diff, atBase); err != nil {
+<span id="L182" class="ln">   182  </span>			return err
+<span id="L183" class="ln">   183  </span>		}
+<span id="L184" class="ln">   184  </span>	}
+<span id="L185" class="ln">   185  </span>
+<span id="L186" class="ln">   186  </span>	tracked, err := list(*dir)
+<span id="L187" class="ln">   187  </span>	if err != nil {
+<span id="L188" class="ln">   188  </span>		return xerrors.Wrap(err, &#34;❌ 追跡ファイルを列挙できません&#34;)
+<span id="L189" class="ln">   189  </span>	}
+<span id="L190" class="ln">   190  </span>	<span class="comment">// 追跡ゼロは「何も見なかった」ことであって「違反が無かった」ことではないので、合格と</span>
+<span id="L191" class="ln">   191  </span>	<span class="comment">// 同じ文言では報告しない。ただし追跡が無ければコミットされる成果物も無く、守るべきものが</span>
+<span id="L192" class="ln">   192  </span>	<span class="comment">// 無いため失敗にはしない。graphify を回す前の checkout や、出力を丸ごと無視する運用が</span>
+<span id="L193" class="ln">   193  </span>	<span class="comment">// これに当たる。壊れた走査（git が答えない・成果物が読めない）は下で失敗になる。</span>
+<span id="L194" class="ln">   194  </span>	if len(tracked) == 0 {
+<span id="L195" class="ln">   195  </span>		log.Printf(&#34;graphify: %s に追跡中の成果物がないため、検査対象はありません&#34;, *dir)
+<span id="L196" class="ln">   196  </span>
+<span id="L197" class="ln">   197  </span>		return nil
+<span id="L198" class="ln">   198  </span>	}
+<span id="L199" class="ln">   199  </span>
+<span id="L200" class="ln">   200  </span>	violations, err := inspect(*dir, fingerprint, tracked, read)
+<span id="L201" class="ln">   201  </span>	if err != nil {
+<span id="L202" class="ln">   202  </span>		return err
+<span id="L203" class="ln">   203  </span>	}
+<span id="L204" class="ln">   204  </span>	if len(violations) == 0 {
+<span id="L205" class="ln">   205  </span>		log.Printf(&#34;✅ graphify: %d ファイルを検査、マシン固有の情報はありません&#34;, len(tracked))
+<span id="L206" class="ln">   206  </span>
+<span id="L207" class="ln">   207  </span>		return nil
+<span id="L208" class="ln">   208  </span>	}
+<span id="L209" class="ln">   209  </span>
+<span id="L210" class="ln">   210  </span>	<span class="comment">// 呼び出し側が分岐に使うのは違反の種類だけなので、戻り値には種類を、中身はログへ出す。</span>
+<span id="L211" class="ln">   211  </span>	kinds := make([]error, 0, len(violations))
+<span id="L212" class="ln">   212  </span>	for _, found := range violations {
+<span id="L213" class="ln">   213  </span>		log.Printf(&#34;❌ %s: %s&#34;, found.path, found.detail)
+<span id="L214" class="ln">   214  </span>		if !slices.Contains(kinds, found.kind) {
+<span id="L215" class="ln">   215  </span>			kinds = append(kinds, found.kind)
+<span id="L216" class="ln">   216  </span>		}
+<span id="L217" class="ln">   217  </span>	}
+<span id="L218" class="ln">   218  </span>
+<span id="L219" class="ln">   219  </span>	return xerrors.Join(kinds...)
+<span id="L220" class="ln">   220  </span>}
+<span id="L221" class="ln">   221  </span>
+<span id="L222" class="ln">   222  </span><span class="comment">// verifySpec は、これから抽出に使うプロンプトが pin と同じものかを照合します。</span>
+<span id="L223" class="ln">   223  </span>func verifySpec(path, pinned string, read func(name string) ([]byte, error)) error {
+<span id="L224" class="ln">   224  </span>	body, err := read(path)
+<span id="L225" class="ln">   225  </span>	if err != nil {
+<span id="L226" class="ln">   226  </span>		return xerrors.Wrap(err, &#34;❌ &#34;+path+msgUnreadable)
+<span id="L227" class="ln">   227  </span>	}
+<span id="L228" class="ln">   228  </span>
+<span id="L229" class="ln">   229  </span>	actual := promptFingerprint(body)
+<span id="L230" class="ln">   230  </span>	if actual != pinned {
+<span id="L231" class="ln">   231  </span>		return xerrors.Wrap(errSpecPinMismatch, fmt.Sprintf(
+<span id="L232" class="ln">   232  </span>			&#34;❌ %s の fingerprint は %s で、pin の %s と一致しません&#34;+
+<span id="L233" class="ln">   233  </span>				&#34;（別バージョンの graphify、または別エージェント向けの spec を掴んでいます）&#34;,
+<span id="L234" class="ln">   234  </span>			path, actual, pinned,
+<span id="L235" class="ln">   235  </span>		))
+<span id="L236" class="ln">   236  </span>	}
+<span id="L237" class="ln">   237  </span>
+<span id="L238" class="ln">   238  </span>	log.Printf(&#34;✅ graphify: 抽出プロンプトは pin と一致します (%s)&#34;, pinned)
+<span id="L239" class="ln">   239  </span>
+<span id="L240" class="ln">   240  </span>	return nil
+<span id="L241" class="ln">   241  </span>}
+<span id="L242" class="ln">   242  </span>
+<span id="L243" class="ln">   243  </span><span class="comment">// verifyBase は、base ref からの差分に graphify の出力が含まれていないかを見ます。</span>
+<span id="L244" class="ln">   244  </span><span class="comment">// base 側に出力がまだ無いときは、その差分は導入そのものなので通します。</span>
+<span id="L245" class="ln">   245  </span>func verifyBase(base, dir string, diff, atBase pathLister) error {
+<span id="L246" class="ln">   246  </span>	changed, err := diff(base, dir)
+<span id="L247" class="ln">   247  </span>	if err != nil {
+<span id="L248" class="ln">   248  </span>		return xerrors.Wrap(err, &#34;❌ &#34;+base+&#34; からの差分を取得できません&#34;)
+<span id="L249" class="ln">   249  </span>	}
+<span id="L250" class="ln">   250  </span>	if len(changed) == 0 {
+<span id="L251" class="ln">   251  </span>		return nil
+<span id="L252" class="ln">   252  </span>	}
+<span id="L253" class="ln">   253  </span>
+<span id="L254" class="ln">   254  </span>	existing, err := atBase(base, dir)
+<span id="L255" class="ln">   255  </span>	if err != nil {
+<span id="L256" class="ln">   256  </span>		return xerrors.Wrap(err, &#34;❌ &#34;+base+&#34; の &#34;+dir+&#34; を列挙できません&#34;)
+<span id="L257" class="ln">   257  </span>	}
+<span id="L258" class="ln">   258  </span>	if len(existing) == 0 {
+<span id="L259" class="ln">   259  </span>		log.Printf(&#34;graphify: %s にはまだ %s が無いため、この差分は導入として扱います（%d 件）&#34;,
+<span id="L260" class="ln">   260  </span>			base, dir, len(changed))
+<span id="L261" class="ln">   261  </span>
+<span id="L262" class="ln">   262  </span>		return nil
+<span id="L263" class="ln">   263  </span>	}
+<span id="L264" class="ln">   264  </span>
+<span id="L265" class="ln">   265  </span>	log.Printf(&#34;❌ %s からの差分に graphify の出力が %d 件含まれています:&#34;, base, len(changed))
+<span id="L266" class="ln">   266  </span>	for _, path := range changed[:min(len(changed), maxListedChanges)] {
+<span id="L267" class="ln">   267  </span>		log.Printf(&#34;     %s&#34;, path)
+<span id="L268" class="ln">   268  </span>	}
+<span id="L269" class="ln">   269  </span>	if len(changed) &gt; maxListedChanges {
+<span id="L270" class="ln">   270  </span>		log.Printf(&#34;     ... 他 %d 件&#34;, len(changed)-maxListedChanges)
+<span id="L271" class="ln">   271  </span>	}
+<span id="L272" class="ln">   272  </span>
+<span id="L273" class="ln">   273  </span>	return xerrors.Wrap(errArtifactInDiff, fmt.Sprintf(
+<span id="L274" class="ln">   274  </span>		&#34;❌ %s の更新はデフォルトブランチ側に寄せています。このブランチからは外してください&#34;+
+<span id="L275" class="ln">   275  </span>			&#34;（`git checkout %s -- %s` で戻せます）&#34;, dir, base, dir,
+<span id="L276" class="ln">   276  </span>	))
+<span id="L277" class="ln">   277  </span>}
+<span id="L278" class="ln">   278  </span>
+<span id="L279" class="ln">   279  </span><span class="comment">// diffAgainst は、base ref と作業ツリーの間で dir 配下に変更のあったパスを返します。</span>
+<span id="L280" class="ln">   280  </span><span class="comment">// 三点ではなく二点の差分を使います。三点の分岐点は base が進むたびに動くので、同じブランチが</span>
+<span id="L281" class="ln">   281  </span><span class="comment">// 触ってもいない出力を「変更した」と報告し得ます。</span>
+<span id="L282" class="ln">   282  </span>func diffAgainst(base, dir string) ([]string, error) {
+<span id="L283" class="ln">   283  </span>	output, err := exec.CommandContext( <span class="comment">//nolint:gosec // 引数は base と dir のみで、コマンド自体は固定</span>
+<span id="L284" class="ln">   284  </span>		context.Background(), &#34;git&#34;, &#34;diff&#34;, &#34;--name-only&#34;, &#34;-z&#34;, base, &#34;--&#34;, dir,
+<span id="L285" class="ln">   285  </span>	).Output()
+<span id="L286" class="ln">   286  </span>	if err != nil {
+<span id="L287" class="ln">   287  </span>		return nil, xerrors.Wrap(err, &#34;git diff &#34;+base+&#34; -- &#34;+dir)
+<span id="L288" class="ln">   288  </span>	}
+<span id="L289" class="ln">   289  </span>
+<span id="L290" class="ln">   290  </span>	var changed []string
+<span id="L291" class="ln">   291  </span>	for name := range strings.SplitSeq(string(output), &#34;\x00&#34;) {
+<span id="L292" class="ln">   292  </span>		if name != &#34;&#34; {
+<span id="L293" class="ln">   293  </span>			changed = append(changed, name)
+<span id="L294" class="ln">   294  </span>		}
+<span id="L295" class="ln">   295  </span>	}
+<span id="L296" class="ln">   296  </span>	sort.Strings(changed)
+<span id="L297" class="ln">   297  </span>
+<span id="L298" class="ln">   298  </span>	return changed, nil
+<span id="L299" class="ln">   299  </span>}
+<span id="L300" class="ln">   300  </span>
+<span id="L301" class="ln">   301  </span><span class="comment">// treeAt は、base ref の時点で dir 配下に追跡されていたパスを返します。作業ツリーではなく ref を</span>
+<span id="L302" class="ln">   302  </span><span class="comment">// 見るので、これから持ち込む差分に左右されません。</span>
+<span id="L303" class="ln">   303  </span>func treeAt(base, dir string) ([]string, error) {
+<span id="L304" class="ln">   304  </span>	output, err := exec.CommandContext( <span class="comment">//nolint:gosec // 引数は base と dir のみで、コマンド自体は固定</span>
+<span id="L305" class="ln">   305  </span>		context.Background(), &#34;git&#34;, &#34;ls-tree&#34;, &#34;-r&#34;, &#34;--name-only&#34;, &#34;-z&#34;, base, &#34;--&#34;, dir,
+<span id="L306" class="ln">   306  </span>	).Output()
+<span id="L307" class="ln">   307  </span>	if err != nil {
+<span id="L308" class="ln">   308  </span>		return nil, xerrors.Wrap(err, &#34;git ls-tree &#34;+base+&#34; -- &#34;+dir)
+<span id="L309" class="ln">   309  </span>	}
+<span id="L310" class="ln">   310  </span>
+<span id="L311" class="ln">   311  </span>	var tracked []string
+<span id="L312" class="ln">   312  </span>	for name := range strings.SplitSeq(string(output), &#34;\x00&#34;) {
+<span id="L313" class="ln">   313  </span>		if name != &#34;&#34; {
+<span id="L314" class="ln">   314  </span>			tracked = append(tracked, name)
+<span id="L315" class="ln">   315  </span>		}
+<span id="L316" class="ln">   316  </span>	}
+<span id="L317" class="ln">   317  </span>	sort.Strings(tracked)
+<span id="L318" class="ln">   318  </span>
+<span id="L319" class="ln">   319  </span>	return tracked, nil
+<span id="L320" class="ln">   320  </span>}
+<span id="L321" class="ln">   321  </span>
+<span id="L322" class="ln">   322  </span><span class="comment">// readPinnedFingerprint は、pin ファイルから抽出プロンプトの fingerprint を読みます。</span>
+<span id="L323" class="ln">   323  </span><span class="comment">// 読み飛ばしや後勝ちの上書きは、その宣言が「存在しない」あるいは「行順で決まる」状態を</span>
+<span id="L324" class="ln">   324  </span><span class="comment">// 警告なく作るため、解釈できない行と重複キーはエラーにします。</span>
+<span id="L325" class="ln">   325  </span>func readPinnedFingerprint(path string, read func(name string) ([]byte, error)) (string, error) {
+<span id="L326" class="ln">   326  </span>	body, err := read(path)
+<span id="L327" class="ln">   327  </span>	if err != nil {
+<span id="L328" class="ln">   328  </span>		return &#34;&#34;, xerrors.Wrap(err, &#34;❌ &#34;+path+msgUnreadable)
+<span id="L329" class="ln">   329  </span>	}
+<span id="L330" class="ln">   330  </span>
+<span id="L331" class="ln">   331  </span>	values := map[string]string{}
+<span id="L332" class="ln">   332  </span>	scanner := bufio.NewScanner(bytes.NewReader(body))
+<span id="L333" class="ln">   333  </span>	for lineNo := 1; scanner.Scan(); lineNo++ {
+<span id="L334" class="ln">   334  </span>		line := strings.TrimSpace(scanner.Text())
+<span id="L335" class="ln">   335  </span>		if line == &#34;&#34; || strings.HasPrefix(line, &#34;#&#34;) {
+<span id="L336" class="ln">   336  </span>			continue
+<span id="L337" class="ln">   337  </span>		}
+<span id="L338" class="ln">   338  </span>		matched := pinLine.FindStringSubmatch(line)
+<span id="L339" class="ln">   339  </span>		if matched == nil {
+<span id="L340" class="ln">   340  </span>			return &#34;&#34;, xerrors.Wrap(errPinInvalidLine, fmt.Sprintf(&#34;%s の %d 行目: %q&#34;, path, lineNo, line))
+<span id="L341" class="ln">   341  </span>		}
+<span id="L342" class="ln">   342  </span>		if _, duplicate := values[matched[1]]; duplicate {
+<span id="L343" class="ln">   343  </span>			return &#34;&#34;, xerrors.Wrap(errPinDuplicateKey, fmt.Sprintf(&#34;%s の %d 行目: %q&#34;, path, lineNo, matched[1]))
+<span id="L344" class="ln">   344  </span>		}
+<span id="L345" class="ln">   345  </span>		values[matched[1]] = matched[2]
+<span id="L346" class="ln">   346  </span>	}
+<span id="L347" class="ln">   347  </span>	if err := scanner.Err(); err != nil {
+<span id="L348" class="ln">   348  </span>		return &#34;&#34;, xerrors.Wrap(err, &#34;❌ &#34;+path+&#34; を読めません&#34;)
+<span id="L349" class="ln">   349  </span>	}
+<span id="L350" class="ln">   350  </span>
+<span id="L351" class="ln">   351  </span>	fingerprint := values[&#34;spec_fingerprint&#34;]
+<span id="L352" class="ln">   352  </span>	if fingerprint == &#34;&#34; {
+<span id="L353" class="ln">   353  </span>		return &#34;&#34;, xerrors.Wrap(errPinMissingKey, path+&#34; に spec_fingerprint がありません&#34;)
+<span id="L354" class="ln">   354  </span>	}
+<span id="L355" class="ln">   355  </span>
+<span id="L356" class="ln">   356  </span>	return fingerprint, nil
+<span id="L357" class="ln">   357  </span>}
+<span id="L358" class="ln">   358  </span>
+<span id="L359" class="ln">   359  </span><span class="comment">// promptFingerprint は、抽出プロンプトの fingerprint を graphify.cache.prompt_fingerprint と</span>
+<span id="L360" class="ln">   360  </span><span class="comment">// 同じ規則で求めます。</span>
+<span id="L361" class="ln">   361  </span>func promptFingerprint(body []byte) string {
+<span id="L362" class="ln">   362  </span>	text := strings.ReplaceAll(string(body), &#34;\r\n&#34;, &#34;\n&#34;)
+<span id="L363" class="ln">   363  </span>	text = strings.ReplaceAll(text, &#34;\r&#34;, &#34;\n&#34;)
+<span id="L364" class="ln">   364  </span>
+<span id="L365" class="ln">   365  </span>	lines := strings.Split(text, &#34;\n&#34;)
+<span id="L366" class="ln">   366  </span>	for i, line := range lines {
+<span id="L367" class="ln">   367  </span>		lines[i] = strings.TrimRightFunc(line, unicode.IsSpace)
+<span id="L368" class="ln">   368  </span>	}
+<span id="L369" class="ln">   369  </span>	sum := sha256.Sum256([]byte(strings.TrimSpace(strings.Join(lines, &#34;\n&#34;))))
+<span id="L370" class="ln">   370  </span>
+<span id="L371" class="ln">   371  </span>	return hex.EncodeToString(sum[:])[:fingerprintLength]
+<span id="L372" class="ln">   372  </span>}
+<span id="L373" class="ln">   373  </span>
+<span id="L374" class="ln">   374  </span><span class="comment">// listTracked は、dir 配下で git が追跡しているパスを昇順で返します。</span>
+<span id="L375" class="ln">   375  </span><span class="comment">// index を読むので、まだコミットされていない staged なファイルも対象に入ります。</span>
+<span id="L376" class="ln">   376  </span>func listTracked(dir string) ([]string, error) {
+<span id="L377" class="ln">   377  </span>	output, err := exec.CommandContext(context.Background(), &#34;git&#34;, &#34;ls-files&#34;, &#34;-z&#34;, &#34;--&#34;, dir).Output() <span class="comment">//nolint:gosec // 引数は dir のみで、コマンド自体は固定</span>
+<span id="L378" class="ln">   378  </span>	if err != nil {
+<span id="L379" class="ln">   379  </span>		return nil, xerrors.Wrap(err, &#34;git ls-files &#34;+dir)
+<span id="L380" class="ln">   380  </span>	}
+<span id="L381" class="ln">   381  </span>
+<span id="L382" class="ln">   382  </span>	var tracked []string
+<span id="L383" class="ln">   383  </span>	<span class="comment">// -z 区切りなので、パスに改行を含むファイルでも分割が壊れない。</span>
+<span id="L384" class="ln">   384  </span>	for name := range strings.SplitSeq(string(output), &#34;\x00&#34;) {
+<span id="L385" class="ln">   385  </span>		if name != &#34;&#34; {
+<span id="L386" class="ln">   386  </span>			tracked = append(tracked, name)
+<span id="L387" class="ln">   387  </span>		}
+<span id="L388" class="ln">   388  </span>	}
+<span id="L389" class="ln">   389  </span>	sort.Strings(tracked)
+<span id="L390" class="ln">   390  </span>
+<span id="L391" class="ln">   391  </span>	return tracked, nil
+<span id="L392" class="ln">   392  </span>}
+<span id="L393" class="ln">   393  </span>
+<span id="L394" class="ln">   394  </span><span class="comment">// inspect は、追跡パスをホワイトリスト・絶対パス混入・キャッシュ名前空間の 3 観点で検査します。</span>
+<span id="L395" class="ln">   395  </span>func inspect(
+<span id="L396" class="ln">   396  </span>	dir, fingerprint string, tracked []string, read func(name string) ([]byte, error),
+<span id="L397" class="ln">   397  </span>) ([]violation, error) {
+<span id="L398" class="ln">   398  </span>	var violations []violation
+<span id="L399" class="ln">   399  </span>	<span class="comment">// 名前空間は個々のエントリではなくディレクトリの性質なので、件数だけ数えて後でまとめて</span>
+<span id="L400" class="ln">   400  </span>	<span class="comment">// 判定する。エントリ 1 件ごとに報告すると、同じ文言が数百行並んで肝心の名前が埋もれる。</span>
+<span id="L401" class="ln">   401  </span>	namespaces := map[string]int{}
+<span id="L402" class="ln">   402  </span>	for _, file := range tracked {
+<span id="L403" class="ln">   403  </span>		name, under := strings.CutPrefix(file, dir+&#34;/&#34;)
+<span id="L404" class="ln">   404  </span>		if !under {
+<span id="L405" class="ln">   405  </span>			violations = append(violations, unexpected(file))
+<span id="L406" class="ln">   406  </span>
+<span id="L407" class="ln">   407  </span>			continue
+<span id="L408" class="ln">   408  </span>		}
+<span id="L409" class="ln">   409  </span>
+<span id="L410" class="ln">   410  </span>		if entry, cached := strings.CutPrefix(name, semanticCache+&#34;/&#34;); cached {
+<span id="L411" class="ln">   411  </span>			namespace, _, nested := strings.Cut(entry, &#34;/&#34;)
+<span id="L412" class="ln">   412  </span>			if !nested {
+<span id="L413" class="ln">   413  </span>				namespace = &#34;&#34;
+<span id="L414" class="ln">   414  </span>			}
+<span id="L415" class="ln">   415  </span>			namespaces[namespace]++
+<span id="L416" class="ln">   416  </span>
+<span id="L417" class="ln">   417  </span>			continue
+<span id="L418" class="ln">   418  </span>		}
+<span id="L419" class="ln">   419  </span>
+<span id="L420" class="ln">   420  </span>		if !slices.Contains(artifacts, name) {
+<span id="L421" class="ln">   421  </span>			violations = append(violations, unexpected(file))
+<span id="L422" class="ln">   422  </span>
+<span id="L423" class="ln">   423  </span>			continue
+<span id="L424" class="ln">   424  </span>		}
+<span id="L425" class="ln">   425  </span>
+<span id="L426" class="ln">   426  </span>		body, err := read(file)
+<span id="L427" class="ln">   427  </span>		if err != nil {
+<span id="L428" class="ln">   428  </span>			return nil, xerrors.Wrap(err, &#34;❌ &#34;+file+msgUnreadable)
+<span id="L429" class="ln">   429  </span>		}
+<span id="L430" class="ln">   430  </span>		for _, found := range scanHomePrefixes(body) {
+<span id="L431" class="ln">   431  </span>			violations = append(violations, violation{
+<span id="L432" class="ln">   432  </span>				path: file,
+<span id="L433" class="ln">   433  </span>				kind: errMachineLocalPath,
+<span id="L434" class="ln">   434  </span>				detail: fmt.Sprintf(
+<span id="L435" class="ln">   435  </span>					&#34;マシン固有の絶対パス %q を含みます (offset %d: %s)&#34;, found.prefix, found.offset, found.excerpt,
+<span id="L436" class="ln">   436  </span>				),
+<span id="L437" class="ln">   437  </span>			})
+<span id="L438" class="ln">   438  </span>		}
+<span id="L439" class="ln">   439  </span>	}
+<span id="L440" class="ln">   440  </span>
+<span id="L441" class="ln">   441  </span>	return append(violations, checkNamespaces(dir, fingerprint, namespaces)...), nil
+<span id="L442" class="ln">   442  </span>}
+<span id="L443" class="ln">   443  </span>
+<span id="L444" class="ln">   444  </span><span class="comment">// checkNamespaces は、追跡されているセマンティックキャッシュの名前空間が pin と一致するかを</span>
+<span id="L445" class="ln">   445  </span><span class="comment">// 見ます。namespaces は名前空間ごとのエントリ数で、空文字は名前空間を持たないフラット配置です。</span>
+<span id="L446" class="ln">   446  </span><span class="comment">//</span>
+<span id="L447" class="ln">   447  </span><span class="comment">// フラット配置は通しません。graphify はそこを「fingerprint 導入前の、素性が不明なエントリ」の</span>
+<span id="L448" class="ln">   448  </span><span class="comment">// 置き場として扱い、どのプロンプトからでもヒットさせたうえで警告を出します（upstream #1939）。</span>
+<span id="L449" class="ln">   449  </span><span class="comment">// 共有するキャッシュの種としては、その素性不明が恒久的に残ってしまいます。</span>
+<span id="L450" class="ln">   450  </span>func checkNamespaces(dir, fingerprint string, namespaces map[string]int) []violation {
+<span id="L451" class="ln">   451  </span>	expected := &#34;p&#34; + fingerprint
+<span id="L452" class="ln">   452  </span>
+<span id="L453" class="ln">   453  </span>	var violations []violation
+<span id="L454" class="ln">   454  </span>	for _, namespace := range slices.Sorted(maps.Keys(namespaces)) {
+<span id="L455" class="ln">   455  </span>		if namespace == expected {
+<span id="L456" class="ln">   456  </span>			continue
+<span id="L457" class="ln">   457  </span>		}
+<span id="L458" class="ln">   458  </span>
+<span id="L459" class="ln">   459  </span>		path := dir + &#34;/&#34; + semanticCache + &#34;/&#34; + namespace
+<span id="L460" class="ln">   460  </span>		detail := fmt.Sprintf(
+<span id="L461" class="ln">   461  </span>			&#34;%d 件のエントリの名前空間が pin の %s と一致しません&#34;+
+<span id="L462" class="ln">   462  </span>				&#34;（別の抽出プロンプトで焼いたキャッシュです。焼き直すか %s を更新してください）&#34;,
+<span id="L463" class="ln">   463  </span>			namespaces[namespace], expected, defaultPin,
+<span id="L464" class="ln">   464  </span>		)
+<span id="L465" class="ln">   465  </span>		if namespace == &#34;&#34; {
+<span id="L466" class="ln">   466  </span>			path = dir + &#34;/&#34; + semanticCache
+<span id="L467" class="ln">   467  </span>			detail = fmt.Sprintf(
+<span id="L468" class="ln">   468  </span>				&#34;%d 件のエントリが名前空間を持たないフラット配置です&#34;+
+<span id="L469" class="ln">   469  </span>					&#34;（素性不明のエントリとして扱われるため、%s/ の下へ置いてください）&#34;,
+<span id="L470" class="ln">   470  </span>				namespaces[&#34;&#34;], expected,
+<span id="L471" class="ln">   471  </span>			)
+<span id="L472" class="ln">   472  </span>		}
+<span id="L473" class="ln">   473  </span>		violations = append(violations, violation{path: path, kind: errSpecPinMismatch, detail: detail})
+<span id="L474" class="ln">   474  </span>	}
+<span id="L475" class="ln">   475  </span>
+<span id="L476" class="ln">   476  </span>	return violations
+<span id="L477" class="ln">   477  </span>}
+<span id="L478" class="ln">   478  </span>
+<span id="L479" class="ln">   479  </span><span class="comment">// unexpected は、追跡してよい一覧から外れたファイルの違反を作ります。</span>
+<span id="L480" class="ln">   480  </span>func unexpected(file string) violation {
+<span id="L481" class="ln">   481  </span>	return violation{
+<span id="L482" class="ln">   482  </span>		path: file,
+<span id="L483" class="ln">   483  </span>		kind: errUnexpectedTracked,
+<span id="L484" class="ln">   484  </span>		detail: &#34;追跡対象外です。マシンローカルな派生物が紛れていないか &#34; +
+<span id="L485" class="ln">   485  </span>			&#34;.gitignore の graphify 節を確認してください&#34;,
+<span id="L486" class="ln">   486  </span>	}
+<span id="L487" class="ln">   487  </span>}
+<span id="L488" class="ln">   488  </span>
+<span id="L489" class="ln">   489  </span><span class="comment">// scanHomePrefixes は、body から絶対パスを探して接頭辞ごとに最初の 1 件だけを位置順で返します。</span>
+<span id="L490" class="ln">   490  </span><span class="comment">// 混入は 1 ファイルあたり数千件に及ぶため、全件を報告すると「どのファイルが汚染されているか」</span>
+<span id="L491" class="ln">   491  </span><span class="comment">// という肝心の情報がログに埋もれます。</span>
+<span id="L492" class="ln">   492  </span>func scanHomePrefixes(body []byte) []hit {
+<span id="L493" class="ln">   493  </span>	var hits []hit
+<span id="L494" class="ln">   494  </span>	for _, prefix := range homePrefixes {
+<span id="L495" class="ln">   495  </span>		at := bytes.Index(body, []byte(prefix))
+<span id="L496" class="ln">   496  </span>		if at &lt; 0 {
+<span id="L497" class="ln">   497  </span>			continue
+<span id="L498" class="ln">   498  </span>		}
+<span id="L499" class="ln">   499  </span>		hits = append(hits, hit{prefix: prefix, offset: at, excerpt: excerpt(body, at)})
+<span id="L500" class="ln">   500  </span>	}
+<span id="L501" class="ln">   501  </span>	sort.Slice(hits, func(i, j int) bool { return hits[i].offset &lt; hits[j].offset })
+<span id="L502" class="ln">   502  </span>
+<span id="L503" class="ln">   503  </span>	return hits
+<span id="L504" class="ln">   504  </span>}
+<span id="L505" class="ln">   505  </span>
+<span id="L506" class="ln">   506  </span><span class="comment">// excerpt は、body の offset 周辺を引用符付きの 1 行に畳んで返します。</span>
+<span id="L507" class="ln">   507  </span>func excerpt(body []byte, at int) string {
+<span id="L508" class="ln">   508  </span>	start := max(at-excerptRadius, 0)
+<span id="L509" class="ln">   509  </span>	end := min(at+excerptRadius, len(body))
+<span id="L510" class="ln">   510  </span>
+<span id="L511" class="ln">   511  </span>	return strconv.Quote(string(body[start:end]))
+<span id="L512" class="ln">   512  </span>}
+<span id="L513" class="ln">   513  </span>
+</pre><p><a href="../../../../src/go-boilerplate/scripts/graphify-check/main.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

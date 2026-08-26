@@ -23,15 +23,19 @@ import (
 const (
 	// ▼ カテゴリ単位のファイル連結ジョブの並列数チューニング定数（値の由来は README に記載）
 
-	// maxSQLCConcurrency:
-	//   占有してよい並列の上限。runtime.NumCPU() と組み合わせて Docker の CPU を極端に占有しないようにする。
+	// maxSQLCConcurrency は、並列数の上限です。
 	maxSQLCConcurrency = 4
-
-	// minSQLCConcurrency:
-	//   並列の下限。I/O 待ちが多く 1 だと非効率なので最低 2 を確保する。
+	// minSQLCConcurrency は、並列数の下限です。
 	minSQLCConcurrency = 2
 
 	genFilePerm = 0o644
+)
+
+var (
+	// errInvalidTargetType は、許可されていない DML カテゴリタイプが指定された場合のエラーです。
+	errInvalidTargetType = xerrors.New("invalid target type")
+	// errPathOutsideBaseDir は、生成対象パスがベースディレクトリの外を指した場合のエラーです。
+	errPathOutsideBaseDir = xerrors.New("path is outside of baseDir")
 )
 
 // FileSystem は merge-dml が必要とするファイル操作を抽象化します。
@@ -209,7 +213,7 @@ func validateTargetType(targetType string) error {
 	case "repository", "query_service", "system_cqrs", "command_service":
 		return nil
 	default:
-		return xerrors.New("invalid target type: " + targetType)
+		return xerrors.Wrap(errInvalidTargetType, targetType)
 	}
 }
 
@@ -229,7 +233,7 @@ func (g *Generator) buildCategorySQLFile(ctx context.Context, category, targetTy
 		return err
 	}
 
-	outName := fmt.Sprintf("%s_%s.gen.sql", category, targetType) // 例: prefecture_repository.gen.sql
+	outName := fmt.Sprintf("%s_%s.gen.sql", category, targetType) // 例: <category>_<type>.gen.sql
 	// 出力先も workDir 起点で統一し、相対/絶対の二系統を排除する。
 	dstPath := filepath.Join(g.workDir, g.genRootDir, outName)
 
@@ -287,7 +291,6 @@ func (g *Generator) buildCategorySQLFile(ctx context.Context, category, targetTy
 
 // ensureUnderDir は path が baseDir 配下かを検証します。
 func (g *Generator) ensureUnderDir(path string) error {
-	// 誤ったパス解決や path traversal により、想定外の場所を操作しないようにします。
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return err
@@ -304,7 +307,7 @@ func (g *Generator) ensureUnderDir(path string) error {
 	}
 	rel = filepath.Clean(rel)
 	if rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
-		return xerrors.New(fmt.Sprintf("path is outside of baseDir: path=%s base=%s", absPath, absBase))
+		return xerrors.Wrap(errPathOutsideBaseDir, fmt.Sprintf("path=%s base=%s", absPath, absBase))
 	}
 	return nil
 }

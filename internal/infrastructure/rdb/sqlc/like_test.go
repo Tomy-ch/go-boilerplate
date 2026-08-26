@@ -51,17 +51,21 @@ func TestWrapContainsLikePattern(t *testing.T) {
 func TestEscapeForLike(t *testing.T) {
 	t.Parallel()
 
-	t.Run("カスタムエスケープ文字でエスケープされる(#)", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		input := "a#%_b#"
-		expected := "a###%#_b##"
-		got := EscapeForLike(input, "#")
-		assert.Equal(t, expected, got)
-	})
 
-	t.Run("デフォルトエスケープ文字(バックスラッシュ)で%と_がエスケープされる", func(t *testing.T) {
-		t.Parallel()
-		got := EscapeForLike("a%_b", DefaultLikeEscapeChar)
-		assert.Equal(t, "a\\%\\_b", got)
+		t.Run("カスタムエスケープ文字でエスケープされる(#)", func(t *testing.T) {
+			t.Parallel()
+			input := "a#%_b#"
+			expected := "a###%#_b##"
+			got := EscapeForLike(input, "#")
+			assert.Equal(t, expected, got)
+		})
+
+		t.Run("デフォルトエスケープ文字(バックスラッシュ)で%と_がエスケープされる", func(t *testing.T) {
+			t.Parallel()
+			got := EscapeForLike("a%_b", DefaultLikeEscapeChar)
+			assert.Equal(t, "a\\%\\_b", got)
+		})
 	})
 }

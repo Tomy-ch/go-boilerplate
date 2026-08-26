@@ -4,9 +4,12 @@ package bodylimit
 import (
 	"fmt"
 
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v5/middleware"
 )
+
+// bytesPerMB は、limitMB をバイト数へ換算する係数です（10 進・1MB=1,000,000 byte）。
+const bytesPerMB = 1_000_000
 
 // Middleware は、リクエストボディを limitMB（MB, 10進・1MB=1,000,000 byte）で上限化する
 // ミドルウェアを返します。上限超過時は echo が 413（Request Entity Too Large）を返します。
@@ -19,5 +22,5 @@ func Middleware(limitMB int) echo.MiddlewareFunc {
 	if limitMB <= 0 {
 		panic(fmt.Sprintf("bodylimit: limitMB must be positive, got %d", limitMB))
 	}
-	return middleware.BodyLimit(fmt.Sprintf("%dM", limitMB))
+	return middleware.BodyLimit(int64(limitMB) * bytesPerMB)
 }

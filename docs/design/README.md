@@ -1,6 +1,6 @@
 # Design References
 
-日本語: [README.ja.md](../ja/design/README.ja.md)
+日本語: [README.ja.md](README.ja.md)
 
 This directory holds the **per-subsystem design references**. Each one consolidates a single subsystem's *role theory, state transitions / lifecycles, implementation locations, what an integrator must implement, and glossary* into one page, **derived from a close reading of the implementation**.
 
@@ -30,6 +30,12 @@ Two invariants underpin all of them:
 | [outbox.md](outbox.md) | Transactional outbox | reliable event publication via the outbox pattern | [outbox](../../internal/usecase/boundary/outbox/README.md) |
 | [idempotency.md](idempotency.md) | Idempotency | the `Idempotency-Key` subsystem and its GC job | [idempotency](../../internal/usecase/idempotency/README.md) |
 | [observability.md](observability.md) | Observability | the cross-cutting traces / metrics / logs substrate | [observability](../../internal/observability/README.md) |
+| [auth.md](auth.md) | Authentication | RS-side JWT / JWKS verification and the development OIDC provider | [jwt](../../internal/infrastructure/auth/jwt/README.md) |
+| [security.md](security.md) | Security posture | the threat model, what each control is for (enforcement / detection / deterrence), and where it fires | [workflows](../../.github/workflows/README.md) |
+| [context-map.md](context-map.md) | Context Map | how this system relates to the systems around it, edge by edge | [boundary](../../internal/usecase/boundary/README.md) |
+| [data-access-pattern.md](data-access-pattern.md) | Data access placement | which of Repository / QueryService / CommandService owns a given read or write, and why | [rdb](../../internal/infrastructure/rdb/README.md) |
+| [agent-environment.md](agent-environment.md) | Agent environment | how instructions, mechanical gates, independent review, and load-aware verification work together | [AGENTS.md](../../AGENTS.md) |
+| [closed-loop.md](closed-loop.md) | AI feedback loop | what a development window is, what is observed about it, and how a landed improvement is re-measured | [.agents/](../../.agents/README.md) |
 
 ## Reading order
 
@@ -37,4 +43,4 @@ The documents are independent, but they read naturally as **entry points → rel
 
 1. **Entry points** — [rest](rest.md) (sync), [worker](worker.md) (async), [job](job.md) (CLI / scheduled)
 2. **Reliability subsystems** — [outbox](outbox.md), [idempotency](idempotency.md)
-3. **Cross-cutting** — [observability](observability.md)
+3. **Cross-cutting** — [observability](observability.md), [auth](auth.md), [security](security.md)

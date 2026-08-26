@@ -8,11 +8,6 @@ import (
 )
 
 // Consumer は、pull-ack クラスのキューに対する seam です。
-//
-// per-message の再配送遅延は first-class な port capability です。engine が
-// 再配送 backoff の policy（ReceiveCount からの指数 + jitter）を決め、adapter は native 機構
-// （SQS ChangeMessageVisibility 等）でそれを honor します。これは broker 非依存の
-// circuit（poll ループ全体の intake throttle）とは別レイヤで、両者は併存します。
 type Consumer interface {
 	// Receive は long-poll で最大 limit 件を取得します。ctx 完了 or メッセージ到着までブロックします。
 	Receive(ctx context.Context, limit int) ([]Message, error)

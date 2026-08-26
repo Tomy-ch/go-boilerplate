@@ -28,7 +28,6 @@ func (s *fakeSleeper) Sleep(_ context.Context, _ time.Duration) error {
 	return nil
 }
 
-// alwaysRetryable / neverRetryable は、テスト用の分類関数です。
 func alwaysRetryable(error) bool { return true }
 func neverRetryable(error) bool  { return false }
 
@@ -118,7 +117,6 @@ func TestDo(t *testing.T) {
 
 			sleeper := &fakeSleeper{}
 			calls := 0
-			// fn が nil を返すと err==nil の短絡で isRetryable は呼ばれないため、nil でもパニックしない。
 			err := Do(context.Background(), sleeper, policy, nil, func(context.Context) error {
 				calls++
 				return nil
@@ -168,7 +166,6 @@ func TestDo(t *testing.T) {
 
 			sleeper := &fakeSleeper{}
 			calls := 0
-			// isRetryable が nil でも「リトライ対象なし」へ正規化されるため、
 			err := Do(context.Background(), sleeper, policy, nil, func(context.Context) error {
 				calls++
 				return errFatal
@@ -248,8 +245,6 @@ func TestFull(t *testing.T) {
 		t.Run("dがMaxInt64でもオーバーフローでパニックせず範囲に収まる", func(t *testing.T) {
 			t.Parallel()
 
-			// [0, d] 閉区間化の +1 が int64 をオーバーフローする境界。
-			// 本体のガードにより panic せず [0, d) に収まる。
 			assert.NotPanics(t, func() {
 				for range 100 {
 					got := Full(time.Duration(math.MaxInt64))

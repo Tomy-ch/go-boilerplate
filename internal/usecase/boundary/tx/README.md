@@ -8,7 +8,8 @@ Provides a `Manager` interface for transaction boundary management and a generic
 
 - Make Usecase aware of "the existence of transactions" without exposing DB details
 - Completely hide DB driver dependencies (pgx, sql.Tx, etc.)
-- Transaction boundaries are a Usecase responsibility — Infrastructure does not start transactions
+
+See [Transaction Rules](../../../../docs/rules.md#transaction-rules) for the layer-ownership rule this package enforces.
 
 ## Implementation
 

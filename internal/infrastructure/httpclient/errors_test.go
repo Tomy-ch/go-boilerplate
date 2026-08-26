@@ -228,3 +228,31 @@ func Test_statusClass(t *testing.T) {
 		})
 	})
 }
+
+func Test_redactURL(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("クエリ_userinfo_fragmentを除去しscheme_host_pathを残す", func(t *testing.T) {
+			t.Parallel()
+
+			out := redactURL("https://user:pass@api.example.com/rates?token=secret#frag")
+
+			assert.Equal(t, "https://api.example.com/rates", out)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("パース不能なURLはupstreamを返す", func(t *testing.T) {
+			t.Parallel()
+
+			out := redactURL("://not a url\x7f")
+
+			assert.Equal(t, "upstream", out)
+		})
+	})
+}

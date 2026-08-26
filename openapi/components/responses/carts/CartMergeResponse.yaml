@@ -1,0 +1,27 @@
+description: |
+  ログイン時のカート引き継ぎの結果。**引き継ぎで失われた分だけ**を報告します。
+  引き継ぎ後のカートの中身は含めません。取得（GET /v1/carts/me）でいつでも引ける一方、
+  ここで失われた分はこの応答でしか得られないためです。
+type: object
+required:
+  - clamped
+  - dropped
+properties:
+  clamped:
+    type: array
+    description: |
+      数量を合算した結果が 1 明細あたりの上限を超え、上限へ丸めた商品の ID。
+      引き継ぎは失敗させないため、超過分は捨てて成功として返します。
+    items:
+      type: string
+      format: uuid
+    example: ["b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f"]
+  dropped:
+    type: array
+    description: |
+      明細数が上限を超えたため取り込まれなかった商品の ID。
+      先にカートへ入っていたものを優先して残し、後から来たものを切り捨てます。
+    items:
+      type: string
+      format: uuid
+    example: []

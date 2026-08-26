@@ -27,7 +27,7 @@
 | `OBS_TRACES_EXPORTER` | trace 送出の有効化（`otlp` で有効／空・`none` で無効） |
 | `OBS_METRICS_EXPORTER` | metric 送出の有効化（同上） |
 | `OBS_LOGS_EXPORTER` | otelzap 経由の log 送出の有効化（同上） |
-| `OBS_OTLP_ENDPOINT` | OTLP エンドポイント URL（Collector / Agent サイドカー）。シグナル有効時のみ使用 |
+| `ENDPOINT_OTLP` | OTLP エンドポイント URL（Collector / Agent サイドカー）。シグナル有効時のみ使用 |
 | `OBS_OTLP_PROTOCOL` | `http/protobuf`（既定）または `grpc` |
 
 各シグナルは **独立にゲート**されます。`TracesEnabled()` / `MetricsEnabled()` /
@@ -37,7 +37,7 @@
 そのためローカル開発では設定も DI 差し替えも不要です。
 
 > **重要:** 送出トランスポートは **OTLP のみ**です（console exporter はありません）。単一の
-> `OBS_OTLP_ENDPOINT` を 3 シグナルで共用し、HTTP ではシグナル別パス（`/v1/traces` /
+> `ENDPOINT_OTLP` を 3 シグナルで共用し、HTTP ではシグナル別パス（`/v1/traces` /
 > `/v1/metrics` / `/v1/logs`）を URL に path が無いとき自動補完します。エンドポイント
 > **だけでは送出は有効になりません** — staging / prod では対応する `OBS_*_EXPORTER=otlp`
 > の設定も必須です。
@@ -78,7 +78,7 @@ LayerTracer --> ApplicationCode
 |`ProvideTracerProvider` / `ProvideMeterProvider`|具象プロバイダを `trace.TracerProvider` / `metric.MeterProvider` IF として公開するアダプタ（`provider.go` 内）|
 |`NewPgxTracer`|接続情報を抑止した `otelpgx` トレーサ（DB span + metric、`pgx_tracer.go` 内）|
 |`NewHTTPClientTransport` / `NewHTTPClientMetrics`|SSRF ガード付き・計装済み外向き HTTP トランスポート + その RED メトリクス（`http_client_transport.go` / `http_client_metrics.go` 内）|
-|`propagation.go`|サービス跨ぎ / キャリア跨ぎのトレース伝播（`ExtractFromCarrier` / `InjectTraceContextToCarrier`）+ `NewTextMapPropagator`|
+|`propagation.go`|サービス跨ぎ / キャリア跨ぎのトレース伝播（`ExtractFromCarrier` / `InjectTraceContextToCarrier`）|
 |`TracerFactory`|レイヤー別トレーサ生成|
 |`LayerTracer`|レイヤー別 span 生成（span のみ。ログ行自体は出力しない）|
 |`helper.go`|span / trace helper, ShouldLogWithSpan, BuildSpanName|
@@ -123,8 +123,7 @@ func NewMeterProvider(obsCfg *config.ObservabilityConfig, res *resource.Resource
   periodic な `MetricReader` 構築を `MetricsEnabled()` のときのみ行います。Go **ランタイム
   メトリクス**計装もそのときのみ開始します（no-op フォールバック時はスキップ）。これも
   ライフサイクル非依存で、具象 `*sdkmetric.MeterProvider` を返し `Shutdown` 登録は di の hook が担う。
-  シャットダウン hook が具象プロバイダに依存するため、DI モジュール側に別途の force-start invoke は
-  不要で、hook を構築することでプロバイダが構築される。
+  シャットダウン hook が具象プロバイダに依存するため、hook を構築することでプロバイダが構築される。
 
 ### 1.2 NewLoggerProvider / NewLogCore（OTLP ログ）
 
@@ -170,6 +169,9 @@ usecaseTracer := tf.Usecase()
 infraTracer := tf.Infra()
 ```
 
+`NewDisabledTracerFactory()` は何も送出しない tracer を返すファクトリです。DI グラフを経由せず
+infra 実装を直接組み立てる CLI 経路のために存在し、`otel` パッケージをこの層に閉じ込めます。
+
 ### 3. LayerTracer
 
 `LayerTracer` は **レイヤー単位の span 管理**を行うコンポーネントです。
@@ -212,7 +214,7 @@ defer end()
 
 任意の処理は `RunWithSpan` で簡単に span 計測できます。
 
-この関数はレイヤに依存せず、任意の処理を span + observability logging とともに実行するためのユーティリティです。
+この関数はレイヤに依存せず、任意の処理を span の中で実行するためのユーティリティです。
 
 ```go
 ctx, result, err := observability.RunWithSpan(
@@ -262,6 +264,10 @@ name := observability.BuildSpanName("usecase", "user", "CreateUser")
 ログ ↔ トレース相関は `otelzap` の `LogCore`（§1.2）が担います。`LogsEnabled()` のとき、
 アプリの `zap` ログはアクティブな trace context を付与して OTLP 送出されるため、バックエンド
 では同一 `trace_id` でログと span が揃います。
+
+各ログ行の `trace_id` / `span_id` は `NewTraceExtractor(obsCfg)` が返す `logging.TraceExtractor`
+クロージャ由来で、これを DI が `Logger` へ注入します。有効・無効の判定はこのクロージャ 1 箇所に
+閉じており、呼び出し側が trace フィールドの付与を決めることはありません。
 
 ## TraceContext
 
@@ -320,12 +326,7 @@ defer end()
 getCallerFullName()
 ```
 
-この情報は
-
-- span名生成
-- observabilityログ
-
-で使用されます。
+この情報は span 名の生成に使用されます。
 
 ## テストサポート
 
@@ -375,6 +376,8 @@ defer cleanup()
 |`NewNoopHTTPClientMetrics`|no-op meter 上の `HTTPClientMetrics`|
 |`NewNoopOutboxMetrics`|no-op meter 上の `OutboxMetrics`|
 |`NewNoopHTTPClientTransport`|SSRF ガードを無効化した `HTTPClientTransport`（loopback / httptest 宛てを許可）|
+|`NewGuardedHTTPClientTransport`|SSRF ガードを**有効のまま**残した `HTTPClientTransport`（ガード自体を検証するテスト用）|
+|`NewObservedHTTPClientMetrics`|計上値を `LabelValues` で読み出せる `HTTPClientMetrics`|
 
 ## 設計ポリシー
 
@@ -391,13 +394,8 @@ span名は必ず `layer.package.function` 形式になります。
 
 ### 2 logging と統合
 
-ログ ↔ トレース相関は `otelzap` の `LogCore`（§1.2）が担います。アプリのログはアクティブな
-trace context を付与して OTLP 送出されるため、バックエンドではログと span が同一の識別子を
-共有します。span context が公開するのは以下です。
-
-- `trace_id`
-- `span_id`
-- `parent_span_id`
+ログ ↔ トレース相関は呼び出し側ではなくロギング層で解決されます。
+[Span / ログ相関](#span--ログ相関) を参照してください。
 
 ### 3 アプリケーションコードはOTelに依存しない
 
@@ -419,7 +417,7 @@ observability 機能が失敗しても
 layer span は controller / usecase / infra の全層で `LayerTracer.Start` により生成されますが、
 その **診断上の価値は異なります**。これは計装をどこから削るかを判断する際に重要になります。
 
-- **controller 層の span — 最も冗長。** `otelecho` ミドルウェアが **リクエスト単位のルート span を既に生成**
+- **controller 層の span — 最も冗長。** `echootel` ミドルウェアが **リクエスト単位のルート span を既に生成**
   しているため、controller(handler) 層で追加する span は **そのリクエスト span とほぼ同じ境界・同程度の区間を重複**
   します。ルート span とほぼ重なります。
 - **usecase / infra 層の span — 残す価値がある。** これらは **リクエスト内の内訳**
@@ -438,7 +436,7 @@ layer span は controller / usecase / infra の全層で `LayerTracer.Start` に
 `propagation.go` は W3C トレースコンテキストをサービス跨ぎ・キャリア跨ぎで運び、
 producer → relay → consumer の連鎖を 1 つの trace にまとめます。
 
-- `NewTextMapPropagator` — `NewTracerProvider` が `otel.SetTextMapPropagator` でグローバル
+- `NewTextMapPropagator`（`provider.go`）— `NewTracerProvider` が `otel.SetTextMapPropagator` でグローバル
   登録する、W3C `TraceContext` + `Baggage` の複合 propagator。
 - `ExtractFromCarrier(ctx, attrs)` — `map[string]string` キャリア（メッセージ属性 / ヘッダ等）
   から **グローバル** propagator で trace を継続します。キャリアが空なら `ctx` をそのまま返します。
@@ -522,3 +520,15 @@ DB span / metric は `NewPgxTracer`（`otelpgx`）が追加で送出し、Go **�
 - 秘密鍵
 
 必要な場合は **マスキング処理**を行います。
+
+## テスト戦略
+
+テレメトリにはユーザから見える振る舞いが無いため、「クラッシュしなかった」は結果ではない。テストは exporter や collector ではなく OTel SDK のインメモリ機構を使い、送出されるシグナルそのものを検証する。
+
+- **メトリクスは manual reader 経由** — `sdkmetric.NewManualReader` を持つ `sdkmetric.NewMeterProvider` を組み、対象を駆動してから collect し、`metricdata` に対して instrument 名・データポイントの値・属性集合を検証する。記録がエラーにならなかったことしか見ないと、instrument 名やラベルの誤りが検知されない。それこそがダッシュボードを壊す失敗である。
+- **スパンは syncer 付き tracer provider 経由** — インメモリのレコーダに対し `sdktrace.WithSyncer` を付けた `sdktrace.NewTracerProvider` を組み、得られた `sdktrace.ReadOnlySpan` のスパン名・属性・親子関係を検証する。
+- **属性のカーディナリティは契約の一部** — 設計上ラベル集合を有界にしている箇所では、非有界な入力（生のパス、ID）が属性へ到達しないことを検証する。カーディナリティの退行はローカルでは不可視で、本番では高くつく。
+- **秘匿化と伝播** — 外向き HTTP トランスポートはスパンから秘匿情報を落としつつ、実リクエストは変更しない。同一テストで **両方** を検証すること。秘匿化だけを見てもリクエストを壊した場合と区別できない。
+- **条件付き propagator** — 2 方向は対称ではなく、その非対称性こそが契約である。`Inject` はフラグで分岐し（明示的に false のときだけ抑止）両側の検証が要る。抑止される分岐がトレースの連続性を黙って落とす経路だからである。`Extract` は無条件に委譲するため、存在しない 2 つ目の分岐を作らず委譲そのものを検証する。
+
+残りは隣接する 2 節が管轄しており、ここへ再掲しないこと。他層へ提供する補助は [テストサポート](#テストサポート)、承認済みの未カバー分岐と追加時の承認ルールは [テストカバレッジ例外（超法規的措置）](#テストカバレッジ例外超法規的措置) にある。

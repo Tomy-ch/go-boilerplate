@@ -41,7 +41,7 @@
 
 ## 注意点
 
-- 高カーディナリティ化や秘匿・環境情報の漏えいを避けるため、次のラベルは意図的に**含めません**: `hostname` / `pod_name` / `container_id` / `instance_id` / `git_branch` / `build_url` / `image_digest` / `full_image` / `token` / `registry`。
+- 高カーディナリティ化や秘匿・環境情報の漏えいを避けるため、次のラベルは意図的に**含めません**: `hostname` / `pod_name` / `container_id` / `instance_id` / `git_branch` / `build_url` / `image_digest` / `full_image` / `token` / `registry` / `commit`。
 - 本パッケージは `os.Getenv` を直接呼びません。環境値は不変な `config.ApplicationConfig` から取得します。
 - ビルド情報を domain / usecase 層に持ち込みません。
 - `prometheus.AlreadyRegisteredError` を無視して重複登録を安全にスキップします。

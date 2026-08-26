@@ -2,10 +2,10 @@
 package metrics
 
 import (
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	echomw "github.com/labstack/echo/v4/middleware"
+	echomw "github.com/labstack/echo/v5/middleware"
 )
 
 // BindHandler は、Prometheusメトリクスエンドポイント（/metrics）をEchoに登録します。

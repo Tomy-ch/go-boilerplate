@@ -32,7 +32,7 @@ func (b *retryBudget) refill(d Downstream, ratio float64) {
 
 	current, ok := b.tokens[d]
 	if !ok {
-		current = retryBudgetInitialTokens // 初回は小さく始め、refill で上限まで獲得させる
+		current = retryBudgetInitialTokens
 	}
 	b.tokens[d] = min(retryBudgetMaxTokens, current+ratio)
 }

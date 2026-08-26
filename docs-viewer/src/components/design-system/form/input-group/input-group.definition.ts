@@ -1,0 +1,47 @@
+const INLINE_START_INPUT_GROUP_ADDON_ALIGN = "inline-start";
+const INLINE_END_INPUT_GROUP_ADDON_ALIGN = "inline-end";
+const BLOCK_START_INPUT_GROUP_ADDON_ALIGN = "block-start";
+const BLOCK_END_INPUT_GROUP_ADDON_ALIGN = "block-end";
+
+/**
+ * 入力欄に対して addon を置く位置を表す定数。
+ */
+export const INPUT_GROUP_ADDON_ALIGN: Readonly<{
+  INLINE_START: "inline-start";
+  INLINE_END: "inline-end";
+  BLOCK_START: "block-start";
+  BLOCK_END: "block-end";
+}> = {
+  INLINE_START: INLINE_START_INPUT_GROUP_ADDON_ALIGN,
+  INLINE_END: INLINE_END_INPUT_GROUP_ADDON_ALIGN,
+  BLOCK_START: BLOCK_START_INPUT_GROUP_ADDON_ALIGN,
+  BLOCK_END: BLOCK_END_INPUT_GROUP_ADDON_ALIGN,
+};
+
+/** {@link INPUT_GROUP_ADDON_ALIGN} のいずれか。 */
+export type InputGroupAddonAlign =
+  (typeof INPUT_GROUP_ADDON_ALIGN)[keyof typeof INPUT_GROUP_ADDON_ALIGN];
+
+const EXTRA_SMALL_INPUT_GROUP_BUTTON_SIZE = "xs";
+const SMALL_INPUT_GROUP_BUTTON_SIZE = "sm";
+const ICON_EXTRA_SMALL_INPUT_GROUP_BUTTON_SIZE = "icon-xs";
+const ICON_SMALL_INPUT_GROUP_BUTTON_SIZE = "icon-sm";
+
+/**
+ * 入力欄の枠内に収まる補助ボタンの大きさを表す定数。
+ */
+export const INPUT_GROUP_BUTTON_SIZE: Readonly<{
+  EXTRA_SMALL: "xs";
+  SMALL: "sm";
+  ICON_EXTRA_SMALL: "icon-xs";
+  ICON_SMALL: "icon-sm";
+}> = {
+  EXTRA_SMALL: EXTRA_SMALL_INPUT_GROUP_BUTTON_SIZE,
+  SMALL: SMALL_INPUT_GROUP_BUTTON_SIZE,
+  ICON_EXTRA_SMALL: ICON_EXTRA_SMALL_INPUT_GROUP_BUTTON_SIZE,
+  ICON_SMALL: ICON_SMALL_INPUT_GROUP_BUTTON_SIZE,
+};
+
+/** {@link INPUT_GROUP_BUTTON_SIZE} のいずれか。 */
+export type InputGroupButtonSize =
+  (typeof INPUT_GROUP_BUTTON_SIZE)[keyof typeof INPUT_GROUP_BUTTON_SIZE];

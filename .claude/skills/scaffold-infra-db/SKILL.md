@@ -1,7 +1,7 @@
 ---
 name: scaffold-infra-db
 description: >-
-  Implement the infrastructure (RDB) layer Repository for one feature, derived from domain Repository IF + sqlc gen functions (lean A — no spec file). Reads the domain Repository Interface at `internal/domain/<aggregate>/<aggregate>_repository.go` for method list, the sqlc gen functions at `internal/infrastructure/rdb/sqlc/gen/*.gen.go` for available DB calls, and `internal/infrastructure/rdb/README.md` for naming convention. Derives the mapping Repository method → sqlc gen function via name-match heuristic. For methods without a derivable mapping, **leaves TODO at the impl location + reports** (user resolves: add SQL + re-run `make gen-query`, or accept hand-write). Wraps each method with tracer span + `pgerror.NormalizeError` + row→entity conversion per the sibling pattern. Reads `internal/infrastructure/README.md` + `internal/infrastructure/rdb/README.md` + an existing `repository/<sibling>/` as structural template, invokes a test-perspective subagent (real DB + rollback via testkit, sqlc gen wrap correctness, pgerror normalization paths, observability spans), writes Go impl + integration-style test, updates `internal/di/module/infrastructure.go` with `fx.Provide`. Verifies with `make fix` + `make test`. Prerequisites: (1) domain Repository IF exists; (2) `make gen-query` has run. Does NOT generate SQL or run `make gen-query` itself.
+  Implement the infrastructure (RDB) layer Repository for one feature, derived from domain Repository IF + sqlc gen functions (lean A — no spec file). Reads the domain Repository Interface at `internal/domain/<aggregate>/<aggregate>_repository.go` for method list, the sqlc gen functions at `internal/infrastructure/rdb/sqlc/gen/*.gen.go` for available DB calls, and `internal/infrastructure/rdb/README.md` for naming convention. Derives the mapping Repository method → sqlc gen function via name-match heuristic. For methods without a derivable mapping, **leaves TODO at the impl location + reports** (user resolves: add SQL + re-run `make gen-query`, or accept hand-write). Wraps each method with tracer span + `pgerror.NormalizeError` + row→entity conversion per the sibling pattern. Reads `internal/infrastructure/README.md` + `internal/infrastructure/rdb/README.md` + an existing `repository/<sibling>/` as structural template, invokes a test-perspective subagent (real DB + rollback via testkit, sqlc gen wrap correctness, pgerror normalization paths, observability spans), writes Go impl + integration-style test, updates `internal/di/module/persistence.go` with `fx.Provide`. Verifies with `make fix` + `make test`. Prerequisites: (1) domain Repository IF exists; (2) `make gen-query` has run. Does NOT generate SQL or run `make gen-query` itself.
 ---
 
 # Scaffold Infra DB
@@ -32,13 +32,13 @@ Do NOT use for:
 - `internal/infrastructure/README.md` — infra-layer convention
 - `internal/infrastructure/rdb/pgerror/README.md` — error normalization rules (SQLSTATE mapping, single-normalization-point principle)
 - `internal/infrastructure/rdb/repository/<sibling>/<sibling>_repository.go` — **de facto reference implementation** (infra READMEs describe principles textually but do not carry full impl snippets, so sibling code is the closest reference; still, if it drifts from README rules the README wins)
-- `internal/di/module/infrastructure.go` — DI registration target
+- `internal/di/module/persistence.go` — DI registration target
 
 **Writes (with confirmation)**:
 
 - `internal/infrastructure/rdb/repository/<aggregate>/<aggregate>_repository.go`
 - `internal/infrastructure/rdb/repository/<aggregate>/<aggregate>_repository_test.go`
-- `internal/di/module/infrastructure.go` (append `fx.Provide(<aggregate>.New)`)
+- `internal/di/module/persistence.go` (append `fx.Provide(<aggregate>.New)`)
 
 **Triggers (via `make`)**:
 
@@ -62,7 +62,7 @@ If any precondition fails, abort with corrective guidance (`/scaffold-domain`, `
 
 > **Environment note:** `make gen-query` dumps the live DB schema via `pg_dump`, so the database must be running first. Use the dedicated make targets — **not raw `docker compose`** — to prepare it: `make serve` (starts the development profile incl. the `database` service) → **`make db-init`** → `make gen-query`. `make db-init` migrates **and seeds** both the local and test DBs in one shot; the integration-style tests this skill writes (`make test`) also need the running, **seeded** test DB, so `db-init` (not a bare `db-*-migrate-up`) is the correct setup.
 >
-> **Toolchain note:** if the final `make fix` / `make test` (or `make lint`) fails on a tool version mismatch (e.g. `golangci-lint` v1-vs-v2 config error), realign the local toolchain with `make install-tools` (`make sync-tools` first if `tools.yaml` changed) rather than hand-editing `PATH` — then re-run.
+> **Toolchain note:** if the final `make fix` / `make test` (or `make lint`) fails on a tool version mismatch (e.g. `golangci-lint` v1-vs-v2 config error), realign the local toolchain with `make install-tools` (`make sync-versions` first if `mise.toml` changed) rather than hand-editing `PATH` — then re-run.
 
 ## First Step: Resolve Identity
 
@@ -77,7 +77,7 @@ This skill **MUST call `AskUserQuestion` immediately after invocation** (unless 
 3. Read `internal/infrastructure/rdb/README.md` for the naming convention (how Repository method names typically map to sqlc gen function names) and impl rules.
 4. Read `internal/infrastructure/README.md` for layer rules.
 5. Read `internal/infrastructure/rdb/pgerror/README.md` for SQLSTATE → apperror mapping and the single-normalization-point principle (every sqlc call's error MUST flow through `pgerror.NormalizeError`).
-6. Read 1 sibling repository (`internal/infrastructure/rdb/repository/user/user_repository.go` etc.) as **concrete reference** — tracer wiring, `gen.New(driver.New(ctx, r.db))` usage, pgerror normalization placement, conversion helper pattern. The infra READMEs do not carry a full code snippet, so sibling code is the closest concrete reference; on any conflict the READMEs win.
+6. Read 1 sibling repository (`internal/infrastructure/rdb/repository/<sibling>/<sibling>_repository.go` etc.) as **concrete reference** — tracer wiring, `gen.New(driver.New(ctx, r.db))` usage, pgerror normalization placement, conversion helper pattern. The infra READMEs do not carry a full code snippet, so sibling code is the closest concrete reference; on any conflict the READMEs win.
 
 ## Step 2. Derive Mapping (lean A core)
 
@@ -98,7 +98,7 @@ For each Repository method WITHOUT a derivable sqlc gen match:
 
       // TODO: CountByActive に対応する sqlc gen 関数が見当たりません。
       // 解決方法:
-      //   1. database/dml/repository/user/*.sql に CountByActive query を追加
+      //   1. database/dml/repository/<aggregate>/*.sql に CountByActive query を追加
       //   2. make gen-query を実行
       //   3. 本 TODO を消して sqlc gen を呼ぶ実装に置き換え
       return 0, errors.New("not implemented")
@@ -141,7 +141,7 @@ Order:
 
 1. `<aggregate>_repository.go` — main implementation
 2. `<aggregate>_repository_test.go` — testkit-backed integration tests
-3. Update `internal/di/module/infrastructure.go` — append `<aggregate>.New` under `repository` module
+3. Update `internal/di/module/persistence.go` — append `<aggregate>.New` under `repository` module
 
 Implementation file conventions:
 
@@ -154,7 +154,7 @@ Implementation file conventions:
   - Map domain params → sqlc params via heuristic (1:1 by name, types adjusted)
   - Call `db.<SqlcFunc>(ctx, params)`
   - Convert sqlc rows → domain entity per sibling pattern
-  - Wrap every sqlc-call error with `pgerror.NormalizeError(err)` (single-normalization principle — see Step 1.5 / `pgerror/README.md`)
+  - Wrap every sqlc-call error with `pgerror.NormalizeError(err)` (single-normalization principle — see Step 1 / `pgerror/README.md`)
 - Each method (unmapped): TODO stub as in Step 2
 - Complex helpers (multi-row → slice): follow sibling pattern (helper function in same file)
 
@@ -191,7 +191,7 @@ Do NOT commit.
 
 Per the "Exception: Skill Execution" clause:
 
-- Write scope: `internal/infrastructure/rdb/repository/<aggregate>/` (new directory) + `internal/di/module/infrastructure.go` (1 entry append).
+- Write scope: `internal/infrastructure/rdb/repository/<aggregate>/` (new directory) + `internal/di/module/persistence.go` (1 entry append).
 - Aborts if the aggregate directory already exists.
 
 Remains protected:
@@ -202,7 +202,7 @@ Remains protected:
 
 ## Constraints
 
-- ❌ Add comments that restate the code or explain *why* a choice was made — keep code comments minimal (behavior / contract only); rationale belongs in the commit message / README, not the code. One-line declaration godoc stays (even on unexported symbols).
+- ❌ Add comments that restate the code or explain *why* a choice was made — keep code comments minimal (behavior / contract only); rationale belongs in the commit message / README, not the code. One-line declaration godoc stays (even on unexported symbols). **Volume counts too**: what this skill scaffolds is idiomatic by construction, so a multi-line explanation of a constructor / Params struct / row-to-entity mapping / handler template is noise. State the contract in one line and stop; never restate a repo-wide rule `docs/rules.md` already carries. Suppression, not elimination — a genuinely non-obvious Why still stays.
 - ❌ Invent business logic in Repository (data orchestration only)
 - ❌ Generate SQL or run `make gen-query` (out of scope)
 - ❌ Hand-edit sqlc generated files
@@ -230,7 +230,7 @@ Remains protected:
 - [ ] Plan displayed (mapped + unmapped clearly distinguished) and confirmed
 - [ ] Implementation file written; mapped methods call sqlc gen, unmapped methods have TODO stub
 - [ ] Test file written; tests only for mapped methods
-- [ ] `internal/di/module/infrastructure.go` updated with new `fx.Provide`
+- [ ] `internal/di/module/persistence.go` updated with new `fx.Provide`
 - [ ] `make fix` + `make test` run; coverage reported (or failure surfaced)
 - [ ] Final summary clearly lists mapped count + unmapped count + next-step guidance
 - [ ] No commits / pushes

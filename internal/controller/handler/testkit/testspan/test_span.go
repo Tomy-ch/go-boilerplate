@@ -6,14 +6,14 @@ import (
 
 	"go-boilerplate/internal/observability"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
-// StartTestSpanForEcho は、テスト用のスタブトレーススパンを echo.Context に設定し、スパン終了関数を返します。
+// StartTestSpanForEcho は、テスト用のスタブトレーススパンを *echo.Context に設定し、スパン終了関数を返します。
 func StartTestSpanForEcho(
 	t *testing.T,
-	c echo.Context,
-) (echo.Context, func()) {
+	c *echo.Context,
+) (*echo.Context, func()) {
 	t.Helper()
 
 	req := c.Request()

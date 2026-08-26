@@ -18,6 +18,8 @@ const (
 	// EventTzKey は、イベント発生時刻のタイムゾーンを表すログフィールドのキーです。
 	EventTzKey = "event_tz"
 
+	// HTTP 系ログのキー
+
 	// StatusKey は、HTTPステータスコードを表すログフィールドのキーです。
 	StatusKey = "status"
 	// MethodKey は、HTTPメソッドを表すログフィールドのキーです。
@@ -88,6 +90,10 @@ const (
 	JobErrorKey = "job_error"
 	// JobResultKey は、ジョブ結果を表すログフィールドのキーです。
 	JobResultKey = "job_result"
+	// JobSkippedKey は、ジョブが対象から除外した件数を表すログフィールドのキーです。
+	JobSkippedKey = "job_skipped"
+	// JobScannedKey は、ジョブが処理対象として検査した件数を表すログフィールドのキーです。
+	JobScannedKey = "job_scanned"
 	// FilterKey は、適用したフィルタ条件を表すログフィールドのキーです。
 	FilterKey = "filter"
 

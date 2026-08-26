@@ -8,6 +8,9 @@ const (
 	EnvCI = "ci"
 	// EnvTest はテスト環境を表します。
 	EnvTest = "test"
+	// EnvDast は DAST スキャンの実行環境を表します。
+	// 認証をスタブに倒す EnvCI と違い、mock 認証サーバーが発行する実 JWT を実際に検証させます。
+	EnvDast = "dast"
 	// EnvDevelopment は開発環境を表します（env ファイルの APP_ENV 実値）。
 	EnvDevelopment = "dev"
 	// EnvStaging はステージング環境を表します（env ファイルの APP_ENV 実値）。
@@ -42,3 +45,8 @@ const (
 	// MaxPort は許可される最大ポート番号を表します。
 	MaxPort = 65535
 )
+
+// BytesPerMB は、MB 表記をバイトへ換算する係数です。
+// SERVER_BODY_LIMIT_MB を解釈する echo の body limit ミドルウェアが 10 進の MB（1MB=1,000,000 byte）を
+// 用いるため、2 進（1MiB=1,048,576 byte）ではなくこの値に揃えます。
+const BytesPerMB int64 = 1_000_000

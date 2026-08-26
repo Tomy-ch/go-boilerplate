@@ -1,0 +1,110 @@
+name: OpenSSF Scorecard
+
+on:
+  # This repository's default branch is not a fixed name (`main` / `master`): it moves
+  # forward with each release (`release/vX.Y.Z`). A branch name therefore cannot be baked
+  # into this file, so the push trigger matches the whole `release/*` namespace and the job
+  # below narrows it down to whichever branch is currently the default one.
+  push:
+    branches:
+      - 'release/*'
+  schedule:
+    - cron: '0 1 * * 1'
+  workflow_dispatch:
+
+# Declare default permissions as read only.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scorecard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Scorecard must analyse the default branch only:
+    #   - the Branch-Protection check can only be evaluated against the default branch, and
+    #   - `publish_results` is accepted by the OpenSSF API only for the default branch.
+    # push receives the whole release/* namespace, so non-default branches must be rejected. A manual
+    # workflow_dispatch on a non-default branch also fails because publish_results rejects it, so it is
+    # filtered out the same way. schedule always runs on the default branch and is unaffected.
+    if: github.ref_name == github.event.repository.default_branch
+    permissions:
+      # Needed to upload the results to the code scanning dashboard.
+      security-events: write
+      # Needed to publish the results and get a badge.
+      id-token: write
+      contents: read
+      actions: read
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            api.securityscorecards.dev:443
+            api.scorecard.dev:443
+            api.osv.dev:443
+            api.deps.dev:443
+            www.bestpractices.dev:443
+            bestpractices.coreinfrastructure.org:443
+            oss-fuzz-build-logs.storage.googleapis.com:443
+            storage.googleapis.com:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Required by Scorecard: the analysis must not run with a credential-bearing
+          # git config available to it.
+          persist-credentials: false
+
+      - name: Run Scorecard analysis
+        uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc # v2.4.4
+        with:
+          results_file: scorecard.sarif
+          results_format: sarif
+          # This sends the scores to the public OpenSSF REST API: the results become
+          # externally visible (consumable via https://api.scorecard.dev and the OpenSSF
+          # dashboard) and enable the Scorecard badge. Only meaningful because this
+          # repository is public; on a private repository it is forced to false.
+          publish_results: true
+
+      - name: Upload Scorecard report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: scorecard
+          path: scorecard.sarif
+
+      - name: Upload Scorecard SARIF to code scanning
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
+        with:
+          sarif_file: scorecard.sarif
+          category: scorecard
+
+  # See README.md § Notification triggers (why only scheduled runs notify, and why cancelled counts).
+  notify-failure:
+    needs: scorecard
+    if: ${{ always() && github.event_name == 'schedule' && contains(fromJSON('["failure", "cancelled"]'), needs.scorecard.result) }}
+    uses: ./.github/workflows/notify.yaml
+    with:
+      failed-job: scorecard
+    secrets:
+      slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}

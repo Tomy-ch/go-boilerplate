@@ -1,0 +1,4 @@
+interface:
+  display_name: "Architecture Compliance Check"
+  short_description: "変更層を対象にアーキテクチャ違反を体系的に検査する"
+  default_prompt: "$arch-check を使い、変更ファイルのアーキテクチャ準拠を確認して。"

@@ -34,17 +34,12 @@ func (a *authenticator) Authenticate(_ context.Context, cred *authbd.Credential)
 		return nil, ErrLocalMockAuthenticatorInvalidToken
 	}
 
-	sub := a.resolveSubject(cred.AccessToken())
+	sub := a.resolveSubject(cred.Token())
 	if sub == "" {
 		return nil, ErrLocalMockAuthenticatorInvalidToken
 	}
 
-	return authbd.New(
-		sub,
-		authbd.ProviderMock,
-		nil,
-		nil,
-	)
+	return authbd.New(sub, authbd.IssuerMock, nil, nil)
 }
 
 // resolveSubject は token から localPrefix を除いた Subject を抽出します。

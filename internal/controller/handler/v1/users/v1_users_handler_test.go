@@ -4,8 +4,10 @@ import (
 	"context"
 	"net/http"
 	"testing"
+	"time"
 
 	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/handler/testkit/testassert"
 	"go-boilerplate/internal/controller/handler/testkit/testauth"
 	"go-boilerplate/internal/controller/handler/v1/users/gen"
@@ -15,8 +17,9 @@ import (
 	"go-boilerplate/internal/usecase/user"
 	mock_user "go-boilerplate/internal/usecase/user/mock"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/runtime/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,9 +28,13 @@ import (
 
 const targetPath = "/v1/users"
 
+// listSubject は、一覧取得テストで使う認証主体の subject です。
+const listSubject = "11111111-1111-1111-1111-111111111111"
+
 // wantUserResponse は、本番 toUserResponse とは独立な検証用オラクル（フィールド取り違え検出）。
 func wantUserResponse(dto user.UserView) gen.UserResponse {
 	return gen.UserResponse{
+		Id:         dto.ID.ToPrimitive(),
 		FirstName:  dto.FirstName,
 		LastName:   dto.LastName,
 		Email:      types.Email(dto.Email),
@@ -52,8 +59,7 @@ func TestBindHandler(t *testing.T) {
 
 	BindHandler(e, tf, mockApp, idempotency.Deps{})
 
-	// /v1/users (GET, POST) が登録される。
-	routes := e.Routes()
+	routes := e.Router().Routes()
 
 	expectedMethods := []string{
 		http.MethodGet,  // GetUsers
@@ -102,7 +108,7 @@ func Test_server_GetUsers(t *testing.T) {
 
 		exec := func(t *testing.T, dtos []user.UserView, total int64) {
 			t.Helper()
-			ctx := context.Background()
+			ctx := testauth.MakeAvailableAuthn(context.Background(), t, listSubject)
 			ctrl := gomock.NewController(t)
 			lt := observability.NewMockControllerLayerTracer(t)
 
@@ -119,7 +125,7 @@ func Test_server_GetUsers(t *testing.T) {
 
 			mockApp := mock_user.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
-				ListUsersWithTotal(gomock.Any(), mockParams.Params.Active, mockPage).
+				ListUsersWithTotal(gomock.Any(), gomock.Any(), mockParams.Params.Active, mockPage).
 				Return(&user.UserListView{Items: dtos, Total: total}, nil)
 
 			s := &server{tracer: lt, uc: mockApp}
@@ -153,7 +159,7 @@ func Test_server_GetUsers(t *testing.T) {
 
 		t.Run("ページング処理が失敗した場合、エラーが返る", func(t *testing.T) {
 			t.Parallel()
-			ctx := context.Background()
+			ctx := testauth.MakeAvailableAuthn(context.Background(), t, listSubject)
 			ctrl := gomock.NewController(t)
 			lt := observability.NewMockControllerLayerTracer(t)
 
@@ -176,7 +182,7 @@ func Test_server_GetUsers(t *testing.T) {
 		t.Run("Usecaseがエラーを返した場合、エラーが返る", func(t *testing.T) {
 			t.Parallel()
 
-			ctx := context.Background()
+			ctx := testauth.MakeAvailableAuthn(context.Background(), t, listSubject)
 			ctrl := gomock.NewController(t)
 			lt := observability.NewMockControllerLayerTracer(t)
 
@@ -184,13 +190,24 @@ func Test_server_GetUsers(t *testing.T) {
 
 			mockApp := mock_user.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
-				ListUsersWithTotal(gomock.Any(), mockParams.Params.Active, mockPage).
+				ListUsersWithTotal(gomock.Any(), gomock.Any(), mockParams.Params.Active, mockPage).
 				Return(nil, expectedError)
 
 			s := &server{tracer: lt, uc: mockApp}
 			resp, err := s.GetUsers(ctx, mockParams)
 			require.Nil(t, resp)
 			require.ErrorIs(t, err, expectedError)
+		})
+
+		t.Run("未認証の場合_ErrUnauthenticatedUser", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			lt := observability.NewMockControllerLayerTracer(t)
+
+			s := &server{tracer: lt, uc: mock_user.NewMockUsecase(ctrl)}
+			resp, err := s.GetUsers(context.Background(), mockParams)
+			require.Nil(t, resp)
+			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
 		})
 	})
 }
@@ -223,7 +240,6 @@ func Test_server_PostUsers(t *testing.T) {
 					City:       "Shibuya",
 					Street:     "1-1-1",
 					Building:   new("Building"),
-					Password:   "secret",
 				},
 			}
 
@@ -265,7 +281,6 @@ func Test_server_PostUsers(t *testing.T) {
 
 			expectedParams := &user.CreateParamsDTO{
 				UserID:              userID,
-				RawPassword:         req.Body.Password,
 				UpdateProfileParams: wantParams,
 			}
 			assert.Equal(t, expectedParams, gotParams)
@@ -291,7 +306,6 @@ func Test_server_PostUsers(t *testing.T) {
 					FirstName: "A",
 					LastName:  "B",
 					Email:     types.Email("err@example.com"),
-					Password:  "pw",
 				},
 			}
 
@@ -301,7 +315,7 @@ func Test_server_PostUsers(t *testing.T) {
 			resp, err := s.PostUsers(ctx, req)
 
 			require.Nil(t, resp)
-			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+			require.ErrorIs(t, err, ctxhelper.ErrUnauthenticatedUser)
 		})
 
 		t.Run("認証データのsubjectにuuidが含まれない場合、エラーが返る", func(t *testing.T) {
@@ -317,7 +331,6 @@ func Test_server_PostUsers(t *testing.T) {
 					FirstName: "A",
 					LastName:  "B",
 					Email:     types.Email("err@example.com"),
-					Password:  "pw",
 				},
 			}
 
@@ -343,7 +356,6 @@ func Test_server_PostUsers(t *testing.T) {
 					FirstName: "A",
 					LastName:  "B",
 					Email:     types.Email("err@example.com"),
-					Password:  "pw",
 				},
 			}
 
@@ -355,6 +367,44 @@ func Test_server_PostUsers(t *testing.T) {
 			resp, err := s.PostUsers(ctx, req)
 			require.Nil(t, resp)
 			require.ErrorIs(t, err, expectedErr)
+		})
+	})
+}
+
+func Test_toUserResponse(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("全項目が設定されたDTOをレスポンスへ写像する", func(t *testing.T) {
+			t.Parallel()
+
+			deletedAt := time.Date(2026, time.March, 4, 5, 6, 7, 0, time.UTC)
+			dto := user.UserView{
+				ID:        uuidtestkit.NewTestFromSalt(t, "user_view"),
+				FirstName: "太郎", LastName: "山田", Email: "taro@example.com", Phone: "1234567890",
+				PostalCode: "100-0001", PrefectureName: "東京都", City: "千代田区", Street: "1-1",
+				Building: new("ビルA"), DeletedAt: &deletedAt,
+			}
+
+			assert.Equal(t, wantUserResponse(dto), toUserResponse(dto))
+		})
+
+		t.Run("任意項目がnilのDTOはレスポンスでもnilのまま写像する", func(t *testing.T) {
+			t.Parallel()
+
+			dto := user.UserView{
+				FirstName: "花子", LastName: "鈴木", Email: "hanako@example.com", Phone: "0987654321",
+				PostalCode: "200-0002", PrefectureName: "大阪府", City: "北区", Street: "2-2",
+				Building: nil, DeletedAt: nil,
+			}
+
+			actual := toUserResponse(dto)
+			assert.Nil(t, actual.Building)
+			assert.Nil(t, actual.DeletedAt)
+			assert.Equal(t, types.Email("hanako@example.com"), actual.Email)
+			assert.Equal(t, "大阪府", actual.Prefecture)
 		})
 	})
 }

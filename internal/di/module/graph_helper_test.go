@@ -27,3 +27,17 @@ func validateGraph(t *testing.T, opts ...fx.Option) {
 	t.Helper()
 	require.NoError(t, fx.ValidateApp(append(opts, fx.NopLogger)...))
 }
+
+// collectGroup は、opt を組み込んだ fx アプリで value group tag に集まった値を返す。
+// provide<X> ヘルパー群が「渡したコンストラクタをそのグループへ登録する」ことの検証に使う。
+func collectGroup[T any](t *testing.T, tag string, opt fx.Option) []T {
+	t.Helper()
+	var got []T
+	app := fx.New(
+		opt,
+		fx.Invoke(fx.Annotate(func(vs []T) { got = vs }, fx.ParamTags(tag))),
+		fx.NopLogger,
+	)
+	require.NoError(t, app.Err())
+	return got
+}

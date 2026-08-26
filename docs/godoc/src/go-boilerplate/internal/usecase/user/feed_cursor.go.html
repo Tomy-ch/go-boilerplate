@@ -67,7 +67,7 @@
 <span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
 <span id="L11" class="ln">    11  </span>)
 <span id="L12" class="ln">    12  </span>
-<span id="L13" class="ln">    13  </span><span class="comment">// feedCursorKeyCount は、フィードカーソルが保持するソートキーの個数（created_at, id）です。</span>
+<span id="L13" class="ln">    13  </span><span class="comment">// feedCursorKeyCount は、フィードカーソルが保持するソートキーの個数（作成日時, ID）です。</span>
 <span id="L14" class="ln">    14  </span>const feedCursorKeyCount = 2
 <span id="L15" class="ln">    15  </span>
 <span id="L16" class="ln">    16  </span><span class="comment">// decodeFeedCursor は、cursor の不透明キー列を keyset 境界（FeedCursor）へ解釈します。</span>
@@ -96,7 +96,7 @@
 <span id="L39" class="ln">    39  </span>	return &amp;fc, nil
 <span id="L40" class="ln">    40  </span>}
 <span id="L41" class="ln">    41  </span>
-<span id="L42" class="ln">    42  </span><span class="comment">// encodeFeedCursor は、現在ページ末尾行のソートキー（created_at, id）から次ページ用の不透明カーソルを生成します。</span>
+<span id="L42" class="ln">    42  </span><span class="comment">// encodeFeedCursor は、現在ページ末尾のソートキー（作成日時, ID）から次ページ用の不透明カーソルを生成します。</span>
 <span id="L43" class="ln">    43  </span>func encodeFeedCursor(last *user.User) string {
 <span id="L44" class="ln">    44  </span>	return paging.EncodeCursor(last.CreatedAt().Format(time.RFC3339Nano), last.ID().String())
 <span id="L45" class="ln">    45  </span>}

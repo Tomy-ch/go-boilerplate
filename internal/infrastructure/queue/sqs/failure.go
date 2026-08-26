@@ -14,7 +14,6 @@ import (
 // attrDataTypeString は、SQS メッセージ属性の DataType に指定する文字列型の値です。
 const attrDataTypeString = "String"
 
-// 実装漏れをコンパイル時に検出します。
 var _ worker.FailureHandler = (*deadLetter)(nil)
 
 // deadLetter は、worker.FailureHandler の SQS 実装です（Permanent を別キュー=DLQ へ送ります）。

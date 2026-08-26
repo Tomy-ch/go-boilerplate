@@ -17,6 +17,5 @@ func TestTimeoutPreMiddleware(t *testing.T) {
 	assert.Equal(t, "timeout", mw.Middleware.Name)
 	assert.Equal(t, timeoutPrePriority, mw.Middleware.Priority)
 	assert.NotNil(t, mw.Middleware.Middleware)
-	// deadline budget の元となる RequestTimeout が正の値であることを確認する。
 	assert.Positive(t, srvCfg.RequestTimeout())
 }

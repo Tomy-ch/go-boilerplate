@@ -1,0 +1,4 @@
+interface:
+  display_name: "Scoped Git Commit"
+  short_description: "変更を安全に分割し日本語コミットを作成して検証する"
+  default_prompt: "$commit を使い、現在の変更を確認して適切な単位でコミットして。"

@@ -52,6 +52,27 @@ fx.Module("httpclient",
 )
 ```
 
+## Test Strategy
+
+This is a substrate with no database, so the infrastructure layer's real-DB strategy does not apply.
+Everything closes in-process: an `httptest` server for the downstream, an injected clock for time.
+
+- **The downstream is an in-process `httptest` server** scripting status / headers / body / transport
+  failure. No real network, no external service.
+- **Time is injected, never waited on.** The `clock` testkit doubles (`NewStepClock` / `NewNoopSleeper`)
+  make backoff, `Retry-After`, the per-attempt timeout and the overall timeout deterministic. A test that
+  sleeps real time is flaky by construction and is the anti-pattern this package guards against — a
+  deadline case pins the abort using the step clock's advance against `OverallTimeout`, not wall time.
+- **Retry policy is pinned from both sides.** Retried: 5xx / 429 / transport failure, for an idempotent
+  method or one carrying `WithRetry`. Not retried: 4xx, success, context cancellation, and a
+  non-idempotent method without an idempotency key. Assertions go through the mapped `apperror` sentinel
+  with `errors.Is`, never a raw status code — that is the contract callers are given.
+- **Breaker and budget are pinned per state transition**, not by timing: closed → open on sustained
+  faults, open → half-open, half-open → closed / open, and the token bucket's consume / refill
+  arithmetic. Each transition is its own subject with its own test.
+- **Unexported helpers unreachable through `Client`** (request construction guard, profile resolution)
+  are covered by `*_internal_test.go` in the same package.
+
 ## Test coverage exception
 
 The following uncovered branch is exempt from the near-100% expectation as **structurally

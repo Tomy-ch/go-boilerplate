@@ -136,10 +136,17 @@ These mechanisms prevent architectural violations and ensure reproducibility.
 
 ## AI-assisted Development
 
-AI-assisted development is supported, but  
-the development workflow must always be followed.
+The flows above are **normally executed with an AI assistant**. That is the standard path of this
+repository, and the reusable procedures are codified as skills under `.claude/skills/` (with their
+`.codex/skills/` counterparts) rather than as prose a reader has to re-derive each time — scaffolding
+a layer, reviewing a change, committing, opening a pull request, and validating a spec each have one.
 
-AI-generated code must comply with:
+Running the same flow by hand remains possible and is not forbidden. It is a compatibility path: the
+steps are the ones documented here, but the skill that would otherwise drive them is not available to
+you, and no equivalent manual tooling is maintained alongside it. See
+[ADR-0007 (agents-md-operational-contract)](adr/0007-agents-md-operational-contract.md).
+
+The workflow itself is unconditional either way. Code produced with AI assistance must comply with:
 
 - OpenAPI-first workflow
 - SQL-first data access
@@ -149,6 +156,10 @@ Before generating code, AI agents must refer to:
 
 - `architecture.md`
 - `rules.md`
+
+Where a flow's outcome is mechanically decidable — generated-artifact drift, layer imports, lint,
+tests — the check in `## CI and Structural Safety` decides it, not the agent's account of what it
+did.
 
 ## Summary
 

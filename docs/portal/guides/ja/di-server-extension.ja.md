@@ -25,7 +25,7 @@ flowchart TB
 
 - **Pre ミドルウェア**: ルーティング前に実行（`e.Pre()`）
 - **Use ミドルウェア**: ルーティング後に実行（`e.Use()`）
-- **Configurator**: Echo インスタンスへの設定適用（デバッグモード等）
+- **Configurator**: Echo インスタンスへの設定適用（クライアント IP 抽出・エラーハンドラ等）
 - Priority の重複は自動検出されエラーになる
 
 ## サブディレクトリ一覧
@@ -64,12 +64,6 @@ flowchart TB
 |`Module()`|Use|セキュリティヘッダ（HSTS 等）|
 |`CORSModule()`|Use|CORS 設定|
 |`CookieModule()`|Use|Cookie セキュリティ属性|
-
-### nonprod（非本番）
-
-|モジュール|種別|説明|
-|---|---|---|
-|`DebugModeModule()`|Configurator|開発環境でデバッグモード有効化|
 
 ## 注意点
 

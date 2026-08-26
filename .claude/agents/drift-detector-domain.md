@@ -53,7 +53,7 @@ Return findings directly, no preamble. Each finding carries reasoning **and** th
 drift-detector-domain 結果（scope: <scope>, 種別: <A/B/C>）
 
 [A] README → Code drift  N 件
-  rule: "全フィールドは unexport、getter 経由でのみ公開" (internal/domain/README.md L113)
+  rule: "全フィールドは unexport、getter 経由でのみ公開" (internal/domain/README.md L301)
   violating files: internal/domain/foo/foo_domain.go (FirstName, LastName が export)
   reasoning: README が明示的に unexport を要求するが、当該ファイルが export field を持つ
   options: 1) コード修正（unexport + getter） 2) README 緩和 3) 例外扱い
@@ -66,7 +66,7 @@ drift-detector-domain 結果（scope: <scope>, 種別: <A/B/C>）
 
 [C] Skill ↔ README duplication  K 件
   rule: "entity フィールドは unexport"
-  duplicated in: arch-auditor-domain.md L<n> / internal/domain/README.md L113
+  duplicated in: arch-auditor-domain.md L<n> / internal/domain/README.md L301
   reasoning: 同一ルールが skill で enumerate + README で記述。skill は README 参照に簡略化可能
   options: 1) skill 記述削除し README 参照のみ 2) skill 記述維持
 

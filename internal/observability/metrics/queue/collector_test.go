@@ -141,6 +141,54 @@ worker_queue_depth{adapter="sqs",queue="source",state="delayed",worker="w"} 0
 			assert.Equal(t, 3, testutil.CollectAndCount(c, "worker_queue_depth"))
 		})
 
+		t.Run("遅い target が健全な target の収集をブロックしない（並行収集）", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			fastCalled := make(chan struct{})
+			// 先頭の遅い target は後続の fast が呼ばれるまで待つ。逐次収集だと fast は呼ばれず
+			// deadline まで待たされ失敗計上される＝並行でなければ両者成功のアサーションは満たせない。
+			slow := mock_worker.NewMockQueueStatsProvider(ctrl)
+			slow.EXPECT().QueueStats(gomock.Any()).DoAndReturn(
+				func(ctx context.Context) (worker.QueueStats, error) {
+					select {
+					case <-fastCalled:
+						return worker.QueueStats{Source: worker.QueueDepth{Visible: 1}}, nil
+					case <-ctx.Done():
+						return worker.QueueStats{}, ctx.Err()
+					}
+				})
+			fast := mock_worker.NewMockQueueStatsProvider(ctrl)
+			fast.EXPECT().QueueStats(gomock.Any()).DoAndReturn(
+				func(context.Context) (worker.QueueStats, error) {
+					close(fastCalled)
+					return worker.QueueStats{Source: worker.QueueDepth{Visible: 2}}, nil
+				})
+
+			c := queuemetrics.NewStatsCollector([]queuemetrics.Target{
+				{WorkerName: "slow", Adapter: "sqs", Provider: slow},
+				{WorkerName: "fast", Adapter: "sqs", Provider: fast},
+			})
+
+			reg := prometheus.NewPedanticRegistry()
+			require.NoError(t, reg.Register(c))
+			got, err := reg.Gather()
+			require.NoError(t, err)
+
+			var depthCount int
+			var hasFailure bool
+			for _, mf := range got {
+				switch mf.GetName() {
+				case "worker_queue_depth":
+					depthCount = len(mf.GetMetric())
+				case "worker_queue_stats_collection_failures_total":
+					hasFailure = true
+				}
+			}
+			assert.Equal(t, 6, depthCount) // 2 target × 3 state、両者成功
+			assert.False(t, hasFailure)
+		})
+
 		t.Run("metric label に queue URL_ARN_message id を含めない", func(t *testing.T) {
 			t.Parallel()
 
@@ -294,6 +342,53 @@ func TestRegisterStatsCollector(t *testing.T) {
 
 			err := queuemetrics.RegisterStatsCollector(reg, queuemetrics.NewStatsCollector(nil))
 			require.Error(t, err)
+		})
+	})
+}
+
+// drainDescs は、Describe が channel へ送出した Desc を全件読み出します。
+// Describe は consumer が読むまでブロックし得るため、送出側を別 goroutine に置きます。
+func drainDescs(t *testing.T, describe func(chan<- *prometheus.Desc)) []*prometheus.Desc {
+	t.Helper()
+	ch := make(chan *prometheus.Desc)
+	go func() {
+		describe(ch)
+		close(ch)
+	}()
+	var got []*prometheus.Desc
+	for d := range ch {
+		got = append(got, d)
+	}
+	return got
+}
+
+func TestStatsCollector_Describe(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("depth gauge と収集失敗 counter の Desc を通知する", func(t *testing.T) {
+			t.Parallel()
+
+			got := drainDescs(t, queuemetrics.NewStatsCollector(nil).Describe)
+
+			require.Len(t, got, 2)
+			descs := []string{got[0].String(), got[1].String()}
+			// fqName と label 次元まで含めて、公開する系列の契約を固定する。
+			assert.Contains(t, descs[0], `fqName: "worker_queue_depth"`)
+			assert.Contains(t, descs[0], "variableLabels: {worker,adapter,queue,state}")
+			assert.Contains(t, descs[1], `fqName: "worker_queue_stats_collection_failures_total"`)
+			assert.Contains(t, descs[1], "variableLabels: {worker,adapter,queue}")
+		})
+
+		t.Run("収集対象が無くても Desc は通知する", func(t *testing.T) {
+			t.Parallel()
+
+			// Describe は target の有無に依らず固定の Desc を返す（未登録扱いにならない）。
+			c := queuemetrics.NewStatsCollector([]queuemetrics.Target{})
+
+			assert.Len(t, drainDescs(t, c.Describe), 2)
 		})
 	})
 }

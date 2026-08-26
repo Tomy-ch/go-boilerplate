@@ -10,7 +10,7 @@
 `New(dbSystemQuery, tracerFactory, clock) Usecase`
 
 - `CheckHealth(ctx) (*DTO, error)` は `clock.Now()` で現在時刻を取得し、続いて
-  `DBSystemQuery.CheckDBHealth(ctx)` を呼びます。成功時は `Status = Ok`・
+  `DBSystemCqrs.CheckDBHealth(ctx)` を呼びます。成功時は `Status = Ok`・
   `ApplicationTime`・`DBHealthCheck` を持つ `*DTO` を返します。DB エラー時は
   `nil` を返すため、DTO を参照してはいけません。
 
@@ -21,7 +21,7 @@
 
 ## DB probe — `healthcheck/query`
 
-`query` サブパッケージは薄い leaf 境界です。`DBSystemQuery` は単一の
+`query` サブパッケージは薄い leaf 境界です。`DBSystemCqrs` は単一の
 `CheckDBHealth(ctx) (DBHealth, error)` を持ち、`DBHealth` は `Ready`・
 `RespondedAt`・`Latency` を報告します。具体的な実装は
 `internal/infrastructure/rdb/system_cqrs/healthcheck/` にあり、軽量な
@@ -33,7 +33,7 @@
 | 関心事 | パス |
 | --- | --- |
 | usecase | `internal/usecase/healthcheck/`（本パッケージ） |
-| DB probe 境界 | `internal/usecase/healthcheck/query/`（`DBSystemQuery`） |
+| DB probe 境界 | `internal/usecase/healthcheck/query/`（`DBSystemCqrs`） |
 | clock 境界 | `internal/usecase/boundary/clock/`（`Clock`） |
 | infrastructure | `internal/infrastructure/rdb/system_cqrs/healthcheck/` |
 | sqlc DML | `database/dml/system_cqrs/health_check/` |

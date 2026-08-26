@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/caarlos0/env/v11"
-	"golang.org/x/crypto/bcrypt"
 
 	"go-boilerplate/pkg/xerrors"
 )
@@ -16,7 +15,8 @@ import (
 // exporterNone は、送出を明示的に無効化する exporter 値。
 const exporterNone = "none"
 
-// New は、アプリケーションの設定を初期化します。
+// New は、環境変数から設定を読み込み、検証したうえで Config を構築して返します。
+// 型変換の失敗、値の範囲・相互整合性の違反、CIDR の解析失敗のいずれでもエラーを返します。
 func New() (*Config, error) {
 	cfg, err := env.ParseAs[Loader]()
 	if err != nil {
@@ -65,7 +65,6 @@ func New() (*Config, error) {
 			tracesExporter:      cfg.Observability.TracesExporter,
 			metricsExporter:     cfg.Observability.MetricsExporter,
 			logsExporter:        cfg.Observability.LogsExporter,
-			otlpEndpoint:        cfg.Observability.OTLPEndpoint,
 			otlpProtocol:        cfg.Observability.OTLPProtocol,
 			maskedDBQueryArgs:   cfg.Observability.MaskedDBQueryArgs,
 			targetStatusCodeSet: buildStatusCodeSet(cfg.Observability.TargetStatusCodes),
@@ -93,25 +92,20 @@ func New() (*Config, error) {
 			maxIdleTime: cfg.DBConnection.MaxIdleTime,
 		},
 		security: SecurityConfig{
-			allowedOrigins:        cfg.Security.AllowedOrigins,
-			cidr:                  cidr,
-			contentTypeNosniff:    cfg.Security.ContentTypeNosniff,
-			xFrameOptions:         cfg.Security.XFrameOptions,
-			hstsMaxAge:            cfg.Security.HSTSMaxAge,
-			hstsExcludeSubdomains: cfg.Security.HSTSExcludeSubdomains,
-			hstsPreloadEnabled:    cfg.Security.HSTSPreloadEnabled,
-			referrerPolicy:        cfg.Security.ReferrerPolicy,
-			bcryptCost:            cfg.Security.BcryptCost,
+			allowedOrigins:            cfg.Security.AllowedOrigins,
+			cidr:                      cidr,
+			contentTypeNosniff:        cfg.Security.ContentTypeNosniff,
+			xFrameOptions:             cfg.Security.XFrameOptions,
+			hstsMaxAge:                cfg.Security.HSTSMaxAge,
+			hstsExcludeSubdomains:     cfg.Security.HSTSExcludeSubdomains,
+			hstsPreloadEnabled:        cfg.Security.HSTSPreloadEnabled,
+			referrerPolicy:            cfg.Security.ReferrerPolicy,
+			crossOriginResourcePolicy: cfg.Security.CrossOriginResourcePolicy,
 		},
 		secureCookie: SecureCookieConfig{
 			secure:   cfg.SecureCookie.Secure,
 			sameSite: cfg.SecureCookie.SameSite,
 			domain:   cfg.SecureCookie.Domain,
-		},
-		auth: AuthConfig{
-			cookieName:          cfg.Auth.CookieName,
-			headerName:          cfg.Auth.HeaderName,
-			allowedHeaderBearer: cfg.Auth.AllowedHeaderBearer,
 		},
 		worker: WorkerConfig{
 			concurrency:               cfg.Worker.Concurrency,
@@ -129,11 +123,53 @@ func New() (*Config, error) {
 			nackBackoffInitial:        cfg.Worker.NackBackoffInitial,
 			nackBackoffMax:            cfg.Worker.NackBackoffMax,
 		},
+		consumerQueue: ConsumerQueueConfig{
+			region:            cfg.ConsumerQueue.Region,
+			url:               cfg.ConsumerQueue.URL,
+			dlqURL:            cfg.ConsumerQueue.DLQURL,
+			accessKeyID:       cfg.ConsumerQueue.AccessKeyID,
+			secretAccessKey:   cfg.ConsumerQueue.SecretAccessKey,
+			maxMessages:       cfg.ConsumerQueue.MaxMessages,
+			waitTimeSeconds:   cfg.ConsumerQueue.WaitTimeSeconds,
+			visibilityTimeout: cfg.ConsumerQueue.VisibilityTimeout,
+		},
 		outbox: OutboxConfig{
-			endpoint:     cfg.Outbox.Endpoint,
-			pollInterval: cfg.Outbox.PollInterval,
-			errorBackoff: cfg.Outbox.ErrorBackoff,
-			batchSize:    cfg.Outbox.BatchSize,
+			publisher:            cfg.Outbox.Publisher,
+			pollInterval:         cfg.Outbox.PollInterval,
+			errorBackoff:         cfg.Outbox.ErrorBackoff,
+			batchSize:            cfg.Outbox.BatchSize,
+			queueRegion:          cfg.Outbox.QueueRegion,
+			queueURL:             cfg.Outbox.QueueURL,
+			queueAccessKeyID:     cfg.Outbox.QueueAccessKeyID,
+			queueSecretAccessKey: cfg.Outbox.QueueSecretAccessKey,
+		},
+		auth: AuthConfig{
+			issuer:             cfg.Auth.Issuer,
+			audience:           cfg.Auth.Audience,
+			allowedAlgorithms:  cfg.Auth.AllowedAlgorithms,
+			clockSkew:          cfg.Auth.ClockSkew,
+			jwksCacheTTL:       cfg.Auth.JWKSCacheTTL,
+			discoveryTTL:       cfg.Auth.JWKSDiscoveryTTL,
+			unknownKidCooldown: cfg.Auth.JWKSUnknownKIDCooldown,
+		},
+		objectStorage: ObjectStorageConfig{
+			region:          cfg.ObjectStorage.Region,
+			bucket:          cfg.ObjectStorage.Bucket,
+			accessKeyID:     cfg.ObjectStorage.AccessKeyID,
+			secretAccessKey: cfg.ObjectStorage.SecretAccessKey,
+			usePathStyle:    cfg.ObjectStorage.UsePathStyle,
+			maxUploadBytes:  cfg.ObjectStorage.MaxUploadBytes,
+		},
+		endpoint: EndpointConfig{
+			otlp:          cfg.Endpoint.OTLP,
+			jwks:          cfg.Endpoint.JWKS,
+			objectStorage: cfg.Endpoint.ObjectStorage,
+			outbox:        cfg.Endpoint.Outbox,
+			outboxQueue:   cfg.Endpoint.OutboxQueue,
+			consumerQueue: cfg.Endpoint.ConsumerQueue,
+			// sample-api:begin
+			exchangeRate: cfg.Endpoint.ExchangeRate,
+			// sample-api:end
 		},
 	}, nil
 }
@@ -164,10 +200,6 @@ func validateConfig(cfg Loader) error {
 		return err
 	}
 
-	if err := validateAuthConfig(cfg.Auth); err != nil {
-		return err
-	}
-
 	if err := validateEmbeddedEnv(cfg.App); err != nil {
 		return err
 	}
@@ -185,7 +217,7 @@ func validateEmbeddedEnv(appCfg Application) error {
 	}
 
 	switch embeddedAppEnv {
-	case EnvLocal, EnvCI, EnvTest, EnvDevelopment, "":
+	case EnvLocal, EnvCI, EnvTest, EnvDast, EnvDevelopment, "":
 		return ErrEmbeddedEnvMismatch
 	default:
 		return nil
@@ -252,7 +284,7 @@ func validateMetricsConfig(metricsCfg Metrics) error {
 
 // ValidateServerShutdown は、graceful shutdown 猶予が処理中リクエストの予算を下回らないことを検証します。
 // 値の妥当性ルールは config の責務だが、この制約は HTTP サーバーを組むプロセスにのみ意味を持つため、
-// New() では全プロファイル共通に走らせず、server グラフの DI から適用する（di/server が結線する）。
+// New() では全プロファイル共通に走らせない。
 func ValidateServerShutdown(appCfg *ApplicationConfig, srvCfg *ServerConfig) error {
 	return validateServerShutdown(appCfg.ShutdownTimeout(), srvCfg.RequestTimeout())
 }
@@ -261,6 +293,21 @@ func ValidateServerShutdown(appCfg *ApplicationConfig, srvCfg *ServerConfig) err
 func validateServerShutdown(shutdown, request time.Duration) error {
 	if shutdown < request {
 		return ErrShutdownTimeoutBelowRequestTimeout
+	}
+	return nil
+}
+
+// ValidateUploadBodyLimit は、リクエストボディ上限がアップロード上限を上回ることを検証します。
+// ValidateServerShutdown と同じ理由で、New() では走らせない。
+func ValidateUploadBodyLimit(srvCfg *ServerConfig, objCfg *ObjectStorageConfig) error {
+	return validateUploadBodyLimit(srvCfg.BodyLimitMB(), objCfg.MaxUploadBytes())
+}
+
+// validateUploadBodyLimit は、bodyLimitMB をバイト換算した値が maxUploadBytes を上回ることを検証します。
+// マルチパートのオーバーヘッド分をどれだけ積むかは運用判断のため、ここでは等値も不可とするだけに留めます。
+func validateUploadBodyLimit(bodyLimitMB int, maxUploadBytes int64) error {
+	if int64(bodyLimitMB)*BytesPerMB <= maxUploadBytes {
+		return ErrBodyLimitBelowMaxUploadBytes
 	}
 	return nil
 }
@@ -294,10 +341,6 @@ func validateSecurityConfig(secCfg Security) error {
 		return ErrEmptyAllowedOrigins
 	}
 
-	if secCfg.BcryptCost < bcrypt.MinCost || bcrypt.MaxCost < secCfg.BcryptCost {
-		return ErrInvalidBcryptCost
-	}
-
 	for _, origin := range secCfg.AllowedOrigins {
 		parsedURL, err := url.Parse(origin)
 		if err != nil {
@@ -320,14 +363,6 @@ func parseCIDR(s string) (*net.IPNet, error) {
 		return nil, xerrors.Join(ErrFailedToParseCIDR, err)
 	}
 	return cidr, nil
-}
-
-// validateAuthConfig は、認証設定を検証します。
-func validateAuthConfig(authCfg Auth) error {
-	if authCfg.CookieName == "" && authCfg.HeaderName == "" {
-		return ErrAuthConfigMissing
-	}
-	return nil
 }
 
 // buildStatusCodeSet は、HTTPステータスコードのセットを構築します。
