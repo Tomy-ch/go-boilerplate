@@ -49,11 +49,11 @@ const MARKED_EXTENSIONS: readonly string[] = [
  * 無視リストと解析除外は、消えたパスを指したまま残っても止まらない。止まらないからこそ、
  * 誰も直さないまま作成先へ渡る。
  */
-const MARKED_FILES: readonly string[] = [
+const MARKED_FILES: ReadonlySet<string> = new Set([
   ".gitleaksignore",
   ".graphifyignore",
   "sonar-project.properties",
-];
+]);
 
 /** 撤去で行う 1 手。 */
 export type Operation =
@@ -120,7 +120,7 @@ export function planRemoval(
     .filter(
       (file) =>
         MARKED_EXTENSIONS.some((extension) => file.endsWith(extension)) ||
-        MARKED_FILES.includes(file),
+        MARKED_FILES.has(file),
     )
     .filter((file) => !EXCLUDED_PREFIXES.some((prefix) => file.startsWith(prefix)))
     .filter((file) => !removedPaths.some((prefix) => file === prefix || file.startsWith(`${prefix}/`)))

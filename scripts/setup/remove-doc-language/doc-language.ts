@@ -97,8 +97,22 @@ const NOTICE_PHRASES: readonly string[] = [
 /** 飾りとして扱う記号。言語ラベルを外した残りがこれだけなら、その行は参照のためだけに在った。 */
 const DECORATION_CHARS = /[|>\-*:：、。\s]/g;
 
-/** Markdown のインラインリンク。タイトル付き（`[t](p "title")`）も 1 つの形として扱う。 */
-const INLINE_LINK = /\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
+/**
+ * Markdown のインラインリンク。括弧の中は丸ごと取る。
+ *
+ * @remarks
+ * タイトル付き（`[t](p "title")`）を任意の後続要素として書くと、行き先の量指定子と
+ * 取り合いになって後戻りが生じます。中身を 1 つの塊で取り、行き先は
+ * {@link hrefOf} が切り出します。
+ */
+const INLINE_LINK = /\[[^\]]*\]\(([^)]*)\)/g;
+
+/** リンクの括弧の中から行き先だけを取る。タイトルは空白で区切られた後半。 */
+function hrefOf(inside: string): string {
+  const [href = ""] = inside.trim().split(/\s/);
+
+  return href;
+}
 
 /**
  * 参照形式のリンク定義（`[ラベル]: 行き先`）。
@@ -110,7 +124,7 @@ const INLINE_LINK = /\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
 const REFERENCE_DEFINITION = /^\s*\[[^\]]+\]:\s*(\S+)/;
 
 /** リンク以外の形で `.md` に触れている箇所（コードスパン・素のパス）。 */
-const BARE_MENTION = /[^\s()[\]"'`|]+\.md/g;
+const BARE_MENTION = /[^\s()[\]"'`|]{1,256}\.md/g;
 
 /** 対訳を名指す綴り。`*.ja.md` のようなグロブは、畳んだ後に当たるファイルを 1 つも持たない。 */
 const TRANSLATION_GLOB = /[*?]/;
@@ -223,7 +237,7 @@ export function listDocPairs(files: readonly string[]): DocPair[] {
  * 置換の結果として自分自身を指すようになったリンクは {@link redactReferences} が別に落とします。
  */
 export function rewriteTranslationLinks(content: string): string {
-  return content.replace(/([^\s()[\]"'`|]+)\.ja\.md/g, "$1.md");
+  return content.replace(/([^\s()[\]"'`|]{1,256})\.ja\.md/g, "$1.md");
 }
 
 /**
@@ -310,8 +324,8 @@ export function redactReferences(
       return;
     }
 
-    const stripped = line.replace(INLINE_LINK, (whole, href: string) =>
-      isRemoved(href) ? "" : whole,
+    const stripped = line.replace(INLINE_LINK, (whole, inside: string) =>
+      isRemoved(hrefOf(inside)) ? "" : whole,
     );
 
     if (stripped === line && !namesAVanishedThing(line.replace(INLINE_LINK, ""))) {
@@ -387,7 +401,7 @@ export function isDecorationOnly(line: string): boolean {
 export function resolveTarget(target: string, fromDir: string): string | null {
   const bare = target.replace(/[#?].*$/, "");
 
-  if (bare === "" || /^[a-z][a-z0-9+.-]*:/i.test(bare)) {
+  if (bare === "" || /^[a-z][a-z0-9+.-]{0,32}:/i.test(bare)) {
     return null;
   }
 
