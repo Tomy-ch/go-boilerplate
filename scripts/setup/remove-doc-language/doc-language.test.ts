@@ -337,6 +337,27 @@ describe("redactReferences", () => {
       expect(result.content).toBe("# 見出し\n");
     });
 
+    // ADR は相互参照を末尾の定義行にまとめる。書式が違うのでインラインリンクの正規表現には当たらない。
+    it("消えた側を指す参照定義を行ごと落とす", () => {
+      const result = redactReferences(
+        "本文\n\n[ADR-0035]: 0035-a.ja.md\n",
+        "docs/adr/x.md",
+        removes("0035-a.ja.md"),
+        new Set(),
+      );
+
+      expect(result.content).toBe("本文\n");
+      expect(result.undeclared).toEqual([]);
+    });
+
+    it("残る側を指す参照定義には手を触れない", () => {
+      const source = "本文\n\n[ADR-0035]: 0035-a.md\n";
+
+      expect(redactReferences(source, "docs/adr/x.md", removes("0035-a.ja.md"), new Set()).content).toBe(
+        source,
+      );
+    });
+
     it("宣言された行を落とす", () => {
       const result = redactReferences(
         "keep\ndrop me\n",

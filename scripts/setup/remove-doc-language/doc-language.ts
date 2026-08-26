@@ -337,20 +337,6 @@ export function redactReferences(
 }
 
 /**
- * リンク以外の形（コードスパン・素のパス）で、名前ごと消えるパスに触れているか。
- *
- * @remarks
- * 先にリンクを丸ごと落としてから探します。走査するのは素の語なので、落とさないとリンクの
- * 行き先の文字列に当たり、リンクとして正しく処理される参照まで「宣言の無い言及」として
- * 報告されます（`ja` でこれが 800 件を超えました）。
- */
-function mentions(line: string, isVanished: (target: string) => boolean): boolean {
-  const withoutLinks = line.replace(INLINE_LINK, "");
-
-  return [...withoutLinks.matchAll(BARE_MENTION)].some(([target]) => isVanished(target));
-}
-
-/**
  * 対訳の存在そのものを述べている注記か。
  *
  * @remarks
@@ -399,7 +385,7 @@ export function isDecorationOnly(line: string): boolean {
  * ja では `scaffold-test/SKILL.md` のような他スキルへの言及が 300 件近く巻き込まれました。
  */
 export function resolveTarget(target: string, fromDir: string): string | null {
-  const bare = target.split("#")[0]?.split("?")[0] ?? target;
+  const bare = target.replace(/[#?].*$/, "");
 
   if (bare === "" || /^[a-z][a-z0-9+.-]*:/i.test(bare)) {
     return null;

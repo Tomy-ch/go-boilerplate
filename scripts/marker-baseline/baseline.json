@@ -203,6 +203,7 @@
   "scripts/setup/lib/markers.test.ts": 1,
   "scripts/setup/remove-boilerplate-identity/targets.test.ts": 8,
   "scripts/setup/remove-boilerplate-identity/targets.ts": 1,
+  "scripts/setup/remove-doc-language/plan.test.ts": 1,
   "scripts/setup/remove-sample-api/sample-api.test.ts": 28,
   "scripts/setup/remove-sample-api/sample-manifest.ts": 3,
   "scripts/setup/replace-repository-reference/repository-reference.test.ts": 3,

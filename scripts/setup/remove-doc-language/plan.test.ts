@@ -92,6 +92,88 @@ describe("planRemoval", () => {
       });
       expect(plan.staleReplacements).toEqual([]);
     });
+
+    // 対訳の存在を前提にしているのは散文だけではない。検査スクリプトや取り込み表も同じ前提に立つ。
+    it("Markdown 以外のマーカーも剥がす", () => {
+      const plan = planRemoval(
+        "en",
+        ["a.md", "a.ja.md", "scripts/x/rules.ts"],
+        reader({
+          "a.md": "# A\n",
+          "a.ja.md": "# あ\n",
+          "scripts/x/rules.ts": "const keep = 1;\n// doc-pair:begin\nconst gone = 2;\n// doc-pair:end\n",
+        }),
+      );
+
+      expect(plan.operations).toContainEqual({
+        kind: "write",
+        path: "scripts/x/rules.ts",
+        content: "const keep = 1;\n",
+      });
+    });
+
+    it("拡張子を持たない無視リストも対象にする", () => {
+      const plan = planRemoval(
+        "en",
+        ["a.md", "a.ja.md", ".graphifyignore"],
+        reader({ "a.md": "# A\n", "a.ja.md": "# あ\n", ".graphifyignore": "*.ja.md\nkeep\n" }),
+        new Set(),
+        [],
+        [{ file: ".graphifyignore", from: "*.ja.md\n", to: "" }],
+      );
+
+      expect(plan.operations).toContainEqual({
+        kind: "write",
+        path: ".graphifyignore",
+        content: "keep\n",
+      });
+    });
+
+    // 綴りを見張る検査が Markdown だけを見ていると、検査スクリプトに残った言及が
+    // 報告もされないまま作成先へ渡る。
+    it("Markdown 以外に残った対訳への言及も報告する", () => {
+      const plan = planRemoval(
+        "en",
+        ["a.md", "a.ja.md", "scripts/x/rules.ts"],
+        reader({
+          "a.md": "# A\n",
+          "a.ja.md": "# あ\n",
+          "scripts/x/rules.ts": 'const pair = "README.ja.md";\n',
+        }),
+      );
+
+      expect(plan.undeclared).toEqual([
+        { file: "scripts/x/rules.ts", line: 1, text: 'const pair = "README.ja.md";' },
+      ]);
+    });
+
+    it("撤去ごと消えるパスは Markdown 以外でも走査しない", () => {
+      const plan = planRemoval(
+        "en",
+        ["a.md", "a.ja.md", "gone/rules.ts"],
+        reader({ "a.md": "# A\n", "a.ja.md": "# あ\n", "gone/rules.ts": 'const p = "x.ja.md";\n' }),
+        new Set(),
+        ["gone"],
+      );
+
+      expect(plan.undeclared).toEqual([]);
+    });
+
+    it("モードが合わない宣言は効かせない", () => {
+      const plan = planRemoval(
+        "en",
+        ["t.md", "t.ja.md"],
+        reader({ "t.md": "英語のみ\n", "t.ja.md": "訳\n" }),
+        new Set(),
+        [],
+        [{ file: "t.md", from: "英語のみ", to: "置換後", mode: "ja" }],
+      );
+
+      expect(plan.operations).not.toContainEqual(
+        expect.objectContaining({ kind: "write", path: "t.md" }),
+      );
+      expect(plan.staleReplacements).toEqual([]);
+    });
   });
 
   describe("異常系", () => {
@@ -118,6 +200,64 @@ describe("planRemoval", () => {
       );
 
       expect(plan.staleReplacements).toEqual([{ file: "t.md", from: "動いてしまった文言", to: "" }]);
+    });
+
+    it("存在しないファイルを指す差し替え宣言を空振りとして報告する", () => {
+      const plan = planRemoval(
+        "en",
+        ["a.md", "a.ja.md"],
+        reader({ "a.md": "# A\n", "a.ja.md": "# あ\n" }),
+        new Set(),
+        [],
+        [{ file: "gone.ts", from: "何か", to: "" }],
+      );
+
+      expect(plan.staleReplacements).toEqual([{ file: "gone.ts", from: "何か", to: "" }]);
+    });
+
+    // 孤児の対訳は正本を持たないので、移植元が無いまま改名だけを行う。
+    it("ja で正本の無い対訳も改名する", () => {
+      const plan = planRemoval("ja", ["orphan.ja.md"], reader({ "orphan.ja.md": "# 訳\n" }));
+
+      expect(plan.operations).toEqual([
+        { kind: "rename", from: "orphan.ja.md", to: "orphan.md", content: "# 訳\n" },
+      ]);
+    });
+
+    it("読めない Markdown を黙って飛ばす", () => {
+      const plan = planRemoval(
+        "en",
+        ["a.md", "a.ja.md", "gone.md"],
+        reader({ "a.md": "# A\n", "a.ja.md": "# あ\n" }),
+      );
+
+      expect(plan.operations).toEqual([{ kind: "delete", path: "a.ja.md" }]);
+    });
+
+    it("読めない非 Markdown を黙って飛ばす", () => {
+      const plan = planRemoval(
+        "en",
+        ["a.md", "a.ja.md", "gone.ts"],
+        reader({ "a.md": "# A\n", "a.ja.md": "# あ\n" }),
+      );
+
+      expect(plan.undeclared).toEqual([]);
+    });
+
+    // 撤去の出力とコミットの中身が走査順（ファイルシステムの都合）で揺れないようにする。
+    it("非 Markdown の対象も名前順に並べる", () => {
+      const plan = planRemoval(
+        "en",
+        ["a.md", "a.ja.md", "z/b.ts", "a/b.ts"],
+        reader({
+          "a.md": "# A\n",
+          "a.ja.md": "# あ\n",
+          "z/b.ts": 'const p = "z.ja.md";\n',
+          "a/b.ts": 'const p = "a.ja.md";\n',
+        }),
+      );
+
+      expect(plan.undeclared.map(({ file }) => file)).toEqual(["a/b.ts", "z/b.ts"]);
     });
 
     it("読めないファイルを黙って飛ばす", () => {

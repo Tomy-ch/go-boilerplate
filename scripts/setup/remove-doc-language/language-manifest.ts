@@ -66,6 +66,22 @@ export type DocReplacement = {
 };
 
 /**
+ * 1 ファイル分の差し替えをまとめて宣言する。
+ *
+ * @remarks
+ * 宣言は 170 件を超え、その大半が同じファイルに対する複数の差し替えです。1 件ずつ書くと
+ * パスが同じ回数だけ繰り返され、打ち間違えても型では気づけません。ファイルを 1 度だけ書く形に
+ * まとめます。`to` を省いた組は削除（空文字への差し替え）です。
+ */
+function forFile(
+  file: string,
+  edits: readonly (readonly [from: string, to?: string])[],
+  mode?: Mode,
+): DocReplacement[] {
+  return edits.map(([from, to = ""]) => (mode === undefined ? { file, from, to } : { file, from, to, mode }));
+}
+
+/**
  * 表のセルのように、行ごと落とせない場所の差し替え。
  *
  * @remarks
@@ -77,919 +93,329 @@ export type DocReplacement = {
  * 見つからなければ撤去は止まり、宣言を直すまで進みません。
  */
 export const DOC_REPLACEMENTS: readonly DocReplacement[] = [
-  {
-    file: ".claude/skills/tool-map/SKILL.md",
-    from: " (skip `SKILL.ja.md` and other `*.ja.md` translation files)",
-    to: "",
-  },
-  {
-    file: ".codex/skills/tool-map/SKILL.md",
-    from: " (skip `SKILL.ja.md` and other `*.ja.md` translation files)",
-    to: "",
-  },
-  {
-    file: ".github/workflows/README.md",
-    from: " and its `README.ja.md` translation",
-    to: "",
-  },
-  {
-    file: ".github/workflows/README.md",
-    from: "| `make md-lint` checks the pair, not the rows |",
-    to: "| `make md-lint` does not check these rows |",
-  },
-  {
-    file: ".claude/skills/back-prop/SKILL.md",
-    from: ", minus `*.ja.md`",
-    to: "",
-  },
-  {
-    file: ".codex/skills/back-prop/SKILL.md",
-    from: ", excluding `*.ja.md`",
-    to: "",
-  },
-  {
-    file: ".claude/skills/commit/SKILL.md",
-    from: ", `*.ja.md`",
-    to: "",
-  },
-  {
-    file: ".claude/skills/context-map/SKILL.md",
-    from: " and its `.ja.md` pair",
-    to: "",
-  },
-  {
-    file: ".codex/skills/context-map/SKILL.md",
-    from: " and `docs/design/context-map.ja.md`",
-    to: "",
-  },
-  {
-    file: ".claude/skills/glossary/SKILL.md",
-    from: "、`.ja.md` ペアの作成",
-    to: "",
-  },
-  {
-    file: ".codex/skills/glossary/SKILL.md",
-    from: " Do not create a `.ja.md` pair for the glossary: this spec tree uses one Japanese file with English headings.",
-    to: "",
-  },
-  {
-    file: ".claude/skills/go-upgrade/SKILL.md",
-    from: " / `README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".codex/skills/go-upgrade/SKILL.md",
-    from: " / `README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".claude/skills/go-upgrade/SKILL.md",
-    from: " / `docker/README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".codex/skills/go-upgrade/SKILL.md",
-    from: " / `docker/README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".claude/skills/go-upgrade/SKILL.md",
-    from: " / `docker/server/README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".codex/skills/go-upgrade/SKILL.md",
-    from: " / `docker/server/README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".claude/skills/go-upgrade/SKILL.md",
-    from: " / `docker/tools/README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".codex/skills/go-upgrade/SKILL.md",
-    from: " / `docker/tools/README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".claude/skills/new-env/SKILL.md",
-    from: ", `env/README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".codex/skills/new-env/SKILL.md",
-    from: ", `env/README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".claude/skills/new-env/SKILL.md",
-    from: " and `README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".codex/skills/new-env/SKILL.md",
-    from: " and `README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".claude/skills/new-env/SKILL.md",
-    from: ", env/README.ja.md",
-    to: "",
-  },
-  {
-    file: ".codex/skills/new-env/SKILL.md",
-    from: ", env/README.ja.md",
-    to: "",
-  },
-  {
-    file: ".claude/skills/new-env/SKILL.md",
-    from: " then `env/README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".codex/skills/new-env/SKILL.md",
-    from: " then `env/README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".claude/skills/new-env/SKILL.md",
-    from: " and `env/README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".codex/skills/new-env/SKILL.md",
-    from: " and `env/README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".claude/skills/portal-manifest-sync/SKILL.md",
-    from: " / `README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".codex/skills/portal-manifest-sync/SKILL.md",
-    from: " / `README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".claude/skills/readme-review/SKILL.md",
-    from: "\n- Cross-reference to translation (`README.ja.md`) — its existence and sync convention compliance",
-    to: "",
-  },
-  {
-    file: ".codex/skills/readme-review/SKILL.md",
-    from: "\n- Cross-reference to translation (`README.ja.md`) — its existence and sync convention compliance",
-    to: "",
-  },
-  {
-    file: ".claude/skills/repo-ops/SKILL.md",
-    from: "-g '!**/*.ja.md' ",
-    to: "",
-  },
-  {
-    file: ".codex/skills/repo-ops/SKILL.md",
-    from: "-g '!**/*.ja.md' ",
-    to: "",
-  },
-  {
-    file: ".claude/skills/tools-upgrade/SKILL.md",
-    from: ", `docker/**/README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".codex/skills/tools-upgrade/SKILL.md",
-    from: ", `docker/**/README.ja.md`",
-    to: "",
-  },
-  {
-    file: "docs/adr/0000-record-architecture-decisions.md",
-    from: " (each ADR also needs its `.ja.md` translation)",
-    to: "",
-  },
-  {
-    file: "scripts/README.md",
-    from: ", translation pairs (`SKILL.ja.md` exists, carries no frontmatter, opens with a sync note, and its heading-level sequence matches `SKILL.md`)",
-    to: "",
-  },
-  {
-    file: ".claude/skills/comment-sweep/SKILL.md",
-    from: "   Whichever is chosen, the English canonical file and its `.ja.md` translation — plus the log table in\n   `docs/adr/README.md` and `docs/adr/README.ja.md` — are updated in the same change.",
-    to: "   Whichever is chosen, the file and the log table in `docs/adr/README.md` are updated in the same\n   change.",
-  },
-  {
-    file: ".claude/skills/new-env/SKILL.md",
-    from: "; the skill translates for the other",
-    to: "",
-  },
-  {
-    file: ".claude/skills/new-env/SKILL.md",
-    from: "\nResolution rules:\n\n- If only Japanese provided → skill writes Japanese to `env/README.ja.md` row, then translates to English for `env/README.md` row.\n- If only English provided → reverse direction.\n- If both provided → use as-is, no translation.\n- Translations are kept short and direct (single-line, technical register matching surrounding rows). If the description is non-trivial or domain-specific, surface the proposed translation in the Step 2 plan summary for user review before writing.\n",
-    to: "",
-  },
-  {
-    file: ".claude/skills/portal-manifest-sync/SKILL.md",
-    from: "\n- Japanese: `docs/portal/guides/ja/<flat-hyphenated-name>.ja.md`",
-    to: "",
-  },
-  {
-    file: ".claude/skills/portal-manifest-sync/SKILL.md",
-    from: "\n  - src: foo/bar/README.ja.md",
-    to: "",
-  },
-  {
-    file: ".claude/skills/repo-ops/SKILL.md",
-    from: "Most of the Markdown in this tree is either a Japanese mirror you must not read or generated output\nthat lags the code, so a naive repo-wide search buries the one file that actually decides the answer.\nOf roughly 1,000 tracked `*.md`, **over 40% are `*.ja.md` translations** and **72 are generated\n`docs/portal/guides/**` copies of READMEs**; `docs/godoc/**` adds ~1,250 files and\n`docs/db-schema/**` ~390.",
-    to: "Much of the Markdown in this tree is generated output that lags the code, so a naive repo-wide\nsearch buries the one file that actually decides the answer. Of the tracked `*.md`, **72 are\ngenerated `docs/portal/guides/**` copies of READMEs**; `docs/godoc/**` adds ~1,250 files and\n`docs/db-schema/**` ~390.",
-  },
-  {
-    file: ".claude/skills/repo-ops/SKILL.md",
-    from: "are *tracked*, so they need these explicit globs. Hitting a `*.ja.md` is still useful as a\n**locator** (it proves the topic is documented); read the English original beside it, per\n`AGENTS.md`'s rule never to read `*.ja.md`.",
-    to: "are *tracked*, so they need these explicit globs.",
-  },
-  {
-    file: ".claude/skills/tool-map/SKILL.md",
-    from: "\n- `*.ja.md` translation files (they are not loaded as entries).",
-    to: "",
-  },
-  {
-    file: ".claude/skills/tool-map/SKILL.md",
-    from: "\n- [ ] `*.ja.md` files excluded from the skills scan",
-    to: "",
-  },
-  {
-    file: ".codex/skills/new-env/SKILL.md",
-    from: "; the skill translates for the other",
-    to: "",
-  },
-  {
-    file: ".codex/skills/new-env/SKILL.md",
-    from: "\nResolution rules:\n\n- If only Japanese provided → skill writes Japanese to `env/README.ja.md` row, then translates to English for `env/README.md` row.\n- If only English provided → reverse direction.\n- If both provided → use as-is, no translation.\n- Translations are kept short and direct (single-line, technical register matching surrounding rows). If the description is non-trivial or domain-specific, surface the proposed translation in the Step 2 plan summary for user review before writing.\n",
-    to: "",
-  },
-  {
-    file: ".codex/skills/portal-manifest-sync/SKILL.md",
-    from: "\n- Japanese: `docs/portal/guides/ja/<flat-hyphenated-name>.ja.md`",
-    to: "",
-  },
-  {
-    file: ".codex/skills/portal-manifest-sync/SKILL.md",
-    from: "\n  - src: foo/bar/README.ja.md",
-    to: "",
-  },
-  {
-    file: ".codex/skills/repo-ops/SKILL.md",
-    from: "Most of the Markdown in this tree is either a Japanese mirror you must not read or generated output\nthat lags the code, so a naive repo-wide search buries the one file that actually decides the answer.\nOf roughly 1,000 tracked `*.md`, **over 40% are `*.ja.md` translations** and **72 are generated\n`docs/portal/guides/**` copies of READMEs**; `docs/godoc/**` adds ~1,250 files and\n`docs/db-schema/**` ~390.",
-    to: "Much of the Markdown in this tree is generated output that lags the code, so a naive repo-wide\nsearch buries the one file that actually decides the answer. Of the tracked `*.md`, **72 are\ngenerated `docs/portal/guides/**` copies of READMEs**; `docs/godoc/**` adds ~1,250 files and\n`docs/db-schema/**` ~390.",
-  },
-  {
-    file: ".codex/skills/repo-ops/SKILL.md",
-    from: "are *tracked*, so they need these explicit globs. Hitting a `*.ja.md` is still useful as a\n**locator** (it proves the topic is documented); read the English original beside it, per\n`AGENTS.md`'s rule never to read `*.ja.md`.",
-    to: "are *tracked*, so they need these explicit globs.",
-  },
-  {
-    file: ".codex/skills/tool-map/SKILL.md",
-    from: "\n- `*.ja.md` translation files (they are not loaded as entries).",
-    to: "",
-  },
-  {
-    file: ".codex/skills/tool-map/SKILL.md",
-    from: "\n- [ ] `*.ja.md` files excluded from the skills scan",
-    to: "",
-  },
-  {
-    file: "AGENTS.md",
-    from: "**Documentation scope for agents** — the canonical sources are the English `README.md` and\n`docs/**/*.md`. **Never read `*.ja.md` files: they are human-facing Japanese translations of\nthose canonical sources — read the canonical English original instead.** Also ignore the\ndocumentation-portal UI assets:\n\n```txt\n**/*.ja.md\ndocs/portal/**\n```",
-    to: "**Documentation scope for agents** — the canonical sources are `README.md` and `docs/**/*.md`.\nIgnore the documentation-portal UI assets:\n\n```txt\ndocs/portal/**\n```",
-  },
-  {
-    file: "docs/get-started/setup-repository.md",
-    from: "1. Rewrite the contents of README.md and README.ja.md according to your project; replace or remove\n   the repository-specific branch-rule exception in the maintainer-policy section.\n2. If your project keeps its documentation in a single language, you may collapse the pair — for\n   example by replacing README.md with the contents of README.ja.md.",
-    to: "1. Rewrite the contents of README.md according to your project; replace or remove the\n   repository-specific branch-rule exception in the maintainer-policy section.",
-  },
-  {
-    file: "docs/maintenance/docs-structure.md",
-    from: "## 2. Japanese Documents\n\nA Japanese document sits **beside its English canonical**, named `<name>.ja.md`. The suffix is what\nseparates the languages; there is no separate directory, and the generator splits them by suffix.\n\nThese files are displayed in the **Architecture (Japanese)** section.\n\n## 3. Section Documents",
-    to: "## 2. Section Documents",
-  },
-  {
-    file: "docs/maintenance/docs-structure.md",
-    from: "## 4. Japanese Section Documents\n\nA section's Japanese documents live in that same section directory, as `<name>.ja.md`. Nothing else\nis needed — the generator finds them by suffix and files them under:\n\n```txt\nProject (Japanese)\n```\n\n## 5. Reserved Directories",
-    to: "## 3. Reserved Directories",
-  },
-  {
-    file: "docs/maintenance/docs-structure.md",
-    from: "\ndocs/security/auth.ja.md",
-    to: "",
-  },
-  {
-    file: "docs/maintenance/docs-structure.md",
-    from: "\nSecurity (Japanese)",
-    to: "",
-  },
-  {
-    file: "docs/maintenance/docs-structure.md",
-    from: "\n|docs/*.ja.md|Japanese|",
-    to: "",
-  },
-  {
-    file: "docs/maintenance/docs-structure.md",
-    from: "\n|docs/<section>/*.ja.md|Japanese セクション|",
-    to: "",
-  },
-  {
-    file: "docs/maintenance/portal-manifest.md",
-    from: "  # Japanese\n  - src: <source path>.ja.md\n    dst: docs/portal/guides/ja/<flat-name>.ja.md\n  - ...\n",
-    to: "  - ...\n",
-  },
-  {
-    file: "docs/maintenance/portal-manifest.md",
-    from: " / `.ja.md`",
-    to: "",
-  },
-  {
-    file: "docs/maintenance/portal-manifest.md",
-    from: "\n| `docs/*.ja.md` | items of section `architecture` (lang: ja) | Japanese counterparts |",
-    to: "",
-  },
-  {
-    file: "docs/maintenance/portal-manifest.md",
-    from: "\n| `docs/<dir>/*.ja.md` | items of section `<dir>` (lang: ja) | Japanese counterparts |",
-    to: "",
-  },
-  {
-    file: "docs/maintenance/portal-manifest.md",
-    from: "     # Japanese\n     - src: internal/controller/<new-package>/README.ja.md\n       dst: docs/portal/guides/ja/controller-<new-package>.ja.md\n",
-    to: "",
-  },
-  {
-    file: "scripts/README.md",
-    from: " Codex-side `SKILL.ja.md` is optional, so it is\nchecked as a translation pair only when present.",
-    to: "",
-  },
-  {
-    file: ".claude/README.md",
-    from: "- **`skill-lint` does not check it.** The repository's skill conventions — frontmatter, the\n  `SKILL.ja.md` pair, references that resolve — assume a skill this repository writes.",
-    to: "- **`skill-lint` does not check it.** The repository's skill conventions — frontmatter and\n  references that resolve — assume a skill this repository writes.",
-  },
-  {
-    file: ".claude/skills/comment-sweep/SKILL.ja.md",
-    from: " と `docs/adr/README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".codex/skills/comment-sweep/SKILL.ja.md",
-    from: "英語の正本・隣の `.ja.md`・英日両方の ADR ログ表を揃えて更新する",
-    to: "正本と ADR ログ表を揃えて更新する",
-  },
-  {
-    file: ".claude/skills/commit/SKILL.ja.md",
-    from: "、`*.ja.md`",
-    to: "",
-  },
-  {
-    file: ".claude/skills/go-upgrade/SKILL.ja.md",
-    from: " / `docker/README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".claude/skills/go-upgrade/SKILL.ja.md",
-    from: " / `docker/server/README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".claude/skills/go-upgrade/SKILL.ja.md",
-    from: " / `docker/tools/README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".claude/skills/manage-skill/SKILL.ja.md",
-    from: " / `SKILL.ja.md`",
-    to: "",
-  },
-  {
-    file: ".claude/skills/new-env/SKILL.ja.md",
-    from: ", `env/README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".claude/skills/new-env/SKILL.ja.md",
-    from: "\n- 日本語のみ供与 → `env/README.ja.md` に日本語そのまま、`env/README.md` に英訳を記入",
-    to: "",
-  },
-  {
-    file: ".claude/skills/new-env/SKILL.ja.md",
-    from: ", env/README.ja.md",
-    to: "",
-  },
-  {
-    file: ".claude/skills/new-env/SKILL.ja.md",
-    from: " → `env/README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".claude/skills/portal-manifest-sync/SKILL.ja.md",
-    from: " / `README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".claude/skills/repo-ops/SKILL.ja.md",
-    from: "-g '!**/*.ja.md' ",
-    to: "",
-  },
-  {
-    file: ".claude/skills/tool-map/SKILL.ja.md",
-    from: "\n- [ ] skills スキャンから `*.ja.md` を除外した",
-    to: "",
-  },
-  {
-    file: ".claude/skills/tools-upgrade/SKILL.ja.md",
-    from: ", `docker/**/README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".codex/skills/go-upgrade/SKILL.ja.md",
-    from: " / `docker/README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".codex/skills/go-upgrade/SKILL.ja.md",
-    from: " / `docker/server/README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".codex/skills/go-upgrade/SKILL.ja.md",
-    from: " / `docker/tools/README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".codex/skills/manage-skill/SKILL.ja.md",
-    from: " / `SKILL.ja.md`",
-    to: "",
-  },
-  {
-    file: ".codex/skills/new-env/SKILL.ja.md",
-    from: ", `env/README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".codex/skills/new-env/SKILL.ja.md",
-    from: "\n- 日本語のみ供与 → `env/README.ja.md` に日本語そのまま、`env/README.md` に英訳を記入",
-    to: "",
-  },
-  {
-    file: ".codex/skills/new-env/SKILL.ja.md",
-    from: ", env/README.ja.md",
-    to: "",
-  },
-  {
-    file: ".codex/skills/new-env/SKILL.ja.md",
-    from: " → `env/README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".codex/skills/portal-manifest-sync/SKILL.ja.md",
-    from: " / `README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".codex/skills/repo-ops/SKILL.ja.md",
-    from: "-g '!**/*.ja.md' ",
-    to: "",
-  },
-  {
-    file: ".codex/skills/tool-map/SKILL.ja.md",
-    from: "\n- [ ] skills スキャンから `*.ja.md` を除外した",
-    to: "",
-  },
-  {
-    file: ".codex/skills/tools-upgrade/SKILL.ja.md",
-    from: ", `docker/**/README.ja.md`",
-    to: "",
-  },
-  {
-    file: ".claude/skills/sync-ai/SKILL.ja.md",
-    from: "、`sh -n` を通し、`SKILL.md` / `SKILL.ja.md` の見出し数が一致していることを確かめる",
-    to: "、`sh -n` を通す",
-  },
-  {
-    file: ".codex/skills/sync-ai/SKILL.ja.md",
-    from: "さらに `sh -n` を実行し、`SKILL.md` / `SKILL.ja.md` の見出し数が一致することも確認する。",
-    to: "さらに `sh -n` を実行する。",
-  },
-  {
-    file: ".codex/skills/back-prop/SKILL.ja.md",
-    from: " から `*.ja.md` を除いた",
-    to: "",
-  },
-  {
-    file: "docs/maintenance/docs-structure.ja.md",
-    from: "\n|docs/*.ja.md|Japanese|",
-    to: "",
-  },
-  {
-    file: "docs/maintenance/docs-structure.ja.md",
-    from: "\n|docs/<section>/*.ja.md|Japanese セクション|",
-    to: "",
-  },
-  {
-    file: "docs/maintenance/portal-manifest.ja.md",
-    from: "\n| `docs/*.ja.md` | section `architecture` の item (lang: ja) | 日本語版 |",
-    to: "",
-  },
-  {
-    file: "docs/maintenance/portal-manifest.ja.md",
-    from: "\n| `docs/<dir>/*.ja.md` | section `<dir>` の item (lang: ja) | 日本語版 |",
-    to: "",
-  },
-  {
-    file: ".claude/skills/back-prop/SKILL.ja.md",
-    from: "、`docs/architecture.md`。`*.ja.md` は除く）",
-    to: "、`docs/architecture.md`）",
-  },
-  {
-    file: ".agents/closed-loop/skill-meta.yaml",
-    from: "    opportunity_predicate: \"対訳ペアの片側だけが変更された（`X.md` と `X.ja.md` の一方のみ）\"\n",
-    to: "",
-  },
-  {
-    file: ".github/workflows/licensed-scanners-removal-check.yaml",
-    from: "      - '.github/workflows/README.ja.md'\n",
-    to: "",
-  },
-  {
-    file: ".github/workflows/sync-versions-check.yaml",
-    from: "      - 'docker/**/README.ja.md'\n",
-    to: "",
-  },
-  {
-    file: ".github/workflows/setup-scripts-check.yaml",
-    from: " README.md README.ja.md ",
-    to: " README.md ",
-  },
-  {
-    file: ".gitleaksignore",
-    from: "env/README.ja.md:generic-api-key:242\n",
-    to: "",
-  },
-  {
-    file: ".gitleaksignore",
-    from: "env/README.ja.md:generic-api-key:217\n",
-    to: "",
-  },
-  {
-    file: ".graphifyignore",
-    from: "*.ja.md\n**/*.ja.md\n",
-    to: "",
-  },
-  {
-    file: "scripts/graphify-pending/main.go",
-    from: "//\t*.ja.md         ファイル名のパターン",
-    to: "//\t*.gen.sql       ファイル名のパターン",
-  },
-  {
-    file: "scripts/graphify-pending/main.go",
-    from: "// matchesGlob は `*.ja.md` のような、",
-    to: "// matchesGlob は `*.gen.sql` のような、",
-  },
-  {
-    file: "scripts/graphify-pending/main_test.go",
-    from: "\t\t\tfiles := manifest(`{\"docs/rules.ja.md\":{\"semantic_hash\":\"stale\"},\"docs/rules.md\":{\"semantic_hash\":\"stale\"}}`)\n\t\t\tfiles[\"docs/rules.ja.md\"] = body\n\t\t\tfiles[\"docs/rules.md\"] = body\n\t\t\tfiles[\"ignore\"] = \"*.ja.md\\n**/*.ja.md\\n\"",
-    to: "\t\t\tfiles := manifest(`{\"docs/a.gen.sql\":{\"semantic_hash\":\"stale\"},\"docs/rules.md\":{\"semantic_hash\":\"stale\"}}`)\n\t\t\tfiles[\"docs/a.gen.sql\"] = body\n\t\t\tfiles[\"docs/rules.md\"] = body\n\t\t\tfiles[\"ignore\"] = \"*.gen.sql\\n**/*.gen.sql\\n\"",
-  },
-  {
-    file: "scripts/graphify-pending/main_test.go",
-    from: "\t\t\"拡張子パターンは深い階層にも当たる\":       {\"docs/adr/0001.ja.md\", \"*.ja.md\", true},\n\t\t\"拡張子パターンは正本に当たらない\":        {\"docs/adr/0001.md\", \"*.ja.md\", false},",
-    to: "\t\t\"拡張子パターンは深い階層にも当たる\":       {\"docs/adr/0001.gen.sql\", \"*.gen.sql\", true},\n\t\t\"拡張子パターンは他の綴りに当たらない\":      {\"docs/adr/0001.md\", \"*.gen.sql\", false},",
-  },
-  {
-    file: "scripts/graphify-pending/main_test.go",
-    from: "\t\t\tassert.True(t, matchesGlob(\"rules.ja.md\", \"*.ja.md\"))",
-    to: "\t\t\tassert.True(t, matchesGlob(\"rules.gen.sql\", \"*.gen.sql\"))",
-  },
-  {
-    file: "AGENTS.ja.md",
-    from: "**エージェントにとってのドキュメント範囲** —— 正典は英語の `README.md` と `docs/**/*.md` です。\n**`*.ja.md` ファイルは決して読まないでください。これらは正典の人間向け日本語訳であり、\n正典である英語の原文を読んでください。** ドキュメントポータルの UI アセットも無視します:\n\n```txt\n**/*.ja.md\ndocs/portal/**\n```",
-    to: "**エージェントにとってのドキュメント範囲** —— 正典は `README.md` と `docs/**/*.md` です。\nドキュメントポータルの UI アセットは無視します:\n\n```txt\ndocs/portal/**\n```",
-  },
-  {
-    file: "scripts/setup/remove-licensed-scanners/scanner-manifest.ts",
-    from: "      {\n        file: README_JA,\n        block:\n          \"|SonarQube Cloud Scan|`sonarqube.yaml`|SonarQube Cloud による一次ソースの解析。結果は Web API から読み戻して SARIF へ変換する（**Sonar の品質ゲートでブロックする**。issue の一覧は報告専用。`SONAR_TOKEN` が必要。[資格情報を要するスキャナの撤去](#資格情報を要するスキャナの撤去)を参照）|\\n\",\n      },\n",
-    to: "",
-    mode: "en",
-  },
-  {
-    file: "scripts/setup/remove-licensed-scanners/scanner-manifest.ts",
-    from: "      {\n        file: README_JA,\n        block:\n          \"| SonarQube Cloud | Go / TypeScript / `sonar-project.properties` 変更 PR | 同上 | 週次 |\\n\",\n      },\n",
-    to: "",
-    mode: "en",
-  },
-  {
-    file: "scripts/setup/remove-licensed-scanners/scanner-manifest.ts",
-    from: "      {\n        file: README_JA,\n        block:\n          \"| `sonarqube.yaml` `sonarqube` | 15 | ベンダー側の解析キューが最大 10 分待つため。テストとカバレッジのゲートはそれぞれの所有ワークフローで実行する |\\n\",\n      },\n",
-    to: "",
-    mode: "en",
-  },
-  {
-    file: "scripts/setup/remove-licensed-scanners/scanner-manifest.ts",
-    from: "      { file: README_JA, fragment: \" + `sonarqube.yaml`（SonarQube Cloud） **(gate, 品質ゲート)**\" },\n",
-    to: "",
-    mode: "en",
-  },
-  {
-    file: "scripts/setup/remove-licensed-scanners/scanner-manifest.ts",
-    from: "      { file: README_JA, fragment: \"、`05:00` SonarQube Cloud\" },\n",
-    to: "",
-    mode: "en",
-  },
-  {
-    file: "scripts/setup/remove-licensed-scanners/scanner-manifest.ts",
-    from: "      {\n        file: README_JA,\n        block:\n          \"| CodeQL | Go / TypeScript / Actions 定義の変更 PR | 同上 | 週次 |\\n\",\n      },\n",
-    to: "",
-    mode: "en",
-  },
-  {
-    file: "scripts/setup/remove-licensed-scanners/scanner-manifest.ts",
-    from: "      {\n        file: README_JA,\n        block:\n          \"\\n最後のスロットは SonarQube Cloud です。解析がベンダーのサーバ側で走るため、DAST を全ファイル読み取り系の後ろへ置いたのと同じ理由で最後に並べています。所要時間がこのリポジトリの制御外のキューに左右されるため、自前のランナーで完結するスキャナより前に積む利点がありません。\\n\",\n      },\n",
-    to: "",
-    mode: "en",
-  },
-  {
-    file: "scripts/setup/remove-licensed-scanners/scanner-manifest.ts",
-    from: "      {\n        file: README_JA,\n        block:\n          \"\\n`自前の Go ソース` と `自前の TypeScript ソース` の行にはベンダーホスト型のスキャナも乗っています。Sonar はこの表で唯一「ルール単位で担当 1 つ」から意図的に外れています。品質ゲートは静的解析・重複と Sonar 自身の issue 分類をまとめて判定し、カバレッジの閾値は Go / TypeScript のテストワークフローがそれぞれ担います。両者が認識する検出で PR が 2 回赤くなり得ますが、それを受け入れているのは、ベンダーの判定を捨てると「スキャンは報告するが run はそのままマージされる」状態になるためです。\\n\",\n      },\n",
-    to: "",
-    mode: "en",
-  },
-  {
-    file: "scripts/setup/remove-licensed-scanners/scanner-manifest.ts",
-    from: "      { file: README_JA, fragment: \"、`01:15` CodeQL\" },\n",
-    to: "",
-    mode: "en",
-  },
-  {
-    file: "scripts/setup/remove-licensed-scanners/scanner-manifest.ts",
-    from: "      { file: README_JA, fragment: \"`code-ql.yaml`（`javascript-typescript` レグ）+ \" },\n",
-    to: "",
-    mode: "en",
-  },
-  {
-    file: "scripts/setup/remove-licensed-scanners/scanner-manifest.ts",
-    from: "      { file: README_JA, fragment: \"+ `code-ql.yaml`（`actions` レグ）\" },\n",
-    to: "",
-    mode: "en",
-  },
-  {
-    file: "scripts/setup/remove-licensed-scanners/scanner-manifest.ts",
-    from: "      { file: README_JA, heading: \"#### 資格情報を要するスキャナの撤去\" },\n",
-    to: "",
-    mode: "en",
-  },
-  {
-    file: "scripts/setup/remove-licensed-scanners/scanner-manifest.ts",
-    from: "const README_JA = \".github/workflows/README.ja.md\";\n",
-    to: "",
-    mode: "en",
-  },
-  {
-    file: "scripts/setup/remove-licensed-scanners/scanner-manifest.ts",
-    from: "      {\n        file: README_EN,\n        block:\n          \"|SonarQube Cloud Scan|`sonarqube.yaml`|SonarQube Cloud analysis of first-party source, read back over the Web API and converted to SARIF (**gates on Sonar's quality gate**, issue list report-only; needs `SONAR_TOKEN`, see [Removing the credential-bearing scanners](#removing-the-credential-bearing-scanners))|\\n\",\n      },\n",
-    to: "",
-    mode: "ja",
-  },
-  {
-    file: "scripts/setup/remove-licensed-scanners/scanner-manifest.ts",
-    from: "      {\n        file: README_EN,\n        block:\n          \"| SonarQube Cloud | Go / TypeScript / `sonar-project.properties`-change PRs | same as above | weekly |\\n\",\n      },\n",
-    to: "",
-    mode: "ja",
-  },
-  {
-    file: "scripts/setup/remove-licensed-scanners/scanner-manifest.ts",
-    from: "      {\n        file: README_EN,\n        block:\n          \"| `sonarqube.yaml` `sonarqube` | 15 | vendor-side analysis can queue for up to 10 minutes; test and coverage gates run in their owning workflows |\\n\",\n      },\n",
-    to: "",
-    mode: "ja",
-  },
-  {
-    file: "scripts/setup/remove-licensed-scanners/scanner-manifest.ts",
-    from: "      { file: README_EN, fragment: \" + `sonarqube.yaml` (SonarQube Cloud) **(gate, quality gate)**\" },\n",
-    to: "",
-    mode: "ja",
-  },
-  {
-    file: "scripts/setup/remove-licensed-scanners/scanner-manifest.ts",
-    from: "      { file: README_EN, fragment: \", `05:00` SonarQube Cloud\" },\n",
-    to: "",
-    mode: "ja",
-  },
-  {
-    file: "scripts/setup/remove-licensed-scanners/scanner-manifest.ts",
-    from: "      {\n        file: README_EN,\n        block:\n          \"| CodeQL | Go / TypeScript / Actions-definition-change PRs | same as above | weekly |\\n\",\n      },\n",
-    to: "",
-    mode: "ja",
-  },
-  {
-    file: "scripts/setup/remove-licensed-scanners/scanner-manifest.ts",
-    from: "      {\n        file: README_EN,\n        block:\n          \"| `code-ql.yaml` `codeql` | 30 | the limit covers whichever matrix leg is slowest, and no leg but `go` has a completed run to measure; `security-extended` is also a larger suite than the one the previous value was measured against |\\n\",\n      },\n",
-    to: "",
-    mode: "ja",
-  },
-  {
-    file: "scripts/setup/remove-licensed-scanners/scanner-manifest.ts",
-    from: "      {\n        file: README_EN,\n        block:\n          \"\\nSonarQube Cloud takes the last slot. Its analysis runs on a vendor's servers, and it is placed at the end for the same reason DAST is placed behind the file-reading scanners: its duration depends on a queue this repository does not control, so nothing useful is gained by having it queued ahead of a scanner that finishes on its own runner.\\n\",\n      },\n",
-    to: "",
-    mode: "ja",
-  },
-  {
-    file: "scripts/setup/remove-licensed-scanners/scanner-manifest.ts",
-    from: "      {\n        file: README_EN,\n        block:\n          \"\\nThe `First-party Go source` and `First-party TypeScript source` rows carry the vendor-hosted scanner as well. Sonar is the one deliberate departure from \\\"one owner per rule\\\" in this table. Its quality gate judges static analysis and duplication alongside its own issue taxonomy, while the Go and TypeScript test workflows own coverage thresholds. A finding both engines recognize can still turn a pull request red twice; that is accepted because discarding the vendor's verdict entirely would leave the scan reporting into a run that merged regardless.\\n\",\n      },\n",
-    to: "",
-    mode: "ja",
-  },
-  {
-    file: "scripts/setup/remove-licensed-scanners/scanner-manifest.ts",
-    from: "      { file: README_EN, fragment: \", `01:15` CodeQL\" },\n",
-    to: "",
-    mode: "ja",
-  },
-  {
-    file: "scripts/setup/remove-licensed-scanners/scanner-manifest.ts",
-    from: "      { file: README_EN, fragment: \"`code-ql.yaml` (`javascript-typescript` leg) + \" },\n",
-    to: "",
-    mode: "ja",
-  },
-  {
-    file: "scripts/setup/remove-licensed-scanners/scanner-manifest.ts",
-    from: "      { file: README_EN, fragment: \" + `code-ql.yaml` (`actions` leg)\" },\n",
-    to: "",
-    mode: "ja",
-  },
-  {
-    file: "scripts/setup/remove-licensed-scanners/scanner-manifest.ts",
-    from: "      { file: README_EN, heading: \"#### Removing the credential-bearing scanners\" },\n",
-    to: "",
-    mode: "ja",
-  },
-  {
-    file: "scripts/setup/remove-licensed-scanners/scanner-manifest.ts",
-    from: "const README_EN = \".github/workflows/README.md\";\n",
-    to: "",
-    mode: "ja",
-  },
-  {
-    file: "scripts/setup/remove-licensed-scanners/scanner-manifest.ts",
-    from: "const README_JA = \".github/workflows/README.ja.md\";",
-    to: "const README_JA = \".github/workflows/README.md\";",
-    mode: "ja",
-  },
-  {
-    file: ".claude/skills/manage-skill/SKILL.md",
-    from: " + mandatory `SKILL.ja.md` translation pair",
-    to: "",
-  },
-  {
-    file: ".claude/skills/manage-skill/SKILL.md",
-    from: "ALWAYS use it before hand-editing a `SKILL.md` or `SKILL.ja.md`.",
-    to: "ALWAYS use it before hand-editing a `SKILL.md`.",
-  },
-  {
-    file: ".claude/skills/manage-skill/SKILL.md",
-    from: "those have `sync-readme` / `canonicalize-doc` / `back-prop`",
-    to: "those have `sync-readme` / `back-prop`",
-  },
-  {
-    file: ".codex/skills/manage-skill/SKILL.md",
-    from: " + mandatory `SKILL.ja.md` translation pair",
-    to: "",
-  },
-  {
-    file: ".codex/skills/manage-skill/SKILL.md",
-    from: "ALWAYS use it before hand-editing a `SKILL.md` or `SKILL.ja.md`.",
-    to: "ALWAYS use it before hand-editing a `SKILL.md`.",
-  },
-  {
-    file: ".codex/skills/manage-skill/SKILL.md",
-    from: "those have `sync-readme` / `canonicalize-doc` / `back-prop`",
-    to: "those have `sync-readme` / `back-prop`",
-  },
-  {
-    file: ".claude/skills/portal-manifest-sync/SKILL.ja.md",
-    from: "\n- 日本語: `docs/portal/guides/ja/<flat-hyphenated-name>.ja.md`",
-    to: "",
-  },
-  {
-    file: ".codex/skills/portal-manifest-sync/SKILL.ja.md",
-    from: "\n- 日本語: `docs/portal/guides/ja/<flat-hyphenated-name>.ja.md`",
-    to: "",
-  },
-  {
-    file: ".claude/skills/portal-manifest-sync/SKILL.md",
-    from: "1. Read the English README content (and the `*.ja.md` sibling for completeness check; sibling existence already established via Step 2 preflight).",
-    to: "1. Read the README content.",
-  },
-  {
-    file: ".codex/skills/portal-manifest-sync/SKILL.md",
-    from: "1. Read the English README content (and the `*.ja.md` sibling for completeness check; sibling existence already established via Step 2 preflight).",
-    to: "1. Read the README content.",
-  },
-  {
-    file: ".claude/skills/sync-readme/SKILL.md",
-    from: "### 6. Chain into `canonicalize-doc` to sync the translation\n\nAfter the canonical README is written:\n\n1. Check whether a sibling translation file exists (e.g., `README.ja.md` next to the updated `README.md`).\n2. If it does, invoke the `canonicalize-doc` skill via the Skill tool with:\n    - source path: the canonical README that was just updated\n    - direction: `translation-from-canonical` (or `sync-both` with the canonical as source of truth, if the translation already exists)\n3. If no translation file exists, skip this step and report that the canonical was updated standalone.\n\nThe chained `canonicalize-doc` call will perform its own `AskUserQuestion` confirmation; that is expected and not redundant — it lets the user veto the translation sync if needed.\n\n",
-    to: "",
-  },
-  {
-    file: ".claude/skills/sync-readme/SKILL.md",
-    from: "### 7. Verify with Markdown Lint",
-    to: "### 6. Verify with Markdown Lint",
-  },
-  {
-    file: ".claude/skills/sync-readme/SKILL.md",
-    from: "### 8. Final verification",
-    to: "### 7. Final verification",
-  },
-  {
-    file: ".claude/skills/sync-readme/SKILL.md",
-    from: "After writing the canonical README (and after `canonicalize-doc` has produced any translation), run:",
-    to: "After writing the canonical README, run:",
-  },
-  {
-    file: ".codex/skills/sync-readme/SKILL.md",
-    from: "### 6. Chain into `canonicalize-doc` to sync the translation\n\nAfter the canonical README is written:\n\n1. Check whether a sibling translation file exists (e.g., `README.ja.md` next to the updated `README.md`).\n2. If it does, invoke the `canonicalize-doc` skill via the Skill tool with:\n    - source path: the canonical README that was just updated\n    - direction: `translation-from-canonical` (or `sync-both` with the canonical as source of truth, if the translation already exists)\n3. If no translation file exists, skip this step and report that the canonical was updated standalone.\n\nThe chained `canonicalize-doc` call will perform its own `ask the user explicitly` confirmation; that is expected and not redundant — it lets the user veto the translation sync if needed.\n\n",
-    to: "",
-  },
-  {
-    file: ".codex/skills/sync-readme/SKILL.md",
-    from: "### 7. Verify with Markdown Lint",
-    to: "### 6. Verify with Markdown Lint",
-  },
-  {
-    file: ".codex/skills/sync-readme/SKILL.md",
-    from: "### 8. Final verification",
-    to: "### 7. Final verification",
-  },
-  {
-    file: ".codex/skills/sync-readme/SKILL.md",
-    from: "After writing the canonical README (and after `canonicalize-doc` has produced any translation), run:",
-    to: "After writing the canonical README, run:",
-  },
-  {
-    file: "docs/get-started/setup-repository.md",
-    from: "3. Rewrite the contents of [openapi.yaml](../../openapi/openapi.yaml) according to your project.",
-    to: "2. Rewrite the contents of [openapi.yaml](../../openapi/openapi.yaml) according to your project.",
-  },
-  {
-    file: "docs/get-started/setup-repository.ja.md",
-    from: "1. [README.md](../../README.md), [README.ja.md](../../README.ja.md) の内容をプロジェクトに合わせて書き換え、メンテナ方針節にあるこのリポジトリ固有のブランチ規則の例外は置き換えるか削除してください。\n2. ドキュメントを 1 言語に絞るなら、対を畳んでも構いません（例えば [README.md](../../README.md) を [README.ja.md](../../README.ja.md) の内容で置き換える）。\n    - [gen-docs-json.ts](../../scripts/portal/gen-docs-json.ts) と、それが生成元にする [manifest.yaml](../portal/manifest.yaml) はどちらも README.md を参照しているため、完全に置換する場合はこれらのスクリプトも書き換える必要があります。\n    - portal の UI も En / Jp の切り替えを持つので、同じ手当てが要ります。\n3. [openapi.yaml](../../openapi/openapi.yaml) の内容をプロジェクトに合わせて書き換えてください。",
-    to: "1. [README.md](../../README.md) の内容をプロジェクトに合わせて書き換え、メンテナ方針節にあるこのリポジトリ固有のブランチ規則の例外は置き換えるか削除してください。\n2. [openapi.yaml](../../openapi/openapi.yaml) の内容をプロジェクトに合わせて書き換えてください。",
-  },
-  {
-    file: ".claude/skills/portal-manifest-sync/SKILL.ja.md",
-    from: "1. 英語 README を読み込む（`*.ja.md` sibling は Step 2 プリフライトで存在保証済み）",
-    to: "1. README を読み込む",
-  },
-  {
-    file: ".codex/skills/portal-manifest-sync/SKILL.ja.md",
-    from: "1. 英語 README を読み込む（`*.ja.md` sibling は Step 2 プリフライトで存在保証済み）",
-    to: "1. README を読み込む",
-  },
-  {
-    file: ".claude/skills/sync-readme/SKILL.ja.md",
-    from: "### 6. `canonicalize-doc` をチェーンして翻訳を同期\n\ncanonical README の書き込み完了後:\n\n1. 兄弟の翻訳ファイル（例: 更新した `README.md` の隣の `README.ja.md`）の有無を確認する。\n2. 存在する場合、Skill ツールで `canonicalize-doc` を起動する。引数は:\n    - source パス: 今回更新した canonical README\n    - direction: `translation-from-canonical`（翻訳が既に存在するなら `sync-both`、source of truth は canonical）\n3. 翻訳ファイルが存在しない場合は本ステップをスキップし、canonical のみ更新した旨を報告する。\n\nチェーンで呼び出された `canonicalize-doc` 自身が改めて `AskUserQuestion` で確認を行うのは期待される動作（冗長ではない）。ユーザーが翻訳同期を veto できる余地を残すため。\n\n",
-    to: "",
-  },
-  {
-    file: ".claude/skills/sync-readme/SKILL.ja.md",
-    from: "### 7. Markdown Lint による検証",
-    to: "### 6. Markdown Lint による検証",
-  },
-  {
-    file: ".claude/skills/sync-readme/SKILL.ja.md",
-    from: "### 8. 最終検証",
-    to: "### 7. 最終検証",
-  },
-  {
-    file: ".codex/skills/sync-readme/SKILL.ja.md",
-    from: "### 6. `canonicalize-doc` をチェーンして翻訳を同期\n\ncanonical README の書き込み完了後:\n\n1. 兄弟の翻訳ファイル（例: 更新した `README.md` の隣の `README.ja.md`）の有無を確認する。\n2. 存在する場合、Skill ツールで `canonicalize-doc` を起動する。引数は:\n    - source パス: 今回更新した canonical README\n    - direction: `translation-from-canonical`（翻訳が既に存在するなら `sync-both`、source of truth は canonical）\n3. 翻訳ファイルが存在しない場合は本ステップをスキップし、canonical のみ更新した旨を報告する。\n\nチェーンで呼び出された `canonicalize-doc` 自身が改めて `ask the user explicitly` で確認を行うのは期待される動作（冗長ではない）。ユーザーが翻訳同期を veto できる余地を残すため。\n\n",
-    to: "",
-  },
-  {
-    file: ".codex/skills/sync-readme/SKILL.ja.md",
-    from: "### 7. Markdown Lint による検証",
-    to: "### 6. Markdown Lint による検証",
-  },
-  {
-    file: ".codex/skills/sync-readme/SKILL.ja.md",
-    from: "### 8. 最終検証",
-    to: "### 7. 最終検証",
-  },
-  {
-    file: ".claude/README.ja.md",
-    from: "- **英語が canonical。** skill / README 本文は命令形の英語で書き、対になる `*.ja.md` は `canonicalize-doc`\n  skill で同期する人間向け参考訳です。ユーザーへの実行時出力は引き続き `CLAUDE.md` に従います（日本語）。\n",
-    to: "",
-  },
-  {
-    file: "docs-viewer/src/portal-app/portal-app.tsx",
-    from: "            <ToggleGroupNative aria-label=\"表示言語\">\n              <ToggleGroupNativeItem\n                checked={lang === \"EN\"}\n                name=\"lang\"\n                onChange={selectEnglish}\n                value=\"EN\"\n              >\n                EN\n              </ToggleGroupNativeItem>\n              <ToggleGroupNativeItem\n                checked={lang === \"JA\"}\n                name=\"lang\"\n                onChange={selectJapanese}\n                value=\"JA\"\n              >\n                JA\n              </ToggleGroupNativeItem>\n            </ToggleGroupNative>\n",
-    to: "",
-  },
+  ...forFile(".claude/skills/tool-map/SKILL.md", [
+    [" (skip `SKILL.ja.md` and other `*.ja.md` translation files)"],
+    ["\n- `*.ja.md` translation files (they are not loaded as entries)."],
+    ["\n- [ ] `*.ja.md` files excluded from the skills scan"],
+  ]),
+  ...forFile(".codex/skills/tool-map/SKILL.md", [
+    [" (skip `SKILL.ja.md` and other `*.ja.md` translation files)"],
+    ["\n- `*.ja.md` translation files (they are not loaded as entries)."],
+    ["\n- [ ] `*.ja.md` files excluded from the skills scan"],
+  ]),
+  ...forFile(".github/workflows/README.md", [
+    [" and its `README.ja.md` translation"],
+    ["| `make md-lint` checks the pair, not the rows |", "| `make md-lint` does not check these rows |"],
+  ]),
+  ...forFile(".claude/skills/back-prop/SKILL.md", [
+    [", minus `*.ja.md`"],
+  ]),
+  ...forFile(".codex/skills/back-prop/SKILL.md", [
+    [", excluding `*.ja.md`"],
+  ]),
+  ...forFile(".claude/skills/commit/SKILL.md", [
+    [", `*.ja.md`"],
+  ]),
+  ...forFile(".claude/skills/context-map/SKILL.md", [
+    [" and its `.ja.md` pair"],
+  ]),
+  ...forFile(".codex/skills/context-map/SKILL.md", [
+    [" and `docs/design/context-map.ja.md`"],
+  ]),
+  ...forFile(".claude/skills/glossary/SKILL.md", [
+    ["、`.ja.md` ペアの作成"],
+  ]),
+  ...forFile(".codex/skills/glossary/SKILL.md", [
+    [" Do not create a `.ja.md` pair for the glossary: this spec tree uses one Japanese file with English headings."],
+  ]),
+  ...forFile(".claude/skills/go-upgrade/SKILL.md", [
+    [" / `README.ja.md`"],
+    [" / `docker/README.ja.md`"],
+    [" / `docker/server/README.ja.md`"],
+    [" / `docker/tools/README.ja.md`"],
+  ]),
+  ...forFile(".codex/skills/go-upgrade/SKILL.md", [
+    [" / `README.ja.md`"],
+    [" / `docker/README.ja.md`"],
+    [" / `docker/server/README.ja.md`"],
+    [" / `docker/tools/README.ja.md`"],
+  ]),
+  ...forFile(".claude/skills/new-env/SKILL.md", [
+    [", `env/README.ja.md`"],
+    [" and `README.ja.md`"],
+    [", env/README.ja.md"],
+    [" then `env/README.ja.md`"],
+    [" and `env/README.ja.md`"],
+    ["; the skill translates for the other"],
+    ["\nResolution rules:\n\n- If only Japanese provided → skill writes Japanese to `env/README.ja.md` row, then translates to English for `env/README.md` row.\n- If only English provided → reverse direction.\n- If both provided → use as-is, no translation.\n- Translations are kept short and direct (single-line, technical register matching surrounding rows). If the description is non-trivial or domain-specific, surface the proposed translation in the Step 2 plan summary for user review before writing.\n"],
+  ]),
+  ...forFile(".codex/skills/new-env/SKILL.md", [
+    [", `env/README.ja.md`"],
+    [" and `README.ja.md`"],
+    [", env/README.ja.md"],
+    [" then `env/README.ja.md`"],
+    [" and `env/README.ja.md`"],
+    ["; the skill translates for the other"],
+    ["\nResolution rules:\n\n- If only Japanese provided → skill writes Japanese to `env/README.ja.md` row, then translates to English for `env/README.md` row.\n- If only English provided → reverse direction.\n- If both provided → use as-is, no translation.\n- Translations are kept short and direct (single-line, technical register matching surrounding rows). If the description is non-trivial or domain-specific, surface the proposed translation in the Step 2 plan summary for user review before writing.\n"],
+  ]),
+  ...forFile(".claude/skills/portal-manifest-sync/SKILL.md", [
+    [" / `README.ja.md`"],
+    ["\n- Japanese: `docs/portal/guides/ja/<flat-hyphenated-name>.ja.md`"],
+    ["\n  - src: foo/bar/README.ja.md"],
+    ["1. Read the English README content (and the `*.ja.md` sibling for completeness check; sibling existence already established via Step 2 preflight).", "1. Read the README content."],
+  ]),
+  ...forFile(".codex/skills/portal-manifest-sync/SKILL.md", [
+    [" / `README.ja.md`"],
+    ["\n- Japanese: `docs/portal/guides/ja/<flat-hyphenated-name>.ja.md`"],
+    ["\n  - src: foo/bar/README.ja.md"],
+    ["1. Read the English README content (and the `*.ja.md` sibling for completeness check; sibling existence already established via Step 2 preflight).", "1. Read the README content."],
+  ]),
+  ...forFile(".claude/skills/readme-review/SKILL.md", [
+    ["\n- Cross-reference to translation (`README.ja.md`) — its existence and sync convention compliance"],
+  ]),
+  ...forFile(".codex/skills/readme-review/SKILL.md", [
+    ["\n- Cross-reference to translation (`README.ja.md`) — its existence and sync convention compliance"],
+  ]),
+  ...forFile(".claude/skills/repo-ops/SKILL.md", [
+    ["-g '!**/*.ja.md' "],
+    ["Most of the Markdown in this tree is either a Japanese mirror you must not read or generated output\nthat lags the code, so a naive repo-wide search buries the one file that actually decides the answer.\nOf roughly 1,000 tracked `*.md`, **over 40% are `*.ja.md` translations** and **72 are generated\n`docs/portal/guides/**` copies of READMEs**; `docs/godoc/**` adds ~1,250 files and\n`docs/db-schema/**` ~390.", "Much of the Markdown in this tree is generated output that lags the code, so a naive repo-wide\nsearch buries the one file that actually decides the answer. Of the tracked `*.md`, **72 are\ngenerated `docs/portal/guides/**` copies of READMEs**; `docs/godoc/**` adds ~1,250 files and\n`docs/db-schema/**` ~390."],
+    ["are *tracked*, so they need these explicit globs. Hitting a `*.ja.md` is still useful as a\n**locator** (it proves the topic is documented); read the English original beside it, per\n`AGENTS.md`'s rule never to read `*.ja.md`.", "are *tracked*, so they need these explicit globs."],
+  ]),
+  ...forFile(".codex/skills/repo-ops/SKILL.md", [
+    ["-g '!**/*.ja.md' "],
+    ["Most of the Markdown in this tree is either a Japanese mirror you must not read or generated output\nthat lags the code, so a naive repo-wide search buries the one file that actually decides the answer.\nOf roughly 1,000 tracked `*.md`, **over 40% are `*.ja.md` translations** and **72 are generated\n`docs/portal/guides/**` copies of READMEs**; `docs/godoc/**` adds ~1,250 files and\n`docs/db-schema/**` ~390.", "Much of the Markdown in this tree is generated output that lags the code, so a naive repo-wide\nsearch buries the one file that actually decides the answer. Of the tracked `*.md`, **72 are\ngenerated `docs/portal/guides/**` copies of READMEs**; `docs/godoc/**` adds ~1,250 files and\n`docs/db-schema/**` ~390."],
+    ["are *tracked*, so they need these explicit globs. Hitting a `*.ja.md` is still useful as a\n**locator** (it proves the topic is documented); read the English original beside it, per\n`AGENTS.md`'s rule never to read `*.ja.md`.", "are *tracked*, so they need these explicit globs."],
+  ]),
+  ...forFile(".claude/skills/tools-upgrade/SKILL.md", [
+    [", `docker/**/README.ja.md`"],
+  ]),
+  ...forFile(".codex/skills/tools-upgrade/SKILL.md", [
+    [", `docker/**/README.ja.md`"],
+  ]),
+  ...forFile("docs/adr/0000-record-architecture-decisions.md", [
+    [" (each ADR also needs its `.ja.md` translation)"],
+  ]),
+  ...forFile("scripts/README.md", [
+    [", translation pairs (`SKILL.ja.md` exists, carries no frontmatter, opens with a sync note, and its heading-level sequence matches `SKILL.md`)"],
+    [" Codex-side `SKILL.ja.md` is optional, so it is\nchecked as a translation pair only when present."],
+  ]),
+  ...forFile(".claude/skills/comment-sweep/SKILL.md", [
+    ["   Whichever is chosen, the English canonical file and its `.ja.md` translation — plus the log table in\n   `docs/adr/README.md` and `docs/adr/README.ja.md` — are updated in the same change.", "   Whichever is chosen, the file and the log table in `docs/adr/README.md` are updated in the same\n   change."],
+  ]),
+  ...forFile("AGENTS.md", [
+    ["**Documentation scope for agents** — the canonical sources are the English `README.md` and\n`docs/**/*.md`. **Never read `*.ja.md` files: they are human-facing Japanese translations of\nthose canonical sources — read the canonical English original instead.** Also ignore the\ndocumentation-portal UI assets:\n\n```txt\n**/*.ja.md\ndocs/portal/**\n```", "**Documentation scope for agents** — the canonical sources are `README.md` and `docs/**/*.md`.\nIgnore the documentation-portal UI assets:\n\n```txt\ndocs/portal/**\n```"],
+  ]),
+  ...forFile("docs/get-started/setup-repository.md", [
+    ["1. Rewrite the contents of README.md and README.ja.md according to your project; replace or remove\n   the repository-specific branch-rule exception in the maintainer-policy section.\n2. If your project keeps its documentation in a single language, you may collapse the pair — for\n   example by replacing README.md with the contents of README.ja.md.", "1. Rewrite the contents of README.md according to your project; replace or remove the\n   repository-specific branch-rule exception in the maintainer-policy section."],
+    ["3. Rewrite the contents of [openapi.yaml](../../openapi/openapi.yaml) according to your project.", "2. Rewrite the contents of [openapi.yaml](../../openapi/openapi.yaml) according to your project."],
+  ]),
+  ...forFile("docs/maintenance/docs-structure.md", [
+    ["## 2. Japanese Documents\n\nA Japanese document sits **beside its English canonical**, named `<name>.ja.md`. The suffix is what\nseparates the languages; there is no separate directory, and the generator splits them by suffix.\n\nThese files are displayed in the **Architecture (Japanese)** section.\n\n## 3. Section Documents", "## 2. Section Documents"],
+    ["## 4. Japanese Section Documents\n\nA section's Japanese documents live in that same section directory, as `<name>.ja.md`. Nothing else\nis needed — the generator finds them by suffix and files them under:\n\n```txt\nProject (Japanese)\n```\n\n## 5. Reserved Directories", "## 3. Reserved Directories"],
+    ["\ndocs/security/auth.ja.md"],
+    ["\nSecurity (Japanese)"],
+    ["\n|docs/*.ja.md|Japanese|"],
+    ["\n|docs/<section>/*.ja.md|Japanese セクション|"],
+  ]),
+  ...forFile("docs/maintenance/portal-manifest.md", [
+    ["  # Japanese\n  - src: <source path>.ja.md\n    dst: docs/portal/guides/ja/<flat-name>.ja.md\n  - ...\n", "  - ...\n"],
+    [" / `.ja.md`"],
+    ["\n| `docs/*.ja.md` | items of section `architecture` (lang: ja) | Japanese counterparts |"],
+    ["\n| `docs/<dir>/*.ja.md` | items of section `<dir>` (lang: ja) | Japanese counterparts |"],
+    ["     # Japanese\n     - src: internal/controller/<new-package>/README.ja.md\n       dst: docs/portal/guides/ja/controller-<new-package>.ja.md\n"],
+  ]),
+  ...forFile(".claude/README.md", [
+    ["- **`skill-lint` does not check it.** The repository's skill conventions — frontmatter, the\n  `SKILL.ja.md` pair, references that resolve — assume a skill this repository writes.", "- **`skill-lint` does not check it.** The repository's skill conventions — frontmatter and\n  references that resolve — assume a skill this repository writes."],
+  ]),
+  ...forFile(".claude/skills/comment-sweep/SKILL.ja.md", [
+    [" と `docs/adr/README.ja.md`"],
+  ]),
+  ...forFile(".codex/skills/comment-sweep/SKILL.ja.md", [
+    ["英語の正本・隣の `.ja.md`・英日両方の ADR ログ表を揃えて更新する", "正本と ADR ログ表を揃えて更新する"],
+  ]),
+  ...forFile(".claude/skills/commit/SKILL.ja.md", [
+    ["、`*.ja.md`"],
+  ]),
+  ...forFile(".claude/skills/go-upgrade/SKILL.ja.md", [
+    [" / `docker/README.ja.md`"],
+    [" / `docker/server/README.ja.md`"],
+    [" / `docker/tools/README.ja.md`"],
+  ]),
+  ...forFile(".claude/skills/manage-skill/SKILL.ja.md", [
+    [" / `SKILL.ja.md`"],
+  ]),
+  ...forFile(".claude/skills/new-env/SKILL.ja.md", [
+    [", `env/README.ja.md`"],
+    ["\n- 日本語のみ供与 → `env/README.ja.md` に日本語そのまま、`env/README.md` に英訳を記入"],
+    [", env/README.ja.md"],
+    [" → `env/README.ja.md`"],
+  ]),
+  ...forFile(".claude/skills/portal-manifest-sync/SKILL.ja.md", [
+    [" / `README.ja.md`"],
+    ["\n- 日本語: `docs/portal/guides/ja/<flat-hyphenated-name>.ja.md`"],
+    ["1. 英語 README を読み込む（`*.ja.md` sibling は Step 2 プリフライトで存在保証済み）", "1. README を読み込む"],
+  ]),
+  ...forFile(".claude/skills/repo-ops/SKILL.ja.md", [
+    ["-g '!**/*.ja.md' "],
+  ]),
+  ...forFile(".claude/skills/tool-map/SKILL.ja.md", [
+    ["\n- [ ] skills スキャンから `*.ja.md` を除外した"],
+  ]),
+  ...forFile(".claude/skills/tools-upgrade/SKILL.ja.md", [
+    [", `docker/**/README.ja.md`"],
+  ]),
+  ...forFile(".codex/skills/go-upgrade/SKILL.ja.md", [
+    [" / `docker/README.ja.md`"],
+    [" / `docker/server/README.ja.md`"],
+    [" / `docker/tools/README.ja.md`"],
+  ]),
+  ...forFile(".codex/skills/manage-skill/SKILL.ja.md", [
+    [" / `SKILL.ja.md`"],
+  ]),
+  ...forFile(".codex/skills/new-env/SKILL.ja.md", [
+    [", `env/README.ja.md`"],
+    ["\n- 日本語のみ供与 → `env/README.ja.md` に日本語そのまま、`env/README.md` に英訳を記入"],
+    [", env/README.ja.md"],
+    [" → `env/README.ja.md`"],
+  ]),
+  ...forFile(".codex/skills/portal-manifest-sync/SKILL.ja.md", [
+    [" / `README.ja.md`"],
+    ["\n- 日本語: `docs/portal/guides/ja/<flat-hyphenated-name>.ja.md`"],
+    ["1. 英語 README を読み込む（`*.ja.md` sibling は Step 2 プリフライトで存在保証済み）", "1. README を読み込む"],
+  ]),
+  ...forFile(".codex/skills/repo-ops/SKILL.ja.md", [
+    ["-g '!**/*.ja.md' "],
+  ]),
+  ...forFile(".codex/skills/tool-map/SKILL.ja.md", [
+    ["\n- [ ] skills スキャンから `*.ja.md` を除外した"],
+  ]),
+  ...forFile(".codex/skills/tools-upgrade/SKILL.ja.md", [
+    [", `docker/**/README.ja.md`"],
+  ]),
+  ...forFile(".claude/skills/sync-ai/SKILL.ja.md", [
+    ["、`sh -n` を通し、`SKILL.md` / `SKILL.ja.md` の見出し数が一致していることを確かめる", "、`sh -n` を通す"],
+  ]),
+  ...forFile(".codex/skills/sync-ai/SKILL.ja.md", [
+    ["さらに `sh -n` を実行し、`SKILL.md` / `SKILL.ja.md` の見出し数が一致することも確認する。", "さらに `sh -n` を実行する。"],
+  ]),
+  ...forFile(".codex/skills/back-prop/SKILL.ja.md", [
+    [" から `*.ja.md` を除いた"],
+  ]),
+  ...forFile("docs/maintenance/docs-structure.ja.md", [
+    ["\n|docs/*.ja.md|Japanese|"],
+    ["\n|docs/<section>/*.ja.md|Japanese セクション|"],
+  ]),
+  ...forFile("docs/maintenance/portal-manifest.ja.md", [
+    ["\n| `docs/*.ja.md` | section `architecture` の item (lang: ja) | 日本語版 |"],
+    ["\n| `docs/<dir>/*.ja.md` | section `<dir>` の item (lang: ja) | 日本語版 |"],
+  ]),
+  ...forFile(".claude/skills/back-prop/SKILL.ja.md", [
+    ["、`docs/architecture.md`。`*.ja.md` は除く）", "、`docs/architecture.md`）"],
+  ]),
+  ...forFile(".agents/closed-loop/skill-meta.yaml", [
+    ["    opportunity_predicate: \"対訳ペアの片側だけが変更された（`X.md` と `X.ja.md` の一方のみ）\"\n"],
+  ]),
+  ...forFile(".github/workflows/licensed-scanners-removal-check.yaml", [
+    ["      - '.github/workflows/README.ja.md'\n"],
+  ]),
+  ...forFile(".github/workflows/sync-versions-check.yaml", [
+    ["      - 'docker/**/README.ja.md'\n"],
+  ]),
+  ...forFile(".github/workflows/setup-scripts-check.yaml", [
+    [" README.md README.ja.md ", " README.md "],
+  ]),
+  ...forFile(".gitleaksignore", [
+    ["env/README.ja.md:generic-api-key:242\n"],
+    ["env/README.ja.md:generic-api-key:217\n"],
+  ]),
+  ...forFile(".graphifyignore", [
+    ["*.ja.md\n**/*.ja.md\n"],
+  ]),
+  ...forFile("scripts/graphify-pending/main.go", [
+    ["//\t*.ja.md         ファイル名のパターン", "//\t*.gen.sql       ファイル名のパターン"],
+    ["// matchesGlob は `*.ja.md` のような、", "// matchesGlob は `*.gen.sql` のような、"],
+  ]),
+  ...forFile("scripts/graphify-pending/main_test.go", [
+    ["\t\t\tfiles := manifest(`{\"docs/rules.ja.md\":{\"semantic_hash\":\"stale\"},\"docs/rules.md\":{\"semantic_hash\":\"stale\"}}`)\n\t\t\tfiles[\"docs/rules.ja.md\"] = body\n\t\t\tfiles[\"docs/rules.md\"] = body\n\t\t\tfiles[\"ignore\"] = \"*.ja.md\\n**/*.ja.md\\n\"", "\t\t\tfiles := manifest(`{\"docs/a.gen.sql\":{\"semantic_hash\":\"stale\"},\"docs/rules.md\":{\"semantic_hash\":\"stale\"}}`)\n\t\t\tfiles[\"docs/a.gen.sql\"] = body\n\t\t\tfiles[\"docs/rules.md\"] = body\n\t\t\tfiles[\"ignore\"] = \"*.gen.sql\\n**/*.gen.sql\\n\""],
+    ["\t\t\"拡張子パターンは深い階層にも当たる\":       {\"docs/adr/0001.ja.md\", \"*.ja.md\", true},\n\t\t\"拡張子パターンは正本に当たらない\":        {\"docs/adr/0001.md\", \"*.ja.md\", false},", "\t\t\"拡張子パターンは深い階層にも当たる\":       {\"docs/adr/0001.gen.sql\", \"*.gen.sql\", true},\n\t\t\"拡張子パターンは他の綴りに当たらない\":      {\"docs/adr/0001.md\", \"*.gen.sql\", false},"],
+    ["\t\t\tassert.True(t, matchesGlob(\"rules.ja.md\", \"*.ja.md\"))", "\t\t\tassert.True(t, matchesGlob(\"rules.gen.sql\", \"*.gen.sql\"))"],
+  ]),
+  ...forFile("AGENTS.ja.md", [
+    ["**エージェントにとってのドキュメント範囲** —— 正典は英語の `README.md` と `docs/**/*.md` です。\n**`*.ja.md` ファイルは決して読まないでください。これらは正典の人間向け日本語訳であり、\n正典である英語の原文を読んでください。** ドキュメントポータルの UI アセットも無視します:\n\n```txt\n**/*.ja.md\ndocs/portal/**\n```", "**エージェントにとってのドキュメント範囲** —— 正典は `README.md` と `docs/**/*.md` です。\nドキュメントポータルの UI アセットは無視します:\n\n```txt\ndocs/portal/**\n```"],
+  ]),
+  ...forFile("scripts/setup/remove-licensed-scanners/scanner-manifest.ts", [
+    ["      {\n        file: README_JA,\n        block:\n          \"|SonarQube Cloud Scan|`sonarqube.yaml`|SonarQube Cloud による一次ソースの解析。結果は Web API から読み戻して SARIF へ変換する（**Sonar の品質ゲートでブロックする**。issue の一覧は報告専用。`SONAR_TOKEN` が必要。[資格情報を要するスキャナの撤去](#資格情報を要するスキャナの撤去)を参照）|\\n\",\n      },\n"],
+    ["      {\n        file: README_JA,\n        block:\n          \"| SonarQube Cloud | Go / TypeScript / `sonar-project.properties` 変更 PR | 同上 | 週次 |\\n\",\n      },\n"],
+    ["      {\n        file: README_JA,\n        block:\n          \"| `sonarqube.yaml` `sonarqube` | 15 | ベンダー側の解析キューが最大 10 分待つため。テストとカバレッジのゲートはそれぞれの所有ワークフローで実行する |\\n\",\n      },\n"],
+    ["      { file: README_JA, fragment: \" + `sonarqube.yaml`（SonarQube Cloud） **(gate, 品質ゲート)**\" },\n"],
+    ["      { file: README_JA, fragment: \"、`05:00` SonarQube Cloud\" },\n"],
+    ["      {\n        file: README_JA,\n        block:\n          \"| CodeQL | Go / TypeScript / Actions 定義の変更 PR | 同上 | 週次 |\\n\",\n      },\n"],
+    ["      {\n        file: README_JA,\n        block:\n          \"\\n最後のスロットは SonarQube Cloud です。解析がベンダーのサーバ側で走るため、DAST を全ファイル読み取り系の後ろへ置いたのと同じ理由で最後に並べています。所要時間がこのリポジトリの制御外のキューに左右されるため、自前のランナーで完結するスキャナより前に積む利点がありません。\\n\",\n      },\n"],
+    ["      {\n        file: README_JA,\n        block:\n          \"\\n`自前の Go ソース` と `自前の TypeScript ソース` の行にはベンダーホスト型のスキャナも乗っています。Sonar はこの表で唯一「ルール単位で担当 1 つ」から意図的に外れています。品質ゲートは静的解析・重複と Sonar 自身の issue 分類をまとめて判定し、カバレッジの閾値は Go / TypeScript のテストワークフローがそれぞれ担います。両者が認識する検出で PR が 2 回赤くなり得ますが、それを受け入れているのは、ベンダーの判定を捨てると「スキャンは報告するが run はそのままマージされる」状態になるためです。\\n\",\n      },\n"],
+    ["      { file: README_JA, fragment: \"、`01:15` CodeQL\" },\n"],
+    ["      { file: README_JA, fragment: \"`code-ql.yaml`（`javascript-typescript` レグ）+ \" },\n"],
+    ["      { file: README_JA, fragment: \"+ `code-ql.yaml`（`actions` レグ）\" },\n"],
+    ["      { file: README_JA, heading: \"#### 資格情報を要するスキャナの撤去\" },\n"],
+    ["const README_JA = \".github/workflows/README.ja.md\";\n"],
+  ], "en"),
+  ...forFile("scripts/setup/remove-licensed-scanners/scanner-manifest.ts", [
+    ["      {\n        file: README_EN,\n        block:\n          \"|SonarQube Cloud Scan|`sonarqube.yaml`|SonarQube Cloud analysis of first-party source, read back over the Web API and converted to SARIF (**gates on Sonar's quality gate**, issue list report-only; needs `SONAR_TOKEN`, see [Removing the credential-bearing scanners](#removing-the-credential-bearing-scanners))|\\n\",\n      },\n"],
+    ["      {\n        file: README_EN,\n        block:\n          \"| SonarQube Cloud | Go / TypeScript / `sonar-project.properties`-change PRs | same as above | weekly |\\n\",\n      },\n"],
+    ["      {\n        file: README_EN,\n        block:\n          \"| `sonarqube.yaml` `sonarqube` | 15 | vendor-side analysis can queue for up to 10 minutes; test and coverage gates run in their owning workflows |\\n\",\n      },\n"],
+    ["      { file: README_EN, fragment: \" + `sonarqube.yaml` (SonarQube Cloud) **(gate, quality gate)**\" },\n"],
+    ["      { file: README_EN, fragment: \", `05:00` SonarQube Cloud\" },\n"],
+    ["      {\n        file: README_EN,\n        block:\n          \"| CodeQL | Go / TypeScript / Actions-definition-change PRs | same as above | weekly |\\n\",\n      },\n"],
+    ["      {\n        file: README_EN,\n        block:\n          \"| `code-ql.yaml` `codeql` | 30 | the limit covers whichever matrix leg is slowest, and no leg but `go` has a completed run to measure; `security-extended` is also a larger suite than the one the previous value was measured against |\\n\",\n      },\n"],
+    ["      {\n        file: README_EN,\n        block:\n          \"\\nSonarQube Cloud takes the last slot. Its analysis runs on a vendor's servers, and it is placed at the end for the same reason DAST is placed behind the file-reading scanners: its duration depends on a queue this repository does not control, so nothing useful is gained by having it queued ahead of a scanner that finishes on its own runner.\\n\",\n      },\n"],
+    ["      {\n        file: README_EN,\n        block:\n          \"\\nThe `First-party Go source` and `First-party TypeScript source` rows carry the vendor-hosted scanner as well. Sonar is the one deliberate departure from \\\"one owner per rule\\\" in this table. Its quality gate judges static analysis and duplication alongside its own issue taxonomy, while the Go and TypeScript test workflows own coverage thresholds. A finding both engines recognize can still turn a pull request red twice; that is accepted because discarding the vendor's verdict entirely would leave the scan reporting into a run that merged regardless.\\n\",\n      },\n"],
+    ["      { file: README_EN, fragment: \", `01:15` CodeQL\" },\n"],
+    ["      { file: README_EN, fragment: \"`code-ql.yaml` (`javascript-typescript` leg) + \" },\n"],
+    ["      { file: README_EN, fragment: \" + `code-ql.yaml` (`actions` leg)\" },\n"],
+    ["      { file: README_EN, heading: \"#### Removing the credential-bearing scanners\" },\n"],
+    ["const README_EN = \".github/workflows/README.md\";\n"],
+    ["const README_JA = \".github/workflows/README.ja.md\";", "const README_JA = \".github/workflows/README.md\";"],
+  ], "ja"),
+  ...forFile(".claude/skills/manage-skill/SKILL.md", [
+    [" + mandatory `SKILL.ja.md` translation pair"],
+    ["ALWAYS use it before hand-editing a `SKILL.md` or `SKILL.ja.md`.", "ALWAYS use it before hand-editing a `SKILL.md`."],
+    ["those have `sync-readme` / `canonicalize-doc` / `back-prop`", "those have `sync-readme` / `back-prop`"],
+  ]),
+  ...forFile(".codex/skills/manage-skill/SKILL.md", [
+    [" + mandatory `SKILL.ja.md` translation pair"],
+    ["ALWAYS use it before hand-editing a `SKILL.md` or `SKILL.ja.md`.", "ALWAYS use it before hand-editing a `SKILL.md`."],
+    ["those have `sync-readme` / `canonicalize-doc` / `back-prop`", "those have `sync-readme` / `back-prop`"],
+  ]),
+  ...forFile(".claude/skills/sync-readme/SKILL.md", [
+    ["### 6. Chain into `canonicalize-doc` to sync the translation\n\nAfter the canonical README is written:\n\n1. Check whether a sibling translation file exists (e.g., `README.ja.md` next to the updated `README.md`).\n2. If it does, invoke the `canonicalize-doc` skill via the Skill tool with:\n    - source path: the canonical README that was just updated\n    - direction: `translation-from-canonical` (or `sync-both` with the canonical as source of truth, if the translation already exists)\n3. If no translation file exists, skip this step and report that the canonical was updated standalone.\n\nThe chained `canonicalize-doc` call will perform its own `AskUserQuestion` confirmation; that is expected and not redundant — it lets the user veto the translation sync if needed.\n\n"],
+    ["### 7. Verify with Markdown Lint", "### 6. Verify with Markdown Lint"],
+    ["### 8. Final verification", "### 7. Final verification"],
+    ["After writing the canonical README (and after `canonicalize-doc` has produced any translation), run:", "After writing the canonical README, run:"],
+  ]),
+  ...forFile(".codex/skills/sync-readme/SKILL.md", [
+    ["### 6. Chain into `canonicalize-doc` to sync the translation\n\nAfter the canonical README is written:\n\n1. Check whether a sibling translation file exists (e.g., `README.ja.md` next to the updated `README.md`).\n2. If it does, invoke the `canonicalize-doc` skill via the Skill tool with:\n    - source path: the canonical README that was just updated\n    - direction: `translation-from-canonical` (or `sync-both` with the canonical as source of truth, if the translation already exists)\n3. If no translation file exists, skip this step and report that the canonical was updated standalone.\n\nThe chained `canonicalize-doc` call will perform its own `ask the user explicitly` confirmation; that is expected and not redundant — it lets the user veto the translation sync if needed.\n\n"],
+    ["### 7. Verify with Markdown Lint", "### 6. Verify with Markdown Lint"],
+    ["### 8. Final verification", "### 7. Final verification"],
+    ["After writing the canonical README (and after `canonicalize-doc` has produced any translation), run:", "After writing the canonical README, run:"],
+  ]),
+  ...forFile("docs/get-started/setup-repository.ja.md", [
+    ["1. [README.md](../../README.md), [README.ja.md](../../README.ja.md) の内容をプロジェクトに合わせて書き換え、メンテナ方針節にあるこのリポジトリ固有のブランチ規則の例外は置き換えるか削除してください。\n2. ドキュメントを 1 言語に絞るなら、対を畳んでも構いません（例えば [README.md](../../README.md) を [README.ja.md](../../README.ja.md) の内容で置き換える）。\n    - [gen-docs-json.ts](../../scripts/portal/gen-docs-json.ts) と、それが生成元にする [manifest.yaml](../portal/manifest.yaml) はどちらも README.md を参照しているため、完全に置換する場合はこれらのスクリプトも書き換える必要があります。\n    - portal の UI も En / Jp の切り替えを持つので、同じ手当てが要ります。\n3. [openapi.yaml](../../openapi/openapi.yaml) の内容をプロジェクトに合わせて書き換えてください。", "1. [README.md](../../README.md) の内容をプロジェクトに合わせて書き換え、メンテナ方針節にあるこのリポジトリ固有のブランチ規則の例外は置き換えるか削除してください。\n2. [openapi.yaml](../../openapi/openapi.yaml) の内容をプロジェクトに合わせて書き換えてください。"],
+  ]),
+  ...forFile(".claude/skills/sync-readme/SKILL.ja.md", [
+    ["### 6. `canonicalize-doc` をチェーンして翻訳を同期\n\ncanonical README の書き込み完了後:\n\n1. 兄弟の翻訳ファイル（例: 更新した `README.md` の隣の `README.ja.md`）の有無を確認する。\n2. 存在する場合、Skill ツールで `canonicalize-doc` を起動する。引数は:\n    - source パス: 今回更新した canonical README\n    - direction: `translation-from-canonical`（翻訳が既に存在するなら `sync-both`、source of truth は canonical）\n3. 翻訳ファイルが存在しない場合は本ステップをスキップし、canonical のみ更新した旨を報告する。\n\nチェーンで呼び出された `canonicalize-doc` 自身が改めて `AskUserQuestion` で確認を行うのは期待される動作（冗長ではない）。ユーザーが翻訳同期を veto できる余地を残すため。\n\n"],
+    ["### 7. Markdown Lint による検証", "### 6. Markdown Lint による検証"],
+    ["### 8. 最終検証", "### 7. 最終検証"],
+  ]),
+  ...forFile(".codex/skills/sync-readme/SKILL.ja.md", [
+    ["### 6. `canonicalize-doc` をチェーンして翻訳を同期\n\ncanonical README の書き込み完了後:\n\n1. 兄弟の翻訳ファイル（例: 更新した `README.md` の隣の `README.ja.md`）の有無を確認する。\n2. 存在する場合、Skill ツールで `canonicalize-doc` を起動する。引数は:\n    - source パス: 今回更新した canonical README\n    - direction: `translation-from-canonical`（翻訳が既に存在するなら `sync-both`、source of truth は canonical）\n3. 翻訳ファイルが存在しない場合は本ステップをスキップし、canonical のみ更新した旨を報告する。\n\nチェーンで呼び出された `canonicalize-doc` 自身が改めて `ask the user explicitly` で確認を行うのは期待される動作（冗長ではない）。ユーザーが翻訳同期を veto できる余地を残すため。\n\n"],
+    ["### 7. Markdown Lint による検証", "### 6. Markdown Lint による検証"],
+    ["### 8. 最終検証", "### 7. 最終検証"],
+  ]),
+  ...forFile(".claude/README.ja.md", [
+    ["- **英語が canonical。** skill / README 本文は命令形の英語で書き、対になる `*.ja.md` は `canonicalize-doc`\n  skill で同期する人間向け参考訳です。ユーザーへの実行時出力は引き続き `CLAUDE.md` に従います（日本語）。\n"],
+  ]),
+  ...forFile("docs-viewer/src/portal-app/portal-app.tsx", [
+    ["            <ToggleGroupNative aria-label=\"表示言語\">\n              <ToggleGroupNativeItem\n                checked={lang === \"EN\"}\n                name=\"lang\"\n                onChange={selectEnglish}\n                value=\"EN\"\n              >\n                EN\n              </ToggleGroupNativeItem>\n              <ToggleGroupNativeItem\n                checked={lang === \"JA\"}\n                name=\"lang\"\n                onChange={selectJapanese}\n                value=\"JA\"\n              >\n                JA\n              </ToggleGroupNativeItem>\n            </ToggleGroupNative>\n"],
+  ]),
 ];
 
 /**
