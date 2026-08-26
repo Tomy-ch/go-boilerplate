@@ -106,8 +106,14 @@ jobs:
           tools: node npm:pnpm npm:markdownlint-cli2
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install script node deps
-        run: pnpm install --dir scripts --frozen-lockfile
+      # `docs-viewer` も入れる。畳むとポータルの取り込みから言語の軸が外れ、その型変更は
+      # `.ja.md` を一言も含まないテストフィクスチャを壊す —— 綴りを見張る検査には映らず、
+      # 型検査だけが見つけられる種類の破損である。
+      - name: Install node deps
+        run: |
+          set -euo pipefail
+          pnpm install --dir scripts --frozen-lockfile
+          pnpm install --dir docs-viewer --frozen-lockfile
         shell: bash
 
       # 撤去はコミットを積むので、コミッターの身元が要る。ローカル実行では利用者自身の
@@ -197,4 +203,6 @@ jobs:
           pnpm --dir scripts run tsx scripts/premise-lint
           pnpm --dir scripts run typecheck
           pnpm --dir scripts test
+          pnpm --dir docs-viewer run typecheck
+          pnpm --dir docs-viewer test
         shell: bash

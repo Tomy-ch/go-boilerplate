@@ -11,11 +11,19 @@ const groups: PortalGroup[] = [
         id: "adr",
         slug: "adr",
         title: "ADR",
+// doc-pair:replace-begin
         items: [{ name: "0001", path: "./guides/0001.md", lang: "ja" }],
+// doc-pair:replace-with
+// =         items: [{ name: "0001", path: "./guides/0001.md" }],
+// doc-pair:replace-end
         subgroups: [
           {
             title: "Layer",
+// doc-pair:replace-begin
             items: [{ name: "0021", path: "./guides/0021.md", lang: "ja" }],
+// doc-pair:replace-with
+// =             items: [{ name: "0021", path: "./guides/0021.md" }],
+// doc-pair:replace-end
           },
         ],
       },
@@ -49,7 +57,11 @@ describe("buildSearchCorpus", () => {
               id: "adr",
               slug: "adr",
               title: "ADR",
+// doc-pair:replace-begin
               items: [{ name: "0001", path: "./guides/0001.md", lang: "ja" }],
+// doc-pair:replace-with
+// =               items: [{ name: "0001", path: "./guides/0001.md" }],
+// doc-pair:replace-end
             },
           ],
         },
