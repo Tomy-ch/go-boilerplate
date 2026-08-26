@@ -559,7 +559,6 @@ Elastic License 2.0 costs nothing to run in CI and constrains only redistributio
 is a different question with its own answer in
 [the workflows README](../../.github/workflows/README.md#bearers-licence-and-removal).
 
-<!-- doc-pair:begin -->
 ## Phase 19: Choose the documentation language
 
 This repository ships every document twice: an English canonical and a Japanese translation beside
@@ -597,4 +596,3 @@ first.
 The script refuses to run rather than guess. Prose that explains the translation convention itself
 cannot be folded mechanically, so anything not covered by a `doc-pair` marker or declared in
 `language-manifest.ts` stops the run with its file and line — and nothing is written when it does.
-<!-- doc-pair:end -->

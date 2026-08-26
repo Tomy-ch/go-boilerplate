@@ -61,11 +61,7 @@ export function replaceSonarProject(content: string, repository: string): string
  * `make setup-remove-licensed-scanners` で消えていることがあるため、不在は正常です。
  */
 export const REPOSITORY_REFERENCE_TARGETS = {
-// doc-pair:replace-begin
   readmeFiles: ["README.md", "README.ja.md"] as readonly string[],
-// doc-pair:replace-with
-// =   readmeFiles: ["README.md"] as readonly string[],
-// doc-pair:replace-end
   openapiFile: "openapi/openapi.yaml",
   sonarFile: "sonar-project.properties",
 } as const;

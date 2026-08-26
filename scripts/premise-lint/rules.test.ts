@@ -123,13 +123,13 @@ describe("isChecked", () => {
 
     it("層 README を対象にする", () => {
       expect(isChecked("internal/domain/README.md")).toBe(true);
-      expect(isChecked("pkg/uuid/README.ja.md")).toBe(true); // doc-pair:line
+      expect(isChecked("pkg/uuid/README.ja.md")).toBe(true);
     });
 
     // ミラーは正本と同じ内容を運ぶので、正本が対象ならミラーも対象。
     it("日本語ミラーを正本と同じ扱いにする", () => {
-      expect(isChecked("docs/adr/0001-avoid-lock-in.ja.md")).toBe(true); // doc-pair:line
-      expect(isChecked("docs/rules.ja.md")).toBe(true); // doc-pair:line
+      expect(isChecked("docs/adr/0001-avoid-lock-in.ja.md")).toBe(true);
+      expect(isChecked("docs/rules.ja.md")).toBe(true);
     });
   });
 
@@ -137,9 +137,9 @@ describe("isChecked", () => {
     // 許可域は前提と一緒に消えるので、前提が残っても嘘にならない。
     it("許可域を対象から外す", () => {
       expect(isChecked("README.md")).toBe(false);
-      expect(isChecked("README.ja.md")).toBe(false); // doc-pair:line
+      expect(isChecked("README.ja.md")).toBe(false);
       expect(isChecked("docs/get-started/setup-repository.md")).toBe(false);
-      expect(isChecked("docs/get-started/setup-repository.ja.md")).toBe(false); // doc-pair:line
+      expect(isChecked("docs/get-started/setup-repository.ja.md")).toBe(false);
     });
 
     it("Markdown 以外を対象にしない", () => {
