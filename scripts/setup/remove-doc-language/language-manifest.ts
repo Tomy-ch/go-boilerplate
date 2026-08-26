@@ -870,6 +870,16 @@ export const DOC_REPLACEMENTS: readonly DocReplacement[] = [
     from: "those have `sync-readme` / `canonicalize-doc` / `back-prop`",
     to: "those have `sync-readme` / `back-prop`",
   },
+  {
+    file: ".claude/skills/portal-manifest-sync/SKILL.ja.md",
+    from: "\n- 日本語: `docs/portal/guides/ja/<flat-hyphenated-name>.ja.md`",
+    to: "",
+  },
+  {
+    file: ".codex/skills/portal-manifest-sync/SKILL.ja.md",
+    from: "\n- 日本語: `docs/portal/guides/ja/<flat-hyphenated-name>.ja.md`",
+    to: "",
+  },
 ];
 
 /**
