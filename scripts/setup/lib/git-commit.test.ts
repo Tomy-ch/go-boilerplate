@@ -10,13 +10,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // git の側の振る舞いだからで、モックにするとその契約は検証できない。
 let repoDir = "";
 
-vi.mock("../lib/runtime", async () => {
-  const actual = await vi.importActual<typeof import("../lib/runtime")>("../lib/runtime");
+vi.mock("./runtime", async () => {
+  const actual = await vi.importActual<typeof import("./runtime")>("./runtime");
 
   return { ...actual, get ROOT_DIR() { return repoDir; } };
 });
 
-const { DirtyWorktreeError, assertCleanWorktree, commitPaths } = await import("./git-commit");
+const { DirtyWorktreeError, assertCleanWorktree, commitPaths, trackedFiles } = await import(
+  "./git-commit"
+);
 
 function git(args: readonly string[]): string {
   return execFileSync("git", args, { cwd: repoDir, encoding: "utf8" });
@@ -39,6 +41,29 @@ beforeEach(() => {
 
 afterEach(() => {
   fs.rmSync(repoDir, { recursive: true, force: true });
+});
+
+describe("trackedFiles", () => {
+  describe("正常系", () => {
+    it("追跡しているファイルを相対パスで返す", () => {
+      expect(trackedFiles().sort()).toEqual(["kept.txt", "target.txt"]);
+    });
+
+    // 走査ではなく git に問うのは、無視対象の宣言を .gitignore と二重に持たないため。
+    it("追跡外のファイルを含めない", () => {
+      fs.writeFileSync(path.join(repoDir, "ignored.txt"), "ignored\n");
+
+      expect(trackedFiles()).not.toContain("ignored.txt");
+    });
+  });
+
+  describe("異常系", () => {
+    it("追跡ファイルが無ければ空を返す", () => {
+      git(["rm", "--quiet", "-r", "--cached", "."]);
+
+      expect(trackedFiles()).toEqual([]);
+    });
+  });
 });
 
 describe("DirtyWorktreeError", () => {

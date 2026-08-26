@@ -3,7 +3,7 @@ import fs from "node:fs";
 
 import { listFilesRecursive, toAbsolutePath, toRelativePath, updateFile } from "../lib/file-utils";
 import { type SetupOptions, newSetupCommand } from "../lib/runtime";
-import { assertCleanWorktree, commitPaths } from "./git-commit";
+import { assertCleanWorktree, commitPaths } from "../lib/git-commit";
 import { SCANNER_DOMAINS, type ScannerDomain } from "./scanner-manifest";
 import {
   isPinKeyReferenced,

@@ -6,7 +6,7 @@
 
 import { execFileSync } from "node:child_process";
 
-import { ROOT_DIR } from "../lib/runtime";
+import { ROOT_DIR } from "./runtime";
 
 /** 作業ツリーが汚れたまま撤去を始めようとしたことを表す。 */
 export class DirtyWorktreeError extends Error {
@@ -26,6 +26,20 @@ export class DirtyWorktreeError extends Error {
 
 function git(args: readonly string[]): string {
   return execFileSync("git", args, { cwd: ROOT_DIR, encoding: "utf8" });
+}
+
+/**
+ * git が追跡しているファイルを相対パスで列挙する。
+ *
+ * @remarks
+ * ディレクトリ走査ではなく git に問うのは、無視対象（`vendor/` / `node_modules/` / 生成物）を
+ * 二重に宣言しないためです。走査側で除外を書くと `.gitignore` と食い違い、その食い違いは
+ * 「消えるはずのないものが消えた」という形でしか気づけません。
+ */
+export function trackedFiles(): string[] {
+  return git(["ls-files"])
+    .split("\n")
+    .filter((line) => line !== "");
 }
 
 /**
