@@ -104,8 +104,11 @@ const DECORATION_CHARS = /[|>\-*:：、。\s]/g;
  * タイトル付き（`[t](p "title")`）を任意の後続要素として書くと、行き先の量指定子と
  * 取り合いになって後戻りが生じます。中身を 1 つの塊で取り、行き先は
  * {@link hrefOf} が切り出します。
+ *
+ * 量指定子に上限を置くのは、この撤去が任意のファイルを読むためです。閉じない括弧が並ぶ入力に
+ * 対して、上限の無い形は開始位置ごとに末尾まで走査し直します。
  */
-const INLINE_LINK = /\[[^\]]*\]\(([^)]*)\)/g;
+const INLINE_LINK = /\[[^\]]{0,256}\]\(([^)]{0,1024})\)/g;
 
 /** リンクの括弧の中から行き先だけを取る。タイトルは空白で区切られた後半。 */
 function hrefOf(inside: string): string {
@@ -399,7 +402,10 @@ export function isDecorationOnly(line: string): boolean {
  * ja では `scaffold-test/SKILL.md` のような他スキルへの言及が 300 件近く巻き込まれました。
  */
 export function resolveTarget(target: string, fromDir: string): string | null {
-  const bare = target.replace(/[#?].*$/, "");
+  // アンカーとクエリを落とす。正規表現を使わないのは、末尾まで舐める形が後戻りを生むためで、
+  // 探しているのは最初の 1 文字の位置でしかない。
+  const cut = [target.indexOf("#"), target.indexOf("?")].filter((at) => at >= 0);
+  const bare = cut.length === 0 ? target : target.slice(0, Math.min(...cut));
 
   if (bare === "" || /^[a-z][a-z0-9+.-]{0,32}:/i.test(bare)) {
     return null;
