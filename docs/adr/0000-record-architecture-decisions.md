@@ -5,68 +5,55 @@ deciders: [maintainers]
 tags: [meta, documentation]
 ---
 
-# ADR-0000: Record architecture decisions as ADRs
+# ADR-0000: アーキテクチャ上の決定を ADR として記録する
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Collating a project's technology rationale into a single growing file has two problems:
+プロジェクトの技術的な根拠を単一の成長し続けるファイルに集約することには、二つの問題がある:
 
-- **In-place editing loses history.** Rewriting a decision when reality changes discards
-  the record of *why the old design was once chosen*.
-- **Mixed content.** Blending immutable decisions with a living inventory (e.g. a dependency
-  table that must track `go.mod`) forces a drifting catalog into a "rationale" document,
-  where it silently goes stale.
+- **インプレース編集による履歴の消失。** 実態が変わったときに決定を上書きすると、*なぜかつてその設計を選んだのか* という記録が失われる。
+- **内容の混在。** 変更不可能な決定と、`go.mod` を追跡しなければならない生きた一覧（例: 依存関係テーブル）を混在させると、漂流するカタログを「根拠」文書に押し込むことになり、静かに陳腐化する。
 
-A decision record is written for a reader who was not in the room: they need to see *why*
-each choice was made, and to be able to replace one choice without editing a document that
-every other choice shares.
+決定の記録は、その場に居合わせなかった読者のために書かれる。読者には各選択の *理由* が見えている必要があり、かつ、他のすべての選択が共有する文書を編集することなく 1 つの選択を差し替えられる必要がある。
 
-## Decision
+## 決定
 
-Record each architecture decision as its own immutable file under `docs/adr/`, in
-MADR-lite form (see [`template.md`](template.md)). Classify every candidate before it
-lands:
+各アーキテクチャ上の決定を `docs/adr/` 以下の個別の不変ファイルとして、MADR-lite 形式（[`template.md`](template.md) 参照）で記録する。すべての候補を着地前に分類する:
 
-- **decision** / **exclusion** → an ADR here (immutable; supersede by a new ADR).
-- **rule** (a day-to-day enforced consequence) → stays in `docs/rules.md`, may link its ADR.
-- **inventory** (a catalog that drifts with code, e.g. the dependency list) → a living
-  reference (`docs/reference/dependencies.md`), never an ADR.
+- **decision** / **exclusion** → このディレクトリ配下の ADR（不変; 新しい ADR で上書きする）。
+- **rule**（日々強制される決定の結果）→ `docs/rules.md` に留め、ADR へのリンクを付ける場合がある。
+- **inventory**（コードと共に変化するカタログ、例: 依存関係リスト）→ 生きたリファレンス（`docs/reference/dependencies.md`）とし、ADR にはしない。
 
-ADRs are numbered in dependency / foundational order (principles first), and superseding a
-decision means adding a new `accepted` ADR and flipping the old one to `superseded`, not
-editing its body.
+ADR は依存関係 / 基礎的な順序で番号付けされ（原則が先）、決定を上書きするとは新しい `accepted` な ADR を追加し、古い ADR を `superseded` に変えることを意味する — 本文を編集するのではない。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Decision history is preserved; supersession is auditable.
-- One decision can be overridden by adding one ADR, leaving the others untouched.
-- Drifting catalogs (dependencies) live where drift is expected, not inside immutable records.
+- 決定の履歴が保存される; 上書きが監査可能になる。
+- 1 つの ADR を追加することで 1 つの決定を上書きでき、他の決定には手を触れずに済む。
+- 漂流するカタログ（依存関係）は、不変の記録の中ではなく、漂流が想定される場所に置かれる。
 
-### Negative Consequences
+### ネガティブな影響
 
-- More files and cross-references to maintain (each ADR also needs its `.ja.md` translation).
-- Contributors must classify (decision vs rule vs inventory) before writing — a small upfront judgment cost.
+- 記述前に分類（decision か rule か inventory か）が必要 — 小さな初期判断コストがかかる。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Keep the single `docs/decisions.md`
+### 単一の `docs/decisions.md` を維持する
 
-Rejected: in-place edits erase decision history, and the file already mixed immutable
-decisions with a drifting inventory.
+却下: インプレース編集は決定の履歴を消去し、すでに不変の決定と漂流するインベントリが混在していた。
 
-### One file, append-only decision log (no per-decision files)
+### 1 ファイル、追記のみの決定ログ（決定ごとのファイルなし）
 
-Rejected: an individual decision cannot be superseded cleanly, and a single file grows
-unbounded and merge-conflicts.
+却下: 個々の決定をきれいに上書きできず、単一ファイルは際限なく肥大化してマージコンフリクトを引き起こす。
 
-## Notes
+## 補足
 
-- Migration scope, the full ordered ADR list, and per-ADR source references live in
-  [the ADR log](README.md).
-- The dependency inventory that lived in `docs/decisions.md` moves to `docs/reference/dependencies.md`.
+- 移行の範囲、順序づけられた ADR の全体一覧、および ADR ごとの出典参照は
+  [ADR ログ](README.md) にある。
+- `docs/decisions.md` にあった依存関係インベントリは `docs/reference/dependencies.md` に移動する。

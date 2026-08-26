@@ -1,38 +1,42 @@
 # DI Layer (`internal/di`)
 
-`internal/di` is the **central layer for Dependency Injection (DI)** in this application.
+`internal/di` は、このアプリケーションにおける **依存性注入 (Dependency Injection: DI)** の中枢レイヤです。
 
-This layer builds a DI container based on **Uber Fx**,  
-and orchestrates **initialization / execution / shutdown / lifecycle management** of the application.
+この層は **Uber Fx** をベースとした DI コンテナを構築し、  
+アプリケーションの **初期化 / 実行 / シャットダウン / ライフサイクル管理** を統括します。
 
-This layer **does not contain business logic**.  
-Instead, it has the following responsibilities:
+このレイヤは **ビジネスロジックを持ちません**。  
+代わりに以下の責務を担います。
 
-- Constructing **dependencies between layers**
-- Switching **application execution profiles** (server / job / worker / outbox-relay)
-- Lifecycle management
-- Middleware / extension configuration
-- Connecting Infrastructure / Usecase / Controller
+- 各レイヤの **依存関係の構築**
+- アプリケーション **実行プロファイルの切り替え**（server / job / worker / outbox-relay）
+- ライフサイクル管理
+- ミドルウェア / 拡張機能の構成
+- Infrastructure / Usecase / Controller の接続
 
-## What is Dependency Injection
+## Dependency Injection とは
 
-Dependency Injection (DI) is:
+Dependency Injection (DI) は、
 
-> **A design pattern that separates dependency creation from application code**
+> **依存関係の生成をアプリケーションコードから分離する設計パターン**
 
-In normal code, dependencies are created as follows:
+です。
+
+通常のコードでは次のような依存関係が発生します。
 
 ```go
 service := NewService(NewRepository(NewDB()))
 ```
 
-Such code causes the following problems:
+このようなコードは
 
-- Dependencies become fixed
-- Testing becomes difficult
-- Switching per execution environment becomes difficult
+- 依存関係が固定される
+- テストが困難になる
+- 実行環境ごとの切り替えが難しい
 
-When using DI, dependency creation is handled by the **container**.
+という問題を引き起こします。
+
+DI を利用すると、依存関係の生成は **コンテナが担当**します。
 
 ```go
 fx.Provide(
@@ -42,13 +46,13 @@ fx.Provide(
 )
 ```
 
-The container analyzes dependencies and automatically constructs the object graph.
+コンテナは依存関係を解析し、自動的にオブジェクトグラフを構築します。
 
-## Role of DI in This Architecture
+## このアーキテクチャにおける DI の役割
 
-This project is structured based on **Onion Architecture / DDD**.
+このプロジェクトは **Onion Architecture / DDD** をベースに構成されています。
 
-The dependencies between layers are as follows:
+各レイヤの依存関係は次のようになります。
 
 ```mermaid
 flowchart TD
@@ -58,24 +62,24 @@ Usecase --> DomainInterface
 Infrastructure --> DomainInterface
 ```
 
-The DI layer provides the **composition root (junction point of dependencies)**.
+DI レイヤはこの **依存関係の接合点 (Composition Root)** を提供します。
 
-In other words, it is:
+つまり
 
 - Domain
 - Usecase
 - Infrastructure
 - Controller
 
-the **only place where they are ultimately assembled**.
+を **最終的に組み合わせる唯一の場所**です。
 
-## Role of DI in This Project
+## このプロジェクトでの DI の役割
 
-In this project, DI is used for the following purposes.
+このプロジェクトでは DI は次の用途で使用されています。
 
-## 1. Application Execution
+## 1. アプリケーション実行
 
-DI **manages the application startup process**
+DI は **アプリケーションの起動処理を管理します**
 
 ```go
 fx.New(
@@ -85,63 +89,63 @@ fx.New(
 )
 ```
 
-Here:
+ここで
 
-- configuration
-- logging
+- 設定
+- ログ
 - DB
-- middleware
+- ミドルウェア
 - Controller
 - Usecase
 
-are all connected.
+などがすべて接続されます。
 
-## 2. Execution Profile Switching
+## 2. 実行プロファイルの切り替え
 
-This project runs on **four execution profiles**. Each profile is a distinct
-top-level entrypoint (a separate `cmd/*` subcommand) that assembles its own
-`fx` object graph from a shared set of `module.*` building blocks.
+このプロジェクトは **4種類の実行プロファイル**で動作します。各プロファイルは独立した
+トップレベル entrypoint（それぞれ別の `cmd/*` サブコマンド）であり、共有された
+`module.*` の部品群から自前の `fx` オブジェクトグラフを組み立てます。
 
-|Profile|Command|Entrypoint|Core function(s)|Purpose|
+|プロファイル|コマンド|Entrypoint|中心関数|用途|
 |---|---|---|---|---|
-|Server|`serve`|`internal/di/server.go`|`NewApplicationCore()` + `NewApplicationServer(app)`|HTTP / Web API (long-running)|
-|Job|`job`|`internal/di/job.go`|`NewJobCore()` / `RunJob(grace)`|CLI / batch (one-shot)|
-|Worker|`worker`|`internal/di/worker.go`|`NewWorkerCore()` / `RunWorker(grace)`|Queue consumer engine (long-running)|
-|Outbox Relay|`outbox-relay`|`internal/di/outboxrelay.go`|`NewOutboxRelayApp(grace)` + `NewApplicationServer(app)`; `RunOutboxReplay()` for one-shot replay|Transactional-outbox relay (long-running) + dead-row replay|
+|Server|`serve`|`internal/di/server.go`|`NewApplicationCore()` + `NewApplicationServer(app)`|HTTP / Web API（常駐）|
+|Job|`job`|`internal/di/job.go`|`NewJobCore()` / `RunJob(grace)`|CLI / バッチ（ワンショット）|
+|Worker|`worker`|`internal/di/worker.go`|`NewWorkerCore()` / `RunWorker(grace)`|キュー consumer engine（常駐）|
+|Outbox Relay|`outbox-relay`|`internal/di/outboxrelay.go`|`NewOutboxRelayApp(grace)` + `NewApplicationServer(app)`／ワンショット replay は `RunOutboxReplay()`|transactional outbox の relay（常駐）＋ dead 行の replay|
 
-All four share the **same architecture** and the same inner layers (domain /
-usecase / infrastructure); they differ only in which outer modules the DI graph
-wires and how the process is driven (long-running vs one-shot).
+4つはすべて **同じアーキテクチャ**・同じ内側レイヤ（domain / usecase /
+infrastructure）を共有し、異なるのは DI グラフがどの外側モジュールを結線するかと、
+プロセスの駆動方式（常駐かワンショットか）だけです。
 
-### What each profile wires
+### 各プロファイルが結線するもの
 
-- **Server** (`NewApplicationCore`) — the full HTTP stack:
-  `lifecycle` → `config` → core HTTP modules (`validator` / `security_cookie` /
-  `authn` / `basicauth` / `skipper`) → `logging` / `observability` / `db` /
+- **Server**（`NewApplicationCore`）— HTTP スタック全体:
+  `lifecycle` → `config` → コア HTTP モジュール（`validator` / `security_cookie` /
+  `authn` / `basicauth` / `skipper`）→ `logging` / `observability` / `db` /
   `system` → `infrastructure` / `usecase` / `controller` → server
-  (`MiddlewareModule` / `Module` / `HookModule`). `fx.WithLogger` routes fx
-  events through the structured logger (`NewFxEventLogger`).
-- **Job** (`NewJobCore`) — `shutdowner` + `lifecycle` + the common substrate
-  (`config` / `logging` / `observability` / `db` / `system`) +
-  `infrastructure` + `usecase` + `JobModule`. `RunJob` populates `job.State`,
-  starts the app (which runs the selected job via its hook), and shuts down.
-- **Worker** (`NewWorkerCore`) — same common substrate + `infrastructure` +
-  `usecase` + `WorkerModule`. `RunWorker` populates `worker.State` and runs the
-  worker engine as a detached background runner.
-- **Outbox Relay** (`NewOutboxRelayCore`) — the common substrate +
-  `infrastructure` + `usecase` + `OutboxRelayModule` (which additionally wires
-  the outbox `publisher` and relay engine). `RunOutboxReplay` reuses the same
-  common substrate for a one-shot "reset dead rows to pending" run.
+  （`MiddlewareModule` / `Module` / `HookModule`）。`fx.WithLogger` により
+  fx イベントを構造化ロガー（`NewFxEventLogger`）へ流します。
+- **Job**（`NewJobCore`）— `shutdowner` + `lifecycle` + 共通基盤
+  （`config` / `logging` / `observability` / `db` / `system`）+
+  `infrastructure` + `usecase` + `JobModule`。`RunJob` は `job.State` を populate し、
+  アプリを起動して（hook 経由で選択されたジョブを実行し）停止します。
+- **Worker**（`NewWorkerCore`）— 同じ共通基盤 + `infrastructure` +
+  `usecase` + `WorkerModule`。`RunWorker` は `worker.State` を populate し、
+  worker engine を detached background runner として実行します。
+- **Outbox Relay**（`NewOutboxRelayCore`）— 共通基盤 +
+  `infrastructure` + `usecase` + `OutboxRelayModule`（これが追加で
+  outbox `publisher` と relay engine を結線します）。`RunOutboxReplay` は
+  同じ共通基盤を再利用し、「dead 行を pending へ戻す」ワンショット実行を行います。
 
-The three non-server profiles set `fx.StopTimeout(grace)` from
-`APP_SHUTDOWN_TIMEOUT`, unifying the stop axis so fx's default 15s teardown
-never cuts off graceful shutdown / drain.
+server 以外の3プロファイルは `APP_SHUTDOWN_TIMEOUT` を `fx.StopTimeout(grace)` に
+設定して停止軸を一本化し、fx 既定の 15s teardown が graceful shutdown / drain を
+先に打ち切らないようにします。
 
-## 3. Environment-Based Dependency Switching
+## 3. 環境ごとの依存関係切り替え
 
-DI enables **implementation switching per environment**.
+DI によって **環境ごとの実装切り替え**が可能になります。
 
-Example:
+例：
 
 ```go
 switch appCfg.Env() {
@@ -150,102 +154,100 @@ case config.EnvLocal:
 }
 ```
 
-This allows handling differences between:
+これにより
 
 - Local
 - CI
 - Test
 - Production
 
-## Structure of the DI Layer
+などの環境差分を吸収できます。
 
-One file per **run profile** — server, job, worker, outbox relay — each exposing that profile's
-entrypoint. A profile whose wiring is more than a constructor gets a directory of the same name
-beside its file. `module/` holds the per-layer `fx.Module` building blocks every profile draws from.
+## DI レイヤの構造
 
-## Core / Optional / Adapter Modules
+**実行プロファイル**ごとに 1 ファイルを置く（server / job / worker / outbox relay）。各ファイルが
+そのプロファイルのエントリポイントを公開する。配線がコンストラクタ 1 つに収まらないプロファイルは、
+自身のファイルと並べて同名のディレクトリを持つ。`module/` には、どのプロファイルも参照する層ごとの
+`fx.Module` の部品を置く。
 
-The `module.*` building blocks fall into three tiers by how they enter the graph.
+## Core / Optional / Adapter モジュール
 
-### Core — always wired (shared substrate)
+`module.*` の部品群は、グラフへの入り方によって次の3層に分類されます。
 
-Present in every (or nearly every) profile. These form the inner-layer
-substrate that all profiles depend on.
+### Core — 常に結線される（共有基盤）
 
-|Module|Role|
+すべての（またはほぼすべての）プロファイルに含まれます。全プロファイルが依存する
+内側レイヤの基盤です。
+
+|モジュール|役割|
 |---|---|
-|`lifecycle.Module()`|Start/Stop registrar (all profiles)|
-|`module.ConfigModule()`|Config providers + `*time.Location` (all profiles)|
-|`module.LoggingModule()`|Logger + log-field builder (all profiles)|
-|`module.ObservabilityModule()`|Tracer / meter / logger providers + shutdown hook (all profiles)|
-|`module.DatabaseModule()`|`*pgxpool.Pool`, tracer, tx manager, pool metrics + DB-close hook (all profiles)|
-|`module.SystemModule()`|Build info (all profiles)|
-|`module.InfrastructureModule()`|Aggregates `persistence` / `clock` / `httpclient` / `webapi` / `auth` (JWKS profile) / `security` / `authz` (all profiles)|
-|`module.UsecaseModule()`|Usecase implementations incl. `idempotency` / `outbox` (all profiles)|
-|`module.ControllerModule()` + `core.*` + `server.*`|Full HTTP stack — **Server profile only**|
+|`lifecycle.Module()`|Start/Stop の registrar（全プロファイル）|
+|`module.ConfigModule()`|Config providers + `*time.Location`（全プロファイル）|
+|`module.LoggingModule()`|Logger + log-field builder（全プロファイル）|
+|`module.ObservabilityModule()`|Tracer / meter / logger providers + shutdown hook（全プロファイル）|
+|`module.DatabaseModule()`|`*pgxpool.Pool`・tracer・tx manager・pool metrics + DB-close hook（全プロファイル）|
+|`module.SystemModule()`|ビルド情報（全プロファイル）|
+|`module.InfrastructureModule()`|`persistence` / `clock` / `httpclient` / `webapi` / `auth`（JWKS profile）/ `security` / `authz` を集約（全プロファイル）|
+|`module.UsecaseModule()`|`idempotency` / `outbox` を含む usecase 実装（全プロファイル）|
+|`module.ControllerModule()` + `core.*` + `server.*`|HTTP スタック全体 — **Server プロファイルのみ**|
 
-### Optional — seam-injected per profile
+### Optional — プロファイルごとに seam へ差し込む
 
-Wired only for the profile that needs them; each is the profile's distinguishing
-outer module and several expose explicit seams for adding constructors.
+必要とするプロファイルにのみ結線されます。各プロファイルを特徴づける外側モジュールで、
+いくつかはコンストラクタ追加用の明示的な seam を公開します。
 
-|Module|Wired in|Notes|
+|モジュール|結線先|補足|
 |---|---|---|
-|`module.JobModule()`|Job|`group:"jobs"` registration + Runner + State + hook|
-|`module.WorkerModule()`|Worker|Engine + State + queue-stats collector; registers **zero workers by default** (`provideWorkers` / `provideQueueStatsTargets` are the seams); `ValidateShutdownGrace` fails startup if `WORKER_DRAIN_TIMEOUT >= APP_SHUTDOWN_TIMEOUT`|
-|`module.OutboxRelayModule()`|Outbox Relay|Relay usecase + engine + hook; also pulls in `outboxPublisherModule()`|
-|`shutdowner.Module()`|Job, Worker|Self-stop for one-shot / signalled drives (not needed by Server / Relay)|
+|`module.JobModule()`|Job|`group:"jobs"` 登録 + Runner + State + hook|
+|`module.WorkerModule()`|Worker|Engine + State + queue-stats collector。**既定では worker を1つも登録しない**（`provideWorkers` / `provideQueueStatsTargets` が seam）。`ValidateShutdownGrace` は `WORKER_DRAIN_TIMEOUT >= APP_SHUTDOWN_TIMEOUT` なら起動を失敗させる|
+|`module.OutboxRelayModule()`|Outbox Relay|Relay usecase + engine + hook。`outboxPublisherModule()` も取り込む|
+|`shutdowner.Module()`|Job, Worker|ワンショット / シグナル駆動の自己停止用（Server / Relay では不要）|
 
-`outboxPublisherModule()` is deliberately **not** part of the shared
-`InfrastructureModule()`: it contributes a non-standard httpclient profile
-(e.g. `MaxAttempts=1`) to the `httpclient_profiles` value group, so it is
-confined to `OutboxRelayModule()` to avoid leaking into other profiles.
+`outboxPublisherModule()` はあえて共有の `InfrastructureModule()` に **含めません**。
+非標準の httpclient profile（例: `MaxAttempts=1`）を `httpclient_profiles` value group
+へ寄与するため、他プロファイルへ漏れないよう `OutboxRelayModule()` に閉じ込めています。
 
-### Adapter — explicit wiring only (never forced into the default graph)
+### Adapter — 明示的に結線したときだけ（既定グラフには強制しない）
 
-Concrete external integrations that the default graph does **not** wire. They
-are opt-in through the Optional seams above.
+既定グラフが **結線しない** 具象の外部連携です。上記 Optional の seam を通じて
+オプトインします。
 
-- **Queue broker adapter** (`internal/infrastructure/queue/sqs`) — the SQS
-  consumer + `QueueStatsProvider`. Wired only when a real worker constructor is
-  registered via `provideWorkers`, and its depth/DLQ metrics only when a
-  `queuemetrics.Target` is registered via `provideQueueStatsTargets`. The
-  default worker graph runs with no adapter.
+- **キュー broker adapter**（`internal/infrastructure/queue/sqs`）— SQS
+  consumer + `QueueStatsProvider`。実際の worker コンストラクタを `provideWorkers`
+  で登録したときにのみ結線され、depth/DLQ メトリクスは `queuemetrics.Target` を
+  `provideQueueStatsTargets` で登録したときのみ出力されます。既定の worker グラフは
+  adapter なしで動作します。
 <!-- sample-api:replace-begin -->
-- **Environment-gated stubs** — `authzModule` and `core.AuthnModule` select an
-  implementation per environment and **fail closed** (return an error) for any
-  environment their `switch` does not name, so an unconfigured environment
-  cannot start with a permissive default. Which environments are named differs
-  between the two, and adding or removing an authorization implementation moves
-  the boundary: `provideAuthorizer` currently wires the allow-all authorizer for
-  CI / test and the `user_roles` authorizer for local through production, and
-  dropping that implementation leaves local / CI / test on allow-all with every
-  production-like environment fail-closed until a real RBAC / policy adapter is
-  wired. `core.provideAuthenticator` is gated independently: CI / test get the
-  stub, local / development get the JWKS authenticator, and staging / production
-  are fail-closed. Read the `switch` rather than assuming a shared boundary.
+- **環境ゲート付きのスタブ** — `authzModule` と `core.AuthnModule` は環境ごとに実装を
+  選択し、自身の `switch` が名前を挙げていない環境に対しては **fail closed**（エラーを
+  返す）ことで、未設定の環境が寛容なデフォルトのまま起動するのを防ぎます。どの環境を
+  名前で挙げるかは両者で異なり、認可実装の増減で境界が動きます。現状 `provideAuthorizer`
+  は CI / test に allow-all を、local から production には `user_roles` authorizer を
+  結線しており、その実装を落とすと local / CI / test が allow-all、本番相当の環境は
+  実際の RBAC / ポリシー adapter を結線するまで fail-closed になります。
+  `core.provideAuthenticator` はこれとは独立にゲートされ、CI / test はスタブ、
+  local / development は JWKS authenticator、staging / production は fail-closed です。
+  共通の境界を前提とせず `switch` を読んでください。
 <!-- sample-api:replace-with -->
-<!-- = - **Environment-gated stubs** — `authzModule` and `core.AuthnModule` select an -->
-<!-- =   implementation per environment and **fail closed** (return an error) for any -->
-<!-- =   environment their `switch` does not name, so an unconfigured environment -->
-<!-- =   cannot start with a permissive default. Which environments are named differs -->
-<!-- =   between the two, and adding or removing an authorization implementation moves -->
-<!-- =   the boundary: `provideAuthorizer` currently wires the allow-all authorizer for -->
-<!-- =   local / CI / test and leaves every production-like environment fail-closed -->
-<!-- =   until a real RBAC / policy adapter is wired. `core.provideAuthenticator` is -->
-<!-- =   gated independently: CI / test get the stub, local / development get the JWKS -->
-<!-- =   authenticator, and staging / production are fail-closed. Read the `switch` -->
-<!-- =   rather than assuming a shared boundary. -->
+<!-- = - **環境ゲート付きのスタブ** — `authzModule` と `core.AuthnModule` は環境ごとに実装を -->
+<!-- =   選択し、自身の `switch` が名前を挙げていない環境に対しては **fail closed**（エラーを -->
+<!-- =   返す）ことで、未設定の環境が寛容なデフォルトのまま起動するのを防ぎます。どの環境を -->
+<!-- =   名前で挙げるかは両者で異なり、認可実装の増減で境界が動きます。現状 `provideAuthorizer` -->
+<!-- =   は local / CI / test に allow-all を結線し、本番相当の環境は実際の RBAC / ポリシー -->
+<!-- =   adapter を結線するまで fail-closed です。 -->
+<!-- =   `core.provideAuthenticator` はこれとは独立にゲートされ、CI / test はスタブ、 -->
+<!-- =   local / development は JWKS authenticator、staging / production は fail-closed です。 -->
+<!-- =   共通の境界を前提とせず `switch` を読んでください。 -->
 <!-- sample-api:replace-end -->
-- While this repository is distributed as a boilerplate, which environments the authorization gate names is additionally moved by the sample-API removal; see [`docs/get-started/boilerplate-only-conventions.md`](../../docs/get-started/boilerplate-only-conventions.md). It does not apply to a project built from it. <!-- boilerplate-only:line -->
+- 本リポジトリがボイラープレートとして頒布されている間は、認可ゲートがどの環境を名前で挙げるかはサンプル API の撤去でも動きます。[`docs/get-started/boilerplate-only-conventions.md`](../../docs/get-started/boilerplate-only-conventions.md) を参照してください。ここから作られたプロジェクトには当てはまりません。 <!-- boilerplate-only:line -->
 
 ## Do / Don't
 
-## Do（Allowed）
+## Do（やってよいこと）
 
-### Assemble dependencies
+### 依存関係の組み立て
 
-In the DI layer, **components are connected**.
+DI レイヤでは **コンポーネントの接続**を行います。
 
 ```go
 fx.Provide(
@@ -255,9 +257,9 @@ fx.Provide(
 )
 ```
 
-### Switch implementations per environment
+### 環境ごとの実装切り替え
 
-DI is the **switch point for implementation differences per execution environment**.
+DI は **実行環境ごとの実装差し替えポイント**です。
 
 ```go
 switch cfg.Env() {
@@ -268,51 +270,51 @@ case config.EnvProd:
 }
 ```
 
-### Lifecycle management
+### ライフサイクル管理
 
-In the DI layer, **startup / shutdown hooks** can be registered.
+DI レイヤでは **起動・停止フック**を登録できます。
 
 ```go
 reg.RegisterStart(startFunc)
 reg.RegisterStop(stopFunc)
 ```
 
-Examples:
+例
 
-- HTTP Server startup / graceful shutdown
-- Job Runner (one-shot)
-- Worker engine drain
-- Outbox relay poll loop
+- HTTP Server 起動 / graceful shutdown
+- Job Runner（ワンショット）
+- Worker engine の drain
+- Outbox relay の poll ループ
 
-### Isolate external frameworks
+### 外部フレームワークの隔離
 
-The following dependencies are **contained within the DI layer**:
+以下の依存は **DI層に閉じ込めます**
 
 - Echo
 - Uber Fx
 - DB driver
 - OpenTelemetry SDK
 
-This ensures:
+これにより
 
 - Domain
 - Usecase
 
-are **framework-independent**.
+は **フレームワーク非依存になります。**
 
-## Don't（Prohibited）
+## Don't（やってはいけないこと）
 
-### Writing business logic
+### ビジネスロジックを書くこと
 
-The following must not be written in the DI layer:
+DI 層に書いてはいけないもの
 
-In particular, do not write **business logic**.
+特に、**ビジネスロジック**を書いてはいけません。
 
-- Domain logic
-- DB queries
-- Business rules
+- ドメインロジック
+- DBクエリ
+- ビジネスルール
 
-### Create dependencies that bypass layers
+### レイヤを飛び越えた依存を作る
 
 NG
 
@@ -322,7 +324,7 @@ flowchart TD
 Controller --> Infrastructure
 ```
 
-Correct dependency
+正しい依存
 
 ```mermaid
 flowchart TD
@@ -332,7 +334,7 @@ Usecase --> DomainInterface
 DomainInterface --> Infrastructure
 ```
 
-### Instantiate with `new` without DI
+### DI を使わず new する
 
 NG
 
@@ -340,13 +342,13 @@ NG
 svc := NewService()
 ```
 
-Correct approach
+正しい方法
 
 ```go
 fx.Provide(NewService)
 ```
 
-### Bring frameworks into Domain / Usecase
+### Framework を Domain / Usecase に持ち込む
 
 NG
 
@@ -356,7 +358,7 @@ type Usecase struct {
 }
 ```
 
-## DI Dependency Structure
+## DI 依存構造
 
 ```mermaid
 flowchart TD
@@ -383,7 +385,7 @@ Usecase --> Domain
 Infrastructure --> Domain
 ```
 
-## Server Startup Flow
+## Server 起動フロー
 
 ```mermaid
 flowchart TD
@@ -408,7 +410,7 @@ LifecycleHook --> HTTPServerStart
 LifecycleHook --> HTTPServerStop
 ```
 
-## Job Execution Flow
+## Job 実行フロー
 
 ```mermaid
 flowchart TD
@@ -431,7 +433,7 @@ JobUsecase --> Infrastructure
 Runner --> Shutdown
 ```
 
-## Worker Execution Flow
+## Worker 実行フロー
 
 ```mermaid
 flowchart TD
@@ -451,7 +453,7 @@ Engine --> SupervisedRunner
 SupervisedRunner --> Drain
 ```
 
-## Outbox Relay Execution Flow
+## Outbox Relay 実行フロー
 
 ```mermaid
 flowchart TD
@@ -471,12 +473,12 @@ RelayEngine --> SupervisedRunner
 SupervisedRunner --> PollLoop
 ```
 
-The `worker` / `outbox-relay` hooks (and the `job` hook) all build on
-`lifecycle.SupervisedRunner`, the shared primitive that starts the background
-loop in a goroutine on `OnStart` and cancels + waits for it (bounded by grace)
-on `OnStop`.
+`worker` / `outbox-relay` の hook（および `job` の hook）はすべて
+`lifecycle.SupervisedRunner` を土台にしています。これは `OnStart` で
+バックグラウンドループを goroutine として起動し、`OnStop` で（grace の範囲内で）
+キャンセル・完了待ちを行う共有プリミティブです。
 
-## Lifecycle Management
+## Lifecycle 管理
 
 ```mermaid
 flowchart TD
@@ -513,38 +515,35 @@ ApplyExtends --> UseMiddlewares
 ApplyExtends --> ServerConfigurators
 ```
 
-## Test Strategy
+## テスト戦略
 
-This is the layer-wide baseline; a sub-directory that needs more detail states it in its own README
-(`module/` for graph validation, `server/hook/` for lifecycle hooks).
+ここに書くのはレイヤ全体の基準であり、より詳細が必要なサブディレクトリは自身の README に記す（グラフ検証は `module/`、ライフサイクルフックは `server/hook/`）。
 
-The DI layer wires — it does not compute. Tests therefore verify **that the graph resolves** and
-**that the bodies this layer owns behave**, never business behavior:
+DI レイヤは配線を行うのみで、計算はしない。したがってテストは **グラフが解決すること** と **このレイヤが所有する処理本体の挙動** を検証し、ビジネス的な振る舞いは検証しない。
 
-- **Graph validity** — `fx.ValidateApp` per module. It resolves the graph without executing constructors or lifecycle hooks, so it proves wiring completeness and nothing else. A module needing no real infrastructure to start may additionally boot a minimal app and assert the component it provides, which graph validation by definition cannot. See [`module/README.md`](module/README.md).
-- **Provider / `fx.Invoke` bodies with their own logic** — precisely what graph validation does *not* reach. Call the function directly in a unit test; a body that only appears in the graph is untested.
-- **Lifecycle hooks** — capture the registered start / stop closures through a `lifecycle.Registrar` mock and drive them. See [`server/hook/README.md`](server/hook/README.md); the `job` / `worker` / `outboxrelay` hooks share that shape on top of `lifecycle.SupervisedRunner`, where the drain path (cancel → wait, bounded by grace) is the branch to pin.
-- **Environment-gated wiring** — a provider that selects an implementation per environment and refuses (returns an error) for the environments it must not serve (`provideAuthorizer`, `core.provideAuthenticator`) is exercised on **every** case of the gate, refusal included. The refusal is the safeguard, so a test that only covers the environments that resolve covers nothing that matters. Read the gate's own `switch` for its current boundary rather than assuming it — adding or removing an authorization implementation moves which environments land in which case.
+- **グラフの妥当性** — モジュール単位の `fx.ValidateApp`。コンストラクタもライフサイクルフックも実行せずにグラフを解決するため、配線の充足だけを証明し、それ以上は証明しない。起動に実インフラを必要としないモジュールは、加えて最小アプリを起動し、提供コンポーネントを assert してよい — グラフ検証が定義上到達できない箇所である。[`module/README.md`](module/README.md) を参照。
+- **独自ロジックを持つ provider / `fx.Invoke` の本体** — まさにグラフ検証が到達しない箇所。単体テストで関数を直接呼ぶこと。グラフ上にしか登場しない本体は未テストである。
+- **ライフサイクルフック** — `lifecycle.Registrar` のモックで登録された start / stop クロージャを捕捉して駆動する。[`server/hook/README.md`](server/hook/README.md) を参照。`job` / `worker` / `outboxrelay` の各フックは `lifecycle.SupervisedRunner` の上で同じ形を取り、drain 経路（cancel → grace 上限つきの wait）が固定すべき分岐となる。
+- **環境ゲート付きの配線** — 環境ごとに実装を選び、担ってはならない環境では拒否（エラーを返す）する provider（`provideAuthorizer`、`core.provideAuthenticator`）は、拒否を含むゲートの **全ケース** を検証する。安全側に倒すこと自体が防御であり、解決に成功する環境しか通らないテストは要点を何も担保しない。現在の境界は推測せずゲート自身の `switch` を読むこと — どの環境がどの case に落ちるかは認可実装の増減によって変わる。
 
-Whole-process startup against a real Echo and a real database is out of scope here — that is
-[`internal/integration`](../integration/README.md).
+実 Echo と実 DB を使ったプロセス全体の起動はここでは対象外 —— それは [`internal/integration`](../integration/README.md) の担当。
 
-## Design Principles
+## 設計原則
 
-This DI layer is based on the following principles.
+この DI レイヤは次の原則に基づいています。
 
 ### Composition Root
 
-Dependency wiring is done **only in the DI layer**
+依存関係の接続は **DI 層のみ**
 
 ### Framework Isolation
 
-Framework dependencies are **contained within DI**
+フレームワーク依存は **DI に閉じ込める**
 
 ### Environment Switch
 
-Environment differences are **handled in DI**
+環境差分は **DI で切り替える**
 
 ### Plugin Architecture
 
-Extensions are added as **Modules / Extensions**
+拡張機能は **Module / Extension として追加**

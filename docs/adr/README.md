@@ -1,168 +1,157 @@
-# Architecture Decision Records (ADR)
+# アーキテクチャ決定記録（ADR）
 
-This directory holds the project's **architecture decisions**, one immutable record per
-file, in [MADR-lite](https://adr.github.io/madr/) form. It supersedes the former monolithic
-`docs/decisions.md` (now a redirect stub).
+このディレクトリはプロジェクトの **アーキテクチャ上の決定** を保持する。1 ファイル = 1 つの不変な記録、[MADR-lite](https://adr.github.io/madr/) 形式。
 
-An ADR captures a single decision at a point in time: the context, the options weighed,
-the choice, and its consequences. Superseding a decision does **not** mean editing its
-ADR — it means adding a *new* ADR whose `Status` is `accepted` and marking the old one
-`superseded`. The record of *why we once chose X* is preserved.
+ADR は 1 時点における単一の決定を記録する: コンテキスト、検討した選択肢、選んだもの、その影響。決定を上書きするとは ADR を編集することを **意味しない** — `Status` が `accepted` の *新しい* ADR を追加し、古い ADR を `superseded` にマークすることを意味する。*なぜかつて X を選んだのか* という記録は保存される。
 
-## What belongs here (and what does not)
+## 何が対象か（そして何が対象でないか）
 
-| Kind | Example | Home |
+| 種別 | 例 | 置き場所 |
 | --- | --- | --- |
-| **decision** — a choice among alternatives with lasting consequences | "Adopt onion architecture" | this dir (ADR) |
-| **exclusion** — a deliberate "we intentionally do NOT do X" | "No in-application rate limiter" | this dir (ADR) |
-| **rule** — a day-to-day enforced constraint / consequence of a decision | "Controller must not import infrastructure" | `docs/rules.md` (may link an ADR) |
-| **inventory** — a catalog that drifts with the code | the direct-dependency table | `docs/reference/dependencies.md` (living doc) |
+| **decision** — 持続的な影響を持つ選択肢間の選択 | 「オニオンアーキテクチャを採用する」 | このディレクトリ（ADR） |
+| **exclusion** — 意図的に「X をしない」という決定 | 「アプリ内レートリミッターなし」 | このディレクトリ（ADR） |
+| **rule** — 日々強制される制約 / 決定の帰結 | 「コントローラーはインフラストラクチャをインポートしてはならない」 | `docs/rules.md`（ADR へのリンクを付ける場合がある） |
+| **inventory** — コードと共に変化するカタログ | 直接依存関係テーブル | `docs/reference/dependencies.md`（生きたドキュメント） |
 
-The dependency inventory is **not** an ADR: it tracks `go.mod` and changes continuously,
-which is the opposite of an immutable record. The *policy* for selecting dependencies is
-a decision (an ADR); the *list* of them is a living reference.
+依存関係インベントリは ADR **ではない**: `go.mod` を追跡して継続的に変化し、不変の記録とは正反対である。依存関係を選定する *ポリシー* は決定（ADR）であり、その *一覧* は生きたリファレンスである。
 
-## Conventions
+## 規約
 
-- **Filename**: `NNNN-kebab-title.md`, zero-padded 4 digits. Supersession frees no number — a superseded ADR keeps both its number and its file — so a retired decision's number is never handed to a different one.
-- **Ordering**: append each new ADR at the next unused number. The number is a stable reference; use the title, tags, and the log to find the applicable decision. This is the general ADR practice described by [AWS](https://docs.aws.amazon.com/prescriptive-guidance/latest/architectural-decision-records/adr-process.html) and [Microsoft](https://learn.microsoft.com/en-us/azure/well-architected/architect-role/architecture-decision-record): preserve accepted records and express a replacement through a later ADR, rather than rearranging the historical sequence for thematic neatness.
-- **References**: write `ADR-NNNN (kebab-title)`. The number identifies the current record and the slug detects a silent retarget after an upstream renumbering; `make md-doc-ref-lint` validates both against the filename.
+- **ファイル名**: `NNNN-kebab-title.md`、ゼロパディング 4 桁。supersession では番号は空かない——supersede された ADR は番号もファイルも保持し続ける——ので、退いた決定の番号が別の決定へ渡ることはない。
+- **ファイル名**: `NNNN-kebab-title.md`（4 桁ゼロ埋め）。supersede しても番号は解放されない——superseded な ADR は番号もファイルも保持する——ため、退役した決定の番号が別の決定へ渡ることはない。
+- **順序**: 新しい ADR を次の未使用番号へ末尾追記する。番号は安定した参照であり、対象の決定はタイトル、タグ、ログから探す。これは [AWS](https://docs.aws.amazon.com/prescriptive-guidance/latest/architectural-decision-records/adr-process.html) と [Microsoft](https://learn.microsoft.com/en-us/azure/well-architected/architect-role/architecture-decision-record) が説明する一般的な ADR 運用である。すなわち、採択済みの記録を保ち、テーマ上の整然さのために履歴順を並べ替えるのではなく、後続 ADR によって置換を表現する。
 <!-- boilerplate-only:begin -->
-- **Upstream ordering exception**: while this repository is distributed as the boilerplate source, numbers follow dependency / foundational order (principles → contract → layers → subsystems → cross-cutting → exclusions), not discovery order. To preserve this order, a new ADR may be **inserted at its thematic position by shifting all subsequent numbers +1** (a pure renumbering: every shifted ADR keeps its content, and all repository-internal references are updated in the same change). This exception is removed when setup creates a project; the kebab title remains the stable identifier across an upstream renumbering.
+- **正本の順序例外**: このリポジトリがボイラープレート正本として配布される間は、番号を発見順ではなく依存関係 / 基礎的な順序（原則 → コントラクト → レイヤー → サブシステム → 横断関心事 → exclusion）に従わせる。この順序を保つため、新しい ADR を**テーマ上の位置へ挿入し、後続の全番号を +1 シフト**してよい（純粋なリナンバー: シフトされた各 ADR の内容は不変で、リポジトリ内の全参照は同一変更内で更新する）。セットアップでこの例外は削除される。正本での再採番をまたいでも、kebab タイトルは安定識別子として残る。
 <!-- boilerplate-only:end -->
-- **Status lifecycle**: `proposed` → `accepted` → (`superseded` | `deprecated`).
-- **Who may change a decision record**: superseding or deprecating an `accepted` ADR is a decision for this repository's architect or tech lead, taken per change. Finding that an accepted ADR is contradicted by the implementation is a reason to raise it with them, not a licence to change it — the implementation is as likely to be the error. A previous change is not standing authorization for the next.
-- **Template**: copy [`template.md`](template.md).
-- **Meta**: [`0000-record-architecture-decisions.md`](0000-record-architecture-decisions.md) records the decision to use ADRs and this classification.
-- **Translation**: each ADR has a `<name>.ja.md` beside it (via the `canonicalize-doc` flow).
-- **Upstream deviations**: while this repository is distributed as a boilerplate it operates under exceptions to the above, recorded in [`docs/get-started/boilerplate-only-conventions.md`](../get-started/boilerplate-only-conventions.md). They do not apply to a project built from it. <!-- boilerplate-only:line -->
+- **ステータスライフサイクル**: `proposed` → `accepted` → (`superseded` | `deprecated`)。
+- **誰が決定の記録を変更してよいか**: `accepted` な ADR を supersede する / deprecate することは、このリポジトリのアーキテクトまたはテックリードの判断であり、変更ごとに取る。`accepted` な ADR が実装と食い違っていると気づいたことは、その人に提起する理由であって変更の許可ではない——**実装側が誤りである可能性が同じだけある**。過去の変更は次の変更の常時承認にはならない。
+- **テンプレート**: [`template.md`](template.md) をコピーする。
+- **メタ**: [`0000-record-architecture-decisions.md`](0000-record-architecture-decisions.md) は ADR の使用とこの分類の決定を記録する。
+- **翻訳**: 各 ADR は隣に `<name>.md` を持つ（`canonicalize-doc` フローを経由）。
+- **上流の逸脱**: 本リポジトリがボイラープレートとして配布される間は上記への例外の下で運用されており、それは [`docs/get-started/boilerplate-only-conventions.md`](../get-started/boilerplate-only-conventions.md) に記録されている。そこから作られたプロジェクトには適用されない。 <!-- boilerplate-only:line -->
 
-## Log
+## ログ
 
-All decisions from `docs/decisions.md` and the latent decisions across the repository have
-been materialized as ADRs.
+`docs/decisions.md` およびリポジトリ全体の潜在的な決定から、すべての決定が ADR として具体化された。
 
 <!-- boilerplate-only:begin -->
-Upstream numbering follows dependency / foundational order (principles → contract → HTTP →
-persistence → DI/config → async subsystems → observability → toolchain/CI → process →
-binary/deploy → exclusions).
+正本の番号付けは依存関係 / 基礎的な順序に従う（原則 → コントラクト → HTTP → 永続化 → DI/設定 → 非同期サブシステム → 可観測性 → ツールチェーン/CI → プロセス → バイナリ/デプロイ → exclusion）。
 
-Exclusion ADRs (deliberate "we do NOT do X") are tagged `setup-review` so the repository-setup flow
-can enumerate them. The tag has no reader once setup is done.
+Exclusion ADR（意図的な「X はしない」）は、リポジトリセットアップフローが列挙できるよう `setup-review` タグを持つ。セットアップが済めばこのタグを読む者は居ない。
 
 <!-- boilerplate-only:end -->
 
-| # | Decision | Status |
+| # | 決定 | ステータス |
 | --- | --- | --- |
-| [0000](0000-record-architecture-decisions.md) | Record architecture decisions as ADRs | accepted |
-| [0001](0001-avoid-lock-in.md) | Adopt lock-in avoidance as a design principle | accepted |
-| [0002](0002-onion-architecture.md) | Adopt pragmatic onion architecture | accepted |
-| [0003](0003-interface-based-decoupling.md) | Define boundaries with interfaces for loose coupling (DIP) | accepted |
-| [0004](0004-modular-monolith.md) | Adopt a modular monolith (microservices are a non-goal) | accepted |
-| [0005](0005-driving-adapters-not-split-axis.md) | REST / Worker / Job are driving adapters, not a service-split axis | accepted |
-| [0006](0006-structural-safety-via-tooling.md) | Enforce structural safety with tooling and CI (depguard) | accepted |
-| [0007](0007-agents-md-operational-contract.md) | AI-first, manual-compatible development, with AGENTS.md as the operational contract | accepted |
-| [0008](0008-agent-environment-alignment.md) | Align the agent environment around declared, checkable properties, and improve it in a closed loop | accepted |
-| [0009](0009-long-running-agent-state.md) | Keep durable agent state in its owning canonical form | accepted |
-| [0010](0010-development-window-as-feedback-unit.md) | Make the development window the unit the feedback loop observes | accepted |
-| [0011](0011-docs-as-canonical-source.md) | Docs-as-canonical-source strategy | accepted |
-| [0012](0012-openapi-first.md) | Define the API contract OpenAPI-first | accepted |
-| [0013](0013-redocly-modular-spec-pipeline.md) | Author the spec in modular Redocly files, bundle, then generate | accepted |
-| [0014](0014-oapi-codegen-strict-server.md) | Generate per tag/handler with oapi-codegen in strict-server mode | accepted |
-| [0015](0015-retain-generated-openapi.md) | Retain the bundled openapi.gen.yaml as a committed cross-repo contract artifact | accepted |
-| [0016](0016-spec-driven-request-validation.md) | Validate requests and enforce auth from the spec at runtime; do not validate responses | accepted |
-| [0017](0017-validation-value-authority.md) | Designate the domain layer as the sole authority for business-validity rules | accepted |
-| [0018](0018-boundary-value-ownership.md) | OpenAPI is the wire contract, not the domain rule; request is subset of domain, domain is subset of response | accepted |
-| [0019](0019-search-query-parameter-shape.md) | Repeat the parameter name for multi-value filters, and keep free-text input scalar | accepted |
-| [0020](0020-metrics-endpoint-auth-exception.md) | /metrics is an auth exception — outside OpenAPI validation, protected by a separate BasicAuth middleware | accepted |
-| [0021](0021-optional-authentication-fail-closed.md) | Optional authentication is allowed, and a failed authentication still denies the request | accepted |
-| [0022](0022-echo-http-framework.md) | Adopt Echo as the HTTP framework | accepted |
-| [0023](0023-priority-ordered-middleware-chain.md) | Build the middleware chain as a priority-ordered, data-driven list | accepted |
-| [0024](0024-outbound-http-resilience.md) | Provide an outbound-HTTP resilience foundation (retry / circuit breaker / retry budget / dual timeout) | accepted |
-| [0025](0025-egress-ssrf-guard.md) | Adopt an egress SSRF / dial-guard security posture for outbound HTTP | accepted |
-| [0026](0026-sql-first-data-access.md) | SQL-first data access | accepted |
-| [0027](0027-sqlc-type-safe-sql.md) | Generate type-safe SQL access with sqlc | accepted |
-| [0028](0028-merged-dml-schema-as-sqlc-input.md) | Use merged DML and a dumped schema as sqlc's single input | accepted |
-| [0029](0029-append-only-immutable-migrations.md) | Treat migrations as append-only and immutable | accepted |
-| [0030](0030-sequential-migration-ids.md) | Use sequential 6-digit migration IDs with CI-enforced gap and pair checks | accepted |
-| [0031](0031-master-data-via-migration.md) | Ship master data via migration; keep transactional seed out of production | accepted |
-| [0032](0032-lightweight-cqrs.md) | Adopt lightweight CQRS — Repository for writes, QueryService for reads | accepted |
-| [0033](0033-system-cqrs-dml-category.md) | Introduce system_cqrs as a fourth DML category outside the CQRS split | accepted |
-| [0034](0034-commandservice-atomicity-criterion.md) | Cross-aggregate operations: usecase + outbox by default, a synchronous lock when a guard must not go stale, CommandService only for single-tx atomicity | accepted |
-| [0035](0035-transaction-retry-idempotent-callers.md) | Retry transactions on serialization conflict; require callers to be idempotent | accepted |
-| [0036](0036-ordered-pessimistic-row-locks.md) | Serialize contended writes with ordered pessimistic row locks taken before the guarded condition | accepted |
-| [0037](0037-uuidv7-identifiers.md) | Use UUIDv7 (time-ordered) identifiers for all entity primary keys | accepted |
-| [0038](0038-two-scale-quantity-model.md) | Hold a quantity in two scales — exact decimal for precision, integer minor unit for settlement | accepted |
-| [0039](0039-domain-lexicon.md) | Cross-aggregate value objects live in a curated domain lexicon (`internal/domain/lexicon`) | accepted |
-| [0040](0040-uber-fx-di.md) | Adopt Uber Fx for dependency injection and lifecycle | accepted |
-| [0041](0041-fx-neutral-di-abstraction.md) | Contain fx behind a neutral DI abstraction (Registrar / Shutdowner) | accepted |
-| [0042](0042-env-gated-wiring.md) | Swap implementations per environment via DI (env-gated wiring) | accepted |
-| [0043](0043-subsystem-typed-config-loaders.md) | Subsystem-scoped envPrefix typed config loaders | accepted |
-| [0044](0044-config-default-vs-required-governance.md) | Governance: default-in-code (immutable) vs required-in-file (variable) | accepted |
-| [0045](0045-immutable-fail-fast-config.md) | Config is immutable, loaded once at startup, fail-fast | accepted |
-| [0046](0046-embedded-self-contained-binary.md) | go:embed bundles config (.env) and migrations for a self-contained binary | accepted |
-| [0047](0047-apperror-protocol-agnostic-errors.md) | Protocol-agnostic aggregated error classification (apperror) | accepted |
-| [0048](0048-error-metadata-code-message-details.md) | Protocol-neutral error metadata (code / message / details) on top of apperror | accepted |
-| [0049](0049-error-details-opt-in-gate.md) | Opt-in gate for error-response details via schema split (refines 0043) | accepted |
-| [0050](0050-broker-agnostic-worker-scaffold.md) | Broker-agnostic pull-ack worker scaffold | accepted |
-| [0051](0051-out-of-scope-push-streaming-brokers.md) | Push-type brokers and streaming-log platforms are out of scope for the worker port | accepted (exclusion) |
-| [0052](0052-sqs-adapter-opt-in.md) | SQS adapter is opt-in and not linked into the default binary | superseded by [0052](0053-broker-sdk-isolation-measured-as-coupling.md) |
-| [0053](0053-broker-sdk-isolation-measured-as-coupling.md) | Measure broker-SDK isolation as coupling, not as linkage | accepted |
-| [0054](0054-transactional-outbox.md) | Transactional outbox: emit events within the business transaction | accepted |
-| [0055](0055-at-least-once-outbox-poll.md) | At-least-once delivery via polling (transport-level retry disabled) | accepted |
-| [0056](0056-skip-locked-outbox-relay.md) | Single-transaction relay using SELECT FOR UPDATE SKIP LOCKED (safe across instances) | accepted |
-| [0057](0057-message-id-idempotency-propagation.md) | Propagate the outbox message_id as the receiver's Idempotency-Key | accepted |
-| [0058](0058-outbox-dead-after-max-attempts.md) | MaxAttempts = 10, then the message is dead (terminal until manual replay) | accepted |
-| [0059](0059-outbox-retention-gc.md) | 7-day retention GC of published rows (batches of 10,000) | accepted |
-| [0060](0060-publisher-http-profile-isolation.md) | Isolate the publisher's non-standard HTTP profile inside the relay | accepted |
-| [0061](0061-relay-resident-gc-oneshot.md) | The relay is a resident process; GC is a one-shot cron job | accepted |
-| [0062](0062-single-tx-at-most-once-idempotency.md) | Run claim, business function, and complete in a single transaction for at-most-once semantics | accepted |
-| [0063](0063-idempotency-scope-required.md) | Every Store call requires an explicit scope to prevent cross-user key collisions | accepted |
-| [0064](0064-idempotency-fixed-ttl.md) | Fix idempotency key TTL at 24 hours with no per-route configuration | accepted |
-| [0065](0065-idempotency-response-persistence.md) | Persist the response body as JSON to enable deterministic replay (accepted PII tradeoff) | accepted |
-| [0066](0066-idempotency-gc-separate-job.md) | Run idempotency key garbage collection as a separate one-shot CLI job | accepted |
-| [0067](0067-idempotency-orthogonal-concerns.md) | Keep idempotency orthogonal to optimistic locking and rate limiting | accepted (exclusion) |
-| [0068](0068-job-fresh-fx-app-per-run.md) | Each job launch constructs a fresh fx.App (one-shot lifecycle) | accepted |
-| [0069](0069-job-no-worker-machinery.md) | Jobs deliberately have no broker, circuit breaker, drain, or health machinery | accepted (exclusion) |
-| [0070](0070-job-explicit-registration.md) | Jobs are explicitly registered (no auto-discovery) | accepted |
-| [0071](0071-config-driven-observability-gating.md) | Config-driven observability gating | accepted |
-| [0072](0072-vendor-neutral-otlp-export.md) | Vendor-neutral OTLP-only export (delegate backend to the Collector) | accepted |
-| [0073](0073-official-otel-semconv.md) | Use only official OpenTelemetry semantic conventions; do not invent custom semconv or put vendor keys in typed config | accepted (exclusion) |
-| [0074](0074-dual-path-metrics.md) | Metrics travel two paths — OTLP push and Prometheus scrape | accepted |
-| [0075](0075-lifecycle-independent-provider.md) | Observability providers are lifecycle-independent (ProviderShutdowner) | accepted |
-| [0076](0076-fixed-default-sampling.md) | Fix the SDK default sampling; do not expose sampling as an env knob | accepted (exclusion) |
-| [0077](0077-library-selection-policy.md) | Single-responsibility library selection policy | accepted |
-| [0078](0078-bridge-instrumentation-exceptions.md) | Bridge / instrumentation libraries as bounded SRP exceptions | accepted |
-| [0079](0079-containerized-pinned-toolchain.md) | Use a containerized toolchain pinned by mise for reproducibility | accepted |
-| [0080](0080-mise-ssot-drift-gate.md) | mise.toml is the single source of truth for mise-resolved versions; versions propagate downstream with a CI drift gate | accepted |
-| [0081](0081-make-single-entrypoint.md) | Make is the single tool entrypoint with .mk registration and self-documenting help | accepted |
-| [0082](0082-scripts-in-node-go.md) | Operational scripts live in scripts/ as TypeScript or Go; shell scripting is not used | accepted |
-| [0083](0083-docker-compose-dev-environment.md) | Local dev environment is provided via Docker Compose with profile-separated services | accepted |
-| [0084](0084-two-layer-golangci-config.md) | Two-layer golangci config: minimal default vs full authoritative gate | accepted |
-| [0085](0085-local-hooks-mirror-ci.md) | Local git hooks duplicate the CI contract (local == CI, glob-scoped, bypass-then-verify-once) | accepted |
-| [0086](0086-coverage-hard-gate.md) | Total coverage 90% is a CI hard gate, with an exception-governance path | accepted |
-| [0087](0087-ci-real-graph-boot-check.md) | CI boots the real fx graph against real Postgres (startup verification) | accepted |
-| [0088](0088-generated-artifact-drift-gate.md) | Generated-artifact drift gate + release-branch-centralized auto-generation bot | accepted |
-| [0089](0089-multi-layer-security-scanning.md) | Multi-layer security scanning, splitting reporting from gating, on hardened runners | accepted |
-| [0090](0090-sha-pinned-actions.md) | Pin GitHub Actions by SHA with a supply-chain quarantine | accepted |
-| [0091](0091-malicious-package-detection-via-cooldown.md) | Malicious packages are mitigated by a publication cooldown, with no dedicated detector adopted | accepted |
-| [0092](0092-rollback-integration-tests.md) | Run infrastructure integration tests against a real DB with sentinel-error rollback | accepted |
-| [0093](0093-multi-model-adversarial-review.md) | Use multi-model adversarial review with finder and verifier subagents | accepted |
-| [0094](0094-lean-a-spec-scaffold.md) | Scaffold only domain and usecase from spec files; derive controller and infra from generated code | accepted |
-| [0095](0095-cli-humble-object-split.md) | CLI humble-object split (thin cmd/ shell + testable internal/cli core) | accepted |
-| [0096](0096-single-multi-command-binary.md) | All roles are one multi-command binary | accepted |
-| [0097](0097-single-runtime-image.md) | A single runtime image with command override (no purpose-specific images) | accepted |
-| [0098](0098-hardened-alpine-runtime.md) | Use a hardened-alpine runtime base; do NOT use distroless/scratch | accepted (exclusion) |
-| [0099](0099-per-environment-images.md) | Per-environment images (.env matrix x APP_ENV build-arg, fixed at build time) | accepted |
-| [0100](0100-predeploy-oneshot-migration.md) | Migrations run as a pre-deploy one-shot; do NOT auto-migrate at application startup | accepted (exclusion) |
-| [0101](0101-release-image-supply-chain.md) | Release-image supply-chain integrity (cosign signing + provenance + SBOM) | accepted |
-| [0102](0102-vendor-neutral-deploy-skeleton.md) | Deploy is a vendor-neutral skeleton (build/sign implemented; cloud CD is a stub; registry not fixed) | accepted |
-| [0103](0103-docs-via-github-pages.md) | Publish static docs/ via GitHub Pages (released on production push) | accepted |
-| [0104](0104-no-in-app-rate-limiter.md) | Do not provide an in-application rate limiter | accepted (exclusion) |
-| [0105](0105-scheduled-job-concurrency-delegated.md) | Do not control scheduled-job concurrency in-app; delegate to the scheduler | accepted (exclusion) |
-| [0106](0106-no-generic-cache-abstraction.md) | Do not provide a generic Cache abstraction | accepted (exclusion) |
-| [0107](0107-outbox-relay-hardening-delegated.md) | Ship a balanced outbox relay; delegate hardening (multi-layer lease redesign) to operational evidence | accepted (exclusion) |
-| [0108](0108-pnpm-as-the-only-node-resolver.md) | Resolve every Node package with pnpm; do not use npm | accepted |
+| [0000](0000-record-architecture-decisions.md) | アーキテクチャ上の決定を ADR として記録する | accepted |
+| [0001](0001-avoid-lock-in.md) | ロックイン回避を設計原則として採用する | accepted |
+| [0002](0002-onion-architecture.md) | 実用的なオニオンアーキテクチャを採用する | accepted |
+| [0003](0003-interface-based-decoupling.md) | 疎結合のためにインターフェースで境界を定義する（DIP） | accepted |
+| [0004](0004-modular-monolith.md) | モジュラーモノリスを採用する（マイクロサービスは非目標） | accepted |
+| [0005](0005-driving-adapters-not-split-axis.md) | REST / Worker / Job はドライビングアダプター、サービス分割の軸ではない | accepted |
+| [0006](0006-structural-safety-via-tooling.md) | ツールと CI で構造的安全性を強制する（depguard） | accepted |
+| [0007](0007-agents-md-operational-contract.md) | AI-first / manual-compatible な開発と、運用契約としての AGENTS.md | accepted |
+| [0008](0008-agent-environment-alignment.md) | エージェント環境を宣言された検査可能な性質へ整合させ、閉じたループで改善する | accepted |
+| [0009](0009-long-running-agent-state.md) | 永続的なエージェント状態を所有する正本の形に保つ | accepted |
+| [0010](0010-development-window-as-feedback-unit.md) | フィードバックループが観測する単位を開発の窓とする | accepted |
+| [0011](0011-docs-as-canonical-source.md) | ドキュメントを正典ソースとする戦略 | accepted |
+| [0012](0012-openapi-first.md) | API 契約を OpenAPI ファーストで定義する | accepted |
+| [0013](0013-redocly-modular-spec-pipeline.md) | 仕様をモジュラーな Redocly ファイルで作成し、バンドルしてから生成する | accepted |
+| [0014](0014-oapi-codegen-strict-server.md) | oapi-codegen の strict-server モードでタグ/ハンドラーごとに生成する | accepted |
+| [0015](0015-retain-generated-openapi.md) | バンドル済み openapi.gen.yaml をコミット済みのクロスリポジトリ契約アーティファクトとして保持する | accepted |
+| [0016](0016-spec-driven-request-validation.md) | リクエスト検証と認証を実行時に仕様から強制する。レスポンスは検証しない | accepted |
+| [0017](0017-validation-value-authority.md) | バリデーションのビジネス有効性における唯一の権威をドメイン層に定める | accepted |
+| [0018](0018-boundary-value-ownership.md) | OpenAPI はワイヤー契約であってドメインルールではない。リクエストはドメインのサブセット、ドメインはレスポンスのサブセット | accepted |
+| [0019](0019-search-query-parameter-shape.md) | 複数値フィルタはパラメータ名を繰り返し、自由入力はスカラのままにする | accepted |
+| [0020](0020-metrics-endpoint-auth-exception.md) | /metrics は認証例外 — OpenAPI 検証の外に置き、独立した BasicAuth ミドルウェアで保護する | accepted |
+| [0021](0021-optional-authentication-fail-closed.md) | 任意認証を許し、認証に失敗したリクエストは通さない | accepted |
+| [0022](0022-echo-http-framework.md) | HTTP フレームワークとして Echo を採用する | accepted |
+| [0023](0023-priority-ordered-middleware-chain.md) | ミドルウェアチェーンを優先順位付きのデータ駆動リストとして構築する | accepted |
+| [0024](0024-outbound-http-resilience.md) | アウトバウンドHTTPレジリエンス基盤の提供（リトライ / サーキットブレーカー / リトライバジェット / デュアルタイムアウト） | accepted |
+| [0025](0025-egress-ssrf-guard.md) | アウトバウンドHTTPに対するエグレスSSRF / ダイヤルガードセキュリティポスチャの採用 | accepted |
+| [0026](0026-sql-first-data-access.md) | SQLファーストのデータアクセス | accepted |
+| [0027](0027-sqlc-type-safe-sql.md) | sqlcによる型安全なSQLアクセスの生成 | accepted |
+| [0028](0028-merged-dml-schema-as-sqlc-input.md) | マージされたDMLおよびダンプされたスキーマをsqlcの単一入力として使用する | accepted |
+| [0029](0029-append-only-immutable-migrations.md) | マイグレーションを追記専用かつイミュータブルとして扱う | accepted |
+| [0030](0030-sequential-migration-ids.md) | CIで強制するギャップ・ペアチェックを伴う6桁連番マイグレーションIDの使用 | accepted |
+| [0031](0031-master-data-via-migration.md) | マスターデータをマイグレーション経由で投入する。トランザクショナルシードを本番から除外する | accepted |
+| [0032](0032-lightweight-cqrs.md) | 軽量CQRSの採用 — 書き込みにRepository、読み込みにQueryService | accepted |
+| [0033](0033-system-cqrs-dml-category.md) | CQRSの分割の外に位置する第4のDMLカテゴリとしてsystem_cqrsを導入する | accepted |
+| [0034](0034-commandservice-atomicity-criterion.md) | 集約を跨ぐ操作の判定 — 既定は usecase + outbox、ガードが陳腐化してはならないなら同期ロック、CommandService は単一トランザクション原子性のときだけ | accepted |
+| [0035](0035-transaction-retry-idempotent-callers.md) | シリアライゼーション競合時はトランザクションをリトライする。呼び出し元は冪等性を保証しなければならない | accepted |
+| [0036](0036-ordered-pessimistic-row-locks.md) | 競合する書き込みを、守る条件より前に取る単一順序の悲観行ロックで直列化する | accepted |
+| [0037](0037-uuidv7-identifiers.md) | すべてのエンティティ主キーに UUIDv7（時刻順）識別子を使用する | accepted |
+| [0038](0038-two-scale-quantity-model.md) | 量を 2 つのスケールで保持する — 精度は正確な十進、決済は最小単位の整数 | accepted |
+| [0039](0039-domain-lexicon.md) | 集約横断の値オブジェクトはキュレートされたドメイン語彙集に置く | accepted |
+| [0040](0040-uber-fx-di.md) | 依存性注入とライフサイクル管理に Uber Fx を採用する | accepted |
+| [0041](0041-fx-neutral-di-abstraction.md) | ニュートラルな DI 抽象（Registrar / Shutdowner）の背後に fx を封じ込める | accepted |
+| [0042](0042-env-gated-wiring.md) | DI を通じて環境ごとに実装を切り替える（環境ゲート結線） | accepted |
+| [0043](0043-subsystem-typed-config-loaders.md) | サブシステムスコープの envPrefix 型付き設定ローダー | accepted |
+| [0044](0044-config-default-vs-required-governance.md) | ガバナンス: コードデフォルト（不変）対ファイル必須（可変） | accepted |
+| [0045](0045-immutable-fail-fast-config.md) | 設定は不変、起動時に 1 回だけロード、フェイルファスト | accepted |
+| [0046](0046-embedded-self-contained-binary.md) | go:embed で設定（.env）とマイグレーションをバンドルし、自己完結型バイナリを実現する | accepted |
+| [0047](0047-apperror-protocol-agnostic-errors.md) | プロトコル非依存の集約エラー分類 (apperror) | accepted |
+| [0048](0048-error-metadata-code-message-details.md) | apperror の上に載せるプロトコル中立なエラーメタ情報（code / message / details） | accepted |
+| [0049](0049-error-details-opt-in-gate.md) | スキーマ分割によるエラー details の opt-in ゲート（0043 を精緻化） | accepted |
+| [0050](0050-broker-agnostic-worker-scaffold.md) | ブローカー非依存のプル・アック型ワーカースキャフォールド | accepted |
+| [0051](0051-out-of-scope-push-streaming-brokers.md) | プッシュ型ブローカーとストリーミングログ基盤はワーカーポートのスコープ外 | accepted (exclusion) |
+| [0052](0052-sqs-adapter-opt-in.md) | SQS アダプターはオプトインであり、デフォルトバイナリにリンクしない | superseded by [0052](0053-broker-sdk-isolation-measured-as-coupling.md) |
+| [0053](0053-broker-sdk-isolation-measured-as-coupling.md) | ブローカー SDK の分離はリンクではなく結合で測る | accepted |
+| [0054](0054-transactional-outbox.md) | トランザクショナルアウトボックス — ビジネストランザクション内でイベントを発行する | accepted |
+| [0055](0055-at-least-once-outbox-poll.md) | ポーリングによる少なくとも1回のデリバリー（トランスポートレベルのリトライを無効化） | accepted |
+| [0056](0056-skip-locked-outbox-relay.md) | SELECT FOR UPDATE SKIP LOCKED を使った単一トランザクションリレー（複数インスタンス間で安全） | accepted |
+| [0057](0057-message-id-idempotency-propagation.md) | アウトボックスの message_id をレシーバーの Idempotency-Key として伝播する | accepted |
+| [0058](0058-outbox-dead-after-max-attempts.md) | MaxAttempts = 10 到達でメッセージをデッド状態にする（手動リプレイまで終端） | accepted |
+| [0059](0059-outbox-retention-gc.md) | 発行済み行の 7 日間保持 GC（10,000 件単位のバッチ） | accepted |
+| [0060](0060-publisher-http-profile-isolation.md) | パブリッシャーの非標準 HTTP プロファイルをリレー内に隔離する | accepted |
+| [0061](0061-relay-resident-gc-oneshot.md) | リレーは常駐プロセス、GC はワンショット cron ジョブ | accepted |
+| [0062](0062-single-tx-at-most-once-idempotency.md) | claim・ビジネス関数・complete を単一トランザクションで実行してアットモストワンスを保証する | accepted |
+| [0063](0063-idempotency-scope-required.md) | クロスユーザーのキー衝突を防ぐためすべての Store 呼び出しに明示的スコープを必須とする | accepted |
+| [0064](0064-idempotency-fixed-ttl.md) | 冪等性キーの TTL を 24 時間に固定しルート別設定を設けない | accepted |
+| [0065](0065-idempotency-response-persistence.md) | 決定論的リプレイを可能にするためレスポンスボディを JSON で永続化する（PII トレードオフを許容） | accepted |
+| [0066](0066-idempotency-gc-separate-job.md) | 冪等性キーのガベージコレクションを独立したワンショット CLI ジョブとして実行する | accepted |
+| [0067](0067-idempotency-orthogonal-concerns.md) | 冪等性をオプティミスティックロックおよびレート制限と直交に保つ | accepted (exclusion) |
+| [0068](0068-job-fresh-fx-app-per-run.md) | ジョブ起動ごとに新しい fx.App を構築する（ワンショットライフサイクル） | accepted |
+| [0069](0069-job-no-worker-machinery.md) | ジョブにはブローカー・サーキットブレーカー・ドレイン・ヘルス機構を意図的に設けない | accepted (exclusion) |
+| [0070](0070-job-explicit-registration.md) | Job は明示的に登録する（自動検出なし） | accepted |
+| [0071](0071-config-driven-observability-gating.md) | 設定駆動によるオブザーバビリティゲーティング | accepted |
+| [0072](0072-vendor-neutral-otlp-export.md) | ベンダー中立の OTLP 専用エクスポート（バックエンドは Collector に委譲） | accepted |
+| [0073](0073-official-otel-semconv.md) | 公式 OpenTelemetry セマンティック規約のみを使用し、カスタム semconv の発明や型付き設定へのベンダーキー追加は行わない | accepted (exclusion) |
+| [0074](0074-dual-path-metrics.md) | メトリクスは 2 経路を通る — OTLP プッシュと Prometheus スクレイプ | accepted |
+| [0075](0075-lifecycle-independent-provider.md) | オブザーバビリティプロバイダーはライフサイクル非依存（ProviderShutdowner） | accepted |
+| [0076](0076-fixed-default-sampling.md) | SDK デフォルトサンプリングを固定し、サンプリングを環境変数ノブとして公開しない | accepted (exclusion) |
+| [0077](0077-library-selection-policy.md) | 単一責任のライブラリ選定ポリシー | accepted |
+| [0078](0078-bridge-instrumentation-exceptions.md) | ブリッジ / 計装ライブラリを有界な SRP 例外として認める | accepted |
+| [0079](0079-containerized-pinned-toolchain.md) | 再現性のために mise でバージョン固定されたコンテナ化ツールチェーンを使用する | accepted |
+| [0080](0080-mise-ssot-drift-gate.md) | mise が解決するバージョンは mise.toml を単一の情報源とし、下流に伝播させ CI でドリフトを検知する | accepted |
+| [0081](0081-make-single-entrypoint.md) | Make を単一のツールエントリポイントとし、.mk 登録とセルフドキュメンティングなヘルプを提供する | accepted |
+| [0082](0082-scripts-in-node-go.md) | 運用スクリプトは scripts/ に TypeScript または Go で配置し、シェルスクリプトは使用しない | accepted |
+| [0083](0083-docker-compose-dev-environment.md) | ローカル開発環境はプロファイルで分離されたサービスを持つ Docker Compose で提供する | accepted |
+| [0084](0084-two-layer-golangci-config.md) | 2 層の golangci 設定——最小デフォルトと完全な権威ゲート | accepted |
+| [0085](0085-local-hooks-mirror-ci.md) | ローカル git フックは CI 契約を複製する（local == CI、グロブスコープ、バイパス後に一度検証） | accepted |
+| [0086](0086-coverage-hard-gate.md) | 総カバレッジ 90% を CI のハードゲートとし、例外ガバナンスパスを設ける | accepted |
+| [0087](0087-ci-real-graph-boot-check.md) | CI は実際の Postgres に対して実際の fx グラフを起動する（スタートアップ検証） | accepted |
+| [0088](0088-generated-artifact-drift-gate.md) | 生成成果物ドリフトゲートとリリースブランチ集約型自動生成ボット | accepted |
+| [0089](0089-multi-layer-security-scanning.md) | 多層セキュリティスキャン——報告とゲートを分離し、ハードニングされたランナー上で行う | accepted |
+| [0090](0090-sha-pinned-actions.md) | GitHub Actions を SHA でピン留めし、サプライチェーン隔離を適用する | accepted |
+| [0091](0091-malicious-package-detection-via-cooldown.md) | 悪意あるパッケージへの主防御は公開クールダウンとし、専用の検知ツールは採用しない | accepted |
+| [0092](0092-rollback-integration-tests.md) | インフラ統合テストはリアル DB に対してセンチネルエラーロールバックで実行する | accepted |
+| [0093](0093-multi-model-adversarial-review.md) | ファインダー・ベリファイアーサブエージェントによるマルチモデル敵対的レビューを使用する | accepted |
+| [0094](0094-lean-a-spec-scaffold.md) | スペックファイルからドメインとユースケースのみスキャフォールドし、コントローラーとインフラは生成コードから導出する | accepted |
+| [0095](0095-cli-humble-object-split.md) | CLI ハンブルオブジェクト分割（薄い cmd/ シェル + テスト可能な internal/cli コア） | accepted |
+| [0096](0096-single-multi-command-binary.md) | すべてのロールを 1 つのマルチコマンドバイナリに集約する | accepted |
+| [0097](0097-single-runtime-image.md) | コマンドオーバーライドによる単一ランタイムイメージ（目的別イメージなし） | accepted |
+| [0098](0098-hardened-alpine-runtime.md) | ハードニング Alpine をランタイムベースとして使用し、distroless/scratch は使用しない | accepted (exclusion) |
+| [0099](0099-per-environment-images.md) | 環境別イメージ（.env マトリックス × APP_ENV ビルド引数、ビルド時に固定） | accepted |
+| [0100](0100-predeploy-oneshot-migration.md) | マイグレーションはデプロイ前のワンショットとして実行し、アプリケーション起動時の自動マイグレーションは行わない | accepted (exclusion) |
+| [0101](0101-release-image-supply-chain.md) | リリースイメージのサプライチェーン完全性（cosign 署名 + プロベナンス + SBOM） | accepted |
+| [0102](0102-vendor-neutral-deploy-skeleton.md) | デプロイはベンダー中立のスケルトン（ビルド/署名は実装済み；クラウド CD はスタブ；レジストリは固定しない） | accepted |
+| [0103](0103-docs-via-github-pages.md) | docs/ の静的コンテンツを GitHub Pages で公開（production プッシュ時にリリース） | accepted |
+| [0104](0104-no-in-app-rate-limiter.md) | アプリケーション内レートリミッターを提供しない | accepted (exclusion) |
+| [0105](0105-scheduled-job-concurrency-delegated.md) | スケジュールジョブの同時実行制御をアプリ内で行わず、スケジューラに委譲する | accepted (exclusion) |
+| [0106](0106-no-generic-cache-abstraction.md) | 汎用 Cache 抽象化を提供しない | accepted (exclusion) |
+| [0107](0107-outbox-relay-hardening-delegated.md) | outbox relay はバランス型で出荷し、ハードニング（多層 lease 再設計）は運用で得た事実に委ねる | accepted (exclusion) |
+| [0108](0108-pnpm-as-the-only-node-resolver.md) | Node パッケージはすべて pnpm で解決し、npm を使わない | accepted |
 
-Frontmatter fields: `status`, `date`, `deciders`, `supersedes` / `superseded-by`, `tags`.
-Consequences follow the MADR standard (`Positive` / `Negative`; optional `Neutral`).
+フロントマターフィールド: `status`、`date`、`deciders`、`supersedes` / `superseded-by`、`tags`。
+Consequences は MADR 標準に従う（`Positive` / `Negative`; 任意で `Neutral`）。

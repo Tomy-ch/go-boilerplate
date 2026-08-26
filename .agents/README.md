@@ -1,89 +1,75 @@
 # .agents
 
-`.agents/` holds **artifacts produced and consumed by skills, for machines rather than for people**.
+`.agents/` は、**スキルが生成・消費する成果物のうち、人間ではなく機械が読むもの**を置くディレクトリです。
 
-The human-facing counterpart of anything in here is the report a skill prints, or the canonical
-documentation under `docs/` and the per-package `README.md`. Nothing in this directory is meant to be
-read straight through; it is state that a skill writes down so the next run does not have to
-re-derive it.
+ここにあるものの人間向けの対応物は、スキルが出力するレポートか、`docs/` と各パッケージの
+`README.md` にある正本ドキュメントです。このディレクトリのファイルを通読することは想定していません。
+次回の実行が同じ導出をやり直さずに済むよう、スキルが書き留めておく状態です。
 
-## Why not under `.claude/`
+## `.claude/` 配下に置かない理由
 
-Every other AI-tool directory in this repository holds **configuration for one assistant** —
-`.claude/` for Claude Code, `.codex/skills/` for the OpenAI Codex CLI, `.cursor/` for Cursor,
-`.gemini/` for Gemini. Those are correctly vendor-scoped, because the instructions inside them are
-written against one tool's contract.
+このリポジトリの他の AI ツール用ディレクトリは、いずれも**特定のアシスタント 1 つに対する設定**です
+— Claude Code なら `.claude/`、OpenAI Codex CLI なら `.codex/skills/`、Cursor なら `.cursor/`、
+Gemini なら `.gemini/`。中身の指示が 1 つのツールの契約に対して書かれている以上、ベンダー単位に
+切られているのは正しい。
 
-An artifact is not. The same skill may be run from Claude, from Codex, or from Cursor, and its output
-is the same data in every case. Filing that data under one assistant's directory would make the other
-assistants either ignore it or duplicate it, and a duplicated ledger is a ledger that disagrees with
-itself. So artifacts live here, one level up from any single tool.
+成果物はそうではありません。同じスキルが Claude からも Codex からも Cursor からも実行されうるし、
+出力はどの場合も同じデータです。それを特定のアシスタントのディレクトリに入れると、他のアシスタントは
+無視するか複製するかのどちらかになり、複製された台帳とは自分自身と食い違う台帳のことです。だから
+成果物は、どの単一ツールよりも 1 段上のここに置きます。
 
-## What belongs here
+## ここに置くもの
 
-| Belongs | Does not belong |
+| 置く | 置かない |
 | --- | --- |
-| Machine-readable state a skill writes and reads back (ledgers, indexes, resolved caches) | Instructions to an assistant — those are tool configuration (`.claude/`, `.codex/skills/`, …) |
-| Committed, shared machine-readable state whose audience is the next run of a skill | Per-run resume state — keep it in the owning skill's ignored artifact under `tmp/skills/<skill-name>/` |
-| Output that is the same regardless of which assistant produced it | Anything tied to one vendor's contract |
+| スキルが書き、読み返す機械可読な状態（台帳・インデックス・解決済みキャッシュ） | アシスタントへの指示 — それはツール設定（`.claude/` / `.codex/skills/` など） |
+| 読み手が「次回のスキル実行」であるデータ | 人間が読むための散文 — それは `docs/` かパッケージの `README.md` |
+| コミット対象の、次回のスキル実行が読む共有された機械可読状態 | per-run の再開状態 — それは所有するスキルの gitignore された `tmp/skills/<skill-name>/` 配下に置く |
+| どのアシスタントが生成しても同じになる出力 | 特定ベンダーの契約に紐づくもの |
 
-Lockfiles for pinned toolchains (`.github/actions-pin.toml`, `docker/images-pin.toml`) are the same
-kind of thing conceptually, but they stay next to the manifests they lock, because that is where the
-tooling that maintains them looks.
+ツールチェーンのピン留め lockfile（`.github/actions-pin.toml` / `docker/images-pin.toml`）は概念的には
+同種のものですが、それらを保守するツールが探しに行く場所である以上、ロック対象のマニフェストの隣に
+置いたままにします。
 
-## Layout
+## 構成
 
-One subdirectory per artifact domain, named after the skill family that owns it.
+成果物のドメインごとに 1 つのサブディレクトリを切り、所有するスキルファミリの名前を付けます。
 
-- `doc-router/` — which documents govern an edit, keyed by where the edit lands. Read by a
-  `PreToolUse` hook so the answer arrives at the moment of writing rather than being looked up
-  again each time. Deliberately incomplete: a path with no entry falls back to the protocol.
-- `ddd-audit/` — the DDD pattern ledger: which Evans pattern this repository has interpreted, and
-  where. Owned by `.claude/skills/ddd-audit/SKILL.md`.
-- `glossary-drift/` — the exclusions the glossary-drift detector honors: where a business term
-  appearing outside `docs/spec/` is knowingly not a finding yet. Owned by
-  `.claude/agents/drift-detector-glossary.md`.
-- `graphify/` — which extraction prompt produced the committed knowledge-graph artifacts. graphify
-  namespaces its semantic cache by a fingerprint of that prompt, and the prompt itself ships with the
-  tool into an assistant's skill directory — outside this repository, replaced on upgrade. Committing
-  the cache without recording the fingerprint would leave an artifact whose validity rests on an
-  unversioned file, which is how a cache baked by a different prompt variant goes unnoticed. This is
-  a pin rather than a ledger, and it stays here rather than beside a manifest because graphify
-  declares none.
-- `closed-loop/` — the configuration the AI-feedback closed loop reads: per-skill usage class and
-  opportunity predicate, and which comment authors are machines. The loop's *data* is not here — it
-  lives in the issue tracker, per [ADR-0009](../docs/adr/0009-long-running-agent-state.md).
-- `private/` — **the one machine-local subtree, and the only one that is gitignored.** It holds
-  caches that can be regenerated from GitHub, such as the closed loop's branch-to-work-item index.
-  Nothing here is shared, so nothing here may be the source of truth for anything: a second machine
-  and a colleague picking up the work both see an empty directory.
+- `doc-router/` — 編集がどこへ着地するかで、その編集を統べる文書を引く経路表。編集の瞬間に答えが
+  届くよう `PreToolUse` フックが読みます。毎回引き直さずに済ませるためのもので、**意図的に不完全**
+  です。経路の無いパスでは何も出さず、Task Execution Protocol の手順へ落ちます。
+- `ddd-audit/` — DDD パターン台帳。このリポジトリがどの Evans パターンをどこで解釈したかを持ちます。
+  所有は `.claude/skills/ddd-audit/SKILL.md`。
+- `glossary-drift/` — glossary ドリフト検出器が尊重する除外の宣言。`docs/spec/` の外に業務語が
+  現れていても、まだ指摘としない箇所を記録します。所有は `.claude/agents/drift-detector-glossary.md`。
+- `closed-loop/` — AI フィードバックの閉じたループが読む設定。スキルごとの Usage Class と
+  Opportunity 述語、およびどのコメント投稿者が機械かを持ちます。ループの*データ*はここにはありません。
+  [ADR-0009](../docs/adr/0009-long-running-agent-state.md) のとおり issue tracker にあります。
+- `private/` — **`.agents/` 配下で唯一のマシンローカルな部分木であり、唯一 gitignore されています。**
+  GitHub から再生成できるキャッシュを置きます（閉じたループの branch → work item 索引など）。
+  共有されないので、ここにあるものが何かの正本になってはいけません。別のマシンからも、
+  作業を引き継ぐ同僚からも、このディレクトリは空に見えます。
 
-A domain here may have a finite life. `comment-remediation/` recorded progress through a migration
-to the comment policy and stopped meaning anything once the tree was fully swept, so it was deleted
-along with its hook entry — that was the intended end state, not neglect. Judge each domain by
-whether its question is still open, not by whether the directory is still there.
+ここのドメインは寿命を持つことがあります。`comment-remediation/` はコメント方針への移行の進捗を
+記録するもので、ツリーを掃き終えた時点で意味を失ったため、フック定義とともに削除しました。放置では
+なく想定された終着点です。各ドメインは、ディレクトリが残っているかではなく、その問いがまだ開いて
+いるかで判断してください。
 
-Each file documents its own schema in a header comment. The schema is not repeated here: a reader who
-needs it is already opening the file, and a second copy would drift.
+各ファイルは自身のスキーマをヘッダコメントで説明します。ここには再掲しません。スキーマが必要な読者は
+すでにそのファイルを開いており、二重に書けば drift するからです。
 
-## Editing
+## 編集について
 
-Edit these files **through the skill that owns them**, not by hand. They record the result of an
-analysis, so a hand-edited entry claims an analysis that never ran — and the next audit silently
-inherits the claim. Where a skill offers a per-item approval loop, that loop is the intended way to
-change the artifact.
+これらのファイルは**所有するスキル経由で編集**し、手で書き換えないでください。記録されているのは解析の
+結果なので、手で編集したエントリは「実際には走っていない解析」を主張することになり、次回の監査がその
+主張を黙って引き継ぎます。スキルが per-item の承認ループを持つ場合は、そのループが意図された変更経路です。
 
-Hand-editing is reasonable for one case: repairing a file that a failed run left malformed. Re-run
-the owning skill afterwards so the content matches what the tooling would produce.
+手編集が妥当なのは 1 ケースだけ、失敗した実行が壊れたファイルを残した場合の修復です。その後は所有する
+スキルを再実行し、内容がツールの生成結果と一致する状態に戻してください。
 
-The distinction between durable knowledge and per-run state is decided in
-[ADR-0009 (long-running-agent-state)](../docs/adr/0009-long-running-agent-state.md). A finding belongs in its owning canonical
-document only when it changes that document's described relationship; do not turn activity logs into
-another durable artifact domain.
+## AI エージェントのスコープ
 
-## Scope for AI agents
-
-`AGENTS.md` lists the directories an agent may modify. This one is not in that list, and the same
-rule applies: **do not create, modify, or delete anything under `.agents/` unless the user asks, or
-unless a skill whose defined procedure covers it is running.** Invoking a skill counts as that
-instruction, for the paths that skill owns and for its duration only.
+`AGENTS.md` はエージェントが変更してよいディレクトリを列挙しています。ここはその一覧に入っておらず、
+同じ規則が適用されます。**ユーザーの指示があるか、定義された手順がここを対象とするスキルの実行中で
+ない限り、`.agents/` 配下を作成・変更・削除しないでください。** スキルの起動はその指示に相当しますが、
+対象はそのスキルが所有するパスに限られ、実行中のみ有効です。

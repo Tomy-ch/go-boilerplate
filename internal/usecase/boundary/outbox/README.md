@@ -1,8 +1,7 @@
 # outbox
 
-Defines the `Store` persistence boundary for the transactional outbox.
-Both `emit` (usecase layer) and the relay engine (controller layer) depend on
-this boundary.
+トランザクショナル outbox の永続化境界 `Store` を定義します。
+emit（usecase 層）と relay engine（controller 層）の双方がこの境界に依存します。
 
 ```go
 type Store interface {
@@ -17,13 +16,13 @@ type Store interface {
 }
 ```
 
-## Why Abstract?
+## なぜ抽象化するのか
 
-- Ensure testability of emit / relay / GC logic without a real database
-- Keep Usecase and the relay engine depending on a persistence port, not on sqlc or `FOR UPDATE SKIP LOCKED` SQL details
-- Allow mock substitution in tests for deterministic behavior
-- Share one contract between the in-transaction `Insert` (usecase) and the claim/mark/replay/SLI calls (relay engine)
+- emit / relay / GC ロジックを、実データベースなしでテスト可能にする
+- Usecase と relay engine が、sqlc や `FOR UPDATE SKIP LOCKED` SQL の詳細ではなく永続化 port に依存するようにする
+- テストでモック差し替えにより決定論的な挙動を実現
+- 業務 tx 内の `Insert`（usecase）と claim/mark/replay/SLI 呼び出し（relay engine）で 1 つの契約を共有する
 
-## Implementation
+## 実装
 
-`internal/infrastructure/rdb/system_cqrs/outbox/` provides the concrete RDB implementation backed by sqlc-generated queries.
+`internal/infrastructure/rdb/system_cqrs/outbox/` に sqlc 生成クエリを用いた RDB 具体実装が配置されています。

@@ -4,195 +4,192 @@ description: >-
   Audit and upgrade the SHA-pinned GitHub Actions referenced by `.github/workflows/**` and `.github/actions/**` (nested composite actions included — the scan recurses), with a supply-chain quarantine and automatic step-back to the previous aged version. Default is minor-only (stay within current majors); pass `major` to also bump major versions; pass a number or `days=N` to set the exclusion window (`PIN_ACTIONS_MIN_AGE_DAYS`, default 14). The version source of truth is the trailing tag comment on each `uses: owner/repo@<sha> # <tag>` line; `.github/actions-pin.toml` is the resolved tag→SHA lockfile, driven by `make pin-actions-resolve` / `pin-actions-apply` / `pin-actions-check` (backed by `scripts/pin-actions`). For each target major the skill prefers the moving major tag when its latest is aged, else steps back to the newest exact version older than the exclusion window, else holds — so a freshly published (possibly compromised) release is never adopted. Quarantine age is the **newer** of the release `published_at` and the resolved commit date, so an old release on a re-pointed moving tag no longer reads as aged. Where no aged release exists to step back to, it chains `/supply-chain-triage` for a scored evidence verdict on the fresh head, and it stops on an **exact** tag whose SHA moved (a re-pointed tag) as a security event rather than a refresh. Verifies with `make pin-actions-check` + `make actions-lint`; both `check` and `apply` fail closed on an unreadable lockfile line, a duplicate key, an orphan lockfile entry, or a `uses:` in a notation the pinner cannot rewrite (flow mapping, quoted key, block scalar, YAML alias), and `apply` settles every file's verdict before writing so an abort leaves the tree untouched. Major bumps additionally verify `with:` input compatibility and are held (not auto-applied) on a breaking change. Sibling of `tools-upgrade` (which covers `mise.toml`, not Actions). Use on a routine cadence or after an Actions security advisory.
 ---
 
-# GitHub Actions Pin Upgrade
+# GitHub Actions の pin 更新
 
-This skill audits and upgrades the SHA-pinned GitHub Actions in `.github/workflows/**` and `.github/actions/**`, with a **supply-chain quarantine gate** plus an **automatic step-back**: releases newer than the exclusion window (`PIN_ACTIONS_MIN_AGE_DAYS`, default 14) are never adopted; instead the skill pins the newest version that is already older than the window. A freshly-published (possibly compromised) version is thus never pulled in before upstream has time to detect and revoke it.
+このスキルは `.github/workflows/**` と `.github/actions/**` で SHA 固定された GitHub Actions を監査・更新する。**サプライチェーン隔離ゲート**に加え、**自動ステップバック**を備える。除外期間（`PIN_ACTIONS_MIN_AGE_DAYS`、既定 14 日）より新しいリリースは採用せず、代わりに「除外期間より前に公開済みの最新版」を固定する。公開直後の（侵害されている可能性のある）バージョンを、upstream が検知・取り下げる前に取り込まないため。
 
-It is the sibling of `tools-upgrade` — that skill covers `mise.toml` `[tools]`; this one covers GitHub Actions pins. They share the same quarantine philosophy but operate on different SSOTs.
+`tools-upgrade` の姉妹スキル。あちらは `mise.toml` の `[tools]` を、こちらは GitHub Actions の pin を対象とする。隔離の思想は共通だが SSOT が異なる。
 
-A Japanese reference translation is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+## このリポジトリでの pin の仕組み
 
-## How Pinning Works in This Repo
+着手前に必ず読むこと。以降の全手順はこの仕組みに依存する。
 
-Read this before doing anything — the mechanism determines every step below.
+- 各外部参照は `uses: owner/repo[/sub]@<40桁hex sha> # <tag>` で固定される。**バージョンの正は末尾コメントの tag** であり、`@<sha>` 側ではない。
+- `.github/actions-pin.toml` が lockfile: `"owner/repo@<tag>" = "<sha>"`（`apply` の SSOT・`resolve` が再生成）。
+- `make pin-actions-resolve` — 各 `uses:` のコメント tag を読み、`git ls-remote` で commit SHA へ解決（annotated tag は commit へ deref）し、隔離を適用して lockfile を再生成。env `PIN_ACTIONS_MIN_AGE_DAYS`（既定 14）でゲートを制御。moving タグの最新 SHA が除外期間内のときは**既存ピンを維持**する（moving タグに対する組み込みのステップバック）。
+- **`resolve` がゲートに使う経過日数は、リリースの `published_at` と解決先 commit の日時のうち新しい方**（理由は `docs/design/security.md` の Build inputs 節）。本スキルへの影響: **`published_at` が古いことは、候補が aged であることを意味しなくなった** — リリース日は古くても head commit が新しい moving タグは、それでも隔離される。
+- `make pin-actions-apply` — lockfile を元に各 `uses:` の `@<sha>` を書き換え（`# <tag>` は保持）。全対象ファイルを読み切って可否を確定させて**から**書き込むため、中断しても作業ツリーは変更されない。
+- `make pin-actions-check` — 書き換えなしで lockfile と一致するか検証（CI / hook 用）。drift 以外にも fail-closed で落ちる: lockfile の解釈できない行、キーの重複、孤児エントリ、pin できない記法で書かれた `uses:` はいずれもエラー（手順 7 参照）。
+- 走査対象は `.github/workflows/*.{yml,yaml}` に加え `.github/actions/**/action.{yml,yaml}` を**再帰的に**辿るため、通常の配置より 1 階層深く置かれた composite action も他と同様に固定される。
+- **moving major タグ（`# v6`）は次回 `resolve` で当該メジャー内の最新へ自動追従**する。よって同一メジャーのリフレッシュは `resolve` + `apply` のみ。**メジャー更新はコメント tag の編集（`# v6` → `# v7`）が必要**。**exact 版コメント（`# 0.35.0`）は `resolve` で動かない**ため、更新はコメント編集が必要。
 
-- Each external reference is pinned as `uses: owner/repo[/sub]@<40-hex-sha> # <tag>`. The **tag in the trailing comment is the version source of truth**, not the `@<sha>` part.
-- `.github/actions-pin.toml` is the lockfile: `"owner/repo@<tag>" = "<sha>"` (SSOT for `apply`, regenerated by `resolve`).
-- `make pin-actions-resolve` — reads the comment tag of every `uses:`, resolves it to a commit SHA via `git ls-remote` (annotated tags are dereferenced to the commit), applies the quarantine, and rewrites the lockfile. Env `PIN_ACTIONS_MIN_AGE_DAYS` (default 14) controls the gate; when a moving-tag's latest SHA is inside the window it **keeps the existing pin** (its own built-in step-back for moving tags).
-- **The age `resolve` gates on is the newer of the release `published_at` and the resolved commit's date** (why, in `docs/design/security.md`, Build inputs). Consequence for this skill: **an old `published_at` no longer implies the candidate is aged** — a moving tag whose release date is old but whose head commit is recent is still quarantined.
-- `make pin-actions-apply` — rewrites each `uses:` `@<sha>` from the lockfile, keeping `# <tag>`. It reads every target file and settles the verdict **before writing anything**, so an abort leaves the working tree untouched.
-- `make pin-actions-check` — verifies pins match the lockfile without writing (CI / hook). It is fail-closed on more than drift: an unreadable lockfile line, a duplicate key, an orphan lockfile entry, and a `uses:` written in a notation the pinner cannot rewrite are all errors (see step 8).
-- The scan covers `.github/workflows/*.{yml,yaml}` plus `.github/actions/**/action.{yml,yaml}` **recursively**, so a composite action placed one directory deeper than the usual layout is pinned like any other.
-- **A moving major tag (`# v6`) auto-advances to the latest within-major release** on the next `resolve`. A same-major refresh is therefore just `resolve` + `apply`. A **major bump requires editing the comment tag** (`# v6` → `# v7`) first. An **exact-version comment (`# 0.35.0`) never moves** on `resolve`; bumping it requires editing the comment.
+## 使用タイミング
 
-## When to Use
+以下のような場合に使用する。
 
-Use this skill when:
+- 固定済み Actions の SHA を定期的にリフレッシュ（既定のマイナーのみモード）
+- Actions を新しいメジャーへ更新（`major` 引数）
+- GitHub Actions のセキュリティ勧告が出たとき
 
-- Routine periodic refresh of pinned Actions SHAs (default minor-only mode)
-- Bumping Actions to newer major versions (`major` argument)
-- After a GitHub Actions security advisory
+以下には使用しない。
 
-Do NOT use this skill for:
+- `mise.toml` のツールバージョン → `/tools-upgrade`
+- Go 本体 → `/go-upgrade`
+- Go モジュール依存 → `make tidy-lib`
+- ローカル複合アクション（`uses: ./...`）→ `@ref` を持たず固定対象外
 
-- `mise.toml` tool versions — use `/tools-upgrade`
-- Go itself — use `/go-upgrade`
-- Go module dependencies — use `make tidy-lib`
-- Local composite actions (`uses: ./...`) — they have no `@ref` and are not pinned
+## 引数
 
-## Arguments
+起動引数を解析する（順不同）。挙動を引数で決めるため、戦略は対話で訊かない。
 
-Parse the invocation arguments (order-independent); they drive behavior so the strategy is NOT asked interactively:
-
-| Token | Meaning | Default |
+| トークン | 意味 | 既定 |
 | --- | --- | --- |
-| `major` (or `--major`) | Also bump to newer **major** versions. Absent → **minor-only** (stay within current majors). | minor-only |
-| a bare integer, or `days=N` (or `--days N`) | Exclusion window in days = `PIN_ACTIONS_MIN_AGE_DAYS`, used both by the skill's step-back computation and passed to `make pin-actions-resolve`. | `14` |
+| `major`（または `--major`） | **メジャー**更新も対象にする。無ければ**マイナーのみ**（現行メジャー維持）。 | マイナーのみ |
+| 裸の整数、または `days=N`（`--days N`） | 除外期間（日）= `PIN_ACTIONS_MIN_AGE_DAYS`。スキルのステップバック計算と `make pin-actions-resolve` の両方に使う。 | `14` |
 
-Examples: `/actions-pin` (minor, 14d) · `/actions-pin major` (minor+major, 14d) · `/actions-pin major 30` (major, 30d) · `/actions-pin 21` (minor, 21d).
+例: `/actions-pin`（マイナー・14日）・`/actions-pin major`（マイナー+メジャー・14日）・`/actions-pin major 30`（メジャー・30日）・`/actions-pin 21`（マイナー・21日）。
 
-The exclusion days must be a non-negative integer. `0` disables the quarantine (adopt even brand-new releases) — only honor it when the user explicitly passes `0`, and surface the supply-chain risk.
+除外日数は非負整数。`0` は隔離を無効化（公開直後でも採用）— ユーザーが明示的に `0` を渡した場合のみ尊重し、サプライチェーンのリスクを提示する。
 
-## AI Modification Scope
+## AI 変更スコープ
 
-Per the "Exception: Skill Execution" clause in `CLAUDE.md`, the following paths may be modified while this skill runs:
+`CLAUDE.md` の「Exception: Skill Execution」条項により、本スキル実行中は以下の編集が許可される。
 
-- `.github/workflows/*.{yml,yaml}` — the `uses:` comment tags + the `@<sha>` (written by `make pin-actions-apply`)
-- `.github/actions/*/action.{yml,yaml}` — same
-- `.github/actions-pin.toml` — the lockfile (written by `make pin-actions-resolve`)
+- `.github/workflows/*.{yml,yaml}` — `uses:` のコメント tag + `@<sha>`（`make pin-actions-apply` が書き込む）
+- `.github/actions/*/action.{yml,yaml}` — 同上
+- `.github/actions-pin.toml` — lockfile（`make pin-actions-resolve` が書き込む）
 
-The following remain protected even during skill execution:
+実行中も保護されるもの。
 
 - `AGENTS.md` / `CLAUDE.md`
-- Generated files (`**/*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`, generated content under `docs/`)
-- Any file unrelated to the pin upgrade. Do NOT change `with:` inputs, step logic, or `scripts/pin-actions` — if a bump needs an input change, surface it and stop.
+- 生成ファイル（`**/*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`, `docs/` 配下の生成物）
+- pin 更新と無関係なファイル全般。`with:` 入力・ステップ処理・`scripts/pin-actions` は変更しない。更新に入力変更が必要なら、提示して停止する。
 
-## The Target-Selection Rule (core of this skill)
+## ターゲット選択規則（このスキルの中核）
 
-For each action, the **target major** `M` is its current major in minor-only mode, or the latest available major in `major` mode. Pick the pin for `M` as follows (`N` = exclusion days, cutoff = `now - N days`):
+各アクションについて、**対象メジャー** `M` は、マイナーのみモードでは現行メジャー、`major` モードでは利用可能な最新メジャー。`M` の pin を以下で決める（`N` = 除外日数、カットオフ = `now - N日`）。
 
-1. **Moving tag, aged** — if a moving major tag `vM` exists and its latest resolved SHA is older than the cutoff → pin `# vM` (preferred: keeps auto-advancing on future runs).
-2. **Step back to previous aged exact** — else (the `vM` head is inside the window, or no moving `vM` tag exists) → choose the newest exact release `vM.x.y` whose `published_at` is older than the cutoff, and pin `# vM.x.y`. This is the "use the one-previous version" behavior — it reaches `M` now while honoring the quarantine.
-3. **Hold** — if no release in `M` is older than the cutoff (e.g. `M` is brand-new and only `vM.0.0` exists, still fresh) → leave the action unchanged and report it as held.
+1. **moving タグが aged** — moving major タグ `vM` が存在し、その最新解決 SHA がカットオフより古い → `# vM` で固定（優先。今後の実行でも自動追従する）。
+2. **一つ前の aged exact へステップバック** — それ以外（`vM` の head が除外期間内、または moving `vM` タグが無い）→ `published_at` がカットオフより古い最新の exact 版 `vM.x.y` を選び `# vM.x.y` で固定。これが「一つ前のバージョンを入れる」挙動で、隔離を守りつつ `M` に今到達できる。
+3. **保留** — `M` 内にカットオフより古いリリースが一つも無い（例: `M` が新規で `vM.0.0` のみ・まだ新しい）→ そのアクションは変更せず、保留として報告。
 
-Notes on the rule:
+規則の補足:
 
-- In **minor-only** mode, `M` is the current major, so step 1 normally applies and `make pin-actions-resolve` does the work (it keeps the existing pin when the within-major head is fresh — equivalent to step 2). The skill only edits a comment tag when it must force a step-back to an exact version (a just-released patch makes the head fresh) or to bump an exact-pinned action's patch line.
-- In **major** mode, `M` is the new major with no existing lockfile key, so a fresh `vM` head would be **skipped** by `resolve` (→ `apply` "missing"). Step 2 (exact step-back) is what makes the new major adoptable now; step 3 holds it otherwise.
-- An exact step-back (step 2) deviates from the moving-major convention. Record in the commit that it can be returned to `# vM` once `vM` ages. `sigstore/cosign-installer` (no moving `v4` tag) is a permanent step-2 case.
-- **`published_at` selects the candidate; `resolve` decides whether it is adopted.** Ranking releases by `published_at` (step 2) is still the right way to pick which tag to propose, but the gate applied afterwards uses the newer of `published_at` and the resolved commit date. A moving `vM` whose release is old but whose head commit is recent therefore fails step 1 at `resolve` time even though the release list said it was aged — `resolve` keeps the existing pin and prints `⚠️ ... 既存ピンを維持`. Treat that as the rule 1 → rule 2 fallback firing late, not as an error.
+- **マイナーのみ**モードでは `M` は現行メジャーなので通常は手順1が成立し、`make pin-actions-resolve` が処理する（within-major head が新しいときは既存ピンを維持＝手順2相当）。スキルがコメント tag を編集するのは、exact 版へのステップバックを強制する必要があるとき（直近の patch リリースで head が新しい）か、exact 固定アクションの patch を上げるときのみ。
+- **major** モードでは `M` は lockfile キーの無い新メジャーなので、`vM` head が新しいと `resolve` に**skip**され（→ `apply` で missing）。手順2（exact ステップバック）が新メジャーを今採用可能にし、無ければ手順3で保留。
+- exact ステップバック（手順2）は moving-major 慣習から外れる。`vM` が aged になれば `# vM` へ戻せる旨をコミットに記す。`sigstore/cosign-installer`（moving `v4` タグ無し）は恒久的な手順2ケース。
+- **候補の選定は `published_at`、採否は `resolve`。** リリースを `published_at` で並べて候補を選ぶ（手順2）のは引き続き正しいが、その後に掛かるゲートは `published_at` と解決先 commit 日時の新しい方を使う。リリースは古いが head commit が新しい moving `vM` は、リリース一覧上は aged に見えても `resolve` の時点で手順1に失敗し、既存ピンを維持して `⚠️ ... 既存ピンを維持` を出す。エラーではなく、手順1→手順2 のフォールバックが遅れて発火したものとして扱う。
 
-## Execution Steps
+## 実行ステップ
 
-### 0. Pre-flight: vendor consistency + token
+### 0. 事前確認: vendor 整合性 + トークン
 
-`make pin-actions-*` runs `go run ./scripts/pin-actions`, which compiles against `vendor/`. `vendor/` is gitignored, so a parallel checkout (e.g. a `go.mod` upgrade branch) can leave it inconsistent with the current branch's `go.mod`, and the `go run` fails with `vendor/modules.txt: ... inconsistent`. If so, run `go mod vendor` once to re-sync, then proceed. Also export a token so `resolve` (GitHub API for release dates) is not rate-limited:
+`make pin-actions-*` は `go run ./scripts/pin-actions` を実行し `vendor/` に対してビルドする。`vendor/` は gitignore 管理のため、並行 checkout（例: `go.mod` 更新ブランチ）の状態が残ると現ブランチの `go.mod` と不整合になり `go run` が `vendor/modules.txt: ... inconsistent` で落ちる。その場合は `go mod vendor` を一度実行して再同期してから進める。また `resolve`（リリース日取得で GitHub API を呼ぶ）のレート制限回避にトークンを export する。
 
 ```sh
 export GITHUB_TOKEN="$(gh auth token)"
 ```
 
-### 1. Parse Arguments and Inventory
+### 1. 引数の解析と棚卸し
 
-Parse the arguments (above) into `<MODE>` (minor / major) and `<N>` (exclusion days). Then:
+引数（上記）を `<MODE>`（minor / major）と `<N>`（除外日数）へ解析する。続いて:
 
-- Read `.github/actions-pin.toml` for the current `tag → sha` set.
-- Grep `uses:` across `.github/workflows/` and `.github/actions/` to map each external action to its file locations and current comment tag (note actions referenced in multiple files).
+- `.github/actions-pin.toml` から現行の `tag → sha` を読む。
+- `.github/workflows/` と `.github/actions/` で `uses:` を grep し、各外部アクションのファイル箇所と現行コメント tag を対応付ける（複数ファイル参照に注意）。
 
-### 2. Query Releases and Compute the Target Pin
+### 2. リリース取得とターゲット pin の算出
 
-For each distinct external action, fetch its release list with dates (`gh api repos/<owner>/<repo>/releases -q '.[] | "\(.tag_name)\t\(.published_at)\t\(.prerelease)"'`; skip pre-releases). Determine the target major `M` per `<MODE>`, then apply the Target-Selection Rule to compute one of: pin `# vM` / pin exact `# vM.x.y` (step-back) / hold. Account for **tag-format changes** across majors (e.g. `aquasecurity/trivy-action` went `0.35.0` → `v0.36.0`) — the comment tag must match the upstream tag string exactly or `resolve` fails with `ref not found`. For step 1 candidates also confirm the moving `vM` tag actually exists (`git ls-remote … vM`); if absent, fall to step 2.
+各外部アクションについてリリース一覧と日付を取得（`gh api repos/<owner>/<repo>/releases -q '.[] | "\(.tag_name)\t\(.published_at)\t\(.prerelease)"'`・pre-release は除外）。`<MODE>` に応じて対象メジャー `M` を決め、ターゲット選択規則を適用して `# vM` 固定 / exact `# vM.x.y` 固定（ステップバック）/ 保留 のいずれかを算出する。メジャー間の **tag 形式変化**（例: `aquasecurity/trivy-action` は `0.35.0` → `v0.36.0`）に注意 — コメント tag は upstream のタグ文字列と完全一致が必要で、ずれると `resolve` が `ref not found` で落ちる。手順1候補は moving `vM` タグの実在も確認（`git ls-remote … vM`）、無ければ手順2へ。
 
-### 3. Verify `with:` for Major Bumps
+### 3. メジャー更新の `with:` 検証
 
-`resolve` / `apply` / `actionlint` catch syntax, NOT semantic input changes. For every action whose **major changes**, read its release notes / `action.yml` and compare against every `with:` block this repo uses. Examples seen: `peter-evans/create-pull-request` renamed `git-token`→`branch-token` (v8); `actions/upload-pages-artifact` v5 excludes dotfiles and requires `deploy-pages@v4+`. If the repo's actual inputs remain compatible → keep the bump. If a breaking input change applies → **hold the action and report the required change**; do not auto-apply. (Minor-only refreshes within a major skip this check.) <!-- skill-lint-ignore -->
+`resolve` / `apply` / `actionlint` は構文を見るが**入力のセマンティクス変更は見ない**。**メジャーが変わる**全アクションについて、リリースノート / `action.yml` を読み、当repo が使う全 `with:` ブロックと突き合わせる。実例: `peter-evans/create-pull-request` は v8 で `git-token`→`branch-token` 改名、`actions/upload-pages-artifact` v5 は dotfile 除外 + `deploy-pages@v4+` 要求。実入力が互換なら更新を維持。破壊的な入力変更があれば**そのアクションは保留し、必要な変更を報告**する（自動適用しない）。（メジャー内のマイナーリフレッシュはこの検証を省略。） <!-- skill-lint-ignore -->
 
-### 4. Triage Where Step-back Is Not Available
+### 4. ステップバックが使えない場合のトリアージ
 
-The quarantine's normal answer here is the **step-back** (rule 2): pin the newest already-aged exact version. That needs no evidence gathering — it adopts something the window has already cleared. Triage belongs to the cases where stepping back is not an option:
+ここでの隔離への通常の応答は**ステップバック**（手順 2）——既に aged な最新の exact 版を固定する。これは証拠収集を要さない。窓が既に通したものを採用するだけである。トリアージが受け持つのは、ステップバックが選択肢にならない場合である。
 
-- **A rule 3 hold** — no release in the target major is older than the cutoff, so the choice is wait or take the fresh one. There is no vetted alternative to fall back to.
-- **An advisory whose fix exists only in the fresh head**, where waiting means staying vulnerable.
-- **Any action whose `with:` review (step 3) held it**, if the user then asks whether the fresh version is safe in itself.
+- **手順 3 の保留** — 対象メジャー内に cutoff より古いリリースが無く、待つか出来立てを取るかの選択しかない。退行先として検証済みの代替が存在しない。
+- **修正が出来立ての head にしか存在しない勧告**。待つことが脆弱なままでいることを意味する場合。
+- **`with:` レビュー（手順 3）で保留になったアクション**について、出来立て版がそれ自体安全かをユーザーが後から尋ねた場合。
 
-For those, chain **`/supply-chain-triage`** with `github-actions` as the ecosystem, the action, the candidate tag, and the **SHA currently recorded in `.github/actions-pin.toml`** as the baseline — the lockfile SHA is what the workflows run today, so it is the correct other end of the diff. Actions triage is the strongest of the four ecosystems: the artifact is a real commit range, so publisher, tag-to-commit correspondence, the diff, and the input surface are all directly answerable.
+これらについては、エコシステムに `github-actions`、アクション、候補 tag、そして baseline に **`.github/actions-pin.toml` に現在記録されている SHA** を渡して **`/supply-chain-triage`** を chain する。lockfile の SHA が今日 workflow が実行しているものなのだから、それが差分の正しいもう一方の端である。Actions のトリアージは 4 エコシステム中で最も強力である——artifact が実物の commit range なので、発行者・tag と commit の対応・差分・入力面のすべてが直接答えられる。
 
-Triage is report-only. It never edits a comment tag, the lockfile, or a `uses:` line, and never runs `resolve` / `apply`. Carry the band into step 5's plan so the hold-versus-adopt choice is visible with its evidence; the decision stays with `AskUserQuestion`.
+トリアージは報告のみ。コメント tag・lockfile・`uses:` 行を編集せず、`resolve` / `apply` も実行しない。バンドは手順 4 の計画へ引き継ぎ、保留か採用かの選択を証拠とともに可視化する。判断は `AskUserQuestion` に残る。
 
-### 5. Display Plan and Confirm
+### 5. 計画の提示と確認
 
-Print a Japanese summary: bumps to apply (moving `# vM` / exact step-back `# vM.x.y`, each with the chosen version + its age), held items (with reason: still-fresh new major / breaking `with:` / no aged release), and unchanged. Then confirm the concrete set via `AskUserQuestion` (`multiSelect: true` when several independent bumps are offered) so the step-back and hold decisions are visible before any write.
+日本語サマリを表示する: 適用する更新（moving `# vM` / exact ステップバック `# vM.x.y`・各々の選定版と経過日数）、保留（理由: 新メジャーがまだ新しい / `with:` 破壊的 / aged 版なし）、変更なし。その上で具体的なセットを `AskUserQuestion` で確認する（独立した複数更新がある場合は `multiSelect: true`）。書き込み前にステップバックと保留の判断を可視化する。
 
-### 6. Edit Comment Tags
+### 6. コメント tag の編集
 
-For each approved bump, edit the trailing comment tag of the relevant `uses:` line(s) to the computed target (`# v7`, or exact `# v4.1.0`). Leave the `@<sha>` as-is (`apply` rewrites it). When an action appears in multiple files with an identical `uses:` line, a per-file replace-all is appropriate; when several distinct actions share the same old comment in one file (e.g. three `# v3` lines), match the full unique `uses:` line so only the intended one changes. Leave held / unchanged actions untouched.
+承認された更新ごとに、該当 `uses:` 行の末尾コメント tag を算出ターゲット（`# v7` または exact `# v4.1.0`）へ編集する。`@<sha>` はそのまま（`apply` が書き換える）。同一の `uses:` 行が複数ファイルに現れる場合はファイル単位の replace-all が適切。1ファイル内で別アクションが同じ旧コメントを共有する場合（例: 3つの `# v3`）は、意図した行だけが変わるよう完全な一意 `uses:` 行でマッチする。保留 / 変更なしのアクションは触らない。
 
-### 7. Resolve → Apply
+### 7. resolve → apply
 
 ```sh
 export GITHUB_TOKEN="$(gh auth token)"
-make pin-actions-resolve PIN_ACTIONS_MIN_AGE_DAYS=<N>   # the parsed exclusion days
+make pin-actions-resolve PIN_ACTIONS_MIN_AGE_DAYS=<N>   # 解析した除外日数
 make pin-actions-apply
 ```
 
-`resolve` re-resolves every referenced tag (current-major actions also get their latest aged within-major SHA) and prints `⚠️ ... 既存ピンを維持` for any whose within-major head is inside the window — expected, not a failure.
+`resolve` は参照中の全 tag を再解決する（現行メジャーのアクションもメジャー内の最新 aged SHA に更新）。within-major head が除外期間内のものは `⚠️ ... 既存ピンを維持` と表示されるが想定どおりで失敗ではない。`ref "vN" が見つかりません` で中断したら moving-major タグが無い → そのアクションは手順2の exact 固定にすべき。修正して再実行。vendor 不整合で中断したら手順0の `go mod vendor`。
 
-**Watch the lockfile diff for a re-pointed tag.** A moving major tag (`# v6`) legitimately advances to a new SHA. An **exact** comment tag (`# v4.1.0`) must not: if `resolve` gives an exact tag a different SHA than the lockfile already recorded, the version reference stayed the same while the code underneath it changed. That is tag re-pointing, the shape of the `tj-actions/changed-files` compromise, and it is a security event rather than a pin refresh. Stop, do not `apply`, and triage it (`/supply-chain-triage`, baseline = the lockfile's previous SHA) before anything is written — the old and new SHAs are what make an upstream report actionable. If `resolve` aborts with `ref "vN" が見つかりません`, the moving-major tag does not exist — that action should have been a step-2 exact pin; fix and re-run. If it aborts on vendor inconsistency, run step 0's `go mod vendor`.
+**lockfile の diff で tag の付け替えを見張る。** moving major タグ（`# v6`）が新しい SHA へ進むのは正当である。**exact** 版コメント tag（`# v4.1.0`）はそうではない。exact tag に対して `resolve` が lockfile 記録済みと異なる SHA を返したなら、バージョン参照は同じままで下のコードが変わったということである。これは tag の付け替えであり、`tj-actions/changed-files` 侵害の形であり、pin のリフレッシュではなくセキュリティ事象である。止まり、`apply` せず、書き込みの前にトリアージする（`/supply-chain-triage`、baseline = lockfile の従前 SHA）——上流への通報を実行可能にするのは旧新の SHA である。
 
-### 8. Verify
+### 8. 検証
 
 ```sh
-make pin-actions-check     # pins match lockfile
-make actions-lint          # actionlint over workflows
+make pin-actions-check     # pin が lockfile と一致
+make actions-lint          # actionlint で workflow 検証
 ```
 
-Report OK / FAIL per command. Do NOT auto-roll-back on failure — the user decides.
+コマンドごとに OK / FAIL を報告。失敗時に自動ロールバックしない（ユーザー判断）。
 
-`pin-actions-check` (and `apply`, which shares the same verdict) fails closed on four conditions beyond ordinary drift. Each is a repository-state problem, not an upstream one, and each is fixed locally:
+`pin-actions-check`（および同じ判定を共有する `apply`）は、通常の drift 以外に次の4条件で fail-closed になる。いずれも upstream ではなくリポジトリ側の状態の問題であり、ローカルで解消できる。
 
-| Failure | What it means | Fix |
+| 失敗 | 意味 | 対処 |
 | --- | --- | --- |
-| `lockfile に解釈できない行があります` (with a line number) | A line in `.github/actions-pin.toml` is neither blank, a comment, nor a `"key" = "<40-hex>"` assignment. | Run `make pin-actions-resolve`, or delete the reported line. |
-| `lockfile にキーの重複があります` | The same `owner/repo@tag` is assigned twice. Most often the residue of resolving a merge conflict in the lockfile mechanically. | Run `make pin-actions-resolve`, or delete the duplicate line. |
-| `lockfile に参照されていないエントリがあります` | A lockfile key no longer matches any `uses:` — typically left behind when a workflow was deleted. The lockfile stops mirroring the live inventory, which breaks the assumption that reviewing its diff is enough. | Run `make pin-actions-resolve` (it rewrites the file from the scan), or delete the orphan line. |
-| `固定対象として解釈できない記法の uses: があります` | A `uses:` the pinner cannot rewrite, so the reference would never be pinned. Four shapes reach this: YAML flow mapping (`- {name: Checkout, uses: actions/checkout@v4}`), a quoted key (`"uses": ...`), a block scalar that puts the value on the next line (`uses: >-`), and a YAML alias (`uses: *anchor`). The message names the offending value. | Rewrite the step in plain block notation (`- uses: owner/repo@sha # tag` on its own line). Do not suppress the check. |
+| `lockfile に解釈できない行があります`（行番号付き） | `.github/actions-pin.toml` の行が、空行でもコメントでも `"key" = "<40桁hex>"` の代入でもない。 | `make pin-actions-resolve` を実行するか、報告された行を削除する。 |
+| `lockfile にキーの重複があります` | 同じ `owner/repo@tag` が2回代入されている。lockfile のマージコンフリクトを機械的に解消した残骸として発生しやすい。 | `make pin-actions-resolve` を実行するか、重複行を削除する。 |
+| `lockfile に参照されていないエントリがあります` | lockfile のキーがどの `uses:` とも対応しない。典型的には workflow を削除した際の残骸。lockfile が現用インベントリの鏡でなくなり、「差分を読めば足りる」という前提が崩れる。 | `make pin-actions-resolve`（走査結果からファイルを再生成する）を実行するか、孤児の行を削除する。 |
+| `固定対象として解釈できない記法の uses: があります` | pin ツールが書き換えられない記法の `uses:` で、そのままでは固定されない。該当するのは 4 形: YAML flow mapping（`- {name: Checkout, uses: actions/checkout@v4}`）、クオートしたキー（`"uses": ...`）、値を次行へ送るブロックスカラー（`uses: >-`）、YAML alias（`uses: *anchor`）。メッセージには該当する値が出る。 | その step を素のブロック記法（`- uses: owner/repo@sha # tag` を独立行に）へ書き換える。検査の抑止で済ませない。 |
 
-Text inside a block scalar is exempt, so a `run:` script that merely prints the string `uses: owner/repo@ref` does not trip the check.
+ブロックスカラーの中身は対象外なので、`run:` スクリプトが `uses: owner/repo@ref` という文字列を出力するだけでは検査に引っかからない。
 
-### 9. Final Report
+### 9. 最終報告
 
-Summarize: actions bumped (moving / exact step-back), actions SHA-refreshed, actions held (with reason, plus any triage band and the axis that drove it), any re-pointed exact tag found in step 7, verification result. List any exact-version pins introduced so the user knows to revisit them once aged. Do NOT commit, stage, or push — the user runs `/commit` (these changes are `CI:`-prefixed) manually.
+更新したアクション（moving / exact ステップバック）、SHA リフレッシュしたアクション、保留（理由付き・トリアージのバンドとそれを決めた軸があればそれも）、手順 6 で見つかった付け替え済み exact tag、検証結果をまとめる。導入した exact 版 pin は、aged 後に見直せるよう一覧化する。commit / stage / push は行わない — ユーザーが手動で `/commit`（`CI:` プレフィックス）を実行する。
 
-## Notes
+## 補足
 
-- **Step-back is the default response to the quarantine, not a hold.** Holding happens only when no aged release exists in the target major. This is the behavior the arguments are designed around. It is also why triage is the exception here rather than the rule: an aged exact version is evidence the window has already supplied, and gathering more about the fresh head buys nothing when a vetted alternative is one comment-tag edit away.
-- **A tag is a name, not an identity.** The lockfile exists because a tag can be re-pointed; an exact tag whose SHA moves is the case it was built to catch (step 7). Treat it as a security event, not a refresh.
-- **Quarantine vs new majors**: the gate keys off SHA age, and a new major has no prior lockfile entry, so a fresh major's moving tag is skipped by `resolve` until it ages — which is exactly why step 2 pins an aged exact version instead.
-- **Not every action has a moving major tag.** Always `git ls-remote` the `vM` tag before assuming `# vM` resolves (`sigstore/cosign-installer` is the known exception → permanent exact pin).
-- **`actionlint` ≠ semantic safety.** It validates workflow syntax, not whether a bumped action's inputs/behavior still match usage. The `with:` review (step 3) is mandatory for major bumps.
-- **annotated-tag deref**: `resolve` returns the dereferenced commit SHA (`refs/tags/vM^{}`), so the lockfile SHA can differ from a naive `git ls-remote vM` line.
-- **A release date is not the age of the code it names.** The quarantine takes the newer of `published_at` and the resolved commit date; it buys time against automated takeover rather than proving a date honest. Catching the re-point itself is still step 7's job. Reasoning: `docs/design/security.md`.
-- **`GITHUB_TOKEN`**: `resolve` queries the GitHub API for release dates; without a token it hits the 60 req/h anonymous limit. Export `gh auth token`.
-- **Idempotency**: a second run shows everything pinned; `pin-actions-check` passes.
-- The skill never auto-pushes.
+- **隔離への既定の応答は保留ではなくステップバック。** 保留は対象メジャー内に aged 版が一つも無いときだけ。引数設計はこの挙動を前提にしている。ここでトリアージが規則ではなく例外である理由もこれである——aged な exact 版は窓が既に供給した証拠であり、検証済みの代替がコメント tag の 1 行編集で手に入るなら、出来立ての head についてさらに証拠を集めても何も買えない。
+- **tag は名前であって同一性ではない。** lockfile が存在するのは tag が付け替えられ得るからであり、exact tag の SHA が動くのはそれが捕まえるために作られたケースそのものである（手順 6）。リフレッシュではなくセキュリティ事象として扱う。
+- **隔離 vs 新メジャー**: ゲートは SHA の経過日数で判定し、新メジャーには既存 lockfile エントリが無いため、新メジャーの moving タグは aged になるまで `resolve` に skip される。だからこそ手順2で aged な exact 版を固定する。
+- **すべてのアクションが moving major タグを持つわけではない。** `# vM` が解決できると仮定する前に必ず `vM` タグを `git ls-remote` する（`sigstore/cosign-installer` は既知の例外 → 恒久 exact 固定）。
+- **`actionlint` ≠ セマンティクスの安全。** workflow 構文は検証するが、更新後アクションの入力・挙動が用途と整合するかは見ない。メジャー更新では手順3 の `with:` レビューが必須。
+- **annotated tag の deref**: `resolve` は deref した commit SHA（`refs/tags/vM^{}`）を採用するため、素朴な `git ls-remote vM` の行と lockfile の SHA が異なる。
+- **リリース日時は、それが指すコードの新しさではない。** 隔離は `published_at` と解決先 commit 日時の新しい方を採る。これは自動化された乗っ取りに対して時間を稼ぐものであり、日時が正直であることの証明ではない。付け替えそのものの検知は引き続き手順6の役割。論拠は `docs/design/security.md`。
+- **`GITHUB_TOKEN`**: `resolve` はリリース日取得で GitHub API を叩く。トークン無しだと匿名 60 req/h 制限に当たる。`gh auth token` を export する。
+- **冪等性**: 再実行すると全て固定済みと表示され、`pin-actions-check` は通る。
+- このスキルは自動 push しない。
 
-## Checklist
+## チェックリスト
 
-Confirm before reporting completion:
+完了報告の前に以下を確認する。
 
-- [ ] Arguments parsed into mode (minor / major) and exclusion days `<N>` (default 14)
-- [ ] `vendor/` consistency ensured (`go mod vendor` if needed) and `GITHUB_TOKEN` exported
-- [ ] Current pins inventoried from `actions-pin.toml` + `uses:` grep
-- [ ] Per action: target major determined by mode, then Target-Selection Rule applied (moving `# vM` aged → exact step-back → hold)
-- [ ] Tag-format changes (e.g. added `v` prefix) and moving-tag existence accounted for
-- [ ] For each major-changing action: `with:` compatibility verified; breaking ones held + reported
-- [ ] Rule 3 holds (and advisory-driven fresh heads) triaged via `/supply-chain-triage` with the lockfile SHA as baseline; step-backs left untriaged by design
-- [ ] Lockfile diff checked for an **exact** tag whose SHA moved (re-pointed tag → stop before `apply`, triage, report)
-- [ ] Any `resolve` quarantine note on a tag whose release looked aged recognized as the commit-date gate firing, not an error
-- [ ] Plan (bumps / step-backs / holds with reasons, with any triage band) presented and confirmed via `AskUserQuestion`
-- [ ] Comment tags edited only for approved bumps; held / unchanged actions left untouched
-- [ ] `make pin-actions-resolve PIN_ACTIONS_MIN_AGE_DAYS=<N>` + `make pin-actions-apply` run
-- [ ] `make pin-actions-check` + `make actions-lint` run and reported
-- [ ] Exact-version step-back pins introduced are listed for later revisit
-- [ ] After updating `SKILL.md`, also update `SKILL.ja.md` to keep the Japanese translation in sync
-- [ ] No commit / stage / push performed
+- [ ] 引数を mode（minor / major）と除外日数 `<N>`（既定 14）へ解析
+- [ ] `vendor/` の整合性を確保（必要なら `go mod vendor`）し `GITHUB_TOKEN` を export
+- [ ] `actions-pin.toml` + `uses:` grep で現行 pin を棚卸し
+- [ ] アクションごとに mode で対象メジャーを決め、ターゲット選択規則を適用（moving `# vM` aged → exact ステップバック → 保留）
+- [ ] tag 形式変化（`v` 接頭辞の有無等）と moving タグの実在を考慮
+- [ ] メジャーが変わる各アクションで `with:` 互換を検証し、破壊的なものは保留 + 報告
+- [ ] 手順 3 の保留（および勧告起因の出来立て head）を lockfile の SHA を baseline として `/supply-chain-triage` でトリアージ。ステップバックは設計どおりトリアージ対象外
+- [ ] lockfile の diff で **exact** tag の SHA が動いていないか確認（付け替え → `apply` 前に停止・トリアージ・報告）
+- [ ] リリースが aged に見えた tag に `resolve` の隔離ノートが出た場合、commit 日時ゲートの発火でありエラーではないと認識している
+- [ ] 計画（更新 / ステップバック / 保留と理由、トリアージのバンドがあればそれも）を提示し `AskUserQuestion` で確認
+- [ ] 承認した更新のみコメント tag 編集・保留/変更なしは不変
+- [ ] `make pin-actions-resolve PIN_ACTIONS_MIN_AGE_DAYS=<N>` + `make pin-actions-apply` を実行
+- [ ] `make pin-actions-check` + `make actions-lint` を実行し報告
+- [ ] 導入した exact 版ステップバック pin を見直し用に一覧化
+- [ ] commit / stage / push を行っていない

@@ -1,84 +1,54 @@
-# `.codex/` — Codex configuration for this repository
+# `.codex/` — このリポジトリの Codex 設定
 
-This directory contains the Codex configuration distributed with the repository: project defaults,
-reusable skills, read-only agent roles, and the spec templates used by scaffold and validation
-workflows. A trusted clone receives the same repository-level development workflow without receiving
-any personal credentials or account settings.
+このディレクトリには、リポジトリとともに配布する Codex 設定を置きます。プロジェクト既定値、再利用可能なスキル、読み取り専用のエージェント役割、および scaffold / 検証ワークフローで使う spec テンプレートが含まれます。信頼した clone には、個人の認証情報やアカウント設定を含めずに、同じリポジトリレベルの開発ワークフローが提供されます。
 
-## Relationship to `AGENTS.md`
+## `AGENTS.md` との関係
 
-[`AGENTS.md`](../AGENTS.md) is the human-maintained operational contract. It defines what an agent may
-change, protected targets, architecture boundaries, Git rules, and validation expectations. Read it
-before using or modifying this directory.
+[`AGENTS.md`](../AGENTS.md) は人間が管理する運用契約です。エージェントが変更できる範囲、保護対象、アーキテクチャ境界、Git ルール、検証要件を定めます。このディレクトリを利用または変更する前に読みます。
 
-`config.toml` records this scaffold's intended Codex posture; it is not a loaded repository-level
-configuration. As measured with `codex-cli 0.145.0`, Codex does not auto-load project-level
-configuration. Apply its values with `-c key=value`, layer them through `--profile`, or reflect them
-in `~/.codex/config.toml`. `hooks.json` is separate: as measured with `codex-cli 0.147.0`, Codex
-discovers `.codex/hooks.json` at session start. Nothing is presently mis-set because the effective
-Codex defaults already coincide with this intended posture. The fine-grained safety rules remain
-canonical in `AGENTS.md`: generated-file protection, prohibited Git operations, and repository
-modification scope are not duplicated here.
+`config.toml` はこの scaffold が意図する Codex の運用方針を記録するものであり、リポジトリレベルの読み込み設定ではありません。`codex-cli 0.145.0` での計測時点では、Codex はプロジェクトレベルの設定を自動読み込みしません。値を適用するには、`-c key=value` を渡す、`--profile` でレイヤーする、または `~/.codex/config.toml` に反映します。Codex の有効な既定値はこの意図した方針と一致しているため、現在このファイルが読み込まれないことによる設定誤りはありません。生成物の保護、禁止する Git 操作、リポジトリの変更範囲といった細かな安全規約は重複させず、`AGENTS.md` を正典とします。
 
-## Layout
+## 構成
 
-| Path | Purpose |
+| パス | 用途 |
 | --- | --- |
-| `config.toml` | Recorded Codex posture: sandbox policy, approval policy, and enabled capabilities. Codex does not auto-load it; apply it with `-c`, `--profile`, or `~/.codex/config.toml`. |
-| `hooks.json` | Project hooks. The doc-router hook sends `apply_patch` paths to the shared router, which names the documents governing them. |
-| `skills/<name>/` | Reusable workflows. Each skill has an English-canonical `SKILL.md`; `agents/openai.yaml` provides Codex UI metadata. Some skills bundle `scripts/` or `prompts/`. |
-| `agents/` | Role definitions for read-only parallel work, such as layer auditors and review verifiers. Integrator skills use them when delegation is available and otherwise execute the same role instructions inline. |
-| `scaffold-spec/` | Runtime spec-format definitions used by `new-spec-*`, `verify-spec`, and `scaffold-*` skills. Updating these files changes the shared format without duplicating it into skills. |
+| `config.toml` | sandbox ポリシー、承認ポリシー、有効な機能を記録した Codex の運用方針です。Codex はこれを自動読み込みしないため、`-c`、`--profile`、または `~/.codex/config.toml` で適用します。 |
+| `skills/<name>/` | 再利用可能なワークフローです。各スキルは英語正典の `SKILL.md` を持ち、`agents/openai.yaml` は Codex の UI メタデータを提供します。一部のスキルは `scripts/` や `prompts/` を同梱します。 |
+| `agents/` | 層別監査やレビュー検証のような、読み取り専用の並列作業の役割定義です。統合スキルは委譲可能な場合にこれらを使い、そうでない場合は同じ役割の指示をインラインで実行します。 |
+| `hooks.json` | プロジェクトのフックです。doc-router フックは `apply_patch` の対象パスを共通ルータへ渡し、それを統べる文書を名指させます。 |
+| `scaffold-spec/` | `new-spec-*`、`verify-spec`、`scaffold-*` スキルが実行時に読む spec 形式定義です。ここを更新すると、形式をスキルに重複させず共有形式を変更できます。 |
 
-## First-time setup
+## 初回セットアップ
 
-Install and authenticate personal tools outside this repository. Do not commit credentials, tokens,
-or user-specific MCP settings here.
+個人用ツールのインストールと認証は、このリポジトリ外で行います。認証情報、トークン、利用者固有の MCP 設定をここへ commit しません。
 
 ```bash
 codex login
-gh auth login       # required by GitHub-aware skills
-mise install        # installs the repository-pinned toolchain
+gh auth login       # GitHub を使うスキルで必要
+mise install        # リポジトリで固定したツールチェーンを導入
 ```
 
-Docker is required for workflows that run the repository's containerized tools or database. Follow
-the repository root documentation and `AGENTS.md` for project verification commands.
+コンテナ化したツールやデータベースを使うワークフローには Docker が必要です。プロジェクトの検証コマンドは、リポジトリルートのドキュメントと `AGENTS.md` に従います。
 
-MCP servers, personal model preferences, and account-specific plugins belong in the user's Codex
-configuration. Add a project-level integration only when every trusted clone needs it and its setup
-contains no secret or machine-specific value.
+MCP サーバー、個人のモデル設定、アカウント固有の plugin は、利用者の Codex 設定に置きます。すべての信頼した clone が必要とし、かつ秘密情報やマシン固有の値を含まない場合に限り、プロジェクトレベルの integration を追加します。
 
-### Recommended external skills
+### 推奨する外部スキル
 
-This repo officially recommends `graphify` (`/graphify`); see
-[`.claude/README.md`](../.claude/README.md) for what it does. It installs into user scope
-(`~/.codex/skills/graphify/`), so a trusted clone does not carry it.
+本リポジトリは `graphify`（`/graphify`）を公式に推奨します。何をするツールかは [`.claude/README.md`](../.claude/README.md) を参照してください。user スコープ（`~/.codex/skills/graphify/`）へ入るため、信頼した clone には含まれません。
 
-One bootstrap covers both Codex and Claude Code, and reads the pinned version from `python/graphify.in`:
+Codex と Claude Code の両方を 1 つの bootstrap で導入し、バージョンは `mise.toml` の pin を読みます:
 
 ```bash
 bash .claude/scripts/bootstrap-external-skills.sh
 ```
 
-The script lives under `.claude/` only because that is where this repo keeps agent-tooling scripts;
-it installs for every supported assistant. Operational notes — what the graph excludes, which
-commands stay local versus call an LLM API, and the uninstall caveat — are in
-[`.claude/README.md`](../.claude/README.md); the version-bump procedure is in
-[`docs/design/security.md`](../docs/design/security.md).
+スクリプトが `.claude/` にあるのは、本リポジトリがエージェント用スクリプトをそこへ置いているだけの理由で、対象は全アシスタントです。運用上の注意（グラフの除外対象、ローカル完結のコマンドと LLM API を呼ぶコマンドの区別、uninstall の消し残り）は [`.claude/README.md`](../.claude/README.md) に、バージョン昇格の手続きは [`docs/design/security.md`](../docs/design/security.md) にあります。
 
-## Conventions
+## 規約
 
-- **English is canonical.** Skill and configuration bodies are written in English. User-visible
-  runtime output follows `AGENTS.md` and is Japanese by default.
-- **Use `$manage-skill` to author or revise a repository skill.** Keep the skill concise and place
-  reusable deterministic work in bundled scripts rather than duplicating it in prompts.
-- **Keep agent roles narrow and read-only.** The integrating skill owns user confirmation and any
-  writes, so delegated work can safely run in parallel.
-- **Skills and agent roles correspond one-to-one with `.claude/`, and `make md-skill-lint` enforces
-  it.** Only existence is checked — bodies are semantic ports, not copies. Registering a
-  deliberately one-sided skill is described in [`scripts/README.md`](../scripts/README.md)
-  (Skill Lint).
-- **Discover the available workflow set with `$tool-map`.** It inventories repository-local skills,
-  agent roles, and their cross-references.
-- **Do not put personal configuration here.** Use `~/.codex/` for model preferences, credentials,
-  personal MCP servers, and other machine-specific defaults.
+- **英語が正典です。** スキルと設定の本文は英語で記述します。実行時にユーザーへ見せる出力は、`AGENTS.md` に従い既定で日本語です。
+- **リポジトリのスキル作成・更新には `$manage-skill` を使います。** スキルは簡潔に保ち、決定的で再利用する処理は prompt に重複させず同梱スクリプトへ置きます。
+- **エージェントの役割は狭く、読み取り専用に保ちます。** 統合スキルがユーザー承認と書き込みを担当するため、委譲作業を安全に並列実行できます。
+- **スキルとエージェント役割は `.claude/` と 1:1 に対応し、`make md-skill-lint` がそれを強制します。** 検査するのは存在だけです（本文はコピーではなく意味ポートのため）。意図的に片側だけへ置くスキルの登録手順は [`scripts/README.md`](../scripts/README.md)（Skill Lint 節）にあります。
+- **利用可能なワークフローの確認には `$tool-map` を使います。** リポジトリローカルのスキル、エージェント役割、相互参照を一覧化します。
+- **個人設定をここへ置きません。** モデル設定、認証情報、個人用 MCP サーバー、その他のマシン固有の既定値は `~/.codex/` を使います。

@@ -5,67 +5,50 @@ deciders: [maintainers]
 tags: [worker, async, adapter]
 ---
 
-# ADR-0050: Broker-agnostic pull-ack worker scaffold
+# ADR-0050: ブローカー非依存のプル・アック型ワーカースキャフォールド
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Queue messages need to reach the same Usecase layer as HTTP requests, as **another driving
-adapter** (message-in) on par with the HTTP handler, without inventing a new architectural
-layer and without binding the engine to any specific broker.
+キューメッセージは、新たなアーキテクチャレイヤーを導入せず、かつエンジンを特定のブローカーに縛ることなく、HTTP ハンドラーと対等な**もう一つのドライビングアダプター**（メッセージ入力）として、HTTP リクエストと同じユースケースレイヤーに到達できなければならない。
 
-## Decision
+## 決定
 
-Provide a **broker-agnostic, pull-ack worker scaffold**:
+**ブローカー非依存のプル・アック型ワーカースキャフォールド**を提供する:
 
-- The engine (`internal/controller/worker`) depends only on a minimal seam
-  (`Consumer` / `Handler` / `FailureHandler`) defined in `internal/usecase/boundary/worker`,
-  and is **completed against an in-memory fake** — every engine invariant is tested without a
-  real broker.
-- The seam is **scoped to the pull-ack class**, designed first against AWS SQS and GCP
-  Pub/Sub (pull). Other pull-ack platforms fit by writing an adapter; only fundamentally
-  different models require changing the interface.
-- Permanent failures route through a `FailureHandler` (dead-letter) seam; broker-specific
-  redrive (e.g. SQS `maxReceiveCount` → DLQ) is IaC configuration, not application code.
-- Backpressure is a 3-state **circuit breaker on the intake side** (stop pulling on
-  continued downstream failure, self-heal via half-open), distinct from per-message `Nack`
-  delay and from `Fatal` (which stops the engine).
+- エンジン（`internal/controller/worker`）は `internal/usecase/boundary/worker` で定義された最小限のシーム（`Consumer` / `Handler` / `FailureHandler`）のみに依存し、**インメモリフェイクに対して完結する** — すべてのエンジン不変条件は実際のブローカーなしにテストできる。
+- シームは**プル・アック型クラスにスコープを絞り**、AWS SQS と GCP Pub/Sub（プル型）を先行設計対象とする。他のプル・アック型プラットフォームはアダプターを書くことで適合できる。根本的に異なるモデルだけがインターフェースの変更を必要とする。
+- 永続的な失敗は `FailureHandler`（デッドレター）シームに経路付けされる。ブローカー固有の再ドライブ（例: SQS の `maxReceiveCount` → DLQ）は IaC 設定であり、アプリケーションコードではない。
+- バックプレッシャーはインテーク側の 3 状態**サーキットブレーカー**（継続的な下流障害時に引き取りを停止し、ハーフオープンで自己回復）であり、メッセージ単位の `Nack` 遅延や `Fatal`（エンジンを停止する）とは区別される。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- The same Usecase / domain code is reachable from HTTP and from queues without duplication.
-- Broker independence: switching or adding a pull-ack broker is an adapter change; the
-  engine and its tests do not change.
-- A fake-first engine keeps the behavioral contract (ack discipline, ordering, drain,
-  backpressure) verifiable in fast unit tests.
+- 同じユースケース / ドメインコードが HTTP とキューの双方から、重複なく到達可能になる。
+- ブローカー独立性: プル・アック型ブローカーの切り替えや追加はアダプター変更で済む。エンジンとそのテストは変更しない。
+- フェイクファーストのエンジンにより、振る舞い契約（アック規律・順序・ドレイン・バックプレッシャー）を高速なユニットテストで検証できる。
 
-### Negative Consequences
+### ネガティブな影響
 
-- The port is deliberately narrow (pull-ack only); push and streaming-log models do not fit
-  and are excluded (recorded separately as ADR-0051, materialized in Phase 4).
-- Each new broker requires an adapter implementing the seam.
+- ポートは意図的に狭い（プル・アック型のみ）。プッシュ型とストリーミングログモデルは適合しないため除外されている（ADR-0051 として別途記録、Phase 4 で具体化）。
+- 新しいブローカーごとに、シームを実装するアダプターが必要になる。
 
-## Alternatives Considered
+## 検討した代替案
 
-### A general multi-broker abstraction (incl. push / streaming)
+### プッシュ/ストリーミングを含む汎用マルチブローカー抽象
 
-Rejected: a lowest-common-denominator port would leak or weaken guarantees; Kafka-style
-consumers (offset commit / consumer-group / partition) belong to a separate engine, not an
-extension of this port.
+却下: 最大公約数的なポートは保証を漏洩させるか弱める。Kafka スタイルのコンシューマー（オフセットコミット / コンシューマーグループ / パーティション）は、このポートの拡張ではなく、独立したエンジンに属する。
 
-### Build tags for dependency isolation of adapters
+### アダプターの依存性分離のためのビルドタグ
 
-Rejected: no precedent in this repo, and with a single binary, module separation is
-insufficient. Not importing an adapter from `cmd` achieves isolation without tags (see
-[ADR-0052](0052-sqs-adapter-opt-in.md)).
+却下: このリポジトリに前例がなく、シングルバイナリではモジュール分離が不十分。`cmd` からアダプターをインポートしないことで、タグなしで分離が達成できる（[ADR-0052](0052-sqs-adapter-opt-in.md) を参照）。
 
-## Notes
+## 補足
 
-- Push / streaming exclusion: ADR-0051 (Phase 4). SQS adapter opt-in isolation: [ADR-0052](0052-sqs-adapter-opt-in.md).
-- Design reference: `docs/design/worker.md`.
-- Migrated from the former `docs/decisions.md`.
+- プッシュ/ストリーミング除外: ADR-0051（Phase 4）。SQS アダプターのオプトイン分離: [ADR-0052](0052-sqs-adapter-opt-in.md)。
+- 設計参考: `docs/design/worker.md`。
+- かつての `docs/decisions.md` から移行。

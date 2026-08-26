@@ -1,136 +1,77 @@
 # Closed Loop
 
-This document explains how the AI-feedback closed loop actually runs, day to day. It is an
-interpretation of [ADR-0008 (agent-environment-alignment)](../adr/0008-agent-environment-alignment.md)
-— which decides that the agent environment is improved in a loop rather than only added to — and of
-[ADR-0010 (development-window-as-feedback-unit)](../adr/0010-development-window-as-feedback-unit.md),
-which decides what the loop counts as one of. It is not a second source of rules.
+この文書は、AI フィードバックの閉じたループが日々どう動くのかを説明する。[ADR-0008 (agent-environment-alignment)](../adr/0008-agent-environment-alignment.md)（エージェント環境は足すだけでなくループで改善すると決めたもの）と、[ADR-0010 (development-window-as-feedback-unit)](../adr/0010-development-window-as-feedback-unit.md)（ループが何を 1 つと数えるかを決めたもの）の解釈であり、規則の第二の正本ではない。
 
 ```mermaid
 flowchart TB
-    A["Window opens · SessionStart"] --> B["Work · marks and transcript accumulate locally"]
-    B --> C["Window closes · /clear · manual compact · SessionEnd"]
-    C --> D["Send to the window's feedback issue"]
-    D --> E["Weekly · deterministic tally, then semantic classification"]
-    E --> F["Retro · a human decides what to absorb"]
-    F --> G["Improvement lands, with an evaluation date"]
-    G --> H["After 14 days · re-measure"]
+    A["窓が開く · SessionStart"] --> B["作業 · マーカーとトランスクリプトがローカルに溜まる"]
+    B --> C["窓が閉じる · /clear · 手動 compact · SessionEnd"]
+    C --> D["窓の feedback issue へ送出"]
+    D --> E["週次 · 決定論的な集計 → 意味の分類"]
+    E --> F["レトロ · 人間が何を取り込むか決める"]
+    F --> G["改善が入る · 評価予定日つき"]
+    G --> H["14 日後 · 測り直す"]
     H --> I{"Improved · Unchanged · Regressed · Insufficient"}
     I --> A
 ```
 
-## Where each thing lives
+## 何がどこにあるか
 
-| Concern | Home | Why there |
+| 関心 | 置き場 | 理由 |
 | --- | --- | --- |
-| Configuration — usage classes, opportunity predicates, which comment authors are machines | `.agents/closed-loop/` | Committed and reviewed like any other declaration |
-| The branch-to-work-item index | `.agents/private/` (ignored) | Machine-local cache. Regenerable, so losing it costs nothing |
-| A window's marks and buffered events | `tmp/closed-loop/` (ignored) | Per-run, per-checkout. [ADR-0009](../adr/0009-long-running-agent-state.md) puts it there |
-| The findings themselves | The issue tracker | Editable and deletable without a git operation, and visible to a colleague picking the work up |
+| 設定 — Usage Class、Opportunity 述語、どのコメント投稿者が機械か | `.agents/closed-loop/` | 他の宣言と同じくコミットされレビューされる |
+| branch → work item の索引 | `.agents/private/`（ignored） | マシンローカルなキャッシュ。再生成できるので失っても損しない |
+| 窓のマーカーとバッファされたイベント | `tmp/closed-loop/`（ignored） | per-run・per-checkout。[ADR-0009](../adr/0009-long-running-agent-state.md) がそこと定める |
+| 所見そのもの | issue tracker | git 操作なしで編集・削除でき、作業を引き継ぐ同僚から見える |
 
-Nothing in the repository is the source of truth for a finding. That is deliberate: a store whose
-upkeep costs a commit is a store that stops being kept up, and the loop corrects and retires
-findings constantly.
+リポジトリの中に所見の正本は無い。これは意図的である。維持にコミットを要する保管場所は維持されなくなる場所であり、ループは所見を絶えず訂正し退役させるからである。
 
-## What is observed, and by whom
+## 何を、誰が観測するか
 
-Two layers, with different strengths, and the loop needs both.
+強みの異なる 2 層があり、ループは両方を必要とする。
 
-**Marks carry meaning.** A workflow stamps the moment it crosses a phase boundary, because that
-boundary exists nowhere else — a transcript records every turn without knowing which phase the turn
-belonged to. Marks are shell, so they behave identically under every assistant. Their weakness is
-coverage: a mark only exists if something wrote it.
+**マーカーは意味を運ぶ。**ワークフローはフェーズ境界を跨ぐ瞬間を打刻する。その境界は他のどこにも存在しないからである — トランスクリプトは全ターンを記録するが、そのターンがどのフェーズに属していたかを知らない。マーカーはシェルなので、どのアシスタントの下でも同じに振る舞う。弱点は網羅性で、誰かが書かなければマーカーは存在しない。
 
-**The transcript carries completeness.** Every tool call, every turn and its duration, every error
-and interruption, recorded whether or not anyone thought to record it. Its weakness is meaning: it
-cannot say what a turn was *for*.
+**トランスクリプトは網羅を運ぶ。**全ツール呼出、全ターンとその所要時間、全エラーと中断が、誰かが記録しようと思ったかに関わらず記録される。弱点は意味で、そのターンが何の*ため*だったかを言えない。
 
-So marks are primary and the transcript is the fallback. Where a mark is missing, the value is
-derived from the transcript and labelled as derived — an implementation start recovered from the
-first edit is worth having, and worth knowing it was recovered.
+ゆえにマーカーが第一、トランスクリプトが fallback である。マーカーが欠けている箇所は値をトランスクリプトから導出し、導出値であることを併せ持たせる — 最初の編集から復元した実装開始時刻は持つ価値があり、それが復元値だと分かっていることにも価値がある。
 
-The moments themselves and the reasoning for each are in `.agents/closed-loop/marks.sh`, which is
-where they belong: the script is what a later reader will open when they wonder why a mark exists.
+瞬間そのものと各マーカーの根拠は `.agents/closed-loop/marks.sh` にある。そこが本来の場所である。後の読み手が「なぜこのマーカーがあるのか」と思ったとき開くのはそのスクリプトだからである。
 
-## Deterministic first, model second
+## 決定論が先、モデルが後
 
-Most of what the loop reports needs no model at all. Skill invocations, tool failures,
-interruptions, turn durations, phase intervals, review and merge latency — all of it is counted,
-not interpreted. That layer runs offline, costs nothing, and its numbers are auditable.
+ループが報告することの大半にモデルは要らない。スキル呼出、ツールの失敗、中断、ターン所要時間、フェーズ区間、レビューとマージの待ち時間 — いずれも数えるのであって解釈するのではない。この層はオフラインで動き、費用はかからず、その数字は監査できる。
 
-A model is needed for exactly one thing: saying what someone found hard. It is given a narrowed
-input rather than the whole corpus — the deterministic pass selects the turns worth reading before
-a model sees any of them. Both halves matter: the narrowing is what makes the reading affordable,
-and the reading is what makes the narrowing worth doing.
+モデルが要るのはただ 1 つ、「誰が何に困ったか」を言うことである。渡すのは corpus 全体ではなく絞り込まれた入力で、決定論的なパスが、モデルが何かを見る前に読む価値のあるターンを選別する。両方が要る。絞り込みが読解を賄えるものにし、読解が絞り込みを行う価値を生む。
 
-**That reading happens on the machine that produced the transcript**, not on a runner, and the
-reason is where the transcript lives. It sits under the developer's home, which no runner can
-reach, so putting the reading in CI would mean publishing the selected turns verbatim to a public
-issue first — creating an outbound path for anything a person pasted into a session
-([security.md](security.md)). Reading locally publishes only the resulting prose. It also gives the
-model more to work with, since the amount that can be shown to a local model is bounded by prompt
-length rather than by what one is willing to make public.
+**その読解は、トランスクリプトを生んだマシンの上で行う。** ランナー上ではない。理由はトランスクリプトの置き場所にある。利用者のホーム配下にあってランナーからは届かないので、読解を CI へ置くと、選別したターンを逐語で public な Issue へ先に投稿することになる — 人がセッションに貼ったものに対する外向きの経路を作ることになる（[security.md](security.md)）。手元で読めば、公開するのは読解結果の散文だけで済む。材料も増える。手元のモデルに見せられる量を縛るのはプロンプト長であって、「どこまで公開してよいか」ではないからである。
 
-CI keeps the fallback, because a machine may have no model available at all. A window that could
-not be read locally is labelled as such and carries its excerpts, and only those windows are read
-by a runner. The cost of that route is the publication above, which is why it is the exception.
+CI には縮退経路を残す。マシンによってはモデルがまったく使えないことがあるためである。手元で読めなかった窓はその旨のラベルが付き、抜粋を伴う。ランナーが読むのはその窓だけである。この経路の代償が上記の公開であり、だからこそ例外に置いてある。
 
-Findings record which half produced them. A count and a reading are not equally strong evidence,
-and a report that blurs them cannot be argued with.
+所見はどちらの半分が生んだかを記録する。数えた値と読解した値は同じ強さの根拠ではなく、両者を混ぜた報告には反論できない。
 
-## Issue and pull request comments are part of the input
+## issue と PR のコメントも入力である
 
-A reviewer's remark is where a problem is finally stated in words, and it appears in no session
-log. The loop therefore reads the comments on the issues and pull requests a window touched — and
-filters them, because on this repository most comments are scanner output rather than remarks. The
-declared list of machine authors is in `.agents/closed-loop/comment-authors.yaml`; an author not on
-it is treated as human, since admitting noise degrades a report while dropping a person's remark
-loses the finding entirely.
+レビュアーの指摘は、問題がついに言葉になる場所であり、セッションログには一切現れない。だからループは窓が触れた issue と PR のコメントを読む。そして絞り込む。このリポジトリではコメントの大半が指摘ではなくスキャナの出力だからである。機械の投稿者の宣言リストは `.agents/closed-loop/comment-authors.yaml` にあり、そこに無い投稿者は人間として扱う。ノイズを入れると報告の質が落ちるだけだが、人の指摘を落とすと所見そのものが失われるからである。
 
-Reading them also supplies the half of lead time that implementation speed cannot explain. A pull
-request that opens quickly and merges slowly consumed the same calendar as one that opened slowly,
-and only one of those is fixed by working faster.
+コメントを読むことは、実装速度では説明できないリードタイムの半分も供給する。早く開いて遅くマージされた PR は、遅く開いた PR と同じだけカレンダーを消費しており、速く働いて直るのは片方だけである。
 
-## Skills are judged against their class
+## スキルはクラスに照らして判断する
 
-A skill that nobody called is not thereby useless. Most of this repository's skills are
-situational or lifecycle — they wait for an occasion, and an occasion that did not arise in a
-given week says nothing about the skill. Judging on call count alone would retire the entire
-scaffolding suite the first month without a new endpoint.
+呼ばれなかったスキルが、それゆえ無用だということにはならない。このリポジトリのスキルの大半は situational か lifecycle であり、機会を待っている。ある週に機会が来なかったことは、そのスキルについて何も語らない。呼出回数だけで判断すれば、新しい endpoint が無かった最初の 1 か月で scaffold 一式が退役する。
 
-So each skill declares a class and, where one can be written, a predicate that says when a window
-*could* have used it. Coverage — used over could-have-used — is the measure that would mean
-something, and it exists only for the skills whose predicate could be written honestly. There is
-no general way to observe an opportunity; the ones that cannot be expressed are marked as such and
-judged on something else. The declarations are in `.agents/closed-loop/skill-meta.yaml`.
+そこで各スキルはクラスを宣言し、書ける場合は「その窓がそれを使えたはずか」を述べる述語を持つ。使った数 / 使えたはずの数 ＝ カバレッジこそが意味を持つ尺度であり、述語を正直に書けたスキルについてのみ存在する。機会を観測する汎用の方法は無い。表現できないものはそう印を付け、別のもので判断する。宣言は `.agents/closed-loop/skill-meta.yaml` にある。
 
-Today those predicates are prose and no evaluator reads them, so what the loop actually reports is
-the call count and which skills went uncalled — with the warning that a count alone is not grounds
-to retire anything. Reading the comments on issues and pull requests is in the same state: the
-machine-author list exists, and the aggregation that would consult it does not yet fetch comments.
-Both are named here because the gap is worth seeing; neither is named as if it were running.
+現時点でこれらの述語は散文であり、読んで評価する機構は無い。ゆえにループが実際に報告するのは呼出回数と、呼ばれなかったスキルの一覧であって、そこには「回数だけでは退役の根拠にならない」という但し書きが付く。issue と PR のコメントを読む部分も同じ状態にある。機械投稿者のリストは存在するが、それを参照するはずの集計はまだコメントを取得していない。どちらもここに書いてあるのは、欠けていること自体が見えるべきだからであって、動いているものとして書いてあるのではない。
 
-## What the loop may not do
+## ループがしてはならないこと
 
-It surfaces; it does not decide. Which improvement to absorb is a human's call, and so is whether
-a landed improvement that did not work should be simplified, reverted, or kept anyway. The AI-tool
-configuration directories stay outside an agent's default scope and are reached only through the
-skill that owns them.
+ループは surface するのであって決定しない。どの改善を取り込むかは人間の判断であり、効かなかった改善を簡素化するか撤回するかそれでも残すかも同じである。AI ツール設定ディレクトリはエージェントの既定スコープの外に留まり、それを所有するスキル経由でのみ到達できる。
 
-The re-measurement after a change is the step that keeps this from becoming an accumulator. Skipped,
-the loop degrades into the thing [ADR-0008](../adr/0008-agent-environment-alignment.md) adopted it
-to prevent: an environment that only grows.
+変更後に測り直す段は、これが蓄積装置に堕ちるのを防ぐ唯一の仕掛けである。それを飛ばせば、ループは [ADR-0008](../adr/0008-agent-environment-alignment.md) が防ぐために採用したもの — 増える一方の環境 — そのものに退化する。
 
-**Closing a feedback issue is what marks an improvement as landed.** Nothing else is recorded,
-because nothing else would be more truthful: automatic closing does not fire on this repository's
-release branches, so closing one is always a person saying "this is dealt with". A separate landing
-date would be a second record of that same declaration, kept up by hand, and the copy nobody
-re-reads is the one that goes stale. Fourteen days later the weekly reports whether the same
-classification came back — and reports only that. Whether the improvement worked, and whether to
-keep, simplify or revert it, stays with the people in the retrospective.
+**改善が着地したことの印は、Feedback Issue のクローズである。** それ以外を記録しないのは、それ以外に正直な記録が無いからである。このリポジトリのリリースブランチでは自動クローズが発火しないので、Feedback Issue のクローズは常に人が「これは片付いた」と宣言する操作になる。着地日を別に持つのは、同じ宣言の写しを手で保守することであり、誰も読み返さない側の写しから腐る。14 日後、週次は同じ分類が戻ってきたかを報告する。報告するのはそれだけである。効いたかどうか、保持するか簡素化するか撤回するかは、レトロの人が決める。
 
-## Keeping this interpretation current
+## 解釈を最新に保つ
 
-This is a describing document. Update it when the relationship it describes changes, not when an
-implementation detail moves. Governing documents and accepted ADRs are not silently corrected from
-implementation drift; raise conflicts as [docs/rules.md](../rules.md) requires.
+これは describing 文書である。説明している関係が変わったときに更新するのであって、実装の細部が動いたときではない。governing 文書と accepted な ADR は実装ドリフトから黙って修正しない。衝突は [docs/rules.md](../rules.md) が定めるとおり提起する。

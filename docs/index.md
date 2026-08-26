@@ -1,48 +1,48 @@
-# Documentation
+# ドキュメント
 
-This directory contains documentation related to the architecture and development of this project.
+このディレクトリには、このプロジェクトのアーキテクチャおよび開発に関するドキュメントが含まれています。
 
-These documents explain the **design philosophy, architectural rules, and development workflows** adopted in this project.
+これらのドキュメントでは、このプロジェクトで採用されている **設計思想、アーキテクチャルール、開発フロー** を説明しています。
 
-The documentation is intended for both **human developers** and **AI agents**. AI-assisted
-development is this project's standard path, so these documents are written to be read by an
-agent as well as by a person; see [ADR-0007 (agents-md-operational-contract)](adr/0007-agents-md-operational-contract.md).
+ドキュメントは **人間の開発者** と **AIエージェント** の両方を対象としています。AI 支援開発は
+本プロジェクトの標準経路であるため、これらの文書は人間だけでなくエージェントが読むことも前提に
+書かれています。[ADR-0007 (agents-md-operational-contract)](adr/0007-agents-md-operational-contract.md) を参照してください。
 
-## Document List
+## ドキュメント一覧
 
-### Root documents
+### ルート直下のドキュメント
 
-|Document|Description|
+|ドキュメント|説明|
 |--------|--------|
-|[architecture.md](architecture.md)|Overall system architecture and layer responsibilities|
-|[rules.md](rules.md)|Architectural rules that must not be violated|
-|[development-flow.md](development-flow.md)|Standard development workflow|
-|[testing-conventions.md](testing-conventions.md)|Test structure, naming, assertions, and coverage exceptions|
-|[decisions.md](decisions.md)|Redirect stub — the decision log now lives in `adr/`|
+|[architecture.md](architecture.md)|システム全体のアーキテクチャとレイヤ責務|
+|[rules.md](rules.md)|破ってはいけないアーキテクチャルール|
+|[development-flow.md](development-flow.md)|標準的な開発フロー|
+|[testing-conventions.md](testing-conventions.md)|テストの構造・命名・アサーション・カバレッジ例外|
+|[decisions.md](decisions.md)|リダイレクトのみ — 決定ログは `adr/` へ移動済み|
 
-### Sections
+### セクション
 
-|Section|Description|
+|セクション|説明|
 |--------|--------|
-|[adr/](adr/README.md)|Architecture Decision Records — one record per decision, with the technology rationale|
-|[design/](design/README.md)|Subsystem design references — rest / worker / job / outbox / idempotency / observability / auth / security / context-map / agent-environment|
-|[get-started/](get-started/setup-repository.md)|Setup performed once before development starts, and the troubleshooting index for when it does not go smoothly|
-|[tutorial/](tutorial/build-user-feature.md)|Worked example — one feature built end to end <!-- sample-api:line -->|
-|[spec/](spec/glossary.md)|Feature specifications and the business-vocabulary glossary|
-|[project/](project/scope.md)|Scope, out-of-scope, maintenance policy, versioning, direction|
-|[plan/](plan/distributed-ready-architecture.md)|Requirements for a release line that has not been built yet <!-- boilerplate-only:line -->|
-|[reference/](reference/dependencies.md)|Living inventories that track the code, such as the direct dependency list|
-|[maintenance/](maintenance/docs-structure.md)|Operational runbooks — documentation structure, local environment, DB worktree pool, upgrades|
-|[deployment/](deployment/github-page.md)|Deployment procedures|
+|[adr/](adr/README.md)|アーキテクチャ決定記録（ADR）— 1 決定 1 レコード。技術選定の根拠|
+|[design/](design/README.md)|サブシステム設計リファレンス — rest / worker / job / outbox / idempotency / observability / auth / security / context-map / agent-environment|
+|[get-started/](get-started/setup-repository.md)|開発を始める前に一度だけ行うセットアップと、うまくいかないときのトラブルシューティング索引|
+|[tutorial/](tutorial/build-user-feature.md)|実例 — 1 つの機能を端から端まで作る <!-- sample-api:line -->|
+|[spec/](spec/glossary.md)|機能仕様と業務語彙の用語集|
+|[project/](project/scope.md)|スコープ・対象外・メンテナンス方針・バージョニング・方向性|
+|[plan/](plan/distributed-ready-architecture.md)|まだ着手していないリリース線の要件 <!-- boilerplate-only:line -->|
+|[reference/](reference/dependencies.md)|コードに追随する目録（直接依存の一覧など）|
+|[maintenance/](maintenance/docs-structure.md)|運用 runbook — ドキュメント構造・ローカル環境・DB worktree プール・アップグレード|
+|[deployment/](deployment/github-page.md)|デプロイ手順|
 
-Japanese translations live under `ja/` mirroring this structure, and the remaining
-subdirectories (`openapi/`, `godoc/`, `coverage/`, `db-schema/`, `portal/`) hold generated
-output rather than documents to read. The rules that keep this layout generatable are in
-[maintenance/docs-structure.md](maintenance/docs-structure.md).
+正本は `docs/` 直下の英語版で、このディレクトリはその構造を写した対訳です。`spec/` は日本語で書かれた
+正本なので対訳を持ちません。残る `openapi/` `godoc/` `coverage/` `db-schema/` `portal/` は読むための
+ドキュメントではなく生成物です。この構造を生成可能に保つための規則は
+[maintenance/docs-structure.md](maintenance/docs-structure.md) にあります。
 
-## Recommended Reading Order
+## 推奨読書順
 
-### New Developers
+### 新しく参加する開発者
 
 ```mermaid
 flowchart TB
@@ -53,27 +53,27 @@ flowchart TB
     %% sample-api:replace-end
 ```
 
-### Maintainers / Contributors
+### メンテナ / コントリビューター
 
 ```mermaid
 flowchart TB
     A["architecture.md"] --> B["rules.md"] --> C["development-flow.md"] --> D["design/"] --> E["adr/"]
 ```
 
-### AI Agents
+### AIエージェント
 
 ```mermaid
 flowchart TB
-    A["AGENTS.md"] --> B["rules.md"] --> C["architecture.md"] --> D["development-flow.md"] --> E["owning README"]
+    A["AGENTS.md"] --> B["rules.md"] --> C["architecture.md"] --> D["development-flow.md"] --> E["対象を所有する README"]
 ```
 
-## Key Concepts
+## 主要コンセプト
 
-This project is built on several important design principles.
+このプロジェクトは、いくつかの重要な設計原則に基づいて構築されています。
 
 ### Onion Architecture
 
-The system follows the layered structure below.
+システムは以下のレイヤ構造に従っています。
 
 ```mermaid
 flowchart LR
@@ -81,91 +81,92 @@ flowchart LR
     Infrastructure --> Domain
 ```
 
-Dependencies must always point **toward inner layers**.
+依存関係は常に **内側のレイヤへ向かう** 必要があります。
 
-### OpenAPI-first Development
+### OpenAPI-first 開発
 
-API contracts are defined using **OpenAPI**.
+API契約は **OpenAPI** によって定義されます。
 
-Implementation must always follow the contract definition.
-
-```mermaid
-flowchart TB
-    OpenAPI --> Gen["Code generation"] --> Handler["Handler implementation"] --> Usecase["Usecase implementation"]
-```
-
-### SQL-first Data Access
-
-Data access is designed around **SQL rather than ORM**.
+実装は必ず契約定義に従って行われます。
 
 ```mermaid
 flowchart TB
-    SQL --> Sqlc["sqlc"] --> Code["Type-safe Go code"]
+    OpenAPI --> Gen["コード生成"] --> Handler["Handler 実装"] --> Usecase["Usecase 実装"]
 ```
 
-### Structural Safety
+### SQL-first データアクセス
 
-This project prioritizes **structural safety over convention**.
+データアクセスは ORM ではなく **SQLを中心に設計**されています。
 
-Instead of relying on implicit rules or manual reviews, safety is enforced through:
+```mermaid
+flowchart TB
+    SQL --> Sqlc["sqlc"] --> Code["型安全なGoコード"]
+```
 
-- Layer separation
-- Code generation
-- CI checks
-- Lint rules
+### 構造的安全性（Structural Safety）
 
-## AI-assisted Development
+このプロジェクトでは **慣習よりも構造による安全性** を重視しています。
 
-**AI-assisted development is the standard path of this project**, and the documentation, skills, and
-automation here are built for it. Manual development stays available as a not-recommended
-compatibility path that is not held to the same developer experience.
+暗黙のルールや人のレビューに依存するのではなく、以下によって安全性を担保します。
 
-The application is a separate question: runtime, build, test, the domain model, the API contract, the
-database schema, and the ordinary CI checks never depend on an AI service. See
-[architecture.md](architecture.md) § *AI-assisted Development*.
+- レイヤ分離
+- コード生成
+- CIチェック
+- Lintルール
 
-Constraints are intentionally introduced to prevent architectural violations, and a deterministic
-check outranks an agent's judgment wherever one exists.
+## AI支援開発
 
-Before generating code, AI agents must refer to:
+**AI 支援開発は本プロジェクトの標準経路であり**、ここにあるドキュメント・スキル・自動化はそれを前提に
+作られています。手動開発は、同等の開発者体験を保証しない推奨されない互換経路として利用可能なまま残します。
 
-- [`AGENTS.md`](../AGENTS.md) — the operational contract: what may be touched and how to behave
+アプリケーションは別の話です。ランタイム、ビルド、テスト、ドメインモデル、API 契約、データベース
+スキーマ、通常の CI 検査が AI サービスへ依存することはありません。[architecture.md](architecture.md)
+§ *AI支援開発* を参照してください。
+
+制約はアーキテクチャ違反を防ぐために意図的に導入されており、決定論的な検査が存在する場面では
+その判定がエージェントの判断に優先します。
+
+アーキテクチャ違反を防ぐために、意図的に制約が設けられています。
+
+AIエージェントはコード生成を行う前に、必ず以下のドキュメントを参照してください。
+
+- [`AGENTS.md`](../AGENTS.md) — 何に触れてよく、どう振る舞うべきかを定める運用契約
 - [`rules.md`](rules.md)
 - [`architecture.md`](architecture.md)
-- the `README.md` nearest to the code being changed
+- 変更対象のコードに最も近い `README.md`
 
-How those instructions, the mechanical gates, and independent review fit together is described in
-[design/agent-environment.md](design/agent-environment.md).
+これらの指示・機械的ゲート・独立レビューがどう噛み合うかは
+[design/agent-environment.md](design/agent-environment.md) が説明します。
 
-## Relationship with Other Documents
+## 他ドキュメントとの関係
 
-The overall structure of the documentation is as follows:
+ドキュメントの全体構造は以下の通りです。
 
 ```mermaid
 flowchart TB
     Readme["README.md"] --> Index["docs/index.md"]
     Index --> Core["architecture.md / rules.md / development-flow.md"]
-    Index --> Adr["adr/ — why a decision was taken"]
-    Index --> Design["design/ — how a subsystem behaves"]
-    Core --> Pkg["the README owning each package"]
+    Index --> Adr["adr/ — なぜその決定を採ったか"]
+    Index --> Design["design/ — サブシステムがどう振る舞うか"]
+    Core --> Pkg["対象を所有する各 README"]
 ```
 
-`README.md` explains the project overview, while `docs/` holds the detailed design documents and
-each package `README.md` holds the contract local to that package.
+`README.md` はプロジェクトの概要を説明し、`docs/` には詳細な設計ドキュメントが、各パッケージの
+`README.md` にはそのパッケージに閉じた契約が格納されています。
 
-## Contribution Guide
+## コントリビューションガイド
 
-When making changes to this project, follow these rules:
+このプロジェクトに変更を加える場合は、以下のルールに従ってください。
 
-1. Follow the architectural rules defined in `rules.md`  
-2. Follow the development workflow described in `development-flow.md`  
-3. Maintain consistency with the structure described in `architecture.md`  
+1. `rules.md` に定義されたアーキテクチャルールを遵守する  
+2. `development-flow.md` に記載された開発フローに従う  
+3. `architecture.md` に記載された構造と整合性を保つ  
 
-If architectural changes are required, update the related documentation accordingly.
+アーキテクチャ変更が必要な場合は、関連するドキュメントも更新してください。
 
-## Philosophy of This Project
+## このプロジェクトの思想
 
-This project aims to make backend development **safe and maintainable**.
+このプロジェクトは、バックエンド開発を **安全で保守しやすいもの** にすることを目的としています。
 
-It does not enforce a single “correct” architecture,  
-but instead provides a **structured baseline** that teams can extend and adapt as needed.
+特定の「唯一の正しいアーキテクチャ」を強制するものではなく、  
+チームが必要に応じて拡張・調整できる **構造化されたベースライン** を提供します。

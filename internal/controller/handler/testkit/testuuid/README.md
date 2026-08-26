@@ -1,7 +1,7 @@
 # testuuid
 
-Generates openapi UUIDs for handler request tests.
+ハンドラのリクエストテスト用に openapi UUID を生成します。
 
-## Role
+## 役割
 
-Handler request tests need UUID values in the API's generated type, and constructing them inline pulls in conversion plumbing that obscures intent. This helper produces a ready-to-use value in one call, so request fixtures stay concise and tests do not couple to UUID-construction details.
+ハンドラのリクエストテストは API の生成型に沿った UUID 値を必要としますが、それをインラインで構築すると変換処理が混入し意図を分かりにくくします。本ヘルパーは 1 回の呼び出しですぐ使える値を生成し、リクエストのフィクスチャを簡潔に保ち、テストが UUID 構築の詳細に結合しないようにします。

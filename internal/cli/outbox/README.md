@@ -1,45 +1,45 @@
 # outbox-relay
 
-Starts the outbox relay process and provides a `replay` subcommand for recovering dead rows.
+outbox relay プロセスを起動し、dead 行を復帰させる `replay` サブコマンドを提供します。
 
-## Role
+## 役割
 
-This command implements the delivery side of the transactional outbox pattern — see [`docs/design/outbox.md`](../../../docs/design/outbox.md) for the pattern itself. The long-running relay polls the outbox and publishes pending rows, while `replay` is the operational recovery path that returns rows which exhausted their retries (`dead`) back to `pending`. It is a separate, resident entry point so the publishing loop has its own process lifecycle, and its decision logic stays a unit-testable core apart from the thin command wiring.
+このコマンドはトランザクショナル outbox パターンの「配信側」を実装します。パターン自体は [`docs/design/outbox.md`](../../../docs/design/outbox.md) を参照してください。常駐する relay は outbox を周期的に poll して pending 行を publish し、`replay` はリトライを使い切った行（`dead`）を `pending` に戻す運用上の復旧経路です。publish ループが独自のプロセスライフサイクルを持てるよう常駐型の独立したエントリポイントとし、その判定ロジックは薄いコマンド配線から切り離して単体テスト可能なコアに保っています。
 
-## Command
+## コマンド
 
 ```text
 outbox-relay
 outbox-relay replay [flags]
 ```
 
-## Flags
+## フラグ
 
-`outbox-relay` itself takes no flags.
+`outbox-relay` 本体にフラグはありません。
 
 `outbox-relay replay`:
 
-|Flag|Default|Description|
+|フラグ|デフォルト|説明|
 |---|---|---|
-|`--message-id`|*(none / all dead rows)*|Target a single `message_id`; when omitted, all `dead` rows are replayed|
+|`--message-id`|*(なし / 全 dead 行)*|対象の `message_id`。未指定の場合は全 `dead` 行が対象|
 
-## Usage
+## 使い方
 
 ```bash
-# Start the relay (runs until SIGINT / SIGTERM)
+# relay を起動（SIGINT / SIGTERM まで常駐）
 ./server outbox-relay
 
-# Replay every dead outbox row back to pending
+# 全 dead 行を pending へ戻す
 ./server outbox-relay replay
 
-# Replay only the row for a specific message_id
+# 特定の message_id の行のみ replay する
 ./server outbox-relay replay --message-id 1b4e28ba-2fa1-11d2-883f-0016d3cca427
 ```
 
-## Notes
+## 注意点
 
-- `outbox-relay` polls the outbox table periodically, publishes unsent messages, and stays resident until a termination signal arrives.
-- On shutdown, the stop context timeout (`APP_SHUTDOWN_TIMEOUT`) is measured from the moment shutdown begins, so it is not consumed by running time.
-- `replay` moves `dead` rows back to `pending` so they become eligible for re-publishing.
-- `--message-id` must be a valid UUID; an invalid value returns a parse error before any replay runs.
-- `replay` prints the number of rows it returned to `pending`.
+- `outbox-relay` は outbox テーブルを周期的に poll し、未 publish のメッセージを送信して、終了シグナルを受け取るまで常駐します。
+- シャットダウン時、停止用 context のタイムアウト（`APP_SHUTDOWN_TIMEOUT`）は停止開始時点から計測されるため、稼働時間に消費されません。
+- `replay` は `dead` 行を `pending` へ戻し、再 publish の対象に復帰させます。
+- `--message-id` は有効な UUID である必要があり、不正な値の場合は replay を実行する前にパースエラーを返します。
+- `replay` は `pending` へ戻した行数を出力します。

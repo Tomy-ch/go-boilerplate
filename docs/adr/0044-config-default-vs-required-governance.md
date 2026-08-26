@@ -5,95 +5,70 @@ deciders: [maintainers]
 tags: [config, governance]
 ---
 
-# ADR-0044: Governance: default-in-code (immutable) vs required-in-file (variable)
+# ADR-0044: ガバナンス: コードデフォルト（不変）対ファイル必須（可変）
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Config fields in `internal/config/envspec.go` are backed by environment variables. For
-each field, a decision must be made about whether the value is:
+`internal/config/envspec.go` の設定フィールドは環境変数によってバックアップされる。各フィールドに対して、その値が以下のどちらであるかを決定する必要がある。
 
-- **a universal framework constant** — a sensible default that is not expected to be
-  changed (e.g., a database driver name, a timeout that works for most workloads), or
-- **a project-specific or per-environment value** — something that differs between
-  projects, environments, or deployment targets and must therefore be set explicitly
-  (e.g., database host, allowed CORS origins, authentication credentials).
+- **ユニバーサルなフレームワーク定数** — 変更されることが想定されない適切なデフォルト値（例: データベースドライバー名、ほとんどのワークロードで機能するタイムアウト）。
+- **プロジェクト固有またはパーエンバイロメント値** — プロジェクト間・環境間・デプロイターゲット間で異なるため、明示的に設定しなければならない値（例: データベースホスト、許可された CORS オリジン、認証クレデンシャル）。
 
-Without a documented rule, contributors make inconsistent choices: some values that
-should be required are given defaults and silently pick up wrong values in production;
-some values that should be fixed constants are moved to env files, creating unnecessary
-operator burden.
+文書化されたルールがなければ、貢献者は一貫性のない選択をする。必須にすべき値にデフォルトが与えられて本番で誤った値が暗黙的に使われたり、固定定数にすべき値が env ファイルに移されてオペレーターに不要な負担を課したりする。
 
-## Decision
+## 決定
 
-Two distinct categories govern how a config value is supplied:
+設定値がどのように提供されるかについて、2 つの異なるカテゴリーを規定する。
 
-**Code default (immutable):** Fields carrying a `envDefault` tag in `envspec.go` are
-intentionally omitted from `.env` files. They are framework-level constants that are
-expected to stay unchanged. The default applies automatically; an explicit `.env` entry is
-added only when a deployment genuinely needs to override it. These are marked **Code default `<value>`** in `env/README.md`.
+**コードデフォルト（不変）:** `envspec.go` に `envDefault` タグを持つフィールドは、意図的に `.env` ファイルから除外される。これらは変更されずに保たれることが期待されるフレームワークレベルの定数である。デフォルトは自動的に適用される。デプロイが本当にオーバーライドする必要がある場合にのみ、明示的な `.env` エントリを追加する。`env/README.md` では **Code default `<value>`** としてマークされる。
 
-**Required in file (variable):** Fields marked `required` in `envspec.go` have no
-embedded default. Every such variable must be present in `env/.env` (the local default)
-and in every per-environment file (`env/.env.<env>`). Missing a required field causes
-`env.ParseAs` to fail, aborting startup (consistent with the fail-fast principle in
-[ADR-0045](0045-immutable-fail-fast-config.md)).
+**ファイル必須（可変）:** `envspec.go` で `required` とマークされたフィールドには埋め込みデフォルトがない。このような変数はすべて `env/.env`（ローカルデフォルト）とすべてのパーエンバイロメントファイル（`env/.env.<env>`）に存在しなければならない。必須フィールドが欠けている場合、`env.ParseAs` は失敗して起動を中断する（[ADR-0045](0045-immutable-fail-fast-config.md) のフェイルファスト原則に沿う）。
 
-The rule for choosing the category when adding a new variable (from `env/README.md`):
+新しい変数を追加する際にカテゴリーを選択するルール（`env/README.md` より）:
 
-- **Project-specific or per-environment value** → mark `required`; add to `env/.env` and
-  every per-environment file.
-- **Universal framework default** → use `envDefault`; omit from `.env` files; mark as
-  **Code default** in the table.
+- **プロジェクト固有またはパーエンバイロメント値** → `required` としてマーク。`env/.env` およびすべてのパーエンバイロメントファイルに追加する。
+- **ユニバーサルなフレームワークデフォルト** → `envDefault` を使用。`.env` ファイルから除外。テーブルでは **Code default** としてマークする。
 
-Examples from `envspec.go`:
+`envspec.go` からの例:
 
 ```go
-// required: differs per project / environment
+// required: プロジェクト / 環境によって異なる
 Env  string `env:"ENV,required"`
 Host string `env:"HOST,required"`
 
-// code default: universal constant, rarely overridden
+// code default: ユニバーサル定数、ほとんど変更しない
 ShutdownTimeout time.Duration `env:"SHUTDOWN_TIMEOUT" envDefault:"45s"`
 Driver          string        `env:"DRIVER"           envDefault:"pgx"`
 ```
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- The intent of each config field is explicit and machine-checkable: `required` prevents
-  startup with a missing value; `envDefault` prevents `.env` clutter for stable
-  constants.
-- Operators know from the `env/README.md` table exactly which variables they must set
-  and which they can ignore.
+- 各設定フィールドの意図が明示的かつ機械的にチェック可能である。`required` は値が欠けている場合に起動を防ぎ、`envDefault` は安定した定数に対して `.env` の肥大化を防ぐ。
+- オペレーターは `env/README.md` のテーブルから、設定が必須の変数とそうでない変数を正確に把握できる。
 
-### Negative Consequences
+### ネガティブな影響
 
-- The category choice is a judgment call for each field; borderline cases (a value that
-  most projects keep the same but some override) require deliberate classification.
-- Changing a field from `envDefault` to `required` (or vice versa) is a breaking change
-  for any project that relied on the old behavior.
+- カテゴリーの選択は各フィールドに対する判断であり、ボーダーラインのケース（ほとんどのプロジェクトでは同じだが一部でオーバーライドする値）は意図的な分類が必要になる。
+- フィールドを `envDefault` から `required`（またはその逆）に変更することは、古い動作に依存していたプロジェクトにとって破壊的な変更となる。
 
-## Alternatives Considered
+## 検討した代替案
 
-### All values required
+### すべての値を必須にする
 
-Explicit for every deployment, but drowns operators in variables that never change
-across projects. Rejected.
+あらゆるデプロイで明示的になるが、プロジェクト間で変わらない変数でオペレーターを圧倒する。却下。
 
-### All values have defaults
+### すべての値にデフォルトを設定する
 
-No required fields; the application can always start. Rejected: production misconfiguration
-(wrong host, missing credentials) would produce a running but broken service rather than
-a startup failure.
+必須フィールドなし。アプリケーションは常に起動できる。却下: 本番の設定ミス（誤ったホスト、欠けたクレデンシャル）が起動失敗ではなく、動作しているが壊れているサービスを生み出す。
 
-## Notes
+## 補足
 
-- Source: `env/README.md` (Conventions section and "Adding a New Variable" step 3),
-  `internal/config/envspec.go` (field-level tag examples).
-- Fail-fast startup behavior: [ADR-0045](0045-immutable-fail-fast-config.md).
-- Subsystem struct layout: [ADR-0043](0043-subsystem-typed-config-loaders.md).
+- 出典: `env/README.md`（Conventions セクションと "Adding a New Variable" ステップ 3）、`internal/config/envspec.go`（フィールドレベルのタグの例）。
+- フェイルファスト起動の動作: [ADR-0045](0045-immutable-fail-fast-config.md)。
+- サブシステム構造体のレイアウト: [ADR-0043](0043-subsystem-typed-config-loaders.md)。

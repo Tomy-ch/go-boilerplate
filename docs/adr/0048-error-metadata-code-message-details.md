@@ -5,121 +5,112 @@ deciders: [maintainers]
 tags: [errors, architecture, api]
 ---
 
-# ADR-0048: Protocol-neutral error metadata (code / message / details) on top of apperror
+# ADR-0048: apperror の上に載せるプロトコル中立なエラーメタ情報（code / message / details）
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## コンテキスト
 
-[ADR-0047](0047-apperror-protocol-agnostic-errors.md) established the protocol-agnostic
-error taxonomy: sentinels in `internal/apperror` classify failures, and the controller's
-error-handler middleware maps each sentinel to a fixed HTTP status with a fixed error
-`code` and `message`. This mapping is strictly 1:1 per status, so an error-raising site
-cannot communicate anything dynamic to the API client — for example, *which* fields of a
-user-update request failed validation.
+[ADR-0047](0047-apperror-protocol-agnostic-errors.md) はプロトコル非依存のエラー taxonomy を
+確立した: `internal/apperror` のセンチネルが失敗を分類し、controller のエラーハンドラ
+middleware が各センチネルを固定の HTTP ステータス・固定のエラー `code` / `message` へ
+マッピングする。このマッピングはステータスごとに厳密な 1:1 であり、エラー発生箇所から
+API クライアントへ動的な情報を伝えられない — 例えば、ユーザー更新リクエストの*どの*
+フィールドが検証に失敗したか、を伝えられない。
 
 <!-- sample-api:replace-begin -->
-The concrete need: `PUT/PATCH /v1/users/{id}` should report the invalid fields in the
+具体的なニーズ: `PUT/PATCH /v1/users/{id}` は不正なフィールドをレスポンスで指摘すべき
 <!-- sample-api:replace-with -->
-<!-- = The concrete need: an update operation should report the invalid fields in the -->
+<!-- = 具体的なニーズ: 更新操作は不正なフィールドをレスポンスで指摘すべき -->
 <!-- sample-api:replace-end -->
-response (`details: ["firstName", "email"]`) **without** exposing the reason each field
-failed (reasons remain log-only). Additionally, domain validation collected only the
-first failing field (`validateProfileFields` returned on the first error), so multiple
-simultaneous violations could not be reported together.
+（`details: ["firstName", "email"]`）だが、各フィールドが**なぜ**失敗したかは公開しない
+（理由はログ専用）。加えて、ドメインの検証は最初に失敗したフィールドしか収集していなかった
+（`validateProfileFields` は first-error return）ため、複数同時違反をまとめて報告できなかった。
 
-## Decision
+## 決定
 
-`internal/apperror` gains a **decoration** type, orthogonal to the classification
-sentinels:
+`internal/apperror` に、分類センチネルと直交する**装飾**型を追加する:
 
-- `Meta{Code, Message, Details}` — all fields optional, protocol-neutral.
-- `WithMeta(err, meta)` / `WithDetails(err, details...)` attach a `Meta` to an error
-  chain; `MetaFrom(err)` extracts the **outermost** one via `xerrors.As`.
-- The wrapper (`MetaError`) implements `Unwrap`, so `xerrors.Is` / `IsAppError` still
-  see the wrapped sentinel(s) — including every branch of a `xerrors.Join`.
+- `Meta{Code, Message, Details}` — 全フィールド任意・プロトコル中立。
+- `WithMeta(err, meta)` / `WithDetails(err, details...)` がエラーチェーンへ `Meta` を付与し、
+  `MetaFrom(err)` が `xerrors.As` で**最も外側**の 1 個を抽出する。
+- ラッパー（`MetaError`）は `Unwrap` を実装するため、`xerrors.Is` / `IsAppError` は
+  ラップされたセンチネル（`xerrors.Join` の全枝を含む）をそのまま検知する。
 
-At the edge, `NewHTTPErrorFromAppError` overlays a present `Meta` on the defaults
-resolved from the sentinel classification: a non-empty `Code` / `Message` overrides the
-status default; `Details` is used when no explicit details argument is given.
+edge では `NewHTTPErrorFromAppError` が、センチネル分類から解決した既定値の上に `Meta` を
+重ねる: 非空の `Code` / `Message` は既定値を上書きし、`Details` は明示引数が無い場合に採用する。
 
-Three constraints keep ADR-0047 intact:
+ADR-0047 を不変に保つための3つの制約:
 
-1. **`Meta` never carries an HTTP status.** The status is resolved solely from the
-   sentinel classification; to change the status, change the sentinel. Allowing a
-   status in `Meta` would re-introduce the HTTP-status-carrying error type that
-   ADR-0047 explicitly rejected.
-2. **`Message` stays under controller ownership.** The field exists for generality,
-   but domain / usecase leave it empty; user-facing wording remains centrally managed
-   in the controller catalog, so API wording changes never touch inner layers.
-3. **`Details` holds public-safe identifiers only** (e.g., invalid field names as
-   domain constants matching the API property names — `user.FieldFirstName`), never
-   reason texts or raw input values. Reasons stay in the wrapped error message
-   (`xerrors.Wrap(ErrInvalidXxx, msg)`), which is surfaced only in logs.
+1. **`Meta` は HTTP ステータスを運ばない。** ステータスはセンチネル分類のみで解決する。
+   ステータスを変えたければセンチネルを変える。`Meta` にステータスを持たせることは、
+   ADR-0047 が明示的に棄却した HTTP-status-carrying error 型の再導入になる。
+2. **`Message` の所有権は controller に残す。** フィールドは汎用性のために存在するが、
+   domain / usecase は空のままにする。利用者向け文言は controller のカタログで集中管理され、
+   API 文言の変更が内層に触れることはない。
+3. **`Details` は公開して安全な識別子のみ**（例: API プロパティ名と一致するドメイン定数
+   `user.FieldFirstName` などの不正フィールド名）を持ち、理由文や入力値そのものは決して
+   入れない。理由はラップしたエラーメッセージ（`xerrors.Wrap(ErrInvalidXxx, msg)`）に残り、
+   ログにのみ現れる。
 
-Supporting change: `user.validateProfileFields` now validates **all** profile fields
-and joins the per-field sentinel errors (`xerrors.Join`), attaching the collected field
-identifiers via `WithDetails`. Server-internal invariants (id, updatedAt, deletedAt)
-keep first-error return — they are not user-correctable input. As a
+支持する変更: `user.validateProfileFields` は**全**プロフィールフィールドを検証し、
+フィールドごとのセンチネルエラーを結合（`xerrors.Join`）した上で、収集したフィールド識別子を
+`WithDetails` で付与する。サーバ内部の不変条件（id / updatedAt / deletedAt）は
+first-error return のまま — ユーザーが修正できる入力ではないため。副次効果として
 <!-- sample-api:replace-begin -->
-side effect, `POST /v1/users` (creation) also reports invalid fields in `details`;
+`POST /v1/users`（作成）でも不正フィールドが `details` に載るようになる。これは意図された改善。
 <!-- sample-api:replace-with -->
-<!-- = side effect, the matching create operation also reports invalid fields in `details`; -->
+<!-- = 対応する作成操作でも不正フィールドが `details` に載るようになる。これは意図された改善。 -->
 <!-- sample-api:replace-end -->
-this is an intended improvement.
 
-## Consequences
+## 帰結
 
-### Positive Consequences
+### ポジティブな帰結
 
-- Error-raising sites can return dynamic, machine-readable specifics (invalid field
-  lists, feature-specific codes) without adding a sentinel or touching the edge mapping.
-- Multiple simultaneous validation failures are reported in one response instead of
-  one-at-a-time round trips.
-- The response contract stays backward compatible: `details` is an existing optional
-  field; status / default code / default message are unchanged.
-- Reasons and values never leak: the public surface is identifiers only.
+- エラー発生箇所が、センチネル追加や edge マッピング変更なしに、動的で機械可読な詳細
+  （不正フィールドのリスト、機能固有コード）を返せる。
+- 複数同時の検証失敗が 1 レスポンスで報告され、1 件ずつのラウンドトリップが不要になる。
+- レスポンス契約は後方互換: `details` は既存の任意フィールドで、ステータス / 既定 code /
+  既定 message は不変。
+- 理由や値は漏れない: 公開面は識別子のみ。
 
-### Negative Consequences
+### ネガティブな帰結
 
-- Joined validation errors make `err.Error()` multi-line; tests comparing full error
-  strings (rather than `xerrors.Is`) would need adjustment.
-- The outermost-wins extraction rule means an upper layer re-attaching `Meta` hides the
-  inner one — intentional, but it requires awareness when wrapping.
-- The "identifiers only" rule for `Details` is enforced by convention and review, not
-  by the type system.
+- Join された検証エラーは `err.Error()` が複数行になる。エラー文字列全体を比較するテスト
+  （`xerrors.Is` ではなく）は修正が必要になる。
+- 最外優先の抽出規則により、上位層が `Meta` を再付与すると内側は隠れる — 意図的な仕様だが、
+  ラップ時に意識が必要。
+- `Details` の「識別子のみ」ルールは型システムではなく規約とレビューで担保される。
 
-## Alternatives Considered
+## 検討した代替案
 
-### HTTP-status-carrying metadata
+### HTTP ステータスを運ぶメタ情報
 
-Let `Meta` override the HTTP status. Rejected: re-introduces the coupling ADR-0047
-removed, and allows status/code inconsistencies (e.g., 422 with `NOT_FOUND`) that the
-sentinel-only resolution structurally prevents.
+`Meta` に HTTP ステータスの上書きを許す。棄却: ADR-0047 が取り除いた結合を再導入し、
+センチネルのみの解決が構造的に防いでいるステータス/コード不整合（例: 422 なのに
+`NOT_FOUND`）を許してしまう。
 
-### Controller-side sentinel→field-name mapping table
+### controller 側のセンチネル→フィールド名変換テーブル
 
-Keep domain free of field identifiers and translate `ErrInvalidXxx` sentinels to field
-names at the edge. Rejected: the generic error handler would need to probe every
-domain's sentinel list (`xerrors.Is` fan-out over joined errors), accumulating domain
-knowledge and growing with every aggregate. Field identifiers are domain vocabulary
-(not wording, not protocol), so the domain exposing them as constants is acceptable;
-if API names ever diverge, the controller can re-map at that point.
+domain にフィールド識別子を持たせず、edge で `ErrInvalidXxx` センチネルをフィールド名へ
+変換する。棄却: 汎用エラーハンドラが各ドメインのセンチネル一覧を総当たりで探索
+（Join されたエラーへの `xerrors.Is` fan-out）する必要があり、集約が増えるたびにドメイン
+知識が蓄積して肥大化する。フィールド識別子はドメイン語彙（文言でもプロトコルでもない）
+であり、domain が定数として公開するのは許容できる。API 名が乖離したらその時点で
+controller で再マップすればよい。
 
-### Per-field sentinel + fixed code for every case
+### ケースごとのセンチネル + 固定コード追加
 
-Add an apperror sentinel and a fixed code/message per dynamic case. Rejected: constant
-explosion for field-level reporting, and still cannot express request-specific data.
+動的ケースごとに apperror センチネルと固定 code/message を追加する。棄却: フィールド
+単位の報告では定数が爆発し、リクエスト固有のデータも表現できない。
 
-## Notes
+## 備考
 
-- Source: `internal/apperror/README.md` — Error Metadata (`Meta`) section;
-  `internal/controller/error/response/README.md` — `apperror.Meta` Overrides section.
-- A failure to resolve a referenced master row remains `ErrNotFound` (404) via the
-  repository path and are out of scope for field `details`; folding them into 422 is a
-  separate decision if ever needed.
-- PATCH validates the merged full profile, so in theory a field the client did not send
-  can appear in `details` if stored data drifted from the invariants; not expected in
-  practice.
+- 出典: `internal/apperror/README.md` — エラーメタ情報（`Meta`）節;
+  `internal/controller/error/response/README.md` — `apperror.Meta` による上書き節。
+- 参照先のマスタ行を解決できなかった場合は repository 経路の `ErrNotFound`（404）のままで、
+  フィールド `details` の対象外。422 へ寄せるかは必要になった時点で別途決定する。
+- PATCH はマージ後の全量を検証するため、保存済みデータが不変条件からズレた場合に限り、
+  クライアントが送っていないフィールドが理論上 `details` に載り得る。実運用では想定しない。

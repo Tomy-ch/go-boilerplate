@@ -1,56 +1,54 @@
 # internal/observability
 
-`internal/observability` is a package that provides **tracing and observability logging integration** for this project.
+`internal/observability` は、本プロジェクトの **トレーシング（Tracing）および観測ログ連携**を提供するパッケージです。
 
-This package provides a **tracing mechanism based on OpenTelemetry**, and  
-**layer-based observability logs** integrated with the `internal/logging` package.
+このパッケージは **OpenTelemetry をベースとしたトレーシング機構**と、  
+`internal/logging` パッケージと連携した **レイヤー単位の可観測性ログ**を提供します。
 
-Primary purposes:
+主な目的：
 
-- Initialization and management of OpenTelemetry (tracing / metrics / logs)
-- Span generation per layer
-- Logging of trace / span information
-- OTLP log export by bridging `zap` logs (otelzap)
-- Unified observability across Domain / Usecase / Controller
-- Lightweight tracer for testing
+- OpenTelemetry の初期化と管理（トレーシング / メトリクス / ログ）
+- レイヤー単位の span 生成
+- trace / span 情報のログ出力
+- `zap` ログを橋渡し（otelzap）した OTLP ログ送出
+- Domain / Usecase / Controller の観測統一
+- テスト時の軽量トレーサ提供
 
-## Configuration boundary (typed config, vendor-neutral OTLP)
+## 設定境界（typed config・ベンダー非依存 OTLP）
 
-This package wires only the **vendor-neutral OTLP plumbing**. The signal toggles and the
-export destination are modeled in the typed `config.ObservabilityConfig`, populated from
-`OBS_`-prefixed environment variables:
+このパッケージが配線するのは **ベンダー非依存な OTLP の土台のみ**です。シグナルの有効化と
+送出先は typed な `config.ObservabilityConfig` にモデル化され、`OBS_` 接頭辞の環境変数から
+読み込まれます。
 
-| Env | Purpose |
+| Env | 用途 |
 | --- | --- |
-| `OBS_TRACES_EXPORTER` | Enable trace export (`otlp` to enable; empty / `none` to disable) |
-| `OBS_METRICS_EXPORTER` | Enable metric export (same convention) |
-| `OBS_LOGS_EXPORTER` | Enable log export via the otelzap bridge (same convention) |
-| `ENDPOINT_OTLP` | OTLP endpoint URL (Collector / Agent sidecar); used only when a signal is enabled |
-| `OBS_OTLP_PROTOCOL` | `http/protobuf` (default) or `grpc` |
+| `OBS_TRACES_EXPORTER` | trace 送出の有効化（`otlp` で有効／空・`none` で無効） |
+| `OBS_METRICS_EXPORTER` | metric 送出の有効化（同上） |
+| `OBS_LOGS_EXPORTER` | otelzap 経由の log 送出の有効化（同上） |
+| `ENDPOINT_OTLP` | OTLP エンドポイント URL（Collector / Agent サイドカー）。シグナル有効時のみ使用 |
+| `OBS_OTLP_PROTOCOL` | `http/protobuf`（既定）または `grpc` |
 
-Each signal is gated **independently**: `TracesEnabled()` / `MetricsEnabled()` /
-`LogsEnabled()` return true only when the matching exporter value is non-empty and not
-`none` (`isActiveExporter`). When a signal is disabled, a **no-op fallback** is used —
-nothing is sent, no connection is attempted, and no background goroutine (batch processor /
-periodic reader / runtime-metrics collector) runs — so local development needs no
-configuration and no DI swapping.
+各シグナルは **独立にゲート**されます。`TracesEnabled()` / `MetricsEnabled()` /
+`LogsEnabled()` は、対応する exporter 値が空でも `none` でもないとき（`isActiveExporter`）
+のみ真になります。無効なシグナルは **no-op フォールバック**となり、送出も接続試行も
+常駐 goroutine（batch processor / periodic reader / ランタイムメトリクス収集）も発生しません。
+そのためローカル開発では設定も DI 差し替えも不要です。
 
-> **Important:** the export transport is **OTLP only** (there is no console exporter). The
-> single `ENDPOINT_OTLP` is reused for all three signals; for HTTP the per-signal path
-> (`/v1/traces` / `/v1/metrics` / `/v1/logs`) is appended automatically when the URL has no
-> path. Setting the endpoint **alone does not enable export** — staging / prod must also set
-> the matching `OBS_*_EXPORTER=otlp`.
+> **重要:** 送出トランスポートは **OTLP のみ**です（console exporter はありません）。単一の
+> `ENDPOINT_OTLP` を 3 シグナルで共用し、HTTP ではシグナル別パス（`/v1/traces` /
+> `/v1/metrics` / `/v1/logs`）を URL に path が無いとき自動補完します。エンドポイント
+> **だけでは送出は有効になりません** — staging / prod では対応する `OBS_*_EXPORTER=otlp`
+> の設定も必須です。
 
-Vendor specifics (Grafana / Datadog / New Relic) live in that Collector, not here.
+ベンダー固有（Grafana / Datadog / New Relic）はその Collector 側に置き、ここには持ち込みません。
 
-Service identity (`service.name` / `deployment.environment` / `service.version` /
-`service.revision` / `service.build_date`) comes from the existing app config and the
-build-time `internal/system` build info (ldflags) via `NewResource`, so no OTLP-specific
-keys leak into the typed config.
+サービス識別情報（`service.name` / `deployment.environment` / `service.version` /
+`service.revision` / `service.build_date`）は既存のアプリ設定とビルド時注入（ldflags）の
+`internal/system` に由来し（`NewResource`）、OTLP 固有のキーは typed config に漏れません。
 
-## Architecture
+## アーキテクチャ
 
-The observability package is designed with the following structure.
+observability パッケージは次の構成で設計されています。
 
 ```mermaid
 flowchart TB
@@ -66,48 +64,48 @@ TracerFactory --> LayerTracer
 LayerTracer --> ApplicationCode
 ```
 
-Roles of each component:
+各コンポーネントの役割：
 
-|Component|Role|
+|コンポーネント|役割|
 |---|---|
-|`NewResource`|Build the OTel resource (service identity) from app config + build info|
-|`NewTracerProvider`|OpenTelemetry tracer provider + context propagator|
-|`NewMeterProvider`|OpenTelemetry meter provider + Go runtime metrics|
-|`NewLoggerProvider` / `NewLogCore`|OTLP log provider + otelzap core bridging `zap` logs (in `log_provider.go`)|
-|`shutdown.go`|`ProviderShutdowner` (otel-agnostic shutdown handle) + `NewProviderShutdowner`, consumed by the DI shutdown hook|
-|`ProvideTracerProvider` / `ProvideMeterProvider`|Adapters exposing the concrete providers as the `trace.TracerProvider` / `metric.MeterProvider` interfaces (in `provider.go`)|
-|`NewPgxTracer`|`otelpgx` tracer for DB spans + metrics, with connection details suppressed (in `pgx_tracer.go`)|
-|`NewHTTPClientTransport` / `NewHTTPClientMetrics`|SSRF-guarded, instrumented outbound HTTP transport + its RED metrics (in `http_client_transport.go` / `http_client_metrics.go`)|
-|`propagation.go`|Cross-service / cross-carrier trace propagation (`ExtractFromCarrier` / `InjectTraceContextToCarrier`)|
-|`TracerFactory`|Generate tracers per layer|
-|`LayerTracer`|Per-layer span emission (spans only — it does not write log lines itself)|
-|`helper.go`|Span / trace helper, ShouldLogWithSpan, BuildSpanName|
-|`caller.go`|Retrieve caller function name|
-|`test_kit.go`|Tracer for testing|
+|`NewResource`|アプリ設定 + ビルド情報から OTel リソース（サービス識別情報）を構築|
+|`NewTracerProvider`|OpenTelemetry のトレーサープロバイダ + コンテキスト伝播器|
+|`NewMeterProvider`|OpenTelemetry のメータープロバイダ + Go ランタイムメトリクス|
+|`NewLoggerProvider` / `NewLogCore`|OTLP ログプロバイダ + `zap` ログを橋渡しする otelzap core（`log_provider.go` 内）|
+|`shutdown.go`|`ProviderShutdowner`（otel 非依存の後始末ハンドル）+ `NewProviderShutdowner`。di の shutdown hook が利用|
+|`ProvideTracerProvider` / `ProvideMeterProvider`|具象プロバイダを `trace.TracerProvider` / `metric.MeterProvider` IF として公開するアダプタ（`provider.go` 内）|
+|`NewPgxTracer`|接続情報を抑止した `otelpgx` トレーサ（DB span + metric、`pgx_tracer.go` 内）|
+|`NewHTTPClientTransport` / `NewHTTPClientMetrics`|SSRF ガード付き・計装済み外向き HTTP トランスポート + その RED メトリクス（`http_client_transport.go` / `http_client_metrics.go` 内）|
+|`propagation.go`|サービス跨ぎ / キャリア跨ぎのトレース伝播（`ExtractFromCarrier` / `InjectTraceContextToCarrier`）|
+|`TracerFactory`|レイヤー別トレーサ生成|
+|`LayerTracer`|レイヤー別 span 生成（span のみ。ログ行自体は出力しない）|
+|`helper.go`|span / trace helper, ShouldLogWithSpan, BuildSpanName|
+|`caller.go`|呼び出し元関数名取得|
+|`test_kit.go`|テスト用 tracer|
 
-## Provided Features
+## 提供機能
 
 ### 1. NewTracerProvider
 
-Initializes the OpenTelemetry tracer provider.
+OpenTelemetry のトレーサープロバイダを初期化します。
 
 ```go
 func NewTracerProvider(obsCfg *config.ObservabilityConfig, res *resource.Resource) (*sdktrace.TracerProvider, error)
 ```
 
-Characteristics
+特徴
 
-- Creates OpenTelemetry TracerProvider with the given resource
-- Registers it with `otel.SetTracerProvider`
-- Registers the W3C `TraceContext` + `Baggage` propagator via `otel.SetTextMapPropagator`
-  (required for cross-service trace continuity)
-- Builds the OTLP `SpanExporter` (batch processor) only when `TracesEnabled()`; otherwise falls back to no-op and skips the batch processor (no goroutine)
-- Uses the SDK default sampler (`ParentBased(AlwaysSample)`); sampling is not currently env-configurable
-- Lifecycle-agnostic: returns the concrete `*sdktrace.TracerProvider` (which exposes `Shutdown`)
-  so the DI layer (`hook.RegisterObservabilityShutdownHooks`) owns the shutdown registration.
-  This keeps the `observability` package free of any `di/lifecycle` dependency.
+- 与えられたリソースで OpenTelemetry TracerProvider を生成
+- `otel.SetTracerProvider` に登録
+- W3C `TraceContext` + `Baggage` 伝播器を `otel.SetTextMapPropagator` で登録
+  （サービス跨ぎのトレース継続に必須）
+- OTLP `SpanExporter`（batch processor）は `TracesEnabled()` のときのみ構築（無効時は no-op となり BatchSpanProcessor を配線しない＝goroutine 無し）
+- サンプラは SDK 既定（`ParentBased(AlwaysSample)`）。サンプリングは現状 env で設定不可
+- ライフサイクル非依存：`Shutdown` を公開する具象 `*sdktrace.TracerProvider` を返し、
+  シャットダウン登録は di 層（`hook.RegisterObservabilityShutdownHooks`）が担う。これにより
+  `observability` パッケージは `di/lifecycle` への依存を持たない。
 
-Used during application DI initialization.
+アプリケーションの DI 初期化で利用されます。
 
 ### 1.1 NewResource / NewMeterProvider
 
@@ -116,33 +114,32 @@ func NewResource(appCfg *config.ApplicationConfig, bi system.BuildInfo) (*resour
 func NewMeterProvider(obsCfg *config.ObservabilityConfig, res *resource.Resource) (*sdkmetric.MeterProvider, error)
 ```
 
-- `NewResource` builds the shared OTel resource carrying `service.name` /
-  `deployment.environment` / `service.version` / `service.revision` / `service.build_date`
-  from app config + build info.
-- `NewMeterProvider` mirrors `NewTracerProvider`: it registers the meter provider via
-  `otel.SetMeterProvider` and builds its periodic `MetricReader` only when `MetricsEnabled()`.
-  Go **runtime metrics** instrumentation starts only in that case (the no-op fallback skips
-  it). It is likewise lifecycle-agnostic — it returns the concrete `*sdkmetric.MeterProvider`
-  and the DI hook registers its `Shutdown`. Because the shutdown hook depends on the concrete
-  provider, constructing the hook forces the providers to be built.
+- `NewResource` は `service.name` / `deployment.environment` / `service.version` /
+  `service.revision` / `service.build_date` をアプリ設定 + ビルド情報から付与した共有 OTel
+  リソースを構築します。
+- `NewMeterProvider` は `NewTracerProvider` と対称で、`otel.SetMeterProvider` への登録・
+  periodic な `MetricReader` 構築を `MetricsEnabled()` のときのみ行います。Go **ランタイム
+  メトリクス**計装もそのときのみ開始します（no-op フォールバック時はスキップ）。これも
+  ライフサイクル非依存で、具象 `*sdkmetric.MeterProvider` を返し `Shutdown` 登録は di の hook が担う。
+  シャットダウン hook が具象プロバイダに依存するため、hook を構築することでプロバイダが構築される。
 
-### 1.2 NewLoggerProvider / NewLogCore (OTLP logs)
+### 1.2 NewLoggerProvider / NewLogCore（OTLP ログ）
 
 ```go
 func NewLoggerProvider(obsCfg *config.ObservabilityConfig, res *resource.Resource) (*sdklog.LoggerProvider, error)
 func NewLogCore(obsCfg *config.ObservabilityConfig, appCfg *config.ApplicationConfig, lp *sdklog.LoggerProvider) logging.LogCore
 ```
 
-- `NewLoggerProvider` builds an OTLP log exporter (batch processor) only when `LogsEnabled()`;
-  otherwise it returns a resource-only provider with no processor (no goroutine).
-- `NewLogCore` returns an `otelzap` core that bridges the application's `zap` logs to the
-  LoggerProvider so they are exported over OTLP. When `LogsEnabled()` is false it returns
-  `nil`, and `zap` keeps writing to stdout only. This is the third signal alongside traces
-  and metrics — application code does not change; only the exporter toggle does.
+- `NewLoggerProvider` は OTLP ログエクスポータ（batch processor）を `LogsEnabled()` のとき
+  のみ構築します（無効時は processor 無しのリソースのみプロバイダ＝goroutine 無し）。
+- `NewLogCore` は、アプリの `zap` ログを LoggerProvider へ橋渡しして OTLP 送出する `otelzap`
+  core を返します。`LogsEnabled()` が偽なら `nil` を返し、`zap` は stdout 出力のみを続けます。
+  これは trace / metric に並ぶ第 3 のシグナルで、アプリケーションコードは変わらず exporter の
+  トグルだけが変わります。
 
 ### 2. TracerFactory
 
-A factory that generates `LayerTracer` for each layer.
+各レイヤー用の `LayerTracer` を生成するファクトリです。
 
 ```go
 type TracerFactory interface {
@@ -152,15 +149,15 @@ type TracerFactory interface {
 }
 ```
 
-With this design:
+この設計により
 
 - Controller
 - Usecase
 - Infrastructure
 
-can have **separated span namespaces**.
+ごとに **span namespace を分離**できます。
 
-Example
+生成例
 
 ```go
 tf := observability.NewTracerFactory(tp)
@@ -170,19 +167,18 @@ usecaseTracer := tf.Usecase()
 infraTracer := tf.Infra()
 ```
 
-`NewDisabledTracerFactory()` returns a factory whose tracers emit nothing. It exists for CLI
-paths that assemble infrastructure implementations directly instead of going through the DI
-graph, so that the `otel` packages stay confined to this layer.
+`NewDisabledTracerFactory()` は何も送出しない tracer を返すファクトリです。DI グラフを経由せず
+infra 実装を直接組み立てる CLI 経路のために存在し、`otel` パッケージをこの層に閉じ込めます。
 
 ### 3. LayerTracer
 
-`LayerTracer` is a component that manages **span at the layer level**.
+`LayerTracer` は **レイヤー単位の span 管理**を行うコンポーネントです。
 
-Main features
+主な機能
 
-- Span generation
-- traceID / spanID exposed via the span context (see `TraceContext`)
-- Automatic span name generation
+- span生成
+- traceID / spanID を span context 経由で公開（`TraceContext` 参照）
+- span名の自動生成
 
 #### Start
 
@@ -191,9 +187,9 @@ ctx, end := tracer.Start(ctx)
 defer end()
 ```
 
-Span names are automatically generated by the rule `layer.package.function`.
+span名は `layer.package.function` のルールで自動生成されます。
 
-Example
+例
 
 - `usecase.user.CreateUser`
 - `controller.user.GetUsers`
@@ -201,22 +197,22 @@ Example
 
 #### StartWithSuffix
 
-Starts a span with an additional suffix appended to the span name.
+span名に追加の接尾辞を付与して span を開始します。
 
 ```go
 ctx, end := tracer.StartWithSuffix(ctx, "detail")
 defer end()
 ```
 
-Generated span name: `usecase.user.CreateUser.detail`
+生成される span名: `usecase.user.CreateUser.detail`
 
-Use this when you need to distinguish multiple spans within the same function.
+同一関数内で複数の span を区別したい場合に使用します。
 
 ### 4. Span Helper (RunWithSpan)
 
-You can easily measure spans for arbitrary processing using `RunWithSpan`.
+任意の処理は `RunWithSpan` で簡単に span 計測できます。
 
-This function is a utility that executes arbitrary processing inside a span, without depending on any specific layer.
+この関数はレイヤに依存せず、任意の処理を span の中で実行するためのユーティリティです。
 
 ```go
 ctx, result, err := observability.RunWithSpan(
@@ -231,49 +227,49 @@ ctx, result, err := observability.RunWithSpan(
 )
 ```
 
-By using this function, the following are handled automatically:
+この関数を使うことで、以下を自動で処理します。
 
-- span start
-- span end (via `defer`)
+- span開始
+- span終了（`defer` による）
 
 ### 5. ShouldLogWithSpan
 
-Determines whether the observability mode is enabled and a valid Span exists in the current Context.
+o11yモードが有効かつ、現在の Context に有効な Span が存在するかを判定します。
 
 ```go
 if observability.ShouldLogWithSpan(ctx, obsCfg) {
-    // log output assuming span is present
+    // span 前提のログ出力
 }
 ```
 
-Combines `config.ObservabilityConfig`'s `Enabled()` with the validity of the Span in the Context.
+`config.ObservabilityConfig` の `Enabled()` と、Context 内の Span の有効性を組み合わせて判定します。
 
 ### 6. BuildSpanName
 
-A helper that constructs a span name from layer name, package name, and function name.
+レイヤー名・パッケージ名・関数名からスパン名を構築するヘルパーです。
 
 ```go
 name := observability.BuildSpanName("usecase", "user", "CreateUser")
 // => "usecase.user.CreateUser"
 ```
 
-## Span / Log Correlation
+## Span / ログ相関
 
-`LayerTracer` emits **spans only** — it does not write log lines itself. Each span carries
-its `trace_id` / `span_id` / `parent_span_id` (retrievable via `TraceContext`), and the span
-name encodes `layer.package.function`.
+`LayerTracer` は **span のみを生成**し、ログ行自体は出力しません。各 span は
+`trace_id` / `span_id` / `parent_span_id`（`TraceContext` から取得可能）を保持し、span 名は
+`layer.package.function` を表します。
 
-Log ↔ trace correlation is provided by the `otelzap` `LogCore` (§1.2): when `LogsEnabled()`,
-the application's `zap` logs are exported over OTLP with the active trace context attached, so
-logs and spans line up in the backend under the same `trace_id`.
+ログ ↔ トレース相関は `otelzap` の `LogCore`（§1.2）が担います。`LogsEnabled()` のとき、
+アプリの `zap` ログはアクティブな trace context を付与して OTLP 送出されるため、バックエンド
+では同一 `trace_id` でログと span が揃います。
 
-The `trace_id` / `span_id` fields on each log line come from `NewTraceExtractor(obsCfg)`, which
-returns the `logging.TraceExtractor` closure that DI injects into the `Logger`. Gating lives in
-that one closure, so callers never decide whether trace fields are attached.
+各ログ行の `trace_id` / `span_id` は `NewTraceExtractor(obsCfg)` が返す `logging.TraceExtractor`
+クロージャ由来で、これを DI が `Logger` へ注入します。有効・無効の判定はこのクロージャ 1 箇所に
+閉じており、呼び出し側が trace フィールドの付与を決めることはありません。
 
 ## TraceContext
 
-TraceContext holds span identification information.
+TraceContext は span の識別情報を保持します。
 
 ```go
 type TraceContext struct {
@@ -283,13 +279,13 @@ type TraceContext struct {
 }
 ```
 
-Retrieval
+取得
 
 ```go
 tc := observability.ExtractTraceContext(ctx)
 ```
 
-Usage example
+利用例
 
 ```go
 tc.TraceID()
@@ -301,7 +297,7 @@ tc.ParentSpanID()
 
 ### StartSpanWithParent
 
-Generates a child span inheriting the parent span.
+親 span を引き継いだ子 span を生成します。
 
 ```go
 tc, ctx, end := observability.StartSpanWithParent(
@@ -312,27 +308,27 @@ tc, ctx, end := observability.StartSpanWithParent(
 defer end()
 ```
 
-Return values
+返却値
 
-|Value|Description|
+|値|説明|
 |---|---|
-|TraceContext|trace/span information|
+|TraceContext|trace/span 情報|
 |context|child context|
-|func()|span end|
+|func()|span終了|
 
 ## Caller Helper
 
-`caller.go` retrieves the **caller function name**.
+`caller.go` は **呼び出し元関数名を取得**します。
 
 ```go
 getCallerFullName()
 ```
 
-This information is used for span name generation.
+この情報は span 名の生成に使用されます。
 
-## Test Support
+## テストサポート
 
-In tests, a **Noop tracer** is used.
+テストでは **Noop tracer** を利用します。
 
 ### TracerFactory
 
@@ -346,200 +342,191 @@ tf := observability.NewNoopTracerFactory(t)
 lt := observability.NewMockUsecaseLayerTracer(t)
 ```
 
-Available test tracers
+利用可能なテストトレーサ
 
-|Function|Description|
+|関数|説明|
 |---|---|
-|`NewMockControllerLayerTracer`|For Controller|
-|`NewMockUsecaseLayerTracer`|For Usecase|
-|`NewMockInfraLayerTracer`|For Infrastructure|
-|`NewNoopLayerTracer`|Generic|
-|`NewStubSpanContext`|Generate Context with a valid Span|
+|`NewMockControllerLayerTracer`|Controller用|
+|`NewMockUsecaseLayerTracer`|Usecase用|
+|`NewMockInfraLayerTracer`|Infra用|
+|`NewNoopLayerTracer`|汎用|
+|`NewStubSpanContext`|有効な Span を持つ Context 生成|
 
 ### StubSpanContext
 
-Use this when a Context containing a valid `trace.Span` is needed in tests.
+テストで有効な `trace.Span` を含む Context が必要な場合に使用します。
 
 ```go
 ctx, cleanup := observability.NewStubSpanContext(t)
 defer cleanup()
 ```
 
-Uses an actual `sdktrace.TracerProvider` to generate a valid span, making it suitable for testing `ShouldLogWithSpan` and similar functions.
+実際の `sdktrace.TracerProvider` を使用して有効な span を生成するため、`ShouldLogWithSpan` のテスト等で利用できます。
 
-### Metrics / transport test helpers
+### メトリクス / トランスポートのテストヘルパ
 
-For code that depends on the metrics sets or the HTTP transport, no-op constructions built on
-a no-op `MeterProvider` / `TracerProvider` are provided.
+メトリクスセットや HTTP トランスポートに依存するコード向けに、no-op の `MeterProvider` /
+`TracerProvider` を用いた no-op 構築を提供します。
 
-|Function|Description|
+|関数|説明|
 |---|---|
-|`NewNoopWorkerMetrics`|`WorkerMetrics` on a no-op meter|
-|`NewNoopHTTPClientMetrics`|`HTTPClientMetrics` on a no-op meter|
-|`NewNoopOutboxMetrics`|`OutboxMetrics` on a no-op meter|
-|`NewNoopHTTPClientTransport`|`HTTPClientTransport` with the SSRF guard disabled (allows loopback / httptest targets)|
-|`NewGuardedHTTPClientTransport`|`HTTPClientTransport` with the SSRF guard left **enabled**, for tests that assert the guard itself|
-|`NewObservedHTTPClientMetrics`|`HTTPClientMetrics` whose recorded values can be read back via `LabelValues`|
+|`NewNoopWorkerMetrics`|no-op meter 上の `WorkerMetrics`|
+|`NewNoopHTTPClientMetrics`|no-op meter 上の `HTTPClientMetrics`|
+|`NewNoopOutboxMetrics`|no-op meter 上の `OutboxMetrics`|
+|`NewNoopHTTPClientTransport`|SSRF ガードを無効化した `HTTPClientTransport`（loopback / httptest 宛てを許可）|
+|`NewGuardedHTTPClientTransport`|SSRF ガードを**有効のまま**残した `HTTPClientTransport`（ガード自体を検証するテスト用）|
+|`NewObservedHTTPClientMetrics`|計上値を `LabelValues` で読み出せる `HTTPClientMetrics`|
 
-## Design Policy
+## 設計ポリシー
 
-This package is based on the following design policies.
+このパッケージは次の設計ポリシーに基づいています。
 
-### 1 Layer-based Tracing
+### 1 Layer単位のトレーシング
 
-Span names always follow `layer.package.function`.
+span名は必ず `layer.package.function` 形式になります。
 
-Reason
+理由
 
-- Improved trace readability
-- Easier service map analysis
+- trace可読性向上
+- service map 分析容易
 
-### 2 Integration with logging
+### 2 logging と統合
 
-Log ↔ trace correlation happens at the logging layer, not in the caller. See
-[Span / Log Correlation](#span--log-correlation).
+ログ ↔ トレース相関は呼び出し側ではなくロギング層で解決されます。
+[Span / ログ相関](#span--ログ相関) を参照してください。
 
-### 3 Application code does not depend on OTel
+### 3 アプリケーションコードはOTelに依存しない
 
-Application code uses only `LayerTracer`.
+アプリケーションコードは `LayerTracer` のみ利用します。
 
-OpenTelemetry SDK is **encapsulated within the observability package**.
+OpenTelemetry SDK は **observability パッケージ内に閉じ込めます。**
 
-### 4 Fail-safe
+### 4 フェールセーフ
 
-Even if observability fails:
+observability 機能が失敗しても
 
-- application processing
-- business logic
+- アプリケーション処理
+- ビジネスロジック
 
-are not affected.
+に影響を与えません。
 
-### 5 Span value by layer (why controller spans are the most redundant)
+### 5 レイヤーごとの span の価値（なぜ controller 層の span が最も冗長か）
 
-Layer spans are emitted in all three layers (controller / usecase / infra) via
-`LayerTracer.Start`, but their **diagnostic value differs**, which matters when
-deciding where to trim instrumentation.
+layer span は controller / usecase / infra の全層で `LayerTracer.Start` により生成されますが、
+その **診断上の価値は異なります**。これは計装をどこから削るかを判断する際に重要になります。
 
-- **Controller layer span — most redundant.** The `echootel` middleware already
-  creates a **per-request root span**, so a span added in the controller (handler)
-  layer covers **almost the same boundary and roughly the same interval** as that
-  request span. It largely duplicates the root span.
-- **Usecase / infra layer spans — worth keeping.** These represent the
-  **breakdown within a request** — *which usecase flow* ran, and *which repository /
-  SQL* was executed. That detail is **not visible from the root span alone** and has
-  real diagnostic value.
+- **controller 層の span — 最も冗長。** `echootel` ミドルウェアが **リクエスト単位のルート span を既に生成**
+  しているため、controller(handler) 層で追加する span は **そのリクエスト span とほぼ同じ境界・同程度の区間を重複**
+  します。ルート span とほぼ重なります。
+- **usecase / infra 層の span — 残す価値がある。** これらは **リクエスト内の内訳**
+  ——「どの usecase フローか」「どの repository / SQL か」——を表します。この内訳は **ルート span だけでは見えず**、
+  実際の診断価値があります。
 
-Design judgment: if instrumentation must be reduced, the **controller-layer span is
-the first candidate** to drop, while the **usecase / infra spans are worth retaining**.
+設計判断: 計装を削るなら **controller 層の span が第一候補**であり、**usecase / infra の span は残す価値がある**、
+という整理です。
 
-> **Note:** The current code intentionally **keeps the controller-layer span as well**
-> (every layer calls `LayerTracer.Start`) for layer consistency. The point above is
-> about **relative value / the rationale behind the design judgment**, not a statement
-> that the controller span has been removed.
+> **注意:** 現状のコードは層の一貫性のため **controller 層の span も意図的に残しています**
+> （各層で `LayerTracer.Start` を呼ぶ）。ここでの記述は **相対的な価値・設計判断の根拠**についてであり、
+> 「controller の span を削除した」という意味ではありません。
 
-## Trace Context Propagation
+## トレースコンテキスト伝播
 
-`propagation.go` carries the W3C trace context across service and carrier boundaries so a
-producer → relay → consumer chain forms a single trace.
+`propagation.go` は W3C トレースコンテキストをサービス跨ぎ・キャリア跨ぎで運び、
+producer → relay → consumer の連鎖を 1 つの trace にまとめます。
 
-- `NewTextMapPropagator` (in `provider.go`) — the composite W3C `TraceContext` + `Baggage`
-  propagator that `NewTracerProvider` registers globally via `otel.SetTextMapPropagator`.
-- `ExtractFromCarrier(ctx, attrs)` — continues a trace from a `map[string]string` carrier
-  (e.g. message attributes / headers) using the **global** propagator. Returns `ctx`
-  unchanged when the carrier is empty.
-- `InjectTraceContextToCarrier(ctx, attrs)` — writes only the current context's
-  **`traceparent` / `tracestate`** into the carrier (a `TraceContext`-only propagator, **not**
-  the global one). Used when emitting outbox rows so the relay → receiver stays on the origin
-  trace, while deliberately **not** forwarding arbitrary inbound baggage to external
-  endpoints.
+- `NewTextMapPropagator`（`provider.go`）— `NewTracerProvider` が `otel.SetTextMapPropagator` でグローバル
+  登録する、W3C `TraceContext` + `Baggage` の複合 propagator。
+- `ExtractFromCarrier(ctx, attrs)` — `map[string]string` キャリア（メッセージ属性 / ヘッダ等）
+  から **グローバル** propagator で trace を継続します。キャリアが空なら `ctx` をそのまま返します。
+- `InjectTraceContextToCarrier(ctx, attrs)` — 現在の ctx の **`traceparent` / `tracestate`**
+  のみをキャリアへ書き込みます（グローバルではなく `TraceContext` 限定 propagator）。outbox 行の
+  emit 時に用い、relay → 受信側を起点 trace に繋ぎつつ、インバウンド由来の任意 baggage を外部
+  エンドポイントへ **転送しない**ようにします。
 
-## Outbound HTTP Client Transport
+## 外向き HTTP client トランスポート
 
-`http_client_transport.go` provides the instrumented, SSRF-guarded transport used by the
-outbound HTTP client substrate.
+`http_client_transport.go` は、外向き HTTP client substrate が使う計装済み・SSRF ガード付き
+トランスポートを提供します。
 
-- `NewHTTPClientTransport(tp, propagator)` — wraps a base `http.Transport` with an `otelhttp`
-  layer (automatic client spans) plus a dial-time SSRF guard. `RoundTripper()` exposes the
-  underlying `http.RoundTripper`.
-- **SSRF guard** — validates the *resolved* destination IP at dial time (so DNS-rebinding is
-  also caught): link-local / metadata, unspecified, and reserved / bogon ranges are **always**
-  blocked; loopback / private / CGNAT (`100.64.0.0/10`) are blocked **unless** explicitly
-  allowed.
-- `ContextWithTracePropagation(ctx, enabled)` — per-call toggle for whether
-  `traceparent` / `baggage` are injected into the outgoing request (suppress propagation to
-  untrusted downstreams with `false`).
-- `ContextWithAllowPrivateNetwork(ctx, allowed)` — per-call toggle allowing private / loopback
-  destinations (default is deny).
+- `NewHTTPClientTransport(tp, propagator)` — base `http.Transport` を `otelhttp`（自動 client
+  span）と dial 時の SSRF ガードで包みます。`RoundTripper()` が内側の `http.RoundTripper` を
+  公開します。
+- **SSRF ガード** — dial 時に *名前解決後の* 宛先 IP を検査します（DNS rebinding も捕捉）。
+  link-local / メタデータ、unspecified、reserved / bogon 帯は **常時ブロック**。loopback /
+  private / CGNAT（`100.64.0.0/10`）は明示的に許可されない限りブロックします。
+- `ContextWithTracePropagation(ctx, enabled)` — この呼び出しで `traceparent` / `baggage` を
+  outgoing リクエストへ注入するかの呼び出し単位トグル（`false` で信頼できない downstream への
+  伝搬を抑止）。
+- `ContextWithAllowPrivateNetwork(ctx, allowed)` — private / loopback 宛てを許可する呼び出し
+  単位トグル（既定は拒否）。
 
-## Metrics
+## メトリクス
 
-In addition to tracing, this package exposes both **OTel meter instruments** (exported over
-OTLP when `MetricsEnabled()`) and **Prometheus collectors** (scraped from the process).
+トレーシングに加えて、本パッケージは **OTel meter instruments**（`MetricsEnabled()` のとき
+OTLP 送出）と **Prometheus collector**（プロセスから scrape）の双方を公開します。
 
 ### OTel meter instruments
 
-Each subsystem owns its meter and instruments, constructed from the injected
-`MeterProvider`. Labels are kept low-cardinality and free of secrets / PII.
+各サブシステムが meter と instrument を所有し、注入された `MeterProvider` から構築します。
+ラベルは低カーディナリティで、秘匿値 / PII を載せません。
 
-|Meter (`go-boilerplate/...`)|Instruments|Owner|
+|Meter (`go-boilerplate/...`)|Instruments|所有|
 |---|---|---|
-|`/outbox`|`outbox.lag_seconds` (gauge), `outbox.dead` (counter)|outbox relay|
-|`/worker`|`received` / `processed` / `failed` / `retried` / `dlq` / poll & extend errors (counters), latency (histogram), in-flight (up-down)|worker engine (broker-agnostic)|
-|`/idempotency`|`requests` / `failures` / `expiredCleanup` (counters); labels limited to `operation_id` / `result` / `phase` / `job`|idempotency subsystem|
-|`/httpclient`|RED (`requests` / `errors`, latency histogram) + `retries`, in-flight, `breakerState` gauge|outbound HTTP client substrate|
+|`/outbox`|`outbox.lag_seconds`（gauge）, `outbox.dead`（counter）|outbox relay|
+|`/worker`|`received` / `processed` / `failed` / `retried` / `dlq` / poll・extend errors（counter）, latency（histogram）, in-flight（up-down）|worker engine（broker 非依存）|
+|`/idempotency`|`requests` / `failures` / `expiredCleanup`（counter）。ラベルは `operation_id` / `result` / `phase` / `job` に限定|冪等性サブシステム|
+|`/httpclient`|RED（`requests` / `errors`, latency histogram）+ `retries`, in-flight, `breakerState` gauge|外向き HTTP client substrate|
 
-DB spans and metrics are additionally emitted by `NewPgxTracer` (`otelpgx`), and Go
-**runtime metrics** are collected when `MetricsEnabled()`.
+DB span / metric は `NewPgxTracer`（`otelpgx`）が追加で送出し、Go **ランタイムメトリクス**は
+`MetricsEnabled()` のとき収集されます。
 
-### Prometheus collectors
+### Prometheus collector
 
-|Collector|Metric|Source|
+|Collector|メトリクス|source|
 |---|---|---|
-|`metrics/buildinfo`|`app_build_info` info gauge (value always `1`)|`system.BuildInfo` (same source as `/version`); labels resolved once at DI wiring time|
-|`metrics/queue`|`worker_queue_depth` gauge (by state, incl. DLQ) + `worker_queue_stats_collection_failures_total`|pulled per-scrape from the broker adapter's `worker.QueueStatsProvider` (approximate on SQS)|
+|`metrics/buildinfo`|`app_build_info` info gauge（値は常に `1`）|`system.BuildInfo`（`/version` と同一 source）。ラベルは DI 結線時に一度だけ解決|
+|`metrics/queue`|`worker_queue_depth` gauge（state 別・DLQ 含む）+ `worker_queue_stats_collection_failures_total`|broker adapter の `worker.QueueStatsProvider` から scrape 毎に pull（SQS では approximate）|
 
-See `internal/observability/metrics/buildinfo/README.md` for details.
+詳細は `internal/observability/metrics/buildinfo/README.md` を参照してください。
 
-## Test coverage exception (extraordinary measure)
+## テストカバレッジ例外（超法規的措置）
 
-This package is **write-once infrastructure**: once implemented it is rarely touched. As an
-**extraordinary measure** (超法規的措置), the following defensive / structurally-unreachable
-branches are exempt from the near-100% unit-coverage expectation. Per the rule below, **no
-extra production code is added and no contrived test is written** solely to reach them —
-only branches reachable as-is would be tested, and none of these are.
+本パッケージは **write-once なインフラ**で、一度実装するとほぼ触りません。**超法規的措置**
+として、以下の防御的 / 構造上到達不能な分岐は「ほぼ 100%」のユニット被覆期待から除外します。
+下記の方針どおり、**これらを塗るための追加実装や contrived テストは行いません**。あくまで
+現状のまま到達可能な分岐のみをテスト対象とし、以下はいずれも到達不能です。
 
-|File|Function|Uncovered branch|Why exempt|
+|ファイル|関数|未被覆分岐|除外理由|
 |---|---|---|---|
-|`caller.go`|`getCallerFullName`|`runtime.Caller` `!ok` / `runtime.FuncForPC` `nil` guards|Cannot be triggered deterministically without manipulating the runtime stack|
-|`provider.go`|`NewResource`|`resource.Merge` error|Inputs are fixed (default + schemaless) → no schema conflict is possible|
-|`provider.go`|`NewMeterProvider`|`runtime.Start` error|Only fails on instrument-registration failure; not reachable without a faulty provider|
-|`test_kit.go`|`NewNoop{Worker,HTTPClient,Outbox}Metrics`|`t.Fatalf` guards|Test-support helpers; the no-op provider never errors, and `*testing.T` cannot be faked without a signature change|
+|`caller.go`|`getCallerFullName`|`runtime.Caller` `!ok` / `runtime.FuncForPC` `nil` ガード|runtime スタックを操作しない限り決定的に発火させられない|
+|`provider.go`|`NewResource`|`resource.Merge` エラー|入力が固定（default + schemaless）でスキーマ衝突が起こり得ない|
+|`provider.go`|`NewMeterProvider`|`runtime.Start` エラー|instrument 登録失敗時のみ。壊れた provider 無しには到達不能|
+|`test_kit.go`|`NewNoop{Worker,HTTPClient,Outbox}Metrics`|`t.Fatalf` ガード|テスト補助 helper。no-op provider は失敗せず、`*testing.T` は署名変更なしに fake 化できない|
 
-> **Governance:** coverage exceptions are **not added at will**. A new entry may be recorded
-> in this section **only with an appropriate approver's (e.g. architect) sign-off**. The
-> "no contrived tests / no extra implementation just to color lines" rule still holds; this
-> section is the sanctioned, auditable list of the few branches where that trade-off was
-> explicitly approved.
+> **ガバナンス:** カバレッジ例外は**任意に追加しない**。新規エントリはアーキテクト等の
+> **適切な承認者の承認を得た場合に限り**本節へ記録する。「行を塗るためだけの contrived
+> テスト / 追加実装はしない」原則は維持し、本節はそのトレードオフが明示的に承認された
+> 数少ない分岐の、監査可能な一覧である。
 
-## Security Considerations
+## セキュリティ注意点
 
-Do not include the following in trace information.
+トレース情報には次を含めないでください。
 
-- passwords
-- tokens
-- personal information
-- private keys
+- パスワード
+- トークン
+- 個人情報
+- 秘密鍵
 
-If necessary, apply **masking processing**.
+必要な場合は **マスキング処理**を行います。
 
-## Test Strategy
+## テスト戦略
 
-Telemetry has no user-visible behavior, so "it did not crash" is not a result. Tests assert the emitted signal itself, using the OTel SDK's in-memory plumbing rather than an exporter or a collector.
+テレメトリにはユーザから見える振る舞いが無いため、「クラッシュしなかった」は結果ではない。テストは exporter や collector ではなく OTel SDK のインメモリ機構を使い、送出されるシグナルそのものを検証する。
 
-- **Metrics through a manual reader** — build an `sdkmetric.NewMeterProvider` with `sdkmetric.NewManualReader`, exercise the subject, then collect and assert over `metricdata`: the instrument name, the data point value, and the attribute set. Asserting only that recording did not error leaves a wrong metric name or a wrong label undetected, and those are the failures that break a dashboard.
-- **Spans through a syncing tracer provider** — build an `sdktrace.NewTracerProvider` with `sdktrace.WithSyncer` over an in-memory recorder and assert the span name, attributes, and parent linkage on the resulting `sdktrace.ReadOnlySpan`.
-- **Attribute cardinality is part of the contract** — where the design bounds a label set, assert that an unbounded input (a raw path, an ID) does not reach the attribute. A cardinality regression is invisible locally and expensive in production.
-- **Redaction vs propagation** — the outbound HTTP transport redacts secrets from the span while leaving the actual request untouched. Assert **both** halves in the same test; asserting only the redaction cannot distinguish it from having mangled the request.
-- **Conditional propagator** — the two directions are not symmetric, and the asymmetry is the contract: `Inject` branches on the flag (suppressed only when it is explicitly false) and needs both sides asserted, because the suppressed branch is the one that silently drops trace continuity; `Extract` delegates unconditionally, so assert the delegation rather than inventing a second branch for it.
+- **メトリクスは manual reader 経由** — `sdkmetric.NewManualReader` を持つ `sdkmetric.NewMeterProvider` を組み、対象を駆動してから collect し、`metricdata` に対して instrument 名・データポイントの値・属性集合を検証する。記録がエラーにならなかったことしか見ないと、instrument 名やラベルの誤りが検知されない。それこそがダッシュボードを壊す失敗である。
+- **スパンは syncer 付き tracer provider 経由** — インメモリのレコーダに対し `sdktrace.WithSyncer` を付けた `sdktrace.NewTracerProvider` を組み、得られた `sdktrace.ReadOnlySpan` のスパン名・属性・親子関係を検証する。
+- **属性のカーディナリティは契約の一部** — 設計上ラベル集合を有界にしている箇所では、非有界な入力（生のパス、ID）が属性へ到達しないことを検証する。カーディナリティの退行はローカルでは不可視で、本番では高くつく。
+- **秘匿化と伝播** — 外向き HTTP トランスポートはスパンから秘匿情報を落としつつ、実リクエストは変更しない。同一テストで **両方** を検証すること。秘匿化だけを見てもリクエストを壊した場合と区別できない。
+- **条件付き propagator** — 2 方向は対称ではなく、その非対称性こそが契約である。`Inject` はフラグで分岐し（明示的に false のときだけ抑止）両側の検証が要る。抑止される分岐がトレースの連続性を黙って落とす経路だからである。`Extract` は無条件に委譲するため、存在しない 2 つ目の分岐を作らず委譲そのものを検証する。
 
-Two neighbouring sections govern the rest and must not be duplicated here: the helpers this package offers other layers are in [Test Support](#test-support), and the approved uncovered branches — plus the sign-off rule for adding one — are in [Test coverage exception (extraordinary measure)](#test-coverage-exception-extraordinary-measure).
+残りは隣接する 2 節が管轄しており、ここへ再掲しないこと。他層へ提供する補助は [テストサポート](#テストサポート)、承認済みの未カバー分岐と追加時の承認ルールは [テストカバレッジ例外（超法規的措置）](#テストカバレッジ例外超法規的措置) にある。

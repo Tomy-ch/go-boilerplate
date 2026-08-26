@@ -5,98 +5,62 @@ deciders: [maintainers]
 tags: [foundational, ci, structural-safety]
 ---
 
-# ADR-0006: Enforce structural safety with tooling and CI (depguard)
+# ADR-0006: ツールと CI で構造的安全性を強制する（depguard）
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Layer dependency rules are documented in [`docs/rules.md`](../rules.md) and summarized
-in `AGENTS.md`. Documentation alone is insufficient: rules that rely on code-review
-discipline are inconsistently applied, especially as the codebase grows and contributors
-change. A cross-layer import that slips through review — for example, a usecase package
-importing an infrastructure package — silently erodes the architectural boundaries that
-[ADR-0002](0002-onion-architecture.md) and [ADR-0003](0003-interface-based-decoupling.md)
-establish.
+レイヤー依存関係ルールは [`docs/rules.md`](../rules.md) に文書化され、`AGENTS.md` に要約されている。ドキュメントだけでは不十分である: コードレビューの規律に依存するルールは、特にコードベースが成長してコントリビューターが変わるにつれ、一貫性なく適用される。レビューをすり抜けるクロスレイヤーインポート — 例えばユースケースパッケージがインフラストラクチャパッケージをインポートする — は、[ADR-0002](0002-onion-architecture.md) と [ADR-0003](0003-interface-based-decoupling.md) が確立したアーキテクチャ境界を静かに侵食する。
 
-This project makes a deliberate choice to encode structural rules as machine-checkable
-constraints so they cannot be bypassed by accident. The same principle applies to other
-structural concerns: generated code must never be manually edited (verified by CI
-regeneration checks), and API contracts must precede implementation (the OpenAPI-first flow).
+このプロジェクトは、構造的ルールを機械的にチェック可能な制約としてエンコードし、偶発的に迂回されないようにする意図的な選択をした。同じ原則が他の構造的な関心事にも適用される: 生成コードは手動で編集されてはならない（CI の再生成チェックで検証）、API コントラクトは実装より先行しなければならない（OpenAPI ファーストフロー）。
 
-The design goals are maintainability, predictability, and structural safety — not raw
-performance or minimal tooling. Investing in tooling infrastructure is consistent with the
-long-term operability objective. Critically, the same CI gate applies to human-authored and
-AI-generated code alike: an agent that violates a boundary receives the same build failure
-as a human contributor.
+設計目標は保守性・予測可能性・構造的安全性であり、生のパフォーマンスや最小限のツールではない。ツールインフラストラクチャへの投資は長期的な運用性の目標と一貫している。特に重要なのは、同じ CI ゲートが人間が書いたコードと AI が生成したコードの両方に等しく適用されることだ: 境界に違反するエージェントは、人間のコントリビューターと同じビルド失敗を受け取る。
 
-## Decision
+## 決定
 
-Enforce layer dependency boundaries using `golangci-lint` with the `depguard` linter.
-Forbidden cross-layer imports cause CI to fail. The four core depguard rule sets, configured
-in `.golangci.yaml`, are:
+`depguard` リンターを使った `golangci-lint` でレイヤー依存関係境界を強制する。禁止されたクロスレイヤーインポートは CI を失敗させる。`.golangci.yaml` に設定される 4 つのコア depguard ルールセットは以下の通り:
 
-- `maintain_a_sound_domain` — domain may not import usecase, controller, or infrastructure
-  packages; nor I/O-side `pkg/` utilities (filesystem, process execution, env-write).
-- `maintain_a_sound_usecase` — usecase may not import controller or infrastructure packages;
-  nor I/O-side `pkg/` utilities.
-- `maintain_a_sound_controller` — controller may not import infrastructure packages.
-- `maintain_a_sound_infrastructure` — infrastructure may not import controller packages.
+- `maintain_a_sound_domain` — ドメインはユースケース・コントローラー・インフラストラクチャパッケージをインポートしてはならない; I/O 側の `pkg/` ユーティリティ（ファイルシステム、プロセス実行、環境変数書き込み）も同様。
+- `maintain_a_sound_usecase` — ユースケースはコントローラーやインフラストラクチャパッケージをインポートしてはならない; I/O 側の `pkg/` ユーティリティも同様。
+- `maintain_a_sound_controller` — コントローラーはインフラストラクチャパッケージをインポートしてはならない。
+- `maintain_a_sound_infrastructure` — インフラストラクチャはコントローラーパッケージをインポートしてはならない。
 
-The full consequence table (what is and is not allowed per layer) is in
-[`docs/rules.md`](../rules.md); this ADR records only the decision to enforce those rules
-via tooling rather than documentation alone.
+レイヤーごとに許可・不許可されるものの完全な帰結テーブルは [`docs/rules.md`](../rules.md) にある; この ADR はドキュメントだけでなくツールによってそれらのルールを強制するという決定のみを記録する。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Layer violations are caught at CI time, not during code review — detection is objective and
-  continuous.
-- AI-generated code that violates boundaries fails the same CI gate as human-authored code.
-- The linter configuration in `.golangci.yaml` is the machine-readable authority on permitted
-  imports per layer; it is version-controlled alongside the code it governs.
+- レイヤー違反はコードレビュー時ではなく CI 時に検出される — 検出は客観的かつ継続的。
+- 境界に違反する AI 生成コードは、人間が書いたコードと同じ CI ゲートで失敗する。
+- `.golangci.yaml` のリンター設定は、レイヤーごとに許可されたインポートに関する機械可読な権威であり、それが管理するコードと共にバージョン管理される。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Adding a legitimate new `pkg/` utility that should be accessible inside a restricted layer
-  requires a conscious update to `.golangci.yaml` — intentional friction, but friction
-  nonetheless.
-- Depguard operates on import paths; it cannot detect architectural violations that stay
-  within a single package (e.g., business logic written inside an infrastructure file that
-  imports no forbidden packages).
+- 制限されたレイヤー内でアクセスすべき正当な新しい `pkg/` ユーティリティを追加するには、`.golangci.yaml` の意識的な更新が必要 — 意図的な摩擦だが、それでも摩擦ではある。
+- Depguard はインポートパスで動作する; 禁止されたパッケージをインポートしない単一パッケージ内に留まるアーキテクチャ違反（例: インフラストラクチャファイルに書かれたビジネスロジック）は検出できない。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Documentation and code-review only
+### ドキュメントとコードレビューのみ
 
-Rules written in `docs/rules.md` and enforced through pull-request review alone. Rejected:
-inconsistent across reviewers and over time; AI agents have no runtime feedback loop for
-violation detection.
+`docs/rules.md` にルールを書き、プルリクエストレビューのみで強制する。却下: レビュアーや時間によって一貫性がなく; AI エージェントには違反検出のための実行時フィードバックループがない。
 
-### Go workspace modules per layer
+### レイヤーごとの Go ワークスペースモジュール
 
-Each layer as a separate Go module, making cross-layer imports fail at `go build`. Provides
-stronger isolation but adds significant module-management overhead (replace directives,
-multi-module CI). The depguard approach achieves the same practical effect with much lower
-complexity.
+各レイヤーを別個の Go モジュールにし、クロスレイヤーインポートを `go build` で失敗させる。より強い分離を提供するが、重大なモジュール管理のオーバーヘッドを追加する（replace ディレクティブ、マルチモジュール CI）。depguard アプローチははるかに低い複雑さで同じ実用的な効果を達成する。
 
-### Custom go/analysis pass
+### カスタム go/analysis パス
 
-Write a custom static-analysis pass. More flexible but requires authoring and maintaining
-a bespoke linter. Depguard covers the use case without custom code.
+カスタム静的解析パスを書く。より柔軟だが、専用のリンターを作成・維持する必要がある。Depguard はカスタムコードなしでそのユースケースをカバーする。
 
-## Notes
+## 補足
 
-- Full layer rules and rationale: [`docs/rules.md`](../rules.md) §§ "Layer Dependency
-  Rules", "Usecase Dependency Rules", "Domain Layer Constraints", "Infrastructure
-  Implementation Rules".
-- Linter configuration: `.golangci.yaml` (depguard `rules` block —
-  `maintain_a_sound_domain`, `maintain_a_sound_usecase`, `maintain_a_sound_controller`,
-  `maintain_a_sound_infrastructure`).
-- Source: `docs/architecture.md` § "Structural Safety".
-- Source: `docs/rules.md` § "Layer Dependency Rules" (enforcement note).
-- Related: [ADR-0002](0002-onion-architecture.md) (layer shape),
-  [ADR-0003](0003-interface-based-decoupling.md) (interface seams).
+- 完全なレイヤールールと根拠: [`docs/rules.md`](../rules.md) §§「Layer Dependency Rules」「Usecase Dependency Rules」「Domain Layer Constraints」「Infrastructure Implementation Rules」。
+- リンター設定: `.golangci.yaml`（depguard の `rules` ブロック — `maintain_a_sound_domain`、`maintain_a_sound_usecase`、`maintain_a_sound_controller`、`maintain_a_sound_infrastructure`）。
+- ソース: `docs/architecture.md` §「Structural Safety」。
+- ソース: `docs/rules.md` §「Layer Dependency Rules」（強制注記）。
+- 関連: [ADR-0002](0002-onion-architecture.md)（レイヤー形状）、[ADR-0003](0003-interface-based-decoupling.md)（インターフェース境界）。

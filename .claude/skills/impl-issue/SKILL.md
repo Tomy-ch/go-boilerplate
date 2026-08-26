@@ -7,172 +7,128 @@ argument-hint: '<issue-url-or-number> [--review-mode=all|harmful|issues] [--issu
 
 # Impl Issue
 
-Semi-automatic issue → PR pipeline. The machine handles progression, bookkeeping, and detection; the
-human keeps every judgment call. The point is not speed — it is that a long autonomous run stops
-being a black box, because each place where the work departed from the approved plan surfaces when it
-happens rather than at the end.
+GitHub issue を、環境確保からマージ済み PR まで進める半自動パイプライン。進行・記録・検出は機械が持ち、判断はすべて人間が持つ。目的は速さではなく、**長い自律実行がブラックボックスにならないこと** — 承認した計画から外れた箇所が、最後ではなくその場で表に出る。
 
-This file is self-contained on purpose. Anyone should be able to reproduce the same run on a
-different machine from this file alone, so the concrete commands live here rather than in local
-notes. Repository detail that genuinely does drift stays behind pointers: `.makefiles/README.md`
-(full target registry), `docs/maintenance/db-worktree-pool.md` (slot pool), `docs/development-flow.md`
-(per-change-type flows).
+このファイルは意図的に自己完結させている。**別マシンでもこのファイルだけ読めば同じ実行を再現できる**ようにするため、具体的なコマンドはローカルのメモではなくここに置く。実際に drift するリポジトリ固有の詳細だけをポインタに残す: `.makefiles/README.md`（target 一覧）、`docs/maintenance/db-worktree-pool.md`（スロットプール）、`docs/development-flow.md`（変更種別ごとのフロー）。
 
-A Japanese reference translation lives at `SKILL.ja.md` in this directory (for human reference only;
-not loaded as a skill).
+## 使うとき
 
-## When to Use
+- issue の URL / 番号を渡され、マージ済み PR まで持っていってほしいとき。
+- 決定点で止まった実行の再開を頼まれたとき。
 
-- The user hands over an issue URL / number and wants it taken to a merged PR.
-- The user asks to resume a run that stopped at a decision point.
+以下には使わない: issue の無い変更（`commit` + `submit-pr` を直接）、既存 diff のレビュー（`impl-review` / `test-review`）、スキルの作成・編集（`manage-skill`）。
 
-Do NOT use it for a change with no issue behind it (`commit` + `submit-pr` directly), for reviewing an
-existing diff (`impl-review` / `test-review`), or for authoring skills (`manage-skill`).
+## このスキルが持たないもの
 
-## What this skill does NOT do
+実装判断を一切持たない。どの設計を採るか、レビュアーが正しいか、その指摘が issue に値するかを決めない。ユーザーへ回して、答えを記録する。
 
-It holds no implementation judgment. It never decides which design to adopt, whether a reviewer is
-right, or whether a finding deserves an issue. It routes those to the user and records the answer.
-
-| Work | Owner |
+| 作業 | 担当 |
 | --- | --- |
-| Commit splitting and execution | `commit` |
-| Push + PR create/update | `submit-pr` |
-| Adversarial code review | `impl-review` |
-| Test-quality review | `test-review` (chained by `impl-review`) |
-| The implementation itself | you, following the approved plan |
+| コミット分割と実行 | `commit` |
+| push + PR 作成/更新 | `submit-pr` |
+| 敵対的コードレビュー | `impl-review` |
+| テスト品質レビュー | `test-review`（`impl-review` が連鎖） |
+| 実装そのもの | 承認された計画に従うあなた |
 
-## AI Modification Scope
+## AI の変更範囲
 
-`AGENTS.md` confines AI edits to `internal/` / `pkg/` / `database/` / `openapi/` and treats everything
-else — `.github/workflows/`, `docker/`, `scripts/`, `docs/`, `.makefiles/`, root dotfiles — as out of
-scope. **Invoking this skill is the explicit user instruction that relaxes that**, because this skill
-is issue-generic: the issue decides the surface, and an issue about CI, tooling, container images, or
-documentation cannot be resolved inside the four default directories. This is a documented,
-non-loophole exception per the "Skills must not be a loophole" clause in `AGENTS.md`.
+`AGENTS.md` は AI の編集対象を `internal/` / `pkg/` / `database/` / `openapi/` に限り、それ以外 — `.github/workflows/`、`docker/`、`scripts/`、`docs/`、`.makefiles/`、ルートのドットファイル — をスコープ外としている。**このスキルの起動は、その制限を緩めるユーザーの明示指示にあたる。** このスキルは issue 汎用のドライバであり、対象面を決めるのは issue の側だからである。CI・ツールチェーン・コンテナイメージ・ドキュメントについての issue は、既定の 4 ディレクトリの中では解決できない。これは `AGENTS.md` の「Skills must not be a loophole」条項に対する、明示された抜け穴でない例外である。
 
-The relaxation is bounded, and the bound is the plan:
+緩和には境界があり、その境界は計画である:
 
-- The Step 3 plan's **Files to touch** section is the permitted surface. A sensitive path outside the
-  four default directories must appear there **before** it is edited, named explicitly rather than
-  implied by a glob.
-- Say so when presenting the plan. The user approves the sensitive paths knowingly, not by discovering
-  them in the diff — a plan that quietly widens the scope is the failure this clause exists to prevent.
-- Reaching a sensitive path the plan does not list is trip-wire 1 (Step 4). Stop and ask; do not widen
-  the surface and report it afterwards.
+- Step 3 の計画の **触るファイル一覧** が許可された対象面。既定の 4 ディレクトリの外にあるセンシティブなパスは、編集する**前**にそこへ現れていなければならない。glob で暗に含めるのではなく、明示的に名前を書く。
+- 計画を提示するときにそれを言う。ユーザーは diff で気づくのではなく、承知のうえでセンシティブなパスを承認する — 黙ってスコープが広がる計画こそ、この条項が防ごうとしている失敗である。
+- 計画に無いセンシティブなパスへ到達したら Step 4 の trip-wire 1。止まって聞く。対象面を広げてから事後報告しない。
 
-Hard-protected even during this skill (never touch, regardless of what the issue asks):
+このスキルの実行中も保護されるもの（issue が何を要求しても触らない）:
 
 - `AGENTS.md` / `CLAUDE.md`
-- Generated files: `**/*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`, and generated content
-  under `docs/` (`docs/openapi/**`, `docs/coverage/**`, `docs/db-schema/**`, `docs/godoc/**`,
-  `docs/portal/docs.json`, `docs/portal/guides/**`). Regenerating through a `make` target is fine;
-  hand-editing is not.
-- Anything under `permissions.deny` in `.claude/settings.json`
-- Existing files under `database/migrations/**` (new migration files only)
+- 生成物: `**/*.gen.go`、`*.sql.go`、`*_mock.go`、`**/openapi.gen.yaml`、および `docs/` 配下の生成物（`docs/openapi/**`、`docs/coverage/**`、`docs/db-schema/**`、`docs/godoc/**`、`docs/portal/docs.json`、`docs/portal/guides/**`）。`make` ターゲット経由での再生成はよい。手編集は駄目。
+- `.claude/settings.json` の `permissions.deny` 配下
+- `database/migrations/**` の既存ファイル（新規 migration ファイルのみ）
 
-## Step 0 — Confirm the three modes (one `AskUserQuestion`)
+## Step 0 — 3 つのモードを確認する（`AskUserQuestion` 1 回）
 
-Ask once, before anything else, in a single call. Defaults are marked; the user's choice always wins.
+何より先に、1 回の呼び出しで聞く。既定は明示するが、ユーザーの選択が常に優先。
 
-**Review mode** — what happens to a review finding.
+**レビューモード** — レビュー指摘をどうするか。
 
-| Mode | Confirmed finding | Everything else |
+| モード | 確定した指摘 | それ以外 |
 | --- | --- | --- |
-| `all` | Apply, even if the change is large | — |
-| `harmful` *(default)* | Apply only what is clearly harmful within the change's scope | Route to issue mode |
-| `issues` | Apply nothing | Route to issue mode |
+| `all` | 大きく書き換わっても適用する | — |
+| `harmful`（既定） | 変更範囲内で明確に有害なものだけ適用 | issue モードへ回す |
+| `issues` | 何も適用しない | issue モードへ回す |
 
-**Issue mode** — how an unrelated finding becomes tracked.
+**issue モード** — 無関係な指摘をどう追跡に載せるか。
 
-| Mode | Behavior |
+| モード | 挙動 |
 | --- | --- |
-| `search` *(default)* | Search existing issues first; on a duplicate, comment there instead of filing |
-| `file` | File without searching |
+| `search`（既定） | 既存 issue を先に検索し、重複ならそこへコメント |
+| `file` | 検索せず起票 |
 
-`issues` × `file` produces the most new issues of any combination. Before executing it, show the count
-and confirm — a review easily yields a dozen findings, and a dozen new issues is itself noise.
+`issues` × `file` は起票数が最大になる組み合わせ。実行前に件数を出して確認する — レビューは容易に十数件出るし、十数件の新規 issue はそれ自体がノイズ。
 
-**Flow mode** — what a trip-wire does.
+**進行モード** — trip-wire に当たったときどうするか。
 
-| Mode | Behavior |
+| モード | 挙動 |
 | --- | --- |
-| `interactive` *(default)* | Stop and ask |
-| `delegated` | Record the call and continue; surface all recorded calls in a PR comment at the end |
+| `interactive`（既定） | 止まって聞く |
+| `delegated` | 判断を記録して続行し、最後に PR コメントへまとめて出す |
 
-`delegated` is for when the user has handed over full authority *and* will be away — stopping for
-permission nobody is there to grant kills the run. It is not a speed setting.
+`delegated` は「全権委任 かつ 長期離脱」のための設定。許可を出す人が居ないのに許可待ちで止まると実行が死ぬ。速度設定ではない。
 
-## Step 1 — Kickoff
+## Step 1 — 起動
 
 ```bash
-printf '\033]0;%s\007' "<issue-number>-<slug>"   # label the window so parallel runs stay distinguishable
+printf '\033]0;%s\007' "<issue-number>-<slug>"   # 並行実行を見分けられるよう窓に印を付ける
 gh issue view <n> --json number,title,body,labels,state,comments
 ```
 
-**Compare the issue against the actual base before writing anything.** An issue body is a snapshot of
-the repo as it was when someone wrote it; line numbers, "X does not exist yet", and "Y has no consumer"
-go stale. Verify each factual claim against the base you are about to branch from.
+**何か書く前に、issue 本文をベース実物と突き合わせる。** issue 本文は書かれた時点のスナップショットで、行番号・「X はまだ無い」・「Y に consumer が無い」は陳腐化する。これから切るベースに対して、本文の事実主張を 1 つずつ検証する。
 
-Then post a kickoff comment recording branch name, base commit, isolation method, and — most
-importantly — **every discrepancy found above**. This marks the issue as taken and gets the
-corrections to the user while they are still cheap.
+その上で着手コメントを投稿する。ブランチ名・ベース commit・隔離方式、そして何より **上で見つけた食い違いすべて** を書く。issue を「着手済み」とマークすると同時に、まだ安いうちに訂正をユーザーへ渡すため。
 
 ```bash
 gh issue comment <n> --body-file <file>
 ```
 
-## Step 2 — Secure the environment
+## Step 2 — 実行環境を確保する
 
-Do this before any code is touched, so nothing lands in a shared checkout. Which half applies depends
-on whether the worktree exists yet — setting one up and resuming into one are different operations,
-and running the first against an already-live worktree destroys work.
+コードに触れる前に済ませる。共有 checkout に何も落とさないため。どちらの半分を実行するかは worktree が既にあるかで決まる。新規に用意することと既存へ再開することは別の操作で、動いている worktree に前者を当てると作業が壊れる。
 
-### Initial setup — no worktree yet
+### 初期セットアップ — worktree がまだ無い
 
 ```bash
-# 1. Resolve the active release line off origin's live state.
+# 1. 現行のリリース線を origin の実状態から解決する。
 BASE=$(make -s base-branch)
 test -n "$BASE" || { echo "ベースブランチを解決できませんでした"; exit 1; }
 
-# 2. Branch from current origin, not a stale local ref.
+# 2. 古いローカル ref ではなく、今の origin から切る。
 git fetch origin "$BASE"
 git worktree add -b feature/<n>-<slug> ../go-boilerplate.worktrees/<n>-<slug> "origin/$BASE"
 
-# 3. Lease a DB slot: own databases (wt<N>_local / wt<N>_test), API port 8080+N, mock-auth 2010+N.
+# 3. DB スロットをリース: 専用 DB（wt<N>_local / wt<N>_test）、API ポート 8080+N、mock-auth 2010+N。
 cd ../go-boilerplate.worktrees/<n>-<slug> && make slot-acquire
 
-# 4. A fresh worktree has no vendor/ and air builds with --mod=vendor, so serve would fail without this.
+# 4. 新規 worktree には vendor/ が無く、air は --mod=vendor でビルドするため、これが無いと serve が失敗する。
 go mod vendor
 ```
 
-`make base-branch` reads `origin`'s live state. Use nothing else for this: the local
-`refs/remotes/origin/HEAD` is set once at clone time and `git fetch` never updates it, the GitHub
-default branch stays on an earlier release line, and the harness's own "Main branch" line reports that
-stale local symref. All three answer without warning, and branching from a generation-old base is not
-visible until a subagent reports that files everyone expects are missing — by which point the work on
-that branch is wasted.
+`make base-branch` は `origin` の実状態を読む。これ以外を使わないこと。ローカルの `refs/remotes/origin/HEAD` は clone 時に一度決まったきり `git fetch` では更新されず、GitHub のデフォルトブランチは前のリリースラインに留まり、ハーネスが提示する "Main branch" はその陳腐化したローカル symref を読んでいる。3 つとも警告なく答えるため、1 世代前のベースから切ったことは、サブエージェントが「あるはずのファイルが無い」と報告するまで表に出ない。そこまで進んだ作業は丸ごと無駄になる。
 
-If `slot-acquire` reports failure, run `make slot-status` before retrying — the lease often succeeded
-even when the command errored.
+`slot-acquire` が失敗を報告したら、再試行の前に `make slot-status` を見る — コマンドがエラーでもリースだけ成功していることが多い。
 
-**Never release the slot on your own, and do not offer to during cleanup.** A slot is cheap to hold
-(the lease is reclaimed automatically once stale) and expensive to lose mid-task; only the user knows
-when the work is really over.
+**スロットは自分から解放しない。片付けフェーズで解放を聞きもしない。** 握ったままのコストはほぼゼロ（リースは stale になれば自動回収される）だが、作業途中で失うと DB とポートを失う。本当に終わったかを知っているのはユーザーだけ。
 
-If the user's instruction named a release version other than the resolved one, ask before branching —
-a deliberate backport target is the one case the resolver cannot know about.
+ユーザーの指示が解決結果と違うリリースバージョンを指していた場合は、切る前に聞く。意図的な backport 先だけは解決器に知りようがない。
 
-### Resuming into an existing worktree
+### 既存 worktree へ再開する
 
-Setup already happened. Observe it and report what you found; do not re-run any of it.
+セットアップは済んでいる。観測して結果を報告するだけにし、どれ一つ再実行しない。
 
-The session-start environment line (`[agent-env] checkout=… branch=… vendor=… db-slot=…`) already
-carries the three facts that matter — which checkout this is, whether `vendor/` exists, and which DB
-slot is held. When it is present, state those back before continuing rather than re-deriving them.
+session-start の環境行（`[agent-env] checkout=… branch=… vendor=… db-slot=…`）が、重要な 3 つの事実 — どの checkout か、`vendor/` があるか、どの DB スロットを保持しているか — を既に運んでいる。存在するなら、導出し直さずそのまま報告してから先へ進む。
 
-Do not depend on it being there. A hook can be absent, disabled, or attached to a harness that never
-ran it, and the fallback has to be inspection rather than repair. Every command below only reads:
+ただしそれがある前提に寄りかからない。hook は無いことも、無効化されていることも、そもそも実行しないハーネスに繋がっていることもある。その場合のフォールバックは修復ではなく確認である。以下はいずれも読むだけ:
 
 ```bash
 git rev-parse --show-toplevel
@@ -180,136 +136,111 @@ test -d vendor && echo 'vendor: present' || echo 'vendor: absent'
 cat .gobp-db-slot 2>/dev/null || echo 'slot: none'
 ```
 
-A missing or malformed slot is a fact to report, not a fault to fix on the spot. Lease one with
-`make slot-acquire` immediately before DB-backed work actually begins — the first `make test`,
-`make serve`, or `psql` — and not before. `go mod vendor` is the same: run it when `vendor/` is absent
-and a build is imminent, not as a resume ritual.
+スロットが無い・壊れているのは報告すべき事実であって、その場で直すべき障害ではない。`make slot-acquire` は DB 作業が実際に始まる直前 — 最初の `make test` / `make serve` / `psql` — に実行し、それより前には実行しない。`go mod vendor` も同じで、`vendor/` が無く、かつビルドが目前に迫っているときに走らせる。再開の儀式として走らせるものではない。
 
-**Never acquire a slot or reinitialize a database because a session resumed.** `slot-acquire` and the
-`db-*-reinit` targets rebuild the slot's `wt<N>_local` / `wt<N>_test` databases from scratch, so a
-reflexive resume-time acquire destroys the state belonging to the very run it is resuming — seeded
-fixtures, a half-applied migration, the data a failure was about to be diagnosed from.
+**セッションを再開したというだけの理由でスロットを取得したり DB を再初期化したりしない。** `slot-acquire` と `db-*-reinit` はスロットの `wt<N>_local` / `wt<N>_test` を作り直すため、反射的な再開時取得は、まさに再開しようとしている実行の状態 — 投入済みのシード、途中まで当てた migration、障害の診断に使うはずだったデータ — を破壊する。
 
-## Step 3 — Plan, then wait
+## Step 3 — 計画を立て、そこで待つ
 
-Have a **different model** draft the plan — a second model catches what the implementer's own blind
-spots would otherwise carry straight into the code. Give it the issue, your Step 1 corrections, and
-the paths you have already read. Tell it to verify your summary rather than trust it.
+計画は**別モデル**に書かせる — 実装者自身の盲点をそのままコードへ持ち込むのを、second model が拾う。issue、Step 1 の訂正、既に読んだパスを渡す。「私の要約を鵜呑みにせず自分で検証しろ」と伝える。
 
-The plan is a written artifact, not a chat message, because Step 5 compares against it mechanically.
-Write it under the repo's gitignored `tmp/` (it may be a symlink to a directory outside the repo if
-the operator prefers). It must contain:
+計画はチャットの発言ではなく**ファイル**にする。Step 5 が機械的に突合するため。repo の gitignore された `tmp/` 配下に置く（運用者の好みで repo 外ディレクトリへの symlink でもよい）。次のセクションが必須:
 
-| Section | Why it is required |
+| セクション | なぜ必須か |
 | --- | --- |
-| Files to touch | Step 5 diffs this against `git diff --name-only` |
-| Per-step deliverables | Lets a partially-finished run be resumed or handed over |
-| Chosen options **and rejected ones, with reasons** | Trip-wire 2 fires when a rejected option is later adopted |
-| Gate table | Fixes at plan time whether runtime verification is required, so it cannot be quietly dropped |
+| 触るファイル一覧 | Step 5 が `git diff --name-only` と突合する |
+| 各ステップの成果物 | 途中で止まった実行の再開・引き継ぎができる |
+| 確定した選択肢と**棄却した選択肢（理由付き）** | 棄却した案を後から採ったとき trip-wire 2 が発火する |
+| ゲート表 | runtime 検証の要否を計画時に固定し、後から黙って落とせなくする |
 
-Present the plan and **wait for approval. Do not implement before it.**
+計画を提示し、**承認を待つ。承認前に実装しない。**
 
-## Step 4 — Implement, watching five trip-wires
+## Step 4 — 実装し、5 つの trip-wire を監視する
 
-The plan is approved and implementation begins — the boundary between deciding and building, which
-only this skill knows:
+計画が承認され、実装が始まる。決める時間と作る時間の境界であり、それを知っているのはこのスキルだけ
+である。
 
 ```sh
 .agents/closed-loop/marks.sh planApprovedAt 2>/dev/null || true
 .agents/closed-loop/marks.sh implStartedAt 2>/dev/null || true
 ```
 
-Follow the approved plan. These triggers are deliberately mechanical — relying on you to *notice* that
-a decision was significant is exactly how drift goes unreported.
+承認された計画に従う。以下は意図的に機械的なトリガーにしてある — 「判断が重要だったと**気づく**」ことに依存させるのが、まさに drift が報告されない原因だから。
 
-| # | Trip-wire | Why it is a human call |
+| # | trip-wire | なぜ人間の判断か |
 | --- | --- | --- |
-| 1 | Touching a file the plan does not list | Scope grew; the user approved a different shape |
-| 2 | Choosing an option the plan rejected, or a third one | The rejection had a reason; overriding it silently discards that reasoning |
-| 3 | A lint/CI failure rooted in an architecture rule (`interfacebloat`, `gocognit`, `depguard`, architest, …) | These are not formatting — satisfying them changes the design |
-| 4 | Rejecting a reviewer's finding, or applying a different fix than proposed | A finding can be correct while its proposed fix is harmful; that judgment is not yours alone |
-| 5 | Skipping any gate | See Step 6 |
+| 1 | 計画に無いファイルを触った | スコープが伸びた。ユーザーが承認したのは別の形 |
+| 2 | 計画が棄却した案、または第三の案を採った | 棄却には理由があった。黙って覆すとその理由が捨てられる |
+| 3 | アーキ規約由来の lint/CI 失敗（`interfacebloat` / `gocognit` / `depguard` / architest ほか） | これらは書式ではない。満たすには設計が変わる |
+| 4 | レビュー指摘を却下した、または提案と別の修正を採った | 指摘が正しくても提案された修正が有害なことがある。単独で決める判断ではない |
+| 5 | ゲートを飛ばした | Step 6 参照 |
 
-On a trip-wire: `interactive` → stop and present the situation with your recommendation.
-`delegated` → record it and continue, then surface every recorded call in one PR comment at the end.
+発火したら: `interactive` → 止めて状況と推奨を提示。`delegated` → 記録して続行し、最後に PR コメント 1 本へまとめる。
 
-### When code generation is blocked
+### コード生成が塞がれているとき
 
-The generation make targets wrap `docker compose run … make <target>-ci`, and the `-ci` halves run on
-the host with mise-installed tools. When the container runtime is unavailable, call them directly:
+生成系 make target は `docker compose run … make <target>-ci` の薄いラッパで、`-ci` 側は mise が入れたツールで host 実行する前提で書かれている。コンテナランタイムが使えないときは直接叩く:
 
 ```bash
-make merge-dml-ci work-dir="."     # DML concatenation
+make merge-dml-ci work-dir="."     # DML 連結
 make sqlc-generate-ci              # sqlc
 make gen-bundle-oapi-ci            # OpenAPI bundle
 make gen-api-docs-ci               # docs/openapi/index.html
 cd <pkg> && mockgen -source=<f>.go -destination=mock/mock_<f>.go.gen.go -package=mock_<pkg>
 ```
 
-Only `make dump-schema` truly needs the container, and only when a migration was added.
+本当にコンテナが要るのは `make dump-schema` だけで、しかも migration を足したときだけ。
 
-Two traps: `merge-dml-ci` runs `go run ./cmd/`, so adding a Repository method before its query exists
-deadlocks the build — stub the implementation for the duration of generation, then restore (back the
-file up with `cp` first). And the embedded-spec generator's `//go:generate` line points at a container
-path, so `go generate` cannot run it; invoke it with the real path:
+罠が 2 つ。`merge-dml-ci` は `go run ./cmd/` を走らせるため、クエリ生成前に Repository メソッドを足すとビルドが詰まる — 生成の間だけ実装をスタブにし、後で戻す（先に `cp` で退避）。もう 1 つ、埋め込み spec の `//go:generate` はコンテナパスを指しているので `go generate` では回らない。実パスで直接叩く:
 
 ```bash
 cd internal/controller/httpstack/oapi/validator \
   && oapi-codegen --package=gen --generate=spec -o ./gen/validate.gen.go <repo>/openapi/openapi.gen.yaml
 ```
 
-Changing an OpenAPI description alone still moves three artifacts: the bundle, `docs/openapi/index.html`,
-and that embedded spec. Miss one and CI's generate checks fail.
+OpenAPI の description を 1 行変えるだけでも生成物は 3 つ動く: bundle、`docs/openapi/index.html`、その埋め込み spec。1 つでも漏らすと CI の生成物チェックが落ちる。
 
-## Step 5 — Reconcile the plan against reality
+## Step 5 — 計画と実物を突合する
 
-Run this before the gates. Compare:
+ゲートの前に行う。突合するのは:
 
-- `git diff --name-only` against the plan's file list — report additions and untouched entries.
-- Options actually taken against the plan's chosen/rejected lists.
-- Gate table entries against what you actually ran.
+- `git diff --name-only` ↔ 計画のファイル一覧（増えた分・触られなかった分の両方を報告）
+- 実際に採った選択肢 ↔ 計画の確定/棄却リスト
+- ゲート表 ↔ 実際に走らせたもの
 
-Present the deltas. A long run drifts for good reasons; the problem is drift the user never saw. If
-nothing drifted, say so in one line and move on.
+差分を提示する。長い実行は正当な理由で drift する。問題なのは**ユーザーが見ていない drift**。drift が無ければ 1 行そう言って進む。
 
-## Step 6 — Local gates
+## Step 6 — ローカルゲート
 
-`make fix`, then `make lint` / `make test`. When many worktrees are active these may be delegated to
-CI — that is a documented trade-off — but **say in the PR that they were not run locally**. Silence
-reads as "verified".
+`make fix` → `make lint` / `make test`。worktree が多いときは CI へ委譲してよい（文書化されたトレードオフ）が、**ローカル未実行であることを PR に書く**。黙っていると「検証済み」と読まれる。
 
-Runtime verification is deliberately *not* here. It belongs after the PR exists (Step 8), so CI runs
-in parallel with it instead of after it.
+runtime 検証は意図的にここに置いていない。PR ができた後（Step 8）に置くことで、CI と並行して走らせられる。
 
-## Step 7 — Review
+## Step 7 — レビュー
 
-Run `impl-review` (which chains `test-review`). Handle findings per the review mode from Step 0.
+`impl-review`（`test-review` を連鎖）を実行し、Step 0 のレビューモードに従って指摘を処理する。
 
-Auto-application is confined to things whose correctness is machine-checkable: formatting, lint fixes,
-comment-quality findings, regenerated artifacts. **A fix that changes the design is always a decision
-point**, even under review mode `all` — `all` authorizes a large rewrite, not an unreviewed one. This
-mirrors why `impl-review` keeps its five code lenses report-only.
+自動適用してよいのは正しさを機械的に判定できるものだけ — 書式、lint 修正、コメント指摘、生成物の再生成。**設計を変える修正は、レビューモード `all` であっても必ず決定点**にする。`all` が許可しているのは「大きな書き換え」であって「未レビューの書き換え」ではない。`impl-review` がコード 5 レンズを報告のみに留めているのと同じ理由。
 
-Then present every trip-wire and deferred judgment together, in one place. Batching beats trickling:
-the user sees the shape of the whole run at once.
+その後、trip-wire と保留した判断をまとめて 1 箇所で提示する。小出しより一括のほうが、実行全体の形が見える。
 
-## Step 8 — PR, then runtime verification, then merge
+## Step 8 — PR → runtime 検証 → マージ
 
-When this step merges the pull request, stamp it — a merge performed here is observed by nobody
-else until the loop goes back to `gh` for it:
+このステップが PR をマージしたら打刻する。ここで行うマージは、ループが後から `gh` を引くまで
+他の誰も観測していない。
 
 ```sh
 .agents/closed-loop/marks.sh mergedAt 2>/dev/null || true
 ```
 
-Open the PR first via `submit-pr`, so CI starts while you verify locally.
+先に `submit-pr` で PR を開く。ローカル検証の間に CI が回り始める。
 
-### Runtime verification — the merge gate
+### runtime 検証 — マージのゲート
 
-Exercise the real HTTP path against the running system. No mode relaxes this.
+動いているシステムに対して実 HTTP 経路を通す。どのモードでも緩められない。
 
 ```bash
-make serve                                    # API on 8080+N, mock-auth on 2010+N
+make serve                                    # API は 8080+N、mock-auth は 2010+N
 
 TOKEN=$(curl -s -X POST http://localhost:201N/bypass/token \
   -H 'Content-Type: application/json' \
@@ -319,115 +250,91 @@ TOKEN=$(curl -s -X POST http://localhost:201N/bypass/token \
 curl -s -o /dev/null -w '%{http_code}\n' -H "Authorization: Bearer $TOKEN" http://localhost:808N/v1/...
 ```
 
-The token subject must be the identity `subject` string the seed registered, not an internal UUID —
-the seeded UUID rows belong to a different issuer than the one the slot's port produces, so a UUID
-yields a confusing 401. Resolve real subjects from the identity table when unsure:
+token の subject は seed が登録した identity の `subject` 文字列でなければならない。内部の UUID ではない — シードの UUID 行はスロットのポートが発行する issuer とは別の issuer に属するため、UUID を渡すと紛らわしい 401 になる。実在する subject は DB から引く:
 
 ```bash
 docker exec gobp-shared-database-1 psql -U postgres -d wt<N>_local -c \
-  "select subject from <identity table> where issuer = 'http://localhost:201N';"
+  "select subject from <identity テーブル> where issuer = 'http://localhost:201N';"
 ```
 
-Check the happy path, the error paths the change introduces, and — for a protected operation — that
-omitting the token gives 401. Then **read the traces in the LGTM stack and confirm the request took
-the path you expect** (controller → usecase → infrastructure, with the SQL you intended). A response
-code alone does not prove the request reached the layer you changed; a wrong-but-plausible route
-produces the right status for the wrong reason.
+正常系、変更が持ち込むエラー経路、そして保護された操作ならトークン無しで 401 になることを確認する。その上で **LGTM スタックのトレースを読み、リクエストが想定どおりの経路（controller → usecase → infrastructure、意図した SQL）を通ったことを確認する**。ステータスコードだけでは、そのリクエストが変更した層に届いたことの証明にならない — 間違ったが尤もらしい経路は、間違った理由で正しいステータスを返す。
 
-**Green CI is not a substitute for this.** Review lenses and CI checks are static analysis or tests
-that stop at the database layer, so a documented status code that the middleware never lets the
-request reach passes all of them. One real HTTP request settles it.
+**CI 緑はこの代替にならない。** レビューレンズも CI チェックも、DB 層で止まる静的解析やテストにすぎない。middleware がそもそもリクエストを届かせない層で、記載されたステータスコードが正しいとされてしまう。実 HTTP リクエスト 1 本で即座に決着する。
 
-When runtime verification cannot run at all, there are two honest options and no third:
+runtime 検証がどうしても実行できないときの正直な選択肢は 2 つで、第三はない。
 
-1. Do not merge yet.
-2. Add an integration test driving the same HTTP path, and merge on that.
+1. まだマージしない。
+2. 同じ HTTP 経路を通す統合テストを足し、それを根拠にマージする。
 
-Say plainly which one you took.
+どちらを採ったかを明言する。
 
-### Merge
+### マージ
 
-Wait for CI without burning the session on a foreground sleep loop — run a background command that
-exits once the checks settle, so one notification arrives:
+foreground の sleep ループでセッションを潰さずに CI を待つ。チェックが確定したら終了する background コマンドを使い、通知を 1 回だけ受ける:
 
 ```bash
 until [ "$(gh pr checks <n> --json bucket --jq '[.[]|select(.bucket=="pending")]|length')" = "0" ]; do sleep 30; done
 gh pr checks <n>
 ```
 
-Then `gh pr merge <n> --merge`.
+その上で `gh pr merge <n> --merge`。
 
-## Step 9 — Close out
+## Step 9 — 締め
 
-Close the issue **manually** — auto-closing keywords do not fire when the PR targets a release branch
-rather than the default branch:
+issue は**手動で**クローズする。PR のベースが default branch ではなくリリースブランチのとき、自動クローズのキーワードは発火しない:
 
 ```bash
 gh issue comment <n> --body-file <handover> && gh issue close <n>
 ```
 
-The handover comment covers what was decided, what surprised you relative to the plan, and what was
-deliberately left undone.
+申し送りコメントには、決めたこと・計画から想定外だったこと・意図的に手を付けなかったことを書く。
 
-Route findings that fall outside the change to the tracker per the issue mode. Under `search`, prefer
-a follow-up comment on an existing issue over a new one — the issue count is itself a cost, and a
-duplicate buries the original.
+変更範囲の外にある指摘は issue モードに従って追跡へ回す。`search` では、新規起票より既存 issue への申し送りコメントを優先する — issue 数それ自体がコストで、重複は元の issue を埋もれさせる。
 
-**Verify a finding against the running system before filing it.** A finding derived purely from
-reading code can be wrong in a way static review cannot catch — most often because a layer outside
-the one being read (middleware, DI wiring, the database) already handles the case. Step 8's runtime
-stage is usually enough to check.
+**起票の前に、その指摘を動いているシステムで検証する。** コードを読んだだけで導いた指摘は、静的レビューでは捕まえられない形で誤りうる — 多くの場合、読んでいた層の外側（middleware、DI 配線、DB）が既にそのケースを処理しているためである。Step 8 の runtime 段階があれば大抵は確認できる。
 
-Finally, record in a PR comment any call not already visible in a commit message or the PR
-description. In `delegated` mode this is where the recorded trip-wires land.
+最後に、コミットメッセージにも PR 本文にも現れていない自己判断を PR コメントへ記録する。`delegated` モードでは、記録した trip-wire がここに落ちる。
 
-## Delegating without double-asking
+## 二重に聞かせない委譲
 
-Sub-skills ask their own questions. Since this skill already settled them with the user, pass the
-answers as a payload so the sub-skill skips its own gate — the way `impl-review` hands `scope` /
-`base_ref` / `reviewer_model` / `skip_verifier` to `test-review`.
+サブスキルはそれぞれ自前の質問を持つ。このスキルが既にユーザーと決着させている以上、答えを payload で渡してサブスキル側のゲートを飛ばす — `impl-review` が `scope` / `base_ref` / `reviewer_model` / `skip_verifier` を `test-review` へ渡すのと同じ形。
 
-| Sub-skill | Pass through | Suppresses |
+| サブスキル | 渡すもの | 抑止されるもの |
 | --- | --- | --- |
-| `commit` | The grouping you already presented | Its grouping-approval question |
-| `submit-pr` | That review already ran; the flow-mode push decision | Its Phase 0 review prompt and push confirmation |
-| `impl-review` | Scope, reviewer model, test-delegation choice | Its Step 0 |
+| `commit` | 既に提示済みのコミット分割 | 分割の承認質問 |
+| `submit-pr` | レビュー実行済みであること、進行モード由来の push 判断 | Phase 0 のレビュー確認と push 確認 |
+| `impl-review` | スコープ、レビュアーモデル、テスト委譲の選択 | Step 0 |
 
-Asking the user the same thing twice trains them to approve without reading, which defeats the
-decision points this skill exists to create.
+同じことを 2 回聞くと、ユーザーは読まずに承認する癖がつく。それはこのスキルが作ろうとしている決定点そのものを無効化する。
 
-## Do / Do NOT
+## やること / やらないこと
 
-- ✅ Secure the worktree and slot before touching code.
-- ✅ On resume, inspect the worktree and report what you found — path, `vendor/`, slot.
-- ✅ Verify the issue's claims against the actual base, and put the discrepancies in the kickoff comment.
-- ✅ Get the plan approved before implementing, and keep it as a file so Step 5 can diff against it.
-- ✅ Treat the five trip-wires as mechanical triggers, not as things to notice.
-- ✅ Say explicitly which gates ran and which did not.
-- ✅ Read the traces, not just the status code.
-- ✅ Verify a finding at runtime before filing an issue for it.
-- ❌ Merge a change to implementation code that has never been exercised over HTTP.
-- ❌ Present green CI as runtime verification.
-- ❌ Auto-apply a fix that changes the design, in any mode.
-- ❌ File an issue without checking for an existing one, unless issue mode says to.
-- ❌ Release the DB slot, or ask about releasing it, unprompted.
-- ❌ Acquire a slot or reinitialize a database merely because a session resumed.
-- ❌ Poll CI in a foreground sleep loop.
+- ✅ コードに触れる前に worktree とスロットを確保する。
+- ✅ 再開時は worktree を観測し、見えたもの — パス・`vendor/`・スロット — を報告する。
+- ✅ issue の主張をベース実物で検証し、食い違いを着手コメントに書く。
+- ✅ 実装前に計画の承認を取り、Step 5 が突合できるようファイルとして残す。
+- ✅ 5 つの trip-wire を「気づくもの」ではなく機械的トリガーとして扱う。
+- ✅ どのゲートを走らせ、どれを走らせなかったかを明言する。
+- ✅ ステータスコードだけでなくトレースを読む。
+- ✅ issue を起票する前に runtime で指摘を検証する。
+- ❌ HTTP 経路を一度も通していない実装コードの変更をマージする。
+- ❌ CI 緑を runtime 検証として提示する。
+- ❌ 設計を変える修正を、どのモードであれ自動適用する。
+- ❌ issue モードが指示しない限り、既存を確認せず起票する。
+- ❌ 頼まれてもいないのに DB スロットを解放する、または解放を聞く。
+- ❌ セッションを再開したというだけの理由でスロットを取得する、または DB を再初期化する。
+- ❌ foreground の sleep ループで CI をポーリングする。
 
-## Checklist
+## チェックリスト
 
-- [ ] Modes confirmed in one `AskUserQuestion`.
-- [ ] Kickoff comment posted, including issue-vs-base discrepancies.
-- [ ] Environment secured on the right half of Step 2: a new worktree created from a freshly fetched
-      base with a slot leased and `go mod vendor` run — or an existing one observed and reported,
-      with no slot acquired and no database reinitialized just because the session resumed.
-- [ ] Plan drafted by a different model, all four sections present, approved before implementation.
-- [ ] Trip-wires handled per flow mode; nothing silently absorbed.
-- [ ] Plan reconciled against the actual diff.
-- [ ] Local gates run, or their delegation to CI stated in the PR.
-- [ ] Review run; auto-application confined to machine-checkable fixes.
-- [ ] Decision points presented together.
-- [ ] PR opened, then runtime verification (curl + traces) completed — or its absence stated together
-      with which of the two options was taken — before merging.
-- [ ] Issue closed manually with a handover comment; unrelated findings routed per issue mode, each
-      verified before filing; remaining judgment calls recorded in a PR comment.
+- [ ] `AskUserQuestion` 1 回で 3 モードを確認した。
+- [ ] 着手コメントを投稿した（issue ↔ ベースの食い違いを含む）。
+- [ ] Step 2 の正しい半分で実行環境を確保した: 新規なら fetch 済みのベースから worktree を作成し、スロットをリースし `go mod vendor` を実行 — 既存なら観測して報告し、再開しただけでスロットを取得も DB を再初期化もしていない。
+- [ ] 別モデルが計画を作成、必須 4 セクションが揃い、実装前に承認された。
+- [ ] trip-wire を進行モードどおりに処理した。黙って吸収したものが無い。
+- [ ] 計画と実差分を突合した。
+- [ ] ローカルゲートを実行した、または CI へ委譲したことを PR に書いた。
+- [ ] レビューを実行し、自動適用は機械的に判定できるものに限定した。
+- [ ] 決定点をまとめて提示した。
+- [ ] PR を開いた上で runtime 検証（curl + トレース）を完了した — または未実施であることと、2 択のどちらを採ったかを明言した — 上でマージした。
+- [ ] issue を申し送り付きで手動クローズ。無関係な指摘は issue モードどおりに処理し、各々起票前に検証済み。残った自己判断を PR コメントへ記録した。

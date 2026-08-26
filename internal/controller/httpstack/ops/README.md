@@ -1,9 +1,9 @@
 # ops
 
-Identifies operational/infrastructure endpoints.
+運用系 / インフラエンドポイントを判定します。
 
-Used by the logging, OpenAPI-validation, and metrics middleware to skip ops endpoints.
+ログ・OpenAPI 検証・メトリクスのミドルウェアで ops エンドポイントをスキップするために使用されます。
 
-## Role
+## 役割
 
-Several middlewares need to treat operational/infrastructure endpoints (health, metrics, etc.) differently from business endpoints — skipping logging, OpenAPI validation, and metrics collection for them. Centralizing the definition of "what counts as an ops endpoint" here gives every consumer one source of truth, so the classification cannot drift between the places that rely on it.
+複数のミドルウェアは運用系 / インフラエンドポイント（health, metrics 等）を業務エンドポイントとは別扱いし、ログ・OpenAPI 検証・メトリクス収集をスキップする必要があります。「何が ops エンドポイントに該当するか」の定義をここに一元化することで、各利用側に唯一の真実を提供し、依存箇所の間で判定がずれることを防ぎます。

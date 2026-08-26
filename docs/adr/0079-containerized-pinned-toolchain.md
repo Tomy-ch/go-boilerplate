@@ -5,91 +5,89 @@ deciders: [maintainers]
 tags: [toolchain, build]
 ---
 
-# ADR-0079: Use a containerized toolchain pinned by mise for reproducibility
+# ADR-0079: 再現性のために mise でバージョン固定されたコンテナ化ツールチェーンを使用する
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-This project is intended for teams with multiple contributors working on different
-machines and operating systems. Go, Node, Python, and a wide set of secondary programs
-(linters, codegen tools, migration runner, debugger, etc.) each have exact version
-requirements: an unversioned host tool can silently produce different output or behave
-differently across environments.
+このプロジェクトは異なるマシンと OS で作業する複数のコントリビューターを持つチームを
+対象としている。Go・Node・Python および多数の補助プログラム（リンター・コード生成ツール・
+マイグレーションランナー・デバッガーなど）にはそれぞれ厳密なバージョン要件があり、
+バージョン管理されていないホストツールは環境をまたいで異なる出力を生成したり
+異なる挙動を示したりすることがある。
 
-Managing tool versions with host-level package managers diverges over time and makes
-"works on my machine" failures hard to diagnose. CI and developer laptops must agree
-on the same tool binaries. Reproducing a build or a lint failure should not depend on
-what a developer happens to have installed.
+ホストレベルのパッケージマネージャーでツールバージョンを管理すると時間とともにズレが生じ、
+「私のマシンでは動く」という障害の原因究明が困難になる。CI と開発者のラップトップは
+同一のツールバイナリで一致していなければならない。ビルドやリントの失敗を再現できるかどうかは、
+開発者がたまたまインストールしているものに依存すべきではない。
 
-## Decision
+## 決定
 
-Tool versions are declared centrally — in `mise.toml` for everything mise resolves, and in
-`python/*.in` + `python/*.txt` for PyPI tools ([ADR-0080](0080-mise-ssot-drift-gate.md)) —
-and baked into Docker images. All
-tool execution — lint, format, codegen, documentation generation, commit-message lint,
-and so on — runs through `make` targets that invoke the tools inside the appropriate
-Docker container (`go_tool_runner`, `node_tool_runner`, or `python_tool_runner`).
+ツールバージョンは一元的に宣言され（mise が解決するものは `mise.toml`、PyPI のツールは
+`python/*.in` と `python/*.txt`。[ADR-0080](0080-mise-ssot-drift-gate.md)）、Docker イメージに
+焼き込まれる。
+リント・フォーマット・コード生成・ドキュメント生成・コミットメッセージリントなど
+すべてのツール実行は、適切な Docker コンテナ（`go_tool_runner`・`node_tool_runner`・
+`python_tool_runner`）内でツールを呼び出す `make` ターゲットを通じて行う。
 
-The three execution contexts are:
+3 つの実行コンテキストは以下の通り。
 
-- **Normal `make` targets** — invoke tools inside Docker containers; this is the
-  standard developer path and what automation must use.
-- **`-ci` targets** — invoke tools on bare metal, intended for CI runners or inside
-  containers themselves.
-- **Host `mise`** — used only for provisioning versions (`make install-tools`, Quick
-  Start onboarding); `mise exec` is not the tool execution path.
+- **通常の `make` ターゲット** — Docker コンテナ内でツールを呼び出す。これが標準の
+  開発者パスであり、自動化でも使用しなければならない。
+- **`-ci` ターゲット** — ベアメタル上でツールを呼び出す。CI ランナーまたはコンテナ自体の
+  内部を対象としている。
+- **ホストの `mise`** — バージョンのプロビジョニング（`make install-tools`・Quick Start
+  オンボーディング）にのみ使用する。`mise exec` はツール実行パスではない。
 
-Automation (git hooks via lefthook, CI steps, and skills) MUST invoke tools through
-`make` targets, never by running a tool binary directly on the host. Bypassing the
-container depends on host-local tool state and breaks reproducibility.
+自動化（lefthook 経由の git フック・CI ステップ・スキル）は `make` ターゲットを通じて
+ツールを呼び出さなければならず、ホスト上でツールバイナリを直接実行してはならない。
+コンテナをバイパスするとホストローカルのツール状態に依存し、再現性が損なわれる。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Tool output is identical regardless of the contributor's host machine or operating
-  system.
-- New contributors do not need to manage tool versions manually beyond installing
-  Docker and mise.
-- The same `make` target works in CI and locally without modification.
-- Upgrading a tool version is a single change in its declaration (and the Dockerfile that
-  consumes it); for a PyPI tool, `make py-lock` then regenerates the lockfile.
+- コントリビューターのホストマシンや OS に関わらず、ツール出力が同一になる。
+- 新しいコントリビューターは Docker と mise のインストール以外にツールバージョンを
+  手動で管理する必要がない。
+- 同じ `make` ターゲットが CI でもローカルでも変更なく動作する。
+- ツールバージョンのアップグレードは宣言（およびそれを使用する Dockerfile）の
+  単一変更で完結する。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Docker must be running for any standard tool invocation.
-- Container startup adds latency compared with running a host binary directly.
-- Bind-mounted outputs from the `generate` profile containers are owned by root; this
-  is accepted behaviour, consistent with generated mock files.
+- 標準的なツール呼び出しのために Docker が実行中でなければならない。
+- コンテナの起動はホストバイナリを直接実行するより遅延が大きい。
+- `generate` プロファイルコンテナからバインドマウントされた出力は root が所有者となる。
+  これは生成されたモックファイルと一致する、受け入れ済みの挙動である。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Direct host tool execution
+### ホストツールの直接実行
 
-Fast and familiar, but version drift between machines is inevitable and silent.
-Debugging "lint passes locally, fails in CI" becomes a recurring cost.
+高速で馴染み深いが、マシン間のバージョンドリフトは避けられず無音で進行する。
+「ローカルでリントが通る、CI で失敗する」のデバッグが繰り返しのコストとなる。
 
-### Nix flakes
+### Nix フレーク
 
-Provides hermetic environments comparable to the container approach, but carries a
-steep learning curve and is uncommon in Go teams. Docker Compose is already required
-for the database and observability services, so adding containers for tool runners
-imposes no new infrastructure dependency.
+コンテナアプローチと同等のハーメティック環境を提供するが、学習曲線が急峻で
+Go チームでは一般的でない。Docker Compose はデータベースとオブザーバビリティサービスの
+ために既に必要であるため、ツールランナー用のコンテナを追加しても新たなインフラストラクチャの
+依存関係は生じない。
 
-### devcontainer (VS Code Dev Containers)
+### devcontainer（VS Code Dev Containers）
 
-Editor-specific; does not cover CI or non-VS Code workflows. The Docker Compose
-approach is editor-agnostic.
+エディター固有であり、CI や VS Code 以外のワークフローをカバーしない。
+Docker Compose によるアプローチはエディター非依存である。
 
-## Notes
+## 補足
 
-- Toolchain execution rules (including the "never bypass the container" constraint):
-  [`docs/rules.md`](../rules.md) § "Toolchain Execution Rules".
-- Tool versions declared in: [`mise.toml`](../../mise.toml), and [`python/`](../../python/)
-  for PyPI tools.
-- Container service definitions: [`docker-compose.yaml`](../../docker-compose.yaml)
-  (`go_tool_runner`, `node_tool_runner`, `python_tool_runner` — profile `generate`).
-- Docker image / Dockerfile details: [`docker/README.md`](../../docker/README.md).
+- ツールチェーン実行ルール（「コンテナをバイパスしてはならない」制約を含む）:
+  [`docs/rules.md`](../rules.md) §「Toolchain Execution Rules」。
+- ツールバージョンの宣言: [`mise.toml`](../../mise.toml)、PyPI のツールは [`python/`](../../python)。
+- コンテナサービス定義: [`docker-compose.yaml`](../../docker-compose.yaml)
+  （`go_tool_runner`・`node_tool_runner`・`python_tool_runner` — プロファイル `generate`）。
+- Docker イメージ / Dockerfile の詳細: [`docker/README.md`](../../docker/README.md)。

@@ -1,68 +1,68 @@
 # httpstack
 
-A directory of **common HTTP middleware** registered when starting the Echo server.
+Echo サーバ起動時に登録する **HTTP 周りの共通ミドルウェア群**をまとめたディレクトリです。
 
-Each sub-package is split into small responsibilities and combined during application startup.
+各サブパッケージは小さな役割に分割されており、アプリケーションの起動処理で組み合わせて利用します。
 
-## Role
+## 役割
 
-`httpstack` is the catalog of Echo middleware and server-configuration helpers used across the application. Each sub-package owns one concern (request ID, logging, recovery, CORS, security headers, etc.) and exposes a thin `Middleware(...)` or `New(...)` constructor. Middleware is intentionally registered elsewhere (`internal/di/server/extension`) so that this directory stays free of fx and Echo-instance dependencies, keeping each unit independently testable and reusable.
+`httpstack` はアプリケーション全体で使われる Echo ミドルウェアおよびサーバー設定ヘルパーのカタログです。各サブパッケージは 1 つの関心事（リクエスト ID / ロギング / リカバリ / CORS / セキュリティヘッダ 等）を担い、薄い `Middleware(...)` または `New(...)` コンストラクタを公開します。ミドルウェアの **登録** は意図的に別の場所（`internal/di/server/extension`）で行い、本ディレクトリは fx や Echo インスタンス依存を含めない設計にしています。これにより各ユニットは独立して単体テスト可能・再利用可能になります。
 
-## Design Policy
+## 設計方針
 
-- Each feature is implemented in small units, selected and combined as needed
-- Middleware is wrapped in a form that can be registered with `e.Use(...)`
-- This directory only provides middleware **implementations**; registration is done in `internal/di/server/extension`
+- 各機能は小さい単位で実装し、必要なものを選んで組み合わせる
+- ミドルウェアは Echo の `e.Use(...)` で登録可能な形にラップ
+- このディレクトリはミドルウェアの **実装のみ** を提供し、登録は `internal/di/server/extension` で行う
 
-## Sub-package List
+## サブパッケージ一覧
 
-### Middleware
+### ミドルウェア
 
-|Package|Function|Description|
+|パッケージ|関数|説明|
 |---|---|---|
-|`requestid`|`Middleware`|Auto-generate X-Request-ID header|
-|`logging`|`Middleware`|Structured logging for HTTP request / response|
-|`recovery`|`Middleware`|Catch panics and log them|
-|`cors`|`Middleware`|CORS configuration|
-|`security`|`Middleware`|Security headers (HSTS, X-Frame-Options, etc.)|
-|`cookie`|`Middleware`|Enforce security attributes on Set-Cookie headers|
-|`forcejson`|`Middleware`|Force response Content-Type to JSON|
-|`uri`|`Middleware`|Remove trailing slashes|
-|`bodylimit`|`Middleware`|Per-request body size limit (MB), 413 on exceed|
-|`timeout`|`Middleware`|Per-request deadline budget (entry point of deadline propagation)|
-|`observability`|`Middleware`|OpenTelemetry tracing integration|
-|`redmetrics`|`Middleware`|HTTP RED metrics (request count / duration / status); labels limited to method / route / status_code / status_class|
-|`idempotency`|`Middleware` / `StrictMiddleware`|`Idempotency-Key`-based request dedup entry point (oapi-codegen StrictMiddleware slot, not `e.Use`)|
+|`requestid`|`Middleware`|X-Request-ID ヘッダの自動生成|
+|`logging`|`Middleware`|HTTP リクエスト / レスポンスの構造化ログ|
+|`recovery`|`Middleware`|パニックのキャッチとログ出力|
+|`cors`|`Middleware`|CORS 設定|
+|`security`|`Middleware`|セキュリティヘッダ（HSTS, X-Frame-Options 等）|
+|`cookie`|`Middleware`|Set-Cookie ヘッダのセキュリティ属性強制|
+|`forcejson`|`Middleware`|レスポンスの Content-Type を JSON に強制|
+|`uri`|`Middleware`|末尾スラッシュの除去|
+|`bodylimit`|`Middleware`|リクエストボディのサイズ上限（MB）、超過時 413|
+|`timeout`|`Middleware`|per-request deadline budget（deadline 伝播の入口）|
+|`observability`|`Middleware`|OpenTelemetry トレーシング統合|
+|`redmetrics`|`Middleware`|HTTP RED メトリクス（request count / duration / status）。label は method / route / status_code / status_class のみ|
+|`idempotency`|`Middleware` / `StrictMiddleware`|`Idempotency-Key` によるリクエスト冪等化の入口（oapi-codegen StrictMiddleware スロット。`e.Use` 登録ではない）|
 
-### Error Handling
+### エラーハンドリング
 
-|Package|Function|Description|
+|パッケージ|関数|説明|
 |---|---|---|
-|`errorhandler`|`New`|Unified error handler for Echo / OpenAPI / apperror|
+|`errorhandler`|`New`|Echo / OpenAPI / apperror の統一エラーハンドラ|
 
-### OpenAPI Integration
+### OpenAPI 統合
 
-|Package|Function|Description|
+|パッケージ|関数|説明|
 |---|---|---|
-|`oapi`|`Middleware`|OpenAPI request validation|
-|`oapi/auth`|`NewAuthenticator`|Token authentication from Cookie / Header|
-|`oapi/skipper`|`New`|Skip validation for ops endpoints|
-|`oapi/validator`|`GetValidator`|Load and provide the OpenAPI schema (spec); validation itself is done by `oapi`|
+|`oapi`|`Middleware`|OpenAPI リクエストバリデーション|
+|`oapi/auth`|`NewAuthenticator`|Cookie / Header からのトークン認証|
+|`oapi/skipper`|`New`|ops エンドポイントのバリデーションスキップ|
+|`oapi/validator`|`GetValidator`|OpenAPI スキーマ（spec）の読み込みと提供。バリデーション自体は `oapi` が担当|
 
-### Infrastructure / Utilities
+### インフラ / ユーティリティ
 
-|Package|Function|Description|
+|パッケージ|関数|説明|
 |---|---|---|
-|`basicauth`|`NewBasicAuthValidator`|Basic auth for metrics endpoint|
-|`ipextractor`|`New`|Environment-aware client IP extraction|
-|`ops`|`IsOpsPath`|Identify ops paths (/health, /metrics, etc.)|
+|`basicauth`|`NewBasicAuthValidator`|メトリクスエンドポイント用 Basic 認証|
+|`ipextractor`|`New`|環境に応じたクライアント IP 抽出|
+|`ops`|`IsOpsPath`|運用系パス（/health, /metrics 等）の判定|
 
-## Middleware Registration
+## ミドルウェア登録
 
-Middleware registration is done in `internal/di/server/extension`.
+ミドルウェアの登録は `internal/di/server/extension` で行います。
 
 ```go
-// Conceptual example in internal/di/server/extension
+// internal/di/server/extension での呼び出し例（概念）
 func ConfigureHTTP(e *echo.Echo, cfg *config.ApplicationConfig, logger logging.Logger, lf logging.LogFieldBuilder) {
     e.Use(requestid.Middleware())
     e.Use(logging.Middleware(logger, lf))
@@ -72,58 +72,58 @@ func ConfigureHTTP(e *echo.Echo, cfg *config.ApplicationConfig, logger logging.L
 }
 ```
 
-Do not register middleware directly within `httpstack`. This can cause dependency and initialization order issues.
+`httpstack` 内で直接 Echo インスタンスへの登録を行わないでください。依存関係や初期化順序の問題が発生します。
 
-## Environment-dependent Behavior
+## 環境による振る舞いの違い
 
-|Feature|Development|Production|
+|機能|Development|Production|
 |---|---|---|
-|IP extraction|Direct|X-Forwarded-For + CIDR|
-|Recovery stack|10KB (full)|4KB (limited)|
+|IP 抽出|直接抽出|X-Forwarded-For + CIDR|
+|リカバリスタック|10KB（フル）|4KB（制限）|
 
-## Test Strategy
+## テスト戦略
 
-Each sub-package is tested **in isolation as a single unit** — as a single middleware for those that wrap a `next`, and per the shapes in *Sub-packages that are not middleware* for the rest. Registration order and the assembled chain belong to `internal/di/server/extension`, and the composed stack is verified by the `internal/integration` HTTP-boundary tests — do not re-test either here.
+各サブパッケージは **単一のユニットとして独立に**テストする。`next` を包むものは単体のミドルウェアとして、それ以外は *ミドルウェアではないサブパッケージ* の類型に従う。登録順序と組み上がったチェーンは `internal/di/server/extension` の担当であり、合成後のスタックは `internal/integration` の HTTP 境界テストで検証する — どちらもここで再テストしないこと。
 
-### Real vs mocked
+### 実体を使う対象とモックにする対象
 
-|Dependency|Method|
+|依存|方法|
 |---|---|
-|`*echo.Echo` / router / `*echo.Context`|real (`echo.New()` + `httptest`)|
-|Downstream handler (`next`)|a test closure that records what it received / returns a fixed error|
-|`logging.Logger`|`logging.NewTestLogger` / `NewObservedTestLogger` — assert on observed entries (message, field), never on a formatted log string|
-|`config.*Config`|`config.MockConfigForTest` + the `Set*(t, …)` setters|
-|A collaborator interface the package declares (e.g. `redmetrics.Recorder`)|generated mock under `*/mock/`|
+|`*echo.Echo` / ルータ / `*echo.Context`|実体（`echo.New()` + `httptest`）|
+|後続ハンドラ（`next`）|受け取った内容を記録する / 固定エラーを返すテスト用クロージャ|
+|`logging.Logger`|`logging.NewTestLogger` / `NewObservedTestLogger` — observed エントリ（メッセージ・フィールド）で検証し、整形済みログ文字列では検証しない|
+|`config.*Config`|`config.MockConfigForTest` + `Set*(t, …)` セッタ|
+|パッケージが宣言する協調オブジェクトのインターフェース（例: `redmetrics.Recorder`）|`*/mock/` の生成モック|
 
-Drive the middleware directly (`Middleware(...)(next)(c)`) when the assertion is about the returned error, and through `e.ServeHTTP` when it is about the response actually written (status / header / body) — the response is only committed on the real Echo path. A middleware that occupies the oapi-codegen `StrictMiddleware` slot (`idempotency`) is driven through that signature instead of `e.Use`.
+戻り値のエラーを検証するときはミドルウェアを直接駆動し（`Middleware(...)(next)(c)`）、実際に書き出されたレスポンス（status / ヘッダ / ボディ）を検証するときは `e.ServeHTTP` 経由で駆動する — レスポンスが commit されるのは実 Echo 経路のみ。oapi-codegen の `StrictMiddleware` スロットに入るミドルウェア（`idempotency`）は `e.Use` ではなくそのシグネチャ経由で駆動する。
 
-### Sub-packages that are not middleware
+### ミドルウェアではないサブパッケージ
 
-The dividing line is whether the sub-package takes a `next`, not which table it sits in: `oapi` is listed under *OpenAPI Integration* but returns an `echo.MiddlewareFunc` and joins the same `e.Use` chain, so the middleware viewpoints below apply to it in full. The sub-packages that go into a slot Echo or oapi-codegen owns — `ops`, `oapi/skipper`, `oapi/auth`, `oapi/validator`, `basicauth`, `ipextractor` — have no `next`: pass-through and the `Before` / `After` viewpoints do not apply to them, while the *Real vs mocked* table does. They fall into three shapes.
+境界はどの表に載っているかではなく `next` を取るかどうかにある。`oapi` は *OpenAPI 連携* 表に置かれているが `echo.MiddlewareFunc` を返して同じ `e.Use` チェーンに乗るため、以下のミドルウェア向け観点がそのまま適用される。Echo や oapi-codegen が持つスロットに収まるサブパッケージ — `ops` / `oapi/skipper` / `oapi/auth` / `oapi/validator` / `basicauth` / `ipextractor` — は `next` を持たない。素通しと `Before` / `After` の観点は適用されず、*実体を使う対象とモックにする対象* の表は適用される。次の 3 類型に分かれる。
 
-- **Predicates and extractors** (`ops`, `oapi/skipper`, `basicauth`, `ipextractor`) — call the constructed function value directly and assert its verdict; `echo.New()` + `httptest` is only the material for the `*echo.Context` it takes. The viewpoint is the decision boundary from both sides, including the edges a caller can reach but the happy path does not (a trailing slash, an empty credential, an unroutable path), plus the config-selected variants under *Environment-dependent branches*.
-- **Adapter-slot functions** (`oapi/auth`) — driven through the signature the adapter demands (`openapi3filter.AuthenticationFunc`), not through Echo. The result is usually a side effect on the request context rather than a return value, so assert the written value, and on each rejection path assert the error identity rather than merely that an error occurred.
-- **Spec providers** (`oapi/validator`) — the returned `*openapi3.T` is itself the subject, so the tests are contracts over the spec (e.g. every operation outside the public allowlist declares an authenticated `security`). They have no production counterpart by design.
+- **述語・抽出関数**（`ops` / `oapi/skipper` / `basicauth` / `ipextractor`）— 構築した関数値を直接呼んで判定結果を検証する。`echo.New()` + `httptest` は関数が受け取る `*echo.Context` を組む材料にすぎない。観点は判定境界の両側であり、正常経路では通らないが呼び出し側からは到達しうる端（末尾スラッシュ・空の資格情報・ルート不一致のパス）を含める。加えて *環境による分岐* に挙げた config 選択の各モードを網羅する。
+- **アダプタのスロットに入る関数**（`oapi/auth`）— Echo ではなくアダプタが要求するシグネチャ（`openapi3filter.AuthenticationFunc`）で駆動する。結果は戻り値ではなくリクエストコンテキストへの副作用として現れることが多いため、書き込まれた値を検証する。拒否経路では「エラーが返った」ではなくエラーの同一性を検証する。
+- **spec プロバイダ**（`oapi/validator`）— 返る `*openapi3.T` そのものが検証対象であり、テストは spec に対する契約になる（例: 公開許可リスト外の全 operation が認証必須の `security` を宣言している）。production 側に対応関数を持たないのは設計どおり。
 
-`errorhandler` replaces `e.HTTPErrorHandler` and its viewpoints are package-specific, so it carries its own *Test Strategy* section — see [`errorhandler/README.md`](errorhandler/README.md).
+`errorhandler` は `e.HTTPErrorHandler` を差し替えるもので観点がパッケージ固有になるため、自前の *テスト戦略* 節を持つ — [`errorhandler/README.md`](errorhandler/README.md) を参照。
 
-### Viewpoints every middleware covers
+### 全ミドルウェア共通で押さえる観点
 
-- **Pass-through** — a request the middleware does not act on reaches `next` unchanged, and `next`'s return value is propagated verbatim.
-- **Ops-path exclusion** — for middleware that consults `ops.IsOpsPath` (`logging` / `redmetrics`, and the `oapi/skipper` skipper), assert both sides: an ops path (`/health`, `/metrics`, …) produces no log / no metric, an application path does.
-- **`server.ResponseOf` degradation** — middleware that unwraps the Echo response degrades to a plain pass-through when the writer cannot be unwrapped. Reproduce it with `c.SetResponse(httptest.NewRecorder())` and assert the middleware neither fails nor records anything. This branch is unreachable through the production stack, so the package-level test is the only thing holding it.
-- **Environment-dependent branches** — when config selects a variant (`recovery` stack size, `ipextractor` extraction mode), exercise each mode through the config setters, including the unknown-mode fallback.
+- **素通し** — ミドルウェアが介入しないリクエストは変更されずに `next` へ届き、`next` の戻り値がそのまま伝播すること。
+- **運用系パスの除外** — `ops.IsOpsPath` を参照するミドルウェア（`logging` / `redmetrics`、および `oapi/skipper` の skipper）は両側を検証する。運用系パス（`/health`・`/metrics` 等）ではログ／メトリクスが出ず、アプリケーションパスでは出ること。
+- **`server.ResponseOf` の縮退** — Echo のレスポンスを取り出すミドルウェアは、ライタを unwrap できない場合に単なる素通しへ縮退する。`c.SetResponse(httptest.NewRecorder())` で再現し、失敗もせず何も記録しないことを検証する。この分岐は本番スタック経由では到達しないため、パッケージ単体テストだけが担保となる。
+- **環境依存の分岐** — 設定によって振る舞いが切り替わる場合（`recovery` のスタックサイズ、`ipextractor` の抽出方式）は、config セッタで各モードを網羅する。不明モードのフォールバックも含めること。
 
-### Viewpoints for `Before` / `After` hooks
+### `Before` / `After` フックの観点
 
-`server.ResponseOf(c).Before(...)` / `.After(...)` register deferred work, so the assertion belongs after the response is written — not after the middleware call returns.
+`server.ResponseOf(c).Before(...)` / `.After(...)` は遅延実行を登録するため、検証はミドルウェア呼び出しの戻り後ではなく、レスポンス書き出し後に置く。
 
-- **Firing condition** — `Before` runs immediately before `WriteHeader`, which is the last point a header can still be corrected (`forcejson`); `After` runs on `Write`, once the status is final, so it observes the status the error handler / recovery ultimately produced (`logging` / `redmetrics`).
-- **Repeat firing** — `After` fires per `Write`, so a chunked / streaming response invokes it more than once. A once-per-request effect must be asserted to stay once-per-request (`redmetrics` guards this with `sync.Once`).
-- **Non-firing** — a body-less response (204 / 304) never calls `Write`, so `After` does not run. Where that costs an observation, the gap is a documented limitation of the hook and is pinned by a test rather than left implicit.
+- **発火条件** — `Before` は `WriteHeader` の直前に走り、ヘッダを補正できる最後の地点である（`forcejson`）。`After` は status 確定後の `Write` で走るため、エラーハンドラ／リカバリが最終的に決めた status を観測できる（`logging` / `redmetrics`）。
+- **複数回の発火** — `After` は `Write` ごとに発火するため、チャンク／ストリーミング応答では複数回呼ばれる。1 リクエスト 1 回であるべき効果は、1 回に留まることを検証する（`redmetrics` は `sync.Once` で担保）。
+- **発火しない経路** — ボディ無し応答（204 / 304）は `Write` が呼ばれないため `After` が走らない。それが観測欠落を招く場合、その欠落はフックの仕様上の限界として文書化し、暗黙にせずテストで固定する。
 
-## Notes
+## 補足
 
-- Add new middleware as its own sub-package; do not stuff multiple concerns into one package.
-- Each middleware should be safe to combine in any order, but registration order in `internal/di/server/extension` does matter for `recovery` (should wrap the rest) and `requestid` (should run first so all downstream logs carry the ID).
-- Do NOT call `e.Use(...)` from inside this directory — keeping registration out of `httpstack` is what allows the same middleware to be reused in tests with `testkit/testecho`.
+- 新規ミドルウェアは独立したサブパッケージとして追加。1 パッケージに複数の関心事を詰め込まないこと
+- 各ミドルウェアは順序に依存しない設計が原則だが、`internal/di/server/extension` での登録順序は `recovery`（他を包む位置で最外殻）と `requestid`（最先で実行し以降の log に ID が乗るように）だけは守る
+- 本ディレクトリ内では `e.Use(...)` を直接呼ばないこと — 登録を `httpstack` の外に出すことで、`testkit/testecho` での再利用テストが可能になる

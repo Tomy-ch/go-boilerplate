@@ -5,79 +5,48 @@ deciders: [maintainers]
 tags: [persistence, migration]
 ---
 
-# ADR-0029: Treat migrations as append-only and immutable
+# ADR-0029: マイグレーションを追記専用かつイミュータブルとして扱う
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Database migrations record the full history of schema changes. The project uses golang-migrate,
-which applies migration files in sequence and records **only the version number and a dirty flag**
-in `schema_migrations` — it stores no checksum of the file it ran. Editing a migration that an
-environment has already applied therefore produces no error at all: golang-migrate sees the version
-as done and skips it. The environments that ran the original file keep the old schema, environments
-created afterwards get the new one, and **nothing reports the difference**. The divergence surfaces
-later, as a query that works on one machine and fails on another.
+データベースマイグレーションはスキーマ変更の完全な履歴を記録する。プロジェクトはgolang-migrateを使用しており、これはマイグレーションファイルを順番に適用し、`schema_migrations`には**バージョン番号とdirtyフラグだけ**を記録する。実行したファイルのチェックサムは保持しない。したがって環境に適用済みのマイグレーションを編集しても、エラーは一切出ない。golang-migrateはそのバージョンを適用済みとみなして読み飛ばす。元のファイルを実行した環境は古いスキーマのまま、その後に作られた環境は新しいスキーマになり、**その差を誰も報告しない**。差異は後になって「ある環境では通るクエリが別の環境では失敗する」という形で表面化する。
 
-That silence is the reason the rule has to be a convention rather than something the tooling
-guarantees. `migration-check.yaml` verifies the numbering (no duplicate versions, no gaps, every
-`up` paired with a `down`) but does not compare file contents against what was applied, and no
-other gate does either.
+この沈黙こそが、この規則をツールの保証ではなく規約として置かざるを得ない理由である。`migration-check.yaml`は採番（バージョンの重複・欠番・`up`と`down`の対応）を検証するが、ファイルの内容を適用済みのものと突き合わせることはせず、他のゲートも行わない。
 
-Beyond the drift, modifying applied migrations destroys the audit trail and makes it impossible to
-reproduce the schema at any historical version — a property that matters for debugging incidents,
-rolling back to a known state, and onboarding environments from scratch.
+ドリフトを別にしても、適用済みマイグレーションを変更することは監査証跡を破壊し、任意の過去バージョンのスキーマを再現することを不可能にする。これはインシデントのデバッグ・既知の状態へのロールバック・新規環境のゼロからの構築において重要な性質である。
 
-## Decision
+## 決定
 
-All migration files under `database/migrations/` are **append-only and immutable**. Once a
-file has been committed, it must never be modified. All schema changes — including
-corrections, column renames, and constraint alterations — must be expressed as new migration
-files. See [`docs/rules.md`](../rules.md) § "Database Migration" for the authoritative
-rule and rationale.
+`database/migrations/`配下のすべてのマイグレーションファイルは**追記専用かつイミュータブル**である。ファイルが一度コミットされたら決して変更してはならない。修正・カラム名変更・制約の変更を含むすべてのスキーマ変更は新しいマイグレーションファイルとして表現しなければならない。権威ある規則と根拠は[`docs/rules.md`](../rules.md)の§ "Database Migration"を参照。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- The schema at any point in history is reproducible by replaying the migration sequence
-  from the beginning.
-- Every environment (local, CI, staging, production) runs the same migration sequence,
-  eliminating environment-specific schema drift — provided the rule is actually followed, since
-  nothing detects a violation after the fact.
+- 任意の時点のスキーマはマイグレーションシーケンスを最初から再生することで再現可能である。
+- すべての環境（ローカル・CI・ステージング・本番）が同一のマイグレーションシーケンスを実行し、環境固有のスキーマドリフトを排除する。ただしこれは規則が実際に守られている限りにおいてであり、破られたことを事後に検出する手段は無い。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Correcting a mistake in an applied migration requires adding a new forward migration even
-  for trivial fixes (e.g., a misspelled comment).
-- The migration sequence grows monotonically; there is no compaction or squash step.
-- The rule rests on review alone. A violation is invisible to golang-migrate and to CI, so it is
-  caught only by someone noticing the diff — which is exactly why it is written down here.
+- 適用済みマイグレーションの誤りを修正するには、些細な修正（例：スペルミスのコメント）でも新しい前方マイグレーションを追加する必要がある。
+- マイグレーションシーケンスは単調に増加し、圧縮やスカッシュのステップはない。
+- この規則はレビューだけに依存する。違反はgolang-migrateにもCIにも見えないため、差分に気づいた人間によってしか捕まえられない。ここに明文化してある理由がまさにそれである。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Allow editing applied migrations
+### 適用済みマイグレーションの編集を許可する
 
-Permits inline corrections, but an environment that already applied the original file never
-receives the edit and is never told so — the schema silently diverges from a freshly created one.
-Rejected: the convenience of in-place edits is not worth a difference between environments that
-no tool and no reviewer is prompted to look for. When an edit is nonetheless made deliberately,
-every environment holding the old schema has to be rebuilt (`make db-reinit DB=<name>`), and that
-cost belongs to whoever chose the edit.
+インライン修正が可能になるが、元のファイルをすでに適用した環境には編集が届かず、そのことも通知されない。新規に作成した環境とスキーマが静かに乖離する。却下する理由は、インライン編集の利便性が「どのツールもどのレビュアーも見るよう促されない環境間の差異」に見合わないからである。それでも意図的に編集する場合は、古いスキーマを持つすべての環境を作り直す（`make db-reinit DB=<name>`）必要があり、そのコストは編集を選んだ側が負う。
 
-### Migration squashing
+### マイグレーションのスカッシュ
 
-Collapse all applied migrations into a baseline schema file periodically. Reduces file
-count but loses the ability to replay individual steps; new environments bootstrapped from
-the baseline cannot roll forward to a specific historical version. Out of scope for the
-current project lifecycle.
+適用済みマイグレーションをすべてベースラインスキーマファイルに定期的に圧縮する。ファイル数は減るが個々のステップを再生する能力を失う。ベースラインからブートストラップした新環境は特定の歴史的バージョンに向かってロールフォワードできなくなる。現在のプロジェクトライフサイクルでは対象外。
 
-## Notes
+## 補足
 
-- `migration-check.yaml` checks the **numbering** only — duplicate versions, gaps, and `up` / `down`
-  pairing (see [ADR-0030](0030-sequential-migration-ids.md) for that discipline). Immutability
-  itself has no CI gate.
-- Source: [`docs/rules.md`](../rules.md) § "Database Migration";
-  [`database/migrations/README.md`](../../database/migrations/README.md) § "Rules".
+- `migration-check.yaml`が検証するのは**採番のみ**である（バージョンの重複・欠番・`up`と`down`の対応。その規律については[ADR-0030](0030-sequential-migration-ids.md)参照）。イミュータビリティ自体にCIゲートは無い。
+- Source: [`docs/rules.md`](../rules.md)の§ "Database Migration"；[`database/migrations/README.md`](../../database/migrations/README.md)の§ "Rules"。

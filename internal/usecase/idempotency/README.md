@@ -1,53 +1,53 @@
-# Idempotency (Idempotency-Key)
+# 冪等性（Idempotency-Key）
 
-Make non-idempotent writes (POST/PATCH/PUT) safe against client retries: a side effect runs **at most once**, and a retry gets the **same response**.
+非冪等な書き込み（POST/PATCH/PUT）をクライアントの再送に対して安全にします。副作用は**高々1回**だけ実行され、再送には**同一の結果**を返します。
 
-## 1. Concept — why a transaction is not enough
+## 1. 概念 — なぜ tx だけでは不十分か
 
-A database transaction only guarantees the **atomicity of a single request**. It does **not** dedupe a request that is **sent twice** (network timeout, double submit, client auto-retry). When a write has no natural unique key — a `uuid.New()`-allocated POST, a balance increment, a charge, an email send — a retry would execute the side effect again.
+DB トランザクションは「**1リクエストの原子性**」しか守りません。**再送をまたいだ重複排除**（ネットワークタイムアウト・ダブルサブミット・クライアントの自動リトライ）は別問題です。自然な一意キーを持たない書き込み（`uuid.New()` 採番の POST・残高加算・課金・メール送信など）では、再送で副作用がもう一度走ってしまいます。
 
-This package closes that gap with a client-supplied `Idempotency-Key`.
+このパッケージは、クライアント供給の `Idempotency-Key` でその隙間を閉じます。
 
-Not to be confused with:
+混同しないこと：
 
-- **Optimistic locking** — prevents lost updates when two *different* operations race on the same row (a `version` column). Orthogonal to idempotency; use both if needed.
-- **Rate limiting** — an edge (gateway/LB) concern, intentionally out of scope here.
+- **楽観ロック** … *別々の2操作*が同じ行を奪い合う lost update を防ぐ（`version` 列）。冪等性とは直交、併用可。
+- **レートリミット** … エッジ（GW/LB）の責務で、本リポでは scope 外。
 
-Use an idempotency key **only** for non-idempotent, retry-prone writes. Adding it to a `GET` is meaningless; omitting it from a charge endpoint is a bug.
+冪等性キーは「非冪等で再送されうる書き込み」**だけ**に付けます。`GET` に付けるのは無意味、課金エンドポイントに付け忘れるのはバグです。
 
-## 2. State transitions
+## 2. 状態遷移
 
 ```text
-(none)
-  │  INSERT ON CONFLICT DO NOTHING  (inside the business tx)
+(なし)
+  │  INSERT ON CONFLICT DO NOTHING（業務 tx 内）
   ▼
-claimed ──── business fn ok + result saved (same tx) ───▶ completed
-  │                                                          │
-  │ business error / crash  →  tx rollback                   │ retry
-  ▼  (key auto-released → re-executes)                       ▼
-(none)                                              replay saved result
+claimed ──── 業務 fn 成功 + 結果保存（同一 tx）───▶ completed
+  │                                                  │
+  │ 業務エラー / クラッシュ → tx ロールバック          │ 再送
+  ▼  （キー自動解放 → 再実行）                         ▼
+(なし)                                        保存済み結果を replay
 
-retry branches:
-  - retry to completed  → replay (business fn NOT run)
-  - retry to claimed    → 409 (being processed, retry later)
-  - fingerprint mismatch → 422 (same key, different request)
-  - TTL expired (GC'd)  → fresh execution
+再送の分岐:
+  - completed への再送   → replay（業務 fn は実行しない）
+  - claimed への再送     → 409（処理中・後で再試行）
+  - 指紋不一致           → 422（同キー・別リクエスト）
+  - TTL 失効（GC 済）    → 新規実行
 ```
 
-The claim and the business write share **one** transaction (strict consistency). A business failure rolls back the claim too — **failure auto-releases the key**, so error caching needs no special handling.
+claim と業務書き込みは**同一 tx**（厳密整合）です。業務失敗は claim ごとロールバックされ、**失敗はキーを自動解放**します。
 
-## 3. How to make an endpoint idempotent
+## 3. エンドポイントを冪等にする手順
 
-Two steps (opt-in; an endpoint without the steps is unchanged):
+opt-in の2ステップ（未採用のエンドポイントは挙動不変）：
 
-1. **Entry middleware** — add the StrictMiddleware to the handler's `NewStrictHandler` second argument:
+1. **入り口 middleware** を handler の `NewStrictHandler` 第二引数へ差す：
 
    ```go
    gen.RegisterHandlers(e, gen.NewStrictHandler(server,
        []gen.StrictMiddlewareFunc{idempotencymw.StrictMiddleware[gen.StrictHandlerFunc]()}))
    ```
 
-2. **Wrap the usecase call** in `Run[T]` with the success status:
+2. **ユースケース呼び出しを `Run[T]` で包む**（成功ステータスを渡す）：
 
    ```go
    dto, _, err := idempotency.Run(ctx, s.idem, http.StatusCreated, func(ctx context.Context) (user.UserView, error) {
@@ -55,55 +55,55 @@ Two steps (opt-in; an endpoint without the steps is unchanged):
    })
    ```
 
-`T` is stored as JSON and rebuilt from JSON on replay, so **every field of `T` must survive a JSON round-trip**. A value object with only unexported fields and no `MarshalJSON` silently degrades to `{}` and replays as a zero value — `pkg/uuid` and `pkg/decimal` implement the pair for this reason.
+`T` は JSON として保存され replay 時に JSON から復元されるため、**`T` の全フィールドが JSON 往復に耐える必要があります**。非公開フィールドのみを持ち `MarshalJSON` を実装しない値オブジェクトは黙って `{}` へ縮退し、replay ではゼロ値になります（`pkg/uuid` / `pkg/decimal` が対を実装しているのはこのためです）。
 
 <!-- sample-api:replace-begin -->
-`PostUsers` (`internal/controller/handler/v1/users/v1_users_handler.go`) is the reference adoption. The middleware only triggers when the `Idempotency-Key` header is present; without it `Run` just runs `businessFn` (non-breaking).
+`PostUsers`（`internal/controller/handler/v1/users/v1_users_handler.go`）が参照採用です。middleware は `Idempotency-Key` ヘッダがある時だけ反応し、無ければ `Run` は `businessFn` を素通し実行します（非破壊）。
 <!-- sample-api:replace-with -->
-<!-- = The middleware only triggers when the `Idempotency-Key` header is present; without it `Run` just runs `businessFn` (non-breaking). -->
+<!-- = middleware は `Idempotency-Key` ヘッダがある時だけ反応し、無ければ `Run` は `businessFn` を素通し実行します（非破壊）。 -->
 <!-- sample-api:replace-end -->
 
-## 4. Client contract
+## 4. クライアント向け契約
 
-- **`Idempotency-Key` header**: non-empty, ≤ 255 chars, printable ASCII (`0x21`–`0x7E`). UUID is recommended but not required. Malformed → **400**.
-- **Replay**: a retry with the same key + same request returns the original response.
-- **409 Conflict**: the key is currently being processed (concurrent retry) — retry later.
-- **422 Unprocessable Entity**: the same key was reused with a *different* request body.
-- Scoped to the authenticated principal: a key is unique **per user** (`UNIQUE (scope, idempotency_key)`), so one user cannot collide with or read another user's key.
+- **`Idempotency-Key` ヘッダ**：非空 / ≤255 / 印字可能 ASCII（`0x21`–`0x7E`）。UUID 推奨・非必須。形式不正 → **400**。
+- **replay**：同キー・同リクエストの再送は最初の結果を返す。
+- **409**：そのキーは処理中（並行再送）→ 後で再試行。
+- **422**：同キーを*別*リクエストボディで使い回した。
+- 認証プリンシパル単位でスコープ（`UNIQUE (scope, idempotency_key)`）。他人のキーに衝突・覗きはできない。
 
-## 5. (c) Per-endpoint scope extension (no config flag)
+## 5. (c) per-endpoint スコープ拡張（config フラグにはしない）
 
-Default scope = principal. To isolate keys per endpoint as well (`scope = principal + operationId`), change the scope composition in **one place** — the entry middleware already has `operationId` for free (also used as the o11y label). Do not add a runtime config flag; keep it a documented code change. Onion note: the operationId comes from HTTP, so prefer threading the usecase-method identity if you want a purer source — both are acceptable.
+既定の scope = principal。エンドポイント単位でも隔離する（`scope = principal + operationId`）には、scope 組成の**1点**を変えるだけ。入り口 middleware が `operationId` を無料で持つ（o11y ラベルにも使用）。ランタイム config は作らず、コード改修として残す。onion 注：operationId は HTTP 由来なので、より純にするなら UC メソッドの identity を渡す案も可。
 
-## 6. Operations
+## 6. 運用
 
-- **GC job** `idempotency-gc` (`internal/controller/job/idempotencygc/`) batch-deletes expired entries. Run it from an external scheduler: `cmd job idempotency-gc` (`--batch-size=N`, default 10,000). Recommended interval: **hourly** (TTL is 24h, so realtime is unnecessary).
-- **TTL = 24h** = the retry window. A retry after the TTL becomes a fresh execution.
-- **Metrics**: the idempotency outcome / failure / GC-cleanup counters are observed at the usecase boundary (not by guessing from HTTP status), since hit/miss/conflict can only be decided from the `Claim`/`Get`/`Complete` results.
-  - `Run[T]` reports `Deps.Metrics` (`idempotency.Metrics`): `IncMiss` (new claim), `IncHit` (completed replay), `IncConflict` (lock timeout / still-claimed / entry vanished after claim), `IncFingerprintMismatch`, `IncClaimFailure` (non-`ErrLockTimeout` claim error), `IncCompleteFailure`.
-  - `GCUsecase` reports `GCMetrics`: `IncExpiredCleanup(count)` per successful batch and `IncExpiredCleanupFailure()` on a delete error.
-  - The wired implementation is `observability.NewIdempotencyMetrics` (provided in `internal/di/module/usecase.go`, annotated as both interfaces). It emits OpenTelemetry counters `idempotency.requests{operation_id,result}`, `idempotency.failures{operation_id,phase}` (per-request failures: `phase=claim/complete`), `idempotency.expired_cleanup{job}`, and `idempotency.expired_cleanup_failure{job}` (GC batch failures — kept symmetric with GC success under the `job` label rather than folded into the per-request `failures` counter). High-cardinality / sensitive values (Idempotency-Key, scope, fingerprint, PII, raw error) are **never** labels; an empty `operation_id` is normalized to `unknown`.
-  - Both `Deps.Metrics` and the `GCMetrics` argument remain optional: a `nil` value is **no-op** (so `Run`/`GC` work without an observability backend).
+- **GC ジョブ** `idempotency-gc`（`internal/controller/job/idempotencygc/`）が失効したエントリをバッチ削除。外部スケジューラから `cmd job idempotency-gc`（`--batch-size=N`、既定 10,000）で起動。推奨間隔は**毎時**（TTL 24h ゆえリアルタイム不要）。
+- **TTL = 24h** = リトライ許容窓。TTL 経過後の再送は新規実行になる。
+- **メトリクス**: 冪等性の判定結果 / 内部失敗 / GC 削除カウンタは、HTTP ステータスからの推測ではなく usecase 境界で観測する（hit/miss/conflict は `Claim`/`Get`/`Complete` の結果を見ないと確定できないため）。
+  - `Run[T]` は `Deps.Metrics`（`idempotency.Metrics`）へ計上する: `IncMiss`（新規 claim）/ `IncHit`（completed の replay）/ `IncConflict`（ロックタイムアウト・claimed のまま・claim 直後にエントリが消失）/ `IncFingerprintMismatch` / `IncClaimFailure`（`ErrLockTimeout` 以外の claim エラー）/ `IncCompleteFailure`。
+  - `GCUsecase` は `GCMetrics` へ計上する: バッチ成功ごとに `IncExpiredCleanup(count)`、削除エラー時に `IncExpiredCleanupFailure()`。
+  - 配線済みの実装は `observability.NewIdempotencyMetrics`（`internal/di/module/usecase.go` で両 interface として提供）。OpenTelemetry カウンタ `idempotency.requests{operation_id,result}` / `idempotency.failures{operation_id,phase}`（per-request 失敗: `phase=claim/complete`）/ `idempotency.expired_cleanup{job}` / `idempotency.expired_cleanup_failure{job}`（GC バッチ失敗 — per-request の `failures` に畳まず GC 成功と同じく `job` ラベルで対称に保つ）を出力する。高カーディナリティ・秘匿値（Idempotency-Key・scope・fingerprint・PII・raw error）は**ラベルにしない**。空の `operation_id` は `unknown` に丸める。
+  - `Deps.Metrics` も `GCMetrics` 引数も任意のまま: `nil` は **no-op**（観測性バックエンド無しでも `Run`/`GC` は動作する）。
 <!-- sample-api:replace-begin -->
-- **Single success status per operation**: `Run[T]` records one `successStatus` and `PostUsers` always returns 201. If you adopt `Run[T]` on an endpoint that can return multiple success statuses (e.g. 200 vs 201), extend the handler to dispatch on the stored status — replay currently re-renders via the handler's fixed response type.
+- **オペレーションごとに成功ステータスは1つ**: `Run[T]` は `successStatus` を1つ記録し、`PostUsers` は常に 201 を返す。成功ステータスが複数あり得る（例: 200 と 201）エンドポイントに `Run[T]` を採用する場合は、保存ステータスで分岐するようハンドラを拡張すること（現状の replay はハンドラ固定のレスポンス型で再描画する）。
 <!-- sample-api:replace-with -->
-<!-- = - **Single success status per operation**: `Run[T]` records one `successStatus`, so an adopting handler always returns the same status. If you adopt `Run[T]` on an endpoint that can return multiple success statuses (e.g. 200 vs 201), extend the handler to dispatch on the stored status — replay currently re-renders via the handler's fixed response type. -->
+<!-- = - **オペレーションごとに成功ステータスは1つ**: `Run[T]` は `successStatus` を1つ記録するため、採用したハンドラは常に同じステータスを返す。成功ステータスが複数あり得る（例: 200 と 201）エンドポイントに `Run[T]` を採用する場合は、保存ステータスで分岐するようハンドラを拡張すること（現状の replay はハンドラ固定のレスポンス型で再描画する）。 -->
 <!-- sample-api:replace-end -->
 
-## Security / storage notes
+## セキュリティ / 保存の注意
 
-- **Scope isolation (IDOR)**: there is no DB FK/RLS on `scope`; isolation is enforced in code — every query carries `WHERE scope = <principal>` and there is no `id`-only lookup. The `Store` interface takes `scope` as a mandatory argument.
-- **`response_payload` PII**: the result DTO is stored as JSON (BYTEA). For PII-bearing DTOs (e.g. `UserResponse`), be aware of DB dump/backup exposure (rows clear after the 24h TTL). If this matters, store a cache-only DTO, encrypt with pgcrypto, or avoid storing PII-bearing DTOs raw.
-- **`request_fingerprint`** is always a 32-byte SHA-256 by construction (the middleware computes `sha256(method+path+typed-request)`); a DB `CHECK (octet_length = 32)` can be added as defense-in-depth.
+- **scope 越境（IDOR）**：`scope` に DB の FK/RLS は無く、隔離は実装で担保。全クエリが `WHERE scope = <principal>` を持ち、`id` 単独 lookup を作らない。`Store` IF は scope を必須引数にする。
+- **`response_payload` の PII**：結果 DTO を JSON(BYTEA) 保存する。PII を含む DTO（例 `UserResponse`）では DB ダンプ/バックアップの漏洩面に注意（24h TTL で消える）。気になる場合はキャッシュ専用 DTO / pgcrypto 暗号化 / 素の PII DTO を保存しない、のいずれかを選ぶ。
+- **`request_fingerprint`** は構造上常に 32byte の SHA-256（middleware が `sha256(method+path+typed-request)` を生成）。DB の `CHECK (octet_length = 32)` を defense-in-depth として追加可。
 
-## Layout
+## 配置
 
-| Layer | Path |
+| 層 | パス |
 | --- | --- |
 | migration | `database/migrations/000001_create_idempotency_keys.*.sql` |
 | sqlc DML | `database/dml/system_cqrs/idempotency/` |
-| boundary | `internal/usecase/boundary/idempotency/` (`Store`) |
+| boundary | `internal/usecase/boundary/idempotency/`（`Store`） |
 | infrastructure | `internal/infrastructure/rdb/system_cqrs/idempotency/` |
-| usecase | `internal/usecase/idempotency/` (`Run[T]`, `GCUsecase`) |
-| controller (entry) | `internal/controller/httpstack/idempotency/` |
-| GC job | `internal/controller/job/idempotencygc/` |
+| usecase | `internal/usecase/idempotency/`（`Run[T]`, `GCUsecase`） |
+| controller（入り口） | `internal/controller/httpstack/idempotency/` |
+| GC ジョブ | `internal/controller/job/idempotencygc/` |

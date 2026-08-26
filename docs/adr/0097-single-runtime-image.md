@@ -5,67 +5,51 @@ deciders: [maintainers]
 tags: [deploy, image]
 ---
 
-# ADR-0097: A single runtime image with command override (no purpose-specific images)
+# ADR-0097: コマンドオーバーライドによる単一ランタイムイメージ（目的別イメージなし）
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Because the project ships a single multi-command binary (see
-[ADR-0096](0096-single-multi-command-binary.md)), deployments require not only the HTTP
-server role but also the migration role. A naive approach would produce a dedicated migration
-image; however, that would duplicate the binary, inflate supply-chain scope, and require
-coordinating image versions across two artifacts.
+プロジェクトが単一のマルチコマンドバイナリをシップするため（[ADR-0096](0096-single-multi-command-binary.md) 参照）、デプロイメントには HTTP サーバーロールだけでなくマイグレーションロールも必要となる。素朴なアプローチでは専用のマイグレーションイメージを作成するが、それはバイナリを重複させ、サプライチェーンのスコープを肥大化させ、2 つの成果物にまたがるイメージバージョンの調整が必要となる。
 
-## Decision
+## 決定
 
-Ship a single `runtime` Docker image. The default command is `./server serve` (HTTP server).
-Any other role — most commonly `migrate-up` — is invoked by overriding the container command
-at runtime:
+単一の `runtime` Docker イメージをシップする。デフォルトコマンドは `./server serve`（HTTP サーバー）である。他のロール — 最も一般的には `migrate-up` — はランタイムでコンテナコマンドをオーバーライドすることで呼び出される:
 
 ```text
 docker run <image> /app/server migrate-up
 ```
 
-No separate migration image, job image, or worker image is produced or maintained.
+別のマイグレーションイメージ、ジョブイメージ、またはワーカーイメージは作成も管理もしない。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- One image digest to sign, attest, and verify per deployment. Supply-chain integrity
-  checks apply uniformly to all roles (see [ADR-0101](0101-release-image-supply-chain.md)).
-- The migration binary is always exactly the same version as the serving binary, eliminating
-  version skew between migration and application code.
-- Reduced CI surface: one build step, one push, one set of tags.
+- デプロイメントごとに署名、アテスト、検証する 1 つのイメージダイジェスト。サプライチェーンの完全性チェックがすべてのロールに均一に適用される（[ADR-0101](0101-release-image-supply-chain.md) 参照）。
+- マイグレーションバイナリは常にサービングバイナリと完全に同じバージョンであり、マイグレーションとアプリケーションコード間のバージョンスキューを排除する。
+- CI サーフェスの削減: 1 つのビルドステップ、1 つのプッシュ、1 セットのタグ。
 
-### Negative Consequences
+### ネガティブな影響
 
-- The image is slightly larger than a hypothetical migration-only image because all roles
-  are included. In practice the binary is statically linked and the delta is small.
-- Operators unfamiliar with command override may attempt to run migrations via a separate
-  (possibly stale) image.
+- すべてのロールが含まれるため、仮想的なマイグレーション専用イメージよりわずかに大きい。実際にはバイナリは静的リンクされており、差分は小さい。
+- コマンドオーバーライドに不慣れなオペレーターが、別の（場合によっては古い）イメージでマイグレーションを実行しようとする可能性がある。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Dedicated migration image
+### 専用マイグレーションイメージ
 
-A separate Dockerfile target or image built from the same binary. Doubles the number of
-images to manage and sign, and introduces the risk of deploying a migration binary that
-differs from the serving binary.
+同じバイナリから構築された別の Dockerfile ターゲットまたはイメージ。管理と署名が必要なイメージ数が 2 倍になり、サービングバイナリとは異なるマイグレーションバイナリをデプロイするリスクが生じる。
 
-### Init-container that pulls migration binary separately
+### 別途マイグレーションバイナリをプルするイニットコンテナ
 
-The binary version must be coordinated externally. Rejected: any version skew between
-migration and app binary is a latent correctness risk.
+バイナリバージョンを外部で調整しなければならない。却下: マイグレーションとアプリバイナリ間のバージョンスキューは潜在的な正確性リスクである。
 
-## Notes
+## 補足
 
-- `docker/server/Dockerfile` lines 55-57: `CMD ["/app/server", "serve"]` is the default;
-  migrations override this to `["/app/server", "migrate-up"]`.
-- `docker/server/README.md`: "Schema migrations run from the `runtime` image via command
-  override, so no dedicated migration target exists."
-- Migration orchestration (one-shot pre-deploy job) is a separate concern; see
-  ADR-0100.
+- `docker/server/Dockerfile` 55-57 行: `CMD ["/app/server", "serve"]` がデフォルト。マイグレーションはこれを `["/app/server", "migrate-up"]` にオーバーライドする。
+- `docker/server/README.md`: "Schema migrations run from the `runtime` image via command override, so no dedicated migration target exists."
+- マイグレーションオーケストレーション（ワンショット事前デプロイジョブ）は別の関心事である。ADR-0100 を参照。

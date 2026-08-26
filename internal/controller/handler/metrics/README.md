@@ -1,16 +1,16 @@
-# Metrics Handler (`internal/controller/handler/metrics`)
+# メトリクスハンドラー (`internal/controller/handler/metrics`)
 
-## Role
+## 役割
 
-`metrics` exposes the Prometheus scrape endpoint **`GET /metrics`**.
+`metrics` は Prometheus のスクレイプエンドポイント **`GET /metrics`** を公開します。
 
-It is an **operational endpoint that is not defined in OpenAPI**, so it is the
-deliberate exception to the standard handler pattern documented in the
-[parent handler guide](../README.md). It has **no `gen/` package, no
-`ServerInterface`, no `server` struct, no `gen.NewStrictHandler`, and no Usecase
-call** — it simply mounts the Prometheus client's own HTTP handler on Echo.
+これは **OpenAPI に定義されない運用エンドポイント**であり、
+[親ハンドラーガイド](../README.md)に記載された標準ハンドラーパターンに対する
+意図的な例外です。**`gen/` パッケージ・`ServerInterface`・`server` struct・
+`gen.NewStrictHandler`・Usecase 呼び出しをいずれも持たず**、Prometheus
+クライアント自身の HTTP ハンドラーを Echo にマウントするだけです。
 
-## Implementation
+## 実装
 
 ```go
 func BindHandler(e *echo.Echo, bav echomw.BasicAuthValidator) {
@@ -21,51 +21,52 @@ func BindHandler(e *echo.Echo, bav echomw.BasicAuthValidator) {
 }
 ```
 
-- The route is registered directly as an `echo.HandlerFunc` via
-  `echo.WrapHandler(promhttp.Handler())` — not through `gen.RegisterHandlers`.
-- `BindHandler` is wired in the controller DI module
-  ([`internal/di/module/controller.go`](../../../di/module/controller.go)) with
-  `fx.Invoke(metrics.BindHandler)`, the same registration mechanism as the
-  standard handlers.
+- ルートは `gen.RegisterHandlers` を経由せず、
+  `echo.WrapHandler(promhttp.Handler())` により `echo.HandlerFunc` として直接登録します。
+- `BindHandler` はコントローラー DI モジュール
+  ([`internal/di/module/controller.go`](../../../di/module/controller.go)) の
+  `fx.Invoke(metrics.BindHandler)` で結線され、登録の仕組み自体は標準ハンドラーと同じです。
 
-## What is exposed
+## 公開される内容
 
-`promhttp.Handler()` serves the Prometheus **default registry**
-(`prometheus.DefaultGatherer` / `prometheus.DefaultRegisterer`). This handler
-package registers nothing itself; the metrics come from collectors that other
-packages register on that default registry at startup, including:
+`promhttp.Handler()` は Prometheus の**デフォルトレジストリ**
+(`prometheus.DefaultGatherer` / `prometheus.DefaultRegisterer`) を配信します。
+このハンドラーパッケージ自身は何も登録せず、メトリクスは他のパッケージが
+起動時にデフォルトレジストリへ登録した Collector から得られます。主なものは以下です。
 
-- the client library's built-in **Go runtime and process collectors**;
-- **`app_build_info`** — the build/version info gauge registered by
+- クライアントライブラリ組み込みの **Go ランタイム / プロセス Collector**
+- **`app_build_info`** — ビルド・バージョン情報の info gauge。
   [`internal/observability/metrics/buildinfo`](../../../observability/metrics/buildinfo)
-  (`buildinfo.Register` → `prometheus.DefaultRegisterer`);
-- **RDB pool / query metrics** from
+  が登録 (`buildinfo.Register` → `prometheus.DefaultRegisterer`)
+- **RDB プール / クエリメトリクス**。
   [`internal/infrastructure/rdb/metrics`](../../../infrastructure/rdb/metrics)
-  (its `NewRegisterer` returns `prometheus.DefaultRegisterer`);
-- **HTTP RED metrics** from the instrumentation middleware, registered against
-  the same `prometheus.Registerer` provided by the DB module (see
-  [instrumentation](../../../di/server/extension/instrumentation/README.md));
-- the **worker queue stats collector**
+  （その `NewRegisterer` は `prometheus.DefaultRegisterer` を返す）
+- **HTTP RED メトリクス**。instrumentation ミドルウェアが DB モジュール提供の
+  同一 `prometheus.Registerer` に登録
+  （[instrumentation](../../../di/server/extension/instrumentation/README.md) 参照）
+- **ワーカーキューの統計 Collector**
   ([`internal/observability/metrics/queue`](../../../observability/metrics/queue),
-  `RegisterStatsCollector`).
+  `RegisterStatsCollector`)
 
-> OpenTelemetry metrics (`OBS_METRICS_EXPORTER`) are **pushed over OTLP**, not
-> scraped here; this endpoint only serves the Prometheus-native default registry.
+> OpenTelemetry のメトリクス (`OBS_METRICS_EXPORTER`) は **OTLP でプッシュ**され、
+> ここでスクレイプされるものではありません。本エンドポイントは
+> Prometheus ネイティブのデフォルトレジストリのみを配信します。
 
-## Access control
+## アクセス制御
 
-The endpoint is protected with Echo's Basic auth middleware
-(`echomw.BasicAuth(bav)`). The `BasicAuthValidator` is provided by DI from
-`internal/controller/httpstack/basicauth` (driven by `config.MetricsConfig`).
+エンドポイントは Echo の Basic 認証ミドルウェア
+(`echomw.BasicAuth(bav)`) で保護されます。`BasicAuthValidator` は DI により
+`internal/controller/httpstack/basicauth` から供給されます
+（`config.MetricsConfig` を根拠とする）。
 
-## Difference from the standard handler pattern
+## 標準ハンドラーパターンとの差分
 
-| Standard OpenAPI handler | This endpoint |
+| 標準 OpenAPI ハンドラー | 本エンドポイント |
 | --- | --- |
-| Route from `gen.RegisterHandlers` | Direct `e.GET("/metrics", …)` |
-| `server` struct + `gen.NewStrictHandler` | Plain `echo.WrapHandler` |
-| Parses request → calls Usecase → Presenter | No Usecase, no DTO conversion |
-| `observability.LayerTracer` span | No span (nothing to trace) |
+| `gen.RegisterHandlers` によるルート登録 | `e.GET("/metrics", …)` の直接登録 |
+| `server` struct + `gen.NewStrictHandler` | 素の `echo.WrapHandler` |
+| リクエスト parse → Usecase 呼び出し → Presenter | Usecase・DTO 変換なし |
+| `observability.LayerTracer` の span | span なし（トレース対象がない） |
 
-This carve-out is limited to non-OpenAPI operational endpoints; feature APIs must
-follow the standard pattern in the [parent handler guide](../README.md).
+この例外は非 OpenAPI の運用エンドポイントに限られます。機能 API は
+[親ハンドラーガイド](../README.md)の標準パターンに従う必要があります。

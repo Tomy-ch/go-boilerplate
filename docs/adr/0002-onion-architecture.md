@@ -5,23 +5,19 @@ deciders: [maintainers]
 tags: [architecture, layering]
 ---
 
-# ADR-0002: Adopt pragmatic onion architecture
+# ADR-0002: 実用的なオニオンアーキテクチャを採用する
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-This project needs business logic to stay independent of infrastructure and framework
-choices so that infrastructure is replaceable (see [ADR-0001](0001-avoid-lock-in.md)) and
-the domain core stays stable and testable over the long term. The driving design goals are
-maintainability, structural safety, type safety, replaceable infrastructure, and long-term
-operability — not raw performance or minimal abstraction.
+このプロジェクトは、インフラストラクチャとフレームワークの選択からビジネスロジックを独立させる必要がある。インフラストラクチャが交換可能（[ADR-0001](0001-avoid-lock-in.md) 参照）であり、ドメインコアが長期にわたって安定してテスト可能であり続けるためである。主要な設計目標は、保守性・構造的安全性・型安全性・交換可能なインフラストラクチャ・長期的な運用性であり、生のパフォーマンスや最小限の抽象化ではない。
 
-## Decision
+## 決定
 
-Adopt a **pragmatic onion architecture**. Dependencies point inward:
+**実用的なオニオンアーキテクチャ** を採用する。依存関係は内側を向く:
 
 ```mermaid
 flowchart LR
@@ -29,44 +25,37 @@ flowchart LR
     Infrastructure --> Domain
 ```
 
-The domain layer holds no dependency on frameworks, infrastructure, or external systems;
-infrastructure implements domain-defined interfaces. This is a deliberately simplified form
-of the concentric-layers idea, not a full Clean Architecture with extra abstraction layers.
+ドメインレイヤーはフレームワーク・インフラストラクチャ・外部システムへの依存を持たない; インフラストラクチャはドメインが定義したインターフェースを実装する。これは同心円レイヤーの概念を意図的に簡略化した形であり、追加の抽象レイヤーを持つ完全なクリーンアーキテクチャではない。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Clear separation of responsibilities.
-- Ease of testing (the domain core is pure and needs no infrastructure to test).
-- Replaceable infrastructure behind domain interfaces.
-- A stable domain core insulated from external change.
-- The pure domain + usecase layers are the portable core, which keeps a future rewrite
-  tractable: staying in Go, a replacement moves essentially those two layers; even a
-  language change reduces to analysing/porting domain + usecase, since they carry no
-  framework or infrastructure coupling (this is why onion is paired with lock-in avoidance,
-  [ADR-0001](0001-avoid-lock-in.md)).
+- 責務の明確な分離。
+- テストの容易さ（ドメインコアは純粋であり、テストにインフラストラクチャを必要としない）。
+- ドメインインターフェースの背後で交換可能なインフラストラクチャ。
+- 外部の変化から隔離された安定したドメインコア。
+- 純粋なドメイン層とユースケース層が「移植可能なコア」となり、将来のリプレイスを現実的にする。
+  Go のままなら実質この 2 層の引っ越しで済み、別言語への移行でもドメイン＋ユースケースの
+  解析／移植に帰着する（両層はフレームワークやインフラに結合していないため）。これがオニオンを
+  ロックイン回避（[ADR-0001](0001-avoid-lock-in.md)）と組み合わせる理由である。
 
-### Negative Consequences
+### ネガティブな影響
 
-- More layers and mapping (DTO ↔ entity conversion at boundaries) than a flat structure.
-- Contributors must learn the dependency-direction discipline; it is enforced in CI (depguard) rather than left to review.
+- フラットな構造よりも多くのレイヤーとマッピング（境界での DTO ↔ エンティティ変換）が必要になる。
+- コントリビューターは依存方向の規律を学ばなければならない; これはレビューに任せるのではなく CI（depguard）で強制される。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Layered MVC
+### レイヤード MVC
 
-Simple, but tends to mix domain logic and infrastructure logic, eroding the stable core
-this project prioritizes. It also creates conditions for fat Model or service classes —
-business logic accumulating in one place — which the layered approach here avoids by
-assigning distinct responsibilities to domain, usecase, and infrastructure.
+シンプルだが、ドメインロジックとインフラストラクチャロジックが混在しがちで、このプロジェクトが優先する安定したコアが侵食される。また、ビジネスロジックが特定のレイヤーに集中する Fat Model や Fat Usecase になりやすく、このアーキテクチャがドメイン・ユースケース・インフラストラクチャに明確な責務を割り当てることで回避している問題でもある。
 
-### Clean Architecture
+### クリーンアーキテクチャ
 
-Conceptually very similar, but tends to introduce additional abstraction layers. This
-project adopts a more practical, simplified version instead.
+概念的には非常に類似しているが、追加の抽象レイヤーを導入する傾向がある。このプロジェクトはより実用的で簡略化されたバージョンを採用する。
 
-## Notes
+## 補足
 
-- Enforced by the layer dependency rules in [`docs/rules.md`](../rules.md) (dependencies point inward; domain purity; DTO/type boundary conversion), which are the day-to-day *consequences* of this decision.
-- Migrated from the former `docs/decisions.md`.
+- [`docs/rules.md`](../rules.md) のレイヤー依存関係ルール（依存関係は内側を向く; ドメインの純粋性; DTO/型境界変換）によって強制される。これらはこの決定の日々の *帰結* である。
+- かつての `docs/decisions.md` から移行。

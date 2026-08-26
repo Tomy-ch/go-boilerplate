@@ -6,202 +6,198 @@ description: >-
 
 # Scaffold Domain
 
-Generate the domain layer for a feature based on `docs/spec/<feature>/domain.md`. Produces the entity, Repository interface, value objects, constants, errors, getters, and tests in a single pass.
+`docs/spec/<feature>/domain.md` を入力に、1 feature の domain 層を 1 パスで生成するスキル。entity / Repository IF / VO / constant / error / getter / test を生成する。
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+## 使うとき
 
-## When to Use
+- `new-spec` または手書きで `domain.md` が完成し、検証も済んだ後
+- `scaffold-endpoint` の最初のステップ（自動 chain）
+- domain 層だけを scaffold したい単独利用
 
-- After `new-spec` / human-written `domain.md` is complete and verified.
-- As the first step of `scaffold-endpoint` (auto-chained).
-- Standalone when only the domain layer needs scaffolding.
+以下の用途には使いません:
 
-Do NOT use this skill for:
+- 既存 domain パッケージの変更（スキルは新規 aggregate ディレクトリ前提）
+- 既存 entity に新メソッド 1 つ追加 — 手編集
+- spec に宣言されていない業務ロジックの記述
 
-- Modifying an existing domain package (the skill assumes a fresh aggregate directory).
-- Adding only a single new method to an existing entity — edit by hand.
-- Writing business logic not declared in the spec.
+## 読み書き範囲
 
-## What This Skill Reads / Writes
+**読み込み（常時）**:
 
-**Reads (always)**:
+- `docs/spec/<feature>/domain.md` — single source of truth
+- `internal/domain/README.md` — layer 規約
+- 既存の sibling aggregate package 1〜2 件（`internal/domain/<sibling>/`）— 構造 template
+- `internal/domain/<aggregate>/` — 既存確認（あれば中断）
 
-- `docs/spec/<feature>/domain.md` — single source of truth for what gets generated.
-- `internal/domain/README.md` — layer-wide convention (principles, naming, getter style, `ptr.Copy` usage, error wrapping, file separation). **Canonical**: README wins on any conflict with sibling code.
-- Existing sibling aggregates under `internal/domain/<sibling>/` — secondary structural template for imports, file layout, formatting style.
-- `internal/domain/<aggregate>/` — to verify the directory does not already exist (abort if it does).
+**書き込み（承認後）**:
 
-**Writes (with confirmation)**:
+- `internal/domain/<aggregate>/<aggregate>_domain.go`
+- `internal/domain/<aggregate>/<aggregate>_repository.go`（`//go:generate mockgen` 付き）
+- `internal/domain/<aggregate>/constant.go`
+- `internal/domain/<aggregate>/error.go`
+- `internal/domain/<aggregate>/<value_object>.go`（VO ごと）
+- `internal/domain/<aggregate>/<aggregate>_domain_test.go`
+- `internal/domain/<aggregate>/<value_object>_test.go`
 
-- `internal/domain/<aggregate>/<aggregate>_domain.go` — entity struct + constructor
-- `internal/domain/<aggregate>/<aggregate>_repository.go` — Repository interface with `//go:generate mockgen`
-- `internal/domain/<aggregate>/constant.go` — derived constants (min/max boundaries)
-- `internal/domain/<aggregate>/error.go` — derived errors (`ErrInvalid<Field>` per field)
-- `internal/domain/<aggregate>/<value_object>.go` — one per VO declared in spec
-- `internal/domain/<aggregate>/<aggregate>_domain_test.go` — invariant + behavior tests
-- `internal/domain/<aggregate>/<value_object>_test.go` — VO boundary tests
+**`make` トリガ**:
 
-**Triggers (via `make`)**:
+- `make gen-api` — `internal/domain/<aggregate>/mock/` 配下に Repository mock 再生成
+- `make fix` + `make test` — 最終検証
 
-- `make gen-api` — regenerates Repository mock under `internal/domain/<aggregate>/mock/`.
-- `make fix` + `make test` — final verification.
+**触らない**:
 
-**Never touches**:
+- 他 aggregate のディレクトリ
+- `internal/domain/<aggregate>/` の外
+- spec ファイル
 
-- Other aggregates' directories.
-- Anything outside `internal/domain/<aggregate>/`.
-- The spec file itself.
+## 最初のステップ: spec パス解決
 
-## First Step: Resolve Spec Path
+`ask the user explicitly` を起動直後に呼ぶ（`scaffold-endpoint` から呼ばれて context にある場合は除く）:
 
-This skill **MUST call `ask the user explicitly` immediately after invocation** (unless invoked from `scaffold-endpoint` with the feature name already in context):
+- 質問: 「対象 feature 名 (kebab-case)」
+- フリーテキスト。`docs/spec/<feature>/domain.md` として解決
 
-- Question: 「対象 feature 名 (kebab-case)」
-- Free-text. The skill then resolves spec path as `docs/spec/<feature>/domain.md`.
+スタンドアロン代替: `--spec=<path>` 引数で規約外パスを指定可能。
 
-Standalone alternative: accept an explicit `--spec=<path>` argument so the user can point at a spec outside the convention.
+spec ファイルが無ければ中断し、`/new-spec` を案内する。
+`internal/domain/<aggregate>/` が既にあれば、手書きコードの clobber を避けるため中断する。
 
-If the spec file is missing → abort with a message pointing to `/new-spec`.
-If `internal/domain/<aggregate>/` already exists → abort to avoid clobbering hand-written code.
+## Step 1. spec + README context 読み込み
 
-## Step 1. Read Spec + README Context
+1. `docs/spec/<feature>/domain.md` を全文読み込み。YAML コードブロックを inventory にパース:
+   - `entity`: package, struct, fields（name, type, required, min/max 等）
+   - `cross_field_invariants`: 制約式リスト
+   - `behavior_methods`: (name, signature, description) リスト
+   - `value_objects`: (name, underlying_type, validation, factory, methods) リスト
+   - `repository_methods`: (name, signature, behavior) リスト
 
-1. Read `docs/spec/<feature>/domain.md` in full. Parse every YAML code block into in-memory inventory:
-   - `entity`: package, struct, fields (each with name, type, required, min/max, etc.)
-   - `cross_field_invariants`: list of constraint expressions
-   - `behavior_methods`: list of (name, signature, description)
-   - `value_objects`: list of (name, underlying_type, validation, factory, methods)
-   - `repository_methods`: list of (name, signature, behavior)
+2. `internal/domain/README.md` を読む（特に "Do / Don't"、"Handling time and ID"、"Invariants" 節）
 
-2. Read `internal/domain/README.md` for layer convention (especially "Do / Don't", "Handling time and ID", "Invariants" sections).
+3. `internal/domain/README.md` を権威的な convention 源として使う — naming / getter style / `ptr.Copy` 使用 / error wrap パターン / ファイル分離規約は README の `Implementation notes` / `Aggregate Design` / `Testing strategy` / `Do / Don't` 節が canonical。既存 aggregate コード（`internal/domain/<sibling>/*.go`）は import / file layout / フォーマットスタイルの **二次的** 参照のみ — README と衝突した場合は README が勝つ（README から drift した実装に skill が黙って従わない方針）。
 
-3. Use `internal/domain/README.md` as the authoritative convention source — the README's `Implementation notes`, `Aggregate Design`, `Testing strategy`, and `Do / Don't` sections are canonical for naming, getter style, `ptr.Copy` usage, error wrapping pattern, and file separation. Existing aggregate code (`internal/domain/<sibling>/*.go`) is a **secondary** reference for imports / file layout / formatting — if it conflicts with the README, the README wins (this skill never silently follows code that drifts from the README).
+YAML パース失敗時は中断 → `/verify-spec` を案内。
 
-If any YAML block fails to parse, abort and surface — point user at `/verify-spec`.
+## Step 2. test 観点 subagent
 
-## Step 2. Test-Perspective Subagent
-
-Before writing any code, invoke a subagent via the Codex delegation to enumerate the layer's test viewpoints. This ensures the subsequent implementation is test-driven from a domain-appropriate perspective.
+実装前に Codex delegation で subagent を起動して domain 層の test 観点を列挙させる。これにより実装が domain 観点で test-driven になる。
 
 - `subagent_type: general-purpose`
-- Prompt content (in Japanese): pass the parsed spec inventory + `internal/domain/README.md`'s `Test Strategy` section + a list of expected viewpoints for the domain layer:
-  - invariant preservation (constructor + state-transition methods)
-  - boundary values for each field (min length / max length / min / max)
-  - value object boundary checks
-  - immutability (defensive copy for pointer fields)
-  - cross-field invariant verification (e.g., `updatedAt >= createdAt`)
-  - error classification (`require.ErrorIs` for specific errors)
-- Expected output: a structured list of test cases the skill must produce, grouped by entity / VO.
+- prompt 内容（日本語）: パース済み spec inventory + `internal/domain/README.md` の `Test Strategy` 節 + domain 層期待観点リスト:
+  - invariant 保護（constructor + 状態遷移メソッド）
+  - 各フィールド境界値（min length / max length / min / max）
+  - VO 境界値
+  - immutability（pointer field の defensive copy）
+  - cross-field invariant 検証（`updatedAt >= createdAt` 等）
+  - error 分類 (`require.ErrorIs` での特定エラー検証)
+- 期待出力: スキルが生成すべきテストケース一覧、entity / VO 別構造化
 
-If the subagent returns no viewpoints, fall back to a minimal default set and warn the user.
+subagent が観点を返さない場合は最小デフォルトで継続し、user に警告。
 
-## Step 3. Derive Auto-Generated Elements
+## Step 3. 自動派生要素の決定
 
-Apply auto-derivation rules to fill in elements that are NOT in the spec but follow convention. These rules map spec → generated elements; the canonical *shape* of the resulting Go (error-wrapping pattern, constant naming, getter / `ptr.Copy` style) lives in `internal/domain/README.md` and wins on any drift:
+spec に**書かれていない**が convention で決まる要素を派生:
 
-- **Errors**: for every spec field with validation, generate `ErrInvalid<Field>` in `error.go`. For VOs, generate `ErrInvalid<VO>`. Wrap them under a single group root `errInvalid` (see README `error.go` example for the exact two-level wrapping).
-- **Field identifiers + collect-all validation**: for every user-correctable input field (fields a client submits and can fix), generate a `Field<Name> = "<property>"` constant in `constant.go` matching the API request property name, and shape the input-field validation to collect **all** failures — append `xerrors.Wrap(ErrInvalid<Field>, msg)` and `Field<Name>` per failing field, then `return apperror.WithDetails(xerrors.Join(errs...), fields...)` — so the API can report every invalid field at once (`details`). Server-internal invariants (id, timestamps, password hash) keep first-error return: they are not user-correctable. The canonical shape lives in the README `Errors` section and the rationale in ADR-0048 (error-metadata-code-message-details); reason texts stay in the wrapped message (log-only), never in the identifiers.
-- **Constants**: for every field with `min_length` / `max_length`, generate `min<Field>Length` / `max<Field>Length` constants. For `min` / `max` numeric fields, generate analogous constants.
-- **Getters**: for every unexported entity field, generate `func (e *Entity) Field() T { return e.field }` on a single line. For pointer types, use `return ptr.Copy(e.field)`.
-- **ID validation**: for `uuid.UUID` fields named `id` or `<x>ID`, add `if id.IsNil() { return nil, xerrors.Wrap(ErrInvalidID, "...") }` in the constructor.
-- **Simple type checks**: for `string` fields with min/max length, generate `if ok, msg := stringkit.ValidateInRange(field, minXLength, maxXLength); !ok`. For nullable string fields, allow nil but apply the range when present (`if x != nil { if ok, msg := stringkit.ValidateInRange(*x, ...); !ok { ... } }`).
+- **Errors**: validation のある全フィールドに `ErrInvalid<Field>` を `error.go` に生成。VO には `ErrInvalid<VO>`。group root `errInvalid := xerrors.Wrap(apperror.ErrValidation, "invalid <aggregate>")` で包む
+- **Field identifiers + collect-all validation**: ユーザーが修正できる入力フィールド（クライアントが送信し修正可能なフィールド）ごとに、API リクエストのプロパティ名と一致する `Field<Name> = "<property>"` 定数を `constant.go` に生成し、入力フィールドの検証は失敗を**すべて**収集する形にする — 失敗フィールドごとに `xerrors.Wrap(ErrInvalid<Field>, msg)` と `Field<Name>` を append し、`return apperror.WithDetails(xerrors.Join(errs...), fields...)` — これにより API は不正フィールドを一度にすべて報告できる（`details`）。サーバ内部の不変条件（id・タイムスタンプ・パスワードハッシュ）は first-error return のまま: ユーザーが修正できる入力ではないため。正準の形は README の `Errors` 節、理由は ADR-0048 (error-metadata-code-message-details) にある。理由文はラップしたメッセージ側（ログ専用）に残し、識別子には決して入れない
+- **Constants**: `min_length` / `max_length` 持つフィールドに `min<Field>Length` / `max<Field>Length`。`min` / `max` 数値フィールドに対応定数
+- **Getters**: 全 unexported field に `func (e *Entity) Field() T { return e.field }` を 1 行で生成。pointer は `return ptr.Copy(e.field)`
+- **ID validation**: `uuid.UUID` 型かつ `id` or `<x>ID` 名のフィールドに constructor で `if id.IsNil() { return nil, xerrors.Wrap(ErrInvalidID, "...") }`
+- **単純な型検証**: string + min/max length は `if ok, msg := stringkit.ValidateInRange(field, minXLength, maxXLength); !ok`。nullable string は nil 許容 + 値があるとき範囲チェック（`if x != nil { if ok, msg := stringkit.ValidateInRange(*x, ...); !ok { ... } }`）
 
-## Step 4. Plan and Confirm
+## Step 4. プランと承認
 
-Display a Japanese summary of files to be created and a brief content preview (first ~10 lines of `<aggregate>_domain.go`). Then ask:
+日本語で生成予定ファイル一覧 + `<aggregate>_domain.go` 冒頭 10 行プレビューを表示:
 
-- Question: 「以下の構成で domain 層を生成しますか？」
-- Options: 「生成する」 / 「修正したい箇所を指摘する」 / 「キャンセル」
+- 質問: 「以下の構成で domain 層を生成しますか？」
+- 選択肢: 「生成する」 / 「修正したい箇所を指摘する」 / 「キャンセル」
 
-## Step 5. Write Files
+## Step 5. ファイル書き込み
 
-Write in this order so cross-references inside the package are consistent:
+依存順序で書き込み（パッケージ内 cross-reference を整合させるため）:
 
-1. `constant.go` (no deps)
-2. `error.go` (no deps)
-3. `<aggregate>_domain.go` (entity + constructor, depends on constants/errors)
-4. `<aggregate>_repository.go` (Repository interface with `//go:generate mockgen`)
-5. `<value_object>.go` per VO (depends on errors)
-6. `<aggregate>_domain_test.go` (uses subagent's viewpoint list)
-7. `<value_object>_test.go` per VO
+1. `constant.go`（依存なし）
+2. `error.go`（依存なし）
+3. `<aggregate>_domain.go`（entity + constructor、constant/error に依存）
+4. `<aggregate>_repository.go`（Repository interface + `//go:generate mockgen`）
+5. `<value_object>.go`（VO ごと、error に依存）
+6. `<aggregate>_domain_test.go`（subagent 観点リスト使用）
+7. `<value_object>_test.go`（VO ごと）
 
-Each file follows the existing aggregate's style (read in Step 1 #3) for imports, comments, formatting.
+各ファイルは Step 1 #3 で読んだ既存 aggregate の style（import、コメント、フォーマット）を踏襲。
 
-## Step 6. Regenerate Mocks
+## Step 6. mock 再生成
 
 ```sh
 make gen-api
 ```
 
-This processes the `//go:generate mockgen` directive in `<aggregate>_repository.go` and produces `internal/domain/<aggregate>/mock/mock_<aggregate>_repository.go.gen.go`. Verify the mock file exists after the command runs.
+`<aggregate>_repository.go` の `//go:generate mockgen` を処理し `internal/domain/<aggregate>/mock/mock_<aggregate>_repository.go.gen.go` を生成。コマンド後にファイル存在確認。
 
-## Step 7. Verify
+## Step 7. 検証
 
 ```sh
-make fix    # absorb formatting
-make test   # compile + tests + coverage
+make fix    # フォーマット
+make test   # コンパイル + テスト + カバレッジ
 ```
 
-Check the coverage line for `internal/domain/<aggregate>`. Domain tests must reach 100% per the project's testing convention. If coverage dropped, identify untested branches (likely an invariant or VO factory path) and request a follow-up test addition.
+`internal/domain/<aggregate>` のカバレッジ行を確認。domain テストはプロジェクト規約で 100% 必須。低下時は未テストブランチ（多くは invariant or VO factory パス）を特定し、テスト追記。
 
-If `make test` fails:
+`make test` 失敗時:
 
-- Surface the failure to the user.
-- Write a TODO comment in the failing file at the relevant location.
-- Do NOT auto-rollback. Print FB summary and ask the user to fix forward.
+- 失敗を surface
+- 該当ファイルに TODO コメント書き込み
+- 自動 rollback しない。FB summary を出して user に fix forward を依頼
 
-## Step 8. Closing
+## Step 8. クロージング
 
-Print a one-line summary:
+1 行サマリ:
 
 ```text
 <Aggregate> domain 層を生成しました。<N> ファイル作成、make test OK、coverage 100%。
 次は scaffold-infra-db で repository 実装、または scaffold-endpoint で残層を続行できます。
 ```
 
-Do NOT commit. Do NOT trigger the next scaffold skill.
+commit しない。次の scaffold skill を起動しない。
 
-## AI Modification Scope
+## AI 修正スコープ
 
-Per the "Exception: Skill Execution" clause in `AGENTS.md`:
+"Exception: Skill Execution" 緩和:
 
-- Write scope: `internal/domain/<aggregate>/` only.
-- The skill will refuse to start if `internal/domain/<aggregate>/` already exists (to avoid clobbering).
+- 書き込みスコープ: `internal/domain/<aggregate>/` のみ
+- 既存ディレクトリがあれば skill 起動を拒否（clobber 防止）
 
-Remains protected:
+保護対象:
 
-- Other aggregates' directories.
-- `docs/spec/` files (read only).
-- Generated mock files are written via `make gen-api`, never hand-edited.
+- 他 aggregate のディレクトリ
+- `docs/spec/` ファイル（read only）
+- mock ファイルは `make gen-api` 経由のみ、手編集不可
 
-## Constraints
+## 制約事項
 
-- ❌ Add comments that restate the code or explain *why* a choice was made — keep code comments minimal (behavior / contract only); rationale belongs in the commit message / README, not the code. One-line declaration godoc stays (even on unexported symbols). **Volume counts too**: what this skill scaffolds is idiomatic by construction, so a multi-line explanation of a constructor / Params struct / row-to-entity mapping / handler template is noise. State the contract in one line and stop; never restate a repo-wide rule `docs/rules.md` already carries. Suppression, not elimination — a genuinely non-obvious Why still stays.
-- ❌ Invent fields, methods, errors, or constants not in the spec
-- ❌ Hardcode the layer convention — always read `internal/domain/README.md` + an existing aggregate as template
-- ❌ Skip the test-perspective subagent (Step 2)
-- ❌ Skip the spec-confirmation `ask the user explicitly`
-- ❌ Overwrite an existing aggregate directory
-- ❌ Hand-edit the mock file
-- ❌ Auto-rollback on failure (use TODO + FB instead)
-- ✅ Japanese user-facing output and Japanese test case names (per AGENTS.md output rule)
-- ✅ Apply auto-derivation rules (Step 3) so the spec stays minimal
-- ✅ Reach 100% coverage for the domain package (per project convention)
-- ✅ Run `make gen-api` to regenerate the mock
+- ❌ コードを言い換える／*なぜ*その設計にしたかを説明するコメントを足す — コードコメントは最小（振る舞い・契約のみ）。理由は commit message / README に置きコードに書かない。宣言の godoc（unexported 含む）は1行で残す。**分量も対象**: このスキルが生成する面は構造上すべて慣用的であり、コンストラクタ / Params 構造体 / 行→エンティティ変換 / handler テンプレートに複数行の説明を付けるのはノイズ。契約を1行で述べて止める。`docs/rules.md` にある repo 全体のルールを書き写さない。抑制であって根絶ではなく、真に非自明な Why は残す。
+- ❌ spec に無いフィールド / メソッド / error / constant を発明
+- ❌ layer 規約をハードコード — 必ず `internal/domain/README.md` + 既存 aggregate を template に
+- ❌ test 観点 subagent (Step 2) をスキップ
+- ❌ spec 確認 `ask the user explicitly` をスキップ
+- ❌ 既存 aggregate ディレクトリの上書き
+- ❌ mock ファイルの手編集
+- ❌ 失敗時の自動 rollback（TODO + FB 使用）
+- ✅ ユーザー向け出力 / テストケース名は日本語（AGENTS.md 出力ルール）
+- ✅ Step 3 の自動派生で spec を minimal に保つ
+- ✅ domain パッケージのカバレッジ 100% 到達（プロジェクト規約）
+- ✅ `make gen-api` で mock 再生成
 
-## Checklist
+## チェックリスト
 
-Before reporting completion, confirm:
-
-- [ ] Spec path resolved and file exists
-- [ ] Aggregate directory does NOT already exist (skill aborts if it does)
-- [ ] Spec read + all YAML blocks parsed successfully
-- [ ] `internal/domain/README.md` (canonical) + existing sibling aggregate (secondary template) read
-- [ ] Test-perspective subagent invoked; viewpoints captured before any write
-- [ ] Auto-derived constants / errors / getters / ID checks computed from spec
-- [ ] Plan displayed and confirmed via `ask the user explicitly`
-- [ ] Files written in dependency order (constant → error → entity → repository → VO → tests)
-- [ ] `make gen-api` executed; mock file present
-- [ ] `make fix` + `make test` run; coverage 100% confirmed (or failure surfaced with TODO + FB)
-- [ ] No commits / pushes
-- [ ] Final summary in Japanese
+- [ ] spec パスを解決しファイル存在確認
+- [ ] aggregate ディレクトリが未存在（あれば中断）
+- [ ] spec を読み全 YAML ブロックをパース成功
+- [ ] `internal/domain/README.md`（canonical）+ 既存 sibling aggregate（二次 template）を読み込み
+- [ ] test 観点 subagent を起動、書き込み前に観点取得
+- [ ] 自動派生（constants / errors / getters / ID チェック）を spec から計算
+- [ ] プラン表示 + `ask the user explicitly` 確認
+- [ ] 依存順序（constant → error → entity → repository → VO → tests）で書き込み
+- [ ] `make gen-api` 実行、mock ファイル存在確認
+- [ ] `make fix` + `make test` 実行、カバレッジ 100% 確認（または失敗時 TODO + FB）
+- [ ] commit / push なし
+- [ ] 最終サマリは日本語

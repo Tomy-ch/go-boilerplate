@@ -1,282 +1,274 @@
 # pkg
 
-`pkg/` is the directory for **shared utility packages** used across the entire application.
+`pkg/` は、アプリケーション全体で共有される **汎用ユーティリティパッケージ群** を格納するディレクトリです。
 
-## Policy
+## 方針
 
-`pkg/` only accepts new packages when they meet the following criteria:
+`pkg/` は、以下の基準を満たす場合にのみ、パッケージの追加を検討します。
 
-- The functionality is **referenced from multiple locations**
-- The package **wraps an external library** so that application code does not depend on it directly
+- **複数箇所から参照される機能**であること
+- **外部パッケージをラップ**し、アプリケーションコードが外部ライブラリに直接依存しないようにする目的であること
 
-Helpers used by only one feature should be placed within that feature's package.
+1つの機能からしか使われないヘルパーは、その機能のパッケージ内に配置してください。
 
-Packages that perform external I/O (e.g. `exec`, `fs`) follow a common
-shape: define an **interface** for the capability, provide a concrete implementation
-(`OS{}` etc.) that wires the real dependency, and add a
-`//go:generate mockgen` directive so callers can inject a mock in tests.
+外部 I/O を伴うパッケージ（例: `exec`, `fs`）は共通の形を取ります。すなわち、機能を
+**インターフェース**として定義し、実依存を配線する具象実装（`OS{}` 等）を提供し、
+`//go:generate mockgen` ディレクティブを付与してテストでモック注入を可能にします。
 
-### `pkg/` vs application-wide cross-cutting concerns
+### `pkg/` とアプリ全体の横断的関心の違い
 
-"Referenced from multiple locations" alone is **not** sufficient. `pkg/` is for
-**context-independent, generic utilities** — code that could be lifted into any
-project unchanged and carries no knowledge of this application's domain or system
-decisions (e.g. `xerrors`, `uuid`, `ptr`, `stringkit`).
+「複数箇所から参照される」だけでは **不十分** です。`pkg/` は **文脈非依存の汎用
+ユーティリティ**（どのプロジェクトにもそのまま持ち出せ、このアプリのドメインやシステム上の
+決定を一切知らないもの。例: `xerrors` / `uuid` / `ptr` / `stringkit`）のための場所です。
 
-Concerns that are cross-cutting but **specific to this application/system** — the
-application-wide error taxonomy (`internal/apperror`), logging (`internal/logging`),
-observability (`internal/observability`), configuration (`internal/config`) — do
-**not** belong in `pkg/` even though they are used across layers. They encode this
-system's choices (error semantics, frameworks such as zap / otel) and therefore live
-under `internal/` as cross-cutting concerns. The domain layer may depend on
-`internal/apperror` as the one permitted exception among these.
+横断的ではあっても **このアプリ/システム固有** の関心 — アプリ全体のエラー taxonomy
+（`internal/apperror`）、ロギング（`internal/logging`）、オブザーバビリティ
+（`internal/observability`）、設定（`internal/config`） — は、層をまたいで使われていても
+`pkg/` には **置きません**。これらはこのシステムの選択（エラー意味論、zap / otel 等の
+フレームワーク）を内包するため、`internal/` 配下の横断的関心として置きます。domain 層が
+これらのうち domain 層が依存してよい唯一の例外は `internal/apperror` です。
 
-### Constraints
+### 制約
 
-- Must not contain business logic
-- Must not depend on `internal/` packages
-- Must not depend on infrastructure or framework-specific packages
-- Must not depend on other `pkg/` packages. Two exceptions are permitted, both enforced by depguard `independent_pkg` in `.golangci-full.yaml`: `pkg/xerrors` may be imported by any package, and a `testkit` sub-package may import its own parent (the rule's file pattern excludes `**/pkg/**/testkit/**.go`)
-- Each package must have a single responsibility
+- ビジネスロジックを含めてはならない
+- `internal/` のパッケージに依存してはならない
+- infrastructure やフレームワーク固有のパッケージに依存してはならない
+- 他の `pkg/` パッケージに依存してはならない。例外は 2 つあり、いずれも `.golangci-full.yaml` の depguard `independent_pkg` で強制される。`pkg/xerrors` はどのパッケージからも import してよく、`testkit` サブパッケージは自身の親を import してよい（ルールのファイルパターンが `**/pkg/**/testkit/**.go` を除外している）
+- 1パッケージ = 1責務を守ること
 
-### Doc comments must stay context-independent too
+### doc コメントも状況非依存であること
 
-The constraints above govern the doc comments, not just the code. A `pkg/` package is meant to survive
-being copied into another project, so its doc comments must not bake in **this** application's context:
-no specific environment-variable names, no naming of the current call sites, and no examples that
-mirror this repository's layer structure. Write `envutil.Override("SOME_KEY", "value")`, not a real
-`DB_NAME`; say a retry loop is shared by "any caller that classifies retryability", not by "the tx
-retry and the external HTTP retry". Naming the current consumers is also plain noise under
-[`docs/rules.md`](../docs/rules.md) § Comment Rules ("where it is called from").
+上記の制約はコードだけでなく doc コメントにも及ぶ。`pkg/` は他プロジェクトへコピーしても成立することを
+前提とするため、doc コメントに**このアプリケーション固有の文脈**を焼き込んではならない。特定の環境変数名、
+現在の呼び出し元の名指し、このリポジトリのレイヤ構造をなぞった例のいずれも書かない。`DB_NAME` のような実名
+ではなく `envutil.Override("SOME_KEY", "value")` と書き、リトライループの共有者は「tx リトライと外部 HTTP の
+retry」ではなく「リトライ可能性を分類する任意の呼び出し側」と書く。現在の利用者の名指しは
+[`docs/rules.md`](../docs/rules.md) § Comment Rules の「呼び出し元への言及」に該当するノイズでもある。
 
-Conversely, the contract itself must be **complete**, because a generic utility is read without the
-surrounding application to fall back on: mutation of pointer arguments, `nil` semantics, silent
-clamping of out-of-range inputs, and units all belong in the doc comment.
+逆に、契約そのものは**過不足なく**書く必要がある。汎用ユーティリティは周囲のアプリケーションという文脈なしに
+読まれるため、ポインタ引数の書き換え、`nil` の意味、範囲外入力の暗黙のクランプ、単位はいずれも doc コメントに
+属する。
 
-## Package List
+## パッケージ一覧
 
-|Package|Summary|Wraps|
+|パッケージ|概要|ラップ対象|
 |---|---|---|
-|`backoff`|Exponential backoff duration (pure, clock/randomness-free)|None|
-|`datetime`|Date/time parsing|Standard library `time`|
-|`decimal`|Exact-decimal type (money / rate)|`github.com/shopspring/decimal`|
-|`envutil`|Environment variable override (test helper)|Standard library `os`|
-|`exec`|External command execution (interface + mock)|Standard library `os/exec`|
-|`fnmeta`|Function / package name extraction|None|
-|`fs`|Filesystem operations (interface + mock)|Standard library `os`|
-|`httpheader`|Classification of HTTP header names (credential-carrying or not)|None|
-|`patch`|Three-state values for partial-update (PATCH) input|None|
-|`ptr`|Pointer operations|None|
-|`retry`|Bounded-retry behavior layer (backoff + full jitter, deadline-aware)|None|
-|`safecast`|Type conversion with overflow detection|None|
-|`stringkit`|String length validation|None|
-|`uuid`|UUID type|`github.com/google/uuid`|
-|`xerrors`|Errors with stack traces|`github.com/cockroachdb/errors`|
+|`backoff`|指数バックオフの待機時間算出（純粋・時刻/乱数非依存）|なし|
+|`datetime`|日時パース|標準ライブラリ `time`|
+|`decimal`|exact-decimal 型（金額 / レート）|`github.com/shopspring/decimal`|
+|`envutil`|環境変数の一時上書き（テスト補助）|標準ライブラリ `os`|
+|`exec`|外部コマンド実行（インターフェース + モック）|標準ライブラリ `os/exec`|
+|`fnmeta`|関数 / パッケージ名の抽出|なし|
+|`fs`|ファイルシステム操作（インターフェース + モック）|標準ライブラリ `os`|
+|`httpheader`|HTTP ヘッダ名の分類（資格情報を運ぶかどうか）|なし|
+|`patch`|部分更新（PATCH）入力の 3 状態値|なし|
+|`ptr`|ポインタ操作|なし|
+|`retry`|有限リトライの行動層（backoff + full jitter, deadline-aware）|なし|
+|`safecast`|オーバーフロー検出付き型変換|なし|
+|`stringkit`|文字列長バリデーション|なし|
+|`uuid`|UUID 型|`github.com/google/uuid`|
+|`xerrors`|スタックトレース付きエラー|`github.com/cockroachdb/errors`|
 
-## Package Details
+## 各パッケージの詳細
 
 ### backoff
 
-Computes exponential backoff wait durations as a pure function of the attempt count, free of clock or randomness (the jitter step lives in `retry`).
+試行回数のみから指数バックオフの待機時間を算出する純関数で、時刻や乱数に依存しません（ジッタ付与は `retry` 側）。
 
-|Symbol|Description|
+|シンボル|説明|
 |---|---|
-|`Exponential` (struct)|`Initial` / `Max` / `Multiplier` configuration|
-|`Duration(attempt)`|Return the base wait duration for the given attempt|
+|`Exponential`（struct）|`Initial` / `Max` / `Multiplier` の設定|
+|`Duration(attempt)`|指定試行回数の基本待機時間を返す|
 
 ### datetime
 
-A parsing utility supporting multiple date/time formats.
+複数の日時フォーマットに対応するパースユーティリティです。
 
-Key functions
+主な関数
 
-|Function|Description|
+|関数|説明|
 |---|---|
-|`ParseRFC3339`|Parse RFC3339 format|
-|`ParseRFC3339UTC`|Parse RFC3339 format (UTC)|
-|`ParseRFC3339Nano`|Parse RFC3339Nano format|
-|`ParseISO8601`|Parse ISO8601 format|
-|`ParseDateTime`|Parse standard datetime format|
-|`ParseDateOnly`|Parse date-only format|
-|`ParseCustomLayout`|Parse with an arbitrary layout|
+|`ParseRFC3339`|RFC3339 形式のパース|
+|`ParseRFC3339UTC`|RFC3339 形式のパース（UTC）|
+|`ParseRFC3339Nano`|RFC3339Nano 形式のパース|
+|`ParseISO8601`|ISO8601 形式のパース|
+|`ParseDateTime`|標準 datetime 形式のパース|
+|`ParseDateOnly`|日付のみのパース|
+|`ParseCustomLayout`|任意のレイアウトによるパース|
 
-All functions have `ToLocation` variants (e.g. `ParseRFC3339ToLocation`) for parsing with a specified timezone.
+すべての関数に `ToLocation` バリアント（例: `ParseRFC3339ToLocation`）があり、タイムゾーンを指定したパースが可能です。
 
 ### decimal
 
-An exact-decimal type wrapping `github.com/shopspring/decimal`, hiding the vendor behind a seam (the `pkg/uuid` precedent). Carries no money semantics — currency / non-negativity / minor-unit choice belong to the caller; this package is pure decimal arithmetic, rounding, scaling, and the DB / wire boundary. Wire representation is a JSON string, because a JSON number is decoded as an IEEE754 double and loses precision.
+`github.com/shopspring/decimal` をラップした exact-decimal 型です。vendor を seam の裏に隠蔽します（`pkg/uuid` の前例）。金額の意味論は持たず、通貨 / 非負 / 最小単位の選択は呼び出し側が所有します。本パッケージは純粋な十進算術・丸め・スケール変換と DB / ワイヤ境界だけを担います。ワイヤ表現は JSON 文字列です（JSON number は IEEE754 double として復元され精度を失うため）。
 
-|Symbol|Description|
+|シンボル|説明|
 |---|---|
-|`Parse` / `FromInt`|Construct from a decimal string / `int64`|
-|`Add` / `Sub` / `Mul` / `Neg` / `DivRound`|Exact decimal arithmetic|
-|`RoundHalfAwayFromZero` / `Truncate`|Rounding at a given number of places|
-|`ToScaledInt64(n)`|Round to `n` places, scale by `10^n`, and return the minor-unit `int64` (or `ErrOverflow`)|
-|`Cmp` / `Equal` / `Sign` / `IsZero` / `IsNegative`|Comparison and inspection|
-|`MarshalJSON` / `UnmarshalJSON`|JSON string wire representation (accepts JSON number on decode)|
-|`Scan` / `Value`|`NUMERIC` database boundary (`sql.Scanner` / `driver.Valuer`)|
+|`Parse` / `FromInt`|十進文字列 / `int64` から生成|
+|`Add` / `Sub` / `Mul` / `Neg` / `DivRound`|正確な十進算術|
+|`RoundHalfAwayFromZero` / `Truncate`|指定桁での丸め|
+|`ToScaledInt64(n)`|n 桁で丸め `10^n` を掛けて最小単位 `int64` を返す（範囲外は `ErrOverflow`）|
+|`Cmp` / `Equal` / `Sign` / `IsZero` / `IsNegative`|比較・検査|
+|`MarshalJSON` / `UnmarshalJSON`|JSON 文字列のワイヤ表現（復元時は JSON number も受理）|
+|`Scan` / `Value`|`NUMERIC` DB 境界（`sql.Scanner` / `driver.Valuer`）|
 
-Test helpers live in the separate package `pkg/decimal/testkit` (`MustParse`), so `testing` is never
-linked into a production binary.
+テストヘルパーは別パッケージ `pkg/decimal/testkit` にある（`MustParse`）。分離することで `testing` が本番バイナリへリンクされない。
 
 ### envutil
 
-Temporarily overrides an environment variable and returns a restore function (mainly for tests / config loading).
+環境変数を一時的に上書きし、復元用の関数を返します（主にテストや設定読み込みで使用）。
 
-|Function|Description|
+|関数|説明|
 |---|---|
-|`Override(key, value)`|Set an env var and return a `func()` that restores the previous state|
+|`Override(key, value)`|環境変数を設定し、元の状態へ戻す `func()` を返す|
 
 ### exec
 
-Abstracts external command execution behind an interface so callers can inject a mock in tests. Production wires the `OS{}` implementation.
+外部コマンド実行をインターフェースで抽象化し、テストでモック注入を可能にします。本番は `OS{}` 実装を配線します。
 
-|Symbol|Description|
+|シンボル|説明|
 |---|---|
-|`Runner` (interface)|`Output(ctx, dir, env, name, args)` — run a command and return stdout|
-|`OS` (struct)|`os/exec`-based implementation of `Runner`|
+|`Runner`（インターフェース）|`Output(ctx, dir, env, name, args)` — コマンドを実行し標準出力を返す|
+|`OS`（構造体）|`os/exec` ベースの `Runner` 実装|
 
 ### fnmeta
 
-Decomposes full function names obtained from `runtime` to extract package and function names.
+`runtime` から取得したフル関数名を分解し、パッケージ名や関数名を抽出します。
 
-|Function|Description|
+|関数|説明|
 |---|---|
-|`ExtractFunctionName`|Extract method name from full function name|
-|`ExtractPackageName`|Extract package name from full function name|
+|`ExtractFunctionName`|フル関数名からメソッド名を抽出|
+|`ExtractPackageName`|フル関数名からパッケージ名を抽出|
 
 ### fs
 
-Abstracts filesystem operations behind an interface so callers can inject a mock in tests. Production wires the `OS{}` implementation.
+ファイルシステム操作をインターフェースで抽象化し、テストでモック注入を可能にします。本番は `OS{}` 実装を配線します。
 
-|Symbol|Description|
+|シンボル|説明|
 |---|---|
-|`FS` (interface)|`ReadFile` / `WriteFile` / `Glob`|
-|`OS` (struct)|`os`-based implementation of `FS`|
+|`FS`（インターフェース）|`ReadFile` / `WriteFile` / `Glob`|
+|`OS`（構造体）|`os` ベースの `FS` 実装|
 
 ### patch
 
-Three-state values for partial-update (PATCH) input. Distinguishes "not sent (keep current)", "sent as `null` (clear)", and "sent with a value (replace)" — a distinction a plain `*T` collapses into `nil`. The zero value of `Field[T]` is unspecified, so a struct of `Field` values defaults to "change nothing".
+部分更新（PATCH）入力の 3 状態を表す値です。「送られなかった（現在値を据え置く）」「`null` として送られた（クリアする）」「値付きで送られた（置き換える）」を区別します。素の `*T` ではこの区別が `nil` に潰れてしまいます。`Field[T]` のゼロ値は未指定のため、`Field` を並べた構造体の既定は「何も変更しない」になります。
 
-|Symbol|Description|
+|シンボル|説明|
 |---|---|
-|`Field[T]` (struct)|One field's specification state in a partial update|
-|`Unspecified[T]` / `Null[T]` / `Value[T]`|Constructors for the three states|
-|`Field[T].Resolve`|Apply the specification to a current value|
+|`Field[T]`（構造体）|部分更新における 1 フィールドの指定状態|
+|`Unspecified[T]` / `Null[T]` / `Value[T]`|3 状態それぞれのコンストラクタ|
+|`Field[T].Resolve`|現在値へ指定状態を適用する|
 
 ### ptr
 
-Pointer manipulation utilities using generics.
+ジェネリクスを利用したポインタ操作ユーティリティです。
 
-|Function|Description|
+|関数|説明|
 |---|---|
-|`To[T]`|Create a pointer from a value|
-|`Copy[T]`|Copy a pointer (nil-safe)|
-|`Map[T,U]`|Apply a function to the pointed-to value, preserving nil|
-|`Deref[T]`|Dereference a pointer, returning a fallback when nil|
+|`To[T]`|値からポインタを生成|
+|`Copy[T]`|ポインタのコピー（nil安全）|
+|`Map[T,U]`|ポインタの指す値に関数を適用（nil は nil のまま）|
+|`Deref[T]`|ポインタをデリファレンスし、nil の場合はフォールバック値を返す|
 
 ### retry
 
-A bounded-retry behavior layer that consumes a failure classification (`classify → bounded attempts → backoff + full jitter → deadline-aware`). Keeps `backoff` pure by confining the randomness (full jitter) here.
+失敗分類を消費する有限リトライの行動層です（`classify → bounded attempts → backoff + full jitter → deadline-aware`）。乱数（full jitter）を本パッケージに閉じることで `backoff` の純粋性を保ちます。
 
-|Symbol|Description|
+|シンボル|説明|
 |---|---|
-|`Do`|Run a function with bounded retries while a classifier marks the error retryable|
-|`Full`|Full jitter — uniform random duration in `[0, d]`|
-|`Policy`|`MaxAttempts` + `Backoff` (`func(attempt int) time.Duration`)|
-|`Sleeper` (interface)|`Sleep(ctx, d)` wait abstraction (satisfied structurally by the caller's own sleeper type)|
+|`Do`|分類関数がリトライ可能と判定する間、関数を有限リトライで実行|
+|`Full`|full jitter（`[0, d]` の一様乱数）|
+|`Policy`|`MaxAttempts` ＋ `Backoff`（`func(attempt int) time.Duration`）|
+|`Sleeper`（インターフェース）|`Sleep(ctx, d)` 待機抽象（呼び出し側が持つ sleeper 型が構造的に充足）|
 
 ### safecast
 
-Provides safe type conversion with overflow detection.
+オーバーフローを検出する安全な型変換を提供します。
 
-|Function|Description|
+|関数|説明|
 |---|---|
-|`UintToInt`|Safe conversion from `uint` to `int`|
-|`IntToInt32`|Safe conversion from `int` to `int32`|
-|`IntToInt16`|Safe conversion from `int` to `int16`|
-|`IntPtrToInt32Ptr`|Safe conversion from `*int` to `*int32` (`nil` means nothing to convert and returns `nil`)|
+|`UintToInt`|`uint` → `int` の安全な変換|
+|`IntToInt32`|`int` → `int32` の安全な変換|
+|`IntToInt16`|`int` → `int16` の安全な変換|
+|`IntPtrToInt32Ptr`|`*int` → `*int32` の安全な変換（`nil` は変換対象なしとして `nil` を返す）|
 
-Returns `ErrOverflow` when an overflow occurs.
+オーバーフロー時は `ErrOverflow` を返します。
 
 ### stringkit
 
-A set of validation functions based on string length (rune count).
+文字列の長さ（ルーン数）に基づくバリデーション関数群です。
 
-|Function|Description|
+|関数|説明|
 |---|---|
-|`RuneCount`|Return UTF-8 rune count|
-|`InRange`|Check if length is within closed interval|
-|`MaxOrLess`|Check if length <= max|
-|`MinOrMore`|Check if length >= min|
-|`StrictInRange`|Check if length is within open interval|
-|`LessThanMax`|Check if length < max|
-|`GreaterThanMin`|Check if length > min|
-|`ValidateInRange`|Check closed-interval length and also return the error message|
+|`RuneCount`|UTF-8 ルーン数を返す|
+|`InRange`|長さが閉区間内か判定|
+|`MaxOrLess`|長さが最大値以下か判定|
+|`MinOrMore`|長さが最小値以上か判定|
+|`StrictInRange`|長さが開区間内か判定|
+|`LessThanMax`|長さが最大値未満か判定|
+|`GreaterThanMin`|長さが最小値超過か判定|
+|`ValidateInRange`|閉区間の長さ判定とエラーメッセージを同時に返す|
 
-Each function has a corresponding `ErrorMsg` function for generating validation error messages.
+各関数に対応する `ErrorMsg` 関数があり、バリデーションエラーメッセージを生成できます。
 
 ### uuid
 
-A UUID type wrapping `github.com/google/uuid`.
+`github.com/google/uuid` をラップした UUID 型です。
 
-Test helpers live in the separate package `pkg/uuid/testkit` (`NewTestFromSalt`), so `testing` is never
-linked into a production binary.
+テストヘルパーは別パッケージ `pkg/uuid/testkit` にあります（`NewTestFromSalt`）。分離することで `testing` が本番バイナリへリンクされません。
 
-Generates UUIDv7 and supports database integration (`sql.Scanner` / `driver.Valuer`).
+UUIDv7 を生成し、データベース連携（`sql.Scanner` / `driver.Valuer`）をサポートします。
 
-|Function / Method|Description|
+|関数 / メソッド|説明|
 |---|---|
-|`New`|Generate UUIDv7|
-|`Parse`|Parse UUID from string|
-|`NewTestFromSalt`|Generate deterministic UUID for testing|
-|`String`|Return string representation|
-|`IsNil`|Check if zero value|
-|`Equal`|Compare UUIDs|
-|`EqualPtr`|Compare against a `*UUID` (nil-safe)|
-|`Bytes`|Return the raw `[16]byte`|
-|`ToPtr`|Return a pointer to the value|
-|`ToPrimitive` / `FromPrimitive`|Convert to / from `github.com/google/uuid` (e.g. sqlc integration)|
-|`MarshalJSON` / `UnmarshalJSON`|JSON string wire representation (rejects a non-string value; `null` is a no-op)|
-|`Scan` / `Value`|DB integration interface implementation|
+|`New`|UUIDv7 を生成|
+|`Parse`|文字列から UUID をパース|
+|`NewTestFromSalt`|テスト用の決定的 UUID を生成|
+|`String`|文字列表現を返す|
+|`IsNil`|ゼロ値か判定|
+|`Equal`|UUID の比較|
+|`EqualPtr`|`*UUID` との比較（nil 安全）|
+|`Bytes`|生の `[16]byte` を返す|
+|`ToPtr`|値へのポインタを返す|
+|`ToPrimitive` / `FromPrimitive`|`github.com/google/uuid` との相互変換（sqlc 連携など）|
+|`MarshalJSON` / `UnmarshalJSON`|JSON 文字列のワイヤ表現（文字列以外は拒否、`null` は no-op）|
+|`Scan` / `Value`|DB 連携用インターフェース実装|
 
 ### xerrors
 
-Wraps `github.com/cockroachdb/errors` to provide error operations with stack traces.
+`github.com/cockroachdb/errors` をラップし、スタックトレース付きのエラー操作を提供します。
 
-|Function|Description|
+|関数|説明|
 |---|---|
-|`New`|Create a new error|
-|`Wrap`|Wrap an existing error|
-|`Is`|Check error identity|
-|`As`|Type-assert an error|
-|`Join`|Combine multiple errors|
-|`StackTrace`|Get stack trace string|
+|`New`|新しいエラーを生成|
+|`Wrap`|既存エラーをラップ|
+|`Is`|エラーの同一性を判定|
+|`As`|エラーの型アサーション|
+|`Join`|複数エラーを結合|
+|`StackTrace`|スタックトレース文字列を取得|
 
-## What a sub-package `README.md` carries
+## サブパッケージの `README.md` が持つもの
 
-Every `pkg/<name>/` has its own `README.md`, and it is the file a reader opens to decide whether the
-package does what they need. It carries these sections, in this order; omit one only when the package
-genuinely has nothing to say under it.
+`pkg/<name>/` にはそれぞれ `README.md` があり、読み手が「このパッケージは求めているものか」を
+判断するために最初に開くファイルです。次の節をこの順で持ちます。書くことが本当に無い節だけ省きます。
 
-| Section | What goes in it |
+| 節 | 書くこと |
 | --- | --- |
-| `Role` | One paragraph: what this package is for, and where the boundary of its responsibility sits. |
-| `Public API` | Every exported symbol, with its signature and a one-line contract. This is the section drift is checked against, so an exported symbol missing here reads as undocumented. |
-| `Wraps` | The external package being wrapped, and what this package adds or hides. Omit when the package wraps nothing. |
-| `Notes` | Pitfalls a caller cannot see from the signature — allocation behavior, precision limits, goroutine safety, what happens on a zero value. |
+| `Role` | このパッケージが何のためにあり、責務の境界がどこにあるかを 1 段落で。 |
+| `Public API` | 公開シンボルを全て、シグネチャと 1 行の契約付きで。ドリフト検査はここと突き合わせるので、ここに無い公開シンボルは未文書とみなされます。 |
+| `Wraps` | ラップしている外部パッケージと、このパッケージが足す・隠すもの。何もラップしないなら省きます。 |
+| `Notes` | シグネチャからは見えない落とし穴 — アロケーションの挙動、精度の限界、goroutine 安全性、ゼロ値を渡したときの振る舞いなど。 |
 
-Anything beyond those four is the package's own call. What is **not** optional is `Public API`:
-`drift-detector-pkg` compares it against the package's exported symbols, so a package that names the
-section something else, or drops it, cannot be checked.
+この 4 つより先はパッケージ側の裁量です。**省けないのは `Public API`** — `drift-detector-pkg` が
+公開シンボルと突き合わせる対象なので、節名を変えたり落としたりすると検査が効きません。
 
-## Checklist for Adding a New Package
+## 新しいパッケージを追加する際のチェックリスト
 
-- [ ] Referenced from multiple locations, or wraps an external package
-- [ ] Does not contain business logic
-- [ ] Does not depend on `internal/`
-- [ ] Single responsibility per package
-- [ ] Tests are written
-- [ ] Documentation is written
-- [ ] Package summary is added to this README
-- [ ] The sub-package `README.md` carries `Role` / `Public API` (+ `Wraps` / `Notes` when they apply)
+- [ ] 複数箇所から参照される、または外部パッケージのラップである
+- [ ] ビジネスロジックを含んでいない
+- [ ] `internal/` に依存していない
+- [ ] 1パッケージ = 1責務になっている
+- [ ] テストが記述されている
+- [ ] ドキュメントが記述されている
+- [ ] この README にパッケージの概要が追加されている
+- [ ] サブパッケージの `README.md` が `Role` / `Public API`（該当すれば `Wraps` / `Notes`）を持つ

@@ -6,186 +6,184 @@ description: >-
 
 # Test Review
 
-Adversarial, low-bias review of Go unit test files. Read-only — surfaces what looks broken / under-tested / over-tested, and the user decides how to act.
+Go ユニットテストファイル (`*_test.go`) の adversarial / low-bias レビュースキル。read-only。「壊れて見える / 検証不足 / 過剰検証」を指摘し、修正は user に委ねる。
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+## 使うとき
 
-## When to Use
+- commit / PR 直前、現在の change に含まれる `*_test.go` に対して。
+- `scaffold-test` 実行後、生成テストの独立 second opinion として。
+- カバレッジ 100 % のまま回帰バグが出る場合（観点が構造的には準拠でも意味的に薄い signal）。
+- 特定 test パッケージ / ファイルの単発監査として。
 
-- Before commit / PR, on the `*_test.go` files in the current change.
-- After `scaffold-test` to get an independent second opinion on the generated tests.
-- When coverage stays at 100 % but bug regressions still slip through (signal that test viewpoints are structurally compliant but semantically weak).
-- As a standalone audit of a specific test package or file.
+使わない場面:
 
-Do NOT use this skill for:
+- **実装コードのレビュー** → `code-review` / `impl-review` / `arch-check`。
+- **HTTP 統合テスト** (`internal/integration/` 配下) → 別 convention（`internal/integration/README.md` + `scaffold-integration-test`）。本スキルは同一パッケージ unit test 専用。
+- 修正の適用 → 本スキルはファイル編集しない。指摘後、user が `scaffold-test` 実行 or 手で編集する。
 
-- Reviewing **implementation** code — use `code-review` / `impl-review` / `arch-check` for that.
-- Reviewing **HTTP integration tests** under `internal/integration/` — those have their own conventions documented in `internal/integration/README.md` and are better reviewed against `scaffold-integration-test`'s rules; this skill focuses on same-package unit tests.
-- Applying fixes — this skill never edits files. The user runs `scaffold-test` or hand-edits afterwards.
+## 読む / 書く
 
-## What This Skill Reads / Writes
+**常に読む**:
 
-**Reads (always)**:
+- `docs/testing-conventions.md` — **section 10（意味的品質のバー / アンチパターン）を含む**。 Lens 3 と Lens 4 軸B（意味網羅）の SSOT であり、`scaffold-test` と共有する。
+- `.claude/skills/scaffold-test/SKILL.md` — 生成側 canonical ルール（parallel 必須 / `t.Run` per subcase / 正常系・異常系 グルーピング / 日本語命名 / require vs assert / mock 方針 / for-loop 方針 / 1 関数 = 1 `TestXxx`）。本スキルはこれらに対してレビューする（重複定義しない）。
+- 層 README。**対象テストファイルから上位へ歩き、Test Strategy 節を持つ最も近い祖先 `README.md`** を採用する（見出しの表記は README ごとに揺れる — `Test Strategy` / `Test strategy` / `Testing strategy` / `Testing Strategy` / `Testing Policy` — ので意味で判定すること。その層のテスト戦略そのものであれば名前が何であれ該当し、他のドキュメントが名前で参照している節をこの規則に合わせて改名するのは誤った直し方である。`scaffold-test/SKILL.md` と同じ規則であり、両者は歩調を合わせる）。節を持たないより近い README も、そのパッケージ固有の規約のために併読する。下記は現時点で walk が着地する先のスナップショットであり固定マップではない。一覧に無いパスは walk の対象であって、対象外ではない。
+  - `internal/domain/README.md`（Testing strategy）
+  - `internal/usecase/README.md`（Testing Strategy）
+  - `internal/controller/handler/README.md`（Test Strategy）はハンドラ用。`internal/controller/outbox/**` / `internal/controller/worker/**` の解決先は `internal/controller/README.md`（Test Strategy、層の基準）であり、HTTP 側ではなくループ駆動のサブセクションを読むこと
+  - `internal/controller/httpstack/README.md`（Test Strategy）— 各ミドルウェアのサブパッケージの解決先
+  - `internal/controller/server/README.md`（Test Strategy）
+  - `internal/infrastructure/README.md` + `internal/infrastructure/rdb/README.md`（Test Strategy）
+  - `internal/di/README.md`（Test Strategy、層の基準）— 配下の対象では `internal/di/module/README.md` / `internal/di/server/hook/README.md` が優先される
+  - `internal/apperror/` / `internal/cli/` / `internal/config/` / `internal/logging/` / `internal/observability/` / `internal/system/` — 横断的な基盤。各パッケージルートに自前の節を持つ
+  - `pkg/**` については `scaffold-test/SKILL.md` 参照 — `pkg/README.md` は意図的に Test Strategy 節を持たず、sibling tests + `pkg/<name>/README.md` から観点派生。**pkg では gap 警告を出さない**。
+- 対象 `*_test.go`。
+- 対応する subject ソース (`<subject>.go` / `<subject>_test.go` 対）— コード起点 2 レンズ（Lens 4 分岐×意味 / Lens 5 シンボル網羅）で「何が test されていないか」を判定するために必須。
+- 同一パッケージの sibling test（成立済みの conventions の参考）。
 
-- `docs/testing-conventions.md` — the project-wide testing conventions, **including section 10 (Semantic quality bar / anti-patterns)** — the SSOT for Lens 3 and Lens 4 Axis B (意味網羅), shared with `scaffold-test`.
-- `.claude/skills/scaffold-test/SKILL.md` — the canonical generation rules (parallel mandate, `t.Run` per subcase, 正常系 / 異常系 grouping, Japanese naming, require vs assert, mock policy, `for`-loop policy, one-`TestXxx`-per-subject policy). This skill reviews against those same rules — no duplication.
-- The nearest layer README, resolved by **walking up from each target test file to the closest ancestor `README.md` that carries a Test Strategy section (the heading wording varies across READMEs — `Test Strategy`, `Test strategy`, `Testing strategy`, `Testing Strategy`, `Testing Policy` — so match on meaning: a section that IS the layer's test strategy counts no matter what it is called, and renaming one to fit this rule is the wrong fix when other docs link to it by name)** (the same rule `scaffold-test/SKILL.md` applies — keep the two in step). A nearer README without the section is still read for that package's own conventions. The list below is a snapshot of where the walk currently lands, not a closed map; a path that is not listed is walked, never treated as out of scope:
-  - `internal/domain/README.md` (Testing strategy)
-  - `internal/usecase/README.md` (Testing Strategy)
-  - `internal/controller/handler/README.md` (Test Strategy) for handlers; `internal/controller/README.md` (Test Strategy, layer baseline) is what `internal/controller/outbox/**` / `internal/controller/worker/**` resolve to — read its loop-driven sub-section, not the HTTP one
-  - `internal/controller/httpstack/README.md` (Test Strategy) — the resolution target for every middleware sub-package
-  - `internal/controller/server/README.md` (Test Strategy)
-  - `internal/infrastructure/README.md` + `internal/infrastructure/rdb/README.md` (Test Strategy)
-  - `internal/di/README.md` (Test Strategy, layer baseline) — superseded by `internal/di/module/README.md` / `internal/di/server/hook/README.md` for targets under those
-  - `internal/apperror/` / `internal/cli/` / `internal/config/` / `internal/logging/` / `internal/observability/` / `internal/system/` — cross-cutting substrate, each with its own section at the package root
-  - For `pkg/**`, see `scaffold-test/SKILL.md` — `pkg/README.md` intentionally has no Test Strategy section; viewpoints come from sibling tests + per-package sub-`pkg/<name>/README.md`. **No gap warning for pkg.**
-- The target `*_test.go` file(s).
-- The corresponding subject source file(s) (`<subject>.go` paired with `<subject>_test.go`) — required for the two code-origin lenses (Lens 4 branch × meaning, Lens 5 subject-symbol completeness) to know what is and isn't tested.
-- Sibling test files in the same package — secondary reference for established conventions.
+**書く**:
 
-**Writes**:
+- 何も書かない。read-only。 最終出力は conversation 上に展開される日本語レポート。
 
-- Nothing. This skill is read-only. The final output is the Japanese report rendered into the conversation.
+**`make` 起動**: なし（実行はしない、レビューだけ）。
 
-**Triggers**: none. No `make` invocation needed (does not run the tests; it reviews them).
+**触らない**:
 
-**Never touches**:
+- test ファイル（自動 fix なし → `scaffold-test` or 手編集の領分）。
+- subject ソース。
+- 生成成果物 (`*.gen.go` / `*_mock.go` / `*.sql.go`)。
+- `.claude/` 配下。
 
-- Test files (no auto-fix; that is `scaffold-test` or hand-edit territory).
-- Subject source files.
-- Generated artifacts (`*.gen.go`, `*_mock.go`, `*.sql.go`).
-- `.claude/` files.
-
-## First Step: Resolve Scope
+## First Step: スコープ解決
 
 `AskUserQuestion`:
 
-- Question: 「test-review の対象スコープを指定してください」
-- Options (single-select):
-  - 「変更ファイル (HEAD-vs-working tree, 推奨)」 — `git diff --name-only` で `*_test.go` を抽出（このフローは `impl-review` / `code-review` と同じ振る舞い）。新規追加 (`git diff --name-only --diff-filter=A`) も含める。
+- 質問: 「test-review の対象スコープを指定してください」
+- 選択肢（single-select）:
+  - 「変更ファイル (HEAD-vs-working tree, 推奨)」 — `git diff --name-only` で `*_test.go` 抽出（`impl-review` / `code-review` と同じ振る舞い）。新規追加 (`--diff-filter=A`) も含める。
   - 「ブランチ base 比較 (ベースブランチ以降の変更)」 — base からの分岐点を `git merge-base` で取り、その間に touched された `*_test.go`。 PR 単位で見たいとき。base は PR があればその `baseRefName`、無ければ `make base-branch`（`origin` の実状態から最新のリリースラインを解決する）。`gh repo view --json defaultBranchRef` は使わない — GitHub のデフォルトブランチはアクティブなリリースラインより遅れており、レビュー範囲が 1 世代分黙って広がる。
-  - 「特定パス / パッケージ (free-text)」 — ユーザがパスを指定。 ファイルでもディレクトリでもよい。
-  - 「キャンセル」.
+  - 「特定パス / パッケージ (free-text)」 — user 指定。 ファイルでもディレクトリでも可。
+  - 「キャンセル」。
 
-After resolution, build the target list. If no `*_test.go` files are in scope, stop with a friendly message — no tests to review. To review a production file whose paired test does not exist, name it in the 特定パス scope — an absent `*_test.go` is exactly Lens 5's subject, and Lenses 1-3 have nothing to read for it.
+解決後、対象ファイルリストを構築。スコープ内に `*_test.go` がなければ穏便に停止（レビュー対象なし）。ペアのテストが存在しない production ファイルをレビューしたいときは、特定パスのスコープでそのファイルを指名する — `*_test.go` の不在こそ Lens 5 の対象であり、Lens 1-3 はそのファイルについて読むものを持たない。
 
-For each target test file, also resolve its **subject source file** (same package, basename without `_test`). Required for the two code-origin lenses (Lens 4 / Lens 5).
+各 test ファイルについて **subject ソース**（同パッケージ・basename `_test` 抜き）も解決。コード起点 2 レンズ（Lens 4 / Lens 5）に必須。
 
-## Step 1. Read Layer Context
+## Step 1. 層コンテキスト読み込み
 
-For every target test file:
+各対象 test ファイルにつき:
 
-1. Resolve the layer README by walking up from the file path (the same walk `scaffold-test/SKILL.md` describes — not a fixed band lookup).
-2. Read the layer README's `Test Strategy` / `Testing strategy` section (full text including every sub-section heading).
-3. Read `docs/testing-conventions.md` once.
-4. Read `.claude/skills/scaffold-test/SKILL.md` once — the canonical generation rules.
-5. Read the subject source file (paired with the test file).
-6. Read sibling `*_test.go` files in the same package for established conventions (helper signatures, fixture style, mock wiring).
+1. ファイルパスから上位へ歩いて層 README を解決する（`scaffold-test/SKILL.md` が定める walk と同じ規則。固定の band lookup ではない）。
+2. 該当層 README の `Test Strategy` / `Testing strategy` 節（全文、サブセクション見出し含む）。
+3. `docs/testing-conventions.md`（1 回）。
+4. `.claude/skills/scaffold-test/SKILL.md`（1 回、canonical ルール）。
+5. subject ソース。
+6. 同パッケージの sibling test（helper シグネチャ / fixture スタイル / mock 配線 等の確立 convention）。
 
-If the walk reaches the repository root without finding a Test Strategy section and the target is under `internal/**`, note it for the report — it surfaces as a documentation gap, but does not block the review. **Every `internal/**` path is expected to resolve to one**, with `pkg/**` as the single documented exemption; never treat a layer as exempt merely because it is not named in the snapshot list above. Lens 2 (viewpoint coverage) has no comparison baseline in that state, so say so explicitly rather than letting the lens report nothing and read as a pass.
+対象が `internal/**` 配下で、上位へ歩いてもリポジトリルートまで Test Strategy 節が見つからない場合は report に notes として記録する（レビューはブロックせず、documentation gap として surface）。**`internal/**` の全パスが節へ解決されることを期待する**。唯一の免除は `pkg/**` であり、上記スナップショット一覧に名前が無いことを理由に免除扱いしないこと。この状態では Lens 2（観点カバレッジ）に比較基準が無いため、その旨を明示する — 何も報告されずに pass と読まれてしまわないように。
 
-## Step 2. Fan Out Five Adversarial Reviewers
+## Step 2. 5 つの adversarial reviewer を fan out
 
-Spawn five `adversarial-reviewer` subagents (`subagent_type: adversarial-reviewer`) **in parallel**, each on `sonnet` by default (so reviewer ≠ an Opus implementer; the orchestrator may override the model to keep reviewer ≠ implementer).
+`adversarial-reviewer` subagent を 5 つ、**並列**起動 (`subagent_type: adversarial-reviewer`)。 既定で `sonnet`（Opus 実装者 ≠ reviewer を保つ。orchestrator がモデルを上書きして reviewer ≠ implementer を維持してもよい）。
 
-Two of the five are **code-origin (subject-driven)** — they start from the subject source, not the test file, so a code element that has no test at all still enters their field of view: **Lens 5** (does a convention-named `TestXxx` exist for every subject symbol?) and **Lens 4** (within a tested function, is every branch reached and distinctly asserted?). The other three (Lens 1 / 2 / 3) start from the test file or the README. The code-origin pair is what catches reachable-but-untested code that a test-file-first read structurally cannot see.
+5 つのうち 2 つは **コード起点（subject 駆動）** — test ファイルではなく subject ソースから出発するため、「テストが 1 つも無いコード要素」も視界に入る: **Lens 5**（各 subject シンボルに規約名 `TestXxx` が存在するか）と **Lens 4**（テスト済み関数の中で各分岐が到達され固有 assert されているか）。残る 3 つ（Lens 1 / 2 / 3）は test ファイル起点 / README 起点。到達可能なのに未テストのコードは、test ファイル起点の読みでは構造的に見えず、このコード起点ペアが拾う。
 
-Each subagent receives the same Step 1 context bundle (layer README, `docs/testing-conventions.md`, `scaffold-test/SKILL.md`, target test file, subject source file, sibling tests) but a different lens prompt:
+各 subagent は Step 1 の context bundle（層 README / `docs/testing-conventions.md` / `scaffold-test/SKILL.md` / 対象 test / subject / sibling tests）を共通で受け取り、レンズだけ違う prompt を受ける。
 
-### Lens 1: Structural Compliance
+### Lens 1: 構造準拠
 
-Audits mechanical rule adherence — these are the hard rules surfaced by `scaffold-test/SKILL.md`:
+機械的なルール準拠を監査（`scaffold-test/SKILL.md` のハードルール）:
 
-- `t.Parallel()` is the first statement in every `t.Run` (or the block has a comment-explained `-race` exception).
-- Every subcase uses `t.Run` (no inline assertions outside a `t.Run`).
-- Outermost `t.Run` groups in a `TestXxx` are the literal strings `正常系` and `異常系` (each `TestXxx` may have at most one of each; finer groupings sit INSIDE those two). The `正常系_xxx` / `異常系_xxx` prefix form on the outermost group is a violation — flag it. Sub-case names inside `正常系` / `異常系` groups must NOT carry the `正常系_` / `異常系_` prefix either, since the group already labels the axis.
-- Case names are Japanese.
-- Error assertions use `require.*` (testifylint `require-error`); terminal value assertions use `assert.*`. `require.NotNil` / `require.True` etc. are correct ONLY when they guard subsequent code that would panic / be meaningless otherwise (e.g. `require.NotNil(fn); fn(...)` or `require.NotNil(rec); _ = rec.Field`); when nothing uses the value afterwards the check is terminal and must be `assert.*` — flag a terminal `require.NotNil` / `require.True` / `require.Equal` as a violation.
-- A subtest that drives a generated mock asserts via the mock controller: `EXPECT()` expectations — including a deliberate *no-EXPECT* (or `.Times(0)`) to assert a method is never called — ARE the assertion. Do NOT flag such a subtest as "assertion-less" merely because it has no `assert.*` / `require.*` line.
-- **Table-driven `for`-loop tests are a violation** (`scaffold-test/SKILL.md` Rule 5) — a `for _, tc := range cases { t.Run(...) }` block over a slice of `(input, expected)` structs must be flagged, regardless of readability or `dupl` justification. The required form is sequential `t.Run` siblings, one per case (accept the repetition). This applies even to long getter / boundary lists.
-- **1:1 mapping between subject functions and `TestXxx`.** The *subject* is the paired production source — the non-test, non-generated `.go` file that the binary is built from; `*.gen.go` / `*.sql.go` / `*_mock.go` and test-only helpers are out of scope (no hand-written `TestXxx` expected). Check BOTH directions:
-  - *forward*: each `TestXxx` covers exactly one subject function / method — a `TestXxx` bundling multiple subjects (e.g. a unified `*_Accessors` / `*_Getters`) is a 1:1 violation, with no rationale-comment exemption. Decompose into one `TestXxx` per subject. The only exemption is a subject that is **unverifiable and therefore unreachable**: it still declares its convention-named `TestXxx` and calls `t.Skip("<why it cannot be verified>")` — flag a bundle, never accept it (per `docs/testing-conventions.md` §1, enforced by `internal/architest`).
-  - *reverse*: each subject function / method maps to exactly one `TestXxx`. A subject split across multiple `TestXxx` (e.g. `TestFoo` + `TestFoo_Metrics` + `TestFoo_CloseError`, or a `Test_foo` / `TestFoo_foo` naming-variant pair) is a finding → consolidate into a single `TestXxx` whose `正常系` / `異常系` groups absorb the variants (Rule 7). A public subject function with NO `TestXxx` at all is **owned by Lens 5** (subject-symbol completeness) — this lens flags only the *shape* of the `TestXxx` that already exist (naming variants, bundling, split), not the absence of one; leave "symbol has zero test" to Lens 5 so the two do not double-report.
-- Mocks come from `<package>/mock/*_mock.go` — no hand-written mocks.
-- No imports of `internal/` from `pkg/**` test files; no infrastructure imports from `internal/domain/**` test files; etc. (architectural rules in `docs/testing-conventions.md`).
+- 全 `t.Run` の冒頭が `t.Parallel()`（または `-race` 例外コメント付きの直列化）。
+- 全サブケースが `t.Run`（裸のアサーション禁止）。
+- `TestXxx` 最外殻 `t.Run` group の name は literal `正常系` / `異常系` （各 `TestXxx` に最大 1 個ずつ、 さらに細分するならその **内側に** ネストする）。 最外殻に `t.Run("正常系_xxx", ...)` 形式を使っているのは違反 → finding として出す。 内側のサブケース名にも `正常系_` / `異常系_` プレフィックスは禁止（外殻 group で既に区別済みのため二重ラベル）。
+- ケース名は日本語。
+- エラーは `require.*`（testifylint `require-error`）、終端値は `assert.*`。`require.NotNil` / `require.True` 等は、**後続コードをガードする**場合（そのまま使うと panic / 無意味になる。例: `require.NotNil(fn); fn(...)` や `require.NotNil(rec); _ = rec.Field`）のみ正しい。値を以降で使わないなら終端なので `assert.*` にすべき — 終端の `require.NotNil` / `require.True` / `require.Equal` は違反として指摘。
+- 生成 mock を駆動するサブテストは mock controller 経由で assert している扱い: `EXPECT()`（メソッドが呼ばれないことを示す意図的な *no-EXPECT* や `.Times(0)` を含む）がアサーション。`assert.*` / `require.*` 行が無いというだけで「アサーション無し」と指摘しない。
+- **table-driven `for` ループは違反**（`scaffold-test/SKILL.md` Rule 5）。`(input, expected)` 構造体スライスを `for _, tc := range cases { t.Run(...) }` で回すブロックは、可読性や `dupl` 回避を理由にしても指摘する。正しい形はケース毎の逐次 `t.Run` sibling（重複は許容）。長いゲッター/境界リストでも同様。
+- **subject 関数 ↔ `TestXxx` の 1:1 対応。** ここでの *subject* はペアになる本番ソース — バイナリにビルドされる非テスト・非生成の `.go` ファイル。`*.gen.go` / `*.sql.go` / `*_mock.go` とテスト専用ヘルパは対象外（手書き `TestXxx` を期待しない）。両方向を確認:
+  - *順方向*: 各 `TestXxx` は 1 subject 関数 / メソッド対応。複数 subject を束ねる `TestXxx`（統合された `*_Accessors` / `*_Getters` 等）は 1:1 違反で、rationale コメントによる免除は無い。subject ごとに `TestXxx` を分解する。唯一の免除は **検証不可能であるために到達できない** subject で、その場合も規約名の `TestXxx` を宣言し `t.Skip("<なぜ検証不可能か>")` を呼ぶ — 束ねは常に指摘し、決して受け入れない（`docs/testing-conventions.md` §1、`internal/architest` が強制）。
+  - *逆方向*: 各 subject 関数 / メソッドは 1 つの `TestXxx` に対応。1 つの subject が複数 `TestXxx` に分裂している（例: `TestFoo` + `TestFoo_Metrics` + `TestFoo_CloseError`、または `Test_foo` / `TestFoo_foo` の命名ゆらぎペア）のは finding → `正常系` / `異常系` group で variant を吸収する単一 `TestXxx` へ統合する (Rule 7)。`TestXxx` が 1 つも無い public subject 関数は **Lens 5（シンボル網羅）の所管** — 本レンズは既に存在する `TestXxx` の *形*（命名ゆらぎ / 束ね / 分裂）だけを指摘し、存在しないこと自体は Lens 5 に委ねて二重報告しない。
+- mock は `<package>/mock/*_mock.go` から（手書き mock 禁止）。
+- 層別禁則 import（`pkg/**` test から `internal/` 参照禁止、`internal/domain/` test から infrastructure 参照禁止 等、`docs/testing-conventions.md` ルール）。
 
-Output: a structured finding list with `file:line` references and the violated rule.
+Output: `file:line` 付きの違反 finding リスト + 違反したルール。
 
-### Lens 2: Viewpoint Coverage
+### Lens 2: 観点カバレッジ
 
-Compares the layer README's Test Strategy sub-sections to what the test file actually exercises:
+層 README の Test Strategy サブセクションと実 test を突き合わせ:
 
-- For each sub-section heading in the README's Test Strategy (`### Getter contract test` / `### Immutable guarantee test` / `### Invariant preservation test` / etc.), is there at least one `TestXxx → t.Run(case)` that maps to it?
-- The layer README's Test Strategy section is the SSOT for that layer's per-layer viewpoint list (read in Step 1). Do NOT keep a hardcoded per-layer viewpoint list in this skill — it drifts from the READMEs. Apply whatever sub-sections that layer's README declares; when a README is missing a viewpoint the reviewer would expect, that absence is itself a documentation-gap finding (surfaced in 補遺), not a reason to hardcode the viewpoint here.
-- If the walk finds no Test Strategy section anywhere above the target, use the sibling-test pattern as the comparison baseline instead — and say which case it is: under `pkg/**` that is the layer's normal mode (no gap), while under `internal/**` it is a documentation gap that leaves this lens without a baseline (report it in 補遺).
+- README の各サブセクション見出し（`### Getter contract test` / `### Immutable guarantee test` / `### Invariant preservation test` 等）に対応する `TestXxx → t.Run(case)` が 1 件以上あるか。
+- 層 README の Test Strategy 節がその層の観点リストの SSOT（Step 1 で読む）。 per-layer 観点リストを本スキルにハードコードしない — README と drift する。 その層の README が宣言するサブセクションをそのまま適用し、reviewer が期待する観点が README に欠けていれば、それ自体を doc ギャップ finding（補遺で surface）として出す。ここに観点を書き戻さない。
+- 上位へ歩いても Test Strategy 節が見つからない場合は sibling test パターンを比較基準にする。ただしどちらのケースかを明示する — `pkg/**` 配下ならそれが層の正常モード（gap ではない）、`internal/**` 配下なら本レンズの比較基準を欠いた documentation gap（補遺で報告）。
 
-Output: a list of viewpoints the README declares but the test file does not exercise, with `file:section` references back into the README.
+Output: README が宣言しているが test が exercise していない観点リスト（`file:section` で README 該当節を引用）。
 
-### Lens 3: Semantic Quality
+### Lens 3: 意味的品質
 
-Audits whether the assertions are actually meaningful, **against `docs/testing-conventions.md` section 10 (Semantic quality bar / anti-patterns) as the single source of truth**. That section is the SSOT shared with `scaffold-test` (the generator satisfies it; this lens flags violations of it) — read it at runtime and apply whatever it currently lists. Do NOT hardcode the anti-pattern catalogue here; it drifts from the doc. As of this writing §10 enumerates: weak assertions (with the trivial-constructor 1:1 *strengthen-in-place* exception — recommend a stronger assertion, never delete the dedicated `TestXxx` or fold it into another subject's test), name over-promising the assertion (with the branchless pass-through / wiring corollary — collapse redundant `NotNil` re-runs), brittle internals coupling, over-mocking, time-literal pinning leaks, `TestXxx` responsibility creep, helper duplication, and redundant comments. If §10 adds, removes, or refines an anti-pattern, follow the doc, not this paragraph.
+アサーションが本当に意味を持っているかを、**`docs/testing-conventions.md` section 10（意味的品質のバー / アンチパターン）を唯一の source of truth として**監査する。 この節は `scaffold-test` と共有する SSOT（生成器はこれを満たすように生成し、本 lens はこれへの違反を検出する）— runtime で読み、その時点で列挙されている内容を適用する。 アンチパターンのカタログを本スキルにハードコードしない（doc からドリフトする）。 執筆時点の §10 の列挙: 弱いアサーション（trivial constructor の 1:1 *その場で強化*例外つき — より強い assert を推奨し、専用 `TestXxx` を削除・他 subject へ畳み込まない）、ケース名がアサートを過剰約束（分岐なし pass-through / 配線の系 — 冗長な `NotNil` 再実行は畳む）、内部結合の脆さ、過剰モック、時刻リテラル漏れ、`TestXxx` 責務肥大、ヘルパ重複、冗長コメント。 §10 がアンチパターンを追加・削除・改訂したら、この段落ではなく doc に従う。
 
-Output: a list of findings with `file:line`, the §10 anti-pattern violated, and a one-sentence explanation of why the assertion is weak or brittle.
+Output: `file:line` + 違反した §10 アンチパターン + 「なぜ弱い / 脆いか」の 1 文説明 finding リスト。
 
-### Lens 4: Viewpoint Gap — Branch × Meaning Completeness (subject-driven)
+### Lens 4: 観点ギャップ — 分岐 × 意味 網羅 (subject 駆動)
 
-Reads the subject source file itself and builds, **per function / method**, a two-axis completeness matrix. Code coverage ≠ meaningful coverage: a branch can be executed by a case that asserts nothing about what makes that branch distinct, and isolating that gap is the point of this lens. Run both axes for every subject — a branch is only "done" when it is both reached (Axis A) and distinctly asserted (Axis B).
+subject ソースを直接読み、**関数 / メソッドごと**に 2 軸の網羅マトリクスを構築する。 カバレッジ ≠ 意味のあるカバレッジ: ある分岐が「その分岐固有の何か」を一切 assert しないケースで実行されているだけのことがあり、その穴を切り分けるのが本 lens の目的。 各 subject で両軸を走らせる — 分岐は「到達済み (軸A)」かつ「固有に assert 済み (軸B)」で初めて完了。
 
-**Division from Lens 5**: Lens 4 audits *within* a symbol that already has a `TestXxx` — which of its branches are reached and meaningfully asserted. "The symbol has no test at all" is **Lens 5's** finding, not Lens 4's; when Lens 5 has already flagged a zero-test symbol, do not also enumerate all of its uncovered branches here (that is one gap, not N). Lens 4's branch findings apply to symbols whose test exists but is incomplete.
+**Lens 5 との棲み分け**: Lens 4 は既に `TestXxx` を持つシンボルの*内側*を監査する — どの分岐が到達され意味づけ assert されているか。「シンボルにテストが 1 つも無い」は **Lens 5** の finding であって Lens 4 のものではない。 Lens 5 が既にゼロテストのシンボルを挙げている場合、その全分岐をここで列挙し直さない（それは N 個ではなく 1 個のギャップ）。 Lens 4 の分岐 finding は、テストは存在するが不完全なシンボルに適用する。
 
-**Axis A — branch enumeration (分岐網羅)**: every logical branch in the subject is reached by at least one case.
+**軸A — 分岐網羅**: subject の各論理分岐が最低 1 件のケースで到達されているか。
 
-- Every conditional branch (positive / negative) has at least one `t.Run` case.
-- Every error sentinel (`ErrInvalid*` / `apperror.*`) declared or returned is reached by at least one case.
-- Every boundary value pair (min-1 / min / max / max+1) for a constrained field is exercised if the subject enforces it.
-- Constructor / factory functions that defend against zero-value / nil input have a rejecting case.
-- A branch reached only by *executing* a constructor / provider / factory body that the test's harness never runs is still uncovered — a graph- or wiring-validation harness that builds the dependency graph without executing the constructors does NOT cover those bodies; they need a direct unit test (call the function). The layer README's Test Strategy names the harness that applies.
-- A `t.Skip` whose reason names another test as covering the subject is a **修正必須** violation, not a gap to weigh: the skip makes one test depend on another test's implementation and stays green after that test shrinks. Require a real test (`docs/testing-conventions.md` §1, enforced by `internal/architest` `TestSkipReasonDoesNotNameCoveringTest`).
-- A `t.Skip` whose reason claims the branch "cannot be reproduced" is itself an Axis-A gap to challenge, not to accept: check the layer README's Test Strategy for an integration-style harness that reaches it (e.g. true concurrency / lock contention needs independent connections, not a serialized test-tx helper). Surface the skipped branch as 追加検討 with the concrete reproduction path.
+- 各条件分岐（ポジ / ネガ）に最低 1 件の `t.Run` ケースがあるか。
+- 宣言 / 返却される error sentinel (`ErrInvalid*` / `apperror.*`) が最低 1 件のケースで到達されているか。
+- 境界制約を持つフィールドについて min-1 / min / max / max+1 の境界値が exercise されているか。
+- zero 値 / nil 入力を防御している constructor / factory に reject ケースがあるか。
+- テストの harness が**実行しない** constructor / provider / factory 本体を通ってしか到達できない分岐は未カバー扱い — 依存グラフを構築するだけでコンストラクタを実行しないグラフ / 配線検証 harness はそれらの本体をカバーしないので、直接の単体テスト（関数を実際に呼ぶ）が要る。 適用される harness は層 README の Test Strategy が明示する。
+- subject を他のテストがカバーしていることを理由にした `t.Skip` は、weigh するギャップではなく **修正必須** の違反: その skip はテストを別テストの実装に依存させ、カバー元が縮小しても green のまま残る。実テストを要求する（`docs/testing-conventions.md` §1、`internal/architest` の `TestSkipReasonDoesNotNameCoveringTest` が強制）。
+- 「再現できない」と理由付けされた `t.Skip` は受け入れず軸A のギャップとして疑う: 層 README の Test Strategy に到達できる統合スタイルの harness が無いか確認する（例: 真の並行 / ロック競合は、直列化するテスト用 tx ヘルパでは表現できず独立コネクションが要る）。skip 分岐を具体的な再現経路つきで 追加検討 として surface する。
 
-A branch with NO covering case is a **分岐未カバー** finding → severity **追加検討** (proactive). Cite the subject `file:line` of the uncovered branch + a proposed `t.Run` case name. Attach a **criticality (1-10)** scored by *production impact* (a direction orthogonal to the lens-derived severity — 「追加検討」 says *what kind* of gap, criticality says *how bad if it breaks*) plus a one-line note of the regression that would ship if the branch stayed unverified, and order the 追加検討 findings by criticality descending so the user fixes the worst first: 9-10 データ破壊 / 認証・認可の穴 / 整合性違反 · 7-8 ユーザ影響のあるロジック誤り（誤った status / DTO マッピング）· 5-6 軽微な edge / boundary · 3-4 網羅性のための nice-to-have · 1-2 任意. Do NOT attach criticality to structural-compliance (修正必須) findings — those are always fix-now.
+カバーケースが**全く無い**分岐は **分岐未カバー** finding → severity **追加検討**（proactive）。 未カバー分岐の subject `file:line` + 提案 `t.Run` ケース名を引用。加えて **criticality（1-10）** を*本番影響*で採点して付す（レンズ由来 severity とは直交する軸 —「追加検討」は*どの種類*のギャップか、criticality は*壊れたらどれだけ悪いか*）。未検証のまま壊れた場合に出荷されるリグレッションを一文添え、追加検討 finding を criticality 降順に並べて最悪から潰せるようにする: 9-10 データ破壊 / 認証・認可の穴 / 整合性違反 · 7-8 ユーザ影響のあるロジック誤り（誤った status / DTO マッピング）· 5-6 軽微な edge / boundary · 3-4 網羅性のための nice-to-have · 1-2 任意。構造準拠（修正必須）には criticality を付けない（常に即修正）。
 
-**Axis B — meaning coverage (意味網羅)**: each covered branch's case actually asserts that branch's *distinctive* outcome, not merely that it executed. This axis applies the **意味網羅 bar defined in `docs/testing-conventions.md` section 10** to the subject's branch set — §10 is the SSOT for what "distinctly asserted" means (shared with `scaffold-test`, which generates to satisfy it); the per-branch checks below are its concrete application.
+**軸B — 意味網羅**: カバー済みの各分岐のケースが、単に実行されたことではなく*その分岐固有*の outcome を assert しているか。 本軸は **`docs/testing-conventions.md` section 10 が定める意味網羅バー**を subject の分岐集合に適用する — 「固有に assert 済み」の定義は §10 が SSOT（`scaffold-test` と共有し、生成器はこれを満たすよう生成する）。 以下の分岐別チェックはその具体適用。
 
-- An error branch asserts the specific sentinel via `require.ErrorIs` — not just `require.Error`.
-- A success branch asserts the resulting value / state that distinguishes it from the other branches — not just `require.NoError` / `assert.NotNil`.
-- A state-mutating method's case asserts the post-mutation invariant / changed field — not just that the call returned.
-- A pointer / reference-returning getter that the layer README marks as immutable has an immutability assertion (mutating the returned value must not affect the entity), not just a value-equality check.
-- A boundary case asserts the differing outcome on each side of the boundary (accept vs reject), not just the accept side.
+- error 分岐は `require.Error` 止まりでなく `require.ErrorIs` で固有 sentinel を assert。
+- 成功分岐は `require.NoError` / `assert.NotNil` 止まりでなく、他分岐と区別される結果値 / state を assert。
+- state mutate メソッドのケースは「呼べた」止まりでなく mutate 後の不変条件 / 変化フィールドを assert。
+- 層 README が immutable と明示するポインタ / 参照返却 getter は、値等価だけでなく不変性を assert（返り値を変更しても entity に影響しないこと）。
+- 境界ケースは accept 側だけでなく境界の両側（accept vs reject）で異なる outcome を assert。
 
-A branch that IS covered but whose case does not distinctly assert its outcome is a **分岐カバー済み・意味未検証** finding → severity **再考** (it passes and lifts coverage but reveals nothing). Tie the finding to the specific subject branch + the test case that nominally covers it.
+カバーは**されているが**固有 outcome を区別 assert していない分岐は **分岐カバー済み・意味未検証** finding → severity **再考**（pass して coverage は上がるが何も明らかにしない）。 finding は当該 subject 分岐 + それを名目上カバーしている test ケースに紐付ける。
 
-Output: per subject, (1) uncovered branches with proposed `t.Run` case names (Axis A → 追加検討), and (2) covered-but-vacuously-asserted branches with the missing distinctive assertion (Axis B → 再考), each citing the subject branch `file:line` and the covering test case.
+Output: subject ごとに、(1) 未カバー分岐 + 提案 `t.Run` ケース名（軸A → 追加検討）、(2) カバー済みだが意味未検証の分岐 + 不足している区別アサーション（軸B → 再考）。 各々 subject 分岐の `file:line` とカバーしている test ケースを引用。
 
-### Lens 5: Subject Symbol Completeness (code-origin)
+### Lens 5: シンボル網羅 (コード起点)
 
-Starts from the **subject source, not the test file** — the same origin as Lens 4, but at the coarser *symbol* granularity. Its single job is to answer, for the subject's complete public-symbol table, "does a test even exist for this?" A test-file-first read (Lens 1) can only judge the `TestXxx` it finds; a symbol with zero tests is invisible to it. This lens exists precisely because that blind spot is how reachable-but-untested code slips through — it enumerates the code first, then checks the tests against it, so absence is a positive finding rather than a silent nothing.
+**test ファイルではなく subject ソース**から出発する — Lens 4 と同じ起点だが、粒度は粗い*シンボル*単位。 その唯一の仕事は、subject の完全な公開シンボル表に対して「そもそもこれにテストが存在するか」を答えること。 test ファイル起点の読み（Lens 1）は見つけた `TestXxx` しか判定できず、テストゼロのシンボルは不可視。 本レンズはまさにその盲点 — 到達可能なのに未テストのコードがすり抜ける経路 — を潰すために存在する。 先にコードを列挙し、それに対してテストを突き合わせるので、不在が「沈黙」ではなく積極的な finding になる。
 
-Procedure:
+手順:
 
-1. **Build the subject symbol table.** From the paired `<subject>.go` (non-generated, non-`*_test.go`), list every symbol that the layer's convention expects a `TestXxx` for: exported funcs / methods / constructors, and unexported package-level funcs that carry branching logic the layer tests directly (the layer README's Test Strategy + `docs/testing-conventions.md` §1 define the expectation; `*.gen.go` / `*.sql.go` / `*_mock.go` and test-only helpers are out of scope). Getters / accessors / provider funcs / env-gate helpers count — they are exactly the low-visibility symbols that get skipped.
-2. **Match each symbol to a `TestXxx`.** A symbol is *satisfied* only when a convention-named `TestXxx` actually tests it. A `TestXxx` whose body is just `t.Skip` is satisfied ONLY when the reason states why the subject is unverifiable; a skip justified by another test covering the subject is **unsatisfied** per `docs/testing-conventions.md` §1.
-3. **Flag every unsatisfied symbol** as a **シンボル未カバー** finding → severity **補完推奨** (a whole code element has no test — a structural coverage hole, distinct from Lens 4's *within-function* branch gaps). Cite the subject `symbol @ file:line` and propose the `TestXxx` name (and its `正常系` / `異常系` skeleton). Attach the same **criticality (1-10)** production-impact score as Lens 4 Axis A and order by it descending — a fully-untested auth/authz or persistence symbol outranks an untested trivial getter.
+1. **subject シンボル表を構築する。** ペアの `<subject>.go`（非生成・非 `*_test.go`）から、その層の規約が `TestXxx` を期待する全シンボルを列挙: 公開 func / メソッド / コンストラクタ、および層が直接テストする分岐ロジックを持つパッケージレベルの非公開 func（期待は層 README の Test Strategy + `docs/testing-conventions.md` §1 が定義。`*.gen.go` / `*.sql.go` / `*_mock.go` とテスト専用ヘルパは対象外）。 getter / accessor / provider func / env ゲートヘルパも数える — これらこそ見落とされやすい低可視性シンボル。
+2. **各シンボルを `TestXxx` に対応付ける。** シンボルが*充足*なのは、規約名の `TestXxx` が実際にそれをテストしている場合のみ。 本体が `t.Skip` だけの `TestXxx` が充足なのは、理由が「なぜ subject を検証できないか」を述べている場合に限り、他テストがカバーしていることを理由にした skip は**未充足**（`docs/testing-conventions.md` §1）。
+3. **充足しない全シンボルを** **シンボル未カバー** finding として挙げる → severity **補完推奨**（コード要素まるごとテストが無い — Lens 4 の*関数内*分岐ギャップとは別の構造的カバレッジ穴）。 subject `symbol @ file:line` を引用し `TestXxx` 名（と `正常系` / `異常系` 骨子）を提案。 Lens 4 軸A と同じ **criticality（1-10）** 本番影響スコアを付し降順に並べる — 完全に未テストの認証・認可 / 永続化シンボルは、未テストの些末な getter より上位。
 
-Hand-off to Lens 4: once Lens 5 has flagged a symbol as entirely untested, Lens 4 does NOT additionally enumerate that symbol's branches (one "no test" gap, not N branch gaps). Lens 4 picks up only symbols that Lens 5 considers satisfied but partially covered.
+Lens 4 への引き継ぎ: Lens 5 があるシンボルを「まるごと未テスト」と挙げたら、Lens 4 はそのシンボルの分岐を追加列挙しない（「テスト無し」ギャップは 1 個であって N 個ではない）。 Lens 4 は Lens 5 が充足と見なしたが部分的にしかカバーされていないシンボルだけを拾う。
 
-Output: the list of subject symbols with no test (or whose `t.Skip` reason names a covering test instead of stating unverifiability), each with `symbol @ file:line`, proposed `TestXxx`, and criticality.
+Output: テストが無い（または `t.Skip` の理由が検証不可能性でなく被覆テストを名指している）subject シンボルのリスト。 各々 `symbol @ file:line` / 提案 `TestXxx` / criticality。
 
-## Step 3. Verify Each Finding
+## Step 3. 各 finding を検証
 
-Each surviving finding goes to an independent `review-verifier` subagent (`subagent_type: review-verifier`) on `sonnet`. The verifier:
+生き残った各 finding を独立した `review-verifier` subagent (`subagent_type: review-verifier`、 sonnet) に渡す。 verifier は:
 
-- Re-derives the conclusion from the code itself, **not** trusting the finder.
-- Defaults to skepticism — when ambiguity remains, label PLAUSIBLE or REFUTED rather than CONFIRMED.
-- Classifies the finding as **CONFIRMED** (the rule violation / gap / weak assertion is real and reproducible) / **PLAUSIBLE** (looks right but verifier could not fully reproduce the chain of reasoning) / **REFUTED** (verifier finds counter-evidence — e.g. the cited line is a comment, the heading is from a different layer, the assertion is actually sufficient given context).
+- コードから結論を **再導出**（finder の出力は信用しない）。
+- 既定で skeptical — 曖昧なら CONFIRMED より PLAUSIBLE / REFUTED 寄り。
+- **CONFIRMED**（違反 / 漏れ / 弱アサーションが実在し再現可能） / **PLAUSIBLE**（妥当そうだが verifier が完全に再導出しきれなかった） / **REFUTED**（counter-evidence — 引用行がコメント、見出しが別層、文脈考慮で十分なアサーション 等）に分類。
 
-Verification runs in parallel across findings (`parallel(findings.map(f => () => agent(verifyPrompt(f))))`). The orchestrator may keep the verifier on a different model than the finder where useful.
+検証は finding 並列実行 (`parallel(findings.map(f => () => agent(verifyPrompt(f))))`)。 reviewer ≠ implementer を保つために finder と verifier で異なるモデルを使うのもよい。
 
-REFUTED findings are dropped from the synthesized report (but a count is mentioned in the summary so the user knows the noise floor). CONFIRMED and PLAUSIBLE findings are kept and grouped by lens for the synthesis.
+REFUTED は report から落とす（合計件数だけ summary に残す → noise floor を見せる）。 CONFIRMED / PLAUSIBLE は lens ごとに残してレポート合成。
 
-## Step 4. Synthesize Report
+## Step 4. レポート合成
 
-Produce a single Japanese report. Recommended structure:
+単一の日本語レポート。推奨構造:
 
 ```text
 # Test Review レポート
@@ -242,57 +240,57 @@ verifier 通過: CONFIRMED <n> 件 / PLAUSIBLE <m> 件 / REFUTED <k> 件 (フィ
 - <その他、レビュー過程で気付いた README 補完候補 / SKILL の改訂候補>
 ```
 
-Severity mapping:
+severity マッピング:
 
-- **修正必須** (Structural Compliance lens): rule violations against `docs/testing-conventions.md` / `scaffold-test/SKILL.md` — these are hard rules. CONFIRMED → 修正必須; PLAUSIBLE → 確認推奨.
-- **補完推奨** (Viewpoint Coverage lens + Subject Symbol Completeness lens): README declares a viewpoint that is not exercised, OR a subject symbol has no `TestXxx` at all. CONFIRMED → 補完推奨; PLAUSIBLE → 確認推奨.
-- **再考** (Semantic Quality lens + Viewpoint Gap Axis B): the test compiles and passes but reveals little — a weak assertion, or a branch that is covered yet does not distinctly assert its outcome. CONFIRMED → 再考; PLAUSIBLE → 補強候補.
-- **追加検討** (Viewpoint Gap Axis A): proactive suggestion for an uncovered branch found by subject inspection. CONFIRMED → 追加検討; PLAUSIBLE → 提案.
+- **修正必須** （構造準拠）: `docs/testing-conventions.md` / `scaffold-test/SKILL.md` のハードルール違反。 CONFIRMED → 修正必須 / PLAUSIBLE → 確認推奨。
+- **補完推奨** （観点カバレッジ + シンボル網羅）: README で宣言されているのに exercise されていない観点、または subject シンボルに `TestXxx` が 1 つも無い。 CONFIRMED → 補完推奨 / PLAUSIBLE → 確認推奨。
+- **再考** （意味的品質 + 観点ギャップ 軸B）: pass はするが意味が薄い — 弱アサーション、または分岐はカバーされているが固有 outcome を区別 assert していない。 CONFIRMED → 再考 / PLAUSIBLE → 補強候補。
+- **追加検討** （観点ギャップ 軸A）: subject 検査から派生する未カバー分岐の proactive 提案。 CONFIRMED → 追加検討 / PLAUSIBLE → 提案。
 
-## Step 5. Next-Action Suggestion
+## Step 5. 次アクション提案
 
-End the report with a single concrete suggestion:
+レポート末尾に 1 つだけ具体提案:
 
-- If 「修正必須」 findings exist → suggest re-running `/scaffold-test` on the affected subjects (which will reset the structure to the canonical pattern) or hand-editing the specific lines.
-- If only 「補完推奨」 / 「追加検討」 findings exist → suggest adding the proposed `t.Run` cases either manually or via a follow-up `/scaffold-test` invocation with those subjects in scope.
-- If no findings survive verification → state that explicitly (`「verifier 通過後 0 件です」`).
+- 「修正必須」がある → 該当 subject に対して `/scaffold-test` 再実行（canonical 構造にリセット）または該当行を手で修正、を提案。
+- 「補完推奨」 / 「追加検討」 のみ → 提案された `t.Run` を手で追加するか、対象 subject を絞った `/scaffold-test` で補完するか、を提案。
+- verifier 通過後 0 件 → その旨明示（`「verifier 通過後 0 件です」`）。
 
-## Standalone by design
+## 単体で成立する設計
 
-This skill is invoked in its own right, never from inside another review skill. `/impl-review` audits the change and `/comment-sweep` the comment stock; the three are peers under the Review Phase Protocol in `AGENTS.md`, each asked for separately, and none of them delegates to another. A review skill that offers to run the next one makes the three subjects stop being independently answerable and lets one skill's drift silently drop the others from every flow that went through it.
+本スキルは自分自身として依頼されるものであり、他のレビュースキルの内側から呼ばれることはない。`/impl-review` は変更そのものを、`/comment-sweep` はコメント在庫を監査する。3 つは `AGENTS.md` の Review Phase Protocol の下で対等であり、それぞれ個別に依頼され、どれも他を委譲しない。次のスキルの実行を提案するレビュースキルは、3 つの主題を独立に答えられないものにし、1 つのスキルのずれが、そこを通った全ての流れから残りを黙って落とす。
 
-It does not chain *into* anything either: the user reads the report and decides whether to invoke `scaffold-test` (regenerate) or hand-edit.
+こちらから他へ連鎖することもない。レポートを読んだユーザーが `scaffold-test`（再生成）か手修正かを決める。
 
-The test viewpoint therefore has exactly one owner. Lens 5 owns "the symbol has no test at all", Lens 4 owns branch × meaning, and no lens outside this skill reports either.
+したがってテスト観点の所管は 1 つである。Lens 5 が「テストが 1 つも無いシンボル」を、Lens 4 が分岐×意味を所管し、本スキルの外にそれらを報告する lens は存在しない。
 
-## Constraints (Summary)
+## 制約（サマリ）
 
-- ❌ Editing any file (read-only).
-- ❌ Running `make test` (this skill reviews tests, not runs them; coverage / pass-status is `make test`'s job, run separately).
-- ❌ Trusting finder output without verification — the verifier stage is mandatory.
-- ❌ Hardcoding viewpoint lists (the SSOT is the layer README's Test Strategy section; `pkg/` is the documented exception).
-- ❌ Hardcoding the semantic-quality anti-pattern catalogue (Lens 3) or the 意味網羅 bar (Lens 4 Axis B) — the SSOT is `docs/testing-conventions.md` section 10, read at runtime.
-- ❌ Duplicating rules already in `docs/testing-conventions.md` or `scaffold-test/SKILL.md` (the skill reads them at runtime).
-- ✅ Default to skepticism in the verifier (PLAUSIBLE > CONFIRMED when ambiguous).
-- ✅ Default reviewer model is `sonnet` (different from Opus implementers); orchestrator may override to keep reviewer ≠ implementer.
-- ✅ Default scope is changed files; alternative scopes selectable.
-- ✅ Final report in Japanese, grouped by lens with severity tags.
-- ✅ Surface `pkg/` as an intentional "no Test Strategy" layer, never as a documentation gap.
-- ✅ criticality (1-10) は Lens 4 Axis A（追加検討）と Lens 5（補完推奨・シンボル未カバー）の finding に付す本番影響のソート鍵で、レンズ由来 severity（修正必須 / 補完推奨 / 再考 / 追加検討）を置換しない。構造準拠（修正必須）には付けない。
-- ✅ コード起点は2レンズ体制（Lens 5=シンボル存在 / Lens 4=関数内 branch×meaning）。「テストが1つも無いシンボル」は Lens 5 が所管し、Lens 1 reverse / Lens 4 とは二重報告しない。テスト観点を見る lens は本スキルの外に存在しないので、所管はスキル境界を跨いでも 1 つのまま。
+- ❌ ファイル編集（read-only）。
+- ❌ `make test` 実行（本スキルはレビュー、実行は `make test` 別途）。
+- ❌ verifier を通さず finder 出力をそのまま信頼する — verifier は必須。
+- ❌ 観点リストのハードコード（SSOT は層 README の Test Strategy 節、`pkg/` は明文化された例外）。
+- ❌ 意味的品質アンチパターンのカタログ（Lens 3）や意味網羅バー（Lens 4 軸B）のハードコード — SSOT は `docs/testing-conventions.md` section 10、runtime 読み込み。
+- ❌ `docs/testing-conventions.md` / `scaffold-test/SKILL.md` のルール重複定義（runtime 読み込み）。
+- ✅ verifier は skeptical 既定（曖昧時は PLAUSIBLE 寄り）。
+- ✅ reviewer 既定モデル `sonnet`（Opus 実装者と異なる）。 必要なら orchestrator が上書きして reviewer ≠ implementer を維持。
+- ✅ スコープ既定: 変更ファイル。 他選択肢あり。
+- ✅ 最終レポートは日本語、 lens 別グルーピング、 severity tag。
+- ✅ `pkg/` は意図的に「Test Strategy 節なし」層として扱い、 documentation gap として警告しない。
+- ✅ criticality (1-10) は Lens 4 軸A（追加検討）と Lens 5（補完推奨・シンボル未カバー）の finding に付す本番影響のソート鍵で、レンズ由来 severity（修正必須 / 補完推奨 / 再考 / 追加検討）を置換しない。構造準拠（修正必須）には付けない。
+- ✅ コード起点は 2 レンズ体制（Lens 5=シンボル存在 / Lens 4=関数内 branch×meaning）。「テストが 1 つも無いシンボル」は Lens 5 が所管し、Lens 1 逆方向 / Lens 4 とは二重報告しない。テスト観点を見る lens は本スキルの外に存在しないため、所管はスキル境界を跨いでも 1 つのまま。
 
-## Checklist
+## チェックリスト
 
-Before reporting completion, confirm:
+完了報告前に確認:
 
-- [ ] Scope was resolved (changed files / base diff / explicit paths).
-- [ ] Each target `*_test.go` has its subject source file located.
-- [ ] Layer README + `docs/testing-conventions.md` + `scaffold-test/SKILL.md` + sibling tests were read in Step 1.
-- [ ] All five lenses ran (in parallel).
-- [ ] Lens 5 built the subject symbol table and flagged every symbol with no `TestXxx` (→ 補完推奨), before Lens 4 branch analysis — the two code-origin lenses did not double-report a zero-test symbol.
-- [ ] Lens 4 ran both axes per subject — Axis A 分岐網羅 (uncovered branches → 追加検討) and Axis B 意味網羅 (covered-but-vacuously-asserted branches → 再考).
-- [ ] Every finding from every lens went through `review-verifier`.
-- [ ] REFUTED findings were dropped; CONFIRMED / PLAUSIBLE were kept.
-- [ ] Final report is Japanese, grouped by lens, with severity tags.
-- [ ] Next-action suggestion is one concrete recommendation.
-- [ ] No files were edited.
+- [ ] スコープ解決済み（変更ファイル / base diff / 明示パス）。
+- [ ] 各対象 `*_test.go` に対し subject ソースが解決済み。
+- [ ] Step 1 で 層 README + `docs/testing-conventions.md` + `scaffold-test/SKILL.md` + sibling tests を読んだ。
+- [ ] 5 レンズが（並列で）走った。
+- [ ] Lens 5 は subject シンボル表を構築し、`TestXxx` が 1 つも無いシンボルを（→ 補完推奨）Lens 4 の分岐分析より前に挙げた — コード起点 2 レンズがゼロテストのシンボルを二重報告していない。
+- [ ] Lens 4 は subject ごとに両軸を走らせた — 軸A 分岐網羅（未カバー分岐 → 追加検討）/ 軸B 意味網羅（カバー済みだが意味未検証 → 再考）。
+- [ ] 各 finding が `review-verifier` を通過した。
+- [ ] REFUTED は落とし、 CONFIRMED / PLAUSIBLE のみ残した。
+- [ ] 最終レポートが日本語、 lens 別、 severity tag 付き。
+- [ ] 次アクション提案が 1 つの具体提案。
+- [ ] ファイル編集していない。

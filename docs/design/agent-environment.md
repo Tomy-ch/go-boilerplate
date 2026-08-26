@@ -1,71 +1,58 @@
-# Agent Environment
+# エージェント環境
 
-This document explains how the repository's agent environment turns its declared properties into daily practice. It is an interpretation of [ADR-0008 (agent-environment-alignment)](../adr/0008-agent-environment-alignment.md) — both the properties a control must satisfy and the loop that later retires it — not a checklist or a second source of rules. Why AI assistance is the standard path at all is [ADR-0007 (agents-md-operational-contract)](../adr/0007-agents-md-operational-contract.md).
+この文書は、リポジトリのエージェント環境が宣言済みの性質を日々の作業へどう反映するかを説明する。[ADR-0008](../adr/0008-agent-environment-alignment.md) の解釈 — 制御が満たすべき性質と、後にそれを退役させるループの両方 — であり、チェックリストや規則の第二の正本ではない。そもそもなぜ AI 支援が標準経路なのかは [ADR-0007](../adr/0007-agents-md-operational-contract.md)。
 
 ```mermaid
 flowchart TD
-    A["AGENTS.md · development flow · owning README"] --> B["Implement the change"]
-    B --> C{"Can the property be decided mechanically?"}
-    C -->|yes| D["Lint · architecture tests · generation / drift checks"]
-    C -->|no| E["Independent finder-to-verifier review"]
-    D --> F{"Changes an approved decision, crosses a boundary, or has no reliable signal?"}
+    A["AGENTS.md · development flow · owning README"] --> B["変更を実装する"]
+    B --> C{"その性質は機械的に決定できるか？"}
+    C -->|はい| D["Lint · architecture test · generation / drift check"]
+    C -->|いいえ| E["独立した finder-to-verifier review"]
+    D --> F{"承認済みの決定を変えるか、境界を跨ぐか、信頼できる signal がないか？"}
     E --> F
-    F -->|yes| G["Escalate to the responsible human"]
-    F -->|no| H["Existing check or review signal is sufficient"]
-    I["ci-first load band"] -. "delegate heavy local gates; CI remains authoritative" .-> D
+    F -->|はい| G["責任を持つ人へ escalation する"]
+    F -->|いいえ| H["既存の check / review signal で十分"]
+    I["ci-first load band"] -. "重い local gate を委譲する。CI は引き続き権威" .-> D
 ```
 
-## Guide before action
+## 行動前に導く
 
-[AGENTS.md](../../AGENTS.md), the development flow, and the package README nearest to the target provide the governing and local context before an action. `CLAUDE.md` is AGENTS.md's symlink, not a second contract. Skills make recurring procedures explicit, but read and link to these same sources rather than replacing them.
+[AGENTS.md](../../AGENTS.md)、development flow、対象に最も近い package README が、行動前の governing / local context を与える。`CLAUDE.md` は AGENTS.md の symlink であり別契約ではない。skill は反復する手順を明示するが、これら同じ正本を読んでリンクし、置き換えない。
 
-## Correct after action
+## 行動後に修正する
 
-Decidable properties fail mechanically: `depguard` and architecture tests protect layer boundaries; generators and drift checks protect derived artifacts; focused linters protect workflow and documentation conventions. Reading-comprehension judgments remain independent review, using the finder-to-verifier shape in [ADR-0093 (multi-model-adversarial-review)](../adr/0093-multi-model-adversarial-review.md).
+決定できる性質は機械的に失敗させる。`depguard` と architecture test は層境界を、generator と drift check は派生成果物を、対象を絞った lint は workflow と文書の規約を保護する。読解を要する判断は [ADR-0093](../adr/0093-multi-model-adversarial-review.md) の finder-to-verifier で独立 review に残す。
 
-## Escalation and load-aware verification
+## escalation と負荷を考慮した検証
 
-Escalate a matter when it changes an approved decision, crosses an architectural boundary, or cannot reappear through an existing check. Do not create a durable task merely because a mechanism already reports the same condition reliably.
+承認済みの決定を変える、アーキテクチャ境界を跨ぐ、または既存 check から再浮上しない事柄は escalation する。既存機構が同じ状態を確実に報告するだけなら、永続的な task を作らない。
 
-The `ci-first` load band delegates heavy local gates to CI when host saturation would make their failures unreliable. It does not permit verification to be skipped: the authoritative check still runs remotely, while local work keeps fast, trustworthy checks.
+`ci-first` load band は、host の飽和により失敗が信頼できなくなるとき、重い local gate を CI へ委譲する。検証を省略する許可ではない。権威ある check は remote で実行し、local 作業では速く信頼できる check を保つ。
 
-## Improving the environment itself
+## 環境そのものを改善する
 
-The steps above describe one change. The environment that guides and checks it is under a loop of
-its own, because a control is added far more readily than it is removed: a skill nobody invokes and
-a rule whose case no longer occurs both produce no failure, so the signal to retire them is the
-absence of a signal.
+ここまでは 1 つの変更についての記述である。それを導き検査する環境自体も、固有のループの下にある。制御は退役させるよりはるかに容易に追加されるからだ。誰も起動しないスキルも、もう起こらないケースのルールも、何の失敗も生まない。退役させるべきというシグナルは、シグナルの不在そのものである。
 
 ```mermaid
 flowchart LR
-    A["Observe AI sessions"] --> B["Compress friction into feedback"]
-    B --> C["Attribute it to a skill · rule · doc · CI step · tool"]
-    C --> D["Generate improvement candidates"]
-    D --> E["Human decides the design questions"]
-    E --> F["Land the improvement"]
-    F --> G["Re-evaluate its effect after an interval"]
+    A["AI セッションを観測する"] --> B["摩擦をフィードバックへ意味圧縮する"]
+    B --> C["スキル · ルール · 文書 · CI 検査 · ツールへ帰属させる"]
+    C --> D["改善候補を生成する"]
+    D --> E["人間が設計判断を行う"]
+    E --> F["改善を反映する"]
+    F --> G["一定期間後に効果を再評価する"]
     G --> H{"Keep · Simplify · Revise · Delete · Revert"}
     H --> A
 ```
 
-In practice the loop is bounded on three sides:
+実務上、このループは 3 方向から境界づけられる。
 
-- **What is observed** is friction, not activity, and it is kept **outside the repository** — the
-  compressed finding (what was hit, which control it implicates, what the change to that control
-  measurably did) goes to its issue, never to a commit. A per-run narrative is not kept at all, and
-  [`.agents/`](../../.agents/README.md) holds only the loop's configuration;
-  [ADR-0009 (long-running-agent-state)](../adr/0009-long-running-agent-state.md) draws both lines.
-- **Who decides** is a human wherever the candidate touches architecture, domain, or policy. The
-  loop surfaces the decision and its options; it does not take one.
-- **What may be edited** follows the same scope as any other change. The AI-tool configuration
-  directories stay outside an agent's default scope and are reachable only through an explicitly
-  invoked skill, bounded by that skill's own procedure, per the skill-execution exception in
-  [AGENTS.md](../../AGENTS.md). `AGENTS.md` itself is human-maintained and is never edited this way.
+- **観測するのは摩擦であって活動ではなく、置き場はリポジトリの外である。** 圧縮された所見 — 何にぶつかったか、どの制御に帰属するか、その制御への変更が測定上どう効いたか — は issue へ送られ、コミットにはならない。per-run の叙述はそもそも保持せず、[`.agents/`](../../.agents/README.md) が持つのはループの設定だけである。どちらの線も [ADR-0009](../adr/0009-long-running-agent-state.md) が引く。
+- **判断するのは人間である。** 候補がアーキテクチャ・ドメイン・ポリシーに触れる限り、ループは判断と選択肢を surface するだけで、判断そのものは行わない。
+- **編集してよい範囲は他の変更と同じである。** AI ツール設定ディレクトリはエージェントの既定スコープの外に留まり、[AGENTS.md](../../AGENTS.md) の skill-execution 例外の下で明示的に起動されたスキル経由でのみ到達でき、そのスキル自身の手順に境界づけられる。`AGENTS.md` 自体は人間が保守し、この経路で編集されることはない。
 
-Skills carry the same lifecycle as any other control, inventoried on how often they are invoked, the
-occasions on which they would have applied but were not, the friction they themselves caused, and
-the measured effect of the last change to them.
+スキルも他の制御と同じライフサイクルを持ち、起動頻度、適用され得たのにされなかった機会、スキル自身が生んだ摩擦、直近の変更の測定された効果で棚卸しする。
 
-## Keeping this interpretation current
+## 解釈を最新に保つ
 
-This is a describing document. Update it only when the relationship it describes changes. Governing documents and accepted ADRs are not silently corrected from implementation drift; raise conflicts as [docs/rules.md](../rules.md) requires.
+これは describing 文書である。説明する関係まで変わる場合だけ更新する。governing 文書と accepted ADR は実装 drift から黙って修正しない。衝突は [docs/rules.md](../rules.md) が定めるとおり提起する。

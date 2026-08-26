@@ -1,54 +1,36 @@
-# core module
+# core モジュール
 
-`internal/di/module/core` provides **DI module groups for core components** commonly used in the HTTP stack.
+`internal/di/module/core` は、HTTP スタックで共通利用される **コアコンポーネントの DI モジュール群**を提供するパッケージです。
 
-Each module returns an `fx.Option` that registers the corresponding component in the DI container.
+各モジュールは `fx.Option` を返し、対応するコンポーネントを DI コンテナに登録します。
 
-## Module List
+## モジュール一覧
 
-|Function|File|Provided Component|
+|関数|ファイル|提供するコンポーネント|
 |---|---|---|
-|`AuthnModule()`|`auth.go`|Authentication (Authenticator + Auth controller)|
-|`BasicAuthModule()`|`basicauth.go`|Basic auth validator for metrics endpoint|
-|`SecurityCookieModule()`|`security_cookie.go`|Cookie security attribute configuration|
-|`SkipperModule()`|`skipper.go`|Skip OpenAPI validation for ops endpoints|
-|`ValidatorModule()`|`validator.go`|OpenAPI schema validator|
+|`AuthnModule()`|`auth.go`|認証（Authenticator + Auth コントローラ）|
+|`BasicAuthModule()`|`basicauth.go`|メトリクスエンドポイント用 Basic 認証バリデータ|
+|`SecurityCookieModule()`|`security_cookie.go`|Cookie セキュリティ属性の設定|
+|`SkipperModule()`|`skipper.go`|OpenAPI バリデーションの ops エンドポイントスキップ|
+|`ValidatorModule()`|`validator.go`|OpenAPI スキーマバリデータ|
 
-## Design Policy
+## 設計方針
 
-- Each module is isolated as one file = one module
-- Internal implementation simply wraps constructors from `internal/controller/httpstack` etc. with `fx.Provide`
-- Does not contain business logic
+- 各モジュールは1ファイル = 1モジュールで分離
+- 内部実装は `internal/controller/httpstack` 等のコンストラクタを `fx.Provide` でラップするだけ
+- ビジネスロジックを含まない
 
 ## Test Strategy
 
-No module here needs real infrastructure to start, which affords a second tier of verification the parent
-layer cannot afford. Each module therefore carries two sibling tests:
+ここのモジュールはいずれも起動に実インフラを必要としません。そのため上位層では負担できない 2 段目の検証が可能で、各モジュールは 2 本の sibling テストを持ちます。
 
-- **`Test<Module>_GraphIsValid`** — the layer baseline declared in [`../README.md`](../README.md).
-  `fx.ValidateApp` resolves the module's output types **without** executing constructors or lifecycle
-  hooks. Because nothing runs, this tier can demand the module's *full* output set against bare mocks:
-  `AuthnModule` resolves its `IdentityResolver` and `AuthenticationFunc` here, which a booting test
-  cannot reach without a usable tracer and database driver. Each one is asserted from **both sides** —
-  the `異常系` case drops the module and requires the type to stop resolving, which is what proves the
-  module is the provider rather than something else in the graph. Without that half, a module whose
-  constructors take no arguments would have nothing left that could fail.
-- **`Test<Module>`** — starts a minimal `fx.New` app and `fx.Populate`s the provided component, proving
-  the constructors actually run and yield a usable value. Most modules assert only that the component is
-  non-nil, because their constructor has one possible outcome; `AuthnModule`, whose provider selects an
-  implementation per environment, asserts the selected value (`local.New()`).
+- **`Test<Module>_GraphIsValid`** — [`../README.md`](../README.md) が宣言する層のベースライン。`fx.ValidateApp` がモジュールの出力型を、コンストラクタやライフサイクルフックを **実行せずに** 解決します。何も実行されないため、この段は素のモックだけでモジュールの **全出力型** を要求できます。`AuthnModule` が `IdentityResolver` と `AuthenticationFunc` をここで解決しているのがその例で、実際に起動するテストでは使用可能なトレーサと DB ドライバが無ければ到達できません。検証は **両側から** 行います。`異常系` はモジュールを外して当該型が解決できなくなることを要求し、これがグラフ中の別の何かではなくそのモジュールこそが供給元であることを示します。この半分が無いと、引数を取らないコンストラクタだけのモジュールには失敗し得る要素が残りません。
+- **`Test<Module>`** — 最小の `fx.New` アプリを起動し、`fx.Populate` した提供コンポーネントを取り出して、コンストラクタが実際に走り使える値を生成することを担保します。大半のモジュールはコンポーネントが非 nil であることだけを assert します。コンストラクタの結果が 1 通りしか無いためです。環境ごとに実装を選ぶ provider を持つ `AuthnModule` だけは、選ばれた値（`local.New()`）まで assert します。
 
-The second tier is available **only because no module here needs real infrastructure to start**. That is
-the criterion, not the directory: a module whose closure would require a live database or network
-connection belongs in the parent, where `fx.ValidateApp` alone is the strategy.
+2 段目が成立するのは、**ここのモジュールが起動に実インフラを必要としないから**です。基準はディレクトリではなくこの性質にあります。クロージャが実 DB やネットワーク接続を要求するモジュールは上位に置き、そこでは `fx.ValidateApp` だけが戦略になります。
 
-Four of the five modules are thin wrappers over a constructor from `internal/controller/httpstack` and
-friends. `AuthnModule` is the exception: `provideAuthenticator` branches per environment and takes an
-`httpclient.Client`. Provider bodies carrying their own logic (`provideAuthenticator` /
-`provideJWKSAuthenticator`) are unit-tested directly, per the DI layer baseline in
-[`../../README.md`](../../README.md) — graph validation reaches neither, and the environment gate's
-refusal cases are the point.
+5 つのうち 4 つは `internal/controller/httpstack` 等のコンストラクタを薄くラップするだけです。`AuthnModule` だけが例外で、`provideAuthenticator` は環境ごとに分岐し `httpclient.Client` を受け取ります。固有のロジックを持つ provider 本体（`provideAuthenticator` / `provideJWKSAuthenticator`）は、[`../../README.md`](../../README.md) の DI 層ベースラインに従って直接ユニットテストします。グラフ検証はどちらにも到達せず、環境ゲートの拒否ケースこそが要点だからです。
 
-## Notes
+## 注意点
 
-- Adding or removing modules requires updating references from `applicationCoreOptions` in `internal/di/server.go`
+- モジュールの追加・削除は `internal/di/server.go` の `applicationCoreOptions` から参照を変更する必要がある

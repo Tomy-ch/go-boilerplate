@@ -5,90 +5,64 @@ deciders: [maintainers]
 tags: [outbox, http]
 ---
 
-# ADR-0060: Isolate the publisher's non-standard HTTP profile inside the relay
+# ADR-0060: パブリッシャーの非標準 HTTP プロファイルをリレー内に隔離する
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-The outbox HTTP publisher requires three deviations from the shared default HTTP client
-profile:
+アウトボックス HTTP パブリッシャーは、共有デフォルト HTTP クライアントプロファイルから次の 3 点で逸脱する必要がある。
 
-1. **`MaxAttempts = 1`** — transport-level retry must be disabled because the relay poll
-   loop is the at-least-once retry mechanism (see [ADR-0055](0055-at-least-once-outbox-poll.md)).
-   Enabling both would cause double-retry amplification (decision D10).
+1. **`MaxAttempts = 1`** — トランスポートレベルのリトライは無効にしなければならない。リレーのポールループが at-least-once リトライ機構であるため（[ADR-0055](0055-at-least-once-outbox-poll.md) 参照）、両方を有効にするとリトライが二重増幅してしまう（決定 D10）。
 
-2. **`PropagateTrace = false`** — the W3C `traceparent` header is captured at emit time
-   and stored verbatim in the `headers` column. The publisher replays that stored value so
-   the receiver joins the originating trace span. Automatic trace-context injection at send
-   time would overwrite the stored `traceparent` with the relay's own span, severing the
-   trace continuity.
+2. **`PropagateTrace = false`** — W3C の `traceparent` ヘッダーは emit 時点でキャプチャされ、`headers` カラムにそのまま保存される。パブリッシャーはその保存値をリプレイすることで、受信側が元のトレーススパンに接続できるようにする。送信時に自動でトレースコンテキストを注入すると、保存済みの `traceparent` がリレー自身のスパンで上書きされ、トレースの連続性が断ち切られる。
 
-3. **`AllowPrivateNetwork = false`** — the receiver endpoint is an external service;
-   delivering to private or loopback addresses is rejected to suppress SSRF risk (see
-   ADR-0024 and ADR-0025 for the resilience and SSRF client policies).
+3. **`AllowPrivateNetwork = false`** — 受信エンドポイントは外部サービスである。プライベートアドレスやループバックアドレスへの配信を拒否することで SSRF リスクを抑制する（耐障害性と SSRF クライアントポリシーについては ADR-0024、ADR-0025 を参照）。
 
-If this profile were registered in the shared `InfrastructureModule`, it would be
-contributed to the DI graph of every process that uses that module — including the main
-API server — potentially overriding or conflicting with the standard HTTP profile used by
-other downstream clients.
+このプロファイルを共有の `InfrastructureModule` に登録すると、そのモジュールを使用するすべてのプロセス（メイン API サーバーを含む）の DI グラフに組み込まれ、他のダウンストリームクライアントが使用する標準 HTTP プロファイルを上書き・競合させる可能性がある。
 
-## Decision
+## 決定
 
-`outboxPublisherModule` — which registers the non-standard `DownstreamProfile` via
-`NewDownstreamProfile` — is **nested inside `OutboxRelayModule`** and is therefore
-composed only in the relay-dedicated process (`cmd outbox-relay`). It is never included
-in the main server's `InfrastructureModule`. The nesting means the non-standard profile
-cannot leak into any other process.
+`outboxPublisherModule`（`NewDownstreamProfile` を通じて非標準の `DownstreamProfile` を登録する）は **`OutboxRelayModule` 内にネスト**され、リレー専用プロセス（`cmd outbox-relay`）のみで組み立てられる。メインサーバーの `InfrastructureModule` には含まれない。ネスト構造により、非標準プロファイルが他のプロセスに漏洩することはない。
 
 ```text
 OutboxRelayModule
-└── outboxPublisherModule          ← registers the non-standard DownstreamProfile
-    └── provideHTTPClientProfiles  ← contributes to the value group
+└── outboxPublisherModule          ← 非標準 DownstreamProfile を登録
+    └── provideHTTPClientProfiles  ← value group に追加
 ```
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- The non-standard profile is strictly scoped to the relay process; it cannot
-  accidentally affect other downstream HTTP clients.
-- Profile ownership is co-located with the relay entry point, making the constraint
-  auditable from the DI graph alone without reading `http_publisher.go`.
-- Observability (metrics, tracing) from the shared `httpclient` infrastructure remains
-  available to the publisher without compromising the profile.
+- 非標準プロファイルはリレープロセスに厳密にスコープされ、他のダウンストリーム HTTP クライアントに誤って影響を与えることがない。
+- プロファイルの所有権がリレーエントリポイントと同じ場所に置かれ、`http_publisher.go` を読まずとも DI グラフだけで制約を監査できる。
+- 共有 `httpclient` インフラのオブザーバビリティ（メトリクス、トレーシング）はプロファイルを損なわずパブリッシャーから利用可能なまま維持される。
 
-### Negative Consequences
+### ネガティブな影響
 
-- The relay process carries its own DI graph, which is a superset of the main server
-  graph; composition code is larger.
-- A developer adding a publisher-related module must be aware of the relay/server split
-  to place their module in the correct `fx.Module`.
+- リレープロセスはメインサーバーグラフのスーパーセットである独自の DI グラフを持つため、合成コードが大きくなる。
+- パブリッシャー関連モジュールを追加する開発者は、正しい `fx.Module` に配置するためにリレー/サーバーの分割を把握しておく必要がある。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Register the profile in InfrastructureModule with a feature flag
+### フィーチャーフラグを使って InfrastructureModule にプロファイルを登録する
 
-Adds runtime configuration surface and makes the profile conditional on an env var rather
-than process identity. This is weaker: a misconfigured flag in the main server could
-activate the wrong profile.
+ランタイム設定のサーフェスが増え、プロセス ID ではなく環境変数によってプロファイルが条件付きになる。これはより弱い保証である。メインサーバーでフラグを誤設定すると誤ったプロファイルが有効化される可能性がある。
 
-### Separate HTTP client instance not managed by the shared profile system
+### 共有プロファイルシステムで管理しない独立した HTTP クライアントインスタンスを使う
 
-Breaks shared observability (RED metrics, tracing) and bypasses the policy enforcement
-(SSRF, circuit-breaker, budget) provided by the profile system.
+共有オブザーバビリティ（RED メトリクス、トレーシング）が失われ、プロファイルシステムが提供するポリシー強制（SSRF、サーキットブレーカー、バジェット）も回避される。
 
-## Notes
+## 補足
 
-- Non-standard profile rationale: `docs/design/outbox.md` (§ "Package placement and
-  dependency direction", Glossary entry "OutboxRelayModule").
-- Implementation:
-  - `internal/di/module/outboxpublisher.go` (`outboxPublisherModule`, `NewDownstreamProfile`)
-  - `internal/di/module/outboxrelay.go` (`OutboxRelayModule`)
-  - `internal/infrastructure/publisher/http_publisher.go` (`NewDownstreamProfile`)
-- Resilience and SSRF client policies: [ADR-0024](0024-outbound-http-resilience.md),
-  [ADR-0025](0025-egress-ssrf-guard.md).
-- Related ADRs: [ADR-0055](0055-at-least-once-outbox-poll.md),
-  [ADR-0061](0061-relay-resident-gc-oneshot.md).
+- 非標準プロファイルの根拠: `docs/design/outbox.md`（§「パッケージ配置と依存関係の方向」、用語集エントリ「OutboxRelayModule」）。
+- 実装:
+  - `internal/di/module/outboxpublisher.go`（`outboxPublisherModule`、`NewDownstreamProfile`）
+  - `internal/di/module/outboxrelay.go`（`OutboxRelayModule`）
+  - `internal/infrastructure/publisher/http_publisher.go`（`NewDownstreamProfile`）
+- 耐障害性と SSRF クライアントポリシー: [ADR-0024](0024-outbound-http-resilience.md)、
+  [ADR-0025](0025-egress-ssrf-guard.md)。
+- 関連 ADR: [ADR-0055](0055-at-least-once-outbox-poll.md)、[ADR-0061](0061-relay-resident-gc-oneshot.md)。

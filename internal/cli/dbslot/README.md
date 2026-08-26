@@ -1,59 +1,59 @@
 # db-slot
 
-Leases a per-worktree slot on a single shared infra stack so multiple `git worktree`s can run DB-backed work in parallel without host-port conflicts. Each slot owns its own databases (`wt<N>_local` / `wt<N>_test`) inside the shared DB container (fixed infra compose project `gobp-shared`, host 5432) plus its own app-layer compose project (`gobp-wt-N`) whose host ports are slot-relative. Every checkout attaches to the same shared infra either way, so leasing a slot is **opt-in** — it is what makes parallel work collision-free. See `docs/maintenance/db-worktree-pool.md` for the full model.
+単一の共有インフラ上で per-worktree のスロットをリースし、複数の `git worktree` がホストポート衝突なく DB を使う並列作業を可能にする。各スロットは共有 DB コンテナ（固定 infra compose プロジェクト `gobp-shared`・ホスト 5432）内の専用データベース（`wt<N>_local` / `wt<N>_test`）と、ホスト公開ポートをスロット番号で相対化した専用の app 層 compose プロジェクト（`gobp-wt-N`）を占有する。スロットを取らない checkout も同じ共有インフラへ繋がるため、スロット取得は**並列作業を衝突なく行うための opt-in** に留まる。全体像は `docs/maintenance/db-worktree-pool.md` を参照。
 
-Runs on the **host** (not in a tool-runner container): it manages host-filesystem leases and drives host `docker compose`, and connects to the shared DB via pgx on `localhost:5432`.
+**ホスト**で実行する（tool-runner コンテナ内ではない）: ホストのファイルシステム上のリースを管理し、ホストの `docker compose` を駆動し、共有 DB へは pgx で `localhost:5432` へ接続するため。
 
-## Commands
+## コマンド
 
 ```text
-db-slot acquire        # lease a free slot, create/setup wt<N> DBs, write .gobp-db-slot
-db-slot release        # stop the slot's app containers, drop the lease (DBs left warm)
-db-slot heartbeat      # refresh the held slot's lease heartbeat
-db-slot status         # print slot occupancy, then this checkout's resolved values
-db-slot env            # print the resolved values as KEY=VALUE for `make` to eval
-db-slot require-owner  # fail unless this checkout owns a database (exit status is the interface)
+db-slot acquire        # 空きスロットをリースし wt<N> DB を作成/設定して .gobp-db-slot を書き出す
+db-slot release        # スロットの app コンテナを停止しリースを解放（DB は warm 保持）
+db-slot heartbeat      # 保持スロットのリース heartbeat を更新
+db-slot status         # スロット占有状況に続けて、この checkout の解決済み値を表示
+db-slot env            # 解決済み値を make が eval するための KEY=VALUE として出力
+db-slot require-owner  # この checkout がデータベースを所有していなければ失敗（終了コードが interface）
 ```
 
-Prefer the make wrappers (`make slot-acquire` / `slot-free` / `slot-release` / `slot-status`) — `slot-acquire` also rebuilds the schema of the leased DBs, and `slot-release` tears the whole worktree down.
+通常は make ラッパ（`make slot-acquire` / `slot-free` / `slot-release` / `slot-status`）を使う。`slot-acquire` はリースした DB のスキーマ再構築も行い、`slot-release` は worktree ごと撤収する。
 
-## Design
+## 設計
 
-- **Lease** (`Registry`) — a lock directory per slot under `~/.cache/gobp-db-pool` (override `GOBP_DB_POOL_DIR`). `os.Mkdir` gives atomic fresh acquisition; stale reclaim atomically re-claims via `rename`, and a `flock` scan lock serialises the whole acquire loop so two worktrees can never double-lease the same slot. Symlinked pool dirs are refused (pre-attack guard); meta files are `0600`.
-- **DB admin** (`DBAdmin` / `PgxAdmin`) — `CREATE DATABASE` + `pg_trgm` extension on each `wt<N>` DB, and a `pg_stat_activity` connection check used when deciding whether a stale slot is safe to reclaim. Timezone is not among them: the `database` container's `TZ` is the cluster default, which a database created later inherits.
-- **In-use detection** — before reclaiming a stale slot, both its app project (`gobp-wt-N`) is checked for running containers and its databases for live connections. A connection pool empties while idle, so the connection check alone misses a worktree that is still serving; the container check alone misses host-run `go test`.
-- **Compose** (`Compose` / `ExecCompose`) — brings up the shared DB in the fixed infra project (`--wait --no-recreate`) and, on release, tears down the slot's app project (`gobp-wt-N`) via `docker-compose.yaml` + `docker-compose.attach.yaml`. `--no-recreate` keeps `acquire` from replacing a container another checkout is serving from; see [`docs/maintenance/db-worktree-pool.md`](../../../docs/maintenance/db-worktree-pool.md) for why it carries no condition here.
-- **Slot file** — `acquire` writes `.gobp-db-slot`, a gitignored `KEY=VALUE` file that `make` `-include`s to override the defaults in `.makefiles/docker/compose.mk`: `SLOT`, `DB_NAME_LOCAL` / `DB_NAME_TEST`, the slot-relative host ports `API_HOST_PORT` / `MOCK_AUTH_HOST_PORT` / `DLV_HOST_PORT` / `PPROF_HOST_PORT`, `COMPOSE_PROJECT_NAME` (the shared infra project) and `SERVE_PROJECT` (`gobp-wt-N`, the app-layer project).
-- **Resolved values** (`Resolver`) — everything that is a *function of the slot* is derived here rather than in `make`: `DB_LOCAL` / `DB_TEST`, the app-layer compose project, the mock-auth issuer URL, and `INFRA_NO_RECREATE`. One derivation feeds both `db-slot env` (what `make` eval's) and `db-slot status` (what a human reads), so the printed value can never disagree with the value actually used. `DB_LOCAL` / `DB_TEST` are additionally kept as `make` variables sourced from `.gobp-db-slot`, because target-specific assignments (`db-local-migrate-up: DB=$(DB_LOCAL)`) are evaluated at parse time, before any recipe could run.
-- **Ownership guard** (`RequireOwner`) — the linked-worktree-without-a-slot check behind `make require-db-owner`. The distinction it rests on is three-valued, not two: **git absent** (tool-runner container) and **not a repository** pass through, while **a repository whose layout could not be read** fails. See [`docs/maintenance/db-worktree-pool.md`](../../../docs/maintenance/db-worktree-pool.md) for why.
-- **Env guard** — refuses to run unless `APP_ENV` is empty or one of `local` / `ci` / `test` (`config.IsLocalClassEnv`); the pool creates and drops databases and must stay a dev/test-only tool. The check is an allowlist, so `dast` and any unrecognised value are refused too.
+- **リース**（`Registry`）— `~/.cache/gobp-db-pool`（`GOBP_DB_POOL_DIR` で上書き可）配下のスロット毎ロックディレクトリ。`os.Mkdir` の原子性で新規取得、stale 回収は `rename` で原子的に占有権を奪い、`flock` の走査ロックで acquire ループ全体を直列化して 2 worktree が同一スロットを二重リースしないようにする。symlink を向いた pool dir は拒否（先読み攻撃対策）、meta は `0600`。
+- **DB 管理**（`DBAdmin` / `PgxAdmin`）— 各 `wt<N>` DB への `CREATE DATABASE` ＋ `pg_trgm` 拡張設定、および stale スロットを reclaim してよいかの判断に使う `pg_stat_activity` の接続確認。timezone は含まない: `database` コンテナの `TZ` がクラスタ既定であり、後から作った DB もそれを継承する。
+- **使用中判定** — stale スロットを reclaim する前に、app プロジェクト（`gobp-wt-N`）の稼働中コンテナと、その DB への接続の両方を確認する。接続プールはアイドルで空になるため接続確認だけでは serve 中の worktree を見落とし、コンテナ確認だけではホスト実行の `go test` を捉えられない。
+- **Compose**（`Compose` / `ExecCompose`）— 共有 DB を固定 infra プロジェクトで起動（`--wait --no-recreate`）し、release 時にスロットの app プロジェクト（`gobp-wt-N`）を `docker-compose.yaml` + `docker-compose.attach.yaml` で停止する。`--no-recreate` は、他の checkout が使っているコンテナを `acquire` が置き換えないためのもの。ここで条件を持たない理由は [`docs/maintenance/db-worktree-pool.md`](../../../docs/maintenance/db-worktree-pool.md) を参照。
+- **スロットファイル** — `acquire` が `.gobp-db-slot`（gitignore・`make` が `-include` で読む `KEY=VALUE`）を書き出し、`.makefiles/docker/compose.mk` の既定値を上書きする。内容は `SLOT`、`DB_NAME_LOCAL` / `DB_NAME_TEST`、スロット相対のホスト公開ポート `API_HOST_PORT` / `MOCK_AUTH_HOST_PORT` / `DLV_HOST_PORT` / `PPROF_HOST_PORT`、`COMPOSE_PROJECT_NAME`（共有 infra プロジェクト）、`SERVE_PROJECT`（`gobp-wt-N`＝app 層プロジェクト）。
+- **解決済み値**（`Resolver`）— *スロットの関数*であるものは `make` ではなくここで導出する: `DB_LOCAL` / `DB_TEST`、app 層の compose プロジェクト、mock-auth の issuer URL、そして `INFRA_NO_RECREATE`。1 つの導出が `db-slot env`（`make` が eval する値）と `db-slot status`（人間が読む値）の両方を賄うため、表示される値と実際に使われる値が食い違うことはない。`DB_LOCAL` / `DB_TEST` だけは `.gobp-db-slot` を読む `make` 変数としても保持する。target-specific な代入（`db-local-migrate-up: DB=$(DB_LOCAL)`）はパース時に評価され、どのレシピよりも先に決まるからである。
+- **所有権ガード**（`RequireOwner`）— `make require-db-owner` の実体で、「スロットを持たないリンク worktree」を検出する。依拠する区別は 2 値ではなく 3 値である。**git が無い**（ツールランナーのコンテナ）と**リポジトリでない**は素通りし、**リポジトリではあるのに構成を読み取れない**場合は失敗する。理由は [`docs/maintenance/db-worktree-pool.md`](../../../docs/maintenance/db-worktree-pool.md) を参照。
+- **env ガード** — `APP_ENV` が空、または `local` / `ci` / `test` のいずれかでなければ実行を拒否する（`config.IsLocalClassEnv`）。pool は DB を作成/破棄するため dev/test 専用ツールに留める。許可リスト方式なので `dast` や未知の値も拒否される。
 
 ## Test Strategy
 
-The parent layer's Testing Policy pushes every dependency behind a seam so the decision logic can be tested against doubles. That governs the decision logic here — but the seams' own implementations are adapters, and an adapter is only worth something if it drives the real thing. Each component is therefore tested at the tier its subject actually lives at:
+上位層の Testing Policy は、判断ロジックをダブルに対してテストできるよう、依存をすべて seam の裏へ押し出す。ここでも判断ロジックはそれに従う — ただし seam の実装自体はアダプタであり、アダプタは実物を駆動して初めて価値を持つ。したがって各コンポーネントは、その subject が実際に存在する層でテストする。
 
-- **`Pool`** (decision logic) — unit tests against the generated `MockDBAdmin` / `MockCompose`, reaching no Postgres and no docker. Every acquire / release / reclaim branch is pinned here, including the two-part in-use check whose whole point is that neither half suffices alone.
-- **`Resolver`** (decision logic) — unit tests against a stub `GitProbe`, which is the only way to reach all four git contexts from one machine: a real host is always exactly one of them, and the dangerous case (a repository git cannot be read) does not occur on demand.
-- **`Registry`** — real filesystem primitives under `t.TempDir()`. Faking the filesystem would prove nothing, because the subject *is* the atomicity of `os.Mkdir` and `os.Rename`; a double-lease is exactly what a fake would paper over.
-- **`ExecCompose`** — a stub `docker` script prepended to `PATH` records the composed argument list and `COMPOSE_PROJECT_NAME`, pinning command construction and environment injection without running a real compose. `t.Setenv` on `PATH` makes these cases incompatible with `t.Parallel()`.
-- **`PgxAdmin`** — the sole `DBAdmin` implementation, tested against the shared Postgres on `localhost:5432`. This is the only net proving its SQL actually executes; unreachable-host cases pin the error path without a server, and databases it creates are dropped in cleanup so runs stay repeatable.
+- **`Pool`**（判断ロジック） — 生成 mock（`MockDBAdmin` / `MockCompose`）に対する単体テスト。Postgres にも docker にも到達しない。acquire / release / reclaim の全分岐をここで固定する。「片方だけでは取りこぼす」ことこそが要点である 2 段構えの in-use 判定も含む。
+- **`Resolver`**（判断ロジック） — スタブ `GitProbe` に対する単体テスト。1 台のマシンから git の 4 文脈すべてに到達する唯一の方法である。実機は常にそのうちのちょうど 1 つでしかなく、危険なケース（git が読み取れないリポジトリ）は望んだときに再現できない。
+- **`Registry`** — `t.TempDir()` 上の実ファイルシステムプリミティブ。subject が `os.Mkdir` / `os.Rename` の**原子性そのもの**なので、FS を fake にしても何も証明できない。二重リースはまさに fake が覆い隠してしまう類の欠陥である。
+- **`ExecCompose`** — `PATH` の先頭に仕込んだスタブ `docker` が、組み立てられた引数列と `COMPOSE_PROJECT_NAME` を記録する。実 compose を走らせずにコマンド構築と環境変数注入を固定する。`PATH` への `t.Setenv` を使うため、これらのケースは `t.Parallel()` と両立しない。
+- **`PgxAdmin`** — `DBAdmin` の唯一の実装。共有 Postgres（`localhost:5432`）に対してテストする。その SQL が実際に実行できることを証明する唯一の網である。到達不能ホストのケースはサーバ無しでエラー経路を固定し、作成した DB は cleanup で drop するので実行を繰り返せる。
 
-The criterion is the subject, not the package: a component whose contract is a *decision* is tested against doubles, while a component whose contract is *the behaviour of an external substrate* is tested against that substrate. Tests here are consequently slower than pure unit-test packages and need the shared infra running.
+基準はパッケージではなく subject にある。契約が**判断**であるコンポーネントはダブルに対して、契約が**外部基盤の振る舞い**であるコンポーネントはその基盤に対してテストする。結果としてここのテストは純粋な単体テストのパッケージより遅く、共有 infra の起動を必要とする。
 
-## Environment variables
+## 環境変数
 
-|Variable|Default|Description|
+|変数|既定|説明|
 |---|---|---|
-|`GOBP_DB_POOL_DIR`|`~/.cache/gobp-db-pool`|Lease registry location|
-|`GOBP_DB_SHARED_PROJECT`|`gobp-shared`|Fixed compose project of the shared infra|
-|`GOBP_DB_POOL_MAX`|`12`|Number of slots (max parallel worktrees)|
-|`GOBP_DB_POOL_TTL`|`1800`|Heartbeat staleness grace (seconds)|
-|`GOBP_API_POOL_BASE` / `GOBP_MOCK_AUTH_POOL_BASE`|`8080` / `2010`|Base host ports of the API / mock auth server (slot N = base + N)|
-|`GOBP_DLV_POOL_BASE` / `GOBP_PPROF_POOL_BASE`|`2345` / `6060`|Base host ports of the dlv debug / pprof endpoints (slot N = base + N)|
-|`GOBP_DB_POOL_PGHOST` / `GOBP_DB_POOL_PGPORT`|`localhost` / `5432`|Postgres the pool administers|
-|`GOBP_DB_POOL_PGUSER` / `GOBP_DB_POOL_PGPASSWORD`|`postgres` / `postgres-password`|Credentials used for `CREATE DATABASE`|
-|`GOBP_DB_POOL_PGMAINTDB`|`postgres`|Maintenance database connected to while creating / dropping|
+|`GOBP_DB_POOL_DIR`|`~/.cache/gobp-db-pool`|リースレジストリの置き場所|
+|`GOBP_DB_SHARED_PROJECT`|`gobp-shared`|共有インフラの固定 compose プロジェクト|
+|`GOBP_DB_POOL_MAX`|`12`|スロット数（＝同時並列 worktree の上限）|
+|`GOBP_DB_POOL_TTL`|`1800`|heartbeat stale 判定の猶予（秒）|
+|`GOBP_API_POOL_BASE` / `GOBP_MOCK_AUTH_POOL_BASE`|`8080` / `2010`|API / mock 認証サーバーのホストポートのベース（スロット N = ベース + N）|
+|`GOBP_DLV_POOL_BASE` / `GOBP_PPROF_POOL_BASE`|`2345` / `6060`|dlv デバッグ / pprof のホストポートのベース（スロット N = ベース + N）|
+|`GOBP_DB_POOL_PGHOST` / `GOBP_DB_POOL_PGPORT`|`localhost` / `5432`|pool が管理する Postgres の接続先|
+|`GOBP_DB_POOL_PGUSER` / `GOBP_DB_POOL_PGPASSWORD`|`postgres` / `postgres-password`|`CREATE DATABASE` に使う資格情報|
+|`GOBP_DB_POOL_PGMAINTDB`|`postgres`|作成 / 破棄の際に接続する保守用データベース|
 
-## Notes
+## 注意
 
-- A checkout without a slot still runs against the same shared infra — it just keeps the default `local` / `test` databases and the default host ports. Take a slot only when you need collision-free parallel work.
+- スロットを取らない checkout も同じ共有インフラへ繋がる（既定の `local` / `test` データベースと既定のホスト公開ポートを使うだけ）。衝突なく並列作業したいときにだけスロットを取る。

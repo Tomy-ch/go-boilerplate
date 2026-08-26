@@ -1,13 +1,13 @@
 # uuid
 
-UUID type wrapping `github.com/google/uuid`. Generates UUIDv7 and supports database integration.
+`github.com/google/uuid` をラップした UUID 型です。UUIDv7 を生成し、データベース連携をサポートします。
 
-## Wraps
+## ラップ対象
 
 `github.com/google/uuid`
 
-## Notes
+## 注意点
 
-- Wire representation is a **JSON string** (`"b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f"`): the type holds only an unexported array, so the default struct encoding would emit `{}` and lose the value. `UnmarshalJSON` rejects any non-string JSON value and leaves the receiver unchanged on `null`.
-- Test helpers live in the separate package `pkg/uuid/testkit` (`NewTestFromSalt`), so `testing` is never linked into a production binary
-- sqlc override aligns DB UUID with this type, eliminating manual conversion
+- ワイヤ表現は **JSON 文字列**（`"b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f"`）— 非公開配列のみを持つ型のため、既定の構造体符号化では `{}` になり値が失われる。`UnmarshalJSON` は文字列以外の JSON 値を拒否し、`null` はレシーバを変更しない
+- テストヘルパーは別パッケージ `pkg/uuid/testkit` にある（`NewTestFromSalt`）。分離することで `testing` が本番バイナリへリンクされない
+- sqlc override により DB の UUID とこの型が統一されるため、手動変換は不要

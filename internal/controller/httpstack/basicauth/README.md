@@ -1,9 +1,9 @@
 # basicauth
 
-Provides Basic authentication validator for metrics endpoints.
+メトリクスエンドポイント用の Basic 認証バリデータを提供します。
 
-## Role
+## 役割
 
-The metrics endpoint exposes internal operational data, so it must sit behind an access gate even though it is not part of the business API. This package isolates that credential check as a single reusable validator using a constant-time comparison, keeping the gate policy in one place and out of the endpoint wiring.
+メトリクスエンドポイントは内部の運用情報を公開するため、業務 API ではなくてもアクセスゲートの背後に置く必要があります。本パッケージはその認証情報チェックを定数時間比較を用いた単一の再利用可能なバリデータとして分離し、ゲートのポリシーを一箇所に集約してエンドポイント側の配線から認証ロジックを排除します。
 
-Hashing the credentials with SHA-256 before comparison would also close the length-based timing leak, but that leak is minor against static metrics credentials, and fast password hashing is itself a finding class security scanners flag — so this validator does not hash.
+資格情報を SHA-256 でハッシュ化してから比較すれば長さによるタイミング漏れも塞げますが、その漏れは静的な metrics 資格情報に対しては軽微であり、パスワードの高速ハッシュ化自体がセキュリティスキャンの検出対象となるため、このバリデータではハッシュ化を行いません。

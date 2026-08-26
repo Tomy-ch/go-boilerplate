@@ -1,121 +1,119 @@
-# Outbox Subsystem Design Reference
+# Outbox サブシステム設計リファレンス
 
-This document consolidates the transactional outbox subsystem's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. For per-package overviews see the READMEs; for the adoption rationale see the outbox ADRs ([ADR-0054 (transactional-outbox)](../adr/0054-transactional-outbox.md) onward); for the decision to ship the balanced relay and defer hardening to operational evidence (with the full multi-layer blueprint) see [ADR-0107 (outbox-relay-hardening-delegated)](../adr/0107-outbox-relay-hardening-delegated.md).
+本書は transactional outbox サブシステムの **役割論・状態遷移・実装箇所・integrator が書く箇所・用語** を、実装を精査して 1 枚にまとめた参照資料です。各パッケージの概要は README、採用判断は outbox ADR（[ADR-0054](../adr/0054-transactional-outbox.md) 以降）、バランス型の relay を出荷しハードニングは運用で得た事実に委ねる決定（多層ハードニングの設計図込み）は [ADR-0107](../adr/0107-outbox-relay-hardening-delegated.md) を参照。
 
 ---
 
-## 1. Role theory (what, and what for)
+## 1. 役割論（なにが・なんのために）
 
-The transactional outbox exists to **eliminate the dual-write anomaly**: when a request both changes domain state *and* must notify the outside world, writing to the DB and publishing to an external endpoint are two separate failures-points. If publish happens after commit it can be lost; if it happens before commit it can be a phantom. The outbox folds the "intent to publish" into **the same DB transaction as the domain change** (one outbox row INSERT), then a separate **relay** asynchronously delivers those rows with **at-least-once** semantics.
+transactional outbox は **dual-write 異常の排除** のために存在します。ドメイン状態を変更し、かつ外部へ通知する必要があるとき、「DB への書き込み」と「外部エンドポイントへの publish」は別々の失敗点です。commit 後に publish すれば lost し、commit 前に publish すれば phantom になる。outbox は「publish する意図」を **ドメイン変更と同一 DB トランザクション** に畳み込み（outbox 行を 1 行 INSERT）、その後に別の **relay** が **at-least-once** で非同期送出します。
 
-So the subsystem splits into two halves that never run in the same breath:
+サブシステムは、決して同じ呼吸で走らない 2 つの半身に分かれます。
 
-- **emit** — synchronous, inside the caller's business transaction. Records the event as a row.
-- **relay / gc / replay** — asynchronous, in a dedicated long-running process. Drains, prunes, and recovers rows.
+- **emit** — 同期。呼び出し側の業務 tx 内。イベントを 1 行として記録する。
+- **relay / gc / replay** — 非同期。専用の常駐プロセス内。行を捌き・刈り・回復する。
 
-Responsibility split (who owns what):
+責務分担（誰がなにを持つか）:
 
-| Component | Layer | Responsibility | Does NOT hold |
+| コンポーネント | 層 | 責務 | 持たないもの |
 | --- | --- | --- | --- |
-| **EmitUsecase** (`emit.go`) | usecase | INSERT one row in the caller's tx; capture `traceparent` into headers | transaction control (caller owns it), delivery |
-| **RelayUsecase** (`relay.go`) | usecase | per-batch claim → publish → mark (`published` / attempts++ / `dead`) in one tx; record lag | loop cadence, broker specifics |
-| **GCUsecase** / **ReplayUsecase** (`gc.go` / `replay.go`) | usecase | prune old `published` rows / return `dead` rows to `pending` | scheduling, CLI parsing |
-| **Store** / **Publisher** / **tx.Manager** | usecase/boundary | the seam: persistence port / send port / transaction port | implementations |
-| **Engine** (`controller/outbox/relay.go`) | controller | poll-loop orchestration: cadence, sleep/backoff, drain on ctx done, span | claim/publish/mark business (delegated to usecase) |
-| **outbox-gc job** (`controller/job/outboxgc`) | controller | one-shot GC entry point for an external scheduler | the loop (it is a cron, not a daemon) |
-| **httpPublisher** (`infrastructure/publisher`) | infrastructure | `Publisher` HTTP impl: POST + `Idempotency-Key` + non-standard client profile | retry (the poll loop is the retry) |
-| **outbox store** (`infrastructure/rdb/system_cqrs/outbox`) | infrastructure | `Store` impl over sqlc gen + `pgerror.NormalizeError` | business decisions |
-| **DI / cli / cmd** | di / cli / cmd(main) | relay-process composition / subcommands / lifecycle | business logic |
-| **OutboxConfig** | config | relay tuning (`OUTBOX_*`) | broker/endpoint internals |
+| **EmitUsecase**（`emit.go`） | usecase | 呼び出し側 tx 内で 1 行 INSERT、`traceparent` を headers へ capture | tx 制御（呼び出し側が持つ）・送出 |
+| **RelayUsecase**（`relay.go`） | usecase | バッチ単位で claim → publish → mark（`published` / attempts++ / `dead`）を 1 tx で・lag 記録 | ループ周期・broker 詳細 |
+| **GCUsecase** / **ReplayUsecase**（`gc.go` / `replay.go`） | usecase | 古い `published` 行の剪定 / `dead` 行を `pending` へ戻す | スケジューリング・CLI パース |
+| **Store** / **Publisher** / **tx.Manager** | usecase/boundary | seam: 永続化ポート / 送出ポート / トランザクションポート | 実装 |
+| **Engine**（`controller/outbox/relay.go`） | controller | poll ループの統括: 周期・sleep/backoff・ctx 完了での drain・span | claim/publish/mark の業務（usecase へ委譲） |
+| **outbox-gc job**（`controller/job/outboxgc`） | controller | 外部スケジューラ向けの one-shot GC 入口 | ループ自体（daemon ではなく cron） |
+| **httpPublisher**（`infrastructure/publisher`） | infrastructure | `Publisher` の HTTP 実装: POST + `Idempotency-Key` + 非標準 client profile | retry（poll ループが retry 本体） |
+| **outbox store**（`infrastructure/rdb/system_cqrs/outbox`） | infrastructure | sqlc gen + `pgerror.NormalizeError` 上の `Store` 実装 | 業務判断 |
+| **DI / cli / cmd** | di / cli / cmd(main) | relay プロセスの合成 / サブコマンド / ライフサイクル | 業務ロジック |
+| **OutboxConfig** | config | relay チューニング（`OUTBOX_*`） | broker/endpoint の内部 |
 
-Design invariants:
+設計上の不変条件:
 
-- **Dual-write avoidance**: `Emit` is called *inside* the same `tx.Manager.Do` as the domain change, so a rolled-back business tx discards its outbox row too — no lost and no phantom events.
-- **At-least-once, retry-by-poll**: a failed publish is **not** rolled back; the row stays `pending` with `attempts++`, and the *next poll is the retry*. Transport-level retry is therefore disabled (`MaxAttempts=1`, D10) to avoid double-retry.
-- **Multi-instance safety**: `ClaimPending` uses `FOR UPDATE SKIP LOCKED` and the whole claim→publish→mark runs in one tx, so a row's lock is held until delivery settles — two relay instances never publish the same row.
-- **Receiver idempotency**: each row carries a stable `message_id` (assigned at INSERT), propagated as the HTTP `Idempotency-Key`; at-least-once on the send side is made exactly-once-effect by the receiver deduping on it.
-- **Trace continuity**: `Emit` captures the current span's `traceparent` into `headers`; the publisher replays it so the receiver joins the originating trace.
+- **dual-write 回避**: `Emit` はドメイン変更と同じ `tx.Manager.Do` の **中で** 呼ばれるため、業務 tx が巻き戻れば outbox 行も破棄される — lost も phantom も起きない。
+- **at-least-once / retry-by-poll**: publish 失敗は巻き戻さない。行は `pending` のまま `attempts++` され、*次 poll が retry 本体*。よって transport 層 retry は二重化を避けるため無効（`MaxAttempts=1`、D10）。
+- **多インスタンス安全**: `ClaimPending` は `FOR UPDATE SKIP LOCKED` を用い、claim→publish→mark 全体を 1 tx で回すため、行ロックは送出が確定するまで保持される — 2 つの relay が同一行を publish しない。
+- **受信側冪等**: 各行は INSERT 時採番の安定 `message_id` を持ち、HTTP `Idempotency-Key` として伝搬。送出側 at-least-once を受信側 dedup で実効 exactly-once 化する。
+- **trace 継続**: `Emit` は現在 span の `traceparent` を `headers` へ capture し、publisher が再生するため受信側が起点 trace に繋がる。
 
 ---
 
-## 2. State transitions
+## 2. 状態遷移
 
-### 2.1 Outbox row lifecycle (`status` column: `pending` / `published` / `dead`)
+### 2.1 outbox 行ライフサイクル（`status` 列: `pending` / `published` / `dead`）
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Pending: Emit INSERT (in business tx)<br/>status=pending, attempts=0
-    Pending --> Published: publish OK → MarkPublished<br/>published_at=NOW (idempotent on status=pending)
-    Pending --> Pending: publish fails → MarkFailed<br/>attempts++, last_error set (stays pending, retried next poll)
-    Pending --> Dead: MarkFailed returns attempts ≥ MaxAttempts(10) → MarkDead<br/>(IncDead metric + warn log)
-    Dead --> Pending: ReplayDead (operator) → attempts=0, last_error=NULL
-    Published --> [*]: GC deletes rows older than now-Retention(7d)
+    [*] --> Pending: Emit INSERT（業務 tx 内）<br/>status=pending, attempts=0
+    Pending --> Published: publish 成功 → MarkPublished<br/>published_at=NOW（status=pending に対し冪等）
+    Pending --> Pending: publish 失敗 → MarkFailed<br/>attempts++, last_error 記録（pending のまま・次 poll で再送）
+    Pending --> Dead: MarkFailed が attempts ≥ MaxAttempts(10) を返す → MarkDead<br/>（IncDead メトリクス + warn ログ）
+    Dead --> Pending: ReplayDead（運用者）→ attempts=0, last_error=NULL
+    Published --> [*]: GC が now-Retention(7d) より古い行を削除
 
     note right of Pending
-      failed is NOT a status value. It is a pending row
-      whose attempts / last_error advanced. Only 3 statuses exist
-      (CHECK constraint = pending / published / dead).
+      failed は status 値ではない。attempts / last_error が
+      進んだ pending 行のこと。status は 3 値のみ
+      （CHECK 制約 = pending / published / dead）。
     end note
     note right of Dead
-      Terminal until a human replays. Surfaced by the
-      outbox.dead counter, recovered via the CLI replay subcommand.
+      replay されるまで終端。outbox.dead カウンタで顕在化し、
+      CLI replay サブコマンドで回復する。
     end note
 ```
 
-### 2.2 Relay poll loop (`Engine.Run` + `RelayUsecase.RelayBatch`)
+### 2.2 relay poll ループ（`Engine.Run` + `RelayUsecase.RelayBatch`）
 
 ```mermaid
 stateDiagram-v2
     [*] --> Polling: Engine.Run(ctx)
-    Polling --> Batch: RelayBatch(BatchSize) in 1 tx<br/>ClaimPending → deliver each → mark
-    Batch --> RecordLag: success → observeLag (best-effort, loop continues on failure)
-    RecordLag --> Continue: Claimed equals BatchSize and Published over 0
-    RecordLag --> WaitPoll: empty / partial / full batch with 0 published
-    Batch --> WaitBackoff: RelayBatch error (DB-level only) → log
-    Continue --> Polling: no sleep (drain aggressively while work remains)
+    Polling --> Batch: RelayBatch(BatchSize) を 1 tx で<br/>ClaimPending → 各 deliver → mark
+    Batch --> RecordLag: 成功 → observeLag（best-effort・失敗時もループ継続）
+    RecordLag --> Continue: Claimed が BatchSize と等しく Published が 1 以上
+    RecordLag --> WaitPoll: 空振り / 部分消化 / 満杯だが publish 0 件
+    Batch --> WaitBackoff: RelayBatch エラー（DB レベルのみ）→ log
+    Continue --> Polling: 待機なし（仕事が残る間は積極的に捌く）
     WaitPoll --> Polling: Sleeper.Sleep(PollInterval = 1s)
     WaitBackoff --> Polling: Sleeper.Sleep(ErrorBackoff = 5s)
-    Polling --> [*]: ctx done → return nil (graceful)
+    Polling --> [*]: ctx 完了 → nil を返す（graceful）
 
     note right of WaitPoll
-      A full batch that published nothing is forced to wait,
-      otherwise a downstream outage hot-loops and dead-letters
-      the whole batch instantly.
+      publish 0 件の満杯バッチは必ず待機させる。さもないと
+      下流停止時にホットループしてバッチ全体を即時 dead 化する。
     end note
     note right of Batch
-      A publish failure does NOT roll back the tx (row kept for
-      next poll). Only a DB or mark failure rolls back and is
-      returned as a loop error.
+      publish 失敗は tx を巻き戻さない（行は次 poll 用に保持）。
+      DB / mark 失敗のみ巻き戻し、ループエラーとして返す。
     end note
 ```
 
 ---
 
-## 3. Implementation locations (where in the architecture it lives and acts)
+## 3. 実装箇所（アーキテクチャ上のどこに在り、どう働くか）
 
-### 3.1 Package placement and dependency direction
+### 3.1 パッケージ配置と依存方向
 
 ```mermaid
 flowchart TD
     subgraph cmdL["cmd (main)"]
-        CMD["cmd/outbox_relay.go<br/>outbox-relay + replay subcommand / SIGTERM"]
+        CMD["cmd/outbox_relay.go<br/>outbox-relay + replay サブコマンド / SIGTERM"]
         CMDJOB["cmd/job.go → job outbox-gc"]
     end
     subgraph cliL["internal/cli/outbox"]
-        CLIR["relay.go: RunRelay (start → wait ctx → stop w/ grace)"]
-        CLIP["replay.go: RunReplayWith (parse UUID → di.RunOutboxReplay)"]
+        CLIR["relay.go: RunRelay（start → ctx 待ち → grace 付き stop）"]
+        CLIP["replay.go: RunReplayWith（UUID parse → di.RunOutboxReplay）"]
     end
     subgraph diL["internal/di"]
-        DIM["module/outboxrelay.go: OutboxRelayModule (relay-only process)"]
-        DIP["module/outboxpublisher.go: outboxPublisherModule (non-standard profile)"]
-        DIPER["module/persistence.go: outbox Store (shared)"]
-        DIJOB["module/job.go: outbox-gc job (shared, main server)"]
+        DIM["module/outboxrelay.go: OutboxRelayModule（relay 専用プロセス）"]
+        DIP["module/outboxpublisher.go: outboxPublisherModule（非標準 profile）"]
+        DIPER["module/persistence.go: outbox Store（共有）"]
+        DIJOB["module/job.go: outbox-gc job（共有・main server）"]
         DIH["outboxrelay/hook: RegisterRelayHooks → SupervisedRunner"]
-        DIREP["outboxrelay.go: RunOutboxReplay (temp app, no relay loop)"]
+        DIREP["outboxrelay.go: RunOutboxReplay（一時 app・relay ループ無し）"]
     end
     subgraph ctrlL["internal/controller"]
-        ENG["outbox/relay.go: Engine (poll loop, sleep/backoff, span)"]
-        GCJ["job/outboxgc: GC job (one-shot)"]
+        ENG["outbox/relay.go: Engine（poll ループ・sleep/backoff・span）"]
+        GCJ["job/outboxgc: GC job（one-shot）"]
     end
     subgraph ucL["internal/usecase/outbox"]
         EMIT["emit.go: EmitUsecase"]
@@ -124,19 +122,19 @@ flowchart TD
         RPL["replay.go: ReplayUsecase"]
     end
     subgraph seamL["internal/usecase/boundary"]
-        STORE["outbox.Store (Insert/Claim/Mark*/Replay/Delete/Oldest)"]
-        PUB["publisher.Publisher (Publish)"]
-        TXM["tx.Manager (Do / DoWithResult)"]
+        STORE["outbox.Store（Insert/Claim/Mark*/Replay/Delete/Oldest）"]
+        PUB["publisher.Publisher（Publish）"]
+        TXM["tx.Manager（Do / DoWithResult）"]
         CLK["clock.Clock / Sleeper"]
     end
     subgraph infraL["internal/infrastructure"]
-        SQ["rdb/system_cqrs/outbox: Store impl (sqlc gen + pgerror)"]
-        HTTP["publisher/http_publisher.go: httpPublisher (POST, Idempotency-Key)"]
+        SQ["rdb/system_cqrs/outbox: Store 実装（sqlc gen + pgerror）"]
+        HTTP["publisher/http_publisher.go: httpPublisher（POST, Idempotency-Key）"]
     end
     subgraph crossL["cross-cutting"]
-        OBS["observability: OutboxMetrics (outbox.lag_seconds / outbox.dead)"]
-        CFG["config: OutboxConfig (OUTBOX_*)"]
-        HC["infrastructure/httpclient (downstream=outbox)"]
+        OBS["observability: OutboxMetrics（outbox.lag_seconds / outbox.dead）"]
+        CFG["config: OutboxConfig（OUTBOX_*）"]
+        HC["infrastructure/httpclient（downstream=outbox）"]
     end
 
     CMD --> CLIR
@@ -171,9 +169,9 @@ flowchart TD
     class CMD,CMDJOB,CLIR,CLIP,DIM,DIP,DIPER,DIJOB,DIH,DIREP,ENG,GCJ,EMIT,REL,GC,RPL,STORE,PUB,TXM,CLK,SQ,HTTP,OBS,CFG,HC done;
 ```
 
-> Green = provided by the subsystem. Dependencies point inward: `controller`/`infrastructure` → `usecase`/`boundary`, never the reverse. The relay's non-standard HTTP profile (`MaxAttempts=1`, `PropagateTrace=false`, `AllowPrivateNetwork=false`) is contributed by `outboxPublisherModule`, which is **nested inside `OutboxRelayModule`** so it cannot leak into other processes.
+> 緑 = サブシステムが提供。依存は内向き: `controller`/`infrastructure` → `usecase`/`boundary`、逆は無い。relay の非標準 HTTP profile（`MaxAttempts=1`・`PropagateTrace=false`・`AllowPrivateNetwork=false`）は `outboxPublisherModule` が寄与し、これは **`OutboxRelayModule` の中に入れ子** にしてあるため他プロセスへ漏れない。
 
-### 3.2 Per-batch action sequence (relay process)
+### 3.2 バッチ単位のアクション列（relay プロセス）
 
 ```mermaid
 sequenceDiagram
@@ -182,18 +180,18 @@ sequenceDiagram
     participant T as tx.Manager
     participant S as Store (infra/rdb)
     participant P as httpPublisher (infra)
-    participant R as Receiver (external)
+    participant R as Receiver (外部)
     E->>U: RelayBatch(BatchSize)
-    U->>T: DoWithResult(fn)  // one tx around the whole batch
+    U->>T: DoWithResult(fn)  // バッチ全体を 1 tx で囲う
     T->>S: ClaimPending(limit)  // FOR UPDATE SKIP LOCKED
     S-->>T: []PendingMessage
-    loop each row
+    loop 各行
         U->>P: Publish(Message{MessageID, EventType, Payload, Headers})
         P->>R: POST endpoint (Content-Type json, Idempotency-Key=message_id, traceparent)
         alt 2xx
             R-->>P: ok
             U->>S: MarkPublished(id)
-        else non-2xx / transport error
+        else 非 2xx / transport 失敗
             R-->>P: error (apperror)
             U->>S: MarkFailed(id, err) → attempts
             opt attempts ≥ MaxAttempts(10)
@@ -204,73 +202,72 @@ sequenceDiagram
     T-->>U: RelayResult{Claimed, Published}
     U-->>E: result
     E->>U: RecordLag()  // best-effort SLI
-    E->>E: sleep decision (continue / PollInterval / ErrorBackoff)
+    E->>E: sleep 判定（continue / PollInterval / ErrorBackoff）
 ```
 
 ---
 
-## 4. What an integrator implements (the parts the subsystem does not provide)
+## 4. integrator が書く箇所（サブシステムが提供しない部分）
 
-The subsystem ships the **full machinery**: emit/relay/gc/replay usecases, the RDB `Store`, the HTTP `Publisher`, the relay `Engine`, the GC job, DI wiring, and the `outbox-relay` / `replay` / `job outbox-gc` entry points. No event flows by default — the integrator wires the two open ends (the producing call and the consuming endpoint) and operates the processes.
+サブシステムは **機構一式** を同梱します: emit/relay/gc/replay の各 usecase、RDB `Store`、HTTP `Publisher`、relay `Engine`、GC job、DI 結線、`outbox-relay` / `replay` / `job outbox-gc` の各入口。既定ではイベントは流れません — integrator が両端（生産する呼び出しと消費するエンドポイント）を結線し、プロセスを運用します。
 
-> **Departure from Evans — no Published Language on this side.** The synchronous HTTP surface has one:
-> OpenAPI is committed as a resolved contract that a consumer in another repository can read without
-> this repository's toolchain, and a drift gate keeps it honest. The asynchronous surface has none.
-> [ADR-0057 (message-id-idempotency-propagation)](../adr/0057-message-id-idempotency-propagation.md) fixes a *transport* convention
-> (`Idempotency-Key`), not a language: nothing here defines or publishes the schema of the event
-> payloads or the vocabulary of `event_type`, so a receiver learns both by reading this repository's
-> source. The asymmetry is deliberate to the extent that item ② below hands payload and `event_type`
-> to the integrator — nothing can publish a language for events it does not own. What is *not*
-> yet provided is the shape that publication should take once the integrator defines those events.
+> **Evans からの逸脱 — この面に公開言語が無い。** 同期 HTTP 面には存在する。OpenAPI は、別リポジトリの
+> 利用者がこのリポジトリのツールチェーン無しで読める解決済み契約としてコミットされ、drift gate が
+> 鮮度を保証している。非同期面には無い。[ADR-0057](../adr/0057-message-id-idempotency-propagation.md)
+> が定めているのは*転送*規約（`Idempotency-Key`）であって言語ではない。イベント payload のスキーマも
+> `event_type` の語彙も、ここでは定義も公開もされていないため、受信側は両方をこのリポジトリのソースを
+> 読んで知ることになる。この非対称は、下記②が payload と `event_type` を integrator に委ねている限りに
+> おいては意図的である。自分が所有していないイベントの言語は、誰も公開できない。**まだ提供
+> できていない**のは、integrator がそれらのイベントを定義した後、その公開がどういう形を取るべきかの型である。
 
 ```mermaid
 flowchart LR
-    EM["① call Emit in the business tx<br/>(alongside the domain change)"]:::need
-    PL["② define payload + event_type<br/>(snapshot + version, self-contained)"]:::need
-    RC["③ build the receiver endpoint<br/>(idempotent on Idempotency-Key)"]:::need
-    CF["④ set ENDPOINT_OUTBOX (+ tuning)"]:::need
-    DP["⑤ deploy the relay process<br/>(cmd outbox-relay, resident)"]:::need
-    GC["⑥ schedule GC<br/>(cron → cmd job outbox-gc)"]:::need
-    OP["⑦ operate dead rows<br/>(monitor outbox.dead → replay)"]:::need
+    EM["① 業務 tx 内で Emit を呼ぶ<br/>（ドメイン変更と一緒に）"]:::need
+    PL["② payload + event_type を定義<br/>（snapshot + version の自己完結）"]:::need
+    RC["③ 受信エンドポイントを作る<br/>（Idempotency-Key で冪等）"]:::need
+    CF["④ ENDPOINT_OUTBOX を設定（+ tuning）"]:::need
+    DP["⑤ relay プロセスをデプロイ<br/>（cmd outbox-relay・常駐）"]:::need
+    GC["⑥ GC をスケジュール<br/>（cron → cmd job outbox-gc）"]:::need
+    OP["⑦ dead 行を運用<br/>（outbox.dead 監視 → replay）"]:::need
     EM --> PL --> RC --> CF --> DP --> GC --> OP
     classDef need fill:#fff8c5,stroke:#bf8700;
 ```
 
-| # | Required implementation | Location / how | Reference |
+| # | 必要な実装 | 箇所 / やり方 | 参照 |
 | --- | --- | --- | --- |
-| ① | call `EmitUsecase.Emit` inside the same `tx.Manager.Do` as the domain write | the usecase that mutates the aggregate | `emit.go` `EmitInput` |
-| ② | choose `EventType` (`+version`) and marshal a **self-contained snapshot** payload; do NOT put `Authorization`/`Cookie` in `Headers` (a denylist drops known-sensitive names before send, but that is defense-in-depth, not the contract) | caller of `Emit` | `EmitInput.Payload` / `.Headers` doc |
-| ③ | a receiving endpoint that **dedupes on `Idempotency-Key`** (= `message_id`) and returns 2xx only on durable accept | external service | `httpPublisher.Publish` |
-| ④ | `ENDPOINT_OUTBOX` (required; empty/invalid URL = relay refuses to start) + optional `OUTBOX_POLL_INTERVAL` / `OUTBOX_ERROR_BACKOFF` / `OUTBOX_BATCH_SIZE` | `env/` & IaC | `OutboxConfig` defaults |
-| ⑤ | run `cmd outbox-relay` as a resident process (it stays up until SIGTERM, drains on stop) | deployment / IaC | `cmd/outbox_relay.go` |
-| ⑥ | schedule `cmd job outbox-gc [--batch-size=N]` (k8s CronJob / cron) to prune `published` rows past retention | scheduler | `controller/job/outboxgc` |
-| ⑦ | alert on the `outbox.dead` counter / `outbox.lag_seconds` gauge and run `outbox-relay replay [--message-id=<uuid>]` to recover | runbook | `cmd outbox-relay replay` |
+| ① | ドメイン書き込みと同じ `tx.Manager.Do` の中で `EmitUsecase.Emit` を呼ぶ | 集約を変更する usecase | `emit.go` `EmitInput` |
+| ② | `EventType`（`+version`）を選び、**自己完結 snapshot** payload を marshal。`Headers` に `Authorization`/`Cookie` を入れない（既知の機微ヘッダ名は送出前に denylist で落とすが、それは defense-in-depth であって契約ではない） | `Emit` の呼び出し側 | `EmitInput.Payload` / `.Headers` doc |
+| ③ | **`Idempotency-Key`（= `message_id`）で dedup** し、永続受理時のみ 2xx を返す受信エンドポイント | 外部サービス | `httpPublisher.Publish` |
+| ④ | `ENDPOINT_OUTBOX`（必須。空/不正 URL は relay が起動拒否）+ 任意の `OUTBOX_POLL_INTERVAL` / `OUTBOX_ERROR_BACKOFF` / `OUTBOX_BATCH_SIZE` | `env/` & IaC | `OutboxConfig` 既定値 |
+| ⑤ | `cmd outbox-relay` を常駐プロセスとして起動（SIGTERM まで常駐・stop で drain） | デプロイ / IaC | `cmd/outbox_relay.go` |
+| ⑥ | `cmd job outbox-gc [--batch-size=N]` をスケジュール（k8s CronJob / cron）し retention 超過の `published` 行を剪定 | スケジューラ | `controller/job/outboxgc` |
+| ⑦ | `outbox.dead` カウンタ / `outbox.lag_seconds` ゲージで alert し `outbox-relay replay [--message-id=<uuid>]` で回復 | runbook | `cmd outbox-relay replay` |
 
-> The relay, GC, and replay all reuse the shared infra wiring; only the resident relay process carries the non-standard HTTP publisher profile. The GC job lives in the main server's job group, so `cmd job outbox-gc` is available from the same binary — it does not run on its own.
+> relay・GC・replay は共有 infra 結線を再利用し、非標準 HTTP publisher profile を持つのは常駐 relay プロセスだけ。GC job は main server の job group に在るため `cmd job outbox-gc` は同一バイナリから使える — 単独では走らない。
 
 ---
 
-## 5. Glossary
+## 5. 用語
 
-| Term | Meaning |
+| 用語 | 意味 |
 | --- | --- |
-| **transactional outbox** | The pattern of recording "intent to publish" as a DB row in the same tx as the domain change, then delivering it asynchronously. Avoids the dual-write anomaly. |
-| **emit** | The synchronous half: `EmitUsecase.Emit` INSERTs one row inside the caller's business tx (`internal/usecase/outbox/emit.go`). |
-| **relay** | The asynchronous half: a resident `Engine` poll loop that claims, publishes, and marks pending rows (`controller/outbox` + `usecase/outbox/relay.go`). |
-| **Store** | The persistence port for the outbox table (`usecase/boundary/outbox`). Implemented over sqlc gen in `infrastructure/rdb/system_cqrs/outbox`. |
-| **Publisher** | The send port (`usecase/boundary/publisher`). The HTTP impl POSTs to `ENDPOINT_OUTBOX`. |
-| **status** | The row's lifecycle column — exactly `pending` / `published` / `dead` (CHECK-constrained). There is no `failed` status; a failed publish stays `pending`. |
-| **attempts / last_error** | Publish try count and latest failure reason. `MarkFailed` advances both; the row stays `pending` until `attempts ≥ MaxAttempts`. |
-| **MaxAttempts** | Publish tries before a row is marked `dead` (`DefaultMaxAttempts = 10`). |
-| **dead** | A row that exhausted `MaxAttempts`. Terminal until an operator replays it. Counted by `outbox.dead`. |
-| **replay** | Returning `dead` rows to `pending` (`attempts=0`, `last_error=NULL`). `ReplayUsecase` / `outbox-relay replay [--message-id]`. |
-| **GC (SweepPublished)** | Deleting `published` rows older than `Retention` (`DefaultRetention = 7d`) in batches of `DefaultGCBatchSize = 10000`. Run via `cmd job outbox-gc`. |
-| **message_id** | The stable per-row UUID (assigned at INSERT). Propagated as the HTTP `Idempotency-Key` for receiver dedup. |
-| **traceparent** | W3C trace context captured into `headers` at emit time and replayed by the publisher, so the receiver joins the originating trace. |
-| **FOR UPDATE SKIP LOCKED** | The claim mechanism that makes multi-instance relay safe — a locked row is skipped by other instances until the holding tx settles. |
-| **retry-by-poll** | The relay's at-least-once mechanism: a publish failure is left `pending` and retried on the next poll. Transport retry is disabled (`MaxAttempts=1`) to avoid doubling it (D10). |
-| **PollInterval / ErrorBackoff** | Sleep after a non-progressing poll (`OUTBOX_POLL_INTERVAL = 1s`) / after a DB-level `RelayBatch` error (`OUTBOX_ERROR_BACKOFF = 5s`). A full-but-zero-published batch is forced to wait. |
-| **BatchSize** | Rows claimed per poll (`OUTBOX_BATCH_SIZE = 100`; clamped to `DefaultBatchSize = 100` if ≤ 0). |
-| **outbox.lag_seconds / outbox.dead** | The subsystem's own SLIs (meter `go-boilerplate/outbox`): age of the oldest pending row / count of rows dead-lettered. Publish latency/errors come from the `httpclient` downstream=`outbox` instrumentation. |
-| **SupervisedRunner** | The lifecycle helper (`di/lifecycle`) that runs the relay loop on OnStart and cancels + drains it on OnStop. |
-| **OutboxRelayModule** | The fx module for the relay-only process; nests `outboxPublisherModule` so the non-standard HTTP profile never leaks elsewhere. |
+| **transactional outbox** | 「publish する意図」をドメイン変更と同一 tx の DB 行として記録し、非同期に送出するパターン。dual-write 異常を回避する。 |
+| **emit** | 同期側の半身: `EmitUsecase.Emit` が呼び出し側の業務 tx 内で 1 行 INSERT する（`internal/usecase/outbox/emit.go`）。 |
+| **relay** | 非同期側の半身: pending 行を claim・publish・mark する常駐 `Engine` poll ループ（`controller/outbox` + `usecase/outbox/relay.go`）。 |
+| **Store** | outbox テーブルの永続化ポート（`usecase/boundary/outbox`）。`infrastructure/rdb/system_cqrs/outbox` で sqlc gen 上に実装。 |
+| **Publisher** | 送出ポート（`usecase/boundary/publisher`）。HTTP 実装が `ENDPOINT_OUTBOX` へ POST する。 |
+| **status** | 行のライフサイクル列 — 厳密に `pending` / `published` / `dead`（CHECK 制約）。`failed` という status は無く、publish 失敗は `pending` のまま。 |
+| **attempts / last_error** | publish 試行回数と直近失敗理由。`MarkFailed` が両方を進める。`attempts ≥ MaxAttempts` まで行は `pending`。 |
+| **MaxAttempts** | 行を `dead` にするまでの publish 試行回数（`DefaultMaxAttempts = 10`）。 |
+| **dead** | `MaxAttempts` を使い切った行。運用者が replay するまで終端。`outbox.dead` で計上。 |
+| **replay** | `dead` 行を `pending` へ戻す（`attempts=0`・`last_error=NULL`）。`ReplayUsecase` / `outbox-relay replay [--message-id]`。 |
+| **GC（SweepPublished）** | `Retention`（`DefaultRetention = 7d`）より古い `published` 行を `DefaultGCBatchSize = 10000` 件ずつ削除。`cmd job outbox-gc` で実行。 |
+| **message_id** | 行ごとの安定 UUID（INSERT 時採番）。受信側 dedup 用に HTTP `Idempotency-Key` として伝搬。 |
+| **traceparent** | W3C trace context。emit 時に `headers` へ capture し publisher が再生するため、受信側が起点 trace に繋がる。 |
+| **FOR UPDATE SKIP LOCKED** | 多インスタンス relay を安全にする claim 機構 — ロック中の行は保持 tx が確定するまで他インスタンスがスキップする。 |
+| **retry-by-poll** | relay の at-least-once 機構: publish 失敗は `pending` のまま残し、次 poll で再送する。二重化回避のため transport retry は無効（`MaxAttempts=1`、D10）。 |
+| **PollInterval / ErrorBackoff** | 進捗なし poll の後の待機（`OUTBOX_POLL_INTERVAL = 1s`）/ DB レベルの `RelayBatch` エラー後の待機（`OUTBOX_ERROR_BACKOFF = 5s`）。満杯だが publish 0 件のバッチは必ず待機させる。 |
+| **BatchSize** | 1 poll で claim する行数（`OUTBOX_BATCH_SIZE = 100`。≤ 0 なら `DefaultBatchSize = 100` へ clamp）。 |
+| **outbox.lag_seconds / outbox.dead** | サブシステム固有 SLI（meter `go-boilerplate/outbox`）: 最古 pending 行の経過秒数 / dead 化した行数。publish の latency/error は `httpclient` downstream=`outbox` 計装が賄う。 |
+| **SupervisedRunner** | relay ループを OnStart で起動し OnStop で cancel + drain するライフサイクルヘルパ（`di/lifecycle`）。 |
+| **OutboxRelayModule** | relay 専用プロセスの fx module。`outboxPublisherModule` を入れ子にして非標準 HTTP profile が他へ漏れないようにする。 |
