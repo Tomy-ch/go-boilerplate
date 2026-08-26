@@ -34,11 +34,7 @@ find .claude/skills/<name> -type f | sort
 find .codex/skills/<name> -type f | sort
 ```
 
-<!-- doc-pair:replace-begin -->
-Treat `SKILL.md`, `SKILL.ja.md`, UI metadata, scripts, references, and assets as one unit.
-<!-- doc-pair:replace-with -->
-<!-- = Treat `SKILL.md`, UI metadata, scripts, references, and assets as one unit. -->
-<!-- doc-pair:replace-end -->
+Treat `SKILL.md`, UI metadata, scripts, references, and assets as one unit.
 Record only a temporary transfer note under `tmp/skills/sync-ai/`; do not create a durable third copy or
 a synchronization manifest.
 
@@ -72,7 +68,6 @@ For a target under `.codex/skills/`, invoke `manage-skill` with the transfer con
 1. create or update the target skill in place;
 2. preserve target-native frontmatter and `agents/openai.yaml`;
 3. use the official skill-creator validation flow;
-4. synchronize `SKILL.ja.md` from the English canonical `SKILL.md`.
 
 For a target under `.claude/skills/`, hand the contract to Claude's `/manage-skill` by running
 Claude headlessly:
@@ -127,11 +122,7 @@ Check Claude's own checklist items against the filesystem too, not merely agains
 properties that fail quietly are the ones a diff does not show: a newly created file appears in
 `git status` without its mode, so verify the executable bit on every bundled script with complete,
 non-truncated output (prefer `stat -f '%Sp %N' <file>` on BSD/macOS; otherwise read `ls -l` in
-<!-- doc-pair:replace-begin -->
-full), run `sh -n` over it, and confirm the `SKILL.md` / `SKILL.ja.md` heading counts still match.
-<!-- doc-pair:replace-with -->
-<!-- = full) and run `sh -n` over it. -->
-<!-- doc-pair:replace-end -->
+full) and run `sh -n` over it.
 Claude reporting these checks as passed is precisely the claim this paragraph exists to distrust.
 
 ## Guardrails

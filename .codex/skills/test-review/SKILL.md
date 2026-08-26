@@ -8,8 +8,6 @@ description: >-
 
 Adversarial, low-bias review of Go unit test files. Read-only — surfaces what looks broken / under-tested / over-tested, and the user decides how to act.
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
-
 ## When to Use
 
 - Before commit / PR, on the `*_test.go` files in the current change.

@@ -7,8 +7,6 @@ description: Add a new environment variable to the project end-to-end, keeping t
 
 Adds a new environment variable to the project end-to-end. The variable is read by the `Loader` struct, mapped into the typed `Config`, exposed via a getter, set in each per-environment sample `env` file, and documented in `env/README.md`.
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
-
 ## When to Use
 
 Use this skill when:
@@ -31,7 +29,7 @@ Do NOT use this skill for:
 - `internal/config/config.go` — `New()` body for mapping pattern; existing getters for naming convention.
 - `internal/config/config_testing_mock.go` — the `expected*` variable block and the mock's field initialisation.
 - `env/.env` (the local default), `.env.ci`, `.env.dev`, `.env.stg`, `.env.prd`, `.env.dast` — per-environment value placement.
-- `env/README.md`, `env/README.ja.md` — table format and subsystem section names.
+- `env/README.md` — table format and subsystem section names.
 
 **Writes (only with confirmation)**:
 
@@ -74,14 +72,7 @@ Follow up with free-text for the concrete type (`int` / `bool` / `time.Duration`
 Free-text. The user provides EITHER English OR Japanese (or both). The skill auto-fills the missing side via inline translation so both READMEs stay in sync without forcing the user to write twice.
 
 - 「説明（日本語または英語のどちらか）」 — written into the matching language's README directly
-- Notes column（任意） — Secret management / 環境依存等の注記。Provided in the same language as the description; the skill translates for the other.
-
-Resolution rules:
-
-- If only Japanese provided → skill writes Japanese to `env/README.ja.md` row, then translates to English for `env/README.md` row.
-- If only English provided → reverse direction.
-- If both provided → use as-is, no translation.
-- Translations are kept short and direct (single-line, technical register matching surrounding rows). If the description is non-trivial or domain-specific, surface the proposed translation in the Step 2 plan summary for user review before writing.
+- Notes column（任意） — Secret management / 環境依存等の注記。Provided in the same language as the description.
 
 ### Question 4: Per-environment values
 
@@ -155,7 +146,7 @@ For each of `env/.env` (the local default), `.env.ci`, `.env.dev`, `.env.stg`, `
 - Append the new var line under the matching section, preserving alignment.
 - For prd, default to the commented placeholder convention (`# APP_FEATURE_X`) unless the user supplied an explicit prd value.
 
-### `env/README.md` and `README.ja.md`
+### `env/README.md`
 
 In the matching subsystem table (e.g., `### Application`), append a row:
 
@@ -189,7 +180,7 @@ Display the full set of proposed changes as a Japanese summary:
   - internal/config/model_test.go (Test<SubStruct>_<Field> を 1 つ追加)
   - internal/config/config_testing_mock_test.go (TestMockConfigForTest 期待値構造体に 1 行追加)
   - env/.env, .env.ci, .env.dev, .env.stg, .env.prd, .env.dast (各 1 行追加)
-  - env/README.md, env/README.ja.md (Application 表に行追加)
+  - env/README.md (Application 表に行追加)
 
 説明の補完:
   - 入力: 日本語のみ供与
@@ -213,7 +204,7 @@ For each file, use the `Edit` tool with exact anchor strings derived from the re
 6. `model_test.go` (getter ごとの `Test<SubStruct>_<Field>` — coverage maintenance)
 7. `config_testing_mock_test.go` (TestMockConfigForTest literal — coverage maintenance)
 8. env files (one Edit per file: `env/.env` (the local default), `.env.ci`, `.env.dev`, `.env.stg`, `.env.prd`, `.env.dast`)
-9. `env/README.md` then `env/README.ja.md`
+9. `env/README.md`
 
 After each file edit, verify the edit landed (the `Edit` tool reports success or failure — if any fails, stop and report).
 
@@ -286,7 +277,7 @@ Before reporting completion, confirm:
 - [ ] `config_testing_mock.go` updated (unless skipped)
 - [ ] `config_test.go`, `model_test.go`, `config_testing_mock_test.go` each updated to cover the new field (unless mock scope was skipped — in which case this is noted explicitly)
 - [ ] All 6 env files updated with the new var under the matching subsystem comment
-- [ ] `env/README.md` and `env/README.ja.md` updated with a new table row
+- [ ] `env/README.md` updated with a new table row
 - [ ] `config_testing_setter.go` was NOT touched unless explicitly requested
 - [ ] `make fix` and `make test` were run and the results reported
 - [ ] `internal/config` coverage was checked against the test output; expected 100.0% (or explicitly noted lower if mock scope skipped)

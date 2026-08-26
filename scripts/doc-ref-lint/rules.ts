@@ -14,12 +14,6 @@ const ANNOTATION = /\s*\(([-a-z0-9]+)\)/y;
 // `kind: adr` に属する id / slug を探す行数。次の `kind:` に当たった時点でも打ち切る。
 const ENTRY_SPAN = 6;
 
-// doc-pair:begin
-export const TRANSLATION_EXCLUSIONS = [
-  { prefix: "docs/spec/", reason: "feature specifications are intentionally English-only" },
-] as const;
-
-// doc-pair:end
 function isGenerated(file: string): boolean {
   return GENERATED_DOC_PREFIXES.some((prefix) => file.startsWith(prefix)) || GENERATED_SUFFIXES.some((suffix) => file.endsWith(suffix));
 }
@@ -120,35 +114,3 @@ export function checkDocRoutes(source: string, present: ReadonlySet<string>): Fi
       .map((doc) => ({ file: DOC_ROUTES_FILE, message: `L${index + 1}: routes to ${doc}, which does not exist` }));
   });
 }
-
-// doc-pair:begin
-/** 対訳は正本の隣に `<name>.ja.md` として置く。リポジトリの他のすべての対訳と同じ形である。 */
-export function expectedTranslation(file: string): string | null {
-  if (!file.startsWith("docs/") || !file.endsWith(".md") || file.endsWith(".ja.md") || file.startsWith("docs/adr/") || isGenerated(file) || translationExclusion(file) !== null) return null;
-  return path.join(path.dirname(file), `${path.basename(file, ".md")}.ja.md`);
-}
-
-export function translationExclusion(file: string): string | null {
-  return TRANSLATION_EXCLUSIONS.find(({ prefix }) => file.startsWith(prefix))?.reason ?? null;
-}
-
-export function checkTranslations(files: readonly string[]): Finding[] {
-  const present = new Set(files);
-  const missing = files.flatMap((file) => {
-    const translation = expectedTranslation(file);
-    return translation !== null && !present.has(translation) ? [{ file, message: `missing ${translation}` }] : [];
-  });
-  const orphans = files.flatMap((file) => {
-    if (!file.startsWith("docs/") || file.startsWith("docs/adr/") || !file.endsWith(".ja.md") || isGenerated(file)) return [];
-    const canonical = file.replace(/\.ja\.md$/, ".md");
-    return expectedTranslation(canonical) !== file || !present.has(canonical) ? [{ file, message: `orphan translation for ${canonical}` }] : [];
-  });
-  return [...missing, ...orphans];
-}
-
-export function checkTranslationExclusions(files: readonly string[]): Finding[] {
-  return TRANSLATION_EXCLUSIONS.flatMap(({ prefix }) => {
-    return files.some((file) => file.startsWith(prefix)) ? [] : [{ file: prefix, message: "stale translation exclusion" }];
-  });
-}
-// doc-pair:end

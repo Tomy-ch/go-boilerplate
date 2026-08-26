@@ -230,7 +230,7 @@ Being outside the OSI definition is not what makes Bearer unusual here — CodeQ
 | `.github/workflows/bearer.yaml` | — |
 | the `aqua:Bearer/bearer` line in [`mise.toml`](../../mise.toml) | `make tool-cooldown-gate` reads the pin from here |
 | the `[job."bearer.yaml:bearer"]` section in [`.github/egress.toml`](../egress.toml) | `make egress-check` fails on a job section with no matching workflow |
-| the `bearer.yaml` rows in this file and its `README.ja.md` translation — timeout table, Security table, trigger matrix, weekly rotation, overlapping surfaces — and this section | `make md-lint` checks the pair, not the rows |
+| the `bearer.yaml` rows in this file — timeout table, Security table, trigger matrix, weekly rotation, overlapping surfaces — and this section | `make md-lint` does not check these rows |
 
 `make pin-actions-check` needs nothing done to it as long as every action `bearer.yaml` used is still referenced elsewhere; it fails on a lockfile entry nothing references, so check that first if it goes red. The `level` defaulting in the summary step goes with the workflow: it exists because Bearer omits `level` from every result, and jq raises a runtime error on the sort key rather than falling through to `//`.
 
@@ -251,7 +251,7 @@ What the script takes with each product, and what has to survive:
 | the workflow file, and `sonar-project.properties` for Sonar | — |
 | the `[job."<workflow>:<job>"]` sections in [`.github/egress.toml`](../egress.toml) | — |
 | the lockfile entries in [`.github/actions-pin.toml`](../actions-pin.toml) that nothing else references | `github/codeql-action@v4` — every other workflow that uploads SARIF references it |
-| the rows and prose in this file and its `README.ja.md` translation | the rows of every scanner that stays |
+| the rows and prose in this file | the rows of every scanner that stays |
 | `.github/codeql/**` for CodeQL | — |
 
 The lockfile rule is not a list of exceptions: the script counts references in the workflows that remain and deletes an entry only when the count reaches zero. `github/codeql-action@v4` is the case that shows why counting beats a list — it is registered with CodeQL, but every scanner that publishes SARIF calls `upload-sarif` from that same action, so removing CodeQL leaves the entry in place where a fixed list would have taken it. `actions/download-artifact@v7` is the opposite case: Sonar's report job is its only user today, so removing Sonar takes it along. `make pin-actions-check` and `make egress-check` both fail on an orphan, which is what turns a missed entry into a red run rather than a silent leftover.

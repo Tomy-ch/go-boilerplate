@@ -245,7 +245,7 @@ jobs:
       - name: Verify no boilerplate prose survived
         run: |
           set -euo pipefail
-          remaining="$(grep -ric 'boilerplate' README.md README.ja.md | grep -v ':0$' || true)"
+          remaining="$(grep -ric 'boilerplate' README.md | grep -v ':0$' || true)"
           if [ -n "$remaining" ]; then
             echo "FAIL: the READMEs still call this a boilerplate"
             echo "$remaining"

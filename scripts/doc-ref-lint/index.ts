@@ -2,11 +2,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-// doc-pair:replace-begin
-import { ADR_FILE, DOC_ROUTES_FILE, adrIndex, checkDocRoutes, checkPathReferences, checkReferences, checkStructuredReferences, checkTranslationExclusions, checkTranslations, isEligible, normalizeReferences } from "./rules";
-// doc-pair:replace-with
-// = import { ADR_FILE, DOC_ROUTES_FILE, adrIndex, checkDocRoutes, checkPathReferences, checkReferences, checkStructuredReferences, isEligible, normalizeReferences } from "./rules";
-// doc-pair:replace-end
+import { ADR_FILE, DOC_ROUTES_FILE, adrIndex, checkDocRoutes, checkPathReferences, checkReferences, checkStructuredReferences, isEligible, normalizeReferences } from "./rules";
 
 const root = process.cwd();
 const write = process.argv.includes("--write");
@@ -52,10 +48,6 @@ for (const file of files.filter((file) => ADR_FILE.test(file))) {
   });
   if (!hasHeading) findings.push(`${file}: ADR filename and H1 disagree`);
 }
-// doc-pair:begin
-// `file` は walk がこのリポジトリ内を辿って返した相対パスだけを取る。
-for (const file of files.filter((file) => /^(internal|pkg)\/.*\/README\.md$/.test(file))) if (!fs.existsSync(path.join(root, path.dirname(file), "README.ja.md"))) findings.push(`${file}: missing README.ja.md`);
-// doc-pair:end
 if (files.includes(DOC_ROUTES_FILE)) {
   findings.push(
     ...checkDocRoutes(readRepositoryFile(DOC_ROUTES_FILE), new Set(files)).map(
@@ -63,10 +55,4 @@ if (files.includes(DOC_ROUTES_FILE)) {
     ),
   );
 }
-// doc-pair:begin
-findings.push(
-  ...checkTranslations(files).map((finding) => `${finding.file}: ${finding.message}`),
-  ...checkTranslationExclusions(files).map((finding) => `${finding.file}: ${finding.message}`),
-);
-// doc-pair:end
 if (findings.length) { console.error(findings.map((item) => `✘ doc-ref-lint: ${item}`).join("\n")); process.exit(1); }
