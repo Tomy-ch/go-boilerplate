@@ -1,466 +1,230 @@
-# Security Posture
+# セキュリティ姿勢
 
-This document records **how security controls in this repository are reasoned about** — what
-they assume, what each one is actually for, and where each one fires. It does not enumerate
-the tools; that inventory lives in [`.github/workflows/README.md`](../../.github/workflows/README.md)
-and drifts with the code. What is recorded here is the part that should *not* drift.
+このドキュメントは、**このリポジトリのセキュリティ制御をどう考えているか**——何を前提にし、各制御が実際には何のためにあり、どこで発火するのか——を記録します。ツールの一覧ではありません。それは [`.github/workflows/README.md`](../../.github/workflows/README.md) にあり、コードとともに変化します。ここに記すのは、**変化してはいけない側**です。
 
-It covers three surfaces, in the order a risk reaches them: what CI **executes** (build
-inputs), what the application **links** (dependencies), and what the running service **does
-with a request** (application runtime). A fourth — the developer's own machine — sits outside
-all three on purpose, and *The developer endpoint* below records where that boundary falls
-rather than leaving it to be rediscovered. The mechanics of identity verification are a separate
-concern with their own reference — see [auth.md](auth.md); what appears here is only where
-authentication sits in the enforcement model.
+扱う面は 3 つで、リスクが到達する順に並べています。CI が**実行するもの**（ビルド入力）、アプリケーションが**リンクするもの**（依存ライブラリ）、動いているサービスが**リクエストに対して行うこと**（アプリケーション実行時）。4 つ目——開発者自身のマシン——はこの 3 つの外側に意図的に置いてあり、その境界がどこに落ちるかは後述の *開発者エンドポイント* に記録してあります。再発見させないためです。本人確認の機構そのものは別の関心事で専用のリファレンスがあります（[auth.md](auth.md)）。ここに現れるのは、認証が強制モデルのどこに位置するかだけです。
 
-## Threat model
+## 脅威モデル
 
-Every control below is shaped by one assumption, and it is worth stating plainly because the
-shape stops making sense without it:
+以下のすべての制御は 1 つの前提から形が決まっています。この前提を外すと形が意味を失うので、明示しておきます。
 
-> **The people with commit access to this repository are an internal team whose members are known
-> to each other.**
+> **このリポジトリに commit 権限を持つのは、メンバーが互いに顔見知りである内部チームである。**
 
-That assumption buys something specific: **attribution is a usable deterrent**. A control does
-not have to be technically unbypassable to work, as long as a bypass is visible and traceable
-to a person. The organisation supplies the consequence; the repository supplies the evidence.
+この前提が買っているものは具体的です。**attribution が抑止力として機能する**ということ。制御は技術的にバイパス不能である必要がなく、バイパスが可視で個人まで辿れれば成立します。結果は組織が与え、リポジトリは証拠を供給します。
 
-It also means a whole class of attack is deliberately **out of scope**. Someone with commit
-access who intends harm can delete a workflow, edit a lockfile, and change the very check that
-would have caught them — all in the same pull request. No amount of CI defends against that,
-and pretending otherwise produces theatre: checks that look protective, cost maintenance, and
-stop nothing. Where a control cannot prevent, this repository says so and settles for
-detecting.
+同時に、ある種の攻撃を意図的に**対象外**にしています。commit 権限を持つ者が害意を持てば、ワークフローを削除し、lockfile を書き換え、それを捕まえるはずのチェック自体を——すべて同一の pull request で——変更できます。どれだけ CI を積んでもこれは防げません。防げるふりをすると劇場ができあがります。守っているように見え、維持コストを食い、何も止めない checks です。防止できない制御について、本リポジトリはそう明言し、検知に留めます。
 
-A repository that operates under different assumptions — public contributions, untrusted
-committers, regulatory obligation — should revisit this document first, then the controls. Several of them
-would need to become fail-closed.
+前提が異なるリポジトリ——公開コントリビューション、信頼できないコミッタ、規制要件——は、制御より先に本書を見直すべきです。いくつかは fail-closed へ変える必要があります。
 
-## Three kinds of control
+## 制御の 3 分類
 
-Conflating these is the most common way a security setup becomes both annoying and useless.
-Each mechanism here is exactly one of the three, on purpose.
+この 3 つを混同することが、セキュリティ構成を「煩わしく、かつ役に立たない」ものにする最も一般的な経路です。ここにある各機構は、意図的にどれか 1 つだけです。
 
-| Kind | What it does | Failure mode when misapplied |
+| 種別 | 何をするか | 誤用したときの失敗モード |
 | --- | --- | --- |
-| **Enforcement** | Refuses the action. Fail-closed. | Blocks legitimate emergency work; gets disabled |
-| **Detection** | Lets the action through, records it, makes it attributable | Mistaken for protection; nobody reads the record |
-| **Deterrence** | Organisational consequence, informed by detection | Assumed to exist without evidence to act on |
+| **強制** | 操作を拒否する。fail-closed | 正当な緊急対応を塞ぎ、やがて無効化される |
+| **検知** | 通したうえで記録し、attribution 可能にする | 防止と誤認される。記録が誰にも読まれない |
+| **抑止** | 検知を根拠とする組織的な結果 | 行動の根拠となる証拠なしに存在すると仮定される |
 
-Where each mechanism sits:
+各機構の位置づけ:
 
-| Mechanism | Kind | Note |
+| 機構 | 種別 | 備考 |
 | --- | --- | --- |
-| `pin-actions-check` / `pin-images-check` | Enforcement | Fail-closed: an unpinned or unregistered reference is an error |
-| `egress-check` | Enforcement | Fail-closed: an inline `allowed-endpoints` that has drifted from `.github/egress.toml` is an error |
-| Release gates (`trivy-release-gate` / `osv-release-gate`) | Enforcement | Only on PRs into a deploy branch |
-| `dependency-review` | Enforcement | Evaluates only what the PR *adds* |
-| Secret scans (gitleaks / TruffleHog) | Enforcement | A committed secret is never an acceptable trade |
-| `zizmor` | Enforcement | High severity only; exceptions are file-scoped in `.github/zizmor.yml`. Also gates pre-commit, offline audits only |
-| Reporting scanners (`trivy-fs` / `osv-scanner` / `govulncheck` / CodeQL) | Detection | Findings reach code scanning and the PR, but do not block |
-| `harden-runner` (`egress-policy: block`) | Enforcement | Refuses any egress outside the job's `allowed-endpoints`; `trufflehog` alone stays on `audit` |
-| `CODEOWNERS` | Enforcement | The review requirement behind "this decision belongs to a role" |
-| OpenSSF Scorecard | Detection | Posture measurement, no verdict |
+| `pin-actions-check` / `pin-images-check` | 強制 | fail-closed。未固定・未登録はいずれもエラー |
+| `egress-check` | 強制 | fail-closed。インラインの `allowed-endpoints` が `.github/egress.toml` からずれていればエラー |
+| リリースゲート（`trivy-release-gate` / `osv-release-gate`） | 強制 | デプロイ先ブランチ宛 PR でのみ |
+| `dependency-review` | 強制 | PR が**追加する**分だけを評価 |
+| シークレットスキャン（gitleaks / TruffleHog） | 強制 | コミットされたシークレットは許容可能な取引ではない |
+| `zizmor` | 強制 | high severity のみ。例外は `.github/zizmor.yml` にファイル単位で。pre-commit でもオフライン監査のみでゲートする |
+| 報告系スキャナ（`trivy-fs` / `osv-scanner` / `govulncheck` / CodeQL） | 検知 | code scanning と PR には届くが、ブロックしない |
+| `harden-runner`（`egress-policy: block`） | 強制 | ジョブの `allowed-endpoints` の外への egress を拒否する。`trufflehog` だけが `audit` |
+| `CODEOWNERS` | 強制 | 「この判断はこのロールのもの」を支えるレビュー要求 |
+| OpenSSF Scorecard | 検知 | 姿勢の計測であり判定ではない |
 
-## Where a control fires
+## 制御が発火する場所
 
-A control that runs everywhere is a control nobody reads. Each trigger answers a different
-question, and a mechanism belongs where its question is actually being asked:
+どこでも走る制御は、誰も読まない制御です。各トリガーは異なる問いに答えており、機構はその問いが実際に立つ場所に属します。
 
-| Trigger | Question it answers |
+| トリガー | 答えている問い |
 | --- | --- |
-| Pull request | *Does this change make things worse?* |
-| Push to a protected branch | Keeps a code-scanning baseline for branch protection to judge |
-| PR into `develop` / `staging` / `production` | *Is what we are about to promote acceptable?* |
-| Weekly schedule | *Did the world change while the code stood still?* — new CVEs, new queries, newly archived actions |
+| Pull request | *この変更は事態を悪化させるか* |
+| protected branch への push | ブランチ保護が判断材料にする code scanning のベースラインを残す |
+| `develop` / `staging` / `production` 宛 PR | *これから昇格させるものは許容できるか* |
+| 週次スケジュール | *コードが動かない間に世界が変わったか*——新規 CVE、新クエリ、アーカイブ化されたアクション |
 
-The consequence worth internalising: **a scheduled run only exists for a tool whose result can
-change without the code changing.** Everything else is noise on a timer.
+内面化する価値がある帰結: **定期実行は「コードが変わらなくても結果が変わりうるツール」のためだけに存在する。** それ以外はタイマー付きのノイズです。
 
-### Why reporting and gating are split
+### なぜ報告とゲートを分けるのか
 
-An ordinary PR reports; a promotion PR gates. The reasoning is in
-[ADR-0089 (multi-layer-security-scanning)](../adr/0089-multi-layer-security-scanning.md), and reduces to this: a vulnerability
-inherited from the existing dependency tree is not something the current PR introduced, and
-not something its author can fix. Blocking there turns every unrelated change red until an
-upstream fix lands elsewhere. The predictable outcome is that the check gets disabled or
-routinely merged past — which costs more than the gate was worth.
+通常の PR は報告し、昇格 PR がゲートします。論拠は [ADR-0089](../adr/0089-multi-layer-security-scanning.md) にありますが、要点はこうです。既存の依存ツリーから受け継いだ脆弱性は、その PR が持ち込んだものではなく、その PR の作者に直せるものでもありません。そこでブロックすれば、上流の修正が別のどこかで入るまで無関係な変更がすべて赤くなります。予想される帰結は、チェックの無効化か、赤いまま merge する習慣の定着です。どちらもゲートの価値を上回るコストです。
 
-Suppressing the finding instead (`ignore-unfixed`, an ID allowlist) trades one failure for
-another: it also silences the finding at promotion time, which is the one moment it mattered.
-The split keeps the signal in both places and puts the *verdict* where someone can act on it.
+代わりに検出を抑止する（`ignore-unfixed`、ID の allowlist）のは、別の失敗との交換にすぎません。本当に問題になる昇格の瞬間にも黙らせてしまうためです。分離は両方の場所でシグナルを保ち、**判定**を対処できる人のいる場所へ置きます。
 
-## Build inputs
+## ビルド入力
 
-What CI *executes* is a different risk from what the application *links*. Actions and base
-images run with the job's credentials before any of our code does, so they are pinned harder.
+CI が**実行するもの**と、アプリケーションが**リンクするもの**はリスクが異なります。Actions と base image は我々のコードより先に、ジョブの資格情報を持って動くため、より強く固定します。
 
-**A version reference is not an identity.** A tag can be re-pointed and a mutable image tag can
-be rebuilt, so the version stays in the source as human-readable intent while an immutable
-digest lives in a lockfile that is the single source of truth —
-`.github/actions-pin.toml` ([ADR-0090 (sha-pinned-actions)](../adr/0090-sha-pinned-actions.md)) and
-`docker/images-pin.toml`. Both checks are fail-closed, and unpinned versus unregistered are
-distinct errors so neither degrades into the other.
+**バージョン参照は同一性ではない。** タグは付け替えられ、mutable な image タグは再ビルドされます。したがってバージョンは人間が読む意図としてソースに残し、不変の digest を SSOT である lockfile が持ちます——`.github/actions-pin.toml`（[ADR-0090](../adr/0090-sha-pinned-actions.md)）と `docker/images-pin.toml`。どちらの検査も fail-closed で、未固定と未登録は別のエラーとして扱われ、片方がもう片方に化けることはありません。
 
-**The quarantine buys time; it does not verify a date.** An action's age is taken as the *newer*
-of its release publication date and its resolved commit date. Neither alone is trustworthy: a
-release object is bound to the tag *name*, so its publication date survives the tag being
-re-pointed — the exact threat the quarantine exists for — while a commit date can be set to any
-past instant by the committer. Taking the newer of the two means the quarantine holds as long as
-either says the target is new, but it is a delay against automated takeover, not a defence
-against a forged date. Detecting the re-point itself is the lockfile's job: the resolved digest
-changes, the diff is small, and a human reads it.
+**検疫は時間を稼ぐ仕組みであり、日付を検証する仕組みではない。** アクションの経過日数は、リリースの公開日時と解決先 commit の日時のうち**新しい方**を採ります。どちらも単独では信用できません——リリースオブジェクトはタグの*名前*に紐づくため、タグが付け替えられても公開日時は据え置かれます（検疫が想定する脅威そのものです）。一方 commit の日時は committer が任意の過去時点へ設定できます。新しい方を採ることで、どちらか一方でも「新しい」と言う限り検疫が掛かりますが、これは自動化された乗っ取りに対する遅延であって、偽装された日付への防御ではありません。付け替えそのものの検知は lockfile の役割です——解決先の digest が変わり、差分は小さく、人間がそれを読みます。
 
-**A `docker://` step reference belongs to the image lockfile, not the action one.** A workflow may
-run a container directly (`uses: docker://<image>[:<tag>|@<digest>]`), which is a registry
-reference rather than a GitHub repository. `pin-actions` resolves a ref to a commit SHA through
-`git ls-remote`, an operation that has no meaning for a registry, so it treats `docker://` as out
-of scope the same way it treats a local `./` reference — forcing it through would either fabricate
-a repository name or duplicate the digest resolution `docker/images-pin.toml` already owns. So
-`pin-images` scans `.github/workflows/**` and `.github/actions/**` for those steps: a registry
-reference is pinned by the mechanism that resolves digests, wherever it is written. Both tools
-read some of the same files and never the same lines.
+**`docker://` のステップ参照は image 側の lockfile に属し、action 側ではない。** ワークフローはコンテナを直接実行でき（`uses: docker://<image>[:<tag>|@<digest>]`）、これは GitHub のリポジトリではなくレジストリの参照です。`pin-actions` は `git ls-remote` で ref を commit SHA へ解決しますが、その操作はレジストリに対して意味を持ちません。したがってローカル参照（`./`）と同じく対象外として扱います——無理に通せば、存在しないリポジトリ名を組み立てるか、`docker/images-pin.toml` が既に持っている digest 解決を二重に実装することになります。そこで `pin-images` が `.github/workflows/**` と `.github/actions/**` を走査してこのステップを拾います。レジストリの参照は、どこに書かれていても digest を解決する側の機構が固定します。両者は同じファイルを読みますが、掴む行は決して重なりません。
 
-**Out of scope is not the same as unwatched.** Excluding `docker://` from `pin-actions` answers
-only who owns it; on its own it drops the reference out of every net, and a mutable tag nothing
-reports is worse than one nothing pins — the pinning exists precisely to stop a tag from being
-re-pointed under a name that already passed review. A local `./` reference may be dropped
-silently because it resolves inside the repository and no third party can re-point it; a registry
-reference may not. Hence the scan above, and hence a `docker://` reference must carry a tag:
-omitting one means `:latest`, so a reference the strict pattern cannot read fails the check
-instead of passing unpinned.
+**対象外であることと、見張られていないことは違う。** `docker://` を `pin-actions` から外すのは所有者を決めるだけで、それ単体ではどの網からも参照が抜け落ちます。そして**何も報告しない可動タグは、何も固定しない可動タグより悪い**——固定という仕組みは、レビューを通過した名前の下でタグが差し替えられることを止めるために存在するからです。ローカル参照（`./`）を黙って落としてよいのは、リポジトリ内で解決され第三者が付け替えられないためであり、レジストリの参照には当てはまりません。だからこその上記の走査であり、だからこそ `docker://` 参照には tag を必須とします。省略は `:latest` を意味するため、厳格なパターンで読めない参照は、固定されないまま通るのではなく検査を落とします。
 
-## Dependencies
+## 依存ライブラリ
 
-### Three principles that hold for every ecosystem
+### エコシステムを問わず成り立つ 3 原則
 
-**A cooldown window is proportional to upstream's detection latency, not to blast radius.** A
-compromised publish is usually caught and pulled within hours to days; the window exists to sit
-out that interval. Where upstream detects and corrects quickly the window is shorter (npm: 7
-days), and where remediation is slower it is longer (Actions and images: 14 days,
-`PIN_ACTIONS_MIN_AGE_DAYS` / `PIN_IMAGES_MIN_AGE_DAYS`). The number is a policy input derived
-from the ecosystem, not a constant to copy across them.
+**cooldown の窓長は、影響範囲ではなく上流の検知レイテンシに比例する。** 侵害された publish は通常、数時間から数日で発見され取り下げられます。窓はその区間をやり過ごすために存在します。上流の検知・是正が速い側は短く（npm: 7 日）、遅い側は長く（Actions とイメージ: 14 日、`PIN_ACTIONS_MIN_AGE_DAYS` / `PIN_IMAGES_MIN_AGE_DAYS`）。この数字はエコシステムから導かれるポリシーの入力であって、横断してコピーする定数ではありません。
 
-**The window is a proxy, and a proxy can be discharged by direct evidence.** Waiting N days is a
-cheap stand-in for four questions: did the publisher change, does the artifact match its source,
-what actually changed, and did new dependencies appear. When a fix is urgent those can be
-answered directly — transparency-log lookup, artifact-versus-tag comparison, reading the diff,
-checking the manifest for new requirements. Answering them beats counting days. Skipping *both*
-does not.
+**窓は代理指標であり、代理指標は直接証拠で置き換えられる。** N 日待つのは、4 つの問い——発行者は変わったか、成果物はソースと一致するか、実際に何が変わったか、新規依存は増えたか——に対する安価な代用です。修正が急を要するとき、これらは直接答えられます。透明性ログの照合、配布物とタグの突き合わせ、差分の読解、マニフェストの新規要求の確認。答えられるなら日数を数えるより強い。ただし**両方を飛ばす**のは別の話です。
 
-**A prerelease is outside what the window measures.** The window buys time for upstream to notice
-a bad publish and pull it. An alpha or beta is not a publish anyone intends to stand behind: it is
-offered on the understanding that it may change shape or vanish, so surviving N days says nothing
-about it. That makes "it cleared the cooldown" the wrong reason to take one. Prereleases therefore
-stay out of the resolved tree unless a specific need names one, even where a dependency's own range
-permits them — a range like `^1.7.1 || ^2.0.0-alpha.3` says the author will accept either, not that
-the alpha is preferred, and a resolver picking the highest match will take the alpha every time.
-Pinning back to the stable line is an `overrides` entry in the ecosystem's own config, carrying the
-reason.
+**プレリリースは窓が測っている対象の外にある。** 窓は、悪性の publish に上流が気づいて取り下げる
+までの時間を稼ぐものです。alpha や beta は、誰も後ろ盾になるつもりで出した publish ではありません。
+形が変わることも消えることもある前提で提供されるので、N 日生き延びたことは何も語りません。
+つまり「冷却期間を通過した」はプレリリースを採る理由になりません。したがってプレリリースは、
+特定の必要が名指ししない限り解決結果へ入れません。依存自身のレンジが許していても同じです——
+`^1.7.1 || ^2.0.0-alpha.3` のようなレンジは「著者はどちらでも受け入れる」と言っているだけで、
+alpha が望ましいとは言っておらず、最も高い一致を採る解決器は毎回 alpha を選びます。
+安定版の系列へ引き戻すのは、そのエコシステム自身の設定に置く `overrides` の 1 項で、理由を添えます。
 
-### Go modules
+### Go モジュール
 
-The Go ecosystem gives integrity almost for free, and offers nothing at all for freshness. Both
-halves matter.
+Go のエコシステムは完全性をほぼ無償で与え、新しさについては何も与えません。両方が重要です。
 
-**Integrity is strong and on by default.** Every module version's hash is recorded in a public
-transparency log (`sum.golang.org`) and checked against `go.sum` on download; a published
-version is immutable in the proxy and cannot be withdrawn or silently swapped. Nothing in this
-repository weakens that — there is no `GOFLAGS`, `GONOSUMDB`, `GOPRIVATE`, or `GOINSECURE`
-override anywhere. `vendor/` is untracked, so build inputs are re-fetched and re-verified rather
-than trusted from the tree.
+**完全性は強力で、既定で有効。** 各モジュールバージョンのハッシュは公開の透明性ログ（`sum.golang.org`）に記録され、ダウンロード時に `go.sum` と照合されます。公開されたバージョンは proxy 上で不変であり、取り下げも差し替えもできません。本リポジトリはこれを一切弱めていません——`GOFLAGS` / `GONOSUMDB` / `GOPRIVATE` / `GOINSECURE` による上書きはどこにも存在しません。`vendor/` は追跡外なので、ビルド入力はツリーを信用するのではなく毎回取得し直して再検証されます。
 
-**Freshness has no enforcement whatsoever.** There is no `min-release-age` equivalent: `go get`
-will take a version published minutes ago without complaint. This inverts the npm situation in a
-way worth internalising:
+**新しさについては強制が一切ない。** `min-release-age` に相当する仕組みが無く、`go get` は数分前に公開されたバージョンも文句なく取ります。これは npm の状況を反転させており、内面化する価値があります。
 
-| | pnpm | Go modules |
+| | npm | Go モジュール |
 | --- | --- | --- |
-| Cooldown enforced by the toolchain | Yes, on every install | **No** |
-| Can be bypassed | Only by a recorded exclusion | Nothing to bypass |
-| Bypass is visible | Yes, in the reviewed diff | **Nothing to detect** |
-| Remaining control | Review + toolchain refusal | **Review only** |
+| ツールチェーンによる cooldown 強制 | あり（解決時） | **なし** |
+| バイパスできるか | できる（フラグ） | バイパスすべき対象が無い |
+| バイパスが可視か | 可視（レビューされる差分に残る） | **検知すべき対象が無い** |
+| 残る制御 | レビュー + 検知 | **レビューのみ** |
 
-Because review is the only control here, `go.mod` and `go.sum` are in
-[`CODEOWNERS`](../../.github/CODEOWNERS). That entry is load-bearing rather than symmetrical
-bookkeeping: under pnpm a slip cannot reach an install unrecorded, for Go it is not caught at all.
+レビューが唯一の制御であるため、`go.mod` と `go.sum` を [`CODEOWNERS`](../../.github/CODEOWNERS) の対象にしています。これは対称性のための記帳ではなく実効を担うエントリです。npm なら取りこぼしても事後に捕まりますが、Go では捕まりません。
 
-**Reachability filtering cuts both ways.** `govulncheck` reports only vulnerabilities the
-application actually calls, which is what makes it trustworthy enough to act on. The cost is
-coverage: an advisory the Go vulnerability database has not ingested yet produces no finding at
-all, so a clean `govulncheck` says nothing about a GHSA published this week. Breadth is covered
-separately by Trivy FS and OSV-Scanner, which match on version rather than call graph.
+**到達可能性フィルタは諸刃。** `govulncheck` はアプリケーションが実際に呼び出す脆弱性だけを報告し、それが「対処するに値する」信頼性を生みます。代償は網羅性です。Go 脆弱性データベースがまだ取り込んでいない advisory は検出そのものが出ないため、`govulncheck` が緑であることは今週公開された GHSA について何も語りません。網羅側は、呼び出しグラフではなくバージョンで照合する Trivy FS と OSV-Scanner が担います。
 
 ### pnpm
 
-Every Node package resolves with pnpm — `scripts/` and `docs-viewer/` —
-each carrying its own `pnpm-workspace.yaml` and `pnpm-lock.yaml`. The window is 7 days, derived
-the same way as the other ecosystems; pnpm states it in minutes, so `minimumReleaseAge: 10080`.
+Node のパッケージはすべて pnpm で解決します——`scripts/`・`docs-viewer/`——で、それぞれが自分の `pnpm-workspace.yaml` と `pnpm-lock.yaml` を持ちます。窓は 7 日で、導出のしかたは他のエコシステムと同じです。pnpm は分で宣言するので `minimumReleaseAge: 10080` になります。
 
-The window is enforced on **every install**, not only while resolving: pnpm re-verifies the
-entire lockfile against the active policies each time — including `--frozen-lockfile`, the
-replay path CI and image builds use. An in-window entry cannot reach the lockfile and then
-become invisible.
+窓は解決時だけでなく **install のたび**に効きます。pnpm は毎回 lockfile 全体を現行ポリシーで再検証します——CI とイメージビルドが使う再生経路である `--frozen-lockfile` も含めてです。窓内のエントリが lockfile に入ったあと見えなくなる、ということが起こりません。
 
-Verified behaviour, not inference:
+推測ではなく実測した挙動:
 
-| Action | Result |
+| 操作 | 結果 |
 | --- | --- |
-| Resolving an exact in-window version, `minimumReleaseAgeStrict: true` | Rejected (`ERR_PNPM_NO_MATURE_MATCHING_VERSION`), naming the version, its publish time, and the cutoff |
-| Resolving a range whose newest match is in-window | Silently resolves to the newest *aged* match, exit 0 |
-| Resolving an exact in-window version, `minimumReleaseAgeStrict: false` | Succeeds — and pnpm writes the `minimumReleaseAgeExclude` entry into `pnpm-workspace.yaml` itself |
-| `--frozen-lockfile` replaying an in-window entry that no exclusion covers | Rejected (`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`) |
-| Any `pnpm run` after a policy setting changed | Rejected (`ERR_PNPM_VERIFY_DEPS_BEFORE_RUN`) until `pnpm install` re-records the settings |
+| 窓内バージョンを完全固定で解決する（`minimumReleaseAgeStrict: true`） | 拒否（`ERR_PNPM_NO_MATURE_MATCHING_VERSION`）。版・公開時刻・カットオフを名指しする |
+| 最新一致が窓内である範囲を解決する | エラーにならず、**枯れた最新**へ黙って解決。exit 0 |
+| 窓内バージョンを完全固定で解決する（`minimumReleaseAgeStrict: false`） | 成功。しかも pnpm が `minimumReleaseAgeExclude` のエントリを `pnpm-workspace.yaml` へ**自分で書き込む** |
+| どの例外にも該当しない窓内エントリを `--frozen-lockfile` で再生する | 拒否（`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`） |
+| ポリシー設定を変えたあとの `pnpm run` | 拒否（`ERR_PNPM_VERIFY_DEPS_BEFORE_RUN`）。`pnpm install` が設定を記録し直すまで通らない |
 
-Three consequences follow, and together they are why no after-the-fact audit exists: there is
-nothing to detect, because nothing gets through unrecorded.
+帰結が 3 つあり、それらを合わせると事後監査が要らない理由になります。記録されずに通るものが無いので、検知すべき対象がそもそも存在しません。
 
-**An override cannot be silent.** Taking an in-window version requires a
-`minimumReleaseAgeExclude` entry, and without one every later install fails — CI included, since
-its install is the frozen replay. The entry lives in `pnpm-workspace.yaml`, which is tracked and in
-[`CODEOWNERS`](../../.github/CODEOWNERS), so the override is reviewed by construction rather than
-reported by a bot afterwards.
+**解除は不可視にできません。** 窓内バージョンを採るには `minimumReleaseAgeExclude` のエントリが要り、無ければ以降の install がすべて落ちます——CI の install は frozen な再生なので CI も含みます。エントリの置き場である `pnpm-workspace.yaml` は追跡対象で [`CODEOWNERS`](../../.github/CODEOWNERS) に載っているため、解除は事後に bot が報告するのではなく構造上レビューを通ります。
 
-**`minimumReleaseAgeStrict: true` is what keeps the override a human's.** With it off, pnpm writes
-the exclusion itself and carries on — the resolver, not a person, decides to take a fresh publish.
-Strict mode turns that into a stop, on the same reasoning that puts install-shaped commands in
-`ask` rather than letting them run: the point of an override is that someone chose it.
+**解除を人間のものに保っているのが `minimumReleaseAgeStrict: true` です。** これを外すと pnpm は例外を自分で書いて処理を続けます——公開直後の版を採ると決めるのが人ではなく解決器になるということです。strict はそれを停止に変えます。install の形をしたコマンドを実行させずに `ask` へ回すのと同じ理屈で、解除の要点は誰かがそれを選んだことにあります。
 
-**An exclusion is dated debt whose removal date is load-bearing in both directions.** Deleting the
-entry before the window opens breaks every install; once the version ages past the cutoff the entry
-is redundant and the lockfile passes without it. Each entry therefore records what it exempts, why,
-where that package runs, and the date it becomes deletable.
+**例外は期限つきの債務で、その期限は両方向に効きます。** 窓が開く前に消せば install がすべて落ち、版がカットオフを越えて熟成すればエントリは不要になり、無くても lockfile は通ります。したがって各エントリには、何を免除しているか・理由・そのパッケージがどこで動くか・いつ削除できるようになるかを記録します。
 
-An exclusion names `<package>@<version>`, never a bare package name: a name-only exemption would
-excuse every future publish of that package, which is exactly what the window exists to catch. The
-same rule governs `trustPolicyExclude`, whose subject is provenance regression rather than freshness.
+例外は `<パッケージ>@<バージョン>` を名指しし、パッケージ名だけにはしません。名前だけの免除はそのパッケージの将来のすべての公開を見逃すことになり、それこそが窓の捕捉対象だからです。同じ規則は、鮮度ではなく provenance の後退を対象とする `trustPolicyExclude` にも当てはまります。
 
-One operational caveat: the lockfile verification result is cached (`Lockfile passes supply-chain
-policies (verified 1m ago)`), so editing a policy does not always force a re-check on the very next
-install.
+運用上の注意が 1 つ。lockfile の検証結果はキャッシュされる（`Lockfile passes supply-chain policies (verified 1m ago)`）ため、ポリシーを編集しても次の install で必ず再検査が走るとは限りません。
 
 ### PyPI
 
-Python tools are the one exception to `mise.toml` holding every tool version, and the reason is a
-supply-chain one: pinning a PyPI tool's version pins almost nothing, because its dependency tree is
-resolved at install time, so the same pin installs a different tree on different days. Each tool
-therefore declares its version in `python/<tool>.in` and carries the resolved tree — every
-transitive package, with sha256 hashes — in `python/<tool>.txt`
-([ADR-0080 (mise-ssot-drift-gate)](../adr/0080-mise-ssot-drift-gate.md); `python/README.md` has the mechanics). Installs
-are `uv pip install --require-hashes -r <tool>.txt`, which refuses any requirement lacking a version
-or a hash, so integrity verification is part of installing rather than a step that can be skipped.
+Python のツールは、`mise.toml` が全ツールのバージョンを持つという原則に対する唯一の例外で、その理由は供給網側にあります。PyPI ツールはバージョンを固定してもほとんど何も固定できません——依存ツリーが install 時に解決されるため、同じ pin でも日によって別のツリーが入ります。そこで各ツールは、バージョンを `python/<tool>.in` で宣言し、解決結果——推移依存すべてと sha256 ハッシュ——を `python/<tool>.txt` が持ちます（[ADR-0080](../adr/0080-mise-ssot-drift-gate.md)。仕組みは `python/README.md`）。install は常に `uv pip install --require-hashes -r <tool>.txt` で、バージョンかハッシュを欠く要求は拒否されるため、完全性の検証は install の一部であり、飛ばせる別工程ではありません。
 
-**The window is 7 days**, derived the way npm's is — PyPI detects and yanks a malicious publish
-quickly, so the interval to sit out is short. A bump therefore takes the newest release already aged
-past the window, not the newest release; when a pin deliberately trails it says so in a comment, and
-`python/graphify.in` is the PyPI instance of that convention.
+**窓は 7 日**で、導出は npm と同じです。PyPI は悪性の publish を素早く検知して yank するため、やり過ごすべき区間は短い。したがってバージョンの引き上げは、最新のリリースではなく、既に窓を越えて枯れた最新のリリースを採ります。pin が意図的に遅れているときはコメントでそう述べ、`python/graphify.in` がその PyPI 側の実例です。
 
-Freshness has no resolver-side enforcement here — `uv pip compile` will resolve a version published
-minutes ago without complaint. What enforces it is a repository gate, `scripts/tool-cooldown`, and
-unlike npm's audit-only counterpart it **fails the build**.
+新しさについては、ここには解決器側の強制がありません——`uv pip compile` は数分前に公開された版でも黙って解決します。強制するのはリポジトリ側のゲート `scripts/tool-cooldown` で、報告専用である npm 側の対応物と違い、こちらは**ビルドを落とします**。
 
-Verified behaviour, not inference:
+推測ではなく実測した挙動:
 
-| Action | Result |
+| 操作 | 結果 |
 | --- | --- |
-| `gate` (a pull request's diff) adds or raises a declaration inside the window | Non-zero exit, naming the version, its age, and the bypass file |
-| `audit` (full inventory) finds an in-window declaration | Reported as a warning, **exit 0** — it takes stock, it does not block |
-| A `.in` declares a version its `.txt` does not pin | Non-zero exit in **both** `gate` and `audit` |
-| Installing | `--require-hashes` refuses any requirement without a version and a hash |
+| `gate`（PR の差分）が窓内の宣言を追加・引き上げする | 非ゼロ終了。版・経過日数・バイパスファイルを名指しする |
+| `audit`（全件棚卸し）が窓内の宣言を見つける | 警告として報告し **exit 0**。棚卸しであってブロックはしない |
+| `.in` の宣言する版を隣の `.txt` が固定していない | `gate` と `audit` の **両方** で非ゼロ終了 |
+| install 時 | `--require-hashes` がバージョンかハッシュを欠く要求を拒否する |
 
-The third row is what keeps the first two honest. The gate reads the declaration while the installer
-reads the lockfile, so without that cross-check raising a `.in` and forgetting `make py-lock` would
-clear the cooldown for a version that never gets installed, and say nothing about the one that does.
-It is a structural fault rather than a cooldown finding, which is why it fails the inventory command
-too.
+3 行目が上の 2 行を成立させています。ゲートが読むのは宣言、インストーラが読むのは lockfile なので、この突合が無ければ `.in` を上げて `make py-lock` を忘れた状態が、実際には入らない版について cooldown を通し、実際に入る版については何も言わないことになります。これは cooldown の所見ではなく構造上の不具合であり、だからこそ棚卸し側のコマンドでも失敗します。
 
-The `gate` / `audit` split is the same one drawn under *Why reporting and gating are split*: `gate`
-judges what a change introduces and can therefore block, while `audit` inventories what is already
-there, where findings arrive as versions age rather than as anyone's edit.
+`gate` と `audit` の分担は *なぜ報告とゲートを分けるのか* で引いた線と同じです。`gate` は変更が持ち込むものを判定するのでブロックでき、`audit` は既にそこにあるものを棚卸しします。後者の所見は誰かの編集ではなくバージョンが古くなることで発生するからです。
 
-**A bypass is dated debt.** `.github/tool-cooldown-bypass.toml` takes
-`"<key>@<version>" = { expires, issue, reason }`, all three required. An entry that has expired, that
-reaches more than three months out, or that no longer matches any declaration fails `gate` *and*
-`audit`. The expiry arrives without anyone editing a file, which is why the check also runs on a
-schedule instead of only on pull requests.
+**バイパスは期限つきの債務です。** `.github/tool-cooldown-bypass.toml` は `"<key>@<version>" = { expires, issue, reason }` を取り、3 つとも必須です。期限切れ・今日から 3 か月を超える先送り・どの宣言にも対応しないエントリは、`gate` と `audit` の**両方**で失敗します。期限は誰もファイルを編集しなくても訪れるので、この検査は PR だけでなくスケジュールでも走ります。
 
-Two properties make freshness sharper here than for a library:
+ライブラリより新しさが効いてくる性質が 2 つあります。
 
-- **A tool runs with the developer's privileges**, not inside the service. A compromised release
-  executes on a workstation that has repo write access and whatever credentials the shell holds.
-- **Cadence can be high enough that the newest version is never aged.** `graphifyy` published 198
-  releases in its first 117 days, so its pin trails by design; the comment saying so is the steady
-  state rather than a one-off note.
+- **ツールは開発者の権限で動く**——サービスの中ではありません。侵害されたリリースは、リポジトリへの書き込み権と、そのシェルが持つ資格情報を握るワークステーション上で実行されます。
+- **公開頻度が高すぎて、最新版が枯れることがない場合がある。** `graphifyy` は最初の 117 日で 198 リリースを公開しており、pin が遅れるのは設計どおりです。そう述べるコメントは一度きりの注記ではなく定常状態です。
 
-Discharging the window early follows the general rule above — answer the four questions with
-`/supply-chain-triage` instead of counting days. A tool that ships an **agent skill** adds one
-question a library does not have: **what it sends off the machine, and on which commands.** Which
-of `graphifyy`'s commands stay local and which reach an API is recorded in
-[`.claude/README.md`](../../.claude/README.md), which also documents the local subset as the
-default path. Its installer additionally writes user-scope agent config (`~/.claude/skills/`,
-`~/.codex/skills/`, `~/.claude/CLAUDE.md`) — outside the repo, and therefore outside every gate
-described here.
+窓を前倒しで解除する場合は上記の一般則に従います——日数を数える代わりに `/supply-chain-triage` で 4 つの問いに答えます。**エージェントのスキル**を同梱するツールには、ライブラリには無い問いが 1 つ増えます。**何をマシンの外へ送るのか、どのコマンドで送るのか。** `graphifyy` のどのコマンドがローカルに留まり、どれが API へ届くのかは [`.claude/README.md`](../../.claude/README.md) に記録してあり、そこではローカルに閉じる部分集合を既定の経路としても示しています。加えてインストーラはユーザースコープのエージェント設定（`~/.claude/skills/`、`~/.codex/skills/`、`~/.claude/CLAUDE.md`）を書きます。リポジトリの外であり、したがってここに記した全てのゲートの外です。
 
-The same tool also ships subcommands that write **project** scope: `graphify claude install`
-rewrites `CLAUDE.md`, `graphify codex install` rewrites `AGENTS.md`, and `graphify hook install`
-installs git hooks and a merge driver. A skill an agent can invoke therefore has a documented path
-to edit the very files that define what that agent may do, which is why those forms sit in
-`settings.json` rather than in prose alone.
+同じツールは**プロジェクト**スコープを書くサブコマンドも持ちます。`graphify claude install` は `CLAUDE.md` を、`graphify codex install` は `AGENTS.md` を書き換え、`graphify hook install` は git hook と merge driver を入れます。つまりエージェントが起動できるスキルが、そのエージェントに何を許すかを定める当のファイルを編集する経路を、文書化された形で持っています。これらの形を散文だけでなく `settings.json` に置いている理由がこれです。
 
-They sit in **`ask`, not `deny`**, and as **patterns, not names**. `ask` because the goal is that no
-install happens without a human choosing it — not that installs are forbidden; a `deny` also blocks
-the legitimate case, and the user issues "use this tool" and "install this tool" as separate
-instructions (`AGENTS.md`, *Installing Things*). Patterns because the risky thing is the shape
-`<something> install`, not the platform names that happened to exist when the list was written:
-`graphify --help` grew to 20 `<platform> install` subcommands, and an enumeration written against an
-earlier release silently stops covering the new ones. A gate that decays without telling anyone is
-worse than a narrower gate that holds.
+置き場所は **`deny` ではなく `ask`**、書き方は**名前の列挙ではなくパターン**です。`ask` なのは、目的が「インストールを禁じる」ことではなく「人間が選ばない限りインストールが起きない」ことだからです。`deny` は正当なケースも塞ぎますし、利用者は「このツールを使え」と「このツールを入れろ」を別の指示として出します（`AGENTS.md` の *Installing Things*）。パターンなのは、危ういのが `<something> install` という形であって、列挙を書いた時点でたまたま存在したプラットフォーム名ではないからです。`graphify --help` は `<platform> install` のサブコマンドが 20 個まで増えており、以前のリリースに対して書かれた列挙は新しいものを黙って覆わなくなります。誰にも告げずに劣化するゲートは、狭くても保たれるゲートより悪い。
 
-**A pin bump is therefore a review of the CLI surface, not just of the version number.** The window
-and the triage above answer "is this release trustworthy"; they say nothing about "does this release
-expose new commands that write to the repo". Read the new `--help` when raising the pin, and check
-that the patterns still cover what it can write. This is the failure mode that produced the
-enumeration gap in the first place — 198 releases in 117 days, each one able to add a subcommand.
+**したがって pin の引き上げは、バージョン番号だけでなく CLI 表面のレビューでもあります。** 窓と上記のトリアージが答えるのは「このリリースは信用できるか」であって、「このリリースはリポジトリへ書き込む新しいコマンドを増やしていないか」には何も答えません。pin を上げるときは新しい `--help` を読み、パターンが書き込みうる範囲を今も覆っているか確かめてください。そもそも列挙の穴を生んだのがこの失敗モードです——117 日で 198 リリース、そのそれぞれがサブコマンドを増やしえます。
 
-## Application runtime
+## アプリケーション実行時
 
-The controls above protect what enters the repository. These protect what the running service
-does with a request. Three patterns repeat, and they are the part worth carrying forward rather
-than rediscovering.
+ここまでの制御はリポジトリに**入ってくるもの**を守ります。以下は、動いているサービスがリクエストに対して**何をするか**を守ります。3 つのパターンが繰り返し現れ、これが再発見ではなく持ち越す価値のある部分です。
 
-**Deny by default, at every boundary.** The outbound dial guard
-(`internal/observability/http_client_transport.go`, [ADR-0025 (egress-ssrf-guard)](../adr/0025-egress-ssrf-guard.md))
-refuses link-local, multicast, unspecified, and bogon destinations unconditionally, and refuses
-loopback / private / CGNAT unless the caller opted in through the context — with the unset case
-resolving to the safe `false`. Error-detail exposure
-(`internal/controller/httpstack/errorhandler/detail_exposure.go`) is the same shape: route
-mismatch, unresolved operation, empty `operationId`, and not-opted-in all evaluate to *deny*.
-Neither control has a state where forgetting something opens it.
+**すべての境界で既定は拒否。** 外向きの dial ガード（`internal/observability/http_client_transport.go`、[ADR-0025](../adr/0025-egress-ssrf-guard.md)）は link-local / multicast / unspecified / bogon を無条件に拒否し、loopback / private / CGNAT は呼び出し側が context で明示 opt-in しない限り拒否します。未設定は安全側の `false` に解決されます。エラー詳細の露出（`internal/controller/httpstack/errorhandler/detail_exposure.go`）も同じ形で、route 不一致・operation 未解決・`operationId` 空・未 opt-in がすべて**拒否**に評価されます。どちらの制御にも「書き忘れると開く」状態がありません。
 
-**The spec is the authority for the request boundary.** Request validation and authentication are
-enforced at runtime from the OpenAPI document ([ADR-0016 (spec-driven-request-validation)](../adr/0016-spec-driven-request-validation.md)),
-not from hand-written checks in handlers. The direct consequence is that **reviewing the spec
-diff is reviewing the security posture** — an operation that omits its `security` requirement is
-unprotected no matter how the handler is written, and no amount of Go review will surface it.
-Business-validity rules are deliberately *not* here: the domain layer is their sole authority
-([ADR-0017 (validation-value-authority)](../adr/0017-validation-value-authority.md)), so the two never drift into each other.
+**リクエスト境界の権威は spec。** リクエスト検証と認証は、ハンドラに手書きしたチェックではなく OpenAPI ドキュメントから実行時に強制されます（[ADR-0016](../adr/0016-spec-driven-request-validation.md)）。直接の帰結として、**spec の差分をレビューすることがセキュリティ姿勢をレビューすること**になります。`security` 要求を書き忘れた operation はハンドラをどう書こうと無防備で、Go のレビューをいくら重ねても表に出ません。業務妥当性のルールは意図的にここに置きません。判定権限は domain 層が単独で持ちます（[ADR-0017](../adr/0017-validation-value-authority.md)）ので、両者が互いへ滲み出しません。
 
-**Escape hatches are named, narrow, and greppable.** `ContextWithAllowPrivateNetwork`, the
-`details` property that opts an error schema into detail exposure, and `/metrics` as a declared
-auth exception ([ADR-0020 (metrics-endpoint-auth-exception)](../adr/0020-metrics-endpoint-auth-exception.md)) are each a specific
-seam you can search for and enumerate. None of them is a general-purpose flag, because a general
-flag becomes the thing everyone sets.
+**逃げ道は名前付きで狭く、grep できる。** `ContextWithAllowPrivateNetwork`、エラースキーマを詳細露出へ opt-in させる `details` プロパティ、宣言された認証例外としての `/metrics`（[ADR-0020](../adr/0020-metrics-endpoint-auth-exception.md)）は、いずれも検索して列挙できる具体的な seam です。汎用フラグは 1 つもありません。汎用フラグは「全員が立てるもの」になるからです。
 
-Two absences are deliberate rather than pending: there is no in-application rate limiter
-([ADR-0104 (no-in-app-rate-limiter)](../adr/0104-no-in-app-rate-limiter.md)), and responses are not validated against the
-spec ([ADR-0016 (spec-driven-request-validation)](../adr/0016-spec-driven-request-validation.md)). SQL injection is handled
-structurally instead of by review — queries are generated by sqlc and therefore parameterised
-([ADR-0027 (sqlc-type-safe-sql)](../adr/0027-sqlc-type-safe-sql.md)) — and `gosec` runs in the authoritative
-golangci gate ([ADR-0084 (two-layer-golangci-config)](../adr/0084-two-layer-golangci-config.md)).
+2 つの不在は保留ではなく意図です。アプリ内 rate limiter は持たず（[ADR-0104](../adr/0104-no-in-app-rate-limiter.md)）、レスポンスは spec に対して検証しません（[ADR-0016](../adr/0016-spec-driven-request-validation.md)）。SQL インジェクションはレビューではなく構造で扱い、クエリは sqlc 生成のためパラメータ化されます（[ADR-0027](../adr/0027-sqlc-type-safe-sql.md)）。`gosec` は権威ある golangci gate で動きます（[ADR-0084](../adr/0084-two-layer-golangci-config.md)）。
 
-A detail worth copying rather than rediscovering: Go's `netip.Addr.IsPrivate` covers RFC1918 and
-ULA but **not** CGNAT (`100.64.0.0/10`), so the guard carries its own prefix check. Reimplementing
-the dial guard from the standard library alone inherits that hole.
+再発見ではなくコピーする価値のある具体を 1 つ。Go の `netip.Addr.IsPrivate` は RFC1918 と ULA を覆いますが **CGNAT（`100.64.0.0/10`）を含みません**。そのためガードは自前の prefix チェックを持っています。標準ライブラリだけで dial ガードを再実装すると、この穴をそのまま引き継ぎます。
 
-## Secrets
+## シークレット
 
-Two detectors, because a secret scanner can be wrong along two independent axes: it can fail to
-recognise the shape, or it can flag a string that was never a live credential. gitleaks covers
-pattern-shaped detection over the full history; TruffleHog reports only credentials it verified
-against the issuing service.
+検出器を 2 つ持つのは、シークレットスキャナが独立した 2 つの軸で間違いうるからです。形を認識できないことも、有効なクレデンシャルでない文字列を挙げることもあります。gitleaks は履歴全体に対するパターン検出を、TruffleHog は発行元に対して検証済みのクレデンシャルだけを担当します。
 
-One rule overrides convenience everywhere: **a detected secret's value never reaches a job log,
-a PR comment, or an artifact.** Summaries carry detector name, path, line, and commit — never
-the match itself. A leak report that leaks is worse than no report, because it publishes the
-credential to a wider audience than the commit did.
+利便性より優先される規則が 1 つあります。**検出されたシークレットの値は、ジョブログ・PR コメント・artifact のいずれにも到達しない。** サマリが載せるのは detector 名・パス・行・commit であって、一致した文字列そのものではありません。漏らす漏洩レポートは、レポートが無いより悪い。コミットよりも広い聴衆へクレデンシャルを公開するからです。
 
-A third path can leave the repository without passing either detector, and it is worth stating
-because it looks like neither of the two above. The AI feedback loop can post excerpts of session
-transcripts to public feedback issues, and a transcript is not a commit — both detectors scan what
-is committed, so neither of them sees this path at all. What a person types into a session is also
-precisely where a dead API key or a connection string gets pasted in order to ask about it:
-measured over this repository's own history, 2 of 4,093 raw human turns carried a live credential.
+どちらの検出器も通らずにリポジトリの外へ出うる経路がもう 1 つあります。上の 2 つとは形が違うので明記しておきます。AI フィードバックループはセッションのトランスクリプトの抜粋を public な Feedback Issue へ投稿しうるのですが、トランスクリプトはコミットではありません。2 つの検出器はコミット対象を検査するので、この経路はそもそも視界に入りません。しかも人がセッションに打ち込む本文は、動かなくなった API キーや接続文字列を貼って質問する場所そのものです。実測でも、このリポジトリの過去の生発話 4,093 件のうち 2 件に実在のクレデンシャルが含まれていました。
 
-**The path is deliberately kept closed on the normal route.** The loop reads its own transcripts
-locally and publishes only the resulting prose, so the raw turns never leave the machine that
-produced them. They are published in one case: the local reading could not run, and the excerpts
-are the only way a CI runner can see what happened. That trade is why the reading was moved off CI
-in the first place — a runner cannot read a file under the developer's home, so putting the reading
-there forces the publication.
+**通常経路ではこの口は閉じてあります。** ループはトランスクリプトを手元で読み、公開するのは読解結果の散文だけなので、生の発話はそれを生んだマシンから出ません。出るのは 1 つの場合だけ——手元の読解が走らなかったときで、そのとき抜粋は CI のランナーが何が起きたかを見る唯一の手段になります。この取引こそが、読解を CI から手元へ移した理由です。ランナーは利用者のホーム配下のファイルを読めないので、読解をそこへ置くと公開が強制されます。
 
-**Prose is not trusted merely because it is prose.** The reading is done by a model that could, if
-left unconstrained, reach files nobody selected for it — so the local call runs outside the
-repository with its file, shell and network tools denied, and what it returns is filtered again
-before anything is posted. A section matching a secret pattern is dropped whole. Filtering only the
-input would leave the output as an unwatched exit, which is the shape of the two paths above: a
-control that inspects one direction and calls the surface covered.
+**散文であることは、それだけでは信用の理由になりません。** 読解を行うのはモデルであり、放っておけば誰も選んでいないファイルにも手が届きます。そこでローカルの呼び出しはリポジトリの外で走らせ、ファイル・シェル・ネットワークのツールを落とし、返ってきた本文を投稿前にもう一度濾します。秘密らしき形を含む節は節ごと落とします。入力だけを濾せば出力が見張られない出口として残る——それは上の 2 つの経路と同じ形、すなわち片方向だけを検査して面を覆ったつもりになる制御です。
 
-On that fallback the loop filters its own candidates, and that filter is the only gate. Shape-based
-detection cannot be complete, so the rule is to **drop anything suspicious**: a dropped excerpt
-costs one of several candidates for the same window, while a published one cannot be recalled. The
-patterns are in [`scripts/closed-loop/candidates.ts`](../../scripts/closed-loop/candidates.ts).
+その縮退経路では、ループが自前で候補を濾します。関門はそれだけです。形による検出は完全にはできないので、方針は**疑わしきは落とす**。落とした抜粋は同じ窓の別候補で代替できますが、公開してしまった 1 件は取り消せません。パターンは [`scripts/closed-loop/candidates.ts`](../../scripts/closed-loop/candidates.ts) にあります。
 
-## The developer endpoint
+## 開発者エンドポイント
 
-Every control above sits on a path *into* the repository: what CI executes, what the application
-links, what a request reaches. None of them observes a machine a developer already has. That is a
-separate surface, deliberately out of scope — but it is easy to mistake for covered, because the
-controls that leave it open are the ones that look most complete.
+ここまでの制御はすべて、リポジトリへ*入ってくる*経路の上にあります。CI が実行するもの、アプリケーションがリンクするもの、リクエストが到達するもの。開発者の手元に**すでに入っているもの**を見ている制御は 1 つもありません。これは別の面であり、意図的に対象外です。ただし覆われていると誤読しやすい。この穴を開けたまま残している制御が、いちばん万全に見える制御だからです。
 
-**A cooldown window protects a resolved tree, not a machine.** The window keeps a compromised publish
-out of the lockfiles here — npm refuses it while resolving, pnpm re-checks the whole lockfile on
-every install. Neither reaches an install a developer ran somewhere else: a scratch project, a global
-CLI, a package pulled once to try it. That machine is exposed, and no lockfile here says so. The same
-holds, more sharply, for everything that never reaches a lockfile
-at all: editor and browser extensions, agent skills, and MCP server configs are user-scope by
-construction (`~/.claude.json`, `~/.gemini/settings.json`, `~/.agents/.skill-lock.json`) — the shape
-already noted above for a tool's user-scope installer, generalised to everything installed that way.
+**クールダウン窓が守るのは解決済みのツリーであって、マシンではありません。** 窓はここにある lockfile から汚染された公開版を締め出します——npm は解決時に拒否し、pnpm は install のたびに lockfile 全体を再検証します。どちらも、開発者が別のどこかで実行した install には届きません。使い捨てのプロジェクト、グローバルに入れた CLI、試すために一度だけ引いたパッケージ。そのマシンは露出しており、ここのどの lockfile もそれを語りません。そもそも lockfile に到達しないものについては、これがより鋭く効きます。エディタ拡張・ブラウザ拡張・エージェントスキル・MCP サーバー設定は構造上ユーザースコープにあり（`~/.claude.json` / `~/.gemini/settings.json` / `~/.agents/.skill-lock.json`）、これは前述したツールのユーザースコープ installer と同じ形を、その経路で入るすべてに一般化したものです。
 
-**The question is about state, not behaviour.** When an advisory names a package and a version, what
-matters is which machines match *right now*. An SBOM answers what shipped and endpoint telemetry
-answers what ran; neither answers what is sitting on disk. Answering it takes an inventory collected
-from the endpoint plus a catalog of what to match against — and without the catalog, an inventory is
-a census rather than an exposure check.
+**問いは振る舞いではなく状態を問うています。** アドバイザリがパッケージとバージョンを名指ししたとき、知りたいのは**いまどのマシンが一致するか**です。SBOM は何を出荷したかに、エンドポイントテレメトリは何が動いたかに答えますが、ディスク上に何が置かれているかにはどちらも答えません。答えるにはエンドポイントから収集したインベントリと、照合対象のカタログが要ります。カタログが無ければ、それは露出照合ではなく単なる棚卸しです。
 
-**It is not a repository control, and could not be made into one.** What is protected is the
-developer's machine, not this repository, so the decision to inventory one belongs to whoever owns
-it. Wiring a collector into `mise.toml` and `install-tools` would put it on every developer's host,
-on machines whose owner never chose to be inventoried, and the Toolchain Execution Rules could not
-carry it either: the
-tool-runner containers cannot see the host state that is the entire subject. The repository's part
-is to record the gap; closing it is the operating organisation's call.
+**これはリポジトリの制御ではなく、制御にすることもできません。** 守る対象は開発者のマシンであってこのリポジトリではないため、マシンを棚卸しするかどうかの判断はそのマシンの持ち主に属します。収集ツールを `mise.toml` と `install-tools` へ配線すれば、棚卸しされることを選んでいない持ち主のマシンを含め、すべての開発者のホストにそれが入ります。Toolchain Execution Rules にも載りません。tool-runner のコンテナからは、主題そのものであるホストの状態が見えないからです。リポジトリの担当は穴を記録することまでで、塞ぐかどうかは運用組織の判断です。
 
-**If it is closed, `perplexityai/bumblebee` is the candidate examined** — Apache-2.0, a single static
-Go binary with no non-stdlib dependencies. It reads lockfiles, package-manager install metadata,
-extension manifests and MCP JSON configs, and executes no package manager, so a scan cannot become
-the incident it was meant to find. It has no configuration file: profile, roots, exposure catalog,
-cadence (`launchd` / `cron`) and output are supplied per run and live outside the repository — so
-taking it is a decision about a run, made when an advisory lands, rather than a decision about this
-repository's toolchain.
+**塞ぐ場合の候補として検討したのは `perplexityai/bumblebee`** です。Apache-2.0、非 stdlib 依存ゼロの単一静的 Go バイナリ。lockfile・パッケージマネージャの install メタデータ・拡張機能の manifest・MCP の JSON 設定を読むだけで、パッケージマネージャを一切実行しないため、スキャンそのものが探すはずだったインシデントに化けることがありません。設定ファイルは持たず、プロファイル・走査ルート・exposure catalog・実行周期（`launchd` / `cron`）・出力先はすべて実行のたびに与えるもので、リポジトリの外に置かれます。つまり採否はアドバイザリが出たときの実行 1 回ごとの判断であって、このリポジトリのツールチェーンの判断ではありません。
 
-## Honest limits
+## 正直な限界
 
-Worth stating so nobody builds on a stronger assumption than the controls support:
+制御が支えられる以上に強い前提を誰かが置かないよう、明記します。
 
-- `harden-runner` runs in `block` mode, and an allowlist is only as good as its accuracy. The
-  lists are inferred from what each job does rather than measured, and they are generated from
-  the SSOT in `.github/egress.toml` by capability class, so a class is wider than the narrowest
-  job in it. One job — `trufflehog` — stays on `audit` deliberately: it verifies a candidate
-  credential against an open-ended set of issuers, so a missing endpoint there would turn a real
-  leak into an unverified result instead of a red build.
-- Release gates only block if registered as **required status checks**. Without that branch
-  protection rule they report and nothing more, and the reporting/gating split degrades to
-  reporting everywhere.
-- `CODEOWNERS` only enforces under the **"Require review from Code Owners"** rule; otherwise it
-  merely auto-requests a reviewer.
-- Detection reaches a PR comment and a run annotation. Both are passive, and the annotation
-  disappears with the run's retention. Routing findings to a channel the owning role actually
-  watches is tracked separately.
+- `harden-runner` は `block` モードで動きます。allowlist の価値はその正確さ以上にはなりません。各一覧は実測ではなく各ジョブの動作から導いたもので、`.github/egress.toml` の SSOT から能力クラス単位で生成されるため、クラスはその中で最も狭いジョブより広くなります。`trufflehog` の 1 ジョブだけは意図的に `audit` のままです。上限のない発行元集合へ候補資格情報を問い合わせて検証するため、ここでのエンドポイント漏れはビルドを赤くせず、本物の漏洩を「未検証」に変えてしまうからです。
+- リリースゲートは **required status check** として登録されて初めてブロックします。そのブランチ保護規則が無ければ報告するだけで、報告／ゲートの分離はどこでも報告のみに退化します。
+- `CODEOWNERS` は **「Require review from Code Owners」** 規則の下でのみ強制されます。無ければレビュアーの自動要求に留まります。
+- 検知が届くのは PR コメントと run のアノテーションです。どちらも受動的で、アノテーションは run の保持期限とともに消えます。所管ロールが実際に見ているチャンネルへ流すことは別途追跡しています。
 
-## Related
+## 関連
 
-- [ADR-0089 (multi-layer-security-scanning)](../adr/0089-multi-layer-security-scanning.md) — layered scanning, reporting/gating split, runner hardening
-- [ADR-0090 (sha-pinned-actions)](../adr/0090-sha-pinned-actions.md) — SHA-pinned Actions and the supply-chain quarantine
-- [ADR-0101 (release-image-supply-chain)](../adr/0101-release-image-supply-chain.md) — release-image integrity (signing, provenance, SBOM)
-- [ADR-0084 (two-layer-golangci-config)](../adr/0084-two-layer-golangci-config.md) — `gosec` as an in-process check during static analysis
-- [`.github/workflows/README.md`](../../.github/workflows/README.md) — the workflow inventory and full trigger matrix
+- [ADR-0089](../adr/0089-multi-layer-security-scanning.md) — 層構成スキャン、報告／ゲートの分離、ランナーのハードニング
+- [ADR-0090](../adr/0090-sha-pinned-actions.md) — Actions の SHA 固定と供給網の隔離期間
+- [ADR-0101](../adr/0101-release-image-supply-chain.md) — リリースイメージの完全性（署名・provenance・SBOM）
+- [ADR-0084](../adr/0084-two-layer-golangci-config.md) — 静的解析時のインプロセスチェックとしての `gosec`
+- [`.github/workflows/README.md`](../../.github/workflows/README.md) — ワークフロー一覧と完全なトリガーマトリクス

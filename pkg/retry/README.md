@@ -1,41 +1,40 @@
 # retry
 
-A bounded-retry behavior layer that *consumes* a failure classification: `classify → bounded attempts → backoff + full jitter → deadline-aware`. Implemented once and shared by any caller that classifies its own failures as retryable.
+失敗分類を*消費する*有限リトライの行動層を提供します。`classify → bounded attempts → backoff + full jitter → deadline-aware` を 1 度だけ実装し、自身の失敗をリトライ可能と分類する任意の呼び出し側が共有します。
 
-## Why this package
+## このパッケージの意図
 
-`pkg/backoff` computes wait durations as a pure function of the attempt count, free of clock or randomness. The full-jitter step needs `math/rand/v2`, so it lives here instead — keeping `backoff` pure while the randomness dependency is confined to `retry`.
+`pkg/backoff` は待機時間を attempt 回数のみから算出する純関数で、時刻や乱数に依存しません。full jitter の付与には `math/rand/v2` が必要なため、その責務を本パッケージへ閉じます。これにより `backoff` の純粋性を保ちつつ、乱数依存を `retry` 側に局所化します。
 
-`pkg/` packages are mutually independent (the only permitted pkg → pkg dependency is `pkg/xerrors`), so `Policy.Backoff` is taken as a **function value** (`attempt → base duration`) rather than a `backoff.Exponential`; the caller (in `internal/`) wires `backoff.Exponential.Duration` or any equivalent.
+`pkg/` 配下は相互独立（pkg → pkg の import は `pkg/xerrors` のみ例外的に許可）のため、`Policy.Backoff` は `backoff.Exponential` 型ではなく**関数値**（`attempt → 基本待機時間`）で受け取り、呼び出し側（`internal/`）が `backoff.Exponential.Duration` 等を結線します。
 
 ## API
 
-|Symbol|Description|
+|シンボル|説明|
 |---|---|
-|`Do(ctx, sleeper, policy, isRetryable, fn)`|Run `fn` with bounded retries; retry while `isRetryable(err)` holds, sleeping `policy.Backoff` (+ full jitter) between attempts|
-|`Full(d)`|Return a uniform random duration in `[0, d]` (full jitter); `0` when `d <= 0`|
-|`Policy` (struct)|`MaxAttempts` + `Backoff` (a `func(attempt int) time.Duration`; `nil` means no wait)|
-|`Sleeper` (interface)|`Sleep(ctx, d) error` — wait abstraction, satisfied structurally by any caller's own sleeper type|
+|`Do(ctx, sleeper, policy, isRetryable, fn)`|`fn` を有限リトライで実行。`isRetryable(err)` が真の間、試行ごとに `policy.Backoff`（+ full jitter）だけ待機して再試行|
+|`Full(d)`|`[0, d]` の一様乱数（full jitter）を返す。`d <= 0` なら `0`|
+|`Policy`（構造体）|`MaxAttempts` ＋ `Backoff`（`func(attempt int) time.Duration`。`nil` は待機なし）|
+|`Sleeper`（インターフェース）|`Sleep(ctx, d) error` — 待機の抽象。呼び出し側が持つ sleeper 型が構造的に充足|
 
-## Notes
+## 補足
 
-- `Do` runs `fn` at least once (`MaxAttempts < 1` is treated as `1`) and returns the last observed error (`nil` on success).
-- `isRetryable` is only consulted for a non-nil `fn` error.
-- When `sleeper.Sleep` returns an error (ctx canceled / deadline), `Do` returns the **preceding `fn` error**, not the sleep error — the original retryable failure is surfaced to the caller.
-- `Sleeper` is defined locally so `pkg/` stays free of `internal/` dependencies; a caller's own sleeper type satisfies it structurally without importing this package's interface.
+- `Do` は `fn` を最低 1 回実行し（`MaxAttempts < 1` は `1` 扱い）、最後に観測した error（成功時は `nil`）を返します。
+- `isRetryable` は `fn` の返した非 nil error に対してのみ呼ばれます。
+- `sleeper.Sleep` が error を返した（ctx 打ち切り / deadline）場合、`Do` は sleep の error ではなく**直前の `fn` の error** を返します。リトライ対象だった元の失敗を呼び出し側へ伝えるためです。
+- `Sleeper` は `pkg/` が `internal/` に依存しないようローカル定義です。呼び出し側が持つ sleeper 型が、本パッケージのインターフェースを import せずに構造的に充足します。
 
-## Wraps
+## ラップ対象
 
-Standard library `context`, `time`, and `math/rand/v2`. No other package dependencies.
+標準ライブラリ `context` / `time` / `math/rand/v2`。他パッケージへの依存はありません。
 
-## Test coverage exception
+## テストカバレッジ例外
 
-The following uncovered branch is exempt from the near-100% expectation as **structurally
-unreachable**; no contrived test or extra implementation is added to reach it:
+以下の未被覆分岐は**構造上到達不能**として、ほぼ 100% の被覆期待の対象外とする。これを塗る
+ための contrived テストや追加実装は行わない:
 
-- `retry.go` `Do` — the trailing `return err` after the attempt loop. The final attempt
-  always returns inside the loop (`attempt == attempts`), so the trailing return exists
-  only to satisfy the compiler and is never executed.
+- `retry.go` `Do` — 試行ループ後の末尾 `return err`。最終試行は必ずループ内で return する
+  （`attempt == attempts`）ため、末尾 return はコンパイラ充足のためだけに存在し実行されない。
 
-**Governance:** coverage exceptions are **not added at will** — a new entry requires an
-appropriate approver's (e.g. architect) sign-off.
+**ガバナンス:** カバレッジ例外は**任意に追加しない**。新規エントリはアーキテクト等の適切な
+承認者の承認を要する。

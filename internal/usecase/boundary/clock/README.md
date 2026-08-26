@@ -1,6 +1,6 @@
 # clock
 
-Provides a `Clock` interface for retrieving the current time and a `Sleeper` interface for waiting.
+現在時刻を取得する `Clock` インターフェースと、待機のための `Sleeper` インターフェースを提供します。
 
 ```go
 type Clock interface {
@@ -12,13 +12,13 @@ type Sleeper interface {
 }
 ```
 
-## Why Abstract?
+## なぜ抽象化するのか
 
-Direct `time.Now()` access from Domain / Usecase is prohibited; see
-[Time Handling Policy](../../README.md#time-handling-policy) for the rationale.
+Domain / Usecase から `time.Now()` へ直接アクセスすることは禁止されています。理由は
+[Time Handling Policy](../../README.md#time-handling-policy) を参照してください。
 
-- `Sleeper` makes backoff waits injectable so retries can be tested without real sleeping. Consumers: the resilient HTTP client (`internal/infrastructure/httpclient`) and the transaction manager's retry (`internal/infrastructure/rdb/driver`).
+- `Sleeper` により backoff の待機を注入可能にし、実時間 sleep なしでリトライをテストできる。利用者: レジリエント HTTP クライアント（`internal/infrastructure/httpclient`）とトランザクションマネージャのリトライ（`internal/infrastructure/rdb/driver`）。
 
-## Implementation
+## 実装
 
-`internal/infrastructure/system/` provides the concrete implementations that call `time.Now()` / `time.NewTimer` (ctx-aware).
+`internal/infrastructure/system/` に `time.Now()` / `time.NewTimer`（ctx 対応）を呼ぶ具体実装が配置されています。

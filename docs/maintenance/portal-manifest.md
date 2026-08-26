@@ -1,106 +1,104 @@
-# Documentation Portal — Manifest Contract
+# ドキュメントポータル — Manifest 契約
 
-The documentation portal at `docs/portal/` is driven by an explicit **contract**: the visible structure (which groups exist, what each section is called, in what order things appear, which links go in the sidebar Reference block) is defined in `docs/portal/manifest.yaml`, and the build scripts under `scripts/` only **construct** the portal data by reading that manifest plus scanning the documentation filesystem.
+`docs/portal/` のドキュメントポータルは明確な **契約** に従って動いています。すなわち、目に見える構造 (どのグループが存在し、各セクションを何と呼び、どの順序で並べ、サイドバーの Reference ブロックに何を出すか) は `docs/portal/manifest.yaml` で定義され、`scripts/` 配下のビルドスクリプトはその manifest を読み、加えてドキュメントのファイルシステムを走査してポータル用データを **構築する** だけです。
 
 ```txt
-manifest.yaml   ← structure   (what goes where, how it is labeled)
-scripts/portal/*.ts ← construction (how it gets assembled)
+manifest.yaml   ← 構造定義   (どこに何を、どんなラベルで)
+scripts/portal/*.ts ← 構築       (それをどう組み立てるか)
 ```
 
-This document is the single reference for that contract. When you add, move, rename, or remove documentation, the change you actually need to make almost always lives in `manifest.yaml`.
+このドキュメントは、その契約の単一リファレンスです。ドキュメントを追加・移動・改名・削除するとき、実際に編集すべき場所はほとんどの場合 `manifest.yaml` です。
 
-## 1. Files involved
+## 1. 関連ファイル
 
-| File | Role |
+| ファイル | 役割 |
 | --- | --- |
-| `docs/portal/manifest.yaml` | Single source of truth for portal structure |
-| `docs-viewer/src/**` | Source of the React viewer (reads `docs.json`). Built with Vite |
-| `docs/portal/index.html` + `dist/**` | **Generated.** Build output of `docs-viewer` (`make gen-portal-build`). Both are gitignored and rebuilt on deploy |
-| `docs/portal/docs.json` | **Generated.** Do not edit. Output of `gen-docs-json.ts` |
-| `docs/portal/guides/**` | **Generated.** Do not edit. Output of `gen-portal-docs.ts` (flat copies of source READMEs) |
-| `scripts/portal/gen-portal-docs.ts` | Copies each manifest entry's `src` to `dst` under `docs/portal/guides/` |
-| `scripts/portal/gen-docs-json.ts` | Reads manifest + scans `docs/` and writes `docs/portal/docs.json` |
+| `docs/portal/manifest.yaml` | ポータル構造の単一源泉 |
+| `docs-viewer/src/**` | React ビューアーのソース（`docs.json` を読む）。Vite でビルドする |
+| `docs/portal/index.html` + `dist/**` | **生成物**。`docs-viewer` のビルド出力（`make gen-portal-build`）。どちらも gitignore 対象で、デプロイのたびに再生成される |
+| `docs/portal/docs.json` | **生成物**。直接編集禁止 (`gen-docs-json.ts` の出力) |
+| `docs/portal/guides/**` | **生成物**。直接編集禁止 (`gen-portal-docs.ts` による README のフラットコピー) |
+| `scripts/portal/gen-portal-docs.ts` | manifest の各エントリ `src` を `docs/portal/guides/` 配下の `dst` へコピー |
+| `scripts/portal/gen-docs-json.ts` | manifest 読み込み + `docs/` 走査により `docs/portal/docs.json` を出力 |
 
-## 2. Manifest schema
+## 2. manifest スキーマ
 
-`docs/portal/manifest.yaml` has two parts:
+`docs/portal/manifest.yaml` は 2 つの部分から成ります。
 
-1. A top-level `meta:` block that defines the **visible structure**.
-2. Top-level **section entries** whose key is the section id and whose value is a list of `{src, dst}` copy pairs.
+1. ポータルの **可視構造** を定義するトップレベルの `meta:` ブロック。
+2. キーが section id、値が `{src, dst}` コピーペアの配列となる、トップレベル **セクションエントリ**。
 
-### 2.1. The `meta:` block
+### 2.1. `meta:` ブロック
 
 ```yaml
 meta:
-  groups:           # ordered list of top-level pages in the sidebar
-    - title: "<Page title>"
-      sections: [<section_id>, <section_id>, ...]   # rendered in this order on the page
+  groups:           # サイドバー上のトップレベルページ群を順序付きで定義
+    - title: "<ページタイトル>"
+      sections: [<section_id>, <section_id>, ...]   # この順序でページ内にレンダリング
 
-  subgroups:        # optional: split a section into role-based subgroupings
+  subgroups:        # 任意: セクションを役割サブグループに分割
     <section_id>:
-      - title: "<Subgroup title>"
-        items: [<guide_id>, <guide_id>, ...]        # guide_id = guides/<id>.md without extension
+      - title: "<サブグループ名>"
+        items: [<guide_id>, <guide_id>, ...]        # guide_id = guides/<id>.md から拡張子を除いた basename
 
-  section_titles:   # optional: override the auto-titled section display name
-    <section_id>: "<Display name>"
+  section_titles:   # 任意: 自動派生されるセクション表示名を上書き
+    <section_id>: "<表示名>"
 
-  reference_links:  # ordered list of section ids whose top item appears in the sidebar Reference block
+  reference_links:  # サイドバー Reference ブロックに代表 item を出す section id 群 (順序維持)
     - <section_id>
     - <section_id>
 ```
 
-| Key | Purpose | Required |
+| キー | 用途 | 必須 |
 | --- | --- | --- |
-| `meta.groups` | Defines which top-level pages exist and which sections each page contains. The order here is the order in the sidebar. | Yes |
-| `meta.subgroups` | Subdivides a section into role-based subgroups (e.g., `Layer Top / HTTP Stack / Error Response`). Items not listed fall into an auto-appended `Other` subgroup. | Optional |
-| `meta.section_titles` | Overrides the default section heading (which is auto-derived from the section id). Use this to fix capitalization (`DI`, `CLI`, `DB Schema`, `OpenAPI Reference`, ...) or to give a section a friendlier name. | Optional |
-| `meta.reference_links` | Section ids whose **single representative item** appears as a persistent quick link in the sidebar. Used for generated HTML (godoc, db-schema, coverage, openapi). These sections are pulled out of the normal group/page flow. | Optional |
+| `meta.groups` | どのトップレベルページが存在し、各ページにどの section が属するかを定義。ここの順序がサイドバーの並び順になる。 | 必須 |
+| `meta.subgroups` | セクションを役割サブグループ (例: `Layer Top / HTTP Stack / Error Response`) に細分化。未掲載 item は末尾に自動追加される `Other` サブグループに集約される。 | 任意 |
+| `meta.section_titles` | section id から自動派生されるデフォルト見出しを上書き。略語の整形 (`DI`, `CLI`, `DB Schema`, `OpenAPI Reference` ...) や、より親しみやすい名前を与えるのに使う。 | 任意 |
+| `meta.reference_links` | セクションの **代表 item 1 個** をサイドバーに常設クイックリンクとして出す section id 群。生成 HTML (godoc / db-schema / coverage / openapi) 用。これらのセクションは通常のグループ/ページ動線からは除外される。 | 任意 |
 
-### 2.2. Section entries
+### 2.2. セクションエントリ
 
-Every key at the top level **other than `meta`** is a section id. The value is a list of copy pairs:
+`meta` 以外のトップレベルキーはすべて section id です。値はコピーペア配列です。
 
 ```yaml
 <section_id>:
   # English
-  - src: <source path in repo>
+  - src: <リポジトリ内のソースパス>
     dst: docs/portal/guides/<flat-name>.md
-  - src: <another EN source>
+  - src: <別の EN ソース>
     dst: docs/portal/guides/<another>.md
   # Japanese
-  - src: <source path>.ja.md
-    dst: docs/portal/guides/ja/<flat-name>.ja.md
+  - src: <ソースパス>.md
+    dst: docs/portal/guides/ja/<flat-name>.md
   - ...
 ```
 
-`src` is the canonical README in the repo. `dst` is where the build copies it to under `docs/portal/guides/`. The viewer fetches the `dst` path at runtime; the `src` path is shown as the small "where this came from" line on each card.
+`src` はリポジトリ内の正本 README、`dst` はビルドで `docs/portal/guides/` 配下にコピーされるパスです。ビューアーは実行時に `dst` をフェッチし、カードの小さな出所表示には `src` が使われます。
 
-**Naming rule for `dst`**: the basename (without `.md` / `.ja.md`) is the **guide id** that `meta.subgroups` references. Keep guide ids unique within the portal.
+**`dst` の命名規則**: 拡張子 (`.md` / `.ja.md`) を除いた basename が `meta.subgroups` から参照される **guide id** になります。guide id はポータル全体で一意にしてください。
 
-## 3. Filesystem auto-discovery (TypeScript construction side)
+## 3. ファイルシステム auto-discovery (TypeScript 構築側)
 
-For documentation that lives under `docs/` directly (rather than as `**/README.md` in a code package), `gen-docs-json.ts` discovers files by scanning the filesystem. The placement and titles for these discovered sections still come from `meta:` — only the **enumeration of files** is TypeScript-side.
+`docs/` 直下のドキュメント (コードパッケージの `**/README.md` ではなく、`docs/` 内に直接置かれる Markdown) は `gen-docs-json.ts` がファイルシステムを走査して検出します。発見されたセクションでも、配置と表示名は依然 `meta:` から来ます。**ファイルの列挙だけ**が TypeScript 側です。
 
-| Filesystem location | Becomes section | Notes |
+| ファイルシステム位置 | 作られる section | 補足 |
 | --- | --- | --- |
-| `docs/*.md` | section id `architecture` | Root-level architecture docs (rules / decisions / development-flow / ...) |
-| `docs/*.ja.md` | items of section `architecture` (lang: ja) | Japanese counterparts |
-| `docs/<dir>/*.md` | section id `<dir>` | Auto for any subdir; e.g. `docs/maintenance/*.md` → section `maintenance` |
-| `docs/<dir>/*.ja.md` | items of section `<dir>` (lang: ja) | Japanese counterparts |
-| `docs/<dir>/index.html` | section id `<dir>`, single HTML item (lang: all) | For generated reference sites (godoc, coverage, ...) |
+| `docs/*.md` | section id `architecture` | ルート直下のアーキ系ドキュメント (rules / decisions / development-flow / ...) |
+| `docs/<dir>/*.md` | section id `<dir>` | 任意のサブディレクトリで自動。例: `docs/maintenance/*.md` → section `maintenance` |
+| `docs/<dir>/index.html` | section id `<dir>`、HTML item 1 個 (lang: all) | 生成リファレンスサイト (godoc / coverage / ...) 用 |
 
-To control where an auto-discovered section appears in the portal, reference its id from `meta.groups` (for placement) and optionally `meta.section_titles` (for display name) / `meta.subgroups` (for subdivision) / `meta.reference_links` (to pull it out as a quick link).
+auto-discovery で見つかったセクションの配置をコントロールするには、`meta.groups` から id を参照してください (配置)。必要に応じて `meta.section_titles` (表示名) / `meta.subgroups` (細分化) / `meta.reference_links` (クイックリンク化) も使えます。
 
-A section id that is referenced from `meta:` but has no matching manifest entry **and** no matching filesystem location will be skipped with a `⚠` warning. A section id discovered from the filesystem that is not referenced from `meta.groups` (and not in `meta.reference_links`) is collected into an `Uncategorized` group at the end as a fallback.
+`meta:` から参照されているが対応する manifest エントリも FS 位置も無い section id は `⚠` 警告でスキップされます。FS から発見されたが `meta.groups` 未掲載 (かつ `meta.reference_links` にも無い) 場合は、フォールバックとして末尾の `Uncategorized` グループに集約されます。
 
-## 4. How to make common changes
+## 4. よくある変更パターン
 
-### 4.1. Add a new README to the portal
+### 4.1. 新しい README をポータルに載せる
 
-Most code-package READMEs (`internal/<layer>/<sub>/README.md`, `pkg/<sub>/README.md`, ...) are surfaced this way.
+コードパッケージの README (`internal/<layer>/<sub>/README.md`, `pkg/<sub>/README.md` ...) はこの方法で表示されます。
 
-1. Pick the section it belongs to (e.g., `controller`, `infrastructure`).
-2. Add an EN + JA pair under that section in `manifest.yaml`:
+1. 所属する section を決める (例: `controller`, `infrastructure`)。
+2. その section に EN + JA ペアを追加する。
 
    ```yaml
    controller:
@@ -108,94 +106,94 @@ Most code-package READMEs (`internal/<layer>/<sub>/README.md`, `pkg/<sub>/README
      - src: internal/controller/<new-package>/README.md
        dst: docs/portal/guides/controller-<new-package>.md
      # Japanese
-     - src: internal/controller/<new-package>/README.ja.md
-       dst: docs/portal/guides/ja/controller-<new-package>.ja.md
+     - src: internal/controller/<new-package>/README.md
+       dst: docs/portal/guides/ja/controller-<new-package>.md
    ```
 
-3. If the section uses `meta.subgroups`, also list the new guide id (`controller-<new-package>`) in the appropriate subgroup — otherwise it lands in `Other`.
-4. Run `make gen-portal-docs && make gen-docs-json`.
+3. その section が `meta.subgroups` を使っているなら、新しい guide id (`controller-<new-package>`) を該当サブグループの `items:` に追加する。書かなければ `Other` に入る。
+4. `make gen-portal-docs && make gen-docs-json` を実行。
 
-### 4.2. Add a new section
+### 4.2. 新しいセクションを追加する
 
-Two paths depending on where the source lives:
+ソースの置き場所で 2 パターン。
 
-- **Source is a README in code** (`internal/<x>/README.md` etc.) → add the section as a new top-level key in `manifest.yaml`, then add the section id to `meta.groups`.
-- **Source is a markdown file under `docs/<new-dir>/`** → just put the file there; auto-discovery picks it up. Add `<new-dir>` to `meta.groups` to control where it appears, and optionally to `meta.section_titles` to give it a nicer name.
+- **ソースがコードの README** (`internal/<x>/README.md` 等) → 新規 section を `manifest.yaml` のトップレベルキーとして追加し、`meta.groups` の該当グループに section id を加える。
+- **ソースが `docs/<new-dir>/` 配下の Markdown** → ファイルを置くだけで auto-discovery が拾う。`meta.groups` に `<new-dir>` を追加して配置を決め、必要なら `meta.section_titles` で見出しを整える。
 
-### 4.3. Move a doc to a different group
+### 4.3. ドキュメントを別グループへ移す
 
-Edit `meta.groups` only. The section id stays the same; just move it from one group's `sections:` list to another's.
+`meta.groups` のみ編集する。section id は変わらず、片方の `sections:` リストから抜いてもう片方に入れるだけ。
 
-### 4.4. Rename a section heading
+### 4.4. セクション見出しを改名する
 
-Add or change `meta.section_titles.<section_id>`. The id itself does **not** change.
+`meta.section_titles.<section_id>` を追加・変更する。id 自体は変更しない。
 
-### 4.5. Subdivide a hot section by role
+### 4.5. 肥大セクションを役割で分割する
 
-Add an entry under `meta.subgroups`:
+`meta.subgroups` にエントリを追加する。
 
 ```yaml
 meta:
   subgroups:
     <section_id>:
-      - title: "<Role A>"
+      - title: "<役割 A>"
         items: [<guide_id>, <guide_id>]
-      - title: "<Role B>"
+      - title: "<役割 B>"
         items: [<guide_id>]
 ```
 
-Any item not listed lands in an auto-appended `Other` subgroup, so partial coverage is safe.
+未掲載 item は自動で末尾の `Other` サブグループに入るので、部分的な記述で安全に運用できる。
 
-### 4.6. Add a new reference link (generated HTML)
+### 4.6. 新しい Reference リンク (生成 HTML) を追加する
 
-1. Make sure the source generator puts the HTML at `docs/<name>/index.html`.
-2. Add `<name>` to `meta.reference_links` in the desired display order.
-3. Optionally override the title via `meta.section_titles.<name>`.
+1. ソース生成器の出力先を `docs/<name>/index.html` にしておく。
+2. `meta.reference_links` に `<name>` を順序付きで追加する。
+3. 必要に応じて `meta.section_titles.<name>` で表示名を上書きする。
 
-The HTML is **not copied** into `docs/portal/guides/` — the link points directly at the original location and opens in a new tab.
+HTML 自体は `docs/portal/guides/` には **コピーされない** ― リンクは元の位置を直接指し、新タブで開く。
 
-## 5. Build commands
+## 5. ビルドコマンド
 
-| Command | What it does |
+| コマンド | 内容 |
 | --- | --- |
-| `make gen-portal-docs` | Copies every `src` → `dst` declared in manifest entries. Validates that all sources exist and that no `dst` escapes `docs/portal/guides/`. |
-| `make gen-docs-json` | Reads `manifest.yaml` + scans `docs/`, writes `docs/portal/docs.json`. |
-| `make gen-docs` | Runs both of the above plus the OpenAPI redocly build. |
+| `make gen-portal-docs` | manifest エントリの `src` → `dst` を全てコピー。ソース存在チェックと `dst` の出力ディレクトリ外参照チェックも行う。 |
+| `make gen-docs-json` | `manifest.yaml` 読み込み + `docs/` 走査で `docs/portal/docs.json` を書き出す。 |
+| `make gen-docs` | 上記 2 つに加え OpenAPI redocly ビルドを実行する。 |
 
-The `*-ci` variants (`make gen-portal-docs-ci`, `make gen-docs-json-ci`) call the Node scripts directly without the Docker tool runner — used by CI.
+`*-ci` 系 (`make gen-portal-docs-ci`, `make gen-docs-json-ci`) は Docker ツールランナーを介さず Node スクリプトを直接実行する。CI 向け。
 
-## 6. Local preview
+## 6. ローカルプレビュー
 
-Serve the `docs/` directory with any static HTTP server and open the portal:
+任意の静的 HTTP サーバーで `docs/` を配信し、ポータルを開く:
 
 ```sh
-# pick any static server you have handy
+# 手元にある適当な静的サーバーで
 python3 -m http.server 8082 -d docs
-# then open
+# 開く
 open http://localhost:8082/portal/
 ```
 
-The portal is a single-page React app whose source lives in `docs-viewer/` and is bundled by Vite, so a static server only ever shows the last build. To iterate on the viewer itself, run `pnpm --dir docs-viewer dev` and let Vite serve it with hot reload; run `make gen-portal-build` when you want to see exactly what gets published. `docs/portal/dist/` is gitignored — `deploy-docs.yaml` rebuilds it before uploading to Pages, so a viewer change reaches the site without any build output being committed.
+ポータルは CDN 経由でロードされる React SPA。ビルドステップは無い。`main.jsx` / `styles.css` を編集してページをリロードすればイテレーションできる。
 
-## 7. Anti-patterns
+## 7. アンチパターン
 
-- **Do not hand-edit `docs/portal/docs.json` or `docs/portal/guides/**`.** They are regenerated wholesale; your edits will vanish.
-- **Do not bypass the manifest** by adding sections directly inside `gen-docs-json.ts`. Anything structural belongs in `meta:`.
-- **Do not introduce a third level of grouping** inside subgroups. If a subgroup is getting too dense, split the section instead.
-- **Do not give two manifest items the same `dst`.** Guide ids must be unique.
+- **`docs/portal/docs.json` や `docs/portal/guides/**` を直接編集しない**。全て再生成されるので消える。
+- **manifest を迂回して** `gen-docs-json.ts` に直接セクションを書き込まない。構造に関わるものはすべて `meta:` に。
+- **サブグループの中にさらにサブグループを切らない**。あるサブグループが大きくなり過ぎたら、その親 section を分割する。
+- **2 つの manifest item に同じ `dst` を与えない**。guide id は一意である必要がある。
 
-## 8. Summary
+## 8. まとめ
 
-| Concern | Lives in |
+| 関心事 | 出所 |
 | --- | --- |
-| Which pages exist (group titles + order) | `manifest.yaml` → `meta.groups` |
-| Which sections appear on which page (in what order) | `manifest.yaml` → `meta.groups[].sections` |
-| Role-based subdivision inside a section | `manifest.yaml` → `meta.subgroups` |
-| Section heading override | `manifest.yaml` → `meta.section_titles` |
-| Sidebar Reference quick links | `manifest.yaml` → `meta.reference_links` |
-| Which source files are copied to `guides/` | `manifest.yaml` flat entries |
-| File enumeration under `docs/<dir>/` and `docs/*.md` | `scripts/portal/gen-docs-json.ts` (FS scan) |
-| Filename → card title (`autoTitle`) | `scripts/portal/gen-docs-json.ts` (deterministic) |
-| EN / JA item ordering and slugification | `scripts/portal/gen-docs-json.ts` (deterministic) |
+| どんなページが存在するか (グループタイトルと順序) | `manifest.yaml` → `meta.groups` |
+| 各ページにどの section が乗るか (順序付き) | `manifest.yaml` → `meta.groups[].sections` |
+| section 内の役割サブグループ | `manifest.yaml` → `meta.subgroups` |
+| section 見出しの上書き | `manifest.yaml` → `meta.section_titles` |
+| サイドバー Reference クイックリンク | `manifest.yaml` → `meta.reference_links` |
+| `guides/` に何をコピーするか | `manifest.yaml` の flat エントリ |
+| `docs/<dir>/` / `docs/*.md` のファイル列挙 | `scripts/portal/gen-docs-json.ts` (FS スキャン) |
+| ファイル名 → カード見出し (`autoTitle`) | `scripts/portal/gen-docs-json.ts` (決定的) |
+| EN/JA の並び順 / slug 化 | `scripts/portal/gen-docs-json.ts` (決定的) |
 
-If a change touches anything in the upper half of the table, the change is **in the manifest**. If a change touches the lower half, the change is **in the script**. Splitting the responsibility this way keeps the manifest small enough to scan in one sitting while letting the build stay self-maintaining for the long tail of READMEs.
+変更が表の上半分に触れるなら **manifest 側**、下半分に触れるなら **スクリプト側** で対応する。この責務分担により、manifest は一目で読み切れる規模に保ちつつ、README が増えても自動で追従するビルドを維持できる。

@@ -1,99 +1,94 @@
-# Context Map
+# コンテキストマップ
 
-This page characterises every place this system exchanges a model with something it does not own,
-using Evans's relationship vocabulary for the edges. It is about **relationships**, not mechanics:
-how each integration works belongs to its own design reference, linked from the table.
+このページは、このシステムが自分の所有しないものとモデルをやりとりしている場所をすべて、Evans の
+関係パターン語彙で辺として特徴づける。書くのは**関係**であって機構ではない。各連携がどう動くかは
+それ自身の design reference のもので、表からリンクする。
 
-Maintained by [`/context-map`](../../.claude/skills/context-map/SKILL.md); drift is detected by
-[`/context-map-audit`](../../.claude/skills/context-map-audit/SKILL.md).
+保守は [`/context-map`](../../.claude/skills/context-map/SKILL.md)、ズレの検出は
+[`/context-map-audit`](../../.claude/skills/context-map-audit/SKILL.md) が担う。
 
-## An undecided edge is an entry, not a blank
+## 未確定の辺は空欄ではなく項目である
 
-Several of Evans's relationships are distinguished by facts that do not exist in a codebase. On a
-downstream edge, what separates Customer-Supplier from the alternatives is whether the upstream will
-take our requirements — a fact about the two organisations, not about the code. The code shows what
-was built at the boundary; it cannot show whether anyone on the other side would have listened.
+Evans の関係のいくつかは、コードベースに存在しない事実で区別される。下流側の辺で
+Customer-Supplier を他と分けるのは、上流がこちらの要件を通してくれるかどうかである。それは**二つの
+組織についての事実**であって、コードについての事実ではない。コードは境界に何が作られたかを示すが、
+向こう側の誰かが聞く耳を持ったかどうかは示せない。
 
-An edge whose settling fact is not available is therefore recorded as `未確定`, carrying its
-evidence and the question that would settle it, rather than left blank or guessed at. An unlabelled
-edge leaves the question open for whoever can answer it; a wrongly labelled one closes it before
-they see it.
+したがって、決着させる事実が手元に無い辺は、空欄にも当て推量にもせず、根拠と、決着させるための
+問いを伴って `未確定` として記録する。ラベルの無い辺は答えられる者に問いを開いたまま渡すが、
+誤って貼られた辺は、その前に判断を閉じてしまう。
 
-> Upstream-only: why `未確定` is a terminal state here rather than an open task — [boilerplate-only conventions](../get-started/boilerplate-only-conventions.md). <!-- boilerplate-only:line -->
+> 上流限定: ここで `未確定` が未処理の課題ではなく終着状態である理由 — [ボイラープレート限定の規約](../get-started/boilerplate-only-conventions.md)。 <!-- boilerplate-only:line -->
 
-## What counts as a contact point
+## 何を接触点とするか
 
-A model crossing out of this system. A boundary port with no external counterpart — the clock, the
-transaction manager, the job and worker runners — is not a contact point, however much it looks like
-one in the port list.
+モデルがこのシステムの外へ渡ること。外部の相手を持たない境界ポート——時計、トランザクション
+マネージャ、job / worker のランナー——は、ポート一覧上どれだけ似て見えても接触点ではない。
 
-Both directions count. A map with only outbound edges would claim this system is nobody's upstream.
+方向は両方を数える。外向きの辺しか無い地図は「このシステムは誰の上流でもない」と主張してしまう。
 
-## Edges
+## 辺
 
-| Counterpart | Direction | Relationship | Evidence | If the other side moves |
+| 相手 | 向き | 関係 | 根拠 | 相手が動いたら |
 | --- | --- | --- | --- | --- |
-| HTTP API consumers | this system is upstream | **Open Host Service + Published Language** | `openapi/openapi.gen.yaml` is committed as a consumable artifact and kept fresh by a drift gate; the surface is one protocol for all consumers rather than per-consumer endpoints | Consumers break only when the published contract changes, and the gate makes that change visible in review |
-| External IdP | this system is downstream | `未確定` | The adapter translates the token into this system's own `Authn` (`internal/infrastructure/auth/jwt/auth_jwt.go:243`), deriving subject / issuer / scopes in this system's terms. The raw claim map is carried through as an opaque payload and has no production reader, so the external vocabulary crosses but is never consumed — a translating boundary is in place | An issuer or claim change is absorbed by the adapter; a protocol change is not |
-| Object storage (S3-compatible) | this system is downstream | `未確定` | The port is stated in this system's vocabulary and `internal/usecase/boundary/README.md` (the `objectstorage` section) declares that vendor vocabulary (bucket / region / etag) never crosses the boundary | A vendor swap is confined to the adapter; the port is unaffected |
-| Outbox receivers | this system is upstream | `未確定` | The publish boundary carries a substrate-agnostic envelope, but no payload schema is published — [ADR-0057 (message-id-idempotency-propagation)](../adr/0057-message-id-idempotency-propagation.md) defines only the transport convention. See [`outbox.md`](outbox.md) | A receiver's expectations are not protected by any artifact this system publishes |
+| HTTP API の消費者 | このシステムが上流 | **Open Host Service + Published Language** | `openapi/openapi.gen.yaml` を消費可能な成果物としてコミットし drift gate で鮮度を保つ。面は消費者ごとの endpoint ではなく全員に対する一律のプロトコル | 公開された契約が変わったときにだけ消費者が壊れ、その変更は gate によってレビューで可視になる |
+| 外部 IdP | このシステムが下流 | `未確定` | アダプタがトークンをこのシステム自身の `Authn` へ変換し（`internal/infrastructure/auth/jwt/auth_jwt.go:243`）、subject / issuer / scopes をこのシステムの語で導出する。生の claim マップは不透明な積荷として持ち込まれるが production の読み手が無く、外部の語彙は越えてくるが消費されない——変換する境界が置かれている | issuer や claim の変更はアダプタが吸収する。プロトコルの変更は吸収しない |
+| オブジェクトストレージ（S3 互換） | このシステムが下流 | `未確定` | ポートはこのシステムの語彙で述べられ、`internal/usecase/boundary/README.md`（`objectstorage` 節）が vendor の語彙（bucket / region / etag）は境界を越えないと明言している | ベンダの差し替えはアダプタに閉じ、ポートは影響を受けない |
+| outbox の受信者 | このシステムが上流 | `未確定` | publish 境界は substrate-agnostic な envelope を持つが、payload のスキーマは公開されていない。[ADR-0057](../adr/0057-message-id-idempotency-propagation.md) が定めるのは転送規約のみ。[`outbox.md`](outbox.md) を参照 | 受信者の期待は、このシステムが公開するどの成果物にも守られていない |
 
-## The open questions
+## 未解決の問い
 
-Each `未確定` edge above is waiting on one thing. Answering it is a decision, not a lookup.
+上の `未確定` の辺は、それぞれ 1 つのことを待っている。答えるのは調べ物ではなく判断である。
 
-- **External IdP** — can this system's requirements reach whoever runs the IdP? If yes the edge is
-  Customer-Supplier. If not, the translating boundary already in place makes it an Anticorruption
-  Layer.
+- **外部 IdP** — このシステムの要件は IdP を運用している側へ届くか。届くなら Customer-Supplier。
+  届かないなら、既に置かれている変換の境界がその辺を Anticorruption Layer にする。
 
-  **Conformist is not a candidate on either of these two edges, and the reason is worth stating.**
-  Conformist means declining to build a translation layer and taking the upstream model as it comes;
-  Anticorruption Layer means building one. They are the two answers to the same situation, not a
-  label and an accessory to it. An edge whose own evidence is a translating adapter cannot be
-  Conformist — offering both would be reading Evans's vocabulary as if the relationship and the
-  remedy were independent axes, and they are not.
-- **Object storage** — the same question, with the same translating boundary already in place, so
-  the same two candidates. The substitutability the boundary buys suggests the relationship is not
-  load-bearing, but that is a reading of intent, not evidence of one.
-- **Outbox receivers** — are the receivers a known set whose requirements shape the payload
-  (Customer-Supplier), or an open set consuming what is emitted (Open Host Service)? The asymmetry
-  with the synchronous side is recorded in [`outbox.md`](outbox.md) §4: the language is not published.
+  **この 2 辺で Conformist は候補にならない。理由は述べておく価値がある。** Conformist とは変換層を
+  作らないことを選び、上流のモデルをそのまま受け入れることであり、Anticorruption Layer とは作ることで
+  ある。両者は同じ状況に対する 2 つの答えであって、ラベルとその付属品ではない。自らの根拠が変換
+  アダプタである辺が Conformist であることはできない。両方を並べるのは、Evans の語彙を「関係」と
+  「対処」が独立した軸であるかのように読むことであり、独立していない
+- **オブジェクトストレージ** — 同じ問い。同じ変換の境界が既に在るので、候補も同じ 2 つ。境界が買って
+  いる差し替え可能性は「この関係は荷重を持たない」ことを示唆するが、それは意図の読み取りであって、
+  意図の根拠ではない
+- **outbox の受信者** — 受信者は payload の形を要件で動かす既知の集合か（Customer-Supplier）、
+  発行されたものを消費する開かれた集合か（Open Host Service）。同期面との非対称は
+  [`outbox.md`](outbox.md) 第 4 節に記録されている。言語は公開されていない
 
 <!-- sample-api:replace-begin -->
-## Sample-derived contact points
+## サンプル由来の接触点
 
-The sample feature set adds outbound gateways to external web APIs. **They disappear when the sample
-is removed**, and are listed separately so this map does not keep describing edges that no longer
-exist:
+サンプル機能一式は、外部 Web API への外向き gateway を足す。**サンプルを撤去すると消える**ため、
+この地図がもう存在しない辺を語り続けないよう、別に列挙する。
 
-- Address lookup gateway and exchange-rate gateway (`internal/infrastructure/webapi/**`), each behind
-  a semantic port in the usecase boundary.
+- 住所補完 gateway と為替レート gateway（`internal/infrastructure/webapi/**`）。それぞれ usecase
+  境界の意味論的なポートの背後にある
 
-What survives their removal is the pattern they demonstrate: a `<service>.Gateway` port stated in
-this system's vocabulary, with transport and vendor failure modes translated at the adapter. A real
-integration added later occupies the same shape and earns its own row in the table above.
+撤去後に残るのは、それらが示しているパターンのほうである。このシステムの語彙で述べた
+`<service>.Gateway` ポートを立て、転送とベンダ由来の失敗をアダプタで変換する形。後から入る実際の
+連携は同じ形に収まり、上の表に自分の行を得る。
 <!-- sample-api:replace-with -->
-<!-- = ## Outbound contact points -->
+<!-- = ## 外向きの接触点 -->
 <!-- = -->
-<!-- = An outbound integration is a `<service>.Gateway` port stated in this system's vocabulary, with -->
-<!-- = transport and vendor failure modes translated at the adapter. Each one added occupies that -->
-<!-- = shape and earns its own row in the table above. -->
+<!-- = 外向きの連携は、このシステムの語彙で述べた `<service>.Gateway` ポートを立て、転送とベンダ -->
+<!-- = 由来の失敗をアダプタで変換する形を取る。追加された連携はその形に収まり、上の表に自分の行を -->
+<!-- = 得る。 -->
 <!-- sample-api:replace-end -->
 
-## Diagram
+## 図
 
 ```mermaid
 flowchart LR
-    Consumers["HTTP API consumers"] -->|OHS + Published Language| SUT["This system"]
-    IdP["External IdP"] -->|未確定 · translating boundary| SUT
-    SUT -->|未確定 · translating boundary| Storage["Object storage (S3-compatible)"]
-    SUT -->|未確定 · no published language| Receivers["Outbox receivers"]
+    Consumers["HTTP API の消費者"] -->|OHS + Published Language| SUT["このシステム"]
+    IdP["外部 IdP"] -->|未確定 · 変換境界あり| SUT
+    SUT -->|未確定 · 変換境界あり| Storage["オブジェクトストレージ（S3 互換）"]
+    SUT -->|未確定 · 公開言語なし| Receivers["outbox の受信者"]
 ```
 
-## What this map does not cover
+## この地図が扱わないもの
 
-- **The database.** It stores this system's own model rather than owning one, so no model crosses
-  out of the system at that edge.
-- **Ports with no external counterpart** — clock, transaction manager, job and worker runners.
-- **How any integration works.** Mechanics live in the per-subsystem references under
-  [`docs/design/`](README.md) and the package READMEs; this page only says how the two sides relate.
+- **データベース。** モデルを所有しているのではなくこのシステム自身のモデルを保存しているので、
+  その辺ではモデルがシステムの外へ渡らない
+- **外部の相手を持たないポート** — 時計、トランザクションマネージャ、job / worker のランナー
+- **各連携がどう動くか。** 機構は [`docs/design/`](README.md) 配下のサブシステム別リファレンスと
+  パッケージ README のもので、このページは両者がどう関係するかだけを述べる

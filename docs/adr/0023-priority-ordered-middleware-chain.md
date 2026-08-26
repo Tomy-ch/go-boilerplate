@@ -5,91 +5,57 @@ deciders: [maintainers]
 tags: [http, middleware]
 ---
 
-# ADR-0023: Build the middleware chain as a priority-ordered, data-driven list
+# ADR-0023: ミドルウェアチェーンを優先順位付きのデータ駆動リストとして構築する
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-The inbound HTTP middleware chain must execute in a specific, invariant order — request-ID
-injection must precede observability (so spans carry the ID), observability must precede
-recovery (so panics are traced), authentication must precede handlers, and so on. The current
-order is: uri-pre (1), requestID (1), observability (2), recovery (3), cors (4), security
-(5), openapi (6), forcejson (7), httpredmetrics (8), logging (9), cookie (10).
+受信 HTTP ミドルウェアチェーンは特定の不変な順序で実行されなければならない——リクエスト ID の注入はオブザーバビリティより前（スパンが ID を持つため）、オブザーバビリティはリカバリーより前（パニックがトレースされるため）、認証はハンドラーより前、等々。現在の順序は次の通りである: uri-pre (1)、requestID (1)、observability (2)、recovery (3)、cors (4)、security (5)、openapi (6)、forcejson (7)、httpredmetrics (8)、logging (9)、cookie (10)。
 
-The project uses [ADR-0040](0040-uber-fx-di.md) (Uber fx) for dependency injection. Each
-middleware lives in its own `*_di.go` file under `internal/di/server/extension/`, meaning
-there is no single location where the call sequence is written down. If each `*_di.go` called
-`e.Use(...)` directly, the effective chain order would be an emergent consequence of Go module
-initialisation and fx wiring order — neither explicit nor guaranteed.
+このプロジェクトは依存性注入に [ADR-0040](0040-uber-fx-di.md)（Uber fx）を使用している。各ミドルウェアは `internal/di/server/extension/` 配下の独自の `*_di.go` ファイルに存在するため、コールシーケンスが記述された単一の場所がない。各 `*_di.go` が `e.Use(...)` を直接呼び出すと、実際のチェーン順序は Go モジュールの初期化と fx ワイヤリング順序の新興的な結果になり、明示的でも保証されたものでもない。
 
-Call-site ordering (`e.Use` in a single setup function) is an alternative, but it is fragile
-under a multi-file, multi-contributor setup: adding a middleware in the wrong position silently
-reorders the chain, and there is no machine-checked signal that the order is correct. Auditing
-the chain requires reading every `e.Use` call in sequence.
+単一のセットアップ関数でのコールサイト順序付け（`e.Use`）は代替手段だが、複数ファイル・複数コントリビューターの構成では脆弱である。間違った位置にミドルウェアを追加すると静かにチェーンが並び替えられ、順序が正しいという機械的な確認もない。チェーンの監査にはすべての `e.Use` 呼び出しを順番に読む必要がある。
 
-## Decision
+## 決定
 
-Each middleware carries an **explicit integer `Priority` field** declared in its `*_di.go`.
-The `UseMiddleware` and `PreMiddleware` value-group structs in `internal/di/server/extension`
-hold the priority alongside the `echo.MiddlewareFunc`. At server startup, `ApplyExtends`
-collects all contributed middleware entries, sorts them by priority (ascending, lower number
-applied first), validates that no two entries in the same kind (`Pre` / `Use`) share the same
-priority value, and applies them to Echo in order.
+各ミドルウェアは `*_di.go` 内で宣言された**明示的な整数 `Priority` フィールド**を持つ。`internal/di/server/extension` の `UseMiddleware` および `PreMiddleware` バリューグループ構造体は `echo.MiddlewareFunc` と並んで priority を保持する。サーバー起動時に `ApplyExtends` が投入されたすべてのミドルウェアエントリを収集し、優先順位（昇順、数値が小さいものほど先に適用）でソートし、同じ種別（`Pre` / `Use`）の 2 つのエントリが同じ優先順位値を共有していないことを検証し、それらを順番に Echo に適用する。
 
-The chain order is therefore **data**, not call-site ordering: each owner declares a
-priority number, the engine enforces uniqueness and applies the sorted list, and the effective
-order is observable from the priority values alone without reading multiple files end-to-end.
+チェーン順序はしたがって**データ**であり、コールサイト順序付けではない。各所有者が優先順位番号を宣言し、エンジンが一意性を強制してソートされたリストを適用し、実際の順序は複数のファイルを最初から最後まで読むことなく優先順位値だけから観察できる。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Chain order is auditable from priority integers alone; a new contributor can see the full
-  order without tracing every wiring file.
-- Priority conflicts (two middleware claiming the same slot) are detected at startup and
-  produce an explicit error, rather than silently applying in an arbitrary order.
-- Each `*_di.go` is fully self-contained: it declares the middleware and its priority without
-  needing to know where other middleware sit in a shared list.
-- The `httpstack/` directory stays free of Echo-instance and fx dependencies; middleware
-  implementations remain independently testable.
+- チェーン順序は優先順位の整数だけから監査可能である。新しいコントリビューターは複数のワイヤリングファイルをトレースすることなく完全な順序を確認できる。
+- 優先順位の競合（2 つのミドルウェアが同じスロットを主張する）は起動時に検出され明示的なエラーを生成する。任意の順序で静かに適用されることはない。
+- 各 `*_di.go` は完全に自己完結している。ミドルウェアとその優先順位を、他のミドルウェアが共有リスト内のどこにいるかを知ることなく宣言する。
+- `httpstack/` ディレクトリは Echo インスタンスと fx の依存関係から解放されたままであり、ミドルウェア実装は独立してテスト可能である。
 
-### Negative Consequences
+### ネガティブな影響
 
-- A contributor adding a new middleware must choose a priority number that does not collide
-  with any existing value in the same kind, requiring awareness of the existing assignment
-  table.
-- The integer-based slot scheme is a flat namespace: inserting a middleware between priority 7
-  and 8 when 7.5 is not an integer requires renumbering neighbours.
+- 新しいミドルウェアを追加するコントリビューターは、同じ種別の既存の値と衝突しない優先順位番号を選択しなければならない。既存の割り当てテーブルへの認識が必要である。
+- 整数ベースのスロット方式はフラットな名前空間である。整数では 7.5 ができないため、優先順位 7 と 8 の間にミドルウェアを挿入するには隣接するものを番号付け直す必要がある。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Hardcoded call-site ordering in a single setup function
+### 単一セットアップ関数でのハードコードされたコールサイト順序付け
 
-Straightforward: one function lists all `e.Use(...)` calls in sequence. Order is immediately
-visible in that function. Rejected because it does not compose with the fx value-group pattern
-— each `*_di.go` would need to call into a shared setup function or the setup function would
-need to import every middleware package, coupling everything to a single registration site.
+シンプルである。すべての `e.Use(...)` 呼び出しをその関数内で順番にリストする。順序はその関数で即座に見える。却下：fx バリューグループパターンとうまく合わない——各 `*_di.go` は共有セットアップ関数を呼び出すか、セットアップ関数がすべてのミドルウェアパッケージをインポートする必要があり、すべてを単一の登録サイトに結合する。
 
-### Named ordered slice in a configuration struct
+### 設定構造体での名前付き順序スライス
 
-Define a fixed ordered slice of middleware names in a config struct; each middleware registers
-itself by name. Provides a single canonical list. Rejected because it requires maintaining a
-list in two places (the config and the `*_di.go`) and introduces string-matching indirection
-that is harder to type-check.
+設定構造体にミドルウェア名の固定順序スライスを定義する。各ミドルウェアは名前で自分自身を登録する。単一の正典リストを提供する。却下：リストを 2 箇所（設定と `*_di.go`）で管理する必要があり、型チェックが困難な文字列マッチングの間接参照を導入する。
 
-### fx ordered-group annotation (soft ordering)
+### fx の ordered-group アノテーション（ソフト順序付け）
 
-Uber fx supports `group:"...,soft"` to express ordering hints. Not used because fx groups do
-not guarantee stable ordering under recompilation, and the chain order here is a hard
-correctness requirement, not a hint.
+Uber fx は順序付けヒントを表現するために `group:"...,soft"` をサポートする。使用しない理由：fx グループは再コンパイル時の安定した順序付けを保証しない。ここでのチェーン順序はヒントではなく、ハードな正確性要件である。
 
-## Notes
+## 補足
 
-- Extension engine implementation: `internal/di/server/extension/extension.go`.
-- Middleware implementations: `internal/controller/httpstack/`.
-- Priority assignment table: see `docs/design/rest.md` § "Glossary" (priority entry).
-- source: `docs/design/rest.md` § "Role theory" (design principle: "Ordered middleware by
-  priority") and Glossary (priority / extension engine entries).
+- エクステンションエンジン実装: `internal/di/server/extension/extension.go`。
+- ミドルウェア実装: `internal/controller/httpstack/`。
+- 優先順位割り当てテーブル: `docs/design/rest.md` § "Glossary"（priority エントリ）を参照。
+- ソース: `docs/design/rest.md` § "Role theory"（設計原則: "Ordered middleware by priority"）および Glossary（priority / extension engine エントリ）。

@@ -1,10 +1,10 @@
-# OpenAPI Parameter Quick Reference
+# OpenAPI パラメータ クイックリファレンス
 
-## $ref Examples
+## $ref の例
 
 <!-- sample-api:replace-begin -->
 ```yaml
-# from openapi/paths/v1/users.yaml
+# openapi/paths/v1/users.yaml から参照する場合
 parameters:
   - $ref: '../../components/parameters/pagination/PageParam.yaml'
   - $ref: '../../components/parameters/pagination/PerPageParam.yaml'
@@ -12,32 +12,32 @@ parameters:
 ```
 <!-- sample-api:replace-with -->
 <!-- = ```yaml -->
-<!-- = # from openapi/paths/v1/<resource>.yaml -->
+<!-- = # openapi/paths/v1/<resource>.yaml から参照する場合 -->
 <!-- = parameters: -->
 <!-- =   - $ref: '../../components/parameters/pagination/PageParam.yaml' -->
 <!-- =   - $ref: '../../components/parameters/pagination/PerPageParam.yaml' -->
 <!-- = ``` -->
 <!-- sample-api:replace-end -->
 
-The number of `../` segments follows the depth of the referencing file: two from
-`paths/v1/*.yaml`, three from `paths/v1/<group>/*.yaml`, and so on.
+`../` の数は参照元ファイルの深さに従います。`paths/v1/*.yaml` なら 2 段、
+`paths/v1/<group>/*.yaml` なら 3 段、といった具合です。
 
-## Naming Convention
+## 命名規則
 
 <!-- sample-api:replace-begin -->
-|Element|Convention|Example|
+|要素|規則|例|
 |---|---|---|
-|Path name|slug format|`/v1/users/{userId}`|
-|Directory|lowercase by concern|`pagination/`, `search/`, `user/`|
-|File name|PascalCase + Param|`PageParam.yaml`, `UserIdParam.yaml`|
+|パス名|スラッグ形式|`/v1/users/{userId}`|
+|ディレクトリ|小文字・関心事別|`pagination/`, `search/`, `user/`|
+|ファイル名|PascalCase + Param|`PageParam.yaml`, `UserIdParam.yaml`|
 <!-- sample-api:replace-with -->
-<!-- = |Element|Convention|Example| -->
+<!-- = |要素|規則|例| -->
 <!-- = |---|---|---| -->
-<!-- = |Path name|slug format|`/v1/<resource>/{<resource>Id}`| -->
-<!-- = |Directory|lowercase by concern|`pagination/`, `idempotency/`| -->
-<!-- = |File name|PascalCase + Param|`PageParam.yaml`, `IdempotencyKeyParam.yaml`| -->
+<!-- = |パス名|スラッグ形式|`/v1/<resource>/{<resource>Id}`| -->
+<!-- = |ディレクトリ|小文字・関心事別|`pagination/`, `idempotency/`| -->
+<!-- = |ファイル名|PascalCase + Param|`PageParam.yaml`, `IdempotencyKeyParam.yaml`| -->
 <!-- sample-api:replace-end -->
 
-## Detailed Guide
+## 詳細ガイド
 
-See [components/parameters/README.md](components/parameters/README.md) for full design policy and available parameters.
+設計ポリシーと利用可能なパラメータの全容は [components/parameters/README.md](components/parameters/README.md) を参照してください。

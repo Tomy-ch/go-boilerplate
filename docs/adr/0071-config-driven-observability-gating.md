@@ -5,84 +5,83 @@ deciders: [maintainers]
 tags: [observability, config]
 ---
 
-# ADR-0071: Config-driven observability gating
+# ADR-0071: 設定駆動によるオブザーバビリティゲーティング
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Observability (traces / metrics / logs) must be switchable per environment so that
-lightweight environments construct **no** OpenTelemetry providers, exporters, or
-instrumentation bridges. A separate control plane read behind the app's back (the
-spec-standard `OTEL_*` environment via autoexport) would create a second source of truth
-disconnected from the project's typed config.
+オブザーバビリティ（トレース / メトリクス / ログ）は環境ごとに切り替え可能でなければならず、
+軽量環境では OpenTelemetry プロバイダー・エクスポーター・計装ブリッジを**一切**構築しないようにする。
+アプリの背後で別のコントロールプレーン（spec 標準の `OTEL_*` 環境変数を autoexport で読む形）が
+読み込まれると、プロジェクトの型付き設定から切り離された第二の真実の源が生まれてしまう。
 
-## Decision
+## 決定
 
-Make observability a single, typed, **config-driven** switch:
+オブザーバビリティを単一の型付き**設定駆動**スイッチにする。
 
-- Exporter settings live in the typed `OBS_*` config subsystem (`OBS_TRACES_EXPORTER` /
-  `OBS_METRICS_EXPORTER` / `OBS_LOGS_EXPORTER` / `ENDPOINT_OTLP` / `OBS_OTLP_PROTOCOL`),
-  not in `OTEL_*` env read by autoexport.
-- There is **no dedicated enable flag**. Observability is *derived* as enabled when any of
-  the three exporter settings is a non-empty, non-`none` value. Deriving from the exporter
-  settings is intentional: a bare enable flag paired with a dead exporter is meaningless;
-  this design forces operators to be conscious of export configuration.
-- Gating is applied at **construction time**: a disabled signal builds no exporter / batcher
-  / reader / runtime collector (no network, no goroutines), the Echo OTel middleware
-  degrades to pass-through, and the otelzap log core is not Tee'd into the logger. The SDK
-  provider shells remain (cheap, inert) — this is runtime disabling, not build-time removal.
-- The same config-driven gate also governs **per-log trace correlation**. `trace_id` /
-  `span_id` are injected by the `Logger` itself (ctx-native API — `Info(ctx, msg, ...)`),
-  never appended by callers, on each log line whose `ctx` carries a valid span. The gate —
-  observability enabled **and** the ctx carries a valid span — is consolidated in a single
-  `observability.NewTraceExtractor(obsCfg)` closure that is DI-injected into the `Logger` as a
-  `logging.TraceExtractor`. `logging` depends only on that abstraction and never imports
-  `observability`, so the gate stays config-driven without inverting the inward-only
-  dependency direction (see [ADR-0003](0003-interface-based-decoupling.md)).
+- エクスポーター設定は型付き `OBS_*` 設定サブシステム（`OBS_TRACES_EXPORTER` /
+  `OBS_METRICS_EXPORTER` / `OBS_LOGS_EXPORTER` / `ENDPOINT_OTLP` /
+  `OBS_OTLP_PROTOCOL`）に置く。autoexport が読む `OTEL_*` 環境変数には置かない。
+- **専用の有効化フラグは設けない**。オブザーバビリティは、3 つのエクスポーター設定のいずれかが
+  空でも `none` でもない値を持つ場合に有効と*導出*される。エクスポーター設定から導出する設計は
+  意図的なものである。Enable フラグだけが有効でエクスポーターが機能していない状態では意味をなさず、
+  エクスポーター設定を意識せざるを得ない状況へ追い込む設計にしている。
+- ゲーティングは**構築時**に適用される。無効なシグナルはエクスポーター / バッチャー /
+  リーダー / ランタイムコレクターを構築しない（ネットワーク接続もゴルーチンもなし）。
+  Echo の echootel ミドルウェアはパススルーに縮退し、otelzap のログコアはロガーに
+  Tee されない。SDK プロバイダーシェルは存在したまま（安価で不活性）— これはランタイムの
+  無効化であり、ビルド時の除去ではない。
+- 同じ config 駆動ゲートは**ログごとの trace 相関**も統制する。`trace_id` / `span_id` は
+  `Logger` 自身が、ctx が有効な span を持つ各ログ行へ注入し（ctx-native API — `Info(ctx, msg, ...)`）、
+  呼び出し側が付与することはない。ゲート（observability が有効**かつ** ctx が有効な span を持つこと）は、
+  `Logger` に DI 注入される単一の `observability.NewTraceExtractor(obsCfg)` クロージャに
+  集約される（`logging.TraceExtractor` として注入）。`logging` はこの抽象のみに依存し
+  `observability` を import しないため、外層から内側へ向かう依存方向を反転させることなく、
+  ゲートを config 駆動のまま保てる（[ADR-0003](0003-interface-based-decoupling.md) 参照）。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- One typed source of truth, consistent with every other subsystem; no second control plane.
-- Lightweight environments pay no observability cost (no exporters, readers, collector, or
-  per-request spans).
-- Portability preserved: any OTLP backend is still just `OBS_*_EXPORTER=otlp` + an endpoint.
-- The `trace_id` / `span_id` gate lives in one place (the injected extractor); callers pass
-  `ctx`, not `trace_id` / `span_id`. The one exception is `parent_span_id`, which cannot be
-  derived from `ctx` and is therefore gated directly by `obsCfg.Enabled()` in
-  `BuildSQLEndFields`.
+- 他のすべてのサブシステムと一貫した、単一の型付き真実の源。第二のコントロールプレーンがない。
+- 軽量環境ではオブザーバビリティのコストをゼロにできる（エクスポーター・リーダー・
+  コレクター・リクエストごとのスパンなし）。
+- ポータビリティが保たれる: OTLP 対応バックエンドであれば `OBS_*_EXPORTER=otlp` とエンドポイントを
+  指定するだけでよい。
+- `trace_id` / `span_id` のゲートは 1 箇所（注入される extractor）にのみ存在する。呼び出し側は
+  `trace_id` / `span_id` ではなく `ctx` を渡す。唯一の例外は `parent_span_id` で、ctx から
+  導出できないため `BuildSQLEndFields` 内で `obsCfg.Enabled()` により直接ゲートされる。
 
-### Negative Consequences
+### ネガティブな影響
 
-- "Enabled" is derived, not explicit; operators read the exporter settings to know the state
-  (this is the deliberate replacement for the removed `OBSERVABILITY_ENABLED` flag).
-- Instrumentation dependencies remain linked (disabled at runtime, not removed at build).
+- 「有効」は明示ではなく導出される。オペレーターは状態を知るためにエクスポーター設定を
+  確認しなければならない（これは削除された `OBSERVABILITY_ENABLED` フラグの意図的な代替）。
+- 計装の依存関係はリンクされたまま残る（ランタイムで無効化されるが、ビルドから除去されるわけではない）。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Keep `OTEL_*` + autoexport
+### `OTEL_*` + autoexport を維持する
 
-Rejected: exporter settings would not be represented in typed config, leaving a second
-source of truth read directly from the environment.
+却下: エクスポーター設定が型付き設定に存在しなくなり、環境から直接読まれる第二の
+真実の源が残る。
 
-### A dedicated `OBSERVABILITY_ENABLED` flag alongside exporter settings
+### エクスポーター設定と並行した専用の `OBSERVABILITY_ENABLED` フラグ
 
-Rejected: redundant with "is any exporter configured", and prone to conflicting states
-(`ENABLED=true` with no exporter). This unifies the two previously disconnected control
-planes.
+却下: 「いずれかのエクスポーターが設定されているか」と冗長であり、矛盾した状態
+（`ENABLED=true` でエクスポーターなし）を引き起こしやすい。これにより以前は切り離されていた
+2 つのコントロールプレーンが統合される。
 
-### Build-tag removal of the otel / bridge dependencies
+### otel / ブリッジ依存関係のビルドタグによる除去
 
-Rejected for now: runtime disabling meets the lightweight goal; build-time removal would add
-two wiring variants for hot-path-wired instrumentation (Echo OTel middleware / otelpgx) without a current
-requirement.
+現時点では却下: ランタイムの無効化で軽量化の目標を達成している。ビルド時除去は
+ホットパスにワイヤリングされた計装（echootel / otelpgx）に対して 2 つのワイヤリング
+バリアントを追加することになるが、現在その要件はない。
 
-## Notes
+## 補足
 
-- Vendor-neutral OTLP-only export and the official-semconv stance are recorded separately (see the observability ADRs in [the ADR log](README.md)).
-- Design reference: `docs/design/observability.md`. The ctx-native `Logger` and the injected `TraceExtractor` that carries the per-log trace gate are described in `internal/logging/README.md`.
-- Migrated from the former `docs/decisions.md`.
+- ベンダー中立の OTLP 専用エクスポートと公式 semconv に関する方針は別途記録されている。
+- 設計参照: `docs/design/observability.md`。ctx-native な `Logger` と、ログごとの trace ゲートを担う注入型 `TraceExtractor` は `internal/logging/README.md` に記載。
+- 移行元: かつての `docs/decisions.md`。

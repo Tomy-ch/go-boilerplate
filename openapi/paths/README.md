@@ -1,29 +1,29 @@
 # OpenAPI Paths
 
-`openapi/paths/` stores **API endpoint route definitions** organized by resource and version.
+`openapi/paths/` は、**API エンドポイントのルーティング定義**をリソース・バージョン単位で格納するディレクトリです。
 
-## Directory Structure
+## ディレクトリ構成
 
-One file per path, named after its last segment. A path with children gets a directory of the
-same name beside its own file, so the directory layout mirrors the URL structure.
+パス 1 本につき 1 ファイルを置き、最後のセグメントを名前にする。子を持つパスは、自身のファイルと
+並べて同名のディレクトリを持つ。したがってディレクトリ構造は URL の構造をそのまま写す。
 
-## Endpoint Categories
+## エンドポイントのカテゴリ
 
-### Operational Endpoints
+### 運用系エンドポイント
 
-Infrastructure endpoints for monitoring and orchestration. These are not part of the business API and are excluded from OpenAPI validation and authentication via the `Skipper`.
+監視・オーケストレーション用のインフラエンドポイントです。ビジネス API には含まれず、`Skipper` により OpenAPI バリデーションと認証の対象外となります。
 
-|Path|File|Description|
+|パス|ファイル|説明|
 |---|---|---|
-|`/health`|`health.yaml`|Health check|
+|`/health`|`health.yaml`|ヘルスチェック|
 |`/healthz`|`healthz.yaml`|Kubernetes liveness probe|
-|`/ready`|`ready.yaml`|Readiness probe|
-|`/version`|`version.yaml`|Build version / revision / date|
-|`/metrics`|`metrics.yaml`|Prometheus metrics (Basic auth protected)|
+|`/ready`|`ready.yaml`|レディネスプローブ|
+|`/version`|`version.yaml`|ビルドバージョン / リビジョン / 日時|
+|`/metrics`|`metrics.yaml`|Prometheus メトリクス（Basic 認証保護）|
 
-### Versioned API (`v1/`)
+### バージョニング API（`v1/`）
 
-Business API endpoints following a **URL versioning strategy**.
+**URL バージョニング戦略**に従うビジネス API エンドポイントです。
 
 <!-- sample-api:replace-begin -->
 ```text
@@ -41,48 +41,48 @@ Business API endpoints following a **URL versioning strategy**.
 <!-- = ``` -->
 <!-- sample-api:replace-end -->
 
-> `v1/` contents are **sample implementations**. Replace with your own resources when building a service.
+> `v1/` の内容は**サンプル実装**です。サービス構築時には独自のリソースに置き換えてください。
 
-#### Versioning Strategy
+#### バージョニング戦略
 
-This project recommends **URL path versioning** (`/v1/`, `/v2/`, etc.):
+本プロジェクトでは **URL パスバージョニング**（`/v1/`、`/v2/` 等）を推奨しています。
 
-- Clear and explicit in URLs and documentation
-- Allows parallel operation of multiple API versions
-- Breaking changes are introduced in a new version prefix
-- Non-breaking additions can be made within the current version
+- URL とドキュメントで明示的かつわかりやすい
+- 複数の API バージョンを並行運用可能
+- 破壊的変更は新しいバージョンプレフィックスで導入
+- 非破壊的な追加は現在のバージョン内で行う
 
-When introducing breaking changes, create a new `v2/` directory alongside `v1/`.
+破壊的変更を導入する場合は、`v1/` と並行して `v2/` ディレクトリを作成してください。
 
-### Internal Types
+### 内部型
 
-`internal/types/error_response.yaml` defines the error response type used by `oapi-codegen` for type generation. This is not a public API endpoint.
+`internal/types/error_response.yaml` は `oapi-codegen` の型生成で使用されるエラーレスポンス型です。公開 API エンドポイントではありません。
 
-## Naming and Structure Rules
+## 命名・構造ルール
 
 <!-- sample-api:replace-begin -->
-|Element|Convention|Example|
+|要素|規則|例|
 |---|---|---|
-|File name|Match the URL segment (lowercase); path-parameter files match the param's `camelCase` name|`search.yaml`, `userId.yaml`|
-|Directory layout|Mirror the URL path (one file per path item)|`/v1/users/search` → `v1/users/search.yaml`|
-|Leaf vs. parent|Leaf = flat `<segment>.yaml`; endpoint-with-children = `<segment>.yaml` beside `<segment>/`|`users.yaml` + `users/`|
-|Path parameter|File name matches the param's `camelCase` name (no braces)|`{userId}` → `userId.yaml`|
-|operationId|`{HTTPMethod}{Resource}` (PascalCase, verb-first)|`GetUsers`, `PostUsers`|
-|tags|Path-based grouping|`v1/users`, `health`|
+|ファイル名|URL セグメントに一致（小文字）／パスパラメータファイルは param の `camelCase` 名に一致|`search.yaml`, `userId.yaml`|
+|ディレクトリ構成|URL パスをミラー（1 path item = 1 ファイル）|`/v1/users/search` → `v1/users/search.yaml`|
+|leaf と親|leaf = フラットな `<segment>.yaml`／エンドポイント＋子あり = `<segment>.yaml` と `<segment>/` を併存|`users.yaml` ＋ `users/`|
+|パスパラメータ|param の `camelCase` 名に一致するファイル名（波括弧なし）|`{userId}` → `userId.yaml`|
+|operationId|`{HTTPメソッド}{リソース名}`（PascalCase・動詞始まり）|`GetUsers`, `PostUsers`|
+|tags|パスベースのグルーピング|`v1/users`, `health`|
 <!-- sample-api:replace-with -->
-<!-- = |Element|Convention|Example| -->
+<!-- = |要素|規則|例| -->
 <!-- = |---|---|---| -->
-<!-- = |File name|Match the URL segment (lowercase); path-parameter files match the param's `camelCase` name|`search.yaml`, `<id>.yaml`| -->
-<!-- = |Directory layout|Mirror the URL path (one file per path item)|`/v1/<resources>/search` → `v1/<resources>/search.yaml`| -->
-<!-- = |Leaf vs. parent|Leaf = flat `<segment>.yaml`; endpoint-with-children = `<segment>.yaml` beside `<segment>/`|`<resources>.yaml` + `<resources>/`| -->
-<!-- = |Path parameter|File name matches the param's `camelCase` name (no braces)|`{<id>}` → `<id>.yaml`| -->
-<!-- = |operationId|`{HTTPMethod}{Resource}` (PascalCase, verb-first)|`Get<Resources>`, `Post<Resources>`| -->
-<!-- = |tags|Path-based grouping|`v1/<resources>`, `health`| -->
+<!-- = |ファイル名|URL セグメントに一致（小文字）／パスパラメータファイルは param の `camelCase` 名に一致|`search.yaml`, `<id>.yaml`| -->
+<!-- = |ディレクトリ構成|URL パスをミラー（1 path item = 1 ファイル）|`/v1/<リソース>/search` → `v1/<リソース>/search.yaml`| -->
+<!-- = |leaf と親|leaf = フラットな `<segment>.yaml`／エンドポイント＋子あり = `<segment>.yaml` と `<segment>/` を併存|`<リソース>.yaml` ＋ `<リソース>/`| -->
+<!-- = |パスパラメータ|param の `camelCase` 名に一致するファイル名（波括弧なし）|`{<id>}` → `<id>.yaml`| -->
+<!-- = |operationId|`{HTTPメソッド}{リソース名}`（PascalCase・動詞始まり）|`Get<リソース>`, `Post<リソース>`| -->
+<!-- = |tags|パスベースのグルーピング|`v1/<リソース>`, `health`| -->
 <!-- sample-api:replace-end -->
 
-## Path-to-Handler Mapping
+## パスとハンドラの対応
 
-Path definitions correspond to handler implementations:
+パス定義はハンドラ実装と対応します：
 
 <!-- sample-api:replace-begin -->
 ```text
@@ -100,10 +100,10 @@ paths/v1/users/search.yaml      → handler/v1/users/search/
 <!-- = ``` -->
 <!-- sample-api:replace-end -->
 
-## Rules
+## ルール
 
-- Use `$ref` to reference schemas, parameters, and responses — do not define inline
-- Split path files by responsibility (list vs. detail vs. search)
-- Do not use `#/` fragment pointers in this directory
-- Align naming with `components/` for easy cross-referencing
-- Each path file should define a single route
+- `$ref` でスキーマ・パラメータ・レスポンスを参照する — インライン定義しない
+- パスファイルは責務ごとに分割する（一覧 vs 詳細 vs 検索）
+- このディレクトリでは `#/` フラグメントポインタを使用しない
+- `components/` との相互参照がしやすいよう命名を統一する
+- 各パスファイルは単一のルートを定義する

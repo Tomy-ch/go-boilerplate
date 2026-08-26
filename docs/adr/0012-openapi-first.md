@@ -5,58 +5,47 @@ deciders: [maintainers]
 tags: [contract, api, openapi]
 ---
 
-# ADR-0012: Define the API contract OpenAPI-first
+# ADR-0012: API 契約を OpenAPI ファーストで定義する
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-This project needs API contracts to be clear, type-safe, and agreed on **before**
-implementation, so that request/response shapes are unambiguous and can stay consistent with
-frontend consumers and generated documentation. Deriving the contract from handwritten
-handler code instead leaves the contract implicit and prone to drift.
+このプロジェクトは、API 契約が実装**前**に明確で型安全であり、合意されている必要がある。リクエスト/レスポンスの形状が曖昧さなく、フロントエンドコンシューマーや生成されたドキュメントと一貫性を保てるようにするためである。手書きのハンドラコードから契約を導出するアプローチでは、契約が暗黙的になりドリフトが生じやすい。
 
-## Decision
+## 決定
 
-Define API specifications **OpenAPI-first**: the OpenAPI document is authored first, and
-server code is generated from it with `oapi-codegen`. The spec is the single source of truth
-for the wire contract; handlers implement the generated interface rather than defining the
-shape.
+API 仕様を **OpenAPI ファースト**で定義する。OpenAPI ドキュメントを最初に作成し、`oapi-codegen` でサーバーコードを生成する。仕様がワイヤー契約の唯一の真実のソースとなり、ハンドラは形状を定義するのではなく、生成されたインターフェースを実装する。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Clear, explicit API contracts fixed before implementation.
-- Type-safe request/response structures generated from the spec.
-- Consistency with frontend consumers working from the same document.
-- API documentation is generated, not maintained by hand.
-- In team development the contract must be authored and agreed on before any implementation begins, which naturally prompts review by the responsible lead or reviewer.
+- 実装前に明確で明示的な API 契約が確定される。
+- 仕様から型安全なリクエスト/レスポンス構造が生成される。
+- 同一ドキュメントから作業するフロントエンドコンシューマーとの一貫性が保たれる。
+- API ドキュメントが生成され、手動で保守する必要がない。
+- チームでの開発時は API 契約を実装より先に合意する形になるため、責任者によるレビューを促す効果がある。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Adding or changing an endpoint requires editing the spec first and regenerating — a
-  heavier step than editing a handler directly.
-- Contributors must learn the OpenAPI YAML authoring conventions; the generation step itself is fully encapsulated by `make gen-api` and does not need to be understood in detail.
+- エンドポイントの追加や変更には、まず仕様を編集してから再生成が必要になる。ハンドラを直接編集するよりも手順が多い。
+- コントリビューターは OpenAPI YAML の作成規約を習得する必要がある。ただし生成ステップ自体は `make gen-api` で完全に隠蔽されており、詳細を把握する必要はない。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Code-first API (generate OpenAPI from code)
+### コードファースト API（コードから OpenAPI を生成）
 
-Rejected: generating the spec from handler code tends to leave the API contract unclear and
-lets the implementation, not an agreed contract, drive the shape. It also prevents the
-system's behaviour from being locked down in a formal definition, risking that frontend
-consumers are given more latitude than intended.
+却下：ハンドラコードから仕様を生成するアプローチは API 契約を不明確にしがちであり、合意された契約ではなく実装が形状を決定することになる。また、契約としてシステムの動きを API 定義で固めることができず、フロント側に必要以上の自由を与えるリスクもある。
 
-### GraphQL-first
+### GraphQL ファースト
 
-Rejected: GraphQL is powerful but introduces high complexity for a general-purpose backend
-template where REST resources are the expected shape.
+却下：GraphQL は強力だが、REST リソースが期待される形状である汎用バックエンドテンプレートには高い複雑性をもたらす。
 
-## Notes
+## 補足
 
-- Enforced by the OpenAPI-first rules in [`docs/rules.md`](../rules.md#openapi-first) (spec defined before implementation; generated code not edited by hand), which are the day-to-day *consequences* of this decision.
-- Migrated from the former `docs/decisions.md`.
-- The spec build pipeline (Redocly modular split → bundle → generate) and per-tag generation are recorded separately (see the API-contract ADRs in [the ADR log](README.md)).
+- [`docs/rules.md`](../rules.md#openapi-first) の OpenAPI ファーストルールで強制される（実装前に仕様を定義すること、生成コードを手動で編集しないこと）。これらのルールはこの決定の日常的な*結果*である。
+- かつての `docs/decisions.md` から移行。
+- 仕様のビルドパイプライン（Redocly によるモジュール分割 → bundle → 生成）とタグ単位の生成は別途記録する（[ADR ログ](README.md) の API コントラクト系 ADR を参照）。

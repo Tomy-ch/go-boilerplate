@@ -1,7 +1,7 @@
 # requestid
 
-Generates unique X-Request-ID header for each request.
+リクエストごとに一意な X-Request-ID ヘッダを生成します。
 
-## Role
+## 役割
 
-Correlating logs, traces, and client-reported failures requires a stable identifier that spans a single request end to end. Generating it once in a middleware guarantees every request carries an ID before any handler or log runs, giving the whole stack a shared correlation key without each layer inventing its own.
+ログ・トレース・クライアントから報告された障害を相関づけるには、1 リクエストを端から端まで貫く安定した識別子が必要です。これをミドルウェアで一度だけ生成することで、どのハンドラやログよりも前にすべてのリクエストが ID を持つことを保証し、各層が独自に採番することなくスタック全体で共有の相関キーを得られます。

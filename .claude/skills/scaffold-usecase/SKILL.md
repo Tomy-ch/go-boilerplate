@@ -6,220 +6,216 @@ description: >-
 
 # Scaffold Usecase
 
-Generate the application service (usecase) layer for a feature based on `docs/spec/<feature>/usecase.md`. Produces the interface, struct, constructor, methods with workflow body, DTOs, tests, and DI registration in a single pass.
+`docs/spec/<feature>/usecase.md` を入力に、1 feature の usecase 層を 1 パスで生成するスキル。interface / struct / constructor / methods / DTOs / tests / DI 登録を生成する。
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+## 使うとき
 
-## When to Use
+- `scaffold-domain`（entity + Repository IF）と `scaffold-infra-db`（Repository impl）完了後
+- `scaffold-endpoint` の 3 番目のステップ（自動 chain）
+- usecase 層だけ scaffold したい単独利用（domain / infra 既存ケース）
 
-- After `scaffold-domain` (entity + Repository IF) and `scaffold-infra-db` (Repository impl) have been completed.
-- As the third step of `scaffold-endpoint` (auto-chained).
-- Standalone when only the usecase layer needs scaffolding (e.g., domain/infra already exist).
+以下の用途には使いません:
 
-Do NOT use this skill for:
+- 既存 usecase パッケージの変更（skill は新規パッケージ前提）
+- 既存 usecase に 1 メソッド追加 — 手編集
+- 新規 boundary interface の作成（`internal/usecase/boundary/` 配下は手動 bootstrap）
 
-- Modifying an existing usecase package (skill assumes a fresh package).
-- Adding a single new method to an existing usecase — edit by hand.
-- Creating new boundary interfaces (those are bootstrapped manually under `internal/usecase/boundary/`).
+## 読み書き範囲
 
-## What This Skill Reads / Writes
+**読み込み（常時）**:
 
-**Reads (always)**:
+- `docs/spec/<feature>/usecase.md` — single source of truth
+- `internal/usecase/README.md` — layer 規約
+- `internal/usecase/boundary/README.md` — boundary 規約
+- `internal/usecase/<sibling>/<sibling>_usecase.go` — **二次** 参照（README の Implementation Example が canonical、既存コードは観察のみ）
+- `internal/domain/<aggregate>/<aggregate>_repository.go` + entity — `calls:` 参照検証
+- `internal/usecase/boundary/<name>/` — spec の `Dependencies` boundary 存在検証
+- `internal/di/module/usecase.go` — DI 登録対象
 
-- `docs/spec/<feature>/usecase.md` — single source of truth for what gets generated.
-- `internal/usecase/README.md` — layer convention (Application Service Pattern, Tx boundary, Application Policy, etc.).
-- `internal/usecase/boundary/README.md` — boundary conventions.
-- `internal/usecase/<sibling>/<sibling>_usecase.go` — **secondary** reference (README has the canonical Implementation Example; existing code is observed but not authoritative).
-- `internal/domain/<aggregate>/<aggregate>_repository.go` + entity — to validate `calls:` references.
-- `internal/usecase/boundary/<name>/` — to validate spec's `Dependencies` boundaries exist.
-- `internal/di/module/usecase.go` — DI registration target.
+**書き込み（承認後）**:
 
-**Writes (with confirmation)**:
+- `internal/usecase/<package>/<package>_usecase.go`（interface + `//go:generate mockgen` + DTOs + struct + constructor + methods）
+- `internal/usecase/<package>/<package>_usecase_test.go`（gomock テスト）
+- `internal/di/module/usecase.go`（`UsecaseModule` の `fx.Provide(...)` に `<package>.New` 追加）
 
-- `internal/usecase/<package>/<package>_usecase.go` — Usecase interface (with `//go:generate mockgen`) + struct + constructor + methods + DTOs
-- `internal/usecase/<package>/<package>_usecase_test.go` — gomock-based tests
-- `internal/di/module/usecase.go` — append `<package>.New` under `UsecaseModule`'s `fx.Provide(...)`
+**`make` トリガ**:
 
-**Triggers (via `make`)**:
+- `make gen-api` — `internal/usecase/<package>/mock/` 配下に Usecase mock 再生成
+- `make fix` + `make test` — 最終検証
 
-- `make gen-api` — regenerates Usecase mock under `internal/usecase/<package>/mock/`
-- `make fix` + `make test` — final verification
+**触らない**:
 
-**Never touches**:
+- domain / infra 層
+- boundary interface 定義
+- `docs/spec/` ファイル
+- 生成 mock ファイル（手編集禁止）
 
-- domain / infra layers.
-- boundary interface definitions.
-- `docs/spec/` files.
-- Generated mock files (hand-edit forbidden).
+## 前提条件
 
-## Preconditions
+書き込み前に確認:
 
-The skill verifies before any write:
+1. `docs/spec/<feature>/usecase.md` 存在 + パース可
+2. spec の各 `calls:` 参照:
+   - `<aggregate>.Repository.<Method>` → domain Repository IF に存在
+   - `<aggregate>.<BehaviorMethod>` or `<aggregate>.New` → domain に存在
+   - `<boundary>.<Method>` → boundary 型が `internal/usecase/boundary/` に存在
+3. `internal/usecase/<package>/` 未存在（あれば中断）
 
-1. `docs/spec/<feature>/usecase.md` exists and parses.
-2. For every `calls:` reference in spec:
-   - `<aggregate>.Repository.<Method>` → exists in domain Repository IF.
-   - `<aggregate>.<BehaviorMethod>` or `<aggregate>.New` → exists in domain.
-   - `<boundary>.<Method>` → boundary type exists under `internal/usecase/boundary/`.
-3. `internal/usecase/<package>/` does NOT already exist (abort if it does).
+未充足時は中断、対応ステップ（`/scaffold-domain`、手動 boundary 作成、手動 cleanup）を案内。
 
-If any precondition fails, abort with a clear corrective pointer (`/scaffold-domain`, manual boundary creation, manual cleanup).
+## 最初のステップ: spec パス解決
 
-## First Step: Resolve Spec Path
+`AskUserQuestion` 起動直後（`scaffold-endpoint` から context 提供時は除く）:
 
-This skill **MUST call `AskUserQuestion` immediately after invocation** (unless invoked from `scaffold-endpoint` with the feature name in context):
+- 質問: 「対象 feature 名 (kebab-case)」
+- フリーテキスト。`docs/spec/<feature>/usecase.md` として解決
 
-- Question: 「対象 feature 名 (kebab-case)」
-- Free-text. Resolves to `docs/spec/<feature>/usecase.md`.
+スタンドアロン代替: `--spec=<path>`
 
-Standalone alternative: `--spec=<path>`.
+## Step 1. spec + 参考 context 読み込み
 
-## Step 1. Read Spec + Reference Context
-
-1. Parse `usecase.md` YAML into inventory:
+1. `usecase.md` YAML を inventory にパース:
    - `interface`: package, name, methods (name + signature)
-   - `dtos`: list of (name, fields)
-   - `dependencies`: list of (name, type) — boundaries + Repository IFs
-   - `workflow`: per method `(tx_required, steps, calls, errors)`
-2. Read `internal/usecase/README.md` as the **authoritative source** for layer rules + reference implementation (especially "Application Service Design Policy", "Time Handling Policy", "Boundary Concept", "Allowed dependencies", "Forbidden dependencies", "Observability (Tracing)", and the "Implementation Example" section at the bottom which carries the canonical struct / constructor / per-method template).
-3. Read `internal/usecase/boundary/README.md` for boundary conventions.
-4. Existing usecase packages (e.g., `internal/usecase/<sibling>/<sibling>_usecase.go`) are a **secondary** reference only — observe but never silently follow if they diverge from the README's reference implementation; README wins.
-5. Verify each `calls:` reference against the actual source (domain Repository IF, domain entity factory/methods, boundary types).
+   - `dtos`: (name, fields) リスト
+   - `dependencies`: (name, type) リスト — boundary + Repository IF
+   - `workflow`: メソッドごと `(tx_required, steps, calls, errors)`
+2. `internal/usecase/README.md` を読み layer 規約取得（特に "Application Service Design Policy"、"Time Handling Policy"、"Boundary Concept"、"Allowed dependencies"、"Forbidden dependencies"）
+3. `internal/usecase/boundary/README.md` を読み boundary 規約取得
+4. 既存 usecase パッケージ（例: `internal/usecase/<sibling>/<sibling>_usecase.go`）は **二次参照のみ** — observability tracer 配線、Tx wrap パターン、DTO 変換、error wrap などは README の Implementation Example が canonical。既存コードと README が衝突した場合 README が勝つ（README から drift したコードに skill が黙って従わない方針）
+5. 各 `calls:` 参照を実コード（domain Repository IF、domain entity factory/methods、boundary 型）に対して検証
 
-## Step 2. Test-Perspective Subagent
+## Step 2. test 観点 subagent
 
-Invoke the Agent tool to enumerate usecase-layer test viewpoints BEFORE writing code.
+実装前に Agent tool で subagent を起動し usecase 層 test 観点を列挙。
 
 - `subagent_type: general-purpose`
-- Prompt (Japanese): pass the parsed spec inventory + `internal/usecase/README.md`'s "Testing Strategy" section + expected usecase viewpoints:
-  - workflow call ordering (domain → repo → boundary in correct order)
-  - mock strategy: Repository / Boundary mocked; Domain entity used as real
-  - transaction-boundary correctness (`tx.Manager.Do` wrapping)
-  - error propagation (boundary error → returned, Repository error → mapped to apperror)
-  - DTO composition (final return value structure)
-  - empty / zero-result handling
-- Expected output: per-method test case list.
+- prompt（日本語）: spec inventory + `internal/usecase/README.md` "Testing Strategy" 節 + usecase 期待観点:
+  - workflow 呼び出し順序（domain → repo → boundary が正しい順か）
+  - mock 戦略: Repository / Boundary を mock、Domain entity は実物
+  - transaction 境界の正当性（`tx.Manager.Do` wrap）
+  - error 伝播（boundary error → return、Repository error → apperror へ map）
+  - DTO 構成（最終返却値の構造）
+  - 空 / zero-result 扱い
+- 出力: メソッドごとのテストケースリスト
 
-Fall back to a minimal default with a warning if the subagent returns nothing.
+subagent が観点を返さない場合は最小デフォルトで継続、警告。
 
-## Step 3. Plan and Confirm
+## Step 3. プランと承認
 
-Display a Japanese summary:
+日本語サマリ表示:
 
-- Files to be created + DI update
-- For each method: signature + workflow synopsis (calls, tx_required)
-- Test method list from subagent
+- 生成予定ファイル + DI 更新
+- 各メソッド: signature + workflow 概要（calls、tx_required）
+- subagent のテストメソッドリスト
 
-Ask:
+質問:
 
 - 「以下の構成で usecase 層を生成しますか？」
-- Options: 「生成する」 / 「修正したい箇所を指摘する」 / 「キャンセル」
+- 選択肢: 「生成する」 / 「修正したい箇所を指摘する」 / 「キャンセル」
 
-## Step 4. Write Files
+## Step 4. ファイル書き込み
 
-Order:
+順序:
 
-1. `<package>_usecase.go` — interface (with `//go:generate mockgen`) + DTOs + struct + constructor + methods
-2. `<package>_usecase_test.go` — gomock tests using subagent viewpoints
-3. `internal/di/module/usecase.go` — append `<package>.New` under the `usecase` `fx.Provide(...)` list
+1. `<package>_usecase.go`（interface + `//go:generate mockgen` + DTOs + struct + constructor + methods）
+2. `<package>_usecase_test.go`（gomock テスト、subagent 観点使用）
+3. `internal/di/module/usecase.go` 更新 — `usecase` の `fx.Provide(...)` に `<package>.New` 追加
 
-Implementation file conventions:
+実装ファイル convention:
 
-- `package <package>` (lowercase aggregate name)
-- `//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE` at top (repo-wide standard directive — identical in every interface file)
-- `type Usecase interface { ... }` from spec's Interface
-- DTOs as `type XxxDTO struct { ... }` from spec's DTOs
-- `type usecase struct { tracer observability.LayerTracer; <deps...> }` from spec's Dependencies
+- `package <package>`（lowercase aggregate name）
+- ファイル先頭に `//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE`（リポジトリ共通の標準ディレクティブ・全 interface ファイルで同一）
+- `type Usecase interface { ... }` を spec Interface から
+- DTO は `type XxxDTO struct { ... }` を spec DTOs から
+- `type usecase struct { tracer observability.LayerTracer; <deps...> }` を spec Dependencies から
 - `func New(tf observability.TracerFactory, <deps...>) Usecase { return &usecase{tracer: tf.Usecase(), <init...>} }`
-- Each method body:
-  - Open the tracer span at the top (`u.tracer.Start(ctx)` / `defer endSpan()`), per usecase README "Observability (Tracing)"
-  - If `tx_required: true`, wrap the body in `u.txm.Do(ctx, func(ctx context.Context) error { ... })`
-  - Implement Workflow steps in order, calling the declared `calls:` entries
-  - Apply error mapping per spec
-  - Return the DTO
+- 各メソッド本体:
+  - `ctx, endSpan := u.tracer.Start(ctx); defer endSpan()`
+  - `tx_required: true` なら body を `u.txm.Do(ctx, func(ctx context.Context) error { ... })` で wrap
+  - Workflow steps を順序通りに実装し、宣言された `calls:` を呼ぶ
+  - spec 通り error mapping 適用
+  - DTO を return
 
-Test file conventions:
+テストファイル convention:
 
-- gomock controller per subtest
-- Mock Repository + Boundaries; use real Domain entity (per project convention)
-- Japanese subtest names
-- Use the subagent's viewpoint list as test case map
+- subtest ごと gomock コントローラ
+- Repository + Boundary を mock、Domain entity は実物（プロジェクト規約）
+- 日本語 subtest 名
+- subagent 観点リストをテストケースマップに使用
 
-## Step 5. Regenerate Mocks
+## Step 5. mock 再生成
 
 ```sh
 make gen-api
 ```
 
-Processes the `//go:generate mockgen` directive in the new usecase file and produces `internal/usecase/<package>/mock/mock_<package>_usecase.go.gen.go`. Verify the mock file exists.
+新 usecase ファイルの `//go:generate mockgen` を処理し `internal/usecase/<package>/mock/mock_<package>_usecase.go.gen.go` を生成。ファイル存在確認。
 
-## Step 6. Verify
+## Step 6. 検証
 
 ```sh
 make fix
 make test
 ```
 
-Confirm `internal/usecase/<package>` coverage line. Target 100% per project convention. If below, identify untested error / branch paths and recommend test additions.
+`internal/usecase/<package>` のカバレッジ行確認。プロジェクト規約で 100% 目標。低下時は未到達 error / branch を特定して追加推奨。
 
-On failure: TODO + FB summary; no auto-rollback.
+失敗時: TODO + FB summary、自動 rollback なし。
 
-> **DI verification (runtime):** `go build` / `make test` do NOT construct the Fx graph — a missing provider, an unregistered `New`, or a mismatched constructor signature only fails at **app startup**, not at compile/test time. After the DI registration (`fx.Provide(<package>.New)`), confirm the app actually boots: with `make serve` running, `air` rebuilds on save — verify the `api_server` logs reach `[Fx] RUNNING` ("http server started") with no Fx `provide` / `invoke` errors. Fresh-env caveat: the container builds in **vendor mode**, so run `make tidy-lib` (generates `vendor/`) first — otherwise it fails with `inconsistent vendoring` before Fx even runs.
+> **DI 検証（runtime）:** `go build` / `make test` は Fx グラフを構築しない — provider 欠落・`New` の未登録・コンストラクタのシグネチャ不整合は、コンパイル/テストではなく**アプリ起動時**に初めて失敗する。DI 登録（`fx.Provide(<package>.New)`）後はアプリが実際に起動するか確認する: `make serve` 稼働中なら保存で `air` が再ビルドするので、`api_server` のログが `[Fx] RUNNING`（"http server started"）に到達し、Fx の `provide` / `invoke` エラーが無いことを確認する。新規環境の注意: コンテナは **vendor モード**でビルドするため先に `make tidy-lib`（`vendor/` 生成）を実行する — 未生成だと Fx 実行前に `inconsistent vendoring` で失敗する。
 
-## Step 7. Closing
+## Step 7. クロージング
 
 ```text
 <Package> usecase 層を生成しました。<N> ファイル作成 + DI 1 行追加、make test OK、coverage <X>%。
 次は scaffold-controller で handler、または scaffold-endpoint で残層を続行できます。
 ```
 
-Do NOT commit. Do NOT trigger the next scaffold skill.
+commit しない。次の scaffold skill を起動しない。
 
-## AI Modification Scope
+## AI 修正スコープ
 
-Per the "Exception: Skill Execution" clause:
+"Exception: Skill Execution" 緩和:
 
-- Write scope: `internal/usecase/<package>/` (new directory) + `internal/di/module/usecase.go` (append 1 entry).
-- Aborts if the package directory already exists.
+- 書き込みスコープ: `internal/usecase/<package>/`（新規ディレクトリ）+ `internal/di/module/usecase.go`（1 行追加）
+- 既存パッケージディレクトリあれば中断
 
-Remains protected:
+保護対象:
 
-- domain / infra layers.
-- boundary interface files (read-only).
-- spec file.
-- Mock files (regenerated via `make gen-api`).
+- domain / infra 層
+- boundary interface ファイル（read-only）
+- spec ファイル
+- mock ファイル（`make gen-api` 経由のみ）
 
-## Constraints
+## 制約事項
 
-- ❌ Add comments that restate the code or explain *why* a choice was made — keep code comments minimal (behavior / contract only); rationale belongs in the commit message / README, not the code. One-line declaration godoc stays (even on unexported symbols). **Volume counts too**: what this skill scaffolds is idiomatic by construction, so a multi-line explanation of a constructor / Params struct / row-to-entity mapping / handler template is noise. State the contract in one line and stop; never restate a repo-wide rule `docs/rules.md` already carries. Suppression, not elimination — a genuinely non-obvious Why still stays.
-- ❌ Invent methods, DTOs, dependencies, or workflow steps not in the spec
-- ❌ Implement business rules (those belong in domain entity)
-- ❌ Access infrastructure directly (only via Repository / Boundary interfaces)
-- ❌ Use `time.Now()` directly — go through the `clock.Clock` boundary (canonical detail: usecase README "Time Handling Policy")
-- ❌ Skip the test-perspective subagent (Step 2)
-- ❌ Skip the spec-confirmation `AskUserQuestion`
-- ❌ Overwrite an existing usecase package
-- ❌ Hand-edit the mock file
-- ❌ Auto-rollback on failure (TODO + FB)
-- ✅ Japanese user-facing output and Japanese test case names
-- ✅ Use `internal/usecase/README.md`'s Implementation Example as the canonical structural template; existing packages are secondary reference only
-- ✅ Validate every `calls:` reference exists before writing
-- ✅ Update DI registration in the same skill run
+- ❌ コードを言い換える／*なぜ*その設計にしたかを説明するコメントを足す — コードコメントは最小（振る舞い・契約のみ）。理由は commit message / README に置きコードに書かない。宣言の godoc（unexported 含む）は1行で残す。**分量も対象**: このスキルが生成する面は構造上すべて慣用的であり、コンストラクタ / Params 構造体 / 行→エンティティ変換 / handler テンプレートに複数行の説明を付けるのはノイズ。契約を1行で述べて止める。`docs/rules.md` にある repo 全体のルールを書き写さない。抑制であって根絶ではなく、真に非自明な Why は残す。
+- ❌ spec に無いメソッド / DTO / dependency / workflow を発明
+- ❌ business rule の実装（domain entity の責務）
+- ❌ infrastructure への直接アクセス（Repository / Boundary interface 経由のみ）
+- ❌ `time.Now()` 直接利用 — 時刻が必要なら `clock.Clock` boundary 経由
+- ❌ test 観点 subagent (Step 2) をスキップ
+- ❌ spec 確認 `AskUserQuestion` をスキップ
+- ❌ 既存 usecase パッケージの上書き
+- ❌ mock ファイルの手編集
+- ❌ 失敗時の自動 rollback（TODO + FB）
+- ✅ ユーザー向け出力 / テストケース名は日本語
+- ✅ `internal/usecase/README.md` の Implementation Example を canonical 構造 template として利用、既存パッケージは二次参照のみ
+- ✅ 書き込み前に全 `calls:` 参照の存在を検証
+- ✅ DI 登録を同じ skill 実行内で更新
 
-## Checklist
+## チェックリスト
 
-Before reporting completion, confirm:
-
-- [ ] Spec path resolved and file exists
-- [ ] Preconditions verified (domain references, boundary references, target directory does not exist)
-- [ ] Spec YAML parsed successfully
-- [ ] `internal/usecase/README.md` (incl. Implementation Example) + `boundary/README.md` read as canonical template; sibling package observed as secondary
-- [ ] Test-perspective subagent invoked; viewpoints captured before any write
-- [ ] Plan displayed and confirmed via `AskUserQuestion`
-- [ ] Implementation file written with interface / DTOs / struct / constructor / methods
-- [ ] Test file written with gomock setup + subagent viewpoints
-- [ ] `internal/di/module/usecase.go` updated with new `fx.Provide`
-- [ ] `make gen-api` executed; mock file present
-- [ ] `make fix` + `make test` run; coverage reported (or failure surfaced with TODO + FB)
-- [ ] No commits / pushes
-- [ ] Final summary in Japanese
+- [ ] spec パスを解決しファイル存在確認
+- [ ] 前提条件確認（domain 参照、boundary 参照、対象ディレクトリ未存在）
+- [ ] spec YAML をパース成功
+- [ ] `internal/usecase/README.md`（Implementation Example 含む）+ `boundary/README.md` を canonical template として読み込み、sibling は二次参照のみ
+- [ ] test 観点 subagent を起動、書き込み前に観点取得
+- [ ] プラン表示 + `AskUserQuestion` 確認
+- [ ] 実装ファイル書き込み（interface / DTOs / struct / constructor / methods）
+- [ ] テストファイル書き込み（gomock セット + subagent 観点）
+- [ ] `internal/di/module/usecase.go` に新 `fx.Provide` 追加
+- [ ] `make gen-api` 実行、mock ファイル存在確認
+- [ ] `make fix` + `make test` 実行、カバレッジ報告（または失敗時 TODO + FB）
+- [ ] commit / push なし
+- [ ] 最終サマリは日本語

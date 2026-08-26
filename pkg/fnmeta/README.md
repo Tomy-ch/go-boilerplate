@@ -1,9 +1,9 @@
 # fnmeta
 
-Extracts function and package names from runtime full function names.
+`runtime` から取得したフル関数名を分解し、パッケージ名や関数名を抽出します。
 
-Used to derive a short, human-readable identifier (e.g. for span or log naming) from a function's runtime full name.
+関数のランタイムフルネームから、短く人間可読な識別子（span 名やログ名など）を導出する用途に使います。
 
-## Wraps
+## ラップ対象
 
-Standard library `strings` package. Parses the full function-name strings produced by `runtime` (e.g. `runtime.FuncForPC(...).Name()`), but does not import `runtime` itself — the caller obtains those names.
+標準ライブラリ `strings` パッケージ。`runtime` が生成するフル関数名文字列（例: `runtime.FuncForPC(...).Name()`）を解析しますが、`runtime` 自体は import しません（フル関数名は呼び出し側が取得します）。

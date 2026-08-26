@@ -1,49 +1,48 @@
-# Database Initialization SQL
+# Database 初期化用 SQL
 
-`docker/database/sql/` stores SQL files for **initializing the database environment**.
+`docker/database/sql/` は、**データベース環境を初期化するための SQL ファイル**を格納するディレクトリです。
 
-These files are executed on PostgreSQL container startup via `docker-entrypoint-initdb.d` and perform setup required **before** migrations (database creation, extension installation, etc.).
+PostgreSQL コンテナの起動時に `docker-entrypoint-initdb.d` 経由で実行され、マイグレーション**以前**に必要なセットアップ（データベース作成、拡張機能の有効化等）を行います。
 
-## Current Files
+## 現在のファイル
 
-|File|Description|
+|ファイル|説明|
 |---|---|
-|`001-create-local-db.sql`|Create the local development database|
-|`002-create-test-db.sql`|Create the test database|
-|`003-init-extensions-local-db.sql`|Enable extensions for the local database|
-|`004-init-extensions-test-db.sql`|Enable extensions for the test database|
+|`001-create-local-db.sql`|ローカル開発用データベースの作成|
+|`002-create-test-db.sql`|テスト用データベースの作成|
+|`003-init-extensions-local-db.sql`|ローカル DB の拡張機能の有効化|
+|`004-init-extensions-test-db.sql`|テスト DB の拡張機能の有効化|
 
-## Execution Order
+## 実行順序
 
-Files are executed in **ascending order of their numeric prefix** (e.g., `001-...`, `002-...`).
+ファイル名の **連番プレフィックスの昇順**（例: `001-...`, `002-...`）で実行されます。
 
-Execution is handled automatically by PostgreSQL's `docker-entrypoint-initdb.d` mechanism on first container startup.
+PostgreSQL の `docker-entrypoint-initdb.d` の仕組みにより、コンテナ初回起動時に自動実行されます。
 
-These scripts create/extension-init only the fixed `local` / `test` databases. The DB worktree
-pool (`cmd/db-slot`, core `internal/cli/dbslot`) creates its per-worktree databases
-(`wt<N>_local` / `wt<N>_test`) dynamically **after** startup, so it bootstraps the same extensions
-itself — keep this setup in sync with `internal/cli/dbslot` (`PgxAdmin.SetupDatabase`).
-See `docs/maintenance/db-worktree-pool.md`.
+これらのスクリプトは固定の `local` / `test` データベースのみを作成・拡張初期化します。DB worktree
+プール（`cmd/db-slot`・コア `internal/cli/dbslot`）は per-worktree のデータベース（`wt<N>_local` / `wt<N>_test`）を起動**後**に
+動的作成するため、同じ拡張を自身でブートストラップします。この設定は `internal/cli/dbslot`（`PgxAdmin.SetupDatabase`）
+と同期させてください。詳細は `docs/maintenance/db-worktree-pool.md` を参照。
 
-Timezone is deliberately **not** set here. The `TZ` environment variable of the `database` service
-makes it the cluster default at `initdb` time, which every database created later inherits, so no
-script or tool has to repeat it. See `env/README.md` (Changing the Timezone).
+timezone はここでは意図的に設定しません。`database` サービスの `TZ` 環境変数が `initdb` 時にクラスタ既定と
+なり、後から作られるデータベースもそれを継承するため、スクリプトやツールが個別に繰り返す必要がありません。
+詳細は `env/README.md` の Changing the Timezone を参照。
 
-## What Belongs Here
+## ここに置くもの
 
-- Database creation (`CREATE DATABASE`)
-- PostgreSQL extension setup (`CREATE EXTENSION`)
-- Roles and permissions required for local/CI environments
+- データベース作成（`CREATE DATABASE`）
+- PostgreSQL 拡張のセットアップ（`CREATE EXTENSION`）
+- ローカル / CI 環境に必要なロールと権限
 
-## What Does NOT Belong Here
+## ここに置かないもの
 
-- **DDL (table definitions, schema changes)** → `database/migrations/`
-- **DML (data manipulation, queries)** → `database/dml/`
-- **Seed data (test/dev initial data)** → `database/seed/`
+- **DDL（テーブル定義、スキーマ変更）** → `database/migrations/`
+- **DML（データ操作、クエリ）** → `database/dml/`
+- **シードデータ（テスト / 開発用初期データ）** → `database/seed/`
 
-## Rules
+## ルール
 
-- Use 3-digit numeric prefixes for ordering (e.g., `001-...`, `002-...`)
-- Make scripts **idempotent** where possible (`IF NOT EXISTS`) — scripts run on first startup but idempotency helps troubleshooting
-- Do not apply directly to CI/production without following team policies
-- Keep files to the **minimum required for environment initialization**
+- 3桁の連番プレフィックスで順序を制御（例: `001-...`, `002-...`）
+- 可能な限り**冪等**にする（`IF NOT EXISTS`）— 初回起動時に実行されるが、冪等にしておくとトラブルシューティングが容易
+- CI / 本番環境への直接適用はチームのポリシーに従う
+- **環境初期化に必要な最小限**のファイルのみ配置する

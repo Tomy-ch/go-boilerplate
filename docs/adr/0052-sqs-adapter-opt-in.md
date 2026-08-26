@@ -6,53 +6,44 @@ superseded-by: 0050
 tags: [worker, async, dependencies]
 ---
 
-# ADR-0052: SQS adapter is opt-in and not linked into the default binary
+# ADR-0052: SQS アダプターはオプトインであり、デフォルトバイナリにリンクしない
 
-## Status
+## ステータス
 
 superseded by [ADR-0053](0053-broker-sdk-isolation-measured-as-coupling.md)
 
-## Context
+## 背景
 
-The worker scaffold ([ADR-0050](0050-broker-agnostic-worker-scaffold.md)) ships a reference
-broker adapter for AWS SQS. If that adapter were wired into the default build, every binary —
-including `serve`, which never consumes a queue — would link `aws-sdk-go-v2`, enlarging the
-dependency surface against the lock-in-avoidance principle
-([ADR-0001](0001-avoid-lock-in.md)).
+ワーカースキャフォールド（[ADR-0050](0050-broker-agnostic-worker-scaffold.md)）は AWS SQS 向けのリファレンスブローカーアダプターを同梱している。このアダプターをデフォルトビルドに組み込むと、キューを消費しない `serve` を含むすべてのバイナリが `aws-sdk-go-v2` をリンクし、ロックイン回避原則（[ADR-0001](0001-avoid-lock-in.md)）に反して依存性サーフェスが拡大する。
 
-## Decision
+## 決定
 
-Keep the SQS adapter **opt-in**. The reference adapter lives in
-`internal/infrastructure/queue/sqs` and is **not wired into the default `cmd` build**, so
-`aws-sdk-go-v2` is not linked into the shipped binary. A deployment that wants SQS wires the
-adapter explicitly.
+SQS アダプターを**オプトイン**のままにする。リファレンスアダプターは `internal/infrastructure/queue/sqs` に置き、**デフォルトの `cmd` ビルドには組み込まない**。これにより `aws-sdk-go-v2` は出荷バイナリにリンクされない。SQS を使いたいデプロイメントは明示的にアダプターを組み込む。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Default binaries stay free of the AWS SDK — smaller dependency surface and build.
-- The reference adapter still exists as a worked example for any pull-ack broker.
-- Dependency isolation is achieved by *not importing* from `cmd`, without build tags.
+- デフォルトバイナリは AWS SDK から解放される — 依存性サーフェスとビルドが軽量になる。
+- リファレンスアダプターは任意のプル・アック型ブローカーの実装例として引き続き存在する。
+- ビルドタグなしで、`cmd` からインポートしないことで依存性の分離が達成される。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Enabling SQS requires an explicit wiring step; it is not on by default.
+- SQS を有効化するには明示的な組み込み手順が必要。デフォルトでは有効にならない。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Wire SQS by default
+### デフォルトで SQS を組み込む
 
-Rejected: it would force `aws-sdk-go-v2` into every binary (including `serve`), against the
-replaceable-infrastructure goal.
+却下: `aws-sdk-go-v2` を（`serve` を含む）すべてのバイナリに強制し、交換可能なインフラという目標に反する。
 
-### Build tags for dependency isolation
+### 依存性分離のためのビルドタグ
 
-Rejected: no precedent in this repo, and a single binary makes module separation
-insufficient. Not importing the adapter from `cmd` isolates the dependency without tags.
+却下: このリポジトリに前例がなく、シングルバイナリではモジュール分離が不十分。`cmd` からアダプターをインポートしないことで、タグなしで依存性が分離できる。
 
-## Notes
+## 補足
 
-- Parent decision: [ADR-0050](0050-broker-agnostic-worker-scaffold.md). Principle: [ADR-0001](0001-avoid-lock-in.md).
-- Reference: `internal/infrastructure/queue/sqs/README.md`.
-- Migrated from the former `docs/decisions.md`.
+- 親決定: [ADR-0050](0050-broker-agnostic-worker-scaffold.md)。原則: [ADR-0001](0001-avoid-lock-in.md)。
+- 参考: `internal/infrastructure/queue/sqs/README.md`。
+- かつての `docs/decisions.md` から移行。

@@ -252,65 +252,6 @@ export function parseFrontmatterKeys(fmLines: readonly string[]): Map<string, st
   return keys;
 }
 
-// doc-pair:begin
-export type Heading = {
-  level: number;
-  text: string;
-  lineNo: number;
-};
-
-/** フェンス外の見出しを (レベル, テキスト) で抽出する。 */
-export function extractHeadings(content: string): Heading[] {
-  const headings: Heading[] = [];
-
-  for (const { line, lineNo } of eachLineOutsideFence(content)) {
-    const matched = /^(#{1,6})\s+(.*?)\s*$/.exec(line);
-    if (matched) headings.push({ level: matched[1].length, text: matched[2], lineNo });
-  }
-
-  return headings;
-}
-
-/** 見出し構造のずれ。`canonical` / `translation` は該当位置の見出し（無ければ `null`）。 */
-export type HeadingMismatch = {
-  index: number;
-  canonical: Heading | null;
-  translation: Heading | null;
-};
-
-/**
- * 対訳が canonical と同じ見出し構造を持つか調べ、最初のずれを返す。
- *
- * @remarks
- * ファイルの有無だけでは節の欠落・ずれを検出できないため、見出しレベル列の一致まで見ます。
- * 見出しテキストは翻訳で変わるので、比較するのはレベルと出現順だけです。
- */
-export function compareHeadingStructure(
-  canonical: readonly Heading[],
-  translation: readonly Heading[],
-): HeadingMismatch | null {
-  const max = Math.max(canonical.length, translation.length);
-
-  for (let i = 0; i < max; i++) {
-    const en = canonical[i] ?? null;
-    const ja = translation[i] ?? null;
-
-    if (en && ja && en.level === ja.level) continue;
-
-    return { index: i, canonical: en, translation: ja };
-  }
-
-  return null;
-}
-
-/** 対訳の冒頭に canonical を指す翻訳注記（引用行）があるか。 */
-export function hasTranslationNote(content: string, canonicalBasename: string): boolean {
-  const firstLine = content.split("\n").find((line) => line.trim() !== "") ?? "";
-
-  return firstLine.startsWith(">") && firstLine.includes(canonicalBasename);
-}
-
-// doc-pair:end
 /** 集合差から片側のみの名前を取り出す。 */
 export function onlyIn(names: readonly string[], otherNames: readonly string[]): string[] {
   const other = new Set(otherNames);

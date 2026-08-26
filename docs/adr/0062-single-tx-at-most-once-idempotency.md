@@ -5,80 +5,51 @@ deciders: [maintainers]
 tags: [idempotency, reliability]
 ---
 
-# ADR-0062: Run claim, business function, and complete in a single transaction for at-most-once semantics
+# ADR-0062: claim・ビジネス関数・complete を単一トランザクションで実行してアットモストワンスを保証する
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-A database transaction guarantees atomicity within one request, but it does not deduplicate
-client retries. When a write has no natural unique key — a `POST` that allocates its own id,
-a balance increment, a charge, an email send — a network timeout or double-submit causes the
-side effect to run again.
+データベーストランザクションは 1 リクエスト内のアトミック性を保証するが、クライアントのリトライを重複排除するわけではない。自然な一意キーを持たない書き込み（自身で ID を採番する `POST`、残高インクリメント、課金、メール送信など）では、ネットワークタイムアウトや二重送信によって副作用が再実行される。
 
-The idempotency subsystem prevents this by tracking each `(scope, key)` pair in a
-`idempotency_keys` table. The central design question is whether the claim (reserving the
-key), the business function, and the completion step (storing the response) run in the same
-database transaction or in separate ones.
+冪等性サブシステムは、`idempotency_keys` テーブルで各 `(scope, key)` ペアを追跡することでこれを防ぐ。設計上の核心的な問いは、クレーム（キーの予約）、ビジネス関数、完了ステップ（レスポンスの保存）を同一データベーストランザクションで実行するか、別々のトランザクションで実行するかである。
 
-Using separate transactions would open a window between a successful business operation and
-a failed `Complete` write: the effect would be applied but the response never stored, so a
-retry would attempt the business function a second time. Conversely, a claim in a separate
-transaction that is never followed by a `Complete` would require a separate explicit
-"release" step on business failure, adding complexity and a failure mode.
+別々のトランザクションを使うと、ビジネス操作の成功と `Complete` 書き込みの失敗の間にウィンドウが生じる。副作用は適用済みだがレスポンスは保存されず、リトライ時にビジネス関数が 2 回目の実行を試みる。逆に、別トランザクションでのクレームが `Complete` なしに終わると、ビジネス失敗時に明示的な「リリース」ステップが必要になり、複雑さと障害モードが増す。
 
-## Decision
+## 決定
 
-The `Run[T]` orchestrator executes `Claim`, `businessFn`, and `Complete` inside **one
-shared database transaction**. If the business function fails or `Complete` fails, the
-transaction rolls back and the claim is released — the key becomes free for a clean retry.
-A committed transaction guarantees that exactly one response is stored and every retry of a
-completed key replays that stored response without calling the business function again.
+`Run[T]` オーケストレーターは、`Claim`・`businessFn`・`Complete` を **1 つの共有データベーストランザクション**内で実行する。ビジネス関数または `Complete` が失敗した場合、トランザクションはロールバックされてクレームが解放される。キーは次のクリーンなリトライで再利用可能になる。コミットされたトランザクションは、ちょうど 1 つのレスポンスが保存されること、および完了済みキーへのすべてのリトライがビジネス関数を再呼び出しせずに保存されたレスポンスをリプレイすることを保証する。
 
-This is the at-most-once guarantee: the side effect runs at most once per `(scope, key)`.
+これがアットモストワンス保証である。副作用は `(scope, key)` ごとに最大 1 回だけ実行される。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Business failure automatically releases the key via rollback — no explicit release path
-  is needed.
-- A stored response is always paired with a committed business effect; there is no
-  intermediate "effect applied, response lost" state.
-- The orchestrator (`Run`) is infrastructure-agnostic: it delegates the transaction to
-  `tx.Manager` and persistence to the `Store` seam.
+- ビジネス失敗はロールバックによりキーを自動的に解放する。明示的なリリースパスは不要である。
+- 保存されたレスポンスは常にコミット済みのビジネス効果と対になる。「副作用適用済み・レスポンス消失」という中間状態は存在しない。
+- オーケストレーター（`Run`）はインフラに依存しない。トランザクションを `tx.Manager` に、永続化を `Store` シームに委譲する。
 
-### Negative Consequences
+### ネガティブな影響
 
-- The database transaction spans the full duration of the business function, which may hold
-  locks longer than a write-only transaction would.
-- All three steps must participate in the same `tx.Manager`-controlled transaction; a
-  business function that opens its own separate transaction cannot participate in this
-  guarantee.
+- データベーストランザクションはビジネス関数の全期間にわたる。書き込み専用のトランザクションよりもロックを長く保持する可能性がある。
+- 3 つのステップすべてが同一の `tx.Manager` 制御トランザクションに参加しなければならない。独自の別トランザクションを開くビジネス関数はこの保証に参加できない。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Two-phase: separate claim then complete
+### 2 フェーズ: 別々の claim と complete
 
-Claim in one transaction, run the business function, complete in a second transaction.
-Rejected because a crash between the two phases leaves the key claimed but incomplete, and
-a retry would skip the business function (key exists) while no response is stored — making
-the operation silently lost.
+1 つ目のトランザクションでクレームし、ビジネス関数を実行し、2 つ目のトランザクションで complete する。2 フェーズ間のクラッシュにより、キーがクレーム済みだが未完了のまま残るため却下した。リトライ時にビジネス関数がスキップされ（キーが存在する）、レスポンスも保存されないため、操作がサイレントに失われる。
 
-### Idempotency table in a separate database
+### 別データベースに冪等性テーブルを置く
 
-Store idempotency state in a dedicated database decoupled from the business database.
-Rejected because atomic coordination between two databases requires distributed transactions
-or a two-phase commit protocol, both of which add substantial complexity without benefit for
-this use case.
+冪等性状態をビジネスデータベースから切り離した専用データベースに保存する。2 データベース間のアトミックな調整には分散トランザクションまたは 2 フェーズコミットプロトコルが必要であり、このユースケースでは利益なしに大幅な複雑さが加わるため却下した。
 
-## Notes
+## 補足
 
-- Source: [`docs/design/idempotency.md`](../design/idempotency.md) §1 (design principles) and §2.2
-  (per-request decision diagram).
-- Related: [ADR-0002](0002-onion-architecture.md) (onion architecture — `Run` depends only
-  on `Store` seam and `tx.Manager`, not on infrastructure).
-- The `Store` seam is defined at `internal/usecase/boundary/idempotency`; the RDB
-  implementation lives in `internal/infrastructure/rdb/system_cqrs/idempotency`.
+- 出典: [`docs/design/idempotency.md`](../design/idempotency.md) §1（設計原則）および §2.2（リクエストごとの決定図）。
+- 関連: [ADR-0002](0002-onion-architecture.md)（オニオンアーキテクチャ — `Run` は `Store` シームと `tx.Manager` にのみ依存し、インフラには依存しない）。
+- `Store` シームは `internal/usecase/boundary/idempotency` に定義されており、RDB 実装は `internal/infrastructure/rdb/system_cqrs/idempotency` にある。

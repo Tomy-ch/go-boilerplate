@@ -4,80 +4,76 @@ description: >-
   Draft and land this repository's Context Map at `docs/design/context-map.md`, describing every boundary-crossing contact point with Evans's relationship vocabulary (Customer-Supplier, Conformist, Open Host Service, Published Language, Anticorruption Layer, and Separate Ways). Use when the map is missing, an external dependency has no mapped edge, someone asks how this system relates to neighbouring systems, or the DDD ledger marks `context-map` as uninterpreted; Japanese triggers include 「コンテキストマップを作って」「外部連携の関係を整理して」「境界の接触点を洗い出して」. It deterministically enumerates runtime ports and adapters, cites `file:line` evidence, and requires a human to confirm every relationship label—never infer one from code. Do NOT use for map-vs-code drift (`context-map-audit`), Evans-pattern auditing (`ddd-audit`), feature specifications (`new-spec`), or mechanics of a single integration.
 ---
 
-# Context Map
+# コンテキストマップ
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+システムが所有しないコンテキストとモデルを交換するすべての場所について、英語正本の関係マップ
+`docs/design/context-map.md` を作成します。日本語訳として
+`docs/design/context-map.md` を維持します。
 
-Create `docs/design/context-map.md`, the English-canonical relationship map for every place this
-system exchanges a model with a context it does not own. Maintain
-`docs/design/context-map.ja.md` as its Japanese translation.
+## 絶対に守る規則
 
-## Non-negotiable rule
+**関係ラベルを決めてはなりません。** 接触点を列挙し、構造的な根拠を示し、その根拠と両立する
+ラベルだけを提示して、辺ごとに人の明示的な判断を得ます。
 
-**Never choose a relationship label.** Enumerate contact points, state the structural evidence,
-offer only labels compatible with that evidence, and obtain an explicit human decision per edge.
+これは単なる慎重さではなく、正確性の規則です。Customer-Supplier と Conformist は、このコードベースの
+内側からは同じに見える場合があります。どちらも上流のモデルを消費するからです。両者を分けるのは、
+上流がこのシステムの要件を受け入れるかどうかという、ソースコードには存在しない組織的事実です。
+ほかの関係も、コードでは証明できない合意に依存します。推測したラベルは、調査していない地図を
+確定済みに見せます。ラベルのない辺は、なお必要な判断を促します。
 
-This is an accuracy rule, not a courtesy. Customer-Supplier and Conformist can look identical from
-inside this codebase: both consume an upstream model. Their distinction—whether the upstream will
-accept this system's requirements—is an organisational fact absent from source. Other relationships
-also depend on commitments that code cannot prove. A guessed label makes an unresearched map look
-settled; an unlabelled edge invites the decision that is still needed.
+構造的事実は読み取り、記録しなければなりません。アダプターが翻訳するか、契約が公開されているか、
+どの語彙が残るか、相手側の変更がこのシステムにどう影響するかです。関係的な事実は質問しなければ
+なりません。`未確定` は、人がまだ決められない場合の正しい第一級の結果です。
 
-Structural facts are readable and must be documented: whether an adapter translates, whether a
-contract is published, which vocabulary survives, and how a counterpart's change affects this
-system. Relational facts must be asked. `未確定` is a correct, first-class result when the human
-cannot yet decide.
+## 手順
 
-## Workflow
+### 1. 対象範囲を確認する
 
-### 1. Confirm scope
+すべての接触点を地図化するか、未記載の接触点だけを対象にするか（`--update`）を、日本語で明示的に
+尋ねます。
 
-Ask explicitly in Japanese whether to map all contact points or only unmapped points (`--update`).
+- **すべての接触点** が既定です。
+- **`--update`** では既存の英語マップを先に読みます。既存の各辺とラベルは変更せずに引き継ぎます。
+  以前に人が決めたラベルを黙って付け替えず、新たに見つけた接触点だけを調べて確認します。
 
-- **All contact points** is the default.
-- With **`--update`**, read the existing English map first. Carry every existing edge and its label
-  forward unchanged. Do not silently re-label a prior human decision; investigate and confirm only
-  newly discovered contact points.
+### 2. リポジトリからノード集合を列挙する
 
-### 2. Enumerate the node set from the repository
-
-Read these at runtime; they are the source of truth, not a list embedded in this skill:
+次を実行時に読みます。本文に埋め込まれた一覧ではなく、これらが正本です。
 
 ```sh
 ls internal/usecase/boundary/
 ls internal/infrastructure/
 ```
 
-Also read `internal/usecase/boundary/README.md` and `internal/infrastructure/README.md`. A contact
-point exchanges a model with a system this repository does not own. A clock or transaction manager
-port is not one merely because it is a port.
+`internal/usecase/boundary/README.md` と `internal/infrastructure/README.md` も読みます。接触点とは、
+このリポジトリが所有しないシステムとモデルを交換する場所です。時計やトランザクションマネージャーの
+ポートは、ポートであるだけでは接触点になりません。
 
-Include inbound contacts: the HTTP surface this system publishes and known consumers of emitted
-models. Do not imply that no consumer exists merely because code does not identify one; record that
-as an open question when necessary.
+このシステムが公開する HTTP 面と、発行するモデルの既知の消費者を含む、流入方向の接触も扱います。
+コードが消費者を特定しないからといって、消費者がいないと示唆してはいけません。必要であれば、
+それを未解決の質問として記録します。
 
-Present the complete enumeration in Japanese before gathering candidates. Correct the node set with
-the user before continuing: an incorrect node set invalidates every relationship conclusion.
+候補を集める前に、完全な列挙を日本語で示します。ノード集合をユーザーと修正してから続けます。
+ノード集合が誤っていれば、すべての関係の結論が無効になるためです。
 
-### 3. Gather verifiable evidence for every edge
+### 3. 各辺について検証可能な根拠を集める
 
-For each contact point, inspect the relevant port, adapter, handler, schema, and design document.
-Use `file:line` citations and record only what they demonstrate:
+接触点ごとに、関係するポート、アダプター、ハンドラー、スキーマ、設計文書を調べます。`file:line` を
+引用し、それが示すことだけを記録します。
 
-- Whether a translating adapter confines external concepts and translates into this system's
-  vocabulary. This is structural evidence compatible with an Anticorruption Layer.
-- Which vocabulary reaches the boundary. External vocabulary reaching inside is evidence that the
-  system conforms in effect, irrespective of the intended relationship.
-- Whether a committed, consumable contract artifact exists. That is evidence compatible with a
-  Published Language; a surface designed for multiple consumers can also support Open Host Service.
-- The direction of model flow, and what breaks here if the counterpart changes shape.
+- 翻訳アダプターが外部概念を閉じ込め、このシステムの語彙へ翻訳するか。これは Anticorruption Layer と
+  両立する構造的根拠です。
+- どの語彙が境界まで届くか。外部の語彙が内側まで届くことは、意図にかかわらず実質的に conform して
+  いる根拠です。
+- コミット済みで消費可能な契約アーティファクトがあるか。これは Published Language と両立する根拠で、
+  複数の消費者向けに設計された面は Open Host Service も支持します。
+- モデルの流れる方向と、相手側が形を変えたときにここで何が壊れるか。
 
-Do not mistake an implementation mechanism for a relationship. Link to its dedicated design or
-package documentation instead of reproducing it in the map.
+実装の仕組みを関係と取り違えません。専用の設計文書またはパッケージ文書へリンクし、地図に複写しません。
 
-### 4. Offer candidates and expose the unresolved fact
+### 4. 候補を提示し、未解決の事実を明らかにする
 
-For each edge, report in Japanese:
+各辺について、次を日本語で報告します。
 
 ```text
 <接触点> — 候補: <label A> / <label B>
@@ -85,56 +81,55 @@ For each edge, report in Japanese:
   未確定の点: <人だけが答えられる質問>
 ```
 
-Offer every label the evidence is compatible with. If structure supports only one label, present it
-as the sole candidate but still require confirmation; it is evidence, not a decision. Phrase the
-gap as an answerable organisational question, for example whether the upstream accepts this
-system's requirements.
+根拠と両立するすべてのラベルを提示します。構造上ひとつのラベルだけが支持される場合も、それを唯一の
+候補として示しますが、なお確認を必須にします。これは根拠であり判断ではありません。たとえば上流が
+このシステムの要件を受け入れるかどうかのように、組織として答えられる質問にします。
 
-### 5. Confirm each edge individually
+### 5. 各辺を個別に確認する
 
-Use Codex's explicit user-question interaction once per edge. Write the prompt and choices in
-Japanese. Offer the evidence-compatible labels and always include:
+Codex の明示的なユーザー質問を、辺ごとに一回使います。プロンプトと選択肢は日本語にします。根拠と
+両立するラベルに加え、常に次を提示します。
 
 ```text
 保留（未確定として地図に残す）
 ```
 
-Do not batch edges, infer an answer, or proceed past a required edge confirmation. For a deferred
-edge, record `未確定`, its evidence, and the open question. Do not use `未確定` as a reason to skip
-the edge.
+辺をまとめず、答えを推測せず、必要な辺の確認を通らずに先へ進みません。保留の辺は `未確定`、根拠、
+未解決の質問を記録します。`未確定` を理由に辺自体を省略してはいけません。
 
-### 6. Write and synchronize the map
+### 6. 地図を書き、同期する
 
-Write only these two documentation files:
+このスキルの実行中に書く文書は次の二つだけです。
 
-- `docs/design/context-map.md` — English canonical
-- `docs/design/context-map.ja.md` — Japanese translation
+- `docs/design/context-map.md` — 英語正本
+- `docs/design/context-map.md` — 日本語訳
 
-Use this structure:
+次の構成を使用します。
 
-1. **Node set** — this system and each external counterpart, with one line identifying it.
-2. **Edges table** — counterpart, direction, relationship label, `file:line` evidence, and what
-   changes if the other side moves. An undecided edge includes `未確定` and its open question.
-3. **Mermaid diagram** — nodes and labelled edges only; do not add styling.
-4. **Out of scope** — deliberately excluded contacts and why.
+1. **ノード集合** — このシステムと各外部の相手を、一行で識別します。
+2. **辺の表** — 相手、方向、関係ラベル、`file:line` の根拠、相手側が変化した場合に変わることです。
+   未決定の辺には `未確定` と未解決の質問を含めます。
+3. **Mermaid 図** — ノードとラベル付きの辺だけを示し、装飾は加えません。
+4. **対象外** — 意図的に除外した接触と、その理由です。
 
-Keep the map about relationships and link to mechanical integration documentation where useful.
-After finalizing the English document, use `canonicalize-doc` to synchronize its Japanese pair.
-Preserve headings, paths, code blocks, and evidence citations in the translation.
+地図は関係について書き、必要に応じて機構を説明する文書へリンクします。英語文書を確定した後、
+`canonicalize-doc` を使って日本語ペアを同期します。訳でも見出し、パス、コードブロック、根拠の引用を
+維持します。
 
-`docs/design/**/*.md` is already within the DDD ledger corpus. Do not edit the ledger.
+`docs/design/**/*.md` はすでに DDD 台帳コーパスに含まれています。台帳は編集しません。
 
-### 7. Close
+### 7. 完了を報告する
 
-Respond in Japanese with the landed edges, the edges left `未確定` and their open questions, and a
-recommendation to rerun `/ddd-audit` for `context-map`. Do not commit or push.
+確定した辺、`未確定` のまま残した辺と未解決の質問、そして `context-map` に対する `/ddd-audit` の再実行を
+勧める内容を、日本語で報告します。コミットやプッシュはしません。
 
-## Boundaries and checklist
+## 境界とチェックリスト
 
-- Read only the relevant boundary, infrastructure, controller, OpenAPI, design, ADR, and package
-  documentation needed to establish an edge.
-- Write only `docs/design/context-map.md` and `docs/design/context-map.ja.md` while this skill
-  executes. Never edit the DDD ledger, ADRs, source code, generated files, or `AGENTS.md`.
-- Do not hardcode the contact-point list; resolve it from boundary and infrastructure at runtime.
-- Do not turn structural evidence into a relationship decision.
-- Run `make md-lint` after writing the document pair.
+- 辺を確立するのに必要な、boundary、infrastructure、controller、OpenAPI、design、ADR、パッケージ文書
+  だけを読みます。
+- このスキルの実行中に書くのは `docs/design/context-map.md` と
+  `docs/design/context-map.md` だけです。DDD 台帳、ADR、ソースコード、生成ファイル、`AGENTS.md` は
+  決して編集しません。
+- 接触点の一覧をハードコードせず、実行時に boundary と infrastructure から解決します。
+- 構造的な根拠を関係の決定へすり替えません。
+- 文書ペアの作成後に `make md-lint` を実行します。

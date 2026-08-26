@@ -5,109 +5,107 @@ deciders: [maintainers]
 tags: [errors, architecture, api, security]
 ---
 
-# ADR-0049: Opt-in gate for error-response details via schema split
+# ADR-0049: スキーマ分割によるエラー details の opt-in ゲート
 
-## Status
+## ステータス
 
 accepted
 
-Refines [ADR-0048](0048-error-metadata-code-message-details.md).
+[ADR-0048](0048-error-metadata-code-message-details.md) を精緻化する。
 
-## Context
+## コンテキスト
 
-[ADR-0048](0048-error-metadata-code-message-details.md) introduced `apperror.Meta`, letting
-an error-raising site attach `details` (public-safe identifiers such as invalid field names)
-that surface in the error response. As delivered, that exposure was **fail-open**: any error
-whose chain carried `Meta` details would render them on **every** endpoint, because a single
-shared `ErrorResponse` schema (with an optional `details` field) backed all error responses.
+[ADR-0048](0048-error-metadata-code-message-details.md) は `apperror.Meta` を導入し、エラー
+発生箇所が `details`(不正フィールド名等の公開安全な識別子)を付与してレスポンスに露出できる
+ようにした。しかし出荷状態では露出が **fail-open** だった: 単一の共有 `ErrorResponse` スキーマ
+(details は任意フィールド)が全 error レスポンスの裏側にあったため、チェーンのどこかで `Meta`
+の details が付けば**全エンドポイント**でそれが描画される。
 
-This is a leakage risk. The concrete trigger was entity reconstruction from a stored row
-(`rowToUser` → `user.New`): a data-integrity failure could reach the client as a `422` whose
-`details` named internal fields, on an endpoint that never intended to expose them. Even after
-that specific path was hardened, the structural default remained "details leak unless something
-strips them" — the wrong direction for a security-relevant field.
+これは漏えいリスクである。具体的な引き金は、保存済み行からのエンティティ再構築
+(`rowToUser` → `user.New`)だった: データ不整合が `422` としてクライアントに届き、その `details`
+が内部フィールド名を名指しする — 露出を意図していないエンドポイントで。この特定経路を
+ハードニングした後も、「何かが剥がさない限り details は漏れる」という構造的既定は残り、
+セキュリティ関連フィールドとしては誤った向きだった。
 
-We want the exposure to be **opt-in per endpoint**, with the decision expressed in the API
-contract (so the contract, the generated client types, and the runtime behavior agree), and
-enforced **fail-closed** at the transport edge.
+露出を**エンドポイントごとの opt-in** にし、その判断を API 契約で表現し(契約・生成クライアント型・
+実行時挙動が一致するように)、transport の edge で **fail-closed** に強制したい。
 
-## Decision
+## 決定
 
-Split the error-response envelope into two schemas and gate details at the edge.
+error レスポンスのエンベロープを 2 スキーマに分割し、details を edge でゲートする。
 
-1. **Contract (SSOT).** `openapi/components/schemas/ErrorResponse.yaml` becomes the base
-   envelope (`code` / `message` / `requestId`, **no** `details`). A new
-   `ErrorResponseWithDetails.yaml` adds `details`. Only responses that intentionally expose
-   details reference the `WithDetails` schema (currently the `422` of `PostUsers` /
-   `PutUsersDetail` / `PatchUsersDetail`, via `errors/UnprocessableEntity422.yaml`). Every
-   other error response keeps referencing the base schema. **Which operations reference
-   `ErrorResponseWithDetails` is the opt-in switch**, and it lives entirely in the OpenAPI spec.
+1. **契約(SSOT)。** `openapi/components/schemas/ErrorResponse.yaml` を base エンベロープ
+   (`code` / `message` / `requestId`、`details` **なし**)にする。新規
+   `ErrorResponseWithDetails.yaml` が `details` を追加する。details を意図的に露出する
+   レスポンスだけが `WithDetails` スキーマを参照する(現状は `PostUsers` / `PutUsersDetail` /
+   `PatchUsersDetail` の `422`、`errors/UnprocessableEntity422.yaml` 経由)。他の error レスポンス
+   はすべて base スキーマを参照したまま。**どの operation が `ErrorResponseWithDetails` を
+   参照するかが opt-in スイッチ**であり、それは OpenAPI spec に完全に閉じている。
 
-2. **Builder type.** The internal type-generation endpoint (`GenerateErrorSchema`) references
-   `ErrorResponseWithDetails`, so the response builder's generated type is the superset
-   (`gen.ErrorResponseWithDetails`). `HTTPErrorResponse` embeds that superset — the single
-   builder DTO always *has* a `Details` field. Whether `details` reaches the wire is decided
-   downstream, not by the builder (which stays request-agnostic, per ADR-0048).
+2. **builder 型。** 型生成用エンドポイント(`GenerateErrorSchema`)が `ErrorResponseWithDetails`
+   を参照するため、response builder の生成型は superset(`gen.ErrorResponseWithDetails`)になる。
+   `HTTPErrorResponse` はこの superset を埋め込む — 唯一の builder DTO は常に `Details`
+   フィールドを**持つ**。`details` が wire に届くかは builder ではなく下流で決まる
+   (builder は ADR-0048 どおり request 非依存のまま)。
 
-3. **Fail-closed gate at the edge.** A `DetailPolicy` (built once at startup from the spec via
-   `gorillamux.NewRouter` + a precomputed `operationId → exposes-details` map) is injected into
-   the `errorhandler`. On the error path, if the response carries `details`, the handler
-   resolves the request's operation and drops `details` from the **client wire** unless that
-   operation opted in. The `resp` object (and therefore the logs) keep the full details.
+3. **edge の fail-closed ゲート。** `DetailPolicy`(起動時に spec から `gorillamux.NewRouter` +
+   `operationId → details 公開可` の前計算マップで 1 度だけ構築)を `errorhandler` に注入する。
+   エラー経路で、レスポンスが `details` を持つ場合、handler はリクエストの operation を解決し、
+   その operation が opt-in していない限り**クライアント wire** から `details` を落とす。
+   `resp` オブジェクト(したがってログ)には完全な details を残す。
 
-This mirrors the existing `requestId` idiom: the request-agnostic `error/response` package
-produces the skeleton (leaves `requestId` empty; attaches whatever `details` the error holds),
-and the request-aware `errorhandler` finalizes it (fills `requestId`; strips `details` when the
-endpoint is not opted in). The gate is host-agnostic — the policy router is built from a
-servers-stripped copy of the spec so proxied / test hosts still resolve by path + method.
+これは既存の `requestId` イディオムの鏡像である: request 非依存の `error/response` package が
+骨格を作り(`requestId` を空にし、エラーが持つ `details` を付与する)、request を知る
+`errorhandler` が仕上げる(`requestId` を埋め、opt-in でなければ `details` を剥がす)。ゲートは
+Host 非依存 — policy 用 router は servers を除去した spec の複製から作るため、proxy / test の
+Host でもパス + メソッドで解決できる。
 
-## Consequences
+## 帰結
 
-### Positive Consequences
+### ポジティブな帰結
 
-- Detail exposure is **fail-closed**: a new endpoint returns no `details` until it declares
-  `ErrorResponseWithDetails`, so forgetting the declaration cannot leak.
-- The opt-in decision is a single machine-readable fact in the OpenAPI contract; generated
-  client types and runtime behavior agree, and the split is auditable.
-- Logs retain full `details` for debugging even when the wire omits them.
-- No per-endpoint middleware and no hot-path cost: the router runs only on the error path.
+- details 露出が **fail-closed**: 新エンドポイントは `ErrorResponseWithDetails` を宣言するまで
+  `details` を返さないため、宣言忘れが漏えいにならない。
+- opt-in 判断が OpenAPI 契約中の単一の機械可読な事実になる。生成クライアント型と実行時挙動が
+  一致し、分割は監査可能。
+- wire が省略しても、デバッグ用にログは完全な `details` を保持する。
+- エンドポイントごとの middleware も、ホットパスのコストも無い(router はエラー経路でのみ走る)。
 
-### Negative Consequences
+### ネガティブな帰結
 
-- "When do details appear" now spans two packages (`error/response` attaches, `errorhandler`
-  gates) — the same two-place cost the `requestId` idiom already has.
-- The `ErrorResponseWithDetails` struct is duplicated across the handler `gen` packages that
-  declare a `422` (normal oapi-codegen per-package output).
-- An endpoint that *should* expose details but forgets the schema declaration silently returns
-  none. The schema is the only opt-in switch; this is documented in `docs/rules.md` and the
-  `apperror` / `error/response` READMEs.
+- 「details がいつ出るか」が 2 package にまたがる(`error/response` が付与、`errorhandler` が
+  ゲート)— `requestId` イディオムが既に持つのと同じ 2 箇所コスト。
+- `ErrorResponseWithDetails` 構造体は、`422` を宣言する handler `gen` package に重複する
+  (oapi-codegen のパッケージ単位生成の通常挙動)。
+- details を露出**すべき**なのにスキーマ宣言を忘れたエンドポイントは、静かに何も返さない。
+  スキーマが唯一の opt-in スイッチであることは `docs/rules.md` と `apperror` / `error/response`
+  の README に明記する。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Vendor extension (`x-expose-error-details`)
+### vendor 拡張(`x-expose-error-details`)
 
-Mark opt-in with a vendor extension on the operation/response instead of a schema split.
-Rejected: the schema split makes the contract itself (and the generated client types) tell the
-truth about which responses carry `details`; a vendor extension is a side-channel that clients
-do not see.
+スキーマ分割ではなく operation / response の vendor 拡張で opt-in を印す。棄却: スキーマ分割は
+契約そのもの(と生成クライアント型)に「どのレスポンスが `details` を持つか」を語らせる。
+vendor 拡張はクライアントから見えないサイドチャネル。
 
-### Gate in the `error/response` builder
+### `error/response` builder でゲート
 
-Pass an `exposeDetails` flag into `NewHTTPErrorFromAppError`. Rejected: the opt-in decision is
-request-aware (it needs the matched operation), while the builder is deliberately
-request-agnostic (pure `apperror → shape` mapping). Edge-time, request-scoped finalization is
-the `errorhandler`'s existing role (`requestId`, logging, commit checks).
+`NewHTTPErrorFromAppError` に `exposeDetails` フラグを渡す。棄却: opt-in 判断は request 依存
+(マッチした operation が必要)だが、builder は意図的に request 非依存(純粋な `apperror → 形`
+写像)。edge 時の request スコープ仕上げは `errorhandler` の既存の役割(`requestId`・ログ・
+commit 判定)。
 
-### Per-endpoint opt-in middleware
+### エンドポイントごとの opt-in middleware
 
-A middleware on each detail-exposing route that sets a flag. Rejected: it duplicates the truth
-already in the OpenAPI contract and drifts from it; it also adds hot-path work on every request.
+details を露出する各ルートにフラグを立てる middleware。棄却: OpenAPI 契約に既にある真実を
+重複させ drift する。加えて全リクエストにホットパスの仕事を足す。
 
-## Notes
+## 備考
 
-- Source: `internal/apperror/README.md` (Error Metadata section),
-  `internal/controller/error/response/README.md`,
-  `internal/controller/httpstack/errorhandler/README.md`.
-- The base `ErrorResponse` Go type is still generated in handler `gen` packages as response
-  aliases (`BadRequest400 = ErrorResponse`, etc.); it is documentation-grade output not used by
-  hand-written code. The builder package (`error/response/gen`) generates only the superset.
+- 出典: `internal/apperror/README.md`(エラーメタ情報 節)、
+  `internal/controller/error/response/README.md`、
+  `internal/controller/httpstack/errorhandler/README.md`。
+- base `ErrorResponse` の Go 型は今も handler `gen` package にレスポンス alias
+  (`BadRequest400 = ErrorResponse` 等)として生成されるが、手書きコードは使わない
+  ドキュメント用生成物。builder package(`error/response/gen`)は superset のみ生成する。

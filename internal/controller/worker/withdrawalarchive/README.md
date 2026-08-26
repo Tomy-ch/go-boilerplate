@@ -1,112 +1,111 @@
-# withdrawal-archive worker (sample)
+# withdrawal-archive worker（サンプル）
 
-A worked example of the **consuming end** of the outbox path: a user withdraws, the outbox emits
-`user.withdrawn.v1` in the same transaction, the relay publishes it to the broker, and this worker
-consumes it and writes a withdrawal record to object storage.
+outbox 経路の**消費側**を一通り動かして見せる実例です。ユーザーが退会すると、outbox が同一トランザ
+クションで `user.withdrawn.v1` を emit し、relay がそれを broker へ publish し、この worker が消費して
+退会証跡をオブジェクトストレージへ書き出します。
 
-It is part of the removable sample set — `make setup-remove-sample-api` deletes this package and the
-two registration lines that reach it, leaving `provideWorkers()` empty again.
+削除可能なサンプル一式の一部です。`make setup-remove-sample-api` はこのパッケージと、ここへ到達する
+2 行の登録を削除し、`provideWorkers()` を再び空へ戻します。
 
-## What it archives, and why that
+## 何を証跡として残すか、なぜそれなのか
 
-The archived object is the **event payload verbatim** (`{userId, deletedAt}`), stored at
-`withdrawals/{userID}.json`.
+保存するオブジェクトは**イベント payload そのもの**（`{userId, deletedAt}`）で、
+`withdrawals/{userID}.json` に置きます。
 
-Archiving the withdrawn user's full record was the obvious alternative and does not work: withdrawn
-users are filtered out by `deleted_at IS NULL` in the user lookup query, so the consumer cannot read
-them back. Archiving the payload avoids that entirely, and it is the more defensible design anyway —
-the record is "who withdrew, and when", which stays meaningful as an audit trail after `user-purge`
-physically deletes the user, and carries no personal data that would need purging in turn.
+退会したユーザーのレコード一式を書き出す案は自明な代替でしたが、成立しません。退会済みユーザーは
+ユーザー検索クエリの `deleted_at IS NULL` で除外されるため、消費側から読み戻せないからです。payload を
+保存する形ならそれを丸ごと回避できますし、そもそも設計として筋が通ります — 残るのは「誰がいつ退会
+したか」であり、`user-purge` がユーザーを物理削除した後も監査証跡として意味を保ち、それ自体は
+purge の対象になるような個人情報を含みません。
 
-## Idempotency
+## 冪等性
 
-At-least-once delivery means this handler will sometimes run twice for one withdrawal. Rather than
-detect the repeat, **the operation is made idempotent**: the key is derived from the user ID alone and
-the body is the payload unmodified, so a second run overwrites the object with identical bytes.
+at-least-once 配信である以上、この Handler は 1 回の退会に対して 2 回走ることがあります。再実行を
+検出するのではなく、**操作自体を冪等に**しています。キーはユーザー ID だけから決まり、本文は payload を
+加工しないため、2 回目の実行は同一のバイト列で上書きします。
 
-That is why nothing here consults an idempotency store. The HTTP idempotency subsystem is built for
-replaying HTTP responses — its records carry method, path, and response status — and borrowing it
-here would mean filling those with placeholder values.
+だからここでは冪等性ストアを参照しません。HTTP の idempotency サブシステムは HTTP レスポンスの
+再生のために作られており、そのレコードは method / path / レスポンスステータスを持ちます。ここで
+借りると、それらにダミー値を詰めることになります。
 
-The same property covers redelivery caused by a slow handler: if a run outlives
-`CONSUMER_QUEUE_VISIBILITY_TIMEOUT` (30s by default, with no `WORKER_EXTEND_INTERVAL` heartbeat) the
-message is redelivered and processed again, and the result is unchanged.
+同じ性質が、Handler の処理が長引いたことによる再配送も引き受けます。実行が
+`CONSUMER_QUEUE_VISIBILITY_TIMEOUT`（既定 30 秒、`WORKER_EXTEND_INTERVAL` のハートビートは既定で
+無し）を超えるとメッセージは再配送されて再度処理されますが、結果は変わりません。
 
-## Message selection
+## メッセージの選別
 
-One queue carries every event the outbox emits, so the handler first checks the `event_type`
-attribute and returns success for anything else — the engine then acks it and the message leaves the
-queue. Treating a foreign event as a permanent failure would route every purchase event to the DLQ.
-A message with no `event_type` attribute at all is treated the same way, so messages published
-before the attribute existed do not fill the DLQ either.
+1 つのキューには outbox が publish する全種別が流れるため、Handler はまず `event_type` 属性を確認し、
+それ以外には成功を返します — engine がそれを ack し、メッセージはキューから消えます。他人のイベントを
+永久失敗として扱うと、購入イベントが軒並み DLQ へ送られます。`event_type` 属性を持たないメッセージも
+同じ扱いにするため、属性が存在する前に publish されたメッセージが DLQ を埋めることもありません。
 
-This works because the sample is the only consumer of `gobp-events`. A deployment with several
-consumers on one queue wants a subscription filter (or a queue per event type) instead, so that each
-consumer only receives what it handles.
+これが成立するのは、サンプルが `gobp-events` の唯一の consumer だからです。1 つのキューに複数の
+consumer がいるデプロイでは、代わりにサブスクリプションフィルタ（またはイベント種別ごとのキュー）を
+使い、各 consumer が自分の扱う分だけを受け取るようにします。
 
-## Error classification
+## エラーの分類
 
-| Situation | Classification | Effect |
+| 状況 | 分類 | 効果 |
 | --- | --- | --- |
-| Other / missing `event_type` | success | acked, no archive written |
-| Payload cannot be decoded | `ErrPermanent` | routed to the DLQ, then acked |
-| Usecase rejects the input (`ErrValidation`) | `ErrPermanent` | routed to the DLQ, then acked |
-| Storage unavailable | unclassified | engine default (retryable) → redelivered with backoff |
+| 他種別 / `event_type` 欠落 | 成功 | ack され、証跡は書かれない |
+| payload を復元できない | `ErrPermanent` | DLQ へ退避してから ack |
+| ユースケースが入力を拒否（`ErrValidation`） | `ErrPermanent` | DLQ へ退避してから ack |
+| ストレージが利用不能 | 未分類 | engine 既定（retryable）→ backoff 付きで再配送 |
 
-Note that the broker also has a redrive policy (`maxReceiveCount = 5` in
-`docker/elasticmq/elasticmq.conf`), so a message that keeps failing for a *retryable* reason still
-ends up in the DLQ once it runs out of receives. That is a second, broker-level net below the
-`FailureHandler`, not a contradiction of the table above.
+なお broker 側にも redrive policy があり（`docker/elasticmq/elasticmq.conf` の
+`maxReceiveCount = 5`）、*retryable* な理由で失敗し続けたメッセージも受信回数を使い切れば DLQ へ
+入ります。これは `FailureHandler` の下にあるもう一段の broker レベルの網であって、上の表と矛盾する
+ものではありません。
 
-## Running it end to end
+## 一気通貫で動かす
 
-Everything below assumes a DB slot has been acquired in a worktree (`make slot-acquire`); on the main
-checkout the default ports apply.
+以下は worktree で DB スロットを取得済み（`make slot-acquire`）である前提です。メイン checkout では
+既定のポートになります。
 
 ```bash
-# 1. Shared infra + API (elasticmq and garage come up with it)
+# 1. 共有インフラ + API（elasticmq と garage も一緒に上がる）
 make serve
 
-# 2. In a second terminal: the relay that publishes outbox rows to the queue
+# 2. 別端末: outbox 行をキューへ publish する relay
 make outbox-relay
 
-# 3. In a third terminal: this worker
+# 3. 別端末: この worker
 make worker NAME=withdrawal-archive
 
-# 4. Withdraw a user (see docs/get-started for obtaining a token from the mock auth server)
+# 4. ユーザーを退会させる（トークンの取得は docs/get-started を参照）
 curl -X DELETE "http://localhost:${API_HOST_PORT:-8080}/v1/users/<userId>" \
   -H "Authorization: Bearer <token>"
 ```
 
-What to watch, in order:
+追跡するポイントは順に:
 
-1. `api_server` — the withdrawal request completes; the outbox row is written in the same transaction
-2. `outbox-relay` — a publish log for `user.withdrawn.v1`, and the row moves to `published`
-3. this worker — the handler runs, with the trace continued from the publisher's `traceparent`
-4. object storage — the archived object appears:
+1. `api_server` — 退会リクエストが完了し、同一トランザクションで outbox 行が書かれる
+2. `outbox-relay` — `user.withdrawn.v1` の publish ログが出て、行が `published` へ遷移する
+3. この worker — publisher の `traceparent` から継続されたトレースで Handler が走る
+4. オブジェクトストレージ — 証跡オブジェクトが現れる:
 
    ```bash
    docker run --rm --network host amazon/aws-cli s3 ls s3://gobp-local/withdrawals/ \
      --endpoint-url http://localhost:3900 --region us-east-1
    ```
 
-   (credentials come from `OBJECT_STORAGE_ACCESS_KEY_ID` / `..._SECRET_ACCESS_KEY` in `env/.env`)
+   （資格情報は `env/.env` の `OBJECT_STORAGE_ACCESS_KEY_ID` / `..._SECRET_ACCESS_KEY`）
 
-To see the idempotency property, publish the same message again — the object is rewritten with the
-same bytes. To see the DLQ path, send a body that is not valid JSON with an `event_type` attribute of
-`user.withdrawn.v1`; it lands in `gobp-events-dlq` with `failure_reason=permanent`.
+冪等性を確かめるには同じメッセージをもう一度 publish します — 同じバイト列でオブジェクトが書き直され
+ます。DLQ 経路を確かめるには、`event_type` 属性を `user.withdrawn.v1` にしたまま JSON として不正な
+本文を送ります。`failure_reason=permanent` 付きで `gobp-events-dlq` に入ります。
 
-> The queue is shared across every checkout and cannot be isolated per worktree
-> (see [`docs/maintenance/db-worktree-pool.md`](../../../../docs/maintenance/db-worktree-pool.md)).
-> Running this worker in two worktrees at once means either one may take the message.
+> キューは全 checkout で共有され、worktree 単位では分離できません
+> （[`docs/maintenance/db-worktree-pool.md`](../../../../docs/maintenance/db-worktree-pool.md) を参照）。
+> 2 つの worktree で同時にこの worker を動かすと、どちらがメッセージを取るかは決まりません。
 
-## Structure
+## 構成
 
-| File | Contents |
+| ファイル | 内容 |
 | --- | --- |
-| `withdrawal_archive_worker.go` | `worker.Worker` — bundles name / consumer / handler / failure handler |
-| `withdrawal_archive_handler.go` | `worker.Handler` — selection, decoding, error classification |
+| `withdrawal_archive_worker.go` | `worker.Worker` — 名前 / consumer / handler / failure handler を束ねる |
+| `withdrawal_archive_handler.go` | `worker.Handler` — 選別・復元・エラー分類 |
 
-The broker adapters themselves are built in `internal/di/module/withdrawalarchive.go`, not here: the
-controller layer must not import infrastructure, so this package never learns which broker it is
-consuming from.
+broker adapter 自体はここではなく `internal/di/module/withdrawalarchive.go` で組み立てられます。
+controller 層は infrastructure を import できないため、このパッケージはどの broker から消費して
+いるかを最後まで知りません。

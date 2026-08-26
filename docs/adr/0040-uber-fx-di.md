@@ -5,60 +5,48 @@ deciders: [maintainers]
 tags: [di, lifecycle]
 ---
 
-# ADR-0040: Adopt Uber Fx for dependency injection and lifecycle
+# ADR-0040: 依存性注入とライフサイクル管理に Uber Fx を採用する
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-The application wires many components across layers and needs structured dependency
-resolution plus managed application lifecycle (ordered start-up and graceful shutdown).
-Manual wiring works at small scale but becomes hard to manage as the component graph grows,
-and a compile-time-only DI tool would not cover runtime lifecycle.
+アプリケーションは複数のレイヤーにまたがる多数のコンポーネントを結線する必要があり、構造化された依存関係の解決とアプリケーションライフサイクルの管理（順序付けられた起動とグレースフルシャットダウン）が求められる。手動の結線は小規模では機能するが、コンポーネントグラフが成長するにつれて管理が難しくなる。コンパイル時のみの DI ツールはランタイムのライフサイクルをカバーできない。
 
-## Decision
+## 決定
 
-Adopt **Uber Fx** as the dependency injection container and application lifecycle manager.
+依存性注入コンテナおよびアプリケーションライフサイクルマネージャーとして **Uber Fx** を採用する。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Explicit dependency wiring organized into modules.
-- Application lifecycle management (ordered start/stop hooks).
-- A clear, modular structure for growing the component graph.
+- モジュールに整理された明示的な依存関係の結線。
+- アプリケーションライフサイクル管理（順序付けられた起動・停止フック）。
+- コンポーネントグラフの成長に対応する明確でモジュラーな構造。
 
-### Negative Consequences
+### ネガティブな影響
 
-- A DI framework dependency at the composition root; its reflective wiring is a learning
-  cost and is kept contained behind neutral DI abstractions (see the fx-containment ADR).
+- コンポジションルートに DI フレームワークへの依存が生じる。リフレクションベースの結線には学習コストがあり、ニュートラルな DI 抽象の背後に閉じ込めて管理する（fx 封じ込め ADR を参照）。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Manual DI
+### 手動 DI
 
-Rejected: effective for small systems, but becomes difficult to manage as the dependency
-graph grows. Specific problems at this system's scale:
+却下: 小規模なシステムには効果的だが、依存関係グラフの成長とともに管理が困難になる。このシステムのスケールで生じる具体的な問題:
 
-- The composition root grows proportionally with each added component; every new
-  dependency requires explicit wiring, causing combinatorial growth.
-- Multiple shared resources (DB pool, logger, observability) must be threaded as
-  arguments through the entire wiring chain, making file-level decomposition
-  impractical.
-- A bloated composition root increases the likelihood of merge conflicts as multiple
-  contributors touch the same wiring site.
-- Manual DI suits small systems, but past a certain threshold readability degrades
-  acceleratingly; it is rarely rewritten once entrenched and becomes permanent
-  technical debt.
+- 今回対象としているシステムのケースでは、配線が係数増加するためコンポジションルートが肥大化する。
+- 複数の共有リソースを使い回す場合は、引数を大量に渡す必要が生まれてしまい、ファイル分割が現実的ではなくなる。
+- 上記に伴ってコンポジションルートの肥大化はファイルコンフリクトの可能性が増加する。
+- 手動DIは小規模システムに向くが一定の閾値から可読性が加速度的に下がり、後から書き換える優先度は低いため実装されずに永続的な負債化しやすい。
 
 ### Google Wire
 
-Rejected: provides compile-time DI, but does not offer runtime application lifecycle
-management, which this application needs.
+却下: コンパイル時の DI を提供するが、このアプリケーションが必要とするランタイムのアプリケーションライフサイクル管理を提供しない。
 
-## Notes
+## 補足
 
-- fx is confined behind neutral DI abstractions (Registrar / Shutdowner) — recorded separately (see the DI ADRs in [the ADR log](README.md)).
-- Migrated from the former `docs/decisions.md`.
+- fx は中立な DI 抽象（Registrar / Shutdowner）の背後に閉じ込める — 別途記録する（[ADR ログ](README.md) の DI 系 ADR を参照）。
+- かつての `docs/decisions.md` から移行。

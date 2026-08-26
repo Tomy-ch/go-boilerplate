@@ -1,31 +1,31 @@
-# OpenAPI Parameters
+# OpenAPI パラメータ
 
-`openapi/components/parameters/` stores **reusable OpenAPI parameter definitions** organized by concern.
+`openapi/components/parameters/` は、**再利用可能な OpenAPI パラメータ定義**を関心事ごとに整理して格納するディレクトリです。
 
-## Directory Structure
+## ディレクトリ構成
 
-One directory per parameter group. A group shared across endpoints is named after the concern
-(`pagination/`, `search/`); one owned by a single resource is named after that resource.
+パラメータ群ごとに 1 つのディレクトリを置く。エンドポイントをまたいで共有するものは関心事の名前
+（`pagination/` / `search/`）を、単一リソースが所有するものはそのリソース名を付ける。
 
-## Pagination strategies
+## ページネーション戦略
 
-This project offers **two pagination strategies**, and each deliberately keeps its own idiomatic parameter names — they are **not** unified on purpose:
+本プロジェクトは**2つのページネーション方式**を提供し、それぞれが各方式で慣用的なパラメータ名を**あえて統一せず**保持しています：
 
-- **Offset** (`page` / `perPage`) — REST-style page navigation. Use for finite, page-addressable lists.
-- **Cursor / keyset** (`first` / `after`) — Relay-style forward traversal. Use for large or infinite feeds where offset is too expensive or unstable.
+- **オフセット**（`page` / `perPage`）— REST 流のページ移動。件数が有限でページ指定できる一覧向け。
+- **カーソル / keyset**（`first` / `after`）— Relay 流の前方走査。offset が高コスト・不安定になる大規模・無限フィード向け。
 
-Renaming the cursor params to `perPage` etc. would be non-idiomatic (cursor traversal has no "pages") and an API-breaking change, so the split is intentional.
+カーソル側を `perPage` 等にリネームするのは非慣用的（カーソル走査に「ページ」概念はない）かつ API 破壊変更になるため、この分離は意図的です。
 
-## Filter conventions
+## 絞り込みパラメータの規約
 
-These apply to every search endpoint, not only the ones that exist today.
+いま存在するエンドポイントだけでなく、検索系すべてに適用します。
 
-### Multiple values for one condition repeat the parameter name
+### 1 つの条件に複数の値を渡すときはパラメータ名を繰り返す
 
-A condition that can hold several values is declared as an array and sent by repeating the name —
-`categoryCodes=1&categoryCodes=2` — which is OpenAPI's default serialization (`style: form`,
-`explode: true`). A parameter that is not declared as an array cannot express "either of these" at all:
-a repeated name is rejected by request validation.
+複数の値を取りうる条件は配列として宣言し、`categoryCodes=1&categoryCodes=2` のように同じ名前を
+繰り返して送ります。これは OpenAPI の既定の直列化（`style: form` / `explode: true`）です。
+配列として宣言していないパラメータでは「いずれかに一致」を表現できません。名前の繰り返しは
+リクエスト検証が弾きます。
 
 ```yaml
 explode: true
@@ -36,53 +36,51 @@ schema:
   items: { type: integer, format: int32, minimum: 1, maximum: 32767 }
 ```
 
-`uniqueItems` and `maxItems` are wire limits: they bound the URL length and the size of the resulting `IN`
+`uniqueItems` と `maxItems` はワイヤ側の上限で、URL 長と生成される `IN` リストの大きさを抑えます。
 <!-- sample-api:replace-begin -->
-list. Existing examples: `product/CategoryCodesParam.yaml`, `product/StatusCodesParam.yaml`, and
-`purchase/PurchaseGroupByParam.yaml` (a string `enum` array whose order is significant — repetition
-preserves it).
+既存の例は `product/CategoryCodesParam.yaml` / `product/StatusCodesParam.yaml` と、
+文字列 enum 配列の `purchase/PurchaseGroupByParam.yaml`（指定順に意味があり、繰り返しは順序を保ちます）。
 <!-- sample-api:replace-with -->
-<!-- = list. A string `enum` array whose order is significant keeps that order across repetitions. -->
+<!-- = 指定順に意味のある文字列 enum 配列では、繰り返しても順序が保たれます。 -->
 <!-- sample-api:replace-end -->
 
-### Free-text input is never an array
+### 自由入力のテキストは配列にしない
 
-A parameter that carries text the user typed is a single `string` with a `maxLength`, never an array —
+利用者が入力したテキストを運ぶパラメータは、配列ではなく `maxLength` を持つ単一の `string` にします。
 <!-- sample-api:replace-begin -->
-`search/KeywordParam.yaml` is the shape to copy. Only a reference to a row (`code`) or a fixed `enum` may
+`search/KeywordParam.yaml` がその形です。複数値を取ってよいのは、行への参照（`code`）と固定の `enum`
 <!-- sample-api:replace-with -->
-<!-- = Only a reference to a row (`code`) or a fixed `enum` may -->
+<!-- = 複数値を取ってよいのは、行への参照（`code`）と固定の `enum` -->
 <!-- sample-api:replace-end -->
-be multi-valued.
+だけです。
 
-This is what keeps the rule above cheap. Percent-encoded UTF-8 costs up to 9 characters per character, so
-one free-text parameter dominates the URL budget by an order of magnitude over any array-serialization
-choice; and a delimiter-separated array could not carry a value containing the delimiter, because the
-separator is split after percent-decoding and therefore cannot be escaped. Restricting arrays to codes and
-enums removes both problems at once.
+上の規約が安く済むのはこの制限があるからです。percent-encode された UTF-8 は 1 文字あたり最大 9 文字に
+なるため、自由入力パラメータ 1 本が URL 予算に与える影響は、配列の直列化形式の差より一桁大きくなります。
+また区切り文字で連結する配列は、区切りが percent-decode の後に分割されるためエスケープが効かず、区切り
+文字を含む値を運べません。配列を code と enum に限ると、この 2 つが同時に消えます。
 
-A search that outgrows this — many facets, or values too large for a URL — belongs in a `POST` body, not in
-a longer query string. See [ADR-0019 (search-query-parameter-shape)](../../../docs/adr/0019-search-query-parameter-shape.md).
+これに収まらない検索 —— ファセットが多い、値が URL に載らないほど大きい —— は、クエリ文字列を伸ばすの
+ではなく `POST` のボディへ移します。[ADR-0019 (search-query-parameter-shape)](../../../docs/adr/0019-search-query-parameter-shape.md) を参照してください。
 
-### Filtering by master data takes `code`, not the row's UUID
+### マスタでの絞り込みは行の UUID ではなく `code` を受ける
 
-The identifier a client sends for a master row is its `code` — a static alias fixed by the migration that
-inserted the row. Which UUID that row carries is decided by the migration, so application code must not
-hold it ([ADR-0031](../../../docs/adr/0031-master-data-via-migration.md)); the same reasoning applies at the
-API boundary. A client can keep `code` as a constant, whereas a UUID has to be resolved by calling the
-master endpoint first, and at 36 characters each it makes a multi-value filter expensive to express.
+クライアントがマスタ行を指すのに送る識別子は `code`——その行を入れた migration が固定した静的な別名です。
+どの UUID を持つかは migration が決めるので、アプリケーションコードがそれを抱えてはいけません
+（[ADR-0031](../../../docs/adr/0031-master-data-via-migration.md)）。同じ理屈が API 境界にも及びます。
+`code` はクライアントが定数として持てますが、UUID は先にマスタのエンドポイントを叩いて解決する必要があり、
+かつ 1 件 36 文字なので複数値の絞り込みを表現するコストが高くなります。
 
-A code matching no master row yields **zero results**, not a 404 — it is a filter, not a lookup.
+どのマスタ行にも一致しない code は 404 ではなく**0 件**を返します。取得対象ではなく絞り込み条件だからです。
 
-### `code` is an int16 range
+### `code` は int16 の範囲で表す
 
-`type: integer` / `format: int32` / `minimum: 1` / `maximum: 32767`. OpenAPI has no int16, so the range is
-carried by the bounds and narrowed in Go through `pkg/safecast`. This matches the `SMALLINT` column, the
-sqlc-generated `int16`, and the domain's own `minCode` / `maxCode`.
+`type: integer` / `format: int32` / `minimum: 1` / `maximum: 32767`。OpenAPI に int16 が無いため範囲は
+境界値で表し、Go 側は `pkg/safecast` で絞り込みます。`SMALLINT` 列・sqlc が生成する `int16`・
+ドメインの `minCode` / `maxCode` と一致します。
 
-## Usage
+## 使い方
 
-Reference parameters in endpoint definitions using `$ref`:
+エンドポイント定義で `$ref` を使ってパラメータを参照します：
 
 ```yaml
 parameters:
@@ -91,21 +89,21 @@ parameters:
   - $ref: '../components/parameters/search/KeywordParam.yaml'
 ```
 
-## Naming Convention
+## 命名規則
 
-|Element|Convention|Example|
+|要素|規則|例|
 |---|---|---|
 <!-- sample-api:replace-begin -->
-|Directory|lowercase by concern|`pagination/`, `search/`, `user/`|
-|File name|PascalCase + `Param`|`PageParam.yaml`, `UserIdParam.yaml`|
+|ディレクトリ|小文字・関心事別|`pagination/`, `search/`, `user/`|
+|ファイル名|PascalCase + `Param`|`PageParam.yaml`, `UserIdParam.yaml`|
 <!-- sample-api:replace-with -->
-<!-- = |Directory|lowercase by concern|`pagination/`, `<resource>/`| -->
-<!-- = |File name|PascalCase + `Param`|`PageParam.yaml`, `<Resource>IdParam.yaml`| -->
+<!-- = |ディレクトリ|小文字・関心事別|`pagination/`, `<リソース>/`| -->
+<!-- = |ファイル名|PascalCase + `Param`|`PageParam.yaml`, `<リソース>IdParam.yaml`| -->
 <!-- sample-api:replace-end -->
 
-## Rules
+## ルール
 
-- `in: path` parameters must always set `required: true`
-- Include `description` and `example` on all parameters for documentation quality
-- Use `minimum`, `maximum`, `default` where appropriate for query parameters
-- One parameter per file for maximum reusability
+- `in: path` パラメータは必ず `required: true` を設定する
+- すべてのパラメータに `description` と `example` を記述し、ドキュメント品質を確保する
+- クエリパラメータには適宜 `minimum`, `maximum`, `default` を設定する
+- 再利用性を最大化するため、1ファイル = 1パラメータとする

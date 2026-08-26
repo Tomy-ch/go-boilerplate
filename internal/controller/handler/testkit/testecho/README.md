@@ -1,7 +1,7 @@
 # testecho
 
-Builder-pattern HTTP test client for Echo handler tests.
+Echo ハンドラテスト用のビルダーパターン HTTP テストクライアントです。
 
-## Role
+## 役割
 
-Driving a handler through the HTTP boundary requires assembling a request, response recorder, and request context the same way in every test. This builder hides that repetitive setup behind a fluent API, so handler tests construct a request in a few readable lines and exercise the real HTTP entry path consistently.
+ハンドラを HTTP 境界経由で駆動するには、リクエスト・レスポンスレコーダ・リクエストコンテキストを各テストで同じように組み立てる必要があります。本ビルダーはその反復的なセットアップを流暢な API の背後に隠し、ハンドラテストが数行の読みやすいコードでリクエストを構築し、実際の HTTP 入口経路を一貫して検証できるようにします。

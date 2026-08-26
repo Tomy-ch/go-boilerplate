@@ -1,15 +1,17 @@
-# worker DI Module
+# worker DI モジュール
 
-## Role
+`internal/di/worker` は、worker 実行に関わる **DI（依存性注入）コンポーネント**を提供するパッケージです。
 
-This directory is the DI seam between the application's worker framework and `fx`. It collects all `worker.Worker` providers registered with the `group:"workers"` tag, builds the engine settings from `WorkerConfig`, assembles them into a `workerengine.Engine`, and wires the lifecycle hook that runs the selected worker (and its health listener) across application start/stop. Upper-layer code (`internal/controller/worker`, `cmd/`, individual worker implementations) depends on the abstractions here; this package contains all of the fx-specific glue so that the rest of the code stays framework-agnostic. It parallels `internal/di/job/` for the long-running consumer (worker) process.
+## 役割
 
-## Structure
+このディレクトリはアプリケーションの worker フレームワークと `fx` の DI 結合点です。`group:"workers"` タグで登録されたすべての `worker.Worker` プロバイダを集約し、`WorkerConfig` から engine の設定を組み立て、`workerengine.Engine` に組み立て、選択された worker（とその health listener）をアプリケーションの起動／停止にまたがって実行する lifecycle hook を配線します。上位コード（`internal/controller/worker`、`cmd/`、個別 worker 実装）はここでの抽象に依存し、fx 固有のグルーコードはすべて本パッケージに閉じ込めることで、それ以外のコードを framework-agnostic に保ちます。長時間稼働するコンシューマ（worker）プロセス向けに、`internal/di/job/` と対をなします。
 
-`runner.go` provides the Engine; `hook/` starts it and its health listener at startup, for the
-same reason the job profile separates the two.
+## 構成
 
-## Architecture
+`runner.go` が Engine を提供し、`hook/` が起動時にそれとヘルスリスナを開始する。job プロファイルが
+両者を分けているのと同じ理由による。
+
+## アーキテクチャ
 
 ```mermaid
 flowchart TB
@@ -31,34 +33,34 @@ flowchart TB
     Hook --> Start --> Stop
 ```
 
-## DI Registration Example
+## DI 登録例
 
 ```go
 fx.Provide(
     observability.NewWorkerMetrics,
     worker.ProvideEngine,
     workercontroller.NewState,
-    provideQueueStatsCollector,           // queue depth / DLQ metrics collector
+    provideQueueStatsCollector,           // queue depth / DLQ メトリクス収集器
 )
-fx.Invoke(worker.ValidateShutdownGrace)   // startup guard: DrainTimeout < shutdown grace
+fx.Invoke(worker.ValidateShutdownGrace)   // 起動時ガード: DrainTimeout < 停止猶予
 fx.Invoke(hook.RegisterWorkerHooks)
 fx.Invoke(queuemetrics.RegisterStatsCollector)
 ```
 
-`WorkerModule()` in `internal/di/module/worker.go` also registers optional queue-stats targets via `provideQueueStatsTargets(...)` (the `group:"worker.queue_stats_targets"` group).
+`internal/di/module/worker.go` の `WorkerModule()` は、任意の queue stats 対象を `provideQueueStatsTargets(...)`（`group:"worker.queue_stats_targets"` グループ）でも登録する。
 
-## Worker Execution Flow
+## worker 実行フロー
 
-1. CLI sets worker info via `state.Set(name, args, done)`
-2. Application starts
-3. Start hook starts the health listener and references `state.Snapshot()`
-4. If `done` exists, `engine.Run()` executes the worker in a detached goroutine
-5. On stop, the engine context is cancelled and drain is awaited within `stopCtx`
+1. CLI が `state.Set(name, args, done)` で worker 情報をセット
+2. アプリケーション起動
+3. Start フックが health listener を起動し、`state.Snapshot()` を参照
+4. `done` が存在すれば、worker を detached goroutine で `engine.Run()` 実行
+5. 停止時に engine の context をキャンセルし、`stopCtx` の範囲で drain を待機
 
-## Notes
+## 注意点
 
-- `state.Set` must be called before application startup
-- Hook lifecycle details (skip on `done == nil`, detached run, drain and redelivery) are in [`hook/README.md`](hook/README.md)
-- `ValidateShutdownGrace` fails app startup when `WORKER_DRAIN_TIMEOUT >= APP_SHUTDOWN_TIMEOUT` (drain must finish before the stop grace expires)
-- The queue-stats collector reports queue depth / DLQ metrics; with no target registered it emits nothing
-- To add workers, add their constructors to `provideWorkers(...)` in `internal/di/module/worker.go` (each must implement `usecase/boundary/worker.Worker`)
+- `state.Set` はアプリケーション起動前に行う必要がある
+- フックのライフサイクル詳細（`done == nil` でのスキップ・detached 実行・drain と再配送）は [`hook/README.md`](hook/README.md) を参照
+- `ValidateShutdownGrace` は `WORKER_DRAIN_TIMEOUT >= APP_SHUTDOWN_TIMEOUT` のときアプリ起動を失敗させる（drain は停止猶予が尽きる前に完了する必要がある）
+- queue stats 収集器は queue depth / DLQ メトリクスを出力する。対象が 1 つも登録されていなければ何も出力しない
+- worker の追加は `internal/di/module/worker.go` の `provideWorkers(...)` にコンストラクタを追加する（各 worker は `usecase/boundary/worker.Worker` を実装する必要がある）

@@ -7,71 +7,64 @@ allowed-tools: Bash, Read, Glob, Grep
 
 # Context Map Audit
 
-Compares `docs/design/context-map.md` against the contact points the repository actually has, and
-reports where the two disagree.
+`docs/design/context-map.md` を、リポジトリが実際に持っている接触点と突き合わせ、両者が食い違う
+ところを報告する。
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory
-(not loaded as a skill; for human reference only).
+## なぜ read-only なのか
 
-## Why this is read-only
+乖離には 2 通りの読み方があり、このスキルには区別が付かない。地図が古くなったのか、コードが誰かの
+決めた関係から離れたのか。**地図を書き換えれば、毎回いつでも前者の読み方を黙って選ぶことになる**。
+そして重要なのは後者のほうである。決定が古びたのではなく、決定が破られていることを意味するからだ。
 
-A divergence has two readings and this skill cannot tell them apart. Either the map went stale, or
-the code drifted away from a relationship someone decided on. **Editing the map would silently pick
-the first reading every time** — and the second is the one that matters, because it means a decision
-is being violated rather than merely out of date.
+食い違いとその根拠を報告する。地図とコードのどちらが誤りかは、メンテナの判断である。
 
-Report the disagreement and its evidence. Whether the map or the code is the error is the
-maintainer's call.
+## 使いどころ
 
-## When to Use
+- 外部依存を足した、あるいは外した
+- 設計の議論で地図に頼る前
+- `internal/usecase/boundary/**`、`internal/infrastructure/**`、`docs/design/**` に変更が入った
+- 定期的な棚卸し
 
-- An external dependency was added or removed.
-- Before relying on the map in a design discussion.
-- A change landed under `internal/usecase/boundary/**`, `internal/infrastructure/**`, or
-  `docs/design/**`.
-- Periodic sweep.
+使わない場面:
 
-Do NOT use for:
+- 地図の作成・拡張 — `context-map`
+- Evans 原義との DDD パターン照合 — `ddd-audit`。README↔code のドリフト — `back-prop`
 
-- Creating or extending the map — `context-map`.
-- DDD patterns against Evans — `ddd-audit`. README↔code drift — `back-prop`.
+## Step 1. 地図を読む
 
-## Step 1. Load the map
+`docs/design/context-map.md` を読む。存在しない場合はそう述べて `/context-map` を指す。地図の不在は
+このスキルが報告できる findings ではなく、ベースラインを捏造しては目的を失う。
 
-Read `docs/design/context-map.md`. If it does not exist, say so and point at `/context-map` — an
-absent map is not a finding this skill can report on, and inventing a baseline defeats the purpose.
+辺の集合を取り出す。相手・向き・ラベル・引用されている根拠。`未確定` の辺も残す。実在する項目であり、
+他の辺と同じようにドリフトしうる。
 
-Extract the edge set: counterpart, direction, label, cited evidence. Keep `未確定` edges — they are
-real entries and can drift like any other.
+## Step 2. 接触点を再列挙する（決定的な処理。委譲しない）
 
-## Step 2. Re-enumerate contact points (deterministic — do not delegate)
-
-Resolve the current set the same way `/context-map` does, from the repository rather than from a
-list in this file:
+`/context-map` と同じ方法で、本文の一覧ではなくリポジトリから現在の集合を解決する。
 
 ```sh
 ls internal/usecase/boundary/
 ls internal/infrastructure/
 ```
 
-Read `internal/usecase/boundary/README.md` and `internal/infrastructure/README.md` at runtime. Apply
-the same test: a model crossing out of this system, not merely a port. Include the inbound direction.
+`internal/usecase/boundary/README.md` と `internal/infrastructure/README.md` を実行時に読む。判定
+基準も同じで、単なるポートではなく**モデルがこのシステムの外へ渡ること**。内向きの方向も含める。
 
-## Step 3. Compare
+## Step 3. 突き合わせる
 
-Three kinds of divergence, kept separate because they ask for different things:
+乖離は 3 種。求められることが違うので分けて扱う。
 
-- **地図に無い接触点** — exists in the repository, absent from the map. The map understates the
-  surface, and nobody has decided how this edge relates.
-- **相手が消えた辺** — recorded in the map, no longer present. The map overstates the surface.
-- **根拠が変わった辺** — both present, but the structural evidence no longer supports the recorded
-  label. Check each against what the map cites: a translating adapter that was removed, external
-  vocabulary now reaching the inside, a published contract artifact withdrawn or newly added.
+- **地図に無い接触点** — リポジトリには在るが地図に無い。地図が実際の面を過小に述べており、
+  この辺がどう関係するのかを誰も決めていない
+- **相手が消えた辺** — 地図に記録されているが、もう存在しない。地図が面を過大に述べている
+- **根拠が変わった辺** — 双方に在るが、構造的な根拠が記録されたラベルを支えなくなっている。
+  地図が引用している根拠に対して 1 件ずつ確認する。変換アダプタが外された、外部の語彙が内側へ
+  届くようになった、公開契約の成果物が取り下げられた／新たに置かれた
 
-The third is the one worth the run. The first two are visible to anyone who looks; the third looks
-fine until someone relies on the label.
+3 つ目がこの実行の価値である。最初の 2 つは見れば誰でも分かる。3 つ目は、**誰かがそのラベルに
+頼るまで問題無く見える**。
 
-## Step 4. Report (Japanese, read-only)
+## Step 4. 報告する（日本語・read-only）
 
 ```text
 context-map-audit 結果（辺 <N> 件 / 接触点 <M> 件）
@@ -93,19 +86,18 @@ context-map-audit 結果（辺 <N> 件 / 接触点 <M> 件）
 総計: 追加候補 <n>, 消滅 <n>, 根拠変化 <n>, 未確定 <n>
 ```
 
-State findings as observations. Do not write 「修正してください」「対応必須」— which side is wrong is
-not something this skill knows. Where a finding is actionable, name the skill that would act
-(`/context-map --update` for a missing edge) and stop there.
+findings は観察として述べる。「修正してください」「対応必須」とは書かない。どちら側が誤りかは
+このスキルの知り得るところではない。対処しうるものについては、対処するスキルの名を挙げる
+（辺が欠けているなら `/context-map --update`）にとどめる。
 
-Carry the `未確定` edges into the report every run. An open question that stops being visible stops
-being answered.
+`未確定` の辺は毎回報告へ載せる。見えなくなった問いは、答えられなくなる。
 
 ## AI Modification Scope
 
-- Read: `docs/design/context-map.md`, `internal/usecase/boundary/**`, `internal/infrastructure/**`,
-  per-package `README.md`
-- Write: nothing
-- Never touch: the map, the DDD ledger, source code, `AGENTS.md`
+- 読み込み: `docs/design/context-map.md`、`internal/usecase/boundary/**`、
+  `internal/infrastructure/**`、パッケージごとの `README.md`
+- 書き込み: なし
+- 触らない: 地図、DDD 台帳、実装コード、`AGENTS.md`
 
 ## Constraints
 
@@ -117,7 +109,7 @@ being answered.
 - ✅ 3 種の乖離を分けて報告（要求されることが違うため）
 - ✅ 根拠は `file:line`、日本語で報告
 
-## Checklist
+## チェックリスト
 
 - [ ] 地図を読み、辺の集合（未確定を含む）を取り出す
 - [ ] 接触点を boundary / infrastructure から再列挙（inbound も含む）

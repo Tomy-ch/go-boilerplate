@@ -1,20 +1,19 @@
-# Testing Conventions
+# テスト規約
 
-This is the **canonical source for how tests are written** in this repository — structure,
-naming, parallelism, assertions, mocks, and coverage-exception governance. It is read at
-runtime by the `scaffold-test` (generation) and `test-review` (review) skills, so keeping a
-single source here prevents drift.
+本書はこのリポジトリで **テストをどう書くか** の唯一の source of truth です — 構造・命名・
+並列化・アサーション・mock・カバレッジ例外のガバナンス。`scaffold-test`(生成)と
+`test-review`(レビュー)の各 skill が runtime で本書を読むため、ここに一元化して drift を防ぎます。
 
-Scope split (do not duplicate across these):
+スコープ分担(以下を跨いで重複させないこと):
 
-- **This document** — the concrete *how* (techniques / conventions).
-- [`rules.md` → *Testing & Definition of Done*](rules.md) — the non-negotiable *when is it done* (per-layer testing, the 90 % bar, "compiles ≠ done", runtime DI verification, live-app smoke tests, unreachable-branch policy).
-- Each layer `README` → *Test Strategy* — the per-layer **viewpoints** (what to exercise for that layer).
+- **本書** — 具体的な *どう書くか*(技法 / 規約)。
+- [`rules.md` → *Testing & Definition of Done*](rules.md) — 非交渉の *どうなれば完了か*(層ごとのテスト・90% ライン・「compiles ≠ done」・実行時 DI 検証・実アプリの smoke test・到達不能分岐の方針)。
+- 各層 `README` → *Test Strategy* — 層ごとの **観点**(その層で何を検証するか)。
 
 <!-- sample-api:replace-begin -->
-The canonical reference test is [`internal/domain/user/user_domain_test.go`](../internal/domain/user/user_domain_test.go).
+canonical な参照テストは [`internal/domain/user/user_domain_test.go`](../internal/domain/user/user_domain_test.go) です。
 <!-- sample-api:replace-with -->
-<!-- = The canonical reference test is the domain test of an aggregate in `internal/domain/`. -->
+<!-- = canonical な参照テストは `internal/domain/` 配下の集約のドメインテストです。 -->
 <!-- sample-api:replace-end -->
 
 <!-- 撤去後にこの箇所へ自分の例を置くための指針。
@@ -22,17 +21,17 @@ The canonical reference test is [`internal/domain/user/user_domain_test.go`](../
      意義: 効くのは「規約を全て満たしている実在のテストを 1 本、パスで名指すこと」。
      書き方: 自分のドメインのテストから、構造・命名・require/assert の使い分けを満たす 1 本を選んで指す。 -->
 
-## 1. Structure
+## 1. 構造
 
-- **One `TestXxx` per function or method — strictly 1:1; no bundling.** This applies to getters / accessors as well: do not group them into a `*_Accessors` / `*_Getters` test — one `TestXxx` per accessor. The 1:1 mapping is enforced mechanically by `internal/architest` (`TestUnitTestMappingCompleteness`) over every **production-code** function / method — non-test source, which is a different thing from the `production` branch and the `prd` environment — branchless ones included, since a body without an `if` can still carry a contract (a `BindHandler` that only registers a route pins its method + path). Only `main` / `init` and generated files are out of scope.
-- **The mapping is one-directional by design**, with the one exception decidable from the same name table: two candidate-named tests for a single subject (`TestFoo` alongside `Test_Foo`) is that subject split in two, and `TestUnitTestMappingCompleteness` fails on it — the alternate names exist to tolerate naming variation, not to license both at once. Otherwise it runs production-code subject → test to catch a *forgotten* test and makes no claim in reverse. A `TestXxx` whose subject is a contract rather than a function — the consistency between data, generated output, and the documentation describing them — has no production-code counterpart by construction, and is not a 1:1 violation. A subject split between a candidate-named test and a differently-named one is indistinguishable from such a contract test by name alone, so flagging one would flag the other; that shape is `test-review`'s to catch, not `architest`'s.
-- **`t.Skip` is allowed only when the subject is unverifiable and therefore unreachable** — e.g. a test helper whose failure path calls `tb.Fatalf`, which terminates the calling test. The skip reason states **why the subject cannot be verified**; there is no allowlist, so that reason stays in the code.
-- **"Covered by another test" is not a valid skip reason.** Such a skip makes the subject depend on another test's implementation: it stays green after the covering test shrinks or is deleted, nothing mechanically confirms the covering test really reaches the branch, and a branch added later goes unverified in silence — which reduces the 1:1 mapping to a name-only shell. If the subject is testable, test it, even when a caller / integration / DI-graph test already happens to exercise it. `internal/architest` (`TestSkipReasonDoesNotNameCoveringTest`) fails the build on a skip reason that names another test.
-- Every logical branch is exercised.
-- **When a `TestXxx` uses `t.Run` subcases, its outermost groups are the literal strings `正常系` / `異常系`** — not a `正常系_xxx` prefixed form, and not a behavior sentence placed directly under `TestXxx`. Nest further `t.Run` subcases inside them. `境界ケース` is a *viewpoint* (section 10), not a third group: boundary cases are split across `正常系` / `異常系` by the outcome each side produces.
-- **A `TestXxx` covering a single scenario may omit the groups.** A DI graph validity check (`fx.ValidateApp`), a branchless provider whose wiring is the whole contract, or a repository-scanning contract test has nothing to divide, so wrapping it in `正常系` adds no classification and only nests the body one level deeper. The exemption is per *subject*, not per layer — a subject that does have an error branch may not hide it in this shape, which is a section 10 meaning-coverage violation.
-- **The `正常系` / `異常系` split follows whether the subject itself fails**, not whether the input is failure-flavored. A logger that records `OnStart` failures never returns an error, so all of its cases belong under `正常系`.
-- The group structure is enforced mechanically by `internal/architest` (`TestSubtestGroupPolicy`); which side a case belongs on is not machine-checkable and stays with section 10 and review.
+- **1 つの関数 / メソッドにつき 1 つの `TestXxx` — 厳密に 1:1、束ねない。** getter / accessor も同様: `*_Accessors` / `*_Getters` に束ねず、accessor ごとに 1 つの `TestXxx` を用意する。この 1:1 対応は、**production code**（テストでない実装コードのこと。`production` ブランチや `prd` 環境とは別物）の全関数 / メソッドについて `internal/architest`（`TestUnitTestMappingCompleteness`）が機械的に強制する。分岐なしも対象で、`if` が無い body でも契約は持ちうる（ルート登録だけを行う `BindHandler` はメソッド + パスを固定する）。対象外は `main` / `init` と生成物のみ。
+- **この写像は設計上、一方向である。** ただし同じ名前表から判定できる例外が 1 つだけある。1 つの subject に候補名のテストが 2 本（`TestFoo` と `Test_Foo`）ある状態はその subject が 2 つに割れているということであり、`TestUnitTestMappingCompleteness` はこれを違反として落とす — 候補名が複数あるのは命名の揺れを許容するためであって、両方を並べてよいという意味ではない。それ以外は production code の subject → テストの向きに走り、テストの**書き忘れ**を検知するために存在する。逆向きについては何も主張しない。subject が関数ではなく契約であるような `TestXxx` — データ・生成物・それらを説明するドキュメントの間の整合を固定するもの — は、構造上 production code 側の対応物を持たず、1:1 違反ではない。候補名のテストと候補名でないテストに subject が割れている状態は、名前だけを見ればそうした契約テストと区別がつかないため、一方を違反にすればもう一方も違反になる。この形は `architest` ではなく `test-review` が受け持つ。
+- **`t.Skip` は、対象が検証不可能であるために到達できない場合のみ許容する** — 例: 失敗経路が `tb.Fatalf` を呼ぶテストヘルパーは、呼び出し側テストの終了を伴うため直接検証できない。skip の理由文には **なぜ検証不可能なのか** を書く。allowlist は持たず、その理由はコードに残す。
+- **「他のテストでカバー済み」は skip の理由にならない。** その skip は対象を別テストの実装に依存させる: カバー元が縮小・削除されても skip は green のままで、カバー元が本当にその分岐を通っているかを機械検証する手段も無く、後から増えた分岐は誰にも検証されないまま無言で通る — 1:1 対応が名前だけの殻になる。呼び出し元 / 統合 / DI グラフテストがたまたま通っていても、テスト可能な対象はテストする。他テストを名指しした skip 理由は `internal/architest`（`TestSkipReasonDoesNotNameCoveringTest`）が失敗させる。
+- すべての論理分岐を網羅する。
+- **`TestXxx` が `t.Run` サブケースを使う場合、その最外グループは literal な `正常系` / `異常系`** — `正常系_xxx` の prefix 形も、`TestXxx` 直下に振る舞いの文を置く形も使わない。その内側にさらに `t.Run` サブケースをネストする。`境界ケース` は第 3 のグループではなく **観点**(§10)であり、境界のケースは各側が生む結果に応じて `正常系` / `異常系` へ振り分ける。
+- **単一シナリオの `TestXxx` はグループを省略してよい。** DI グラフの妥当性検証(`fx.ValidateApp`)・配線そのものが契約である分岐なし provider・リポジトリ全体を走査する contract test には分割する先が無く、`正常系` で包んでも分類の情報は増えず body が一段深くなるだけである。この例外は **subject 単位**であり層単位ではない — エラー分岐を持つ subject をこの形に押し込むことは §10 の意味網羅違反になる。
+- **`正常系` / `異常系` の振り分けは、subject 自身が失敗するかで決める** — 入力が失敗の題材かどうかでは決めない。`OnStart` の失敗イベントを記録する logger はエラーを返さないため、そのケースはすべて `正常系` に属する。
+- グループ構造は `internal/architest`（`TestSubtestGroupPolicy`）が機械的に強制する。どちら側に属すべきかは機械検証できないため、§10 とレビューが担う。
 
 ```go
 func TestNewUser(t *testing.T) {
@@ -48,25 +47,25 @@ func TestNewUser(t *testing.T) {
 }
 ```
 
-## 2. Naming
+## 2. 命名
 
-- All test case names are in **Japanese** and describe the behavior **and** the branch condition.
-- When groups are present, they are the bare literals `正常系` / `異常系`. **Sub-case names inside them carry no `正常系_` / `異常系_` prefix** — they read as a behavior sentence (e.g. `firstNameの文字数が最小値未満の場合、エラーを返す`).
+- テストケース名はすべて **日本語**で、振る舞い **と** 分岐条件を記述する。
+- グループがある場合、それは素の literal `正常系` / `異常系`。**その内側のサブケース名に `正常系_` / `異常系_` の prefix は付けない** — 振る舞いの文として書く(例: `firstNameの文字数が最小値未満の場合、エラーを返す`)。
 
-## 3. Parallelism
+## 3. 並列化
 
-- Call `t.Parallel()` at **every nesting level**.
-- The only exceptions are shared-mutable-state cases and env/CWD mutation (`t.Setenv`, `config.EnsureRepoRootAndEnv`), which are incompatible with `t.Parallel()`. Mark those with `//nolint:paralleltest` and a one-line reason. For a fixed listen port that collides under parallel packages, prefer an ephemeral address (`127.0.0.1:0`) over serializing the test.
+- **すべてのネスト階層**で `t.Parallel()` を呼ぶ。
+- 例外は共有可変状態のケースと env / CWD の変更(`t.Setenv`・`config.EnsureRepoRootAndEnv`)で、これらは `t.Parallel()` と非互換。`//nolint:paralleltest` と一行の理由を付ける。並列パッケージで衝突する固定 listen ポートは、テストを直列化するのではなく ephemeral アドレス(`127.0.0.1:0`)を優先する。
 
-## 4. No table-driven `for` loops
+## 4. table-driven な `for` ループ禁止
 
-Write **sequential `t.Run` siblings, one per case** — do **not** use a `for _, tc := range cases` loop. Each case gets its own named `t.Run` so a failure names the exact scenario and parallelism is per-case.
+**逐次の `t.Run` 兄弟をケースごとに 1 つずつ**書く — `for _, tc := range cases` ループは使わない。各ケースが独立した名前付き `t.Run` を持つことで、失敗時に該当シナリオが名指しされ、並列もケース単位になる。
 
-## 5. Assertions
+## 5. アサーション
 
-- Use `require` for **preconditions**, fatal checks, and **all error assertions** (`NoError` / `Error` / `ErrorIs` / `ErrorContains`). The `testifylint` `require-error` rule enforces this — `assert.ErrorIs` etc. fail lint.
-- Use `require` for a check that **guards subsequent code** (e.g. `require.NotNil` before a dereference).
-- Use `assert` for **terminal value verification** that does not guard later code (`Equal` / `Len` / `Contains` / `True` / `False` / `Empty`), so one run surfaces all mismatches.
+- **前提条件**・致命チェック・**全てのエラーアサーション**(`NoError` / `Error` / `ErrorIs` / `ErrorContains`)には `require` を使う。`testifylint` の `require-error` ルールが強制し、`assert.ErrorIs` 等は lint で落ちる。
+- **後続コードを保護する**チェック(例: dereference 前の `require.NotNil`)にも `require` を使う。
+- 後続を保護しない**終端の値検証**(`Equal` / `Len` / `Contains` / `True` / `False` / `Empty`)には `assert` を使い、1 回の実行で不一致を一度に洗い出す。
 
 ```go
 require.NoError(t, err)            // 前提（失敗で以降無意味）
@@ -74,99 +73,73 @@ require.ErrorIs(t, err, ErrX)      // エラー系は require（testifylint requ
 assert.Equal(t, expected, actual)  // 終端の値検証は assert
 ```
 
-## 6. Mocks and generated files
+## 6. mock と生成物
 
-- Use the **generated mocks** under `*/mock/` (`go.uber.org/mock`). Never hand-write custom mocks in test files.
-- Never edit generated files: `**/*.gen.go`, `*.sql.go`, `*_mock.go`.
-- Tests rely only on public interfaces and generated artifacts.
+- `*/mock/` 配下の **生成 mock**(`go.uber.org/mock`)を使う。テストファイルに手書き mock を作らない。
+- 生成物は編集しない: `**/*.gen.go`・`*.sql.go`・`*_mock.go`。
+- テストは公開インターフェースと生成物のみに依存する。
 
-## 7. Architectural rules in tests
+## 7. テストにおけるアーキテクチャ制約
 
-Tests respect the same onion boundaries as production code:
+テストも本番コードと同じ onion 境界を守る:
 
-- Domain tests must not use infrastructure implementations.
-- Usecase tests mock domain repositories.
-- Controller tests mock usecases.
-- Do not bypass layers.
+- domain テストは infrastructure 実装を使わない。
+- usecase テストは domain の repository を mock する。
+- controller テストは usecase を mock する。
+- レイヤをバイパスしない。
 
-## 8. Coverage
+## 8. カバレッジ
 
-- Run `make test` (coverage). Coverage **must not decrease** from the current baseline; new / modified packages exceed **90 %** and handlers approach ~100 %.
-- If a package is below the bar, add the missing branch tests — do not stop until met. (The "done" definition lives in [`rules.md` → Testing & Definition of Done](rules.md).)
+- `make test`(カバレッジ付き)を実行する。カバレッジは現行 baseline から **低下させない**。新規 / 変更パッケージは **90%** 超、handler は ~100% に近づける。
+- ラインを下回るパッケージは不足分岐テストを追加する — 満たすまで止めない。(「完了」の定義は [`rules.md` → Testing & Definition of Done](rules.md)。)
 
-## 9. Coverage exceptions and governance
+## 9. カバレッジ例外とガバナンス
 
-Some uncovered lines are legitimate and must **not** be chased with contrived tests:
+一部の未被覆行は正当であり、contrived テストで **追わない**:
 
-- **Structurally unreachable** — an impossible `switch default`, a `panic` guarding a precondition that cannot fail, a compiler-mandated `return` after an exhaustive loop.
-- **Infallible defensive branches** — error returns from operations that cannot fail in practice (e.g. `json.Marshal` of a `[]string`).
-- **Write-once infrastructure (extraordinary measure / 超法規的措置)** — packages such as `internal/observability` that, once implemented, are rarely touched. Their defensive branches may be left uncovered **only when covering them would require extra production code, a signature change, or runtime-stack manipulation** — i.e. only branches reachable as-is are tested.
+- **構造上到達不能** — あり得ない `switch default`、失敗し得ない前提を守る `panic`、網羅ループ後のコンパイラ必須 `return`。
+- **失敗しない防御分岐** — 実質失敗しない演算のエラー return(例: `[]string` の `json.Marshal`)。
+- **write-once インフラ(超法規的措置)** — 一度実装するとほぼ触らない `internal/observability` のようなパッケージ。その防御分岐は、**被覆に追加の本番コード・署名変更・runtime スタック操作を要する場合に限り** 未被覆のまま許容する(= 現状のまま到達可能な分岐のみをテストする)。
 
-Rules for exceptions:
+例外の規則:
 
-- Do **not** add contrived tests or extra implementation solely to color these lines.
-- Record each exception in the owning package's `README` (the concrete file/function list).
-- **Governance:** a new exception is **not added at will** — it is recorded only with an appropriate approver's (e.g. architect) sign-off. If an exempted function later gains real branching logic (not error plumbing), that logic must be unit-tested like everything else.
+- これらの行を塗るためだけの contrived テストや追加実装は **行わない**。
+- 各例外は所有パッケージの `README` に記録する(具体的なファイル / 関数の一覧)。
+- **ガバナンス:** 新規例外は **任意に追加しない** — アーキテクト等の適切な承認者の承認を得た場合に限り記録する。免除された関数が後に(エラー配線ではない)実際の分岐ロジックを持つようになった場合は、他と同様にユニットテストで担保する。
 
-## 10. Semantic quality bar (anti-patterns)
+## 10. 意味的品質のバー(アンチパターン)
 
-Sections 1–9 make a test *well-formed*; they do not make it *meaningful*. A test can be
-100 % structurally compliant, lift coverage, and still assert nothing about what makes the
-exercised branch distinct. This section is the semantic bar every test must meet and the
-anti-patterns to avoid. It is the **single source for test quality**, read by both
-`scaffold-test` (to generate tests that satisfy it) and `test-review` (to flag tests that
-violate it) — keeping the list here prevents the generator and the reviewer from drifting.
+section 1〜9 はテストを *well-formed*(整形式)にするが、*meaningful*(有意味)にはしない。テストは構造上 100% 準拠でカバレッジを上げても、被覆した分岐の何が固有なのかを一切 assert していないことがある。この節は全テストが満たすべき意味的なバーと、避けるべきアンチパターンを定める。ここが **テスト品質の唯一の出所**であり、`scaffold-test`(これを満たすテストを生成する)と `test-review`(これに違反するテストを検出する)の双方が読む — 一覧をここに集約することで生成器とレビュアのドリフトを防ぐ。
 
-### Meaning coverage (意味網羅)
+### 意味網羅 (meaning coverage)
 
-Reaching a branch is not enough — each case must assert that branch's **distinctive**
-outcome, not merely that it executed. A covered-but-vacuously-asserted branch passes and
-lifts coverage yet reveals nothing.
+分岐に到達するだけでは不十分 — 各ケースはその分岐の **固有の** outcome を assert しなければならない。単に実行されたことだけを示す「被覆済みだが意味未検証」の分岐は、pass してカバレッジを上げても何も明らかにしない。
 
-- **Error branch** — assert the specific sentinel via `require.ErrorIs`, not just `require.Error`.
-- **Success branch** — assert the resulting value / state that distinguishes it from the other branches, not just `require.NoError` / `assert.NotNil`.
-- **State-mutating method** — assert the post-mutation field / invariant, not just that the call returned.
-- **Immutable pointer / reference getter** — assert immutability (mutating the returned value must not affect the entity), not just value equality.
-- **Boundary** — assert the differing outcome on each side (accept vs reject), not only the accept side.
+- **エラー分岐** — `require.Error` ではなく `require.ErrorIs` で固有の sentinel を assert する。
+- **成功分岐** — `require.NoError` / `assert.NotNil` ではなく、他分岐と区別できる結果の値 / 状態を assert する。
+- **状態変更メソッド** — 呼び出しが返ったことではなく、変更後のフィールド / 不変条件を assert する。
+- **不変な pointer / 参照 getter** — 値の一致ではなく、不変性(返り値を変更してもエンティティに影響しないこと)を assert する。
+- **境界** — 受理側だけでなく、境界の両側で異なる outcome(受理 vs 拒否)を assert する。
 
-### Anti-patterns (avoid when writing, flag when reviewing)
+### アンチパターン(書くときは避け、レビューでは検出する)
 
-- **Weak assertion** — `assert.NotNil` as the sole check on a complex return; `assert.NoError` with no follow-up state assertion; `assert.Equal(t, len(actual), 1)` instead of asserting the element. *Exception:* a trivial constructor kept as its own `TestXxx` for the one-`TestXxx`-per-subject rule (section 1) is a *strengthen-in-place* case — recommend a stronger assertion, never delete the dedicated test or fold it into another subject's test.
-- **Name over-promising the assertion** — a `t.Run` case name claims a property the body does not verify (e.g. `"…を保持した収集器を返す"` while the body only asserts `NotNil`). Either assert the property or rename the case. *Corollary:* a branchless pass-through / wiring function (e.g. a DI provider forwarding its input to a constructor) needs only one honest case; extra cases re-running the same `NotNil` with different inputs add no coverage and should be collapsed.
-- **Brittle internals coupling** — reading unexported fields when the public API would do; asserting on log output or error-message *strings* instead of `errors.Is`.
-- **Over-mocking** — mocking a collaborator a real (pure) implementation would cover more revealingly; call-count matchers at a granularity that locks the implementation in place.
-- **Time-literal pinning leak** — `time.Now()` called inside the assertion instead of a fixed `baseTime`; comparisons relying on the system clock.
-- **Responsibility creep** — one `TestXxx` driving multiple subjects (a section-1 1:1 violation). Decompose into one `TestXxx` per subject; do not fold multiple subjects into one test.
-- **Helper duplication** — a 5+-line fixture repeated across 3+ `TestXxx` functions that should be a `t.Helper()`-tagged helper.
-- **Redundant comments** — inline comments that restate the code or narrate *why*; case intent belongs in the Japanese `t.Run` name, not in comments (per the Comment Rules in [`rules.md`](rules.md)).
-- **Auto-fixable broken input** — a deliberately-invalid literal that `make fix` silently repairs, so the case stops exercising the rejection path while still passing. A misspelled field name (`"nmae"`) is rewritten to the real one by `misspell`, turning a body that should be rejected into a valid one. Pick an input whose invalidity no linter can "correct": for an unknown field, a correctly-spelled name that simply is not in the contract.
+- **弱いアサーション** — 複雑な返り値に対し `assert.NotNil` だけ / 後続の状態 assert が無い `assert.NoError` / 要素を assert せず `assert.Equal(t, len(actual), 1)`。*例外:* 1-`TestXxx`-per-subject 規則(section 1)のために単独の `TestXxx` として保持している trivial constructor は *その場で強化*するケース — より強い assert を推奨するのであって、専用テストを削除したり他 subject のテストへ畳み込んだりしない。
+- **名前がアサーションを過剰約束** — `t.Run` ケース名が本体で検証していない性質を主張している(例: 本体は `NotNil` だけなのに `"…を保持した収集器を返す"`)。性質を assert するか、ケース名を実際の検証内容に改名する。*系:* 分岐の無い pass-through / 配線関数(例: 入力を constructor に転送するだけの DI provider)は正直な 1 ケースで足りる。入力を変えて同じ `NotNil` を再実行する追加ケースはカバレッジを増やさず、まとめるべき。
+- **内部への脆い結合** — 公開 API で足りるのに unexported フィールドを読む / `errors.Is` ではなくログ出力やエラーメッセージ *文字列* を assert する。
+- **over-mocking** — 実(純粋)実装の方がより多くを露わにできる協調オブジェクトを mock する / 実装を固定してしまう粒度の呼び出し回数マッチャ。
+- **time リテラル固定漏れ** — 固定 `baseTime` ではなくアサーション内で `time.Now()` を呼ぶ / システムクロックに依存する比較。
+- **責務クリープ** — 1 つの `TestXxx` が複数 subject を駆動する(section 1 の 1:1 違反)。subject ごとに 1 つの `TestXxx` へ分解し、複数 subject を 1 テストに畳み込まない。
+- **helper 重複** — 3 つ以上の `TestXxx` にまたがり 5 行以上の fixture が重複しており、`t.Helper()` 付き helper にすべき。
+- **冗長なコメント** — コードを言い換える / *why* を語る inline コメント。ケースの意図はコメントではなく日本語の `t.Run` 名に持たせる([`rules.md`](rules.md) の Comment Rules 準拠)。
+- **自動修正される壊れた入力** — `make fix` が黙って直してしまう不正リテラル。ケースは通り続けるのに拒否経路を検証しなくなる。フィールド名の綴り誤り(`"nmae"`)は `misspell` が実在名へ書き換えるため、拒否されるべき本文が正当な本文に変わる。どの linter にも「直せない」不正さを選ぶこと。未知フィールドなら、綴りは正しいが契約に無い名前を使う。
 
-## 11. Test Strategy sections: ownership and adjudicating drift
+## 11. Test Strategy 節の帰属と、乖離の裁定
 
-Per-layer viewpoints live in each layer README's *Test Strategy* section (see the scope split
-at the top of this document). Generation (`scaffold-test`) and review (`test-review`) resolve
-the governing section by walking up from the package under test to the nearest ancestor README
-that carries one. When that section and the package's actual tests disagree — or no applicable
-section exists — adjudicate by the rules below rather than case by case, so the same situation
-does not get decided two different ways in two different packages.
+層ごとの観点は各層 README の *Test Strategy* 節に置きます(本書冒頭のスコープ分担を参照)。生成(`scaffold-test`)とレビュー(`test-review`)は、対象パッケージから上へ walk して該当節を持つ最も近い祖先 README を統治節として解決します。その節と実際のテストが食い違ったとき — あるいは適用可能な節が存在しないとき — は、ケースごとに判断せず以下の規則で裁定します。同じ状況が別のパッケージで別々に決着することを防ぐためです。
 
-- **The tests are sound design → amend the declaration.** When the approach the tests take is
-  architecturally justified, the declaration is what failed to describe reality. Fix the README,
-  normally by giving the package its own *Test Strategy* section — and state **the criterion
-  that selects the approach**, not just the approach, so the next package in the same situation
-  applies a rule instead of copying a precedent.
-- **The declaration is the correct intent → amend the tests.** When the deviation has no design
-  justification, the section states what should be true; bring the tests in line with it.
-- **An inherited section governs only where its premises hold.** The nearest ancestor section
-  applies to a sub-package only when its preconditions — substrate, dependencies, real I/O —
-  actually hold there. A strategy written for one substrate (real-database integration tests,
-  say) does not govern a sub-package that has no database. The walk resolving *formally* is not
-  the same as the section applying: treat an inapplicable nearest section exactly like a missing
-  one, as a documentation gap closed by giving the sub-package its own section.
-- **A package that is not a layer still owns its viewpoints.** A test-only package verifying
-  cross-package contracts (`internal/architest`) has no layer README above it by construction.
-  Its viewpoints belong in its own README's *Test Strategy* section like any other package;
-  this document keeps only the cross-cutting structure rules.
+- **テストが設計として妥当なら、宣言を直す。** テストの採る手法にアーキテクチャ上の正当性があるなら、現実を記述し損ねているのは宣言の側です。README を直します — 通常はそのパッケージ自身に *Test Strategy* 節を持たせる形で。このとき手法そのものだけでなく **その手法を選ぶ基準** まで書きます。同じ状況に置かれた次のパッケージが、先例のコピーではなく基準の適用で判断できるようにするためです。
+- **宣言が意図として正しいなら、テストを直す。** 乖離に設計上の正当性が無いなら、節は「そうあるべき」を述べています。テストを宣言へ寄せます。
+- **継承された節は、その前提が成り立つ範囲でのみ統治する。** 最も近い祖先の節がサブパッケージに適用されるのは、その前提 — 基盤・依存・実 I/O — が実際にそこで成り立つ場合だけです。ある基盤向けに書かれた戦略(例えば実 DB を使う統合テスト)は、DB を持たないサブパッケージを統治しません。walk が **形式上** 解決することと、節が適用されることは別です。適用不能な最寄り節は、節が無いのと全く同じく、そのサブパッケージに自前の節を持たせて閉じるドキュメントギャップとして扱います。
+- **層でないパッケージも、自分の観点は自分で持つ。** 複数パッケージ横断の契約を検証するテスト専用パッケージ(`internal/architest`)は、構造上その上に層 README を持ちません。観点は他のパッケージと同様に自身の README の *Test Strategy* 節に置きます。本書が持つのは横断的な構造規則だけです。
 
-Which side an adjudication took, and why, is recorded in the pull request that makes the change —
-neither this document nor the READMEs carry that history.
+裁定がどちらへ倒れたか、そしてその根拠は、変更を行う pull request に記録します — 本書も README もその履歴を持ちません。

@@ -1,31 +1,31 @@
 # driver
 
-Overview: **Base driver layer for RDB (PostgreSQL / pgx) connections. Provides connection management, transaction boundaries, and sqlc execution adapters.**
+概要: **RDB（PostgreSQL / pgx）接続のための基盤ドライバレイヤー。接続管理・トランザクション境界・sqlc 実行アダプタを提供します。**
 
-This package is the **lowest-level DB access foundation in the Infrastructure layer**.
+このパッケージは **Infrastructure 層の最下位に位置する DB アクセス基盤**です。
 
-The Repository layer accesses the DB through this driver.
+Repository 層はこの driver を通して DB にアクセスします。
 
-## Architectural Position
+## アーキテクチャ上の位置
 
 ```mermaid
 flowchart TB
-    Usecase --> Repo["Repository"] --> Driver["Driver (this package)"] --> DB["PostgreSQL"]
+    Usecase --> Repo["Repository"] --> Driver["Driver (このパッケージ)"] --> DB["PostgreSQL"]
 ```
 
-Driver is the **lowest-level adapter for RDB connections**.
+Driver は **RDB 接続の最下層アダプタ**です。
 
-## Responsibilities
+## 役割
 
-This directory provides the following functionalities:
+このディレクトリは次の機能を提供します。
 
-- **DatabaseDriver abstraction** wrapping `pgxpool.Pool`
-- **Transaction management (`tx.Manager`)**
-- **Provision of pgx-based DBTX interface (sqlc compatible)**
-- **Connection pool configuration**
-- **Connectivity check at DB startup (fail fast)**
+- `pgxpool.Pool` をラップした **DatabaseDriver 抽象化**
+- **トランザクション管理 (`tx.Manager`)**
+- **pgx ベースの DBTX インターフェース提供（sqlc 互換）**
+- **接続プール設定**
+- **DB 起動時の疎通確認 (fail fast)**
 
-With this, the Repository layer can execute the same query code with either:
+これにより Repository 層は
 
 ```mermaid
 flowchart TB
@@ -33,44 +33,44 @@ flowchart TB
     B["pgx.Tx"]
 ```
 
-## DB Initialization
+のどちらでも同じクエリコードを実行できます。
 
-Two constructors initialize the DB connection:
+## DB 初期化
+
+DB 接続を初期化するコンストラクタは 2 つあります。
 
 ```go
-func NewDB(...) (DatabaseDriver, error)                         // no query tracer
-func NewTracedDB(..., tracer pgx.QueryTracer) (DatabaseDriver, error) // with query tracer
+func NewDB(...) (DatabaseDriver, error)                         // クエリトレーサーなし
+func NewTracedDB(..., tracer pgx.QueryTracer) (DatabaseDriver, error) // クエリトレーサーあり
 ```
 
-`NewTracedDB` is used by the application (DI) and wires the pgx query tracer at
-`poolCfg.ConnConfig.Tracer`. `NewDB` (no tracer) is kept for tooling paths that do not need
-query instrumentation (e.g. migration / seed).
+`NewTracedDB` はアプリ本体（DI）が利用し、pgx クエリトレーサーを `poolCfg.ConnConfig.Tracer`
+に結線します。`NewDB`（トレーサーなし）は、クエリ計装が不要なツール経路（マイグレーション /
+シード等）のために残しています。
 
-Processing details:
+処理内容:
 
-1. Initialize connection via `pgxpool.NewWithConfig()`
-2. Configure connection pool
+1. `pgxpool.NewWithConfig()` による接続初期化
+2. 接続プール設定
     - MaxConns
     - MinConns
     - ConnMaxLifetime
     - ConnMaxIdleTime
-3. Attach the query tracer to `ConnConfig.Tracer` (only when provided)
-4. Verify DB connectivity using `Ping`
+3. クエリトレーサーを `ConnConfig.Tracer` に結線（指定時のみ）
+4. `Ping` による DB 疎通確認
 
-If Ping fails, it returns an error at startup (**fail fast** design).
+Ping に失敗した場合は **起動時にエラーを返す (fail fast)** 設計です。
 
-`DB_PING_TIMEOUT` is the budget for the whole of that sequence, not for `Ping` alone — pool creation
-and `Ping` share one context. `pgxpool` also opens `MinConns` connections concurrently the moment the
-pool is created, so those establishments compete with `Ping` for the same deadline. When many
-processes build a pool against one database at the same instant (parallel `go test`, a fleet of
-replicas cold-starting, reconnection after a failover), the budget can expire on queueing rather than
-on a database that is actually unreachable. Tune `DBCONN_MIN_CONNS` / `DB_PING_TIMEOUT` per
-environment for that shape of load rather than reading the failure as a broken database
-(see `env/README.md`).
+`DB_PING_TIMEOUT` は `Ping` 単体ではなく、この一連の処理全体に対する予算です（プール生成と `Ping` が同一の
+context を共有します）。さらに `pgxpool` はプール生成の直後に `MinConns` 本の接続を並行して張るため、その
+確立も同じ締切を `Ping` と奪い合います。1 つのデータベースに対して多数のプロセスが同時にプールを作る状況
+（並列 `go test`、レプリカ群の同時コールドスタート、フェイルオーバー後の再接続）では、データベースが実際に
+到達不能なのではなく順番待ちで予算を使い切ることがあります。この形の負荷では失敗を「DB が落ちている」と
+読まず、`DBCONN_MIN_CONNS` / `DB_PING_TIMEOUT` を環境ごとに調整してください（`env/README.md` 参照）。
 
 ## DatabaseDriver
 
-`DatabaseDriver` is an interface that abstracts `pgxpool.Pool`.
+`DatabaseDriver` は `pgxpool.Pool` を抽象化したインターフェースです。
 
 ```go
  type DatabaseDriver interface {
@@ -83,17 +83,17 @@ environment for that shape of load rather than reading the failure as a broken d
  }
 ```
 
-Purpose:
+目的:
 
-- Avoid direct dependency on `pgxpool.Pool`
-- Enable mocking during tests
-- Abstract transaction start
+- `pgxpool.Pool` への直接依存を避ける
+- テスト時に mock 化を可能にする
+- トランザクション開始を抽象化する
 
-Implementation is provided by `dbDriver`.
+実装は `dbDriver` が提供します。
 
 ## DBTX
 
-`DBTX` is the **minimal interface required by sqlc**.
+`DBTX` は **sqlc が要求する最小インターフェース**です。
 
 ```go
  type DBTX interface {
@@ -103,7 +103,7 @@ Implementation is provided by `dbDriver`.
  }
 ```
 
-With this interface, sqlc can execute the same query code with either:
+このインターフェースにより sqlc は
 
 ```mermaid
 flowchart TB
@@ -111,27 +111,29 @@ flowchart TB
     B["pgx.Tx"]
 ```
 
-## Transaction Transparent Layer
+のどちらでも同じクエリコードを実行できます。
 
-`New()` in `connection.go` is a **transaction-transparent adapter**.
+## トランザクション透過レイヤ
+
+`connection.go` の `New()` は **トランザクション透過アダプタ**です。
 
 ```go
 func New(ctx context.Context, db DatabaseDriver) DBTX
 ```
 
-Behavior:
+挙動:
 
 ```mermaid
 flowchart TB
-    HasTx["Tx exists in context"] --> ReturnTx["Return pgx.Tx"]
-    NoTx["No Tx"] --> ReturnDB["Return pgxpool.Pool (DatabaseDriver)"]
+    HasTx["context に Tx がある"] --> ReturnTx["pgx.Tx を返す"]
+    NoTx["Tx がない"] --> ReturnDB["pgxpool.Pool（DatabaseDriver）を返す"]
 ```
 
-With this, the Repository layer can execute queries without being aware of the difference between `DB` and `Tx`.
+これにより Repository 層は`DB`と`Tx`の違いを意識せずクエリを実行できます。
 
-## Transaction Management
+## トランザクション管理
 
-`tx.Manager` provides transaction boundaries in the Usecase layer.
+`tx.Manager` は Usecase 層のトランザクション境界を提供します。
 
 ```go
 err := tx.Do(ctx, func(ctx context.Context) error {
@@ -139,25 +141,26 @@ err := tx.Do(ctx, func(ctx context.Context) error {
 })
 ```
 
-Internally, it performs the following:
+内部では次の処理を行います。
 
-1. Check if Tx exists in context
-2. If exists → **reuse existing Tx**
-3. If not → **start new Tx**
-4. Execute fn
-5. Success → commit
+1. context に Tx が存在するか確認
+2. 存在すれば **既存 Tx を再利用**
+3. 存在しなければ **新規 Tx を開始**
+4. fn 実行
+5. 成功 → commit
 6. error → rollback
 
-- Uses pgx.Tx for transaction management.
+- pgx.Tx を利用したトランザクション管理です。
 
-This enables **safe handling of nested transactions**.
+これにより **ネストトランザクションを安全に扱うことができます。**
 
-## Notes
+## 注意点
 
-### Transaction cleanup timeout
+### トランザクション cleanup タイムアウト
 
-When executing rollback / commit, cleanup must run even if the request context is canceled.  
-To achieve this, the following pattern is used:
+rollback / commit 実行時は、リクエストの `context` がキャンセルされていても cleanup を必ず試行する必要があります。
+
+そのため、以下のパターンを採用しています。
 
 ```go
 context.WithTimeout(
@@ -166,64 +169,64 @@ context.WithTimeout(
 )
 ```
 
-#### Why `context.WithoutCancel(ctx)`?
+#### なぜ `context.WithoutCancel(ctx)` を使うのか
 
-Cleanup must **not depend on the request lifecycle**.
+cleanup は **リクエストライフサイクルに依存してはいけません**。
 
-- If the request is canceled (timeout / client disconnect), using the original `ctx` would cause:
-  - rollback/commit to be canceled
-  - transaction left open
-  - connection not returned to the pool
+- リクエストがキャンセル（timeout / client 切断）された場合、元の `ctx` をそのまま使うと次が起きます:
+  - rollback / commit がキャンセルされる
+  - トランザクションが開いたまま残る
+  - connection が pool へ返らない
 
-Using `context.WithoutCancel(ctx)` ensures:
+`context.WithoutCancel(ctx)` を使うことで:
 
-- cleanup always runs
-- trace / logger / correlation ID are preserved
+- cleanup は必ず実行される
+- trace / logger / correlation ID は維持される
 
-> Cleanup is about **attempting safely**, not guaranteeing success.
+> cleanup は「成功させること」ではなく「安全に試みること」が重要です。
 
-#### About `cleanupTimeout`
+#### cleanupTimeout について
 
-- Maximum time allowed for cleanup (rollback / commit)
-- Currently fixed to `5 seconds`
+- rollback / commit に許可する最大時間
+- 現在は `5秒` に固定
 
-This value is **not a business configuration but a safety mechanism for infrastructure protection**.
+この値は **ビジネス設定ではなくインフラ保護のためのセーフティ値** です。
 
-- If too large:
-  - Goroutine blocking
-  - Connection pool exhaustion
-- If too small:
-  - Cleanup may not complete
+- 長すぎると:
+  - goroutine 詰まり
+  - connection pool 枯渇
+- 短すぎると:
+  - cleanup 未完了
 
-Therefore, it is intentionally kept as a constant inside the driver and not exposed via environment variables.
+そのため、環境変数ではなく driver 内の定数として管理しています。
 
-### Always propagate Context
+### Context を必ず伝搬する
 
-Transactions are stored in `context.Context`. Therefore, always propagate `ctx` to lower layers.
+トランザクションは`context.Context`に格納されます。そのため`ctx`を必ず下位レイヤに伝搬してください。
 
-### Repository must use driver.New()
+### Repository は driver.New() を使用する
 
-In the Repository layer:
+Repository 層では
 
 ```go
 driver.New(ctx, db)
 ```
 
-Use this to obtain `DBTX`.
+を利用して `DBTX` を取得します。
 
-This allows transparent switching between `Tx` and `DB`.
+これにより`Tx`と`DB`を透過的に切り替えることができます。
 
-## DSN Helpers (config.go)
+## DSN ヘルパー（config.go）
 
-Utilities for building DB connection DSNs.
+DB 接続用の DSN を組み立てるユーティリティです。
 
-|Function|Description|
+|関数|説明|
 |---|---|
-|`DSN(dbCfg)`|Build base connection URL|
-|`DSNWithTimeZone(dbCfg, osCfg)`|Build connection URL with timezone|
-|`DSNString(dbCfg)`|String version of `DSN`|
-|`DSNStringWithoutPassword(dbCfg)`|String version of `DSN` without the password (pass it via `PGPASSWORD` etc. instead)|
-|`DSNWithTimeZoneString(dbCfg, osCfg)`|String version of `DSNWithTimeZone`|
+|`DSN(dbCfg)`|基本の接続 URL を生成|
+|`DSNWithTimeZone(dbCfg, osCfg)`|タイムゾーン付き接続 URL を生成|
+|`DSNString(dbCfg)`|`DSN` の文字列版|
+|`DSNStringWithoutPassword(dbCfg)`|パスワードを含まない `DSN` の文字列版（パスワードは `PGPASSWORD` などで別途渡す）|
+|`DSNWithTimeZoneString(dbCfg, osCfg)`|`DSNWithTimeZone` の文字列版|
 
 ## NewTransactionManager
 
@@ -231,52 +234,50 @@ Utilities for building DB connection DSNs.
 func NewTransactionManager(db DatabaseDriver, dbCfg *config.DatabaseConfig, logger logging.Logger, sleeper clock.Sleeper) tx.Manager
 ```
 
-Constructor that implements `tx.Manager` (`internal/usecase/boundary/tx`) for the Usecase layer.
-`Do` retries the whole transaction a bounded number of times on `serialization_failure` (40001) /
-`deadlock_detected` (40P01), using `sleeper` for exponential backoff + full jitter (`pkg/retry`). The
-retry bound and backoff come from config (`DB_TX_MAX_RETRIES` / `DB_TX_RETRY_BASE_BACKOFF` /
-`DB_TX_RETRY_MAX_BACKOFF`); non-positive values fall back to built-in defaults. See the `tx` boundary
-README for the `fn`-idempotency contract.
+Usecase 層の `tx.Manager`（`internal/usecase/boundary/tx`）を実装するコンストラクタです。
+`Do` は `serialization_failure`(40001) / `deadlock_detected`(40P01) を検出するとトランザクション全体を
+有限回まで再試行します（`sleeper` で指数 backoff + full jitter, `pkg/retry`）。再試行回数と backoff は
+config（`DB_TX_MAX_RETRIES` / `DB_TX_RETRY_BASE_BACKOFF` / `DB_TX_RETRY_MAX_BACKOFF`）から取得し、
+0 以下の場合は組み込み既定値にフォールバックします。`fn` の冪等性契約は `tx` 境界 README を参照してください。
 
-## Query Tracer (query_tracer.go)
+## クエリトレーサー（query_tracer.go）
 
-`NewQueryTracer` builds the `pgx.QueryTracer` that is wired at `ConnConfig.Tracer`. It embeds
-`otelpgx` for OpenTelemetry spans and adds query logs: success at Info (with latency), slow
-queries at Warn, and failures at Error.
+`NewQueryTracer` は `ConnConfig.Tracer` に結線する `pgx.QueryTracer` を生成します。OpenTelemetry
+span のために `otelpgx` を埋め込み、クエリログ（正常終了 Info / スロー Warn / 失敗 Error）を上乗せします。
 
-|Type / Function|Description|
+|型 / 関数|説明|
 |---|---|
-|`NewQueryTracer`|Build a `pgx.QueryTracer` (receives DB / Observability config, otelpgx tracer, `QueryRecorder`, Logger, LogFieldBuilder)|
-|`queryTracer`|Embeds `*otelpgx.Tracer`; overrides `TraceQueryStart` / `TraceQueryEnd` to add logging and query metrics|
+|`NewQueryTracer`|`pgx.QueryTracer` を生成（DB / Observability 設定、otelpgx トレーサー、`QueryRecorder`、Logger、LogFieldBuilder を受け取る）|
+|`queryTracer`|`*otelpgx.Tracer` を埋め込み、`TraceQueryStart` / `TraceQueryEnd` を上書きしてログとクエリメトリクスを付加|
 
-Features:
+特徴：
 
-- OpenTelemetry span per query via `otelpgx` (with semconv DB attributes; batch / copy covered too)
-- **Info log** on successful completion (with latency)
-- **Error log** on query failure (in addition to `span.RecordError`)
-- **Slow query Warn log** when `DB_SLOW_QUERY_WARN_THRESHOLD` is exceeded
-- Query argument masking via `OBS_MASKED_DB_QUERY_ARGS`
-- **Query metrics** recorded on every `TraceQueryEnd` via an injected `QueryRecorder` (implemented in the `metrics` package)
+- `otelpgx` によるクエリごとの OpenTelemetry span（semconv の DB 属性付き、batch / copy も対象）
+- 正常終了時の**Info ログ**（latency 付き）
+- クエリ失敗時の**エラーログ**（`span.RecordError` に加えて）
+- `DB_SLOW_QUERY_WARN_THRESHOLD` 超過時の**スロークエリ Warn ログ**
+- `OBS_MASKED_DB_QUERY_ARGS` によるクエリ引数のマスキング
+- `TraceQueryEnd` ごとに、注入された `QueryRecorder`（実装は `metrics` パッケージ）で**クエリメトリクス**を記録
 
-## Query Metrics (query_metric.go)
+## クエリメトリクス（query_metric.go）
 
-`TraceQueryEnd` records DB query duration / errors through a `QueryRecorder`. The interface and
-its `QueryAttrs` value live in this package (the consumer) so the `metrics` package can implement
-it without an import cycle (`metrics` already imports `driver`).
+`TraceQueryEnd` は `QueryRecorder` を通じて DB クエリの duration / error を記録します。interface と
+値 `QueryAttrs` は消費側である本パッケージに置き、`metrics` パッケージが循環 import なしに実装できる
+ようにしています（`metrics` は既に `driver` を import しているため）。
 
-|Type / Function|Description|
+|型 / 関数|説明|
 |---|---|
-|`QueryRecorder`|Interface called once per query end with the assembled `QueryAttrs`|
-|`QueryAttrs`|Low-cardinality observation attrs (query name / operation / status / error class / duration) — never SQL text, bind values, or PII|
-|`WithQueryName(ctx, name)`|Attach a stable `query_name` (e.g. `"user.find_by_id"`) for the metric label|
+|`QueryRecorder`|クエリ終了ごとに、組み立てた `QueryAttrs` を 1 回受け取る interface|
+|`QueryAttrs`|低カーディナリティな観測属性（query name / operation / status / error class / duration）。SQL 本文・bind 値・PII は持たない|
+|`WithQueryName(ctx, name)`|メトリクスラベル用の安定名（例: `"user.find_by_id"`）を付与|
 
-How the attrs are derived:
+属性の導出方法：
 
-- `query_name`: from `WithQueryName`; unset / empty → `unknown`
-- `operation`: from the SQL leading token only → `select` / `insert` / `update` / `delete` / `begin` / `commit` / `rollback` / `copy` / `other` (leading comments and `WITH` clauses fold to `select` / `other`)
-- `status`: `success` / `error`; `pgx.ErrNoRows` is treated as `success` and is not counted as an error
-- `error_class`: derived via `pgerror` → `constraint` / `timeout` / `retryable` / `connection` / `unknown` (`retryable` = `serialization_failure` (40001) / `deadlock_detected` (40P01), i.e. retryable transaction conflicts). `pgx.ErrNoRows` is `success`, so it never appears here.
+- `query_name`: `WithQueryName` から取得。未設定 / 空文字は `unknown`
+- `operation`: SQL の先頭トークンのみから分類 → `select` / `insert` / `update` / `delete` / `begin` / `commit` / `rollback` / `copy` / `other`（先頭コメントや `WITH` 句は `select` / `other` に丸める）
+- `status`: `success` / `error`。`pgx.ErrNoRows` は `success` 扱いで error には数えない
+- `error_class`: `pgerror` を用いて導出 → `constraint` / `timeout` / `retryable` / `connection` / `unknown`（`retryable` は `serialization_failure` (40001) / `deadlock_detected` (40P01)、すなわちリトライ可能なトランザクション競合）。`pgx.ErrNoRows` は `success` 扱いのため、ここには現れない
 
-The Prometheus metric definitions (`rdb_query_duration_seconds`, `rdb_query_errors_total`) live in
-`internal/infrastructure/rdb/metrics`. Repository / QueryService set the query name with
-`driver.WithQueryName(ctx, "...")`; everything else is transparent.
+Prometheus メトリクス定義（`rdb_query_duration_seconds` / `rdb_query_errors_total`）は
+`internal/infrastructure/rdb/metrics` にあります。Repository / QueryService は
+`driver.WithQueryName(ctx, "...")` で query name を設定するだけで、その他は透過的に計装されます。

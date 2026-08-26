@@ -5,173 +5,95 @@ deciders: [maintainers]
 tags: [process, ai, review]
 ---
 
-# ADR-0093: Use multi-model adversarial review with finder and verifier subagents
+# ADR-0093: ファインダー・ベリファイアーサブエージェントによるマルチモデル敵対的レビューを使用する
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-A code review performed by the same AI model that wrote the code has a structural blind
-spot: the reviewer carries the same biases, assumptions, and errors as the implementer.
-Reviews that only flag what the implementer already considered provide low marginal value.
+コードを書いたのと同じ AI モデルが行うコードレビューには構造的な盲点がある。レビュアーは実装者と同じバイアス、仮定、エラーを持つ。実装者がすでに検討済みのことしか指摘しないレビューは、限界的な価値しか提供しない。
 
-A review workflow is needed that:
+必要なレビューワークフローの要件:
 
-1. Uses a different model than the implementer so blind spots differ between the two.
-2. Reduces false positives — a finding that sounds real but is refuted by context should
-   not reach the report.
-3. Covers runtime behavior (DI wiring, authentication middleware, real DB) that unit tests
-   with mocked dependencies cannot exercise.
-4. Distinguishes code correctness from comment quality, which requires different review
-   criteria and different resolution actions.
+1. 実装者とは異なるモデルを使用し、2 者間で盲点が異なるようにする。
+2. 偽陽性を削減する — 一見リアルに見えるが文脈によって否定される指摘はレポートに含めない。
+3. モックされた依存関係を持つユニットテストでは実行できない、ランタイム動作（DI ワイヤリング、認証ミドルウェア、リアル DB）をカバーする。
+4. コードの正確性とコメントの品質を区別する。これらは異なるレビュー基準と異なる解決アクションを必要とする。
 
-A related question surfaced later, from a different direction. Some properties this project
-wants reviewed are not decidable by a linter at all — whether a type can only be built through
-its validated constructor, whether a design document has interpreted a domain concept under
-any wording, whether a divergence from an external standard was declared on purpose. Go's
-package-level encapsulation in particular means several of these have no deterministic form:
-there is no class-private, so "constructed only via the factory" cannot be checked the way
-"this field is exported" can.
+これとは別の方向から、後になって浮上した問いがある。このプロジェクトがレビュー対象としたい性質のいくつかは、そもそも linter で判定できない — ある型が検証付きコンストラクタ経由でしか構築できないか、ある設計文書がどんな言い回しであれドメイン概念を解釈済みか、外部標準からの乖離が意図的に宣言されたものか。とりわけ Go の package 単位のカプセル化により、これらのいくつかは決定的な形を持たない。class-private が存在しないため、「ファクトリ経由でしか構築されない」は「このフィールドが export されている」のようには検査できない。
 
-Such checks can be approximated by heuristic static analysis, but the approximation is
-unreliable at a rate the tool cannot report. Wiring it into CI would make a merge gate depend
-on a guess; making it an opt-in linter would not improve the guess, only move the cost of
-being wrong onto whoever opted in. The allocation of checks between deterministic tooling and
-probabilistic review therefore needs to be a decision, not an accident of what was easy to
-build.
+こうした検査はヒューリスティックな静的解析で近似できるが、その近似はツール自身が報告できない率で外れる。CI に組み込めばマージゲートが推測に依存することになり、オプトイン linter にしても推測の精度は変わらず、外れたときのコストをオプトインした側へ移すだけである。したがって決定的なツールと確率的なレビューへの検査の配分は、作りやすさの偶然ではなく決定であるべきである。
 
-## Decision
+## 決定
 
-The `impl-review` skill implements a multi-model adversarial review in the
-**finder → verifier** shape:
+`impl-review` スキルは、**ファインダー → ベリファイアー**形式のマルチモデル敵対的レビューを実装する:
 
-**Finder stage (concurrent):** Four code lenses (`correctness`, `security`, `architecture`,
-`runtime-gap`) each run as an independent `adversarial-reviewer` subagent. A dedicated
-`comment-reviewer` subagent covers comment quality. All finders run concurrently. The
-orchestrator enforces that reviewer agents run on a different model than the implementer —
-the reviewer agents default to `sonnet`, and the orchestrator overrides them when the
-session model would otherwise match.
+**ファインダーステージ（並行）:** 4 つのコードレンズ（`correctness`、`security`、`architecture`、`runtime-gap`）がそれぞれ独立した `adversarial-reviewer` サブエージェントとして実行される。専用の `comment-reviewer` サブエージェントがコメント品質をカバーする。すべてのファインダーが並行実行される。オーケストレーターは、レビュアーエージェントが実装者とは異なるモデルで実行されることを保証する — レビュアーエージェントはデフォルトで `sonnet` であり、セッションモデルが一致する場合はオーケストレーターがオーバーライドする。
 
-**Verifier stage (concurrent):** Each surviving finding is independently verified by a
-`review-verifier` subagent, which re-derives its conclusion from the source code rather than
-trusting the finder. Findings are classified `CONFIRMED`, `PLAUSIBLE`, or `REFUTED`.
-Refuted findings are dropped before the report.
+**ベリファイアーステージ（並行）:** 残存する各指摘は、ファインダーを信頼せずソースコードから独自に結論を導き出す `review-verifier` サブエージェントによって個別に検証される。指摘は `CONFIRMED`、`PLAUSIBLE`、`REFUTED` に分類される。却下された指摘はレポートに含める前に除外される。
 
-**Runtime stage (orchestrator):** When a touched endpoint is detected, the orchestrator
-performs a live `curl` and observability log check against the running application. This
-exercises the Fx DI graph, HTTP middleware (authentication, OpenAPI validation), and the
-real database — none of which mocked unit tests reach.
+**ランタイムステージ（オーケストレーター）:** タッチされたエンドポイントが検出された場合、オーケストレーターは実行中のアプリケーションに対してライブの `curl` およびオブザーバビリティログチェックを実行する。これにより、モックされたユニットテストでは到達できない Fx DI グラフ、HTTP ミドルウェア（認証、OpenAPI バリデーション）、およびリアルデータベースが検証される。
 
-**Comment fix stage:** Confirmed comment quality findings are applied to the working tree by
-the orchestrator (not a subagent) after user confirmation, followed by `make fix` and
-`make lint`. The four code lenses are read-only; their surviving findings are posted to the
-branch PR as inline review comments by default.
+**コメント修正ステージ:** 確認されたコメント品質の指摘は、ユーザー確認後にオーケストレーター（サブエージェントではなく）によって作業ツリーに適用され、`make fix` と `make lint` が続いて実行される。4 つのコードレンズは読み取り専用であり、残存する指摘はデフォルトでブランチ PR にインラインレビューコメントとして投稿される。
 
-**Allocation between deterministic and probabilistic checks.** A check is placed by whether it
-is decidable, not by how valuable it is:
+**決定的な検査と確率的な検査の配分。** 検査の配置は、価値の大きさではなく判定可能かどうかで決める:
 
-| Decidable from the syntax tree | Requires reading comprehension |
+| 構文木から判定できる | 読解を要する |
 | --- | --- |
-| golangci-lint / depguard / custom analyzers, CI-gating | review agents in the finder → verifier shape, never CI-gating |
+| golangci-lint / depguard / カスタムアナライザー。CI ゲートになる | ファインダー → ベリファイアー形式のレビューエージェント。決して CI ゲートにしない |
 
-Nothing straddles the line. A property that can be decided is decided by tooling and gates the
-merge; a property that cannot is reviewed by an agent that reports and does not block. Heuristic
-static analysis that approximates an undecidable property is not adopted in either position — the
-finder → verifier shape above exists precisely because a probabilistic judgment needs an
-independent check before a human reads it, and a linter has no equivalent.
+境界をまたぐものは置かない。判定できる性質はツールが判定してマージをゲートし、判定できない性質はブロックせず報告するエージェントがレビューする。判定不能な性質を近似するヒューリスティック静的解析は、どちらの位置にも採用しない — 上記のファインダー → ベリファイアー形式が存在するのは、まさに確率的な判定が人間の目に触れる前に独立した検証を要するからであり、linter にはそれに相当するものが無い。
 
-The same shape carries checks whose yardstick is external to the repository — `ddd-audit` and
-its `ddd-origin-auditor` compare the project's design documents against Evans's DDD patterns,
-with the pattern ledger at `.agents/ddd-audit/pattern-ledger.yaml` recording which patterns have
-been interpreted and where. Because the yardstick is a book the model cannot open, those agents
-must state the premise they judged against so a reader can refute it, and they emit flags rather
-than verdicts: this project claims DDD alignment, not Evans-strict compliance, so whether a
-divergence is a deliberate design choice or an oversight stays a maintainer decision.
+同じ形式が、物差しをリポジトリの外に持つ検査も担う — `ddd-audit` とその `ddd-origin-auditor` は、プロジェクトの設計文書を Evans の DDD パターンと照合し、どのパターンをどこで解釈したかは `.agents/ddd-audit/pattern-ledger.yaml` の台帳が記録する。物差しがモデルには開けない本である以上、これらのエージェントは判定の前提を明示して読者が反証できるようにしなければならず、出力は判定ではなくフラグである。このプロジェクトが掲げるのは DDD 準拠であって Evans-strict 準拠ではないため、乖離が意図的な設計判断か見落としかはメンテナの決定に残る。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Bias reduction: reviewer and implementer run on different models, so the review surfaces
-  findings the implementer's own model would miss.
-- False-positive control: the verifier independently re-derives each finding from the code;
-  plausible-but-wrong findings are classified `REFUTED` and dropped before the final report.
-- Runtime coverage: the curl and observability stage catches DI misconfiguration, missing
-  `security:` declarations, and SQL behavioral gaps that mocked tests do not exercise.
-- Comment quality findings are applied automatically (with one confirmation), reducing
-  friction for fixing narrating or tautological comments.
-- Undecidable properties get reviewed at all, instead of being dropped because no linter could
-  hold them — and they get reviewed by a mechanism that is honest about being probabilistic.
-- What CI blocks on stays decidable, so a red gate always means a fact and never a guess.
+- バイアス削減: レビュアーと実装者が異なるモデルで実行されるため、実装者自身のモデルが見逃す指摘がレビューに現れる。
+- 偽陽性制御: ベリファイアーがコードから各指摘を独立して再導出する。もっともらしいが誤った指摘は `REFUTED` に分類され、最終レポートに含まれる前に除外される。
+- ランタイムカバレッジ: curl とオブザーバビリティステージが、モックされたテストでは検証できない DI 設定ミス、`security:` 宣言の欠落、SQL 動作のギャップを捕捉する。
+- コメント品質の指摘は（1 回の確認で）自動適用され、ナレーティングまたはトートロジカルなコメントの修正の摩擦を軽減する。
+- 判定不能な性質が、どの linter にも載らないという理由で落ちるのではなく、レビューされるようになる — しかも自らが確率的であることに正直な仕組みでレビューされる。
+- CI がブロックする対象は判定可能なものだけに保たれるので、赤いゲートは常に事実を意味し、推測を意味しない。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Multiple concurrent subagent spawns increase cost and latency compared to a single-pass
-  review.
-- The runtime stage requires a live application environment (`make serve` and `make db-init`);
-  it is skipped when no endpoint is touched by the change.
-- The model-divergence guarantee depends on the orchestrator correctly detecting and
-  overriding when the session model matches the reviewer model default.
-- Non-gating checks can be skipped. A reviewer who never runs `ddd-audit` sees none of its
-  findings, and nothing in CI will tell them. This is accepted: the alternative is gating a
-  merge on a probabilistic judgment, which trades a missed finding for a false block.
-- Agents judging against an external standard depend on the model's recall of that standard.
-  The stated-premise requirement and the verifier pass reduce the damage but cannot remove it.
+- 複数の並行サブエージェント起動により、シングルパスレビューと比較してコストとレイテンシが増加する。
+- ランタイムステージにはライブアプリケーション環境（`make serve` と `make db-init`）が必要であり、変更によってエンドポイントがタッチされない場合はスキップされる。
+- モデル乖離の保証は、オーケストレーターがセッションモデルがレビュアーモデルのデフォルトと一致する場合に正確に検出してオーバーライドすることに依存する。
+- ゲートにしない検査はスキップできてしまう。`ddd-audit` を一度も実行しないレビュアーはその指摘を一切目にせず、CI も何も教えてくれない。これは受け入れる。代替案は確率的な判定でマージをゲートすることであり、見逃し 1 件と引き換えに誤ったブロックを買うことになる。
+- 外部標準を物差しにするエージェントは、その標準に対するモデルの記憶に依存する。前提の明示要求とベリファイアーパスは被害を減らすが、無くすことはできない。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Single-model review
+### シングルモデルレビュー
 
-Simple to invoke, but the same model that wrote the code reviews it. Structural blind spots
-are shared between implementer and reviewer. Rejected because the primary value proposition
-is bias reduction through model divergence.
+呼び出しはシンプルだが、コードを書いたのと同じモデルがレビューする。実装者とレビュアーが構造的な盲点を共有する。主な価値提案がモデル乖離によるバイアス削減であるため、却下。
 
-### Human-only review
+### 人間のみによるレビュー
 
-Provides genuine independence but is not available at every commit and does not scale with
-AI-driven development pace. The `impl-review` skill is positioned as a pre-PR complement
-to human review, not a replacement.
+真の独立性を提供するが、すべてのコミットで利用可能なわけではなく、AI 駆動の開発ペースに対してスケールしない。`impl-review` スキルは人間によるレビューの代替ではなく、PR 前の補完として位置付けられる。
 
-### Automated linting only
+### 自動リントのみ
 
-`make lint` and `make fix` catch formatting and static analysis errors but do not reason
-about correctness semantics, authorization, architecture violations, or runtime behavior.
-Rejected as insufficient for a full code review pass.
+`make lint` と `make fix` はフォーマットと静的解析エラーを捕捉するが、正確性セマンティクス、認可、アーキテクチャ違反、またはランタイム動作についての推論は行わない。完全なコードレビューパスとして不十分であるため却下。
 
-### Heuristic static analysis for undecidable properties
+### 判定不能な性質に対するヒューリスティック静的解析
 
-An analyzer could approximate "constructed only via the validated constructor" by flagging
-composite literals of a type that also has a `New`, or approximate design-document coverage by
-grepping for pattern names. Rejected in both the CI-gating and the opt-in form. Gating a merge on
-an approximation makes the gate lie in a direction nobody can see; opting in does not make the
-approximation any better, it only relocates the consequences of it being wrong onto the person
-who trusted it. Where a property is undecidable, this project prefers a mechanism that is openly
-probabilistic and can be argued with over one that is quietly probabilistic and cannot.
+アナライザーは「検証付きコンストラクタ経由でのみ構築される」を、`New` を持つ型の composite literal を検出することで近似でき、設計文書のカバレッジをパターン名の grep で近似できる。CI ゲート形式・オプトイン形式のいずれも却下。近似でマージをゲートすると、ゲートは誰にも見えない方向に嘘をつく。オプトインにしても近似が良くなるわけではなく、外れたときの結果をそれを信じた人へ移すだけである。判定不能な性質に対しては、静かに確率的で議論できないものより、公然と確率的で議論できるものを本プロジェクトは選ぶ。
 
-### Skipping the external-standard audit entirely
+### 外部標準の監査自体を行わない
 
-Relying on maintainer knowledge alone is cheaper and avoids the model-recall risk. Rejected
-because that knowledge is held by individuals and is invisible to a reviewer who has not read the
-source material — and the failure it produces is silent: a concept nobody knows exists is never
-looked for and never missed. Flagging with a stated premise trades a bounded, visible risk for an
-unbounded, invisible one.
+メンテナの知識だけに頼るほうが安価であり、モデルの記憶リスクも避けられる。却下。その知識は個人が保持しており、原典を読んでいないレビュアーには不可視だからである — しかもそこで生じる失敗は静かである。存在を知らない概念は探されることがなく、欠けても気づかれない。前提を明示したうえでフラグを立てることは、限定的で可視なリスクと引き換えに、無限定で不可視なリスクを手放す取引である。
 
-## Notes
+## 補足
 
-- Source: `.claude/skills/impl-review/SKILL.md`, `.claude/agents/adversarial-reviewer.md`,
-  `.claude/agents/review-verifier.md`.
-- The `adversarial-reviewer` and `review-verifier` agent files declare `model: sonnet`
-  in their frontmatter; the orchestrator overrides this via the `Agent` tool `model`
-  parameter when the session model is also `sonnet`.
-- Comment quality findings are the only findings auto-applied in Step 8; the four code
-  lenses are reported-only (no auto-fix applied by the skill).
-- Findings are posted to the branch PR as inline review comments by default; suppress with
-  `--no-comment`, or pass `--no-apply` to suppress the comment auto-fix.
-- DDD audit source: `.claude/skills/ddd-audit/SKILL.md`, `.claude/agents/ddd-origin-auditor.md`,
-  `.claude/agents/drift-detector-ddd.md`, ledger at `.agents/ddd-audit/pattern-ledger.yaml`.
-  `arch-check` runs the auditor in quick mode when domain code or the ADR / README corpus is
-  touched; `back-prop` category (D) checks the ledger against that corpus.
-- The ledger lives under `.agents/` rather than `.claude/` because it is a skill artifact that
-  other assistants (Codex, Cursor) may produce or consume, and nothing about it is Claude-specific.
+- ソース: `.claude/skills/impl-review/SKILL.md`、`.claude/agents/adversarial-reviewer.md`、`.claude/agents/review-verifier.md`。
+- `adversarial-reviewer` と `review-verifier` エージェントファイルはフロントマターで `model: sonnet` を宣言する。セッションモデルも `sonnet` の場合、オーケストレーターは `Agent` ツールの `model` パラメーターを通じてこれをオーバーライドする。
+- コメント品質の指摘は Step 8 で自動適用される唯一の指摘であり、4 つのコードレンズはレポートのみ（スキルによる自動修正は適用されない）。
+- 指摘はデフォルトでブランチ PR にインラインレビューコメントとして投稿される。`--no-comment` で抑制、または `--no-apply` でコメント自動修正を抑制できる。
+- DDD 監査のソース: `.claude/skills/ddd-audit/SKILL.md`、`.claude/agents/ddd-origin-auditor.md`、`.claude/agents/drift-detector-ddd.md`、台帳は `.agents/ddd-audit/pattern-ledger.yaml`。`arch-check` は domain コードまたは ADR / README コーパスがタッチされたとき quick モードで auditor を起動し、`back-prop` の種別 (D) が台帳とそのコーパスの整合を検査する。
+- 台帳を `.claude/` ではなく `.agents/` 配下に置いているのは、これが他のアシスタント（Codex、Cursor）も生成・消費しうるスキル成果物であり、Claude 固有の要素を何も持たないためである。

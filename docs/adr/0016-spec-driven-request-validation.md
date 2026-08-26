@@ -5,93 +5,56 @@ deciders: [maintainers]
 tags: [contract, openapi, security]
 ---
 
-# ADR-0016: Validate requests and enforce auth from the spec at runtime; do not validate responses
+# ADR-0016: リクエスト検証と認証を実行時に仕様から強制する。レスポンスは検証しない
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-[ADR-0012](0012-openapi-first.md) makes the OpenAPI spec the single source of truth for
-the wire contract. The OpenAPI definition is the formal contract between the backend and
-its consumers (frontend, partner APIs); it must therefore be treated as the highest
-priority, and request handling must be controlled to prevent violations of that contract
-from reaching business logic. To have the spec actually protect the server at runtime —
-not just document it — request validation and security-scheme enforcement must run
-automatically for every inbound request, derived from the same spec document. At the same time, validating
-outbound responses against the spec at runtime is expensive and, if the spec and code are
-kept in sync through code generation (see [ADR-0014](0014-oapi-codegen-strict-server.md)),
-unnecessary.
+[ADR-0012](0012-openapi-first.md) は OpenAPI 仕様をワイヤー契約の唯一の真実のソースとしている。OpenAPI の定義はバックエンドとフロントエンドや他の API との「契約」であるため、これを最優先とし、契約違反がビジネスロジックに到達しないよう処理の中でエラーが出ないように制御することを選んだ。仕様が単にドキュメント化するだけでなく実際にランタイムでサーバーを保護するためには、リクエスト検証とセキュリティスキームの強制が、同一の仕様ドキュメントから自動的にすべての受信リクエストに対して実行されなければならない。同時に、コード生成によって仕様とコードが同期した状態に保たれる場合（[ADR-0014](0014-oapi-codegen-strict-server.md) 参照）、送信レスポンスを実行時に仕様に対して検証することはコストが高く、かつ不要である。
 
-An additional constraint: ops paths (`/health`, `/metrics`, `/ready`, `/healthz`,
-`/version`) must not pass through the OpenAPI validation pipeline because they are not
-described in the OpenAPI spec.
+追加の制約として、オペレーションパス（`/health`、`/metrics`、`/ready`、`/healthz`、`/version`）は OpenAPI 仕様に記述されていないため、OpenAPI 検証パイプラインを通過させてはならない。
 
-## Decision
+## 決定
 
-Wire `oapimw.OapiRequestValidatorWithOptions` from the `oapi-codegen/echo-v5-middleware`
-package as an Echo middleware, passing the parsed spec and an `openapi3filter.AuthenticationFunc`.
-Before the validator runs, an authn context slot is injected so the `AuthenticationFunc`
-can write authentication results into the request context.
+`oapi-codegen/echo-v5-middleware` パッケージの `oapimw.OapiRequestValidatorWithOptions` を Echo ミドルウェアとしてワイヤリングし、解析済みの仕様と `openapi3filter.AuthenticationFunc` を渡す。バリデーターが実行される前に、authn コンテキストスロットを注入して `AuthenticationFunc` がリクエストコンテキストに認証結果を書き込めるようにする。
 
-The slot is carried on the request's own context rather than returned as a value, because the
-`AuthenticationFunc` is invoked with a context the validation library builds independently of
-the request and has no other route back to the handler. The middleware lives at
-[`internal/controller/httpstack/oapi/oapi.go`](../../internal/controller/httpstack/oapi/oapi.go).
+スロットを戻り値ではなくリクエスト自身のコンテキストに載せているのは、`AuthenticationFunc` がリクエストとは独立に検証ライブラリ側で組み立てられたコンテキストで呼ばれ、他にハンドラへ値を戻す経路が無いためである。ミドルウェアの実体は [`internal/controller/httpstack/oapi/oapi.go`](../../internal/controller/httpstack/oapi/oapi.go)。
 
-The middleware is configured with a skipper that bypasses validation for ops paths
-(`internal/controller/httpstack/oapi/skipper`). The `security:` declarations in the spec
-drive the `AuthenticationFunc`: the function only fires for operations that declare a
-security requirement, so public endpoints (e.g. `GET /health`) are never challenged for
-authentication.
+ミドルウェアはオペレーションパスの検証をバイパスするスキッパー（`internal/controller/httpstack/oapi/skipper`）で設定される。仕様内の `security:` 宣言が `AuthenticationFunc` を駆動する。この関数はセキュリティ要件を宣言したオペレーションに対してのみ発火するため、パブリックエンドポイント（例: `GET /health`）は認証を要求されない。
 
-**Responses are not validated at runtime.** The response contract is trusted by
-construction: because handler code is generated from the same spec (ADR-0014), a
-well-typed response cannot violate the spec.
+**レスポンスは実行時に検証しない。** レスポンス契約は構造によって信頼される。ハンドラーコードは同一の仕様から生成されるため（ADR-0014）、型が正しいレスポンスは仕様に違反できない。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Request bodies, query parameters, and path parameters are validated against the spec
-  before the handler is invoked; invalid input never reaches business logic.
-- Security requirements declared in the spec (`security:` blocks) are enforced
-  automatically — a handler cannot be reached without passing the configured
-  `AuthenticationFunc`.
-- Ops paths are excluded without any per-handler opt-out; the skipper logic is
-  centralised.
-- No runtime overhead for response validation.
+- リクエストボディ、クエリパラメーター、パスパラメーターがハンドラーの呼び出し前に仕様に対して検証される。無効な入力はビジネスロジックに到達しない。
+- 仕様内で宣言されたセキュリティ要件（`security:` ブロック）が自動的に強制される——設定された `AuthenticationFunc` を通過しないとハンドラーに到達できない。
+- オペレーションパスはハンドラーごとのオプトアウトなしに除外される。スキッパーロジックは一元化されている。
+- レスポンス検証によるランタイムオーバーヘッドがない。
 
-### Negative Consequences
+### ネガティブな影響
 
-- If a response value is produced outside the HTTP path (e.g. a seeded row with a value
-  that violates the response schema), the violation is invisible at the server and only
-  surfaces on the client side. See [`openapi/boundary-ownership.md`](../../openapi/boundary-ownership.md)
-  for the direction invariant that guards against this.
-- The middleware must be kept wired with the same bundled spec used for code generation;
-  if the spec file loaded at startup drifts from the generated code, the middleware and
-  handlers may disagree silently.
+- レスポンス値が HTTP パス外で生成された場合（例: レスポンススキーマに違反する値を持つシードされた行）、その違反はサーバー側では見えず、クライアント側にのみ現れる。これを防ぐ方向不変条件については [`openapi/boundary-ownership.md`](../../openapi/boundary-ownership.md) を参照。
+- ミドルウェアはコード生成に使用されるバンドル済み仕様と同じものをワイヤリングした状態に保たれなければならない。起動時に読み込まれた仕様ファイルが生成コードからドリフトした場合、ミドルウェアとハンドラーが静かに不一致になる可能性がある。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Per-handler manual validation
+### ハンドラーごとの手動検証
 
-Each handler calls its own binding and validation logic. Rejected: this is the status quo
-that code generation is designed to replace — it is tedious, error-prone, and easy to
-omit.
+各ハンドラーが独自のバインディングおよび検証ロジックを呼び出す。却下：これはコード生成によって置き換えるべき現状の問題であり、煩雑でエラーが発生しやすく、省略が容易である。
 
-### Runtime response validation
+### ランタイムレスポンス検証
 
-Validate outbound response bodies against the spec. Rejected: significant latency cost on
-every response, and the strict-server generated code already guarantees the response type
-matches the spec at compile time.
+送信レスポンスボディを仕様に対して検証する。却下：すべてのレスポンスに重大なレイテンシコストがかかり、strict-server の生成コードがすでにコンパイル時にレスポンス型が仕様に一致することを保証している。
 
-## Notes
+## 補足
 
-- Middleware implementation: [`internal/controller/httpstack/oapi/oapi.go`](../../internal/controller/httpstack/oapi/oapi.go).
-- Ops-path skipper: [`internal/controller/httpstack/oapi/skipper/skipper.go`](../../internal/controller/httpstack/oapi/skipper/skipper.go).
-- The `/metrics` auth exception (skipped from this pipeline; protected by a separate
-  BasicAuth middleware) is recorded in [ADR-0020](0020-metrics-endpoint-auth-exception.md).
-- Security and boundary notes: [`openapi/README.md`](../../openapi/README.md) (§ Security) and [`openapi/boundary-ownership.md`](../../openapi/boundary-ownership.md).
-- Parent decision: [ADR-0012](0012-openapi-first.md) (OpenAPI-first).
+- ミドルウェア実装: [`internal/controller/httpstack/oapi/oapi.go`](../../internal/controller/httpstack/oapi/oapi.go)。
+- オペレーションパススキッパー: [`internal/controller/httpstack/oapi/skipper/skipper.go`](../../internal/controller/httpstack/oapi/skipper/skipper.go)。
+- `/metrics` の認証例外（このパイプラインからスキップされ、別の BasicAuth ミドルウェアで保護される）は [ADR-0020](0020-metrics-endpoint-auth-exception.md) に記録されている。
+- セキュリティと境界の注記: [`openapi/README.md`](../../openapi/README.md)（§ Security）および [`openapi/boundary-ownership.md`](../../openapi/boundary-ownership.md)。
+- 親の決定: [ADR-0012](0012-openapi-first.md)（OpenAPI ファースト）。

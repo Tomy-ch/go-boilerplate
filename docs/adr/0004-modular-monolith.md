@@ -5,77 +5,54 @@ deciders: [maintainers]
 tags: [foundational, architecture]
 ---
 
-# ADR-0004: Adopt a modular monolith (microservices are a non-goal)
+# ADR-0004: モジュラーモノリスを採用する（マイクロサービスは非目標）
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-This repository targets backend services for business systems expected to be operated and
-evolved over a long period — from PoC to early-scaling phases — by teams with Tech
-Lead-level technical judgment. The primary design goals are maintainability, structural
-safety, and long-term operability, not independent scalability of individual capabilities.
+このリポジトリは、PoC から初期スケーリングフェーズにかけて、テックリード相当の技術的判断を持つチームが長期にわたって運用・進化させることが想定されるビジネスシステムのバックエンドサービスを対象としている。主要な設計目標は保守性・構造的安全性・長期的な運用性であり、個々の機能の独立したスケーラビリティではない。
 
-Two deployment philosophies were considered:
+二つのデプロイ哲学が検討された:
 
-1. **Modular monolith** — a single deployable binary with clear internal module boundaries
-   enforced by layer rules.
-2. **Microservices** — multiple independently deployable services, each owning its own data
-   store and domain.
+1. **モジュラーモノリス** — レイヤールールによって強制された明確な内部モジュール境界を持つ単一のデプロイ可能なバイナリ。
+2. **マイクロサービス** — それぞれ独自のデータストアとドメインを持つ、複数の独立してデプロイ可能なサービス。
 
-Microservices introduce significant operational complexity: distributed tracing, network
-failure modes, cross-service transactions, and independent deployment pipelines. For the
-class of systems targeted here, that complexity is premature. At the same time, the
-architecture should not become a trap: the strict layer separation and interface-defined
-boundaries (see [ADR-0002](0002-onion-architecture.md) and
-[ADR-0003](0003-interface-based-decoupling.md)) should make future service extraction a
-deliberate and tractable refactor.
+マイクロサービスは重大な運用上の複雑さをもたらす: 分散トレーシング、ネットワーク障害モード、クロスサービストランザクション、独立したデプロイパイプライン。ここで対象とするシステムのクラスにとって、その複雑さは時期尚早である。同時に、アーキテクチャは罠になってはならない: 厳密なレイヤー分離とインターフェース定義の境界（[ADR-0002](0002-onion-architecture.md) および [ADR-0003](0003-interface-based-decoupling.md) 参照）により、将来のサービス抽出が意図的かつ扱いやすいリファクタリングになるべきである。
 
-## Decision
+## 決定
 
-Adopt a **modular monolith** as the deployment architecture. The system runs as a single
-deployable application. Internal module boundaries are enforced by layer separation and
-depguard rules. Microservices are explicitly a non-goal for this system.
+**モジュラーモノリス** をデプロイアーキテクチャとして採用する。システムは単一のデプロイ可能なアプリケーションとして動作する。内部モジュール境界はレイヤー分離と depguard ルールによって強制される。マイクロサービスはこのシステムにおいて明示的に非目標である。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Single deployment artifact simplifies CI/CD, observability, and local development.
-- No distributed transaction complexity; transaction boundaries remain within a single
-  process (Usecase layer owns them).
-- Clear module boundaries at the Go package level make future service extraction a deliberate
-  refactor rather than an accident.
-- Suitable for the primary target: PoC-to-early-scaling backend services under long-term
-  maintenance.
+- 単一のデプロイアーティファクトにより、CI/CD・可観測性・ローカル開発が簡略化される。
+- 分散トランザクションの複雑さがない; トランザクション境界は単一プロセス内に留まる（ユースケースレイヤーが所有）。
+- Go パッケージレベルでの明確なモジュール境界により、将来のサービス抽出が偶発的なものではなく意図的なリファクタリングになる。
+- 主要な対象（長期保守下での PoC から初期スケーリングまでのバックエンドサービス）に適している。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Not appropriate for systems designed as microservices from inception.
-- Not appropriate for ultra-low-latency workloads where abstraction overhead must be
-  minimized.
-- A single deployable means all components scale together; fine-grained per-capability
-  autoscaling requires architectural refactoring.
+- 最初からマイクロサービスとして設計されたシステムには適さない。
+- 抽象化のオーバーヘッドを最小化しなければならない超低レイテンシワークロードには適さない。
+- 単一のデプロイ可能体はすべてのコンポーネントが一緒にスケールすることを意味する; 機能ごとのきめ細かい自動スケーリングにはアーキテクチャのリファクタリングが必要になる。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Microservices from day one
+### 最初からマイクロサービス
 
-Independent services per domain capability. Rejected for the primary target:
-operational overhead is disproportionate for systems in the PoC-through-early-scaling scope.
-A system that needs microservices from the outset should treat this structure as an
-extraction source rather than a starting point.
+ドメイン機能ごとの独立したサービス。主要対象には却下: 運用上のオーバーヘッドが PoC から初期スケーリングのスコープのシステムには不釣り合いに大きい。当初からマイクロサービスを必要とするシステムは、この構造を出発点ではなく抽出元として扱うべきである。
 
-### Flat monolith (no enforced module boundaries)
+### フラットモノリス（強制されたモジュール境界なし）
 
-A single package or lightly structured package tree with no enforced layer rules. Rejected:
-business logic, infrastructure, and transport become entangled over time, making maintenance
-and future decomposition difficult.
+強制されたレイヤールールを持たない単一パッケージまたは軽く構造化されたパッケージツリー。却下: 時間の経過とともにビジネスロジック・インフラストラクチャ・トランスポートが絡み合い、保守と将来の分解が困難になる。
 
-## Notes
+## 補足
 
-- Source: `docs/architecture.md` § "Modular Monolith Strategy" and § "Non-Goals".
-- Source: `docs/project/scope.md` § "Architectural Assumptions" and § "Non-Target Use Cases".
-- Related layer shape: [ADR-0002](0002-onion-architecture.md).
+- ソース: `docs/architecture.md` §「Modular Monolith Strategy」および§「Non-Goals」。
+- ソース: `docs/project/scope.md` §「Architectural Assumptions」および§「Non-Target Use Cases」。
+- 関連するレイヤー形状: [ADR-0002](0002-onion-architecture.md)。

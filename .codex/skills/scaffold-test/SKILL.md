@@ -5,126 +5,124 @@ description: Generate a Go unit test file for an existing function / method in t
 
 # Scaffold Test
 
-Generate a Go unit test file for an existing function or method, applying the canonical pattern abstractly extracted from `internal/domain/<aggregate>/<aggregate>_domain_test.go` (parallel + nested `t.Run` + Japanese case names + 正常系 / 異常系 outer grouping, table-driven for-loops forbidden — always sequential `t.Run`).
+既存の関数 / メソッドに対する Go ユニットテストファイルを生成するスキル。書き方は `internal/domain/<aggregate>/<aggregate>_domain_test.go` から抽象化したパターン（全階層 `t.Parallel()` ＋ ネスト `t.Run` ＋ 日本語ケース名 ＋ 最外殻 `正常系` / `異常系` グループ、table-driven の `for` ループは原則禁止）に従う。
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+## 使うとき
 
-## When to Use
+- 既に実装が存在しコンパイルが通っている関数 / メソッドに対し、ユニットテストを追加するとき。
+- `make test` のカバレッジが 90 % を下回ったパッケージを埋めるとき。
+- 手動編集で挙動が変わった関数について、既存テストが意図を反映しなくなったとき。
+- `scaffold-domain` / `scaffold-usecase` / `scaffold-controller` / `scaffold-infra-db` から chain される一段として（親が target + 観点を渡すので、First Step と Step 2 はスキップ）。
 
-- Adding a unit test for a function or method whose implementation already exists and compiles.
-- Filling a coverage gap surfaced by `make test` (a package below the 90 % threshold).
-- After hand-editing a function whose behavior changed and the existing test no longer reflects intent.
-- As a chained step from `scaffold-domain` / `scaffold-usecase` / `scaffold-controller` / `scaffold-infra-db` when those skills want test generation factored out (the parent passes target + viewpoints; this skill skips its own resolution + perspective subagent).
+使わない場面:
 
-Do NOT use this skill for:
+- **HTTP 境界の統合テスト**（`internal/integration/` 配下）→ `scaffold-integration-test` を使う。本スキルは同一パッケージ内ユニットテスト専用。
+- 既存テストファイル全体の書き直し → 手で編集する。
+- 実装コードの生成 → 本スキルは test ファイルしか書かない。
+- 生成ファイル (`*.gen.go` / `*_mock.go` / `*.sql.go`) に対するテスト。
 
-- **HTTP-boundary integration tests** under `internal/integration/` — use `scaffold-integration-test` instead. This skill produces same-package unit tests.
-- Rewriting an entire existing test file — this skill writes new tests; for incremental edits, edit by hand.
-- Generating implementation code (writes test files only; never edits the subject under test).
-- Writing tests against generated files (`*.gen.go`, `*_mock.go`, `*.sql.go`).
+## 読む / 書く
 
-## What This Skill Reads / Writes
+**常に読む**:
 
-**Reads (always)**:
+- `docs/testing-conventions.md`（parallel 必須・命名・require vs assert・mock 方針・層構造ルール）**および section 10 の意味的品質バー / アンチパターン** — 生成テストが満たすべき SSOT（各ケースはその分岐固有の outcome を assert し、列挙されたアンチパターンを出力しない）。 `test-review` も同じ節を読んでレビューするため、生成器とレビュアは対称に保たれる — 観点・アンチパターンのリストを本スキルへ複製しない。
+- 対象ソースファイル（シグネチャ・引数・戻り値・エラーセンチネル・package 内ヘルパを抽出）。
+- 層別 README。**対象ファイルから上位ディレクトリへ歩き、Test Strategy 節を実際に持つ最も近い祖先 `README.md`** を採用する（見出しの表記は README ごとに揺れる — `Test Strategy` / `Test strategy` / `Testing strategy` / `Testing Strategy` / `Testing Policy` — ので意味で判定すること。その層のテスト戦略そのものであれば名前が何であれ該当し、他のドキュメントが名前で参照している節をこの規則に合わせて改名するのは誤った直し方である）。節を持たないより近い README も併読する（観点は祖先から来ても、そのパッケージの命名・ヘルパ・不変条件の規約はそこが持つ）。解決は lookup ではなく walk で行う: 下記は現時点で walk が着地する先のスナップショットであり、一覧に無い層は「歩いて辿る対象」であって「対象外」ではない。
+  - `internal/domain/README.md` （`internal/domain/**`）
+  - `internal/usecase/README.md`（＋ `internal/usecase/boundary/README.md`）（`internal/usecase/**`）
+  - `internal/controller/README.md` — controller 層の基準。駆動方式ごとにスコープされる: HTTP ハンドラ（＋ `internal/controller/handler/README.md`）は `internal/controller/handler/**`、ループ駆動の controller は `internal/controller/outbox/**` / `internal/controller/worker/**`
+  - `internal/controller/httpstack/README.md`（`internal/controller/httpstack/**`）— 各ミドルウェアのサブパッケージはこの親へ解決される
+  - `internal/controller/server/README.md`（`internal/controller/server/**`）
+  - `internal/infrastructure/README.md`（＋ `internal/infrastructure/rdb/README.md`）（`internal/infrastructure/**`）
+  - `internal/di/README.md`（`internal/di/**`）。対象が配下にある場合はより近い `internal/di/module/README.md` / `internal/di/server/hook/README.md` が優先される
+  - `internal/apperror/` / `internal/cli/` / `internal/config/` / `internal/logging/` / `internal/observability/` / `internal/system/` — 横断的な基盤パッケージ群。各パッケージルートに自前の節を持つ
+  - `pkg/README.md`（＋ 最寄りの `pkg/<name>/README.md`）（`pkg/**`）
+- 同一パッケージ内の他 test ファイル（import 構成、ヘルパスタイル `newValidUser(t)` 等、assertion 文体、fixture 慣例）。README と矛盾するときは **README 優先**。
+- `<package>/mock/*_mock.go` （対象が DI 注入インタフェースを使う場合のみ）。
 
-- `docs/testing-conventions.md` — the project-wide testing conventions (parallel mandate, naming, require vs assert, generated-mock policy, architectural rules) **and its section 10 semantic quality bar / anti-patterns** — the SSOT the generated tests must satisfy (each case asserts its branch's distinctive outcome; none of the listed anti-patterns is emitted). `test-review` reads the same section to review against it, so generator and reviewer stay symmetric — no viewpoint or anti-pattern list is duplicated into this skill.
-- The target source file — to extract the function/method signature, parameters, return types, error sentinels, and any in-package helpers.
-- The nearest layer README, resolved by **walking up from the target file to the closest ancestor `README.md` that actually carries a Test Strategy section (the heading wording varies across READMEs — `Test Strategy`, `Test strategy`, `Testing strategy`, `Testing Strategy`, `Testing Policy` — so match on meaning: a section that IS the layer's test strategy counts no matter what it is called, and renaming one to fit this rule is the wrong fix when other docs link to it by name)**. Also read any nearer README that lacks the section — it still owns that package's naming, helper, and invariant conventions even when the viewpoints come from an ancestor. Resolve by walking, not by lookup: the list below is a snapshot of where the walk currently lands, and a layer absent from it is a layer to walk to, never a layer to skip.
-  - `internal/domain/README.md` for `internal/domain/**`
-  - `internal/usecase/README.md` (+ `internal/usecase/boundary/README.md`) for `internal/usecase/**`
-  - `internal/controller/README.md` — the controller-layer baseline, scoped per driver: HTTP handlers (+ `internal/controller/handler/README.md`) for `internal/controller/handler/**`, loop-driven controllers for `internal/controller/outbox/**` and `internal/controller/worker/**`
-  - `internal/controller/httpstack/README.md` for `internal/controller/httpstack/**` — every middleware sub-package resolves to this parent
-  - `internal/controller/server/README.md` for `internal/controller/server/**`
-  - `internal/infrastructure/README.md` (+ `internal/infrastructure/rdb/README.md`) for `internal/infrastructure/**`
-  - `internal/di/README.md` for `internal/di/**`, superseded by the nearer `internal/di/module/README.md` or `internal/di/server/hook/README.md` when the target sits under one of those
-  - `internal/apperror/` / `internal/cli/` / `internal/config/` / `internal/logging/` / `internal/observability/` / `internal/system/` — the cross-cutting substrate packages each carry their own section at their package root
-  - `pkg/README.md` (+ nearest sub-`pkg/<name>/README.md`) for `pkg/**`
-- Sibling test files in the **same package** — secondary structural template for imports, helper style (e.g. `newValidUser(t)`), assertion phrasing, fixture conventions. README wins on any conflict.
-- Existing mocks under `<package>/mock/*_mock.go` when the target depends on injected interfaces — to wire them up without writing custom mocks (per `docs/testing-conventions.md`).
+**書く（承認後のみ）**:
 
-**Writes (with confirmation)**:
+- 対象と同じ階層に 1 つの test ファイル `<subject>_test.go`（`<subject>` は元ファイルから拡張子を除いた basename）。既存ファイルがある場合は **末尾追記** モードに切り替え、事前に承認を取る。
 
-- One test file alongside the subject, named `<subject>_test.go` (where `<subject>` is the source file basename without `.go`). If the file already exists, the skill appends new top-level `TestXxx` functions rather than rewriting it — and asks first.
+**`make` 経由で発火**:
 
-**Triggers (via `make`)**:
+- `make fix`（生成 test ファイルの自動整形）
+- `make test`（生成テストの実行 + パッケージ全体カバレッジが落ちないことの確認）
 
-- `make fix` — auto-format the generated test file.
-- `make test` — run the produced tests + verify the package's coverage did not regress.
+**触らない**:
 
-**Never touches**:
+- 対象ソースファイル本体（`<subject>.go`）。
+- 生成成果物（`**/*.gen.go` / `*_mock.go` / `*.sql.go`）。
+- `*/mock/` 配下（読むだけ）。
+- 他パッケージの test ファイル。
 
-- The subject source file (`<subject>.go`).
-- Generated artifacts (`**/*.gen.go`, `*_mock.go`, `*.sql.go`).
-- Mocks under `*/mock/` directories (consumed as-is).
-- Other packages' test files.
+## First Step: 対象解決
 
-## First Step: Resolve Target
+`scaffold-*` から chain されている場合を除いて、最初に `ask the user explicitly`:
 
-Unless invoked with target context from a chained scaffold-* skill, the first action is `ask the user explicitly`:
+- 質問: 「テストを書きたい対象を指定してください」
+- 選択肢（single-select）:
+  - 「対象ファイル全体」 — free-text path。ファイル内の export 済み top-level 関数 / メソッドを全て列挙し、それぞれに 1 つの `TestXxx` を生成。
+  - 「ファイル内の特定関数 / メソッドのみ」 — free-text `<file>:<symbol>`。指定の 1 件に対してのみ `TestXxx` 生成。
+  - 「キャンセル」。
 
-- Question: 「テストを書きたい対象を指定してください」
-- Options (single-select):
-  - 「対象ファイル全体」 — free-text path; the skill enumerates every exported top-level function and method in that file and generates one `TestXxx` per subject.
-  - 「ファイル内の特定関数 / メソッドのみ」 — free-text `<file>:<symbol>`; the skill generates one `TestXxx` for that single subject.
-  - 「キャンセル」.
+解決後、上述の walk 規則をファイルパスに適用して層を判定し（固定の層プレフィックス集合とのパターンマッチはしない）、解決された README を以降のステップで使う。
 
-After resolution, detect the layer by applying the walk-up rule above to the file path (do not pattern-match against a fixed set of layer prefixes) and store the resolved README(s) for downstream steps.
+対象ファイルが存在しない場合は中断してパス確認。
 
-If the target file does not exist, abort and ask the user to confirm the path.
+## Step 1. 層コンテキストを読む
 
-## Step 1. Read Layer Context
+1. 上述の層別 README を読む。命名・ヘルパスタイル・層固有のテスト規約（domain の `pkg/ptr.Copy` 不変性チェック、controller の `testecho` 利用、infra の `pgerror.NormalizeError` アサーション 等）はここに canonical。
+2. 対象パッケージ内の全 `*_test.go` を読む。次を抽出:
+   - top-level test ヘルパ（例: `newValidUser(t *testing.T) (*User, time.Time)`）。
+   - `TestXxx` 関数冒頭で慣例的に宣言されている fixture 変数。
+   - 実際に使われている assertion スタイルと import セット。
+3. `docs/testing-conventions.md` を 1 回読み、parallel 必須・命名・require vs assert・mock 方針・層構造制約として扱う。
 
-1. Read the layer README(s) listed above. The README is the canonical source for naming, helper style, and any layer-specific testing conventions (e.g. domain `pkg/ptr.Copy` immutability checks, controller `testecho` usage, infra `pgerror.NormalizeError` assertions).
-2. Read every `*_test.go` file in the target package. Extract:
-   - Top-level test helper signatures (e.g. `newValidUser(t *testing.T) (*User, time.Time)`).
-   - Fixture variables conventionally declared at the top of `TestXxx` functions.
-   - Assertion style and import set actually in use.
-3. Read `docs/testing-conventions.md` once and treat it as load-bearing for: parallel mandate, naming, require vs assert, generated-mock policy, architectural test rules.
+sibling と README が矛盾する場合、**README 優先**。
 
-If any conflict arises between sibling tests and the layer README, the README wins.
+## Step 2. テスト観点 subagent
 
-## Step 2. Test-Perspective Subagent
+コード生成前に必ず subagent (`subagent_type: general-purpose`) を起動して **対象 subject に対する** テスト観点を列挙させる。このステップは必須でメインループにインライン化しない（観点は層 README の Test Strategy 節 + 対象シグネチャから派生させるもので、スキル自身の記憶からパターンマッチさせる対象ではない）。
 
-Spawn a subagent (`subagent_type: general-purpose`) to enumerate the test viewpoints for **this specific subject** before any code is generated. This step is mandatory and never inlined into the main loop — the perspective must be derived from the layer README's Test Strategy section + the target signature, not pattern-matched from the skill's own memory.
+このスキルは層別の観点シードリストをハードコードしない。観点の SSOT は層 README （canonical）で、本スキルは README が現時点で書いている内容にそのまま従う。README が進化すれば観点も自動的に追従する — スキル側の編集は不要。
 
-This skill does NOT carry a hardcoded viewpoint seed list per layer. Viewpoints are the layer README's responsibility (canonical), and this skill defers to whatever the README currently documents. As READMEs evolve, the viewpoint set evolves automatically — no skill edit required.
+プロンプト内容（日本語）:
 
-Prompt content (Japanese):
-
-- The target subject's signature + Doc comment.
-- The **full text** of the layer README's `Test Strategy` / `Testing strategy` section (whichever heading exists) — captured verbatim from Step 1, including every sub-section heading. The subagent's job is to map those headings to concrete viewpoints for this subject. Reference points already present in the current READMEs:
-  - `internal/domain/README.md` → `## Testing strategy` (Getter contract / Immutable guarantee / Domain behavior / Error classification / Test design policy / Test Fixture / Invariant preservation)
-  - `internal/usecase/README.md` → `## Testing Strategy` (Test dependencies / Testing goals / Test targets / Test structure / What not to test)
-  - `internal/controller/handler/README.md` → `## Test Strategy` (Test Dependencies / Test Targets / Test Structure / Router Test / Handler Test / Error Test / Thin Controller Test Scope / Observability Test / Test Policy / Not Covered in Controller Tests / Test Kit testkit / testassert / testauth / testecho / testspan)
-  - `internal/controller/httpstack/README.md` → `## Test Strategy` (Real vs mocked / Viewpoints every middleware covers / Viewpoints for `Before` / `After` hooks) — middleware is tested as an isolated unit; ops-path exclusion, `server.ResponseOf` nil degradation, and hook firing / repeat-firing / non-firing are the recurring viewpoints
-  - `internal/controller/server/README.md` → `## Test Strategy` (Echo context utilities / Server construction)
+- 対象 subject のシグネチャ + Doc コメント。
+- 該当層 README の `Test Strategy` / `Testing strategy` 節（存在する見出しの方）の **全文**。Step 1 で読み取った内容をサブセクション見出しごとそのまま渡す。subagent の仕事はそれらの見出しを対象 subject に対する具体観点へ落とすこと。本スキル作成時点での READMEs の状況（記述的、固定マップではない）:
+  - `internal/domain/README.md` → `## Testing strategy`（Getter contract / Immutable guarantee / Domain behavior / Error classification / Test design policy / Test Fixture / Invariant preservation）
+  - `internal/usecase/README.md` → `## Testing Strategy`（Test dependencies / Testing goals / Test targets / Test structure / What not to test）
+  - `internal/controller/handler/README.md` → `## Test Strategy`（Test Dependencies / Test Targets / Test Structure / Router Test / Handler Test / Error Test / Thin Controller Test Scope / Observability Test / Test Policy / Not Covered in Controller Tests / Test Kit testkit / testassert / testauth / testecho / testspan）
+  - `internal/controller/httpstack/README.md` → `## Test Strategy`（実体を使う対象とモックにする対象 / 全ミドルウェア共通で押さえる観点 / `Before` `After` フックの観点）— ミドルウェアは単体として独立にテストし、運用系パス除外・`server.ResponseOf` の nil 縮退・フックの発火/複数回発火/非発火が反復して現れる観点
+  - `internal/controller/server/README.md` → `## Test Strategy`（Echo コンテキストのユーティリティ / サーバーの構築）
   - `internal/infrastructure/README.md` + `internal/infrastructure/rdb/README.md` → `## Test Strategy` / `### 7. Test Strategy (Integration-based)`
-  - `internal/di/README.md` → `## Test Strategy` (the DI-layer baseline: graph validity vs provider bodies vs lifecycle hooks vs environment-gated wiring), with `internal/di/module/README.md` and `internal/di/server/hook/README.md` carrying the detail for their sub-trees — the latter names the three HTTP-hook paths (bind failure / graceful shutdown / log-only `Serve` exit)
-  - `pkg/README.md` → **intentionally has no Test Strategy section**. `pkg/` is framework-agnostic pure utilities (per `docs/testing-conventions.md`), and the test viewpoints reduce to the standard Go pattern — input-output verification, edge / boundary values, nil / zero handling — which is well-covered by sibling tests (the existing `pkg/datetime`, `pkg/envutil`, `pkg/ptr`, `pkg/uuid`, `pkg/xerrors`, etc. tests demonstrate the pattern). The subagent derives viewpoints from sibling tests + `docs/testing-conventions.md` here and does NOT surface a gap warning — this is the layer's normal mode, not a documentation hole. Any per-package sub-`pkg/<name>/README.md` should still be consulted for package-specific invariants.
-  These cross-references are descriptive (current state of the READMEs at the time this skill was written) and are NOT a hard map — when the READMEs change, the subagent reads the up-to-date headings and adapts. If a heading is renamed, removed, or added, the subagent uses what is actually in the README on the day it runs.
-- Sibling test patterns observed in Step 1 (as secondary reference).
-- `docs/testing-conventions.md` (as the project-wide baseline).
+  - `internal/di/README.md` → `## Test Strategy`（DI レイヤの基準: グラフ妥当性 / provider 本体 / ライフサイクルフック / 環境ゲート付き配線）。サブツリーの詳細は `internal/di/module/README.md` と `internal/di/server/hook/README.md` が持ち、後者は HTTP フックの 3 経路（bind 失敗 / graceful shutdown / ログのみの `Serve` 終了）を明示する
+  - `pkg/README.md` → **意図的に Test Strategy 節を持たない**。`pkg/` は framework-agnostic な pure utility (`docs/testing-conventions.md`) で、観点は標準 Go テストパターン（input-output 検証 / edge / boundary 値 / nil / zero ハンドリング）に帰着し、sibling tests（`pkg/datetime` / `pkg/envutil` / `pkg/ptr` / `pkg/uuid` / `pkg/xerrors` 等の既存テスト）でパターンが明示されている。subagent は sibling tests + `docs/testing-conventions.md` から観点を派生する。ドキュメントの穴ではなく **層として正常**なので、gap 警告は出さない。 package 個別の不変条件は `pkg/<name>/README.md` を併読する。
+  この一覧は本スキル作成時点の READMEs を記述したもので、固定マッピングではない — README が更新されれば subagent はその時点の見出しを読んで適応する。見出しが renamed / removed / added されても、subagent は実行時点の README をそのまま使う。
+- Step 1 で確認した sibling のテストパターン（補助参照）。
+- `docs/testing-conventions.md`（プロジェクト横断ベースライン）。
 
-Expected return: a structured list of `TestXxx → t.Run(正常系) → t.Run(case)` / `t.Run(異常系) → t.Run(case)` paths the skill should produce, with each case annotated by which README sub-section (or sibling test pattern) it traces back to.
+期待される戻り値: 生成すべき `TestXxx → t.Run(正常系) → t.Run(case)` / `t.Run(異常系) → t.Run(case)` のパスを構造化したリスト（各 case に対応する README サブセクション or sibling test パターンを添付）。
 
-Fallback behavior:
+フォールバック:
 
-- **Layer is `pkg/**`** — the README intentionally has no Test Strategy section because the test viewpoints are the standard Go pattern (input-output, edge cases, nil / zero handling). The subagent derives viewpoints from sibling tests + per-package sub-`pkg/<name>/README.md` (if present) + `docs/testing-conventions.md` and the skill does NOT surface a warning. This is the layer's normal mode.
-- **Target is anywhere under `internal/**` and the walk up reaches the repository root without finding a Test Strategy section** — surface the gap to the user (`「<walked path> のいずれにも Test Strategy 節がないため、sibling テストパターン + docs/testing-conventions.md からフォールバックで観点を導出しています。README を補完する余地があります」`). **Every `internal/**` layer is expected to have one**, with `pkg/**` as the single documented exemption — do not narrow this to a list of layers that happen to have one today. That narrowing is exactly what let whole layers (middleware / server lifecycle / DI wiring) sit without a comparison baseline while the check reported nothing: an unlisted layer looked exempt instead of undocumented. Name the READMEs the walk passed through, so the user can see where the section belongs.
-- If the subagent returns no viewpoints at all (regardless of layer), fall back to a minimal default (one 正常系 success + one 異常系 catchall) and warn the user.
+- **層が `pkg/**`** — README が意図的に Test Strategy 節を持たない。観点は標準 Go パターン（input-output / edge / nil / zero）に帰着するので、 sibling tests + 該当する `pkg/<name>/README.md`（あれば）+ `docs/testing-conventions.md` から派生し、**警告は出さない**。これが pkg 層の正常モード。
+- **対象が `internal/**` 配下で、上位へ歩いてもリポジトリルートまで Test Strategy 節が見つからない場合** — gap として user に surface（`「<歩いたパス> のいずれにも Test Strategy 節がないため、sibling テストパターン + docs/testing-conventions.md からフォールバックで観点を導出しています。README を補完する余地があります」`）。**`internal/**` の全ての層が節を持つことを期待する**。唯一の免除は `pkg/**`。今たまたま節を持っている層のリストへ狭めないこと — その狭め方こそが、ミドルウェア / サーバライフサイクル / DI 配線といった層まるごとを比較基準の無いまま放置させ、しかもチェックは何も報告しない状態を作った原因である（未列挙の層が「未文書」ではなく「免除」に見えてしまう）。節を置くべき場所がユーザに分かるよう、歩いて通過した README を明示する。
+- subagent が観点を返さない場合（層を問わず）、最小デフォルト（正常系成功 1 件 + 異常系全捕捉 1 件）にフォールバックしてユーザに警告。
 
-## Step 3. Plan the Test Structure
+## Step 3. テスト構造の設計
 
-Apply these hard rules to map viewpoints to a concrete test file outline:
+ハードルール:
 
-1. **One `TestXxx` per function or method.** A function `Foo` gets `func TestFoo(t *testing.T)`. A method `(*User).UpdateProfile` gets `func TestUser_UpdateProfile(t *testing.T)`. Multiple `TestXxx` for the same subject are never produced.
-   - **Reverse direction — every public function / method keeps its own `TestXxx`, and the 1:1 mapping outranks weak-test avoidance.** Do NOT delete or drop a subject's dedicated `TestXxx` merely because its only honest assertion is currently thin (e.g. `assert.NotNil(NewClock())` for a trivial constructor). Keep the 1:1 slot so a future meaningful test has a home. A public subject with no `TestXxx` of its own is a 1:1 violation even when its behavior is transitively exercised by another subject's test.
-   - **Never fold one subject's verification into another subject's `TestXxx`** — it muddies the responsibility of the test it is folded into. Asserting `NewClock`'s contract inside `TestClockNow` is folding; the constructor's own assertion belongs in `TestNewClock`. A method test MAY *call* the constructor as a fixture to obtain the SUT — that is not folding (folding is adding a separate assertion about the constructor itself into the method's test).
-2. **Never bundle multiple subjects into one `TestXxx` — strict 1:1, no exception.** Do NOT produce a unified `TestEntity_Accessors` / `*_Getters` covering multiple getters; each getter / accessor gets its own `TestXxx`. There is no `ask the user explicitly` bundling path and no rationale-comment exemption. The *only* exemption is a subject that is **unverifiable and therefore unreachable** (e.g. a helper whose failure path calls `tb.Fatalf`, which terminates the calling test): it STILL declares its convention-named `TestXxx` and calls `t.Skip("<why it cannot be verified>")` — there is no allowlist; the reason lives in the `t.Skip` string. **"Covered by another test" is NOT an exemption**: it makes the subject depend on another test's implementation and stays green after that test shrinks, so a testable subject gets a real test even when a caller / integration / DI-graph test already exercises it. This mirrors `docs/testing-conventions.md` §1, mechanically enforced by `internal/architest` (`TestUnitTestMappingCompleteness` for the 1:1 slot, `TestSkipReasonDoesNotNameCoveringTest` for the skip reason).
-3. **Outermost two `t.Run` groups MUST be the literal strings `正常系` and `異常系` — nothing else.**
-   - Use `t.Run("正常系", ...)` and `t.Run("異常系", ...)` exactly. The group names are the literal two characters, not a prefix.
-   - **Forbidden pattern**: `t.Run("正常系_ユーザーが存在する場合", ...)` at the top level. The `正常系_` / `異常系_` prefix on individual case names is explicitly NOT the project convention — it conflates the group axis (正常系 / 異常系) with the case description axis (what this specific case does).
-   - **Correct pattern**:
+1. **1 関数 / メソッド = 1 `TestXxx`**。 `Foo` → `func TestFoo(t *testing.T)`、`(*User).UpdateProfile` → `func TestUser_UpdateProfile(t *testing.T)`。 同一 subject に対する複数 `TestXxx` は絶対に作らない。
+   - **逆方向 — 公開関数 / メソッドは各々が自分の `TestXxx` を持ち、1:1 の対応は弱いテストの回避より優先する。** 現時点で誠実に書ける assert が薄い（例: 些末なコンストラクタに対する `assert.NotNil(NewClock())`）というだけで、その subject 専用の `TestXxx` を削ったり作らなかったりしてはならない。将来の意味あるテストの置き場所として 1:1 の枠を残す。他の subject のテストから推移的に実行されていても、自分の `TestXxx` を持たない公開 subject は 1:1 違反である。
+   - **ある subject の検証を別の subject の `TestXxx` に畳み込まない** — 畳み込まれた側のテストの責務が濁る。`NewClock` の契約を `TestClockNow` の中で assert するのが畳み込みであり、コンストラクタ自身の assert は `TestNewClock` に属する。メソッドのテストが SUT を得るための fixture としてコンストラクタを*呼ぶ*のは畳み込みではない（畳み込みとは、コンストラクタ自体についての別の assert をメソッドのテストへ加えることを指す）。
+2. **複数 subject を 1 `TestXxx` に束ねない — 厳密 1:1、例外なし**。 全 getter を `TestEntity_Accessors` / `*_Getters` で一括検証するような統合テストは作らず、getter / accessor ごとに 1 つの `TestXxx` を用意する。 `ask the user explicitly` による束ねの分岐も rationale コメントによる免除も無い。 唯一の免除は、**検証不可能であるために到達できない** subject（例: 失敗経路が `tb.Fatalf` を呼ぶヘルパーは呼び出し側テストの終了を伴う）で、その場合も規約どおりの名前の `TestXxx` を宣言し `t.Skip("<なぜ検証不可能か>")` を呼ぶ — allowlist は持たず、理由は `t.Skip` の文字列に残す。 **「他のテストでカバー済み」は免除にならない**: その skip は subject を別テストの実装に依存させ、カバー元が縮小しても green のまま残るため、呼び出し元 / 統合 / DI グラフテストがたまたま通っていてもテスト可能な subject には実テストを書く。 `docs/testing-conventions.md` §1 に準拠し、`internal/architest`（1:1 枠は `TestUnitTestMappingCompleteness`、skip 理由は `TestSkipReasonDoesNotNameCoveringTest`）が機械的に強制する。
+3. **最外殻 2 つの `t.Run` の name は 必ず literal の `正常系` / `異常系` の 2 文字のみ**。 prefix 形式 (`正常系_xxx` / `異常系_xxx`) は NG。
+   - 使うのは `t.Run("正常系", ...)` と `t.Run("異常系", ...)` のみ。group name はリテラルの 2 文字であって、 case 名のプレフィックスではない。
+   - **禁止パターン**: 最外殻に `t.Run("正常系_ユーザーが存在する場合", ...)` を書くこと。 `正常系_` / `異常系_` プレフィックスをサブケース名に付けるのも、 「グループ軸 (正常系/異常系)」と「ケース説明軸 (具体的に何を試すか)」を混同させる。
+   - **正しい形**:
 
      ```go
      t.Run("正常系", func(t *testing.T) {
@@ -138,44 +136,44 @@ Apply these hard rules to map viewpoints to a concrete test file outline:
      })
      ```
 
-   - Both groups call `t.Parallel()` immediately inside. Nested sub-groups for finer categorization (e.g. `t.Run("firstNameが範囲外の場合、エラーを返す", ...)`) are encouraged when readable, and live INSIDE the relevant 正常系 / 異常系 group.
-   - Each `TestXxx` has at most one `正常系` block and at most one `異常系` block. If only happy cases exist, omit the `異常系` block (and vice versa); do NOT create an empty group.
-4. **Every `t.Run` calls `t.Parallel()` as its first statement.** Exception: a block that mutates a pointer shared with another sibling block keeps its outer `t.Run` serial; the comment above the block MUST explain why (`-race` would catch the violation). Inner cases inside that serial block still call `t.Parallel()`.
-5. **Table-driven `for`-loop tests are forbidden — always use sequential `t.Run` siblings.** Each case is its own named `t.Run`, as in `user_domain_test.go`. Do NOT loop over a slice of `(input, expected)` structs with `for _, tc := range cases`. Writing each case out separately makes failures name the exact case, lets each case call `t.Parallel()`, and avoids a shared loop body coupling the cases together. This holds even for a long list of near-identical getter / boundary assertions (accept the repetition; do not collapse into a table). There is no per-case exception — do not ask; write sequential `t.Run`.
-6. **Case names are Japanese, and sub-case names carry NO `正常系_` / `異常系_` prefix.** Outermost groups: literally `正常系` / `異常系`. Sub-cases inside those groups: free-form Japanese sentence describing the input class and the expected outcome (`「<input class>の場合、<outcome>」`). The case name reads as a complete sentence. Since the sub-case already lives under a 正常系 / 異常系 group, adding `正常系_` / `異常系_` to the case name itself is redundant and forbidden — it produces `正常系 > 正常系_xxx` paths in `go test` output, which is double-labelling. Strip the prefix from the case description.
-7. **`require` vs `assert` per `docs/testing-conventions.md`**:
-   - `require.NoError` / `require.Error` / `require.ErrorIs` / `require.ErrorContains` — every error-related assertion (the testifylint `require-error` rule rejects `assert.ErrorIs`).
-   - `require.Not<Nil>` only when guarding a subsequent dereference.
-   - `assert.Equal` / `assert.Len` / `assert.Contains` / `assert.True` / `assert.False` / `assert.Empty` for terminal value verification — a failure here should not stop the test.
-8. **Mocks always come from `<package>/mock/`** (generated via `go.uber.org/mock` + `make gen-api`). Custom hand-written mocks are forbidden by `docs/testing-conventions.md`.
-9. **No DB / HTTP / external IO** inside unit tests in domain / usecase / controller layers (per `docs/testing-conventions.md` architectural rules). Infra tests against the real DB stay in this skill's scope only when the package already has a sibling test that establishes the convention — otherwise refer the user to `scaffold-integration-test`.
+   - 両 group の直後に `t.Parallel()` を呼ぶ。 さらに細分化のためのネストグループ（例: `t.Run("firstNameが範囲外の場合、エラーを返す", ...)`) は可読性が上がるなら推奨で、 正常系 / 異常系 group の **内側に** 置く。
+   - 1 つの `TestXxx` には `正常系` group が最大 1 個、 `異常系` group が最大 1 個。 正常系のみで構成されるなら `異常系` group は作らない（逆も同様）。 空のグループは作らない。
+4. **全ての `t.Run` の冒頭で `t.Parallel()` を呼ぶ**。例外: sibling ブロックと共有しているポインタを mutate する場合は外側の `t.Run` を逐次にする。**ブロック直上にコメント必須**（`-race` で検出される競合を意図的に避けている旨を書く）。内部 case は引き続き `t.Parallel()`。
+5. **table-driven `for` ループは禁止 — 常に逐次 `t.Run` sibling で書く**。 各ケースをそれぞれ独立した `t.Run` にする（`user_domain_test.go` のパターン）。`(input, expected)` の構造体スライスを `for _, tc := range cases` で回さない。個別に書き出すことで、失敗時に該当ケース名が出て、各ケースが `t.Parallel()` を呼べ、共有ループ本体でケース同士が結合しない。ゲッター/境界の似たアサーションが長く並ぶ場合でも同様（重複は許容し、table へ畳み込まない）。ケース単位の例外は無い — 尋ねず、逐次 `t.Run` で書く。
+6. **ケース名は日本語。 サブケース名に `正常系_` / `異常系_` プレフィックスは付けない**。 最外殻 group の name はリテラルの `正常系` / `異常系`。 サブケースは入力クラスと期待結果を 1 文で表す自由記述（`「<入力クラス>の場合、<結果>」`）。 そのまま読める文章になるように。サブケースは既に 正常系 / 異常系 group の下にいるため、 名前に `正常系_` / `異常系_` を付けると `正常系 > 正常系_xxx` のような二重ラベルになり冗長 → 禁止。 prefix は剥がす。
+7. **`require` vs `assert`**（`docs/testing-conventions.md` 準拠）:
+   - `require.NoError` / `require.Error` / `require.ErrorIs` / `require.ErrorContains` — エラー系アサーション全般（testifylint `require-error` ルールが `assert.ErrorIs` を拒絶）。
+   - `require.Not<Nil>` は以降の dereference をガードする場合のみ。
+   - `assert.Equal` / `assert.Len` / `assert.Contains` / `assert.True` / `assert.False` / `assert.Empty` は終端の値検証（失敗時に以降を止めない）。
+8. **mock は常に `<package>/mock/` から**（`go.uber.org/mock` + `make gen-api` の生成物）。手書き mock は `docs/testing-conventions.md` で禁止。
+9. **DB / HTTP / 外部 IO はユニットテストでは行わない**（domain / usecase / controller 層）。 infra の実 DB 結合は、同パッケージにすでに sibling test がいて慣行が確立されている場合のみ本スキルの守備範囲。それ以外は `scaffold-integration-test` への切替を案内する。
 
-## Step 4. Confirm Plan
+## Step 4. プランの確認
 
-Display, in Japanese:
+日本語で:
 
-- Target file path.
-- Detected layer.
-- Each `TestXxx` to be generated, with its 正常系 / 異常系 sub-case list.
-- A short rationale tying each case to the viewpoint that produced it.
-- The first ~20 lines of the proposed test file as a preview.
-- Any subject emitted as a skip-test (`TestXxx` + `t.Skip("<why it cannot be verified>")`) because it is unverifiable, stating why verification is impossible.
+- 対象ファイルパス
+- 検出した層
+- 生成予定の各 `TestXxx` と、その配下の 正常系 / 異常系 サブケースのリスト
+- 各 case を生んだ観点との対応理由
+- 提案テストファイル冒頭 ~20 行のプレビュー
+- 検証不可能なため skip-test（`TestXxx` + `t.Skip("<なぜ検証不可能か>")`）として出力した subject（なぜ検証できないかを明記）
 
-Then `ask the user explicitly`:
+を提示してから `ask the user explicitly`:
 
-- Question: 「以下の構成でテストを生成しますか？」
-- Options: 「生成する」 / 「修正したい箇所を指摘する」 / 「キャンセル」.
+- 質問: 「以下の構成でテストを生成しますか？」
+- 選択肢: 「生成する」 / 「修正したい箇所を指摘する」 / 「キャンセル」。
 
-## Step 5. Write the Test File
+## Step 5. test ファイル書き出し
 
-Generate the test file applying the abstract pattern from `internal/domain/<aggregate>/<aggregate>_domain_test.go`:
+`internal/domain/<aggregate>/<aggregate>_domain_test.go` から抽象化した骨格に従う:
 
 ```go
 func Test<Subject>(t *testing.T) {
     t.Parallel()
 
-    // Common fixture setup shared across subcases. Pin time to a fixed
-    // baseTime so subtests stay deterministic.
+    // サブテスト間で共有する fixture をここで宣言。time は固定 baseTime に pin して
+    // determinism を確保する。
     <fixture variables>
 
     t.Run("正常系", func(t *testing.T) {
@@ -187,7 +185,7 @@ func Test<Subject>(t *testing.T) {
             require.NoError(t, err)
             assert.Equal(t, <expected>, actual.<field>)
         })
-        // ... additional happy cases
+        // ... 追加の正常系
     })
 
     t.Run("異常系", func(t *testing.T) {
@@ -199,93 +197,93 @@ func Test<Subject>(t *testing.T) {
             assert.Nil(t, actual)
             require.ErrorIs(t, err, <ErrSentinel>)
         })
-        // ... additional error cases, optionally nested for finer grouping
+        // ... 必要なら細分化のためにネスト
     })
 }
 ```
 
-Additional generation rules:
+追加の生成ルール:
 
-- **Satisfy the semantic quality bar (`docs/testing-conventions.md` section 10).** Each generated case must assert its branch's *distinctive* outcome — error branches via `require.ErrorIs` on the specific sentinel, success / state-mutating branches on the resulting value / field, boundary cases on both sides — never a vacuous `require.NoError` / `assert.NotNil`-only body that merely proves the branch executed. Do not emit any section-10 anti-pattern (weak assertion, name over-promising the assertion, brittle internals coupling, over-mocking, time-literal pinning leak, redundant comments). This is the same section `test-review` reviews against — do NOT restate the list here, read it at runtime.
-- **Test helpers** declared in the same package (e.g. `newValidUser(t)`) are reused as-is. If a helper does not yet exist but the same fixture would be repeated 3+ times across the produced tests, generate an unexported `t.Helper()`-tagged helper at the bottom of the test file.
-- **`uuid.NewTestFromSalt(t, "<salt>")`** is the canonical way to obtain a deterministic UUID inside tests (per `pkg/uuid`).
-- **`ptr.To(...)` / `ptr.Copy(...)`** are used for nullable pointer fields per the domain README's "Handling time and ID" / "Invariants" sections.
-- **Mock setup**: when the target consumes injected interfaces, instantiate the corresponding `mock.NewMock<Interface>(t)` and wire `.EXPECT().<Method>(...).Return(...)` calls. The order and argument matchers should mirror the target's call sequence.
-- **Imports**: assemble the import block exactly as the same-package sibling tests do. Do not add unused imports.
+- **意味的品質バー（`docs/testing-conventions.md` section 10）を満たす。** 生成する各ケースはその分岐*固有*の outcome を assert すること — エラー分岐は固有 sentinel を `require.ErrorIs`、成功 / 状態変更分岐は結果の値 / フィールド、境界は両側 — 分岐が実行されたことだけを示す空虚な `require.NoError` / `assert.NotNil` のみの本体にしない。 §10 のアンチパターン（弱いアサーション、ケース名の過剰約束、内部結合の脆さ、過剰モック、時刻リテラル漏れ、冗長コメント）を一切出力しない。 これは `test-review` がレビューする節と同一 — リストを本スキルに再掲せず runtime で読む。
+- **テストヘルパ**は package 内既存のもの（例: `newValidUser(t)`）を再利用。 未定義かつ同じ fixture を 3 回以上繰り返すならば、test ファイル末尾に `t.Helper()` 付きの unexported ヘルパを生成。
+- **`uuid.NewTestFromSalt(t, "<salt>")`** がテスト内で deterministic な UUID を取得する canonical 手段（`pkg/uuid`）。
+- **`ptr.To(...)` / `ptr.Copy(...)`** は nullable ポインタフィールドで利用（domain README の "Handling time and ID" / "Invariants" 節 参照）。
+- **mock セットアップ**: 対象が DI 注入インタフェースを使う場合、対応する `mock.NewMock<Interface>(t)` を生成し、 `.EXPECT().<Method>(...).Return(...)` を対象の呼び出し順序通りに並べる。
+- **import**: 同一 package の sibling test と同じ構成に揃える。未使用 import は入れない。
 
-If the test file already exists, do not rewrite it — append the new `TestXxx` functions at the bottom, after any existing helper declarations. Confirm appending via `ask the user explicitly` first.
+test ファイル既存の場合は全書き換えしない — 末尾追記モード（既存ヘルパ宣言の後ろ）に切り替え、`ask the user explicitly` で事前承認を取る。
 
-## Step 6. Verify
+## Step 6. 検証
 
-Run, in order:
+順次:
 
-1. `make fix` — formats the new test file. If any non-target file is reformatted, surface the diff to the user.
-2. `make test` — confirms the new tests pass and that the package's coverage stays at or above its prior level (and above the 90 % project threshold for new / modified packages, per `docs/testing-conventions.md`).
-3. **Mutation-check the regression-critical cases.** For any case written to lock in a specific behavior or guard a known / just-fixed bug (not generic coverage cases), prove the test actually catches the regression: temporarily inject the regression into the **subject** (flip the condition, drop the guard, swap the field / arg), re-run just that test, confirm it **FAILs**, then revert the mutation. A test that still passes under the mutation protects nothing — strengthen the assertion until it fails. This is the difference between a real regression test and a tautology; do it on the regression-critical cases, not every case.
+1. `make fix` — 生成 test ファイルを整形。対象外ファイルが整形されたら diff を提示。
+2. `make test` — 生成テスト通過確認 + パッケージのカバレッジが下がっていないこと（`docs/testing-conventions.md` の新規 / 変更パッケージ 90 % 閾値）。
+3. **回帰の要となるケースはミューテーション検証する。** 特定の振る舞いを固定する／既知・直前修正のバグを守るために書いたケース（汎用カバレッジ目的でないもの）は、**subject** に退行を一時注入（条件反転・ガード削除・フィールド/引数すり替え）して当該テストだけ再実行し、**FAIL すること**を確認してから注入を戻す。注入下でも通るテストは何も守っていない＝アサーションを FAIL するまで強化する。これが本物の回帰テストとトートロジーの差。全ケースでなく回帰の要だけで行う。
 
-If `make test` fails:
+`make test` 失敗時:
 
-- Leave the produced test file in place so the user can inspect it.
-- Surface the failing test name + assertion message.
-- Do NOT auto-rollback — the user decides whether to amend the test or the subject.
+- 生成 test ファイルはそのまま残す（user 検査用）。
+- 失敗テスト名 + assertion メッセージを提示。
+- 自動 rollback はしない。テスト修正か subject 修正かは user 判断。
 
-If coverage regressed below 90 % despite tests passing, surface the gap and propose the missing viewpoint(s) for a follow-up invocation.
+カバレッジが 90 % 未満に落ちた場合（テスト自体は通る場合も）は、不足観点を提示して再呼び出しを促す。
 
 ## Chainability
 
-When invoked from `scaffold-domain`, `scaffold-usecase`, `scaffold-controller`, or `scaffold-infra-db`, the parent passes a context payload containing at minimum:
+`scaffold-domain` / `scaffold-usecase` / `scaffold-controller` / `scaffold-infra-db` から chain された場合、親は最低限以下を渡す:
 
-- `target_file` — absolute path to the source file under test.
-- `target_subjects` — list of `<func or method name>` strings the parent wants tests for.
-- `layer` — pre-resolved layer key (`domain` / `usecase` / `controller` / `infra` / `pkg`).
-- `viewpoints` — the parent's already-derived test-perspective output, when available.
+- `target_file` — テスト対象ソースの絶対パス。
+- `target_subjects` — 親がテストを欲しい `<func or method name>` のリスト。
+- `layer` — 解決済み層キー（`domain` / `usecase` / `controller` / `infra` / `pkg`）。
+- `viewpoints` — 親が既に subagent から得たテスト観点（あれば）。
 
-In chained mode, this skill skips:
+chain モードでは以下をスキップ:
 
-- First Step (target resolution).
-- Step 2 (test-perspective subagent), when `viewpoints` is non-empty.
-- Step 4's `ask the user explicitly` confirmation (the parent already obtained per-feature approval) — but a one-line summary is still printed for the audit trail.
+- First Step（target 解決）。
+- Step 2（test-perspective subagent）— `viewpoints` が非空のとき。
+- Step 4 の `ask the user explicitly`（親が feature 単位の承認を既に取得済み）— 監査用に 1 行サマリは表示する。
 
-The strict 1:1 rule (no bundling; skip-test exemption only for an unverifiable subject) holds in chained mode too — there is no bundling confirmation to obtain, since bundling is never allowed. (Table-driven tests likewise have no exception path: they are forbidden — always sequential `t.Run`.)
+厳密 1:1 ルール（束ね禁止、免除は検証不可能な subject に限る）は chain モードでも同様 — 束ねは常に不許可なので確認を取る対象自体が無い。（table-driven にも例外は無い — 禁止であり常に逐次 `t.Run`。）
 
-## Constraints (Summary)
+## 制約（サマリ）
 
-- ❌ Add restate-the-code or *why*-narration comments to the generated test — keep test comments minimal (behavior only). Case intent is carried by the Japanese `t.Run` name, not by inline comments; the only required non-godoc comment is the `-race` serial-block exception rationale. When a comment does earn its place, keep it to one line — a multi-line explanation of a fixture or an idiomatic assertion costs more to read than it returns.
-- ❌ Multiple `TestXxx` for the same function / method.
-- ❌ Bundling multiple subjects into one `TestXxx` (strict 1:1, no exception; getters / accessors included). Each subject gets its own named `TestXxx` — never a bundle.
-- ❌ `t.Skip` justified by another test covering the subject (it makes one test depend on another's implementation). Skip only what is unverifiable, and write *why* it cannot be verified.
-- ❌ Table-driven `for`-loop tests (forbidden — always write sequential `t.Run` siblings, one per case).
-- ❌ Custom hand-written mocks (use `<package>/mock/*_mock.go`).
-- ❌ Editing the subject source file.
-- ❌ Editing generated artifacts (`*.gen.go`, `*_mock.go`, `*.sql.go`).
-- ❌ `assert.ErrorIs` / `assert.NoError` (testifylint `require-error` rule).
-- ❌ Skipping `t.Parallel()` without a documented `-race` reason.
-- ❌ Skipping `t.Run` for any subcase.
-- ❌ English case names (Japanese per `docs/testing-conventions.md`).
-- ❌ Outer `t.Run("正常系_xxx", ...)` / `t.Run("異常系_xxx", ...)` prefix form. Use literal `正常系` / `異常系` as the outer group name and put the case description in the inner `t.Run`.
-- ❌ Sub-case names that include the `正常系_` / `異常系_` prefix (they live under the group already).
-- ✅ `t.Parallel()` at every nesting level (with documented exceptions).
-- ✅ `t.Run` per subcase.
-- ✅ Japanese case names; outermost groups are the literal strings `正常系` / `異常系`; inner sub-case names are free-form Japanese sentences without `正常系_` / `異常系_` prefix.
-- ✅ `require` for errors, `assert` for terminal values.
-- ✅ Generated mocks from `*/mock/` only.
-- ✅ Deterministic fixtures (fixed `baseTime`, `uuid.NewTestFromSalt(t, ...)`).
-- ✅ `t.Helper()` on helper functions in the produced test file.
-- ✅ Satisfy the section-10 semantic quality bar (each case asserts its branch's distinctive outcome; no anti-pattern emitted) — read from `docs/testing-conventions.md`, not restated here.
-- ✅ Mutation-check regression-critical cases (inject the regression into the subject, confirm the test FAILs, revert) — a case that stays green under the mutation is a tautology, not a guard.
+- ❌ 生成テストにコード言い換え／*なぜ*の説明コメントを足す — テストコメントは最小（振る舞いのみ）。ケースの意図は日本語 `t.Run` 名で表し、インラインコメントに書かない（godoc 以外で必須なのは `-race` 直列ブロック例外の理由コメントのみ）。書く価値のあるコメントでも1行に収める — フィクスチャや慣用的なアサーションへの複数行の説明は、読むコストが返る情報を上回る。
+- ❌ 同一関数 / メソッドに対する複数 `TestXxx`。
+- ❌ 複数 subject を 1 `TestXxx` に束ねる（厳密 1:1、例外なし。getter / accessor 含む）。 subject ごとに named `TestXxx` を用意する — 束ねない。
+- ❌ 「他のテストがカバーしている」を理由にした `t.Skip`（テストが別テストの実装に依存する）。 skip は検証不可能なものに限り、*なぜ検証できないか* を書く。
+- ❌ table-driven `for` ループ（禁止 — 常にケース毎の逐次 `t.Run` sibling で書く）。
+- ❌ 手書き mock（`<package>/mock/*_mock.go` を使う）。
+- ❌ subject ソースファイルの編集。
+- ❌ 生成物の編集（`*.gen.go` / `*_mock.go` / `*.sql.go`）。
+- ❌ `assert.ErrorIs` / `assert.NoError`（testifylint `require-error`）。
+- ❌ コメント付き `-race` 理由なしでの `t.Parallel()` 省略。
+- ❌ サブケースでの `t.Run` 省略。
+- ❌ 英語ケース名（`docs/testing-conventions.md` の通り日本語）。
+- ❌ 最外殻に `t.Run("正常系_xxx", ...)` / `t.Run("異常系_xxx", ...)` を書く（外殻 group の name は literal `正常系` / `異常系` のみ）。
+- ❌ サブケース名に `正常系_` / `異常系_` プレフィックスを付ける（外殻 group で既に区別済み）。
+- ✅ 全階層 `t.Parallel()`（明文化された例外のみ可）。
+- ✅ サブケース毎の `t.Run`。
+- ✅ 日本語ケース名。 最外殻 group は literal `正常系` / `異常系`、 サブケース名は prefix なしの日本語自由記述。
+- ✅ エラーは `require` / 終端値は `assert`。
+- ✅ mock は `*/mock/` 由来のみ。
+- ✅ deterministic な fixture（固定 `baseTime`、`uuid.NewTestFromSalt(t, ...)`）。
+- ✅ 生成 test ファイル内ヘルパに `t.Helper()`。
+- ✅ section 10 の意味的品質バーを満たす（各ケースは分岐固有の outcome を assert・アンチパターンを出力しない）— `docs/testing-conventions.md` から読み、本スキルに再掲しない。
+- ✅ 回帰の要となるケースはミューテーション検証（subject に退行を注入→テストが FAIL することを確認→戻す）。注入下で緑のままのケースはガードでなくトートロジー。
 
-## Checklist
+## チェックリスト
 
-Before reporting completion, confirm:
+完了報告前に確認:
 
-- [ ] Target file + layer were resolved (standalone) or accepted from the parent scaffold-* skill (chained).
-- [ ] Layer README + `docs/testing-conventions.md` + sibling tests were read in Step 1.
-- [ ] Test-perspective subagent ran in Step 2 (or `viewpoints` was supplied by the parent).
-- [ ] Each produced `TestXxx` matches exactly one subject (strict 1:1, no bundling); only an unverifiable subject is emitted as a named `TestXxx` + `t.Skip("<why it cannot be verified>")`, and no skip reason names another test.
-- [ ] Outermost `t.Run` group names are the literal strings `正常系` / `異常系`, NOT the `正常系_xxx` / `異常系_xxx` prefix form. Inner sub-case names contain no `正常系_` / `異常系_` prefix.
-- [ ] Every `t.Run` has `t.Parallel()` as its first statement, or carries a comment explaining the `-race` exception.
-- [ ] No `for`-loop tables produced (forbidden — always sequential `t.Run` siblings, no exception).
-- [ ] All error assertions use `require.*`, all terminal value checks use `assert.*`.
-- [ ] Mocks come from `<package>/mock/`; no custom mocks added.
-- [ ] The subject source file was not edited.
-- [ ] `make fix` + `make test` passed; coverage did not regress.
+- [ ] 対象ファイル + 層が確定（standalone）または親 scaffold-* から受領（chain）した。
+- [ ] Step 1 で層 README + `docs/testing-conventions.md` + sibling test を読んだ。
+- [ ] Step 2 の test-perspective subagent を実行した（または親から `viewpoints` を受領）。
+- [ ] 各 `TestXxx` が単一 subject に対応している（厳密 1:1、束ねなし）。 検証不可能な subject のみ named `TestXxx` + `t.Skip("<なぜ検証不可能か>")` で出力し、他テストを名指しした skip 理由が無い。
+- [ ] 最外殻 `t.Run` group の name が literal `正常系` / `異常系` （`正常系_xxx` 形式ではない）。 サブケース名にも `正常系_` / `異常系_` プレフィックスが含まれない。
+- [ ] 全 `t.Run` の冒頭で `t.Parallel()` を呼んでいる、または `-race` 例外の説明コメントが付いている。
+- [ ] `for` ループ table は生成していない（禁止 — 常に逐次 `t.Run` sibling、例外なし）。
+- [ ] エラー系は `require.*`、終端値は `assert.*`。
+- [ ] mock は `<package>/mock/` 由来のみ。手書き mock を追加していない。
+- [ ] subject ソースは編集していない。
+- [ ] `make fix` + `make test` が pass し、カバレッジが落ちていない。

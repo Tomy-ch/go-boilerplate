@@ -5,206 +5,204 @@ description: Push the current feature branch to `origin` and create or update it
 
 # Submit PR
 
-This skill pushes the current branch to `origin` and ensures a GitHub pull request exists for it. It handles two cases automatically:
+このスキルは、現在のブランチを `origin` に push し、対応する GitHub プルリクエストが存在することを保証する。次の 2 ケースを自動で判別して処理する。
 
-- **Create**: no PR exists for the current branch → push (with `-u` if no upstream) and open a new PR.
-- **Update**: an open PR already exists → confirm with the user, then push (the PR's diff auto-updates).
+- **Create**: 現在のブランチに対する PR が存在しない場合 → `-u` 付き push（upstream 未設定時）と新規 PR 作成を行う。
+- **Update**: 既存の open PR が存在する場合 → ユーザーに確認してから push する（PR 上の diff は自動で更新される）。
 
-The PR body is filled from `.github/pull_request_template.md`. The skill never auto-pushes, never overwrites an existing PR's title/body, and never force-pushes.
+PR の本文は `.github/pull_request_template.md` をひな型にして埋める。自動 push は行わず、既存 PR のタイトル / 本文を勝手に上書きせず、force push もしない。
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+## 前提
 
-## Preconditions
+- `gh` CLI がインストールされ、認証済みであること（`gh auth status` が成功する）。
+- 現在のブランチが保護ブランチ（`production` / `develop` / `staging` / `release/*`）ではないこと。
+- working tree がクリーンであること。未コミット変更がある場合はスキルを中断し、先に `/commit` を実行するよう促す。
 
-- `gh` CLI is installed and authenticated (`gh auth status` succeeds).
-- Current branch is not a protected branch (`production` / `develop` / `staging` / `release/*`).
-- Working tree is clean. If there are uncommitted changes, the skill aborts and suggests running `/commit` first.
+## Step 0. 事前チェック
 
-## Step 0. Pre-flight Checks
-
-Run in parallel:
+並列で実行:
 
 ```sh
-git rev-parse --abbrev-ref HEAD                          # current branch
-git status --porcelain                                   # working-tree state
-git rev-parse --verify '@{u}' 2>/dev/null                # upstream existence
-git log '@{u}'..HEAD --oneline 2>/dev/null               # unpushed commits (if upstream)
+git rev-parse --abbrev-ref HEAD                          # 現在のブランチ
+git status --porcelain                                   # working tree の状態
+git rev-parse --verify '@{u}' 2>/dev/null                # upstream の有無
+git log '@{u}'..HEAD --oneline 2>/dev/null               # 未 push コミット（upstream がある場合）
 gh auth status
 ```
 
-Bail out if any of the following:
+以下のいずれかに該当する場合は中断する。
 
-- Branch matches `^(production|develop|staging|release/.+)$` → tell the user to switch to a feature branch.
-- `git status --porcelain` is non-empty → tell the user to run `/commit` (or stash) first.
-- `gh auth status` fails → tell the user to run `gh auth login`.
+- ブランチが `^(production|develop|staging|release/.+)$` にマッチする → feature ブランチに切り替えるようユーザーに伝える。
+- `git status --porcelain` が非空 → 先に `/commit`（または stash）を実行するようユーザーに伝える。
+- `gh auth status` が失敗 → `gh auth login` の実行をユーザーに依頼する。
 
-The four valid working states going into Step 2:
+Step 2 に進むときの状態は以下の 4 パターン。
 
-| Upstream | Unpushed commits | Meaning |
+| upstream | 未 push コミット | 意味 |
 | --- | --- | --- |
-| none | n/a | First push case |
-| set | > 0 | Subsequent push case |
-| set | 0 | Nothing to push; PR may still need to be created |
-| set | 0 + PR open | Nothing to do (handled in Step 2) |
+| なし | n/a | 初回 push |
+| あり | > 0 | 追加 push |
+| あり | 0 | push 不要だが PR が未作成の可能性 |
+| あり | 0 + PR open | 何もすることが無い（Step 2 で処理） |
 
-### Step 1. Pre-push Local Review Gate (confirm)
+### Step 1. push 前ローカルレビュー ゲート（確認）
 
-Immediately after the pre-flight bail-outs pass — **before composing anything or pushing** — ask which pre-push reviews to run. Review before the change leaves the machine is the point: it inspects the local diff on a different model than the implementer and catches gaps (auth / IDOR, DI / SQL, shared-schema propagation) that mocked tests miss.
+事前チェックの bail-out を通過した直後、**何も compose せず push もする前に**、push 前にどのレビューを実行するかを聞く。変更がローカルを離れる前にレビューすることが要点で、実装者とは別モデルでローカル差分を検査し、モックテストでは出ない不具合（認証 / IDOR・DI / SQL・共有スキーマ波及）を拾う。
 
-**Name all three explicitly.** The Review Phase Protocol in `AGENTS.md` gives one subject to each skill — `/impl-review` the change, `/test-review` the tests, `/comment-sweep` the comment stock — and none of them offers to run the others. So this question is the only place all three are visible at once, and listing just one would silently drop the other two from every flow that goes through here. Do NOT auto-run any of them.
+**3 つすべてを明示的に列挙する。** `AGENTS.md` の Review Phase Protocol は 1 スキルに 1 主題を与えており（`/impl-review` は変更そのもの、`/test-review` はテスト、`/comment-sweep` はコメント在庫）、どのスキルも他の実行を提案しない。したがってこの質問が 3 つを一度に見せる唯一の場所であり、1 つしか挙げなければ、ここを通る全ての流れから残り 2 つが黙って落ちる。いずれも自動実行はしない。
 
-Per the same protocol, **estimate each one's return before asking** — which layers the change touched, whether tests or comments moved at all, what an earlier skill in this session already covered — and say which you expect to pay off and which you expect to return nothing. Handing over three unpriced checkboxes is the failure this protocol names.
+同じ Protocol に従い、**聞く前にそれぞれの見込みを見積もる** — どの層に触れたか、テストやコメントが動いたか、このセッションで先行スキルが何を覆ったか。そのうえで、どれが効きそうで、どれが何も返さなそうかを述べる。値付けされていないチェックボックスを 3 つ渡すのは、この Protocol が名指ししている失敗そのものである。
 
 `AskUserQuestion`:
 
-- Question: 「push 前にどのレビューを実行しますか？（それぞれの見込みを添えて提示すること）」
-- Options (multi-select; each carries this run's estimate and its reason):
+- 質問: 「push 前にどのレビューを実行しますか？（それぞれの見込みを添えて提示すること）」
+- 選択肢（複数選択可。各項目にこの実行での見込みと理由を添える）:
   - 「`/impl-review`（変更そのもの — 実装者とは別モデルの独立・敵対レビュー）」
   - 「`/test-review`（テスト — 分岐 × 意味の網羅とシンボル網羅）」
   - 「`/comment-sweep`（コメント在庫 — 触れたファイルをファイル単位で掃引）」
-  - 「実行済み / 不要（このまま進める）」 — continue to Step 2.
-  - 「キャンセル」 — abort.
+  - 「実行済み / 不要（このまま進める）」 — Step 2 へ
+  - 「キャンセル」 — 中止
 
-Selecting any review cancels submit-pr and guides the user to run them, in the order listed.
+レビューを 1 つでも選んだ場合は submit-pr をキャンセルし、列挙した順に実行するよう案内する。
 
-**On any review choice, cancel submit-pr and guide the user to review — do NOT chain a review skill inline and do NOT try to resume this run.** Print:
+**レビューを選んだら submit-pr をキャンセルし、レビューへ案内する — `/impl-review` を inline chain せず、この run を再開しようともしない。** 次を表示する:
 
-> submit-pr をキャンセルします。選択したレビュー（<選ばれたスキル名を列挙>）を実行し、指摘を修正してから `/commit` で確定し、改めて `/submit-pr` を実行してください。（clean tree でないと push できないため、レビュー修正の commit を先に済ませる必要があります。次回はこの Step 1 で「実行済み」を選べばそのまま進みます。）
+> submit-pr をキャンセルします。`/impl-review` を実行し、指摘を修正してから `/commit` で確定し、改めて `/submit-pr` を実行してください。（clean tree でないと push できないため、レビュー修正の commit を先に済ませる必要があります。次回はこの Step 1 で「実行済み」を選べばそのまま進みます。）
 
-Why a clean cancel rather than a pause-and-resume: a local review commonly produces fixes, which must be committed *before* submit-pr can run at all (the clean-tree precondition in Step 0, and the push in Step 6). Since the working tree will change anyway, there is nothing to "resume" — the next `/submit-pr` is a fresh, cheap run that flows straight through once the fixes are committed. Guiding (not inline-chaining) keeps submit-pr free of a review + fix + commit loop it should not own.
+再開ではなくクリーンにキャンセルする理由: ローカルレビューはしばしば修正を生み、その修正は submit-pr が動く前に commit しておく必要がある（Step 0 の clean-tree 前提、Step 6 の push）。 どのみち working tree は変わるので「再開」するものは無く、修正を commit すれば次の `/submit-pr` はフレッシュで安価な run として素通りする。 inline chain せず案内に留めることで、submit-pr が抱えるべきでない review + fix + commit ループを持ち込まない。
 
-**Depth by change type** — scale the recommendation to what the diff touches (this same scaling also drives the post-PR review at Step 9):
+**変更種別による深さ** — diff が触る範囲に応じて推奨をスケールする（このスケールは Step 9 の PR 後レビューにも効く）:
 
-- **Behavior-affecting code** (`internal/**`, `pkg/**` `.go`, SQL, OpenAPI) → recommend the review by default.
-- **Docs / tooling-dominant changes** (`docs/**`, `*.md`, `.claude/**`, `AGENTS.md`, CI config — no production behavior change) → note the lower ROI so the user can decline quickly; still ask.
+- **振る舞いに影響するコード**（`internal/**`・`pkg/**` の `.go`・SQL・OpenAPI）→ 既定でレビューを推奨。
+- **ドキュメント / ツール主体の変更**（`docs/**`・`*.md`・`.claude/**`・`AGENTS.md`・CI 設定 — 本番挙動の変更なし）→ ROI が低い旨を伝え、素早く見送れるようにする（それでも尋ねる）。
 
-Judge the dominant nature of the diff (changed paths / commit prefixes) for the default recommendation, but the user's choice always wins.
+diff の主たる性質（変更パス / commit prefix）で既定の推奨を判断するが、ユーザーの選択が常に優先。
 
-## Step 2. Detect Existing PR and Base Branch
+## Step 2. 既存 PR とベースブランチの検出
 
 ```sh
 gh pr view --json number,state,baseRefName,headRefName,url,title,body 2>/dev/null
 make -s base-branch
 ```
 
-Branch on the result:
+結果に応じて分岐する。
 
-- **PR exists and state is `OPEN`** → "update" path. Base branch is fixed (`baseRefName` from the result). The PR's own base is what the pull request is already merging into; nothing may re-resolve it.
-- **PR exists but state is `MERGED` / `CLOSED`** → ask the user via `AskUserQuestion`:
-  - Question: 「このブランチには `<state>` 状態の PR #N があります。新規 PR を作成しますか？」
-  - Options: 「新規 PR を作成する」 / 「キャンセル」
-- **No PR exists** → "create" path. The base is the branch `make base-branch` resolves: the latest release line, read from `origin`'s live state. Do not use `gh repo view --json defaultBranchRef` — the GitHub default branch lags behind the active release line, and a PR opened against it targets a generation-old base.
+- **PR が存在し state が `OPEN`** → "update" 経路。ベースブランチは固定（結果の `baseRefName`）。PR の base は既にその PR がマージ先にしているブランチであり、何かが再解決してよいものではない。
+- **PR が存在するが state が `MERGED` / `CLOSED`** → `AskUserQuestion` でユーザーに確認:
+  - 質問: 「このブランチには `<state>` 状態の PR #N があります。新規 PR を作成しますか？」
+  - 選択肢: 「新規 PR を作成する」 / 「キャンセル」
+- **PR が存在しない** → "create" 経路。ベースは `make base-branch` が解決するブランチ、すなわち `origin` の実状態から読んだ最新のリリースライン。`gh repo view --json defaultBranchRef` は使わない。GitHub のデフォルトブランチは現行のリリースラインより遅れており、そこへ向けて PR を作ると 1 世代前のベースを対象にしてしまう。
 
-If `make base-branch` fails, stop and report it rather than guessing a base; opening a pull request against the wrong branch is not something the user can undo by editing the PR.
+`make base-branch` が失敗した場合は、ベースを推測せず報告して止める。間違ったブランチへ PR を作ってしまうと、PR を編集して取り消せる種類の失敗ではない。
 
-For the "create" path, confirm the resolved base via `AskUserQuestion` — a backport or a deliberate hotfix target is the case the resolver cannot know about:
+"create" 経路では、解決したベースを `AskUserQuestion` で確認する。backport や意図的な hotfix 対象は、解決器が知りようのないケースだからである:
 
-- Question: 「ベースブランチをこれで作成しますか？」
-- Options: 「`<resolved-base>` を使う」 / 「別のブランチを指定する」
+- 質問: 「ベースブランチをこれで作成しますか？」
+- 選択肢: 「`<resolved-base>` を使う」 / 「別のブランチを指定する」
 
-Special early-exit cases:
+早期終了の特殊ケース:
 
-- "update" path with 0 unpushed commits → tell the user there is nothing to push and stop. Print the existing PR URL.
-- "create" path with 0 unpushed commits but the remote branch exists → continue to Step 3 (we will create a PR for whatever is already on the remote).
+- "update" 経路で未 push コミットが 0 件 → push する必要が無い旨を伝えて終了。既存 PR の URL を表示する。
+- "create" 経路で未 push コミットが 0 件だがリモートブランチは存在 → Step 3 へ進む（リモートに既にある内容で PR を作成する）。
 
-## Step 3. Gather Context and Read Template
+## Step 3. コンテキスト収集とテンプレート読み込み
 
-Collect the inputs needed to compose title and body. `<base>` is the base branch decided in Step 2.
+タイトル・本文を組み立てるための入力を収集する。`<base>` は Step 2 で確定したベースブランチ。
 
 ```sh
-git log <base>..HEAD --pretty=format:'%h %s'                # commit titles
-git log <base>..HEAD --pretty=format:'%h%n%s%n%b%n---'      # commit titles + bodies
-git diff <base>...HEAD --shortstat                          # diff summary
-git diff <base>...HEAD --name-only                          # changed files
+git log <base>..HEAD --pretty=format:'%h %s'                # コミットタイトル
+git log <base>..HEAD --pretty=format:'%h%n%s%n%b%n---'      # コミットタイトル + 本文
+git diff <base>...HEAD --shortstat                          # diff サマリ
+git diff <base>...HEAD --name-only                          # 変更ファイル
 ```
 
-Read `.github/pull_request_template.md` and identify sections by `#` / `##` headers. The current template defines:
+`.github/pull_request_template.md` を読み、`#` / `##` ヘッダでセクションを識別する。現行テンプレートは以下のセクションを持つ。
 
 - `# 概要`
 - `## 変更内容`
 - `## 動作確認方法`
 
-Strip the HTML comment placeholders. If the template is absent, fall back to the same three-section structure inline.
+HTML コメントのプレースホルダーは取り除く。テンプレートが存在しない場合は、同じ 3 セクション構成をインラインのフォールバックとして使う。
 
-## Step 4. Compose Title and Body
+## Step 4. タイトルと本文の生成
 
-### Title
+### タイトル
 
-- Derive from the most significant change. Single-commit PR → use that commit's title (strip the leading `<Prefix>:` only if redundant). Multi-commit PR → summarize the overall intent in Japanese.
-- ≤ 70 characters.
-- If the branch name embeds an issue number (`feature/1234-...`, `bugfix/5678-...`), include `#1234` in the title naturally.
-- For the "update" path: keep the existing PR title unchanged unless the user explicitly asks to change it.
+- 最も大きい変更から導出する。単一コミットの PR ならそのコミットタイトルを使う（冗長な場合のみ先頭の `<Prefix>:` を外す）。複数コミットなら全体の意図を日本語で要約する。
+- 70 文字以内。
+- ブランチ名に issue 番号が埋め込まれている場合（`feature/1234-...`、`bugfix/5678-...`）、`#1234` を自然な形でタイトルに含める。
+- "update" 経路では、ユーザーから明示的な指示がない限り既存タイトルを変更しない。
 
-### Body
+### 本文
 
-Fill each template section in Japanese:
+テンプレートの各セクションを日本語で埋める。
 
-- **概要**: 1–3 sentences summarizing the PR's intent. Use commit messages as the primary source.
-- **変更内容**: Bullet list grouped by area (API / DB / 内部ロジック / テスト / ドキュメント など). Reference changed files and commit titles. Group meaningfully — do not paste a raw file list.
-- **動作確認方法**: Concrete verification steps. Adapt to what actually changed: `make serve` + curl for API changes, `make db-local-migrate-up` for migrations, `make test` for logic, etc.
+- **概要**: PR の意図を 1〜3 文で要約。主にコミットメッセージから抽出する。
+- **変更内容**: 領域別の箇条書き（API / DB / 内部ロジック / テスト / ドキュメント など）。変更ファイルとコミットタイトルを参照する。生のファイル一覧の貼り付けは避け、意味のある粒度でまとめる。
+- **動作確認方法**: 具体的な確認手順。実際の変更内容に合わせて適応する（API 変更なら `make serve` + curl、マイグレーションなら `make db-local-migrate-up`、ロジックなら `make test` など）。
 
-If the branch name encodes an issue number, append `closes #N` at the bottom of the body (or fold it into 概要 if natural).
+ブランチ名から issue 番号が拾えれば、本文末尾に `closes #N` を追加する（自然なら 概要 に折り込んでも可）。
 
-## Step 5. Confirm with the User
+## Step 5. ユーザー確認
 
-The pre-push impl-review decision was already made at **Step 1** (Phase 0) — do not re-ask it here.
+push 前のローカルレビュー可否は **Step 1（Phase 0）** で既に確認済み — ここでは再度尋ねない。
 
-Display the resolved title, base branch, push command, and full body.
+確定したタイトル、ベースブランチ、push コマンド、本文全文を表示する。
 
-### Create path
+### Create 経路
 
 `AskUserQuestion`:
 
-- Question: 「以下の内容で PR を作成しますか？」
-- Options:
+- 質問: 「以下の内容で PR を作成しますか？」
+- 選択肢:
   - 「この内容で作成する」
   - 「draft で作成する」
   - 「title / body を修正したい」
   - 「キャンセル」
 
-If the user chooses "修正したい", collect free-text feedback, regenerate the relevant section, and re-confirm.
+「修正したい」が選ばれた場合、自由記述のフィードバックを収集し、該当セクションを再生成して再確認する。
 
-### Update path
+### Update 経路
 
-Display the unpushed commit list and diff summary. Then ask with the wording required by `CLAUDE.md`:
+未 push コミット一覧と diff サマリを表示してから、`CLAUDE.md` で指定された文面で確認する。
 
-- Question: 「変更はローカルにコミット済みです。これらの変更をプルリクエストにプッシュしますか？」
-- Options: 「push する」 / 「キャンセル」
+- 質問: 「変更はローカルにコミット済みです。これらの変更をプルリクエストにプッシュしますか？」
+- 選択肢: 「push する」 / 「キャンセル」
 
-## Step 6. Push
+## Step 6. push
 
 ```sh
-# First push (no upstream)
+# 初回 push (upstream 未設定)
 git push -u origin <branch>
 
-# Subsequent push
+# 2 回目以降
 git push
 ```
 
-A branch cut from `origin/release/*` (the merged-PR recovery flow in `commit`) has its upstream pointing at that **protected** base, so a bare `git push` would target the protected branch. Always do the first push with the explicit refspec `git push -u origin <branch>` to repoint the upstream at the feature branch; only after that is a bare `git push` safe.
+`origin/release/*` から切ったブランチ（`commit` のマージ済み PR 復旧フロー）は upstream が**保護**ベースを指すため、素の `git push` は保護ブランチを対象にしてしまう。初回は必ず明示 refspec `git push -u origin <branch>` で upstream をフィーチャーブランチへ張り直す。それ以降のみ素の `git push` が安全。
 
-Never use `--force` or `--force-with-lease` unless the user has explicitly requested it.
+ユーザーから明示指示がない限り `--force` / `--force-with-lease` は使わない。
 
-On push failure (non-fast-forward, permission denied, network error, etc.), report the error verbatim to the user and stop. Do not attempt automatic recovery.
+push が失敗（non-fast-forward、権限エラー、ネットワークエラー等）した場合は、エラー内容をそのままユーザーに伝えて停止する。自動復旧は試みない。
 
-### The pre-push hook sizes itself — do not pre-empt it
+### pre-push フックは自分で規模を決める — 先回りしない
 
-`pre-push` runs the heavy Go gates through `make gate-go-push`, and `.makefiles/load.mk` decides from the number of open worktrees whether they run at full speed, throttled, or are deferred to CI (`repo-ops` §21; `make load-status` reports the band). Let the hook make that call.
+`pre-push` は重い Go ゲートを `make gate-go-push` 経由で走らせ、`.makefiles/load.mk` が開いている worktree の数から「全開・絞る・CI へ委譲」のどれかを決める（`repo-ops` §21、現在の帯は `make load-status`）。その判断はフックに任せる。
 
-Do **not** run `make lint` / `make test` by hand before pushing to "make sure" — with several windows open that is minutes of saturated host to rediscover what CI runs identically, and the saturation itself makes unrelated gates fail. Pushing *is* the verification step in the `ci-first` band. If the hook fails for a reason outside this change, `repo-ops` §11 covers the `--no-verify` carve-out.
+push 前に「念のため」`make lint` / `make test` を手で回さないこと。窓が複数開いている状態では、CI が同一に再実行する内容を再発見するために飽和したホストを数分間占有するだけであり、その飽和自体が無関係なゲートを落とす。`ci-first` の帯では **push そのものが検証ステップである**。自分の変更と無関係な理由でフックが落ちた場合の `--no-verify` の扱いは `repo-ops` §11 が持つ。
 
-When the band deferred gates to CI, say so in Step 8's report and treat the PR as unverified until its checks land — do not describe it as passing local verification it never ran.
+帯がゲートを CI へ委譲した場合は Step 8 のレポートにその旨を書き、チェックが揃うまで PR は未検証として扱う。実行していないローカル検証を通ったかのように書かないこと。
 
-## Step 7. Create or Update the PR
+## Step 7. PR の作成 / 更新
 
-Stamp the phase as soon as the PR exists. GitHub records a creation time too, but the two answer
-different questions and the join to it holds only about two thirds of the time:
+PR が存在した時点で打刻する。GitHub も作成時刻を持つが、両者は別の問いに答えており、そちらへの
+結合は 3 分の 2 程度しか成立しない。
 
 ```sh
 .agents/closed-loop/marks.sh prOpenedAt 2>/dev/null || true
 ```
 
-### Create the PR
+### PR を作成する
 
 ```sh
 gh pr create \
@@ -216,11 +214,11 @@ EOF
 )" [--draft]
 ```
 
-### Update the PR
+### PR を更新する
 
-Step 6's push already updated the PR's diff. Do NOT touch the PR's title or body by default.
+Step 6 の push で既に PR の diff は更新されている。デフォルトでは PR のタイトル・本文には触れない。
 
-Only if the user explicitly asked to update them, run:
+ユーザーから明示的に更新指示があった場合のみ、以下を実行する。
 
 ```sh
 gh pr edit <number> [--title "<new-title>"] [--body "$(cat <<'EOF'
@@ -229,11 +227,11 @@ EOF
 )"]
 ```
 
-## Step 8. Report
+## Step 8. 結果報告
 
-Print the PR URL and a brief summary in Japanese. Run `make -s load-status`. When its resolved band is `ci-first`, the heavy gates were delegated by the push hook, so wait for their CI result with `gh pr checks --watch` and include the final check status in this report. If checks fail, report the failure and do not describe the PR as verified. Do not wait for CI in `full` or `low`: this step follows delegated verification, not every CI-only check.
+PR の URL と簡単な要約を日本語で表示する。`make -s load-status` を実行する。解決された帯が `ci-first` の場合、push フックが重いゲートを CI へ委譲しているため、`gh pr checks --watch` で CI 結果を待ち、最終ステータスをこの報告へ含める。チェックが失敗したら失敗を報告し、PR を検証済みとして扱わない。`full` / `low` では CI を待たない。この手順は全 CI 専用チェックを待つためではなく、委譲した検証を追従するためのものである。
 
-For the create path:
+Create 経路:
 
 ```text
 PR を作成しました: <url>
@@ -243,7 +241,7 @@ PR を作成しました: <url>
 CI 委譲: <なし / ci-first。gh pr checks の最終結果>
 ```
 
-For the update path:
+Update 経路:
 
 ```text
 PR を更新しました: <url>
@@ -251,44 +249,44 @@ PR を更新しました: <url>
 CI 委譲: <なし / ci-first。gh pr checks の最終結果>
 ```
 
-## Step 9. Post-PR Review (confirm)
+## Step 9. PR 後レビュー（確認）
 
-After the PR URL is reported, **always ask the user whether to run a PR-based review** — do not skip this, and do not auto-run a review. These are the reviews that need the PR to exist (pre-push `/impl-review` was already offered at Step 1). Use `AskUserQuestion`:
+PR の URL を報告したら、**必ず PR ベースのレビュー実行可否をユーザーに確認する**（スキップしない／自動実行しない）。 ここで扱うのは PR が存在して初めて可能なレビュー（push 前 `/impl-review` は Step 1 で提示済み）。 `AskUserQuestion` を使う:
 
-- Question: 「PR を作成/更新しました。コードレビューを実行しますか？」
-- Options (offer the ones that apply):
-  - 「`/code-review <PR#>` を実行」 — PR-based review (can post inline comments with `--comment`)
-  - 「ultrareview を案内」 — cloud multi-agent review; **user-triggered and billed**, so the skill cannot launch it — only surface the command for the user to run
-  - 「`/impl-review` / `/test-review` / `/comment-sweep` を実行」 — offer these only if the user skipped the pre-push gate at Step 1; list all three the way Step 1 does, each with its estimate, since they are peers and none of them will surface the others
+- 質問: 「PR を作成/更新しました。コードレビューを実行しますか？」
+- 選択肢（該当するものを提示）:
+  - 「`/code-review <PR#>` を実行」 — PR ベースのレビュー（`--comment` でインラインコメント可）
+  - 「ultrareview を案内」 — クラウド多エージェントレビュー。**ユーザー起動・課金**のためスキルからは起動できず、コマンドの案内のみ
+  - 「`/impl-review` / `/test-review` / `/comment-sweep` を実行」 — Step 1 の push 前ゲートを見送った場合のみ提示。Step 1 と同じく 3 つすべてを見込みを添えて列挙する。対等な別スキルであり、どれも他を提示しないため
   - 「レビューしない」
 
-Scale the default recommendation to what changed, using the **Depth by change type** guidance in Step 1 (behavior-affecting code → recommend by default; docs / tooling-dominant → note the lower ROI). The user's choice always wins.
+既定の推奨は変更内容に応じてスケールする。 Step 1 の **変更種別による深さ** ガイダンスに従う（挙動に影響するコード → 既定で推奨 / ドキュメント・ツール主体 → ROI 低を添える）。 最終判断は常にユーザーが優先。
 
-## Constraints
+## 制約
 
-- ❌ Push to protected branches (`production` / `develop` / `staging` / `release/*`)
-- ❌ `git push --force` / `--force-with-lease` (only with explicit user instruction)
-- ❌ Auto-update an existing PR's title or body (only on explicit user request)
-- ❌ Push while the working tree has uncommitted changes
-- ❌ Create a PR without user confirmation
-- ❌ Push to an existing PR branch without re-confirming with the exact wording required by `CLAUDE.md`
-- ✅ Use `.github/pull_request_template.md` as the body skeleton
-- ✅ Japanese title and body
-- ✅ HEREDOC for the body when calling `gh pr create` / `gh pr edit`
-- ✅ Detect issue number from branch name and surface it in title / body
+- ❌ 保護ブランチ（`production` / `develop` / `staging` / `release/*`）への push
+- ❌ `git push --force` / `--force-with-lease`（ユーザーから明示指示があった場合のみ可）
+- ❌ 既存 PR のタイトル・本文の自動更新（明示指示があった場合のみ可）
+- ❌ working tree に未コミット変更があるまま push する
+- ❌ ユーザー確認なしで PR を作成する
+- ❌ 既存 PR ブランチへの push を、`CLAUDE.md` 指定の文面で再確認せずに実行する
+- ✅ `.github/pull_request_template.md` を本文のひな型として使う
+- ✅ タイトル・本文は日本語
+- ✅ `gh pr create` / `gh pr edit` の body は HEREDOC で渡す
+- ✅ ブランチ名から issue 番号を検出してタイトル / 本文に反映する
 
-## Checklist
+## チェックリスト
 
-Before reporting completion, confirm:
+完了報告の前に以下を確認する。
 
-- [ ] Current branch is not a protected branch
-- [ ] (必須) Phase 0 (Step 1) で push 前 `/impl-review` の実行可否を確認した（レビューを選んだら submit-pr はキャンセルし、review→fix→commit→再実行へ案内）
-- [ ] Working tree was clean before the push
-- [ ] `gh auth status` passed
-- [ ] PR template was read and reflected in the body
-- [ ] Title and body are Japanese
-- [ ] Title ≤ 70 characters
-- [ ] User confirmation was obtained before the push (mandatory for update path per `CLAUDE.md`)
-- [ ] PR URL was reported to the user
+- [ ] 現在のブランチが保護ブランチではない
+- [ ] (必須) Phase 0（Step 1）で push 前 `/impl-review` の実行可否を確認した（レビューを選んだら submit-pr はキャンセルし、review→fix→commit→再実行へ案内）
+- [ ] push 前の working tree がクリーンだった
+- [ ] `gh auth status` が成功した
+- [ ] PR テンプレートを読み、本文に反映した
+- [ ] タイトル・本文が日本語である
+- [ ] タイトルが 70 文字以内である
+- [ ] push 前にユーザー確認を取得した（update 経路では `CLAUDE.md` 規定文面で必須）
+- [ ] PR URL をユーザーに伝えた
 - [ ] (必須) PR 作成/更新後に PR ベースのレビュー実行可否を確認した（深さは変更種別でスケール）
-- [ ] No `--force` was used
+- [ ] `--force` 系を使っていない

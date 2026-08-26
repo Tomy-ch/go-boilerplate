@@ -1,73 +1,69 @@
-# Tutorial: Build the User Feature From Zero
+# チュートリアル: User 機能をゼロから作る
 
-This tutorial walks you through building a complete onion-architecture feature — the
-sample **User** API — starting from an empty slate. It is the *worked example* companion
-to the reference docs: where [`architecture.md`](../architecture.md) and
-[`rules.md`](../rules.md) describe the rules, this document threads a single feature
-through every layer in dependency order and explains **why each step happens when it
-does**.
+このチュートリアルは、完全なオニオンアーキテクチャの機能 —— サンプルの **User** API —— を、
+まっさらな状態から構築する手順を一気通貫で辿る。これはリファレンス文書に対する *実践例
+（worked example）* の対であり、[`architecture.md`](../architecture.md) や
+[`rules.md`](../rules.md) が「ルール」を述べるのに対し、本書は 1 つの機能を依存順に全レイヤー
+へ通し、**各ステップがなぜその順番で起きるのか** を説明する。
 
-It is deliberately reproducible on a real checkout: the repository ships a script that
-deletes the entire User feature, so you can return to zero and rebuild it yourself.
+実チェックアウト上で再現できるよう意図的に設計してある。リポジトリには User 機能を丸ごと削除する
+スクリプトが同梱されているため、ゼロへ戻して自分で再構築できる。
 
-## Who this is for
+## 対象読者
 
-- Newcomers who want one continuous path through the codebase instead of layer-by-layer
-  reference docs.
-- Anyone who needs to see **what the scaffold skills actually do** — this document is the
-  ground truth they encode, and the place to look when a generated result has to be judged.
-- Anyone operating without the `.claude/` scaffold skills, who therefore performs the
-  procedure by hand.
+- レイヤー別のリファレンス文書ではなく、コードベースを通す 1 本の連続した道筋がほしい新規参入者。
+- scaffold スキルが **実際に何をしているのか** を知る必要がある人。本書はスキルが内部に符号化して
+  いる正典であり、生成結果の妥当性を判断するときに見る場所である。
+- `.claude/` の scaffold スキルを持たず、手作業で手順を実行する人。
 
-> The standard path is not to type this out. The automated equivalent of the whole tutorial is
-> `/scaffold-endpoint user` (see [Where to go next](#where-to-go-next)); read this once so you
-> can tell whether what it produced is right.
+> 標準経路はこれを打ち込むことではない。チュートリアル全体の自動版は `/scaffold-endpoint user` で
+> ある（[次に進む先](#次に進む先) を参照）。生成されたものが正しいか判断できるよう、本書は一度
+> 読んでおく。
 
-## What you will build
+## 何を作るか
 
-The full-stack User sample: an aggregate with invariants, a repository + read-optimized
-query service, an application service, four HTTP endpoints, a CLI job, and the HTTP-boundary
-integration tests — plus the OpenAPI and SQL **contracts** they are generated from.
+フルスタックの User サンプル: 不変条件を持つ集約、リポジトリ + 読み取り最適化されたクエリサービス、
+アプリケーションサービス、4 つの HTTP エンドポイント、CLI ジョブ、そして HTTP 境界の結合テスト ——
+さらにそれらが生成元とする OpenAPI と SQL の **契約**。
 
-## The constitution: lean A
+## 憲法: lean A
 
-This repository follows a **lean A** spec policy. Only two layers are spec-driven:
+本リポジトリは **lean A** の spec 方針に従う。spec 駆動になるのは 2 レイヤーのみ:
 
-|Layer|Source of truth|
+|レイヤー|真実の源|
 |---|---|
 |domain|`docs/spec/<feature>/domain.md`|
 |usecase|`docs/spec/<feature>/usecase.md`|
-|infrastructure|**derived** from the domain Repository interface + sqlc gen (no spec file)|
-|controller|**derived** from the OpenAPI-generated `ServerInterface` + usecase interface (no spec file)|
+|infrastructure|domain の Repository インターフェース + sqlc gen から **導出**（spec ファイルなし）|
+|controller|OpenAPI 生成の `ServerInterface` + usecase インターフェースから **導出**（spec ファイルなし）|
 
-So you write specs for the *inner* two layers and let the *outer* two layers follow from
-generated contracts. Keep this in mind — it explains why Step 1 only produces two spec files.
+つまり *内側* の 2 レイヤーには spec を書き、*外側* の 2 レイヤーは生成された契約から従わせる。これを
+覚えておくこと —— Step 1 が spec ファイルを 2 つしか作らない理由がこれである。
 
-## Dependency order
+## 依存順
 
-Dependencies always point inward, but you *build* contracts-first so generators have
-something to consume:
+依存は常に内側を向くが、ジェネレーターに消費対象を与えるため **契約を先に** 作る:
 
 ```text
 spec (domain + usecase)
    └─ contracts:  OpenAPI  +  DB migration  +  DML SQL
         └─ generate:  make gen-api   make gen-query
              └─ domain  →  infrastructure  →  usecase  →  controller
-                  └─ DI wiring  →  integration tests  →  verify
+                  └─ DI 配線  →  結合テスト  →  検証
 ```
 
-Each step below states its **goal**, the **files it touches**, the **convention that makes
-it correct** (the "why"), and the **command that proves it**.
+以下の各ステップは、その **目的**、**触るファイル**、**それを正しくする規約**（「なぜ」）、そして
+**それを証明するコマンド** を示す。
 
 ---
 
-## Prerequisites
+## 前提条件
 
-- Toolchain bootstrapped (`mise`), Docker available — the code generators and the DB run in
-  containers. See the root [`README.md`](../../README.md) Quick Start.
-- The DB container (`database`) running. `make gen-query` dumps the **live** schema, and the
-  infra/integration tests need a real database.
-- Do this on a **scratch branch** so the reference implementation is one `git restore` away:
+- ツールチェーンが用意済み（`mise`）で Docker が使えること —— コードジェネレーターと DB はコンテナで
+  動く。ルートの [`README.md`](../../README.md) の Quick Start を参照。
+- DB コンテナ（`database`）が起動していること。`make gen-query` は **ライブ** スキーマをダンプし、
+  infra/結合テストは実 DB を必要とする。
+- 参照実装を `git restore` 一発で戻せるよう、**作業用ブランチ** で行うこと:
 
 ```bash
 git switch -c tutorial/build-user
@@ -75,116 +71,111 @@ git switch -c tutorial/build-user
 
 ---
 
-## Step 0 — Reset to zero
+## Step 0 —— ゼロへリセット
 
-The repository declares every file that constitutes the sample in
-[`scripts/setup/remove-sample-api/sample-manifest.ts`](../../scripts/setup/remove-sample-api/sample-manifest.ts). One command
-deletes them and strips the `sample-api` marker blocks out of the shared DI modules and
-`openapi.yaml`, then regenerates and verifies the now-smaller tree:
+リポジトリは、サンプルを構成する全ファイルを
+[`scripts/setup/remove-sample-api/sample-manifest.ts`](../../scripts/setup/remove-sample-api/sample-manifest.ts) に宣言している。
+1 つのコマンドがそれらを削除し、共有 DI モジュールと `openapi.yaml` から `sample-api` マーカーブロックを
+取り除いたうえで、小さくなったツリーを再生成・検証する:
 
 ```bash
-# Preview first — lists every path that would be deleted, writes nothing.
+# まずプレビュー —— 削除されるパスを列挙し、何も書き込まない。
 DRY_RUN=1 make setup-remove-sample-api
 
-# Actually reset. Runs gen-api → gen-query → fix → lint afterwards.
+# 実際にリセット。完了後に gen-api → gen-query → fix → lint を実行する。
 make setup-remove-sample-api
 ```
 
-**What it removes** (the manifest is your table of contents for the rest of this tutorial):
-`internal/domain/user`, `internal/usecase/user`, the infra package under
-`repository/user`, `internal/controller/handler/v1/users`,
-`internal/controller/job/usercount`, the three `internal/integration/v1_users*_test.go`
-files, the User OpenAPI paths/components, the User DML + migrations + seed, and
-`docs/spec/user`.
+**何を削除するか**（このマニフェストが本チュートリアル残り全体の目次になる）:
+`internal/domain/user`、`internal/usecase/user`、`repository/user` 配下の infra パッケージ、`internal/controller/handler/v1/users`、`internal/controller/job/usercount`、
+3 つの `internal/integration/v1_users*_test.go`、User の OpenAPI paths/components、User の DML +
+migration + seed、そして `docs/spec/user`。
 
-> **Caveat:** the script also removes the `product` / `order` DB stubs (they share the
-> "sample" manifest). That is fine for a User-only rebuild — they are unused migrations — but
-> be aware the reset is "all samples," not "user only."
+> **注意:** このスクリプトは `product` / `order` の DB スタブも削除する（同じ「サンプル」マニフェスト
+> を共有しているため）。User のみの再構築ではこれで問題ない —— それらは未使用のマイグレーションである
+> —— が、リセットは「全サンプル」であって「user のみ」ではない点に注意。
 
-Because `gen-query` dumps the live schema, drop the now-removed `users` table from your dev
-and test databases so it does not linger in generated models, then regenerate:
+`gen-query` はライブスキーマをダンプするため、削除済みの `users` テーブルが生成モデルに残らないよう、
+開発用とテスト用の DB から落としてから再生成する:
 
 ```bash
 make db-init-local db-init-test
 make gen-query
 ```
 
-At this point the tree compiles and lints **without** the User feature. That is your zero
-state. Everything below rebuilds it.
+この時点でツリーは User 機能 **なし** でコンパイル・lint が通る。これがゼロ状態である。以下はすべて
+これを再構築する。
 
 ---
 
-## Step 1 — Specs (the inner contract)
+## Step 1 —— spec（内側の契約）
 
-**Goal:** declare the domain aggregate and the application service in the two lean-A spec
-files. These are the human-authored intent the inner layers will implement.
+**目的:** lean A の 2 つの spec ファイルに、ドメイン集約とアプリケーションサービスを宣言する。これらは
+内側のレイヤーが実装する、人間が書いた意図である。
 
-**Files:**
+**ファイル:**
 
-- `docs/spec/user/domain.md` — Overview / Entity / Cross-field Invariants / Behavior
-  Methods / Value Objects / Repository Methods.
-- `docs/spec/user/usecase.md` — Overview / Interface / DTOs / Dependencies / Workflow.
-- `docs/spec/user-search/usecase.md` — the read-only keyword-search service (its own spec
-  because it is a separate query-side use case).
+- `docs/spec/user/domain.md` —— Overview / Entity / Cross-field Invariants / Behavior
+  Methods / Value Objects / Repository Methods。
+- `docs/spec/user/usecase.md` —— Overview / Interface / DTOs / Dependencies / Workflow。
+- `docs/spec/user-search/usecase.md` —— 読み取り専用のキーワード検索サービス（クエリ側の別ユース
+  ケースなので独自の spec を持つ）。
 
-**Why first:** in lean A the domain and usecase implementations are validated against these
-specs (`/verify-spec`), and the spec's Entity field table is the soft contract checked
-against the SQL migration. Writing them first gives every later step a target. The Entity
-section, for example, fixes that `prefectureID` is held as an ID reference only. The `User`
-aggregate holds no credential of its own: authentication is delegated to an external OIDC
-provider, and the mapping from a token's `(issuer, subject)` to an internal user is owned by
-the separate `user_identities` table (see [`docs/design/auth.md`](../design/auth.md)).
+**なぜ最初か:** lean A では domain と usecase の実装はこれらの spec に対して検証され（`/verify-spec`）、
+spec の Entity フィールド表は SQL マイグレーションに対して照合されるソフト契約である。これらを最初に
+書くことで、以降の全ステップに目標が与えられる。例えば Entity セクションは、`prefectureID` を ID 参照
+としてのみ保持することを固定する。`User` 集約は自前のクレデンシャルを一切持たない: 認証は外部の OIDC
+provider に委譲され、トークンの `(issuer, subject)` から内部ユーザーへの対応は別テーブル
+`user_identities` が所有する（[`docs/design/auth.md`](../design/auth.md) を参照）。
 
-**Verify:** none yet (Markdown). If you have the skills, `/verify-spec user` checks format +
-cross-references.
+**検証:** まだなし（Markdown）。スキルがあれば `/verify-spec user` が形式 + 相互参照を確認する。
 
 ---
 
-## Step 2 — Contracts (OpenAPI + database)
+## Step 2 —— 契約（OpenAPI + データベース）
 
-**Goal:** define the outer contracts that the generators turn into Go. Nothing in
-`internal/` is written by hand for these — you write YAML and SQL.
+**目的:** ジェネレーターが Go へ変換する外側の契約を定義する。これらについて `internal/` 内に手書きする
+ものは何もない —— YAML と SQL を書く。
 
 ### 2a. OpenAPI
 
-**Files:**
+**ファイル:**
 
-- `openapi/paths/v1/users.yaml` (list + create), `openapi/paths/v1/users/userId.yaml`
-  (get/put/patch/delete), `openapi/paths/v1/users/me.yaml` (authenticated self-retrieval),
-  `openapi/paths/v1/users/search.yaml`, `openapi/paths/v1/users/feed.yaml`.
-- `openapi/components/schemas/{UserBaseInputRequest,UserResponse}.yaml`, plus the
-  `requests/`, `responses/`, and `parameters/` fragments for users and search.
-- `openapi/openapi.yaml` — the root document that `$ref`s the above. The sample entries here
-  live inside `# sample-api:begin … # sample-api:end` marker blocks under `paths`,
-  `components.parameters`, and `components.schemas`.
+- `openapi/paths/v1/users.yaml`（一覧 + 作成）、`openapi/paths/v1/users/userId.yaml`
+  （取得/更新/部分更新/削除）、`openapi/paths/v1/users/me.yaml`（認証済み自己取得）、
+  `openapi/paths/v1/users/search.yaml`、`openapi/paths/v1/users/feed.yaml`。
+- `openapi/components/schemas/{UserBaseInputRequest,UserResponse}.yaml`、加えて users と search 向けの
+  `requests/`・`responses/`・`parameters/` 断片。
+- `openapi/openapi.yaml` —— 上記を `$ref` するルート文書。ここのサンプルエントリは `paths`・
+  `components.parameters`・`components.schemas` の下で `# sample-api:begin … # sample-api:end`
+  マーカーブロックに収められている。
 
-**Why:** **OpenAPI-first is non-negotiable** (`rules.md`). The handler interface, request,
-and response types are *generated* from this; you may not hand-write a handler for an
-endpoint that has no contract. Each `operationId` (`GetUsers`, `PostUsers`, `GetUsersSearch`,
-…) becomes one method on the generated `ServerInterface`.
+**なぜ:** **OpenAPI-first は譲れない**（`rules.md`）。ハンドラーのインターフェース、リクエスト、
+レスポンス型はここから *生成* される。契約のないエンドポイントにハンドラーを手書きしてはならない。
+各 `operationId`（`GetUsers`、`PostUsers`、`GetUsersSearch` …）は生成される `ServerInterface` の
+1 メソッドになる。
 
-### 2b. Database
+### 2b. データベース
 
-**Files:**
+**ファイル:**
 
-- `database/migrations/000004_create_users.up.sql` / `.down.sql` — the `users` table
-  (`id` UUID PK, `email` UNIQUE, `prefecture_id` FK, address columns, `created_at` /
-  `updated_at` / `deleted_at` for soft delete).
-- `database/migrations/000017_add_users_table_search_text_column.up.sql` / `.down.sql` — a
-  `GENERATED ALWAYS` `search_text` column + a GIN trigram index for keyword search.
-- `database/dml/repository/user/*.sql` — the aggregate's CRUD queries
-  (`insert_user`, `select_user_by_id`, `select_users`, `update_user`, `count_user`) and its
-  keyword search (`select_users_by_keyword`, `count_users_by_keyword`). User keeps both on the
-  Repository rather than splitting a QueryService — the read side returns entities, not a
-  separate projection.
-- `database/seed/000001_users.sql` — sample rows (including a soft-deleted one).
+- `database/migrations/000004_create_users.up.sql` / `.down.sql` —— `users` テーブル
+  （`id` UUID PK、`email` UNIQUE、`prefecture_id` FK、住所カラム、論理削除用の `created_at` /
+  `updated_at` / `deleted_at`）。
+- `database/migrations/000017_add_users_table_search_text_column.up.sql` / `.down.sql` ——
+  `GENERATED ALWAYS` の `search_text` カラム + キーワード検索用の GIN トライグラム索引。
+- `database/dml/repository/user/*.sql` —— 集約の CRUD クエリ
+  （`insert_user`、`select_user_by_id`、`select_users`、`update_user`、`count_user`）と
+  キーワード検索（`select_users_by_keyword`、`count_users_by_keyword`）。User は QueryService を
+  分離せず Repository に両方を持たせており、読み取り側も射影ではなくエンティティを返す。
+- `database/seed/000001_users.sql` —— サンプル行（論理削除済みの 1 件を含む）。
 
-**Why:** **migrations are append-only** — never edit an existing migration; add a new
-numbered `NNNNNN_name.up.sql` / `.down.sql` pair. The DML files are the input to sqlc; they
-are split by responsibility (repository = aggregate persistence, query_service =
-read/projection) because that split is mirrored all the way up the stack.
+**なぜ:** **マイグレーションは追記専用** —— 既存のマイグレーションを編集してはならない。新しい連番の
+`NNNNNN_name.up.sql` / `.down.sql` のペアを追加する。DML ファイルは sqlc の入力であり、責務で分割
+される（repository = 集約の永続化、query_service = 読み取り/投影）。この分割はスタックの上まで一貫して
+反映される。
 
-**Verify:** apply the migrations to your dev/test DBs:
+**検証:** マイグレーションを開発/テスト DB へ適用する:
 
 ```bash
 make db-local-migrate-up
@@ -193,60 +184,57 @@ make db-test-migrate-up
 
 ---
 
-## Step 3 — Generate
+## Step 3 —— 生成
 
-**Goal:** turn the contracts into Go. This is the boundary between "what you write" and
-"what you must never edit by hand."
+**目的:** 契約を Go へ変換する。これが「自分が書くもの」と「決して手で編集してはならないもの」の境界で
+ある。
 
 ```bash
-make gen-api     # bundles OpenAPI → openapi.gen.yaml, runs oapi-codegen + mockgen
-make gen-query   # dumps schema → merges DML → sqlc generate → fmt
+make gen-api     # OpenAPI をバンドル → openapi.gen.yaml、oapi-codegen + mockgen を実行
+make gen-query   # スキーマをダンプ → DML をマージ → sqlc generate → fmt
 ```
 
-**What appears (generated — do not edit):**
+**何が現れるか（生成物 —— 編集禁止）:**
 
-- `internal/controller/handler/v1/users/gen/server.gen.go` + `type.gen.go` (and the same
-  under `detail/gen`, `search/gen`) — the `ServerInterface` and request/response types.
-- `internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go` — type-safe query methods.
-- `*_mock.go` for any interface carrying a `//go:generate mockgen` directive (added in the
-  next steps; re-run `make gen-api` after you declare them).
+- `internal/controller/handler/v1/users/gen/server.gen.go` + `type.gen.go`（および `detail/gen`・
+  `search/gen` 下の同種）—— `ServerInterface` とリクエスト/レスポンス型。
+- `internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go` —— 型安全なクエリメソッド。
+- `//go:generate mockgen` ディレクティブを持つインターフェースの `*_mock.go`（次のステップで宣言する。
+  宣言後に `make gen-api` を再実行する）。
 
-**Why:** `**/*.gen.go`, `*.sql.go`, `*_mock.go`, and `openapi.gen.yaml` are generated and
-**protected**. You change behavior by changing the *contract* and regenerating, never by
-editing the output.
+**なぜ:** `**/*.gen.go`・`*.sql.go`・`*_mock.go`・`openapi.gen.yaml` は生成物であり **保護対象** である。
+挙動は *契約* を変えて再生成することで変える。出力を編集することでは変えない。
 
 ---
 
-## Step 4 — Domain layer
+## Step 4 —— domain レイヤー
 
-**Goal:** implement the aggregate from `domain.md`: the entity, its invariants, behavior
-methods, value objects, sentinel errors, constants, and the Repository interface.
+**目的:** `domain.md` から集約を実装する: エンティティ、不変条件、振る舞いメソッド、値オブジェクト、
+sentinel エラー、定数、そして Repository インターフェース。
 
-**Files (in `internal/domain/user/`):**
+**ファイル（`internal/domain/user/` 内）:**
 
-- `user_domain.go` — the `User` struct + `New(...)` constructor + getters + behavior methods.
-- `constant.go` — `min*/max*` length bounds derived from the spec's field constraints.
-- `error.go` — `ErrInvalid<Field>` sentinels + `ErrAlreadyDeleted` etc.
-- `email.go` / `postal_code.go` — value objects (`Email` / `PostalCode`) that validate their
-  raw string in a factory (`NewEmail` / `NewPostalCode`) and expose it via `Value()`, so an
-  invalid form can never be constructed.
-- `user_repository.go` — the Repository interface, carrying a `//go:generate mockgen`
-  directive (→ `mock/`).
-- `*_test.go` — invariants, behavior methods, VO boundaries.
+- `user_domain.go` —— `User` 構造体 + `New(...)` コンストラクタ + getter + 振る舞いメソッド。
+- `constant.go` —— spec のフィールド制約から導いた `min*/max*` の長さ境界。
+- `error.go` —— `ErrInvalid<Field>` sentinel + `ErrAlreadyDeleted` など。
+- `email.go` / `postal_code.go` —— 値オブジェクト（`Email` / `PostalCode`）。生の文字列をファクトリ
+  （`NewEmail` / `NewPostalCode`）で検証し `Value()` で公開するため、不正な形式は決して構築できない。
+- `user_repository.go` —— Repository インターフェース。`//go:generate mockgen` ディレクティブを持つ
+  （→ `mock/`）。
+- `*_test.go` —— 不変条件、振る舞いメソッド、VO 境界。
 
-**The conventions that make it correct** (`internal/domain/README.md`):
+**それを正しくする規約**（`internal/domain/README.md`）:
 
-- **Fields are unexported, exposed via getters.** Outside code cannot bypass an invariant.
-- **Pointer getters/setters copy with `ptr.Copy`** so internal state never leaks by
-  reference.
-- **Validation failures wrap a named sentinel** with `xerrors.Wrap(ErrInvalidEmail, msg)`.
-- **The layer is pure:** no `time.Now()`, no `uuid.New()`, no I/O, no context in domain
-  logic. Time and IDs arrive as constructor arguments.
+- **フィールドは非公開、getter で公開する。** 外部コードが不変条件を迂回できない。
+- **ポインタの getter/setter は `ptr.Copy` でコピーする** ので、内部状態が参照経由で漏れない。
+- **検証失敗は名前付き sentinel をラップする**: `xerrors.Wrap(ErrInvalidEmail, msg)`。
+- **レイヤーは純粋:** `time.Now()` なし、`uuid.New()` なし、I/O なし、domain ロジックに context なし。
+  時刻と ID はコンストラクタ引数として届く。
 
-The constructor is the shape every aggregate follows — validate, then build:
+コンストラクタは全集約が従う形である —— 検証してから構築する:
 
 ```go
-// internal/domain/user/user_domain.go  (excerpt — see the file for the full body)
+// internal/domain/user/user_domain.go （抜粋 —— 本体はファイルを参照）
 func New(id uuid.UUID, firstName /* … */ string, /* … */ ) (*User, error) {
  if id.IsNil() {
   return nil, xerrors.Wrap(ErrInvalidID, "id is required")
@@ -254,52 +242,50 @@ func New(id uuid.UUID, firstName /* … */ string, /* … */ ) (*User, error) {
  if err := validateProfileFields(firstName /* … */); err != nil {
   return nil, err
  }
- // … updatedAt/deletedAt ordering checks …
+ // … updatedAt/deletedAt の順序チェック …
  return &User{id: id, firstName: firstName /* … */, building: ptr.Copy(building)}, nil
 }
 ```
 
-Mutations are methods that re-check invariants (e.g. `UpdateProfile`, `MarkAsDeleted` — each
-calls `ensureNotDeleted` first). Read the real file: it is the canonical template for any
-future aggregate.
+変更は不変条件を再チェックするメソッドである（例: `UpdateProfile`、`MarkAsDeleted` —— いずれも
+最初に `ensureNotDeleted` を呼ぶ）。実ファイルを読むこと: それが将来のあらゆる集約の正典テンプレート
+である。
 
-**Verify:**
+**検証:**
 
 ```bash
-make gen-api                        # regenerate the repository mock
+make gen-api                        # Repository モックを再生成
 go test ./internal/domain/user/...
 ```
 
 ---
 
-## Step 5 — Infrastructure layer
+## Step 5 —— infrastructure レイヤー
 
-**Goal:** implement the domain Repository interface (and the usecase's QueryService
-interface) by wrapping the sqlc-generated functions. **No spec file** — this layer is derived
-from the interface + sqlc gen.
+**目的:** sqlc 生成関数をラップして、domain の Repository インターフェース（および usecase の
+QueryService インターフェース）を実装する。**spec ファイルなし** —— このレイヤーはインターフェース +
+sqlc gen から導出される。
 
-**Files:**
+**ファイル:**
 
-- `internal/infrastructure/rdb/repository/user/user_repository.go` — implements the domain
-  `user.Repository` (Create / FindByID / Update / active listing / count).
-- `*_test.go` — integration tests against a **real DB** with transaction rollback (via the
-  rdb `testkit`).
+- `internal/infrastructure/rdb/repository/user/user_repository.go` —— domain の `user.Repository`
+  を実装（Create / FindByID / Update / アクティブ一覧 / 件数）。
+- `*_test.go` —— トランザクションロールバックを伴う **実 DB** に対する結合テスト（rdb の `testkit`
+  経由）。
 
-**The conventions that make it correct** (`internal/infrastructure/rdb/README.md`,
-`pgerror/README.md`):
+**それを正しくする規約**（`internal/infrastructure/rdb/README.md`、`pgerror/README.md`）:
 
-- **Every sqlc return is normalized through `pgerror.NormalizeError`** so PostgreSQL
-  SQLSTATEs become `apperror` values (`pgx.ErrNoRows → ErrNotFound`, unique violation →
-  `ErrConflict`). Outer layers never see driver-specific errors.
-- **Each method opens a tracer span** (`r.tracer.Start(ctx)` / `defer endSpan()`).
-- **sqlc types never leak.** Rows are converted to domain entities (repository) or DTOs
-  (query service) before returning. The query service may skip the domain and project
-  straight to a DTO.
+- **すべての sqlc の返り値は `pgerror.NormalizeError` で正規化する** ので、PostgreSQL の SQLSTATE は
+  `apperror` 値になる（`pgx.ErrNoRows → ErrNotFound`、unique 違反 → `ErrConflict`）。外側のレイヤーは
+  ドライバー固有のエラーを決して見ない。
+- **各メソッドは tracer span を開く**（`r.tracer.Start(ctx)` / `defer endSpan()`）。
+- **sqlc 型は決して漏らさない。** 返す前に行をドメインエンティティ（repository）または DTO
+  （query service）へ変換する。query service は domain を飛ばして DTO へ直接投影してよい。
 
-The repository method shape — span, sqlc call, normalize, convert:
+repository メソッドの形 —— span、sqlc 呼び出し、正規化、変換:
 
 ```go
-// shape only — see user_repository.go for the real body
+// 形のみ —— 実本体は user_repository.go を参照
 func (r *repository) Create(ctx context.Context, u *user.User) error {
  ctx, endSpan := r.tracer.Start(ctx)
  defer endSpan()
@@ -311,10 +297,10 @@ func (r *repository) Create(ctx context.Context, u *user.User) error {
 }
 ```
 
-Register the implementations with `fx.Provide` in
-`internal/di/module/infrastructure.go` (a `sample-api` marker block — Step 8).
+実装は `internal/di/module/infrastructure.go` の `fx.Provide` で登録する（`sample-api` マーカー
+ブロック —— Step 8）。
 
-**Verify:** needs the test DB migrated (Step 2b):
+**検証:** テスト DB のマイグレーションが必要（Step 2b）:
 
 ```bash
 go test ./internal/infrastructure/rdb/repository/user/...
@@ -322,92 +308,88 @@ go test ./internal/infrastructure/rdb/repository/user/...
 
 ---
 
-## Step 6 — Usecase layer
+## Step 6 —— usecase レイヤー
 
-**Goal:** implement the application service from `usecase.md`: orchestrate domain + repository +
-boundaries, and return DTOs. No business *rules* are invented here — this layer coordinates.
+**目的:** `usecase.md` からアプリケーションサービスを実装する: domain + repository + boundary を
+オーケストレーションし、DTO を返す。ここでは業務 *ルール* を一切発明しない —— このレイヤーは調整役で
+ある。
 
-**Files (in `internal/usecase/user/`):**
+**ファイル（`internal/usecase/user/` 内）:**
 
-- `user_usecase.go` — the `Usecase` interface + `usecase` struct + `New` constructor.
-- `search/user_search_usecase.go` + `search/query/…` — the keyword-search service and its
-  QueryService interface.
-- `mock/…gen.go` — generated mocks for the usecase interfaces (for controller/integration
-  tests).
-- `*_test.go` — table-driven, domain repositories mocked.
+- `user_usecase.go` —— `Usecase` インターフェース + `usecase` 構造体 + `New` コンストラクタ。
+- `search/user_search_usecase.go` + `search/query/…` —— キーワード検索サービスとその QueryService
+  インターフェース。
+- `mock/…gen.go` —— usecase インターフェースの生成モック（controller/結合テスト用）。
+- `*_test.go` —— テーブル駆動、domain リポジトリはモック。
 
-**The conventions that make it correct** (`internal/usecase/README.md`,
-`boundary/README.md`):
+**それを正しくする規約**（`internal/usecase/README.md`、`boundary/README.md`）:
 
-- **Return DTOs, never domain entities.** Map `*user.User` → `UserView` before returning.
-- **Time and transactions come through boundaries**, not the stdlib: `u.clock.Now()` (not
-  `time.Now()`) for the current time, `u.txm.Do(ctx, fn)` for transaction boundaries. Every
-  non-deterministic or external dependency arrives as a `boundary/` interface. Determinism and
-  testability depend on this.
-- **The usecase owns the transaction boundary**; the domain knows nothing about `tx`.
-- **Orchestrate, don't re-implement rules.** Calling a domain behavior method is fine;
-  encoding a new invariant here is not — that belongs in the domain.
+- **DTO を返す。ドメインエンティティは決して返さない。** `*user.User` → `UserView` へマップしてから
+  返す。
+- **時刻とトランザクションは boundary 経由で来る**。標準ライブラリではない: 現在時刻には
+  `u.clock.Now()`（`time.Now()` ではない）、トランザクション境界には `u.txm.Do(ctx, fn)`。非決定的
+  または外部の依存はすべて `boundary/` インターフェースとして届く。決定性とテスト容易性はこれに依存する。
+- **usecase がトランザクション境界を所有する**。domain は `tx` を何も知らない。
+- **オーケストレーションせよ、ルールを再実装するな。** ドメインの振る舞いメソッドを呼ぶのはよい。
+  新しい不変条件をここに符号化するのはダメ —— それは domain に属する。
 
-Shape of a write use case — obtain time from the clock boundary, then run inside a transaction:
+書き込みユースケースの形 —— clock boundary から時刻を取得し、トランザクション内で実行する:
 
 ```go
-// shape only — see user_usecase.go for the real body
+// 形のみ —— 実本体は user_usecase.go を参照
 func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (UserView, error) {
  ctx, endSpan := u.tracer.Start(ctx); defer endSpan()
- now := u.clock.Now()                                   // boundary, not time.Now()
+ now := u.clock.Now()                                   // time.Now() ではなく boundary
  // … u.txm.Do(ctx, func(ctx) { user.New(...now...); u.repo.Create(...) }) …
- return toUserView(entity /* … */), nil                 // DTO out
+ return toUserView(entity /* … */), nil                 // DTO を返す
 }
 ```
 
-**Verify:**
+**検証:**
 
 ```bash
-make gen-api                          # regenerate usecase mocks
+make gen-api                          # usecase モックを再生成
 go test ./internal/usecase/user/...
 ```
 
 ---
 
-## Step 7 — Controller layer
+## Step 7 —— controller レイヤー
 
-**Goal:** implement the OpenAPI-generated `ServerInterface` — one handler method per
-`operationId` — plus the CLI job. **No spec file** — derived from the generated interface +
-the usecase interface.
+**目的:** OpenAPI 生成の `ServerInterface` を実装する —— `operationId` ごとに 1 ハンドラーメソッド ——
+加えて CLI ジョブ。**spec ファイルなし** —— 生成インターフェース + usecase インターフェースから導出。
 
-**Files:**
+**ファイル:**
 
-- `internal/controller/handler/v1/users/v1_users_handler.go` (+ `detail/`, `search/`
-  subpackages mirroring the URL structure) — the `server` struct, the `BindHandler`
-  constructor, the handler methods, and the presenter functions (`toUserResponse`, …).
-- `internal/controller/job/usercount/user_count_job.go` — a CLI batch job (not HTTP): parses
-  flags, calls the usecase, logs. No `os.Exit` (the runner owns process exit).
-- `*_test.go` — usecase mocked.
+- `internal/controller/handler/v1/users/v1_users_handler.go`（+ URL 構造をミラーする `detail/`・
+  `search/` サブパッケージ）—— `server` 構造体、`BindHandler` コンストラクタ、ハンドラーメソッド、
+  そして presenter 関数（`toUserResponse` …）。
+- `internal/controller/job/usercount/user_count_job.go` —— CLI バッチジョブ（HTTP ではない）:
+  フラグを解析し、usecase を呼び、ログ出力する。`os.Exit` なし（プロセス終了は runner が所有）。
+- `*_test.go` —— usecase はモック。
 
-**The conventions that make it correct** (`internal/controller/handler/README.md`):
+**それを正しくする規約**（`internal/controller/handler/README.md`）:
 
-- **`BindHandler(echo, tracerFactory, usecase)`** builds the `server`, then registers via
-  `gen.NewStrictHandler` + `gen.RegisterHandlers`. This is the canonical reference snippet in
-  the handler README.
-- **One method per `operationId`, name-matched 1:1** with the generated `ServerInterface`.
-- **The handler body is a pure template:** start span → parse request → call **one** usecase
-  method → convert the DTO to the OpenAPI response type → return. No business logic, no infra
-  access, no manual status codes (apperror → HTTP status is automatic).
-- **HTTP vocabulary stays in the controller.** Convert OpenAPI types to domain types via
-  `internal/controller/conv` (e.g. `conv.UUID`) so `http.*` / `openapi_types.*` never reach
-  the usecase.
+- **`BindHandler(echo, tracerFactory, usecase)`** が `server` を構築し、`gen.NewStrictHandler` +
+  `gen.RegisterHandlers` で登録する。これはハンドラー README にある正典の参照スニペットである。
+- **`operationId` ごとに 1 メソッド、名前で 1:1 一致** —— 生成された `ServerInterface` と。
+- **ハンドラー本体は純粋なテンプレート:** span 開始 → リクエスト解析 → **1 つの** usecase メソッド呼び
+  出し → DTO を OpenAPI レスポンス型へ変換 → 返す。業務ロジックなし、infra アクセスなし、手動ステータス
+  コードなし（apperror → HTTP ステータスは自動）。
+- **HTTP の語彙は controller に留める。** OpenAPI 型を `internal/controller/conv` でドメイン型へ変換する
+  （例: `conv.UUID`）ので、`http.*` / `openapi_types.*` が usecase に到達しない。
 
 ```go
-// shape only — see v1_users_handler.go for the real body
+// 形のみ —— 実本体は v1_users_handler.go を参照
 func (s *server) GetUsers(ctx context.Context, req gen.GetUsersRequestObject) (gen.GetUsersResponseObject, error) {
  ctx, endSpan := s.tracer.Start(ctx); defer endSpan()
  page, err := paging.NewPageFrom1Based(req.Params.Page, req.Params.PerPage)
  // … list, err := s.uc.<ListMethod>(ctx, …) …
- return gen.GetUsers200JSONResponse(/* mapped DTOs */), nil
+ return gen.GetUsers200JSONResponse(/* マップした DTO */), nil
 }
 ```
 
-**Verify:**
+**検証:**
 
 ```bash
 go test ./internal/controller/handler/v1/users/...
@@ -415,25 +397,25 @@ go test ./internal/controller/handler/v1/users/...
 
 ---
 
-## Step 8 — Wire dependency injection
+## Step 8 —— 依存注入の配線
 
-**Goal:** register the new providers/handlers in the Fx modules. These are the shared
-`MARKER_FILES` the reset script strips — so re-adding the wiring inside `sample-api` marker
-blocks keeps the feature self-contained and removable.
+**目的:** 新しいプロバイダー/ハンドラーを Fx モジュールに登録する。これらはリセットスクリプトが
+取り除く共有の `MARKER_FILES` である —— よって `sample-api` マーカーブロック内に配線を再追加する
+ことで、機能を自己完結かつ削除可能に保つ。
 
-**Files (each edit lives inside `// sample-api:begin … // sample-api:end`):**
+**ファイル（各編集は `// sample-api:begin … // sample-api:end` 内に置く）:**
 
-- `internal/di/module/controller.go` — `fx.Invoke(users.BindHandler, detail.BindHandler,
-  search.BindHandler)`.
-- `internal/di/module/usecase.go` — `fx.Provide` the usecase constructors.
-- `internal/di/module/infrastructure.go` — `fx.Provide` the repository + query service.
-- `internal/di/module/job.go` — register the `usercount` job.
+- `internal/di/module/controller.go` —— `fx.Invoke(users.BindHandler, detail.BindHandler,
+  search.BindHandler)`。
+- `internal/di/module/usecase.go` —— usecase コンストラクタを `fx.Provide`。
+- `internal/di/module/infrastructure.go` —— repository + query service を `fx.Provide`。
+- `internal/di/module/job.go` —— `usercount` ジョブを登録。
 
 ```go
 // internal/di/module/controller.go
 fx.Invoke(
  health.BindHandler,
- // … core handlers …
+ // … コアのハンドラー …
  // sample-api:begin
  users.BindHandler,
  detail.BindHandler,
@@ -442,25 +424,25 @@ fx.Invoke(
 ),
 ```
 
-**Why:** DI is the only place these layers meet; there is **no business logic here**. The
-marker comments are what let `make setup-remove-sample-api` cleanly excise the sample again.
+**なぜ:** DI はこれらのレイヤーが出会う唯一の場所であり、**ここに業務ロジックはない**。マーカー
+コメントこそが `make setup-remove-sample-api` にサンプルをきれいに再切除させるものである。
 
 ---
 
-## Step 9 — Integration tests
+## Step 9 —— 結合テスト
 
-**Goal:** verify the HTTP boundary end-to-end with the usecase mocked — Router → Middleware →
-Handler → Presenter.
+**目的:** usecase をモックして HTTP 境界をエンドツーエンドで検証する —— Router → Middleware →
+Handler → Presenter。
 
-**Files:** `internal/integration/v1_users_test.go`,
-`v1_users_detail_test.go`, `v1_users_search_test.go`.
+**ファイル:** `internal/integration/v1_users_test.go`、
+`v1_users_detail_test.go`、`v1_users_search_test.go`。
 
-**Why these are different from Step 5's tests:** they boot a real Echo server via `httptest`
-but **mock the usecase** (`internal/integration/README.md`). They are not DB tests — they
-prove the HTTP wiring (status codes, JSON shape, path/param parsing, auth header handling),
-which mocked unit tests of the handler cannot fully cover. One subtest per `operationId`.
+**Step 5 のテストとどう違うか:** これらは `httptest` 経由で実際の Echo サーバーを起動するが、
+**usecase はモックする**（`internal/integration/README.md`）。DB テストではない —— HTTP 配線
+（ステータスコード、JSON 形状、path/param 解析、認証ヘッダー処理）を証明するものであり、ハンドラーの
+モック単体テストでは完全にはカバーできない部分である。`operationId` ごとに 1 サブテスト。
 
-**Verify:**
+**検証:**
 
 ```bash
 go test ./internal/integration/...
@@ -468,99 +450,96 @@ go test ./internal/integration/...
 
 ---
 
-## Step 10 — The event-driven side (optional)
+## Step 10 —— イベント駆動側（任意）
 
-**Goal:** see the other entry point into the usecase layer. Everything so far was driven by an HTTP
-request; withdrawal additionally emits a domain event that a **worker** consumes.
+**目的:** usecase 層へのもう 1 つの入口を見る。ここまではすべて HTTP リクエストが駆動していたが、
+退会はドメインイベントも emit し、それを **worker** が消費する。
 
-Nothing you built in Steps 1–9 changes for this. The withdrawal usecase already writes
-`user.withdrawn.v1` to the outbox **inside the same transaction** as the deletion, so the event
-cannot be lost, nor emitted for a withdrawal that rolled back. From there:
+Step 1〜9 で作ったものは何も変わらない。退会の usecase は既に `user.withdrawn.v1` を削除と**同一
+トランザクション**で outbox へ書いているため、イベントが失われることも、ロールバックした退会に
+対して emit されることもない。そこから先は次のとおり。
 
-|#|Piece|File|
+|#|要素|ファイル|
 |---|---|---|
-|①|business `Handler` — decode, classify, call the usecase|`internal/controller/worker/withdrawalarchive/withdrawal_archive_handler.go`|
-|②|`Consumer` / `FailureHandler` adapter|`internal/infrastructure/queue/sqs` (constructed in DI, not here)|
-|③|`Worker` — bundles name / consumer / handler / failure handler|`internal/controller/worker/withdrawalarchive/withdrawal_archive_worker.go`|
-|④|registration|`internal/di/module/worker.go`, inside `sample-api` markers|
-|⑤|broker client + adapter config|`internal/di/module/withdrawalarchive.go`|
-|⑥|env|`CONSUMER_QUEUE_*` in `env/.env`|
+|①|業務 `Handler` — 復元・分類・usecase 呼び出し|`internal/controller/worker/withdrawalarchive/withdrawal_archive_handler.go`|
+|②|`Consumer` / `FailureHandler` adapter|`internal/infrastructure/queue/sqs`（生成は DI 側。ここではない）|
+|③|`Worker` — 名前 / consumer / handler / failure handler を束ねる|`internal/controller/worker/withdrawalarchive/withdrawal_archive_worker.go`|
+|④|登録|`internal/di/module/worker.go` の `sample-api` マーカー内|
+|⑤|broker クライアント + adapter 設定|`internal/di/module/withdrawalarchive.go`|
+|⑥|env|`env/.env` の `CONSUMER_QUEUE_*`|
 
-**Why the adapter is built in DI rather than in the worker package:** the controller layer must not
-import infrastructure (depguard enforces it), so the worker receives an already-constructed
-`Consumer` and never learns which broker it is reading from. Same rule that keeps the HTTP handler
-away from a repository.
+**adapter を worker パッケージではなく DI で組み立てる理由:** controller 層は infrastructure を
+import できない（depguard が強制する）。worker は組み立て済みの `Consumer` を受け取るだけで、
+どの broker から読んでいるかを知らない。HTTP handler を repository から遠ざけているのと同じ規則。
 
-**Two things worth opening the code for:**
+**コードを開いて確かめる価値があるのは 2 点:**
 
-- **Idempotency.** Delivery is at-least-once, so this handler will sometimes run twice for one
-  withdrawal. Rather than detect the repeat, the *operation* is made idempotent: the object key is
-  derived from the user ID alone and the body is the payload unmodified, so a second run writes
-  identical bytes. That is stronger than propagating an idempotency key, which only works if the
-  downstream honours it.
-- **Selection.** One queue carries every event the outbox emits, so the handler checks the
-  `event_type` attribute first and acks anything else without processing it. Treating a foreign event
-  as a failure would route every purchase event to the DLQ.
+- **冪等性。** 配信は at-least-once なので、この Handler は 1 回の退会に対して 2 回走ることがある。
+  再実行を検出するのではなく、*操作*を冪等にしている。オブジェクトキーはユーザー ID だけから決まり、
+  本文は payload を加工しないため、2 回目の実行は同一のバイト列を書く。冪等キーの伝搬より強い —
+  伝搬は下流がそれを尊重して初めて効く。
+- **選別。** 1 つのキューに outbox が emit する全種別が流れるため、Handler はまず `event_type` 属性を
+  確認し、それ以外は処理せず ack する。他人のイベントを失敗として扱うと、購入イベントが軒並み
+  DLQ へ送られる。
 
-**Verify** — three terminals (`make serve`, `make outbox-relay`, `make worker
-NAME=withdrawal-archive`), then withdraw a user. The full recipe, with what to watch at each hop, is
-in
-[`internal/controller/worker/withdrawalarchive/README.md`](../../internal/controller/worker/withdrawalarchive/README.md).
+**検証** —— 3 つの端末（`make serve`、`make outbox-relay`、`make worker NAME=withdrawal-archive`）を
+立ててからユーザーを退会させる。各段で何を見るかを含む完全な手順は
+[`internal/controller/worker/withdrawalarchive/README.md`](../../internal/controller/worker/withdrawalarchive/README.md)
+にある。
 
 ---
 
-## Step 11 — Full verification
+## Step 11 —— フル検証
 
-**Goal:** prove the rebuilt feature is correct, formatted, and meets the coverage gate.
+**目的:** 再構築した機能が正しく、整形済みで、カバレッジゲートを満たすことを証明する。
 
 ```bash
 make fix    # gofmt + golangci-lint --fix
-make lint   # golangci-lint (full config)
-make test   # all tests, no cache; needs the test DB migrated
+make lint   # golangci-lint（フル設定）
+make test   # 全テスト、キャッシュなし。テスト DB のマイグレーションが必要
 ```
 
-**Coverage:** `make test` must not drop coverage; new/modified packages must exceed **90%**
-(`make cover-gate` enforces the floor in CI). Generated packages (`gen`, `cmd`, `mock`,
-`apperror`, `scripts`) are excluded from the calculation.
+**カバレッジ:** `make test` はカバレッジを下げてはならない。新規/変更したパッケージは **90%** を超える
+こと（`make cover-gate` が CI でフロアを強制する）。生成パッケージ（`gen`、`cmd`、`mock`、`apperror`、
+`scripts`）は計算から除外される。
 
-If a package is short of 90%, add the missing branch tests before moving on — this is part of
-the Definition of Done, not an optional polish.
+パッケージが 90% に届かない場合は、先へ進む前に不足している分岐テストを追加すること —— これは Definition
+of Done の一部であり、任意の仕上げではない。
 
 ---
 
-## Recap
+## まとめ
 
-|Step|Layer|Key files|The "why" in one line|Verify|
+|Step|レイヤー|主なファイル|一言での「なぜ」|検証|
 |---|---|---|---|---|
-|0|reset|`make setup-remove-sample-api`|The manifest is the feature's table of contents|tree compiles without User|
-|1|spec|`docs/spec/user/{domain,usecase}.md`|lean A: only the inner two layers are spec-driven|`/verify-spec user`|
-|2|contracts|`openapi/**`, `database/migrations/**`, `database/dml/**`|OpenAPI-first + append-only migrations|`make db-*-migrate-up`|
-|3|generate|`make gen-api` / `make gen-query`|Change the contract, never the generated output|files appear under `gen/`|
-|4|domain|`internal/domain/user/**`|Unexported fields + `ptr.Copy` + sentinel errors + purity|`go test ./internal/domain/user/...`|
-|5|infra|`internal/infrastructure/rdb/repository/user/**`|`pgerror.NormalizeError` + tracer span + no type leak|`go test ./…/user/...` (DB)|
-|6|usecase|`internal/usecase/user/**`|DTOs out; time/tx via boundaries; orchestrate only|`go test ./internal/usecase/user/...`|
-|7|controller|`internal/controller/handler/v1/users/**`, `job/usercount/**`|One method per operationId; handler is a pure template|`go test ./…/users/...`|
-|8|DI|`internal/di/module/*.go`|The only place layers meet; marker blocks keep it removable|`make lint`|
-|9|integration|`internal/integration/v1_users*_test.go`|HTTP boundary with usecase mocked|`go test ./internal/integration/...`|
-|9.5|worker|`internal/controller/worker/withdrawalarchive/**`|A second entry point into the usecase layer; the operation itself is idempotent|`make worker NAME=withdrawal-archive`|
-|10|verify|`make fix` / `make lint` / `make test`|90% floor is part of Done|`make cover-gate`|
+|0|reset|`make setup-remove-sample-api`|マニフェストが機能の目次|User なしでツリーがコンパイル|
+|1|spec|`docs/spec/user/{domain,usecase}.md`|lean A: 内側の 2 レイヤーのみ spec 駆動|`/verify-spec user`|
+|2|contracts|`openapi/**`、`database/migrations/**`、`database/dml/**`|OpenAPI-first + 追記専用マイグレーション|`make db-*-migrate-up`|
+|3|generate|`make gen-api` / `make gen-query`|契約を変え、生成物は変えない|`gen/` 下にファイルが現れる|
+|4|domain|`internal/domain/user/**`|非公開フィールド + `ptr.Copy` + sentinel エラー + 純粋性|`go test ./internal/domain/user/...`|
+|5|infra|`internal/infrastructure/rdb/repository/user/**`|`pgerror.NormalizeError` + tracer span + 型漏洩なし|`go test ./…/user/...`（DB）|
+|6|usecase|`internal/usecase/user/**`|DTO を返す。時刻/tx は boundary 経由。調整のみ|`go test ./internal/usecase/user/...`|
+|7|controller|`internal/controller/handler/v1/users/**`、`job/usercount/**`|operationId ごとに 1 メソッド。ハンドラーは純粋テンプレート|`go test ./…/users/...`|
+|8|DI|`internal/di/module/*.go`|レイヤーが出会う唯一の場所。マーカーブロックで削除可能に保つ|`make lint`|
+|9|integration|`internal/integration/v1_users*_test.go`|usecase をモックした HTTP 境界|`go test ./internal/integration/...`|
+|9.5|worker|`internal/controller/worker/withdrawalarchive/**`|usecase 層へのもう 1 つの入口。操作自体が冪等|`make worker NAME=withdrawal-archive`|
+|10|verify|`make fix` / `make lint` / `make test`|90% フロアは Done の一部|`make cover-gate`|
 
 ---
 
-## Where to go next
+## 次に進む先
 
-- **Automate it.** With the `.claude/` skills, this entire flow is
-  `/scaffold-endpoint user` (which chains `verify-spec` → `scaffold-domain` →
-  `scaffold-infra-db` → `scaffold-usecase` → `scaffold-controller` →
-  `scaffold-integration-test`). This tutorial is the manual ground truth those skills encode —
-  read it once, then let the skills do the typing.
-- **Check for drift.** After any multi-layer change, `/back-prop` and `/arch-check` confirm
-  the READMEs and code still agree.
-- **Add a second feature.** `product` and `order` already ship as DB-only stubs (see the
-  `sample-manifest.ts` manifest); promoting one to a full stack is the natural next exercise.
+- **自動化する。** `.claude/` のスキルがあれば、このフロー全体は `/scaffold-endpoint user` である
+  （`verify-spec` → `scaffold-domain` → `scaffold-infra-db` → `scaffold-usecase` →
+  `scaffold-controller` → `scaffold-integration-test` を連鎖する）。本チュートリアルはそれらのスキルが
+  符号化している手作業の正典である —— 一度読んだら、あとはスキルにタイピングを任せればよい。
+- **ドリフトを確認する。** 複数レイヤーの変更後は、`/back-prop` と `/arch-check` が README とコードが
+  まだ一致していることを確認する。
+- **2 つめの機能を追加する。** `product` と `order` は DB のみのスタブとして既に同梱されている
+  （`sample-manifest.ts` マニフェスト参照）。どちらかをフルスタックへ昇格させるのが自然な次の練習である。
 
-## Maintenance note
+## メンテナンスノート
 
-This tutorial references the **real** User implementation rather than transcribing it, so the
-canonical files stay the single source of truth. If you rename a layer file or change a
-convention, the drift surfaces here too — run `/back-prop` to catch it.
+本チュートリアルは User の実装を転記せず **実ファイル** を参照しているため、正典ファイルが単一の真実の
+源であり続ける。レイヤーファイルをリネームしたり規約を変えたりすると、ドリフトはここにも表面化する ——
+`/back-prop` を実行して捉えること。

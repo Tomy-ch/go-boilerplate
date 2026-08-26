@@ -5,85 +5,78 @@ deciders: [maintainers]
 tags: [ci, lint]
 ---
 
-# ADR-0084: Two-layer golangci config: minimal default vs full authoritative gate
+# ADR-0084: 2 層の golangci 設定——最小デフォルトと完全な権威ゲート
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-golangci-lint picks up `.golangci.yaml` automatically when no `--config` flag is given.
-IDE plugins (VS Code, GoLand) and editors that integrate golangci-lint directly use this
-implicit default. The full suite of linters — many of which are slow, noisy, or irrelevant
-for in-flight editing — would degrade the editor feedback loop if run on every save.
+golangci-lint は `--config` フラグが指定されない場合、`.golangci.yaml` を自動的に読み込む。
+IDE プラグイン（VS Code、GoLand）および golangci-lint を直接統合するエディターはこの暗黙のデフォルトを使用する。
+全リンタースイート——その多くが低速でノイズが多く、編集中には関係ない——を保存のたびに実行するとエディターの
+フィードバックループが劣化する。
 
-At the same time, CI and the team's `make lint` / `make fix` targets must enforce the
-authoritative rule set, which is substantially stricter: it enables over 50 linters
-(compared to roughly 20 in the minimal set), enforces additional `depguard` rules that
-guard layer boundaries (e.g. restricting `reflect`, `os`, DI container, and zap logger
-usage to their permitted scopes), and runs `forbidigo` patterns. The heavier analysis takes
-minutes rather than seconds.
+同時に、CI とチームの `make lint` / `make fix` ターゲットは権威あるルールセットを強制しなければならない。
+このセットは実質的に厳格であり、50 以上のリンターを有効にし（最小セットの約 20 に対して）、
+レイヤー境界を守る追加の `depguard` ルール（例: `reflect`、`os`、DI コンテナ、zap ロガーの使用を
+許可されたスコープに制限）を強制し、`forbidigo` パターンを実行する。重い解析のため所要は秒ではなく分の
+オーダーになる。
 
-Running identical configs in both contexts is not practical: a multi-minute full lint pass
-blocks responsive IDE feedback, while a 30-second minimal pass would let CI-only
-violations slip through undetected.
+両方のコンテキストで同一の設定を実行することは実用的でない。数分かかる完全リントパスはレスポンシブな
+IDE フィードバックをブロックし、30 秒の最小パスでは CI 専用の違反が検出されずにすり抜ける。
 
-## Decision
+## 決定
 
-Maintain two golangci-lint configuration files with a clear division of authority:
+権限の明確な分担を持つ 2 つの golangci-lint 設定ファイルを管理する:
 
-- `.golangci.yaml` — the implicit default, picked up by IDE tooling automatically. Enables
-  a curated minimal set of linters with a 30-second timeout. It is intentionally not
-  the gate that fails CI.
-- `.golangci-full.yaml` — the authoritative CI gate. Both `make lint` and `make fix` pass
-  `--config .golangci-full.yaml` explicitly (see the `lint` and `fix` targets in
-  `.makefiles/go/golangci-lint.mk`). This config enables the complete linter set including all `depguard` layer
-  rules and carries no fixed timeout of its own: a full run grows with the repository, so
-  a fixed budget in the config would go stale. The cutoff belongs to whichever entry point
-  runs it — `GOLANGCI_LINT_TIMEOUT` in the makefile locally, `timeout-minutes` on the
-  `go-lint` job in CI.
+- `.golangci.yaml` — IDE ツーリングが自動的に読み込む暗黙のデフォルト。30 秒のタイムアウトで
+  厳選された最小リンタセットを有効にする。CI を失敗させるゲートには意図的にしない。
+- `.golangci-full.yaml` — 権威ある CI ゲート。`make lint` と `make fix` の両方が
+  `--config .golangci-full.yaml` を明示的に渡す（`.makefiles/go/golangci-lint.mk` の `lint` / `fix` ターゲット参照）。
+  この設定はすべての `depguard` レイヤールールを含む完全なリンタセットを有効にし、自身は固定のタイムアウトを
+  持たない。完全実行の所要はリポジトリの成長に伴って伸びるため、設定側に固定の予算を置くと陳腐化する。
+  打ち切りはそれを実行する入口が持つ——ローカルは makefile の `GOLANGCI_LINT_TIMEOUT`、
+  CI は `go-lint` ジョブの `timeout-minutes`。
 
-Any rule that must be enforced as a hard gate belongs in `.golangci-full.yaml` only.
-The minimal config may contain a subset; drift between the two is intentional.
+ハードゲートとして強制しなければならないルールはすべて `.golangci-full.yaml` のみに属する。
+最小設定はそのサブセットを含んでもよく、両者の間のドリフトは意図的である。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- IDE tooling stays responsive: authors get fast, low-noise feedback without waiting for
-  the full suite.
-- CI enforcement is unambiguous: the gate is always the full config, regardless of what
-  the editor runs.
-- Layer-boundary rules (depguard) and dangerous-identifier rules (forbidigo) are enforced
-  in CI even if editors never surface them.
+- IDE ツーリングがレスポンシブなまま保たれる。作成者は全スイートを待つことなく、高速で低ノイズの
+  フィードバックを得られる。
+- CI 強制が明確。ゲートは常に完全な設定であり、エディターが実行するものに関係なく変わらない。
+- レイヤー境界ルール（depguard）と危険な識別子ルール（forbidigo）は、エディターがそれらを表示しなくても
+  CI で強制される。
 
-### Negative Consequences
+### ネガティブな影響
 
-- A rule added to `.golangci-full.yaml` is not automatically visible in the editor unless
-  it is also added to `.golangci.yaml`. Discoverability of new rules depends on the
-  author remembering to check both files or running `make lint` locally.
-- Two files to maintain. Settings common to both (formatter config, some linter settings)
-  must be kept in sync manually.
+- `.golangci-full.yaml` に追加されたルールは、`.golangci.yaml` にも追加しない限り自動的にエディターで
+  表示されない。新しいルールの発見可能性は、作成者が両方のファイルを確認することや `make lint` をローカルで
+  実行することを覚えているかどうかに依存する。
+- 管理するファイルが 2 つある。両方に共通の設定（フォーマッタ設定、一部のリンタ設定）は手動で同期を
+  保たなければならない。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Single shared config
+### 単一の共有設定
 
-One `.golangci.yaml` used everywhere. Simple to maintain but forces a choice: either use
-the full slow suite in IDEs, or weaken CI to the fast subset. Neither is acceptable.
+あらゆる場所で 1 つの `.golangci.yaml` を使用する。管理は簡単だが選択を迫られる: IDE で完全な低速スイートを
+実行するか、高速サブセットに CI を弱めるかのどちらかである。どちらも受け入れられない。
 
-### golangci-lint `--fast` flag
+### golangci-lint の `--fast` フラグ
 
-The `--fast` flag selects a subset of linters. Does not give the fine-grained control
-needed to enforce the project-specific `depguard` rules selectively, and the flag's
-semantics have changed across golangci-lint versions.
+`--fast` フラグはリンタのサブセットを選択する。プロジェクト固有の `depguard` ルールを選択的に強制するために
+必要なきめ細かい制御ができず、フラグのセマンティクスが golangci-lint のバージョン間で変化している。
 
-## Notes
+## 補足
 
-- Source: `.golangci.yaml` (minimal default), `.golangci-full.yaml` (full gate),
-  the `lint` and `fix` targets in `.makefiles/go/golangci-lint.mk`.
-- The `depguard` rules in `.golangci-full.yaml` are the machine-enforced expression of
-  the layer dependency rules documented in [`docs/rules.md`](../rules.md).
-- Related: [ADR-0002](0002-onion-architecture.md) — the layer boundaries that `depguard`
-  enforces.
+- ソース: `.golangci.yaml`（最小デフォルト）、`.golangci-full.yaml`（完全ゲート）、
+  `.makefiles/go/golangci-lint.mk` の `lint` / `fix` ターゲット。
+- `.golangci-full.yaml` の `depguard` ルールは [`docs/rules.md`](../rules.md) に文書化された
+  レイヤー依存ルールの機械強制版である。
+- 関連: [ADR-0002](0002-onion-architecture.md) — `depguard` が強制するレイヤー境界。

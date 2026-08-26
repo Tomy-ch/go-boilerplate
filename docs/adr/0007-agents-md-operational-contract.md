@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [foundational, process, ai]
 ---
 
-# ADR-0007: AI-first, manual-compatible development, with AGENTS.md as the operational contract
+# ADR-0007: AI-first / manual-compatible な開発と、運用契約としての AGENTS.md
 
 ## Status
 
@@ -13,145 +13,76 @@ accepted
 
 ## Context
 
-This repository is designed to operate with AI-assisted development tools (Claude Code, OpenAI
-Codex CLI, Cursor, GitHub Copilot, Gemini CLI / Code Assist). Each tool has its own native
-configuration mechanism (`.claude/`, `.codex/`, `.cursor/`, `.github/copilot-instructions.md`,
-`.gemini/`), but without a common contract each configuration independently re-specifies the same
-behavioral rules — modification scope, forbidden shortcuts, layer boundary rules, git discipline,
-language requirements — creating drift risk across tools.
+このリポジトリは AI 支援開発ツール（Claude Code、OpenAI Codex CLI、Cursor、GitHub Copilot、Gemini CLI / Code Assist）と共に動くよう設計されている。各ツールは固有の設定機構（`.claude/`、`.codex/`、`.cursor/`、`.github/copilot-instructions.md`、`.gemini/`）を持つが、共通契約がなければ各設定が同じ振る舞いルール — 変更スコープ、禁止ショートカット、レイヤ境界ルール、git 規律、言語要件 — を独立に再定義し、ツール間のドリフトを生む。
 
-Agents executing on this codebase must be constrained consistently regardless of which tool or
-model is active:
+このコードベース上で動くエージェントは、どのツール／モデルが有効かに関わらず一貫して制約されねばならない。
 
-- Agents must not violate layer boundaries (the same rules that apply to human developers,
-  enforced by CI per [ADR-0006](0006-structural-safety-via-tooling.md)).
-- Agents must not modify generated files or protected configuration.
-- Agents must not commit directly to protected branches.
-- Agents must not introduce new architectural patterns without instruction.
-- Agents must follow the OpenAPI-first flow (see ADR-0012).
+- レイヤ境界を侵さない（人間の開発者と同じルール。[ADR-0006](0006-structural-safety-via-tooling.md) により CI で強制）
+- 生成ファイルや保護された設定を変更しない
+- 保護ブランチへ直接コミットしない
+- 指示なく新しいアーキテクチャパターンを導入しない
+- OpenAPI-first フローに従う（ADR-0012 を参照）
 
-Structural safety (ADR-0006) handles violations at the build layer, but behavioral constraints —
-what an agent may touch, how it must behave before and after a task — cannot be expressed in a
-linter. They require a declarative contract that agent harnesses load at session start. A secondary
-concern is instruction priority: when the architecture doc, the rules doc, and an ad-hoc user
-instruction disagree, the resolution order must be explicit.
+構造的安全性（ADR-0006）はビルド層で違反を捕らえるが、振る舞いの制約 — 何に触れてよいか、タスクの前後にどう振る舞うか — は linter で表現できない。セッション開始時にエージェントのハーネスが読み込む宣言的な契約が要る。第二の関心は指示の優先順位であり、アーキテクチャ文書・ルール文書・その場のユーザー指示が食い違ったときの解決順が明示されている必要がある。
 
-The second question this decision settles is **which development path the repository optimizes
-for**. Two facts changed the answer:
+この決定が settle する二つ目の問いは、**リポジトリがどちらの開発経路に最適化するか**である。答えを変えた事実が二つある。
 
-- The repository is large. Individual directories and files remain readable by a human, but
-  continuously holding the whole of it — structure, conventions, dependencies, design intent, and
-  the blast radius of a change — is expensive for a human working alone.
-- An agent is no longer only a code generator. It is the navigation layer over that foundation:
-  cross-repository search, locating the document that owns a topic, reading architecture / rules /
-  skills, tracing what a change affects, assisting implementation, review, and verification, and
-  collecting the friction encountered along the way.
+- リポジトリが大きい。個々のディレクトリやファイルは人間に読めるままだが、その全体 — 構造、規約、依存関係、設計意図、変更の影響範囲 — を継続的に把握し続けるコストは、人間ひとりには高い。
+- エージェントはもはやコード生成器だけではない。リポジトリ横断探索、話題を所有する文書の発見、アーキテクチャ / ルール / スキルの参照、変更影響範囲の把握、実装・レビュー・検証の補助、そして過程で生じた摩擦の収集という、開発基盤のナビゲーション層として機能している。
 
-Holding an AI-specific mechanism optional purely to keep a manual path at full parity now costs
-more than the parity is worth. At the same time, the application itself must never require an AI
-service to build, test, or run: a system that cannot be built, tested, or operated without a
-particular vendor's agent has traded one lock-in for another.
+手動経路と完全な体験対称性を保つためだけに AI 固有機構を任意扱いすることは、その対称性が生む価値を上回るコストになった。同時に、アプリケーション自体が build / test / run のために AI サービスを要求してはならない。特定ベンダーのエージェントなしに出荷できない状態は、ロックインを別のロックインに置き換えただけである。
 
 ## Decision
 
-**The standard development path of this repository is AI-assisted. Manual development stays
-technically supported, as a not-recommended compatibility path with no guarantee of an equivalent
-developer experience.**
+**このリポジトリの標準開発経路は AI 支援開発とする。手動開発は技術的に利用可能なまま、推奨されない互換経路として扱い、同等の開発者体験は保証しない。**
 
-1. **AI-specific mechanisms may be built into the standard development foundation** — `.claude/`,
-   `.codex/`, skills, agent-facing rules and context, AI-invoking GitHub Actions, AI review,
-   feedback issues, the closed improvement loop of [ADR-0008](0008-agent-environment-alignment.md),
-   skill-usage measurement, and automation that presumes an agent session. Being AI-specific is not
-   by itself a reason to make a mechanism optional, and full feature symmetry with the manual path
-   is not maintained.
-2. **The dependency is confined to development workflow, navigation, automation, feedback, and
-   review.** Application runtime, build, test, production runtime, the application architecture,
-   the domain model, the API contract, the database schema, ordinary CI checks, and production
-   availability stay AI-independent. With no AI service or agent available, build / test / run must
-   still succeed.
-3. **AI-first does not license a structure a human cannot read.** Explicit structure that an agent
-   can traverse and explicit structure a human can read are treated as correlated. The existing
-   responsibility separation, explicit naming, architecture boundaries, and documentation structure
-   are preserved; AI-facing context, skills, and automation are added as a control surface *over*
-   that structure, never as a replacement for it.
-4. **Deterministic checks outrank an agent's judgment.** Tests, lint, CI, and architecture rules
-   decide what an agent's reading cannot. Architecture, domain, and policy decisions keep a human
-   gate.
+1. **AI 固有機構を標準開発基盤へ組み込んでよい** — `.claude/`、`.codex/`、スキル、エージェント向けルールとコンテキスト、AI を起動する GitHub Actions、AI レビュー、フィードバック issue、[ADR-0008](0008-agent-environment-alignment.md) の閉じた改善ループ、スキル利用計測、エージェントセッションを前提とした自動化。AI 固有であることのみを理由に任意化しない。手動経路との完全な機能対称性は維持しない。
+2. **依存は開発ワークフロー / ナビゲーション / 自動化 / フィードバック / レビューに限定する。** アプリケーションランタイム、ビルド、テスト、本番ランタイム、アプリケーションアーキテクチャ、ドメインモデル、API コントラクト、データベーススキーマ、通常の CI 検査、本番可用性は AI 非依存を保つ。AI サービスやエージェントが利用できなくても build / test / run は成立しなければならない。
+3. **AI-first は人間に読めない構造を許可しない。** エージェントが辿れる明示的な構造と、人間が読める明示的な構造は相関するものとして扱う。既存の責務分離、明示的な命名、アーキテクチャ境界、ドキュメント構造は維持し、AI 向けのコンテキスト・スキル・自動化はその構造の *上に* 制御面として足す。構造の置き換えではない。
+4. **決定論的な検査はエージェントの判断に優先する。** テスト、lint、CI、アーキテクチャルールが、エージェントの読解では決められないことを決める。アーキテクチャ・ドメイン・ポリシーの判断には Human Gate を維持する。
 
-`AGENTS.md` (project root) remains the **single operational contract** for agents, taking
-precedence in the order `AGENTS.md` → `docs/rules.md` → `docs/architecture.md` → user instructions,
-and remains **human-maintained only**. The contract covers instruction priority, the canonical
-documentation map, the hard modification scope, forbidden shortcuts, the AI-tool configuration
-directories, the skill-execution exception that relaxes scope for the duration of an explicitly
-invoked skill, git rules, and language rules.
+`AGENTS.md`（リポジトリルート）は引き続きエージェントに対する**単一の運用契約**であり、`AGENTS.md` → `docs/rules.md` → `docs/architecture.md` → ユーザー指示の順で優先し、**人間のみが保守する**。契約が扱うのは、指示の優先順位、正本ドキュメントの地図、変更スコープ、禁止ショートカット、AI ツール設定ディレクトリ、明示的に起動されたスキルの実行中だけスコープを緩める skill-execution 例外、git ルール、言語ルールである。
 
-Per-tool harness files (`.claude/settings.json`, `.codex/config.toml`, …) translate and extend the
-contract for each tool's native mechanism, but `AGENTS.md` remains the source of truth. Reusable
-agent procedures (scaffold, review, commit, release-notes, …) are codified as skill files under
-`.claude/skills/` and their `.codex/skills/` counterparts.
+ツールごとのハーネスファイル（`.claude/settings.json`、`.codex/config.toml` など）は契約を各ツールの機構へ翻訳・拡張するが、正本は `AGENTS.md` のままとする。再利用可能な手順（scaffold、review、commit、release-notes など）は `.claude/skills/` と対応する `.codex/skills/` にスキルとして成文化する。
 
 ## Consequences
 
 ### Positive Consequences
 
-- A single human-reviewed document governs agent behavior across all tools; per-tool configuration
-  drift is reduced, and instruction priority resolves deterministically.
-- The development foundation can adopt a mechanism on its merits, without first proving that a
-  manual path reaches the same result by a different route.
-- The line that actually carries operational risk — can this application be built, tested, and
-  operated without AI — is stated once and stays testable, instead of being implied by the absence
-  of AI machinery.
-- The AGENTS.md and README-driven contract converges AI output variance: it raises AI-generated
-  code and workflow execution toward the level a developer reaches by reading the canonical READMEs.
+- 単一の人間レビュー済み文書が全ツールのエージェント挙動を統べ、ツール間の設定ドリフトが減り、指示の優先順位が決定的に解決する。
+- 開発基盤は、手動経路が別ルートで同じ結果に到達すると先に証明しなくても、機構をその価値で採用できる。
+- 採用者が実際に気にする線 — このアプリケーションを AI なしで build / test / 運用できるか — が一度明示され、検証可能に保たれる。AI 機構の不在によって暗黙に示されるのではない。
+- AGENTS.md と README 駆動の契約は AI 出力のばらつきを収束させ、正本 README を読んだ開発者の水準へ AI 生成コードとワークフロー実行を引き上げる。
 
 ### Negative Consequences
 
-- A contributor who declines the AI-assist layer performs by hand what a skill would otherwise
-  drive, and encounters conventions whose only executable form is a skill. This is accepted.
-- `AGENTS.md` must be kept current by humans as the architecture evolves; a stale contract misleads
-  agents.
-- Different AI tools have different compliance fidelity; the contract is best-effort, and hard
-  enforcement remains with CI.
-- The number of skills grows as the codebase matures, requiring its own maintenance discipline —
-  which is why ADR-0008 puts them under a measured improvement loop rather than letting them
-  accumulate.
+- AI 支援層を採らない貢献者は、スキルが駆動するはずの作業を手で行い、実行形態がスキルしかない規約に出会う。これは受容する。
+- `AGENTS.md` はアーキテクチャの進化に合わせて人間が最新に保たねばならない。古い契約はエージェントを誤導する。
+- AI ツールごとに遵守度が異なる。契約は best-effort であり、強制は CI に残る。
+- コードベースの成熟につれてスキルは増え、それ自体の保守規律を要する。だから ADR-0008 はスキルを蓄積させず、測定された改善ループの下に置く。
 
 ## Alternatives Considered
 
-### Keep the manual path as a first-class, symmetric use case
+### 手動経路を第一級の対称なユースケースとして維持する
 
-The original position: hold every AI-specific mechanism optional so that a developer without AI
-tooling receives the same developer experience. Rejected. It rests on the premise that a human
-alone can continuously hold the whole repository, which no longer holds at this size, and it turns
-every foundation improvement into a symmetry negotiation. The genuine part of the concern — not
-making the *product* depend on AI — is preserved as decision point 2 above, which is where the
-operational risk actually lives.
+当初の立場。AI 固有機構をすべて任意に保ち、AI ツールを持たない開発者に同等の開発者体験を提供する。却下。これは「人間ひとりがリポジトリ全体を継続的に把握できる」という前提に立つが、この規模では成り立たず、あらゆる基盤改善が対称性の交渉になる。懸念のうち真に価値のある部分 — *プロダクト* を AI 依存にしないこと — は上記の決定 2 として保存されており、そこが実際にリスクの在処である。
 
-### Drop manual development entirely
+### 手動開発を完全に廃止する
 
-Rejected. Build, test, and runtime must not depend on an AI service, and the resulting application
-must be operable without one. Removing the manual path would also make the project's viability
-contingent on one vendor's agent remaining available.
+却下。build / test / runtime が AI サービスに依存してはならず、結果として得られるアプリケーションは AI なしで運用できねばならない。手動経路の削除は、プロジェクトの成立性を特定ベンダーのエージェントの存続に賭けることにもなる。
 
-### Per-tool configuration only
+### ツールごとの設定のみ
 
-Each tool's native config file is the sole contract for that tool. Rejected: rules diverge across
-tools and the common architectural constraints must be restated and maintained in multiple places.
+各ツールのネイティブ設定ファイルをそのツール唯一の契約とする。却下。ルールがツール間で分岐し、共通のアーキテクチャ制約を複数箇所で再記述・保守することになる。
 
-### Inline AI rules in docs/rules.md
+### AI ルールを docs/rules.md に混ぜる
 
-Merge agent behavioral rules into the architectural rules document. Rejected: `docs/rules.md` is an
-architectural document addressed to whoever changes the code; agent-specific behavioral constraints
-(modification scope, forbidden shortcuts, git discipline) reduce clarity for both audiences when
-mixed in.
+エージェントの振る舞いルールをアーキテクチャルール文書へ統合する。却下。`docs/rules.md` はコードを変更する者に宛てたアーキテクチャ文書であり、エージェント固有の振る舞い制約（変更スコープ、禁止ショートカット、git 規律）を混ぜると双方の読者にとって明瞭さが落ちる。
 
 ## Notes
 
-- Source: `AGENTS.md` (full document — the operational contract itself).
-- Skill files: `.claude/skills/` and `.codex/skills/` (per-procedure agent capabilities extending
-  the contract).
-- Related structural enforcement: [ADR-0006](0006-structural-safety-via-tooling.md).
-- Related: [ADR-0008](0008-agent-environment-alignment.md) (how a control is judged and retired),
-  [ADR-0009](0009-long-running-agent-state.md) (what agent state may persist).
-- Interpretation: [`docs/design/agent-environment.md`](../design/agent-environment.md);
-  `docs/architecture.md` § "AI-assisted Development".
+- 出典: `AGENTS.md`（運用契約そのもの）。
+- スキルファイル: `.claude/skills/` および `.codex/skills/`。
+- 関連する構造的強制: [ADR-0006](0006-structural-safety-via-tooling.md)。
+- 関連: [ADR-0008](0008-agent-environment-alignment.md)（制御をどう判断し、どう退役させるか）、[ADR-0009](0009-long-running-agent-state.md)（どのエージェント状態を永続してよいか）。
+- 解釈: [`docs/design/agent-environment.md`](../design/agent-environment.md)、`docs/architecture.md` § "AI-assisted Development"。

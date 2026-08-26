@@ -1,7 +1,7 @@
 # ipextractor
 
-Configures client IP extraction strategy based on environment.
+環境に応じたクライアント IP 抽出戦略を設定します。
 
-## Role
+## 役割
 
-The real client IP is derived differently depending on whether the app runs directly exposed or behind a trusted proxy or load balancer, and getting it wrong undermines logging and any IP-based control. Centralizing the extraction strategy as an environment-driven setup gives the rest of the stack a single, correctly-derived client IP to trust.
+実際のクライアント IP は、アプリが直接公開されているか信頼できるプロキシ / ロードバランサの背後にあるかで導出方法が異なり、誤るとログや IP ベースの制御が損なわれます。抽出戦略を環境駆動の設定として一元化することで、スタックの他の部分が信頼できる正しく導出された単一のクライアント IP を得られます。
