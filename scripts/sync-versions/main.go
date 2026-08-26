@@ -229,28 +229,34 @@ func buildRules(v runtimeVersions) []rule {
 			"docker/README.md (node image)", nodeImageRe, v.Node),
 		readmeRule("docker/README.md",
 			"docker/README.md (python image)", pythonImageRe, v.Python),
+// doc-pair:begin
 		readmeRule("docker/README.ja.md",
 			"docker/README.ja.md (golang image)", golangImageRe, v.Go),
 		readmeRule("docker/README.ja.md",
 			"docker/README.ja.md (node image)", nodeImageRe, v.Node),
 		readmeRule("docker/README.ja.md",
 			"docker/README.ja.md (python image)", pythonImageRe, v.Python),
+// doc-pair:end
 		readmeRule("docker/server/README.md",
 			"docker/server/README.md (golang image)", golangImageRe, v.Go),
+// doc-pair:begin
 		readmeRule("docker/server/README.ja.md",
 			"docker/server/README.ja.md (golang image)", golangImageRe, v.Go),
+// doc-pair:end
 		readmeRule("docker/tools/README.md",
 			"docker/tools/README.md (golang image)", golangImageRe, v.Go),
 		readmeRule("docker/tools/README.md",
 			"docker/tools/README.md (node image)", nodeImageRe, v.Node),
 		readmeRule("docker/tools/README.md",
 			"docker/tools/README.md (python image)", pythonImageRe, v.Python),
+// doc-pair:begin
 		readmeRule("docker/tools/README.ja.md",
 			"docker/tools/README.ja.md (golang image)", golangImageRe, v.Go),
 		readmeRule("docker/tools/README.ja.md",
 			"docker/tools/README.ja.md (node image)", nodeImageRe, v.Node),
 		readmeRule("docker/tools/README.ja.md",
 			"docker/tools/README.ja.md (python image)", pythonImageRe, v.Python),
+// doc-pair:end
 		dockerfileRule("docker/tools/Dockerfile",
 			"docker/tools/Dockerfile (mise version)", miseDockerfileRe, v.Mise, 1),
 		dockerfileRule("docker/server/Dockerfile",

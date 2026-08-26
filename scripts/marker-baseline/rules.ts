@@ -17,9 +17,9 @@
 // 見張るのは「マーカー行が増えたこと」だけでよい。例示を書けば必ず増えるからである。行数は
 // マーカーを足した / 消した瞬間にしか動かないので、区域内の散文を直しても差分は出ない。
 
-/** 撤去マーカーの行。両名前空間・全接尾辞を 1 本で見る。 */
+/** 撤去マーカーの行。全名前空間・全接尾辞を 1 本で見る。 */
 const MARKER_LINE =
-  /(?:\/\/|#|%%|<!--)\s*(?:boilerplate-only|sample-api):(?:begin|end|line|replace-begin|replace-with|replace-end)\b/;
+  /(?:\/\/|#|%%|<!--)\s*(?:boilerplate-only|sample-api|doc-pair):(?:begin|end|line|replace-begin|replace-with|replace-end)\b/;
 
 /** 走査から外すディレクトリ名。依存の取得物と VCS の内部。 */
 export const EXCLUDED_DIRECTORIES: ReadonlySet<string> = new Set([

@@ -9,7 +9,7 @@ import {
   checkPlatformOnlyAllowlist,
   checkReferences,
   checkSkillParity,
-  checkTranslationPair,
+  checkTranslationPair, // doc-pair:line
   formatFindings,
   isClaudeAgentDefinition,
   isCodexAgentDefinition,
@@ -35,11 +35,13 @@ function canonical(name = "demo"): string {
   return doc("---", `name: ${name}`, "description: what it does", "---", "", "# Demo", "", "## Steps");
 }
 
+// doc-pair:begin
 /** canonical と 1:1 の対訳。 */
 function translation(basename = "SKILL.md"): string {
   return doc(`> ${basename} の日本語訳です。`, "", "# デモ", "", "## 手順");
 }
 
+// doc-pair:end
 const NO_REFERENCES = {
   makeTargetExists: () => true,
   repoPathExists: () => true,
@@ -90,6 +92,7 @@ describe("checkFrontmatter", () => {
   });
 });
 
+// doc-pair:begin
 describe("checkTranslationPair", () => {
   describe("正常系", () => {
     it("frontmatter が無く注記と見出しが揃っていれば違反にしない", () => {
@@ -144,6 +147,7 @@ describe("checkTranslationPair", () => {
   });
 });
 
+// doc-pair:end
 describe("checkSkillParity", () => {
   describe("正常系", () => {
     it("両環境に揃っていれば違反にしない", () => {
@@ -254,6 +258,7 @@ describe("checkPlatformOnlyAllowlist", () => {
   });
 });
 
+// doc-pair:replace-begin
 describe("checkCodexSkillStructure", () => {
   describe("正常系", () => {
     it("SKILL.md と openai.yaml と対訳が揃えば違反にしない", () => {
@@ -324,6 +329,40 @@ describe("checkCodexSkillStructure", () => {
   });
 });
 
+// doc-pair:replace-with
+// = describe("checkCodexSkillStructure", () => {
+// =   describe("正常系", () => {
+// =     it("SKILL.md と openai.yaml が揃えば違反にしない", () => {
+// =       expect(
+// =         checkCodexSkillStructure(".codex/skills/a", { canonical: canonical(), hasMetadata: true }),
+// =       ).toEqual([]);
+// =     });
+// =   });
+// =
+// =   describe("異常系", () => {
+// =     it("SKILL.md が無ければ報告する", () => {
+// =       const findings = checkCodexSkillStructure(".codex/skills/a", {
+// =         canonical: null,
+// =         hasMetadata: true,
+// =       });
+// =
+// =       expect(findings).toHaveLength(1);
+// =       expect(findings[0].message).toContain("`SKILL.md`");
+// =     });
+// =
+// =     it("openai.yaml が無ければ報告する", () => {
+// =       const findings = checkCodexSkillStructure(".codex/skills/a", {
+// =         canonical: canonical(),
+// =         hasMetadata: false,
+// =       });
+// =
+// =       expect(findings).toHaveLength(1);
+// =       expect(findings[0].message).toContain("openai.yaml");
+// =     });
+// =   });
+// = });
+// =
+// doc-pair:replace-end
 describe("checkReferences", () => {
   describe("正常系", () => {
     it("実在する参照だけなら違反にしない", () => {
@@ -452,7 +491,7 @@ describe("isClaudeAgentDefinition", () => {
 
   describe("異常系", () => {
     it("対訳は定義として数えない", () => {
-      expect(isClaudeAgentDefinition("reviewer.ja.md")).toBe(false);
+      expect(isClaudeAgentDefinition("reviewer.ja.md")).toBe(false); // doc-pair:line
     });
 
     it("md 以外は対象にしない", () => {

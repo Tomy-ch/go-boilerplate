@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import { autoTitle, buildDocsJson, guideIdOf, slugify, type DiscoveredDocs, isSectionDirectory, isMarkdownFile, sortSectionNames } from "./docs-json";
 
+// doc-pair:replace-begin
 const EMPTY: DiscoveredDocs = { directories: [], rootEnFiles: [], rootJaFiles: [] };
+// doc-pair:replace-with
+// = const EMPTY: DiscoveredDocs = { directories: [], rootFiles: [] };
+// doc-pair:replace-end
 
 function build(manifest: Record<string, unknown>, discovered: DiscoveredDocs = EMPTY) {
   return buildDocsJson(manifest, discovered);
@@ -13,9 +17,11 @@ describe("autoTitle", () => {
     it("拡張子を落として語頭を大文字にする", () => {
       expect(autoTitle("rest-design.md")).toBe("Rest Design");
     });
+// doc-pair:begin
     it("対訳の拡張子も落とす", () => {
       expect(autoTitle("rest-design.ja.md")).toBe("Rest Design");
     });
+// doc-pair:end
     it("アンダースコアも語の区切りにする", () => {
       expect(autoTitle("make_commands")).toBe("Make Commands");
     });
@@ -35,10 +41,16 @@ describe("slugify", () => {
 
 describe("guideIdOf", () => {
   describe("正常系", () => {
+// doc-pair:replace-begin
     it("EN と JA の対を同じ識別子へ寄せる", () => {
       expect(guideIdOf("docs/portal/guides/rules.md")).toBe("rules");
       expect(guideIdOf("docs/portal/guides/rules.ja.md")).toBe("rules");
     });
+// doc-pair:replace-with
+// =     it("拡張子を落として識別子にする", () => {
+// =       expect(guideIdOf("docs/portal/guides/rules.md")).toBe("rules");
+// =     });
+// doc-pair:replace-end
     it("html の 1 段だけを落とす（foo.html.md と foo.html を混ぜない）", () => {
       expect(guideIdOf("foo.html.md")).toBe("foo.html");
       expect(guideIdOf("foo.html")).toBe("foo");
@@ -70,7 +82,7 @@ describe("buildDocsJson", () => {
                 {
                   name: "Adr 0001 X",
                   path: "./guides/adr-0001-x.md",
-                  lang: "en",
+                  lang: "en", // doc-pair:line
                   source: "docs/adr/0001-x.md",
                   guideId: "adr-0001-x",
                 },
@@ -93,6 +105,7 @@ describe("buildDocsJson", () => {
       expect(docs.groups[0].sections[0].title).toBe("Decisions");
     });
 
+// doc-pair:begin
     it("対訳を lang: ja として持ち、EN の後ろへ並べる", () => {
       const { docs } = build({
         meta: { groups: [{ title: "G", sections: ["adr"] }] },
@@ -105,10 +118,12 @@ describe("buildDocsJson", () => {
       expect(docs.groups[0].sections[0].items.map((item) => item.lang)).toEqual(["en", "ja"]);
     });
 
+// doc-pair:end
     it("走査で見つけた docs/<dir> を section にする", () => {
       const { docs } = build(
         { meta: { groups: [{ title: "G", sections: ["adr"] }] } },
         {
+// doc-pair:replace-begin
           directories: [
             { name: "adr", hasIndexHtml: false, enFiles: ["a.md"], jaFiles: ["a.md"] },
           ],
@@ -121,15 +136,35 @@ describe("buildDocsJson", () => {
         { name: "A", path: "../adr/a.md", lang: "en", source: "docs/adr/a.md", guideId: "a" },
         { name: "A", path: "../ja/adr/a.md", lang: "ja", source: "docs/adr/a.md", guideId: "a" },
       ]);
+// doc-pair:replace-with
+// =           directories: [{ name: "adr", hasIndexHtml: false, files: ["a.md"] }],
+// =           rootFiles: [],
+// =         },
+// =       );
+// =
+// =       expect(docs.groups[0].sections[0].items).toEqual([
+// =         { name: "A", path: "../adr/a.md", source: "docs/adr/a.md", guideId: "a" },
+// =       ]);
+// doc-pair:replace-end
     });
 
     it("index.html を持つ section は言語を問わない 1 枚のカードにする", () => {
       const { docs } = build(
         { meta: { groups: [{ title: "G", sections: ["godoc"] }] } },
         {
+// doc-pair:replace-begin
           directories: [{ name: "godoc", hasIndexHtml: true, enFiles: [], jaFiles: [] }],
+// doc-pair:replace-with
+// =           directories: [{ name: "godoc", hasIndexHtml: true, files: [] }],
+// doc-pair:replace-end
+// doc-pair:replace-begin
           rootEnFiles: [],
+// doc-pair:replace-with
+// =           rootFiles: [],
+// doc-pair:replace-end
+// doc-pair:begin
           rootJaFiles: [],
+// doc-pair:end
         },
       );
 
@@ -137,7 +172,7 @@ describe("buildDocsJson", () => {
         {
           name: "Godoc",
           path: "../godoc/index.html",
-          lang: "all",
+          lang: "all", // doc-pair:line
           source: "docs/godoc/index.html",
           guideId: "godoc",
         },
@@ -148,6 +183,7 @@ describe("buildDocsJson", () => {
       const { docs } = build(
         { meta: { groups: [{ title: "G", sections: ["godoc"] }] } },
         {
+// doc-pair:replace-begin
           directories: [{ name: "godoc", hasIndexHtml: true, enFiles: ["a.md"], jaFiles: ["b.md"] }],
           rootEnFiles: [],
           rootJaFiles: [],
@@ -155,12 +191,24 @@ describe("buildDocsJson", () => {
       );
 
       expect(docs.groups[0].sections[0].items.map((item) => item.lang)).toEqual(["en", "ja", "all"]);
+// doc-pair:replace-with
+// =           directories: [{ name: "godoc", hasIndexHtml: true, files: ["a.md"] }],
+// =           rootFiles: [],
+// =         },
+// =       );
+// =
+// =       expect(docs.groups[0].sections[0].items.map((item) => item.name)).toEqual(["A", "Godoc"]);
+// doc-pair:replace-end
     });
 
     it("docs 直下の Markdown を architecture セクションへ集約する", () => {
       const { docs } = build(
         { meta: { groups: [{ title: "G", sections: ["architecture"] }] } },
+// doc-pair:replace-begin
         { directories: [], rootEnFiles: ["rules.md"], rootJaFiles: [] },
+// doc-pair:replace-with
+// =         { directories: [], rootFiles: ["rules.md"] },
+// doc-pair:replace-end
       );
 
       expect(docs.groups[0].sections[0]).toMatchObject({
@@ -169,6 +217,7 @@ describe("buildDocsJson", () => {
       });
     });
 
+// doc-pair:begin
     it("docs 直下の対訳も同じ architecture セクションへ集約する", () => {
       const { docs } = build(
         { meta: { groups: [{ title: "G", sections: ["architecture"] }] } },
@@ -186,6 +235,7 @@ describe("buildDocsJson", () => {
       ]);
     });
 
+// doc-pair:end
     it("全ての項目が小見出しへ収まれば Other を作らない", () => {
       const { docs } = build({
         meta: {
@@ -267,9 +317,19 @@ describe("buildDocsJson", () => {
       const { docs, warnings } = build(
         {},
         {
+// doc-pair:replace-begin
           directories: [{ name: "empty", hasIndexHtml: false, enFiles: [], jaFiles: [] }],
+// doc-pair:replace-with
+// =           directories: [{ name: "empty", hasIndexHtml: false, files: [] }],
+// doc-pair:replace-end
+// doc-pair:replace-begin
           rootEnFiles: [],
+// doc-pair:replace-with
+// =           rootFiles: [],
+// doc-pair:replace-end
+// doc-pair:begin
           rootJaFiles: [],
+// doc-pair:end
         },
       );
 
@@ -304,10 +364,20 @@ describe("buildDocsJson", () => {
         { meta: { groups: [{ title: "G", sections: ["adr"] }] }, adr: [] },
         {
           directories: [
+// doc-pair:replace-begin
             { name: "adr", hasIndexHtml: false, enFiles: ["a.md", "a.md"], jaFiles: [] },
+// doc-pair:replace-with
+// =             { name: "adr", hasIndexHtml: false, files: ["a.md", "a.md"] },
+// doc-pair:replace-end
           ],
+// doc-pair:replace-begin
           rootEnFiles: [],
+// doc-pair:replace-with
+// =           rootFiles: [],
+// doc-pair:replace-end
+// doc-pair:begin
           rootJaFiles: [],
+// doc-pair:end
         },
       );
 

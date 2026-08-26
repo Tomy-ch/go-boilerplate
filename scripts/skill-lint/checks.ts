@@ -252,6 +252,7 @@ export function parseFrontmatterKeys(fmLines: readonly string[]): Map<string, st
   return keys;
 }
 
+// doc-pair:begin
 export type Heading = {
   level: number;
   text: string;
@@ -309,6 +310,7 @@ export function hasTranslationNote(content: string, canonicalBasename: string): 
   return firstLine.startsWith(">") && firstLine.includes(canonicalBasename);
 }
 
+// doc-pair:end
 /** 集合差から片側のみの名前を取り出す。 */
 export function onlyIn(names: readonly string[], otherNames: readonly string[]): string[] {
   const other = new Set(otherNames);
