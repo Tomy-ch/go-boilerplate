@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 func TestNewTracerFactory(t *testing.T) {
@@ -24,6 +25,25 @@ func TestNewTracerFactory(t *testing.T) {
 				tp: provided,
 			}
 			actual := NewTracerFactory(provided)
+			assert.Equal(t, expected, actual)
+		})
+	})
+}
+
+func TestNewDisabledTracerFactory(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("スパンを送出しないTracerFactoryを返す", func(t *testing.T) {
+			t.Parallel()
+
+			expected := &tracerFactory{
+				tp: noop.NewTracerProvider(),
+			}
+			actual := NewDisabledTracerFactory()
+
 			assert.Equal(t, expected, actual)
 		})
 	})

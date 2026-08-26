@@ -8,6 +8,20 @@ English | [日本語](README.ja.md)
 
 `RegisterJobHooks` wires the job into a `lifecycle.SupervisedRunner` (the shared primitive also used by the worker / outbox-relay hooks), which registers both a Start and a Stop hook with `lifecycle.Registrar`:
 
+```mermaid
+flowchart TB
+    Start["Start hook"]
+    Snapshot["state.Snapshot()"]
+    Check{"done == nil?"}
+    NoJob["log → Shutdown"]
+    RunJob["runner.Run() in a goroutine"]
+    Done["done <- err → Shutdown"]
+
+    Start --> Snapshot --> Check
+    Check -- yes --> NoJob
+    Check -- no --> RunJob --> Done
+```
+
 1. Calls `state.Snapshot()` to get job name, args, and done channel
 2. If `done == nil`: logs and triggers `sd.Shutdown()`
 3. Otherwise: executes `runner.Run(jobCtx, name, args)` in a goroutine, sends result to `done`, then calls `sd.Shutdown()`
@@ -31,4 +45,3 @@ err := <-done
 - Job execution starts asynchronously in a separate goroutine
 - The `done` channel is closed by the hook side (callers should not close it)
 - `shutdowner.Shutdown()` triggers application stop after job completion
-- On `OnStop` the run context is cancelled, so a job still running (e.g. on `--timeout`) is interrupted rather than detached

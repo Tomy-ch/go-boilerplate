@@ -15,7 +15,7 @@ import (
 	"go-boilerplate/internal/usecase/healthcheck/query"
 	"go-boilerplate/pkg/xerrors"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -37,10 +37,10 @@ func TestBindHandler(t *testing.T) {
 	expectedMethods := []string{http.MethodGet}
 
 	testassert.AssertEchoRouterPath(
-		t, targetPath, e.Routes(),
+		t, targetPath, e.Router().Routes(),
 	)
 	testassert.AssertEchoRouterMethods(
-		t, expectedMethods, e.Routes(),
+		t, expectedMethods, e.Router().Routes(),
 	)
 }
 

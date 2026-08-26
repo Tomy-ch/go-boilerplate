@@ -3,7 +3,11 @@
 // Package exchangerate は、外部為替レート取得サービスへの意味的 gateway を提供します。
 package exchangerate
 
-import "context"
+import (
+	"context"
+
+	"go-boilerplate/pkg/decimal"
+)
 
 // Gateway は、外部サービスから為替レートを取得する意味的 gateway です。
 type Gateway interface {
@@ -19,5 +23,8 @@ type Rate struct {
 	// Quote は、換算先の通貨コードです。
 	Quote string
 	// Value は、Base 1 単位あたりの Quote 換算値です。
-	Value float64
+	Value decimal.Decimal
+	// Date は、レートの基準日（外部レートサービスの公表日、例 "2026-07-21"）です。
+	// 外部レスポンスに date が含まれない場合は空文字になります。
+	Date string
 }

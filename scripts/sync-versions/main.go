@@ -24,24 +24,27 @@ const (
 	// drift 検出の下限件数。現実装の出現箇所数に揃えており、下回ると abort する。
 	serverDockerfileGolangCount = 3
 	toolsDockerfileGolangCount  = 2
-	dockerReadmeGolangCount     = 3
-	serverReadmeGolangCount     = 2
 )
+
+// errAborted は、問題を検出したためファイルを書き換えずに中止したことを表す。
+var errAborted = xerrors.New("❌ 書き換えを中止しました")
 
 var (
 	miseSectionRe = regexp.MustCompile(`^\[([^\]]+)\]`)
 	miseKeyRe     = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_-]*)\s*=\s*"([^"]+)"`)
 	goModRe       = regexp.MustCompile(`(?m)^go \d+(?:\.\d+){0,2}$`)
-	// `(?m)^[^#]*?` でコメント行（先頭 `#`）を除外する。
-	golangFromRe = regexp.MustCompile(`(?m)^[^#]*?(FROM\s+golang:)\d+(?:\.\d+){0,2}(-[\w.-]+)`)
-	nodeFromRe   = regexp.MustCompile(`(?m)^[^#]*?(FROM\s+node:)\d+(?:\.\d+){0,2}(-[\w.-]+)`)
-	pythonFromRe = regexp.MustCompile(`(?m)^[^#]*?(FROM\s+python:)\d+(?:\.\d+){0,2}(-[\w.-]+)`)
+	// `(?m)^[^#\n]*?` でコメント行（先頭 `#`）を除外する。`\n` を除くのは、Go の文字クラスが
+	// 改行にもマッチするためで、`[^#]` のままだとマッチが行をまたいで広がる。間に `#` を
+	// 含まない 2 つの `FROM` があると、その間の行までマッチに取り込まれ、置換で消える。
+	// マッチ件数は変わらないので expectedCount のゲートも通過してしまう。
+	golangFromRe = regexp.MustCompile(`(?m)^[^#\n]*?(FROM\s+golang:)\d+(?:\.\d+){0,2}(-[\w.-]+)`)
+	nodeFromRe   = regexp.MustCompile(`(?m)^[^#\n]*?(FROM\s+node:)\d+(?:\.\d+){0,2}(-[\w.-]+)`)
+	pythonFromRe = regexp.MustCompile(`(?m)^[^#\n]*?(FROM\s+python:)\d+(?:\.\d+){0,2}(-[\w.-]+)`)
 	// バッククォートを capture に含めることで置換後も保持する。
 	golangImageRe    = regexp.MustCompile("(`golang:)" + `\d+(?:\.\d+){0,2}` + "(-[\\w.-]+`)")
 	nodeImageRe      = regexp.MustCompile("(`node:)" + `\d+(?:\.\d+){0,2}` + "(-[\\w.-]+`)")
 	pythonImageRe    = regexp.MustCompile("(`python:)" + `\d+(?:\.\d+){0,2}` + "(-[\\w.-]+`)")
 	miseDockerfileRe = regexp.MustCompile(`(MISE_VERSION=v)\d+(?:\.\d+){0,2}()`)
-	miseActionRe     = regexp.MustCompile(`(?m)^([ \t]+version: )\d+(?:\.\d+){0,2}([ \t]*)$`)
 	// docker-compose.yaml の otel-lgtm image タグ。suffix は空 capture でタグ末尾を保持する。
 	otelLgtmImageRe = regexp.MustCompile("(grafana/otel-lgtm:)" + `\d+(?:\.\d+){0,2}` + "()")
 )
@@ -57,11 +60,12 @@ type runtimeVersions struct {
 
 // rule はファイル内の regex マッチ箇所を 1 つの version で置換する単位。
 type rule struct {
-	label         string
-	file          string
-	re            *regexp.Regexp
-	version       string
-	replace       func(match string) string
+	label   string
+	file    string
+	re      *regexp.Regexp
+	version string
+	replace func(match string) string
+	// expectedCount はマッチ件数の下限。0 は下限なしを表し、記載が 1 つも無いファイルも許容する。
 	expectedCount int
 }
 
@@ -72,18 +76,26 @@ type fileState struct {
 	applied  []string
 }
 
+// main は 1:1 テスト規約の対象外で分岐を検査できないため、判断は run に置きます。
 func main() {
 	log.SetFlags(0)
 	log.SetPrefix("")
 
-	root, err := os.Getwd()
+	if err := run(os.Getwd); err != nil {
+		log.Fatalf("%v", err)
+	}
+}
+
+// run は、mise.toml の version を各種ファイルへ反映します。getwd は走査の基点の取得手段です。
+func run(getwd func() (string, error)) error {
+	root, err := getwd()
 	if err != nil {
-		log.Fatalf("❌ getwd: %v", err)
+		return xerrors.Wrap(err, "❌ getwd")
 	}
 
 	v, err := parseMiseTOML(filepath.Join(root, "mise.toml"))
 	if err != nil {
-		log.Fatalf("❌ mise.toml のパースに失敗: %v", err)
+		return xerrors.Wrap(err, "❌ mise.toml のパースに失敗")
 	}
 
 	printSource(v)
@@ -91,17 +103,19 @@ func main() {
 	rules := buildRules(v)
 
 	if errs := validateRules(rules, root); len(errs) > 0 {
-		reportAndExit("Validation errors（書き換えは行いません）", errs)
+		reportProblems("Validation errors（書き換えは行いません）", errs)
+
+		return errAborted
 	}
 
 	states, errs := computeChanges(rules, root)
 	if len(errs) > 0 {
-		reportAndExit("Match-count errors（書き換えは行いません）", errs)
+		reportProblems("Match-count errors（書き換えは行いません）", errs)
+
+		return errAborted
 	}
 
-	if err := writeChanges(states, root); err != nil {
-		log.Fatalf("❌ %v", err)
-	}
+	return writeChanges(states, root)
 }
 
 // parseMiseTOML は mise.toml の [tools] table 配下の go / node / python キーを抽出する。
@@ -179,14 +193,15 @@ func dockerfileRule(file, label string, re *regexp.Regexp, version string, count
 	}
 }
 
-func readmeRule(file, label string, re *regexp.Regexp, version string, count int) rule {
+// readmeRule は README 中のイメージ記載を書き換える rule を返す。件数の下限は設けない —
+// README の記載量は書き手の裁量で変わるため、固定すると文章の書き方が変わっただけで abort する。
+func readmeRule(file, label string, re *regexp.Regexp, version string) rule {
 	return rule{
-		label:         label,
-		file:          file,
-		re:            re,
-		version:       version,
-		replace:       fromReplacer(re, version),
-		expectedCount: count,
+		label:   label,
+		file:    file,
+		re:      re,
+		version: version,
+		replace: fromReplacer(re, version),
 	}
 }
 
@@ -209,43 +224,37 @@ func buildRules(v runtimeVersions) []rule {
 		dockerfileRule("docker/tools/Dockerfile",
 			"docker/tools/Dockerfile (python base)", pythonFromRe, v.Python, 1),
 		readmeRule("docker/README.md",
-			"docker/README.md (golang image)", golangImageRe, v.Go, dockerReadmeGolangCount),
+			"docker/README.md (golang image)", golangImageRe, v.Go),
 		readmeRule("docker/README.md",
-			"docker/README.md (node image)", nodeImageRe, v.Node, 1),
+			"docker/README.md (node image)", nodeImageRe, v.Node),
 		readmeRule("docker/README.md",
-			"docker/README.md (python image)", pythonImageRe, v.Python, 1),
+			"docker/README.md (python image)", pythonImageRe, v.Python),
 		readmeRule("docker/README.ja.md",
-			"docker/README.ja.md (golang image)", golangImageRe, v.Go, dockerReadmeGolangCount),
+			"docker/README.ja.md (golang image)", golangImageRe, v.Go),
 		readmeRule("docker/README.ja.md",
-			"docker/README.ja.md (node image)", nodeImageRe, v.Node, 1),
+			"docker/README.ja.md (node image)", nodeImageRe, v.Node),
 		readmeRule("docker/README.ja.md",
-			"docker/README.ja.md (python image)", pythonImageRe, v.Python, 1),
+			"docker/README.ja.md (python image)", pythonImageRe, v.Python),
 		readmeRule("docker/server/README.md",
-			"docker/server/README.md (golang image)", golangImageRe, v.Go, serverReadmeGolangCount),
+			"docker/server/README.md (golang image)", golangImageRe, v.Go),
 		readmeRule("docker/server/README.ja.md",
-			"docker/server/README.ja.md (golang image)", golangImageRe, v.Go, serverReadmeGolangCount),
+			"docker/server/README.ja.md (golang image)", golangImageRe, v.Go),
 		readmeRule("docker/tools/README.md",
-			"docker/tools/README.md (golang image)", golangImageRe, v.Go, 1),
+			"docker/tools/README.md (golang image)", golangImageRe, v.Go),
 		readmeRule("docker/tools/README.md",
-			"docker/tools/README.md (node image)", nodeImageRe, v.Node, 1),
+			"docker/tools/README.md (node image)", nodeImageRe, v.Node),
 		readmeRule("docker/tools/README.md",
-			"docker/tools/README.md (python image)", pythonImageRe, v.Python, 1),
+			"docker/tools/README.md (python image)", pythonImageRe, v.Python),
 		readmeRule("docker/tools/README.ja.md",
-			"docker/tools/README.ja.md (golang image)", golangImageRe, v.Go, 1),
+			"docker/tools/README.ja.md (golang image)", golangImageRe, v.Go),
 		readmeRule("docker/tools/README.ja.md",
-			"docker/tools/README.ja.md (node image)", nodeImageRe, v.Node, 1),
+			"docker/tools/README.ja.md (node image)", nodeImageRe, v.Node),
 		readmeRule("docker/tools/README.ja.md",
-			"docker/tools/README.ja.md (python image)", pythonImageRe, v.Python, 1),
+			"docker/tools/README.ja.md (python image)", pythonImageRe, v.Python),
 		dockerfileRule("docker/tools/Dockerfile",
 			"docker/tools/Dockerfile (mise version)", miseDockerfileRe, v.Mise, 1),
 		dockerfileRule("docker/server/Dockerfile",
 			"docker/server/Dockerfile (mise version)", miseDockerfileRe, v.Mise, 1),
-		dockerfileRule(".github/workflows/go-lint.yaml",
-			"go-lint.yaml (mise-action version)", miseActionRe, v.Mise, 1),
-		dockerfileRule(".github/workflows/gen-db-artifacts-check.yaml",
-			"gen-db-artifacts-check.yaml (mise-action version)", miseActionRe, v.Mise, 1),
-		dockerfileRule(".github/workflows/vulnerability-check.yaml",
-			"vulnerability-check.yaml (mise-action version)", miseActionRe, v.Mise, 1),
 		dockerfileRule("docker-compose.yaml",
 			"docker-compose.yaml (otel-lgtm image)", otelLgtmImageRe, v.OtelLgtm, 1),
 	}
@@ -331,13 +340,14 @@ func writeChanges(states map[string]*fileState, root string) error {
 	return nil
 }
 
-func reportAndExit(title string, errs []string) {
+// reportProblems は、書き換えへ進めない理由を一覧で表示する。件数が可変で複数行になるため、
+// エラーのメッセージへ畳み込まず、中止そのものは errAborted で表す。
+func reportProblems(title string, errs []string) {
 	log.Println("")
 	log.Printf("❌ %s:", title)
 	for _, e := range errs {
 		log.Printf("  - %s", e)
 	}
-	os.Exit(1)
 }
 
 func emptyAs(s string) string {

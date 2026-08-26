@@ -10,7 +10,7 @@ Usecase for reporting service health: it captures the application time from the
 `New(dbSystemQuery, tracerFactory, clock) Usecase`
 
 - `CheckHealth(ctx) (*DTO, error)` reads the current time via `clock.Now()`, then
-  calls `DBSystemQuery.CheckDBHealth(ctx)`. On success it returns a `*DTO` with
+  calls `DBSystemCqrs.CheckDBHealth(ctx)`. On success it returns a `*DTO` with
   `Status = Ok`, `ApplicationTime`, and the `DBHealthCheck` result. On a DB error
   it returns `nil` — the DTO must not be dereferenced.
 
@@ -21,7 +21,7 @@ error, not as a `Degraded` / `Unhealthy` DTO).
 
 ## DB probe — `healthcheck/query`
 
-The `query` subpackage is a thin leaf boundary: `DBSystemQuery` with a single
+The `query` subpackage is a thin leaf boundary: `DBSystemCqrs` with a single
 `CheckDBHealth(ctx) (DBHealth, error)`, where `DBHealth` reports `Ready`,
 `RespondedAt`, and `Latency`. The concrete implementation lives in
 `internal/infrastructure/rdb/system_cqrs/healthcheck/` and runs a lightweight
@@ -32,7 +32,7 @@ The `query` subpackage is a thin leaf boundary: `DBSystemQuery` with a single
 | Concern | Path |
 | --- | --- |
 | usecase | `internal/usecase/healthcheck/` (this package) |
-| DB probe boundary | `internal/usecase/healthcheck/query/` (`DBSystemQuery`) |
+| DB probe boundary | `internal/usecase/healthcheck/query/` (`DBSystemCqrs`) |
 | clock boundary | `internal/usecase/boundary/clock/` (`Clock`) |
 | infrastructure | `internal/infrastructure/rdb/system_cqrs/healthcheck/` |
 | sqlc DML | `database/dml/system_cqrs/health_check/` |

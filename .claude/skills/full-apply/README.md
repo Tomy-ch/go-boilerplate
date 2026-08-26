@@ -1,16 +1,16 @@
 # full-apply
 
 The **"apply" skill that is the counterpart** to `full-verify` (read-only whole-repository
-verification). It reflects the findings `full-verify` emitted into `tmp/reviews/` onto the actual
+verification). It reflects the findings `full-verify` emitted into `tmp/skills/reviews/` onto the actual
 code, top-down by severity.
 
 ```txt
-full-verify  ──generates──▶  tmp/reviews/mod_*.md / architecture.md / _index.md
+full-verify  ──generates──▶  tmp/skills/reviews/mod_*.md / architecture.md / _index.md
                                    │
                                    ▼
 full-apply   ──applies──────▶  code fixes + commits
-                          ├─ tmp/reviews/working.md          (ledger: done/deferred and commit hash)
-                          └─ tmp/reviews/mod_*.md top comment (per-finding status + commit hash)
+                          ├─ tmp/skills/reviews/working.md          (ledger: done/deferred and commit hash)
+                          └─ tmp/skills/reviews/mod_*.md top comment (per-finding status + commit hash)
 ```
 
 See [README.ja.md](README.ja.md) for the Japanese version.
@@ -28,8 +28,8 @@ See [README.ja.md](README.ja.md) for the Japanese version.
 ## Usage
 
 ```text
-/full-apply                          # target tmp/reviews/, all up to Low, stop per directory
-/full-apply --reviews-dir tmp/reviews-config
+/full-apply                          # target tmp/skills/reviews/, all up to Low, stop per directory
+/full-apply --reviews-dir tmp/skills/reviews-config
 /full-apply --severity high          # stop at up to High
 /full-apply --pace all               # run continuously up to the threshold
 /full-apply --dry-run                # judgment only (no fixing)

@@ -1,0 +1,14 @@
+type: object
+description: |
+  購入ステータス別件数の 1 要素。status は ID・名称を事前解決済みで、別途の名称解決は不要です。
+required:
+  - status
+  - count
+properties:
+  status:
+    $ref: '../PurchaseStatusRef.yaml'
+  count:
+    type: integer
+    format: int64
+    description: 集計対象期間に注文された、当該ステータスの購入件数
+    example: 4

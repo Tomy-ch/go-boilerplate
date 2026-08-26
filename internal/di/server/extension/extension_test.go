@@ -9,7 +9,7 @@ import (
 
 	"go-boilerplate/internal/logging"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,7 +17,7 @@ import (
 // orderTagMiddleware は X-Order ヘッダへ tag を追記するミドルウェアを返します（適用順序の検証用）。
 func orderTagMiddleware(tag string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
+		return func(c *echo.Context) error {
 			c.Response().Header().Add("X-Order", tag)
 			return next(c)
 		}
@@ -27,7 +27,7 @@ func orderTagMiddleware(tag string) echo.MiddlewareFunc {
 // serveRootAndOrder は / へ1回リクエストし、積まれた X-Order ヘッダの並びを返します。
 func serveRootAndOrder(t *testing.T, e *echo.Echo) []string {
 	t.Helper()
-	e.GET("/", func(c echo.Context) error { return c.String(http.StatusOK, "ok") })
+	e.GET("/", func(c *echo.Context) error { return c.String(http.StatusOK, "ok") })
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
@@ -47,7 +47,6 @@ func TestApplyPreMiddlewares(t *testing.T) {
 			t.Parallel()
 
 			e := echo.New()
-			// Priority を逆順で渡し、昇順ソートされて A → B の順で適用されることを確認する。
 			mws := []PreMiddleware{
 				{Name: "B", Priority: 2, Middleware: orderTagMiddleware("B")},
 				{Name: "A", Priority: 1, Middleware: orderTagMiddleware("A")},
@@ -126,7 +125,7 @@ func TestApplyConfigurators(t *testing.T) {
 			e := echo.New()
 
 			cfg := func(e *echo.Echo) {
-				e.GET("/cfg", func(c echo.Context) error {
+				e.GET("/cfg", func(c *echo.Context) error {
 					c.Response().Header().Set("X-Cfg", "yes")
 					return c.NoContent(http.StatusNoContent)
 				})
@@ -157,19 +156,19 @@ func TestApplyExtends(t *testing.T) {
 			e := echo.New()
 
 			pre := func(next echo.HandlerFunc) echo.HandlerFunc {
-				return func(c echo.Context) error {
+				return func(c *echo.Context) error {
 					c.Response().Header().Set("X-Pre", "ok")
 					return next(c)
 				}
 			}
 			use := func(next echo.HandlerFunc) echo.HandlerFunc {
-				return func(c echo.Context) error {
+				return func(c *echo.Context) error {
 					c.Response().Header().Add("X-Use", "1")
 					return next(c)
 				}
 			}
 			cfg := func(e *echo.Echo) {
-				e.GET("/ext", func(c echo.Context) error {
+				e.GET("/ext", func(c *echo.Context) error {
 					return c.String(http.StatusOK, "done")
 				})
 			}
@@ -238,15 +237,13 @@ func TestApplyFunctions_HandleEmptySlices_NoPanic(t *testing.T) {
 	t.Parallel()
 
 	e := echo.New()
-	// ensure calling with nil/empty slices does not panic
 	err := ApplyPreMiddlewares(e, logging.NewTestLogger(t), nil)
 	require.NoError(t, err)
 	err = ApplyUseMiddlewares(e, logging.NewTestLogger(t), nil)
 	require.NoError(t, err)
 	ApplyConfigurators(e, logging.NewTestLogger(t), nil)
 
-	// still able to register and serve a route
-	e.GET("/ok", func(c echo.Context) error { return c.String(http.StatusOK, "ok") })
+	e.GET("/ok", func(c *echo.Context) error { return c.String(http.StatusOK, "ok") })
 	ctx := context.Background()
 	req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/ok", nil)
 	rec := httptest.NewRecorder()
@@ -254,119 +251,201 @@ func TestApplyFunctions_HandleEmptySlices_NoPanic(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
 
+func Test_applyMiddlewares(t *testing.T) {
+	t.Parallel()
+
+	// markMiddleware は、apply へ渡された際に自身の名前を order へ記録するミドルウェアを返す。
+	markMiddleware := func(order *[]string, name string) echo.MiddlewareFunc {
+		return func(next echo.HandlerFunc) echo.HandlerFunc {
+			*order = append(*order, name)
+			return next
+		}
+	}
+	// recorder は、受け取ったミドルウェアを適用順に評価する apply 関数を返す。
+	recorder := func(order *[]string) func(...echo.MiddlewareFunc) {
+		return func(mws ...echo.MiddlewareFunc) {
+			for _, mw := range mws {
+				mw(nil)
+			}
+		}
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("宣言順によらず priority 昇順で適用する", func(t *testing.T) {
+			t.Parallel()
+
+			var order []string
+			mws := []middlewareEntry{
+				{name: "C", priority: 30, middleware: markMiddleware(&order, "C")},
+				{name: "A", priority: 10, middleware: markMiddleware(&order, "A")},
+				{name: "B", priority: 20, middleware: markMiddleware(&order, "B")},
+			}
+
+			err := applyMiddlewares(logging.NewTestLogger(t), "use", mws, recorder(&order))
+
+			require.NoError(t, err)
+			assert.Equal(t, []string{"A", "B", "C"}, order)
+		})
+
+		t.Run("ミドルウェアが 0 件の場合は何も適用せずエラーも返さない", func(t *testing.T) {
+			t.Parallel()
+
+			var order []string
+
+			err := applyMiddlewares(logging.NewTestLogger(t), "pre", nil, recorder(&order))
+
+			require.NoError(t, err)
+			assert.Empty(t, order)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("priority が重複する場合は 1 件も適用せずエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			var order []string
+			mws := []middlewareEntry{
+				{name: "A", priority: 10, middleware: markMiddleware(&order, "A")},
+				{name: "B", priority: 10, middleware: markMiddleware(&order, "B")},
+			}
+
+			err := applyMiddlewares(logging.NewTestLogger(t), "use", mws, recorder(&order))
+
+			require.ErrorIs(t, err, errDuplicateMiddlewarePriority)
+			assert.Empty(t, order) // 検証を通過する前に適用が始まっていないこと
+		})
+	})
+}
+
 func Test_validatePriorityConflicts(t *testing.T) {
 	t.Parallel()
 
-	t.Run("priority がユニークならエラーなし", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		mws := []middlewareEntry{
-			{name: "A", priority: 10},
-			{name: "B", priority: 20},
-			{name: "C", priority: 30},
-		}
+		t.Run("priority がユニークならエラーなし", func(t *testing.T) {
+			t.Parallel()
 
-		err := validatePriorityConflicts("use", mws)
-		require.NoError(t, err)
+			mws := []middlewareEntry{
+				{name: "A", priority: 10},
+				{name: "B", priority: 20},
+				{name: "C", priority: 30},
+			}
+
+			err := validatePriorityConflicts("use", mws)
+			require.NoError(t, err)
+		})
 	})
 
-	t.Run("同じ priority が複数あればエラー", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		mws := []middlewareEntry{
-			{name: "A", priority: 10},
-			{name: "B", priority: 20},
-			{name: "C", priority: 20},
-		}
+		t.Run("同じ priority が複数あればエラー", func(t *testing.T) {
+			t.Parallel()
 
-		err := validatePriorityConflicts("use", mws)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "priority=20")
-		assert.Contains(t, err.Error(), "B")
-		assert.Contains(t, err.Error(), "C")
-	})
+			mws := []middlewareEntry{
+				{name: "A", priority: 10},
+				{name: "B", priority: 20},
+				{name: "C", priority: 20},
+			}
 
-	t.Run("kind 種別がエラー文言へ反映されること", func(t *testing.T) {
-		t.Parallel()
+			err := validatePriorityConflicts("use", mws)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "priority=20")
+			assert.Contains(t, err.Error(), "B")
+			assert.Contains(t, err.Error(), "C")
+		})
 
-		mws := []middlewareEntry{
-			{name: "A", priority: 1},
-			{name: "B", priority: 1},
-		}
+		t.Run("kind 種別がエラー文言へ反映されること", func(t *testing.T) {
+			t.Parallel()
 
-		preErr := validatePriorityConflicts("pre", mws)
-		require.Error(t, preErr)
-		assert.Contains(t, preErr.Error(), "duplicate pre middleware priorities")
+			mws := []middlewareEntry{
+				{name: "A", priority: 1},
+				{name: "B", priority: 1},
+			}
 
-		useErr := validatePriorityConflicts("use", mws)
-		require.Error(t, useErr)
-		assert.Contains(t, useErr.Error(), "duplicate use middleware priorities")
+			preErr := validatePriorityConflicts("pre", mws)
+			require.ErrorIs(t, preErr, errDuplicateMiddlewarePriority)
+			require.ErrorContains(t, preErr, "pre")
+
+			useErr := validatePriorityConflicts("use", mws)
+			require.ErrorIs(t, useErr, errDuplicateMiddlewarePriority)
+			require.ErrorContains(t, useErr, "use")
+		})
 	})
 }
 
 func Test_extractPriorityConflicts(t *testing.T) {
 	t.Parallel()
 
-	t.Run("重複なしの場合は空スライスを返す", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		input := map[int][]string{
-			1: {"A"},
-			2: {"B"},
-			3: {"C"},
-		}
+		t.Run("重複なしの場合は空スライスを返す", func(t *testing.T) {
+			t.Parallel()
 
-		got := extractPriorityConflicts(input)
-		require.Empty(t, got)
-	})
+			input := map[int][]string{
+				1: {"A"},
+				2: {"B"},
+				3: {"C"},
+			}
 
-	t.Run("重複がある場合はそのpriorityのみ返す", func(t *testing.T) {
-		t.Parallel()
+			got := extractPriorityConflicts(input)
+			require.Empty(t, got)
+		})
 
-		input := map[int][]string{
-			1: {"A", "B"}, // ★ 重複
-			2: {"C"},
-		}
+		t.Run("重複がある場合はそのpriorityのみ返す", func(t *testing.T) {
+			t.Parallel()
 
-		got := extractPriorityConflicts(input)
+			input := map[int][]string{
+				1: {"A", "B"}, // ★ 重複
+				2: {"C"},
+			}
 
-		require.Len(t, got, 1)
-		assert.Contains(t, got[0], "priority=1")
-		assert.Contains(t, got[0], "[A B]") // names の出力
-	})
+			got := extractPriorityConflicts(input)
 
-	t.Run("複数のpriorityが重複している場合は複数返す", func(t *testing.T) {
-		t.Parallel()
+			require.Len(t, got, 1)
+			assert.Contains(t, got[0], "priority=1")
+			assert.Contains(t, got[0], "[A B]") // names の出力
+		})
 
-		input := map[int][]string{
-			1: {"A", "B"}, // ★ 重複
-			2: {"C"},
-			3: {"X", "Y", "Z"}, // ★ 重複
-		}
+		t.Run("複数のpriorityが重複している場合は複数返す", func(t *testing.T) {
+			t.Parallel()
 
-		got := extractPriorityConflicts(input)
+			input := map[int][]string{
+				1: {"A", "B"}, // ★ 重複
+				2: {"C"},
+				3: {"X", "Y", "Z"}, // ★ 重複
+			}
 
-		require.Len(t, got, 2)
-		assert.Contains(t, got[0], "priority=")
-		assert.Contains(t, got[1], "priority=")
+			got := extractPriorityConflicts(input)
 
-		// priority=1 が含まれていること
-		assert.True(t, containsSubstring(got, "priority=1"))
-		// priority=3 が含まれていること
-		assert.True(t, containsSubstring(got, "priority=3"))
-	})
+			require.Len(t, got, 2)
+			assert.Contains(t, got[0], "priority=")
+			assert.Contains(t, got[1], "priority=")
 
-	t.Run("names が3つ以上の場合でも正しくフォーマットされる", func(t *testing.T) {
-		t.Parallel()
+			// priority=1 が含まれていること
+			assert.True(t, containsSubstring(got, "priority=1"))
+			// priority=3 が含まれていること
+			assert.True(t, containsSubstring(got, "priority=3"))
+		})
 
-		input := map[int][]string{
-			5: {"A", "B", "C"},
-		}
+		t.Run("names が3つ以上の場合でも正しくフォーマットされる", func(t *testing.T) {
+			t.Parallel()
 
-		got := extractPriorityConflicts(input)
-		require.Len(t, got, 1)
-		assert.Contains(t, got[0], "priority=5")
-		assert.Contains(t, got[0], "[A B C]")
+			input := map[int][]string{
+				5: {"A", "B", "C"},
+			}
+
+			got := extractPriorityConflicts(input)
+			require.Len(t, got, 1)
+			assert.Contains(t, got[0], "priority=5")
+			assert.Contains(t, got[0], "[A B C]")
+		})
 	})
 }
 

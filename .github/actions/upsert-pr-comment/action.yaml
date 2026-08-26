@@ -1,28 +1,32 @@
 name: Upsert PR comment
-description: マーカーで既存コメントを検出し update / create する（PR コメントの upsert）
+description: Detect an existing comment by marker and update / create it (PR comment upsert)
 
 inputs:
   github-token:
     required: true
-    description: コメント投稿に使う GITHUB_TOKEN
+    description: Token used to post the comment; must post as a bot (GITHUB_TOKEN or a GitHub App token), because the existing comment is matched on a bot author
   marker:
     required: true
-    description: 同一コメント検出用の HTML コメントマーカー
+    description: HTML comment marker used to detect the same comment
+  status:
+    required: false
+    default: ""
+    description: The caller's verdict. The literal `success` is the only value that suppresses creating a comment; every other value — including the empty default, which is what a cut-off job produces — posts one
   body-file:
     required: true
-    description: 本文として読み込むファイルパス
+    description: Path to the file read as the comment body; a missing file is reported as a cut-off job rather than failing the step
   title:
     required: false
     default: ""
-    description: 本文先頭へ付与する見出し（任意）
+    description: Heading prepended to the body (optional)
   details-summary:
     required: false
     default: ""
-    description: 指定時は本文をコードブロック付き details で畳む際の summary 文言
+    description: When set, the summary text used to fold the body into a details block with a code block
   max-length:
     required: false
     default: "45000"
-    description: 本文の最大文字数（超過分は truncate）
+    description: Maximum body length in characters (the excess is truncated)
 
 runs:
   using: composite
@@ -30,6 +34,7 @@ runs:
     - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
       env:
         MARKER: ${{ inputs.marker }}
+        STATUS: ${{ inputs.status }}
         BODY_FILE: ${{ inputs.body-file }}
         TITLE: ${{ inputs.title }}
         DETAILS_SUMMARY: ${{ inputs.details-summary }}
@@ -40,6 +45,7 @@ runs:
           const fs = require('fs');
 
           const marker = process.env.MARKER;
+          const status = process.env.STATUS || '';
           const bodyFile = process.env.BODY_FILE;
           const title = process.env.TITLE || '';
           const detailsSummary = process.env.DETAILS_SUMMARY || '';
@@ -50,15 +56,29 @@ runs:
             core.setFailed('Not a PR context');
             return;
           }
-          if (!fs.existsSync(bodyFile)) {
-            core.setFailed(`${bodyFile} not found`);
-            return;
+          // Absence means cut-off, not step failure: a cut-off job never reaches the step that
+          // writes the body. It is not the whole test — a job cut off *while* writing leaves a
+          // file behind, and the caller's `title` carries that half (see below).
+          // See README.md § Job Cut-off.
+          const cutOff = !fs.existsSync(bodyFile);
+          if (cutOff) {
+            core.warning(`${bodyFile} not found; reporting the job as cut off`);
           }
 
-          let content = fs.readFileSync(bodyFile, 'utf8').trimEnd();
+          let content = cutOff
+            ? `No result was produced: the job did not reach the step that writes \`${bodyFile}\`. See the run log for how far it got.`
+            : fs.readFileSync(bodyFile, 'utf8').trimEnd();
           if (content.length > maxLength) {
             content = content.slice(0, maxLength) + '\n... (truncated)';
           }
+
+          // The cut-off heading replaces the caller's title: no title can still describe a body
+          // saying the job never ran, and it names no cause (only the run log tells a timeout from
+          // an earlier failure). See README.md § Job Cut-off.
+          const heading = cutOff
+            ? '## ⚠️ CUT OFF (no result produced)'
+            : title;
+          const summary = cutOff ? '' : detailsSummary;
 
           const updatedAtJST = new Date().toLocaleString('ja-JP', {
             timeZone: 'Asia/Tokyo',
@@ -81,12 +101,22 @@ runs:
           const commitLine = `🔖 Commit: [\`${shortSha}\`](${commitUrl})`;
           const updatedLine = `🕒 UpdatedAt: ${updatedAtJST} (JST)`;
 
-          const main = detailsSummary
-            ? [`<details><summary>${detailsSummary}</summary>`, '', '```', content, '```', '', '</details>'].join('\n')
+          // One backtick longer than the longest run in the body, so no run in the body can
+          // close the fence early. Callers that fence their own body duplicate this exactly.
+          // See README.md § PR comment fencing.
+          const fenceFor = (text) => {
+            const longestRun = (text.match(/`+/g) || [])
+              .reduce((max, run) => Math.max(max, run.length), 0);
+            return '`'.repeat(Math.max(3, longestRun + 1));
+          };
+
+          const fence = fenceFor(content);
+          const main = summary
+            ? [`<details><summary>${summary}</summary>`, '', fence, content, fence, '', '</details>'].join('\n')
             : content;
 
           const parts = [marker];
-          if (title) parts.push(title, '');
+          if (heading) parts.push(heading, '');
           parts.push(main, '', commitLine, '', updatedLine);
           const body = parts.join('\n');
 
@@ -97,7 +127,44 @@ runs:
             per_page: 100,
           });
 
-          const existing = comments.find(c => (c.body || '').includes(marker));
+          // Matched on the marker AND a Bot author, and only as a prefix — a marker anywhere in a
+          // body can be planted by a pull-request author. See README.md § Notes.
+          const existing = comments.find(
+            c => (c.body || '').startsWith(marker) && c.user?.type === 'Bot',
+          );
+
+          // `success` suppresses *creating* a comment, never updating one, so a fixed check
+          // overwrites its own red comment in place. A cut-off has no status and always posts.
+          // See README.md § Result Comments.
+          const quiet = !cutOff && status === 'success';
+
+          if (!existing && quiet) {
+            core.info(`status=success and no existing ${marker} comment; nothing to post`);
+            return;
+          }
+
+          // The one comment deleted rather than overwritten: a cut-off records no verdict, so a
+          // later success answers it rather than superseding a finding. Recognized by its heading,
+          // since a mid-write cut-off has a body. A refused delete falls back to the overwrite.
+          // See README.md § Result Comments.
+          const headingLine = (existing?.body || '').split('\n')[1] || '';
+          const staleCutOff = quiet
+            && headingLine.startsWith('## ')
+            && headingLine.includes('CUT OFF (no result produced)');
+
+          if (existing && staleCutOff) {
+            try {
+              await github.rest.issues.deleteComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+              });
+              core.info(`removed the stale cut-off ${marker} comment`);
+              return;
+            } catch (error) {
+              core.warning(`could not delete the stale cut-off comment (${error.message}); updating it instead`);
+            }
+          }
 
           if (existing) {
             await github.rest.issues.updateComment({

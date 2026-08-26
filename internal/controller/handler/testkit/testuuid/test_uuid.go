@@ -11,11 +11,11 @@ import (
 )
 
 // RequestUUID は、リクエスト用の openapi UUID（生成型）を1件生成します。
-func RequestUUID(t *testing.T) types.UUID {
-	t.Helper()
+func RequestUUID(tb testing.TB) types.UUID {
+	tb.Helper()
 
 	id, err := uuid.New()
-	require.NoError(t, err)
+	require.NoError(tb, err)
 
 	return id.ToPrimitive()
 }

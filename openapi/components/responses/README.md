@@ -9,6 +9,7 @@ English | [日本語](README.ja.md)
 - `schemas/` — small, reusable building blocks (`UserResponse.yaml`, `PaginationMetadataResponse.yaml`, `CursorPaginationMetadataResponse.yaml`, `ErrorResponse.yaml`).
 - `responses/` — the **per-endpoint** shape, usually composing those blocks via `allOf` (e.g. an item array + pagination metadata).
 
+<!-- sample-api:replace-begin -->
 ```yaml
 # responses/users/UsersResponse.yaml
 allOf:
@@ -21,33 +22,36 @@ allOf:
           $ref: '../../schemas/UserResponse.yaml'
   - $ref: '../../schemas/PaginationMetadataResponse.yaml'
 ```
+<!-- sample-api:replace-with -->
+<!-- = ```yaml -->
+<!-- = # responses/<resources>/<Resources>Response.yaml -->
+<!-- = allOf: -->
+<!-- =   - type: object -->
+<!-- =     required: [<resources>] -->
+<!-- =     properties: -->
+<!-- =       <resources>: -->
+<!-- =         type: array -->
+<!-- =         items: -->
+<!-- =           $ref: '../../schemas/<Resource>Response.yaml' -->
+<!-- =   - $ref: '../../schemas/PaginationMetadataResponse.yaml' -->
+<!-- = ``` -->
+<!-- sample-api:replace-end -->
 
 ## Directory Contents
 
-```text
-responses/
-├── users/
-│   ├── UsersResponse.yaml          # User list (UserResponse[] + offset pagination)
-│   ├── UsersFeedResponse.yaml      # User feed   (UserResponse[] + cursor pagination)
-│   ├── UsersSearchResponse.yaml    # Search result list
-│   └── UsersSearchResponseItem.yaml # One search-result item (UserResponse + registeredAt)
-├── health-check/
-│   ├── HealthResponse.yaml
-│   └── ReadyResponse.yaml
-└── version/
-    └── VersionResponse.yaml
-```
-
-> `users/` is a **sample implementation**. Mirror its structure for your own resources.
->
-> Reusable **error** response objects (shared `400/401/403/404/500`) live next to `ErrorResponse` under [`schemas/errors/`](../schemas/README.md), not here.
+One directory per resource or concern, named after it; each holds that unit's response bodies.
 
 ## Naming Convention
 
 |Element|Convention|Example|
 |---|---|---|
+<!-- sample-api:replace-begin -->
 |Directory|lowercase by resource / concern|`users/`, `health-check/`, `version/`|
 |File name|PascalCase + `Response`|`UsersResponse.yaml`, `VersionResponse.yaml`|
+<!-- sample-api:replace-with -->
+<!-- = |Directory|lowercase by resource / concern|`<resources>/`, `health-check/`, `version/`| -->
+<!-- = |File name|PascalCase + `Response`|`<Resources>Response.yaml`, `VersionResponse.yaml`| -->
+<!-- sample-api:replace-end -->
 
 ## Rules
 

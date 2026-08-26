@@ -12,7 +12,7 @@ import (
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/xerrors"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 const (
@@ -21,28 +21,41 @@ const (
 	errorLevelBoundHTTPStatus = 500
 )
 
+// Policies は、OpenAPI spec から起動時に前計算し、リクエストごとに参照するポリシー群です。
+type Policies struct {
+	// Detail は、レスポンスに details を含めてよいエンドポイントかを判定します(未 opt-in なら fail-closed で落とす)。
+	Detail DetailPolicy
+	// Allow は、405 レスポンスへ返す Allow ヘッダーの値を解決します。
+	Allow AllowPolicy
+}
+
 // New は、NewHTTPErrorHandler で生成したハンドラを Echo の HTTPErrorHandler として登録します。
-func New(e *echo.Echo, policy DetailPolicy, log logging.Logger, lf logging.LogFieldBuilder, obsCfg *config.ObservabilityConfig) {
-	e.HTTPErrorHandler = NewHTTPErrorHandler(policy, log, lf, obsCfg)
+func New(
+	e *echo.Echo,
+	policies Policies,
+	log logging.Logger,
+	lf logging.LogFieldBuilder,
+	obsCfg *config.ObservabilityConfig,
+) {
+	e.HTTPErrorHandler = NewHTTPErrorHandler(policies, log, lf, obsCfg)
 }
 
 // NewHTTPErrorHandler は、echo.HTTPErrorHandler を生成して返します。
-// policy は、レスポンスに details を含めてよいエンドポイントかを判定します(未 opt-in なら fail-closed で落とす)。
 func NewHTTPErrorHandler(
-	policy DetailPolicy,
+	policies Policies,
 	logger logging.Logger,
 	lf logging.LogFieldBuilder,
 	obsCfg *config.ObservabilityConfig,
 ) echo.HTTPErrorHandler {
-	return func(err error, c echo.Context) {
-		handleHTTPError(c, policy, logger, lf, obsCfg, err)
+	return func(c *echo.Context, err error) {
+		handleHTTPError(c, policies, logger, lf, obsCfg, err)
 	}
 }
 
 // handleHTTPError は、HTTPエラーを処理し、適切なレスポンスをクライアントに返します。
 func handleHTTPError(
-	c echo.Context,
-	policy DetailPolicy,
+	c *echo.Context,
+	policies Policies,
 	logger logging.Logger,
 	lf logging.LogFieldBuilder,
 	obsCfg *config.ObservabilityConfig,
@@ -57,16 +70,17 @@ func handleHTTPError(
 
 	// details を持つレスポンスは、エンドポイントが OpenAPI で opt-in している場合のみクライアントへ返す。
 	// resp 本体(とログ)には details を残し、クライアント wire だけを落とす(fail-closed)。
-	exposeDetails := resp.Details == nil || policy.Allows(c.Request())
+	exposeDetails := resp.Details == nil || policies.Detail.Allows(c.Request())
 
-	if !c.Response().Committed {
+	if !responseCommitted(c) {
+		setAllowHeader(c, policies.Allow, resp.HTTPStatus)
 		if writeErr := writeErrorResponse(c, resp, exposeDetails); writeErr != nil {
 			reqIn := server.BuildHTTPRequestLogInput(c, logging.EventTypeError)
 			writeErrFields := []*logging.Field{logging.String(logging.InternalErrorKey, writeErr.Error())}
 			fields := append(lf.BuildHTTPRequestFields(reqIn), writeErrFields...)
 			logger.Named("errorhandler.handleHTTPError").Error(c.Request().Context(), "failed to write error response", fields...)
 			// ヘッダ送出途中の失敗ではレスポンスが commit 済みになり得るため、未 commit 時のみ 500 を書く。
-			if !c.Response().Committed {
+			if !responseCommitted(c) {
 				c.Response().WriteHeader(http.StatusInternalServerError)
 			}
 			return
@@ -82,7 +96,7 @@ func handleHTTPError(
 // writeErrorResponse は、エラーレスポンスをクライアントに書き込みます。
 // exposeDetails が false の場合、wire に送る body の details のみを落とします
 // (resp 本体は温存し、ログには従来どおり details を残す)。
-func writeErrorResponse(c echo.Context, resp *response.HTTPErrorResponse, exposeDetails bool) error {
+func writeErrorResponse(c *echo.Context, resp *response.HTTPErrorResponse, exposeDetails bool) error {
 	body := resp.ErrorResponseWithDetails
 	if !exposeDetails {
 		body.Details = nil
@@ -111,16 +125,9 @@ func normalizeHTTPError(
 		return he
 	}
 
-	var ehe *echo.HTTPError
-	if xerrors.As(err, &ehe) {
-		if res := normalizeOpenAPIError(ehe); res != nil {
-			res.RequestId = requestID
-			return res
-		}
-		if res := normalizeEchoHTTPError(ehe); res != nil {
-			res.RequestId = requestID
-			return res
-		}
+	if res := normalizeEchoHTTPError(err); res != nil {
+		res.RequestId = requestID
+		return res
 	}
 
 	res := response.NewHTTPErrorFromAppError(err)
@@ -128,9 +135,16 @@ func normalizeHTTPError(
 	return res
 }
 
+// responseCommitted は、レスポンスがクライアントへ送出済みかを返します。
+// レスポンスを取り出せない場合は未送出として扱い、エラーレスポンスの書き込みを試みます。
+func responseCommitted(c *echo.Context) bool {
+	res := server.ResponseOf(c)
+	return res != nil && res.Committed
+}
+
 // httpErrorField は、HTTPエラーに関するログフィールドを生成します。
 func httpErrorField(
-	c echo.Context,
+	c *echo.Context,
 	lf logging.LogFieldBuilder,
 	he *response.HTTPErrorResponse,
 ) []*logging.Field {
@@ -156,7 +170,7 @@ func httpErrorField(
 
 // logHTTPError は、HTTPエラーをログに記録します。
 func logHTTPError(
-	c echo.Context,
+	c *echo.Context,
 	logger logging.Logger,
 	lf logging.LogFieldBuilder,
 	obsCfg *config.ObservabilityConfig,

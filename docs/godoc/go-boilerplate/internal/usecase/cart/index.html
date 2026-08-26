@@ -1,0 +1,575 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>cart - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package cart
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/usecase/cart&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package cart は、カートの参照ユースケースを提供します。主体（認証済みユーザーまたはゲストセッション）
+からカートを解決し、明細ごとに商品の現在値を突き合わせて状態を判定します。
+単価は価格スケール（ドル decimal）、小計は決済スケール（整数セント）で扱います
+（ADR-0038 (two-scale-quantity-model)）。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+				<dd><a href="#pkg-variables">Variables</a></dd>
+			
+			
+			
+				
+				<dd><a href="#CartItemView">type CartItemView</a></dd>
+				
+				
+			
+				
+				<dd><a href="#CartView">type CartView</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ItemIssue">type ItemIssue</a></dd>
+				
+				
+			
+				
+				<dd><a href="#MergeCartResult">type MergeCartResult</a></dd>
+				
+				
+			
+				
+				<dd><a href="#MergeOnLoginParams">type MergeOnLoginParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#RemoveItemParams">type RemoveItemParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#SetItemParams">type SetItemParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Subject">type Subject</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Usecase">type Usecase</a></dd>
+				
+					
+					<dd>    <a href="#New">func New(txm tx.Manager, cartRepo cart.Repository, productRepo product.Repository, tokenGen token.Generator, clk clock.Clock, tf observability.TracerFactory) Usecase</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../src/go-boilerplate/internal/usecase/cart/cart_clear_usecase.go.html">cart_clear_usecase.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/usecase/cart/cart_get_usecase.go.html">cart_get_usecase.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/usecase/cart/cart_merge_usecase.go.html">cart_merge_usecase.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/usecase/cart/cart_remove_item_usecase.go.html">cart_remove_item_usecase.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/usecase/cart/cart_set_item_usecase.go.html">cart_set_item_usecase.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/usecase/cart/cart_usecase.go.html">cart_usecase.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+			<h2 id="pkg-variables">Variables</h2>
+			
+				<p>ErrUnavailableProduct は、カートへ入れられない商品を指定した場合のエラーです（422）。
+不存在の商品と非公開の商品のどちらもこれになります（区別しない理由と、明細に立つ issue との
+違いは docs/spec/cart/usecase.md の SetItem）。
+
+				</p><pre>var <span id="ErrUnavailableProduct">ErrUnavailableProduct</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../go-boilerplate/internal/apperror/#ErrValidation">ErrValidation</a>, &#34;product is unavailable for the cart&#34;)</pre>
+			
+		
+		
+		
+			
+			
+			<h2 id="CartItemView">type <a href="../../../../src/go-boilerplate/internal/usecase/cart/cart_usecase.go.html?s=4433:5329#L88">CartItemView</a>
+				<a class="permalink" href="#CartItemView">¶</a>
+				
+				
+			</h2>
+			<p>CartItemView は、明細 1 件の出力 DTO です。
+
+			</p><pre>type CartItemView struct {
+<span id="CartItemView.ProductID"></span>    <span class="comment">// ProductID は、対象の商品です。カート内で明細を一意に指す自然キーでもあります。</span>
+    ProductID <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="CartItemView.ProductName"></span>    <span class="comment">// ProductName / UnitPrice は、取得時点の商品の値です。商品を引けなかった場合は nil です。</span>
+    ProductName *<a href="../../../../builtin/#string">string</a>
+<span id="CartItemView.UnitPrice"></span>    UnitPrice   *<a href="../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>
+<span id="CartItemView.ImagePath"></span>    <span class="comment">// ImagePath は、取得時点の商品の代表画像のオブジェクトキーです。</span>
+    <span class="comment">// 商品を引けなかった場合と、商品が代表画像を持たない場合は nil です。</span>
+    ImagePath *<a href="../../../../builtin/#string">string</a>
+<span id="CartItemView.Quantity"></span>    <span class="comment">// Quantity は、カートに入っている数量です。</span>
+    Quantity <a href="../../../../builtin/#int">int</a>
+<span id="CartItemView.Issues"></span>    <span class="comment">// Issues は、この明細の再評価結果です。空なら現時点で購入可能です。</span>
+    Issues []<a href="#ItemIssue">ItemIssue</a>
+<span id="CartItemView.AvailableQuantity"></span>    <span class="comment">// AvailableQuantity は、ItemIssueInsufficientStock のときの今買える上限です。それ以外は nil です。</span>
+    AvailableQuantity *<a href="../../../../builtin/#int">int</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="CartView">type <a href="../../../../src/go-boilerplate/internal/usecase/cart/cart_usecase.go.html?s=5382:5969#L106">CartView</a>
+				<a class="permalink" href="#CartView">¶</a>
+				
+				
+			</h2>
+			<p>CartView は、カートの出力 DTO です。
+
+			</p><pre>type CartView struct {
+<span id="CartView.SessionToken"></span>    <span class="comment">// SessionToken は、ゲストカートのトークンです。新規発行が起きなかった操作では nil です。</span>
+    SessionToken *<a href="../../../../builtin/#string">string</a>
+<span id="CartView.Items"></span>    <span class="comment">// Items は、明細です。カートが無い場合も空スライスで、nil にはなりません。</span>
+    Items []<a href="#CartItemView">CartItemView</a>
+<span id="CartView.SubtotalAmount"></span>    <span class="comment">// SubtotalAmount は、購入可能な明細のみを合算した参考値（USD セント）です。請求額ではありません。</span>
+    SubtotalAmount <a href="../../../../builtin/#int64">int64</a>
+<span id="CartView.ExpiresAt"></span>    <span class="comment">// ExpiresAt は、カートの有効期限です。カートが存在しない場合は nil です。</span>
+    ExpiresAt *<a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ItemIssue">type <a href="../../../../src/go-boilerplate/internal/usecase/cart/cart_usecase.go.html?s=2568:2589#L41">ItemIssue</a>
+				<a class="permalink" href="#ItemIssue">¶</a>
+				
+				
+			</h2>
+			<p>ItemIssue は、明細ごとの再評価結果です。値は外部向けの安定コードで、表示ではなく分岐に用います。
+
+			</p><pre>type ItemIssue <a href="../../../../builtin/#string">string</a></pre>
+
+			
+				
+				<pre>const (
+
+    <span class="comment">// ItemIssueNotFound は、商品を引けなかったことを表します。</span>
+    <span id="ItemIssueNotFound">ItemIssueNotFound</span> <a href="#ItemIssue">ItemIssue</a> = &#34;notFound&#34;
+    <span class="comment">// ItemIssueUnpublished は、商品が非公開であることを表します。</span>
+    <span id="ItemIssueUnpublished">ItemIssueUnpublished</span> <a href="#ItemIssue">ItemIssue</a> = &#34;unpublished&#34;
+    <span class="comment">// ItemIssueOutOfStock は、在庫が無いことを表します。</span>
+    <span id="ItemIssueOutOfStock">ItemIssueOutOfStock</span> <a href="#ItemIssue">ItemIssue</a> = &#34;outOfStock&#34;
+    <span class="comment">// ItemIssueInsufficientStock は、在庫が要求数量に満たないことを表します。</span>
+    <span id="ItemIssueInsufficientStock">ItemIssueInsufficientStock</span> <a href="#ItemIssue">ItemIssue</a> = &#34;insufficientStock&#34;
+    <span class="comment">// ItemIssuePriceIncreased は、前回提示した価格より高いことを表します。</span>
+    <span id="ItemIssuePriceIncreased">ItemIssuePriceIncreased</span> <a href="#ItemIssue">ItemIssue</a> = &#34;priceIncreased&#34;
+    <span class="comment">// ItemIssuePriceDecreased は、前回提示した価格より安いことを表します。</span>
+    <span id="ItemIssuePriceDecreased">ItemIssuePriceDecreased</span> <a href="#ItemIssue">ItemIssue</a> = &#34;priceDecreased&#34;
+)</pre>
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="MergeCartResult">type <a href="../../../../src/go-boilerplate/internal/usecase/cart/cart_usecase.go.html?s=4100:4373#L80">MergeCartResult</a>
+				<a class="permalink" href="#MergeCartResult">¶</a>
+				
+				
+			</h2>
+			<p>MergeCartResult は、引き継ぎで失われた分の出力 DTO です。
+引き継ぎ後のカートの中身は持ちません（取得でいつでも引けるため）。
+
+			</p><pre>type MergeCartResult struct {
+<span id="MergeCartResult.Clamped"></span>    <span class="comment">// Clamped は、合算の結果が明細ごとの上限を超え、上限へ丸めた商品です。</span>
+    Clamped []<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="MergeCartResult.Dropped"></span>    <span class="comment">// Dropped は、明細数の上限を超えたため取り込まれなかった商品です。</span>
+    Dropped []<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="MergeOnLoginParams">type <a href="../../../../src/go-boilerplate/internal/usecase/cart/cart_usecase.go.html?s=3690:3916#L71">MergeOnLoginParams</a>
+				<a class="permalink" href="#MergeOnLoginParams">¶</a>
+				
+				
+			</h2>
+			<p>MergeOnLoginParams は、ログイン時のカート引き継ぎの入力 DTO です。
+
+			</p><pre>type MergeOnLoginParams struct {
+<span id="MergeOnLoginParams.UserID"></span>    <span class="comment">// UserID は、引き継ぎ先の認証済みユーザーです。</span>
+    UserID <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="MergeOnLoginParams.SessionToken"></span>    <span class="comment">// SessionToken は、引き継ぎ元のゲストカートのトークンです。</span>
+    SessionToken <a href="../../../../builtin/#string">string</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="RemoveItemParams">type <a href="../../../../src/go-boilerplate/internal/usecase/cart/cart_usecase.go.html?s=3418:3597#L63">RemoveItemParams</a>
+				<a class="permalink" href="#RemoveItemParams">¶</a>
+				
+				
+			</h2>
+			<p>RemoveItemParams は、明細の削除の入力 DTO です。
+
+			</p><pre>type RemoveItemParams struct {
+<span id="RemoveItemParams.Subject"></span>    <span class="comment">// Subject は、カートの主体です。</span>
+    Subject <a href="#Subject">Subject</a>
+<span id="RemoveItemParams.ProductID"></span>    <span class="comment">// ProductID は、取り除く明細が指す商品です。</span>
+    ProductID <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="SetItemParams">type <a href="../../../../src/go-boilerplate/internal/usecase/cart/cart_usecase.go.html?s=3081:3351#L53">SetItemParams</a>
+				<a class="permalink" href="#SetItemParams">¶</a>
+				
+				
+			</h2>
+			<p>SetItemParams は、明細の数量設定の入力 DTO です。
+
+			</p><pre>type SetItemParams struct {
+<span id="SetItemParams.Subject"></span>    <span class="comment">// Subject は、カートの主体です。</span>
+    Subject <a href="#Subject">Subject</a>
+<span id="SetItemParams.ProductID"></span>    <span class="comment">// ProductID は、対象の商品です。</span>
+    ProductID <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="SetItemParams.Quantity"></span>    <span class="comment">// Quantity は、設定する数量です。現在の数量への加算ではありません。</span>
+    Quantity <a href="../../../../builtin/#int">int</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Subject">type <a href="../../../../src/go-boilerplate/internal/usecase/cart/cart_usecase.go.html?s=2817:3011#L45">Subject</a>
+				<a class="permalink" href="#Subject">¶</a>
+				
+				
+			</h2>
+			<p>Subject は、カートの主体です。認証済みユーザーとゲストセッションのうち高々一方が設定され、
+どちらも設定されていない場合は表示するカートを持ちません。
+
+			</p><pre>type Subject struct {
+<span id="Subject.UserID"></span>    <span class="comment">// UserID は、認証済みの内部ユーザー ID です。</span>
+    UserID *<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="Subject.SessionToken"></span>    <span class="comment">// SessionToken は、ゲスト追跡用のトークンです。</span>
+    SessionToken *<a href="../../../../builtin/#string">string</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Usecase">type <a href="../../../../src/go-boilerplate/internal/usecase/cart/cart_usecase.go.html?s=6040:8512#L118">Usecase</a>
+				<a class="permalink" href="#Usecase">¶</a>
+				
+				
+			</h2>
+			<p>Usecase は、カートのユースケースを定義します。
+
+			</p><pre>type Usecase interface {
+    <span class="comment">// GetCart は、主体のカートを明細ごとの再評価つきで返します。</span>
+    <span class="comment">// カートが無い、または有効期限を過ぎている場合は空のカートを返し、行は作りません。</span>
+    <span class="comment">// 明細の問題（在庫・非公開・価格差）はエラーではなく、各明細の Issues として返されます。</span>
+    GetCart(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, subject <a href="#Subject">Subject</a>) (<a href="#CartView">CartView</a>, <a href="../../../../builtin/#error">error</a>)
+
+    <span class="comment">// SetItem は、主体のカートに指定商品の数量を設定し、再評価つきのカートを返します。</span>
+    <span class="comment">// 現在の数量への加算ではないため、同じ入力を何回与えても結果は変わりません。</span>
+    <span class="comment">// カートを持たない主体にはこの操作がカートを作ります（ゲストにはトークンを発行します）。</span>
+    <span class="comment">// カートへ入れられない商品は ErrUnavailableProduct を返します。</span>
+    SetItem(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, params <a href="#SetItemParams">SetItemParams</a>) (<a href="#CartView">CartView</a>, <a href="../../../../builtin/#error">error</a>)
+
+    <span class="comment">// RemoveItem は、主体のカートから指定商品の明細を取り除きます。</span>
+    <span class="comment">// 対象の明細が無い場合も、カートを持たない主体が呼んだ場合も成功します（削除は冪等です）。</span>
+    <span class="comment">// カートは作らず、商品の存在も公開状態も確かめません。</span>
+    <span class="comment">// カートを持つ主体には有効期限の延長だけが起きます。</span>
+    RemoveItem(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, params <a href="#RemoveItemParams">RemoveItemParams</a>) <a href="../../../../builtin/#error">error</a>
+
+    <span class="comment">// ClearCart は、主体のカートから明細をすべて取り除きます。</span>
+    <span class="comment">// カートの行は残り、有効期限は延長されます（空のカートは正当な状態です）。</span>
+    <span class="comment">// 既に空の場合も、カートを持たない主体が呼んだ場合も成功します。カートは作りません。</span>
+    ClearCart(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, subject <a href="#Subject">Subject</a>) <a href="../../../../builtin/#error">error</a>
+
+    <span class="comment">// MergeOnLogin は、ゲストカートを認証済みユーザーへ引き継ぎます。</span>
+    <span class="comment">// 引き継ぎ元を引けない場合（引き継ぎ済み・期限切れ・未知のトークン）も成功し、失われた分は空になります。</span>
+    <span class="comment">// 形式が不正なトークンはエラーを返しますが、それ以外の理由で引き継ぎが失敗することはありません。</span>
+    <span class="comment">// 数量や明細数が上限を超える分は調整され、失われた分は戻り値で報告します</span>
+    <span class="comment">// （切り捨ての優先順位は docs/spec/cart/domain.md の Merge）。</span>
+    MergeOnLogin(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, params <a href="#MergeOnLoginParams">MergeOnLoginParams</a>) (<a href="#MergeCartResult">MergeCartResult</a>, <a href="../../../../builtin/#error">error</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/usecase/cart/cart_usecase.go.html?s=8782:8956#L159">New</a>
+					<a class="permalink" href="#New">¶</a>
+					
+					
+				</h3>
+				<pre>func New(
+    txm <a href="../../../../go-boilerplate/internal/usecase/boundary/tx/">tx</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/tx/#Manager">Manager</a>,
+    cartRepo <a href="../../../../go-boilerplate/internal/domain/cart/">cart</a>.<a href="../../../../go-boilerplate/internal/domain/cart/#Repository">Repository</a>,
+    productRepo <a href="../../../../go-boilerplate/internal/domain/product/">product</a>.<a href="../../../../go-boilerplate/internal/domain/product/#Repository">Repository</a>,
+    tokenGen <a href="../../../../go-boilerplate/internal/usecase/boundary/token/">token</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/token/#Generator">Generator</a>,
+    clk <a href="../../../../go-boilerplate/internal/usecase/boundary/clock/">clock</a>.<a href="../../../../go-boilerplate/internal/usecase/boundary/clock/#Clock">Clock</a>,
+    tf <a href="../../../../go-boilerplate/internal/observability/">observability</a>.<a href="../../../../go-boilerplate/internal/observability/#TracerFactory">TracerFactory</a>,
+) <a href="#Usecase">Usecase</a></pre>
+				<p>New は、カートのユースケースを生成します。
+
+				
+				
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+	
+	
+		</p><h2 id="pkg-subdirectories">Subdirectories</h2>
+	
+	<div class="pkg-dir">
+		<table>
+			<tbody><tr>
+				<th class="pkg-name">Name</th>
+				<th class="pkg-synopsis">Synopsis</th>
+			</tr>
+
+			
+			<tr>
+				<td colspan="2"><a href="..">..</a></td>
+			</tr>
+			
+
+			
+		</tbody></table>
+	</div>
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

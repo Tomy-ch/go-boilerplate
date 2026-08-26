@@ -1,0 +1,203 @@
+name: Lockfile Integrity
+
+# Guards against lockfile poisoning: an attacker who can edit a lockfile does not need to
+# touch package.json at all, because the resolver fetches whatever the lockfile points at.
+# The version and the integrity hash can look untouched while the tarball comes from
+# somewhere else entirely.
+#
+# Both packages in the repository resolve with pnpm — `scripts/`
+# and `docs-viewer/`, each with its own lockfile — so one check covers them.
+#
+# This is a different question from the vulnerability scanners. OSV and Trivy ask
+# "is this package known-bad"; a poisoned lockfile names a package that is not
+# known-bad at all, because the malicious artifact was never published to the
+# registry under that name.
+#
+# Gating on purpose. There is no scheduled run: the lockfiles in the repository
+# cannot change without a commit, so re-checking an unchanged tree weekly would
+# only ever restate the previous answer.
+#
+# The `push` trigger is what keeps that reasoning honest. "A commit" is not the
+# same set as "a pull request": a commit landing on a protected branch directly —
+# because the ruleset does not require a PR, or because someone bypasses it —
+# changes a lockfile without any pull_request event ever firing. Reviewing only
+# the reviewed path is the blind spot a poisoned lockfile would be pushed through,
+# so the same check runs on the push itself. It cannot block what has already
+# landed; it makes the landing visible instead of silent.
+
+on:
+  push:
+    branches:
+      - develop
+      - staging
+      - production
+      - 'release/*'
+    paths:
+      - '.github/workflows/lockfile-integrity.yaml'
+      - 'scripts/pnpm-lock.yaml'
+      - 'docs-viewer/pnpm-lock.yaml'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # The pull-request half of this workflow's trigger, moved out of `on:` and into a job. A `paths:`
+  # filter that excludes a pull request starts no run at all, and a required context that is never
+  # reported is not read as "not applicable" — the merge waits with nothing to wait for. A job the
+  # filter skips reports `skipped` instead, which a required check counts as success.
+  # The `push` filter above is left where it is: that half reports no context, so it blocks nothing.
+  changes:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      relevant: ${{ steps.filter.outputs.relevant }}
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+
+      - name: Filter the changed paths
+        id: filter
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
+        with:
+          filters: |
+            relevant:
+              - '.github/workflows/lockfile-integrity.yaml'
+              - 'scripts/pnpm-lock.yaml'
+              - 'docs-viewer/pnpm-lock.yaml'
+
+  lockfile-lint:
+    needs: changes
+    # Fail open. `relevant` is empty wherever the filter reached no verdict — skipped on a
+    # non-pull-request event, or failed outright — and an empty value is not `false`, so the work
+    # runs and reports what it finds. Skipping there would hand the required context a green it
+    # never earned, and a broken filter is exactly when that matters.
+    if: ${{ !cancelled() && needs.changes.outputs.relevant != 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The poisoning vector takes a particular shape here: pnpm-lock.yaml names no URL at
+      # all for a registry package — the entry is `resolution: {integrity: ...}` and the host
+      # comes from the resolver's configuration. An entry that carries any other key
+      # (`tarball`, `directory`, a git reference) is fetching from somewhere the registry
+      # settings never approved.
+      #
+      # `blockExoticSubdeps` in pnpm-workspace.yaml refuses those at install time. This step is
+      # the committed-state counterpart: the setting protects the machine that runs install,
+      # the check protects the reviewer looking at the diff.
+      - name: Lint pnpm lockfiles
+        id: pnpm-lint
+        run: |
+          set -uo pipefail
+
+          : > lockfile-lint.log
+          status=success
+
+          for lockfile in scripts/pnpm-lock.yaml docs-viewer/pnpm-lock.yaml; do
+            echo "### ${lockfile}" >> lockfile-lint.log
+
+            if exotic=$(grep -n 'resolution: {' "${lockfile}" | grep -v 'resolution: {integrity:'); then
+              echo "non-registry resolutions found:" >> lockfile-lint.log
+              echo "${exotic}" >> lockfile-lint.log
+              status=failure
+            else
+              total=$(grep -c 'resolution: {integrity:' "${lockfile}")
+              echo "ok (${total} registry resolutions, no other resolution form)" >> lockfile-lint.log
+            fi
+            echo >> lockfile-lint.log
+          done
+
+          echo "status=${status}" >> "$GITHUB_OUTPUT"
+        shell: bash
+
+      # Computing the verdict here rather than inside the lint step keeps the PR comment
+      # reachable: the lint step captures its status instead of aborting, so a finding still
+      # produces a comment.
+      - name: Summarize lockfile verdict
+        id: verdict
+        if: always()
+        env:
+          PNPM_STATUS: ${{ steps.pnpm-lint.outputs.status }}
+        run: |
+          set -uo pipefail
+
+          if [ "${PNPM_STATUS}" = "success" ]; then
+            echo "status=success" >> "$GITHUB_OUTPUT"
+            echo "title=## ✅ Lockfile Integrity: PASS" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=failure" >> "$GITHUB_OUTPUT"
+            echo "title=## 🚨 Lockfile Integrity: FAIL" >> "$GITHUB_OUTPUT"
+          fi
+
+          cat lockfile-lint.log >> "${GITHUB_STEP_SUMMARY}"
+        shell: bash
+
+      - name: Upload lockfile-lint log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: lockfile-lint
+          path: lockfile-lint.log
+
+      - name: Comment lockfile result on PR
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- lockfile-integrity-result -->'
+          status: ${{ steps.verdict.outputs.status }}
+          title: "${{ steps.verdict.outputs.title || '## ⚠️ Lockfile Integrity: CUT OFF (no result produced)' }}"
+          body-file: lockfile-lint.log
+          details-summary: 'lockfile-lint log'
+
+      # Gating with no severity threshold: a resolution either names the registry over
+      # HTTPS (npm) or carries nothing but an integrity hash (pnpm), or it does not.
+      - name: Fail if a lockfile finding was found
+        if: always() && steps.verdict.outputs.status != 'success'
+        run: exit 1

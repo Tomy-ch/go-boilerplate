@@ -16,6 +16,10 @@ var (
 	ErrConflict = xerrors.New("conflict")
 	// ErrValidation は検証が失敗した場合に使用します。
 	ErrValidation = xerrors.New("validation error")
+	// ErrUnsupportedMediaType はサポートされていない Content-Type / メディア形式の場合に使用します。
+	ErrUnsupportedMediaType = xerrors.New("unsupported media type")
+	// ErrPayloadTooLarge はリクエストペイロードが許容サイズを超える場合に使用します。
+	ErrPayloadTooLarge = xerrors.New("payload too large")
 	// ErrTooManyRequests はリクエストが多すぎる場合に使用します。
 	ErrTooManyRequests = xerrors.New("too many requests")
 	// ErrCanceled はクライアントがリクエストをキャンセル/切断した場合に使用します。
@@ -29,9 +33,7 @@ var (
 )
 
 // worker のメッセージ処理分類センチネル。
-// engine が Handler の返すエラーを分類して挙動を変えるために使用します
-// （Retryable=Nack で再配送 / Permanent=FailureHandler へ退避して Ack / Fatal=engine 停止）。
-// これらは HTTP エラー taxonomy ではないため、appErrors（IsAppError 判定対象）には含めません。
+// HTTP エラー taxonomy ではないため、appErrors（IsAppError 判定対象）には含めません。
 var (
 	// ErrRetryable は一時障害を示します。engine は Nack で再配送します。
 	ErrRetryable = xerrors.New("retryable")
@@ -49,6 +51,8 @@ var appErrors = []error{
 	ErrNotFound,
 	ErrConflict,
 	ErrValidation,
+	ErrUnsupportedMediaType,
+	ErrPayloadTooLarge,
 	ErrTooManyRequests,
 	ErrCanceled,
 	ErrInternal,

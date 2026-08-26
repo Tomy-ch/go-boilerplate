@@ -18,12 +18,10 @@ import (
 func TestNewWorkerCore(t *testing.T) {
 	t.Parallel()
 
-	// worker 用 fx グラフの結線が欠落なく成立することを検証する（コンストラクタの実体実行は伴わない）。
 	require.NoError(t, fx.ValidateApp(NewWorkerCore(), fx.WithLogger(NewFxEventLogger)))
 }
 
 func TestNewWorkerCore_BootsWithMockedDB(t *testing.T) {
-	// 実 DB を避けつつ、worker 用 fx グラフの全コンストラクタ実行とライフサイクル(OnStart/OnStop)を検証する。
 	// worker 未選択(state 未設定)でも起動・停止でき、health listener の起動/停止まで通ることを確認する。
 	config.EnsureRepoRootAndEnv(t, config.TestingEnvValue)
 	// health listener のポート衝突を避けるため OS 割り当ての空きポートを使う。
@@ -118,6 +116,42 @@ func TestRunWorker(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			cancel()
 			require.Error(t, stop(ctx))
+		})
+
+		//nolint:paralleltest // t.Setenv を使用するため並列化不可
+		t.Run("start: fx グラフの構築に失敗すると panic せず構築エラーを閉じ済みチャンネルで返す", func(t *testing.T) {
+			t.Setenv("APP_SHUTDOWN_TIMEOUT", "not-a-duration")
+
+			start, stop := RunWorker(30 * time.Second)
+			require.NotNil(t, start)
+			require.NotNil(t, stop)
+
+			// nil 参照の退行が起きても panic をこのテスト内で捕捉し、同一パッケージの後続テストを巻き込まない。
+			var done <-chan error
+			require.NotPanics(t, func() {
+				done = start(context.Background(), "no-worker", nil)
+			})
+
+			require.ErrorIs(t, <-done, config.ErrFailedToParseConfig)
+
+			_, ok := <-done
+			require.False(t, ok)
+		})
+
+		//nolint:paralleltest // t.Setenv を使用するため並列化不可
+		t.Run("stop: fx グラフの構築に失敗すると panic せず構築エラーを返す", func(t *testing.T) {
+			t.Setenv("APP_SHUTDOWN_TIMEOUT", "not-a-duration")
+
+			_, stop := RunWorker(30 * time.Second)
+			require.NotNil(t, stop)
+
+			// nil 参照の退行が起きても panic をこのテスト内で捕捉し、同一パッケージの後続テストを巻き込まない。
+			var err error
+			require.NotPanics(t, func() {
+				err = stop(context.Background())
+			})
+
+			require.ErrorIs(t, err, config.ErrFailedToParseConfig)
 		})
 	})
 }

@@ -1,0 +1,11 @@
+type: object
+description: |
+  画像アップロード結果。格納されたオブジェクトのパスを返します。
+  表示 URL はフロントが配信ベース URL とこのパスから組み立てます（backend はフル URL を保持しません）。
+required:
+  - imagePath
+properties:
+  imagePath:
+    type: string
+    description: 格納されたオブジェクトのパス（オブジェクトキー）。
+    example: "products/b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f.png"

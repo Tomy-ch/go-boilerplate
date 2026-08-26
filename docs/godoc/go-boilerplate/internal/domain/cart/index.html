@@ -1,0 +1,1283 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>cart - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package cart
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/domain/cart&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package cart は、カートドメインを定義します。カート（Cart）集約と明細（CartItem）を持ち、
+所有者とセッションの排他、同一商品の重複禁止、数量と明細数の上限を不変条件として保持します。
+</p><p>カートは在庫を押さえず、確定単価も持ちません。買うつもりの控えであって、売り越しの禁止も
+請求額の確定も購入成立時の関心です。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+				<dd><a href="#pkg-variables">Variables</a></dd>
+			
+			
+			
+				
+				<dd><a href="#Attributes">type Attributes</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Cart">type Cart</a></dd>
+				
+					
+					<dd>    <a href="#NewForGuest">func NewForGuest(id uuid.UUID, token SessionToken, expiresAt time.Time) (*Cart, error)</a></dd>
+				
+					
+					<dd>    <a href="#NewForOwner">func NewForOwner(id uuid.UUID, attrs Attributes) (*Cart, error)</a></dd>
+				
+					
+					<dd>    <a href="#Reconstruct">func Reconstruct(id uuid.UUID, attrs Attributes) (*Cart, error)</a></dd>
+				
+				
+					
+					<dd>    <a href="#Cart.Clear">func (c *Cart) Clear()</a></dd>
+				
+					
+					<dd>    <a href="#Cart.CreatedAt">func (c *Cart) CreatedAt() time.Time</a></dd>
+				
+					
+					<dd>    <a href="#Cart.ExpiresAt">func (c *Cart) ExpiresAt() time.Time</a></dd>
+				
+					
+					<dd>    <a href="#Cart.ID">func (c *Cart) ID() uuid.UUID</a></dd>
+				
+					
+					<dd>    <a href="#Cart.IsEmpty">func (c *Cart) IsEmpty() bool</a></dd>
+				
+					
+					<dd>    <a href="#Cart.IsExpired">func (c *Cart) IsExpired(now time.Time) bool</a></dd>
+				
+					
+					<dd>    <a href="#Cart.IsOwnedBy">func (c *Cart) IsOwnedBy(userID uuid.UUID) bool</a></dd>
+				
+					
+					<dd>    <a href="#Cart.Items">func (c *Cart) Items() []CartItem</a></dd>
+				
+					
+					<dd>    <a href="#Cart.MarkSeen">func (c *Cart) MarkSeen(prices map[uuid.UUID]money.Price)</a></dd>
+				
+					
+					<dd>    <a href="#Cart.Merge">func (c *Cart) Merge(other *Cart, now time.Time) MergeResult</a></dd>
+				
+					
+					<dd>    <a href="#Cart.OwnerID">func (c *Cart) OwnerID() *uuid.UUID</a></dd>
+				
+					
+					<dd>    <a href="#Cart.RemoveItem">func (c *Cart) RemoveItem(productID uuid.UUID) error</a></dd>
+				
+					
+					<dd>    <a href="#Cart.SessionToken">func (c *Cart) SessionToken() *SessionToken</a></dd>
+				
+					
+					<dd>    <a href="#Cart.SetItem">func (c *Cart) SetItem(attrs SetItemAttributes, now time.Time) error</a></dd>
+				
+					
+					<dd>    <a href="#Cart.Subtotal">func (c *Cart) Subtotal(snapshots map[uuid.UUID]ProductSnapshot) (int64, error)</a></dd>
+				
+					
+					<dd>    <a href="#Cart.Touch">func (c *Cart) Touch(now time.Time, ttl time.Duration)</a></dd>
+				
+					
+					<dd>    <a href="#Cart.UpdatedAt">func (c *Cart) UpdatedAt() time.Time</a></dd>
+				
+			
+				
+				<dd><a href="#CartItem">type CartItem</a></dd>
+				
+					
+					<dd>    <a href="#NewCartItem">func NewCartItem(id uuid.UUID, attrs CartItemAttributes) CartItem</a></dd>
+				
+				
+					
+					<dd>    <a href="#CartItem.AddedAt">func (i CartItem) AddedAt() time.Time</a></dd>
+				
+					
+					<dd>    <a href="#CartItem.Evaluate">func (i CartItem) Evaluate(snapshot *ProductSnapshot) Evaluation</a></dd>
+				
+					
+					<dd>    <a href="#CartItem.ID">func (i CartItem) ID() uuid.UUID</a></dd>
+				
+					
+					<dd>    <a href="#CartItem.LastSeenPrice">func (i CartItem) LastSeenPrice() *money.Price</a></dd>
+				
+					
+					<dd>    <a href="#CartItem.ProductID">func (i CartItem) ProductID() uuid.UUID</a></dd>
+				
+					
+					<dd>    <a href="#CartItem.Quantity">func (i CartItem) Quantity() int</a></dd>
+				
+			
+				
+				<dd><a href="#CartItemAttributes">type CartItemAttributes</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Carts">type Carts</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Evaluation">type Evaluation</a></dd>
+				
+				
+					
+					<dd>    <a href="#Evaluation.AvailableQuantity">func (e Evaluation) AvailableQuantity() *int</a></dd>
+				
+					
+					<dd>    <a href="#Evaluation.Issues">func (e Evaluation) Issues() []Issue</a></dd>
+				
+			
+				
+				<dd><a href="#Issue">type Issue</a></dd>
+				
+				
+			
+				
+				<dd><a href="#MergeResult">type MergeResult</a></dd>
+				
+				
+					
+					<dd>    <a href="#MergeResult.Clamped">func (r MergeResult) Clamped() []uuid.UUID</a></dd>
+				
+					
+					<dd>    <a href="#MergeResult.Dropped">func (r MergeResult) Dropped() []uuid.UUID</a></dd>
+				
+			
+				
+				<dd><a href="#ProductSnapshot">type ProductSnapshot</a></dd>
+				
+					
+					<dd>    <a href="#NewProductSnapshot">func NewProductSnapshot(quantity int, price money.Price, published bool) ProductSnapshot</a></dd>
+				
+				
+					
+					<dd>    <a href="#ProductSnapshot.Price">func (s ProductSnapshot) Price() money.Price</a></dd>
+				
+			
+				
+				<dd><a href="#Repository">type Repository</a></dd>
+				
+				
+			
+				
+				<dd><a href="#SessionToken">type SessionToken</a></dd>
+				
+					
+					<dd>    <a href="#NewSessionToken">func NewSessionToken(value string) (SessionToken, error)</a></dd>
+				
+				
+					
+					<dd>    <a href="#SessionToken.IsZero">func (t SessionToken) IsZero() bool</a></dd>
+				
+					
+					<dd>    <a href="#SessionToken.Value">func (t SessionToken) Value() string</a></dd>
+				
+			
+				
+				<dd><a href="#SetItemAttributes">type SetItemAttributes</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../src/go-boilerplate/internal/domain/cart/cart_domain.go.html">cart_domain.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/domain/cart/cart_item.go.html">cart_item.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/domain/cart/cart_repository.go.html">cart_repository.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/domain/cart/constant.go.html">constant.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/domain/cart/error.go.html">error.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/domain/cart/evaluation.go.html">evaluation.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/domain/cart/session_token.go.html">session_token.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/domain/cart/subtotal.go.html">subtotal.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+			<h2 id="pkg-variables">Variables</h2>
+			
+				
+				<pre>var (
+
+    <span class="comment">// ErrInvalidID は、カート ID または明細 ID の検証に失敗した場合のエラーです（422）。</span>
+    <span id="ErrInvalidID">ErrInvalidID</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;id failed&#34;)
+    <span class="comment">// ErrInvalidUserID は、所有者のユーザー ID の検証に失敗した場合のエラーです（422）。</span>
+    <span id="ErrInvalidUserID">ErrInvalidUserID</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;userID failed&#34;)
+    <span class="comment">// ErrInvalidProductID は、明細の商品 ID の検証に失敗した場合のエラーです（422）。</span>
+    <span id="ErrInvalidProductID">ErrInvalidProductID</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;productID failed&#34;)
+    <span class="comment">// ErrInvalidQuantity は、数量が許容範囲を外れた場合のエラーです（422）。</span>
+    <span id="ErrInvalidQuantity">ErrInvalidQuantity</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;quantity failed&#34;)
+    <span class="comment">// ErrTooManyItems は、明細数が上限を超える場合のエラーです（422）。</span>
+    <span id="ErrTooManyItems">ErrTooManyItems</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;too many items&#34;)
+    <span class="comment">// ErrDuplicateProductID は、明細に同一 productID が重複した場合のエラーです（422）。</span>
+    <span id="ErrDuplicateProductID">ErrDuplicateProductID</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;duplicate product id in items&#34;)
+    <span class="comment">// ErrInvalidSessionToken は、セッショントークンの形式が不正な場合のエラーです（422）。</span>
+    <span id="ErrInvalidSessionToken">ErrInvalidSessionToken</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;session token failed&#34;)
+    <span class="comment">// ErrInvalidOwner は、所有者とセッショントークンの排他が満たされない場合のエラーです（422）。</span>
+    <span id="ErrInvalidOwner">ErrInvalidOwner</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;exactly one of ownerID and sessionToken must be set&#34;)
+    <span class="comment">// ErrInvalidExpiresAt は、有効期限の検証に失敗した場合のエラーです（422）。</span>
+    <span id="ErrInvalidExpiresAt">ErrInvalidExpiresAt</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;expiresAt failed&#34;)
+    <span class="comment">// ErrSubtotalOutOfRange は、購入可能な明細の合計が決済スケールの整数幅に収まらない場合のエラーです（422）。</span>
+    <span id="ErrSubtotalOutOfRange">ErrSubtotalOutOfRange</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;subtotal exceeds the settlement range&#34;)
+)</pre>
+			
+		
+		
+		
+			
+			
+			<h2 id="Attributes">type <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_domain.go.html?s=1539:2100#L30">Attributes</a>
+				<a class="permalink" href="#Attributes">¶</a>
+				
+				
+			</h2>
+			<p>Attributes は、カートの再構築に必要な属性一式です。有効期限と監査時刻は同じ time.Time のため、
+取り違えを型で防ぐ目的で構造体で受けます
+（docs/rules.md の Function Signature Rules、internal/domain/README.md の
+Bundle attributes into a struct when positional arguments can be swapped）。
+
+			</p><pre>type Attributes struct {
+<span id="Attributes.OwnerID"></span>    <span class="comment">// OwnerID は、確定した所有者です。ゲストの間は nil です。</span>
+    OwnerID *<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="Attributes.SessionToken"></span>    <span class="comment">// SessionToken は、ゲスト追跡用のトークンです。所有者確定後は nil です。</span>
+    SessionToken *<a href="#SessionToken">SessionToken</a>
+<span id="Attributes.Items"></span>    <span class="comment">// Items は、明細の集合です。空を許します（空カートは正当な状態）。</span>
+    Items []<a href="#CartItem">CartItem</a>
+<span id="Attributes.ExpiresAt"></span>    <span class="comment">// ExpiresAt は、有効期限です。</span>
+    ExpiresAt <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+<span id="Attributes.CreatedAt"></span>    <span class="comment">// CreatedAt は、作成日時です。</span>
+    CreatedAt <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+<span id="Attributes.UpdatedAt"></span>    <span class="comment">// UpdatedAt は、更新日時です。</span>
+    UpdatedAt <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Cart">type <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_domain.go.html?s=982:1176#L16">Cart</a>
+				<a class="permalink" href="#Cart">¶</a>
+				
+				
+			</h2>
+			<p>Cart は、カートを表すドメイン集約です。
+所有者は後から決まります。ゲストの間は sessionToken で追跡され、ログインによって ownerID が確定し、
+同時に sessionToken は破棄されます。
+
+			</p><pre>type Cart struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewForGuest">func <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_domain.go.html?s=3436:3522#L70">NewForGuest</a>
+					<a class="permalink" href="#NewForGuest">¶</a>
+					
+					
+				</h3>
+				<pre>func NewForGuest(id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, token <a href="#SessionToken">SessionToken</a>, expiresAt <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>) (*<a href="#Cart">Cart</a>, <a href="../../../../builtin/#error">error</a>)</pre>
+				<p>NewForGuest は、所有者が未確定のカートを生成します。明細は空で始まります。
+id が未設定なら ErrInvalidID を、expiresAt がゼロ値なら ErrInvalidExpiresAt を返します。
+
+				
+				
+			
+				
+				</p><h3 id="NewForOwner">func <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_domain.go.html?s=3949:4012#L78">NewForOwner</a>
+					<a class="permalink" href="#NewForOwner">¶</a>
+					
+					
+				</h3>
+				<pre>func NewForOwner(id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, attrs <a href="#Attributes">Attributes</a>) (*<a href="#Cart">Cart</a>, <a href="../../../../builtin/#error">error</a>)</pre>
+				<p>NewForOwner は、所有者が確定したカートを生成します。
+OwnerID の設定は必須で、SessionToken を併せて設定した場合は ErrInvalidOwner を返します。
+id または OwnerID が未設定なら ErrInvalidID / ErrInvalidUserID を、ExpiresAt がゼロ値なら
+ErrInvalidExpiresAt を返します。
+
+				
+				
+			
+				
+				</p><h3 id="Reconstruct">func <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_domain.go.html?s=4384:4447#L85">Reconstruct</a>
+					<a class="permalink" href="#Reconstruct">¶</a>
+					
+					
+				</h3>
+				<pre>func Reconstruct(id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, attrs <a href="#Attributes">Attributes</a>) (*<a href="#Cart">Cart</a>, <a href="../../../../builtin/#error">error</a>)</pre>
+				<p>Reconstruct は、永続化済みのカートを再構築します。
+NewForGuest / NewForOwner と同じ不変条件を課します。保存済みデータのための緩和経路はありません。
+加えて、監査時刻が設定されている場合は expiresAt が createdAt より後であることを要求します。
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="Cart.Clear">func (*Cart) <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_domain.go.html?s=10553:10575#L241">Clear</a>
+					<a class="permalink" href="#Cart.Clear">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Cart">Cart</a>) Clear()</pre>
+				<p>Clear は、明細をすべて取り除きます。空カートは正当な状態のため、カート自体と有効期限は維持されます。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Cart.CreatedAt">func (*Cart) <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_domain.go.html?s=8515:8551#L193">CreatedAt</a>
+					<a class="permalink" href="#Cart.CreatedAt">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Cart">Cart</a>) CreatedAt() <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a></pre>
+				<p>CreatedAt は、作成日時を返します。生成直後の集約ではゼロ値で、再構築時に設定されます。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Cart.ExpiresAt">func (*Cart) <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_domain.go.html?s=8326:8362#L190">ExpiresAt</a>
+					<a class="permalink" href="#Cart.ExpiresAt">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Cart">Cart</a>) ExpiresAt() <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a></pre>
+				<p>ExpiresAt は、有効期限を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Cart.ID">func (*Cart) <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_domain.go.html?s=7650:7679#L178">ID</a>
+					<a class="permalink" href="#Cart.ID">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Cart">Cart</a>) ID() <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a></pre>
+				<p>ID は、カート ID を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Cart.IsEmpty">func (*Cart) <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_domain.go.html?s=13587:13616#L317">IsEmpty</a>
+					<a class="permalink" href="#Cart.IsEmpty">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Cart">Cart</a>) IsEmpty() <a href="../../../../builtin/#bool">bool</a></pre>
+				<p>IsEmpty は、明細を 1 件も持たないかを返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Cart.IsExpired">func (*Cart) <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_domain.go.html?s=13438:13482#L314">IsExpired</a>
+					<a class="permalink" href="#Cart.IsExpired">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Cart">Cart</a>) IsExpired(now <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>) <a href="../../../../builtin/#bool">bool</a></pre>
+				<p>IsExpired は、有効期限を過ぎているかを返します。
+</p><p>「期限切れ」の定義はこのメソッドが持ちます。有効期限そのものの時点は期限切れではありません。
+掃除ジョブの削除条件はこの述語の実行形であって定義ではなく、片方だけを変更してはなりません。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Cart.IsOwnedBy">func (*Cart) <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_domain.go.html?s=13776:13823#L320">IsOwnedBy</a>
+					<a class="permalink" href="#Cart.IsOwnedBy">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Cart">Cart</a>) IsOwnedBy(userID <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) <a href="../../../../builtin/#bool">bool</a></pre>
+				<p>IsOwnedBy は、指定ユーザーが所有者かを返します。所有者が未確定のカートは常に false です。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Cart.Items">func (*Cart) <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_domain.go.html?s=8208:8241#L187">Items</a>
+					<a class="permalink" href="#Cart.Items">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Cart">Cart</a>) Items() []<a href="#CartItem">CartItem</a></pre>
+				<p>Items は、明細のスライスを返します（内部スライスの変更を防ぐためコピーを返します）。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Cart.MarkSeen">func (*Cart) <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_domain.go.html?s=12875:12932#L300">MarkSeen</a>
+					<a class="permalink" href="#Cart.MarkSeen">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Cart">Cart</a>) MarkSeen(prices map[<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>]<a href="../../../../go-boilerplate/internal/domain/lexicon/money/">money</a>.<a href="../../../../go-boilerplate/internal/domain/lexicon/money/#Price">Price</a>)</pre>
+				<p>MarkSeen は、利用者へ提示した価格を明細へ記録します。
+prices に現れない商品の明細は変更しません（非公開化などで価格を引けなかった場合）。
+</p><p>ここに記録される値は表示の履歴であって約束ではありません
+（詳細: docs/spec/cart/domain.md の Behavior Methods の MarkSeen）。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Cart.Merge">func (*Cart) <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_domain.go.html?s=11153:11213#L251">Merge</a>
+					<a class="permalink" href="#Cart.Merge">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Cart">Cart</a>) Merge(other *<a href="#Cart">Cart</a>, now <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>) <a href="#MergeResult">MergeResult</a></pre>
+				<p>Merge は、別のカートの明細を自身へ取り込みます。
+</p><p>同一商品は数量を合算し、上限を超える場合は上限へクランプします。自身に無い商品は追加し、明細数の
+上限を超える分は追加が新しいものから切り捨てます（先に入っていたものを優先して残す）。
+失われた分は戻り値で報告されます。
+</p><p>error を返しません（理由: docs/spec/cart/domain.md の Behavior Methods の Merge）。
+取り込み元は変更しません。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Cart.OwnerID">func (*Cart) <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_domain.go.html?s=7808:7843#L181">OwnerID</a>
+					<a class="permalink" href="#Cart.OwnerID">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Cart">Cart</a>) OwnerID() *<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a></pre>
+				<p>OwnerID は、所有者のユーザー ID を返します。所有者が未確定の場合は nil です。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Cart.RemoveItem">func (*Cart) <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_domain.go.html?s=10136:10188#L230">RemoveItem</a>
+					<a class="permalink" href="#Cart.RemoveItem">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Cart">Cart</a>) RemoveItem(productID <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) <a href="../../../../builtin/#error">error</a></pre>
+				<p>RemoveItem は、指定商品の明細を取り除きます。
+該当する明細が無い場合も成功を返します（削除は冪等であり、「無かった」と「消した」を区別しません）。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Cart.SessionToken">func (*Cart) <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_domain.go.html?s=8000:8043#L184">SessionToken</a>
+					<a class="permalink" href="#Cart.SessionToken">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Cart">Cart</a>) SessionToken() *<a href="#SessionToken">SessionToken</a></pre>
+				<p>SessionToken は、ゲスト追跡用のトークンを返します。所有者が確定済みの場合は nil です。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Cart.SetItem">func (*Cart) <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_domain.go.html?s=9184:9252#L202">SetItem</a>
+					<a class="permalink" href="#Cart.SetItem">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Cart">Cart</a>) SetItem(attrs <a href="#SetItemAttributes">SetItemAttributes</a>, now <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>) <a href="../../../../builtin/#error">error</a></pre>
+				<p>SetItem は、指定商品の数量を設定します。
+同一商品の明細が既にあれば数量を置換し（addedAt は保持）、無ければ ItemID で追加します。
+数量が範囲外なら ErrInvalidQuantity を、追加により明細数が上限を超えるなら ErrTooManyItems を返します。
+数量 0 は削除ではなくエラーです。削除は RemoveItem が担います。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Cart.Subtotal">func (*Cart) <a href="../../../../src/go-boilerplate/internal/domain/cart/subtotal.go.html?s=818:897#L7">Subtotal</a>
+					<a class="permalink" href="#Cart.Subtotal">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Cart">Cart</a>) Subtotal(snapshots map[<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>]<a href="#ProductSnapshot">ProductSnapshot</a>) (<a href="../../../../builtin/#int64">int64</a>, <a href="../../../../builtin/#error">error</a>)</pre>
+				<p>Subtotal は、購入可能な明細だけを合算して決済スケールの整数へ落とします。
+丸めは合算の後に一度だけ行い、明細ごとの丸め誤差が積み上がらないようにします。
+</p><p>snapshots は商品 ID ごとの観測値で、引けなかった商品は含みません。含まれない明細と、
+突き合わせで issue が立った明細は合算に入りません。
+</p><p>幅を超えるのは明細が積み上がった結果に限られます（単価 1 件が決済スケールへ落とせることは
+money.Price の構築時に保証されるため）。合計を偽らずに返す術が無いため、エラーを返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Cart.Touch">func (*Cart) <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_domain.go.html?s=12394:12448#L290">Touch</a>
+					<a class="permalink" href="#Cart.Touch">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Cart">Cart</a>) Touch(now <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>, ttl <a href="../../../../time/">time</a>.<a href="../../../../time/#Duration">Duration</a>)</pre>
+				<p>Touch は、有効期限を now から ttl だけ先へ延長します。
+使われている間のカートが掃除の対象にならないようにするためです。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Cart.UpdatedAt">func (*Cart) <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_domain.go.html?s=8704:8740#L196">UpdatedAt</a>
+					<a class="permalink" href="#Cart.UpdatedAt">¶</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Cart">Cart</a>) UpdatedAt() <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a></pre>
+				<p>UpdatedAt は、更新日時を返します。生成直後の集約ではゼロ値で、再構築時に設定されます。
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="CartItem">type <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_item.go.html?s=369:515#L3">CartItem</a>
+				<a class="permalink" href="#CartItem">¶</a>
+				
+				
+			</h2>
+			<p>CartItem は、カートの明細を表す値オブジェクトです。
+明細はカート集約に属する部品であり単独では成立しないため、不変条件の判定は集約へ入る時点で行われます。
+
+			</p><pre>type CartItem struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewCartItem">func <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_item.go.html?s=1417:1482#L26">NewCartItem</a>
+					<a class="permalink" href="#NewCartItem">¶</a>
+					
+					
+				</h3>
+				<pre>func NewCartItem(id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, attrs <a href="#CartItemAttributes">CartItemAttributes</a>) <a href="#CartItem">CartItem</a></pre>
+				<p>NewCartItem は、明細を組み立てます。
+集約の不変条件（同一商品の重複、明細数の上限）は明細 1 件では判定できないため、ここでは検証しません。
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="CartItem.AddedAt">func (CartItem) <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_item.go.html?s=2060:2097#L46">AddedAt</a>
+					<a class="permalink" href="#CartItem.AddedAt">¶</a>
+					
+					
+				</h3>
+				<pre>func (i <a href="#CartItem">CartItem</a>) AddedAt() <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a></pre>
+				<p>AddedAt は、明細が最初にカートへ入った時刻を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="CartItem.Evaluate">func (CartItem) <a href="../../../../src/go-boilerplate/internal/domain/cart/evaluation.go.html?s=3265:3329#L63">Evaluate</a>
+					<a class="permalink" href="#CartItem.Evaluate">¶</a>
+					
+					
+				</h3>
+				<pre>func (i <a href="#CartItem">CartItem</a>) Evaluate(snapshot *<a href="#ProductSnapshot">ProductSnapshot</a>) <a href="#Evaluation">Evaluation</a></pre>
+				<p>Evaluate は、明細を商品の観測値と突き合わせて再評価結果を返します。
+snapshot が nil の場合は商品を引けなかったことを表し、IssueNotFound だけが立ちます。
+
+				
+				
+				
+			
+				
+				</p><h3 id="CartItem.ID">func (CartItem) <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_item.go.html?s=1718:1750#L37">ID</a>
+					<a class="permalink" href="#CartItem.ID">¶</a>
+					
+					
+				</h3>
+				<pre>func (i <a href="#CartItem">CartItem</a>) ID() <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a></pre>
+				<p>ID は、明細 ID を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="CartItem.LastSeenPrice">func (CartItem) <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_item.go.html?s=2402:2448#L51">LastSeenPrice</a>
+					<a class="permalink" href="#CartItem.LastSeenPrice">¶</a>
+					
+					
+				</h3>
+				<pre>func (i <a href="#CartItem">CartItem</a>) LastSeenPrice() *<a href="../../../../go-boilerplate/internal/domain/lexicon/money/">money</a>.<a href="../../../../go-boilerplate/internal/domain/lexicon/money/#Price">Price</a></pre>
+				<p>LastSeenPrice は、最後に利用者へ提示した価格を返します。未提示の場合は nil です。
+</p><p>これは比較の基準であって金額の根拠ではありません。請求額を拘束するのは購入明細のスナップショットだけです。
+
+				
+				
+				
+			
+				
+				</p><h3 id="CartItem.ProductID">func (CartItem) <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_item.go.html?s=1816:1855#L40">ProductID</a>
+					<a class="permalink" href="#CartItem.ProductID">¶</a>
+					
+					
+				</h3>
+				<pre>func (i <a href="#CartItem">CartItem</a>) ProductID() <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a></pre>
+				<p>ProductID は、商品 ID を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="CartItem.Quantity">func (CartItem) <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_item.go.html?s=1923:1955#L43">Quantity</a>
+					<a class="permalink" href="#CartItem.Quantity">¶</a>
+					
+					
+				</h3>
+				<pre>func (i <a href="#CartItem">CartItem</a>) Quantity() <a href="../../../../builtin/#int">int</a></pre>
+				<p>Quantity は、数量を返します。
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="CartItemAttributes">type <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_item.go.html?s=781:1209#L13">CartItemAttributes</a>
+				<a class="permalink" href="#CartItemAttributes">¶</a>
+				
+				
+			</h2>
+			<p>CartItemAttributes は、明細の組み立てに必要な属性一式です。id と productID は隣接する同じ
+uuid.UUID で、位置引数のままだと取り違えてもコンパイルも検証も通ってしまうため構造体で受けます。
+
+			</p><pre>type CartItemAttributes struct {
+<span id="CartItemAttributes.ProductID"></span>    <span class="comment">// ProductID は、明細の対象商品です。</span>
+    ProductID <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="CartItemAttributes.Quantity"></span>    <span class="comment">// Quantity は、明細の数量です。</span>
+    Quantity <a href="../../../../builtin/#int">int</a>
+<span id="CartItemAttributes.AddedAt"></span>    <span class="comment">// AddedAt は、明細が最初にカートへ入った時刻です。数量の置換では引き継がれます。</span>
+    AddedAt <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+<span id="CartItemAttributes.LastSeenPrice"></span>    <span class="comment">// LastSeenPrice は、最後に利用者へ提示した価格です。未提示は nil です。</span>
+    LastSeenPrice *<a href="../../../../go-boilerplate/internal/domain/lexicon/money/">money</a>.<a href="../../../../go-boilerplate/internal/domain/lexicon/money/#Price">Price</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Carts">type <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_domain.go.html?s=710:728#L11">Carts</a>
+				<a class="permalink" href="#Carts">¶</a>
+				
+				
+			</h2>
+			<p>Carts は、Cart 集約のスライス型です。
+
+			</p><pre>type Carts []*<a href="#Cart">Cart</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Evaluation">type <a href="../../../../src/go-boilerplate/internal/domain/cart/evaluation.go.html?s=1497:1574#L29">Evaluation</a>
+				<a class="permalink" href="#Evaluation">¶</a>
+				
+				
+			</h2>
+			<p>Evaluation は、明細 1 件の再評価結果です。
+
+			</p><pre>type Evaluation struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="Evaluation.AvailableQuantity">func (Evaluation) <a href="../../../../src/go-boilerplate/internal/domain/cart/evaluation.go.html?s=2281:2325#L51">AvailableQuantity</a>
+					<a class="permalink" href="#Evaluation.AvailableQuantity">¶</a>
+					
+					
+				</h3>
+				<pre>func (e <a href="#Evaluation">Evaluation</a>) AvailableQuantity() *<a href="../../../../builtin/#int">int</a></pre>
+				<p>AvailableQuantity は、IssueInsufficientStock のときの今買える上限を返します。それ以外は nil です。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Evaluation.Issues">func (Evaluation) <a href="../../../../src/go-boilerplate/internal/domain/cart/evaluation.go.html?s=2031:2067#L43">Issues</a>
+					<a class="permalink" href="#Evaluation.Issues">¶</a>
+					
+					
+				</h3>
+				<pre>func (e <a href="#Evaluation">Evaluation</a>) Issues() []<a href="#Issue">Issue</a></pre>
+				<p>Issues は、立った issue を返します。空なら現時点で購入可能です。
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="Issue">type <a href="../../../../src/go-boilerplate/internal/domain/cart/evaluation.go.html?s=1176:1193#L18">Issue</a>
+				<a class="permalink" href="#Issue">¶</a>
+				
+				
+			</h2>
+			<p>Issue は、明細を商品の観測値と突き合わせた結果です。
+
+			</p><pre>type Issue <a href="../../../../builtin/#string">string</a></pre>
+
+			
+				
+				<pre>const (
+    <span class="comment">// IssueNotFound は、商品が引けなかったことを表します。</span>
+    <span id="IssueNotFound">IssueNotFound</span> <a href="#Issue">Issue</a> = &#34;notFound&#34;
+    <span class="comment">// IssueUnpublished は、商品が非公開であることを表します。</span>
+    <span id="IssueUnpublished">IssueUnpublished</span> <a href="#Issue">Issue</a> = &#34;unpublished&#34;
+    <span class="comment">// IssueOutOfStock は、在庫が無いことを表します。</span>
+    <span id="IssueOutOfStock">IssueOutOfStock</span> <a href="#Issue">Issue</a> = &#34;outOfStock&#34;
+    <span class="comment">// IssueInsufficientStock は、在庫が要求数量に満たないことを表します。</span>
+    <span id="IssueInsufficientStock">IssueInsufficientStock</span> <a href="#Issue">Issue</a> = &#34;insufficientStock&#34;
+    <span class="comment">// IssuePriceIncreased は、最後に提示した価格より高いことを表します。</span>
+    <span id="IssuePriceIncreased">IssuePriceIncreased</span> <a href="#Issue">Issue</a> = &#34;priceIncreased&#34;
+    <span class="comment">// IssuePriceDecreased は、最後に提示した価格より安いことを表します。</span>
+    <span id="IssuePriceDecreased">IssuePriceDecreased</span> <a href="#Issue">Issue</a> = &#34;priceDecreased&#34;
+)</pre>
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="MergeResult">type <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_domain.go.html?s=2795:2864#L57">MergeResult</a>
+				<a class="permalink" href="#MergeResult">¶</a>
+				
+				
+			</h2>
+			<p>MergeResult は、マージで失われた分の報告です。永続化しません。
+
+			</p><pre>type MergeResult struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MergeResult.Clamped">func (MergeResult) <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_domain.go.html?s=2963:3005#L63">Clamped</a>
+					<a class="permalink" href="#MergeResult.Clamped">¶</a>
+					
+					
+				</h3>
+				<pre>func (r <a href="#MergeResult">MergeResult</a>) Clamped() []<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a></pre>
+				<p>Clamped は、数量合算が上限を超えクランプされた商品 ID を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="MergeResult.Dropped">func (MergeResult) <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_domain.go.html?s=3136:3178#L66">Dropped</a>
+					<a class="permalink" href="#MergeResult.Dropped">¶</a>
+					
+					
+				</h3>
+				<pre>func (r <a href="#MergeResult">MergeResult</a>) Dropped() []<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a></pre>
+				<p>Dropped は、明細数の上限により切り捨てられた商品 ID を返します。
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="ProductSnapshot">type <a href="../../../../src/go-boilerplate/internal/domain/cart/evaluation.go.html?s=1350:1435#L22">ProductSnapshot</a>
+				<a class="permalink" href="#ProductSnapshot">¶</a>
+				
+				
+			</h2>
+			<p>ProductSnapshot は、再評価した時点で観測した商品の値です（設計意図は
+docs/spec/cart/domain.md の Overview を参照）。
+
+			</p><pre>type ProductSnapshot struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewProductSnapshot">func <a href="../../../../src/go-boilerplate/internal/domain/cart/evaluation.go.html?s=1647:1735#L35">NewProductSnapshot</a>
+					<a class="permalink" href="#NewProductSnapshot">¶</a>
+					
+					
+				</h3>
+				<pre>func NewProductSnapshot(quantity <a href="../../../../builtin/#int">int</a>, price <a href="../../../../go-boilerplate/internal/domain/lexicon/money/">money</a>.<a href="../../../../go-boilerplate/internal/domain/lexicon/money/#Price">Price</a>, published <a href="../../../../builtin/#bool">bool</a>) <a href="#ProductSnapshot">ProductSnapshot</a></pre>
+				<p>NewProductSnapshot は、商品の観測値を組み立てます。
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="ProductSnapshot.Price">func (ProductSnapshot) <a href="../../../../src/go-boilerplate/internal/domain/cart/evaluation.go.html?s=1873:1917#L40">Price</a>
+					<a class="permalink" href="#ProductSnapshot.Price">¶</a>
+					
+					
+				</h3>
+				<pre>func (s <a href="#ProductSnapshot">ProductSnapshot</a>) Price() <a href="../../../../go-boilerplate/internal/domain/lexicon/money/">money</a>.<a href="../../../../go-boilerplate/internal/domain/lexicon/money/#Price">Price</a></pre>
+				<p>Price は、観測した単価を返します。
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="Repository">type <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_repository.go.html?s=452:4044#L4">Repository</a>
+				<a class="permalink" href="#Repository">¶</a>
+				
+				
+			</h2>
+			<p>Repository は、カート集約の永続化を抽象化します。書き込みは集約単位で Create と Update の
+2 つに閉じ、明細だけを対象とする操作は持ちません
+（理由: docs/spec/cart/domain.md の Repository Methods の Update）。
+
+			</p><pre>type Repository interface {
+    <span class="comment">// FindBySessionToken は、セッショントークンからカートを明細込みで取得します。</span>
+    <span class="comment">// 存在しない場合は NotFound を返します。所有者が確定したカートは引けません</span>
+    <span class="comment">// （理由: docs/spec/cart/domain.md の Repository Methods の FindBySessionToken）。</span>
+    FindBySessionToken(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, token <a href="#SessionToken">SessionToken</a>) (*<a href="#Cart">Cart</a>, <a href="../../../../builtin/#error">error</a>)
+
+    <span class="comment">// FindByOwnerID は、所有者からカートを明細込みで取得します。</span>
+    <span class="comment">// 存在しない場合は NotFound を返します。ユーザー 1 人につきカートは高々 1 件です。</span>
+    <span class="comment">//</span>
+    <span class="comment">// 期限切れのカートも返します。期限切れかどうかは Cart.IsExpired が定義するため、</span>
+    <span class="comment">// ここで取り除くと呼び出し側から判定の機会が失われます。</span>
+    FindByOwnerID(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, userID <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (*<a href="#Cart">Cart</a>, <a href="../../../../builtin/#error">error</a>)
+
+    <span class="comment">// LockByID は、更新のためにカートを悲観ロックして明細込みで取得します。</span>
+    <span class="comment">// ロックは同一カートに対する並行した更新を、取得から commit まで直列化します。</span>
+    LockByID(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (*<a href="#Cart">Cart</a>, <a href="../../../../builtin/#error">error</a>)
+
+    <span class="comment">// LockByIDs は、更新のために ID の集合からカート群を、ID 昇順にまとめて悲観ロックして</span>
+    <span class="comment">// 明細込みで取得します（順序を固定する理由は ADR-0036 (ordered-pessimistic-row-locks)）。</span>
+    <span class="comment">// 複数件はこちらでまとめてロックし、順序の維持を呼び出し側の責務にしません。</span>
+    <span class="comment">//</span>
+    <span class="comment">// 不存在の ID はロックできず結果に現れないため、要素数は ids より少なくなり得ます</span>
+    <span class="comment">// （不存在の検証は呼び出し側の責務です）。</span>
+    LockByIDs(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, ids []<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (<a href="#Carts">Carts</a>, <a href="../../../../builtin/#error">error</a>)
+
+    <span class="comment">// Create は、カートを明細込みで新規登録します。</span>
+    <span class="comment">// 所有者またはセッショントークンが既に使われている場合は Conflict を返します。</span>
+    Create(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, c *<a href="#Cart">Cart</a>) <a href="../../../../builtin/#error">error</a>
+
+    <span class="comment">// CreateOwnerIfAbsent は、所有者のカートが無ければ空のカートを作り、確定したカートを返します。</span>
+    <span class="comment">// 既にある場合は衝突として扱わず、既存のカートがそのまま返ります（そこが Create との違いです）。</span>
+    <span class="comment">// 並行して作成が競合した場合も、勝ったほうのカートが返ります。</span>
+    CreateOwnerIfAbsent(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, c *<a href="#Cart">Cart</a>) (*<a href="#Cart">Cart</a>, <a href="../../../../builtin/#error">error</a>)
+
+    <span class="comment">// Update は、カートを明細込みで現在の状態へ一致させます（差分ではなく集約単位の書き込み）。</span>
+    <span class="comment">// 所有者・セッショントークン・有効期限と、明細の集合が対象です。</span>
+    <span class="comment">// 対象が存在しない場合は NotFound を返します。</span>
+    <span class="comment">//</span>
+    <span class="comment">// 明細は商品ごとに置き換えられ、最初に入った時刻は保持されます。集合から消えた明細は取り除かれます。</span>
+    Update(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, c *<a href="#Cart">Cart</a>) <a href="../../../../builtin/#error">error</a>
+
+    <span class="comment">// Delete は、カートを明細ごと削除します。存在しない場合もエラーとしません。</span>
+    Delete(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) <a href="../../../../builtin/#error">error</a>
+
+    <span class="comment">// DeleteExpired は、有効期限を過ぎたカートを最大 limit 件削除し、削除件数を返します。</span>
+    <span class="comment">// 1 回で消し切ることを意図せず、件数上限で区切って繰り返し呼ばれる前提です。</span>
+    <span class="comment">//</span>
+    <span class="comment">// 削除の対象は Cart.IsExpired が定義する「期限切れ」であり、この実装はその実行形です。</span>
+    <span class="comment">// 片方だけを変更してはなりません。</span>
+    DeleteExpired(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, now <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>, limit <a href="../../../../builtin/#int32">int32</a>) (<a href="../../../../builtin/#int">int</a>, <a href="../../../../builtin/#error">error</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="SessionToken">type <a href="../../../../src/go-boilerplate/internal/domain/cart/session_token.go.html?s=295:337#L1">SessionToken</a>
+				<a class="permalink" href="#SessionToken">¶</a>
+				
+				
+			</h2>
+			<p>SessionToken は、所有者が確定していないカートを追跡するための値オブジェクトです。
+値の生成は外側の層が行い、ドメインは受け取った値の形式のみを検証します。
+
+			</p><pre>type SessionToken struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewSessionToken">func <a href="../../../../src/go-boilerplate/internal/domain/cart/session_token.go.html?s=547:603#L7">NewSessionToken</a>
+					<a class="permalink" href="#NewSessionToken">¶</a>
+					
+					
+				</h3>
+				<pre>func NewSessionToken(value <a href="../../../../builtin/#string">string</a>) (<a href="#SessionToken">SessionToken</a>, <a href="../../../../builtin/#error">error</a>)</pre>
+				<p>NewSessionToken は、セッショントークンを生成します。
+長さが規定と異なる場合、または URL-safe でない文字を含む場合は ErrInvalidSessionToken を返します。
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="SessionToken.IsZero">func (SessionToken) <a href="../../../../src/go-boilerplate/internal/domain/cart/session_token.go.html?s=1603:1638#L42">IsZero</a>
+					<a class="permalink" href="#SessionToken.IsZero">¶</a>
+					
+					
+				</h3>
+				<pre>func (t <a href="#SessionToken">SessionToken</a>) IsZero() <a href="../../../../builtin/#bool">bool</a></pre>
+				<p>IsZero は、生成を経ていないゼロ値かどうかを返します。
+複合リテラルは検証を通らずに組み立てられるため、値を受け取る側はこれで拒否できます。
+
+				
+				
+				
+			
+				
+				</p><h3 id="SessionToken.Value">func (SessionToken) <a href="../../../../src/go-boilerplate/internal/domain/cart/session_token.go.html?s=1744:1780#L45">Value</a>
+					<a class="permalink" href="#SessionToken.Value">¶</a>
+					
+					
+				</h3>
+				<pre>func (t <a href="#SessionToken">SessionToken</a>) Value() <a href="../../../../builtin/#string">string</a></pre>
+				<p>Value は、セッショントークンの文字列表現を返します。
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="SetItemAttributes">type <a href="../../../../src/go-boilerplate/internal/domain/cart/cart_domain.go.html?s=2352:2702#L47">SetItemAttributes</a>
+				<a class="permalink" href="#SetItemAttributes">¶</a>
+				
+				
+			</h2>
+			<p>SetItemAttributes は、明細の数量設定に必要な属性一式です。ItemID と ProductID は同じ uuid.UUID の
+ため、取り違えを型で防ぐ目的で構造体で受けます（docs/rules.md の Function Signature Rules）。
+
+			</p><pre>type SetItemAttributes struct {
+<span id="SetItemAttributes.ItemID"></span>    <span class="comment">// ItemID は、明細を新たに追加するときに採番済みの ID です。既存商品の置換では使いません。</span>
+    ItemID <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="SetItemAttributes.ProductID"></span>    <span class="comment">// ProductID は、対象の商品です。明細の自然キーでもあります。</span>
+    ProductID <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="SetItemAttributes.Quantity"></span>    <span class="comment">// Quantity は、設定する数量です。</span>
+    Quantity <a href="../../../../builtin/#int">int</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+	
+	
+		<h2 id="pkg-subdirectories">Subdirectories</h2>
+	
+	<div class="pkg-dir">
+		<table>
+			<tbody><tr>
+				<th class="pkg-name">Name</th>
+				<th class="pkg-synopsis">Synopsis</th>
+			</tr>
+
+			
+			<tr>
+				<td colspan="2"><a href="..">..</a></td>
+			</tr>
+			
+
+			
+		</tbody></table>
+	</div>
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

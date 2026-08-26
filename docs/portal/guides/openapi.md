@@ -10,20 +10,14 @@ This directory contains the **OpenAPI definitions** used in this project.
 
 ## Directory Structure
 
-```text
-openapi/
-├── openapi.yaml              # Entry point (split file references)
-├── openapi.gen.yaml          # Bundled file (generated, used for code generation)
-├── paths/                    # Endpoint definitions
-├── components/
-│   ├── schemas/              # Data structures (request / response / security)
-│   ├── parameters/           # Query and path parameters
-│   ├── requests/             # Request semantics (content / required)
-│   └── responses/            # Response semantics (status / description)
-├── parameter-guide.md        # Parameter definition reference
-├── secure-uuid.md            # UUID exposure security evaluation
-└── boundary-ownership.md     # Who owns min/max/length constraints (wire contract vs domain rule)
-```
+The split is fixed by how the spec is assembled, not by convenience:
+
+- `openapi.yaml` — the entry point; every other file is reached from here by `$ref`
+- `openapi.gen.yaml` — the bundled result, generated and read by code generation (do not edit)
+- `paths/` — endpoint definitions, laid out to mirror the URL structure
+- `components/` — the reusable halves of a definition: `schemas/`, `parameters/`, `requests/`, `responses/`
+
+Reference documents sit beside them as ordinary Markdown; each states its own subject.
 
 ## File Responsibilities
 
@@ -109,9 +103,63 @@ HTTP headers are out of scope for this table — they follow the conventional `T
 
 Body fields and parameters use the same `camelCase` casing on purpose: aligning parameters with body fields keeps the wire contract consistent with JS / TS frontends and generated SDKs. Keep each location internally consistent.
 
+### Partial Update (PATCH) — Three-State Fields
+
+A PATCH request body must distinguish three states per field: **not sent** (keep the current value), **sent as `null`** (clear the value), and **sent with a value** (replace it). The default oapi-codegen mapping generates `*T` for an optional nullable field, which collapses "not sent" and "null" into the same `nil` — a clear request becomes indistinguishable from an omit.
+
+For a field that supports explicit-null clearing, override the generated type with the `x-go-type` extension and [`oapi-codegen/nullable`](https://github.com/oapi-codegen/nullable), whose `Nullable[T]` preserves all three states through standard `encoding/json` decoding:
+
+```yaml
+description:
+  type: string
+  nullable: true
+  description: 説明。null を指定すると値をクリアします。
+  x-go-type: nullable.Nullable[string]
+  x-go-type-import:
+    path: github.com/oapi-codegen/nullable
+  x-go-type-skip-optional-pointer: true   # *Nullable[T] にしない（3 状態は型自身が表現する）
+```
+
+Rules:
+
+- Apply this only to PATCH request fields where "clear" is a meaningful operation. Plain optional fields (where absent and null need no distinction) stay as the default `*T`.
+- `x-go-type-import` always points at the `nullable` package — even when `T` needs another import (e.g. `time.Time`); oapi-codegen resolves `time` on its own, and declaring it here duplicates the import in the generated file.
+- Per "Do not pass OpenAPI generated types to Usecase": convert `nullable.Nullable[T]` to the framework-agnostic three-state value (`pkg/patch.Field[T]`) at the controller boundary. Inner layers never see the generated type; the domain receives only resolved concrete values.
+
+#### Collections as a three-state field
+
+`T` may be a slice. A collection that is replaced as a whole — rather than merged element by element —
+takes the same three states, with `null` meaning "remove every element":
+
+```yaml
+items:
+  type: array
+  nullable: true
+  description: 送ると集合ごと置き換えます（差分更新ではありません）。null を指定すると全て取り除きます。
+  items:
+    $ref: './ItemInput.yaml'
+  x-go-type: nullable.Nullable[[]ItemInput]
+  x-go-type-import:
+    path: github.com/oapi-codegen/nullable
+  x-go-type-skip-optional-pointer: true
+```
+
+The element type is referenced by its generated name, so the `$ref` target must land in the same
+generated package as the field that uses it.
+
+Two things this shape is easy to get wrong:
+
+- **State the replacement semantics in `description`.** `[]` and `null` both end up removing
+  everything, so a caller cannot infer from the schema alone whether sending a shorter array deletes
+  the missing elements or leaves them. Say it.
+- **Do not act on an unspecified collection.** Resolving three states with `Resolve` alone cannot
+  separate "not sent" from "sent as null" — both yield no value. Branch on
+  `pkg/patch.Field.IsSpecified()` before touching the stored collection; otherwise every unrelated
+  PATCH rewrites rows the request never mentioned.
+
 ### Versioning
 
-URL path versioning: `/v1/users`
+URL path versioning: `/v1/<resources>`
 
 Breaking changes → create `/v2/` alongside `/v1/`
 

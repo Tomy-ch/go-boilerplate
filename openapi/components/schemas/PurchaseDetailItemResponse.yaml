@@ -1,0 +1,31 @@
+type: object
+description: |
+  購入詳細（GET）専用の購入明細レスポンス。productName は products との結合で解決した現在の商品名です。
+  unitPrice は購入時点の単価スナップショットです。
+required:
+  - productId
+  - productName
+  - quantity
+  - unitPrice
+properties:
+  productId:
+    type: string
+    format: uuid
+    description: 商品ID
+    example: "5266f905-1af4-477a-bc7c-e69729e22a2b"
+  productName:
+    type: string
+    description: 商品名（products との結合で解決した現在名）
+    example: "ワイヤレスイヤホン"
+  quantity:
+    type: integer
+    format: int32
+    description: 購入数量
+    example: 2
+  unitPrice:
+    type: string
+    pattern: '^\d+(\.\d+)?$'
+    description: |
+      購入時点の単価スナップショット。サブセント精度を保持する decimal 文字列（USD ドル）で表します（例 "800.00"）。
+      購入成立後に商品価格が変わっても本値は不変です。
+    example: "800.00"

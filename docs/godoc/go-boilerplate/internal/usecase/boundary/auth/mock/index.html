@@ -85,6 +85,7 @@
 			<div class="expanded">
 				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
 				<p>Package mock_auth is a generated GoMock package.
+</p><p>Package mock_auth is a generated GoMock package.
 
 				
 			</p></div>
@@ -126,6 +127,28 @@
 					<dd>    <a href="#MockAuthenticatorMockRecorder.Authenticate">func (mr *MockAuthenticatorMockRecorder) Authenticate(ctx, cred any) *gomock.Call</a></dd>
 				
 			
+				
+				<dd><a href="#MockIdentityResolver">type MockIdentityResolver</a></dd>
+				
+					
+					<dd>    <a href="#NewMockIdentityResolver">func NewMockIdentityResolver(ctrl *gomock.Controller) *MockIdentityResolver</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockIdentityResolver.EXPECT">func (m *MockIdentityResolver) EXPECT() *MockIdentityResolverMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockIdentityResolver.Resolve">func (m *MockIdentityResolver) Resolve(ctx context.Context, authn *auth.Authn) (*auth.Authn, error)</a></dd>
+				
+			
+				
+				<dd><a href="#MockIdentityResolverMockRecorder">type MockIdentityResolverMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockIdentityResolverMockRecorder.Resolve">func (mr *MockIdentityResolverMockRecorder) Resolve(ctx, authn any) *gomock.Call</a></dd>
+				
+			
 			
 			</dl>
 			</div><!-- #manual-nav -->
@@ -138,6 +161,8 @@
 			<span style="font-size:90%">
 			
 				<a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/auth/mock/mock_authenticator.go.gen.go.html">mock_authenticator.go.gen.go</a>
+			
+				<a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/auth/mock/mock_resolver.go.gen.go.html">mock_resolver.go.gen.go</a>
 			
 			</span>
 			</p>
@@ -248,6 +273,109 @@
 				</h3>
 				<pre>func (mr *<a href="#MockAuthenticatorMockRecorder">MockAuthenticatorMockRecorder</a>) Authenticate(ctx, cred <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
 				<p>Authenticate indicates an expected call of Authenticate.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockIdentityResolver">type <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/auth/mock/mock_resolver.go.gen.go.html?s=473:601#L11">MockIdentityResolver</a>
+				<a class="permalink" href="#MockIdentityResolver">¶</a>
+				
+				
+			</h2>
+			<p>MockIdentityResolver is a mock of IdentityResolver interface.
+
+			</p><pre>type MockIdentityResolver struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockIdentityResolver">func <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/auth/mock/mock_resolver.go.gen.go.html?s=820:895#L23">NewMockIdentityResolver</a>
+					<a class="permalink" href="#NewMockIdentityResolver">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockIdentityResolver(ctrl *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockIdentityResolver">MockIdentityResolver</a></pre>
+				<p>NewMockIdentityResolver creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockIdentityResolver.EXPECT">func (*MockIdentityResolver) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/auth/mock/mock_resolver.go.gen.go.html?s=1091:1164#L30">EXPECT</a>
+					<a class="permalink" href="#MockIdentityResolver.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockIdentityResolver">MockIdentityResolver</a>) EXPECT() *<a href="#MockIdentityResolverMockRecorder">MockIdentityResolverMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockIdentityResolver.Resolve">func (*MockIdentityResolver) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/auth/mock/mock_resolver.go.gen.go.html?s=1219:1318#L35">Resolve</a>
+					<a class="permalink" href="#MockIdentityResolver.Resolve">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockIdentityResolver">MockIdentityResolver</a>) Resolve(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, authn *<a href="../../../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>) (*<a href="../../../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>Resolve mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockIdentityResolverMockRecorder">type <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/auth/mock/mock_resolver.go.gen.go.html?s=686:762#L18">MockIdentityResolverMockRecorder</a>
+				<a class="permalink" href="#MockIdentityResolverMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockIdentityResolverMockRecorder is the mock recorder for MockIdentityResolver.
+
+			</p><pre>type MockIdentityResolverMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockIdentityResolverMockRecorder.Resolve">func (*MockIdentityResolverMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/boundary/auth/mock/mock_resolver.go.gen.go.html?s=1518:1598#L44">Resolve</a>
+					<a class="permalink" href="#MockIdentityResolverMockRecorder.Resolve">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockIdentityResolverMockRecorder">MockIdentityResolverMockRecorder</a>) Resolve(ctx, authn <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>Resolve indicates an expected call of Resolve.
 
 				
 				

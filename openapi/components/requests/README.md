@@ -7,40 +7,48 @@ English | [日本語](README.ja.md)
 ## Role boundary vs `schemas/`
 
 - `schemas/` — small, reusable building blocks (e.g. `UserBaseInputRequest.yaml`).
-- `requests/` — the **per-endpoint** shape, usually composing a base block via `allOf` and adding operation-specific fields.
+- `requests/` — the **per-endpoint** shape, usually composing a base block via `allOf` and adding operation-specific constraints (e.g. a `required` list).
 
+<!-- sample-api:replace-begin -->
 ```yaml
 # requests/users/UsersPostRequest.yaml
 allOf:
   - $ref: '../../schemas/UserBaseInputRequest.yaml'
-  - properties:
-      password:        # field specific to "create user"
-        type: string
+  - required:          # fields mandatory for "create user"
+      - firstName
+      - lastName
+      - email
 ```
+<!-- sample-api:replace-with -->
+<!-- = ```yaml -->
+<!-- = # requests/<resources>/<Resources>PostRequest.yaml -->
+<!-- = allOf: -->
+<!-- =   - $ref: '../../schemas/<Resource>BaseInputRequest.yaml' -->
+<!-- =   - required:          # fields mandatory for the create operation -->
+<!-- =       - <field> -->
+<!-- = ``` -->
+<!-- sample-api:replace-end -->
 
 ## Directory Contents
 
-```text
-requests/
-└── users/
-    ├── UsersPostRequest.yaml      # Create user (base + password)
-    ├── UserPutRequest.yaml        # Full update (all fields required)
-    ├── UserPatchRequest.yaml      # Partial update (base, fields optional)
-    └── UserPasswordPutRequest.yaml # Password change (current + new)
-```
-
-> `users/` is a **sample implementation**. Mirror its structure for your own resources.
+One directory per resource, named after it; each holds that resource's request bodies.
 
 ## Naming Convention
 
 |Element|Convention|Example|
 |---|---|---|
+<!-- sample-api:replace-begin -->
 |Directory|lowercase by resource|`users/`|
 |File name|PascalCase + `Request`|`UsersPostRequest.yaml`|
+<!-- sample-api:replace-with -->
+<!-- = |Directory|lowercase by resource|`<resources>/`| -->
+<!-- = |File name|PascalCase + `Request`|`<Resources>PostRequest.yaml`| -->
+<!-- sample-api:replace-end -->
 
 ## Rules
 
 - Compose a reusable base from `schemas/` via `allOf` instead of duplicating fields.
-- Keep `additionalProperties: false` (directly or on the wrapper) to reject unknown fields.
+- Declare `additionalProperties: false` on the schema object that declares the properties, so unknown fields are rejected. `additionalProperties` only sees properties declared **in the same schema object**, so when composing with `allOf` the declaration belongs on the base that holds them — a wrapper adding only `required` cannot see them and would reject every field instead.
+- A nested element schema (an array's `items`) needs its own declaration; the enclosing request's does not reach it. `TestRequestBodyRejectsUnknownFields` in [`internal/architest`](../../../internal/architest/README.md) checks both halves for every schema reachable from a request body.
 - Include `description` and `example` on all properties.
 - Boundary values (`maxLength` etc.) are a **wire contract**, not the domain rule — see [Input Boundary Value Ownership](../../boundary-ownership.md).

@@ -5,7 +5,7 @@ import (
 	"go-boilerplate/internal/controller/httpstack/oapi"
 	"go-boilerplate/internal/di/server/extension"
 
-	echomw "github.com/labstack/echo/v4/middleware"
+	echomw "github.com/labstack/echo/v5/middleware"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"

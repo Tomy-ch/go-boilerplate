@@ -63,7 +63,7 @@
 <span id="L6" class="ln">     6  </span>	&#34;net/http/httptest&#34;
 <span id="L7" class="ln">     7  </span>	&#34;testing&#34;
 <span id="L8" class="ln">     8  </span>
-<span id="L9" class="ln">     9  </span>	&#34;github.com/labstack/echo/v4&#34;
+<span id="L9" class="ln">     9  </span>	&#34;github.com/labstack/echo/v5&#34;
 <span id="L10" class="ln">    10  </span>	&#34;github.com/stretchr/testify/assert&#34;
 <span id="L11" class="ln">    11  </span>)
 <span id="L12" class="ln">    12  </span>
@@ -76,7 +76,7 @@
 <span id="L19" class="ln">    19  </span>		t.Run(&#34;ミドルウェアが生成される&#34;, func(t *testing.T) {
 <span id="L20" class="ln">    20  </span>			t.Parallel()
 <span id="L21" class="ln">    21  </span>
-<span id="L22" class="ln">    22  </span>			mw := Middleware(&#34;test-service&#34;)
+<span id="L22" class="ln">    22  </span>			mw := Middleware()
 <span id="L23" class="ln">    23  </span>			assert.NotNil(t, mw)
 <span id="L24" class="ln">    24  </span>		})
 <span id="L25" class="ln">    25  </span>	})
@@ -93,7 +93,7 @@
 <span id="L36" class="ln">    36  </span>
 <span id="L37" class="ln">    37  </span>			e := echo.New()
 <span id="L38" class="ln">    38  </span>			e.Use(PassthroughMiddleware())
-<span id="L39" class="ln">    39  </span>			e.GET(&#34;/&#34;, func(c echo.Context) error {
+<span id="L39" class="ln">    39  </span>			e.GET(&#34;/&#34;, func(c *echo.Context) error {
 <span id="L40" class="ln">    40  </span>				return c.NoContent(http.StatusOK)
 <span id="L41" class="ln">    41  </span>			})
 <span id="L42" class="ln">    42  </span>
@@ -117,7 +117,7 @@
 <span id="L60" class="ln">    60  </span>			t.Parallel()
 <span id="L61" class="ln">    61  </span>
 <span id="L62" class="ln">    62  </span>			e := echo.New()
-<span id="L63" class="ln">    63  </span>			e.Use(Middleware(&#34;test-service&#34;))
+<span id="L63" class="ln">    63  </span>			e.Use(Middleware())
 <span id="L64" class="ln">    64  </span>
 <span id="L65" class="ln">    65  </span>			ctx := context.Background()
 <span id="L66" class="ln">    66  </span>			req := httptest.NewRequestWithContext(ctx, http.MethodGet, &#34;/&#34;, nil)

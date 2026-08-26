@@ -175,7 +175,7 @@
 		
 			
 			
-			<h2 id="Action">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/action.go.html?s=481:499#L3">Action</a>
+			<h2 id="Action">type <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/action.go.html?s=2536:2554#L32">Action</a>
 				<a class="permalink" href="#Action">¶</a>
 				
 				
@@ -185,14 +185,41 @@
 			</p><pre>type Action <a href="../../../../../builtin/#string">string</a></pre>
 
 			
-				
-				<pre>const (
+				<p>sample-api:begin
+サンプル EC の操作。Action 型と String は基盤として残す。
+
+				</p><pre>const (
+    <span class="comment">// ActionUserList は、ユーザーの列挙操作（一覧・フィード・検索、admin）を表します。</span>
+    <span id="ActionUserList">ActionUserList</span> <a href="#Action">Action</a> = &#34;user:list&#34;
     <span class="comment">// ActionUserGet は、ユーザー取得操作を表します。</span>
     <span id="ActionUserGet">ActionUserGet</span> <a href="#Action">Action</a> = &#34;user:get&#34;
     <span class="comment">// ActionUserUpdate は、ユーザー更新操作（全更新・部分更新）を表します。</span>
     <span id="ActionUserUpdate">ActionUserUpdate</span> <a href="#Action">Action</a> = &#34;user:update&#34;
     <span class="comment">// ActionUserDelete は、ユーザー削除操作を表します。</span>
     <span id="ActionUserDelete">ActionUserDelete</span> <a href="#Action">Action</a> = &#34;user:delete&#34;
+    <span class="comment">// ActionProductImageUpload は、商品画像のアップロード操作（admin）を表します。</span>
+    <span id="ActionProductImageUpload">ActionProductImageUpload</span> <a href="#Action">Action</a> = &#34;product:image:upload&#34;
+    <span class="comment">// ActionProductCreate は、商品の作成操作（admin）を表します。</span>
+    <span id="ActionProductCreate">ActionProductCreate</span> <a href="#Action">Action</a> = &#34;product:create&#34;
+    <span class="comment">// ActionProductUpdate は、商品の更新操作（admin）を表します。</span>
+    <span id="ActionProductUpdate">ActionProductUpdate</span> <a href="#Action">Action</a> = &#34;product:update&#34;
+    <span class="comment">// ActionProductStockUpdate は、商品在庫の増減操作（admin）を表します。</span>
+    <span id="ActionProductStockUpdate">ActionProductStockUpdate</span> <a href="#Action">Action</a> = &#34;product:stock:update&#34;
+    <span class="comment">// ActionProductListLowStock は、在庫僅少商品一覧の参照操作（admin）を表します。</span>
+    <span id="ActionProductListLowStock">ActionProductListLowStock</span> <a href="#Action">Action</a> = &#34;product:low-stock:list&#34;
+    <span class="comment">// ActionProductReadUnpublished は、未公開商品を含む商品の参照操作（admin）を表します。</span>
+    <span class="comment">// 一覧・一致件数・詳細が同じ能力を共有するため、3 つの経路で同一の Action を用います。</span>
+    <span id="ActionProductReadUnpublished">ActionProductReadUnpublished</span> <a href="#Action">Action</a> = &#34;product:unpublished:read&#34;
+    <span class="comment">// ActionPurchaseReadAll は、購入者を問わない購入の参照操作（admin）を表します。</span>
+    <span id="ActionPurchaseReadAll">ActionPurchaseReadAll</span> <a href="#Action">Action</a> = &#34;purchase:all:read&#34;
+    <span class="comment">// ActionPurchaseListShippable は、発送待ち購入一覧の参照操作（admin）を表します。</span>
+    <span id="ActionPurchaseListShippable">ActionPurchaseListShippable</span> <a href="#Action">Action</a> = &#34;purchase:shippable:list&#34;
+    <span class="comment">// ActionPurchaseShip は、購入の発送操作（admin）を表します。</span>
+    <span id="ActionPurchaseShip">ActionPurchaseShip</span> <a href="#Action">Action</a> = &#34;purchase:ship&#34;
+    <span class="comment">// ActionPurchaseDeliver は、購入の配達完了操作（admin）を表します。</span>
+    <span id="ActionPurchaseDeliver">ActionPurchaseDeliver</span> <a href="#Action">Action</a> = &#34;purchase:deliver&#34;
+    <span class="comment">// ActionDashboardRead は、ダッシュボード集計の参照操作（admin）を表します。</span>
+    <span id="ActionDashboardRead">ActionDashboardRead</span> <a href="#Action">Action</a> = &#34;dashboard:read&#34;
 )</pre>
 			
 
@@ -206,7 +233,7 @@
 
 			
 				
-				<h3 id="Action.String">func (Action) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/action.go.html?s=561:592#L6">String</a>
+				<h3 id="Action.String">func (Action) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/action.go.html?s=2616:2647#L35">String</a>
 					<a class="permalink" href="#Action.String">¶</a>
 					
 					
@@ -271,15 +298,15 @@
 
 			
 				
-				<h3 id="NewResource">func <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/resource.go.html?s=727:786#L8">NewResource</a>
+				<h3 id="NewResource">func <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/resource.go.html?s=681:740#L8">NewResource</a>
 					<a class="permalink" href="#NewResource">¶</a>
 					
 					
 				</h3>
 				<pre>func NewResource(kind <a href="../../../../../builtin/#string">string</a>, ownerID *<a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) *<a href="#Resource">Resource</a></pre>
 				<p>NewResource は、種別と所有者 ID から Resource を生成します。
-ownerID は防御的にコピーして保持するため、呼出元が渡したポインタの後続変更や
-スタック寿命に Resource は影響されません（Authorize が非同期実装でも安全）。
+ownerID は防御的にコピーして保持するため、呼出元が渡したポインタを事後に変更しても
+Resource の所有者 ID は変化しません。
 
 				
 				
@@ -287,7 +314,7 @@ ownerID は防御的にコピーして保持するため、呼出元が渡した
 
 			
 				
-				</p><h3 id="Resource.Kind">func (*Resource) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/resource.go.html?s=901:933#L13">Kind</a>
+				</p><h3 id="Resource.Kind">func (*Resource) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/resource.go.html?s=855:887#L13">Kind</a>
 					<a class="permalink" href="#Resource.Kind">¶</a>
 					
 					
@@ -300,7 +327,7 @@ ownerID は防御的にコピーして保持するため、呼出元が渡した
 				
 			
 				
-				</p><h3 id="Resource.OwnerID">func (*Resource) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/resource.go.html?s=1124:1163#L17">OwnerID</a>
+				</p><h3 id="Resource.OwnerID">func (*Resource) <a href="../../../../../src/go-boilerplate/internal/usecase/boundary/authz/resource.go.html?s=1078:1117#L17">OwnerID</a>
 					<a class="permalink" href="#Resource.OwnerID">¶</a>
 					
 					

@@ -40,6 +40,12 @@ type State interface {
 }
 ```
 
+> **`State.args` は予約シームであり、現状 worker engine では消費されません。** CLI は `args` を `Set`
+> に渡しますが、hook は `Snapshot` 時に破棄し、`engine.Run` は worker 名のみを取ります。姉妹の `job`
+> boundary と形を揃えるため、また将来の起動時パラメータ（シャード / リプレイ起点 / モード選択など）の
+> 前方シームとして意図的に残しています。worker は現状 `args` ではなく env で設定します。`args` に依存する
+> 前に、`Snapshot` から読むだけでなく `engine.Run` まで実消費経路を通し（テストも併せて）ください。
+
 ## なぜ抽象化するのか
 
 - engine の receive → process → ack/nack ループを、実 broker なしでテスト可能にする

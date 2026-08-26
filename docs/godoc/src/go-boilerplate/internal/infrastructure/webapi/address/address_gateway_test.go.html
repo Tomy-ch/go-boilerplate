@@ -1,0 +1,242 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>address - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../../src/go-boilerplate/internal/infrastructure">infrastructure</a>/<a href="../../../../../../src/go-boilerplate/internal/infrastructure/webapi">webapi</a>/<a href="../../../../../../src/go-boilerplate/internal/infrastructure/webapi/address">address</a>/<span class="text-muted">address_gateway_test.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../../go-boilerplate/internal/infrastructure/webapi/address">go-boilerplate/internal/infrastructure/webapi/address</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package address_test
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;context&#34;
+<span id="L5" class="ln">     5  </span>	&#34;strings&#34;
+<span id="L6" class="ln">     6  </span>	&#34;testing&#34;
+<span id="L7" class="ln">     7  </span>
+<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/apperror&#34;
+<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/infrastructure/httpclient&#34;
+<span id="L10" class="ln">    10  </span>	mock_httpclient &#34;go-boilerplate/internal/infrastructure/httpclient/mock&#34;
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/infrastructure/webapi/address&#34;
+<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/observability&#34;
+<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L14" class="ln">    14  </span>
+<span id="L15" class="ln">    15  </span>	&#34;github.com/stretchr/testify/assert&#34;
+<span id="L16" class="ln">    16  </span>	&#34;github.com/stretchr/testify/require&#34;
+<span id="L17" class="ln">    17  </span>	&#34;go.uber.org/mock/gomock&#34;
+<span id="L18" class="ln">    18  </span>)
+<span id="L19" class="ln">    19  </span>
+<span id="L20" class="ln">    20  </span>const testEndpoint address.Endpoint = &#34;https://zipcloud.example.com&#34;
+<span id="L21" class="ln">    21  </span>
+<span id="L22" class="ln">    22  </span>func TestNew(t *testing.T) {
+<span id="L23" class="ln">    23  </span>	t.Parallel()
+<span id="L24" class="ln">    24  </span>
+<span id="L25" class="ln">    25  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L26" class="ln">    26  </span>		t.Parallel()
+<span id="L27" class="ln">    27  </span>
+<span id="L28" class="ln">    28  </span>		t.Run(&#34;Endpoint_Client_TracerFactory から Gateway を生成する&#34;, func(t *testing.T) {
+<span id="L29" class="ln">    29  </span>			t.Parallel()
+<span id="L30" class="ln">    30  </span>
+<span id="L31" class="ln">    31  </span>			ctrl := gomock.NewController(t)
+<span id="L32" class="ln">    32  </span>			client := mock_httpclient.NewMockClient(ctrl)
+<span id="L33" class="ln">    33  </span>
+<span id="L34" class="ln">    34  </span>			gw := address.New(testEndpoint, client, observability.NewNoopTracerFactory(t))
+<span id="L35" class="ln">    35  </span>
+<span id="L36" class="ln">    36  </span>			assert.NotNil(t, gw)
+<span id="L37" class="ln">    37  </span>		})
+<span id="L38" class="ln">    38  </span>	})
+<span id="L39" class="ln">    39  </span>}
+<span id="L40" class="ln">    40  </span>
+<span id="L41" class="ln">    41  </span>func Test_gateway_Lookup(t *testing.T) {
+<span id="L42" class="ln">    42  </span>	t.Parallel()
+<span id="L43" class="ln">    43  </span>
+<span id="L44" class="ln">    44  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L45" class="ln">    45  </span>		t.Parallel()
+<span id="L46" class="ln">    46  </span>
+<span id="L47" class="ln">    47  </span>		t.Run(&#34;Requestを正しく組み立て外部レスポンスをCandidate_DTOへ変換する&#34;, func(t *testing.T) {
+<span id="L48" class="ln">    48  </span>			t.Parallel()
+<span id="L49" class="ln">    49  </span>
+<span id="L50" class="ln">    50  </span>			ctrl := gomock.NewController(t)
+<span id="L51" class="ln">    51  </span>			client := mock_httpclient.NewMockClient(ctrl)
+<span id="L52" class="ln">    52  </span>			client.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
+<span id="L53" class="ln">    53  </span>				func(_ context.Context, req *httpclient.Request) (*httpclient.Response, error) {
+<span id="L54" class="ln">    54  </span>					assert.Equal(t, httpclient.Downstream(&#34;address&#34;), req.Downstream())
+<span id="L55" class="ln">    55  </span>					assert.Equal(t, httpclient.MethodGet(), req.Method())
+<span id="L56" class="ln">    56  </span>					<span class="comment">// endpoint / パス / クエリまで含めて組み立てを検証する（endpoint 欠落や別ホスト固定の退行を捕捉）。</span>
+<span id="L57" class="ln">    57  </span>					assert.Equal(t, string(testEndpoint)+&#34;/api/search?zipcode=1000001&#34;, req.URL())
+<span id="L58" class="ln">    58  </span>					return &amp;httpclient.Response{StatusCode: 200, Body: []byte(
+<span id="L59" class="ln">    59  </span>						`{&#34;status&#34;:200,&#34;message&#34;:null,&#34;results&#34;:[` +
+<span id="L60" class="ln">    60  </span>							`{&#34;address1&#34;:&#34;東京都&#34;,&#34;address2&#34;:&#34;千代田区&#34;,&#34;address3&#34;:&#34;千代田&#34;},` +
+<span id="L61" class="ln">    61  </span>							`{&#34;address1&#34;:&#34;東京都&#34;,&#34;address2&#34;:&#34;千代田区&#34;,&#34;address3&#34;:&#34;大手町&#34;}]}`,
+<span id="L62" class="ln">    62  </span>					)}, nil
+<span id="L63" class="ln">    63  </span>				})
+<span id="L64" class="ln">    64  </span>
+<span id="L65" class="ln">    65  </span>			gw := address.New(testEndpoint, client, observability.NewNoopTracerFactory(t))
+<span id="L66" class="ln">    66  </span>			candidates, err := gw.Lookup(context.Background(), &#34;1000001&#34;)
+<span id="L67" class="ln">    67  </span>
+<span id="L68" class="ln">    68  </span>			require.NoError(t, err)
+<span id="L69" class="ln">    69  </span>			require.Len(t, candidates, 2)
+<span id="L70" class="ln">    70  </span>			assert.Equal(t, &#34;東京都&#34;, candidates[0].PrefectureName)
+<span id="L71" class="ln">    71  </span>			assert.Equal(t, &#34;千代田区&#34;, candidates[0].City)
+<span id="L72" class="ln">    72  </span>			assert.Equal(t, &#34;千代田&#34;, candidates[0].Town)
+<span id="L73" class="ln">    73  </span>			assert.Equal(t, &#34;大手町&#34;, candidates[1].Town)
+<span id="L74" class="ln">    74  </span>		})
+<span id="L75" class="ln">    75  </span>
+<span id="L76" class="ln">    76  </span>		t.Run(&#34;該当なし_results_nullは空スライスとnilエラーを返す&#34;, func(t *testing.T) {
+<span id="L77" class="ln">    77  </span>			t.Parallel()
+<span id="L78" class="ln">    78  </span>
+<span id="L79" class="ln">    79  </span>			ctrl := gomock.NewController(t)
+<span id="L80" class="ln">    80  </span>			client := mock_httpclient.NewMockClient(ctrl)
+<span id="L81" class="ln">    81  </span>			client.EXPECT().Do(gomock.Any(), gomock.Any()).
+<span id="L82" class="ln">    82  </span>				Return(&amp;httpclient.Response{StatusCode: 200, Body: []byte(`{&#34;status&#34;:200,&#34;message&#34;:null,&#34;results&#34;:null}`)}, nil)
+<span id="L83" class="ln">    83  </span>
+<span id="L84" class="ln">    84  </span>			gw := address.New(testEndpoint, client, observability.NewNoopTracerFactory(t))
+<span id="L85" class="ln">    85  </span>			candidates, err := gw.Lookup(context.Background(), &#34;0000000&#34;)
+<span id="L86" class="ln">    86  </span>
+<span id="L87" class="ln">    87  </span>			require.NoError(t, err)
+<span id="L88" class="ln">    88  </span>			assert.Empty(t, candidates)
+<span id="L89" class="ln">    89  </span>		})
+<span id="L90" class="ln">    90  </span>
+<span id="L91" class="ln">    91  </span>		t.Run(&#34;候補が上限を超える応答は上限件数へ切り詰める&#34;, func(t *testing.T) {
+<span id="L92" class="ln">    92  </span>			t.Parallel()
+<span id="L93" class="ln">    93  </span>
+<span id="L94" class="ln">    94  </span>			<span class="comment">// 上限（50）+1 件を返し、防御的に 50 件へ切り詰められることを検証する。</span>
+<span id="L95" class="ln">    95  </span>			one := `{&#34;address1&#34;:&#34;東京都&#34;,&#34;address2&#34;:&#34;千代田区&#34;,&#34;address3&#34;:&#34;千代田&#34;}`
+<span id="L96" class="ln">    96  </span>			body := `{&#34;status&#34;:200,&#34;results&#34;:[` + strings.Repeat(one+&#34;,&#34;, 50) + one + `]}`
+<span id="L97" class="ln">    97  </span>
+<span id="L98" class="ln">    98  </span>			ctrl := gomock.NewController(t)
+<span id="L99" class="ln">    99  </span>			client := mock_httpclient.NewMockClient(ctrl)
+<span id="L100" class="ln">   100  </span>			client.EXPECT().Do(gomock.Any(), gomock.Any()).
+<span id="L101" class="ln">   101  </span>				Return(&amp;httpclient.Response{StatusCode: 200, Body: []byte(body)}, nil)
+<span id="L102" class="ln">   102  </span>
+<span id="L103" class="ln">   103  </span>			gw := address.New(testEndpoint, client, observability.NewNoopTracerFactory(t))
+<span id="L104" class="ln">   104  </span>			candidates, err := gw.Lookup(context.Background(), &#34;1000001&#34;)
+<span id="L105" class="ln">   105  </span>
+<span id="L106" class="ln">   106  </span>			require.NoError(t, err)
+<span id="L107" class="ln">   107  </span>			assert.Len(t, candidates, 50)
+<span id="L108" class="ln">   108  </span>		})
+<span id="L109" class="ln">   109  </span>	})
+<span id="L110" class="ln">   110  </span>
+<span id="L111" class="ln">   111  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L112" class="ln">   112  </span>		t.Parallel()
+<span id="L113" class="ln">   113  </span>
+<span id="L114" class="ln">   114  </span>		t.Run(&#34;substrateが返すapperrorをそのまま伝播する&#34;, func(t *testing.T) {
+<span id="L115" class="ln">   115  </span>			t.Parallel()
+<span id="L116" class="ln">   116  </span>
+<span id="L117" class="ln">   117  </span>			ctrl := gomock.NewController(t)
+<span id="L118" class="ln">   118  </span>			client := mock_httpclient.NewMockClient(ctrl)
+<span id="L119" class="ln">   119  </span>			client.EXPECT().Do(gomock.Any(), gomock.Any()).
+<span id="L120" class="ln">   120  </span>				Return(nil, xerrors.Wrap(apperror.ErrUnavailable, &#34;downstream unavailable&#34;))
+<span id="L121" class="ln">   121  </span>
+<span id="L122" class="ln">   122  </span>			gw := address.New(testEndpoint, client, observability.NewNoopTracerFactory(t))
+<span id="L123" class="ln">   123  </span>			candidates, err := gw.Lookup(context.Background(), &#34;1000001&#34;)
+<span id="L124" class="ln">   124  </span>
+<span id="L125" class="ln">   125  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
+<span id="L126" class="ln">   126  </span>			assert.Nil(t, candidates)
+<span id="L127" class="ln">   127  </span>		})
+<span id="L128" class="ln">   128  </span>
+<span id="L129" class="ln">   129  </span>		t.Run(&#34;不正なJSONレスポンスはErrUnavailableを返す&#34;, func(t *testing.T) {
+<span id="L130" class="ln">   130  </span>			t.Parallel()
+<span id="L131" class="ln">   131  </span>
+<span id="L132" class="ln">   132  </span>			ctrl := gomock.NewController(t)
+<span id="L133" class="ln">   133  </span>			client := mock_httpclient.NewMockClient(ctrl)
+<span id="L134" class="ln">   134  </span>			client.EXPECT().Do(gomock.Any(), gomock.Any()).
+<span id="L135" class="ln">   135  </span>				Return(&amp;httpclient.Response{StatusCode: 200, Body: []byte(`not-json`)}, nil)
+<span id="L136" class="ln">   136  </span>
+<span id="L137" class="ln">   137  </span>			gw := address.New(testEndpoint, client, observability.NewNoopTracerFactory(t))
+<span id="L138" class="ln">   138  </span>			candidates, err := gw.Lookup(context.Background(), &#34;1000001&#34;)
+<span id="L139" class="ln">   139  </span>
+<span id="L140" class="ln">   140  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
+<span id="L141" class="ln">   141  </span>			assert.Nil(t, candidates)
+<span id="L142" class="ln">   142  </span>		})
+<span id="L143" class="ln">   143  </span>
+<span id="L144" class="ln">   144  </span>		t.Run(&#34;body_statusが200以外のレスポンスはErrUnavailableを返す&#34;, func(t *testing.T) {
+<span id="L145" class="ln">   145  </span>			t.Parallel()
+<span id="L146" class="ln">   146  </span>
+<span id="L147" class="ln">   147  </span>			ctrl := gomock.NewController(t)
+<span id="L148" class="ln">   148  </span>			client := mock_httpclient.NewMockClient(ctrl)
+<span id="L149" class="ln">   149  </span>			client.EXPECT().Do(gomock.Any(), gomock.Any()).
+<span id="L150" class="ln">   150  </span>				Return(&amp;httpclient.Response{StatusCode: 200, Body: []byte(`{&#34;status&#34;:400,&#34;message&#34;:&#34;パラメータが不正です。&#34;,&#34;results&#34;:null}`)}, nil)
+<span id="L151" class="ln">   151  </span>
+<span id="L152" class="ln">   152  </span>			gw := address.New(testEndpoint, client, observability.NewNoopTracerFactory(t))
+<span id="L153" class="ln">   153  </span>			candidates, err := gw.Lookup(context.Background(), &#34;1000001&#34;)
+<span id="L154" class="ln">   154  </span>
+<span id="L155" class="ln">   155  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
+<span id="L156" class="ln">   156  </span>			assert.Nil(t, candidates)
+<span id="L157" class="ln">   157  </span>		})
+<span id="L158" class="ln">   158  </span>
+<span id="L159" class="ln">   159  </span>		t.Run(&#34;body_statusが200以外でmessageがnullでもErrUnavailableを返す&#34;, func(t *testing.T) {
+<span id="L160" class="ln">   160  </span>			t.Parallel()
+<span id="L161" class="ln">   161  </span>
+<span id="L162" class="ln">   162  </span>			<span class="comment">// message 欠落（null）でもエラーメッセージ組み立てで panic せず ErrUnavailable へ写像すること。</span>
+<span id="L163" class="ln">   163  </span>			ctrl := gomock.NewController(t)
+<span id="L164" class="ln">   164  </span>			client := mock_httpclient.NewMockClient(ctrl)
+<span id="L165" class="ln">   165  </span>			client.EXPECT().Do(gomock.Any(), gomock.Any()).
+<span id="L166" class="ln">   166  </span>				Return(&amp;httpclient.Response{StatusCode: 200, Body: []byte(`{&#34;status&#34;:500,&#34;results&#34;:null}`)}, nil)
+<span id="L167" class="ln">   167  </span>
+<span id="L168" class="ln">   168  </span>			gw := address.New(testEndpoint, client, observability.NewNoopTracerFactory(t))
+<span id="L169" class="ln">   169  </span>			candidates, err := gw.Lookup(context.Background(), &#34;1000001&#34;)
+<span id="L170" class="ln">   170  </span>
+<span id="L171" class="ln">   171  </span>			require.ErrorIs(t, err, apperror.ErrUnavailable)
+<span id="L172" class="ln">   172  </span>			assert.Nil(t, candidates)
+<span id="L173" class="ln">   173  </span>		})
+<span id="L174" class="ln">   174  </span>	})
+<span id="L175" class="ln">   175  </span>}
+<span id="L176" class="ln">   176  </span>
+</pre><p><a href="../../../../../../src/go-boilerplate/internal/infrastructure/webapi/address/address_gateway_test.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

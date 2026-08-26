@@ -1,0 +1,8 @@
+/*
+ * scrollbar-color / scrollbar-width は継承プロパティのため :root で一度だけ宣言する。
+ * component 側で指定しないこと（理由と挙動は README.md）。
+ */
+:root {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-muted-foreground) transparent;
+}

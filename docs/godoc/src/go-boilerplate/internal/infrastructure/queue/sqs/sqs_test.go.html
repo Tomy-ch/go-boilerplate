@@ -645,6 +645,93 @@
 <span id="L588" class="ln">   588  </span>	})
 <span id="L589" class="ln">   589  </span>}
 <span id="L590" class="ln">   590  </span>
+<span id="L591" class="ln">   591  </span>func Test_toMessage(t *testing.T) {
+<span id="L592" class="ln">   592  </span>	t.Parallel()
+<span id="L593" class="ln">   593  </span>
+<span id="L594" class="ln">   594  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L595" class="ln">   595  </span>		t.Parallel()
+<span id="L596" class="ln">   596  </span>
+<span id="L597" class="ln">   597  </span>		t.Run(&#34;属性_ReceiptHandle_ReceiveCount_MessageGroupIdを反映する&#34;, func(t *testing.T) {
+<span id="L598" class="ln">   598  </span>			t.Parallel()
+<span id="L599" class="ln">   599  </span>
+<span id="L600" class="ln">   600  </span>			got := toMessage(types.Message{
+<span id="L601" class="ln">   601  </span>				MessageId:     aws.String(&#34;id1&#34;),
+<span id="L602" class="ln">   602  </span>				Body:          aws.String(&#34;hello&#34;),
+<span id="L603" class="ln">   603  </span>				ReceiptHandle: aws.String(&#34;rh1&#34;),
+<span id="L604" class="ln">   604  </span>				Attributes: map[string]string{
+<span id="L605" class="ln">   605  </span>					string(types.MessageSystemAttributeNameApproximateReceiveCount): &#34;3&#34;,
+<span id="L606" class="ln">   606  </span>					string(types.MessageSystemAttributeNameMessageGroupId):          &#34;grp&#34;,
+<span id="L607" class="ln">   607  </span>				},
+<span id="L608" class="ln">   608  </span>				MessageAttributes: map[string]types.MessageAttributeValue{
+<span id="L609" class="ln">   609  </span>					&#34;traceparent&#34;: {DataType: aws.String(attrDataTypeString), StringValue: aws.String(&#34;tp-val&#34;)},
+<span id="L610" class="ln">   610  </span>				},
+<span id="L611" class="ln">   611  </span>			})
+<span id="L612" class="ln">   612  </span>
+<span id="L613" class="ln">   613  </span>			assert.Equal(t, &#34;id1&#34;, got.ID)
+<span id="L614" class="ln">   614  </span>			assert.Equal(t, []byte(&#34;hello&#34;), got.Body)
+<span id="L615" class="ln">   615  </span>			assert.Equal(t, 3, got.ReceiveCount)
+<span id="L616" class="ln">   616  </span>			assert.Equal(t, &#34;grp&#34;, got.PartitionKey)
+<span id="L617" class="ln">   617  </span>			assert.Equal(t, &#34;tp-val&#34;, got.Attributes[&#34;traceparent&#34;])
+<span id="L618" class="ln">   618  </span>			assert.Equal(t, &#34;rh1&#34;, got.Attributes[worker.AttrReceiptHandle])
+<span id="L619" class="ln">   619  </span>		})
+<span id="L620" class="ln">   620  </span>
+<span id="L621" class="ln">   621  </span>		t.Run(&#34;StringValueがnilの属性とReceiptHandleがnilは予約キーを付与しない&#34;, func(t *testing.T) {
+<span id="L622" class="ln">   622  </span>			t.Parallel()
+<span id="L623" class="ln">   623  </span>
+<span id="L624" class="ln">   624  </span>			got := toMessage(types.Message{
+<span id="L625" class="ln">   625  </span>				MessageId: aws.String(&#34;id1&#34;),
+<span id="L626" class="ln">   626  </span>				Body:      aws.String(&#34;hello&#34;),
+<span id="L627" class="ln">   627  </span>				MessageAttributes: map[string]types.MessageAttributeValue{
+<span id="L628" class="ln">   628  </span>					&#34;traceparent&#34;: {DataType: aws.String(attrDataTypeString), StringValue: nil},
+<span id="L629" class="ln">   629  </span>				},
+<span id="L630" class="ln">   630  </span>			})
+<span id="L631" class="ln">   631  </span>
+<span id="L632" class="ln">   632  </span>			assert.NotContains(t, got.Attributes, &#34;traceparent&#34;)
+<span id="L633" class="ln">   633  </span>			assert.NotContains(t, got.Attributes, worker.AttrReceiptHandle)
+<span id="L634" class="ln">   634  </span>		})
+<span id="L635" class="ln">   635  </span>
+<span id="L636" class="ln">   636  </span>		t.Run(&#34;ApproximateReceiveCountが無い場合ReceiveCountは0になる&#34;, func(t *testing.T) {
+<span id="L637" class="ln">   637  </span>			t.Parallel()
+<span id="L638" class="ln">   638  </span>
+<span id="L639" class="ln">   639  </span>			got := toMessage(types.Message{
+<span id="L640" class="ln">   640  </span>				MessageId: aws.String(&#34;id1&#34;),
+<span id="L641" class="ln">   641  </span>				Body:      aws.String(&#34;hello&#34;),
+<span id="L642" class="ln">   642  </span>			})
+<span id="L643" class="ln">   643  </span>
+<span id="L644" class="ln">   644  </span>			assert.Equal(t, 0, got.ReceiveCount)
+<span id="L645" class="ln">   645  </span>		})
+<span id="L646" class="ln">   646  </span>	})
+<span id="L647" class="ln">   647  </span>}
+<span id="L648" class="ln">   648  </span>
+<span id="L649" class="ln">   649  </span>func Test_visibilitySeconds(t *testing.T) {
+<span id="L650" class="ln">   650  </span>	t.Parallel()
+<span id="L651" class="ln">   651  </span>
+<span id="L652" class="ln">   652  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L653" class="ln">   653  </span>		t.Parallel()
+<span id="L654" class="ln">   654  </span>
+<span id="L655" class="ln">   655  </span>		t.Run(&#34;秒未満の端数は切り上げる&#34;, func(t *testing.T) {
+<span id="L656" class="ln">   656  </span>			t.Parallel()
+<span id="L657" class="ln">   657  </span>			assert.Equal(t, int32(3), visibilitySeconds(2*time.Second+1*time.Nanosecond))
+<span id="L658" class="ln">   658  </span>		})
+<span id="L659" class="ln">   659  </span>
+<span id="L660" class="ln">   660  </span>		t.Run(&#34;端数のない値はそのままの秒数を返す&#34;, func(t *testing.T) {
+<span id="L661" class="ln">   661  </span>			t.Parallel()
+<span id="L662" class="ln">   662  </span>			assert.Equal(t, int32(30), visibilitySeconds(30*time.Second))
+<span id="L663" class="ln">   663  </span>		})
+<span id="L664" class="ln">   664  </span>
+<span id="L665" class="ln">   665  </span>		t.Run(&#34;サブ秒は即時再配送を避けるため下限1秒へ丸める&#34;, func(t *testing.T) {
+<span id="L666" class="ln">   666  </span>			t.Parallel()
+<span id="L667" class="ln">   667  </span>			assert.Equal(t, int32(1), visibilitySeconds(time.Millisecond))
+<span id="L668" class="ln">   668  </span>		})
+<span id="L669" class="ln">   669  </span>
+<span id="L670" class="ln">   670  </span>		t.Run(&#34;0以下の値も下限1秒へ丸める&#34;, func(t *testing.T) {
+<span id="L671" class="ln">   671  </span>			t.Parallel()
+<span id="L672" class="ln">   672  </span>			assert.Equal(t, int32(1), visibilitySeconds(0))
+<span id="L673" class="ln">   673  </span>			assert.Equal(t, int32(1), visibilitySeconds(-5*time.Second))
+<span id="L674" class="ln">   674  </span>		})
+<span id="L675" class="ln">   675  </span>	})
+<span id="L676" class="ln">   676  </span>}
+<span id="L677" class="ln">   677  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/infrastructure/queue/sqs/sqs_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

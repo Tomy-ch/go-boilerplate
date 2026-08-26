@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # full-verify: リポジトリ全体の構成と全実装コードの妥当性を headless 検証し md 出力する。
-# read-only。コードを変更しない。出力は tmp/reviews/ 配下の md のみ（シェルリダイレクトで書く）。
+# read-only。コードを変更しない。出力は tmp/skills/reviews/ 配下の md のみ（シェルリダイレクトで書く）。
 #
 # 設計の要点:
-#   - 冪等・再開可能: 状態は tmp/reviews/mod_<id>.md の「有無/中身」だけで表現。state ファイルや cron は作らない。
+#   - 冪等・再開可能: 状態は tmp/skills/reviews/mod_<id>.md の「有無/中身」だけで表現。state ファイルや cron は作らない。
 #   - 原子的書き込み: <out>.tmp に書き、成功時のみ mv。中断しても半端な md を残さない。
 #   - タイムアウト: 各 claude -p を timeout <分>m で囲む（headless は組み込みタイムアウトが無い）。
 #   - 上限ハンドリング: rc=99（usage/rate limit 検出）のときだけ 5h sleep して 1 回再送。なお上限なら停止。
@@ -23,7 +23,7 @@ TIMEOUT_MIN="30"        # 1 呼び出しタイムアウト（分）
 # ---- 内部定数（フラグでは変更不可）------------------------------------------
 SRC=""                  # 解析起点。常にリポジトリルート（後段で設定）
 MAX_TURNS="120"         # claude -p の上限ターン（暴走抑止）。内部固定
-LIMIT_WAIT=18000        # 5h。サブスクのローリング窓を丸ごと抜ける長さ
+LIMIT_WAIT=18000        # 5h。値の根拠は README.md「Timeout / Limit Handling」
 # 上限検知パターン（stdout/stderr 両方を対象に grep する）。文言は claude の出力に追従して拡張。
 LIMIT_RE='usage limit|rate limit|rate-limit|too many requests|429|overloaded|quota exceeded|limit reached|usage cap|reached your limit'
 # サーキットブレーカ: 「即失敗（=API即拒否）」が連続したら、上限の見逃し等とみなし停止する。
@@ -33,7 +33,7 @@ DETECT_ONLY=0           # 1 なら検出と構造生成だけ行い claude -p �
 GRANULARITY="module"    # module | file。file は .go 等のリーフ1ファイル=1ユニット
 INCLUDE_TESTS=0         # file 粒度時に *_test.go 等のテストも対象に含めるなら 1
 EXCLUDE_EXT=""          # file 粒度で「この拡張子以外を全部」対象にする除外リスト（csv。例 "go,md"）
-OUT_OVERRIDE=""         # 出力先ディレクトリ上書き（既定 tmp/reviews）。別クラスのレビューを分離したい時
+OUT_OVERRIDE=""         # 出力先ディレクトリ上書き（既定 tmp/skills/reviews）。別クラスのレビューを分離したい時
 EXCLUDE_PATH=""         # 対象から除外するパス接頭辞（csv。例 "openapi,database"）。サンプル除外用
 NO_INDEX=0              # 1 なら Pass3(集約 _index.md)を行わず各 mod_*.md のみで終了
 
@@ -55,7 +55,7 @@ while [ $# -gt 0 ]; do
     --no-index)      NO_INDEX=1; shift ;;
     --detect-only)   DETECT_ONLY=1; shift ;;
     -h|--help)
-      sed -n '2,16p' "$0"; exit 0 ;;
+      sed -n '2,14p' "$0"; exit 0 ;;
     *) echo "未知の引数: $1" >&2; exit 2 ;;
   esac
 done
@@ -69,11 +69,11 @@ REPO_ROOT="$(pwd)"
 if [ -n "$OUT_OVERRIDE" ]; then
   case "$OUT_OVERRIDE" in /*) OUT="$OUT_OVERRIDE" ;; *) OUT="$REPO_ROOT/$OUT_OVERRIDE" ;; esac
 else
-  OUT="$REPO_ROOT/tmp/reviews"
+  OUT="$REPO_ROOT/tmp/skills/reviews"
 fi
 # claude -p は cwd=REPO_ROOT で動くため、プロンプトに渡すパスは REPO_ROOT 相対にする
 # （リポジトリ外を --out 指定した場合のみ絶対パス）。--out を使っても前提文脈が正しい出力先を指す。
-case "$OUT" in "$REPO_ROOT"/*) OUTREL="${OUT#$REPO_ROOT/}" ;; *) OUTREL="$OUT" ;; esac
+case "$OUT" in "$REPO_ROOT"/*) OUTREL="${OUT#"$REPO_ROOT"/}" ;; *) OUTREL="$OUT" ;; esac
 STRUCT="$OUT/_structure"
 SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PROMPTS="$SKILL_DIR/prompts"
@@ -147,6 +147,7 @@ for pat in 'INTENT.md' 'CLAUDE.md' 'AGENTS.md' 'README.md' 'README.*' \
            'docs/architecture*' 'docs/rules*' 'docs/decisions*' 'docs/ADR*' \
            'docs/adr*' 'docs/**/*.md' 'ARCHITECTURE.md' 'DESIGN.md'; do
   # shellcheck disable=SC2044
+  # shellcheck disable=SC2086 # $pat は glob。展開させるのが目的なので引用しない
   for f in $(cd "$REPO_ROOT" && ls -1 $pat 2>/dev/null); do
     [ -f "$REPO_ROOT/$f" ] && echo "$f" >> "$STRUCT/design_docs.txt"
   done
@@ -269,14 +270,15 @@ is_test_file() { # $1=path
 # 常に除外する生成物ディレクトリ（doc ポータル/各種ビルド出力）と無価値ファイル
 GEN_DIRS=( docs/portal docs/openapi docs/coverage docs/db-schema )
 is_generated_path() { # $1=path（REPO_ROOT 相対 or 絶対）
-  local rel="${1#$REPO_ROOT/}" d
-  for d in "${GEN_DIRS[@]}"; do case "$rel" in "$d"/*|"$d") return 0 ;; esac; done
-  case "$1" in *.gen.*|*.sql.go|*_mock.go|*openapi.gen.yaml|*openapi.gen.yml) return 0 ;; esac
+  local path=$1
+  local rel="${path#"$REPO_ROOT"/}" d
+  for d in "${GEN_DIRS[@]}"; do case "$rel" in "$d"/*|"$d") return 0 ;; *) ;; esac; done
+  case "$path" in *.gen.*|*.sql.go|*_mock.go) return 0 ;; *) ;; esac
   return 1
 }
 is_junk_file() { # レビュー価値の無いメタ/ロック/バイナリ
   case "$(basename "$1")" in
-    LICENSE|go.sum|go.mod|*.lock|package-lock.json|yarn.lock|pnpm-lock.yaml|\
+    LICENSE|go.sum|go.mod|*.lock|pnpm-lock.yaml|\
     .gitignore|.gitattributes|.gitkeep|.dockerignore|.editorconfig|.DS_Store) return 0 ;;
   esac
   case "$1" in
@@ -316,7 +318,7 @@ enumerate_files() {
     is_junk_file "$f" && continue
     # パス除外（サンプル等）: rel 先頭が指定接頭辞に一致したら捨てる
     if [ -n "$EXCLUDE_PATH" ]; then
-      rel="${f#$REPO_ROOT/}"; rel="${rel#$SRC/}"
+      rel="${f#"$REPO_ROOT"/}"; rel="${rel#"$SRC"/}"
       local skip=0
       for xp in ${EXCLUDE_PATH//,/ }; do case "$rel" in "$xp"/*|"$xp") skip=1; break ;; esac; done
       [ "$skip" -eq 1 ] && continue
@@ -324,7 +326,7 @@ enumerate_files() {
     e="$(ext_of "$f")"
     if [ "$mode" = "exclude" ]; then
       # 拡張子なしファイル(Dockerfile/makefile 等)は残す。除外 csv に該当する拡張子のみ捨てる
-      [ -n "$e" ] && in_csv "$(echo "$EXCLUDE_EXT"|tr -d ' '|tr 'A-Z' 'a-z')" "$(echo "$e"|tr 'A-Z' 'a-z')" && continue
+      [[ -n "$e" ]] && in_csv "$(echo "$EXCLUDE_EXT"|tr -d ' '|tr '[:upper:]' '[:lower:]')" "$(echo "$e"|tr '[:upper:]' '[:lower:]')" && continue
     fi
     if is_test_file "$f"; then
       [ "$INCLUDE_TESTS" -eq 1 ] && tests+=("$f")
@@ -350,16 +352,16 @@ fi
 # ユニット一覧を記録（id とパスの対応）。id はファイル/ディレクトリ共通の安全名。
 : > "$STRUCT/modules.txt"
 mod_id() { # $1=path(file or dir) -> 安全な id
-  local rel="${1#$REPO_ROOT/}"; rel="${rel#$SRC/}"
+  local rel="${1#"$REPO_ROOT"/}"; rel="${rel#"$SRC"/}"
   echo "$rel" | sed 's#[/ ]#_#g; s#^_*##; s#__*#_#g' | sed 's#^$#root#'
 }
 for d in "${MODULES[@]}"; do
-  printf '%s\t%s\n' "$(mod_id "$d")" "${d#$REPO_ROOT/}" >> "$STRUCT/modules.txt"
+  printf '%s\t%s\n' "$(mod_id "$d")" "${d#"$REPO_ROOT"/}" >> "$STRUCT/modules.txt"
 done
 log "粒度=$GRANULARITY  ユニット数=${#MODULES[@]}  (include_tests=$INCLUDE_TESTS)"
 
 # =============================================================================
-# 構造表現の生成（tmp/reviews/_structure/）
+# 構造表現の生成（tmp/skills/reviews/_structure/）
 # =============================================================================
 
 # --- ツリー ------------------------------------------------------------------
@@ -420,6 +422,7 @@ gen_deps() {
     java|kotlin)
       if have jdeps; then
         local jars; jars="$(find "$SRC" -name '*.jar' 2>/dev/null | head -50)"
+        # shellcheck disable=SC2086 # $jars は複数の引数。分割させるのが目的
         [ -n "$jars" ] && jdeps $jars 2>/dev/null && return
       fi
       ;;
@@ -448,7 +451,7 @@ gen_deps > "$STRUCT/deps.txt" 2>/dev/null
 # --- メタ情報 ----------------------------------------------------------------
 {
   echo "# full-verify 検出メタ"
-  echo "- 解析起点(SRC): ${SRC#$REPO_ROOT/}"
+  echo "- 解析起点(SRC): ${SRC#"$REPO_ROOT"/}"
   echo "- 主要言語: $LANG (主要コード拡張子 .${PRIMARY_EXT:-?})"
   echo "- 粒度: $GRANULARITY / ユニット数: ${#MODULES[@]} (module-depth=$MODULE_DEPTH, include_tests=$INCLUDE_TESTS)"
   echo "- 基準(BASIS): $BASIS"
@@ -542,6 +545,7 @@ run_one() { # $1=prompt(文字列) $2=out(最終パス)
   local t0=$SECONDS
 
   # stdin を /dev/null にする（背景実行で claude -p が毎回 stdin を数秒待つのを防ぐ）。
+  # shellcheck disable=SC2086 # $READONLY_TOOLS は複数の引数。分割させるのが目的
   timeout "${TIMEOUT_MIN}m" claude -p "$prompt" \
     --effort "$EFFORT" \
     --allowedTools $READONLY_TOOLS \
@@ -582,7 +586,7 @@ attempt_module() { # $1=prompt $2=out $3=label
   [ $rc -eq 0 ] && return 0
   if [ $rc -ne 99 ]; then
     echo "FAILED $3" >> "$OUT/run.err"
-    log "失敗(継続): $3 -> tmp/reviews/run.err"
+    log "失敗(継続): $3 -> tmp/skills/reviews/run.err"
     # サーキットブレーカ: 即失敗が連続したら停止扱い(99)にして呼び出し側で break させる
     cb_on_fail "$RUN_ONE_DUR" || return 99
     return 1
@@ -590,14 +594,14 @@ attempt_module() { # $1=prompt $2=out $3=label
   log "上限検知。5h 待機して 1 回だけ再送: $3"
   sleep "$LIMIT_WAIT"
   run_one "$1" "$2" && return 0
-  log "再送も上限。停止（tmp/reviews/ から再開可能。後で再投入）: $3"
+  log "再送も上限。停止（tmp/skills/reviews/ から再開可能。後で再投入）: $3"
   return 99
 }
 
 # プロンプト合成: テンプレートのプレースホルダを置換
 render() { # $1=template_file ; 環境変数で渡した置換を適用
   local tpl; tpl="$(cat "$1")"
-  tpl="${tpl//\{\{SRC\}\}/${SRC#$REPO_ROOT/}}"
+  tpl="${tpl//\{\{SRC\}\}/${SRC#"$REPO_ROOT"/}}"
   tpl="${tpl//\{\{STRUCTURE_DIR\}\}/$OUTREL/_structure}"
   tpl="${tpl//\{\{ARCH_DOC\}\}/$OUTREL/architecture.md}"
   tpl="${tpl//\{\{BASIS\}\}/$BASIS}"
@@ -607,7 +611,7 @@ render() { # $1=template_file ; 環境変数で渡した置換を適用
 }
 
 # =============================================================================
-# Pass 1: 構造検証 → tmp/reviews/architecture.md
+# Pass 1: 構造検証 → tmp/skills/reviews/architecture.md
 # =============================================================================
 if [ -s "$ARCH_DOC" ]; then
   log "Pass1 スキップ（architecture.md は既に中身あり）"
@@ -628,7 +632,7 @@ else
     {
       echo "# 構造検証(Pass1) は生成に失敗"
       echo
-      echo "このファイルは full-verify の Pass1 が失敗した記録です（タイムアウト等。tmp/reviews/run.err 参照）。"
+      echo "このファイルは full-verify の Pass1 が失敗した記録です（タイムアウト等。tmp/skills/reviews/run.err 参照）。"
       echo "再試行するには本ファイルを削除して run.sh を再投入してください。"
       echo "Pass2(実装検証) は前提文脈なしで続行されています。"
     } > "$ARCH_DOC"
@@ -638,7 +642,7 @@ fi
 write_progress
 
 # =============================================================================
-# Pass 2: モジュール単位の実装検証 → tmp/reviews/mod_<id>.md
+# Pass 2: モジュール単位の実装検証 → tmp/skills/reviews/mod_<id>.md
 # =============================================================================
 
 # 1 モジュールを処理（並列ワーカーからも呼ばれる）
@@ -646,7 +650,7 @@ process_module() { # $1=dir
   local dir="$1"
   local id path md
   id="$(mod_id "$dir")"
-  path="${dir#$REPO_ROOT/}"
+  path="${dir#"$REPO_ROOT"/}"
   md="$OUT/mod_${id}.md"
 
   # 再開: 中身のある mod は飛ばす
@@ -689,20 +693,18 @@ cb_reset   # 前回の即失敗カウントを掃除
 
 if [ "$PARALLEL" -gt 1 ]; then
   # --- キャッシュ温機（warm-up）---
-  # 並列同時起動だと共有プレフィックス（システム+テンプレ）のプロンプトキャッシュが
-  # 書き込み前に各ワーカーで読めず全員フルプライスになる。先頭の未完1件を単独実行して
-  # キャッシュを温めてから fan out する（公式の回避策: 1本投げ→完了→残りを並列）。
+  # 先頭の未完1件を単独実行してから fan out する。根拠は README.md「Notes on Parallel Execution」。
   warmup_dir=""
   for d in "${MODULES[@]}"; do
     id="$(mod_id "$d")"
     [ -s "$OUT/mod_${id}.md" ] || { warmup_dir="$d"; break; }
   done
   if [ -n "$warmup_dir" ]; then
-    log "warm-up: 先頭1件を単独実行してキャッシュを温める: ${warmup_dir#$REPO_ROOT/}"
+    log "warm-up: 先頭1件を単独実行してキャッシュを温める: ${warmup_dir#"$REPO_ROOT"/}"
     process_module "$warmup_dir"; rc=$?
     write_progress
     if [ $rc -eq 99 ] || [ -f "$STOP_FLAG" ]; then
-      log "warm-up で停止（上限/CB）。tmp/reviews/ から再開可能。"
+      log "warm-up で停止（上限/CB）。tmp/skills/reviews/ から再開可能。"
       exit 0
     fi
   fi
@@ -718,7 +720,7 @@ if [ "$PARALLEL" -gt 1 ]; then
     | xargs -I{} -P "$PARALLEL" bash -c 'process_module "$@"' _ {}
   write_progress
   if [ -f "$STOP_FLAG" ]; then
-    log "並列実行は上限/CB で停止。tmp/reviews/ から再開可能（未完了ユニットのみ再投入で継続）。"
+    log "並列実行は上限/CB で停止。tmp/skills/reviews/ から再開可能（未完了ユニットのみ再投入で継続）。"
     exit 0
   fi
 else
@@ -726,14 +728,14 @@ else
     process_module "$dir"; rc=$?
     write_progress   # 1 ユニット毎に進行状況 md を更新（トークン枯渇で途中停止しても可視化）
     if [ $rc -eq 99 ]; then
-      log "上限で停止。tmp/reviews/ から再開可能（未完了ユニットのみ再投入で継続）。"
+      log "上限で停止。tmp/skills/reviews/ から再開可能（未完了ユニットのみ再投入で継続）。"
       exit 0
     fi
   done
 fi
 
 # =============================================================================
-# Pass 3: 集約 → tmp/reviews/_index.md（全モジュール完了後のみ）
+# Pass 3: 集約 → tmp/skills/reviews/_index.md（全モジュール完了後のみ）
 # =============================================================================
 if [ "$NO_INDEX" -eq 1 ]; then
   log "--no-index: Pass3(集約)はスキップ。各 mod_*.md のみで終了。"
@@ -754,7 +756,7 @@ fi
 # （実装のみ先に集約 → 後でテストを追加実行した場合、新しい mod が出来るので再集約される）
 if [ -s "$INDEX_DOC" ] && [ -z "$(find "$OUT" -maxdepth 1 -name 'mod_*.md' -newer "$INDEX_DOC" -print -quit 2>/dev/null)" ]; then
   log "Pass3 スキップ（_index.md は最新。より新しい mod_*.md なし）"
-  log "完了。成果物: tmp/reviews/"
+  log "完了。成果物: tmp/skills/reviews/"
   exit 0
 fi
 
@@ -793,5 +795,5 @@ elif [ $rc -ne 0 ]; then
 fi
 
 write_progress
-log "完了。成果物: tmp/reviews/ （architecture.md / mod_*.md / _index.md / _progress.md）"
+log "完了。成果物: tmp/skills/reviews/ （architecture.md / mod_*.md / _index.md / _progress.md）"
 exit 0

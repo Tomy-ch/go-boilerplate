@@ -141,6 +141,137 @@ func Test_repository_FindByID(t *testing.T) {
 	})
 }
 
+func Test_repository_FindAll(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	lt := observability.NewMockInfraLayerTracer(t)
+
+	txm := testkit.NewTestTransactionRunner(t)
+
+	repo := &repository{
+		tracer: lt,
+		db:     testDB,
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("全都道府県が47件、既定seedの順で取得できる", func(t *testing.T) {
+			t.Parallel()
+
+			tokyoID, err := uuid.Parse("101caa1e-84e7-4ceb-9108-50d40b6be1a3")
+			require.NoError(t, err)
+
+			txm.WithinTx(func(ctx context.Context) {
+				expectedTokyo, err := prefecture.New(tokyoID, "東京都", 8)
+				require.NoError(t, err)
+
+				actual, err := repo.FindAll(ctx)
+				require.NoError(t, err)
+				assert.Len(t, actual, 47)
+
+				// seed は sort_key と code を同じ値で入れているため、既定の並びは code 昇順にも一致する。
+				// 並び順の出所が sort_key であることは、直後のケースが両者を食い違わせて確かめる。
+				for i := 1; i < len(actual); i++ {
+					assert.Less(t, actual[i-1].Code(), actual[i].Code())
+				}
+
+				var actualTokyo *prefecture.Prefecture
+				for _, p := range actual {
+					if p.ID() == tokyoID {
+						actualTokyo = p
+						break
+					}
+				}
+				require.NotNil(t, actualTokyo)
+				assert.Equal(t, expectedTokyo, actualTokyo)
+			})
+		})
+
+		t.Run("並び順はcodeではなくsort_keyが決める", func(t *testing.T) {
+			t.Parallel()
+
+			hokkaidoID, err := uuid.Parse("faba7bb2-f5a0-4a51-adae-1564929077b2")
+			require.NoError(t, err)
+
+			txm.WithinTx(func(ctx context.Context) {
+				// seed では code=1 / sort_key=1 で先頭に来る北海道の sort_key だけを最後尾へ動かす。
+				// code は動かさないため、並びが code に従っていればこの更新では何も変わらない。
+				_, execErr := driver.New(ctx, testDB).Exec(ctx,
+					"UPDATE prefectures SET sort_key = $1 WHERE id = $2", 999, hokkaidoID,
+				)
+				require.NoError(t, execErr)
+
+				actual, err := repo.FindAll(ctx)
+				require.NoError(t, err)
+				require.Len(t, actual, 47)
+
+				assert.Equal(t, hokkaidoID, actual[len(actual)-1].ID())
+				assert.NotEqual(t, hokkaidoID, actual[0].ID())
+			})
+		})
+
+		t.Run("テーブルが空の場合、nilではない空一覧を返す", func(t *testing.T) {
+			t.Parallel()
+
+			// TRUNCATE は依存表ごと ACCESS EXCLUSIVE を取るため、直列化の外側で走る tx と
+			// deadlock（40P01）しうる。require で即死させるとトランザクションマネージャーが
+			// 戻り値を受け取れず、リトライ可能と宣言済みのエラーが恒久的な失敗になるため、
+			// エラーは返して再試行に委ねる（WithinTxE の doc 参照）。
+			txm.WithinTxE(func(ctx context.Context) error {
+				// prefectures を参照する依存行（users など）ごと空にする（tx はロールバックされる）。
+				if _, execErr := driver.New(ctx, testDB).Exec(ctx, "TRUNCATE prefectures CASCADE"); execErr != nil {
+					return execErr
+				}
+
+				actual, err := repo.FindAll(ctx)
+				require.NoError(t, err)
+				assert.NotNil(t, actual)
+				assert.Empty(t, actual)
+
+				return nil
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化される", func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			actual, err := repo.FindAll(ctx)
+			assert.Nil(t, actual)
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+		})
+
+		t.Run("取得行のドメイン化に失敗した場合、データ不整合としてErrInternalを返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				invalidID, err := uuid.Parse("00000000-0000-0000-0000-0000000000fe")
+				require.NoError(t, err)
+
+				// code=99 は都道府県コードの有効範囲(1..47)外のため、ドメイン化に失敗する。
+				_, execErr := driver.New(ctx, testDB).Exec(ctx,
+					"INSERT INTO prefectures (id, name, code, sort_key) VALUES ($1,$2,$3,$4)",
+					invalidID, "テスト無効県", 99, 99,
+				)
+				require.NoError(t, execErr)
+
+				actual, err := repo.FindAll(ctx)
+				assert.Nil(t, actual)
+				require.ErrorIs(t, err, apperror.ErrInternal)
+				require.NotErrorIs(t, err, prefecture.ErrInvalidCode)
+			})
+		})
+	})
+}
+
 func Test_repository_FindByIDs(t *testing.T) {
 	t.Parallel()
 
@@ -156,6 +287,31 @@ func Test_repository_FindByIDs(t *testing.T) {
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
+
+		t.Run("並び順はcodeではなくsort_keyが決める", func(t *testing.T) {
+			t.Parallel()
+
+			tokyoID, err := uuid.Parse("101caa1e-84e7-4ceb-9108-50d40b6be1a3")
+			require.NoError(t, err)
+			osakaID, err := uuid.Parse("d647fc85-ff46-4530-88cb-198f4a68a9d7")
+			require.NoError(t, err)
+
+			txm.WithinTx(func(ctx context.Context) {
+				// seed では東京(code=8) が大阪(code=27) より先に来る。東京の sort_key だけを後ろへ動かし、
+				// code を据え置くことで、並びが code に従っていればこの更新で何も変わらない状態を作る。
+				_, execErr := driver.New(ctx, testDB).Exec(ctx,
+					"UPDATE prefectures SET sort_key = $1 WHERE id = $2", 998, tokyoID,
+				)
+				require.NoError(t, execErr)
+
+				actual, err := repo.FindByIDs(ctx, []uuid.UUID{tokyoID, osakaID})
+				require.NoError(t, err)
+				require.Len(t, actual, 2)
+
+				assert.Equal(t, osakaID, actual[0].ID())
+				assert.Equal(t, tokyoID, actual[1].ID())
+			})
+		})
 
 		t.Run("有効な都道府県ID一覧の場合、都道府県エンティティ一覧が取得できる", func(t *testing.T) {
 			t.Parallel()
@@ -226,8 +382,8 @@ func Test_repository_FindByIDs(t *testing.T) {
 
 				// code=99 は都道府県コードの有効範囲(1..47)外のため、ドメイン化に失敗する。
 				_, execErr := driver.New(ctx, testDB).Exec(ctx,
-					"INSERT INTO prefectures (id, name, code) VALUES ($1,$2,$3)",
-					invalidID, "テスト無効県", 99,
+					"INSERT INTO prefectures (id, name, code, sort_key) VALUES ($1,$2,$3,$4)",
+					invalidID, "テスト無効県", 99, 98,
 				)
 				require.NoError(t, execErr)
 
@@ -236,6 +392,45 @@ func Test_repository_FindByIDs(t *testing.T) {
 				require.ErrorIs(t, err, apperror.ErrInternal)
 				require.NotErrorIs(t, err, prefecture.ErrInvalidCode)
 			})
+		})
+	})
+}
+
+func Test_rowToPrefecture(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("有効な行からエンティティを再構築する", func(t *testing.T) {
+			t.Parallel()
+
+			id, err := uuid.New()
+			require.NoError(t, err)
+
+			entity, err := rowToPrefecture(id, "東京都", int16(13))
+			require.NoError(t, err)
+			require.NotNil(t, entity)
+			assert.Equal(t, id, entity.ID())
+			assert.Equal(t, "東京都", entity.Name())
+			assert.Equal(t, 13, entity.Code())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("再構築時の検証失敗はErrInternalへ正規化され元の分類は露出しない", func(t *testing.T) {
+			t.Parallel()
+
+			id, err := uuid.New()
+			require.NoError(t, err)
+
+			// code=0 は JIS 範囲(1〜47)外のため domain 構築が失敗する。
+			entity, err := rowToPrefecture(id, "東京都", int16(0))
+			require.Error(t, err)
+			require.Nil(t, entity)
+			require.ErrorIs(t, err, apperror.ErrInternal)
 		})
 	})
 }

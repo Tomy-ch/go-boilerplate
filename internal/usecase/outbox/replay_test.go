@@ -8,6 +8,7 @@ import (
 	mock_outbox "go-boilerplate/internal/usecase/boundary/outbox/mock"
 	"go-boilerplate/internal/usecase/outbox"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
@@ -57,7 +58,7 @@ func Test_replayUsecase_ReplayDead(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			store := mock_outbox.NewMockStore(ctrl)
-			id := uuid.NewTestFromSalt(t, "dead")
+			id := uuidtestkit.NewTestFromSalt(t, "dead")
 
 			store.EXPECT().ReplayDead(gomock.Any(), &id).Return(int64(1), nil)
 

@@ -7,7 +7,6 @@ import (
 	"go-boilerplate/internal/di/server/extension"
 	"go-boilerplate/internal/di/server/extension/inbound"
 	"go-boilerplate/internal/di/server/extension/instrumentation"
-	"go-boilerplate/internal/di/server/extension/nonprod"
 	"go-boilerplate/internal/di/server/extension/outbound"
 	"go-boilerplate/internal/di/server/extension/security"
 	"go-boilerplate/internal/di/server/hook"
@@ -20,6 +19,7 @@ func Module() fx.Option {
 	return fx.Module("server",
 		fx.Provide(
 			server.NewAppServer,
+			server.NewHTTPServer,
 		),
 	)
 }
@@ -28,8 +28,9 @@ func Module() fx.Option {
 func HookModule() fx.Option {
 	return fx.Module("server.hook",
 		fx.Invoke(
-			// server グラフに限って shutdown/request の交差検証を適用する（非 HTTP プロセスへ波及させない）。
+			// server グラフに限って設定の交差検証を適用する（非 HTTP プロセスへ波及させない）。
 			config.ValidateServerShutdown,
+			config.ValidateUploadBodyLimit,
 			hook.RegisterHTTPServerHooks,
 		),
 	)
@@ -54,7 +55,6 @@ func MiddlewareModule() fx.Option {
 		instrumentation.LoggingModule(),
 		instrumentation.ObservabilityModule(),
 		instrumentation.HTTPRedMetricsModule(),
-		nonprod.DebugModeModule(),
 		fx.Provide(
 			extension.ApplyExtends,
 		),

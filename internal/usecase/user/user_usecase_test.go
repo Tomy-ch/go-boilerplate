@@ -2,24 +2,26 @@ package user
 
 import (
 	"context"
-	"strings"
 	"testing"
 	"time"
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/prefecture"
 	mock_prefecture "go-boilerplate/internal/domain/prefecture/mock"
+	mock_purchase "go-boilerplate/internal/domain/purchase/mock"
 	"go-boilerplate/internal/domain/user"
 	mock_user "go-boilerplate/internal/domain/user/mock"
 	"go-boilerplate/internal/observability"
+	authbd "go-boilerplate/internal/usecase/boundary/auth"
+	"go-boilerplate/internal/usecase/boundary/authz"
 	mock_authz "go-boilerplate/internal/usecase/boundary/authz/mock"
 	clocktest "go-boilerplate/internal/usecase/boundary/clock/testkit"
-	mock_security "go-boilerplate/internal/usecase/boundary/security/mock"
 	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
+	mock_outbox "go-boilerplate/internal/usecase/outbox/mock"
 	"go-boilerplate/internal/usecase/testkit"
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/pkg/uuid"
-	"go-boilerplate/pkg/xerrors"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -36,21 +38,25 @@ func TestNew(t *testing.T) {
 		tf := observability.NewNoopTracerFactory(t)
 		mockTxManager := mock_tx.NewMockManager(ctrl)
 		clock := clocktest.NewMockClock(t, time.Time{})
-		encrypter := mock_security.NewMockHasher(ctrl)
 		authorizer := mock_authz.NewMockAuthorizer(ctrl)
 		userRepo := mock_user.NewMockRepository(ctrl)
+		userLock := mock_user.NewMockLockRepository(ctrl)
 		pftRepo := mock_prefecture.NewMockRepository(ctrl)
+		purchaseRepo := mock_purchase.NewMockRepository(ctrl)
+		emit := mock_outbox.NewMockEmitUsecase(ctrl)
 
 		expected := &usecase{
-			tracer:     tf.Usecase(),
-			txm:        mockTxManager,
-			clock:      clock,
-			encrypter:  encrypter,
-			authorizer: authorizer,
-			userRepo:   userRepo,
-			pftRepo:    pftRepo,
+			tracer:       tf.Usecase(),
+			txm:          mockTxManager,
+			clock:        clock,
+			authorizer:   authorizer,
+			userRepo:     userRepo,
+			userLock:     userLock,
+			pftRepo:      pftRepo,
+			purchaseRepo: purchaseRepo,
+			emit:         emit,
 		}
-		actual := New(tf, mockTxManager, clock, encrypter, authorizer, userRepo, pftRepo)
+		actual := New(tf, mockTxManager, clock, authorizer, userRepo, userLock, pftRepo, purchaseRepo, emit)
 
 		assert.Equal(t, expected, actual)
 	})
@@ -63,24 +69,22 @@ func Test_usecase_ListUsers(t *testing.T) {
 	lt := observability.NewMockUsecaseLayerTracer(t)
 	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-	prefectureID := uuid.NewTestFromSalt(t, "prefecture_domain")
+	prefectureID := uuidtestkit.NewTestFromSalt(t, "prefecture_domain")
 
-	userDomain, err := user.New(
-		uuid.NewTestFromSalt(t, "user_domain"),
-		"first_name",
-		"last_name",
-		"password",
-		"user@example.com",
-		"phone_number",
-		prefectureID,
-		"city_name",
-		"town_address",
-		nil,
-		"150-0001",
-		now,
-		now,
-		nil,
-	)
+	userDomain, err := user.New(uuidtestkit.NewTestFromSalt(t, "user_domain"), user.Attributes{
+		Profile: user.Profile{
+			FirstName:    "first_name",
+			LastName:     "last_name",
+			Email:        "user@example.com",
+			Phone:        "phone_number",
+			PrefectureID: prefectureID,
+			City:         "city_name",
+			Street:       "town_address",
+			PostalCode:   "150-0001",
+		},
+		CreatedAt: now,
+		UpdatedAt: now,
+	})
 	require.NoError(t, err)
 
 	t.Run("正常系", func(t *testing.T) {
@@ -100,6 +104,7 @@ func Test_usecase_ListUsers(t *testing.T) {
 
 		expected := []UserView{
 			{
+				ID:             userDomain.ID(),
 				FirstName:      userDomain.FirstName(),
 				LastName:       userDomain.LastName(),
 				PostalCode:     userDomain.PostalCode(),
@@ -121,12 +126,13 @@ func Test_usecase_ListUsers(t *testing.T) {
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{prefectureDomain}, nil)
 			uc := &usecase{
-				tracer:   lt,
-				userRepo: userRepo,
-				pftRepo:  pftRepo,
+				authorizer: newAllowAuthorizer(ctrl),
+				tracer:     lt,
+				userRepo:   userRepo,
+				pftRepo:    pftRepo,
 			}
 
-			actual, err := uc.ListUsers(ctx, nil, p)
+			actual, err := uc.ListUsers(ctx, newTestAuthn(t), nil, p)
 			require.NoError(t, err)
 			assert.Equal(t, expected, actual)
 		})
@@ -149,11 +155,12 @@ func Test_usecase_ListUsers(t *testing.T) {
 			repo := mock_user.NewMockRepository(ctrl)
 			repo.EXPECT().FindByActive(gomock.Any(), nil, p.Limit32(), p.Offset32()).Return(nil, expectedErr)
 			uc := &usecase{
-				tracer:   lt,
-				userRepo: repo,
+				authorizer: newAllowAuthorizer(ctrl),
+				tracer:     lt,
+				userRepo:   repo,
 			}
 
-			actual, actualErr := uc.ListUsers(ctx, nil, p)
+			actual, actualErr := uc.ListUsers(ctx, newTestAuthn(t), nil, p)
 			require.Nil(t, actual)
 			require.ErrorIs(t, actualErr, expectedErr)
 		})
@@ -175,12 +182,13 @@ func Test_usecase_ListUsers(t *testing.T) {
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(nil, expectedErr)
 			uc := &usecase{
-				tracer:   lt,
-				userRepo: userRepo,
-				pftRepo:  pftRepo,
+				authorizer: newAllowAuthorizer(ctrl),
+				tracer:     lt,
+				userRepo:   userRepo,
+				pftRepo:    pftRepo,
 			}
 
-			actual, err := uc.ListUsers(ctx, nil, p)
+			actual, err := uc.ListUsers(ctx, newTestAuthn(t), nil, p)
 			require.Nil(t, actual)
 			require.ErrorIs(t, err, expectedErr)
 		})
@@ -200,12 +208,13 @@ func Test_usecase_ListUsers(t *testing.T) {
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{}, nil)
 			uc := &usecase{
-				tracer:   lt,
-				userRepo: userRepo,
-				pftRepo:  pftRepo,
+				authorizer: newAllowAuthorizer(ctrl),
+				tracer:     lt,
+				userRepo:   userRepo,
+				pftRepo:    pftRepo,
 			}
 
-			actual, err := uc.ListUsers(ctx, nil, p)
+			actual, err := uc.ListUsers(ctx, newTestAuthn(t), nil, p)
 			require.Nil(t, actual)
 			require.ErrorIs(t, err, apperror.ErrInternal)
 		})
@@ -213,10 +222,33 @@ func Test_usecase_ListUsers(t *testing.T) {
 		t.Run("page が nil の場合、ErrInvalidArgument が返される", func(t *testing.T) {
 			t.Parallel()
 
-			uc := &usecase{tracer: lt}
-			actual, err := uc.ListUsers(ctx, nil, nil)
+			ctrl := gomock.NewController(t)
+			uc := &usecase{tracer: lt, authorizer: newAllowAuthorizer(ctrl)}
+			actual, err := uc.ListUsers(ctx, newTestAuthn(t), nil, nil)
 			require.Nil(t, actual)
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+		})
+
+		t.Run("認可が拒否される場合、ErrForbidden が返りリポジトリへ到達しない", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			page := 1
+			perPage := 100
+			p, err := paging.NewPageFrom1Based(&page, &perPage)
+			require.NoError(t, err)
+
+			// userRepo は EXPECT を持たないため、認可より先にリポジトリを呼ぶ実装に戻ると失敗する。
+			uc := &usecase{
+				tracer:     lt,
+				authorizer: newDenyAuthorizer(ctrl),
+				userRepo:   mock_user.NewMockRepository(ctrl),
+				pftRepo:    mock_prefecture.NewMockRepository(ctrl),
+			}
+
+			actual, err := uc.ListUsers(ctx, newTestAuthn(t), nil, p)
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, authz.ErrForbidden)
 		})
 	})
 }
@@ -229,24 +261,22 @@ func Test_usecase_CreateUser(t *testing.T) {
 	mockTxManager := testkit.NewMockTransactionManager(t)
 	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-	prefectureID := uuid.NewTestFromSalt(t, "prefecture_domain")
+	prefectureID := uuidtestkit.NewTestFromSalt(t, "prefecture_domain")
 
-	userDomain, err := user.New(
-		uuid.NewTestFromSalt(t, "user_domain"),
-		"first_name",
-		"last_name",
-		"password",
-		"user@example.com",
-		"phone_number",
-		prefectureID,
-		"city_name",
-		"town_address",
-		nil,
-		"150-0001",
-		now,
-		now,
-		nil,
-	)
+	userDomain, err := user.New(uuidtestkit.NewTestFromSalt(t, "user_domain"), user.Attributes{
+		Profile: user.Profile{
+			FirstName:    "first_name",
+			LastName:     "last_name",
+			Email:        "user@example.com",
+			Phone:        "phone_number",
+			PrefectureID: prefectureID,
+			City:         "city_name",
+			Street:       "town_address",
+			PostalCode:   "150-0001",
+		},
+		CreatedAt: now,
+		UpdatedAt: now,
+	})
 	require.NoError(t, err)
 
 	prefectureName := "prefecture_name"
@@ -267,6 +297,7 @@ func Test_usecase_CreateUser(t *testing.T) {
 
 			createDTO := newCreateDTO(userDomain, prefectureName)
 			expected := UserView{
+				ID:             createDTO.UserID,
 				FirstName:      createDTO.FirstName,
 				LastName:       createDTO.LastName,
 				Email:          createDTO.Email,
@@ -279,30 +310,40 @@ func Test_usecase_CreateUser(t *testing.T) {
 			}
 
 			clock := clocktest.NewMockClockOnce(t, now)
-			encrypter := mock_security.NewMockHasher(ctrl)
 			userRepo := mock_user.NewMockRepository(ctrl)
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 
-			// 暗号化 → 都道府県解決 → ユーザー永続化の呼出順序を固定する。
 			gomock.InOrder(
-				encrypter.EXPECT().Hash(createDTO.RawPassword).Return("hashed_password", nil),
 				pftRepo.EXPECT().FindByName(
 					gomock.Any(),
 					prefectureName,
 				).Return(pftDomain, nil),
-				userRepo.EXPECT().Create(
-					gomock.Any(),
-					gomock.AssignableToTypeOf(userDomain),
-				).Return(nil),
+				userRepo.EXPECT().Create(gomock.Any(), gomock.Any()).DoAndReturn(
+					func(_ context.Context, u *user.User) error {
+						assert.Equal(t, createDTO.UserID, u.ID())
+						assert.Equal(t, createDTO.FirstName, u.FirstName())
+						assert.Equal(t, createDTO.LastName, u.LastName())
+						assert.Equal(t, createDTO.Email, u.Email())
+						assert.Equal(t, createDTO.Phone, u.Phone())
+						assert.Equal(t, createDTO.PostalCode, u.PostalCode())
+						assert.Equal(t, createDTO.City, u.City())
+						assert.Equal(t, createDTO.Street, u.Street())
+						assert.Equal(t, createDTO.Building, u.Building())
+						assert.Equal(t, pftDomain.ID(), u.PrefectureID())
+						assert.Equal(t, now, u.CreatedAt())
+						assert.Equal(t, now, u.UpdatedAt())
+						assert.Nil(t, u.DeletedAt())
+						return nil
+					},
+				),
 			)
 
 			uc := &usecase{
-				tracer:    lt,
-				txm:       mockTxManager,
-				clock:     clock,
-				encrypter: encrypter,
-				userRepo:  userRepo,
-				pftRepo:   pftRepo,
+				tracer:   lt,
+				txm:      mockTxManager,
+				clock:    clock,
+				userRepo: userRepo,
+				pftRepo:  pftRepo,
 			}
 
 			actual, err := uc.CreateUser(ctx, createDTO)
@@ -314,47 +355,6 @@ func Test_usecase_CreateUser(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("生パスワードの検証が失敗した場合、エラーが返される", func(t *testing.T) {
-			t.Parallel()
-
-			createDTO := newCreateDTO(userDomain, prefectureName)
-			createDTO.RawPassword = strings.Repeat("a", user.MaxRawPasswordLength+1) // パスワードを最大長+1にしてエラーを発生させる
-
-			clock := clocktest.NewMockClockOnce(t, now)
-
-			uc := &usecase{
-				tracer: lt,
-				clock:  clock,
-			}
-
-			actual, err := uc.CreateUser(ctx, createDTO)
-			assert.Equal(t, UserView{}, actual)
-			require.ErrorIs(t, err, user.ErrInvalidRawPassword)
-		})
-
-		t.Run("暗号化が失敗した場合、エラーが返される", func(t *testing.T) {
-			t.Parallel()
-			ctrl := gomock.NewController(t)
-
-			expectedErr := xerrors.New("encryption failed")
-
-			createDTO := newCreateDTO(userDomain, prefectureName)
-
-			clock := clocktest.NewMockClockOnce(t, now)
-			encrypter := mock_security.NewMockHasher(ctrl)
-			encrypter.EXPECT().Hash(createDTO.RawPassword).Return("", expectedErr)
-
-			uc := &usecase{
-				tracer:    lt,
-				clock:     clock,
-				encrypter: encrypter,
-			}
-
-			actual, err := uc.CreateUser(ctx, createDTO)
-			assert.Equal(t, UserView{}, actual)
-			require.ErrorIs(t, err, expectedErr)
-		})
-
 		t.Run("都道府県の取得に失敗した場合、エラーが返される", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
@@ -364,8 +364,6 @@ func Test_usecase_CreateUser(t *testing.T) {
 			createDTO := newCreateDTO(userDomain, prefectureName)
 
 			clock := clocktest.NewMockClockOnce(t, now)
-			encrypter := mock_security.NewMockHasher(ctrl)
-			encrypter.EXPECT().Hash(createDTO.RawPassword).Return("hashed_password", nil)
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 			pftRepo.EXPECT().FindByName(
 				gomock.Any(),
@@ -373,11 +371,10 @@ func Test_usecase_CreateUser(t *testing.T) {
 			).Return(nil, expectedErr)
 
 			uc := &usecase{
-				tracer:    lt,
-				txm:       mockTxManager,
-				clock:     clock,
-				encrypter: encrypter,
-				pftRepo:   pftRepo,
+				tracer:  lt,
+				txm:     mockTxManager,
+				clock:   clock,
+				pftRepo: pftRepo,
 			}
 
 			actual, err := uc.CreateUser(ctx, createDTO)
@@ -385,7 +382,7 @@ func Test_usecase_CreateUser(t *testing.T) {
 			require.ErrorIs(t, err, expectedErr)
 		})
 
-		t.Run("ユーザードメインの生成に失敗した場合、エラーが返される", func(t *testing.T) {
+		t.Run("FirstNameが空でドメイン生成に失敗した場合、エラーが返される", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 
@@ -393,8 +390,6 @@ func Test_usecase_CreateUser(t *testing.T) {
 			createDTO.FirstName = "" // FirstNameを空にしてエラーを発生させる
 
 			clock := clocktest.NewMockClockOnce(t, now)
-			encrypter := mock_security.NewMockHasher(ctrl)
-			encrypter.EXPECT().Hash(createDTO.RawPassword).Return("hashed_password", nil)
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 			pftRepo.EXPECT().FindByName(
 				gomock.Any(),
@@ -402,16 +397,41 @@ func Test_usecase_CreateUser(t *testing.T) {
 			).Return(pftDomain, nil)
 
 			uc := &usecase{
-				tracer:    lt,
-				txm:       mockTxManager,
-				clock:     clock,
-				encrypter: encrypter,
-				pftRepo:   pftRepo,
+				tracer:  lt,
+				txm:     mockTxManager,
+				clock:   clock,
+				pftRepo: pftRepo,
 			}
 
 			actual, err := uc.CreateUser(ctx, createDTO)
 			assert.Equal(t, UserView{}, actual)
 			require.ErrorIs(t, err, user.ErrInvalidFirstName)
+		})
+
+		t.Run("UserIDがゼロ値でドメイン生成に失敗した場合、ErrInvalidIDが返される", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			createDTO := newCreateDTO(userDomain, prefectureName)
+			createDTO.UserID = uuid.UUID{} // 呼出元の配線ミス等でゼロ UUID が渡ると New が ErrInvalidID を返す
+
+			clock := clocktest.NewMockClockOnce(t, now)
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().FindByName(
+				gomock.Any(),
+				prefectureName,
+			).Return(pftDomain, nil)
+
+			uc := &usecase{
+				tracer:  lt,
+				txm:     mockTxManager,
+				clock:   clock,
+				pftRepo: pftRepo,
+			}
+
+			actual, err := uc.CreateUser(ctx, createDTO)
+			assert.Equal(t, UserView{}, actual)
+			require.ErrorIs(t, err, user.ErrInvalidID)
 		})
 
 		t.Run("ユーザー作成に失敗した場合、エラーが返される", func(t *testing.T) {
@@ -423,8 +443,6 @@ func Test_usecase_CreateUser(t *testing.T) {
 			createDTO := newCreateDTO(userDomain, prefectureName)
 
 			clock := clocktest.NewMockClockOnce(t, now)
-			encrypter := mock_security.NewMockHasher(ctrl)
-			encrypter.EXPECT().Hash(createDTO.RawPassword).Return("hashed_password", nil)
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().Create(
 				gomock.Any(),
@@ -437,12 +455,35 @@ func Test_usecase_CreateUser(t *testing.T) {
 			).Return(pftDomain, nil)
 
 			uc := &usecase{
-				tracer:    lt,
-				txm:       mockTxManager,
-				clock:     clock,
-				encrypter: encrypter,
-				userRepo:  userRepo,
-				pftRepo:   pftRepo,
+				tracer:   lt,
+				txm:      mockTxManager,
+				clock:    clock,
+				userRepo: userRepo,
+				pftRepo:  pftRepo,
+			}
+
+			actual, err := uc.CreateUser(ctx, createDTO)
+			assert.Equal(t, UserView{}, actual)
+			require.ErrorIs(t, err, expectedErr)
+		})
+
+		t.Run("トランザクションの実行に失敗した場合、エラーが伝播される", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			expectedErr := testkit.ExpectedDBError()
+
+			createDTO := newCreateDTO(userDomain, prefectureName)
+
+			clock := clocktest.NewMockClockOnce(t, now)
+			// tx.Manager 自体が失敗する経路（接続断等）。fn は実行されないため repo 呼び出しはない。
+			txm := mock_tx.NewMockManager(ctrl)
+			txm.EXPECT().Do(gomock.Any(), gomock.Any()).Return(expectedErr)
+
+			uc := &usecase{
+				tracer: lt,
+				txm:    txm,
+				clock:  clock,
 			}
 
 			actual, err := uc.CreateUser(ctx, createDTO)
@@ -459,12 +500,21 @@ func Test_usecase_ListUsersWithTotal(t *testing.T) {
 	lt := observability.NewMockUsecaseLayerTracer(t)
 	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-	prefectureID := uuid.NewTestFromSalt(t, "prefecture_domain")
-	userDomain, err := user.New(
-		uuid.NewTestFromSalt(t, "user_domain"),
-		"first_name", "last_name", "password", "user@example.com", "phone_number",
-		prefectureID, "city_name", "town_address", nil, "150-0001", now, now, nil,
-	)
+	prefectureID := uuidtestkit.NewTestFromSalt(t, "prefecture_domain")
+	userDomain, err := user.New(uuidtestkit.NewTestFromSalt(t, "user_domain"), user.Attributes{
+		Profile: user.Profile{
+			FirstName:    "first_name",
+			LastName:     "last_name",
+			Email:        "user@example.com",
+			Phone:        "phone_number",
+			PrefectureID: prefectureID,
+			City:         "city_name",
+			Street:       "town_address",
+			PostalCode:   "150-0001",
+		},
+		CreatedAt: now,
+		UpdatedAt: now,
+	})
 	require.NoError(t, err)
 	prefectureDomain, err := prefecture.New(prefectureID, "prefecture_name", 1)
 	require.NoError(t, err)
@@ -486,9 +536,9 @@ func Test_usecase_ListUsersWithTotal(t *testing.T) {
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{prefectureDomain}, nil)
 
-			uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
+			uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo, authorizer: newAllowAuthorizer(ctrl)}
 
-			actual, err := uc.ListUsersWithTotal(ctx, nil, p)
+			actual, err := uc.ListUsersWithTotal(ctx, newTestAuthn(t), nil, p)
 			require.NoError(t, err)
 			assert.Len(t, actual.Items, 1)
 			assert.Equal(t, int64(1), actual.Total)
@@ -505,9 +555,9 @@ func Test_usecase_ListUsersWithTotal(t *testing.T) {
 
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().FindByActive(gomock.Any(), nil, p.Limit32(), p.Offset32()).Return(nil, expectedErr)
-			uc := &usecase{tracer: lt, userRepo: userRepo}
+			uc := &usecase{tracer: lt, userRepo: userRepo, authorizer: newAllowAuthorizer(ctrl)}
 
-			actual, err := uc.ListUsersWithTotal(ctx, nil, p)
+			actual, err := uc.ListUsersWithTotal(ctx, newTestAuthn(t), nil, p)
 			require.ErrorIs(t, err, expectedErr)
 			require.Nil(t, actual)
 		})
@@ -522,19 +572,42 @@ func Test_usecase_ListUsersWithTotal(t *testing.T) {
 			userRepo.EXPECT().CountByActive(gomock.Any(), nil).Return(int64(0), expectedErr)
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{prefectureDomain}, nil)
-			uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
+			uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo, authorizer: newAllowAuthorizer(ctrl)}
 
-			actual, err := uc.ListUsersWithTotal(ctx, nil, p)
+			actual, err := uc.ListUsersWithTotal(ctx, newTestAuthn(t), nil, p)
 			require.ErrorIs(t, err, expectedErr)
 			require.Nil(t, actual)
 		})
 
 		t.Run("page が nil の場合、ErrInvalidArgument が返る", func(t *testing.T) {
 			t.Parallel()
-			uc := &usecase{tracer: observability.NewNoopTracerFactory(t).Usecase()}
-			actual, err := uc.ListUsersWithTotal(ctx, nil, nil)
+			ctrl := gomock.NewController(t)
+			uc := &usecase{tracer: observability.NewNoopTracerFactory(t).Usecase(), authorizer: newAllowAuthorizer(ctrl)}
+			actual, err := uc.ListUsersWithTotal(ctx, newTestAuthn(t), nil, nil)
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 			require.Nil(t, actual)
+		})
+
+		t.Run("認可が拒否される場合、ErrForbidden が返りリポジトリへ到達しない", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			page := 1
+			perPage := 100
+			p, err := paging.NewPageFrom1Based(&page, &perPage)
+			require.NoError(t, err)
+
+			// userRepo は EXPECT を持たないため、認可より先にリポジトリを呼ぶ実装に戻ると失敗する。
+			uc := &usecase{
+				tracer:     lt,
+				authorizer: newDenyAuthorizer(ctrl),
+				userRepo:   mock_user.NewMockRepository(ctrl),
+				pftRepo:    mock_prefecture.NewMockRepository(ctrl),
+			}
+
+			actual, err := uc.ListUsersWithTotal(ctx, newTestAuthn(t), nil, p)
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, authz.ErrForbidden)
 		})
 	})
 }
@@ -608,17 +681,26 @@ func Test_usecase_ListUsersFeed(t *testing.T) {
 	lt := observability.NewMockUsecaseLayerTracer(t)
 	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-	prefectureID := uuid.NewTestFromSalt(t, "prefecture_domain")
+	prefectureID := uuidtestkit.NewTestFromSalt(t, "prefecture_domain")
 	prefectureDomain, err := prefecture.New(prefectureID, "prefecture_name", 1)
 	require.NoError(t, err)
 
 	// newFeedUser は、作成日時違いのフィードユーザーを生成するヘルパーです。
 	newFeedUser := func(salt string, createdAt time.Time) *user.User {
-		u, uErr := user.New(
-			uuid.NewTestFromSalt(t, salt),
-			"first_name", "last_name", "password", "user@example.com", "phone_number",
-			prefectureID, "city_name", "town_address", nil, "150-0001", createdAt, createdAt, nil,
-		)
+		u, uErr := user.New(uuidtestkit.NewTestFromSalt(t, salt), user.Attributes{
+			Profile: user.Profile{
+				FirstName:    "first_name",
+				LastName:     "last_name",
+				Email:        "user@example.com",
+				Phone:        "phone_number",
+				PrefectureID: prefectureID,
+				City:         "city_name",
+				Street:       "town_address",
+				PostalCode:   "150-0001",
+			},
+			CreatedAt: createdAt,
+			UpdatedAt: createdAt,
+		})
 		require.NoError(t, uErr)
 		return u
 	}
@@ -642,9 +724,9 @@ func Test_usecase_ListUsersFeed(t *testing.T) {
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{prefectureDomain}, nil)
 
-			uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
+			uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo, authorizer: newAllowAuthorizer(ctrl)}
 
-			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
+			actual, actualErr := uc.ListUsersFeed(ctx, newTestAuthn(t), cursor)
 			require.NoError(t, actualErr)
 			assert.Len(t, actual.Items, 1)
 			assert.Nil(t, actual.NextCursor)
@@ -673,9 +755,9 @@ func Test_usecase_ListUsersFeed(t *testing.T) {
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{prefectureDomain}, nil)
 
-			uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
+			uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo, authorizer: newAllowAuthorizer(ctrl)}
 
-			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
+			actual, actualErr := uc.ListUsersFeed(ctx, newTestAuthn(t), cursor)
 			require.NoError(t, actualErr)
 			assert.Len(t, actual.Items, 1)
 			assert.Nil(t, actual.NextCursor)
@@ -699,9 +781,9 @@ func Test_usecase_ListUsersFeed(t *testing.T) {
 			// 切り詰め後の 1 件分のみ都道府県解決される。
 			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{prefectureDomain}, nil)
 
-			uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
+			uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo, authorizer: newAllowAuthorizer(ctrl)}
 
-			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
+			actual, actualErr := uc.ListUsersFeed(ctx, newTestAuthn(t), cursor)
 			require.NoError(t, actualErr)
 			assert.Len(t, actual.Items, 1)
 			require.NotNil(t, actual.NextCursor)
@@ -717,8 +799,9 @@ func Test_usecase_ListUsersFeed(t *testing.T) {
 		t.Run("cursorがnilの場合、ErrInvalidArgumentが返る", func(t *testing.T) {
 			t.Parallel()
 
-			uc := &usecase{tracer: lt}
-			actual, actualErr := uc.ListUsersFeed(ctx, nil)
+			ctrl := gomock.NewController(t)
+			uc := &usecase{tracer: lt, authorizer: newAllowAuthorizer(ctrl)}
+			actual, actualErr := uc.ListUsersFeed(ctx, newTestAuthn(t), nil)
 			require.ErrorIs(t, actualErr, apperror.ErrInvalidArgument)
 			require.Nil(t, actual)
 		})
@@ -732,8 +815,9 @@ func Test_usecase_ListUsersFeed(t *testing.T) {
 			cursor, cErr := paging.NewCursor(&encoded, &first)
 			require.NoError(t, cErr)
 
-			uc := &usecase{tracer: lt}
-			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
+			ctrl := gomock.NewController(t)
+			uc := &usecase{tracer: lt, authorizer: newAllowAuthorizer(ctrl)}
+			actual, actualErr := uc.ListUsersFeed(ctx, newTestAuthn(t), cursor)
 			require.ErrorIs(t, actualErr, apperror.ErrInvalidArgument)
 			require.Nil(t, actual)
 		})
@@ -741,13 +825,14 @@ func Test_usecase_ListUsersFeed(t *testing.T) {
 		t.Run("カーソルのcreated_atがRFC3339Nanoでない場合、ErrInvalidArgumentが返る", func(t *testing.T) {
 			t.Parallel()
 
-			encoded := paging.EncodeCursor("not-a-time", uuid.NewTestFromSalt(t, "any").String())
+			encoded := paging.EncodeCursor("not-a-time", uuidtestkit.NewTestFromSalt(t, "any").String())
 			first := 20
 			cursor, cErr := paging.NewCursor(&encoded, &first)
 			require.NoError(t, cErr)
 
-			uc := &usecase{tracer: lt}
-			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
+			ctrl := gomock.NewController(t)
+			uc := &usecase{tracer: lt, authorizer: newAllowAuthorizer(ctrl)}
+			actual, actualErr := uc.ListUsersFeed(ctx, newTestAuthn(t), cursor)
 			require.ErrorIs(t, actualErr, apperror.ErrInvalidArgument)
 			require.Nil(t, actual)
 		})
@@ -760,8 +845,9 @@ func Test_usecase_ListUsersFeed(t *testing.T) {
 			cursor, cErr := paging.NewCursor(&encoded, &first)
 			require.NoError(t, cErr)
 
-			uc := &usecase{tracer: lt}
-			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
+			ctrl := gomock.NewController(t)
+			uc := &usecase{tracer: lt, authorizer: newAllowAuthorizer(ctrl)}
+			actual, actualErr := uc.ListUsersFeed(ctx, newTestAuthn(t), cursor)
 			require.ErrorIs(t, actualErr, apperror.ErrInvalidArgument)
 			require.Nil(t, actual)
 		})
@@ -777,9 +863,9 @@ func Test_usecase_ListUsersFeed(t *testing.T) {
 
 			userRepo := mock_user.NewMockRepository(ctrl)
 			userRepo.EXPECT().FindFeed(gomock.Any(), (*user.FeedCursor)(nil), int32(21)).Return(nil, expectedErr)
-			uc := &usecase{tracer: lt, userRepo: userRepo}
+			uc := &usecase{tracer: lt, userRepo: userRepo, authorizer: newAllowAuthorizer(ctrl)}
 
-			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
+			actual, actualErr := uc.ListUsersFeed(ctx, newTestAuthn(t), cursor)
 			require.ErrorIs(t, actualErr, expectedErr)
 			require.Nil(t, actual)
 		})
@@ -798,11 +884,309 @@ func Test_usecase_ListUsersFeed(t *testing.T) {
 			userRepo.EXPECT().FindFeed(gomock.Any(), (*user.FeedCursor)(nil), int32(21)).Return(user.Users{u1}, nil)
 			pftRepo := mock_prefecture.NewMockRepository(ctrl)
 			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{}, nil)
-			uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo}
+			uc := &usecase{tracer: lt, userRepo: userRepo, pftRepo: pftRepo, authorizer: newAllowAuthorizer(ctrl)}
 
-			actual, actualErr := uc.ListUsersFeed(ctx, cursor)
+			actual, actualErr := uc.ListUsersFeed(ctx, newTestAuthn(t), cursor)
 			require.ErrorIs(t, actualErr, apperror.ErrInternal)
 			require.Nil(t, actual)
+		})
+
+		t.Run("認可が拒否される場合、ErrForbidden が返りリポジトリへ到達しない", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			cursor, err := paging.NewCursor(nil, nil)
+			require.NoError(t, err)
+
+			// userRepo は EXPECT を持たないため、認可より先にリポジトリを呼ぶ実装に戻ると失敗する。
+			uc := &usecase{
+				tracer:     lt,
+				authorizer: newDenyAuthorizer(ctrl),
+				userRepo:   mock_user.NewMockRepository(ctrl),
+				pftRepo:    mock_prefecture.NewMockRepository(ctrl),
+			}
+
+			actual, err := uc.ListUsersFeed(ctx, newTestAuthn(t), cursor)
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, authz.ErrForbidden)
+		})
+	})
+}
+
+func Test_usecase_authorizeUserCollection(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	authn, err := authbd.New("subject", "mock", nil, nil)
+	require.NoError(t, err)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("所有者を持たないリソースとして問い合わせ、許可された場合はnilが返る", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			authorizer := mock_authz.NewMockAuthorizer(ctrl)
+			authorizer.EXPECT().
+				Authorize(gomock.Any(), authn, authz.ActionUserList, authz.NewResource("user", nil)).
+				Return(nil)
+
+			uc := &usecase{authorizer: authorizer}
+
+			require.NoError(t, uc.authorizeUserCollection(ctx, authn))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("authnがnilの場合、ErrUnauthenticatedが返り認可判定は行われない", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			authorizer := mock_authz.NewMockAuthorizer(ctrl)
+
+			uc := &usecase{authorizer: authorizer}
+
+			require.ErrorIs(t, uc.authorizeUserCollection(ctx, nil), apperror.ErrUnauthenticated)
+		})
+
+		t.Run("認可が拒否された場合、認可エラーが伝播される", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			authorizer := mock_authz.NewMockAuthorizer(ctrl)
+			authorizer.EXPECT().
+				Authorize(gomock.Any(), authn, authz.ActionUserList, authz.NewResource("user", nil)).
+				Return(authz.ErrForbidden)
+
+			uc := &usecase{authorizer: authorizer}
+
+			require.ErrorIs(t, uc.authorizeUserCollection(ctx, authn), authz.ErrForbidden)
+		})
+	})
+}
+
+func Test_usecase_authorizeUserAccess(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	id := uuidtestkit.NewTestFromSalt(t, "authorize_user_access")
+
+	authn, err := authbd.New("subject", "mock", nil, nil)
+	require.NoError(t, err)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("authnが非nilで認可が許可された場合、nilが返る", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			authorizer := mock_authz.NewMockAuthorizer(ctrl)
+			authorizer.EXPECT().Authorize(gomock.Any(), authn, authz.ActionUserGet, authz.NewResource("user", &id)).Return(nil)
+
+			uc := &usecase{authorizer: authorizer}
+
+			err := uc.authorizeUserAccess(ctx, authn, authz.ActionUserGet, id)
+			require.NoError(t, err)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("authnがnilの場合、ErrUnauthenticatedが返り認可判定は行われない", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			authorizer := mock_authz.NewMockAuthorizer(ctrl)
+
+			uc := &usecase{authorizer: authorizer}
+
+			err := uc.authorizeUserAccess(ctx, nil, authz.ActionUserGet, id)
+			require.ErrorIs(t, err, apperror.ErrUnauthenticated)
+		})
+
+		t.Run("認可が拒否された場合、認可エラーが伝播される", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			authorizer := mock_authz.NewMockAuthorizer(ctrl)
+			authorizer.EXPECT().Authorize(gomock.Any(), authn, authz.ActionUserGet, authz.NewResource("user", &id)).Return(authz.ErrForbidden)
+
+			uc := &usecase{authorizer: authorizer}
+
+			err := uc.authorizeUserAccess(ctx, authn, authz.ActionUserGet, id)
+			require.ErrorIs(t, err, authz.ErrForbidden)
+		})
+	})
+}
+
+func Test_usecase_resolvePatchPrefecture(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	prefectureID := uuidtestkit.NewTestFromSalt(t, "resolve_patch_prefecture")
+
+	pftDomain, err := prefecture.New(prefectureID, "prefecture_name", 1)
+	require.NoError(t, err)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("名前指定がある場合、名前で解決した都道府県が返る", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			name := "prefecture_name"
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().FindByName(gomock.Any(), name).Return(pftDomain, nil)
+
+			uc := &usecase{pftRepo: pftRepo}
+
+			actual, err := uc.resolvePatchPrefecture(ctx, &name, prefectureID)
+			require.NoError(t, err)
+			assert.Equal(t, pftDomain, actual)
+		})
+
+		t.Run("名前指定がない場合、既存IDで解決した都道府県が返る", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().FindByID(gomock.Any(), prefectureID).Return(pftDomain, nil)
+
+			uc := &usecase{pftRepo: pftRepo}
+
+			actual, err := uc.resolvePatchPrefecture(ctx, nil, prefectureID)
+			require.NoError(t, err)
+			assert.Equal(t, pftDomain, actual)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("名前指定がなく既存IDが解決できない場合、参照整合性破れが返る", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().FindByID(gomock.Any(), prefectureID).Return(nil, apperror.ErrNotFound)
+
+			uc := &usecase{pftRepo: pftRepo}
+
+			actual, err := uc.resolvePatchPrefecture(ctx, nil, prefectureID)
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, errOrphanPrefecture)
+		})
+
+		t.Run("名前指定がなく既存ID解決で他のエラーが発生した場合、エラーが伝播される", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			expectedErr := testkit.ExpectedDBError()
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().FindByID(gomock.Any(), prefectureID).Return(nil, expectedErr)
+
+			uc := &usecase{pftRepo: pftRepo}
+
+			actual, err := uc.resolvePatchPrefecture(ctx, nil, prefectureID)
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, expectedErr)
+		})
+	})
+}
+
+func Test_usecase_toUserViews(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+
+	prefectureID := uuidtestkit.NewTestFromSalt(t, "to_user_views_prefecture")
+
+	userDomain, err := user.New(uuidtestkit.NewTestFromSalt(t, "to_user_views_user"), user.Attributes{
+		Profile: user.Profile{
+			FirstName:    "first_name",
+			LastName:     "last_name",
+			Email:        "user@example.com",
+			Phone:        "phone_number",
+			PrefectureID: prefectureID,
+			City:         "city_name",
+			Street:       "town_address",
+			PostalCode:   "150-0001",
+		},
+		CreatedAt: now,
+		UpdatedAt: now,
+	})
+	require.NoError(t, err)
+
+	prefectureDomain, err := prefecture.New(prefectureID, "prefecture_name", 1)
+	require.NoError(t, err)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("全ユーザーの都道府県が解決できる場合、UserViewのリストが返る", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{prefectureDomain}, nil)
+
+			uc := &usecase{
+				tracer:  observability.NewNoopTracerFactory(t).Usecase(),
+				pftRepo: pftRepo,
+			}
+
+			actual, err := uc.toUserViews(ctx, user.Users{userDomain})
+			require.NoError(t, err)
+			require.Len(t, actual, 1)
+			assert.Equal(t, prefectureDomain.Name(), actual[0].PrefectureName)
+			assert.Equal(t, userDomain.Email(), actual[0].Email)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("都道府県取得でエラーが発生した場合、エラーが伝播される", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			expectedErr := testkit.ExpectedDBError()
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(nil, expectedErr)
+
+			uc := &usecase{
+				tracer:  observability.NewNoopTracerFactory(t).Usecase(),
+				pftRepo: pftRepo,
+			}
+
+			actual, err := uc.toUserViews(ctx, user.Users{userDomain})
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, expectedErr)
+		})
+
+		t.Run("ユーザーが参照する都道府県が解決できない場合、参照整合性破れが返る", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{}, nil)
+
+			uc := &usecase{
+				tracer:  observability.NewNoopTracerFactory(t).Usecase(),
+				pftRepo: pftRepo,
+			}
+
+			actual, err := uc.toUserViews(ctx, user.Users{userDomain})
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, errOrphanPrefecture)
 		})
 	})
 }
@@ -810,8 +1194,7 @@ func Test_usecase_ListUsersFeed(t *testing.T) {
 // newCreateDTO は、テスト用のCreateParamsDTOを生成するヘルパー関数です。
 func newCreateDTO(u *user.User, pName string) *CreateParamsDTO {
 	return &CreateParamsDTO{
-		UserID:      u.ID(),
-		RawPassword: "password",
+		UserID: u.ID(),
 		UpdateProfileParams: UpdateProfileParams{
 			FirstName:      u.FirstName(),
 			LastName:       u.LastName(),
@@ -824,4 +1207,158 @@ func newCreateDTO(u *user.User, pName string) *CreateParamsDTO {
 			Building:       u.Building(),
 		},
 	}
+}
+
+func Test_toUserView(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+	building := "building_name"
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("エンティティの属性と引数の都道府県名からDTOを構築する", func(t *testing.T) {
+			t.Parallel()
+
+			u, err := user.New(uuidtestkit.NewTestFromSalt(t, "to_user_view_user"), user.Attributes{
+				Profile: user.Profile{
+					FirstName:    "first_name",
+					LastName:     "last_name",
+					Email:        "user@example.com",
+					Phone:        "phone_number",
+					PrefectureID: uuidtestkit.NewTestFromSalt(t, "to_user_view_prefecture"),
+					City:         "city_name",
+					Street:       "town_address",
+					Building:     &building,
+					PostalCode:   "150-0001",
+				},
+				CreatedAt: now,
+				UpdatedAt: now,
+			})
+			require.NoError(t, err)
+
+			actual := toUserView(u, "prefecture_name")
+
+			assert.Equal(t, u.ID(), actual.ID)
+			assert.Equal(t, "first_name", actual.FirstName)
+			assert.Equal(t, "last_name", actual.LastName)
+			assert.Equal(t, "user@example.com", actual.Email)
+			assert.Equal(t, "phone_number", actual.Phone)
+			assert.Equal(t, "150-0001", actual.PostalCode)
+			assert.Equal(t, "prefecture_name", actual.PrefectureName)
+			assert.Equal(t, "city_name", actual.City)
+			assert.Equal(t, "town_address", actual.Street)
+			require.NotNil(t, actual.Building)
+			assert.Equal(t, building, *actual.Building)
+			assert.Nil(t, actual.DeletedAt)
+		})
+
+		t.Run("削除済みエンティティの場合、DeletedAtを引き継ぐ", func(t *testing.T) {
+			t.Parallel()
+
+			deletedAt := now.Add(24 * time.Hour)
+			u, err := user.New(uuidtestkit.NewTestFromSalt(t, "to_user_view_deleted"), user.Attributes{
+				Profile: user.Profile{
+					FirstName:    "first_name",
+					LastName:     "last_name",
+					Email:        "deleted@example.com",
+					Phone:        "phone_number",
+					PrefectureID: uuidtestkit.NewTestFromSalt(t, "to_user_view_prefecture"),
+					City:         "city_name",
+					Street:       "town_address",
+					PostalCode:   "150-0001",
+				},
+				CreatedAt: now,
+				UpdatedAt: now,
+				DeletedAt: &deletedAt,
+			})
+			require.NoError(t, err)
+
+			actual := toUserView(u, "prefecture_name")
+
+			assert.Nil(t, actual.Building)
+			require.NotNil(t, actual.DeletedAt)
+			assert.Equal(t, deletedAt, *actual.DeletedAt)
+		})
+	})
+}
+
+func Test_usecase_listUsers(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	lt := observability.NewMockUsecaseLayerTracer(t)
+	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+
+	prefectureID := uuidtestkit.NewTestFromSalt(t, "prefecture_domain")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("認可済みの呼出元向けの内部処理として、認可を経ずに一覧を返す", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			page := 1
+			perPage := 100
+			p, err := paging.NewPageFrom1Based(&page, &perPage)
+			require.NoError(t, err)
+
+			userDomain := newActiveUser(t, uuidtestkit.NewTestFromSalt(t, "list_users_helper"), prefectureID, now)
+			prefectureDomain, err := prefecture.New(prefectureID, "prefecture_name", 1)
+			require.NoError(t, err)
+
+			userRepo := mock_user.NewMockRepository(ctrl)
+			userRepo.EXPECT().FindByActive(gomock.Any(), nil, p.Limit32(), p.Offset32()).Return(user.Users{userDomain}, nil)
+			pftRepo := mock_prefecture.NewMockRepository(ctrl)
+			pftRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{prefectureID}).Return(prefecture.Prefectures{prefectureDomain}, nil)
+
+			// authorizer は EXPECT を持たない。ヘルパ自身が認可を行う実装に変わると、
+			// 合成メソッドが二重に認可することになるため、ここで落とす。
+			uc := &usecase{
+				tracer:     lt,
+				authorizer: mock_authz.NewMockAuthorizer(ctrl),
+				userRepo:   userRepo,
+				pftRepo:    pftRepo,
+			}
+
+			expected := []UserView{{
+				ID:             userDomain.ID(),
+				FirstName:      userDomain.FirstName(),
+				LastName:       userDomain.LastName(),
+				Email:          userDomain.Email(),
+				Phone:          userDomain.Phone(),
+				PostalCode:     userDomain.PostalCode(),
+				PrefectureName: prefectureDomain.Name(),
+				City:           userDomain.City(),
+				Street:         userDomain.Street(),
+				Building:       userDomain.Building(),
+				DeletedAt:      userDomain.DeletedAt(),
+			}}
+
+			actual, err := uc.listUsers(ctx, nil, p)
+			require.NoError(t, err)
+			assert.Equal(t, expected, actual)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("page が nil の場合、ErrInvalidArgument が返る", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+
+			uc := &usecase{
+				tracer:     lt,
+				authorizer: mock_authz.NewMockAuthorizer(ctrl),
+				userRepo:   mock_user.NewMockRepository(ctrl),
+			}
+
+			actual, err := uc.listUsers(ctx, nil, nil)
+			require.Nil(t, actual)
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+		})
+	})
 }

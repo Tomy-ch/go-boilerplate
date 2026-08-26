@@ -11,6 +11,7 @@ package mock_exchangerate
 
 import (
 	context "context"
+	exchangerate "go-boilerplate/internal/usecase/exchangerate"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
@@ -41,16 +42,16 @@ func (m *MockUsecase) EXPECT() *MockUsecaseMockRecorder {
 }
 
 // Convert mocks base method.
-func (m *MockUsecase) Convert(ctx context.Context, base, quote string, amount float64) (float64, error) {
+func (m *MockUsecase) Convert(ctx context.Context, in exchangerate.ConvertInput) (*exchangerate.ConvertResult, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Convert", ctx, base, quote, amount)
-	ret0, _ := ret[0].(float64)
+	ret := m.ctrl.Call(m, "Convert", ctx, in)
+	ret0, _ := ret[0].(*exchangerate.ConvertResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Convert indicates an expected call of Convert.
-func (mr *MockUsecaseMockRecorder) Convert(ctx, base, quote, amount any) *gomock.Call {
+func (mr *MockUsecaseMockRecorder) Convert(ctx, in any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Convert", reflect.TypeOf((*MockUsecase)(nil).Convert), ctx, base, quote, amount)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Convert", reflect.TypeOf((*MockUsecase)(nil).Convert), ctx, in)
 }

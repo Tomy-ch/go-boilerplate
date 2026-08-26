@@ -115,7 +115,7 @@
 					<dd>    <a href="#EchoTestClient.AuthBearer">func (c *EchoTestClient) AuthBearer(token string) *EchoTestClient</a></dd>
 				
 					
-					<dd>    <a href="#EchoTestClient.Build">func (c *EchoTestClient) Build() (*http.Request, *httptest.ResponseRecorder, echo.Context)</a></dd>
+					<dd>    <a href="#EchoTestClient.Build">func (c *EchoTestClient) Build() (*http.Request, *httptest.ResponseRecorder, *echo.Context)</a></dd>
 				
 					
 					<dd>    <a href="#EchoTestClient.Header">func (c *EchoTestClient) Header(k, v string) *EchoTestClient</a></dd>
@@ -216,7 +216,7 @@
 
 			
 				
-				</p><h3 id="EchoTestClient.AuthBearer">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=3995:4060#L124">AuthBearer</a>
+				</p><h3 id="EchoTestClient.AuthBearer">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=4433:4498#L138">AuthBearer</a>
 					<a class="permalink" href="#EchoTestClient.AuthBearer">¶</a>
 					
 					
@@ -229,21 +229,21 @@
 				
 			
 				
-				</p><h3 id="EchoTestClient.Build">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=4742:4832#L146">Build</a>
+				</p><h3 id="EchoTestClient.Build">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=5182:5273#L160">Build</a>
 					<a class="permalink" href="#EchoTestClient.Build">¶</a>
 					
 					
 				</h3>
-				<pre>func (c *<a href="#EchoTestClient">EchoTestClient</a>) Build() (*<a href="../../../../../../net/http/">http</a>.<a href="../../../../../../net/http/#Request">Request</a>, *<a href="../../../../../../net/http/httptest/">httptest</a>.<a href="../../../../../../net/http/httptest/#ResponseRecorder">ResponseRecorder</a>, echo.<a href="#Context">Context</a>)</pre>
-				<p>Build はテスト用のHTTPリクエストとレスポンスレコーダー、echo.Contextを構築します。
-</p><p>requestURL モードではルータ解決により echo.Context のパスが設定されます。
+				<pre>func (c *<a href="#EchoTestClient">EchoTestClient</a>) Build() (*<a href="../../../../../../net/http/">http</a>.<a href="../../../../../../net/http/#Request">Request</a>, *<a href="../../../../../../net/http/httptest/">httptest</a>.<a href="../../../../../../net/http/httptest/#ResponseRecorder">ResponseRecorder</a>, *echo.<a href="#Context">Context</a>)</pre>
+				<p>Build はテスト用のHTTPリクエストとレスポンスレコーダー、*echo.Contextを構築します。
+</p><p>requestURL モードではルータ解決により *echo.Context のパスが設定されます。
 
 				
 				
 				
 			
 				
-				</p><h3 id="EchoTestClient.Header">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=3827:3887#L117">Header</a>
+				</p><h3 id="EchoTestClient.Header">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=4265:4325#L131">Header</a>
 					<a class="permalink" href="#EchoTestClient.Header">¶</a>
 					
 					
@@ -256,7 +256,7 @@
 				
 			
 				
-				</p><h3 id="EchoTestClient.JSONBody">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=3201:3257#L95">JSONBody</a>
+				</p><h3 id="EchoTestClient.JSONBody">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=3639:3695#L109">JSONBody</a>
 					<a class="permalink" href="#EchoTestClient.JSONBody">¶</a>
 					
 					
@@ -269,7 +269,7 @@
 				
 			
 				
-				</p><h3 id="EchoTestClient.Method">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=2491:2548#L69">Method</a>
+				</p><h3 id="EchoTestClient.Method">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=2929:2986#L83">Method</a>
 					<a class="permalink" href="#EchoTestClient.Method">¶</a>
 					
 					
@@ -282,7 +282,7 @@
 				
 			
 				
-				</p><h3 id="EchoTestClient.PathParams">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=4200:4275#L130">PathParams</a>
+				</p><h3 id="EchoTestClient.PathParams">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=4638:4713#L144">PathParams</a>
 					<a class="permalink" href="#EchoTestClient.PathParams">¶</a>
 					
 					
@@ -295,7 +295,7 @@
 				
 			
 				
-				</p><h3 id="EchoTestClient.QueryParams">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=4392:4468#L137">QueryParams</a>
+				</p><h3 id="EchoTestClient.QueryParams">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=4830:4906#L151">QueryParams</a>
 					<a class="permalink" href="#EchoTestClient.QueryParams">¶</a>
 					
 					
@@ -308,7 +308,7 @@
 				
 			
 				
-				</p><h3 id="EchoTestClient.RawBody">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=3567:3648#L107">RawBody</a>
+				</p><h3 id="EchoTestClient.RawBody">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=4005:4086#L121">RawBody</a>
 					<a class="permalink" href="#EchoTestClient.RawBody">¶</a>
 					
 					
@@ -322,7 +322,7 @@
 				
 			
 				
-				</p><h3 id="EchoTestClient.RequestURL">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=3018:3079#L88">RequestURL</a>
+				</p><h3 id="EchoTestClient.RequestURL">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=3456:3517#L102">RequestURL</a>
 					<a class="permalink" href="#EchoTestClient.RequestURL">¶</a>
 					
 					
@@ -337,7 +337,7 @@
 				
 			
 				
-				</p><h3 id="EchoTestClient.RoutePattern">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=2691:2754#L78">RoutePattern</a>
+				</p><h3 id="EchoTestClient.RoutePattern">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=3129:3192#L92">RoutePattern</a>
 					<a class="permalink" href="#EchoTestClient.RoutePattern">¶</a>
 					
 					
@@ -351,7 +351,7 @@
 				
 			
 				
-				</p><h3 id="EchoTestClient.Serve">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=5476:5535#L172">Serve</a>
+				</p><h3 id="EchoTestClient.Serve">func (*EchoTestClient) <a href="../../../../../../src/go-boilerplate/internal/controller/handler/testkit/testecho/test_echo.go.html?s=5968:6027#L185">Serve</a>
 					<a class="permalink" href="#EchoTestClient.Serve">¶</a>
 					
 					

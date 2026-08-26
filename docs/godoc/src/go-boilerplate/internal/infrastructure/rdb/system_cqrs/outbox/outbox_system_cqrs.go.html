@@ -138,7 +138,7 @@
 <span id="L81" class="ln">    81  </span>	return messages, nil
 <span id="L82" class="ln">    82  </span>}
 <span id="L83" class="ln">    83  </span>
-<span id="L84" class="ln">    84  </span><span class="comment">// MarkPublished は、publish 成功行を published へ遷移します（既に pending でなければ no-op）。</span>
+<span id="L84" class="ln">    84  </span><span class="comment">// MarkPublished は、publish 成功行を published へ遷移します。</span>
 <span id="L85" class="ln">    85  </span>func (s *store) MarkPublished(ctx context.Context, id int64) error {
 <span id="L86" class="ln">    86  </span>	ctx, endSpan := s.tracer.Start(ctx)
 <span id="L87" class="ln">    87  </span>	defer endSpan()
@@ -170,7 +170,7 @@
 <span id="L113" class="ln">   113  </span>	return attempts, nil
 <span id="L114" class="ln">   114  </span>}
 <span id="L115" class="ln">   115  </span>
-<span id="L116" class="ln">   116  </span><span class="comment">// MarkDead は、行を dead へ遷移します（既に pending でなければ no-op）。</span>
+<span id="L116" class="ln">   116  </span><span class="comment">// MarkDead は、行を dead へ遷移します。</span>
 <span id="L117" class="ln">   117  </span>func (s *store) MarkDead(ctx context.Context, id int64) error {
 <span id="L118" class="ln">   118  </span>	ctx, endSpan := s.tracer.Start(ctx)
 <span id="L119" class="ln">   119  </span>	defer endSpan()

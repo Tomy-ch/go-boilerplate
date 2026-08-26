@@ -4,13 +4,18 @@
 package worker
 
 const (
-	// ReservedKeyPrefix は、Attributes のうち engine が解釈せず素通しする
-	// broker 固有値（lease/handle 等）の予約キーに付ける接頭辞です。
+	// ReservedKeyPrefix は、engine が解釈も伝播もしない adapter 専用の broker 固有値
+	// （receipt handle / lease 等）を、traceparent 等の伝播対象属性と区別して隔離するための予約キー接頭辞です。
 	ReservedKeyPrefix = "_"
 
 	// AttrReceiptHandle は、broker のメッセージ識別子（SQS の receipt handle 等）を
 	// Attributes に隔離するための予約キーです。adapter が設定し、Ack/Nack/Extend 時に読み戻します。
 	AttrReceiptHandle = ReservedKeyPrefix + "receipt_handle"
+
+	// AttrEventType は、イベント種別（version 込み）を運ぶ属性キーです。1 つのキューには複数種別が
+	// 流れるため、Handler は本文を解釈する前にこの属性で自分の処理対象かを判定します。
+	// 予約キーではなく、publish 側 adapter が載せ consume 側 adapter が素通しする伝播対象の値です。
+	AttrEventType = "event_type"
 )
 
 // Message は、broker 非依存のメッセージ封筒です。

@@ -5,15 +5,17 @@ import (
 )
 
 // InfrastructureModule は、全プロセス共通のインフラストラクチャ層の依存関係を集約して提供するfx.Moduleです。
-// 含む concern は永続化 / clock / HTTP client / webapi gateway / security / authz です。
+// 含む concern は永続化 / clock / HTTP client / webapi gateway / object storage / auth（JWKS profile）/ authz です。
 // outbox publisher は relay 専用のため含めず、OutboxRelayModule 側で提供します。
 func InfrastructureModule() fx.Option {
 	return fx.Module("infrastructure",
 		persistenceModule(),
 		clockModule(),
+		tokenModule(), // sample-api:line
 		httpClientModule(),
 		webapiModule(),
-		securityModule(),
+		objectStorageModule(),
+		authModule(),
 		authzModule(),
 	)
 }

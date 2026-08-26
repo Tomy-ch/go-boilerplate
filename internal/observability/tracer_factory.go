@@ -6,6 +6,7 @@ import (
 	"go-boilerplate/pkg/fnmeta"
 
 	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 // TracerFactory は、レイヤー別の LayerTracer を生成するファクトリです。
@@ -27,6 +28,13 @@ func NewTracerFactory(tp trace.TracerProvider) TracerFactory {
 	return &tracerFactory{
 		tp: tp,
 	}
+}
+
+// NewDisabledTracerFactory は、スパンを一切送出しない TracerFactory を返します。
+// DI グラフを組まない CLI が infra 実装を直接組み立てる場合に用います
+// （otel パッケージはこの層の外では使えないため、生成をここへ閉じます）。
+func NewDisabledTracerFactory() TracerFactory {
+	return NewTracerFactory(noop.NewTracerProvider())
 }
 
 // Controller/Usecase/Infra は本体をインライン重複させている。getCallerFullName のスキップ段数(2)が

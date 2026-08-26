@@ -6,7 +6,7 @@ description: >-
 
 # Portal Manifest Sync
 
-This skill audits `docs/portal/manifest.yaml` against the real `README.md` / `README.ja.md` files on disk. The manifest drives `scripts/gen-portal-docs.mjs`, which copies each `src` to its `dst` under `docs/portal/guides/`.
+This skill audits `docs/portal/manifest.yaml` against the real `README.md` / `README.ja.md` files on disk. The manifest drives `scripts/portal/gen-portal-docs.ts`, which copies each `src` to its `dst` under `docs/portal/guides/`.
 
 ## Key Assumptions
 
@@ -42,7 +42,7 @@ A Japanese reference translation of this skill is available at `SKILL.ja.md` in 
 
 Use this skill when:
 
-- Files have been moved or removed and you want to clean up stale `src` entries that produce `gen-portal-docs.mjs` warnings.
+- Files have been moved or removed and you want to clean up stale `src` entries that produce `gen-portal-docs.ts` warnings.
 - You want to detect translation pair gaps (`README.md` without a `README.ja.md` sibling, or vice versa).
 - Before merging a feature branch, to verify no portal regression was introduced.
 - You want a snapshot of which on-disk READMEs are *not* currently exposed in the portal — to inform a manual curation decision, NOT to mass-add them.
@@ -54,18 +54,20 @@ Do NOT use this skill for:
 - Mass-adding undocumented READMEs to the manifest — that defeats the manual's curation intent. Treat additions as a deliberate per-file editorial decision.
 - Creating the missing translation file — chain into `canonicalize-doc` (this skill only flags the drift).
 - Rewriting individual README contents — use `sync-readme`.
+- A **deep-dive review** of a single README (strengths / gaps / improvement suggestions) — use `/readme-review <path>`.
 
 ## What This Skill Reads / Writes
 
 **Reads (always)**:
 
 - `docs/portal/manifest.yaml` — source of truth for which READMEs are exposed.
+- `.claude/skills/readme-review/SKILL.md` — source of truth for the evaluation criteria; re-read on every run.
 - All `README.md` / `README.ja.md` files in the repo, with these always excluded:
   - `docs/portal/guides/**` (generated copies of the originals)
   - `vendor/**`, `node_modules/**`
   - `.git/**`, `.claude/**` (skill / config files; not portal content)
   - Any path matching `.gitignore`
-- `scripts/gen-portal-docs.mjs` — to confirm the dst convention is still `docs/portal/guides/<flat-name>.md`.
+- `scripts/portal/gen-portal-docs.ts` — to confirm the dst convention is still `docs/portal/guides/<flat-name>.md`.
 
 **Writes (only with confirmation)**:
 
@@ -139,11 +141,7 @@ For each entry in `uncurated_raw`:
 
 1. Read the English README content (and the `*.ja.md` sibling for completeness check; sibling existence already established via Step 2 preflight).
 2. Apply the P1–P7 positive criteria and N1–N4 negative criteria from `readme-review`.
-3. Compute the verdict using `readme-review`'s thresholds:
-   - **`manual-worthy`** — positive ≥ 3 AND no negative trigger
-   - **`borderline`** — positive 1–2 AND no negative trigger
-   - **`not-yet-manual-grade`** — N2 (Stub) or N3 (Index-only) triggered
-   - **`out-of-scope-for-portal`** — N1 (Pure API ref) or N4 (Operational ref) triggered
+3. Compute the verdict using `readme-review`'s thresholds, into one of the four result classes listed under *Key Assumptions* above.
 
 4. For each file, record:
    - The verdict
@@ -202,7 +200,7 @@ Observed convention (verify per group at runtime):
 Where `<flat-hyphenated-name>` is the src path with the layer prefix stripped and `/` replaced by `-`. Examples from the existing manifest:
 
 - `internal/controller/handler/README.md` → `docs/portal/guides/controller-handler.md`
-- `internal/controller/handler/debug/README.md` → `docs/portal/guides/controller-handler-debug.md` (if it were added)
+- `internal/controller/handler/debug/README.md` → `docs/portal/guides/controller-handler-debug.md` (if it were added) <!-- skill-lint-ignore -->
 - `internal/controller/README.md` → `docs/portal/guides/controller.md`
 
 If a group's dsts deviate from this pattern, follow that group's actual convention. Some groups use bespoke names (e.g., `database/dml/README.md` → `sqlc-query-guide.md`); do not try to mechanically rename — show the convention literally.

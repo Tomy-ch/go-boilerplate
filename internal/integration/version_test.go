@@ -11,7 +11,7 @@ import (
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/system"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/require"
 )
 

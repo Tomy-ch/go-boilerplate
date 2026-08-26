@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,7 +25,7 @@ func AssertJSONEqual[T any](
 }
 
 // AssertEchoRouterMethods は、EchoのルートのHTTPメソッド集合が期待通りであることをアサートします。
-func AssertEchoRouterMethods(t *testing.T, expectedMethods []string, actualRoute []*echo.Route) {
+func AssertEchoRouterMethods(t *testing.T, expectedMethods []string, actualRoute echo.Routes) {
 	t.Helper()
 	actualMethods := make([]string, len(actualRoute))
 	for i, r := range actualRoute {
@@ -36,7 +36,7 @@ func AssertEchoRouterMethods(t *testing.T, expectedMethods []string, actualRoute
 }
 
 // AssertEchoRouterPath は、Echoのルートのパスが期待通りであることをアサートします。
-func AssertEchoRouterPath(t *testing.T, expectedPath string, actualRoute []*echo.Route) {
+func AssertEchoRouterPath(t *testing.T, expectedPath string, actualRoute echo.Routes) {
 	t.Helper()
 	require.NotEmpty(t, actualRoute, "ルートが登録されていません")
 	for _, r := range actualRoute {

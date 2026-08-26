@@ -169,25 +169,16 @@ label は method / route / status_code / status_class のみで、raw path や q
 		
 			
 			
-			<h2 id="Middleware">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/middleware.go.html?s=1234:1283#L16">Middleware</a>
+			<h2 id="Middleware">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/middleware.go.html?s=688:737#L7">Middleware</a>
 				<a class="permalink" href="#Middleware">¶</a>
 				
 				
 			</h2>
 			<pre>func Middleware(rec <a href="#Recorder">Recorder</a>) echo.<a href="#MiddlewareFunc">MiddlewareFunc</a></pre>
 			<p>Middleware は、HTTP リクエストの count / duration / status を計測する Echo ミドルウェアを返します。
-status は c.Response().After フックで確定後に取得し、error handler / recovery による
-最終 status を安全に観測します。/metrics などの運用系パスは計測対象から除外します。
-</p><p>After フックはレスポンスの Write ごとに発火するため、ストリーミング応答（チャンク / SSE 等）
-では複数回呼ばれうる。これによる重複計上を防ぐため、Observe は 1 リクエストにつき
-厳密に 1 回だけ呼び出されることを保証する。
-</p><p>計測の既知の限界（After フック方式に起因する仕様）:
-</p><ul>
-<li>ボディ無し応答（204 No Content / 304 Not Modified など）は Write が呼ばれず
-After フックが発火しないため、計測されない。
-</li></ul>
-<p>これは status を確定後に安全に観測するための After フック採用とのトレードオフであり、
-現時点では仕様として許容する。
+Observe は 1 リクエストにつき厳密に 1 回だけ呼び出されます。/metrics などの運用系パスは計測対象から
+除外し、レスポンスを取り出せない場合は計測せず素通しします。After フック方式に起因する既知の限界
+（ボディ無し応答が計測されない等）は README を参照してください。
 
 			
 			
@@ -195,7 +186,7 @@ After フックが発火しないため、計測されない。
 		
 			
 			
-			</p><h2 id="RegisterRecorder">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/recorder.go.html?s=3361:3438#L75">RegisterRecorder</a>
+			</p><h2 id="RegisterRecorder">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/recorder.go.html?s=3240:3317#L74">RegisterRecorder</a>
 				<a class="permalink" href="#RegisterRecorder">¶</a>
 				
 				
@@ -211,7 +202,7 @@ After フックが発火しないため、計測されない。
 		
 			
 			
-			</p><h2 id="PrometheusRecorder">type <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/recorder.go.html?s=1432:1534#L24">PrometheusRecorder</a>
+			</p><h2 id="PrometheusRecorder">type <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/recorder.go.html?s=1311:1413#L23">PrometheusRecorder</a>
 				<a class="permalink" href="#PrometheusRecorder">¶</a>
 				
 				
@@ -234,7 +225,7 @@ prometheus.Collector も満たし、pool_stats_collector と同じく registry �
 
 			
 				
-				<h3 id="NewPrometheusRecorder">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/recorder.go.html?s=1714:1762#L31">NewPrometheusRecorder</a>
+				<h3 id="NewPrometheusRecorder">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/recorder.go.html?s=1593:1641#L30">NewPrometheusRecorder</a>
 					<a class="permalink" href="#NewPrometheusRecorder">¶</a>
 					
 					
@@ -249,7 +240,7 @@ prometheus.Collector も満たし、pool_stats_collector と同じく registry �
 
 			
 				
-				</p><h3 id="PrometheusRecorder.Collect">func (*PrometheusRecorder) <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/recorder.go.html?s=3078:3143#L68">Collect</a>
+				</p><h3 id="PrometheusRecorder.Collect">func (*PrometheusRecorder) <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/recorder.go.html?s=2957:3022#L67">Collect</a>
 					<a class="permalink" href="#PrometheusRecorder.Collect">¶</a>
 					
 					
@@ -262,7 +253,7 @@ prometheus.Collector も満たし、pool_stats_collector と同じく registry �
 				
 			
 				
-				</p><h3 id="PrometheusRecorder.Describe">func (*PrometheusRecorder) <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/recorder.go.html?s=2854:2919#L62">Describe</a>
+				</p><h3 id="PrometheusRecorder.Describe">func (*PrometheusRecorder) <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/recorder.go.html?s=2733:2798#L61">Describe</a>
 					<a class="permalink" href="#PrometheusRecorder.Describe">¶</a>
 					
 					
@@ -275,7 +266,7 @@ prometheus.Collector も満たし、pool_stats_collector と同じく registry �
 				
 			
 				
-				</p><h3 id="PrometheusRecorder.Observe">func (*PrometheusRecorder) <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/recorder.go.html?s=2383:2501#L50">Observe</a>
+				</p><h3 id="PrometheusRecorder.Observe">func (*PrometheusRecorder) <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/recorder.go.html?s=2262:2380#L49">Observe</a>
 					<a class="permalink" href="#PrometheusRecorder.Observe">¶</a>
 					
 					
@@ -290,7 +281,7 @@ prometheus.Collector も満たし、pool_stats_collector と同じく registry �
 		
 			
 			
-			</p><h2 id="Recorder">type <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/recorder.go.html?s=1009:1210#L17">Recorder</a>
+			</p><h2 id="Recorder">type <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/redmetrics/recorder.go.html?s=888:1089#L16">Recorder</a>
 				<a class="permalink" href="#Recorder">¶</a>
 				
 				

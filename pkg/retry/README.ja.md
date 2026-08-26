@@ -2,7 +2,7 @@
 
 [English](README.md) | 日本語
 
-失敗分類を*消費する*有限リトライの行動層を提供します。`classify → bounded attempts → backoff + full jitter → deadline-aware` を 1 度だけ実装し、トランザクションのリトライやレジリエントな外部 HTTP などの呼び出し側が共有します。
+失敗分類を*消費する*有限リトライの行動層を提供します。`classify → bounded attempts → backoff + full jitter → deadline-aware` を 1 度だけ実装し、自身の失敗をリトライ可能と分類する任意の呼び出し側が共有します。
 
 ## このパッケージの意図
 
@@ -17,14 +17,14 @@
 |`Do(ctx, sleeper, policy, isRetryable, fn)`|`fn` を有限リトライで実行。`isRetryable(err)` が真の間、試行ごとに `policy.Backoff`（+ full jitter）だけ待機して再試行|
 |`Full(d)`|`[0, d]` の一様乱数（full jitter）を返す。`d <= 0` なら `0`|
 |`Policy`（構造体）|`MaxAttempts` ＋ `Backoff`（`func(attempt int) time.Duration`。`nil` は待機なし）|
-|`Sleeper`（インターフェース）|`Sleep(ctx, d) error` — 待機の抽象。`internal/usecase/boundary/clock.Sleeper` が構造的に充足|
+|`Sleeper`（インターフェース）|`Sleep(ctx, d) error` — 待機の抽象。呼び出し側が持つ sleeper 型が構造的に充足|
 
 ## 補足
 
 - `Do` は `fn` を最低 1 回実行し（`MaxAttempts < 1` は `1` 扱い）、最後に観測した error（成功時は `nil`）を返します。
 - `isRetryable` は `fn` の返した非 nil error に対してのみ呼ばれます。
 - `sleeper.Sleep` が error を返した（ctx 打ち切り / deadline）場合、`Do` は sleep の error ではなく**直前の `fn` の error** を返します。リトライ対象だった元の失敗を呼び出し側へ伝えるためです。
-- `Sleeper` は `pkg/` が `internal/` に依存しないようローカル定義です。境界の `clock.Sleeper` が構造的に充足します。
+- `Sleeper` は `pkg/` が `internal/` に依存しないようローカル定義です。呼び出し側が持つ sleeper 型が、本パッケージのインターフェースを import せずに構造的に充足します。
 
 ## ラップ対象
 

@@ -28,7 +28,7 @@ Do NOT use this skill for:
 
 - `docs/spec/<feature>/domain.md` — single source of truth for what gets generated.
 - `internal/domain/README.md` — layer-wide convention (principles, naming, getter style, `ptr.Copy` usage, error wrapping, file separation). **Canonical**: README wins on any conflict with sibling code.
-- Existing sibling aggregates under `internal/domain/<sibling>/` (e.g., `internal/domain/user/`) — secondary structural template for imports, file layout, formatting style.
+- Existing sibling aggregates under `internal/domain/<sibling>/` — secondary structural template for imports, file layout, formatting style.
 - `internal/domain/<aggregate>/` — to verify the directory does not already exist (abort if it does).
 
 **Writes (with confirmation)**:
@@ -100,11 +100,11 @@ If the subagent returns no viewpoints, fall back to a minimal default set and wa
 Apply auto-derivation rules to fill in elements that are NOT in the spec but follow convention. These rules map spec → generated elements; the canonical *shape* of the resulting Go (error-wrapping pattern, constant naming, getter / `ptr.Copy` style) lives in `internal/domain/README.md` and wins on any drift:
 
 - **Errors**: for every spec field with validation, generate `ErrInvalid<Field>` in `error.go`. For VOs, generate `ErrInvalid<VO>`. Wrap them under a single group root `errInvalid` (see README `error.go` example for the exact two-level wrapping).
-- **Field identifiers + collect-all validation**: for every user-correctable input field (fields a client submits and can fix), generate a `Field<Name> = "<property>"` constant in `constant.go` matching the API request property name, and shape the input-field validation to collect **all** failures — append `xerrors.Wrap(ErrInvalid<Field>, msg)` and `Field<Name>` per failing field, then `return apperror.WithDetails(xerrors.Join(errs...), fields...)` — so the API can report every invalid field at once (`details`). Server-internal invariants (id, timestamps, password hash) keep first-error return: they are not user-correctable. The canonical shape and rationale live in the README `Errors` section (ADR-0040); reason texts stay in the wrapped message (log-only), never in the identifiers.
+- **Field identifiers + collect-all validation**: for every user-correctable input field (fields a client submits and can fix), generate a `Field<Name> = "<property>"` constant in `constant.go` matching the API request property name, and shape the input-field validation to collect **all** failures — append `xerrors.Wrap(ErrInvalid<Field>, msg)` and `Field<Name>` per failing field, then `return apperror.WithDetails(xerrors.Join(errs...), fields...)` — so the API can report every invalid field at once (`details`). Server-internal invariants (id, timestamps, password hash) keep first-error return: they are not user-correctable. The canonical shape lives in the README `Errors` section and the rationale in ADR-0048 (error-metadata-code-message-details); reason texts stay in the wrapped message (log-only), never in the identifiers.
 - **Constants**: for every field with `min_length` / `max_length`, generate `min<Field>Length` / `max<Field>Length` constants. For `min` / `max` numeric fields, generate analogous constants.
 - **Getters**: for every unexported entity field, generate `func (e *Entity) Field() T { return e.field }` on a single line. For pointer types, use `return ptr.Copy(e.field)`.
 - **ID validation**: for `uuid.UUID` fields named `id` or `<x>ID`, add `if id.IsNil() { return nil, xerrors.Wrap(ErrInvalidID, "...") }` in the constructor.
-- **Simple type checks**: for `string` fields with min/max length, generate `stringkit.InRange(field, minXLength, maxXLength)`. For nullable string fields, allow nil but apply range when present (`if x != nil && !stringkit.InRange(*x, ...)`).
+- **Simple type checks**: for `string` fields with min/max length, generate `if ok, msg := stringkit.ValidateInRange(field, minXLength, maxXLength); !ok`. For nullable string fields, allow nil but apply the range when present (`if x != nil { if ok, msg := stringkit.ValidateInRange(*x, ...); !ok { ... } }`).
 
 ## Step 4. Plan and Confirm
 
@@ -176,7 +176,7 @@ Remains protected:
 
 ## Constraints
 
-- ❌ Add comments that restate the code or explain *why* a choice was made — keep code comments minimal (behavior / contract only); rationale belongs in the commit message / README, not the code. One-line declaration godoc stays (even on unexported symbols).
+- ❌ Add comments that restate the code or explain *why* a choice was made — keep code comments minimal (behavior / contract only); rationale belongs in the commit message / README, not the code. One-line declaration godoc stays (even on unexported symbols). **Volume counts too**: what this skill scaffolds is idiomatic by construction, so a multi-line explanation of a constructor / Params struct / row-to-entity mapping / handler template is noise. State the contract in one line and stop; never restate a repo-wide rule `docs/rules.md` already carries. Suppression, not elimination — a genuinely non-obvious Why still stays.
 - ❌ Invent fields, methods, errors, or constants not in the spec
 - ❌ Hardcode the layer convention — always read `internal/domain/README.md` + an existing aggregate as template
 - ❌ Skip the test-perspective subagent (Step 2)

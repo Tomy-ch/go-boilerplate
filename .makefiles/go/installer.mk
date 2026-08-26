@@ -21,9 +21,13 @@ install-tools:
 	@mise install go:golang.org/x/tools/gopls
 	@mise install go:github.com/cweill/gotests/gotests
 	@mise install go:github.com/josharian/impl
-	@mise install aqua:go-delve/delve
+	@mise install go:github.com/go-delve/delve/cmd/dlv
 	@mise install lefthook
 	@mise install golangci-lint
+	@mise install aqua:zizmorcore/zizmor
+	# make test-scripts の actions-shellcheck のテストは実物の shellcheck を呼ぶ。無いと自分で skip
+	# するため、host にも入れておかないと hook が緑でも検査されていない範囲が残る。
+	@mise install shellcheck
 	@mise reshim
 	@echo "✅ Go tools installed successfully."
 

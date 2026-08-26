@@ -10,7 +10,7 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
-// feedCursorKeyCount は、フィードカーソルが保持するソートキーの個数（created_at, id）です。
+// feedCursorKeyCount は、フィードカーソルが保持するソートキーの個数（作成日時, ID）です。
 const feedCursorKeyCount = 2
 
 // decodeFeedCursor は、cursor の不透明キー列を keyset 境界（FeedCursor）へ解釈します。
@@ -39,7 +39,7 @@ func decodeFeedCursor(cursor *paging.Cursor) (*user.FeedCursor, error) {
 	return &fc, nil
 }
 
-// encodeFeedCursor は、現在ページ末尾行のソートキー（created_at, id）から次ページ用の不透明カーソルを生成します。
+// encodeFeedCursor は、現在ページ末尾のソートキー（作成日時, ID）から次ページ用の不透明カーソルを生成します。
 func encodeFeedCursor(last *user.User) string {
 	return paging.EncodeCursor(last.CreatedAt().Format(time.RFC3339Nano), last.ID().String())
 }

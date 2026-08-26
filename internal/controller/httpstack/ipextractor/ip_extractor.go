@@ -4,7 +4,7 @@ package ipextractor
 import (
 	"go-boilerplate/internal/config"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 // New は、アプリケーション設定とセキュリティ設定をもとに Echo の IP アドレス抽出ポリシーを設定します。

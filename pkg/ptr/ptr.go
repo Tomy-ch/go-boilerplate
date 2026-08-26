@@ -14,6 +14,16 @@ func Copy[T any](v *T) *T {
 	return &c
 }
 
+// Map は、p が非 nil ならその指す値に f を適用した結果のポインタを、nil なら nil を返します。
+// f は p が nil の場合には呼び出されません。
+func Map[T, U any](p *T, f func(T) U) *U {
+	if p == nil {
+		return nil
+	}
+	u := f(*p)
+	return &u
+}
+
 // Deref は、p が非 nil ならその指す値を、nil なら fallback を返します。
 func Deref[T any](p *T, fallback T) T {
 	if p != nil {

@@ -14,12 +14,14 @@ deletes the entire User feature, so you can return to zero and rebuild it yourse
 
 - Newcomers who want one continuous path through the codebase instead of layer-by-layer
   reference docs.
-- AI agents (or humans) operating **without** the `.claude/` scaffold skills, who need the
-  manual procedure the skills automate.
+- Anyone who needs to see **what the scaffold skills actually do** — this document is the
+  ground truth they encode, and the place to look when a generated result has to be judged.
+- Anyone operating without the `.claude/` scaffold skills, who therefore performs the
+  procedure by hand.
 
-> If you *do* have the scaffold skills available, the automated equivalent of this whole
-> tutorial is `/scaffold-endpoint user` (see [Where to go next](#where-to-go-next)). This
-> document is the manual ground truth those skills encode.
+> The standard path is not to type this out. The automated equivalent of the whole tutorial is
+> `/scaffold-endpoint user` (see [Where to go next](#where-to-go-next)); read this once so you
+> can tell whether what it produced is right.
 
 ## What you will build
 
@@ -76,7 +78,7 @@ git switch -c tutorial/build-user
 ## Step 0 — Reset to zero
 
 The repository declares every file that constitutes the sample in
-[`scripts/setup/lib/sample-api.mjs`](../../scripts/setup/lib/sample-api.mjs). One command
+[`scripts/setup/remove-sample-api/sample-manifest.ts`](../../scripts/setup/remove-sample-api/sample-manifest.ts). One command
 deletes them and strips the `sample-api` marker blocks out of the shared DI modules and
 `openapi.yaml`, then regenerates and verifies the now-smaller tree:
 
@@ -89,8 +91,8 @@ make setup-remove-sample-api
 ```
 
 **What it removes** (the manifest is your table of contents for the rest of this tutorial):
-`internal/domain/user`, `internal/usecase/user`, the two infra packages under
-`repository/user` and `query_service/user`, `internal/controller/handler/v1/users`,
+`internal/domain/user`, `internal/usecase/user`, the infra package under
+`repository/user`, `internal/controller/handler/v1/users`,
 `internal/controller/job/usercount`, the three `internal/integration/v1_users*_test.go`
 files, the User OpenAPI paths/components, the User DML + migrations + seed, and
 `docs/spec/user`.
@@ -128,8 +130,10 @@ files. These are the human-authored intent the inner layers will implement.
 **Why first:** in lean A the domain and usecase implementations are validated against these
 specs (`/verify-spec`), and the spec's Entity field table is the soft contract checked
 against the SQL migration. Writing them first gives every later step a target. The Entity
-section, for example, fixes that `prefectureID` is held as an ID reference only and that
-`passwordHash` — never a plaintext password — is the persisted credential.
+section, for example, fixes that `prefectureID` is held as an ID reference only. The `User`
+aggregate holds no credential of its own: authentication is delegated to an external OIDC
+provider, and the mapping from a token's `(issuer, subject)` to an internal user is owned by
+the separate `user_identities` table (see [`docs/design/auth.md`](../design/auth.md)).
 
 **Verify:** none yet (Markdown). If you have the skills, `/verify-spec user` checks format +
 cross-references.
@@ -145,9 +149,9 @@ cross-references.
 
 **Files:**
 
-- `openapi/paths/v1/users.yaml` (list + create), `openapi/paths/v1/users/user_id.yaml`
-  (get/put/patch/delete), `openapi/paths/v1/users/me/password.yaml`,
-  `openapi/paths/v1/users/search.yaml`.
+- `openapi/paths/v1/users.yaml` (list + create), `openapi/paths/v1/users/userId.yaml`
+  (get/put/patch/delete), `openapi/paths/v1/users/me.yaml` (authenticated self-retrieval),
+  `openapi/paths/v1/users/search.yaml`, `openapi/paths/v1/users/feed.yaml`.
 - `openapi/components/schemas/{UserBaseInputRequest,UserResponse}.yaml`, plus the
   `requests/`, `responses/`, and `parameters/` fragments for users and search.
 - `openapi/openapi.yaml` — the root document that `$ref`s the above. The sample entries here
@@ -166,12 +170,13 @@ endpoint that has no contract. Each `operationId` (`GetUsers`, `PostUsers`, `Get
 - `database/migrations/000004_create_users.up.sql` / `.down.sql` — the `users` table
   (`id` UUID PK, `email` UNIQUE, `prefecture_id` FK, address columns, `created_at` /
   `updated_at` / `deleted_at` for soft delete).
-- `database/migrations/000011_users_table_search_text_column.up.sql` / `.down.sql` — a
+- `database/migrations/000017_add_users_table_search_text_column.up.sql` / `.down.sql` — a
   `GENERATED ALWAYS` `search_text` column + a GIN trigram index for keyword search.
 - `database/dml/repository/user/*.sql` — the aggregate's CRUD queries
-  (`insert_user`, `select_user_by_id`, `select_users`, `update_user`, `count_user`).
-- `database/dml/query_service/user/*.sql` — read-side queries
-  (`select_users_by_keyword`, `count_user_by_keyword`).
+  (`insert_user`, `select_user_by_id`, `select_users`, `update_user`, `count_user`) and its
+  keyword search (`select_users_by_keyword`, `count_users_by_keyword`). User keeps both on the
+  Repository rather than splitting a QueryService — the read side returns entities, not a
+  separate projection.
 - `database/seed/000001_users.sql` — sample rows (including a soft-deleted one).
 
 **Why:** **migrations are append-only** — never edit an existing migration; add a new
@@ -202,8 +207,7 @@ make gen-query   # dumps schema → merges DML → sqlc generate → fmt
 
 - `internal/controller/handler/v1/users/gen/server.gen.go` + `type.gen.go` (and the same
   under `detail/gen`, `search/gen`) — the `ServerInterface` and request/response types.
-- `internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go` +
-  `user_query_service.gen.sql.go` — type-safe query methods.
+- `internal/infrastructure/rdb/sqlc/gen/user_repository.gen.sql.go` — type-safe query methods.
 - `*_mock.go` for any interface carrying a `//go:generate mockgen` directive (added in the
   next steps; re-run `make gen-api` after you declare them).
 
@@ -223,8 +227,9 @@ methods, value objects, sentinel errors, constants, and the Repository interface
 - `user_domain.go` — the `User` struct + `New(...)` constructor + getters + behavior methods.
 - `constant.go` — `min*/max*` length bounds derived from the spec's field constraints.
 - `error.go` — `ErrInvalid<Field>` sentinels + `ErrAlreadyDeleted` etc.
-- `raw_password.go` — the `RawPassword` value object (length-validated plaintext, hashed in
-  an outer layer).
+- `email.go` / `postal_code.go` — value objects (`Email` / `PostalCode`) that validate their
+  raw string in a factory (`NewEmail` / `NewPostalCode`) and expose it via `Value()`, so an
+  invalid form can never be constructed.
 - `user_repository.go` — the Repository interface, carrying a `//go:generate mockgen`
   directive (→ `mock/`).
 - `*_test.go` — invariants, behavior methods, VO boundaries.
@@ -254,9 +259,9 @@ func New(id uuid.UUID, firstName /* … */ string, /* … */ ) (*User, error) {
 }
 ```
 
-Mutations are methods that re-check invariants (e.g. `UpdateProfile`, `ChangePassword`,
-`MarkAsDeleted` — each calls `ensureNotDeleted` first). Read the real file: it is the
-canonical template for any future aggregate.
+Mutations are methods that re-check invariants (e.g. `UpdateProfile`, `MarkAsDeleted` — each
+calls `ensureNotDeleted` first). Read the real file: it is the canonical template for any
+future aggregate.
 
 **Verify:**
 
@@ -277,8 +282,6 @@ from the interface + sqlc gen.
 
 - `internal/infrastructure/rdb/repository/user/user_repository.go` — implements the domain
   `user.Repository` (Create / FindByID / Update / active listing / count).
-- `internal/infrastructure/rdb/query_service/user/user_query_service.go` — implements the
-  usecase-side QueryService (keyword find / count), returning **DTOs**, not entities.
 - `*_test.go` — integration tests against a **real DB** with transaction rollback (via the
   rdb `testkit`).
 
@@ -314,17 +317,15 @@ Register the implementations with `fx.Provide` in
 **Verify:** needs the test DB migrated (Step 2b):
 
 ```bash
-go test ./internal/infrastructure/rdb/repository/user/... \
-        ./internal/infrastructure/rdb/query_service/user/...
+go test ./internal/infrastructure/rdb/repository/user/...
 ```
 
 ---
 
 ## Step 6 — Usecase layer
 
-**Goal:** implement the application service from `usecase.md`: orchestrate domain + repository
-
-- boundaries, and return DTOs. No business *rules* are invented here — this layer coordinates.
+**Goal:** implement the application service from `usecase.md`: orchestrate domain + repository +
+boundaries, and return DTOs. No business *rules* are invented here — this layer coordinates.
 
 **Files (in `internal/usecase/user/`):**
 
@@ -340,20 +341,20 @@ go test ./internal/infrastructure/rdb/repository/user/... \
 
 - **Return DTOs, never domain entities.** Map `*user.User` → `UserView` before returning.
 - **Time and transactions come through boundaries**, not the stdlib: `u.clock.Now()` (not
-  `time.Now()`), `u.txm.Do(ctx, fn)` for transaction boundaries, `u.encrypter.Hash(...)` for
-  password hashing. Determinism and testability depend on this.
+  `time.Now()`) for the current time, `u.txm.Do(ctx, fn)` for transaction boundaries. Every
+  non-deterministic or external dependency arrives as a `boundary/` interface. Determinism and
+  testability depend on this.
 - **The usecase owns the transaction boundary**; the domain knows nothing about `tx`.
 - **Orchestrate, don't re-implement rules.** Calling a domain behavior method is fine;
   encoding a new invariant here is not — that belongs in the domain.
 
-Shape of a write use case — obtain time, hash, then run inside a transaction:
+Shape of a write use case — obtain time from the clock boundary, then run inside a transaction:
 
 ```go
 // shape only — see user_usecase.go for the real body
 func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (UserView, error) {
  ctx, endSpan := u.tracer.Start(ctx); defer endSpan()
  now := u.clock.Now()                                   // boundary, not time.Now()
- hash, err := u.encrypter.Hash(dto.RawPassword)         // boundary
  // … u.txm.Do(ctx, func(ctx) { user.New(...now...); u.repo.Create(...) }) …
  return toUserView(entity /* … */), nil                 // DTO out
 }
@@ -467,7 +468,48 @@ go test ./internal/integration/...
 
 ---
 
-## Step 10 — Full verification
+## Step 10 — The event-driven side (optional)
+
+**Goal:** see the other entry point into the usecase layer. Everything so far was driven by an HTTP
+request; withdrawal additionally emits a domain event that a **worker** consumes.
+
+Nothing you built in Steps 1–9 changes for this. The withdrawal usecase already writes
+`user.withdrawn.v1` to the outbox **inside the same transaction** as the deletion, so the event
+cannot be lost, nor emitted for a withdrawal that rolled back. From there:
+
+|#|Piece|File|
+|---|---|---|
+|①|business `Handler` — decode, classify, call the usecase|`internal/controller/worker/withdrawalarchive/withdrawal_archive_handler.go`|
+|②|`Consumer` / `FailureHandler` adapter|`internal/infrastructure/queue/sqs` (constructed in DI, not here)|
+|③|`Worker` — bundles name / consumer / handler / failure handler|`internal/controller/worker/withdrawalarchive/withdrawal_archive_worker.go`|
+|④|registration|`internal/di/module/worker.go`, inside `sample-api` markers|
+|⑤|broker client + adapter config|`internal/di/module/withdrawalarchive.go`|
+|⑥|env|`CONSUMER_QUEUE_*` in `env/.env`|
+
+**Why the adapter is built in DI rather than in the worker package:** the controller layer must not
+import infrastructure (depguard enforces it), so the worker receives an already-constructed
+`Consumer` and never learns which broker it is reading from. Same rule that keeps the HTTP handler
+away from a repository.
+
+**Two things worth opening the code for:**
+
+- **Idempotency.** Delivery is at-least-once, so this handler will sometimes run twice for one
+  withdrawal. Rather than detect the repeat, the *operation* is made idempotent: the object key is
+  derived from the user ID alone and the body is the payload unmodified, so a second run writes
+  identical bytes. That is stronger than propagating an idempotency key, which only works if the
+  downstream honours it.
+- **Selection.** One queue carries every event the outbox emits, so the handler checks the
+  `event_type` attribute first and acks anything else without processing it. Treating a foreign event
+  as a failure would route every purchase event to the DLQ.
+
+**Verify** — three terminals (`make serve`, `make outbox-relay`, `make worker
+NAME=withdrawal-archive`), then withdraw a user. The full recipe, with what to watch at each hop, is
+in
+[`internal/controller/worker/withdrawalarchive/README.md`](../../internal/controller/worker/withdrawalarchive/README.md).
+
+---
+
+## Step 11 — Full verification
 
 **Goal:** prove the rebuilt feature is correct, formatted, and meets the coverage gate.
 
@@ -495,11 +537,12 @@ the Definition of Done, not an optional polish.
 |2|contracts|`openapi/**`, `database/migrations/**`, `database/dml/**`|OpenAPI-first + append-only migrations|`make db-*-migrate-up`|
 |3|generate|`make gen-api` / `make gen-query`|Change the contract, never the generated output|files appear under `gen/`|
 |4|domain|`internal/domain/user/**`|Unexported fields + `ptr.Copy` + sentinel errors + purity|`go test ./internal/domain/user/...`|
-|5|infra|`internal/infrastructure/rdb/{repository,query_service}/user/**`|`pgerror.NormalizeError` + tracer span + no type leak|`go test ./…/user/...` (DB)|
+|5|infra|`internal/infrastructure/rdb/repository/user/**`|`pgerror.NormalizeError` + tracer span + no type leak|`go test ./…/user/...` (DB)|
 |6|usecase|`internal/usecase/user/**`|DTOs out; time/tx via boundaries; orchestrate only|`go test ./internal/usecase/user/...`|
 |7|controller|`internal/controller/handler/v1/users/**`, `job/usercount/**`|One method per operationId; handler is a pure template|`go test ./…/users/...`|
 |8|DI|`internal/di/module/*.go`|The only place layers meet; marker blocks keep it removable|`make lint`|
 |9|integration|`internal/integration/v1_users*_test.go`|HTTP boundary with usecase mocked|`go test ./internal/integration/...`|
+|9.5|worker|`internal/controller/worker/withdrawalarchive/**`|A second entry point into the usecase layer; the operation itself is idempotent|`make worker NAME=withdrawal-archive`|
 |10|verify|`make fix` / `make lint` / `make test`|90% floor is part of Done|`make cover-gate`|
 
 ---
@@ -514,7 +557,7 @@ the Definition of Done, not an optional polish.
 - **Check for drift.** After any multi-layer change, `/back-prop` and `/arch-check` confirm
   the READMEs and code still agree.
 - **Add a second feature.** `product` and `order` already ship as DB-only stubs (see the
-  `sample-api.mjs` manifest); promoting one to a full stack is the natural next exercise.
+  `sample-manifest.ts` manifest); promoting one to a full stack is the natural next exercise.
 
 ## Maintenance note
 

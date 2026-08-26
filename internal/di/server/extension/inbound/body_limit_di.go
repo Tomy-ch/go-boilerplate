@@ -9,9 +9,7 @@ import (
 )
 
 // bodyLimitPrePriority は、body limit ミドルウェアの Pre 適用順序です。
-// OpenAPI validator（Use=6）が requestBody を読む前に確実に上限を適用するため Pre に置きます。
-// uri=1・deadline budget の timeout=2 の後（Pre=3）に置く。timeout が設定した budget の内側に入るため、
-// body 読み取りも budget 内に収まります。
+// OpenAPI validator（Use=6）が requestBody を読む前に適用する必要があります。
 const bodyLimitPrePriority = 3
 
 // BodyLimitModule は、リクエストボディ上限のミドルウェアを提供する fx モジュールを返します。

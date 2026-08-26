@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub Actions Pin Update"
+  short_description: "SHA固定Actionsを隔離期間付きで安全に更新"
+  default_prompt: "$actions-pin を使い、GitHub Actions の固定SHAを通常更新して。"

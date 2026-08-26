@@ -1,0 +1,4 @@
+interface:
+  display_name: "DDD Audit"
+  short_description: "Evans原義とDDD台帳・正本の対応を監査する"
+  default_prompt: "$ddd-audit を使い、DDDパターン台帳とADR・READMEの解釈を監査して。"

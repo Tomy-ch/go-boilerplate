@@ -20,8 +20,8 @@ flowchart TB
     Stop --> Cancel --> Wait
 ```
 
-- `OnStart`：poll ループ（`engine.Run(engineCtx)`）を detached goroutine で起動し、即座に返す（Start はブロックしない）
-- `OnStop`：`engineCtx` をキャンセルし、`stopCtx` の範囲でループの終了を待つ
+1. Start 時: poll ループ（`engine.Run(engineCtx)`）を detached goroutine で起動し、即座に返す（Start はブロックしない）
+2. Stop 時: `engineCtx` をキャンセルし、`stopCtx` の範囲でループの終了を待つ
 
 ## 使用フロー
 
@@ -32,8 +32,5 @@ flowchart TB
 ## 注意点
 
 - Start/Stop 配線（detached goroutine・停止時キャンセル・grace 内 drain）は `lifecycle.SupervisedRunner` に委譲する
-- 実行 context は `OnStop` でのみキャンセルされるため、Start 完了後の `startCtx` キャンセルには巻き込まれない
 - `engine.Run` の戻り値は意図的に無視される（リトライ／バックオフはループ自身が管理する）
-- relay 専用プロセス（`cmd outbox-relay`）でのみ使用し、メインサーバーでは使用しない
-- `OnStop` でのループ終了待ちは `stopCtx` で制限される
 - このフックは `internal/di/module/outboxrelay.go` の `OutboxRelayModule` から配線される

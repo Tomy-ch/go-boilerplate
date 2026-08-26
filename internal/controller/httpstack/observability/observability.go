@@ -2,13 +2,15 @@
 package observability
 
 import (
-	"github.com/labstack/echo/v4"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
+	echootel "github.com/labstack/echo-opentelemetry"
+	"github.com/labstack/echo/v5"
 )
 
-// Middleware は、指定したサービス名で Echo 用の OTel ミドルウェアを返します。
-func Middleware(serviceName string) echo.MiddlewareFunc {
-	return otelecho.Middleware(serviceName)
+// Middleware は、Echo 用の OTel ミドルウェアを返します。
+// server.address / server.port は Request.Host から解決させるため Config.ServerName は空のままにします
+// （ServerName はサーバの正式ホスト名であり、サービス名は OTel の Resource が持ちます）。
+func Middleware() echo.MiddlewareFunc {
+	return echootel.NewMiddlewareWithConfig(echootel.Config{})
 }
 
 // PassthroughMiddleware は、リクエストを次のハンドラへそのまま渡す素通しミドルウェアを返します。

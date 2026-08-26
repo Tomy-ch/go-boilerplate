@@ -11,12 +11,17 @@ import (
 	mock_outbox "go-boilerplate/internal/usecase/boundary/outbox/mock"
 	"go-boilerplate/internal/usecase/outbox"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
+
+// spacedAuthorization は、前後空白付きの機微ヘッダ名です。map リテラルのキーに空白を書くと
+// gocritic が誤記として弾くため、定数を経由して与えます。
+const spacedAuthorization = " Authorization"
 
 // traceparentPattern は、W3C traceparent（00-<traceID>-<spanID>-<flags>）の形式を検証する正規表現です。
 var traceparentPattern = regexp.MustCompile(`^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$`)
@@ -47,16 +52,15 @@ func Test_emitUsecase_Emit(t *testing.T) {
 
 		t.Run("noop tracer 環境で Headers が無い場合は headers を nil で INSERT し message_id を返す", func(t *testing.T) {
 			t.Parallel()
-			// noop tracer は有効なスパンを持たないため traceparent が注入されず、headers は nil のままになる。
 			ctrl := gomock.NewController(t)
 			store := mock_outbox.NewMockStore(ctrl)
-			want := uuid.NewTestFromSalt(t, "msg")
+			want := uuidtestkit.NewTestFromSalt(t, "msg")
 
 			store.EXPECT().
 				Insert(gomock.Any(), outboxbndry.EmitParams{
-					AggregateType: "Purchase",
+					AggregateType: "Resource",
 					AggregateID:   "p-1",
-					EventType:     "purchase.created.v1",
+					EventType:     "resource.created.v1",
 					Payload:       []byte(`{"v":1}`),
 					Headers:       nil,
 				}).
@@ -64,9 +68,9 @@ func Test_emitUsecase_Emit(t *testing.T) {
 
 			got, err := outbox.NewEmit(store, observability.NewNoopTracerFactory(t)).
 				Emit(context.Background(), outbox.EmitInput{
-					AggregateType: "Purchase",
+					AggregateType: "Resource",
 					AggregateID:   "p-1",
-					EventType:     "purchase.created.v1",
+					EventType:     "resource.created.v1",
 					Payload:       []byte(`{"v":1}`),
 				})
 
@@ -76,10 +80,9 @@ func Test_emitUsecase_Emit(t *testing.T) {
 
 		t.Run("noop tracer 環境で Headers がある場合はユーザ値をそのまま JSON へ marshal して INSERT する", func(t *testing.T) {
 			t.Parallel()
-			// noop tracer は有効なスパンを持たないため traceparent の上書きが起きず、ユーザ提供値がそのまま残る。
 			ctrl := gomock.NewController(t)
 			store := mock_outbox.NewMockStore(ctrl)
-			want := uuid.NewTestFromSalt(t, "msg2")
+			want := uuidtestkit.NewTestFromSalt(t, "msg2")
 
 			store.EXPECT().
 				Insert(gomock.Any(), gomock.Any()).
@@ -101,16 +104,50 @@ func Test_emitUsecase_Emit(t *testing.T) {
 			assert.Equal(t, want, got)
 		})
 
+		t.Run("機微ヘッダ（Authorization/Cookie 等）は大文字小文字と前後空白を問わず除外し、他ヘッダは保持する", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			store := mock_outbox.NewMockStore(ctrl)
+			want := uuidtestkit.NewTestFromSalt(t, "msg_denylist")
+
+			store.EXPECT().
+				Insert(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(_ context.Context, p outboxbndry.EmitParams) (uuid.UUID, error) {
+					var h map[string]string
+					require.NoError(t, json.Unmarshal(p.Headers, &h))
+					assert.Equal(t, map[string]string{"traceparent": "00-abc", "x-custom": "keep"}, h)
+					return want, nil
+				})
+
+			headers := map[string]string{
+				"traceparent":   "00-abc",
+				"x-custom":      "keep",
+				"Authorization": "Bearer secret",
+				"cookie":        "sid=abc",
+				"Set-Cookie":    "sid=abc",
+			}
+			headers[spacedAuthorization] = "Bearer secret"
+
+			got, err := outbox.NewEmit(store, observability.NewNoopTracerFactory(t)).
+				Emit(context.Background(), outbox.EmitInput{
+					EventType: "e.v1",
+					Payload:   []byte(`{}`),
+					Headers:   headers,
+				})
+
+			require.NoError(t, err)
+			assert.Equal(t, want, got)
+		})
+
 		t.Run("有効スパン環境では Headers が無くても traceparent を注入して INSERT する", func(t *testing.T) {
 			t.Parallel()
-			// 有効なスパンを持つ ctx では InjectTraceContextToCarrier が traceparent を headers へ載せる。
 			ctx, end := observability.NewStubSpanContext(t)
 			defer end()
 			wantTraceID := observability.ExtractTraceContext(ctx).TraceID()
 
 			ctrl := gomock.NewController(t)
 			store := mock_outbox.NewMockStore(ctrl)
-			want := uuid.NewTestFromSalt(t, "msg3")
+			want := uuidtestkit.NewTestFromSalt(t, "msg3")
 
 			store.EXPECT().
 				Insert(gomock.Any(), gomock.Any()).
@@ -135,14 +172,13 @@ func Test_emitUsecase_Emit(t *testing.T) {
 
 		t.Run("有効スパン環境ではユーザ提供の traceparent を有効スパンの値で上書きしつつ他ヘッダは保持する", func(t *testing.T) {
 			t.Parallel()
-			// 有効なスパンがある場合、ユーザが渡した traceparent はアクティブスパンの値で上書きされ、他のヘッダは残る。
 			ctx, end := observability.NewStubSpanContext(t)
 			defer end()
 			wantTraceID := observability.ExtractTraceContext(ctx).TraceID()
 
 			ctrl := gomock.NewController(t)
 			store := mock_outbox.NewMockStore(ctrl)
-			want := uuid.NewTestFromSalt(t, "msg4")
+			want := uuidtestkit.NewTestFromSalt(t, "msg4")
 
 			store.EXPECT().
 				Insert(gomock.Any(), gomock.Any()).

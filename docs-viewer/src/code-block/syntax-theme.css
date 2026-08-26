@@ -1,0 +1,144 @@
+/*
+ * highlight.js が付ける scope class の配色。
+ *
+ * 配布されている theme（`highlight.js/styles/*.css`）をそのまま読み込まない。theme は 1 枚で
+ * 1 つの配色しか持たず、light と dark の 2 枚を重ねると後から読んだ側が常に勝つ。ここでは
+ * 役割ごとの custom property を tokens.css と同じ 2 経路（OS の設定 / `data-theme`）で切り替え、
+ * 規則そのものは 1 組だけ持つ。
+ *
+ * 配色の値は GitHub の syntax theme（highlight.js 同梱の `github` / `github-dark`）に合わせる。
+ * 面と余白は typeset foundation の `pre` / `code` が持つため、ここでは色だけを扱う。
+ */
+
+:root {
+  --syntax-keyword: #d73a49;
+  --syntax-entity: #6f42c1;
+  --syntax-constant: #005cc5;
+  --syntax-string: #032f62;
+  --syntax-variable: #e36209;
+  --syntax-comment: #6a737d;
+  --syntax-entity-tag: #22863a;
+  --syntax-heading: #005cc5;
+  --syntax-list: #735c0f;
+  --syntax-inserted: #22863a;
+  --syntax-inserted-background: #f0fff4;
+  --syntax-deleted: #b31d28;
+  --syntax-deleted-background: #ffeef0;
+}
+
+@media screen and (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --syntax-keyword: #ff7b72;
+    --syntax-entity: #d2a8ff;
+    --syntax-constant: #79c0ff;
+    --syntax-string: #a5d6ff;
+    --syntax-variable: #ffa657;
+    --syntax-comment: #8b949e;
+    --syntax-entity-tag: #7ee787;
+    --syntax-heading: #1f6feb;
+    --syntax-list: #f2cc60;
+    --syntax-inserted: #aff5b4;
+    --syntax-inserted-background: #033a16;
+    --syntax-deleted: #ffdcd7;
+    --syntax-deleted-background: #67060c;
+  }
+}
+
+@media screen {
+  :root[data-theme="dark"] {
+    --syntax-keyword: #ff7b72;
+    --syntax-entity: #d2a8ff;
+    --syntax-constant: #79c0ff;
+    --syntax-string: #a5d6ff;
+    --syntax-variable: #ffa657;
+    --syntax-comment: #8b949e;
+    --syntax-entity-tag: #7ee787;
+    --syntax-heading: #1f6feb;
+    --syntax-list: #f2cc60;
+    --syntax-inserted: #aff5b4;
+    --syntax-inserted-background: #033a16;
+    --syntax-deleted: #ffdcd7;
+    --syntax-deleted-background: #67060c;
+  }
+}
+
+.hljs-doctag,
+.hljs-keyword,
+.hljs-meta .hljs-keyword,
+.hljs-template-tag,
+.hljs-template-variable,
+.hljs-type,
+.hljs-variable.language_ {
+  color: var(--syntax-keyword);
+}
+
+.hljs-title,
+.hljs-title.class_,
+.hljs-title.class_.inherited__,
+.hljs-title.function_ {
+  color: var(--syntax-entity);
+}
+
+.hljs-attr,
+.hljs-attribute,
+.hljs-literal,
+.hljs-meta,
+.hljs-number,
+.hljs-operator,
+.hljs-selector-attr,
+.hljs-selector-class,
+.hljs-selector-id,
+.hljs-variable {
+  color: var(--syntax-constant);
+}
+
+.hljs-meta .hljs-string,
+.hljs-regexp,
+.hljs-string {
+  color: var(--syntax-string);
+}
+
+.hljs-built_in,
+.hljs-symbol {
+  color: var(--syntax-variable);
+}
+
+.hljs-code,
+.hljs-comment,
+.hljs-formula {
+  color: var(--syntax-comment);
+}
+
+.hljs-name,
+.hljs-quote,
+.hljs-selector-pseudo,
+.hljs-selector-tag {
+  color: var(--syntax-entity-tag);
+}
+
+.hljs-section {
+  color: var(--syntax-heading);
+  font-weight: bold;
+}
+
+.hljs-bullet {
+  color: var(--syntax-list);
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: bold;
+}
+
+.hljs-addition {
+  background-color: var(--syntax-inserted-background);
+  color: var(--syntax-inserted);
+}
+
+.hljs-deletion {
+  background-color: var(--syntax-deleted-background);
+  color: var(--syntax-deleted);
+}

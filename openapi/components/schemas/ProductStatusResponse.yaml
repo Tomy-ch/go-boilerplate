@@ -1,0 +1,13 @@
+type: object
+description: 商品ステータスマスタ 1 件分のレスポンスです。
+allOf:
+  - $ref: './ProductStatusRef.yaml'
+  - type: object
+    description: 商品ステータスマスタの詳細情報です。
+    required:
+      - code
+    properties:
+      code:
+        type: integer
+        description: 商品ステータスコード（正の SMALLINT）
+        example: 1

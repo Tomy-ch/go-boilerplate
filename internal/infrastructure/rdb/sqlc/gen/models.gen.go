@@ -7,8 +7,45 @@ package gen
 import (
 	"time"
 
+	decimal "go-boilerplate/pkg/decimal"
 	uuid "go-boilerplate/pkg/uuid"
 )
+
+// カート明細
+type CartItems struct {
+	// ID
+	ID uuid.UUID
+	// カートID
+	CartID uuid.UUID
+	// 商品ID
+	ProductID uuid.UUID
+	// 数量
+	Quantity int32
+	// 最後に提示した価格
+	LastSeenPrice *decimal.Decimal
+	// 追加日時
+	AddedAt time.Time
+	// 作成日時
+	CreatedAt time.Time
+	// 更新日時
+	UpdatedAt time.Time
+}
+
+// カート
+type Carts struct {
+	// ID
+	ID uuid.UUID
+	// 所有者のユーザーID
+	UserID *uuid.UUID
+	// ゲストセッショントークン
+	SessionToken *string
+	// 有効期限
+	ExpiresAt time.Time
+	// 作成日時
+	CreatedAt time.Time
+	// 更新日時
+	UpdatedAt time.Time
+}
 
 // 冪等性キー
 type IdempotencyKeys struct {
@@ -74,6 +111,8 @@ type Prefectures struct {
 	Name string
 	// 都道府県コード
 	Code int16
+	// 順序
+	SortKey int16
 	// 作成日時
 	CreatedAt time.Time
 	// 更新日時
@@ -90,6 +129,24 @@ type ProductCategories struct {
 	Code int16
 	// 順序
 	SortKey int16
+	// 作成日時
+	CreatedAt time.Time
+	// 更新日時
+	UpdatedAt time.Time
+}
+
+// 商品画像
+type ProductImages struct {
+	// ID
+	ID uuid.UUID
+	// 商品ID
+	ProductID uuid.UUID
+	// 画像パス
+	ImagePath string
+	// 表示順
+	DisplaySort int16
+	// 削除日時
+	DeletedAt *time.Time
 	// 作成日時
 	CreatedAt time.Time
 	// 更新日時
@@ -121,7 +178,7 @@ type Products struct {
 	// 説明
 	Description *string
 	// 価格
-	Price int32
+	Price decimal.Decimal
 	// 在庫数
 	Quantity int32
 	// 在庫警告閾値
@@ -132,6 +189,8 @@ type Products struct {
 	CategoryID uuid.UUID
 	// 公開日時
 	PublishedAt *time.Time
+	// 楽観ロックバージョン
+	LockVersion int32
 	// 作成日時
 	CreatedAt time.Time
 	// 更新日時
@@ -149,7 +208,7 @@ type PurchaseDetails struct {
 	// 数量
 	Quantity int32
 	// 単価
-	UnitPrice int32
+	UnitPrice decimal.Decimal
 	// 作成日時
 	CreatedAt time.Time
 	// 更新日時
@@ -183,13 +242,13 @@ type Purchases struct {
 	// 購入ステータスID
 	StatusID uuid.UUID
 	// 小計金額
-	SubtotalAmount int32
+	SubtotalAmount int64
 	// 税金額
-	TaxAmount int32
+	TaxAmount int64
 	// 配送料
-	ShippingFee int32
+	ShippingFee int64
 	// 合計金額
-	TotalAmount int32
+	TotalAmount int64
 	// 注文日時
 	OrderedAt time.Time
 	// 支払日時
@@ -206,9 +265,53 @@ type Purchases struct {
 	UpdatedAt time.Time
 }
 
+// ロール
+type Roles struct {
+	// ID
+	ID uuid.UUID
+	// 名称
+	Name string
+	// コード
+	Code int16
+	// 順序
+	SortKey int16
+	// 作成日時
+	CreatedAt time.Time
+	// 更新日時
+	UpdatedAt time.Time
+}
+
 type SchemaMigrations struct {
 	Version int64
 	Dirty   bool
+}
+
+// 外部ID連携
+type UserIdentities struct {
+	// ID
+	ID uuid.UUID
+	// ユーザID
+	UserID uuid.UUID
+	// トークン発行者（IdP issuer）
+	Issuer string
+	// 認証主体（token の sub）
+	Subject string
+	// 作成日時
+	CreatedAt time.Time
+	// 更新日時
+	UpdatedAt time.Time
+}
+
+// ユーザロール
+type UserRoles struct {
+	// ユーザID
+	UserID uuid.UUID
+	// ロールID
+	RoleID uuid.UUID
+	// 作成日時
+	CreatedAt time.Time
+	// 更新日時
+	UpdatedAt time.Time
 }
 
 // ユーザ
@@ -219,8 +322,6 @@ type Users struct {
 	FirstName string
 	// 苗字
 	LastName string
-	// パスワードハッシュ
-	PasswordHash string
 	// メールアドレス
 	Email string
 	// 電話番号

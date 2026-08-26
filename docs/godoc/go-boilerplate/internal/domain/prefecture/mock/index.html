@@ -115,6 +115,9 @@
 					<dd>    <a href="#MockRepository.EXPECT">func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder</a></dd>
 				
 					
+					<dd>    <a href="#MockRepository.FindAll">func (m *MockRepository) FindAll(ctx context.Context) (prefecture.Prefectures, error)</a></dd>
+				
+					
 					<dd>    <a href="#MockRepository.FindByID">func (m *MockRepository) FindByID(ctx context.Context, id uuid.UUID) (*prefecture.Prefecture, error)</a></dd>
 				
 					
@@ -127,6 +130,9 @@
 				
 				<dd><a href="#MockRepositoryMockRecorder">type MockRepositoryMockRecorder</a></dd>
 				
+				
+					
+					<dd>    <a href="#MockRepositoryMockRecorder.FindAll">func (mr *MockRepositoryMockRecorder) FindAll(ctx any) *gomock.Call</a></dd>
 				
 					
 					<dd>    <a href="#MockRepositoryMockRecorder.FindByID">func (mr *MockRepositoryMockRecorder) FindByID(ctx, id any) *gomock.Call</a></dd>
@@ -214,7 +220,20 @@
 				
 			
 				
-				</p><h3 id="MockRepository.FindByID">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/prefecture/mock/mock_prefecture_repository.go.gen.go.html?s=1221:1321#L36">FindByID</a>
+				</p><h3 id="MockRepository.FindAll">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/prefecture/mock/mock_prefecture_repository.go.gen.go.html?s=1220:1305#L36">FindAll</a>
+					<a class="permalink" href="#MockRepository.FindAll">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockRepository">MockRepository</a>) FindAll(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>) (<a href="../../../../../go-boilerplate/internal/domain/prefecture/">prefecture</a>.<a href="../../../../../go-boilerplate/internal/domain/prefecture/#Prefectures">Prefectures</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>FindAll mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepository.FindByID">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/prefecture/mock/mock_prefecture_repository.go.gen.go.html?s=1757:1857#L51">FindByID</a>
 					<a class="permalink" href="#MockRepository.FindByID">¶</a>
 					
 					
@@ -227,7 +246,7 @@
 				
 			
 				
-				</p><h3 id="MockRepository.FindByIDs">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/prefecture/mock/mock_prefecture_repository.go.gen.go.html?s=1792:1896#L51">FindByIDs</a>
+				</p><h3 id="MockRepository.FindByIDs">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/prefecture/mock/mock_prefecture_repository.go.gen.go.html?s=2328:2432#L66">FindByIDs</a>
 					<a class="permalink" href="#MockRepository.FindByIDs">¶</a>
 					
 					
@@ -240,7 +259,7 @@
 				
 			
 				
-				</p><h3 id="MockRepository.FindByName">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/prefecture/mock/mock_prefecture_repository.go.gen.go.html?s=2377:2478#L66">FindByName</a>
+				</p><h3 id="MockRepository.FindByName">func (*MockRepository) <a href="../../../../../src/go-boilerplate/internal/domain/prefecture/mock/mock_prefecture_repository.go.gen.go.html?s=2913:3014#L81">FindByName</a>
 					<a class="permalink" href="#MockRepository.FindByName">¶</a>
 					
 					
@@ -279,7 +298,20 @@
 
 			
 				
-				<h3 id="MockRepositoryMockRecorder.FindByID">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/prefecture/mock/mock_prefecture_repository.go.gen.go.html?s=1532:1604#L45">FindByID</a>
+				<h3 id="MockRepositoryMockRecorder.FindAll">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/prefecture/mock/mock_prefecture_repository.go.gen.go.html?s=1509:1576#L45">FindAll</a>
+					<a class="permalink" href="#MockRepositoryMockRecorder.FindAll">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockRepositoryMockRecorder">MockRepositoryMockRecorder</a>) FindAll(ctx <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>FindAll indicates an expected call of FindAll.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockRepositoryMockRecorder.FindByID">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/prefecture/mock/mock_prefecture_repository.go.gen.go.html?s=2068:2140#L60">FindByID</a>
 					<a class="permalink" href="#MockRepositoryMockRecorder.FindByID">¶</a>
 					
 					
@@ -292,7 +324,7 @@
 				
 			
 				
-				</p><h3 id="MockRepositoryMockRecorder.FindByIDs">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/prefecture/mock/mock_prefecture_repository.go.gen.go.html?s=2111:2185#L60">FindByIDs</a>
+				</p><h3 id="MockRepositoryMockRecorder.FindByIDs">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/prefecture/mock/mock_prefecture_repository.go.gen.go.html?s=2647:2721#L75">FindByIDs</a>
 					<a class="permalink" href="#MockRepositoryMockRecorder.FindByIDs">¶</a>
 					
 					
@@ -305,7 +337,7 @@
 				
 			
 				
-				</p><h3 id="MockRepositoryMockRecorder.FindByName">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/prefecture/mock/mock_prefecture_repository.go.gen.go.html?s=2697:2773#L75">FindByName</a>
+				</p><h3 id="MockRepositoryMockRecorder.FindByName">func (*MockRepositoryMockRecorder) <a href="../../../../../src/go-boilerplate/internal/domain/prefecture/mock/mock_prefecture_repository.go.gen.go.html?s=3233:3309#L90">FindByName</a>
 					<a class="permalink" href="#MockRepositoryMockRecorder.FindByName">¶</a>
 					
 					

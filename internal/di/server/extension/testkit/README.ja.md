@@ -2,7 +2,7 @@
 
 [English](README.md) | 日本語
 
-`testkit` は、di server extension のモジュールテスト（兄弟パッケージである `inbound` / `outbound` / `security` / `instrumentation` / `nonprod`）向けの **共有テストヘルパー**を提供するパッケージです。
+`testkit` は、di server extension のモジュールテスト（兄弟パッケージである `inbound` / `outbound` / `security` / `instrumentation`）向けの **共有テストヘルパー**を提供するパッケージです。
 
 使い捨ての `fx` アプリを構築し、モジュールが fx グループに何を provide するかを検証する定型処理を集約することで、各 extension の `module_graph_test.go` を小さく一貫した形に保ちます。
 

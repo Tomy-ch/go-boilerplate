@@ -1,0 +1,32 @@
+/**
+ * 検査対象から外すモジュールの宣言。
+ *
+ * @remarks
+ * カバレッジの母数と 1:1 ゲートは、同じ理由で同じモジュールを外します。外す理由は 1 つで、
+ * 「判定を持たず、ファイル入出力と終了コードだけを担う」こと。判定が無いところに検査を張っても、
+ * 守る契約が無いまま率と件数だけが動きます。
+ *
+ * 宣言をここ 1 箇所に置くのは、2 箇所に書くと片方だけを直したときに黙ってずれるためです。
+ * ずれる向きは「カバレッジからは外れているのにゲートは要求する」（開発が止まる）か、
+ * 「ゲートからは外れているのにカバレッジは要求する」（検査されない判定が増える）のどちらかで、
+ * 後者は気づかれないまま進みます。
+ */
+
+/**
+ * 入口ファイル。CLI 引数の受け取り・ファイル入出力・終了コードだけを担い、判定は同じディレクトリの
+ * 判定モジュールへ切り出してある。Go 側の `cmd/<command>.go` ↔ `internal/cli/<command>/` と同じ扱い。
+ *
+ * `*&#47;index.ts` は `scripts/<tool>/index.ts`、`*&#47;*&#47;index.ts` は `scripts/setup/<tool>/index.ts` に
+ * 当たる。`portal/` だけは入口の命名が揃っていないため別に挙げる。
+ */
+export const ENTRYPOINT_PATTERNS = ["*/index.ts", "*/*/index.ts", "portal/gen-*.ts"] as const;
+
+/**
+ * 判定を持たないモジュール。
+ *
+ * - `setup/lib/runtime.ts` — `ROOT_DIR` の解決と commander の生成だけ。
+ */
+export const NON_DECIDING_MODULES = ["setup/lib/runtime.ts"] as const;
+
+/** カバレッジ母数と 1:1 ゲートの双方が外す対象（`scripts/` からの相対）。 */
+export const EXCLUDED_FROM_CHECKS = [...ENTRYPOINT_PATTERNS, ...NON_DECIDING_MODULES] as const;

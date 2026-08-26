@@ -89,15 +89,7 @@ func New(provider driver.DatabaseDriver, tf observability.TracerFactory) outboxb
 
 ## 構成
 
-```text
-internal/infrastructure/rdb/system_cqrs/
-├── healthcheck/
-│   └── health_check_system_cqrs.go
-├── idempotency/
-│   └── idempotency_system_cqrs.go
-└── outbox/
-    └── outbox_system_cqrs.go
-```
+運用上の関心事ごとに 1 つのディレクトリを置き、`database/dml/system_cqrs/` の同じ関心事と同じ名前を付ける。
 
 ## 設計方針
 

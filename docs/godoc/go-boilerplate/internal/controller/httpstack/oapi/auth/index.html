@@ -106,7 +106,7 @@
 			
 			
 				
-				<dd><a href="#NewAuthenticator">func NewAuthenticator(authCfg *config.AuthConfig, authenticator authbd.Authenticator) openapi3filter.AuthenticationFunc</a></dd>
+				<dd><a href="#NewAuthenticator">func NewAuthenticator(authenticator authbd.Authenticator, resolver authbd.IdentityResolver) openapi3filter.AuthenticationFunc</a></dd>
 			
 			
 			
@@ -146,22 +146,22 @@
     <span id="ErrUnauthorizedInvalidToken">ErrUnauthorizedInvalidToken</span> = <a href="../../../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../../../go-boilerplate/internal/apperror/#ErrUnauthenticated">ErrUnauthenticated</a>, &#34;invalid token&#34;)
     <span class="comment">// ErrUnauthorizedTokenNotProvided は、認証トークンが提供されていない場合のエラー。</span>
     <span id="ErrUnauthorizedTokenNotProvided">ErrUnauthorizedTokenNotProvided</span> = <a href="../../../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../../../go-boilerplate/internal/apperror/#ErrUnauthenticated">ErrUnauthenticated</a>, &#34;authorization token not provided&#34;)
-    <span class="comment">// ErrAuthnSlotNotFound は、Authn スロット未装着の場合のエラー。実経路では認証失敗(401)として返るため誤解を避け 401 に寄せる。</span>
-    <span id="ErrAuthnSlotNotFound">ErrAuthnSlotNotFound</span> = <a href="../../../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../../../go-boilerplate/internal/apperror/#ErrUnauthenticated">ErrUnauthenticated</a>, &#34;authn slot not found in request context&#34;)
+    <span class="comment">// ErrAuthnSlotNotFound は、Authn スロット未装着の場合のエラー（資格情報と無関係な結線の不具合）。</span>
+    <span id="ErrAuthnSlotNotFound">ErrAuthnSlotNotFound</span> = <a href="../../../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../../../go-boilerplate/internal/apperror/#ErrInternal">ErrInternal</a>, &#34;authn slot not found in request context&#34;)
 )</pre>
 			
 		
 		
 			
 			
-			<h2 id="NewAuthenticator">func <a href="../../../../../../src/go-boilerplate/internal/controller/httpstack/oapi/auth/auth.go.html?s=470:594#L10">NewAuthenticator</a>
+			<h2 id="NewAuthenticator">func <a href="../../../../../../src/go-boilerplate/internal/controller/httpstack/oapi/auth/auth.go.html?s=555:685#L12">NewAuthenticator</a>
 				<a class="permalink" href="#NewAuthenticator">¶</a>
 				
 				
 			</h2>
 			<pre>func NewAuthenticator(
-    authCfg *<a href="../../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../../go-boilerplate/internal/config/#AuthConfig">AuthConfig</a>,
     authenticator <a href="../../../../../../go-boilerplate/internal/usecase/boundary/auth/">authbd</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/auth/#Authenticator">Authenticator</a>,
+    resolver <a href="../../../../../../go-boilerplate/internal/usecase/boundary/auth/">authbd</a>.<a href="../../../../../../go-boilerplate/internal/usecase/boundary/auth/#IdentityResolver">IdentityResolver</a>,
 ) <a href="../../../../../../github.com/getkin/kin-openapi/openapi3filter/">openapi3filter</a>.<a href="../../../../../../github.com/getkin/kin-openapi/openapi3filter/#AuthenticationFunc">AuthenticationFunc</a></pre>
 			<p>NewAuthenticator は、認証用のOpenAPIオプションを返します。
 

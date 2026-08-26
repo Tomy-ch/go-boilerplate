@@ -6,92 +6,122 @@ import (
 	"net/http"
 	"strings"
 
-	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/ctxhelper"
+	"go-boilerplate/internal/controller/error/response"
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/getkin/kin-openapi/openapi3filter"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 const prefixBearer = "Bearer "
 
 // NewAuthenticator は、認証用のOpenAPIオプションを返します。
 func NewAuthenticator(
-	authCfg *config.AuthConfig,
 	authenticator authbd.Authenticator,
+	resolver authbd.IdentityResolver,
 ) openapi3filter.AuthenticationFunc {
-	return func(ctx context.Context, input *openapi3filter.AuthenticationInput) error {
+	return func(_ context.Context, input *openapi3filter.AuthenticationInput) error {
 		req := input.RequestValidationInput.Request
 
-		// エラー変換は authExtractor に一本化。
-		authn, err := authExtractor(ctx, req, authCfg, authenticator)
+		// OpenAPI バリデータが渡す context は context.Background() から組み立てられており、
+		// スパン・deadline・キャンセルのいずれも持たない。認証は request の予算の内側で行う。
+		//nolint:contextcheck // 引数の context ではなく input が内包する request の context を用いるため
+		authn, err := authExtractor(req.Context(), req, authenticator, resolver)
 		if err != nil {
-			return err
+			failure := withHTTPStatus(err)
+			// 記録するのは資格情報が提示されたうえでの失敗だけ。未提示は失敗ではない。
+			//nolint:contextcheck // input が内包する request の context のスロットへ書き戻すため
+			ctxhelper.SetAuthnFailure(req.Context(), failure)
+			return failure
 		}
 		if authn == nil {
-			return ErrUnauthorizedTokenNotProvided
+			return withHTTPStatus(ErrUnauthorizedTokenNotProvided)
 		}
 
 		//nolint:contextcheck // input が内包する request の context のスロットへ書き戻すため
 		if !ctxhelper.SetAuthn(req.Context(), *authn) {
-			return ErrAuthnSlotNotFound
+			failure := withHTTPStatus(ErrAuthnSlotNotFound)
+			// 認証は成立したが結果を運べていない。記録しなければ、認証済みの主体が匿名として通る。
+			//nolint:contextcheck // 同上
+			ctxhelper.SetAuthnFailure(req.Context(), failure)
+			return failure
 		}
 		return nil
 	}
 }
 
-// authExtractor は、認証情報を抽出します。
+// withHTTPStatus は、認証フェーズのエラーへ apperror の分類に対応するステータスを持たせます（元のエラーは保持）。
+// OpenAPI バリデータはステータスを解決できないエラーを 403 へ丸めるため、この段で持たせないと、
+// 認可の判定を行っていないものが認可の結論として外へ出ます。
+// メッセージは空のまま返します（本文は errorhandler が組み立てる）。
+func withHTTPStatus(err error) error {
+	var he *echo.HTTPError
+	if xerrors.As(err, &he) {
+		return err
+	}
+	return echo.NewHTTPError(response.NewHTTPErrorFromAppError(err).HTTPStatus, "").Wrap(err)
+}
+
+// authExtractor は、Bearer トークンを検証して内部ユーザーを解決した Authn を返します。
+// トークンが無い場合は nil, nil を返します。
 func authExtractor(
 	ctx context.Context,
 	req *http.Request,
-	authCfg *config.AuthConfig,
 	authenticator authbd.Authenticator,
+	resolver authbd.IdentityResolver,
 ) (*authbd.Authn, error) {
-	token := extractToken(req, authCfg)
+	scheme, token := extractBearerToken(req)
 	if token == "" {
 		//nolint:nilnil // トークン未提供を表す。呼び出し側で authn==nil を判定し未提供エラーへ変換するため意図的にnil,nilを返す
 		return nil, nil
 	}
 
-	cred, err := authbd.NewCredential(token)
+	cred, err := authbd.NewCredential(scheme, token)
 	if err != nil {
 		return nil, err
 	}
 
+	// 資格情報についての結論だけを認証エラーへ寄せ、原因は外へ出さない。
+	// 検証を遂行できなかった場合（鍵が引けない / 予算切れ）は結論ではないため、分類を保ったまま返す。
 	authn, err := authenticator.Authenticate(ctx, cred)
 	if err != nil {
-		return nil, ErrUnauthorizedInvalidToken
+		if xerrors.Is(err, apperror.ErrUnauthenticated) {
+			return nil, ErrUnauthorizedInvalidToken
+		}
+		return nil, err
+	}
+	if authn == nil {
+		//nolint:nilnil // Authenticate が nil,nil を返した場合は未提供として扱い、呼び出し側で ErrUnauthorizedTokenNotProvided へ変換する
+		return nil, nil
 	}
 
-	return authn, nil
+	// 認証済みの外部アイデンティティ（issuer + subject）を内部ユーザーへ解決する。エラーは分類を変えずに返す。
+	resolved, err := resolver.Resolve(ctx, authn)
+	if err != nil {
+		return nil, err
+	}
+	if resolved == nil {
+		// resolver は成功時に非 nil の Authn を返す契約。防御的に未認証として扱う。
+		return nil, authbd.ErrIdentityNotFound
+	}
+
+	return resolved, nil
 }
 
-// extractToken は、認証トークンを抽出します。
-func extractToken(r *http.Request, authCfg *config.AuthConfig) string {
-	// extract from Cookie
-	if authCfg.CookieName() != "" {
-		if ck, err := r.Cookie(authCfg.CookieName()); err == nil && ck != nil {
-			if v := strings.TrimSpace(ck.Value); v != "" {
-				return v
-			}
-		}
-	}
-
-	// extract from Header
-	if authCfg.HeaderName() == "" {
-		return ""
-	}
-
-	raw := strings.TrimSpace(r.Header.Get(authCfg.HeaderName()))
+// extractBearerToken は、Authorization ヘッダから Bearer トークンを抽出します（ヘッダ名・スキームは RFC 6750 により固定）。
+// Authorization: Bearer <token> 形式のときだけ scheme=SchemeBearer と token を返し、
+// それ以外は scheme/token とも空を返します。
+func extractBearerToken(r *http.Request) (string, string) {
+	raw := strings.TrimSpace(r.Header.Get(echo.HeaderAuthorization))
 	if raw == "" {
-		return ""
+		return "", ""
 	}
-	if authCfg.AllowedHeaderBearer() && strings.EqualFold(authCfg.HeaderName(), echo.HeaderAuthorization) {
-		if after, ok := strings.CutPrefix(raw, prefixBearer); ok {
-			return strings.TrimSpace(after)
-		}
-		return ""
+	after, ok := strings.CutPrefix(raw, prefixBearer)
+	if !ok {
+		return "", ""
 	}
-	return raw
+	return authbd.SchemeBearer, strings.TrimSpace(after)
 }

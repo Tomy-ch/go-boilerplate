@@ -2,13 +2,13 @@
 
 ## Overview
 
-This project is a backend architecture template for Go applications based on the following three primary objectives.
+This project is a backend architecture for Go applications based on the following three primary objectives.
 
 - **Contract-driven development**
 - **Type safety**
 - **Clear layer separation**
 
-This template combines the following architectural approaches.
+This architecture combines the following approaches.
 
 - Pragmatic Onion Architecture
 - OpenAPI-first development
@@ -27,7 +27,7 @@ It is particularly effective for the following types of systems.
 
 ## Architectural Principles
 
-This template is based on several design principles.
+This architecture is based on several design principles.
 
 ### Contract-first API
 
@@ -93,7 +93,7 @@ architectural violations can be prevented.
 
 ### Vendor Neutrality
 
-This template avoids strong dependencies on specific SaaS or proprietary tools.
+This project avoids strong dependencies on specific SaaS or proprietary tools.
 
 As much as possible, the following are prioritized.
 
@@ -252,7 +252,7 @@ The `internal/` directory contains application code with a layered structure.
 
 ## Modular Monolith Strategy
 
-This template assumes a **modular monolith architecture**.
+This project assumes a **modular monolith architecture**.
 
 Characteristics:
 
@@ -281,7 +281,10 @@ This architecture is designed with the premise that
 
 ## AI-assisted Development
 
-This project is designed to safely integrate with AI-assisted development tools.
+AI-assisted development is the **standard development path** of this project. Manual development
+remains technically possible, as a not-recommended compatibility path that is not held to the same
+developer experience. See
+[ADR-0007 (agents-md-operational-contract)](adr/0007-agents-md-operational-contract.md).
 
 Architectural constraints prevent  
 AI-generated code from violating design rules.
@@ -291,9 +294,34 @@ AI agents should refer to the following before generating code.
 - `rules.md`
 - `architecture.md`
 
+### What the architecture never depends on
+
+Making development AI-first does not make the **application** depend on AI. The following stay
+AI-independent, and must succeed with no AI service or agent available:
+
+- Application runtime and production runtime
+- Build and test
+- The architecture itself, and the domain model
+- The API contract and the database schema
+- The ordinary CI checks
+
+AI dependence is confined to the surrounding development workflow — navigation, automation,
+feedback, and review. The resulting system can therefore be operated without an AI vendor, which is
+the property that actually carries risk.
+
+### Structure stays human-readable
+
+AI-first is not a licence to restructure the code into something only a machine can follow. This
+project assumes that **explicit structure an agent can traverse and explicit structure a human can
+read are strongly correlated**: the responsibility separation, explicit naming, layer boundaries,
+and documentation structure described above are the shared substrate.
+
+Agent-facing context, skills, and automation are therefore added *over* that structure as a control
+surface for exploring and using it accurately — never as a replacement for it.
+
 ## Non-Goals
 
-This template does not aim to be:
+This project does not aim to be:
 
 - A microservices framework
 - An ultra low-latency architecture

@@ -199,15 +199,18 @@ linters:
             - pkg: go.opentelemetry.io/otel
               desc: "オブザーバビリティ関連ライブラリの使用は制限されています。
                 可能な限り、オブザーバビリティ関連ライブラリを追加で使用しない実装を心がけてください。"
-        restrict_the_use_of_otel_contrib: # OTel contrib(計装/エクスポータ)の使用を制限します
+        restrict_the_use_of_otel_instrumentation: # OTel 計装ライブラリ(contrib / Echo 公式)の使用を制限します
           files:
             - "**/*.go"
             - "!**/internal/observability/**.go" # otel 初期化(exporter / runtime 計装)で使用を許可します
-            - "!**/internal/controller/httpstack/observability/**.go" # HTTP層の otelecho ミドルウェア統合で使用を許可します
+            - "!**/internal/controller/httpstack/observability/**.go" # HTTP層の OTel ミドルウェア統合で使用を許可します
           list-mode: lax
           deny:
             - pkg: go.opentelemetry.io/contrib
               desc: "OTel contrib ライブラリの使用は observability の初期化 / HTTP otel ミドルウェアに限定されています。
+                可能な限り、オブザーバビリティ関連ライブラリを追加で使用しない実装を心がけてください。"
+            - pkg: github.com/labstack/echo-opentelemetry
+              desc: "Echo の OTel 計装ライブラリの使用は HTTP otel ミドルウェアに限定されています。
                 可能な限り、オブザーバビリティ関連ライブラリを追加で使用しない実装を心がけてください。"
         restrict_lifecycle_to_di: # di 層外からの lifecycle.Registrar への参照を禁止する
           files:
@@ -285,6 +288,9 @@ linters:
         independent_pkg: # pkgディレクトリが他の内部パッケージに依存しないことを保証します
           files:
             - "**/pkg/**.go"
+            # testkit サブパッケージ（テスト補助）は親 pkg を import してよい。production から参照されず、
+            # testing パッケージを本体バイナリから隔離するための seam であるため独立性の対象外とする。
+            - "!**/pkg/**/testkit/**.go"
           list-mode: lax
           allow:
             # pkg 配下からの参照のみ例外的に許可します。
@@ -304,12 +310,62 @@ linters:
         maintain_a_sound_domain:
           files:
             - "**/internal/domain/**.go"
+            # ドメインサービス（internal/domain/service/**）は下の maintain_a_sound_domain_service が受け持つ。
+            # 両ルールが同じファイルに当たると、こちらの集約間 deny が例外を打ち消してしまう。
+            - "!**/internal/domain/service/**.go"
+          list-mode: lax
+          allow:
+            # 集約横断で共有する業務 VO の置き場。ここだけは domain 間の import を許可する。
+            # 器としての正確な十進量は pkg/decimal だが、通貨・非負・最小単位といった業務意味論は
+            # pkg に置けないため domain に置く（ADR-0039 (domain-lexicon)）。
+            - go-boilerplate/internal/domain/lexicon
+          deny:
+            # 集約間の直接結合を禁止する。集約横断で共有したい業務 VO は internal/domain/lexicon
+            # に置くこと（上の allow）。ある集約が別集約の内部型へ依存すると境界が崩れる。
+            - pkg: go-boilerplate/internal/domain/
+              desc: "domain層で他の集約を直接参照することは禁止です。集約横断で共有する業務 VO は
+                internal/domain/lexicon へ置いてください。"
+            - pkg: net/http
+              desc: "Domain層でhttpパッケージを直接使用しないでください。
+                handler層にて処理して、DTOなどを介して値を受け渡してください。"
+            - pkg: github.com/labstack/echo/v5
+              desc: "Domain層でechoパッケージを直接使用しないでください。
+                handler層にて処理して、DTOなどを介して値を受け渡してください。"
+            - pkg: database/sql
+              desc: "Domain層でdatabase/sqlパッケージを直接使用しないでください。
+                infrastructure層にて処理して、コンストラクタに受け渡してください。"
+            - pkg: go-boilerplate/internal/usecase/
+              desc: "domain層でusecase層を参照することは禁止です。"
+            - pkg: go-boilerplate/internal/controller/
+              desc: "domain層でcontroller層を参照することは禁止です。"
+            - pkg: go-boilerplate/internal/infrastructure/
+              desc: "domain層でinfrastructure層を参照することは禁止です。"
+            - pkg: go-boilerplate/pkg/fs
+              desc: "domain層でファイルシステム I/O を行わないでください。FS アクセスは外側の層の責務です。"
+            - pkg: go-boilerplate/pkg/exec
+              desc: "domain層で外部プロセス実行を行わないでください。プロセス実行は外側の層の責務です。"
+            - pkg: go-boilerplate/pkg/envutil
+              desc: "環境変数の書き換えは外側の層の責務です。本層からの参照は禁止です。"
+        # ドメインサービス（internal/domain/service/<name>）だけは集約の import を許可します。
+        # どのエンティティ・値オブジェクトの自然な責務でもない規則は集約の外に置きますが、集約をまたぐ
+        # 規則の場合、置き場所を変えても相手の集約を参照できなければ規則は書けません。そのための例外です。
+        # 許可であって要求ではないため、単一集約に閉じたサービスも同じくここに置きます。
+        #
+        # 抜け道にしないための歯止めは 2 つです。ひとつは、ここが緩めるのは domain 間の import
+        # だけで、層をまたぐ deny（usecase / controller / infrastructure / net/http / echo /
+        # database/sql / fs / exec / envutil）は maintain_a_sound_domain と同一のまま再掲していること。
+        # もうひとつは、この置き場への入場条件（どのエンティティ・値オブジェクトの自然な責務でもなく、
+        # 状態を持たない）が internal/domain/README.md に明文化されていること。単に 2 つの
+        # 集約を読みたいだけの処理は Usecase の仕事であり、ここへ移してはいけません。
+        maintain_a_sound_domain_service:
+          files:
+            - "**/internal/domain/service/**.go"
           list-mode: lax
           deny:
             - pkg: net/http
               desc: "Domain層でhttpパッケージを直接使用しないでください。
                 handler層にて処理して、DTOなどを介して値を受け渡してください。"
-            - pkg: github.com/labstack/echo/v4
+            - pkg: github.com/labstack/echo/v5
               desc: "Domain層でechoパッケージを直接使用しないでください。
                 handler層にて処理して、DTOなどを介して値を受け渡してください。"
             - pkg: database/sql
@@ -338,7 +394,7 @@ linters:
             - pkg: net/http
               desc: "Usecase層でhttpパッケージを直接使用しないでください。
                 handler層にて処理して、DTOなどを介して値を受け渡してください。"
-            - pkg: github.com/labstack/echo/v4
+            - pkg: github.com/labstack/echo/v5
               desc: "Usecase層でechoパッケージを直接使用しないでください。
                 handler層にて処理して、DTOなどを介して値を受け渡してください。"
             - pkg: go-boilerplate/internal/controller/
@@ -380,7 +436,7 @@ linters:
             - pkg: net/http
               desc: "Infrastructure層でhttpパッケージを直接使用しないでください。
                 controller層にて処理して、DTOなどを介して値を受け渡してください。"
-            - pkg: github.com/labstack/echo/v4
+            - pkg: github.com/labstack/echo/v5
               desc: "Infrastructure層でechoパッケージを直接使用しないでください。
                 controller層にて処理して、DTOなどを介して値を受け渡してください。"
             - pkg: go-boilerplate/internal/controller/
@@ -392,7 +448,7 @@ linters:
             - "**/internal/infrastructure/httpclient/**.go"
           list-mode: lax
           deny:
-            - pkg: github.com/labstack/echo/v4
+            - pkg: github.com/labstack/echo/v5
               desc: "outbound HTTP client では echo(inbound ハンドラ用)を使用しないでください。"
             - pkg: go-boilerplate/internal/controller/
               desc: "infrastructure層でcontroller層を参照することは禁止です。"
@@ -454,6 +510,18 @@ linters:
         - pattern: '^fmt\.Errorf$'
           msg: "禁止：fmt.Errorf は使用しないでください。
                 pkg/xerrors の New / Wrap / Join を使用してください。"
+        - pattern: '^time\.Now$'
+          pkg: '^time$'
+          msg: "禁止：現在時刻は clock.Clock（internal/usecase/boundary/clock）の Now() で取得してください。
+                domain / usecase での time.Now() は固定時刻に差し替えられず非決定的なテストを招きます
+                （本ルールは exclusions.rules で domain / usecase 層のみに限定しています）。"
+        - pattern: '^time\.Local$'
+          pkg: '^time$'
+          msg: "禁止：time.Local は使用しないでください。設定（OS_TZ）は Go ランタイムの time.Local へ届かず、
+                コンテナの TZ 次第で UTC になり得ます。タイムゾーンは config が構築した *time.Location
+                （config.NewTimeLocation）を注入して受け取ってください。
+                テストでも time.Local で作った期待値を time.Local で検証すると実行ホストのタイムゾーンに
+                依存して常に緑になるため、time.UTC か固定の Location を使ってください。"
       analyze-types: true
     funcorder:
       constructor: true
@@ -506,6 +574,9 @@ linters:
   exclusions:
     paths:
       - vendor
+      # npm が展開する依存ツリー。`flatted` のように Go 実装を同梱するパッケージがあり、
+      # そこは第三者のコードなので指摘しても直せない（pnpm 側は `.pnpm` 配下で go が自ら飛ばす）。
+      - node_modules
     rules:
       - path: (.+)_test\.go
         linters:
@@ -516,9 +587,18 @@ linters:
       - path: pkg/ptr/ptr_test\.go
         linters:
           - modernize
+      # time.Now の禁止（forbidigo）は domain / usecase 層でのみ適用する。
+      # infrastructure は clock の具体実装を提供し、controller / di は計測・ロギング用途で time.Now() を許容する。
+      - path-except: internal/(domain|usecase)/
+        linters:
+          - forbidigo
+        text: 'time\.Now'
 
 run:
-  timeout: "3m"
+  # 固定 timeout は持たない（0 = 無効）。所要はリポジトリ規模と有効 linter 数で単調に伸びるため、
+  # 固定秒数を置くと再発する。予算はローカルが make の GOLANGCI_LINT_TIMEOUT、
+  # CI が go-lint ジョブの timeout-minutes で持つ。
+  timeout: "0s"
   issues-exit-code: 1
   tests: true
   allow-parallel-runners: true
@@ -555,3 +635,4 @@ formatters:
       - ".*\\.gen\\.go$"
       - ".*\\.sql\\.go$"
       - ".*mock_.*\\.go$"
+      - "node_modules/.*"

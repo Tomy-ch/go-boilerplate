@@ -16,9 +16,12 @@ type Config struct {
 	dbconnection  DBConnectionConfig
 	security      SecurityConfig
 	secureCookie  SecureCookieConfig
-	auth          AuthConfig
 	worker        WorkerConfig
+	consumerQueue ConsumerQueueConfig
 	outbox        OutboxConfig
+	auth          AuthConfig
+	objectStorage ObjectStorageConfig
+	endpoint      EndpointConfig
 }
 
 // OperatingSystemConfig は、OS レベルの設定（タイムゾーン）を保持します。
@@ -61,7 +64,6 @@ type ObservabilityConfig struct {
 	tracesExporter      string
 	metricsExporter     string
 	logsExporter        string
-	otlpEndpoint        string
 	otlpProtocol        string
 	maskedDBQueryArgs   bool
 	targetStatusCodeSet map[int]bool
@@ -93,17 +95,17 @@ type DBConnectionConfig struct {
 	maxIdleTime time.Duration
 }
 
-// SecurityConfig は、CORS・許可 CIDR・セキュリティヘッダー・bcrypt コスト等のセキュリティ設定を保持します。
+// SecurityConfig は、CORS・許可 CIDR・セキュリティヘッダー等のセキュリティ設定を保持します。
 type SecurityConfig struct {
-	allowedOrigins        []string
-	cidr                  *net.IPNet
-	contentTypeNosniff    string
-	xFrameOptions         string
-	hstsMaxAge            time.Duration
-	hstsExcludeSubdomains bool
-	hstsPreloadEnabled    bool
-	referrerPolicy        string
-	bcryptCost            int
+	allowedOrigins            []string
+	cidr                      *net.IPNet
+	contentTypeNosniff        string
+	xFrameOptions             string
+	hstsMaxAge                time.Duration
+	hstsExcludeSubdomains     bool
+	hstsPreloadEnabled        bool
+	referrerPolicy            string
+	crossOriginResourcePolicy string
 }
 
 // SecureCookieConfig は、セキュアクッキーの属性（Secure / SameSite / Domain）の強制設定を保持します。
@@ -111,13 +113,6 @@ type SecureCookieConfig struct {
 	secure   *bool
 	sameSite string
 	domain   string
-}
-
-// AuthConfig は、認証に使う Cookie 名・ヘッダー名・Bearer 許可の設定を保持します。
-type AuthConfig struct {
-	cookieName          string
-	headerName          string
-	allowedHeaderBearer bool
 }
 
 // WorkerConfig は、worker engine の engine-core 設定（broker 非依存）を保持します。
@@ -138,12 +133,65 @@ type WorkerConfig struct {
 	nackBackoffMax            time.Duration
 }
 
+// ConsumerQueueConfig は、worker が consume する broker（SQS 互換）の adapter 設定を保持します。
+type ConsumerQueueConfig struct {
+	region            string
+	url               string
+	dlqURL            string
+	accessKeyID       string
+	secretAccessKey   string
+	maxMessages       int32
+	waitTimeSeconds   int32
+	visibilityTimeout int32
+}
+
 // OutboxConfig は、transactional outbox relay の設定を保持します。
 type OutboxConfig struct {
-	endpoint     string
-	pollInterval time.Duration
-	errorBackoff time.Duration
-	batchSize    int
+	publisher            string
+	pollInterval         time.Duration
+	errorBackoff         time.Duration
+	batchSize            int
+	queueRegion          string
+	queueURL             string
+	queueAccessKeyID     string
+	queueSecretAccessKey string
+}
+
+// AuthConfig は、access token（JWT）検証の設定を保持します。
+// Issuer / Audience / JWKSURL が空の環境では実 JWT authenticator ではなくスタブが使われます。
+type AuthConfig struct {
+	issuer             string
+	audience           string
+	allowedAlgorithms  []string
+	clockSkew          time.Duration
+	jwksCacheTTL       time.Duration
+	discoveryTTL       time.Duration
+	unknownKidCooldown time.Duration
+}
+
+// ObjectStorageConfig は、S3 互換オブジェクトストレージ（ローカルは Garage）の接続設定と
+// アップロード上限を保持します。
+type ObjectStorageConfig struct {
+	region          string
+	bucket          string
+	accessKeyID     string
+	secretAccessKey string
+	usePathStyle    bool
+	maxUploadBytes  int64
+}
+
+// EndpointConfig は、このアプリが接続する外部サービスの所在を保持します。
+// いずれも空文字を取り得ます。空が何を意味するかは接続先ごとに異なるため、各アクセサに記します。
+type EndpointConfig struct {
+	otlp          string
+	jwks          string
+	objectStorage string
+	outbox        string
+	outboxQueue   string
+	consumerQueue string
+	// sample-api:begin
+	exchangeRate string
+	// sample-api:end
 }
 
 // NewOperatingSystemConfig は、OSの設定を返します。
@@ -158,7 +206,7 @@ func NewApplicationConfig(cfg *Config) *ApplicationConfig { return &cfg.app }
 // Env は、デプロイ環境ラベルを返します（自由値）。例: "local" / "staging" / "production"。
 func (a *ApplicationConfig) Env() string { return a.env }
 
-// Mode は、アプリの動作モードを返します（"development" / "production" のみ。挙動切替に使用。Env とは別軸）。
+// Mode は、アプリの動作モードを返します（"development" / "production" のみ）。
 func (a *ApplicationConfig) Mode() string { return a.mode }
 
 // LogLevel は、ログ出力レベル（"debug" / "info" / "warn" / "error"）を返します。
@@ -238,9 +286,6 @@ func (o *ObservabilityConfig) MetricsEnabled() bool { return isActiveExporter(o.
 
 // LogsEnabled は、log exporter が有効値かどうかを返します。
 func (o *ObservabilityConfig) LogsEnabled() bool { return isActiveExporter(o.logsExporter) }
-
-// OTLPEndpoint は、OTLP exporter の送出先エンドポイントを返します。
-func (o *ObservabilityConfig) OTLPEndpoint() string { return o.otlpEndpoint }
 
 // OTLPProtocol は、OTLP exporter のプロトコル（"http/protobuf" / "grpc"）を返します。
 func (o *ObservabilityConfig) OTLPProtocol() string { return o.otlpProtocol }
@@ -357,13 +402,14 @@ func (s *SecurityConfig) HSTSPreloadEnabled() bool { return s.hstsPreloadEnabled
 // ReferrerPolicy は、Referrer-Policyヘッダーの値を返します。
 func (s *SecurityConfig) ReferrerPolicy() string { return s.referrerPolicy }
 
-// BcryptCost は、bcryptのコストを返します。
-func (s *SecurityConfig) BcryptCost() int { return s.bcryptCost }
+// CrossOriginResourcePolicy は、Cross-Origin-Resource-Policyヘッダーの値を返します。
+// 空文字はヘッダーを出さないことを表します。
+func (s *SecurityConfig) CrossOriginResourcePolicy() string { return s.crossOriginResourcePolicy }
 
 // NewSecureCookieConfig は、セキュアクッキーの設定を返します。
 func NewSecureCookieConfig(cfg *Config) *SecureCookieConfig { return &cfg.secureCookie }
 
-// Secure は、Secure属性の強制設定を返します。
+// Secure は、Secure 属性の強制設定を返します。nil は「上書きしない」ことを意味します。
 func (s *SecureCookieConfig) Secure() *bool {
 	if s.secure == nil {
 		return nil
@@ -372,23 +418,11 @@ func (s *SecureCookieConfig) Secure() *bool {
 	return &v
 }
 
-// SameSite は、SameSite属性の強制設定を返します。
+// SameSite は、SameSite 属性の強制設定を返します。空文字列は「上書きしない」ことを意味します。
 func (s *SecureCookieConfig) SameSite() string { return s.sameSite }
 
-// Domain は、Domain属性の強制設定を返します。
+// Domain は、Domain 属性の強制設定を返します。空文字列は「上書きしない」ことを意味します。
 func (s *SecureCookieConfig) Domain() string { return s.domain }
-
-// NewAuthConfig は、認証の設定を返します。
-func NewAuthConfig(cfg *Config) *AuthConfig { return &cfg.auth }
-
-// CookieName は、認証に使用するCookie名を返します。
-func (a *AuthConfig) CookieName() string { return a.cookieName }
-
-// HeaderName は、認証に使用するヘッダー名を返します。
-func (a *AuthConfig) HeaderName() string { return a.headerName }
-
-// AllowedHeaderBearer は、認証に使用するヘッダーのBearerトークンの許可設定を返します。
-func (a *AuthConfig) AllowedHeaderBearer() bool { return a.allowedHeaderBearer }
 
 // NewWorkerConfig は、worker engine の設定を返します。
 func NewWorkerConfig(cfg *Config) *WorkerConfig { return &cfg.worker }
@@ -435,11 +469,50 @@ func (w *WorkerConfig) NackBackoffInitial() time.Duration { return w.nackBackoff
 // NackBackoffMax は、per-message 再配送 backoff の上限を返します。
 func (w *WorkerConfig) NackBackoffMax() time.Duration { return w.nackBackoffMax }
 
+// NewConsumerQueueConfig は、worker が consume する broker の adapter 設定を返します。
+func NewConsumerQueueConfig(cfg *Config) *ConsumerQueueConfig { return &cfg.consumerQueue }
+
+// Region は、SQS の署名に用いるリージョンを返します。
+func (c *ConsumerQueueConfig) Region() string { return c.region }
+
+// URL は、consume 対象キューの URL を返します。
+func (c *ConsumerQueueConfig) URL() string { return c.url }
+
+// DLQURL は、滞留量の収集対象とする DLQ の URL を返します（空なら収集しません）。
+func (c *ConsumerQueueConfig) DLQURL() string { return c.dlqURL }
+
+// AccessKeyID は、明示注入する静的資格情報のアクセスキー ID を返します（空なら chain へ委ねます）。
+func (c *ConsumerQueueConfig) AccessKeyID() string { return c.accessKeyID }
+
+// SecretAccessKey は、明示注入する静的資格情報のシークレットアクセスキーを返します（空なら chain へ委ねます）。
+func (c *ConsumerQueueConfig) SecretAccessKey() string { return c.secretAccessKey }
+
+// MaxMessages は、1 回の受信で取得する最大件数を返します。
+func (c *ConsumerQueueConfig) MaxMessages() int32 { return c.maxMessages }
+
+// WaitTimeSeconds は、long-poll の待機秒数を返します。
+func (c *ConsumerQueueConfig) WaitTimeSeconds() int32 { return c.waitTimeSeconds }
+
+// VisibilityTimeout は、受信メッセージの可視性タイムアウト秒数を返します。
+func (c *ConsumerQueueConfig) VisibilityTimeout() int32 { return c.visibilityTimeout }
+
 // NewOutboxConfig は、outbox relay の設定を返します。
 func NewOutboxConfig(cfg *Config) *OutboxConfig { return &cfg.outbox }
 
-// Endpoint は、メッセージの送信先エンドポイント URL を返します。
-func (o *OutboxConfig) Endpoint() string { return o.endpoint }
+// Publisher は、publish 先の種別（"http" / "sqs"）を返します。
+func (o *OutboxConfig) Publisher() string { return o.publisher }
+
+// QueueRegion は、SQS の署名に用いるリージョンを返します。
+func (o *OutboxConfig) QueueRegion() string { return o.queueRegion }
+
+// QueueURL は、publish 先キューの URL を返します。
+func (o *OutboxConfig) QueueURL() string { return o.queueURL }
+
+// QueueAccessKeyID は、SQS の静的資格情報のアクセスキー ID を返します。
+func (o *OutboxConfig) QueueAccessKeyID() string { return o.queueAccessKeyID }
+
+// QueueSecretAccessKey は、SQS の静的資格情報のシークレットアクセスキーを返します。
+func (o *OutboxConfig) QueueSecretAccessKey() string { return o.queueSecretAccessKey }
 
 // PollInterval は、pending を捌き切った後に次 poll まで待機する時間を返します。
 func (o *OutboxConfig) PollInterval() time.Duration { return o.pollInterval }
@@ -449,3 +522,80 @@ func (o *OutboxConfig) ErrorBackoff() time.Duration { return o.errorBackoff }
 
 // BatchSize は、1 回の poll で claim する pending 行数を返します。
 func (o *OutboxConfig) BatchSize() int { return o.batchSize }
+
+// NewAuthConfig は、認証（JWT 検証）の設定を返します。
+func NewAuthConfig(cfg *Config) *AuthConfig { return &cfg.auth }
+
+// Issuer は、検証する iss クレームの期待値を返します。
+func (a *AuthConfig) Issuer() string { return a.issuer }
+
+// Audience は、検証する aud クレームの期待値を返します。
+func (a *AuthConfig) Audience() string { return a.audience }
+
+// AllowedAlgorithms は、許可する署名アルゴリズムの allowlist を返します。
+func (a *AuthConfig) AllowedAlgorithms() []string {
+	return append([]string(nil), a.allowedAlgorithms...)
+}
+
+// ClockSkew は、exp / nbf 検証時のクロックずれ許容幅を返します。
+func (a *AuthConfig) ClockSkew() time.Duration { return a.clockSkew }
+
+// JWKSCacheTTL は、取得した JWKS をキャッシュする期間を返します。
+func (a *AuthConfig) JWKSCacheTTL() time.Duration { return a.jwksCacheTTL }
+
+// DiscoveryTTL は、OIDC discovery 文書の再取得間隔を返します。
+func (a *AuthConfig) DiscoveryTTL() time.Duration { return a.discoveryTTL }
+
+// UnknownKidCooldown は、未知 kid での JWKS 再取得の最小間隔を返します。
+func (a *AuthConfig) UnknownKidCooldown() time.Duration { return a.unknownKidCooldown }
+
+// NewObjectStorageConfig は、オブジェクトストレージの設定を返します。
+func NewObjectStorageConfig(cfg *Config) *ObjectStorageConfig { return &cfg.objectStorage }
+
+// Region は、署名に用いるリージョンを返します。
+func (o *ObjectStorageConfig) Region() string { return o.region }
+
+// Bucket は、オブジェクトを格納するバケット名を返します。
+func (o *ObjectStorageConfig) Bucket() string { return o.bucket }
+
+// AccessKeyID は、静的資格情報のアクセスキー ID を返します。
+func (o *ObjectStorageConfig) AccessKeyID() string { return o.accessKeyID }
+
+// SecretAccessKey は、静的資格情報のシークレットアクセスキーを返します。
+func (o *ObjectStorageConfig) SecretAccessKey() string { return o.secretAccessKey }
+
+// UsePathStyle は、path-style アクセスを使うかどうかを返します（Garage / MinIO は true）。
+func (o *ObjectStorageConfig) UsePathStyle() bool { return o.usePathStyle }
+
+// MaxUploadBytes は、アップロード可能な最大バイト数を返します。
+// ServerConfig.BodyLimitMB（マルチパートのオーバーヘッドを含む）を上回る値を設定すると、
+// グローバルな body limit が先に 413 を返すためこの上限は到達不能になります。
+func (o *ObjectStorageConfig) MaxUploadBytes() int64 { return o.maxUploadBytes }
+
+// NewEndpointConfig は、接続先の設定を返します。
+func NewEndpointConfig(cfg *Config) *EndpointConfig { return &cfg.endpoint }
+
+// OTLP は、OTLP exporter の送出先を返します。空なら送出しません。
+func (e *EndpointConfig) OTLP() string { return e.otlp }
+
+// JWKS は、公開鍵の取得先を返します。空なら OIDC discovery で issuer から解決します。
+func (e *EndpointConfig) JWKS() string { return e.jwks }
+
+// ObjectStorage は、S3 互換エンドポイントを返します。空なら SDK 既定の解決に委ねます。
+func (e *EndpointConfig) ObjectStorage() string { return e.objectStorage }
+
+// Outbox は、PUBLISHER=http のときの送出先を返します。
+func (e *EndpointConfig) Outbox() string { return e.outbox }
+
+// OutboxQueue は、publish 端の SQS 互換エンドポイントを返します。空なら SDK 既定の解決に委ねます。
+func (e *EndpointConfig) OutboxQueue() string { return e.outboxQueue }
+
+// ConsumerQueue は、consume 端の SQS 互換エンドポイントを返します。空なら SDK 既定の解決に委ねます。
+func (e *EndpointConfig) ConsumerQueue() string { return e.consumerQueue }
+
+// sample-api:begin
+
+// ExchangeRate は、外部為替レートサービスのベース URL を返します。空ならこの機能を使いません。
+func (e *EndpointConfig) ExchangeRate() string { return e.exchangeRate }
+
+// sample-api:end

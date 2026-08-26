@@ -5,25 +5,22 @@ import (
 	"context"
 	"time"
 
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v5/middleware"
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/pkg/xerrors"
 )
 
 // Middleware は、リクエスト context に timeout の deadline を設定するミドルウェアを返します。
-//
-// 後続の全ミドルウェア・ハンドラ・DB・外部 HTTP が単一の deadline budget を ctx 経由で共有します。
-// response writer のデータ競合を避けるため race-free な ContextTimeout を基底とします
-// （deprecated な Timeout は競合を抱える）。deadline 超過は apperror.ErrUnavailable(503) へ、
-// それ以外のエラーはそのまま伝播します。
+// deadline 超過は apperror.ErrUnavailable(503) へ、それ以外のエラーはそのまま伝播します。
+// 単一 deadline budget の共有と ContextTimeout を基底に選んだ理由は README を参照してください。
 func Middleware(timeout time.Duration) echo.MiddlewareFunc {
 	return middleware.ContextTimeoutWithConfig(middleware.ContextTimeoutConfig{
 		Timeout: timeout,
-		ErrorHandler: func(err error, _ echo.Context) error {
+		ErrorHandler: func(_ *echo.Context, err error) error {
 			if xerrors.Is(err, context.DeadlineExceeded) {
-				return xerrors.Wrap(apperror.ErrUnavailable, "request deadline exceeded")
+				return xerrors.Join(apperror.ErrUnavailable, err)
 			}
 			return err
 		},

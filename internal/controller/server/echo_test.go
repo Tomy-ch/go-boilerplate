@@ -8,16 +8,24 @@ import (
 
 	"go-boilerplate/internal/logging"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// unwrappableWriter は、内側の http.ResponseWriter を公開するテスト用のラッパーです。
+type unwrappableWriter struct {
+	http.ResponseWriter
+}
+
+// Unwrap は、包んでいる http.ResponseWriter を返します。
+func (w *unwrappableWriter) Unwrap() http.ResponseWriter { return w.ResponseWriter }
 
 func TestExtractPathParams(t *testing.T) {
 	t.Parallel()
 
 	e := echo.New()
-	newCtx := func() echo.Context {
+	newCtx := func() *echo.Context {
 		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/users/123/books/abc", nil)
 		return e.NewContext(req, httptest.NewRecorder())
 	}
@@ -35,8 +43,10 @@ func TestExtractPathParams(t *testing.T) {
 		t.Run("パスパラメータがある場合は全て抽出される", func(t *testing.T) {
 			t.Parallel()
 			c := newCtx()
-			c.SetParamNames("user_id", "book_id")
-			c.SetParamValues("123", "abc")
+			c.SetPathValues(echo.PathValues{
+				{Name: "user_id", Value: "123"},
+				{Name: "book_id", Value: "abc"},
+			})
 
 			got := ExtractPathParams(c)
 			require.Len(t, got, 2)
@@ -99,8 +109,7 @@ func TestBuildHTTPRequestLogInput(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 			c.SetPath("/users/:id")
-			c.SetParamNames("id")
-			c.SetParamValues("123")
+			c.SetPathValues(echo.PathValues{{Name: "id", Value: "123"}})
 
 			got := BuildHTTPRequestLogInput(c, logging.EventTypeError)
 
@@ -115,6 +124,45 @@ func TestBuildHTTPRequestLogInput(t *testing.T) {
 			assert.Equal(t, map[string]string{"id": "123"}, got.PathParams)
 			assert.Equal(t, []string{"v"}, got.QueryParams["q"])
 			assert.False(t, got.EventAt.IsZero())
+		})
+	})
+}
+
+func TestResponseOf(t *testing.T) {
+	t.Parallel()
+
+	e := echo.New()
+	newCtx := func() *echo.Context {
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/path", nil)
+		return e.NewContext(req, httptest.NewRecorder())
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("レスポンスライタを包むミドルウェアがあってもEchoのレスポンスへ辿れる", func(t *testing.T) {
+			t.Parallel()
+
+			c := newCtx()
+			inner := ResponseOf(c)
+			require.NotNil(t, inner)
+
+			c.SetResponse(&unwrappableWriter{ResponseWriter: c.Response()})
+
+			assert.Same(t, inner, ResponseOf(c))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Echoのレスポンスへ辿れないライタの場合はnilを返す", func(t *testing.T) {
+			t.Parallel()
+
+			c := newCtx()
+			c.SetResponse(httptest.NewRecorder())
+
+			assert.Nil(t, ResponseOf(c))
 		})
 	})
 }

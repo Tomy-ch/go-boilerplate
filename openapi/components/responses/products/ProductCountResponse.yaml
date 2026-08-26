@@ -1,0 +1,11 @@
+description: 商品検索の一致件数レスポンス
+type: object
+required:
+  - count
+properties:
+  count:
+    type: integer
+    format: int64
+    minimum: 0
+    description: 検索条件に一致する公開商品の件数。対象がない場合は 0 です。
+    example: 42

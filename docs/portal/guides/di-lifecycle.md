@@ -10,6 +10,22 @@ The `lifecycle/` package exists as an independent directory to provide a **neutr
 
 Using `fx.Lifecycle` directly causes the following problems:
 
+```mermaid
+flowchart TB
+    subgraph "depending on fx directly (NG)"
+        Server1["HTTP Server"] --> FxLC["fx.Lifecycle"]
+        Tracer1["TracerProvider"] --> FxLC
+        Metrics1["Metrics"] --> FxLC
+    end
+
+    subgraph "abstracted behind Registrar (OK)"
+        Server2["HTTP Server"] --> Reg["Registrar"]
+        Tracer2["TracerProvider"] --> Reg
+        Metrics2["Metrics"] --> Reg
+        Reg --> FxLC2["fx.Lifecycle"]
+    end
+```
+
 ### 1. fx Dependency Leaks Across the Application
 
 If `fx.Lifecycle` is used directly, all layers (HTTP server, Observability, Metrics, Workers, etc.) become dependent on fx, violating the Onion Architecture principle of not bringing external technical details into inner layers.

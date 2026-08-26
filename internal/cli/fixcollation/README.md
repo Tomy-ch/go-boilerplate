@@ -18,17 +18,22 @@ fix-collation [flags]
 
 |Flag|Default|Description|
 |---|---|---|
-|`--database`|`local`|Target database name|
+|`--database`|`local`|Target database name. One of `local`, `test`, `template1`, `wt<N>_local`, `wt<N>_test`|
 
 ## Usage
 
 ```bash
 ./server fix-collation --database local
+./server fix-collation --database template1   # unblocks CREATE DATABASE ... TEMPLATE template1
+./server fix-collation --database wt3_test    # a database leased by a worktree slot
 ```
 
 ## Notes
 
-- **Intended for local and test databases only.** Only `--database local` and `--database test` are accepted; any other value is rejected with an error before any SQL runs.
+- **Intended for development and test databases only.** Any name outside the list above is rejected with an error before any SQL runs. The allowlist doubles as the injection guard, since the database name is interpolated into the SQL text.
+- `template1` is accepted because the mismatch propagates to every database cloned from it: `CREATE DATABASE ... TEMPLATE template1` fails outright while the template carries a stale collation version.
+- `wt<N>_local` / `wt<N>_test` are the databases a worktree leases from the slot pool (see `docs/maintenance/db-worktree-pool.md`).
+- The command **connects to the database it is about to fix**, overriding the database in the configured DSN. `REINDEX DATABASE` can only target the currently open database, so reusing the configured connection would fail for every other name.
 - Requires `psql` to be available on `PATH` and the executing user to have `REINDEX` and `ALTER DATABASE` privileges.
-- Database connection information is read from the application configuration (`DSN`).
+- Connection information other than the database name (host, port, user, `sslmode`) is read from the application configuration (`DSN`).
 - SQL execution stops immediately on error (`ON_ERROR_STOP=1`).

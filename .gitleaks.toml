@@ -11,4 +11,14 @@ paths = [
   '''.*_mock\.go$''',
   '''.*/mock_.*\.go$''',
   '''openapi/openapi\.gen\.yaml$''',
+  # graphify の抽出キャッシュ。内容アドレス指定の索引で、SHA-256 の羅列が generic-api-key に
+  # 当たる。gitignore 済みでコミットされ得ないため、ここを外しても走査範囲は狭まらない
+  # （追跡する graphify-out/ の成果物は対象のまま）。gitleaks の dir 走査は gitignore を見ない。
+  '''graphify-out/cache/''',
+  '''docs/openapi/''',
+  '''docs/coverage/''',
+  '''docs/db-schema/''',
+  '''docs/godoc/''',
+  '''docs/portal/docs\.json$''',
+  '''docs/portal/guides/''',
 ]

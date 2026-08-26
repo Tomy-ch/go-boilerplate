@@ -11,7 +11,7 @@ import (
 	idempotencyuc "go-boilerplate/internal/usecase/idempotency"
 	"go-boilerplate/pkg/xerrors"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 // headerName は、冪等性キーのリクエストヘッダ名です。
@@ -21,12 +21,12 @@ const headerName = "Idempotency-Key"
 const maxKeyLength = 255
 
 // NextFunc は、StrictHandlerFunc と構造的に同一の handler 呼び出しシグネチャです。
-type NextFunc func(ctx echo.Context, request any) (any, error)
+type NextFunc func(ctx *echo.Context, request any) (any, error)
 
 // Middleware は、冪等性入り口を StrictMiddleware の構造的シグネチャで返します。
 func Middleware() func(next NextFunc, operationID string) NextFunc {
 	return func(next NextFunc, operationID string) NextFunc {
-		return func(ec echo.Context, request any) (any, error) {
+		return func(ec *echo.Context, request any) (any, error) {
 			return handle(ec, request, operationID, next)
 		}
 	}
@@ -34,14 +34,14 @@ func Middleware() func(next NextFunc, operationID string) NextFunc {
 
 // StrictMiddleware は、Middleware() を oapi-codegen のパッケージ固有 StrictMiddlewareFunc 形へ
 // 適合させたアダプタを返します。
-func StrictMiddleware[H ~func(ec echo.Context, request any) (any, error)]() func(f H, operationID string) H {
+func StrictMiddleware[H ~func(ec *echo.Context, request any) (any, error)]() func(f H, operationID string) H {
 	core := Middleware()
 	return func(f H, operationID string) H {
 		return H(core(NextFunc(f), operationID))
 	}
 }
 
-func handle(ec echo.Context, request any, operationID string, next NextFunc) (any, error) {
+func handle(ec *echo.Context, request any, operationID string, next NextFunc) (any, error) {
 	r := ec.Request()
 	key := strings.TrimSpace(r.Header.Get(headerName))
 	if key == "" {
@@ -52,9 +52,13 @@ func handle(ec echo.Context, request any, operationID string, next NextFunc) (an
 		return nil, err
 	}
 
-	// 認証プリンシパルが取れなければ冪等性は発動しない（スコープキーに Subject を使うため、認証済みリクエストのみ対象とする）。
+	// 未認証、または UserID 未解決なら安全側で素通しする。
 	authn, ok := ctxhelper.GetAuthn(r.Context())
 	if !ok {
+		return next(ec, request)
+	}
+	userID, err := authn.UserID()
+	if err != nil {
 		return next(ec, request)
 	}
 
@@ -64,7 +68,7 @@ func handle(ec echo.Context, request any, operationID string, next NextFunc) (an
 	}
 
 	reqCtx := idempotencyuc.WithRequest(r.Context(), idempotencyuc.Request{
-		Scope:       authn.Subject(),
+		Scope:       userID.String(),
 		Key:         key,
 		Fingerprint: fp,
 		Method:      r.Method,
@@ -76,7 +80,7 @@ func handle(ec echo.Context, request any, operationID string, next NextFunc) (an
 	return next(ec, request)
 }
 
-// validateKey は、Idempotency-Key の健全性を検証します（非空 / ≤255 / 印字可能 ASCII）。違反は 400。
+// validateKey は、Idempotency-Key の健全性を検証します（≤255 / 印字可能 ASCII）。違反は 400。
 func validateKey(key string) error {
 	if len(key) > maxKeyLength {
 		return xerrors.Wrap(apperror.ErrInvalidArgument, "Idempotency-Key must be 255 characters or fewer")

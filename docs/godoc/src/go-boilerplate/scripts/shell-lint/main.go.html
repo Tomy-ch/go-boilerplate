@@ -1,0 +1,200 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>shell-lint - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../src/go-boilerplate/scripts">scripts</a>/<a href="../../../../src/go-boilerplate/scripts/shell-lint">shell-lint</a>/<span class="text-muted">main.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../go-boilerplate/scripts/shell-lint">go-boilerplate/scripts/shell-lint</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span><span class="comment">// Package main はリポジトリ内の `*.sh` を shellcheck で検査する。</span>
+<span id="L2" class="ln">     2  </span><span class="comment">//</span>
+<span id="L3" class="ln">     3  </span><span class="comment">// composite action の中のシェルは actions-shellcheck が見るが、ファイルとして置かれたシェルは</span>
+<span id="L4" class="ln">     4  </span><span class="comment">// どのゲートにも掛かっていなかった。フックやセットアップの入口はそこに居る —— PreToolUse フック、</span>
+<span id="L5" class="ln">     5  </span><span class="comment">// SessionStart フック、スキル同梱スクリプト、コンテナの init。いずれも編集のたび、あるいは</span>
+<span id="L6" class="ln">     6  </span><span class="comment">// セッションのたびに走るのに、壊れても CI は緑を返していた。</span>
+<span id="L7" class="ln">     7  </span><span class="comment">//</span>
+<span id="L8" class="ln">     8  </span><span class="comment">// 内容をそのまま渡すので、指摘の行・列は写し戻さずに使える（起動の詳細は scripts/lib/shellcheck）。</span>
+<span id="L9" class="ln">     9  </span>package main
+<span id="L10" class="ln">    10  </span>
+<span id="L11" class="ln">    11  </span>import (
+<span id="L12" class="ln">    12  </span>	&#34;context&#34;
+<span id="L13" class="ln">    13  </span>	&#34;fmt&#34;
+<span id="L14" class="ln">    14  </span>	&#34;io/fs&#34;
+<span id="L15" class="ln">    15  </span>	&#34;log&#34;
+<span id="L16" class="ln">    16  </span>	&#34;os&#34;
+<span id="L17" class="ln">    17  </span>	&#34;os/exec&#34;
+<span id="L18" class="ln">    18  </span>	&#34;path/filepath&#34;
+<span id="L19" class="ln">    19  </span>	&#34;slices&#34;
+<span id="L20" class="ln">    20  </span>	&#34;strings&#34;
+<span id="L21" class="ln">    21  </span>
+<span id="L22" class="ln">    22  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L23" class="ln">    23  </span>	&#34;go-boilerplate/scripts/lib/shellcheck&#34;
+<span id="L24" class="ln">    24  </span>)
+<span id="L25" class="ln">    25  </span>
+<span id="L26" class="ln">    26  </span>const shellSuffix = &#34;.sh&#34;
+<span id="L27" class="ln">    27  </span>
+<span id="L28" class="ln">    28  </span><span class="comment">// 走査から外すディレクトリ名。依存の取得物と VCS の内部で、いずれも我々が書いたものではない。</span>
+<span id="L29" class="ln">    29  </span>var skippedDirs = []string{&#34;.git&#34;, &#34;node_modules&#34;, &#34;vendor&#34;, &#34;tmp&#34;}
+<span id="L30" class="ln">    30  </span>
+<span id="L31" class="ln">    31  </span>var errFindings = xerrors.New(&#34;shellcheck が指摘を検出しました&#34;)
+<span id="L32" class="ln">    32  </span>
+<span id="L33" class="ln">    33  </span>func main() {
+<span id="L34" class="ln">    34  </span>	log.SetFlags(0)
+<span id="L35" class="ln">    35  </span>
+<span id="L36" class="ln">    36  </span>	if err := run(context.Background(), os.Getwd, exec.LookPath); err != nil {
+<span id="L37" class="ln">    37  </span>		log.Fatalf(&#34;❌ %v&#34;, err)
+<span id="L38" class="ln">    38  </span>	}
+<span id="L39" class="ln">    39  </span>}
+<span id="L40" class="ln">    40  </span>
+<span id="L41" class="ln">    41  </span><span class="comment">// run はリポジトリ内のシェルスクリプトを shellcheck に掛け、結果を報告します。</span>
+<span id="L42" class="ln">    42  </span><span class="comment">// wd は走査の基点となるディレクトリの取得手段、lookPath は shellcheck の所在確認手段です。</span>
+<span id="L43" class="ln">    43  </span>func run(ctx context.Context, wd func() (string, error), lookPath func(string) (string, error)) error {
+<span id="L44" class="ln">    44  </span>	root, err := shellcheck.Setup(wd, lookPath)
+<span id="L45" class="ln">    45  </span>	if err != nil {
+<span id="L46" class="ln">    46  </span>		return err
+<span id="L47" class="ln">    47  </span>	}
+<span id="L48" class="ln">    48  </span>
+<span id="L49" class="ln">    49  </span>	scripts, err := shellScripts(root)
+<span id="L50" class="ln">    50  </span>	if err != nil {
+<span id="L51" class="ln">    51  </span>		return err
+<span id="L52" class="ln">    52  </span>	}
+<span id="L53" class="ln">    53  </span>
+<span id="L54" class="ln">    54  </span>	var findings []string
+<span id="L55" class="ln">    55  </span>	for _, script := range scripts {
+<span id="L56" class="ln">    56  </span>		<span class="comment">// script は shellScripts が root 配下を walk して得た相対パスだけを取る。</span>
+<span id="L57" class="ln">    57  </span>		body, err := os.ReadFile(filepath.Join(root, script)) <span class="comment">//nolint:gosec // G304: 走査結果のみ</span>
+<span id="L58" class="ln">    58  </span>		if err != nil {
+<span id="L59" class="ln">    59  </span>			return xerrors.Wrap(err, &#34;read&#34;)
+<span id="L60" class="ln">    60  </span>		}
+<span id="L61" class="ln">    61  </span>
+<span id="L62" class="ln">    62  </span>		out, err := shellcheck.Run(ctx, string(body))
+<span id="L63" class="ln">    63  </span>		if err != nil {
+<span id="L64" class="ln">    64  </span>			return err
+<span id="L65" class="ln">    65  </span>		}
+<span id="L66" class="ln">    66  </span>		findings = append(findings, prefixFindings(script, out)...)
+<span id="L67" class="ln">    67  </span>	}
+<span id="L68" class="ln">    68  </span>
+<span id="L69" class="ln">    69  </span>	if len(findings) &gt; 0 {
+<span id="L70" class="ln">    70  </span>		log.Print(strings.Join(findings, &#34;\n&#34;))
+<span id="L71" class="ln">    71  </span>		return xerrors.Wrap(errFindings, fmt.Sprintf(&#34;%d 件&#34;, len(findings)))
+<span id="L72" class="ln">    72  </span>	}
+<span id="L73" class="ln">    73  </span>
+<span id="L74" class="ln">    74  </span>	log.Printf(&#34;✅ シェルスクリプト %d ファイルを shellcheck で検査しました&#34;, len(scripts))
+<span id="L75" class="ln">    75  </span>
+<span id="L76" class="ln">    76  </span>	return nil
+<span id="L77" class="ln">    77  </span>}
+<span id="L78" class="ln">    78  </span>
+<span id="L79" class="ln">    79  </span><span class="comment">// shellScripts は root 配下の `*.sh` をリポジトリ相対パスで昇順に返します。</span>
+<span id="L80" class="ln">    80  </span>func shellScripts(root string) ([]string, error) {
+<span id="L81" class="ln">    81  </span>	var scripts []string
+<span id="L82" class="ln">    82  </span>
+<span id="L83" class="ln">    83  </span>	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
+<span id="L84" class="ln">    84  </span>		if err != nil {
+<span id="L85" class="ln">    85  </span>			return err
+<span id="L86" class="ln">    86  </span>		}
+<span id="L87" class="ln">    87  </span>		if entry.IsDir() {
+<span id="L88" class="ln">    88  </span>			if slices.Contains(skippedDirs, entry.Name()) {
+<span id="L89" class="ln">    89  </span>				return fs.SkipDir
+<span id="L90" class="ln">    90  </span>			}
+<span id="L91" class="ln">    91  </span>
+<span id="L92" class="ln">    92  </span>			return nil
+<span id="L93" class="ln">    93  </span>		}
+<span id="L94" class="ln">    94  </span>		if !strings.HasSuffix(entry.Name(), shellSuffix) {
+<span id="L95" class="ln">    95  </span>			return nil
+<span id="L96" class="ln">    96  </span>		}
+<span id="L97" class="ln">    97  </span>
+<span id="L98" class="ln">    98  </span>		rel, err := filepath.Rel(root, path)
+<span id="L99" class="ln">    99  </span>		if err != nil {
+<span id="L100" class="ln">   100  </span>			return xerrors.Wrap(err, &#34;rel&#34;)
+<span id="L101" class="ln">   101  </span>		}
+<span id="L102" class="ln">   102  </span>		scripts = append(scripts, filepath.ToSlash(rel))
+<span id="L103" class="ln">   103  </span>
+<span id="L104" class="ln">   104  </span>		return nil
+<span id="L105" class="ln">   105  </span>	})
+<span id="L106" class="ln">   106  </span>	if err != nil {
+<span id="L107" class="ln">   107  </span>		return nil, xerrors.Wrap(err, &#34;walk&#34;)
+<span id="L108" class="ln">   108  </span>	}
+<span id="L109" class="ln">   109  </span>
+<span id="L110" class="ln">   110  </span>	slices.Sort(scripts)
+<span id="L111" class="ln">   111  </span>
+<span id="L112" class="ln">   112  </span>	return scripts, nil
+<span id="L113" class="ln">   113  </span>}
+<span id="L114" class="ln">   114  </span>
+<span id="L115" class="ln">   115  </span><span class="comment">// prefixFindings は shellcheck の出力を 1 行 1 指摘へ整え、先頭をリポジトリ相対パスへ差し替えます。</span>
+<span id="L116" class="ln">   116  </span><span class="comment">// stdin で渡しているため shellcheck 自身は入力を `-` としか呼べず、どのファイルの指摘か言えません。</span>
+<span id="L117" class="ln">   117  </span>func prefixFindings(script, out string) []string {
+<span id="L118" class="ln">   118  </span>	trimmed := strings.TrimSpace(out)
+<span id="L119" class="ln">   119  </span>	if trimmed == &#34;&#34; {
+<span id="L120" class="ln">   120  </span>		return nil
+<span id="L121" class="ln">   121  </span>	}
+<span id="L122" class="ln">   122  </span>
+<span id="L123" class="ln">   123  </span>	var findings []string
+<span id="L124" class="ln">   124  </span>	for line := range strings.SplitSeq(trimmed, &#34;\n&#34;) {
+<span id="L125" class="ln">   125  </span>		_, rest, found := strings.Cut(line, &#34;:&#34;)
+<span id="L126" class="ln">   126  </span>		if !found {
+<span id="L127" class="ln">   127  </span>			continue
+<span id="L128" class="ln">   128  </span>		}
+<span id="L129" class="ln">   129  </span>		findings = append(findings, script+&#34;:&#34;+rest)
+<span id="L130" class="ln">   130  </span>	}
+<span id="L131" class="ln">   131  </span>
+<span id="L132" class="ln">   132  </span>	return findings
+<span id="L133" class="ln">   133  </span>}
+<span id="L134" class="ln">   134  </span>
+</pre><p><a href="../../../../src/go-boilerplate/scripts/shell-lint/main.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

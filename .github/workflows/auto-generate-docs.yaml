@@ -5,6 +5,9 @@ on:
     branches:
       - release/**
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
@@ -13,6 +16,7 @@ jobs:
   generate-docs:
     if: github.actor != 'github-actions[bot]' && !startsWith(github.ref_name, 'auto/docs-update/') && !contains(github.event.head_commit.message, '[skip ci]')
     runs-on: ubuntu-latest
+    timeout-minutes: 25
 
     permissions:
       contents: write
@@ -26,11 +30,13 @@ jobs:
 
     services:
       database:
-        image: postgres:18.3-bookworm
+        image: postgres:18.4-trixie
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres-password
           POSTGRES_DB: test
+          TZ: Asia/Tokyo
+          PGTZ: Asia/Tokyo
         ports:
           - "5432:5432"
         options: >-
@@ -40,8 +46,69 @@ jobs:
           --health-retries=5
 
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+            docker.io:443
+            index.docker.io:443
+            registry-1.docker.io:443
+            auth.docker.io:443
+            *.docker.io:443
+            production.cloudflare.docker.com:443
+            production.cloudfront.docker.com:443
+            mirror.gcr.io:443
+            ghcr.io:443
+            pkg-containers.githubusercontent.com:443
+            dl-cdn.alpinelinux.org:443
+            dl-cdn.alpinelinux.org:80
+            deb.debian.org:443
+            deb.debian.org:80
+            security.debian.org:443
+            security.debian.org:80
+            apt.postgresql.org:443
+            apt.postgresql.org:80
+            www.postgresql.org:443
+            archive.ubuntu.com:80
+            azure.archive.ubuntu.com:80
+            security.ubuntu.com:80
+            esm.ubuntu.com:443
+            motd.ubuntu.com:443
+
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -63,8 +130,13 @@ jobs:
           password: ${{ env.DB_PASSWORD }}
           init_sql: docker/database/sql/004-init-extensions-test-db.sql
 
+      # The stamp is a TypeScript script now, so it runs through the node tool runner rather than
+      # bare node: the container is where `tsx` and the script's dependencies live, and every
+      # other generation step in this job already goes through it.
       - name: Stamp OpenAPI version from release branch
-        run: node scripts/stamp-openapi-version.mjs
+        run: make stamp-openapi-version REF="${GITHUB_REF_NAME}"
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
 
       - name: Generate OpenAPI bundle
         run: make gen-bundle-oapi
@@ -79,10 +151,10 @@ jobs:
         run: make materialize-env
 
       - name: Migrate
-        run: go run ./cmd/ migrate-up --database ${{ env.DB }}
+        run: go run ./cmd/ migrate-up --database "$DB"
 
       - name: Seed Database
-        run: go run ./cmd/ db-seed --database ${{ env.DB }}
+        run: go run ./cmd/ db-seed --database "$DB"
 
       - name: Generate ER Diagram
         run: make gen-db-schema-ci
@@ -104,9 +176,9 @@ jobs:
 
       - name: Fix permissions
         run: |
-          sudo chown -R $USER:$USER docs internal openapi
+          sudo chown -R "$USER:$USER" docs internal openapi
 
-      # 材料化した env/.env は生成物ではないため、コミット判定の対象から外す。
+      # The materialized env/.env is not generated output, so exclude it from the commit check.
       - name: Restore embedded env
         run: make restore-env
 
@@ -116,7 +188,7 @@ jobs:
           BEFORE_SHA: ${{ github.event.before }}
           AFTER_SHA: ${{ github.sha }}
         run: |
-          # この push に .go 変更が含まれるか（意味のあるカバレッジ更新の判定に使う）。
+          # Whether this push contains .go changes (used to decide if a coverage update is meaningful).
           go_changed=false
           if [ -z "$BEFORE_SHA" ] || [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
             go_changed=true
@@ -129,22 +201,58 @@ jobs:
             git checkout -- docs/coverage/index.html 2>/dev/null || true
           fi
 
-          # ノイズ除去後に、コミットすべき差分が残っているかで PR 作成可否を判定する。
+          # After removing noise, decide whether to create a PR based on whether committable diffs remain.
           git add -A
           if git diff --cached --quiet; then
-            echo "has_diff=false" >> $GITHUB_OUTPUT
+            echo "has_diff=false" >> "$GITHUB_OUTPUT"
           else
-            echo "has_diff=true" >> $GITHUB_OUTPUT
+            echo "has_diff=true" >> "$GITHUB_OUTPUT"
           fi
+
+      # The secrets context is unavailable in `if:`, hence the detour through a run step output.
+      - name: Check auto-PR app credentials
+        id: app-config
+        if: steps.diff.outputs.has_diff == 'true'
+        env:
+          AUTO_PR_APP_ID: ${{ secrets.AUTO_PR_APP_ID }}
+          AUTO_PR_APP_PRIVATE_KEY: ${{ secrets.AUTO_PR_APP_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -n "${AUTO_PR_APP_ID}" ] && [ -n "${AUTO_PR_APP_PRIVATE_KEY}" ]; then
+            echo 'configured=true' >> "${GITHUB_OUTPUT}"
+          else
+            echo '::warning::AUTO_PR_APP_ID / AUTO_PR_APP_PRIVATE_KEY are not configured; the pull request is opened with GITHUB_TOKEN, whose events start no workflow, so its required checks never report and the merge stays blocked.'
+            echo 'configured=false' >> "${GITHUB_OUTPUT}"
+          fi
+
+      # A pull request opened with GITHUB_TOKEN starts no workflow run at all — GitHub suppresses
+      # the events that token raises, to stop a workflow from triggering itself — so every required
+      # context stays unreported and the merge blocks with nothing to wait for. An app token is a
+      # separate identity, and the events it raises are ordinary ones.
+      - name: Mint the auto-PR app token
+        id: app-token
+        if: steps.diff.outputs.has_diff == 'true' && steps.app-config.outputs.configured == 'true'
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        with:
+          app-id: ${{ secrets.AUTO_PR_APP_ID }}
+          private-key: ${{ secrets.AUTO_PR_APP_PRIVATE_KEY }}
+          # An installation token carries the app's whole permission set unless it is narrowed here.
+          # Pushing the branch and opening the pull request is the entire job.
+          permission-contents: write
+          permission-pull-requests: write
 
       - name: Create PR
         if: steps.diff.outputs.has_diff == 'true'
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8
         with:
-          commit-message: "chore(docs): auto update docs [skip ci]"
+          # Falls back to GITHUB_TOKEN when the app is not configured: the pull request still opens,
+          # it just carries no checks. A skipped step leaves an empty output, which is falsy, so the
+          # fallback is reached exactly when the token was not minted.
+          token: ${{ steps.app-token.outputs.token || github.token }}
+          commit-message: "Chore: auto update docs"
           branch: auto/docs-update/${{ github.ref_name }}
           base: ${{ github.ref_name }}
-          title: "chore(docs): sync generated artifacts"
+          title: "Chore: sync generated artifacts"
           body: |
             ## 🤖 Auto-generated Docs Sync
 

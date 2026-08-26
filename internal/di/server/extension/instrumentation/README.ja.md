@@ -23,8 +23,7 @@ HTTPRedMetrics（Priority 8）は Observability の後に動くためトレー�
 
 ## 注意点
 
-- RequestID / Observability / HTTPRedMetrics は **UseMiddleware として Priority 付きで適用**
-- Observability は `ApplicationConfig` に依存 — **本番 / 非本番で挙動が変わる可能性あり**
-- 可観測性の責務は controller 層まで — **domain / usecase に漏らさないこと**
+- RequestID / Observability / HTTPRedMetrics / Logging は **UseMiddleware として Priority 付きで適用**
+- Observability は `ObservabilityConfig` に依存 — **本番 / 非本番で挙動が変わる可能性あり**
 - `HTTPRedMetricsModule()` は DB モジュールが提供する `prometheus.Registerer` に recorder を登録するため、メトリクスは同一の `/metrics` エンドポイントで公開される。運用系パス（`/metrics`, `/health` 等）は計測対象から除外される
 - ミドルウェア追加や Priority 変更時は、他の UseMiddleware との衝突に注意

@@ -1,12 +1,18 @@
 pre-commit:
   parallel: true
   commands:
-    lint:
+    # 重い Go ゲート（lint / test）は 1 command に束ねる。lefthook は commands を parallel で
+    # 走らせるため個別に並べると「窓の数 × フックの同時実行数」で負荷が乗算され、CPU 飽和が
+    # 作業内容と無関係なテスト落ちに化ける。並列/逐次/CI委譲の判断は make 側（.makefiles/load.mk）が
+    # 窓の数から決めるので、ここは委譲先を 1 つにするだけに留める。
+    go-gates:
       glob: "*.go"
-      run: make lint
-    test:
-      glob: "*.go"
-      run: make test-cached
+      run: make gate-go
+    go-test-scripts:
+      glob: "scripts/**/*.go"
+      skip:
+        - run: make -s gate-heavy-skip
+      run: make test-scripts-cached
     sql-lint:
       glob: "*.sql"
       run: make sql-lint
@@ -17,7 +23,26 @@ pre-commit:
       glob:
         - ".github/workflows/*.{yml,yaml}"
         - ".github/actions/**/*.{yml,yaml}"
+        - "scripts/pr-comment-secret-lint/index.ts"
+        - "scripts/pr-comment-fence-lint/index.ts"
+        - "scripts/actions-cutoff-lint/index.ts"
+        # 判定ロジックは lib/ 側に居るため、入口だけを見ると検査の変更を取り逃がす。
+        - "scripts/lib/workflow.ts"
+        - "scripts/pr-comment-secret-lint/secret.ts"
+        - "scripts/pr-comment-fence-lint/fence.ts"
+        - "scripts/actions-cutoff-lint/cutoff.ts"
+        - "scripts/actions-shellcheck/*.go"
       run: make actions-lint
+    actions-zizmor:
+      glob:
+        - ".github/workflows/*.{yml,yaml}"
+        - ".github/actions/**/*.{yml,yaml}"
+        - ".github/zizmor.yml"
+      run: make actions-zizmor
+    oapi-lint:
+      glob:
+        - "openapi/**/*.yaml"
+      run: make lint-oapi
     docker-lint:
       glob:
         - "docker/**/Dockerfile"
@@ -29,11 +54,30 @@ pre-commit:
         - ".github/actions/**/*.{yml,yaml}"
         - ".github/actions-pin.toml"
       run: make pin-actions-check
+    egress:
+      glob:
+        - ".github/workflows/*.{yml,yaml}"
+        - ".github/egress.toml"
+        - "scripts/egress/*.go"
+        - ".makefiles/github/egress.mk"
+      run: make egress-check
     pin-images:
       glob:
         - "docker/**/Dockerfile"
+        - "docker-compose*.yaml"
         - "docker/images-pin.toml"
       run: make pin-images-check
+    # マシン固有の絶対パスが入った commit は、編集でも取り消せない形で公開リポジトリに残る。
+    # graphify の出力そのものに加えて、追跡範囲を決める .gitignore と判定側を触ったときも起こす。
+    graphify-check:
+      glob:
+        - "graphify-out/*"
+        - ".gitignore"
+        - ".agents/graphify/spec-pin.toml"
+        - "python/graphify.*"
+        - "scripts/graphify-check/*.go"
+        - ".makefiles/graphify/export.mk"
+      run: make graphify-check
     migration-check-version:
       glob: "database/migrations/*.sql"
       run: make check-migration-up-version check-migration-down-version
@@ -49,12 +93,57 @@ commit-msg:
 pre-push:
   parallel: true
   commands:
+    # secret-scan は push 後では手遅れになるため、CI-first でも必ず手元に残す。
     secret-scan:
       run: make secret-scan
-    test:
+    go-gates:
       glob: "*.go"
-      run: make test
+      run: make gate-go-push
+    # 補助スクリプトの判定ロジックは検査ゲートそのものなので、壊れると「違反なし」を報告する
+    # 向きに倒れる。ただし実行は docker のツールランナーを起こすため、窓が多いときは CI の
+    # scripts-check へ委ねる（同じ入力に対して等価に効く）。
+    scripts-test:
+      glob:
+        # lefthook の glob は separator を渡さない gobwas/glob なので、`*` 自体が `/` を跨ぐ。
+        # `<dir>/*.ts` の 1 本で深い階層まで拾える一方、`**/*.ts` は直後の `/` を要求する分だけ
+        # 直下のファイルを落とすため、階層ごとにパターンを並べる書き方にはしない。
+        - "scripts/*.ts"
+        # 同じスイートに居る 1:1 ゲートは docs-viewer の src/ も走査するため、そちらの
+        # 変更でも起こす。ここが scripts/ だけを見ていると、テストの無い export を足した
+        # push が手元では素通りする。
+        - "docs-viewer/src/*.{ts,tsx}"
+      skip:
+        - run: make -s gate-heavy-skip
+      run: make scripts-test-cached
+    # 生成物の再生成は docker のツールランナーを起こすため、窓が多いときは CI の
+    # generate-go-check に委ねる（差分検出は CI でも等価に効く）。
     gen-go-check:
+      glob:
+        - "*.go"
+        - "openapi/**/*.yaml"
+      skip:
+        - run: make -s gate-heavy-skip
       run: make gen-bundle-oapi gen-go-code && git diff --exit-code -- '*.gen.go' '*/mock/mock_*.go' '*_mock.go' openapi/openapi.gen.yaml
     tidy-check:
+      glob:
+        - "go.mod"
+        - "go.sum"
       run: go mod tidy && git diff --exit-code go.mod go.sum
+
+# コミットの瞬間は誰も他に記録していないので、ここで打刻する。pre-commit ではなく post-commit
+# なのは、/commit が全コミットを --no-verify で作るため。--no-verify は pre-commit と commit-msg
+# を飛ばすが post-commit は飛ばさない（実測）ので、スキルを経由しないコミットも取りこぼさない。
+post-commit:
+  commands:
+    closed-loop-mark:
+      run: .agents/closed-loop/marks.sh commitAt
+
+post-merge:
+  commands:
+    vendor-sync:
+      run: make vendor-sync
+
+post-checkout:
+  commands:
+    vendor-sync:
+      run: make vendor-sync

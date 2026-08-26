@@ -1,0 +1,27 @@
+# app 層の override（全 checkout / worktree 共通）。api_server / mock_auth_server だけを checkout 毎の
+# compose プロジェクトへ起動し、固定ポートを持つ共有インフラ（database / observability / garage /
+# elasticmq）は gobp-shared の 1 インスタンスを host-gateway 経由で参照する。ホスト公開ポートは DB スロット保持時に
+# 8080+N / 2010+N へずれ、未取得なら既定値のままなので main checkout も同じ経路で起動できる。
+services:
+  api_server:
+    ports: !override
+      - "${API_HOST_PORT:-8080}:8080" # APIポート
+      - "${DLV_HOST_PORT:-2345}:2345" # デバッグ(dlv)ポート
+      - "${PPROF_HOST_PORT:-6060}:6060" # メトリクス(pprof)ポート
+    depends_on: !override # 共有インフラは infra 層で起動済みのため app 層では待たない
+      mock_auth_server:
+        condition: service_healthy
+    # 共有インフラへの接続先。loader.go は実行時 env を env/.env より優先するため、
+    # コンテナ名前提の既定値（database / observability / garage）をホスト公開ポート経由に差し替える。
+    environment:
+      DB_HOST: host.docker.internal
+      DB_NAME: ${DB_NAME_LOCAL:-local}
+      ENDPOINT_OTLP: http://host.docker.internal:4318
+      ENDPOINT_OBJECT_STORAGE: http://host.docker.internal:3900
+      # SQS クライアントは BaseEndpoint を優先するため、ここを差し替えれば OUTBOX_QUEUE_URL /
+      # CONSUMER_QUEUE_URL のホスト部（elasticmq:9324）は接続先の解決に使われない。
+      ENDPOINT_OUTBOX_QUEUE: http://host.docker.internal:9324
+      ENDPOINT_CONSUMER_QUEUE: http://host.docker.internal:9324
+      # token の iss は mock 認証サーバーのホスト公開 URL（Host ヘッダ由来）。スロット毎にポートが
+      # ずれるため追従させる。mock 側は iss を保持しないので、追従先はここ 1 箇所で足りる。
+      AUTH_ISSUER: http://localhost:${MOCK_AUTH_HOST_PORT:-2010}/default

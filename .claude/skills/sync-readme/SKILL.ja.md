@@ -146,7 +146,7 @@ make md-fix
 make md-lint
 ```
 
-`make md-fix` はリポジトリ全体に対して `markdownlint-cli2 --fix` を実行し、よくある違反（見出し / リスト / コードブロック周辺の空行、行末空白、ファイル末尾の改行など）を自動修正する。続けて `make md-lint` で `.markdownlint.yaml` 準拠かを検証する。
+`make md-fix` はリポジトリ全体に対して `markdownlint-cli2 --fix` を実行し、よくある違反（見出し / リスト / コードブロック周辺の空行、行末空白、ファイル末尾の改行など）を自動修正する。続けて `make md-lint` で `.markdownlint-cli2.yaml` 準拠かを検証する。
 
 `make md-lint` がエラーを報告する場合:
 

@@ -15,11 +15,14 @@ import (
 )
 
 // NewLoggerProvider は LoggerProvider を構築して返す。
-func NewLoggerProvider(obsCfg *config.ObservabilityConfig, res *resource.Resource) (*sdklog.LoggerProvider, error) {
+// LogsEnabled が偽の場合は processor を持たない no-op 相当の LoggerProvider を返す。
+func NewLoggerProvider(
+	obsCfg *config.ObservabilityConfig, epCfg *config.EndpointConfig, res *resource.Resource,
+) (*sdklog.LoggerProvider, error) {
 	opts := []sdklog.LoggerProviderOption{sdklog.WithResource(res)}
 
 	if obsCfg.LogsEnabled() {
-		exporter, err := newLogExporter(context.Background(), obsCfg)
+		exporter, err := newLogExporter(context.Background(), obsCfg, epCfg)
 		if err != nil {
 			return nil, xerrors.Wrap(err, "failed to build log exporter")
 		}
@@ -39,18 +42,20 @@ func NewLogCore(
 	return otelzap.NewCore(appCfg.Name(), otelzap.WithLoggerProvider(lp))
 }
 
-// newLogExporter は OBS_OTLP_PROTOCOL / OBS_OTLP_ENDPOINT から OTLP LogExporter を構築する。
-func newLogExporter(ctx context.Context, obsCfg *config.ObservabilityConfig) (sdklog.Exporter, error) {
+// newLogExporter は OBS_OTLP_PROTOCOL / ENDPOINT_OTLP から OTLP LogExporter を構築する。
+func newLogExporter(
+	ctx context.Context, obsCfg *config.ObservabilityConfig, epCfg *config.EndpointConfig,
+) (sdklog.Exporter, error) {
 	switch obsCfg.OTLPProtocol() {
 	case protocolGRPC:
 		var opts []otlploggrpc.Option
-		if ep := obsCfg.OTLPEndpoint(); ep != "" {
+		if ep := epCfg.OTLP(); ep != "" {
 			opts = append(opts, otlploggrpc.WithEndpointURL(ep))
 		}
 		return otlploggrpc.New(ctx, opts...)
 	case protocolHTTP, "":
 		var opts []otlploghttp.Option
-		if ep := obsCfg.OTLPEndpoint(); ep != "" {
+		if ep := epCfg.OTLP(); ep != "" {
 			opts = append(opts, otlploghttp.WithEndpointURL(ensureOTLPPath(ep, otlpLogsPath)))
 		}
 		return otlploghttp.New(ctx, opts...)

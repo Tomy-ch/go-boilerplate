@@ -15,21 +15,35 @@ func TestNewAppServer(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("設定値を反映した http.Server を生成する", func(t *testing.T) {
+		t.Run("Echoインスタンスを生成する", func(t *testing.T) {
+			t.Parallel()
+
+			assert.NotNil(t, NewAppServer())
+		})
+	})
+}
+
+func TestNewHTTPServer(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Echoをハンドラとし設定値を反映したhttp.Serverを生成する", func(t *testing.T) {
 			t.Parallel()
 
 			cfg := config.MockConfigForTest(t)
 			srvCfg := config.NewServerConfig(cfg)
+			e := NewAppServer()
 
-			actual := NewAppServer(srvCfg)
+			actual := NewHTTPServer(e, srvCfg)
 			require.NotNil(t, actual)
 
-			assert.Equal(t, srvCfg.ReadHeaderTimeout(), actual.Server.ReadHeaderTimeout)
-			assert.Equal(t, srvCfg.ReadTimeout(), actual.Server.ReadTimeout)
-			assert.Equal(t, srvCfg.WriteTimeout(), actual.Server.WriteTimeout)
-			assert.Equal(t, srvCfg.IdleTimeout(), actual.Server.IdleTimeout)
-			assert.True(t, actual.HideBanner)
-			assert.True(t, actual.HidePort)
+			assert.Same(t, e, actual.Handler)
+			assert.Equal(t, srvCfg.ReadHeaderTimeout(), actual.ReadHeaderTimeout)
+			assert.Equal(t, srvCfg.ReadTimeout(), actual.ReadTimeout)
+			assert.Equal(t, srvCfg.WriteTimeout(), actual.WriteTimeout)
+			assert.Equal(t, srvCfg.IdleTimeout(), actual.IdleTimeout)
 		})
 	})
 }

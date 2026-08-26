@@ -75,9 +75,9 @@
    - `dtos`: (name, fields) リスト
    - `dependencies`: (name, type) リスト — boundary + Repository IF
    - `workflow`: メソッドごと `(tx_required, steps, calls, errors)`
-2. `internal/usecase/README.md` を読み layer 規約取得（特に "Application Service Pattern"、"Time Handling Policy"、"Boundary Concept"、"Allowed dependencies"、"Forbidden dependencies"）
+2. `internal/usecase/README.md` を読み layer 規約取得（特に "Application Service Design Policy"、"Time Handling Policy"、"Boundary Concept"、"Allowed dependencies"、"Forbidden dependencies"）
 3. `internal/usecase/boundary/README.md` を読み boundary 規約取得
-4. 既存 usecase パッケージ（例: `internal/usecase/user/user_usecase.go`）は **二次参照のみ** — observability tracer 配線、Tx wrap パターン、DTO 変換、error wrap などは README の Implementation Example が canonical。既存コードと README が衝突した場合 README が勝つ（README から drift したコードに skill が黙って従わない方針）
+4. 既存 usecase パッケージ（例: `internal/usecase/<sibling>/<sibling>_usecase.go`）は **二次参照のみ** — observability tracer 配線、Tx wrap パターン、DTO 変換、error wrap などは README の Implementation Example が canonical。既存コードと README が衝突した場合 README が勝つ（README から drift したコードに skill が黙って従わない方針）
 5. 各 `calls:` 参照を実コード（domain Repository IF、domain entity factory/methods、boundary 型）に対して検証
 
 ## Step 2. test 観点 subagent
@@ -104,8 +104,10 @@ subagent が観点を返さない場合は最小デフォルトで継続、警�
 - 各メソッド: signature + workflow 概要（calls、tx_required）
 - subagent のテストメソッドリスト
 
-質問: 「以下の構成で usecase 層を生成しますか？」  
-選択肢: 「生成する」 / 「修正したい箇所を指摘する」 / 「キャンセル」
+質問:
+
+- 「以下の構成で usecase 層を生成しますか？」
+- 選択肢: 「生成する」 / 「修正したい箇所を指摘する」 / 「キャンセル」
 
 ## Step 4. ファイル書き込み
 
@@ -183,7 +185,7 @@ commit しない。次の scaffold skill を起動しない。
 
 ## 制約事項
 
-- ❌ コードを言い換える／*なぜ*その設計にしたかを説明するコメントを足す — コードコメントは最小（振る舞い・契約のみ）。理由は commit message / README に置きコードに書かない。宣言の godoc（unexported 含む）は1行で残す。
+- ❌ コードを言い換える／*なぜ*その設計にしたかを説明するコメントを足す — コードコメントは最小（振る舞い・契約のみ）。理由は commit message / README に置きコードに書かない。宣言の godoc（unexported 含む）は1行で残す。**分量も対象**: このスキルが生成する面は構造上すべて慣用的であり、コンストラクタ / Params 構造体 / 行→エンティティ変換 / handler テンプレートに複数行の説明を付けるのはノイズ。契約を1行で述べて止める。`docs/rules.md` にある repo 全体のルールを書き写さない。抑制であって根絶ではなく、真に非自明な Why は残す。
 - ❌ spec に無いメソッド / DTO / dependency / workflow を発明
 - ❌ business rule の実装（domain entity の責務）
 - ❌ infrastructure への直接アクセス（Repository / Boundary interface 経由のみ）

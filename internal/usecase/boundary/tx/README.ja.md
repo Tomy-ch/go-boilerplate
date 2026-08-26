@@ -8,7 +8,8 @@
 
 - Usecase に「トランザクションの存在」を意識させつつ、DB の詳細は隠蔽
 - DB ドライバ依存（pgx, sql.Tx 等）を完全に隠蔽
-- トランザクション境界は Usecase の責務 — Infrastructure はトランザクションを開始しない
+
+このパッケージが体現するレイヤ責務の規約は [Transaction Rules](../../../../docs/rules.md#transaction-rules) を参照してください。
 
 ## 実装
 

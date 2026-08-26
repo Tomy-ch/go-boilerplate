@@ -1,6 +1,7 @@
 package uuid
 
 import (
+	"encoding/json"
 	"testing"
 
 	googleuuid "github.com/google/uuid"
@@ -37,15 +38,6 @@ func TestNew(t *testing.T) {
 			assert.True(t, u.IsNil())
 		})
 	})
-}
-
-func TestNewTestFromSalt(t *testing.T) {
-	t.Parallel()
-	salt := "test-salt"
-	uuid1 := NewTestFromSalt(t, salt)
-	uuid2 := NewTestFromSalt(t, salt)
-	assert.Equal(t, uuid1, uuid2)
-	assert.NotEqual(t, uuid1, NewTestFromSalt(t, "other-salt"))
 }
 
 func TestUUID_Bytes(t *testing.T) {
@@ -120,6 +112,9 @@ func TestUUID_EqualPtr(t *testing.T) {
 	uuid3, err := New()
 	require.NoError(t, err)
 	assert.False(t, uuid1.EqualPtr(uuid3.ToPtr()))
+
+	var zero UUID
+	assert.True(t, zero.EqualPtr(zero.ToPtr()))
 }
 
 func TestParse(t *testing.T) {
@@ -127,18 +122,112 @@ func TestParse(t *testing.T) {
 	uuid, err := New()
 	require.NoError(t, err)
 
-	t.Run("正常系/問題なく解析ができると、uuidが得られる", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		actual, err := Parse(uuid.String())
-		require.NoError(t, err)
-		assert.True(t, uuid.Equal(actual))
+
+		t.Run("問題なく解析ができると、uuidが得られる", func(t *testing.T) {
+			t.Parallel()
+			actual, err := Parse(uuid.String())
+			require.NoError(t, err)
+			assert.True(t, uuid.Equal(actual))
+		})
 	})
 
-	t.Run("異常系/無効な文字列を解析するとエラーが返る", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
-		actual, err := Parse("invalid-uuid")
-		assert.Empty(t, actual)
-		require.Error(t, err)
+
+		t.Run("無効な文字列を解析するとエラーが返る", func(t *testing.T) {
+			t.Parallel()
+			actual, err := Parse("invalid-uuid")
+			assert.Empty(t, actual)
+			require.Error(t, err)
+		})
+	})
+}
+
+func TestUUID_MarshalJSON(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("JSON 文字列として符号化する", func(t *testing.T) {
+			t.Parallel()
+			u, err := Parse("b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f")
+			require.NoError(t, err)
+
+			b, err := json.Marshal(u)
+			require.NoError(t, err)
+			assert.JSONEq(t, `"b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f"`, string(b))
+		})
+
+		t.Run("ゼロ値もゼロUUIDの文字列として符号化する", func(t *testing.T) {
+			t.Parallel()
+			b, err := json.Marshal(UUID{})
+			require.NoError(t, err)
+			assert.JSONEq(t, `"00000000-0000-0000-0000-000000000000"`, string(b))
+		})
+	})
+}
+
+func TestUUID_UnmarshalJSON(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("JSON 文字列から復元する", func(t *testing.T) {
+			t.Parallel()
+			var u UUID
+			require.NoError(t, json.Unmarshal([]byte(`"b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f"`), &u))
+			assert.Equal(t, "b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f", u.String())
+		})
+
+		t.Run("符号化した値と往復しても同じUUIDに戻る", func(t *testing.T) {
+			t.Parallel()
+			want, err := New()
+			require.NoError(t, err)
+			b, err := json.Marshal(want)
+			require.NoError(t, err)
+
+			var got UUID
+			require.NoError(t, json.Unmarshal(b, &got))
+			assert.True(t, want.Equal(got))
+		})
+
+		t.Run("JSON null は値を変更しない", func(t *testing.T) {
+			t.Parallel()
+			want, err := New()
+			require.NoError(t, err)
+
+			got := want
+			require.NoError(t, got.UnmarshalJSON([]byte("null")))
+			assert.True(t, want.Equal(got))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("UUIDとして解析できない文字列はエラーを返し値を変更しない", func(t *testing.T) {
+			t.Parallel()
+			want, err := New()
+			require.NoError(t, err)
+
+			got := want
+			require.Error(t, got.UnmarshalJSON([]byte(`"invalid-uuid"`)))
+			assert.True(t, want.Equal(got))
+		})
+
+		t.Run("文字列以外の値はエラーを返し値を変更しない", func(t *testing.T) {
+			t.Parallel()
+			want, err := New()
+			require.NoError(t, err)
+
+			got := want
+			require.Error(t, got.UnmarshalJSON([]byte(`{}`)))
+			assert.True(t, want.Equal(got))
+		})
 	})
 }
 

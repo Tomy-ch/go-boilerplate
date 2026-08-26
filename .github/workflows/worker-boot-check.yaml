@@ -12,6 +12,9 @@ on:
       - 'go.sum'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -19,13 +22,14 @@ concurrency:
 jobs:
   worker-boot-check:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
     env:
       ENV: ci
     services:
       database:
-        image: postgres:18.3-bookworm
+        image: postgres:18.4-trixie
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres-password
@@ -43,8 +47,63 @@ jobs:
           --health-start-period=20s
 
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+            docker.io:443
+            index.docker.io:443
+            registry-1.docker.io:443
+            auth.docker.io:443
+            *.docker.io:443
+            production.cloudflare.docker.com:443
+            production.cloudfront.docker.com:443
+            mirror.gcr.io:443
+            ghcr.io:443
+            pkg-containers.githubusercontent.com:443
+            dl-cdn.alpinelinux.org:443
+            dl-cdn.alpinelinux.org:80
+            deb.debian.org:443
+            deb.debian.org:80
+            security.debian.org:443
+            security.debian.org:80
+
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Setup Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
@@ -55,8 +114,8 @@ jobs:
       - name: Materialize ci env for embedding
         run: make materialize-env
 
-      # 存在しない worker 名を渡し、"unknown worker" エラーで終了することを確認する
-      # （DI 構築・DB 接続を含む起動経路が機能していることの確認。DB/DI 失敗時は出力に含まれない）。
+      # Pass a non-existent worker name and verify it exits with an "unknown worker" error
+      # (confirms the boot path including DI construction and DB connection works; a DB / DI failure would not produce this output).
       - name: Boot worker entrypoint and expect "unknown worker"
         run: |
           set -uo pipefail
@@ -70,13 +129,13 @@ jobs:
           echo "-------------------------"
 
           if [ "${code}" -eq 0 ]; then
-            echo "FAIL: 未知 worker なのに exit 0 が返った（dispatch が機能していない可能性）"
+            echo "FAIL: exit 0 returned for an unknown worker (dispatch may not be working)"
             exit 1
           fi
 
           if ! echo "${output}" | grep -q "unknown worker"; then
-            echo "FAIL: non-zero 終了だが 'unknown worker' 経路ではない（起動/DI/DB 接続の失敗の可能性）"
+            echo "FAIL: non-zero exit but not via the 'unknown worker' path (boot / DI / DB connection may have failed)"
             exit 1
           fi
 
-          echo "OK: worker のエントリポイントが起動（DI/DB 構築）し、未知 worker を正しく拒否した"
+          echo "OK: the worker entrypoint booted (DI / DB constructed) and correctly rejected an unknown worker"

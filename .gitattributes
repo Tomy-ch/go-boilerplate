@@ -4,6 +4,8 @@
 
 #  linguist制御
 docs/** linguist-documentation=true
+# Portalsの生成物
+docs/portal/dist/** linguist-generated=true
 
 # export-ignore
 tmp/main

@@ -6,16 +6,41 @@ This directory contains documentation related to the architecture and developmen
 
 These documents explain the **design philosophy, architectural rules, and development workflows** adopted in this project.
 
-The documentation is intended for both **human developers** and **AI agents**.
+The documentation is intended for both **human developers** and **AI agents**. AI-assisted
+development is this project's standard path, so these documents are written to be read by an
+agent as well as by a person; see [ADR-0007 (agents-md-operational-contract)](adr/0007-agents-md-operational-contract.md).
 
 ## Document List
+
+### Root documents
 
 |Document|Description|
 |--------|--------|
 |[architecture.md](architecture.md)|Overall system architecture and layer responsibilities|
 |[rules.md](rules.md)|Architectural rules that must not be violated|
 |[development-flow.md](development-flow.md)|Standard development workflow|
-|[adr/](adr/README.md)|Architecture Decision Records — background of technology selection and design decisions|
+|[testing-conventions.md](testing-conventions.md)|Test structure, naming, assertions, and coverage exceptions|
+|[decisions.md](decisions.md)|Redirect stub — the decision log now lives in `adr/`|
+
+### Sections
+
+|Section|Description|
+|--------|--------|
+|[adr/](adr/README.md)|Architecture Decision Records — one record per decision, with the technology rationale|
+|[design/](design/README.md)|Subsystem design references — rest / worker / job / outbox / idempotency / observability / auth / security / context-map / agent-environment|
+|[get-started/](get-started/setup-repository.md)|Setup performed once before development starts, and the troubleshooting index for when it does not go smoothly|
+|[tutorial/](tutorial/build-user-feature.md)|Worked example — one feature built end to end <!-- sample-api:line -->|
+|[spec/](spec/glossary.md)|Feature specifications and the business-vocabulary glossary|
+|[project/](project/scope.md)|Scope, out-of-scope, maintenance policy, versioning, direction|
+|[plan/](plan/distributed-ready-architecture.md)|Requirements for a release line that has not been built yet <!-- boilerplate-only:line -->|
+|[reference/](reference/dependencies.md)|Living inventories that track the code, such as the direct dependency list|
+|[maintenance/](maintenance/docs-structure.md)|Operational runbooks — documentation structure, local environment, DB worktree pool, upgrades|
+|[deployment/](deployment/github-page.md)|Deployment procedures|
+
+Japanese translations live under `ja/` mirroring this structure, and the remaining
+subdirectories (`openapi/`, `godoc/`, `coverage/`, `db-schema/`, `portal/`) hold generated
+output rather than documents to read. The rules that keep this layout generatable are in
+[maintenance/docs-structure.md](maintenance/docs-structure.md).
 
 ## Recommended Reading Order
 
@@ -23,21 +48,25 @@ The documentation is intended for both **human developers** and **AI agents**.
 
 ```mermaid
 flowchart TB
-    A["architecture.md"] --> B["development-flow.md"] --> C["rules.md"] --> D["adr/"]
+    %% sample-api:replace-begin
+    A["get-started/"] --> B["architecture.md"] --> C["development-flow.md"] --> D["tutorial/"] --> E["rules.md"] --> F["adr/"]
+    %% sample-api:replace-with
+    %% = A["get-started/"] --> B["architecture.md"] --> C["development-flow.md"] --> D["rules.md"] --> E["adr/"]
+    %% sample-api:replace-end
 ```
 
 ### Maintainers / Contributors
 
 ```mermaid
 flowchart TB
-    A["architecture.md"] --> B["rules.md"] --> C["development-flow.md"] --> D["adr/"]
+    A["architecture.md"] --> B["rules.md"] --> C["development-flow.md"] --> D["design/"] --> E["adr/"]
 ```
 
 ### AI Agents
 
 ```mermaid
 flowchart TB
-    A["rules.md"] --> B["architecture.md"] --> C["development-flow.md"]
+    A["AGENTS.md"] --> B["rules.md"] --> C["architecture.md"] --> D["development-flow.md"] --> E["owning README"]
 ```
 
 ## Key Concepts
@@ -89,14 +118,26 @@ Instead of relying on implicit rules or manual reviews, safety is enforced throu
 
 ## AI-assisted Development
 
-This project is designed to work safely with **AI-assisted development tools**.
+**AI-assisted development is the standard path of this project**, and the documentation, skills, and
+automation here are built for it. Manual development stays available as a not-recommended
+compatibility path that is not held to the same developer experience.
 
-Constraints are intentionally introduced to prevent architectural violations.
+The application is a separate question: runtime, build, test, the domain model, the API contract, the
+database schema, and the ordinary CI checks never depend on an AI service. See
+[architecture.md](architecture.md) § *AI-assisted Development*.
+
+Constraints are intentionally introduced to prevent architectural violations, and a deterministic
+check outranks an agent's judgment wherever one exists.
 
 Before generating code, AI agents must refer to:
 
-- `rules.md`
-- `architecture.md`
+- [`AGENTS.md`](../AGENTS.md) — the operational contract: what may be touched and how to behave
+- [`rules.md`](rules.md)
+- [`architecture.md`](architecture.md)
+- the `README.md` nearest to the code being changed
+
+How those instructions, the mechanical gates, and independent review fit together is described in
+[design/agent-environment.md](design/agent-environment.md).
 
 ## Relationship with Other Documents
 
@@ -104,11 +145,15 @@ The overall structure of the documentation is as follows:
 
 ```mermaid
 flowchart TB
-    Readme["README.md"] --> Index["docs/index.md"] --> Docs["architecture.md / rules.md / development-flow.md"]
+    Readme["README.md"] --> Index["docs/index.md"]
+    Index --> Core["architecture.md / rules.md / development-flow.md"]
+    Index --> Adr["adr/ — why a decision was taken"]
+    Index --> Design["design/ — how a subsystem behaves"]
+    Core --> Pkg["the README owning each package"]
 ```
 
-`README.md` explains the project overview,  
-while the `docs/` directory contains detailed design documents.
+`README.md` explains the project overview, while `docs/` holds the detailed design documents and
+each package `README.md` holds the contract local to that package.
 
 ## Contribution Guide
 
@@ -122,7 +167,7 @@ If architectural changes are required, update the related documentation accordin
 
 ## Philosophy of This Project
 
-This project aims to provide a **safe and maintainable starting point for backend development**.
+This project aims to make backend development **safe and maintainable**.
 
 It does not enforce a single “correct” architecture,  
 but instead provides a **structured baseline** that teams can extend and adapt as needed.

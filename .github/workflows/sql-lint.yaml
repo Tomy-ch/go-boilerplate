@@ -6,6 +6,8 @@ on:
       - '.github/workflows/sql-lint.yaml'
       - '**/*.sql'
       - '**/*.sqlfluff'
+      - 'mise.toml'
+      - 'python/sqlfluff.*'
   workflow_dispatch:
 
 permissions:
@@ -18,16 +20,71 @@ concurrency:
 jobs:
   sql-lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       pull-requests: write
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
 
-      - name: Build python tool container
-        run: docker compose build python_tool_runner
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
+        with:
+          tools: uv
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # --only-binary :all: refuses a source distribution, so no package here can run a
+      # setup script during install. The lockfile resolves entirely from wheels, so this
+      # takes nothing away; a pin that stops doing so fails the step instead of quietly
+      # executing arbitrary code with the runner's token in scope.
+      - name: Install sqlfluff
+        run: |
+          set -euo pipefail
+          python_version="$(mise config get tools.python)"
+          uv venv --python "${python_version}" .venv
+          uv pip install --only-binary :all: --require-hashes --no-cache -r python/sqlfluff.txt
+          echo "${PWD}/.venv/bin" >> "$GITHUB_PATH"
 
       - name: Run SQL lint
         id: lint
@@ -37,7 +94,7 @@ jobs:
           set +e
           status=success
           for cat in migrations dml seed; do
-            make "sql-lint-${cat}" 2>&1 | tee "/tmp/sqlfluff_${cat}.log"
+            make "sql-lint-${cat}-ci" 2>&1 | tee "/tmp/sqlfluff_${cat}.log"
             code=${PIPESTATUS[0]}
             echo "exit_code_${cat}=${code}" >> "$GITHUB_OUTPUT"
             [ "$code" = "0" ] || status=failure
@@ -48,9 +105,14 @@ jobs:
         id: comment
         if: github.event_name == 'pull_request'
         shell: bash
+        env:
+          LINT_STATUS: ${{ steps.lint.outputs.status }}
+          EXIT_CODE_MIGRATIONS: ${{ steps.lint.outputs.exit_code_migrations }}
+          EXIT_CODE_DML: ${{ steps.lint.outputs.exit_code_dml }}
+          EXIT_CODE_SEED: ${{ steps.lint.outputs.exit_code_seed }}
         run: |
           set -euo pipefail
-          if [ "${{ steps.lint.outputs.status }}" = "success" ]; then
+          if [ "${LINT_STATUS-}" = "success" ]; then
             echo "title=## ✅ SQL lint: PASS" >> "$GITHUB_OUTPUT"
           else
             echo "title=## ❌ SQL lint: FAIL" >> "$GITHUB_OUTPUT"
@@ -59,11 +121,48 @@ jobs:
           out=/tmp/sql-lint-comment.md
           : > "$out"
 
+          # fence_for mirrors upsert-pr-comment's fenceFor: this body stays live Markdown, so it sizes its own fence. See README.md § PR comment fencing.
+          # `-a`: without it a single NUL byte makes grep report a binary match and print nothing,
+          # collapsing the fence back to three backticks.
+          fence_for() {
+            local longest len
+            longest="$({ grep -a -o '`\{1,\}' "$1" || true; } | awk '{ if (length($0) > n) n = length($0) } END { print n + 0 }')"
+            len=$(( longest + 1 ))
+            if [ "$len" -lt 3 ]; then len=3; fi
+            printf '%*s' "$len" '' | tr ' ' '\140'
+          }
+
+          # The action's length cap slices a body without regard for fences and does not re-fence on
+          # this path, so a body trimmed there loses the closing fence built here. Three logs of
+          # this size stay under the action's 45000 character default.
+          log_limit=12000
+
+          prepare_log() {
+            local src="$1" dst="$2"
+            if [ ! -f "$src" ]; then
+              echo "(log not found)" > "$dst"
+              return
+            fi
+            # head cuts on a byte boundary and the logs quote SQL carrying Japanese comments, so it
+            # can split a trailing multi-byte character. `-c` drops an invalid sequence mid-stream
+            # but not a truncated one at the end: iconv exits non-zero there, which under
+            # `set -euo pipefail` would fail this step over a cut that landed one byte off. It
+            # writes the converted prefix before exiting, which is the wanted result, so the
+            # failure is absorbed rather than propagated.
+            # sed: a run this long cannot come from a lint message, and a fence built to out-length
+            # one would exceed the size budget above by itself.
+            { head -c "$log_limit" "$src" | iconv -f UTF-8 -t UTF-8 -c || true; } \
+              | sed -E 's/`{10,}/[long backtick run elided]/g' > "$dst"
+            if [ "$(wc -c < "$src")" -gt "$log_limit" ]; then
+              printf '\n... (log truncated)\n' >> "$dst"
+            fi
+          }
+
           category_code() {
             case "$1" in
-              migrations) echo '${{ steps.lint.outputs.exit_code_migrations }}' ;;
-              dml)        echo '${{ steps.lint.outputs.exit_code_dml }}' ;;
-              seed)       echo '${{ steps.lint.outputs.exit_code_seed }}' ;;
+              migrations) echo "${EXIT_CODE_MIGRATIONS-}" ;;
+              dml)        echo "${EXIT_CODE_DML-}" ;;
+              seed)       echo "${EXIT_CODE_SEED-}" ;;
             esac
           }
 
@@ -71,32 +170,36 @@ jobs:
             if [ "$(category_code "$cat")" = "0" ]; then
               printf -- '- ✅ %s\n' "$cat" >> "$out"
             else
-              printf -- '- ❌ %s のディレクトリの SQL をローカルで修正し、差分をコミットしてください。\n' "$cat" >> "$out"
+              printf -- '- ❌ Fix the SQL under the %s directory locally and commit the diff.\n' "$cat" >> "$out"
             fi
           done
           echo "" >> "$out"
 
           for cat in migrations dml seed; do
             if [ "$(category_code "$cat")" = "0" ]; then icon="✅"; else icon="🚨"; fi
+            body="/tmp/sqlfluff_${cat}_body.log"
+            prepare_log "/tmp/sqlfluff_${cat}.log" "$body"
+            fence="$(fence_for "$body")"
             {
               echo "<details><summary>${icon} ${cat} log</summary>"
               echo ""
-              echo '```text'
-              cat "/tmp/sqlfluff_${cat}.log" 2>/dev/null || echo "(log not found)"
-              echo '```'
+              echo "${fence}text"
+              cat "$body"
+              echo "${fence}"
               echo "</details>"
               echo ""
             } >> "$out"
           done
 
       - name: Comment SQL lint result on PR
-        if: github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- sql-lint-result -->'
-          title: ${{ steps.comment.outputs.title }}
+          status: ${{ steps.lint.outputs.status }}
+          title: "${{ steps.comment.outputs.title || '## ⚠️ SQL Lint: CUT OFF (no result produced)' }}"
           body-file: /tmp/sql-lint-comment.md
 
       - name: Fail if SQL lint failed

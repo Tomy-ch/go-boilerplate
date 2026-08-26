@@ -1,3 +1,7 @@
+#checkov:skip=CKV_DOCKER_2:make から docker compose run --rm で起動して終了する使い捨てで、常駐しないため健全性の観測対象が無い
+#checkov:skip=CKV_DOCKER_3:root 実行が要件。mise を /root 配下へ配置しており、非 root では mise と各ツールを解決できない（docker-compose.yaml 参照）
+# 上の #checkov:skip は checkov 自身の判定からしか外れない。code scanning へは checkov.yaml の
+# 「Drop suppressed results」が落としており、片方だけでは消えない。
 # mise 本体の固定バージョン（全ツールステージ共通。bump 時はここだけ変更する）
 ARG MISE_VERSION=v2026.6.0
 
@@ -5,13 +9,10 @@ ARG MISE_VERSION=v2026.6.0
 # Go ツールビルダー：mise.toml のバージョン pin で Go 系ツール一式を install し、
 # バイナリだけを /out に抽出する。最終 go_tools ステージに mise 本体を残さないための中継。
 # ------------------------------
-FROM golang:1.26.5-alpine@sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2 AS go_tools_builder
+FROM golang:1.26.6-alpine@sha256:3889b425f035be855a72fb4755265311293b6d414521f0a519d819df32222d83 AS go_tools_builder
 
 # CGO_ENABLED=0: `go:` backend で install されるツール（mockgen）を静的バイナリにする
 ENV CGO_ENABLED=0
-
-# パイプを含む RUN（mise インストール）の失敗を確実に検知するため pipefail を有効化（hadolint DL4006）
-SHELL ["/bin/ash", "-o", "pipefail", "-c"]
 
 RUN apk add --no-cache bash ca-certificates curl git
 
@@ -19,19 +20,28 @@ ARG MISE_VERSION
 ENV MISE_DATA_DIR=/root/.local/share/mise \
     MISE_CONFIG_DIR=/root/.config/mise \
     PATH="/root/.local/bin:/root/.local/share/mise/shims:$PATH"
-RUN curl -fsSL https://mise.run | MISE_VERSION=${MISE_VERSION} sh \
+# パイプのままだとリトライ時に部分受信分が sh へ流れ込むため、ファイルへ落としてから実行する。
+RUN curl -fsSL --retry 3 --retry-delay 2 --retry-all-errors https://mise.run -o /tmp/mise-install.sh \
+    && MISE_VERSION=${MISE_VERSION} sh /tmp/mise-install.sh \
+    && rm /tmp/mise-install.sh \
     && /root/.local/bin/mise --version
 
 WORKDIR /app
 COPY mise.toml ./
 RUN mise trust mise.toml
 
-RUN mise install aqua:golang-migrate/migrate \
+# 未認証の GitHub API（60 req/hour・IP 単位）ではこの install 群を賄えず 403 になる。トークンは
+# イメージ履歴に焼き込む build-arg を避け secret で渡す（未指定なら従来どおり未認証で成立）。
+RUN --mount=type=secret,id=github_token \
+    github_token="$(cat /run/secrets/github_token 2>/dev/null || true)"; \
+    if [ -n "$github_token" ]; then export GITHUB_TOKEN="$github_token"; fi; \
+    mise install aqua:golang-migrate/migrate \
     && mise install go:go.uber.org/mock/mockgen \
     && mise install oapi-codegen \
     && mise install sqlc \
     && mise install aqua:aquasecurity/trivy \
     && mise install actionlint \
+    && mise install shellcheck \
     && mise install hadolint \
     && mise install gitleaks \
     && mise install go:golang.org/x/tools/cmd/godoc \
@@ -44,16 +54,17 @@ RUN mkdir /out \
     && cp "$(mise which sqlc)" /out/ \
     && cp "$(mise which trivy)" /out/ \
     && cp "$(mise which actionlint)" /out/ \
+    && cp "$(mise which shellcheck)" /out/ \
     && cp "$(mise which hadolint)" /out/ \
     && cp "$(mise which gitleaks)" /out/ \
     && cp "$(mise which godoc)" /out/ \
     && cp "$(mise which godoc-static)" /out/
 
 # ------------------------------
-# Go ツールボックス：migrate / mockgen / oapi-codegen / sqlc / trivy / actionlint / hadolint / gitleaks / godoc / godoc-static を mise.toml のバージョンで提供
+# Go ツールボックス：migrate / mockgen / oapi-codegen / sqlc / trivy / actionlint / shellcheck / hadolint / gitleaks / godoc / godoc-static を mise.toml のバージョンで提供
 # Go ランタイムは golang 公式 base image を使用（mise.toml の go 値と `make sync-go-version` で同期）
 # ------------------------------
-FROM golang:1.26.5-alpine@sha256:0178a641fbb4858c5f1b48e34bdaabe0350a330a1b1149aabd498d0699ff5fb2 AS go_tools
+FROM golang:1.26.6-alpine@sha256:3889b425f035be855a72fb4755265311293b6d414521f0a519d819df32222d83 AS go_tools
 
 RUN apk add --no-cache \
     bash \
@@ -73,15 +84,12 @@ ENTRYPOINT []
 CMD []
 
 # ------------------------------
-# Node ツールボックス：redocly / markdownlint-cli2 を mise.toml のバージョンで提供
+# Node ツールボックス：redocly / markdownlint-cli2 / pnpm を mise.toml のバージョンで提供
 # Node ランタイムは公式 node:X.Y-alpine（musl 対応のプリビルド）を使用。
 # mise の Node ビルドは alpine 上でソースコンパイルを要求するため、ここでは公式 base に頼る。
-# 補助スクリプトが依存する npm パッケージをローカル node_modules にインストールしておく
+# 補助スクリプトが依存するパッケージを pnpm でローカル node_modules にインストールしておく
 # ------------------------------
-FROM node:24.18.0-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd AS node_tools
-
-# パイプを含む RUN（mise インストール）の失敗を確実に検知するため pipefail を有効化（hadolint DL4006）
-SHELL ["/bin/ash", "-o", "pipefail", "-c"]
+FROM node:24.19.0-alpine@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43 AS node_tools
 
 RUN apk add --no-cache \
     bash \
@@ -94,27 +102,48 @@ ARG MISE_VERSION
 ENV MISE_DATA_DIR=/root/.local/share/mise \
     MISE_CONFIG_DIR=/root/.config/mise \
     PATH="/root/.local/bin:/root/.local/share/mise/shims:$PATH"
-RUN curl -fsSL https://mise.run | MISE_VERSION=${MISE_VERSION} sh \
+RUN curl -fsSL --retry 3 --retry-delay 2 --retry-all-errors https://mise.run -o /tmp/mise-install.sh \
+    && MISE_VERSION=${MISE_VERSION} sh /tmp/mise-install.sh \
+    && rm /tmp/mise-install.sh \
     && /root/.local/bin/mise --version
 
 WORKDIR /app
 COPY mise.toml ./
 RUN mise trust mise.toml
 
-RUN mise install npm:@redocly/cli \
+# install 対象は npm backend だが、mise は対象に関わらず mise.toml 全体を解決するため GitHub を引く。
+RUN --mount=type=secret,id=github_token \
+    github_token="$(cat /run/secrets/github_token 2>/dev/null || true)"; \
+    if [ -n "$github_token" ]; then export GITHUB_TOKEN="$github_token"; fi; \
+    mise install npm:@redocly/cli \
     && mise install npm:markdownlint-cli2 \
     && mise install npm:@commitlint/cli \
+    && mise install npm:pnpm \
     && rm -rf /root/.cache /root/.npm
 
-# scripts の依存を in-tree（/app/scripts/node_modules）へ install する。
-# --ignore-scripts はサプライチェーン攻撃の主要 RCE 経路（依存の postinstall 等）を封じる防御。
-# 本ツリーの install script は esbuild のみで、そのバイナリは @esbuild/<platform>（lock 済み）
-# から実行時に解決されるため、script を飛ばしても portal ビルドは動く。
+# scripts の依存を in-tree（/app/scripts/node_modules）へ install する。補助スクリプト
+# （TypeScript）は同じ場所の tsx / vitest で実行・検査する。
+#
+# 以降の pnpm install は、依存ライフサイクルスクリプトの実行可否を各 package の
+# pnpm-workspace.yaml が宣言する（strictDepBuilds + allowBuilds）。宣言に無い依存が script を
+# 持ち込んだ時点で install が失敗する。
 WORKDIR /app/scripts
-COPY docker/tools/package.json docker/tools/package-lock.json docker/tools/.npmrc ./
-RUN npm ci --ignore-scripts \
-    && npm cache clean --force \
-    && rm -rf /root/.npm
+COPY scripts/package.json scripts/pnpm-lock.yaml scripts/pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile \
+    && pnpm store prune \
+    && rm -rf /root/.cache
+
+# docs-viewer の依存を in-tree（/app/docs-viewer/node_modules）へ install する。scripts とは
+# 別パッケージで、パッケージマネージャも pnpm で分かれている。
+#
+# ここで install しておくのは、compose がこのパスへ匿名ボリュームを当てて host の node_modules を
+# 隠すため。vite / rolldown はプラットフォーム別のバイナリを引くので、host（darwin）の解決結果が
+# そのままコンテナ（linux）へ見えると実行できない。
+WORKDIR /app/docs-viewer
+COPY docs-viewer/package.json docs-viewer/pnpm-lock.yaml docs-viewer/pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile \
+    && pnpm store prune \
+    && rm -rf /root/.cache
 
 WORKDIR /app
 
@@ -122,14 +151,12 @@ ENTRYPOINT []
 CMD []
 
 # ------------------------------
-# Python ツールボックス：sqlfluff を mise.toml のバージョンで提供
+# Python ツールボックス：sqlfluff を python/sqlfluff.txt のバージョンで提供
 # Python ランタイムは公式 python:X.Y.Z-slim（プリビルド）を使用。
 # mise の Python ビルドは python-build によるソースコンパイルが必要で時間がかかるため、ここでは公式 base に頼る。
-# NOTE: mise の pipx バックエンドが extras 構文（`sqlfluff[jinja]`）を受け付けないため、
-#       jinja extras 無しの素の sqlfluff を入れている。
-#       jinja テンプレートを SQL ファイルで使う場合は別途見直し。
+# mise が入れるのは uv までで、sqlfluff 本体は sha256 付きの lockfile から uv が入れる。
 # ------------------------------
-FROM python:3.14.6-slim@sha256:d3400aa122fa42cf0af0dbe8ec3091b047eac5c8f7e3539f7135e86d855dc015 AS python_tools
+FROM python:3.14.7-slim@sha256:ce40764625a4ff50df3548277632e7f96c4e77fe75fa848aae9885476e7df5a4 AS python_tools
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -138,26 +165,51 @@ RUN apt-get update \
         curl \
         git \
         make \
-        pipx \
     && rm -rf /var/lib/apt/lists/*
-
-# パイプを含む RUN（mise インストール）の失敗を確実に検知するため pipefail を有効化（hadolint DL4006）
-# bash は上の apt-get で導入済み（python:slim は debian ベースで /bin/ash を持たない）
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 ARG MISE_VERSION
 ENV PATH="/root/.local/bin:/root/.local/share/mise/shims:$PATH" \
     MISE_DATA_DIR=/root/.local/share/mise \
     MISE_CONFIG_DIR=/root/.config/mise
-RUN curl -fsSL https://mise.run | MISE_VERSION=${MISE_VERSION} sh \
+RUN curl -fsSL --retry 3 --retry-delay 2 --retry-all-errors https://mise.run -o /tmp/mise-install.sh \
+    && MISE_VERSION=${MISE_VERSION} sh /tmp/mise-install.sh \
+    && rm /tmp/mise-install.sh \
     && /root/.local/bin/mise --version
 
 WORKDIR /app
 COPY mise.toml ./
 RUN mise trust mise.toml
 
-RUN mise install pipx:sqlfluff \
+# uv 自体が aqua:astral-sh/uv（GitHub Releases 解決）であるうえ、mise は mise.toml 全体を解決する。
+RUN --mount=type=secret,id=github_token \
+    github_token="$(cat /run/secrets/github_token 2>/dev/null || true)"; \
+    if [ -n "$github_token" ]; then export GITHUB_TOKEN="$github_token"; fi; \
+    mise install uv \
     && rm -rf /root/.cache
+
+# --require-hashes は lockfile の全エントリが版とハッシュで固定されていることを要求するため、
+# 記載漏れのある lockfile はここで install ごと失敗する。ハッシュ照合そのものが検査を兼ねる。
+#
+# --only-binary :all: が見ているのはその次の問いで、ハッシュが一致した sdist であっても
+# setup script は install 時に走る。wheel だけを受け付ければその余地が無くなる。この lockfile は
+# 全件 wheel から解決できるため失うものは無く、解決できない pin が入った時点で黙って任意コードを
+# 実行するのではなくここで落ちる。.github/workflows/sql-lint.yaml が同じ lockfile を同じ形で入れる。
+COPY python/sqlfluff.txt python/
+RUN uv pip install --system --only-binary :all: --require-hashes --no-cache -r python/sqlfluff.txt \
+    && sqlfluff --version
+
+# graphify（知識グラフ）。lockfile を分けてあるのは、片方の版を動かしたときに
+# もう片方の install レイヤまで作り直させないため。
+#
+# ここに入れるのは速度のためではなく再現性のためである。graphify の意味論抽出は
+# 同梱の抽出プロンプトで結果が変わり、キャッシュの名前空間もそのプロンプトの
+# fingerprint で決まる（.agents/graphify/spec-pin.toml）。プロンプトはツールに同梱されて
+# 配られるので、ホストに入れた graphify を使うと「どのプロンプトで焼いたか」が
+# マシンごとに変わる。このイメージ経由なら python/graphify.in が版を、graphify.txt の
+# sha256 が中身を決める。
+COPY python/graphify.txt python/
+RUN uv pip install --system --only-binary :all: --require-hashes --no-cache -r python/graphify.txt \
+    && graphify --version
 
 ENTRYPOINT []
 CMD []

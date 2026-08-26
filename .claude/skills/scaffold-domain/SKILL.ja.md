@@ -22,7 +22,7 @@
 
 - `docs/spec/<feature>/domain.md` — single source of truth
 - `internal/domain/README.md` — layer 規約
-- 既存 aggregate package 1〜2 件（例: `internal/domain/user/`）— 構造 template
+- 既存の sibling aggregate package 1〜2 件（`internal/domain/<sibling>/`）— 構造 template
 - `internal/domain/<aggregate>/` — 既存確認（あれば中断）
 
 **書き込み（承認後）**:
@@ -55,8 +55,8 @@
 
 スタンドアロン代替: `--spec=<path>` 引数で規約外パスを指定可能。
 
-- spec ファイル無し → 中断、`/new-spec` 案内
-- `internal/domain/<aggregate>/` 既存 → 中断（手書きコード clobber 防止）
+spec ファイルが無ければ中断し、`/new-spec` を案内する。
+`internal/domain/<aggregate>/` が既にあれば、手書きコードの clobber を避けるため中断する。
 
 ## Step 1. spec + README context 読み込み
 
@@ -94,11 +94,11 @@ subagent が観点を返さない場合は最小デフォルトで継続し、us
 spec に**書かれていない**が convention で決まる要素を派生:
 
 - **Errors**: validation のある全フィールドに `ErrInvalid<Field>` を `error.go` に生成。VO には `ErrInvalid<VO>`。group root `errInvalid := xerrors.Wrap(apperror.ErrValidation, "invalid <aggregate>")` で包む
-- **Field identifiers + collect-all validation**: ユーザーが修正できる入力フィールド（クライアントが送信し修正可能なフィールド）ごとに、API リクエストのプロパティ名と一致する `Field<Name> = "<property>"` 定数を `constant.go` に生成し、入力フィールドの検証は失敗を**すべて**収集する形にする — 失敗フィールドごとに `xerrors.Wrap(ErrInvalid<Field>, msg)` と `Field<Name>` を append し、`return apperror.WithDetails(xerrors.Join(errs...), fields...)` — これにより API は不正フィールドを一度にすべて報告できる（`details`）。サーバ内部の不変条件（id・タイムスタンプ・パスワードハッシュ）は first-error return のまま: ユーザーが修正できる入力ではないため。正準の形と理由は README の `Errors` 節（ADR-0040）にある。理由文はラップしたメッセージ側（ログ専用）に残し、識別子には決して入れない
+- **Field identifiers + collect-all validation**: ユーザーが修正できる入力フィールド（クライアントが送信し修正可能なフィールド）ごとに、API リクエストのプロパティ名と一致する `Field<Name> = "<property>"` 定数を `constant.go` に生成し、入力フィールドの検証は失敗を**すべて**収集する形にする — 失敗フィールドごとに `xerrors.Wrap(ErrInvalid<Field>, msg)` と `Field<Name>` を append し、`return apperror.WithDetails(xerrors.Join(errs...), fields...)` — これにより API は不正フィールドを一度にすべて報告できる（`details`）。サーバ内部の不変条件（id・タイムスタンプ・パスワードハッシュ）は first-error return のまま: ユーザーが修正できる入力ではないため。正準の形は README の `Errors` 節、理由は ADR-0048 (error-metadata-code-message-details) にある。理由文はラップしたメッセージ側（ログ専用）に残し、識別子には決して入れない
 - **Constants**: `min_length` / `max_length` 持つフィールドに `min<Field>Length` / `max<Field>Length`。`min` / `max` 数値フィールドに対応定数
 - **Getters**: 全 unexported field に `func (e *Entity) Field() T { return e.field }` を 1 行で生成。pointer は `return ptr.Copy(e.field)`
 - **ID validation**: `uuid.UUID` 型かつ `id` or `<x>ID` 名のフィールドに constructor で `if id.IsNil() { return nil, xerrors.Wrap(ErrInvalidID, "...") }`
-- **単純な型検証**: string + min/max length は `stringkit.InRange(field, minXLength, maxXLength)`。nullable string は nil 許容 + 値があるとき範囲チェック
+- **単純な型検証**: string + min/max length は `if ok, msg := stringkit.ValidateInRange(field, minXLength, maxXLength); !ok`。nullable string は nil 許容 + 値があるとき範囲チェック（`if x != nil { if ok, msg := stringkit.ValidateInRange(*x, ...); !ok { ... } }`）
 
 ## Step 4. プランと承認
 
@@ -170,7 +170,7 @@ commit しない。次の scaffold skill を起動しない。
 
 ## 制約事項
 
-- ❌ コードを言い換える／*なぜ*その設計にしたかを説明するコメントを足す — コードコメントは最小（振る舞い・契約のみ）。理由は commit message / README に置きコードに書かない。宣言の godoc（unexported 含む）は1行で残す。
+- ❌ コードを言い換える／*なぜ*その設計にしたかを説明するコメントを足す — コードコメントは最小（振る舞い・契約のみ）。理由は commit message / README に置きコードに書かない。宣言の godoc（unexported 含む）は1行で残す。**分量も対象**: このスキルが生成する面は構造上すべて慣用的であり、コンストラクタ / Params 構造体 / 行→エンティティ変換 / handler テンプレートに複数行の説明を付けるのはノイズ。契約を1行で述べて止める。`docs/rules.md` にある repo 全体のルールを書き写さない。抑制であって根絶ではなく、真に非自明な Why は残す。
 - ❌ spec に無いフィールド / メソッド / error / constant を発明
 - ❌ layer 規約をハードコード — 必ず `internal/domain/README.md` + 既存 aggregate を template に
 - ❌ test 観点 subagent (Step 2) をスキップ

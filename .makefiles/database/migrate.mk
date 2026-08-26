@@ -1,26 +1,7 @@
-define check_duplicate
-@PREFIXES=$$(ls database/migrations/*.$1.sql | xargs -n1 basename | cut -d'_' -f1); \
-DUP=$$(echo "$$PREFIXES" | sort | uniq -d); \
-if [ -n "$$DUP" ]; then \
-	echo "Duplicate migration numbers ($1): $$DUP"; \
-	exit 1; \
-fi
-endef
-
-define check_gap
-@PREFIXES=$$(ls database/migrations/*.$1.sql | xargs -n1 basename | cut -d'_' -f1); \
-SORTED=$$(echo "$$PREFIXES" | sort); \
-FIRST=$$(echo "$$SORTED" | head -n1); \
-LAST=$$(echo "$$SORTED" | tail -n1); \
-WIDTH=$$(echo "$$FIRST" | wc -c); \
-EXPECTED=$$(seq $$(echo $$FIRST | sed 's/^0*//') $$(echo $$LAST | sed 's/^0*//') | xargs -I{} printf "%0$$(($$WIDTH-1))d\n" {}); \
-if [ "$$SORTED" != "$$EXPECTED" ]; then \
-	echo "Migration version gap detected ($1)"; \
-	echo "Existing :"; echo "$$SORTED"; \
-	echo "Expected :"; echo "$$EXPECTED"; \
-	exit 1; \
-fi
-endef
+# 連番の重複・欠番の判定は scripts/migration-lint（テスト付き）が持つ。これは lefthook の
+# pre-commit ゲートで、壊れ方が「何も検査しなくなる」方向に出るため、判定をシェルに置かない。
+# 自前ツールなのでツールランナーは経由せずホストで実行する（cmd/db-slot と同じ扱い）。
+MIGRATION_LINT := go run ./scripts/migration-lint
 
 ## DBマイグレーション関連のコマンド群
 # -----Migrateターゲット-----
@@ -62,16 +43,16 @@ new-migrate-%:
 	@echo "✅ 新しいマイグレーションファイルを生成しました: database/migrations/<連番>_$*.up.sql / .down.sql"
 
 check-migration-up-version:
-	$(call check_duplicate,up)
+	@$(MIGRATION_LINT) -kind up -check duplicate
 
 check-migration-down-version:
-	$(call check_duplicate,down)
+	@$(MIGRATION_LINT) -kind down -check duplicate
 
 check-migration-up-gap:
-	$(call check_gap,up)
+	@$(MIGRATION_LINT) -kind up -check gap
 
 check-migration-down-gap:
-	$(call check_gap,down)
+	@$(MIGRATION_LINT) -kind down -check gap
 
 # -------------------------------
 # 汎用ターゲット（DB可変）
@@ -81,23 +62,23 @@ check-migration-down-gap:
 #   make db-migrate-down DB=local
 #   make db-seed DB=test
 # -------------------------------
-db-migrate-up:
+db-migrate-up: require-db-owner
 	@echo "🧱 マイグレーション: 最新版までアップグレードします... (database=$(DB))"
 	@docker compose run --rm go_tool_runner make db-migrate-ci-up DB=$(DB)
 	@echo "✅ 完了：全マイグレーション適用されました。 (database=$(DB))"
 
-db-migrate-up-%:
+db-migrate-up-%: require-db-owner
 	@steps=$* && \
 	echo "🧱 マイグレーション: 現在位置から $$steps 段アップグレードします... (database=$(DB))" && \
 	docker compose run --rm go_tool_runner make db-migrate-ci-up-$$steps DB=$(DB) && \
 	echo "✅ 完了：$$steps 段適用されました。 (database=$(DB))"
 
-db-migrate-down:
+db-migrate-down: require-db-owner
 	@echo "💥 マイグレーション: 初期状態までダウングレードします... (database=$(DB))"
 	@docker compose run --rm go_tool_runner make db-migrate-ci-down DB=$(DB)
 	@echo "✅ 完了：全マイグレーションダウングレードされました。 (database=$(DB))"
 
-db-migrate-down-%:
+db-migrate-down-%: require-db-owner
 	@steps=$* && \
 	echo "💥 マイグレーション: 現在位置から $$steps 段ダウングレードします... (database=$(DB))" && \
 	docker compose run --rm go_tool_runner make db-migrate-ci-down-$$steps DB=$(DB) && \
@@ -105,32 +86,34 @@ db-migrate-down-%:
 
 # -----LocalDBに対してのMigrateエイリアス-----
 # 例: make db-local-migrate-up, make db-local-seed
+# 対象は所有している local 系データベース（主 checkout=local / 取得済み worktree=wt<N>_local）。
+# local 直書きに戻すと、取得済み worktree からでも主 checkout のデータベースを触れてしまう。
 # -------------------------------
-db-local-migrate-up: DB=local
+db-local-migrate-up: DB=$(DB_LOCAL)
 db-local-migrate-up: db-migrate-up
 
-db-local-migrate-up-%: DB=local
+db-local-migrate-up-%: DB=$(DB_LOCAL)
 db-local-migrate-up-%: db-migrate-up-%
 
-db-local-migrate-down: DB=local
+db-local-migrate-down: DB=$(DB_LOCAL)
 db-local-migrate-down: db-migrate-down
 
-db-local-migrate-down-%: DB=local
+db-local-migrate-down-%: DB=$(DB_LOCAL)
 db-local-migrate-down-%: db-migrate-down-%
 
 # -----TestDBに対してのMigrateエイリアス-----
 # 例: make db-test-migrate-up, make db-test-seed
 # -------------------------------
-db-test-migrate-up: DB=test
+db-test-migrate-up: DB=$(DB_TEST)
 db-test-migrate-up: db-migrate-up
 
-db-test-migrate-up-%: DB=test
+db-test-migrate-up-%: DB=$(DB_TEST)
 db-test-migrate-up-%: db-migrate-up-%
 
-db-test-migrate-down: DB=test
+db-test-migrate-down: DB=$(DB_TEST)
 db-test-migrate-down: db-migrate-down
 
-db-test-migrate-down-%: DB=test
+db-test-migrate-down-%: DB=$(DB_TEST)
 db-test-migrate-down-%: db-migrate-down-%
 
 # -----CI用ターゲット-----

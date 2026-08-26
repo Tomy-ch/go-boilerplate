@@ -1,0 +1,148 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>shellcheck - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../src/go-boilerplate/scripts">scripts</a>/<a href="../../../../../src/go-boilerplate/scripts/lib">lib</a>/<a href="../../../../../src/go-boilerplate/scripts/lib/shellcheck">shellcheck</a>/<span class="text-muted">shellcheck.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../go-boilerplate/scripts/lib/shellcheck">go-boilerplate/scripts/lib/shellcheck</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span><span class="comment">// Package shellcheck は shellcheck の起動と結果の解釈を 1 箇所へ集める。</span>
+<span id="L2" class="ln">     2  </span><span class="comment">//</span>
+<span id="L3" class="ln">     3  </span><span class="comment">// 呼び出し側は 2 つある。composite action から抽出した run ステップを検査する actions-shellcheck と、</span>
+<span id="L4" class="ln">     4  </span><span class="comment">// ファイルとして置かれたシェルを検査する shell-lint である。どちらも渡し方が同じでなければ、同じ</span>
+<span id="L5" class="ln">     5  </span><span class="comment">// スクリプトが経路によって違う判定を受けうる。</span>
+<span id="L6" class="ln">     6  </span><span class="comment">//</span>
+<span id="L7" class="ln">     7  </span><span class="comment">// 検査対象は常に標準入力から渡す。コマンドの引数を定数に保つためで、可変引数は gosec の G204 に当たる。</span>
+<span id="L8" class="ln">     8  </span><span class="comment">// 方言は内容の shebang から shellcheck 自身が決めるので、渡し方は結果を変えない。</span>
+<span id="L9" class="ln">     9  </span>package shellcheck
+<span id="L10" class="ln">    10  </span>
+<span id="L11" class="ln">    11  </span>import (
+<span id="L12" class="ln">    12  </span>	&#34;context&#34;
+<span id="L13" class="ln">    13  </span>	&#34;fmt&#34;
+<span id="L14" class="ln">    14  </span>	&#34;os/exec&#34;
+<span id="L15" class="ln">    15  </span>	&#34;strings&#34;
+<span id="L16" class="ln">    16  </span>	&#34;time&#34;
+<span id="L17" class="ln">    17  </span>
+<span id="L18" class="ln">    18  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L19" class="ln">    19  </span>)
+<span id="L20" class="ln">    20  </span>
+<span id="L21" class="ln">    21  </span>const (
+<span id="L22" class="ln">    22  </span>	<span class="comment">// Binary は起動する実行ファイル名。所在確認も同じ名前で行う。</span>
+<span id="L23" class="ln">    23  </span>	Binary = &#34;shellcheck&#34;
+<span id="L24" class="ln">    24  </span>
+<span id="L25" class="ln">    25  </span>	<span class="comment">// findingsExitCode は「指摘があった」ことを表す終了コード。失敗ではなく結果である。</span>
+<span id="L26" class="ln">    26  </span>	findingsExitCode = 1
+<span id="L27" class="ln">    27  </span>
+<span id="L28" class="ln">    28  </span>	timeout = 30 * time.Second
+<span id="L29" class="ln">    29  </span>)
+<span id="L30" class="ln">    30  </span>
+<span id="L31" class="ln">    31  </span>var (
+<span id="L32" class="ln">    32  </span>	<span class="comment">// ErrMissing は shellcheck が PATH に無いことを表す。</span>
+<span id="L33" class="ln">    33  </span>	ErrMissing = xerrors.New(&#34;shellcheck が PATH にありません（mise install shellcheck）&#34;)
+<span id="L34" class="ln">    34  </span>
+<span id="L35" class="ln">    35  </span>	<span class="comment">// ErrRun は shellcheck を起動できなかった、または指摘以外の理由で終了したことを表す。</span>
+<span id="L36" class="ln">    36  </span>	ErrRun = xerrors.New(&#34;shellcheck の実行に失敗しました&#34;)
+<span id="L37" class="ln">    37  </span>)
+<span id="L38" class="ln">    38  </span>
+<span id="L39" class="ln">    39  </span><span class="comment">// Setup は shellcheck の所在を確かめ、走査の基点を返します。</span>
+<span id="L40" class="ln">    40  </span><span class="comment">//</span>
+<span id="L41" class="ln">    41  </span><span class="comment">// 順序に意味があります。基点が取れても shellcheck が無ければ 1 件も検査できないので、走査を始める</span>
+<span id="L42" class="ln">    42  </span><span class="comment">// 前に落とします。両ツールが同じ前提で始まることを、この 1 箇所が保証します。</span>
+<span id="L43" class="ln">    43  </span>func Setup(wd func() (string, error), lookPath func(string) (string, error)) (string, error) {
+<span id="L44" class="ln">    44  </span>	if _, err := lookPath(Binary); err != nil {
+<span id="L45" class="ln">    45  </span>		return &#34;&#34;, xerrors.Wrap(ErrMissing, err.Error())
+<span id="L46" class="ln">    46  </span>	}
+<span id="L47" class="ln">    47  </span>
+<span id="L48" class="ln">    48  </span>	root, err := wd()
+<span id="L49" class="ln">    49  </span>	if err != nil {
+<span id="L50" class="ln">    50  </span>		return &#34;&#34;, xerrors.Wrap(err, &#34;getwd&#34;)
+<span id="L51" class="ln">    51  </span>	}
+<span id="L52" class="ln">    52  </span>
+<span id="L53" class="ln">    53  </span>	return root, nil
+<span id="L54" class="ln">    54  </span>}
+<span id="L55" class="ln">    55  </span>
+<span id="L56" class="ln">    56  </span><span class="comment">// Run は script を shellcheck に掛け、gcc 形式の出力を返します。</span>
+<span id="L57" class="ln">    57  </span><span class="comment">//</span>
+<span id="L58" class="ln">    58  </span><span class="comment">// 指摘があるときの終了コード 1 は失敗ではなく結果なので、そのまま出力を返します。区別しないと</span>
+<span id="L59" class="ln">    59  </span><span class="comment">// 「指摘があった」と「起動できなかった」が同じ扱いになり、後者が黙って緑になります。</span>
+<span id="L60" class="ln">    60  </span>func Run(ctx context.Context, script string) (string, error) {
+<span id="L61" class="ln">    61  </span>	cctx, cancel := context.WithTimeout(ctx, timeout)
+<span id="L62" class="ln">    62  </span>	defer cancel()
+<span id="L63" class="ln">    63  </span>
+<span id="L64" class="ln">    64  </span>	cmd := exec.CommandContext(cctx, Binary, &#34;--norc&#34;, &#34;--format=gcc&#34;, &#34;-&#34;)
+<span id="L65" class="ln">    65  </span>	cmd.Stdin = strings.NewReader(script)
+<span id="L66" class="ln">    66  </span>	var stdout, stderr strings.Builder
+<span id="L67" class="ln">    67  </span>	cmd.Stdout = &amp;stdout
+<span id="L68" class="ln">    68  </span>	cmd.Stderr = &amp;stderr
+<span id="L69" class="ln">    69  </span>
+<span id="L70" class="ln">    70  </span>	err := cmd.Run()
+<span id="L71" class="ln">    71  </span>	if err == nil {
+<span id="L72" class="ln">    72  </span>		return stdout.String(), nil
+<span id="L73" class="ln">    73  </span>	}
+<span id="L74" class="ln">    74  </span>
+<span id="L75" class="ln">    75  </span>	var exitErr *exec.ExitError
+<span id="L76" class="ln">    76  </span>	if xerrors.As(err, &amp;exitErr) &amp;&amp; exitErr.ExitCode() == findingsExitCode {
+<span id="L77" class="ln">    77  </span>		return stdout.String(), nil
+<span id="L78" class="ln">    78  </span>	}
+<span id="L79" class="ln">    79  </span>
+<span id="L80" class="ln">    80  </span>	return &#34;&#34;, xerrors.Wrap(ErrRun, fmt.Sprintf(&#34;%v: %s&#34;, err, strings.TrimSpace(stderr.String())))
+<span id="L81" class="ln">    81  </span>}
+<span id="L82" class="ln">    82  </span>
+</pre><p><a href="../../../../../src/go-boilerplate/scripts/lib/shellcheck/shellcheck.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

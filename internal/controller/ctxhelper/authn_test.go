@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"go-boilerplate/internal/usecase/boundary/auth"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -12,7 +14,7 @@ import (
 
 func newTestAuthn(t *testing.T, subject string) auth.Authn {
 	t.Helper()
-	a, err := auth.New(subject, auth.ProviderMock, nil, nil)
+	a, err := auth.New(subject, auth.IssuerMock, nil, nil)
 	require.NoError(t, err)
 	return *a
 }
@@ -47,7 +49,7 @@ func TestSetAuthn(t *testing.T) {
 			got, ok := GetAuthn(ctx)
 			assert.True(t, ok)
 			assert.Equal(t, want.Subject(), got.Subject())
-			assert.Equal(t, want.Provider(), got.Provider())
+			assert.Equal(t, want.Issuer(), got.Issuer())
 		})
 	})
 
@@ -78,6 +80,170 @@ func TestGetAuthn(t *testing.T) {
 			ctx := WithAuthn(context.Background())
 			_, ok := GetAuthn(ctx)
 			assert.False(t, ok)
+		})
+	})
+}
+
+func TestSetAuthnFailure(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("スロットがあれば書き込めAuthnFailureで読める", func(t *testing.T) {
+			t.Parallel()
+			want := xerrors.New("authentication failed")
+			ctx := WithAuthn(context.Background())
+
+			require.True(t, SetAuthnFailure(ctx, want))
+
+			assert.Equal(t, want, AuthnFailure(ctx))
+		})
+
+		t.Run("Authnの書き込みとは独立して共存する", func(t *testing.T) {
+			t.Parallel()
+			ctx := WithAuthn(context.Background())
+			failure := xerrors.New("authentication failed")
+
+			require.True(t, SetAuthn(ctx, newTestAuthn(t, "u1")))
+			require.True(t, SetAuthnFailure(ctx, failure))
+
+			_, ok := GetAuthn(ctx)
+			assert.True(t, ok)
+			assert.Equal(t, failure, AuthnFailure(ctx))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("スロット未仕込みなら書き込めずfalseを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, SetAuthnFailure(context.Background(), xerrors.New("authentication failed")))
+		})
+	})
+}
+
+func TestAuthnFailure(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("スロットはあるが失敗が無ければnil", func(t *testing.T) {
+			t.Parallel()
+			assert.NoError(t, AuthnFailure(WithAuthn(context.Background())))
+		})
+
+		t.Run("スロット未仕込みならnil", func(t *testing.T) {
+			t.Parallel()
+			assert.NoError(t, AuthnFailure(context.Background()))
+		})
+	})
+}
+
+func TestRequireAuthn(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("設定済みならAuthnを返す", func(t *testing.T) {
+			t.Parallel()
+			ctx := WithAuthn(context.Background())
+			expected := newTestAuthn(t, "require-authn")
+			require.True(t, SetAuthn(ctx, expected))
+
+			actual, err := RequireAuthn(ctx)
+			require.NoError(t, err)
+			assert.Equal(t, expected, actual)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("スロット未仕込みならErrUnauthenticatedUserを返す", func(t *testing.T) {
+			t.Parallel()
+			_, err := RequireAuthn(context.Background())
+			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+		})
+
+		t.Run("スロットはあるが未設定ならErrUnauthenticatedUserを返す", func(t *testing.T) {
+			t.Parallel()
+			_, err := RequireAuthn(WithAuthn(context.Background()))
+			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+		})
+	})
+}
+
+func TestOptionalAuthn(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("設定済みなら同じAuthnを指すポインタを返す", func(t *testing.T) {
+			t.Parallel()
+			ctx := WithAuthn(context.Background())
+			expected := newTestAuthn(t, "optional-authn")
+			require.True(t, SetAuthn(ctx, expected))
+
+			actual := OptionalAuthn(ctx)
+			require.NotNil(t, actual)
+			assert.Equal(t, expected, *actual)
+		})
+
+		t.Run("スロット未仕込みならnilを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Nil(t, OptionalAuthn(context.Background()))
+		})
+
+		t.Run("スロットはあるが未設定ならnilを返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Nil(t, OptionalAuthn(WithAuthn(context.Background())))
+		})
+	})
+}
+
+func TestRequireUserID(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("UserID解決済みならそのIDを返す", func(t *testing.T) {
+			t.Parallel()
+			ctx := WithAuthn(context.Background())
+			expected := uuidtestkit.NewTestFromSalt(t, "require_user_id")
+			base := newTestAuthn(t, "require-user-id")
+			resolved, err := base.WithUserID(expected)
+			require.NoError(t, err)
+			require.True(t, SetAuthn(ctx, *resolved))
+
+			actual, uerr := RequireUserID(ctx)
+			require.NoError(t, uerr)
+			assert.Equal(t, expected, actual)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Authn未設定ならErrUnauthenticatedUserを返す", func(t *testing.T) {
+			t.Parallel()
+			_, err := RequireUserID(context.Background())
+			require.ErrorIs(t, err, ErrUnauthenticatedUser)
+		})
+
+		t.Run("UserID未解決なら解決失敗の原因を返す", func(t *testing.T) {
+			t.Parallel()
+			ctx := WithAuthn(context.Background())
+			require.True(t, SetAuthn(ctx, newTestAuthn(t, "unresolved")))
+
+			_, err := RequireUserID(ctx)
+			require.Error(t, err)
+			assert.NotErrorIs(t, err, ErrUnauthenticatedUser)
 		})
 	})
 }

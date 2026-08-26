@@ -141,3 +141,36 @@ func Test_stacktraceArrayCore_With(t *testing.T) {
 		})
 	})
 }
+
+func Test_wrapStacktraceCore(t *testing.T) {
+	t.Parallel()
+
+	newInnerCore := func(t *testing.T, level zapcore.Level) zapcore.Core {
+		t.Helper()
+		enc := zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig())
+		return zapcore.NewCore(enc, zapcore.AddSync(&bytes.Buffer{}), level)
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定した出力キーを保持したラッパを返す", func(t *testing.T) {
+			t.Parallel()
+
+			wrapped := wrapStacktraceCore(newInnerCore(t, zapcore.DebugLevel), "stack_lines")
+
+			c, ok := wrapped.(*stacktraceArrayCore)
+			require.True(t, ok)
+			assert.Equal(t, "stack_lines", c.key)
+		})
+
+		t.Run("レベル判定は内側coreへ委譲される", func(t *testing.T) {
+			t.Parallel()
+
+			wrapped := wrapStacktraceCore(newInnerCore(t, zapcore.WarnLevel), stacktraceKey)
+
+			assert.False(t, wrapped.Enabled(zapcore.InfoLevel))
+			assert.True(t, wrapped.Enabled(zapcore.WarnLevel))
+		})
+	})
+}

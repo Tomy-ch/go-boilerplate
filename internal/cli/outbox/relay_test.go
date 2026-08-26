@@ -28,7 +28,6 @@ func TestRunRelay(t *testing.T) {
 			start := func(context.Context) error { started = true; return nil }
 			stop := func(stopCtx context.Context) error {
 				stopped = true
-				// 停止用 context には shutdownTimeout 由来の deadline が設定されている。
 				_, ok := stopCtx.Deadline()
 				assert.True(t, ok)
 				return nil

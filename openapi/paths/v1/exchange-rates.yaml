@@ -4,8 +4,9 @@ get:
     - v1/exchange-rates
   summary: 為替レートで金額を換算します。
   description: |
-    base 通貨建ての amount を quote 通貨へ換算した結果を返します。
+    base 通貨建ての original を quote 通貨へ換算した結果を返します。
     外部の為替レートサービスを gateway（DTO モード）経由で利用するサンプルエンドポイントです。
+  security: []
   parameters:
     - name: base
       in: query
@@ -21,14 +22,29 @@ get:
       schema:
         type: string
         example: JPY
-    - name: amount
+    - name: original
       in: query
       required: true
-      description: 換算する金額（base 通貨建て）
+      description: |
+        換算する金額（base 通貨建て）。正確な十進量を保つため decimal 文字列で受け付けます。
+        JSON number は IEEE754 double として復元され精度を失うため、金額・レート経路では文字列で表現します。
       schema:
-        type: number
-        format: double
-        example: 100
+        type: string
+        # 未認証エンドポイントの DoS 対策として桁数を有界にする（根拠: docs/spec/exchange-rate/usecase.md）。
+        maxLength: 40
+        pattern: '^\d{1,20}(\.\d{1,18})?$'
+        example: "100"
+    - name: displayCurrency
+      in: query
+      required: false
+      description: |
+        指定時のみ、その通貨での参考換算額を referenceAmount として返します（非永続）。
+        現状は JPY のみサポートします。
+      schema:
+        type: string
+        enum:
+          - JPY
+        example: JPY
   responses:
     '200':
       description: 換算結果を返します。
@@ -38,6 +54,8 @@ get:
             $ref: '../../components/responses/exchange-rates/ExchangeRateResponse.yaml'
     '400':
       $ref: '../../components/schemas/errors/BadRequest400.yaml'
+    '405':
+      $ref: '../../components/schemas/errors/MethodNotAllowed405.yaml'
     '500':
       $ref: '../../components/schemas/errors/InternalServerError500.yaml'
     '503':

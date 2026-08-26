@@ -1,8 +1,8 @@
 # Outbox Subsystem Design Reference
 
-[Outbox Store README](../../internal/usecase/boundary/outbox/README.md) | 日本語: [outbox.ja.md](../ja/design/outbox.ja.md)
+[Outbox Store README](../../internal/usecase/boundary/outbox/README.md) | 日本語: [outbox.ja.md](outbox.ja.md)
 
-This document consolidates the transactional outbox subsystem's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. For per-package overviews see the READMEs; for the adoption rationale see the outbox ADRs ([ADR-0045](../adr/0045-transactional-outbox.md) onward); for the deliberate decision NOT to harden the relay's duplicate windows in this template (and the recommended multi-layer redesign for production copies) see [ADR-0097](../adr/0097-outbox-relay-hardening-delegated.md).
+This document consolidates the transactional outbox subsystem's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. For per-package overviews see the READMEs; for the adoption rationale see the outbox ADRs ([ADR-0054 (transactional-outbox)](../adr/0054-transactional-outbox.md) onward); for the decision to ship the balanced relay and defer hardening to operational evidence (with the full multi-layer blueprint) see [ADR-0107 (outbox-relay-hardening-delegated)](../adr/0107-outbox-relay-hardening-delegated.md).
 
 ---
 
@@ -215,12 +215,22 @@ sequenceDiagram
 
 The subsystem ships the **full machinery**: emit/relay/gc/replay usecases, the RDB `Store`, the HTTP `Publisher`, the relay `Engine`, the GC job, DI wiring, and the `outbox-relay` / `replay` / `job outbox-gc` entry points. No event flows by default — the integrator wires the two open ends (the producing call and the consuming endpoint) and operates the processes.
 
+> **Departure from Evans — no Published Language on this side.** The synchronous HTTP surface has one:
+> OpenAPI is committed as a resolved contract that a consumer in another repository can read without
+> this repository's toolchain, and a drift gate keeps it honest. The asynchronous surface has none.
+> [ADR-0057 (message-id-idempotency-propagation)](../adr/0057-message-id-idempotency-propagation.md) fixes a *transport* convention
+> (`Idempotency-Key`), not a language: nothing here defines or publishes the schema of the event
+> payloads or the vocabulary of `event_type`, so a receiver learns both by reading this repository's
+> source. The asymmetry is deliberate to the extent that item ② below hands payload and `event_type`
+> to the integrator — nothing can publish a language for events it does not own. What is *not*
+> yet provided is the shape that publication should take once the integrator defines those events.
+
 ```mermaid
 flowchart LR
     EM["① call Emit in the business tx<br/>(alongside the domain change)"]:::need
     PL["② define payload + event_type<br/>(snapshot + version, self-contained)"]:::need
     RC["③ build the receiver endpoint<br/>(idempotent on Idempotency-Key)"]:::need
-    CF["④ set OUTBOX_ENDPOINT (+ tuning)"]:::need
+    CF["④ set ENDPOINT_OUTBOX (+ tuning)"]:::need
     DP["⑤ deploy the relay process<br/>(cmd outbox-relay, resident)"]:::need
     GC["⑥ schedule GC<br/>(cron → cmd job outbox-gc)"]:::need
     OP["⑦ operate dead rows<br/>(monitor outbox.dead → replay)"]:::need
@@ -231,9 +241,9 @@ flowchart LR
 | # | Required implementation | Location / how | Reference |
 | --- | --- | --- | --- |
 | ① | call `EmitUsecase.Emit` inside the same `tx.Manager.Do` as the domain write | the usecase that mutates the aggregate | `emit.go` `EmitInput` |
-| ② | choose `EventType` (`+version`) and marshal a **self-contained snapshot** payload; do NOT put `Authorization`/`Cookie` in `Headers` (they are sent verbatim) | caller of `Emit` | `EmitInput.Payload` / `.Headers` doc |
+| ② | choose `EventType` (`+version`) and marshal a **self-contained snapshot** payload; do NOT put `Authorization`/`Cookie` in `Headers` (a denylist drops known-sensitive names before send, but that is defense-in-depth, not the contract) | caller of `Emit` | `EmitInput.Payload` / `.Headers` doc |
 | ③ | a receiving endpoint that **dedupes on `Idempotency-Key`** (= `message_id`) and returns 2xx only on durable accept | external service | `httpPublisher.Publish` |
-| ④ | `OUTBOX_ENDPOINT` (required; empty/invalid URL = relay refuses to start) + optional `OUTBOX_POLL_INTERVAL` / `OUTBOX_ERROR_BACKOFF` / `OUTBOX_BATCH_SIZE` | `env/` & IaC | `OutboxConfig` defaults |
+| ④ | `ENDPOINT_OUTBOX` (required; empty/invalid URL = relay refuses to start) + optional `OUTBOX_POLL_INTERVAL` / `OUTBOX_ERROR_BACKOFF` / `OUTBOX_BATCH_SIZE` | `env/` & IaC | `OutboxConfig` defaults |
 | ⑤ | run `cmd outbox-relay` as a resident process (it stays up until SIGTERM, drains on stop) | deployment / IaC | `cmd/outbox_relay.go` |
 | ⑥ | schedule `cmd job outbox-gc [--batch-size=N]` (k8s CronJob / cron) to prune `published` rows past retention | scheduler | `controller/job/outboxgc` |
 | ⑦ | alert on the `outbox.dead` counter / `outbox.lag_seconds` gauge and run `outbox-relay replay [--message-id=<uuid>]` to recover | runbook | `cmd outbox-relay replay` |
@@ -250,7 +260,7 @@ flowchart LR
 | **emit** | The synchronous half: `EmitUsecase.Emit` INSERTs one row inside the caller's business tx (`internal/usecase/outbox/emit.go`). |
 | **relay** | The asynchronous half: a resident `Engine` poll loop that claims, publishes, and marks pending rows (`controller/outbox` + `usecase/outbox/relay.go`). |
 | **Store** | The persistence port for the outbox table (`usecase/boundary/outbox`). Implemented over sqlc gen in `infrastructure/rdb/system_cqrs/outbox`. |
-| **Publisher** | The send port (`usecase/boundary/publisher`). The HTTP impl POSTs to `OUTBOX_ENDPOINT`. |
+| **Publisher** | The send port (`usecase/boundary/publisher`). The HTTP impl POSTs to `ENDPOINT_OUTBOX`. |
 | **status** | The row's lifecycle column — exactly `pending` / `published` / `dead` (CHECK-constrained). There is no `failed` status; a failed publish stays `pending`. |
 | **attempts / last_error** | Publish try count and latest failure reason. `MarkFailed` advances both; the row stays `pending` until `attempts ≥ MaxAttempts`. |
 | **MaxAttempts** | Publish tries before a row is marked `dead` (`DefaultMaxAttempts = 10`). |

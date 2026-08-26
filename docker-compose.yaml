@@ -7,26 +7,46 @@ services:
       context: .
       dockerfile: docker/server/Dockerfile
       target: tooling
+      secrets:
+        - github_token
     ports:
-      - "8080:8080"   # APIポート
-      - "2345:2345"   # デバッグ(dlv)ポート
-      - "6060:6060"   # メトリクス(pprof)ポート
+      # ホスト公開ポートは DB スロットプール（cmd/db-slot）が worktree 毎に割り当てる（既定 8080/2345/6060）。
+      # 複数 worktree で同時に make serve するための分離。コンテナ内部は常に固定。
+      - "${API_HOST_PORT:-8080}:8080"   # APIポート
+      - "${DLV_HOST_PORT:-2345}:2345"   # デバッグ(dlv)ポート
+      - "${PPROF_HOST_PORT:-6060}:6060" # メトリクス(pprof)ポート
     volumes:
       - .:/app
     extra_hosts:
       - "host.docker.internal:host-gateway"
+# sample-api:begin
+    # 実行時 env は env/.env より優先されるため、local だけがキューへ向く。判別子を env/.env
+    # ではなくここに置くのは、環境差の宣言（env/README.md の Per-environment value）が削除後に
+    # 陳腐化する一方、Markdown の表では replace マーカーで差し替えられないため。
+    environment:
+      OUTBOX_PUBLISHER: sqs
+# sample-api:end
     tty: true
     stdin_open: true
     working_dir: /app
     depends_on:
       database:
         condition: service_healthy
+      mock_auth_server:
+        condition: service_healthy
+      garage:
+        condition: service_healthy
+      garage_init:
+        condition: service_completed_successfully
     profiles:
       - development
 
   database: # PostgreSQLデータベース
-    image: postgres:18.3-bookworm
+    image: postgres:18.4-trixie@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636
     ports:
+      # 固定ポートを持つ共有インフラ（database / observability / garage）は、全 checkout が
+      # 単一プロジェクト gobp-shared の 1 インスタンスを共有する。worktree の並列化は
+      # per-worktree のデータベース（wt<N>_local / wt<N>_test）で行う（cmd/db-slot）。
       - "5432:5432"
     volumes:
       - pg_data:/var/lib/postgresql
@@ -35,6 +55,11 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres-password
       POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+      # DB 側の timezone はこの 2 変数だけが供給する（CI の postgres service と同じ機構）。
+      # TZ は initdb 時にしか効かないため、既存 volume では作り直しまで反映されない。
+      # 機構と変更手順は env/README.md の Changing the Timezone を参照。
+      TZ: Asia/Tokyo
+      PGTZ: Asia/Tokyo
     user: postgres
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "postgres", "-d", "local"]
@@ -48,7 +73,7 @@ services:
       - tools
 
   observability:
-    image: grafana/otel-lgtm:0.28.0
+    image: grafana/otel-lgtm:0.30.0@sha256:46ca028e294bd728e8e930a28e887f640a8f2a9533cc283f79bcc6ab73d2ffd8
     ports:
       - "3000:3000" # Grafana UI
       - "4317:4317" # OTLP gRPC
@@ -57,26 +82,114 @@ services:
     profiles:
       - development
 
+  mock_auth_server: # 疑似 OIDC 認証サーバー（開発用。実 IdP の差し替え先）
+    image: ghcr.io/navikt/mock-oauth2-server:6.0.0@sha256:b9fa251aefee22a97c32534d23a1c400f01dbd483ab263b013d89f6d60d96691
+    ports:
+      # 独自サービスの帯（2000 番台）。ホスト公開ポートはスロット毎に割り当てる（既定 2010、内部は常に 4000）。
+      - "${MOCK_AUTH_HOST_PORT:-2010}:4000"
+    environment:
+      # iss はトークンを取得したリクエストの Host から導出されるため、ホスト公開 URL でトークンを取れば
+      # AUTH_ISSUER と一致する（issuer を env で固定する必要が無い）。JWKS 取得だけはコンテナ名で
+      # 内部解決する（Go 側 ENDPOINT_JWKS=http://mock_auth_server:4000/default/jwks）。
+      SERVER_PORT: "4000"
+      JSON_CONFIG_PATH: /etc/mock-oauth2-server/config.json
+      LOG_LEVEL: INFO
+    volumes:
+      # 発行するトークンの契約（issuerId / typ=at+jwt / aud / sub）は config.json が持つ。
+      - ./docker/mock-auth-server/config.json:/etc/mock-oauth2-server/config.json:ro
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:4000/isalive"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 3s
+    profiles:
+      - development
+      - auth
+
+  garage: # S3 互換オブジェクトストレージ（ローカル開発用。テストは gofakes3 in-process を使う）
+    image: dxflrs/garage:v2.3.0@sha256:866bd13ed2038ba7e7190e840482bc27234c4afaf77be8cfa439ae088c1e4690
+    entrypoint: ["/garage", "-c", "/etc/garage.toml", "server"]
+    ports:
+      - "3900:3900" # S3 API
+      - "3902:3902" # Web API（匿名 read の公開配信）
+    volumes:
+      - ./docker/garage/garage.toml:/etc/garage.toml:ro
+      - garage_meta:/var/lib/garage/meta
+      - garage_data:/var/lib/garage/data
+    healthcheck:
+      test: ["CMD", "/garage", "-c", "/etc/garage.toml", "status"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 3s
+    profiles:
+      - development
+      - tools
+
+  garage_init: # Garage の初期プロビジョニング（レイアウト / バケット / アクセスキー・冪等・one-shot）
+    build:
+      context: docker/garage
+    entrypoint: ["/bin/sh", "/usr/local/bin/garage-init.sh"]
+    depends_on:
+      garage:
+        condition: service_healthy
+    volumes:
+      - ./docker/garage/garage.toml:/etc/garage.toml:ro
+      # イメージに焼かずマウントで渡し、再ビルド忘れで古いプロビジョニングが走るのを避ける。
+      - ./docker/garage/init.sh:/usr/local/bin/garage-init.sh:ro
+      # garage server が生成したノード鍵を CLI が読むため meta を共有する。
+      - garage_meta:/var/lib/garage/meta
+    # バケット / アクセスキーは Go 側と同一の値でなければならないため、値を再掲せず env/.env を直接渡す。
+    env_file:
+      - env/.env
+    restart: "no"
+    profiles:
+      - development
+      - tools
+
+  elasticmq: # SQS 互換ブローカー（ローカル開発用。テストは in-process の fake を使う）
+    image: softwaremill/elasticmq-native:1.6.16@sha256:8383f29ad746c12981ca2128f689a4b4a93815235f1a7851d2f165316503d132
+    ports:
+      - "9324:9324" # SQS API
+    volumes:
+      # キューと DLQ の定義。起動時に読まれるため初期化用の one-shot コンテナは持たない。
+      - ./docker/elasticmq/elasticmq.conf:/opt/elasticmq.conf:ro
+    healthcheck:
+      # SQS API ポートの受付可否だけを見る。ListQueues を叩くと空レスポンスとの区別が付かず、
+      # 起動直後のキュー作成完了を待てないため、接続可否を判定に使う。
+      test: ["CMD", "nc", "-z", "localhost", "9324"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 3s
+    profiles:
+      - development
+      - tools
+
 # -------------------------------------
 # 補助サービス
 # -------------------------------------
 
-  docs_viewer: # 開発用ドキュメントビューア
+  docs_server: # 開発用ドキュメント配信（docs/ を nginx で配る）
     build:
       context: .
       dockerfile: docker/document/Dockerfile
       target: document_viewer
     ports:
-      - "8082:80"
+      # 独自サービスの帯（2000 番台）。採番規則は docs/maintenance/local-environment.md（内部は常に 80）。
+      - "2001:80"
     volumes:
       - ./docs:/usr/share/nginx/html:ro
     profiles:
       - tools
 
   sql_editor:
-    image: sosedoff/pgweb:latest
+    image: sosedoff/pgweb:0.17.0@sha256:a5256d416e2e8b92d69a4459058e3eca33a9f075d8325491644411d0bc3bd70b
     ports:
-      - "8081:8081"
+      # 独自サービスの帯（2000 番台）。pgweb 既定の 8081 は API スロット帯（8080+N）と重なるので
+      # ホスト側では採らない（内部は常に 8081）。
+      - "2000:8081"
     environment:
       DATABASE_URL: postgres://postgres:postgres-password@database:5432/local?sslmode=disable
     depends_on:
@@ -87,10 +200,11 @@ services:
       - database
 
   er_diagram_generator: # ER図生成ツール
-    image: schemaspy/schemaspy:latest
+    image: schemaspy/schemaspy:7.0.2@sha256:c8f98116a5cfe4b00b379eeb23b2022cdea4c9192cbccb843a75049e752479b7
     user: "${UID:-1000}:${GID:-1000}"
     ports:
-      - "5433:3000"
+      # 独自サービスの帯（2000 番台）。内部は常に 3000。
+      - "2002:3000"
     volumes:
       - ./docker/database/schemaspy/schemaspy.properties:/schemaspy.properties
       - ./docs/er-diagram:/output
@@ -108,6 +222,8 @@ services:
       context: .
       dockerfile: docker/tools/Dockerfile
       target: go_tools
+      secrets:
+        - github_token
     user: root
     tty: true
     stdin_open: true
@@ -123,6 +239,8 @@ services:
       context: .
       dockerfile: docker/tools/Dockerfile
       target: node_tools
+      secrets:
+        - github_token
     user: root
     tty: true
     stdin_open: true
@@ -130,6 +248,9 @@ services:
       - .:/app
       # node_modules を匿名ボリュームで保持（バインドマウントの shadow 回避）
       - /app/scripts/node_modules
+      # docs-viewer も同様。host（darwin）が解決した vite / rolldown のバイナリは
+      # コンテナ（linux）では実行できないため、バインドマウント越しに見せない
+      - /app/docs-viewer/node_modules
     working_dir: /app
     entrypoint: ""
     profiles:
@@ -140,6 +261,8 @@ services:
       context: .
       dockerfile: docker/tools/Dockerfile
       target: python_tools
+      secrets:
+        - github_token
     user: root
     tty: true
     stdin_open: true
@@ -150,6 +273,15 @@ services:
     profiles:
       - generate
 
+secrets:
+  # mise のツール解決を認証付きにするビルド時トークン。build-arg と違いイメージ履歴に残らない。
+  github_token:
+    environment: GITHUB_TOKEN
+
 volumes:
   pg_data:
+    external: false
+  garage_meta:
+    external: false
+  garage_data:
     external: false

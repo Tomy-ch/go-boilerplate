@@ -131,6 +131,16 @@
                                     <td>
                                         <table border='0' cellspacing='0' cellpadding='0'>
                                             <tr>
+                                                <td title="cart_items.product_id references products.id via cart_items_product_id_foreign"><a href='cart_items.html'>cart_items</a><span class='relatedKey'>.product_id</span></td>
+                                                <td class="constraint detail">cart_items_product_id_foreign</td>
+                                                <td class="constraint detail"><span title='Restrict delete:&#10;Parent cannot be deleted if children exist'>R</span></td>
+                                            </tr>
+                                            <tr>
+                                                <td title="product_images.product_id references products.id via product_images_product_id_foreign"><a href='product_images.html'>product_images</a><span class='relatedKey'>.product_id</span></td>
+                                                <td class="constraint detail">product_images_product_id_foreign</td>
+                                                <td class="constraint detail"><span title='Restrict delete:&#10;Parent cannot be deleted if children exist'>R</span></td>
+                                            </tr>
+                                            <tr>
                                                 <td title="purchase_details.product_id references products.id via purchase_details_product_id_foreign"><a href='purchase_details.html'>purchase_details</a><span class='relatedKey'>.product_id</span></td>
                                                 <td class="constraint detail">purchase_details_product_id_foreign</td>
                                                 <td class="constraint detail"><span title='Restrict delete:&#10;Parent cannot be deleted if children exist'>R</span></td>
@@ -144,7 +154,7 @@
                                     <td><p>ID</p></td>
                                 </tr>
                                 <tr>
-                                    <td><span id="name">name</span></td>
+                                    <td class='indexedColumn' title='Indexed'><i class='fa fa-sitemap fa-rotate-120' style='padding-right: 5px;'></i><span id="name">name</span></td>
                                     <td>varchar</td>
                                     <td>255</td>
                                     <td title=''></td>
@@ -161,7 +171,7 @@
                                     <td><p>名称</p></td>
                                 </tr>
                                 <tr>
-                                    <td><span id="description">description</span></td>
+                                    <td class='indexedColumn' title='Indexed'><i class='fa fa-sitemap fa-rotate-120' style='padding-right: 5px;'></i><span id="description">description</span></td>
                                     <td>text</td>
                                     <td>2147483647</td>
                                     <td title='nullable'>√</td>
@@ -178,9 +188,9 @@
                                     <td><p>説明</p></td>
                                 </tr>
                                 <tr>
-                                    <td><span id="price">price</span></td>
-                                    <td>int4</td>
-                                    <td>10</td>
+                                    <td class='indexedColumn' title='Indexed'><i class='fa fa-sitemap fa-rotate-120' style='padding-right: 5px;'></i><span id="price">price</span></td>
+                                    <td>numeric</td>
+                                    <td>0</td>
                                     <td title=''></td>
                                     <td title=''></td>
                                     <td>null</td>
@@ -195,7 +205,7 @@
                                     <td><p>価格</p></td>
                                 </tr>
                                 <tr>
-                                    <td><span id="quantity">quantity</span></td>
+                                    <td class='indexedColumn' title='Indexed'><i class='fa fa-sitemap fa-rotate-120' style='padding-right: 5px;'></i><span id="quantity">quantity</span></td>
                                     <td>int4</td>
                                     <td>10</td>
                                     <td title=''></td>
@@ -273,7 +283,7 @@
                                     <td><p>商品カテゴリID</p></td>
                                 </tr>
                                 <tr>
-                                    <td><span id="published_at">published_at</span></td>
+                                    <td class='indexedColumn' title='Indexed'><i class='fa fa-sitemap fa-rotate-120' style='padding-right: 5px;'></i><span id="published_at">published_at</span></td>
                                     <td>timestamptz</td>
                                     <td>35,6</td>
                                     <td title='nullable'>√</td>
@@ -290,7 +300,24 @@
                                     <td><p>公開日時</p></td>
                                 </tr>
                                 <tr>
-                                    <td><span id="created_at">created_at</span></td>
+                                    <td><span id="lock_version">lock_version</span></td>
+                                    <td>int4</td>
+                                    <td>10</td>
+                                    <td title=''></td>
+                                    <td title=''></td>
+                                    <td>1</td>
+                                    <td>
+                                        <table border='0' cellspacing='0' cellpadding='0'>
+                                        </table>
+                                    </td>
+                                    <td>
+                                        <table border='0' cellspacing='0' cellpadding='0'>
+                                        </table>
+                                    </td>
+                                    <td><p>楽観ロックバージョン</p></td>
+                                </tr>
+                                <tr>
+                                    <td class='indexedColumn' title='Indexed'><i class='fa fa-sitemap fa-rotate-120' style='padding-right: 5px;'></i><span id="created_at">created_at</span></td>
                                     <td>timestamptz</td>
                                     <td>35,6</td>
                                     <td title=''></td>
@@ -359,6 +386,48 @@
                                     <td><span title='Ascending'>Asc</span></td>
                                     <td>id</td>
                                 </tr>
+                                <tr>
+                                    <td title='Indexed'>products_category_id_idx</td>
+                                    <td>Performance</td>
+                                    <td><span title='Ascending'>Asc</span></td>
+                                    <td>category_id</td>
+                                </tr>
+                                <tr>
+                                    <td title='Indexed'>products_created_at_id_idx</td>
+                                    <td>Performance</td>
+                                    <td><span title='Descending'>Desc</span>/<span title='Descending'>Desc</span>/<span title='Ascending'>Asc</span>/<span title='Ascending'>Asc</span></td>
+                                    <td>created_at + id + price + quantity</td>
+                                </tr>
+                                <tr>
+                                    <td title='Indexed'>products_description_trgm_idx</td>
+                                    <td>Performance</td>
+                                    <td><span title='Ascending'>Asc</span></td>
+                                    <td>description</td>
+                                </tr>
+                                <tr>
+                                    <td title='Indexed'>products_low_stock_quantity_id_idx</td>
+                                    <td>Performance</td>
+                                    <td><span title='Ascending'>Asc</span>/<span title='Ascending'>Asc</span></td>
+                                    <td>quantity + id</td>
+                                </tr>
+                                <tr>
+                                    <td title='Indexed'>products_name_trgm_idx</td>
+                                    <td>Performance</td>
+                                    <td><span title='Ascending'>Asc</span></td>
+                                    <td>name</td>
+                                </tr>
+                                <tr>
+                                    <td title='Indexed'>products_published_at_id_idx</td>
+                                    <td>Performance</td>
+                                    <td><span title='Descending'>Desc</span>/<span title='Descending'>Desc</span>/<span title='Ascending'>Asc</span>/<span title='Ascending'>Asc</span></td>
+                                    <td>published_at + id + price + quantity</td>
+                                </tr>
+                                <tr>
+                                    <td title='Indexed'>products_status_id_idx</td>
+                                    <td>Performance</td>
+                                    <td><span title='Ascending'>Asc</span></td>
+                                    <td>status_id</td>
+                                </tr>
                                 </tbody>
                             </table>
                         </div><!-- /.box-body -->
@@ -382,20 +451,25 @@
                                 <div class="tab-content no-padding">
                                     <div class="chart tab-pane active" id="oneDegreeImg-chart" style="position: relative; overflow-x:auto;">
                                         <map id="oneDegreeRelationshipsDiagram" name="oneDegreeRelationshipsDiagram">
-<area shape="rect" id="node1" href="products.html" target="_top" title="products" alt="" coords="320,61,763,453">
-<area shape="rect" id="node2" href="product_categories.html" target="_top" title="product_categories" alt="" coords="5,365,276,571">
-<area shape="rect" id="node3" href="product_statuses.html" target="_top" title="product_statuses" alt="" coords="15,143,267,348">
-<area shape="rect" id="node4" href="purchase_details.html" target="_top" title="purchase_details" alt="" coords="807,5,1055,181">
+<area shape="rect" id="node1" href="cart_items.html" target="_top" title="cart_items" alt="" coords="832,5,1029,181">
+<area shape="rect" id="node2" href="products.html" target="_top" title="products" alt="" coords="320,225,763,647">
+<area shape="rect" id="node4" href="product_categories.html" target="_top" title="product_categories" alt="" coords="5,529,276,735">
+<area shape="rect" id="node5" href="product_statuses.html" target="_top" title="product_statuses" alt="" coords="15,307,267,512">
+<area shape="rect" id="node3" href="product_images.html" target="_top" title="product_images" alt="" coords="811,199,1050,375">
+<area shape="rect" id="node6" href="purchase_details.html" target="_top" title="purchase_details" alt="" coords="807,392,1055,568">
 </map>
                                         <a name='diagram'><img id="oneDegreeImg" src="../diagrams/tables/products.1degree.png" usemap="#oneDegreeRelationshipsDiagram" class="diagram" border="0" align="left"></a>
                                     </div>
                                     <div class="chart tab-pane " id="twodegreesDegreeImg-chart" style="position: relative; overflow-x:auto;">
                                         <map id="twoDegreesRelationshipsDiagram" name="twoDegreesRelationshipsDiagram">
-<area shape="rect" id="node1" href="products.html" target="_top" title="products" alt="" coords="320,111,763,503">
-<area shape="rect" id="node2" href="product_categories.html" target="_top" title="product_categories" alt="" coords="5,415,276,620">
-<area shape="rect" id="node3" href="product_statuses.html" target="_top" title="product_statuses" alt="" coords="15,192,267,397">
-<area shape="rect" id="node4" href="purchase_details.html" target="_top" title="purchase_details" alt="" coords="807,15,1055,191">
-<area shape="rect" id="node5" href="purchases.html" target="_top" title="purchases" alt="" coords="450,5,633,93">
+<area shape="rect" id="node1" href="cart_items.html" target="_top" title="cart_items" alt="" coords="832,5,1029,181">
+<area shape="rect" id="node2" href="carts.html" target="_top" title="carts" alt="" coords="475,37,607,125">
+<area shape="rect" id="node3" href="products.html" target="_top" title="products" alt="" coords="320,184,763,605">
+<area shape="rect" id="node5" href="product_categories.html" target="_top" title="product_categories" alt="" coords="5,488,276,693">
+<area shape="rect" id="node6" href="product_statuses.html" target="_top" title="product_statuses" alt="" coords="15,265,267,471">
+<area shape="rect" id="node4" href="product_images.html" target="_top" title="product_images" alt="" coords="811,199,1050,375">
+<area shape="rect" id="node7" href="purchase_details.html" target="_top" title="purchase_details" alt="" coords="807,491,1055,667">
+<area shape="rect" id="node8" href="purchases.html" target="_top" title="purchases" alt="" coords="450,623,633,711">
 </map>
                                         <a name='diagram'><img id="twodegreesDegreeImg" src="../diagrams/tables/products.2degrees.png" usemap="#twoDegreesRelationshipsDiagram" class="diagram" border="0" align="left"></a>
                                     </div>

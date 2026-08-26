@@ -2,8 +2,8 @@
 package uri
 
 import (
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v5/middleware"
 )
 
 // Middleware は、URIの末尾のスラッシュを削除するミドルウェアを返します。

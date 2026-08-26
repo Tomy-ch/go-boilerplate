@@ -1,6 +1,5 @@
 -- name: DeletePublishedOutbox :execrows
 -- retention 用 GC。published_at が cutoff より古い行を最大 $2 件削除し、削除件数を返す。
--- 長時間稼働で outbox が単調増加しないようにする。
 DELETE FROM outbox
 WHERE id IN (
         SELECT o.id

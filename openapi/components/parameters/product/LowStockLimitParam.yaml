@@ -1,0 +1,10 @@
+name: limit
+in: query
+description: 取得する上位件数。在庫の少ない順で上位 limit 件を返します。
+required: false
+schema:
+  type: integer
+  minimum: 1
+  maximum: 100
+  default: 20
+  example: 20

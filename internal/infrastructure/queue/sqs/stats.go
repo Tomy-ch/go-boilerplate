@@ -12,7 +12,6 @@ import (
 	"go-boilerplate/internal/usecase/boundary/worker"
 )
 
-// 実装漏れをコンパイル時に検出します。
 var _ worker.QueueStatsProvider = (*statsProvider)(nil)
 
 // statsProvider は、worker.QueueStatsProvider の SQS 実装です。

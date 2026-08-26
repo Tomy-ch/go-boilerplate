@@ -1,13 +1,13 @@
 # User — Domain Spec
 
 > 既存実装（`internal/domain/user`）を spec 化したベースに、未実装の詳細系エンドポイント（GetUsersDetail / Put / Patch / Delete）向けの更新・論理削除を追記したもの。
-> 追記分は scaffold の入力となる目標仕様（FindByID / Update + UpdateProfile / ChangePassword / MarkAsDeleted）。更新・論理削除は「load → ドメインメソッドで変更 → Update で永続化」に統一する方針。
+> 追記分は scaffold の入力となる目標仕様（FindByID / Update + UpdateProfile / MarkAsDeleted）。更新・論理削除は「load → ドメインメソッドで変更 → Update で永続化」に統一する方針。
 
 ## Overview
 
 ユーザー集約は、アカウントの基本情報（氏名・認証情報・連絡先）と住所情報（都道府県・市区町村・番地・建物・郵便番号）を保持するドメインの中核エンティティ。生成時に全フィールドの形式・長さ・必須を検証し、不変条件を満たさない `User` は構築できない。
 
-都道府県は ID 参照（`prefectureID`）のみを保持し、表示名は別集約（`prefecture`）から解決する。パスワードは平文を保持せず、検証済みのハッシュ（`passwordHash`）のみを保持する。平文パスワードは値オブジェクト `RawPassword` で長さ検証されたうえで、外側のレイヤーでハッシュ化される。
+都道府県は ID 参照（`prefectureID`）のみを保持し、表示名は別集約（`prefecture`）から解決する。認証は外部の OIDC/JWT に委譲し、`User` はパスワード等の認証情報を保持しない。
 
 ## Entity
 
@@ -28,11 +28,6 @@ fields:
     required: true
     min_length: 1
     max_length: 100
-  - name: passwordHash
-    type: string
-    required: true
-    min_length: 1
-    max_length: 255
   - name: email
     type: Email               # 値オブジェクト（長さ + local@domain 形式を factory で検証）
     required: true
@@ -80,48 +75,40 @@ fields:
 - `updatedAt >= createdAt`（更新日時は作成日時以降）。違反時 `ErrInvalidUpdatedAt`
 - `deletedAt != nil` のとき `deletedAt >= createdAt`。違反時 `ErrInvalidDeletedAt`
 - `deletedAt != nil` のとき `deletedAt >= updatedAt`。違反時 `ErrInvalidDeletedAt`
+- `UpdateProfile` での更新時は `updatedAt >= 現在の updatedAt`（単調非減少）。違反時 `ErrInvalidUpdatedAt`
 
 ## Behavior Methods
 
 ```yaml
 # 派生メソッド（単純フィールド getter ではない）
-- name: FullName
-  signature: FullName() string
-  description: firstName + " " + lastName を連結したフルネームを返す派生値。
+- name: IsActive
+  signature: IsActive() bool
+  description: |
+    ユーザーが在籍しているか（退会していないか）を返す述語。
+    「在籍している」が指す条件はこの述語が定義であり、永続化層の絞り込み条件が定義になることはない。
 
 # 状態遷移メソッド（更新・論理削除エンドポイント向け。追記分）
 - name: UpdateProfile
-  signature: |
-    UpdateProfile(firstName, lastName, email, phone string, prefectureID uuid.UUID,
-                  postalCode, city, street string, building *string, updatedAt time.Time) error
+  signature: UpdateProfile(profile Profile, updatedAt time.Time) error
   description: |
     プロフィール（氏名・連絡先・住所・都道府県ID）と updatedAt を一括で置き換える。
     各フィールドは New と同じ不変条件で検証する（長さ範囲 / prefectureID 非 nil /
-    building は非 nil 時のみ検証 / updatedAt >= createdAt）。パスワードは変更しない。
+    building は非 nil 時のみ検証）。updatedAt は createdAt 以降かつ現在の updatedAt 以降
+    （単調非減少）でなければならず、違反時は ErrInvalidUpdatedAt を返す。
+    既に論理削除済みの場合は ErrAlreadyDeleted を返し、更新しない。
     PUT は全フィールド指定、PATCH は load した現在値に provided フィールドをマージした
     フルセットを渡して呼ぶ（usecase 側でマージ）。
-- name: ChangePassword
-  signature: ChangePassword(passwordHash string, updatedAt time.Time) error
-  description: |
-    パスワードハッシュと updatedAt を置き換える。passwordHash は New と同じ長さ範囲で検証。
-    PUT のみ使用（PATCH では password を更新しない）。
 - name: MarkAsDeleted
   signature: MarkAsDeleted(deletedAt time.Time) error
   description: |
     論理削除。deletedAt を設定する（deletedAt >= createdAt かつ >= updatedAt を検証）。
+    論理削除は更新操作でもあるため、updatedAt も deletedAt の値へ更新する。
     既に削除済み（deletedAt != nil）の場合は ErrAlreadyDeleted を返す。
 ```
 
 ## Value Objects
 
 ```yaml
-- name: RawPassword
-  underlying_type: string
-  validation: 長さが MinRawPasswordLength(8) 以上 MaxRawPasswordLength(64) 以下。違反時 ErrInvalidRawPassword
-  factory: NewRawPassword
-  methods:
-    - name: Value
-      returns: string
 - name: Email
   underlying_type: string
   validation: 長さが 1 以上 100 以下、かつ local@domain 形式（ドメインにドットを含む）。違反時 ErrInvalidEmail
@@ -136,6 +123,15 @@ fields:
   methods:
     - name: Value
       returns: string
+- name: FeedCursor
+  underlying_type: struct   # createdAt time.Time + id uuid.UUID
+  validation: なし（境界キーの組を保持するだけで、値の妥当性はカーソルの復号側が担う）
+  factory: NewFeedCursor
+  methods:
+    - name: CreatedAt
+      returns: time.Time
+    - name: ID
+      returns: uuid.UUID
 ```
 
 ## Repository Methods
@@ -152,6 +148,23 @@ fields:
 - name: CountByActive
   signature: CountByActive(ctx context.Context, active *bool) (int64, error)
   behavior: アクティブ状態（active）に基づきユーザーの総件数を返す。
+# フィード（cursor ページネーション）向け
+- name: FindFeed
+  signature: FindFeed(ctx context.Context, after *FeedCursor, limit int32) (Users, error)
+  behavior: |
+    未削除ユーザーを作成日時の降順（同時刻は ID 降順）の安定順で keyset ページネーション取得する。
+    after=nil は先頭ページ、それ以外は after が表す境界より後ろ（より過去）を返す。
+# キーワード検索向け
+- name: SearchByKeyword
+  signature: SearchByKeyword(ctx context.Context, keywords []string, active *bool, limit, offset int32) (Users, error)
+  behavior: |
+    検索テキストがいずれかのキーワードに部分一致するユーザーを、作成日時の降順でページング取得する。
+    active の意味は FindByActive と同じ。keywords が空の場合は全ユーザーを対象とする。
+- name: CountByKeyword
+  signature: CountByKeyword(ctx context.Context, keywords []string, active *bool) (int64, error)
+  behavior: |
+    検索テキストがいずれかのキーワードに部分一致するユーザーの総件数を返す。
+    active / keywords の意味は SearchByKeyword と同じ。
 # 詳細系エンドポイント向け（追記分）
 - name: FindByID
   signature: FindByID(ctx context.Context, id uuid.UUID) (*User, error)
@@ -161,7 +174,31 @@ fields:
 - name: Update
   signature: Update(ctx context.Context, user *User) error
   behavior: |
-    ID をキーに mutable フィールド（氏名・連絡先・住所・prefectureID・passwordHash）と
+    ID をキーに mutable フィールド（氏名・連絡先・住所・prefectureID）と
     updatedAt / deletedAt を更新する。PUT / PATCH / DELETE（論理削除）すべてが
     load → ドメインメソッドで変更 → 本メソッドで永続化、という共通経路で利用する。
+# 退会後の物理削除ジョブ向け（追記分）
+- name: FindDeletedBefore
+  signature: FindDeletedBefore(ctx context.Context, cutoff time.Time, afterID *uuid.UUID, limit int32) ([]uuid.UUID, error)
+  behavior: |
+    cutoff より前に論理削除されたユーザーの ID を、ID の昇順で最大 limit 件返す。
+    afterID=nil は先頭から、それ以外は afterID より後ろを返す keyset ページネーション。
+    削除できない候補（購入を持つユーザー）を挟んでも前進できるよう、境界を offset ではなく
+    ID で受け取る。エンティティを再構築せず ID だけを返すのは、後続が物理削除のみを行うため。
+- name: PurgeByIDs
+  signature: PurgeByIDs(ctx context.Context, ids []uuid.UUID) (int64, error)
+  behavior: |
+    指定した ID のユーザーを従属データごと物理削除し、削除したユーザーの件数を返す。
+    ids が空の場合は何も削除せず 0 を返す。トランザクション境界は usecase が持つ
+    （1 バッチ = 1 トランザクション）。
+    論理削除されていないユーザーは従属データを含めて削除対象から外れるため、返る件数が ids の
+    件数を下回ることがある。保持期間の判定は usecase の責務だが、「生きているユーザーを不可逆に
+    消さない」ことは呼び手を問わない不変条件なので、永続化側の最終防壁として持つ。
 ```
+
+## Notes
+
+`users.search_text` は Entity に現れない。プロフィール列（氏名・メール・電話・住所）を連結した
+`GENERATED ALWAYS AS ... STORED` の生成列であり、`SearchByKeyword` / `CountByKeyword` が部分一致検索の
+索引として引くだけの永続化都合の派生値だからである。値はドメインが決めず DB が既存列から導出するため、
+Entity に持たせると同じ情報を二重に持つことになる。

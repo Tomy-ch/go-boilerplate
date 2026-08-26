@@ -1,0 +1,1 @@
+{"nodes": [{"id": "openapi_paths_v1_products_statuses_get_product_statuses", "label": "Get Product Statuses", "file_type": "concept", "source_file": "openapi/paths/v1/products/statuses.yaml", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null}], "edges": [], "hyperedges": []}

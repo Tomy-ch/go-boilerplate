@@ -1,6 +1,6 @@
 # Observability Subsystem Design Reference
 
-[Observability README](../../internal/observability/README.md) | 日本語: [observability.ja.md](../ja/design/observability.ja.md)
+[Observability README](../../internal/observability/README.md) | 日本語: [observability.ja.md](observability.ja.md)
 
 This document consolidates the observability subsystem's **role theory, signal lifecycles, implementation locations, provided capabilities, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. For the package-level API overview see the README; for the subsystems it instruments see [worker.md](worker.md), [outbox.md](outbox.md), [idempotency.md](idempotency.md), and [rest.md](rest.md).
 
@@ -59,7 +59,7 @@ stateDiagram-v2
 
 ### 2.2 Exporter selection (protocol switch, shared endpoint)
 
-All three signals share `OBS_OTLP_ENDPOINT` and `OBS_OTLP_PROTOCOL`. The transport is OTLP only.
+All three signals share `ENDPOINT_OTLP` and `OBS_OTLP_PROTOCOL`. The transport is OTLP only.
 
 ```mermaid
 stateDiagram-v2
@@ -168,7 +168,7 @@ The substrate ships the following ready-to-use instrumentation. An integrator mo
 | --- | --- | --- |
 | **Per-layer tracing** | `TracerFactory.Controller()/Usecase()/Infra()` → `LayerTracer.Start` | span name `layer.package.function`; auto start/end + `trace_id`/`span_id` structured logs |
 | **Ad-hoc span helper** | `RunWithSpan` / `StartSpanWithParent` / `StartWithSuffix` | span any function without a layer tracer; suffix to disambiguate multiple spans in one function |
-| **HTTP root spans** | `otelecho` middleware | per-request root span (the controller-layer span largely duplicates it — see README §Design Policy 5) |
+| **HTTP root spans** | `echootel` middleware | per-request root span (the controller-layer span largely duplicates it — see README §Design Policy 5) |
 | **DB tracing + metrics** | `NewPgxTracer` (`otelpgx`) | connection details suppressed from attributes |
 | **Outbound HTTP RED metrics** | `NewHTTPClientTransport` + `HTTPClientMetrics` | requests / errors / latency + retries / in-flight / breaker-state gauge |
 | **Subsystem metrics** | `OutboxMetrics` / `WorkerMetrics` / `IdempotencyMetrics` | lag & dead / engine RED + DLQ / idempotency result & GC; low-cardinality labels only |
@@ -201,7 +201,7 @@ flowchart LR
 | ① | wrap new work in a span | handler / usecase / repository | existing `LayerTracer.Start` call sites; `RunWithSpan` for arbitrary code |
 | ② | a new metric | a meter-owning struct like `WorkerMetrics`, `fx.Provide`d in `ObservabilityModule`, recorded from the owning subsystem | `outbox_metrics.go` / `worker_metrics.go` |
 | ③ | a new pull metric | `prometheus.Collector` + a `Register` invoke | `metrics/buildinfo` / `metrics/queue` |
-| ④ | turn export on for the environment | `OBS_TRACES/METRICS/LOGS_EXPORTER=otlp` + `OBS_OTLP_ENDPOINT` (+ `OBS_OTLP_PROTOCOL`) | `env/.env.*`, `env/README.md` |
+| ④ | turn export on for the environment | `OBS_TRACES/METRICS/LOGS_EXPORTER=otlp` + `ENDPOINT_OTLP` (+ `OBS_OTLP_PROTOCOL`) | `env/.env.*`, `env/README.md` |
 | ⑤ | keep secrets/PII out of spans & labels | everywhere instrumentation touches user input | `OBS_MASKED_DB_QUERY_ARGS`, the `IdempotencyMetrics` label allowlist, `otelpgx` connection-detail suppression |
 
 > Enabling export is a **config/IaC** action, not a code change: the same binary runs no-op locally (`OBS_*_EXPORTER` empty) and pushes OTLP in staging/prod.

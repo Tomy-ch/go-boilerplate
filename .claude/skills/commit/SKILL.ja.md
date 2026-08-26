@@ -6,17 +6,19 @@
 
 このコマンドは作業ツリーの未コミット変更を分析し、適切な粒度とプロジェクトのプレフィックス規約に沿った 1 つ以上の git コミットを生成する。コミットメッセージはすべて `CLAUDE.md` に従い日本語で書く。
 
-このコマンドは各コミットで意図的に lefthook をバイパスする（`git commit --no-verify`）。これは、複数コミットへの分割中に pre-commit チェック（`make lint` / `make test` / `make sql-lint` / migration チェック）が N 回発火するのを避けるためである。代わりに、全コミットが成功した後、Step 6 で lefthook 定義の各 `pre-commit` コマンドと `make fix` を 1 回の検証パスとして直接実行する。`lefthook run pre-commit` 自体を呼ばないのは、staged が何もないとき（このコマンドが全てをステージ・コミットした後がまさにその状態）lefthook が登録コマンドをスキップするためである。
+このコマンドは各コミットで意図的に lefthook をバイパスする（`git commit --no-verify`）。これは、複数コミットへの分割中に pre-commit チェック（`make lint` / `make test` / `make sql-lint` / migration チェック）が N 回発火するのを避けるためである。代わりに、全コミットが成功した後、Step 6 で pre-commit フック全体を `lefthook run pre-commit --force` で 1 回実行し、`make fix` を加えて検証パスとする。`--force` が肝である: このコマンドが全てをステージ・コミットした後は作業ツリーが clean なため、素の `lefthook run pre-commit` は全コマンドをスキップする（「no matching staged files」）— `--force` はそれでもフックを実行する。本物のフックを回すことでゲートは `.lefthook.yaml` と同期し、コマンドは並列実行される。
 
 ## Step 0. 自動フォーマット
 
-まず最初に `make fix` を 1 回実行し、フォーマット修正（gofmt / goimports / 自動修正可能な lint ルール）を吸収する。これにより後続の diff 確認における最も一般的なノイズ源が除去され、Step 6 の検証が純粋なフォーマット差分で失敗する可能性が下がる。
+まず最初に `make gate-fix` を 1 回実行し、フォーマット修正（gofmt / goimports / 自動修正可能な lint ルール）を吸収する。これにより後続の diff 確認における最も一般的なノイズ源が除去され、Step 6 の検証が純粋なフォーマット差分で失敗する可能性が下がる。
 
 ```sh
-make fix
+make gate-fix
 ```
 
-`make fix` 自体が失敗した場合は中止し、失敗をユーザーに報告する。続行しない。`make fix` が生成した変更は作業ツリーに畳み込まれ、Step 2 で確認する候補変更セットの一部となる。
+`fix` ではなく `gate-fix` を使うのは、これが `/commit` のたびに走る経路であり、かつ `fix` が `lint` と同じ full config の golangci-lint を回すためである。`.makefiles/load.mk` は `ci-first` の帯でこれを他の重いゲートと同様に委譲し（`repo-ops` §21）、フォーマットのずれは CI の lint が指摘する。素の `make fix` は帯に関わらず実行される — 明示的に打ったコマンドは書いたとおりに動く。
+
+`make gate-fix` 自体が失敗した場合は中止し、失敗をユーザーに報告する。続行しない。生成された変更は作業ツリーに畳み込まれ、Step 2 で確認する候補変更セットの一部となる。帯が委譲した場合は設計上そもそも変更を生まないので、それを「既に整形済みだった証拠」と読まないこと。
 
 ## Step 1. 事前チェック
 
@@ -61,15 +63,17 @@ gh pr view --json number,state,mergedAt,baseRefName,headRefName,url 2>/dev/null
     - 「新しいブランチを切る（推奨）」 — 保留中の変更に由来するブランチ名（例: `feature/<topic>`）を提案・確認し、base を更新して切り替える:
 
       ```sh
-      git fetch origin <baseRefName>
-      git switch -c <new-branch> origin/<baseRefName>
+      BASE=$(make -s base-branch)
+      test -n "$BASE" || { echo "ベースブランチを解決できませんでした"; exit 1; }
+      git fetch origin "$BASE"
+      git switch -c <new-branch> "origin/$BASE"
       ```
 
-      `<baseRefName>` は **アクティブなリリースライン** である — 本リポジトリは feature 作業を最新の `release/v1.X.0` を base にしており、これは GitHub のデフォルトブランチではない（デフォルトは現行リリースより遅れている）。`defaultBranchRef` よりマージ済み PR の `baseRefName` を信頼する。`git switch -c … origin/release/*` は新ブランチの upstream を **保護された** base に設定するため、最終的な push は明示 refspec（`git push -u origin <new-branch>`）を使い、bare `git push`（保護 base を対象にしてしまう）は決して使わないこと。未コミットの作業ツリー変更は新ブランチへ持ち越されるので、そのまま通常フロー（Step 2 以降）を続ける。**例外:** `--dry-run` ではブランチを切り替えず、警告と推奨コマンドを提示するだけにして、dry-run の提案に進む。
+      ここでの base は **現在の** アクティブなリリースラインであり、`make base-branch` が `origin` の実状態から解決する。マージ済み PR の `baseRefName` は使わない。あれは古い作業がマージされた先を記録しているだけで、その後に新しいリリースラインが開いていることは十分あり、そこから切ると新しい作業が 1 世代遅れて始まる。`gh repo view --json defaultBranchRef` が答えにならないのも同じ理由で、GitHub のデフォルトブランチもアクティブなラインより遅れている。`git switch -c … origin/release/*` は新ブランチの upstream を **保護された** base に設定するため、最終的な push は明示 refspec（`git push -u origin <new-branch>`）を使い、bare `git push`（保護 base を対象にしてしまう）は決して使わないこと。未コミットの作業ツリー変更は新ブランチへ持ち越されるので、そのまま通常フロー（Step 2 以降）を続ける。**例外:** `--dry-run` ではブランチを切り替えず、警告と推奨コマンドを提示するだけにして、dry-run の提案に進む。
     - 「このブランチのまま続ける」 — ユーザーがマージ済みブランチへのコミットを受け入れる場合は、現在のブランチのまま続行する。
 - **`state` が `CLOSED`**（マージされずクローズ）→ ブロックはしないが、一度ユーザーに知らせて（ブランチの PR はクローズ済み）続行する。
 
-`.lefthook.yaml`（あれば）を読み、`pre-commit:` のコマンドエントリ一覧を抽出する。この一覧は 2 か所で使う: (a) 分割中にスキップされる内容をユーザーに知らせるため Step 4 で表示、(b) コミット後の検証ゲートとして Step 6 で直接実行。`.lefthook.yaml` が無い場合はその旨を記録して続行する（Step 6 は `make fix` のみの実行にフォールバックする）。
+`.lefthook.yaml`（あれば）を読み、`pre-commit:` のコマンドエントリ一覧を抽出する。この一覧は、分割中にスキップされる内容をユーザーに知らせるため Step 4 で表示する。Step 6 では `lefthook run pre-commit --force` でフック全体を再実行する。`.lefthook.yaml` が無い場合はその旨を記録して続行する（Step 6 は `make fix` のみの実行にフォールバックする）。
 
 `$ARGUMENTS` をパースする:
 
@@ -92,7 +96,7 @@ git diff --name-only
 
 以下は **rider ファイル** として扱う — それ単独でコミットを構成せず、それを生成したソース変更に相乗りする:
 
-- 生成ファイル: `**/*.gen.go`、`**/*.sql.go`、`*_mock.go`、`**/openapi.gen.yaml`、`docs/portal/links/implements/` 配下の生成物
+- 生成ファイル: `**/*.gen.go`、`**/*.sql.go`、`*_mock.go`、`**/openapi.gen.yaml`、`docs/portal/guides/` 配下の生成物
 - vendored コンテンツ: `vendor/**`
 
 例: `openapi/**/*.yaml` の変更は、その `*.gen.go` 出力を同じコミットに持ち込む。`database/dml/**/*.sql` の変更は、その `internal/infrastructure/rdb/sqlc/gen/*.gen.go` 出力を同じコミットに持ち込む。
@@ -109,8 +113,8 @@ git diff --name-only
 | `Perf:` | パフォーマンス改善 | クエリ最適化、N+1 解消、アロケーション削減 |
 | `Docs:` | ドキュメント変更 | `README*`、`docs/`、`*.ja.md`、コードコメント、リリースノート |
 | `Test:` | テストの追加・修正 | `*_test.go`、テストフィクスチャ、テストヘルパー |
-| `Build:` | ビルドシステム・依存・ツール | `Dockerfile`、`go.mod` / `go.sum`、`Makefile`、`.makefiles/**`、`tools.yaml` |
-| `CI:` | CI/CD 設定 | `.github/workflows/**`、`lefthook.yml`、GitHub Actions 関連 |
+| `Build:` | ビルドシステム・依存・ツール | `Dockerfile`、`go.mod` / `go.sum`、`makefile`、`.makefiles/**`、`mise.toml` |
+| `CI:` | CI/CD 設定 | `.github/workflows/**`、`.lefthook.yaml`、GitHub Actions 関連 |
 | `Chore:` | 雑多な作業 | `.gitignore`、エディタ設定、`.claude/**`、その他の小タスク |
 | `Style:` | ロジックに影響しないフォーマットのみの変更 | `make fix` / `gofmt` / `goimports` の出力 |
 | `Revert:` | 既存コミットの取り消し | `git revert` の出力、または同等の手動 revert |
@@ -127,8 +131,8 @@ git diff --name-only
 | `database/migrations/**/*.sql` | `Feat`（スキーマ変更） |
 | `database/dml/**/*.sql` | `Feat` / `Refactor`（新クエリ vs 整理） |
 | `docs/**/*.md`、`README*.md`、`*.ja.md` | `Docs` |
-| `Dockerfile`、`docker/**`、`go.mod`、`go.sum`、`Makefile`、`.makefiles/**`、`tools.yaml` | `Build` |
-| `.github/workflows/**`、`lefthook.yml`、`.lefthook.yaml` | `CI` |
+| `Dockerfile`、`docker/**`、`go.mod`、`go.sum`、`makefile`、`.makefiles/**`、`mise.toml` | `Build` |
+| `.github/workflows/**`、`.lefthook.yaml` | `CI` |
 | `.gitignore`、`.claude/**`、エディタ設定 | `Chore` |
 
 ## Step 4. コミット分割の提案
@@ -154,12 +158,12 @@ git diff --name-only
 
 ### lefthook 通知
 
-分割の提案とあわせて、コミットフェーズ中は **スキップ** されるが Step 6 で検証ゲートとして **直接実行** される lefthook コマンドを表示する。`.lefthook.yaml` から動的に読む（この一覧は設定であり、ハードコードしない）。現在の設定が lint/test/sql-lint/migration チェックを定義している場合の出力例:
+分割の提案とあわせて、コミットフェーズ中は **スキップ** されるが Step 6 で `lefthook run pre-commit --force` により **まとめて再実行** される lefthook コマンドを表示する。`.lefthook.yaml` から動的に読む（この一覧は設定であり、ハードコードしない）。現在の設定が lint/test/sql-lint/migration チェックを定義している場合の出力例:
 
 ```txt
 This command will run `git commit --no-verify` on every commit.
 The following lefthook pre-commit commands will be SKIPPED during commits but
-EXECUTED automatically in Step 6 (verification) after all commits succeed:
+re-run together in Step 6 via `lefthook run pre-commit --force` after all commits succeed:
   - lint                    (make lint)
   - test                    (make test)
   - sql-lint                (make sql-lint)
@@ -192,7 +196,7 @@ git commit --no-verify -m "$(cat <<'EOF'
 
 <任意の本文: 何を・なぜ変えたか>
 
-Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+Co-Authored-By: Claude {実行中モデル} <noreply@anthropic.com>
 EOF
 )"
 ```
@@ -202,8 +206,8 @@ EOF
 - **タイトル**: `<Prefix>: <日本語タイトル>`。50 文字以内を目安。
 - **本文**: 任意。ある場合はタイトルの後に空行を 1 つ入れ、72 文字前後で折り返す。「何を」より「なぜ」を優先。
 - **言語**: 日本語（`CLAUDE.md` の出力ルールに従う）。
-- **`Co-Authored-By` フッター**: 必須。`Claude Opus 4.8 (1M context) <noreply@anthropic.com>` を使う。
-- **`Refs:` フッター（レビュー適用コミットのみ）**: コミットが `full-apply` / `local-review` / `code-review` の指摘を適用する場合（変更がレビュー台帳に遡れる場合）、フッターに `Refs: <reviews-dir>/mod_*.md (<severity>)` 行を追加し、コミットを指摘にリンクする。通常のコミットでは省略する。
+- **`Co-Authored-By` フッター**: 必須。`Claude <model> <noreply@anthropic.com>` の形。`<model>` はコミットを実行しているモデル自身の識別子で、ハーネスが提示するものを使い（例: `Opus 5 (1M context)`）、推測しない。バージョンをこのファイルに書き込まないこと — 同じ事実が 2 箇所に置かれ、読み返されない側が黙って腐る。
+- **`Refs:` フッター（レビュー適用コミットのみ）**: コミットが `full-apply` / `impl-review` / `code-review` の指摘を適用する場合（変更がレビュー台帳に遡れる場合）、フッターに `Refs: <reviews-dir>/mod_*.md (<severity>)` 行を追加し、コミットを指摘にリンクする。通常のコミットでは省略する。
 - **HEREDOC**: 必須（タイトル + 空行 + 本文 + フッターのレイアウトを保つ）。
 - **`--no-verify`**: このコマンドが生成する全コミットで必須。これはプロジェクト全体のルールに対する、コマンド限定の明示的な例外である。理由は Step 4 に記載（lefthook は分割中に N 回ではなく、push 前に手動で 1 回実行する）。
 - **`-a` / `git add -A` / `git add .` を決して使わない。** 常にファイルを名前でステージする（`.env` や認証情報の巻き込みを避ける）。
@@ -227,33 +231,27 @@ EOF
 
 ## Step 6. 検証
 
-全コミットが成功した後、(a) `.lefthook.yaml` の `pre-commit:` `commands:` で定義された各コマンドと (b) 最終フォーマットパスとしての `make fix` から成る検証ゲートを実行する。`lefthook run pre-commit` 自体は実行しない — staged が何もないとき（コミット後の状態）lefthook は登録コマンドをスキップし、「no matching staged files」と報告して何も検査せず終了するためである。代わりに各コマンドを直接実行する。
+全コミットが成功した後、pre-commit フック全体を `lefthook run pre-commit --force` で 1 回実行し、続いて最終フォーマットパスとして `make fix` を実行する。`--force` フラグが肝である: コミットは `--no-verify` で作成され作業ツリーは clean なため、素の `lefthook run pre-commit` は全コマンドをスキップする（「no matching staged files」）; `--force` は staged に関わらずフック全体を実行する。手で列挙したコマンド一覧ではなく本物のフックを回すことで、このゲートは `.lefthook.yaml` と同期し（新規追加の `pre-commit` コマンドも自動で拾う）、lefthook が並列（`parallel: true`）で実行するため順次再実行よりはるかに速い。
+
+フックは自分でどれだけ全力で走るかを決める。`.makefiles/load.mk` が開いている worktree の数から重い Go ゲートの規模を決め、`ci-first` の帯ではここで走らせず CI へ委譲する（現在の帯は `make load-status`、仕組みは `repo-ops` §21）。その判断に逆らって `make lint` / `make test` を直接叩き「念のため」検証し直さないこと — 窓が複数開いている状態でのフル lint は、CI が同一に再実行する内容を再発見するために飽和したホストを数分間占有するだけである。帯が何をしたかを報告し、残りは push に運ばせる。
 
 ### 手順
 
-1. `.lefthook.yaml` を再読し、`pre-commit.commands.*.run` の値を列挙する。`.lefthook.yaml` が無ければこのステップをスキップする。
-2. 各コマンドを **順次** 実行する（並列より出力が明確で、失敗時にどのステップが失敗したか分かる）。各々について終了ステータスと出力の短い末尾を記録する。
-3. lefthook 定義の全コマンドが終わったら `make fix` を実行する。`make fix` が追跡ファイルを変更したら、その diff をユーザーに提示する — コミット状態が完全にフォーマットされていなかったことを示すので、それらの修正をステージ・コミットするかはユーザーが判断する。
-4. 結果を表形式でユーザーに要約する:
-
-   ```txt
-   検証コマンドの実行結果:
-     - make lint                                                       → OK / FAIL
-     - make test                                                       → OK / FAIL
-     - make sql-lint                                                   → OK / FAIL
-     - make check-migration-up-version check-migration-down-version    → OK / FAIL
-     - make check-migration-up-gap check-migration-down-gap            → OK / FAIL
-     - make fix                                                        → no changes / changes detected
-   ```
-
-5. いずれかのコマンドが **失敗** したら、失敗サマリ（終了コード + 出力末尾）を報告して停止する。コミットはロールバックしない — 失敗は情報提供であり、fix-up コミットを足すか amend するかはユーザーが判断する。ユーザーに明示的に伝える:
+0. `make -s load-status` を実行し、解決された帯を控える。重いゲートがローカルで実行されるのか（`full` / `low`）CI へ委譲されるのか（`ci-first`）が事前に分かるため、手順 4 の要約で「実際に何が検証されたか」を言える。
+1. `lefthook run pre-commit --force` を実行する。`pre-commit.commands.*` の全コマンドを作業ツリー（コミット状態を反映）に対して実行し、いずれかが失敗すれば非 0 で終了する。`.lefthook.yaml` が無い、または `lefthook` 未インストールなら手順 3 へ飛び（`make fix` のみ実行）、その旨を記録する。
+2. lefthook のコマンド別サマリ（各コマンドを ✔️ / ❌ と所要時間で列挙）を読む。
+3. `make gate-fix` を実行する。追跡ファイルを変更したら、その diff をユーザーに提示する — コミット状態が完全にフォーマットされていなかったことを示すので、それらの修正をステージ・コミットするかはユーザーが判断する。
+4. 結果をユーザーに要約する: lefthook の成否サマリ（または lefthook が使えなかった旨）と、`make fix` が変更を生んだか。帯が `ci-first` だった場合は、どのゲートが委譲され CI が検証を担うのかを明示する — その但し書きの無い「検証が通りました」は、実際に確かめた範囲を過大に伝える。
+5. `lefthook run pre-commit --force` が非 0 で終了したら（いずれかのコマンドが失敗）、失敗したコマンド（lefthook サマリ由来）を報告して停止する。コミットはロールバックしない — 失敗は情報提供であり、fix-up コミットを足すか amend するかはユーザーが判断する。ユーザーに明示的に伝える:
 
    ```txt
    検証で失敗があります。push 前に修正してください。
-   失敗したコマンド: <name> (<command>)
+   失敗したコマンド: <lefthook が ❌ を出したコマンド名>
    ```
 
-6. 全コマンドが **成功** し `make fix` が変更を生まなかったら、Step 7 へ進む。
+6. lefthook が成功し `make fix` が変更を生まなかったら、Step 7 へ進む。
+
+> 本 repo の `pre-commit` コマンドはツリー全体を対象とする `make` ターゲットなので、`--force`（空 / `{all_files}` セットを渡す）でも正しく走る。将来 `{staged_files}` テンプレートに依存するコマンドが入ったら再検討すること — `--force` はファイルを渡さないため。
 
 ### 検証のスキップ
 
@@ -269,6 +267,13 @@ EOF
   ```txt
   N 件のコミットを作成し、検証コマンドも全て成功しました。
   プッシュは手動で実行してください: `git push`
+  ```
+
+  解決された帯が `ci-first` のとき:
+
+  ```txt
+  N 件のコミットを作成しました。重い Go ゲートと自動フォーマットは CI へ委譲されています。
+  push 後に CI の結果を確認してください。ローカルでは重いゲートを実行していません。
   ```
 
   一部チェック失敗時:
@@ -305,8 +310,8 @@ EOF
 - ✅ Step 1 で安全なロールバック用に `ORIGINAL_HEAD` を保存
 - ✅ Step 1 で、現在ブランチの PR がマージ済みか検出（`gh pr view`）し、コミット前に base から新ブランチを切ることを推奨（`gh` が使えない場合はグレースフルに劣化）
 - ✅ 失敗時は `AskUserQuestion` で `git reset --mixed <ORIGINAL_HEAD>` を提案
-- ✅ Step 6 は lefthook 定義の各コマンド + `make fix` を直接実行（`lefthook run pre-commit` は使わない）
-- ❌ `lefthook run pre-commit` を呼ばない — staged が無いとき（コミット後の状態）コマンドをスキップするため
+- ✅ Step 6 は pre-commit フック全体を `lefthook run pre-commit --force` + `make fix` で実行する
+- ✅ Step 6 の `lefthook run pre-commit` には必ず `--force` を付ける — 付けないと clean なコミット後ツリーに対し lefthook が全コマンドをスキップするため
 
 ## チェックリスト
 
@@ -324,6 +329,6 @@ EOF
 - [ ] 各コミットで `--no-verify` を使い、HEREDOC で渡した
 - [ ] `git add` はファイルを明示指定（`-A` / `.` なし）
 - [ ] 生成物をソース変更と同居させた
-- [ ] Step 6 の検証が lefthook 定義の各コマンド + `make fix` を実行した（または明示的にスキップした）
+- [ ] Step 6 の検証が `lefthook run pre-commit --force` + `make fix` を実行した（または lefthook / `.lefthook.yaml` が使えず `make fix` のみにフォールバックした）
 - [ ] 検証結果（OK / FAIL / no changes）をユーザーに提示した
 - [ ] 自動 push を行わなかった

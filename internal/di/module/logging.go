@@ -10,6 +10,9 @@ import (
 	"go.uber.org/fx"
 )
 
+// errUnknownAppMode は、未知の APP_MODE に対応する Logger が無く配線に失敗した場合のエラーです。
+var errUnknownAppMode = xerrors.New("unknown app mode")
+
 // LoggingModule は、ロギング関連の依存関係を提供するfx.Moduleです。
 func LoggingModule() fx.Option {
 	return fx.Module("logging",
@@ -39,6 +42,6 @@ func provideLogger(
 	case appCfg.IsDevelopmentMode():
 		return logging.WithCore(logging.NewConsoleLogger(level, logging.LevelWarn(), extract), logCore), nil
 	default:
-		return nil, xerrors.New("unknown app mode: " + appCfg.Mode())
+		return nil, xerrors.Wrap(errUnknownAppMode, appCfg.Mode())
 	}
 }

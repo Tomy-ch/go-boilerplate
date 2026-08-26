@@ -3,8 +3,9 @@ description: 為替換算結果のレスポンスです。
 required:
   - base
   - quote
-  - amount
+  - original
   - converted
+  - referenceAmount
 properties:
   base:
     type: string
@@ -14,13 +15,15 @@ properties:
     type: string
     description: 換算先の通貨コード
     example: JPY
-  amount:
-    type: number
-    format: double
-    description: 換算元の金額
-    example: 100
+  original:
+    type: string
+    pattern: '^\d+(\.\d+)?$'
+    description: 換算元の金額。正確な十進量を保つため decimal 文字列で表します。
+    example: "100"
   converted:
-    type: number
-    format: double
-    description: 換算後の金額
-    example: 15050
+    type: string
+    pattern: '^-?\d+(\.\d+)?$'
+    description: 換算後の金額。正確な十進量を保つため decimal 文字列で表します。
+    example: "15050"
+  referenceAmount:
+    $ref: '../../schemas/exchange-rates/ReferenceAmount.yaml'
