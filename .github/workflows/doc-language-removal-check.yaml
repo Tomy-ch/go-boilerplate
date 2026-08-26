@@ -1,0 +1,194 @@
+name: Doc Language Removal Check
+
+# `make setup-remove-doc-language` が主張どおりに動くことを検証する。
+#
+# 撤去は template の利用者側で一度きり走るもので、失敗しても壊れるのは利用者のリポジトリであり
+# こちらでは何も赤くならない。だからここで走らせる。しかもこの撤去は 500 件規模のファイルを消し、
+# `ja` では改名まで行うため、取りこぼしの影響が他のどの撤去より大きい。
+#
+# 本命は「撤去後のリポジトリが緑であること」である。対訳の存在を前提にした検査（doc-ref-lint の
+# ペア検査・skill-lint の SKILL.ja.md 必須）はマーカーで落としており、落とし損ねは撤去した人の
+# 手元で初めて赤くなる。ここで先に踏んでおく。
+#
+# `ja` にはもう 1 つ、この経路でしか現れない退行がある。対訳は本文しか持たないので、正本の
+# フロントマターを移植し損ねると、日本語を選んだだけでスキルが 1 本残らず読み込まれなくなる。
+# ファイルは全て在るので、検査を書かない限り誰も気づけない。
+
+on:
+  push:
+    branches:
+      - 'release/*'
+      - develop
+      - staging
+      - production
+    paths:
+      - '.github/workflows/doc-language-removal-check.yaml'
+      - 'scripts/setup/remove-doc-language/**'
+      - 'scripts/setup/lib/**'
+      - '.makefiles/github/operation/setup-repository.mk'
+      - 'docs/portal/manifest.yaml'
+  pull_request:
+    paths:
+      - '.github/workflows/doc-language-removal-check.yaml'
+      - 'scripts/setup/remove-doc-language/**'
+      - 'scripts/setup/lib/**'
+      - '.makefiles/github/operation/setup-repository.mk'
+      - 'docs/portal/manifest.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  doc-language-removal-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # 2 つは行き先が同じ（対訳ペアの無い 1 言語）で、違うのはどちらのファイルが残るかだけ。
+        # 別々に回すのは、`ja` の改名とフロントマター移植が `en` には無い経路だからである。
+        lang: [en, ja]
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
+        with:
+          tools: node npm:pnpm npm:markdownlint-cli2
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install script node deps
+        run: pnpm install --dir scripts --frozen-lockfile
+        shell: bash
+
+      # 撤去はコミットを積むので、コミッターの身元が要る。ローカル実行では利用者自身の
+      # 身元をそのまま使うため、make ターゲット側には持たせずここで設定する。
+      - name: Configure the committer
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+        shell: bash
+
+      # `both` は何もしない選択肢である。何もしないことは、何かをすることと同じだけ壊れ得る。
+      - name: Keeping both languages writes nothing
+        run: |
+          set -euo pipefail
+          make setup-remove-doc-language LANG_CHOICE=both
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::LANG_CHOICE=both の実行が作業ツリーを変更しました"
+            git status --porcelain
+            exit 1
+          fi
+          echo "both: no writes"
+        shell: bash
+
+      - name: Dry run writes nothing
+        run: |
+          set -euo pipefail
+          DRY_RUN=1 make setup-remove-doc-language LANG_CHOICE=${{ matrix.lang }}
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::DRY_RUN の実行が作業ツリーを変更しました"
+            git status --porcelain
+            exit 1
+          fi
+          echo "dry run: no writes"
+        shell: bash
+
+      - name: Fold the documentation into one language
+        run: |
+          set -euo pipefail
+          BEFORE=$(git rev-parse HEAD)
+          make setup-remove-doc-language LANG_CHOICE=${{ matrix.lang }}
+          if [ "$(git rev-parse HEAD)" = "${BEFORE}" ]; then
+            echo "::error::撤去がコミットを積みませんでした"
+            exit 1
+          fi
+          git log --oneline "${BEFORE}..HEAD"
+        shell: bash
+
+      - name: No translation pair survives
+        run: |
+          set -euo pipefail
+          LEFTOVER=$(git ls-files '*.ja.md')
+          if [ -n "${LEFTOVER}" ]; then
+            echo "::error::対訳が残っています"
+            echo "${LEFTOVER}"
+            exit 1
+          fi
+          echo "fold: no *.ja.md remains"
+        shell: bash
+
+      # `ja` だけの退行。対訳は本文しか持たないため、正本のフロントマターを移植し損ねると
+      # ファイルは全て在るのにスキルが 1 本も読み込まれない状態になる。
+      - name: Every skill still carries its frontmatter
+        run: |
+          set -euo pipefail
+          FAILED=0
+          for skill in .claude/skills/*/SKILL.md .codex/skills/*/SKILL.md; do
+            [ -e "${skill}" ] || continue
+            if [ "$(head -n 1 "${skill}")" != '---' ]; then
+              echo "::error file=${skill}::フロントマターがありません（スキルとして読み込まれません）"
+              FAILED=1
+            fi
+          done
+          [ "${FAILED}" -eq 0 ]
+          echo "fold: every SKILL.md keeps its frontmatter"
+        shell: bash
+
+      - name: The folded repository is green
+        run: |
+          set -euo pipefail
+          make md-markdownlint-ci
+          pnpm --dir scripts run typecheck
+          pnpm --dir scripts test
+        shell: bash
