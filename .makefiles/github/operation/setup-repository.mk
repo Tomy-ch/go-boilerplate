@@ -13,6 +13,9 @@
 # boilerplate-only:end
 .PHONY: setup-remove-sample-api ## サンプルAPI(user/product/order)を一括削除し再生成・検証まで実行 # sample-api:line
 .PHONY: setup-remove-licensed-scanners ## 資格情報/課金を要するスキャナ2件を撤去し製品ごとにコミット
+# doc-pair:begin
+.PHONY: setup-remove-doc-language ## ドキュメント/スキルの対訳ペアを選んだ言語1本へ畳む
+# doc-pair:end
 
 SETUP_DRY_RUN_FLAG := $(if $(DRY_RUN),--dry-run,)
 
@@ -154,3 +157,23 @@ setup-remove-sample-api:
 # プレビューは DRY_RUN=1 を付ける（書き込みもコミットも行わない）。
 setup-remove-licensed-scanners:
 	@$(TSX) scripts/setup/remove-licensed-scanners $(SETUP_DRY_RUN_FLAG)
+
+# doc-pair:begin
+
+# ドキュメント / スキルの対訳ペアを、選んだ言語 1 本へ畳む（LANG=en|ja|both）。
+# 他の setup ターゲットと違いツールランナーを経由せずホストで走らせる。400 件超のファイルを
+# 消す・改名するため撤去を 1 コミットに畳んでおり、setup-repo と同じくホストの git が要る
+# （worktree では .git がマウント外の実体を指すファイルなので、コンテナ内からは辿れない）。
+# 手順の最後に置くのは、先に走らせると他の撤去が宣言している完全一致の文字列が消えて
+# 空振りするため。プレビューは DRY_RUN=1 を付ける（書き込みもコミットも行わない）。
+setup-remove-doc-language:
+	@if [ -z "$(LANG_CHOICE)" ]; then \
+		echo "❌ LANG_CHOICE を指定してください。例: make setup-remove-doc-language LANG_CHOICE=en"; \
+		echo "   en   = 英語 1 本に畳む（日本語の対訳を撤去）"; \
+		echo "   ja   = 日本語 1 本に畳む（英語正本を撤去し対訳を正本の名前へ改名）"; \
+		echo "   both = 両方残す（何もしない）"; \
+		exit 1; \
+	fi
+	@$(TSX) scripts/setup/remove-doc-language --lang $(LANG_CHOICE) $(SETUP_DRY_RUN_FLAG)
+
+# doc-pair:end

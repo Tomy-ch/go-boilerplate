@@ -1,7 +1,5 @@
 # Make Command List
 
-English | [日本語](README.ja.md)
-
 ## Role
 
 `.makefiles/` is the central registry for every `make` target used by the project. Each `.mk` file groups related targets by area (application / database / sql / go / openapi / docs / github / tools). The top-level `makefile` simply `include`s them, so adding a new target means dropping it into the right group file — no top-level edits required.
@@ -589,6 +587,7 @@ This is the initial setup command when launching a new repository.
 | `make setup-verify` | Verifies the localization landed, then removes the localization tooling. | Runs `scripts/setup/verify-setup` in `node_tool_runner`; expects the Phase 5 values in the environment.  <!-- setup-localize:line --> |
 | `make setup-remove-boilerplate-identity` | Removes what only holds while this repository is a boilerplate. | Scans the repository for `boilerplate-only` markers and resolves each via `node_tool_runner`, deletes the boilerplate-only conventions doc, then removes itself. Preview with `DRY_RUN=1`. <!-- boilerplate-only:line --> |
 | `make setup-remove-sample-api` | Removes the sample API (`user`/`product`/`order`) in batch. | Deletes via `node_tool_runner`, then runs `db-local-reinit` / `db-test-reinit` → `gen-api` → `gen-query` → `tidy-lib` → `fix` → `lint`. The DB rebuild keeps dropped tables out of the generated models, and `tidy-lib` drops the direct dependencies the sample API was the only user of. **Requires the DB container (`database`) running** (`gen-query` dumps the live schema). Preview without changing anything with `DRY_RUN=1` (any non-empty value counts as preview, `0` included, so omit the variable entirely for a real run). <!-- sample-api:line --> |
+| `make setup-remove-doc-language` | Folds the documentation / skill translation pairs into the language given by `LANG_CHOICE` (`en` / `ja` / `both`). | Runs on the host, not through the tool runner: it commits the whole fold at once and needs the host's git. Run it **after** every other removal — those declare exact strings in the documents they edit, and folding first deletes the text they wait for. Preview with `DRY_RUN=1` (works on a dirty tree; the real run requires a clean one). <!-- doc-pair:line --> |
 
 ### Base branch resolution related
 

@@ -1,7 +1,5 @@
 # scripts
 
-English | [日本語](README.ja.md)
-
 `scripts/` contains **utility scripts** for code generation, documentation, versioning, and initial project setup.
 
 ## Directory Structure
@@ -157,6 +155,7 @@ Scripts for configuring the boilerplate when creating a new project from this te
 |`replace-codeowners/`|Replace the owner of every rule in `.github/CODEOWNERS`. Comment lines keep their example owner, and a rule whose owner field is unrecognizable is reported instead of rewritten. <!-- setup-localize:line -->|
 |`remove-sample-api/`|Remove the sample API (`user`/`prefecture`/`product`/`order`): deletes paths declared in `sample-manifest.ts` and strips `sample-api` marker blocks from the shared DI modules and `openapi.yaml`. Run via `make setup-remove-sample-api` to also regenerate/format/lint. <!-- sample-api:line -->|
 |`repo-setup/`|The git / gh half of initialising this boilerplate as your own repository: `preflight` refuses to proceed when a `v0.0.0` tag is present, `bootstrap` recreates the tags, prepares `develop` / `staging` / `production` and moves the default branch, and `prune-release-notes` deletes every release note but `v0.0.0.md`. Labels, rulesets and workflow enablement stay in `setup-repository.mk`, which owns the overall chain. Here too the steps are Go because deleting tags in bulk and moving the default branch cannot be rehearsed without breaking a real repository.|
+|`remove-doc-language/`|Fold the documentation / skill translation pairs into a single language (`--lang en\|ja\|both`). `en` deletes every `*.ja.md`; `ja` renames each translation onto the canonical name and transplants the canonical's frontmatter, so `SKILL.md` stays loadable. Prose that explains the pairing convention is not folded mechanically — it is carried by `doc-pair` markers, or declared in `language-manifest.ts`, and an undeclared line stops the run before anything is written. <!-- doc-pair:line -->|
 
 All setup scripts support `--dry-run` for preview.
 <!-- sample-api:begin -->

@@ -1,7 +1,5 @@
 # Make コマンド一覧
 
-[English](README.md) | 日本語
-
 ## 役割
 
 `.makefiles/` はプロジェクトで使用するすべての `make` ターゲットの中央レジストリです。各 `.mk` ファイルは関連ターゲットを領域別（application / database / sql / go / openapi / docs / github / tools）にグルーピング。トップレベルの `makefile` はそれらを `include` するだけなので、新規ターゲット追加は該当グループファイルへの追記だけで完結し、トップレベル編集は不要です。
@@ -539,6 +537,7 @@ Trivy スキャン）は放置します。ループで回すものではない�
 | `make setup-verify` | 初期化が当たったことを検証し、通れば初期化ツールを撤去します。 | `node_tool_runner` で `scripts/setup/verify-setup` を実行します。Phase 5 の値を環境変数で渡します。  <!-- setup-localize:line --> |
 | `make setup-remove-boilerplate-identity` | ボイラープレートである間だけ成り立つ記述を削除します。 | `node_tool_runner` でリポジトリを走査して `boilerplate-only` マーカーをすべて解決し、ボイラープレート限定の規約ドキュメントを削除したうえで、ツール自身も撤去します。`DRY_RUN=1` でプレビューできます。 <!-- boilerplate-only:line --> |
 | `make setup-remove-sample-api` | サンプルAPI(`user`/`product`/`order`)を一括削除します。 | `node_tool_runner` で削除後、`db-local-reinit` / `db-test-reinit` → `gen-api` → `gen-query` → `tidy-lib` → `fix` → `lint` を実行します。DB 再構築により削除済みテーブルが生成モデルに残らず、`tidy-lib` によりサンプルAPIだけが使っていた直接依存が go.mod から落ちます。**DB コンテナ(`database`)の起動が必要**（`gen-query` がライブスキーマをダンプ）。`DRY_RUN=1` で変更せずプレビューできます（`0` を含む空でない値はすべてプレビュー扱いになるため、実行時は変数自体を付けません）。 <!-- sample-api:line --> |
+| `make setup-remove-doc-language` | ドキュメント / スキルの対訳ペアを `LANG_CHOICE`（`en` / `ja` / `both`）で選んだ 1 言語へ畳みます。 | ツールランナーを経由せずホストで実行します（撤去を 1 コミットに畳むためホストの git が要る）。他のすべての撤去の**後**に実行してください。先行する撤去は編集対象の文書に完全一致の文字列を宣言しており、先に畳むとその本文ごと消えます。`DRY_RUN=1` でプレビューできます（作業ツリーが汚れていても動作し、実行時はクリーンが必要）。 <!-- doc-pair:line --> |
 
 ### ベースブランチ解決関連
 
