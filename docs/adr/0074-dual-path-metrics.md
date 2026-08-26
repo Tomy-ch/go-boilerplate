@@ -5,85 +5,83 @@ deciders: [maintainers]
 tags: [observability, metrics]
 ---
 
-# ADR-0074: Metrics travel two paths — OTLP push and Prometheus scrape
+# ADR-0074: メトリクスは 2 経路を通る — OTLP プッシュと Prometheus スクレイプ
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-The observability subsystem produces two categories of metrics with fundamentally
-different collection shapes:
+オブザーバビリティサブシステムは収集の形状が根本的に異なる 2 種類のメトリクスを生成する。
 
-- **Operational subsystem metrics** (outbox lag, worker RED, idempotency results, DB
-  spans, Go runtime) are event-driven: they accumulate as the application processes work
-  and are best emitted on a push schedule by the SDK.
-- **Process/broker identity metrics** (build info, broker queue depth) are pull-oriented:
-  build identity is resolved once at wiring time and never changes; queue depth is best
-  read on-demand per scrape rather than buffered and pushed periodically.
+- **操作サブシステムメトリクス**（outbox ラグ・worker RED・べき等性結果・DB スパン・Go ランタイム）は
+  イベント駆動: アプリケーションが処理を進めるにつれて蓄積され、SDK によるプッシュスケジュールで
+  送信するのが最適。
+- **プロセス / ブローカー識別メトリクス**（ビルド情報・ブローカーキュー深度）はプル指向:
+  ビルドの識別情報はワイヤリング時に一度解決されて以降変化しない。キュー深度は定期的に
+  バッファリングしてプッシュするより、スクレイプのたびにオンデマンドで読むのが最適。
 
-Routing both categories through the same OTLP push path would force pull-oriented metrics
-into an awkward push pattern (polling in a background goroutine just to push them over
-OTLP), or would require disabling OTLP metrics entirely to keep a Prometheus scrape
-endpoint.
+両カテゴリを同じ OTLP プッシュ経路に通すと、プル指向のメトリクスを無理なプッシュパターンに
+押し込むことになる（純粋に計装目的のためだけにバックグラウンドゴルーチンでポーリングして
+OTLP へプッシュする）か、Prometheus スクレイプエンドポイントを維持するために OTLP メトリクスを
+完全に無効化しなければならなくなる。
 
-## Decision
+## 決定
 
-Expose metrics via **two deliberate and independent paths**:
+メトリクスを**意図的かつ独立した 2 経路**で公開する。
 
-| Path | Instruments | How it leaves the process |
+| 経路 | 計装 | プロセスからの出力方法 |
 | --- | --- | --- |
-| **OTLP push** | `outbox` / `worker` / `idempotency` / `httpclient` OTel meters + Go runtime + `otelpgx` DB metrics | `MeterProvider` `PeriodicReader` pushes to Collector; active only when `MetricsEnabled()` |
-| **Prometheus scrape** | `app_build_info` (buildinfo), `worker_queue_depth` (queue) | registered to the default Prometheus registry, served at `/metrics` via `promhttp`; independent of `OBS_METRICS_EXPORTER` |
+| **OTLP プッシュ** | `outbox` / `worker` / `idempotency` / `httpclient` OTel メーター + Go ランタイム + `otelpgx` DB メトリクス | `MeterProvider` の `PeriodicReader` が Collector へプッシュ。`MetricsEnabled()` のときのみ有効 |
+| **Prometheus スクレイプ** | `app_build_info`（buildinfo）・`worker_queue_depth`（queue） | デフォルトの Prometheus レジストリに登録され、`promhttp` 経由で `/metrics` に提供。`OBS_METRICS_EXPORTER` に依存しない |
 
-The scrape path is always present regardless of whether the OTLP signal is enabled. The
-two paths coexist: a deployment may enable both, only the scrape endpoint, or only OTLP
-push, depending on the monitoring stack.
+スクレイプ経路は OTLP シグナルが有効かどうかに関わらず常に存在する。2 つの経路は共存する。
+監視スタックに応じて、両方を有効にする・スクレイプエンドポイントのみ・OTLP プッシュのみという
+構成が可能。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Pull-oriented metrics (build identity, live queue depth) are collected efficiently on
-  demand rather than pushed on a fixed interval.
-- The scrape endpoint works without any Collector and without enabling `OBS_METRICS_EXPORTER`,
-  making lightweight / local deployments still queryable.
-- Each path is independently operated: the OTLP push path and the scrape path do not
-  share state or introduce coupling between them.
+- プル指向のメトリクス（ビルド識別情報・ライブキュー深度）は固定間隔でプッシュされるのではなく、
+  オンデマンドで効率的に収集される。
+- スクレイプエンドポイントは Collector なしでも `OBS_METRICS_EXPORTER` を有効にしなくても
+  動作するため、軽量 / ローカルデプロイメントでもクエリできる。
+- 各経路は独立して運用される: OTLP プッシュ経路とスクレイプ経路は状態を共有せず、
+  互いに結合を導入しない。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Operators must be aware of both paths to get the full metric picture; a Prometheus
-  scrape endpoint and an OTLP Collector are two distinct ingestion points to configure
-  and monitor.
-- Metrics that belong to one path cannot trivially be queried through the other without
-  Collector-side bridging (e.g., Prometheus remote write).
+- 全メトリクスの全体像を把握するには、オペレーターが両経路を認識しなければならない。
+  Prometheus スクレイプエンドポイントと OTLP Collector は設定・監視が必要な 2 つの
+  異なる取り込みポイントとなる。
+- 一方の経路に属するメトリクスは、Collector 側のブリッジ（例: Prometheus remote write）なしに
+  もう一方の経路で簡単にクエリすることはできない。
 
-## Alternatives Considered
+## 検討した代替案
 
-### OTLP push only (bridge Prometheus collectors into the OTel MeterProvider)
+### OTLP プッシュのみ（Prometheus コレクターを OTel MeterProvider にブリッジ）
 
-Rejected: queue depth is a live pull (sampling the broker state per scrape is the
-intended model for `worker.QueueStatsProvider`); buffering it into a push pipeline
-introduces a stale-reading window and an extra background goroutine purely for
-instrumentation reasons.
+却下: キュー深度はライブプル（スクレイプごとにブローカー状態をサンプリングするのが
+`worker.QueueStatsProvider` の意図するモデル）であり、プッシュパイプラインへバッファリングすると
+古い値の読み取りウィンドウと純粋に計装目的のバックグラウンドゴルーチンが生まれる。
 
-### Prometheus scrape only
+### Prometheus スクレイプのみ
 
-Rejected: OTel meter instruments integrate natively with the SDK pipeline (batch export,
-exemplars, resource attribution), which Prometheus instruments do not.
+却下: OTel メーター計装は SDK パイプライン（バッチエクスポート・エグゼンプラー・リソース帰属）と
+ネイティブに統合されるが、Prometheus 計装はそうではない。
 
-### Unified through a Prometheus-to-OTLP bridge in the Collector
+### Collector 内の Prometheus-to-OTLP ブリッジを通じた統合
 
-Not adopted here: that is a Collector-side concern. The application does not prescribe
-Collector configuration.
+ここでは採用しない: これは Collector 側の関心事であり、アプリケーションは Collector の
+設定を規定しない。
 
-## Notes
+## 補足
 
-- Source: `docs/design/observability.md` §3.2 "Two metric exit paths".
-- Parent: [ADR-0071](0071-config-driven-observability-gating.md) (config-driven gating).
-- Implementation: `internal/observability/metrics/buildinfo/` (buildinfo collector),
-  `internal/observability/metrics/queue/` (queue depth collector),
-  OTel meter instruments in `outbox_metrics.go`, `worker_metrics.go`,
-  `idempotency_metrics.go`, `http_client_metrics.go`.
+- 出典: `docs/design/observability.md` §3.2「Two metric exit paths」。
+- 親: [ADR-0071](0071-config-driven-observability-gating.md)（設定駆動ゲーティング）。
+- 実装: `internal/observability/metrics/buildinfo/`（buildinfo コレクター）、
+  `internal/observability/metrics/queue/`（キュー深度コレクター）、
+  `outbox_metrics.go`・`worker_metrics.go`・`idempotency_metrics.go`・
+  `http_client_metrics.go` 内の OTel メーター計装。

@@ -1,15 +1,15 @@
 # timeout
 
-Sets a per-request deadline budget on the request context (`SERVER_REQUEST_TIMEOUT`).
+リクエスト context に per-request の deadline budget（`SERVER_REQUEST_TIMEOUT`）を設定します。
 
-## Role
+## 役割
 
-Entry point of the **deadline budget**: a single per-request deadline is set once here and propagated through `ctx` to every downstream layer — the remaining `Use` middleware, OpenAPI validation, the handler, DB queries (pgx cancels on `ctx` deadline), and outbound HTTP (`httpclient` already honours the remaining budget via `ctx.Deadline()`). Instead of placing independent timeout knobs at each boundary, every layer derives its deadline from this one budget; `statement_timeout` / `lock_timeout` are coarse backstops for queries that ignore `ctx`, not the primary mechanism.
+deadline budget の入口です。per-request の deadline をここで1点だけ設定し、`ctx` 経由で下流の全層へ伝播させます——後続の `Use` ミドルウェア、OpenAPI 検証、ハンドラ、DB クエリ（pgx が `ctx` deadline でキャンセル）、外部 HTTP（`httpclient` は既に `ctx.Deadline()` で残予算を尊重）。各境界に独立した timeout ノブを置くのではなく、全層がこの単一予算から deadline を導出します。`statement_timeout` / `lock_timeout` は `ctx` を無視するクエリ向けの粗い backstop であり、主機構ではありません。
 
-To avoid response-writer data races, Echo's race-free `middleware.ContextTimeout` is used as the base (the deprecated `middleware.Timeout` carries such a race). On deadline exceedance the middleware returns `apperror.ErrUnavailable`, so Echo's central unified `HTTPErrorHandler` produces the same error body shape as every other error (HTTP 503).
+response writer のデータ競合を避けるため、echo 標準の race-free な `middleware.ContextTimeout` を基底とします（非推奨の `middleware.Timeout` は競合を抱える）。deadline 超過時は `apperror.ErrUnavailable` を返し、echo 中央の統一 `HTTPErrorHandler` が他のエラーと同じボディ形（HTTP 503）を生成します。
 
-## Notes
+## 補足
 
-- Registered as a **Pre** middleware (priority 2, just after `uri`=1) so the deadline covers all `Use` middleware, validation, handler, and DB — lower priority executes first, so `uri`=1 runs before `timeout`=2. See `internal/di/server/extension/inbound`.
-- The timeout duration is injected from `ServerConfig.RequestTimeout()`; the package itself takes the duration as a parameter and is framework-config-free.
-- `ContextTimeout` provides the deadline `ctx`; it does not forcibly interrupt a handler that ignores `ctx`. Handlers / drivers respect `ctx` (pgx, `httpclient`) so the budget is enforced cooperatively.
+- **Pre** ミドルウェア（priority 2、`uri`=1 の直後）として登録し、deadline が全 `Use`・検証・ハンドラ・DB を覆うようにします（priority が小さいほど先に実行されるため `uri`=1 が先行、`timeout`=2 が直後に続く。`internal/di/server/extension/inbound` 参照）。
+- timeout 値は `ServerConfig.RequestTimeout()` から注入されます。本パッケージ自体は duration を引数で受け取り、フレームワーク設定に非依存です。
+- `ContextTimeout` は deadline 付き `ctx` を供給するだけで、`ctx` を無視するハンドラを強制中断はしません。ハンドラ／ドライバ（pgx, `httpclient`）が `ctx` を尊重することで予算が協調的に enforce されます。

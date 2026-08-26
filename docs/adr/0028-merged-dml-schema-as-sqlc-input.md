@@ -5,93 +5,64 @@ deciders: [maintainers]
 tags: [persistence, codegen, tooling]
 ---
 
-# ADR-0028: Use merged DML and a dumped schema as sqlc's single input
+# ADR-0028: マージされたDMLおよびダンプされたスキーマをsqlcの単一入力として使用する
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-sqlc requires two inputs: a schema (table definitions) and SQL query files. The schema
-evolves through migrations applied to a live database, and DML queries are spread across
-per-category subdirectories (`repository/`, `query_service/`, `command_service/`,
-`system_cqrs/`). Pointing sqlc directly at raw migration files is impractical because sqlc
-does not understand migration sequencing — it would need all DDL statements merged and
-applied in order. Pointing it at scattered DML directories without merging would require
-sqlc to be aware of the directory layout.
+sqlcには2種類の入力が必要である。スキーマ（テーブル定義）とSQLクエリファイルである。スキーマはライブデータベースに適用されるマイグレーションを通じて変化し、DMLクエリはカテゴリごとのサブディレクトリ（`repository/`・`query_service/`・`command_service/`・`system_cqrs/`）に分散している。sqlcをマイグレーションファイルに直接向けることは現実的でない。sqlcはマイグレーションの順序を理解しないため、すべてのDDL文を順序通りにマージして適用する必要があり、それはまさに`dump-schema`がライブDBから取り込む作業である。分散したDMLディレクトリをマージせずにsqlcに向けると、sqlcがディレクトリレイアウトを把握する必要が生じる。
 
-A pre-processing step that produces a single, self-contained input set in a known location
-keeps sqlc configuration simple and the generation pipeline deterministic.
+既知の場所に単一の自己完結した入力セットを生成する前処理ステップを設けることで、sqlcの設定をシンプルに保ち生成パイプラインを決定論的にする。
 
-## Decision
+## 決定
 
-Two build steps produce a unified input set for sqlc under `database/gen/` before `sqlc
-generate` runs:
+`sqlc generate`を実行する前に、`database/gen/`配下にsqlcの統一入力セットを生成する2つのビルドステップを設ける。
 
-1. **merge-dml** (`go run ./cmd/ merge-dml --type=$(type) --work-dir=$(work-dir)`)
-   concatenates all SQL files from each DML category directory into `database/gen/`,
-   producing one merged file per category.
-2. **dump-schema** (`go run ./cmd/ dump-schema --work-dir=$(work-dir)`) dumps the schema of
-   the live, migrated database into `database/gen/schema.gen.sql`.
+1. **merge-dml**（`go run ./cmd/ merge-dml --type=$(type) --work-dir=$(work-dir)`）が各DMLカテゴリディレクトリのすべてのSQLファイルを`database/gen/`に連結し、カテゴリごとに1つのマージファイルを生成する。
+2. **dump-schema**（`go run ./cmd/ dump-schema --work-dir=$(work-dir)`）がライブのマイグレーション済みデータベースのスキーマを`database/gen/schema.gen.sql`にダンプする。
 
-`sqlc.yaml` then points at exactly these two artifacts:
+`sqlc.yaml`はこの2つの成果物のみを指定する。
 
 ```yaml
 schema: database/gen/schema.gen.sql
 queries: database/gen/
 ```
 
-`make gen-query` runs both steps followed by `sqlc generate`. `database/gen/` is a
-generated artifact and must not be edited manually.
+`make gen-query`はmerge-dml・dump-schema・sqlc generateの順でこれらのステップを実行する。`database/gen/`は生成された成果物であり、手動で編集してはならない。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- sqlc always sees the schema that reflects the actual applied-migration state, not raw DDL
-  files that could be out of order or partially applied.
-- DML files remain organized per category under `database/dml/` but are merged before
-  generation, keeping both human organization and tooling simplicity.
-- The generated Go code (`internal/infrastructure/rdb/sqlc/gen/`) is fully reproducible
-  from the same migrated DB state.
-- The committed `schema.gen.sql` snapshot lets reviewers audit the generated Go code without
-  re-running the migration pipeline: the runtime source of truth is the SQL files, but the
-  generation-input state exists only on the generator's local DB at generation time, so the
-  snapshot makes it available for review without reconstruction.
+- sqlcは常に実際に適用されたマイグレーション状態を反映するスキーマを参照し、順序が乱れたり部分的に適用された生DDLファイルを参照しない。
+- DMLファイルは`database/dml/`配下でカテゴリごとに整理されたまま生成前にマージされるため、人間の整理とツールのシンプルさの両方が保たれる。
+- 生成されたGoコード（`internal/infrastructure/rdb/sqlc/gen/`）は同一のマイグレーション済みDB状態から完全に再現可能である。
+- コミットされた`schema.gen.sql`のスナップショットにより、レビュアーはマイグレーションパイプラインを再実行せずに生成されたGoコードをレビューできる。生成されるGoファイルの実行時のSource of TruthはSQLファイルだが、生成時のスキーマ状態は生成実行時点のローカルDBにのみ存在するため、スナップショットとして保存することで再導出せずにレビューが可能になる。
 
-### Negative Consequences
+### ネガティブな影響
 
-- A live, migrated database must be available before running `make gen-query`; the schema
-  dump cannot be produced from migration files alone. In practice this is harmless because a
-  local container is always running during normal development.
-- `database/gen/` must be committed or regenerated in CI, adding a dependency on the DB
-  container during generation.
+- `make gen-query`を実行する前にライブのマイグレーション済みデータベースが利用可能でなければならない。スキーマダンプはマイグレーションファイルだけからは生成できない。通常開発時は常にローカルコンテナが起動しているため、実際には無害である。
+- `database/gen/`はコミットするか、または生成時にDBコンテナへの依存を追加してCIで再生成しなければならない。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Point sqlc directly at migration files
+### sqlcをマイグレーションファイルに直接向ける
 
-sqlc does not understand migration ordering. All DDL statements from all migration files
-would need to be applied in sequence, which is exactly what `dump-schema` already captures
-from the live DB. Rejected because it replicates the migration engine's job.
+sqlcはマイグレーションの順序を理解しない。すべてのマイグレーションファイルからすべてのDDL文を順序通りに適用する必要があり、それはまさに`dump-schema`がライブDBから取り込む作業と同一である。マイグレーションエンジンの仕事を複製するため却下。
 
-### Maintain a hand-written schema.sql
+### 手書きのschema.sqlを管理する
 
-A manually curated schema file would drift from the actual applied migrations over time.
-The dump-schema approach derives the schema from the applied state, eliminating drift.
-Rejected.
+手動で管理されるスキーマファイルは実際に適用されたマイグレーションから時間とともにずれていく。dump-schemaアプローチは適用済み状態からスキーマを導出しドリフトを排除する。却下。
 
-### One sqlc invocation per DML category
+### DMLカテゴリごとに個別のsqlc呼び出し
 
-Running sqlc separately for each category (`repository`, `query_service`, etc.) with
-category-specific config would produce separate generated packages and complicate the Go
-import graph. The single merged input produces one coherent generated package. Rejected.
+各カテゴリ（`repository`・`query_service`等）ごとにカテゴリ別の設定でsqlcを個別に実行すると、別々の生成パッケージが生成されGoのインポートグラフが複雑になる。単一のマージされた入力により一貫性のある単一の生成パッケージが得られる。却下。
 
-## Notes
+## 補足
 
-- Source: [`database/README.md`](../../database/README.md) — Data Lifecycle diagram.
-- Related: [ADR-0026](0026-sql-first-data-access.md) (SQL-first data access),
-  [ADR-0027](0027-sqlc-type-safe-sql.md) (sqlc as code generator).
-- `make gen-query` is the single command that runs merge-dml, dump-schema, and sqlc in
-  order.
+- Source: [`database/README.md`](../../database/README.md) — データライフサイクル図。
+- 関連: [ADR-0026](0026-sql-first-data-access.md)（SQLファーストデータアクセス）、[ADR-0027](0027-sqlc-type-safe-sql.md)（コードジェネレーターとしてのsqlc）。
+- `make gen-query`がmerge-dml・dump-schema・sqlcを順に実行する単一コマンドである。

@@ -5,203 +5,93 @@ deciders: [maintainers]
 tags: [persistence, domain, architecture, concurrency]
 ---
 
-# ADR-0036: Serialize contended writes with ordered pessimistic row locks taken before the guarded condition
+# ADR-0036: 競合する書き込みを、守る条件より前に取る単一順序の悲観行ロックで直列化する
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-A write that reads a row, decides something from what it read, and then writes, is serialized
-against a concurrent write by nothing the application does by default. Transactions here run at
-**READ COMMITTED** — the transaction manager begins without `TxOptions` and nothing sets
-`default_transaction_isolation`, so PostgreSQL's default applies — and a plain `SELECT` reads its
-own statement snapshot, conflicting with nothing. Any invariant of the form *"this write is
-allowed only while that other row is in state S"* therefore carries a window between the check
-and the write:
+行を読み、読んだ内容から何かを判断し、そのうえで書き込む処理は、既定ではアプリケーション側の何によっても並行する書き込みと直列化されない。本リポジトリのトランザクションは **READ COMMITTED** で走る——トランザクションマネージャーは `TxOptions` なしで開始し、`default_transaction_isolation` を設定している箇所もないため PostgreSQL の既定が適用される——ので、素の `SELECT` は自身のステートメントスナップショットを読み、何とも競合しない。したがって「あの行が状態 S にある間だけ、この書き込みが許される」という形の不変条件はすべて、判定と書き込みの間に窓を抱える:
 
 ```txt
-T1: reads the guard row → condition holds → proceeds
-T2:                       changes the guard row, commits
-T1:                                          writes anyway
+T1: ガード行を読む → 条件が成立 → 続行
+T2:                  ガード行を変更し commit
+T1:                                 そのまま書き込む
 ```
 
-Referential integrity survives this interleaving, so no database constraint reports it; only the
-business invariant breaks. Under SERIALIZABLE the same interleaving would surface as write skew
-and one side would abort with `40001`, but the isolation level is a property of *every*
-transaction in the application, and raising it repository-wide — with the retry-rate cost that
-carries — is a far larger decision than any single invariant can justify on its own.
+このインターリーブでも参照整合性は壊れないため、データベース制約は何も報告しない。壊れるのは業務上の不変条件だけである。SERIALIZABLE ならば同じインターリーブは write skew として現れ片方が `40001` で abort するが、分離レベルはアプリケーション内の *すべての* トランザクションに掛かる性質であり、リトライ率のコストを伴ってリポジトリ全体を引き上げる判断は、単一の不変条件が単独で正当化できる範囲を大きく超える。
 
-The serialization must therefore be expressed per invariant, with pessimistic row locks. That
-leaves four questions to settle: in what order locks are taken, at what point in the transaction,
-in which mode, and who is allowed to author the condition the lock protects. A fifth follows from
-the answers: what the application returns when the guarded condition turns out to be false.
+よって直列化は不変条件ごとに、悲観行ロックで表現する必要がある。そこで決めるべきことが 4 つ残る: どの順序でロックを取るか、トランザクションのどの時点で取るか、どのモードで取るか、そしてロックが守る条件を誰が書いてよいか。その答えから 5 つめが従う: 守られた条件が偽だったとき、アプリケーションは何を返すか。
 
-## Decision
+## 決定
 
-1. **Locks are taken in a single global order, fixed across every transaction.** Rows are locked
-   by a stable key in ascending order (`... WHERE id = ANY($1) ORDER BY id FOR UPDATE`), and where
-   a workflow locks rows in more than one table, the table order is fixed too — a workflow that
-   locks a subset takes those rows in the same relative order as one that locks all of them. A
-   cycle in the wait-for graph requires two transactions to acquire the same pair in opposite
-   orders; a single global order makes that unreachable, so deadlock is removed **structurally**
-   rather than mitigated by retry. A request carrying a duplicate key is rejected as a validation
-   error before locking, so the ordering premise holds.
+1. **ロックは単一の全域順序で、全トランザクション共通に固定して取る。** 行は安定したキーの昇順でロックし（`... WHERE id = ANY($1) ORDER BY id FOR UPDATE`）、複数のテーブルの行をロックするワークフローではテーブルの順序も固定する——部分集合だけをロックするワークフローも、全部をロックするワークフローと同じ相対順序で取る。wait-for グラフの循環は 2 つのトランザクションが同じペアを逆順で取得することを必要とするため、単一の全域順序はそれを到達不能にする。すなわちデッドロックはリトライで緩和されるのではなく**構造的に**除去される。重複キーを含むリクエストはロックの前に検証エラーで弾き、順序付けの前提を保つ。
 
-2. **The lock is taken before the condition it protects is evaluated.** This is the load-bearing
-   part, and the part that is easy to get wrong: a transaction that evaluates its refusal
-   condition first and takes the row lock only later — often implicitly, through its own `UPDATE`
-   — has already left the window open. A lock acquired after the decision it was meant to guard
-   serializes nothing.
+2. **ロックは、それが守る条件を評価する前に取る。** ここが要であり、間違えやすいところでもある: 先に拒否条件を評価し、行ロックは——しばしば自身の `UPDATE` を通じて暗黙に——後から取るトランザクションは、その時点で既に窓を開けてしまっている。守るはずだった判断より後に取得したロックは、何も直列化しない。
 
-3. **Lock mode expresses the asymmetry between observing and changing.** A reader whose
-   observation must not be invalidated takes a **shared** lock on the guard row; the writer that
-   would invalidate it takes an **exclusive** lock on the same row. Shared locks are mutually
-   compatible, so concurrent readers of the same guard row do not serialize against one another —
-   only the invalidating writer conflicts. Taking the exclusive lock on both sides would also be
-   correct and would need one concept fewer, but it serializes observers against each other for no
-   reason: the observing side only needs to establish that no invalidating write is in flight, and
-   the shared lock states exactly that. A *key-share* lock is not sufficient — it is compatible
-   with non-key `UPDATE`s, so it fails to block precisely the write it exists to observe.
+3. **ロックモードは、観測することと変更することの非対称性を表す。** 観測を無効化されては困る読み手はガード行に**共有**ロックを取り、それを無効化する書き手は同じ行に**排他**ロックを取る。共有ロック同士は互いに両立するため、同じガード行の並行する読み手同士は直列化されず、無効化する書き手とだけ衝突する。両側で排他ロックを取っても正しく、概念は 1 つ少なくて済むが、それは観測側同士を理由なく直列化する: 観測側が必要としているのは「無効化する書き込みが進行中でない」ことの確認だけであり、共有ロックはまさにそれを述べている。*key-share* ロックでは不十分である——非キーの `UPDATE` と両立するため、観測したいまさにその書き込みをブロックできない。
 
-4. **A waiter re-evaluates; it does not resume on its entry snapshot.** Under READ COMMITTED, when
-   a blocking writer commits, PostgreSQL's `EvalPlanQual` re-evaluates the blocked statement's
-   predicate against the newly committed row version. A transaction that was already waiting
-   therefore observes the change — its lock query returns zero rows — instead of proceeding on the
-   snapshot it entered with. This is what makes a locking `SELECT` a usable guard rather than
-   merely a wait.
+4. **待たされた側は再評価する。入場時のスナップショットのまま再開しない。** READ COMMITTED では、ブロックしていた書き手が commit した時点で PostgreSQL の `EvalPlanQual` が、ブロックされていたステートメントの述語を新しくコミットされた行バージョンに対して再評価する。すでに待機していたトランザクションは変更を観測し——ロッククエリが 0 行を返し——入場時のスナップショットのまま進むことはない。これがロッキング `SELECT` を単なる待機ではなく、使えるガードにしている。
 
-5. **The lock query acquires the row and returns state; it does not author the criterion.** A
-   locking `SELECT` narrows to the row it must lock and returns that row, but the *business
-   condition* the lock protects is defined by a domain predicate over the returned state, never by
-   the SQL's `WHERE`. A lock query that also filters on the guarded condition looks economical and
-   is the wrong shape: it relocates a business rule into infrastructure, where the domain no longer
-   owns it and a second copy exists to diverge silently the first time only one of them moves —
-   and it collapses "the row is absent" and "the row is present but ineligible" into one
-   indistinguishable zero-row result. This is the criterion-authorship rule already recorded in
-   [`internal/domain/README.md`](../../internal/domain/README.md) (§ Query and Aggregate) and
-   [`docs/rules.md`](../rules.md) (§ Domain Layer Constraints); a locking read is bound by it like
-   any other read. Restating the guard inside the write statement itself is permitted only as a
-   fail-closed second net **derived from** the domain rule
-   ([ADR-0032](0032-lightweight-cqrs.md) § Derivation), never as its author.
+5. **ロッククエリは行を取得して状態を返すのであって、判定基準を著述しない。** ロッキング `SELECT` はロックすべき行に絞り込んでその行を返すが、そのロックが守る*業務条件*は返された状態に対するドメインの述語で定義され、SQL の `WHERE` では定義されない。守るべき条件までロッククエリで絞り込む形は一見して経済的に見えるが誤りである: 業務ルールをインフラへ移設することになり、そこではドメインがルールを所有せず、どちらか片方だけが動いた瞬間に静かに乖離する 2 つめの写しが生まれる。さらに「行が存在しない」と「行はあるが条件を満たさない」を区別のつかない 0 行結果へ潰してしまう。これは [`internal/domain/README.md`](../../internal/domain/README.md)（§ Query and Aggregate）と [`docs/rules.md`](../rules.md)（§ Domain Layer Constraints）に既に記録されている基準著述のルールであり、ロッキング読み取りも他の読み取りと同様にこれに縛られる。書き込みステートメント自体の中でガードを再掲することは、ドメインのルールから**導出された** fail-closed の二重防御としてのみ許され（[ADR-0032](0032-lightweight-cqrs.md) § Derivation）、著述元となることは決してない。
 
-   The resulting division of labour has three parts. The **usecase** takes the lock, owns the
-   transaction boundary, and maps a refused condition onto a protocol error. The **domain
-   predicate** on the locked aggregate decides whether the condition holds. Where the rule spans
-   aggregates — the locked row belongs to one aggregate and the evidence against it to another —
-   the rule lives in a **Domain Service** (`internal/domain/service/<name>/`), which is the one
-   place permitted to import more than one aggregate and which returns the domain error the
-   usecase maps. The locking Repository method therefore hands back an aggregate rather than a
-   `bool`: a `bool` would mean infrastructure had already decided, which is precisely what this
-   point forbids.
+   結果として役割は 3 つに分かれる。**usecase** がロックを取り、トランザクション境界を所有し、拒否された条件をプロトコルのエラーへ写像する。ロックした集約に対する**ドメインの述語**が条件の成否を決める。ルールが集約をまたぐ場合——ロックした行が一方の集約に属し、それを否定する根拠が他方に属する場合——ルールは **Domain Service**（`internal/domain/service/<name>/`）に置く。そこが複数の集約を import してよい唯一の場所であり、usecase が写像するドメインエラーを返す。したがってロッキング Repository メソッドは `bool` ではなく集約を返す: `bool` を返すことはインフラが既に判定したことを意味し、それこそがこの項の禁じるものである。
 
-6. **A collision between the caller's own lifecycle state and the requested operation is a
-   conflict (409).** When the guarded condition is false because of the state of the principal
-   making the request, the answer is `ErrConflict` → 409
-   ([ADR-0047](0047-apperror-protocol-agnostic-errors.md)). 404 is reserved for hiding the
-   existence of *another* principal's resource; here the subject is the caller's own state, there
-   is nothing to hide, and a 404 on a creation endpoint would read as "the thing you are creating
-   against does not exist". 403 belongs to the authorizer's policy decisions, which the request has
-   already passed. Both directions of a mutually exclusive pair of operations therefore answer the
-   same status, so the pair reads as one rule rather than two unrelated refusals. Errors other than
-   not-found propagate untouched, so an infrastructure outage is never reported as a business
-   refusal.
+6. **呼び出し主体自身のライフサイクル状態と要求操作の衝突は、コンフリクト（409）である。** 守られた条件が、要求を行っている主体の状態ゆえに偽であるとき、答えは `ErrConflict` → 409 である（[ADR-0047](0047-apperror-protocol-agnostic-errors.md)）。404 は*他者*のリソースの存在を秘匿するために予約されている。ここでは対象が呼び出し主体自身の状態であり秘匿すべきものはなく、作成系エンドポイントでの 404 は「作成しようとしている対象が存在しない」と読めてしまう。403 は Authorizer のポリシー判断のものであり、リクエストは既にそこを通過している。したがって互いに排他的な 1 対の操作は双方向とも同じステータスで答え、その対は 2 つの無関係な拒否ではなく 1 つのルールとして読める。not-found 以外のエラーはそのまま伝播させ、インフラ障害が業務上の拒否として報告されることは決してない。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- The invariant holds under concurrency rather than probabilistically: the interleaving above
-  becomes structurally unreachable, and the ordering is pinned by an integration test that runs two
-  real transactions against the database ([ADR-0092](0092-rollback-integration-tests.md)).
-- Deadlock is avoided by construction rather than absorbed by the transaction retry
-  ([ADR-0035](0035-transaction-retry-idempotent-callers.md)), so the retry budget stays available
-  for genuine serialization failures.
-- A guard costs the same number of round trips as an unlocked existence check would — one `SELECT`
-  on a primary key — so strictness here is not bought with extra queries.
-- Both directions of one business collision answer 409, so closing an invariant introduces no new
-  status code into the API surface.
+- 不変条件は確率的にではなく並行下で成立する: 上記のインターリーブは構造的に到達不能になり、順序は 2 つの実トランザクションをデータベースに対して走らせる結合テストで固定される（[ADR-0092](0092-rollback-integration-tests.md)）。
+- デッドロックはトランザクションリトライ（[ADR-0035](0035-transaction-retry-idempotent-callers.md)）に吸収されるのではなく構成上回避されるため、リトライ予算は本来の serialization failure のために残る。
+- ガードのラウンドトリップ数はロックなしの存在確認と同じ——主キーへの `SELECT` 1 回——なので、ここでの厳密さは追加クエリと引き換えではない。
+- 1 つの業務衝突は双方向とも 409 で答えるため、不変条件を閉じても API サーフェスに新しいステータスコードは増えない。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Pessimistic locks serialize concurrent operations on the same row. This is acceptable where the
-  row is a genuinely contended resource, but it bounds write throughput per hot row.
-- A transaction that guards on another aggregate's row now blocks for the duration of any
-  concurrent writer of that row, so a hot path is no longer fully independent of the aggregate it
-  guards on.
-- Two lock modes widen the vocabulary a reader must hold: seeing a locking read is no longer enough,
-  the mode has to be read too.
-- A workflow that locks another aggregate's row acquires a dependency on that aggregate. Confining
-  the locking reads to their own narrow repository interface limits the dependency to the methods
-  actually used, at the cost of that aggregate presenting more than one repository interface.
+- 悲観ロックは同一行に対する並行操作を直列化する。その行が本当に競合するリソースである場合は妥当だが、ホットな行あたりの書き込みスループットに上限を与える。
+- 他集約の行でガードするトランザクションは、その行に対する並行する書き手の実行時間だけブロックされるようになるため、ホットパスがガード対象の集約から完全に独立ではなくなる。
+- ロックモードが 2 つになることで、読み手が保持すべき語彙が広がる。ロッキング読み取りを見つけるだけでは足りず、モードまで読む必要がある。
+- 他集約の行をロックするワークフローはその集約への依存を得る。ロッキング読み取りを専用の狭い Repository インターフェースに閉じ込めれば依存は実際に使うメソッドだけに限定されるが、その集約が複数の Repository インターフェースを提示することになる。
 
-### Neutral Consequences
+### ニュートラルな影響
 
-- A row lock serializes the transactions that take it and says nothing about authority obtained
-  before a transaction started; a credential issued before the guard row changed is a separate
-  concern with a separate mechanism.
+- 行ロックが直列化するのはそれを取るトランザクション同士であり、トランザクション開始前に得られた権限については何も述べない。ガード行が変わる前に発行された資格情報は別の関心事であり、別の機構で扱う。
 
-## Alternatives Considered
+## 検討した代替案
 
-### An unlocked existence check (plain `SELECT ... WHERE <condition>`)
+### ロックなしの存在確認（素の `SELECT ... WHERE <条件>`）
 
-Rejected. Under READ COMMITTED it narrows the window to the width of the guarded transaction but
-does not close it, because the read conflicts with nothing. A test that deterministically
-reproduces the interleaving still fails — and that is the standard an invariant is held to here.
+却下。READ COMMITTED では窓をガード対象トランザクションの幅まで狭めるだけで、閉じることはできない。読み取りが何とも競合しないためである。インターリーブを決定的に再現するテストは依然として落ちる——そしてそれが、ここで不変条件に課している水準である。
 
-### Advisory locks (`pg_advisory_xact_lock`)
+### アドバイザリロック（`pg_advisory_xact_lock`）
 
-Rejected. Advisory locks fit logical keys that have no backing row. Where the contended resource
-*is* a row, the row lock is the direct expression of it and needs no separate key convention. The
-outbox relay's `SKIP LOCKED` choice ([ADR-0056](0056-skip-locked-outbox-relay.md)) is a different
-contention profile — many workers competing to claim *any* queue row — and does not transfer to a
-specific row that every contender must observe.
+却下。アドバイザリロックは背後に行を持たない論理キーに適する。競合するリソースが行*そのもの*である場合、行ロックがその直接的な表現であり、別途キーの規約を要さない。outbox relay の `SKIP LOCKED`（[ADR-0056](0056-skip-locked-outbox-relay.md)）は競合プロファイルが異なり——多数のワーカーが*どれでもよい*キュー行を奪い合う——全員が観測しなければならない特定の行には転用できない。
 
-### Optimistic locking (a version column plus retry)
+### 楽観ロック（バージョン列 + リトライ）
 
-Rejected for this class of invariant. Optimistic control detects a conflict only on rows the
-transaction itself writes; a guard row that a transaction merely *reads* carries no version bump,
-so exactly the write skew at issue stays invisible to it. It would also convert a bounded wait into
-a retry loop whose cost grows with contention.
+この種の不変条件については却下。楽観制御が競合を検出できるのはトランザクション自身が書き込む行に対してだけであり、トランザクションが単に*読む*だけのガード行にはバージョンの更新が起きないため、問題としている write skew はまさに不可視のままになる。さらに、有界な待機を競合とともにコストが増えるリトライループへ置き換えてしまう。
 
-### The exclusive lock on both sides
+### 両側で排他ロックを取る
 
-Rejected as the default, though it is correct and would reuse a single lock mode and a single
-repository method. Operations that only need to *observe* the guard row would then serialize against
-each other for no reason; the shared/exclusive pair expresses the real asymmetry — shared intent to
-observe versus exclusive intent to change.
+既定としては却下。正しくはあり、ロックモードも Repository メソッドも 1 つで済む。しかしガード行を*観測*するだけでよい操作同士が理由なく直列化されてしまう。共有 / 排他の対は実際の非対称性——観測する共有の意図と、変更する排他の意図——を表現している。
 
-### A database constraint (partial unique index or trigger)
+### データベース制約（部分ユニークインデックスやトリガー）
 
-Rejected. An invariant that spans two tables and depends on a reference master cannot be expressed
-declaratively; it requires a trigger, which relocates business intent into the database and away
-from the domain that owns it — the same objection as point 5, in a stronger form.
+却下。2 つのテーブルにまたがり参照マスタに依存する不変条件は宣言的に表現できず、トリガーを要する。それは業務上の意図をデータベースへ移設し、それを所有するドメインから遠ざける——決定 5 と同じ反論の、より強い形である。
 
-### SERIALIZABLE isolation
+### SERIALIZABLE 分離レベル
 
-Rejected as out of scope. It would surface the interleaving as write skew and abort one side, but
-it applies to every transaction in the application and brings a retry-rate cost that a single
-invariant cannot justify deciding on its own.
+スコープ外として却下。インターリーブを write skew として顕在化させ片側を abort させられるが、アプリケーション内のすべてのトランザクションに適用され、単一の不変条件が単独で決めてよい範囲を超えるリトライ率のコストを伴う。
 
-## Notes
+## 補足
 
-- Related: [ADR-0032](0032-lightweight-cqrs.md) (Repository vs CommandService, and the Derivation
-  rule that binds a restated guard), [ADR-0034](0034-commandservice-atomicity-criterion.md) (the
-  three-way procedure that decides *whether* a cross-aggregate condition must be held — its branch 2
-  is the entry point into this ADR — and when a step needs write atomicity rather than only
-  serialization),
-  [ADR-0035](0035-transaction-retry-idempotent-callers.md) (serialization-failure retry),
-  [ADR-0047](0047-apperror-protocol-agnostic-errors.md) (`ErrConflict` → 409),
-  [ADR-0056](0056-skip-locked-outbox-relay.md) (the contrasting claim-a-queue-row profile),
-  [ADR-0092](0092-rollback-integration-tests.md) (integration tests against a real database).
+- 関連: [ADR-0032](0032-lightweight-cqrs.md)（Repository と CommandService の区分、および再掲されたガードを縛る Derivation ルール）、[ADR-0034](0034-commandservice-atomicity-criterion.md)（集約横断の条件を保持する必要が *あるか* を決める 3 分岐の判定手順。その分岐 2 が本 ADR への入口であり、あわせて直列化ではなく書き込みの原子性を要する場合も扱う）、[ADR-0035](0035-transaction-retry-idempotent-callers.md)（serialization failure のリトライ）、[ADR-0047](0047-apperror-protocol-agnostic-errors.md)（`ErrConflict` → 409）、[ADR-0056](0056-skip-locked-outbox-relay.md)（対照的な「キュー行を奪い合う」プロファイル）、[ADR-0092](0092-rollback-integration-tests.md)（実データベースに対する結合テスト）。
 <!-- sample-api:replace-begin -->
-- Which rows a given workflow locks, and which business rule each lock protects, is feature content
-  rather than an architectural decision, so it is specified with the feature. In this repository
-  that means the removable sample set (`docs/spec/purchase/`, `docs/spec/user/`) — referenced by
-  path rather than linked, because those files are deleted by `make setup-remove-sample-api` while
-  this ADR stays.
+- どのワークフローがどの行をロックし、各ロックがどの業務ルールを守るのかは、アーキテクチャ上の決定ではなく機能の内容であり、機能とともに記述する。本リポジトリではそれは削除可能なサンプル群（`docs/spec/purchase/` / `docs/spec/user/`）を指す。`make setup-remove-sample-api` で削除される一方で本 ADR は残るため、リンクではなくパスで示す。
 <!-- sample-api:replace-with -->
-<!-- = - Which rows a given workflow locks, and which business rule each lock protects, is feature content -->
-<!-- =   rather than an architectural decision, so it is specified with the feature. -->
+<!-- = - どのワークフローがどの行をロックし、各ロックがどの業務ルールを守るのかは、アーキテクチャ上の決定ではなく機能の内容であり、機能とともに記述する。 -->
 <!-- sample-api:replace-end -->

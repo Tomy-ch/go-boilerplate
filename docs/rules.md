@@ -1,18 +1,16 @@
-# Architecture Rules
+# アーキテクチャルール
 
-This document defines the **architectural rules that must not be violated** in this project.
+このドキュメントは、このプロジェクトにおける **破ってはいけないアーキテクチャルール** を定義します。
 
-These rules must be strictly followed by both **human developers** and **AI agents**.
+これらのルールは **人間の開発者** と **AIエージェント** の両方が必ず遵守する必要があります。
 
-Violating these rules may compromise the architectural integrity of the system.
+これらのルールに違反すると、システムのアーキテクチャ整合性が損なわれる可能性があります。
 
-## Layer Dependency Rules
+## レイヤ依存ルール
 
-> Rationale: [ADR-0002 (onion-architecture)](adr/0002-onion-architecture.md), [ADR-0003 (interface-based-decoupling)](adr/0003-interface-based-decoupling.md); enforced via [ADR-0006 (structural-safety-via-tooling)](adr/0006-structural-safety-via-tooling.md).
+依存関係は常に **内側のレイヤへ向かう** 必要があります。
 
-Dependencies must always point **toward the inner layers**.
-
-### Allowed Dependencies
+### 許可される依存
 
 ```mermaid
 flowchart LR
@@ -20,7 +18,7 @@ flowchart LR
     Infrastructure --> Domain
 ```
 
-### Forbidden Dependencies
+### 禁止される依存
 
 ```mermaid
 flowchart LR
@@ -29,90 +27,84 @@ flowchart LR
     Usecase -.-> Controller
 ```
 
-**The domain layer must always be the most independent layer.**
+**domain レイヤは常に最も独立したレイヤである必要があります。**
 
-### Domain lexicon
+### ドメイン語彙（lexicon）
 
-A domain package must **not** import another aggregate (`internal/domain/` is denied by depguard).
-Business-semantic value objects used by more than one aggregate, which cannot live in `pkg/` because
-`pkg/` forbids business logic, live in the **domain lexicon**
-[`internal/domain/lexicon`](../internal/domain/lexicon/README.md), which every domain package may
-import (depguard allows `internal/domain/lexicon`).
+domain パッケージは他の集約を import してはなりません（depguard が `internal/domain/` を拒否します）。
+複数の集約から使われる業務意味論を持つ値オブジェクトのうち、`pkg/` が業務ロジックを禁じているために
+そちらへ置けないものは、**ドメイン語彙**
+[`internal/domain/lexicon`](../internal/domain/lexicon/README.md) に置きます。ここは全ての domain
+パッケージが import してよい場所です（depguard が `internal/domain/lexicon` を許可します）。
 
-Placement is resolved **`pkg/` first** — its bar is machine-enforced, the lexicon's is prose, and a
-prose bar cannot push a type across a boundary a linter draws. Failing `pkg/` is not an argument for
-the lexicon; a type that clears neither stays in its aggregate. Admission is deliberately narrow
-(value object, used by ≥2 aggregates, business-semantic, jointly owned — see its README), and the
-name states the question asked at the door: is this a word of the business?
-Rationale: [ADR-0039 (domain-lexicon)](adr/0039-domain-lexicon.md).
+配置は **`pkg/` を先に判定**します。あちらの基準は機械強制ですが lexicon の基準は散文であり、散文の
+基準がリンタの引く境界を越えて型を押し込むことはできないためです。`pkg/` で落ちたことは lexicon の
+根拠になりません。どちらも満たさない型は所有する集約に残します。入場基準は意図的に狭く（値オブジェクト /
+2 集約以上で使用 / 業務意味論を持つ / 共同所有の判断。詳細はその README）、名前が入場時の問いを
+表しています——これは業務の語か。根拠: [ADR-0039](adr/0039-domain-lexicon.md)。
 
-### Domain services
+### ドメインサービス
 
-The lexicon is not the only path allowed to cross inside the domain. A rule that is the responsibility
-of no entity and no value object lives under **`internal/domain/service/<name>/`**, and that path has
-a depguard rule of its own which permits importing aggregates. The permission is one edge wide: every
-other domain deny (framework, infrastructure, usecase, controller, file system, process, environment)
-is repeated verbatim in that rule, and a service there holds no I/O — no Repository, no
-`context.Context`. It receives state the Usecase has already loaded, and returns a derived value or a
-domain error.
+domain 内部を横断してよい経路は lexicon だけではありません。どのエンティティ・値オブジェクトの責務でも
+ないルールは **`internal/domain/service/<name>/`** に置き、このパスは集約の import を許す専用の depguard
+ルールを持ちます。緩めるのはこの一辺だけで、それ以外の domain の deny（フレームワーク /
+infrastructure / usecase / controller / ファイルシステム / プロセス / 環境変数）は同ルールへ一字一句
+再掲されています。ここのサービスは I/O を持たず、Repository も `context.Context` も受け取りません。
+Usecase が読み込み済みの状態を受け取り、導出した値またはドメインのエラーを返します。
 
-**Admission turns on responsibility, never on how many aggregates the rule reaches.** Spanning
-aggregates is one way an operation comes to belong to no entity, not what makes it one: a question
-asked about a *set* of entities drawn from a single aggregate has no entity to be a method on either.
-Both kinds live at the same path, so the placement question is asked once and answered once.
+**入場の可否は責務で決まり、ルールがいくつの集約に届くかでは決まりません。** 集約に跨ることは、操作が
+どのエンティティのものでもなくなる一つの経路であって、そうであることの定義ではありません。単一の集約から
+取った *集合* についての問いもまた、メソッドの置き先となるエンティティを持ちません。どちらも同じパスに
+置くので、配置の問いは一度だけ問われ一度だけ答えられます。
 
-The two exceptions answer different questions and are not interchangeable. The lexicon admits a
-**value object** that several aggregates speak in; a domain service holds a **rule** that no entity
-can own. A rule that fits on one entity goes on that entity, and reading two aggregates merely to
-place them side by side is mapping, which stays in Usecase. The admission bar and the current
-occupants are in [`internal/domain/README.md`](../internal/domain/README.md) § Where a Domain Service
-lives.
+2 つの例外は別々の問いに答えるものであり、互換ではありません。lexicon が受け入れるのは複数の集約が
+話す **値オブジェクト** であり、ドメインサービスが持つのはどのエンティティも所有できない **ルール** です。
+1 つのエンティティに収まるルールはそのエンティティへ置き、2 つの集約を読んで並べるだけなら写像であり
+Usecase に留まります。入場基準と現在の占有者は
+[`internal/domain/README.md`](../internal/domain/README.md) の「Domain Service を
+どこに置くか」を参照してください。
 
-### Rationale
+### 理由
 
-This rule prevents the domain model from depending on frameworks or infrastructure.
+このルールにより、ドメインモデルがフレームワークやインフラストラクチャに依存することを防ぎます。
 
-These boundaries are **enforced in CI by `golangci-lint` depguard**, not by documentation alone — a forbidden cross-layer import (e.g. `domain` importing `infrastructure`, or `pkg/` importing `internal/`) fails the build.
+これらの境界はドキュメント上の取り決めに留まらず、**CI の `golangci-lint` depguard で強制**されます。禁止された cross-layer import（例: `domain` が `infrastructure` を import、`pkg/` が `internal/` を import）はビルドを失敗させます。
 
-## Usecase Dependency Rules
+## Usecase 依存ルール
 
-> Rationale: [ADR-0002 (onion-architecture)](adr/0002-onion-architecture.md).
+Usecase は Infrastructure に直接依存してはなりません。
 
-Usecase must not directly depend on Infrastructure.
-
-- Dependencies must always go through Boundary (interface)
-- Infrastructure implementations are injected via DI
+- 依存は必ず Boundary（interface）を通す
+- Infrastructure 実装は DI によって注入される
 
 ```txt
 Usecase → Boundary(interface) → Infrastructure
 ```
 
-## Generated Code Rules
+## 生成コードルール
 
-> Rationale: [ADR-0014 (oapi-codegen-strict-server)](adr/0014-oapi-codegen-strict-server.md), [ADR-0027 (sqlc-type-safe-sql)](adr/0027-sqlc-type-safe-sql.md), [ADR-0028 (merged-dml-schema-as-sqlc-input)](adr/0028-merged-dml-schema-as-sqlc-input.md); drift gated by [ADR-0088 (generated-artifact-drift-gate)](adr/0088-generated-artifact-drift-gate.md).
+一部のファイルは **自動生成されるコード** です。
 
-Some files are **automatically generated code**.
+これらのファイルは **手動で編集してはいけません**。
 
-These files must **never be edited manually**.
+### 生成コードの例
 
-### Examples of Generated Code
+例：
 
-Examples:
+- OpenAPI から生成されたサーバコード
+- sqlc によって生成されたクエリバインディング
+- mock 生成ファイル
 
-- Server code generated from OpenAPI
-- Query bindings generated by sqlc
-- Mock generated files
+### ルール
 
-### Rules
+生成コードは常に **ソース定義から完全に再生成できる状態**である必要があります。
 
-Generated code must always be in a state that is **fully reproducible from source definitions**.
+生成コードを変更する必要がある場合は、  
+**生成元の定義を変更してください。**
 
-If it is necessary to modify generated code,  
-**modify the source definitions instead.**
+例：
 
-Examples:
-
-|Generated Code|Source|
+|生成コード|ソース|
 |---|---|
 |OpenAPI server code|OpenAPI specification|
 |SQL bindings|SQL query files|
@@ -120,450 +112,404 @@ Examples:
 
 ## OpenAPI-first
 
-> Rationale: [ADR-0012 (openapi-first)](adr/0012-openapi-first.md).
-
-Changes to APIs must always start from the **OpenAPI definition**.
+API の変更は必ず **OpenAPI 定義から開始**します。
 
 ```mermaid
 flowchart TB
     OpenAPI --> Gen["oapi-codegen"] --> IF["Server Interface"] --> Handler["Handler Implementation"]
 ```
 
-### OpenAPI-first Rules
+### OpenAPI-first ルール
 
-- Do not implement handler before defining the API contract
-- Do not manually edit generated API interfaces
-- Every route registered on Echo must correspond 1:1 to an operation in the spec, with no allowlist for exceptions — machine-verified by `TestRouteSpecParity` in `internal/architest`. Parts of the HTTP stack resolve behavior from the spec, so a route the spec does not declare changes behavior at runtime while the tests stay green. See [the handler guide](../internal/controller/handler/README.md#every-route-must-exist-in-openapi) for what this means when writing a handler.
-- Every handler package that declares a `BindHandler` must be listed in the `fx.Invoke` of `ControllerModule()`, and every package with generated `RegisterHandlers` must have a `BindHandler` implementing it — machine-verified by `TestBindHandlerDIParity` in `internal/architest`. `TestRouteSpecParity` reads the generated route registrations, which `make gen-api` produces from the spec whether or not the handler is wired into DI, so without this check a missing wiring answers 404 at runtime while the tests stay green.
+- API 契約を定義する前に handler を実装してはいけません
+- 生成された API インターフェースを手動で編集してはいけません
+- Echo に登録するルートは spec の operation と 1:1 で対応しなければならず、例外のための許可リストは持ちません（`internal/architest` の `TestRouteSpecParity` が機械検証します）。HTTP スタックの一部は挙動を spec から解決するため、spec に無いルートはテストが緑のまま実行時の挙動だけを変えます。ハンドラを書くうえで何を意味するかは [handler ガイド](../internal/controller/handler/README.md#すべてのルートは-openapi-に存在しなければならない)を参照してください。
+- `BindHandler` を宣言するハンドラパッケージは `ControllerModule()` の `fx.Invoke` に列挙されていなければならず、`RegisterHandlers` が生成されているパッケージはそれを実装する `BindHandler` を持たなければなりません（`internal/architest` の `TestBindHandlerDIParity` が機械検証します）。`TestRouteSpecParity` が読むのは生成されたルート登録で、これは DI へ配線したかどうかに関わらず `make gen-api` が spec から作るため、この検証が無いと配線漏れはテストが緑のまま実行時に 404 を返します。
 
-OpenAPI definition is the **single source of truth of API**.
+OpenAPI 定義は **APIの唯一のソース（Single Source of Truth）** です。
 
-## Database Migration
+## データベースマイグレーション
 
-> Rationale: [ADR-0029 (append-only-immutable-migrations)](adr/0029-append-only-immutable-migrations.md), [ADR-0030 (sequential-migration-ids)](adr/0030-sequential-migration-ids.md).
+データベーススキーマの変更は、厳格なマイグレーションルールに従う必要があります。
 
-Changes to the database schema must follow strict migration rules.
+### マイグレーションルール
 
-### Migration Rules
-
-- Existing migration files must **not be modified**
-- Migration is **append-only**
-- Schema changes must always start from **migration**
+- 既存の migration ファイルを **変更してはいけません**
+- migration は **append-only（追記のみ）** です
+- スキーマ変更は必ず **migration から開始**します
 
 <!-- boilerplate-only:begin -->
-**Upstream exception — renumbering is allowed, on instruction.** While this repository is
-distributed as the boilerplate source, an existing migration may be renumbered or rewritten when
-a human explicitly approves or instructs it, decided per change. What upstream ships is a worked
-example, and the clarity and consistency of that example outweigh the schema history of a
-repository nobody runs in production.
+**上流の例外 — 指示があれば採番のし直しを許します。** このリポジトリが boilerplate の正本として
+配布されている間に限り、既存の migration は、人間が明示的に承認または指示したときに採番し直したり
+書き換えたりできます（変更ごとに判断します）。上流が配布しているのは手本であり、**その手本としての
+明瞭さと一貫性を、誰も本番で動かしていないリポジトリのスキーマ履歴より優先します**。
 
-The cost is real, and it falls on anyone holding a partially migrated database: the migration
-tool records the version number, not the filename, so a database stopped between the old and the
-new numbering applies the wrong file next. Rebuild such a database (`make db-local-reinit` /
-`make db-test-reinit`) rather than migrating it forward.
+代償は実在し、途中まで適用されたデータベースを持つ人に降りかかります。migration ツールが記録するのは
+ファイル名ではなく番号なので、旧番号と新番号の間で止まっているデータベースは次に誤ったファイルを
+適用します。そうしたデータベースは前へ進めるのではなく、作り直してください
+（`make db-local-reinit` / `make db-test-reinit`）。
 
-This exception is removed when setup creates a project. From then on the append-only rule above
-admits no exception, because a project's migration history is the only record of how its
-production schema came to be.
+この例外は setup がプロジェクトを作成した時点で外れます。以降、上記の append-only 規則に例外はありません。
+プロジェクトの migration 履歴は、その本番スキーマがどう出来上がったかを示す唯一の記録だからです。
 <!-- boilerplate-only:end -->
 
-### Typical Flow
+### 典型的なフロー
 
 ```mermaid
 flowchart TB
     Migration --> Schema["Schema change"] --> SQL["SQL query update"] --> Gen["sqlc regeneration"]
 ```
 
-This ensures that database history is always reproducible.
+これにより、データベースの履歴を常に再現可能に保つことができます。
 
-## Domain Layer Constraints
+## Domain レイヤ制約
 
-> Rationale: [ADR-0002 (onion-architecture)](adr/0002-onion-architecture.md).
+Domain レイヤは **純粋かつ独立した状態** を保つ必要があります。
 
-The Domain layer must maintain a **pure and independent state**.
+Domain レイヤでは以下の処理を **行ってはいけません**。
 
-The following processing must **not be performed** in the Domain layer.
+### Domain で禁止されること
 
-### Forbidden in Domain
+- 外部 I/O
+- データベースアクセス
+- 環境変数の取得
+- フレームワーク依存
+- ログ出力
+- HTTP ロジック
 
-- External I/O
-- Database access
-- Retrieval of environment variables
-- Framework dependencies
-- Logging
-- HTTP logic
-
-### Allowed in Domain
+### Domain で許可されるもの
 
 - Entity
 - Value Object
 - Domain Service
-- Business rules
-- Repository interface
+- ビジネスルール
+- Repository インターフェース
 
-The two lists above govern what the domain may *contain*. The domain must equally not be *missing*
-what it owns: **a condition that carries a name in the business vocabulary must exist in the domain
-as a predicate.** SQL, handlers and jobs may *execute* such a condition; none of them may *author*
-it. A condition qualifies when someone who knows the business would recognise it as a statement
-about the business — not merely because it appears in a filter. Identity lookup, pagination,
-ordering, and foreign-key joins are mechanism and are out of scope. See
-[`internal/domain/README.md`](../internal/domain/README.md) § Query and Aggregate for the
-discriminator and the reasoning.
+上の 2 つのリストは、ドメインに何を**含めてよいか**を定めるものである。ドメインは同時に、自分が
+所有するものを**欠いていてもいけない**。**業務語彙で名前を持つ条件は、ドメインに述語として存在
+しなければならない。** SQL・handler・job はその条件を**実行**してよいが、いずれも**著作**しては
+ならない。条件がこれに該当するのは、業務を知る者がそれを業務についての言明だと認める場合であり、
+単に絞り込みに現れるからではない。ID 一致・ページネーション・並び順・外部キー結合は機構であり
+対象外。判別と根拠は [`internal/domain/README.md`](../internal/domain/README.md) の
+Query and Aggregate 節を参照。
 
-## Context Propagation Rules
+## Context 伝搬ルール
 
-- `context.Context` must always be propagated to lower layers
-- New context must not be created (e.g., `context.Background`)
+- context.Context は必ず下位レイヤへ伝搬する
+- 新規に context を生成してはいけない（例: context.Background）
 
-## Infrastructure Implementation Rules
+## Infrastructure 実装ルール
 
-Infrastructure components have the role of  
-**implementing Domain interfaces**.
+Infrastructure コンポーネントは  
+**Domain のインターフェースを実装する役割**を持ちます。
 
-Rules:
+ルール：
 
-- Do not write domain logic in Infrastructure
-- Infrastructure depends on domain interfaces
-- Infrastructure can access external systems
+- Infrastructure にドメインロジックを書いてはいけません
+- Infrastructure は domain インターフェースに依存します
+- Infrastructure は外部システムにアクセスできます
 
-Examples:
+例：
 
 - database adapter
-- external API client
-- repository implementation
+- 外部 API クライアント
+- repository 実装
 
-## Repository / QueryService Rules
+## Repository / QueryService ルール
 
-> Criterion: [`docs/design/data-access-pattern.md`](design/data-access-pattern.md) — which construct a
-> given operation belongs to, and why. Decisions:
-> [ADR-0032 (lightweight-cqrs)](adr/0032-lightweight-cqrs.md),
-> [ADR-0033 (system-cqrs-dml-category)](adr/0033-system-cqrs-dml-category.md),
-> [ADR-0034 (commandservice-atomicity-criterion)](adr/0034-commandservice-atomicity-criterion.md).
+> 判定基準: [`docs/design/data-access-pattern.md`](design/data-access-pattern.md) —— ある操作が
+> どの構築物に属するのか、そしてなぜか。決定:
+> [ADR-0032 (lightweight-cqrs)](adr/0032-lightweight-cqrs.md)、
+> [ADR-0033 (system-cqrs-dml-category)](adr/0033-system-cqrs-dml-category.md)、
+> [ADR-0034 (commandservice-atomicity-criterion)](adr/0034-commandservice-atomicity-criterion.md)。
 
-Repository is the default for both reads and writes. QueryService and CommandService are the residue
-that remains where a non-functional requirement forbids decomposing an operation into per-aggregate
-work; `system_cqrs` sits outside the split entirely. **Do not restate the criterion here, in an ADR, or
-in a package README** — every copy drifts, and the copy nobody re-reads is the one that goes stale.
-Link to the criterion document instead.
+Repository は読み・書きの両方向で既定である。QueryService と CommandService は、非機能要件が操作を集約単位の
+作業へ分解することを禁じるときに残る残余であり、`system_cqrs` は分割の外側にある。**判定基準をここにも、ADR にも、
+パッケージ README にも書き写さないこと** —— 写しは必ず乖離し、誰も読み返さない写しこそが古くなる。判定基準の文書へ
+リンクすること。
 
-Forbidden:
+禁止:
 
-- Writing join / aggregation queries across *independent* Aggregates in Repository — **exempt**: a
-  uniquely-determined JOIN to a context-nested reference master
-- Writing domain logic in QueryService
-- Placing a write on CommandService that can be expressed as loading an Aggregate, mutating it, and
-  saving it
-- Enforcing a condition in CommandService that is not derived from a domain invariant
-- Placing an infrastructure-operational query (health verification, idempotency, outbox delivery) in
-  `repository/`, which keeps a 1:1 correspondence with domain Aggregates
-- Authoring a named business condition in a query — the `WHERE` clause is that condition's
-  *execution*, not its definition (see [Domain Layer Constraints](#domain-layer-constraints))
+- Repository に *独立した* Aggregate を跨ぐ結合 / 集計クエリを書くこと —— **例外**: 一意に定まる、文脈に入れ子の
+  参照マスタへの JOIN
+- QueryService にドメインロジックを書くこと
+- 集約を読み込み・変更し・保存する形で表現できる書き込みを CommandService に置くこと
+- ドメイン不変条件から導出されていない条件を CommandService で強制すること
+- インフラ運用のクエリ（ヘルス検証・冪等性・outbox 配信）を `repository/` へ置くこと。`repository/` は
+  ドメイン集約との 1:1 対応を保つ
+- 業務語彙で名前を持つ条件をクエリで著作すること —— `WHERE` 句はその条件の**実行**であって定義ではない
+  （[Domain レイヤ制約](#domain-レイヤ制約)を参照）
 
-## DTO / Type Boundary Rules
+## DTO / 型境界ルール
 
-- Do not pass OpenAPI types to Usecase
-- Convert to DTO in Controller
-- Domain must not know OpenAPI types
+- OpenAPI の型を Usecase に渡してはいけない
+- Controller で DTO に変換すること
+- Domain は OpenAPI 型を知らない
 
-### Boundary Type Conversion
+### 境界の型変換
 
-- Convert framework / generated types (e.g. OpenAPI `openapi_types.UUID`) to domain types **only in the layer that owns those types**. For HTTP this is the Controller, via the dedicated helper `internal/controller/conv`. Because other layers must not import generated / framework types, this confines the conversion to the boundary by dependency direction.
-- Do **not** add public, validation-bypassing constructors to shared packages (`pkg/`) just to make a boundary conversion convenient. Such bypass entry points erode the intended-use policy over time and get misused across the codebase — reuse the existing validated constructors (`New` / `Parse`).
+- フレームワーク/生成型（例: OpenAPI `openapi_types.UUID`）→ ドメイン型の変換は、**その型を所有する層にのみ**置く。HTTP では Controller の専用ヘルパー `internal/controller/conv` 経由とする。他層は生成/フレームワーク型を import しないため、依存方向で変換用途が境界に構造的に限定される。
+- 利便性のために共有パッケージ（`pkg/`）へ**検証バイパスの公開コンストラクタを足さない**。バイパス入口は利用方針が時間とともに形骸化し、コードベース全体で乱用される。既存の検証済みコンストラクタ（`New` / `Parse`）を再利用すること。
 
-## Infrastructure Type Leakage Prohibition
+## Infrastructure 型漏洩禁止
 
-- Do not pass sqlc generated types to Usecase / Domain
-- Always convert to Domain Entity or DTO
+- sqlc の生成型を Usecase / Domain に渡してはいけない
+- 必ず Domain Entity または DTO に変換する
 
-## Function Signature Rules
+## 関数シグネチャルール
 
-Layer-independent: this applies to constructors, behavior methods, usecase functions, and helpers alike.
+層非依存。コンストラクタ・振る舞いメソッド・usecase 関数・ヘルパーのいずれにも適用する。
 
-A function taking **two or more parameters of the same type** lets a call site swap them with no compile
-or lint error. Bundle those parameters into a value struct so every call site states which one each value
-is. This does not hand the check to the compiler — a same-typed field filled with the wrong value still
-compiles — but it removes the position-dependent binding that let adjacent same-typed arguments
-transpose, so what remains is a named mistake visible in review rather than an invisible ordering one.
-Keep call sites keyed: an unkeyed composite literal reintroduces the ordering dependency this removes.
+**同型の引数を 2 つ以上取る**関数は、呼び出し側で入れ替えてもコンパイラにも lint にも検出されない。
+これらの引数を値構造体へ束ね、各呼び出し側にどの引数へ渡しているかを明示させること。検査を
+コンパイラに委ねられるわけではない（正しいフィールド名に誤った値を与えたリテラルは同型である以上
+コンパイルを通る）が、隣接する同型引数を入れ替えてしまう位置依存の束縛は消えるため、残るのは
+レビューで見える名前付きの誤りだけになる。呼び出し側はフィールド名付きで書くこと。フィールド名を
+省いた複合リテラルは、ここで消したはずの順序依存をそのまま呼び戻す。
 
-**When it applies.** The trigger is two or more parameters of one type in a single signature; compare the
-resolved types, since two distinct named types are distinct even when both wrap a string. Beyond the
-trigger, weigh how likely a swap is to survive undetected:
+**適用する場合**。トリガーは 1 つのシグネチャに同型の引数が 2 つ以上あること。型は解決後で比較し、
+同じ string を包む名前付き型どうしでも型が異なれば別物として扱う。そのうえで、取り違えが検出され
+ないまま残る確度を次の観点で測る。
 
-- **Optional / pointer parameters** — `nil` is valid for either, so nothing at runtime rejects the swap.
-- **Free-form values** — no validation would reject the other parameter's value.
-- **A caller that maps positionally** — a Repository rebuilding an entity from a DB row, a seed, or any
-  code that fills arguments in column order rather than by meaning.
-- **Adjacent parameters** — neighbours are easier to transpose than distant ones.
+- **省略可能／ポインタの引数** — どちらも `nil` が正当なため、実行時に取り違えを弾く検査がない。
+- **自由書式の値** — もう一方の引数の値を弾く検証が存在しない。
+- **位置で機械的に流し込む呼び出し側** — DB 行からエンティティを再構築する Repository、seed など、
+  意味ではなく列順で引数を埋めるコード。
+- **引数が隣接している** — 離れた引数より隣どうしの方が入れ替わりやすい。
 
-**When it does not apply.**
+**適用しない場合**。
 
-- **Every parameter has a distinct type.** The compiler already rejects a swap, so keep the positional
-  form. This is the common case, and bundling by reflex is not the rule.
-- **A swap cannot survive construction.** The invariants reject the transposed values, so the mistake
-  fails fast instead of propagating.
-- **The signature is merely long.** Parameter count alone is not the criterion.
+- **全引数の型が相異なる。** 入れ替えはコンパイラが弾くため位置引数のままでよい。これが通常の
+  ケースであり、反射的に構造体化するルールではない。
+- **入れ替えが構築を通過できない。** 入れ替えた値を不変条件が弾くため、誤りは伝播せず fail fast する。
+- **単に引数が多いだけ。** 引数の個数は判断基準ではない。
 
-**Choosing the remedy.** Give the parameters distinct types (a VO each) when the value deserves an
-invariant of its own — that removes the swap risk as a side effect. Bundle into a struct when a VO would
-add no invariant and the value really is a plain primitive. Either way, lock the mapping with a test that
-passes **distinct** values for the same-typed parameters and asserts each one — including at the
-persistence boundary, where field names still allow a wrong assignment.
+**対処の選択**。引数自体に不変条件を持たせるべきなら型を相異なるものにする（引数ごとの VO 化）。
+副次的に取り違えリスクも消える。VO 化しても不変条件が増えず、値が本当に素のプリミティブなら構造体へ
+束ねる。いずれの場合も、同型の引数へ**異なる値**を渡して各値を検証するテストで対応づけを固定する。
+フィールド名があっても誤った代入は書けるため、永続化境界でも同様に固定すること。
 
-Per-layer application: `internal/domain/README.md` (attribute structs on entities),
-`internal/usecase/README.md` (Params DTO structs on usecase inputs).
+層ごとの適用: `internal/domain/README.md`（エンティティの属性構造体）、
+`internal/usecase/README.md`（usecase 入力の Params DTO 構造体）。
 
-## Package / Directory Naming Rules
+## パッケージ / ディレクトリ命名ルール
 
-- Go package identifiers are a single lowercase word with **no underscores** (staticcheck ST1003).
-- A multi-word aggregate uses one of two forms:
-  - **Context nesting** — when a bounded context groups several sub-aggregates / masters, nest
-    under the context directory: `internal/<layer>/<context>/<sub>/` with package `<sub>`
+- Go のパッケージ識別子は小文字 1 語で **アンダースコア禁止**（staticcheck ST1003）。
+- 多語アグリゲートは次の 2 形式のいずれか：
+  - **コンテキストによるネスト** — 1 つの境界づけられたコンテキストが複数のサブアグリゲート / マスタを
+    束ねる場合、コンテキストディレクトリ配下にネストする：`internal/<layer>/<context>/<sub>/`（package `<sub>`）。
     <!-- sample-api:replace-begin -->
-    (e.g. `internal/domain/product/category` → package `category`,
-    `internal/domain/product/status` → package `status`).
+    例: `internal/domain/product/category`（package `category`）、`internal/domain/product/status`（package `status`）。
     <!-- sample-api:replace-with -->
-    <!-- = (e.g. `internal/domain/<context>/<sub>` → package `<sub>`). -->
+    <!-- = 例: `internal/domain/<context>/<sub>`（package `<sub>`）。 -->
     <!-- sample-api:replace-end -->
-  - **Concatenation** — a standalone multi-word aggregate with no grouping context concatenates
+  - **連結** — 束ねるコンテキストを持たない単独の多語アグリゲートは 1 語に連結する
     <!-- sample-api:replace-begin -->
-    into one word (e.g. `useridentity`, `exchangerate`). Existing concatenated packages stay
+    （例: `useridentity`、`exchangerate`）。既存の連結パッケージは現状維持とし、コンテキストに 2 つ目の
     <!-- sample-api:replace-with -->
-    <!-- = into one word (e.g. `<noun><noun>`). Existing concatenated packages stay -->
+    <!-- = （例: `<名詞><名詞>`）。既存の連結パッケージは現状維持とし、コンテキストに 2 つ目の -->
     <!-- sample-api:replace-end -->
-    as-is; prefer context nesting once a context gains a second sub-aggregate.
-- Database DML and sqlc-generated directories use **snake_case matching the table name**
+    サブアグリゲートが加わった時点でネストを優先する。
+- データベース DML と sqlc 生成物のディレクトリは、Go パッケージ構成とは独立に、**テーブル名準拠の snake_case**
   <!-- sample-api:replace-begin -->
-  (`product_category`, `user_identity`), independent of the Go package layout.
+  を用いる（`product_category`、`user_identity`）。
   <!-- sample-api:replace-with -->
-  <!-- = (`<noun>_<noun>`), independent of the Go package layout. -->
+  <!-- = を用いる（`<名詞>_<名詞>`）。 -->
   <!-- sample-api:replace-end -->
-- Controller handler directories match the **HTTP resource (route) name**, not the Go package
-  layout.
+- Controller ハンドラのディレクトリは Go パッケージ構成ではなく **HTTP リソース（route）名**に一致させる。
   <!-- 撤去後にこの箇所へ自分の例を置くための指針。
        目的: ルート名と Go パッケージ名がずれる実例が無いと、規則が空文に見える。
        意義: ずれる典型は複数形とハイフンで、Go 側の単数・アンダースコアと形が違う点にある。
        書き方: 実在するルートを 1〜2 個、バッククォートで挙げる。 -->
   <!-- sample-api:begin -->
-  例: `product-categories` / `prefectures`。
+  例: `product-categories`、`prefectures`。
   <!-- sample-api:end -->
-- Type names may keep the aggregate noun inside a same-named package
-  <!-- sample-api:replace-begin -->
-  (`category.Category`, `prefecture.Prefecture`).
-  <!-- sample-api:replace-with -->
-  <!-- = (`<aggregate>.<Aggregate>`). -->
-  <!-- sample-api:replace-end -->
+<!-- sample-api:replace-begin -->
+- 型名は同名パッケージ内でもアグリゲート名詞を保持してよい（`category.Category`、`prefecture.Prefecture`）。
+<!-- sample-api:replace-with -->
+<!-- = - 型名は同名パッケージ内でもアグリゲート名詞を保持してよい（`<集約>.<集約>`）。 -->
+<!-- sample-api:replace-end -->
 
-## New Type Derivation
+## 新しい型の導出
 
-Before placing a new type or package, find the existing one that plays the **same mechanical role** —
-not the one with a similar name, the one with the same shape — and derive from it. A precedent of the
-same shape has already settled where it lives, how it is constructed, and who calls it; re-deciding
-those turns a derivable answer into an open design question, and lets one mechanism acquire two
-different forms in the same repository.
+新しい型やパッケージを置く前に、**同じ機構的役割を果たす既存のもの**を見つけて、そこから導出する。
+名前が似ているものではなく、形が同じものを探すこと。同型の先例は、置き場所・構築のしかた・呼び出す側が
+誰かを既に決めている。それを決め直すと、導出すれば一意に定まる答えが設計上の選択肢に化け、同じ機構が
+同一リポジトリ内で二通りの形を持つことになる。
 
-Search by role, not by name: *normalizing request input*, *converting at a boundary*, *identifying a
-row*, *carrying a quantity*. `paging.Page` and `timewindow.Window` are the worked example — both
-normalize a request parameter into a Usecase-tier value object with unexported fields, a validating
-constructor returning `apperror.ErrInvalidArgument`, and a call site in the handler. Deriving the
-second from the first fixes all four properties at once, including the negative one:
-`internal/controller/conv` wraps neither, so neither is wrapped.
+名前ではなく役割で探す — *リクエスト入力の正規化*、*境界での変換*、*行の識別*、*量の保持*。
+`paging.Page` と `timewindow.Window` がその実例である。どちらもリクエストパラメータを Usecase 層の
+値オブジェクトへ正規化し、フィールドは非公開、コンストラクタが検証して `apperror.ErrInvalidArgument`
+を返し、呼び出し位置はハンドラである。後者を前者から導出すれば、この 4 つが一度に定まる。否定形も
+同様で、`internal/controller/conv` はどちらも包んでいないため、新しい方も包まない。
 
-The derivation also answers questions the new type never asked. `internal/usecase/tools/money`
-carries a written note that it is kept out of sample removal because it is a generic Usecase tool
-like `paging` / `search`; a new `tools/` package inherits that disposition rather than re-arguing it.
+導出は、その新しい型が問わなかった問いにも答える。`internal/usecase/tools/money` には「`paging` /
+`search` と同様の汎用 Usecase ツールであるためサンプル削除の対象にしない」という記述があり、新しい
+`tools/` パッケージはその方針を議論し直すのではなく引き継ぐ。
 
-Open placement as a design question only when no isomorphic mechanism exists. This is a different
-question from the duplicate check in the task protocol ("verify no existing implementation already
-covers it"): that one asks whether the thing already exists, this one asks what shape it must take
-when it does not.
+置き場所を設計上の問いとして開くのは、同型の機構が存在しないときだけである。これはタスク手順にある
+重複確認（「既存の実装が既にカバーしていないか確認する」）とは別の問いである。前者は「そのものが既に
+存在するか」を問い、こちらは「存在しないとき、どんな形を取るべきか」を問う。
 
-## Layer Responsibility Rules
+## レイヤ責務ルール
 
-Each layer has a clear responsibility.
+各レイヤには明確な責務があります。
 
 ### Controller
 
-Responsibilities:
+責務：
 
-- HTTP transport
-- Request validation
-- Error transformation
+- HTTP トランスポート
+- リクエストバリデーション
+- エラー変換
 
-**Do not write business logic in Controller.**
+Controller に **ビジネスロジックを書いてはいけません**。
 
 ### Usecase
 
-Responsibilities:
+責務：
 
-- Application workflow
-- Transaction boundary
-- Coordination of domain logic
+- アプリケーションワークフロー
+- トランザクション境界
+- ドメインロジックの調整
 
-Usecase should **avoid direct dependency on Infrastructure**.
+Usecase は **直接 Infrastructure に依存することを避けるべき**です。
 
-### Transaction Rules
+### トランザクションルール
 
-> Rationale: [ADR-0035 (transaction-retry-idempotent-callers)](adr/0035-transaction-retry-idempotent-callers.md).
+- トランザクションは Usecase 層でのみ開始する
+- Infrastructure / Repository はトランザクションを開始してはいけない
 
-- Transactions must be started only in the Usecase layer
-- Infrastructure / Repository must not start transactions
+## エラーハンドリングルール
 
-## Error Handling Rules
+- エラーを黙って握り潰さない。各エラーは「処理する」「`apperror` / `xerrors` でラップして伝播する」「**論理的に到達不能**で発生＝前提崩壊を意味するなら `panic` でラウドに通知する」のいずれかでなければならない。
+- 「起き得ない失敗」は構造的に起こせなくするのを優先する。境界で値の有効性が既に保証される場合（例: echo で検証済みの path パラメータ）、防御的な `error` 戻りをスタックに引き回さず、**到達不能エラーで `panic` するヘルパー**経由で変換する。そのヘルパーは `Must` 系の明示的な命名にし、panic 経路を単体テストする。
+- 理由: 到達不能な `if err != nil { return err }` はデッドコードであり、テスト不能・カバレッジ低下・意図の隠蔽を招く。`panic` は不変条件を文書化し、前提が破られたら確実に気づける。
+- **関数本体の中で組み立てた `xerrors.New(...)` を返さない。** package-level のセンチネル（`var errXxx = xerrors.New("...")`）として宣言し、動的な文脈は `xerrors.Wrap(errXxx, ctx)` で付与する。その場で生成したエラーは `errors.Is` から辿れないため、呼び出し側が分岐できず、テストはメッセージ文字列一致に追い込まれる — 一語の文言変更でテストが壊れ、逆に別のエラーでも通ってしまう。`internal/architest`（`TestNoInlineXerrorsNew`）で機械検証しており、allowlist は持たない。`_test.go` は対象外 — テストが注入用のアドホックなエラーを作るのは正当な用法。
+- `apperror` センチネルを元エラーに付与する場合は `pkg/xerrors` を使う。元エラーを文字列へ潰す `Wrap(sentinel, err.Error())` より、型・スタックを chain に残して `Is` / `As` で辿れる `Join(sentinel, err)` を優先する。例外は2つ: 機密（クエリ・userinfo を含む URL 等）を含みうるエラーへの **redact** ルールと、**意図的な型消去** ルール — `Wrap` による潰しは意図的なこともある（元の型を chain から消す）ため、既存の正規化器を `Join` へ変える前に、その型に**マッチしないこと**に依存する下流の `Is` / `As` 述語（例: `*pgconn.PgError` の SQLSTATE を見る tx リトライ述語）をすべて確認する。完全な方針は [`pkg/xerrors/README.md`](../pkg/xerrors/README.md) を参照。
+- レスポンスで動的なエラー `code` / `details` を返す場合は、エラー発生箇所で `apperror.Meta` を付与する（`apperror.WithMeta` / `WithDetails`）。`Meta` は HTTP ステータスを運ばず、ステータスはセンチネル分類のみで解決する。`Details` には公開して安全な識別子のみ（例: 不正フィールド名）を入れ、理由文や入力値そのものを入れてはならない。理由はラップしたエラーメッセージ側に残し、ログ専用とする。理由: [ADR-0048](adr/0048-error-metadata-code-message-details.md)。
+- クライアントへ `details` を返すのは**エンドポイントごとの opt-in かつ fail-closed**。error レスポンスが `details` を運ぶのは、その operation が OpenAPI で `ErrorResponseWithDetails` スキーマを宣言している場合のみ（唯一の opt-in スイッチ）。opt-in していない operation では `errorhandler` が wire から `details` を落とす（`Meta` に details を付けるだけでは不十分）。ログには完全な `details` を残す。理由: [ADR-0049](adr/0049-error-details-opt-in-gate.md)。
 
-> Rationale: [ADR-0047 (apperror-protocol-agnostic-errors)](adr/0047-apperror-protocol-agnostic-errors.md).
+## コメントルール
 
-- Never silently swallow an error. Each error must be either handled, wrapped (`apperror` / `xerrors`) and propagated, or — when it represents a **logically unreachable** failure whose occurrence means a broken precondition — surfaced loudly via `panic`.
-- Prefer making impossible failures impossible by construction. When a value is already guaranteed valid at a boundary (e.g. an echo-validated path parameter), convert it through a helper that `panic`s on the unreachable error instead of threading a defensive `error` return up the stack. Name such helpers with a `Must`-style / clearly assertive intent, and unit-test the panic path.
-- Rationale: a defensive `if err != nil { return err }` on an unreachable path is dead code — untestable, it drags coverage down and hides intent. A `panic` documents the invariant and fails loudly if the precondition is ever violated.
-- **Never return a `xerrors.New(...)` built inside a function body.** Declare the error as a package-level sentinel (`var errXxx = xerrors.New("...")`) and attach the dynamic context with `xerrors.Wrap(errXxx, ctx)`. An error created in place is unreachable to `errors.Is`, so callers cannot branch on it and tests are forced onto message-string matching — a one-word wording change then breaks the test, and a different error passes it. Enforced mechanically by `internal/architest` (`TestNoInlineXerrorsNew`); there is no allowlist. `_test.go` is out of scope — building an ad-hoc error to inject is a legitimate use there.
-- When attaching an `apperror` sentinel to an underlying error, use `pkg/xerrors`: prefer `Join(sentinel, err)` so the original error's type / stack stay in the chain for `Is` / `As`, over `Wrap(sentinel, err.Error())` which flattens the original to a string. Two caveats bound this: a **redact** rule for errors that may carry secrets (a URL with query / userinfo etc.), and a **load-bearing-flatten** rule — a `Wrap`-flatten can be intentional (it deliberately removes the underlying type from the chain), so before converting an existing normalizer to `Join` check every downstream `Is` / `As` predicate that relies on *not* matching that type (e.g. a tx retry predicate keyed on `*pgconn.PgError` SQLSTATE). See [`pkg/xerrors/README.md`](../pkg/xerrors/README.md) for the full policy.
-- To return a dynamic error `code` / `details` in the response, attach `apperror.Meta` at the raising site (`apperror.WithMeta` / `WithDetails`). `Meta` never carries an HTTP status — the status is resolved solely from the sentinel classification — and `Details` must contain public-safe identifiers only (e.g., invalid field names), never reason texts or raw input values; reasons stay in the wrapped error message, which is log-only. Rationale: [ADR-0048 (error-metadata-code-message-details)](adr/0048-error-metadata-code-message-details.md).
-- Returning `details` to the client is **opt-in per endpoint and fail-closed**: an error response only carries `details` if the operation declares the `ErrorResponseWithDetails` schema in OpenAPI (the single opt-in switch). The `errorhandler` drops `details` from the wire for any operation that has not opted in — attaching `Meta` details is not enough. Logs keep the full `details`. Rationale: [ADR-0049 (error-details-opt-in-gate)](adr/0049-error-details-opt-in-gate.md).
+コメントの権威は **godoc の慣習** — Go のデファクト標準 — であり、独自の分類ではない。
+巨大な upstream（<https://go.dev/doc/comment>）を fetch せず、その要約ローカルミラー
+（[`godoc-comment-conventions.md`](maintenance/godoc-comment-conventions.md)、canonical は `docs/maintenance/godoc-comment-conventions.md`）を読む。
 
-## Comment Rules
+- **doc コメント（export 宣言・パッケージ doc）は godoc の慣習に従う。** godoc は doc コメントを **API 利用者**向けにレンダリングするので、doc コメントは **呼び出し側が依拠する契約** — その宣言が何をするか、入出力・エラーの意味 — を `Name` 前置の完全な文で述べる。その契約が必要十分な内容であり、それ以上は書かない。
+- **godoc が要求しないものはノイズ** — 利用者の役に立たないので書かない:
+  - **How / 実装手段** — コードが語る。NG `// ReadFile は os.ReadFile を呼び出して…`；OK `// ReadFile は name のファイル内容全体を読み込んで返す`。
+  - **どこから呼ばれるか** — 組織構造に結合した呼び出し元 / 登録場所メモ: `// 〜の登録は di 層が担う`。
+  - **変更履歴 / 開発の経緯** — 移行履歴、障害の後日談、「なぜ移行したか」、`// テスト容易性のため` — これらは腐るので PR / commit ログに置く。
+  - **言い換え / トートロジー** — `// 内部表現は [16]byte`、`// User は User です`；または下のコードが既に条件を満たしている解決済みの `// TODO:` / `// FIXME:` 残置（未解決の正当な TODO は対象外）。
+- **分量そのものがコストである。** コメントはコードを読むたびに読み返されるため、1 行ずつは正当化できても長さは認知負荷を上げる。契約を最小の語数で述べ、そこで止める。肥大化の大半は 2 つの癖から生まれる: **repo 全体の根拠**を、それに従う宣言のたびに書き下すこと（根拠はここに一度だけ書き、コードは黙らせる — 複写せずリンクする）と、読者が既に知っている**言語機能の仕組みをナレーション**すること。シグネチャが既に与えている事実へ辿り着くために読者が読み進めねばならないコメントは、差し引きで損失である。
+- **変更はコメントを「獲得する」のであって、最初から伴っているのではない。** どの編集でも既定は**新規コメント 0 行**であり、既存の宣言を編集したときにそのコメント行数を増やしてはならない。増やせるのは、その編集が*それ自体で*、読者が他の手段では得られないものを持ち込んだときだけ — その呼び出し箇所に前提のある制約、コードベースの慣用からの意図的な逸脱、シグネチャでは運べない契約のいずれかである。トリガが無ければ、その変更はコメント無しで完成している。これを助言ではなく**既定値**として置く必要があるのは、1 回の編集の内側では誘因が一方向にしか働かないためである — コメントを足したコストはグローバルにしか現れず diff からは見えないが、書かなかったコストは局所的で目に見える。したがって個々のコメントをそれ自身の是非で判定すると必ず残す側に倒れ、どの個別判断も誤っていないまま総量だけが増える。判定テストは **「そのコメントは、編集を見ていない読者に対して正当化できるか？」**。変更*について*書かれたもの（以前はどうだったか、なぜ調整したか、書き手が何を検討したか）は即座に落ちる — 読者が見るのは結果だけであり、diff は決して見ない。これは慎重さではない点に注意する: 警告が機能するのは**周囲が黙っているから**であり、全宣言が 4 行を抱えたファイルは、どれが効いている 1 件かをもはや示せない。一様な明示は安全性を足さず、安全性を伝える唯一の機構を使い潰す。
+- **慣用的なコードに説明は要らない。** API を組み立てる定型面 — エンティティのコンストラクタ、Params / 属性構造体、Repository の行→エンティティ変換、handler の bind → usecase → response、検証フィールドの列挙 — は慣習であり、このコードベースに馴染んだ読者は何をしているか既に分かる。書くのは慣習から**外れた**箇所、または慣習では表現できない事柄だけ。これは**抑制であって根絶ではない**: export 宣言は `Name` 前置の契約を依然として持ち、前提がその場にある制約も残る。逆にコードが慣用から離れるほど（回避策、意図的な逸脱、外部から課された制約）、コメントは書く価値を得る。
+- **正確が最優先。** 実挙動と食い違う/陳腐化した doc コメントは無コメントより有害＝最優先の指摘。
+- **コードが残すのは理由ではなく制約である。** godoc が必須としないが本 repo が残す唯一の追加はこれであり、入場テストは**「その理由が非自明か」ではない**。理由はほぼ常に非自明なので、そのテストは全部を通してしまい何も決めない（下の管轄条項も同じことを述べている）。テストは**その前提がこの呼び出し箇所にあるか**である: この宣言を編集せずに、その記述を偽にできるか？ できないなら、そのコメントは気づかれずに陳腐化することがなく、置く価値を得る — `runtime.Caller` のスキップ段数の警告（「このヘルパーを抽出するな — スキップ段数がずれる」）、「この 2 つの呼び出しを入れ替えてはならない」、「既存値へ加算するので 2 回呼ぶと積み上がる」。できるなら — 前提が upstream サービスの挙動、運用方針、業務ルールであるなら — そのコメントは誰にも検証できず、偽になっても何も警告しない。下の管轄条項に従って移すか、書かないでおく。**次に編集する人が破ってはならないこと**を書くのであって、かつて誰かがそう決めた理由を書くのではない。
+- **Why を捏造しない。** 上のゲートを通ったものは、さらに**検証可能**でなければならない（コード・設計文書・設定から根拠を示せること）。これは同じ性質を別の角度から見たものである: 前提が呼び出し箇所にあるということは、読者がそれを確かめられるということであり、だからこそ前提が同じ場所にある制約だけが生き残る。根拠を示せない理由付けは推測であり、もっともらしい推測は沈黙より悪い — コメントは権威あるものとして読まれるため、誤った Why は以後の読者すべてをミスリードし、説明対象のコードより長く生き残る。防御的な分岐やマジックナンバーに理由が必要そうに見えても、それを特定できないならコメントは書かず、レビューでその欠落を指摘する。検証できる部分だけを書き写すのも解決ではない — それは**言い換え**に戻る。
+- **Why には管轄があり、コードが常にその管轄とは限らない。** Why を残す価値があるかの判断と、それを**ここに**置くかの判断は別問題。godoc の面は **API 利用者**向けの契約であって設計判断を論じる場ではない — したがって**却下した選択肢**の理由、**脅威モデル**の考察、**アーキ全体の方針**は `docs/adr/` / `docs/design/**` / パッケージ README の持ち物であり、コードに残すのは**作用のある残滓**だけ: この宣言を編集する人が破ってはならない 1〜2 文と、所有文書へのリンク。ここを誤ると二重に失敗する — コメントに置かれた設計論はその判断を所有する文書から見えないため気づかれずにドリフトし、契約を読みに来た呼び出し側は毎回その議論を読み飛ばさねばならない。したがって判定基準は「この Why は非自明か？」**ではなく**（たいてい非自明であり、だからこそ量だけを根拠にした主張は決して勝てない）、**その判断を覆す人はどの文書の更新を義務づけられるか？** である。その文書に書き、リンクする。正直な答えが「文書は無い — その制約はこの呼び出し箇所にしか存在しない」（`runtime.Caller` のスキップ段数、upstream のバグ回避）である場合、コードが**まさに**管轄であり、コメントはそのまま残す。
+- **移設は投棄ではない — 各移設先には受け入れ基準があり、コードもまた正当な移設先である。** コメントから文章を追い出しても、その**種類**の知識を所有する場所に着地しなければ意味がない。何でも受け入れる文書は何も答えない文書である。コメントの内側から見るとどちらも「設計上の理由」に見えるため、誤配送になりやすい 2 つを名指しする: **ライブラリや API の固有の挙動**（このドライバは Y のとき X を返す、この SDK はあの環境変数を読む）は選択肢の中から選んだ決定ではなく、呼び出す対象の性質であり、依存を更新すれば変わる — その管轄は呼び出し箇所のコメントである。**業務知識・ドメイン知識**（そのルールが何を意味するか、なぜそのステータス遷移になるか）は `docs/spec/**` の持ち物であり、そこが挙動を仕様として定め最新に保つ場所である。`docs/adr/` が受け取るのは **持続的な帰結を伴う選択肢間の決定**、または意図的な除外だけ — [`docs/adr/README.md`](adr/README.md) の *What belongs here* 表が規範であり、それに従う。どの移設先にも当てはまらないなら、それはコードが最初から正しい置き場所だったという証拠である。無理に住所を与えず、そのまま残す。
+- **関数内コメントは godoc の管轄外だが、このゲートの外ではない。** 他の追加コメントと同じトリガ（**変更はコメントを「獲得する」**）と、同じ前提テストで入場する — 実際にはほぼ常に、前提がまさにその場にある制約である。ゲートは 1 つで、上に一度だけ書かれている。この箇条書きが独自の基準を追加することはない。ノイズ一覧はそのまま適用される。
+- **言語スコープ**: godoc は Go のみを統べるが、この内容基準は**言語非依存** — 非 Go（shell, `.mjs` / `.jsx`, Dockerfile, Makefile, SQL, YAML）にも等しく適用する。非 Go は**高リスク**で対象外ではない: `revive` は Go しか見ないため、非 Go では `comment-reviewer` レビューが唯一のチェックになる。同基準で扱う — How ナレーション・経緯・言い換えは NG、前提がその場にある制約は残す。
+- **強制の分担**: `revive` の `exported` ルールは export 宣言の doc コメントの **有無**と **`Name` 前置の形式**しか保証しない。この **内容**ルール（godoc 準拠の契約 + 前提がその場にある制約 + ノイズなし）は意味的で lint 不能 — レビューで強制する: `impl-review` が専用の `comment-reviewer` agent を fan-out し、良いコメントの**検証**と ノイズの**検出**を行い、確定した指摘を自動修正する。このゲートは **diff スコープ**であり、既にツリーにあるものを再検査しない — 流入チェックだけで流出経路が無い。蓄積した在庫は `comment-sweep` スキルが別途一掃する。上記の管轄の判定基準をパッケージ / レイヤ / リポジトリ単位で適用し、文書が管轄を持つ内容を移設する。
 
-The authority for comments is the **godoc conventions** — the de-facto Go standard — not a
-bespoke taxonomy. A condensed local mirror lives at
-`docs/maintenance/godoc-comment-conventions.md` (read it instead of fetching the large
-upstream <https://go.dev/doc/comment>).
+## ドキュメントルール
 
-- **Doc comments (exported declarations & package docs) follow the godoc conventions.** godoc renders doc comments for the **API consumer**, so a doc comment states the **caller-facing contract** — what the declaration does and the meaning of its inputs / outputs / errors — as a complete, `Name`-prefixed sentence. That contract is the necessary-and-sufficient content: write it, and no more.
-- **Anything godoc does not call for is noise** — it does not serve the consumer, so leave it out:
-  - **How / implementation means** — the code conveys it. NG `// ReadFile は os.ReadFile を呼び出して…`; OK `// ReadFile は name のファイル内容全体を読み込んで返す`.
-  - **Where it is called from** — call-site / registration notes coupled to organization: `// 〜の登録は di 層が担う`.
-  - **Change history / development 経緯** — migration history, incident backstory, "なぜ移行したか", `// テスト容易性のため` — these rot and belong in the PR / commit log.
-  - **Restatement / tautology** — `// 内部表現は [16]byte`, `// User は User です`; or a resolved-but-left-behind `// TODO:` / `// FIXME:` whose condition the code below already satisfies (an unresolved, legitimate TODO is not flagged).
-- **Volume is itself a cost.** A comment is re-read every time the code is, so length raises cognitive load even when each line is individually defensible. State the contract in as few words as it takes and stop. Two habits produce most of the bloat: spelling out a **repo-wide rationale** at every declaration that follows it (state it once here and let the code stay silent — link, do not repeat), and **narrating the mechanism** of a language feature the reader already knows. A comment the reader must work through to reach a fact the signature already gave them is a net loss.
-- **A change earns its comments; it does not arrive with them.** The default for any edit is **zero new comment lines**, and editing an existing declaration must not raise its comment count. Adding one requires that the edit *itself* introduced something the reader cannot get otherwise: a constraint whose premise sits at this call site, a deliberate departure from the codebase's idiom, or a contract detail the signature cannot carry. Absent a trigger, the change is complete without a comment. This has to be a **default rather than advice**, because inside a single edit every incentive points one way — the cost of an added comment is global and invisible from the diff, while the cost of an omitted one is local and visible — so each comment judged on its own merits resolves toward keeping, and the total grows without any individual judgment being wrong. The operative test: **is the comment justifiable to a reader who never saw the edit?** One written *about the change* (what it used to do, why it was adjusted, what the author weighed) fails immediately — the reader sees only the result, never the diff. Note that this is not caution: a warning works **because its neighbours are silent**, so a file where every declaration carries four lines can no longer show which one is load-bearing. Uniform explicitness does not add safety, it spends the only mechanism that conveys it.
-- **Idiomatic code needs no explanation.** The routine surface of building an API — an entity constructor, a Params / attribute struct, a Repository's row-to-entity conversion, a handler's bind → usecase → response, a table of validated fields — is conventional, and a reader fluent in this codebase already knows what it is for. Comment only what **departs** from the convention, or what the convention cannot express. This is **suppression, not elimination**: an exported declaration still carries its `Name`-prefixed contract, and a constraint whose premise sits there still stays. Conversely, the further code sits from the idiom (a workaround, a deliberate deviation, a constraint imposed from outside), the more a comment earns its space.
-- **Correct outranks everything.** A doc comment that lies about or has drifted from the actual behavior is worse than no comment — the highest-priority finding.
-- **What the code keeps is a constraint, not a rationale.** This is the one addition godoc does not mandate and this repo keeps — but the admission test is **not** whether the reason is non-obvious. It nearly always is, so that test admits everything and decides nothing (the jurisdiction bullet below says the same). The test is whether **the premise sits at this call site**: could someone make this statement false without editing this declaration? If they could not, the comment cannot go stale unseen, and it earns its place — a `runtime.Caller` skip-depth warning ("do not extract this helper — it shifts the skip count"), "these two calls must not be reordered", "this adds to the existing value, so calling it twice accumulates". If they could — the premise is an upstream service's behavior, an operational policy, a business rule — then nobody can verify the comment and nothing will flag it when it turns false; route it by the jurisdiction bullet below, or leave it out. Write what the next editor must not violate, not why someone once decided it.
-- **Never invent a Why.** Whatever passes the gates above must also be **verifiable** — derivable from the code, a design document, or the configuration. This is the same property from another angle: a premise that sits at the call site is one a reader can check, which is why the co-located constraint is the form that survives. A rationale you cannot establish is a guess, and a plausible guess is worse than silence: a comment reads as authoritative, so a wrong Why misleads every later reader and survives longer than the code it explains. When a defensive branch or a magic value looks like it needs a reason you cannot pin down, leave the comment out and raise the gap in review instead of writing something that sounds right. Restating only the part you can verify is not a fix either — that lands back on **restatement**.
-- **A Why has a jurisdiction, and the code is not always it.** Deciding a Why is worth keeping is a separate question from deciding it belongs *here*. godoc's surface is the **API consumer's** contract, not a venue for arguing a design decision — so the rationale for a **rejected alternative**, a **threat-model analysis**, or an **architecture-wide policy** is owned by `docs/adr/` / `docs/design/**` / the package README, and the code keeps only the **operative residue**: the one or two sentences someone editing *this* declaration must not violate, plus a link to the owning document. Getting this wrong fails twice over — design prose parked in a comment is invisible from the document that owns the decision, so it drifts unnoticed, and every caller reading for the contract must first read past the argument. The deciding test is therefore **not** "is this Why non-obvious?" (it usually is, which is why volume alone never wins the argument) but: **if someone reversed this decision, which document would they be obliged to update?** Write it there and link to it. When the honest answer is "no document — the constraint exists only at this call site" (a `runtime.Caller` skip depth, a workaround for an upstream bug), the code **is** the jurisdiction and the comment stays in full.
-- **Relocating is not dumping — each destination has an entry bar, and the code is a legitimate destination.** Moving prose out of a comment only helps if it lands where that *kind* of knowledge is owned; a document that accepts everything answers nothing. Two misroutes are worth naming because both look like "design rationale" from inside a comment: **a library's or an API's specific behavior** (this driver returns X on Y, this SDK reads that env var) is not a decision among alternatives — it is a property of the thing being called, it changes when the dependency is upgraded, and its home is the comment at the call site; and **business / domain knowledge** (what a rule means, why a status transitions this way) belongs to `docs/spec/**`, which is where the behavior is specified and kept current. `docs/adr/` takes only a **choice among alternatives with lasting consequences** or a deliberate exclusion — see the *What belongs here* table in [`docs/adr/README.md`](adr/README.md), which governs. If a candidate fits none of the destinations, that is evidence the code was the right place all along; keep it there rather than forcing a home.
-- **In-function comments are outside godoc's purview, but not outside this gate.** They are admitted on the same triggers as any other added comment (*A change earns its comments*) and by the same premise test — in practice almost always a constraint whose premise sits right there. There is one gate, stated once above; this bullet adds no separate bar of its own. The noise list applies unchanged.
-- **Language scope**: godoc governs Go only, but this content standard is **language-agnostic** — it applies to non-Go alike (shell, `.mjs` / `.jsx`, Dockerfile, Makefile, SQL, YAML). Non-Go is **higher-risk**, not exempt: `revive` covers only Go, so for non-Go the `comment-reviewer` review is the *only* check. Hold non-Go comments to the same bar — no How narration, no 経緯, no restatement; a constraint whose premise sits at that site stays.
-- **Enforcement split**: `revive`'s `exported` rule guarantees only the **presence** and **`Name`-prefixed format** of doc comments on exported declarations. This **content** rule (godoc-conformant contract + co-located constraint + no noise) is semantic and cannot be linted — it is enforced by review: `impl-review` fans out the dedicated `comment-reviewer` agent, which both **validates** good comments and **flags** noise, then auto-fixes the confirmed findings. That gate is **diff-scoped**, so it never re-examines what is already in the tree — an inflow check with no outflow. The accumulated stock is swept separately by the `comment-sweep` skill, which applies the jurisdiction test above over a package / layer / repo scope and relocates content a document owns.
+ソースコードコメント（*コメントルール* 参照）ではなく、独立した **ドキュメント散文** — `README*` / `docs/**` / ガイド — に適用する。これは **内容**の基準で、lint ではなくレビュー（`doc-reviewer` agent）で強制する。*コメントルール* から転用できる原則（正確性 / 有意性 / 経緯排除）は適用するが、差分として docs は What・Why・How のいずれも **歓迎**する。
 
-## Documentation Rules
+- **正確**: 散文が実体（記述対象のコード・ファイル・コマンド・フラグ・API）と一致すること。コードから**乖離**した doc（削除済みシンボル、リネームされたファイル、変わったフラグ）は**最優先**の指摘 — 自信ありげに誤った doc は、無い doc より誤誘導する。散文を信じず、実コード/ファイルと突き合わせて検証する。
+- **どちらが誤りかは、その文書が何をする文書かで決まる。** *記述する*文書——パッケージ README、コマンドリファレンス、ガイド——はコードに合わせて直す。*統べる*文書——`docs/rules.md`・`docs/architecture.md`・`docs/adr/**`——は違う。そちらはコードが満たすべき意図を述べているのだから、食い違いはコード側の欠陥である可能性が同じだけある。食い違いは報告すること。統べる文書を「作られたもの」に合わせて変えるのは、このリポジトリのアーキテクトまたはテックリードの判断であって、ドリフトの修正ではない。
+- **`docs/design/**` はファイル単位ではなく記述単位で分かれる。** 設計文書は両方を同時に抱える。**そこで定義される機構**——プロトコル、状態機械、配置の判定基準——は*統べる*側なので、コードとの食い違いは報告するだけで直さない。**そこで引用される個別値**——シンボル名、既定値、手順の順序、行番号参照——は*記述する*側なので、ドリフトは訂正する。ファイル名で分類すると、統べるべき判定基準が記述する側に乗り、作られたものに合わせて黙って書き換えられる。
+- **有意**: 自明を超えて情報を与えること。見出しやディレクトリ名の単なる言い換えのような埋め草は不可。
+- **経緯排除**: 恒久 doc に開発の経緯を語らない。移行履歴・障害の後日談・「なぜ X から乗り換えたか」は release note（`.github/release/`）/ PR / commit ログに置き、常に真であるべき README には置かない。
+- **その文書より先に失効する前提に立たない**: *経緯排除* の鏡像である。経緯が「意味を失った過去」なら、こちらは「これから成り立たなくなる現在」。恒久 doc の記述を、失効が予定されている前提——このリポジトリの現在の位置づけ、配布形態、いま置かれているライフサイクル段階（「まだ PoC 段階である」「デモ用データが同梱されている」）——の上に立てないこと。この種の記述は書いた時点では正しく、後のレビューでも捕まらない。文書は変わらず、変わるのは実態のほうだからである。恒久 doc には規則の**一般形**だけを置き、前提に縛られた部分は前提が死ぬ場所——前提が失効するのと同時に破棄または書き換えられる文書——に置く。**その部分は現場でマーキングせず 1 つの文書へ集約すること**。散文から領域を切り出せば前後の文を修復する必要が残り、切除点近傍への後日の追記はそのたびに気づかれず壊す機会になる。その文書への相互参照は、それぞれ単独で除去できる自己完結した 1 行にすること。
+- **冗長な言い換え排除**: 隣接する正典 doc やコードが既に述べていることを逐語的に複製しない。**リンク**で参照する。
+- **恒久的な知識であって活動ログではない**: *記述する*文書を変える指摘は、それを所有する README や
+  `docs/` のリファレンスへ返す。実行ごとの進捗をリポジトリの状態として溜めない。再開のための状態は、
+  そのスキルが所有する `tmp/` の成果物だけが適切な置き場所である。*統べる*文書との食い違いは、
+  書き換えるのではなく提起する。根拠: [ADR-0009 (long-running-agent-state)](adr/0009-long-running-agent-state.md)。
+- **README はディスク上にあるものの目録を持たない。** 何があるかはエディタが見せる。ファイルツリーも
+  ディレクトリごとの一覧も、それを再掲したうえで腐る（このリポジトリでも、実在するディレクトリが抜けた木や、
+  実在しないディレクトリを載せた木が繰り返し見つかっている）。木を箇条書きへ直しても何も変わらない
+  — 列挙であることは同じで、同じ理由で古くなる。書くのは、名前が運べないものだけである。
+  - **閉じた設計上の集合** — その要素と、なぜその区切りなのか。`database/dml/` の区分が 4 つなのは設計が
+    そう決めたからであり、5 つ目を足すことはこの記述を動かすべき判断である。この 4 つの列挙は目録ではなく
+    契約である。
+  - **名前に存在理由が入っていないディレクトリ** — その理由を、そのディレクトリについてだけ書く。
+  - **構造を説明できる命名規則** — 規則を 1 行書き、一覧は置かない。「集約ごとに 1 つ、集約名を付ける」は、
+    誰がいくつ集約を足しても生き残る。
 
-Applies to standalone **documentation prose** — `README*` / `docs/**` / guides — as opposed to source-code comments (see *Comment Rules*). It is a **content** standard, enforced by review (the `doc-reviewer` agent), not by a linter. The transferable principles from *Comment Rules* (accuracy / substance / no rot) apply; the difference is that docs **welcome** What, Why, and How.
+  ディレクトリの中身を知りたければ、そのディレクトリの README を開く。ファイルはどこにも列挙しない。
+- **What / Why / How すべて歓迎**: コードコメントと異なり、docs は **Why**（設計意図・根拠＝`docs/adr/` や設計セクションの役割）と **How**（使い方・チュートリアル・実行手順）を*書くべき*。これらは指摘対象ではない。
+- この内容ルールの対象外（別ツールが担当）: ディスク上のファイルとの構造ドリフト（`sync-readme`）、portal 掲載価値のキュレーション（`readme-review`）。
 
-- **Accurate** — the prose must match reality: the code, files, commands, flags, and APIs it describes. A doc that has **drifted** from the code (a removed symbol, a renamed file, a changed flag) is the **highest-priority** finding — a confidently wrong doc misleads more than a missing one. Verify claims against the actual code / files, do not trust the prose.
-- **Which side is the error depends on what the document does.** A doc that *describes* — a package README, a command reference, a guide — is corrected to match the code. A doc that *governs* — `docs/rules.md`, `docs/architecture.md`, `docs/adr/**` — is not: it states the intent the code is meant to satisfy, so a disagreement is as likely to be a defect in the code. Report the disagreement; changing a governing document to match what was built is a decision for this repository's architect or tech lead, not a drift fix.
-- **`docs/design/**` splits by statement, not by file.** A design document carries both kinds at once: the **mechanism it defines** — a protocol, a state machine, a placement criterion — *governs*, so a disagreement with the code is reported, not fixed; the **particulars it cites** — a symbol name, a default value, a step order, a line reference — *describe*, so drift there is corrected. Classifying by filename is what lets a governing criterion sit on the describing side and get quietly rewritten to match whatever was built.
-- **Substantive** — inform beyond the obvious; no filler that merely restates a heading or a directory name.
-- **No rot** — do not narrate development 経緯 in evergreen docs: migration history, incident backstory, "why we switched from X" belong in release notes (`.github/release/`) / PR / commit log, not a README that must stay true over time.
-- **No premise the document will outlive** — the mirror image of *No rot*: rot is a past that stopped mattering, this is a present that will stop holding. Do not rest a statement in an evergreen document on a premise that is scheduled to lapse — the repository's current positioning, its distribution form, the lifecycle stage it is in ("we are still in PoC", "the demo data is present"). Such a statement is correct when written and no later review catches it, because the document never changes — reality does. Keep the **general form** of the rule in the evergreen document, and put the premise-bound part where the premise dies: a document that is discarded or rewritten at the moment it lapses. **Collect those parts into one document rather than marking them where they stand** — a region cut out of prose leaves the text on either side to be repaired, and every later edit near the cut is a fresh chance to break it unnoticed. Cross-references into that document must each be a single self-contained line, removable on its own.
-- **No redundant restatement** — do not duplicate, verbatim, what an adjacent canonical doc or the code already states; **link** instead.
-- **Durable knowledge, not activity logs** — return a finding that changes a describing document to
-  its owning README or `docs/` reference. Do not accumulate per-run progress as repository state;
-  its skill-owned `tmp/` artifact is the only appropriate resume state. A conflict with a governing
-  document is raised, not rewritten. Rationale: [ADR-0009 (long-running-agent-state)](adr/0009-long-running-agent-state.md).
-- **A README does not inventory what is on disk.** What is there, the editor shows. A file tree or a
-  per-directory list restates it and then rots — this repository has repeatedly carried trees missing
-  real directories, and ones naming directories that do not exist. Reformatting a tree into a bullet
-  list changes nothing: it is still an inventory, and it goes stale for the same reason. Write only
-  what the name cannot carry:
-  - **A closed, designed set** — its members and why the set is drawn that way. `database/dml/` has
-    exactly four categories because the design says so, and adding a fifth is a decision that should
-    move this text. Enumerating those four is a contract, not an inventory.
-  - **A directory whose reason for existing is not in its name** — say the reason, and only for that
-    directory.
-  - **A naming convention that explains the structure** — state the convention in one line and list
-    nothing. "One directory per aggregate, named after it" outlives every aggregate anyone adds.
+## テストと完了の定義（Definition of Done）
 
-  To learn what is inside a directory, open its own README. Files are never enumerated anywhere.
-- **What / Why / How are all welcome** — unlike code comments, docs *should* explain **Why** (design intent / rationale — that is what `docs/adr/` and design sections are for) and **How** (usage, tutorials, runnable steps). These are NOT findings.
-- Out of scope for this content rule (handled elsewhere): structural drift vs the files on disk (`sync-readme`), and portal manual-worthiness curation (`readme-review`).
+> テストの具体的な *どう書くか*（構造・`正常系`/`異常系` の命名・`t.Parallel()`・`require` vs `assert`・table-driven `for` ループ禁止・mock 方針・カバレッジ例外のガバナンス）は [`testing-conventions.md`](testing-conventions.md) にある。本節は非交渉の *完了の定義* のみを定める。
 
-## Testing & Definition of Done
+- テストは**各層の実装と同居**させ、層ごとに検証する — その層のテストを書き、次へ進む前に `make test`（カバレッジ付き）を回す。テストを最終ステップにまとめないこと。先送りはカバレッジ不足を終盤まで隠す。
+- 変更が「完了」とは、コンパイルが通ることではなく、**テスト済みでカバレッジ基準を満たす**こと（新規/変更パッケージ > 90%、handler はおおむね 100%）。`go build` の成功は完了の signal では**ない**。
+- 「コンパイル可 ≠ 完了」は配線にも適用する: DI グラフの正しさは **runtime**（アプリが起動し `[Fx] RUNNING` に到達する）で検証する。ビルドや unit テストだけでは不十分。
+- 意図的に到達不能な防御分岐（あり得ない `switch` の default、失敗し得ない前提を守る `panic`、強制困難なインフラのエラー経路）は未カバーで許容する — テストを歪めて到達させるのではなく、アサーションとして残す。
+- テスト環境は `make db-init` 実行済みを前提とする: local/test 両 DB を migrate **かつ seed** する。`make serve` の後にまず `make db-init` を走らせること。seed を伴わない `db-*-migrate-up` 単体では DB 依存テストが落ちる。
+- mock した unit / integration テストに加え、`make serve` の実アプリに `curl` で新エンドポイントを smoke 検証する: mock は実 DI グラフ・実 DB・end-to-end 配線を通らない。構造化 observability ログ（`docker compose logs api_server` — 層ごとの span + logging DB driver が出力する実 SQL）を durable な検証エビデンスとして扱い、再確認は再実行せずログを読む。
+- 破壊的なランタイム検証（dev DB に対する `POST` / `PUT` / `PATCH` / `DELETE`）は、非破壊な代替が無い場合は事前にユーザー確認する。検証後は `make db-init` で復元する。
 
-> The concrete *how* of writing tests (structure, `正常系` / `異常系` naming, `t.Parallel()`, `require` vs `assert`, no table-driven `for` loops, mock policy, coverage-exception governance) lives in [`testing-conventions.md`](testing-conventions.md). This section defines only the non-negotiable *definition of done*.
+## AIエージェントルール
 
-- Co-locate tests with each layer's implementation and verify them **per layer** — write that layer's tests and run `make test` (with coverage) before moving on. Do not batch all testing into a final step; deferred tests hide coverage gaps until late.
-- A change is "done" only when it is **tested and meets the coverage bar** (new / modified packages > 90%, handlers ~100%), not when it merely compiles. `go build` success is **not** a completion signal.
-- "Compiles ≠ done" also applies to wiring: verify the DI graph at **runtime** (the app boots and reaches `[Fx] RUNNING`), not by build / unit tests alone.
-- Intentionally unreachable defensive branches (an impossible `switch` default, a `panic` guarding a precondition that cannot fail, a hard-to-force infrastructure error path) are acceptable as uncovered lines — keep them as assertions instead of contorting tests to reach them.
-- The test environment assumes `make db-init` has been run: it migrates **and seeds** both the local and test DBs. After `make serve`, run `make db-init` first — a bare `db-*-migrate-up` (no seed) makes DB-backed tests fail.
-- Beyond mocked unit / integration tests, smoke-test new endpoints against the live app (`make serve`) with `curl`: mocks do not exercise the real DI graph, DB, or end-to-end wiring. Treat the structured observability logs (`docker compose logs api_server` — per-layer spans + the actual SQL emitted by the logging DB driver) as the durable verification evidence; read them to re-confirm instead of re-running the request.
-- Destructive runtime verification (`POST` / `PUT` / `PATCH` / `DELETE` against the dev DB) must be confirmed with the user beforehand when there is no non-destructive alternative; restore afterward with `make db-init`.
+AI 支援開発はこのリポジトリの**標準開発経路**です。手動開発は利用可能ですが推奨されない互換経路であり、同等の開発者体験は保証しません。根拠: [ADR-0007 (agents-md-operational-contract)](adr/0007-agents-md-operational-contract.md)。
 
-## AI Agent Rules
+AI が生成するコードも、すべてのアーキテクチャルールに従う必要があります。標準経路が下げるのはルールに従うコストであって、従う義務ではありません。
 
-AI-assisted development is the **standard development path** of this repository; manual development
-is a supported but not-recommended compatibility path with no guarantee of an equivalent developer
-experience. Rationale: [ADR-0007 (agents-md-operational-contract)](adr/0007-agents-md-operational-contract.md).
+AI エージェントは以下を守る必要があります。
 
-Code generated by AI must follow all architectural rules — the standard path lowers the cost of
-following them, never the obligation.
+- レイヤ境界を守る
+- OpenAPI-first 開発を遵守する
+- SQL ファイルを契約として扱う
+- 生成コードを編集しない
 
-AI agents must follow:
-
-- Respect layer boundaries
-- Follow OpenAPI-first development
-- Treat SQL files as contracts
-- Do not edit generated code
-
-Before generating code, AI agents must refer to the following documents.
+コード生成を行う前に、AI エージェントは以下のドキュメントを参照してください。
 
 - `architecture.md`
 - `development-flow.md`
 
-Three constraints bound what being the standard path means:
+標準経路であることの意味は、次の 3 つの制約に境界づけられます。
 
-- **A deterministic check outranks an agent's judgment.** Where tests, lint, CI, or an architecture
-  rule decide a property, their verdict is the answer, and an agent's reading does not override it.
-  Where no such check exists, the judgment is reviewed independently, not asserted
-  ([ADR-0093 (multi-model-adversarial-review)](adr/0093-multi-model-adversarial-review.md)).
-- **Architecture, domain, and policy decisions keep a human gate.** An agent surfaces the decision
-  and the options; it does not take one. This is the same asymmetry the *Documentation Rules* draw
-  between describing and governing documents.
-- **The application never depends on AI.** Application runtime, build, test, production runtime, the
-  domain model, the API contract, the database schema, and the ordinary CI checks must succeed with
-  no AI service or agent available. AI dependence is confined to development workflow, navigation,
-  automation, feedback, and review.
+- **決定論的な検査はエージェントの判断に優先する。** テスト・lint・CI・アーキテクチャルールが性質を決められる場面では、その判定が答えであり、エージェントの読解がそれを覆すことはありません。そうした検査が無い場面の判断は、主張ではなく独立レビューで確かめます（[ADR-0093 (multi-model-adversarial-review)](adr/0093-multi-model-adversarial-review.md)）。
+- **アーキテクチャ・ドメイン・ポリシーの判断には Human Gate を維持する。** エージェントは判断と選択肢を提示するだけで、判断そのものは行いません。これは *ドキュメントルール* が describing 文書と governing 文書の間に引くのと同じ非対称です。
+- **アプリケーションは AI に依存しない。** アプリケーションランタイム、ビルド、テスト、本番ランタイム、ドメインモデル、API コントラクト、データベーススキーマ、通常の CI 検査は、AI サービスやエージェントが利用できなくても成立しなければなりません。AI 依存は開発ワークフロー / ナビゲーション / 自動化 / フィードバック / レビューに限定します。
 
-The agent environment itself is not append-only: skills, rules, documents, CI steps, and tooling are
-observed, re-evaluated after they land, and kept / simplified / revised / deleted / reverted on that
-evidence. Rationale: [ADR-0008 (agent-environment-alignment)](adr/0008-agent-environment-alignment.md);
-what may be persisted to support it: [ADR-0009 (long-running-agent-state)](adr/0009-long-running-agent-state.md).
+エージェント環境そのものは append-only ではありません。スキル・ルール・ドキュメント・CI ステップ・ツールは観測され、反映後に再評価され、その証拠に基づいて Keep / Simplify / Revise / Delete / Revert されます。根拠: [ADR-0008 (agent-environment-alignment)](adr/0008-agent-environment-alignment.md)。それを支えるために何を永続してよいかは [ADR-0009 (long-running-agent-state)](adr/0009-long-running-agent-state.md)。
 
-## Toolchain Execution Rules
+## ツールチェイン実行ルール
 
-> Rationale: [ADR-0079 (containerized-pinned-toolchain)](adr/0079-containerized-pinned-toolchain.md), [ADR-0080 (mise-ssot-drift-gate)](adr/0080-mise-ssot-drift-gate.md).
+ツールのバージョンは `mise.toml`（mise が解決するもの全部についての単一の真実源）に固定され、
+コンテナ化された tool-runner 内で実行することで、マシン間の再現性を保ちます。PyPI から入れる
+ツールだけは `python/*.in` で宣言し、`python/*.txt` にパッケージごとのハッシュ付きで固定します。
+mise の pin では推移依存が固定されないためです（[ADR-0080](adr/0080-mise-ssot-drift-gate.md)）。
 
-Tool versions are pinned in `mise.toml` (the single source of truth for everything mise resolves)
-and executed in the containerized tool-runners so they stay reproducible across machines. Tools
-installed from PyPI are declared in `python/*.in` and locked with per-package hashes in
-`python/*.txt` instead, because a mise pin leaves their transitive dependencies floating
-([ADR-0080 (mise-ssot-drift-gate)](adr/0080-mise-ssot-drift-gate.md)).
-
-- Tool execution — lint / format / codegen / doc generation / commit-message lint / etc. — runs
-  through the `make` targets that execute inside the tool-runners (`go_tool_runner` /
-  `node_tool_runner` / `python_tool_runner`).
-- Automation — git hooks (lefthook), CI steps, and skills — MUST invoke these tools via the
-  `make` targets, never by running a tool directly on the host (e.g. `mise exec <tool> -- …` or a
-  bare tool binary). Bypassing the container breaks reproducibility and depends on host-local
-  tool state.
-- The `-ci` targets are the intended bare-metal path (they run the tool directly, for CI runners
-  or inside the containers). Host `mise` is only for provisioning versions (`make install-tools`,
-  Quick Start). One-off human diagnostics (e.g. checking a version) are not tool execution and
-  are exempt.
-- **A tool the runner image cannot hold runs on the host, and `make install-tools` must provision
-  it.** The tool-runner images are Alpine, so a tool whose upstream publishes no musl build cannot
-  live in one; `golangci-lint` and `zizmor` resolve on the host for that reason. Reproducibility is
-  then carried by the `mise.toml` pin alone rather than by the image, which is weaker — so this is a
-  last resort, admitted only where upstream packaging leaves no container path, and never a shortcut
-  around container startup latency. Such a target must fail with an install hint rather than a bare
-  `command not found`.
+- ツール実行（lint / format / codegen / doc 生成 / commit-message lint 等）は、tool-runner
+  （`go_tool_runner` / `node_tool_runner` / `python_tool_runner`）内で走る `make` ターゲット経由で
+  行います。
+- 自動化（lefthook フック・CI・skill）は、これらのツールを必ず `make` ターゲット経由で実行し、
+  ホスト上でツールを直接実行（例: `mise exec <tool> -- …` や素のツール binary）してコンテナを
+  バイパスしてはなりません。再現性を壊し、ホスト固有のツール状態に依存するためです。
+- `-ci` ターゲットが bare-metal 実行の正規経路です（CI ランナーやコンテナ内でツールを直接実行）。
+  ホストの `mise` はバージョン供給（`make install-tools`・Quick Start）専用です。単発の人手による
+  診断（バージョン確認等）はツール実行ではないため対象外です。
+- **ランナーイメージに載せられないツールはホストで実行し、`make install-tools` が供給を担います。**
+  tool-runner イメージは Alpine のため、上流が musl ビルドを配布していないツールは載せられません。
+  `golangci-lint` と `zizmor` がホスト解決なのはこの理由によります。この場合の再現性はイメージでは
+  なく `mise.toml` の pin だけが担保することになり、その分弱いので、上流のパッケージングがコンテナ
+  経路を残していない場合に限る最後の手段です。コンテナ起動の遅さを回避する近道として使ってはいけません。
+  該当ターゲットは素の `command not found` ではなく、インストール導線を出して失敗させること。
 
 ## Summary
 
-These rules exist to achieve the following.
+これらのルールは以下を実現するために存在します。
 
-- Maintain architectural integrity
-- Maintainable code structure
-- Reproducible builds
-- Safe collaboration between humans and AI
+- アーキテクチャ整合性の維持
+- 保守しやすいコード構造
+- 再現可能なビルド
+- 人間とAIの安全な協働

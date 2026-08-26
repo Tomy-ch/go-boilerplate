@@ -1,200 +1,112 @@
 ---
 name: manage-skill
 description: >-
-  Create, update, evaluate, and optimize skills under this repository's `.claude/skills/`, wrapping Anthropic's official `skill-creator` methodology and layering this repo's conventions on top (English-canonical SKILL.md + mandatory `SKILL.ja.md` translation pair, dense "pushy" description frontmatter, AGENTS.md scope + hard-protected paths, eval artifacts kept out of version control). This is the single entry point for ANY change to an existing skill under `.claude/skills/`; ALWAYS use it before hand-editing a `SKILL.md` or `SKILL.ja.md`. Use this WHENEVER the user wants to update / modify / change / edit / fix / improve / refactor / rename / extend / adjust / tune an existing skill — its steps, `description`, frontmatter, or behavior — or to build a new skill, author/scaffold a `/<name>` command, turn a repeated workflow into a skill, tune a skill's triggering description, or run evals/benchmarks on a skill — even if they don't say the word "skill-creator". Japanese triggers also apply, e.g. 「スキルを更新したい」「スキルを修正して」「このスキルの手順 / description / 挙動を変えて」. Do NOT use it for editing canonical docs (`docs/**`, per-package `README.md` — those have `sync-readme` / `canonicalize-doc` / `back-prop`), other AI-tool configs (`.cursor/`, `.gemini/`, Copilot), or generated files.
+  Create, update, evaluate, and optimize skills under this repository's `.claude/skills/`, wrapping Anthropic's official `skill-creator` methodology and layering this repo's conventions on top (English-canonical SKILL.md, dense "pushy" description frontmatter, AGENTS.md scope + hard-protected paths, eval artifacts kept out of version control). This is the single entry point for ANY change to an existing skill under `.claude/skills/`; ALWAYS use it before hand-editing a `SKILL.md`. Use this WHENEVER the user wants to update / modify / change / edit / fix / improve / refactor / rename / extend / adjust / tune an existing skill — its steps, `description`, frontmatter, or behavior — or to build a new skill, author/scaffold a `/<name>` command, turn a repeated workflow into a skill, tune a skill's triggering description, or run evals/benchmarks on a skill — even if they don't say the word "skill-creator". Japanese triggers also apply, e.g. 「スキルを更新したい」「スキルを修正して」「このスキルの手順 / description / 挙動を変えて」. Do NOT use it for editing canonical docs (`docs/**`, per-package `README.md` — those have `sync-readme` / `back-prop`), other AI-tool configs (`.cursor/`, `.gemini/`, Copilot), or generated files.
 argument-hint: '[skill-name] [--update|--new|--optimize]'
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, Skill, Agent
 ---
 
 # Manage Skill
 
-You have been invoked via `/manage-skill`. Argument string: `$ARGUMENTS`.
+`/manage-skill` で起動されます。引数文字列: `$ARGUMENTS`。
 
-This skill authors and maintains skills under `.claude/skills/` for **this** repository. It is a
-thin wrapper: the *methodology* (draft → test → review → improve → optionally optimize the
-description) comes from Anthropic's official `skill-creator` skill, and this file layers the
-repository's own conventions on top so the produced skill fits in alongside `commit`, `new-env`,
-`canonicalize-doc`, and the rest.
+このスキルは **本** リポジトリの `.claude/skills/` 配下のスキルを作成・保守します。薄いラッパーです。*手法*（ドラフト → テスト → レビュー → 改善 → 必要なら description 最適化）は Anthropic 公式の `skill-creator` スキルに由来し、このファイルはその上にリポジトリ固有の規約を重ねて、`commit` / `new-env` / `canonicalize-doc` などの既存スキルと同じ体裁で並ぶ成果物を作ります。
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory
-(not loaded as a skill; for human reference only).
+このスキルの日本語参考訳は同ディレクトリの `SKILL.md` にあります（スキルとしては読み込まれません。参考用）。
 
-## When to Use
+## 使うとき
 
-Use this skill when the user wants to:
+以下をユーザーが望むとき:
 
-- Create a brand-new skill / `/<name>` command, or turn a repeated workflow from the current
-  conversation into one.
-- Update, modify, improve, refactor, rename, extend, or fix an existing skill under
-  `.claude/skills/` — this is the entry point for any such change, used before hand-editing a
-  <!-- doc-pair:replace-begin -->
-  `SKILL.md` / `SKILL.ja.md`.
-  <!-- doc-pair:replace-with -->
-  <!-- = `SKILL.md`. -->
-  <!-- doc-pair:replace-end -->
-- Optimize a skill's `description` for better triggering, or run evals/benchmarks on a skill.
+- 新規スキル / `/<name>` コマンドの作成、または現在の会話中の反復ワークフローのスキル化。
+- `.claude/skills/` 配下の既存スキルの更新・修正・改善・リファクタ・リネーム・拡張 — こうした変更全般の入口であり、`SKILL.md` を手で編集する前に必ずこれを使います。
+- スキルの `description` のトリガー精度最適化、またはスキルの eval / benchmark 実行。
 
-Do NOT use it for:
+以下には使いません:
 
-- Editing canonical docs (`docs/**`, per-package `README.md`) — those have their own flows
-  (`sync-readme`, `canonicalize-doc`, `back-prop`).
-- Other AI-tool configs (`.cursor/`, `.gemini/`, `.github/copilot-instructions.md`) — out of scope
-  per `AGENTS.md`.
+- canonical ドキュメント（`docs/**`、パッケージ別 `README.md`）の編集 — それぞれ専用フロー（`sync-readme` / `canonicalize-doc` / `back-prop`）があります。
+- 他の AI ツール設定（`.cursor/` / `.gemini/` / `.github/copilot-instructions.md`）— `AGENTS.md` によりスコープ外。
 
-## Scope note (AGENTS.md)
+## スコープ注記（AGENTS.md）
 
-`AGENTS.md` normally treats `.claude/**` as out of scope. **Invoking this skill is the explicit user
-instruction that relaxes that** — but only for `.claude/skills/**`, and only for the duration of this
-run. The hard-protected paths from `AGENTS.md` stay protected even here: never touch `AGENTS.md`,
-generated files (`**/*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`), generated `docs/`
-content, or anything under `permissions.deny`.
+`AGENTS.md` は通常 `.claude/**` をスコープ外として扱います。**このスキルを起動することが、それを緩和する明示的なユーザー指示** ですが、緩和は `.claude/skills/**` に限定され、この実行の間だけです。`AGENTS.md` の hard-protected パスはここでも保護されたままです。`AGENTS.md`・生成ファイル（`**/*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`）・生成された `docs/` 配下・`permissions.deny` 配下には決して触れないこと。
 
-## Step 0 — Ensure and load the official methodology (do this first)
+## Step 0 — 公式手法の担保と読み込み（最初に行う）
 
-The official `skill-creator` is the source of truth for the *how*. Operate on the assumption that it
-is present: it is declared at **project scope** in this repo's `.claude/settings.json`, so a trusted
-clone already has it. If it is missing, ensure it via the repo-level plugin bootstrap:
+公式の `skill-creator` が *how* の真の出所です。「存在する前提」で運用します。これは本リポジトリの `.claude/settings.json` に **project スコープ** で宣言されているため、信頼済みの clone には既に入っています。もし無ければ、リポジトリ共通のプラグイン bootstrap で担保します:
 
 ```bash
 bash .claude/scripts/bootstrap-plugins.sh
 ```
 
-The bootstrap declares the `claude-plugins-official` marketplace and enables the official plugins this
-repo depends on (`skill-creator`, `feature-dev`) at project scope. It is idempotent; re-running is a
-no-op. Newly enabled plugins load on the next session, when `skill-creator` also becomes invocable as
-`/skill-creator` — but this wrapper does not depend on that; it reads the file by path so it works in
-the same session.
+bootstrap は `claude-plugins-official` マーケットプレイスを宣言し、このリポジトリが依存する公式プラグイン（`skill-creator`・`feature-dev`）を project スコープで有効化します。冪等であり、再実行は no-op です。新たに有効化されたプラグインは次セッションで読み込まれ、そのとき `skill-creator` は `/skill-creator` としても起動可能になります。ただしこのラッパーはそれに依存しません。パスでファイルを読むため同一セッションでも動作します。
 
-Read that `SKILL.md` in full (the path the script prints; discover it with the glob below if needed):
+その `SKILL.md` を全文読みます（スクリプトが表示したパス。必要なら以下の glob で探索）:
 
 ```bash
 ls ~/.claude/plugins/marketplaces/*/plugins/skill-creator/skills/skill-creator/SKILL.md
 ```
 
-Everything it says about **Creating a skill**, **Running and evaluating test cases**, **Improving the
-skill**, **Description Optimization**, blind comparison, and packaging applies verbatim. Its bundled
-resources live next to it and are used as-is:
+そこに書かれた **Creating a skill**・**Running and evaluating test cases**・**Improving the skill**・**Description Optimization**・blind comparison・packaging はすべてそのまま適用されます。付属リソースは隣接して置かれ、そのまま利用します:
 
-- `scripts/` — `aggregate_benchmark`, `run_loop` (description optimizer), `package_skill`, etc. Run
-  them from the official skill's directory; do not reimplement them.
-- `eval-viewer/generate_review.py` — the review viewer. Always use it; never hand-write review HTML.
-- `agents/` (`grader.md`, `comparator.md`, `analyzer.md`) and `references/schemas.md`.
+- `scripts/` — `aggregate_benchmark`・`run_loop`（description 最適化）・`package_skill` など。公式スキルのディレクトリから実行し、再実装しないこと。
+- `eval-viewer/generate_review.py` — レビュービューア。常にこれを使い、レビュー用 HTML を自作しないこと。
+- `agents/`（`grader.md`・`comparator.md`・`analyzer.md`）と `references/schemas.md`。
 
-If the bootstrap fails (e.g. no network, `claude` CLI missing), report the failure to the user and ask
-whether to proceed with the methodology summarized inline (draft → test → review → improve) instead of
-aborting.
+bootstrap が失敗した場合（ネットワーク無し、`claude` CLI 不在など）は、失敗をユーザーに報告し、中断する代わりにインラインで要約した手法（ドラフト → テスト → レビュー → 改善）で進めてよいか確認します。
 
-## The repository overlay (this is what the wrapper adds)
+## リポジトリオーバーレイ（＝このラッパーが足すもの）
 
-Follow the official process, but apply these repo-specific rules wherever they differ. On conflict,
-these win, because a skill that ignores them won't fit this repo.
+公式手法に従いつつ、差異がある箇所では以下のリポジトリ固有ルールを適用します。競合時はこれらが優先されます。これらを無視したスキルはこのリポジトリに馴染まないからです。
 
-### 1. Placement and structure
+### 1. 配置と構造
 
-- New skills live at `.claude/skills/<name>/SKILL.md`, `<name>` in kebab-case matching the `name:`
-  frontmatter. Look at neighbors first (`commit`, `new-env`, `canonicalize-doc`, the `scaffold-*`
-  family, the integrator `arch-check` / `back-prop`) and prefer editing/extending an existing skill
-  over adding a near-duplicate.
-- Bundled resources (`scripts/`, `references/`, `assets/`) follow the official anatomy when needed.
-  Keep `SKILL.md` under ~500 lines and push detail into `references/` with clear pointers.
+- 新規スキルは `.claude/skills/<name>/SKILL.md` に置き、`<name>` は `name:` フロントマターと一致する kebab-case にします。まず近隣（`commit`・`new-env`・`canonicalize-doc`・`scaffold-*` 群・integrator の `arch-check` / `back-prop`）を見て、ほぼ重複する新規追加より既存スキルの編集・拡張を優先します。
+- 付属リソース（`scripts/`・`references/`・`assets/`）は必要時に公式の anatomy に従います。`SKILL.md` は約 500 行未満に保ち、詳細は明確なポインタ付きで `references/` に押し出します。
 
-### 2. Frontmatter conventions (match the existing skills)
+### 2. フロントマター規約（既存スキルに合わせる）
 
-- `name`: kebab-case, equal to the directory name.
-- `description`: **one dense paragraph**, English, following the official "pushy" triggering guidance
-  (state what it does AND concrete when-to-use contexts, plus explicit *when NOT* to trigger). Study
-  the descriptions of `commit` / `new-env` for the density and tone this repo uses — match it.
-- Optional: `argument-hint` and `allowed-tools` when the skill is a `/command` that takes args or runs
-  a fixed tool set (see `commit` for the pattern). Omit them when not needed (most skills do).
+- `name`: kebab-case、ディレクトリ名と一致。
+- `description`: **1 段落で密に**、英語で、公式の「pushy」なトリガー指針に従う（何をするか AND 具体的な使用コンテキスト、加えて *いつトリガーしないか* も明示）。`commit` / `new-env` の description の密度とトーンを研究し、それに合わせること。
+- 任意: `argument-hint` と `allowed-tools`（`/command` が引数を取る、または固定のツールセットを使う場合。パターンは `commit` を参照）。不要なら省略します（多くのスキルは省略）。
 
-### 3. Language rules (`CLAUDE.md`)
+### 3. 言語ルール（`CLAUDE.md`）
 
-- `SKILL.md` is **English canonical** — its body is written in imperative English, like every existing
-  skill here. Do not write the canonical `SKILL.md` in Japanese.
-- But the skill's *runtime behavior* must obey `CLAUDE.md`: all user-visible output the skill produces
-  (responses, generated code comments, test case names, PR/commit text) must be **Japanese**. When
-  authoring a skill, bake that requirement into its instructions.
+- `SKILL.md` は **英語 canonical** — 本文は既存スキル同様に命令形の英語で書きます。canonical の `SKILL.md` を日本語で書かないこと。
+- ただしスキルの *実行時の振る舞い* は `CLAUDE.md` に従います。スキルが生成するユーザー可視の出力（応答・生成コードのコメント・テストケース名・PR / commit 文言）はすべて **日本語** であること。スキルを書く際はその要件を当該スキルの指示に組み込みます。
 
-<!-- doc-pair:begin -->
-### 4. Mandatory Japanese translation pair
+### 4. 日本語翻訳ペアの義務化
 
-Every skill in this repo ships a `SKILL.ja.md` reference translation next to `SKILL.md`. This is not
-optional here. After the canonical `SKILL.md` is finalized (create) or changed (update):
+- 翻訳は標準の同期ノート見出しを持ち、それ自体はスキルとして読み込まれません。完了とする前にペアが同期していることを確認します。
 
-- Chain the `canonicalize-doc` skill to produce/sync `SKILL.ja.md` from the canonical `SKILL.md`.
-- The translation carries the standard sync-note header and is not itself loaded as a skill. Confirm
-  the pair is in sync before considering the task done.
+### 5. eval 成果物はバージョン管理外に置く
 
-<!-- doc-pair:end -->
-<!-- doc-pair:replace-begin -->
-### 5. Eval artifacts stay out of version control
-<!-- doc-pair:replace-with -->
-<!-- = ### 4. Eval artifacts stay out of version control -->
-<!-- doc-pair:replace-end -->
+公式手法は iteration / eval ディレクトリ・ベンチマーク・ビューア出力を含む `<skill-name>-workspace/` を書き出します。スキルディレクトリの兄弟に置くと、追跡対象の `.claude/skills/**` 内に落ちてしまいます。**配置を上書きします**。workspace はリポジトリの gitignore された `tmp/`（例: `tmp/skills/manage-skill/<skill-name>-workspace/`）に置き、このリポジトリの作業成果物規約（計画 / 成果物は git 外、`tmp/` は ignore）に合わせます。eval 実行結果・ベンチマーク・feedback JSON・ビューア HTML は決してコミットしないこと。
 
-The official process writes a `<skill-name>-workspace/` with iteration/eval dirs, benchmarks, and
-viewer output. A sibling of the skill directory would land inside the tracked `.claude/skills/**`.
-**Override the location**: put the workspace under the repo's gitignored `tmp/` (e.g.
-`tmp/skills/manage-skill/<skill-name>-workspace/`), consistent with this repo's work-artifact convention
-(plans/artifacts live outside git; `tmp/` is ignored). Never commit eval runs, benchmarks, feedback
-JSON, or viewer HTML.
+### 6. スキルの形に合うならリポジトリのパターンを再利用する
 
-<!-- doc-pair:replace-begin -->
-### 6. Reuse repo patterns when they fit the skill's shape
-<!-- doc-pair:replace-with -->
-<!-- = ### 5. Reuse repo patterns when they fit the skill's shape -->
-<!-- doc-pair:replace-end -->
+- 新スキルが読み取り専用の解析をレイヤー横断でファンアウトするなら、**integrator + レイヤー別サブエージェント** パターンを踏襲します（`arch-check` / `back-prop` は `*-auditor-*` / `*-detector-*` エージェントを並列起動し、integrator が単一スレッドで書き込みます）。可能なら新規サブエージェント型を発明せず既存を再利用します。
+- スキルがユーザー選択でゲートされる決定的な多段フローなら、`new-env` / `commit` のように free-text プロンプトではなく `AskUserQuestion` でゲートします。
+- 対象レイヤーの `README.md` / `docs/` を **実行時に真の出所として読み**（`arch-*`・`test-review`・`scaffold-*` はすべてこうしています）、drift するルールをハードコードしないこと。
 
-- If the new skill fans out read-only analysis across layers, mirror the **integrator + per-layer
-  subagent** pattern (`arch-check` / `back-prop` spawn `*-auditor-*` / `*-detector-*` agents in
-  parallel; the integrator does the single-threaded writes). Reuse existing subagent types rather than
-  inventing new ones where possible.
-- If the skill has a deterministic multi-step flow gated on user choices, use `AskUserQuestion` for the
-  gates like `new-env` / `commit` do, rather than free-text prompts.
-- Read the target layer's `README.md` / `docs/` **at runtime as the source of truth** (the `arch-*`,
-  `test-review`, `scaffold-*` skills all do this) instead of hardcoding rules that will drift.
+## 新規スキルの作成
 
-## Creating a new skill
+## 既存スキルの更新
 
-Run the official **Creating a skill** flow (Capture Intent → Interview → Write SKILL.md → Test Cases),
-<!-- doc-pair:replace-begin -->
-then apply the overlay: correct placement, matching frontmatter/description density, English-canonical
-body, and the eval workspace under `tmp/`. When the draft stabilizes, generate `SKILL.ja.md` via
-`canonicalize-doc`.
-<!-- doc-pair:replace-with -->
-<!-- = then apply the overlay: correct placement, matching frontmatter/description density, English-canonical -->
-<!-- = body, and the eval workspace under `tmp/`. -->
-<!-- doc-pair:replace-end -->
+- どのスキルか確認します（`.claude/skills/<name>/`）。`name` とディレクトリは変更しないこと。
+- *インストール済み* のプラグインスキルと違い、リポジトリのスキルはその場で書き込み可能です。**`.claude/skills/<name>/` 配下を直接編集** します。read-only なコピー先を `/tmp` に作る手順は不要です。
+- eval のベースライン用に、公式指針どおり編集前のスキルをスナップショット（`tmp/` へ）し、before / after を比較できるようにします。
 
-## Updating an existing skill
+## 評価 / 最適化
 
-- Confirm which skill (`.claude/skills/<name>/`). Preserve its `name` and directory unchanged.
-- Unlike an *installed* plugin skill, repo skills are writeable in place — **edit them directly** under
-  `.claude/skills/<name>/`; there is no read-only copy-to-`/tmp` dance.
-- For the eval baseline, snapshot the pre-edit skill per the official guidance (into `tmp/`), so
-  before/after can be compared.
-- After editing, re-sync `SKILL.ja.md` via `canonicalize-doc` — an updated `SKILL.md` with a stale
-  Japanese pair is drift.
-
-## Evaluating / optimizing
-
-Use the official test-run, benchmark, viewer, and **Description Optimization** flows unchanged, with
-two adaptations: workspaces go under `tmp/` (§5), and for the description optimizer pass the model ID
-powering this session (see the environment/system prompt) so triggering matches production.
+公式の test-run・benchmark・viewer・**Description Optimization** フローをそのまま使い、2 点だけ適応します。workspace は `tmp/` 配下（§5）に置くこと、description 最適化にはこのセッションを動かしているモデル ID（環境 / システムプロンプト参照）を渡してトリガーを本番に合わせること。
 
 ## Definition of Done
 
-- The official `skill-creator` resolved (project-scope plugin; ensured via the plugin bootstrap if
-  missing) and its methodology is loaded.
-- `.claude/skills/<name>/SKILL.md` present, kebab `name` = dir, dense English "pushy" `description`.
-- `SKILL.ja.md` generated/synced from the canonical `SKILL.md` and in sync.
-- No eval artifacts committed (workspace under gitignored `tmp/`).
-- No hard-protected path touched; only `.claude/skills/**` modified.
-- The user has reviewed outputs (viewer or inline) and is satisfied, per the official loop.
-- For every new or materially changed skill that is not platform-only, invoke `sync-ai` after local
-  validation with this environment as the source. Pass the transfer contract to the receiving
-  environment's `manage-skill`. When this invocation is itself the receiving child operation, do
-  not invoke `sync-ai` again.
-- `make md-skill-lint` passes. It enforces the previous item's existence half — a skill present in
-  only one environment fails. To declare one deliberately platform-only, follow the Skill Lint
-  section of `scripts/README.md`.
+- 公式 `skill-creator` が解決済み（project スコープのプラグイン。無ければプラグイン bootstrap で担保）で、手法が読み込まれている。
+- `.claude/skills/<name>/SKILL.md` が存在し、kebab の `name` = ディレクトリ、密な英語「pushy」`description` を持つ。
+- eval 成果物が未コミット（workspace は gitignore された `tmp/`）。
+- hard-protected パスに未接触。変更は `.claude/skills/**` のみ。
+- 公式ループに従い、ユーザーが成果物（ビューアまたはインライン）をレビューし満足している。
+- 新規または大きく変更したスキルがプラットフォーム専用でない場合、ローカル検証後にこの環境を送信元として `sync-ai` を起動する。転送契約を受信側環境の `manage-skill` に渡す。この起動自体が受信側の子操作である場合は、`sync-ai` を再起動しない。
+- `make md-skill-lint` が通る。これは前項の存在部分を強制する検査で、片側の環境にしか無いスキルは落ちる。意図的にプラットフォーム専用と宣言する手順は `scripts/README.md` の Skill Lint 節に従う。

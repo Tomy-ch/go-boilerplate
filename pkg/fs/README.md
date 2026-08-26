@@ -1,14 +1,14 @@
 # fs
 
-Provides a thin wrapper around filesystem operations so callers depend on an interface instead of `os` directly.
+ファイルシステム操作の薄いラッパーを提供し、利用側が `os` に直接依存せずインターフェース経由で扱えるようにします。
 
-## Wraps
+## ラップ対象
 
 - `os.ReadFile` / `os.WriteFile`
 - `path/filepath.Glob`
 
-## Notes
+## 注意点
 
-- Uses `os`, so depguard's `reject_dangerous_os` is relaxed for this package (`!**/pkg/fs/**.go`).
-- Must NOT be imported from the domain / usecase layers (enforced by depguard); filesystem I/O belongs to outer layers.
-- Inject `FS` to test; production wires `OS{}`. A generated mock lives under `mock/`.
+- `os` を使用するため、本パッケージは depguard の `reject_dangerous_os` を緩和しています（`!**/pkg/fs/**.go`）。
+- domain / usecase 層からの import は禁止（depguard で強制）。ファイル I/O は外側の層の責務です。
+- `FS` を注入してテストし、プロダクションは `OS{}` を結線します。生成モックは `mock/` 配下。

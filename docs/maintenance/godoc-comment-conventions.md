@@ -1,117 +1,112 @@
-# Go Doc-Comment Conventions (Condensed)
+# Go doc コメント規約（要約）
 
-Condensed local mirror of <https://go.dev/doc/comment> ("Go Doc Comments"), kept so tooling
-(e.g. the `comment-reviewer` agent) reads this instead of fetching the large upstream page.
-Update this file if the upstream conventions change.
+`docs/maintenance/godoc-comment-conventions.md`（<https://go.dev/doc/comment>「Go Doc Comments」
+の canonical な英語要約ミラー）の日本語訳。人間向けの参照用。upstream の規約が変わったら
+canonical 側とあわせて更新する。
 
-## Purpose and Scope
+## 目的とスコープ
 
-- A doc comment is the comment immediately preceding a top-level `package`, `const`, `func`,
-  `type`, or `var` declaration (no blank line between).
-- Doc comments document the **exported API for its consumer** — they are what `go doc`,
-  pkg.go.dev/pkgsite, and gopls render. They are not implementation notes.
-- **Every exported (capitalized) name, and every package, should have a doc comment.**
+- doc コメントとは、トップレベルの `package` / `const` / `func` / `type` / `var` 宣言の
+  直前（間に空行なし）に置かれるコメント。
+- doc コメントは **export された API を利用者向けに**説明する — `go doc`・
+  pkg.go.dev/pkgsite・gopls がレンダリングする対象。実装メモではない。
+- **すべての export（大文字始まり）名、およびすべてのパッケージに doc コメントを付ける。**
 
-## Universal Format Rules
+## 共通の書式ルール
 
-- Complete sentences, present tense.
-- The **first sentence is a one-sentence summary that begins with the name being declared**
-  (e.g. `// Quote returns a double-quoted Go string literal representing s.`). This makes
-  the symbol searchable and the summary usable in lists.
-- Refer to parameters and results by name directly, with no quoting or special syntax.
-- Focus on what matters to callers; document special cases and edge cases prominently.
+- 完全な文、現在形で書く。
+- **第 1 文は、宣言している名前で始まる一文サマリ**にする
+  （例 `// Quote returns a double-quoted Go string literal representing s.`）。これにより
+  シンボルが検索可能になり、サマリが一覧表示で使える。
+- 引数・戻り値は名前で直接参照する（引用符や特別な記法は使わない）。
+- 呼び出し側にとって重要なことに集中し、特殊ケース・エッジケースを目立つ位置に書く。
 
-First-sentence patterns by declaration kind:
+宣言種別ごとの第 1 文パターン:
 
-| Kind | First sentence starts with |
+| 種別 | 第 1 文の始まり |
 | --- | --- |
-| Package | `Package <name> <verb> ...` |
-| Command (`package main`) | `<Progname> <verb> ...` (program name, capitalized) |
-| Type | `A <Name> ...` / `The <Name> ...` (or `<Name> is ...`) |
-| Func / method | `<Name> <verb> ...`; boolean-returning: `<Name> reports whether ...` (never "or not") |
-| Ungrouped const / var | `<Name> is/holds/... ...` |
+| パッケージ | `Package <name> <verb> ...` |
+| コマンド（`package main`） | `<Progname> <verb> ...`（プログラム名・大文字始まり） |
+| 型 | `A <Name> ...` / `The <Name> ...`（または `<Name> is ...`） |
+| 関数 / メソッド | `<Name> <verb> ...`；bool を返す場合は `<Name> reports whether ...`（"or not" は使わない） |
+| 非グループの const / var | `<Name> is/holds/... ...` |
 
-## Per-Declaration Conventions
+## 宣言ごとの規約
 
-### Packages
+### パッケージ
 
-- Every package has a package comment introducing it; first sentence starts `Package <name>`.
-- In multi-file packages, put the package comment in only one file (conventionally `doc.go`
-  for long ones); multiple comments are concatenated.
-- Large packages: give an overview of the most important API parts, with doc links.
+- すべてのパッケージにパッケージコメントを付けて紹介する。第 1 文は `Package <name>` で始める。
+- 複数ファイルのパッケージでは、パッケージコメントは 1 ファイルだけに置く（長い場合は
+  慣習的に `doc.go`）。複数書くと連結される。
+- 大きなパッケージでは、最重要 API の概要を doc リンク付きで示す。
 
-### Commands
+### コマンド
 
-- A command's package comment describes the **program's behavior**, not Go symbols; first
-  sentence starts with the capitalized program name (e.g. `Gofmt formats Go programs.`).
-- Conventionally includes a `Usage:` section and flag documentation as indented
-  (preformatted) blocks.
+- コマンドのパッケージコメントは Go シンボルではなく**プログラムの挙動**を説明する。
+  第 1 文は大文字始まりのプログラム名で始める（例 `Gofmt formats Go programs.`）。
+- 慣習的に `Usage:` セクションとフラグ説明を、インデントされた（整形済み）ブロックで含める。
 
-### Types
+### 型
 
-- Explain what each instance of the type represents or provides.
-- **Concurrency:** default assumption is safe for use by a single goroutine only; explicitly
-  state any stronger guarantee.
-- **Zero value:** document its meaning when non-obvious (e.g. "The zero value for Buffer is
-  an empty buffer ready to use.").
-- Exported struct fields: explain each via the type's doc comment or per-field
-  (end-of-line) comments.
+- その型の各インスタンスが何を表す / 提供するかを説明する。
+- **並行性:** デフォルトの前提は「単一 goroutine からのみ安全」。それより強い保証は明示する。
+- **ゼロ値:** 非自明な場合はその意味を書く（例 "The zero value for Buffer is an empty
+  buffer ready to use."）。
+- export された構造体フィールド: 型の doc コメント、またはフィールドごとの（行末）
+  コメントで説明する。
 
-### Funcs and Methods
+### 関数・メソッド
 
-- Explain what the function returns, or what it does and its side effects.
-- Multiple/named results may be named in the signature purely to make the doc readable.
-- **Do not explain internal implementation or algorithms.** Asymptotic time/space bounds may
-  be documented when critical to callers (e.g. `sort.Sort`).
-- Top-level functions are assumed callable from multiple goroutines; methods are assumed
-  single-goroutine by default — document only deviations.
-- Constructors: top-level funcs returning `T` / `*T` (optionally with `error`) are grouped
-  with the type by the doc tools; no special comment form required.
-- Use consistent receiver names across a type's methods.
+- 何を返すか、または何をして副作用が何かを説明する。
+- 複数 / 名前付き戻り値は、doc を読みやすくするためだけにシグネチャで名前を付けてよい。
+- **内部実装やアルゴリズムは説明しない。** 呼び出し側にとって重要なら漸近的な
+  時間 / 空間計算量は書いてよい（例 `sort.Sort`）。
+- トップレベル関数は複数 goroutine から呼べる前提、メソッドはデフォルト単一 goroutine
+  前提 — 逸脱のみ書く。
+- コンストラクタ: `T` / `*T`（任意で `error` を伴う）を返すトップレベル関数は doc ツールが
+  型とグループ化する。特別なコメント形式は不要。
+- 型のメソッド間でレシーバ名を一貫させる。
 
-### Consts and Vars
+### const・var
 
-- A **group** (`const (...)` / `var (...)`) may be introduced by a single doc comment on the
-  group, with short end-of-line comments per member — or need no comment at all when the
-  associated type's doc comment covers it (typed constant sets).
-- An **ungrouped** const/var gets a full doc comment starting with its name.
+- **グループ**（`const (...)` / `var (...)`）はグループ全体への 1 つの doc コメントで導入し、
+  メンバごとに短い行末コメントを付けてよい。あるいは、関連する型の doc コメントが
+  カバーしていれば無コメントでもよい（型付き定数集合）。
+- **非グループ**の const/var には、名前始まりの完全な doc コメントを付ける。
 
-## Rendered Syntax (what godoc/pkgsite understands)
+## レンダリングされる構文（godoc/pkgsite が解釈するもの）
 
-- **Paragraphs:** spans of unindented non-blank lines; line breaks are preserved (semantic
-  linefeeds allowed); gofmt never rewraps.
-- **Headings:** a line `# Heading` (space after `#`, unindented, single line, blank lines
-  around it). Anything else with `#` is plain text.
-- **Lists:** indented lines starting with a bullet (`-`, `*`, `+`, `•`) or a number
-  (`1.` / `1)`), followed by space/tab. List items contain paragraphs only — **no nested
-  lists or code blocks**. Numbers are never renumbered.
-- **Code blocks:** indented span not starting with a list marker → rendered preformatted.
-  Used for example code, usage text, grammars, shell commands.
-- **Links:** `[Text]` in prose plus a target line `[Text]: URL` (targets conventionally at
-  the end of the comment). Bare URLs auto-link. `[Text]` without a target stays literal.
-- **Doc links:** `[Name]`, `[Name1.Name2]` (current package), `[pkg]`, `[pkg.Name]`,
-  `[pkg.Name1.Name2]`, optional leading star for pointers (`[*bytes.Buffer]`). Must be
-  bounded by punctuation/space/line boundaries.
-- **`Deprecated:`** a paragraph beginning with `Deprecated:` marks the symbol deprecated;
-  tools warn on use and pkgsite hides it by default. Follow with the reason and the
-  recommended replacement. Need not be the last paragraph.
-- **Notes:** `MARKER(uid): body` with a 2+ uppercase-letter marker (`TODO(user):`,
-  `BUG(user):`) is collected into its own rendered section.
-- **Directives** (`//go:generate`, `//nolint`-style `//tool:directive`, `//line`, etc.) are
-  **not** part of the rendered doc; gofmt moves them to the end of the comment. Never treat
-  them as prose (and never delete them as "bad comments").
-- gofmt canonicalizes doc comments (indentation, blank lines around code blocks, `#`
-  headings, link-target placement) — formatting need not be policed by hand.
+- **段落:** インデントなしの非空行の連なり。改行は保持される（意味的改行が可能）。
+  gofmt は再折り返ししない。
+- **見出し:** `# 見出し` の行（`#` の後に空白、インデントなし、単一行、前後に空行）。
+  それ以外の `#` はプレーンテキスト。
+- **リスト:** インデントされ、箇条書き記号（`-`, `*`, `+`, `•`）または番号（`1.` / `1)`）＋
+  空白/タブで始まる行。リスト項目は段落のみを含む — **ネストしたリストやコードブロックは
+  不可**。番号は振り直されない。
+- **コードブロック:** リストマーカーで始まらないインデントされた連なり → 整形済みで
+  レンダリング。サンプルコード・使用法テキスト・文法・シェルコマンドに使う。
+- **リンク:** 散文中の `[Text]` ＋ ターゲット行 `[Text]: URL`（ターゲットは慣習的に
+  コメント末尾）。裸の URL は自動リンク。ターゲットのない `[Text]` はそのまま文字列。
+- **doc リンク:** `[Name]`、`[Name1.Name2]`（現パッケージ）、`[pkg]`、`[pkg.Name]`、
+  `[pkg.Name1.Name2]`、ポインタは先頭に星（`[*bytes.Buffer]`）。前後は句読点/空白/行境界で
+  区切る必要がある。
+- **`Deprecated:`** `Deprecated:` で始まる段落はそのシンボルを非推奨としてマークする。
+  ツールは使用時に警告し、pkgsite はデフォルトで隠す。理由と推奨する代替を続けて書く。
+  最後の段落である必要はない。
+- **Notes:** `MARKER(uid): body`（2 文字以上の大文字マーカー、`TODO(user):`・`BUG(user):`）は
+  独立したレンダリングセクションに集約される。
+- **ディレクティブ**（`//go:generate`、`//nolint` 系の `//tool:directive`、`//line` など）は
+  レンダリングされる doc の**一部ではない**。gofmt はコメント末尾へ移動する。散文として
+  扱わないこと（「悪いコメント」として削除しないこと）。
+- gofmt は doc コメントを正規化する（インデント、コードブロック前後の空行、`#` 見出し、
+  リンクターゲットの位置）— 書式を手で管理する必要はない。
 
-## Not Prescribed by godoc (treat as surplus in a doc comment)
+## godoc が規定しないもの（doc コメントでは余剰として扱う）
 
-The upstream conventions never ask for any of the following; their presence is noise, not
-compliance:
+upstream の規約は以下を一切求めない。これらの存在は規約準拠ではなくノイズ:
 
-- Step-by-step narration of the internal implementation ("how it works inside") — expressly
-  discouraged for funcs.
-- Call-site or registration notes ("called from X", "registered in the DI module").
-- Change history, migration rationale, or development backstory (belongs in commits/PRs).
-- Restating the identifier without adding information (e.g. `// GetUser gets the user.`
-  adds nothing beyond the required name-prefixed summary — the summary must still say
-  something a caller learns).
+- 内部実装の逐次ナレーション（「内部でどう動くか」）— 関数については明示的に非推奨。
+- 呼び出し元 / 登録場所メモ（「X から呼ばれる」「DI モジュールに登録」）。
+- 変更履歴・移行の根拠・開発の後日談（commit / PR に置く）。
+- 情報を足さない識別子の言い換え（例 `// GetUser gets the user.` は必須の名前始まり
+  サマリを超える情報がない — サマリは呼び出し側が学べる何かを述べる必要がある）。

@@ -5,126 +5,121 @@ deciders: [maintainers]
 tags: [contract, domain, validation]
 ---
 
-# ADR-0017: Designate the domain layer as the sole authority for business-validity rules
+# ADR-0017: バリデーションのビジネス有効性における唯一の権威をドメイン層に定める
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Validation constraints appear in multiple locations across a system: an OpenAPI schema
-`maxLength`, a domain constant, a database column definition, and potentially a client-side
-rule. When these numbers coincide — which they often do by convenience — it is tempting to
-treat them as equivalent. When they diverge, it becomes unclear which layer should be
-consulted as the source of truth.
+バリデーション制約は、システム内の複数の場所に現れる。OpenAPI スキーマの `maxLength`、
+ドメイン定数、データベースのカラム定義、そしてクライアント側のルールなど。これらの数値が
+一致している場合（利便性上よく一致する）、同等と見なしがちである。しかし乖離がある場合、
+どの層を真実の源泉として参照すべきかが不明確になる。
 
-Two conceptually distinct axes are in play:
+ここには、概念的に独立した 2 つの軸が存在する。
 
-**Strictness** describes how tight a constraint's value set is. A rule that allows values up
-to 50 is stricter than one that allows up to 100. The tightest constraint admits the fewest
-values.
+**厳密性（Strictness）** は、制約の値集合がどれだけ狭いかを表す。最大 50 まで許可する
+ルールは、最大 100 まで許可するルールより厳しい。最も厳しい制約は、最も少ない値しか
+許容しない。
 
-**Authority** (or authenticity) describes which layer has the right to define what the
-business considers valid. Authority is a role assignment — it answers "whose decision is
-this?" not "which number is smaller?"
+**権威（Authority / Authenticity）** は、ビジネスが有効と見なすものを定義する権利を持つ
+層はどれかを表す。権威は役割の割り当てであり、「どの数値が小さいか」ではなく
+「誰の決定か」という問いに答える。
 
-These axes are independent. The tightest constraint is not necessarily the most
-authoritative one. For example, an OpenAPI request constraint of `maxLength: 50` may be
-tighter than a domain constant of `maxLength: 100`, yet the domain constant is the
-authoritative business rule and the request constraint is a wire-contract decision owned by
-the API developer.
+これらの軸は独立している。最も厳しい制約が最も権威があるわけではない。例えば、OpenAPI
+リクエスト制約 `maxLength: 50` がドメイン定数 `maxLength: 100` より厳しくても、
+ドメイン定数が権威あるビジネスルールであり、リクエスト制約は API 開発者が所有するワイヤー
+契約上の判断に過ぎない。
 
-Without an explicit authority model, teams fall into several failure modes:
+明示的な権威モデルがなければ、チームは以下の失敗パターンに陥る：
 
-- Assuming the strictest layer is the business rule ("the API says 50, so the domain limit
-  must be 50").
-- Assuming all layers must agree ("the numbers differ — which one is right?").
-- Changing a wire-contract value and believing the domain rule changed as a consequence.
+- 最も厳しい層をビジネスルールと見なす（「API が 50 と言っているから、ドメイン上限も
+  50 のはず」）。
+- すべての層が一致しなければならないと仮定する（「数値が異なる——どちらが正しい？」）。
+- ワイヤー契約の値を変更することで、ドメインルールも変わったと誤解する。
 
-The domain layer's purpose — holding business logic in a form that is framework-free and
-independent of infrastructure — establishes it as the natural locus of business-validity
-authority. Domain experts, not API developers or DBAs, are the role that defines what the
-business considers valid.
+ドメイン層の目的——フレームワークに依存せず、インフラストラクチャから独立した形でビジネス
+ロジックを保持する——は、ビジネス有効性の権威が置かれる自然な場所として確立している。
+API 開発者や DBA ではなく、ドメイン専門家が「ビジネスが有効と見なすもの」を定義する
+役割を担う。
 
-## Decision
+## 決定
 
-The **domain layer** is designated as the sole authority for **business-validity
-decisions**. The domain constant (e.g., `internal/domain/<aggregate>/constant.go`) is the
-single source of truth for what the business considers valid.
+**ドメイン層**を**ビジネス有効性の判断**における唯一の権威として指定する。ドメイン定数
+（例：`internal/domain/<aggregate>/constant.go`）が、ビジネスが有効と見なすものについての
+唯一の真実の源泉（Single Source of Truth）である。
 
-Strictness and authority are treated as **independent axes**:
+厳密性と権威は**独立した軸**として扱う：
 
-| Layer | Role | Authority over |
+| 層 | 役割 | 権威を持つ対象 |
 | --- | --- | --- |
-| OpenAPI (request) | API developer / wire contract | What the HTTP API accepts from callers |
-| Domain | Domain expert / business rule | What the business considers valid — sole business-validity authority |
-| Database | DBA / data owner | Physical storage capacity |
-| OpenAPI (response) | API developer / wire contract | What the HTTP API promises to callers |
+| OpenAPI（リクエスト） | API 開発者 / ワイヤー契約 | HTTP API が呼び出し元から受け付ける内容 |
+| ドメイン | ドメイン専門家 / ビジネスルール | ビジネスが有効と見なす内容（ビジネス有効性の唯一の権威） |
+| データベース | DBA / データオーナー | 物理ストレージ容量 |
+| OpenAPI（レスポンス） | API 開発者 / ワイヤー契約 | HTTP API が呼び出し元に約束する内容 |
 
-A layer may be **stricter** than the domain without thereby becoming the business-validity
-authority. The strictest constraint governs what reaches the domain at runtime (the tightest
-gate wins at the wire), but it does not redefine the domain's validity boundary.
+ある層がドメインより**厳しい**制約を持っていても、それによってビジネス有効性の権威に
+なるわけではない。最も厳しい制約が実行時にドメインに到達するものを支配する（最も狭い
+ゲートがワイヤーで勝つ）が、ドメインの有効性境界を再定義することはない。
 
-Corollary: when layers disagree on a boundary value, the domain constant is correct by
-definition for business validity. Divergence in other layers reflects each layer's own
-independent concern, not an error in the domain.
+系：ある境界値について各層が食い違う場合、ビジネス有効性に関してはドメイン定数が定義上
+正しい。他の層における乖離は、それぞれの独立した関心事を反映したものであり、ドメインに
+おけるエラーではない。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Domain business rules remain stable and legible independently of HTTP API versioning,
-  consumer-compatibility decisions, or DBA storage choices.
-- The failure modes described in Context — assuming the strictest layer is authoritative, or
-  that all layers must agree — are structurally ruled out.
-- Each layer's owner (API developer, domain expert, DBA) can evolve their constraint for
-  their own reasons without incorrectly implying a change to business validity.
-- This authority model is the prerequisite for the direction invariant in ADR-0018
-  (境界値の所有権 / boundary value ownership): the invariant
-  `request ⊆ domain ⊆ response` presupposes that the domain is the authority and that
-  other layers must respect its boundaries, not the other way around.
+- ドメインのビジネスルールは、HTTP API のバージョニング、消費者互換性の制約、または
+  DBA のストレージ判断とは独立して安定し、読みやすい。
+- 「背景」に挙げた失敗パターン——最も厳しい層が権威を持つと仮定する、またはすべての層が
+  一致しなければならないと仮定する——が構造的に排除される。
+- 各層のオーナー（API 開発者、ドメイン専門家、DBA）は、ビジネス有効性への変更を誤って
+  示唆することなく、自身の理由で制約を進化させられる。
+- この権威モデルは、ADR-0018（境界値の所有権 / boundary value ownership）の方向不変条件
+  の前提となる。不変条件 `request ⊆ domain ⊆ response` は、ドメインが権威であり他の層が
+  その境界を尊重しなければならないことを前提としている（その逆ではない）。
 
-### Negative Consequences
+### ネガティブな影響
 
-- The same field can have up to four numbers (request, domain, DB, response) that are
-  explicitly permitted to differ. This overhead is unavoidable; it is the cost of treating
-  independent concerns as independent.
-- Reviewers who encounter a divergence (e.g., request `maxLength: 50` vs domain `100`)
-  must understand this model to avoid filing false-alarm review comments.
+- 同一フィールドに最大 4 つの数値（リクエスト、ドメイン、DB、レスポンス）が存在し、
+  明示的に異なることが許容される。独立した関心事を独立したものとして扱うコストであり、
+  このオーバーヘッドは避けられない。
+- 乖離に遭遇したレビュアー（例：リクエスト `maxLength: 50` vs ドメイン `100`）は、
+  誤ったレビューコメントを避けるためにこのモデルを理解する必要がある。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Treat the strictest constraint as authoritative
+### 最も厳しい制約を権威とする
 
-Simple: look at whichever number is tightest and treat it as the truth. Rejected: it
-conflates strictness (a value-set property) with authority (a role assignment). A defensive
-wire limit tighter than the domain does not redefine business validity; mistaking it for
-the authority causes domain rules to drift in response to wire-contract decisions.
+シンプルで、最も小さい数値を真実として参照するだけでよい。却下：厳密性（値集合の特性）
+と権威（役割の割り当て）を混同する。ドメインより厳しい防御的なワイヤー制限はビジネス
+有効性を再定義しない。権威と誤認することで、ドメインルールがワイヤー契約の判断に応じて
+漂流する原因となる。
 
-### Treat the database column limit as authoritative (DBA owns validity)
+### データベースカラムの制限を権威とする（DBA が有効性を所有する）
 
-The DB constraint is often the physical ceiling. Rejected: physical storage capacity
-answers "what the column can hold," not "what the business considers valid." A domain might
-legitimately store only values up to 100 while the column is 255 — the extra space is
-buffer, not domain permission. Database ownership is about data integrity and storage
-capacity, not business-validity semantics.
+DB 制約はしばしば物理的な上限になる。却下：物理ストレージ容量は「カラムが保持できるも
+の」に答えるのであり、「ビジネスが有効と見なすもの」に答えるのではない。ドメインがカラム
+が 255 でも最大 100 の値しか格納しない場合、余分なスペースは余裕であり、ドメインの許可
+ではない。データベースの所有権はデータ整合性とストレージに関するものであり、ビジネス
+有効性のセマンティクスに関するものではない。
 
-### Require all layers to agree (single number everywhere)
+### すべての層を一致させる（どこでも同一の数値）
 
-Eliminates ambiguity about which number is authoritative. Rejected: forces coupling across
-independently-evolving concerns. A wire contract may need to tighten for consumer
-compatibility without changing the domain rule; a DB column may widen for future capacity
-without changing business validity. Requiring agreement conflates three separate
-change-reasons into one.
+どの数値が権威かについての曖昧さを排除する。却下：独立して進化する関心事間の結合を強制
+する。消費者互換性のために API ワイヤー契約を厳しくする必要があっても、ドメインルールを
+変更すべきでない場合がある。将来の容量のために DB カラムを拡大してもビジネス有効性は
+変わらない場合がある。一致を要求することは、3 つの独立した変更理由を混同することになる。
 
-## Notes
+## 補足
 
-- Domain constants live at `internal/domain/<aggregate>/constant.go`.
-- The downstream constraint relationship (direction invariant: `request ⊆ domain ⊆
-  response`) is specified in ADR-0018 (境界値の所有権 / boundary value ownership). This
-  ADR establishes the authority model that makes that invariant coherent; ADR-0018
-  specifies the containment direction.
-- The `openapi/boundary-ownership.md` guide illustrates the authority separation with the
-  `firstName` `maxLength` worked example (request 50 / domain 100 / DB `VARCHAR(100)` /
-  response 100).
+- ドメイン定数は `internal/domain/<aggregate>/constant.go` に存在する。
+- 下流の制約関係（方向不変条件：`request ⊆ domain ⊆ response`）は ADR-0018
+  （境界値の所有権 / boundary value ownership）に規定されている。本 ADR はその不変条件を
+  整合させる権威モデルを確立する。ADR-0018 は包含方向を規定する。
+- `openapi/boundary-ownership.md` ガイドは、`firstName` の `maxLength` の具体例
+  （リクエスト 50 / ドメイン 100 / DB `VARCHAR(100)` / レスポンス 100）で権威の分離を
+  示している。

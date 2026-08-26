@@ -1,188 +1,194 @@
-# pgerror Package
+# pgerror パッケージ
 
-Overview: **An Infrastructure-layer component that normalizes PostgreSQL-specific errors into application-wide errors and determines database connectivity failures. It acts as a translation layer that hides database-specific error semantics from upper layers.**
+概要: **PostgreSQL 固有のエラーをアプリケーション共通エラーへ正規化し、接続エラーを判定するための Infrastructure レイヤーコンポーネント。DB 固有のエラー仕様を上位レイヤーから隠蔽するための変換レイヤーです。**
 
-## Architectural Position
+## アーキテクチャ上の位置
 
 ```mermaid
 flowchart TB
     Repo["Repository"] --> PgErr["pgerror"] --> Driver["PostgreSQL driver (pgx / pgconn)"]
 ```
 
-`pgerror` is **a layer that converts errors returned by the DB driver into application-wide errors**.
+pgerror は **DB driver が返すエラーをアプリケーション共通エラーへ変換するレイヤー**です。
 
-By introducing this layer:
+このレイヤーを挟むことで、
 
 - Usecase
 - Domain
 - Handler
 
-in upper layers **no longer need to be aware of PostgreSQL-specific error semantics**.
+などの上位レイヤーが **PostgreSQL 固有のエラー仕様を意識する必要がなくなります。**
 
-## Responsibility
+## 役割
 
-This package normalizes PostgreSQL-specific error handling into a common application format.
+このパッケージは PostgreSQL 固有のエラー処理をアプリケーション共通形式へ正規化します。
 
-Primary responsibilities:
+主な責務:
 
-- Convert PostgreSQL SQLSTATE into `apperror`
-- Determine database connectivity errors
-- Convert `pgx.ErrNoRows` into `NotFound`
-- Standardize error contracts between Infrastructure and Usecase layers
+- PostgreSQL SQLSTATE を `apperror` へ変換
+- DB 接続不可エラーの判定
+- `pgx.ErrNoRows` を `NotFound` へ変換
+- Infrastructure → Usecase 間のエラー仕様を統一
 
-This enables **separating DB implementation-dependent error handling from application code**.
+これにより **DB 実装依存のエラー判定をアプリケーションコードから分離**できます。
 
-## Error Normalization
+## エラー正規化
 
-`NormalizeError` converts PostgreSQL errors into application-wide errors.
+`NormalizeError` は PostgreSQL エラーをアプリケーション共通エラーへ変換します。
 
 ```go
 func NormalizeError(err error) error
 ```
 
-Processing flow:
+処理の流れ:
 
 ```mermaid
 flowchart TB
     DBErr["DB error"] --> Norm["NormalizeError"] --> App["AppError (apperror)"]
 ```
 
-This function is recommended to be used as the **single normalization point for errors returned from the Infrastructure layer to the Usecase layer**.
+この関数は **Infrastructure 層から Usecase 層へ返すエラーの唯一の正規化ポイント**として使用することが推奨されます。
 
-For write queries that return an affected-row count (sqlc `:execrows`), use `NormalizeExecResult` instead — it applies `NormalizeError` to the error and additionally treats **0 affected rows as `apperror.ErrNotFound`**, so `UPDATE` / `DELETE` against a non-existent row fails loudly rather than succeeding silently. Keep this 0-rows judgment here (next to `NormalizeError`), not inlined in each repository, so every write path shares it.
+影響行数を返す書き込み系クエリ（sqlc `:execrows`）には `NormalizeExecResult` を使います。これは `NormalizeError` をエラーに適用したうえで、**影響行数 0 を `apperror.ErrNotFound` として扱い**、存在しない行への `UPDATE` / `DELETE` がサイレント成功せずに NotFound で失敗するようにします。この「0 件判定」は各 repository に inline せず、`NormalizeError` と同じここに集約し、全書き込み経路で共有します。
 
 ```go
 func NormalizeExecResult(affected int64, err error) error
 ```
 
-For errors returned by a **domain constructor while reconstructing an entity from a stored row** (`rowToXxx` → `New(...)`), use `NormalizeReconstructError` — stored data violating a domain invariant is a data-integrity failure (server-side), so the error is deliberately **flattened to `apperror.ErrInternal`** (a load-bearing flatten: the validation sentinel and any `apperror.Meta` are removed from the chain) to prevent it surfacing to clients as `422` with field `details`. The reason text stays in the message, so it still reaches the logs.
+**保存済み行からのエンティティ再構築**（`rowToXxx` → `New(...)`）でドメインコンストラクタが返したエラーには `NormalizeReconstructError` を使います。保存済みデータがドメイン不変条件に違反するのはデータ不整合（サーバ側障害）であり、クライアントへ `422` + フィールド `details` として露出させないため、エラーを意図的に **`apperror.ErrInternal` へ平坦化**します（load-bearing flatten: 検証センチネルと `apperror.Meta` をチェーンから消す）。理由文はメッセージに残るためログには届きます。
 
 ```go
 func NormalizeReconstructError(err error) error
 ```
 
-## SQLSTATE Mapping
+## SQLSTATE マッピング
 
-The following PostgreSQL SQLSTATE values are converted into application errors.
+以下の PostgreSQL SQLSTATE がアプリケーションエラーへ変換されます。
 
-|SQLSTATE|Meaning|AppError|
+|SQLSTATE|意味|AppError|
 |--------|------|----------|
 |23505|unique violation|Conflict|
 |23503|foreign key violation|InvalidArgument|
 |23502|not null violation|InvalidArgument|
 |23514|check violation|InvalidArgument|
 |22001|string too long|InvalidArgument|
-|22021|character not in repertoire (e.g. a NUL byte in a `text` parameter)|InvalidArgument|
+|22021|符号化できない文字（`text` 引数の NUL バイト等）|InvalidArgument|
 |22P02|invalid text representation|InvalidArgument|
 |42501|insufficient privilege|PermissionDenied|
 |40001|serialization failure|Unavailable|
 |40P01|deadlock detected|Unavailable|
-|55P03|lock not available (`lock_timeout` expiry)|Unavailable|
+|55P03|lock not available（`lock_timeout` 失効）|Unavailable|
 |57014|query canceled|Unavailable|
 
-PostgreSQL errors that do not match these cases are converted into `Internal` errors.
+これらに該当しない PostgreSQL エラーは `Internal` エラーへ変換されます。
 
-## Special Handling
+## 特別処理
 
 ### pgx.ErrNoRows
 
-`pgx.ErrNoRows` is not a PostgreSQL SQLSTATE, so it is handled specially.
+`pgx.ErrNoRows` は PostgreSQL SQLSTATE ではないため特別扱いされます。
 
 ```mermaid
 flowchart TB
     NoRows["pgx.ErrNoRows"] --> NotFound["NotFound"]
 ```
 
-This allows the Repository layer to handle `NotFound` errors simply by:
+これにより Repository 層は
 
 ```go
 return NormalizeError(err)
 ```
 
-## Connection Failure Detection
+のみで `NotFound` エラーを扱えます。
 
-`IsUnavailable` determines database connectivity failures.
+## 接続不可エラー判定
+
+`IsUnavailable` はデータベース接続不可エラーを判定します。
 
 ```go
 func IsUnavailable(err error) bool
 ```
 
-The following errors are treated as connectivity failures.
+以下のエラーが接続不可として扱われます。
 
 - context.DeadlineExceeded
-- net.Error (timeout, connection refused, DNS failure, etc.)
-- PostgreSQL SQLSTATE 08XXX (connection exception)
+- net.Error（タイムアウト・接続拒否・DNS 失敗など）
+- PostgreSQL SQLSTATE 08XXX（接続例外）
 
-Note: context.Canceled (client cancellation / disconnect) is NOT a connectivity failure. It is classified as a client error (`apperror.ErrCanceled`, HTTP 499 Client Closed Request).
+なお context.Canceled（クライアントのキャンセル/切断）は接続不可ではなく、クライアント起因エラー（`apperror.ErrCanceled`、HTTP 499 Client Closed Request）として分類されます。
 
-This determination can be used for recovery processing such as:
+この判定は
 
-- retry
-- circuit breaker
-- failover
+- リトライ
+- サーキットブレーカー
+- フェイルオーバー
 
-## Retryable / Lock Predicates
+などの復旧処理に利用できます。
 
-In addition to normalization, `pgerror` exposes predicates used by the driver's retry / metrics paths. They match on the **raw** `pgconn.PgError` SQLSTATE (not the normalized sentinel), so unrelated `Unavailable` errors (e.g. connection loss) are not swept into retry.
+## リトライ / ロック判定述語
+
+`pgerror` は正規化に加えて、driver のリトライ / メトリクス経路で使う判定述語を提供します。これらは正規化後の sentinel ではなく **生の** `pgconn.PgError` の SQLSTATE で判定するため、無関係な `Unavailable` エラー（接続断など）をリトライ対象に巻き込みません。
 
 ```go
 func IsRetryableTxError(err error) bool // 40001 serialization_failure / 40P01 deadlock_detected
-func IsLockNotAvailable(err error) bool // 55P03 lock_not_available (lock_timeout expiry)
+func IsLockNotAvailable(err error) bool // 55P03 lock_not_available（lock_timeout 失効）
 ```
 
-`IsRetryableTxError` is what `driver.NewTransactionManager` uses to decide whether to retry the whole transaction. `55P03` is normalized to `Unavailable` (see the mapping table) but is deliberately **excluded** from it: an immediate retry does not resolve a lock still held by another transaction.
+`IsRetryableTxError` は `driver.NewTransactionManager` がトランザクション全体を再試行するか判断する際に利用します。`55P03` は `Unavailable` へ正規化されます（マッピング表を参照）が、この述語からは意図的に**除外**しています: 他トランザクションが保持し続けているロックは即時リトライでは解消しないためです。
 
-`IsLockNotAvailable` remains a separate predicate because a caller may need `55P03` to mean something narrower than "temporarily unavailable". `system_cqrs/idempotency` checks it **before** `NormalizeError` so a contended claim surfaces as its own `ErrLockTimeout`; every other caller gets `Unavailable` from the mapping table without writing a lock check of its own. Prefer the mapping — a per-call-site check is unreliable here, since a lock wait is not confined to queries that spell out `FOR UPDATE` (an `UPDATE` / `DELETE` against a row another transaction holds waits too).
+`IsLockNotAvailable` を独立した述語として残しているのは、呼び出し側が `55P03` に「一時的に利用不可」より狭い意味を与えたい場合があるためです。`system_cqrs/idempotency` は `NormalizeError` の**前に**この述語を判定し、claim の競合を専用の `ErrLockTimeout` として露出させます。それ以外の呼び出し側は、自前のロック判定を書かずともマッピング表により `Unavailable` を得ます。原則はマッピング側での対処です — ロック待ちは `FOR UPDATE` と書いたクエリに限らず発生する（他トランザクションが保持する行への `UPDATE` / `DELETE` も待つ）ため、呼び出し箇所ごとの判定では漏れが避けられません。
 
-## Error Wrapping
+## エラーラッピング
 
-`NormalizeError` combines the `apperror` sentinel with the original DB error via `xerrors.Join`, preserving the original error in the chain.
+`NormalizeError` は `apperror` の sentinel と元の DB エラーを `xerrors.Join` で結合し、元のエラーを chain に保持します。
 
-This allows `xerrors.Is` to match both:
+これにより `xerrors.Is` は
 
-- application error classification (e.g. `apperror.ErrConflict`)
-- the original DB error (e.g. the underlying `pgconn.PgError` / `pgx.ErrNoRows`)
+- アプリケーションエラー種別（例: `apperror.ErrConflict`）
+- 元の DB エラー（例: 下層の `pgconn.PgError` / `pgx.ErrNoRows`）
 
-(`NormalizeExecResult`'s 0-rows case is the exception: it uses `xerrors.Wrap(apperror.ErrNotFound, ...)` since there is no underlying DB error to join.)
+の両方に一致します。
 
-## Necessity
+（`NormalizeExecResult` の 0 件ケースは例外で、結合すべき下層の DB エラーが無いため `xerrors.Wrap(apperror.ErrNotFound, ...)` を使います。）
 
-### Production
+## 必要度
 
-Required
+### 本番運用
 
-Reason:
+必須
 
-- Convert DB constraint violations into correct HTTP status codes
-- Detect DB connection failures
-- Hide raw errors for security purposes
+理由:
 
-This makes it an essential layer for applications.
+- DB 制約違反を正しい HTTP ステータスへ変換
+- DB 接続断の検知
+- セキュリティ上の raw error 隠蔽
 
-### Development / Testing
+を行うため、アプリケーションとして必須のレイヤーです。
 
-Required
+### 開発 / テスト
 
-Reason:
+必須
 
-- Hide DB error semantics from tests
-- Stabilize error handling in CI
-- Improve readability of sqlc / repository tests
+理由:
 
-## Notes
+- DB エラー仕様をテストから隠蔽
+- CI でのエラーハンドリング安定化
+- sqlc / repository テストの可読性向上
 
-### Use NormalizeError at a single point
+## 注意点
 
-`NormalizeError` is recommended to be applied **only once at the Infrastructure → Usecase boundary**.
+### NormalizeError を一箇所で使用する
 
-Applying it multiple times may break the error structure.
+`NormalizeError` は **Infrastructure → Usecase の境界で一度だけ適用する**ことが推奨されます。
 
-### PostgreSQL-specific behavior
+複数箇所で変換するとエラー構造が崩れる可能性があります。
 
-SQLSTATE `08XXX` represents PostgreSQL-specific connection errors.
+### PostgreSQL 固有仕様
 
-If migrating to another DB (MySQL / TiDB, etc.), the implementation of `pgerror` must be replaced.
+SQLSTATE `08XXX` は PostgreSQL 固有の接続エラーです。
 
-### Do not perform DB-specific checks in upper layers
+他 DB (MySQL / TiDB など) に移行する場合は`pgerror`の実装を差し替える必要があります。
 
-Do not write DB-dependent logic such as `SQLSTATE`, `pgconn`, or `pgx` in Usecase / Domain layers.
+### 上位レイヤーで DB 判定をしない
+
+Usecase / Domain 層で`SQLSTATE` / `pgconn` / `pgx`などの DB 依存ロジックを書かないようにしてください。

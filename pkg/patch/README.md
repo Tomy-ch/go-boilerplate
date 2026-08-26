@@ -1,24 +1,24 @@
 # patch
 
-Three-state values for partial-update (PATCH) input.
+部分更新（PATCH）入力の 3 状態を表す値。
 
-## Role
+## 役割
 
-A partial update needs to distinguish three cases per field: the field was not sent (keep the current value), it was sent as `null` (clear the value), and it was sent with a value (replace it). A plain `*T` collapses the first two into `nil`, so a request that clears a field becomes indistinguishable from one that omits it.
+部分更新では、フィールドごとに 3 つの状態を区別する必要があります。送られなかった（現在値を据え置く）、`null` として送られた（値をクリアする）、値付きで送られた（その値へ置き換える）の 3 つです。単なる `*T` では前の 2 つがどちらも `nil` に潰れてしまい、クリア要求と未送信を区別できません。
 
-`Field[T]` carries that distinction across the boundary between outer-layer DTOs and domain values, and `Resolve` applies it to a current value so callers do not re-implement the three-way branch per field.
+`Field[T]` はこの区別を外側の層の DTO とドメイン値の境界を越えて運び、`Resolve` が現在値に対してそれを適用します。これにより、呼び出し側がフィールドごとに 3 分岐を書き直さずに済みます。
 
-## Public API
+## 公開 API
 
-- `Unspecified[T]() Field[T]` — the field was not sent.
-- `Null[T]() Field[T]` — the field was sent as `null`.
-- `Value[T](v T) Field[T]` — the field was sent with a value.
-- `(Field[T]) Resolve(current *T) *T` — the value to persist, given the current one.
+- `Unspecified[T]() Field[T]` — フィールドが送られなかった状態。
+- `Null[T]() Field[T]` — フィールドが `null` として送られた状態。
+- `Value[T](v T) Field[T]` — フィールドが値付きで送られた状態。
+- `(Field[T]) Resolve(current *T) *T` — 現在値を与えて、永続化すべき値を返す。
 
-## Notes
+## 注記
 
-The zero value of `Field[T]` is unspecified, so a struct of `Field` values defaults to "change nothing".
+`Field[T]` のゼロ値は未指定のため、`Field` を並べた構造体の既定は「何も変更しない」になります。
 
-This package models only the shape of the input. Deciding which fields a given API accepts as clearable, and validating the resolved values, belong to the layers that own those rules.
+本パッケージが扱うのは入力の形だけです。どのフィールドをクリア可能とするか、解決後の値をどう検証するかは、その規則を所有する層の責務です。
 
-Requires Go 1.18+ (generics).
+Go 1.18 以降（ジェネリクス）が必要です。

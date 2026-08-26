@@ -1,17 +1,17 @@
 # cookie
 
-Middleware to enforce secure Cookie policies (Secure / HttpOnly / SameSite / Path / Domain / Max-Age).
+Set-Cookie ヘッダのセキュリティ属性（Secure / HttpOnly / SameSite / Path / Domain / Max-Age）を強制するミドルウェアです。
 
-## Role
+## 役割
 
-Cookie security attributes are easy for individual handlers to forget or set inconsistently. By rewriting outgoing `Set-Cookie` headers in a single middleware, this package guarantees a uniform cookie security policy across every response, so handlers can set cookies without restating the hardening flags each time and the policy stays defined in one place.
+Cookie のセキュリティ属性は各ハンドラが付け忘れたり不揃いに設定したりしがちです。本パッケージは送出される `Set-Cookie` ヘッダを単一のミドルウェアで書き換えることで、すべてのレスポンスに一貫した Cookie セキュリティポリシーを保証し、ハンドラ側は堅牢化フラグを毎回書き直すことなく Cookie を設定でき、ポリシーを一箇所に集約できます。
 
-## The `ResponseWriter` wrapper must not own its own header map
+## `ResponseWriter` ラッパーは独自のヘッダマップを持ってはならない
 
-Rewriting `Set-Cookie` requires wrapping the `ResponseWriter`, and the middleware installs that wrapper for the rest of the request (it is deliberately never restored, so error paths are rewritten too). The wrapper therefore becomes the header map every later participant sees — including the error handler, which reads `X-Request-Id` back off the response to fill the `requestId` of the JSON error body.
+`Set-Cookie` の書き換えには `ResponseWriter` のラップが必要で、ミドルウェアはそのラッパーをリクエストの残りの区間に据え置きます（エラー経路も書き換え対象にするため、意図的に復元しません）。したがってラッパーは、以降のすべての参加者が見るヘッダマップそのものになります。JSON エラーボディの `requestId` を埋めるためにレスポンスから `X-Request-Id` を読み戻すエラーハンドラも、その参加者の一つです。
 
-So `Header()` **delegates to the wrapped writer** instead of returning a private map. A private map only propagates in the write direction (flushed on `WriteHeader`); values written by middleware that ran *before* the wrapper was installed become unreadable, and the wire header and the response body silently disagree. Any future wrapper added to this stack owes the same guarantee: buffer nothing that a reader can ask for.
+そのため `Header()` は独自マップを返さず、**ラップ対象のライタへ委譲します**。独自マップは書き込み方向にしか伝播せず（`WriteHeader` 時に flush される）、ラッパー設置**前**に動いたミドルウェアが書いた値は読み出せなくなり、ワイヤ上のヘッダとレスポンスボディが黙って食い違います。今後このスタックに追加するラッパーも同じ保証を負います。読み手が問い合わせ得るものをバッファしてはいけません。
 
-## `SECURE_COOKIE_SAME_SITE` clamping (safe default, not silent)
+## `SECURE_COOKIE_SAME_SITE` の clamp（安全な既定値であり、silent ではない）
 
-`normalizeSameSite` accepts only `Lax` / `Strict` / `None` (case-insensitive); **any other value — including an empty string — is clamped to "do not override"**, leaving the framework/default `SameSite` in place rather than failing startup. This is a deliberate resilience choice, so a typo in `SECURE_COOKIE_SAME_SITE` weakens the override silently at the value level. It is documented here and enumerated in the setup review ([`docs/get-started/setup-repository.md`](../../../../docs/get-started/setup-repository.md)) so the behavior stays reviewable; set the variable to one of the three accepted values to force a specific policy.
+`normalizeSameSite` は `Lax` / `Strict` / `None`（大文字小文字を区別しない）のみを受け付けます。**それ以外の値 — 空文字列を含む — は「上書きしない」へ clamp** され、起動失敗にはせず、フレームワーク/既定の `SameSite` をそのまま残します。これは意図的な回復性の選択であり、`SECURE_COOKIE_SAME_SITE` のタイプミスは値レベルで上書きを silent に弱めます。挙動をレビュー可能に保つため、ここに記し、セットアップレビュー（[`docs/get-started/setup-repository.md`](../../../../docs/get-started/setup-repository.md)）にも列挙します。特定のポリシーを強制したい場合は、この変数を上記 3 つの受理値のいずれかに設定してください。

@@ -1,15 +1,15 @@
 # webapi
 
-`internal/infrastructure/webapi` is the **parent subsystem for external Web API gateways** — each leaf implements a usecase `boundary.Gateway` interface on top of the `httpclient` resilient substrate.
+`internal/infrastructure/webapi` は、**外部 Web API gateway の親サブシステム**です。各 leaf は `httpclient` の resilient な substrate 上で usecase の `boundary.Gateway` インターフェースを実装します。
 
-## Architectural Position
+## アーキテクチャ上の位置づけ
 
 ```mermaid
 flowchart TB
-    subgraph "Usecase Layer (boundary)"
+    subgraph "Usecase 層（boundary）"
         IF["&lt;service&gt;.Gateway interface"]
     end
-    subgraph "Infrastructure Layer"
+    subgraph "Infrastructure 層"
         Impl["webapi/&lt;service&gt; gateway"]
         Sub["httpclient.Client substrate"]
     end
@@ -18,51 +18,37 @@ flowchart TB
     Impl --> Sub
 ```
 
-Each leaf under `webapi/` implements a semantic gateway interface defined in `internal/usecase/boundary/<service>` and delegates transport to the `httpclient` substrate. Usecase / Domain depend only on the boundary, never on HTTP details. Leaf implementations do not carry their own README (repo convention); this subsystem README is the single entry point.
+`webapi/` 配下の各 leaf は `internal/usecase/boundary/<service>` で定義された意味的 gateway インターフェースを実装し、transport は `httpclient` substrate へ委譲します。Usecase / Domain は HTTP の詳細ではなく境界のみに依存します。leaf 実装は独自の README を持ちません（リポジトリの規約）。このサブシステム README が唯一の入り口です。
 
-## Design Policy
+## 設計方針
 
-- One leaf package per external service, each implementing the usecase-defined `boundary.Gateway` and returning boundary output DTOs (not raw HTTP / JSON shapes)
-- Each leaf wraps the `httpclient` substrate and registers a `DownstreamProfile` (a logical `Downstream` key drives the profile / breaker / metrics / budget)
-- External-service profiles disable trace propagation (`PropagateTrace = false`) and reject private/loopback access (`AllowPrivateNetwork = false`) to prevent internal correlation-ID leakage and SSRF to internal hosts
-- Errors are returned as `apperror` sentinels already mapped by the substrate; JSON decode / domain-shape validation failures are wrapped as `apperror.ErrUnavailable`
-- The endpoint base URL is resolved at construction and injected via DI (a `NewEndpoint` per leaf); each leaf opens a span via `observability.LayerTracer` (`tf.Infra()`)
+- 外部サービスごとに 1 つの leaf パッケージを置き、各 leaf は usecase が定義した `boundary.Gateway` を実装し、境界の出力 DTO（生の HTTP / JSON 形ではない）を返す。
+- 各 leaf は `httpclient` substrate をラップし、`DownstreamProfile` を登録する（論理 `Downstream` キーが profile / breaker / metrics / budget を駆動する）。
+- 外部サービス向け profile は trace 伝搬を無効化し（`PropagateTrace = false`）、private/loopback 宛て接続を拒否する（`AllowPrivateNetwork = false`）。内部相関 ID の外部漏洩と内部ホストへの SSRF を防ぐ。
+- エラーは substrate が写像済みの `apperror` sentinel として返す。JSON デコード / ドメイン形の検証失敗は `apperror.ErrUnavailable` でラップする。
+- エンドポイントのベース URL は構築時に解決して DI で注入する（各 leaf の `NewEndpoint`）。各 leaf は `observability.LayerTracer`（`tf.Infra()`）で span を開始する。
 
-> **Departure from Evans.** Structurally this is an Anticorruption Layer: a port stated in our own
-> vocabulary, translation at the boundary, nothing of the vendor reaching inward. The stated motive is
-> not Evans's, though. Everything above argues from dependency inversion, substitutability, and
-> transport hiding — Evans argues from semantics, from keeping the upstream *model* out. The practical
-> difference is what the layer reliably protects. Types and vendor vocabulary: yes, by construction.
-> Concepts: not decided here. Nothing above says which side wins when an external service's notion of
-> a thing genuinely disagrees with ours. Until it does, resolve such a conflict toward this model's
-> vocabulary and record the choice where the leaf translates.
+> **Evans からの逸脱。** 構造としてはこれは Anticorruption Layer である。自層の語彙で述べた port、
+> 境界での変換、ベンダーのものが内側へ届かないこと。ただし掲げている動機は Evans のものではない。
+> 上記は一貫して依存性逆転・置換可能性・transport の隠蔽から論じているが、Evans は意味論から、
+> 上流の*モデル*を入れないことから論じる。実務上の違いは、この層が確実に守るものが何かに出る。
+> 技術型とベンダー語彙は構造上守られる。概念は、ここでは決めていない。外部サービスのある概念が
+> 我々のものと本当に食い違ったとき、どちらが勝つかを上記のどこも述べていない。述べられるまでは、
+> その衝突はこのモデルの語彙へ寄せて解決し、その判断を leaf の変換箇所に記録すること。
 
 ## Test Strategy
 
-Gateways here are built on the `httpclient` substrate, not on a database, so the infrastructure layer's
-real-DB strategy does not apply. Everything closes in-process behind a generated `httpclient` mock.
-Leaves carry no README of their own, so these viewpoints govern every leaf under `webapi/`.
+ここの gateway は DB ではなく `httpclient` substrate の上に構築されるため、infrastructure 層の実 DB 戦略は適用されません。すべて `httpclient` の生成モックの背後で in-process に閉じます。leaf は自前の README を持たない規約であるため、以下の観点が `webapi/` 配下の全 leaf を統治します。
 
-- **The boundary DTO is the assertion target, not the wire shape.** A leaf exists to stop raw JSON at
-  this layer, so a test asserts the returned boundary output — including the parsed numeric / value types
-  — rather than echoing back the response body it just scripted.
-- **A malformed downstream response is a first-class case.** Undecodable JSON, a well-formed body whose
-  shape the domain rejects, and an empty result set each get their own case, because these are the paths
-  a downstream can take without any transport error to signal them.
-- **The substrate's error mapping is not re-derived.** Non-2xx and transport failures arrive as
-  `apperror` sentinels; assertions go through `errors.Is` against those, never a status code, since the
-  status is the substrate's concern and the sentinel is what the usecase is given.
-- **A cache in front of a gateway is tested on the injected clock**, never on wall time: hit, miss,
-  expiry at the TTL boundary, and concurrent access to a single key. A test that sleeps to let an entry
-  expire is flaky by construction.
-- **The endpoint a leaf resolves is its own subject**, however thin that resolution currently is. The
-  sample leaves return a compile-time constant, so their test pins only which base URL they hand the
-  substrate; a leaf that instead parses a configured URL is expected to reject a bad one at construction,
-  so a misconfigured deployment fails at startup rather than on the first outbound call.
+- **assert の対象はワイヤ形ではなく境界 DTO である。** leaf は生の JSON をこの層で止めるために存在します。したがってテストは、直前に自分で組み立てた応答ボディを写し返すのではなく、返された境界の出力（パース済みの数値型 / 値オブジェクトを含む）を assert します。
+- **downstream の不正な応答は一級のケースである。** デコード不能な JSON、形は妥当だがドメインが拒否するボディ、そして結果 0 件は、それぞれ独立したケースを持ちます。これらは transport エラーという signal を伴わずに downstream が取り得る経路だからです。
+- **substrate のエラー写像を再導出しない。** 非 2xx と transport 失敗は `apperror` sentinel として到達します。assert はステータスコードではなくその sentinel に対する `errors.Is` で行います。ステータスは substrate の関心事であり、usecase に渡されるのは sentinel だからです。
+- **gateway の手前に置くキャッシュは注入 clock で検証する。** 実時間では検証しません。ヒット・ミス・TTL 境界での失効・単一キーへの並行アクセスです。エントリの失効を sleep で待つテストは構造的に flaky です。
+- **leaf が解決するエンドポイントそれ自体が subject である。** 現時点でその解決がどれだけ薄くてもです。サンプルの leaf はコンパイル時定数を返すため、そのテストが固定するのは「substrate へどのベース URL を渡すか」だけです。設定由来の URL をパースする leaf を作る場合は、拒否すべきものを構築時に拒否することが期待されます。設定を誤ったデプロイは、最初の外向き呼び出し時ではなく起動時に失敗します。
 
-## DI Registration
+## DI 登録
 
-Registered by the `webapi` module in `internal/di/module/webapi.go`. Each leaf provides its constructor / endpoint and contributes its `DownstreamProfile` to the `httpclient_profiles` group.
+`internal/di/module/webapi.go` の `webapi` モジュールに登録します。各 leaf がコンストラクタ / エンドポイントを provide し、`DownstreamProfile` を `httpclient_profiles` グループへ寄与します。
 
 ```go
 fx.Module("webapi",

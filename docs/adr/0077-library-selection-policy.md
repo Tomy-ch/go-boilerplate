@@ -5,57 +5,56 @@ deciders: [maintainers]
 tags: [dependencies, policy]
 ---
 
-# ADR-0077: Single-responsibility library selection policy
+# ADR-0077: 単一責任のライブラリ選定ポリシー
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-To keep the dependency surface auditable and replaceable (a direct consequence of the
-lock-in-avoidance principle, [ADR-0001](0001-avoid-lock-in.md)), the project needs a stated
-rule for *when* a third-party library may be adopted — otherwise dependencies accrete by
-convenience and the surface becomes hard to reason about or swap.
+依存関係のサーフェスを監査可能かつ交換可能な状態に保つため（ロックイン回避原則
+[ADR-0001](0001-avoid-lock-in.md) の直接的な帰結として）、プロジェクトはサードパーティ
+ライブラリをいつ採用するかについて明確なルールを必要としている。ルールがなければ
+依存関係は利便性から次々と追加され、サーフェスが推論・交換困難になる。
 
-## Decision
+## 決定
 
-Adopt a library only when it satisfies **one responsibility = one concern, ideally bound to
-a single upstream ecosystem**. Each direct dependency must map to a single, nameable,
-replaceable responsibility.
+**1 つの責任 = 1 つの関心事、理想的には単一の上流エコシステムに結びついている**場合にのみ
+ライブラリを採用する。各直接依存関係は単一の名付けられた交換可能な責任にマッピングされなければならない。
 
-Libraries that stand between **two independently-versioned upstreams** (a framework/library
-*and* OpenTelemetry) are **bridge / instrumentation** libraries; they deviate from the
-single-responsibility criterion and are treated as explicit, individually-justified
-exceptions (see [ADR-0078](0078-bridge-instrumentation-exceptions.md)).
+**独立してバージョン管理される 2 つの上流**（フレームワーク / ライブラリ × OpenTelemetry）の間に
+立つライブラリは**ブリッジ / 計装**ライブラリであり、単一責任基準から外れるため、
+明示的かつ個別に正当化された例外として扱う
+（[ADR-0078](0078-bridge-instrumentation-exceptions.md) 参照）。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- The dependency surface stays auditable — each library has one replaceable job.
-- Replacing any single concern has a bounded blast radius.
-- A clear yes/no test for proposed dependencies, reducing incidental accretion.
+- 依存関係サーフェスが監査可能に保たれる — 各ライブラリには交換可能な 1 つの仕事がある。
+- 単一の関心事を置き換えても影響範囲が限定される。
+- 提案された依存関係に対する明確な採否判断基準があり、偶発的な積み重なりを防ぐ。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Some convenient multi-purpose libraries are declined in favour of narrower ones.
-- Genuine glue code (bridges) needs an explicit exception path rather than a blanket rule.
+- 便利な多目的ライブラリの一部は、より狭いライブラリを選ぶために断られることがある。
+- 本物のグルーコード（ブリッジ）は一括ルールではなく明示的な例外経路が必要になる。
 
-## Alternatives Considered
+## 検討した代替案
 
-### No stated policy (adopt per convenience)
+### 明確なポリシーなし（利便性に応じて採用）
 
-Rejected: without a criterion, dependencies accumulate incidentally and the surface loses
-auditability and replaceability.
+却下: 基準がなければ依存関係が偶発的に蓄積し、サーフェスの監査可能性と交換可能性が
+失われる。
 
-### Ban all multi-upstream libraries outright
+### 複数上流のライブラリを一律禁止
 
-Rejected: instrumentation/bridge glue is genuinely useful and hand-rolling it is worse;
-these are admitted as bounded, documented exceptions instead.
+却下: 計装 / ブリッジのグルーは真に有用であり、手で実装する方が悪い結果となる。
+これらは有界かつ文書化された例外として認める。
 
-## Notes
+## 補足
 
-- Parent principle: [ADR-0001](0001-avoid-lock-in.md). Exceptions: [ADR-0078](0078-bridge-instrumentation-exceptions.md).
-- The *list* of dependencies is an inventory, not a decision — it lives in `docs/reference/dependencies.md`; this ADR records the *policy* only.
-- Migrated from the former `docs/decisions.md`.
+- 親原則: [ADR-0001](0001-avoid-lock-in.md)。例外: [ADR-0078](0078-bridge-instrumentation-exceptions.md)。
+- 依存関係の*リスト*は決定ではなくインベントリ — `docs/reference/dependencies.md` にある。この ADR は*ポリシー*のみを記録する。
+- 移行元: かつての `docs/decisions.md`。

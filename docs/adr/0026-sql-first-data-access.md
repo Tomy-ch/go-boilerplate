@@ -5,55 +5,45 @@ deciders: [maintainers]
 tags: [persistence, data]
 ---
 
-# ADR-0026: SQL-first data access
+# ADR-0026: SQLファーストのデータアクセス
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Data access needs predictable performance characteristics and explicit, auditable query
-behavior. Hiding SQL behind an ORM obscures what actually runs against the database, which
-conflicts with this repository's goals of type safety, structural clarity, and long-term
-operability.
+データアクセスには予測可能なパフォーマンス特性と明示的で監査可能なクエリ動作が必要である。ORMの背後にSQLを隠蔽することは実際にデータベースに対して何が実行されるかを不明瞭にし、型安全性・構造的明確性・長期的な運用可能性というこのリポジトリの目標と相反する。
 
-## Decision
+## 決定
 
-Treat **SQL as an explicit contract**: queries are written directly in SQL rather than
-generated implicitly by an ORM. SQL is the first-class artifact of the data-access layer;
-Go code is derived from it (see [ADR-0027](0027-sqlc-type-safe-sql.md)).
+**SQLを明示的な契約として扱う**：クエリはORMによって暗黙的に生成されるのではなく、SQLとして直接記述する。SQLはデータアクセスレイヤーのファーストクラスの成果物であり、Goコードはそこから導出される（[ADR-0027](0027-sqlc-type-safe-sql.md)参照）。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Full control over every query.
-- Clear, predictable performance characteristics.
-- Explicit, reviewable data-access patterns; writing queries as SQL files allows database
-  administrators and data owners to review query behavior in the language they already know.
+- すべてのクエリに対する完全な制御。
+- 明確で予測可能なパフォーマンス特性。
+- 明示的でレビュー可能なデータアクセスパターン。クエリをSQLファイルとして記述することで、DB管理者やデータ管理者が専門とするSQLという共通言語を介して事前レビューを受けられる。
 
-### Negative Consequences
+### ネガティブな影響
 
-- More hand-written code than an ORM's convenience methods; each access path is written as SQL.
-- No automatic cross-database portability that an ORM abstraction might provide.
+- ORMの便利なメソッドより多くの手書きコードが必要になる。各アクセスパスをSQLとして記述する。
+- ORMの抽象化が提供しうるデータベース横断の自動移植性がない。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Full ORM
+### フルORM
 
-Rejected: convenient, but obscures query behavior and performance, working against the
-explicit-data-access goal. Library updates also introduce breaking changes that require
-continuous tracking and can produce unexpected runtime errors in production; query builders
-are comparatively static and stable in this regard.
+却下：便利ではあるが、クエリ動作とパフォーマンスを不明瞭にし、明示的なデータアクセスという目標に反する。また、ライブラリアップデートでの破壊的変更やバグ修正への継続追跡が必要となり、本番で想定外の使い方により実行時エラーを発生させうる（クエリビルダー型は比較的静的に定義できるため、この点では安定しやすい）。
 
-### Query builder
+### クエリビルダー
 
-Rejected: reduces SQL visibility and adds an abstraction layer that increases complexity
-without a matching benefit here.
+却下：SQLの可視性を低下させ、見合うメリットなく複雑さを増す抽象レイヤーを追加する。
 
-## Notes
+## 補足
 
-- The concrete type-safe generation mechanism is [ADR-0027](0027-sqlc-type-safe-sql.md) (sqlc).
-- Enforced in part by the Repository / QueryService rules in [`docs/rules.md`](../rules.md#repository--queryservice-rules).
-- Migrated from the former `docs/decisions.md`.
+- 具体的な型安全コード生成の仕組みは[ADR-0027](0027-sqlc-type-safe-sql.md)（sqlc）。
+- Repository / QueryServiceルールによって部分的に強制される（[`docs/rules.md`](../rules.md#repository--queryservice-ルール)）。
+- かつての `docs/decisions.md` から移行。

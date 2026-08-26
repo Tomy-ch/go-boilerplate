@@ -1,111 +1,111 @@
-# OpenAPI Guide (`openapi/`)
+# OpenAPI ガイド（`openapi/`）
 
-This directory contains the **OpenAPI definitions** used in this project.
+このディレクトリには、本プロジェクトで使用する **OpenAPI 定義**が格納されています。
 
-- Modular structure using Redocly
-- Go code generation using oapi-codegen
-- Boundary design aligned with Onion Architecture
+- Redocly による分割構成
+- oapi-codegen による Go コード生成
+- オニオンアーキテクチャに準拠した境界設計
 
-## Directory Structure
+## ディレクトリ構成
 
-The split is fixed by how the spec is assembled, not by convenience:
+この分割は利便ではなく、spec の組み立て方によって決まっている。
 
-- `openapi.yaml` — the entry point; every other file is reached from here by `$ref`
-- `openapi.gen.yaml` — the bundled result, generated and read by code generation (do not edit)
-- `paths/` — endpoint definitions, laid out to mirror the URL structure
-- `components/` — the reusable halves of a definition: `schemas/`, `parameters/`, `requests/`, `responses/`
+- `openapi.yaml` — エントリポイント。他のファイルはすべてここから `$ref` で辿られる
+- `openapi.gen.yaml` — バンドル結果。生成物でありコード生成が読む（編集しない）
+- `paths/` — エンドポイント定義。URL の構造を写すように配置する
+- `components/` — 定義の再利用される側: `schemas/` / `parameters/` / `requests/` / `responses/`
 
-Reference documents sit beside them as ordinary Markdown; each states its own subject.
+参考資料はそれらと並ぶ通常の Markdown として置く。主題は各ファイルが自分で述べる。
 
-## File Responsibilities
+## ファイルの役割
 
-|File|Role|
+|ファイル|役割|
 |---|---|
-|`openapi.yaml`|Entry point — references split files via `$ref`|
-|`openapi.gen.yaml`|Bundled single file by Redocly — **input for oapi-codegen** (do not edit)|
+|`openapi.yaml`|エントリーポイント — `$ref` で分割ファイルを参照|
+|`openapi.gen.yaml`|Redocly でバンドルされた単一ファイル — **oapi-codegen の入力**（編集禁止）|
 
-## Code Generation
+## コード生成
 
 ```bash
-make gen-api    # Bundle OpenAPI + generate Go code
+make gen-api    # OpenAPI バンドル + Go コード生成
 ```
 
-Generated components:
+生成内容：
 
-- Handler interfaces (`gen/server.gen.go`)
-- Request/Response types (`gen/type.gen.go`)
-- Validation spec (`gen/validate.gen.go`)
+- ハンドラインターフェース（`gen/server.gen.go`）
+- リクエスト / レスポンス型（`gen/type.gen.go`）
+- バリデーション仕様（`gen/validate.gen.go`）
 
-## Position in Architecture
+## アーキテクチャ上の位置
 
 ```mermaid
 flowchart TB
-    OpenAPI["OpenAPI (contract)"] --> Controller["Controller (oapi-codegen)"] --> Usecase --> Domain
+    OpenAPI["OpenAPI（契約）"] --> Controller["Controller（oapi-codegen）"] --> Usecase --> Domain
 ```
 
-OpenAPI defines the **contract at the Controller boundary**. It specifies input/output formats and HTTP semantics, while Controller converts between OpenAPI types and application DTOs.
+OpenAPI は **Controller 境界の契約**を定義します。入出力形式と HTTP セマンティクスを規定し、Controller が OpenAPI 型とアプリケーション DTO の間を変換します。
 
-## Design Principles
+## 設計方針
 
-### 1. Modular Structure (Redocly)
+### 1. 分割構成（Redocly）
 
-- Endpoints → `paths/`
-- Data structures → `components/schemas/`
-- Parameters → `components/parameters/`
+- エンドポイント → `paths/`
+- データ構造 → `components/schemas/`
+- パラメータ → `components/parameters/`
 
-### 2. `$ref` Uses Relative Paths
+### 2. `$ref` は相対パスで統一
 
 ```yaml
-# Recommended
+# 推奨
 $ref: '../components/schemas/UserResponse.yaml'
 
-# Forbidden
+# 禁止
 $ref: '#/components/schemas/UserResponse'
 ```
 
-Reason: compatibility with Redocly bundling.
+理由: Redocly バンドルとの互換性。
 
-### 3. One File = One Responsibility
+### 3. 1ファイル = 1責務
 
-- schema → one structure per file
-- parameter → one definition per file
-- path → one endpoint per file
+- schema → 1ファイル1構造体
+- parameter → 1ファイル1定義
+- path → 1エンドポイント単位
 
-### 4. Separation from Implementation
+### 4. 実装との分離
 
-|Layer|Knows OpenAPI?|
+|レイヤー|OpenAPI を知るか|
 |---|---|
-|Controller|Yes — converts OpenAPI types ↔ DTO|
-|Usecase|No — receives/returns DTO only|
-|Domain|No — uses Entities and Value Objects|
+|Controller|はい — OpenAPI 型 ↔ DTO を変換|
+|Usecase|いいえ — DTO のみ受け渡し|
+|Domain|いいえ — Entity と Value Object を使用|
 
-## API Design Policy
+## API 設計ポリシー
 
-### REST Design (Google API Design Guide)
+### REST 設計（Google API Design Guide 準拠）
 
-- Resources are plural: `/users`
-- CRUD via HTTP methods: `GET`, `POST`, `PATCH`, `DELETE`
-- Non-CRUD actions: `POST /users/{id}:deactivate`
+- リソースは複数形: `/users`
+- CRUD は HTTP メソッドで表現: `GET`, `POST`, `PATCH`, `DELETE`
+- 非 CRUD アクション: `POST /users/{id}:deactivate`
 
-### Naming / Casing
+### 命名 / casing
 
-A deliberate, per-location convention (enforced by `redocly lint`):
+ロケーション別の意図的な規約（`redocly lint` で強制）：
 
-|Location|Casing|Example|
+|ロケーション|casing|例|
 |---|---|---|
-|Request / response **body fields**|`camelCase`|`firstName`, `postalCode`, `nextCursor`, `hasNext`, `requestId`|
-|**Query / path parameters**|`camelCase`|`perPage`, `userId`|
-|`operationId`|`PascalCase`, verb-first|`GetUsers`, `PostUsers`|
+|リクエスト／レスポンスの**ボディフィールド**|`camelCase`|`firstName`, `postalCode`, `nextCursor`, `hasNext`, `requestId`|
+|**クエリ／パスパラメータ**|`camelCase`|`perPage`, `userId`|
+|`operationId`|`PascalCase`・動詞始まり|`GetUsers`, `PostUsers`|
 
-HTTP headers are out of scope for this table — they follow the conventional `Train-Case` (e.g. `Idempotency-Key`).
+HTTP ヘッダーはこの表の対象外です — 慣例に従い `Train-Case`（例 `Idempotency-Key`）を用います。
 
-Body fields and parameters use the same `camelCase` casing on purpose: aligning parameters with body fields keeps the wire contract consistent with JS / TS frontends and generated SDKs. Keep each location internally consistent.
+ボディフィールドとパラメータは意図的に同じ `camelCase` に統一しています（パラメータをボディフィールドと揃えることで、JS/TS フロントエンドや生成 SDK とワイヤー契約を一致させる）。各ロケーション内では統一します。
 
-### Partial Update (PATCH) — Three-State Fields
+### 部分更新（PATCH）— 3 状態フィールド
 
-A PATCH request body must distinguish three states per field: **not sent** (keep the current value), **sent as `null`** (clear the value), and **sent with a value** (replace it). The default oapi-codegen mapping generates `*T` for an optional nullable field, which collapses "not sent" and "null" into the same `nil` — a clear request becomes indistinguishable from an omit.
+PATCH のリクエストボディでは、フィールドごとに **未送信**（現在値を据え置く）・**null 送信**（値をクリアする）・**値送信**（置き換える）の 3 状態を区別する必要があります。oapi-codegen の既定マッピングは optional かつ nullable なフィールドを `*T` に生成するため、「未送信」と「null」が同じ `nil` に潰れ、クリア要求と省略が区別できなくなります。
 
-For a field that supports explicit-null clearing, override the generated type with the `x-go-type` extension and [`oapi-codegen/nullable`](https://github.com/oapi-codegen/nullable), whose `Nullable[T]` preserves all three states through standard `encoding/json` decoding:
+null 明示によるクリアをサポートするフィールドには、`x-go-type` 拡張と [`oapi-codegen/nullable`](https://github.com/oapi-codegen/nullable) で生成型を上書きします。`Nullable[T]` は標準の `encoding/json` デコードだけで 3 状態を保持します:
 
 ```yaml
 description:
@@ -118,75 +118,44 @@ description:
   x-go-type-skip-optional-pointer: true   # *Nullable[T] にしない（3 状態は型自身が表現する）
 ```
 
-Rules:
+ルール:
 
-- Apply this only to PATCH request fields where "clear" is a meaningful operation. Plain optional fields (where absent and null need no distinction) stay as the default `*T`.
-- `x-go-type-import` always points at the `nullable` package — even when `T` needs another import (e.g. `time.Time`); oapi-codegen resolves `time` on its own, and declaring it here duplicates the import in the generated file.
-- Per "Do not pass OpenAPI generated types to Usecase": convert `nullable.Nullable[T]` to the framework-agnostic three-state value (`pkg/patch.Field[T]`) at the controller boundary. Inner layers never see the generated type; the domain receives only resolved concrete values.
+- 適用するのは「クリア」が意味を持つ PATCH リクエストフィールドのみ。未送信と null の区別が不要な単なる optional フィールドは既定の `*T` のままにします。
+- `x-go-type-import` は常に `nullable` パッケージを指します。`T` が別の import を要する場合（例 `time.Time`）でも、`time` は oapi-codegen が自動解決するため、ここで宣言すると生成ファイルで import が重複します。
+- 「OpenAPI 生成型を Usecase に渡さない」原則に従い、`nullable.Nullable[T]` は controller 境界でフレームワーク非依存の 3 状態値（`pkg/patch.Field[T]`）へ変換します。内側の層は生成型を見ず、domain には解決済みの確定値のみを渡します。
 
-#### Collections as a three-state field
+### バージョニング
 
-`T` may be a slice. A collection that is replaced as a whole — rather than merged element by element —
-takes the same three states, with `null` meaning "remove every element":
+URL パスバージョニング: `/v1/<リソース>`
 
-```yaml
-items:
-  type: array
-  nullable: true
-  description: 送ると集合ごと置き換えます（差分更新ではありません）。null を指定すると全て取り除きます。
-  items:
-    $ref: './ItemInput.yaml'
-  x-go-type: nullable.Nullable[[]ItemInput]
-  x-go-type-import:
-    path: github.com/oapi-codegen/nullable
-  x-go-type-skip-optional-pointer: true
-```
+破壊的変更 → `/v1/` と並行して `/v2/` を新設
 
-The element type is referenced by its generated name, so the `$ref` target must land in the same
-generated package as the field that uses it.
+### セキュリティ
 
-Two things this shape is easy to get wrong:
+- 認証エンドポイントには JWT（BearerAuth）を使用
+- リソース所有権は Usecase / Middleware で `sub` クレームにより検証
+- UUID を公開識別子として使用 — セキュリティ評価は `secure-uuid.md` を参照
+- IDOR 対策必須
+- OpenAPI 経由のエンドポイントでは `security:` 宣言が**強制の source of truth**：`oapi` ミドルウェアの `AuthenticationFunc` は宣言のある操作だけ発火する。**例外：** `/metrics` は ops パスとして OpenAPI 検証パイプラインから skip されるため、宣言された `BasicAuth` はドキュメント上のみで、実際の認証はそのルートに付与した別の Echo `BasicAuth` ミドルウェアが担う。
 
-- **State the replacement semantics in `description`.** `[]` and `null` both end up removing
-  everything, so a caller cannot infer from the schema alone whether sending a shorter array deletes
-  the missing elements or leaves them. Say it.
-- **Do not act on an unspecified collection.** Resolving three states with `Resolve` alone cannot
-  separate "not sent" from "sent as null" — both yield no value. Branch on
-  `pkg/patch.Field.IsSpecified()` before touching the stored collection; otherwise every unrelated
-  PATCH rewrites rows the request never mentioned.
+## 禁止事項
 
-### Versioning
+- OpenAPI 定義にビジネスロジックを含めない
+- パス定義内でスキーマをインライン定義しない
+- ファイル間で構造を重複定義しない
+- DB カラム構造を API スキーマに露出しない
+- OpenAPI 生成型を Usecase に渡さない — DTO に変換する
 
-URL path versioning: `/v1/<resources>`
+## ガイド
 
-Breaking changes → create `/v2/` alongside `/v1/`
+- [parameter-guide.md](parameter-guide.md) — パラメータ定義のクイックリファレンス
+- [secure-uuid.md](secure-uuid.md) — UUID 公開のセキュリティ評価
+- [boundary-ownership.md](boundary-ownership.md) — `min` / `max` / 長さ制約のオーナーシップ：OpenAPI の制約は **ワイヤー契約**であり domain の業務ルールではない（両者は正当に食い違える）
 
-### Security
+## サブディレクトリのドキュメント
 
-- JWT (BearerAuth) for authenticated endpoints
-- Resource ownership validated via `sub` claim in Usecase/Middleware
-- UUID as public identifiers — see `secure-uuid.md` for security evaluation
-- IDOR protection required
-- For OpenAPI-routed endpoints the `security:` declaration **is** the enforcement source of truth: the `oapi` middleware's `AuthenticationFunc` only fires for operations that declare it. **Exception:** `/metrics` is an ops path skipped from the OpenAPI validation pipeline, so its declared `BasicAuth` is documentation-only — the actual auth is a separate Echo `BasicAuth` middleware on that route.
-
-## Prohibited Practices
-
-- Do not include business logic in OpenAPI definitions
-- Do not write schemas inline in path definitions
-- Do not duplicate structures across files
-- Do not expose DB column structures in API schemas
-- Do not pass OpenAPI generated types to Usecase — convert to DTO
-
-## Guides
-
-- [parameter-guide.md](parameter-guide.md) — Parameter definition quick reference
-- [secure-uuid.md](secure-uuid.md) — UUID exposure security evaluation
-- [boundary-ownership.md](boundary-ownership.md) — Ownership of `min` / `max` / length constraints: an OpenAPI constraint is the **wire contract**, not the domain's business rule (the two may legitimately differ)
-
-## Subdirectory Documentation
-
-- [paths/README.md](paths/README.md) — Endpoint definitions and versioning
-- [components/schemas/README.md](components/schemas/README.md) — Schema design policy
-- [components/parameters/README.md](components/parameters/README.md) — Parameter conventions
-- [components/requests/README.md](components/requests/README.md) — Request body semantics (content / required)
-- [components/responses/README.md](components/responses/README.md) — Response semantics (status / description)
+- [paths/README.md](paths/README.md) — エンドポイント定義とバージョニング
+- [components/schemas/README.md](components/schemas/README.md) — スキーマ設計ポリシー
+- [components/parameters/README.md](components/parameters/README.md) — パラメータ規約
+- [components/requests/README.md](components/requests/README.md) — リクエストボディのセマンティクス（content / required）
+- [components/responses/README.md](components/responses/README.md) — レスポンスのセマンティクス（status / description）

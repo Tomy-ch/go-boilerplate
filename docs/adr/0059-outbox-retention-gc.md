@@ -5,29 +5,21 @@ deciders: [maintainers]
 tags: [outbox, async, gc]
 ---
 
-# ADR-0059: 7-day retention GC of published rows (batches of 10,000)
+# ADR-0059: 発行済み行の 7 日間保持 GC（10,000 件単位のバッチ）
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Once an outbox row is marked `published`, it serves no further delivery purpose. Without
-a cleanup policy the `outbox` table grows without bound, increasing storage costs and
-gradually slowing the `ClaimPending` query as the table size grows — even with a partial
-index on `status = 'pending'`, table bloat degrades vacuuming and page cache efficiency.
+アウトボックス行が `published` とマークされた後は、それ以上のデリバリー目的を果たさない。クリーンアップポリシーがなければ `outbox` テーブルが際限なく成長し、ストレージコストが増加し、テーブルサイズの増大に伴って `ClaimPending` クエリが徐々に遅くなる — `status = 'pending'` の部分インデックスがあっても、テーブルの肥大化は VACUUM の効率やページキャッシュ効率を低下させる。
 
-## Decision
+## 決定
 
-`GCUsecase.SweepPublished` deletes `published` rows whose `published_at` timestamp is
-older than `DefaultRetention = 7 days`, processing at most `DefaultGCBatchSize = 10 000`
-rows per invocation. The underlying SQL selects candidates ordered by `published_at` and
-deletes by `id IN (subquery)`, bounding the lock duration per statement. GC is invoked
-via `cmd job outbox-gc` — a one-shot command scheduled by an external cron (see
-[ADR-0061](0061-relay-resident-gc-oneshot.md)).
+`GCUsecase.SweepPublished` は `published_at` タイムスタンプが `DefaultRetention = 7 日` より古い `published` 行を削除し、1 回の呼び出しで最大 `DefaultGCBatchSize = 10,000` 行を処理する。基底の SQL は `published_at` 順に候補を選択し `id IN (サブクエリ)` で削除することで、ステートメントごとのロック時間を制限する。GC は `cmd job outbox-gc` — 外部 cron でスケジュールされるワンショットコマンド — 経由で呼び出される（[ADR-0061](0061-relay-resident-gc-oneshot.md) を参照）。
 
-The SQL is:
+SQL は以下の通り:
 
 ```sql
 DELETE FROM outbox
@@ -41,44 +33,36 @@ WHERE id IN (
 );
 ```
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- The `outbox` table is bounded; it does not grow monotonically.
-- Batch-delete limits per-statement lock duration and I/O pressure, reducing impact on
-  concurrent relay activity.
-- The 7-day retention window preserves recent delivery history for debugging without
-  accumulating data indefinitely.
+- `outbox` テーブルが有界になる。単調に増加しない。
+- バッチ削除によりステートメントごとのロック時間と I/O プレッシャーが制限され、並行するリレー処理への影響が軽減される。
+- 7 日間の保持期間により、データを際限なく蓄積することなく、デバッグのために直近のデリバリー履歴が保持される。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Published rows occupy space for up to 7 days after delivery; this is acceptable but
-  means the table always contains some historical rows.
-- Batch size and retention period are fixed defaults; changing them requires a code change.
-- An external scheduler (cron or Kubernetes CronJob) must be provisioned and monitored;
-  a misconfigured or absent cron leaves published rows accumulating.
+- 発行済み行はデリバリー後最大 7 日間スペースを占有する。これは許容できるが、テーブルに常に一部の過去の行が含まれることを意味する。
+- バッチサイズと保持期間は固定のデフォルト値。変更するにはコード変更が必要。
+- 外部スケジューラー（cron または Kubernetes CronJob）をプロビジョニングして監視しなければならない。設定ミスや不在の cron では発行済み行が蓄積される。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Delete inside MarkPublished
+### MarkPublished 内での削除
 
-Immediate cleanup, but adds latency to every mark call and runs inside the relay
-transaction, lengthening row-lock hold time.
+即時クリーンアップだが、すべてのマーク呼び出しにレイテンシを追加し、リレートランザクション内で実行されるため行ロック保持時間が長くなる。
 
-### Continuous background sweeper embedded in the relay
+### リレーに組み込んだ継続的バックグラウンドスイーパー
 
-Avoids an external scheduler dependency, but couples two unrelated concerns in one
-process and adds concurrency to an already stateful loop.
+外部スケジューラーへの依存を排除できるが、関係のない 2 つの懸念を 1 つのプロセスに結合し、すでにステートフルなループに並行性を追加する。
 
-### No GC (retain forever)
+### GC なし（永続保持）
 
-Operationally simple but unsustainable at any non-trivial event volume.
+運用上はシンプルだが、非自明なイベント量では持続不能。
 
-## Notes
+## 補足
 
-- `DefaultRetention` (7 days) and `DefaultGCBatchSize` (10 000) described in
-  `docs/design/outbox.md` (Glossary entry "GC (SweepPublished)").
-- SQL source: `database/dml/system_cqrs/outbox/delete_published_outbox.sql`.
-- Related ADRs: [ADR-0058](0058-outbox-dead-after-max-attempts.md),
-  [ADR-0061](0061-relay-resident-gc-oneshot.md).
+- `DefaultRetention`（7 日）と `DefaultGCBatchSize`（10,000）は `docs/design/outbox.md`（用語集エントリ「GC (SweepPublished)」）に記述されている。
+- SQL ソース: `database/dml/system_cqrs/outbox/delete_published_outbox.sql`。
+- 関連 ADR: [ADR-0058](0058-outbox-dead-after-max-attempts.md)、[ADR-0061](0061-relay-resident-gc-oneshot.md)。

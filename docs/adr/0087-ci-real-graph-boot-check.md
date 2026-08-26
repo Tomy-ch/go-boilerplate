@@ -5,98 +5,89 @@ deciders: [maintainers]
 tags: [ci, testing]
 ---
 
-# ADR-0087: CI boots the real fx graph against real Postgres (startup verification)
+# ADR-0087: CI は実際の Postgres に対して実際の fx グラフを起動する（スタートアップ検証）
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Unit tests and integration tests validate individual components in isolation or with mocks,
-but they do not prove that the full dependency injection graph assembles correctly against
-real infrastructure. A missing `fx.Provide`, a misconfigured database connection, or a
-wiring error in `internal/di` can pass all unit tests yet fail at runtime with an opaque
-panic or fatal log.
+ユニットテストと統合テストは個々のコンポーネントを独立して、またはモックを使って検証するが、
+完全な依存性注入グラフが実際のインフラに対して正しく組み立てられることは証明しない。`fx.Provide` の欠落、
+誤設定されたデータベース接続、または `internal/di` のワイヤリングエラーは、すべてのユニットテストをパスしながら
+不明瞭なパニックや致命的なログとともにランタイムで失敗することがある。
 
-The project has three distinct entrypoints — HTTP server, background worker, and one-off
-job — each with its own DI graph. All three must be verified on every pull request that
-touches application code.
+プロジェクトには 3 つの独立したエントリポイントがある——HTTP サーバー、バックグラウンドワーカー、単発ジョブ——
+それぞれに独自の DI グラフを持つ。アプリケーションコードに触れるすべてのプルリクエストで 3 つすべてを
+検証しなければならない。
 
-Historically, DI wiring bugs are discovered late: after deployment to staging, or during
-manual testing. Catching them in CI on every PR requires a lightweight check that
-exercises the real startup path without needing a running broker or full seed data.
+歴史的に、DI ワイヤリングのバグはステージングへのデプロイ後または手動テスト中に遅れて発見される。
+PR ごとに CI でそれらを検出するには、実行中のブローカーや完全なシードデータを必要とせず、
+実際のスタートアップパスを実行する軽量なチェックが必要である。
 
-## Decision
+## 決定
 
-Introduce three dedicated CI workflow jobs that each boot the real fx graph against a
-real Postgres container and verify that the graph assembled and the entrypoint reached
-its dispatch logic:
+実際の Postgres コンテナに対して実際の fx グラフを起動し、グラフが組み立てられてエントリポイントが
+ディスパッチロジックに到達したことを検証する 3 つの専用 CI ワークフロージョブを導入する:
 
-**Server boot check** (`app-di-startup-check.yaml`):
-Build the server binary, start it in the background, then poll `GET /ready` up to 30
-times with 2-second intervals. A successful readiness response proves that fx completed
-dependency injection, the database connection was established, and the HTTP stack reached
-a serving state.
+**サーバー起動チェック**（`app-di-startup-check.yaml`）:
+サーバーバイナリをビルドし、バックグラウンドで起動してから、2 秒間隔で最大 30 回 `GET /ready` をポーリングする。
+成功したレディネスレスポンスは、fx が依存性注入を完了し、データベース接続が確立され、HTTP スタックが
+サービング状態に達したことを証明する。
 
-**Worker boot check** (`worker-boot-check.yaml`):
-Pass a deliberately non-existent worker name (`__ci_boot_check_no_such_worker__`) to
-`go run ./cmd/ worker`. Assert that the process exits non-zero AND that the output
-contains the string `"unknown worker"`. A missing `"unknown worker"` message with a
-non-zero exit means DI or database setup failed before the dispatch point — which would
-be a hard failure, not just an unknown worker.
+**ワーカー起動チェック**（`worker-boot-check.yaml`）:
+意図的に存在しないワーカー名（`__ci_boot_check_no_such_worker__`）を `go run ./cmd/ worker` に渡す。
+プロセスが非ゼロで終了し、かつ出力に `"unknown worker"` という文字列が含まれることをアサートする。
+非ゼロ終了で `"unknown worker"` メッセージがない場合は、ディスパッチポイント到達前に DI または
+データベースセットアップが失敗したことを意味する——これはハード失敗であり、単なる未知のワーカーではない。
 
-**Job boot check** (`job-boot-check.yaml`):
-Same pattern as the worker check but for the job entrypoint: pass
-`__ci_boot_check_no_such_job__`, expect a non-zero exit containing `"unknown job"`.
+**ジョブ起動チェック**（`job-boot-check.yaml`）:
+ワーカーチェックと同じパターンだがジョブエントリポイント用: `__ci_boot_check_no_such_job__` を渡し、
+`"unknown job"` を含む非ゼロ終了を期待する。
 
-All three jobs spin up a real Postgres 18 container via the `services:` block and run
-`make materialize-env` to embed the CI environment configuration before executing.
+3 つのジョブはすべて `services:` ブロック経由で実際の Postgres 18 コンテナを起動し、実行前に
+`make materialize-env` を実行して CI 環境設定を埋め込む。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- DI wiring bugs are caught at PR time on the actual graph, not discovered post-deploy.
-- The worker and job checks exercise the full startup path (DI construction, DB
-  connection) without requiring a running broker or seed data.
-- The server check uses the existing `/ready` health endpoint rather than introducing a
-  new test-only path.
-- Each entrypoint is covered independently; a wiring regression in one does not hide
-  behind another's success.
+- DI ワイヤリングのバグはデプロイ後ではなく、PR 時に実際のグラフで検出される。
+- ワーカーとジョブのチェックは、実行中のブローカーやシードデータを必要とせず、完全なスタートアップパス
+  （DI 構築、DB 接続）を実行する。
+- サーバーチェックは新しいテスト専用パスを導入せず、既存の `/ready` ヘルスエンドポイントを使用する。
+- 各エントリポイントが独立してカバーされる。一方のワイヤリングリグレッションが他方の成功の後ろに隠れない。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Each check spins up a real Postgres container, adding to CI runtime and resource usage.
-- The worker and job checks rely on a sentinel string in the error output. If the error
-  message changes, the check must be updated.
-- The server check's polling loop (30 retries × 2 s = 60 s max) means a genuine boot
-  failure takes up to one minute to be detected.
+- 各チェックが実際の Postgres コンテナを起動し、CI の実行時間とリソース使用を増加させる。
+- ワーカーとジョブのチェックはエラー出力内のセンチネル文字列に依存する。エラーメッセージが変更されると
+  チェックも更新しなければならない。
+- サーバーチェックのポーリングループ（30 回 × 2 秒 = 最大 60 秒）は、本物の起動失敗を検出するのに
+  最大 1 分かかることを意味する。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Mock the fx graph in tests
+### テストで fx グラフをモックする
 
-Possible, but a mocked DI graph does not exercise the real wiring in `internal/di`.
-It would miss missing providers and circular dependencies.
+可能だが、モックされた DI グラフは `internal/di` の実際のワイヤリングを実行しない。欠落したプロバイダーや
+循環依存を見逃すことになる。
 
-### Rely on staging deployment for boot verification
+### スタートアップ検証をステージングデプロイに依存する
 
-Feedback loop is too long (hours to days), and failures affect the staging environment
-rather than being contained to the PR.
+フィードバックループが長すぎる（数時間から数日）。失敗が PR に閉じ込められるのではなく
+ステージング環境に影響する。
 
-### Single combined entrypoint check
+### 単一の結合エントリポイントチェック
 
-A single job could sequentially boot all three entrypoints. Chosen against in favour of
-three independent jobs so that a failure in one does not mask the others and CI reports
-are clearly attributed.
+単一のジョブが 3 つのエントリポイントすべてを順番に起動することもできる。一方の失敗が他方を
+マスクしないように、また CI レポートが明確に帰属されるように、3 つの独立したジョブを選択した。
 
-## Notes
+## 補足
 
-- Sources: `.github/workflows/app-di-startup-check.yaml`,
-  `.github/workflows/worker-boot-check.yaml`,
-  `.github/workflows/job-boot-check.yaml`.
-- Related: [ADR-0040](0040-uber-fx-di.md) — the Uber fx DI container whose graph this
-  check exercises.
-- Related: [ADR-0050](0050-broker-agnostic-worker-scaffold.md) — the worker subsystem
-  whose entrypoint is verified.
+- ソース: `.github/workflows/app-di-startup-check.yaml`、
+  `.github/workflows/worker-boot-check.yaml`、
+  `.github/workflows/job-boot-check.yaml`。
+- 関連: [ADR-0040](0040-uber-fx-di.md) — このチェックが実行する Uber fx DI コンテナのグラフ。
+- 関連: [ADR-0050](0050-broker-agnostic-worker-scaffold.md) — エントリポイントが検証されるワーカーサブシステム。

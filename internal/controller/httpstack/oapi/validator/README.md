@@ -1,43 +1,43 @@
 # oapi/validator
 
-Loads the embedded OpenAPI specification and provides the parsed schema that `oapi.Middleware()` consumes for request validation.
+埋め込まれた OpenAPI 仕様を読み込み、`oapi.Middleware()` がリクエストバリデーションに利用するパース済みスキーマを提供します。
 
-## How It Works
+## 仕組み
 
 ```mermaid
 flowchart LR
-    Spec["openapi.gen.yaml"] -->|"oapi-codegen --generate=spec"| GenGo["gen/validate.gen.go (embedded)"]
+    Spec["openapi.gen.yaml"] -->|"oapi-codegen --generate=spec"| GenGo["gen/validate.gen.go (埋め込み)"]
     GenGo -->|"GetValidator()"| Schema["*openapi3.T"]
-    Schema -->|"oapi.Middleware()"| MW["Echo Middleware"]
+    Schema -->|"oapi.Middleware()"| MW["Echo ミドルウェア"]
 ```
 
-1. `oapi-codegen` generates `gen/validate.gen.go` containing a base64-encoded, gzipped OpenAPI spec
-2. `GetValidator()` calls `gen.GetSpec()` to decode the schema, then strips `servers` so route resolution stays host-agnostic (keeping them makes the router match on Host, so any listener other than the documented `localhost:8080` answers every request with 404)
-3. `oapi.Middleware()` (parent package) wraps the oapi-codegen request validator with this schema
+1. `oapi-codegen` が `gen/validate.gen.go` を生成（base64 エンコード + gzip 圧縮された OpenAPI 仕様を含む）
+2. `GetValidator()` が `gen.GetSpec()` を呼び出してスキーマをデコードし、経路解決を Host 非依存にするため `servers` を除去する（残すとルーターが Host マッチを行い、ドキュメント上の `localhost:8080` 以外で待ち受けた全リクエストが 404 になる）
+3. `oapi.Middleware()`（親パッケージ）がこのスキーマで oapi-codegen のリクエストバリデータをラップ
 
-## Validation Coverage
+## バリデーション対象
 
-The middleware validates:
+ミドルウェアは以下をバリデーションします：
 
-- **Path parameters** — type, format, required
-- **Query parameters** — type, format, enum, required
-- **Request body** — schema, required fields, content-type
-- **Content-Type header** — must match the OpenAPI spec
+- **パスパラメータ** — 型、フォーマット、必須
+- **クエリパラメータ** — 型、フォーマット、enum、必須
+- **リクエストボディ** — スキーマ、必須フィールド、Content-Type
+- **Content-Type ヘッダー** — OpenAPI 仕様と一致するか
 
-Validation errors are turned into an `echo.HTTPError` by the validation middleware and caught by the `errorhandler`.
+バリデーションエラーはバリデーションミドルウェアが `echo.HTTPError` へ変換し、`errorhandler` で捕捉されます。
 
-## Code Generation
+## コード生成
 
 ```bash
 make gen-api
 ```
 
-This regenerates `gen/validate.gen.go` from `openapi/openapi.gen.yaml`.
+`openapi/openapi.gen.yaml` から `gen/validate.gen.go` を再生成します。
 
-**Do not edit `gen/validate.gen.go` manually.**
+**`gen/validate.gen.go` を手動で編集しないでください。**
 
-## Notes
+## 注意点
 
-- The spec is embedded at compile time — no file I/O at runtime
-- Schema changes require regeneration via `make gen-api`
-- This is separate from the handler/type generation (`--generate=echo-server,types`) which lives in `controller/handler/*/gen/`
+- 仕様はコンパイル時に埋め込まれる — 実行時のファイル I/O なし
+- スキーマ変更時は `make gen-api` で再生成が必要
+- ハンドラ / 型の生成（`--generate=echo-server,types`）は `controller/handler/*/gen/` に配置される別の生成物

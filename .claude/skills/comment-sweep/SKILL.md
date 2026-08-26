@@ -6,105 +6,95 @@ description: >-
 
 # Comment Sweep
 
-Judge accumulated comments on one question the existing reviewers cannot ask: **does this content
-belong here?**
+蓄積したコメントを、既存のレビュアが問えない一点で判定する: **この内容はここに属するのか？**
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory
-(not loaded as a skill; for human reference only).
+## 使うとき
 
-## When to Use
+- あるパッケージのコメントが、どの行も間違っていないのに冗長・論文的に読める
+- doc コメントが設計論（却下した選択肢、脅威モデル、アーキ方針）に育っている
+- パッケージ / レイヤ / リポジトリ全体の定期的な衛生チェック
+- template として切り出す前（蓄積した注釈が後続の読解負荷になる）
 
-- Comments in a package read as bloated / essay-like even though nothing in them is wrong.
-- A doc comment has grown into a design argument (rejected alternatives, threat model, architecture policy).
-- Periodic hygiene sweep of a package, a layer, or the repo.
-- Before a template cut, where accumulated commentary becomes downstream reading burden.
+使わないとき:
 
-Do NOT use for:
+- README / `docs/**` の散文の品質 — `doc-reviewer`
+- README↔コードの構造ドリフト — `back-prop` / `sync-readme`
 
-- README / `docs/**` prose quality — `doc-reviewer`.
-- README↔code structural drift — `back-prop` / `sync-readme`.
+## なぜこのスキルが要るのか（判定の前に読むこと）
 
-## Why this skill exists (read this before judging anything)
+このリポジトリは既に How ナレーション・経緯・言い換えを禁止している。それでもコメントは増え続けた。構造的な理由が 2 つあり、これを理解することがこのスキルを機能させる:
 
-The repo already forbids How-narration, 経緯, and restatement. Comments kept growing anyway. Two
-structural reasons, and understanding them is what makes this skill work:
+1. **残す側の主張は、常に消す側の主張に勝つ。** 「この Why は非自明かつ検証可能」は具体的な主張であり、
+   `docs/rules.md` に明文の許可がある。「量はコストだ」は抽象的な主張である。具体は常に抽象に勝つので、
+   判断が割れるたびに残す方へ倒れ、在庫は増える一方になる。量を再度持ち出しても勝てない — 試みないこと。
+2. **レビューが diff スコープである。** 変更のレビューは既にあるものを再検査しない。入る経路はあるが
+   出る経路が無い。
 
-1. **The argument to keep always beats the argument to cut.** "This Why is non-obvious and
-   verifiable" is a concrete claim with explicit permission in `docs/rules.md`. "Volume is a cost"
-   is an abstract one. Concrete beats abstract every time, so every judgment call resolves toward
-   keeping, and the stock only grows. You will not win by re-arguing volume — do not try.
-2. **Review is diff-scoped.** A review of a change never re-examines what is already there. There is a
-   path in and no path out.
+したがってこのスキルは Why の良し悪しを蒸し返さない。**別の、同じだけ具体的な問い** — 「非自明だから」に
+実際に勝てる問い — を立てる:
 
-So this skill does not re-litigate whether a Why is good. It asks a **different, equally concrete
-question** — one that can actually beat "but it's non-obvious":
+> **その判断を覆す人は、どの文書の更新を義務づけられるか？**
 
-> **If someone reversed this decision, which document would they be obliged to update?**
+その文書に書き、コードからリンクし、コメントには**作用のある残滓**だけを残す: この宣言を編集する人が
+破ってはならない 1〜2 文である。正直な答えが「文書は無い — その制約はこの呼び出し箇所にしか存在しない」
+なら、コードが**まさに**管轄であり、コメントはそのまま残す。これは削除のスキルではなく移設のスキルである。
 
-Write it there, link to it from the code, and keep in the comment only the **operative residue**: the
-one or two sentences a person editing *this* declaration must not violate. When the honest answer is
-"no document — the constraint exists only at this call site", the code **is** the jurisdiction and
-the comment stays in full. This is a relocation skill, not a deletion skill.
+### 2 つ目の問い: 1 件ずつでは原理的に見えないもの
 
-### The second question: what one comment at a time cannot see
+管轄は 1 つのコメントに対して問うものであり、そこには上と同じ形の死角が残る。同じ Why が 3 箇所の
+呼び出し先に書かれているとき、**各コピーは単独では管轄テストを通る** — どれも非自明で、どれも自分が
+前提を述べている場所にあり、どれも個別には正当化できる。1 件ずつ判定すれば 3 件の 維持 である。重複は
+ファイルを総体として読んだときにしか現れないので、どれだけ丁寧に走らせても per-comment のパスでは
+見つからない。
 
-Jurisdiction is asked of a single comment, and that leaves a blind spot with the same shape as the one
-above. When the same Why is written at three call sites, **each copy passes the jurisdiction test
-independently** — each is non-obvious, each sits at the site whose premise it states, each is
-individually defensible. Judged one at a time they are three 維持. The redundancy is only visible when
-the file is read as a whole, so a per-comment pass cannot find it no matter how carefully it is run.
+そこで、どの監査もファイルのコメント在庫に対して 2 つ目の問いを立てる:
 
-So every audit asks a second question of the file's comment stock as a unit:
+> **その内容は、このファイルの他の場所に既に書かれていないか。書かれているなら、どの 1 箇所が所有者か。**
 
-> **Is this content already carried somewhere else in this file, and if so, which single site owns it?**
+これに答える形は 3 つあり、いずれも 1 件ずつでは到達できない:
 
-Three shapes answer to it, and none of them is reachable per comment:
+- **重複** — 1 つの Why が複数の宣言で言い直されている。概念を所有する 1 箇所が本体を持ち、残りは
+  ポインタまで縮める。
+- **分散** — 制約が宣言をまたいで分割され、どの 1 箇所もそれを述べていないため、読み手が断片を
+  組み立てる羽目になっている。直し方は 1 箇所を完全にすることであって、4 つ目の断片を足すことではない。
+- **総量過多** — 各コメントは個別には正しいのに、ファイルのコメント総量が、説明対象のコードより読むのに
+  高くつく。
 
-- **Scattered duplication** — one Why restated at several declarations. One site owns the concept; the
-  rest shrink to a pointer.
-- **Fragmentation** — a constraint split across declarations so that no single place states it, and a
-  reader has to assemble it. The fix is to make one site whole, not to add a fourth fragment.
-- **Aggregate over-explanation** — every comment is individually correct, yet the file's total
-  commentary costs more to read than the code it explains.
+これは diff スコープの罠の 1 階層下にある同じ罠である。孤立して問われるかぎり各コピーを残す主張が毎回
+勝ち、何も集約されない。集合に対して問え。
 
-This is the same trap as the diff-scope one, one level down: the argument to keep each copy wins every
-time it is asked in isolation, so nothing ever consolidates. Ask it of the set instead.
+## 権威 — 実行時に読む。何もハードコードしない
 
-## Authoritative sources — read at runtime, hardcode nothing
-
-| Question | Source of truth |
+| 問い | 真実の源 |
 | --- | --- |
-| What may a comment contain; the jurisdiction clause | **Comment Rules** in `docs/rules.md` |
-| Where does relocated content belong (decision / exclusion / rule / inventory) | the *What belongs here* table in `docs/adr/README.md` |
-| What a subsystem design reference is for | `docs/design/README.md` |
-| Package-level scope | the nearest ancestor `README.md` |
+| コメントに何を書いてよいか / 管轄条項 | `docs/rules.md` の **Comment Rules** |
+| 移設した内容の帰属先（decision / exclusion / rule / inventory） | `docs/adr/README.md` の *What belongs here* 表 |
+| サブシステム設計リファレンスの役割 | `docs/design/README.md` |
+| パッケージ単位のスコープ | 最も近い祖先の `README.md` |
 
-Read these at the start of every run and apply them verbatim. They may have changed; a remembered
-version is not good enough. If anything in this file disagrees with `docs/rules.md`, `docs/rules.md`
-wins.
+毎回の実行の冒頭で読み、そのまま適用する。変わっている可能性があり、記憶した版では不十分である。
+本ファイルが `docs/rules.md` と食い違う場合は `docs/rules.md` が勝つ。
 
-### Relocating is not dumping — each destination has an entry bar
+### 移設は投棄ではない — 各移設先には受け入れ基準がある
 
-A relocation only helps if the prose lands where that *kind* of knowledge is owned. A document that
-accepts everything answers nothing, and `docs/adr/` is the one most at risk of becoming the default
-bucket, because from inside a comment almost anything reads as "design rationale". Two misroutes to
-refuse outright:
+移設が役に立つのは、その**種類**の知識を所有する場所に着地したときだけである。何でも受け入れる文書は
+何も答えない文書であり、`docs/adr/` は既定の投棄先になる危険が最も高い — コメントの内側から見れば、
+ほとんど何でも「設計上の理由」に見えるからである。次の 2 つは明確に拒否する:
 
-- **A library's or an API's specific behavior** (this driver returns X on Y, this SDK reads that env
-  var) is not a choice among alternatives — it is a property of the thing being called, and it
-  changes when the dependency is upgraded. Its home is the comment at the call site. Verdict: 維持.
-- **Business / domain knowledge** (what a rule means, why a status transitions this way) belongs to
-  `docs/spec/**`, where the behavior is specified and kept current. Never route it to an ADR.
+- **ライブラリや API の固有の挙動**（このドライバは Y のとき X を返す、この SDK はあの環境変数を読む）は
+  選択肢間の決定ではなく、呼び出す対象の性質であり、依存を更新すれば変わる。管轄は呼び出し箇所の
+  コメントである。判定: 維持。
+- **業務知識・ドメイン知識**（そのルールが何を意味するか、なぜそのステータス遷移になるか）の帰属先は
+  `docs/spec/**` である。ADR へ回してはならない。
 
-`docs/adr/` takes only a **choice among alternatives with lasting consequences** or a deliberate
-exclusion. When a candidate fits no destination, that is evidence the code was the right place all
-along — return 維持 rather than forcing a home. Proposing a bad destination is worse than proposing
-nothing, because a wrong move is much harder to undo than a comment left alone.
+`docs/adr/` が受け取るのは**持続的な帰結を伴う選択肢間の決定**、または意図的な除外だけである。どの移設先
+にも当てはまらないなら、それはコードが最初から正しい置き場所だったという証拠であり、維持を返す。悪い
+移設先を提案することは、何も提案しないことより悪い — 誤った移動は、放置されたコメントよりはるかに
+取り消しにくいからである。
 
-## Step 0 — Confirm scope and apply mode
+## Step 0 — スコープと適用モードの確認
 
-One `AskUserQuestion` call carrying **two** questions. Skip whichever question a flag or a caller
-already answers it; skip the call entirely when both are fixed.
+`AskUserQuestion` 1 回に **2 問**を載せる。フラグで既に確定している問いは出さない。両方が確定しているなら呼び出し自体を行わない。
 
 - 「comment-sweep の対象スコープを選んでください」
   - 「指定パス配下（パッケージ / ディレクトリを続けて指定）」
@@ -116,40 +106,38 @@ already answers it; skip the call entirely when both are fixed.
   - 「そのまま書き換える（1 件ずつの確認をしない。文書書き込みを伴う移設は対象外）」
   - 「報告のみ（書き込まない）」
 
-Stock scope is the point of this skill. Diff scope exists so a large refactor can be swept without
-naming every package by hand — but even then the subject is the **whole comment stock of the files the
-change touched**, never the changed lines alone. A file judged in pieces cannot answer the second
-question, and the duplication this skill exists to find lives between the pieces.
+在庫スコープこそがこのスキルの主眼である。diff スコープは、大規模 refactor をパッケージ名の列挙なしに
+掃引するために在る — ただしその場合も対象は**変更が触れたファイルのコメント在庫の全量**であって、変更行
+だけではない。断片で判定されたファイルは 2 つ目の問いに答えられず、このスキルが探している重複は断片の
+隙間に住んでいる。
 
-### Apply modes
+### 適用モード
 
-| Mode | Selected by | What Step 4 does |
+| モード | 選び方 | Step 4 の挙動 |
 | --- | --- | --- |
-| 確認して適用 | the default option, or `mode: confirm` | per-item approval, then write — every verdict is reachable |
-| 自動適用 | `--apply`, or the second option | writes 短縮 / 削除 / high-confidence 集約 with no per-item question; a 移設 needing a document write is reported, not applied |
-| 報告のみ | `--report-only`, or `mode: report` | Step 3 renders the findings and the run ends; nothing is written |
+| 確認して適用 | 既定の選択肢、または `mode: confirm` | 1 件ずつ承認してから書き込む。全判定が到達可能 |
+| 自動適用 | `--apply`、または 2 番目の選択肢 | 短縮 / 削除 / 確度 high の集約を 1 件ずつの確認なしで書き込む。文書書き込みを伴う移設は報告するだけで適用しない |
+| 報告のみ | `--report-only`、または `mode: report` | Step 3 で検出結果を提示して終了。何も書かない |
 
-### Flags
+### フラグ
 
-- `--apply` — 自動適用. Fixes the mode, so the mode question is not asked.
-- `--report-only` — 報告のみ. Detect and report; never write.
-- Both at once is a contradiction, not a precedence puzzle: say so and fall back to the mode
-  question rather than silently picking one.
+- `--apply` — 自動適用。モードが確定するのでモードの問いは出さない。
+- `--report-only` — 報告のみ。検出して報告するだけで、書き込まない。
+- 両方の同時指定は優先順位の問題ではなく矛盾である。その旨を伝え、黙って一方を選ばずモードの問いへ戻す。
 
-## Step 1 — Resolve targets
+## Step 1 — 対象の解決
 
-Exclude generated files and tests; they are not this skill's business:
+生成物とテストは対象外（このスキルの管轄ではない）:
 
 ```sh
 find <scope> -name '*.go' \
   ! -name '*.gen.go' ! -name '*.sql.go' ! -name '*_mock.go' ! -name '*_test.go'
 ```
 
-Non-Go sources (shell, Dockerfile, Makefile, SQL, YAML, `.mjs`) are in scope for the same content
-standard — `docs/rules.md` says so explicitly, and they are higher-risk because `revive` does not
-see them. Include them when they fall under the chosen scope.
+非 Go のソース（shell, Dockerfile, Makefile, SQL, YAML, `.mjs`）も同じ内容基準の対象である —
+`docs/rules.md` が明示しており、`revive` が見ないぶん高リスクである。選択スコープに含まれるなら含める。
 
-Rank by comment volume so the sweep starts where the payoff is, and tell the user the ranking:
+コメント量で並べ、費用対効果の高いところから始める。並び順はユーザーにも示す:
 
 ```sh
 for f in <files>; do
@@ -157,37 +145,36 @@ for f in <files>; do
 done | sort -rn | head -30
 ```
 
-Group the resolved files by package directory — that is the fan-out unit, because jurisdiction is a
-per-package judgment (a package's own README is one of the candidate destinations).
+解決したファイルをパッケージディレクトリ単位でまとめる。これが fan-out の単位である — 管轄判定は
+パッケージ単位の判断であり（そのパッケージ自身の README が移設先候補の一つになる）。
 
-## Step 2 — Fan out read-only auditors in parallel
+## Step 2 — read-only 監査エージェントを並列 fan-out
 
-For each package group, spawn one auditor via the **Agent tool** (`subagent_type: general-purpose`),
-all in a **single message with multiple tool calls** so they run concurrently. Give each:
+パッケージのまとまりごとに **Agent tool**（`subagent_type: general-purpose`）で 1 体ずつ spawn する。
+**1 メッセージ内に複数ツールコール**を並べて同時実行させる。各エージェントへ渡すもの:
 
-- the package directory and its resolved file list
-- the instruction to read `references/audit-prompt.md` in this skill's directory and follow it verbatim
-- the repo-root-relative paths of the authoritative sources above
+- パッケージディレクトリと、解決済みファイル一覧
+- 本スキルディレクトリの `references/audit-prompt.md` を読み、そのまま従うという指示
+- 上記の権威文書のリポジトリルート相対パス
 
-`references/audit-prompt.md` is the auditors' single source of instructions — do not paraphrase it
-into the spawn prompt, or the two will drift and the auditors will disagree with each other.
+`references/audit-prompt.md` が監査エージェントの唯一の指示源である — spawn プロンプトへ言い換えて
+書き写さないこと。両者がドリフトし、エージェント同士の判定が食い違う。
 
-Each auditor runs **both passes** described in *Why this skill exists* — the per-comment jurisdiction
-question and the per-file stock question — over the same files it has already read. The second pass
-costs reading no extra material; what it adds is a question, and the findings it produces (verdict
-**集約**) name a *set* of comments rather than one.
+各監査エージェントは、*なぜこのスキルが要るのか* で述べた**両方のパス**を、既に読んだ同じファイルに対して
+走らせる — コメント単位の管轄の問いと、ファイル単位の在庫の問いである。2 つ目のパスに追加の読み込みは
+発生しない。増えるのは問いであり、そこから出る finding（判定 **集約**）は 1 件のコメントではなくコメントの
+*集合*を名指す。
 
-Auditors are **strictly read-only**. They surface verdicts with evidence and a proposed landing
-form; they never call `AskUserQuestion` and never write. Approval and every write happen in this
-integrator, single-threaded, so parallel auditors cannot contend.
+監査エージェントは**厳密に read-only** である。根拠と着地形を伴う判定を提示するだけで、
+`AskUserQuestion` を呼ばず、何も書かない。承認と全ての書き込みはこの integrator が単一スレッドで行う
+ため、並列エージェント間で競合しない。
 
-If subagents cannot be spawned in the current environment, follow `references/audit-prompt.md`
-inline per package instead; the rest of the flow is unchanged.
+現在の環境でサブエージェントを spawn できない場合は、`references/audit-prompt.md` の手順をパッケージ
+ごとにインラインで実行する。以降のフローは変わらない。
 
-## Step 3 — Aggregate (read-only checkpoint)
+## Step 3 — 集約（read-only のチェックポイント）
 
-Show the full surface before any decision, so the user sees the shape of the sweep rather than being
-walked through unbounded one-by-one questions:
+判断の前に全体像を見せる。際限のない一問一答を歩かされるのではなく、掃除の規模が見えるようにする:
 
 ```text
 comment-sweep 検出結果（scope: <X>, 対象 <n> ファイル / <m> パッケージ）
@@ -200,142 +187,128 @@ comment-sweep 検出結果（scope: <X>, 対象 <n> ファイル / <m> パッケ
 総 finding: <sum>（うち要判断 <k>）。<確認して適用のときだけ「これから 1 件ずつ確認します。」を続ける>
 ```
 
-Count a 集約 finding **once**, not once per member comment — it is one decision. Report the member
-count alongside it so the size of the edit is visible before anyone approves it.
+集約は**メンバー数ではなく 1 件**として数える — 1 つの判断だからである。承認の前に編集の規模が見えるよう、
+メンバー数はその横に併記する。
 
-`維持` findings are reported as a count only — they need no decision, and listing them in full buries
-the ones that do. If nothing needs action, say so plainly and stop.
+`維持` は件数だけを報告する — 判断が不要であり、全件を並べると判断が要るものが埋もれる。
+対応が要るものが無ければ、その旨を明確に述べて終了する。
 
-**In 報告のみ mode the run ends here**, and the aggregate above is not enough on its own. Render every
-non-`維持` finding in full — the evidence, the comment before and after, and for a 移設 the exact prose
-proposed for the destination — because no approval loop follows to reveal them one at a time. Close by
-saying how to act on the report: re-run with `--apply` for the 短縮 / 削除 / 集約, or in 確認して適用 for
-those plus the 移設. For a 集約, render every member comment, not just the site that keeps the content —
-a reader cannot judge a consolidation from the winner alone.
+**報告のみモードではここで終了する。**そしてその場合、上記の集計だけでは足りない。`維持` 以外の
+finding を全件・全文で提示する — 根拠、コメントの変更前 / 変更後、移設なら移設先へ追記する文面まで。
+1 件ずつ明かしていく承認ループが後に続かないからである。最後に、この報告をどう実行に移すかを書く:
+短縮 / 削除 / 集約だけなら `--apply` で、移設も含めるなら確認して適用で再実行する。集約については、本体を
+持つ site だけでなく**メンバー全件**を描画する — 勝ち残った 1 箇所だけを見せられても、集約の可否は判断できない。
 
-## Step 4 — Apply (integrator-side)
+## Step 4 — 適用（integrator 側）
 
-Not reached in 報告のみ mode. Between the other two the write itself is identical; what differs is who
-approves it, and how much of the verdict set is in play.
+報告のみモードでは到達しない。残る 2 モードの間で書き込みそのものは同一であり、違うのは誰が承認するか、
+そして判定のどこまでが対象になるかである。
 
-### 自動適用 — no per-item question
+### 自動適用 — 1 件ずつの確認をしない
 
-Apply **短縮**, **削除**, and **集約** as the auditor landed them, in one pass, and report what was
-applied. Three exclusions come off that set first:
+**短縮**・**削除**・**集約**を監査エージェントの着地形のまま一括で適用し、適用した内容を報告する。まず、
+その集合から次の 3 つを外す:
 
-- **A finding whose comment contradicts the code** (`誤り/陳腐化`) is reported, never applied. Which
-  side is wrong — the comment or the code — is not a comment-cleanup call, and deleting the comment
-  can erase the only surviving evidence of a bug.
-- **`追記なし` 移設 is applied only after the integrator opens the destination and confirms the content
-  is actually there.** With a human in the loop that claim is checked at approval time; unattended,
-  an auditor that misread a section would strip the rationale from the code and point the residue at
-  a document that never says it. When the check fails, report the finding instead of applying it.
+- **コードと矛盾するコメントの finding**（`誤り/陳腐化`）は報告するだけで適用しない。コメントとコードの
+  どちらが誤っているかはコメント整理の判断ではなく、コメントを消せばバグの唯一の証拠を消しかねない。
+- **`追記なし` の移設は、integrator が移設先を開いて内容が実在することを確認できたときだけ適用する。**
+  人が介在するモードではその主張は承認の時点で検証されるが、無人では、節を読み違えた監査エージェントが
+  コードから論拠を剥ぎ取り、そう書いていない文書へ残滓を向けてしまう。確認が取れなければ適用せず報告へ回す。
 
-- **A 集約 is applied only at `確度: high`.** 短縮 risks the wrong wording at one site; a consolidation
-  additionally picks *which declaration owns the concept*, and it has already shrunk the other sites
-  by the time a wrong pick becomes visible. That is markedly harder to undo, so anything the auditor
-  itself rated `medium` or `low` is reported for 確認して適用 instead of applied.
+- **集約は `確度: high` のときだけ適用する。** 短縮が誤るのは 1 箇所の文言だが、集約はそれに加えて
+  *どの宣言が概念を所有するか*を選ぶ判断であり、選択の誤りが表面化する頃には他の site は既に縮められて
+  いる。取り消しは目に見えて難しくなるので、監査エージェント自身が `medium` / `low` と評価したものは
+  適用せず確認して適用へ回す。
 
-A `追記なし` 移設 that survives the check is applied: the destination already states the content, so the
-finding is really a 短縮 to the residue plus a link and touches no document. A 集約 likewise writes no
-document — it only moves content between comments in one file — which is why it belongs to this mode
-at all.
+確認を通った `追記なし` の移設は適用する — 移設先に既に同内容があるので、実体は残滓＋リンクへの短縮であり、
+文書には触れない。集約も同様に文書を書かない — 1 つのファイルの中でコメント間の内容を動かすだけである。
+そもそもこのモードに属せるのはそのためである。
 
-**Do not apply a 移設 that would write to a destination document.** Report those with their count and
-proposed landing form, and say that 確認して適用 is where they land. The reason is not caution in
-general, it is the ADR question below: whether a rationale becomes a new record or a rewrite of an
-existing one is a repository-policy call under the immutability rule in `docs/adr/README.md`, and a
-mode whose contract is "no questions" has no way to ask it. Keeping that one question alive would
-break the contract; answering it silently would settle a policy question by generator.
+**文書書き込みを伴う移設は適用しない。**件数と着地形を報告し、それらが着地するのは確認して適用である旨を
+伝える。理由は一般論としての慎重さではなく、下記の ADR の問いである: ある論拠が新規レコードになるのか
+既存の書き換えになるのかは `docs/adr/README.md` の immutable 規約下でのリポジトリ方針の判断であり、
+「質問しない」を契約とするモードにはそれを問う手段が無い。そこだけ質問を残せば契約が壊れ、黙って答えれば
+方針の判断を生成器が下したことになる。
 
-Every guard in this file still holds — an exported Go declaration's doc comment is rewritten rather
-than deleted, functional directives are untouched, and the out-of-scope list is out of scope.
-自動適用 removes the question, not the rules.
+本ファイルのガードはすべて有効なままである — export された Go 宣言の doc コメントは削除ではなく書換、
+機能的ディレクティブには触れない、対象外リストは対象外のまま。自動適用が外すのは質問であって規則ではない。
 
-### 確認して適用 — per-item approval
+### 確認して適用 — 1 件ずつ承認
 
-For each non-`維持` finding, in descending impact order:
+`維持` 以外の finding ごとに、影響の大きい順に:
 
-1. Present the finding with its evidence and the concrete landing form — show the comment **before**
-   and **after** as a diff, and for a 移設 also show the exact prose that will be added to the
-   destination document. A verdict the user cannot see the result of is not reviewable.
-2. `AskUserQuestion` with the options the auditor surfaced (typically 移設 / 短縮 / 削除 / 維持 / 判断を保留).
-   A **集約 is one question covering the whole set**, never one question per member. Splitting it
-   produces incoherent outcomes the user never chose — approve the deletions but not the surviving
-   site and the Why is gone; approve the survivor but not the deletions and nothing consolidated.
-   Offer 集約 / 維持（現状のまま） / 別の site を本体にする / 判断を保留, and show every member.
-3. On approval, write in this order — **destination document first, code second**. Reversing it
-   creates a window where the rationale exists nowhere, and if the run is interrupted there, the
-   reasoning is simply gone. When the auditor found the destination **already states the content**
-   (`追記なし`), there is no document write: the finding lands as a 短縮 to the residue plus a link,
-   and only the code changes.
-4. If the destination is an **ADR**, do not decide the ADR's shape yourself. `docs/adr/README.md`
-   declares accepted ADRs immutable, so a new rationale can land either as a new record or as a
-   rewrite of an existing one, and which is right is a repository-policy call, not a code-cleanup
-   call. Ask: 「既存 ADR-NNNN を書き換える」 / 「新規 ADR を起こす」 / 「ADR ではなく docs/design か README へ」 / 「今回は移設しない」.
-   Whichever is chosen, the English canonical file and its `.ja.md` translation — plus the log table in
-   `docs/adr/README.md` and `docs/adr/README.ja.md` — are updated in the same change.
-5. If the destination is a package README, and the addition materially changes what that README
-   claims, mention that `back-prop` is the right follow-up to check the README against code reality.
+1. 根拠と具体的な着地形を提示する — コメントの**変更前 / 変更後**を diff で示し、移設なら移設先文書へ
+   追記する文面もそのまま見せる。結果が見えない判定はレビュー不能である。
+2. 監査エージェントが挙げた選択肢で `AskUserQuestion`（通常は 移設 / 短縮 / 削除 / 維持 / 判断を保留）。
+   **集約は集合全体で 1 問**とし、メンバーごとに問わない。分割すると、ユーザーが選んでいない不整合な結果が
+   出る — 削除だけ承認され本体側が承認されなければ Why が消え、本体側だけ承認されれば何も集約されない。
+   集約 / 維持（現状のまま） / 別の site を本体にする / 判断を保留 を提示し、メンバーは全件見せる。
+3. 承認されたら、**移設先文書を先、コードを後**の順で書く。逆にすると理由がどこにも存在しない窓が
+   でき、そこで中断されると論拠がそのまま失われる。監査エージェントが移設先に**既に同内容がある**
+   （`追記なし`）と判定した場合、文書側の書き込みは発生しない — その finding は残滓＋リンクへの
+   短縮として着地し、変わるのはコードだけである。
+4. 移設先が **ADR** の場合、ADR の形は自分で決めない。`docs/adr/README.md` は accepted な ADR を
+   immutable と定めており、新規レコードとして起こすことも既存を書き換えることもあり得る。どちらが
+   正しいかはリポジトリ方針の判断であって、コード整理の判断ではない。
+   「既存 ADR-NNNN を書き換える」/「新規 ADR を起こす」/「ADR ではなく docs/design か README へ」/
+   「今回は移設しない」を問う。いずれの場合も、英語正本と隣の `.ja.md`、さらに
+   `docs/adr/README.md` のログ表を同一変更内で更新する。
+5. 移設先がパッケージ README で、その追記が README の主張を実質的に変えるなら、README をコードの実態と
+   突き合わせる後続として `back-prop` が適切であることを伝える。
 
-In this mode, never batch-apply without per-item confirmation. The judgments here are close calls by
-construction: an obvious one is caught by `revive` or by reading the diff, and what is left over is
-the stock nobody re-reads.
+このモードでは per-item の確認なしに一括適用しないこと。ここでの判断は構造上どれも際どい — 明白なものは
+明白なものは `revive` か diff を読めば捕まり、残るのは誰も読み返さない在庫だからである。
 
-## Step 5 — Verify
+## Step 5 — 検証
 
-Run this only when something was written. 報告のみ has nothing to verify; 自動適用 needs it most,
-because no human read the edits one at a time.
+書き込みが発生したときだけ実行する。報告のみには検証する対象が無い。自動適用こそ最も必要である —
+1 件ずつ人間が編集を読んでいないからである。
 
-- `make fix` then `make lint` over the touched packages — `revive exported` will catch a doc comment
-  deleted where the convention requires one.
-- `make md-lint` when a Markdown destination was written.
-- Re-read each edited comment once: does the residue still stand on its own for someone who does not
-  follow the link? A residue that only makes sense after reading the ADR has been cut too far, and
-  that failure is invisible to every linter.
-- After a 集約, read the file top to bottom rather than each edited site in isolation — the finding was
-  about the file, so the check has to be too. Two failures show up only this way: the surviving site
-  does not actually carry what the shrunk ones gave up, and a pointer names a declaration a reader
-  cannot find from where they are standing.
+- 触れたパッケージに `make fix` → `make lint`。規約上必要な doc コメントを消していれば
+  `revive exported` が捕まえる。
+- Markdown の移設先へ書いたなら `make md-lint`。
+- 編集した各コメントを一度読み返す: リンクを辿らない読者にとって、残滓は単独で成立しているか。
+  移設先を読まないと意味が通らない残滓は削りすぎであり、この失敗はどの linter にも見えない。
+- 集約の後は、編集した各 site を個別に見るのではなくファイルを通しで読む。finding がファイルについての
+  ものだった以上、検証もそうでなければならない。この読み方でしか出てこない失敗が 2 つある: 本体側が
+  縮めた側の手放した内容を実際には引き受けていないこと、そしてポインタが、読み手の現在地からは辿れない
+  宣言を指していることである。
 
-## Explicitly out of scope
+## 明示的に対象外
 
-- **`// Name は、〜です。` field comments** — `// Limit は、取得件数の上限です。`, `// StatusCode は、HTTP ステータスコードです。`.
-  These are name restatements and carry little information, but the repo deliberately keeps one line
-  per field for visual uniformity, and that call has been made. The bloat this skill exists to fix
-  lives in long-form Why, not here. Do not flag them, do not propose deleting them, and do not
-  reopen the question as a side note — it has already been decided.
-- **Package overviews** — a `// Package …` comment, wherever it lives. Usage and How belong there and
-  `docs/rules.md` exempts them. Note that this repository has **no `doc.go`**: all 300-plus overviews
-  sit at the top of an ordinary source file, so an exclusion phrased as a filename excludes nothing.
-  A 集約 does not get to reopen this from the other side: an overview is not a landing site for
-  consolidated content either. When the fragments really do add up to a package-level statement, that
-  is a 移設 to the package README, which is already a supported destination and is where a reader
-  looking for package-level prose goes.
-- **Generated files** (`**/*.gen.go`, `*.sql.go`, `*_mock.go`) and `*_test.go`.
-- **Functional / directive comments** — `//go:generate`, `//nolint`, `//go:build`, `//go:embed`,
-  `// Code generated ... DO NOT EDIT`, shebangs, tool directives. These are not prose.
-- **Docs prose quality** — `doc-reviewer` owns it. This skill only *adds* to a destination document;
-  it does not audit what is already there.
+- **`// Name は、〜です。` のフィールドコメント** — `// Limit は、取得件数の上限です。`、
+  `// StatusCode は、HTTP ステータスコードです。`。これらは名前の言い換えで情報量は乏しいが、
+  全フィールドに 1 行という見た目の統一をリポジトリが意図的に維持しており、その判断は既に下されている。
+  このスキルが存在する理由である肥大は長文 Why 側にあり、ここではない。指摘せず、削除も提案せず、
+  余談としても蒸し返さないこと。
+- **パッケージ概要** — `// Package …` コメント（置かれている場所を問わない）。usage と How はそこに
+  属し、`docs/rules.md` が除外している。このリポジトリには **`doc.go` が 1 つも無い**点に注意 —
+  300 件超の概要はすべて通常のソースファイル冒頭にあるため、ファイル名で書いた除外は何も除外しない。
+  集約がこれを逆方向から蒸し返すこともしない — 概要は判定対象でないと同時に、集約の着地先でもない。
+  断片が本当にパッケージ単位の言明を成すのなら、それは既に移設先として認めているパッケージ README への
+  **移設**であり、パッケージ単位の散文を探す読み手が行く先もそこである。
+- **生成物**（`**/*.gen.go`, `*.sql.go`, `*_mock.go`）と `*_test.go`。
+- **機能的 / ディレクティブコメント** — `//go:generate`, `//nolint`, `//go:build`, `//go:embed`,
+  `// Code generated ... DO NOT EDIT`、シバン、ツールディレクティブ。これらは散文ではない。
+- **ドキュメント散文の品質** — `doc-reviewer` の管轄。このスキルは移設先文書へ*追記*するだけで、
+  既にそこにあるものを監査しない。
 
-## Standalone by design
+## 単体で成立する設計
 
-This skill is invoked in its own right, never from inside another review skill. `/impl-review` audits the change and `/test-review` the tests; the three are peers under the Review Phase Protocol in `AGENTS.md`, each asked for separately, and none of them delegates to another. A review skill that offers to run the next one makes the three subjects stop being independently answerable and lets one skill's drift silently drop the others from every flow that went through it.
+本スキルは自分自身として依頼されるものであり、他のレビュースキルの内側から呼ばれることはない。`/impl-review` は変更そのものを、`/test-review` はテストを監査する。3 つは `AGENTS.md` の Review Phase Protocol の下で対等であり、それぞれ個別に依頼され、どれも他を委譲しない。次のスキルの実行を提案するレビュースキルは、3 つの主題を独立に答えられないものにし、1 つのスキルのずれが、そこを通った全ての流れから残りを黙って落とす。
 
-That independence is also what keeps the sweep file-level. Nothing hands it a diff, nothing filters which comments its auditors may read, and nothing removes a comment from a file before the per-file pass sees it — so the duplication that lives *between* comments stays visible. A sweep that received only changed regions would be a second diff review wearing the word "stock".
+この独立性が、掃引をファイル単位に保っている当のものでもある。diff を渡してくるものが無く、監査エージェントが読んでよいコメントを絞るものが無く、ファイル単位のパスが見る前にコメントを間引くものも無い — だからコメントとコメントの*あいだ*に住む重複が見えたままになる。変更箇所だけを受け取る掃引は、「在庫」という語をまとった 2 度目の diff レビューにすぎない。
 
-The comment subject therefore has exactly one owner. When a diff's newly added comments need judging, they are judged here, as part of the file they now live in.
+したがってコメントという主題の所管は 1 つである。diff が新しく足したコメントを判定する必要があるときも、それは今そのコメントが載っているファイルの一部として、ここで判定される。
 
-## Relationship to the existing reviewers
+## 既存レビュアとの関係
 
-| | Unit judged | Verdicts | Owns |
+| | 判定の単位 | 判定 | 管轄 |
 | --- | --- | --- | --- |
-| `doc-reviewer` | `README*` / `docs/**` | content findings | quality of docs prose |
-| **`comment-sweep`** (this skill) | **one comment, and the file's whole stock** | **維持 / 短縮 / 削除 / 移設 / 集約** | **jurisdiction — where content belongs, and which single site owns it** |
+| `doc-reviewer` | `README*` / `docs/**` | 内容の指摘 | ドキュメント散文の品質 |
+| **`comment-sweep`**（本スキル） | **コメント 1 件と、ファイルの在庫全体** | **維持 / 短縮 / 削除 / 移設 / 集約** | **管轄 — 内容がどこに属し、どの 1 箇所が所有するか** |
 
-No review skill carries a comment lens any more, so this is where the whole subject is answered —
-both the comments a change just added and the ones the file was already carrying, judged together as
-the body they now form.
+どのレビュースキルもコメント lens を持たなくなったため、この主題はここで一括して答えられる —
+変更が今足したコメントも、ファイルが元から抱えていたコメントも、いま一緒に成している総体として判定する。
 
-All user-visible output — findings, questions, proposed prose, summaries — is written in **Japanese**
-per `CLAUDE.md`.
+ユーザーに見える出力 — finding、質問、提案する文面、要約 — はすべて `CLAUDE.md` に従い**日本語**で書く。

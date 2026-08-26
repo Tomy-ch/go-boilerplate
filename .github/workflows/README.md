@@ -1,472 +1,459 @@
 # GitHub Actions Workflows
 
-This directory contains GitHub Actions workflow definitions for CI/CD. Workflows are grouped by purpose: pull-request gates (lint / test / security scans), push-triggered deployments, and documentation regeneration on release branches.
+このディレクトリには CI/CD 用の GitHub Actions ワークフロー定義を格納しています。ワークフローは目的別にグルーピングされており、PR ゲート（lint / test / セキュリティスキャン）、push 起点のデプロイ、リリースブランチ起点のドキュメント再生成という構成です。
 
-## Trigger Strategy
+## トリガー戦略
 
-| Group | When it runs | What it does |
+| グループ | 発火タイミング | 目的 |
 | --- | --- | --- |
-| CI Checks | every pull request | Block merge if lint / test / generated-artifact consistency fails |
-| Security | per-tool matrix (see below) | Surface vulnerabilities in code, dependencies, images, workflow definitions, and committed secrets |
-| Deployment | push to `production` / `staging` / `develop` | Build artifacts, run migration, deploy app or docs portal |
-| Documentation | push to `release/*` | Regenerate OpenAPI / ER / portal docs and open an auto-sync PR |
-| Assistant | `@claude` mentioned on a pull request | Answer or investigate on demand, restricted to accounts with write access |
+| CI チェック | 全 PR | lint / test / 生成物整合性が失敗したらマージブロック |
+| セキュリティ | ツールごとのマトリクス（後述） | コード / 依存 / イメージ / ワークフロー定義 / コミット済みシークレットの問題を surface |
+| デプロイ | `production` / `staging` / `develop` への push | 成果物ビルド、マイグレーション実行、アプリ / docs portal をデプロイ |
+| ドキュメント | `release/*` への push | OpenAPI / ER / portal ドキュメントを再生成し auto-sync PR を作成 |
+| アシスタント | プルリクエストでの `@claude` メンション | オンデマンドで回答・調査する。書き込み権限を持つアカウントに限定 |
 
-The `gen-*-artifacts-check` workflows protect the invariant "the committed generated output is reproducible from the generator". That invariant breaks in two directions — the generator inputs change without the output being regenerated, and the output is edited directly — so their `on.pull_request.paths` must list **both the inputs and the generated output**. Watching only the inputs makes the check structurally blind to a PR that touches the output alone, which lets the broken artifact reach the base branch and turns the next unrelated PR red instead.
+`gen-*-artifacts-check` 系のワークフローが守る不変条件は「コミットされた生成物が生成器から再現できる」ことです。この不変条件は「入力が変わったのに生成物が再生成されていない」「生成物が直接書き換えられた」の 2 方向で崩れるため、`on.pull_request.paths` には**入力と生成物の双方**を列挙する必要があります。入力側だけを見張ると、生成物のみを触った PR に対して構造的に盲目になり、壊れた生成物がそのままベースブランチへ入って次の無関係な PR が代わりに赤くなります。
 
-Because these workflows pin their generators through `mise.toml`, that file is an input to most of them. A `paths` filter matches whole files, so a bump to any unrelated tool in that shared lockfile also triggers them — including the Postgres-backed `gen-db` job. That over-triggering is accepted deliberately: a generator version bump is exactly the change that should be re-verified, and splitting `mise.toml` to narrow the trigger would cost more than the occasional extra run.
+これらのワークフローは生成器のバージョンを `mise.toml` で固定しているため、同ファイルは多くの検査にとって入力です。`paths` フィルタはファイル単位でしか判定できないので、この共有ロックファイル内の無関係なツールを更新しただけでも検査が起動します（Postgres を伴う `gen-db` ジョブを含む）。この過剰起動は意図的に受け入れています。生成器のバージョン更新こそ再検証すべき変更であり、トリガを絞るために `mise.toml` を分割するコストの方が、たまの余分な実行より大きいためです。
 
-## Result Comments
+## 結果コメント
 
-A pull request here runs some thirty checks and nearly every one of them can comment. A comment per passing check states what no one asked and buries the one comment that has something to say, so a result comment is **created only when the check has something to report**. The `status` input on `upsert-pr-comment` carries that verdict: the literal `success` is the only value that suppresses a comment, and every other value — including the empty string a cut-off job leaves behind — posts one.
+このリポジトリの PR では 30 件ほどの検査が走り、そのほとんどがコメントを投稿しえます。通過した検査ごとのコメントは誰も尋ねていないことを述べるだけで、言うべきことがある唯一のコメントを埋もれさせます。したがって結果コメントは**その検査に報告すべきことがあるときにだけ作成します**。この判定を運ぶのが `upsert-pr-comment` の `status` 入力で、コメントを抑止する値はリテラル `success` ただ 1 つです。それ以外の値は、打ち切られたジョブが残す空文字も含めて、すべて投稿します。
 
-Silence is not how a fix gets reported. `success` suppresses *creating* a comment, never updating one, so a check that failed on an earlier push overwrites its own red comment with the green result, in place. The pull request never keeps a failure that no longer holds, and the reader learns it was resolved where the failure was reported rather than by noticing an absence. Deleting the comment instead would leave the fix unrecorded and, on a re-failure, drop the comment at the bottom of a thread that has moved past it.
+修正されたことは沈黙で伝えません。`success` が抑止するのはコメントの *作成* だけで、更新は抑止しません。以前の push で失敗した検査は、自分の赤いコメントを緑の結果でその場に上書きします。PR にはもう成り立たない失敗が残らず、読み手は失敗が報告された場所で解決を知ることができます（不在に気付く必要がありません）。削除にすると修正の記録が残らず、再発時にはコメントが、既に読み進められたスレッドの末尾へ移動してしまいます。
 
-**One comment is removed rather than overwritten: a cut-off notice.** It records no verdict — only that a run ended without reaching one — so a later `success` answers the question it left open instead of superseding a finding, and deleting it loses nothing. Overwriting would put a permanent green comment on the pull request in exchange for a cancellation, and cancellations are routine: `cancel-in-progress` kills the previous run on every quick second push, and a job cut off while piping its output leaves a half-written body, so the notice gets created and then frozen green. The cancellation stays in the run history either way. Recognition is by the `CUT OFF (no result produced)` heading — a job cut off mid-write has a body and so never reaches the action's own notice text, which leaves the heading every caller passes as the only common signal, and `make actions-cutoff-lint` is what keeps it mandatory. A refused delete falls back to the overwrite, so a green run never leaves a cut-off notice standing.
+**上書きではなく削除する例外が 1 つだけあります。打ち切り（CUT OFF）通知です。** これは判定を記録しておらず「ある実行が判定に到達しないまま終わった」ことしか述べていないため、後続の `success` は所見を上書きしているのではなく、開いたままの問いに答えているだけで、消しても失われる情報がありません。上書きすると、キャンセル 1 回と引き換えに恒久的な緑コメントが PR に残ります。しかもキャンセルは日常的です — `cancel-in-progress` は 2 回目の push のたびに前の実行を打ち切り、出力を流しながら打ち切られたジョブは書きかけの本文を残すので、通知が作成されてそのまま緑で固定されます。打ち切り自体はどちらにせよ実行履歴に残ります。判定は `CUT OFF (no result produced)` の見出しで行います。本文を書きながら打ち切られたジョブは本文を持つため action 自身の通知文には到達せず、共通するのは呼び出し側が渡す見出しだけで、それを必須にしているのが `make actions-cutoff-lint` です。トークンが削除を拒否した場合は上書きへフォールバックするので、緑の実行に打ち切り表示が残ることはありません。
 
-**The verdict is derived positively — only an explicit clean signal is quiet.** Where a step already publishes a `status` output, the caller passes it through; where the clean state is a count or a flag, the caller tests for that exact value (`steps.<id>.outputs.count == '0' && 'success' || 'findings'`) rather than testing for the finding. The difference shows up when the producing step never ran: the output is empty, which is not the clean value, so the check reports instead of going quiet. Reversing the test would make every unfinished run look like a pass. `✅` in a title and `success` here mean the same thing by construction — the scanners that mark a non-blocking finding `✅` (`osv-scan`) are quiet on it, and the ones that mark it `⚠️` (`sast`) are not.
+**判定は肯定形で導きます — 明示的にクリーンな信号のときだけ黙ります。** ステップが既に `status` 出力を持つ場合は呼び出し側がそれをそのまま渡し、クリーン状態が件数やフラグで表される場合は所見側ではなくその値そのものを検査します（`steps.<id>.outputs.count == '0' && 'success' || 'findings'`）。差が出るのは本文を作るステップが走らなかったときです。出力は空になり、それはクリーンな値ではないので検査は報告側へ倒れます。逆向きに書くと、完走しなかった実行がすべて合格に見えてしまいます。title の `✅` と `success` は構造上同じことを意味します — 非ブロッキングな所見を `✅` とする側（`osv-scan`）はそれについて黙り、`⚠️` とする側（`sast`）は黙りません。
 
-Three callers pass a constant `report`, all in `image-scan.yaml`: an SBOM inventory and the two Trivy tables are not verdicts, so none of them has a state that means "nothing to say", and that job only runs for a pull request into a deploy branch, where the contents of the image are what is under review.
+定数 `report` を渡す呼び出しは `image-scan.yaml` の 3 件だけです。SBOM のインベントリと 2 つの Trivy の表は判定ではないので「言うべきことが無い」状態を持たず、またこのジョブはデプロイブランチ向けの PR でしか走らず、そこではイメージの中身こそがレビュー対象だからです。
 
-A comment can outlive the run that wrote it. A `paths` filter means a later push may not run the workflow at all, leaving a red comment standing on a head it never examined; the Commit / UpdatedAt footer every comment carries is what distinguishes it from a current one, and the check run is what carries the authoritative status.
+コメントはそれを書いた実行より長く残ることがあります。`paths` フィルタにより後続の push でワークフローが走らないことがあり、赤いコメントが、検査していない head の上に立ったまま残ります。各コメントが持つ Commit / UpdatedAt のフッタが現行のものと区別する手がかりであり、権威ある状態はチェックラン側にあります。
 
-## Job Cut-off
+## ジョブの打ち切り
 
-A job can stop without reaching a verdict — a timeout, a cancellation, a runner fault. What a reader sees on the pull request in that case is not a property of the tool that was running; it follows from how the job and its comment step are declared, and every default here is the wrong one. `make actions-cutoff-lint` enforces the rules below, because keeping every comment step and every job in this directory correct by eye is not something a review can be asked to do.
+ジョブは判定に到達しないまま止まることがあります（タイムアウト、キャンセル、ランナー障害）。そのとき PR 上で何が読めるかは、走っていたツールの性質ではなく、ジョブとコメントステップをどう宣言したかで決まります。しかもここでの既定値はどれも誤った側に倒れています。以下の規約は `make actions-cutoff-lint` で機械的に守っています。このディレクトリの全コメントステップと全ジョブを目視で維持することはレビューに要求できないためです。
 
-**Every step that calls `upsert-pr-comment` must be reachable after a cancellation.** Actions prepends an implicit `success() &&` to any custom `if:` that contains no status-check function, so a cut-off job skips the comment step and the pull request keeps no trace at all — while the `Fail if …` step, which usually does carry `always()`, still turns the check red. Red with no readable reason is worse than either half alone. The condition therefore needs `always()` or `cancelled()`; `failure()` does **not** qualify, because it is false for a cancelled job. Every caller now uses the plain `always() && github.event_name == 'pull_request'`: whether a comment is warranted is decided by `status` inside the action, not by skipping the step, because a step that never runs cannot correct a comment an earlier push left behind.
+**`upsert-pr-comment` を呼ぶステップは、キャンセル後にも到達できなければなりません。** Actions はステータスチェック関数を含まないカスタム `if:` に暗黙で `success() &&` を前置するため、打ち切られたジョブではコメントステップがスキップされ、PR には何の痕跡も残りません。一方で `Fail if …` 側は `always()` を持つことが多く、チェックは赤くなります。理由の読めない赤は、どちらか片方の欠落より悪い状態です。したがって条件には `always()` か `cancelled()` が要ります。`failure()` は**該当しません** — キャンセルされたジョブでは false になるためです。現在はすべての呼び出しが素の `always() && github.event_name == 'pull_request'` です。コメントすべきかどうかはステップをスキップすることではなく action 内の `status` が決めます。走らなかったステップは、以前の push が残したコメントを訂正できないためです。
 
-**A missing body file is reported as a cut-off, not as a step failure.** A job cut off early never runs the step that writes the file, so absence is the normal shape of exactly the case the comment has to survive; `upsert-pr-comment` posts a cut-off notice and replaces the caller's heading, since no title the caller set can still describe a body that says the job never ran. The notice names no cause — a body can also be missing because an earlier step failed outright, and only the run log tells those apart. The cost is that a miswired `body-file` path surfaces as a cut-off notice on a green run rather than as a failure — loud enough to catch, which silence on a cut-off is not. Under `cancel-in-progress`, a superseded run may post that notice moments before the new run overwrites the same marker; that is the mechanism working, not a defect to fix.
+**本文ファイルの不在は、ステップの失敗ではなく打ち切りとして報告します。** 早期に打ち切られたジョブはファイルを書くステップに到達しないので、不在はまさにコメントが生き残るべきケースの通常形です。`upsert-pr-comment` は打ち切りの通知を投稿し、呼び出し側の見出しを置き換えます — ジョブが走らなかったと書く本文に対して、呼び出し側が設定した title はもう何も説明していないためです。通知は原因を名指ししません。本文が無い理由には前段ステップがそのまま失敗した場合もあり、両者を区別できるのは実行ログだけだからです。代償として `body-file` のパスを誤配線すると、失敗ではなく緑の実行に打ち切り通知が出ます。これは気付ける程度に喧しく、打ち切り時の沈黙はそうではありません。`cancel-in-progress` のもとでは、打ち切られた実行がこの通知を投稿した直後に新しい実行が同じ marker を上書きすることがあります。これは機構が働いている姿であって、直すべき不具合ではありません。
 
-**Absence is only half the test, so every caller passes a cut-off heading too.** Most inspection steps pipe their output straight into the body file with `tee` and set their `title` output only afterwards, from the exit code. Cut off mid-inspection, such a job leaves a *partially written* file behind — the action sees a body and cannot tell it from a finished one, while the title never got set. The caller therefore carries the other half of the signal as `${{ steps.<id>.outputs.title || '## ⚠️ <check>: CUT OFF (no result produced)' }}`: the fallback fires exactly when the producing step did not reach its own conclusion, and the partial log stays visible underneath it. Where the heading is a literal rather than a step output (`image-scan.yaml`, `sync-versions-check.yaml`), the same signal is expressed as a condition on that step's `outcome` / output. Note the GitHub-expression trap when writing one: `cond && '' || X` always yields `X`, because an empty string is falsy — the heading has to sit in the truthy branch.
+**不在だけでは判定の半分にしかならないので、呼び出し側も打ち切り時の見出しを渡します。** 多くの検査ステップは出力を `tee` でそのまま本文ファイルへ流し、`title` は終了コードを見たあとに出力します。検査の途中で打ち切られると、そのジョブは**書きかけのファイル**を残すため、action からは完成した本文と区別がつきません。一方 title は出力されないままです。そこで呼び出し側が判定のもう半分を `${{ steps.<id>.outputs.title || '## ⚠️ <検査名>: CUT OFF (no result produced)' }}` の形で持ちます。フォールバックは本文を作るステップが自らの結論に到達しなかったときにちょうど発火し、書きかけのログはその下にそのまま残ります。見出しがステップ出力ではなくリテラルの箇所（`image-scan.yaml` / `sync-versions-check.yaml`）では、同じ判定をそのステップの `outcome` / 出力への条件として書きます。書くときは GitHub の式の罠に注意してください。`cond && '' || X` は空文字が falsy なので常に `X` になります。見出しは真の側の枝に置く必要があります。
 
-**Every job sets `timeout-minutes`.** Without it a job runs to GitHub's 360-minute default, so one hang holds a runner for six hours. The value is the job's measured maximum × 3, rounded up to the next 5 minutes, with a floor of 10 to absorb setup variance on a contended runner; a job with no recent completed run gets 15. Only the values that depart from that formula are listed here — every other job is at the floor, and a value can be re-derived from the formula rather than looked up.
+**全ジョブに `timeout-minutes` を置きます。** 無いと GitHub 既定の 360 分まで走るため、1 つのハングがランナーを 6 時間占有します。値は「実測の最大所要 × 3 を 5 分単位で切り上げ、下限 10 分」です。下限は混雑したランナーでのセットアップ変動を吸収するためで、直近に完了実行が無いジョブは 15 分とします。この式から外れる値だけを以下に挙げます。他は全て下限であり、値は一覧を引くのではなく式から再導出できます。
 
-| Job | Minutes | Why not the formula |
+| ジョブ | 分 | 式から外した理由 |
 | --- | --- | --- |
-| `auto-generate-docs.yaml` `generate-docs` | 25 | measured ~7m |
-| `go-test.yaml` `go-test` | 20 | measured ~5m |
-| `image-scan.yaml` `build`, `deploy-app.yaml` `build` | 15 | image build with a cold layer cache varies well beyond its measured run |
-| `deploy-app.yaml` `deploy` | 30 | a placeholder today; a real deployment wired in downstream must not meet a 10-minute cap |
-| `fuzz.yaml`, `scorecard.yaml`, `notify.yaml`, `osv-release-gate.yaml`, `checkov.yaml` | 15 | no recent completed run to measure |
-| `zap-api-scan.yaml` `dast` | 30 | no completed run to measure, and the job builds and boots the application before a scan whose length is set by the size of the OpenAPI definition |
-| `code-ql.yaml` `codeql` | 30 | the limit covers whichever matrix leg is slowest, and no leg but `go` has a completed run to measure; `security-extended` is also a larger suite than the one the previous value was measured against |
-| `secret-scan.yaml`, `trufflehog.yaml` | 15 | measured on pull requests only, where they scan a diff; the weekly run walks the full history and has never completed one to measure |
-| `bearer.yaml` `bearer` | 20 | no completed run to measure, and the scan builds a data-flow model of the whole first-party tree before it reports anything |
-| `sonarqube.yaml` `sonarqube` | 15 | vendor-side analysis can queue for up to 10 minutes; test and coverage gates run in their owning workflows |
-| `app-di-startup-check.yaml`, `gen-go-artifacts-check.yaml` | 15 | predate the formula; left as they are, since lowering a working limit only adds risk |
-| `claude.yaml`, `go-lint.yaml`, `sample-removal-check.yaml` | 30 | as above; `go-lint` additionally runs golangci-lint with its own timeout disabled, so this is that job's only cutoff |
+| `auto-generate-docs.yaml` `generate-docs` | 25 | 実測 約 7 分 |
+| `go-test.yaml` `go-test` | 20 | 実測 約 5 分 |
+| `image-scan.yaml` `build`、`deploy-app.yaml` `build` | 15 | レイヤキャッシュが冷えたイメージビルドは実測を大きく超えて振れる |
+| `deploy-app.yaml` `deploy` | 30 | 現状はプレースホルダ。作成先が実デプロイを配線したときに 10 分の上限へ当てない |
+| `fuzz.yaml`、`scorecard.yaml`、`notify.yaml`、`osv-release-gate.yaml`、`checkov.yaml` | 15 | 直近に完了実行が無く実測できない |
+| `zap-api-scan.yaml` `dast` | 30 | 完了実行が無く実測できないうえ、スキャンの前にアプリケーションをビルドして起動し、スキャン自体の長さは OpenAPI 定義の規模で決まる |
+| `code-ql.yaml` `codeql` | 30 | 上限は matrix の最も遅い leg に掛かるが、`go` 以外の leg には完了実行が無く実測できない。加えて `security-extended` は従前の値を測ったスイートより大きい |
+| `secret-scan.yaml`、`trufflehog.yaml` | 15 | 実測は差分を見る PR 実行のみ。週次は全履歴を走査するが、その完了実行が一度も無く実測できない |
+| `bearer.yaml` `bearer` | 20 | 完了実行が無く実測できないうえ、報告の前に自前ツリー全体のデータフローモデルを構築する |
+| `sonarqube.yaml` `sonarqube` | 15 | ベンダー側の解析キューが最大 10 分待つため。テストとカバレッジのゲートはそれぞれの所有ワークフローで実行する |
+| `app-di-startup-check.yaml`、`gen-go-artifacts-check.yaml` | 15 | 式より前から存在する値。動いている上限を下げてもリスクしか増えないためそのまま |
+| `claude.yaml`、`go-lint.yaml`、`sample-removal-check.yaml` | 30 | 同上。`go-lint` は golangci-lint 自身の timeout を無効化して走らせているため、これがそのジョブ唯一の打ち切り点でもある |
 
-A job that starts tripping its limit has outgrown its measurement: re-measure and re-apply the formula rather than nudging the number. Jobs that call a reusable workflow cannot carry `timeout-minutes` at all — the key is invalid there — so the check skips them, and the limit lives in the called workflow's own job.
+上限に当たり始めたジョブは実測を追い越しているということなので、数字を小突くのではなく測り直して式に掛け直します。reusable workflow を呼ぶジョブには `timeout-minutes` を書けません（invalid key）。検査はそれらを除外し、上限は呼ばれる側のジョブが持ちます。
 
-All three rules live in one check rather than three, because they are not three policies: a job with no limit is what produces a cut-off, and the two comment rules are what make one readable. Fixing any of them alone leaves the pull request no better off, so there is no case for running one without the others.
+3 つの規約を 3 本ではなく 1 本の検査に置いているのは、これらが 3 つのポリシーではないからです。上限の無いジョブが打ち切りを生み、コメント側の 2 つがそれを読めるようにします。どれか 1 つだけを直しても PR 上の状況は改善しないので、単独で走らせる理由がありません。
 
-## Workflow List
+## ワークフロー一覧
 
-### CI Checks (Pull Request)
+### CI チェック（Pull Request）
 
-|Workflow|File|Description|
+|ワークフロー|ファイル|説明|
 |---|---|---|
-|Go Lint|`go-lint.yaml`|Run golangci-lint on Go code|
-|Go Test|`go-test.yaml`|Run Go tests with coverage reporting, plus the `scripts/` tool tests outside the coverage gate|
-|Module Tidy Check|`tidy-check.yaml`|Verify go.mod / go.sum are tidied|
-|SQL Lint|`sql-lint.yaml`|Run sqlfluff on migration / DML / seed SQL files|
-|Actions Lint|`actions-lint.yaml`|Run actionlint on workflow definitions, shellcheck the `run:` scripts of composite actions, and run the Node checks for PR comments, job cut-off behavior, and the setup-mise pin|
-|Migration Check|`migration-check.yaml`|Validate migration files (duplicates, gaps, up/down pairing)|
-|Sync Versions Check|`sync-versions-check.yaml`|Verify mise.toml versions are propagated to go.mod / Dockerfiles / READMEs|
-|Generated Go Artifacts Check|`gen-go-artifacts-check.yaml`|Verify generated Go code matches committed artifacts|
-|Generated Database Artifacts Check|`gen-db-artifacts-check.yaml`|Verify generated sqlc code matches committed artifacts|
-|Generated OpenAPI Artifacts Check|`gen-oapi-artifacts-check.yaml`|Verify OpenAPI bundle and docs match committed artifacts|
-|Portal Check|`portal-check.yaml`|Type-check the documentation portal viewer (`docs-viewer/`) and run its test suite|
-|Scripts Check|`scripts-check.yaml`|Type-check the repository's TypeScript helper scripts (`scripts/**/*.ts`), run the unit tests covering their decision logic, and run the 1:1 test-mapping gate, which also walks `docs-viewer/src/**`|
-|OpenAPI Lint|`oapi-lint.yaml`|`redocly lint` the OpenAPI definition (naming / casing / descriptions / unused components)|
-|App Boot Check|`app-di-startup-check.yaml`|Verify the application server starts successfully with DB|
-|Job Boot Check|`job-boot-check.yaml`|Verify the job entrypoint boots and rejects an unknown job|
-|Worker Boot Check|`worker-boot-check.yaml`|Verify the worker entrypoint boots (DI / DB) and rejects an unknown worker|
-|Dockerfile Lint|`docker-lint.yaml`|Run hadolint on Dockerfiles (via go_tool_runner)|
-|Markdown Lint|`md-lint.yaml`|Lint Markdown shape with markdownlint, validate every ` ```mermaid ` fence with the real parser, and check the `.claude/**` skill / agent definitions against reality and their `.codex/**` counterparts|
-|Commitlint|`commitlint.yaml`|Lint every commit message the PR adds to the base branch — the route the `commit-msg` hook cannot cover|
-|Pin Actions Check|`pin-actions-check.yaml`|Verify GitHub Actions are pinned to a SHA (supply-chain hardening)|
-|Pin Images Check|`pin-images-check.yaml`|Verify Docker base images are pinned to a digest per the lockfile (supply-chain hardening)|
-|Egress Check|`egress-check.yaml`|Verify every job's inline `allowed-endpoints` matches the SSOT (see [Runner Hardening](#runner-hardening))|
-|Graphify Check|`graphify-check.yaml`|Verify the tracked graphify artifacts stay portable: nothing outside the `.gitignore` whitelist is tracked, and no artifact carries an absolute path from the machine that produced it|
+|Go Lint|`go-lint.yaml`|golangci-lint による Go コードの静的解析|
+|Go Test|`go-test.yaml`|Go テスト実行とカバレッジレポート、およびカバレッジゲート対象外の `scripts/` ツールテスト|
+|Module Tidy Check|`tidy-check.yaml`|go.mod / go.sum の整合性検証|
+|SQL Lint|`sql-lint.yaml`|sqlfluff による migration / DML / seed SQL の検証|
+|Actions Lint|`actions-lint.yaml`|actionlint によるワークフロー定義の検証、composite action の `run:` スクリプトの shellcheck 検査、PR コメント本文への secret 混入・固定長フェンスの検査、ジョブ打ち切り時の振る舞いの検査|
+|Migration Check|`migration-check.yaml`|マイグレーションファイルの検証（重複、欠番、up/down ペア）|
+|Sync Versions Check|`sync-versions-check.yaml`|mise.toml のバージョンが go.mod / 各 Dockerfile / README へ伝播済みか検証|
+|Generated Go Artifacts Check|`gen-go-artifacts-check.yaml`|生成済み Go コードとコミット済み成果物の一致検証|
+|Generated Database Artifacts Check|`gen-db-artifacts-check.yaml`|生成済み sqlc コードとコミット済み成果物の一致検証|
+|Generated OpenAPI Artifacts Check|`gen-oapi-artifacts-check.yaml`|OpenAPI バンドルとドキュメントの一致検証|
+|Portal Check|`portal-check.yaml`|ドキュメントポータルのビューアー（`docs-viewer/`）の型検査とテスト|
+|Scripts Check|`scripts-check.yaml`|リポジトリの TypeScript 補助スクリプト（`scripts/**/*.ts`）の型検査と、判定ロジックを覆う単体テスト、および `docs-viewer/src/**` も走査する 1:1 テスト対応ゲートを実行します|
+|OpenAPI Lint|`oapi-lint.yaml`|OpenAPI 定義を `redocly lint` で検証（命名 / casing / description / 未使用コンポーネント）|
+|App Boot Check|`app-di-startup-check.yaml`|DB 付きでアプリケーションサーバが正常に起動するか検証|
+|Job Boot Check|`job-boot-check.yaml`|ジョブのエントリポイントが起動し、未知のジョブを拒否するか検証|
+|Worker Boot Check|`worker-boot-check.yaml`|worker のエントリポイントが起動（DI / DB）し、未知の worker を拒否するか検証|
+|Dockerfile Lint|`docker-lint.yaml`|hadolint による Dockerfile の検証（go_tool_runner 経由）|
+|Markdown Lint|`md-lint.yaml`|markdownlint による Markdown 体裁の検証、実 mermaid パーサによる ` ```mermaid ` フェンスの構文検証、`.claude/**` のスキル / エージェント定義の実態一致と `.codex/**` との存在対応の検証|
+|Commitlint|`commitlint.yaml`|PR が base ブランチへ加えるコミットのメッセージを検証（`commit-msg` フックが覆えない経路を担う）|
+|Pin Actions Check|`pin-actions-check.yaml`|GitHub Actions が SHA でピン留めされているか検証（サプライチェーン対策）|
+|Pin Images Check|`pin-images-check.yaml`|Docker base image が lockfile 通り digest でピン留めされているか検証（サプライチェーン対策）|
+|Egress Check|`egress-check.yaml`|各ジョブのインライン `allowed-endpoints` が SSOT 通りか検証（[ランナーのハードニング](#ランナーのハードニング)を参照）|
 
-### Security
+### セキュリティ
 
-|Workflow|File|Description|
+|ワークフロー|ファイル|説明|
 |---|---|---|
-|CodeQL Scan|`code-ql.yaml`|CodeQL analysis on the `security-extended` suite, one matrix leg per language: `go`, `javascript-typescript` (docs-viewer / scripts) and `actions` (the workflow definitions themselves)|
-|Dependency Scan|`trivy-fs.yaml`|Trivy filesystem scan for library vulnerabilities (developer-facing)|
-|Release Dependency Scan|`trivy-release-gate.yaml`|Trivy filesystem scan on PRs into develop/staging/production|
-|Grype Scan|`grype.yaml`|Anchore Grype filesystem scan of the same dependency manifests Trivy reads, against a different vulnerability database and a different matcher|
-|Image Scan|`image-scan.yaml`|Build image, generate the SBOM in both SPDX-JSON and CycloneDX-JSON, run Trivy scan, check the built image against Dockle's practice rules, and re-check the CycloneDX SBOM with `trivy sbom`|
-|Vulnerability Scan|`vulnerability-check.yaml`|govulncheck for actionable Go vulnerabilities|
-|OSV Scan|`osv-scanner.yaml`|OSV database scan across the Go module graph and the npm lockfiles|
-|Release OSV Scan|`osv-release-gate.yaml`|OSV scan on PRs into develop/staging/production, failing on HIGH or above|
-|Secret Scan|`secret-scan.yaml`|Two independent scans of the working tree for committed secrets: gitleaks (wide regex / entropy net) and Trivy (curated rules, far fewer false positives), as separate jobs with separate verdicts|
-|Secret Scan (TruffleHog)|`trufflehog.yaml`|TruffleHog scan for *verified* secrets — credentials that are actually live|
-|Actions Static Analysis|`zizmor.yaml`|zizmor audit of the workflow / composite-action definitions themselves (same `make` gate as the pre-commit hook)|
-|Dependency Review|`dependency-review.yaml`|Block a PR that introduces a newly vulnerable dependency|
-|OpenSSF Scorecard|`scorecard.yaml`|Score the repository's security posture and publish the result|
-|Go Cooldown|`go-cooldown.yaml`|Gate a PR that adds or upgrades a direct Go module published inside the cooldown window|
-|Tool Cooldown|`tool-cooldown.yaml`|Gate a PR that pins a CLI tool version — declared in `mise.toml` or `python/*.in` — published inside the cooldown window|
-|Config Scan|`trivy-config.yaml`|Trivy misconfiguration scan of the Dockerfiles, gating at HIGH|
-|Checkov Scan|`checkov.yaml`|Checkov policy scan of the workflow definitions and the Dockerfiles, against a rule set neither zizmor nor Trivy ships (report-only)|
-|SAST|`opengrep.yaml`|Opengrep (Semgrep-compatible) scan of first-party Go and TypeScript source with taint tracking|
-|DevSkim Scan|`devskim.yaml`|DevSkim regex scan over every file in the tree, whatever its language|
-|Bearer Scan|`bearer.yaml`|Bearer data-flow scan for sensitive values reaching a sink (report-only; Elastic License 2.0, see [Bearer's licence and removal](#bearers-licence-and-removal))|
-|ESLint Scan|`eslint.yaml`|ESLint with `eslint-plugin-security` over the three TypeScript workspaces, one matrix leg each (report-only)|
-|SonarQube Cloud Scan|`sonarqube.yaml`|SonarQube Cloud analysis of first-party source, read back over the Web API and converted to SARIF (**gates on Sonar's quality gate**, issue list report-only; needs `SONAR_TOKEN`, see [Removing the credential-bearing scanners](#removing-the-credential-bearing-scanners))|
-|Lockfile Integrity|`lockfile-integrity.yaml`|Verify every npm `resolved` URL points at the official registry over HTTPS|
-|OpenAPI Security|`openapi-security.yaml`|Spectral with the OWASP API Security ruleset over the OpenAPI definition|
-|Fuzz|`fuzz.yaml`|Go native fuzzing over the parsers that accept external text|
-|DAST|`zap-api-scan.yaml`|OWASP ZAP API scan, driven by the OpenAPI definition, against the application booted inside the runner (report-only sample; see [DAST](#dast))|
-|Capability Diff|`capability-diff.yaml`|capslock report of capability changes in the Go dependency graph (report-only)|
-|Agent Config Scan|`trustabl.yaml`|trustabl scan of the AI-agent configuration — subagent and skill declarations under `.claude/`, and MCP server declarations (report-only; see [Agent Config Scan](#agent-config-scan))|
-|Notify|`notify.yaml`|Reusable `workflow_call` target that pushes a scheduled failure, or a finding from a non-blocking scanner, to a human|
+|CodeQL Scan|`code-ql.yaml`|`security-extended` スイートでの CodeQL 解析。言語ごとに matrix を分け、`go` / `javascript-typescript`（docs-viewer / scripts）/ `actions`（ワークフロー定義そのもの）を対象とする|
+|Dependency Scan|`trivy-fs.yaml`|Trivy によるライブラリ脆弱性スキャン(開発者向け)|
+|Release Dependency Scan|`trivy-release-gate.yaml`|develop/staging/production 向け PR での Trivy 依存スキャン|
+|Grype Scan|`grype.yaml`|Trivy と同じ依存マニフェストを、別の脆弱性 DB と別のマッチャで走査する Anchore Grype のファイルシステムスキャン|
+|Image Scan|`image-scan.yaml`|Docker イメージビルド + SBOM 生成（SPDX-JSON と CycloneDX-JSON の両形式）+ Trivy スキャン + ビルド済みイメージへの Dockle のプラクティス検査 + CycloneDX SBOM への `trivy sbom` による再照合|
+|Vulnerability Scan|`vulnerability-check.yaml`|govulncheck による Go パッケージ脆弱性検出|
+|OSV Scan|`osv-scanner.yaml`|OSV データベースによる Go モジュール / npm lockfile 横断の脆弱性スキャン|
+|Release OSV Scan|`osv-release-gate.yaml`|develop/staging/production 向け PR での OSV スキャン。HIGH 以上で fail|
+|Secret Scan|`secret-scan.yaml`|ワーキングツリーに対する 2 系統の独立したシークレット検出。gitleaks（正規表現 / エントロピーの広い網）と Trivy（誤検知の少ない固定ルール）を、判定を分けた別ジョブとして実行する|
+|Secret Scan (TruffleHog)|`trufflehog.yaml`|TruffleHog による**検証済み**シークレット（実際に有効なクレデンシャル）の検出|
+|Actions Static Analysis|`zizmor.yaml`|zizmor によるワークフロー / composite action 定義自体の静的解析（pre-commit フックと同じ `make` ゲートを共有）|
+|Dependency Review|`dependency-review.yaml`|PR が新たに持ち込む脆弱な依存をマージ前にブロック|
+|OpenSSF Scorecard|`scorecard.yaml`|リポジトリのセキュリティ姿勢のスコアリングと結果の公開|
+|Go Cooldown|`go-cooldown.yaml`|cooldown 窓の内側で公開された direct Go モジュールを足す / 上げる PR をゲート|
+|Tool Cooldown|`tool-cooldown.yaml`|cooldown 窓の内側で公開された CLI ツール版（`mise.toml` / `python/*.in` の宣言）を pin する PR をゲート|
+|Config Scan|`trivy-config.yaml`|Trivy による Dockerfile の設定不備スキャン（HIGH 以上でゲート）|
+|Checkov Scan|`checkov.yaml`|zizmor も Trivy も持たないルールセットによる、ワークフロー定義と Dockerfile への Checkov ポリシースキャン（報告専用）|
+|SAST|`opengrep.yaml`|Opengrep（Semgrep 互換）による自前の Go / TypeScript ソースの解析（taint 追跡あり）|
+|DevSkim Scan|`devskim.yaml`|言語を問わずツリー内の全ファイルに当たる DevSkim の正規表現スキャン|
+|Bearer Scan|`bearer.yaml`|機微な値が sink へ到達する経路を追う Bearer のデータフロースキャン（報告専用。Elastic License 2.0 — [Bearer のライセンスと撤去](#bearer-のライセンスと撤去)を参照）|
+|ESLint Scan|`eslint.yaml`|3 つの TypeScript ワークスペースに対する `eslint-plugin-security` の検査。matrix の 1 レグずつ（報告専用）|
+|SonarQube Cloud Scan|`sonarqube.yaml`|SonarQube Cloud による一次ソースの解析。結果は Web API から読み戻して SARIF へ変換する（**Sonar の品質ゲートでブロックする**。issue の一覧は報告専用。`SONAR_TOKEN` が必要。[資格情報を要するスキャナの撤去](#資格情報を要するスキャナの撤去)を参照）|
+|Lockfile Integrity|`lockfile-integrity.yaml`|npm の `resolved` URL が正規レジストリかつ HTTPS であることの検証|
+|OpenAPI Security|`openapi-security.yaml`|Spectral + OWASP API Security ルールセットによる OpenAPI 定義の検証|
+|Fuzz|`fuzz.yaml`|外部入力を受けるパーサに対する Go ネイティブ fuzzing|
+|DAST|`zap-api-scan.yaml`|ランナー内で起動したアプリケーションに対する、OpenAPI 定義を入力とした OWASP ZAP の API スキャン（報告専用のサンプル。[DAST](#dast) を参照）|
+|Capability Diff|`capability-diff.yaml`|capslock による Go 依存グラフの capability 差分報告（report-only）|
+|Agent Config Scan|`trustabl.yaml`|AI エージェント設定—— `.claude/` 配下の subagent / skill 宣言と MCP サーバー宣言——に対する trustabl のスキャン（報告専用。[エージェント設定スキャン](#エージェント設定スキャン)を参照）|
+|Notify|`notify.yaml`|定期実行の失敗、および非ブロッキングなスキャナの検出を人へ届ける `workflow_call` の再利用ワークフロー|
 
-Every scanner writes SARIF to GitHub code scanning where it can, and reports a finding on the PR through the shared `upsert-pr-comment` action (see [Result Comments](#result-comments) for when a comment is written at all).
+各スキャナは可能な限り SARIF を GitHub code scanning へ送り、検出は共通の `upsert-pr-comment` アクションで PR にコメントします（そもそもコメントを書くのがどういうときかは [結果コメント](#結果コメント) を参照）。
 
-#### Security Trigger Matrix
+#### セキュリティのトリガーマトリクス
 
-Each tool runs where its findings can actually change: a PR surfaces the risk the change itself introduces, a push to a protected branch keeps a code-scanning baseline for branch protection to judge, and a weekly schedule only exists for tools whose result can change while the code stands still (newly disclosed CVEs, new queries).
+各ツールは「結果が実際に変わりうる場所」で走らせています。PR はその変更自身が持ち込むリスクを surface し、protected branch への push はブランチ保護が判断材料にする code scanning のベースラインを残し、定期実行は「コードが変わらなくても結果が変わる」種別（新規公表 CVE / 新規クエリ）にだけ設けます。
 
-| Tool | Pull request | Push to protected branch | Schedule |
+| 種別 | PR | protected branch への push | 定期 |
 | --- | --- | --- | --- |
-| gitleaks | all PRs | — | weekly, full history |
-| Trivy secret | all PRs, working tree | — | weekly |
-| TruffleHog | all PRs, diff only | — | weekly, full history |
-| zizmor | when Actions files change | `develop` / `staging` / `production` / `release/*` | weekly (online audits) |
-| Dependency Review | dependency-change PRs | — | — |
-| govulncheck | Go / dependency-change PRs | same as above | weekly |
-| Trivy FS | Go / dependency-change PRs | same as above | weekly |
-| OSV-Scanner | dependency-change PRs | same as above | weekly |
-| CodeQL | Go / TypeScript / Actions-definition-change PRs | same as above | weekly |
-| OpenSSF Scorecard | — | default branch only | weekly |
-| Image Scan | PRs into a deploy branch | — | weekly |
-| Release gates (Trivy FS / OSV) | PRs into a deploy branch | — | — |
-| Trivy config (misconfig) | Dockerfile-change PRs | same as above | — |
-| Checkov | Actions-definition / Dockerfile-change PRs | same as above | weekly |
-| Dockle | PRs into a deploy branch | — | weekly (inside Image Scan) |
-| Trivy SBOM | PRs into a deploy branch | — | weekly (inside Image Scan) |
-| Trivy licence | same trigger as Trivy FS | same as above | weekly |
-| OSV diff | dependency-change PRs | — | — |
-| Opengrep (SAST) | Go / TypeScript / dependency / spec-change PRs | same as above | weekly |
-| Grype | Go / dependency-change PRs | same as above | weekly |
-| DevSkim | all PRs | `develop` / `staging` / `production` / `release/*` | weekly |
-| Bearer | Go / TypeScript-change PRs | same as above | weekly |
-| ESLint (security) | TypeScript-workspace-change PRs | same as above | weekly |
-| SonarQube Cloud | Go / TypeScript / `sonar-project.properties`-change PRs | same as above | weekly |
-| lockfile-lint | lockfile-change PRs | — | — |
-| Spectral (OpenAPI) | spec-change PRs | `release/*` / deploy branches | — |
-| capslock | `go.mod`-change PRs | — | — |
-| Go fuzzing | — | — | weekly |
-| OWASP ZAP (DAST) | when `zap-api-scan.yaml` or `.github/zap/**` changes | `develop` / `staging` / `production` / `release/*` | weekly |
-| trustabl (agent config) | — | — | weekly |
+| gitleaks | 全 PR | 不要 | 週次で履歴全体 |
+| Trivy secret | 全 PR・作業ツリー | 不要 | 週次 |
+| TruffleHog | 全 PR の差分 | 不要 | 週次で履歴全体 |
+| zizmor | Actions 関連ファイル変更時 | `develop` / `staging` / `production` / `release/*` | 週次（オンライン監査） |
+| Dependency Review | 依存関係変更 PR | 不要 | 不要 |
+| govulncheck | Go・依存変更 PR | 同上 | 週次 |
+| Trivy FS | Go・依存変更 PR | 同上 | 週次 |
+| OSV-Scanner | 依存関係変更 PR | 同上 | 週次 |
+| CodeQL | Go / TypeScript / Actions 定義の変更 PR | 同上 | 週次 |
+| OpenSSF Scorecard | 不要 | 既定ブランチのみ | 週次 |
+| Image Scan | デプロイ先ブランチへの PR | 不要 | 週次 |
+| リリースゲート（Trivy FS / OSV） | デプロイ先ブランチへの PR | 不要 | 不要 |
+| Trivy config（設定不備） | Dockerfile 変更 PR | 同上 | 不要 |
+| Checkov | Actions 定義 / Dockerfile 変更 PR | 同上 | 週次 |
+| Dockle | デプロイ先ブランチへの PR | 不要 | 週次（Image Scan 内） |
+| Trivy SBOM | デプロイ先ブランチへの PR | 不要 | 週次（Image Scan 内） |
+| Trivy ライセンス | Trivy FS と同一トリガー | 同上 | 週次 |
+| OSV diff | 依存関係変更 PR | 不要 | 不要 |
+| Opengrep（SAST） | Go / TypeScript・依存・spec 変更 PR | 同上 | 週次 |
+| Grype | Go・依存変更 PR | 同上 | 週次 |
+| DevSkim | 全 PR | `develop` / `staging` / `production` / `release/*` | 週次 |
+| Bearer | Go / TypeScript 変更 PR | 同上 | 週次 |
+| ESLint（security） | TypeScript ワークスペース変更 PR | 同上 | 週次 |
+| SonarQube Cloud | Go / TypeScript / `sonar-project.properties` 変更 PR | 同上 | 週次 |
+| lockfile-lint | lockfile 変更 PR | 不要 | 不要 |
+| Spectral（OpenAPI） | spec 変更 PR | `release/*` / デプロイ先ブランチ | 不要 |
+| capslock | `go.mod` 変更 PR | 不要 | 不要 |
+| Go fuzzing | 不要 | 不要 | 週次 |
+| OWASP ZAP（DAST） | `zap-api-scan.yaml` / `.github/zap/**` 変更時 | `develop` / `staging` / `production` / `release/*` | 週次 |
+| trustabl（エージェント設定） | — | — | 週次 |
 
-Weekly runs are staggered across Monday morning UTC in **15-minute steps**, one workflow per slot, so a single moment does not queue every scanner at once: `00:00` Trivy FS, `00:15` govulncheck, `00:30` TruffleHog, `00:45` OSV-Scanner, `01:00` Scorecard, `01:15` CodeQL, `01:30` Image Scan, `01:45` gitleaks (full-history), `02:00` zizmor (online audits), `02:15` Go cooldown, `02:30` Opengrep, `02:45` fuzz, `03:00` ZAP (DAST), `03:15` Grype, `03:30` DevSkim, `03:45` ESLint, `04:00` Bearer, `04:15` Checkov, `04:30` trustabl, `04:45` tool cooldown, `05:00` SonarQube Cloud, `05:15` Closed Loop Weekly.
+週次実行は月曜未明（UTC）に **15 分刻み**で 1 スロット 1 本ずつずらしています。同一時刻に全スキャナが並ぶのを避けるためです。スロットの割り当ては `00:00` Trivy FS、`00:15` govulncheck、`00:30` TruffleHog、`00:45` OSV-Scanner、`01:00` Scorecard、`01:15` CodeQL、`01:30` Image Scan、`01:45` gitleaks（全履歴）、`02:00` zizmor（オンライン監査）、`02:15` Go cooldown、`02:30` Opengrep、`02:45` fuzz、`03:00` ZAP（DAST）、`03:15` Grype、`03:30` DevSkim、`03:45` ESLint、`04:00` Bearer、`04:15` Checkov、`04:30` trustabl、`04:45` tool cooldown、`05:00` SonarQube Cloud、`05:15` Closed Loop Weekly。
 
-The step is 15 minutes rather than an hour because the set has grown to 22: at hourly spacing the last one would not start until the following evening, which puts a scanner's findings a day away from the ones it should be read beside. A new scheduled workflow takes the next free slot; two sharing one is a defect, not a preference. The order encodes intent, so a new entry goes where it belongs rather than at the end.
+刻みが 1 時間でなく 15 分なのは、対象が 22 本まで増えたためです。1 時間刻みだと最後の 1 本が翌日の夜まで始まらず、並べて読むべき検出どうしが 1 日離れてしまいます。定期実行のワークフローを追加するときは次の空きスロットを取ります。2 本が同じスロットを共有しているのは好みの問題ではなく欠陥です。順序には意図があるので、追加は末尾ではなく相応しい位置へ入れます。
 
-GitHub does not honour a scheduled time exactly — a run can start well after its slot under load — so the stagger reduces the pile-up rather than eliminating it. Spacing that no scheduler guarantees is not something to tune finely.
+GitHub は指定時刻を厳密には守らず、負荷次第でスロットよりかなり遅れて始まることがあります。このずらしは重なりを減らすものであって無くすものではありません。スケジューラが保証しない間隔を細かく調整しても意味がありません。
 
-DAST takes `03:00`. It is placed behind every file-reading scanner because it is the only one that builds and boots the application before it scans, so it is the longest and the least useful to have queued ahead of anything else.
+DAST は `03:00` に入ります。スキャンの前にアプリケーションをビルドして起動する唯一のワークフローで、いちばん長く、他の前に並べても得るものが無いため、ファイルを読むだけのスキャナ群より後ろに置いています。
 
-SonarQube Cloud takes the last slot. Its analysis runs on a vendor's servers, and it is placed at the end for the same reason DAST is placed behind the file-reading scanners: its duration depends on a queue this repository does not control, so nothing useful is gained by having it queued ahead of a scanner that finishes on its own runner.
+最後のスロットは SonarQube Cloud です。解析がベンダーのサーバ側で走るため、DAST を全ファイル読み取り系の後ろへ置いたのと同じ理由で最後に並べています。所要時間がこのリポジトリの制御外のキューに左右されるため、自前のランナーで完結するスキャナより前に積む利点がありません。
 
-#### Notification triggers
+#### 検出通知のトリガー
 
-Every scanner with a weekly schedule calls `notify.yaml` when its job ends in `failure` or `cancelled`. A PR failure is already visible to its author; a scheduled failure is visible to nobody, which is the case the notification exists for. `cancelled` is included because a job killed by a timeout or a runner fault reports that rather than `failure`.
+週次スケジュールを持つスキャナは、ジョブが `failure` または `cancelled` で終わったときに `notify.yaml` を呼び出します。PR の失敗は作成者に見えていますが、定期実行の失敗は誰にも見えないためです。`cancelled` を含めるのは、タイムアウトやランナー障害で打ち切られたジョブが `failure` ではなくこちらになるからです。
 
-Failure is not the only thing worth pushing. A report-only scanner leaves its job green on a finding, so failure mode can never fire for one; those call `notify.yaml` in detection mode instead, which names the actor, ref, commit and the findings themselves. Both modes skip delivery and leave the run green when no webhook secret is configured, so a created repository is never failed by a notification it cannot send.
+押し出す価値があるのは失敗だけではありません。報告専用のスキャナは検出してもジョブが green で終わるため、失敗モードは検出に対して決して発火しません。それらは代わりに `notify.yaml` を検出モードで呼び出し、actor / ref / commit と検出内容そのものを添えて通知します。どちらのモードも webhook secret が未設定なら送信をスキップして run を green のままにするため、送信先を持たない作成先が通知のせいで落ちることはありません。
 
-Which trigger a detection notification fires on follows from who the right recipient is. For the vulnerability scanners it is the scheduled run only — on a PR the finding is already in a comment addressed to the author, who introduced the dependency, whereas a weekly finding is a newly published advisory against code that stood still and reaches nobody.
+検出通知をどのトリガーで発火させるかは、届けるべき相手が誰かで決まります。脆弱性スキャナは定期実行のみです。PR では検出内容が既に PR コメントとして依存を持ち込んだ作成者宛に出ている一方、週次の検出は「変わっていないコードに対して新たに公開された advisory」であり誰にも届かないからです。
 
-| Workflow | Fires when | Trigger |
+| ワークフロー | 発火条件 | トリガー |
 | --- | --- | --- |
-| `trivy-fs.yaml` | fixable CRITICAL / HIGH / MEDIUM found | schedule |
-| `vulnerability-check.yaml` | reachable vulnerability found | schedule |
-| `osv-scanner.yaml` | promotion-blocking finding | schedule |
-| `grype.yaml` | any vulnerability found | schedule |
-| `devskim.yaml` | any finding | schedule |
+| `trivy-fs.yaml` | 修正版のある CRITICAL / HIGH / MEDIUM | schedule |
+| `vulnerability-check.yaml` | 到達可能な脆弱性 | schedule |
+| `osv-scanner.yaml` | 昇格をブロックする検出 | schedule |
+| `grype.yaml` | 脆弱性の検出 | schedule |
+| `devskim.yaml` | 検出あり | schedule |
 
-The other scheduled scanners need no detection notification: gitleaks, Trivy secret, TruffleHog, Opengrep, zizmor (at high), the image-scan gate and fuzzing all fail their job on a finding, so failure mode already delivers it. Four are deliberately left unconnected: the Trivy licence inventory reports licences nobody has yet agreed are problems (the same reason it writes no SARIF), while CodeQL and Scorecard publish to the code-scanning dashboard and expose no finding count to the workflow — a Scorecard "score dropped" notification would additionally need the previous score kept somewhere, which nothing here does. Checkov joins them on the same terms: its baseline over this repository is twenty findings, most of them one rule reported once per workflow file. Dockle and `trivy sbom` need no wiring of their own: they run inside `image-scan.yaml`, whose scheduled failure already reaches a human.
+他の定期実行スキャナに検出通知は不要です。gitleaks / Trivy secret / TruffleHog / Opengrep / zizmor（high）/ image-scan のゲート / fuzzing はいずれも検出時にジョブが落ちるため、失敗モードが既に届けています。意図的に未接続のものが 4 つあります。Trivy のライセンス集計は「まだ誰も問題だと合意していないライセンス」を並べるもので（SARIF を書かないのと同じ理由）、CodeQL と Scorecard は結果を code scanning ダッシュボードへ publish するだけでワークフロー側に検出件数が出てきません。Scorecard の「スコア低下」通知には加えて前回スコアの保持が要りますが、それを持つ仕組みはここにありません。Checkov も同じ条件で未接続です。このリポジトリに対するベースラインが 20 件あり、その大半は 1 つのルールがワークフローファイルごとに 1 回ずつ出ているものです。Dockle と `trivy sbom` は自前の配線が要りません。どちらも `image-scan.yaml` の中で走り、その定期実行の失敗は既に人へ届きます。ESLint と Bearer と trustabl は理由が別で未接続です。ベースラインが 0 件ではない（ESLint は 100 件超の warning、Bearer は 14 件の検出、trustabl は `.claude/agents/` 配下の読み取り専用 subagent 1 本につき high が 1 件）ため「検出あり」で発火する通知は変更の内容によらず毎週鳴り続けます。それは人が読まなくなる形の通知です。SonarQube Cloud も同じ理由で未接続です。セキュリティと並んで保守性を報告するため、既存コードベースに対するベースラインが 0 件になることはありません。
 
-ESLint, Bearer and trustabl are left unconnected for a different reason: their baselines are non-zero — over a hundred warnings for ESLint, fourteen findings for Bearer, and for trustabl one high finding per read-only subagent under `.claude/agents/` — so a detection notification keyed on "any finding" would fire every week regardless of what changed, which is the shape of a notification people learn to ignore. SonarQube Cloud joins them on that reason: it reports maintainability alongside security, so its baseline over an existing codebase is never zero.
+#### 検知が重なる面
 
-#### Overlapping surfaces
+複数のツールが同じ種類の指摘を出せます。**重複させてはならないのはゲートであって、ツールではありません**。1 つの問題で PR が 2 回赤くなるということは、抑止する場所が 2 箇所になり、抑止が腐る場所も 2 箇所になるということです。報告は別で、同じファイルを別の DB / 別のルールセットで読む 2 つ目のエンジンは、1 つ目がまだ知らないものを拾います。この冗長性は意図して買っています。
 
-Several tools can detect the same class of finding. **What must not be duplicated is the gate, not the tool**: one problem turning a pull request red twice means two places to suppress it and two places for a suppression to rot. Reporting is a different matter — a second engine reading the same files against its own database or rule set catches what the first has not learned about yet, and that redundancy is bought deliberately.
+したがって 1 つの面に複数のツールが同時に乗って構いません。ゲートを 1 つに保っているのは「走るツールが 1 つだけ」だからではなく、**ゲートする 2 つのツールが同じ指摘を担当しないから**です。これを支える仕組みは 2 つあり、表はその両方を記録しています。同じルールを judge しうる 2 つのツールがある場合は片方をその面で切る（3 列目がそれを名指しし、検知可能なツールがなぜ使われないかを示す）。2 つのゲートが同居する場合は、互いに素なルールセットを judge する。`自前の Go ソース` の行がその違いを示す例です — Opengrep は Semgrep の ERROR 帯でゲートし、`gosec` は golangci-lint 経由でゲートしますが、対象ファイルは同じでもルールは決して重なりません。つまりここでの「担当 1 つ」は**ルール単位で 1 つ**という意味であり、ツールが 1 つという意味ではありません。
 
-So a surface may carry several tools at once. What keeps the gate single is not that only one tool runs, but that **no two gating tools claim the same finding**. Two mechanisms hold that, and the table records both: where two tools would judge the same rule, one side is switched off for that surface (the third column names it, and why a capable tool is unused); where two gates coexist, they judge disjoint rule sets. `First-party Go source` is the case that shows the difference — Opengrep gates on Semgrep's ERROR band and `gosec` gates through golangci-lint, over the same files but never the same rule — so "one owner" there means one owner *per rule*, not one tool.
+共有された面に乗るそれ以外のツールは報告専用で、その面の判定は下表で `(gate)` が付いたものが持ちます。`(gate)` の無い行はどこでもゲートしません。依存スキャナは報告に徹し、ブロック判定は[リリースゲート](#リリースゲート)が持ちます。
 
-Every other tool on a shared surface is report-only, and the verdict on that surface belongs to the gate(s) marked below. A row with no `(gate)` marker gates nowhere: the dependency scanners report, and the blocking verdict is the release gates' (see [Release Gates](#release-gates)).
-
-| Surface | Owner | Also capable, deliberately not used here |
+| 面 | 担当 | 検知可能だがここでは使わない |
 | --- | --- | --- |
-| Dockerfile security policy | `trivy-config.yaml` **(gate, HIGH+)** + `checkov.yaml` (Checkov, report-only) | Opengrep (its Dockerfile rules are excluded in `opengrep.yaml`) |
-| Workflow definitions | `zizmor.yaml` (zizmor) **(gate)** + `code-ql.yaml` (`actions` leg) + `checkov.yaml` (Checkov, report-only) | — |
-| Dockerfile style / correctness | `docker-lint.yaml` (hadolint) **(gate)** | — (a different layer, not a duplicate) |
-| First-party Go source | `opengrep.yaml` (Opengrep, ERROR band) **(gate)** + `gosec` via `go-lint.yaml` **(gate)** — disjoint rule sets + `sonarqube.yaml` (SonarQube Cloud) **(gate, quality gate)** | — |
-| OpenAPI conventions / naming | `oapi-lint.yaml` (redocly) **(gate)** | Spectral |
-| OpenAPI security posture | `openapi-security.yaml` (Spectral) **(gate)** | redocly |
-| Dependency vulnerabilities | `trivy-fs.yaml` (Trivy) + `osv-scanner.yaml` (OSV) + `grype.yaml` (Grype) — all report-only | — |
-| First-party TypeScript source | `code-ql.yaml` (`javascript-typescript` leg) + `opengrep.yaml` (`p/typescript`) **(gate)** + `eslint.yaml` (`eslint-plugin-security`) + `sonarqube.yaml` (SonarQube Cloud) **(gate, quality gate)** | — |
-| Any file, whatever its language | `devskim.yaml` (DevSkim) | — |
-| AI-agent configuration (`.claude/**`, MCP declarations) | `trustabl.yaml` (trustabl) — report-only | — (no other scanner here parses a tool grant) |
-| Sensitive values reaching a sink | `bearer.yaml` (Bearer) — report-only, over application code only (`/scripts` is excluded: repository tooling handles no user data, which is the whole of what this question asks) | — |
-| Runtime image | `image-scan.yaml` (Trivy) **(gate)** + Dockle (practice rules, report-only) + `trivy sbom` (report-only — the same database as the gate, reading syft's package list instead of Trivy's own) | — |
+| Dockerfile のセキュリティポリシー | `trivy-config.yaml` **(gate, HIGH+)** + `checkov.yaml`（Checkov・報告専用） | Opengrep（`opengrep.yaml` で Dockerfile ルールを除外） |
+| ワークフロー定義 | `zizmor.yaml`（zizmor） **(gate)** + `code-ql.yaml`（`actions` レグ）+ `checkov.yaml`（Checkov・報告専用） | — |
+| Dockerfile のスタイル / 正しさ | `docker-lint.yaml`（hadolint） **(gate)** | —（層が違い重複ではない） |
+| 自前の Go ソース | `opengrep.yaml`（Opengrep・ERROR 帯） **(gate)** + `go-lint.yaml` 経由の `gosec` **(gate)** — ルールセットは互いに素 + `sonarqube.yaml`（SonarQube Cloud） **(gate, 品質ゲート)** | — |
+| OpenAPI の規約 / 命名 | `oapi-lint.yaml`（redocly） **(gate)** | Spectral |
+| OpenAPI のセキュリティ姿勢 | `openapi-security.yaml`（Spectral） **(gate)** | redocly |
+| 依存の脆弱性 | `trivy-fs.yaml`（Trivy）+ `osv-scanner.yaml`（OSV）+ `grype.yaml`（Grype） — すべて報告専用 | — |
+| 自前の TypeScript ソース | `code-ql.yaml`（`javascript-typescript` レグ）+ `opengrep.yaml`（`p/typescript`） **(gate)** + `eslint.yaml`（`eslint-plugin-security`） + `sonarqube.yaml`（SonarQube Cloud） **(gate, 品質ゲート)** | — |
+| 言語を問わない全ファイル | `devskim.yaml`（DevSkim） | — |
+| AI エージェント設定（`.claude/**`、MCP 宣言） | `trustabl.yaml`（trustabl）——報告専用 | —（ツール付与を解釈するスキャナは他に無い） |
+| sink へ到達する機微な値 | `bearer.yaml`（Bearer） — 報告専用。対象はアプリケーションコードのみで `/scripts` は除外（リポジトリのツーリングはユーザーデータを扱わず、この問いが訊いているのはそれだけであるため） | — |
+| ランタイムイメージ | `image-scan.yaml`（Trivy） **(gate)** + Dockle（プラクティス検査・報告専用）+ `trivy sbom`（報告専用。ゲートと同じ DB を、Trivy 自身ではなく syft のパッケージ一覧で引く） | — |
 
-The `First-party Go source` and `First-party TypeScript source` rows carry the vendor-hosted scanner as well. Sonar is the one deliberate departure from "one owner per rule" in this table. Its quality gate judges static analysis and duplication alongside its own issue taxonomy, while the Go and TypeScript test workflows own coverage thresholds. A finding both engines recognize can still turn a pull request red twice; that is accepted because discarding the vendor's verdict entirely would leave the scan reporting into a run that merged regardless.
+`自前の Go ソース` と `自前の TypeScript ソース` の行にはベンダーホスト型のスキャナも乗っています。Sonar はこの表で唯一「ルール単位で担当 1 つ」から意図的に外れています。品質ゲートは静的解析・重複と Sonar 自身の issue 分類をまとめて判定し、カバレッジの閾値は Go / TypeScript のテストワークフローがそれぞれ担います。両者が認識する検出で PR が 2 回赤くなり得ますが、それを受け入れているのは、ベンダーの判定を捨てると「スキャンは報告するが run はそのままマージされる」状態になるためです。
 
-#### Bearer's licence and removal
+#### Bearer のライセンスと撤去
 
-`bearer/bearer` is published under the **Elastic License 2.0**, which permits use, modification and redistribution but forbids providing the software to third parties as a hosted or managed service, and forbids circumventing its licence-key functionality. Running it inside this repository's own CI engages neither: nothing here is offered to a third party, and the CLI needs no key — its `--api-key` flag is documented as legacy and exists only for the vendor's discontinued cloud product.
+`bearer/bearer` は **Elastic License 2.0** で公開されており、利用・改変・再配布は認めつつ、ソフトウェアを hosted / managed service として第三者へ提供することと、ライセンスキー機構の回避とを禁じています。このリポジトリ自身の CI で走らせる限りどちらにも触れません。第三者へ何も提供しておらず、CLI はキーを必要としないためです（`--api-key` フラグは legacy と明記され、提供を終えたクラウド製品のために残っているだけです）。
 
-Being outside the OSI definition is not what makes Bearer unusual here — CodeQL is not OSI-approved either, and gets no section of its own. What is worth writing down is that a repository created from this template inherits the workflow along with the licence, so a consumer who then wants to offer the tool as part of a service has a question to answer that the OSI-licensed scanners here do not raise. Removing Bearer is the answer, and it has to take all of this with it:
+OSI の定義の外にあること自体は Bearer に固有ではありません。CodeQL も OSI 承認ではなく、専用の節を持っていません。書き留める価値があるのは、このテンプレートから作られたリポジトリがワークフローとともにライセンスも引き継ぐという点です。ツールをサービスの一部として提供したい利用者には、ここにある OSI ライセンスのスキャナには生じない判断が要ります。その答えは撤去であり、撤去は次のすべてを落とします。
 
-| Remove | Kept green by |
+| 落とすもの | 落とし忘れを捕まえるもの |
 | --- | --- |
 | `.github/workflows/bearer.yaml` | — |
-| the `aqua:Bearer/bearer` line in [`mise.toml`](../../mise.toml) | `make tool-cooldown-gate` reads the pin from here |
-| the `[job."bearer.yaml:bearer"]` section in [`.github/egress.toml`](../egress.toml) | `make egress-check` fails on a job section with no matching workflow |
-| the `bearer.yaml` rows in this file and its `README.ja.md` translation — timeout table, Security table, trigger matrix, weekly rotation, overlapping surfaces — and this section | `make md-lint` checks the pair, not the rows |
+| [`mise.toml`](../../mise.toml) の `aqua:Bearer/bearer` 行 | `make tool-cooldown-gate` はこの固定値を読む |
+| [`.github/egress.toml`](../egress.toml) の `[job."bearer.yaml:bearer"]` セクション | `make egress-check` が「対応する workflow の無いジョブセクション」で落ちる |
+| このファイルと対訳の `README.md` にある `bearer.yaml` の行 — timeout 表 / Security 表 / トリガーマトリクス / 週次のずらし方 / 検知が重なる面 — およびこの節 | `make md-lint` が見るのは対訳ペアであって行ではない |
 
-`make pin-actions-check` needs nothing done to it as long as every action `bearer.yaml` used is still referenced elsewhere; it fails on a lockfile entry nothing references, so check that first if it goes red. The `level` defaulting in the summary step goes with the workflow: it exists because Bearer omits `level` from every result, and jq raises a runtime error on the sort key rather than falling through to `//`.
+`make pin-actions-check` は、`bearer.yaml` が使っていた Action がすべて他所からも参照されている限り何もする必要がありません。参照されないエントリが lockfile に残ると落ちるため、赤くなったらそこを先に見てください。summary ステップの `level` 補完はワークフローと一緒に消えます。Bearer は全ての結果に `level` を持たず、jq がソートキーで `//` へ落ちずにランタイムエラーになるために置いてあるものです。
 
-#### Removing the credential-bearing scanners
+#### 資格情報を要するスキャナの撤去
 
-Two scanners here need something the repository cannot supply on its own. SonarQube Cloud needs a token for a vendor's service, and CodeQL needs GitHub Advanced Security, which is free for a public repository and billed for a private one. Both are free for this repository because it is public; a repository created from this template may be neither public nor willing to pay.
+ここには、リポジトリ自身では用意できないものを必要とするスキャナが 2 つあります。SonarQube Cloud はベンダーのサービスへのトークンを要し、CodeQL は GitHub Advanced Security を要します。後者は public リポジトリでは無料、private では課金対象です。このリポジトリは public なので 2 つとも無料で回りますが、このテンプレートから作られたリポジトリが public とは限らず、課金を受け入れるとも限りません。
 
-`make setup-remove-licensed-scanners` removes both in one run, and commits each product separately so a consumer who holds a licence for one of them can restore it with `git revert` on that commit alone. Which is why the removal is one script and not one per product: the decision a consumer actually makes once is "do I want scanners that bill me or phone a vendor", and the per-product choice is better expressed as an undo than as two scripts to remember.
+`make setup-remove-licensed-scanners` は 2 つを 1 回の実行でまとめて撤去し、**製品ごとに別のコミットを積みます**。どれか 1 つのライセンスを既に持っている利用者は、そのコミットだけを `git revert` すれば復活させられます。撤去を 2 つのスクリプトに分けず 1 つにしているのはこのためです。利用者が実際に一度だけ下す判断は「課金されるスキャナやベンダーへ送信するスキャナを使うか」であり、製品単位の選択は 2 つのスクリプトを覚えることよりも「取り消し」として表現するほうが適切です。
 
-The edits to this file and its translation are **not** in those per-product commits — they land in one final commit of their own. The products occupy adjacent rows of the same tables, so a per-product doc edit makes every `git revert` but the last one conflict here, which is the one thing the split exists to prevent. The cost is that a reverted scanner comes back working but undocumented; its rows can be read back out of that final commit.
+このファイルと対訳の編集は、製品ごとのコミットには**含めず**独立した最後の 1 コミットにまとめます。2 製品は同じ表の隣り合う行を占めるため、ドキュメント編集を製品側へ混ぜると最後の 1 つ以外の `git revert` が必ずここで衝突し、分割した意味がなくなるからです。代償として、復活させたスキャナは動きますが記述は戻りません。行はその最後のコミットから読み出せます。
 
-`bearer.yaml` is deliberately **not** in that set. The Elastic License 2.0 costs nothing to run in CI and constrains only redistribution as a service, which is a different question with a different answer — see [Bearer's licence and removal](#bearers-licence-and-removal), which stays a manual procedure.
+`bearer.yaml` は意図的にこの対象**外**です。Elastic License 2.0 は CI での実行に費用を課さず、制約するのはサービスとしての再配布だけで、これは別の問いであり別の答えになります。[Bearer のライセンスと撤去](#bearer-のライセンスと撤去)を参照してください。そちらは手動手順のままです。
 
-What the script takes with each product, and what has to survive:
+スクリプトが製品と一緒に持っていくもの、および残さなければならないもの:
 
-| Removed with the product | Must survive |
+| 製品と一緒に消えるもの | 残さなければならないもの |
 | --- | --- |
-| the workflow file, and `sonar-project.properties` for Sonar | — |
-| the `[job."<workflow>:<job>"]` sections in [`.github/egress.toml`](../egress.toml) | — |
-| the lockfile entries in [`.github/actions-pin.toml`](../actions-pin.toml) that nothing else references | `github/codeql-action@v4` — every other workflow that uploads SARIF references it |
-| the rows and prose in this file and its `README.ja.md` translation | the rows of every scanner that stays |
-| `.github/codeql/**` for CodeQL | — |
+| ワークフローファイル。Sonar は `sonar-project.properties` も | — |
+| [`.github/egress.toml`](../egress.toml) の `[job."<workflow>:<job>"]` セクション | — |
+| [`.github/actions-pin.toml`](../actions-pin.toml) のうち他から参照されなくなったエントリ | `github/codeql-action@v4` — SARIF をアップロードする他のすべてのワークフローが参照する |
+| このファイルと `README.md` の行および散文 | 残るスキャナの行 |
+| CodeQL の `.github/codeql/**` | — |
 
-The lockfile rule is not a list of exceptions: the script counts references in the workflows that remain and deletes an entry only when the count reaches zero. `github/codeql-action@v4` is the case that shows why counting beats a list — it is registered with CodeQL, but every scanner that publishes SARIF calls `upload-sarif` from that same action, so removing CodeQL leaves the entry in place where a fixed list would have taken it. `actions/download-artifact@v7` is the opposite case: Sonar's report job is its only user today, so removing Sonar takes it along. `make pin-actions-check` and `make egress-check` both fail on an orphan, which is what turns a missed entry into a red run rather than a silent leftover.
+lockfile の規則は例外リストではありません。スクリプトは残るワークフロー側の参照数を数え、0 になったエントリだけを削除します。`github/codeql-action@v4` は数えることがリストに勝つ理由を示す例です。CodeQL に紐づいて登録されたエントリですが、SARIF を publish するスキャナはいずれも同じアクションの `upload-sarif` を呼ぶため、CodeQL を撤去してもエントリは残ります。固定のリストなら消していたところです。`actions/download-artifact@v7` は逆の例で、いま使っているのは Sonar の report ジョブだけなので、Sonar の撤去が一緒に消します。`make pin-actions-check` と `make egress-check` はどちらも孤児で落ちるため、消し忘れは静かな残骸ではなく赤い run になります。
 
-The same counting is why reverting one scanner can leave `make pin-actions-check` red on an *unregistered* reference rather than an orphan: where two scanners in the removal set share an entry, it is deleted by whichever commit removed its last user, so restoring the earlier one brings back a `uses:` whose entry a later commit already took. The present set of two shares no such entry, so no revert hits this today — it returns the moment a third scanner joins. `make pin-actions-resolve` puts it back, and the check names the entry.
+この参照数の数え方は、1 つのスキャナを revert したときに `make pin-actions-check` が孤児ではなく**未登録の参照**で赤くなる理由でもあります。撤去対象どうしで共有するエントリは「最後の利用者を消したコミット」が削除するため、より前のスキャナを戻すと、後のコミットが既に消したエントリを参照する `uses:` が復活します。いまの 2 件は共有するエントリを持たないため、この形で赤くなることは現状ありません。3 つ目が加わった時点で戻ります。`make pin-actions-resolve` で戻せますし、どのエントリかは検査が名指しします。
 
-Registering `SONAR_TOKEN` stays a human step, as does creating the project on the vendor's side. Until it exists the leg skips itself and the run stays green — see [Result Comments](#result-comments) for why a missing credential is reported as a setup gap rather than as a scan result.
+`SONAR_TOKEN` の登録は人手の作業として残り、ベンダー側でのプロジェクト作成も同様です。それが存在しない間はレグが自分をスキップし run は green のままです。資格情報の欠如をスキャン結果ではなくセットアップの未了として報告する理由は[結果コメント](#結果コメント)を参照してください。
 
-#### OSS scanners evaluated but not in the catalogue
+#### 一覧に無い OSS スキャナの評価
 
-GitHub's code-scanning starter catalogue is not the boundary of what could run here. Eight OSS tools outside it were evaluated together; four are now wired in and four were declined. The table below is the record, and it exists because **a repository created from this template is usually private, where the answers change** — a licence that costs nothing here may not be acceptable there, and a service that is free for a public repository may not be free for theirs. The reasoning is kept here rather than in the issue that produced it, because a consumer of this template can read this file and cannot read that issue.
+GitHub の code scanning テンプレート一覧は、ここで走らせられるものの境界ではありません。一覧の外にある OSS ツール 8 件をまとめて評価し、4 件を採用、4 件を見送りました。下の表がその記録です。この表を残しているのは、**このテンプレートから作られるリポジトリはたいてい private で、そこでは答えが変わるから**です。ここでは費用のかからないライセンスが向こうでは受け入れられないことがあり、public リポジトリでは無料のサービスが向こうでは無料とは限りません。判断の経緯を発端となった issue ではなくこのファイルに置いているのは、テンプレートの利用者はこのファイルを読めても、その issue は読めないからです。
 
-Licences were read from each project's own licence file rather than from a third-party summary. Where a question could not be settled, the cell says so instead of guessing.
+ライセンスは第三者の集計ではなく各プロジェクトのライセンスファイル本体から読み取りました。確定できなかったものは推測で埋めず、その旨をセルに書いています。
 
-| Tool | Licence | Private / internal | Public | Verdict |
+| ツール | ライセンス | private・社内 | public | 判断 |
 | --- | --- | --- | --- | --- |
-| Dockle | Apache-2.0 | yes | yes | **Adopted** — inside `image-scan.yaml`. Practice rules over the built image, which no other scanner here reads. Runs entirely on the runner. Note that its last release is from January 2025, though the project still takes commits |
-| `trivy sbom` | Apache-2.0 | yes | yes | **Adopted** — inside `image-scan.yaml`. Not a new tool but a subcommand of the Trivy already pinned here, so it raises no licence or supply-chain question of its own |
-| Checkov | Apache-2.0 (CLI and Action alike) | yes | yes | **Adopted** — `checkov.yaml`. The CLI needs no account and reaches nothing outside the runner; the vendor's SaaS integration is a separate opt-in feature that is not used. Its `github_actions` rules are the part that earns its place, and they matter more, not less, once CodeQL is removed |
-| KICS | core Apache-2.0, **Action GPL-3.0** | yes | yes | **Declined** — on distribution shape, not on licence. Its release archive ships the binary alone without the query library, and its aqua package is a `go_build` recipe mise cannot install, so no route to it stays inside this repository's version SSOT. Calling the Action from a workflow would create no GPL obligation, but it would leave the tool outside `mise.toml` and outside `tool-cooldown.yaml` |
-| detect-secrets | Apache-2.0 | yes | yes | **Declined** — it would be the fourth secret engine after gitleaks, Trivy secret and TruffleHog |
-| Renovate | **AGPL-3.0** (MIT through v11; AGPL from v12) | yes, self-hosted | yes, self-hosted | **Declined** — Dependabot plus the cooldown gates already cover this, and nothing here needs what Renovate adds. Running it unmodified for one's own dependency updates triggers no AGPL disclosure; the terms of Mend's hosted app were **not established** and would need checking by anyone who adopts that form |
-| OpenSSF Allstar | Apache-2.0 | yes, with an org decision | yes | **Declined** — it enforces rather than detects, and it is an organisation-level GitHub App, so it is not something a template can hand down as a workflow file at all. It also wants authority over settings that [`.github/settings/branch-protection.json`](../settings/branch-protection.json) already owns. Adopting it means first deciding which of the two is authoritative, and granting an externally operated App read access to a private repository is the consuming organisation's call, not this template's |
+| Dockle | Apache-2.0 | 可 | 可 | **採用** — `image-scan.yaml` 内。ビルド済みイメージへのプラクティス検査で、ここの他のどのスキャナも読んでいない面。runner 内で完結する。最新リリースは 2025 年 1 月で止まっているが、本体へのコミットは続いている |
+| `trivy sbom` | Apache-2.0 | 可 | 可 | **採用** — `image-scan.yaml` 内。新規ツールではなく既に pin 済み Trivy のサブコマンドなので、ライセンスと供給網の判断が増えない |
+| Checkov | Apache-2.0（CLI・Action とも） | 可 | 可 | **採用** — `checkov.yaml`。CLI はアカウント不要で runner の外へ出ない。ベンダーの SaaS 連携は別建てのオプトイン機能で、使っていない。採用の理由は `github_actions` ルールで、これは CodeQL を撤去したあとほど重みが増す |
+| KICS | 本体 Apache-2.0、**Action は GPL-3.0** | 可 | 可 | **見送り** — 理由はライセンスではなく配布形態。リリース書庫はバイナリ単体でクエリ本体を同梱せず、aqua パッケージは mise が扱えない `go_build` 形式のため、このリポジトリのバージョン SSOT の内側に収まる経路が無い。ワークフローから Action を呼ぶだけなら GPL の義務は生じないが、それでもツールは `mise.toml` と `tool-cooldown.yaml` の外に出る |
+| detect-secrets | Apache-2.0 | 可 | 可 | **見送り** — gitleaks・Trivy secret・TruffleHog に続く 4 つ目のシークレットエンジンになる |
+| Renovate | **AGPL-3.0**（v11 までは MIT、v12 から AGPL） | 可（self-host 形態） | 可（self-host 形態） | **見送り** — Dependabot と cooldown ゲートで足りており、Renovate が足すものを必要としていない。自リポジトリの依存更新に未改変で使う限り AGPL の開示義務は生じない。Mend のホスト型の条件は**確認できていない**。その形態を採る場合は採用側で確認が要る |
+| OpenSSF Allstar | Apache-2.0 | 可（org の判断が要る） | 可 | **見送り** — 検出ではなく強制であり、組織単位の GitHub App なので、そもそもテンプレートがワークフローファイルとして配れる形をしていない。加えて強制対象は [`.github/settings/branch-protection.json`](../settings/branch-protection.json) が既に持っている。採用するならまずどちらが正本かを決める必要があり、外部が運用する App へ private リポジトリの読み取り権限を渡す判断は、このテンプレートではなく採用する組織のものである |
 
-Two limits on the table. It reports licence terms and whether an account is required; it does not reach any organisation's internal policy on GPL- or AGPL-licensed tooling, and where those disagree the organisation's policy governs. And a declined verdict is this repository's, decided against what already runs here — a consumer whose repository lacks these overlaps may well reach a different one, which is the reason the reasoning is written out rather than just the outcome.
+この表には限界が 2 つあります。報告しているのはライセンス条項とアカウントの要否までで、GPL / AGPL 系ツールの利用可否といった各組織の内部規程には踏み込んでいません。食い違う場合は組織側の規程が優先します。もう 1 つ、見送りの判断はこのリポジトリのもので、既にここで走っているものと突き合わせて下したものです。同じ重複を持たないリポジトリでは違う結論になり得ます。結果だけでなく理由を書いているのはそのためです。
 
-#### DevSkim's version pin
+#### DevSkim のバージョン固定
 
-Every other tool a workflow here installs is pinned in [`mise.toml`](../../mise.toml), which is what makes `tool-cooldown.yaml` able to gate a version published inside the supply-chain cooldown window. DevSkim is the exception: `microsoft/DevSkim` publishes no release binary and has no aqua package, so the only distribution is the NuGet global tool.
+ここのワークフローが入れる他のツールはすべて [`mise.toml`](../../mise.toml) で固定されており、それがあるから `tool-cooldown.yaml` は「供給網クールダウンの窓の内側に公開された版」をゲートできます。DevSkim だけが例外です。`microsoft/DevSkim` はリリースバイナリを公開しておらず aqua パッケージも無いため、配布経路は NuGet のグローバルツールだけです。
 
-mise can in fact reach that — its `dotnet:` backend resolves NuGet packages — and it is still not used, for two reasons. The backend requires the .NET runtime to become a mise-managed tool as well, which puts a whole language runtime into the version SSOT for the sake of one linter. And [`scripts/tool-cooldown`](../../scripts/tool-cooldown) has no publish-time source for a `dotnet:` backend, so the entry would be reported as *unresolved* rather than gated. Moving the pin into `mise.toml` would therefore buy the appearance of coverage without the coverage.
+mise はそれ自体には届きます（`dotnet:` バックエンドが NuGet パッケージを解決します）。それでも使っていない理由は 2 つです。このバックエンドは .NET ランタイム自体も mise 管理下のツールにすることを要求し、リンタ 1 本のためにバージョン SSOT へ言語ランタイムを丸ごと入れることになります。そして [`scripts/tool-cooldown`](../../scripts/tool-cooldown) は `dotnet:` バックエンドの公開時刻の取得経路を持たないため、宣言してもゲートされず *unresolved* として報告されるだけです。`mise.toml` へ移すと、検査されている見た目だけが手に入ります。
 
-The version consequently lives in `devskim.yaml`'s own `env:` block, and nothing guards it — bumping it means reading the release notes by hand.
+そのためバージョンは `devskim.yaml` の `env:` が持ち、これを守る仕組みはありません。更新はリリースノートを人が読んで判断します。
 
-The alternative — `microsoft/DevSkim-Action` — is worse on exactly this axis, not better. It is a Docker action whose `Dockerfile` builds from the floating `mcr.microsoft.com/dotnet/sdk:8.0` tag and then runs an unversioned `dotnet tool install`, so pinning the action to a SHA pins the recipe and not the code that ends up executing.
+代替の `microsoft/DevSkim-Action` は、この軸ではむしろ悪化します。`Dockerfile` が浮動タグ `mcr.microsoft.com/dotnet/sdk:8.0` から起こしてバージョン未指定の `dotnet tool install` を走らせる Docker action なので、Action を SHA で固定してもレシピが固定されるだけで、実際に走るコードは固定されません。
 
-#### Release Gates
+#### リリースゲート
 
-The dependency scanners are a double gate. On an ordinary PR they report only: a vulnerability inherited from the existing dependency tree is not something that PR introduced, and blocking there stops unrelated work while the update is prepared elsewhere. The blocking verdict happens on a PR into `develop` / `staging` / `production`, where the dependency state under review is the one about to be promoted.
+依存スキャナは二段構えです。通常の PR では報告のみに留めます。既存の依存ツリーから受け継いだ脆弱性はその PR が持ち込んだものではなく、そこでブロックしても更新作業が別途進む間、無関係な作業が止まるだけだからです。ブロックの判定は `develop` / `staging` / `production` 向けの PR で行います。そこでレビュー対象になっている依存の状態が、まさに昇格されようとしている状態だからです。
 
-| Gate | Fails on |
+| ゲート | fail する条件 |
 | --- | --- |
-| `trivy-release-gate.yaml` | any Trivy finding, including one with no released fix |
-| `osv-release-gate.yaml` | any OSV finding rated HIGH or CRITICAL, fixed or not, plus an unrated finding that has a fixed version |
+| `trivy-release-gate.yaml` | Trivy の全 finding（修正版が出ていないものを含む） |
+| `osv-release-gate.yaml` | HIGH / CRITICAL 判定の OSV finding（修正版の有無を問わない）と、判定を持たないが修正版が存在する finding |
 
-Severity for the OSV gate comes from the advisory's own rating and falls back to the CVSS score osv-scanner aggregates per group. Advisories from the Go vulnerability database publish neither, so they cannot be measured against the HIGH threshold at all; those gate only when a fixed version exists, which keeps an advisory that can be neither rated nor updated away from turning every promotion permanently red. Both gates deliberately carry no `paths` filter — a promotion PR often changes no manifest, and a required check has to run to be able to block.
+OSV ゲートの深刻度は advisory 自身の評価を使い、無ければ osv-scanner がグループ単位で集約する CVSS スコアへフォールバックします。Go 脆弱性データベース由来の advisory はそのどちらも公開しないため HIGH 閾値では測れず、修正版が存在する場合にのみゲート対象とします。評価もできず更新もできない advisory が、昇格のたびに恒久的な赤を生むのを避けるためです。両ゲートとも意図的に `paths` フィルタを持ちません。昇格 PR はマニフェストを一切変更しないことが多く、required check はまず実行されなければブロックできないからです。
 
-#### Required checks report on every pull request
+#### required check は全 pull request で報告される
 
-A context named in [`branch-protection.json`](../settings/branch-protection.json) must be *reported* before a merge is allowed. GitHub does not read an absent check as "not applicable"; it waits, and the pull request never becomes mergeable. So a workflow that reports a required context must not filter its `pull_request` trigger at all — `paths:` and `branches:` there decide whether the run happens, and a run that does not happen reports nothing.
+[`branch-protection.json`](../settings/branch-protection.json) が挙げた context はマージ前に**報告される**必要があります。GitHub は「報告が無い」を「該当しない」とは読まず、待ち続けます。その pull request は永久にマージ可能になりません。したがって required context を報告するワークフローは、`pull_request` トリガーにフィルタを持ってはいけません。`paths:` や `branches:` はそこでは run が起きるかどうかを決めるものであり、起きなかった run は何も報告しないからです。
 
-The trigger condition therefore lives in the job instead, where GitHub draws the opposite conclusion: **a job skipped by its `if:` reports `skipped`, and a required check counts that as success.** The eleven path-filtered workflows compute the condition in a `changes` job with [`dorny/paths-filter`](https://github.com/dorny/paths-filter) and gate the reporting job on its output; the two release gates read `github.base_ref` in the `if:` directly, since their condition is a branch name and needs no file list.
+そこで起動条件は job 側へ移します。GitHub はこちらでは逆の結論を出すためです。**`if:` で skip された job は `skipped` を報告し、required check はそれを成功として数えます。** path フィルタを持っていた 11 本は [`dorny/paths-filter`](https://github.com/dorny/paths-filter) を使う `changes` job で条件を計算し、その出力で報告 job をゲートします。リリースゲート 2 本は条件がブランチ名でファイル一覧を要さないため、`if:` で `github.base_ref` を直接読みます。
 
-The gate is written to **fail open**:
+ゲートは **fail open** で書いてあります。
 
 ```yaml
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.relevant != 'false' }}
 ```
 
-`relevant` is empty wherever the filter reached no verdict — skipped on a non-pull-request event, or failed outright — and an empty value is not `false`, so the work runs. The alternative fails silently: a skip hands the required context a green nobody earned, and a broken filter is exactly the moment that matters.
+`relevant` はフィルタが判定に到達しなかったところで空になります（pull_request 以外のイベントで skip された場合と、失敗した場合）。空は `false` ではないので、本体が走ります。逆向きだと静かに壊れます。skip は required context に誰も稼いでいない緑を渡すことになり、フィルタが壊れているときこそそれが効いてしまいます。
 
-The `push` half of each trigger keeps its own `paths:`. That half reports no context, so filtering it blocks nothing.
+各トリガーの `push` 側は `paths:` をそのまま持っています。そちらは context を報告しないので、絞っても何もブロックしません。
 
-`make required-check-lint` verifies that every required context is declared by exactly one job, and that its workflow's `pull_request` trigger carries no filter. **The second half is what keeps the deadlock closed**, and it is checkable only because the condition is stated once. Split it across a filter and its inverse and the invariant moves into the agreement between two lists, which nothing here can compare — and the disagreement surfaces on exactly the pull requests that touch the path someone forgot to add on the other side.
+`make required-check-lint` は、required context がちょうど 1 つの job から宣言されていること、およびその workflow の `pull_request` トリガーがフィルタを持たないことを検査します。**デッドロックを塞いでいるのは後半で**、これが検査できるのは条件が 1 箇所にしか書かれていないからです。フィルタとその反転に分けて書くと、不変条件は 2 つのリストの一致という、ここでは誰も比較できないものへ移ります。そして食い違いは、片側に足し忘れたパスを変更した pull request でだけ表面化します。
 
-#### Go Cooldown
+#### Go モジュールの cooldown
 
-Go has no counterpart to `min-release-age`: nothing lets `go get` refuse a version for being too new. That inverts the relationship between tool and guard: pnpm refuses a too-new version at resolution time, so the resolver is the guard; here the check **is** the guard, and reporting alone would leave the window existing nowhere.
+Go には `min-release-age` に当たるものがありません。`go get` に「新しすぎるから採るな」と言わせる手段が無い、ということです。これがツールと防御の関係を逆にします。pnpm は新しすぎるバージョンを依存解決の時点で拒否するのでリゾルバ自体が防御ですが、こちらは検査そのものが防御であり、報告に留めれば窓はどこにも存在しないままになります。
 
-`go-cooldown.yaml` therefore gates on a pull request, and only over the requirements the change adds or upgrades — everything already in `go.mod` is grandfathered, so the window applies going forward instead of holding every branch hostage to the state it inherited. Only **direct** requirements fail it. An indirect version is chosen by MVS and can sit above a direct dependency's own lower bound, where lowering it is not something the pull request can do; failing there would produce a red with no remedy, so those are reported.
+そこで `go-cooldown.yaml` は PR でゲートし、対象はその変更が追加 / 更新した require だけに絞ります。既に `go.mod` にあるものは grandfather するので、窓はこれから入るものに効き、引き継いだ状態で全ブランチが人質になることはありません。落とすのは **direct** だけです。indirect の版は MVS が選び、direct が要求する下限より上に固定されることがあります。それを下げるのは PR にできる操作ではないので、落としても打つ手の無い赤になります。よって indirect は報告に留めます。
 
-The window is **7 days**, and the number comes from this repository rather than from npm. Go modules carry no install script — `go mod download` executes nothing — so the class where a freshly published version takes the machine at install time does not exist; what the window buys is time before malicious code is built and shipped. Measured against the history here, 7 days would have stopped 12 of the 47 commits that touched `go.mod` and 14 days only 3 more, so there is no cliff between them, and the one commit that already declared it was picking versions that "satisfy the cooldown" had waited 7.4 days.
+窓は **7 日**で、この数字は npm からではなく本リポジトリの実績から採りました。Go モジュールには install script が無く `go mod download` は何も実行しないため、公開直後のバージョンが install 時点でマシンを奪うクラスは成立しません。窓が買うのは「悪意あるコードがビルドされ出荷されるまでの時間」です。履歴に当てると、7 日は `go.mod` を触った 47 コミットのうち 12 件を止め、14 日にしても 3 件しか増えないので両者の間に崖がありません。加えて「cooldown を満たす」と明示してバージョンを選んだ唯一のコミットが、実際には 7.4 日待っていました。
 
-Urgent overrides live in [`go-cooldown-bypass.toml`](../go-cooldown-bypass.toml), and every entry carries a deadline. An expired deadline, one reaching further than three months out, or an entry matching nothing in `go.mod` fails the check — and an invalid entry also stops working, so a lapsed bypass cannot quietly keep letting its module through. A deadline arrives without `go.mod` changing, which is why the schedule exists: the pull-request trigger alone would never see one expire.
+緊急の解除は [`go-cooldown-bypass.toml`](../go-cooldown-bypass.toml) が受け、エントリは必ず期限を持ちます。期限切れ・3 ヶ月より先の期限・`go.mod` の何にも当たらないエントリは検査を落とします。無効なエントリは効力も失うので、失効したバイパスが黙ってモジュールを通し続けることはありません。期限は `go.mod` が変わらなくても訪れます。定期実行があるのはそのためで、PR トリガーだけでは失効を一度も見られません。
 
-The scheduled run is the other half: it audits every requirement, never fails on the window, and exists to collect the bypass deadlines the pull-request trigger would never see arrive.
+定期実行はもう半分です。全 require を監査し、窓では決して落とさず、PR トリガーだけでは到来を見られないバイパスの期限を回収するために存在します。
 
-All three packages resolve with pnpm, whose `minimumReleaseAge` refuses a too-new version at resolution time instead of recording it and warning later (`minimumReleaseAgeStrict` makes that a hard failure rather than a silently widened window). There is no audit tool for it because there is nothing to audit after the fact — which puts the whole weight on review of `pnpm-workspace.yaml` itself, hence its [`CODEOWNERS`](../CODEOWNERS) entry.
+3 つのパッケージはいずれも pnpm で解決します。`minimumReleaseAge` は窓内のバージョンを記録して後から警告するのではなく、解決の時点で拒否します（`minimumReleaseAgeStrict` により、窓が黙って外れるのではなくハード失敗になります）。事後に監査する対象が残らないため、この半分には監査ツールがありません。そのぶん重みは `pnpm-workspace.yaml` 自体のレビューへ全て乗るので、[`CODEOWNERS`](../CODEOWNERS) に登録しています。
 
 #### DAST
 
-`zap-api-scan.yaml` is the only workflow here that scans a *running* application. Every other security check reads files; this one builds the server, boots it against a seeded Postgres, and drives HTTP at it from OWASP ZAP, with the endpoint list taken from the bundled OpenAPI definition.
+`zap-api-scan.yaml` は、ここで唯一「動いているアプリケーション」を走査するワークフローです。他のセキュリティ検査がファイルを読むのに対し、これはサーバーをビルドし、シードを入れた Postgres に対して起動し、バンドル済みの OpenAPI 定義から得たエンドポイント一覧をもとに OWASP ZAP から HTTP を投げます。
 
-That shape is what decided the tool. Of the six DAST products in GitHub's code-scanning template catalogue, four run the scan on the vendor's own infrastructure — which cannot reach an API that exists only inside a GitHub-hosted runner — and the two that do run in the runner both require a paid token. ZAP needs no credential and scans from inside the job, so it is the only one that can see an ephemeral target at all.
+ツールの選定はこの形から決まりました。GitHub の code scanning テンプレート一覧にある DAST 6 件のうち 4 件はベンダー側でスキャンが走り、GitHub-hosted runner の内部にしか存在しない API へは到達できません。runner 内で走る残り 2 件はいずれも有償トークンが必須です。ZAP は資格情報を要さず、ジョブの内部からスキャンできる唯一の選択肢で、そもそも短命な対象を見られるのはこの性質によります。
 
-**The scan runs authenticated, and that is the part most easily broken.** An unauthenticated scan collects 401 from every protected operation and stops at the surface, which looks like a completed scan and is not one. The job runs under the `dast` environment profile, which wires the real JWKS-backed authenticator described in [`docs/design/auth.md`](../../docs/design/auth.md) rather than the dev-only stub `ci` uses, so the credential is a JWT the mock auth server actually signed and the scan drives signature verification, `typ` checking and `kid` resolution on every request. The job asserts that the credential is accepted before ZAP starts. Losing that assertion would not turn the check red — it would quietly shrink what the scan covers.
+**スキャンは認証済みで走ります。そしてここが最も壊れやすい部分です。** 未認証のスキャンは保護されたオペレーションから 401 を集めて表層で止まり、完走したように見えて完走していません。ジョブは `dast` の環境プロファイルで走り、`ci` が使う dev 限定スタブではなく [`docs/design/auth.md`](../../docs/design/auth.md) が述べる JWKS backed の実 authenticator を配線します。したがって資格情報は mock 認証サーバーが実際に署名した JWT で、スキャンは毎リクエストで署名検証・`typ` 判定・`kid` 解決を通します。ジョブは ZAP を起動する前にその資格情報が通ることを確認します。この確認を失うと検査が赤くなるのではなく、スキャンの守備範囲だけが黙って縮みます。
 
-**It is report-only by design, not by omission.** The alert thresholds in [`.github/zap/rules.tsv`](../zap/rules.tsv) are derived from what this API happens to answer today; gating a merge on them would fail pull requests over findings they were never calibrated for. Alerts go to code scanning under the `zap-dast` category and to an artifact, and only a scan that could not run fails the job. ZAP emits no SARIF of its own, so the JSON report is mapped to it in the workflow; every alert is anchored to the OpenAPI bundle, because that file is what describes the surface the finding is about and pointing at a file that exists is what makes the alert navigable.
+**報告専用であることは、決めた結果であって省略ではありません。** [`.github/zap/rules.tsv`](../zap/rules.tsv) のしきい値は、この API が現に何を返すかから導いたものです。これでマージをゲートすれば、しきい値が想定していない検出で pull request を落とすことになります。検出は `zap-dast` カテゴリで code scanning と artifact に上がり、ジョブが落ちるのは「スキャン自体が実行できなかった」ときだけです。ZAP は SARIF を出力しないため、JSON レポートをワークフロー内で SARIF へ写像しています。各検出を OpenAPI バンドルへ紐づけるのは、そのファイルこそ検出対象の面を記述したものであり、実在するファイルを指すことが code scanning 上の辿りやすさになるからです。
 
-The thresholds and the scanned surface are expected to be re-derived against the API they are pointed at — see [Phase 17 of the setup guide](../../docs/get-started/setup-repository.md).
+しきい値とスキャン対象の面は、向ける先の API に対して導き直される前提です（[セットアップ手順の Phase 17](../../docs/get-started/setup-repository.md)）。
 
-#### Agent Config Scan
+#### エージェント設定スキャン
 
-`trustabl.yaml` scans a surface no other check here reads: the AI-agent configuration itself. zizmor and Checkov read the workflow definitions, CodeQL and the Go linters read the source, and none of them parse a subagent's `tools:` grant or a skill's `allowed-tools:`. The rule packs that matter for this repository are the Claude subagent and skill ones; the engine also ships packs for the OpenAI, Google ADK, LangChain, CrewAI and MCP ecosystems, which find nothing here.
+`trustabl.yaml` は、ここの他のどの検査も読まない面——AI エージェント設定そのもの——を走査します。zizmor と Checkov はワークフロー定義を、CodeQL と Go の linter はソースを読みますが、subagent の `tools:` 付与や skill の `allowed-tools:` を解釈するものはありません。このリポジトリで効くのは Claude の subagent / skill ルールパックです。エンジンは OpenAI・Google ADK・LangChain・CrewAI・MCP 向けのパックも同梱しますが、ここでは何も検出しません。
 
-**Three separately-versioned artifacts run in that one step, and only the first is pinned by pinning the action.** The action downloads the engine binary from the vendor's releases at run time, and the engine clones its rule pack from a second repository — both defaulting to a moving target. Left at their defaults they would put unreviewed third-party code on the runner every week, outside the cooldown window every other pin in this repository observes. The workflow therefore names all three: the action by SHA through [`.github/actions-pin.toml`](../actions-pin.toml), the engine by release tag, and the rule pack by tag. The rule pack is the weak link — the engine resolves that input against branches and tags but never a commit, so a re-pointed tag would be adopted silently. The engine logs the SHA it actually cloned, which is where a re-point would show.
+**この 1 ステップでは別々にバージョン付けされた 3 つの成果物が動き、アクションを固定して固定できるのは最初の 1 つだけです。** アクションは実行時にベンダーのリリースからエンジンバイナリを取得し、エンジンはさらに 2 つ目のリポジトリからルールパックを clone します——どちらも既定は可動先です。既定のままだと、このリポジトリの他のピンが守っているクールダウン窓の外側で、未レビューの第三者コードが毎週ランナーに載ります。そのためワークフローは 3 つとも明示します。アクションは [`.github/actions-pin.toml`](../actions-pin.toml) 経由の SHA、エンジンはリリースタグ、ルールパックはタグです。弱いのはルールパックで、エンジンはこの入力をブランチとタグには解決しますがコミットには解決しないため、タグの張り替えは黙って取り込まれます。エンジンは実際に clone した SHA をログに出すので、張り替えはそこに現れます。
 
-**It is report-only, and the baseline is the reason.** The subagent rules flag any grant of `Bash`, and every read-only reviewer under `.claude/agents/` holds one — the grant is what lets a reviewer run `git diff` or `go build`, so the finding describes the design rather than a defect in it. A severity gate would fail on that baseline from the first run. The useful half is the skill pack, which catches a bare `Bash` in a skill's `allowed-tools:` where the narrow `Bash(git status:*)` form was meant; `allowed-tools` is an auto-approval list rather than a sandbox, so the difference is real. Findings reach a human through the step summary and the `trustabl` artifact.
+**報告専用であり、その理由はベースラインにあります。** subagent ルールは `Bash` の付与を一律に検出しますが、`.claude/agents/` 配下の読み取り専用レビュワーはいずれもそれを持っています——`git diff` や `go build` を走らせるための付与なので、検出が指しているのは欠陥ではなく設計です。severity ゲートを置けば初回からそのベースラインで落ちます。有用なのは skill パックの側で、狭い `Bash(git status:*)` 形を意図した箇所に裸の `Bash` が入っているのを捕まえます。`allowed-tools` は sandbox ではなく自動承認リストなので、この差は実在します。検出は step summary と `trustabl` アーティファクトで人に届きます。
 
-SARIF upload and the sticky PR comment are both switched off. Each costs a write scope — `security-events: write` and `pull-requests: write` respectively — handed to a third-party binary, and a report-only scanner has no claim on either. That also keeps the job at `contents: read`.
+SARIF アップロードと sticky な PR コメントはどちらも切っています。それぞれ書き込みスコープ——`security-events: write` と `pull-requests: write`——を第三者バイナリへ渡す代償を伴い、報告専用のスキャナにその要求権はありません。これによりジョブは `contents: read` のままに保たれます。
 
-#### Runner Hardening
+#### ランナーのハードニング
 
-Every job in this directory starts with `step-security/harden-runner` in `egress-policy: block` mode with its own `allowed-endpoints`. It resolves every outbound connection against that list and refuses the rest, so a compromised action or transitive tool download cannot exfiltrate to an endpoint the job has no business reaching. File-integrity events are still recorded alongside.
+このディレクトリの全ジョブは `step-security/harden-runner` を `egress-policy: block` と、そのジョブ専用の `allowed-endpoints` とで先頭に置いています。外向き接続はすべてこの一覧と照合され、載っていない宛先は遮断されます。侵害されたアクションやツールの推移的ダウンロードは、そのジョブが本来必要としない宛先へ持ち出すことができません。ファイル改変の記録は従来どおり併走します。
 
-The step stays **inline in every job**, and that is a constraint rather than a preference. A local composite action (`uses: ./.github/actions/*`) resolves only once the repository is checked out, and harden-runner has to run *before* the checkout — the checkout is itself an outbound call, and guarding it is the point. Factoring the step out would open the window it exists to close. Expect this proposal to recur; the answer is that it is not available, not that it was weighed and declined.
+このステップは**全ジョブにインラインのまま置きます**。これは好みではなく制約です。ローカルの composite action（`uses: ./.github/actions/*`）はリポジトリが checkout 済みでなければ解決できず、harden-runner は checkout の**前**に走る必要があります。checkout 自体が外向き通信であり、それを守るのが目的だからです。括り出せば、塞ごうとしている窓がそのまま開きます。この案は繰り返し再提案されますが、答えは「検討して見送った」ではなく「そもそも成立しない」です。
 
-**What is not fixed is where the list comes from.** [`.github/egress.toml`](../egress.toml) is the source of truth. `make egress-apply` writes it into every job, and `make egress-check` fails when an inline block has drifted from it — on the pre-commit hook and in `egress-check.yaml`.
+**固定されていないのは、その一覧を何処から持ってくるかです。** 正本は [`.github/egress.toml`](../egress.toml) です。`make egress-apply` が各ジョブへ書き込み、インラインのブロックが正本からずれていれば `make egress-check` が落とします（pre-commit フックと `egress-check.yaml` の両方）。
 
-**A job declares its capability class, not its hosts.** What a job reaches follows from what it *does* — install tooling, build an image, boot a database — and not from the job's own identity: execution descends from `make` into docker into `mise` inside the container, so the endpoints a job needs are not visible in its YAML. Four classes cover it, and a job names the ones that apply:
+**ジョブが宣言するのは能力クラスであって、ホストの列挙ではありません。** ジョブが何処へ到達するかは、そのジョブが**何をするか**（ツールを入れる / イメージを作る / DB を起動する）から決まり、ジョブそれ自体の性質ではありません。実行は `make` → docker → コンテナ内 `mise` と潜っていくため、必要な宛先はジョブの YAML には現れません。クラスは 4 つで足り、ジョブは自分に当たるものを名指しします。
 
-| Class | Endpoints | Applies to |
+| クラス | エンドポイント | 対象 |
 | --- | --- | --- |
-| `base` | harden-runner's own agent, the GitHub API / web / codeload hosts, `objects` / `raw` / `release-assets.githubusercontent.com`, `*.actions.githubusercontent.com`, `*.blob.core.windows.net` | **every job, implicitly** — checkout, action download, artifact upload. It is never written in `classes` |
-| `mise` | mise's own distribution, plus every backend `mise.toml` resolves through: aqua / GitHub releases, the Go toolchain and module proxy, `downloads.sqlc.dev`, the npm registry and `get.pnpm.io`, `astral.sh` and PyPI — and Sigstore, because mise verifies each tool's GitHub artifact attestation through it | any job that installs tooling. A job that only runs `setup-go` names this class too: the module proxy lives here, and a narrower Go-only class would be one more classification to get wrong |
-| `image` | the Docker Hub hosts and both CDNs, `mirror.gcr.io`, `ghcr.io`, `pkg-containers.githubusercontent.com`, and the Alpine / Debian package mirrors. Inherits `mise`, because the image build runs `mise install` inside the container | image build / push, service containers, Trivy's DB and checks bundle, and anything driving docker through `make` |
-| `db` | the PGDG apt repository and the Ubuntu archive mirrors that the Postgres service container installs from | jobs that boot Postgres |
+| `base` | harden-runner 自身の agent、GitHub の API / web / codeload、`objects` / `raw` / `release-assets.githubusercontent.com`、`*.actions.githubusercontent.com`、`*.blob.core.windows.net` | **全ジョブへ暗黙に適用**（checkout、action の取得、artifact のアップロード）。`classes` へは書きません |
+| `mise` | mise 自身の配布元と、`mise.toml` が解決に使う全 backend: aqua / GitHub リリース、Go のツールチェーンと module proxy、`downloads.sqlc.dev`、npm レジストリと `get.pnpm.io`、`astral.sh` と PyPI。加えて Sigstore（mise は各ツールの GitHub artifact attestation をここで検証します） | ツールを入れる全ジョブ。`setup-go` しか使わないジョブもこのクラスを名指しします。module proxy はここに居り、Go 専用の細いクラスを設ければ判定を 1 つ増やすだけだからです |
+| `image` | Docker Hub の各ホストと CDN 2 種、`mirror.gcr.io`、`ghcr.io`、`pkg-containers.githubusercontent.com`、および Alpine / Debian のパッケージミラー。`mise` を継承します（イメージのビルドがコンテナ内で `mise install` を走らせるため） | イメージの build / push、service container、Trivy の DB と checks bundle、`make` 経由で docker を起こすもの全般 |
+| `db` | PGDG の apt リポジトリと、Postgres の service container が導入時に参照する Ubuntu のアーカイブミラー | Postgres を起動するジョブ |
 
-Anything genuinely particular to one job goes in that job's `extra`: a scanner's data source (`semgrep.dev`, `api.osv.dev`, `vuln.go.dev`), a deploy target, `hooks.slack.com` for the notifier, `zaproxy.org` for the DAST job (ZAP resolves its add-on manifest at startup). A host that turns up in a second job's `extra` belongs in a class instead.
+本当にそのジョブ固有のものは、当該ジョブの `extra` に書きます。スキャナのデータソース（`semgrep.dev`、`api.osv.dev`、`vuln.go.dev`）、デプロイ先、通知の `hooks.slack.com`、DAST の `zaproxy.org`（ZAP は起動時に add-on のマニフェストを解決します）などです。 2 つ目のジョブの `extra` にも現れたホストは、クラスへ移すべきものです。
 
-**The classes are deliberately coarse.** Splitting them finer buys a tighter allowlist and costs more classification decisions, and a job in the wrong class is the failure this arrangement exists to remove. A class that is slightly wider than one job needs still refuses everything outside it; a job in the wrong class fails the build.
+**クラスは意図的に粗く保ちます。** 細かく割れば allowlist は締まりますが、そのぶん分類の判定点が増えます。そしてこの仕組みが取り除こうとしている失敗は、まさにジョブのクラス判定を誤ることです。必要より少し広いクラスでも、その外側は依然として全部遮断されます。クラスを取り違えたジョブは落ちます。
 
-To add an endpoint: edit `.github/egress.toml` — into the class when the need follows from a capability, into the job's `extra` when it does not — then run `make egress-apply` and commit the generated blocks. Never hand-edit an inline block; `make egress-check` rejects it.
+エンドポイントを足すときは `.github/egress.toml` を直します。能力から導けるものはクラスへ、導けないものはそのジョブの `extra` へ。そのうえで `make egress-apply` を実行し、生成されたブロックをコミットします。インラインのブロックを手で書き換えてはいけません。`make egress-check` が弾きます。
 
-A blocked endpoint appears in the harden-runner run summary as a denied connection. That is the thing to read when a job fails for no reason visible in its own logs, and the fix is to widen the class or the `extra`, never to drop the job back to `audit`.
+遮断された宛先は harden-runner の実行サマリに拒否接続として現れます。ジョブ自身のログからは理由が読めない失敗のとき読むべきはそこで、対処はクラスか `extra` を広げることであり、`audit` へ戻すことではありません。
 
-**One job's failure mode is inverted and is called out where it lives.** `trufflehog.yaml` verifies a candidate credential by calling the service that issued it, and that set of services is open-ended. A missing endpoint there does not turn the job red; it turns a real leak into an unverified result the workflow does not report. Treat a disappearing TruffleHog finding as a possible allowlist gap. It is the only job on `egress-policy: audit`, declared as such in the SSOT so that it carries no `allowed-endpoints` at all — and `make egress-check` fails if the two ever disagree.
+**1 つだけ失敗の出方が逆転しているジョブがあり、その旨は当該ファイルに書いてあります。** `trufflehog.yaml` は候補の資格情報を発行元サービスへ問い合わせて検証しますが、その発行元の集合には上限がありません。ここでのエンドポイント漏れはジョブを赤くせず、本物の漏洩を「未検証」に変えます。このワークフローは検証済みのみを報告するため、結果として黙って緑になります。TruffleHog の検出が消えたときは allowlist の漏れをまず疑ってください。`egress-policy: audit` を持つ唯一のジョブで、SSOT 上もそう宣言してあるため `allowed-endpoints` を一切持ちません。両者が食い違えば `make egress-check` が落ちます。
 
-Two jobs carry an assumption worth restating when instantiating this template: `deploy-app.yaml`'s build job assumes `ghcr.io` and the public Sigstore instance (its `extra`), and its deploy job is a placeholder that declares no class at all, so it gets `base` and nothing else — wiring a real deployment in means adding that cloud's control-plane hosts to its `extra`, since the OIDC exchange is an outbound call like any other.
+テンプレート作成時に読み直す価値のある前提が 2 つあります。`deploy-app.yaml` の build ジョブは `ghcr.io` と公開 Sigstore インスタンスを前提にしており（その `extra`）、deploy ジョブは placeholder でクラスを 1 つも宣言しないため `base` だけを持ちます。実際のデプロイを結線する際は、その環境の control plane のホストをそのジョブの `extra` へ足す必要があります。`id-token` の交換も外向き通信だからです。
 
-### Deployment (Push)
+### デプロイ（Push）
 
-|Workflow|File|Trigger|Description|
+|ワークフロー|ファイル|トリガー|説明|
 |---|---|---|---|
-|Deploy App|`deploy-app.yaml`|push to production/staging/develop|Build and push Docker images (image signing via cosign + provenance / SBOM attestation), run migration and deploy|
-|Deploy Docs|`deploy-docs.yaml`|push to production (docs changes)|Deploy documentation portal to GitHub Pages|
+|Deploy App|`deploy-app.yaml`|production/staging/develop への push|Docker イメージのビルド・プッシュ（cosign による image 署名 + provenance / SBOM attestation）、マイグレーション実行、デプロイ|
+|Deploy Docs|`deploy-docs.yaml`|production への push（docs 変更時）|ドキュメントポータルを GitHub Pages にデプロイ|
 
-### Documentation (Push)
+### ドキュメント生成（Push）
 
-|Workflow|File|Trigger|Description|
+|ワークフロー|ファイル|トリガー|説明|
 |---|---|---|---|
-|Auto-generate Docs|`auto-generate-docs.yaml`|push to release/* branches|Sync OpenAPI `info.version` from the `release/vX.Y.Z` branch name, then auto-generate the OpenAPI bundle / embedded spec / docs, ER diagrams, portal docs|
-|Graphify Sync|`graphify-sync.yaml`|push to release/* branches|Re-extract the code files whose content changed into the knowledge graph and open a PR with the result. Deterministic half only, and it also reports how much semantic work has accumulated|
-|Graphify Extract|`graphify-extract.yaml`|manual (`workflow_dispatch`)|Run semantic extraction over the documents that changed, as an assistant, and open a PR. Separate from the sync workflow because this is the only job that runs an assistant with write access; skips itself when `CLAUDE_CODE_TOKEN` is unconfigured, so a repository created from this template never spends a token it did not provision|
+|Auto-generate Docs|`auto-generate-docs.yaml`|release/* への push|`release/vX.Y.Z` のブランチ名から OpenAPI `info.version` を同期し、OpenAPI バンドル / 埋め込み spec / ドキュメント、ER 図、ポータルドキュメントを自動生成|
 
-### Assistant (Comment)
+### アシスタント（コメント）
 
-|Workflow|File|Trigger|Description|
+|ワークフロー|ファイル|トリガー|説明|
 |---|---|---|---|
-|Claude|`claude.yaml`|`@claude` in a pull-request comment or review|Run Claude Code against the pull request on demand|
-|Closed Loop Summarize|`closed-loop-summarize.yaml`|the `feedback/needs-summary` label lands on an issue, or manual dispatch|Fill the reading-comprehension sections of a Feedback Issue the local path could not read. The normal route reads on the machine that holds the transcript, so this fires only on the fallback — gating on `feedback` would re-read every window. The observation block it does **not** touch: that half is deterministic and is what the weekly tally reads|
+|Claude|`claude.yaml`|プルリクエストのコメント / レビューでの `@claude`|オンデマンドでプルリクエストに対して Claude Code を実行|
+|Closed Loop Summarize|`closed-loop-summarize.yaml`|issue に `feedback/needs-summary` ラベルが付いたとき、または手動実行|手元で読解できなかった Feedback Issue の、読解にあたる節を埋める。通常経路はトランスクリプトを持つマシン上で読むので、これが動くのは縮退経路だけ — `feedback` で待ち受けると読解済みの窓まで読み直す。観測ブロックには**触れない** — そちらは決定論的な半分であり、週次の集計が読むのはそこ|
 
-Both skip quietly when `CLAUDE_CODE_TOKEN` is absent. A derived repository inherits the workflows
-but not the secret, and a red run there would be reporting the absence of an optional layer as a
-failure.
+どちらも `CLAUDE_CODE_TOKEN` が無ければ静かにスキップする。派生リポジトリはワークフローを
+受け取るがシークレットは受け取らないため、そこで赤くなると任意レイヤの不在を失敗として
+報告することになる。
 
-### Feedback Loop (Schedule)
+### フィードバックループ（定期実行）
 
-|Workflow|File|Trigger|Description|
+|ワークフロー|ファイル|トリガー|説明|
 |---|---|---|---|
-|Closed Loop Weekly|`closed-loop-weekly.yaml`|weekly, or manual dispatch with a period|Collect the period's Feedback Issues, cluster them by their classification labels and score each cluster, into the run summary. Reads no model — every number comes from the observation blocks the issues already carry, which is why this needs no token where `closed-loop-summarize.yaml` does|
+|Closed Loop Weekly|`closed-loop-weekly.yaml`|週次、または期間を指定した手動実行|期間内の Feedback Issue を集め、分類ラベルでまとめ、クラスタごとにスコアを付けて run summary へ出す。モデルは読まない — 数字はすべて Issue が既に持つ観測ブロックから数える。`closed-loop-summarize.yaml` と違ってトークンが要らないのはそのため|
 
-It is scheduled rather than left to `make closed-loop-weekly` because the re-measurement is the
-step [ADR-0008](../../docs/adr/0008-agent-environment-alignment.md) makes the loop conditional on,
-and a step nobody is reminded to run stops being run.
+`make closed-loop-weekly` に委ねず定期実行にしているのは、効果の測り直しが
+[ADR-0008](../../docs/adr/0008-agent-environment-alignment.md) がループの条件として置いた段であり、
+誰にも促されない段は実行されなくなるからである。
 
-## Shared Composite Actions
+## 共通 Composite Action
 
-Reusable composite actions live under [`.github/actions/`](../actions/):
+再利用可能な composite action は [`.github/actions/`](../actions/) に配置しています：
 
-|Action|Purpose|
+|アクション|目的|
 |---|---|
-|`setup-postgres`|Wait for and initialize the Postgres service container (used by DB-dependent jobs)|
-|`upsert-pr-comment`|Marker-based PR comment upsert (detect existing → update / create) with a shared Commit / UpdatedAt footer, used by the result-commenting workflows; `status: success` updates an existing comment but creates none|
-|`osv-scan`|Run osv-scanner and classify each finding against the release-gate severity policy, shared by the OSV reporting workflow and the OSV release gate|
+|`setup-postgres`|Postgres サービスコンテナの待機・初期化（DB 依存ジョブで使用）|
+|`upsert-pr-comment`|マーカーで既存コメントを検出して update / create する PR コメントの upsert。Commit / UpdatedAt フッターを共通付与し、結果コメント系ワークフローで使用。`status: success` は既存コメントを更新するが新規作成はしない|
+|`osv-scan`|osv-scanner を実行し、各 finding をリリースゲートの深刻度ポリシーで分類する。OSV の報告用ワークフローと OSV リリースゲートで共用|
 
-## Notes
+## 補足
 
-- Comments and log messages in `.github/workflows/**` and `.github/actions/**` are written in
-  **English**, including `echo` output and `::error::` annotations. The repository's Japanese-comment
-  convention covers Go code, test names, PRs, and replies — it does not extend to CI definitions,
-  whose readers are the workflow logs and the wider Actions ecosystem. The content standard in
-  [`docs/rules.md`](../../docs/rules.md) § Comment Rules still applies: no how-narration, no
-  development history, no restatement, and keep a non-obvious Why.
-- `auto-generate-docs.yaml` opens an auto-PR whose branch is named `auto/docs-update/<base>` (one branch per release base, reused across runs with `delete-branch: true`); the workflow skips itself on that branch to avoid recursion.
-- **The auto-PRs are opened with a GitHub App token, not `GITHUB_TOKEN`.** GitHub suppresses the events a workflow raises with its own `GITHUB_TOKEN`, so a pull request opened with it starts no workflow run at all — and a required context that never reports is not read as "not applicable": the merge waits with nothing to wait for. `auto-generate-docs.yaml`, `graphify-sync.yaml` and `graphify-extract.yaml` therefore mint an installation token from `AUTO_PR_APP_ID` / `AUTO_PR_APP_PRIVATE_KEY`, narrowed to `contents: write` and `pull-requests: write` because pushing the branch and opening the pull request is the whole job. Registering the app is a human step; until it exists the workflows fall back to `GITHUB_TOKEN` with a warning, so the pull request still opens — it just carries no checks and cannot be merged while any is required. The same reasoning removed `[skip ci]` from all three commit messages: the keyword suppresses `push` **and `pull_request`** events, and since none of these workflows watches the `auto/` branches in the first place (their `push` filter is `release/**`), the only thing it ever suppressed was the auto-PR's own checks.
-- `graphify-sync.yaml` and `graphify-extract.yaml` follow the same shape on `auto/graphify-update/<base>`. They are separate workflows on purpose: the second runs an assistant with `contents: write`, and folding it into the first as a conditional branch would attach that permission to a job that fires on every release push. `graphify-extract.yaml` also carries no `--max-turns` — the extraction is a long sequence whose length depends on how many documents changed, so a turn cap would cut it mid-flow and leave a half-written graph; `timeout-minutes` is the bound that belongs there. Why the graph is updated on the release line at all: it is one 450k-line blob rewritten whenever any source file moves, so concurrent feature branches always conflict on it, and the usual remedy for a generated artifact — regenerate from the source of truth — does not apply because the semantic half needs a model. `graphify-check.yaml` therefore fails a pull request that carries a change to `graphify-out/`, passing `BASE` everywhere except on the sync branch itself. A base that has no output yet is the exception the tool makes on its own — the introduction of the graph conflicts with nothing, and holding it would leave the artifact no way in.
-- All deployment workflows require their target branch (`production` / `staging` / `develop`) to be branch-protected; merges must flow through PR review.
-- Security scan triggers are defined per tool in the Security Trigger Matrix above; if a high-severity CodeQL or Trivy finding appears, the corresponding branch-protection rule blocks merge.
-- `trivy-fs.yaml` and `osv-scanner.yaml` never fail a check: every finding, fixed or not, is written to code scanning and to the PR comment, and the blocking verdict is left to the release gates described above, so a promotion cannot silently ship a known vulnerability while an ordinary PR is not held hostage to one it did not introduce.
-- `trufflehog.yaml` reports only *verified* secrets and never writes a raw secret value into the job log, the PR comment, or an artifact; gitleaks covers the regex-based side with `--redact`.
-- **A job that comments on a PR is passed no secret.** Secret masking only covers the path where the runner captures job output for the log; bytes a step wrote to a file with `tee` never pass through it, and `upsert-pr-comment` reads its body from exactly such a file. A value that looks masked in the log therefore lands raw in a public comment. No inspection step currently receives a secret, and `make actions-comment-secret-lint` keeps it that way by failing when a job using the action is passed anything other than `GITHUB_TOKEN`. Needing a secret in an inspection step means splitting it into a job that does not comment. The check reads direct `secrets` references only, so routing one through `needs.<job>.outputs` would evade it — the rule, not the linter, is what holds.
-- **`upsert-pr-comment` matches its own comment on a bot author and a leading marker.** Anyone can post a comment carrying the marker on a public repository, and every workflow here comments under the same bot, so neither the marker nor the author identifies a comment on its own: a pull-request author who gets one workflow to echo another's marker into its log would otherwise steer that other workflow onto the wrong comment. A body the action wrote always opens with the marker, which a planted one never does. `github-token` must consequently be a token that posts as a bot — `GITHUB_TOKEN` or a GitHub App token; a PAT posts as a user, whose comment the action would never find, leaving a new comment on every run.
-- Exceptions to zizmor's audits live in `.github/zizmor.yml`. `ignore` there is file-scoped on purpose, so a new workflow hitting the same audit still fails; entries are removed as the underlying finding is fixed rather than kept as a permanent allowlist.
-- **An expression interpolated into a `run:` body is code, and only zizmor sees that.** `${{ }}` is substituted before the shell parses anything, so an unquoted `github.event.*` value ends the command and starts the attacker's. The shellcheck-based gates are structurally blind to this — see the `actions-shellcheck/` row in [`scripts/README.md`](../../scripts/README.md) for why. zizmor's `template-injection` audit judges the interpolation site instead and grades it by whether the expression's origin is attacker-controllable, which is why `make actions-zizmor` sits on the pre-commit hook beside `make actions-lint` rather than inside it. Bind the expression to an `env:` entry and read `"$VAR"` in the shell, where the value arrives as data.
-- The `Detect changes` step in `auto-generate-docs.yaml` excludes coverage HTML and SchemaSpy timestamp churn so cosmetic regenerations do not open noise PRs.
-- GitHub disables scheduled workflows automatically after 60 days without a commit, and it does so silently. Keeping them alive is out of scope for this template — no keepalive job is provided — so a repository that goes quiet should expect to re-enable them from the Actions tab.
-- A repository created from a template starts with every workflow in `disabled_fork` state, where nothing runs at all. `make enable-workflows` enumerates and enables them; it is idempotent and safe to re-run.
-- **`claude.yaml` authorization.** Who may invoke Claude is decided by the action's own write-permission check, not by an allowlist in the workflow. Both alternatives break under forking: a hardcoded list of accounts locks a fork owner out of their own repository, and a repository variable holding that list is never inherited by a fork, so it resolves empty and nobody can invoke anything. A permission check resolves against whichever repository the workflow runs in and therefore needs no configuration to be correct anywhere. Two inputs would undo this and are deliberately left unset: `allowed_non_write_users` bypasses the check outright, and `allowed_bots` admits Apps that need neither installation nor write access. The workflow's own `if:` reads only the `github` context, so no comment starts a runner; it grants no authority. Restricting *who* cannot address prompt injection carried in a fork pull request — the invoker is trusted, the diff Claude reads is not — which is why `contents` stays read-only.
-- `.spectral.yaml` and `.trivyignore.yaml` follow the same policy as `.github/zizmor.yml`: nothing is disabled in bulk, every entry carries the ADR or implementation that justifies it, and suppressions are scoped to a path (or a JSON pointer) so a new file hitting the same rule still fails.
-- `fuzz.yaml` is scheduled rather than run per PR: a fuzz run explores a random corpus, so gating a merge on it would make the verdict depend on a coin flip. Crash reproducers are committed under `testdata/fuzz/` and replay as ordinary regression tests.
+- `.github/workflows/**` と `.github/actions/**` のコメントおよびログ文言は **英語**で書く（`echo` の出力と
+  `::error::` アノテーションを含む）。このリポジトリの日本語コメント規則は Go コード・テスト名・PR・応答を
+  対象とし、読み手が workflow ログと Actions エコシステムである CI 定義には及ばない。内容基準
+  （[`docs/rules.md`](../../docs/rules.md) § Comment Rules）はそのまま適用される — 手順のナレーション・
+  開発経緯・言い換えは書かず、非自明な Why は残す
+- `auto-generate-docs.yaml` は `auto/docs-update/<base>` というブランチ名で auto-PR を作成（release base ごとに 1 ブランチを `delete-branch: true` で再利用）。再帰実行を避けるため自己ブランチでは workflow をスキップ
+- **auto-PR は `GITHUB_TOKEN` ではなく GitHub App のトークンで作成する。** ワークフローが自分の `GITHUB_TOKEN` で起こしたイベントを GitHub は抑止するため、そのトークンで作成した pull request はワークフローを 1 本も起動しない。そして報告されない required context は「該当しない」とは読まれず、待つ対象の無いまま待ち続ける。そこで `auto-generate-docs.yaml` / `graphify-sync.yaml` / `graphify-extract.yaml` は `AUTO_PR_APP_ID` / `AUTO_PR_APP_PRIVATE_KEY` から installation token を発行し、`contents: write` と `pull-requests: write` に絞って渡す（ブランチを push して pull request を開くのが仕事のすべてなので）。App の登録は人間の手順で、未登録のうちは警告を出して `GITHUB_TOKEN` へフォールバックする。pull request は開くが、チェックは付かず、required がある限りマージはできない。3 本のコミットメッセージから `[skip ci]` を外したのも同じ理由による。このキーワードは `push` **と `pull_request`** の両方を抑止するが、これらの workflow はそもそも `auto/` ブランチを見ていない（`push` フィルタは `release/**`）ので、実際に抑止していたのは auto-PR 自身のチェックだけだった
+- デプロイ系 workflow の target ブランチ（`production` / `staging` / `develop`）はすべてブランチ保護を有効化。マージは必ず PR レビュー経由
+- セキュリティスキャンのトリガーは上記「セキュリティのトリガーマトリクス」でツールごとに定義。CodeQL / Trivy で high-severity が出るとブランチ保護ルールでマージブロック
+- `trivy-fs.yaml` と `osv-scanner.yaml` は**チェックを落とさない**。修正版の有無に関わらず全 finding を code scanning と PR コメントへ載せ、ブロックの判定は上記のリリースゲートに委ねる。これにより、既知の脆弱性が黙って昇格に載ることはなく、かつ通常の PR がその PR の持ち込みでない脆弱性に足止めされることもない
+- `trufflehog.yaml` は**検証済み**シークレットのみを報告し、生のシークレット値をジョブログ / PR コメント / artifact のいずれにも出さない。正規表現ベースの検知は `--redact` 付きの gitleaks が担当
+- **PR にコメントするジョブには secret を渡さない**。シークレットマスキングが効くのは、ランナーがジョブ出力をログ表示用に捕捉する経路だけ。ステップが `tee` でファイルへ落としたバイトはそこを通らず、`upsert-pr-comment` は本文をまさにそのファイルから読む。つまりログ上はマスク済みに見える値が、公開コメントには生のまま載る。現状どの検査ステップにも secret は渡っていないが、それを維持するのが `make actions-comment-secret-lint` で、当該アクションを使うジョブに `GITHUB_TOKEN` 以外が渡ると失敗する。検査ステップに secret が要るなら、コメントしないジョブへ分離する。なお検査が読むのは secrets の直接参照だけなので、`needs.<job>.outputs` を経由すればすり抜ける。支えているのは lint ではなく規約の側
+- **`upsert-pr-comment` は「投稿者が bot」かつ「本文冒頭がマーカー」で自分のコメントを同定する**。公開リポジトリではマーカー入りのコメントを誰でも投稿でき、しかも本リポジトリのワークフローはすべて同じ bot で投稿するため、マーカーだけでも投稿者だけでもコメントは同定できない。PR 提出者が、あるワークフローのログに別のワークフローのマーカーを混ぜられれば、その別ワークフローを誤ったコメントへ誘導できてしまう。アクションが書いた本文は必ずマーカーで始まるが、混入させたマーカーはそうならない。したがって `github-token` は bot として投稿するトークン（`GITHUB_TOKEN` か GitHub App トークン）である必要がある。PAT はユーザーとして投稿するので自分のコメントを見つけられず、実行のたびに新規コメントが増える
+- zizmor の例外設定は `.github/zizmor.yml`。`ignore` はファイル単位であり、同じ audit を踏む新規ワークフローは意図どおり落ちる。恒久的な allowlist ではなく、元の指摘を直したらエントリを消す運用
+- **`run:` 本文へ展開された式はコードであり、それを見ているのは zizmor だけ**。`${{ }}` の置換はシェルが構文を解釈するより前に起きるため、未クオートの `github.event.*` はコマンドを終わらせて攻撃者のコマンドを始められる。shellcheck を通すゲート群は構造的にこれを見られない（理由は [`scripts/README.md`](../../scripts/README.md) の `actions-shellcheck/` の行を参照）。zizmor の `template-injection` は代わりに展開位置そのものを判定し、式の出自が攻撃者制御可能かで重み付けする。`make actions-zizmor` が `make actions-lint` の中ではなくその隣に pre-commit フックへ載っているのはこのため。式を `env:` へ束ねてシェル側では `"$VAR"` を読む形にすれば、値はデータとして届く
+- `auto-generate-docs.yaml` の `Detect changes` ステップはカバレッジ HTML / SchemaSpy のタイムスタンプ揺れを除外し、無意味な PR が発火しないよう設計
+- GitHub は 60 日コミットが無いとスケジュール実行のワークフローを自動的に、しかも黙って無効化する。これを回避し続けることは本テンプレートの責任範囲外であり keepalive ジョブは用意しない。動きが止まった作成先では Actions タブから再有効化が必要になる前提で扱う
+- テンプレート由来のリポジトリは全ワークフローが `disabled_fork` 状態で作られ、この状態では何も動かない。`make enable-workflows` が列挙して一括で有効化する（冪等なので再実行して差し支えない）
+- **`claude.yaml` の認可**。誰が Claude を呼べるかはワークフロー側の allowlist ではなく action 自身の書き込み権限チェックで決まる。代替案はいずれも fork で破綻する。アカウントをワークフローに直書きすると fork 先のオーナーが自分のリポジトリで締め出され、リポジトリ変数に持たせても変数は fork に引き継がれないため空に解決されて誰も呼べない。権限チェックはワークフローが動いているリポジトリに対して解決されるので、どこでも設定なしで正しく振る舞う。これを無効化する 2 つの input は意図的に未設定である。`allowed_non_write_users` はチェック自体をバイパスし、`allowed_bots` はインストールも書き込み権限も不要な App を通す。ワークフローの `if:` は `github` コンテキストしか読まず、無関係なコメントで runner を起動させないためのものであって権限を与えない。なお「誰が呼べるか」を絞っても fork PR に仕込まれたプロンプトインジェクションは防げない（呼ぶ人間は信頼できても Claude が読む diff は信頼できない）。`contents` を read のまま据え置いているのはそのためである
+- `.spectral.yaml` と `.trivyignore.yaml` は `.github/zizmor.yml` と同じ方針。一括無効化はせず、各エントリに根拠となる ADR か実装を書き、抑止はパス（または JSON ポインタ）単位に閉じる。これにより同じルールを踏む新規ファイルは引き続き落ちる
+- `fuzz.yaml` は PR ではなく定期実行。fuzz はランダムな corpus を探索するため、マージ可否をそれに賭けさせないための判断。クラッシュの再現入力は `testdata/fuzz/` へコミットされ、通常の回帰テストとして再生される
 
-### PR comment fencing
+### PR コメントのフェンス
 
-**A fence around attacker-controlled text is sized from that text, never fixed.** `upsert-pr-comment` computes its fence as one backtick longer than the longest run in the body, but only on the `details-summary` path; without that input the body is passed through untouched, because several callers write Markdown — headings, tables, their own `<details>` — that is meant to render. A caller on that path which fences part of its body itself therefore owns the fence, and a fixed three-backtick one is closable by any body that reproduces source lines: a linter quoting a file the pull-request author wrote lands three backticks inside the block, and everything after renders as live Markdown under the bot's name. `sql-lint.yaml` builds its fences this way and sizes each from its own log; `capability-diff.yaml` leaves fencing to the action and wraps only its step summary. Callers must also keep each body under the action's `max-length`, which is applied *before* fencing — a body trimmed there loses its closing fence. `make actions-comment-fence-lint` covers the three parts that are mechanically decidable — no literal fence is emitted from a `run:` block, the duplicated `fence_for` helpers stay identical, and no pass-through workflow interpolates a value into an inline code span — but whether a body is attacker-controlled is not, so the rule is what holds.
+**攻撃者が内容を制御できるテキストを囲むフェンスは、そのテキストから長さを決める。固定長にはしない**。`upsert-pr-comment` は本文中の最長バッククォート連 + 1 をフェンス長とするが、これが働くのは `details-summary` 経路だけである。この入力が無い呼び出しでは本文を素通しする — 見出し・表・自前の `<details>` をそのままレンダリングさせたい呼び出しが複数あるためで、一律フェンスは表示を壊す。したがって素通し経路で本文の一部を自前でフェンスする呼び出しは、フェンスの責任を自分で負う。固定 3 連は、ソース行をそのまま再現する本文には閉じられる — lint が PR 提出者の書いたファイルを引用すればブロック内に 3 連が入り、以降が bot 名義の生 Markdown としてレンダリングされる。`sql-lint.yaml` は自前でフェンスを組むためログごとに長さを計算し、`capability-diff.yaml` はフェンスをアクションへ委ね step summary だけを包む。あわせて本文はアクションの `max-length` を下回るよう呼び出し側で切り詰める。この切り詰めはフェンスより**前**に適用されるため、そこで削られた本文は閉じフェンスを失う。機械的に判定できる 3 点 — `run:` からリテラルのフェンスを出さないこと、複製された `fence_for` が同一であること、素通しのワークフローが inline code span へ値を補間しないこと — は `make actions-comment-fence-lint` が見るが、「その本文が攻撃者制御か」は判定できないので、支えているのは規約の側
 
-**The same rule covers inline code spans, which are just fences of length one.** A single backtick in the interpolated value closes the span, and the rest of the line reverts to live Markdown. A path is the case that bites: the only bytes it cannot hold are NUL and `/`, so backticks, `@`, and link syntax are all available, and a filename lifted straight out of `git diff --name-only` reaches the comment unaltered — `core.quotePath` escapes non-ASCII and control characters, not these. A pass-through caller therefore puts no repository-derived path in a span and none in bare Markdown either; it fences the whole list at a length taken from the list, exactly as above. The four `gen-*-artifacts-check.yaml` workflows and `sync-versions-check.yaml` emit their file lists that way. Where a body must keep rendering, fencing all of it is not available: `image-scan.yaml` opens its SBOM summary with a heading and a bold label, because that body is an inventory a reviewer reads rather than a log. There the template stays literal Markdown and every value is sized from itself instead — a scalar goes into a span one backtick longer than its own longest run, padded with the space CommonMark strips back off so that a value may begin or end with a backtick; a list is fenced from the list exactly as above; and a digest is matched against `^[0-9a-f]{64}$` and dropped to `unknown` when it does not fit. An SBOM string, unlike a path, is bounded by nothing, so a long run is elided and each value capped before the fence is sized — and the cap is what the whole scheme rests on, because the `max-length` trim that costs a fence its closing line costs a span its closing delimiter just the same, and an unclosed span hands the rest of the body back to live Markdown. Every contributor to that body is therefore bounded so their sum stays inside the cap. The linter keeps a file-scoped exclusion mechanism for a body not yet on one of these paths, on the same terms as `.github/zizmor.yml` — an entry names the issue tracking it and goes away when that finding is fixed, never a permanent allowlist. The check cannot see a span built through a variable or assembled by `jq`, so here too the rule outruns the linter. It reads the `details-summary` *value*, not just the key, because the action falls back to passing the body through when that input is empty — so `details-summary` must be a static non-empty string; an expression that could evaluate to empty is treated as pass-through and gets checked.
+**同じ規則は inline code span にも及ぶ。span は長さ 1 のフェンスでしかない**。補間した値にバッククォートが 1 つあれば span はそこで閉じ、以降は生 Markdown に戻る。刺さるのはパスの場合である。パスに使えない文字は NUL と `/` だけなので、バッククォート・`@`・リンク構文はいずれも使え、`git diff --name-only` で得たファイル名は手を加えられないままコメントへ届く（`core.quotePath` がエスケープするのは非 ASCII と制御文字であって、これらではない）。したがって素通しの呼び出しは、リポジトリ由来のパスを span にも裸の Markdown にも置かず、上と同じく一覧全体をその一覧から決めた長さのフェンスで包む。`gen-*-artifacts-check.yaml` 4 本と `sync-versions-check.yaml` のファイル一覧はこの形。本文をレンダリングさせ続ける必要がある場合、本文全体を包む解は採れない。`image-scan.yaml` の SBOM summary が見出しと強調ラベルから始まるのは、この本文がログではなくレビュアーが読むインベントリだからである。そこではテンプレートを生の Markdown のまま残し、代わりに値ごとに長さを値自身から決める。スカラーは自身の最長バッククォート連 + 1 の span へ入れ（CommonMark が剥がす空白で両端を埋めるので、値がバッククォートで始まっても終わってもよい）、一覧は上と同じくその一覧から決めた長さのフェンスで包み、digest は `^[0-9a-f]{64}$` に一致しなければ `unknown` へ落とす。SBOM 由来の文字列はパスと違って何にも有界でないため、長い連を潰し、値ごとに長さの上限を掛けてからフェンス長を決める。この上限こそが仕組み全体の土台である。フェンスから閉じ行を奪う `max-length` の切り詰めは、span からも同じように閉じデリミタを奪い、閉じられなかった span は以降の本文を生 Markdown へ戻すからである。したがって本文に寄与するものはすべて、合計が上限の内側に収まるよう有界にしてある。lint はこれらのいずれにも乗っていない本文のために、ファイル単位の除外機構を残している。運用は `.github/zizmor.yml` と同じで、エントリは追跡 issue を明記し、その指摘を直したら消す。恒久的な allowlist ではない。変数経由や `jq` の連結で組んだ span は検査から見えないので、ここでも規約が lint を上回る。なお検査は `details-summary` のキーの有無ではなく**値**を読む。この入力が空だとアクションは本文を素通しへ落とすためで、したがって `details-summary` には静的な非空文字列を渡す。空になり得る式は素通し扱いとして検査対象に含める
 
-### Mise setup
+### キャッシュの安全性
 
-Every workflow that needs a mise-managed tool uses [`.github/actions/setup-mise`](../actions/setup-mise/action.yaml). The action downloads the pinned mise binary to a file with retries, caches that binary by its version and digest, and verifies its SHA256 before every execution. A cache entry is never trusted merely because it was restored: a mismatch is discarded and downloaded again, and a second mismatch fails the job.
-
-The action installs the caller's optional `tools` input after the binary passes verification. Tool versions remain in [`mise.toml`](../../mise.toml); callers pass only the backend-qualified tool specifications they need. `make actions-mise-pin-lint` runs as part of Actions Lint and rejects a mismatch between the action's version, digest, and cache key. When updating mise itself, obtain the checksum from the release's `SHASUMS256.txt` and update all three values together.
-
-### Cache safety
-
-**Cache safety.** Caches are branch-scoped — a run restores only its own ref's cache plus the default branch's — so a pull-request run cannot write a cache that a later `release/*` push restores. That is why caching stays enabled on ordinary CI workflows. Poisoning becomes possible when untrusted PR code executes in a trusted scope while a cache is saved: `pull_request_target` and `workflow_run` run in the base ref's scope, so a workflow that checks out the PR head there would leave its cache exactly where privileged runs read it. Never combine those two; a workflow that must handle untrusted code keeps caching off. The mise binary cache is also verified against its pinned SHA256 before it executes, so a lower-privileged workflow cannot turn a restored binary into executable input for a job that holds `security-events: write`.
+**キャッシュの安全性**。キャッシュは branch-scoped であり、run が復元できるのは自分の ref とデフォルトブランチのキャッシュだけなので、pull request の run が後続の `release/*` push が読むキャッシュを書くことはできない。通常の CI ワークフローでキャッシュを有効なままにしているのはこのため。汚染が成立する経路は 2 つある。1 つは、信頼できない PR のコードを信頼された scope で実行しつつキャッシュを保存する場合。`pull_request_target` と `workflow_run` は base ref の scope で動くため、そこで PR head を checkout するワークフローを書くと、そのキャッシュが特権 run の読む場所に残る。この 2 つを組み合わせてはならない。信頼できないコードを扱うワークフローではキャッシュを無効にする。もう 1 つは、**同じ branch scope を共有しながら権限が異なるワークフロー間**。protected branch への push で走る通常のワークフローが複数あるため、そのどれかが侵害されると `security-events: write` を持つジョブが復元・実行するツールキャッシュを残せてしまう。そのため当該権限を持つジョブはすべて `cache: false` とし、インストールが遅くなる代わりに、低権限の run が書きえた成果物を引き継がないようにしている

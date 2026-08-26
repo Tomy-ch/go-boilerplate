@@ -1,24 +1,24 @@
 # server hook
 
-`internal/di/server/hook` is a package that **registers lifecycle hooks** tied to the application server.
+`internal/di/server/hook` は、アプリケーションサーバーのライフサイクルに結び付く **各種フックを登録する**パッケージです。
 
-## Hook List
+## フック一覧
 
-|Function|Start|Stop|Description|
+|関数|Start|Stop|説明|
 |---|---|---|---|
-|`RegisterHTTPServerHooks`|Start Echo server|Graceful Shutdown|HTTP server lifecycle management|
-|`RegisterDBCloseHooks`|—|Close DB connection|Safely close DB connection on shutdown|
-|`RegisterObservabilityShutdownHooks`|—|Shut down TracerProvider / MeterProvider|Flush and release OpenTelemetry providers on shutdown|
+|`RegisterHTTPServerHooks`|Echo サーバー起動|Graceful Shutdown|HTTP サーバーのライフサイクル管理|
+|`RegisterDBCloseHooks`|—|DB 接続クローズ|シャットダウン時に DB コネクションを安全に閉じる|
+|`RegisterObservabilityShutdownHooks`|—|TracerProvider / MeterProvider のシャットダウン|シャットダウン時に OpenTelemetry プロバイダを flush して解放する|
 
-## Flow
+## フロー
 
 ```mermaid
 flowchart TB
-    subgraph "Start Hooks"
-        HTTP["Echo server start (goroutine)"]
+    subgraph "Start フック"
+        HTTP["Echo サーバー起動（goroutine）"]
     end
 
-    subgraph "Stop Hooks"
+    subgraph "Stop フック"
         Shutdown["srv.Shutdown()"]
         DBClose["db.Close()"]
         O11yShutdown["tp.Shutdown() / mp.Shutdown()"]
@@ -31,27 +31,27 @@ flowchart TB
 
 ## RegisterHTTPServerHooks
 
-Registers HTTP server start/stop hooks with `lifecycle.Registrar`.
+HTTP サーバーの起動・停止を `lifecycle.Registrar` に登録します。
 
-- **Start**: Opens the listener (a bind failure aborts startup), serves in a goroutine, logs port / allowed_origins / CIDR / mode
-- **Stop**: Graceful Shutdown via `srv.Shutdown(ctx)`
-- Receives `extension.AppliedServerExtends` to ensure registration occurs after server extensions are applied
+- **Start**: リスナを開き（bind 失敗は起動を中断）、goroutine で待ち受けを開始し、起動ログにポート / allowed_origins / CIDR / モードを出力
+- **Stop**: `srv.Shutdown(ctx)` で Graceful Shutdown
+- `extension.AppliedServerExtends` を受け取ることで、サーバー拡張が適用された後に登録されることを保証
 
 ## RegisterDBCloseHooks
 
-Registers a hook to close the database connection on shutdown.
+シャットダウン時にデータベース接続を閉じるフックを登録します。
 
-- **Stop**: Calls `db.Close()` and logs any errors
+- **Stop**: `db.Close()` を呼び出し、エラーがあればログに出力
 
 ## RegisterObservabilityShutdownHooks
 
-Registers shutdown hooks for the OpenTelemetry `TracerProvider` / `MeterProvider`.
+OpenTelemetry の `TracerProvider` / `MeterProvider` のシャットダウンフックを登録します。
 
-- **Stop**: Calls `observability.ProviderShutdowner.Shutdown()`, which flushes buffered spans / metrics and releases the `TracerProvider` / `MeterProvider`
-- Construction (`observability.NewTracerProvider` / `NewMeterProvider`) is lifecycle-agnostic; this hook owns the shutdown registration, keeping the `observability` package free of any `di/lifecycle` dependency
-- Receives `observability.ProviderShutdowner` — an otel-agnostic handle that bundles both providers' `Shutdown` — so that otel SDK types do not leak into the DI layer
+- **Stop**: `observability.ProviderShutdowner.Shutdown()` を呼び出し、バッファされた span / metric を flush して `TracerProvider` / `MeterProvider` を解放
+- 構築（`observability.NewTracerProvider` / `NewMeterProvider`）はライフサイクル非依存で行われ、シャットダウン登録はこの hook が担う。これにより `observability` パッケージは `di/lifecycle` への依存を持たない
+- 両プロバイダの `Shutdown` を束ねた otel 非依存ハンドル `observability.ProviderShutdowner` を受け取ることで、otel SDK 型を di 層へ漏らさない
 
-## DI Registration Example
+## DI 登録例
 
 ```go
 fx.Invoke(
@@ -61,21 +61,21 @@ fx.Invoke(
 )
 ```
 
-## Test Strategy
+## テスト戦略
 
-Hooks are tested by **capturing the registered closures and calling them**, never by booting fx: a `lifecycle.Registrar` mock records the `RegisterStart` / `RegisterStop` arguments (`gomock.AssignableToTypeOf`), and the test then drives those functions directly. This keeps registration and behavior as two separate contracts — a hook silently dropped from the wiring fails the registration test even when its body still works.
+フックは fx を起動せず、**登録されたクロージャを捕捉して呼び出す**形でテストする。`lifecycle.Registrar` のモックが `RegisterStart` / `RegisterStop` の引数を記録し（`gomock.AssignableToTypeOf`）、テストはその関数を直接駆動する。これにより「登録」と「挙動」が別々の契約として保たれ、配線からフックが黙って落ちた場合は、本体が動いていても登録側のテストで落ちる。
 
-The logger is the generated `logging.Logger` mock with the expected `Named(...)` / `CallerSkip(...)` chain, so log identity (name, message) is part of the asserted contract, not incidental output.
+ロガーは生成された `logging.Logger` のモックを使い、`Named(...)` / `CallerSkip(...)` の連鎖を期待値として置く。ログの同定情報（名前・メッセージ）は付随的な出力ではなく検証対象の契約とする。
 
-`RegisterHTTPServerHooks` has three paths, and each needs its own case because they fail in different directions:
+`RegisterHTTPServerHooks` には 3 つの経路があり、失敗の向きが異なるためそれぞれ独立したケースが要る。
 
-1. **Bind failure aborts startup** — the start function returns the `listen` error. Reproduce it by occupying the port with a listener of your own first. This is the only server error that propagates to fx, so it is what stops a half-started process from being reported healthy.
-2. **Graceful shutdown** — the stop function returns nil once no connection is in flight, and returns the error *plus* an error log when `Shutdown` cannot drain within the context deadline. Reproduce the latter by holding a handler open and passing an already-tight context.
-3. **Abnormal `Serve` exit is log-only** — `serveHTTP` runs in a goroutine, so its failure cannot surface as a start error. Assert that a normal stop (`http.ErrServerClosed`) logs nothing and that any other exit logs an error; a closed listener reproduces the latter.
+1. **bind 失敗による起動中断** — start 関数が `listen` のエラーを返すこと。自前のリスナで先にポートを占有して再現する。fx へ伝播するサーバーエラーはこれだけであり、中途半端に起動したプロセスが healthy として扱われるのを止めているのがこの経路。
+2. **graceful shutdown** — 処理中の接続が無ければ stop 関数が nil を返すこと、`Shutdown` が context の期限内に drain しきれない場合はエラーを返し **かつ** エラーログを出すこと。後者はハンドラを処理中に保持したまま期限の迫った context を渡して再現する。
+3. **`Serve` の異常終了はログのみ** — `serveHTTP` は goroutine で走るため、その失敗は start のエラーとしては表出しない。正常停止（`http.ErrServerClosed`）ではログを出さず、それ以外の終了ではエラーログを出すことを検証する。後者は閉じたリスナを渡して再現する。
 
-Bind an OS-assigned port (`:0`) rather than a fixed one so the package stays `t.Parallel()`-safe; when the port number is needed before binding, take it from a listener and close it. Start a real listener and issue a real request when the assertion is "the server actually serves" — a successful `Listen` alone does not prove the handler chain is reachable.
+ポートは固定値ではなく OS 割り当て（`:0`）を使い、パッケージが `t.Parallel()` 可能な状態を保つ。bind 前にポート番号が必要な場合はリスナから取得して閉じる。「実際に配信できること」を検証する場合は実リスナを立てて実リクエストを投げる —— `Listen` の成功だけではハンドラ連鎖に到達できることの証明にならない。
 
-## Notes
+## 注意点
 
-- `RegisterHTTPServerHooks` depends on the `AppliedServerExtends` token, so it executes after extension application
-- Opening the listener happens synchronously, so a bind failure is returned from the Start hook and aborts startup; only `Serve`, which runs in a goroutine after that, can fail with nothing to return the error to — those failures are logged
+- `RegisterHTTPServerHooks` は `AppliedServerExtends` トークンに依存するため、extension 適用後に実行される
+- リスナのオープンは同期的に行うため、bind 失敗は Start フックからエラーとして返り起動を中断する。goroutine で走るのはその後の `Serve` だけであり、エラーの返し先が無いためこちらの失敗はログに出力される

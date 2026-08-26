@@ -6,161 +6,124 @@ description: >-
 
 # New Issue
 
-Convert a question about a possible change into an issue that can be trusted later — or into the
-conclusion that no issue is warranted.
+変更の可能性についての質問を、**前提を実装で検証済みの** GitHub issue に変える。あるいは「これは issue にすべきではない」という結論に変える。
 
-The drafting is the easy part. What this skill exists for is the step before it: **checking that what
-you are about to assert is true of the code as it stands right now**, and refusing to fill gaps with
-plausible guesses. An issue is read months later by someone who will act on it; a confident sentence
-that was never verified costs more than no issue at all.
+本文を書くことは簡単な部分。このスキルが存在する理由はその手前 —— **これから断定しようとしていることが、今のコードについて本当に成り立つかを確かめること**、そして足りない情報を尤もらしい推測で埋めないこと。issue は数ヶ月後に、それを根拠に動く誰かが読む。検証されていない自信ありげな一文は、issue が無いことより高くつく。
 
-A Japanese reference translation lives at `SKILL.ja.md` in this directory (for human reference only;
-not loaded as a skill).
+## 使うとき
 
-## When to Use
+- 実現できるかを問われたとき、あるいは変更が話のついでに提案されたとき。
+- 挙動がおかしいと報告されたとき。
+- issue 化を直接頼まれたとき。
 
-- The user wonders whether something is feasible, or proposes a change in passing.
-- The user reports behavior they believe is wrong.
-- The user asks for an issue outright.
+以下には使わない: 既にある issue を進める（`impl-issue`）、diff のレビュー（`impl-review` / `test-review`）、spec / ADR の作成（`new-spec`、`docs/adr/`）。
 
-Do NOT use it to work an issue that already exists (`impl-issue`), to review a diff (`impl-review` /
-`test-review`), or to write specs / ADRs (`new-spec`, `docs/adr/`).
+## なぜ必要か
 
-## Why this exists
+issue の事実主張が誤っている理由はたいてい 1 つ —— 誰も、自分が考えている層の外を見ていなかったこと。ステータスコード、あるイベントの consumer、ホットパス上の選択肢のコスト —— どれも静的に確認できるのに、著者が一度も開いていない場所で決まっている。このスキルはその失敗を形にしたもの。「関係する層を読む」ことは「経路を辿る」ことではない。
 
-An issue's factual claims are usually wrong for one reason: nobody looked outside the layer they were
-thinking about. A status code, an event's consumer, the cost of an option on the hot path — each is
-statically checkable, and each is decided somewhere the author never opened. That is the failure this
-skill is shaped around. Reading "the relevant layer" is not the same as tracing the path.
+## Step 0 — 2 つを確認する（1 回の対話で `ask the user explicitly`）
 
-## Step 0 — Confirm two things (ask the user explicitly once, in one interaction)
+**検証の深さ** — 挙動の主張を起票前にどこまで証明するか。
 
-**Verification depth** — how far a behavioral claim must be proven before filing.
-
-| Mode | Behavior |
+| モード | 挙動 |
 | --- | --- |
-| `runtime` *(default when the draft asserts runtime behavior)* | Confirm the behavior against the running system before filing |
-| `static` | Code reading only; every behavioral claim is then marked as unverified in the body |
+| `runtime`（挙動を主張する下書きでは既定） | 起票前に動いているシステムで挙動を確認する |
+| `static` | コード読解のみ。挙動に関する主張はすべて本文で「未検証」と明示する |
 
-**Output** — whether this run ends in a filed issue or a handed-over draft.
+**出力** — この実行を起票で終えるか、下書きの引き渡しで終えるか。
 
-| Mode | Behavior |
+| モード | 挙動 |
 | --- | --- |
-| `file` *(default)* | Present the body, then file after approval |
-| `draft` | Produce the body and the analysis; file nothing |
+| `file`（既定） | 本文を提示し、承認後に起票 |
+| `draft` | 本文と分析を出すだけで起票しない |
 
-Searching existing issues is not a mode. It always happens — it is cheap, and skipping it is how a
-duplicate gets filed.
+既存 issue の検索はモードではない。常に行う —— 安いし、飛ばすことが重複起票の原因だから。
 
-## Step 1 — Capture the question
+## Step 1 — 質問を捕捉する
 
-Restate what the user is actually asking, in one or two sentences, and confirm it. A question asked in
-passing ("これ直せる？") usually carries an unstated assumption about *where* the problem is; naming
-that assumption early is what lets Step 2 disprove it.
+ユーザーが実際に聞いていることを 1〜2 文で言い直し、確認する。ついでに聞かれた質問（「これ直せる？」）はたいてい**どこに問題があるか**についての暗黙の前提を含んでいる。それを早い段階で名指しすることが、Step 2 でその前提を反証できるようにする。
 
-Record what triggered this: a symptom the user hit, a review finding, a code reading. The origin
-determines how much of it is already evidence and how much is conjecture.
+きっかけを記録する: ユーザーが踏んだ症状か、レビュー指摘か、コードを読んでいて気づいたか。出所によって、どこまでが既に証拠でどこからが推測かが決まる。
 
-## Step 2 — Trace the path end to end
+## Step 2 — 経路を端から端まで辿る
 
-This is the step the skill exists for. Do not read only the layer the question points at.
+このスキルが存在する理由の中核。**質問が指している層だけを読まない。**
 
-For a behavioral question, follow the request from entry to storage and back:
+挙動に関する問いなら、入口から保存まで、そして戻りまでを辿る:
 
 ```txt
-OpenAPI → middleware (auth / identity resolution / validation) → handler → usecase → domain → infrastructure → SQL
+OpenAPI → middleware（認証 / identity 解決 / 検証）→ handler → usecase → domain → infrastructure → SQL
 ```
 
-Middleware is the most commonly skipped segment and the most commonly decisive one, because it can
-reject or transform a request before the layer under discussion ever runs. For a structural question,
-trace the dependency direction instead, and check the layer rules in `docs/rules.md` and the relevant
-`README.md` at runtime rather than from memory.
+middleware は最も飛ばされやすく、最も決定的な区間である。議論している層が動く前にリクエストを弾いたり変形したりできるから。構造に関する問いなら依存の向きを辿り、レイヤ規約は記憶ではなく `docs/rules.md` と該当 `README.md` を実行時に読んで確認する。
 
-Then establish, for each thing you intend to assert:
+その上で、断定しようとしている各項目について次を確立する:
 
-- **Is it current?** The file may have changed in a branch that merged this week. Check recent history
-  for the paths involved (`git log --oneline -15 -- <paths>`) and recently merged PRs touching them.
-- **Is the radius complete?** If the claim is "only X does this", search for every caller and every
-  sibling. A claim of scope is a claim about absence, and absence is what searches are for.
-- **Does a cost comparison rest on anything?** "Adds a read on the hot path" is checkable — count the
-  queries in both designs. An unmeasured cost is not a trade-off, it is a guess.
+- **今も成り立つか。** そのファイルは今週マージされたブランチで変わっているかもしれない。関係するパスの直近履歴（`git log --oneline -15 -- <paths>`）と、それらに触れた最近のマージ済み PR を見る。
+- **範囲は網羅されているか。** 「X だけがこうしている」という主張なら、全呼出元と全兄弟を探す。範囲の主張は不在の主張であり、不在こそ検索が担うもの。
+- **コスト比較に根拠はあるか。**「ホットパスに read が 1 本増える」は確認できる —— 両設計のクエリ数を数えればよい。測っていないコストはトレードオフではなく推測。
 
-Read `docs/architecture.md` and `docs/development-flow.md` to locate the relevant code rather than
-guessing at paths.
+該当コードの場所はパスを当てずっぽうに書かず、`docs/architecture.md` と `docs/development-flow.md` を読んで特定する。
 
-## Step 3 — Five blockers
+## Step 3 — 5 つのブロッカー
 
-A draft does not proceed to Step 4 while any of these is true. They are deliberately mechanical: an
-author who is asked to *notice* that they are unsure will usually not notice.
+いずれかが真である限り、下書きは Step 4 へ進まない。意図的に機械的にしてある: 「自信が無いことに**気づけ**」と言われた書き手は、たいてい気づかない。
 
-| # | Blocker | Resolution |
+| # | ブロッカー | 解消 |
 | --- | --- | --- |
-| 1 | The draft asserts runtime behavior that was never executed | Run it (Step 5), or mark the claim unverified and say so in the body |
-| 2 | Cited implementation was not checked for currency | Check history for those paths |
-| 3 | An option comparison has no measured basis | Measure it, or drop the comparison and present the options without a cost claim |
-| 4 | An impact-radius claim rests on a partial search | Search exhaustively, or narrow the claim to what was searched |
-| 5 | Existing issues were not searched | Search |
+| 1 | 実行していない挙動を断定している | 実行する（Step 5）か、未検証と明記する |
+| 2 | 引用した実装が最新か確認していない | 該当パスの履歴を確認する |
+| 3 | 選択肢の比較に測定した根拠が無い | 測るか、コスト主張を落として選択肢だけ示す |
+| 4 | 影響範囲の主張が部分的な検索に依存している | 網羅的に検索するか、検索した範囲まで主張を狭める |
+| 5 | 既存 issue を検索していない | 検索する |
 
-**When information is missing, ask — do not estimate.** This is the instruction the user gave when
-asking for this skill, and it is worth stating plainly: a plausible guess written in an issue's
-confident register becomes fact for everyone who reads it afterward. Missing information includes
-which behavior is actually desired, which of several possible causes the user has in mind, and
-whether a constraint the code implies is intentional. Ask about those; do not resolve them by
-inference.
+**情報が足りないときは聞く。推定しない。** これはこのスキルを依頼したときにユーザーが出した指示であり、明記する価値がある: 尤もらしい推測は、issue の断定的な語調で書かれた瞬間、以後それを読む全員にとって事実になる。足りない情報には「実際にどの挙動が望ましいのか」「考えられる複数の原因のうちどれを想定しているのか」「コードが含意している制約は意図的なのか」が含まれる。これらは聞く。推論で解決しない。
 
-## Step 4 — Draft the body
+## Step 4 — 本文を書く
 
-Use the shape this repository's issues already use, plus a premises section:
+このリポジトリの issue が既に使っている形に、前提セクションを足したもの:
 
 ```markdown
 ## 概要
-## 前提            ← each factual claim, and where it was verified
+## 前提            ← 各事実主張と、どこで検証したか
 ## 背景
 ## やることリスト
-## 論点            ← options A / B / C, each with cost and consequence, plus a recommendation and its basis
+## 論点            ← 選択肢 A / B / C、各々のコストと帰結、推奨とその根拠
 ## やらないことリスト
 ## 完成の定義
 ## 関連
 ```
 
-**The 前提 section is the part that is new, and it is the point.** Write each premise as a separate,
-individually falsifiable statement with the evidence behind it:
+**前提セクションが新しい部分であり、要点でもある。** 各前提を、独立して反証可能な文として、その根拠とともに書く:
 
 ```markdown
 ## 前提
 
-- `POST /v1/<resource>` reaches the usecase for a deactivated identity — **verified**: the resolver
-  only rejects on `deleted_at`, and the identity is resolved before the handler runs
-  (`internal/infrastructure/auth/<impl>/resolver.go`, read at `abc1234`)
-- `<aggregate>.<event>.v1` has no consumer — **verified**: no handler matches the event type
-  (`rg 'Type<Event>' internal/controller/worker/`, at `abc1234`)
+- 無効化済みの identity でも `POST /v1/<リソース>` は usecase まで到達する — **検証済み**: resolver
+  は `deleted_at` でのみ拒否し、identity 解決は handler より前に走る
+  （`internal/infrastructure/auth/<実装>/resolver.go`、`abc1234` 時点で確認）
+- `<集約>.<イベント>.v1` に consumer は無い — **検証済み**: 該当イベント種別に一致する handler が無い
+  （`rg 'Type<イベント>' internal/controller/worker/`、`abc1234` 時点）
 ```
 
-`impl-issue` reads this section when the issue is picked up and reports every premise that no longer
-holds. Prose that buries its assumptions cannot be checked that way, which is exactly how the three
-wrong claims above survived to implementation.
+`impl-issue` は issue に着手するときこのセクションを読み、成り立たなくなった前提をすべて報告する。前提が散文に埋まっていると、その突合ができない —— 上記 3 件の誤りが実装まで生き延びたのは、まさにそれが理由。
 
-Two writing rules that keep an issue from rotting:
+腐らせないための書き方が 2 つ:
 
-- **Cite symbols and paths, never line numbers.** Line numbers are stale by the next refactor, and a
-  reader who follows one to the wrong place trusts what they find there.
-- **Record the recommendation together with its basis.** A recommendation that turns out to be wrong
-  is fine and normal; one whose reasoning is invisible cannot be overturned by evidence.
+- **シンボルとパスで引用し、行番号は書かない。** 行番号は次のリファクタで陳腐化し、それを辿って別の場所に着いた読者は、そこにあるものを信じてしまう。
+- **推奨は根拠とセットで記録する。** 推奨が外れることは普通で問題ない。問題なのは、根拠が見えず証拠で覆せない推奨。
 
-For a link to another repository's issue or PR, use `redirect.github.com` — a plain `github.com` link
-posts a public cross-reference on that thread. Whether to send that signal deliberately is a human
-decision, without exception: ask every time, and never make the call yourself. See `AGENTS.md`.
+他リポジトリの issue / PR へリンクするときは `redirect.github.com` を使う —— 素の `github.com` リンクは相手のスレッドに公開の逆参照を投稿する。その信号を意図して送るかは例外なく人間の判断: 毎回聞くこと、自分で決めないこと。`AGENTS.md` を参照。
 
-Write the body in Japanese. Present it and wait for approval.
+本文は日本語で書く。提示して承認を待つ。
 
-## Step 5 — Runtime confirmation (when the draft asserts behavior)
+## Step 5 — ランタイム確認（挙動を主張する下書きの場合）
 
-Under `--verify=runtime`, confirm the behavioral claims against the running system before filing.
-This is the same stage `impl-issue` runs before merging, for the same reason: a status code produced
-by an unexpected path looks identical to the right one.
+`--verify=runtime` では、起票前に挙動の主張を動いているシステムで確認する。`impl-issue` がマージ前に走らせるのと同じ段階で、理由も同じ: 想定外の経路が返したステータスコードは、正しいものと見分けがつかない。
 
 ```bash
-make slot-acquire && make serve            # API on 8080+N, mock-auth on 2010+N
+make slot-acquire && make serve            # API は 8080+N、mock-auth は 2010+N
 
 TOKEN=$(curl -s -X POST http://localhost:201N/bypass/token \
   -H 'Content-Type: application/json' \
@@ -170,89 +133,75 @@ TOKEN=$(curl -s -X POST http://localhost:201N/bypass/token \
 curl -s -o /dev/null -w '%{http_code}\n' -H "Authorization: Bearer $TOKEN" http://localhost:808N/v1/...
 ```
 
-The token subject must be the identity `subject` string the seed registered, not an internal
-UUID — the seeded UUID rows belong to a different issuer than the slot's port produces, so a UUID
-yields a confusing 401.
+token の subject は seed が登録した identity の `subject` 文字列でなければならない。内部の UUID ではない —— シードの UUID 行はスロットのポートが発行する issuer とは別の issuer に属するため、UUID を渡すと紛らわしい 401 になる。
 
-Read the traces too, not just the status: they show which layers actually ran, which is precisely
-what the wrong claims above got wrong.
+ステータスだけでなくトレースも読む。どの層が実際に走ったかが見え、それこそが上記の誤った主張が間違えた点だから。
 
-Do not release the DB slot afterward unless the user asks.
+終わってもスロットは、ユーザーに言われない限り解放しない。
 
-Under `--verify=static`, skip this — and mark every behavioral claim in 前提 as unverified. An
-unverified claim presented in the same register as a verified one is worse than an admitted gap.
+`--verify=static` ではこれを飛ばす —— そして 前提 の挙動に関する主張をすべて未検証と明示する。未検証の主張を検証済みと同じ語調で出すことは、欠落を認めるより悪い。
 
-## Step 6 — Decide whether this should be an issue at all
+## Step 6 — そもそも issue にすべきかを判断する
 
-Run this gate before filing. An AI that can write issues quickly will produce more of them than a
-human would, and issue count is itself a cost — a duplicate buries the original, and a backlog nobody
-can read is a backlog nobody uses.
+起票の前にこのゲートを通す。issue を速く書ける AI は人間より多く issue を作る。issue 数はそれ自体がコストで、重複は元の issue を埋もれさせ、誰も読めない backlog は誰も使わない。
 
-| Situation | Action instead of filing |
+| 状況 | 起票の代わりに |
 | --- | --- |
-| An existing issue covers it | Comment there with the new finding |
-| The fix is small enough to just make | Offer to make it now |
-| Step 2 disproved the premise | Report that; file nothing |
-| It is a decision, not a task | Propose an ADR (`docs/adr/`) |
-| It is behavior of a feature, not a defect or change | Propose a spec update (`docs/spec/**`) |
+| 既存 issue が扱っている | そこへ新しい知見をコメントする |
+| その場で直せる規模 | 今直すことを提案する |
+| Step 2 が前提を反証した | それを報告し、起票しない |
+| タスクではなく決定である | ADR を提案する（`docs/adr/`） |
+| 欠陥や変更ではなく機能の挙動である | spec 更新を提案する（`docs/spec/**`） |
 
-Search before concluding it is new:
+新規だと結論する前に検索する:
 
 ```bash
 gh issue list --state open --limit 100 --search "<keywords> in:title"
 gh issue list --state all --limit 50 --search "<keywords>"
 ```
 
-Include closed issues. A previously rejected proposal is important context, and re-filing it without
-acknowledging the rejection wastes the reader's time.
+クローズ済みも含める。過去に却下された提案は重要な文脈であり、却下に触れずに再提出することは読み手の時間を浪費する。
 
-State which branch of the table applied. Silence reads as "it was obviously an issue".
+表のどの分岐に当たったかを明言する。黙っていると「当然 issue だった」と読まれる。
 
-## Step 7 — File
+## Step 7 — 起票
 
 ```bash
 gh issue create --title "<title>" --label <label> --body-file <file>
 ```
 
-Report the URL, and say which premises were verified at runtime and which only statically.
+URL を報告し、どの前提を runtime で検証し、どれを静的にのみ確認したかを述べる。
 
-If the user selected `--output=draft`, stop before this and hand over the body.
+`--output=draft` が選ばれている場合は、ここへ進まず本文を渡して終える。
 
-## Handoff to `impl-issue`
+## `impl-issue` への引き渡し
 
-An issue produced here is meant to be picked up by `impl-issue`, whose first step compares the issue
-against the base and reports every discrepancy in the kickoff comment. The 前提 section is what makes
-that comparison possible. When drafting, write for that reader: state assumptions where they can be
-checked, not where they read most smoothly.
+ここで作られた issue は `impl-issue` が拾う前提で書く。`impl-issue` の最初のステップは issue をベース実物と突き合わせ、食い違いを着手コメントに報告することであり、それを可能にするのが 前提 セクション。書くときはその読者を想定する —— 前提は、最も滑らかに読める場所ではなく、確認できる場所に置く。
 
-## Do / Do NOT
+## やること / やらないこと
 
-- ✅ Trace the whole request path, including middleware, before asserting anything.
-- ✅ Ask when information is missing; never fill the gap by inference.
-- ✅ Write each premise as a separate falsifiable claim with its evidence.
-- ✅ Search existing issues, closed ones included, before concluding it is new.
-- ✅ Say explicitly which claims are unverified.
-- ✅ Cite symbols and paths; record the recommendation's basis alongside it.
-- ❌ Assert runtime behavior that was never executed, without labelling it as unverified.
-- ❌ Present an unmeasured cost as a trade-off.
-- ❌ Claim an impact radius from a partial search.
-- ❌ File when an existing issue only needs a comment, or when the fix is smaller than the issue.
-- ❌ Link another repository's issue with a plain `github.com` URL, or decide on your own that a
-  cross-reference is warranted.
-- ❌ Write line numbers into the body.
-- ❌ Release the DB slot unprompted.
+- ✅ 何かを断定する前に、middleware を含めてリクエスト経路全体を辿る。
+- ✅ 情報が足りないときは聞く。推論で埋めない。
+- ✅ 各前提を、根拠付きの独立した反証可能な主張として書く。
+- ✅ クローズ済みも含め既存 issue を検索してから、新規だと結論する。
+- ✅ どの主張が未検証かを明示する。
+- ✅ シンボルとパスで引用し、推奨はその根拠と並べて記録する。
+- ❌ 実行していない挙動を、未検証と断らずに断定する。
+- ❌ 測っていないコストをトレードオフとして提示する。
+- ❌ 部分的な検索から影響範囲を主張する。
+- ❌ 既存 issue へのコメントで足りるとき、あるいは修正が issue より小さいときに起票する。
+- ❌ 他リポジトリの issue へ素の `github.com` リンクを張る。逆参照を送るべきかを自分で決める。
+- ❌ 本文に行番号を書く。
+- ❌ 頼まれてもいないのにスロットを解放する。
 
-## Checklist
+## チェックリスト
 
-- [ ] Verification depth and output mode confirmed in one explicit user interaction.
-- [ ] The question restated and confirmed; its origin recorded.
-- [ ] Request path traced end to end, middleware included; cited code checked for currency; impact
-      radius searched exhaustively.
-- [ ] All five blockers cleared, or the corresponding claim narrowed / marked unverified.
-- [ ] Missing information asked about rather than estimated.
-- [ ] Body drafted in Japanese in the repo's shape, with a 前提 section carrying evidence per claim,
-      symbols not line numbers, and the recommendation's basis recorded.
-- [ ] Runtime confirmation run, or every behavioral claim marked unverified.
-- [ ] Existing issues searched including closed; the should-this-be-an-issue gate applied and its
-      outcome stated.
-- [ ] Filed and URL reported, or handed over as a draft.
+- [ ] 1 回の明示的な対話で検証の深さと出力モードを確認した。
+- [ ] 質問を言い直して確認し、その出所を記録した。
+- [ ] middleware を含めてリクエスト経路を端から端まで辿り、引用したコードの現在性を確認し、影響範囲を網羅的に検索した。
+- [ ] 5 つのブロッカーをすべて解消した、または該当する主張を狭めた / 未検証と明記した。
+- [ ] 足りない情報は推定せず聞いた。
+- [ ] リポジトリの形に沿った本文を日本語で書き、主張ごとに根拠を持つ 前提 セクションを備え、行番号ではなくシンボルで引用し、推奨の根拠を記録した。
+- [ ] ランタイム確認を実行した、または挙動に関する主張をすべて未検証と明記した。
+- [ ] クローズ済みを含め既存 issue を検索し、「そもそも issue にすべきか」ゲートを適用してその結果を明言した。
+- [ ] 起票して URL を報告した、または下書きとして引き渡した。

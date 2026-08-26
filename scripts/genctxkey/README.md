@@ -1,29 +1,29 @@
 # genctxkey
 
-`genctxkey` is a tool that generates code to pass values to and from `context.Context` and `*echo.Context` in a type-safe manner.
+`genctxkey` は、`context.Context` および `*echo.Context` に対する値の受け渡しを型安全に行うためのコードを生成するツールです。
 
-## Overview
+## 概要
 
-The goal is to handle storing and retrieving values in context in a unified way while avoiding the following issues.
+context に対する値の格納・取得を、以下のような問題を避けながら統一的に扱うことを目的としています。
 
-- collisions caused by string keys
-- lack of type safety
-- inconsistency in implementation
+- stringキーによる衝突
+- 型安全性の欠如
+- 実装のばらつき
 
-This tool automatically generates helper functions to solve these problems.
+本ツールはこれらを解決するためのヘルパー関数群を自動生成します。
 
-## Generated Code
+## 生成されるコード
 
-- for context.Context
+- context.Context 用
   - `SetXxx`
   - `GetXxx`
-- for *echo.Context
+- *echo.Context 用
   - `SetXxxToEcho`
   - `GetXxxFromEcho`
 
-## Usage
+## 使用方法
 
-### 1. Define in generate.go
+### 1. generate.go に定義
 
 ```go
 package ctxhelper
@@ -31,121 +31,121 @@ package ctxhelper
 //go:generate go run ../../../scripts/genctxkey --name ErrorHandled --type bool --out .
 ```
 
-### 2. Generate code
+### 2. コード生成
 
 ```sh
 make gen-go-code
 ```
 
-## How to specify type
+## type の指定方法
 
-### Primitive types / same-package types
+### 基本型 / 同一パッケージ型
 
 ```sh
 --type string
 --type UserID
 ```
 
-- import is not required
-- handled directly as a Go type
+- import は不要
+- Goの型としてそのまま扱われます
 
-### Types from external packages
+### 外部パッケージの型
 
 ```sh
 --type "auth.Authn"
 --import go-boilerplate/internal/usecase/boundary/auth
 ```
 
-- specify Go type format in `--type`
-- explicitly specify package with `--import`
-- `--alias` is optional (auto-generated if not specified)
-- `--test-value` is optional: a Go expression the generated test uses as its success value. A
-  non-primitive type has no usable zero value to assert against, so supply one there
+- `--type` には Goの型式を指定します
+- `--import` でパッケージを明示します
+- `--alias` は省略可能（未指定時は自動生成）
+- `--test-value` は省略可能で、生成されるテストが成功値として使う Go の式を渡します。基本型でない型は
+  アサーションに使えるゼロ値が無いため、ここで与えます
 
-### Complex types (supported)
+### 複雑な型（対応）
 
 ```sh
 --type "*[]auth.Authn"
 --type "map[string]auth.Authn"
 ```
 
-- supports pointer / slice / map / generic
-- types are treated as Go type expressions, not strings
+- pointer / slice / map / generic に対応
+- 型は文字列としてではなく Go の型式として扱われます
 
-## Invalid examples
+## 無効な例
 
 ```sh
 --type github.com/foo/bar
 ```
 
-- specifying only import path is invalid
-- when using external types, combine `--type` and `--import`
+- import path のみは無効です
+- 外部型を使う場合は `--type` と `--import` を組み合わせて指定してください
 
-## Output Specification
+## 出力仕様
 
-- file names are all lowercase
-  - example: `errorhandled_ctx.gen.go`
-- test files are also automatically generated
-  - example: `errorhandled_ctx_test.go`
+- ファイル名はすべて小文字
+  - 例: `errorhandled_ctx.gen.go`
+- テストファイルも自動生成
+  - 例: `errorhandled_ctx_test.go`
 
-## Design Policy
+## 設計方針
 
-### 1. Responsibilities of generator
+### 1. generator の責務
 
-- focus on code generation
-- treat types as Go type expressions, do not analyze them
-- process imports based on CLI input
+- コード生成に専念
+- 型は Go の型式として扱い、解析は行わない
+- import は CLI 入力に基づいて処理
 
-### 2. template has minimal responsibility
+### 2. template は最小責務
 
-- contains no logic
-- display only
+- ロジックは持たない
+- 表示のみ
 
-### 3. deterministic (reproducible)
+### 3. deterministic（再現可能）
 
-- no heuristic processing (goimports not used)
-- always generates identical results
+- 推測処理なし（goimports未使用）
+- 常に同一結果を生成
 
-## About editing
+## 編集について
 
-Generated `.gen.go` files are auto-generated code.
+生成される `.gen.go` ファイルは自動生成コードです。
 
-- manual editing is prohibited in principle
-- make changes through the generator
+- 原則として手動編集は禁止
+- 変更は generator を通して行う
 
-### Exceptions
+### 例外
 
-The following are allowed due to dependency resolution needs:
+依存解決の都合で以下は許可されます：
 
-- import adjustments
-- alias changes
+- import の調整
+- alias の変更
 
-However:
+ただし、
 
-- may be overwritten during regeneration
-- permanent fixes should be made on the generator side
+- 再生成時に上書きされる可能性あり
+- 恒久対応は generator 側で行うこと
 
-## Relationship with CI
+## CIとの関係
 
-- generation is performed locally, and the results are committed
-- CI re-runs `make gen-go-code` and fails the pull request when the committed output differs
-  (`.github/workflows/gen-go-artifacts-check.yaml`), so a forgotten regeneration is caught
+- 生成はローカルで実施し、結果をコミットする前提です
+- CI は `make gen-go-code` を回し直し、コミット済みの出力と差があればプルリクエストを失敗させます
+  （`.github/workflows/gen-go-artifacts-check.yaml`）。再生成の忘れはここで捕まります
 
-## Notes
+## 補足
 
-This tool is based on the following principles:
+本ツールは以下の思想に基づいています：
 
-- context is used within a "controlled boundary"
-- direct manipulation is prohibited; always use wrappers
-- consistency is ensured through generation
+- context は「制御された境界」で使用する
+- 直接操作は禁止し、必ずラッパーを通す
+- 生成によって一貫性を担保する
 
-## Summary
+## まとめ
 
-|Item|Policy|
+|項目|方針|
 |------|------|
-|type specification|Go type format|
-|import|explicit via CLI|
-|generation|reproducible|
-|editing|prohibited in principle (exceptions exist)|
+|型指定|Goの型式|
+|import|CLIで明示|
+|生成|再現可能|
+|編集|原則禁止（例外あり）|
 
-This tool is a foundational component that ensures consistency and safety in context usage.
+本ツールは、context利用の統一と安全性を保証するための基盤コンポーネントです。

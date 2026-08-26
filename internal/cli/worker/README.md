@@ -1,31 +1,31 @@
 # worker
 
-Starts a named pull-ack worker as a resident process and runs it until a termination signal arrives.
+名前を指定した pull-ack worker を常駐プロセスとして起動し、終了シグナルを受け取るまで実行します。
 
-## Command
+## コマンド
 
 ```text
 worker <worker-name> [args...]
 ```
 
-## Flags
+## フラグ
 
-This command takes no flags. The worker name is required and any following arguments are passed through to the worker implementation.
+このコマンドにフラグはありません。worker 名は必須で、後続の引数は worker の実装へそのまま渡されます。
 
-## Usage
+## 使い方
 
 ```bash
-# Start a worker by name
+# 名前を指定して worker を起動
 ./server worker myworker
 
-# Pass extra arguments through to the worker
+# 追加の引数を worker へ渡す
 ./server worker myworker --some-arg value
 ```
 
-## Notes
+## 注意点
 
-- Unlike `job`, the worker is a resident process: it keeps running and waits on the engine's completion channel rather than exiting after one execution.
-- On SIGINT / SIGTERM the engine is drained and stopped gracefully; the actual engine result (including a late `Fatal`) is always awaited so failures are not silently dropped.
-- The engine may also self-stop (e.g. `Fatal` or unknown worker), in which case the process exits with that result.
-- Graceful stop is bounded by the shutdown grace (`APP_SHUTDOWN_TIMEOUT`, the single stop-timeout axis), measured from the moment shutdown begins; the stop context drops cancellation but keeps trace/baggage. The same grace is set as `fx.StopTimeout` so fx's 15s default does not cut the drain short, and startup validation enforces `WORKER_DRAIN_TIMEOUT < APP_SHUTDOWN_TIMEOUT`.
-- The package can expose a health listener (`/healthz` liveness, `/readyz` readiness) on a dedicated mux, separate from the metrics/pprof server.
+- `job` と異なり、worker は常駐プロセスです。1 回の実行で終了せず、engine の完了チャネルを待ち続けます。
+- SIGINT / SIGTERM を受けると engine を drain してグレースフルに停止し、実際の engine の終了結果（遅延した `Fatal` を含む）を必ず待ち切るため、失敗が握り潰されることはありません。
+- engine 側が自走停止する場合（例: `Fatal` や unknown worker）もあり、その際はその結果でプロセスが終了します。
+- グレースフルストップは停止猶予（`APP_SHUTDOWN_TIMEOUT`、停止タイムアウトの単一軸）で上限が設けられ、停止開始時点から計測されます。停止用 context はキャンセルを切り離しつつ trace/baggage は引き継ぎます。同じ grace を `fx.StopTimeout` にも設定して fx 既定の 15 秒が drain を打ち切らないようにし、起動時に `WORKER_DRAIN_TIMEOUT < APP_SHUTDOWN_TIMEOUT` を検証します。
+- 本パッケージは、metrics/pprof サーバーとは別の専用 mux で health listener（`/healthz` liveness、`/readyz` readiness）を公開できます。

@@ -4,115 +4,85 @@ description: >-
   Draft and maintain `docs/spec/glossary.md`, the cross-feature Ubiquitous Language spec for business vocabulary. Use when a feature introduces terms that need registering, someone asks what a business term means or whether terms conflict, the glossary may be stale against specs/code/OpenAPI, or a periodic vocabulary sweep is needed; Japanese triggers include 「用語集を作って」「新出用語を登録」「この語の定義は」「orphan を出して」「語彙の棚卸し」. At runtime, inventory spec declarations, exported domain types and behaviours (with accessors subtracted), and OpenAPI schemas; separately verify unresolved code symbols declared in both feature specs and the glossary itself, and report new terms, undocumented code orphans, unresolved references, and homonyms for human decisions. Never choose a canonical name or declare synonyms. Do NOT use to author a feature spec (`new-spec` / `new-spec-domain`), validate spec format (`verify-spec`), audit Evans DDD patterns (`ddd-audit`), or find glossary drift in READMEs and ADRs (`back-prop`).
 ---
 
-# Glossary
+# 用語集
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+このシステムの業務語彙における唯一の正本として `docs/spec/glossary.md` を維持します。
 
-Maintain `docs/spec/glossary.md` as the single source of truth for this system's business vocabulary.
+## 判断境界
 
-## Decision boundary
+機械的に確定できる事実だけを確定します。すなわち、どの識別子が存在するか、用語集の行がないか、2 つの所有者の下に現れるか、または解決しなくなったかです。**正名は決めず、2 つの語を同義とは宣言しません。**
 
-Settle only mechanical facts: which identifiers exist, lack a glossary row, appear under two owners, or no longer resolve. **Never choose the canonical name and never declare two words synonymous.**
+これは慎重さではなく、証拠の境界です。識別子の衝突は文字列比較ですが、2 つの定義が異なるかの判定には文章を読む必要があります。1 つの概念に対する異なる語には機械的な痕跡がありません。どちらの名前を採るかは業務がどう話すかを決めることであり、コードはその判断を供給できません。証拠と候補文言を報告し、判断は人に委ねます。
 
-This is an evidence boundary, not caution. Identifier collision is a string comparison; deciding whether two definitions differ requires reading prose. Different words for one concept leave no mechanical trace. Choosing a winning name decides how the business speaks, and code cannot supply that decision. Report the evidence and proposed wording, then leave the decision to a person.
+## スコープと基準線
 
-## Scope and baseline
+1. 単一 feature には `--feature <name>` を受け付け、それ以外ではすべての feature を対象にします。対話可能な実行では Codex ネイティブのユーザー入力でこのスコープを選びます。1 回の対話は最大 4 件の finding にします。対話できない場合、未決の finding は決めずに報告します。
+2. 抽出の前に `docs/spec/glossary.md` を読みます。既存行、**Mechanism vocabulary**、**Watch list** はハードコードせず、そこから導出します。
+3. コンテナがなければ報告して停止します。このコンテナを作ることは独自の規則を伴う設計行為であり、このスキルはそれを満たすだけで発明しません。
 
-1. Accept `--feature <name>` for a single feature; otherwise cover every feature. In an interactive run, use Codex's native user-input interaction to choose between these scopes. Keep each interaction to at most four findings. When no interaction is available, report rather than decide any finding left open.
-2. Read `docs/spec/glossary.md` before extracting anything. Derive, rather than hardcode, its existing rows, **Mechanism vocabulary**, and **Watch list**.
-3. If the container is absent, report that and stop. Creating this container is a design act with its own rules; this skill fills it and does not invent it.
+Mechanism vocabulary は抑制チャネルです。**報告前にすべての orphan 集合からその名前を差し引きます。** そうしなければ、構造的な名前を毎回繰り返すため、棚卸しが読めないものになります。
+裸の識別子に対して完全一致で照合します。この節がパッケージを付けないのは、同じ構造名が複数パッケージに現れうるためであり、前方一致なら `Detail` を根拠に `DetailInput` まで抑止してしまいます。
 
-The Mechanism vocabulary is the suppression channel. **Subtract its names from every orphan set before reporting.** Otherwise every sweep repeats structural names and becomes unreadable.
-Match a bare identifier whole. The section omits packages because the same structural name can recur
-across packages; a prefix match would suppress `DetailInput` merely because `Detail` is listed.
+## 実行時インベントリの抽出
 
-## Extract the runtime inventory
+ドメイン spec YAML の形は `.codex/scaffold-spec/domain-spec.md` を実行時に読んで把握し、節が固定であると仮定しません。次の 5 つのインベントリを抽出します。
 
-Read `.codex/scaffold-spec/domain-spec.md` at runtime to learn the domain-spec YAML shape; do not assume its sections stay fixed. Extract five inventories:
-
-- `package:` and `struct:` declarations from the YAML in `docs/spec/*/domain.md`, restricted to the selected feature when applicable;
-- exported `type X struct` and `type X interface` declarations in `internal/domain/**`, excluding `_test.go` and `mock/`;
-- exported behaviours in `internal/domain/**`, excluding `_test.go` and `mock/`:
+- `docs/spec/*/domain.md` の YAML にある `package:` と `struct:` の宣言（対象を絞る場合は選択された feature のみ）。
+- `_test.go` と `mock/` を除く `internal/domain/**` にある、export された `type X struct` と `type X interface` の宣言。
+- `_test.go` と `mock/` を除く `internal/domain/**` にある export 済みの振る舞い。たとえば次で抽出します。
 
   ```sh
   grep -rn '^func \(([a-z]* \*\?[A-Z][A-Za-z0-9]*) \)\?[A-Z][A-Za-z0-9]*(' internal/domain --include='*.go'
   ```
 
-  Subtract accessors by opening the receiver's source and reading its struct. Fields are unexported,
-  so no inventory grep reveals them. Judge the body, not its name: drop a method when it reaches one
-  field and returns it, including after a copy, through an embedded value, or with an abbreviated
-  field name. The remainder expresses a verb or a judgement, for example `Cancel`, `IsCanceled`,
-  or `Update<Attribute>`.
-- exported package-level values in `internal/domain/**`, for example with:
+  アクセサは差し引きます。レシーバのソースを開いて struct を読みます。フィールドは非公開なので、在庫抽出の grep からは得られません。名前ではなく本体で判定し、コピーして返す、埋め込んだ値へ委譲する、フィールド名を省略する場合も含め、1 つのフィールドに到達してそれを返すメソッドを落とします。残るのは `Cancel`、`IsCanceled`、`Is<Judgement>`、`UpdateEmail` のような動詞または判断です。
+- `internal/domain/**` の公開パッケージ値。たとえば次で抽出します。
 
   ```sh
   grep -rn '^\t[A-Z][A-Za-z0-9]* \(=\|[A-Z]\)' internal/domain --include='*.go'
   ```
 
-  Treat named states and roles as seriously as types. They are often `const` values represented in
-  the glossary as `package.Value`; omitting them makes those rows impossible to propose while still
-  claiming they resolve.
-- published names, recursively, from both `openapi/components/schemas` and
-  `openapi/components/responses`, for example with:
+  名前を持つ状態と役割は型と同じだけ真剣に扱います。これらは多くの場合 `const` で、用語表では `package.Value` の形になるため、落とすと解決だけを報告しながら行を提案できなくなります。
+- `openapi/components/schemas` と `openapi/components/responses` の両方にある公開名。再帰して、たとえば次で抽出します。
 
   ```sh
   grep -rn '^ *[a-zA-Z]*:' openapi/components/schemas openapi/components/responses --include='*.yaml'
   ```
 
-  This inventory fills only the glossary's last column; it produces no findings. Schemas can be
-  nested, and a published name can be a response-body property rather than an independent schema.
+  この在庫は用語表の最後の列だけを埋め、findings は生みません。schema は入れ子になり、公開名は独立した schema ではなくレスポンス本体のプロパティであることがあります。
 
-Resolve feature packages from their declarations, never from a directory-name glob:
+feature のパッケージはディレクトリ名の glob ではなく、宣言から解決します。
 
 ```sh
 grep -n '^package:' docs/spec/*/domain.md docs/spec/*/usecase.md
 ```
 
-A kebab-case feature may map to one concatenated package or a nested package; the spec says which.
+kebab-case の feature は 1 語に連結されたパッケージにも親の下の入れ子にもなり得るため、どちらかは spec が述べます。
 
-Do not mechanically discard constructors. `New` is Go's word for construction; if the business calls
-the same action something else, that mismatch is a finding. Genuine construction mechanisms belong
-in Mechanism vocabulary and Step 1 will suppress them in subsequent runs.
+構築子を機械的に除外しません。`New` は Go における構築の語であり、同じ行為を業務が別の名前で呼ぶなら、その不一致は finding です。本当に構築機構であるものは Mechanism vocabulary に記録し、以後は Step 1 が差し引きます。
 
-Treat verbs as seriously as nouns. A noun-only vocabulary says what the business has but not what
-happens to it; rules live in what happens. An inventory drawn only from types can appear complete
-while missing that entire side of the business.
+動詞を名詞と同じだけ重く扱います。名詞だけの語彙は業務が何を持つかは言えても、それに何が起きるかを言えず、規則は起きることに宿ります。型だけの在庫は完全に見えても、この側面を丸ごと落とします。
 
-Treat a term's owner as the feature directory plus its declared aggregate. Do not reconcile two owners: that condition is a finding.
+用語の所有者は feature ディレクトリと、その feature が宣言する集約の組とします。2 つの所有者を調停せず、その状態自体を finding とします。
 
-### Read-side boundary
+### 読み取り側の境界
 
-Read-side concepts are an inventory source only for features with no
-`docs/spec/<feature>/domain.md`: a projection without an aggregate has no other place to introduce
-its business words. Resolve those packages from the spec declarations; do not assume a fixed path.
-For a feature with an aggregate, read models only restate its terms and are not candidate rows.
-This boundary outranks the orphan rule: a read model located in `internal/domain/**` can qualify by
-location but still be a restatement by nature; classify it as mechanism vocabulary, not a candidate.
+読み取り側の概念は、`docs/spec/<feature>/domain.md` を持たない feature に限って在庫に入れます。集約を持たない投影には業務語を導入するほかの場所がないためです。パッケージは spec の宣言から解決し、固定パスを仮定しません。集約を持つ feature の read model は用語の言い直しであり、候補行ではありません。この境界は orphan 規則より優先します。`internal/domain/**` に置かれた read model であっても、性質が言い直しなら候補行ではなく Mechanism vocabulary として扱います。
 
-Before judging a read-side name, strip mechanism suffixes `Result`, `ReadModel`, `View`, `Input`,
-`Params`, `Cursor`, `Summary`, `Breakdown`, `Item`, `List`, `Count`, and `DTO`. This is a starting
-set, not a closed one: strip anything serving the same role and report what was stripped. Drop ports
-whose whole name is `Usecase`, `Gateway`, `QueryService`, or `Repository` outright.
+読み取り側の名前を判定する前に、`Result`、`ReadModel`、`View`、`Input`、`Params`、`Cursor`、`Summary`、`Breakdown`、`Item`、`List`、`Count`、`DTO` という機構サフィックスを落とします。この一覧は出発点であって閉じた集合ではありません。同じ役割を果たすものは何であれ落とし、何を落としたかを報告します。名前全体が `Usecase`、`Gateway`、`QueryService`、`Repository` である port は落とします。
 
-## Keep the four findings separate
+## 4 種類の finding を分離する
 
-Do not merge these lists: each asks the human for a different decision.
+これらのリストを統合しません。人に求める判断が異なるためです。
 
-- **新出用語** — a spec declares a term with no glossary row. Read “declares” as the whole spec,
-  not just `package:` / `struct:` lines: a Value Object named in its own section is declared as
-  certainly as an aggregate. Draft a candidate row from the spec's prose and make editing the
-  definition easy. A definition nobody edited is a definition nobody agreed to.
-- **orphan** — an exported domain type, a behaviour that survived the accessor subtraction, or a
-  read-side concept for an aggregate-free feature that survived suffix stripping, appears in no spec,
-  no glossary row, and no Mechanism vocabulary entry. This alone catches vocabulary that nobody
-  documented. Classify each as a glossary row, Mechanism vocabulary, or a code naming mistake; do
-  not make the code change.
-- **解決しない参照** — a declared code symbol no longer resolves. Verify both a feature spec's `package` / `struct` and the glossary's own code-symbol column with `grep`. That column takes four shapes and all four must resolve — `package.Type`, `package.Type.Method`, `package.Func`, and `package.Value` for a package-level constant or variable, which is how a named state or role is usually carried; a checker that knows only the first three reports a false defect against the rows that matter most, never a judgement call. This is always a defect, but do not decide whether the glossary, spec, or code is wrong. The glossary is the governing claim; a governing claim never compared with what it governs is decoration.
-- **同音異義** — one identifier is declared by two features. Put both definitions and owners side by side and ask whether they are the same concept. Never answer that question here.
+- **新出用語** — spec が宣言しているが、用語集に行がない用語。「宣言している」は `package:` / `struct:` の行だけでなく spec 全体として読みます。自身の節で名前が挙がる Value Object は集約と同じだけ確かに宣言されています。spec 自身の文章から候補行を下書きし、定義を容易に編集できるようにします。誰も編集しなかった定義は、誰も合意しなかった定義です。
+- **orphan** — どの spec にも、用語集の行にも、Mechanism vocabulary の項目にもない export 済みドメイン型、アクセサ差し引き後に残った振る舞い、または集約を持たない feature でサフィックス除去後に残った読み取り側の概念。これは誰も文書化しなかった語彙を捕まえる唯一の手段です。各 orphan を用語集行、Mechanism vocabulary、またはコードの命名ミスに分類します。コード変更はしません。
+- **解決しない参照** — 宣言済みコードシンボルが解決しなくなった状態。feature spec の `package` / `struct` と、用語集自身のコードシンボル列の両方を `grep` で確認します。この列は 4 形を取り、4 形すべてが解決しなければなりません——`package.Type`、`package.Type.Method`、`package.Func`、そしてパッケージレベルの定数・変数を指す `package.Value` です。名前を持つ状態や役割は最後の形で担われることが多く、前 3 形しか知らない検査器は最も重要な行に対して偽の欠陥を報告します。判断では決めません、判断では決めません。常に欠陥ですが、用語集・spec・コードのどれが誤りかは決めません。用語集は統べる主張であり、統べるものが対象と照合されなければ装飾です。
+- **同音異義** — 1 つの識別子が 2 つの feature により宣言されている状態。両方の定義と所有者を並べ、同じ概念かを尋ねます。この問いには答えません。
 
-For each interactive decision, show only the evidence required and batch no more than four findings. For new terms, preserve a directly editable proposed definition. For an orphan, offer: register it as a term, record it as Mechanism vocabulary, flag code naming, or leave it pending.
+対話による判断では、必要な証拠だけを表示し、最大 4 件までをまとめます。新出用語では直接編集できる候補定義を維持します。orphan には、用語として登録、Mechanism vocabulary として記録、コード命名を指摘、保留、を提示します。
 
-For an unresolved code symbol, offer these options in this order:
+解決しないコードシンボルには、次の順で選択肢を提示します。
 
 1. 「コード側の改名が誤り。シンボルを表に合わせて戻す」
 2. 「業務側で語の扱いが変わった。**先に表の行を改訂し**、そのあとコードを追随させる」
@@ -120,44 +90,39 @@ For an unresolved code symbol, offer these options in this order:
 4. 「表とコードは一致しており、ずれているのは spec 側。`verify-spec` へ送る」
 5. 「今回は保留」
 
-The fourth option is essential: when the spec has drifted, none of the first three applies. This
-skill does not write feature specs, so row-or-code-only choices would pressure the run to rewrite
-something correct.
+4 番目は不可欠です。spec がずれているときは最初の 3 つのどれも当てはまりません。このスキルは feature spec を書かないため、行かコードかだけの選択肢は正しいものを書き換える方向へ実行を押しやります。
 
-Never offer “rewrite the row to match the code” as an option of its own. That turns the glossary
-into an index of code: an index cannot contradict what it indexes, so it cannot reveal that the
-model is wrong. The second option preserves the required order: revise the language first, then
-make the code follow it.
+「表をコードに合わせて書き換える」を単独の選択肢として提示しません。それは用語集をコードの索引に変えます。索引は指しているコードと矛盾できず、モデルが誤っていることを示せません。2 番目の選択肢は、先に語彙を改訂してからコードを追随させるという必要な順序を守ります。
 
-## Write and close
+## 書き込みと終了
 
-Write **only** `docs/spec/glossary.md`; do not edit feature specs, READMEs, ADRs, the DDD ledger, source, or generated files. Do not create a `.ja.md` pair for the glossary: this spec tree uses one Japanese file with English headings.
+書き込むのは **`docs/spec/glossary.md` のみ** です。feature spec、README、ADR、DDD ledger、ソース、生成ファイルは編集しません。用語集には `.ja.md` ペアを作りません。この spec ツリーは英語見出しを持つ単一の日本語ファイルです。
 
 <!-- sample-api:begin -->
-Put sample-derived rows between `sample-api:begin` and `sample-api:end`. Put terms that survive sample removal outside those markers.
+サンプル由来の行は `sample-api:begin` と `sample-api:end` の間に置きます。サンプル撤去後も残る用語は、これらのマーカーの外に置きます。
 
 <!-- sample-api:end -->
-Close in Japanese with the rows added, orphan classifications, unresolved references, homonyms left open, and follow-ups owned by other skills. Do not commit or push.
+追加行、orphan の分類、解決しない参照、未解決の同音異義、他スキルが担当する follow-up を日本語で報告して終了します。commit と push はしません。
 
-## Constraints
+## 制約
 
-- ❌ Inventory only types (verbs disappear, along with the side where business rules live).
-- ❌ Omit public package values from the inventory (then `package.Value` rows cannot be proposed even while resolution is reported).
-- ❌ Identify accessors solely by exact method-name/field-name equality (copies, delegation, and abbreviations escape it).
-- ❌ Skip verification of the glossary's code-symbol column (a governing claim that is never compared is decoration).
-- ❌ Limit unresolved-reference choices to row versus code (spec drift then has no safe outcome).
-- ❌ Offer “rewrite the row to match the code” as an option by itself (that moment opens the regression into an index).
+- ❌ 在庫を型だけから取る（動詞が落ち、業務規則が宿る側が丸ごと見えなくなる）。
+- ❌ 在庫から公開パッケージ値を落とす（`package.Value` 形の行を提案できないまま解決だけ報告することになる）。
+- ❌ メソッド名とフィールド名の文字列一致だけでアクセサを判定する（コピー・委譲・省略形を取り逃す）。
+- ❌ 用語表のコードシンボル列を検証せずに済ませる（照合されない統べる主張は装飾）。
+- ❌ 解決しない参照の選択肢を「行 / コード」の二項に閉じる（spec がずれている場合が落ちる）。
+- ❌ 「表をコードに合わせて書き換える」を単独の選択肢として出す（索引への退化はこの瞬間に開く）。
 
-## Checklist
+## チェックリスト
 
-- [ ] Choose all features or `--feature <name>`.
-- [ ] Read the existing rows, Mechanism vocabulary, and Watch list; stop if the container is absent.
-- [ ] Extract spec YAML, exported domain types, behaviours, package values, read-side concepts, and published OpenAPI names at runtime.
-- [ ] Resolve packages from the specs' `package:` declarations, rather than directory names.
-- [ ] Subtract accessors by reading the receiver struct and judging whether the body reaches and returns one field.
-- [ ] Limit read-side concepts to aggregate-free features; suppress restatements before the orphan rule.
-- [ ] Verify the glossary code-symbol column with `grep`, along with spec `package` / `struct` declarations.
-- [ ] Subtract Mechanism vocabulary from orphans.
-- [ ] Report the four finding kinds independently and leave naming/synonym decisions to a person.
-- [ ] Update only `docs/spec/glossary.md`; keep sample rows inside their markers.
-- [ ] Finish in Japanese without a commit or push.
+- [ ] 全 feature または `--feature <name>` を選ぶ。
+- [ ] 既存行、Mechanism vocabulary、Watch list を読み、コンテナがなければ停止する。
+- [ ] spec YAML・domain 公開型・公開振る舞い・公開パッケージ値・読み取り側の概念・OpenAPI 公開名を実行時に抽出する。
+- [ ] ディレクトリ名ではなく spec の `package:` 宣言からパッケージを解決する。
+- [ ] レシーバの struct を読み、本体が 1 フィールドに到達して返すアクセサを振る舞いから差し引く。
+- [ ] 読み取り側の概念は集約を持たない feature に限定し、言い直しは orphan 規則より先に抑止する。
+- [ ] spec の `package` / `struct` とともに、用語集のコードシンボル列を `grep` で解決確認する。
+- [ ] orphan から Mechanism vocabulary を差し引く。
+- [ ] 4 種の finding を独立して報告し、命名・同義の判断を人に残す。
+- [ ] `docs/spec/glossary.md` のみを更新し、サンプル行はマーカー内に置く。
+- [ ] commit と push をせず、日本語で終了する。

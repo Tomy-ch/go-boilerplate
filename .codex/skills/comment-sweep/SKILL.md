@@ -3,106 +3,74 @@ name: comment-sweep
 description: Sweep the existing stock of source-code comments to decide whether their content belongs at the declaration or in its governing document, preserving operative code residue and links when relocating rationale. Use for bloated or essay-like comments, doc comments grown into design arguments, periodic hygiene of a package/layer/repository, and before a template cut; Japanese triggers include 「コメントが長すぎる」「コメントを整理して」「この Why はコードに置くべきか」「コメントを ADR に移したい」. Do not use for comments on a change just written, which `impl-review` / `comment-reviewer` own as diff scope; README or docs prose quality, which `doc-reviewer` owns; or README-to-code structural drift, which `back-prop` / `sync-readme` own.
 ---
 
-# Comment Sweep
+# コメント清掃
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+これは**移設のワークフローであって、コメント削除のワークフローではない**。コメントの分量を蒸し返さないこと。非自明で検証可能な Why は、残る具体的な根拠を持っている。代わりに、実行時の権威が定める**管轄の問い**を立てる —— この判断が覆されたとき、更新が必要になるのはどの文書か。どれも必要にならないなら、管轄はコードであり、コメントはそのまま残る。
 
-Treat this as a relocation workflow, not a comment-deletion workflow. Do not re-argue comment
-volume: a non-obvious, verifiable Why has a concrete case for remaining. Instead, ask the
-jurisdiction question from the runtime authority: if this decision were reversed, which document
-would require an update? If none would, the code is the jurisdiction and the full comment remains.
+findings・選択肢・提案する文面・要約を含め、**ユーザーに見えるすべての出力は日本語**でなければならない。
 
-All user-visible output, including findings, choices, proposed prose, and summaries, must be in
-Japanese.
+## 実行時の権威
 
-## Runtime authorities
+選択したスコープを読む前に、以下の各出典を読むこと。記憶した方針をハードコードしたり代用したりしないこと。このスキルと食い違う場合は `docs/rules.md` が勝つ。
 
-Before inspecting the selected scope, read each source below. Do not hardcode or substitute a
-remembered policy. `docs/rules.md` wins if it conflicts with this skill.
-
-| Question | Runtime source |
+| 問い | 実行時の出典 |
 | --- | --- |
-| Allowed comment content and jurisdiction | *Comment Rules* in `docs/rules.md` |
-| Destination type | *What belongs here* in `docs/adr/README.md` |
-| Subsystem design references | `docs/design/README.md` |
-| Package scope | The package's nearest ancestor `README.md` |
+| 許容されるコメントの内容と管轄 | `docs/rules.md` の *Comment Rules* |
+| 移設先の種別 | `docs/adr/README.md` の *What belongs here* |
+| サブシステムの設計リファレンス | `docs/design/README.md` |
+| パッケージのスコープ | そのパッケージの最も近い祖先の `README.md` |
 
-Read [`references/audit-prompt.md`](references/audit-prompt.md) before auditing or dispatching an
-auditor. It is the single shared instruction file for all auditors.
+監査を行う前、または監査役へ委譲する前に [`references/audit-prompt.md`](references/audit-prompt.md) を読むこと。これが全監査役に共通する唯一の指示ファイルである。
 
-## 1. Confirm the scope
+## 1. スコープを確認する
 
-Before reading target files, present these numbered choices in Japanese and wait for the user's
-choice:
+対象ファイルを読む前に、次の番号付き選択肢を日本語で提示し、ユーザーの選択を待つ。
 
 1. 指定パス配下（パッケージまたはディレクトリ）
 2. ベースブランチとの差分
 3. レイヤ全体（`internal/domain`、`internal/usecase`、`internal/controller`、`internal/infrastructure`、`pkg`）
 4. キャンセル
 
-Stock scope is this skill's purpose. If the user selects diff scope, state in one Japanese line
-that `comment-reviewer` is normally the better diff-scoped tool, then continue. On cancel, stop
-without reading the target scope.
+**在庫（stock）スコープがこのスキルの目的である。** ユーザーが差分スコープを選んだ場合は、差分スコープなら通常 `comment-reviewer` のほうが適した道具である旨を日本語 1 行で述べたうえで続行する。キャンセルなら、対象スコープを読まずに止める。
 
-## 2. Resolve and rank targets
+## 2. 対象を解決し順位付ける
 
-Resolve all source files under the selected scope. Exclude `*.gen.go`, `*.sql.go`, `*_mock.go`, and
-`*_test.go`. Include non-Go sources such as shell, Dockerfile, Makefile, SQL, YAML, and `.mjs` when
-they are in scope; their prose follows the same standard and is not covered by `revive`.
+選択したスコープ配下のソースファイルをすべて解決する。`*.gen.go` / `*.sql.go` / `*_mock.go` / `*_test.go` は除外する。スコープ内にあれば、シェル・Dockerfile・Makefile・SQL・YAML・`.mjs` などの非 Go ソースも含める。それらの散文も同じ基準に従い、`revive` の守備範囲ではない。
 
-Count comment lines, rank files from highest volume to lowest, and show that ranking in Japanese.
-Group files by package directory. A package is the audit unit because its nearest README can be the
-jurisdictional destination.
+コメント行を数え、分量の多い順にファイルを並べ、その順位を日本語で示す。ファイルはパッケージディレクトリごとにまとめる。**監査の単位がパッケージなのは、その最も近い README が管轄上の移設先になり得るからである。**
 
-## 3. Audit read-only
+## 3. 読み取り専用で監査する
 
-When the runtime supports parallel inspection, audit independent package groups concurrently;
-otherwise audit them sequentially. Each auditor must:
+ランタイムが並列検査に対応しているなら、独立したパッケージ群を並行して監査する。対応していなければ順に監査する。各監査役は次を満たさなければならない。
 
-- Be strictly read-only: surface evidence, verdicts, and landing forms only; never ask the user or write.
-- Read and follow `references/audit-prompt.md` verbatim rather than a paraphrased spawn prompt.
-- Read the runtime authorities and the nearest README for its package.
+- 厳密に読み取り専用であること。証拠・判定・着地形だけを提示し、ユーザーへ問うことも書き込むことも決してしない。
+- 言い換えた起動プロンプトではなく、`references/audit-prompt.md` を逐語で読んで従うこと。
+- 実行時の権威と、そのパッケージの最も近い README を読むこと。
 
-The orchestrator alone obtains approval and performs every write, single-threaded. This prevents
-parallel auditors from contending over one destination document.
+**承認を得て書き込みを行うのはオーケストレータだけであり、それも単一スレッドで行う。** これにより、並列の監査役が 1 つの移設先文書を奪い合うことを防ぐ。
 
-## 4. Aggregate before decisions
+## 4. 判断の前に集約する
 
-Show the entire audit surface before proposing a write. Group by package and show `維持 / 短縮 /
-削除 / 移設` counts. Show individual findings only for contradictions and non-`維持` verdicts, with
-location, verbatim comment, reasoning, and the complete landing form. Show destination totals and a
-grand total. `維持` is a count only, except a code contradiction is always an individual finding.
+書き込みを提案する前に、監査面の全体を示す。パッケージごとにまとめ、`維持 / 短縮 / 削除 / 移設` の件数を示す。個別の findings を示すのは、矛盾と `維持` 以外の判定についてだけであり、位置・逐語のコメント・理由・完全な着地形を添える。移設先ごとの合計と総計を示す。`維持` は件数のみとする。ただしコードとの矛盾は常に個別の findings とする。
 
-If no action is needed, say so in Japanese and stop.
+対応が不要なら、日本語でその旨を述べて止める。
 
-## 5. Approve and apply one finding at a time
+## 5. findings を 1 件ずつ承認して適用する
 
-Process non-`維持` findings in descending impact order. For each one, present the evidence and a
-before/after comment diff. For `移設`, also present the exact destination prose. Ask for approval for
-that one finding; never batch-apply close calls.
+`維持` 以外の findings を影響の大きい順に処理する。各件について、証拠と before/after のコメント差分を提示する。`移設` の場合は移設先の文面も正確に提示する。**その 1 件について承認を求める。判断の際どいものをまとめて適用しないこと。**
 
-After approval, write the destination document first and the code second. This order is mandatory:
-an interruption must never leave the rationale without its new home.
-When the auditor reported `追記なし`, do not write the destination document: land the finding as a
-`短縮` and change only the code.
+承認後は、**移設先の文書を先に、コードを後に**書く。この順序は必須である。中断が起きても、根拠がその新しい住所を持たないまま取り残されてはならない。監査役が `追記なし` と報告した場合は移設先文書を書かず、その findings を `短縮` として着地させ、コードだけを変更する。
 
-For an ADR destination, do not choose its record shape. Ask the user to choose one of: rewrite the
-existing ADR-NNNN, create a new ADR, use `docs/design` or a README instead, or do not relocate now.
-If approved, update the English canonical document, its `.ja.md` translation, and the English/Japanese
-ADR log tables together. If a package README addition materially changes its claims, mention
-`back-prop` as the appropriate follow-up.
+移設先が ADR の場合、その記録の形をこちらで選ばないこと。既存の ADR-NNNN を書き換える / 新しい ADR を作る / 代わりに `docs/design` か README を使う / 今は移設しない —— このいずれかをユーザーに選んでもらう。承認されたら、正本と ADR ログ表を揃えて更新する。パッケージ README への追記がその主張を実質的に変える場合は、続く対応として `back-prop` に言及する。
 
-## 6. Verify
+## 6. 検証する
 
-Run `make fix`, then `make lint` over touched packages. Run `make md-lint` whenever a Markdown
-destination was written. Finally, reread every edited comment against the residue test: it must stand
-alone for a reader who does not follow its link. Report the result in Japanese; do not stage, commit,
-or push.
+触れたパッケージに対して `make fix`、続けて `make lint` を実行する。Markdown の移設先へ書き込んだ場合は `make md-lint` も実行する。最後に、編集した全コメントを**残渣テスト**に照らして読み直す —— リンクを辿らない読者にとって単独で成立していなければならない。結果は日本語で報告する。stage / commit / push はしない。
 
-## Reviewer boundary
+## レビュー役の境界
 
-| Tool | Scope | Verdicts | Owns |
+| 道具 | スコープ | 判定 | 所管 |
 | --- | --- | --- | --- |
-| `comment-reviewer` via `impl-review` | diff | 削除 / 書換 / 加筆 | Generation-time inflow gate |
-| `doc-reviewer` | `README*` / `docs/**` | Content findings | Docs prose quality |
-| `comment-sweep` | stock | 維持 / 短縮 / 削除 / 移設 | Content jurisdiction |
+| `impl-review` 経由の `comment-reviewer` | 差分 | 削除 / 書換 / 加筆 | 生成時の流入ゲート |
+| `doc-reviewer` | `README*` / `docs/**` | 内容の findings | ドキュメント散文の品質 |
+| `comment-sweep` | 在庫 | 維持 / 短縮 / 削除 / 移設 | 内容の管轄 |

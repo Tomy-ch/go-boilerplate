@@ -1,80 +1,80 @@
 
 # GitHub Pages
 
-This project publishes documentation with GitHub Pages.
-Deployment is executed through GitHub Actions.
+本プロジェクトでは、ドキュメントを GitHub Pages で公開します。  
+デプロイは GitHub Actions 経由で実行します。
 
-## Overview
+## 概要
 
-GitHub Pages for this repository is operated with the following policy:
+本リポジトリの GitHub Pages は、以下の方針で運用します。
 
-- Publishing method: GitHub Actions
-- Repository setting: `Settings > Pages > Source = GitHub Actions`
-- Deployment definition: `.github/workflows/deploy-docs.yaml`
-- Source of truth for deployment behavior: the GitHub Actions workflow
+- 公開方法: GitHub Actions
+- Repository 設定: `Settings > Pages > Source = GitHub Actions`
+- デプロイ定義: `.github/workflows/deploy-docs.yaml`
+- 実際のデプロイ挙動の正本: GitHub Actions の Workflow
 
 > [!NOTE]
-> This document explains the operational policy and points to check for GitHub Pages.
-> The exact build and deployment steps must follow `.github/workflows/deploy-docs.yaml`.
+> このドキュメントは GitHub Pages の運用方針と確認ポイントを説明するものです。  
+> 実際のビルド手順・デプロイ手順は `.github/workflows/deploy-docs.yaml` を正本として扱ってください。
 
-## Why GitHub Actions is used
+## GitHub Actions を利用する理由
 
-This repository does not use the legacy "Deploy from a branch" Pages configuration.
-Instead, documentation is built and deployed through GitHub Actions so that the publishing process stays reproducible and reviewable.
+本リポジトリでは、従来の "Deploy from a branch" による Pages 公開は採用しません。  
+GitHub Actions 経由でビルド・デプロイすることで、公開フローを再現可能かつレビュー可能な状態で管理します。
 
-Advantages:
+利点:
 
-- The deployment procedure is version-controlled
-- Build inputs are visible in the workflow file
-- Local file placement and repository settings are less likely to drift
-- It is easier to extend the pipeline later
+- デプロイ手順をバージョン管理できる
+- ビルド入力を Workflow ファイル上で追跡できる
+- ローカルのファイル配置や Repository 設定との差異が起きにくい
+- 将来的な拡張を追加しやすい
 
-## Repository Settings
+## Repository 設定
 
-Check the following repository setting before troubleshooting:
+トラブルシューティング前に、以下の Repository 設定を確認してください。
 
 ### Settings > Pages
 
 - Source: `GitHub Actions`
 
-If this is not set correctly, the workflow may succeed while the site is not published as expected.
+ここが正しく設定されていないと、Workflow が成功しても期待通りに公開されない場合があります。
 
 ## Workflow
 
-The GitHub Pages deployment workflow is defined here:
+GitHub Pages のデプロイ Workflow は以下です。
 
 ```text
 .github/workflows/deploy-docs.yaml
 ```
 
-When you need the exact trigger, build steps, artifact path, or deploy steps, always check the workflow file first.
+トリガー条件、ビルド手順、artifact の配置先、deploy 手順などの詳細は、必ず Workflow ファイルを確認してください。
 
-## Base Path
+## ベースパス
 
-GitHub Pages for a project repository is published under the repository path.
+Project Repository の GitHub Pages は、リポジトリ名を含むパスで公開されます。
 
 ```text
 https://<username>.github.io/<repository-name>/
 ```
 
-Example:
+例:
 
 ```text
 https://example-org.github.io/example-api/
 ```
 
-Because of this, documentation assets should be referenced with care.
+そのため、ドキュメント内のリンクや静的アセット参照には注意が必要です。
 
-### Recommended
+### 推奨
 
-- Use relative paths where possible
-- Keep links and static asset references compatible with the repository base path
+- 可能な限り相対パスを使う
+- リポジトリ名を含むベースパスでも動作するようにリンクと静的アセット参照を組む
 
-### Avoid
+### 非推奨
 
-- Root-relative paths that assume `/` is the site root
+- `/` をサイトルートとみなす絶対パス
 
-Example:
+例:
 
 ```html
 <!-- NG -->
@@ -84,66 +84,66 @@ Example:
 <link rel="stylesheet" href="./styles.css">
 ```
 
-## Notes
+## 注意点
 
-### Single source of truth
+### 正本は Workflow
 
-If this document and the workflow differ, treat `.github/workflows/deploy-docs.yaml` as the source of truth.
+このドキュメントと Workflow の内容に差異がある場合は、`.github/workflows/deploy-docs.yaml` を正本として扱ってください。
 
-### Static site assumptions
+### 静的サイト前提
 
-GitHub Pages serves static files.
-If a page depends on runtime server behavior, it will not work as-is on Pages.
+GitHub Pages は静的ファイル配信です。  
+実行時のサーバ処理を前提としたページは、そのままでは動作しません。
 
-### SPA routing
+### SPA ルーティング
 
-If a single-page application is published on GitHub Pages, reloading a deep link may return `404`.
-If SPA routing is introduced, add an appropriate fallback strategy such as a `404.html` redirect.
+Single Page Application を GitHub Pages に載せる場合、深いパスでリロードすると `404` になることがあります。  
+SPA ルーティングを導入する場合は、`404.html` リダイレクトなどのフォールバック戦略を追加してください。
 
-### Cache delay
+### キャッシュ
 
-GitHub Pages may continue showing cached content for a short time after deployment.
-If changes do not appear immediately, check the workflow result first and then retry with a hard refresh.
+GitHub Pages はデプロイ直後でもキャッシュにより旧内容が表示されることがあります。  
+更新が見えない場合は、まず Workflow の結果を確認したうえでハードリロードしてください。
 
-## Troubleshooting
+## トラブルシューティング
 
-### The site is not updated
+### 更新されない
 
-Check the following in order:
+以下を順番に確認してください。
 
-1. `.github/workflows/deploy-docs.yaml` was triggered
-2. The workflow completed successfully
-3. `Settings > Pages > Source` is set to `GitHub Actions`
-4. The published path and asset paths are compatible with the repository base path
+1. `.github/workflows/deploy-docs.yaml` が起動しているか
+2. Workflow が成功しているか
+3. `Settings > Pages > Source` が `GitHub Actions` になっているか
+4. 公開パスとアセット参照がリポジトリのベースパスに対応しているか
 
-### Assets or links are broken
+### アセットやリンクが壊れる
 
-Typical causes:
+主な原因:
 
-- Using root-relative paths such as `/assets/...`
-- Assuming the site is published at the domain root
-- A mismatch between generated paths and the GitHub Pages repository path
+- `/assets/...` のようなルート相対パスを使っている
+- ドメイン直下公開を前提にしている
+- 生成物のパスと GitHub Pages の公開パスが一致していない
 
-### The deployment behavior is unclear
+### デプロイ挙動が分からない
 
-Open the workflow file and confirm:
+Workflow ファイルを開き、以下を確認してください。
 
-- trigger conditions
-- build commands
-- output directory or uploaded artifact
-- Pages deploy step
+- trigger 条件
+- build コマンド
+- 出力ディレクトリまたは upload する artifact
+- Pages への deploy ステップ
 
-## Related Files
+## 関連ファイル
 
 - `.github/workflows/deploy-docs.yaml`
 - `docs/`
 - `docs/portal/`
 
-## Operational Guideline
+## 運用ルール
 
-When changing documentation publishing behavior, update both of the following together:
+ドキュメント公開方法を変更する場合は、以下を必ずセットで更新してください。
 
 1. `.github/workflows/deploy-docs.yaml`
-2. this document
+2. このドキュメント
 
-This keeps the documented operation aligned with the actual deployment behavior.
+これにより、実際のデプロイ挙動と説明文のズレを防ぎます。

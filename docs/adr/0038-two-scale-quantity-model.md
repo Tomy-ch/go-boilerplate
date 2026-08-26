@@ -5,159 +5,90 @@ deciders: [maintainers]
 tags: [architecture, persistence, http]
 ---
 
-# ADR-0038: Hold a quantity in two scales — exact decimal for precision, integer minor unit for settlement
+# ADR-0038: 量を 2 つのスケールで保持する — 精度は正確な十進、決済は最小単位の整数
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-A domain routinely carries two quantities that look like one concept — "money" — but whose
-precision requirements point in opposite directions.
+ドメインは往々にして、見た目は 1 つの概念——「金額」——でありながら、精度の要求が正反対を向く 2 つの量を抱える。
 
-- One of them **must** admit values finer than the smallest indivisible unit. A unit price below
-  one cent is ordinary for metered, wholesale, and FX-derived goods, and a representation that
-  cannot hold it is simply wrong for that value.
-- The other **must not**. A figure that is actually settled — charged, invoiced, transferred —
-  cannot be expressible below the minor unit, because such a figure is an invalid state rather
-  than a merely unusual one.
+- 一方は、分割不能な最小単位より細かい値を**表現できなければならない**。1 セント未満の単価は従量課金・卸売・為替由来の商材ではありふれており、それを保持できない表現はその値に対して単純に誤りである。
+- もう一方は、表現**できてはならない**。実際に決済される値——課金・請求・送金される値——が最小単位より細かく表現可能であってはならない。それは単に珍しい値ではなく不正な状態だからである。
 
-A single representation cannot both admit and forbid sub-minor-unit precision. Making everything
-fine-grained loses the guarantee; making everything coarse loses the value.
+単一の表現で、最小単位未満の精度を許容しつつ同時に禁止することはできない。すべてを細かくすれば保証を失い、すべてを粗くすれば値そのものを失う。
 
-Underneath both sits a second problem: `float64` cannot represent decimal fractions such as `0.1`
-or `19.99` exactly, so any such quantity carried as a float is already corrupted at parse time,
-before any arithmetic runs. Deciding the two scales therefore also means deciding what the exact
-container is, how it is stored, and how it crosses the wire without being re-corrupted at the
-boundary.
+その下にはもう 1 つ問題がある。`float64` は `0.1` や `19.99` のような十進小数を正確に表現できないため、こうした量を float で運んだ時点で——演算を 1 つも実行する前に、パース時点で——値は既に壊れている。したがって 2 つのスケールを決めることは、正確な器が何か、それをどう保存するか、そして境界で再び壊されずにワイヤを渡る方法を決めることでもある。
 
-## Decision
+## 決定
 
-**Two quantities with different precision requirements are held as different types.** One is an
-exact base-10 decimal; the other is an integer count of the currency minor unit. The choice of
-type *is* the guarantee: a settlement figure is not representable below the minor unit **by
-construction**, so the invalid state cannot be built at all rather than being built and then
-rejected. Which concrete quantities live in which scale is feature content and is specified with
-the feature, not here.
+**精度要求の異なる 2 つの量は、異なる型で保持する。** 一方は正確な 10 進数、もう一方は通貨最小単位の整数個数である。型の選択そのものが保証になる: 決済される値は**構成上**最小単位より細かく表現不能であり、不正な状態は「作ってから弾く」のではなくそもそも作れない。どの具体的な量がどちらのスケールに属するかは機能の内容であり、機能とともに記述してここには書かない。
 
-**The lossy conversion between the scales happens at exactly one point.** Rounding is applied once,
-at the boundary where an exact quantity becomes a settled figure, in a single function reused
-across endpoints. Callers never round, so the policy cannot drift between two call sites and a
-settled figure cannot silently disagree with the stored quantity it derives from.
+**スケール間の非可逆な変換はちょうど 1 点でのみ行う。** 丸めは、正確な量が決済される値になる境界で 1 回だけ適用し、エンドポイント間で再利用される単一の関数に置く。呼び出し側は丸めないため、方針が 2 つの呼び出し箇所で乖離することはなく、決済される値がその導出元の量と静かに食い違うこともない。
 
-**The rounding mode and the digit count are a policy owned by the usecase / value object, never
-baked into the generic decimal mechanism.** `pkg/decimal` offers arithmetic, rounding modes, and
-scale conversion (`ToScaledInt64`) and holds no opinion about which currency has how many minor-unit
-digits or which mode a given figure needs; both are supplied by the layer that knows the business
-meaning. A mechanism that decided them would force every future policy change through a change to a
-generic `pkg/` package.
+**丸め方式と桁数は usecase / 値オブジェクトが所有する policy であり、汎用の十進機構には決して焼き込まない。** `pkg/decimal` は算術・丸めモード・スケール変換（`ToScaledInt64`）を提供するが、どの通貨が最小単位を何桁持つか、ある値にどのモードが必要かについては何の意見も持たない。いずれも業務上の意味を知る層が供給する。機構がそれらを決めてしまうと、以後あらゆる policy 変更が汎用 `pkg/` パッケージの変更を経由することになる。
 
-**The database column for the exact scale is `NUMERIC` with no precision or scale.** Scale is a
-property of the value, not a design-time constant, so the schema does not assert a decimal exponent
-that cannot be justified at design time: for money it would have to be the minor-unit digit count of
-whichever currency is in play, which the column cannot know. The settlement scale is a plain integer
-column.
+**正確なスケールのデータベース列は、精度もスケールも指定しない `NUMERIC` とする。** スケールは値の性質であって設計時の定数ではないため、スキーマは設計時に正当化できない十進指数を主張しない。貨幣であれば、それは実際に扱う通貨の最小単位桁数でなければならず、列にはそれを知りようがない。決済スケールは素の整数列である。
 
-**On the wire, an exact-decimal value is a JSON string** (`"19.99"`), never a JSON number, and the
-OpenAPI schema types those fields as `type: string` with a decimal `pattern`. A JSON number is
-decoded by typical parsers as an IEEE754 `double`, which silently undoes the exactness that the rest
-of the decision buys; a string is the only lossless JSON representation. On decode the container
-also accepts a bare JSON number, so an external payload that emits one is ingested without digit
-loss.
+**ワイヤ上では、正確な十進の値は JSON の文字列**（`"19.99"`）であり、JSON number ではない。OpenAPI スキーマでも `type: string` に十進の `pattern` を付ける。JSON number は一般的なパーサによって IEEE754 の `double` として復号され、この決定が買ったはずの正確さを静かに帳消しにする。文字列は JSON における唯一の無損失な表現である。復号側は素の JSON number も受け付けるので、そう出力する外部ペイロードも桁落ちなく取り込める。
 
-**At the persistence boundary the same container carries itself.** It implements `sql.Scanner` /
-`driver.Valuer` and the sqlc override maps `NUMERIC` columns to it, so generated infrastructure code
-never names the underlying vendor type either. That the vendor sits behind a `pkg/` seam at all is
-the lock-in-avoidance pattern recorded in [ADR-0001](0001-avoid-lock-in.md); what is specific here is
-that the seam must also cover the DB and wire boundaries, or the vendor type reappears in generated
-code.
+**永続化境界でも同じ器が自分自身を運ぶ。** 器は `sql.Scanner` / `driver.Valuer` を実装し、sqlc の override が `NUMERIC` 列をこの型へ写像するため、生成されるインフラのコードもベンダー型を名指ししない。ベンダーを `pkg/` の継ぎ目の背後に置くこと自体はロックイン回避のパターンであり [ADR-0001](0001-avoid-lock-in.md) に記録されている。ここに固有なのは、その継ぎ目が DB とワイヤの境界まで覆っていなければ、生成コードにベンダー型が再出現するという点である。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- A sub-minor-unit quantity is representable where it is legitimate, and a sub-minor-unit *settled
-  figure* is not representable at all — each state is enforced by the chosen representation rather
-  than by convention or by a validation that someone must remember to call.
-- Rounding is localized to one boundary, so a settled figure cannot drift from the quantity it was
-  derived from, and a change of policy is a change in one place.
-- `NUMERIC` without a fixed scale keeps the schema honest: no currency-specific decimal exponent is
-  asserted at design time.
-- The value is lossless end to end — string on the wire, exact decimal in memory, `NUMERIC` at rest —
-  with no float anywhere on the path.
-- The generic mechanism stays free of business meaning, so `pkg/` keeps satisfying its own
-  independence bar.
+- 最小単位未満の量は、それが正当な場所では表現でき、最小単位未満の*決済される値*はまったく表現できない。どちらの状態も、慣習や「呼び忘れうる検証」ではなく選んだ表現によって強制される。
+- 丸めが 1 つの境界に局在するため、決済される値が導出元の量から乖離することがなく、方針の変更も 1 箇所の変更で済む。
+- スケール固定なしの `NUMERIC` はスキーマを正直に保つ。設計時に通貨固有の十進指数を主張しない。
+- 値はワイヤ上の文字列、メモリ上の正確な十進、保存時の `NUMERIC` と端から端まで無損失であり、経路上に float が存在しない。
+- 汎用の機構が業務上の意味を持たないままなので、`pkg/` は自身の独立性の基準を満たし続ける。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Two representations for one apparent concept raise the conceptual bar: a contributor must know
-  which scale a given quantity lives in before touching it. This is what the per-feature spec and
-  the per-layer READMEs have to state.
-- An unspecified `NUMERIC` admits arbitrarily long fractions at the database level; what actually
-  bounds precision at use sites is the domain value object and the single conversion point, not the
-  column.
-- Clients must treat the field as a string rather than a number — a visible shape in the API
-  contract, and a migration cost for any existing client.
-- A `NUMERIC` → string → decimal round trip is marginally more work than a native numeric type,
-  accepted as the price of exactness.
+- 見た目 1 つの概念に対して表現が 2 つあることは概念的なハードルを上げる。触る前に、その量がどちらのスケールに属するかを知っている必要がある。機能ごとの spec と各層の README がそれを述べる責務を負う。
+- 指定なしの `NUMERIC` はデータベースレベルでは任意長の小数を許す。利用箇所で実際に精度を縛るのは列ではなく、ドメインの値オブジェクトと単一の変換点である。
+- クライアントはそのフィールドを数値ではなく文字列として扱う必要がある。API コントラクト上の可視な形であり、既存クライアントには移行コストが生じる。
+- `NUMERIC` → 文字列 → 十進のラウンドトリップはネイティブの数値型よりわずかに手数が多い。正確さの代価として受け入れる。
 
-## Alternatives Considered
+## 検討した代替案
 
-### One scale — integer minor units everywhere
+### 単一スケール — すべてを最小単位の整数にする
 
-Rejected: it cannot express a value below the minor unit at all, which is the motivating
-requirement. This is the status quo the two-scale model replaces.
+却下: 最小単位より細かい値をまったく表現できず、それこそが動機である。2 スケールモデルが置き換える現状がこれである。
 
-### One scale — exact decimal everywhere
+### 単一スケール — すべてを正確な十進にする
 
-Rejected: it makes a sub-minor-unit *settled figure* representable again, reintroducing exactly the
-invalid state the second scale exists to forbid. Uniformity is not worth losing that guarantee.
+却下: 最小単位未満の*決済される値*を再び表現可能にしてしまい、2 つめのスケールが禁じるために存在する不正な状態がそのまま戻ってくる。統一性はその保証を失うほどの価値を持たない。
 
-### `float64` for both
+### 両方を `float64` にする
 
-Rejected outright: `float64` cannot hold `0.1` or `19.99` exactly, so the value is corrupted at
-parse time and every subsequent operation accumulates the error. This is the defect the decision
-removes, not a trade-off to weigh.
+即座に却下: `float64` は `0.1` も `19.99` も正確に保持できないため、パース時点で値が壊れ、以後の演算が誤差を累積する。これは天秤にかけるトレードオフではなく、この決定が取り除く欠陥そのものである。
 
-### Fix `NUMERIC(precision, scale)` per column
+### 列ごとに `NUMERIC(precision, scale)` を固定する
 
-Rejected: it bakes a unit-specific decimal exponent into the schema as a design-time constant,
-contradicting "scale is a property of the value" and committing the column to an assumption it
-cannot justify for a currency it has never seen.
+却下: 単位固有の十進指数を設計時の定数としてスキーマに焼き込むことになり、「スケールは値の性質」と矛盾し、見たこともない通貨に対して正当化できない前提を列に背負わせる。
 
-### Keep the wire as a JSON number (`format: decimal` / `double`)
+### ワイヤを JSON number のままにする（`format: decimal` / `double`）
 
-Rejected: common tooling decodes JSON numbers as IEEE754 doubles, reintroducing the float corruption
-being removed at the one boundary the application does not control. A string is the only lossless
-JSON representation of an exact decimal.
+却下: 一般的なツールは JSON number を IEEE754 の double として復号するため、アプリケーションが制御できない唯一の境界で、取り除こうとしている float の破壊が再導入される。文字列は正確な十進の唯一の無損失な JSON 表現である。
 
-### `big.Rat` (true rationals)
+### `big.Rat`（真の有理数）
 
-Rejected as over-modeling: prices, rates, and taxes are decimal, not arbitrary rationals. `big.Rat`
-would add complexity and non-terminating representations with no benefit for these quantities.
+過剰なモデリングとして却下: 価格・レート・税はいずれも十進であって任意の有理数ではない。`big.Rat` はこれらの量に対して何の利益もないまま、複雑さと非終端の表現をもたらす。
 
-### Bake the rounding mode and minor-unit digit count into the decimal container
+### 丸めモードと最小単位桁数を十進の器に焼き込む
 
-Rejected: it would give a generic `pkg/` container business meaning, breaking the rule that `pkg/`
-holds no feature-specific logic, and would route every future policy change through the shared
-mechanism instead of through the layer that owns the policy.
+却下: 汎用の `pkg/` の器に業務上の意味を与えることになり、「`pkg/` は機能固有のロジックを持たない」というルールを破る。さらに、以後の policy 変更をすべて、policy を所有する層ではなく共有機構経由にしてしまう。
 
-## Notes
+## 補足
 
-- Container: `pkg/decimal`; the vendor-behind-`pkg/` pattern it follows is
-  [ADR-0001](0001-avoid-lock-in.md), and the `pkg/` independence rule it must satisfy is in
-  [`docs/rules.md`](../rules.md).
-- Where a shared, business-semantic money value object lives:
-  [ADR-0039](0039-domain-lexicon.md).
+- 器: `pkg/decimal`。それが従うベンダー wrap のパターンは [ADR-0001](0001-avoid-lock-in.md)、満たすべき `pkg/` 独立性ルールは [`docs/rules.md`](../rules.md)。
+- 共有される業務意味を持つ金額の値オブジェクトの置き場所: [ADR-0039](0039-domain-lexicon.md)。
 <!-- sample-api:replace-begin -->
-- Which quantities occupy which scale, the concrete minor-unit digit counts, the rounding mode
-  chosen for each figure, and the settlement currency are feature content, specified with the
-  feature. In this repository that means the removable sample set (`docs/spec/purchase/`,
-  `docs/spec/exchange-rate/`) — referenced by path rather than linked, because those files are
-  deleted by `make setup-remove-sample-api` while this ADR stays.
+- どの量がどちらのスケールに属するか、具体的な最小単位桁数、各値に選んだ丸め方式、決済通貨は機能の内容であり、機能とともに記述する。本リポジトリではそれは削除可能なサンプル群（`docs/spec/purchase/` / `docs/spec/exchange-rate/`）を指す。`make setup-remove-sample-api` で削除される一方で本 ADR は残るため、リンクではなくパスで示す。
 <!-- sample-api:replace-with -->
-<!-- = - Which quantities occupy which scale, the concrete minor-unit digit counts, the rounding mode -->
-<!-- =   chosen for each figure, and the settlement currency are feature content, specified with the -->
-<!-- =   feature. -->
+<!-- = - どの量がどちらのスケールに属するか、具体的な最小単位桁数、各値に選んだ丸め方式、決済通貨は機能の内容であり、機能とともに記述する。 -->
 <!-- sample-api:replace-end -->

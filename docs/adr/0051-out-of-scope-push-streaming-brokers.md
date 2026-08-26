@@ -5,84 +5,55 @@ deciders: [maintainers]
 tags: [worker, async, exclusion, setup-review]
 ---
 
-# ADR-0051: Push-type brokers and streaming-log platforms are out of scope for the worker port
+# ADR-0051: プッシュ型ブローカーとストリーミングログ基盤はワーカーポートのスコープ外
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-The broker-agnostic worker scaffold ([ADR-0050](0050-broker-agnostic-worker-scaffold.md))
-defines a pull-ack port (`Consumer` / `Handler` / `FailureHandler`) that allows different
-queue brokers to be wired as adapters without changing the engine. This design creates
-pressure to also cover:
+ブローカー非依存のワーカースキャフォールド（[ADR-0050](0050-broker-agnostic-worker-scaffold.md)）は、エンジンを変更せずに異なるキューブローカーをアダプターとして接続できるプル・アック型ポート（`Consumer` / `Handler` / `FailureHandler`）を定義している。この設計は、以下もカバーすべきというプレッシャーを生む:
 
-- **Push-type brokers** (e.g. RabbitMQ, AMQP) — the broker pushes messages to the consumer
-  rather than the consumer polling.
-- **Streaming-log platforms** (e.g. Apache Kafka, Amazon Kinesis) — consumption involves
-  offset management, consumer groups, and partition assignment; the protocol is fundamentally
-  different from pull-ack.
+- **プッシュ型ブローカー**（例: RabbitMQ、AMQP）— コンシューマーがポーリングするのではなく、ブローカーがコンシューマーにメッセージをプッシュする。
+- **ストリーミングログ基盤**（例: Apache Kafka、Amazon Kinesis）— 消費にはオフセット管理、コンシューマーグループ、パーティション割り当てが伴い、プロトコルがプル・アック型と根本的に異なる。
 
-There is a temptation to treat these as "just another adapter" and extend the pull-ack seam
-to cover them, or to generalise the port to a lowest-common-denominator interface.
+これらを「単なる別のアダプター」として扱い、プル・アック型シームを拡張してカバーしようとする誘惑、またはポートを最大公約数的なインターフェースに汎用化しようとする誘惑が生じる。
 
-## Decision
+## 決定
 
-We deliberately do NOT support push-type brokers or streaming-log consumers within the
-worker port defined by [ADR-0050](0050-broker-agnostic-worker-scaffold.md). The exclusion
-is not about pull-ack being the only conceivable model — it is about deliberately avoiding
-the need to build and maintain multiple adapter variants. Pull-ack is the chosen concrete
-instance; push and streaming are excluded because supporting them would require either a
-diluted lowest-common-denominator interface or separate adapters with their own maintenance
-burden.
+[ADR-0050](0050-broker-agnostic-worker-scaffold.md) で定義されたワーカーポートでは、プッシュ型ブローカーとストリーミングログコンシューマーを意図的にサポートしない。この除外は、プル・アック型が唯一望ましいモデルだからではなく、プッシュ型をサポートして複数のアダプターを構築・維持することを意図的に避けたためである。プル・アック型はそのうえで選択された具体的なインスタンスにすぎない。プッシュ型やストリーミングをサポートすれば、最大公約数的なインターフェースへの希釈か、独自のメンテナンスコストを伴う個別アダプターの新設が必要になる。
 
-- **Push delivery** (RabbitMQ-style) already has a natural home in this codebase: the HTTP
-  controller layer receives pushed requests. A webhook endpoint is the correct adapter for
-  push-type brokers.
-- **Streaming-log consumers** (Kafka / Kinesis) require offset commit, consumer-group
-  coordination, and per-partition state — a fundamentally different engine, not an extension
-  of the pull-ack port.
+- **プッシュ型デリバリー**（RabbitMQ スタイル）は、このコードベースに自然な居場所がある。HTTP コントローラーレイヤーがプッシュされたリクエストを受け取る。Webhook エンドポイントがプッシュ型ブローカーの正しいアダプターである。
+- **ストリーミングログコンシューマー**（Kafka / Kinesis）はオフセットコミット、コンシューマーグループ調整、パーティション単位の状態を必要とし、プル・アック型ポートの拡張ではなく、根本的に異なるエンジンに属する。
 
-Generalising the port to accommodate both models would produce a lowest-common-denominator
-interface that leaks protocol details or weakens the Ack / Nack / Extend guarantees that
-the engine relies on.
+両方のモデルに対応するようポートを汎用化すると、プロトコルの詳細を漏洩させるか、エンジンが依存する Ack / Nack / Extend の保証を弱めた最大公約数的なインターフェースが生まれる。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- The pull-ack seam stays narrow and coherent; Ack / Nack / Extend semantics are
-  unambiguous for all conforming adapters.
-- Engine invariants (ordering, drain, circuit breaker) remain testable against a single
-  in-memory fake.
-- Teams that genuinely need Kafka or Kinesis are not misled into forcing those platforms
-  through a mismatched adapter.
+- プル・アック型シームは狭く一貫性を保つ。Ack / Nack / Extend のセマンティクスはすべての適合アダプターにとって明確である。
+- エンジンの不変条件（順序・ドレイン・サーキットブレーカー）は単一のインメモリフェイクに対してテスト可能であり続ける。
+- Kafka や Kinesis が本当に必要なチームが、適合しないアダプターを無理に通そうと誤誘導されない。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Push-type and streaming workloads require a separate subsystem (outside the worker port)
-  when they cannot be served by HTTP webhooks.
-- The constraint must be communicated to whoever wires a new adapter, to prevent incorrect
-  adapter attempts.
+- プッシュ型やストリーミングのワークロードは、HTTP Webhook で対応できない場合、ワーカーポートの外部に独立したサブシステムを必要とする。
+- この制約は、誤ったアダプター実装の試みを防ぐため、新しいアダプターを結線する者へ周知しなければならない。
 
-## Alternatives Considered
+## 検討した代替案
 
-### A general multi-broker abstraction (incl. push / streaming)
+### プッシュ/ストリーミングを含む汎用マルチブローカー抽象
 
-Rejected: a lowest-common-denominator port would leak or weaken guarantees. Kafka-style
-consumers (offset commit / consumer-group / partition) belong to a separate engine, not an
-extension of this port.
+却下: 最大公約数的なポートは保証を漏洩させるか弱める。Kafka スタイルのコンシューマー（オフセットコミット / コンシューマーグループ / パーティション）は、このポートの拡張ではなく、独立したエンジンに属する。
 
-### A separate streaming-log port alongside the pull-ack port
+### プル・アック型ポートと並置する独立ストリーミングログポート
 
-Not rejected in principle, but out of scope for the worker port — no concrete demand, and
-adding it speculatively violates [ADR-0001](0001-avoid-lock-in.md)'s preference for
-concrete over hypothetical abstraction.
+原則としては却下しないが、ワーカーポートのスコープ外 — 具体的な需要がなく、投機的な追加は [ADR-0001](0001-avoid-lock-in.md) の「仮想的な抽象より具体を優先する」方針に反する。
 
-## Notes
+## 補足
 
-- Related: [ADR-0050](0050-broker-agnostic-worker-scaffold.md) (pull-ack worker scaffold,
-  the port this ADR qualifies).
-- Source: the former `docs/decisions.md`.
-- Source: `docs/design/worker.md` (§ 1 Role theory).
+- 関連: [ADR-0050](0050-broker-agnostic-worker-scaffold.md)（プル・アック型ワーカースキャフォールド — この ADR が限定するポート）。
+- ソース: かつての `docs/decisions.md`。
+- ソース: `docs/design/worker.md`（§ 1 Role theory）。

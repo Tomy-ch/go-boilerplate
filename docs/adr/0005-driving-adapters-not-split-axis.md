@@ -5,79 +5,58 @@ deciders: [maintainers]
 tags: [foundational, architecture]
 ---
 
-# ADR-0005: REST / Worker / Job are driving adapters, not a service-split axis
+# ADR-0005: REST / Worker / Job はドライビングアダプター、サービス分割の軸ではない
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Three entry-point types co-exist in this repository:
+このリポジトリには 3 種類のエントリーポイントが共存する:
 
-- **REST** — synchronous HTTP requests handled by Echo handlers.
-- **Worker** — asynchronous messages pulled from a queue and processed by worker handlers.
-- **Job** — CLI-invoked or scheduled commands processed by job handlers.
+- **REST** — Echo ハンドラーが処理する同期 HTTP リクエスト。
+- **Worker** — キューからプルされワーカーハンドラーが処理する非同期メッセージ。
+- **Job** — CLI から起動またはスケジュールされジョブハンドラーが処理するコマンド。
 
-A natural misreading of this structure is to treat entry-point type as a reason to split
-Usecase or Domain packages: "REST usecases", "worker usecases", "job usecases". This
-produces duplicated business logic across transport-specific subtrees and erodes the
-single-responsibility of the Usecase layer.
+この構造の自然な誤読として、エントリーポイントの種類をユースケースやドメインパッケージを分割する理由として扱うことがある: 「REST ユースケース」「ワーカーユースケース」「ジョブユースケース」。これはトランスポート固有のサブツリー間でビジネスロジックを重複させ、ユースケースレイヤーの単一責任を侵食する。
 
-The correct framing is that all three are **driving adapters** — they adapt an external
-signal (HTTP request, queue message, CLI invocation) into a call on the Usecase layer. The
-Usecase and Domain layers are split by **business capability, business context, and
-transaction boundary** — not by the transport mechanism that triggered the operation.
+正しいフレーミングは、3 つすべてが **ドライビングアダプター** であるということだ — 外部シグナル（HTTP リクエスト、キューメッセージ、CLI 呼び出し）をユースケースレイヤーへの呼び出しに変換する。ユースケースとドメインのレイヤーは **ビジネス機能・ビジネスコンテキスト・トランザクション境界** によって分割され、操作をトリガーしたトランスポートメカニズムによって分割されるのではない。
 
-REST is the original entry point; Worker ("message-in driving adapter") and Job
-("command-in driving adapter") were modelled after the same pattern.
+REST は元々のエントリーポイントであり; Worker（「メッセージイン型ドライビングアダプター」）と Job（「コマンドイン型ドライビングアダプター」）は同じパターンをモデルとして作られた。
 
-## Decision
+## 決定
 
-REST, Worker, and Job entry points are **driving adapters** into the Usecase layer. They are
-not a basis for splitting Usecase or Domain packages. Usecase and Domain packages are
-organized by business capability and transaction boundary.
+REST・Worker・Job のエントリーポイントはユースケースレイヤーへの **ドライビングアダプター** である。これらはユースケースやドメインパッケージを分割する根拠にはならない。ユースケースとドメインのパッケージはビジネス機能とトランザクション境界で整理される。
 
-Each adapter type lives under `internal/controller/` and calls the same Usecase methods that
-any other adapter would call for the same business operation.
+各アダプタータイプは `internal/controller/` 以下に置かれ、同じビジネス操作に対して他のアダプターが呼ぶのと同じユースケースメソッドを呼び出す。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Business logic is implemented once in the Usecase / Domain layers and invoked by any
-  adapter; no duplication across transport types.
-- Adding a new entry-point type (e.g., gRPC) requires only a new adapter under
-  `internal/controller/` — the Usecase layer is unchanged.
-- Layer boundaries enforced by depguard (see [ADR-0006](0006-structural-safety-via-tooling.md))
-  apply uniformly across all adapter types.
+- ビジネスロジックはユースケース / ドメインレイヤーに一度だけ実装され、どのアダプターからも呼び出される; トランスポートタイプ間での重複がない。
+- 新しいエントリーポイントタイプ（例: gRPC）の追加には `internal/controller/` 以下に新しいアダプターを作るだけでよい — ユースケースレイヤーは変更されない。
+- depguard によって強制されるレイヤー境界（[ADR-0006](0006-structural-safety-via-tooling.md) 参照）がすべてのアダプタータイプに一様に適用される。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Developers unfamiliar with the driving-adapter pattern may instinctively create
-  per-transport usecase packages; the design doc and this ADR serve as the corrective
-  reference.
-- All adapters share the same Usecase method signatures; if one transport has significantly
-  different input / output shapes, the DTO mapping in the adapter grows.
+- ドライビングアダプターパターンに不慣れな開発者はトランスポートごとのユースケースパッケージを直感的に作ろうとするかもしれない; 設計ドキュメントとこの ADR が是正のリファレンスとなる。
+- すべてのアダプターは同じユースケースメソッドシグネチャを共有する; あるトランスポートで入出力の形状が大きく異なる場合、アダプター内の DTO マッピングが肥大化する。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Per-transport Usecase packages
+### トランスポートごとのユースケースパッケージ
 
-Separate usecase subtrees for REST, Worker, and Job. Rejected: business logic is duplicated
-across transport-specific packages, violating the single-responsibility of the Usecase layer.
+REST・Worker・Job それぞれに別個のユースケースサブツリー。却下: ビジネスロジックがトランスポート固有のパッケージ間で重複し、ユースケースレイヤーの単一責任に違反する。
 
-### Single controller package with no adapter distinction
+### アダプター区別のない単一コントローラーパッケージ
 
-Collapsing all entry points into one package. Rejected: the distinct lifecycle and error
-semantics of HTTP, queue, and CLI entry points justify separate adapter packages under
-`internal/controller/`.
+すべてのエントリーポイントを 1 つのパッケージにまとめる。却下: HTTP・キュー・CLI エントリーポイントのライフサイクルとエラーセマンティクスの違いが、`internal/controller/` 以下の別個のアダプターパッケージを正当化する。
 
-## Notes
+## 補足
 
-- Source: `docs/design/README.md` § "How to read these" (first invariant: REST / Job / Worker
-  are driving adapters into the Usecase layer, not package split axes).
-- Source: `docs/design/rest.md` § "1. Role theory" — REST defined as the
-  "request-in driving adapter, the synchronous HTTP entry point into the Usecase layer".
-- Layer boundary enforcement: [ADR-0006](0006-structural-safety-via-tooling.md).
-- Layer shape: [ADR-0002](0002-onion-architecture.md).
+- ソース: `docs/design/README.md` §「How to read these」（最初の不変条件: REST / Job / Worker はユースケースレイヤーへのドライビングアダプターであり、パッケージ分割の軸ではない）。
+- ソース: `docs/design/rest.md` §「1. Role theory」— REST は「リクエストイン型ドライビングアダプター、ユースケースレイヤーへの同期 HTTP エントリーポイント」と定義されている。
+- レイヤー境界の強制: [ADR-0006](0006-structural-safety-via-tooling.md)。
+- レイヤー形状: [ADR-0002](0002-onion-architecture.md)。

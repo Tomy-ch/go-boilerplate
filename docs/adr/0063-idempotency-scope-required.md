@@ -5,70 +5,49 @@ deciders: [maintainers]
 tags: [idempotency, security]
 ---
 
-# ADR-0063: Every Store call requires an explicit scope to prevent cross-user key collisions
+# ADR-0063: クロスユーザーのキー衝突を防ぐためすべての Store 呼び出しに明示的スコープを必須とする
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-An idempotency key is a client-chosen string. If key uniqueness is enforced globally
-(across all users), two different users using the same key string — a common value such as
-`"retry-1"` or a UUID that happens to collide — would share the same idempotency record.
-This would allow one user's request to replay another user's response, which is an
-Insecure Direct Object Reference (IDOR) vulnerability.
+冪等性キーはクライアントが自由に選択する文字列である。キーの一意性をグローバル（全ユーザー横断）に強制すると、同じキー文字列を使用する 2 人の異なるユーザー（`"retry-1"` のような一般的な値や、たまたま衝突した UUID）が同一の冪等性レコードを共有してしまう。これにより、あるユーザーのリクエストが別のユーザーのレスポンスをリプレイできる状態となり、Insecure Direct Object Reference（IDOR）脆弱性が発生する。
 
-In addition, without scope isolation a malicious client could deliberately use another
-user's key to probe whether that user performed a particular operation.
+さらに、スコープ分離なしでは悪意あるクライアントが意図的に他のユーザーのキーを使用し、そのユーザーが特定の操作を実行したかどうかを探ることができる。
 
-The authentication context is always available at the point the idempotency middleware runs
-(the subsystem requires authentication as a prerequisite), making the authenticated
-principal a natural scoping unit.
+冪等性ミドルウェアが実行される時点では認証コンテキストが常に利用可能であり（サブシステムは前提条件として認証を要求する）、認証済みプリンシパルが自然なスコープ単位となる。
 
-## Decision
+## 決定
 
-Every method on the `Store` interface takes a mandatory `scope` parameter. There is no
-key-only lookup. The underlying `idempotency_keys` table enforces `UNIQUE(scope,
-idempotency_key)`, so uniqueness is always scoped to an authenticated principal. The scope
-value is the authenticated subject (`authn.Subject()`) resolved by the middleware before
-the key is processed.
+`Store` インターフェースのすべてのメソッドは必須の `scope` パラメーターを取る。キーのみによる検索は存在しない。`idempotency_keys` テーブルは `UNIQUE(scope, idempotency_key)` を強制するため、一意性は常に認証済みプリンシパルのスコープ内に限定される。スコープ値は、キーが処理される前にミドルウェアが解決した認証済みサブジェクト（`authn.Subject()`）である。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- IDOR is prevented at the persistence layer — even if application code were to pass the
-  wrong scope, the DB constraint would catch conflicting claims.
-- Scope isolation is a compile-time contract: a `Store` call without a scope argument does
-  not compile.
-- Different users may reuse the same key string without interference.
+- IDOR は永続化レイヤーで防止される。アプリケーションコードが誤ったスコープを渡した場合でも、DB 制約が競合するクレームを検出する。
+- スコープ分離はコンパイル時のコントラクトである。スコープ引数なしの `Store` 呼び出しはコンパイルエラーになる。
+- 異なるユーザーが同じキー文字列を干渉なく再利用できる。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Every caller must supply a scope; anonymous or partially authenticated flows cannot use
-  the idempotency subsystem without providing a principal identifier.
-- Scope is derived from the authentication context, coupling the idempotency subsystem to
-  the authentication mechanism.
+- すべての呼び出し元はスコープを指定しなければならない。匿名または部分的に認証されたフローは、プリンシパル識別子を提供しない限り冪等性サブシステムを使用できない。
+- スコープは認証コンテキストから派生するため、冪等性サブシステムが認証メカニズムと結合する。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Global key namespace (no scope)
+### グローバルキー名前空間（スコープなし）
 
-Enforce uniqueness on the key string alone. Rejected because it introduces IDOR: one
-user's key could collide with and replay another user's stored response.
+キー文字列のみで一意性を強制する。あるユーザーのキーが別のユーザーの保存済みレスポンスと衝突・リプレイできるため IDOR が発生し、却下した。
 
-### Caller-specified arbitrary scope string
+### 呼び出し元が任意のスコープ文字列を指定できる
 
-Allow callers to pass any string as a scope rather than requiring the authenticated subject.
-Rejected because it shifts the security responsibility to each call site, making it easy
-to accidentally use a constant or empty scope and re-introduce the collision problem.
+認証済みサブジェクトを要求する代わりに、任意の文字列をスコープとして渡せるようにする。セキュリティ責任が各呼び出しサイトに移り、定数や空スコープを誤って使用して衝突問題が再発しやすくなるため却下した。
 
-## Notes
+## 補足
 
-- Source: [`docs/design/idempotency.md`](../design/idempotency.md) §1 (design principles, "Scope
-  is mandatory") and §5 (glossary entry for "scope").
-- The `UNIQUE(scope, idempotency_key)` constraint is defined in the
-  `database/migrations/` idempotency migration.
-- Related: [ADR-0002](0002-onion-architecture.md) (the middleware resolves scope; the
-  `Store` seam enforces it — responsibility is correctly split across layers).
+- 出典: [`docs/design/idempotency.md`](../design/idempotency.md) §1（設計原則、「Scope is mandatory」）および §5（用語集エントリ「scope」）。
+- `UNIQUE(scope, idempotency_key)` 制約は `database/migrations/` の冪等性マイグレーションで定義されている。
+- 関連: [ADR-0002](0002-onion-architecture.md)（ミドルウェアがスコープを解決し、`Store` シームがそれを強制する。責務がレイヤー間で正しく分割されている）。

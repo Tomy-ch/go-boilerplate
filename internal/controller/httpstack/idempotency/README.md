@@ -1,16 +1,16 @@
 # idempotency
 
-`Idempotency-Key`-based request deduplication entry point, provided as an oapi-codegen StrictMiddleware slot (not `e.Use`).
+`Idempotency-Key` ベースのリクエスト重複排除の入り口です。oapi-codegen の StrictMiddleware スロット用に提供され、`e.Use` では登録しません。
 
-## Role
+## 役割
 
-Safe retries require the server to recognize when a client resends the same mutating request, so that a duplicate does not apply the operation twice. Placing that recognition at the middleware boundary — where the request is already parsed into its typed form — lets every endpoint opt into idempotency uniformly without each handler reimplementing key handling and request fingerprinting. This package only establishes the idempotency context for a request; the actual persistence and replay of stored responses live in the usecase layer.
+安全なリトライを実現するには、クライアントが同一の更新系リクエストを再送したことをサーバが認識し、重複によって操作が二重に適用されないようにする必要があります。この認識をミドルウェア境界（リクエストが既に型付き表現へパースされている地点）に置くことで、各ハンドラがキー処理やリクエスト指紋計算を再実装することなく、すべてのエンドポイントが一様に冪等性を選択できます。本パッケージはリクエストに対して冪等性コンテキストを確立するだけであり、保存済みレスポンスの永続化・再生といった実処理は usecase 層が担います。
 
-## Notes
+## 補足
 
-- `Middleware()` returns the entry point in the StrictMiddleware structural signature `func(next NextFunc, operationID string) NextFunc`, where `NextFunc` is `func(ctx *echo.Context, request any) (any, error)`. `StrictMiddleware[H]()` adapts it to a package-specific oapi-codegen `StrictMiddlewareFunc` type (e.g. `gen.StrictHandlerFunc`), so it is registered in the generated strict-handler middleware slot — not via `e.Use`.
-- When the `Idempotency-Key` header is absent, the request passes through unchanged (treated as non-idempotent).
-- Idempotency activates only when the authenticated principal has a resolved internal `UserID`: that `UserID` is used as the scope key, so the request passes through unchanged if no authentication principal is present, or if the principal's `UserID` is unresolved.
-- An absent or blank `Idempotency-Key` passes through unchanged. A present key is validated and a violating one is rejected with `400` (`apperror.ErrInvalidArgument`): it must be at most 255 bytes and contain only printable ASCII characters.
-- The request fingerprint is the SHA-256 of `method + path + JSON(typed request)`. Marshalling the request is fail-closed: if it fails, an internal error (`apperror.ErrInternal`) is returned rather than proceeding with a weak fingerprint.
-- On success, the middleware stores an `idempotency.Request` (scope, key, fingerprint, method, path, operationID) into the request context via the usecase's `WithRequest`, then delegates to the next handler; the usecase layer consumes it downstream.
+- `Middleware()` は StrictMiddleware の構造的シグネチャ `func(next NextFunc, operationID string) NextFunc` で入り口を返します（`NextFunc` は `func(ctx *echo.Context, request any) (any, error)`）。`StrictMiddleware[H]()` はそれをパッケージ固有の oapi-codegen `StrictMiddlewareFunc` 型（例: `gen.StrictHandlerFunc`）へ適合させるため、生成された strict handler のミドルウェアスロットに登録されます。`e.Use` 経由では登録しません。
+- `Idempotency-Key` ヘッダが無い場合、リクエストはそのまま素通しされます（非冪等として扱います）。
+- 冪等性は、認証済みプリンシパルの内部 `UserID` が解決済みの場合にのみ発動します。スコープキーにその `UserID` を用いるため、認証プリンシパルが存在しない場合、または `UserID` が未解決の場合は素通しされます。
+- `Idempotency-Key` が無い、または空白のみの場合は素通しされます。値がある場合は検証され、違反キーは `400`（`apperror.ErrInvalidArgument`）で拒否されます。キーは 255 バイト以下・印字可能 ASCII のみで構成されている必要があります。
+- リクエスト指紋は `method + path + JSON(型付き request)` の SHA-256 です。request の marshal は fail-closed とし、失敗時は弱い指紋で処理を続行せず内部エラー（`apperror.ErrInternal`）を返します。
+- 成功時、ミドルウェアは usecase の `WithRequest` を介して `idempotency.Request`（scope・key・fingerprint・method・path・operationID）をリクエストコンテキストへ格納し、次のハンドラへ委譲します。以降の処理は usecase 層が消費します。

@@ -1,44 +1,43 @@
-# Controller Layer Guide (`internal/controller`)
+# コントローラー層（`internal/controller`）ガイド
 
-## Role in Onion Architecture
+## オニオンアーキテクチャでの役割
 
-- Acts as the **boundary between the external world (HTTP/CLI) and the application**
-- Responsible for **protocol adaptation (Adapter)**, converting inputs into **application vocabulary (DTO / Value Objects)** and invoking the **Usecase layer**
-- Performs **output formatting (Presenter)** by converting Usecase results into **OpenAPI response types**
-- Maps exceptions (`error`) into **HTTP status codes** and **error codes** (`apperror` → Status)
+- **外界（HTTP/CLI）とアプリケーションの境界面**
+- **プロトコル適応（Adapter）** を担い、入力を **アプリ語彙（DTO/Value）** に変換して **Usecase** を呼ぶ
+- **出力整形（Presenter）** で Usecase の結果を **OpenAPI のレスポンス型** へ詰め替える
+- 例外（`error`）を **HTTP ステータス** + **エラーコード** へマッピング（`apperror` → Status）
 
-> Key point: **Controllers must not contain business logic**.
-> Their responsibility is limited to interpreting and formatting HTTP / CLI interactions.
+> ポイント：**ビジネスロジックは一切持たない**。持つのは「HTTP / CLI の解釈と整形」だけ。
 
-## Directory Structure
+## ディレクトリ構成
 
-The layer is split by **how the outside reaches the application** — four entry-point kinds, and
-nothing else may be one:
+この層は**外部がどこからアプリケーションへ入ってくるか**で分かれる。入口は次の 4 種であり、
+これ以外が入口になることはない。
 
-- `handler/` — HTTP requests
-- `job/` — a CLI invocation
-- `worker/` — a message on a queue
-- `outbox/` — the relay that polls the outbox and publishes
+- `handler/` — HTTP リクエスト
+- `job/` — CLI からの起動
+- `worker/` — キューのメッセージ
+- `outbox/` — outbox を polling して publish する relay
 
-The remaining directories exist to serve those four: `server/` builds the Echo instance,
-`httpstack/` the middleware stack, `error/response/` the error body, `conv/` the
-generated-type ↔ domain-type boundary, and `ctxhelper/` the Echo context accessors.
+残りのディレクトリはこの 4 つに奉仕する。`server/` は Echo インスタンスの構築、`httpstack/` は
+ミドルウェアスタック、`error/response/` はエラーボディ、`conv/` は生成型とドメイン型の境界、
+`ctxhelper/` は Echo context のアクセサである。
 
-## Subdirectory Roles
+## サブディレクトリの役割
 
-|Directory|Description|Details|
+|ディレクトリ|説明|詳細|
 |---|---|---|
-|`handler/`|Handlers that receive HTTP requests and delegate to Usecase|[README](handler/README.md)|
-|`job/`|Job controllers invoked from CLI|[README](job/README.md)|
-|`worker/`|Worker engine consuming a pull-ack message queue and dispatching to Usecase|[README](worker/README.md)|
-|`outbox/`|Relay engine that periodically polls the outbox and publishes pending messages|[README](outbox/README.md)|
-|`server/`|Echo instance initialization and DI lifecycle integration|[README](server/README.md)|
-|`httpstack/`|Middleware stack (CORS, security, logging, auth, etc.)|[README](httpstack/README.md)|
-|`error/response/`|Unified HTTP error response generation and apperror mapping|[README](error/response/README.md)|
-|`conv/`|Boundary helpers converting OpenAPI-generated types into domain types|[README](conv/README.md)|
-|`ctxhelper/`|Helpers for setting/getting values in Echo context|[README](ctxhelper/README.md)|
+|`handler/`|HTTP リクエストを受け取り Usecase へ委譲するハンドラ|[README](handler/README.md)|
+|`job/`|CLI から起動されるジョブのコントローラ|[README](job/README.md)|
+|`worker/`|pull-ack メッセージキューを消費し Usecase へディスパッチするワーカーエンジン|[README](worker/README.md)|
+|`outbox/`|outbox を周期的に poll し未 publish メッセージを送るリレーエンジン|[README](outbox/README.md)|
+|`server/`|Echo インスタンスの初期化と DI ライフサイクルへの統合|[README](server/README.md)|
+|`httpstack/`|ミドルウェア群（CORS, セキュリティ, ログ, 認証等）|[README](httpstack/README.md)|
+|`error/response/`|統一的な HTTP エラーレスポンスの生成と apperror マッピング|[README](error/response/README.md)|
+|`conv/`|OpenAPI 生成型をドメイン型へ変換する境界ヘルパー|[README](conv/README.md)|
+|`ctxhelper/`|Echo コンテキストへの値の設定・取得ヘルパー|[README](ctxhelper/README.md)|
 
-## Dependency Rules
+## 依存関係ルール
 
 ```mermaid
 flowchart TB
@@ -51,40 +50,39 @@ flowchart TB
     Controller -. forbidden .-> Database
 ```
 
-Controllers access lower layers **only through Usecase**.
+Controller は **Usecase を通してのみ下位層にアクセス**します。
 
-### Doc comments stay in HTTP vocabulary
+### doc コメントは HTTP 語彙で書く
 
-The forbidden edges above govern doc comments as well. A handler doc comment states the HTTP-level
-contract — what the endpoint returns, which status codes the failures map to, whether authentication
-is required — and must not name tables, columns, SQL fragments, or where the transaction boundary
-sits; those belong to the layer that owns them (see
-[`internal/usecase/README.md`](../usecase/README.md) § Doc comments: interface vs implementation and
+上記の禁止された依存の矢印は doc コメントにも適用されます。ハンドラの doc コメントは HTTP レベルの契約
+（そのエンドポイントが何を返すか、失敗がどのステータスコードへ写像されるか、認証が必要か）を述べ、
+テーブル名・カラム名・SQL 断片・トランザクション境界の所在は述べません。それらはそれを所有する層に属します
+（[`internal/usecase/README.md`](../usecase/README.md) § Doc comments: interface vs implementation および
 [`internal/infrastructure/README.md`](../infrastructure/README.md) § Doc comments may name technical
-detail). A handler method is a method on the unexported `server`, so `revive` does not require a doc
-comment on it: when the generated `ServerInterface` already carries the OpenAPI summary and there is
-no HTTP-level detail worth adding, omit it rather than restating.
+detail を参照）。ハンドラのメソッドは非公開の `server` に対するメソッドであるため `revive` は doc コメントを
+要求しません。生成された `ServerInterface` が既に OpenAPI の summary を持ち、HTTP レベルで足す価値のある
+具体が無いなら、言い換えを書くのではなく省略します。
 
-## Test Strategy
+## テスト戦略
 
-This is the layer baseline. A controller is any inbound adapter, and they do not all speak HTTP, so read the sub-section that matches the driver before applying anything below. Sub-trees with their own section own their viewpoints outright: [`handler/`](handler/README.md), [`job/`](job/README.md), [`httpstack/`](httpstack/README.md), [`server/`](server/README.md).
+ここに書くのは層の基準である。controller は inbound adapter の総称であり、全てが HTTP を話すわけではない。以下を適用する前に、駆動方式に対応するサブセクションを読むこと。独自の節を持つサブツリーはその節が観点を専有する: [`handler/`](handler/README.md)、[`job/`](job/README.md)、[`httpstack/`](httpstack/README.md)、[`server/`](server/README.md)。
 
-### HTTP handlers
+### HTTP ハンドラ
 
-Handler tests mock the usecase and drive the handler through Echo (`testkit/testecho` + `testkit/testassert`); business logic lives in the usecase and is not re-tested here. Each handler test verifies:
+ハンドラテストは usecase を mock し、Echo 経由でハンドラを駆動する（`testkit/testecho` + `testkit/testassert`）。ビジネスロジックは usecase 側にありここでは再テストしない。各ハンドラテストが検証する観点:
 
-- HTTP I/O conversion — request binding (path / query / body) → usecase input, and usecase output → response DTO / status
-- request validation paths (OpenAPI / bind failures → 400 etc.)
-- `apperror` → HTTP status mapping (the usecase error surfaced as the right status / code)
-- middleware-supplied context — values the handler reads from context (auth principal / request id / idempotency)
+- HTTP I/O 変換 — リクエストの bind（path / query / body）→ usecase 入力、usecase 出力 → レスポンス DTO / status
+- リクエスト validation 経路（OpenAPI / bind 失敗 → 400 等）
+- `apperror` → HTTP status マッピング（usecase のエラーが適切な status / code として表出する）
+- middleware が乗せる context — ハンドラが context から読む値（auth principal / request id / idempotency）
 
-Boundary-level HTTP wiring (Router → Middleware → Handler → Presenter) is covered separately by the `internal/integration` HTTP-boundary tests.
+境界レベルの HTTP 結線（Router → Middleware → Handler → Presenter）は `internal/integration` の HTTP 境界テストで別途カバーする。
 
-### Loop-driven controllers (`outbox/`, `worker/`)
+### ループ駆動の controller（`outbox/` / `worker/`）
 
-These adapters are driven by a poll / consume loop rather than a request, so nothing above about Echo, binding, or HTTP status applies to them. The usecase and the boundary ports (`usecase/boundary/clock`, `usecase/boundary/worker`) are mocked, the logger is `logging.NewTestLogger`, the tracer is `observability.NewNoopTracerFactory`, and the in-memory fakes under `usecase/boundary/worker/testkit` stand in for a real broker. The loop is what is under test, so exercise it as a loop:
+これらの adapter はリクエストではなく poll / consume ループで駆動されるため、上記の Echo・bind・HTTP status に関する記述は一切当てはまらない。usecase と boundary ポート（`usecase/boundary/clock`・`usecase/boundary/worker`）を mock し、ロガーは `logging.NewTestLogger`、トレーサは `observability.NewNoopTracerFactory`、実ブローカの代わりに `usecase/boundary/worker/testkit` の in-memory fake を使う。テスト対象はループそのものなので、ループとして駆動して検証する。
 
-- **One iteration's effect** — a poll that finds work dispatches it; a poll that finds none backs off by the configured interval. Assert through the mocked sleeper, never by sleeping in the test.
-- **Stop semantics** — cancelling the context ends the loop and returns, and an in-flight item finishes or is abandoned according to the drain contract the package documents. This is the branch a `SupervisedRunner`-driven shutdown depends on.
-- **Error handling per iteration** — a usecase error backs off and continues rather than killing the loop; the failure path documented by the package (retry / circuit / failure handler) is asserted by its distinctive outcome, not just by "no panic".
-- **Settings clamping** — a value outside the accepted range is clamped to the documented bound, and the clamp is visible (logged / reflected in the effective setting), not silent.
+- **1 反復の効果** — 処理対象を見つけた poll はディスパッチし、見つからなかった poll は設定された間隔だけバックオフすること。検証は mock した sleeper を通して行い、テスト内で実際に sleep しないこと。
+- **停止のセマンティクス** — context のキャンセルでループが終了して return すること、処理中の要素が各パッケージの文書化された drain 契約どおりに完了 or 放棄されること。`SupervisedRunner` 駆動の shutdown が依存しているのがこの分岐。
+- **反復ごとのエラー処理** — usecase のエラーはバックオフして継続し、ループを殺さないこと。パッケージが文書化する失敗経路（retry / circuit / failure handler）は「panic しない」ではなくその分岐固有の outcome で検証すること。
+- **設定値の clamp** — 受理範囲外の値が文書化された境界へ clamp され、その clamp が黙って行われず観測可能（ログ／実効設定への反映）であること。

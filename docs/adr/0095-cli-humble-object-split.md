@@ -5,77 +5,53 @@ deciders: [maintainers]
 tags: [cli, architecture]
 ---
 
-# ADR-0095: CLI humble-object split (thin cmd/ shell + testable internal/cli core)
+# ADR-0095: CLI ハンブルオブジェクト分割（薄い cmd/ シェル + テスト可能な internal/cli コア）
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-CLI commands need business logic that is testable without launching real databases, external
-processes, or the file system, while still wiring real dependencies in production. A single
-Cobra handler function that both defines the command and contains the logic conflates two
-concerns — testability and wiring — making the decision logic impossible to unit-test in
-isolation.
+CLI コマンドは、本番環境でリアルな依存関係をワイヤリングしながら、リアルなデータベース、外部プロセス、またはファイルシステムを起動せずにテスト可能なビジネスロジックを必要とする。コマンドを定義しロジックを含む単一の Cobra ハンドラー関数は、テスタビリティとワイヤリングという 2 つの関心事を混在させ、決定ロジックを独立してユニットテストすることを不可能にする。
 
-The coverage gate ([ADR-0086](0086-coverage-hard-gate.md), 90%+ branch coverage) must apply to command logic, but `cmd/` shell files
-that import Cobra, `internal/di`, and OS signals cannot be unit-tested cheaply; their runtime
-correctness is instead verified by CI boot checks (`app-di-startup-check`, `job-boot-check`,
-`worker-boot-check`, `migration-check`, and `gen-*-artifacts-check`) against a real Postgres
-service.
+カバレッジゲート（[ADR-0086](0086-coverage-hard-gate.md)、90%+ ブランチカバレッジ）はコマンドロジックに適用されなければならないが、Cobra、`internal/di`、OS シグナルをインポートする `cmd/` シェルファイルは安価にユニットテストできない。これらのランタイム正確性は CI ブートチェック（`app-di-startup-check`、`job-boot-check`、`worker-boot-check`、`migration-check`、`gen-*-artifacts-check`）によってリアルの Postgres サービスに対して検証される。
 
-## Decision
+## 決定
 
-Split every CLI command into two parts:
+すべての CLI コマンドを 2 つの部分に分割する:
 
-1. **A thin `cmd/<command>.go` shell** — defines the Cobra command, parses flags into local
-   variables, wires real OS / DB / logger dependencies, and delegates to a single core
-   function. This file is excluded from the coverage gate.
-2. **A testable `internal/cli/<command>/` core package** — contains all decision logic
-   (error handling, branching, formatting, deletion conditions, timeout dispatch). All
-   OS / filesystem / external-process / DB / logger dependencies are injected via interfaces
-   or function seams; production code wires the real implementations; unit tests pass fakes.
-   This package is included in the coverage gate and must meet 90%+ branch coverage.
+1. **薄い `cmd/<command>.go` シェル** — Cobra コマンドを定義し、フラグをローカル変数にパースし、リアルな OS / DB / ロガー依存関係をワイヤリングし、単一のコア関数にデリゲートする。このファイルはカバレッジゲートから除外される。
+2. **テスト可能な `internal/cli/<command>/` コアパッケージ** — すべての決定ロジック（エラーハンドリング、分岐、フォーマット、削除条件、タイムアウトディスパッチ）を含む。OS / ファイルシステム / 外部プロセス / DB / ロガーの依存関係はインターフェースまたは関数シームを介して注入される。プロダクションコードはリアル実装をワイヤリングし、ユニットテストはフェイクを渡す。このパッケージはカバレッジゲートに含まれ、90%+ ブランチカバレッジを満たさなければならない。
 
-The core must not import Cobra, `internal/di`, `internal/config`, OS signals, or
-infrastructure (other than `infrastructure/rdb/driver` types for type-passing purposes).
+コアは Cobra、`internal/di`、`internal/config`、OS シグナル、またはインフラストラクチャ（型渡し目的の `infrastructure/rdb/driver` 型を除く）をインポートしてはならない。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Decision logic is fully unit-testable without real infrastructure.
-- The `cmd/` shell stays to a handful of lines (config load → dependency build → delegate),
-  making it easy to read and keeping wiring concerns separate from logic concerns.
-- The coverage gate is enforceable: `internal/cli/*` meets 90%+ branch coverage; `cmd/` is
-  exempt and guarded by CI boot checks instead.
-- Adding a new command is mechanical: add `cmd/<command>.go`, add core logic under
-  `internal/cli/<command>/`, register in `registerCommands`.
+- 決定ロジックはリアルなインフラストラクチャなしで完全にユニットテスト可能である。
+- `cmd/` シェルは数行（設定ロード → 依存関係ビルド → デリゲート）に留まり、読みやすく、ワイヤリングの関心事をロジックの関心事から分離する。
+- カバレッジゲートを適用可能: `internal/cli/*` は 90%+ ブランチカバレッジを満たし、`cmd/` は免除されて代わりに CI ブートチェックで保護される。
+- 新しいコマンドの追加は機械的: `cmd/<command>.go` を追加し、`internal/cli/<command>/` にコアロジックを追加し、`registerCommands` に登録する。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Two files must be created for every new command instead of one.
-- The interface seam between shell and core requires designing injected interfaces upfront,
-  which adds a small design overhead for simple commands.
+- 新しいコマンドごとに 1 つではなく 2 つのファイルを作成しなければならない。
+- シェルとコアの間のインターフェースシームは、注入されたインターフェースを事前に設計することを必要とし、シンプルなコマンドに対して少し設計のオーバーヘッドが加わる。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Cobra handler contains all logic
+### すべてのロジックを含む Cobra ハンドラー
 
-Simple for small commands, but decision logic becomes untestable in isolation. As commands
-grow, this tends toward integration-test-only coverage or test-skipped code paths.
+小さなコマンドにはシンプルだが、決定ロジックが独立してテスト不可能になる。コマンドが成長するにつれ、統合テストのみのカバレッジまたはテストスキップされたコードパスに向かう傾向がある。
 
-### Separate CLI binary per command
+### コマンドごとに別のバイナリ
 
-Avoids Cobra registration but requires distributing multiple binaries, complicates
-deployment, and prevents sharing initialization code (config loading, DI). Inconsistent
-with the single-binary decision (see [ADR-0096](0096-single-multi-command-binary.md)).
+Cobra 登録を避けるが、複数のバイナリの配布が必要となり、デプロイが複雑化し、初期化コード（設定ロード、DI）の共有が妨げられる。シングルバイナリの決定（[ADR-0096](0096-single-multi-command-binary.md) 参照）と矛盾する。
 
-## Notes
+## 補足
 
-- Pattern illustrated in `cmd/outbox_relay.go` (thin shell) and `internal/cli/outbox/`
-  (core package).
-- `registerCommands` in `cmd/commands.go` is the single registration point for all
-  subcommands.
-- Source: `internal/cli/README.md` §"Design Policy" and §"Testing Policy".
+- パターンの例: `cmd/outbox_relay.go`（薄いシェル）と `internal/cli/outbox/`（コアパッケージ）。
+- `cmd/commands.go` 内の `registerCommands` はすべてのサブコマンドの単一登録ポイントである。
+- ソース: `internal/cli/README.md` §"Design Policy" および §"Testing Policy"。

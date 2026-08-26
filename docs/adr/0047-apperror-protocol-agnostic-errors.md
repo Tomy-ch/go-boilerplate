@@ -5,87 +5,57 @@ deciders: [maintainers]
 tags: [errors, architecture]
 ---
 
-# ADR-0047: Protocol-agnostic aggregated error classification (apperror)
+# ADR-0047: プロトコル非依存の集約エラー分類 (apperror)
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Without a shared error taxonomy, each layer independently encodes its failures. Domain
-and usecase code may return raw database errors, sentinel errors carrying HTTP status
-codes, or unclassified `error` values. Controllers must then special-case every
-possible error type, coupling the transport layer to the internals of every layer below
-it.
+共有エラー分類体系がなければ、各レイヤーが独立して失敗をエンコードする。ドメインとユースケースコードが生のデータベースエラー、HTTP ステータスコードを持つセンチネルエラー、または未分類の `error` 値を返すことになる。コントローラーはその結果、考えられるすべてのエラー型を個別に処理しなければならず、トランスポートレイヤーが下位レイヤーの内部実装に結合してしまう。
 
-In an onion architecture (see [ADR-0002](0002-onion-architecture.md)) the domain and
-usecase layers must remain independent of protocols. An error type that carries an HTTP
-status or a gRPC code violates that independence; swapping the transport layer would
-require touching error-producing code deep in the domain.
+オニオンアーキテクチャ（[ADR-0002](0002-onion-architecture.md) を参照）では、ドメインとユースケースレイヤーはプロトコルから独立していなければならない。HTTP ステータスや gRPC コードを持つエラー型はその独立性を損なう。トランスポートレイヤーを切り替えるには、ドメイン深部のエラー生成コードに手を入れる必要が生じる。
 
-Additionally, infrastructure errors (database errors, external API failures) use
-library-specific types that inner layers should not need to understand.
+さらに、インフラのエラー（データベースエラー、外部 API 障害）はライブラリ固有の型を使っており、内部レイヤーはそれを理解すべきでない。
 
-## Decision
+## 決定
 
-The `internal/apperror` package defines an **application-wide error taxonomy**
-independent of any protocol. It provides sentinel errors such as `ErrNotFound`,
-`ErrConflict`, `ErrValidation`, and `ErrInternal` that classify failures in
-application-domain terms without reference to HTTP status codes or gRPC codes.
+`internal/apperror` パッケージは、プロトコルに依存しない**アプリケーション全体のエラー分類体系**を定義する。`ErrNotFound`、`ErrConflict`、`ErrValidation`、`ErrInternal` などのセンチネルエラーを提供し、HTTP ステータスコードや gRPC コードを参照することなく、アプリケーションドメインの観点から失敗を分類する。
 
-All layers — domain, usecase, infrastructure, and controller — may reference
-`apperror`. Infrastructure repositories translate library-specific errors (e.g.,
-PostgreSQL constraint violations) into the nearest `apperror` sentinel before
-returning. Upper layers wrap their own errors with the appropriate sentinel using
-`pkg/xerrors`.
+ドメイン・ユースケース・インフラ・コントローラーのすべてのレイヤーが `apperror` を参照できる。インフラのリポジトリは、ライブラリ固有のエラー（例: PostgreSQL の制約違反）を返す前に、最も近い `apperror` センチネルに変換する。上位レイヤーは `pkg/xerrors` を使って自分のエラーを適切なセンチネルでラップする。
 
-Protocol mapping happens exclusively at the **edge**: the controller's error-handler
-middleware reads the sentinel via `xerrors.Is` and converts it to an HTTP status and
-response body. The domain and usecase layers never know which protocol the caller uses.
+プロトコルへのマッピングは**エッジ**でのみ行われる。コントローラーのエラーハンドラーミドルウェアが `xerrors.Is` でセンチネルを読み取り、HTTP ステータスとレスポンスボディに変換する。ドメインとユースケースレイヤーは、呼び出し元がどのプロトコルを使うか知らない。
 
-A second, orthogonal set of sentinels (`ErrRetryable`, `ErrPermanent`, `ErrFatal`) is
-used by the worker engine to classify handler errors for retry / dead-letter / stop
-decisions. These worker sentinels have no HTTP mapping and are intentionally excluded
-from the HTTP classification helper `IsAppError`.
+2 つ目の直交するセンチネル群（`ErrRetryable`、`ErrPermanent`、`ErrFatal`）は、ワーカーエンジンがハンドラーエラーをリトライ / デッドレター / 停止の判断に分類するために使う。これらのワーカーセンチネルには HTTP マッピングがなく、HTTP 分類ヘルパー `IsAppError` から意図的に除外されている。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Domain and usecase code expresses failures in application-domain vocabulary; no
-  transport knowledge leaks into inner layers.
-- Switching or adding a transport (HTTP to gRPC, adding a CLI controller) requires only
-  a new edge mapping; the error-producing code is unchanged.
-- Infrastructure errors are translated once at the repository boundary; upper layers
-  are not exposed to library-specific error types.
-- `xerrors.Is`-based classification traverses wrapped error chains, so the original
-  error context is preserved for logging and tracing.
+- ドメインとユースケースコードは失敗をアプリケーションドメインの語彙で表現できる。トランスポートの知識が内部レイヤーに漏れない。
+- トランスポートの切り替えや追加（HTTP から gRPC、CLI コントローラーの追加）は新しいエッジマッピングのみで済む。エラーを生成するコードは変更不要。
+- インフラのエラーはリポジトリ境界で一度だけ変換される。上位レイヤーはライブラリ固有のエラー型にさらされない。
+- `xerrors.Is` ベースの分類はラップされたエラーチェーンを辿るため、ロギングとトレーシングのために元のエラーコンテキストが保持される。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Every repository and infrastructure adapter must explicitly translate external errors
-  to `apperror` sentinels; consistent application of this discipline requires attention
-  in code review.
-- Adding a new sentinel category requires cross-cutting review (it must make sense
-  across multiple use cases and have a clear HTTP/worker mapping).
+- すべてのリポジトリとインフラのアダプターは、外部エラーを明示的に `apperror` センチネルに変換しなければならない。この変換の徹底はコードレビューで継続的に確認する必要がある。
+- 新しいセンチネルカテゴリを追加する場合、横断的なレビューが必要になる（複数のユースケースにまたがって意味をなし、HTTP/ワーカーへの明確なマッピングが必要）。
 
-## Alternatives Considered
+## 検討した代替案
 
-### HTTP-status-carrying error types
+### HTTP ステータスを持つエラー型
 
-Return errors that embed an HTTP status code from domain or usecase code. Rejected:
-couples inner layers to HTTP and prevents reuse in non-HTTP controllers (CLI, workers).
+ドメインやユースケースコードから HTTP ステータスコードを埋め込んだエラーを返す。却下: 内部レイヤーが HTTP に結合し、非 HTTP コントローラー（CLI、ワーカー）での再利用が妨げられる。
 
-### Unclassified errors everywhere
+### 至る所で未分類エラー
 
-Let each layer return raw errors and classify them only in the controller. Rejected:
-without a shared taxonomy, controller error-handling logic must pattern-match on every
-library-specific error type from every dependency, which is unmaintainable.
+各レイヤーが生のエラーを返し、コントローラーでのみ分類する。却下: 共有分類体系がないと、コントローラーのエラー処理ロジックがすべての依存関係からのライブラリ固有エラー型に対してパターンマッチしなければならず、保守不能になる。
 
-## Notes
+## 補足
 
-- Source: `internal/apperror/README.md` (Basic Policy and Mapping Table sections).
-- Error-handling rules (wrapping, `xerrors.Join` vs `xerrors.Wrap`, redact rule):
-  [`docs/rules.md`](../rules.md) — Error Handling Rules section.
-- Protocol mapping via `xerrors.Is` follows the wrapping policy in `pkg/xerrors`.
+- ソース: `internal/apperror/README.md`（Basic Policy および Mapping Table セクション）。
+- エラー処理ルール（ラッピング、`xerrors.Join` vs `xerrors.Wrap`、リダクトルール）:
+  [`docs/rules.md`](../rules.md) — Error Handling Rules セクション。
+- `xerrors.Is` を介したプロトコルマッピングは `pkg/xerrors` のラッピングポリシーに従う。

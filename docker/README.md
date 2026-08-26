@@ -1,170 +1,156 @@
 # docker
 
-`docker/` is the directory for **Docker-related configuration files** required for development, building, and operations.
+`docker/` は、開発・ビルド・運用に必要な **Docker 関連の設定ファイル**を格納するディレクトリです。
 
-## Directory Structure
+## ディレクトリ構成
 
-One directory per image or service, named after it; each holds that unit's Dockerfile and any
-configuration it needs at build or run time.
+イメージまたはサービスごとに 1 つのディレクトリを置き、その名前を付ける。そのユニットの Dockerfile と、
+ビルド時・実行時に必要な設定を収める。
 
-## Compose Layering (infra / app)
+## compose の階層構成（infra / app）
 
-Compose services are split into two layers, so the main checkout and any number of worktrees can run side by side.
+compose のサービスは 2 層に分かれており、主 checkout と任意個数の worktree を同時に起動できます。
 
-|Layer|compose project|Services|
+|層|compose プロジェクト|サービス|
 |---|---|---|
-|**infra**|`gobp-shared` (fixed name) — **one instance for every checkout**|`database` / `observability` / `garage` (+ `garage_init`) / `elasticmq`. The auxiliary services and tool runners default to the same project via `COMPOSE_PROJECT_NAME`|
-|**app**|`APP_PROJECT` — one per checkout (`gobp-app-<directory name>`, or `gobp-wt-N` while a DB slot is held)|`api_server` / `mock_auth_server`|
+|**infra**|`gobp-shared`（固定名）— **全 checkout で 1 インスタンス**|`database` / `observability` / `garage`（+ `garage_init`）/ `elasticmq`。補助サービスとツールランナーも `COMPOSE_PROJECT_NAME` の既定により同じプロジェクトで動く|
+|**app**|`APP_PROJECT` — checkout 毎（`gobp-app-<ディレクトリ名>`、DB スロット保持時は `gobp-wt-N`）|`api_server` / `mock_auth_server`|
 
-The infra layer holds every service that can only run on a fixed host port, which is why it exists exactly once on the host.
+infra 層には固定ポートでしか動けないサービスだけが属し、そのためホスト上に 1 つだけ存在します。
 
-|File|Role|
+|ファイル|役割|
 |---|---|
-|`docker-compose.yaml`|Definitions of all services|
-|`docker-compose.attach.yaml`|app layer override, **always** overlaid (`docker compose -f docker-compose.yaml -f docker-compose.attach.yaml`)|
+|`docker-compose.yaml`|全サービスの定義|
+|`docker-compose.attach.yaml`|app 層の override。**常に**重ねて適用する（`docker compose -f docker-compose.yaml -f docker-compose.attach.yaml`）|
 
-`docker-compose.attach.yaml` publishes the `api_server` host ports as `${API_HOST_PORT:-8080}` / `${DLV_HOST_PORT:-2345}` / `${PPROF_HOST_PORT:-6060}`, narrows `depends_on` to `mock_auth_server` alone (the infra layer is already up), and points the app at the shared infra by overriding `DB_HOST=host.docker.internal` / `DB_NAME=${DB_NAME_LOCAL:-local}` / `ENDPOINT_OTLP=http://host.docker.internal:4318` / `ENDPOINT_OBJECT_STORAGE=http://host.docker.internal:3900` / `AUTH_ISSUER=http://localhost:${MOCK_AUTH_HOST_PORT:-2010}/default`. The provider needs no matching override: it derives the issuer from the `Host` it was reached through.
+`docker-compose.attach.yaml` は `api_server` のホスト公開ポートを `${API_HOST_PORT:-8080}` / `${DLV_HOST_PORT:-2345}` / `${PPROF_HOST_PORT:-6060}` にし、`depends_on` を `mock_auth_server` だけに絞り（infra 層は起動済みのため）、`DB_HOST=host.docker.internal` / `DB_NAME=${DB_NAME_LOCAL:-local}` / `ENDPOINT_OTLP=http://host.docker.internal:4318` / `ENDPOINT_OBJECT_STORAGE=http://host.docker.internal:3900` / `AUTH_ISSUER=http://localhost:${MOCK_AUTH_HOST_PORT:-2010}/default` の上書きで共有インフラを参照させます。プロバイダ側に対応する上書きは要りません——issuer は到達した `Host` から導出されるためです。
 
-|Purpose|Reference|
+|目的|参照先|
 |---|---|
-|Layer variables (`INFRA_PROJECT` / `APP_PROJECT` / `COMPOSE_INFRA` / `COMPOSE_APP`)|[`.makefiles/docker/compose.mk`](../.makefiles/docker/compose.mk)|
-|Local development topology as a whole|[`docs/maintenance/local-environment.md`](../docs/maintenance/local-environment.md)|
-|Slot assignment of host ports / DB names|[`docs/maintenance/db-worktree-pool.md`](../docs/maintenance/db-worktree-pool.md)|
+|層の変数（`INFRA_PROJECT` / `APP_PROJECT` / `COMPOSE_INFRA` / `COMPOSE_APP`）|[`.makefiles/docker/compose.mk`](../.makefiles/docker/compose.mk)|
+|ローカル開発環境の全体像|[`docs/maintenance/local-environment.md`](../docs/maintenance/local-environment.md)|
+|ホスト公開ポート / DB 名のスロット割当|[`docs/maintenance/db-worktree-pool.md`](../docs/maintenance/db-worktree-pool.md)|
 
-## Service Overview
+## サービス概要
 
-The following table maps services defined in docker-compose.yaml to their corresponding Dockerfile / configuration.
+docker-compose.yaml で定義されるサービスと、対応する Dockerfile / 設定の対応表です。
 
-### Development Environment (profile: `development`)
+### 開発環境（profile: `development`）
 
-|Service|Layer|Dockerfile / Image|Port|Description|
+|サービス|層|Dockerfile / Image|ポート|説明|
 |---|---|---|---|---|
-|`api_server`|app|`docker/server/Dockerfile` (target: `tooling`)|`${API_HOST_PORT:-8080}`, `${DLV_HOST_PORT:-2345}`, `${PPROF_HOST_PORT:-6060}`|Development API server (hot reload via air)|
-|`mock_auth_server`|app|`ghcr.io/navikt/mock-oauth2-server`|`${MOCK_AUTH_HOST_PORT:-2010}`|Mock OIDC provider (development only)|
-|`database`|infra|`postgres:18.4-trixie`|5432|PostgreSQL database|
-|`observability`|infra|`grafana/otel-lgtm`|3000, 4317, 4318, 3200|Local observability stack (OTLP endpoint / Grafana) for o11y verification|
-|`garage`|infra|`dxflrs/garage`|3900, 3902|S3-compatible object storage (S3 API / Web API)|
-|`garage_init`|infra|`docker/garage/Dockerfile`|-|One-shot provisioning of the garage layout / bucket / access key / website access (idempotent)|
-|`elasticmq`|infra|`softwaremill/elasticmq-native`|9324|SQS-compatible message broker (local development; tests use an in-process fake)|
+|`api_server`|app|`docker/server/Dockerfile` (target: `tooling`)|`${API_HOST_PORT:-8080}`, `${DLV_HOST_PORT:-2345}`, `${PPROF_HOST_PORT:-6060}`|開発用APIサーバ（air によるホットリロード）|
+|`mock_auth_server`|app|`ghcr.io/navikt/mock-oauth2-server`|`${MOCK_AUTH_HOST_PORT:-2010}`|疑似 OIDC プロバイダ（開発専用）|
+|`database`|infra|`postgres:18.4-trixie`|5432|PostgreSQL データベース|
+|`observability`|infra|`grafana/otel-lgtm`|3000, 4317, 4318, 3200|ローカル o11y 検証用の可観測性スタック（OTLP 送出口 / Grafana）|
+|`garage`|infra|`dxflrs/garage`|3900, 3902|S3 互換オブジェクトストレージ（S3 API / Web API）|
+|`garage_init`|infra|`docker/garage/Dockerfile`|-|garage のレイアウト / バケット / アクセスキー / 公開配信の許可を one-shot でプロビジョニング（冪等）|
+|`elasticmq`|infra|`softwaremill/elasticmq-native`|9324|SQS 互換のメッセージブローカー（ローカル開発用。テストは in-process の fake を使う）|
 
-The app layer host ports are the ones a DB slot shifts (`8080+N` / `2010+N` / `2345+N` / `6060+N`); the container-internal ports never move.
+DB スロットでずれるのは app 層のホスト公開ポート（`8080+N` / `2010+N` / `2345+N` / `6060+N`）だけで、コンテナ内部のポートは常に固定です。
 
-### Auxiliary Services (profile: `tools`, infra layer)
+### 補助サービス（profile: `tools`・infra 層）
 
-|Service|Dockerfile / Image|Port|Description|
+|サービス|Dockerfile / Image|ポート|説明|
 |---|---|---|---|
-|`docs_server`|`docker/document/Dockerfile`|2001|Documentation portal (nginx)|
-|`sql_editor`|`sosedoff/pgweb`|2000|Web SQL editor|
+|`docs_server`|`docker/document/Dockerfile`|2001|ドキュメントポータル（nginx）|
+|`sql_editor`|`sosedoff/pgweb`|2000|Web SQL エディタ|
 
-### Tool Runners (profile: `generate`, infra layer)
+### ツールランナー（profile: `generate`・infra 層）
 
-|Service|Dockerfile / Image|Description|
+|サービス|Dockerfile / Image|説明|
 |---|---|---|
-|`go_tool_runner`|`docker/tools/Dockerfile` (target: `go_tools`)|Go code generation / linting / security / documentation tools ([list](tools/README.md#go_tools))|
-|`node_tool_runner`|`docker/tools/Dockerfile` (target: `node_tools`)|OpenAPI bundling, Markdown / commit linting, portal build ([list](tools/README.md#node_tools))|
-|`python_tool_runner`|`docker/tools/Dockerfile` (target: `python_tools`)|SQL linting ([list](tools/README.md#python_tools))|
-|`er_diagram_generator`|`schemaspy/schemaspy`|ER diagram generation (SchemaSpy)|
+|`go_tool_runner`|`docker/tools/Dockerfile` (target: `go_tools`)|Go のコード生成 / lint / セキュリティ / ドキュメント生成ツール（[一覧](tools/README.md#go_tools)）|
+|`node_tool_runner`|`docker/tools/Dockerfile` (target: `node_tools`)|OpenAPI バンドル、Markdown / コミットの lint、ポータルのビルド（[一覧](tools/README.md#node_tools)）|
+|`python_tool_runner`|`docker/tools/Dockerfile` (target: `python_tools`)|SQL の lint（[一覧](tools/README.md#python_tools)）|
+|`er_diagram_generator`|`schemaspy/schemaspy`|ER図生成（SchemaSpy）|
 
 ## server
 
-Application server images. One multi-stage Dockerfile produces three targets: `builder` (Go binary), `runtime` (production, non-root; migrations run from this same image via command override, so there is no dedicated migration image), and `tooling` (local hot-reload development). Base images and the tools each target carries: [`server/README.md`](server/README.md).
+アプリケーションサーバのイメージです。1 つのマルチステージ Dockerfile が 3 つのターゲットを作ります。`builder`（Go バイナリ）、`runtime`（本番用・非 root。マイグレーションもこの同一イメージを command override で実行するため専用イメージは持たない）、`tooling`（ローカルのホットリロード開発）。ベースイメージと各ターゲットが持つツールは [`server/README.md`](server/README.md) を参照してください。
 
 ## tools
 
-Tool containers for code generation and linting, split into three stages by language: `go_tools` / `node_tools` / `python_tools`. Which tools each stage carries and what each is for: [`tools/README.md`](tools/README.md).
+コード生成と lint 用のツールコンテナです。言語ごとに `go_tools` / `node_tools` / `python_tools` の 3 ステージに分かれています。各ステージが持つツールと用途は [`tools/README.md`](tools/README.md) を参照してください。
 
 ## document
 
-Container for the documentation portal.
+ドキュメントポータル用のコンテナです。
 
-- Base image: `nginx:1.31-alpine`
-- Volume mounts the entire `docs/` directory
-- Portal app is served at `/portal/`
-- Accessing `http://localhost:2001/` redirects to `/portal/`
+- ベースイメージ: `nginx:1.31-alpine`
+- `docs/` ディレクトリ全体をボリュームマウント
+- ポータルアプリは `/portal/` で提供
+- `http://localhost:2001/` にアクセスすると `/portal/` にリダイレクト
 
 ## garage
 
-S3-compatible object storage for local development (tests use in-process gofakes3 instead).
+ローカル開発用の S3 互換オブジェクトストレージです（テストは in-process の gofakes3 を使います）。
 
-- The server itself runs the official `dxflrs/garage` image. `garage_init` is the one that needs a build: the official image is `scratch`-based and has no shell, so the provisioning script cannot run in it — the Dockerfile copies the `garage` binary onto `alpine:3.24` for that
-- `garage.toml`: single-node configuration (`replication_factor = 1`, S3 API `3900` / Web API `3902`), mounted read-only
-- `init.sh`: idempotent provisioning run by the `garage_init` service (layout assignment → bucket creation → fixed access key import → bucket permission → website permission), mounted the same way so that editing it needs no image rebuild. It reads `OBJECT_STORAGE_*` straight from `env/.env` (passed via `env_file`) and fails immediately if one is unset, so the bucket and key can never drift from what the Go side connects with
+- サーバ本体は公式の `dxflrs/garage` イメージをそのまま使います。ビルドが必要なのは `garage_init` の方です。公式イメージは `scratch` ベースで shell を持たずプロビジョニングスクリプトを実行できないため、そのために Dockerfile が `garage` バイナリを `alpine:3.24` へコピーします
+- `garage.toml`: 単一ノード構成（`replication_factor = 1`、S3 API `3900` / Web API `3902`）。read-only でマウント
+- `init.sh`: `garage_init` サービスが実行する冪等なプロビジョニング（レイアウト割当 → バケット作成 → 固定アクセスキー import → バケット許可 → 公開配信の許可）。同じくマウントで渡すため、編集にイメージの再ビルドは不要です。`OBJECT_STORAGE_*` は `env/.env` から直接読み（`env_file` で渡す）、未設定なら即座に失敗するため、バケットとキーが Go 側の接続先と食い違うことはありません
 
-### Public delivery (anonymous read)
+### 公開配信（匿名 read）
 
-The Web API (`3902`, Garage's `[s3_web]`) serves bucket objects **without credentials**, so a browser can load
 <!-- sample-api:replace-begin -->
-product images straight from the object storage, the way a CDN fronts S3 in production. Writing still goes through
-`POST /v1/products/images` (BearerAuth + admin); only reading is open.
+Web API（`3902`、Garage の `[s3_web]`）はバケットのオブジェクトを**資格情報なしで**配信します。本番で CDN が S3 の前段に立つのと同じ形で、ブラウザがオブジェクトストレージから直接商品画像を読み込めます。書き込みは `POST /v1/products/images`（BearerAuth + admin）のままで、開くのは read だけです。
 <!-- sample-api:replace-with -->
-<!-- = objects straight from the object storage, the way a CDN fronts S3 in production. Writing still goes through -->
-<!-- = an authenticated upload endpoint; only reading is open. -->
+<!-- = Web API（`3902`、Garage の `[s3_web]`）はバケットのオブジェクトを**資格情報なしで**配信します。本番で CDN が S3 の前段に立つのと同じ形で、ブラウザがオブジェクトストレージから直接オブジェクトを読み込めます。書き込みは認証付きのアップロードエンドポイント経由のままで、開くのは read だけです。 -->
 <!-- sample-api:replace-end -->
 
-- Delivery origin: `http://gobp-local.web.garage.localhost:3902` — an object is `<origin>/<object key>`, e.g.
-  `http://gobp-local.web.garage.localhost:3902/<prefix>/{uuid}.png`. This is the value the frontend puts in its
-  media-origin setting; the API never returns a full URL, only the object key
-- **Virtual-host addressing only.** Garage's web endpoint resolves the bucket from the `Host` header
-  (`<bucket>.<root_domain>` or `<bucket>`), so path style (`localhost:3902/<bucket>/<key>`) does not work.
-  macOS and the major browsers resolve `*.localhost` to `127.0.0.1` on their own, so no `/etc/hosts` entry is
-  needed. From inside a glibc Linux container, which does not, either send the header explicitly
-  (`curl -H 'Host: gobp-local' http://<host>:3902/<prefix>/...`) or add `127.0.0.1 gobp-local.web.garage.localhost`
-  to `/etc/hosts`
-- Listing stays closed: the web endpoint never lists, and an anonymous `ListObjects` against the S3 API is
-  unsigned and rejected. Object keys carry a UUIDv7, whose ~74 random bits put enumeration out of reach —
-  but note that the remaining bits are a millisecond timestamp, so a key is opaque, not secret. Treat
-  anything in this bucket as world-readable to whoever holds the key
-- **Website permission is per bucket, not per object** — every object in `gobp-local` becomes anonymously
-  readable. The bucket holds nothing but publicly readable assets; storing non-public objects would require a second bucket
+- 配信オリジン: `http://gobp-local.web.garage.localhost:3902` — オブジェクトは `<オリジン>/<オブジェクトキー>` で、例えば `http://gobp-local.web.garage.localhost:3902/<接頭辞>/{uuid}.png` です。フロントはこの値を配信オリジンの設定に入れます。API はフル URL を返さず、オブジェクトキーだけを返します
+- **virtual-host 形式のみ。** Garage の web エンドポイントは `Host` ヘッダ（`<bucket>.<root_domain>` または `<bucket>`）からバケットを解決するため、パス形式（`localhost:3902/<bucket>/<key>`）は動きません。macOS と主要ブラウザは `*.localhost` を自前で `127.0.0.1` に解決するので `/etc/hosts` への追記は不要です。解決しない glibc の Linux コンテナ内からは、ヘッダを明示するか（`curl -H 'Host: gobp-local' http://<host>:3902/<接頭辞>/...`）、`/etc/hosts` へ `127.0.0.1 gobp-local.web.garage.localhost` を追記してください
+- 一覧は閉じたままです。web エンドポイントは一覧を返さず、S3 API への匿名 `ListObjects` は署名が無いため拒否されます。オブジェクトキーは UUIDv7 で、ランダムな約 74 ビットにより列挙は非現実的です。ただし残りのビットはミリ秒精度のタイムスタンプであり、キーは opaque ではあっても secret ではありません。このバケットの中身は、キーを知る者に対しては誰でも読めるものとして扱ってください
+- **公開配信の許可はバケット単位であってオブジェクト単位ではありません。** `gobp-local` のすべてのオブジェクトが匿名で読めるようになります。このバケットは公開して構わない資産しか持たないため許容していますが、非公開のオブジェクトを置くならバケットを分ける必要があります
 
 ## elasticmq
 
-SQS-compatible broker for local development (tests use an in-process fake instead). Only `elasticmq.conf` lives here; the queues and their DLQ redrive policy are read from it at startup, so there is no one-shot provisioning container. ElasticMQ does not expand environment variables, so the queue names are literal in that file — [`env/README.md`](../env/README.md) records which `*_QUEUE_URL` they pair with.
+ローカル開発用の SQS 互換ブローカーです（テストは in-process の fake を使います）。ここにあるのは `elasticmq.conf` だけで、キューと DLQ の redrive 設定は起動時にそこから読まれるため、初期化用の one-shot コンテナは持ちません。ElasticMQ は環境変数を展開しないためキュー名は設定ファイルに直書きで、どの `*_QUEUE_URL` と対になるかは [`env/README.md`](../env/README.md) に記載しています。
 
 ## mock-auth-server
 
-Development OIDC provider. Nothing is built here — the service runs the upstream `ghcr.io/navikt/mock-oauth2-server` image, digest-pinned in [`images-pin.toml`](images-pin.toml), so this directory holds only the configuration handed to it.
+開発用の OIDC プロバイダです。ここでは何もビルドしません——上流の `ghcr.io/navikt/mock-oauth2-server` イメージを [`images-pin.toml`](images-pin.toml) で digest 固定して起動するため、このディレクトリが持つのは渡す設定だけです。
 
-- `config.json` is mounted read-only at `/etc/mock-oauth2-server/config.json` and passed via `JSON_CONFIG_PATH`. It declares the whole token contract: the `issuerId` (which becomes both the issuer's path segment and the JWKS `kid`), the `at+jwt` type header the resource server requires (RFC 9068), the `aud` / `azp` pair that lets one claim set satisfy both the resource server and an OIDC client (see [`docs/design/auth.md`](../docs/design/auth.md) § 3.3.1), and `${subject}`, which resolves to the login form's — or the password grant's — `username` and becomes the `sub` claim
-- The internal port is always `4000` (`SERVER_PORT`); the process runs as a non-root UID from the upstream image
-- The issuer is derived from the `Host` of the request that minted the token, so nothing has to declare it here — a token taken through the published host port carries an `iss` matching `AUTH_ISSUER`. `docker-compose.attach.yaml` only has to keep the API's `AUTH_ISSUER` on the slot's port
-- Signing keys are generated at startup rather than checked in, so tokens are not reproducible across restarts. Nothing depends on them being reproducible: the resource server resolves keys from the JWKS at runtime, and the fixed keys the JWKS rotation test needs are its own (`internal/integration/testdata/`)
+- `config.json` は `/etc/mock-oauth2-server/config.json` へ read-only でマウントし、`JSON_CONFIG_PATH` で渡します。トークンの契約はすべてここが宣言します——`issuerId`（issuer のパス要素と JWKS の `kid` を兼ねる）、リソースサーバーが要求する `at+jwt` 型ヘッダ（RFC 9068）、1 つの claim 集合でリソースサーバーと OIDC クライアントの双方を満たすための `aud` / `azp`（[`docs/design/auth.md`](../docs/design/auth.md) の 3.3.1 節）、そしてログインフォーム（または password grant）の `username` に解決され `sub` になる `${subject}`
+- コンテナ内部のポートは常に `4000`（`SERVER_PORT`）。プロセスは上流イメージの非 root UID で動く
+- issuer はトークンを取得したリクエストの `Host` から導出されるため、ここで宣言する必要はありません——ホスト公開ポート経由で取ったトークンは `AUTH_ISSUER` と一致する `iss` を持ちます。`docker-compose.attach.yaml` は API 側の `AUTH_ISSUER` をスロットのポートに追従させるだけで済みます
+- 署名鍵は起動時に生成され、コミットしません。したがってトークンは再起動をまたいで再現しません。再現性に依存しているものはありません——リソースサーバーは実行時に JWKS から鍵を解決し、JWKS ローテーションテストが必要とする固定鍵はそのテスト自身が持ちます（`internal/integration/testdata/`）
 
 ## database
 
 ### sql
 
-Stores DB initialization SQL files.
+DB初期化用のSQLファイルを格納します。
 
-- Executed via `docker-entrypoint-initdb.d` on PostgreSQL container startup
-- Executed in order of filename numeric prefix (e.g., `001-...`, `002-...`)
-- DDL (table definitions) should not be placed here; use `database/migrations/` instead
+- PostgreSQL コンテナ起動時に `docker-entrypoint-initdb.d` 経由で実行
+- ファイル名の連番プレフィックス順に実行（例: `001-...`, `002-...`）
+- DDL（テーブル定義）はここに置かず、`database/migrations/` で管理
 
 ### schemaspy
 
-Connection configuration for the ER diagram generator (SchemaSpy).
+ER図生成ツール（SchemaSpy）の接続設定です。
 
-|File|Purpose|
+|ファイル|用途|
 |---|---|
-|`schemaspy.properties`|Local environment (host: `database`)|
-|`schemaspy-ci.properties`|CI environment (host: `localhost`)|
+|`schemaspy.properties`|ローカル環境用（host: `database`）|
+|`schemaspy-ci.properties`|CI環境用（host: `localhost`）|
 
 ### sqlfluff
 
-Configuration files for the SQL linter (sqlfluff). Different rules are applied per target.
+SQLリンター（sqlfluff）の設定ファイルです。対象ごとに異なるルールを適用します。
 
-|File|Target|Notes|
+|ファイル|対象|特徴|
 |---|---|---|
-|`.dml.sqlfluff`|`database/dml/` (sqlc queries)|`@param` placeholder support, some rules excluded|
-|`.migrations.sqlfluff`|`database/migrations/`|Max line length 150|
-|`.seed.sqlfluff`|Seed data|Max line length 500|
+|`.dml.sqlfluff`|`database/dml/`（sqlc クエリ）|`@param` プレースホルダ対応、一部ルール除外|
+|`.migrations.sqlfluff`|`database/migrations/`|行長制限150|
+|`.seed.sqlfluff`|シードデータ|行長制限500|
 
-Common rules
+共通ルール
 
-- Dialect: `postgres`
-- Keywords: uppercase
-- Identifiers: lowercase
-- Functions / literals / types: uppercase
-- `processes = 1` in all three. Parallel execution trips a CPython `resource_tracker` bug that surfaces as a
-  `leaked semaphore` warning or an outright crash ([python/cpython#131788](https://github.com/python/cpython/issues/131788),
-  [#142206](https://github.com/python/cpython/issues/142206)); revisit once those are fixed in the pinned interpreter
+- dialect: `postgres`
+- キーワード: 大文字
+- 識別子: 小文字
+- 関数 / リテラル / 型: 大文字
+- 3 ファイルとも `processes = 1`。並列実行すると CPython の `resource_tracker` のバグを踏み、
+  `leaked semaphore` の警告や異常終了が起きるため（[python/cpython#131788](https://github.com/python/cpython/issues/131788)、
+  [#142206](https://github.com/python/cpython/issues/142206)）。pin しているインタプリタで修正されたら見直す

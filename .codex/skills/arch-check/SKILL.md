@@ -3,44 +3,42 @@ name: arch-check
 description: Audit this repository's architectural compliance before review or merge. Use for changed Go files, one or more specified layers, or the full repository. Run the shared lint baseline once, inspect the applicable onion-architecture layers against their runtime READMEs, and report violations separately from advisory suggestions. Make source changes only when the user explicitly asks to add TODO hand-offs.
 ---
 
-# Architecture Compliance Check
+# アーキテクチャ適合チェック
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+このスキルはアーキテクチャに焦点を当てたレビューのためのものであり、整形・一般的なコードレビュー・仕様検証のためのものではない。
 
-Use this skill for an architecture-focused review, not for formatting, general code review, or specification validation.
+## スコープと書き込み権限
 
-## Scope and write permission
+既定の対象は変更された production の Go ファイルで、生成ファイル・モック・テストは除く。プルリクエストが既にあるなら、その `baseRefName` が権威である。無ければ base を `make base-branch`（`origin` の生の状態から得た最新の `release/*`）で解決する。`gh repo view --json defaultBranchRef` は決して使わない。base を解決できない場合は止め、その失敗を日本語で報告する。変更された production ファイルが無かった場合とは区別して報告すること。
 
-Default to changed production Go files, excluding generated files, mocks, and tests. For an existing pull request, its `baseRefName` is authoritative; otherwise resolve the base with `make base-branch` (the latest `release/*` from `origin`'s live state), never `gh repo view --json defaultBranchRef`; if the base cannot be resolved, stop and report that failure in Japanese, separately from the no-changed-production-files case.
+リポジトリ全体を対象にするのは、そう要求されたときだけである。1 つ以上の層を名指しした要求は、監査をその層に限定する。
 
-Use the full repository only when requested. A request naming one or more layers limits the audit to those layers:
-
-| Path | Layer | Agent |
+| パス | 層 | エージェント |
 | --- | --- | --- |
 | `internal/domain/` | domain | `.codex/agents/arch-auditor-domain.toml` |
 | `internal/usecase/` | usecase | `.codex/agents/arch-auditor-usecase.toml` |
 | `internal/controller/` | controller | `.codex/agents/arch-auditor-controller.toml` |
 | `internal/infrastructure/` | infrastructure | `.codex/agents/arch-auditor-infra.toml` |
-| `pkg/` | shared package | `.codex/agents/arch-auditor-pkg.toml` |
-| `internal/domain/`, ADR, or README corpus | DDD interpretation | `.codex/agents/ddd-origin-auditor.toml` (`ddd-audit`, preset `quick` scope) |
+| `pkg/` | 共有パッケージ | `.codex/agents/arch-auditor-pkg.toml` |
+| `internal/domain/` / ADR / README 群 | DDD 解釈 | `.codex/agents/ddd-origin-auditor.toml`（`ddd-audit`、`quick` スコープのプリセット） |
 
-This skill is read-only by default. Do not add `TODO` comments merely because the source skill offered that option. Add them only after explicit user approval, and never add one for a violation that should be fixed.
+**このスキルは既定で読み取り専用である。** 元のスキルがその選択肢を提示していたというだけの理由で `TODO` コメントを足さないこと。足すのはユーザーの明示的な承認を得たあとだけであり、修正すべき violation に対して足すことは決してない。
 
-## Procedure
+## 手順
 
-1. Read `AGENTS.md`, then resolve the in-scope files and layers. Report changed Go files outside the listed layers separately; do not pretend they were audited.
-2. Run `make lint` once. Attribute its findings to the appropriate layer. If the baseline is broken by unrelated errors, report the failure and do not continue semantic review.
-3. For each in-scope layer, read the agent definition named in the scope table above, the layer README, and any applicable nearest package README. The agent definition gives the audit role and output contract; `AGENTS.md` and the READMEs remain the source of truth for repository rules.
-4. Review layer-specific concerns:
+1. `AGENTS.md` を読み、対象のファイルと層を解決する。列挙された層の外にある変更 Go ファイルは別途報告する。監査したふりをしないこと。
+2. `make lint` を 1 回だけ実行する。その findings を適切な層へ割り当てる。無関係なエラーで基準そのものが壊れている場合は、失敗を報告し、意味論的なレビューへは進まない。
+3. 対象の各層について、上のスコープ表が名指すエージェント定義・層の README・該当する最も近いパッケージ README を読む。エージェント定義が与えるのは監査の役割と出力の契約であり、リポジトリの規則についての source of truth は `AGENTS.md` と README のままである。
+4. 層ごとの観点をレビューする。
 
-   - **domain:** purity; inward-only dependencies; no framework, persistence, I/O, direct time/randomness/ID generation, or inappropriate context use. Treat entity-to-table correspondence as an advisory check, allowing value-object and computed-method representations.
-   - **usecase:** orchestration and transaction ownership; dependency only on domain interfaces; boundary abstractions for time, randomness, and external I/O; no business invariants that belong in domain.
-   - **controller:** OpenAPI operation-to-handler correspondence; request/response adaptation only; no infrastructure imports or business orchestration. Treat handler size and non-trivial branching as suggestions unless a documented rule is violated.
-   - **infrastructure:** implementation of domain interfaces; data orchestration only; generated-query use and error normalization according to the RDB and `pgerror` READMEs. Treat one-to-one repository/query correspondence as advisory because joins, multi-query operations, and dispatch are valid.
-   - **pkg:** no `internal/` dependency; framework-agnostic and reusable; no feature-specific business logic. Honor an explicit subpackage README exception when present.
+   - **domain:** 純粋性。依存は内向きのみ。フレームワーク・永続化・I/O・時刻 / 乱数 / ID 生成の直接呼び出し・不適切な context の使用が無いこと。エンティティとテーブルの対応は advisory な検査として扱い、値オブジェクトによる表現やメソッド形式の計算値を許容する。
+   - **usecase:** オーケストレーションとトランザクションの所有。依存は domain のインターフェースのみ。時刻・乱数・外部 I/O は boundary の抽象を経由すること。domain に属する業務不変条件を持たないこと。
+   - **controller:** OpenAPI の operation とハンドラの対応。リクエスト / レスポンスの適合のみ。インフラの import や業務のオーケストレーションが無いこと。ハンドラの大きさや自明でない分岐は、明文化された規則に反しない限り suggestion として扱う。
+   - **infrastructure:** domain インターフェースの実装。データのオーケストレーションのみ。生成クエリの使用とエラー正規化を RDB / `pgerror` の README に従って行うこと。Repository とクエリの 1:1 対応は advisory として扱う。JOIN・複数クエリの操作・ディスパッチはいずれも妥当だからである。
+   - **pkg:** `internal/` へ依存しないこと。フレームワーク非依存で再利用可能であること。feature 固有の業務ロジックを持たないこと。サブパッケージ README に明示された例外があればそれを尊重する。
 
-5. Delegate independent layers to the agent roles named in the scope table above when delegation is available. Otherwise execute their instructions inline. Never run `make lint` more than once. When the audited change touches domain code or the ADR / README corpus, also run `ddd-audit` with its `quick` scope preset through `.codex/agents/ddd-origin-auditor.toml`; it must not ask for scope again. Keep this separate from the per-layer audits: it compares the repository's documented DDD interpretation with Evans, flags divergences for a human, and never arbitrates or fixes them.
-6. Report in Japanese using this form:
+5. 委譲が使えるなら、独立した層を上のスコープ表が名指すエージェントの役割へ委譲する。使えない場合はその指示をインラインで実行する。**`make lint` を 2 回以上実行しないこと。** 監査対象の変更が domain のコードまたは ADR / README 群に触れている場合は、`.codex/agents/ddd-origin-auditor.toml` を通して `ddd-audit` を `quick` スコープのプリセットで併せて実行する。このときスコープを再度尋ねさせてはならない。これは層ごとの監査とは分けて扱うこと。リポジトリが文書化した DDD の解釈を Evans と比較し、乖離を人間へ提起するものであって、裁定も修正も決して行わない。
+6. 次の形式で日本語で報告する。
 
    ```text
    arch-check 結果（スコープ: <changed | full | layers>）
@@ -58,17 +56,17 @@ This skill is read-only by default. Do not add `TODO` comments merely because th
    総計: violations <n>, suggestions <n>
    ```
 
-   Do not manufacture findings. If clean, name the audited layers and say no violations were found.
+   **findings を捏造しないこと。** 問題が無ければ、監査した層を名指したうえで violation が見つからなかったと述べる。
 
-## Optional TODO hand-off
+## 任意の TODO 引き渡し
 
-Only after explicit approval, add a plain Japanese `// TODO:` comment for a suggestion in `internal/domain`, `internal/controller`, or `internal/infrastructure`.
+明示的な承認を得たあとにのみ、`internal/domain` / `internal/controller` / `internal/infrastructure` の suggestion に対して、素の日本語の `// TODO:` コメントを足す。
 
-Before insertion, inspect the three preceding lines. If a comment block already exists, skip it. Describe the observed deviation and the decision left to the human. Do not use an AI-specific marker, and do not write TODOs for violations.
+挿入前に直前の 3 行を確認する。既にコメントブロックがあるならスキップする。観測した逸脱と、人間に委ねる判断を記述する。AI 専用のマーカーは使わないこと。violation に対して TODO を書かないこと。
 
-## Completion constraints
+## 完了時の制約
 
-- Do not auto-fix, stage, commit, or push.
-- Cite the governing README or `AGENTS.md` for every finding.
-- Keep generated files untouched.
-- Report TODO additions and skips separately if the optional hand-off was approved.
+- 自動修正・stage・commit・push はしない。
+- findings ごとに、それを統べる README または `AGENTS.md` を引用する。
+- 生成ファイルには触れない。
+- 任意の引き渡しが承認された場合は、TODO を足した箇所とスキップした箇所を分けて報告する。

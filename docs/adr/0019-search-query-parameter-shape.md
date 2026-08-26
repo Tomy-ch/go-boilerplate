@@ -5,131 +5,81 @@ deciders: [maintainers]
 tags: [contract, openapi]
 ---
 
-# ADR-0019: Repeat the parameter name for multi-value filters, and keep free-text input scalar
+# ADR-0019: 複数値フィルタはパラメータ名を繰り返し、自由入力はスカラのままにする
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-A search endpoint carries two kinds of query parameter that look alike and behave nothing
-alike: a **filter that accepts several values for one condition** (categories, statuses,
-grouping units) and a **free-text field the user typed** (a keyword). Both end up in the
-query string, so a single convention has to cover both or endpoints drift apart.
+検索エンドポイントは、見た目は似ているが性質がまったく違う 2 種類のクエリパラメータを運ぶ。**1 つの条件に複数の値を取る絞り込み**（カテゴリ、ステータス、グループ化単位）と、**利用者が打ち込んだ自由入力**（キーワード）である。どちらも同じクエリ文字列に載るため、両方を覆う規約を 1 つ決めない限り、エンドポイントごとに形式が割れる。
 
-OpenAPI offers more than one serialization for an array in a query, selected by `style` and
-`explode`. The two candidates for `style: form` are the default `explode: true`
-(`categoryCodes=1&categoryCodes=2`) and `explode: false` (`categoryCodes=1,2`). They are not
-interchangeable, and a parameter cannot accept both: `explode` is a single boolean, and both
-layers of this repository's request path reject the form they were not declared for.
+OpenAPI はクエリ配列の直列化を `style` と `explode` の組で複数提供している。`style: form` での候補は既定の `explode: true`（`categoryCodes=1&categoryCodes=2`）と `explode: false`（`categoryCodes=1,2`）の 2 つ。これらは互換ではなく、1 つのパラメータが両方を受け付けることもできない。`explode` は単一の boolean であり、このリポジトリのリクエスト経路は 2 層とも、宣言されていない側の形式を拒否する。
 
-Three forces decide between them.
+選択を決める力は 3 つある。
 
-**The URL has a practical ceiling.** Front proxies and CDNs commonly cap the request line
-around 8 KB. Repeating the name costs `len(name) + 1` per value, while a delimiter costs it
-once per condition. For a 32-value `int` code filter these compute to 639 and 205 characters
-respectively; against an 8 KB budget that is roughly 12 versus 40 multi-value conditions on
-one endpoint.
+**URL には実務上の天井がある。** 前段のプロキシや CDN はリクエストラインを 8 KB 前後で打ち切ることが多い。名前の繰り返しは値 1 件ごとに `名前長 + 1` を課金するが、区切り文字なら 1 条件につき 1 回で済む。32 値の `int` code フィルタで計算すると、それぞれ 639 文字と 205 文字。8 KB の予算に対して、1 エンドポイントあたり多値条件およそ 12 本と 40 本の差になる。
 
-**A delimiter cannot be escaped.** Both `kin-openapi` (request validation) and the
-`oapi-codegen` runtime split the value *after* percent-decoding, so a `%2C` a client sends
-inside a value is indistinguishable from a separator by the time either sees it. A
-delimiter-joined array therefore cannot carry a value containing the delimiter at all —
-switching to `spaceDelimited` or `pipeDelimited` only moves the collision to another
-character.
+**区切り文字はエスケープできない。** `kin-openapi`（リクエスト検証）と `oapi-codegen` のランタイムは、いずれも percent-decode の**後**に値を分割する。クライアントが値の中に `%2C` を書いて送っても、両者が見る時点では区切りと区別がつかない。したがって区切り文字で連結する配列は、区切り文字を含む値をそもそも運べない。`spaceDelimited` や `pipeDelimited` へ替えても、衝突が別の文字へ移るだけである。
 
-**Free text dominates the budget regardless.** Percent-encoded UTF-8 costs up to 9
-characters per character, so one `maxLength: 255` text parameter can reach 2,295 characters
-— an order of magnitude more than the 434-character gap between the two array forms.
+**どちらを選んでも予算を支配するのは自由入力である。** percent-encode された UTF-8 は 1 文字あたり最大 9 文字を消費するため、`maxLength: 255` のテキストパラメータ 1 本で 2,295 文字に達し得る。これは 2 つの配列形式の差 434 文字より一桁大きい。
 
-(The lengths above are computed from the declared `maxItems` / `maxLength` bounds, not
-measured against a running proxy.)
+（上記の長さは宣言された `maxItems` / `maxLength` から計算した値であり、実際のプロキシに対して実測したものではない。）
 
-## Decision
+## 決定
 
-Search query parameters take one of two shapes, and nothing in between.
+検索クエリパラメータは次の 2 つの形のいずれかを取り、中間はない。
 
-| Shape | Declared as | Wire form | Used for |
+| 形 | 宣言 | ワイヤー形式 | 用途 |
 | --- | --- | --- | --- |
-| Multi-value filter | `type: array` with OpenAPI's default serialization (`style: form`, `explode: true`) | `categoryCodes=1&categoryCodes=2` | a reference to a master row (`code`) or a fixed `enum` |
-| Free-text input | single `string` with `maxLength` | `keyword=...` | text the user typed |
+| 複数値フィルタ | `type: array` + OpenAPI 既定の直列化（`style: form` / `explode: true`） | `categoryCodes=1&categoryCodes=2` | マスタ行への参照（`code`）または固定の `enum` |
+| 自由入力 | `maxLength` を持つ単一 `string` | `keyword=...` | 利用者が打ち込んだテキスト |
 
-Three rules follow from the table:
+この表から 3 つの規則が導かれる。
 
-1. **A condition that accepts several values repeats its name.** The array is declared with
-   `uniqueItems` and `maxItems` as wire limits.
-2. **Only a row reference or a fixed `enum` may be multi-valued.** Free-text input is never
-   an array.
-3. **A search that outgrows this moves to a `POST` body** — many facets, or values too large
-   for a URL. The answer is not a longer query string.
+1. **複数の値を取る条件はパラメータ名を繰り返す。** 配列は `uniqueItems` と `maxItems` をワイヤー側の上限として宣言する。
+2. **複数値を取ってよいのは、行への参照か固定の `enum` だけである。** 自由入力を配列にはしない。
+3. **これに収まらない検索は `POST` のボディへ移す。** ファセットが多い、あるいは値が URL に載らないほど大きい場合であり、答えはクエリ文字列を伸ばすことではない。
 
-Rule 2 is what makes rule 1 affordable: because every array element is an ASCII code or an
-enum member, neither the delimiter collision nor the UTF-8 blow-up can reach an array, and
-the cost of repeating a name stays bounded by `maxItems`.
+規則 1 が安く済むのは規則 2 があるからである。配列の要素が必ず ASCII の code か enum のメンバーであるため、区切り文字の衝突も UTF-8 の膨張も配列には届かず、名前を繰り返すコストは `maxItems` で抑え込まれる。
 
-Which identifier a filter accepts is settled separately by
-[ADR-0031 (master-data-via-migration)](0031-master-data-via-migration.md): a client sends the
-master row's `code`, never its UUID and never its display name. That decision is what keeps
-Japanese text out of a filter parameter in the first place.
+フィルタがどの識別子を受けるかは [ADR-0031 (master-data-via-migration)](0031-master-data-via-migration.md) が別途決めている。クライアントが送るのはマスタ行の `code` であり、UUID でも表示名でもない。日本語のテキストがそもそも絞り込みパラメータに載らないのは、この決定によるものである。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- The wire form is OpenAPI's default, so no client generator has to implement a
-  non-default path. `explode: false` is a documented source of gaps in several
-  `openapi-generator` languages; this repository stops depending on that path.
-- The request-validation layer and the binding layer agree. `kin-openapi` reads only the
-  first occurrence of a non-exploded parameter while the `oapi-codegen` runtime rejects
-  extra occurrences outright — a divergence that exists **only** on the non-exploded path
-  and disappears here.
-- A value containing a comma is representable, so a future filter is not silently
-  constrained by a serialization choice made for today's integer codes.
-- The rules are checkable while reading a spec file: an array of `string` with no `enum` is
-  a violation on sight.
+- ワイヤー形式が OpenAPI の既定なので、クライアント生成器が非既定の経路を実装している必要がない。`explode: false` は複数言語の `openapi-generator` で実装漏れが報告されてきた経路であり、このリポジトリはそこへの依存をやめる。
+- リクエスト検証層とバインド層のモデルが一致する。`kin-openapi` は非 explode のパラメータについて最初の出現しか読まず、`oapi-codegen` のランタイムは余分な出現を拒否する。この齟齬は非 explode 経路に**のみ**存在し、ここでは消える。
+- カンマを含む値が表現可能なので、今日の整数 code のために選んだ直列化形式が、将来のフィルタを黙って縛ることがない。
+- spec ファイルを読むだけで規則違反を判定できる。`enum` を持たない `string` の配列は、見た時点で違反である。
 
-### Negative Consequences
+### ネガティブな影響
 
-- The same filter costs a longer URL. On one endpoint the ceiling drops from roughly 40
-  multi-value conditions to roughly 12; past that the endpoint must become a `POST` search
-  under rule 3.
-- Rules 2 and 3 have no mechanical gate. They are enforced by spec review, so a
-  free-text array can be introduced by an author who has not read this record.
+- 同じフィルタでも URL は長くなる。1 エンドポイントの天井は多値条件およそ 40 本から 12 本へ下がる。それを超えるものは規則 3 により `POST` 検索へ移す。
+- 規則 2 と 3 に機械的なゲートはない。spec レビューで守る規約であり、この記録を読んでいない書き手が自由入力の配列を持ち込み得る。
 
-## Alternatives Considered
+## 検討した代替案
 
-### A delimiter-separated array (`style: form`, `explode: false`)
+### 区切り文字で連結する配列（`style: form` / `explode: false`）
 
-Rejected. It buys URL headroom that rule 3 makes unnecessary, and it pays for that headroom
-with an unescapable delimiter, a non-default path through client generators, and a
-disagreement between this repository's two request layers. Its headroom advantage is also
-second-order: free-text parameters dominate the budget either way.
+却下。規則 3 によって不要になる URL の余裕を買うために、エスケープ不能な区切り文字、クライアント生成器の非既定経路、そしてこのリポジトリの 2 つのリクエスト層の食い違いを対価として払うことになる。しかもその余裕の優位は二次的である。予算を支配するのはどちらにせよ自由入力パラメータだからである。
 
-### Bracket notation (`categoryCodes[]=1&categoryCodes[]=2`)
+### bracket 記法（`categoryCodes[]=1&categoryCodes[]=2`）
 
-Rejected. This is the PHP / Rails convention and jQuery's `$.param()` default, but OpenAPI
-has no `style` for it — expressing it means writing the brackets into the parameter *name*
-and letting tooling treat them as opaque. It is also the longest of the three forms, since
-`[]` percent-encodes to six characters on every occurrence.
+却下。PHP / Rails の慣習であり jQuery の `$.param()` の既定でもあるが、OpenAPI にこの `style` は存在しない。表現するにはブラケットをパラメータ**名**に書き込み、ツール側にはそれを不透明な名前として扱わせることになる。`[]` は出現ごとに 6 文字へ percent-encode されるため、3 つの形式のうち最も長くもなる。
 
-### Matrix parameters or path segments (`/<resource>;<param>=1,2`)
+### matrix パラメータやパスセグメント（`/<resource>;<param>=1,2`）
 
-Rejected. OpenAPI's `matrix` and `label` styles apply to **path** parameters, and a path
-parameter must be `required: true`. Optional filters cannot be expressed there at all.
+却下。OpenAPI の `matrix` / `label` style は **path** パラメータに適用され、path パラメータは `required: true` でなければならない。任意の絞り込みはそこに載せられない。
 
-### Abbreviating parameter names (`cc=1&cc=2`)
+### パラメータ名の短縮（`cc=1&cc=2`）
 
-Rejected. Shortening the name is the only way repetition becomes materially cheaper, and it
-is not worth it: `cc` reads as "carbon copy" or "credit card" to anyone outside this
-repository, it contradicts the ubiquitous language the master-data vocabulary establishes,
-and it would set an abbreviated public-API name as the convention every later endpoint
-follows. The saving is second-order against rule 3's ceiling.
+却下。繰り返しのコストを実質的に下げる方法は名前の短縮しかないが、割に合わない。`cc` はこのリポジトリの外では carbon copy や credit card と読まれ、マスタデータの語彙が確立するユビキタス言語に反し、以降のエンドポイントが従う規約として「公開 API の名前を略す」形を残してしまう。節約できる量は規則 3 の天井に対して二次的である。
 
-## Notes
+## 補足
 
-- Convention and examples: [`openapi/components/parameters/README.md`](../../openapi/components/parameters/README.md).
-- Identifier choice for master-data filters: [ADR-0031 (master-data-via-migration)](0031-master-data-via-migration.md).
-- The runtime enforcement referred to above is
-  [ADR-0016 (spec-driven-request-validation)](0016-spec-driven-request-validation.md); which
-  layer owns a boundary value is [ADR-0018 (boundary-value-ownership)](0018-boundary-value-ownership.md).
+- 規約と実例: [`openapi/components/parameters/README.md`](../../openapi/components/parameters/README.md)
+- マスタデータ絞り込みの識別子の選択: [ADR-0031 (master-data-via-migration)](0031-master-data-via-migration.md)
+- 上記のランタイム強制は [ADR-0016 (spec-driven-request-validation)](0016-spec-driven-request-validation.md)、境界値をどの層が所有するかは [ADR-0018 (boundary-value-ownership)](0018-boundary-value-ownership.md)

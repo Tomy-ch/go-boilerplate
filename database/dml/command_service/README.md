@@ -1,27 +1,27 @@
 # CommandService DML
 
-Write SQL for state changes (INSERT / UPDATE / DELETE) that do not fit the load-mutate-save shape of a Repository.
+Repository の load-mutate-save の形に収まらない状態変更（INSERT / UPDATE / DELETE）のための書き込み SQL を管理します。
 
-## Purpose
+## 目的
 
-- Centralize write operations that mutate application state, separate from repository CRUD and read-only queries.
-- Ensure transactional integrity for multi-table updates and complex state transitions.
-- Generate type-safe Go code via sqlc for compile-time parameter validation.
+- リポジトリのCRUDや読み取り専用クエリとは分離して、状態変更を伴う書き込み操作を集約します。
+- 複数テーブルの更新や複雑な状態遷移に対するトランザクション整合性を確保します。
+- sqlc によるコード生成で、パラメータの型をコンパイル時に検証します。
 
-## Infrastructure Mapping
+## インフラストラクチャマッピング
 
-Implementation: `internal/infrastructure/rdb/command_service/`
+実装: `internal/infrastructure/rdb/command_service/`
 
-## Directory Structure
+## ディレクトリ構成
 
-One directory per aggregate whose writes need this category, named after it.
+この区分の書き込みを必要とする集約ごとに 1 つのディレクトリを置き、集約名を付ける。
 
-## Naming Convention
+## 命名規則
 
-- Files: verb + target (e.g., `update_user_email.sql`)
-- `-- name:` annotation required on all queries
+- ファイル名: 動詞 + 対象名（例: `update_user_email.sql`）
+- 全てのクエリに `-- name:` アノテーションが必須
 
-## Code Generation
+## コード生成
 
 ```sh
 make gen-query

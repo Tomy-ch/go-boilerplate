@@ -1,278 +1,225 @@
 # scripts
 
-`scripts/` contains **utility scripts** for code generation, documentation, versioning, and initial project setup.
+`scripts/` には、コード生成・ドキュメント・バージョニング・プロジェクト初期設定のための**ユーティリティスクリプト**が格納されています。
 
-## Directory Structure
+## ディレクトリ構成
 
-One directory per tool, named after what it does; `lib/` holds what more than one of them needs.
-Node configuration and the cross-package gates sit at the top level. What each tool is for is in
-*Script Categories* below — that is the part a name cannot carry.
+ツールごとに 1 つのディレクトリを置き、その働きを名前にする。複数のツールが必要とするものは `lib/` に置く。
+Node の設定とパッケージ横断のゲートは直下に置く。各ツールが何のためにあるかは下の *スクリプトカテゴリ* にある
+— 名前が運べないのはそこだからである。
 
-## Script Categories
+## スクリプトカテゴリ
 
-### Documentation Generation
+### ドキュメント生成
 
-|Script|Description|Invoked By|
+|スクリプト|説明|実行元|
 |---|---|---|
-|`portal/gen-portal-docs.ts`|Copy source docs to portal `guides/` based on `manifest.yaml`|`make gen-docs`|
-|`portal/gen-docs-json.ts`|Generate `docs.json` navigation for the portal app|`make gen-docs`|
+|`portal/gen-portal-docs.ts`|`manifest.yaml` に基づきソースドキュメントをポータルの `guides/` にコピー|`make gen-docs`|
+|`portal/gen-docs-json.ts`|ポータルアプリ用のナビゲーション `docs.json` を生成|`make gen-docs`|
 
-### Linting
+### Lint
 
-|Script|Description|Invoked By|
+|スクリプト|説明|実行元|
 |---|---|---|
-|`marker-baseline/`|Pin the number of removal-marker (`boilerplate-only` / `sample-api`) lines per file in `baseline.json`, and fail when the count moves. A marker that fires and a marker shown as an example look identical, so the removers carry a `MARKER_LITERAL_FILES` declaration for the latter; forgetting it either aborts the removal (loud) or silently deletes the illustrated passage (not loud — an emptied code fence is valid Markdown). An added marker line is the only signal either way, so it is made a decision: update the baseline, or declare the file. Regenerate with `tsx scripts/marker-baseline --write`.|`make test` (vitest) <!-- boilerplate-only:line -->|
-|`premise-lint/`|Mechanises the *No premise the document will outlive* rule from [docs/rules.md](../docs/rules.md). Reads every Markdown file that survives template instantiation — `docs/adr/**`, `docs/design/**`, `docs/rules.md`, the layer READMEs, … — with the marked regions removed, and fails on a self-reference that stops being true once a repository is created from the template. A premise belongs in `README*` / `docs/get-started/**`, which the setup rewrites or deletes, or inside a `boilerplate-only` / `sample-api` marker. Other senses of the same words are declared with a reason in `allowances.ts`.|`make md-premise-lint` <!-- boilerplate-only:line -->|
-|`mermaid-lint/`|Extract every ` ```mermaid ` fence from the repo's Markdown (same exclusions as `markdownlint-cli2`) and validate each with the real `mermaid.parse` (DOM provided by `linkedom`). Reports every broken diagram, then exits non-zero if there was any. Fills the gap that `markdownlint` only checks Markdown shape, never the diagram grammar.|`make md-lint` / `make md-mermaid-lint`|
-|`skill-lint/`|Check the skill / agent definitions under `.claude/**` semantically: frontmatter (`name` matches the directory / file name, `name` + `description` present), translation pairs (`SKILL.ja.md` exists, carries no frontmatter, opens with a sync note, and its heading-level sequence matches `SKILL.md`), and reference existence (every `` `make <target>` `` resolves against `Makefile` / `.makefiles/**`, every repo-root-relative path in inline code exists). Also checks that each skill / agent exists in `.codex/**` too. Fills the gap that a skill definition is an agent instruction sheet whose prose nothing else checks against reality, and that a skill landing on only one of the two AI environments goes unnoticed. See [Skill Lint](#skill-lint) for scope and the ignore directive.|`make md-lint` / `make md-skill-lint`|
-|`doc-ref-lint/`|Check ADR filename/H1/reference consistency and the existence of English/Japanese documentation pairs. Every ADR reference carries its filename slug with the number, so a renumbering cannot silently retarget it. `docs/spec/**` is intentionally excluded from translation existence checks until its Japanese specification set is introduced.|`make md-lint` / `make md-doc-ref-lint`|
-|`actions-shellcheck/`|Parse every `action.yaml` / `action.yml` under `.github/actions/**`, extract `runs.steps[].run` from the composite ones and check each script with `shellcheck` over stdin, remapping every finding back to its line in the `action.yaml`. Fills the gap that `actionlint` walks only `.github/workflows` and cannot be pointed at an action manifest (handed one directly, it parses it as a workflow and fails), so the shell inside a composite action was checked by nothing. The dialect comes from the step's `shell:` — passed to shellcheck as a shebang, which also settles the target shell without a `-s` flag; `pwsh` / `python` / `cmd` and an expression-valued `shell:` are counted as skipped instead. `${{ }}` expressions are masked to a placeholder that preserves the line count, the same approach `actionlint` takes for workflow `run:`. Per file, the number of extracted steps must equal the number a plain decode of the same YAML counts, and a mismatch exits non-zero — the two routes break independently, so a broken extractor cannot pass as a clean run; a `run:` written as a folded scalar (`>`) is rejected outright, because folding drops the line breaks a finding's position is mapped back through. Masking is also the reason this script says nothing about whether an expression was quoted — that question survives the mask only for a checker that reads the interpolation site itself, which is `make actions-zizmor`'s job.|`make actions-lint` / `make actions-shellcheck`|
-|`pr-comment-secret-lint/`|Split every workflow in `.github/workflows/` into jobs and fail when a job using `./.github/actions/upsert-pr-comment` references a secret other than `GITHUB_TOKEN`, workflow-wide `env:` included. Enforces a rule `actionlint` cannot express — see [`.github/workflows/README.md`](../.github/workflows/README.md) for why the rule exists. Reach: direct `secrets` references inside a `${{ }}` expression, whether `secrets.NAME`, `secrets['NAME']`, or the whole context (`toJSON(secrets)`); a secret read in one job and handed on through `needs.<job>.outputs` is beyond static reach and passes.|`make actions-lint` / `make actions-comment-secret-lint`|
-|`pr-comment-fence-lint/`|Fail when a workflow's `run:` block emits a fixed-length Markdown fence around a PR comment body, when the duplicated `fence_for` helpers stop agreeing with each other, and when a workflow that passes a body through interpolates a value into an inline code span. Enforces rules `actionlint` cannot express — see [`.github/workflows/README.md`](../.github/workflows/README.md) for why a fence must be sized from the text it wraps. Reach: literal fences in an `echo`, textual equality between the helper implementations, and a span written literally around a shell expansion — one built through a variable or assembled by `jq` is invisible here, and whether a given body is attacker-controlled is not decidable at all; both are left to the rule. The span check is file-scoped and keeps an exclusion map for a workflow whose body is not yet on a safe path: an entry names the issue tracking it, is printed on every run so a skipped file cannot pass for a checked one, and goes away when that issue is fixed.|`make actions-lint` / `make actions-comment-fence-lint`|
-|`actions-cutoff-lint/`|Fail when a job carries no `timeout-minutes`, and when a step calling `./.github/actions/upsert-pr-comment` has an `if:` a cancelled job cannot reach or a `title:` with no cut-off heading. Enforces rules `actionlint` cannot express — see [`.github/workflows/README.md`](../.github/workflows/README.md) for what a cut-off has to leave behind and why the three are one check. Reach: `always()` / `cancelled()` in the condition, `failure()` deliberately not counting since it is false for a cancelled job; the literal `CUT OFF` in the title expression; jobs calling a reusable workflow are skipped because the key is invalid there. Structure is read by column rather than by a YAML parser, which holds because a block scalar's body is always more indented than its key — `actionlint` runs first in the same target and guarantees the input parses at all. A condition that negates its own reachability (`!always()`) is writable and not statically caught — the rule is what holds.|`make actions-lint` / `make actions-cutoff-lint`|
+|`marker-baseline/`|撤去マーカー（`boilerplate-only` / `sample-api`）の行数をファイルごとに `baseline.json` へ固定し、動いたら落とす。発火する本物のマーカーと、規約を説明する例示とは同じ形をしているため、除去側は後者を `MARKER_LITERAL_FILES` で宣言する。宣言し忘れると、除去が中断する（声が出る）か、例示した区域が黙って消える（空フェンスは valid な Markdown なので誰も鳴らない）。どちらの経路でも唯一の手がかりは「マーカー行が増えたこと」なので、そこを判断の場にする——ベースラインを更新するか、ファイルを宣言するか。再生成は `tsx scripts/marker-baseline --write`。|`make test`（vitest） <!-- boilerplate-only:line -->|
+|`doc-ref-lint/`|ADR のファイル名 / H1 / 参照の整合と、英日ドキュメント対の存在を検査する。ADR 参照は番号と併せてファイル名の slug を持つため、再採番が黙って別の ADR を指すことはない。`docs/spec/**` は日本語版の spec 一式が入るまで対訳存在チェックから意図的に除外している。|`make md-lint` / `make md-doc-ref-lint`|
+|`premise-lint/`|[docs/rules.md](../docs/rules.md) の *No premise the document will outlive* を機械化したもの。テンプレート作成後も残る Markdown（`docs/adr/**` / `docs/design/**` / `docs/rules.md` / 各層 README …）をマーカー除去後の姿で読み、テンプレートから作成した瞬間に真でなくなる自己参照があれば落とす。前提を書いてよいのは、セットアップが書き換え・削除する `README*` / `docs/get-started/**` と、`boilerplate-only` / `sample-api` マーカーで囲った領域だけ。同じ語の別語義は `allowances.ts` へ理由付きで宣言する。|`make md-premise-lint` <!-- boilerplate-only:line -->|
+|`mermaid-lint/`|リポジトリ内 Markdown の ` ```mermaid ` フェンスを全抽出し（除外範囲は `markdownlint-cli2` と同一）、実 `mermaid.parse` で構文検証する（DOM は `linkedom` で供給）。壊れた図が 1 つでもあれば非 0 で終了。`markdownlint` は Markdown の体裁しか見ず図の文法を見ない、その穴を塞ぐ。|`make md-lint` / `make md-mermaid-lint`|
+|`actions-shellcheck/`|`.github/actions/**` の `action.yaml` / `action.yml` を解析し、composite action の `runs.steps[].run` を抽出して各スクリプトを標準入力経由で `shellcheck` に掛け、指摘を `action.yaml` 上の行番号へ写し戻す。`actionlint` は `.github/workflows` しか走査せず、action マニフェストを直接渡してもワークフローとして解釈して失敗するため、composite action 内のシェルはどのゲートにも掛かっていなかった。その死角を埋める。方言はステップの `shell:` から決め、shebang として渡すことで `-s` を使わずに対象シェルを確定させる。`pwsh` / `python` / `cmd` や式で指定された `shell:` は検査せず skip として数える。`${{ }}` 式は行数を保つプレースホルダへ置換する（ワークフローの `run:` に対して `actionlint` が採る方式と同じ）。抽出したステップ数は、同じ YAML をそのままデコードして数えた件数とファイル単位で一致していなければならず、食い違えば非 0 で終了する。2 つの経路は独立に壊れるため、抽出が壊れた状態が「緑」として通ることはない。`run:` をブロック折り畳み（`>`）で書いた場合は拒否する（折り畳みは指摘の位置を写し戻す基準である改行を落とすため）。式がクオートされていたかどうかを本スクリプトが何も言わないのもこのプレースホルダ置換のためで、その問いが残るのは展開位置そのものを読む検査に限られる。担当は `make actions-zizmor`。|`make actions-lint` / `make actions-shellcheck`|
+|`pr-comment-secret-lint/`|`.github/workflows/` の各ワークフローをジョブ単位に切り出し、`./.github/actions/upsert-pr-comment` を使うジョブが `GITHUB_TOKEN` 以外の secret を参照していれば失敗する（ワークフロー全体の `env:` も対象）。`actionlint` では表現できない規約を機械化したもので、規約の理由は [`.github/workflows/README.md`](../.github/workflows/README.md) を参照。検出範囲は `${{ }}` 式に現れる secrets の直接参照（`secrets.NAME` / `secrets['NAME']` / `toJSON(secrets)` のようなコンテキスト全体）。別ジョブで読んで `needs.<job>.outputs` 経由で渡す間接参照は静的には追えず、検査を通る。|`make actions-lint` / `make actions-comment-secret-lint`|
+|`pr-comment-fence-lint/`|ワークフローの `run:` ブロックが PR コメント本文を固定長の Markdown フェンスで囲んでいる場合、複製されている `fence_for` の実装が互いに一致しなくなった場合、本文を素通しさせるワークフローが inline code span の内側へ値を補間している場合に失敗する。`actionlint` では表現できない規約を機械化したもので、フェンスを囲む本文から算出すべき理由は [`.github/workflows/README.md`](../.github/workflows/README.md) を参照。検出範囲は `echo` 中のリテラルなフェンス、実装同士の文字列一致、そしてシェル展開をリテラルな span で囲んだ形。変数経由や `jq` の連結で組んだ span はここからは見えず、ある本文が攻撃者制御かどうかはそもそも判定できない。いずれも規約に委ねる。span 検査はファイル単位で、まだ安全な形に乗っていない本文のための除外マップを持つ。エントリは追跡 issue を明記し、検査を素通りしたファイルが検査済みと区別できなくならないよう毎回出力され、その issue が解決したら消える。|`make actions-lint` / `make actions-comment-fence-lint`|
+|`actions-cutoff-lint/`|ジョブに `timeout-minutes` が無い場合と、`./.github/actions/upsert-pr-comment` を呼ぶステップの `if:` がキャンセルされたジョブから到達できない場合・`title:` に打ち切り時の見出しが無い場合に失敗する。`actionlint` では表現できない規約を機械化したもので、打ち切りが何を残すべきか・なぜ 3 つで 1 本かは [`.github/workflows/README.md`](../.github/workflows/README.md) を参照。検出範囲は条件中の `always()` / `cancelled()`（`failure()` はキャンセル時 false なので意図的に数えない）と、title 式中のリテラル `CUT OFF`。reusable workflow を呼ぶジョブは同キーが invalid なため除外する。構造は YAML パーサではなく桁で読む。ブロックスカラーの中身が必ず親より深い桁に来ることが前提で、入力がそもそもパースできることは同じターゲット内で先に走る `actionlint` が担保する。到達性を自ら打ち消す条件（`!always()`）は書けてしまい静的には捕まらないので、そこは規約が支える。|`make actions-lint` / `make actions-cutoff-lint`|
 
 #### Skill Lint
 
-`skill-lint/` only asserts what can be derived mechanically from the Makefile target list, the
-filesystem, and heading extraction — it never judges wording. Reference checks read **inline code
-spans outside fenced blocks** (a fence is an example or a sample output, so it guarantees nothing).
+`skill-lint/` は、Makefile のターゲット一覧・ファイルシステム・見出し抽出から機械的に導出できることだけを主張する（文面の良し悪しは判断しない）。参照検査が読むのは**コードフェンス外のインラインコードスパン**に限る（フェンス内は例示・出力サンプルであり実在性を保証しない）。
 
-A path reference is checked only when it is unambiguously a path: its first segment is an existing
-repo-root entry, and it either ends with `/` or has a dotted basename. That deliberately leaves Go
-import paths (`database/sql`), package-qualified symbols (`pkg/ptr.Copy`), ellipses
-(`internal/controller/handler/...`), and context-relative filenames (`SKILL.md`) unchecked — none of
-them resolve to a unique path. `<placeholder>` / `*` / `**` / `{a,b}` are resolved as patterns, and a
-path is also tried relative to the referencing file so a skill can point at its own bundled
-`scripts/`.
+パス参照は、パスであることが一意に決まるときだけ検査する: 先頭セグメントがリポジトリルート直下の実在エントリであり、かつ末尾が `/` か basename にドットを含むもの。これにより Go の import パス（`database/sql`）、パッケージ修飾シンボル（`pkg/ptr.Copy`）、省略記法（`internal/controller/handler/...`）、文脈相対のファイル名（`SKILL.md`）は意図的に対象外となる — いずれも解決先が一意に決まらない。`<placeholder>` / `*` / `**` / `{a,b}` はパターンとして解決し、パスは参照元ファイルからの相対でも解決を試みる（スキルが同梱する `scripts/` を指せるようにするため）。
 
-For a reference that is intentionally absent — a hypothetical example, an optional location, a file
-that lives in the counterpart AI tool's repository — put the ignore directive anywhere on that line:
+仮定の例示・任意配置・対向 AI ツール側リポジトリのファイルなど、意図的に不在な参照には、その行のどこかに ignore ディレクティブを置く:
 
 ```markdown
 - `internal/controller/handler/debug/README.md` → `docs/portal/guides/controller-handler-debug.md` (if it were added) <!-- skill-lint-ignore -->
 ```
 
-Across the two AI environments the script checks **existence only**: every `.claude/skills/<name>/`
-has a `.codex/skills/<name>/` and vice versa, every `.claude/agents/<name>.md` has a
-`.codex/agents/<name>.toml` and vice versa, and every Codex skill carries the `SKILL.md` +
-`agents/openai.yaml` pair its README documents. Codex-side `SKILL.ja.md` is optional, so it is
-checked as a translation pair only when present.
+本文の追随は意図的に検査しない。`sync-ai` は逐語コピーではなく意味ポートであり、`CLAUDE.md` ↔ `AGENTS.md` の言い換え・Claude 固有機構の適応・凝縮スタイルへの書き下ろしといった意図的な差分が恒久的に残る（共通スキルのうち少なからぬ数は、見出し集合がまったく重ならない）。存在の対応であれば例外は宣言可能な件数に収まり、それでいて肝心の事故 — 片側の環境にだけマージされた skill — は捕まえられる。
 
-Body correspondence is deliberately **not** checked. `sync-ai` performs a semantic port, not a
-verbatim copy, so `CLAUDE.md` ↔ `AGENTS.md` rewording, adaptation of Claude-only mechanisms, and
-condensed rewrites leave permanent intentional differences — for a substantial minority of the
-shared skills the two heading sets do not overlap at all. Existence parity has few enough
-exceptions to declare, and still catches the failure that matters: a skill merged into one
-environment only.
+意図的に片側の環境だけへ置く skill は、`skill-lint/checks.ts` の `PLATFORM_ONLY_SKILLS` へ**理由付きで**登録する。理由が空の登録は落ち、両環境に揃った（あるいはどちらにも無くなった）skill の登録も落ちるので、例外リストが例外より長生きすることはない。**この仕組みの正典はここで、他のドキュメントは再掲せずここへリンクする。**
 
-A skill that intentionally lives in one environment goes in the `PLATFORM_ONLY_SKILLS` map in
-`skill-lint/checks.ts` **with a reason**. An entry with an empty reason fails, and so does one whose skill
-has since appeared in both environments (or in neither) — so the exception list cannot outlive the
-exception. **This is the canonical description of the mechanism; other documents link here rather
-than restating it.**
+エージェント役割にはこの逃げ道が無く、対応は無条件に要求される。意図的に片側だけへ置いたエージェントはこれまで無く、例外の表を用意してもエントリが 0 件になる — 例外機構は実際の事例が出てから足す。
 
-Agent roles have no such escape hatch: their parity is unconditional. No agent has ever been
-deliberately one-sided, so an exception map for them would carry no entries — add the mechanism
-when a real case appears, not before.
+本リポジトリが書いていない skill は、`skill-lint/checks.ts` の `EXTERNAL_SKILLS` へやはり理由付きで登録して、上の全検査から外す。それらは [`.claude/scripts/bootstrap-external-skills.sh`](../.claude/README.md) が pin 済みのパッケージから展開するもので gitignore されており、frontmatter も対訳も参照するパスも upstream が決める — 参照先の多くは実行後にしか存在しない成果物である。検査してもここでは誰も対応できない指摘が出るだけで、対応できない指摘を出すゲートは読まれなくなる。チェックアウトに存在しないことがこれらの登録では正常なので、腐り検査は持たせない。着地先ディレクトリ*への*パス参照は、存在しないではなく存在するものとして解決する — この仕組みを説明する文書はいずれもそのディレクトリ名を書くことになり、実在を要求する検査はどれも通せないため。解決するのは宣言済みの名前だけなので、綴り違いは従来どおり落ちる。
 
-A skill this repository does not write is excluded from every check above through the
-`EXTERNAL_SKILLS` map in `skill-lint/checks.ts`, also with a reason. Those skills are installed from
-a pinned package by [`.claude/scripts/bootstrap-external-skills.sh`](../.claude/README.md) and are
-gitignored, so their frontmatter, their translation pair, and the paths they reference are all
-decided upstream — most of those paths are artifacts that exist only after a run. Checking them
-would produce findings nobody here can act on, and a gate that reports unfixable findings stops
-being read. Absence from a checkout is normal for these entries, which is why they carry no
-staleness check of their own. A path reference *to* one of those landing directories resolves as
-present rather than missing — every document describing the arrangement has to name the directory,
-and none of them could pass a check that requires it to exist. Only the declared names resolve this
-way, so a misspelling still fails.
+### バージョニング
 
-### Versioning
-
-|Script|Description|Invoked By|
+|スクリプト|説明|実行元|
 |---|---|---|
-|`semver/`|Bump semantic version (patch/minor/major)|Release workflow|
-|`stamp-openapi-version/`|Derive `X.Y.Z` from a `release/vX.Y.Z` branch name and write it into `openapi.yaml` `info.version` (first `version:` line only; idempotent; no-op for non-release refs). Contract version only — no SHA / build metadata (commit-level traceability is the runtime `/version`'s job). Runs through `tsx`.|`auto-generate-docs.yaml`|
-|`sync-versions/`|Go-based sync utility. Parses `mise.toml` `[tools]` (table-scoped, no external deps) and propagates `go` / `node` / `python` versions to `go.mod` (`go` directive) + `docker/*/Dockerfile` `FROM golang:` / `FROM node:` / `FROM python:` lines. Pre-validates all rules (version present, file exists, expected match count) and writes per file atomically, so failures never leave a partial state.|`make sync-versions`|
-|`release/`|Create a release tag (`tag`) or the next release branch (`branch`), deriving the next version from the newest semantic-version `git tag` with `-bump patch\|minor\|major`. The steps live here rather than in a Make recipe because both include operations that cannot be taken back — pushing a tag, creating a GitHub Release, moving the default branch — so exercising the branches for real would mean actually releasing. The sequencing and the abort conditions are pure functions pinned by tests.|`make tag-patch` / `tag-minor` / `tag-major` / `branch-patch` / `branch-minor` / `branch-major` / `hotfix-patch`|
-|`base-branch/`|Print the branch name of the latest release line — the branch a feature branch is cut from. The source is `origin`'s live state (`git ls-remote --heads origin 'refs/heads/release/*'`); no local ref is read, because `refs/remotes/origin/HEAD` is fixed at clone time and `git fetch` never updates it, and the GitHub default branch can still point at an earlier release line. Both go stale without warning, which is how a feature branch ends up cut from a generation-old base. "Latest" is the numeric comparison of `major` / `minor` / `patch`, the same basis `release/` uses to choose the next version, so the tool that creates these branches and the tool that resolves them agree: the commit date reorders under a hotfix or a base merge into an older line, and string order puts `v1.10.0` before `v1.9.0`. A remote with no `release/vX.Y.Z` branch is an error rather than an empty answer — a caller cannot tell an empty base from an unresolved one. Scope is `release/*` only, matching the rule this resolves ("cut a feature branch from the latest `release/*`"); a `hotfix/*` branch, which `make hotfix-patch` also makes the GitHub default, is not a candidate.|`make base-branch`|
+|`semver/`|セマンティックバージョンのバンプ（patch / minor / major）|リリースワークフロー|
+|`stamp-openapi-version/`|`release/vX.Y.Z` のブランチ名から `X.Y.Z` を導出し `openapi.yaml` の `info.version` に書き込む（先頭の `version:` 行のみ・冪等・非 release ref は no-op）。契約版のみで SHA / build metadata は付けない（commit 単位の追跡は runtime の `/version` の責務）。`tsx` 経由で実行する。|`auto-generate-docs.yaml`|
+|`sync-versions/`|Go 実装の sync ツール。`mise.toml` の `[tools]` table を行ベース parser で解析し（外部依存ゼロ）、`go` / `node` / `python` を `go.mod` の `go` directive と `docker/*/Dockerfile` の `FROM golang:` / `FROM node:` / `FROM python:` 行へ反映する。version 存在・ファイル存在・期待マッチ数の事前 validate を全 rule で通してからファイル単位 atomic に書き出すため、partial state にならない。|`make sync-versions`|
+|`release/`|リリースタグ（`tag`）と次のリリースブランチ（`branch`）を作る。次バージョンは `git tag` の最新セマンティックバージョンから `-bump patch\|minor\|major` で決める。手順が make のレシピではなくここに在るのは、どちらも取り消しの効かない操作（タグの push / GitHub Release の作成 / デフォルトブランチの切り替え）を含み、分岐を実地で確かめようとすると本当にリリースするしかないためである。手順の組み立てと中止条件は純粋関数へ寄せてテストで固定してある。|`make tag-patch` / `tag-minor` / `tag-major` / `branch-patch` / `branch-minor` / `branch-major` / `hotfix-patch`|
+|`base-branch/`|フィーチャーブランチの分岐元となる最新のリリースラインのブランチ名を出力する。出所は `origin` の実状態（`git ls-remote --heads origin 'refs/heads/release/*'`）で、ローカルの参照は一切読まない。`refs/remotes/origin/HEAD` は clone 時に決まったきり `git fetch` では更新されず、GitHub のデフォルトブランチも前のリリースラインを指したままのことがある。どちらも警告なく古い答えを返すので、1 世代前のベースからフィーチャーブランチを切る事故になる。「最新」は `major` / `minor` / `patch` の数値比較で、ブランチを作る `release/` が次版を決める基準と同じにしてある（作る側と解決する側の基準が揃う）。コミット日時は古いラインへの hotfix やベース merge で前後し、文字列順は `v1.10.0` を `v1.9.0` より前に並べる。`release/vX.Y.Z` が 1 本も無いリモートは空の答えではなくエラーにする — 空のベースと解決できなかったことを呼び出し側が区別できないため。対象は `release/*` のみで、これが解決する規則（「最新の `release/*` からフィーチャーブランチを切る」）に合わせてある。`make hotfix-patch` が GitHub のデフォルトに設定する `hotfix/*` は候補に入れない。|`make base-branch`|
 
-All other tool versions are managed by [`mise.toml`](../mise.toml) as the single source of truth, except the PyPI tools, which are declared in [`python/`](../python/README.md) and installed from a hash-pinned lockfile. Each environment (host / docker / CI) installs only what it needs via `mise install <tool>` (or `uv pip install --require-hashes`) — no sync script required for those.
+その他のツールのバージョンは [`mise.toml`](../mise.toml) を SSOT として管理しています（PyPI のツールだけは例外で、[`python/`](../python/README.md) で宣言しハッシュ固定の lockfile から入れます）。各環境（host / docker / CI）は必要なものだけ `mise install <tool>`（または `uv pip install --require-hashes`）で個別に取得するため、sync スクリプトは不要です。
 
-### Makefile Support
+### Makefile サポート
 
-|Script|Description|Invoked By|
+|スクリプト|説明|実行元|
 |---|---|---|
-|`make-help/`|Parse `.makefiles/*.mk` and display target descriptions|`make help`|
-|`load-band/`|Resolve the host load band (`full` / `low` / `ci-first`) and the per-window CPU share from the number of `git worktree`s, emitting them as `KEY=VALUE` for a recipe to `eval` (`env`) or as a human-readable summary (`status`). Resolution happens inside the recipe rather than at make's parse time, so targets that run nothing heavy pay nothing for it. The shell it replaced counted windows with `git worktree list \| grep -c . \|\| echo 1`, which emits `0` *and* `1` when git cannot answer — the comparisons then failed with `integer expression expected` and the band silently degraded to `full`.|`make load-status` / the `gate-*` targets|
+|`make-help/`|`.makefiles/*.mk` を解析してターゲット説明を表示|`make help`|
+|`load-band/`|`git worktree` の数からホストの負荷帯（`full` / `low` / `ci-first`）と 1 窓あたりの CPU share を解決し、レシピが `eval` できる `KEY=VALUE`（`env`）または人間向けの要約（`status`）として出力する。解決は make のパース時ではなくレシピ内で行うため、重い処理を伴わないターゲットはこのコストを払わない。置き換え前のシェルは窓数を `git worktree list \| grep -c . \|\| echo 1` で数えており、git が答えられないときに `0` と `1` の両方を出力していた。結果、比較が `integer expression expected` で失敗し、帯は黙って `full` へ縮退していた。|`make load-status` / `gate-*` 系ターゲット|
 
-### Code Generation
+### コード生成
 
-|Script|Description|Invoked By|
+|スクリプト|説明|実行元|
 |---|---|---|
-|`genctxkey/`|Generate Echo context key helpers (Go code generator). Driven by the `//go:generate` directives in `internal/controller/ctxhelper/generate.go`, run via `go generate ./...`.|`make gen-go-code`|
+|`genctxkey/`|Echo コンテキストキーヘルパーの生成（Go コードジェネレータ）。`internal/controller/ctxhelper/generate.go` の `//go:generate` ディレクティブから `go generate ./...` 経由で実行される。|`make gen-go-code`|
 
-See [genctxkey/README.md](genctxkey/README.md) for details.
+詳細は [genctxkey/README.md](genctxkey/README.md) を参照。
 
-### Knowledge Graph (`graphify-*`)
+### CI / サプライチェーン
 
-|Script|Description|Invoked By|
+|スクリプト|説明|実行元|
 |---|---|---|
-|`graphify-export/`|Convert the `graphify-out/graph.json` node-link graph into the deterministic `nodes.json` / `edges.json` / `metadata.json` triple: nodes and edges sorted by a stable key, a schema version stamped on each document, and every attribute the upstream format carries preserved rather than dropped. Consumers read the triple instead of the upstream shape, so an upstream format change lands in one place.|`make graphify-export`|
-|`graphify-pending/`|Report how much semantic extraction is waiting. The pending set comes from `graphify-out/manifest.json`, where a document is behind when its stored `semantic_hash` no longer matches the file's current MD5 — not when the manifest's two hashes disagree, which they never do until the deterministic half has run and is the mistake that makes the count read zero forever. Size is measured in changed lines rather than files, since a typo fix and a rewritten ADR cost the same to count but not to re-extract; the baseline is the last commit touching `graphify-out/cache/semantic/`, which is written only by semantic extraction and is tracked, so the measure accumulates across pushes without inventing any new state. Exclusions are read from `.graphifyignore` so generated output does not inflate the number through a second list that could drift. Reports only — the extraction itself needs a model, and nothing in CI can start one.|`make graphify-pending` / `graphify-sync.yaml`|
-|`graphify-check/`|Verify that the tracked graphify artifacts stay portable and that the tracked cache's provenance is known. Three checks: nothing outside the `.gitignore` whitelist is tracked; no tracked artifact carries an absolute path from the machine that produced it; and the tracked semantic cache sits in the namespace [`.agents/graphify/spec-pin.toml`](../.agents/graphify/spec-pin.toml) pins. The first two are both needed — one alone misses an upstream regression that starts leaking host paths into an already-whitelisted file, the other alone misses machine-local files that happen to contain no path. The AST cache is what makes them real: graphify builds node IDs from the paths it was handed, and its relativizing pass runs after the cache is written, so those entries keep the producing machine's user name; a public repository cannot take such a commit back. The third check exists because graphify namespaces the semantic cache by a fingerprint of the extraction prompt, and that prompt lives in an assistant's skill directory rather than here — without the pin, a cache baked by a different prompt variant is indistinguishable from a correct one. `-spec <path>` fingerprints a prompt file against the pin before an extraction, reimplementing `graphify.cache.prompt_fingerprint` (CRLF normalize, strip trailing whitespace per line, trim, SHA-256, first 12 hex) with cases pinned to values measured from graphify itself. `-base <ref>` adds a fourth check: the diff against `<ref>` must not touch the output directory. That one is about merge behaviour rather than portability — the graph is a single 450k-line blob rewritten whenever any source file moves, so concurrent branches always conflict on it, and regenerating from the source of truth (the usual remedy for a generated artifact) does not apply because the semantic half needs a model. Updates therefore stay on the release line, and when to enforce that is the caller's decision, not this tool's. The one case the tool decides itself is a base that carries no output yet: there is nothing to conflict with, and failing there would leave no route by which the graph could ever be placed for the first time. Nothing tracked is a pass reported in its own words, not as a clean run.|`make graphify-check [SPEC=<path>]` / `pre-commit` hook / `graphify-check.yaml`|
+|`pin-actions/`|`.github/workflows/**` と `.github/actions/**` の外部 GitHub Actions `uses:` を不変の commit SHA へ固定する。`resolve` は参照を走査し各 tag/branch を `git ls-remote` で SHA へ解決して lockfile `.github/actions-pin.toml`（SSOT）へ書き出す。`PIN_ACTIONS_MIN_AGE_DAYS`（既定 14）日未満の新しすぎるコミットは採用せず既存ピンを維持する supply-chain quarantine 付き。`apply` は lockfile を元に各 `uses:` を `@<sha> # <tag>` へ書き換える。`check` は書き換えずに同じ判定を行い、未固定/古い/未登録があれば非 0 で終了する（CI / hook 用）。既に固定済みの行はコメント末尾の `# <tag>` を版として再解決するため冪等。|`make pin-actions-resolve` / `pin-actions-apply` / `pin-actions-check`|
+|`pin-images/`|`docker/*/Dockerfile` の全 `FROM` base image を不変の digest へ固定する。`resolve` は各 `image:tag` を集め `docker buildx imagetools inspect` で現在 digest へ解決して lockfile `docker/images-pin.toml`（SSOT）へ書き出す。image-config の `created` が `PIN_IMAGES_MIN_AGE_DAYS`（既定 14）日未満の digest は採用しない supply-chain cooldown 付き。mutable tag は履歴を問えないため step-back 先はツール自身の前回 lock で、初回（無い場合）は tag のまま残す。`apply` は lockfile を元に各 `FROM` を `image:tag@sha256:...` へ正規化し、quarantine 中の image は digest を剥がして tag のみへ戻す。`check` は書き換えずに同じ判定を行い、drift があれば非 0 で終了する（CI / hook 用）。tag は版の SSOT として `FROM` 行に残す。|`make pin-images-resolve` / `pin-images-apply` / `pin-images-check`|
+|`egress/`|各ジョブのインライン harden-runner `allowed-endpoints` を `.github/egress.toml`（SSOT）から生成する。ジョブは自分が属する能力クラス（`base` / `mise` / `image` / `db`）と自分固有の `extra` を宣言し、ホストの列挙はクラス定義が持つ。`apply` は `.github/workflows/*.yaml` の各 `allowed-endpoints:` の折り畳みブロックを書き換え、`check` は書き換えずに同じ判定を行い drift があれば非 0 で終了する（CI / hook 用）。黙って通さず fail-close する: SSOT に無いジョブのブロック、どの workflow も名乗らない SSOT エントリ、SSOT と食い違う `egress-policy`、ブロック内のホスト以外の行は、いずれもエラーになる。このステップは checkout より前に走る必要があり composite action へ括り出せないため、重複の除去はこの SSOT が担う — [`.github/workflows/README.md`](../.github/workflows/README.md) の「ランナーのハードニング」節を参照。|`make egress-apply` / `egress-check`|
+|`go-cooldown/`|Go module proxy が返す公開時刻（`<module>/@v/<version>.info`）で `go.mod` を供給網 cooldown 窓に照らす。GOPROXY プロトコルの一部なので追加依存は不要。`gate` は base ref と比較し、その変更が追加 / 更新した **direct** の require が窓内なら失敗する。indirect は MVS が direct の要求下限より上に固定することがあり PR 側で下げられないため報告に留める。`audit` は全 require を棚卸しし、窓そのものでは失敗しない（既存依存は grandfather）。`.github/go-cooldown-bypass.toml` のエントリが期限切れ・3 ヶ月超・`go.mod` に不在のいずれかなら双方で失敗し、無効なエントリは効力も失うので失効したバイパスがモジュールを通し続けることはない。pnpm の `minimumReleaseAge` と違い Go は解決時に窓を強制しないため、この検査は検知器ではなく防御そのものである。|`make go-cooldown-gate BASE=<ref>` / `make go-cooldown-audit`|
+|`tool-cooldown/`|このリポジトリが宣言するツール版を供給網 cooldown 窓に照らす。対象は mise が解決するもの全部（`mise.toml`）に加え、hash 固定の lockfile から入る PyPI ツール（`python/*.in`、[ADR-0080 (mise-ssot-drift-gate)](../docs/adr/0080-mise-ssot-drift-gate.md)）。窓はツールではなく backend の性質で決まる。GitHub リリース経由（aqua / ubi / github）は 14 日で、tag が別 commit へ付け替えられ得るぶん `pin-actions` / `pin-images` と揃える。パッケージレジストリ経由（go / npm / PyPI）は公開が immutable なので 7 日で、`go-cooldown` と揃う。lockfile 側（推移依存）は `go-cooldown` が direct のみを見るのと同じ理由で対象外。公開時刻はそれぞれ GitHub Releases API・Go module proxy・npm registry・PyPI から取る。`go:` backend はパッケージパスを指すため、proxy が答えるまで接頭辞を遡ってモジュールパスを見つける。短縮名の backend は対応表を持たず `mise registry` に解決させる（表を持つと mise の更新で静かにずれる）。**言語ランタイム（`core:` backend）は受容したリスクとして対象外** — go / node / python の配布自体が汚染される事態は供給網の 1 リンクではなく言語の信頼モデルの崩壊であり、冷却期間で守れるものが無い。`gate` は base ref と比較して失敗し、`audit` は全件を棚卸しして窓では失敗しない。双方とも `python/*.in` の宣言と `python/*.txt` の lockfile が違う版を指していれば失敗する（cooldown を通した版が実際に入る版と別になるため。再生成は `make py-lock`）。また `.github/tool-cooldown-bypass.toml` のエントリが期限切れ・3 ヶ月超・対象不在なら失敗し、無効なエントリは効力を失う。|`make tool-cooldown-gate BASE=<ref>` / `make tool-cooldown-audit`|
+|`migration-lint/`|`database/migrations` の連番について、重複（`-check duplicate`）と欠番（`-check gap`）を検査する。読むのは `<連番>_<名前>.<kind>.sql` の最初の `_` より前で、up / down は `-kind` で切り替える。lefthook の pre-commit ゲートから呼ばれる。判定がシェルのレシピではなく Go に在るのは、この検査の壊れ方が「何も検査しなくなる」方向に出るためで、そこはテストで固定できるがシェルのパイプラインでは固定できない。|`make check-migration-up-version` / `check-migration-down-version` / `check-migration-up-gap` / `check-migration-down-gap`|
+|`cover-gate/`|`go tool cover -func` が報告する総カバレッジを `-threshold` の値と比較し、下回れば非 0 で終了する。`total:` 行の抽出と判定を別々の純粋関数に分けてあるため双方をテストで固定できる。置き換え前の `awk` パイプラインは数値でないパーセント表記を `t+0` で `0` に丸めていたため、壊れたプロファイルを「ツールの失敗」ではなく「カバレッジ不足」として報告していた。|`make cover-gate`|
 
-### CI / Supply Chain
+### AI フィードバックループ（`closed-loop/`）
 
-|Script|Description|Invoked By|
+|スクリプト|説明|実行元|
 |---|---|---|
-|`pin-actions/`|Pin every external GitHub Actions `uses:` in `.github/workflows/**` and `.github/actions/**` to an immutable commit SHA. `resolve` walks the references and resolves each tag/branch to a SHA via `git ls-remote`, writing the lockfile `.github/actions-pin.toml` (SSOT) — with a supply-chain quarantine that refuses commits younger than `PIN_ACTIONS_MIN_AGE_DAYS` (default 14, keeping the existing pin instead). `apply` rewrites each `uses:` to `@<sha> # <tag>` from the lockfile. `check` runs the same comparison without writing and exits non-zero on any unpinned/stale/unregistered reference (for CI / hooks). Idempotent: an already-pinned line re-resolves off its trailing `# <tag>` comment.|`make pin-actions-resolve` / `pin-actions-apply` / `pin-actions-check`|
-|`pin-images/`|Pin every `FROM` base image in `docker/*/Dockerfile` to an immutable digest. `resolve` collects each `image:tag` and resolves its current digest via `docker buildx imagetools inspect`, writing the lockfile `docker/images-pin.toml` (SSOT) — with a supply-chain cooldown that refuses digests whose image-config `created` is younger than `PIN_IMAGES_MIN_AGE_DAYS` (default 14). A mutable tag has no queryable history, so the step-back target is the tool's own prior lock entry; with none (bootstrap) the image is left tag-only. `apply` normalizes each `FROM` to `image:tag@sha256:...` from the lockfile, leaving a tag-only line where the lockfile carries no entry (which is how a quarantined image stays unpinned). `check` runs the same comparison without writing and exits non-zero on drift (for CI / hooks). The tag stays inline as the version SSOT.|`make pin-images-resolve` / `pin-images-apply` / `pin-images-check`|
-|`egress/`|Generate every job's inline harden-runner `allowed-endpoints` from `.github/egress.toml` (SSOT), where a job declares the capability classes it belongs to (`base` / `mise` / `image` / `db`) plus its own `extra`, and the class definitions hold the hosts. `apply` rewrites the folded block of every `allowed-endpoints:` in `.github/workflows/*.yaml`; `check` runs the same comparison without writing and exits non-zero on drift (for CI / hooks). Fails closed rather than silently: a job whose block is missing from the SSOT, an SSOT entry no workflow claims, an `egress-policy` that disagrees with the SSOT, and a non-host line inside a block are all errors. The step must stay inline (harden-runner runs before checkout, so a composite action cannot hold it), so the SSOT is what removes the duplication instead — see [`.github/workflows/README.md`](../.github/workflows/README.md) § Runner Hardening.|`make egress-apply` / `egress-check`|
-|`go-cooldown/`|Check `go.mod` against the supply-chain cooldown window using the publish time the Go module proxy reports (`<module>/@v/<version>.info`), so no extra dependency is needed. `gate` compares against a base ref and fails on a **direct** requirement the change adds or upgrades that was published inside the window; an indirect one is reported instead, since MVS can hold it above a direct dependency's lower bound where the pull request cannot lower it. `audit` inventories every requirement and never fails on the window itself, because existing dependencies are grandfathered. Both fail on a bypass entry in `.github/go-cooldown-bypass.toml` that has expired, reaches beyond three months, or matches nothing in `go.mod`, and an invalid entry loses its effect so a lapsed bypass cannot keep letting its module through. Unlike pnpm's `minimumReleaseAge`, Go enforces no window at resolution time — this check is the guard, not a detector for one.|`make go-cooldown-gate BASE=<ref>` / `make go-cooldown-audit`|
-|`tool-cooldown/`|Check the tool versions this repository declares — `mise.toml` for everything mise resolves, plus `python/*.in` for the PyPI tools that install from a hash-pinned lockfile ([ADR-0080 (mise-ssot-drift-gate)](../docs/adr/0080-mise-ssot-drift-gate.md)) — against the supply-chain cooldown window. The window comes from the backend, not the tool: 14 days for one resolved through a GitHub release (aqua / ubi / github), matching `pin-actions` and `pin-images` because a tag can be moved onto another commit; 7 days for one resolved through a package registry (go / npm / PyPI), matching `go-cooldown` because a published version there is immutable. The lockfiles themselves (transitive dependencies) are out of scope, for the same reason `go-cooldown` gates only direct requirements. Publish times come from the GitHub Releases API, the Go module proxy, the npm registry and PyPI respectively — a `go:` backend names a package path, so the module path is found by walking the prefix back until the proxy answers. A short name's backend is resolved by asking `mise registry` rather than by a table kept here, which would drift the next time mise changes. **Language runtimes (`core:` backend) are excluded as an accepted risk** — a compromised go / node / python distribution is a failure of the language's trust model rather than of one supply-chain link, and no cooldown protects against it. `gate` compares against a base ref and fails; `audit` inventories everything and never fails on the window. Both also fail when a `python/*.in` declaration and its `python/*.txt` lockfile name different versions, because the version cleared here would then not be the version installed — `make py-lock` regenerates it. Both fail on a bypass entry in `.github/tool-cooldown-bypass.toml` that has expired, reaches beyond three months, or matches nothing, and an invalid entry loses its effect.|`make tool-cooldown-gate BASE=<ref>` / `make tool-cooldown-audit`|
-|`migration-lint/`|Check the sequence numbers under `database/migrations` for duplicates (`-check duplicate`) and gaps (`-check gap`), reading the number before the first `_` of `<seq>_<name>.<kind>.sql` and selecting up / down with `-kind`. Called from the lefthook pre-commit gate. The decision lives in Go rather than in the shell recipe because this check fails towards *inspecting nothing*, which a test can pin and a shell pipeline cannot.|`make check-migration-up-version` / `check-migration-down-version` / `check-migration-up-gap` / `check-migration-down-gap`|
-|`cover-gate/`|Compare the total coverage `go tool cover -func` reports against the `-threshold` value and exit non-zero below it. Extracting the `total:` line and judging it are separate pure functions, so both are pinned by tests — the `awk` pipeline this replaced coerced any non-numeric percentage to `0` through `t+0`, which reported a malformed profile as a coverage failure rather than as the tooling failure it is.|`make cover-gate`|
+|`closed-loop/`|`tmp/closed-loop/marks/` に窓が残した打刻を読み、窓ごとのフェーズ区間・重複した打刻・数字を使う前に見るべき状態（開始の打刻が無い / 閉じられていない / 打刻が順序どおりでない）を報告する。`--transcripts` / `--codex` を渡せば、期間内のセッション記録を決定論的な数——発話数・ツール呼び出し・失敗・中断・スキル呼出——へ畳み、一度も呼ばれなかったスキルも挙げる（回数だけでは撤去の根拠にならない、という但し書き付きで）。窓とは何か、なぜ順序をタイムスタンプではなく宣言から取るのかは [ADR-0010 (development-window-as-feedback-unit)](../docs/adr/0010-development-window-as-feedback-unit.md)。|`make closed-loop-report`|
+|`closed-loop/send/`|閉じたのに Feedback Issue へ到達していない窓を送る。観測ブロックが Issue 本文になり、その読解もここで作る——選んだターンに対する手元のモデル呼び出しなので、トランスクリプトはマシンから出ない。その呼び出しが走らなかったときだけ `feedback/needs-summary` ラベルを付け、選んだターンをコメントとして投稿する。ランナーがそれを見る唯一の手段だからである。逐語が公開されるのはこの経路だけで、[`docs/design/security.md`](../docs/design/security.md) に記録してある。Issue の作成とコメントの投稿は別の失敗として扱う——コメントの無い Issue はコメントだけを再試行する。束ねると半分だけ送れた窓が「送出済み」に見えるためである。ホストで動く: 読むトランスクリプトが利用者のホーム配下にあり、tool-runner コンテナからは見えない。|`make closed-loop-send` / SessionStart hook|
+|`closed-loop/weekly/`|期間内に作られた Feedback Issue を集め、付いている分類ラベルでまとめ、頻度 / 影響 / 人の介入 / 再発でクラスタごとにスコアを付けて、レトロが着手順を持てるようにする。各 Issue の `Suggested Improvement` をクラスタの下に並べるので、議題を作るのに Issue を 1 件ずつ開かなくてよい。再発を最も重く見るのは、窓をまたいで再び現れる問題が個人の失敗ではなく基盤の問題だからである。マージ待ちが実装時間を超えた窓も名指しする。速く作っても短くならない待ちだからである。加えて、Feedback Issue のクローズを改善が着地した合図として、その後に同じ分類が戻ってきたかを報告する。報告するのは再発であって判定ではない。保持 / 簡素化 / 撤回はレトロで決める。|`make closed-loop-weekly FROM=<date> TO=<date>` / 週次ワークフロー|
 
-### AI Feedback Loop (`closed-loop/`)
+### 初期設定（`setup/` / `repo-setup/`）
 
-|Script|Description|Invoked By|
-|---|---|---|
-|`closed-loop/`|Read the phase marks a window left under `tmp/closed-loop/marks/` and report each window's phase intervals, repeated stamps, and the states that must be looked at before the numbers are used (no opening mark, never closed, marks out of order). Given `--transcripts` / `--codex` it also folds the session records for a period into deterministic counts — prompts, tool calls, failures, interruptions, skill invocations — and lists the skills that went uncalled, with the warning that a count alone is not grounds to retire one. What a window is, and why the order comes from a declaration rather than from the timestamps, is [ADR-0010 (development-window-as-feedback-unit)](../docs/adr/0010-development-window-as-feedback-unit.md).|`make closed-loop-report`|
-|`closed-loop/send/`|Send the windows that have closed but never reached their feedback issue. The observation block becomes the issue body, and the reading of it is produced here too — a local model call over the selected turns, so the transcript never leaves the machine. When that call cannot run the issue is labelled `feedback/needs-summary` and the selected turns are posted as a comment, which is the only way a runner can see them; that is the one route on which verbatim turns are published, and [`docs/design/security.md`](../docs/design/security.md) records it. Creating the issue and posting the comment are separate failures — an issue with no comment is retried for its comment alone, because folding them together would let a half-sent window read as done. Runs on the host: the transcripts it reads live under the user's home, which the tool-runner container cannot see.|`make closed-loop-send` / SessionStart hook|
-|`closed-loop/weekly/`|Collect the feedback issues created in a period, cluster them by the classification labels they carry, and score each cluster on frequency / impact / human intervention / recurrence so a retrospective has an order to work through, printing each issue's `Suggested Improvement` under its cluster so the agenda does not require opening every issue. Recurrence weighs heaviest: a problem that reappears across windows is a foundation problem rather than one person's slip. Also names the windows whose merge wait exceeded their implementation time, since working faster does not shorten those, and — taking a closed feedback issue as the signal that an improvement landed — reports whether the same classification has come back since. It reports the recurrence and never the verdict: keep, simplify or revert is decided in the retrospective.|`make closed-loop-weekly FROM=<date> TO=<date>` / weekly workflow|
+ボイラープレートから新規プロジェクトを作成する際の設定スクリプトです。
 
-### Initial Setup (`setup/` / `repo-setup/`)
-
-Scripts for configuring the boilerplate when creating a new project from this template.
-
-|Script|Description|
+|スクリプト|説明|
 |---|---|
-|`replace-module/`|Replace Go module name across all `.go`, `go.mod`, etc. <!-- setup-localize:line -->|
-|`replace-app-metadata/`|Replace app name/description in env files and OpenAPI spec <!-- setup-localize:line -->|
-|`replace-license-copyright/`|Replace LICENSE copyright holder and year <!-- setup-localize:line -->|
-|`replace-repository-reference/`|Replace GitHub repository references in READMEs and OpenAPI <!-- setup-localize:line -->|
-|`replace-codeowners/`|Replace the owner of every rule in `.github/CODEOWNERS`. Comment lines keep their example owner, and a rule whose owner field is unrecognizable is reported instead of rewritten. <!-- setup-localize:line -->|
-|`remove-sample-api/`|Remove the sample API (`user`/`prefecture`/`product`/`order`): deletes paths declared in `sample-manifest.ts` and strips `sample-api` marker blocks from the shared DI modules and `openapi.yaml`. Run via `make setup-remove-sample-api` to also regenerate/format/lint. <!-- sample-api:line -->|
-|`repo-setup/`|The git / gh half of initialising this boilerplate as your own repository: `preflight` refuses to proceed when a `v0.0.0` tag is present, `bootstrap` recreates the tags, prepares `develop` / `staging` / `production` and moves the default branch, and `prune-release-notes` deletes every release note but `v0.0.0.md`. Labels, rulesets and workflow enablement stay in `setup-repository.mk`, which owns the overall chain. Here too the steps are Go because deleting tags in bulk and moving the default branch cannot be rehearsed without breaking a real repository.|
-|`remove-doc-language/`|Fold the documentation / skill translation pairs into a single language (`--lang en\|ja\|both`). `en` deletes every `*.ja.md`; `ja` renames each translation onto the canonical name and transplants the canonical's frontmatter, so `SKILL.md` stays loadable. Prose that explains the pairing convention is not folded mechanically — it is carried by `doc-pair` markers, or declared in `language-manifest.ts`, and an undeclared line stops the run before anything is written. <!-- doc-pair:line -->|
+|`replace-module/`|Go モジュール名を全 `.go`、`go.mod` 等で置換 <!-- setup-localize:line -->|
+|`replace-app-metadata/`|env ファイルと OpenAPI 仕様のアプリ名・説明を置換 <!-- setup-localize:line -->|
+|`replace-license-copyright/`|LICENSE の著作権者名と年を置換 <!-- setup-localize:line -->|
+|`replace-repository-reference/`|README と OpenAPI の GitHub リポジトリ参照を置換 <!-- setup-localize:line -->|
+|`replace-codeowners/`|`.github/CODEOWNERS` の全ルールの所有者を置換。コメント行は記載例を保つため対象外で、所有者欄を判定できないルール行は書き換えずに報告する。 <!-- setup-localize:line -->|
+|`remove-sample-api/`|サンプルAPI(`user`/`prefecture`/`product`/`order`)を削除。`sample-manifest.ts` に宣言したパスを削除し、共有 DI モジュールと `openapi.yaml` の `sample-api` マーカーブロックを除去する。再生成・整形・Lint まで行うには `make setup-remove-sample-api` 経由で実行する。 <!-- sample-api:line -->|
+|`repo-setup/`|boilerplate を自分のリポジトリとして初期化する際の git / gh 側の手順。`preflight` は `v0.0.0` タグがあれば中止し、`bootstrap` はタグを作り直して develop / staging / production を用意しデフォルトブランチを移し、`prune-release-notes` は `v0.0.0.md` 以外のリリースノートを削除する。ラベル・ルールセット・ワークフローの有効化は全体の連鎖を持つ `setup-repository.mk` に残る。ここも Go なのは、タグの一括削除やデフォルトブランチの移動が、実物のリポジトリを壊さずには試せないためである。|
 
-All setup scripts support `--dry-run` for preview.
+すべての setup スクリプトはプレビュー用の `--dry-run` をサポートしています。
 <!-- sample-api:begin -->
 
-The deletion targets are declared in [`sample-manifest.ts`](setup/remove-sample-api/sample-manifest.ts) and the marker-stripping rules in [`sample-api.ts`](setup/remove-sample-api/sample-api.ts). The sample spans several full-stack domains, so expanding it only requires appending paths to the matching domain block and wrapping interleaved lines with the `sample-api:begin … sample-api:end` markers (or `sample-api:line`).
+削除対象は [`sample-manifest.ts`](setup/remove-sample-api/sample-manifest.ts) に、マーカー除去の規則は [`sample-api.ts`](setup/remove-sample-api/sample-api.ts) に宣言されています。サンプルは複数のフルスタックドメインからなり、拡張時は該当ドメインブロックにパスを追記し、混在行を `sample-api:begin … sample-api:end`（または `sample-api:line`）で囲むだけで対象に含まれます。
 
-#### Where a marker may sit
+#### マーカーを置ける場所
 
-A marker only fires inside a comment, and which comment forms are available is decided by where the
-line lives, not by the file's extension. Getting this wrong fails in two directions: the marker is
-not recognised and the line survives the removal, or it is recognised but its own presence breaks
-the document while the sample is still there. Both are silent until a lint or a post-removal build
-catches them, and only `sample-removal-check` sees the second half of that.
+マーカーはコメントの中でしか効かず、どのコメント形が使えるかは拡張子ではなく**その行が置かれている
+文脈**で決まります。取り違えると失敗は 2 方向に出ます。認識されずに撤去後まで行が残るか、認識される
+代わりにマーカー自身がサンプル在中の文書を壊すかです。どちらも lint か撤去後のビルドまで黙っており、
+後者を見るのは `sample-removal-check` だけです。
 
-Below, `<marker>` stands for the marker name and suffix (`sample-api` + `:begin` / `:end` / `:line` /
-`:replace-*`) — spelled out here with its comment prefix, this page would become a marker itself.
+以下の `<marker>` はマーカー名と接尾辞（`sample-api` ＋ `:begin` / `:end` / `:line` / `:replace-*`）を
+指します。コメント接頭辞まで書くと、この頁自身がマーカーになるためです。
 
-|Context|Form that works|Why the others do not|
+|文脈|効く形|他が使えない理由|
 |---|---|---|
-|Markdown prose|`<marker>` in an HTML comment, `:begin` and `:end` on their own lines|Nothing else is a comment here|
-|Markdown table row|The `:line` form **inside the last cell**, before the closing `\|`|A comment on its own line ends the table. Match the table's own spacing: a tight table (`\|a\|b\|`) takes the comment with no surrounding space, a loose one (`\| a \| b \|`) with it — otherwise MD060|
-|Markdown list item|Marker lines indented to the item's continuation indent|A comment at column 0 splits the list (MD032 / MD007)|
-|Fenced code|The fence language's own comment (`//` for Go)|An HTML comment inside a fence renders as text|
-|mermaid fence|`%%`, and **block form only**|mermaid takes comments on their own line, so there is no trailing form. Mark the edges and the `class` line that name the node too, not just the node|
-|YAML block scalar|Nothing works inside it — wrap the whole key from outside with `replace`|YAML has `#` comments, but inside a block scalar (`>-`, `\|`) a `#` line is part of the string, so the marker becomes the value's own text and the scalar keeps it after the removal|
-|Go declaration|`:begin` goes **above the doc comment**|A doc comment left outside survives alone at end of file, and `gofmt` does not remove it|
-|Go import|The `:line` form on the import line|An import used only inside a marked region fails `typecheck` once the region is gone|
+|Markdown 散文|HTML コメント内の `<marker>`。`:begin` と `:end` は独立行|ここではこれ以外がコメントにならない|
+|Markdown の表の行|`:line` 形を**最後のセルの中**（閉じ `\|` の手前）へ|独立行のコメントは表を切る。空白はその表の記法に合わせる。詰めた表（`\|a\|b\|`）は前後に空白を置かず、緩い表（`\| a \| b \|`）は置く。違えると MD060|
+|Markdown の箇条書き|マーカー行をその項目の継続インデントに揃える|列 0 のコメントは箇条書きを分断する（MD032 / MD007）|
+|コードフェンス|フェンスの言語自身のコメント（Go なら `//`）|フェンス内の HTML コメントは本文として描画される|
+|mermaid フェンス|`%%`、かつ**ブロック形のみ**|mermaid のコメントは独立行なので行末形が無い。ノードだけでなく、それを名指す辺と `class` 行にも付ける|
+|YAML のブロックスカラー|中には置けない。キーごと外側から `replace` で囲む|YAML には `#` コメントがあるが、ブロックスカラー（`>-` / `\|`）の中では `#` 行が文字列の一部になる。マーカーが値の本文そのものになり、撤去後もスカラーに残る|
+|Go の宣言|`:begin` を **doc コメントより前**へ|外に残った doc コメントはファイル末尾へ孤児として残り、`gofmt` でも消えない|
+|Go の import|import 行に `:line` 形|マーカー領域の中でしか使われない import は、領域が消えた時点で `typecheck` に落ちる|
 
-Two rules for the `replace` escrow (the lines beginning `=`):
+`replace` の退避行（`=` で始まる行）については 2 点:
 
-- The resulting indentation is the escrow line's own leading whitespace **plus** whatever the content
-  carries. Write the indent once, not twice.
-- Never put an HTML comment inside an HTML-comment escrow. The first `-->` closes the outer comment
-  and the remainder leaks into the rendered page. Keep such a comment outside the `replace` block —
-  which is where a guidance comment belongs anyway, since it has to survive the removal.
+- 結果のインデントは、退避行自身の先頭空白と本文が持つ空白の**合計**になります。インデントは二重に
+  書かないこと。
+- HTML コメントの退避行の中に HTML コメントを入れないこと。最初の `-->` が外側を閉じ、残りが本文として
+  描画されます。そうしたコメントは `replace` ブロックの外へ置きます——撤去後も残る必要がある指針
+  コメントは、そもそもそこが置き場です。
 
-A whole construct that cannot hold a marker — a `sql` or `text` fence, a table the change restructures
-— is wrapped from the outside with `replace`, substituting the entire construct rather than a line
-inside it.
+マーカーを持てない構造そのもの（`sql` / `text` フェンス、変更が組み替える表など）は、中の 1 行ではなく
+構造ごと外側から `replace` で囲んで差し替えます。
 
-Adding or removing a marker line moves the count `scripts/marker-baseline/baseline.json` pins, so
-regenerate it (`tsx scripts/marker-baseline --write`) in the same change. A file that carries the
-marker form as *data* rather than as an instruction goes in `MARKER_LITERAL_FILES` instead — but only
-a file with no real markers of its own, since that declaration removes it from the scan entirely.
+マーカー行の増減は `scripts/marker-baseline/baseline.json` が固定している件数を動かすので、同じ変更の中で
+再生成（`tsx scripts/marker-baseline --write`）してください。マーカーの形を指示ではなく**データ**として
+持つファイルは、代わりに `MARKER_LITERAL_FILES` へ宣言します——ただしその宣言は走査から丸ごと外すので、
+本物のマーカーを 1 つも持たないファイルに限ります。
 <!-- sample-api:end -->
 
-## Test Strategy
+## テスト戦略
 
-These tools are not a layer, so no layer README governs them; per section 11 of
-[`docs/testing-conventions.md`](../docs/testing-conventions.md) their viewpoints live here. The
-cross-cutting structure rules (`t.Parallel()`, subtest groups, assertions) still come from that
-document — only the viewpoints below are local. They hold for the Go tools and the TypeScript ones
-alike: the runner differs (`make test-scripts` vs. `make scripts-test`), the viewpoints do not.
+このツール群は層ではないため、それを統べる層 README は存在しません。
+[`docs/testing-conventions.md`](../docs/testing-conventions.md) の 11 節に従い、観点はここが持ちます。
+横断的な構造規則（`t.Parallel()`・サブテストのグループ・アサーション）は引き続きその文書が持ち、
+ここが持つのは以下の観点だけです。観点は Go のツールにも TypeScript のツールにも等しく効きます。
+違うのは走らせ方（`make test-scripts` か `make scripts-test` か）であって観点ではありません。
 
-- **Test the decision, not the shell around it.** Each tool splits into an entry that only reads
-  files, prints, and sets an exit code, and the decision modules beside it. In Go that entry is
-  `main` plus a `run` that takes its impure dependencies as arguments — the working directory, an
-  HTTP client, the current time, a coverage total, a command runner — so the dispatch itself is
-  reachable from a test. In TypeScript it is `index.ts`, which holds no branch at all: what it may
-  not contain, and why, is declared in [`lib/untested-modules.ts`](lib/untested-modules.ts). A
-  module named there is claimed to hold no decision, so the claim has to stay true — when one of
-  them turns out to own a rule (an ordering, a dry-run equivalence, a safety guard), it leaves the
-  declaration rather than keeping the exemption.
-- **Pin the degenerate input, not just the violation.** Most of these tools are gates, and a gate
-  fails towards *inspecting nothing and reporting a clean run*. A malformed glob pattern, an
-  unreadable target file, a lockfile line that does not parse, and an empty scan therefore each get
-  a case asserting an error — never a silent fall-back to zero findings. This is the viewpoint that
-  keeps "found no violations" distinguishable from "looked at nothing".
-- **Assert on the sentinel, not on the message.** Every failure mode is a package-level sentinel and
-  tests reach it with `require.ErrorIs`. A substring assertion is added on top when the message
-  carries something a caller acts on — which file drifted, which key failed — but never as the only
-  check, or a reworded message quietly becomes a passing test for the wrong error.
-- **Give every window both of its sides.** Where a tool compares against a threshold — a cooldown
-  window in days, a coverage percentage — the case pair is the boundary value itself and the value
-  one step below it. A single comfortably-inside case cannot tell `>=` from `>`.
-- **Stub the external world at its own boundary.** `docker` and `npm` are replaced by a shell script
-  placed first on `PATH` so the argument list a tool composes is itself under test; the GitHub API
-  and the module registries are replaced by an `httptest` server. `t.Setenv` makes the `PATH` cases
-  incompatible with `t.Parallel()`, which is declared per case rather than worked around.
-  `actions-shellcheck` is the exception: it drives the real `shellcheck` and skips when absent, and
-  `REQUIRE_SHELLCHECK` exists so that skip cannot pass for a run.
-- **An irreversible step is verified as a plan, never performed.** `release` and `repo-setup` push
-  tags, cut GitHub Releases and move the default branch, so their steps go through a `runner` seam
-  and the tests assert the composed command sequence and the abort conditions. Exercising these for
-  real would mean actually releasing.
-- **Prove that a failed run wrote nothing.** A tool that rewrites files decides everything before it
-  writes, so an abort partway through must leave the working tree untouched. The assertion is on the
-  file contents after the error, not merely on the error.
-- **Treat the reported text as the contract where it is the only output.** A drift list, a
-  `::warning::` annotation, a quarantine note — a human or a CI annotation reads exactly that, so
-  those cases capture the standard logger and assert on what was emitted.
-- **Fixtures live under `t.TempDir()`, never in the real tree.** A test that reads the repository's
-  own workflows or lockfiles passes or fails with today's contents and has stopped being about the
-  tool.
+- **判定を検査し、その外側の入口は検査しない。** どのツールも、ファイルを読み・出力し・終了コードを
+  返すだけの入口と、その隣に並ぶ判定モジュールへ分かれる。Go では入口が `main` と `run` で、`run` は
+  不純な依存——作業ディレクトリ・HTTP クライアント・現在時刻・カバレッジ総量・コマンド実行器——を
+  引数で受け、振り分けそのものをテストから触れるようにする。TypeScript では入口は `index.ts` で、
+  分岐を一切持たない。何を持ってはいけないかとその理由は
+  [`lib/untested-modules.ts`](lib/untested-modules.ts) が宣言する。そこに載ったモジュールは
+  「判定を持たない」と主張していることになるので、その主張は真であり続けなければならない。
+  規則（並び順・ドライランの同値性・安全策）を持っていたと分かったモジュールは、免除を保つのではなく
+  宣言から外す。
+- **違反だけでなく退化した入力も固定する。** これらの多くはゲートであり、ゲートは*何も検査せずに
+  「違反なし」を報告する*向きに倒れる。したがって、解釈できない glob パターン・読めない対象ファイル・
+  代入として読めない lockfile 行・空の走査には、それぞれエラーを主張するケースを置く。0 件へ黙って
+  縮退させることはしない。「違反が無かった」と「何も見ていない」を区別し続けるための観点である。
+- **メッセージではなく sentinel を主張する。** 失敗の種類はすべて package レベルの sentinel であり、
+  テストは `require.ErrorIs` でそれを特定する。呼び出し側が行動に使う情報——どのファイルがずれたか、
+  どのキーで失敗したか——を運ぶ場合に限り部分一致を重ねるが、それを唯一の検査にはしない。
+  そうすると文言を書き換えただけで、別のエラーに対する合格テストへ静かに化ける。
+- **窓は必ず両側を与える。** しきい値と比較するツール——日数の cooldown 窓、カバレッジの下限——では、
+  境界値ちょうどと、そこから 1 段外れた値を対で置く。余裕を持って内側にあるケース 1 本では
+  `>=` と `>` を区別できない。
+- **外部は自分の境界でスタブする。** `docker` と `npm` は `PATH` の先頭へ置いたシェルスクリプトで
+  差し替え、ツールが組み立てる引数列そのものを検査対象にする。GitHub API と各レジストリは
+  `httptest` サーバへ差し替える。`t.Setenv` を使う `PATH` 系のケースは `t.Parallel()` と両立しないため、
+  回避せずケース単位で宣言する。`actions-shellcheck` だけは例外で、実物の `shellcheck` を呼び、
+  無ければ skip する。その skip を実行と取り違えないために `REQUIRE_SHELLCHECK` がある。
+- **不可逆な手順は計画として検証し、実行しない。** `release` と `repo-setup` はタグを push し、
+  GitHub Release を作り、デフォルトブランチを移す。そのため各手順は `runner` の継ぎ目を通し、
+  テストは組み立てたコマンド列と中止条件を主張する。実際に走らせて確かめることは、
+  本当にリリースすることを意味する。
+- **失敗した実行が何も書いていないことを示す。** ファイルを書き換えるツールは、書き込む前にすべてを
+  決める。途中で中止したときに作業ツリーが元のままであることが要件なので、アサーションはエラーだけで
+  なく中止後のファイル内容に対して置く。
+- **出力文言が唯一の成果物である場合は、それを契約として扱う。** drift の一覧・`::warning::` の
+  アノテーション・検疫のノートは、人間や CI のアノテーションがまさにそれを読む。だからこれらのケースは
+  標準ロガーを捕まえ、何が出力されたかを主張する。
+- **フィクスチャは `t.TempDir()` 配下に置き、実ツリーには置かない。** リポジトリ自身のワークフローや
+  lockfile を読むテストは、その日の内容次第で合否が変わり、ツールについてのテストではなくなる。
 
-## Notes
+## 注意点
 
-- The Go tools' unit tests run through `make test-scripts` / `make test-scripts-cached` alone —
-  `make test` excludes `scripts/`. How they are wired is in
-  [`.makefiles/README.md`](../.makefiles/README.md)
-- `actions-shellcheck`'s tests shell out to the real `shellcheck` and skip themselves when it is
-  absent. `REQUIRE_SHELLCHECK` turns those skips into failures, because a skip is invisible in the
-  default output and would leave a run green while checking less than it reports
-- The TypeScript scripts run through `tsx` and are type-checked with `tsc`; their dependencies are
-  declared here (`package.json` + `pnpm-lock.yaml` + `pnpm-workspace.yaml`) and installed into
-  `scripts/node_modules` by the `node_tool_runner` image build and by the CI jobs that need them
-- Every entry point is invoked as `pnpm --dir scripts <script>` rather than through
-  `node_modules/.bin`, because `pnpm-workspace.yaml`'s `verifyDepsBeforeRun` only inspects the
-  installed tree when a run goes through pnpm. The `tsx` entry returns to the repository root
-  first: the scripts resolve their relative paths from there
-- Their decision logic lives beside each entry (`scripts/<tool>/*.ts`), in `scripts/lib/**` when it is
-  shared, and in `scripts/portal/*.ts`, separated from the CLI entry points on purpose: five of these scripts are gates, and a gate that stops inspecting reports
-  a clean run rather than an error. `make scripts-test` / `make scripts-typecheck` are what keep a
-  silent no-op from passing for a pass, and CI runs them in `scripts-check.yaml`
-- Setup scripts run after the sample API (and parts of this tooling) has been removed, so they must
-  not rely on the rest of the tree still being there. `remove-sample-api.ts` deletes its own manifest
-  and marker logic, and `verify-sample-removal.ts` deletes itself, its decision module and that
-  module's test once the verification passes
-- Setup scripts are one-time use — run when creating a new project from the boilerplate
-- AI agents should not modify this directory unless explicitly instructed
+- Go ツールのユニットテストを実行するのは `make test-scripts` / `make test-scripts-cached` だけ。
+  `make test` は `scripts/` を除外する。配線の詳細は
+  [`.makefiles/README.md`](../.makefiles/README.md) を参照
+- `actions-shellcheck` のテストは実物の `shellcheck` を呼び、無い環境では自分で skip する。
+  `REQUIRE_SHELLCHECK` を立てるとその skip を失敗に変える。skip は既定の出力に現れないため、
+  そのままでは「緑だが報告より少なくしか検査していない」状態が残る
+- TypeScript のスクリプトは `tsx` で実行し `tsc` で型検査する。依存はここが宣言し
+  （`package.json` + `pnpm-lock.yaml` + `pnpm-workspace.yaml`）、`node_tool_runner` のイメージ
+  ビルドと、必要とする CI ジョブが `scripts/node_modules` へ展開する
+- 入口はいずれも `node_modules/.bin` ではなく `pnpm --dir scripts <script>` で起動する。
+  `pnpm-workspace.yaml` の `verifyDepsBeforeRun` は pnpm を通った実行しか検査しないため。
+  `tsx` の入口は先にリポジトリルートへ戻る。スクリプトはそこを基点に相対パスを解決する
+- 判定ロジックは CLI の入口から切り離して `scripts/lib/**` と `scripts/portal/*.ts` に置く。
+  これらのうち 5 本はゲートであり、検査をやめたときエラーではなく「違反なし」を報告する向きに
+  倒れる。`make scripts-test` / `make scripts-typecheck` が、その沈黙を合格と取り違えないための
+  歯止めで、CI では `scripts-check.yaml` が回す
+- setup スクリプトはサンプル API（およびこのツール群の一部）を撤去した後に走るため、残りのツリーが
+  在ることを前提にできない。`remove-sample-api.ts` は自身の manifest とマーカー除去ロジックごと消え、
+  `verify-sample-removal.ts` は検証を通した後に自身と判定モジュール・そのテストを消す
+- setup スクリプトは一度だけ使用 — ボイラープレートから新規プロジェクト作成時に実行
+- AI エージェントは明示的な指示がない限りこのディレクトリを変更しないこと

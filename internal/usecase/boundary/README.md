@@ -1,104 +1,104 @@
 # boundary
 
-`internal/usecase/boundary` defines the **interfaces that the Usecase layer requires from external layers (Infrastructure)**.
+`internal/usecase/boundary` は、**Usecase 層が外部（Infrastructure 層）に要求するインターフェース群**を定義するディレクトリです。
 
-## Position in Onion Architecture
+## オニオンアーキテクチャにおける位置づけ
 
 ```mermaid
 flowchart TB
-    subgraph "Usecase Layer"
-        Boundary["boundary (interface definitions)"]
-        UC["Usecase impl"]
+    subgraph "Usecase 層"
+        Boundary["boundary（interface 定義）"]
+        UC["Usecase 実装"]
     end
-    subgraph "Infrastructure Layer"
-        Impl["Concrete impl"]
+    subgraph "Infrastructure 層"
+        Impl["具体実装"]
     end
 
     UC --> Boundary
     Impl -. implements .-> Boundary
 ```
 
-boundary is the mechanism for achieving the **Dependency Inversion Principle (DIP)**.
+boundary は **依存性逆転の原則（DIP）** を実現するための境界です。
 
-- Usecase depends only on boundary interfaces
-- Infrastructure provides concrete implementations
-- Usecase has no knowledge of Infrastructure implementation details
+- Usecase は boundary の interface にのみ依存する
+- Infrastructure が具体実装を提供する
+- Usecase は Infrastructure の実装詳細を知らない
 
-### Difference from Domain Repository Interface
+### Domain の Repository interface との違い
 
-|Aspect|Domain Repository|Usecase Boundary|
+|観点|Domain Repository|Usecase Boundary|
 |---|---|---|
-|Definition location|Domain layer|Usecase layer|
-|Purpose|Aggregate persistence abstraction|Abstraction of external capabilities needed by Usecase|
-|Scope|Persistence (CRUD)|Auth / encryption / time / transaction / job, etc.|
+|定義場所|Domain 層|Usecase 層|
+|目的|Aggregate の永続化抽象|Usecase が必要とする外部機能の抽象|
+|対象|永続化（CRUD）|認証 / 暗号化 / 時刻 / トランザクション / ジョブ等|
 
-Domain Repository abstracts "how to persist Aggregates", while Usecase Boundary abstracts "external capabilities Usecase needs to execute business flows".
+Domain Repository は「Aggregate をどう保存するか」を抽象化するのに対し、Usecase Boundary は「Usecase がビジネスフローを実行するために必要な外部機能」を抽象化します。
 
-## Package List
+## パッケージ一覧
 
-|Package|Interface|Description|Implementation|
+|パッケージ|interface|説明|実装場所|
 |---|---|---|---|
-|`address`|`Gateway`|Semantic gateway to an external postal-address lookup service (sample of the `<service>.Gateway` pattern)|`internal/infrastructure/webapi/address/`<!-- sample-api:line -->|
-|`auth`|`Authenticator`|Obtain auth info (`Authn`) from token|`internal/infrastructure/auth/`|
-|`authz`|`Authorizer`|Decide whether a subject may perform an action on a resource|`internal/infrastructure/authz/`|
-|`clock`|`Clock`|Retrieve current time|`internal/infrastructure/system/`|
-|`exchangerate`|`Gateway`|Semantic gateway to an external exchange-rate service (sample of the `<service>.Gateway` pattern)|`internal/infrastructure/webapi/exchangerate/`<!-- sample-api:line -->|
-|`idempotency`|`Store`|Idempotency-key persistence boundary (claim / replay / conflict)|`internal/infrastructure/rdb/system_cqrs/idempotency/`|
-|`job`|`Job`, `Runner`, `State`|Job definition, execution, state management|`internal/controller/job/`|
-|`objectstorage`|`Storage`|Substrate-agnostic object-storage boundary (`Put` / `List` / `Delete` objects by key)|`internal/infrastructure/objectstorage/s3/`|
-|`outbox`|`Store`|Transactional outbox table persistence boundary|`internal/infrastructure/rdb/system_cqrs/outbox/`|
-|`publisher`|`Publisher`|Substrate-agnostic outbound message publish boundary|`internal/infrastructure/publisher/`|
-|`token`|`Generator`|Generate unguessable opaque token strings|`internal/infrastructure/token/`<!-- sample-api:line -->|
-|`tx`|`Manager`|Transaction boundary management|`internal/infrastructure/rdb/driver/`|
-|`worker`|`Consumer`, `Handler`, `FailureHandler`, `Worker`, `State`|Broker-agnostic worker seam (pull-ack)|`internal/infrastructure/queue/sqs/`|
+|`address`|`Gateway`|外部の住所検索サービスへの意味的ゲートウェイ（`<service>.Gateway` パターンのサンプル）|`internal/infrastructure/webapi/address/`<!-- sample-api:line -->|
+|`auth`|`Authenticator`|トークンから認証情報（`Authn`）を取得|`internal/infrastructure/auth/`|
+|`authz`|`Authorizer`|認証主体がリソースに対し操作を実行してよいか判定|`internal/infrastructure/authz/`|
+|`clock`|`Clock`|現在時刻の取得|`internal/infrastructure/system/`|
+|`exchangerate`|`Gateway`|外部為替レート取得サービスへの意味的 gateway（`<service>.Gateway` パターンのサンプル）|`internal/infrastructure/webapi/exchangerate/`<!-- sample-api:line -->|
+|`idempotency`|`Store`|冪等性キーの永続化境界（claim / replay / 競合判定）|`internal/infrastructure/rdb/system_cqrs/idempotency/`|
+|`job`|`Job`, `Runner`, `State`|ジョブの定義・実行・状態管理|`internal/controller/job/`|
+|`objectstorage`|`Storage`|実体非依存のオブジェクトストレージ境界（キー指定でオブジェクトを `Put` / `List` / `Delete` する）|`internal/infrastructure/objectstorage/s3/`|
+|`outbox`|`Store`|トランザクショナル outbox テーブルの永続化境界|`internal/infrastructure/rdb/system_cqrs/outbox/`|
+|`publisher`|`Publisher`|publish 先非依存の outbound メッセージ publish 境界|`internal/infrastructure/publisher/`|
+|`token`|`Generator`|推測できない不透明なトークン文字列を生成する|`internal/infrastructure/token/`<!-- sample-api:line -->|
+|`tx`|`Manager`|トランザクション境界の管理|`internal/infrastructure/rdb/driver/`|
+|`worker`|`Consumer`, `Handler`, `FailureHandler`, `Worker`, `State`|broker 非依存の worker seam（pull-ack）|`internal/infrastructure/queue/sqs/`|
 
-## Package Details
+## 各パッケージの詳細
 
 ### auth
 
-Provides interfaces and value objects for authentication.
+認証に関するインターフェースと値オブジェクトを提供します。
 
-|Type / Function|Description|
+|型 / 関数|説明|
 |---|---|
-|`Authenticator`|Interface to generate `Authn` from `Credential`|
-|`Authn`|Authentication result (subject / userID / issuer / scopes / claims)|
-|`New(subject, issuer, scopes, claims)`|Create `Authn` with the UserID unresolved (empty subject returns `ErrUnauthenticatedSubjectMissing`)|
-|`WithUserID(userID)`|Return a copy of `Authn` with the internal UserID resolved (a zero-value UUID returns `ErrUserIDZero`)|
-|`Credential`|Value object holding the auth scheme + token|
-|`NewCredential(scheme, token)`|Create `Credential` (empty token returns `ErrTokenMissing`)|
-|`IdentityResolver`|Interface to resolve an authenticated external identity (issuer + subject) to an internal user; applied after authentication succeeds|
+|`Authenticator`|`Credential` から `Authn` を生成するインターフェース|
+|`Authn`|認証結果（subject / userID / issuer / scopes / claims）|
+|`New(subject, issuer, scopes, claims)`|`Authn` を UserID 未解決の状態で生成（subject 空は `ErrUnauthenticatedSubjectMissing`）|
+|`WithUserID(userID)`|内部 UserID を解決した `Authn` の複製を返す（ゼロ値 UUID は `ErrUserIDZero`）|
+|`Credential`|認証スキームとトークンを保持する値オブジェクト|
+|`NewCredential(scheme, token)`|`Credential` を生成（空トークンは `ErrTokenMissing`）|
+|`IdentityResolver`|認証済みの外部アイデンティティ（issuer + subject）を内部ユーザーへ解決するインターフェース。認証成功後に適用|
 
-Errors:
+エラー：
 
-|Error|Description|
+|エラー|説明|
 |---|---|
-|`ErrUnauthenticatedSubjectMissing`|Subject is empty|
-|`ErrUserIDUnresolved`|Internal UserID is unresolved|
-|`ErrUserIDZero`|`WithUserID()` was given a zero-value UUID|
-|`ErrTokenMissing`|Token is empty|
-|`ErrIdentityNotFound`|No internal user corresponds to the authenticated identity|
-|`ErrUserUnavailable`|The corresponding internal user exists but is unusable (e.g. deleted)|
+|`ErrUnauthenticatedSubjectMissing`|subject が空|
+|`ErrUserIDUnresolved`|内部 UserID が未解決|
+|`ErrUserIDZero`|`WithUserID()` にゼロ値 UUID が渡された|
+|`ErrTokenMissing`|トークンが空|
+|`ErrIdentityNotFound`|認証されたアイデンティティに対応する内部ユーザーが存在しない|
+|`ErrUserUnavailable`|対応する内部ユーザーは存在するが利用できない状態（削除済み等）|
 
 ### authz
 
-Provides the interface and value objects for authorization — the counterpart to `auth`. The Usecase layer is the enforcement point (PEP): it calls `Authorize(...)` and maps a deny to `apperror.ErrPermissionDenied` (403).
+認可に関するインターフェースと値オブジェクトを提供します（`auth` と対になる存在）。強制点（PEP）は Usecase 層であり、`Authorize(...)` を呼び、拒否時に `apperror.ErrPermissionDenied`（403）へ対応づけます。
 
-|Type / Function|Description|
+|型 / 関数|説明|
 |---|---|
-|`Authorizer`|Interface deciding whether `authn` may perform `action` on `resource` (`Authorize(ctx, *auth.Authn, Action, *Resource) error`)|
-|`Action`|Operation being authorized (e.g. `ActionUserDelete` = `"user:delete"`)|
-|`Resource`|Target resource carrying `Kind()` and optional `OwnerID()`, so ownership-based (object-level) decisions are expressible|
-|`NewResource(kind, ownerID)`|Create a `Resource`|
+|`Authorizer`|`authn` が `resource` に対し `action` を実行してよいか判定するインターフェース（`Authorize(ctx, *auth.Authn, Action, *Resource) error`）|
+|`Action`|認可対象の操作（例: `ActionUserDelete` = `"user:delete"`）|
+|`Resource`|対象リソース。`Kind()` と任意の `OwnerID()` を持ち、所有権ベース（オブジェクトレベル）の判定を表現可能|
+|`NewResource(kind, ownerID)`|`Resource` を生成|
 
-Errors:
+エラー：
 
-|Error|Description|
+|エラー|説明|
 |---|---|
-|`ErrForbidden`|Authorization denied (wraps `apperror.ErrPermissionDenied`, HTTP 403)|
+|`ErrForbidden`|認可拒否（`apperror.ErrPermissionDenied` をラップ、HTTP 403）|
 
-Passing the full `auth.Authn` (subject / scopes / claims) plus the target `Resource` lets both RBAC (roles from claims) and ownership (subject == OwnerID) models be expressed. The default implementation is allow-all and restricted to non-production environments.
+`auth.Authn`（subject / scopes / claims）と対象 `Resource` を渡すことで、RBAC（claims からロール）と所有権（subject == OwnerID）の双方を表現できます。デフォルト実装は全許可であり、本番以外の環境に限定されます。
 
-Passing `ownerID = nil` to `NewResource` declares an **ownerless** resource — the caller is stating that no ownership claim applies, not that the owner is unknown. What an `Authorizer` makes of that is its own policy, but no ownership comparison can succeed against such a resource, so any ownership-based rule can only narrow access, never widen it. Omitting the owner is therefore the safe direction to fail in.
+`NewResource` に `ownerID = nil` を渡すことは、**所有者を持たない**リソースの宣言です。所有者が不明という意味ではなく、所有権による主張が適用されないことを呼び出し側が表明しています。それを `Authorizer` がどう扱うかは各実装のポリシーですが、そうしたリソースに対して所有権の一致が成立することはないため、所有権に基づく規則はアクセスを狭める方向にしか働きません。所有者の指定を省くことは、安全側に倒れる選択です。
 
 ### clock
 
@@ -112,81 +112,81 @@ type Sleeper interface {
 }
 ```
 
-Abstraction to prevent Domain / Usecase from depending directly on `time.Now()`. Allows mock substitution in tests. `Sleeper` does the same for waiting, so backoff and retry can be exercised without real sleeping.
+Domain / Usecase が `time.Now()` に直接依存しないための抽象。テスト時にモック差し替え可能。`Sleeper` は待機について同じ役割を果たし、実時間 sleep なしで backoff とリトライを検証できます。
 
 <!-- sample-api:begin -->
 ### exchangerate
 
-Sample Gateway boundary: a semantic port to an external exchange-rate service (`<service>.Gateway` pattern). Keeps Usecase depending on a semantic port rather than `net/http` or a vendor SDK, and translates transport failures into `apperror` sentinels at the boundary.
+サンプルの Gateway 境界。外部為替レート取得サービスへの意味的 port（`<service>.Gateway` パターン）。Usecase が `net/http` やベンダー SDK ではなく意味的 port に依存するようにし、境界でトランスポート失敗を `apperror` sentinel へ変換します。
 
-|Type / Function|Description|
+|型 / 関数|説明|
 |---|---|
-|`Gateway`|Fetch a conversion rate via `GetRate(ctx, base, quote)`|
-|`Rate`|Output DTO (`Base` / `Quote` / `Value`)|
+|`Gateway`|`GetRate(ctx, base, quote)` で換算レートを取得|
+|`Rate`|出力 DTO（`Base` / `Quote` / `Value`）|
 <!-- sample-api:end -->
 
 ### idempotency
 
-Persistence boundary for idempotency keys. Every method requires a `scope` (no id-only lookup, to prevent cross-boundary access).
+冪等性キーの永続化境界。すべてのメソッドは `scope` 必須です（id 単独 lookup を持たない＝越境防止）。
 
-|Type / Function|Description|
+|型 / 関数|説明|
 |---|---|
-|`Store`|Idempotency-key persistence boundary interface|
-|`Claim(ctx, p)`|Create a claimed row; returns `claimed=true` when new, `false` when the key already exists (`ErrLockTimeout` on lock-wait timeout)|
-|`Get(ctx, scope, key)`|Return the stored state for `(scope, key)` (nil when absent)|
-|`Complete(ctx, p)`|Transition `claimed` → `completed` and store the response|
-|`DeleteExpired(ctx, cutoff, limit)`|Delete rows older than `cutoff` up to `limit` (GC), returning the count|
+|`Store`|冪等性キーの永続化境界インターフェース|
+|`Claim(ctx, p)`|claimed 行を作成。新規なら `claimed=true`、既存キーがあれば `false` を返す（ロック待ちタイムアウト時は `ErrLockTimeout`）|
+|`Get(ctx, scope, key)`|`(scope, key)` の保存済み状態を返す（無ければ nil）|
+|`Complete(ctx, p)`|`claimed` → `completed` へ遷移し結果を保存|
+|`DeleteExpired(ctx, cutoff, limit)`|`cutoff` より古い行を `limit` 件まで削除（GC）。削除件数を返す|
 
-Input / output value objects: `ClaimParams` / `CompleteParams` (inputs) and `Record` (stored state). Sentinel: `ErrLockTimeout` (mapped to 409 by the usecase).
+入出力の値オブジェクト：`ClaimParams` / `CompleteParams`（入力）、`Record`（保存済み状態）。sentinel: `ErrLockTimeout`（usecase 側で 409 へマップ）。
 
 ### job
 
-|Interface|Description|
+|interface|説明|
 |---|---|
-|`Job`|Job definition with `Name()` + `Execute(ctx, args)`|
-|`Runner`|Execute and list jobs via `Run(ctx, jobName, args)` + `Names()`|
-|`State`|Manage job execution state via `Set(name, args, done)` + `Snapshot()`|
+|`Job`|`Name()` + `Execute(ctx, args)` を持つジョブ定義|
+|`Runner`|`Run(ctx, jobName, args)` + `Names()` でジョブを実行・一覧|
+|`State`|`Set(name, args, done)` + `Snapshot()` でジョブ実行状態を管理|
 
 ### objectstorage
 
-Substrate-agnostic object-storage boundary. Usecase depends only on this port; the S3-compatible adapter (infrastructure) implements it, and vendor vocabulary (bucket / region / etag) never leaks across the boundary.
+実体非依存のオブジェクトストレージ境界。Usecase はこのポートにのみ依存し、S3 互換 adapter（infrastructure）が実装する。bucket / region / etag などの vendor 語彙は境界を越えて漏れない。
 
-|Type / Function|Description|
+|型 / 関数|説明|
 |---|---|
-|`Storage`|`Put(ctx, PutObject) (Path, error)` stores an object under its key. `List(ctx, ListQuery) (ListResult, error)` enumerates one page of matching objects. `Delete(ctx, keys []string) error` removes objects in bulk — an empty slice is a no-op, absent keys are not an error, and re-running with the same keys changes nothing. Failures return an `apperror` sentinel (e.g. `ErrUnavailable`)|
-|`PutObject`|Input DTO (`Key` / `Body` / `ContentType` / `CacheControl`); the caller assigns `Key` (e.g. `<prefix>/{uuid}.png`) and decides `CacheControl`, since cacheability follows from how the caller numbers keys (empty leaves it unset)|
-|`ListQuery`|Input DTO (`Prefix` / `Cursor` / `Limit`); an empty `Prefix` enumerates everything, `Cursor` is the opaque, adapter-defined boundary taken from a previous `ListResult.NextCursor`, and a `Limit` of zero or less leaves the page size to the adapter's default|
-|`ListResult`|One page of objects plus `NextCursor`; a non-empty `NextCursor` means more remain and is fed back as the next `ListQuery.Cursor`|
-|`Object`|A single enumerated object as the boundary describes it|
-|`Path`|The stored object path (key); the display URL is composed separately by the caller|
+|`Storage`|`Put(ctx, PutObject) (Path, error)` でオブジェクトをキー配下へ保存する。`List(ctx, ListQuery) (ListResult, error)` で条件に一致するオブジェクトを 1 ページ分列挙する。`Delete(ctx, keys []string) error` でまとめて削除する（空スライスは何もせず、存在しないキーもエラーにならず、同じキーで再実行しても結果は変わらない）。失敗時は `apperror` sentinel（例 `ErrUnavailable`）を返す|
+|`PutObject`|入力 DTO（`Key` / `Body` / `ContentType` / `CacheControl`）。`Key` は呼び出し側が採番し（例 `<接頭辞>/{uuid}.png`）、`CacheControl` も呼び出し側が決める。キャッシュ可否はキーの採番方針から導かれるため（空なら未設定）|
+|`ListQuery`|入力 DTO（`Prefix` / `Cursor` / `Limit`）。`Prefix` が空なら全件が対象。`Cursor` は直前の `ListResult.NextCursor` をそのまま渡す adapter 依存の不透明な境界で、`Limit` が 0 以下ならページサイズは adapter の既定値に委ねられる|
+|`ListResult`|1 ページ分のオブジェクトと `NextCursor`。`NextCursor` が非空なら続きがあり、次の `ListQuery.Cursor` に渡す|
+|`Object`|列挙されたオブジェクト 1 件を境界の語彙で表したもの|
+|`Path`|保存されたオブジェクトのパス（キー）。表示 URL は上位が別途組み立てる|
 
 ### outbox
 
-Persistence boundary for the transactional outbox table. The emit usecase and the relay engine (controller layer) both depend on it.
+トランザクショナル outbox テーブルの永続化境界。emit usecase と relay engine（controller 層）の双方が依存します。
 
-|Type / Function|Description|
+|型 / 関数|説明|
 |---|---|
-|`Store`|Outbox table persistence boundary interface|
-|`Insert(ctx, p)`|INSERT one outbox row within the business tx, returning the assigned `message_id`|
-|`ClaimPending(ctx, limit)`|Claim up to `limit` pending rows (`FOR UPDATE SKIP LOCKED`)|
-|`MarkPublished(ctx, id)`|Transition a published row to `published` (no-op unless still pending)|
-|`MarkFailed(ctx, id, lastErr)`|Increment `attempts`, record `last_error`, return the new attempt count|
-|`MarkDead(ctx, id)`|Transition a row to `dead` (no-op unless still pending)|
-|`ReplayDead(ctx, messageID)`|Return `dead` rows to `pending` (all dead rows when `messageID` is nil), returning the count|
-|`DeletePublished(ctx, cutoff, limit)`|Delete published rows older than `cutoff` up to `limit` (GC), returning the count|
-|`OldestPendingCreatedAt(ctx)`|Return the oldest pending row's `created_at` for the outbox-lag SLI (`ok=false` when none)|
+|`Store`|outbox テーブルの永続化境界インターフェース|
+|`Insert(ctx, p)`|業務 tx 内で outbox 行を 1 行 INSERT し、採番された `message_id` を返す|
+|`ClaimPending(ctx, limit)`|pending 行を最大 `limit` 件 claim（`FOR UPDATE SKIP LOCKED`）|
+|`MarkPublished(ctx, id)`|publish 成功行を `published` へ遷移（pending でなければ no-op）|
+|`MarkFailed(ctx, id, lastErr)`|`attempts` を加算し `last_error` を記録、加算後の試行回数を返す|
+|`MarkDead(ctx, id)`|行を `dead` へ遷移（pending でなければ no-op）|
+|`ReplayDead(ctx, messageID)`|`dead` 行を `pending` へ戻す（`messageID` が nil なら全 dead 行）。戻した件数を返す|
+|`DeletePublished(ctx, cutoff, limit)`|`cutoff` より古い published 行を `limit` 件まで削除（GC）。削除件数を返す|
+|`OldestPendingCreatedAt(ctx)`|最古 pending 行の `created_at` を返す（outbox-lag SLI 用、無ければ `ok=false`）|
 
-Input / output value objects: `EmitParams` (INSERT input) and `PendingMessage` (claimed unpublished row).
+入出力の値オブジェクト：`EmitParams`（INSERT 入力）、`PendingMessage`（claim した未 publish 行）。
 
 ### publisher
 
-Outbound publish boundary for domain events plus a substrate-agnostic message envelope. Both the relay engine (controller layer) and the publish adapter (infrastructure layer) depend on it.
+ドメインイベントの outbound publish 境界と、publish 先非依存のメッセージ封筒。relay engine（controller 層）と publish adapter（infrastructure 層）の双方が依存します。
 
-|Type / Function|Description|
+|型 / 関数|説明|
 |---|---|
-|`Publisher`|Boundary that sends a message to its destination|
-|`Publish(ctx, m)`|Send `m` to the destination; on failure returns an error and the relay re-sends on its next poll (at-least-once)|
-|`Message`|Substrate-agnostic message envelope built from an outbox row (exposes no `net/http` types)|
+|`Publisher`|メッセージを publish 先へ送る境界|
+|`Publish(ctx, m)`|`m` を publish 先へ送る。失敗時はエラーを返し relay の次 poll で再送（at-least-once）|
+|`Message`|outbox 行から構築する publish 先非依存のメッセージ封筒（`net/http` 等の型を露出しない）|
 
 <!-- sample-api:begin -->
 ### token
@@ -197,32 +197,31 @@ type Generator interface {
 }
 ```
 
-Produces an unguessable, opaque token string. Randomness is an effect, so a caller that reaches
-for it directly stops being reproducible — the same reason `clock` exists for time. The value's
-length and alphabet belong to the implementation; whether a string is acceptable as a particular
-kind of token is a rule of the type that holds it.
+推測できない不透明なトークン文字列を生成します。乱数は副作用であり、直接手を伸ばした呼び出し元は
+再現性を失います（時刻に対して `clock` が存在するのと同じ理由）。値の長さと文字集合は実装のもので、
+ある文字列が特定の種類のトークンとして妥当かどうかは、それを保持する型が持つ規則です。
 <!-- sample-api:end -->
 
 ### tx
 
-|Type / Function|Description|
+|型 / 関数|説明|
 |---|---|
-|`Manager`|Manage transaction boundaries via `Do(ctx, fn)`|
-|`DoWithResult[T](ctx, m, fn)`|Generic helper to return a value from within a transaction|
+|`Manager`|`Do(ctx, fn)` でトランザクション境界を管理|
+|`DoWithResult[T](ctx, m, fn)`|トランザクション内で値を返すジェネリクスヘルパー|
 
 ### worker
 
-|Type / Function|Description|
+|型 / 関数|説明|
 |---|---|
-|`Consumer`|Broker-agnostic message intake — `Receive` / `Ack` / `Nack` / `NackWithBackoff` / `Extend` (implemented by a broker adapter)|
-|`Handler`|Per-message business processing (must be idempotent)|
-|`FailureHandler`|Dead-letter sink for permanent failures|
-|`Worker`|Bundles Name / Consumer / Handler / FailureHandler|
-|`State`|Selected-worker state shared with the engine|
-|`QueueStatsProvider`|Optional queue depth / DLQ stats source for metrics|
+|`Consumer`|broker 非依存のメッセージ受信 — `Receive` / `Ack` / `Nack` / `NackWithBackoff` / `Extend`（broker adapter が実装）|
+|`Handler`|メッセージ単位の業務処理（冪等であること）|
+|`FailureHandler`|恒久失敗の dead-letter シンク|
+|`Worker`|Name / Consumer / Handler / FailureHandler を束ねる|
+|`State`|engine と共有する選択済み worker の状態|
+|`QueueStatsProvider`|メトリクス用の queue depth / DLQ 統計ソース（任意）|
 
-## Design Policy
+## 設計方針
 
-- boundary contains no business logic (only interfaces and value objects)
-- Importing Infrastructure is prohibited (dependency direction violation)
-- All interfaces have `mockgen` auto-generation configured
+- boundary にはビジネスロジックを含めない（interface と値オブジェクトのみ）
+- Infrastructure の import は禁止（依存方向の違反）
+- すべての interface に `mockgen` による mock 自動生成を設定

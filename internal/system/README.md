@@ -1,26 +1,26 @@
 # internal/system
 
-`internal/system` is a package that provides **runtime metadata (build information)** for the application.
+`internal/system` は **アプリケーションのランタイムメタ情報（ビルド情報）** を提供するパッケージです。
 
-This package handles **process metadata** that is independent of business logic and infrastructure.  
-It enables the application to retrieve **version information, Git revision, and build timestamp**.
+このパッケージはビジネスロジックやインフラとは独立した **プロセス情報 (process metadata)** を扱います。  
+主に **バージョン情報・Gitリビジョン・ビルド日時** をアプリケーションから取得できるようにします。
 
-These values are typically **injected at build time using Go `ldflags`**.
+これらの値は通常 **Go build 時の `ldflags` によって注入**されます。
 
-## Responsibility
+## 役割
 
-The responsibilities of this package are as follows.
+このパッケージの責務は次の通りです。
 
-- Store **application build metadata**
-- Enable retrieval of **Version / Revision / BuildDate** at runtime
-- Provide APIs usable by version display (`--version`) and diagnostic endpoints
-- Allow **BuildInfo to be mocked in tests**
+- アプリケーションの **ビルドメタ情報** を保持する
+- 実行時に **Version / Revision / BuildDate** を取得できるようにする
+- バージョン表示 (`--version`) や診断エンドポイントで利用できる API を提供する
+- テスト時に **BuildInfo をモック可能**にする
 
-This package **does not contain business logic.**
+このパッケージは **ビジネスロジックを持ちません。**
 
-## BuildInfo Interface
+## BuildInfo インターフェース
 
-Application code retrieves build information through the **BuildInfo interface**.
+アプリケーションコードは **BuildInfo interface** を通してビルド情報を取得します。
 
 ```go
 type BuildInfo interface {
@@ -30,13 +30,13 @@ type BuildInfo interface {
 }
 ```
 
-Implementation
+実装
 
 ```go
 func NewBuildInfo() BuildInfo
 ```
 
-Usage example
+利用例
 
 ```go
 bi := system.NewBuildInfo()
@@ -46,15 +46,17 @@ revision := bi.Revision()
 buildDate := bi.BuildDate()
 ```
 
-This design enables:
+この設計により
 
-- Injection of mocks during testing
-- Abstraction of version retrieval logic
-- Dependency injection via DI
+- テスト時に mock を注入可能
+- version 取得処理を抽象化
+- DI による依存注入が可能
+
+になります。
 
 ## version.go
 
-`version.go` defines variables that are **overwritten at build time**.
+`version.go` は **ビルド時に書き換えられる変数**を定義します。
 
 ```go
 var (
@@ -64,15 +66,15 @@ var (
 )
 ```
 
-The default values are **fallback values for development environments**.
+デフォルト値は **開発環境用のフォールバック値**です。
 
-Actual values are overwritten during `go build`.
+実際の値は `go build` 時に上書きされます。
 
-## Build-Time Value Injection
+## ビルド時の値注入
 
-In CI / Docker / Makefile, values are typically injected as follows.
+CI / Docker / Makefile では通常次のように値を注入します。
 
-Example:
+例：
 
 ```bash
 go build \
@@ -81,7 +83,7 @@ go build \
             -X 'go-boilerplate/internal/system.BuildDate=2025-01-01T00:00:00Z'"
 ```
 
-In Dockerfile, it is used as follows.
+Dockerfile では次のように利用されます。
 
 ```bash
 ARG VERSION
@@ -94,59 +96,59 @@ RUN go build \
             -X 'go-boilerplate/internal/system.BuildDate=$BUILD_DATE'"
 ```
 
-## Usage
+## 利用用途
 
-BuildInfo is used for the following purposes.
+BuildInfo は次の用途で使用されます。
 
-- `--version` command (via cobra `Version` in `cmd/main.go`)
-- `/version` API (`internal/controller/handler/version`)
-- `app_build_info` Prometheus metric (see `internal/observability/metrics/buildinfo`)
-- diagnostic information
+- `--version` コマンド（`cmd/main.go` の cobra `Version` 経由）
+- `/version` API（`internal/controller/handler/version`）
+- `app_build_info` Prometheus メトリクス（`internal/observability/metrics/buildinfo` を参照）
+- 診断情報
 
-The `BuildInfo` provider is wired via DI in `internal/di/module` (`SystemModule`).
+`BuildInfo` プロバイダは `internal/di/module`（`SystemModule`）で DI 配線されます。
 
-Example: `service version=1.2.3 revision=abc123 build=2025-01-01`
+例：`service version=1.2.3 revision=abc123 build=2025-01-01`
 
-## Layer Position
+## レイヤー上の位置
 
-`internal/system` is the **runtime metadata layer of the application**.
+`internal/system` は **アプリケーションのランタイム情報レイヤー**です。
 
 ```mermaid
 flowchart TB
     Controller --> Usecase --> Domain --> Infrastructure --> System["System (runtime metadata)"]
 ```
 
-Characteristics
+特徴
 
-- Does not contain business logic
-- Does not depend on Infrastructure
-- Accessible from the entire application
+- ビジネスロジックを持たない
+- Infrastructure に依存しない
+- アプリケーション全体から参照可能
 
-## Test Strategy
+## テスト戦略
 
-The values this package exposes are injected at link time (`-ldflags`), so a test binary is built **without** them. That is the defining constraint: the unset case is the one every test actually runs under, and it must be a documented value rather than an accident.
+本パッケージが公開する値はリンク時（`-ldflags`）に注入されるため、テストバイナリはそれ **無し** でビルドされる。これが定義的な制約であり、全てのテストが実際に走るのは未注入の状態である。したがって未注入時の値は、事故ではなく文書化された値でなければならない。
 
-- **Unset (test-binary) values** — `NewBuildInfo` with no injected values yields the documented placeholder for each field, not an empty string that silently reaches `/version` or a build-info metric. Assert the placeholder explicitly.
-- **Injected values** — each getter returns the value it was constructed with, one `TestXxx` per accessor (per `docs/testing-conventions.md` §1; do not fold them into a single accessor test).
-- **Consumers mock the interface** — `BuildInfo` is an interface with a `go:generate mockgen` directive, so packages that merely read build info use the generated mock rather than depending on link-time injection:
+- **未注入（テストバイナリ）の値** — `NewBuildInfo` は注入が無い場合に各フィールドの文書化されたプレースホルダを返すこと。空文字が黙って `/version` や build-info メトリクスへ流れないよう、プレースホルダを明示的に検証する。
+- **注入された値** — 各 getter は構築時に渡された値を返すこと。アクセサ 1 つにつき `TestXxx` 1 つ（`docs/testing-conventions.md` §1。まとめたアクセサテストにしないこと）。
+- **利用側は interface を mock する** — `BuildInfo` は `go:generate mockgen` を持つ interface なので、ビルド情報を読むだけのパッケージはリンク時注入に依存せず生成 mock を使う:
 
   ```go
   mockBuildInfo := mock_system.NewMockBuildInfo(ctrl)
   mockBuildInfo.EXPECT().Version().Return("1.0.0")
   ```
 
-The build-info **metric** built on top of this lives in `internal/observability/metrics/buildinfo` and is tested there, not here.
+これを土台にした build-info **メトリクス** は `internal/observability/metrics/buildinfo` にあり、検証もそちらの担当である。
 
-## Security Considerations
+## セキュリティ注意点
 
-The following information must **not be included** in build metadata.
+ビルド情報には次の情報を **含めないでください**
 
-- authentication tokens
-- environment variables
-- private keys
-- personal information
+- 認証トークン
+- 環境変数
+- 秘密鍵
+- 個人情報
 
-Information that should be included:
+含めるべき情報
 
 - Version
 - Git Revision

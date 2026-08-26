@@ -1,38 +1,27 @@
 # storage
 
-Local seed content for the object-storage substrate — the counterpart of `database/seed` for the
-S3-compatible bucket. `database/` bootstraps rows; this directory bootstraps objects.
+オブジェクトストレージ基盤へ投入するローカル用のシード内容です。S3 互換バケットに対する `database/seed` の対応物にあたります。`database/` が行を用意するのに対し、このディレクトリはオブジェクトを用意します。
 
-## The directory layout is the key layout
+## ディレクトリ構造がキー構造
 
-`make db-seed` uploads everything under `seed/` and **derives each object key from the path relative to
-`seed/`**, so the tree built here is the tree that appears in the bucket:
+`make db-seed` は `seed/` 配下のすべてを投入し、**`seed/` からの相対パスからオブジェクトキーを導きます**。したがって、ここで組んだツリーがそのままバケットに現れるツリーになります。
 
 ```text
 storage/seed/<prefix>/<file>   →   <prefix>/<file>
 ```
 
-A subdirectory is simply a key prefix; adding one puts its files under that prefix. Nothing in the
-seeder is bound to a particular prefix — it never interprets file names and never touches the database.
+サブディレクトリは単なるキーの接頭辞です。追加すればその配下にファイルが置かれます。投入機構は特定の接頭辞に縛られておらず、ファイル名を解釈することもデータベースに触れることもありません。
 
-- Files sit one level below `seed/`; a file placed directly in `seed/` has no prefix and is skipped
-- Accepted extensions are the ones the seeder can label with a MIME type (`.webp` / `.png` / `.jpg` /
-  `.jpeg` / `.svg` / `.pdf`). Anything else is skipped with a warning rather than served as the wrong
-  type; dotfiles are ignored
-- Keep the files small. Everyone who clones this template pulls them
+- ファイルは `seed/` の 1 階層下に置きます。`seed/` の直下に置いたファイルは接頭辞を持たないためスキップされます
+- 受け付ける拡張子は、投入機構が MIME タイプを付けられるもの（`.webp` / `.png` / `.jpg` / `.jpeg` / `.svg` / `.pdf`）です。それ以外は誤った種別で配信せずに警告付きでスキップします。ドットファイルは無視します
+- ファイルは小さく保ってください。このテンプレートを clone する全員が取得します
 
-## Rows that reference an object
+## オブジェクトを参照する行
 
-The seeder only uploads. A column holding an object key is written by the SQL in `database/seed`, like
-any other column — so the key in the SQL and the file name here have to agree. Keeping both in the same
-commit is what stops them from drifting.
+投入機構が行うのはアップロードだけです。オブジェクトキーを保持する列は、他の列と同じく `database/seed` の SQL が書きます。したがって SQL 中のキーとここのファイル名は一致していなければなりません。両者を同じコミットに保つことが、乖離を防ぐ手段です。
 
-## What is not uploaded
+## 投入されない場合
 
-Nothing happens — success, not an error — when `seed/` holds no file, or when `ENDPOINT_OBJECT_STORAGE`
-is empty. An empty endpoint means SDK-default resolution, i.e. a real AWS S3 account, and seed content
-must never be pushed there. That is also why CI, whose endpoint is empty, only ever seeds the database.
+`seed/` にファイルが 1 つも無い場合、または `ENDPOINT_OBJECT_STORAGE` が空の場合は何も起きません（エラーではなく成功として扱います）。エンドポイントが空とは SDK 既定の解決、すなわち実在の AWS S3 アカウントを指すことであり、シードの内容をそこへ送ってはならないためです。CI のエンドポイントが空なのも同じ理由で、CI はデータベースだけを投入します。
 
-No `Cache-Control` is set on the uploaded objects. A seed file is replaceable in place under the same
-key, so it is not immutable; the caching policy for content uploaded through the API is decided by that
-upload path instead.
+投入したオブジェクトに `Cache-Control` は付けません。シードのファイルは同じキーのまま差し替えられるため immutable ではないからです。API 経由でアップロードされた内容のキャッシュ方針は、そのアップロード経路が決めます。

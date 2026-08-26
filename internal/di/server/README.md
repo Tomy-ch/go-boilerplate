@@ -1,38 +1,38 @@
-# server DI Module
+# server DI モジュール
 
-This directory is the **server module layer responsible for Echo server initialization, startup, and DI management**.
+Echo サーバーの初期化・起動・DI 管理を担う **サーバーモジュール層**です。
 
-Built around three `fx.Module` functions, it provides HTTP server creation, middleware aggregation, and lifecycle hook registration.
+3つの `fx.Module` 関数を中心に、HTTP サーバー生成・ミドルウェア集約・ライフサイクルフック登録を提供します。
 
-## Structure
+## 構成
 
-`server.go` provides the modules; `extension/` registers the middleware and configurators, and
-`hook/` the lifecycle hooks. The split exists because a hook runs at a point in time while a
-module is only a description of wiring.
+`server.go` がモジュールを提供し、`extension/` がミドルウェアとコンフィギュレータを、`hook/` が
+ライフサイクルフックを登録する。この分割があるのは、hook が「ある時点で走るもの」であるのに対し、
+module は配線の記述にすぎないからである。
 
-## Application Startup Order
+## アプリケーション起動順序
 
 ```mermaid
 flowchart LR
     Module["Module()"] --> MiddlewareModule["MiddlewareModule()"]
     MiddlewareModule --> HookModule["HookModule()"]
-    HookModule --> Start["Server Start"]
+    HookModule --> Start["サーバー起動"]
 ```
 
-1. `Module()` — Create the Echo instance and the `http.Server` that serves it
-2. `MiddlewareModule()` — Apply all middleware and configurators
-3. `HookModule()` — Register start/stop hooks (server starts here)
+1. `Module()` — Echo インスタンス生成
+2. `MiddlewareModule()` — 全ミドルウェア・Configurator を適用
+3. `HookModule()` — 起動/停止フック登録（ここでサーバーが起動）
 
-## Subdirectories
+## サブディレクトリ
 
-|Directory|Description|Details|
+|ディレクトリ|説明|詳細|
 |---|---|---|
-|`extension/`|Middleware and configurator DI registration with Priority management|[README](extension/README.md)|
-|`hook/`|Server lifecycle hooks (HTTP, DB close)|[README](hook/README.md)|
+|`extension/`|Priority 管理付きのミドルウェア・Configurator DI 登録|[README](extension/README.md)|
+|`hook/`|サーバーライフサイクルフック（HTTP、DB クローズ）|[README](hook/README.md)|
 
-## Notes
+## 注意点
 
-- `Module()` must be loaded before `MiddlewareModule()` — Echo instance is required for middleware application
-- `HookModule()` must be loaded last — server starts after middleware and configurators are applied
-- `NewAppServer` / `NewHTTPServer` have side effects and must not be referenced from domain/usecase
-- Extensions are applied in the order **MiddlewareModule → HookModule**
+- `Module()` は `MiddlewareModule()` より先にロードする必要がある — ミドルウェア適用に Echo インスタンスが必要
+- `HookModule()` は最後にロードする — ミドルウェア・Configurator 適用後にサーバーが起動
+- `NewAppServer` / `NewHTTPServer` は副作用を持つため、domain / usecase から参照しないこと
+- extension は **MiddlewareModule → HookModule** の順で適用される

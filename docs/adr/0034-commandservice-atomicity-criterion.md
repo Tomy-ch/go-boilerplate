@@ -5,118 +5,119 @@ deciders: [maintainers]
 tags: [persistence, cqrs, architecture, concurrency]
 ---
 
-# ADR-0034: Reserve CommandService for multi-aggregate writes that require single-transaction atomicity
+# ADR-0034: CommandService は単一トランザクション原子性を要する複数集約書き込みに限定する
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-[ADR-0032](0032-lightweight-cqrs.md) defines the *structure* of the CommandService
-construct: its interface lives in the usecase layer (`internal/usecase/<workflow>/command/`),
-its implementation lives under `internal/infrastructure/rdb/command_service/<aggregate>/`, it
-returns DTOs, and it is registered in `persistenceModule` and injected via DI. What ADR-0032
-deliberately leaves open is the *placement criterion*: when does a write operation actually
-warrant a CommandService instead of a regular usecase composed of Repository calls?
+[ADR-0032](0032-lightweight-cqrs.md) は CommandService という構成要素の
+*構造* を定義している。インターフェースは usecase 層
+（`internal/usecase/<workflow>/command/`）に置き、実装は
+`internal/infrastructure/rdb/command_service/<aggregate>/` 配下に置き、DTO を返し、
+`persistenceModule` に登録して DI で注入する。一方で ADR-0032 が意図的に空けたままに
+しているのが *配置基準* — どのような書き込み操作であれば、Repository 呼び出しで構成
+される通常の usecase ではなく CommandService を正当に必要とするのか — である。
 
-Without such a criterion, the placement of multi-aggregate write operations falls back to
-implementer judgment about inter-aggregate semantics, and decisions vary by implementer. The
-naive heuristic — "it touches more than one aggregate, so it needs a CommandService" — pulls
-work that could be eventually consistent into synchronous transactions, contradicting this
-project's outbox-first design ([ADR-0054](0054-transactional-outbox.md)). A related ambiguity
-exists in ADR-0032 itself: its consequences note that CommandService "can freely optimize
-flexible updates, deletes", which could be misread as write-shape flexibility or performance
-being sufficient grounds for introducing one.
+この基準がないと、複数集約にまたがる書き込み操作の配置は集約間のセマンティクスに
+対する実装者の判断に委ねられ、判断が実装者ごとにぶれる。「複数の集約に触れるのだから
+CommandService が要る」という素朴なヒューリスティクスは、結果整合で済むはずの処理を
+同期トランザクションに引き込み、本プロジェクトの outbox ファーストの設計
+（[ADR-0054](0054-transactional-outbox.md)）と矛盾する。関連する曖昧さは ADR-0032
+自体にもある。その帰結には CommandService が「柔軟な update や delete などの書き込みを
+自由に最適化できる」とあり、書き込み形状の柔軟性やパフォーマンスだけで CommandService を
+導入する十分な根拠になると誤読される余地がある。
 
-That question is about *writes*, and it does not reach every way an operation crosses an aggregate
-boundary. An operation may also **read** another aggregate to decide whether it is permitted at all
-— a **guard**. A guard writes nothing, so an atomicity criterion never triggers on it and the
-operation lands on the default path by omission rather than by decision. Under READ COMMITTED,
-however, a condition that was merely read is not held: a concurrent write can invalidate it between
-the check and the commit ([ADR-0036](0036-ordered-pessimistic-row-locks.md)). "It spans aggregates
-but it is a read, so no write atomicity is required" is therefore a true sentence with a right
-conclusion — a regular usecase — and an incomplete answer, because the read may still have to be
-serialized against the write that would invalidate it. Left without a branch of its own, the choice
-between holding a cross-aggregate condition synchronously and letting it go stale falls back to
-exactly the implementer judgment this ADR exists to remove.
+この問いは *書き込み* についてのものであり、操作が集約境界を越える経路のすべてには
+届かない。操作は、そもそもそれが許されるかを判断するために他の集約を **読む** ことも
+ある — **ガード** である。ガードは何も書かないため、原子性の基準はガードに対して
+発火せず、その操作は判断されてではなく問われなかった結果としてデフォルト経路に落ちる。
+しかし READ COMMITTED では、単に読んだだけの条件は保持されない。判定と commit の間に
+並行する書き込みがそれを無効化し得る（[ADR-0036](0036-ordered-pessimistic-row-locks.md)）。
+したがって「集約は跨ぐが読み取りなので書き込みの原子性は要らない」は、真の文であり、
+結論（通常の usecase）も正しく、そのうえで不完全な答えである。その読み取りは、それを
+無効化する書き込みと直列化される必要がまだあり得るからである。専用の分岐を持たないまま
+では、集約を跨ぐ条件を同期的に保持するのか陳腐化を許すのかの選択は、本 ADR が排除する
+ために存在するまさにその実装者判断へ差し戻される。
 
-The goal is to decide where an operation that crosses an aggregate boundary belongs — for its
-writes and for the conditions it reads — based on a verifiable criterion rather than implementer
-judgment.
+目標は、集約境界を越える操作の置き場所を — その書き込みについても、それが読む条件に
+ついても — 実装者の判断ではなく検証可能な基準に基づいて決めることである。
 
-## Decision
+## 決定
 
-**CommandService is defined as the write-side counterpart of QueryService.** Here,
-CommandService is not a layer; it is a processing category contrasted with QueryService.
+**CommandService は QueryService の書き込み側の対応物として定義する。** ここでの
+CommandService はレイヤーではなく、QueryService と対をなす処理カテゴリである。
 
-### Definition
+### 定義
 
-QueryService and CommandService are defined as the same kind of construct:
+QueryService と CommandService は同種の構成要素として定義する。
 
-- **QueryService** — the residue that remains when read performance requirements forbid
-  decomposition into per-aggregate reads.
-- **CommandService** — the residue that remains when write atomicity (immediacy) requirements
-  forbid decomposition into eventual consistency.
+- **QueryService** — 読み取りパフォーマンス要件が集約単位の読み取りへの分解を
+  禁じるときに残る残余。
+- **CommandService** — 書き込みの原子性（即時性）要件が結果整合への分解を
+  禁じるときに残る残余。
 
-Neither is a semantic domain category. **Both are constructs that stand where non-functional
-requirements forbid aggregate decomposition.**
+どちらも意味論的なドメインカテゴリではない。**いずれも、非機能要件が集約分解を
+禁じる場所に立つ構成要素である。**
 
-The underlying fact: given unlimited latency and resources, every read decomposes into
-per-aggregate Repository reads joined in application code, and every write decomposes into a
-single-aggregate write followed by an eventually consistent cascade. QueryService and
-CommandService are needed only where non-functional requirements forbid that decomposition.
+根底にある事実: レイテンシとリソースが無制限であれば、あらゆる読み取りは集約単位の
+Repository 読み取りとアプリケーションコードでの結合に分解でき、あらゆる書き込みは
+単一集約への書き込みとそれに続く結果整合のカスケードに分解できる。QueryService と
+CommandService が必要になるのは、非機能要件がその分解を禁じる場合だけである。
 
-### Criterion
+### 基準
 
-Two independent questions decide where a cross-aggregate operation belongs. They are independent
-because one is about reading and the other about writing, and a single operation may answer yes to
-both:
+集約を跨ぐ操作の置き場所は、独立した 2 つの問いで決まる。一方は読み取りについて、
+他方は書き込みについての問いであり、1 つの操作が両方に「はい」と答えることもある
+ため、独立である:
 
-1. **Does a condition read from another aggregate have to hold for the rest of the transaction?**
-   Equivalently: can a concurrent operation invalidate the checked condition between the check and
-   the commit? This asks whether a *read may go stale*, not whether a write is atomic, which is why
-   the second question never reaches it.
-2. **Does the multi-aggregate write require single-transaction atomicity?** Immediacy — all effects
-   being visible at API response time — is the typical reason this requirement arises.
+1. **他の集約から読んだ条件は、トランザクションの残りの間ずっと成立している必要が
+   あるか？** 言い換えれば、判定と commit の間に、並行する操作がその条件を無効化し
+   得るか。これは *読み取りが陳腐化してよいか* を問うのであって書き込みが原子的かを
+   問うのではない。だからこそ、2 つめの問いはここへ届かない。
+2. **その複数集約書き込みは単一トランザクションの原子性を要件として要求するか？**
+   即時性 — API 応答時点ですべての効果が可視であること — がこの要件が生じる典型的な
+   理由である。
 
-### Decision procedure
+### 判定手順
 
-The default is decomposition. A guard that must hold until commit takes a synchronous row lock and
-stays a regular usecase; CommandService is reached only when single-transaction atomicity of the
-multi-aggregate *write* remains as a requirement. Two justifications are not acceptable: "it spans
-multiple aggregates, therefore CommandService", and — the failure mode branch 2 exists to close —
-"it is only a read, therefore nothing is needed".
+デフォルトは分解である。commit まで成立している必要のあるガードは同期的な行ロックを取り、通常の usecase の
+ままである。CommandService に到達するのは、複数集約 *書き込み* の単一トランザクション原子性が要件として
+残る場合に限る。認められない正当化が 2 つある。「複数の集約にまたがるから CommandService」と、分岐 2 が
+塞ぐために存在する失敗様式である「読み取りにすぎないから何も要らない」である。
 
-The procedure itself, and the eligibility gate it composes with, are stated once in
-[`docs/design/data-access-pattern.md`](../design/data-access-pattern.md).
+手順そのもの、およびそれと組み合わさる eligibility の門は、
+[`docs/design/data-access-pattern.md`](../design/data-access-pattern.md)に一度だけ記述する。
 
-### Departure from "1 Aggregate = 1 Transaction Boundary"
+### 「1 Aggregate = 1 Transaction Boundary」からの逸脱
 
-Branches 2 and 3 both put rows belonging to more than one aggregate inside a single transaction, so
-both depart from the principle [`internal/domain/README.md`](../../internal/domain/README.md)
-(§ Aggregate Boundary) states as "1 Aggregate = 1 Transaction Boundary" — Vernon's formulation of
-Evans's argument that the aggregate is the unit of consistency. The departure is stated here rather
-than left implicit:
+分岐 2 と分岐 3 はどちらも、複数の集約に属する行を単一のトランザクションに入れる。
+したがってどちらも、[`internal/domain/README.md`](../../internal/domain/README.md)
+（§ Aggregate Boundary）が「1 Aggregate = 1 Transaction Boundary」として掲げる原則から
+逸脱する — 集約が整合性の単位であるという Evans の議論の、Vernon による定式化である。
+その逸脱を暗黙にせず、ここで宣言する:
 
-- **What Evans holds.** The aggregate is the boundary of *immediate* consistency. One transaction
-  changes one aggregate; anything beyond it is reconciled afterwards. A boundary that may be widened
-  whenever it is convenient constrains nothing, so the discipline is the point of the pattern.
-- **What this repository does instead.** Two named widenings, and only these two. A guard locks a row
-  belonging to another aggregate and holds it until commit (branch 2). A write that must be atomic
-  across aggregates runs in one transaction through a CommandService (branch 3).
-- **Why.** Evans's argument is about *change*: the hazard in a wide boundary is mutating several
-  aggregates through one loaded graph until no one can say which invariant belongs to which root.
-  Branch 2 does not mutate the other aggregate at all — it observes one row and blocks the writer
-  that would invalidate the observation, so that aggregate's root keeps sole authority over its own
-  changes. Branch 3 does mutate more than one, which is why it is the narrow exception: it is
-  admitted only where the requirements say the intermediate state must never be observable, and the
-  condition it enforces is still authored by the domain
-  ([ADR-0032](0032-lightweight-cqrs.md) § Derivation). What both branches refuse is the option a
-  strict reading would otherwise leave as the default — deciding a cross-aggregate question from a
-  read that nothing holds, which is not eventual consistency but no consistency at all.
+- **Evans の主張。** 集約は *即時* 整合の境界である。1 トランザクションは 1 集約を
+  変更し、その外側は後から調停される。都合次第で広げてよい境界は何も制約しないため、
+  この規律こそがパターンの要点である。
+- **本リポジトリが代わりに行うこと。** 名前の付いた 2 つの拡張、そしてその 2 つだけ。
+  ガードは他の集約に属する行をロックし commit まで保持する（分岐 2）。集約を跨いで
+  原子的でなければならない書き込みは、CommandService を通して 1 トランザクションで
+  走る（分岐 3）。
+- **理由。** Evans の議論は *変更* についてのものである。広い境界の害は、読み込んだ
+  1 つのグラフ越しに複数の集約を変更し続けた結果、どの不変条件がどのルートのものか
+  誰にも言えなくなることである。分岐 2 は他の集約を一切変更しない — 1 行を観測し、
+  その観測を無効化する書き手をブロックするだけであり、その集約のルートは自身の変更に
+  対する唯一の権威であり続ける。分岐 3 は複数を変更するので狭い例外に留める。要件が
+  「中間状態が観測されてはならない」と述べる場合にのみ認め、そこで強制される条件も
+  ドメインが著述する（[ADR-0032](0032-lightweight-cqrs.md) § Derivation）。
+  両分岐がともに拒むのは、原則を厳格に読んだときに既定として残ってしまう選択肢 —
+  何にも保持されていない読み取りから集約横断の判断を下すこと — である。それは結果整合
+  ですらなく、整合が無いということである。
 
-### Worked instances
+### 実際の適用例
 
 <!-- 撤去後にこの箇所へ自分の例を置くための指針。
      目的: 判定手順は分岐の形しか述べておらず、実際にどう当てはめたかは実例が無いと読めない。
@@ -124,183 +125,181 @@ than left implicit:
      書き方: 自分の書き込み操作から分岐 1 / 2 / 3 に当たる例を 1 件ずつ挙げ、それぞれ
              『何が同時に書かれるか』『途中状態が観測されてよいか』を明記する。 -->
 <!-- sample-api:replace-begin -->
-- **Purchase creation — branch 2 and branch 3 together.** Stock validation and decrement must be
-  atomic with purchase confirmation: a state where "a purchase succeeded without stock" must never
-  be observable, even momentarily (no overselling). The writes across the aggregates involved
-  (written together: `purchases`, `purchase_details`, `products`)
-  therefore require single-transaction atomicity (branch 3), and the outbox insert joins
-  that same transaction as usual per [ADR-0054](0054-transactional-outbox.md). The outbox insert is
-  not what justifies the CommandService — a regular usecase also writes the outbox in its own
-  transaction; the justification is the stock/purchase atomicity. Independently, the same
-  transaction guards on the purchaser still being a member, and that condition can be invalidated by
-  a concurrent withdrawal, so the user row is locked first (branch 2). The transaction consequently
-  spans three aggregates — user, product, purchase — for two different reasons, which is why the two
-  branches are asked separately. Specified in `docs/spec/purchase/usecase.md`.
-- **User withdrawal — branch 2 for the guard, branch 1 for the cascade.** The core of withdrawal is
-  a single-aggregate write to `users.deleted_at`. The cascade — cancelling pending purchases and
-  restoring stock — requires no immediacy and is eventually consistent via outbox events (branch 1).
-  The check "cannot withdraw with purchases in progress" spans aggregates and is a read, so branch 3
-  does not apply and the operation stays a usecase; but a concurrent purchase creation would
-  invalidate it, so branch 2 does apply and the user row is locked exclusively before the check.
-  This is the shape the two-way procedure could not describe: a usecase that nonetheless takes a
-  lock. Specified in `docs/spec/user/usecase.md`.
-- **Product unpublication — branch 1, with no guard at all.** Clearing a product's publication date
-  is a single-aggregate write, and the cross-aggregate condition it might appear to threaten — the
-  in-progress purchases that reference the product — is deliberately not guarded. A purchase records
-  a unit-price snapshot when it is created, and no step of its lifecycle re-reads the product's
-  publication state, so the product going unpublished cannot make the purchase wrong. The condition
-  is therefore allowed to go stale, and the update takes no lock on any purchase row. This is the
-  contrasting instance to the withdrawal guard: same shape (one aggregate's write, another
-  aggregate's state), opposite answer to question 1. Specified in `docs/spec/purchase/usecase.md`.
+- **購入作成 — 分岐 2 と分岐 3 の同時適用。** 在庫の検証と減算は購入確定と原子的で
+  なければならない。「在庫がないのに購入が成功した」状態は、一瞬たりとも観測されては
+  ならない（売り越し禁止）。したがって関係する集約群への書き込みは
+  （`purchases` / `purchase_details` / `products` へ同時に書く）
+  単一トランザクションの原子性を要し（分岐 3）、outbox への挿入は
+  [ADR-0054](0054-transactional-outbox.md) のとおり同一トランザクションに参加する。
+  CommandService を正当化するのは outbox 挿入ではない — 通常の usecase も自身の
+  トランザクション内で outbox に書き込む。根拠は在庫と購買の原子性である。これとは
+  独立に、同じトランザクションは購入者が在籍していることをガードしており、この条件は
+  並行する退会によって無効化され得るため、先にユーザー行をロックする（分岐 2）。
+  結果としてトランザクションは 3 つの集約 — user / product / purchase — にまたがるが、
+  その理由は 2 つ別々である。2 つの分岐を別々に問うのはこのためである。仕様は
+  `docs/spec/purchase/usecase.md`。
+- **ユーザー退会 — ガードは分岐 2、カスケードは分岐 1。** 退会の中核は
+  `users.deleted_at` への単一集約書き込みである。カスケード — 進行中の購入のキャンセルと
+  在庫の復元 — は即時性を要さず、outbox イベント経由の結果整合とする（分岐 1）。
+  「進行中の購入があると退会できない」という判定は集約を跨ぐが読み取りであるため
+  分岐 3 は当たらず、操作は usecase のままである。しかし並行する購入作成がそれを
+  無効化するため分岐 2 が当たり、判定より前にユーザー行を排他ロックする。これが
+  2 分岐の手順では記述できなかった形 — ロックを取る usecase — である。仕様は
+  `docs/spec/user/usecase.md`。
+- **商品の非公開化 — 分岐 1。ガードは一切置かない。** 商品の公開日時をクリアする操作は
+  単一集約書き込みであり、脅かすように見える集約横断の条件 — その商品を参照する進行中の
+  購入 — は意図的にガードしない。購入は作成時に単価スナップショットを記録し、その
+  ライフサイクルのどの段階でも商品の公開状態を読み直さないため、商品が非公開になっても
+  購入が誤りになることはない。したがってこの条件は陳腐化してよく、更新はどの購入行にも
+  ロックを取らない。これは退会のガードに対する対照例である。形は同じ（一方の集約の
+  書き込みと他方の集約の状態）で、問い 1 への答えが逆になる。仕様は
+  `docs/spec/purchase/usecase.md`。
 <!-- sample-api:replace-with -->
-<!-- = No instance has been recorded for this project yet. -->
+<!-- = このプロジェクトの適用例はまだ記録されていない。 -->
 <!-- sample-api:replace-end -->
 
-### Recording discipline
+### 記録の規律
 
-This classification depends on **requirements**, not on the structure of the operation. The
+この分類は操作の構造ではなく**要件**に依存する。要件が変われば同じ操作でも分類が
 <!-- sample-api:replace-begin -->
-same operation changes classification when requirements change (e.g., if "stock restored by
-response time" becomes a requirement, withdrawal moves to CommandService).
+変わる（例: 「応答時点までに在庫が復元されていること」が要件になれば、退会は
+CommandService に移る）。
 <!-- sample-api:replace-with -->
-<!-- = same operation changes classification when requirements change: a tolerance that used to be -->
-<!-- = acceptable becoming a requirement moves the operation to CommandService. -->
+<!-- = 変わる。これまで許容していた事柄が要件になれば、その操作は CommandService に移る。 -->
 <!-- sample-api:replace-end -->
 
-Therefore, record the **tolerance judgment as the rationale**, not the conclusion alone. Both
-questions are recorded, because an operation that answers them differently is a different operation:
+したがって、結論だけでなく**許容判断を根拠として**記録する。2 つの問いは両方とも
+記録する。答えが違えばそれは別の操作だからである。
 
 <!-- sample-api:replace-begin -->
-- Bad — "Withdrawal is a usecase."
-- Good — "The withdrawal cascade tolerates eventual consistency; therefore it is a usecase."
-- Bad — "Withdrawal locks the user row."
-- Good — "A concurrent purchase would invalidate the withdrawal guard; therefore the user row is
-  locked before the check."
-- Good — "A product going unpublished cannot invalidate a purchase that already snapshotted its unit
-  price; therefore that condition is left unguarded."
+- 悪い例 — 「退会は usecase である。」
+- 良い例 — 「退会のカスケードは結果整合を許容する。したがって usecase である。」
+- 悪い例 — 「退会はユーザー行をロックする。」
+- 良い例 — 「並行する購入が退会のガードを無効化する。したがって判定より前にユーザー行を
+  ロックする。」
+- 良い例 — 「商品が非公開になっても、既に単価をスナップショットした購入は無効にならない。
+  したがってこの条件はガードしない。」
 <!-- sample-api:replace-with -->
-<!-- = - Bad — "<operation> is a usecase." -->
-<!-- = - Good — "<operation>'s cascade tolerates eventual consistency; therefore it is a usecase." -->
-<!-- = - Bad — "<operation> locks the <aggregate> row." -->
-<!-- = - Good — "A concurrent <other operation> would invalidate <operation>'s guard; therefore the -->
-<!-- =   <aggregate> row is locked before the check." -->
-<!-- = - Good — "<other operation> cannot invalidate what <operation> already snapshotted; therefore -->
-<!-- =   that condition is left unguarded." -->
+<!-- = - 悪い例 — 「<操作> は usecase である。」 -->
+<!-- = - 良い例 — 「<操作> のカスケードは結果整合を許容する。したがって usecase である。」 -->
+<!-- = - 悪い例 — 「<操作> は <集約> 行をロックする。」 -->
+<!-- = - 良い例 — 「並行する <別の操作> が <操作> のガードを無効化する。したがって判定より前に -->
+<!-- =   <集約> 行をロックする。」 -->
+<!-- = - 良い例 — 「<別の操作> は、<操作> が既にスナップショットした内容を無効にしない。 -->
+<!-- =   したがってこの条件はガードしない。」 -->
 <!-- sample-api:replace-end -->
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Placement decisions shift from subjective interpretation of inter-aggregate semantics to
-  verifiable requirement checks.
-- The direction of default (decomposition) vs. exception (CommandService) is explicit,
-  suppressing misuse at the policy level.
-- The definition is symmetric with QueryService, so both sides of CQRS are explained in the
-  same grammar.
-- Because the rationale is recorded as a requirement, the places that need re-evaluation are
-  identifiable when requirements change.
-- A cross-aggregate read now has a branch of its own, so "it is only a read" can no longer route an
-  unheld condition onto the default path by omission.
-- Every widening of the transaction boundary is named and bounded, and its relation to the
-  aggregate-as-consistency-boundary principle is stated rather than left for a reader to reconstruct
-  from the code.
+- 配置判断が、集約間セマンティクスの主観的解釈から検証可能な要件チェックへ移る。
+- デフォルト（分解）と例外（CommandService）の向きが明示され、ポリシーレベルで
+  誤用が抑止される。
+- 定義が QueryService と対称なので、CQRS の両側を同じ文法で説明できる。
+- 根拠が要件として記録されるため、要件変更時に再評価が必要な箇所を特定できる。
+- 集約横断の読み取りが専用の分岐を持つため、「読み取りにすぎない」という理由で、
+  保持されていない条件が問われないままデフォルト経路へ流れることがなくなる。
+- トランザクション境界の拡張はすべて名前が付き範囲が限定され、集約を整合性の境界と
+  する原則との関係が、コードから読者が再構成するのではなく明文で述べられる。
 
-### Negative Consequences
+### ネガティブな影響
 
-- The criterion requires an explicit requirements judgment ("can this cascade tolerate
-  eventual consistency?") before implementation; the answer cannot be derived from code
-  structure alone.
-- Classification is requirement-relative: when requirements change, an operation may need to
-  migrate between usecase + outbox and CommandService.
-- The atomicity judgment and its recorded rationale must be maintained by review; there is no
-  compiler enforcement for the distinction.
-- The default path presumes the outbox machinery (relay process, at-least-once delivery), so
-  its eventual-consistency effects must be acceptable to downstream consumers.
-- Branch 2 costs throughput on the guarded row: the operation now blocks for the duration of any
-  concurrent writer of that row ([ADR-0036](0036-ordered-pessimistic-row-locks.md)).
-- Three branches are harder to hold than two, and two of them produce the same construct (a regular
-  usecase), so the presence of a lock — not the class of the file — is what distinguishes branch 2
-  from branch 1 at a glance.
+- 基準は実装前に明示的な要件判断（「このカスケードは結果整合を許容できるか」）を
+  要求する。答えはコード構造だけからは導出できない。
+- 分類は要件相対である。要件が変わると、操作が usecase + outbox と CommandService の
+  間を移動する必要が生じ得る。
+- 原子性判断とその記録された根拠はレビューで維持するしかなく、この区別に
+  コンパイラによる強制はない。
+- デフォルト経路は outbox の機構（relay プロセス、at-least-once 配信）を前提と
+  するため、その結果整合の影響を下流の消費者が許容できる必要がある。
+- 分岐 2 はガード対象の行のスループットを代償にする。その行に対する並行する書き手の
+  実行時間だけ操作がブロックされるようになる
+  （[ADR-0036](0036-ordered-pessimistic-row-locks.md)）。
+- 分岐が 3 つになると 2 つのときより保持が難しく、しかもうち 2 つは同じ構成要素
+  （通常の usecase）を生む。分岐 1 と分岐 2 を一目で分けるのはファイルの種別ではなく
+  ロックの有無である。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Classification by derivability
+### 導出可能性による分類
 
-Classifying by "whether the change to secondary aggregates is derivable as a consequence of
-the primary operation." This inserts a subjective judgment about inter-aggregate semantics,
+「二次集約への変更が一次操作の帰結として導出可能かどうか」で分類する案。これは
+集約間セマンティクスへの主観的判断を挟むため、判断が実装者ごとにぶれる。さらに
 <!-- sample-api:replace-begin -->
-so decisions vary by implementer. It also classifies purchase creation as a regular usecase
-and withdrawal as a CommandService — the reverse of what the atomicity criterion yields —
-evidence that the criterion is not grounded in requirements. Rejected.
+購買作成を通常の usecase、退会を CommandService に分類してしまい、原子性基準が
+導く結果と真逆になる — この基準が要件に根ざしていないことの証左である。却下。
 <!-- sample-api:replace-with -->
-<!-- = so decisions vary by implementer. It also inverts the classification the atomicity criterion -->
-<!-- = yields on real operations — evidence that the criterion is not grounded in requirements. Rejected. -->
+<!-- = 実際の操作について原子性基準が導く分類と真逆の結果を出す — この基準が要件に根ざして -->
+<!-- = いないことの証左である。却下。 -->
 <!-- sample-api:replace-end -->
 
-### Classifying every multi-aggregate write as CommandService
+### すべての複数集約書き込みを CommandService に分類する
 
-Simpler to decide, but it creates an incentive to pull work that could be eventually
-consistent into synchronous transactions, contradicting this project's outbox-first design
-([ADR-0054](0054-transactional-outbox.md)). Rejected.
+判定は単純になるが、結果整合で済むはずの処理を同期トランザクションに引き込む
+インセンティブを生み、本プロジェクトの outbox ファーストの設計
+（[ADR-0054](0054-transactional-outbox.md)）と矛盾する。却下。
 
-### Treating a cross-aggregate read as needing no mechanism
+### 集約横断の読み取りには機構が要らないものとして扱う
 
-Keeping the two-way procedure and letting every guard fall to the default path, on the grounds that
-a read changes nothing. Rejected. It is the reading that produced the gap: it answers a question
-about atomicity that a guard never asks, and leaves the guard deciding from a condition nothing
-holds — the interleaving [ADR-0036](0036-ordered-pessimistic-row-locks.md) documents. It also makes
-the two directions of one invariant look like unrelated operations, since only the writing side gets
-a mechanism.
+2 分岐の手順を維持し、読み取りは何も変更しないという理由でガードをすべてデフォルト
+経路へ落とす案。却下。この読み方こそがギャップを生んだ。ガードが問うていない原子性の
+問いに答え、何にも保持されていない条件からガードに判断させてしまう —
+[ADR-0036](0036-ordered-pessimistic-row-locks.md) が記録するインターリーブである。
+さらに、機構が与えられるのが書き込み側だけになるため、1 つの不変条件の両方向が
+無関係な操作に見えてしまう。
 
-### Promoting a guarded operation to CommandService
+### ガードを取る操作を CommandService へ昇格させる
 
-Routing anything that touches a second aggregate's row — lock included — through a CommandService,
-so that "crosses the boundary" and "is a CommandService" coincide. Rejected. It restates the
-already-rejected "spans multiple aggregates, therefore CommandService" with the lock as the trigger,
-and it misplaces the work: taking a lock is a transaction-boundary responsibility, which the usecase
-already owns, and the condition the lock protects belongs to the domain
-([ADR-0036](0036-ordered-pessimistic-row-locks.md) § 5), not to a write-optimization construct.
+他の集約の行に触れるもの — ロックを含む — をすべて CommandService に通し、「境界を越える」
+と「CommandService である」を一致させる案。却下。これは既に却下した「複数の集約に
+またがるから CommandService」を、引き金をロックに置き換えて言い直したにすぎない。
+配置も誤っている。ロックを取ることはトランザクション境界の責務であり usecase が既に
+所有しており、ロックが守る条件はドメインのもので
+（[ADR-0036](0036-ordered-pessimistic-row-locks.md) § 5）、書き込み最適化の構成要素の
+ものではない。
 
-### Raising the isolation level instead of adding a branch
+### 分岐を足す代わりに分離レベルを上げる
 
-Running every transaction at SERIALIZABLE, so that a stale guard surfaces as a serialization failure
-and no per-operation judgment is needed. Rejected here for the reason
-[ADR-0036](0036-ordered-pessimistic-row-locks.md) records: the isolation level is a property of every
-transaction in the application, and its retry-rate cost is not a decision any single invariant should
-make.
+すべてのトランザクションを SERIALIZABLE で走らせ、陳腐化したガードを serialization
+failure として顕在化させて操作ごとの判断を不要にする案。却下。理由は
+[ADR-0036](0036-ordered-pessimistic-row-locks.md) が記録するとおりである。分離レベルは
+アプリケーション内のすべてのトランザクションに掛かる性質であり、そのリトライ率のコストは
+単一の不変条件が決めてよいものではない。
 
-### Introducing Saga / process manager
+### Saga / プロセスマネージャの導入
 
-The general solution for multi-aggregate writes, but at this project's scale, outbox
-choreography is sufficient and an orchestration layer does not justify its complexity.
-Rejected for now; not excluded as a future evolution.
+複数集約書き込みに対する一般解だが、本プロジェクトの規模では outbox による
+コレオグラフィで十分であり、オーケストレーション層はその複雑さに見合わない。
+現時点では却下。将来の発展形としては排除しない。
 
-## Notes
+## 補足
 
-- **Relationship to [ADR-0032](0032-lightweight-cqrs.md)**: complementary, not conflicting.
-  ADR-0032 defines the construct's structure (interface placement, implementation directory,
-  DTO returns, DI registration); this ADR supplies the placement criterion ADR-0032 left
-  open. One clarification: ADR-0032's consequence that CommandService "can freely optimize
-  flexible updates, deletes" describes what the construct may do once placed, not when to
-  place it. Under this ADR, write-shape flexibility or performance alone is NOT sufficient
-  grounds for a CommandService; the atomicity requirement is the sole criterion, and this ADR
-  governs placement going forward. ADR-0032 is not edited or superseded.
-- **Relationship to [ADR-0036](0036-ordered-pessimistic-row-locks.md)**: this ADR decides *whether* a
-  cross-aggregate condition needs to be held; ADR-0036 decides *how* it is held — lock order,
-  acquisition point, lock mode, and who is allowed to author the guarded condition. Branch 2 is the
-  entry point into it, and nothing in branch 2 overrides it.
+- **[ADR-0032](0032-lightweight-cqrs.md) との関係**: 補完関係であり、衝突しない。
+  ADR-0032 は構成要素の構造（インターフェースの配置、実装ディレクトリ、DTO 返却、
+  DI 登録）を定義し、本 ADR は ADR-0032 が空けたままにした配置基準を与える。
+  1 点の明確化: ADR-0032 の帰結にある CommandService は「柔軟な update や delete を
+  自由に最適化できる」という記述は、配置が決まった後にその構成要素が何をできるかの
+  説明であって、いつ配置するかの基準ではない。本 ADR のもとでは、書き込み形状の
+  柔軟性やパフォーマンスだけでは CommandService の十分な根拠にならない。原子性要件が
+  唯一の基準であり、今後の配置は本 ADR が規律する。ADR-0032 は編集も supersede も
+  しない。
+- **[ADR-0036](0036-ordered-pessimistic-row-locks.md) との関係**: 本 ADR は集約横断の
+  条件を保持する必要が *あるか* を決め、ADR-0036 はそれを *どう* 保持するか — ロック順序、
+  取得位置、ロックモード、守る条件を誰が著述してよいか — を決める。分岐 2 はその入口で
+  あり、分岐 2 の記述が ADR-0036 を上書きすることはない。
 <!-- sample-api:replace-begin -->
-- Which rows a given workflow locks, and which business rule each lock protects, is feature content
-  rather than an architectural decision, so it is specified with the feature — in this repository the
-  removable sample set (`docs/spec/purchase/`, `docs/spec/user/`), referenced by path rather than
-  linked, because those files are deleted by `make setup-remove-sample-api` while this ADR stays.
+- どのワークフローがどの行をロックし、各ロックがどの業務ルールを守るのかは、アーキテクチャ
+  上の決定ではなく機能の内容であり、機能とともに記述する。本リポジトリではそれは削除可能な
+  サンプル群（`docs/spec/purchase/` / `docs/spec/user/`）を指す。`make setup-remove-sample-api`
+  で削除される一方で本 ADR は残るため、リンクではなくパスで示す。
 <!-- sample-api:replace-with -->
-<!-- = - Which rows a given workflow locks, and which business rule each lock protects, is feature content -->
-<!-- =   rather than an architectural decision, so it is specified with the feature. -->
+<!-- = - どのワークフローがどの行をロックし、各ロックがどの業務ルールを守るのかは、アーキテクチャ -->
+<!-- =   上の決定ではなく機能の内容であり、機能とともに記述する。 -->
 <!-- sample-api:replace-end -->
-- Related: [ADR-0033](0033-system-cqrs-dml-category.md) (`system_cqrs` category that carries
-  the outbox DML, outside the CQRS split); [ADR-0054](0054-transactional-outbox.md) (the
-  outbox pattern that the default decomposition path relies on);
-  [ADR-0035](0035-transaction-retry-idempotent-callers.md) (retry semantics of the single
-  transaction an atomic write runs in).
+- 関連: [ADR-0033](0033-system-cqrs-dml-category.md)（CQRS 分割の外側で outbox の
+  DML を担う `system_cqrs` カテゴリ）、
+  [ADR-0054](0054-transactional-outbox.md)（デフォルトの分解経路が依存する
+  outbox パターン）、
+  [ADR-0035](0035-transaction-retry-idempotent-callers.md)（原子的書き込みが走る
+  単一トランザクションのリトライセマンティクス）。
