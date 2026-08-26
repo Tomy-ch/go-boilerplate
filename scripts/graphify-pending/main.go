@@ -227,7 +227,7 @@ func loadIgnore(ignorePath string, read func(name string) ([]byte, error)) (func
 //
 //	docs/godoc/     ルートからのディレクトリ
 //	**/gen/         どの階層にあってもよいディレクトリ
-//	*.ja.md         ファイル名のパターン
+//	*.gen.sql       ファイル名のパターン
 //	**/*.gen.go     どの階層にあってもよいファイル名のパターン
 //	openapi/x.yaml  素のパス
 //
@@ -254,7 +254,7 @@ func matchesIgnore(file, pattern string) bool {
 	return file == pattern || strings.HasPrefix(file, pattern+"/")
 }
 
-// matchesGlob は `*.ja.md` のような、先頭の `*` 一つだけを持つパターンを判定します。
+// matchesGlob は `*.gen.sql` のような、先頭の `*` 一つだけを持つパターンを判定します。
 func matchesGlob(name, pattern string) bool {
 	suffix, ok := strings.CutPrefix(pattern, "*")
 	if !ok {

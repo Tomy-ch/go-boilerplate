@@ -7,8 +7,6 @@ description: Integrator skill for architectural compliance checks. Confirms scop
 
 Integrator for layer-scoped architectural compliance checks. Fans out 1〜5 per-layer **read-only auditor subagents** in parallel based on scope, then aggregates.
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
-
 ## When to Use
 
 - About to commit / push and want comprehensive layer-compliance check across all touched layers.

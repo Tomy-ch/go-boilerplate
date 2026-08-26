@@ -8,8 +8,6 @@ description: >-
 
 Generate the application service (usecase) layer for a feature based on `docs/spec/<feature>/usecase.md`. Produces the interface, struct, constructor, methods with workflow body, DTOs, tests, and DI registration in a single pass.
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
-
 ## When to Use
 
 - After `scaffold-domain` (entity + Repository IF) and `scaffold-infra-db` (Repository impl) have been completed.

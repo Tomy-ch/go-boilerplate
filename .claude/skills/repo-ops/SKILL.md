@@ -6,7 +6,6 @@ description: >-
 
 # Repo Ops Runbook
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory
 (not loaded as a skill; for human reference only).
 
 Concrete recovery steps for the operational gotchas that recur in this repo. This is a lookup
@@ -58,10 +57,9 @@ Three facts explain almost everything below:
 
 ## 0. Finding the authoritative source
 
-Most of the Markdown in this tree is either a Japanese mirror you must not read or generated output
-that lags the code, so a naive repo-wide search buries the one file that actually decides the answer.
-Of roughly 1,000 tracked `*.md`, **over 40% are `*.ja.md` translations** and **72 are generated
-`docs/portal/guides/**` copies of READMEs**; `docs/godoc/**` adds ~1,250 files and
+Much of the Markdown in this tree is generated output that lags the code, so a naive repo-wide
+search buries the one file that actually decides the answer. Of the tracked `*.md`, **72 are
+generated `docs/portal/guides/**` copies of READMEs**; `docs/godoc/**` adds ~1,250 files and
 `docs/db-schema/**` ~390.
 
 ### Where the truth lives
@@ -87,15 +85,13 @@ Of roughly 1,000 tracked `*.md`, **over 40% are `*.ja.md` translations** and **7
 
 ```bash
 rg "<pattern>" \
-  -g '!**/*.ja.md' -g '!docs/portal/**' \
+  -g '!docs/portal/**' \
   -g '!docs/godoc/**' -g '!docs/db-schema/**' -g '!docs/openapi/**' -g '!docs/coverage/**'
 ```
 
 Typical effect: hit counts drop by half or more (e.g. `gen-query`, `NormalizeError`). `rg` honours
 `.gitignore`, so `vendor/` and `node_modules/` are already excluded — but the generated `docs/` trees
-are *tracked*, so they need these explicit globs. Hitting a `*.ja.md` is still useful as a
-**locator** (it proves the topic is documented); read the English original beside it, per
-`AGENTS.md`'s rule never to read `*.ja.md`.
+are *tracked*, so they need these explicit globs.
 
 ### When sources disagree
 

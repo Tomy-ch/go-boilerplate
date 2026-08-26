@@ -519,7 +519,6 @@ export const MARKER_LITERAL_FILES: readonly string[] = [
   // マーカーの書き方を説明している散文。1 行に begin と end が同居するため、
   // 素通しすると「閉じられていない begin」として除去が中断する。
   "docs/get-started/setup-repository.md",
-  "docs/get-started/setup-repository.ja.md", // doc-pair:line
   // マーカー規約を説明している散文。
   ".claude/agents/drift-detector-glossary.md",
   ".codex/agents/drift-detector-glossary.toml",

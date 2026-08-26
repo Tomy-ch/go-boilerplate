@@ -8,8 +8,6 @@ description: >-
 
 Generate the domain layer for a feature based on `docs/spec/<feature>/domain.md`. Produces the entity, Repository interface, value objects, constants, errors, getters, and tests in a single pass.
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
-
 ## When to Use
 
 - After `new-spec` / human-written `domain.md` is complete and verified.
