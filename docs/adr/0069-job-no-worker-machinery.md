@@ -5,81 +5,55 @@ deciders: [maintainers]
 tags: [job, async, exclusion, setup-review]
 ---
 
-# ADR-0069: Jobs deliberately have no broker, circuit breaker, drain, or health machinery
+# ADR-0069: ジョブにはブローカー・サーキットブレーカー・ドレイン・ヘルス機構を意図的に設けない
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-The job subsystem and the worker subsystem are both async entry points into the Usecase
-layer, and they share the same Fx DI container pattern. The worker engine
-([ADR-0050](0050-broker-agnostic-worker-scaffold.md)) provides a rich operational layer:
-a pull-ack broker seam, a 3-state circuit breaker on the intake side, a drain phase on
-shutdown (waiting for in-flight messages), and an HTTP health listener (`/healthz`,
-`/readyz`).
+ジョブサブシステムとワーカーサブシステムはどちらもユースケースレイヤーへの非同期エントリポイントであり、同じ Fx DI コンテナパターンを共有する。ワーカーエンジン（[ADR-0050](0050-broker-agnostic-worker-scaffold.md)）は豊富な運用レイヤーを提供する。インテーク側にプルアック型ブローカーシーム、3 状態サーキットブレーカー、シャットダウン時のドレインフェーズ（インフライトメッセージの待機）、そして HTTP ヘルスリスナー（`/healthz`、`/readyz`）である。
 
-Because jobs are implemented in the same codebase and share the Fx lifecycle
-infrastructure, there is a temptation to reuse or replicate these mechanisms — for example,
-adding a circuit breaker to retry failed jobs, a health endpoint to observe long-running
-jobs, or a drain phase to allow a job to finish gracefully before SIGTERM.
+ジョブは同じコードベースに実装されており Fx ライフサイクルインフラを共有するため、これらのメカニズムを再利用・複製したくなる誘惑がある。たとえば、失敗したジョブをリトライするサーキットブレーカーを追加したり、長時間実行ジョブを観測するためのヘルスエンドポイントを追加したり、SIGTERM 前にジョブをグレースフルに完了させるドレインフェーズを追加したりするといった形で。
 
-## Decision
+## 決定
 
-We deliberately do NOT provide broker integration, a circuit breaker, drain-phase logic, or
-a health listener in the job subsystem.
+ジョブサブシステムにブローカーインテグレーション・サーキットブレーカー・ドレインフェーズロジック・ヘルスリスナーを意図的に**設けない**。
 
-A job is a **one-shot CLI invocation**: it runs exactly one unit of work, returns a result
-to the CLI, and exits. This is fundamentally different from the resident worker, which polls
-indefinitely and must manage concurrent in-flight messages over an unbounded lifetime:
+ジョブは**ワンショットの CLI 呼び出し**である。1 単位の作業を実行し、結果を CLI に返して終了する。これは常駐ワーカーとは根本的に異なる。ワーカーは無制限のライフタイムにわたって無限にポーリングし、並行するインフライトメッセージを管理しなければならない。
 
-- **No broker**: a job is invoked by an operator or a scheduler directly via the CLI, not
-  by a message queue. Retry and scheduling are the caller's responsibility (e.g. cron, a
-  CI step, or an operator manual re-run).
-- **No circuit breaker**: a one-shot invocation either succeeds or fails; a circuit breaker
-  has no intake stream to throttle and no repeated attempts to protect against.
-- **No drain phase**: there is only one unit of work; the graceful-stop window (default 45 s, `SHUTDOWN_TIMEOUT`) is
-  provided to allow Fx lifecycle hooks to clean up, but there are no in-flight messages to
-  drain.
-- **No health listener**: a job runs for a bounded duration under direct operator control;
-  there is no long-lived process for a health check to observe.
+- **ブローカーなし**: ジョブはメッセージキューではなくオペレーターやスケジューラーによって CLI 経由で直接呼び出される。リトライとスケジューリングは呼び出し元の責務である（例: cron、CI ステップ、オペレーターの手動再実行）。
+- **サーキットブレーカーなし**: ワンショット呼び出しは成功か失敗かのいずれかである。サーキットブレーカーにはスロットルすべきインテークストリームも、保護すべき繰り返しの試行も存在しない。
+- **ドレインフェーズなし**: 作業単位は 1 つだけである。グレースフルストップウィンドウ（デフォルト 45 秒・`SHUTDOWN_TIMEOUT` で変更可）は Fx ライフサイクルフックがクリーンアップできるよう提供されているが、ドレインすべきインフライトメッセージは存在しない。
+- **ヘルスリスナーなし**: ジョブはオペレーターの直接制御下で有界の期間だけ実行される。ヘルスチェックが観察すべき長期稼働プロセスは存在しない。
 
-Job failures are returned to the CLI as a non-zero exit code and logged with structured
-fields (`JobResultKey`, `JobErrorKey`).
+ジョブの失敗は非ゼロ終了コードとして CLI に返され、構造化フィールド（`JobResultKey`、`JobErrorKey`）でログに記録される。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- The job subsystem stays simple and auditable — the lifecycle reduces to start, run, stop.
-- No operational machinery means no configuration surface to tune (no `FailureThreshold`,
-  `DrainTimeout`, `ProgressStaleAfter`, etc.).
-- The contrast with the worker is explicit and intentional, preventing accidental feature
-  drift toward a second worker implementation.
+- ジョブサブシステムはシンプルかつ監査可能なまま維持される。ライフサイクルは「起動・実行・停止」に集約される。
+- 運用機構がないため、チューニングすべき設定サーフェスがない（`FailureThreshold`、`DrainTimeout`、`ProgressStaleAfter` 等が不要）。
+- ワーカーとの対比が明示的かつ意図的であり、ジョブが第 2 のワーカー実装に向けて機能が肥大化（フィーチャードリフト）することを防ぐ。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Long-running jobs that could benefit from a health endpoint require external monitoring
-  (e.g. process supervision, structured log tailing) rather than a standard `/readyz`.
-- Retry logic for failed jobs must be implemented by the caller rather than by the job
-  subsystem itself.
+- ヘルスエンドポイントがあると利便性が高い長時間実行ジョブは、標準的な `/readyz` ではなく外部モニタリング（例: プロセス監視、構造化ログテーリング）が必要になる。
+- 失敗したジョブのリトライロジックは、ジョブサブシステム自身ではなく呼び出し元が実装しなければならない。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Adding a circuit breaker for automatic retry on failure
+### 失敗時の自動リトライのためにサーキットブレーカーを追加する
 
-Rejected: a job is invoked once. Automatic retry inside the job lifecycle would require a
-loop, turning a one-shot command into a resident process — that is the worker's domain.
+却下: ジョブは 1 回だけ呼び出される。ジョブライフサイクル内の自動リトライにはループが必要となり、ワンショットコマンドが常駐プロセスに変わってしまう。それはワーカーの領域である。
 
-### Exposing a health endpoint for long-running jobs
+### 長時間実行ジョブのためにヘルスエンドポイントを公開する
 
-Rejected: the job process is ephemeral and directly observable via its exit code and
-structured logs. A health listener would add an HTTP server whose lifetime outlives its
-usefulness for a process expected to exit imminently.
+却下: ジョブプロセスは一時的であり、終了コードと構造化ログを通じて直接観測可能である。HTTP リスナーは、間もなく終了することが期待されるプロセスに対してそのライフタイムを超えて稼働し続ける HTTP サーバーを追加することになる。
 
-## Notes
+## 補足
 
-- Contrast with [ADR-0050](0050-broker-agnostic-worker-scaffold.md) (worker: broker seam,
-  circuit breaker, drain, health listener).
-- Source: `docs/design/job.md` (§ 1 Role theory, design principle paragraph).
+- [ADR-0050](0050-broker-agnostic-worker-scaffold.md)（ワーカー: ブローカーシーム、サーキットブレーカー、ドレイン、ヘルスリスナー）との対比。
+- 出典: `docs/design/job.md`（§1 ロール理論、設計原則パラグラフ）。

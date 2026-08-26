@@ -5,80 +5,79 @@ deciders: [maintainers]
 tags: [observability]
 ---
 
-# ADR-0072: Vendor-neutral OTLP-only export (delegate backend to the Collector)
+# ADR-0072: ベンダー中立の OTLP 専用エクスポート（バックエンドは Collector に委譲）
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-The observability subsystem must ship traces, metrics, and logs to a monitoring backend
-without coupling the application binary to any specific vendor's SDK or proprietary
-endpoint. The same service is deployed to environments with different backends (Grafana,
-Datadog, New Relic, and others), and the binary must remain neutral across those choices. Embedding vendor-specific exporters in the application binary would require
-code changes when switching providers, contradicting the lock-in avoidance principle in
-[ADR-0001](0001-avoid-lock-in.md).
+オブザーバビリティサブシステムはトレース・メトリクス・ログを監視バックエンドへ送信しなければならないが、
+アプリケーションバイナリを特定ベンダーの SDK や独自エンドポイントに結合してはならない。
+同一のサービスが異なるバックエンド（Grafana・Datadog・New Relic など）を持つ環境へ
+デプロイされるため、バイナリはそれらの選択をまたいで中立でなければならない。
+アプリケーションバイナリにベンダー固有のエクスポーターを組み込むと、プロバイダーを切り替える
+際にコード変更が必要になり、[ADR-0001](0001-avoid-lock-in.md) のロックイン回避原則に
+反する。
 
-## Decision
+## 決定
 
-Wire only the **vendor-neutral OTLP plumbing**. All three signals — traces, metrics, and
-logs — use OTLP as the sole export transport (`http/protobuf` by default, `grpc`
-optional). Vendor-specific routing, pipeline transformation, and backend authentication
-live entirely in a Collector or Agent sidecar, never in the application code or typed
-config.
+**ベンダー中立の OTLP 配管のみ**をワイヤリングする。トレース・メトリクス・ログの 3 つの
+シグナルすべてが OTLP を唯一のエクスポートトランスポートとして使用する（デフォルトは
+`http/protobuf`、`grpc` はオプション）。ベンダー固有のルーティング・パイプライン変換・
+バックエンド認証は Collector または Agent サイドカーにのみ存在し、アプリケーションコードや
+型付き設定には存在しない。
 
-The single `ENDPOINT_OTLP` is shared across all three signals; for HTTP the
-per-signal path (`/v1/traces`, `/v1/metrics`, `/v1/logs`) is appended automatically when
-the URL carries no path. No vendor SDK is imported; the only exporter dependency is the
-OpenTelemetry OTLP exporter packages.
+単一の `ENDPOINT_OTLP` が 3 つのシグナルで共有される。HTTP の場合、URL にパスが
+含まれていなければシグナルごとのパス（`/v1/traces`・`/v1/metrics`・`/v1/logs`）が
+自動的に付加される。ベンダー SDK はインポートしない。唯一のエクスポーター依存関係は
+OpenTelemetry の OTLP エクスポーターパッケージのみである。
 
-This decision is gated by [ADR-0071](0071-config-driven-observability-gating.md): a
-signal that is disabled (empty or `none` exporter value) builds no OTLP exporter at all.
+この決定は [ADR-0071](0071-config-driven-observability-gating.md) によってゲーティングされる。
+無効なシグナル（エクスポーター値が空または `none`）は OTLP エクスポーターを一切構築しない。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Any OTLP-compatible backend is reachable by pointing `ENDPOINT_OTLP` at a
-  Collector without changing application code.
-- No vendor SDK is compiled into the binary; dependency surface stays auditable and
-  replaceable.
-- Backend-specific concerns (authentication, pipeline routing, sampling rules) are
-  handled by the Collector, separating operational concerns from the application.
+- OTLP 対応バックエンドであれば `ENDPOINT_OTLP` を Collector に向けるだけで到達でき、
+  アプリケーションコードの変更は不要。
+- ベンダー SDK はバイナリにコンパイルされない。依存関係の表面は監査可能かつ交換可能な状態を保つ。
+- バックエンド固有の関心事（認証・パイプラインルーティング・サンプリングルール）は
+  Collector が担い、アプリケーションの関心事と分離される。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Requires a Collector or Agent sidecar in every environment that enables export.
-  Direct-to-vendor export without a Collector is not supported by this design.
-- Two transport options (`http/protobuf` and `grpc`) must be maintained; misconfigured
-  protocol produces a startup-time error at provider construction (`errInvalidOTLPProtocol`).
+- エクスポートを有効にするすべての環境で Collector または Agent サイドカーが必要になる。
+  Collector を介さないベンダー直接エクスポートはこの設計では対応しない。
+- 2 つのトランスポートオプション（`http/protobuf` と `grpc`）を維持しなければならない。
+  プロトコルの設定誤りは起動時（provider 構築時）のエラー（`errInvalidOTLPProtocol`）となる。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Vendor-native exporters (e.g., Datadog agent SDK, New Relic SDK)
+### ベンダーネイティブなエクスポーター（例: Datadog Agent SDK・New Relic SDK）
 
-Rejected: importing a vendor SDK couples the binary to one provider's API and authentication
-model. Switching backends would require code and dependency changes in the application
-itself, violating [ADR-0001](0001-avoid-lock-in.md).
+却下: ベンダー SDK をインポートするとバイナリが 1 つのプロバイダーの API と認証モデルに
+結合する。バックエンドの切り替えにはアプリケーション自体のコードと依存関係の変更が必要になり、
+[ADR-0001](0001-avoid-lock-in.md) に違反する。
 
-### OTel autoexport (reading `OTEL_*` env vars directly)
+### OTel autoexport（`OTEL_*` 環境変数を直接読む）
 
-Rejected: autoexport reads the environment outside the typed config system and would
-create a second control plane. [ADR-0071](0071-config-driven-observability-gating.md)
-records this rejection in detail.
+却下: autoexport は型付き設定システムの外側で環境変数を読み込み、第二のコントロールプレーンを
+生み出す。[ADR-0071](0071-config-driven-observability-gating.md) がこの却下を詳述している。
 
-### Console exporter for local development
+### ローカル開発用コンソールエクスポーター
 
-Rejected: the no-op fallback (disabled signal builds no exporter, no goroutine) is a
-sufficient local development mode. A console exporter would be a third code path for
-negligible benefit.
+却下: no-op フォールバック（無効なシグナルはエクスポーターもゴルーチンも構築しない）で
+ローカル開発モードとして十分。コンソールエクスポーターは軽微なメリットしかない第三のコード
+パスになってしまう。
 
-## Notes
+## 補足
 
-- Parent principle: [ADR-0001](0001-avoid-lock-in.md) (lock-in avoidance).
-- Config-driven gating: [ADR-0071](0071-config-driven-observability-gating.md).
-- Source: `docs/design/observability.md` §1 "Role theory", `internal/observability/README.md`
-  "Configuration boundary".
-- Implementation: `internal/observability/provider.go` (OTLP-only exporter construction
-  in `newSpanExporter` / `newMetricExporter`).
+- 親原則: [ADR-0001](0001-avoid-lock-in.md)（ロックイン回避）。
+- 設定駆動ゲーティング: [ADR-0071](0071-config-driven-observability-gating.md)。
+- 出典: `docs/design/observability.md` §1「Role theory」、`internal/observability/README.md`
+  「Configuration boundary」。
+- 実装: `internal/observability/provider.go`（`newSpanExporter` / `newMetricExporter` における
+  OTLP 専用エクスポーター構築）。

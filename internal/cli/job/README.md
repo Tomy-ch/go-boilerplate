@@ -1,32 +1,32 @@
 # job
 
-Runs a registered job by name via the CLI. The job executes synchronously and blocks until completion.
+登録済みのジョブを名前を指定して CLI から実行します。ジョブは同期的に実行され、完了まで待機します。
 
-## Command
+## コマンド
 
 ```text
 job <job-name> [args...] [flags]
 ```
 
-## Flags
+## フラグ
 
-|Flag|Default|Description|
+|フラグ|デフォルト|説明|
 |---|---|---|
-|`--timeout`|*(none / unlimited)*|Maximum execution duration (e.g. `30s`, `5m`)|
+|`--timeout`|*(なし / 無制限)*|最大実行時間（例: `30s`, `5m`）|
 
-## Usage
+## 使い方
 
 ```bash
-# Run a job with a timeout
+# タイムアウト付きでジョブを実行
 ./server job user-count --timeout 30s
 
-# Run a job without timeout
+# タイムアウトなしでジョブを実行
 ./server job cleanup-expired
 ```
 
-## Notes
+## 注意点
 
-- The job name must correspond to a job registered in the DI layer (`di.RunJob()`).
-- When `--timeout` is set, the job is cancelled if it exceeds the specified duration.
-- Cleanup (`stop`) is always called after the job finishes, whether it succeeds, fails, or times out. It is bounded by the shutdown grace (`APP_SHUTDOWN_TIMEOUT`, the single stop-timeout axis, also set as `fx.StopTimeout`), and its failure (e.g. OTel flush / DB pool close) is **joined** (`xerrors.Join`) with the job result and surfaced to the caller, so a clean job with a failed teardown still produces a non-zero exit code.
-- Argument parsing and validation are the responsibility of each job implementation.
+- ジョブ名は DI レイヤー（`di.RunJob()`）に登録されているジョブに対応している必要があります。
+- `--timeout` を設定した場合、指定時間を超えるとジョブはキャンセルされます。
+- クリーンアップ処理（`stop`）は、成功・失敗・タイムアウトに関わらず常に呼び出されます。停止猶予（`APP_SHUTDOWN_TIMEOUT`、停止タイムアウトの単一軸。`fx.StopTimeout` にも設定）で上限が設けられ、その失敗（OTel flush / DB pool close 等）はジョブ結果と **Join**（`xerrors.Join`）され呼出側へ伝播するため、ジョブ自体が成功でも後始末が失敗すれば非ゼロ exit code になります。
+- 引数のパースとバリデーションは各ジョブの実装に委ねられています。

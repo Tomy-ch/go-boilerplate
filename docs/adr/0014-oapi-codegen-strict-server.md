@@ -5,45 +5,33 @@ deciders: [maintainers]
 tags: [contract, openapi, codegen]
 ---
 
-# ADR-0014: Generate per tag/handler with oapi-codegen in strict-server mode
+# ADR-0014: oapi-codegen の strict-server モードでタグ/ハンドラーごとに生成する
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-[ADR-0012](0012-openapi-first.md) requires that server code is generated from the OpenAPI
-spec rather than written by hand. The question is *how* to scope that generation: a single
-global generation produces one large interface that all handlers must implement together,
-which creates tight coupling between otherwise-independent handler packages. Additionally,
-the default oapi-codegen server mode passes raw `*echo.Context` to each handler method,
-leaving request unmarshalling and response serialization to the handler implementation —
-this is repetitive code that every handler author must reproduce consistently.
+[ADR-0012](0012-openapi-first.md) はサーバーコードを手書きするのではなく OpenAPI 仕様から生成することを要求している。問題はその生成のスコープをどうするかである。単一のグローバル生成は、すべてのハンドラーが一緒に実装しなければならない 1 つの大きなインターフェースを生成し、それによって独立したハンドラーパッケージ間に密な結合が生じる。さらに、デフォルトの oapi-codegen サーバーモードは各ハンドラーメソッドに生の `*echo.Context` を渡すため、リクエストのアンマーシャリングとレスポンスのシリアライズはハンドラー実装に委ねられる——これはすべてのハンドラー作成者が一貫して再現しなければならない反復コードである。
 
-## Decision
+## 決定
 
-Use **oapi-codegen with `--generate=echo-server,strict-server`**, scoped per OpenAPI tag,
-so each handler package owns only the interface for its own tag.
+**oapi-codegen を `--generate=echo-server,strict-server` で使用し**、OpenAPI タグごとにスコープを絞る。これによって各ハンドラーパッケージは自身のタグのインターフェースのみを持つ。
 
-Each handler file carries two `go:generate` directives at the top:
+各ハンドラーファイルの先頭に 2 つの `go:generate` ディレクティブを記述する：
 
 ```go
 //go:generate oapi-codegen --include-tags=<tag> --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
 //go:generate oapi-codegen --include-tags=<tag> --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
 ```
 
-The `--include-tags=<tag>` flag filters the bundled spec to only the operations that belong
-to this handler package. The generated `gen/` sub-package contains:
+`--include-tags=<tag>` フラグはバンドルされた仕様をこのハンドラーパッケージに属するオペレーションのみにフィルタリングする。生成された `gen/` サブパッケージには以下が含まれる：
 
-- `type.gen.go` — request/response types for the tag.
-- `server.gen.go` — the `StrictServerInterface` for the tag, plus the `echo-server` glue
-  that registers routes and calls the strict handler.
+- `type.gen.go` — タグのリクエスト/レスポンス型。
+- `server.gen.go` — タグの `StrictServerInterface` と、ルートを登録して strict ハンドラーを呼び出す `echo-server` グルーコード。
 
-In **strict-server mode** the generated `StrictServerInterface` receives a typed
-`RequestObject` (carrying already-unmarshalled params and body) and returns a typed
-`ResponseObject`. The handler implementation never calls `c.Bind`, `c.JSON`, or similar
-directly — the strict glue layer handles all marshalling. Example:
+**strict-server モード**では、生成された `StrictServerInterface` は型付きの `RequestObject`（既にアンマーシャリングされたパラメーターとボディを持つ）を受け取り、型付きの `ResponseObject` を返す。ハンドラー実装は `c.Bind`、`c.JSON` などを直接呼び出さない——strict グルー層がすべてのマーシャリングを処理する。例：
 
 ```go
 type StrictServerInterface interface {
@@ -52,56 +40,37 @@ type StrictServerInterface interface {
 }
 ```
 
-`NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc)` adapts the
-strict interface to the plain `ServerInterface` that Echo route registration expects.
+`NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc)` が strict インターフェースを、Echo のルート登録が期待する通常の `ServerInterface` に適合させる。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Each handler package is independently generated, compiled, and tested; adding a new tag
-  does not affect existing handler packages.
-- Strict-server mode eliminates the per-handler binding code: unmarshalling and serialisation
-  are handled by generated code.
-- Handler methods receive fully typed Go structs, making type mismatches compile-time
-  errors rather than runtime panics.
-- Regenerating a single package is fast (`go generate ./internal/controller/handler/<pkg>/`).
+- 各ハンドラーパッケージは独立して生成、コンパイル、テストされる。新しいタグを追加しても既存のハンドラーパッケージには影響しない。
+- strict-server モードでハンドラーごとのバインド処理が排除される。アンマーシャリングとシリアライズは生成コードが処理する。
+- ハンドラーメソッドは完全に型付けされた Go 構造体を受け取るため、型の不一致はランタイムパニックではなくコンパイルエラーになる。
+- 単一パッケージの再生成は高速（`go generate ./internal/controller/handler/<pkg>/`）。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Every handler package must declare its own `//go:generate` directives — there is no
-  single global generation target.
-- The generated strict glue layer adds an indirection layer between Echo and the handler
-  implementation; developers unfamiliar with strict-server mode may find the call flow
-  non-obvious.
-- Regeneration requires the bundled `openapi.gen.yaml` to exist first (see
-  [ADR-0013](0013-redocly-modular-spec-pipeline.md)).
+- すべてのハンドラーパッケージが独自の `//go:generate` ディレクティブを宣言しなければならない。単一のグローバル生成ターゲットは存在しない。
+- 生成された strict グルー層は Echo とハンドラー実装の間に間接層を追加する。strict-server モードに不慣れな開発者はコールフローが分かりにくいと感じる場合がある。
+- 再生成にはバンドルされた `openapi.gen.yaml` が先に存在する必要がある（[ADR-0013](0013-redocly-modular-spec-pipeline.md) 参照）。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Single global generation (all tags in one package)
+### 単一グローバル生成（全タグを 1 パッケージに）
 
-Simpler to configure. Rejected because it couples all handler packages to a shared
-interface — adding or changing one endpoint recompiles everything and makes responsibility
-boundaries ambiguous. In active team development, simultaneous edits to a single shared
-generated file also produce frequent merge conflicts.
+設定がシンプルになる。却下：すべてのハンドラーパッケージを共有インターフェースに結合する——1 つのエンドポイントを追加・変更するとすべてが再コンパイルされ、責任境界が曖昧になる。複数人による並行開発では、単一の共有生成ファイルへの同時編集がコンフリクトを多発させる問題もある。
 
-### Plain echo-server mode (without strict-server)
+### プレーンな echo-server モード（strict-server なし）
 
-Still scoped per tag, but each handler method receives a raw `*echo.Context` and must
-perform its own binding and serialisation. Rejected because it reproduces the same
-binding code in every handler and leaves room for inconsistent error handling. Writing this
-binding and serialisation code in every handler also significantly inflates overall
-line count.
+タグごとにスコープを絞るが、各ハンドラーメソッドは生の `*echo.Context` を受け取り、自身でバインディングとシリアライズを行う必要がある。却下：すべてのハンドラーで同じバインド処理を再現することになり、一貫性のないエラー処理の余地が残る。この処理を各ハンドラーに書いていくだけで全体の行数が著しく増加する問題もある。
 
-## Notes
+## 補足
 
-- `//go:generate` directives are at the top of each `*_handler.go` file under
-  [`internal/controller/handler/`](../../internal/controller/handler/).
-- Generated files are in the `gen/` sub-package of each handler directory and must not be
-  edited by hand.
-- The handler layer contract (one `StrictServerInterface` method per `operationId`, no
-  business logic in handlers) is enforced by the architecture rules in
-  [`docs/rules.md`](../rules.md).
-- Parent decision: [ADR-0012](0012-openapi-first.md) (OpenAPI-first).
-- Spec bundling prerequisite: [ADR-0013](0013-redocly-modular-spec-pipeline.md).
+- `//go:generate` ディレクティブは [`internal/controller/handler/`](../../internal/controller/handler) 配下の各 `*_handler.go` ファイルの先頭にある。
+- 生成ファイルは各ハンドラーディレクトリの `gen/` サブパッケージにあり、手動で編集してはならない。
+- ハンドラー層の契約（`operationId` ごとに 1 つの `StrictServerInterface` メソッド、ハンドラー内にビジネスロジックなし）は [`docs/rules.md`](../rules.md) のアーキテクチャルールで強制される。
+- 親の決定: [ADR-0012](0012-openapi-first.md)（OpenAPI ファースト）。
+- 仕様バンドルの前提条件: [ADR-0013](0013-redocly-modular-spec-pipeline.md)。

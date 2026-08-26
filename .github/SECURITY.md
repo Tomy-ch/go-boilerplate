@@ -1,62 +1,58 @@
-# Security Policy
+# セキュリティポリシー
 
-This repository is a boilerplate template. This file is the initial policy provided as part of
-the template; **downstream inheritors should adjust the contact points, supported versions, and
-other environment-specific details to match their own setup** (environment-specific spots are
-marked `※ adjust for your environment`).
+> 更新は英語版から反映してください。
 
-## Reporting a Vulnerability
+このリポジトリは boilerplate テンプレートです。本ファイルはテンプレートとして提供される初期ポリシーであり、
+**継承先は連絡先・対象バージョン等を自環境に合わせて修正**してください（環境依存箇所は `※環境に合わせて修正` と明記）。
+
+## 脆弱性の報告
 
 > [!IMPORTANT]
-> The contact points below are placeholders. Inheritors must replace them with their actual
-> reporting channels.
+> 以下の連絡先はプレースホルダです。継承先で必ず実際の窓口へ差し替えてください。
 
-- **Do not report vulnerabilities via public Issues or Pull Requests** (doing so discloses the
-  information publicly).
-- Report **privately** through one of the following:
-  - GitHub Private Vulnerability Reporting (repository `Security` → `Advisories` → `Report a
-    vulnerability`)
-  - Security contact: `security@example.com` ※ adjust for your environment
-- Include the following in your report:
-  - Reproduction steps / PoC
-  - Impact scope (expected damage, preconditions)
-  - Affected version or commit SHA
-- Target for the initial response: **within X business days** ※ adjust for your operations
+- 脆弱性は **公開 Issue / Pull Request では報告しないでください**（情報が公開されてしまうため）。
+- 次のいずれかで **非公開** に報告してください。
+  - GitHub の Private Vulnerability Reporting（リポジトリの `Security` → `Advisories` → `Report a
+    vulnerability`）
+  - セキュリティ窓口: `security@example.com` ※環境に合わせて修正
+- 報告には以下を含めてください。
+  - 再現手順 / PoC
+  - 影響範囲（想定される被害・前提条件）
+  - 該当するバージョン or コミット SHA
+- 初回応答の目安: **X 営業日以内** ※運用に合わせて修正
 
-### Supported Versions
+### サポート対象
 
-- Latest release: ✅ supported
-- Anything older: ❌ not supported ※ adjust for your operations
+- 最新リリース: ✅ サポート対象
+- それ以前: ❌ サポート対象外 ※運用に合わせて修正
 
-## Verifying release artifacts
+## 成果物の検証
 
-`.github/workflows/deploy-app.yaml` attaches the following to the `runtime` image pushed to
-GHCR, **targeting the digest of the pushed image**:
+`.github/workflows/deploy-app.yaml` は GHCR へ push する `runtime` イメージに対し、
+**push 済みイメージの digest を対象に** 次を付与します。
 
-- cosign keyless signature (OIDC → Fulcio → Rekor)
-- SLSA provenance attestation (`actions/attest-build-provenance`)
-- SBOM (SPDX) attestation (`actions/attest-sbom`)
+- cosign keyless 署名（OIDC → Fulcio → Rekor）
+- SLSA provenance attestation（`actions/attest-build-provenance`）
+- SBOM(SPDX) attestation（`actions/attest-sbom`）
 
-Tags are mutable but a digest is immutable, so **always verify against the digest**.
-Replace `<owner>` / `<repo>` / `<tag>` / `<digest>` in the commands below to match your
-environment (if you moved off GHCR, also reinterpret the `ghcr.io/<owner>` portion).
+タグは可変だが digest は不変なので、**検証は必ず digest 基準**で行ってください。
+以下コマンド中の `<owner>` / `<repo>` / `<tag>` / `<digest>` は環境に合わせて置換します
+（GHCR 以外へ移した場合は `ghcr.io/<owner>` 部分も読み替え）。
 
-### 0. Resolve the target digest
+### 0. 対象 digest の取得
 
-Because verification is digest-based rather than tag-based, resolve the digest from the
-target image's tag. Migrations run from this same image through a command override
-(`docker run <image> /app/server migrate-up`), not from a separate one, so there is a
-single digest to resolve.
+検証はタグではなく digest 基準で行うため、対象イメージのタグから digest を解決する。
+マイグレーションは別イメージではなく、この同じイメージをコマンド上書き
+（`docker run <image> /app/server migrate-up`）で走らせるため、解決すべき digest は 1 つ。
 
 ```bash
 docker buildx imagetools inspect ghcr.io/<owner>/app:<tag> --format '{{.Manifest.Digest}}'
 crane digest ghcr.io/<owner>/app:<tag>
 ```
 
-### 1. Verify the cosign signature
+### 1. cosign 署名の検証
 
-A keyless signature is verified by "which workflow signed it (the certificate identity)" and
-"the OIDC issuer".
+keyless 署名は「どのワークフローが署名したか（証明書の identity）」と「OIDC 発行者」で検証します。
 
 ```bash
 cosign verify \
@@ -65,7 +61,7 @@ cosign verify \
   ghcr.io/<owner>/app@<digest>
 ```
 
-### 2. Verify the provenance attestation (where and from what it was built)
+### 2. provenance attestation の検証（どこで・何からビルドされたか）
 
 ```bash
 gh attestation verify oci://ghcr.io/<owner>/app@<digest> \
@@ -73,7 +69,7 @@ gh attestation verify oci://ghcr.io/<owner>/app@<digest> \
   --predicate-type https://slsa.dev/provenance/v1
 ```
 
-### 3. Verify the SBOM (SPDX) attestation (proof of contents)
+### 3. SBOM(SPDX) attestation の検証（同梱物の証明）
 
 ```bash
 gh attestation verify oci://ghcr.io/<owner>/app@<digest> \
@@ -82,14 +78,12 @@ gh attestation verify oci://ghcr.io/<owner>/app@<digest> \
 ```
 
 > [!NOTE]
-> `gh attestation verify` consults the GitHub Attestation store, so it works even when the
-> registry does not support OCI referrers (it can also verify via GitHub's records when the
-> deploy side sets `push-to-registry: false`). `cosign verify`, by contrast, consults the
-> signature (referrer) on the registry.
+> `gh attestation verify` は GitHub Attestation store を参照するため、レジストリが OCI referrer に
+> 非対応でも検証できます（deploy 側で `push-to-registry: false` にした場合も GitHub 側の記録で検証可能）。
+> 一方 `cosign verify` はレジストリ上の署名（referrer）を参照します。
 
-### Making verification a deploy gate (recommended)
+### 検証のデプロイゲート化（推奨）
 
 > [!IMPORTANT]
-> We recommend building verification into the CD pipeline as a **gate before deployment**
-> (do not deploy images whose signature, provenance, and SBOM cannot be confirmed). This file
-> only describes the verification steps.
+> 検証は **デプロイ前のゲート** として CD パイプライン側に組み込むことを推奨します
+> （署名・provenance・SBOM が確認できないイメージはデプロイしない）。本ファイルは検証手順のみを示します。

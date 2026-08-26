@@ -5,86 +5,59 @@ deciders: [maintainers]
 tags: [deploy]
 ---
 
-# ADR-0102: Deploy is a vendor-neutral skeleton (build/sign implemented; cloud CD is a stub; registry not fixed)
+# ADR-0102: デプロイはベンダー中立のスケルトン（ビルド/署名は実装済み；クラウド CD はスタブ；レジストリは固定しない）
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-The deploy pipeline must demonstrate a production-grade supply chain without binding the
-repository to a specific cloud provider or container registry. The build, signing, and
-attestation steps are universally applicable; the cloud-specific steps (registry login,
-credential configuration, migration job invocation, and application deployment) vary per
-environment and cannot be implemented in a generic way.
+デプロイパイプラインは、リポジトリを特定のクラウドプロバイダーやコンテナレジストリに縛ることなく、プロダクショングレードのサプライチェーンを示さなければならない。ビルド・署名・アテステーションのステップはどの環境にも適用できるが、クラウド固有のステップ（レジストリログイン、認証情報設定、マイグレーションジョブの実行、アプリケーションのデプロイ）は環境ごとに異なり、汎用的に実装することはできない。
 
-Implementing the pipeline fully for one cloud provider (e.g., AWS ECS) would force any
-deployment to a different provider to strip those steps out, creating friction. Shipping no
-pipeline at all would leave no supply-chain-integrity reference.
+特定のクラウドプロバイダー（例: AWS ECS）向けに完全実装してしまうと、別のプロバイダーへデプロイする際にそれらのステップを取り除く必要が生じ、摩擦が増す。一方、パイプラインを全く提供しないと、サプライチェーン整合性のリファレンスが残らない。
 
-This tension is resolved by separating what can be implemented generically from what must
-be customized (see [ADR-0001](0001-avoid-lock-in.md)).
+この緊張関係は、汎用的に実装できるものとカスタマイズが必要なものを分離することで解決する（[ADR-0001](0001-avoid-lock-in.md) 参照）。
 
-## Decision
+## 決定
 
-The deploy workflow (`deploy-app.yaml`) is structured as a **vendor-neutral skeleton**:
+デプロイワークフロー（`deploy-app.yaml`）を**ベンダー中立のスケルトン**として構成する:
 
-- **Fully implemented** (no modification needed): image build, tagging, caching
-  (`docker/build-push-action`), cosign signing, build-provenance attestation, and SBOM
-  attestation (see [ADR-0101](0101-release-image-supply-chain.md)).
-- **Stubs** (must be replaced for the target environment):
-  - `Define registry` / `Login to registry` — registry selection and authentication.
-    The `meta_registry` output variable is referenced by all downstream steps so a single
-    replacement propagates everywhere. Currently defaults to `ghcr.io` as an illustrative
-    example.
-  - `Configure cloud credentials` — OIDC / Workload Identity / Federated Identity setup.
-  - `Run migration (one-time job)` — cloud-native job primitive (ECS RunTask, Cloud Run
-    Job, Kubernetes Job, etc.).
-  - `Deploy application` — cloud-native deploy primitive (ECS service update, Cloud Run
-    deploy, Kubernetes rollout, etc.).
+- **実装済み**（変更不要）: イメージのビルド・タグ付け・キャッシュ（`docker/build-push-action`）、cosign 署名、ビルドプロベナンスアテステーション、SBOM アテステーション（[ADR-0101](0101-release-image-supply-chain.md) 参照）。
+- **スタブ**（対象環境向けに置き換える必要あり）:
+  - `Define registry` / `Login to registry` — レジストリの選択と認証。`meta_registry` 出力変数はすべての後続ステップから参照されるため、ここを 1 か所置き換えるだけで全体に反映される。現状は例示として `ghcr.io` をデフォルトとしている。
+  - `Configure cloud credentials` — OIDC / Workload Identity / Federated Identity のセットアップ。
+  - `Run migration (one-time job)` — クラウドネイティブのジョブプリミティブ（ECS RunTask、Cloud Run Job、Kubernetes Job など）。
+  - `Deploy application` — クラウドネイティブのデプロイプリミティブ（ECS サービス更新、Cloud Run デプロイ、Kubernetes ロールアウトなど）。
 
-Each stub contains explanatory `echo` lines that describe the expected behavior, the
-environment constraint, and provider examples, so what to implement is documented without
-forcing any one provider.
+各スタブには、期待される動作・環境要件・プロバイダー例を説明する `echo` 行が含まれており、特定のプロバイダーを強制することなく何を実装すればよいかが文書化されている。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Any cloud (AWS / GCP / Azure / on-premises) can use the workflow without removing
-  cloud-specific steps for a rival provider.
-- The registry is not hard-coded: replacing the two registry steps is sufficient to switch
-  registries; signing and attestation steps follow automatically via `meta_registry`.
-- Supply-chain integrity (signing, provenance, SBOM) is pre-wired and works out of the box
-  regardless of which cloud is targeted.
+- どのクラウド（AWS / GCP / Azure / オンプレミス）でも、競合プロバイダー固有のステップを削除することなくワークフローを利用できる。
+- レジストリはハードコードされていない。レジストリ関連の 2 ステップを置き換えるだけでレジストリを切り替えられ、署名・アテステーションのステップは `meta_registry` を介して自動的に追従する。
+- サプライチェーン整合性（署名、プロベナンス、SBOM）は事前に組み込まれており、どのクラウドを対象とするかに関わらず、そのまま機能する。
 
-### Negative Consequences
+### ネガティブな影響
 
-- The pipeline is not runnable end-to-end until the stub steps are implemented for the
-  target environment. A pipeline that partially executes (build succeeds, deploy stub does
-  nothing) can give a false sense of completeness.
-- Stubs must be kept accurate and up to date as the surrounding pipeline evolves, or they
-  risk misleading whoever implements them.
+- パイプラインは、スタブステップが対象環境向けに実装されるまでエンドツーエンドで実行できない。パイプラインが部分的に実行される（ビルドは成功するがデプロイスタブは何もしない）状態は、完成した印象を誤って与えかねない。
+- スタブは、周囲のパイプラインの変化に合わせて正確に最新の状態を保つ必要があり、そうしないと実装する者を誤解させるリスクがある。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Fully implemented for one cloud (e.g., AWS ECS)
+### 特定クラウド向けに完全実装（例: AWS ECS）
 
-Provides a working example for one target environment, but forces every other one to
-understand and remove AWS-specific steps. Inconsistent with [ADR-0001](0001-avoid-lock-in.md).
+1 つの対象環境には動作例を提供できるが、他のすべての環境では AWS 固有のステップを理解して削除しなければならない。[ADR-0001](0001-avoid-lock-in.md) と矛盾するため却下。
 
-### External CD tool (Argo CD, Flux, Spinnaker)
+### 外部 CD ツール（Argo CD、Flux、Spinnaker）
 
-Moves the deploy concern out of GitHub Actions entirely. Valid for mature platforms but
-introduces a new tool dependency that exceeds this repository's deploy scope and is itself
-provider-specific in its hosting.
+デプロイの関心を GitHub Actions から完全に切り出す。成熟したプラットフォームには有効だが、本リポジトリのデプロイのスコープを超える新たなツール依存を導入し、そのホスティング自体もプロバイダー固有になる。
 
-## Notes
+## 補足
 
-- `.github/workflows/deploy-app.yaml` `Define registry` step and `Login to registry` step
-  are the registry customization points.
-- `.github/workflows/deploy-app.yaml` (`Configure cloud credentials`, `Run
-  migration`, `Deploy application`) are the cloud-CD stubs.
-- The lock-in avoidance principle is ADR-0001.
-- Source: `.github/workflows/deploy-app.yaml`.
+- `.github/workflows/deploy-app.yaml` の `Define registry` ステップと `Login to registry` ステップがレジストリのカスタマイズポイントである。
+- `.github/workflows/deploy-app.yaml`（`Configure cloud credentials`、`Run migration`、`Deploy application`）がクラウド CD のスタブである。
+- ロックイン回避の原則は ADR-0001 に定められている。
+- ソース: `.github/workflows/deploy-app.yaml`。

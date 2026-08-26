@@ -1,21 +1,21 @@
-# allowall (Allow-All Authorizer for Local Development)
+# allowall（ローカル開発用の全許可 Authorizer）
 
-A trivial `Authorizer` implementation that **grants every request**. Intended for local development and CI / test environments only — **not for production use**.
+**すべての要求を許可する**単純な `Authorizer` 実装です。ローカル開発・CI / テスト環境専用であり、**本番利用は想定していません**。
 
-## Role
+## 役割
 
-- Satisfy the `Authorizer` dependency so feature development can proceed before a real authorization policy exists.
-- `Authorize(...)` always returns `nil` (allow), regardless of subject / action / resource.
+- 実際の認可ポリシーが存在しない段階でも機能開発を進められるよう、`Authorizer` 依存を満たす。
+- `Authorize(...)` は subject / action / resource によらず常に `nil`（許可）を返す。
 
-## Fail-closed Construction
+## fail-closed な生成
 
-`New` takes the `*config.ApplicationConfig` and **refuses to construct outside `local` / `ci` / `test`**, returning an error for production-like environments. Because a stub that grants everything is dangerous, this precondition is owned by the stub itself rather than by its callers — a wiring mistake in `provideAuthorizer` cannot make an allow-all policy reachable in production. The DI provider surfaces the refusal as a startup failure.
+`New` は `*config.ApplicationConfig` を受け取り、**`local` / `ci` / `test` 以外では生成を拒否**して本番相当の環境ではエラーを返します。すべてを許可するスタブは危険なため、この前提条件は呼び出し側ではなくスタブ自身が担保します —— `provideAuthorizer` の配線を誤っても、本番で全許可ポリシーに到達することはありません。DI プロバイダはその拒否を起動失敗として表面化させます。
 
-## Replacing for Production
+## 本番向けの差し替え
 
-Replace `allowall` with an RBAC / external policy-engine (OPA / Cedar) implementation of `Authorizer`, wired for production-like environments in `provideAuthorizer` (`internal/di/module/authz.go`).
+`allowall` を RBAC / 外部ポリシーエンジン（OPA / Cedar）実装に差し替え、本番相当の環境向けに `provideAuthorizer`（`internal/di/module/authz.go`）で配線してください。
 
-## Notes
+## 注意点
 
-- Performs no authorization at all (allows everything).
-- Do not use in production.
+- 認可を一切行いません（全許可）。
+- 本番で使用しないこと。

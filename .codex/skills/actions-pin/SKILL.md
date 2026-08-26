@@ -3,44 +3,42 @@ name: actions-pin
 description: Audit and update SHA-pinned GitHub Actions in `.github/workflows/**` and `.github/actions/**` using this repository's quarantine-aware lockfile workflow. `check` and `apply` fail closed on lockfile integrity and on `uses:` notation the pinner cannot rewrite (flow mapping, quoted key, block scalar, YAML alias); quarantine age uses the newer release or commit date. Use for routine Actions pin refreshes, a GitHub Actions security advisory, or a requested major upgrade. Default to same-major updates; accept `major` for major upgrades and `days=N` (default 14) for the minimum release age.
 ---
 
-# GitHub Actions Pin Update
+# GitHub Actions の pin 更新
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
-
-Use the trailing tag comment in each external `uses:` reference as the intended version and `.github/actions-pin.toml` as the resolved SHA lockfile.
+外部 `uses:` 参照の末尾に付いたタグコメントを意図されたバージョンとして扱い、`.github/actions-pin.toml` を解決済み SHA の lockfile として扱う。
 
 ```yaml
 uses: owner/repo@<40-hex-sha> # <tag>
 ```
 
-`make pin-actions-resolve` resolves eligible tags into the lockfile, and `make pin-actions-apply` updates only the SHAs. Never update an Action release newer than the exclusion window unless the user explicitly passes `days=0`.
+`make pin-actions-resolve` が対象タグを lockfile へ解決し、`make pin-actions-apply` が SHA だけを更新する。**除外窓より新しい Action リリースへは、ユーザーが明示的に `days=0` を渡さない限り決して更新しないこと。**
 
-Quarantine age is the newer of the release `published_at` and the resolved commit date, so an old release object does not make a freshly re-pointed moving tag appear aged — a moving tag whose release date is old but whose head commit is recent is still quarantined. The quarantine buys time against automated takeover; reviewing lockfile diffs remains the way to detect a re-point itself. Reasoning: `docs/design/security.md`, Build inputs.
+隔離期間の判定に使う日付は、リリースの `published_at` と解決されたコミット日付の**新しいほう**である。したがって、リリースオブジェクトが古いというだけでは、貼り直されたばかりの moving タグが枯れて見えることはない —— リリース日は古いが head コミットが新しい moving タグは、依然として隔離される。隔離が買うのは自動化された乗っ取りに対する時間であり、貼り直しそのものを検出する手段は lockfile の diff をレビューすることのままである。根拠は `docs/design/security.md` の Build inputs。
 
-## Inputs
+## 入力
 
-Parse invocation tokens in any order.
+起動時のトークンは順不同で解釈する。
 
-- No argument: update within existing major versions; minimum age is 14 days.
-- `major` or `--major`: consider newer major versions too.
-- `<integer>`, `days=N`, or `--days N`: set the minimum release age. Reject negative values. Warn explicitly for `0` because it disables quarantine.
+- 引数なし: 既存のメジャーバージョン内で更新する。最小経過日数は 14 日。
+- `major` または `--major`: 新しいメジャーバージョンも検討対象にする。
+- `<整数>` / `days=N` / `--days N`: 最小経過日数を設定する。負値は拒否する。`0` は隔離を無効化するため明示的に警告する。
 
-Do not use this skill for `mise.toml`, Go, or Go module dependency upgrades. Do not change local composite actions (`uses: ./...`).
+このスキルを `mise.toml`・Go・Go モジュール依存の更新に使わないこと。ローカルの composite action（`uses: ./...`）は変更しないこと。
 
-## Workflow
+## ワークフロー
 
-1. Read `AGENTS.md`, `.github/actions-pin.toml`, and all external `uses:` lines in `.github/workflows/` and `.github/actions/`. Identify each Action, all locations, current tag comment, and current major.
-2. Ensure the repository can run the pin tooling. It uses `go run ./scripts/pin-actions` and requires a vendor tree consistent with `go.mod`. If that is the only blocker, run `go mod vendor`. Obtain an authenticated GitHub token if available (`gh auth token`) so release-date queries do not hit anonymous rate limits.
-3. For each distinct Action, query non-prerelease releases and their publication dates. Also verify that a moving major tag exists before selecting it. Continue to rank candidates by `published_at`, but do not infer that an old release is aged: resolution gates it on the newer release or commit date.
-4. Select a target for major `M`, where `M` is the current major unless `major` was requested:
-   1. Prefer moving tag `vM` when its resolved head is older than the cutoff.
-   2. Otherwise choose the newest exact `vM.x.y` release older than the cutoff.
-   3. If no aged release exists in that major, hold the current pin and record why.
-   Use the upstream tag spelling exactly; some projects change between `0.x.y` and `v0.x.y`.
-5. For every proposed major upgrade, inspect the upstream release notes or `action.yml` and compare all repository `with:` inputs. Hold the Action if any input is incompatible; do not silently alter workflow behavior to accommodate it.
-6. Present the concrete plan in Japanese before writing: changes (including moving versus exact pin and release age), held items and reasons, and unchanged items. Ask the user to confirm the proposed set. Do not write until confirmation.
-7. For confirmed items only, edit the trailing `# <tag>` comment. Match the full `uses:` line when multiple Actions share a tag. Do not edit held or unchanged entries.
-8. Resolve and apply:
+1. `AGENTS.md`・`.github/actions-pin.toml`・`.github/workflows/` と `.github/actions/` の外部 `uses:` 行をすべて読む。各 Action、その全出現箇所、現在のタグコメント、現在のメジャーを特定する。
+2. pin ツールが動く状態かを確認する。ツールは `go run ./scripts/pin-actions` を使い、`go.mod` と整合した vendor ツリーを要求する。それだけが障害なら `go mod vendor` を実行する。可能なら認証済みの GitHub トークン（`gh auth token`）を得て、リリース日付の照会が匿名のレート制限に当たらないようにする。
+3. Action ごとに、prerelease でないリリースとその公開日を照会する。moving なメジャータグを選ぶ場合は、それが実在することも確認する。候補の順位付けは `published_at` で続けてよいが、**古いリリースであることから枯れていると推論しないこと**。解決はリリース日とコミット日の新しいほうで判定される。
+4. メジャー `M`（`major` が要求されていない限り現在のメジャー）に対して対象を選ぶ。
+   1. moving タグ `vM` の解決された head が締切より古いなら、それを優先する。
+   2. そうでなければ、締切より古い最新の厳密な `vM.x.y` リリースを選ぶ。
+   3. そのメジャーに枯れたリリースが無ければ、現在の pin を維持し、理由を記録する。
+   タグの綴りは上流のものをそのまま使う。プロジェクトによっては `0.x.y` と `v0.x.y` の間で表記が変わる。
+5. メジャー更新を提案するものすべてについて、上流のリリースノートまたは `action.yml` を確認し、リポジトリ側の `with:` 入力をすべて突き合わせる。入力に非互換があればその Action は据え置く。**それに合わせて workflow の挙動を黙って変えないこと。**
+6. 書き込む前に、具体的な計画を日本語で提示する。変更するもの（moving か厳密な pin か、リリースの経過日数を含む）、据え置くものとその理由、変更しないもの。提案した集合の確認をユーザーへ求める。**確認が取れるまで書き込まないこと。**
+7. 確認が取れた項目についてのみ、末尾の `# <tag>` コメントを編集する。複数の Action が同じタグを共有する場合は `uses:` 行全体で一致させる。据え置き・変更なしのエントリは編集しない。
+8. 解決と適用:
 
    ```sh
    export GITHUB_TOKEN="$(gh auth token)"
@@ -48,28 +46,28 @@ Do not use this skill for `mise.toml`, Go, or Go module dependency upgrades. Do 
    make pin-actions-apply
    ```
 
-   `apply` settles the verdict for every target before writing; if it aborts, the working tree is untouched. If the moving tag is still fresh under the newer-of-release-and-commit-date rule, retaining an existing within-major pin is expected. An old release whose moving-tag head is recent can therefore make `resolve` print `⚠️ ... 既存ピンを維持`: this is the rule 4.1 → 4.2 fallback firing late, not an error. If resolution reports a missing moving tag, use an eligible exact release instead.
-9. Verify:
+   `apply` は書き込み前に全対象の判定を確定させる。中断した場合、作業ツリーは手つかずのままである。リリース日とコミット日の新しいほうを見る規則の下で moving タグがまだ新しい場合、メジャー内の既存 pin を保つのは想定どおりの挙動である。したがって、古いリリースでも moving タグの head が新しいと `resolve` が `⚠️ ... 既存ピンを維持` と出すことがある。これは規則 4.1 → 4.2 のフォールバックが遅れて発火しただけであり、エラーではない。解決が moving タグの不在を報告した場合は、条件を満たす厳密なリリースを代わりに使う。
+9. 検証:
 
    ```sh
    make pin-actions-check
    make actions-lint
    ```
 
-   `check` and `apply` also fail closed on repository-state problems; fix them locally before retrying:
+   `check` と `apply` はリポジトリの状態の問題に対しても fail-closed する。再試行の前にローカルで直すこと。
 
-   | Error | Meaning and fix |
+   | エラー | 意味と対処 |
    | --- | --- |
-   | `lockfile に解釈できない行があります` (with a line number) | A lockfile line is not blank, a comment, or a `"key" = "<40-hex>"` assignment. Run `make pin-actions-resolve`, or delete the reported line. |
-   | `lockfile にキーの重複があります` | One `owner/repo@tag` is assigned twice, often after a merge-conflict resolution. Run `make pin-actions-resolve`, or delete the duplicate. |
-   | `lockfile に参照されていないエントリがあります` | A lockfile key matches no live `uses:`, usually after a workflow deletion. Run `make pin-actions-resolve`, or delete the orphan. |
-   | `固定対象として解釈できない記法の uses: があります` | A `uses:` the pinner cannot rewrite: a flow mapping (`- {name: Checkout, uses: actions/checkout@v4}`), a quoted key (`"uses": ...`), a block scalar deferring the value to the next line (`uses: >-`), or a YAML alias (`uses: *anchor`). The message names the offending value. Rewrite the step in plain block notation with `- uses: owner/repo@sha # tag`; do not suppress the check. Text inside a block scalar is exempt, so a `run:` script printing the string `uses: owner/repo@ref` does not trip it. |
+   | `lockfile に解釈できない行があります`（行番号付き） | lockfile の行が、空行でもコメントでも `"key" = "<40-hex>"` の代入でもない。`make pin-actions-resolve` を実行するか、報告された行を削除する。 |
+   | `lockfile にキーの重複があります` | 1 つの `owner/repo@tag` が 2 回代入されている。マージ衝突の解決後によく起きる。`make pin-actions-resolve` を実行するか、重複を削除する。 |
+   | `lockfile に参照されていないエントリがあります` | lockfile のキーがどの生きた `uses:` にも一致しない。通常は workflow の削除後。`make pin-actions-resolve` を実行するか、孤児を削除する。 |
+   | `固定対象として解釈できない記法の uses: があります` | pinner が書き換えられない `uses:`。フローマッピング（`- {name: Checkout, uses: actions/checkout@v4}`）、引用符付きキー（`"uses": ...`）、値を次行へ送るブロックスカラー（`uses: >-`）、YAML エイリアス（`uses: *anchor`）のいずれか。メッセージが該当する値を名指す。そのステップを素のブロック記法 `- uses: owner/repo@sha # tag` へ書き直すこと。**検査を抑制しないこと。** ブロックスカラーの内側のテキストは対象外なので、`run:` スクリプトが `uses: owner/repo@ref` という文字列を出力しても引っかからない。 |
 
-   Report each result. Do not automatically roll back on failure.
+   結果はそれぞれ報告する。失敗しても自動でロールバックしないこと。
 
-## Safety and Completion
+## 安全性と完了
 
-- Modify only `.github/workflows/*.{yml,yaml}`, `.github/actions/**/action.{yml,yaml}`, and `.github/actions-pin.toml` while this skill runs.
-- Do not change `with:` inputs, workflow step logic, `scripts/pin-actions`, generated files, or `AGENTS.md`.
-- Do not stage, commit, or push. Report exact-version step-back pins so they can be revisited after the moving tag ages.
-- Treat `make pin-actions-check` and `make actions-lint` as required completion checks.
+- このスキルの実行中に変更してよいのは `.github/workflows/*.{yml,yaml}` / `.github/actions/**/action.{yml,yaml}` / `.github/actions-pin.toml` だけである。
+- `with:` の入力・workflow のステップの論理・`scripts/pin-actions`・生成ファイル・`AGENTS.md` は変更しない。
+- stage / commit / push はしない。厳密バージョンへ後退させた pin は、moving タグが枯れたあとに見直せるよう報告する。
+- `make pin-actions-check` と `make actions-lint` は必須の完了検査として扱う。

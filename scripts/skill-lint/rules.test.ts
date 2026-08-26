@@ -9,7 +9,6 @@ import {
   checkPlatformOnlyAllowlist,
   checkReferences,
   checkSkillParity,
-  checkTranslationPair, // doc-pair:line
   formatFindings,
   isClaudeAgentDefinition,
   isCodexAgentDefinition,
@@ -35,13 +34,6 @@ function canonical(name = "demo"): string {
   return doc("---", `name: ${name}`, "description: what it does", "---", "", "# Demo", "", "## Steps");
 }
 
-// doc-pair:begin
-/** canonical と 1:1 の対訳。 */
-function translation(basename = "SKILL.md"): string {
-  return doc(`> ${basename} の日本語訳です。`, "", "# デモ", "", "## 手順");
-}
-
-// doc-pair:end
 const NO_REFERENCES = {
   makeTargetExists: () => true,
   repoPathExists: () => true,
@@ -92,62 +84,6 @@ describe("checkFrontmatter", () => {
   });
 });
 
-// doc-pair:begin
-describe("checkTranslationPair", () => {
-  describe("正常系", () => {
-    it("frontmatter が無く注記と見出しが揃っていれば違反にしない", () => {
-      expect(
-        checkTranslationPair("a/SKILL.md", "a/SKILL.ja.md", canonical(), translation()),
-      ).toEqual([]);
-    });
-  });
-
-  describe("異常系", () => {
-    it("対訳が無ければ canonical 側を指して報告する", () => {
-      const findings = checkTranslationPair("a/SKILL.md", "a/SKILL.ja.md", canonical(), null);
-
-      expect(findings).toHaveLength(1);
-      expect(findings[0]).toMatchObject({ file: "a/SKILL.md", rule: "translation" });
-      expect(findings[0].message).toContain("SKILL.ja.md");
-    });
-
-    it("対訳に frontmatter があれば報告する", () => {
-      const withFrontmatter = doc("---", "name: demo", "---", "> SKILL.md の日本語訳です。", "", "# デモ", "", "## 手順");
-
-      const findings = checkTranslationPair("a/SKILL.md", "a/SKILL.ja.md", canonical(), withFrontmatter);
-
-      expect(findings.map((f) => f.message)).toContainEqual(expect.stringContaining("frontmatter"));
-    });
-
-    it("翻訳注記が無ければ報告する", () => {
-      const noNote = doc("# デモ", "", "## 手順");
-
-      const findings = checkTranslationPair("a/SKILL.md", "a/SKILL.ja.md", canonical(), noNote);
-
-      expect(findings.map((f) => f.message)).toContainEqual(expect.stringContaining("翻訳注記"));
-    });
-
-    it("見出し構造がずれていれば、ずれた側の行番号を指して報告する", () => {
-      const shifted = doc("> SKILL.md の日本語訳です。", "", "# デモ", "", "### 手順");
-
-      const findings = checkTranslationPair("a/SKILL.md", "a/SKILL.ja.md", canonical(), shifted);
-
-      expect(findings).toHaveLength(1);
-      expect(findings[0].file).toBe("a/SKILL.ja.md");
-      expect(findings[0].message).toContain("見出し構造");
-    });
-
-    it("対訳の見出しが足りなければ「無し」として示す", () => {
-      const short = doc("> SKILL.md の日本語訳です。", "", "# デモ");
-
-      const findings = checkTranslationPair("a/SKILL.md", "a/SKILL.ja.md", canonical(), short);
-
-      expect(findings[0].message).toContain("（無し）");
-    });
-  });
-});
-
-// doc-pair:end
 describe("checkSkillParity", () => {
   describe("正常系", () => {
     it("両環境に揃っていれば違反にしない", () => {
@@ -258,16 +194,11 @@ describe("checkPlatformOnlyAllowlist", () => {
   });
 });
 
-// doc-pair:replace-begin
 describe("checkCodexSkillStructure", () => {
   describe("正常系", () => {
-    it("SKILL.md と openai.yaml と対訳が揃えば違反にしない", () => {
+    it("SKILL.md と openai.yaml が揃えば違反にしない", () => {
       expect(
-        checkCodexSkillStructure(".codex/skills/a", {
-          canonical: canonical(),
-          hasMetadata: true,
-          translation: translation(),
-        }),
+        checkCodexSkillStructure(".codex/skills/a", { canonical: canonical(), hasMetadata: true }),
       ).toEqual([]);
     });
   });
@@ -277,7 +208,6 @@ describe("checkCodexSkillStructure", () => {
       const findings = checkCodexSkillStructure(".codex/skills/a", {
         canonical: null,
         hasMetadata: true,
-        translation: null,
       });
 
       expect(findings).toHaveLength(1);
@@ -288,81 +218,14 @@ describe("checkCodexSkillStructure", () => {
       const findings = checkCodexSkillStructure(".codex/skills/a", {
         canonical: canonical(),
         hasMetadata: false,
-        translation: translation(),
       });
 
       expect(findings).toHaveLength(1);
       expect(findings[0].message).toContain("openai.yaml");
     });
-
-    it("対訳が無ければ報告する", () => {
-      const findings = checkCodexSkillStructure(".codex/skills/a", {
-        canonical: canonical(),
-        hasMetadata: true,
-        translation: null,
-      });
-
-      expect(findings).toHaveLength(1);
-      expect(findings[0].message).toContain("SKILL.ja.md");
-    });
-
-    it("在る対訳の構造が崩れていれば報告する", () => {
-      const findings = checkCodexSkillStructure(".codex/skills/a", {
-        canonical: canonical(),
-        hasMetadata: true,
-        translation: doc("# デモ"),
-      });
-
-      expect(findings.length).toBeGreaterThan(0);
-      expect(findings[0].file).toBe(".codex/skills/a/SKILL.ja.md");
-    });
-
-    it("SKILL.md が無ければ対訳の構造は検査しない", () => {
-      const findings = checkCodexSkillStructure(".codex/skills/a", {
-        canonical: null,
-        hasMetadata: true,
-        translation: doc("# デモ"),
-      });
-
-      expect(findings).toHaveLength(1);
-    });
   });
 });
 
-// doc-pair:replace-with
-// = describe("checkCodexSkillStructure", () => {
-// =   describe("正常系", () => {
-// =     it("SKILL.md と openai.yaml が揃えば違反にしない", () => {
-// =       expect(
-// =         checkCodexSkillStructure(".codex/skills/a", { canonical: canonical(), hasMetadata: true }),
-// =       ).toEqual([]);
-// =     });
-// =   });
-// =
-// =   describe("異常系", () => {
-// =     it("SKILL.md が無ければ報告する", () => {
-// =       const findings = checkCodexSkillStructure(".codex/skills/a", {
-// =         canonical: null,
-// =         hasMetadata: true,
-// =       });
-// =
-// =       expect(findings).toHaveLength(1);
-// =       expect(findings[0].message).toContain("`SKILL.md`");
-// =     });
-// =
-// =     it("openai.yaml が無ければ報告する", () => {
-// =       const findings = checkCodexSkillStructure(".codex/skills/a", {
-// =         canonical: canonical(),
-// =         hasMetadata: false,
-// =       });
-// =
-// =       expect(findings).toHaveLength(1);
-// =       expect(findings[0].message).toContain("openai.yaml");
-// =     });
-// =   });
-// = });
-// =
-// doc-pair:replace-end
 describe("checkReferences", () => {
   describe("正常系", () => {
     it("実在する参照だけなら違反にしない", () => {
@@ -491,7 +354,6 @@ describe("isClaudeAgentDefinition", () => {
 
   describe("異常系", () => {
     it("対訳は定義として数えない", () => {
-      expect(isClaudeAgentDefinition("reviewer.ja.md")).toBe(false); // doc-pair:line
     });
 
     it("md 以外は対象にしない", () => {

@@ -5,83 +5,59 @@ deciders: [maintainers]
 tags: [config]
 ---
 
-# ADR-0045: Config is immutable, loaded once at startup, fail-fast
+# ADR-0045: 設定は不変、起動時に 1 回だけロード、フェイルファスト
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Configuration that can be read at any time or mutated after startup creates race
-conditions, obscures what value was in effect during a failure, and makes components
-harder to test because their configuration context is unpredictable.
+起動後に任意のタイミングで読み取れたり変更できたりする設定は、レース条件を引き起こし、障害時にどの値が有効だったかを曖昧にし、設定コンテキストが予測できないためコンポーネントのテストを困難にする。
 
-Additionally, a service that starts with invalid or missing configuration can run for
-minutes before a missing credential or wrong host causes a failure deep in a request
-path. Detecting problems early — before any traffic is served — produces clearer error
-messages and prevents partial initialization.
+また、無効または欠落した設定でサービスが起動すると、欠けたクレデンシャルや誤ったホストがリクエストパスの深い部分で障害を引き起こすまで数分間動作し続けることがある。問題をトラフィックが到達する前に早期に検出することで、エラーメッセージが明確になり、部分的な初期化が防止される。
 
-## Decision
+## 決定
 
-Configuration is loaded **exactly once** at application startup through `config.SetUpConfig()`,
-which chains `config.Load()` (reads the embedded `env/.env` into process env vars) then
-`config.New()` (parse + validate). The loading sequence is:
+設定はアプリケーション起動時に `config.SetUpConfig()` を通じて**ちょうど 1 回**ロードされる。これは `config.Load()`（embedded な `env/.env` をプロセス環境変数へ読み込む）→ `config.New()`（parse + validate）を連結する。ロードシーケンスは以下の通り:
 
 ```text
-config.Load(): env/.env (embedded) → process env
+config.Load(): env/.env (embedded) → プロセス環境変数
 config.New():  env.ParseAs[Loader]() → validateConfig() → *Config
 ```
 
-The returned `*Config` type is **immutable**: it exposes only getter methods; no setter
-methods exist. Components receive narrowly scoped SubConfig values (e.g.,
-`*config.ServerConfig`, `*config.DatabaseConfig`) via DI providers rather than the full
-`*Config` object.
+返される `*Config` 型は**不変**である。ゲッターメソッドのみを公開し、セッターメソッドは存在しない。コンポーネントは `*Config` オブジェクト全体ではなく、DI プロバイダー経由でスコープを絞った SubConfig 値（例: `*config.ServerConfig`、`*config.DatabaseConfig`）を受け取る。
 
-`validateConfig()` enforces constraints (port ranges, CIDR format, timeout ordering,
-allowed-origins non-empty, etc.) and returns an error immediately if any constraint is violated.
-The application **fails to start** on any validation error or missing required field,
-rather than running in a degraded or misconfigured state.
+`validateConfig()` は制約（ポート範囲、CIDR フォーマット、タイムアウトの順序、allowed-origins が非空であることなど）を適用し、制約に違反した場合は即座にエラーを返す。アプリケーションは検証エラーや必須フィールドの欠落があれば、劣化または誤設定の状態で動作するのではなく、**起動に失敗する**。
 
-Domain and usecase layers must not depend on environment variables directly; configuration
-interpretation is confined to the `config` package.
+ドメインとユースケースのレイヤーは環境変数に直接依存してはならない。設定の解釈は `config` パッケージに限定される。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- The effective configuration at any point in time is fixed and observable from startup
-  logs; no runtime mutation can change the values a component sees.
-- Invalid or incomplete configuration surfaces immediately at startup with a clear error,
-  not mid-request.
-- SubConfig providers expose only the fields a component needs, reducing its visible
-  surface and making test setup straightforward.
+- 任意の時点での有効な設定は起動ログから固定的かつ観察可能であり、ランタイムの変更がコンポーネントが参照する値を変えることはない。
+- 無効または不完全な設定は、リクエスト途中ではなく起動時に明確なエラーとして即座に表面化する。
+- SubConfig プロバイダーはコンポーネントが必要とするフィールドのみを公開し、その可視サーフェスを削減してテストのセットアップを簡潔にする。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Changes to configuration require a process restart; there is no hot-reload mechanism.
-- Test code must use the provided testing helpers (`MockConfigForTest`, `t.Setenv`) to
-  inject different values; direct field mutation is intentionally unavailable.
+- 設定の変更にはプロセスの再起動が必要であり、ホットリロードの仕組みはない。
+- テストコードは異なる値を注入するために提供されたテストヘルパー（`MockConfigForTest`、`t.Setenv`）を使用する必要があり、フィールドの直接変更は意図的に無効化されている。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Mutable config with live reload
+### ライブリロードによるミュータブル設定
 
-Allow configuration to be reloaded at runtime (e.g., from a file watcher or a config
-server). Rejected: increases complexity, introduces race conditions, and requires every
-consumer to handle value changes at arbitrary times.
+設定をランタイムにリロードできるようにする（例: ファイルウォッチャーや設定サーバーを使用）。却下: 複雑さが増し、レース条件が導入され、すべてのコンシューマーが任意のタイミングでの値変更を処理する必要が生じる。
 
-### Load config on first use (lazy)
+### ファーストユース時の設定ロード（遅延）
 
-Defer loading until a component first reads a value. Rejected: defers detection of
-missing or invalid values until that component is exercised, which may not happen during
-startup verification.
+コンポーネントが初めて値を読み取る際にロードを先送りする。却下: 欠落または無効な値の検出がそのコンポーネントが初めて実行されるまで遅延し、起動時の検証で実行されない可能性がある。
 
-## Notes
+## 補足
 
-- Source: `internal/config/README.md` (Design Principles section),
-  `internal/config/setup.go` (`SetUpConfig()`), `internal/config/loader.go` (`Load()`),
-  `internal/config/config.go` (`New()` and `validateConfig()`).
-- Subsystem struct layout: [ADR-0043](0043-subsystem-typed-config-loaders.md).
-- Default-vs-required governance: [ADR-0044](0044-config-default-vs-required-governance.md).
-- Embedded env file mechanism: [ADR-0046](0046-embedded-self-contained-binary.md).
+- 出典: `internal/config/README.md`（Design Principles セクション）、`internal/config/setup.go`（`SetUpConfig()`）、`internal/config/loader.go`（`Load()`）、`internal/config/config.go`（`New()` と `validateConfig()`）。
+- サブシステム構造体のレイアウト: [ADR-0043](0043-subsystem-typed-config-loaders.md)。
+- デフォルト対必須のガバナンス: [ADR-0044](0044-config-default-vs-required-governance.md)。
+- 埋め込み env ファイルの仕組み: [ADR-0046](0046-embedded-self-contained-binary.md)。

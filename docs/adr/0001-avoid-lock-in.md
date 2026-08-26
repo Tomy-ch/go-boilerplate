@@ -5,78 +5,56 @@ deciders: [maintainers]
 tags: [foundational, architecture, dependencies]
 ---
 
-# ADR-0001: Adopt lock-in avoidance as a design principle
+# ADR-0001: ロックイン回避を設計原則として採用する
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-This repository is long-lived, and its stated design goals include replaceable
-infrastructure and long-term operability. Two forms of captivity threaten those goals:
+このリポジトリは長期にわたるものであり、その設計目標として交換可能なインフラストラクチャと長期的な運用性が掲げられている。二つの形態の囲い込みがその目標を脅かす:
 
-- **Vendor lock-in** — binding the application to a proprietary SaaS (a specific APM,
-  managed queue, or cloud primitive) so that switching provider means rewriting code.
-- **Library lock-in** — a dependency that spreads a framework's types and idioms across
-  layers so it can no longer be swapped without a wide blast radius.
+- **ベンダーロックイン** — アプリケーションを特定の SaaS（特定の APM、マネージドキュー、クラウドプリミティブ）に縛り付け、プロバイダーを切り替えるとコードの書き直しが必要になる。
+- **ライブラリロックイン** — フレームワークの型やイディオムを複数のレイヤーに広げる依存関係であり、広い影響範囲を伴わずには差し替えられなくなる。
 
-Any vendor this system runs on can have its updates stop one day and quietly die, and being
-captive to it at that moment is a concrete, not theoretical, risk.
+このシステムが乗るベンダーは、ある日更新が止まり静かに死にうる。そのときに囲い込まれていることは、理論上のリスクではなく具体的なリスクである。
 
-## Decision
+## 決定
 
-Treat **lock-in avoidance (replaceability)** as a first-order design principle that the
-more specific decisions inherit:
+**ロックイン回避（交換可能性）** を、より具体的な決定が継承する最優先の設計原則として扱う:
 
-- Prefer vendor-neutral, OSS, standards-based components; keep vendor specifics behind a
-  seam (domain `Repository` interfaces, `usecase/boundary` ports, OTLP + Collector for
-  observability) rather than in inner layers.
-- Every third-party library maps to a single, nameable, replaceable responsibility; a
-  library that would straddle two upstreams is treated as an explicit, bounded exception.
-- **Wrap the vendor behind `pkg/`.** Where a library supplies a general-purpose *value type*
-  that would otherwise spread through every layer, the concrete vendor is wrapped by a thin
-  `pkg/` package and the rest of the repository depends only on that wrapper (`pkg/uuid`,
-  `pkg/xerrors`, `pkg/decimal`). A direct import of the wrapped vendor from anywhere other than
-  its seam is forbidden, which is checkable by grep and by depguard, so the library can be
-  swapped by editing one package instead of the whole tree. The wrapper carries no business
-  semantics — that is what keeps it admissible in `pkg/` at all — and where the type crosses the
-  database or the HTTP boundary, the wrapper owns those conversions too, so even generated code
-  never names the vendor type. Applying this pattern to a particular library is an instance of
-  this principle and does not warrant an ADR of its own.
+- ベンダーニュートラルかつ OSS・標準ベースのコンポーネントを優先し、ベンダー固有の要素は内部レイヤーではなく境界の背後に隠す（ドメインの `Repository` インターフェース、`usecase/boundary` ポート、可観測性の OTLP + Collector）。
+- すべてのサードパーティライブラリは単一の名前を持ち、交換可能な責務にマッピングされる; 2 つ以上の上流をまたぐライブラリは、明示的かつ境界を持つ例外として扱われる。
+- **ベンダーは `pkg/` の背後に包む。** ライブラリが汎用の*値型*を供給し、放っておけば全レイヤーへ広がる場合、具体のベンダーは薄い `pkg/` パッケージで包み、リポジトリの残りはそのラッパーにのみ依存する（`pkg/uuid`、`pkg/xerrors`、`pkg/decimal`）。継ぎ目以外の場所から包まれたベンダーを直接 import することは禁止で、これは grep と depguard で検査できるため、ライブラリの差し替えはツリー全体ではなく 1 パッケージの編集で済む。ラッパーは業務的な意味を持たない——それが `pkg/` に置ける条件そのものである——し、その型が DB や HTTP の境界をまたぐ場合は変換もラッパーが所有するので、生成コードですらベンダーの型を名指ししない。個別のライブラリへこのパターンを適用することは本原則の一事例であり、単独の ADR には値しない。
 
-This principle is the parent of the library-selection policy, the SQS opt-in isolation, the
-OTLP-only export, and the vendor-neutral deploy skeleton (each recorded as its own ADR).
+この原則は、ライブラリ選定ポリシー、SQS オプトイン分離、OTLP 専用エクスポート、およびベンダーニュートラルなデプロイスケルトンの親となる（それぞれ個別の ADR として記録）。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Infrastructure and providers are swappable behind stable interfaces; no SaaS captivity.
-- The dependency surface stays auditable — each library has one replaceable job.
-- Cloud, broker, and telemetry backends can be retargeted without touching domain/usecase.
+- インフラストラクチャとプロバイダーは安定したインターフェースの背後で交換可能; SaaS への囲い込みがない。
+- 依存関係の表面が監査可能なまま保たれる — 各ライブラリは 1 つの交換可能な仕事を持つ。
+- クラウド・ブローカー・テレメトリのバックエンドは、ドメイン/ユースケースに触れることなく切り替えられる。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Neutral seams can cost technology-specific capabilities (the trade-off examined per case,
-  e.g. the deliberately rejected generic cache abstraction).
-- More indirection than binding directly to a vendor SDK.
+- ニュートラルな境界は技術固有の能力を犠牲にする場合がある（例ごとに検討されるトレードオフ、例: 意図的に却下した汎用キャッシュ抽象）。
+- ベンダー SDK に直接バインドするよりも間接層が増える。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Bind directly to a chosen vendor / SaaS
+### 特定のベンダー / SaaS に直接バインドする
 
-Rejected: fastest initially, but couples business code to one provider's API and pricing,
-defeating the replaceable-infrastructure goal.
+却下: 初期は最速だが、ビジネスコードを特定プロバイダーの API と料金体系に結合させ、交換可能なインフラという目標を損なう。
 
-### No explicit principle (decide per case)
+### 明示的な原則なし（ケースバイケースで決定する）
 
-Rejected: without a stated parent principle, lock-in creeps in incrementally through
-convenient SDK imports and framework types leaking across layers.
+却下: 親となる原則がなければ、便利な SDK インポートやレイヤーをまたぐフレームワーク型を通じてロックインが段階的に忍び込む。
 
-## Notes
+## 補足
 
-- Sources: `docs/architecture.md` (vendor-neutral / OSS-replaceable), `docs/project/policy.md`
-  (vendor neutrality), `docs/project/policy.md` § "Library Selection Policy".
-- Enforced in part by the layer/`pkg` import rules in [`docs/rules.md`](../rules.md).
-- Full ADR set and ordering: [the ADR log](README.md).
+- ソース: `docs/architecture.md`（ベンダーニュートラル / OSS 交換可能）、`docs/project/policy.md`（ベンダーニュートラリティ）、`docs/project/policy.md` §「Library Selection Policy」。
+- 一部は [`docs/rules.md`](../rules.md) のレイヤー/`pkg` インポートルールによって強制される。
+- ADR の全体像と順序: [ADR ログ](README.md)。

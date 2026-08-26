@@ -6,176 +6,174 @@ description: >-
 
 # Scaffold Integration Test
 
-Generate the HTTP-boundary integration test for a feature under `internal/integration/`.
+1 feature 分の HTTP 境界 integration テストを `internal/integration/` 配下に生成するスキル。
 
-This layer is **not** about DB or usecase internals — it boots a real Echo server (`httptest`) and asserts the behavior of the **whole HTTP path** (Router → Middleware → Handler → Presenter) with the **usecase mocked**. See `internal/integration/README.md` for the canonical test strategy and scope.
+ここでいう integration は **DB や usecase 内部のテストではない**。`httptest` で実際の Echo サーバを起動し、**HTTP 経路全体（Router → Middleware → Handler → Presenter）** の振る舞いを、**usecase を mock した状態**で検証する。テスト戦略とスコープの canonical は `internal/integration/README.md`。
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+## 使うとき
 
-## When to Use
+- feature の controller handler を実装し、コンパイルが通った直後
+- `scaffold-controller` の最終ステップとして自動 chain（handler 実装直後に HTTP 境界テストが付く）
+- 既存 handler に対して integration テストだけ scaffold したい standalone 利用
 
-- Immediately after a feature's controller handler is implemented and compiles.
-- As the final step of `scaffold-controller` (auto-chained), so a feature gets its HTTP-boundary test right after the handler exists.
-- Standalone when only the integration test for an existing handler needs scaffolding.
+以下には使わない:
 
-Do NOT use for:
+- DB / Repository / usecase ロジックの検証 — それらは unit テスト（domain/usecase）と repository 自身の `make test`（実 DB）の担当。ここは HTTP 境界で止める
+- handler / usecase / 生成ファイルの変更
+- 既存 `<feature>_test.go` への 1 ケース追加 — 手で編集
 
-- DB / Repository / usecase-logic verification — those are unit tests (domain/usecase) and the repository's own `make test` (real DB). Integration here stops at the HTTP boundary.
-- Modifying the handler, usecase, or generated files.
-- Adding a single case to an existing `<feature>_test.go` — edit by hand.
+## 読む / 書く
 
-## What This Skill Reads / Writes
+**読む（常に source of truth として）**:
 
-**Reads (always, as source of truth)**:
+- `internal/integration/README.md` — テスト戦略 + スコープ（ここで検証する/しない範囲）
+- `internal/integration/helper_test.go` — このパッケージのテストヘルパー（役割: HTTP サーバ起動 / リクエスト実行 / JSON レスポンス assert / 認証ヘッダ付与）。**正確な名前・シグネチャは実行時にこのファイルから読む — スキルは一切 hardcode しない。** 存在するヘルパーを使い、HTTP 配線を自作しない
+- `internal/integration/<sibling>_test.go`（例 `v1_users_test.go`）— パッケージの書き方の構造テンプレート
+- `internal/controller/handler/<path>/<feature>_handler.go` — import する `BindHandler` シグネチャ + handler パッケージ名
+- `internal/controller/handler/<path>/gen/server.gen.go` — operationId 一覧 + HTTP メソッド/パス（route コメント）+ request/response 型
+- usecase mock パッケージ（例 `internal/usecase/<pkg>/mock`）— mapped usecase メソッド用の mock + `EXPECT()` メソッド名
 
-- `internal/integration/README.md` — test strategy + scope (what is and is NOT verified here)
-- `internal/integration/helper_test.go` — the package's test helpers, by role: HTTP server bootstrap, request execution, JSON-response assertion, auth-header injection. **Read their exact names + signatures from this file at runtime — the skill hardcodes none of them.** Use whatever helpers exist there; do not reinvent HTTP plumbing.
-- `internal/integration/<sibling>_test.go` (e.g. `v1_users_test.go`) — structural template for the package's idioms
-- `internal/controller/handler/<path>/<feature>_handler.go` — the `BindHandler` signature + handler package name to import
-- `internal/controller/handler/<path>/gen/server.gen.go` — operationId list + HTTP method/path (from the route comments) + request/response types
-- the usecase mock package (e.g. `internal/usecase/<pkg>/mock`) — the mock + `EXPECT()` method names for the mapped usecase methods
+**書く（確認のうえ）**:
 
-**Writes (with confirmation)**:
+- `internal/integration/<feature>_test.go` — `Test<Feature>_Integration` 1 関数、operationId ごとに 1 subtest
 
-- `internal/integration/<feature>_test.go` — one top-level `Test<Feature>_Integration` func with one subtest per operationId
+**トリガ（`make` 経由）**:
 
-**Triggers (via `make`)**:
+- `make fix` + `make test` — 最終検証
 
-- `make fix` + `make test` — final verification
+**触らない**:
 
-**Never touches**:
+- handler / usecase / domain / infra コード
+- 生成 `*.gen.go`
+- `internal/integration/helper_test.go`（読み取り専用。必要なヘルパーが無ければ surface するだけで、ここでは編集しない）
 
-- Handler / usecase / domain / infra code
-- Generated `*.gen.go`
-- `internal/integration/helper_test.go` (read-only; if a needed helper is missing, surface it — do not edit the helper here)
+## 前提条件
 
-## Preconditions
+書き込み前に検証:
 
-The skill verifies before any write:
+1. `internal/integration/` が存在し `helper_test.go`（ヘルパー API）がある
+2. 対象 handler パッケージが存在し `BindHandler` を公開（controller scaffold 済み + コンパイル可）
+3. feature の usecase mock パッケージが存在（生成済み）
+4. `internal/integration/<feature>_test.go` が**未存在**（あれば中断 — 手動編集に委ねる）
 
-1. `internal/integration/` exists with `helper_test.go` (the helper API is present).
-2. The target handler package exists and exposes `BindHandler` (controller scaffolding done + compiling).
-3. The usecase mock package for the feature exists (generated).
-4. `internal/integration/<feature>_test.go` does NOT already exist (abort if it does — hand back to manual editing).
+前提未充足時は明示メッセージで中断（`/scaffold-controller`、mock 用 `make gen-api`、手動 cleanup 等の案内付き）。
 
-If any precondition fails, abort with corrective guidance (`/scaffold-controller`, `make gen-api` for the mock, manual cleanup).
+## 最初のステップ: identity 解決
 
-## First Step: Resolve Identity
-
-This skill **MUST call `ask the user explicitly` immediately after invocation** (unless invoked from `scaffold-controller` with feature + handler path + usecase package already in context):
+このスキルは**起動直後に必ず `ask the user explicitly` を呼ぶ**（`scaffold-controller` から feature + handler パス + usecase パッケージを受け取って chain された場合は省略）:
 
 1. 質問: 「対象 feature 名 (kebab-case) / 出力ファイル名 (`internal/integration/<feature>_test.go`)」 — free-text
-2. 質問: 「handler package パス (`internal/controller/handler/` 配下)」 — free-text, validate dir exists
-3. 質問: 「対応する usecase package 名 (mock の所在)」 — free-text, validate `internal/usecase/<name>/mock` exists
+2. 質問: 「handler package パス (`internal/controller/handler/` 配下)」 — free-text、ディレクトリ存在を検証
+3. 質問: 「対応する usecase package 名 (mock の所在)」 — free-text、`internal/usecase/<name>/mock` 存在を検証
 
-## Step 1. Read Inputs
+## Step 1. 入力読み込み
 
-1. Read `internal/integration/README.md` — re-confirm the scope (HTTP boundary only, usecase mocked, no DB).
-2. Read `internal/integration/helper_test.go` — enumerate the available helpers and their signatures (do not hardcode; read them this run).
-3. Read 1 sibling `<sibling>_test.go` as the structural template (imports, `echo.New()`, mock wiring, `StartServer`, assertions, `MakeAvailableUserID` for auth).
-4. Read the handler `gen/server.gen.go` — for each operationId: HTTP method + path (from route comments), request type, response type + the 2xx response constructor.
-5. Read the handler `<feature>_handler.go` — `BindHandler` signature + which operations require auth (`ctxhelper.GetAuthn` usage).
-6. Read the usecase mock package — the mock constructor + `EXPECT()` method names to stub for each operation.
+1. `internal/integration/README.md` を読み、スコープ（HTTP 境界のみ、usecase mock、DB なし）を再確認
+2. `internal/integration/helper_test.go` を読み、利用可能なヘルパーとシグネチャを列挙（hardcode せず、その実行で読む）
+3. sibling `<sibling>_test.go` を 1 つ読み、構造テンプレートとする（import、`echo.New()`、mock 配線、サーバ起動、assert、認証ヘッダ付与）
+4. handler `gen/server.gen.go` を読み、operationId ごとに HTTP メソッド + パス（route コメント）/ request 型 / response 型 + 2xx レスポンスコンストラクタを把握
+5. handler `<feature>_handler.go` を読み、`BindHandler` シグネチャ + 認証が必要な operation（認証コンテキスト参照の有無）を把握
+6. usecase mock パッケージを読み、各 operation で stub する mock コンストラクタ + `EXPECT()` メソッド名を把握
 
-## Step 2. Derive Per-Operation Test Plan
+## Step 2. operation ごとのテスト計画
 
-For each operationId in the handler `gen`:
+handler `gen` の各 operationId について:
 
-- HTTP method + path (e.g. `GET /v1/<resources>/{<id>}`)
-- the usecase method the handler calls (read from `<feature>_handler.go`) → the mock `EXPECT()` to set
-- whether the operation requires authentication → if so, use `MakeAvailableUserID`
-- happy-path expectation (status + minimal JSON body shape) and, where cheap, one representative error path (e.g. usecase returns `apperror.ErrNotFound` → expect 404) to confirm the errorhandler middleware mapping on the HTTP path
+- HTTP メソッド + パス（例 `GET /v1/<リソース>/{<id>}`）
+- handler が呼ぶ usecase メソッド（`<feature>_handler.go` から読む）→ 設定する mock `EXPECT()`
+- 認証が必要か → 必要なら認証ヘッダ付与ヘルパーを使う
+- 正常系の期待（status + 最小の JSON ボディ形状）と、安価に書ける範囲で代表的なエラー系 1 つ（例: usecase が `apperror.ErrNotFound` を返す → 404 を期待）で、HTTP 経路上の errorhandler middleware マッピングを確認
 
-Keep it at the HTTP boundary: assert status codes and response serialization, NOT business outcomes (the usecase is mocked).
+HTTP 境界に留めること: status コードとレスポンスシリアライズを assert し、業務的な結果は assert しない（usecase は mock）。
 
-## Step 3. Test-Perspective Subagent
+## Step 3. テスト観点 subagent
 
-Invoke the Codex delegation (`subagent_type: general-purpose`) to enumerate HTTP-boundary viewpoints BEFORE writing, passing `internal/integration/README.md` + the per-operation plan. Expected viewpoints:
+Agent ツール（`subagent_type: general-purpose`）で、書き込み前に HTTP 境界の観点を列挙。`internal/integration/README.md` + operation ごとの計画を渡す。期待観点:
 
-- routing reachability (method + path resolves to the handler)
-- request deserialization (path param / body) and 2xx response serialization shape
-- apperror → HTTP status mapping along the real middleware stack (e.g. NotFound → 404, validation → 422/400)
-- auth-required operations: with and (where meaningful) without `MakeAvailableUserID`
-- middleware effects that only manifest on the full HTTP path (request id, force-json, recovery) when relevant
+- ルーティング到達性（メソッド + パスが handler に解決される）
+- リクエストのデシリアライズ（path param / body）と 2xx レスポンスのシリアライズ形状
+- 実際の middleware スタックを通した apperror → HTTP status マッピング（NotFound → 404、validation → 422/400 等）
+- 認証必須 operation: 認証ヘッダあり / （意味があれば）なし
+- HTTP 経路全体でしか現れない middleware 効果（request id、force-json、recovery）が関係する場合
 
-Output: per-operation subtest list (happy path + the error/auth paths worth asserting at this layer).
+出力: operation ごとの subtest リスト（正常系 + この層で assert する価値のあるエラー/認証系）。
 
-## Step 4. Plan and Confirm
+## Step 4. 計画提示と確認
 
-Display a Japanese summary: output file, per-operation subtests (method + path + mocked usecase method + auth note + expected status), then ask:
+日本語サマリを表示: 出力ファイル、operation ごとの subtest（メソッド + パス + mock する usecase メソッド + 認証メモ + 期待 status）。その後:
 
 - 「以下の構成で integration テストを生成しますか？」
-- Options: 「生成する」 / 「修正したい箇所を指摘する」 / 「キャンセル」
+- 選択肢: 「生成する」 / 「修正したい箇所を指摘する」 / 「キャンセル」
 
-## Step 5. Write the Test File
+## Step 5. テストファイル書き込み
 
-Write `internal/integration/<feature>_test.go`:
+`internal/integration/<feature>_test.go` を書く:
 
 - `package integration`
-- One `func Test<Feature>_Integration(t *testing.T)` with `t.Parallel()`
-- One `t.Run("<日本語の振る舞い説明>", ...)` per planned subtest. Build each by **mirroring the sibling `<feature>_test.go` and the helpers read in Step 1** — do not assume helper names; use whatever `helper_test.go` actually exposes. The shape per subtest:
-  - boot a fresh Echo instance + a no-op tracer factory + a `gomock` controller
-  - construct the usecase mock and set its `EXPECT()` for the mapped method (return canned DTO / error)
-  - bind the handler via the package's `BindHandler`
-  - for auth-required ops: obtain auth headers via the auth-header helper
-  - drive the endpoint (method + path + body + headers) through the request helper, capture the response
-  - assert the status code; on happy path build the expected `gen` response struct and compare via the JSON-assert helper
-- Japanese subtest names; mirror the sibling file's idioms exactly (the actual helper names, import aliases like `mock_<pkg>`, tracer-factory constructor). The sibling test + `helper_test.go` are the source of truth for every helper call — the steps above describe roles, not fixed identifiers.
+- `func Test<Feature>_Integration(t *testing.T)` 1 つ、先頭で `t.Parallel()`
+- 計画した subtest ごとに `t.Run("<日本語の振る舞い説明>", ...)`。各 subtest は **sibling `<feature>_test.go` と Step 1 で読んだヘルパーを写して**組み立てる — ヘルパー名を仮定せず、`helper_test.go` が実際に公開しているものを使う。各 subtest の形:
+  - 新しい Echo インスタンス + no-op tracer factory + `gomock` controller を用意
+  - usecase mock を構築し、mapped メソッドの `EXPECT()` を設定（既定の DTO / error を返す）
+  - パッケージの `BindHandler` で handler を bind
+  - 認証必須 operation: 認証ヘッダ付与ヘルパーでヘッダを取得
+  - リクエスト実行ヘルパーでエンドポイント（メソッド + パス + body + ヘッダ）を叩き、レスポンスを取得
+  - status コードを assert。正常系は期待する `gen` レスポンス struct を組み立て JSON assert ヘルパーで比較
+- 日本語の subtest 名。sibling ファイルのイディオム（実際のヘルパー名、`mock_<pkg>` 等の import エイリアス、tracer factory コンストラクタ）を正確に写す。すべてのヘルパー呼び出しの source of truth は sibling テスト + `helper_test.go` であり、上記は固定の識別子ではなく役割の記述。
 
-## Step 6. Verify
+## Step 6. 検証
 
 ```sh
 make fix
 make test
 ```
 
-> **Environment note:** `make test` requires the dev environment to be running for the DB-backed suites in the same run; bring it up with the dedicated make targets (`make serve` → **`make db-init`**, which migrates **and seeds** both local & test DBs — seed data is assumed by the suite), **not raw `docker compose`** and not a bare `db-*-migrate-up`. If `make fix` / `make test` fails on a tool version mismatch (e.g. `golangci-lint` v1/v2 config error), realign with `make install-tools` (`make sync-versions` first if `mise.toml` changed) rather than hand-editing `PATH`.
+> **環境に関する注記:** `make test` は同一実行内の DB 依存スイートのために開発環境が起動している必要がある。**生 `docker compose` ではなく専用 make ターゲット**で起動する（`make serve` → **`make db-init`**。local/test 両 DB を migrate **かつ seed** する。スイートは seed 前提のため、`db-*-migrate-up` 単体では不十分）。`make fix` / `make test` がツールのバージョン不整合（例: `golangci-lint` の v1/v2 config エラー）で失敗した場合は、`PATH` の手動書き換えではなく `make install-tools` で揃えてから再実行する（`mise.toml` 変更時は先に `make sync-versions`）。
 
-On failure: surface the failing test output + leave a `// TODO:` at the problem case + FB summary. No auto-rollback.
+失敗時: 失敗テスト出力を surface + 該当ケースに `// TODO:` + FB サマリ。自動 rollback はしない。
 
-## Step 7. Closing
+## Step 7. 終了
 
 ```text
 <Feature> の HTTP 境界 integration テストを internal/integration/<feature>_test.go に生成しました。
 <N> 件の subtest、make test OK。
 ```
 
-Do NOT commit.
+commit はしない。
 
-## AI Modification Scope
+## AI 改変スコープ
 
-Per the "Exception: Skill Execution" clause:
+「Exception: Skill Execution」条項に従う:
 
-- Write scope: `internal/integration/<feature>_test.go` only.
-- Aborts if that file already exists.
+- 書き込みスコープ: `internal/integration/<feature>_test.go` のみ
+- 同ファイルが既存なら中断
 
-Remains protected:
+保護対象のまま:
 
-- `internal/integration/helper_test.go` (read-only).
-- Handler / usecase / domain / infra code and generated files.
+- `internal/integration/helper_test.go`（読み取り専用）
+- handler / usecase / domain / infra コードと生成ファイル
 
-## Constraints
+## 制約
 
-- ❌ Verify DB / Repository / usecase business logic here (HTTP boundary only — usecase is mocked)
-- ❌ Edit `helper_test.go` or reinvent HTTP plumbing (use the existing helpers)
-- ❌ Modify handler / usecase / generated files
-- ❌ Overwrite an existing `<feature>_test.go`
-- ❌ Skip the test-perspective subagent or the confirmation `ask the user explicitly`
-- ❌ Auto-rollback on failure (TODO + FB)
-- ✅ Japanese user-facing output and Japanese subtest names
-- ✅ `t.Parallel()`, generated mocks, existing helpers
-- ✅ Mirror a sibling `<feature>_test.go` as the structural template
-- ✅ One subtest per operationId; assert status + response serialization
+- ❌ ここで DB / Repository / usecase 業務ロジックを検証（HTTP 境界のみ、usecase は mock）
+- ❌ `helper_test.go` の編集や HTTP 配線の自作（既存ヘルパーを使う）
+- ❌ handler / usecase / 生成ファイルの変更
+- ❌ 既存 `<feature>_test.go` の上書き
+- ❌ テスト観点 subagent や確認 `ask the user explicitly` の省略
+- ❌ 失敗時の自動 rollback（TODO + FB）
+- ✅ 日本語の出力と日本語 subtest 名
+- ✅ `t.Parallel()`、生成 mock、既存ヘルパー
+- ✅ sibling `<feature>_test.go` を構造テンプレートとする
+- ✅ operationId ごとに 1 subtest、status + レスポンスシリアライズを assert
 
-## Checklist
+## チェックリスト
 
-- [ ] Identity confirmed (feature / handler path / usecase package) or received from `scaffold-controller`
-- [ ] Preconditions verified (helper_test.go present, BindHandler exists, mock exists, target file absent)
-- [ ] `internal/integration/README.md` + `helper_test.go` + sibling test read this run
-- [ ] handler `gen` operationIds + method/path + mapped usecase methods + auth flags derived
-- [ ] Test-perspective subagent invoked; viewpoints captured before any write
-- [ ] Plan displayed and confirmed via `ask the user explicitly`
-- [ ] `internal/integration/<feature>_test.go` written using existing helpers, Japanese subtest names, `t.Parallel()`
-- [ ] `make fix` + `make test` run (or failure surfaced with TODO + FB)
-- [ ] No commits / pushes
-- [ ] Final summary in Japanese
+- [ ] identity 確認（feature / handler パス / usecase パッケージ）または `scaffold-controller` から受領
+- [ ] 前提検証（helper_test.go 存在、BindHandler 存在、mock 存在、対象ファイル未存在）
+- [ ] `internal/integration/README.md` + `helper_test.go` + sibling テストをその実行で読んだ
+- [ ] handler `gen` の operationId + メソッド/パス + mapped usecase メソッド + 認証フラグを導出
+- [ ] テスト観点 subagent を起動、書き込み前に観点を捕捉
+- [ ] 計画を提示し `ask the user explicitly` で確認
+- [ ] `internal/integration/<feature>_test.go` を既存ヘルパー・日本語 subtest 名・`t.Parallel()` で書いた
+- [ ] `make fix` + `make test` 実行（または失敗を TODO + FB で surface）
+- [ ] commit / push なし
+- [ ] 最終サマリは日本語

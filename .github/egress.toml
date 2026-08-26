@@ -236,11 +236,6 @@ classes = ["image"]
 [job."job-boot-check.yaml:job-boot-check"]
 classes = ["image"]
 
-# doc-pair:begin
-[job."doc-language-removal-check.yaml:doc-language-removal-check"]
-classes = ["mise"]
-
-# doc-pair:end
 [job."licensed-scanners-removal-check.yaml:licensed-scanners-removal-check"]
 classes = ["mise"]
 

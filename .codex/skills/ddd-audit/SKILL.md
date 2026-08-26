@@ -4,92 +4,92 @@ description: >-
   Audit this repository's documented DDD interpretation against Eric Evans's original pattern language, and reconcile the layer-1 ledger at `.agents/ddd-audit/pattern-ledger.yaml` with its ADR and README corpus. Use when checking whether a DDD pattern such as Aggregate, Value Object, Repository, Factory, Specification, Bounded Context, Anticorruption Layer, Ubiquitous Language, or Domain Event has been interpreted, after changing an ADR or domain README, when the DDD ledger may be stale, or when onboarding a reviewer without Evans context. Japanese triggers apply too — 「DDD 原義と照らして」「Evans 的に正しいか」「この概念は解釈済みか」「台帳を更新して」. Audit one pattern per `ddd-origin-auditor` instance because an interpretation can be distributed across the corpus, verify every `差異あり` finding independently, and write only approved ledger entries. Emit `差異なし`, `差異あり`, or `逸脱宣言あり`; never decide whether a divergence from Evans is intentional. Do NOT use for Go architecture checks (`arch-check`), domain-type quality, README-to-code drift (`back-prop`), or feature-spec validation.
 ---
 
-# DDD Audit
+# DDD 監査
 
-Audit layer 2, the repository's documented interpretation of DDD, against layer 1, Evans's
-pattern language recorded in the ledger. Do not audit layer 3 enforcement in code; CI and
-`arch-check` own that deterministic work.
+台帳に記録された Evans のパターン言語（レイヤー 1）と、このリポジトリに文書化された
+DDD の解釈（レイヤー 2）を監査する。コード上のレイヤー 3 の強制を監査してはならない。
+その決定的な作業は CI と `arch-check` が担当する。
 
-| Layer | Content | Source |
+| レイヤー | 内容 | 情報源 |
 | --- | --- | --- |
-| 1 | Evans's project-independent pattern language | `.agents/ddd-audit/pattern-ledger.yaml` |
-| 2 | This repository's interpretation | ledger-defined ADR / README corpus |
-| 3 | Code enforcement | linters and analyzers |
+| 1 | Evans のプロジェクト非依存なパターン言語 | `.agents/ddd-audit/pattern-ledger.yaml` |
+| 2 | このリポジトリの解釈 | 台帳で定義された ADR / README コーパス |
+| 3 | コードによる強制 | linter と analyzer |
 
-The result is an observation, not an order. This repository claims DDD alignment, not strict
-Evans conformance, so whether a divergence is deliberate remains a human decision.
+結果は命令ではなく観察である。このリポジトリは Evans への厳密な準拠ではなく DDD との整合を
+掲げているため、乖離が意図的かどうかは人間が判断する。
 
-## Scope and sources
+## スコープと情報源
 
-1. Confirm both scope and whether ledger updates are wanted before inspecting findings. Offer:
-   all patterns, only `unexamined` / `examining` / `uninterpreted` patterns, core patterns
-   (`scope: core`), or `quick` patterns related to changed corpus documents; and `update` or
-   read-only reporting. When invoked by `arch-check` with preset `quick` scope, do not ask again.
-2. Read `.agents/ddd-audit/pattern-ledger.yaml`. The ledger is the source of truth for both the
-   pattern list and its `corpus` globs; never hardcode either in this skill.
-3. For `quick`, resolve changed files and select patterns whose `interpreted_by` points to a changed
-   file, plus every `unexamined` or `uninterpreted` pattern. An existing pull request's
-   `baseRefName` is authoritative; without a pull request, use `make base-branch` to resolve the
-   latest release line from origin's live state. Never use `gh repo view --json defaultBranchRef`
-   as the fallback. If the
-   base cannot be resolved, stop and report the failure in Japanese, distinguishing it from the
-   normal Japanese clean exit when no patterns are selected.
-4. Before delegation, deterministically compare the changed files with the ledger's corpus globs.
-   If a corpus file changed but the ledger did not, report a ledger-staleness banner. This is useful
-   information, not a gate, and must be a set comparison rather than an LLM judgement.
+1. finding を調べる前に、スコープと台帳更新の要否を確認する。選択肢は、全パターン、
+   `unexamined` / `examining` / `uninterpreted` のみ、コアパターン（`scope: core`）、または変更済み
+   コーパス文書に関係する `quick` パターンと、`update` または読み取り専用レポートとする。
+   `arch-check` から `quick` スコープが指定されて呼び出された場合は、再度確認しない。
+2. `.agents/ddd-audit/pattern-ledger.yaml` を読む。台帳はパターン一覧とその `corpus` glob の両方の
+   情報源であり、このスキルにどちらもハードコードしてはならない。
+3. `quick` では、変更済みファイルを解決し、`interpreted_by` が変更済みファイルを指すパターンに、
+   すべての `unexamined` または `uninterpreted` パターンを加えて選択する。既存のプルリクエストが
+   ある場合は、その `baseRefName` を正本とする。プルリクエストがない場合は、origin のライブ状態から
+   最新の release line を解決するために `make base-branch` を使う。フォールバックとして
+   `gh repo view --json defaultBranchRef` を使ってはならない。ベースを解決できない場合は停止して
+   日本語で失敗を報告し、何もパターンが選択されなかった場合の通常の日本語による正常終了と区別する。
+4. 委譲前に、変更済みファイルと台帳の `corpus` glob を決定的に比較する。コーパスファイルが変更され、
+   台帳が更新されていなければ、台帳の鮮度に関するバナーを報告する。これはゲートではなく有益な情報で、
+   LLM の判断ではなく集合比較で行う。
 
-## Pattern-level audit
+## パターン単位の監査
 
-The fan-out unit is one Evans pattern, never one document. Answering whether Aggregate is
-interpreted requires a sweep of the entire corpus: the interpretation may be in a README under a
-different name from an ADR. Re-reading documents is the necessary cost of a distributed question.
+fan-out の単位は文書ではなく Evans パターンを 1 つとする。Aggregate が解釈済みかを答えるには、
+コーパス全体を調べる必要がある。解釈は ADR とは別名の README にある場合がある。分散した問いには、
+文書を再読することが必要なコストである。
 
-For every selected pattern, use `.codex/agents/ddd-origin-auditor.toml` as the read-only role
-contract. Delegate independent patterns when delegation is available; otherwise execute that role's
-instructions inline, one pattern at a time, and disclose the fallback in the report. Give each
-instance the pattern id, `full` or `quick` mode, and the resolved quick file list.
+選択した各パターンについて、読み取り専用のロール契約として
+`.codex/agents/ddd-origin-auditor.toml` を使う。委譲できる場合は独立したパターンを委譲し、
+できない場合はそのロールの指示を 1 パターンずつインラインで実行して、レポートでフォールバックを
+開示する。各インスタンスには pattern id、`full` または `quick` モード、解決済みの quick ファイル
+一覧を渡す。
 
-The auditor returns exactly one of:
+auditor は必ず次のいずれか 1 つを返す。
 
-- `差異なし`: the corpus interprets the pattern consistently with Evans.
-- `差異あり`: the corpus diverges or does not interpret the pattern, without an explicit declaration.
-- `逸脱宣言あり`: the corpus diverges and explicitly explains the alternative and its reason.
+- `差異なし`: コーパスは Evans と整合する形でパターンを解釈している。
+- `差異あり`: コーパスが乖離している、またはパターンを解釈しておらず、明示的な宣言がない。
+- `逸脱宣言あり`: コーパスが乖離しているが、代替とその理由を明示的に説明している。
 
-Require an Evans premise, `file:line` evidence, and proposed ledger data for every result. The
-auditor is strictly read-only; it must not arbitrate, ask the user, or write the ledger, prose, or
-source.
+すべての結果に、Evans の前提、`file:line` の根拠、および提案する台帳データを要求する。auditor は
+厳格に読み取り専用であり、裁定、ユーザーへの質問、台帳・散文・ソースへの書き込みをしてはならない。
 
-## Verify potential differences
+## 差異候補の検証
 
-Independently verify each `差異あり` result before showing it. Use `review-verifier` when available;
-otherwise perform an explicit skeptical pass. Test the stated Evans premise, whether evidence was
-missed because the corpus uses another vocabulary, and whether an explicit divergence declaration
-exists elsewhere. Drop refuted findings; retain confirmed or plausible findings with that label.
-`差異なし` and `逸脱宣言あり` need no second pass because their citations are directly checkable.
+各 `差異あり` の結果は、表示する前に独立して検証する。利用できる場合は `review-verifier` を使い、
+それ以外は明示的な懐疑的確認を行う。提示された Evans の前提、別の語彙により根拠を見落としていないか、
+および明示的な逸脱宣言が他の場所にないかを検証する。反証された finding は除外し、確認済みまたは
+もっともらしい finding にはそのラベルを付けて残す。`差異なし` と `逸脱宣言あり` は引用を直接確認
+できるため、二度目の検証を必要としない。
 
-## Report and approved ledger writes
+## レポートと承認済み台帳書き込み
 
-First return a Japanese, read-only report grouped by verdict, but split `差異あり` by the ledger's
-`status`: `[差異あり・解釈あり]` for `interpreted`, and `[差異あり・未解釈]` for `uninterpreted`.
-The former is a position that diverges from Evans while the latter is an undecided blank, so readers
-need different next actions; the ledger header's `status` × `verdict` table is authoritative and
-the report must preserve its verdict values. Use the total form `差異あり <n>（解釈あり <k> / 未解釈 <m>、うち
-CONFIRMED <c>）`. For `未解釈`, evidence must state the searched range and what was absent rather than
-inventing a `file:line` citation. Include the staleness banner, each Evans premise, evidence,
-verification label where applicable, and any dropped finding. Use neutral wording: never say
-`修正してください`, `対応必須`, or `違反`.
+最初に、日本語の読み取り専用レポートを verdict ごとにまとめて返す。ただし `差異あり` は台帳の
+`status` で分割する。`interpreted` は `[差異あり・解釈あり]`、`uninterpreted` は
+`[差異あり・未解釈]` とする。前者は Evans と乖離した立場であり、後者は未決定の空白であるため、
+読者に必要な次の行動は異なる。台帳ヘッダーの `status` × `verdict` 表が正本であり、レポートでは
+verdict の値を変更してはならない。総計には
+`差異あり <n>（解釈あり <k> / 未解釈 <m>、うち CONFIRMED <c>）` の形式を使う。`未解釈` の根拠には、
+存在しない `file:line` 引用を作らず、検索した範囲と存在しなかったものを記載する。台帳鮮度バナー、
+各 Evans の前提、根拠、該当する検証ラベル、および除外した finding を含める。中立な表現を使い、
+`修正してください`、`対応必須`、`違反` とは決して書かない。
 
-If updates were not selected, finish after that report. Otherwise, for each changed proposal:
+更新が選択されなかった場合は、このレポートで終了する。それ以外の場合、変更された各提案について:
 
-1. Obtain explicit approval for that individual ledger entry and its supported options.
-2. Show the YAML diff before writing.
-3. On approval, update only `.agents/ddd-audit/pattern-ledger.yaml`, set `last_audited` to today,
-   then verify it parses and its entry count is unchanged.
+1. 個別の台帳エントリと、それが支持する選択肢について明示的な承認を得る。
+2. 書き込む前に YAML diff を示す。
+3. 承認後、`.agents/ddd-audit/pattern-ledger.yaml` のみを更新し、`last_audited` を当日に設定してから、
+   パース可能でエントリ数が変わっていないことを検証する。
 
-Never write ADRs, READMEs, implementation code, generated files, or `AGENTS.md`. A desired prose
-change is a maintainer decision to surface as follow-up, not wording for this audit to author.
+ADR、README、実装コード、生成ファイル、`AGENTS.md` には決して書き込まない。必要な散文変更は、
+この監査が起草する文面ではなく、メンテナの判断としてフォローアップに示す。
 
-## Completion
+## 完了
 
-Return the Japanese aggregate report, state whether delegation or inline fallback was used, and list
-approved / declined ledger updates. Do not stage, commit, push, or write outside the approved ledger.
+日本語の集約レポートを返し、委譲またはインライン・フォールバックのどちらを使ったかを述べ、
+承認済み / 却下済みの台帳更新を一覧にする。stage、commit、push をせず、承認された台帳以外には
+書き込まない。

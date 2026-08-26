@@ -5,75 +5,51 @@ deciders: [maintainers]
 tags: [idempotency, exclusion, setup-review]
 ---
 
-# ADR-0067: Keep idempotency orthogonal to optimistic locking and rate limiting
+# ADR-0067: 冪等性をオプティミスティックロックおよびレート制限と直交に保つ
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Idempotency (deduplicating client retries via `Idempotency-Key`), optimistic locking
-(detecting lost updates via version/ETag checks), and rate limiting (bounding request
-frequency at the edge) address three distinct failure modes. Because all three concern
-request safety and are applied in middleware or usecase layers, there is pressure to
-integrate them — for example, automatically enabling optimistic locking when idempotency
-is active, or co-locating rate-limiting counters with idempotency key storage.
+冪等性（`Idempotency-Key` によるクライアントリトライの重複排除）、オプティミスティックロック（バージョン/ETag チェックによる失われた更新の検出）、レート制限（エッジでのリクエスト頻度の制限）は、3 つの異なる障害モードに対処する。3 つすべてがリクエストの安全性に関わり、ミドルウェアまたはユースケースレイヤーで適用されるため、これらを統合しようという圧力が生じる。たとえば、冪等性が有効なときにオプティミスティックロックを自動的に有効化したり、レート制限カウンターを冪等性キーのストレージと同居させたりするといった形で。
 
-Coupling these concerns would reduce integration surface for the simple case, but would
-also make it harder to enable each independently, complicate the mental model, and
-introduce policy decisions about how conflicts between the mechanisms should be resolved
-(e.g., should a rate-limited request consume an idempotency key?).
+これらの懸念を結合すれば単純なケースでのインテグレーションサーフェスは減るが、それぞれを独立して有効化することが難しくなり、メンタルモデルが複雑になり、メカニズム間の競合をどのように解決するかについてのポリシー決定が生じる（例: レート制限されたリクエストは冪等性キーを消費すべきか？）。
 
-## Decision
+## 決定
 
-We deliberately do NOT couple idempotency with optimistic locking or rate limiting. The
-idempotency subsystem is **opt-in per handler** and **orthogonal** to both:
+冪等性をオプティミスティックロックやレート制限と意図的に結合しない。冪等性サブシステムは**ハンドラーごとのオプトイン**であり、両者に対して**直交**している。
 
-- **Optimistic locking** (lost-update prevention via version/ETag checks) is a separate
-  concern applied at the domain or usecase layer; enabling idempotency on an endpoint does
-  not automatically add optimistic locking, and vice versa.
-- **Rate limiting** is an edge concern; it is applied independently of whether an endpoint
-  uses the `Idempotency-Key` mechanism.
+- **オプティミスティックロック**（バージョン/ETag チェックによる失われた更新防止）は、ドメインまたはユースケースレイヤーで適用される独立した懸念である。あるエンドポイントに冪等性を有効化しても自動的にオプティミスティックロックが追加されるわけではなく、逆も同様である。
+- **レート制限**はエッジの懸念であり、エンドポイントが `Idempotency-Key` 機構を使用するかどうかとは独立して適用される。
 
-Each concern may be adopted independently. There are no shared configuration flags,
-combined middleware, or cross-cutting state between them.
+各懸念は独立して採用できる。それらの間に共有設定フラグ、結合されたミドルウェア、横断的な状態は存在しない。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Each mechanism can be adopted, reasoned about, and tested in isolation.
-- Integrators understand the scope of each opt-in: adding idempotency does not implicitly
-  add other behaviors.
-- There is no policy ambiguity about interaction semantics (e.g., rate-limited retries,
-  version conflicts on replayed operations).
+- 各メカニズムを独立して採用・理解・テストできる。
+- インテグレーターは各オプトインのスコープを理解できる。冪等性を追加しても暗黙的に他の動作が追加されない。
+- 相互作用のセマンティクス（例: レート制限されたリトライ、リプレイされた操作でのバージョン競合）に関するポリシーの曖昧さがない。
 
-### Negative Consequences
+### ネガティブな影響
 
-- An endpoint that needs all three must wire each independently, with no combined shortcut.
-- The orthogonality is a design convention, not enforced by the type system or linter; it
-  relies on integrators understanding the separation.
+- 3 つすべてを必要とするエンドポイントは、結合されたショートカットなしに各々を独立して配線しなければならない。
+- 直交性は型システムやリンターで強制されるものではなく、設計上の規約である。インテグレーターが分離を理解していることに依存する。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Bundle optimistic locking into the idempotency middleware
+### オプティミスティックロックを冪等性ミドルウェアに組み込む
 
-Automatically perform an ETag/version check when an idempotency key is present. Rejected
-because optimistic locking is a domain-level concern (it requires knowledge of the
-resource's current version), while idempotency is a cross-cutting infrastructure concern.
-Coupling them would violate the onion architecture's layer separation.
+冪等性キーが存在するときに自動的に ETag/バージョンチェックを実行する。オプティミスティックロックはドメインレベルの懸念（リソースの現在バージョンの知識を必要とする）であり、冪等性は横断的なインフラの懸念であるため却下した。結合するとオニオンアーキテクチャのレイヤー分離に違反する。
 
-### Co-locate rate-limiting counters with idempotency state
+### レート制限カウンターを冪等性状態と同居させる
 
-Store request counts in the `idempotency_keys` table to share a single DB round-trip.
-Rejected because rate limiting is an edge concern (typically enforced before the request
-reaches application code) and operates on different time windows and eviction semantics
-than idempotency TTLs.
+単一の DB ラウンドトリップを共有するためにリクエスト数を `idempotency_keys` テーブルに保存する。レート制限はエッジの懸念（通常リクエストがアプリケーションコードに到達する前に適用される）であり、冪等性 TTL とは異なる時間ウィンドウと退避セマンティクスで動作するため却下した。
 
-## Notes
+## 補足
 
-- Source: [`docs/design/idempotency.md`](../design/idempotency.md) §1 ("orthogonal to optimistic
-  locking (lost-update prevention) and rate limiting (edge concern)").
-- Related: [ADR-0002](0002-onion-architecture.md) (layer separation — optimistic locking
-  belongs in the domain/usecase layer, rate limiting at the edge).
+- 出典: [`docs/design/idempotency.md`](../design/idempotency.md) §1（「optimistic locking（lost-update prevention）および rate limiting（edge concern）と直交」）。
+- 関連: [ADR-0002](0002-onion-architecture.md)（レイヤー分離 — オプティミスティックロックはドメイン/ユースケースレイヤー、レート制限はエッジに属する）。

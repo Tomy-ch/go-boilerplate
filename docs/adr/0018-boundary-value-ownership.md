@@ -5,103 +5,70 @@ deciders: [maintainers]
 tags: [contract, openapi, domain]
 ---
 
-# ADR-0018: OpenAPI is the wire contract, not the domain rule; request is subset of domain, domain is subset of response
+# ADR-0018: OpenAPI はワイヤー契約であってドメインルールではない。リクエストはドメインのサブセット、ドメインはレスポンスのサブセット
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-OpenAPI constraints such as `maxLength`, `minimum`, and `maximum` look like single facts
-about a field, but the same boundary value can live in several layers owned by different
-concerns: the wire contract (OpenAPI), the business rule (domain), and physical storage
-(database). Treating an OpenAPI constraint as equivalent to the domain's business rule
-leads to incorrect conclusions — for example, assuming that tightening an OpenAPI request
-constraint also tightens the domain's validity check, or that a response constraint can be
-made equal to the request constraint without breaking server-side correctness.
+OpenAPI の制約（`maxLength`、`minimum`、`maximum` など）はフィールドに関する単一の事実のように見えるが、同じ境界値は異なる関心事を持つ複数の層に存在し得る。ワイヤー契約（OpenAPI）、ビジネスルール（ドメイン）、物理ストレージ（データベース）がそれぞれ所有する。OpenAPI の制約をドメインのビジネスルールと等価と扱うことは誤った結論につながる——例えば、OpenAPI のリクエスト制約を厳しくすることでドメインのバリデーションチェックも厳しくなると仮定したり、レスポンス制約をリクエスト制約と等しくしてもサーバー側の正確性が損なわれないと仮定したりすることである。
 
-## Decision
+## 決定
 
-The three layers own their constraints independently:
+3 つの層はそれぞれ独立して制約を所有する：
 
-| Concern | Owner | Where it lives | What it means |
+| 関心事 | 所有者 | 記述場所 | 意味 |
 | --- | --- | --- | --- |
-| Wire contract | OpenAPI | `openapi/components/schemas/*.yaml` | What the HTTP API accepts (request) or promises (response) |
-| Business rule | domain | `internal/domain/<aggregate>/constant.go` | What the business considers valid |
-| Storage capacity | DB | `database/migrations/*.sql` | Physical column limit |
+| ワイヤー契約 | OpenAPI | `openapi/components/schemas/*.yaml` | HTTP API が受け入れる（リクエスト）または約束する（レスポンス）内容 |
+| ビジネスルール | ドメイン | `internal/domain/<aggregate>/constant.go` | ビジネスが有効と見なす内容 |
+| ストレージ容量 | DB | `database/migrations/*.sql` | 物理的なカラムの制限 |
 
-These three numbers answer different questions and change for different reasons. They often
-coincide by convenience, but they must not be assumed to be equivalent.
+この 3 つの数値は異なる問いに答え、異なる理由で変更される。利便性上一致することは多いが、等価であると仮定してはならない。
 
-The **direction invariant** governs how the three layers relate on the input side:
+**方向不変条件**が入力側の 3 層の関係を規定する：
 
 ```text
-OpenAPI request constraint  ⊆  domain rule  ⊆  OpenAPI response capacity
-        (tightest)                                    (loosest)
+OpenAPI リクエスト制約  ⊆  ドメインルール  ⊆  OpenAPI レスポンス容量
+    （最も厳しい）                              （最も緩い）
 ```
 
-- The request constraint may be *stricter* than the domain rule. The request-validation
-  middleware (see [ADR-0016](0016-spec-driven-request-validation.md)) rejects out-of-range
-  input before the domain sees it, so a stricter wire limit is safe.
-- The response constraint must be at least as permissive as the domain rule. If the domain
-  (or any non-HTTP write path) can produce a value that the response schema forbids, the
-  server emits a contract violation that nothing on the server side catches — there is no
-  runtime response validation.
+- リクエスト制約はドメインルールより*厳しく*てよい。リクエスト検証ミドルウェア（[ADR-0016](0016-spec-driven-request-validation.md) 参照）は範囲外の入力をドメインが見る前に拒否するため、より厳しいワイヤー制限は安全である。
+- レスポンス制約はドメインルールと少なくとも同じくらい緩くなければならない。ドメイン（または HTTP 以外の書き込みパス）がレスポンススキーマの禁止する値を生成できる場合、サーバーは契約違反を emit するが、サーバー側ではそれを何も検出しない（ランタイムレスポンス検証はない）。
 
-A violation at each layer also surfaces as a *different* error, which helps place
-responsibility: a request-constraint violation is rejected by the validation middleware as a
-`400` before the domain runs; a domain-rule violation is a business validation error raised
-by the domain; a response-constraint violation is a server-side contract breach that nothing
-catches at runtime (it must be prevented by construction, since responses are not validated).
+各レイヤーでの違反は *異なる* エラーとして現れ、責任の所在を分かりやすくする。リクエスト制約違反はドメインが動く前に検証ミドルウェアが `400` として拒否する。ドメインルール違反はドメインが発生させる業務検証エラー。レスポンス制約違反はランタイムで何も捕捉しないサーバー側の契約違反であり（レスポンスは検証されないため）、設計段階で防ぐしかない。
 
-When modifying a constraint value, decide from its own concern. Do not copy a domain
-constant into OpenAPI or vice versa and assume they must stay equal.
+制約値を変更する際は、その制約自身の関心事から判断する。ドメイン定数を OpenAPI にコピーしたり、その逆をしたりして、それらが等しいままでなければならないと仮定しないこと。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Domain business rules remain stable independently of HTTP API versioning decisions.
-- The request middleware can legitimately reject values that the domain would still accept
-  (defensive wire boundary), without requiring a domain change.
-- The direction invariant is checkable: a test that reads `openapi.gen.yaml` and domain
-  constants can assert `request ≤ domain ≤ response` in CI.
-- Ownership is cleanly separated by role — DB capacity → DBA / data owner, wire contract →
-  developer, business rule → domain expert — so the system can be built without merging all
-  three sets of requirements into one place (the owners coordinate, but do not have to
-  co-locate their constraints).
+- ドメインのビジネスルールは HTTP API のバージョニング判断とは独立して安定する。
+- リクエストミドルウェアはドメインがまだ受け入れる値を正当に拒否できる（防御的なワイヤー境界）。ドメインの変更は不要。
+- 方向不変条件は検証可能である。`openapi.gen.yaml` とドメイン定数を読み取るテストが CI で `request ≤ domain ≤ response` をアサートできる。
+- 所有権が役割ごとに明確に分離される — DB 容量 → DB 管理者 / データ管理者、ワイヤー契約 → 開発者、業務ルール → ドメインエキスパート。そのため 3 種の要件を 1 箇所に統合しなくてもシステムを構築できる（各所有者は調整はするが、制約を同一箇所に集約する必要はない）。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Developers must track three separate places for what looks like "one number"; this
-  overhead is unavoidable given the independent ownership.
-- When the OpenAPI request constraint is deliberately tighter than the domain, reviewers
-  may question why they differ — the divergence must be justified explicitly.
+- 開発者は「1 つの数値」に見えるものについて 3 つの別々の場所を追跡しなければならない。独立した所有権を考えると、このオーバーヘッドは避けられない。
+- OpenAPI のリクエスト制約が意図的にドメインより厳しい場合、レビュアーはなぜ異なるのか疑問を持つ可能性がある——その乖離は明示的に正当化されなければならない。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Keep OpenAPI and domain constraints identical
+### OpenAPI とドメインの制約を同一に保つ
 
-Simpler to reason about. Rejected: conflates two independently-owned concerns, hides the
-direction invariant, and produces incorrect results when the API wire contract is versioned
-or adjusted for consumer compatibility independently of the domain.
+推論がシンプルになる。却下：独立して所有される 2 つの関心事を混同し、方向不変条件を隠し、API ワイヤー契約がドメインとは独立してバージョン管理されたり消費者互換性のために調整されたりする場合に誤った結果を生む。
 
-### Let the domain own all constraints (derive OpenAPI from domain constants)
+### ドメインにすべての制約を所有させる（ドメイン定数から OpenAPI を導出）
 
-Would guarantee request ⊆ domain by construction. Rejected: violates the
-[ADR-0012](0012-openapi-first.md) OpenAPI-first principle (the spec is authored first, not
-derived from code) and couples the domain package to HTTP-layer tooling.
+構造的に request ⊆ domain を保証する。却下：[ADR-0012](0012-openapi-first.md) の OpenAPI ファースト原則（仕様はコードから導出されるのではなく、最初に作成される）に違反し、ドメインパッケージを HTTP 層のツールに結合する。
 
-## Notes
+## 補足
 
-- Full rationale and worked example (`firstName` maxLength 50 / 100 / 100 / 100 across
-  request / domain / DB / response): [`openapi/boundary-ownership.md`](../../openapi/boundary-ownership.md).
-- Domain constants live at `internal/domain/<aggregate>/constant.go`.
-- The request validation that enforces the wire-contract side is described in
-  [ADR-0016](0016-spec-driven-request-validation.md).
-- Builds on [ADR-0017](0017-validation-value-authority.md): the domain is the authority for
-  business validity, and *strictness* (value-set tightness) is a separate axis from
-  *authority*. This ADR's direction invariant (`request ⊆ domain ⊆ response`) is the
-  tightness view and does not override domain authority.
-- Parent decision: [ADR-0012](0012-openapi-first.md) (OpenAPI-first).
+- 完全な根拠と具体例（`firstName` の maxLength 50 / 100 / 100 / 100 がリクエスト / ドメイン / DB / レスポンス間でどう異なるか）: [`openapi/boundary-ownership.md`](../../openapi/boundary-ownership.md)。
+- ドメイン定数は `internal/domain/<aggregate>/constant.go` に存在する。
+- ワイヤー契約側を強制するリクエスト検証は [ADR-0016](0016-spec-driven-request-validation.md) に説明されている。
+- [ADR-0017](0017-validation-value-authority.md) を前提とする。ビジネス有効性の権威はドメインにあり、*厳しさ*（値集合の狭さ）と *権威* は別軸である。本 ADR の方向不変条件（`request ⊆ domain ⊆ response`）は厳しさの観点であり、ドメインの権威を覆すものではない。
+- 親の決定: [ADR-0012](0012-openapi-first.md)（OpenAPI ファースト）。

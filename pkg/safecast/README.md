@@ -1,15 +1,15 @@
 # safecast
 
-Provides safe type conversion with overflow detection.
+オーバーフローを検出する安全な型変換を提供します。
 
-## Role
+## 役割
 
-Go's built-in numeric conversions silently wrap or truncate on overflow. This package centralizes range-checked conversions so that crossing signed/unsigned or width boundaries fails loudly with an error instead of corrupting a value, giving every layer one trustworthy, framework-agnostic conversion to reach for.
+Go の組み込み数値変換は、オーバーフロー時に黙って値を巻き戻したり切り詰めたりします。本パッケージは範囲チェック付きの変換を一箇所に集約し、符号付き/符号なしやビット幅の境界をまたぐ際に、値を壊す代わりにエラーで明示的に失敗させます。これにより、どの層からも頼れる単一でフレームワーク非依存の変換を提供します。
 
-## Notes
+## 注意点
 
-Returns `ErrOverflow` when the value falls outside the destination type's range.
+値が変換先の型の範囲外になる場合に `ErrOverflow` を返します。
 
-Optional values have a pointer form (`IntPtrToInt32Ptr`), so that "absent stays absent" is centralized here too instead of being re-implemented at every nullable boundary. `nil` passes through as `nil`, and a non-nil result addresses a fresh value — mutating the argument afterwards cannot alter it.
+任意指定の値にはポインタ版（`IntPtrToInt32Ptr`）があり、「未設定は未設定のまま」という扱いも nullable な境界ごとに再実装せず本パッケージへ集約しています。`nil` は `nil` のまま透過し、非 nil の結果は新しい領域を指すため、変換後に引数を書き換えても結果は変わりません。
 
-Depends on `pkg/xerrors` for error wrapping — the sole permitted `pkg/` → `pkg/` dependency (enforced by depguard `independent_pkg`).
+エラーラップのため `pkg/xerrors` に依存します — これは `pkg/` → `pkg/` 依存で唯一許可された例外です（depguard `independent_pkg` で強制）。

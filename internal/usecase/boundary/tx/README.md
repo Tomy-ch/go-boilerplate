@@ -1,21 +1,26 @@
 # tx
 
-Provides a `Manager` interface for transaction boundary management and a generic helper for returning values from transactions.
+トランザクション境界管理のための `Manager` インターフェースと、トランザクション内で値を返すジェネリクスヘルパーを提供します。
 
-## Design Intent
+## 設計意図
 
-- Make Usecase aware of "the existence of transactions" without exposing DB details
-- Completely hide DB driver dependencies (pgx, sql.Tx, etc.)
+- Usecase に「トランザクションの存在」を意識させつつ、DB の詳細は隠蔽
+- DB ドライバ依存（pgx, sql.Tx 等）を完全に隠蔽
 
-See [Transaction Rules](../../../../docs/rules.md#transaction-rules) for the layer-ownership rule this package enforces.
+このパッケージが体現するレイヤ責務の規約は [Transaction Rules](../../../../docs/rules.md#transaction-rules) を参照してください。
 
-## Implementation
+## 実装
 
-`internal/infrastructure/rdb/driver/` provides the concrete implementation using pgx transactions.
+`internal/infrastructure/rdb/driver/` に pgx トランザクションを使った具体実装が配置されています。
 
-## Notes
+## 注意点
 
-- `Manager.Do` supports nested calls — reuses existing transaction if one exists in context
-- `DoWithResult` wraps `Manager.Do` to extract a typed return value
-- Transaction scope should be kept minimal to avoid unnecessary locks
-- **Retry on contention**: `Do` retries the whole transaction a bounded number of times on `serialization_failure` (40001) / `deadlock_detected` (40P01). Because `fn` may run **up to N times**, it must be **idempotent for non-DB side effects** (caller's responsibility). The recommended pattern is to write external side effects (event publish, email, ...) as **outbox rows within the same transaction**, so a rolled-back attempt discards them too and only the committed attempt's rows are delivered — making retries safe by construction. The nested path (reusing an existing transaction) is **not** retried and runs once.
+- `Manager.Do` はネスト呼び出しに対応 — context に既存トランザクションがあれば再利用
+- `DoWithResult` は `Manager.Do` をラップして型付き戻り値を抽出
+- トランザクションスコープは不要なロックを避けるため最小限に保つこと
+- **競合時のリトライ**: `Do` は `serialization_failure`(40001) / `deadlock_detected`(40P01) を
+  検出するとトランザクション全体を有限回まで再試行します。**`fn` は最大 N 回実行されうる**ため、
+  DB 副作用以外について**冪等**であること（呼出側責務）。推奨パターンは、外部副作用（イベント発行・
+  メール送信等）を**同一トランザクション内の outbox 行**として書くことです。こうすれば rollback した
+  試行ではそれらも破棄され、commit した試行の行だけが配送されるため、リトライが構造的に安全になります。
+  nested（既存トランザクション再利用）経路はリトライ対象外で 1 回のみ実行されます。

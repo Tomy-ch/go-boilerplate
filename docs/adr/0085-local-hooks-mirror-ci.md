@@ -5,110 +5,101 @@ deciders: [maintainers]
 tags: [ci, tooling]
 ---
 
-# ADR-0085: Local git hooks duplicate the CI contract (local == CI, glob-scoped, bypass-then-verify-once)
+# ADR-0085: ローカル git フックは CI 契約を複製する（local == CI、グロブスコープ、バイパス後に一度検証）
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Without local hooks, developers only learn about CI failures after pushing — the feedback
-loop is minutes long. Repeating the full CI suite on every commit attempt, on the other
-hand, would be prohibitively slow and frustrating: running tests, linters, and secret
-scans against every staged change regardless of which files changed makes committing
-feel expensive.
+ローカルフックがなければ、開発者はプッシュ後にしか CI の失敗を知ることができない——フィードバックループは
+数分に及ぶ。一方、コミットのたびに全 CI スイートを実行することは過度に低速で苦痛を伴う。
+変更されたファイルに関係なくステージされたすべての変更に対してテスト、リンター、シークレットスキャンを実行すると、
+コミットが高コストに感じられる。
 
-The project also uses a structured multi-commit workflow (scoped commits via the `commit`
-skill), which requires suppressing hooks during the split and running verification exactly
-once at the end — meaning the hook system must be bypass-able in a controlled way while
-still producing a single, definitive verification pass.
+プロジェクトはまた、構造化されたマルチコミットワークフロー（`commit` スキルによるスコープ付きコミット）を使用している。
+これはスプリット中にフックを抑制し、最後に一度だけ検証を実行することを必要とする——つまりフックシステムは
+制御された方法でバイパス可能でなければならないが、単一の決定的な検証パスは依然として実行する必要がある。
 
-## Decision
+## 決定
 
-Use lefthook (`.lefthook.yaml`) to define local git hooks that mirror the CI contract,
-with two design constraints:
+lefthook（`.lefthook.yaml`）を使用して、CI 契約を複製するローカル git フックを 2 つの設計制約で定義する:
 
-**1. Glob-scoped execution.** Each hook command declares a `glob:` (or `glob` list) that
-limits it to the file types it is relevant for. A commit that touches only `.md` files
-does not run Go lint or tests; a commit that touches only `.go` files skips SQL and
-Markdown lint. Commands without a glob run unconditionally (e.g. commitlint on
-commit-msg).
+**1. グロブスコープ実行。** 各フックコマンドは、関連するファイルタイプに限定する `glob:`（または `glob` リスト）を
+宣言する。`.md` ファイルだけに触れるコミットは Go リントやテストを実行しない。`.go` ファイルだけに触れるコミットは
+SQL と Markdown のリントをスキップする。グロブを持たないコマンドは無条件に実行される
+（例: commit-msg に対する commitlint）。
 
-**2. Bypass-then-verify-once.** The `commit` skill commits with `--no-verify` during the
-split phase to avoid repeated hook overhead on each partial commit, then executes the
-lefthook-defined commands directly — plus `make fix` — as a final verification gate.
-This guarantees CI parity without redundant per-commit overhead.
+**2. バイパス後に一度検証。** `commit` スキルはスプリットフェーズ中に `--no-verify` でコミットし、
+各部分コミットの繰り返しフックオーバーヘッドを避け、その後 lefthook で定義されたコマンドを直接——
+加えて `make fix` を——最終検証ゲートとして実行する。これにより、コミットごとの冗長なオーバーヘッドなしに
+CI パリティが保証される。
 
-The hook stages and their commands are:
+フックステージとそのコマンド:
 
-The stages and their commands are below. The names are the lefthook command names, which is
-what `--command` selects — they are not always the `make` target the command runs (`go-lint`
-runs `make lint`, `go-test` runs `make test-cached`).
+ステージとそのコマンドは以下のとおり。名前は lefthook のコマンド名であり、`--command` が選ぶのはこちらである。
+コマンドが実行する `make` ターゲットとは必ずしも一致しない（`go-lint` は `make lint`、`go-test` は
+`make test-cached` を実行する）。
 
-- `pre-commit` (parallel, 13): `go-lint` (`.go`), `go-test` (`.go`),
-  `go-test-scripts` (`scripts/**/*.go`), `sql-lint` (`.sql`), `md-lint` (`.md`),
-  `actions-lint` (workflow YAML + action YAML + the node lint scripts),
-  `actions-zizmor` (workflow YAML + action YAML + `zizmor.yml`), `oapi-lint` (`openapi/**`),
-  `docker-lint` (Dockerfiles),
-  `pin-actions` (workflow YAML + action YAML + `actions-pin.toml`),
-  `pin-images` (Dockerfiles + compose + `images-pin.toml`),
-  `migration-check-version` (`.sql`), `migration-check-gap` (`.sql`).
-- `commit-msg`: `commitlint`.
-- `pre-push` (parallel, 5): `secret-scan`, `test` (full, no cache, `.go`),
-  `test-scripts` (`scripts/**/*.go`), `gen-go-check` (generated artifact drift),
-  `tidy-check` (`go.mod` / `go.sum`).
+- `pre-commit`（並列・13 件）: `go-lint`（`.go`）、`go-test`（`.go`）、
+  `go-test-scripts`（`scripts/**/*.go`）、`sql-lint`（`.sql`）、`md-lint`（`.md`）、
+  `actions-lint`（ワークフロー YAML + action YAML + node 製の lint スクリプト）、
+  `actions-zizmor`（ワークフロー YAML + action YAML + `zizmor.yml`）、`oapi-lint`（`openapi/**`）、
+  `docker-lint`（Dockerfile）、
+  `pin-actions`（ワークフロー YAML + action YAML + `actions-pin.toml`）、
+  `pin-images`（Dockerfile + compose + `images-pin.toml`）、
+  `migration-check-version`（`.sql`）、`migration-check-gap`（`.sql`）。
+- `commit-msg`: `commitlint`。
+- `pre-push`（並列・5 件）: `secret-scan`、`test`（完全、キャッシュなし、`.go`）、
+  `test-scripts`（`scripts/**/*.go`）、`gen-go-check`（生成成果物ドリフト）、
+  `tidy-check`（`go.mod` / `go.sum`）。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- CI failures are surfaced locally before a push, reducing round-trip time.
-- Glob scoping keeps individual commits fast: only the relevant checks run.
-- The bypass-then-verify-once pattern gives the multi-commit workflow safe hook avoidance
-  without silently dropping the verification requirement.
-- The hook set covers the full CI contract: lint, tests, secret scan, generated-artifact
-  drift, migration sequencing, action pinning, and commit message format.
+- CI の失敗がプッシュ前にローカルで表面化し、ラウンドトリップ時間を削減する。
+- グロブスコーピングにより個々のコミットが速くなる。関連するチェックだけが実行される。
+- バイパス後に一度検証するパターンにより、マルチコミットワークフローが検証要件をサイレントに落とすことなく
+  安全なフック回避を実現する。
+- フックセットは完全な CI 契約をカバーする: リント、テスト、シークレットスキャン、生成成果物ドリフト、
+  マイグレーション順序付け、アクションピン留め、コミットメッセージフォーマット。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Developers can bypass hooks manually (`git commit --no-verify`). This is intentional
-  for the structured workflow but relies on discipline to run the final verification, and
-  an edit made through the GitHub web UI never meets a hook at all. A gate that exists
-  only as a hook is therefore optional in practice, so each one needs a CI counterpart to
-  be binding — `md-lint.yaml` is that counterpart for the Markdown checks.
-- The final verification is `lefthook run pre-commit`, so it reaches no `commit-msg`
-  command: a stage runs only the commands defined under its own name. Commit messages
-  written during a split are therefore the one gate the pattern cannot restore, and
-  `commitlint.yaml` checks the PR's commit range in CI instead. It is the only gate here
-  with no hook counterpart, because a range needs a base to compare against and a base
-  exists only once a pull request does.
-- Glob matching is file-extension based; a change to a build script that does not touch
-  `.go` files still requires Go tests indirectly, but those tests are not triggered by
-  the pre-commit glob.
-- Pre-push runs the full non-cached test suite and generated-artifact checks, which can
-  be slow on large changesets.
+- 開発者はフックを手動でバイパスできる（`git commit --no-verify`）。これは構造化ワークフローには意図的だが、
+  最終検証を実行するという規律に依存する。加えて GitHub の web UI から編集した場合はフックにそもそも
+  出会わない。フックとしてしか存在しないゲートは実質的に任意になるため、拘束力を持たせるには CI 側の
+  対応物が要る。Markdown 検査についてはそれが `md-lint.yaml` である。
+- 最終検証は `lefthook run pre-commit` であり、`commit-msg` のコマンドには届かない。ステージは自分の名前で
+  定義されたコマンドしか実行しないためである。したがって分割中に書かれたコミットメッセージだけは、この
+  パターンでは回復できない唯一のゲートであり、代わりに `commitlint.yaml` が PR のコミット範囲を CI で
+  検証する。ここで唯一フック側に対応物を持たないゲートでもある。範囲の検証には比較対象となる base が要り、
+  base はプルリクエストが存在して初めて定まるためである。
+- グロブマッチングはファイル拡張子ベースである。`.go` ファイルに触れないビルドスクリプトへの変更でも
+  間接的に Go テストが必要な場合があるが、pre-commit グロブではそれらのテストはトリガーされない。
+- pre-push はキャッシュなしの完全テストスイートと生成成果物チェックを実行するため、大きな変更セットでは
+  低速になる可能性がある。
 
-## Alternatives Considered
+## 検討した代替案
 
-### No local hooks; rely entirely on CI
+### ローカルフックなし、CI に全面依存
 
-Simplest setup. Feedback loop is slow (minutes per push), and mistakes accumulate on the
-remote branch before detection.
+セットアップが最もシンプル。フィードバックループが低速（プッシュごとに数分）で、ミスがリモートブランチに
+蓄積されてから検出される。
 
-### Run all checks unconditionally on every commit
+### すべてのコミットですべてのチェックを無条件に実行
 
-Maximally safe but prohibitively slow. A Markdown edit should not block on a full Go
-test run.
+最大限に安全だが過度に低速。Markdown の編集が Go の完全テスト実行でブロックされるべきではない。
 
-## Notes
+## 補足
 
-- Source: `.lefthook.yaml`.
-- A hook command shares its gate definition with CI through a `make` target rather than
-  restating the tool invocation, so the two cannot drift. `actions-zizmor` runs the offline
-  audits only; the online ones need a GitHub token and stay in CI, which makes the hook a
-  fast subset rather than an exact copy.
-- The bypass-then-verify-once pattern is described in `CLAUDE.md` under "Commit / PR
-  execution".
-- Migration gap and version checks enforce the rules documented in
-  [`docs/rules.md`](../rules.md).
+- ソース: `.lefthook.yaml`。
+- フックのコマンドはツールの起動方法を書き直すのではなく `make` ターゲットを通じて CI と
+  ゲート定義を共有するため、両者がずれることはない。`actions-zizmor` が走らせるのは
+  オフライン監査だけで、GitHub トークンを要するオンライン監査は CI に残る。つまりフックは
+  完全な複製ではなく高速な部分集合である。
+- バイパス後に一度検証するパターンは `CLAUDE.md` の「Commit / PR execution」に記述されている。
+- マイグレーションギャップとバージョンチェックは [`docs/rules.md`](../rules.md) に文書化された
+  ルールを強制する。

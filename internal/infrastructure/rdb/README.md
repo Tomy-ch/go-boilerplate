@@ -1,167 +1,164 @@
-# RDB Infrastructure Guide (`internal/infrastructure/rdb`)
+# インフラ層のRDB（`internal/infrastructure/rdb`）ガイド
 
-## Role
+## 役割
 
-`internal/infrastructure/rdb` is an **Infrastructure subsystem for using RDB (PostgreSQL)**.
+`internal/infrastructure/rdb` は **RDB（PostgreSQL）を利用するための Infrastructure サブシステム**です。
 
-This directory has the following responsibilities.
+このディレクトリは次の責務を持ちます。
 
-- Connection management to PostgreSQL
-- SQL execution (sqlc)
-- Repository / QueryService implementation
-- SQL execution logging and tracing (Observability)
-- PostgreSQL error normalization
-- Conversion between DB nullable types and Go types
+- PostgreSQL への接続管理
+- SQL 実行（sqlc）
+- Repository / QueryService 実装
+- SQL 実行ログとトレース（Observability）
+- PostgreSQL エラーの正規化
+- DB nullable 型と Go 型の変換
 
-Domain / Usecase can use **data persistence and querying without being aware of RDB implementation details**.
+Domain / Usecase は **RDB の実装詳細を意識せずにデータ永続化・検索を利用できます。**
 
-## RDB Architecture
+## RDB アーキテクチャ
 
-This directory is composed of the following layered structure.
+このディレクトリは次のレイヤー構造で構成されています。
 
 ```mermaid
 flowchart TB
     Usecase --> Repo["Repository / QueryService"] --> Driver["driver (+ pgx query tracer)"] --> DB["PostgreSQL"]
 ```
 
-The responsibilities of each layer are as follows.
+各レイヤーの責務は次の通りです。
 
-|Layer|Role|
+|Layer|役割|
 |---|---|
-|Repository|Aggregate persistence (implementation of Domain Repository Interface)|
-|QueryService|Provides search-specific queries (implementation of Usecase Interface)|
-|CommandService|Multi-aggregate atomic writes (write-side counterpart of QueryService)|
-|driver|DB connection / transaction management, and SQL logging / tracing via a pgx query tracer|
-|PostgreSQL|Actual DB|
+|Repository|Aggregate 永続化（Domain Repository Interface の実装）|
+|QueryService|検索専用クエリーの提供（Usecase Interface の実装）|
+|CommandService|複数集約への原子的な書き込み（QueryService の write 側対称物）|
+|driver|DB 接続 / トランザクション管理、および pgx クエリトレーサーによる SQL ログ / トレース|
+|PostgreSQL|実際の DB|
 
-The following exist as supporting components.
+補助コンポーネントとして以下が存在します。
 
-|Component|Role|
+|Component|役割|
 |---|---|
-|sqlc|Type-safe query execution code generated from SQL|
-|pgerror|PostgreSQL error → application error conversion|
-|metrics|Connection pool + query duration/error statistics as Prometheus metrics|
-|system_cqrs|System operational queries (health check, etc.)|
-|testkit|RDB test utilities (real DB + rollback)|
+|sqlc|SQL から生成された型安全なクエリ実行コード|
+|pgerror|PostgreSQL エラー → アプリケーションエラー変換|
+|metrics|コネクションプール統計とクエリ duration / error の Prometheus メトリクス|
+|system_cqrs|システム運用クエリ（ヘルスチェック等）|
+|testkit|RDB テストユーティリティ（実DB + rollback）|
 
-## Directory Structure
+## ディレクトリ構成
 
-The data-access directories mirror the DML categories under `database/dml/`, one for one —
-`repository/`, `query_service/`, `command_service/`, `system_cqrs/` — because a category that
-exists in SQL and not in Go (or the reverse) is a category nobody decided on.
+データアクセスのディレクトリは `database/dml/` の DML 区分と 1 対 1 で対応する
+（`repository/` / `query_service/` / `command_service/` / `system_cqrs/`）。SQL 側にあって Go 側に
+無い区分（またはその逆）は、誰も決めていない区分だからである。
 
-The rest are what those four need: `driver/` for connections, transactions and the pgx tracer,
-`sqlc/` for generated code, `pgerror/` for normalizing PostgreSQL errors, `metrics/` for pool and
-query instrumentation, and `testkit/` for the test harness.
+残りはこの 4 つが必要とするものである。`driver/` は接続・トランザクション・pgx のトレーサ、
+`sqlc/` は生成コード、`pgerror/` は PostgreSQL エラーの正規化、`metrics/` はプールとクエリの計装、
+`testkit/` はテスト用の足場を担う。
 
 ## Repository
 
-Repository is the layer that **implements the Domain Repository Interface**.
+Repository は **Domain の Repository Interface を実装する層**です。
 
-Main responsibilities
+主な責務
 
-- sqlc query execution
-- Row → Domain entity conversion
-- DB error normalization
+- sqlc クエリ実行
+- Row → Domain エンティティ変換
+- DB エラー正規化
 
-Important: **Repository does not contain business logic**
+重要: **Repository はビジネスロジックを持たない**
 
-See details below.
+詳細は以下を参照してください。
 
-[repository directory README](repository/README.md)
+[repository ディレクトリの README](repository/README.md)
 
 ## QueryService
 
-QueryService is the layer that **provides read-only queries such as search and listing**.
+QueryService は **検索・一覧取得などの読み取り専用クエリーを提供する層**です。
 
-While Repository handles Aggregate persistence,  
-QueryService is specialized for search use cases.
+Repository が Aggregate 永続化を扱うのに対し、
+QueryService は検索用途に特化します。
 
-Main responsibilities
+主な責務
 
-- Execute search queries
-- Convert Row → Domain / DTO
-- Normalize DB errors
+- 検索クエリ実行
+- Row → Domain / DTO 変換
+- DB エラー正規化
 
-Important: **Search must be implemented in QueryService, not Repository**
+重要: **検索は Repository ではなく QueryService に実装する**
 
-See details below.
+詳細は以下を参照してください。
 
-[query_service directory README](query_service/README.md)
+[query_service ディレクトリの README](query_service/README.md)
 
 ## sqlc
 
-`sqlc` is a tool that generates Go code from SQL.
+`sqlc` は SQL から Go コードを生成するツールです。
 
-In this directory:
+このディレクトリでは
 
-- sqlc generated code
-- LIKE search helper
+- sqlc 生成コード
+- LIKE 検索 helper
 
-are provided.
+などを提供します。
 
-Generated code is placed at:
+`internal/infrastructure/rdb/sqlc/gen` に生成コードが配置されます。
 
-`internal/infrastructure/rdb/sqlc/gen`
+詳細は以下を参照してください。
 
-See details below.
-
-[sqlc directory README](sqlc/README.md)
+[sqlc ディレクトリの README](sqlc/README.md)
 
 ## driver
 
-`driver` is the **lowest layer that provides DB connection and transaction management**.
+`driver` は **DB 接続とトランザクション管理を提供する最下位レイヤー**です。
 
-Main functions
+主な機能
 
-- DatabaseDriver abstraction
-- DB connection pool management
-- Transaction management (tx.Manager)
-- DBTX interface for sqlc
-- SQL logging / tracing via a pgx query tracer (see below)
+- DatabaseDriver 抽象
+- DB 接続プール管理
+- トランザクション管理（tx.Manager）
+- sqlc 用 DBTX インターフェース
+- pgx クエリトレーサーによる SQL ログ / トレース（後述）
 
-Important: **Transaction boundaries are managed by the Usecase layer**
+重要: **トランザクション境界は Usecase 層が管理する**
 
-See details below.
+詳細は以下を参照してください。
 
-[driver directory README](driver/README.md)
+[driver ディレクトリの README](driver/README.md)
 
-## SQL Logging / Tracing (pgx query tracer)
+## SQL ログ / トレース（pgx クエリトレーサー）
 
-SQL logging and tracing are wired at the **pgx connection level** (`ConnConfig.Tracer`) by
-`driver.NewQueryTracer`, not in a separate wrapper layer. Repository / QueryService talk to the
-driver directly via `driver.New(ctx, db)`; instrumentation is transparent and also covers
-transaction-bound queries.
+SQL のログとトレースは、専用のラッパー層ではなく **pgx の接続レベル**（`ConnConfig.Tracer`）で
+`driver.NewQueryTracer` により結線します。Repository / QueryService は `driver.New(ctx, db)` で
+driver を直接利用し、計装は透過的で、トランザクション内のクエリも対象になります。
 
 ```mermaid
 flowchart TB
     Repo["Repository / QueryService"] --> Driver["driver (ConnConfig.Tracer)"] --> DB["PostgreSQL"]
 ```
 
-The query tracer embeds `otelpgx` for OpenTelemetry spans (with semconv DB attributes) and adds
-query logs: **success at Info (with latency), slow queries at Warn, and failures at Error**.
+クエリトレーサーは OpenTelemetry span（semconv の DB 属性付き）のために `otelpgx` を埋め込み、
+クエリログを出力します：**正常終了は Info（latency 付き）、スローは Warn、失敗は Error**。
 
-Main functions
+主な機能
 
-- OpenTelemetry span per query (via `otelpgx`, including batch / copy)
-- Info log on successful completion (with latency)
-- Error log on query failure (`span.RecordError` + log)
-- Slow query warning log (threshold: `DB_SLOW_QUERY_WARN_THRESHOLD`)
-- Query argument masking (`OBS_MASKED_DB_QUERY_ARGS`)
+- クエリごとの OpenTelemetry span（`otelpgx` 経由、batch / copy も対象）
+- 正常終了時の Info ログ（latency 付き）
+- クエリ失敗時のエラーログ（`span.RecordError` に加えて）
+- スロークエリ警告ログ（しきい値: `DB_SLOW_QUERY_WARN_THRESHOLD`）
+- クエリ引数のマスク（`OBS_MASKED_DB_QUERY_ARGS`）
 
-## PostgreSQL Error Normalization
+## PostgreSQL エラー正規化
 
-`pgerror` is a **layer that converts PostgreSQL-specific errors into application errors**.
+`pgerror` は **PostgreSQL 固有エラーをアプリケーションエラーへ変換するレイヤー**です。
 
-Repository / QueryService use:
+Repository / QueryService は
 
 ```go
 pgerror.NormalizeError(err)
 ```
 
-to normalize DB errors.
+を利用して DB エラーを正規化します。
 
-Main conversions
+主な変換
 
 ```mermaid
 flowchart TB
@@ -171,177 +168,179 @@ flowchart TB
     G["others"] -->|→| H["ErrInternal"]
 ```
 
-See details below.
+詳細は以下を参照してください。
 
-[pgerror directory README](pgerror/README.md)
+[pgerror ディレクトリの README](pgerror/README.md)
 
 ## metrics
 
-`metrics` is a package that **exposes pgxpool connection pool statistics and per-query duration / error statistics as Prometheus metrics**.
+`metrics` は **pgxpool コネクションプールの統計情報と、クエリ単位の duration / error を Prometheus メトリクスとして公開する**パッケージです。
 
-Provides Gauge (connection counts) and Counter (acquire counts, destroy counts, etc.).
+Gauge（接続数）と Counter（取得回数・破棄回数等）を提供します。
 
-See details below.
+詳細は以下を参照してください。
 
-[metrics directory README](metrics/README.md)
+[metrics ディレクトリの README](metrics/README.md)
 
 ## system_cqrs
 
-`system_cqrs` is a layer that provides **system-operational DB queries** (health check, etc.).
+`system_cqrs` は **システム運用向けの DB クエリ**（ヘルスチェック等）を提供する層です。
 
-Unlike Repository / QueryService, it handles operational and monitoring queries that do not belong to the business domain.
+Repository / QueryService とは異なり、ビジネスドメインに属さない運用・監視目的のクエリを担当します。
 
-See details below.
+詳細は以下を参照してください。
 
-[system_cqrs directory README](system_cqrs/README.md)
+[system_cqrs ディレクトリの README](system_cqrs/README.md)
 
 ## command_service
 
-`command_service` implements a **CommandService** — the write-side counterpart of QueryService
-(interface in the Usecase layer alongside QueryService, implementation here). It is reserved for multi-aggregate writes
-that require single-transaction atomicity (see [ADR-0032 (lightweight-cqrs)](../../../docs/adr/0032-lightweight-cqrs.md)
-/ [ADR-0034 (commandservice-atomicity-criterion)](../../../docs/adr/0034-commandservice-atomicity-criterion.md)); the first implementation
+`command_service` は **CommandService** を実装します。QueryService の書き込み側の対称物で、
+インターフェースは QueryService と並んで Usecase 層に、実装はここに置きます。単一トランザクションでの
+原子性を要する複数集約への書き込みのために予約されています
+（[ADR-0032 (lightweight-cqrs)](../../../docs/adr/0032-lightweight-cqrs.md) /
 <!-- sample-api:replace-begin -->
-is `command_service/purchase` (stock decrement + purchase / detail INSERT — see
-[ADR-0036 (ordered-pessimistic-row-locks)](../../../docs/adr/0036-ordered-pessimistic-row-locks.md)).
+[ADR-0034 (commandservice-atomicity-criterion)](../../../docs/adr/0034-commandservice-atomicity-criterion.md)）。最初の実装は
+`command_service/purchase`（在庫減算 + 購入 / 明細 INSERT。
+[ADR-0036 (ordered-pessimistic-row-locks)](../../../docs/adr/0036-ordered-pessimistic-row-locks.md) 参照）です。
 <!-- sample-api:replace-with -->
-<!-- = and the write ordering follows -->
-<!-- = [ADR-0036 (ordered-pessimistic-row-locks)](../../../docs/adr/0036-ordered-pessimistic-row-locks.md). -->
+<!-- = [ADR-0034 (commandservice-atomicity-criterion)](../../../docs/adr/0034-commandservice-atomicity-criterion.md)）。書き込み順序は -->
+<!-- = [ADR-0036 (ordered-pessimistic-row-locks)](../../../docs/adr/0036-ordered-pessimistic-row-locks.md) に従います。 -->
 <!-- sample-api:replace-end -->
 
-A CommandService executes writes on the transaction supplied via the `ctx` (it never opens its own —
-the Usecase owns the boundary, nested under `idempotency.Run`) and does **not** emit outbox events
-(that is a Usecase responsibility, `system_cqrs` category). Its methods take the decided Domain
-aggregate and normalize every sqlc error with `pgerror.NormalizeError`.
+CommandService は `ctx` で渡されたトランザクション上で書き込みを実行し（自前では開かない。境界は
+Usecase が所有し、`idempotency.Run` の内側に入る）、outbox イベントは発行しません（Usecase の責務で
+`system_cqrs` カテゴリ）。メソッドは決定済みの Domain 集約を受け取り、sqlc のエラーは
+`pgerror.NormalizeError` で正規化します。
 
-**What may live here.** Only a write that cannot be expressed as loading an aggregate and saving it:
-a relative update, a set-based operation, or one that obtains atomicity without taking a lock.
-Anything that can be read-modify-saved belongs on the Repository. Without that line this package
-becomes "where I put SQL I want to write directly".
+**ここに置いてよいもの。** 集約を読み込んで保存する形では表現できない書き込みだけです。相対更新、
+集合演算、ロックを取らずに原子性を得る操作。読んで変更して保存できるものは Repository に属します。
+この線引きが無いと、このパッケージは「SQL を直接書きたいときの置き場」になります。
 
-**Conditions are derived, never authored.** A guard enforced in SQL here must restate a domain
-invariant that already exists — a guard in a relative-update statement restates the condition the
-domain has already checked, and returns that same domain sentinel. It is downstream: a change to the
-domain rule obliges a change here, never the reverse. Two independently written copies of one rule
-diverge silently the first time only one of them moves. See
-[ADR-0032 (lightweight-cqrs)](../../../docs/adr/0032-lightweight-cqrs.md) § Derivation.
+**条件は導出であって独立の著作ではない。** ここで SQL に書くガードは、既に存在するドメインの不変条件を
+言い換えたものでなければなりません。相対更新の文の中のガードはドメインが既に検査した条件を言い換えたもので、返す
+sentinel も同じものです。つまり下流であり、ドメインの規則が変わればこちらも変わりますが、逆はありません。
+1 つの規則を独立に 2 度書くと、片方だけが動いた瞬間に黙って乖離します。
+[ADR-0032 (lightweight-cqrs)](../../../docs/adr/0032-lightweight-cqrs.md) § Derivation を参照。
 
 ## testkit
 
-`testkit` is a **utility for testing using RDB**.
+`testkit` は **RDB を利用するテストのためのユーティリティ**です。
 
-Main functions
+主な機能
 
-- Test DB initialization
-- Shared test DB driver provision
-- Transaction-based testing (automatic rollback)
+- テスト用 DB 初期化
+- 共有テスト DB ドライバの提供
+- トランザクション内テスト（自動 rollback）
 
-Test characteristics
+テスト特性
 
-- real DB
-- transaction rollback
-- parallel execution (Tx is serialized)
+- 実DB
+- トランザクション rollback
+- 並列実行（Tx は直列）
 
-See details below.
+詳細は以下を参照してください。
 
-[testkit directory README](testkit/README.md)
+[testkit ディレクトリの README](testkit/README.md)
 
-## Design Principles
+## 設計方針
 
-This RDB subsystem is based on the following design principles.
+この RDB サブシステムは次の設計原則に基づいています。
 
-### 1. Hiding DB Implementation
+### 1. DB 実装の隠蔽
 
-Domain / Usecase do not depend on:
+Domain / Usecase は
 
 - sql
 - pgx
 - sql.DB
 
-### 2. Separation of Responsibility (Repository / QueryService)
+などの DB 実装に依存しません。
 
-- Write / persistence → Repository
-- Search / read       → QueryService
+### 2. 責務分離（Repository / QueryService）
 
-### 3. Centralized Transaction Boundary Management
+- 書き込み / 永続化 → Repository
+- 検索 / 読み取り   → QueryService
 
-Usecase manages Tx, and Infrastructure does not start Tx.
+### 3. トランザクション境界の集中管理
 
-### 4. DB Error Normalization
+Usecase が Tx を管理し、Infra は Tx を開始しません。
 
-PostgreSQL-specific errors are converted into application-wide errors by `pgerror`.
+### 4. DB エラーの正規化
 
-### 5. SQL Type Safety
+PostgreSQL 固有エラーは`pgerror`でアプリケーション共通エラーへ変換します。
 
-All SQL execution is performed through `sqlc`.
+### 5. SQL 型安全
 
-Exception: PostgreSQL session-configuration commands that `sqlc` cannot model (e.g. `SET LOCAL lock_timeout` issued before a row-locking query) may be run via a direct `Exec`. These are confined to `system_cqrs` and their errors still flow through `pgerror.NormalizeError`.
+SQL 実行はすべて`sqlc`を通して行います。
 
-### 6. Observability
+例外: `sqlc` で表現できない PostgreSQL のセッション設定コマンド（例: 行ロッククエリ前に発行する `SET LOCAL lock_timeout`）は直接 `Exec` で実行してよい。これらは `system_cqrs` に限定し、エラーは引き続き `pgerror.NormalizeError` を経由させます。
 
-SQL execution tracing is provided by a pgx query tracer wired at the driver connection level
-(`otelpgx` spans), with logs on successful completion (Info, with latency), slow queries (Warn),
-and failures (Error).
+### 6. 可観測性
 
-### 7. Test Strategy (Integration-based)
+SQL 実行トレースは driver の接続層に結線した pgx クエリトレーサー（`otelpgx` の span）が提供し、
+ログは正常終了（Info・latency 付き）・スロー（Warn）・失敗（Error）で出力します。
 
-Repository / QueryService / CommandService tests are executed with:
+### 7. テスト戦略（Integration 前提）
 
-real DB + rollback
+Repository / QueryService / CommandService テストは
 
-This is safely implemented using `testkit`.
+実DB + rollback
 
-Each Repository / QueryService test verifies:
+で実行します。
 
-- SQL execution paths — every query / branch the method dispatches
-- `pgerror.NormalizeError` application on every sqlc return (raw `pg` / connection errors → `apperror`)
-- row → entity conversion (column → field mapping, NULL handling)
+`testkit`を利用して安全に実現します。
 
-A CommandService test additionally verifies:
+各 Repository / QueryService テストが検証する観点:
+
+- SQL 実行経路 — メソッドが dispatch する各クエリ / 分岐
+- 全 sqlc 戻り値への `pgerror.NormalizeError` 適用（生 `pg` / 接続エラー → `apperror`）
+- row → entity 変換（カラム → フィールド対応、NULL 処理）
+
+CommandService テストは加えて次を検証します:
 
 <!-- sample-api:replace-begin -->
-- the atomic write effect on every touched table (e.g. stock decremented, purchase / detail rows
-  inserted, `status_id` resolved from a business code) via post-write `SELECT`
+- 触れた全テーブルへの atomic な書き込み効果（例: 在庫の減算、purchase / detail 行の挿入、
+  業務コードから解決された `status_id`）を書き込み後の `SELECT` で確認する
 <!-- sample-api:replace-with -->
-<!-- = - the atomic write effect on every touched table (including any id resolved from a business code) -->
-<!-- =   via post-write `SELECT` -->
+<!-- = - 触れた全テーブルへの atomic な書き込み効果（業務コードから解決された id を含む）を -->
+<!-- =   書き込み後の `SELECT` で確認する -->
 <!-- sample-api:replace-end -->
-- the fail-closed guard (e.g. defensive `WHERE quantity >= :qty` → 0 rows → `ErrConflict`) using a
-  stale lock value so the domain check passes but the DB predicate rejects
-- constraint-violation normalization (`pgerror.NormalizeError`: FK `23503` → `ErrInvalidArgument`,
-  unique `23505` → `ErrConflict`)
+- fail-closed のガード（例: 防御的な `WHERE quantity >= :qty` → 0 行 → `ErrConflict`）を、
+  ドメイン検査は通るが DB 述語が弾くよう stale なロック値を使って確認する
+- 制約違反の正規化（`pgerror.NormalizeError`: FK `23503` → `ErrInvalidArgument`、
+  unique `23505` → `ErrConflict`）
 
-Concurrency / lock contention cannot be reproduced with the default `testkit` helper: its `WithinTx` serializes transactions (a single tx rolled back at the end). A branch that only fires under genuinely concurrent connections — e.g. `Claim`'s `lock_timeout` `55P03` (lock_not_available) — needs a dedicated integration test that runs two independent `TransactionManager.Do` calls (two connections / transactions) so one holds the row lock while the other times out.
+並行 / ロック競合は既定の `testkit` ヘルパでは再現できません: `WithinTx` はトランザクションを直列化します（最後に rollback する単一 tx）。真に並行なコネクションでしか発火しない分岐 — 例: `Claim` の `lock_timeout` `55P03`（lock_not_available）— は、独立した `TransactionManager.Do` を 2 本（2 コネクション / トランザクション）走らせ、片方が行ロックを保持しもう片方をタイムアウトさせる専用の統合テストが要ります。
 
-#### Coverage exceptions (infallible defensive branches)
+#### カバレッジ例外（到達不能な防御分岐）
 
-Domain values are narrowed to the sqlc column width through `pkg/safecast`, so each write site
-carries an `if err != nil` that a caller cannot reach once the domain guarantees the range. The
-range check itself lives in `pkg/safecast` and is fully branch-tested there; what remains at the
-call site is error plumbing, and per
-[`testing-conventions.md` §9](../../../docs/testing-conventions.md) it is recorded here rather
-than covered with a contrived test.
+ドメインの値は `pkg/safecast` を通して sqlc のカラム幅へ絞り込むため、各書き込み箇所には
+`if err != nil` が付きます。ドメインが範囲を保証している以上、呼び出し側からこの分岐へは到達
+できません。範囲チェック本体は `pkg/safecast` にあり全分岐がテスト済みで、呼び出し側に残るのは
+エラープラミングだけなので、[`testing-conventions.md` §9](../../../docs/testing-conventions.md)
+に従い作為的なテストで色を付けるのではなくここに記録します。
 
 <!-- sample-api:replace-begin -->
-|File|Function|Uncovered branch|Why unreachable|
+|ファイル|関数|未被覆の分岐|到達不能な理由|
 |---|---|---|---|
-|`repository/product/product_repository.go`|`Create`|`safecast.IntToInt32(p.Quantity())` error|`product` validates `quantity` into `[0, math.MaxInt32]`|
-|`repository/product/product_repository.go`|`Create`|`safecast.IntPtrToInt32Ptr(p.StockWarningThreshold())` error|`product` validates the threshold into `[0, math.MaxInt32]`|
-|`repository/product/product_repository.go`|`Update`|`safecast.IntToInt32(p.Quantity())` error|同上|
-|`repository/product/product_repository.go`|`Update`|`safecast.IntPtrToInt32Ptr(p.StockWarningThreshold())` error|同上|
-|`repository/product/product_repository.go`|`UpdateStock`|`safecast.IntToInt32(p.Quantity())` error|同上|
-|`repository/product/product_repository.go`|`insertImages`|`safecast.IntToInt16(img.SortKey())` error|`product` validates `sortKey` into `[1, math.MaxInt16]`|
-|`repository/product/product_repository.go`|`syncImages`|`safecast.IntToInt16(img.SortKey())` error|同上|
+|`repository/product/product_repository.go`|`Create`|`safecast.IntToInt32(p.Quantity())` のエラー|`product` が `quantity` を `[0, math.MaxInt32]` に検証済み|
+|`repository/product/product_repository.go`|`Create`|`safecast.IntPtrToInt32Ptr(p.StockWarningThreshold())` のエラー|`product` が閾値を `[0, math.MaxInt32]` に検証済み|
+|`repository/product/product_repository.go`|`Update`|`safecast.IntToInt32(p.Quantity())` のエラー|同上|
+|`repository/product/product_repository.go`|`Update`|`safecast.IntPtrToInt32Ptr(p.StockWarningThreshold())` のエラー|同上|
+|`repository/product/product_repository.go`|`UpdateStock`|`safecast.IntToInt32(p.Quantity())` のエラー|同上|
+|`repository/product/product_repository.go`|`insertImages`|`safecast.IntToInt16(img.SortKey())` のエラー|`product` が `sortKey` を `[1, math.MaxInt16]` に検証済み|
+|`repository/product/product_repository.go`|`syncImages`|`safecast.IntToInt16(img.SortKey())` のエラー|同上|
 <!-- sample-api:replace-with -->
-<!-- = |File|Function|Uncovered branch|Why unreachable| -->
+<!-- = |ファイル|関数|未被覆の分岐|到達不能な理由| -->
 <!-- = |---|---|---|---| -->
-<!-- = |(none recorded yet)|||| -->
+<!-- = |（まだ記録なし）|||| -->
 <!-- sample-api:replace-end -->
 
-A `version` conversion at such a call site is **not** exempt: the domain only requires
-`version >= 1`, so an out-of-range version is reachable and is covered by a test. The same applies
+そうした呼び出し箇所の `version` 変換は例外ではありません。ドメインが課すのは `version >= 1` だけで
 <!-- sample-api:replace-begin -->
-to the purchase `statusCode` / detail-quantity conversions.
+範囲外の version は到達可能なため、テストで被覆しています。purchase の `statusCode` / 明細数量の
+変換も同様です。
 <!-- sample-api:replace-with -->
-<!-- = to any other conversion whose domain type admits a narrower range than the column. -->
+<!-- = 範囲外の version は到達可能なため、テストで被覆しています。ドメイン型が列より狭い範囲しか許さない -->
+<!-- = 変換も同様です。 -->
 <!-- sample-api:replace-end -->

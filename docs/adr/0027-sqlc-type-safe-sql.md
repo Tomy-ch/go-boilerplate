@@ -5,51 +5,45 @@ deciders: [maintainers]
 tags: [persistence, codegen]
 ---
 
-# ADR-0027: Generate type-safe SQL access with sqlc
+# ADR-0027: sqlcによる型安全なSQLアクセスの生成
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Given the SQL-first stance ([ADR-0026](0026-sql-first-data-access.md)), the handwritten SQL
-still needs to reach Go as **compile-time type-safe** code, without reintroducing an ORM's
-runtime abstraction or implicit query generation.
+SQLファーストの方針（[ADR-0026](0026-sql-first-data-access.md)）を前提とすると、手書きのSQLをGoに**コンパイル時の型安全な**コードとして届ける必要があるが、ORMのランタイム抽象や暗黙的なクエリ生成を再導入したくない。
 
-## Decision
+## 決定
 
-Use **sqlc** to generate Go code from the SQL queries. The developer writes SQL; sqlc emits
-typed Go functions and row structs that the infrastructure layer wraps.
+**sqlc**を使用してSQLクエリからGoコードを生成する。開発者がSQLを記述し、sqlcが型付きGo関数と行構造体を生成し、インフラレイヤーがそれをラップする。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Compile-time type safety between SQL and Go.
-- SQL stays explicit and readable as the source artifact.
-- Minimal runtime abstraction — generated code is thin.
+- SQLとGoの間のコンパイル時型安全性。
+- SQLがソース成果物として明示的かつ読みやすいまま保持される。
+- ランタイム抽象が最小限 — 生成コードは薄い。
 
-### Negative Consequences
+### ネガティブな影響
 
-- A code-generation step (`make gen-query`) is required in the workflow; generated files
-  are not edited by hand.
-- Query capabilities are bounded by what sqlc can parse and map.
+- ワークフローにコード生成ステップ（`make gen-query`）が必要であり、生成ファイルは手動で編集しない。
+- クエリ機能はsqlcが解析・マッピングできる範囲に限定される。
 
-## Alternatives Considered
+## 検討した代替案
 
 ### GORM
 
-Rejected: a convenient ORM, but it reintroduces ORM abstraction and implicit query
-generation — exactly what the SQL-first decision avoids.
+却下：便利なORMだが、SQLファーストの決定が避けようとしているORM抽象と暗黙的なクエリ生成を再導入する。
 
 ### Ent
 
-Rejected: a schema-first approach that imposes a different development workflow than
-authoring SQL directly.
+却下：SQLを直接記述するのとは異なる開発ワークフローを強制するスキーマファーストのアプローチ。
 
-## Notes
+## 補足
 
-- Builds on [ADR-0026](0026-sql-first-data-access.md) (SQL-first).
-- Generated code is not edited by hand — see the Generated Code rules in [`docs/rules.md`](../rules.md#generated-code-rules).
-- Migrated from the former `docs/decisions.md`.
+- [ADR-0026](0026-sql-first-data-access.md)（SQLファースト）を前提とする。
+- 生成コードは手動編集不可 — [`docs/rules.md`](../rules.md#生成コードルール)の生成コードルール参照。
+- かつての `docs/decisions.md` から移行。

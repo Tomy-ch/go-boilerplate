@@ -1,37 +1,37 @@
 # fix-collation
 
-Fixes PostgreSQL collation version mismatch by running `REINDEX DATABASE` and `ALTER DATABASE ... REFRESH COLLATION VERSION`.
+PostgreSQL の照合順序バージョン不整合を、`REINDEX DATABASE` と `ALTER DATABASE ... REFRESH COLLATION VERSION` を実行して修正します。
 
-## Role
+## 役割
 
-This command exists to recover from collation drift: when the operating system's collation library is upgraded under a running database, the sort order of existing text indexes can silently no longer match the order the database assumes, which risks wrong query results until the indexes are rebuilt. It rebuilds the affected indexes and re-stamps the recorded collation version so the database stops warning and the indexes are trustworthy again. It lives as its own pure, unit-tested core so the rebuild-and-refresh decision logic is verifiable in isolation, separate from the thin command wiring.
+このコマンドは照合順序（collation）のずれから復旧するために存在します。稼働中のデータベースの下で OS の照合ライブラリがアップグレードされると、既存のテキストインデックスのソート順がデータベースの前提とする順序と知らぬ間に一致しなくなり、インデックスを再構築するまでクエリ結果が誤るおそれがあります。本コマンドは該当インデックスを再構築し、記録された照合順序バージョンを再スタンプすることで、警告を解消しインデックスを再び信頼できる状態に戻します。再構築と再スタンプの判定ロジックを薄いコマンド配線から切り離して単体検証できるよう、純粋かつテスト可能なコアとして独立しています。
 
-## Command
+## コマンド
 
 ```text
 fix-collation [flags]
 ```
 
-## Flags
+## フラグ
 
-|Flag|Default|Description|
+|フラグ|デフォルト|説明|
 |---|---|---|
-|`--database`|`local`|Target database name. One of `local`, `test`, `template1`, `wt<N>_local`, `wt<N>_test`|
+|`--database`|`local`|対象データベース名。`local` / `test` / `template1` / `wt<N>_local` / `wt<N>_test` のいずれか|
 
-## Usage
+## 使い方
 
 ```bash
 ./server fix-collation --database local
-./server fix-collation --database template1   # unblocks CREATE DATABASE ... TEMPLATE template1
-./server fix-collation --database wt3_test    # a database leased by a worktree slot
+./server fix-collation --database template1   # CREATE DATABASE ... TEMPLATE template1 の失敗を解消する
+./server fix-collation --database wt3_test    # worktree スロットが借りているデータベース
 ```
 
-## Notes
+## 注意点
 
-- **Intended for development and test databases only.** Any name outside the list above is rejected with an error before any SQL runs. The allowlist doubles as the injection guard, since the database name is interpolated into the SQL text.
-- `template1` is accepted because the mismatch propagates to every database cloned from it: `CREATE DATABASE ... TEMPLATE template1` fails outright while the template carries a stale collation version.
-- `wt<N>_local` / `wt<N>_test` are the databases a worktree leases from the slot pool (see `docs/maintenance/db-worktree-pool.md`).
-- The command **connects to the database it is about to fix**, overriding the database in the configured DSN. `REINDEX DATABASE` can only target the currently open database, so reusing the configured connection would fail for every other name.
-- Requires `psql` to be available on `PATH` and the executing user to have `REINDEX` and `ALTER DATABASE` privileges.
-- Connection information other than the database name (host, port, user, `sslmode`) is read from the application configuration (`DSN`).
-- SQL execution stops immediately on error (`ON_ERROR_STOP=1`).
+- **開発・テスト用データベースでの使用を想定しています。** 上記以外の名前は SQL 実行前にエラーで拒否されます。データベース名は SQL 文へ文字列として埋め込むため、この許可リストはインジェクション対策も兼ねています。
+- `template1` を対象に含めているのは、不整合がそこから複製される全データベースへ伝播するためです。古い照合順序バージョンを抱えたままだと `CREATE DATABASE ... TEMPLATE template1` 自体が失敗します。
+- `wt<N>_local` / `wt<N>_test` は worktree がスロットプールから借りるデータベースです（`docs/maintenance/db-worktree-pool.md` 参照）。
+- **修正対象のデータベースへ接続し直します**（設定の DSN のデータベース名を上書きします）。`REINDEX DATABASE` は接続中のデータベースしか対象にできないため、設定の接続先のままでは他の名前を指定しても失敗します。
+- `psql` が `PATH` 上に存在し、実行ユーザーが `REINDEX` および `ALTER DATABASE` の権限を持っている必要があります。
+- データベース名以外の接続情報（ホスト・ポート・ユーザー・`sslmode`）はアプリケーション設定（`DSN`）から取得されます。
+- SQL 実行時にエラーが発生すると即座に停止します（`ON_ERROR_STOP=1`）。

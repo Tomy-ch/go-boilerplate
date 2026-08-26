@@ -5,107 +5,61 @@ deciders: [maintainers]
 tags: [process, ai, scaffold]
 ---
 
-# ADR-0094: Scaffold only domain and usecase from spec files; derive controller and infra from generated code
+# ADR-0094: スペックファイルからドメインとユースケースのみスキャフォールドし、コントローラーとインフラは生成コードから導出する
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Scaffolding an onion-architecture endpoint requires human input for the parts of the design
-that cannot be mechanically derived: domain invariants, behavior method semantics, value
-object validations, and usecase workflow steps. However, the controller and infrastructure
-layers follow deterministic templates once their generated inputs exist:
+オニオンアーキテクチャのエンドポイントをスキャフォールドするには、機械的に導出できない設計部分について人間の入力が必要となる: ドメイン不変条件、振る舞いメソッドのセマンティクス、バリューオブジェクトのバリデーション、ユースケースワークフローのステップ。しかし、コントローラーとインフラストラクチャのレイヤーは、生成された入力が存在すれば決定論的なテンプレートに従う:
 
-- A controller handler is a pure mapping from an OpenAPI `ServerInterface` method to a
-  usecase method call. Its shape is fully determined by the generated interface and a
-  naming convention heuristic.
-- A Repository implementation is a pure mapping from a domain Repository interface method
-  to a sqlc-generated function. Its shape is fully determined by the domain interface and
-  the sqlc output.
+- コントローラーハンドラーは OpenAPI の `ServerInterface` メソッドからユースケースメソッド呼び出しへの純粋なマッピングである。その形状は、生成されたインターフェースと命名規則ヒューリスティックによって完全に決定される。
+- Repository 実装は、ドメイン Repository インターフェースのメソッドから sqlc 生成関数へのマッピングである。その形状は、ドメインインターフェースと sqlc の出力によって完全に決定される。
 
-Writing separate spec files for controller and infra would duplicate the OpenAPI YAML and
-sqlc gen content, creating a second source of truth that can drift silently. It would also
-impose authoring cost without adding derivation value, since the derivation is deterministic
-given the generated code and naming convention.
+コントローラーとインフラのために別々のスペックファイルを書くと、OpenAPI YAML と sqlc gen コンテンツが重複し、サイレントにドリフトし得る第二の真実の源泉が生まれる。また、生成コードと命名規則から導出が決定論的である以上、導出の価値を加えることなく作成コストが課される。
 
-## Decision
+## 決定
 
-The spec scaffolding follows a **lean-A constitution**: only `domain.md` and `usecase.md`
-spec files are required under `docs/spec/<feature>/`. Controller and infrastructure layers
-are derived from generated code and naming conventions — no `controller.md` or `infra.md`
-spec files exist.
+スキャフォールドツールは**リーン A 構成**に従う: `docs/spec/<feature>/` 配下には `domain.md` と `usecase.md` スペックファイルのみが必要である。コントローラーとインフラストラクチャのレイヤーは生成コードと命名規則から導出される — `controller.md` や `infra.md` スペックファイルは存在しない。
 
-- `scaffold-domain` consumes `domain.md` (sections: Overview, Entity, Cross-field
-  Invariants, Behavior Methods, Value Objects, Repository Methods) to generate the entity,
-  value objects, constants, errors, and Repository interface.
-- `scaffold-usecase` consumes `usecase.md` (sections: Overview, Interface, DTOs,
-  Dependencies, Workflow) to generate the Application Service, DTOs, and boundary wiring.
-- `scaffold-controller` derives the handler from the OpenAPI-generated `ServerInterface`
-  and the usecase Interface via name-match heuristic. It halts with a hand-off message if
-  an `operationId` cannot be mapped to a usecase method — no auto-resolution.
-- `scaffold-infra-db` derives the Repository from the domain Repository interface and the
-  sqlc-generated functions via name-match heuristic. For unmapped methods it emits TODO
-  stubs rather than halting, because partial Repository compilation remains valid.
-- `scaffold-endpoint` orchestrates all four in dependency order after `verify-spec`
-  validates the two spec files.
+- `scaffold-domain` は `domain.md`（セクション: 概要、エンティティ、クロスフィールド不変条件、振る舞いメソッド、バリューオブジェクト、Repository メソッド）を消費し、エンティティ、バリューオブジェクト、定数、エラー、Repository インターフェースを生成する。
+- `scaffold-usecase` は `usecase.md`（セクション: 概要、インターフェース、DTO、依存関係、ワークフロー）を消費し、アプリケーションサービス、DTO、バウンダリーワイヤリングを生成する。
+- `scaffold-controller` は OpenAPI 生成の `ServerInterface` とユースケースインターフェースから名前マッチヒューリスティックでハンドラーを導出する。`operationId` をユースケースメソッドにマッピングできない場合は、自動解決なしでハンドオフメッセージとともに停止する。
+- `scaffold-infra-db` は、ドメイン Repository インターフェースと sqlc 生成関数から名前マッチヒューリスティックで Repository を導出する。マッピングできないメソッドには停止する代わりに TODO スタブを出力する。部分的な Repository のコンパイルは有効なままであるためである。
+- `scaffold-endpoint` は `verify-spec` が 2 つのスペックファイルを検証した後、依存関係の順序に従ってすべての 4 つをオーケストレートする。
 
-Correctness of controller and infra against their derivation rules is enforced by
-`arch-check`, which serves as the safety net when a naming-convention template is violated.
+命名規則テンプレートが違反された場合のコントローラーとインフラの正確性は `arch-check` によって強制される。これが安全ネットとして機能する。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Reduced authoring burden: engineers write two spec files that cover the non-derivable
-  design choices, not four.
-- Single source of truth for controller and infra shape: the generated code (OpenAPI gen,
-  sqlc gen) is the definition; spec duplication and drift are structurally prevented.
-- Spec files cover only the decisions requiring design judgment (invariants, behavior,
-  workflow), making them useful review artifacts rather than mechanical transcriptions.
-- `arch-check` provides automated enforcement of controller/infra templates without
-  requiring a spec file.
+- 作成負担の軽減: エンジニアは導出不可能な設計判断をカバーする 2 つのスペックファイルを書くだけでよく、4 つではない。
+- コントローラーとインフラ形状の単一の真実の源泉: 生成コード（OpenAPI gen、sqlc gen）が定義であり、スペックの重複とドリフトが構造的に防止される。
+- スペックファイルは設計判断（不変条件、振る舞い、ワークフロー）を必要とする決定のみをカバーし、機械的な転記ではなく有用なレビュー成果物となる。
+- `arch-check` はスペックファイルを必要とせず、コントローラー/インフラテンプレートの自動適用を提供する。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Controller scaffolding halts when an `operationId`-to-usecase name mapping cannot be
-  derived. Naming mismatches require manual resolution before scaffold can proceed.
-- Infra correctness depends on `arch-check` running after scaffold rather than on an
-  upfront spec. A violated naming convention produces a TODO stub rather than an early
-  error.
-- The lean-A constitution requires OpenAPI YAML, SQL migrations, and sqlc gen to exist
-  before scaffold runs; these are human-written preconditions that must be satisfied first.
+- `operationId` からユースケース名へのマッピングが導出できない場合、コントローラースキャフォールドが停止する。命名の不一致はスキャフォールドを進める前に手動で解決しなければならない。
+- インフラの正確性は、スペックファイルによる事前チェックではなく、スキャフォールド後に `arch-check` が実行されることに依存する。違反した命名規則は早期エラーではなく TODO スタブを生成する。
+- リーン A 構成では、スキャフォールドを実行する前に OpenAPI YAML、SQL マイグレーション、sqlc gen が存在している必要がある。これらは先に満たされなければならない人間が書いた前提条件である。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Four-layer spec (domain + usecase + controller + infra)
+### 4 レイヤースペック（ドメイン + ユースケース + コントローラー + インフラ）
 
-Explicit but redundant. Controller and infra spec content would duplicate the OpenAPI YAML
-and sqlc gen output, creating a second source of truth that drifts silently as the generated
-files evolve. Rejected because the derivation is deterministic enough to not warrant a
-separate spec.
+明示的だが冗長である。コントローラーとインフラのスペックコンテンツは OpenAPI YAML と sqlc gen 出力を複製し、生成ファイルが進化するにつれてサイレントにドリフトする第二の真実の源泉を作る。導出が別のスペックを正当化するほど十分でないため却下。
 
-### No spec files (pure derivation)
+### スペックファイルなし（純粋な導出）
 
-Would require the scaffolding to infer domain invariants, validation rules, behavior method
-semantics, and usecase workflow orchestration from the SQL schema and OpenAPI spec alone.
-Domain invariants and usecase Workflow are design decisions that cannot be reliably derived
-from data schema definitions. Rejected because the spec captures design judgment that is
-genuinely non-derivable from the generated artifacts.
+スキャフォールドが SQL スキーマと OpenAPI スペックのみからドメイン不変条件、バリデーションルール、振る舞いメソッドのセマンティクス、ユースケースワークフローオーケストレーションを推論する必要がある。ドメイン不変条件とユースケースワークフローは、データスキーマ定義から確実に導出できない設計判断である。スペックが生成成果物からは真に導出不可能な設計判断を捉えるため却下。
 
-## Notes
+## 補足
 
-- Source: `.claude/scaffold-spec/lifecycle.md` (§ "なぜ 2 spec か"),
-  `.claude/skills/scaffold-endpoint/SKILL.md`,
-  `.claude/skills/scaffold-controller/SKILL.md`,
-  `.claude/skills/scaffold-infra-db/SKILL.md`,
-  `.claude/scaffold-spec/domain-spec.md`,
-  `.claude/scaffold-spec/usecase-spec.md`.
-- Spec files are committed to the repository under `docs/spec/<feature>/` as permanent
-  design artifacts; they remain after scaffold completes and are reviewed alongside the PR.
-- Naming convention enforcement for controller and infra is governed by `arch-check`; see
-  [`docs/rules.md`](../rules.md) for the layer dependency and purity rules that underpin it.
-- Controller derivation halts on unmapped `operationId`; infra derivation continues with
-  TODO stubs. This asymmetry reflects that a partial infra impl compiles, while a partial
-  handler impl would violate the generated `ServerInterface`.
+- ソース: `.claude/scaffold-spec/lifecycle.md`（§"なぜ 2 spec か"）、`.claude/skills/scaffold-endpoint/SKILL.md`、`.claude/skills/scaffold-controller/SKILL.md`、`.claude/skills/scaffold-infra-db/SKILL.md`、`.claude/scaffold-spec/domain-spec.md`、`.claude/scaffold-spec/usecase-spec.md`。
+- スペックファイルは `docs/spec/<feature>/` の下に永続的な設計成果物としてリポジトリにコミットされる。スキャフォールド完了後も残り、PR とともにレビューされる。
+- コントローラーとインフラの命名規則適用は `arch-check` が管理する。その基礎となるレイヤー依存性と純粋性ルールについては [`docs/rules.md`](../rules.md) を参照。
+- コントローラーの導出はマッピングできない `operationId` で停止する。インフラの導出は TODO スタブで続行する。この非対称性は、部分的なインフラ実装はコンパイルできるが、部分的なハンドラー実装は生成された `ServerInterface` に違反するためである。

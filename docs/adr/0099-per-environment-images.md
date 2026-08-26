@@ -5,89 +5,67 @@ deciders: [maintainers]
 tags: [deploy, image, config]
 ---
 
-# ADR-0099: Per-environment images (.env matrix x APP_ENV build-arg, fixed at build time)
+# ADR-0099: 環境別イメージ（.env マトリックス × APP_ENV ビルド引数、ビルド時に固定）
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-The application reads configuration from an `.env` file that is embedded into the binary at
-build time via `go:embed` (see ADR-0046). Because the embedded file is baked in at compile
-time, a single binary can only carry one environment's configuration. Separate per-environment
-configurations (production, staging, development) therefore require separate images.
+アプリケーションは `go:embed` を通じてビルド時にバイナリに埋め込まれた `.env` ファイルから設定を読み取る（ADR-0046 参照）。埋め込みファイルはコンパイル時にベイクインされるため、単一のバイナリは 1 つの環境の設定しか持てない。異なる環境の設定（プロダクション、ステージング、開発）はそのため別々のイメージを必要とする。
 
-At the same time, injecting environment-specific secrets or config values at container
-runtime (via env vars or mounted files) must still be possible; the embedded config provides
-the safe defaults, while runtime env vars override them.
+同時に、環境固有のシークレットや設定値をコンテナランタイムで（環境変数またはマウントされたファイルを通じて）注入できなければならない。埋め込まれた設定は安全なデフォルトを提供し、ランタイムの環境変数がそれらをオーバーライドする。
 
-The CI/CD pipeline runs on three long-lived branches — `production`, `staging`, and `develop`
-— that map 1:1 to environments.
+CI/CD パイプラインは 3 つの長命ブランチ（`production`、`staging`、`develop`）で実行され、これらは 1:1 で環境にマップされる。
 
-## Decision
+## 決定
 
-Each branch push produces an image that embeds the matching `.env.<env>` file, selected by
-the `APP_ENV` build argument:
+各ブランチのプッシュは、`APP_ENV` ビルド引数で選択されたマッチする `.env.<env>` ファイルを埋め込んだイメージを作成する:
 
-| Branch | APP_ENV | Embedded config |
+| ブランチ | APP_ENV | 埋め込み設定 |
 | --- | --- | --- |
 | `production` | `prd` | `env/.env.prd` |
 | `staging` | `stg` | `env/.env.stg` |
 | `develop` | `dev` | `env/.env.dev` |
 
-The `builder` stage materializes the target config before compilation:
+`builder` ステージはコンパイル前にターゲット設定をマテリアライズする:
 
 ```text
 cp "env/.env.${APP_ENV}" env/.env
 go build ... -o /app/bin/server ./cmd/
 ```
 
-The `Define build environment` step in the workflow maps `github.ref_name` to `app_env` and
-passes it as a `build-arg` to the Docker build. Runtime environment variables can still
-override any embedded value, so secrets are never required to be embedded.
+ワークフローの `Define build environment` ステップは `github.ref_name` を `app_env` にマップし、Docker ビルドへの `build-arg` として渡す。ランタイム環境変数は埋め込まれた値をオーバーライドできるため、シークレットを埋め込む必要はない。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- The environment a container runs in is determined at build time, not runtime injection,
-  eliminating a class of misconfiguration errors (wrong env vars, missing env vars at
-  container start).
-- Each image is independently verifiable and auditable: the embedded config is part of
-  the signed artifact (see [ADR-0101](0101-release-image-supply-chain.md)).
-- No runtime config-management sidecar or secret-injection step is required for the base
-  config values.
+- コンテナが実行される環境はランタイム注入ではなくビルド時に決定され、設定ミスのクラス（誤った環境変数、コンテナ起動時の環境変数の欠落）を排除する。
+- 各イメージは独立して検証可能かつ監査可能である: 埋め込まれた設定は署名された成果物の一部である（[ADR-0101](0101-release-image-supply-chain.md) 参照）。
+- ベース設定値のためのランタイム設定管理サイドカーやシークレット注入ステップは必要ない。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Config changes for a given environment require a full rebuild and push of that
-  environment's image.
-- Three distinct image tags must be maintained (one per environment), increasing registry
-  storage.
-- Secrets must never be placed in `env/.env.<env>` files (they would be embedded in the
-  image layer). Runtime env var injection is the appropriate path for secrets.
+- 特定の環境の設定変更には、その環境のイメージの完全な再ビルドとプッシュが必要となる。
+- 3 つの異なるイメージタグを管理しなければならず（環境ごとに 1 つ）、レジストリストレージが増加する。
+- シークレットは `env/.env.<env>` ファイルに置いてはならない（イメージレイヤーに埋め込まれるため）。シークレットにはランタイム環境変数注入が適切な方法である。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Single image with runtime config injection
+### ランタイム設定注入を持つ単一イメージ
 
-One image for all environments; env vars or mounted files supply config at runtime. Simpler
-registry, but requires a reliable config-injection mechanism (secret manager, mounted
-ConfigMap/Secret) at every deployment target and makes the "what config is this container
-running?" question harder to answer from the image alone.
+すべての環境に対して 1 つのイメージ。環境変数またはマウントされたファイルがランタイムで設定を提供する。シンプルなレジストリになるが、すべてのデプロイターゲットで信頼できる設定注入メカニズム（シークレットマネージャー、マウントされた ConfigMap/Secret）が必要となり、「このコンテナはどの設定で実行されているか」という問いにイメージのみから答えることが困難になる。
 
-### Per-environment Dockerfile
+### 環境別の Dockerfile
 
-A separate Dockerfile per environment. Duplicates build and maintenance effort; the
-`APP_ENV` build arg achieves the same outcome from a single Dockerfile without duplication.
+環境ごとに別の Dockerfile。ビルドとメンテナンスの労力が重複する。`APP_ENV` ビルド引数は単一の Dockerfile から重複なしに同じ結果を達成する。
 
-## Notes
+## 補足
 
-- `docker/server/Dockerfile` lines 25-30: `ARG APP_ENV=prd` and the `cp` command.
-- `.github/workflows/deploy-app.yaml` `Define build environment` step (lines 54-63): branch
-  → `app_env` mapping.
-- `env/README.md`: "Env files are embedded into the binary at build time (`embed.go`). The
-  Docker `builder` stage materializes the target via the `APP_ENV` build arg."
-- The embedded-config mechanism itself is documented in ADR-0046.
-- Source: `docker/server/Dockerfile`, `.github/workflows/deploy-app.yaml`, `env/README.md`.
+- `docker/server/Dockerfile` 25-30 行: `ARG APP_ENV=prd` と `cp` コマンド。
+- `.github/workflows/deploy-app.yaml` の `Define build environment` ステップ（54-63 行）: ブランチ → `app_env` マッピング。
+- `env/README.md`: "Env files are embedded into the binary at build time (`embed.go`). The Docker `builder` stage materializes the target via the `APP_ENV` build arg."
+- 埋め込み設定メカニズム自体は ADR-0046 に文書化されている。
+- ソース: `docker/server/Dockerfile`、`.github/workflows/deploy-app.yaml`、`env/README.md`。

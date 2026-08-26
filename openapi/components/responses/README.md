@@ -1,11 +1,11 @@
-# OpenAPI Response Schemas
+# OpenAPI レスポンススキーマ
 
-`openapi/components/responses/` stores **endpoint response-body schemas**. They are plain OpenAPI **schemas** (not the `responses` component object type — see [`schemas/README.md`](../schemas/README.md)) and are referenced from a path under `responses.<status>.content.<media>.schema.$ref`.
+`openapi/components/responses/` は**エンドポイントのレスポンスボディスキーマ**を格納します。これらは OpenAPI の素の **schema** であり（`responses` の component object 型ではない。[`schemas/README.md`](../schemas/README.md) 参照）、パスからは `responses.<status>.content.<media>.schema.$ref` で参照します。
 
-## Role boundary vs `schemas/`
+## `schemas/` との役割境界
 
-- `schemas/` — small, reusable building blocks (`UserResponse.yaml`, `PaginationMetadataResponse.yaml`, `CursorPaginationMetadataResponse.yaml`, `ErrorResponse.yaml`).
-- `responses/` — the **per-endpoint** shape, usually composing those blocks via `allOf` (e.g. an item array + pagination metadata).
+- `schemas/` — 小さく再利用できる部品（`UserResponse.yaml`, `PaginationMetadataResponse.yaml`, `CursorPaginationMetadataResponse.yaml`, `ErrorResponse.yaml`）。
+- `responses/` — **エンドポイント固有**の形。多くはそれらを `allOf` で合成する（例：items 配列 ＋ ページネーションメタ）。
 
 <!-- sample-api:replace-begin -->
 ```yaml
@@ -22,38 +22,38 @@ allOf:
 ```
 <!-- sample-api:replace-with -->
 <!-- = ```yaml -->
-<!-- = # responses/<resources>/<Resources>Response.yaml -->
+<!-- = # responses/<リソース>/<リソース>Response.yaml -->
 <!-- = allOf: -->
 <!-- =   - type: object -->
-<!-- =     required: [<resources>] -->
+<!-- =     required: [<リソース>] -->
 <!-- =     properties: -->
-<!-- =       <resources>: -->
+<!-- =       <リソース>: -->
 <!-- =         type: array -->
 <!-- =         items: -->
-<!-- =           $ref: '../../schemas/<Resource>Response.yaml' -->
+<!-- =           $ref: '../../schemas/<リソース>Response.yaml' -->
 <!-- =   - $ref: '../../schemas/PaginationMetadataResponse.yaml' -->
 <!-- = ``` -->
 <!-- sample-api:replace-end -->
 
-## Directory Contents
+## ディレクトリ内容
 
-One directory per resource or concern, named after it; each holds that unit's response bodies.
+リソースまたは関心事ごとに 1 つのディレクトリを置き、その名前を付ける。その単位のレスポンスボディを収める。
 
-## Naming Convention
+## 命名規則
 
-|Element|Convention|Example|
+|要素|規則|例|
 |---|---|---|
 <!-- sample-api:replace-begin -->
-|Directory|lowercase by resource / concern|`users/`, `health-check/`, `version/`|
-|File name|PascalCase + `Response`|`UsersResponse.yaml`, `VersionResponse.yaml`|
+|ディレクトリ|リソース／関心事別に小文字|`users/`, `health-check/`, `version/`|
+|ファイル名|PascalCase ＋ `Response`|`UsersResponse.yaml`, `VersionResponse.yaml`|
 <!-- sample-api:replace-with -->
-<!-- = |Directory|lowercase by resource / concern|`<resources>/`, `health-check/`, `version/`| -->
-<!-- = |File name|PascalCase + `Response`|`<Resources>Response.yaml`, `VersionResponse.yaml`| -->
+<!-- = |ディレクトリ|リソース／関心事別に小文字|`<リソース>/`, `health-check/`, `version/`| -->
+<!-- = |ファイル名|PascalCase ＋ `Response`|`<リソース>Response.yaml`, `VersionResponse.yaml`| -->
 <!-- sample-api:replace-end -->
 
-## Rules
+## ルール
 
-- Compose reusable blocks from `schemas/` via `allOf` instead of duplicating fields.
-- A list response must include the matching pagination metadata block (`PaginationMetadataResponse` for offset, `CursorPaginationMetadataResponse` for cursor).
-- The response constraint must cover everything the domain can emit (`domain ⊆ response`) — see [Input Boundary Value Ownership](../../boundary-ownership.md).
-- Include `description` and `example` on all properties.
+- フィールドを複製せず、`schemas/` の再利用部品を `allOf` で合成する。
+- 一覧レスポンスには対応するページネーションメタを含める（オフセットは `PaginationMetadataResponse`、カーソルは `CursorPaginationMetadataResponse`）。
+- レスポンス制約は domain が出しうる値を包含する必要がある（`domain ⊆ レスポンス`） — [入力境界値のオーナーシップ](../../boundary-ownership.md) を参照。
+- すべてのプロパティに `description` と `example` を記述する。

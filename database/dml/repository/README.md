@@ -1,27 +1,27 @@
 # Repository DML
 
-SQL for Aggregate persistence and simple single-Aggregate reads (CRUD, plus simple filter / list / count by the Aggregate's own attributes).
+単一 Aggregate の永続化と単純な読み取り（CRUD、および Aggregate 自身の属性による単純なフィルタ・一覧・件数）に使用するSQLを管理します。
 
-## Purpose
+## 目的
 
-- Centralize INSERT / UPDATE / DELETE / SELECT queries -- including simple filter / list / count by a single Aggregate's own attributes -- for persisting and retrieving domain models.
-- Keep SQL simple and free of business logic -- cross-Aggregate reads, aggregation, and complex joins belong in QueryService.
-- Provide type-safe repository implementations via sqlc code generation.
+- ドメインモデルの永続化・取得に必要な INSERT / UPDATE / DELETE / SELECT クエリ（単一 Aggregate 自身の属性による単純なフィルタ・一覧・件数を含む）を集約します。
+- ビジネスロジックを含まないシンプルなSQLを維持します。Aggregate を横断する読み取り・集計・複雑な結合は QueryService で行います。
+- sqlc によるコード生成で、型安全なリポジトリ実装を提供します。
 
-## Infrastructure Mapping
+## インフラストラクチャマッピング
 
-Implementation: `internal/infrastructure/rdb/repository/`
+実装: `internal/infrastructure/rdb/repository/`
 
-## Directory Structure
+## ディレクトリ構成
 
-One directory per aggregate, named after it; each holds that aggregate's `.sql` files.
+集約ごとに 1 つのディレクトリを置き、集約名を付ける。その集約の `.sql` を収める。
 
-## Naming Convention
+## 命名規則
 
-- Files: verb + target (e.g., `select_user_by_id.sql`)
-- `-- name:` annotation required on all queries
+- ファイル名: 動詞 + 対象名（例: `select_user_by_id.sql`）
+- 全てのクエリに `-- name:` アノテーションが必須
 
-## Code Generation
+## コード生成
 
 ```sh
 make gen-query

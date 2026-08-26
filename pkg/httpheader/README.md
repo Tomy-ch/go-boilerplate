@@ -1,19 +1,19 @@
 # httpheader
 
-Classification of HTTP header names.
+HTTP ヘッダ名の分類。
 
-## Public API
+## 公開 API
 
-|Function|Description|
+|関数|説明|
 |---|---|
-|`IsSensitive(name)`|Reports whether the header carries credentials and must not be forwarded outside the process.|
+|`IsSensitive(name)`|そのヘッダが資格情報を運び、プロセス外へ転送してはならないものかを返す。|
 
-## Notes
+## 補足
 
-`IsSensitive` matches on the header name with case and surrounding whitespace ignored, so a caller
-that hands over `" Authorization"` or `"AUTHORIZATION"` is judged the same as `"authorization"`.
-A single spelling would let the caller's formatting decide whether a credential leaves the process.
+`IsSensitive` は大小文字と前後の空白を無視して判定するため、呼び出し側が `" Authorization"` や
+`"AUTHORIZATION"` を渡しても `"authorization"` と同じ判定になる。単一の綴りだけを見ると、
+資格情報がプロセス外へ出るかどうかを呼び出し側の書式が決めてしまう。
 
-The set is deliberately small and fixed — `Authorization`, `Proxy-Authorization`, `Cookie`,
-`Set-Cookie`. It answers "is this header a credential", not "is this value private": a header
-carrying personal data is the caller's judgment and is not represented here.
+対象は `Authorization` / `Proxy-Authorization` / `Cookie` / `Set-Cookie` の 4 つに固定している。
+答えるのは「そのヘッダが資格情報か」であって「その値が秘密か」ではない。個人情報を載せた
+ヘッダの扱いは呼び出し側の判断であり、ここでは表現しない。

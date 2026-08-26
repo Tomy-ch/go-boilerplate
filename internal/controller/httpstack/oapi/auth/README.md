@@ -1,15 +1,15 @@
 # oapi/auth
 
-OpenAPI authentication function that extracts a Bearer token from the `Authorization` header, validates it via boundary `Authenticator`, and stores the result in the request context (an authn slot). Cookie-based extraction is not supported (Bearer / Resource Server model).
+`Authorization` ヘッダーから Bearer トークンを抽出し、boundary の `Authenticator` で検証し、結果をリクエストコンテキスト（authn スロット）に格納する OpenAPI 認証関数です。Cookie ベースの抽出はサポートしません（Bearer / リソースサーバーモデル）。
 
-## Token Extraction Flow
+## トークン抽出フロー
 
 ```mermaid
 flowchart TB
-    Start["Request"]
+    Start["リクエスト"]
     IsBearer{"Authorization: Bearer <token>?"}
-    StripBearer["Strip 'Bearer ' prefix → scheme=Bearer"]
-    NoToken["Token empty → ErrUnauthorizedTokenNotProvided"]
+    StripBearer["'Bearer ' プレフィックス除去 → scheme=Bearer"]
+    NoToken["トークンなし → ErrUnauthorizedTokenNotProvided"]
     Credential["NewCredential(scheme, token)"]
     Authenticate["authenticator.Authenticate(ctx, credential)"]
     StoreAuthn["ctxhelper.SetAuthn(req.Context(), authn)"]
@@ -20,59 +20,54 @@ flowchart TB
     Credential --> Authenticate --> StoreAuthn
 ```
 
-### Extraction Rules
+### 抽出ルール
 
-1. **Header** — Extract from the fixed `Authorization` header. Bearer tokens are pinned to `Authorization` by RFC 6750, so the header name is not configurable
-2. **Bearer prefix** — Only `Authorization: Bearer <token>` is accepted; the `Bearer` prefix is stripped and the credential scheme becomes `Bearer`. Any other form yields no token
-3. If no token is found, return `ErrUnauthorizedTokenNotProvided`
+1. **Header** — 固定の `Authorization` ヘッダーから抽出。Bearer トークンは RFC 6750 で `Authorization` に固定されるため、ヘッダー名は可変にしない
+2. **Bearer プレフィックス** — `Authorization: Bearer <token>` 形式のみ受理。`Bearer` プレフィックスを除去し credential のスキームは `Bearer` になる。それ以外の形式はトークンなしとして扱う
+3. トークンが取得できない場合は `ErrUnauthorizedTokenNotProvided` を返す
 
-### Authentication Steps
+### 認証ステップ
 
-1. Extract the Bearer token from the `Authorization` header (rules above)
-2. Create `boundary/auth.Credential` from the scheme and token
-3. Call `authenticator.Authenticate(ctx, credential)` to obtain `Authn`, passing the **request's**
-   context rather than the one the validator supplies — the validator builds its context from
-   `context.Background()`, so the span, deadline and cancellation would all be lost, and
-   authentication would run outside the request's budget and outside its trace
-4. Store `Authn` into the request context via `ctxhelper.SetAuthn()` (the slot is seeded upstream by `ctxhelper.WithAuthn` in `oapi.Middleware`); returns `ErrAuthnSlotNotFound` if the slot is missing
+1. `Authorization` ヘッダーから Bearer トークンを抽出（上記ルールに従う）
+2. スキームとトークンから `boundary/auth.Credential` を生成
+3. `authenticator.Authenticate(ctx, credential)` を呼び出して `Authn` を取得。渡すのはバリデータから来る
+   コンテキストではなく**リクエストの**コンテキスト —— バリデータは `context.Background()` から組み立てるため、
+   スパン・deadline・キャンセルがいずれも失われ、認証がリクエストの予算の外・トレースの外で動くことになる
+4. `ctxhelper.SetAuthn()` でリクエストコンテキストに `Authn` を格納（スロットは上流の `oapi.Middleware` が `ctxhelper.WithAuthn` で仕込む）。スロットが無ければ `ErrAuthnSlotNotFound` を返す
 
-Handler code can then retrieve `Authn` using `ctxhelper.GetAuthn()`.
+ハンドラコードでは `ctxhelper.GetAuthn()` で `Authn` を取得できます。
 
-When a credential was presented and rejected, the resulting error is also recorded into the
-slot via `ctxhelper.SetAuthnFailure()` before it is returned. A rejected credential must deny
-the request even where the spec declares authentication optional, and the return value alone
-cannot carry that — see the fail-closed section in [`../README.md`](../README.md). Absence of a
-credential is not a failure and is never recorded, so an operation that admits anonymous
-callers still admits them.
+資格情報が提示されたうえで拒否された場合、その結果のエラーは返す前に `ctxhelper.SetAuthnFailure()` で
+スロットへも記録されます。拒否された資格情報は、spec が認証を任意と宣言していてもリクエストを拒否
+しなければならず、戻り値だけではそれを運べないためです（[`../README.md`](../README.md) の
+fail-closed の節を参照）。資格情報が提示されなかったことは失敗ではなく、記録もされないため、
+匿名の呼び出し元を受け入れる operation は従来どおり受け入れます。
 
-## Errors
+## エラー
 
-|Error|Base Error|Description|
+|エラー|ベースエラー|説明|
 |---|---|---|
-|`ErrUnauthorizedInvalidToken`|`ErrUnauthenticated`|Token validation failed by `Authenticator`|
-|`ErrUnauthorizedTokenNotProvided`|`ErrUnauthenticated`|No token found in the `Authorization` header|
-|`ErrUnauthorizedTokenMissing`|`ErrUnauthenticated`|Authorization token is missing (**reserved** — not currently returned; see Notes)|
-|`ErrAuthnSlotNotFound`|`ErrInternal`|Authn slot not found in the request context (slot not seeded by `oapi.Middleware`) — a wiring defect, unrelated to the credential|
-|`ErrInvalidAuthDefaultMode`|`ErrInternal`|Default auth policy not found (**reserved** — not currently returned; see Notes)|
+|`ErrUnauthorizedInvalidToken`|`ErrUnauthenticated`|`Authenticator` によるトークン検証失敗|
+|`ErrUnauthorizedTokenNotProvided`|`ErrUnauthenticated`|`Authorization` ヘッダーにトークンが見つからない|
+|`ErrUnauthorizedTokenMissing`|`ErrUnauthenticated`|認証トークンが欠落（**予約** — 現状は返さない。注意点を参照）|
+|`ErrAuthnSlotNotFound`|`ErrInternal`|リクエストコンテキストに authn スロットが無い（`oapi.Middleware` が未注入）。資格情報と無関係な結線の不具合|
+|`ErrInvalidAuthDefaultMode`|`ErrInternal`|デフォルト認証ポリシーが見つからない（**予約** — 現状は返さない。注意点を参照）|
 
-Every error leaving the authFunc is wrapped so that it carries an HTTP status, and that status
-comes from the central `apperror` mapping in `controller/error/response` — the authentication
-phase keeps no table of its own. Authentication verdicts land on 401; cancellation on 499; an
-unreachable dependency on 503; anything unclassified on 500.
+authFunc から出るエラーはすべて HTTP ステータスを持つ形へ包まれ、そのステータスは
+`controller/error/response` の中央の `apperror` 写像から来ます —— 認証フェーズは自前の表を持ちません。
+認証の結論は 401、キャンセルは 499、依存先へ到達できない場合は 503、分類の無いものは 500 です。
 
-This is not cosmetic. The validation middleware only propagates a status it can read off the
-error and otherwise collapses the failure to **403** — an authorization verdict for a request
-whose authorization was never evaluated. Assigning the status here is what keeps that from
-happening.
+これは見た目の問題ではありません。バリデーションミドルウェアはエラーから読み取れるステータスしか伝播させず、
+それ以外は **403** へ丸めます —— 認可を評価していないリクエストに対する認可の結論です。
+この段でステータスを持たせることが、それを防いでいます。
 
-The distinction is what the caller acts on. 401 says the credential was rejected, so re-authenticate;
-499 / 503 say no verdict was reached, so retry; 403 would say the identity is known and the
-operation is refused. Reporting a dependency failure as 401 sends a client to fix a token nobody
-examined, and buries a server-side defect inside the one status that is expected background noise.
+クライアントが取る行動が変わります。401 は「資格情報を拒否した」＝再認証、499 / 503 は「結論に至らなかった」＝再試行、
+403 なら「本人だと分かったうえで操作を拒否した」。依存先の障害を 401 として返すと、誰も検査していないトークンを
+直すようクライアントへ促し、こちら側の欠陥を「期待される定常ノイズ」である 401 の中に埋めることになります。
 
-## Authn Slot Integration
+## authn スロット統合
 
-This function runs inside the OpenAPI validation pipeline, where only `context.Context` is available (not `*echo.Context`). The parent `oapi.Middleware` seeds an **authn slot** into `request.Context()` (via `ctxhelper.WithAuthn`) before validation runs, so the authFunc — invoked by the validator — can write the authenticated `Authn` back into that slot with `ctxhelper.SetAuthn`. The handler later reads it with `ctxhelper.GetAuthn`.
+この関数は OpenAPI バリデーションパイプライン内で動作するため、`*echo.Context` ではなく `context.Context` のみが利用可能です。親の `oapi.Middleware` がバリデーション実行前に `request.Context()` へ **authn スロット**（`ctxhelper.WithAuthn`）を仕込むことで、バリデータから呼ばれる authFunc がそのスロットへ認証結果 `Authn` を `ctxhelper.SetAuthn` で書き戻せます。ハンドラは後段で `ctxhelper.GetAuthn` により取得します。
 
 ```mermaid
 flowchart LR
@@ -82,9 +77,9 @@ flowchart LR
     Handler["handler"] -->|"GetAuthn"| ReqCtx
 ```
 
-## Notes
+## 注意点
 
-- Token extraction is header-only; cookies are not consulted (Bearer / Resource Server model)
-- Only the `Authorization: Bearer <token>` form is accepted (RFC 6750); non-Bearer schemes and custom header names are not supported
-- The `Authenticator` implementation is environment-specific (local mock, JWT, OAuth, etc.) and injected via DI
-- **Reserved error seams (not currently returned).** `ErrUnauthorizedTokenMissing` and `ErrInvalidAuthDefaultMode` are deliberately provided as extension points for scenarios this package does not yet implement — respectively, distinguishing a *missing `Authorization` header* from an *empty Bearer token*, and a future *default auth policy* resolution path. Today token absence is reported solely via `ErrUnauthorizedTokenNotProvided`, and there is no default-policy resolution. They are kept (not deleted) as intentional API seams; when either scenario is actually implemented, add the returning code path together with its test rather than relying on the bare sentinel
+- トークン抽出はヘッダーのみ。Cookie は参照しません（Bearer / リソースサーバーモデル）
+- `Authorization: Bearer <token>` 形式のみ受理（RFC 6750）。非 Bearer スキームやカスタムヘッダー名はサポートしない
+- `Authenticator` の実装は環境固有（ローカルモック、JWT、OAuth 等）で DI 経由で注入される
+- **予約エラーシーム（現状は返さない）。** `ErrUnauthorizedTokenMissing` と `ErrInvalidAuthDefaultMode` は、本パッケージが未実装のシナリオに向けて意図的に用意した拡張ポイントです。前者は *`Authorization` ヘッダー自体の欠如* と *Bearer トークンが空* を将来区別するため、後者は将来の *デフォルト認証ポリシー* 解決経路のためのものです。現状、トークン欠如は `ErrUnauthorizedTokenNotProvided` のみで表現し、デフォルトポリシー解決は存在しません。削除せず意図的な API シームとして残しています。いずれかのシナリオを実際に実装する際は、素のセンチネルに頼らず、返却する実処理とテストを併せて追加してください

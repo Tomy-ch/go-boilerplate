@@ -5,191 +5,177 @@ deciders: [maintainers]
 tags: [exclusion, outbox, messaging, reliability, setup-review]
 ---
 
-# ADR-0107: Ship a balanced outbox relay; delegate hardening to operational evidence
+# ADR-0107: outbox relay はバランス型で出荷し、ハードニングは運用で得た事実に委ねる
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## コンテキスト
 
-The outbox relay claims pending rows, publishes them over HTTP, and marks the outcome inside a
-single transaction ([ADR-0055], [ADR-0056]). Any such design is bounded by an impossibility
-result: an external side effect (the HTTP POST) and its record (the DB row) cannot be made atomic
-(Two Generals). Duplicate, loss, and availability *windows* — bounded time intervals during which
-an invariant can be violated — cannot all be zero; a design only chooses which window remains.
-A window admits exactly three treatments: **close** (make the interleaving structurally
-impossible), **narrow** (shrink the interval), or **absorb** (make the event harmless downstream).
+outbox relay は pending 行を claim し、HTTP で publish し、その結果を**単一トランザクション内**で
+mark する（[ADR-0055]、[ADR-0056]）。この種の設計はすべて不可能性の結果に縛られる: 外部副作用
+（HTTP POST）とその記録（DB 行）は原子化できない（Two Generals）。重複・喪失・可用性の
+*窓（window）* — 不変条件が一時的に破られうる、始点と終点を持つ時間区間 — を同時にゼロには
+できず、設計とは「どの窓を残すか」の選択である。窓への対処は 3 種類しかない: **閉じる**
+（交錯を構造的に不可能にする）、**狭める**（区間を縮める）、**吸収する**（下流で無害化する）。
 
-The shipped single-transaction relay carries these windows:
+出荷状態の単一トランザクション relay は以下の窓を持つ:
 
-- **Transaction dwell**: publish runs inside the claim tx, so the worst-case tx duration is
-  `BatchSize (100) x per-attempt timeout (~3s) ≈ 300s`, pinning the vacuum horizon and holding a
-  pool connection. Consequently a pool-wide `idle_in_transaction_session_timeout` backstop is
-  deliberately omitted (`driver.applyDBTimeouts` sets only `statement_timeout` / `lock_timeout`):
-  a blanket value short enough to backstop runaway transactions would kill the relay's own
-  long-lived claim→publish→mark tx. It becomes safe to enable pool-wide once blueprint layer 2
-  moves publish outside the transaction.
-- **No per-message backoff**: max attempts is hard-coded (`DefaultMaxAttempts = 10`) and failed
-  rows are re-claimed on the next poll (default 1s), so a downstream outage of only tens of
-  seconds drives the whole pending backlog to `dead`.
-- **Tx-retry republish**: a serialization-failure/deadlock retry ([ADR-0035]) re-runs the whole
-  claim → publish → mark function, re-sending already-delivered messages within one poll. The
-  relay is the sole sanctioned exception to ADR-0035's rule that external side effects must live
-  in outbox rows — the relay *is* the drain and has no outbox to defer to.
-- **Attempts as a lower bound**: a batch rollback erases the `attempts` increment but not the
-  HTTP POST that already happened.
-- **Lag SLI ambiguity**: rows being published still count as `pending`, so the lag gauge cannot
-  distinguish in-flight from stalled.
+- **tx 滞留**: publish が claim tx の内側で走るため、最悪 tx 時間は
+  `BatchSize (100) × 試行あたりタイムアウト (~3s) ≈ 300s`。vacuum horizon をピン留めし、pool
+  接続を 1 本占有する。この帰結として、pool 全体への `idle_in_transaction_session_timeout` の
+  バックストップは意図的に見送っている（`driver.applyDBTimeouts` は `statement_timeout` /
+  `lock_timeout` のみを設定する）: 暴走トランザクションをバックストップできるほど短い一律値は、
+  relay 自身の長命な claim→publish→mark tx を kill してしまう。pool 全体への有効化が安全に
+  なるのは、設計図の第 2 層が publish をトランザクション外へ移した後である。
+- **per-message backoff の不在**: max attempts はハードコードされ（`DefaultMaxAttempts = 10`）、
+  失敗行は次 poll（既定 1s）で再 claim される。数十秒の下流停止だけで pending 全量が `dead` へ
+  落ちる。
+- **tx リトライ再送**: serialization failure / deadlock リトライ（[ADR-0035]）は claim →
+  publish → mark の関数全体を再実行し、配送済みメッセージを同一 poll 内で再送する。relay は
+  ドレイン本体であり退避先の outbox を持たないため、「外部副作用は outbox 行に置く」という
+  ADR-0035 の規則に対する唯一の公認例外である。
+- **attempts の下限保証化**: バッチ rollback は `attempts` の加算を消すが、実行済みの HTTP POST
+  は消えない。
+- **lag SLI の曖昧さ**: publish 中の行も `pending` のままカウントされ、lag gauge は処理中と滞留を
+  区別できない。
 
-A hardened design that closes every closable window exists (the blueprint below). Whether to run it
-is not a correctness question — it is a trade-off between three things:
+閉じられる窓をすべて閉じるハードニング設計は存在する（下記設計図）。それを動かすかどうかは正誤の
+問題ではなく、次の 3 つのトレードオフである:
 
-- **Duplicate suppression** — how far duplicates are pushed from "absorbed harmlessly downstream"
-  toward "structurally impossible".
-- **Availability** — a lease- and leader-based relay stalls for the takeover interval when the
-  holder dies, where a stateless poll loop simply continues on whichever instance polls next.
-- **Implementation and operational cost** — extra schema (two columns and a status value), a
-  dependency on runtime topology for leader election, and tuning knobs (lease length, deadline
-  margin, backoff curve) that only a specific deployment can set.
+- **重複の抑止強度** — 重複を「下流で無害に吸収する」から「構造的に起こり得ない」まで、どこまで
+  押し上げるか。
+- **可用性** — lease とリーダーに基づく relay は保持者が死んだとき引き継ぎ区間だけ停止するが、
+  状態を持たない poll ループは次に poll したインスタンスがそのまま続行する。
+- **実装と運用のコスト** — 追加スキーマ（列 2 本 + status 値）、リーダー選出のための実行トポロジ
+  への依存、そして特定のデプロイにしか決められないチューニング値（lease 長・deadline margin・
+  backoff 曲線）。
 
-Which of the three binds is rarely knowable before the system runs. Message volume, instance count,
-how long a receiver outage actually lasts, and whether receivers deduplicate are operational facts,
-not design-time ones. Fixing a point on this trade-off in advance therefore risks paying
-availability and cost for a duplicate rate that never materialises — the same reasoning as
-[ADR-0104] and [ADR-0105].
+この 3 つのどれが効いてくるかは、システムが動き出す前にはめったに分からない。メッセージ量・
+インスタンス数・受信側の停止が実際にどれだけ続くか・受信側が dedup するかは、設計時ではなく
+運用で分かる事実である。したがってこのトレードオフ上の一点を先に固定すると、発生しない重複率の
+ために可用性とコストを払うおそれがある — [ADR-0104] と [ADR-0105] と同じ論法である。
 
-## Decision
+## 決定
 
-We ship the **balanced** point on that trade-off and move from it on operational evidence.
+このトレードオフの**バランス型**の一点を出荷し、運用で得た事実に基づいてそこから動かす。
 
-The relay stays the simple single-transaction one, and duplicates are handled by absorption rather
-than by structural exclusion: `message_id` propagates as `Idempotency-Key` ([ADR-0057]) and the
-bundled idempotency middleware deduplicates on the receiving side, so duplicates collapse to
-exactly-once *effect* wherever that middleware runs (third-party receivers inherit the dedup
-obligation as an integration requirement). This point costs no availability and no extra schema,
-never loses a message, and leaves duplicates possible but harmless.
+relay は単純な単一トランザクションのままとし、重複は構造的排除ではなく吸収で扱う。`message_id` を
+`Idempotency-Key` として伝搬（[ADR-0057]）し、受信側の同梱冪等性ミドルウェアが dedup するので、
+そのミドルウェアが動いている限り重複は exactly-once *effect* へ畳まれる（第三者実装の受信者は
+dedup 義務を統合要件として引き継ぐ）。この一点は可用性も追加スキーマも要求せず、メッセージを
+失わず、重複は起こり得るが無害な状態に置く。
 
-Once operation shows the duplicate axis binding — a multi-instance relay, volume that makes
-normal-operation duplicates routine, or a receiver that cannot deduplicate — the relay SHOULD be
-redesigned with the following multi-layer structure. It has no functional trade-off; its price is
-implementation cost plus an availability window.
+重複の軸が効いていることが運用で分かった時点 — 多インスタンスの relay、正常運転中の重複が日常に
+なる量、あるいは dedup できない受信側 — で、以下の多層構造による再設計を行う **SHOULD**。この
+構造に機能的トレードオフはなく、対価は実装コストと可用性窓である。
 
-### Hardening blueprint
+### ハードニング設計図
 
-1. **Lease-based claim**: add `claiming` status, `claimed_until`, and `next_attempt_at`; fold
-   expired-lease reclaim into the claim predicate (`pending AND next_attempt_at <= now()` OR
-   `claiming AND claimed_until < now()`) so no separate reaper process exists.
-2. **Publish outside the transaction**: claim and mark become short txs; tx dwell, vacuum pinning,
-   idle-in-transaction concerns, and the tx-retry republish path disappear. With no external side
-   effect inside any transaction, the relay satisfies ADR-0035's general rule and its sanctioned
-   exception ceases to exist.
-3. **Per-message exponential backoff** via `next_attempt_at`, with max attempts made configurable —
-   a downstream outage then costs minutes-to-hours before dead-lettering instead of seconds.
-4. **Singleton topology** via a session-scoped Postgres advisory lock — closes inter-instance
-   concurrent publish at the topology level; the lock auto-releases when the holder's session dies.
-5. **Self-deadline fence**: bound each batch's publishing by `claimed_until − margin`, anchored to
-   the DB clock captured at claim time — a live instance structurally cannot act outside its own
-   lease (no clock-skew dependence between app instances).
-6. **Fenced mark**: `WHERE status = 'claiming' AND claimed_until = <own lease>` — double-mark is
-   closed entirely inside the DB.
-7. **Absorption as the last layer**: the only remaining duplicates are crash-class, temporal
-   (never concurrent), bounded in count, and keyed by the same `message_id` — exactly the input the
-   bundled idempotency middleware collapses deterministically.
+1. **lease 方式の claim**: `claiming` status・`claimed_until`・`next_attempt_at` を追加し、失効
+   lease の回収を claim 述語（`pending AND next_attempt_at <= now()` OR
+   `claiming AND claimed_until < now()`）に畳み込む — 専用 reaper プロセスを持たない。
+2. **publish の tx 外化**: claim と mark は短 tx になる。tx 滞留・vacuum ピン留め・
+   idle-in-transaction の懸念・tx リトライ再送経路が消える。どのトランザクションにも外部副作用が
+   含まれなくなるため、relay は ADR-0035 の一般則を満たし、公認例外そのものが消滅する。
+3. **per-message 指数 backoff**（`next_attempt_at`）+ max attempts の設定化 — 下流停止時の
+   dead 化は数十秒から分〜時間オーダーへ。
+4. **singleton トポロジ**: セッションスコープの Postgres advisory lock で、インスタンス間の併走
+   publish をトポロジレベルで閉じる。保持セッションの死でロックは自動解放される。
+5. **自己 deadline fence**: 各バッチの publish を `claimed_until − margin` で打ち切る。基準時刻は
+   claim 時に取得した DB 時計に固定する — 生存インスタンスは自分の lease の外で構造的に行動
+   できない（アプリ間 clock skew に依存しない）。
+6. **fence 付き mark**: `WHERE status = 'claiming' AND claimed_until = <自 lease>` — 二重 mark は
+   DB 内で完全に閉じる。
+7. **最終層としての吸収**: 残る重複は crash-class・時間差（併走しない）・回数有界・同一
+   `message_id` キー — 同梱の冪等性ミドルウェアが決定論的に畳める形そのものである。
 
-Under this structure, normal-operation duplicates are structurally zero; the lease length tunes
-only crash-recovery latency (no longer a duplicate-probability trade-off); and the residual price
-is an availability window (failover takeover, hung-leader detection), which belongs to deployment
-runbooks.
+この構造の下では、正常運転中の重複は構造的にゼロになる。lease 長はクラッシュ回収の遅延だけを
+決める運用値になり（重複確率とのトレードオフではなくなる）、残る対価は可用性窓（failover の
+引き継ぎ、ハング保持者の検知）で、これはデプロイ側 runbook の領分である。
 
-### Keeping the later move cheap
+### 後から動かす手を安くしておく
 
-Deferring a decision is only safe while taking it later stays cheap. Four things keep it so:
+判断を先送りできるのは、後から動かす手が安いあいだだけである。それを保つのが次の 4 点である:
 
-- **Blueprint, not just a verdict**: this ADR carries the full mechanical design — schema, claim
-  predicate, fences, and the residual-window ledger — so the later move pays for implementation and
-  tuning, never for re-deriving the analysis.
-- **Extension seams, not a rewrite**: the hardened design fits the existing seams, so it arrives as
-  an extension of specific interfaces and tables rather than a rewrite:
-  - *Strategy seam*: the relay engine owns only the poll loop and its waits, and reaches the
-    claim → publish → mark business solely through the `RelayUsecase` interface; the hardened
-    orchestration is a new implementation of that interface, selected in DI.
-  - *Persistence seam*: `boundary/outbox.Store` is **signature-compatible** with the lease design —
-    `ClaimPending(ctx, limit)` is implementable by the lease-claim `UPDATE … RETURNING`, and the
-    mark methods keep their shapes. The contracts are stated behaviorally (concurrent callers never
-    claim the same row), never mechanically (no `FOR UPDATE` wording), so a lease implementation
-    *conforms* instead of deviating.
-  - *Query seam*: one query per SQL file — new predicates arrive as new files under
-    `database/dml/system_cqrs/outbox/`.
-  - *Schema seam*: new columns (`next_attempt_at`, `claimed_until`) arrive as additive migrations.
-- **What is not additive, declared honestly**: swapping the `outbox_status_check` CHECK to admit
-  `claiming` and replacing `outbox_pending_idx` for the new claim predicate (both via new
-  migration files — the standard schema-evolution mechanism; a CHECK cannot be "extended"), plus
-  the one-line DI provide swap. The schema deliberately does NOT pre-admit `claiming` in its CHECK,
-  and no unused strategy switch is shipped — schema and wiring declare only what the code
-  exercises.
-- **Escalation trigger**: if hardened relays become the norm rather than the exception, promote
-  this blueprint to an implementation guide under `docs/design/` (or a reference implementation)
-  and revisit this ADR — the balanced point is where a relay starts, not where it must stay.
+- **判定文ではなく設計図**: 本 ADR はスキーマ・claim 述語・fence・残余窓の台帳という機械的設計の
+  全体を保持する。後から払うのは実装とチューニングのコストであり、分析のやり直しではない。
+- **書き直しではなく拡張継ぎ目**: ハードニング設計は既存の継ぎ目に収まるため、書き直しではなく
+  特定のインターフェースとテーブルの拡張として届く:
+  - *戦略の継ぎ目*: relay engine は poll ループと待機だけを持ち、claim → publish → mark の業務
+    には `RelayUsecase` インターフェース経由でのみ到達する。ハードニング版の編成はこの
+    インターフェースの新実装であり、DI で選択される。
+  - *永続化の継ぎ目*: `boundary/outbox.Store` は lease 設計と**シグネチャ互換** —
+    `ClaimPending(ctx, limit)` は lease claim の `UPDATE … RETURNING` で実装可能で、mark 系
+    メソッドも形を保つ。契約は挙動（並行呼び出しが同一行を二重取得しない）で記述され、機構
+    （`FOR UPDATE` という文言）では記述されないため、lease 実装は契約から逸脱するのではなく
+    **適合**する。
+  - *クエリの継ぎ目*: 1 クエリ 1 SQL ファイル — 新しい述語は `database/dml/system_cqrs/outbox/`
+    配下の新規ファイルとして追加される。
+  - *スキーマの継ぎ目*: 新列（`next_attempt_at`、`claimed_until`）は追加 migration として届く。
+- **非加算な箇所の正直な列挙**: `claiming` を許可するための `outbox_status_check` CHECK の
+  差し替えと、新しい claim 述語向けの `outbox_pending_idx` の張り替え（いずれも新規 migration
+  ファイル経由 — スキーマ進化の標準機構。CHECK は「拡張」できない）、および DI の provide 1 行の
+  swap。スキーマは CHECK に `claiming` を先行許可せず、使われない戦略スイッチも同梱しない — これは
+  意図的であり、スキーマと配線はコードが実際に行使するものだけを宣言する。
+- **格上げトリガー**: ハードニング済みの relay が例外ではなく主流になった場合は、本設計図を
+  `docs/design/` の実装ガイド（または参照実装）へ格上げし、本 ADR を再訪する — バランス型の一点は
+  relay が始まる場所であって、留まるべき場所ではない。
 
-## Consequences
+## 帰結
 
-### Positive Consequences
+### ポジティブな帰結
 
-- The shipped relay stays small and readable, and states the at-least-once contract honestly
-  instead of implying exactly-once.
-- Hardening starts from a fully-analyzed, mechanically-applicable blueprint (schema, predicates,
-  fences, residual-window ledger) rather than from a half-hardened default whose policy values were
-  fixed before any operational evidence existed.
-- Responsibility is explicit: this decision owns the absorption contract and this analysis; the
-  deployment that hardens owns the implementation and its operational tuning.
+- 出荷される relay は小さく読みやすいまま保たれ、exactly-once を装わず at-least-once 契約を
+  正直に述べる。
+- ハードニングは、運用の事実が出る前にポリシー値を固定した中途半端な既定からではなく、完全に
+  分析済みで機械的に適用可能な設計図（スキーマ・述語・fence・残余窓の台帳）から始まる。
+- 責務が明示される: 本決定が吸収契約と本分析を持ち、ハードニングする配備側が実装とその運用
+  チューニングを持つ。
 
-### Negative Consequences
+### ネガティブな帰結
 
-- The shipped relay retains the enumerated windows: under multi-instance operation duplicates
-  can occur in normal operation, and a short downstream outage dead-letters the backlog. The
-  shipped defaults therefore suit low-volume or single-instance relays.
-- Hardening is real implementation work (migration, claim/mark rewrite, lock, fence, tests);
-  divergence from the shipped default grows once it is done — mitigated, not eliminated, by
-  the blueprint and the extension seams above, which bound the divergence to an enumerated surface.
-- Third-party receivers remain protected only by the documented dedup obligation — nothing in this
-  repository can enforce it.
+- 出荷される relay には列挙した窓が残る: 多インスタンス運用では正常運転中にも重複が起こりえ、
+  短い下流停止で backlog が dead 化する。出荷既定は低ボリュームまたは単一インスタンスの relay に
+  適する。
+- ハードニングは実装作業（migration、claim/mark 書き換え、lock、fence、テスト）そのものであり、
+  実施後は出荷既定との乖離が広がる — 上記の設計図と拡張継ぎ目により乖離は列挙可能な面に
+  限定されるが、消えはしない。
+- 第三者実装の受信者を守るのは文書化された dedup 義務のみで、本リポジトリからは強制できない。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Implement the multi-layer redesign up front
+### 多層再設計を最初から実装する
 
-Closes every closable window out of the box, but fixes a point on the trade-off before operation
-can say which axis binds: it commits deployment-specific policy (lease, margin, backoff, singleton
-topology) to values chosen without that evidence, and pays availability and reading cost on the
-core path from day one. Rejected as the shipped default; recorded here so the work is mechanical
-once the evidence arrives.
+閉じられる窓をすべて出荷時に閉じられるが、どの軸が効くかを運用が語る前にトレードオフ上の一点を
+固定してしまう。デプロイ固有のポリシー（lease・margin・backoff・singleton トポロジ）をその事実
+抜きに選んだ値へ固定し、初日から可用性と中核経路の読解コストを払うことになる。出荷既定としては
+不採用とし、事実が出た時点の作業が機械的になるよう本 ADR に記録する。
 
-### Narrow-only tuning (smaller batches, shorter timeouts, lease values)
+### 狭めるだけのチューニング（バッチ縮小・タイムアウト短縮・lease 値調整）
 
-Keeps every window open and only reduces width/frequency — probabilistic, not structural,
-protection. Rejected as a primary strategy; narrowing is useful only as a complement to closing.
+すべての窓が開いたまま幅と頻度を下げるだけ — 構造的ではなく確率的な防御。主戦略としては不採用。
+狭める手段は閉じる手段の補完としてのみ有用である。
 
-### At-most-once relay (mark published before sending; never retry ambiguous outcomes)
+### at-most-once relay（送信前に published を記録し、結果不明の送信をリトライしない）
 
-Closes all duplicate windows by opening a loss window. Rejected outright: guaranteed delivery is
-the outbox's reason to exist.
+すべての重複窓を閉じる代わりに喪失窓を開く。即不採用: 確実な配送は outbox の存在意義である。
 
-### Receiver-verified fencing tokens
+### 受信側検証つき fencing token
 
-Closes end-to-end duplication but requires receiver cooperation beyond the shipped contract, i.e.
-the same third-party dependence as absorption with strictly more coupling. Rejected as a sole
-mechanism.
+end-to-end で重複を閉じられるが、出荷済み契約を超えた受信側の協力を要する。すなわち吸収と同じ
+第三者依存に、より強い結合を加えたもの。単独機構としては不採用。
 
-## Notes
+## 備考
 
-- Design reference: [`docs/design/outbox.md`](../design/outbox.md) — §1 invariants and the §4
-  integrator checklist carry the receiver-dedup obligation this decision relies on.
-- Related ADRs: [ADR-0035] (tx-retry idempotency contract; the shipped relay is its sole
-  sanctioned exception, which blueprint layer 2 removes), [ADR-0055] (at-least-once poll),
-  [ADR-0056] (SKIP LOCKED claim), [ADR-0057] (message-id / Idempotency-Key propagation),
-  [ADR-0058] (dead-lettering after max attempts).
-- Full ADR set and ordering: [the ADR log](README.md).
+- 設計リファレンス: [`docs/design/outbox.md`](../design/outbox.md) — §1 の不変条件と §4 の
+  統合者チェックリストが、本決定が依拠する受信側 dedup 義務を規定する。
+- 関連 ADR: [ADR-0035]（tx リトライ冪等性契約。出荷状態の relay はその唯一の公認例外であり、
+  設計図の第 2 層がこの例外を除去する）、[ADR-0055]（at-least-once poll）、[ADR-0056]
+  （SKIP LOCKED claim）、[ADR-0057]（message-id / Idempotency-Key 伝搬）、[ADR-0058]
+  （max attempts 到達での dead 化）。
+- ADR 全体の一覧と順序: [ADR ログ](README.md)。
 
 [ADR-0035]: 0035-transaction-retry-idempotent-callers.md
 [ADR-0055]: 0055-at-least-once-outbox-poll.md

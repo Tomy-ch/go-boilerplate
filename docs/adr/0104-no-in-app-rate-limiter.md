@@ -5,69 +5,48 @@ deciders: [maintainers]
 tags: [exclusion, setup-review]
 ---
 
-# ADR-0104: Do not provide an in-application rate limiter
+# ADR-0104: アプリケーション内レートリミッターを提供しない
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Rate limiting is a standard production-hardening concern, and it is natural to reach for an
-in-process, in-memory counter when adding it to an API. However, this project targets
-cloud-native, multi-instance deployments. In that environment, each application instance
-maintains its own counter independently: counters are not shared across replicas, so an
-attacker distributing requests across pods bypasses any per-instance threshold. An in-memory
-limiter would therefore give a false sense of protection while adding complexity.
+レートリミッティングは標準的なプロダクションハードニングの関心事であり、API に追加する際にインプロセス・インメモリカウンターに手が伸びるのは自然なことだ。しかし、本プロジェクトはクラウドネイティブなマルチインスタンスデプロイを対象としている。その環境では、各アプリケーションインスタンスが独立して自分自身のカウンターを管理する。カウンターはレプリカ間で共有されないため、リクエストをポッド間に分散させた攻撃者はどのインスタンスのしきい値もバイパスできる。インメモリリミッターは複雑さを増やしつつ、誤った安全感を与えるだけになる。
 
-The pressure to include one is real — frameworks and libraries (e.g. Echo middleware,
-`golang.org/x/time/rate`) make it trivial to add a limiter in a few lines, and it appears to
-work correctly in single-instance or development environments, which is where it is typically
-tested.
+実際、導入の圧力は現実的に存在する。フレームワークやライブラリ（例: Echo ミドルウェア、`golang.org/x/time/rate`）を使えば数行でリミッターを追加でき、単一インスタンスや開発環境では正しく動作するように見える。しかしその環境は典型的なテスト環境でもある。
 
-## Decision
+## 決定
 
-We deliberately do NOT provide an in-application rate limiter. Rate limiting is delegated to
-the infrastructure edge — the API gateway, load balancer, reverse proxy, or service mesh that
-sits in front of the fleet. These components enforce limits against the true global request
-rate, regardless of how many application instances are running.
+アプリケーション内レートリミッターは意図的に**提供しない**。レートリミッティングはインフラエッジ層に委譲する。フリートの前段に位置する API ゲートウェイ・ロードバランサー・リバースプロキシ・サービスメッシュがこれを担い、実行中のアプリケーションインスタンス数に関わらず、真のグローバルリクエストレートに対してリミットを適用する。
 
-Rate limiting must be configured at the infrastructure layer appropriate to the deployment
-(e.g. AWS API Gateway usage plans, NGINX `limit_req`, Envoy `ratelimit` filter, Kubernetes
-Gateway API).
+レートリミッティングは、デプロイに適したインフラ層で設定しなければならない（例: AWS API Gateway の使用量プラン、NGINX の `limit_req`、Envoy の `ratelimit` フィルター、Kubernetes Gateway API）。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- No false security from a per-instance counter that can be bypassed by distributing load.
-- No in-process lock contention or memory overhead from a shared limiter data structure.
-- Rate-limiting policy lives in infrastructure configuration, where it can be tuned without
-  deploying application code.
+- 負荷を分散させることでバイパスされうるインスタンス単位カウンターによる偽のセキュリティが生まれない。
+- 共有リミッターデータ構造によるインプロセスのロック競合やメモリオーバーヘッドが発生しない。
+- レートリミッティングポリシーはインフラ設定に集約され、アプリケーションコードをデプロイせずにチューニングできる。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Rate limiting must be configured at the infrastructure layer; there is no fallback if
-  none is configured.
-- Local development and testing do not exercise rate-limiting behavior unless the edge
-  component is included in the dev environment.
+- レートリミッティングはインフラ層で設定しなければならず、設定しない場合のフォールバックが存在しない。
+- ローカル開発・テストでは、エッジコンポーネントを開発環境に含めない限りレートリミッティングの動作を検証できない。
 
-## Alternatives Considered
+## 検討した代替案
 
-### In-memory token bucket / sliding window (e.g. `golang.org/x/time/rate`)
+### インメモリトークンバケット / スライディングウィンドウ（例: `golang.org/x/time/rate`）
 
-Works correctly for a single instance but fails silently in a multi-replica deployment —
-each pod gets its own independent bucket, making the effective limit `n × per-instance-limit`
-where `n` is the replica count. Rejected because it provides incorrect enforcement at scale.
+単一インスタンスでは正しく動作するが、マルチレプリカデプロイではサイレントに失敗する。各ポッドが独立したバケットを持つため、実効リミットは `n × インスタンス単位リミット`（`n` はレプリカ数）になる。スケール時に正しく機能しないため却下。
 
-### Distributed in-app limiter backed by Redis or similar
+### Redis などをバックエンドとした分散インアプリリミッター
 
-Shares state across replicas, but requires an additional infrastructure dependency
-(a Redis cluster), couples the application to that specific technology, and replicates
-functionality already available at the edge layer. Rejected as over-engineering here; the
-edge layer is the appropriate place.
+レプリカ間で状態を共有できるが、追加のインフラ依存（Redis クラスター）を必要とし、アプリケーションをその特定技術に結合し、エッジ層で既に利用可能な機能を複製する。ここでは過剰エンジニアリングであるとして却下。エッジ層が適切な場所である。
 
-## Notes
+## 補足
 
-- Source: [`docs/project/out-of-scope.md`](../project/out-of-scope.md) lines 11–16.
-- Full ADR set and ordering: [the ADR log](README.md).
+- ソース: [`docs/project/out-of-scope.md`](../project/out-of-scope.md) 行 11–16。
+- ADR の全体像と順序: [ADR ログ](README.md)。
