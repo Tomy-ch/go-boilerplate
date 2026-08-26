@@ -629,12 +629,12 @@ export const DOC_REPLACEMENTS: readonly DocReplacement[] = [
   },
   {
     file: ".gitleaksignore",
-    from: "env/README.ja.md:generic-api-key:244\n",
+    from: "env/README.ja.md:generic-api-key:242\n",
     to: "",
   },
   {
     file: ".gitleaksignore",
-    from: "env/README.ja.md:generic-api-key:219\n",
+    from: "env/README.ja.md:generic-api-key:217\n",
     to: "",
   },
   {
@@ -878,6 +878,116 @@ export const DOC_REPLACEMENTS: readonly DocReplacement[] = [
   {
     file: ".codex/skills/portal-manifest-sync/SKILL.ja.md",
     from: "\n- 日本語: `docs/portal/guides/ja/<flat-hyphenated-name>.ja.md`",
+    to: "",
+  },
+  {
+    file: ".claude/skills/portal-manifest-sync/SKILL.md",
+    from: "1. Read the English README content (and the `*.ja.md` sibling for completeness check; sibling existence already established via Step 2 preflight).",
+    to: "1. Read the README content.",
+  },
+  {
+    file: ".codex/skills/portal-manifest-sync/SKILL.md",
+    from: "1. Read the English README content (and the `*.ja.md` sibling for completeness check; sibling existence already established via Step 2 preflight).",
+    to: "1. Read the README content.",
+  },
+  {
+    file: ".claude/skills/sync-readme/SKILL.md",
+    from: "### 6. Chain into `canonicalize-doc` to sync the translation\n\nAfter the canonical README is written:\n\n1. Check whether a sibling translation file exists (e.g., `README.ja.md` next to the updated `README.md`).\n2. If it does, invoke the `canonicalize-doc` skill via the Skill tool with:\n    - source path: the canonical README that was just updated\n    - direction: `translation-from-canonical` (or `sync-both` with the canonical as source of truth, if the translation already exists)\n3. If no translation file exists, skip this step and report that the canonical was updated standalone.\n\nThe chained `canonicalize-doc` call will perform its own `AskUserQuestion` confirmation; that is expected and not redundant — it lets the user veto the translation sync if needed.\n\n",
+    to: "",
+  },
+  {
+    file: ".claude/skills/sync-readme/SKILL.md",
+    from: "### 7. Verify with Markdown Lint",
+    to: "### 6. Verify with Markdown Lint",
+  },
+  {
+    file: ".claude/skills/sync-readme/SKILL.md",
+    from: "### 8. Final verification",
+    to: "### 7. Final verification",
+  },
+  {
+    file: ".claude/skills/sync-readme/SKILL.md",
+    from: "After writing the canonical README (and after `canonicalize-doc` has produced any translation), run:",
+    to: "After writing the canonical README, run:",
+  },
+  {
+    file: ".codex/skills/sync-readme/SKILL.md",
+    from: "### 6. Chain into `canonicalize-doc` to sync the translation\n\nAfter the canonical README is written:\n\n1. Check whether a sibling translation file exists (e.g., `README.ja.md` next to the updated `README.md`).\n2. If it does, invoke the `canonicalize-doc` skill via the Skill tool with:\n    - source path: the canonical README that was just updated\n    - direction: `translation-from-canonical` (or `sync-both` with the canonical as source of truth, if the translation already exists)\n3. If no translation file exists, skip this step and report that the canonical was updated standalone.\n\nThe chained `canonicalize-doc` call will perform its own `ask the user explicitly` confirmation; that is expected and not redundant — it lets the user veto the translation sync if needed.\n\n",
+    to: "",
+  },
+  {
+    file: ".codex/skills/sync-readme/SKILL.md",
+    from: "### 7. Verify with Markdown Lint",
+    to: "### 6. Verify with Markdown Lint",
+  },
+  {
+    file: ".codex/skills/sync-readme/SKILL.md",
+    from: "### 8. Final verification",
+    to: "### 7. Final verification",
+  },
+  {
+    file: ".codex/skills/sync-readme/SKILL.md",
+    from: "After writing the canonical README (and after `canonicalize-doc` has produced any translation), run:",
+    to: "After writing the canonical README, run:",
+  },
+  {
+    file: "docs/get-started/setup-repository.md",
+    from: "3. Rewrite the contents of [openapi.yaml](../../openapi/openapi.yaml) according to your project.",
+    to: "2. Rewrite the contents of [openapi.yaml](../../openapi/openapi.yaml) according to your project.",
+  },
+  {
+    file: "docs/get-started/setup-repository.ja.md",
+    from: "1. [README.md](../../README.md), [README.ja.md](../../README.ja.md) の内容をプロジェクトに合わせて書き換え、メンテナ方針節にあるこのリポジトリ固有のブランチ規則の例外は置き換えるか削除してください。\n2. ドキュメントを 1 言語に絞るなら、対を畳んでも構いません（例えば [README.md](../../README.md) を [README.ja.md](../../README.ja.md) の内容で置き換える）。\n    - [gen-docs-json.ts](../../scripts/portal/gen-docs-json.ts) と、それが生成元にする [manifest.yaml](../portal/manifest.yaml) はどちらも README.md を参照しているため、完全に置換する場合はこれらのスクリプトも書き換える必要があります。\n    - portal の UI も En / Jp の切り替えを持つので、同じ手当てが要ります。\n3. [openapi.yaml](../../openapi/openapi.yaml) の内容をプロジェクトに合わせて書き換えてください。",
+    to: "1. [README.md](../../README.md) の内容をプロジェクトに合わせて書き換え、メンテナ方針節にあるこのリポジトリ固有のブランチ規則の例外は置き換えるか削除してください。\n2. [openapi.yaml](../../openapi/openapi.yaml) の内容をプロジェクトに合わせて書き換えてください。",
+  },
+  {
+    file: ".claude/skills/portal-manifest-sync/SKILL.ja.md",
+    from: "1. 英語 README を読み込む（`*.ja.md` sibling は Step 2 プリフライトで存在保証済み）",
+    to: "1. README を読み込む",
+  },
+  {
+    file: ".codex/skills/portal-manifest-sync/SKILL.ja.md",
+    from: "1. 英語 README を読み込む（`*.ja.md` sibling は Step 2 プリフライトで存在保証済み）",
+    to: "1. README を読み込む",
+  },
+  {
+    file: ".claude/skills/sync-readme/SKILL.ja.md",
+    from: "### 6. `canonicalize-doc` をチェーンして翻訳を同期\n\ncanonical README の書き込み完了後:\n\n1. 兄弟の翻訳ファイル（例: 更新した `README.md` の隣の `README.ja.md`）の有無を確認する。\n2. 存在する場合、Skill ツールで `canonicalize-doc` を起動する。引数は:\n    - source パス: 今回更新した canonical README\n    - direction: `translation-from-canonical`（翻訳が既に存在するなら `sync-both`、source of truth は canonical）\n3. 翻訳ファイルが存在しない場合は本ステップをスキップし、canonical のみ更新した旨を報告する。\n\nチェーンで呼び出された `canonicalize-doc` 自身が改めて `AskUserQuestion` で確認を行うのは期待される動作（冗長ではない）。ユーザーが翻訳同期を veto できる余地を残すため。\n\n",
+    to: "",
+  },
+  {
+    file: ".claude/skills/sync-readme/SKILL.ja.md",
+    from: "### 7. Markdown Lint による検証",
+    to: "### 6. Markdown Lint による検証",
+  },
+  {
+    file: ".claude/skills/sync-readme/SKILL.ja.md",
+    from: "### 8. 最終検証",
+    to: "### 7. 最終検証",
+  },
+  {
+    file: ".codex/skills/sync-readme/SKILL.ja.md",
+    from: "### 6. `canonicalize-doc` をチェーンして翻訳を同期\n\ncanonical README の書き込み完了後:\n\n1. 兄弟の翻訳ファイル（例: 更新した `README.md` の隣の `README.ja.md`）の有無を確認する。\n2. 存在する場合、Skill ツールで `canonicalize-doc` を起動する。引数は:\n    - source パス: 今回更新した canonical README\n    - direction: `translation-from-canonical`（翻訳が既に存在するなら `sync-both`、source of truth は canonical）\n3. 翻訳ファイルが存在しない場合は本ステップをスキップし、canonical のみ更新した旨を報告する。\n\nチェーンで呼び出された `canonicalize-doc` 自身が改めて `ask the user explicitly` で確認を行うのは期待される動作（冗長ではない）。ユーザーが翻訳同期を veto できる余地を残すため。\n\n",
+    to: "",
+  },
+  {
+    file: ".codex/skills/sync-readme/SKILL.ja.md",
+    from: "### 7. Markdown Lint による検証",
+    to: "### 6. Markdown Lint による検証",
+  },
+  {
+    file: ".codex/skills/sync-readme/SKILL.ja.md",
+    from: "### 8. 最終検証",
+    to: "### 7. 最終検証",
+  },
+  {
+    file: ".claude/README.ja.md",
+    from: "- **英語が canonical。** skill / README 本文は命令形の英語で書き、対になる `*.ja.md` は `canonicalize-doc`\n  skill で同期する人間向け参考訳です。ユーザーへの実行時出力は引き続き `CLAUDE.md` に従います（日本語）。\n",
+    to: "",
+  },
+  {
+    file: "docs-viewer/src/portal-app/portal-app.tsx",
+    from: "            <ToggleGroupNative aria-label=\"表示言語\">\n              <ToggleGroupNativeItem\n                checked={lang === \"EN\"}\n                name=\"lang\"\n                onChange={selectEnglish}\n                value=\"EN\"\n              >\n                EN\n              </ToggleGroupNativeItem>\n              <ToggleGroupNativeItem\n                checked={lang === \"JA\"}\n                name=\"lang\"\n                onChange={selectJapanese}\n                value=\"JA\"\n              >\n                JA\n              </ToggleGroupNativeItem>\n            </ToggleGroupNative>\n",
     to: "",
   },
 ];

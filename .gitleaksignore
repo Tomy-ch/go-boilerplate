@@ -13,7 +13,7 @@
 # env/README の既定値表は同じ URL を載せるため同じ検出になる。
 env/.env:generic-api-key:84
 env/README.md:generic-api-key:246
-env/README.ja.md:generic-api-key:244
+env/README.ja.md:generic-api-key:242
 # ローカル開発用の固定値。Garage の開発用資格情報と、JWKS ローテーションテストが所有する署名鍵。
 env/.env:generic-api-key:63
 docker/garage/garage.toml:generic-api-key:12
@@ -40,7 +40,7 @@ env/.env:generic-api-key:42
 env/.env:generic-api-key:64
 env/.env:generic-api-key:65
 env/README.md:generic-api-key:221
-env/README.ja.md:generic-api-key:219
+env/README.ja.md:generic-api-key:217
 4eb9ea41915735f7d4354a09c28afe0422e404ab:docker-compose.yaml:generic-api-key:133
 # 撤去済みの mock-auth-server が旧 docker/ 配下に置いていた署名鍵。
 daf3f6a9bfa7ced79fe84d0ebf18f42b73eee40b:docker/mock-auth-server/keys/mock-key-2.pem:private-key:1

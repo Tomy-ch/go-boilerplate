@@ -172,7 +172,6 @@ export function PortalApp({ docs }: Readonly<PortalAppProps>) {
               label="ドキュメントを検索"
               onSearch={setQuery}
             />
-// doc-pair:begin
             <ToggleGroupNative aria-label="表示言語">
               <ToggleGroupNativeItem
                 checked={lang === "EN"}
@@ -191,7 +190,6 @@ export function PortalApp({ docs }: Readonly<PortalAppProps>) {
                 JA
               </ToggleGroupNativeItem>
             </ToggleGroupNative>
-// doc-pair:end
           </div>
         </div>
       </header>

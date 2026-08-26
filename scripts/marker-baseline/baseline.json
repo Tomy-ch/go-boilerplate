@@ -41,7 +41,7 @@
   "docs-viewer/src/docs-json/docs-json.test.ts": 5,
   "docs-viewer/src/docs-json/docs-json.ts": 4,
   "docs-viewer/src/portal-app/portal-app.test.tsx": 11,
-  "docs-viewer/src/portal-app/portal-app.tsx": 14,
+  "docs-viewer/src/portal-app/portal-app.tsx": 12,
   "docs-viewer/src/portal-card-grid/portal-card-grid.test.tsx": 4,
   "docs-viewer/src/search/search-corpus.test.ts": 9,
   "docs/adr/0011-docs-as-canonical-source.ja.md": 26,

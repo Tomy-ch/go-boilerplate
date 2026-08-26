@@ -12,6 +12,7 @@ import {
   redactReferences,
   resolveTarget,
   rewriteTranslationLinks,
+  stripLeadingTranslationNote,
   transplantFrontmatter,
 } from "./doc-language";
 
@@ -227,6 +228,50 @@ describe("rewriteTranslationLinks", () => {
   describe("異常系", () => {
     it("対訳を含まない本文を変えない", () => {
       expect(rewriteTranslationLinks("[x](../a/README.md)")).toBe("[x](../a/README.md)");
+    });
+  });
+});
+
+describe("stripLeadingTranslationNote", () => {
+  describe("正常系", () => {
+    // 改名して正本にした後もこれが残ると、正本が自分を訳だと名乗る。
+    it("冒頭の引用注記を落とす", () => {
+      expect(stripLeadingTranslationNote("> `SKILL.md` の訳です。\n\n# 見出し\n", "SKILL.md")).toBe(
+        "# 見出し\n",
+      );
+    });
+
+    it("複数行の引用注記をまとめて落とす", () => {
+      expect(
+        stripLeadingTranslationNote("> 1 行目 `X.md`\n> 2 行目\n\n# 見出し\n", "X.md"),
+      ).toBe("# 見出し\n");
+    });
+
+    it("フロントマターの後ろにある注記も落とす", () => {
+      expect(
+        stripLeadingTranslationNote("---\nname: a\n---\n\n> `X.md` の訳\n\n# 見出し\n", "X.md"),
+      ).toBe("---\nname: a\n---\n\n# 見出し\n");
+    });
+  });
+
+  describe("異常系", () => {
+    it("正本を指さない引用は残す", () => {
+      const source = "> 補足です。\n\n# 見出し\n";
+
+      expect(stripLeadingTranslationNote(source, "X.md")).toBe(source);
+    });
+
+    // 位置が規約で決まっているのは冒頭だけ。本文中の引用まで対象にすると巻き込む。
+    it("本文中の引用は落とさない", () => {
+      const source = "# 見出し\n\n> `X.md` を参照。\n";
+
+      expect(stripLeadingTranslationNote(source, "X.md")).toBe(source);
+    });
+
+    it("閉じていないフロントマターには手を触れない", () => {
+      const source = "---\nname: a\n\n> `X.md` の訳\n";
+
+      expect(stripLeadingTranslationNote(source, "X.md")).toBe(source);
     });
   });
 });
