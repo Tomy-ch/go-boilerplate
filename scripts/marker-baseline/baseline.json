@@ -214,7 +214,7 @@
   "scripts/skill-lint/index.ts": 5,
   "scripts/skill-lint/rules.test.ts": 9,
   "scripts/skill-lint/rules.ts": 20,
-  "scripts/sync-versions/main_test.go": 9,
+  "scripts/sync-versions/main_test.go": 6,
   "scripts/sync-versions/main.go": 6,
   "sonar-project.properties": 3
 }

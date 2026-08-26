@@ -331,36 +331,50 @@ func Test_buildRules(t *testing.T) {
 		t.Run("各書き換え先へ対応するランタイムの版を割り当てる", func(t *testing.T) {
 			t.Parallel()
 			v := testVersions()
+			// doc-pair:replace-begin
 			want := map[string]string{
-				"go.mod (go directive)":                  v.Go,
-				"docker/server/Dockerfile (golang base)": v.Go,
-				"docker/tools/Dockerfile (golang base)":  v.Go,
-				"docker/tools/Dockerfile (node base)":    v.Node,
-				"docker/tools/Dockerfile (python base)":  v.Python,
-				"docker/README.md (golang image)":        v.Go,
-				"docker/README.md (node image)":          v.Node,
-				"docker/README.md (python image)":        v.Python,
-				// doc-pair:begin
-				"docker/README.ja.md (golang image)": v.Go,
-				"docker/README.ja.md (node image)":   v.Node,
-				"docker/README.ja.md (python image)": v.Python,
-				// doc-pair:end
-				"docker/server/README.md (golang image)": v.Go,
-				// doc-pair:begin
+				"go.mod (go directive)":                     v.Go,
+				"docker/server/Dockerfile (golang base)":    v.Go,
+				"docker/tools/Dockerfile (golang base)":     v.Go,
+				"docker/tools/Dockerfile (node base)":       v.Node,
+				"docker/tools/Dockerfile (python base)":     v.Python,
+				"docker/README.md (golang image)":           v.Go,
+				"docker/README.md (node image)":             v.Node,
+				"docker/README.md (python image)":           v.Python,
+				"docker/README.ja.md (golang image)":        v.Go,
+				"docker/README.ja.md (node image)":          v.Node,
+				"docker/README.ja.md (python image)":        v.Python,
+				"docker/server/README.md (golang image)":    v.Go,
 				"docker/server/README.ja.md (golang image)": v.Go,
-				// doc-pair:end
-				"docker/tools/README.md (golang image)": v.Go,
-				"docker/tools/README.md (node image)":   v.Node,
-				"docker/tools/README.md (python image)": v.Python,
-				// doc-pair:begin
-				"docker/tools/README.ja.md (golang image)": v.Go,
-				"docker/tools/README.ja.md (node image)":   v.Node,
-				"docker/tools/README.ja.md (python image)": v.Python,
-				// doc-pair:end
-				"docker/tools/Dockerfile (mise version)":  v.Mise,
-				"docker/server/Dockerfile (mise version)": v.Mise,
-				"docker-compose.yaml (otel-lgtm image)":   v.OtelLgtm,
+				"docker/tools/README.md (golang image)":     v.Go,
+				"docker/tools/README.md (node image)":       v.Node,
+				"docker/tools/README.md (python image)":     v.Python,
+				"docker/tools/README.ja.md (golang image)":  v.Go,
+				"docker/tools/README.ja.md (node image)":    v.Node,
+				"docker/tools/README.ja.md (python image)":  v.Python,
+				"docker/tools/Dockerfile (mise version)":    v.Mise,
+				"docker/server/Dockerfile (mise version)":   v.Mise,
+				"docker-compose.yaml (otel-lgtm image)":     v.OtelLgtm,
 			}
+			// doc-pair:replace-with
+			// = want := map[string]string{
+			// = 	"go.mod (go directive)":                   v.Go,
+			// = 	"docker/server/Dockerfile (golang base)":  v.Go,
+			// = 	"docker/tools/Dockerfile (golang base)":   v.Go,
+			// = 	"docker/tools/Dockerfile (node base)":     v.Node,
+			// = 	"docker/tools/Dockerfile (python base)":   v.Python,
+			// = 	"docker/README.md (golang image)":         v.Go,
+			// = 	"docker/README.md (node image)":           v.Node,
+			// = 	"docker/README.md (python image)":         v.Python,
+			// = 	"docker/server/README.md (golang image)":  v.Go,
+			// = 	"docker/tools/README.md (golang image)":   v.Go,
+			// = 	"docker/tools/README.md (node image)":     v.Node,
+			// = 	"docker/tools/README.md (python image)":   v.Python,
+			// = 	"docker/tools/Dockerfile (mise version)":  v.Mise,
+			// = 	"docker/server/Dockerfile (mise version)": v.Mise,
+			// = 	"docker-compose.yaml (otel-lgtm image)":   v.OtelLgtm,
+			// = }
+			// doc-pair:replace-end
 
 			rules := buildRules(v)
 
@@ -700,9 +714,9 @@ func writeSyncTargets(t *testing.T, root string) {
 		"docker/server/README.md", "docker/server/README.ja.md",
 		"docker/tools/README.md", "docker/tools/README.ja.md",
 		// doc-pair:replace-with
-		// =		"docker/README.md",
-		// =		"docker/server/README.md",
-		// =		"docker/tools/README.md",
+		// = "docker/README.md",
+		// = "docker/server/README.md",
+		// = "docker/tools/README.md",
 		// doc-pair:replace-end
 	} {
 		writeFile(t, root, readme, imageReadme)
