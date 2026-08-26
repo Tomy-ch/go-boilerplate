@@ -16,17 +16,7 @@
 
 ## ディレクトリ構成
 
-```text
-repository/
-├── user/
-│   ├── insert_user.sql
-│   ├── select_user_by_id.sql
-│   └── ...
-├── prefecture/
-│   ├── ...
-│   └── ...
-└── ...
-```
+集約ごとに 1 つのディレクトリを置き、集約名を付ける。その集約の `.sql` を収める。
 
 ## 命名規則
 

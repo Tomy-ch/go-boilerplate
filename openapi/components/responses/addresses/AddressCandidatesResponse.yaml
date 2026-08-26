@@ -1,0 +1,20 @@
+type: object
+description: |
+  郵便番号 lookup による住所候補のレスポンスです。
+  外部 lookup サービスの障害時は 503 ではなく `candidates: []` + `isFallback: true` で degrade し、
+  登録フローを止めません（外部が落ちても縦一本のジャーニーを進めるためのフォールバック）。
+required:
+  - candidates
+  - isFallback
+properties:
+  candidates:
+    type: array
+    description: 住所候補の一覧。該当なし・degrade 時は空配列。
+    items:
+      $ref: '../../schemas/addresses/AddressCandidate.yaml'
+  isFallback:
+    type: boolean
+    description: |
+      lookup 機構が機能しなかった（外部不通・不正応答）場合に true。true のときフロントは全項目手入力へ倒します。
+      正常応答で候補が 0 件（該当なし）の場合や、候補はあるが県名解決に失敗した場合は false です。
+    example: false

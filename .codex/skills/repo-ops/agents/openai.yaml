@@ -1,0 +1,3 @@
+interface:
+  display_name: "Repo Ops"
+  short_description: "Recover recurring local and CI repository operational issues"

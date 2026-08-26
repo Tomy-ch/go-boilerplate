@@ -8,11 +8,8 @@ This directory is the DI seam between the application's worker framework and `fx
 
 ## Structure
 
-```text
-internal/di/worker/
-├── runner.go   # Engine DI provider
-└── hook/       # Lifecycle hook (worker execution / health listener)
-```
+`runner.go` provides the Engine; `hook/` starts it and its health listener at startup, for the
+same reason the job profile separates the two.
 
 ## Architecture
 
@@ -63,9 +60,7 @@ fx.Invoke(queuemetrics.RegisterStatsCollector)
 ## Notes
 
 - `state.Set` must be called before application startup
-- If `done` is `nil`, the worker is skipped (engine is not started)
-- The engine runs in a detached goroutine; its context is cancelled only on `OnStop`
-- Unfinished work past the drain timeout is not Acked and is redelivered
+- Hook lifecycle details (skip on `done == nil`, detached run, drain and redelivery) are in [`hook/README.md`](hook/README.md)
 - `ValidateShutdownGrace` fails app startup when `WORKER_DRAIN_TIMEOUT >= APP_SHUTDOWN_TIMEOUT` (drain must finish before the stop grace expires)
 - The queue-stats collector reports queue depth / DLQ metrics; with no target registered it emits nothing
 - To add workers, add their constructors to `provideWorkers(...)` in `internal/di/module/worker.go` (each must implement `usecase/boundary/worker.Worker`)

@@ -22,4 +22,7 @@ module.exports = {
     "type-empty": [2, "never"],
     "subject-empty": [2, "never"],
   },
+  // boilerplate-only:begin
+  ignores: [(message) => message.startsWith("chore(docs): auto update docs")],
+  // boilerplate-only:end
 }

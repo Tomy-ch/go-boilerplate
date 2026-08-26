@@ -9,175 +9,585 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestConfigTestingSetters(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-	t.Run("正常系", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-		cfg := MockConfigForTest(t)
+func TestApplicationConfig_SetApplicationMode(t *testing.T) {
+	t.Parallel()
 
-		t.Run("アプリケーションモードを設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-			expected := "test-mode"
-			cfg.app.SetApplicationMode(t, expected)
-			assert.Equal(t, expected, cfg.app.Mode())
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定したモードへ差し替わり、クリーンアップで元のモードへ戻る", func(t *testing.T) {
+			t.Parallel()
+			app := MockConfigForTest(t).app
+
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				app.SetApplicationMode(t, ProductionMode)
+				assert.Equal(t, ProductionMode, app.Mode())
+			})
+
+			assert.Equal(t, expectedApplicationMode, app.Mode())
 		})
+	})
+}
 
-		t.Run("アプリケーション環境を設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-			expected := "test-env"
-			cfg.app.SetApplicationEnv(t, expected)
-			assert.Equal(t, expected, cfg.app.Env())
+func TestApplicationConfig_SetApplicationEnv(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定した環境へ差し替わり、クリーンアップで元の環境へ戻る", func(t *testing.T) {
+			t.Parallel()
+			app := MockConfigForTest(t).app
+
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				app.SetApplicationEnv(t, EnvStaging)
+				assert.Equal(t, EnvStaging, app.Env())
+			})
+
+			assert.Equal(t, expectedApplicationEnv, app.Env())
 		})
+	})
+}
 
-		t.Run("アプリケーションログレベルを設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-			expected := "warn"
-			cfg.app.SetApplicationLogLevel(t, expected)
-			assert.Equal(t, expected, cfg.app.LogLevel())
+func TestApplicationConfig_SetApplicationLogLevel(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定したログレベルへ差し替わり、クリーンアップで元のログレベルへ戻る", func(t *testing.T) {
+			t.Parallel()
+			app := MockConfigForTest(t).app
+
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				app.SetApplicationLogLevel(t, LogLevelWarn)
+				assert.Equal(t, LogLevelWarn, app.LogLevel())
+			})
+
+			assert.Equal(t, expectedApplicationLogLevel, app.LogLevel())
 		})
+	})
+}
 
-		t.Run("サーバーポートを設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-			expected := 8081
-			cfg.server.SetServerPort(t, expected)
-			assert.Equal(t, expected, cfg.server.Port())
+func TestServerConfig_SetServerPort(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定したポートへ差し替わり、クリーンアップで元のポートへ戻る", func(t *testing.T) {
+			t.Parallel()
+			server := MockConfigForTest(t).server
+
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				server.SetServerPort(t, 18080)
+				assert.Equal(t, 18080, server.Port())
+			})
+
+			assert.Equal(t, expectedServerPort, server.Port())
 		})
+	})
+}
 
-		t.Run("DBクエリ引数のマスク設定を設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-			expected := true
-			cfg.observability.SetObservabilityMaskedDBQueryArgs(t, expected)
-			assert.Equal(t, expected, cfg.observability.MaskedDBQueryArgs())
+func TestMetricsConfig_SetMetricsPort(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定したポートへ差し替わり、クリーンアップで元のポートへ戻る", func(t *testing.T) {
+			t.Parallel()
+			metrics := MockConfigForTest(t).metrics
+
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				metrics.SetMetricsPort(t, 16060)
+				assert.Equal(t, 16060, metrics.Port())
+			})
+
+			assert.Equal(t, expectedMetricsPort, metrics.Port())
 		})
+	})
+}
 
-		t.Run("trace exporter を設定して有効判定が変わる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-			cfg.observability.SetObservabilityTracesExporter(t, "")
-			assert.False(t, cfg.observability.TracesEnabled())
+func TestObservabilityConfig_SetObservabilityMaskedDBQueryArgs(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定したマスク設定へ差し替わり、クリーンアップで元の設定へ戻る", func(t *testing.T) {
+			t.Parallel()
+			observability := MockConfigForTest(t).observability
+
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				observability.SetObservabilityMaskedDBQueryArgs(t, !expectedObservabilityMaskedDBQueryArgs)
+				assert.Equal(t, !expectedObservabilityMaskedDBQueryArgs, observability.MaskedDBQueryArgs())
+			})
+
+			assert.Equal(t, expectedObservabilityMaskedDBQueryArgs, observability.MaskedDBQueryArgs())
 		})
+	})
+}
 
-		t.Run("metric exporter を設定して有効判定が変わる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-			cfg.observability.SetObservabilityMetricsExporter(t, "")
-			assert.False(t, cfg.observability.MetricsEnabled())
+func TestObservabilityConfig_SetObservabilityTracesExporter(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("無効値へ差し替えると trace 送出が無効になり、クリーンアップで有効へ戻る", func(t *testing.T) {
+			t.Parallel()
+			observability := MockConfigForTest(t).observability
+
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				observability.SetObservabilityTracesExporter(t, exporterNone)
+				assert.False(t, observability.TracesEnabled())
+			})
+
+			assert.True(t, observability.TracesEnabled())
 		})
+	})
+}
 
-		t.Run("log exporter を設定して有効判定が変わる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-			cfg.observability.SetObservabilityLogsExporter(t, "")
-			assert.False(t, cfg.observability.LogsEnabled())
+func TestObservabilityConfig_SetObservabilityMetricsExporter(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("無効値へ差し替えると metric 送出が無効になり、クリーンアップで有効へ戻る", func(t *testing.T) {
+			t.Parallel()
+			observability := MockConfigForTest(t).observability
+
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				observability.SetObservabilityMetricsExporter(t, exporterNone)
+				assert.False(t, observability.MetricsEnabled())
+			})
+
+			assert.True(t, observability.MetricsEnabled())
 		})
+	})
+}
 
-		t.Run("OTLPプロトコルを設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-			expected := "grpc"
-			cfg.observability.SetObservabilityOTLPProtocol(t, expected)
-			assert.Equal(t, expected, cfg.observability.OTLPProtocol())
+func TestObservabilityConfig_SetObservabilityLogsExporter(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("無効値へ差し替えると log 送出が無効になり、クリーンアップで有効へ戻る", func(t *testing.T) {
+			t.Parallel()
+			observability := MockConfigForTest(t).observability
+
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				observability.SetObservabilityLogsExporter(t, exporterNone)
+				assert.False(t, observability.LogsEnabled())
+			})
+
+			assert.True(t, observability.LogsEnabled())
 		})
+	})
+}
 
-		t.Run("OTLPエンドポイントを設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-			expected := "http://test-collector:4318"
-			cfg.observability.SetObservabilityOTLPEndpoint(t, expected)
-			assert.Equal(t, expected, cfg.observability.OTLPEndpoint())
+func TestObservabilityConfig_SetObservabilityOTLPProtocol(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定したプロトコルへ差し替わり、クリーンアップで元のプロトコルへ戻る", func(t *testing.T) {
+			t.Parallel()
+			observability := MockConfigForTest(t).observability
+
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				observability.SetObservabilityOTLPProtocol(t, "grpc")
+				assert.Equal(t, "grpc", observability.OTLPProtocol())
+			})
+
+			assert.Equal(t, expectedObservabilityOTLPProtocol, observability.OTLPProtocol())
 		})
+	})
+}
 
-		t.Run("メトリクスポートを設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-			expected := 16060
-			cfg.metrics.SetMetricsPort(t, expected)
-			assert.Equal(t, expected, cfg.metrics.Port())
+func TestEndpointConfig_SetEndpointOTLP(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定したエンドポイントへ差し替わり、クリーンアップで元のエンドポイントへ戻る", func(t *testing.T) {
+			t.Parallel()
+			endpoint := MockConfigForTest(t).endpoint
+
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				endpoint.SetEndpointOTLP(t, "http://collector.test:4318")
+				assert.Equal(t, "http://collector.test:4318", endpoint.OTLP())
+			})
+
+			assert.Equal(t, expectedEndpointOTLP, endpoint.OTLP())
 		})
+	})
+}
 
-		t.Run("データベースホストを設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-			expected := "test-host"
-			cfg.database.SetDatabaseHost(t, expected)
-			assert.Equal(t, expected, cfg.database.Host())
+func TestDatabaseConfig_SetDatabaseHost(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定したホストへ差し替わり、クリーンアップで元のホストへ戻る", func(t *testing.T) {
+			t.Parallel()
+			database := MockConfigForTest(t).database
+
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				database.SetDatabaseHost(t, "db.test")
+				assert.Equal(t, "db.test", database.Host())
+			})
+
+			assert.Equal(t, expectedDBHost, database.Host())
 		})
+	})
+}
 
-		t.Run("データベース名を設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-			expected := "test-name"
-			cfg.database.SetDatabaseName(t, expected)
-			assert.Equal(t, expected, cfg.database.DBName())
+func TestDatabaseConfig_SetDatabaseName(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定したデータベース名へ差し替わり、クリーンアップで元の名前へ戻る", func(t *testing.T) {
+			t.Parallel()
+			database := MockConfigForTest(t).database
+
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				database.SetDatabaseName(t, "other-db")
+				assert.Equal(t, "other-db", database.DBName())
+			})
+
+			assert.Equal(t, expectedDBName, database.DBName())
 		})
+	})
+}
 
-		t.Run("最大コネクション数を設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-			expected := int32(20)
-			cfg.dbconnection.SetMaxConns(t, expected)
-			assert.Equal(t, expected, cfg.dbconnection.MaxConns())
+func TestDBConnectionConfig_SetMaxConns(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定した最大コネクション数へ差し替わり、クリーンアップで元の値へ戻る", func(t *testing.T) {
+			t.Parallel()
+			dbconnection := MockConfigForTest(t).dbconnection
+
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				dbconnection.SetMaxConns(t, int32(20))
+				assert.Equal(t, int32(20), dbconnection.MaxConns())
+			})
+
+			assert.Equal(t, expectedDBMaxConnsInt32, dbconnection.MaxConns())
 		})
+	})
+}
 
-		t.Run("CIDRを設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-			_, testCIDR, err := net.ParseCIDR("192.168.1.0/24")
+func TestSecurityConfig_SetCIDR(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定したCIDRへ差し替わり、クリーンアップで元のCIDRへ戻る", func(t *testing.T) {
+			t.Parallel()
+			security := MockConfigForTest(t).security
+			_, cidr, err := net.ParseCIDR("10.0.0.0/8")
 			require.NoError(t, err)
-			cfg.security.SetCIDR(t, testCIDR)
-			assert.Equal(t, testCIDR, cfg.security.CIDR())
-		})
 
-		t.Run("認証ヘッダー名を設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-			expected := "X-TEST-AUTH"
-			cfg.auth.SetHeaderName(t, expected)
-			assert.Equal(t, expected, cfg.auth.HeaderName())
-		})
-
-		t.Run("Bearerヘッダー許可を設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-			expected := true
-			cfg.auth.SetAllowedHeaderBearer(t, expected)
-			assert.Equal(t, expected, cfg.auth.AllowedHeaderBearer())
-		})
-
-		t.Run("outboxのbatch sizeを設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-			expected := 7
-			cfg.outbox.SetOutboxBatchSize(t, expected)
-			assert.Equal(t, expected, cfg.outbox.BatchSize())
-		})
-
-		t.Run("outboxのエンドポイントを設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-			expected := "http://test-relay:8080"
-			cfg.outbox.SetOutboxEndpoint(t, expected)
-			assert.Equal(t, expected, cfg.outbox.Endpoint())
-		})
-
-		t.Run("outboxのpoll間隔を設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-			expected := 3 * time.Second
-			cfg.outbox.SetOutboxPollInterval(t, expected)
-			assert.Equal(t, expected, cfg.outbox.PollInterval())
-		})
-
-		t.Run("outboxのエラー時待機時間を設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-			expected := 9 * time.Second
-			cfg.outbox.SetOutboxErrorBackoff(t, expected)
-			assert.Equal(t, expected, cfg.outbox.ErrorBackoff())
-		})
-
-		t.Run("worker health listener アドレスを設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-			expected := "127.0.0.1:0"
-			cfg.worker.SetHealthListenAddr(t, expected)
-			assert.Equal(t, expected, cfg.worker.HealthListenAddr())
-		})
-
-		t.Run("セキュアクッキーの SameSite を設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-			expected := "Lax"
-			cfg.secureCookie.SetSameSite(t, expected)
-			assert.Equal(t, expected, cfg.secureCookie.SameSite())
-		})
-
-		t.Run("セキュアクッキーの Domain を設定して取得できる", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-			expected := "example.test"
-			cfg.secureCookie.SetDomain(t, expected)
-			assert.Equal(t, expected, cfg.secureCookie.Domain())
-		})
-
-		t.Run("クリーンアップ後に元の値へ復元される", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-			t.Run("サーバーポートが復元される", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-				original := cfg.server.Port()
-
-				t.Run("一時的にポートを上書きする", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-					cfg.server.SetServerPort(t, original+1)
-					assert.Equal(t, original+1, cfg.server.Port())
-				})
-
-				// 内側サブテスト終了時に Cleanup が発火し、元値へ戻る。
-				assert.Equal(t, original, cfg.server.Port())
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				security.SetCIDR(t, cidr)
+				assert.Equal(t, cidr, security.CIDR())
 			})
 
-			t.Run("認証ヘッダー名が復元される", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-				original := cfg.auth.HeaderName()
+			assert.Equal(t, expectedCIDR, security.CIDR())
+		})
+	})
+}
 
-				t.Run("一時的にヘッダー名を上書きする", func(t *testing.T) { //nolint:paralleltest // 共有状態のため並列化不可
-					cfg.auth.SetHeaderName(t, "X-OVERRIDE")
-					assert.Equal(t, "X-OVERRIDE", cfg.auth.HeaderName())
-				})
+func TestSecureCookieConfig_SetSameSite(t *testing.T) {
+	t.Parallel()
 
-				assert.Equal(t, original, cfg.auth.HeaderName())
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定したSameSiteへ差し替わり、クリーンアップで元の値へ戻る", func(t *testing.T) {
+			t.Parallel()
+			secureCookie := MockConfigForTest(t).secureCookie
+
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				secureCookie.SetSameSite(t, "Lax")
+				assert.Equal(t, "Lax", secureCookie.SameSite())
 			})
+
+			assert.Equal(t, expectedSecureCookieSameSite, secureCookie.SameSite())
+		})
+	})
+}
+
+func TestSecureCookieConfig_SetDomain(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定したDomainへ差し替わり、クリーンアップで元の値へ戻る", func(t *testing.T) {
+			t.Parallel()
+			secureCookie := MockConfigForTest(t).secureCookie
+
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				secureCookie.SetDomain(t, "example.test")
+				assert.Equal(t, "example.test", secureCookie.Domain())
+			})
+
+			assert.Equal(t, expectedSecureCookieDomain, secureCookie.Domain())
+		})
+	})
+}
+
+func TestWorkerConfig_SetHealthListenAddr(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定した待ち受けアドレスへ差し替わり、クリーンアップで元のアドレスへ戻る", func(t *testing.T) {
+			t.Parallel()
+			worker := MockConfigForTest(t).worker
+
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				worker.SetHealthListenAddr(t, "127.0.0.1:0")
+				assert.Equal(t, "127.0.0.1:0", worker.HealthListenAddr())
+			})
+
+			assert.Equal(t, expectedWorkerHealthListenAddr, worker.HealthListenAddr())
+		})
+	})
+}
+
+func TestOutboxConfig_SetOutboxBatchSize(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定したバッチサイズへ差し替わり、クリーンアップで元の値へ戻る", func(t *testing.T) {
+			t.Parallel()
+			outbox := MockConfigForTest(t).outbox
+
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				outbox.SetOutboxBatchSize(t, 7)
+				assert.Equal(t, 7, outbox.BatchSize())
+			})
+
+			assert.Equal(t, expectedOutboxBatchSize, outbox.BatchSize())
+		})
+	})
+}
+
+func TestOutboxConfig_SetOutboxPollInterval(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定したポーリング間隔へ差し替わり、クリーンアップで元の値へ戻る", func(t *testing.T) {
+			t.Parallel()
+			outbox := MockConfigForTest(t).outbox
+
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				outbox.SetOutboxPollInterval(t, 3*time.Second)
+				assert.Equal(t, 3*time.Second, outbox.PollInterval())
+			})
+
+			assert.Equal(t, expectedOutboxPollInterval, outbox.PollInterval())
+		})
+	})
+}
+
+func TestOutboxConfig_SetOutboxErrorBackoff(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定したエラー時待機時間へ差し替わり、クリーンアップで元の値へ戻る", func(t *testing.T) {
+			t.Parallel()
+			outbox := MockConfigForTest(t).outbox
+
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				outbox.SetOutboxErrorBackoff(t, 9*time.Second)
+				assert.Equal(t, 9*time.Second, outbox.ErrorBackoff())
+			})
+
+			assert.Equal(t, expectedOutboxErrorBackoff, outbox.ErrorBackoff())
+		})
+	})
+}
+
+func TestEndpointConfig_SetEndpointOutbox(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定したエンドポイントへ差し替わり、クリーンアップで元の値へ戻る", func(t *testing.T) {
+			t.Parallel()
+			endpoint := MockConfigForTest(t).endpoint
+
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				endpoint.SetEndpointOutbox(t, "http://relay.test:8080")
+				assert.Equal(t, "http://relay.test:8080", endpoint.Outbox())
+			})
+
+			assert.Equal(t, expectedEndpointOutbox, endpoint.Outbox())
+		})
+	})
+}
+
+func TestAuthConfig_SetAuthIssuer(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定したissuerへ差し替わり、クリーンアップで元の値へ戻る", func(t *testing.T) {
+			t.Parallel()
+			auth := MockConfigForTest(t).auth
+
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				auth.SetAuthIssuer(t, "https://issuer.test")
+				assert.Equal(t, "https://issuer.test", auth.Issuer())
+			})
+
+			assert.Equal(t, expectedAuthIssuer, auth.Issuer())
+		})
+	})
+}
+
+func TestAuthConfig_SetAuthAudience(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定したaudienceへ差し替わり、クリーンアップで元の値へ戻る", func(t *testing.T) {
+			t.Parallel()
+			auth := MockConfigForTest(t).auth
+
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				auth.SetAuthAudience(t, "test-audience")
+				assert.Equal(t, "test-audience", auth.Audience())
+			})
+
+			assert.Equal(t, expectedAuthAudience, auth.Audience())
+		})
+	})
+}
+
+func TestEndpointConfig_SetEndpointJWKS(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定したJWKS URLへ差し替わり、クリーンアップで元の値へ戻る", func(t *testing.T) {
+			t.Parallel()
+			endpoint := MockConfigForTest(t).endpoint
+
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				endpoint.SetEndpointJWKS(t, "https://issuer.test/jwks")
+				assert.Equal(t, "https://issuer.test/jwks", endpoint.JWKS())
+			})
+
+			assert.Equal(t, expectedEndpointJWKS, endpoint.JWKS())
+		})
+	})
+}
+
+func TestOutboxConfig_SetOutboxPublisher(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定した種別へ差し替わり、クリーンアップで元の値へ戻る", func(t *testing.T) {
+			t.Parallel()
+			outbox := MockConfigForTest(t).outbox
+
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				outbox.SetOutboxPublisher(t, "sqs")
+				assert.Equal(t, "sqs", outbox.Publisher())
+			})
+
+			assert.Equal(t, expectedOutboxPublisher, outbox.Publisher())
+		})
+	})
+}
+
+func TestConsumerQueueConfig_SetConsumerQueue(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定した queue 設定へ差し替わり、クリーンアップで元の値へ戻る", func(t *testing.T) {
+			t.Parallel()
+			consumerQueue := MockConfigForTest(t).consumerQueue
+
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				consumerQueue.SetConsumerQueue(
+					t,
+					"http://elasticmq:9324/000000000000/gobp-events",
+					"http://elasticmq:9324/000000000000/gobp-events-dlq",
+					"ap-northeast-1",
+					"k",
+					"s",
+				)
+				assert.Equal(t, "http://elasticmq:9324/000000000000/gobp-events", consumerQueue.URL())
+				assert.Equal(t, "http://elasticmq:9324/000000000000/gobp-events-dlq", consumerQueue.DLQURL())
+				assert.Equal(t, "ap-northeast-1", consumerQueue.Region())
+				assert.Equal(t, "k", consumerQueue.AccessKeyID())
+				assert.Equal(t, "s", consumerQueue.SecretAccessKey())
+			})
+
+			assert.Equal(t, expectedConsumerQueueURL, consumerQueue.URL())
+			assert.Equal(t, expectedConsumerQueueDLQURL, consumerQueue.DLQURL())
+			assert.Equal(t, expectedConsumerQueueRegion, consumerQueue.Region())
+			assert.Equal(t, expectedConsumerQueueAccessKeyID, consumerQueue.AccessKeyID())
+			assert.Equal(t, expectedConsumerQueueSecretAccessKey, consumerQueue.SecretAccessKey())
+		})
+	})
+}
+
+func TestOutboxConfig_SetOutboxQueue(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定した queue 設定へ差し替わり、クリーンアップで元の値へ戻る", func(t *testing.T) {
+			t.Parallel()
+			outbox := MockConfigForTest(t).outbox
+
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				outbox.SetOutboxQueue(t, "http://elasticmq:9324/000000000000/gobp-events", "ap-northeast-1", "k", "s")
+				assert.Equal(t, "http://elasticmq:9324/000000000000/gobp-events", outbox.QueueURL())
+				assert.Equal(t, "ap-northeast-1", outbox.QueueRegion())
+				assert.Equal(t, "k", outbox.QueueAccessKeyID())
+				assert.Equal(t, "s", outbox.QueueSecretAccessKey())
+			})
+
+			assert.Equal(t, expectedOutboxQueueURL, outbox.QueueURL())
+			assert.Equal(t, expectedOutboxQueueRegion, outbox.QueueRegion())
+			assert.Equal(t, expectedOutboxQueueAccessKeyID, outbox.QueueAccessKeyID())
+			assert.Equal(t, expectedOutboxQueueSecretAccessKey, outbox.QueueSecretAccessKey())
 		})
 	})
 }

@@ -26,13 +26,13 @@
 - `internal/infrastructure/README.md` — infra 層規約
 - `internal/infrastructure/rdb/pgerror/README.md` — エラー正規化規則（SQLSTATE mapping、single-normalization-point 原則）
 - `internal/infrastructure/rdb/repository/<sibling>/<sibling>_repository.go` — **de facto reference 実装**（infra READMEs は principles を文章で記述するが完全な impl snippet はないため、sibling コードが最も近い具体例。ただし README ルールと衝突した場合は README が勝つ）
-- `internal/di/module/infrastructure.go` — DI 登録対象
+- `internal/di/module/persistence.go` — DI 登録対象
 
 **書き込み（承認後）**:
 
 - `internal/infrastructure/rdb/repository/<aggregate>/<aggregate>_repository.go`
 - `internal/infrastructure/rdb/repository/<aggregate>/<aggregate>_repository_test.go`
-- `internal/di/module/infrastructure.go`（`fx.Provide(<aggregate>.New)` 追加）
+- `internal/di/module/persistence.go`（`fx.Provide(<aggregate>.New)` 追加）
 
 **Triggers (via `make`)**:
 
@@ -56,7 +56,7 @@ skill が書き込み前に検証:
 
 > **環境に関する注記:** `make gen-query` は `pg_dump` で稼働中の DB スキーマをダンプするため、先に DB が起動している必要がある。準備は**生 `docker compose` ではなく専用 make ターゲット**で行うこと: `make serve`（development プロファイル、`database` サービス含む）→ **`make db-init`** → `make gen-query`。`make db-init` は local/test 両 DB を一括で migrate **かつ seed** する。本 skill が書く integration テスト（`make test`）も稼働中かつ **seed 済み**の test DB を要するため、`db-*-migrate-up` 単体ではなく `db-init` が正しい準備手順。
 >
-> **ツールチェーンに関する注記:** 最終の `make fix` / `make test`（または `make lint`）がツールのバージョン不整合（例: `golangci-lint` の v1/v2 config エラー）で失敗した場合は、`PATH` の手動書き換えではなく `make install-tools` でローカルのツールを揃えてから再実行する（`tools.yaml` を変更した場合は先に `make sync-tools`）。
+> **ツールチェーンに関する注記:** 最終の `make fix` / `make test`（または `make lint`）がツールのバージョン不整合（例: `golangci-lint` の v1/v2 config エラー）で失敗した場合は、`PATH` の手動書き換えではなく `make install-tools` でローカルのツールを揃えてから再実行する（`mise.toml` を変更した場合は先に `make sync-versions`）。
 
 ## 最初のステップ: identity 確認
 
@@ -71,7 +71,7 @@ skill が書き込み前に検証:
 3. `internal/infrastructure/rdb/README.md` から命名規約（Repository method 名がどう sqlc gen 関数名にマップされるか）と実装規則を取得
 4. `internal/infrastructure/README.md` から layer 規約取得
 5. `internal/infrastructure/rdb/pgerror/README.md` を読んで SQLSTATE → apperror mapping と single-normalization-point 原則（全 sqlc 呼び出しの error は必ず `pgerror.NormalizeError` 経由）を確認
-6. 1 個の sibling repository（`internal/infrastructure/rdb/repository/user/user_repository.go` 等）を **具体 reference** として参照 — tracer 配線、`gen.New(driver.New(ctx, r.db))` 利用、pgerror 正規化位置、変換ヘルパー pattern。infra READMEs に完全 code snippet 無いため sibling が最も近い具体例。衝突時は READMEs が勝つ
+6. 1 個の sibling repository（`internal/infrastructure/rdb/repository/<sibling>/<sibling>_repository.go` 等）を **具体 reference** として参照 — tracer 配線、`gen.New(driver.New(ctx, r.db))` 利用、pgerror 正規化位置、変換ヘルパー pattern。infra READMEs に完全 code snippet 無いため sibling が最も近い具体例。衝突時は READMEs が勝つ
 
 ## Step 2. mapping 導出（lean A の核）
 
@@ -92,7 +92,7 @@ mapping 不能な Repository method について:
 
       // TODO: CountByActive に対応する sqlc gen 関数が見当たりません。
       // 解決方法:
-      //   1. database/dml/repository/user/*.sql に CountByActive query を追加
+      //   1. database/dml/repository/<aggregate>/*.sql に CountByActive query を追加
       //   2. make gen-query を実行
       //   3. 本 TODO を消して sqlc gen を呼ぶ実装に置き換え
       return 0, errors.New("not implemented")
@@ -135,7 +135,7 @@ Agent tool を起動して infra 層 test 観点を実装前に列挙:
 
 1. `<aggregate>_repository.go` — 主実装
 2. `<aggregate>_repository_test.go` — testkit backed integration test
-3. `internal/di/module/infrastructure.go` 更新 — `repository` module に `<aggregate>.New` 追加
+3. `internal/di/module/persistence.go` 更新 — `repository` module に `<aggregate>.New` 追加
 
 実装ファイル規約:
 
@@ -185,7 +185,7 @@ commit しない。
 
 「Exception: Skill Execution」clause により:
 
-- 書き込み scope: `internal/infrastructure/rdb/repository/<aggregate>/`（新規 dir）+ `internal/di/module/infrastructure.go`（1 行追加）
+- 書き込み scope: `internal/infrastructure/rdb/repository/<aggregate>/`（新規 dir）+ `internal/di/module/persistence.go`（1 行追加）
 - aggregate ディレクトリ既存時は中断
 
 触らない:
@@ -196,7 +196,7 @@ commit しない。
 
 ## 制約事項
 
-- ❌ コードを言い換える／*なぜ*その設計にしたかを説明するコメントを足す — コードコメントは最小（振る舞い・契約のみ）。理由は commit message / README に置きコードに書かない。宣言の godoc（unexported 含む）は1行で残す。
+- ❌ コードを言い換える／*なぜ*その設計にしたかを説明するコメントを足す — コードコメントは最小（振る舞い・契約のみ）。理由は commit message / README に置きコードに書かない。宣言の godoc（unexported 含む）は1行で残す。**分量も対象**: このスキルが生成する面は構造上すべて慣用的であり、コンストラクタ / Params 構造体 / 行→エンティティ変換 / handler テンプレートに複数行の説明を付けるのはノイズ。契約を1行で述べて止める。`docs/rules.md` にある repo 全体のルールを書き写さない。抑制であって根絶ではなく、真に非自明な Why は残す。
 - ❌ Repository に業務ロジック発明（データ orchestration のみ）
 - ❌ SQL 生成 / `make gen-query` 実行（スコープ外）
 - ❌ sqlc 生成ファイル手 edit
@@ -224,7 +224,7 @@ commit しない。
 - [ ] 計画表示（mapped + unmapped 明確に区別）し承認
 - [ ] 実装ファイル書き込み; mapped method は sqlc gen 呼び出し、unmapped method は TODO stub
 - [ ] テストファイル書き込み; mapped method のみテスト
-- [ ] `internal/di/module/infrastructure.go` 更新（新 `fx.Provide`）
+- [ ] `internal/di/module/persistence.go` 更新（新 `fx.Provide`）
 - [ ] `make fix` + `make test` 実行; coverage 報告（or 失敗 surface）
 - [ ] 最終サマリで mapped count + unmapped count + 次手順案内を明示
 - [ ] commit / push なし

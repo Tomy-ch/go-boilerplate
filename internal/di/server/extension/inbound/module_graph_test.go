@@ -10,7 +10,7 @@ import (
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
-	echomw "github.com/labstack/echo/v4/middleware"
+	echomw "github.com/labstack/echo/v5/middleware"
 	"go.uber.org/fx"
 )
 

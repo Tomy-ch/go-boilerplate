@@ -16,17 +16,7 @@ Implementation: `internal/infrastructure/rdb/repository/`
 
 ## Directory Structure
 
-```text
-repository/
-├── user/
-│   ├── insert_user.sql
-│   ├── select_user_by_id.sql
-│   └── ...
-├── prefecture/
-│   ├── ...
-│   └── ...
-└── ...
-```
+One directory per aggregate, named after it; each holds that aggregate's `.sql` files.
 
 ## Naming Convention
 

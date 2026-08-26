@@ -14,3 +14,13 @@ import (
 func UUID(p openapi_types.UUID) uuid.UUID {
 	return uuid.FromPrimitive(p)
 }
+
+// UUIDPtr は、任意指定（nullable）の UUID クエリパラメータをドメインの *uuid.UUID へ変換します。
+// nil の場合はそのまま nil を返し、指定された場合のみ変換します。
+func UUIDPtr(p *openapi_types.UUID) *uuid.UUID {
+	if p == nil {
+		return nil
+	}
+	id := uuid.FromPrimitive(*p)
+	return &id
+}

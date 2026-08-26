@@ -13,7 +13,7 @@ accepted
 
 ## Context
 
-Three entry-point types co-exist in this template:
+Three entry-point types co-exist in this repository:
 
 - **REST** — synchronous HTTP requests handled by Echo handlers.
 - **Worker** — asynchronous messages pulled from a queue and processed by worker handlers.

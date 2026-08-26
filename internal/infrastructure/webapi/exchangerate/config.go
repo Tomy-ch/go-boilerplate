@@ -1,9 +1,8 @@
 package exchangerate
 
-// sampleEndpoint は、サンプル用の外部為替レートサービスのベース URL です。
-const sampleEndpoint Endpoint = "https://api.exchangerate.example.com"
+import "go-boilerplate/internal/config"
 
-// NewEndpoint は、サンプル既定値の Endpoint を返します。
-func NewEndpoint() Endpoint {
-	return sampleEndpoint
+// NewEndpoint は、設定から外部為替レートサービスの Endpoint を返します。
+func NewEndpoint(epCfg *config.EndpointConfig) Endpoint {
+	return Endpoint(epCfg.ExchangeRate())
 }

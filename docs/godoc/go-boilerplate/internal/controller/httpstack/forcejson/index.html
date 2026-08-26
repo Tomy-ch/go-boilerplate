@@ -133,7 +133,7 @@
 		
 			
 			
-			<h2 id="Middleware">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/forcejson/forcejson.go.html?s=325:362#L2">Middleware</a>
+			<h2 id="Middleware">func <a href="../../../../../src/go-boilerplate/internal/controller/httpstack/forcejson/forcejson.go.html?s=453:490#L5">Middleware</a>
 				<a class="permalink" href="#Middleware">¶</a>
 				
 				
@@ -141,6 +141,7 @@
 			<pre>func Middleware() echo.<a href="#MiddlewareFunc">MiddlewareFunc</a></pre>
 			<p>Middleware は、Content-Type が未設定または text/html の場合に
 application/json へ強制するミドルウェアを返します。
+レスポンスを取り出せない場合は補正せず素通しします。
 
 			
 			

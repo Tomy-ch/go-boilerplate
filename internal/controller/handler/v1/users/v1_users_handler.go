@@ -1,5 +1,5 @@
 //go:generate oapi-codegen --include-tags=v1/users --package=gen --generate=types -o ./gen/type.gen.go /app/openapi/openapi.gen.yaml
-//go:generate oapi-codegen --include-tags=v1/users --package=gen --generate=echo-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
+//go:generate oapi-codegen --include-tags=v1/users --package=gen --generate=echo5-server,strict-server -o ./gen/server.gen.go /app/openapi/openapi.gen.yaml
 
 // Package users は、/v1/users エンドポイントに関連するハンドラを提供します。
 package users
@@ -8,7 +8,6 @@ import (
 	"context"
 	"net/http"
 
-	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/conv"
 	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/handler/v1/users/gen"
@@ -17,14 +16,10 @@ import (
 	"go-boilerplate/internal/usecase/idempotency"
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/internal/usecase/user"
-	"go-boilerplate/pkg/xerrors"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/runtime/types"
 )
-
-// ErrUnauthenticatedUser は、認証ユーザー情報が取得できない場合のエラーです。
-var ErrUnauthenticatedUser = xerrors.Wrap(apperror.ErrUnauthenticated, "requires authenticated user")
 
 type server struct {
 	tracer observability.LayerTracer
@@ -46,13 +41,17 @@ func (s *server) GetUsers(ctx context.Context, request gen.GetUsersRequestObject
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	// WARN: 本来はここで認可を行うべきですが、今回は省略します。
+	authn, err := ctxhelper.RequireAuthn(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	page, err := paging.NewPageFrom1Based(request.Params.Page, request.Params.PerPage)
 	if err != nil {
 		return nil, err
 	}
 
-	list, err := s.uc.ListUsersWithTotal(ctx, request.Params.Active, page)
+	list, err := s.uc.ListUsersWithTotal(ctx, &authn, request.Params.Active, page)
 	if err != nil {
 		return nil, err
 	}
@@ -77,18 +76,13 @@ func (s *server) PostUsers(ctx context.Context, request gen.PostUsersRequestObje
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
-	authn, ok := ctxhelper.GetAuthn(ctx)
-	if !ok {
-		return nil, ErrUnauthenticatedUser
-	}
-	userID, err := authn.ID()
+	userID, err := ctxhelper.RequireUserID(ctx)
 	if err != nil {
-		return nil, xerrors.Wrap(err, "failed to get user ID from authenticator")
+		return nil, err
 	}
 
 	createParams := &user.CreateParamsDTO{
-		UserID:      userID,
-		RawPassword: request.Body.Password,
+		UserID: userID,
 		UpdateProfileParams: user.UpdateProfileParams{
 			FirstName:      request.Body.FirstName,
 			LastName:       request.Body.LastName,
@@ -115,6 +109,7 @@ func (s *server) PostUsers(ctx context.Context, request gen.PostUsersRequestObje
 // toUserResponse は、ユースケースのDTOをHTTPレスポンスへ変換します。
 func toUserResponse(dto user.UserView) gen.UserResponse {
 	return gen.UserResponse{
+		Id:         dto.ID.ToPrimitive(),
 		FirstName:  dto.FirstName,
 		LastName:   dto.LastName,
 		Email:      types.Email(dto.Email),

@@ -6,11 +6,11 @@ package outbox
 import (
 	"context"
 	"encoding/json"
-	"maps"
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/observability"
 	outboxbndry "go-boilerplate/internal/usecase/boundary/outbox"
+	"go-boilerplate/pkg/httpheader"
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
 )
@@ -26,14 +26,16 @@ type EmitInput struct {
 	// Payload は呼び出し側が snapshot + version で marshal 済みのイベント本文 JSON です。
 	Payload []byte
 	// Headers は publish 時に外部エンドポイントへ伝搬するヘッダ（traceparent 等）です。nil 可。
-	// ここに入れた値はそのまま外部へ送出されるため、Authorization / Cookie 等の機微ヘッダを含めてはならない。
+	// 既知の機微ヘッダ名（Authorization / Cookie 等）は送出前に落としますが、それは defense-in-depth で
+	// あって主契約ではありません。機微情報は入れないこと。
 	Headers map[string]string
 }
 
-// EmitUsecase は、ドメイン変更と同一 tx で outbox 行を INSERT するユースケースです。
+// EmitUsecase は、ドメイン変更と同一 tx で outbox へ 1 件記録するユースケースです。
 type EmitUsecase interface {
-	// Emit は、業務 tx 内で呼ばれ、outbox 行を 1 行 INSERT し、採番された message_id を返します。
+	// Emit は、業務 tx 内で呼ばれ、outbox へちょうど 1 件記録し、採番された message_id を返します。
 	// 呼び出し側がドメイン変更と同じ tx.Manager.Do の中で呼ぶことで lost event を排除します。
+	// 保存される Headers には、呼び出し時点の trace context が自動で追加されます（traceparent、および存在すれば tracestate）。
 	Emit(ctx context.Context, in EmitInput) (uuid.UUID, error)
 }
 
@@ -47,14 +49,19 @@ func NewEmit(store outboxbndry.Store, tf observability.TracerFactory) EmitUsecas
 	return &emitUsecase{store: store, tracer: tf.Usecase()}
 }
 
-// Emit は、業務 tx 内で outbox 行を 1 行 INSERT し、採番された message_id を返します。
-// 現在の ctx の traceparent を headers へ capture し、後続の relay→受信側を起点 trace に繋ぎます。
 func (u *emitUsecase) Emit(ctx context.Context, in EmitInput) (uuid.UUID, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 
 	headers := make(map[string]string, len(in.Headers)+1)
-	maps.Copy(headers, in.Headers)
+	for k, v := range in.Headers {
+		// 呼び出し側契約（EmitInput.Headers の doc）に加えた defense-in-depth として、
+		// egress の起点であるここで、誤って混入した既知の機微ヘッダを保守的に落とします。
+		if httpheader.IsSensitive(k) {
+			continue
+		}
+		headers[k] = v
+	}
 	// emit span の trace context を traceparent として載せる（消費側が同一 trace に繋がる）。
 	observability.InjectTraceContextToCarrier(ctx, headers)
 

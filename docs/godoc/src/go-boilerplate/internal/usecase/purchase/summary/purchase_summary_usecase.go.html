@@ -1,0 +1,308 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>summary - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../../src/go-boilerplate/internal/usecase">usecase</a>/<a href="../../../../../../src/go-boilerplate/internal/usecase/purchase">purchase</a>/<a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/summary">summary</a>/<span class="text-muted">purchase_summary_usecase.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../../go-boilerplate/internal/usecase/purchase/summary">go-boilerplate/internal/usecase/purchase/summary</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span><span class="comment">//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE</span>
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span><span class="comment">// Package summary は、認証主体自身の購入集計の参照ユースケースを提供します。</span>
+<span id="L4" class="ln">     4  </span>package summary
+<span id="L5" class="ln">     5  </span>
+<span id="L6" class="ln">     6  </span>import (
+<span id="L7" class="ln">     7  </span>	&#34;context&#34;
+<span id="L8" class="ln">     8  </span>	&#34;fmt&#34;
+<span id="L9" class="ln">     9  </span>
+<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/apperror&#34;
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/observability&#34;
+<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/usecase/boundary/auth&#34;
+<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/internal/usecase/purchase/query&#34;
+<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/internal/usecase/tools/timewindow&#34;
+<span id="L15" class="ln">    15  </span>	&#34;go-boilerplate/pkg/decimal&#34;
+<span id="L16" class="ln">    16  </span>	&#34;go-boilerplate/pkg/uuid&#34;
+<span id="L17" class="ln">    17  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L18" class="ln">    18  </span>)
+<span id="L19" class="ln">    19  </span>
+<span id="L20" class="ln">    20  </span>const (
+<span id="L21" class="ln">    21  </span>	<span class="comment">// GroupByCategory は、商品カテゴリ単位でグループ化する指定です。</span>
+<span id="L22" class="ln">    22  </span>	GroupByCategory GroupKind = &#34;category&#34;
+<span id="L23" class="ln">    23  </span>	<span class="comment">// GroupByProduct は、商品単位でグループ化する指定です。</span>
+<span id="L24" class="ln">    24  </span>	GroupByProduct GroupKind = &#34;product&#34;
+<span id="L25" class="ln">    25  </span>)
+<span id="L26" class="ln">    26  </span>
+<span id="L27" class="ln">    27  </span><span class="comment">// GroupKind は、集計のグループ化単位です。</span>
+<span id="L28" class="ln">    28  </span>type GroupKind string
+<span id="L29" class="ln">    29  </span>
+<span id="L30" class="ln">    30  </span><span class="comment">// groupLevel は、集計行を 1 つのグループ化単位で見たときのマップキーと表示名です。</span>
+<span id="L31" class="ln">    31  </span>type groupLevel struct {
+<span id="L32" class="ln">    32  </span>	key  string
+<span id="L33" class="ln">    33  </span>	name string
+<span id="L34" class="ln">    34  </span>}
+<span id="L35" class="ln">    35  </span>
+<span id="L36" class="ln">    36  </span><span class="comment">// GetSummaryParams は、購入集計取得ユースケースの入力パラメータです。</span>
+<span id="L37" class="ln">    37  </span>type GetSummaryParams struct {
+<span id="L38" class="ln">    38  </span>	<span class="comment">// Window は、集計対象期間です。ゼロ値は全期間を意味します。</span>
+<span id="L39" class="ln">    39  </span>	Window timewindow.Window
+<span id="L40" class="ln">    40  </span>	<span class="comment">// GroupBy は、グループ化単位を適用順（先頭が最上位の階層）に並べたものです。空ならグループ化しません。</span>
+<span id="L41" class="ln">    41  </span>	GroupBy []GroupKind
+<span id="L42" class="ln">    42  </span>}
+<span id="L43" class="ln">    43  </span>
+<span id="L44" class="ln">    44  </span><span class="comment">// StatusCountView は、ステータス別内訳 1 件分のユースケース出力 DTO です。</span>
+<span id="L45" class="ln">    45  </span><span class="comment">// ステータスは購入ステータスマスタで解決済みの ID・業務キー・名称、TotalAmount は USD セント単位の整数です。</span>
+<span id="L46" class="ln">    46  </span>type StatusCountView struct {
+<span id="L47" class="ln">    47  </span>	StatusID    uuid.UUID
+<span id="L48" class="ln">    48  </span>	StatusCode  int
+<span id="L49" class="ln">    49  </span>	StatusName  string
+<span id="L50" class="ln">    50  </span>	Count       int64
+<span id="L51" class="ln">    51  </span>	TotalAmount int64
+<span id="L52" class="ln">    52  </span>}
+<span id="L53" class="ln">    53  </span>
+<span id="L54" class="ln">    54  </span><span class="comment">// GroupNodeView は、グループ化した集計 1 ノード分のユースケース出力 DTO です。</span>
+<span id="L55" class="ln">    55  </span><span class="comment">// ItemsTotal は価格スケールの正確な decimal（USD ドル）で、下位ノードを持つ場合はその総和と一致します。</span>
+<span id="L56" class="ln">    56  </span>type GroupNodeView struct {
+<span id="L57" class="ln">    57  </span>	<span class="comment">// Name は、グループの表示名（カテゴリ名称・商品名称）です。</span>
+<span id="L58" class="ln">    58  </span>	Name string
+<span id="L59" class="ln">    59  </span>	<span class="comment">// ItemsTotal は、当該グループの明細金額の合計です。</span>
+<span id="L60" class="ln">    60  </span>	ItemsTotal decimal.Decimal
+<span id="L61" class="ln">    61  </span>	<span class="comment">// Groups は、下位のグループ化単位ごとのノードです。最下位のノードでは nil です。</span>
+<span id="L62" class="ln">    62  </span>	Groups map[string]GroupNodeView
+<span id="L63" class="ln">    63  </span>}
+<span id="L64" class="ln">    64  </span>
+<span id="L65" class="ln">    65  </span><span class="comment">// SummaryView は、購入集計のユースケース出力 DTO です。全フィールドは GetPurchaseSummary が定義する</span>
+<span id="L66" class="ln">    66  </span><span class="comment">// 同一の母集団から算出されるため、フィールド間で不整合は生じません。</span>
+<span id="L67" class="ln">    67  </span>type SummaryView struct {
+<span id="L68" class="ln">    68  </span>	<span class="comment">// TotalCount / TotalAmount は、購入件数と支払金額（小計 + 税額 + 送料）の合計です。</span>
+<span id="L69" class="ln">    69  </span>	<span class="comment">// 対象がない場合はいずれも 0 で、TotalAmount は USD セント単位の整数です。</span>
+<span id="L70" class="ln">    70  </span>	TotalCount  int64
+<span id="L71" class="ln">    71  </span>	TotalAmount int64
+<span id="L72" class="ln">    72  </span>	<span class="comment">// ItemsTotal は、明細金額（単価 × 数量）の合計です。税額・送料を含まないため TotalAmount とは</span>
+<span id="L73" class="ln">    73  </span>	<span class="comment">// 一致せず、価格スケールの正確な decimal（USD ドル）です。</span>
+<span id="L74" class="ln">    74  </span>	ItemsTotal decimal.Decimal
+<span id="L75" class="ln">    75  </span>	<span class="comment">// StatusBreakdown は、購入に出現したステータスのみの内訳です。対象がない場合は空スライスです。</span>
+<span id="L76" class="ln">    76  </span>	StatusBreakdown []StatusCountView
+<span id="L77" class="ln">    77  </span>	<span class="comment">// Groups は、GetSummaryParams.GroupBy の最上位単位ごとのノードです。グループ化しない場合は nil です。</span>
+<span id="L78" class="ln">    78  </span>	Groups map[string]GroupNodeView
+<span id="L79" class="ln">    79  </span>}
+<span id="L80" class="ln">    80  </span>
+<span id="L81" class="ln">    81  </span><span class="comment">// Usecase は、認証主体自身の購入集計の参照ユースケースを定義します。</span>
+<span id="L82" class="ln">    82  </span>type Usecase interface {
+<span id="L83" class="ln">    83  </span>	<span class="comment">// GetPurchaseSummary は、認証主体自身の購入の件数・支払金額・明細金額・ステータス別内訳を返します。</span>
+<span id="L84" class="ln">    84  </span>	<span class="comment">// 集計は認証主体の userID に限定され、他ユーザーの購入は含みません。キャンセル済みの購入は除外します。</span>
+<span id="L85" class="ln">    85  </span>	<span class="comment">// params.GroupBy を指定した場合は、明細金額をその単位へ分解した内訳も返します。</span>
+<span id="L86" class="ln">    86  </span>	<span class="comment">// 対象の購入がない場合はゼロ値を返します。グループ化指定が不正な場合は InvalidArgument を返します。</span>
+<span id="L87" class="ln">    87  </span>	GetPurchaseSummary(ctx context.Context, authn *auth.Authn, params GetSummaryParams) (SummaryView, error)
+<span id="L88" class="ln">    88  </span>}
+<span id="L89" class="ln">    89  </span>
+<span id="L90" class="ln">    90  </span>type usecase struct {
+<span id="L91" class="ln">    91  </span>	tracer observability.LayerTracer
+<span id="L92" class="ln">    92  </span>	qs     query.PurchaseSummaryQueryService
+<span id="L93" class="ln">    93  </span>}
+<span id="L94" class="ln">    94  </span>
+<span id="L95" class="ln">    95  </span><span class="comment">// New は、購入集計の参照ユースケースを生成します。</span>
+<span id="L96" class="ln">    96  </span>func New(
+<span id="L97" class="ln">    97  </span>	qs query.PurchaseSummaryQueryService,
+<span id="L98" class="ln">    98  </span>	tf observability.TracerFactory,
+<span id="L99" class="ln">    99  </span>) Usecase {
+<span id="L100" class="ln">   100  </span>	return &amp;usecase{
+<span id="L101" class="ln">   101  </span>		tracer: tf.Usecase(),
+<span id="L102" class="ln">   102  </span>		qs:     qs,
+<span id="L103" class="ln">   103  </span>	}
+<span id="L104" class="ln">   104  </span>}
+<span id="L105" class="ln">   105  </span>
+<span id="L106" class="ln">   106  </span>func (u *usecase) GetPurchaseSummary(
+<span id="L107" class="ln">   107  </span>	ctx context.Context, authn *auth.Authn, params GetSummaryParams,
+<span id="L108" class="ln">   108  </span>) (SummaryView, error) {
+<span id="L109" class="ln">   109  </span>	ctx, endSpan := u.tracer.Start(ctx)
+<span id="L110" class="ln">   110  </span>	defer endSpan()
+<span id="L111" class="ln">   111  </span>
+<span id="L112" class="ln">   112  </span>	if authn == nil {
+<span id="L113" class="ln">   113  </span>		return SummaryView{}, xerrors.Wrap(apperror.ErrUnauthenticated, &#34;requires authenticated user&#34;)
+<span id="L114" class="ln">   114  </span>	}
+<span id="L115" class="ln">   115  </span>	userID, err := authn.UserID()
+<span id="L116" class="ln">   116  </span>	if err != nil {
+<span id="L117" class="ln">   117  </span>		return SummaryView{}, xerrors.Wrap(err, &#34;failed to get user ID from authenticator&#34;)
+<span id="L118" class="ln">   118  </span>	}
+<span id="L119" class="ln">   119  </span>
+<span id="L120" class="ln">   120  </span>	if err = validateGroupBy(params.GroupBy); err != nil {
+<span id="L121" class="ln">   121  </span>		return SummaryView{}, err
+<span id="L122" class="ln">   122  </span>	}
+<span id="L123" class="ln">   123  </span>
+<span id="L124" class="ln">   124  </span>	statuses, err := u.qs.SummarizeByUserID(ctx, userID, params.Window)
+<span id="L125" class="ln">   125  </span>	if err != nil {
+<span id="L126" class="ln">   126  </span>		return SummaryView{}, err
+<span id="L127" class="ln">   127  </span>	}
+<span id="L128" class="ln">   128  </span>
+<span id="L129" class="ln">   129  </span>	itemsTotal, groups, err := u.summarizeItems(ctx, userID, params.Window, params.GroupBy)
+<span id="L130" class="ln">   130  </span>	if err != nil {
+<span id="L131" class="ln">   131  </span>		return SummaryView{}, err
+<span id="L132" class="ln">   132  </span>	}
+<span id="L133" class="ln">   133  </span>
+<span id="L134" class="ln">   134  </span>	view := toSummaryView(statuses)
+<span id="L135" class="ln">   135  </span>	view.ItemsTotal = itemsTotal
+<span id="L136" class="ln">   136  </span>	view.Groups = groups
+<span id="L137" class="ln">   137  </span>	return view, nil
+<span id="L138" class="ln">   138  </span>}
+<span id="L139" class="ln">   139  </span>
+<span id="L140" class="ln">   140  </span><span class="comment">// summarizeItems は、明細金額の合計と、要求されたグループ化単位の内訳を返します。</span>
+<span id="L141" class="ln">   141  </span><span class="comment">// グループ化しない呼び出しは商品単位の行を読まずに合計だけを取り、要求された場合のみ内訳を畳み込みます。</span>
+<span id="L142" class="ln">   142  </span>func (u *usecase) summarizeItems(
+<span id="L143" class="ln">   143  </span>	ctx context.Context, userID uuid.UUID, window timewindow.Window, groupBy []GroupKind,
+<span id="L144" class="ln">   144  </span>) (decimal.Decimal, map[string]GroupNodeView, error) {
+<span id="L145" class="ln">   145  </span>	if len(groupBy) == 0 {
+<span id="L146" class="ln">   146  </span>		total, err := u.qs.SumItemsByUserID(ctx, userID, window)
+<span id="L147" class="ln">   147  </span>		if err != nil {
+<span id="L148" class="ln">   148  </span>			return decimal.Decimal{}, nil, err
+<span id="L149" class="ln">   149  </span>		}
+<span id="L150" class="ln">   150  </span>		return total, nil, nil
+<span id="L151" class="ln">   151  </span>	}
+<span id="L152" class="ln">   152  </span>
+<span id="L153" class="ln">   153  </span>	rows, err := u.qs.SummarizeItemsByProductByUserID(ctx, userID, window)
+<span id="L154" class="ln">   154  </span>	if err != nil {
+<span id="L155" class="ln">   155  </span>		return decimal.Decimal{}, nil, err
+<span id="L156" class="ln">   156  </span>	}
+<span id="L157" class="ln">   157  </span>	total, groups := toGroups(rows, groupBy)
+<span id="L158" class="ln">   158  </span>	return total, groups, nil
+<span id="L159" class="ln">   159  </span>}
+<span id="L160" class="ln">   160  </span>
+<span id="L161" class="ln">   161  </span><span class="comment">// validateGroupBy は、グループ化単位の指定を検証します。未知の単位と同一単位の重複を拒否します。</span>
+<span id="L162" class="ln">   162  </span><span class="comment">// 重複を通すと同じ階層が入れ子になり、内訳の総和が親と一致しなくなります。</span>
+<span id="L163" class="ln">   163  </span>func validateGroupBy(groupBy []GroupKind) error {
+<span id="L164" class="ln">   164  </span>	seen := make(map[GroupKind]struct{}, len(groupBy))
+<span id="L165" class="ln">   165  </span>	for _, g := range groupBy {
+<span id="L166" class="ln">   166  </span>		if g != GroupByCategory &amp;&amp; g != GroupByProduct {
+<span id="L167" class="ln">   167  </span>			return xerrors.Wrap(apperror.ErrInvalidArgument, fmt.Sprintf(&#34;unknown groupBy: %s&#34;, g))
+<span id="L168" class="ln">   168  </span>		}
+<span id="L169" class="ln">   169  </span>		if _, dup := seen[g]; dup {
+<span id="L170" class="ln">   170  </span>			return xerrors.Wrap(apperror.ErrInvalidArgument, fmt.Sprintf(&#34;groupBy %s appears more than once&#34;, g))
+<span id="L171" class="ln">   171  </span>		}
+<span id="L172" class="ln">   172  </span>		seen[g] = struct{}{}
+<span id="L173" class="ln">   173  </span>	}
+<span id="L174" class="ln">   174  </span>	return nil
+<span id="L175" class="ln">   175  </span>}
+<span id="L176" class="ln">   176  </span>
+<span id="L177" class="ln">   177  </span><span class="comment">// toSummaryView は、ステータス別の集計結果を総計へ畳み込みつつ出力 DTO へ写像します。</span>
+<span id="L178" class="ln">   178  </span><span class="comment">// 総計をステータス別集計から導くことで、総件数・合計金額と内訳が同一スナップショットで整合します。</span>
+<span id="L179" class="ln">   179  </span>func toSummaryView(results []query.PurchaseStatusSummaryReadModel) SummaryView {
+<span id="L180" class="ln">   180  </span>	view := SummaryView{StatusBreakdown: make([]StatusCountView, len(results))}
+<span id="L181" class="ln">   181  </span>	for i, r := range results {
+<span id="L182" class="ln">   182  </span>		view.TotalCount += r.Count
+<span id="L183" class="ln">   183  </span>		view.TotalAmount += r.TotalAmount
+<span id="L184" class="ln">   184  </span>		view.StatusBreakdown[i] = StatusCountView{
+<span id="L185" class="ln">   185  </span>			StatusID:    r.StatusID,
+<span id="L186" class="ln">   186  </span>			StatusCode:  r.StatusCode,
+<span id="L187" class="ln">   187  </span>			StatusName:  r.StatusName,
+<span id="L188" class="ln">   188  </span>			Count:       r.Count,
+<span id="L189" class="ln">   189  </span>			TotalAmount: r.TotalAmount,
+<span id="L190" class="ln">   190  </span>		}
+<span id="L191" class="ln">   191  </span>	}
+<span id="L192" class="ln">   192  </span>	return view
+<span id="L193" class="ln">   193  </span>}
+<span id="L194" class="ln">   194  </span>
+<span id="L195" class="ln">   195  </span><span class="comment">// toGroups は、商品単位の集計行を groupBy の指定順に入れ子のマップへ畳み込み、その総和も返します。</span>
+<span id="L196" class="ln">   196  </span><span class="comment">// 総和を同じ行から導くことで、明細金額の合計と内訳が必ず一致します。</span>
+<span id="L197" class="ln">   197  </span>func toGroups(
+<span id="L198" class="ln">   198  </span>	rows []query.PurchaseItemSummaryReadModel, groupBy []GroupKind,
+<span id="L199" class="ln">   199  </span>) (decimal.Decimal, map[string]GroupNodeView) {
+<span id="L200" class="ln">   200  </span>	groups := make(map[string]GroupNodeView, len(rows))
+<span id="L201" class="ln">   201  </span>	total := decimal.Decimal{}
+<span id="L202" class="ln">   202  </span>	for _, row := range rows {
+<span id="L203" class="ln">   203  </span>		groups = accumulate(groups, levelsOf(row, groupBy), row.ItemsTotal)
+<span id="L204" class="ln">   204  </span>		total = total.Add(row.ItemsTotal)
+<span id="L205" class="ln">   205  </span>	}
+<span id="L206" class="ln">   206  </span>	return total, groups
+<span id="L207" class="ln">   207  </span>}
+<span id="L208" class="ln">   208  </span>
+<span id="L209" class="ln">   209  </span><span class="comment">// levelsOf は、集計行を groupBy の指定順にたどるためのキーと表示名の並びへ写像します。</span>
+<span id="L210" class="ln">   210  </span><span class="comment">// カテゴリ名は商品カテゴリマスタで一意なためそのままキーにでき、商品名は一意でないため ID をキーにします</span>
+<span id="L211" class="ln">   211  </span><span class="comment">// （同名の別商品を 1 つのグループへ畳み込まないため）。</span>
+<span id="L212" class="ln">   212  </span>func levelsOf(row query.PurchaseItemSummaryReadModel, groupBy []GroupKind) []groupLevel {
+<span id="L213" class="ln">   213  </span>	levels := make([]groupLevel, 0, len(groupBy))
+<span id="L214" class="ln">   214  </span>	for _, g := range groupBy {
+<span id="L215" class="ln">   215  </span>		switch g {
+<span id="L216" class="ln">   216  </span>		case GroupByCategory:
+<span id="L217" class="ln">   217  </span>			levels = append(levels, groupLevel{key: row.CategoryName, name: row.CategoryName})
+<span id="L218" class="ln">   218  </span>		case GroupByProduct:
+<span id="L219" class="ln">   219  </span>			levels = append(levels, groupLevel{key: row.ProductID.String(), name: row.ProductName})
+<span id="L220" class="ln">   220  </span>		}
+<span id="L221" class="ln">   221  </span>	}
+<span id="L222" class="ln">   222  </span>	return levels
+<span id="L223" class="ln">   223  </span>}
+<span id="L224" class="ln">   224  </span>
+<span id="L225" class="ln">   225  </span><span class="comment">// accumulate は、1 行の金額を levels がたどる各階層のノードへ加算し、更新後のマップを返します。</span>
+<span id="L226" class="ln">   226  </span><span class="comment">// どの階層のノードもその配下の総和を持つため、内訳の合計は常に親と一致します。</span>
+<span id="L227" class="ln">   227  </span>func accumulate(groups map[string]GroupNodeView, levels []groupLevel, amount decimal.Decimal) map[string]GroupNodeView {
+<span id="L228" class="ln">   228  </span>	if len(levels) == 0 {
+<span id="L229" class="ln">   229  </span>		return groups
+<span id="L230" class="ln">   230  </span>	}
+<span id="L231" class="ln">   231  </span>	if groups == nil {
+<span id="L232" class="ln">   232  </span>		groups = make(map[string]GroupNodeView, 1)
+<span id="L233" class="ln">   233  </span>	}
+<span id="L234" class="ln">   234  </span>	level := levels[0]
+<span id="L235" class="ln">   235  </span>	node := groups[level.key]
+<span id="L236" class="ln">   236  </span>	node.Name = level.name
+<span id="L237" class="ln">   237  </span>	node.ItemsTotal = node.ItemsTotal.Add(amount)
+<span id="L238" class="ln">   238  </span>	node.Groups = accumulate(node.Groups, levels[1:], amount)
+<span id="L239" class="ln">   239  </span>	groups[level.key] = node
+<span id="L240" class="ln">   240  </span>	return groups
+<span id="L241" class="ln">   241  </span>}
+<span id="L242" class="ln">   242  </span>
+</pre><p><a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/summary/purchase_summary_usecase.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

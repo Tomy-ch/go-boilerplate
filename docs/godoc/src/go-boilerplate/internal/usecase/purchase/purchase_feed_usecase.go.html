@@ -1,0 +1,251 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>purchase - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../src/go-boilerplate/internal/usecase">usecase</a>/<a href="../../../../../src/go-boilerplate/internal/usecase/purchase">purchase</a>/<span class="text-muted">purchase_feed_usecase.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../go-boilerplate/internal/usecase/purchase">go-boilerplate/internal/usecase/purchase</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package purchase
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;context&#34;
+<span id="L5" class="ln">     5  </span>	&#34;fmt&#34;
+<span id="L6" class="ln">     6  </span>	&#34;time&#34;
+<span id="L7" class="ln">     7  </span>
+<span id="L8" class="ln">     8  </span>	&#34;go-boilerplate/internal/apperror&#34;
+<span id="L9" class="ln">     9  </span>	&#34;go-boilerplate/internal/usecase/boundary/auth&#34;
+<span id="L10" class="ln">    10  </span>	&#34;go-boilerplate/internal/usecase/boundary/authz&#34;
+<span id="L11" class="ln">    11  </span>	&#34;go-boilerplate/internal/usecase/purchase/query&#34;
+<span id="L12" class="ln">    12  </span>	&#34;go-boilerplate/internal/usecase/tools/paging&#34;
+<span id="L13" class="ln">    13  </span>	&#34;go-boilerplate/internal/usecase/tools/timewindow&#34;
+<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/pkg/uuid&#34;
+<span id="L15" class="ln">    15  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L16" class="ln">    16  </span>)
+<span id="L17" class="ln">    17  </span>
+<span id="L18" class="ln">    18  </span><span class="comment">// purchaseCursorKeyCount は、購入履歴一覧カーソルが保持するソートキーの個数（注文日時, ID）です。</span>
+<span id="L19" class="ln">    19  </span>const purchaseCursorKeyCount = 2
+<span id="L20" class="ln">    20  </span>
+<span id="L21" class="ln">    21  </span><span class="comment">// PurchaseSummaryView は、購入履歴一覧の 1 件分のユースケース出力 DTO です。TotalAmount は USD セント</span>
+<span id="L22" class="ln">    22  </span><span class="comment">// 単位の整数、ステータスは購入ステータスマスタで解決済みの ID・業務キー・名称、FirstItemName /</span>
+<span id="L23" class="ln">    23  </span><span class="comment">// ItemCount は行を見分けるための明細の要約です。</span>
+<span id="L24" class="ln">    24  </span>type PurchaseSummaryView struct {
+<span id="L25" class="ln">    25  </span>	Code          string
+<span id="L26" class="ln">    26  </span>	TotalAmount   int
+<span id="L27" class="ln">    27  </span>	StatusID      uuid.UUID
+<span id="L28" class="ln">    28  </span>	StatusCode    int
+<span id="L29" class="ln">    29  </span>	StatusName    string
+<span id="L30" class="ln">    30  </span>	FirstItemName string
+<span id="L31" class="ln">    31  </span>	ItemCount     int
+<span id="L32" class="ln">    32  </span>	OrderedAt     time.Time
+<span id="L33" class="ln">    33  </span>}
+<span id="L34" class="ln">    34  </span>
+<span id="L35" class="ln">    35  </span><span class="comment">// PurchaseListView は、購入履歴一覧（cursor ページネーション）のユースケース出力 DTO です。</span>
+<span id="L36" class="ln">    36  </span>type PurchaseListView struct {
+<span id="L37" class="ln">    37  </span>	<span class="comment">// Items は、現在ページの購入履歴概要一覧です。</span>
+<span id="L38" class="ln">    38  </span>	Items []PurchaseSummaryView
+<span id="L39" class="ln">    39  </span>	<span class="comment">// NextCursor は、次ページ取得用の不透明カーソルです。最終ページの場合は nil です。</span>
+<span id="L40" class="ln">    40  </span>	NextCursor *string
+<span id="L41" class="ln">    41  </span>}
+<span id="L42" class="ln">    42  </span>
+<span id="L43" class="ln">    43  </span><span class="comment">// purchaseCursor は、購入履歴一覧（keyset ページネーション）の境界キーを表す usecase 層の値です。</span>
+<span id="L44" class="ln">    44  </span><span class="comment">// 直前ページ末尾行の注文日時と ID を保持し、次ページ取得時の keyset 比較の境界として用います。</span>
+<span id="L45" class="ln">    45  </span><span class="comment">// ドメイン層は不透明カーソルを持たず、この境界を primitive（注文日時, ID）で受け取ります。</span>
+<span id="L46" class="ln">    46  </span>type purchaseCursor struct {
+<span id="L47" class="ln">    47  </span>	orderedAt time.Time
+<span id="L48" class="ln">    48  </span>	id        uuid.UUID
+<span id="L49" class="ln">    49  </span>}
+<span id="L50" class="ln">    50  </span>
+<span id="L51" class="ln">    51  </span><span class="comment">// ListPurchasesParams は、購入履歴一覧取得の入力パラメータです。</span>
+<span id="L52" class="ln">    52  </span>type ListPurchasesParams struct {
+<span id="L53" class="ln">    53  </span>	<span class="comment">// Cursor は、keyset ページネーションの位置と件数です。nil は不正な入力として扱います。</span>
+<span id="L54" class="ln">    54  </span>	Cursor *paging.Cursor
+<span id="L55" class="ln">    55  </span>	<span class="comment">// Window は、注文日時で絞り込む対象期間です。境界を持たない側には条件を付けません。</span>
+<span id="L56" class="ln">    56  </span>	Window timewindow.Window
+<span id="L57" class="ln">    57  </span>	<span class="comment">// StatusCodes は、購入ステータスの業務キーによる絞り込みです。空の場合は全ステータスが対象です。</span>
+<span id="L58" class="ln">    58  </span>	StatusCodes []int16
+<span id="L59" class="ln">    59  </span>	<span class="comment">// IncludeOtherUsers は、他ユーザーの購入も母集団に含める場合に true です。指定は admin のみが通ります。</span>
+<span id="L60" class="ln">    60  </span>	IncludeOtherUsers bool
+<span id="L61" class="ln">    61  </span>}
+<span id="L62" class="ln">    62  </span>
+<span id="L63" class="ln">    63  </span><span class="comment">// GetPurchases は、既定では所有権の絞り込みを QueryService に委ね、usecase 側では所有者を再判定しません。</span>
+<span id="L64" class="ln">    64  </span><span class="comment">// 対象が無い場合は QueryService が空一覧を返すため、他ユーザーの購入が混ざる経路は存在しません</span>
+<span id="L65" class="ln">    65  </span><span class="comment">// （母集団の切り替え条件は Usecase.GetPurchases のインターフェース doc を参照）。</span>
+<span id="L66" class="ln">    66  </span><span class="comment">// 母集団が変わっても並び順の軸は変わらないため、カーソルの解釈は共通です。</span>
+<span id="L67" class="ln">    67  </span><span class="comment">// 注文日時の対象期間は params.Window をそのまま QueryService へ渡し、境界を持たない側には条件を付けません。</span>
+<span id="L68" class="ln">    68  </span>func (u *usecase) GetPurchases(
+<span id="L69" class="ln">    69  </span>	ctx context.Context, authn *auth.Authn, params ListPurchasesParams,
+<span id="L70" class="ln">    70  </span>) (*PurchaseListView, error) {
+<span id="L71" class="ln">    71  </span>	if params.Cursor == nil {
+<span id="L72" class="ln">    72  </span>		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, &#34;cursor must not be nil&#34;)
+<span id="L73" class="ln">    73  </span>	}
+<span id="L74" class="ln">    74  </span>	if authn == nil {
+<span id="L75" class="ln">    75  </span>		return nil, apperror.ErrUnauthenticated
+<span id="L76" class="ln">    76  </span>	}
+<span id="L77" class="ln">    77  </span>
+<span id="L78" class="ln">    78  </span>	ctx, endSpan := u.tracer.Start(ctx)
+<span id="L79" class="ln">    79  </span>	defer endSpan()
+<span id="L80" class="ln">    80  </span>
+<span id="L81" class="ln">    81  </span>	cursor := params.Cursor
+<span id="L82" class="ln">    82  </span>	after, err := decodePurchaseCursor(cursor)
+<span id="L83" class="ln">    83  </span>	if err != nil {
+<span id="L84" class="ln">    84  </span>		return nil, err
+<span id="L85" class="ln">    85  </span>	}
+<span id="L86" class="ln">    86  </span>
+<span id="L87" class="ln">    87  </span>	feedParams := query.ListFeedParams{
+<span id="L88" class="ln">    88  </span>		Limit:       cursor.Limit32() + 1,
+<span id="L89" class="ln">    89  </span>		Window:      params.Window,
+<span id="L90" class="ln">    90  </span>		StatusCodes: params.StatusCodes,
+<span id="L91" class="ln">    91  </span>	}
+<span id="L92" class="ln">    92  </span>	if after != nil {
+<span id="L93" class="ln">    93  </span>		feedParams.AfterOrderedAt = &amp;after.orderedAt
+<span id="L94" class="ln">    94  </span>		feedParams.AfterID = &amp;after.id
+<span id="L95" class="ln">    95  </span>	}
+<span id="L96" class="ln">    96  </span>
+<span id="L97" class="ln">    97  </span>	feed, err := u.findFeedPage(ctx, authn, params.IncludeOtherUsers, feedParams)
+<span id="L98" class="ln">    98  </span>	if err != nil {
+<span id="L99" class="ln">    99  </span>		return nil, err
+<span id="L100" class="ln">   100  </span>	}
+<span id="L101" class="ln">   101  </span>
+<span id="L102" class="ln">   102  </span>	limit := cursor.Limit()
+<span id="L103" class="ln">   103  </span>	hasNext := len(feed) &gt; limit
+<span id="L104" class="ln">   104  </span>	if hasNext {
+<span id="L105" class="ln">   105  </span>		feed = feed[:limit]
+<span id="L106" class="ln">   106  </span>	}
+<span id="L107" class="ln">   107  </span>
+<span id="L108" class="ln">   108  </span>	items := make([]PurchaseSummaryView, len(feed))
+<span id="L109" class="ln">   109  </span>	for i, f := range feed {
+<span id="L110" class="ln">   110  </span>		items[i] = PurchaseSummaryView{
+<span id="L111" class="ln">   111  </span>			Code:          f.Code,
+<span id="L112" class="ln">   112  </span>			TotalAmount:   f.TotalAmount,
+<span id="L113" class="ln">   113  </span>			StatusID:      f.StatusID,
+<span id="L114" class="ln">   114  </span>			StatusCode:    f.StatusCode,
+<span id="L115" class="ln">   115  </span>			StatusName:    f.StatusName,
+<span id="L116" class="ln">   116  </span>			FirstItemName: f.FirstItemName,
+<span id="L117" class="ln">   117  </span>			ItemCount:     f.ItemCount,
+<span id="L118" class="ln">   118  </span>			OrderedAt:     f.OrderedAt,
+<span id="L119" class="ln">   119  </span>		}
+<span id="L120" class="ln">   120  </span>	}
+<span id="L121" class="ln">   121  </span>
+<span id="L122" class="ln">   122  </span>	var nextCursor *string
+<span id="L123" class="ln">   123  </span>	if hasNext &amp;&amp; len(feed) &gt; 0 {
+<span id="L124" class="ln">   124  </span>		<span class="comment">// len 判定は防御的な安全弁。hasNext は len &gt; limit なので limit &gt;= 1 の下では冗長だが、</span>
+<span id="L125" class="ln">   125  </span>		<span class="comment">// limit の下限保証は paging.NewCursor 依存であり、ゼロ値 Cursor 混入時の feed[-1] panic を防ぐ。</span>
+<span id="L126" class="ln">   126  </span>		encoded := encodePurchaseCursor(feed[len(feed)-1])
+<span id="L127" class="ln">   127  </span>		nextCursor = &amp;encoded
+<span id="L128" class="ln">   128  </span>	}
+<span id="L129" class="ln">   129  </span>
+<span id="L130" class="ln">   130  </span>	return &amp;PurchaseListView{Items: items, NextCursor: nextCursor}, nil
+<span id="L131" class="ln">   131  </span>}
+<span id="L132" class="ln">   132  </span>
+<span id="L133" class="ln">   133  </span><span class="comment">// findFeedPage は、可視範囲に応じた読み取りでフィードの 1 ページを取得します。既定（自分の購入のみ）は</span>
+<span id="L134" class="ln">   134  </span><span class="comment">// 認証済みであること以上を要求せず、他ユーザーを含める指定のときだけ admin の能力を要求します</span>
+<span id="L135" class="ln">   135  </span><span class="comment">// （設計意図: docs/spec/purchase/usecase.md § GET 一覧）。</span>
+<span id="L136" class="ln">   136  </span>func (u *usecase) findFeedPage(
+<span id="L137" class="ln">   137  </span>	ctx context.Context, authn *auth.Authn, includeOtherUsers bool, params query.ListFeedParams,
+<span id="L138" class="ln">   138  </span>) ([]query.PurchaseFeedReadModel, error) {
+<span id="L139" class="ln">   139  </span>	if !includeOtherUsers {
+<span id="L140" class="ln">   140  </span>		userID, err := authn.UserID()
+<span id="L141" class="ln">   141  </span>		if err != nil {
+<span id="L142" class="ln">   142  </span>			return nil, xerrors.Wrap(err, &#34;failed to get user ID from authn&#34;)
+<span id="L143" class="ln">   143  </span>		}
+<span id="L144" class="ln">   144  </span>		return u.feedQS.FindFeedByUserID(ctx, userID, params)
+<span id="L145" class="ln">   145  </span>	}
+<span id="L146" class="ln">   146  </span>
+<span id="L147" class="ln">   147  </span>	if err := u.authorizer.Authorize(
+<span id="L148" class="ln">   148  </span>		ctx, authn, authz.ActionPurchaseReadAll, authz.NewResource(&#34;purchase&#34;, nil),
+<span id="L149" class="ln">   149  </span>	); err != nil {
+<span id="L150" class="ln">   150  </span>		return nil, err
+<span id="L151" class="ln">   151  </span>	}
+<span id="L152" class="ln">   152  </span>
+<span id="L153" class="ln">   153  </span>	return u.feedQS.FindFeedAll(ctx, params)
+<span id="L154" class="ln">   154  </span>}
+<span id="L155" class="ln">   155  </span>
+<span id="L156" class="ln">   156  </span><span class="comment">// decodePurchaseCursor は、cursor の不透明キー列を keyset 境界（purchaseCursor）へ解釈します。</span>
+<span id="L157" class="ln">   157  </span><span class="comment">// 先頭ページ（カーソル無し）の場合は nil を返します。キーの個数・型が不正な場合は ErrInvalidArgument を返します。</span>
+<span id="L158" class="ln">   158  </span>func decodePurchaseCursor(cursor *paging.Cursor) (*purchaseCursor, error) {
+<span id="L159" class="ln">   159  </span>	if !cursor.HasCursor() {
+<span id="L160" class="ln">   160  </span>		return nil, nil <span class="comment">//nolint:nilnil // 先頭ページは境界なし（nil）を正常値として返す</span>
+<span id="L161" class="ln">   161  </span>	}
+<span id="L162" class="ln">   162  </span>
+<span id="L163" class="ln">   163  </span>	keys := cursor.Keys()
+<span id="L164" class="ln">   164  </span>	if len(keys) != purchaseCursorKeyCount {
+<span id="L165" class="ln">   165  </span>		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, fmt.Sprintf(&#34;invalid cursor: expected %d keys&#34;, purchaseCursorKeyCount))
+<span id="L166" class="ln">   166  </span>	}
+<span id="L167" class="ln">   167  </span>
+<span id="L168" class="ln">   168  </span>	orderedAt, err := time.Parse(time.RFC3339Nano, keys[0])
+<span id="L169" class="ln">   169  </span>	if err != nil {
+<span id="L170" class="ln">   170  </span>		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, &#34;invalid cursor: ordered_at is not RFC3339Nano&#34;)
+<span id="L171" class="ln">   171  </span>	}
+<span id="L172" class="ln">   172  </span>
+<span id="L173" class="ln">   173  </span>	id, err := uuid.Parse(keys[1])
+<span id="L174" class="ln">   174  </span>	if err != nil {
+<span id="L175" class="ln">   175  </span>		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, &#34;invalid cursor: id is not a valid UUID&#34;)
+<span id="L176" class="ln">   176  </span>	}
+<span id="L177" class="ln">   177  </span>
+<span id="L178" class="ln">   178  </span>	return &amp;purchaseCursor{orderedAt: orderedAt, id: id}, nil
+<span id="L179" class="ln">   179  </span>}
+<span id="L180" class="ln">   180  </span>
+<span id="L181" class="ln">   181  </span><span class="comment">// encodePurchaseCursor は、現在ページ末尾のソートキー（注文日時, ID）から次ページ用の不透明カーソルを生成します。</span>
+<span id="L182" class="ln">   182  </span>func encodePurchaseCursor(last query.PurchaseFeedReadModel) string {
+<span id="L183" class="ln">   183  </span>	return paging.EncodeCursor(last.OrderedAt.Format(time.RFC3339Nano), last.ID.String())
+<span id="L184" class="ln">   184  </span>}
+<span id="L185" class="ln">   185  </span>
+</pre><p><a href="../../../../../src/go-boilerplate/internal/usecase/purchase/purchase_feed_usecase.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

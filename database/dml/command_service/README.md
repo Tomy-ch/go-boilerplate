@@ -2,7 +2,7 @@
 
 English | [日本語](README.ja.md)
 
-Write SQL for state changes (INSERT / UPDATE / DELETE), designed as a future extension point.
+Write SQL for state changes (INSERT / UPDATE / DELETE) that do not fit the load-mutate-save shape of a Repository.
 
 ## Purpose
 
@@ -12,21 +12,11 @@ Write SQL for state changes (INSERT / UPDATE / DELETE), designed as a future ext
 
 ## Infrastructure Mapping
 
-Implementation: `internal/infrastructure/rdb/command_service/` (future)
+Implementation: `internal/infrastructure/rdb/command_service/`
 
 ## Directory Structure
 
-```text
-command_service/
-├── user/
-│   ├── insert_user.sql
-│   ├── update_user_email.sql
-│   └── ...
-├── product/
-│   ├── publish_product.sql
-│   └── ...
-└── ...
-```
+One directory per aggregate whose writes need this category, named after it.
 
 ## Naming Convention
 

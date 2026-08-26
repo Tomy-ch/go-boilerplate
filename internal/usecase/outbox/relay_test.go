@@ -16,7 +16,7 @@ import (
 	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
 	"go-boilerplate/internal/usecase/outbox"
 	mock_relay "go-boilerplate/internal/usecase/outbox/mock"
-	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
@@ -50,7 +50,7 @@ func pendingMessage(t *testing.T) outboxbndry.PendingMessage {
 	t.Helper()
 	return outboxbndry.PendingMessage{
 		ID:        1,
-		MessageID: uuid.NewTestFromSalt(t, "msg"),
+		MessageID: uuidtestkit.NewTestFromSalt(t, "msg"),
 		EventType: "e.v1",
 		Payload:   []byte(`{"v":1}`),
 	}
@@ -163,8 +163,6 @@ func Test_relayUsecase_RelayBatch(t *testing.T) {
 			msg2 := pendingMessage(t)
 			msg2.ID = 2
 
-			// 1件目は publish 失敗だが attempts 上限未満なので MarkFailed のみ（非致命・dead 化しない）。
-			// 2件目は publish 成功で MarkPublished。tx は巻き戻らず Claimed=2 / Published=1 を返す。
 			store.EXPECT().ClaimPending(gomock.Any(), int32(100)).
 				Return([]outboxbndry.PendingMessage{msg1, msg2}, nil)
 			gomock.InOrder(
@@ -313,9 +311,6 @@ func Test_relayUsecase_RelayBatch(t *testing.T) {
 			pub := mock_publisher.NewMockPublisher(ctrl)
 			wantErr := xerrors.New("mark failed")
 
-			// 1件目は publish 成功で MarkPublished も成功するが、2件目の MarkPublished が
-			// DB エラーになる。deliver の DB マーク失敗は tx を巻き戻すエラーなので、
-			// 1件目の成功も含めて RelayResult は破棄される（DoWithResult が zero 値を返す）。
 			msg1 := pendingMessage(t)
 			msg2 := pendingMessage(t)
 			msg2.ID = 2

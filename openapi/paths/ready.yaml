@@ -4,6 +4,7 @@ get:
     - ready
   summary: サーバー全体のレディネスチェック
   description: サーバー全体がリクエストを受け付ける準備ができているかを確認するためのレディネスチェックエンドポイントです。
+  security: []
   responses:
     '200':
       description: サーバーはリクエストを受け付ける準備ができています。
@@ -11,3 +12,5 @@ get:
         application/json:
           schema:
             $ref: '../components/responses/health-check/ReadyResponse.yaml'
+    '405':
+      $ref: '../components/schemas/errors/MethodNotAllowed405.yaml'

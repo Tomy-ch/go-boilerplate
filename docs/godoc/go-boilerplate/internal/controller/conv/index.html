@@ -112,7 +112,13 @@ OpenAPI 生成型を import するのは controller 層のみであり、本パ�
 				<dd><a href="#EmailPtr">func EmailPtr(e *openapi_types.Email) *string</a></dd>
 			
 				
+				<dd><a href="#Int16sPtr">func Int16sPtr(p *[]int32) ([]int16, error)</a></dd>
+			
+				
 				<dd><a href="#UUID">func UUID(p openapi_types.UUID) uuid.UUID</a></dd>
+			
+				
+				<dd><a href="#UUIDPtr">func UUIDPtr(p *openapi_types.UUID) *uuid.UUID</a></dd>
 			
 			
 			
@@ -127,6 +133,8 @@ OpenAPI 生成型を import するのは controller 層のみであり、本パ�
 			<span style="font-size:90%">
 			
 				<a href="../../../../src/go-boilerplate/internal/controller/conv/email.go.html">email.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/controller/conv/int16.go.html">int16.go</a>
 			
 				<a href="../../../../src/go-boilerplate/internal/controller/conv/uuid.go.html">uuid.go</a>
 			
@@ -171,6 +179,22 @@ OpenAPI 生成型を import するのは controller 層のみであり、本パ�
 		
 			
 			
+			</p><h2 id="Int16sPtr">func <a href="../../../../src/go-boilerplate/internal/controller/conv/int16.go.html?s=486:529#L1">Int16sPtr</a>
+				<a class="permalink" href="#Int16sPtr">¶</a>
+				
+				
+			</h2>
+			<pre>func Int16sPtr(p *[]<a href="../../../../builtin/#int32">int32</a>) ([]<a href="../../../../builtin/#int16">int16</a>, <a href="../../../../builtin/#error">error</a>)</pre>
+			<p>Int16sPtr は、任意指定の int32 配列クエリパラメータを int16 のスライスへ変換します。
+nil と空配列はいずれも「絞り込みなし」を表す nil を返します。要素が int16 の範囲を外れる場合はエラーを返します。
+変換先の DB 列は SMALLINT であるため、範囲外は切り捨てずエラーとして拒否します。
+
+			
+			
+
+		
+			
+			
 			</p><h2 id="UUID">func <a href="../../../../src/go-boilerplate/internal/controller/conv/uuid.go.html?s=704:745#L4">UUID</a>
 				<a class="permalink" href="#UUID">¶</a>
 				
@@ -179,6 +203,21 @@ OpenAPI 生成型を import するのは controller 層のみであり、本パ�
 			<pre>func UUID(p <a href="../../../../github.com/oapi-codegen/runtime/types/">openapi_types</a>.<a href="../../../../github.com/oapi-codegen/runtime/types/#UUID">UUID</a>) <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a></pre>
 			<p>UUID は、OpenAPI 生成の UUID（path / query パラメータ）をドメインの uuid.UUID へ変換します。
 openapi_types.UUID は検証済みの 16 バイト UUID 値型であり、変換は無条件に成功します。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="UUIDPtr">func <a href="../../../../src/go-boilerplate/internal/controller/conv/uuid.go.html?s=1003:1049#L10">UUIDPtr</a>
+				<a class="permalink" href="#UUIDPtr">¶</a>
+				
+				
+			</h2>
+			<pre>func UUIDPtr(p *<a href="../../../../github.com/oapi-codegen/runtime/types/">openapi_types</a>.<a href="../../../../github.com/oapi-codegen/runtime/types/#UUID">UUID</a>) *<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a></pre>
+			<p>UUIDPtr は、任意指定（nullable）の UUID クエリパラメータをドメインの *uuid.UUID へ変換します。
+nil の場合はそのまま nil を返し、指定された場合のみ変換します。
 
 			
 			

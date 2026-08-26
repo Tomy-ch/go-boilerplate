@@ -6,15 +6,15 @@
 
 ## 役割
 
-`docker/tools/Dockerfile` はビルドで必要となるすべてのコード生成・lint・セキュリティ・ドキュメント生成ツール（oapi-codegen / mockgen / sqlc / migrate / trivy / actionlint / hadolint / gitleaks / godoc / godoc-static / redocly-cli / markdownlint-cli2 / @commitlint/cli / js-yaml / sqlfluff）を、言語ごとに隔離したランナーイメージにパッケージングします。開発者と CI はこれらのコンテナを `make` ターゲット（`make gen-api` / `make gen-query` / `make sql-lint` 等）経由で起動するため、誰も Go / Node / Python ツールチェインをローカルにインストールする必要がありません。マシン間でツールバージョンが再現可能になり、生成物が既知のツールチェインに固定されます。
+`docker/tools/Dockerfile` はビルドで必要となるすべてのコード生成・lint・セキュリティ・ドキュメント生成ツールを、言語ごとに 1 ステージずつ隔離したランナーイメージにパッケージングします。開発者と CI はこれらのコンテナを `make` ターゲット（`make gen-api` / `make gen-query` / `make sql-lint` 等）経由で起動するため、誰も Go / Node / Python ツールチェインをローカルにインストールする必要がありません。マシン間でツールバージョンが再現可能になり、生成物が既知のツールチェインに固定されます。
 
 ## ビルドターゲット
 
-|ターゲット|ベースイメージ|含まれるツール|
+|ターゲット|ベースイメージ|担当範囲|
 |---|---|---|
-|`go_tools`|`golang:1.26.5-alpine`|oapi-codegen, mockgen, sqlc, migrate, trivy, actionlint, hadolint, gitleaks, godoc, godoc-static|
-|`node_tools`|`node:24.18.0-alpine`|redocly-cli, markdownlint-cli2, @commitlint/cli, js-yaml, esbuild（+ ポータルバンドル用ライブラリ）|
-|`python_tools`|`python:3.14.6-slim`|sqlfluff|
+|`go_tools`|`golang:1.26.6-alpine`|Go のコード生成・lint・セキュリティスキャン・ドキュメント生成（[ツール](#go_tools)）|
+|`node_tools`|`node:24.19.0-alpine`|OpenAPI バンドル、Markdown / コミットの lint、ポータルのビルドとスクリプトのテスト（[ツール](#node_tools)）|
+|`python_tools`|`python:3.14.7-slim`|SQL の lint（[ツール](#python_tools)）|
 
 ## go_tools
 
@@ -28,6 +28,7 @@ Go 用のコード生成・lint・セキュリティ・ドキュメント生成�
 |`migrate`|データベースマイグレーション CLI|
 |`trivy`|脆弱性・設定ミスのスキャナー|
 |`actionlint`|GitHub Actions ワークフローの Lint|
+|`shellcheck`|シェルスクリプトの Lint|
 |`hadolint`|Dockerfile の Lint|
 |`gitleaks`|コミットされた認証情報を検出するシークレットスキャナー|
 |`godoc`|Go パッケージドキュメントの配信 / 生成|
@@ -35,7 +36,7 @@ Go 用のコード生成・lint・セキュリティ・ドキュメント生成�
 
 ## node_tools
 
-OpenAPI ドキュメント処理とポータルフロントエンドのバンドル用ツール：
+OpenAPI ドキュメント処理とポータル生成用のツール：
 
 |ツール|用途|
 |---|---|
@@ -43,9 +44,12 @@ OpenAPI ドキュメント処理とポータルフロントエンドのバンド
 |`markdownlint-cli2`|ドキュメント用の Markdown リンター（`make md-lint`）|
 |`@commitlint/cli`|コミットメッセージのリンター（`make commitlint`。`commit-msg` フックに配線）|
 |`js-yaml`|ポータルドキュメント生成スクリプト用の YAML 処理|
-|`esbuild`|ポータルフロントエンド（`docs/portal/src/main.jsx`）を `docs/portal/dist/` へバンドル（`make gen-portal-build`）|
-|`react` / `react-dom` / `marked` / `fuse.js` / `mermaid` / `highlight.js`|esbuild がバンドルするポータルフロントエンドの実行時ライブラリ（従来の CDN + ブラウザ内 Babel 構成を置き換え）。`mermaid` は `scripts/mermaid-lint.mjs` でも再利用し ` ```mermaid ` フェンスを構文検証する（`make md-lint`）。|
-|`linkedom`|`mermaid.parse` を Node で動かすためのヘッドレス DOM。Markdown 内 mermaid の構文 Lint（`scripts/mermaid-lint.mjs`）で使用|
+|`pnpm`|リポジトリ内の 2 つの Node パッケージを解決する。lockfile も `node_modules` もそれぞれ別で、`scripts/`（`/app/scripts/node_modules` へ install）と、ポータルフロントエンドを `docs/portal/` へビルドする `docs-viewer/`（`make gen-portal-build` / `make portal-test`）。|
+|`tsx`|リポジトリの TypeScript 補助スクリプト（`scripts/**/*.ts`）をビルドなしで実行する|
+|`typescript`|その型検査（`make scripts-typecheck`）|
+|`vitest`|補助スクリプトの判定ロジックの単体テスト（`make scripts-test`）|
+|`mermaid`|`scripts/mermaid-lint/index.ts` が ` ```mermaid ` フェンスを本物のパーサで構文検証するために使う（`make md-lint`）|
+|`linkedom`|`mermaid.parse` を Node で動かすためのヘッドレス DOM。Markdown 内 mermaid の構文 Lint（`scripts/mermaid-lint/index.ts`）で使用|
 
 ## python_tools
 
@@ -54,6 +58,11 @@ SQL リンティングツール：
 |ツール|用途|
 |---|---|
 |`sqlfluff`|migration / DML / seed ファイル用の SQL リンター|
+
+他の 2 つのステージと違い、ツール本体は `mise.toml` 由来ではありません。mise が入れるのは `uv` だけで、
+`sqlfluff` はその `uv` が [`python/sqlfluff.txt`](../../python/sqlfluff.txt) から `--require-hashes` 付きで
+install します。これにより推移依存まで含めてバージョンとハッシュが固定されます
+（[ADR-0080 (mise-ssot-drift-gate)](../../docs/adr/0080-mise-ssot-drift-gate.ja.md)）。
 
 ## docker-compose サービス
 
@@ -83,4 +92,5 @@ make gen-query  # sqlc コード生成
 
 - すべてのターゲットで作業ディレクトリは `/app`
 - Go ツールはビルダーステージでインストールし、ランタイムステージにコピーしてイメージサイズを最小化（`go_tools`）
-- ツールのバージョンは `mise.toml`（バージョンの SSOT）で固定 — 更新はそこで行い、ローカルと CI のイメージを一致させること
+- ツールのバージョンは `mise.toml`（バージョンの SSOT）で固定 — 更新はそこで行い、ローカルと CI のイメージを一致させること。PyPI のツールだけは例外で、詳細は上の [python_tools](#python_tools) を参照
+- このイメージが install する Node 依存を宣言するのは `scripts/` / `docs-viewer/` の 2 つ（それぞれ独自の `package.json` / `pnpm-lock.yaml` / `pnpm-workspace.yaml` を持つ）で、ビルドはそれぞれのマニフェストを本来の場所へコピーしてその場で install する。いずれもこのディレクトリには無いため、依存の変更は使う側のコードと並べてレビューされる

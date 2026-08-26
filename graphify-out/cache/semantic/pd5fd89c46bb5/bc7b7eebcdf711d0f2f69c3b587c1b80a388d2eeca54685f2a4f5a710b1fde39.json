@@ -1,0 +1,1 @@
+{"nodes": [{"id": "docs_adr_0066_idempotency_gc_separate_job_idempotency_gc_separate_job", "label": "Idempotency GC Separate Job", "file_type": "document", "source_file": "docs/adr/0066-idempotency-gc-separate-job.md", "source_location": null, "source_url": null, "captured_at": null, "author": null, "contributor": null}], "edges": [], "hyperedges": []}

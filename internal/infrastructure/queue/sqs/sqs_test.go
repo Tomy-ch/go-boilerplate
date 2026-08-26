@@ -587,3 +587,90 @@ func Test_deadLetter_Fail(t *testing.T) {
 		})
 	})
 }
+
+func Test_toMessage(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("属性_ReceiptHandle_ReceiveCount_MessageGroupIdを反映する", func(t *testing.T) {
+			t.Parallel()
+
+			got := toMessage(types.Message{
+				MessageId:     aws.String("id1"),
+				Body:          aws.String("hello"),
+				ReceiptHandle: aws.String("rh1"),
+				Attributes: map[string]string{
+					string(types.MessageSystemAttributeNameApproximateReceiveCount): "3",
+					string(types.MessageSystemAttributeNameMessageGroupId):          "grp",
+				},
+				MessageAttributes: map[string]types.MessageAttributeValue{
+					"traceparent": {DataType: aws.String(attrDataTypeString), StringValue: aws.String("tp-val")},
+				},
+			})
+
+			assert.Equal(t, "id1", got.ID)
+			assert.Equal(t, []byte("hello"), got.Body)
+			assert.Equal(t, 3, got.ReceiveCount)
+			assert.Equal(t, "grp", got.PartitionKey)
+			assert.Equal(t, "tp-val", got.Attributes["traceparent"])
+			assert.Equal(t, "rh1", got.Attributes[worker.AttrReceiptHandle])
+		})
+
+		t.Run("StringValueがnilの属性とReceiptHandleがnilは予約キーを付与しない", func(t *testing.T) {
+			t.Parallel()
+
+			got := toMessage(types.Message{
+				MessageId: aws.String("id1"),
+				Body:      aws.String("hello"),
+				MessageAttributes: map[string]types.MessageAttributeValue{
+					"traceparent": {DataType: aws.String(attrDataTypeString), StringValue: nil},
+				},
+			})
+
+			assert.NotContains(t, got.Attributes, "traceparent")
+			assert.NotContains(t, got.Attributes, worker.AttrReceiptHandle)
+		})
+
+		t.Run("ApproximateReceiveCountが無い場合ReceiveCountは0になる", func(t *testing.T) {
+			t.Parallel()
+
+			got := toMessage(types.Message{
+				MessageId: aws.String("id1"),
+				Body:      aws.String("hello"),
+			})
+
+			assert.Equal(t, 0, got.ReceiveCount)
+		})
+	})
+}
+
+func Test_visibilitySeconds(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("秒未満の端数は切り上げる", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, int32(3), visibilitySeconds(2*time.Second+1*time.Nanosecond))
+		})
+
+		t.Run("端数のない値はそのままの秒数を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, int32(30), visibilitySeconds(30*time.Second))
+		})
+
+		t.Run("サブ秒は即時再配送を避けるため下限1秒へ丸める", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, int32(1), visibilitySeconds(time.Millisecond))
+		})
+
+		t.Run("0以下の値も下限1秒へ丸める", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, int32(1), visibilitySeconds(0))
+			assert.Equal(t, int32(1), visibilitySeconds(-5*time.Second))
+		})
+	})
+}

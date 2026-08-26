@@ -1,5 +1,5 @@
 -- name: CompleteIdempotencyKey :execrows
--- 同一 tx 内で claimed → completed へ遷移し、結果 DTO(JSON) と HTTP ステータスを保存する。scope 必須（越境防止）。
+-- 同一 tx 内で claimed → completed へ遷移し、結果 DTO(JSON) と HTTP ステータスを保存する。scope 必須。
 UPDATE idempotency_keys
 SET
     status = 'completed',

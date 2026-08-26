@@ -1,0 +1,5 @@
+description: ファイルサイズが大きすぎます。
+content:
+  application/json:
+    schema:
+      $ref: '../ErrorResponse.yaml'

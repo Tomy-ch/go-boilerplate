@@ -51,7 +51,7 @@
 		<tr>
 			<td class="pkg-name" style="padding-left: 40px;"><a href="go-boilerplate/internal/apperror">apperror</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package apperror は、層の制約無くアプリケーション全体で使用できるエラーを定義します。
 			</td>
 		</tr>
 
@@ -70,72 +70,79 @@
 		</tr>
 
 		<tr>
+			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/cli/dbslot">dbslot</a></td>
+			<td class="pkg-synopsis">
+				Package dbslot は、複数の git worktree が単一共有 Postgres を per-worktree のデータベース （wt<N>_local / wt<N>_test）として貸し借りする DB スロットプールのコアロジックを提供します。
+			</td>
+		</tr>
+
+		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/cli/dumpschema">dumpschema</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package dumpschema は、DBスキーマのダンプと整形のコアロジックを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/cli/fixcollation">fixcollation</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package fixcollation は、PostgreSQL の照合順序不整合を修正するコアロジックを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/cli/job">job</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package job は、ジョブ実行のオーケストレーション（タイムアウト分岐・停止処理）のコアロジックを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/cli/mergedml">mergedml</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package mergedml は、DMLをマージして単一ファイルにまとめる機能を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/cli/migrate">migrate</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package migrate は、データベースマイグレーションのコアロジック（適用段数の分岐・無変更許容・dirty 復旧）を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/cli/outbox">outbox</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package outbox は、outbox relay の起動・グレースフルシャットダウンと replay 実行のコアロジックを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/cli/seed">seed</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package seed は、データベース初期データ投入のコアロジックを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/cli/server">server</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package server は、サーバー起動・グレースフルシャットダウンのコアロジックを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/cli/worker">worker</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package worker は、worker 実行のオーケストレーション（常駐・グレースフルストップ）のコアロジックを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 40px;"><a href="go-boilerplate/internal/config">config</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package config は、アプリケーションの設定を管理します。
 			</td>
 		</tr>
 
@@ -149,14 +156,14 @@
 		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/controller/conv">conv</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package conv は、controller 層で OpenAPI 生成型をドメイン型へ変換する境界ヘルパーを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/controller/ctxhelper">ctxhelper</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package ctxhelper provides request-scoped context value helpers.
 			</td>
 		</tr>
 
@@ -170,7 +177,7 @@
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/controller/error/response">response</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package response は、echoでのエラーレスポンスを生成するためのユーティリティを提供します。
 			</td>
 		</tr>
 
@@ -184,28 +191,28 @@
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/controller/handler/health">health</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package health は、サーバーのヘルスチェックのハンドラーを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/controller/handler/healthz">healthz</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package healthz は、サーバーのヘルスチェックのハンドラーを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/controller/handler/metrics">metrics</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package metrics は、メトリクス関連のハンドラを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/controller/handler/ready">ready</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package ready は、サーバーのレディネスチェックのハンドラーを提供します。
 			</td>
 		</tr>
 
@@ -219,35 +226,35 @@
 		<tr>
 			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/controller/handler/testkit/testassert">testassert</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package testassert は、テスト用のアサーションヘルパーを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/controller/handler/testkit/testauth">testauth</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package testauth は、テスト用の認証ヘルパーを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/controller/handler/testkit/testecho">testecho</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package testecho は、Echoフレームワークを使用したハンドラーのテストユーティリティを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/controller/handler/testkit/testspan">testspan</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package testspan は、テスト用のトレーススパンユーティリティを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/controller/handler/testkit/testuuid">testuuid</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package testuuid は、テスト用の UUID 生成ヘルパーを提供します。
 			</td>
 		</tr>
 
@@ -259,44 +266,205 @@
 		</tr>
 
 		<tr>
+			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/controller/handler/v1/addresses">addresses</a></td>
+			<td class="pkg-synopsis">
+				Package addresses は、/v1/addresses エンドポイントに関連するハンドラを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/controller/handler/v1/carts">carts</a></td>
+			<td class="pkg-synopsis">
+				Package carts は、/v1/carts エンドポイントに関連するハンドラを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 120px;"><a href="go-boilerplate/internal/controller/handler/v1/carts/items">items</a></td>
+			<td class="pkg-synopsis">
+				Package items は、/v1/carts/me/items エンドポイントに関連するハンドラを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 120px;"><a href="go-boilerplate/internal/controller/handler/v1/carts/merge">merge</a></td>
+			<td class="pkg-synopsis">
+				Package merge は、/v1/carts/me/merge エンドポイントに関連するハンドラを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/controller/handler/v1/dashboard">dashboard</a></td>
+			<td class="pkg-synopsis">
+				Package dashboard は、/v1/dashboard 配下のエンドポイントに関連するハンドラを提供します。
+			</td>
+		</tr>
+
+		<tr>
 			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/controller/handler/v1/exchangerate">exchangerate</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package exchangerate は、/v1/exchange-rates エンドポイントに関連するハンドラを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/controller/handler/v1/prefectures">prefectures</a></td>
+			<td class="pkg-synopsis">
+				Package prefectures は、/v1/prefectures エンドポイントに関連するハンドラを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/controller/handler/v1/products">products</a></td>
+			<td class="pkg-synopsis">
+				Package products は、/v1/products エンドポイントに関連するハンドラを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 120px;"><a href="go-boilerplate/internal/controller/handler/v1/products/categories">categories</a></td>
+			<td class="pkg-synopsis">
+				Package productcategories は、/v1/products/categories エンドポイントに関連するハンドラを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 120px;"><a href="go-boilerplate/internal/controller/handler/v1/products/count">count</a></td>
+			<td class="pkg-synopsis">
+				Package productcount は、/v1/products/count エンドポイントに関連するハンドラを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 120px;"><a href="go-boilerplate/internal/controller/handler/v1/products/detail">detail</a></td>
+			<td class="pkg-synopsis">
+				Package detail は、/v1/products/{productId} エンドポイントに関連するハンドラを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 120px;"><a href="go-boilerplate/internal/controller/handler/v1/products/lowstock">lowstock</a></td>
+			<td class="pkg-synopsis">
+				Package lowstock は、/v1/products/low-stock エンドポイントに関連するハンドラを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 120px;"><a href="go-boilerplate/internal/controller/handler/v1/products/ranking">ranking</a></td>
+			<td class="pkg-synopsis">
+				Package productranking は、/v1/products/ranking エンドポイントに関連するハンドラを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 120px;"><a href="go-boilerplate/internal/controller/handler/v1/products/statuses">statuses</a></td>
+			<td class="pkg-synopsis">
+				Package productstatuses は、/v1/products/statuses エンドポイントに関連するハンドラを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/controller/handler/v1/purchases">purchases</a></td>
+			<td class="pkg-synopsis">
+				Package purchases は、/v1/purchases エンドポイントに関連するハンドラを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 120px;"><a href="go-boilerplate/internal/controller/handler/v1/purchases/detail">detail</a></td>
+			<td class="pkg-synopsis">
+				Package detail は、GET /v1/purchases/{purchaseCode} エンドポイントに関連するハンドラを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 140px;"><a href="go-boilerplate/internal/controller/handler/v1/purchases/detail/cancel">cancel</a></td>
+			<td class="pkg-synopsis">
+				Package cancel は、PATCH /v1/purchases/{purchaseCode}/cancel エンドポイントに関連するハンドラを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 140px;"><a href="go-boilerplate/internal/controller/handler/v1/purchases/detail/deliver">deliver</a></td>
+			<td class="pkg-synopsis">
+				Package deliver は、PATCH /v1/purchases/{purchaseCode}/deliver エンドポイントに関連するハンドラを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 140px;"><a href="go-boilerplate/internal/controller/handler/v1/purchases/detail/pay">pay</a></td>
+			<td class="pkg-synopsis">
+				Package pay は、PATCH /v1/purchases/{purchaseCode}/pay エンドポイントに関連するハンドラを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 140px;"><a href="go-boilerplate/internal/controller/handler/v1/purchases/detail/ship">ship</a></td>
+			<td class="pkg-synopsis">
+				Package ship は、PATCH /v1/purchases/{purchaseCode}/ship エンドポイントに関連するハンドラを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 120px;"><a href="go-boilerplate/internal/controller/handler/v1/purchases/shippable">shippable</a></td>
+			<td class="pkg-synopsis">
+				Package shippable は、GET /v1/purchases/shippable エンドポイントに関連するハンドラを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/controller/handler/v1/users">users</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package users は、/v1/users エンドポイントに関連するハンドラを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 120px;"><a href="go-boilerplate/internal/controller/handler/v1/users/detail">detail</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package detail は、/v1/users/{userId} エンドポイントに関連するハンドラを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 120px;"><a href="go-boilerplate/internal/controller/handler/v1/users/feed">feed</a></td>
 			<td class="pkg-synopsis">
+				Package feed は、/v1/users/feed エンドポイントに関連するハンドラを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 120px;">me</td>
+			<td class="pkg-synopsis">
 				&nbsp;
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 140px;"><a href="go-boilerplate/internal/controller/handler/v1/users/me/purchases">purchases</a></td>
+			<td class="pkg-synopsis">
+				Package usersmepurchases は、/v1/users/me/purchases 配下のエンドポイントに関連するハンドラを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 140px;"><a href="go-boilerplate/internal/controller/handler/v1/users/me/roles">roles</a></td>
+			<td class="pkg-synopsis">
+				Package usersmeroles は、/v1/users/me/roles エンドポイントに関連するハンドラを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 120px;"><a href="go-boilerplate/internal/controller/handler/v1/users/search">search</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package search は、/v1/users/search エンドポイントに関連するハンドラを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/controller/handler/version">version</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package version パッケージは、アプリケーションのバージョン情報を提供します。
 			</td>
 		</tr>
 
@@ -310,245 +478,259 @@
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/controller/httpstack/basicauth">basicauth</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package basicauth は、Basic認証に関連するHTTPスタックの機能を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/controller/httpstack/bodylimit">bodylimit</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package bodylimit は、リクエストボディのサイズ上限ミドルウェアを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/controller/httpstack/cookie">cookie</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package cookie は、セキュアなCookie設定を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/controller/httpstack/cors">cors</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
-			</td>
-		</tr>
-
-		<tr>
-			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/controller/httpstack/debugmode">debugmode</a></td>
-			<td class="pkg-synopsis">
-				&nbsp;
+				Package cors は、CORS（Cross-Origin Resource Sharing）に関するミドルウェアを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/controller/httpstack/errorhandler">errorhandler</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package errorhandler は、HTTPエラーハンドリングに関する機能を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/controller/httpstack/forcejson">forcejson</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package forcejson は、特定のContent-Typeを強制的にapplication/jsonに設定します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/controller/httpstack/idempotency">idempotency</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package idempotency は、冪等性の入り口 middleware（oapi-codegen StrictMiddleware スロット用）を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/controller/httpstack/ipextractor">ipextractor</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package ipextractor は、IPアドレスの抽出に関する機能を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/controller/httpstack/logging">logging</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package logging は、HTTPリクエストログに関する定数を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/controller/httpstack/oapi">oapi</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package oapi は、OpenAPIに関連するHTTPスタックの機能を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/controller/httpstack/oapi/auth">auth</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package auth は認証に関連する設定を扱うパッケージです。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/controller/httpstack/oapi/skipper">skipper</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package skipper は、Oapiミドルウェアのスキッパー機能を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/controller/httpstack/oapi/validator">validator</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package validator は、OpenAPI 仕様(spec)を読み込み提供します（検証 mw 生成は oapi が担当）。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/controller/httpstack/observability">observability</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package observability は、オブザーバビリティに関する機能を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/controller/httpstack/ops">ops</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package ops は、運用系エンドポイントを識別するためのユーティリティを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/controller/httpstack/recovery">recovery</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package recovery は、パニックからのリカバリを行うミドルウェアです。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/controller/httpstack/redmetrics">redmetrics</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package redmetrics は、HTTP の RED（Rate / Errors / Duration）メトリクスを Echo ミドルウェアとして計測するための実装を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/controller/httpstack/requestid">requestid</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package requestid は、リクエストIDミドルウェアをラップするためのパッケージです。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/controller/httpstack/security">security</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package security は、セキュリティに関するミドルウェアを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/controller/httpstack/timeout">timeout</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package timeout は、リクエスト全体の deadline budget を設定するミドルウェアを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/controller/httpstack/uri">uri</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package uri は、URI制御のミドルウェアを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/controller/job">job</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package job は、ジョブ実行に関するコントローラを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/controller/job/idempotencygc">idempotencygc</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package idempotencygc は、TTL 失効した冪等性キーを削除する GC ジョブを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/controller/job/outboxgc">outboxgc</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package outboxgc は、retention を超えた published 済みの outbox エントリを削除する GC ジョブを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/controller/job/productimagegc">productimagegc</a></td>
+			<td class="pkg-synopsis">
+				Package productimagegc は、どの商品からも参照されていない商品画像オブジェクトを回収する GC ジョブを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/controller/job/usercount">usercount</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package usercount は、ユーザの件数をカウントするジョブを提供するパッケージです。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/controller/job/userpurge">userpurge</a></td>
+			<td class="pkg-synopsis">
+				Package userpurge は、退会から retention を過ぎたユーザーを物理削除するジョブを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/controller/outbox">outbox</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package outbox は、outbox を周期 poll して未 publish メッセージを送る relay engine を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/controller/server">server</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package server は、Echo サーバーの初期化と、HTTP リクエストのログ入力・クエリ/パスパラメータ抽出ユーティリティを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/controller/worker">worker</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package worker は、pull-ack クラスのキューを consume する worker engine を提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/controller/worker/withdrawalarchive">withdrawalarchive</a></td>
+			<td class="pkg-synopsis">
+				Package withdrawalarchive は、退会イベントを消費して退会証跡を保存する worker を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 40px;"><a href="go-boilerplate/internal/di">di</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package di は、依存性注入（DI）コンテナの中心的な役割を果たす機能を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/di/job">job</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package job は、ジョブ関連の依存性注入を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/di/job/hook">hook</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package hook は、ジョブのライフサイクルフックを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/di/lifecycle">lifecycle</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package lifecycle は、fx.Lifecycle を抽象化するテスト可能な Registrar インターフェースと、バックグラウンドランナーを fx ライフサイクルへ結線する SupervisedRunner プリミティブを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/di/module">module</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package module は、各レイヤの fx.Module（依存関係定義）を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/di/module/core">core</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package core は、HTTP ミドルウェア層で使用する Fx モジュール群を提供します。
 			</td>
 		</tr>
 
@@ -562,91 +744,84 @@
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/di/outboxrelay/hook">hook</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package hook は、outbox relay engine のライフサイクルフックを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/di/server">server</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package server は、Echoサーバーの初期化と設定を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/di/server/extension">extension</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package extension は、サーバー拡張機能の適用に関するユーティリティを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/di/server/extension/inbound">inbound</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package inbound は、サーバーのリクエストや入力時の拡張機能に関するDIモジュールを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/di/server/extension/instrumentation">instrumentation</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
-			</td>
-		</tr>
-
-		<tr>
-			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/di/server/extension/nonprod">nonprod</a></td>
-			<td class="pkg-synopsis">
-				&nbsp;
+				Package instrumentation は、サーバーの監視・計測に関するDIモジュールを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/di/server/extension/outbound">outbound</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package outbound は、サーバーの応答や出力時の拡張機能に関するDIモジュールを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/di/server/extension/security">security</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package security は、セキュリティ制御系のミドルウェアをDIコンテナに提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/di/server/extension/testkit">testkit</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package testkit は、di server extension のモジュールテスト用の共有ヘルパーを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/di/server/hook">hook</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package hook は、起動と停止のライフサイクルフックを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/di/shutdowner">shutdowner</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package shutdowner は、fx.Shutdowner を抽象化し、上位層を fx 依存から切り離すための薄いラッパを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/di/worker">worker</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package worker は、worker 関連の依存性注入を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/di/worker/hook">hook</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package hook は、worker のライフサイクルフックを提供します。
 			</td>
 		</tr>
 
@@ -658,16 +833,86 @@
 		</tr>
 
 		<tr>
-			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/domain/prefecture">prefecture</a></td>
+			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/domain/cart">cart</a></td>
+			<td class="pkg-synopsis">
+				Package cart は、カートドメインを定義します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 60px;">lexicon</td>
 			<td class="pkg-synopsis">
 				&nbsp;
 			</td>
 		</tr>
 
 		<tr>
-			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/domain/user">user</a></td>
+			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/domain/lexicon/money">money</a></td>
+			<td class="pkg-synopsis">
+				Package money は、金額の値オブジェクトを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/domain/prefecture">prefecture</a></td>
+			<td class="pkg-synopsis">
+				Package prefecture は、都道府県ドメインを定義します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/domain/product">product</a></td>
+			<td class="pkg-synopsis">
+				Package product は、商品ドメインを定義します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/domain/product/category">category</a></td>
+			<td class="pkg-synopsis">
+				Package category は、商品カテゴリドメインを定義します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/domain/product/status">status</a></td>
+			<td class="pkg-synopsis">
+				Package status は、商品ステータスマスタドメインを定義します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/domain/purchase">purchase</a></td>
+			<td class="pkg-synopsis">
+				Package purchase は、購入ドメインを定義します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 60px;">service</td>
 			<td class="pkg-synopsis">
 				&nbsp;
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/domain/service/dispatch">dispatch</a></td>
+			<td class="pkg-synopsis">
+				Package dispatch は、発送待ちの購入をまとめて発送してよい組へ分ける規則を表すドメインサービスです。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/domain/service/membership">membership</a></td>
+			<td class="pkg-synopsis">
+				Package membership は、ユーザーの在籍と購入の進行状態にまたがる規則を表すドメインサービスです。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/domain/user">user</a></td>
+			<td class="pkg-synopsis">
+				Package user は、ユーザードメインを定義します。
 			</td>
 		</tr>
 
@@ -686,9 +931,30 @@
 		</tr>
 
 		<tr>
+			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/infrastructure/auth/identity">identity</a></td>
+			<td class="pkg-synopsis">
+				Package identity は、外部アイデンティティ解決（IdentityResolver）の substrate 既定実装を提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/infrastructure/auth/jwt">jwt</a></td>
+			<td class="pkg-synopsis">
+				Package jwt は、access token（JWT）を検証する Authenticator 実装を提供します。
+			</td>
+		</tr>
+
+		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/infrastructure/auth/local">local</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package local はローカル開発用の認証基盤実装を提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/infrastructure/auth/useridentity">useridentity</a></td>
+			<td class="pkg-synopsis">
+				Package useridentity は、外部アイデンティティ（issuer + subject）を内部ユーザーへ解決する IdentityResolver の RDB 実装を提供します。
 			</td>
 		</tr>
 
@@ -702,21 +968,49 @@
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/infrastructure/authz/allowall">allowall</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package allowall は、すべての操作を許可する開発用の Authorizer 実装を提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/infrastructure/authz/userrole">userrole</a></td>
+			<td class="pkg-synopsis">
+				Package userrole は、user_roles テーブルに基づく Authorizer 実装を提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/infrastructure/awsclient">awsclient</a></td>
+			<td class="pkg-synopsis">
+				Package awsclient は、AWS SDK v2 クライアントに共通する組み立て — 資格情報の解決と、 API 呼び出し用 / 資格情報解決用に分けた HTTP クライアントの割り当て — を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/infrastructure/httpclient">httpclient</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package httpclient は、外部 HTTP 通信の resilient な substrate（driver 相当）を提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/infrastructure/objectstorage">objectstorage</a></td>
+			<td class="pkg-synopsis">
+				Package objectstorage は、オブジェクトストレージ境界（boundary.Storage）の実装を選ぶ唯一の場所です。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/infrastructure/objectstorage/s3">s3</a></td>
+			<td class="pkg-synopsis">
+				Package s3 は、オブジェクトストレージ境界（objectstorage.Storage）の S3 互換実装を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/infrastructure/publisher">publisher</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package publisher は、ドメインイベントの publish 境界（boundary publisher.Publisher）の HTTP 実装を提供します。
 			</td>
 		</tr>
 
@@ -730,7 +1024,7 @@
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/infrastructure/queue/sqs">sqs</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package sqs は、worker seam（Consumer / FailureHandler）と outbox の publish 境界 （Publisher）の AWS SQS 実装を提供します。
 			</td>
 		</tr>
 
@@ -742,23 +1036,37 @@
 		</tr>
 
 		<tr>
-			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/infrastructure/rdb/driver">driver</a></td>
+			<td class="pkg-name" style="padding-left: 80px;">command_service</td>
 			<td class="pkg-synopsis">
 				&nbsp;
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/infrastructure/rdb/command_service/purchase">purchase</a></td>
+			<td class="pkg-synopsis">
+				Package purchase は、購入 CommandService（command.CommandService）の RDB 実装を提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/infrastructure/rdb/driver">driver</a></td>
+			<td class="pkg-synopsis">
+				Package driver は、RDBの接続のための基盤的な機能を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/infrastructure/rdb/metrics">metrics</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package metrics は、RDBのコネクションプールの統計情報を収集するための機能を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/infrastructure/rdb/pgerror">pgerror</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package pgerror は、PostgreSQL エラー（SQLSTATE・接続断・context タイムアウト）をアプリケーションエラー（apperror）へ正規化する関数群と、retryable / lock-timeout / unavailable 判定述語を提供します。
 			</td>
 		</tr>
 
@@ -770,9 +1078,44 @@
 		</tr>
 
 		<tr>
-			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/infrastructure/rdb/query_service/user">user</a></td>
+			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/infrastructure/rdb/query_service/dashboard">dashboard</a></td>
+			<td class="pkg-synopsis">
+				Package dashboard は、admin ダッシュボード横断集計クエリサービス（query.DashboardQueryService）の RDB 実装を提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 100px;">product</td>
 			<td class="pkg-synopsis">
 				&nbsp;
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 120px;"><a href="go-boilerplate/internal/infrastructure/rdb/query_service/product/ranking">ranking</a></td>
+			<td class="pkg-synopsis">
+				Package ranking は、商品売上ランキングのクエリサービス実装を提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/infrastructure/rdb/query_service/purchase">purchase</a></td>
+			<td class="pkg-synopsis">
+				Package purchase は、購入詳細クエリサービス（query.PurchaseDetailQueryService）の RDB 実装を提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 120px;"><a href="go-boilerplate/internal/infrastructure/rdb/query_service/purchase/feed">feed</a></td>
+			<td class="pkg-synopsis">
+				Package feed は、購入履歴一覧クエリサービス（query.PurchaseFeedQueryService）の RDB 実装を提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 120px;"><a href="go-boilerplate/internal/infrastructure/rdb/query_service/purchase/summary">summary</a></td>
+			<td class="pkg-synopsis">
+				Package summary は、購入集計クエリサービス（query.PurchaseSummaryQueryService）の RDB 実装を提供します。
 			</td>
 		</tr>
 
@@ -784,23 +1127,58 @@
 		</tr>
 
 		<tr>
+			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/infrastructure/rdb/repository/cart">cart</a></td>
+			<td class="pkg-synopsis">
+				Package cart は、カートリポジトリ（cart.Repository）の RDB 実装を提供します。
+			</td>
+		</tr>
+
+		<tr>
 			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/infrastructure/rdb/repository/prefecture">prefecture</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package prefecture は、都道府県リポジトリ（prefecture.Repository）の RDB 実装を提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/infrastructure/rdb/repository/product">product</a></td>
+			<td class="pkg-synopsis">
+				Package product は、商品リポジトリ（product.Repository）の RDB 実装を提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/infrastructure/rdb/repository/product_category">product_category</a></td>
+			<td class="pkg-synopsis">
+				Package productcategory は、商品カテゴリリポジトリ（category.Repository）の RDB 実装を提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/infrastructure/rdb/repository/productstatus">productstatus</a></td>
+			<td class="pkg-synopsis">
+				Package productstatus は、商品ステータスリポジトリ（status.Repository）の RDB 実装を提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/infrastructure/rdb/repository/purchase">purchase</a></td>
+			<td class="pkg-synopsis">
+				Package purchase は、購入リポジトリ（purchase.Repository）の RDB 実装を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/infrastructure/rdb/repository/user">user</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package user は、ユーザーリポジトリ（user.Repository）の RDB 実装を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/infrastructure/rdb/sqlc">sqlc</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package sqlc は、LIKE/ILIKE クエリのパターン生成とエスケープのユーティリティを提供します。
 			</td>
 		</tr>
 
@@ -814,42 +1192,42 @@
 		<tr>
 			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/infrastructure/rdb/system_cqrs/healthcheck">healthcheck</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package healthcheck は、システムの健全性チェックに関するシステムクエリを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/infrastructure/rdb/system_cqrs/idempotency">idempotency</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package idempotency は、冪等性キーの永続化（boundary idempotency.Store）の RDB 実装を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/infrastructure/rdb/system_cqrs/outbox">outbox</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package outbox は、outbox テーブルの永続化（boundary outbox.Store）の RDB 実装を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/infrastructure/rdb/testkit">testkit</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
-			</td>
-		</tr>
-
-		<tr>
-			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/infrastructure/security">security</a></td>
-			<td class="pkg-synopsis">
-				&nbsp;
+				Package testkit は RDB のテスト用インスタンスを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/infrastructure/system">system</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package system は、システム全体で使用される共通のインフラストラクチャを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/infrastructure/token">token</a></td>
+			<td class="pkg-synopsis">
+				Package token は、トークン生成のインフラストラクチャ実装を提供します。
 			</td>
 		</tr>
 
@@ -861,9 +1239,16 @@
 		</tr>
 
 		<tr>
+			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/infrastructure/webapi/address">address</a></td>
+			<td class="pkg-synopsis">
+				Package address は、郵便番号住所補完 gateway の外部サービス実装を提供します。
+			</td>
+		</tr>
+
+		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/infrastructure/webapi/exchangerate">exchangerate</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package exchangerate は、為替レート gateway の外部サービス実装を提供します。
 			</td>
 		</tr>
 
@@ -877,14 +1262,14 @@
 		<tr>
 			<td class="pkg-name" style="padding-left: 40px;"><a href="go-boilerplate/internal/logging">logging</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package logging は、zap を基盤とする構造化ロギングの抽象を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 40px;"><a href="go-boilerplate/internal/observability">observability</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package observability は、OTel ベースの分散トレース・メトリクス・ログ計装ユーティリティを提供します。
 			</td>
 		</tr>
 
@@ -898,21 +1283,21 @@
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/observability/metrics/buildinfo">buildinfo</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package buildinfo は、アプリケーションのビルド・バージョン・ランタイム情報を Prometheus の info gauge (app_build_info) として公開する機能を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/observability/metrics/queue">queue</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package queue は、worker が対象とする broker queue の滞留量（depth / DLQ count）を Prometheus メトリクスとして公開する収集器を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 40px;"><a href="go-boilerplate/internal/system">system</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package system は、アプリケーションのバージョン情報を提供します。
 			</td>
 		</tr>
 
@@ -924,6 +1309,13 @@
 		</tr>
 
 		<tr>
+			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/usecase/address">address</a></td>
+			<td class="pkg-synopsis">
+				Package address は、郵便番号 lookup gateway を用いた住所補完ユースケースのサンプルです。
+			</td>
+		</tr>
+
+		<tr>
 			<td class="pkg-name" style="padding-left: 60px;">boundary</td>
 			<td class="pkg-synopsis">
 				&nbsp;
@@ -931,135 +1323,254 @@
 		</tr>
 
 		<tr>
+			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/boundary/address">address</a></td>
+			<td class="pkg-synopsis">
+				Package address は、外部の郵便番号 lookup サービスへの意味的 gateway を提供します。
+			</td>
+		</tr>
+
+		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/boundary/auth">auth</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package auth は認証に関連するインターフェースを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/boundary/authz">authz</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package authz は認可（authorization）を行うためのインターフェースを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/boundary/clock">clock</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package clock は、現在時刻の取得を抽象化するバウンダリインターフェースを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/usecase/boundary/clock/testkit">testkit</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package testkit は、clock バウンダリのテストに関連するユーティリティを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/boundary/exchangerate">exchangerate</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package exchangerate は、外部為替レート取得サービスへの意味的 gateway を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/boundary/idempotency">idempotency</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package idempotency は、冪等性キーの永続化境界（Store）を定義します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/boundary/job">job</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package job は、ジョブを管理・実行するためのコマンドを提供するためのパッケージです。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/boundary/objectstorage">objectstorage</a></td>
+			<td class="pkg-synopsis">
+				Package objectstorage は、オブジェクトストレージへの中立な保存境界（Storage）と vendor 非依存の入出力表現を定義します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/boundary/outbox">outbox</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package outbox は、トランザクショナル outbox の永続化境界（Store）を定義します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/boundary/publisher">publisher</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package publisher は、ドメインイベントの outbound publish 境界（Publisher）と publish 先非依存のメッセージ封筒を定義します。
 			</td>
 		</tr>
 
 		<tr>
-			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/boundary/security">security</a></td>
+			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/boundary/token">token</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package token は、不透明なトークン文字列の生成を抽象化するバウンダリインターフェースを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/boundary/tx">tx</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package tx は、トランザクションの管理を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/boundary/worker">worker</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package worker は、pull-ack クラスのキューを consume する worker の seam（port）と broker 非依存のメッセージ封筒を定義します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/usecase/boundary/worker/testkit">testkit</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package testkit は、worker seam（Consumer / FailureHandler）の in-memory テストダブルを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/usecase/cart">cart</a></td>
+			<td class="pkg-synopsis">
+				Package cart は、カートの参照ユースケースを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/usecase/checkout">checkout</a></td>
+			<td class="pkg-synopsis">
+				Package checkout は、購入の作成と表示通貨での参考換算額を組み合わせる合成ユースケースを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/usecase/dashboard">dashboard</a></td>
+			<td class="pkg-synopsis">
+				Package dashboard は、admin ダッシュボードの横断集計の参照ユースケースを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/dashboard/query">query</a></td>
+			<td class="pkg-synopsis">
+				Package query は、admin ダッシュボードの横断集計のクエリサービスインターフェースを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/usecase/exchangerate">exchangerate</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package exchangerate は、為替レート gateway を用いた換算ユースケースのサンプルです。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/usecase/healthcheck">healthcheck</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package healthcheck は、システムの健全性チェックに関するユースケースを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/healthcheck/query">query</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package query は、システムの健全性チェックに関するクエリを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/usecase/idempotency">idempotency</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package idempotency は、冪等性の at-most-once 実行と replay を行う Run[T] を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/usecase/outbox">outbox</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package outbox は、トランザクショナル outbox の emit / relay / GC / replay ユースケースを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/usecase/prefecture">prefecture</a></td>
+			<td class="pkg-synopsis">
+				Package prefecture は、都道府県マスタの参照ユースケースを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/usecase/product">product</a></td>
+			<td class="pkg-synopsis">
+				Package product は、商品の参照・作成ユースケースと商品画像アップロードユースケースを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/product/category">category</a></td>
+			<td class="pkg-synopsis">
+				Package category は、商品カテゴリマスタの参照ユースケースを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/product/ranking">ranking</a></td>
+			<td class="pkg-synopsis">
+				Package ranking は、商品売上ランキングの参照ユースケースを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/usecase/product/ranking/query">query</a></td>
+			<td class="pkg-synopsis">
+				Package query は、商品売上ランキングのクエリサービスインターフェースを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/product/status">status</a></td>
+			<td class="pkg-synopsis">
+				Package status は、商品ステータスマスタの参照ユースケースを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/usecase/purchase">purchase</a></td>
+			<td class="pkg-synopsis">
+				Package purchase は、購入の作成と状態遷移のユースケースを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/purchase/command">command</a></td>
+			<td class="pkg-synopsis">
+				Package command は、購入の書き込み操作（CommandService）のインターフェースを定義します（ADR-0032 (lightweight-cqrs)）。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/purchase/event">event</a></td>
+			<td class="pkg-synopsis">
+				Package event は、購入ユースケースが発行する outbox イベントの本文（自己完結 snapshot）と その marshal を提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/purchase/query">query</a></td>
+			<td class="pkg-synopsis">
+				Package query は、購入の読み取り専用クエリ（QueryService）のインターフェースと読み取りモデルを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/purchase/summary">summary</a></td>
+			<td class="pkg-synopsis">
+				Package summary は、認証主体自身の購入集計の参照ユースケースを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/usecase/testkit">testkit</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package testkit は、ユースケースのテストに関連するユーティリティを提供します。
 			</td>
 		</tr>
 
@@ -1071,37 +1582,58 @@
 		</tr>
 
 		<tr>
+			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/tools/money">money</a></td>
+			<td class="pkg-synopsis">
+				Package money は、Usecase 層のマネー計算ヘルパを提供します。
+			</td>
+		</tr>
+
+		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/tools/paging">paging</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package paging は、ページングの共通処理のための変換構造を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/tools/search">search</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package search は、検索関連のユースケースをサポートするユーティリティを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/tools/timewindow">timewindow</a></td>
+			<td class="pkg-synopsis">
+				Package timewindow は、集計・絞り込みの対象期間を表す半開区間を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/internal/usecase/user">user</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package user は、ユーザーに関するユースケースを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/user/event">event</a></td>
+			<td class="pkg-synopsis">
+				Package event は、ユーザーの outbox イベント payload を提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/user/role">role</a></td>
+			<td class="pkg-synopsis">
+				Package role は、認証主体自身に割り当てられたロールの参照ユースケースを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 80px;"><a href="go-boilerplate/internal/usecase/user/search">search</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
-			</td>
-		</tr>
-
-		<tr>
-			<td class="pkg-name" style="padding-left: 100px;"><a href="go-boilerplate/internal/usecase/user/search/query">query</a></td>
-			<td class="pkg-synopsis">
-				&nbsp;
+				Package search は、ユーザー検索に関するユースケースを提供します。
 			</td>
 		</tr>
 
@@ -1115,89 +1647,131 @@
 		<tr>
 			<td class="pkg-name" style="padding-left: 40px;"><a href="go-boilerplate/pkg/backoff">backoff</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package backoff は、指数バックオフの待機時間を算出するユーティリティです。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 40px;"><a href="go-boilerplate/pkg/datetime">datetime</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package datetime は、RFC3339、ISO 8601、YYYY-MM-DD HH:MM:SS などの形式の日時文字列を解析するユーティリティを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 40px;"><a href="go-boilerplate/pkg/decimal">decimal</a></td>
+			<td class="pkg-synopsis">
+				Package decimal は、金額・比率などの正確な十進量を扱う exact-decimal 値オブジェクトを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/pkg/decimal/testkit">testkit</a></td>
+			<td class="pkg-synopsis">
+				Package testkit は、decimal のテスト補助を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 40px;"><a href="go-boilerplate/pkg/envutil">envutil</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package envutil は、環境変数を扱うための小さなユーティリティを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 40px;"><a href="go-boilerplate/pkg/exec">exec</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package exec は、外部プロセス実行の薄いラッパーを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 40px;"><a href="go-boilerplate/pkg/fnmeta">fnmeta</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package fnmeta は、関数名やパッケージ名の抽出に関するユーティリティを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 40px;"><a href="go-boilerplate/pkg/fs">fs</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package fs は、ファイルシステム操作の薄いラッパーを提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 40px;"><a href="go-boilerplate/pkg/httpheader">httpheader</a></td>
+			<td class="pkg-synopsis">
+				Package httpheader は、HTTP ヘッダ名の判定を提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 40px;"><a href="go-boilerplate/pkg/patch">patch</a></td>
+			<td class="pkg-synopsis">
+				Package patch は、部分更新の入力が取りうる状態を表す値を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 40px;"><a href="go-boilerplate/pkg/ptr">ptr</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package ptr は、ポインタ操作に関するユーティリティを提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 40px;"><a href="go-boilerplate/pkg/retry">retry</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package retry は、失敗分類を消費する有限リトライの行動層です。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 40px;"><a href="go-boilerplate/pkg/safecast">safecast</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package safecast は、型変換の安全な関数を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 40px;"><a href="go-boilerplate/pkg/stringkit">stringkit</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package stringkit は、文字列の長さを検証するための関数を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 40px;"><a href="go-boilerplate/pkg/uuid">uuid</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package uuid は、UUIDを生成および操作するための機能を提供します。
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 60px;"><a href="go-boilerplate/pkg/uuid/testkit">testkit</a></td>
+			<td class="pkg-synopsis">
+				Package testkit は、uuid のテスト補助を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 40px;"><a href="go-boilerplate/pkg/xerrors">xerrors</a></td>
 			<td class="pkg-synopsis">
-				&nbsp;
+				Package xerrors は、StackTrace を含むエラーのラップ・判定・結合を提供します。
 			</td>
 		</tr>
 
 		<tr>
 			<td class="pkg-name" style="padding-left: 20px;">scripts</td>
+			<td class="pkg-synopsis">
+				&nbsp;
+			</td>
+		</tr>
+
+		<tr>
+			<td class="pkg-name" style="padding-left: 40px;">lib</td>
 			<td class="pkg-synopsis">
 				&nbsp;
 			</td>

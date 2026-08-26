@@ -29,7 +29,6 @@ type DTO struct {
 	DBHealthCheck   query.DBHealth
 }
 
-// usecase は、システムの健全性チェックに関するユースケースを提供します。
 type usecase struct {
 	tracer       observability.LayerTracer
 	clock        clock.Clock
@@ -51,7 +50,6 @@ func New(dbsq query.DBSystemCqrs, tf observability.TracerFactory, clock clock.Cl
 	}
 }
 
-// CheckHealth は、システムの健全性をチェックするユースケースです。
 func (u *usecase) CheckHealth(ctx context.Context) (*DTO, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()

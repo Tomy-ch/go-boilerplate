@@ -1,0 +1,9 @@
+name: maxQuantity
+in: query
+required: false
+description: 最高在庫数（この値以下）。
+schema:
+  type: integer
+  format: int32
+  minimum: 0
+example: 100

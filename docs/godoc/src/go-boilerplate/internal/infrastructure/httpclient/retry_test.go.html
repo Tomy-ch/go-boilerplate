@@ -172,172 +172,177 @@
 <span id="L115" class="ln">   115  </span>			t.Parallel()
 <span id="L116" class="ln">   116  </span>			assert.True(t, isRetryableOutcome(nil, errCircuitOpen))
 <span id="L117" class="ln">   117  </span>		})
-<span id="L118" class="ln">   118  </span>	})
-<span id="L119" class="ln">   119  </span>}
-<span id="L120" class="ln">   120  </span>
-<span id="L121" class="ln">   121  </span>func Test_computeBackoff(t *testing.T) {
-<span id="L122" class="ln">   122  </span>	t.Parallel()
-<span id="L123" class="ln">   123  </span>
-<span id="L124" class="ln">   124  </span>	profile := Profile{
-<span id="L125" class="ln">   125  </span>		BaseBackoff: 10 * time.Millisecond,
-<span id="L126" class="ln">   126  </span>		MaxBackoff:  1 * time.Second,
-<span id="L127" class="ln">   127  </span>	}
+<span id="L118" class="ln">   118  </span>
+<span id="L119" class="ln">   119  </span>		t.Run(&#34;レスポンス上限超過(errResponseTooLarge=ErrUnavailable内包)は決定的失敗なので対象外&#34;, func(t *testing.T) {
+<span id="L120" class="ln">   120  </span>			t.Parallel()
+<span id="L121" class="ln">   121  </span>			assert.False(t, isRetryableOutcome(nil, errResponseTooLarge))
+<span id="L122" class="ln">   122  </span>		})
+<span id="L123" class="ln">   123  </span>	})
+<span id="L124" class="ln">   124  </span>}
+<span id="L125" class="ln">   125  </span>
+<span id="L126" class="ln">   126  </span>func Test_computeBackoff(t *testing.T) {
+<span id="L127" class="ln">   127  </span>	t.Parallel()
 <span id="L128" class="ln">   128  </span>
-<span id="L129" class="ln">   129  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L130" class="ln">   130  </span>		t.Parallel()
-<span id="L131" class="ln">   131  </span>
-<span id="L132" class="ln">   132  </span>		t.Run(&#34;各attemptのバックオフが指数cap内のfull_jitter範囲に収まる&#34;, func(t *testing.T) {
-<span id="L133" class="ln">   133  </span>			t.Parallel()
-<span id="L134" class="ln">   134  </span>
-<span id="L135" class="ln">   135  </span>			for attempt := 1; attempt &lt;= 8; attempt++ {
-<span id="L136" class="ln">   136  </span>				upperBound := profile.BaseBackoff &lt;&lt; (attempt - 1)
-<span id="L137" class="ln">   137  </span>				if upperBound &lt;= 0 || upperBound &gt; profile.MaxBackoff {
-<span id="L138" class="ln">   138  </span>					upperBound = profile.MaxBackoff
-<span id="L139" class="ln">   139  </span>				}
-<span id="L140" class="ln">   140  </span>
-<span id="L141" class="ln">   141  </span>				<span class="comment">// jitter は乱数のため複数回試行して常に [0, upperBound] に収まることを確認する。</span>
-<span id="L142" class="ln">   142  </span>				for range 50 {
-<span id="L143" class="ln">   143  </span>					got := computeBackoff(attempt, profile)
-<span id="L144" class="ln">   144  </span>					assert.GreaterOrEqual(t, got, time.Duration(0))
-<span id="L145" class="ln">   145  </span>					assert.LessOrEqual(t, got, upperBound)
-<span id="L146" class="ln">   146  </span>				}
-<span id="L147" class="ln">   147  </span>			}
-<span id="L148" class="ln">   148  </span>		})
-<span id="L149" class="ln">   149  </span>
-<span id="L150" class="ln">   150  </span>		t.Run(&#34;attemptが0以下でも1として扱う&#34;, func(t *testing.T) {
-<span id="L151" class="ln">   151  </span>			t.Parallel()
-<span id="L152" class="ln">   152  </span>
-<span id="L153" class="ln">   153  </span>			got := computeBackoff(0, profile)
-<span id="L154" class="ln">   154  </span>			assert.GreaterOrEqual(t, got, time.Duration(0))
-<span id="L155" class="ln">   155  </span>			assert.LessOrEqual(t, got, profile.BaseBackoff)
-<span id="L156" class="ln">   156  </span>		})
-<span id="L157" class="ln">   157  </span>	})
-<span id="L158" class="ln">   158  </span>}
-<span id="L159" class="ln">   159  </span>
-<span id="L160" class="ln">   160  </span>func Test_retryWait(t *testing.T) {
-<span id="L161" class="ln">   161  </span>	t.Parallel()
-<span id="L162" class="ln">   162  </span>
-<span id="L163" class="ln">   163  </span>	profile := Profile{
-<span id="L164" class="ln">   164  </span>		BaseBackoff: 10 * time.Millisecond,
-<span id="L165" class="ln">   165  </span>		MaxBackoff:  time.Second,
-<span id="L166" class="ln">   166  </span>	}
+<span id="L129" class="ln">   129  </span>	profile := Profile{
+<span id="L130" class="ln">   130  </span>		BaseBackoff: 10 * time.Millisecond,
+<span id="L131" class="ln">   131  </span>		MaxBackoff:  1 * time.Second,
+<span id="L132" class="ln">   132  </span>	}
+<span id="L133" class="ln">   133  </span>
+<span id="L134" class="ln">   134  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L135" class="ln">   135  </span>		t.Parallel()
+<span id="L136" class="ln">   136  </span>
+<span id="L137" class="ln">   137  </span>		t.Run(&#34;各attemptのバックオフが指数cap内のfull_jitter範囲に収まる&#34;, func(t *testing.T) {
+<span id="L138" class="ln">   138  </span>			t.Parallel()
+<span id="L139" class="ln">   139  </span>
+<span id="L140" class="ln">   140  </span>			for attempt := 1; attempt &lt;= 8; attempt++ {
+<span id="L141" class="ln">   141  </span>				upperBound := profile.BaseBackoff &lt;&lt; (attempt - 1)
+<span id="L142" class="ln">   142  </span>				if upperBound &lt;= 0 || upperBound &gt; profile.MaxBackoff {
+<span id="L143" class="ln">   143  </span>					upperBound = profile.MaxBackoff
+<span id="L144" class="ln">   144  </span>				}
+<span id="L145" class="ln">   145  </span>
+<span id="L146" class="ln">   146  </span>				<span class="comment">// jitter は乱数のため複数回試行して常に [0, upperBound] に収まることを確認する。</span>
+<span id="L147" class="ln">   147  </span>				for range 50 {
+<span id="L148" class="ln">   148  </span>					got := computeBackoff(attempt, profile)
+<span id="L149" class="ln">   149  </span>					assert.GreaterOrEqual(t, got, time.Duration(0))
+<span id="L150" class="ln">   150  </span>					assert.LessOrEqual(t, got, upperBound)
+<span id="L151" class="ln">   151  </span>				}
+<span id="L152" class="ln">   152  </span>			}
+<span id="L153" class="ln">   153  </span>		})
+<span id="L154" class="ln">   154  </span>
+<span id="L155" class="ln">   155  </span>		t.Run(&#34;attemptが0以下でも1として扱う&#34;, func(t *testing.T) {
+<span id="L156" class="ln">   156  </span>			t.Parallel()
+<span id="L157" class="ln">   157  </span>
+<span id="L158" class="ln">   158  </span>			got := computeBackoff(0, profile)
+<span id="L159" class="ln">   159  </span>			assert.GreaterOrEqual(t, got, time.Duration(0))
+<span id="L160" class="ln">   160  </span>			assert.LessOrEqual(t, got, profile.BaseBackoff)
+<span id="L161" class="ln">   161  </span>		})
+<span id="L162" class="ln">   162  </span>	})
+<span id="L163" class="ln">   163  </span>}
+<span id="L164" class="ln">   164  </span>
+<span id="L165" class="ln">   165  </span>func Test_retryWait(t *testing.T) {
+<span id="L166" class="ln">   166  </span>	t.Parallel()
 <span id="L167" class="ln">   167  </span>
-<span id="L168" class="ln">   168  </span>	now := time.Unix(1000, 0).UTC()
-<span id="L169" class="ln">   169  </span>
-<span id="L170" class="ln">   170  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L171" class="ln">   171  </span>		t.Parallel()
+<span id="L168" class="ln">   168  </span>	profile := Profile{
+<span id="L169" class="ln">   169  </span>		BaseBackoff: 10 * time.Millisecond,
+<span id="L170" class="ln">   170  </span>		MaxBackoff:  time.Second,
+<span id="L171" class="ln">   171  </span>	}
 <span id="L172" class="ln">   172  </span>
-<span id="L173" class="ln">   173  </span>		t.Run(&#34;respがnilならバックオフ範囲の待機時間を返す&#34;, func(t *testing.T) {
-<span id="L174" class="ln">   174  </span>			t.Parallel()
-<span id="L175" class="ln">   175  </span>
-<span id="L176" class="ln">   176  </span>			<span class="comment">// jitter があるため複数回試行し attempt1 の cap 範囲に収まることを確認する。</span>
-<span id="L177" class="ln">   177  </span>			for range 50 {
-<span id="L178" class="ln">   178  </span>				got := retryWait(1, profile, nil, now)
-<span id="L179" class="ln">   179  </span>				assert.GreaterOrEqual(t, got, time.Duration(0))
-<span id="L180" class="ln">   180  </span>				assert.LessOrEqual(t, got, profile.BaseBackoff)
-<span id="L181" class="ln">   181  </span>			}
-<span id="L182" class="ln">   182  </span>		})
-<span id="L183" class="ln">   183  </span>
-<span id="L184" class="ln">   184  </span>		t.Run(&#34;respはあるがRetry-After不在ならバックオフ範囲の待機時間を返す&#34;, func(t *testing.T) {
-<span id="L185" class="ln">   185  </span>			t.Parallel()
-<span id="L186" class="ln">   186  </span>
-<span id="L187" class="ln">   187  </span>			resp := &amp;Response{StatusCode: 503, Header: Header{}}
-<span id="L188" class="ln">   188  </span>			for range 50 {
-<span id="L189" class="ln">   189  </span>				got := retryWait(1, profile, resp, now)
-<span id="L190" class="ln">   190  </span>				assert.GreaterOrEqual(t, got, time.Duration(0))
-<span id="L191" class="ln">   191  </span>				assert.LessOrEqual(t, got, profile.BaseBackoff)
-<span id="L192" class="ln">   192  </span>			}
-<span id="L193" class="ln">   193  </span>		})
-<span id="L194" class="ln">   194  </span>
-<span id="L195" class="ln">   195  </span>		t.Run(&#34;Retry-Afterがあればバックオフより優先する&#34;, func(t *testing.T) {
-<span id="L196" class="ln">   196  </span>			t.Parallel()
-<span id="L197" class="ln">   197  </span>
-<span id="L198" class="ln">   198  </span>			resp := &amp;Response{StatusCode: 503, Header: Header{retryAfterHeader: {&#34;5&#34;}}}
-<span id="L199" class="ln">   199  </span>			got := retryWait(1, profile, resp, now)
-<span id="L200" class="ln">   200  </span>			assert.Equal(t, 5*time.Second, got) <span class="comment">// バックオフ(&lt;=10ms)ではなく Retry-After(5s)</span>
-<span id="L201" class="ln">   201  </span>		})
+<span id="L173" class="ln">   173  </span>	now := time.Unix(1000, 0).UTC()
+<span id="L174" class="ln">   174  </span>
+<span id="L175" class="ln">   175  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L176" class="ln">   176  </span>		t.Parallel()
+<span id="L177" class="ln">   177  </span>
+<span id="L178" class="ln">   178  </span>		t.Run(&#34;respがnilならバックオフ範囲の待機時間を返す&#34;, func(t *testing.T) {
+<span id="L179" class="ln">   179  </span>			t.Parallel()
+<span id="L180" class="ln">   180  </span>
+<span id="L181" class="ln">   181  </span>			<span class="comment">// jitter があるため複数回試行し attempt1 の cap 範囲に収まることを確認する。</span>
+<span id="L182" class="ln">   182  </span>			for range 50 {
+<span id="L183" class="ln">   183  </span>				got := retryWait(1, profile, nil, now)
+<span id="L184" class="ln">   184  </span>				assert.GreaterOrEqual(t, got, time.Duration(0))
+<span id="L185" class="ln">   185  </span>				assert.LessOrEqual(t, got, profile.BaseBackoff)
+<span id="L186" class="ln">   186  </span>			}
+<span id="L187" class="ln">   187  </span>		})
+<span id="L188" class="ln">   188  </span>
+<span id="L189" class="ln">   189  </span>		t.Run(&#34;respはあるがRetry-After不在ならバックオフ範囲の待機時間を返す&#34;, func(t *testing.T) {
+<span id="L190" class="ln">   190  </span>			t.Parallel()
+<span id="L191" class="ln">   191  </span>
+<span id="L192" class="ln">   192  </span>			resp := &amp;Response{StatusCode: 503, Header: Header{}}
+<span id="L193" class="ln">   193  </span>			for range 50 {
+<span id="L194" class="ln">   194  </span>				got := retryWait(1, profile, resp, now)
+<span id="L195" class="ln">   195  </span>				assert.GreaterOrEqual(t, got, time.Duration(0))
+<span id="L196" class="ln">   196  </span>				assert.LessOrEqual(t, got, profile.BaseBackoff)
+<span id="L197" class="ln">   197  </span>			}
+<span id="L198" class="ln">   198  </span>		})
+<span id="L199" class="ln">   199  </span>
+<span id="L200" class="ln">   200  </span>		t.Run(&#34;Retry-Afterがあればバックオフより優先する&#34;, func(t *testing.T) {
+<span id="L201" class="ln">   201  </span>			t.Parallel()
 <span id="L202" class="ln">   202  </span>
-<span id="L203" class="ln">   203  </span>		t.Run(&#34;HTTP-date形式のRetry-Afterは固定時刻との差分を待機時間とする&#34;, func(t *testing.T) {
-<span id="L204" class="ln">   204  </span>			t.Parallel()
-<span id="L205" class="ln">   205  </span>
-<span id="L206" class="ln">   206  </span>			future := now.Add(7 * time.Second).Format(http.TimeFormat)
-<span id="L207" class="ln">   207  </span>			resp := &amp;Response{StatusCode: 503, Header: Header{retryAfterHeader: {future}}}
-<span id="L208" class="ln">   208  </span>			got := retryWait(1, profile, resp, now)
-<span id="L209" class="ln">   209  </span>			assert.Equal(t, 7*time.Second, got) <span class="comment">// 渡した now を基準に決定論的に算出する</span>
-<span id="L210" class="ln">   210  </span>		})
-<span id="L211" class="ln">   211  </span>	})
-<span id="L212" class="ln">   212  </span>}
-<span id="L213" class="ln">   213  </span>
-<span id="L214" class="ln">   214  </span>func Test_retryAfter(t *testing.T) {
-<span id="L215" class="ln">   215  </span>	t.Parallel()
-<span id="L216" class="ln">   216  </span>
-<span id="L217" class="ln">   217  </span>	now := time.Unix(1000, 0).UTC()
+<span id="L203" class="ln">   203  </span>			resp := &amp;Response{StatusCode: 503, Header: Header{retryAfterHeader: {&#34;5&#34;}}}
+<span id="L204" class="ln">   204  </span>			got := retryWait(1, profile, resp, now)
+<span id="L205" class="ln">   205  </span>			assert.Equal(t, 5*time.Second, got) <span class="comment">// バックオフ(&lt;=10ms)ではなく Retry-After(5s)</span>
+<span id="L206" class="ln">   206  </span>		})
+<span id="L207" class="ln">   207  </span>
+<span id="L208" class="ln">   208  </span>		t.Run(&#34;HTTP-date形式のRetry-Afterは固定時刻との差分を待機時間とする&#34;, func(t *testing.T) {
+<span id="L209" class="ln">   209  </span>			t.Parallel()
+<span id="L210" class="ln">   210  </span>
+<span id="L211" class="ln">   211  </span>			future := now.Add(7 * time.Second).Format(http.TimeFormat)
+<span id="L212" class="ln">   212  </span>			resp := &amp;Response{StatusCode: 503, Header: Header{retryAfterHeader: {future}}}
+<span id="L213" class="ln">   213  </span>			got := retryWait(1, profile, resp, now)
+<span id="L214" class="ln">   214  </span>			assert.Equal(t, 7*time.Second, got) <span class="comment">// 渡した now を基準に決定論的に算出する</span>
+<span id="L215" class="ln">   215  </span>		})
+<span id="L216" class="ln">   216  </span>	})
+<span id="L217" class="ln">   217  </span>}
 <span id="L218" class="ln">   218  </span>
-<span id="L219" class="ln">   219  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L220" class="ln">   220  </span>		t.Parallel()
+<span id="L219" class="ln">   219  </span>func Test_retryAfter(t *testing.T) {
+<span id="L220" class="ln">   220  </span>	t.Parallel()
 <span id="L221" class="ln">   221  </span>
-<span id="L222" class="ln">   222  </span>		t.Run(&#34;delay-seconds形式を秒数として解釈する&#34;, func(t *testing.T) {
-<span id="L223" class="ln">   223  </span>			t.Parallel()
-<span id="L224" class="ln">   224  </span>
-<span id="L225" class="ln">   225  </span>			d, ok := retryAfter(Header{retryAfterHeader: {&#34;3&#34;}}, now)
-<span id="L226" class="ln">   226  </span>			require.True(t, ok)
-<span id="L227" class="ln">   227  </span>			assert.Equal(t, 3*time.Second, d)
-<span id="L228" class="ln">   228  </span>		})
+<span id="L222" class="ln">   222  </span>	now := time.Unix(1000, 0).UTC()
+<span id="L223" class="ln">   223  </span>
+<span id="L224" class="ln">   224  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L225" class="ln">   225  </span>		t.Parallel()
+<span id="L226" class="ln">   226  </span>
+<span id="L227" class="ln">   227  </span>		t.Run(&#34;delay-seconds形式を秒数として解釈する&#34;, func(t *testing.T) {
+<span id="L228" class="ln">   228  </span>			t.Parallel()
 <span id="L229" class="ln">   229  </span>
-<span id="L230" class="ln">   230  </span>		t.Run(&#34;HTTP-date形式は現在時刻との差分として解釈する&#34;, func(t *testing.T) {
-<span id="L231" class="ln">   231  </span>			t.Parallel()
-<span id="L232" class="ln">   232  </span>
-<span id="L233" class="ln">   233  </span>			future := now.Add(5 * time.Second).Format(http.TimeFormat)
-<span id="L234" class="ln">   234  </span>			d, ok := retryAfter(Header{retryAfterHeader: {future}}, now)
-<span id="L235" class="ln">   235  </span>			require.True(t, ok)
-<span id="L236" class="ln">   236  </span>			assert.Equal(t, 5*time.Second, d)
-<span id="L237" class="ln">   237  </span>		})
-<span id="L238" class="ln">   238  </span>
-<span id="L239" class="ln">   239  </span>		t.Run(&#34;過去のHTTP-dateは0として扱う&#34;, func(t *testing.T) {
-<span id="L240" class="ln">   240  </span>			t.Parallel()
-<span id="L241" class="ln">   241  </span>
-<span id="L242" class="ln">   242  </span>			past := now.Add(-5 * time.Second).Format(http.TimeFormat)
-<span id="L243" class="ln">   243  </span>			d, ok := retryAfter(Header{retryAfterHeader: {past}}, now)
-<span id="L244" class="ln">   244  </span>			require.True(t, ok)
-<span id="L245" class="ln">   245  </span>			assert.Equal(t, time.Duration(0), d)
-<span id="L246" class="ln">   246  </span>		})
-<span id="L247" class="ln">   247  </span>	})
-<span id="L248" class="ln">   248  </span>
-<span id="L249" class="ln">   249  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L250" class="ln">   250  </span>		t.Parallel()
-<span id="L251" class="ln">   251  </span>
-<span id="L252" class="ln">   252  </span>		t.Run(&#34;ヘッダ不在_はfalseを返す&#34;, func(t *testing.T) {
-<span id="L253" class="ln">   253  </span>			t.Parallel()
-<span id="L254" class="ln">   254  </span>			_, ok := retryAfter(nil, now)
-<span id="L255" class="ln">   255  </span>			assert.False(t, ok)
-<span id="L256" class="ln">   256  </span>		})
-<span id="L257" class="ln">   257  </span>
-<span id="L258" class="ln">   258  </span>		t.Run(&#34;キー無し_はfalseを返す&#34;, func(t *testing.T) {
-<span id="L259" class="ln">   259  </span>			t.Parallel()
-<span id="L260" class="ln">   260  </span>			_, ok := retryAfter(Header{&#34;X-Other&#34;: {&#34;1&#34;}}, now)
-<span id="L261" class="ln">   261  </span>			assert.False(t, ok)
-<span id="L262" class="ln">   262  </span>		})
-<span id="L263" class="ln">   263  </span>
-<span id="L264" class="ln">   264  </span>		t.Run(&#34;空文字_はfalseを返す&#34;, func(t *testing.T) {
-<span id="L265" class="ln">   265  </span>			t.Parallel()
-<span id="L266" class="ln">   266  </span>			_, ok := retryAfter(Header{retryAfterHeader: {&#34;&#34;}}, now)
-<span id="L267" class="ln">   267  </span>			assert.False(t, ok)
-<span id="L268" class="ln">   268  </span>		})
-<span id="L269" class="ln">   269  </span>
-<span id="L270" class="ln">   270  </span>		t.Run(&#34;負の秒数_はfalseを返す&#34;, func(t *testing.T) {
-<span id="L271" class="ln">   271  </span>			t.Parallel()
-<span id="L272" class="ln">   272  </span>			_, ok := retryAfter(Header{retryAfterHeader: {&#34;-1&#34;}}, now)
-<span id="L273" class="ln">   273  </span>			assert.False(t, ok)
-<span id="L274" class="ln">   274  </span>		})
-<span id="L275" class="ln">   275  </span>
-<span id="L276" class="ln">   276  </span>		t.Run(&#34;解釈不能な文字列_はfalseを返す&#34;, func(t *testing.T) {
-<span id="L277" class="ln">   277  </span>			t.Parallel()
-<span id="L278" class="ln">   278  </span>			_, ok := retryAfter(Header{retryAfterHeader: {&#34;soon&#34;}}, now)
-<span id="L279" class="ln">   279  </span>			assert.False(t, ok)
-<span id="L280" class="ln">   280  </span>		})
-<span id="L281" class="ln">   281  </span>	})
-<span id="L282" class="ln">   282  </span>}
-<span id="L283" class="ln">   283  </span>
+<span id="L230" class="ln">   230  </span>			d, ok := retryAfter(Header{retryAfterHeader: {&#34;3&#34;}}, now)
+<span id="L231" class="ln">   231  </span>			require.True(t, ok)
+<span id="L232" class="ln">   232  </span>			assert.Equal(t, 3*time.Second, d)
+<span id="L233" class="ln">   233  </span>		})
+<span id="L234" class="ln">   234  </span>
+<span id="L235" class="ln">   235  </span>		t.Run(&#34;HTTP-date形式は現在時刻との差分として解釈する&#34;, func(t *testing.T) {
+<span id="L236" class="ln">   236  </span>			t.Parallel()
+<span id="L237" class="ln">   237  </span>
+<span id="L238" class="ln">   238  </span>			future := now.Add(5 * time.Second).Format(http.TimeFormat)
+<span id="L239" class="ln">   239  </span>			d, ok := retryAfter(Header{retryAfterHeader: {future}}, now)
+<span id="L240" class="ln">   240  </span>			require.True(t, ok)
+<span id="L241" class="ln">   241  </span>			assert.Equal(t, 5*time.Second, d)
+<span id="L242" class="ln">   242  </span>		})
+<span id="L243" class="ln">   243  </span>
+<span id="L244" class="ln">   244  </span>		t.Run(&#34;過去のHTTP-dateは0として扱う&#34;, func(t *testing.T) {
+<span id="L245" class="ln">   245  </span>			t.Parallel()
+<span id="L246" class="ln">   246  </span>
+<span id="L247" class="ln">   247  </span>			past := now.Add(-5 * time.Second).Format(http.TimeFormat)
+<span id="L248" class="ln">   248  </span>			d, ok := retryAfter(Header{retryAfterHeader: {past}}, now)
+<span id="L249" class="ln">   249  </span>			require.True(t, ok)
+<span id="L250" class="ln">   250  </span>			assert.Equal(t, time.Duration(0), d)
+<span id="L251" class="ln">   251  </span>		})
+<span id="L252" class="ln">   252  </span>	})
+<span id="L253" class="ln">   253  </span>
+<span id="L254" class="ln">   254  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L255" class="ln">   255  </span>		t.Parallel()
+<span id="L256" class="ln">   256  </span>
+<span id="L257" class="ln">   257  </span>		t.Run(&#34;ヘッダ不在_はfalseを返す&#34;, func(t *testing.T) {
+<span id="L258" class="ln">   258  </span>			t.Parallel()
+<span id="L259" class="ln">   259  </span>			_, ok := retryAfter(nil, now)
+<span id="L260" class="ln">   260  </span>			assert.False(t, ok)
+<span id="L261" class="ln">   261  </span>		})
+<span id="L262" class="ln">   262  </span>
+<span id="L263" class="ln">   263  </span>		t.Run(&#34;キー無し_はfalseを返す&#34;, func(t *testing.T) {
+<span id="L264" class="ln">   264  </span>			t.Parallel()
+<span id="L265" class="ln">   265  </span>			_, ok := retryAfter(Header{&#34;X-Other&#34;: {&#34;1&#34;}}, now)
+<span id="L266" class="ln">   266  </span>			assert.False(t, ok)
+<span id="L267" class="ln">   267  </span>		})
+<span id="L268" class="ln">   268  </span>
+<span id="L269" class="ln">   269  </span>		t.Run(&#34;空文字_はfalseを返す&#34;, func(t *testing.T) {
+<span id="L270" class="ln">   270  </span>			t.Parallel()
+<span id="L271" class="ln">   271  </span>			_, ok := retryAfter(Header{retryAfterHeader: {&#34;&#34;}}, now)
+<span id="L272" class="ln">   272  </span>			assert.False(t, ok)
+<span id="L273" class="ln">   273  </span>		})
+<span id="L274" class="ln">   274  </span>
+<span id="L275" class="ln">   275  </span>		t.Run(&#34;負の秒数_はfalseを返す&#34;, func(t *testing.T) {
+<span id="L276" class="ln">   276  </span>			t.Parallel()
+<span id="L277" class="ln">   277  </span>			_, ok := retryAfter(Header{retryAfterHeader: {&#34;-1&#34;}}, now)
+<span id="L278" class="ln">   278  </span>			assert.False(t, ok)
+<span id="L279" class="ln">   279  </span>		})
+<span id="L280" class="ln">   280  </span>
+<span id="L281" class="ln">   281  </span>		t.Run(&#34;解釈不能な文字列_はfalseを返す&#34;, func(t *testing.T) {
+<span id="L282" class="ln">   282  </span>			t.Parallel()
+<span id="L283" class="ln">   283  </span>			_, ok := retryAfter(Header{retryAfterHeader: {&#34;soon&#34;}}, now)
+<span id="L284" class="ln">   284  </span>			assert.False(t, ok)
+<span id="L285" class="ln">   285  </span>		})
+<span id="L286" class="ln">   286  </span>	})
+<span id="L287" class="ln">   287  </span>}
+<span id="L288" class="ln">   288  </span>
 </pre><p><a href="../../../../../src/go-boilerplate/internal/infrastructure/httpclient/retry_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

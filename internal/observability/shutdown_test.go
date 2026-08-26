@@ -67,7 +67,7 @@ func TestNewProviderShutdowner(t *testing.T) {
 	})
 }
 
-func TestProviderShutdowner_Shutdown(t *testing.T) {
+func Test_providerShutdowner_Shutdown(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -152,7 +152,6 @@ func TestProviderShutdowner_Shutdown(t *testing.T) {
 
 			err := NewProviderShutdowner(tp, mp, lp).Shutdown(context.Background())
 
-			// errors.Join により tp/mp/lp 全ての Shutdown エラーが 1 つに集約されることを確認する。
 			require.ErrorIs(t, err, tpErr)
 			require.ErrorIs(t, err, mpErr)
 			require.ErrorIs(t, err, lpErr)

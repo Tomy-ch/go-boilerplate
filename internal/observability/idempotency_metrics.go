@@ -19,9 +19,10 @@ const idempotencyGCJob = "idempotency_gc"
 // 高カーディナリティ・秘匿値（Idempotency-Key / scope / fingerprint / PII / raw error）は
 // ラベルに載せません。許可ラベルは operation_id / result / phase / job のみです。
 type IdempotencyMetrics struct {
-	requests       metric.Int64Counter
-	failures       metric.Int64Counter
-	expiredCleanup metric.Int64Counter
+	requests              metric.Int64Counter
+	failures              metric.Int64Counter
+	expiredCleanup        metric.Int64Counter
+	expiredCleanupFailure metric.Int64Counter
 }
 
 // NewIdempotencyMetrics は、注入された MeterProvider から冪等性計装一式を生成します。
@@ -29,9 +30,10 @@ type IdempotencyMetrics struct {
 func NewIdempotencyMetrics(mp metric.MeterProvider) (*IdempotencyMetrics, error) {
 	b := &meterBuilder{m: mp.Meter(idempotencyMeterName)}
 	im := &IdempotencyMetrics{
-		requests:       b.counter("idempotency.requests", "冪等性判定結果数(result=hit/miss/conflict/fingerprint_mismatch 別)"),
-		failures:       b.counter("idempotency.failures", "冪等性の内部失敗数(phase=claim/complete/gc_cleanup 別)"),
-		expiredCleanup: b.counter("idempotency.expired_cleanup", "GC が削除した失効キー件数"),
+		requests:              b.counter("idempotency.requests", "冪等性判定結果数(result=hit/miss/conflict/fingerprint_mismatch 別)"),
+		failures:              b.counter("idempotency.failures", "冪等性のリクエスト内部失敗数(phase=claim/complete 別)"),
+		expiredCleanup:        b.counter("idempotency.expired_cleanup", "GC が削除した失効キー件数(job=idempotency_gc)"),
+		expiredCleanupFailure: b.counter("idempotency.expired_cleanup_failure", "GC 削除バッチの失敗回数(job=idempotency_gc)"),
 	}
 	if b.err != nil {
 		return nil, b.err
@@ -76,8 +78,11 @@ func (m *IdempotencyMetrics) IncExpiredCleanup(ctx context.Context, count int64)
 }
 
 // IncExpiredCleanupFailure は、GC 削除バッチの失敗回数を計上します。
+// GC バッチ失敗はリクエスト由来の operationID を持たないため、成功計上（IncExpiredCleanup）
+// と対称に、per-request の failures カウンタではなく専用カウンタへ job ラベルで計上します。
 func (m *IdempotencyMetrics) IncExpiredCleanupFailure(ctx context.Context) {
-	m.incFailure(ctx, "", "gc_cleanup")
+	m.expiredCleanupFailure.Add(ctx, 1,
+		metric.WithAttributes(attribute.String("job", idempotencyGCJob)))
 }
 
 func (m *IdempotencyMetrics) incRequest(ctx context.Context, operationID, result string) {

@@ -9,7 +9,7 @@ import (
 	"go-boilerplate/internal/usecase/healthcheck"
 	mock_healthcheck "go-boilerplate/internal/usecase/healthcheck/mock"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"go.uber.org/mock/gomock"
 )
 

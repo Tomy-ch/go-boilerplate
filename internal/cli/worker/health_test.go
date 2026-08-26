@@ -106,7 +106,6 @@ func TestNewHealthServer(t *testing.T) {
 
 			_, stop := NewHealthServer(":0", func() bool { return true }, logging.NewTestLogger(t))
 
-			// 起動していないサーバーへの Shutdown はエラーにならず、panic しないこと。
 			assert.NotPanics(t, func() { stop(context.Background()) })
 		})
 	})
@@ -140,7 +139,6 @@ func TestNewHealthServer(t *testing.T) {
 
 			driveInFlight(t, "http://"+addr+"/readyz", entered, release)
 
-			// 非アイドル接続が残る状態へ、期限切れの ctx で Shutdown を当てる。
 			stop(canceledContext())
 			close(release)
 

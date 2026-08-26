@@ -29,7 +29,7 @@ spec 検証の統合スキル。`docs/spec/<feature>/` 配下に存在する spe
 
 lean A 構成では controller.md / infra.md は存在しないため spec 検証は不要（controller / infra は実装時に OpenAPI + sqlc gen から導出され、verify は `arch-check`（controller / infra 監査）が implementation 側で実施）。
 
-validator は per-spec 検証ワーカーで**厳密に read-only**（auto-fix なし・書込なし）。両 validator は独立に読む — `spec-validator-usecase` は cross-spec `calls:` 解決のため `domain.md` を自分で読む — ため**書込依存がなく並列実行可能**（旧来の domain 先行順序は read 参照であって barrier ではない）。
+validator は per-spec 検証ワーカーで**厳密に read-only**（auto-fix なし・書込なし）。両 validator は独立に読む — `spec-validator-usecase` は cross-spec 参照の解決のため `domain.md` を自分で読む — ため**書込依存がなく並列実行可能**。
 
 ## 最初のステップ: 対象 feature 確認
 

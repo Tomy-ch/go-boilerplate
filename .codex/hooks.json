@@ -1,0 +1,56 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\"/.codex/hooks/load-codex-instructions.sh",
+            "statusMessage": "Loading Codex instructions",
+            "additionalContextLimit": 5000
+          },
+          {
+            "type": "command",
+            "command": "\"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\"/.agents/closed-loop/marks.sh --hook session-start"
+          },
+          {
+            "type": "command",
+            "command": "\"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\"/.agents/closed-loop/send.sh --hook"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\"/.agents/closed-loop/marks.sh --hook pre-compact"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$(git rev-parse --show-toplevel 2>/dev/null || pwd)\"/.agents/closed-loop/marks.sh --hook session-end"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$PWD\"/.agents/doc-router/doc-router.sh --hook"
+          }
+        ]
+      }
+    ]
+  }
+}

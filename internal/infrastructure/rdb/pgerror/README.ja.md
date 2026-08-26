@@ -74,10 +74,12 @@ func NormalizeReconstructError(err error) error
 |23502|not null violation|InvalidArgument|
 |23514|check violation|InvalidArgument|
 |22001|string too long|InvalidArgument|
+|22021|符号化できない文字（`text` 引数の NUL バイト等）|InvalidArgument|
 |22P02|invalid text representation|InvalidArgument|
 |42501|insufficient privilege|PermissionDenied|
 |40001|serialization failure|Unavailable|
 |40P01|deadlock detected|Unavailable|
+|55P03|lock not available（`lock_timeout` 失効）|Unavailable|
 |57014|query canceled|Unavailable|
 
 これらに該当しない PostgreSQL エラーは `Internal` エラーへ変換されます。
@@ -134,7 +136,9 @@ func IsRetryableTxError(err error) bool // 40001 serialization_failure / 40P01 d
 func IsLockNotAvailable(err error) bool // 55P03 lock_not_available（lock_timeout 失効）
 ```
 
-`IsRetryableTxError` は `driver.NewTransactionManager` がトランザクション全体を再試行するか判断する際に利用します。
+`IsRetryableTxError` は `driver.NewTransactionManager` がトランザクション全体を再試行するか判断する際に利用します。`55P03` は `Unavailable` へ正規化されます（マッピング表を参照）が、この述語からは意図的に**除外**しています: 他トランザクションが保持し続けているロックは即時リトライでは解消しないためです。
+
+`IsLockNotAvailable` を独立した述語として残しているのは、呼び出し側が `55P03` に「一時的に利用不可」より狭い意味を与えたい場合があるためです。`system_cqrs/idempotency` は `NormalizeError` の**前に**この述語を判定し、claim の競合を専用の `ErrLockTimeout` として露出させます。それ以外の呼び出し側は、自前のロック判定を書かずともマッピング表により `Unavailable` を得ます。原則はマッピング側での対処です — ロック待ちは `FOR UPDATE` と書いたクエリに限らず発生する（他トランザクションが保持する行への `UPDATE` / `DELETE` も待つ）ため、呼び出し箇所ごとの判定では漏れが避けられません。
 
 ## エラーラッピング
 

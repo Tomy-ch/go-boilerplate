@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/require"
 )
 
@@ -42,7 +42,7 @@ func TestAssertEchoRouterMethods(t *testing.T) {
 
 		t.Run("ルーティングのメソッドが期待通りの場合、検証が通る", func(t *testing.T) {
 			t.Parallel()
-			routes := []*echo.Route{
+			routes := echo.Routes{
 				{Method: "GET"},
 				{Method: "POST"},
 				{Method: "DELETE"},
@@ -61,7 +61,7 @@ func TestAssertEchoRouterPath(t *testing.T) {
 
 		t.Run("すべてのルートのパスが期待通りの場合、検証が通る", func(t *testing.T) {
 			t.Parallel()
-			routes := []*echo.Route{
+			routes := echo.Routes{
 				{Path: "/users/:id"},
 				{Path: "/users/:id"},
 			}

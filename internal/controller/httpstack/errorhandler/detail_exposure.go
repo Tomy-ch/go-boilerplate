@@ -29,13 +29,9 @@ type openAPIDetailPolicy struct {
 
 // NewOpenAPIDetailPolicy は、spec からエンドポイント opt-in ポリシーを構築します。
 // details を返せるのは、error レスポンス(4xx/5xx)の JSON スキーマに details プロパティを持つ operation のみです。
-// 判定は Host に依存しないため、router は servers を除去した複製から構築します
-// (servers を残すと gorillamux が Host マッチを行い、proxy 等の Host 不一致で全て fail-closed に倒れる)。
+// 判定は Host に依存しないため、router は [newHostAgnosticRouter] で構築します。
 func NewOpenAPIDetailPolicy(spec *openapi3.T) (DetailPolicy, error) {
-	hostAgnostic := *spec
-	hostAgnostic.Servers = nil
-
-	router, err := gorillamux.NewRouter(&hostAgnostic)
+	router, err := newHostAgnosticRouter(spec)
 	if err != nil {
 		return nil, err
 	}
@@ -44,6 +40,16 @@ func NewOpenAPIDetailPolicy(spec *openapi3.T) (DetailPolicy, error) {
 		router:  router,
 		allowed: buildDetailExposureMap(spec),
 	}, nil
+}
+
+// newHostAgnosticRouter は、Host 制約を持たない router を spec から構築します。
+// servers を残すと gorillamux が Host マッチを行い、proxy やテストの Host 不一致で
+// 全てのルート解決が失敗するため、servers を除去した複製から構築します。
+func newHostAgnosticRouter(spec *openapi3.T) (routers.Router, error) {
+	hostAgnostic := *spec
+	hostAgnostic.Servers = nil
+
+	return gorillamux.NewRouter(&hostAgnostic)
 }
 
 // Allows は [DetailPolicy] を実装します。ルート解決に失敗した場合は false(fail-closed)を返します。

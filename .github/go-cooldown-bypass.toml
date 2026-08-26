@@ -1,0 +1,13 @@
+# Go モジュール cooldown の緊急バイパス（SSOT）。
+# make go-cooldown-gate / go-cooldown-audit と .github/workflows/go-cooldown.yaml が読む。
+#
+# 1 行 1 エントリ。形式は以下で、4 つのキーは順序も含めてすべて必須。
+#
+#   "<module>@<version>" = { expires = YYYY-MM-DD, issue = <N>, reason = "..." }
+#
+# expires は必ず置く。期限切れ・上限（今日から 3 ヶ月）超過・go.mod に無いエントリは、
+# gate / audit のどちらでも失敗する。期限を持たせるのは、外したまま放置されたバイパスを
+# 恒久 allowlist と区別できるようにするため。上限を置くのは、期限を遠い未来へ置くだけで
+# 同じ状態を作れてしまうため。運用は .github/zizmor.yml と同じで、解決したらエントリを消す。
+#
+# 期限切れは go.mod が変わらなくても訪れるので、回収はスケジュール実行が担う。

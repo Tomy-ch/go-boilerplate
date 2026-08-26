@@ -184,7 +184,7 @@
 		
 			
 			
-			<h2 id="ApplyConfigurators">func <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=6986:7061#L184">ApplyConfigurators</a>
+			<h2 id="ApplyConfigurators">func <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=6996:7071#L186">ApplyConfigurators</a>
 				<a class="permalink" href="#ApplyConfigurators">¶</a>
 				
 				
@@ -198,14 +198,14 @@
 		
 			
 			
-			</p><h2 id="ApplyPreMiddlewares">func <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=4017:4105#L96">ApplyPreMiddlewares</a>
+			</p><h2 id="ApplyPreMiddlewares">func <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=4107:4195#L99">ApplyPreMiddlewares</a>
 				<a class="permalink" href="#ApplyPreMiddlewares">¶</a>
 				
 				
 			</h2>
 			<pre>func ApplyPreMiddlewares(e *echo.<a href="#Echo">Echo</a>, logger <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#Logger">Logger</a>, mws []<a href="#PreMiddleware">PreMiddleware</a>) <a href="../../../../../builtin/#error">error</a></pre>
-			<p>ApplyPreMiddlewares は、Echoに対してPreのミドルウェアを適用します。
-ApplyPreMiddlewares は、mws を Priority 昇順に Echo.Pre として適用する。Priority が重複するエントリが存在する場合はエラーを返す。
+			<p>ApplyPreMiddlewares は、mws を Priority 昇順に Echo.Pre として適用します。
+Priority が重複するエントリが存在する場合はエラーを返します。
 
 			
 			
@@ -213,14 +213,14 @@ ApplyPreMiddlewares は、mws を Priority 昇順に Echo.Pre として適用す
 		
 			
 			
-			</p><h2 id="ApplyUseMiddlewares">func <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=4600:4688#L106">ApplyUseMiddlewares</a>
+			</p><h2 id="ApplyUseMiddlewares">func <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=4612:4700#L109">ApplyUseMiddlewares</a>
 				<a class="permalink" href="#ApplyUseMiddlewares">¶</a>
 				
 				
 			</h2>
 			<pre>func ApplyUseMiddlewares(e *echo.<a href="#Echo">Echo</a>, logger <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#Logger">Logger</a>, mws []<a href="#UseMiddleware">UseMiddleware</a>) <a href="../../../../../builtin/#error">error</a></pre>
-			<p>ApplyUseMiddlewares は、Echoに対してUseのミドルウェアを適用します。
-ApplyUseMiddlewares は、mws を Priority 昇順に Echo.Use として適用する。Priority が重複するエントリが存在する場合はエラーを返す。
+			<p>ApplyUseMiddlewares は、mws を Priority 昇順に Echo.Use として適用します。
+Priority が重複するエントリが存在する場合はエラーを返します。
 
 			
 			
@@ -229,7 +229,7 @@ ApplyUseMiddlewares は、mws を Priority 昇順に Echo.Use として適用す
 		
 			
 			
-			</p><h2 id="AppliedServerExtends">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=1190:1224#L23">AppliedServerExtends</a>
+			</p><h2 id="AppliedServerExtends">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=1407:1441#L26">AppliedServerExtends</a>
 				<a class="permalink" href="#AppliedServerExtends">¶</a>
 				
 				
@@ -249,14 +249,14 @@ ApplyUseMiddlewares は、mws を Priority 昇順に Echo.Use として適用す
 
 			
 				
-				<h3 id="ApplyExtends">func <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=3368:3476#L83">ApplyExtends</a>
+				<h3 id="ApplyExtends">func <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=3536:3644#L86">ApplyExtends</a>
 					<a class="permalink" href="#ApplyExtends">¶</a>
 					
 					
 				</h3>
 				<pre>func ApplyExtends(e *echo.<a href="#Echo">Echo</a>, logger <a href="../../../../../go-boilerplate/internal/logging/">logging</a>.<a href="../../../../../go-boilerplate/internal/logging/#Logger">Logger</a>, extends <a href="#ServerExtends">ServerExtends</a>) (*<a href="#AppliedServerExtends">AppliedServerExtends</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
-				<p>ApplyExtends は、サーバー拡張を適用します。
-ApplyExtends は、Pre・Use ミドルウェアおよびサーバー設定関数を Priority 昇順に Echo へ適用する。同一 kind 内で Priority が重複するミドルウェアが存在する場合はエラーを返す。
+				<p>ApplyExtends は、Pre・Use ミドルウェアおよびサーバー設定関数を Priority 昇順に Echo へ適用します。
+同一 kind 内で Priority が重複するミドルウェアが存在する場合はエラーを返します。
 
 				
 				
@@ -266,7 +266,7 @@ ApplyExtends は、Pre・Use ミドルウェアおよびサーバー設定関数
 		
 			
 			
-			</p><h2 id="PreMiddleware">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=1784:2122#L41">PreMiddleware</a>
+			</p><h2 id="PreMiddleware">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=2001:2339#L44">PreMiddleware</a>
 				<a class="permalink" href="#PreMiddleware">¶</a>
 				
 				
@@ -297,7 +297,7 @@ ApplyExtends は、Pre・Use ミドルウェアおよびサーバー設定関数
 		
 			
 			
-			<h2 id="PreMiddlewareOut">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=2622:2715#L61">PreMiddlewareOut</a>
+			<h2 id="PreMiddlewareOut">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=2839:2932#L64">PreMiddlewareOut</a>
 				<a class="permalink" href="#PreMiddlewareOut">¶</a>
 				
 				
@@ -325,7 +325,7 @@ ApplyExtends は、Pre・Use ミドルウェアおよびサーバー設定関数
 		
 			
 			
-			<h2 id="ServeCfgOut">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=1615:1697#L34">ServeCfgOut</a>
+			<h2 id="ServeCfgOut">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=1832:1914#L37">ServeCfgOut</a>
 				<a class="permalink" href="#ServeCfgOut">¶</a>
 				
 				
@@ -353,7 +353,7 @@ ApplyExtends は、Pre・Use ミドルウェアおよびサーバー設定関数
 		
 			
 			
-			<h2 id="ServerExtends">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=597:1085#L11">ServerExtends</a>
+			<h2 id="ServerExtends">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=814:1302#L14">ServerExtends</a>
 				<a class="permalink" href="#ServerExtends">¶</a>
 				
 				
@@ -386,7 +386,7 @@ ApplyExtends は、Pre・Use ミドルウェアおよびサーバー設定関数
 		
 			
 			
-			<h2 id="SrvCfg">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=1324:1522#L26">SrvCfg</a>
+			<h2 id="SrvCfg">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=1541:1739#L29">SrvCfg</a>
 				<a class="permalink" href="#SrvCfg">¶</a>
 				
 				
@@ -415,7 +415,7 @@ ApplyExtends は、Pre・Use ミドルウェアおよびサーバー設定関数
 		
 			
 			
-			<h2 id="UseMiddleware">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=2209:2547#L51">UseMiddleware</a>
+			<h2 id="UseMiddleware">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=2426:2764#L54">UseMiddleware</a>
 				<a class="permalink" href="#UseMiddleware">¶</a>
 				
 				
@@ -446,7 +446,7 @@ ApplyExtends は、Pre・Use ミドルウェアおよびサーバー設定関数
 		
 			
 			
-			<h2 id="UseMiddlewareOut">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=2790:2883#L68">UseMiddlewareOut</a>
+			<h2 id="UseMiddlewareOut">type <a href="../../../../../src/go-boilerplate/internal/di/server/extension/extension.go.html?s=3007:3100#L71">UseMiddlewareOut</a>
 				<a class="permalink" href="#UseMiddlewareOut">¶</a>
 				
 				

@@ -24,7 +24,8 @@ func (OS) ReadFile(name string) ([]byte, error) {
 	return os.ReadFile(name) //nolint:gosec // path は呼び出し側で検証された信頼パス
 }
 
-// WriteFile は、data を name のファイルへ書き込みます。ファイルが存在しない場合は perm で新規作成します。
+// WriteFile は、data を name のファイルへ書き込みます。ファイルが存在しない場合は perm で新規作成し、
+// 既に存在する場合はパーミッションを変えずに既存内容を切り詰めてから書き込みます。
 func (OS) WriteFile(name string, data []byte, perm os.FileMode) error {
 	return os.WriteFile(name, data, perm)
 }

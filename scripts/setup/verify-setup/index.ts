@@ -1,0 +1,154 @@
+#!/usr/bin/env -S tsx
+// 初期化（`docs/get-started/setup-repository.md` の Phase 5）が過不足なく終わったことを検証し、
+// 通ったら初期化ツール一式と自身を撤去する。撤去の理由とタイミングは同 Phase 5 が持つ。
+//
+// この入口はファイル入出力と終了コードだけを担う。判定は verify.ts にある。
+
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+import { listFilesRecursive } from "../lib/file-utils";
+import { stripMarkers } from "../lib/markers";
+import { EXCLUDED_DIRECTORIES, isReplacementTarget } from "../replace-module/module-replace";
+import {
+  BOILERPLATE_MODULE,
+  type ExpectedIdentity,
+  LOCALIZATION_CI_PATHS,
+  SETUP_SHARED_DIR,
+  LOCALIZATION_MARKER,
+  LOCALIZATION_MARKER_FILES,
+  collectFailures,
+  selfDestructTargets,
+} from "./verify";
+
+const SELF_DIR = path.dirname(fileURLToPath(import.meta.url));
+const SETUP_DIR = path.resolve(SELF_DIR, "..");
+const ROOT_DIR = path.resolve(SETUP_DIR, "../..");
+
+function read(relativePath: string): string {
+  const absolute = path.join(ROOT_DIR, relativePath);
+
+  return fs.existsSync(absolute) ? fs.readFileSync(absolute, "utf8") : "";
+}
+
+/**
+ * ボイラープレート名が残っている置換対象ファイルを列挙する。
+ *
+ * @remarks
+ * 走査範囲と対象判定は `replace-module` のものをそのまま使います
+ * （理由は verify.ts の `VerificationInput.boilerplateReferences`）。
+ */
+function boilerplateReferences(): string[] {
+  const files = listFilesRecursive(ROOT_DIR, {
+    excludedDirectories: EXCLUDED_DIRECTORIES,
+    shouldIncludeFile: (entryPath) => isReplacementTarget(path.relative(ROOT_DIR, entryPath)),
+  });
+
+  return files
+    .filter((file) => fs.readFileSync(file, "utf8").includes(BOILERPLATE_MODULE))
+    .map((file) => path.relative(ROOT_DIR, file));
+}
+
+function requireEnv(name: string): string {
+  const value = process.env[name];
+
+  if (value === undefined || value === "") {
+    console.error(`❌ 環境変数 ${name} が必要です`);
+    process.exit(2);
+  }
+
+  return value;
+}
+
+function expectedIdentity(): ExpectedIdentity {
+  return {
+    module: requireEnv("MODULE"),
+    repository: requireEnv("REPOSITORY"),
+    copyrightHolder: requireEnv("COPYRIGHT_HOLDER"),
+    copyrightYear: requireEnv("COPYRIGHT_YEAR"),
+    codeOwners: requireEnv("CODE_OWNERS"),
+  };
+}
+
+/**
+ * 初期化ツールを指す宣言（make ターゲットとその説明）を落とす。
+ *
+ * @remarks
+ * ディレクトリの削除より先に行います。make は起動時に makefile を全読込するため、実行中の
+ * レシピはこの書き換えの後も走り切ります。
+ */
+function stripDeclarations(): void {
+  for (const relativePath of LOCALIZATION_MARKER_FILES) {
+    const absolute = path.join(ROOT_DIR, relativePath);
+
+    // 存在確認と読み出しを分けると、その間に消えたファイルで例外になる。読めなければ対象外とする。
+    let source: string;
+    try {
+      source = fs.readFileSync(absolute, "utf8");
+    } catch {
+      continue;
+    }
+
+    const result = stripMarkers(source, LOCALIZATION_MARKER);
+
+    if (result.removed === 0) continue;
+
+    fs.writeFileSync(absolute, result.content);
+    console.log(`  ${relativePath} (${result.removed} 行)`);
+  }
+}
+
+function selfDestruct(): void {
+  const setupEntries = fs
+    .readdirSync(SETUP_DIR, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name);
+
+  for (const target of selfDestructTargets(path.basename(SELF_DIR), setupEntries)) {
+    fs.rmSync(path.join(SETUP_DIR, target), { force: true, recursive: true });
+  }
+
+  // ツールを叩く CI はリポジトリルート相対なので、SETUP_DIR ではなく ROOT_DIR から解決する。
+  for (const relativePath of LOCALIZATION_CI_PATHS) {
+    fs.rmSync(path.join(ROOT_DIR, relativePath), { force: true, recursive: true });
+  }
+
+  if (!fs.existsSync(path.join(SETUP_DIR, SETUP_SHARED_DIR))) {
+    console.log("🧹 setup/lib を使うツールが他に残っていないため、setup/lib も撤去しました。");
+  }
+}
+
+function main(): void {
+  console.log("🔍 初期化の検証を開始します（置換の過不足・ボイラープレート名の残留）。");
+
+  const failures = collectFailures({
+    expected: expectedIdentity(),
+    goMod: read("go.mod"),
+    license: read("LICENSE"),
+    codeowners: read(".github/CODEOWNERS"),
+    readme: read("README.md"),
+    openapi: read("openapi/openapi.yaml"),
+    boilerplateReferences: boilerplateReferences(),
+  });
+
+  if (failures.length > 0) {
+    console.error("❌ 初期化の検証に失敗しました:");
+    for (const failure of failures) {
+      console.error(`  - ${failure}`);
+    }
+    process.exit(1);
+  }
+
+  console.log("🧹 初期化ツールの宣言を除去します...");
+  stripDeclarations();
+  selfDestruct();
+  console.log("✅ 初期化の完了を確認し、初期化ツールも撤去しました。");
+}
+
+try {
+  main();
+} catch (error) {
+  console.error(`❌ 検証エラー: ${(error as Error).message}`);
+  process.exit(1);
+}

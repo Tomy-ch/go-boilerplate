@@ -21,7 +21,5 @@
 ## 注意点
 
 - Priority は `extension.UseMiddleware` のルールに従い、他のミドルウェアと順序が衝突しないよう調整済み
-- Recovery は **最初に動くべきミドルウェアのひとつ**
 - ErrorHandler は Echo の `HTTPErrorHandler` を置き換えるため ServeCfg として提供
-- outbound ミドルウェアは controller 層であり、**domain / usecase に依存させないこと**
 - レスポンス処理の追加は、このディレクトリへ新しい outbound ミドルウェアを追加することを推奨

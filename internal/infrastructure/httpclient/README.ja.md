@@ -52,6 +52,16 @@ fx.Module("httpclient",
 )
 ```
 
+## Test Strategy
+
+DB を持たない substrate であるため、infrastructure 層の実 DB 戦略は適用されない。すべてがプロセス内で閉じる —— downstream は `httptest` サーバ、時刻は注入したクロック。
+
+- **downstream はプロセス内の `httptest` サーバ**で、status / ヘッダ / body / トランスポート失敗を台本どおりに返す。実ネットワークにも外部サービスにも触れない。
+- **時刻は注入し、実時間を待たない。** `clock` testkit のダブル（`NewStepClock` / `NewNoopSleeper`）が backoff・`Retry-After`・試行ごとのタイムアウト・全体タイムアウトを決定的にする。実時間を sleep するテストは構造的に flaky であり、本パッケージが避けるべきアンチパターンそのもの。打ち切りのケースは実時間ではなく StepClock の進みと `OverallTimeout` の関係で固定する。
+- **リトライ方針を両側から固定する。** リトライする: 5xx / 429 / トランスポート失敗（冪等メソッド、または `WithRetry` を持つ場合）。リトライしない: 4xx・成功・context キャンセル・冪等キーを持たない非冪等メソッド。assert は raw な status code ではなく、`errors.Is` でマップ後の `apperror` sentinel に対して行う —— それが呼び出し側に与えている契約だから。
+- **breaker と budget は状態遷移ごとに固定する**（タイミングではなく）。継続的な失敗による closed → open、open → half-open、half-open → closed / open、およびトークンバケットの消費 / 補充の算術。各遷移がそれぞれ独立した subject として独立したテストを持つ。
+- **`Client` 経由では到達できない非公開ヘルパー**（リクエスト構築のガード、プロファイル解決）は、同一パッケージの `*_internal_test.go` で担保する。
+
 ## テストカバレッジ例外
 
 以下の未被覆分岐は**構造上到達不能**として、ほぼ 100% の被覆期待の対象外とする。これを塗る

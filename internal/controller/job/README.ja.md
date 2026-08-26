@@ -15,7 +15,10 @@ internal/controller/job は、CLI（Cobra）から起動される **バッチ/�
 
 「ビジネスロジック」「DBアクセス」「ドメインモデルの操作」は Usecase / Domain / Infra に寄せ、Controller は薄く保ちます。
 
-配下の `usercount/` はサンプル実装です。実際のサービス構築時には参考にした上で、不要であれば削除してください。
+<!-- sample-api:begin -->
+配下の `usercount/` / `userpurge/` / `productimagegc/` はサンプル実装です。実際のサービス構築時には参考にした上で、不要であれば削除してください。
+
+<!-- sample-api:end -->
 
 ## アーキテクチャ
 
@@ -200,7 +203,11 @@ flowchart TB
 
 命名は以下の方針が安定します。
 
+<!-- sample-api:replace-begin -->
 - パッケージ名：lower_snake ではなく Go 流儀の lower（例：usercount, fixcollation）
+<!-- sample-api:replace-with -->
+<!-- = - パッケージ名：lower_snake ではなく Go 流儀の lower（例：idempotencygc, fixcollation） -->
+<!-- sample-api:replace-end -->
 - Job 名（Runner が引くキー）：kebab-case を推奨
   - 例：user-count / fix-collation / dump-schema
 - Cobra の job <name> と一致させやすく、README にも書きやすい
@@ -360,7 +367,11 @@ Job は `group:"jobs"` にまとめられ、Runner に集約されます。
 
 ```mermaid
 flowchart TB
+    %% sample-api:replace-begin
     A["fx.Provide(usercount.New)"]
+    %% sample-api:replace-with
+    %% = A["fx.Provide(someJob.New)"]
+    %% sample-api:replace-end
     B["fx.Provide(otherJob.New)"]
     Group["group:”jobs”"]
     Jobs["[]job.Job"]
@@ -380,7 +391,9 @@ func JobModule() fx.Option {
             // ここにジョブのコンストラクタを追加します。
             idempotencygc.New,
             outboxgc.New,
-            usercount.New, // サンプル（setup-remove-sample-api で削除）
+            usercount.New,      // sample-api:line
+            userpurge.New,      // sample-api:line
+            productimagegc.New, // sample-api:line
         ),
         fx.Provide(
             dijob.ProvideRunner,
@@ -488,10 +501,24 @@ func New(
 ここではSDKの生インスタンスを直接使わず、
 observability層がtracerの生成ルール（レイヤー名やパッケージ名・関数名の抽出）を内部で隠蔽します。
 
+## GC / バッチ系ジョブ
+
+行やオブジェクトをバッチで掃除するジョブは、参考スニペットに加えて 2 つの規約に従う。
+
+- **フラグの解析は厳格にする。** 未知のフラグ・同一フラグの重複・相反するフラグの併用は、いずれも
+  エラーにする。ジョブは無人で走るため、打ち間違いが黙って何もしないほうが、失敗するより悪い。
+- **失敗した掃除も、コミットした分は報告する。** usecase が途中でエラーを返した場合でも、そこまでに
+  通した件数を `Warn` で出してから伝播する。その削除は既にコミット済みで取り消せないため、件数を
+  落とすと作業が行われた唯一の記録が消える。
+
 ## 参考スニペット
 
 ```go
+// sample-api:replace-begin
 package usercount
+// sample-api:replace-with
+// = package somejob
+// sample-api:replace-end
 
 import (
     "context"
@@ -535,15 +562,12 @@ func (u *jobImpl) Execute(ctx context.Context, args []string) error {
     defer endSpan()
 
     // ジョブの主要ロジックをここに実装(引数の解析)
+    // 解析は専用関数に切り出し、想定外はすべて拒否します。未知のフラグ・同一フラグの重複・
+    // 相反するフラグの併用は、いずれも後勝ちで黙殺せずエラーにします。
     // 複雑なジョブでは flag または pflag の利用を推奨します。
-    var active *bool
-    for _, a := range args {
-        switch a {
-        case "--active-only":
-            active = ptr.To(true)
-        case "--inactive-only":
-            active = ptr.To(false)
-        }
+    active, err := parseFilter(args)
+    if err != nil {
+        return err
     }
 
     // ユースケースを呼び出し

@@ -1,0 +1,625 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>mock - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package mock_query
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/usecase/purchase/query/mock&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package mock_query is a generated GoMock package.
+</p><p>Package mock_query is a generated GoMock package.
+</p><p>Package mock_query is a generated GoMock package.
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#MockPurchaseDetailQueryService">type MockPurchaseDetailQueryService</a></dd>
+				
+					
+					<dd>    <a href="#NewMockPurchaseDetailQueryService">func NewMockPurchaseDetailQueryService(ctrl *gomock.Controller) *MockPurchaseDetailQueryService</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockPurchaseDetailQueryService.EXPECT">func (m *MockPurchaseDetailQueryService) EXPECT() *MockPurchaseDetailQueryServiceMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockPurchaseDetailQueryService.FindDetailByUserAndCode">func (m *MockPurchaseDetailQueryService) FindDetailByUserAndCode(ctx context.Context, userID uuid.UUID, code string) (*query.PurchaseDetailReadModel, error)</a></dd>
+				
+			
+				
+				<dd><a href="#MockPurchaseDetailQueryServiceMockRecorder">type MockPurchaseDetailQueryServiceMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockPurchaseDetailQueryServiceMockRecorder.FindDetailByUserAndCode">func (mr *MockPurchaseDetailQueryServiceMockRecorder) FindDetailByUserAndCode(ctx, userID, code any) *gomock.Call</a></dd>
+				
+			
+				
+				<dd><a href="#MockPurchaseFeedQueryService">type MockPurchaseFeedQueryService</a></dd>
+				
+					
+					<dd>    <a href="#NewMockPurchaseFeedQueryService">func NewMockPurchaseFeedQueryService(ctrl *gomock.Controller) *MockPurchaseFeedQueryService</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockPurchaseFeedQueryService.EXPECT">func (m *MockPurchaseFeedQueryService) EXPECT() *MockPurchaseFeedQueryServiceMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockPurchaseFeedQueryService.FindFeedAll">func (m *MockPurchaseFeedQueryService) FindFeedAll(ctx context.Context, params query.ListFeedParams) ([]query.PurchaseFeedReadModel, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockPurchaseFeedQueryService.FindFeedByUserID">func (m *MockPurchaseFeedQueryService) FindFeedByUserID(ctx context.Context, userID uuid.UUID, params query.ListFeedParams) ([]query.PurchaseFeedReadModel, error)</a></dd>
+				
+			
+				
+				<dd><a href="#MockPurchaseFeedQueryServiceMockRecorder">type MockPurchaseFeedQueryServiceMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockPurchaseFeedQueryServiceMockRecorder.FindFeedAll">func (mr *MockPurchaseFeedQueryServiceMockRecorder) FindFeedAll(ctx, params any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockPurchaseFeedQueryServiceMockRecorder.FindFeedByUserID">func (mr *MockPurchaseFeedQueryServiceMockRecorder) FindFeedByUserID(ctx, userID, params any) *gomock.Call</a></dd>
+				
+			
+				
+				<dd><a href="#MockPurchaseSummaryQueryService">type MockPurchaseSummaryQueryService</a></dd>
+				
+					
+					<dd>    <a href="#NewMockPurchaseSummaryQueryService">func NewMockPurchaseSummaryQueryService(ctrl *gomock.Controller) *MockPurchaseSummaryQueryService</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockPurchaseSummaryQueryService.EXPECT">func (m *MockPurchaseSummaryQueryService) EXPECT() *MockPurchaseSummaryQueryServiceMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockPurchaseSummaryQueryService.SumItemsByUserID">func (m *MockPurchaseSummaryQueryService) SumItemsByUserID(ctx context.Context, userID uuid.UUID, window timewindow.Window) (decimal.Decimal, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockPurchaseSummaryQueryService.SummarizeByUserID">func (m *MockPurchaseSummaryQueryService) SummarizeByUserID(ctx context.Context, userID uuid.UUID, window timewindow.Window) ([]query.PurchaseStatusSummaryReadModel, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockPurchaseSummaryQueryService.SummarizeItemsByProductByUserID">func (m *MockPurchaseSummaryQueryService) SummarizeItemsByProductByUserID(ctx context.Context, userID uuid.UUID, window timewindow.Window) ([]query.PurchaseItemSummaryReadModel, error)</a></dd>
+				
+			
+				
+				<dd><a href="#MockPurchaseSummaryQueryServiceMockRecorder">type MockPurchaseSummaryQueryServiceMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockPurchaseSummaryQueryServiceMockRecorder.SumItemsByUserID">func (mr *MockPurchaseSummaryQueryServiceMockRecorder) SumItemsByUserID(ctx, userID, window any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockPurchaseSummaryQueryServiceMockRecorder.SummarizeByUserID">func (mr *MockPurchaseSummaryQueryServiceMockRecorder) SummarizeByUserID(ctx, userID, window any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockPurchaseSummaryQueryServiceMockRecorder.SummarizeItemsByProductByUserID">func (mr *MockPurchaseSummaryQueryServiceMockRecorder) SummarizeItemsByProductByUserID(ctx, userID, window any) *gomock.Call</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_detail_query_service.go.gen.go.html">mock_purchase_detail_query_service.go.gen.go</a>
+			
+				<a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_feed_query_service.go.gen.go.html">mock_purchase_feed_query_service.go.gen.go</a>
+			
+				<a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_summary_query_service.go.gen.go.html">mock_purchase_summary_query_service.go.gen.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="MockPurchaseDetailQueryService">type <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_detail_query_service.go.gen.go.html?s=593:741#L12">MockPurchaseDetailQueryService</a>
+				<a class="permalink" href="#MockPurchaseDetailQueryService">¶</a>
+				
+				
+			</h2>
+			<p>MockPurchaseDetailQueryService is a mock of PurchaseDetailQueryService interface.
+
+			</p><pre>type MockPurchaseDetailQueryService struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockPurchaseDetailQueryService">func <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_detail_query_service.go.gen.go.html?s=1010:1105#L24">NewMockPurchaseDetailQueryService</a>
+					<a class="permalink" href="#NewMockPurchaseDetailQueryService">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockPurchaseDetailQueryService(ctrl *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockPurchaseDetailQueryService">MockPurchaseDetailQueryService</a></pre>
+				<p>NewMockPurchaseDetailQueryService creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockPurchaseDetailQueryService.EXPECT">func (*MockPurchaseDetailQueryService) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_detail_query_service.go.gen.go.html?s=1321:1414#L31">EXPECT</a>
+					<a class="permalink" href="#MockPurchaseDetailQueryService.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockPurchaseDetailQueryService">MockPurchaseDetailQueryService</a>) EXPECT() *<a href="#MockPurchaseDetailQueryServiceMockRecorder">MockPurchaseDetailQueryServiceMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockPurchaseDetailQueryService.FindDetailByUserAndCode">func (*MockPurchaseDetailQueryService) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_detail_query_service.go.gen.go.html?s=1485:1641#L36">FindDetailByUserAndCode</a>
+					<a class="permalink" href="#MockPurchaseDetailQueryService.FindDetailByUserAndCode">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockPurchaseDetailQueryService">MockPurchaseDetailQueryService</a>) FindDetailByUserAndCode(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, userID <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, code <a href="../../../../../../builtin/#string">string</a>) (*<a href="../../../../../../go-boilerplate/internal/usecase/purchase/query/">query</a>.<a href="../../../../../../go-boilerplate/internal/usecase/purchase/query/#PurchaseDetailReadModel">PurchaseDetailReadModel</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>FindDetailByUserAndCode mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockPurchaseDetailQueryServiceMockRecorder">type <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_detail_query_service.go.gen.go.html?s=846:942#L19">MockPurchaseDetailQueryServiceMockRecorder</a>
+				<a class="permalink" href="#MockPurchaseDetailQueryServiceMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockPurchaseDetailQueryServiceMockRecorder is the mock recorder for MockPurchaseDetailQueryService.
+
+			</p><pre>type MockPurchaseDetailQueryServiceMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockPurchaseDetailQueryServiceMockRecorder.FindDetailByUserAndCode">func (*MockPurchaseDetailQueryServiceMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_detail_query_service.go.gen.go.html?s=1915:2028#L45">FindDetailByUserAndCode</a>
+					<a class="permalink" href="#MockPurchaseDetailQueryServiceMockRecorder.FindDetailByUserAndCode">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockPurchaseDetailQueryServiceMockRecorder">MockPurchaseDetailQueryServiceMockRecorder</a>) FindDetailByUserAndCode(ctx, userID, code <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>FindDetailByUserAndCode indicates an expected call of FindDetailByUserAndCode.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockPurchaseFeedQueryService">type <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_feed_query_service.go.gen.go.html?s=583:727#L12">MockPurchaseFeedQueryService</a>
+				<a class="permalink" href="#MockPurchaseFeedQueryService">¶</a>
+				
+				
+			</h2>
+			<p>MockPurchaseFeedQueryService is a mock of PurchaseFeedQueryService interface.
+
+			</p><pre>type MockPurchaseFeedQueryService struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockPurchaseFeedQueryService">func <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_feed_query_service.go.gen.go.html?s=986:1077#L24">NewMockPurchaseFeedQueryService</a>
+					<a class="permalink" href="#NewMockPurchaseFeedQueryService">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockPurchaseFeedQueryService(ctrl *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockPurchaseFeedQueryService">MockPurchaseFeedQueryService</a></pre>
+				<p>NewMockPurchaseFeedQueryService creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockPurchaseFeedQueryService.EXPECT">func (*MockPurchaseFeedQueryService) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_feed_query_service.go.gen.go.html?s=1289:1378#L31">EXPECT</a>
+					<a class="permalink" href="#MockPurchaseFeedQueryService.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockPurchaseFeedQueryService">MockPurchaseFeedQueryService</a>) EXPECT() *<a href="#MockPurchaseFeedQueryServiceMockRecorder">MockPurchaseFeedQueryServiceMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockPurchaseFeedQueryService.FindFeedAll">func (*MockPurchaseFeedQueryService) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_feed_query_service.go.gen.go.html?s=1437:1576#L36">FindFeedAll</a>
+					<a class="permalink" href="#MockPurchaseFeedQueryService.FindFeedAll">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockPurchaseFeedQueryService">MockPurchaseFeedQueryService</a>) FindFeedAll(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, params <a href="../../../../../../go-boilerplate/internal/usecase/purchase/query/">query</a>.<a href="../../../../../../go-boilerplate/internal/usecase/purchase/query/#ListFeedParams">ListFeedParams</a>) ([]<a href="../../../../../../go-boilerplate/internal/usecase/purchase/query/">query</a>.<a href="../../../../../../go-boilerplate/internal/usecase/purchase/query/#PurchaseFeedReadModel">PurchaseFeedReadModel</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>FindFeedAll mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockPurchaseFeedQueryService.FindFeedByUserID">func (*MockPurchaseFeedQueryService) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_feed_query_service.go.gen.go.html?s=2119:2281#L51">FindFeedByUserID</a>
+					<a class="permalink" href="#MockPurchaseFeedQueryService.FindFeedByUserID">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockPurchaseFeedQueryService">MockPurchaseFeedQueryService</a>) FindFeedByUserID(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, userID <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, params <a href="../../../../../../go-boilerplate/internal/usecase/purchase/query/">query</a>.<a href="../../../../../../go-boilerplate/internal/usecase/purchase/query/#ListFeedParams">ListFeedParams</a>) ([]<a href="../../../../../../go-boilerplate/internal/usecase/purchase/query/">query</a>.<a href="../../../../../../go-boilerplate/internal/usecase/purchase/query/#PurchaseFeedReadModel">PurchaseFeedReadModel</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>FindFeedByUserID mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockPurchaseFeedQueryServiceMockRecorder">type <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_feed_query_service.go.gen.go.html?s=828:920#L19">MockPurchaseFeedQueryServiceMockRecorder</a>
+				<a class="permalink" href="#MockPurchaseFeedQueryServiceMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockPurchaseFeedQueryServiceMockRecorder is the mock recorder for MockPurchaseFeedQueryService.
+
+			</p><pre>type MockPurchaseFeedQueryServiceMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockPurchaseFeedQueryServiceMockRecorder.FindFeedAll">func (*MockPurchaseFeedQueryServiceMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_feed_query_service.go.gen.go.html?s=1807:1900#L45">FindFeedAll</a>
+					<a class="permalink" href="#MockPurchaseFeedQueryServiceMockRecorder.FindFeedAll">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockPurchaseFeedQueryServiceMockRecorder">MockPurchaseFeedQueryServiceMockRecorder</a>) FindFeedAll(ctx, params <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>FindFeedAll indicates an expected call of FindFeedAll.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockPurchaseFeedQueryServiceMockRecorder.FindFeedByUserID">func (*MockPurchaseFeedQueryServiceMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_feed_query_service.go.gen.go.html?s=2535:2641#L60">FindFeedByUserID</a>
+					<a class="permalink" href="#MockPurchaseFeedQueryServiceMockRecorder.FindFeedByUserID">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockPurchaseFeedQueryServiceMockRecorder">MockPurchaseFeedQueryServiceMockRecorder</a>) FindFeedByUserID(ctx, userID, params <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>FindFeedByUserID indicates an expected call of FindFeedByUserID.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockPurchaseSummaryQueryService">type <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_summary_query_service.go.gen.go.html?s=699:849#L14">MockPurchaseSummaryQueryService</a>
+				<a class="permalink" href="#MockPurchaseSummaryQueryService">¶</a>
+				
+				
+			</h2>
+			<p>MockPurchaseSummaryQueryService is a mock of PurchaseSummaryQueryService interface.
+
+			</p><pre>type MockPurchaseSummaryQueryService struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockPurchaseSummaryQueryService">func <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_summary_query_service.go.gen.go.html?s=1123:1220#L26">NewMockPurchaseSummaryQueryService</a>
+					<a class="permalink" href="#NewMockPurchaseSummaryQueryService">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockPurchaseSummaryQueryService(ctrl *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockPurchaseSummaryQueryService">MockPurchaseSummaryQueryService</a></pre>
+				<p>NewMockPurchaseSummaryQueryService creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockPurchaseSummaryQueryService.EXPECT">func (*MockPurchaseSummaryQueryService) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_summary_query_service.go.gen.go.html?s=1438:1533#L33">EXPECT</a>
+					<a class="permalink" href="#MockPurchaseSummaryQueryService.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockPurchaseSummaryQueryService">MockPurchaseSummaryQueryService</a>) EXPECT() *<a href="#MockPurchaseSummaryQueryServiceMockRecorder">MockPurchaseSummaryQueryServiceMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockPurchaseSummaryQueryService.SumItemsByUserID">func (*MockPurchaseSummaryQueryService) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_summary_query_service.go.gen.go.html?s=1597:1745#L38">SumItemsByUserID</a>
+					<a class="permalink" href="#MockPurchaseSummaryQueryService.SumItemsByUserID">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockPurchaseSummaryQueryService">MockPurchaseSummaryQueryService</a>) SumItemsByUserID(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, userID <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, window <a href="../../../../../../go-boilerplate/internal/usecase/tools/timewindow/">timewindow</a>.<a href="../../../../../../go-boilerplate/internal/usecase/tools/timewindow/#Window">Window</a>) (<a href="../../../../../../go-boilerplate/pkg/decimal/">decimal</a>.<a href="../../../../../../go-boilerplate/pkg/decimal/#Decimal">Decimal</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>SumItemsByUserID mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockPurchaseSummaryQueryService.SummarizeByUserID">func (*MockPurchaseSummaryQueryService) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_summary_query_service.go.gen.go.html?s=2335:2507#L53">SummarizeByUserID</a>
+					<a class="permalink" href="#MockPurchaseSummaryQueryService.SummarizeByUserID">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockPurchaseSummaryQueryService">MockPurchaseSummaryQueryService</a>) SummarizeByUserID(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, userID <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, window <a href="../../../../../../go-boilerplate/internal/usecase/tools/timewindow/">timewindow</a>.<a href="../../../../../../go-boilerplate/internal/usecase/tools/timewindow/#Window">Window</a>) ([]<a href="../../../../../../go-boilerplate/internal/usecase/purchase/query/">query</a>.<a href="../../../../../../go-boilerplate/internal/usecase/purchase/query/#PurchaseStatusSummaryReadModel">PurchaseStatusSummaryReadModel</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>SummarizeByUserID mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockPurchaseSummaryQueryService.SummarizeItemsByProductByUserID">func (*MockPurchaseSummaryQueryService) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_summary_query_service.go.gen.go.html?s=3140:3324#L68">SummarizeItemsByProductByUserID</a>
+					<a class="permalink" href="#MockPurchaseSummaryQueryService.SummarizeItemsByProductByUserID">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockPurchaseSummaryQueryService">MockPurchaseSummaryQueryService</a>) SummarizeItemsByProductByUserID(ctx <a href="../../../../../../context/">context</a>.<a href="../../../../../../context/#Context">Context</a>, userID <a href="../../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, window <a href="../../../../../../go-boilerplate/internal/usecase/tools/timewindow/">timewindow</a>.<a href="../../../../../../go-boilerplate/internal/usecase/tools/timewindow/#Window">Window</a>) ([]<a href="../../../../../../go-boilerplate/internal/usecase/purchase/query/">query</a>.<a href="../../../../../../go-boilerplate/internal/usecase/purchase/query/#PurchaseItemSummaryReadModel">PurchaseItemSummaryReadModel</a>, <a href="../../../../../../builtin/#error">error</a>)</pre>
+				<p>SummarizeItemsByProductByUserID mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockPurchaseSummaryQueryServiceMockRecorder">type <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_summary_query_service.go.gen.go.html?s=956:1054#L21">MockPurchaseSummaryQueryServiceMockRecorder</a>
+				<a class="permalink" href="#MockPurchaseSummaryQueryServiceMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockPurchaseSummaryQueryServiceMockRecorder is the mock recorder for MockPurchaseSummaryQueryService.
+
+			</p><pre>type MockPurchaseSummaryQueryServiceMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockPurchaseSummaryQueryServiceMockRecorder.SumItemsByUserID">func (*MockPurchaseSummaryQueryServiceMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_summary_query_service.go.gen.go.html?s=1985:2094#L47">SumItemsByUserID</a>
+					<a class="permalink" href="#MockPurchaseSummaryQueryServiceMockRecorder.SumItemsByUserID">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockPurchaseSummaryQueryServiceMockRecorder">MockPurchaseSummaryQueryServiceMockRecorder</a>) SumItemsByUserID(ctx, userID, window <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>SumItemsByUserID indicates an expected call of SumItemsByUserID.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockPurchaseSummaryQueryServiceMockRecorder.SummarizeByUserID">func (*MockPurchaseSummaryQueryServiceMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_summary_query_service.go.gen.go.html?s=2773:2883#L62">SummarizeByUserID</a>
+					<a class="permalink" href="#MockPurchaseSummaryQueryServiceMockRecorder.SummarizeByUserID">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockPurchaseSummaryQueryServiceMockRecorder">MockPurchaseSummaryQueryServiceMockRecorder</a>) SummarizeByUserID(ctx, userID, window <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>SummarizeByUserID indicates an expected call of SummarizeByUserID.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockPurchaseSummaryQueryServiceMockRecorder.SummarizeItemsByProductByUserID">func (*MockPurchaseSummaryQueryServiceMockRecorder) <a href="../../../../../../src/go-boilerplate/internal/usecase/purchase/query/mock/mock_purchase_summary_query_service.go.gen.go.html?s=3630:3754#L77">SummarizeItemsByProductByUserID</a>
+					<a class="permalink" href="#MockPurchaseSummaryQueryServiceMockRecorder.SummarizeItemsByProductByUserID">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockPurchaseSummaryQueryServiceMockRecorder">MockPurchaseSummaryQueryServiceMockRecorder</a>) SummarizeItemsByProductByUserID(ctx, userID, window <a href="../../../../../../builtin/#any">any</a>) *<a href="../../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>SummarizeItemsByProductByUserID indicates an expected call of SummarizeItemsByProductByUserID.
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

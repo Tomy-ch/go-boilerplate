@@ -2,12 +2,12 @@
 
 This document describes the **intended scope** of this project.
 
-The goal is to clarify **what kind of systems this template is designed for**  
+The goal is to clarify **what kind of systems this architecture is designed for**  
 and **what use cases are not intended**.
 
 ## Target Team
 
-This template assumes a team that understands the following technologies and practices:
+This project assumes a team that understands the following technologies and practices:
 
 - Architecture using Go + Echo + Fx + OpenAPI + sqlc
 - Contract-driven API development using OpenAPI
@@ -20,9 +20,24 @@ This template assumes a team that understands the following technologies and pra
 It is also assumed that the team includes members capable of making **initial architectural decisions**.  
 As a guideline, this targets teams with **Tech Lead-level technical judgment**.
 
+## Assumed Development Method
+
+This project assumes **AI-assisted development as the standard path**. The documentation, the skills
+under `.claude/` / `.codex/`, the agent contract, and the automation around them are built for a team
+that works with an AI assistant, and full feature symmetry with a manual path is not maintained.
+
+Developing without that layer is possible and not forbidden, but it is a **not-recommended
+compatibility path**: the flows stay documented, while the tooling that drives them is not maintained
+in a manual form.
+
+This says nothing about the system you build. The application never depends on an AI service —
+runtime, build, test, the domain model, the API contract, the database schema and the ordinary CI
+checks all succeed without one. See
+[ADR-0007 (agents-md-operational-contract)](../adr/0007-agents-md-operational-contract.md).
+
 ## Target Systems
 
-This template is suitable for the following types of systems:
+This architecture is suitable for the following types of systems:
 
 - Backend services for new products
 - Applications in PoC to early scaling phases
@@ -36,7 +51,7 @@ This architecture assumes a **modular monolith based on Onion Architecture**.
 
 ## Non-Target Use Cases
 
-This template may not be suitable for the following cases:
+This architecture may not be suitable for the following cases:
 
 - Extremely small APIs implemented in a single file
 - Rapid prototyping without architectural boundaries
@@ -54,4 +69,4 @@ Characteristics:
 - Layer separation based on Onion Architecture
 
 It is possible to split into microservices in the future if needed,  
-but that is **not the primary goal of this template**.
+but that is **not the primary goal of this project**.

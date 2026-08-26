@@ -98,16 +98,6 @@ func (o *ObservabilityConfig) SetObservabilityOTLPProtocol(tb testing.TB, val st
 	tb.Cleanup(func() { o.otlpProtocol = prev })
 }
 
-// SetObservabilityOTLPEndpoint は、テスト用に OTLP エンドポイント指定を設定します。
-//
-// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (o *ObservabilityConfig) SetObservabilityOTLPEndpoint(tb testing.TB, val string) {
-	tb.Helper()
-	prev := o.otlpEndpoint
-	o.otlpEndpoint = val
-	tb.Cleanup(func() { o.otlpEndpoint = prev })
-}
-
 // SetDatabaseHost は、テスト用にデータベースのホスト名を設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
@@ -170,26 +160,6 @@ func (s *SecurityConfig) SetCIDR(tb testing.TB, cidr *net.IPNet) {
 	tb.Cleanup(func() { s.cidr = prev })
 }
 
-// SetHeaderName は、テスト用に認証のヘッダ名を設定します。
-//
-// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (a *AuthConfig) SetHeaderName(tb testing.TB, headerName string) {
-	tb.Helper()
-	prev := a.headerName
-	a.headerName = headerName
-	tb.Cleanup(func() { a.headerName = prev })
-}
-
-// SetAllowedHeaderBearer は、テスト用に認証の許可されたヘッダベアラーを設定します。
-//
-// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (a *AuthConfig) SetAllowedHeaderBearer(tb testing.TB, allowed bool) {
-	tb.Helper()
-	prev := a.allowedHeaderBearer
-	a.allowedHeaderBearer = allowed
-	tb.Cleanup(func() { a.allowedHeaderBearer = prev })
-}
-
 // SetOutboxBatchSize は、テスト用に outbox relay の batch size を設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
@@ -220,14 +190,44 @@ func (o *OutboxConfig) SetOutboxErrorBackoff(tb testing.TB, errorBackoff time.Du
 	tb.Cleanup(func() { o.errorBackoff = prev })
 }
 
-// SetOutboxEndpoint は、テスト用に outbox relay の送信先エンドポイントを設定します。
+// SetOutboxPublisher は、テスト用に outbox の publish 先種別を設定します。
 //
 // 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
-func (o *OutboxConfig) SetOutboxEndpoint(tb testing.TB, endpoint string) {
+func (o *OutboxConfig) SetOutboxPublisher(tb testing.TB, publisher string) {
 	tb.Helper()
-	prev := o.endpoint
-	o.endpoint = endpoint
-	tb.Cleanup(func() { o.endpoint = prev })
+	prev := o.publisher
+	o.publisher = publisher
+	tb.Cleanup(func() { o.publisher = prev })
+}
+
+// SetOutboxQueue は、テスト用に SQS publish 先の設定をまとめて行います。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (o *OutboxConfig) SetOutboxQueue(tb testing.TB, queueURL, region, accessKeyID, secretAccessKey string) {
+	tb.Helper()
+	prev := *o
+	o.queueURL, o.queueRegion = queueURL, region
+	o.queueAccessKeyID, o.queueSecretAccessKey = accessKeyID, secretAccessKey
+	tb.Cleanup(func() {
+		o.queueURL, o.queueRegion = prev.queueURL, prev.queueRegion
+		o.queueAccessKeyID, o.queueSecretAccessKey = prev.queueAccessKeyID, prev.queueSecretAccessKey
+	})
+}
+
+// SetConsumerQueue は、テスト用に consume 対象キューの接続設定をまとめて行います。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (c *ConsumerQueueConfig) SetConsumerQueue(
+	tb testing.TB, url, dlqURL, region, accessKeyID, secretAccessKey string,
+) {
+	tb.Helper()
+	prev := *c
+	c.url, c.dlqURL, c.region = url, dlqURL, region
+	c.accessKeyID, c.secretAccessKey = accessKeyID, secretAccessKey
+	tb.Cleanup(func() {
+		c.url, c.dlqURL, c.region = prev.url, prev.dlqURL, prev.region
+		c.accessKeyID, c.secretAccessKey = prev.accessKeyID, prev.secretAccessKey
+	})
 }
 
 // SetSameSite は、テスト用にセキュアクッキーの SameSite 強制値を設定します。
@@ -248,4 +248,54 @@ func (s *SecureCookieConfig) SetDomain(tb testing.TB, domain string) {
 	prev := s.domain
 	s.domain = domain
 	tb.Cleanup(func() { s.domain = prev })
+}
+
+// SetAuthIssuer は、テスト用に認証の issuer を設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (a *AuthConfig) SetAuthIssuer(tb testing.TB, issuer string) {
+	tb.Helper()
+	prev := a.issuer
+	a.issuer = issuer
+	tb.Cleanup(func() { a.issuer = prev })
+}
+
+// SetAuthAudience は、テスト用に認証の audience を設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (a *AuthConfig) SetAuthAudience(tb testing.TB, audience string) {
+	tb.Helper()
+	prev := a.audience
+	a.audience = audience
+	tb.Cleanup(func() { a.audience = prev })
+}
+
+// SetEndpointOTLP は、テスト用に OTLP の送出先を設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (e *EndpointConfig) SetEndpointOTLP(tb testing.TB, val string) {
+	tb.Helper()
+	prev := e.otlp
+	e.otlp = val
+	tb.Cleanup(func() { e.otlp = prev })
+}
+
+// SetEndpointJWKS は、テスト用に JWKS の取得先を設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (e *EndpointConfig) SetEndpointJWKS(tb testing.TB, val string) {
+	tb.Helper()
+	prev := e.jwks
+	e.jwks = val
+	tb.Cleanup(func() { e.jwks = prev })
+}
+
+// SetEndpointOutbox は、テスト用に outbox relay の送出先を設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (e *EndpointConfig) SetEndpointOutbox(tb testing.TB, val string) {
+	tb.Helper()
+	prev := e.outbox
+	e.outbox = val
+	tb.Cleanup(func() { e.outbox = prev })
 }

@@ -272,48 +272,168 @@
 <span id="L215" class="ln">   215  </span>	})
 <span id="L216" class="ln">   216  </span>}
 <span id="L217" class="ln">   217  </span>
-<span id="L218" class="ln">   218  </span>func Test_normalizeSameSite(t *testing.T) {
+<span id="L218" class="ln">   218  </span>func TestSecurityCookie_targets(t *testing.T) {
 <span id="L219" class="ln">   219  </span>	t.Parallel()
 <span id="L220" class="ln">   220  </span>
 <span id="L221" class="ln">   221  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
 <span id="L222" class="ln">   222  </span>		t.Parallel()
 <span id="L223" class="ln">   223  </span>
-<span id="L224" class="ln">   224  </span>		t.Run(&#34;小文字laxはLaxへ正規化される&#34;, func(t *testing.T) {
+<span id="L224" class="ln">   224  </span>		t.Run(&#34;applyToAll=trueかつskip外は対象になる&#34;, func(t *testing.T) {
 <span id="L225" class="ln">   225  </span>			t.Parallel()
-<span id="L226" class="ln">   226  </span>			assert.Equal(t, &#34;Lax&#34;, normalizeSameSite(&#34;lax&#34;))
-<span id="L227" class="ln">   227  </span>		})
-<span id="L228" class="ln">   228  </span>
-<span id="L229" class="ln">   229  </span>		t.Run(&#34;大文字混在STRICTはStrictへ正規化される&#34;, func(t *testing.T) {
-<span id="L230" class="ln">   230  </span>			t.Parallel()
-<span id="L231" class="ln">   231  </span>			assert.Equal(t, &#34;Strict&#34;, normalizeSameSite(&#34;STRICT&#34;))
-<span id="L232" class="ln">   232  </span>		})
-<span id="L233" class="ln">   233  </span>
-<span id="L234" class="ln">   234  </span>		t.Run(&#34;noneはNoneへ正規化される&#34;, func(t *testing.T) {
-<span id="L235" class="ln">   235  </span>			t.Parallel()
-<span id="L236" class="ln">   236  </span>			assert.Equal(t, &#34;None&#34;, normalizeSameSite(&#34;none&#34;))
-<span id="L237" class="ln">   237  </span>		})
-<span id="L238" class="ln">   238  </span>
-<span id="L239" class="ln">   239  </span>		t.Run(&#34;前後空白は除去して正規化される&#34;, func(t *testing.T) {
-<span id="L240" class="ln">   240  </span>			t.Parallel()
-<span id="L241" class="ln">   241  </span>			assert.Equal(t, &#34;None&#34;, normalizeSameSite(&#34; None &#34;))
-<span id="L242" class="ln">   242  </span>		})
-<span id="L243" class="ln">   243  </span>	})
-<span id="L244" class="ln">   244  </span>
-<span id="L245" class="ln">   245  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L246" class="ln">   246  </span>		t.Parallel()
-<span id="L247" class="ln">   247  </span>
-<span id="L248" class="ln">   248  </span>		t.Run(&#34;タイポは空を返す&#34;, func(t *testing.T) {
-<span id="L249" class="ln">   249  </span>			t.Parallel()
-<span id="L250" class="ln">   250  </span>			assert.Empty(t, normalizeSameSite(&#34;Strcit&#34;))
-<span id="L251" class="ln">   251  </span>		})
-<span id="L252" class="ln">   252  </span>
-<span id="L253" class="ln">   253  </span>		t.Run(&#34;空文字は空を返す&#34;, func(t *testing.T) {
-<span id="L254" class="ln">   254  </span>			t.Parallel()
-<span id="L255" class="ln">   255  </span>			assert.Empty(t, normalizeSameSite(&#34;&#34;))
-<span id="L256" class="ln">   256  </span>		})
-<span id="L257" class="ln">   257  </span>	})
-<span id="L258" class="ln">   258  </span>}
+<span id="L226" class="ln">   226  </span>			cfg := &amp;SecurityCookie{applyToAll: true}
+<span id="L227" class="ln">   227  </span>			assert.True(t, cfg.targets(&#34;anything&#34;))
+<span id="L228" class="ln">   228  </span>		})
+<span id="L229" class="ln">   229  </span>
+<span id="L230" class="ln">   230  </span>		t.Run(&#34;applyToAll=falseでcookieNamesに含まれれば対象になる&#34;, func(t *testing.T) {
+<span id="L231" class="ln">   231  </span>			t.Parallel()
+<span id="L232" class="ln">   232  </span>			cfg := &amp;SecurityCookie{applyToAll: false, cookieNames: map[string]struct{}{&#34;foo&#34;: {}}}
+<span id="L233" class="ln">   233  </span>			assert.True(t, cfg.targets(&#34;foo&#34;))
+<span id="L234" class="ln">   234  </span>		})
+<span id="L235" class="ln">   235  </span>	})
+<span id="L236" class="ln">   236  </span>
+<span id="L237" class="ln">   237  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L238" class="ln">   238  </span>		t.Parallel()
+<span id="L239" class="ln">   239  </span>
+<span id="L240" class="ln">   240  </span>		t.Run(&#34;applyToAll=falseでcookieNamesに含まれなければ対象外&#34;, func(t *testing.T) {
+<span id="L241" class="ln">   241  </span>			t.Parallel()
+<span id="L242" class="ln">   242  </span>			cfg := &amp;SecurityCookie{applyToAll: false, cookieNames: map[string]struct{}{&#34;foo&#34;: {}}}
+<span id="L243" class="ln">   243  </span>			assert.False(t, cfg.targets(&#34;bar&#34;))
+<span id="L244" class="ln">   244  </span>		})
+<span id="L245" class="ln">   245  </span>
+<span id="L246" class="ln">   246  </span>		t.Run(&#34;skipCookieNamesに含まれれば対象外&#34;, func(t *testing.T) {
+<span id="L247" class="ln">   247  </span>			t.Parallel()
+<span id="L248" class="ln">   248  </span>			cfg := &amp;SecurityCookie{applyToAll: true, skipCookieNames: map[string]struct{}{&#34;skip&#34;: {}}}
+<span id="L249" class="ln">   249  </span>			assert.False(t, cfg.targets(&#34;skip&#34;))
+<span id="L250" class="ln">   250  </span>		})
+<span id="L251" class="ln">   251  </span>	})
+<span id="L252" class="ln">   252  </span>}
+<span id="L253" class="ln">   253  </span>
+<span id="L254" class="ln">   254  </span>func TestSecurityCookie_applySameSite(t *testing.T) {
+<span id="L255" class="ln">   255  </span>	t.Parallel()
+<span id="L256" class="ln">   256  </span>
+<span id="L257" class="ln">   257  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L258" class="ln">   258  </span>		t.Parallel()
 <span id="L259" class="ln">   259  </span>
+<span id="L260" class="ln">   260  </span>		t.Run(&#34;forceSameSiteが設定されていれば上書きする&#34;, func(t *testing.T) {
+<span id="L261" class="ln">   261  </span>			t.Parallel()
+<span id="L262" class="ln">   262  </span>			cfg := &amp;SecurityCookie{forceSameSite: &#34;Lax&#34;}
+<span id="L263" class="ln">   263  </span>			attrs := &amp;cookieAttrs{order: []string{}, kv: map[string]*string{}}
+<span id="L264" class="ln">   264  </span>
+<span id="L265" class="ln">   265  </span>			cfg.applySameSite(attrs)
+<span id="L266" class="ln">   266  </span>			assertKV(t, attrs, &#34;samesite&#34;, &#34;Lax&#34;)
+<span id="L267" class="ln">   267  </span>			assertNoAttr(t, attrs, &#34;secure&#34;)
+<span id="L268" class="ln">   268  </span>		})
+<span id="L269" class="ln">   269  </span>
+<span id="L270" class="ln">   270  </span>		t.Run(&#34;実効SameSite=NoneかつenforceでSecureを強制する&#34;, func(t *testing.T) {
+<span id="L271" class="ln">   271  </span>			t.Parallel()
+<span id="L272" class="ln">   272  </span>			cfg := &amp;SecurityCookie{forceSameSite: &#34;None&#34;, enforceSecureWhenSameSiteNone: true}
+<span id="L273" class="ln">   273  </span>			attrs := &amp;cookieAttrs{order: []string{}, kv: map[string]*string{}}
+<span id="L274" class="ln">   274  </span>
+<span id="L275" class="ln">   275  </span>			cfg.applySameSite(attrs)
+<span id="L276" class="ln">   276  </span>			assertKV(t, attrs, &#34;samesite&#34;, &#34;None&#34;)
+<span id="L277" class="ln">   277  </span>			assertFlag(t, attrs, &#34;secure&#34;)
+<span id="L278" class="ln">   278  </span>		})
+<span id="L279" class="ln">   279  </span>
+<span id="L280" class="ln">   280  </span>		t.Run(&#34;入力由来のSameSite=NoneでもSecureを強制する&#34;, func(t *testing.T) {
+<span id="L281" class="ln">   281  </span>			t.Parallel()
+<span id="L282" class="ln">   282  </span>			cfg := &amp;SecurityCookie{enforceSecureWhenSameSiteNone: true}
+<span id="L283" class="ln">   283  </span>			attrs := &amp;cookieAttrs{order: []string{&#34;samesite&#34;}, kv: map[string]*string{&#34;samesite&#34;: new(&#34;None&#34;)}}
+<span id="L284" class="ln">   284  </span>
+<span id="L285" class="ln">   285  </span>			cfg.applySameSite(attrs)
+<span id="L286" class="ln">   286  </span>			assertFlag(t, attrs, &#34;secure&#34;)
+<span id="L287" class="ln">   287  </span>		})
+<span id="L288" class="ln">   288  </span>
+<span id="L289" class="ln">   289  </span>		t.Run(&#34;enforceが無効ならNoneでもSecureを付けない&#34;, func(t *testing.T) {
+<span id="L290" class="ln">   290  </span>			t.Parallel()
+<span id="L291" class="ln">   291  </span>			cfg := &amp;SecurityCookie{forceSameSite: &#34;None&#34;, enforceSecureWhenSameSiteNone: false}
+<span id="L292" class="ln">   292  </span>			attrs := &amp;cookieAttrs{order: []string{}, kv: map[string]*string{}}
+<span id="L293" class="ln">   293  </span>
+<span id="L294" class="ln">   294  </span>			cfg.applySameSite(attrs)
+<span id="L295" class="ln">   295  </span>			assertNoAttr(t, attrs, &#34;secure&#34;)
+<span id="L296" class="ln">   296  </span>		})
+<span id="L297" class="ln">   297  </span>	})
+<span id="L298" class="ln">   298  </span>}
+<span id="L299" class="ln">   299  </span>
+<span id="L300" class="ln">   300  </span>func TestSecurityCookie_applyNamePrefix(t *testing.T) {
+<span id="L301" class="ln">   301  </span>	t.Parallel()
+<span id="L302" class="ln">   302  </span>
+<span id="L303" class="ln">   303  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L304" class="ln">   304  </span>		t.Parallel()
+<span id="L305" class="ln">   305  </span>
+<span id="L306" class="ln">   306  </span>		t.Run(&#34;prefix無しは何も変更しない&#34;, func(t *testing.T) {
+<span id="L307" class="ln">   307  </span>			t.Parallel()
+<span id="L308" class="ln">   308  </span>			cfg := &amp;SecurityCookie{}
+<span id="L309" class="ln">   309  </span>			attrs := &amp;cookieAttrs{order: []string{&#34;domain&#34;}, kv: map[string]*string{&#34;domain&#34;: new(&#34;example.com&#34;)}}
+<span id="L310" class="ln">   310  </span>
+<span id="L311" class="ln">   311  </span>			cfg.applyNamePrefix(&#34;plain&#34;, attrs)
+<span id="L312" class="ln">   312  </span>			assertNoAttr(t, attrs, &#34;secure&#34;)
+<span id="L313" class="ln">   313  </span>			assertKV(t, attrs, &#34;domain&#34;, &#34;example.com&#34;)
+<span id="L314" class="ln">   314  </span>		})
+<span id="L315" class="ln">   315  </span>
+<span id="L316" class="ln">   316  </span>		t.Run(&#34;__Secure-prefixはSecureを強制する&#34;, func(t *testing.T) {
+<span id="L317" class="ln">   317  </span>			t.Parallel()
+<span id="L318" class="ln">   318  </span>			cfg := &amp;SecurityCookie{}
+<span id="L319" class="ln">   319  </span>			attrs := &amp;cookieAttrs{order: []string{}, kv: map[string]*string{}}
+<span id="L320" class="ln">   320  </span>
+<span id="L321" class="ln">   321  </span>			cfg.applyNamePrefix(&#34;__Secure-a&#34;, attrs)
+<span id="L322" class="ln">   322  </span>			assertFlag(t, attrs, &#34;secure&#34;)
+<span id="L323" class="ln">   323  </span>		})
+<span id="L324" class="ln">   324  </span>
+<span id="L325" class="ln">   325  </span>		t.Run(&#34;__Host-prefixはSecure付与とPath=/上書きとDomain削除を行う&#34;, func(t *testing.T) {
+<span id="L326" class="ln">   326  </span>			t.Parallel()
+<span id="L327" class="ln">   327  </span>			cfg := &amp;SecurityCookie{}
+<span id="L328" class="ln">   328  </span>			attrs := &amp;cookieAttrs{order: []string{&#34;domain&#34;, &#34;path&#34;}, kv: map[string]*string{&#34;domain&#34;: new(&#34;example.com&#34;), &#34;path&#34;: new(&#34;/foo&#34;)}}
+<span id="L329" class="ln">   329  </span>
+<span id="L330" class="ln">   330  </span>			cfg.applyNamePrefix(&#34;__Host-a&#34;, attrs)
+<span id="L331" class="ln">   331  </span>			assertFlag(t, attrs, &#34;secure&#34;)
+<span id="L332" class="ln">   332  </span>			assertKV(t, attrs, &#34;path&#34;, &#34;/&#34;)
+<span id="L333" class="ln">   333  </span>			assertNoAttr(t, attrs, &#34;domain&#34;)
+<span id="L334" class="ln">   334  </span>		})
+<span id="L335" class="ln">   335  </span>	})
+<span id="L336" class="ln">   336  </span>}
+<span id="L337" class="ln">   337  </span>
+<span id="L338" class="ln">   338  </span>func Test_normalizeSameSite(t *testing.T) {
+<span id="L339" class="ln">   339  </span>	t.Parallel()
+<span id="L340" class="ln">   340  </span>
+<span id="L341" class="ln">   341  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L342" class="ln">   342  </span>		t.Parallel()
+<span id="L343" class="ln">   343  </span>
+<span id="L344" class="ln">   344  </span>		t.Run(&#34;小文字laxはLaxへ正規化される&#34;, func(t *testing.T) {
+<span id="L345" class="ln">   345  </span>			t.Parallel()
+<span id="L346" class="ln">   346  </span>			assert.Equal(t, &#34;Lax&#34;, normalizeSameSite(&#34;lax&#34;))
+<span id="L347" class="ln">   347  </span>		})
+<span id="L348" class="ln">   348  </span>
+<span id="L349" class="ln">   349  </span>		t.Run(&#34;大文字混在STRICTはStrictへ正規化される&#34;, func(t *testing.T) {
+<span id="L350" class="ln">   350  </span>			t.Parallel()
+<span id="L351" class="ln">   351  </span>			assert.Equal(t, &#34;Strict&#34;, normalizeSameSite(&#34;STRICT&#34;))
+<span id="L352" class="ln">   352  </span>		})
+<span id="L353" class="ln">   353  </span>
+<span id="L354" class="ln">   354  </span>		t.Run(&#34;noneはNoneへ正規化される&#34;, func(t *testing.T) {
+<span id="L355" class="ln">   355  </span>			t.Parallel()
+<span id="L356" class="ln">   356  </span>			assert.Equal(t, &#34;None&#34;, normalizeSameSite(&#34;none&#34;))
+<span id="L357" class="ln">   357  </span>		})
+<span id="L358" class="ln">   358  </span>
+<span id="L359" class="ln">   359  </span>		t.Run(&#34;前後空白は除去して正規化される&#34;, func(t *testing.T) {
+<span id="L360" class="ln">   360  </span>			t.Parallel()
+<span id="L361" class="ln">   361  </span>			assert.Equal(t, &#34;None&#34;, normalizeSameSite(&#34; None &#34;))
+<span id="L362" class="ln">   362  </span>		})
+<span id="L363" class="ln">   363  </span>	})
+<span id="L364" class="ln">   364  </span>
+<span id="L365" class="ln">   365  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L366" class="ln">   366  </span>		t.Parallel()
+<span id="L367" class="ln">   367  </span>
+<span id="L368" class="ln">   368  </span>		t.Run(&#34;タイポは空を返す&#34;, func(t *testing.T) {
+<span id="L369" class="ln">   369  </span>			t.Parallel()
+<span id="L370" class="ln">   370  </span>			assert.Empty(t, normalizeSameSite(&#34;Strcit&#34;))
+<span id="L371" class="ln">   371  </span>		})
+<span id="L372" class="ln">   372  </span>
+<span id="L373" class="ln">   373  </span>		t.Run(&#34;空文字は空を返す&#34;, func(t *testing.T) {
+<span id="L374" class="ln">   374  </span>			t.Parallel()
+<span id="L375" class="ln">   375  </span>			assert.Empty(t, normalizeSameSite(&#34;&#34;))
+<span id="L376" class="ln">   376  </span>		})
+<span id="L377" class="ln">   377  </span>	})
+<span id="L378" class="ln">   378  </span>}
+<span id="L379" class="ln">   379  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/controller/httpstack/cookie/secure_cookie_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

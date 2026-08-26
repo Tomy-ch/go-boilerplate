@@ -7,8 +7,7 @@ import (
 )
 
 // RunRelay は、relay アプリを起動し、ctx のキャンセル（終了シグナル）を受けてから
-// グレースフルシャットダウンを行います。停止用 context のタイムアウトは「停止開始時点」から
-// 計測することで稼働時間に消費されないようにします。
+// グレースフルシャットダウンを行います。停止猶予の計測方式は [go-boilerplate/internal/cli/server.RunServer] と同じです。
 func RunRelay(
 	ctx context.Context,
 	shutdownTimeout time.Duration,

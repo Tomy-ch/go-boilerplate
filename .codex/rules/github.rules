@@ -1,0 +1,68 @@
+prefix_rule(
+    pattern = ["git", "push", ["--force", "--force-with-lease", "-f", "+"]],
+    decision = "forbidden",
+    justification = "AGENTS.md の Git Rules 2 により、ユーザーの明示的な要求なしに force push は実行しない",
+)
+
+prefix_rule(
+    pattern = ["git", "push"],
+    decision = "allow",
+    justification = "検証済みの既存 PR ブランチは通常 push まで自動で反映する",
+)
+
+prefix_rule(
+    pattern = ["gh", "pr", ["checks", "close", "comment", "create", "diff", "edit", "list", "ready", "reopen", "review", "status", "update-branch", "view"]],
+    decision = "allow",
+    justification = "PR の非破壊的な操作は開発フロー中に自動実行する",
+)
+prefix_rule(
+    pattern = ["gh", "issue", ["close", "comment", "create", "edit", "list", "lock", "reopen", "status", "transfer", "unlock", "view"]],
+    decision = "allow",
+    justification = "Issue の非破壊的な操作は開発フロー中に自動実行する",
+)
+prefix_rule(
+    pattern = ["gh", "run", ["cancel", "download", "list", "rerun", "view", "watch"]],
+    decision = "allow",
+    justification = "Actions の非破壊的な操作は開発フロー中に自動実行する",
+)
+prefix_rule(
+    pattern = ["gh", "workflow", ["list", "run", "view"]],
+    decision = "allow",
+    justification = "Workflow の非破壊的な操作は開発フロー中に自動実行する",
+)
+prefix_rule(
+    pattern = ["gh", "repo", ["clone", "create", "fork", "list", "view"]],
+    decision = "allow",
+    justification = "Repository の非破壊的な操作は開発フロー中に自動実行する",
+)
+prefix_rule(
+    pattern = ["gh", "release", ["create", "download", "edit", "list", "upload", "view"]],
+    decision = "allow",
+    justification = "Release の非破壊的な操作は開発フロー中に自動実行する",
+)
+
+prefix_rule(
+    pattern = ["gh", ["api", "auth", "config", "extension"]],
+    decision = "forbidden",
+    justification = "明示的な安全境界を持つ gh サブコマンドを使う",
+)
+prefix_rule(
+    pattern = ["gh", "pr", "merge"],
+    decision = "forbidden",
+    justification = "PR のマージは Codex から実行しない",
+)
+prefix_rule(
+    pattern = ["gh", ["cache", "gist", "gpg-key", "issue", "project", "release", "repo", "ruleset", "run", "secret", "ssh-key", "variable"], "delete"],
+    decision = "forbidden",
+    justification = "削除は Codex から実行しない",
+)
+prefix_rule(
+    pattern = ["gh", "repo", "archive"],
+    decision = "forbidden",
+    justification = "リポジトリのアーカイブは Codex から実行しない",
+)
+prefix_rule(
+    pattern = ["gh", "workflow", "disable"],
+    decision = "forbidden",
+    justification = "Workflow の無効化は Codex から実行しない",
+)

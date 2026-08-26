@@ -1,0 +1,14 @@
+type: string
+description: |
+  カート明細の再評価結果。取得のたびに商品の現在値と突き合わせて判定される。
+  1 つの明細に複数同時に立ちうるが、notFound は単独で立ち（商品が引けない以上、在庫も価格も
+  判定材料が無い）、outOfStock と insufficientStock は排他（在庫 0 は「不足」ではなく「無い」）。
+  いずれの値もカートの取得を失敗にしない。買えない明細があることは要求の不正ではないため。
+enum:
+  - notFound
+  - unpublished
+  - outOfStock
+  - insufficientStock
+  - priceIncreased
+  - priceDecreased
+example: "outOfStock"

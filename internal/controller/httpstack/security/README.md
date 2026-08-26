@@ -2,7 +2,7 @@
 
 English | [日本語](README.ja.md)
 
-Security headers middleware (HSTS, X-Frame-Options, Content-Type-Options, Referrer-Policy).
+Security headers middleware (HSTS, X-Frame-Options, Content-Type-Options, Referrer-Policy, Cross-Origin-Resource-Policy).
 
 ## Role
 

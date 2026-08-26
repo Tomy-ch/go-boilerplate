@@ -13,17 +13,96 @@ type Loader struct {
 	DBConnection  DBConnection    `envPrefix:"DBCONN_"`
 	Security      Security        `envPrefix:"SECURITY_"`
 	SecureCookie  SecureCookie    `envPrefix:"SECURE_COOKIE_"`
-	Auth          Auth            `envPrefix:"AUTH_"`
 	Worker        Worker          `envPrefix:"WORKER_"`
+	ConsumerQueue ConsumerQueue   `envPrefix:"CONSUMER_QUEUE_"`
 	Outbox        Outbox          `envPrefix:"OUTBOX_"`
+	Auth          Auth            `envPrefix:"AUTH_"`
+	ObjectStorage ObjectStorage   `envPrefix:"OBJECT_STORAGE_"`
+	Endpoint      Endpoint        `envPrefix:"ENDPOINT_"`
+}
+
+// Endpoint は、このアプリが接続する外部サービスの所在をまとめて保持する。
+// 「どこへ繋ぐか」はデプロイごとに変わる軸であり、各サブシステムの「どう振る舞うか」とは
+// 直交するため、サブシステム設定から切り離してここへ集める。
+// 全項目 required だが空文字を許容する。空の意味は接続先ごとに異なるため各フィールドに記す。
+type Endpoint struct {
+	// OTLP は OpenTelemetry Collector の送出先です。空なら送出しません。
+	OTLP string `env:"OTLP,required"`
+	// JWKS は公開鍵の取得先です。空なら OIDC discovery で issuer から解決します。
+	JWKS string `env:"JWKS,required"`
+	// ObjectStorage は S3 互換エンドポイントです。空なら SDK 既定の解決に委ねます（本番 AWS S3 等）。
+	ObjectStorage string `env:"OBJECT_STORAGE,required"`
+	// Outbox は PUBLISHER=http のときの送出先です。空のまま http を選ぶと DI で起動エラーにします。
+	Outbox string `env:"OUTBOX,required"`
+	// OutboxQueue は publish 端の SQS 互換エンドポイントです。空なら SDK 既定の解決に委ねます。
+	OutboxQueue string `env:"OUTBOX_QUEUE,required"`
+	// ConsumerQueue は consume 端の SQS 互換エンドポイントです。空なら SDK 既定の解決に委ねます。
+	ConsumerQueue string `env:"CONSUMER_QUEUE,required"`
+	// sample-api:begin
+	// ExchangeRate は外部為替レートサービスのベース URL です。空ならこの機能を使いません。
+	ExchangeRate string `env:"EXCHANGE_RATE,required"`
+	// sample-api:end
+}
+
+// ObjectStorage は、画像等を格納する S3 互換オブジェクトストレージ（ローカルは Garage）の接続設定と
+// アップロード上限を保持する。中立境界の実装は S3 アダプタだが、env 名は vendor 非依存にする。
+type ObjectStorage struct {
+	Region string `env:"REGION,required,notEmpty"`
+	Bucket string `env:"BUCKET,required,notEmpty"`
+	// AccessKeyID / SecretAccessKey は両方空なら SDK 既定の credential chain（IAM ロール等）へ委ねるため、
+	// 未設定を許す。ロール運用のデプロイにダミー値の注入を強いないための既定。
+	AccessKeyID     string `env:"ACCESS_KEY_ID"                      envDefault:""`
+	SecretAccessKey string `env:"SECRET_ACCESS_KEY"                  envDefault:""`
+	UsePathStyle    bool   `env:"USE_PATH_STYLE,required"`
+	MaxUploadBytes  int64  `env:"MAX_UPLOAD_BYTES,required,notEmpty"`
+}
+
+// Auth は access token（JWT）検証の設定を保持する。
+type Auth struct {
+	Issuer            string        `env:"ISSUER"             envDefault:""`
+	Audience          string        `env:"AUDIENCE"           envDefault:""`
+	AllowedAlgorithms []string      `env:"ALLOWED_ALGORITHMS" envDefault:"RS256" envSeparator:","`
+	ClockSkew         time.Duration `env:"CLOCK_SKEW"         envDefault:"60s"`
+	JWKSCacheTTL      time.Duration `env:"JWKS_CACHE_TTL"     envDefault:"1h"`
+	// JWKSDiscoveryTTL は OIDC discovery 文書の再取得間隔です（鍵キャッシュとは別軸）。
+	JWKSDiscoveryTTL time.Duration `env:"JWKS_DISCOVERY_TTL" envDefault:"24h"`
+	// JWKSUnknownKIDCooldown は未知 kid での JWKS 再取得の最小間隔です（DoS 抑止）。
+	JWKSUnknownKIDCooldown time.Duration `env:"JWKS_UNKNOWN_KID_COOLDOWN" envDefault:"60s"`
 }
 
 // Outbox は transactional outbox relay の設定を保持する。
 type Outbox struct {
-	Endpoint     string        `env:"ENDPOINT"      envDefault:""`
+	// Publisher は publish 先の種別（"http" / "sqs"）です。ENV ではなくこの判別子で切り替え、
+	// 未知の値は DI で起動エラーにする（fail-closed）。
+	Publisher    string        `env:"PUBLISHER"     envDefault:"http"`
 	PollInterval time.Duration `env:"POLL_INTERVAL" envDefault:"1s"`
 	ErrorBackoff time.Duration `env:"ERROR_BACKOFF" envDefault:"5s"`
 	BatchSize    int           `env:"BATCH_SIZE"    envDefault:"100"`
+	// Queue* は PUBLISHER=sqs のときだけ使う。未設定のまま sqs を選ぶと adapter 構築時に落とす。
+	QueueRegion          string `env:"QUEUE_REGION"            envDefault:""`
+	QueueURL             string `env:"QUEUE_URL"               envDefault:""`
+	QueueAccessKeyID     string `env:"QUEUE_ACCESS_KEY_ID"     envDefault:""`
+	QueueSecretAccessKey string `env:"QUEUE_SECRET_ACCESS_KEY" envDefault:""`
+}
+
+// ConsumerQueue は worker が consume する broker（SQS 互換）の adapter 設定を保持する。
+// engine-core の Worker は broker 非依存と定めているため、broker 語彙を持つ設定は別軸に置く。
+// publish 端の Outbox.Queue* とは対になる（consume 端がこちら）。
+// 資格情報が両方空なら SDK 既定の credential chain（IAM ロール等）へ委ねる。
+type ConsumerQueue struct {
+	Region          string `env:"REGION"            envDefault:""`
+	URL             string `env:"URL"               envDefault:""`
+	AccessKeyID     string `env:"ACCESS_KEY_ID"     envDefault:""`
+	SecretAccessKey string `env:"SECRET_ACCESS_KEY" envDefault:""`
+	// DLQURL は Permanent メッセージの退避先であり、滞留量の収集対象でもある。
+	// 空なら app 側の退避経路を持たず、broker の redrive policy に委ねる。
+	DLQURL string `env:"DLQ_URL" envDefault:""`
+	// MaxMessages は ReceiveMessage の最大取得件数（SQS の上限は 10）。
+	MaxMessages int32 `env:"MAX_MESSAGES" envDefault:"10"`
+	// WaitTimeSeconds は long-poll の待機秒数（0〜20）。上限にすると空ポーリングの往復が最も減る。
+	WaitTimeSeconds int32 `env:"WAIT_TIME_SECONDS" envDefault:"20"`
+	// VisibilityTimeout は受信メッセージの可視性タイムアウト秒数。
+	VisibilityTimeout int32 `env:"VISIBILITY_TIMEOUT" envDefault:"30"`
 }
 
 // Worker は worker engine の engine-core 設定（broker 非依存）を保持する。
@@ -46,7 +125,7 @@ type Worker struct {
 
 // OperatingSystem は OS レベルの設定を保持する。
 type OperatingSystem struct {
-	Timezone string `env:"TZ" envDefault:"Asia/Tokyo"`
+	Timezone string `env:"TZ,required,notEmpty"`
 }
 
 // Application はアプリケーション識別・動作モードおよびシャットダウン制御に関する設定を保持する。
@@ -66,7 +145,7 @@ type Server struct {
 	ReadTimeout       time.Duration `env:"READ_TIMEOUT"        envDefault:"10s"`
 	WriteTimeout      time.Duration `env:"WRITE_TIMEOUT"       envDefault:"65s"`
 	IdleTimeout       time.Duration `env:"IDLE_TIMEOUT"        envDefault:"60s"`
-	BodyLimitMB       int           `env:"BODY_LIMIT_MB"       envDefault:"5"`
+	BodyLimitMB       int           `env:"BODY_LIMIT_MB"       envDefault:"6"`
 	RequestTimeout    time.Duration `env:"REQUEST_TIMEOUT"     envDefault:"60s"`
 }
 
@@ -84,7 +163,6 @@ type Observability struct {
 	TracesExporter    string `env:"TRACES_EXPORTER"`
 	MetricsExporter   string `env:"METRICS_EXPORTER"`
 	LogsExporter      string `env:"LOGS_EXPORTER"`
-	OTLPEndpoint      string `env:"OTLP_ENDPOINT"`
 	OTLPProtocol      string `env:"OTLP_PROTOCOL"                 envDefault:"http/protobuf"`
 	MaskedDBQueryArgs bool   `env:"MASKED_DB_QUERY_ARGS,required"`
 	TargetStatusCodes []int  `env:"TARGET_STATUS_CODES,required"                             envSeparator:","`
@@ -118,7 +196,7 @@ type DBConnection struct {
 }
 
 // Security は CORS 許可オリジン・CIDR 制限・セキュリティヘッダー（HSTS・X-Frame-Options 等）・
-// Referrer Policy および bcrypt コストパラメータを保持する。
+// Referrer Policy を保持する。
 type Security struct {
 	AllowedOrigins        []string      `env:"ALLOWED_ORIGINS,required"         envSeparator:","`
 	CIDR                  string        `env:"CIDR,required"`
@@ -128,7 +206,9 @@ type Security struct {
 	HSTSExcludeSubdomains bool          `env:"HSTS_EXCLUDE_SUBDOMAINS,required"`
 	HSTSPreloadEnabled    bool          `env:"HSTS_PRELOAD_ENABLED,required"`
 	ReferrerPolicy        string        `env:"REFERRER_POLICY,required"`
-	BcryptCost            int           `env:"BCRYPT_COST,required"`
+	// CrossOriginResourcePolicy は Cross-Origin-Resource-Policy ヘッダーの値です。空の場合は
+	// ヘッダーを出さない（ブラウザ既定の挙動に委ねる）という意味を持つため、空文字を許容する。
+	CrossOriginResourcePolicy string `env:"CROSS_ORIGIN_RESOURCE_POLICY,required"`
 }
 
 // SecureCookie はセキュアクッキーの属性（Secure / SameSite / Domain）の上書き設定を保持する。
@@ -136,11 +216,4 @@ type SecureCookie struct {
 	Secure   *bool  `env:"SECURE"`
 	SameSite string `env:"SAME_SITE"`
 	Domain   string `env:"DOMAIN"`
-}
-
-// Auth は認証に使う Cookie 名・ヘッダー名・Bearer 許可の設定を保持する。
-type Auth struct {
-	CookieName          string `env:"COOKIE_NAME,required"`
-	HeaderName          string `env:"HEADER_NAME,required"`
-	AllowedHeaderBearer bool   `env:"ALLOWED_HEADER_BEARER,required"`
 }

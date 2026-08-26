@@ -7,40 +7,48 @@
 ## `schemas/` との役割境界
 
 - `schemas/` — 小さく再利用できる部品（例：`UserBaseInputRequest.yaml`）。
-- `requests/` — **エンドポイント固有**の形。多くは `allOf` で基底部品を合成し、操作固有のフィールドを足す。
+- `requests/` — **エンドポイント固有**の形。多くは `allOf` で基底部品を合成し、操作固有の制約（例：`required` リスト）を足す。
 
+<!-- sample-api:replace-begin -->
 ```yaml
 # requests/users/UsersPostRequest.yaml
 allOf:
   - $ref: '../../schemas/UserBaseInputRequest.yaml'
-  - properties:
-      password:        # 「ユーザー作成」固有のフィールド
-        type: string
+  - required:          # 「ユーザー作成」で必須となるフィールド
+      - firstName
+      - lastName
+      - email
 ```
+<!-- sample-api:replace-with -->
+<!-- = ```yaml -->
+<!-- = # requests/<リソース>/<リソース>PostRequest.yaml -->
+<!-- = allOf: -->
+<!-- =   - $ref: '../../schemas/<リソース>BaseInputRequest.yaml' -->
+<!-- =   - required:          # 作成操作で必須になるフィールド -->
+<!-- =       - <フィールド> -->
+<!-- = ``` -->
+<!-- sample-api:replace-end -->
 
 ## ディレクトリ内容
 
-```text
-requests/
-└── users/
-    ├── UsersPostRequest.yaml      # ユーザー作成（基底 ＋ password）
-    ├── UserPutRequest.yaml        # 全項目更新（全フィールド必須）
-    ├── UserPatchRequest.yaml      # 部分更新（基底・フィールド任意）
-    └── UserPasswordPutRequest.yaml # パスワード変更（現＋新）
-```
-
-> `users/` は**サンプル実装**です。独自リソースでも同じ構造に倣ってください。
+リソースごとに 1 つのディレクトリを置き、リソース名を付ける。そのリソースのリクエストボディを収める。
 
 ## 命名規則
 
 |要素|規則|例|
 |---|---|---|
+<!-- sample-api:replace-begin -->
 |ディレクトリ|リソース別に小文字|`users/`|
 |ファイル名|PascalCase ＋ `Request`|`UsersPostRequest.yaml`|
+<!-- sample-api:replace-with -->
+<!-- = |ディレクトリ|リソース別に小文字|`<リソース>/`| -->
+<!-- = |ファイル名|PascalCase ＋ `Request`|`<リソース>PostRequest.yaml`| -->
+<!-- sample-api:replace-end -->
 
 ## ルール
 
 - フィールドを複製せず、`schemas/` の再利用基底を `allOf` で合成する。
-- 不明フィールドを拒否するため `additionalProperties: false` を維持する（直接 or ラッパーに）。
+- 不明フィールドを拒否するため、`additionalProperties: false` は properties を宣言しているスキーマオブジェクト自身に置く。`additionalProperties` が見るのは**同じスキーマオブジェクト**で宣言された properties だけなので、`allOf` で合成する場合の置き場所は properties を持つ基底であり、`required` だけを足すラッパーに置くと properties が見えず全フィールドを拒否してしまう。
+- ネストした要素スキーマ（配列の `items`）には自前の宣言が要る。外側のリクエストの宣言は届かない。両者は [`internal/architest`](../../../internal/architest/README.md) の `TestRequestBodyRejectsUnknownFields` が、リクエストボディから到達できる全スキーマについて検査する。
 - すべてのプロパティに `description` と `example` を記述する。
 - 境界値（`maxLength` 等）は **ワイヤー契約**であり domain ルールではない — [入力境界値のオーナーシップ](../../boundary-ownership.ja.md) を参照。

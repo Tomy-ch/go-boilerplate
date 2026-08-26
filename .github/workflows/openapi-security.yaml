@@ -1,0 +1,197 @@
+name: OpenAPI Security
+
+# Spectral with the OWASP API Security ruleset, over openapi/openapi.yaml.
+#
+# Distinct from oapi-lint.yaml, which runs redocly lint. The two do not overlap:
+# redocly enforces this repository's conventions (operationId casing, camelCase
+# body fields, unused components, explicit security on every operation), while
+# this workflow asks OWASP's questions (unbounded input, weak auth declarations,
+# undeclared server inventory). redocly stays the linter of record because it is
+# also the bundler and docs generator (ADR-0013 (redocly-modular-spec-pipeline)); Spectral is additive.
+#
+# Rule dispositions live in .spectral.yaml, each with the ADR or implementation
+# that justifies it. Nothing is disabled in bulk.
+
+on:
+  pull_request:
+  push:
+    branches:
+      - 'release/*'
+      - develop
+      - staging
+      - production
+    paths:
+      - '.github/workflows/openapi-security.yaml'
+      - '.spectral.yaml'
+      - 'openapi/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # The pull-request half of this workflow's trigger, moved out of `on:` and into a job. A `paths:`
+  # filter that excludes a pull request starts no run at all, and a required context that is never
+  # reported is not read as "not applicable" — the merge waits with nothing to wait for. A job the
+  # filter skips reports `skipped` instead, which a required check counts as success.
+  # The `push` filter above is left where it is: that half reports no context, so it blocks nothing.
+  changes:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      relevant: ${{ steps.filter.outputs.relevant }}
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+
+      - name: Filter the changed paths
+        id: filter
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
+        with:
+          filters: |
+            relevant:
+              - '.github/workflows/openapi-security.yaml'
+              - '.spectral.yaml'
+              - 'openapi/**'
+              - 'scripts/package.json'
+              - 'scripts/pnpm-lock.yaml'
+              - 'scripts/pnpm-workspace.yaml'
+
+  openapi-security:
+    needs: changes
+    # Fail open. `relevant` is empty wherever the filter reached no verdict — skipped on a
+    # non-pull-request event, or failed outright — and an empty value is not `false`, so the work
+    # runs and reports what it finds. Skipping there would hand the required context a green it
+    # never earned, and a broken filter is exactly when that matters.
+    if: ${{ !cancelled() && needs.changes.outputs.relevant != 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
+        with:
+          tools: node npm:pnpm
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # The Node and pnpm versions are pinned in mise.toml (SSOT), same as every
+      # other Node-using workflow here.
+
+      - name: Install OpenAPI tooling
+        run: pnpm install --dir scripts --frozen-lockfile
+
+      # spectral exits non-zero on an error-severity finding, so the status is
+      # captured and the PR comment is produced either way; the final step turns
+      # the captured status into the verdict.
+      - name: Spectral scan
+        id: scan
+        run: |
+          set -uo pipefail
+          set +e
+
+          make lint-oapi-security-ci > spectral.log 2>&1
+          code=$?
+          set -e
+
+          cat spectral.log
+
+          if [ "${code}" -eq 0 ]; then
+            echo "status=success" >> "$GITHUB_OUTPUT"
+            echo "title=## ✅ OpenAPI Security: PASS" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=failure" >> "$GITHUB_OUTPUT"
+            echo "title=## 🚨 OpenAPI Security: FAIL" >> "$GITHUB_OUTPUT"
+          fi
+
+          cat spectral.log >> "${GITHUB_STEP_SUMMARY}"
+        shell: bash
+
+      - name: Upload Spectral log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: spectral
+          path: spectral.log
+
+      - name: Comment OpenAPI security result on PR
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- openapi-security-result -->'
+          status: ${{ steps.scan.outputs.status }}
+          title: "${{ steps.scan.outputs.title || '## ⚠️ OpenAPI Security: CUT OFF (no result produced)' }}"
+          body-file: spectral.log
+          details-summary: 'spectral log'
+
+      # Gating: a finding here is introduced by the spec change under review, and
+      # the accepted exceptions are already encoded in .spectral.yaml.
+      - name: Fail if a finding was found
+        if: always() && steps.scan.outputs.status != 'success'
+        run: exit 1

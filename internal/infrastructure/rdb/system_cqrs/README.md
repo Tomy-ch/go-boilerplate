@@ -89,15 +89,7 @@ See [`internal/usecase/boundary/outbox/README.md`](../../../usecase/boundary/out
 
 ## Structure
 
-```text
-internal/infrastructure/rdb/system_cqrs/
-├── healthcheck/
-│   └── health_check_system_cqrs.go
-├── idempotency/
-│   └── idempotency_system_cqrs.go
-└── outbox/
-    └── outbox_system_cqrs.go
-```
+One directory per operational concern, named after the same concern in `database/dml/system_cqrs/`.
 
 ## Design Policy
 

@@ -107,7 +107,10 @@
 				<dd><a href="#New">func New(endpoint Endpoint, client httpclient.Client, tf observability.TracerFactory) boundary.Gateway</a></dd>
 			
 				
-				<dd><a href="#NewDownstreamProfile">func NewDownstreamProfile() httpclient.DownstreamProfile</a></dd>
+				<dd><a href="#NewCache">func NewCache(inner boundary.Gateway, clk clock.Clock) boundary.Gateway</a></dd>
+			
+				
+				<dd><a href="#NewDownstreamProfile">func NewDownstreamProfile(allowPrivateNetwork bool) httpclient.DownstreamProfile</a></dd>
 			
 				
 				<dd><a href="#RequiredDownstream">func RequiredDownstream() httpclient.Downstream</a></dd>
@@ -117,7 +120,7 @@
 				<dd><a href="#Endpoint">type Endpoint</a></dd>
 				
 					
-					<dd>    <a href="#NewEndpoint">func NewEndpoint() Endpoint</a></dd>
+					<dd>    <a href="#NewEndpoint">func NewEndpoint(epCfg *config.EndpointConfig) Endpoint</a></dd>
 				
 				
 			
@@ -131,6 +134,8 @@
 			<h3>Package files</h3>
 			<p>
 			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/infrastructure/webapi/exchangerate/cache.go.html">cache.go</a>
 			
 				<a href="../../../../../src/go-boilerplate/internal/infrastructure/webapi/exchangerate/config.go.html">config.go</a>
 			
@@ -149,7 +154,7 @@
 		
 			
 			
-			<h2 id="New">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/webapi/exchangerate/exchangerate_gateway.go.html?s=1887:1995#L42">New</a>
+			<h2 id="New">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/webapi/exchangerate/exchangerate_gateway.go.html?s=2228:2336#L46">New</a>
 				<a class="permalink" href="#New">¶</a>
 				
 				
@@ -167,14 +172,14 @@
 		
 			
 			
-			</p><h2 id="NewDownstreamProfile">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/webapi/exchangerate/exchangerate_gateway.go.html?s=1206:1262#L27">NewDownstreamProfile</a>
-				<a class="permalink" href="#NewDownstreamProfile">¶</a>
+			</p><h2 id="NewCache">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/webapi/exchangerate/cache.go.html?s=1796:1867#L35">NewCache</a>
+				<a class="permalink" href="#NewCache">¶</a>
 				
 				
 			</h2>
-			<pre>func NewDownstreamProfile() <a href="../../../../../go-boilerplate/internal/infrastructure/httpclient/">httpclient</a>.<a href="../../../../../go-boilerplate/internal/infrastructure/httpclient/#DownstreamProfile">DownstreamProfile</a></pre>
-			<p>NewDownstreamProfile は、外部為替サービス向けの resilient プロファイルを返します。
-外部サービスのため trace を伝搬せず、private/loopback 宛て接続を拒否します。
+			<pre>func NewCache(inner <a href="../../../../../go-boilerplate/internal/usecase/boundary/exchangerate/">boundary</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/exchangerate/#Gateway">Gateway</a>, clk <a href="../../../../../go-boilerplate/internal/usecase/boundary/clock/">clock</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/clock/#Clock">Clock</a>) <a href="../../../../../go-boilerplate/internal/usecase/boundary/exchangerate/">boundary</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/exchangerate/#Gateway">Gateway</a></pre>
+			<p>NewCache は、gateway を TTL キャッシュで包んだ boundary.Gateway を返します。
+clk は失効判定の時刻源で、テストでは固定時刻の clock を注入できます。
 
 			
 			
@@ -182,7 +187,23 @@
 		
 			
 			
-			</p><h2 id="RequiredDownstream">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/webapi/exchangerate/exchangerate_gateway.go.html?s=1729:1776#L37">RequiredDownstream</a>
+			</p><h2 id="NewDownstreamProfile">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/webapi/exchangerate/exchangerate_gateway.go.html?s=1509:1589#L31">NewDownstreamProfile</a>
+				<a class="permalink" href="#NewDownstreamProfile">¶</a>
+				
+				
+			</h2>
+			<pre>func NewDownstreamProfile(allowPrivateNetwork <a href="../../../../../builtin/#bool">bool</a>) <a href="../../../../../go-boilerplate/internal/infrastructure/httpclient/">httpclient</a>.<a href="../../../../../go-boilerplate/internal/infrastructure/httpclient/#DownstreamProfile">DownstreamProfile</a></pre>
+			<p>NewDownstreamProfile は、外部為替サービス向けの resilient プロファイルを返します。
+外部サービスのため trace を伝搬しません。
+allowPrivateNetwork は private 網宛て接続の可否で、環境に応じた解決は DI が行います（infra は env を知らない）。
+
+			
+			
+
+		
+			
+			
+			</p><h2 id="RequiredDownstream">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/webapi/exchangerate/exchangerate_gateway.go.html?s=2070:2117#L41">RequiredDownstream</a>
 				<a class="permalink" href="#RequiredDownstream">¶</a>
 				
 				
@@ -199,7 +220,7 @@ silent な DefaultProfile fallback ではなく loud な起動失敗になるこ
 		
 			
 			
-			</p><h2 id="Endpoint">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/webapi/exchangerate/exchangerate_gateway.go.html?s=648:668#L11">Endpoint</a>
+			</p><h2 id="Endpoint">type <a href="../../../../../src/go-boilerplate/internal/infrastructure/webapi/exchangerate/exchangerate_gateway.go.html?s=678:698#L12">Endpoint</a>
 				<a class="permalink" href="#Endpoint">¶</a>
 				
 				
@@ -218,13 +239,13 @@ silent な DefaultProfile fallback ではなく loud な起動失敗になるこ
 
 			
 				
-				<h3 id="NewEndpoint">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/webapi/exchangerate/config.go.html?s=270:297#L1">NewEndpoint</a>
+				<h3 id="NewEndpoint">func <a href="../../../../../src/go-boilerplate/internal/infrastructure/webapi/exchangerate/config.go.html?s=161:216#L1">NewEndpoint</a>
 					<a class="permalink" href="#NewEndpoint">¶</a>
 					
 					
 				</h3>
-				<pre>func NewEndpoint() <a href="#Endpoint">Endpoint</a></pre>
-				<p>NewEndpoint は、サンプル既定値の Endpoint を返します。
+				<pre>func NewEndpoint(epCfg *<a href="../../../../../go-boilerplate/internal/config/">config</a>.<a href="../../../../../go-boilerplate/internal/config/#EndpointConfig">EndpointConfig</a>) <a href="#Endpoint">Endpoint</a></pre>
+				<p>NewEndpoint は、設定から外部為替レートサービスの Endpoint を返します。
 
 				
 				

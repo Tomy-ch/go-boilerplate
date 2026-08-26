@@ -30,7 +30,7 @@ The forces driving this decision:
   (consistent with [ADR-0001](0001-avoid-lock-in.md)).
 - Usecase must orchestrate domain behavior without knowing which infrastructure adapter
   satisfies each Repository or Boundary interface.
-- DI resolution (see ADR-0032) wires implementations to interfaces at startup, so the
+- DI resolution (see ADR-0040) wires implementations to interfaces at startup, so the
   cross-layer seam must be an interface for the DI container to inject.
 - Defining interfaces as cross-layer contracts allows each layer to own its processing
   logic independently, unbound from the implementation details behind the interface.
@@ -68,7 +68,7 @@ Concretely:
 - Every cross-layer concern requires an interface declaration plus at least one concrete
   implementation, increasing file count.
 - Mapping between layer-local types (domain entity to DTO, DTO to OpenAPI response) adds
-  boilerplate at each boundary crossing.
+  repetitive conversion code at each boundary crossing.
 
 ## Alternatives Considered
 
@@ -87,7 +87,7 @@ complexity without meaningful benefit for the Repository and Boundary use cases 
 - Layer dependency rules and the forbidden import table: [`docs/rules.md`](../rules.md)
   §§ "Layer Dependency Rules", "Usecase Dependency Rules", "Infrastructure Implementation
   Rules".
-- The DI container that wires implementations to interfaces at startup: ADR-0032.
+- The DI container that wires implementations to interfaces at startup: ADR-0040.
 - Related layer shape: [ADR-0002](0002-onion-architecture.md).
 - Source: `docs/architecture.md` § "Dependency Inversion"; `docs/rules.md` §§ "Layer
   Dependency Rules", "Usecase Dependency Rules", "Infrastructure Implementation Rules".

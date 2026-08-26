@@ -22,35 +22,23 @@ live in `cmd/` (package `main`). This split keeps the core unit-testable and the
 |`merge-dml`|`mergedml/`|`cmd/merge_dml.go`|Merge DML directory SQL files by type|
 |`worker`|`worker/`|`cmd/worker.go`|Run a registered worker (`worker <worker-name> [args...]`)|
 |`outbox-relay`|`outbox/`|`cmd/outbox_relay.go`|Run the outbox relay; `replay` subcommand returns dead rows to pending|
+|`db-slot`|`dbslot/`|`cmd/db-slot.go`|Lease a database slot from the shared worktree pool (`acquire` / `release` / `heartbeat` / `status` / `env` / `require-owner`)|
 
 ## Structure
 
-```text
-cmd/                     # package main: Cobra defs + composition root (excluded from coverage)
-├── commands.go          # registerCommands (subcommand registration)
-├── serve.go             # newServeCommand + serveRun wiring
-├── migrate.go           # newMigrate{Up,Down}Command + buildMigrateInstance
-└── ...                  # one file per command
-
-internal/cli/            # pure testable core (covered by unit tests, 90%+)
-├── server/              # RunServer / ResolveMetricsStop / NewMetricsServer
-├── migrate/             # MigrateUpRun / MigrateDownRun / Migrator
-├── seed/                # RunDBSeed
-├── job/                 # RunJobWith
-├── fixcollation/        # RunFix
-├── dumpschema/          # RunDump / NewGenerator
-├── mergedml/            # RunMerge / NewGenerator
-├── worker/              # RunWorkerWith / NewHealthServer
-└── outbox/              # RunRelay / RunReplayWith
-```
+One directory per subcommand, named after it, paired with the `cmd/<name>.go` that wires it.
+The pairing is the point: `cmd/` stays a Cobra shell with a composition root and is excluded from
+coverage, while the testable core lives here and is covered like any other package.
 
 `registerCommands` in `cmd/commands.go` registers all subcommands to the Cobra root command.
 
 ## Design Policy
 
 - Each command is one core package under `internal/cli/` + one thin shell file under `cmd/`.
-- The core must NOT import Cobra, `internal/di`, `internal/config`, OS signals, or infrastructure
-  (except `infrastructure/rdb/driver` types). It operates on injected interfaces / function seams.
+- The core must NOT import Cobra, `internal/di`, OS signals, or infrastructure (except
+  `infrastructure/rdb/driver` types). It operates on injected interfaces / function seams.
+  `internal/config` is permitted — the enforced boundary is the `independent_cli` depguard rule in
+  `.golangci-full.yaml`, which denies the layers above but not `config`.
 - The CLI layer does not contain feature business logic (that belongs in usecase / domain).
 - Adding a new command: add `cmd/<command>.go` (Cobra def + real-dependency wiring), add the core
   logic under `internal/cli/<command>/`, and register it in `registerCommands`.
@@ -65,7 +53,11 @@ pushed out to `cmd/`. The package boundary equals the test boundary.
   coverage**. `internal/cli/*` is included in the coverage gate and is expected to meet 90%+.
 - **OS / filesystem / external-process / DB / logger dependencies are injected** (interfaces or
   function seams). Production wires the real implementations in `cmd/`; unit tests pass fakes, so
-  **tests never touch the real filesystem, run external binaries (`pg_dump` / `psql`), or open a DB**.
+  **the decision logic's tests never touch the real filesystem, run external binaries
+  (`pg_dump` / `psql`), or open a DB**. The **real implementation adapter behind a seam** is the one
+  exception: its contract is that the external substrate behaves as expected, which a fake cannot
+  establish, so it may be tested against the real thing. A package doing this declares the split in
+  its own README — see [`dbslot/`](dbslot/README.md).
 - **The thin `cmd/` shells are excluded** from the coverage gate (`gen|cmd|mock|apperror|scripts`).
   Their runtime correctness is covered by CI boot checks: `app-di-startup-check` (serve → `/ready`),
   `job-boot-check` (job dispatch), `worker-boot-check` (worker dispatch), `migration-check`

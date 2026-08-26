@@ -31,9 +31,8 @@ type EngineIn struct {
 
 // ValidateShutdownGrace は、drain 完了前に停止猶予が尽きないことを起動時に検証します。
 //
-// 停止時の実効カットオフは fx.StopTimeout と停止 context の deadline（共に APP_SHUTDOWN_TIMEOUT を
-// 単一軸とする grace）で決まります。WORKER_DRAIN_TIMEOUT >= grace だと OnStop の drain が grace で
-// 打ち切られ、未完了の in-flight handler と後続の停止処理（DB pool close 等）が競合します。
+// WORKER_DRAIN_TIMEOUT >= APP_SHUTDOWN_TIMEOUT だと OnStop の drain が停止猶予で打ち切られ、
+// 未完了の in-flight handler と後続の停止処理（DB pool close 等）が競合します。
 // 設定不整合は起動時に失敗させ、運用時の競合を未然に防ぎます。
 func ValidateShutdownGrace(appCfg *config.ApplicationConfig, workerCfg *config.WorkerConfig) error {
 	return validateShutdownGrace(workerCfg.DrainTimeout(), appCfg.ShutdownTimeout())

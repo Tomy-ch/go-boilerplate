@@ -2,10 +2,16 @@
 .DEFAULT_GOAL := help
 
 # 依存されるファイル
+# Docker関連
+include .makefiles/docker/compose.mk
 # DB関連
 include .makefiles/database/vars.mk
 # Go言語関連
 include .makefiles/go/vars.mk
+# Node関連
+include .makefiles/node/vars.mk
+# 負荷配分（重いターゲットが参照するため、それらより前に読む）
+include .makefiles/load.mk
 
 # 依存されないファイル
 # DB関連
@@ -14,6 +20,7 @@ include .makefiles/database/dml-merge.mk
 include .makefiles/database/seed.mk
 include .makefiles/database/fix.mk
 include .makefiles/database/gen.mk
+include .makefiles/database/pool.mk
 # Application関連
 include .makefiles/app/server.mk
 include .makefiles/app/job.mk
@@ -25,9 +32,12 @@ include .makefiles/github/operation/release-tag.mk
 include .makefiles/github/setting/github.mk
 include .makefiles/github/setting/branch-ruleset.mk
 include .makefiles/github/setting/label-setting.mk
+include .makefiles/github/base-branch.mk
 include .makefiles/github/lint.mk
 include .makefiles/github/commitlint.mk
 include .makefiles/github/pin.mk
+include .makefiles/github/egress.mk
+include .makefiles/github/workflows.mk
 # Go言語関連
 include .makefiles/go/fmt.mk
 include .makefiles/go/gen.mk
@@ -45,9 +55,20 @@ include .makefiles/sql/fix.mk
 include .makefiles/sql/lint.mk
 # Markdown関連
 include .makefiles/markdown/lint.mk
+# Node関連
+include .makefiles/node/scripts.mk
+# AI 開発フィードバック（Closed Loop）関連
+include .makefiles/agents/closed-loop.mk
+# Python関連
+include .makefiles/python/lock.mk
+# Graphify関連
+include .makefiles/graphify/export.mk
 # セキュリティ関連
 include .makefiles/security/trivy.mk
 include .makefiles/security/gitleaks.mk
+include .makefiles/security/go-cooldown.mk
+include .makefiles/security/tool-cooldown.mk
+include .makefiles/security/zizmor.mk
 # Docker関連
 include .makefiles/docker/lint.mk
 include .makefiles/docker/pin.mk
@@ -62,5 +83,4 @@ include .makefiles/gen/gen.mk
 
 .PHONY: help
 help:
-	@node scripts/make_help.mjs
-
+	@$(TSX) scripts/make-help

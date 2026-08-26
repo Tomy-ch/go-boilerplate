@@ -1,0 +1,226 @@
+name: Config Scan
+
+# Trivy misconfiguration scanning for Dockerfiles, kept out of trivy-fs.yaml on
+# purpose. The two share a tool and nothing else: this one has a different target
+# (Dockerfiles, not dependency manifests), a different path filter, and a different
+# gate (HIGH+ blocks here, while dependency findings are reported and gated at
+# release time). Folding it into the dependency scan would also break that
+# workflow's summary, which counts .Results[].Vulnerabilities and would have to
+# start distinguishing .Misconfigurations from it.
+#
+# docker-compose files are NOT covered: Trivy ships no compose checks, so the
+# scanner detects only the five Dockerfiles under docker/. hadolint
+# (docker-lint.yaml) lints the same files for style and correctness; this workflow
+# is the security-policy layer over them.
+
+on:
+  push:
+    branches:
+      - 'release/*'
+      - develop
+      - staging
+      - production
+    paths:
+      - '.github/workflows/trivy-config.yaml'
+      - '.makefiles/security/trivy.mk'
+      - '.trivyignore.yaml'
+      - 'docker/**/Dockerfile'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # The pull-request half of this workflow's trigger, moved out of `on:` and into a job. A `paths:`
+  # filter that excludes a pull request starts no run at all, and a required context that is never
+  # reported is not read as "not applicable" — the merge waits with nothing to wait for. A job the
+  # filter skips reports `skipped` instead, which a required check counts as success.
+  # The `push` filter above is left where it is: that half reports no context, so it blocks nothing.
+  changes:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      relevant: ${{ steps.filter.outputs.relevant }}
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+
+      - name: Filter the changed paths
+        id: filter
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
+        with:
+          filters: |
+            relevant:
+              - '.github/workflows/trivy-config.yaml'
+              - '.makefiles/security/trivy.mk'
+              - '.trivyignore.yaml'
+              - 'docker/**/Dockerfile'
+
+  trivy-config:
+    needs: changes
+    # Fail open. `relevant` is empty wherever the filter reached no verdict — skipped on a
+    # non-pull-request event, or failed outright — and an empty value is not `false`, so the work
+    # runs and reports what it finds. Skipping there would hand the required context a green it
+    # never earned, and a broken filter is exactly when that matters.
+    if: ${{ !cancelled() && needs.changes.outputs.relevant != 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+      pull-requests: write
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+            mirror.gcr.io:443
+            ghcr.io:443
+            pkg-containers.githubusercontent.com:443
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
+        with:
+          tools: aqua:aquasecurity/trivy
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trivy config scan (JSON)
+        run: make -s trivy-config-ci TRIVY_FORMAT=json > trivy-config.json
+        shell: bash
+
+      - name: Create Trivy config summary (Markdown)
+        id: summarize
+        run: |
+          set -euo pipefail
+
+          # trivy config emits one Result per detected config file; files with no
+          # finding carry no Misconfigurations key at all, hence the // [] default.
+          # Results itself is absent — not empty — when nothing was detected at all,
+          # which a PR that deletes every Dockerfile would produce, so it needs the
+          # same defaulting before being iterated.
+          COUNT=$(jq '
+            [(.Results // [])[] | .Misconfigurations // []]
+            | flatten
+            | length
+          ' trivy-config.json)
+
+          echo "count=${COUNT}" >> "$GITHUB_OUTPUT"
+
+          if [ "$COUNT" -eq 0 ]; then
+            echo "title=## ✅ Config Scan: PASS (no HIGH+ misconfiguration)" >> "$GITHUB_OUTPUT"
+            echo "No HIGH or CRITICAL misconfiguration found." > trivy-config-summary.md
+            exit 0
+          fi
+
+          echo "title=## 🚨 Config Scan: FOUND (${COUNT})" >> "$GITHUB_OUTPUT"
+
+          jq -r '
+            (.Results // [])[]
+            | .Target as $target
+            | (.Misconfigurations // [])[]
+            | "- [\(.Severity)] `\($target)` \(.ID) — \(.Title)\n  - \(.Resolution)"
+          ' trivy-config.json > trivy-config-summary.md
+        shell: bash
+
+      - name: Upload Trivy config report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: trivy-config
+          path: |
+            trivy-config.json
+            trivy-config-summary.md
+
+      - name: Comment Trivy config result on PR
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- trivy-config-result -->'
+          status: "${{ steps.summarize.outputs.count == '0' && 'success' || 'findings' }}"
+          title: "${{ steps.summarize.outputs.title || '## ⚠️ Config Scan: CUT OFF (no result produced)' }}"
+          body-file: trivy-config-summary.md
+          details-summary: '📄 Summary'
+
+      - name: Trivy config scan (SARIF)
+        if: always()
+        run: make -s trivy-config-ci TRIVY_FORMAT=sarif > trivy-config.sarif
+        shell: bash
+
+      # Its own category so misconfiguration alerts stay separable from the
+      # dependency findings uploaded under trivy-fs.
+      - name: Upload Trivy config SARIF to code scanning
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
+        with:
+          sarif_file: trivy-config.sarif
+          category: trivy-misconfig
+
+      # Unlike the dependency scan, a misconfiguration is introduced by the change
+      # under review rather than inherited from an upstream advisory, so it blocks
+      # here instead of being deferred to a release gate. Accepted exceptions live
+      # in .trivyignore.yaml, pinned per path.
+      - name: Fail if a HIGH+ misconfiguration was found
+        if: always() && steps.summarize.outputs.count != '0'
+        run: exit 1

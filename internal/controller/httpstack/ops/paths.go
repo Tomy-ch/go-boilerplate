@@ -1,4 +1,4 @@
-// Package ops は、運用系エンドポイント（/health, /metrics, /healthz, /ready, /version）を識別するためのユーティリティを提供します。
+// Package ops は、運用系エンドポイントを識別するためのユーティリティを提供します。
 package ops
 
 import "strings"

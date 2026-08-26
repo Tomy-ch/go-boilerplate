@@ -25,6 +25,7 @@ type circuit struct {
 	mu sync.Mutex
 
 	phase       circuitPhase
+	probing     bool // Half-open で probe バッチを投入済み（結果待ち）なら true
 	failures    int
 	threshold   int // 0 以下でサーキット無効
 	openCount   int
@@ -52,12 +53,38 @@ func (c *circuit) cooldown() time.Duration {
 }
 
 // toHalfOpen は、Open から Half-open へ遷移します（cooldown 経過後に poll loop が呼ぶ）。
+// 新しい Half-open エピソードなので probing は未投入（false）へ戻します。
 func (c *circuit) toHalfOpen() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.phase == phaseOpen {
 		c.phase = phaseHalfOpen
+		c.probing = false
 	}
+}
+
+// abortProbe は、Half-open の probe バッチが空振り（0 件受信）だったとき probing を解除します。
+// probe が in-flight にならないと結果（onSuccess/onFailure）が出ず slotFreed も鳴らないため、
+// これを解除しないと poll loop が次周の acquire で永久停止する。解除後は次周で再 probe できる。
+func (c *circuit) abortProbe() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.phase == phaseHalfOpen {
+		c.probing = false
+	}
+}
+
+// tryBeginProbe は、Half-open で probe バッチをまだ投入していなければ probing を確定して true を返します。
+// 既に probing 中（結果待ち）または Half-open でない場合は false を返し、呼び出し側は新規 Receive を止めます。
+// これにより 1 Half-open エピソードで投入する probe は 1 バッチ（総試行数 ≤ CircuitHalfOpenProbe）に限定されます。
+func (c *circuit) tryBeginProbe() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.phase == phaseHalfOpen && !c.probing {
+		c.probing = true
+		return true
+	}
+	return false
 }
 
 // onSuccess は、成功（または Permanent 退避完了）を記録します。Half-open なら Closed へ復帰します。
@@ -67,6 +94,7 @@ func (c *circuit) onSuccess() {
 	c.failures = 0
 	if c.phase == phaseHalfOpen {
 		c.phase = phaseClosed
+		c.probing = false
 		c.openCount = 0
 	}
 }
@@ -94,6 +122,7 @@ func (c *circuit) onFailure() {
 // trip は、Open へ遷移し cooldown を確定します（mu ロック下で呼ぶこと）。
 func (c *circuit) trip() {
 	c.phase = phaseOpen
+	c.probing = false
 	c.curCooldown = c.backoff.Duration(c.openCount)
 	c.openCount++
 }

@@ -1,0 +1,129 @@
+name: Release OSV Scan
+
+# Blocking half of the OSV double gate. osv-scanner.yaml reports on every
+# dependency-touching PR without ever failing; this one runs on a PR that promotes into
+# a deploy branch and fails on HIGH or above, so a vulnerability is decided on at the
+# promotion boundary instead of blocking unrelated feature work.
+#
+# Deliberately carries no `paths` filter: a promotion PR often changes nothing under
+# go.mod or the npm lockfiles, yet it is exactly the moment the dependency state has to
+# be re-judged — and a required check must run to be able to block.
+#
+# The `push` trigger covers the same boundary crossed the other way. A commit landing
+# on a deploy branch directly is a promotion that skipped its promotion PR, which is
+# precisely the case this gate exists to judge and the one case it would otherwise
+# never see. It cannot block a commit that has already landed, so on push the failing
+# job is a record rather than a gate — but a silent landing is the worse of the two.
+on:
+  push:
+    branches:
+      - develop
+      - staging
+      - production
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  osv-release:
+    # The pull-request half of this workflow's trigger, moved out of `on:` and into the job. A
+    # `branches:` filter that excludes a pull request starts no run at all, and a required context
+    # that is never reported is not read as "not applicable" — the merge waits with nothing to wait
+    # for. A job the condition skips reports `skipped` instead, which a required check counts as
+    # success. The `push` filter above is left where it is: that half reports no context.
+    if: ${{ github.event_name != 'pull_request' || contains(fromJSON('["develop", "staging", "production"]'), github.base_ref) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+            api.osv.dev:443
+            api.deps.dev:443
+            osv-vulnerabilities.storage.googleapis.com:443
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
+        with:
+          tools: aqua:google/osv-scanner
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # The scanner version is declared in mise.toml (SSOT) — never pinned here.
+
+      - name: Scan with osv-scanner
+        id: scan
+        uses: ./.github/actions/osv-scan
+
+      - name: Upload osv-scanner release report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: osv-release-gate
+          path: |
+            osv-scanner.json
+            osv-scanner.log
+            osv-findings.json
+            osv-scanner-summary.md
+
+      - name: Comment OSV release gate result on PR
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          marker: '<!-- osv-release-gate-result -->'
+          status: ${{ steps.scan.outputs.status }}
+          title: "${{ steps.scan.outputs.title || '## ⚠️ Release OSV Scan: CUT OFF (no result produced)' }}"
+          body-file: osv-scanner-summary.md
+          details-summary: '📄 Summary'
+
+      # An empty output (the scan never produced one) also fails, so a scanner or
+      # parsing failure is never mistaken for a pass.
+      - name: Fail if a blocking vulnerability was found
+        if: always() && steps.scan.outputs.gating != '0'
+        run: exit 1

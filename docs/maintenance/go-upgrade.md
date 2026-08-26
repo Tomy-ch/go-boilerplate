@@ -154,12 +154,28 @@ Main tools installed (versions pinned in `mise.toml`):
 - lefthook
 - gotests
 - impl
+- zizmor
+- shellcheck
 
 ## 7. Docker images pick up the new Go base via sync
 
 `docker/server/Dockerfile` and `docker/tools/Dockerfile` both use `FROM golang:X.Y.Z-alpine` as the base for stages that need the Go runtime. Step 2's `make sync-versions` already rewrote these `FROM` lines. No manual Dockerfile edit is needed for a Go bump.
 
 The non-Go tools (air, dlv, golangci-lint, etc.) inside these Dockerfiles continue to be installed via `mise install <tool>`, so their versions are also driven by `mise.toml`.
+
+## 7.5. Re-pin the base image digests
+
+`make sync-versions` rewrites the `FROM golang:` **tag**, but the `@sha256:...` digest pinned beside it still points at the OLD Go image. Docker honors the digest, so a build would silently keep using the old image. Re-resolve the pins from the registry so the digest tracks the new tag:
+
+```sh
+make pin-images-resolve   # run `docker login` first if Docker Hub returns 429
+make pin-images-apply
+make pin-images-check
+```
+
+**A Go upgrade normally cannot complete this step on the day the release lands.** The new `golang:` tag has no prior lockfile entry, and the image is inside the `PIN_IMAGES_MIN_AGE_DAYS` cooldown (default 14 days). With no aged digest to fall back to, `pin-images-resolve` fails closed rather than adopting a fresh digest or dropping the pin to tag-only, and `pin-images-check` then rejects the surviving stale digest as `未登録`. The lockfile is `docker/images-pin.toml`; the targets and the cooldown knob are documented in `.makefiles/README.md`.
+
+So the upgrade and its base-image pin are coupled: it lands cleanly once the new Go image has aged past the window, or when a human deliberately bootstraps it with `days=0`. That is a decision to raise, not one to take — and the tag/digest mismatch must not be left in the tree either way.
 
 ## 8. Rebuild Docker containers
 
@@ -208,6 +224,8 @@ make lint
 Ensure that all of the following commands succeed.
 
 ```sh
+make sync-versions
+make pin-images-check
 make tidy-lib
 make install-tools
 make gen
@@ -216,6 +234,8 @@ make lint
 make serve-build-clean
 make tool-runners-build-clean
 ```
+
+`make sync-versions` is repeated here so that any leftover drift between `mise.toml` and the files derived from it is caught before the upgrade is reported as done.
 
 ## Upgrade Checklist
 
@@ -228,6 +248,7 @@ When updating the Go version, check the following.
 - [ ] Run `make tidy-lib`
 - [ ] (Optional) Decide whether to update Go module dependencies; if yes, run `go get -u[=patch] ./...` + `make tidy-lib` (keep the `go` directive unchanged)
 - [ ] Run `make install-tools`
+- [ ] Re-pin the base image digests (`make pin-images-resolve` → `apply` → `check`); if `resolve` fails closed on the cooldown, raise the choice instead of forcing it
 - [ ] Rebuild Docker containers (`make serve-build-clean`, `make tool-runners-build-clean`)
 - [ ] Re-run code generation
 - [ ] Run test

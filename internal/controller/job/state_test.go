@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewState(t *testing.T) {
@@ -21,37 +22,33 @@ func TestNewState(t *testing.T) {
 	})
 }
 
-func TestState(t *testing.T) {
+func Test_state_Set(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("SetとSnapshotは値を保存して返す", func(t *testing.T) {
+		t.Run("設定したジョブ名・引数・doneがSnapshotで取得できる", func(t *testing.T) {
 			t.Parallel()
-			s := NewState()
 
-			name := "my-job"
-			args := []string{"a", "b"}
+			s := NewState()
 			doneCh := make(chan error, 1)
 
-			s.Set(name, args, doneCh)
+			s.Set("my-job", []string{"a", "b"}, doneCh)
 
 			gotName, gotArgs, gotDone := s.Snapshot()
-			assert.Equal(t, name, gotName)
-			assert.Equal(t, args, gotArgs)
-			assert.Equal(t, doneCh, gotDone)
+			assert.Equal(t, "my-job", gotName)
+			assert.Equal(t, []string{"a", "b"}, gotArgs)
+			require.Equal(t, doneCh, gotDone)
 
-			// チャネルが使用可能であることを確認する
-			select {
-			case gotDone <- nil:
-			default:
-				t.Fatalf("gotDone channel not usable")
-			}
+			// 別チャネルへ差し替わっていないこと（渡した done がそのまま使える）を確認する。
+			gotDone <- nil
+			assert.Len(t, doneCh, 1)
 		})
 
-		t.Run("Setを複数回呼ぶとSnapshotは最後の値を返す", func(t *testing.T) {
+		t.Run("複数回呼ぶと最後に設定した値で上書きされる", func(t *testing.T) {
 			t.Parallel()
+
 			s := NewState()
 
 			s.Set("first", []string{"1"}, nil)
@@ -61,18 +58,28 @@ func TestState(t *testing.T) {
 			assert.Equal(t, "second", gotName)
 			assert.Equal(t, []string{"2"}, gotArgs)
 		})
+	})
+}
 
-		t.Run("Set前のSnapshotはゼロ値を返す", func(t *testing.T) {
+func Test_state_Snapshot(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Set前はゼロ値を返す", func(t *testing.T) {
 			t.Parallel()
 
 			gotName, gotArgs, gotDone := NewState().Snapshot()
+
 			assert.Empty(t, gotName)
 			assert.Nil(t, gotArgs)
 			assert.Nil(t, gotDone)
 		})
 
-		t.Run("SetとSnapshotを並行に呼んでもデータ競合しない", func(t *testing.T) {
+		t.Run("Setと並行に呼んでもデータ競合せず設定後の値を返す", func(t *testing.T) {
 			t.Parallel()
+
 			s := NewState()
 
 			var wg sync.WaitGroup
@@ -81,8 +88,10 @@ func TestState(t *testing.T) {
 			go func() { defer wg.Done(); _, _, _ = s.Snapshot() }()
 			wg.Wait()
 
-			gotName, _, _ := s.Snapshot()
+			gotName, gotArgs, gotDone := s.Snapshot()
 			assert.Equal(t, "job", gotName)
+			assert.Equal(t, []string{"a"}, gotArgs)
+			assert.NotNil(t, gotDone)
 		})
 	})
 }

@@ -1,0 +1,20 @@
+type: object
+description: |
+  購入集計のステータス別内訳の 1 要素。status は ID・名称を事前解決済みで、別途の名称解決は不要です。
+required:
+  - status
+  - count
+  - totalAmount
+properties:
+  status:
+    $ref: './PurchaseStatusRef.yaml'
+  count:
+    type: integer
+    format: int64
+    description: 当該ステータスの購入件数
+    example: 4
+  totalAmount:
+    type: integer
+    format: int64
+    description: 当該ステータスの購入金額の合計。USD セント単位の整数です。
+    example: 706000

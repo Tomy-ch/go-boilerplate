@@ -4,6 +4,7 @@ get:
     - health
   summary: サーバーのヘルスチェック
   description: サーバーが正常に稼働しているかを確認するためのECSやALB向けのヘルスチェックエンドポイントです。
+  security: []
   responses:
     '200':
       description: サーバーは正常に稼働しています。
@@ -11,3 +12,5 @@ get:
         application/json:
           schema:
             $ref: '../components/responses/health-check/HealthResponse.yaml'
+    '405':
+      $ref: '../components/schemas/errors/MethodNotAllowed405.yaml'

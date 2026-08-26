@@ -76,7 +76,7 @@ This skill **MUST call `AskUserQuestion` immediately after invocation** (unless 
 2. Read `internal/usecase/<package>/<package>_usecase.go` and extract the `Usecase` Interface method list (signatures).
 3. Read `internal/usecase/README.md` and (if needed) 1〜2 sibling usecase packages for the naming convention (verb prefixes used in this codebase).
 4. Read `internal/controller/README.md` + `internal/controller/handler/README.md` for layer rules.
-5. Read 1 sibling handler (`internal/controller/handler/v1/users/v1_users_handler.go` etc.) as structural template.
+5. Read 1 sibling handler (`internal/controller/handler/v1/<sibling>/v1_<sibling>_handler.go` etc.) as structural template. <!-- skill-lint-ignore -->
 
 ## Step 2. Derive Mapping (lean A core)
 
@@ -188,7 +188,7 @@ HTTP 境界 integration テストも internal/integration/<feature>_test.go に�
 全層が揃いました — `make serve` + curl での実機ランタイム確認に進めます。
 ```
 
-> **ランタイム curl 確認の位置づけ:** 認証（`security:`）・DI 配線・実 DB を通した curl + o11y の確認は、全層が揃う `scaffold-endpoint` の Runtime Verification（Step 3.5）が正式な実施場所。controller を**単独**で scaffold した場合も、下位層（usecase / domain / infra）と DI が既に存在していれば同様に curl 確認できる。下位層が未整備のうちは curl しても Fx が組み上がらず失敗するため、curl は全層が揃ってから行う。
+> **ランタイム curl 確認の位置づけ:** 認証（`security:`）・DI 配線・実 DB を通した curl + o11y の確認は、全層が揃う `scaffold-endpoint` の Phase 7（Integration Verification）が正式な実施場所。controller を**単独**で scaffold した場合も、下位層（usecase / domain / infra）と DI が既に存在していれば同様に curl 確認できる。下位層が未整備のうちは curl しても Fx が組み上がらず失敗するため、curl は全層が揃ってから行う。
 
 Do NOT commit.
 
@@ -207,7 +207,7 @@ Remains protected:
 
 ## Constraints
 
-- ❌ Add comments that restate the code or explain *why* a choice was made — keep code comments minimal (behavior / contract only); rationale belongs in the commit message / README, not the code. One-line declaration godoc stays (even on unexported symbols).
+- ❌ Add comments that restate the code or explain *why* a choice was made — keep code comments minimal (behavior / contract only); rationale belongs in the commit message / README, not the code. One-line declaration godoc stays (even on unexported symbols). **Volume counts too**: what this skill scaffolds is idiomatic by construction, so a multi-line explanation of a constructor / Params struct / row-to-entity mapping / handler template is noise. State the contract in one line and stop; never restate a repo-wide rule `docs/rules.md` already carries. Suppression, not elimination — a genuinely non-obvious Why still stays.
 - ❌ Contain business logic in the handler (must be in usecase or domain)
 - ❌ Generate handler stubs for unmapped operationIds (halt with hand-off instead)
 - ❌ Auto-resolve mapping gaps (e.g., create dummy usecase methods)

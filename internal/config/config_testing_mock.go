@@ -3,17 +3,20 @@ package config
 import (
 	"fmt"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
-
-	"golang.org/x/crypto/bcrypt"
 )
 
 const (
 	// TestingEnvValue は、テスト用の環境変数の値です。
 	TestingEnvValue = "ci"
+	// testDBHostPort は、共有 DB のホスト公開ポート（テスト接続先・固定）です。
+	testDBHostPort = 5432
+	// defaultTestDBName は、DB スロットプール未使用時のテスト用データベース既定名です。
+	defaultTestDBName = "test"
 )
 
 // 下記の変数は、テスト用の期待値以外に、テスト環境の環境変数設定にも使用されます。
@@ -59,21 +62,26 @@ var (
 	expectedObservabilityTracesExporter       = "otlp"
 	expectedObservabilityMetricsExporter      = "otlp"
 	expectedObservabilityLogsExporter         = "otlp"
-	expectedObservabilityOTLPEndpoint         = "http://localhost:4318"
+	expectedEndpointOTLP                      = "http://localhost:4318"
 	expectedObservabilityOTLPProtocol         = "http/protobuf"
 	expectedObservabilityMaskedDBQueryArgs    = false
-	expectedObservabilityTargetStatusCodes    = []int{400, 401, 403, 404, 409, 422, 429, 500, 501, 503}
-	expectedObservabilityTargetStatusCodesStr = "400,401,403,404,409,422,429,500,501,503"
+	expectedObservabilityTargetStatusCodes    = []int{400, 401, 403, 404, 405, 409, 422, 429, 500, 501, 503}
+	expectedObservabilityTargetStatusCodesStr = "400,401,403,404,405,409,422,429,500,501,503"
 	expectedObservabilityTargetStatusCodeSet  = buildStatusCodeSet(expectedObservabilityTargetStatusCodes)
 	// database
-	expectedDBDriver                      = "pgx"
-	expectedDBHost                        = "localhost"
-	expectedDBPort                        = 5432
-	expectedDBUser                        = "postgres"
-	expectedDBPassword                    = "postgres-password"
-	expectedDBName                        = "test"
-	expectedDBSSLMode                     = "disable"
-	expectedDBPingTimeoutCount            = 5
+	expectedDBDriver = "pgx"
+	expectedDBHost   = "localhost"
+	// worktree の分離はポートではなくデータベース名（DB_NAME_TEST）で行うため、接続ポートは固定。
+	expectedDBPort     = testDBHostPort
+	expectedDBUser     = "postgres"
+	expectedDBPassword = "postgres-password"
+	// DB 名は worktree 毎に変わるため testDBName() で解決する（詳細はその doc）。
+	expectedDBName    = testDBName()
+	expectedDBSSLMode = "disable"
+	// テストは 1 つの共有インスタンスへ複数の go test プロセスが同時にプールを張るため、順番待ちしている
+	// だけの接続を「DB が落ちている」と読み違えないよう、起動時 fail-fast を意図した本番の予算（env/.env の
+	// 5s）ではなく、その競合を吸収するマージンを取る。
+	expectedDBPingTimeoutCount            = 30
 	expectedDBPingTimeoutStr              = fmt.Sprintf("%ds", expectedDBPingTimeoutCount)
 	expectedDBPingTimeout                 = time.Duration(expectedDBPingTimeoutCount) * time.Second
 	expectedDBSlowQueryWarnThresholdCount = 500
@@ -90,9 +98,12 @@ var (
 	expectedDBTxRetryMaxBackoffStr        = fmt.Sprintf("%dms", expectedDBTxRetryMaxBackoffCount)
 	expectedDBTxRetryMaxBackoff           = time.Duration(expectedDBTxRetryMaxBackoffCount) * time.Millisecond
 	// dbconnection
-	expectedDBMaxConns         = 10
-	expectedDBMaxConnsInt32    = int32(expectedDBMaxConns)
-	expectedDBMinConns         = 5
+	expectedDBMaxConns      = 10
+	expectedDBMaxConnsInt32 = int32(expectedDBMaxConns)
+	// pgxpool はプール生成の直後に MinConns 本の接続確立を一斉に走らせる。テストの tx は testkit が
+	// advisory lock で全プロセス横断に直列化しており、事前に温めたコネクションが使われることはないため、
+	// この一斉確立は共有インスタンスへの負荷にしかならない。0 にして接続はテストが要求した分だけ張る。
+	expectedDBMinConns         = 0
 	expectedDBMinConnsInt32    = int32(expectedDBMinConns)
 	expectedDBMaxLifetimeCount = 60
 	expectedDBMaxLifetimeStr   = fmt.Sprintf("%ds", expectedDBMaxLifetimeCount)
@@ -101,26 +112,22 @@ var (
 	expectedDBMaxIdleTimeStr   = fmt.Sprintf("%ds", expectedDBMaxIdleTimeCount)
 	expectedDBMaxIdleTime      = time.Duration(expectedDBMaxIdleTimeCount) * time.Second
 	// security
-	expectedAllowedOrigins        = "http://localhost,https://example.com"
-	expectedCIDRStr               = "192.168.0.0/24"
-	_, expectedCIDR, _            = net.ParseCIDR(expectedCIDRStr)
-	expectedContentTypeNosniff    = "nosniff"
-	expectedXFrameOptions         = "SAMEORIGIN"
-	expectedHSTSMaxAgeCount       = 31536000
-	expectedHSTSMaxAge            = time.Duration(expectedHSTSMaxAgeCount) * time.Second
-	expectedHSTSMaxAgeStr         = fmt.Sprintf("%ds", expectedHSTSMaxAgeCount)
-	expectedHSTSExcludeSubdomains = false
-	expectedHSTSPreloadEnabled    = false
-	expectedReferrerPolicy        = "no-referrer"
-	expectedBcryptCost            = bcrypt.MinCost
+	expectedAllowedOrigins            = "http://localhost,https://example.com"
+	expectedCIDRStr                   = "192.168.0.0/24"
+	_, expectedCIDR, _                = net.ParseCIDR(expectedCIDRStr)
+	expectedContentTypeNosniff        = "nosniff"
+	expectedXFrameOptions             = "SAMEORIGIN"
+	expectedHSTSMaxAgeCount           = 31536000
+	expectedHSTSMaxAge                = time.Duration(expectedHSTSMaxAgeCount) * time.Second
+	expectedHSTSMaxAgeStr             = fmt.Sprintf("%ds", expectedHSTSMaxAgeCount)
+	expectedHSTSExcludeSubdomains     = false
+	expectedHSTSPreloadEnabled        = false
+	expectedReferrerPolicy            = "no-referrer"
+	expectedCrossOriginResourcePolicy = "same-origin"
 	// secure cookie
 	expectedSecureCookieSecure   = new(true)
 	expectedSecureCookieSameSite = "Strict"
 	expectedSecureCookieDomain   = "localhost"
-	// auth
-	expectedAuthCookieName          = "auth_token"
-	expectedAuthHeaderName          = "Authorization"
-	expectedAuthAllowedHeaderBearer = true
 	// worker
 	expectedWorkerConcurrency               = 4
 	expectedWorkerMaxInFlight               = 8
@@ -137,14 +144,60 @@ var (
 	expectedWorkerNackBackoffInitial        = 1 * time.Second
 	expectedWorkerNackBackoffMax            = 30 * time.Second
 
-	// outbox
-	expectedOutboxEndpoint     = ""
-	expectedOutboxPollInterval = 1 * time.Second
-	expectedOutboxErrorBackoff = 5 * time.Second
-	expectedOutboxBatchSize    = 100
+	// consumerQueue（worker を配線したときだけ使うため、接続情報は既定の空値）
+	expectedEndpointConsumerQueue               = ""
+	expectedConsumerQueueRegion                 = ""
+	expectedConsumerQueueURL                    = ""
+	expectedConsumerQueueDLQURL                 = ""
+	expectedConsumerQueueAccessKeyID            = ""
+	expectedConsumerQueueSecretAccessKey        = ""
+	expectedConsumerQueueMaxMessages            = 10
+	expectedConsumerQueueMaxMessagesInt32       = int32(expectedConsumerQueueMaxMessages)
+	expectedConsumerQueueWaitTimeSeconds        = 20
+	expectedConsumerQueueWaitTimeSecondsInt32   = int32(expectedConsumerQueueWaitTimeSeconds)
+	expectedConsumerQueueVisibilityTimeout      = 30
+	expectedConsumerQueueVisibilityTimeoutInt32 = int32(expectedConsumerQueueVisibilityTimeout)
+
+	// outbox（Queue* は PUBLISHER=sqs のときだけ使うため、既定の http では空値）
+	expectedOutboxPublisher            = "http"
+	expectedEndpointOutbox             = ""
+	expectedOutboxPollInterval         = 1 * time.Second
+	expectedOutboxErrorBackoff         = 5 * time.Second
+	expectedOutboxBatchSize            = 100
+	expectedEndpointOutboxQueue        = ""
+	expectedOutboxQueueRegion          = ""
+	expectedOutboxQueueURL             = ""
+	expectedOutboxQueueAccessKeyID     = ""
+	expectedOutboxQueueSecretAccessKey = ""
+
+	// auth（local/ci/test では実 JWT authenticator を配線しないため、issuer 等は既定の空値）
+	expectedAuthIssuer             = ""
+	expectedAuthAudience           = ""
+	expectedEndpointJWKS           = ""
+	expectedAuthAllowedAlgorithms  = []string{"RS256"}
+	expectedAuthClockSkew          = 60 * time.Second
+	expectedAuthJWKSCacheTTL       = 1 * time.Hour
+	expectedAuthDiscoveryTTL       = 24 * time.Hour
+	expectedAuthUnknownKidCooldown = 60 * time.Second
+
+	// object storage（Endpoint は空文字＝SDK 既定解決の意味を持つため空。他は required,notEmpty のため実値）
+	expectedEndpointObjectStorage = ""
+	// sample-api:begin
+	expectedEndpointExchangeRate = "https://exchange-rate.example.test"
+	// sample-api:end
+	expectedObjectStorageRegion                  = "us-east-1"
+	expectedObjectStorageBucket                  = "test-bucket"
+	expectedObjectStorageAccessKeyID             = "test-access-key"
+	expectedObjectStorageSecretAccessKey         = "test-secret-key"
+	expectedObjectStorageUsePathStyle            = true
+	expectedObjectStorageUsePathStyleStr         = strconv.FormatBool(expectedObjectStorageUsePathStyle)
+	expectedObjectStorageMaxUploadBytes    int64 = 5242880
+	expectedObjectStorageMaxUploadBytesStr       = strconv.FormatInt(expectedObjectStorageMaxUploadBytes, 10)
 )
 
 // MockConfigForTest は、テスト用のConfigを返します。
+//
+//nolint:dupl // Config の全フィールドを網羅比較するための構造体リテラルであり、テスト側期待値との重複は不可避
 func MockConfigForTest(tb testing.TB) *Config {
 	tb.Helper()
 	return &Config{
@@ -178,7 +231,6 @@ func MockConfigForTest(tb testing.TB) *Config {
 			tracesExporter:      expectedObservabilityTracesExporter,
 			metricsExporter:     expectedObservabilityMetricsExporter,
 			logsExporter:        expectedObservabilityLogsExporter,
-			otlpEndpoint:        expectedObservabilityOTLPEndpoint,
 			otlpProtocol:        expectedObservabilityOTLPProtocol,
 			maskedDBQueryArgs:   expectedObservabilityMaskedDBQueryArgs,
 			targetStatusCodeSet: expectedObservabilityTargetStatusCodeSet,
@@ -206,25 +258,20 @@ func MockConfigForTest(tb testing.TB) *Config {
 			maxIdleTime: expectedDBMaxIdleTime,
 		},
 		security: SecurityConfig{
-			allowedOrigins:        strings.Split(expectedAllowedOrigins, ","),
-			cidr:                  expectedCIDR,
-			contentTypeNosniff:    expectedContentTypeNosniff,
-			xFrameOptions:         expectedXFrameOptions,
-			hstsMaxAge:            expectedHSTSMaxAge,
-			hstsExcludeSubdomains: expectedHSTSExcludeSubdomains,
-			hstsPreloadEnabled:    expectedHSTSPreloadEnabled,
-			referrerPolicy:        expectedReferrerPolicy,
-			bcryptCost:            expectedBcryptCost,
+			allowedOrigins:            strings.Split(expectedAllowedOrigins, ","),
+			cidr:                      expectedCIDR,
+			contentTypeNosniff:        expectedContentTypeNosniff,
+			xFrameOptions:             expectedXFrameOptions,
+			hstsMaxAge:                expectedHSTSMaxAge,
+			hstsExcludeSubdomains:     expectedHSTSExcludeSubdomains,
+			hstsPreloadEnabled:        expectedHSTSPreloadEnabled,
+			referrerPolicy:            expectedReferrerPolicy,
+			crossOriginResourcePolicy: expectedCrossOriginResourcePolicy,
 		},
 		secureCookie: SecureCookieConfig{
 			secure:   expectedSecureCookieSecure,
 			sameSite: expectedSecureCookieSameSite,
 			domain:   expectedSecureCookieDomain,
-		},
-		auth: AuthConfig{
-			cookieName:          expectedAuthCookieName,
-			headerName:          expectedAuthHeaderName,
-			allowedHeaderBearer: expectedAuthAllowedHeaderBearer,
 		},
 		worker: WorkerConfig{
 			concurrency:               expectedWorkerConcurrency,
@@ -242,11 +289,53 @@ func MockConfigForTest(tb testing.TB) *Config {
 			nackBackoffInitial:        expectedWorkerNackBackoffInitial,
 			nackBackoffMax:            expectedWorkerNackBackoffMax,
 		},
+		consumerQueue: ConsumerQueueConfig{
+			region:            expectedConsumerQueueRegion,
+			url:               expectedConsumerQueueURL,
+			dlqURL:            expectedConsumerQueueDLQURL,
+			accessKeyID:       expectedConsumerQueueAccessKeyID,
+			secretAccessKey:   expectedConsumerQueueSecretAccessKey,
+			maxMessages:       expectedConsumerQueueMaxMessagesInt32,
+			waitTimeSeconds:   expectedConsumerQueueWaitTimeSecondsInt32,
+			visibilityTimeout: expectedConsumerQueueVisibilityTimeoutInt32,
+		},
 		outbox: OutboxConfig{
-			endpoint:     expectedOutboxEndpoint,
-			pollInterval: expectedOutboxPollInterval,
-			errorBackoff: expectedOutboxErrorBackoff,
-			batchSize:    expectedOutboxBatchSize,
+			publisher:            expectedOutboxPublisher,
+			pollInterval:         expectedOutboxPollInterval,
+			errorBackoff:         expectedOutboxErrorBackoff,
+			batchSize:            expectedOutboxBatchSize,
+			queueRegion:          expectedOutboxQueueRegion,
+			queueURL:             expectedOutboxQueueURL,
+			queueAccessKeyID:     expectedOutboxQueueAccessKeyID,
+			queueSecretAccessKey: expectedOutboxQueueSecretAccessKey,
+		},
+		auth: AuthConfig{
+			issuer:             expectedAuthIssuer,
+			audience:           expectedAuthAudience,
+			allowedAlgorithms:  expectedAuthAllowedAlgorithms,
+			clockSkew:          expectedAuthClockSkew,
+			jwksCacheTTL:       expectedAuthJWKSCacheTTL,
+			discoveryTTL:       expectedAuthDiscoveryTTL,
+			unknownKidCooldown: expectedAuthUnknownKidCooldown,
+		},
+		objectStorage: ObjectStorageConfig{
+			region:          expectedObjectStorageRegion,
+			bucket:          expectedObjectStorageBucket,
+			accessKeyID:     expectedObjectStorageAccessKeyID,
+			secretAccessKey: expectedObjectStorageSecretAccessKey,
+			usePathStyle:    expectedObjectStorageUsePathStyle,
+			maxUploadBytes:  expectedObjectStorageMaxUploadBytes,
+		},
+		endpoint: EndpointConfig{
+			otlp:          expectedEndpointOTLP,
+			jwks:          expectedEndpointJWKS,
+			objectStorage: expectedEndpointObjectStorage,
+			outbox:        expectedEndpointOutbox,
+			outboxQueue:   expectedEndpointOutboxQueue,
+			consumerQueue: expectedEndpointConsumerQueue,
+			// sample-api:begin
+			exchangeRate: expectedEndpointExchangeRate,
+			// sample-api:end
 		},
 	}
 }
@@ -276,10 +365,20 @@ func mockLoader(tb testing.TB) Loader {
 			TracesExporter:    expectedObservabilityTracesExporter,
 			MetricsExporter:   expectedObservabilityMetricsExporter,
 			LogsExporter:      expectedObservabilityLogsExporter,
-			OTLPEndpoint:      expectedObservabilityOTLPEndpoint,
 			OTLPProtocol:      expectedObservabilityOTLPProtocol,
 			MaskedDBQueryArgs: expectedObservabilityMaskedDBQueryArgs,
 			TargetStatusCodes: expectedObservabilityTargetStatusCodes,
+		},
+		Endpoint: Endpoint{
+			OTLP:          expectedEndpointOTLP,
+			JWKS:          expectedEndpointJWKS,
+			ObjectStorage: expectedEndpointObjectStorage,
+			Outbox:        expectedEndpointOutbox,
+			OutboxQueue:   expectedEndpointOutboxQueue,
+			ConsumerQueue: expectedEndpointConsumerQueue,
+			// sample-api:begin
+			ExchangeRate: expectedEndpointExchangeRate,
+			// sample-api:end
 		},
 		Server: Server{
 			Host:              expectedServerHost,
@@ -313,25 +412,20 @@ func mockLoader(tb testing.TB) Loader {
 			MaxIdleTime: expectedDBMaxIdleTime,
 		},
 		Security: Security{
-			AllowedOrigins:        strings.Split(expectedAllowedOrigins, ","),
-			CIDR:                  expectedCIDRStr,
-			ContentTypeNosniff:    expectedContentTypeNosniff,
-			XFrameOptions:         expectedXFrameOptions,
-			HSTSMaxAge:            expectedHSTSMaxAge,
-			HSTSExcludeSubdomains: expectedHSTSExcludeSubdomains,
-			HSTSPreloadEnabled:    expectedHSTSPreloadEnabled,
-			ReferrerPolicy:        expectedReferrerPolicy,
-			BcryptCost:            expectedBcryptCost,
+			AllowedOrigins:            strings.Split(expectedAllowedOrigins, ","),
+			CIDR:                      expectedCIDRStr,
+			ContentTypeNosniff:        expectedContentTypeNosniff,
+			XFrameOptions:             expectedXFrameOptions,
+			HSTSMaxAge:                expectedHSTSMaxAge,
+			HSTSExcludeSubdomains:     expectedHSTSExcludeSubdomains,
+			HSTSPreloadEnabled:        expectedHSTSPreloadEnabled,
+			ReferrerPolicy:            expectedReferrerPolicy,
+			CrossOriginResourcePolicy: expectedCrossOriginResourcePolicy,
 		},
 		SecureCookie: SecureCookie{
 			Secure:   expectedSecureCookieSecure,
 			SameSite: expectedSecureCookieSameSite,
 			Domain:   expectedSecureCookieDomain,
-		},
-		Auth: Auth{
-			CookieName:          expectedAuthCookieName,
-			HeaderName:          expectedAuthHeaderName,
-			AllowedHeaderBearer: expectedAuthAllowedHeaderBearer,
 		},
 	}
 }
@@ -364,7 +458,6 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // テスト用の環�
 	t.Setenv("OBS_TRACES_EXPORTER", expectedObservabilityTracesExporter)
 	t.Setenv("OBS_METRICS_EXPORTER", expectedObservabilityMetricsExporter)
 	t.Setenv("OBS_LOGS_EXPORTER", expectedObservabilityLogsExporter)
-	t.Setenv("OBS_OTLP_ENDPOINT", expectedObservabilityOTLPEndpoint)
 	t.Setenv("OBS_OTLP_PROTOCOL", expectedObservabilityOTLPProtocol)
 	t.Setenv("OBS_MASKED_DB_QUERY_ARGS", strconv.FormatBool(expectedObservabilityMaskedDBQueryArgs))
 	t.Setenv("OBS_TARGET_STATUS_CODES", expectedObservabilityTargetStatusCodesStr)
@@ -397,13 +490,47 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // テスト用の環�
 	t.Setenv("SECURITY_HSTS_EXCLUDE_SUBDOMAINS", strconv.FormatBool(expectedHSTSExcludeSubdomains))
 	t.Setenv("SECURITY_HSTS_PRELOAD_ENABLED", strconv.FormatBool(expectedHSTSPreloadEnabled))
 	t.Setenv("SECURITY_REFERRER_POLICY", expectedReferrerPolicy)
-	t.Setenv("SECURITY_BCRYPT_COST", strconv.Itoa(expectedBcryptCost))
+	t.Setenv("SECURITY_CROSS_ORIGIN_RESOURCE_POLICY", expectedCrossOriginResourcePolicy)
+	// Endpoint
+	t.Setenv("ENDPOINT_OTLP", expectedEndpointOTLP)
+	t.Setenv("ENDPOINT_JWKS", expectedEndpointJWKS)
+	t.Setenv("ENDPOINT_OBJECT_STORAGE", expectedEndpointObjectStorage)
+	t.Setenv("ENDPOINT_OUTBOX", expectedEndpointOutbox)
+	t.Setenv("ENDPOINT_OUTBOX_QUEUE", expectedEndpointOutboxQueue)
+	t.Setenv("ENDPOINT_CONSUMER_QUEUE", expectedEndpointConsumerQueue)
+	// sample-api:begin
+	t.Setenv("ENDPOINT_EXCHANGE_RATE", expectedEndpointExchangeRate)
+	// sample-api:end
 	// Secure Cookie
 	t.Setenv("SECURE_COOKIE_SECURE", strconv.FormatBool(*expectedSecureCookieSecure))
 	t.Setenv("SECURE_COOKIE_SAME_SITE", expectedSecureCookieSameSite)
 	t.Setenv("SECURE_COOKIE_DOMAIN", expectedSecureCookieDomain)
-	// Auth
-	t.Setenv("AUTH_COOKIE_NAME", expectedAuthCookieName)
-	t.Setenv("AUTH_HEADER_NAME", expectedAuthHeaderName)
-	t.Setenv("AUTH_ALLOWED_HEADER_BEARER", strconv.FormatBool(expectedAuthAllowedHeaderBearer))
+	// Auth（make がスロットの issuer を渡すため、実行環境の値が混ざらないよう期待値へ固定する）
+	t.Setenv(authIssuerEnvKey, expectedAuthIssuer)
+	t.Setenv("AUTH_AUDIENCE", expectedAuthAudience)
+	// Object Storage
+	t.Setenv("OBJECT_STORAGE_REGION", expectedObjectStorageRegion)
+	t.Setenv("OBJECT_STORAGE_BUCKET", expectedObjectStorageBucket)
+	t.Setenv("OBJECT_STORAGE_ACCESS_KEY_ID", expectedObjectStorageAccessKeyID)
+	t.Setenv("OBJECT_STORAGE_SECRET_ACCESS_KEY", expectedObjectStorageSecretAccessKey)
+	t.Setenv("OBJECT_STORAGE_USE_PATH_STYLE", expectedObjectStorageUsePathStyleStr)
+	t.Setenv("OBJECT_STORAGE_MAX_UPLOAD_BYTES", expectedObjectStorageMaxUploadBytesStr)
+}
+
+// testDBName は、ホストから見たテスト用データベース名を返します。環境変数 DB_NAME_TEST があればそれを、
+// 無ければ既定の "test" を返します。DB スロットプール利用時は make が DB_NAME_TEST を各 worktree の
+// テスト用データベース（wt<N>_test）へ設定するため、共有 DB 内の自 worktree DB へ繋ぎます。ただし
+// deploy 系 env では本番 DB を誤指しないよう DB_NAME_TEST を無視します（IsLocalClassEnv、未設定は許可）。
+func testDBName() string {
+	v := os.Getenv("DB_NAME_TEST")
+	if v == "" {
+		return defaultTestDBName
+	}
+	if env := os.Getenv("APP_ENV"); env != "" && !IsLocalClassEnv(env) {
+		fmt.Fprintf(os.Stderr,
+			"[config] 警告: APP_ENV=%q は local/test 系でないため、DB スロットプールの DB_NAME_TEST=%q を無視します\n",
+			env, v)
+		return defaultTestDBName
+	}
+	return v
 }

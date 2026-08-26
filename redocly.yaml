@@ -15,7 +15,7 @@ rules:
   tag-description: error # 宣言した tag には description を付ける
 
   # --- このリポジトリの規約に合わせて抑制 ---
-  security-defined: off # version / health など意図的に公開のエンドポイントがある
+  security-defined: off # 代わりに rule/require-explicit-security で全 operation に security 明示を強制する
   info-license: off # ボイラープレートのため info.license は要求しない
   tags-alphabetical: off
   no-server-example.com: off # servers はプレースホルダ（利用時に差し替え）
@@ -29,7 +29,6 @@ rules:
     assertions:
       casing: camelCase
   # クエリ / パスパラメータ名は camelCase（body フィールドと揃え、JS/TS フロント・生成 SDK と一致させる）。
-  # header パラメータは HTTP 慣習の Train-Case（例: Idempotency-Key）が正しく camelCase にできないため対象外にする。
   rule/parameter-names-camelCase:
     severity: error
     subject:
@@ -53,3 +52,10 @@ rules:
       property: operationId
     assertions:
       casing: PascalCase
+  rule/require-explicit-security:
+    severity: error
+    subject:
+      type: Operation
+      property: security
+    assertions:
+      defined: true

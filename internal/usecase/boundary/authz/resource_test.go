@@ -3,7 +3,7 @@ package authz
 import (
 	"testing"
 
-	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,7 +17,7 @@ func TestNewResource(t *testing.T) {
 
 		t.Run("所有者IDありのResourceを生成する", func(t *testing.T) {
 			t.Parallel()
-			id := uuid.NewTestFromSalt(t, "owner")
+			id := uuidtestkit.NewTestFromSalt(t, "owner")
 
 			r := NewResource("user", &id)
 
@@ -39,12 +39,12 @@ func TestNewResource(t *testing.T) {
 
 		t.Run("生成後に入力ポインタの指す値を変更してもResourceの所有者IDは不変", func(t *testing.T) {
 			t.Parallel()
-			original := uuid.NewTestFromSalt(t, "owner")
+			original := uuidtestkit.NewTestFromSalt(t, "owner")
 			id := original
 
 			r := NewResource("user", &id)
 
-			id = uuid.NewTestFromSalt(t, "mutated")
+			id = uuidtestkit.NewTestFromSalt(t, "mutated")
 
 			require.NotNil(t, r.OwnerID())
 			assert.Equal(t, original, *r.OwnerID())
@@ -61,7 +61,7 @@ func TestResource_Kind(t *testing.T) {
 
 		t.Run("生成時に渡した種別を返す", func(t *testing.T) {
 			t.Parallel()
-			id := uuid.NewTestFromSalt(t, "owner")
+			id := uuidtestkit.NewTestFromSalt(t, "owner")
 			r := NewResource("user", &id)
 
 			assert.Equal(t, "user", r.Kind())
@@ -77,7 +77,7 @@ func TestResource_OwnerID(t *testing.T) {
 
 		t.Run("生成時に渡した所有者IDと同値を返す", func(t *testing.T) {
 			t.Parallel()
-			id := uuid.NewTestFromSalt(t, "owner")
+			id := uuidtestkit.NewTestFromSalt(t, "owner")
 			r := NewResource("user", &id)
 
 			require.NotNil(t, r.OwnerID())
@@ -93,7 +93,7 @@ func TestResource_OwnerID(t *testing.T) {
 
 		t.Run("呼び出し毎に独立したポインタを返す", func(t *testing.T) {
 			t.Parallel()
-			id := uuid.NewTestFromSalt(t, "owner")
+			id := uuidtestkit.NewTestFromSalt(t, "owner")
 			r := NewResource("user", &id)
 
 			first := r.OwnerID()
@@ -107,12 +107,12 @@ func TestResource_OwnerID(t *testing.T) {
 
 		t.Run("返り値のポインタの指す値を変更してもResourceの所有者IDは不変", func(t *testing.T) {
 			t.Parallel()
-			id := uuid.NewTestFromSalt(t, "owner")
+			id := uuidtestkit.NewTestFromSalt(t, "owner")
 			r := NewResource("user", &id)
 
 			got := r.OwnerID()
 			require.NotNil(t, got)
-			*got = uuid.NewTestFromSalt(t, "mutated")
+			*got = uuidtestkit.NewTestFromSalt(t, "mutated")
 
 			require.NotNil(t, r.OwnerID())
 			assert.Equal(t, id, *r.OwnerID())

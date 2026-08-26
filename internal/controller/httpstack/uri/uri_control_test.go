@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -23,7 +23,7 @@ func TestMiddleware(t *testing.T) {
 		c := e.NewContext(req, rec)
 
 		var seenPath string
-		handler := Middleware()(func(c echo.Context) error {
+		handler := Middleware()(func(c *echo.Context) error {
 			seenPath = c.Request().URL.Path
 			return c.NoContent(http.StatusOK)
 		})

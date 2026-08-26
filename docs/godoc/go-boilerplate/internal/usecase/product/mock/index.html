@@ -1,0 +1,625 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>mock - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package mock_product
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/usecase/product/mock&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package mock_product is a generated GoMock package.
+</p><p>Package mock_product is a generated GoMock package.
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#MockImageGCUsecase">type MockImageGCUsecase</a></dd>
+				
+					
+					<dd>    <a href="#NewMockImageGCUsecase">func NewMockImageGCUsecase(ctrl *gomock.Controller) *MockImageGCUsecase</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockImageGCUsecase.EXPECT">func (m *MockImageGCUsecase) EXPECT() *MockImageGCUsecaseMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockImageGCUsecase.SweepOrphans">func (m *MockImageGCUsecase) SweepOrphans(ctx context.Context, grace time.Duration, batchSize int32, dryRun bool) (product.ImageGCResult, error)</a></dd>
+				
+			
+				
+				<dd><a href="#MockImageGCUsecaseMockRecorder">type MockImageGCUsecaseMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockImageGCUsecaseMockRecorder.SweepOrphans">func (mr *MockImageGCUsecaseMockRecorder) SweepOrphans(ctx, grace, batchSize, dryRun any) *gomock.Call</a></dd>
+				
+			
+				
+				<dd><a href="#MockUsecase">type MockUsecase</a></dd>
+				
+					
+					<dd>    <a href="#NewMockUsecase">func NewMockUsecase(ctrl *gomock.Controller) *MockUsecase</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockUsecase.CountProducts">func (m *MockUsecase) CountProducts(ctx context.Context, authn *auth.Authn, params product.CountProductsParams) (product.ProductCountView, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockUsecase.CreateProduct">func (m *MockUsecase) CreateProduct(ctx context.Context, authn *auth.Authn, params product.CreateProductParams) (product.ProductView, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockUsecase.EXPECT">func (m *MockUsecase) EXPECT() *MockUsecaseMockRecorder</a></dd>
+				
+					
+					<dd>    <a href="#MockUsecase.GetProduct">func (m *MockUsecase) GetProduct(ctx context.Context, authn *auth.Authn, params product.GetProductParams) (product.ProductView, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockUsecase.ListLowStockProducts">func (m *MockUsecase) ListLowStockProducts(ctx context.Context, authn *auth.Authn, params product.ListLowStockProductsParams) (product.ProductLowStockListView, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockUsecase.ListProducts">func (m *MockUsecase) ListProducts(ctx context.Context, authn *auth.Authn, params product.ListProductsParams) (product.ProductListView, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockUsecase.UpdateProduct">func (m *MockUsecase) UpdateProduct(ctx context.Context, authn *auth.Authn, id uuid.UUID, params product.UpdateProductParams) (product.ProductView, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockUsecase.UpdateProductStock">func (m *MockUsecase) UpdateProductStock(ctx context.Context, authn *auth.Authn, id uuid.UUID, params product.UpdateProductStockParams) (product.ProductView, error)</a></dd>
+				
+					
+					<dd>    <a href="#MockUsecase.UploadProductImage">func (m *MockUsecase) UploadProductImage(ctx context.Context, authn *auth.Authn, params product.UploadProductImageParams) (product.ProductImageView, error)</a></dd>
+				
+			
+				
+				<dd><a href="#MockUsecaseMockRecorder">type MockUsecaseMockRecorder</a></dd>
+				
+				
+					
+					<dd>    <a href="#MockUsecaseMockRecorder.CountProducts">func (mr *MockUsecaseMockRecorder) CountProducts(ctx, authn, params any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockUsecaseMockRecorder.CreateProduct">func (mr *MockUsecaseMockRecorder) CreateProduct(ctx, authn, params any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockUsecaseMockRecorder.GetProduct">func (mr *MockUsecaseMockRecorder) GetProduct(ctx, authn, params any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockUsecaseMockRecorder.ListLowStockProducts">func (mr *MockUsecaseMockRecorder) ListLowStockProducts(ctx, authn, params any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockUsecaseMockRecorder.ListProducts">func (mr *MockUsecaseMockRecorder) ListProducts(ctx, authn, params any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockUsecaseMockRecorder.UpdateProduct">func (mr *MockUsecaseMockRecorder) UpdateProduct(ctx, authn, id, params any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockUsecaseMockRecorder.UpdateProductStock">func (mr *MockUsecaseMockRecorder) UpdateProductStock(ctx, authn, id, params any) *gomock.Call</a></dd>
+				
+					
+					<dd>    <a href="#MockUsecaseMockRecorder.UploadProductImage">func (mr *MockUsecaseMockRecorder) UploadProductImage(ctx, authn, params any) *gomock.Call</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/product/mock/mock_product_image_gc_usecase.go.gen.go.html">mock_product_image_gc_usecase.go.gen.go</a>
+			
+				<a href="../../../../../src/go-boilerplate/internal/usecase/product/mock/mock_product_usecase.go.gen.go.html">mock_product_usecase.go.gen.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="MockImageGCUsecase">type <a href="../../../../../src/go-boilerplate/internal/usecase/product/mock/mock_product_image_gc_usecase.go.gen.go.html?s=536:660#L12">MockImageGCUsecase</a>
+				<a class="permalink" href="#MockImageGCUsecase">¶</a>
+				
+				
+			</h2>
+			<p>MockImageGCUsecase is a mock of ImageGCUsecase interface.
+
+			</p><pre>type MockImageGCUsecase struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockImageGCUsecase">func <a href="../../../../../src/go-boilerplate/internal/usecase/product/mock/mock_product_image_gc_usecase.go.gen.go.html?s=869:940#L24">NewMockImageGCUsecase</a>
+					<a class="permalink" href="#NewMockImageGCUsecase">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockImageGCUsecase(ctrl *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockImageGCUsecase">MockImageGCUsecase</a></pre>
+				<p>NewMockImageGCUsecase creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockImageGCUsecase.EXPECT">func (*MockImageGCUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/product/mock/mock_product_image_gc_usecase.go.gen.go.html?s=1132:1201#L31">EXPECT</a>
+					<a class="permalink" href="#MockImageGCUsecase.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockImageGCUsecase">MockImageGCUsecase</a>) EXPECT() *<a href="#MockImageGCUsecaseMockRecorder">MockImageGCUsecaseMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockImageGCUsecase.SweepOrphans">func (*MockImageGCUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/product/mock/mock_product_image_gc_usecase.go.gen.go.html?s=1261:1405#L36">SweepOrphans</a>
+					<a class="permalink" href="#MockImageGCUsecase.SweepOrphans">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockImageGCUsecase">MockImageGCUsecase</a>) SweepOrphans(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, grace <a href="../../../../../time/">time</a>.<a href="../../../../../time/#Duration">Duration</a>, batchSize <a href="../../../../../builtin/#int32">int32</a>, dryRun <a href="../../../../../builtin/#bool">bool</a>) (<a href="../../../../../go-boilerplate/internal/usecase/product/">product</a>.<a href="../../../../../go-boilerplate/internal/usecase/product/#ImageGCResult">ImageGCResult</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>SweepOrphans mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockImageGCUsecaseMockRecorder">type <a href="../../../../../src/go-boilerplate/internal/usecase/product/mock/mock_product_image_gc_usecase.go.gen.go.html?s=741:813#L19">MockImageGCUsecaseMockRecorder</a>
+				<a class="permalink" href="#MockImageGCUsecaseMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockImageGCUsecaseMockRecorder is the mock recorder for MockImageGCUsecase.
+
+			</p><pre>type MockImageGCUsecaseMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockImageGCUsecaseMockRecorder.SweepOrphans">func (*MockImageGCUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/product/mock/mock_product_image_gc_usecase.go.gen.go.html?s=1649:1751#L45">SweepOrphans</a>
+					<a class="permalink" href="#MockImageGCUsecaseMockRecorder.SweepOrphans">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockImageGCUsecaseMockRecorder">MockImageGCUsecaseMockRecorder</a>) SweepOrphans(ctx, grace, batchSize, dryRun <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>SweepOrphans indicates an expected call of SweepOrphans.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockUsecase">type <a href="../../../../../src/go-boilerplate/internal/usecase/product/mock/mock_product_usecase.go.gen.go.html?s=568:678#L13">MockUsecase</a>
+				<a class="permalink" href="#MockUsecase">¶</a>
+				
+				
+			</h2>
+			<p>MockUsecase is a mock of Usecase interface.
+
+			</p><pre>type MockUsecase struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewMockUsecase">func <a href="../../../../../src/go-boilerplate/internal/usecase/product/mock/mock_product_usecase.go.gen.go.html?s=852:909#L25">NewMockUsecase</a>
+					<a class="permalink" href="#NewMockUsecase">¶</a>
+					
+					
+				</h3>
+				<pre>func NewMockUsecase(ctrl *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Controller">Controller</a>) *<a href="#MockUsecase">MockUsecase</a></pre>
+				<p>NewMockUsecase creates a new mock instance.
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="MockUsecase.CountProducts">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/product/mock/mock_product_usecase.go.gen.go.html?s=1203:1348#L37">CountProducts</a>
+					<a class="permalink" href="#MockUsecase.CountProducts">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) CountProducts(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, authn *<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, params <a href="../../../../../go-boilerplate/internal/usecase/product/">product</a>.<a href="../../../../../go-boilerplate/internal/usecase/product/#CountProductsParams">CountProductsParams</a>) (<a href="../../../../../go-boilerplate/internal/usecase/product/">product</a>.<a href="../../../../../go-boilerplate/internal/usecase/product/#ProductCountView">ProductCountView</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>CountProducts mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockUsecase.CreateProduct">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/product/mock/mock_product_usecase.go.gen.go.html?s=1882:2022#L52">CreateProduct</a>
+					<a class="permalink" href="#MockUsecase.CreateProduct">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) CreateProduct(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, authn *<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, params <a href="../../../../../go-boilerplate/internal/usecase/product/">product</a>.<a href="../../../../../go-boilerplate/internal/usecase/product/#CreateProductParams">CreateProductParams</a>) (<a href="../../../../../go-boilerplate/internal/usecase/product/">product</a>.<a href="../../../../../go-boilerplate/internal/usecase/product/#ProductView">ProductView</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>CreateProduct mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockUsecase.EXPECT">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/product/mock/mock_product_usecase.go.gen.go.html?s=1087:1142#L32">EXPECT</a>
+					<a class="permalink" href="#MockUsecase.EXPECT">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) EXPECT() *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a></pre>
+				<p>EXPECT returns an object that allows the caller to indicate expected use.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockUsecase.GetProduct">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/product/mock/mock_product_usecase.go.gen.go.html?s=2548:2682#L67">GetProduct</a>
+					<a class="permalink" href="#MockUsecase.GetProduct">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) GetProduct(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, authn *<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, params <a href="../../../../../go-boilerplate/internal/usecase/product/">product</a>.<a href="../../../../../go-boilerplate/internal/usecase/product/#GetProductParams">GetProductParams</a>) (<a href="../../../../../go-boilerplate/internal/usecase/product/">product</a>.<a href="../../../../../go-boilerplate/internal/usecase/product/#ProductView">ProductView</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>GetProduct mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockUsecase.ListLowStockProducts">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/product/mock/mock_product_usecase.go.gen.go.html?s=3200:3366#L82">ListLowStockProducts</a>
+					<a class="permalink" href="#MockUsecase.ListLowStockProducts">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) ListLowStockProducts(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, authn *<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, params <a href="../../../../../go-boilerplate/internal/usecase/product/">product</a>.<a href="../../../../../go-boilerplate/internal/usecase/product/#ListLowStockProductsParams">ListLowStockProductsParams</a>) (<a href="../../../../../go-boilerplate/internal/usecase/product/">product</a>.<a href="../../../../../go-boilerplate/internal/usecase/product/#ProductLowStockListView">ProductLowStockListView</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>ListLowStockProducts mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockUsecase.ListProducts">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/product/mock/mock_product_usecase.go.gen.go.html?s=3948:4090#L97">ListProducts</a>
+					<a class="permalink" href="#MockUsecase.ListProducts">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) ListProducts(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, authn *<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, params <a href="../../../../../go-boilerplate/internal/usecase/product/">product</a>.<a href="../../../../../go-boilerplate/internal/usecase/product/#ListProductsParams">ListProductsParams</a>) (<a href="../../../../../go-boilerplate/internal/usecase/product/">product</a>.<a href="../../../../../go-boilerplate/internal/usecase/product/#ProductListView">ProductListView</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>ListProducts mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockUsecase.UpdateProduct">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/product/mock/mock_product_usecase.go.gen.go.html?s=4617:4771#L112">UpdateProduct</a>
+					<a class="permalink" href="#MockUsecase.UpdateProduct">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) UpdateProduct(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, authn *<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, id <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, params <a href="../../../../../go-boilerplate/internal/usecase/product/">product</a>.<a href="../../../../../go-boilerplate/internal/usecase/product/#UpdateProductParams">UpdateProductParams</a>) (<a href="../../../../../go-boilerplate/internal/usecase/product/">product</a>.<a href="../../../../../go-boilerplate/internal/usecase/product/#ProductView">ProductView</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>UpdateProduct mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockUsecase.UpdateProductStock">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/product/mock/mock_product_usecase.go.gen.go.html?s=5317:5481#L127">UpdateProductStock</a>
+					<a class="permalink" href="#MockUsecase.UpdateProductStock">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) UpdateProductStock(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, authn *<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, id <a href="../../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, params <a href="../../../../../go-boilerplate/internal/usecase/product/">product</a>.<a href="../../../../../go-boilerplate/internal/usecase/product/#UpdateProductStockParams">UpdateProductStockParams</a>) (<a href="../../../../../go-boilerplate/internal/usecase/product/">product</a>.<a href="../../../../../go-boilerplate/internal/usecase/product/#ProductView">ProductView</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>UpdateProductStock mocks base method.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockUsecase.UploadProductImage">func (*MockUsecase) <a href="../../../../../src/go-boilerplate/internal/usecase/product/mock/mock_product_usecase.go.gen.go.html?s=6057:6212#L142">UploadProductImage</a>
+					<a class="permalink" href="#MockUsecase.UploadProductImage">¶</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#MockUsecase">MockUsecase</a>) UploadProductImage(ctx <a href="../../../../../context/">context</a>.<a href="../../../../../context/#Context">Context</a>, authn *<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/">auth</a>.<a href="../../../../../go-boilerplate/internal/usecase/boundary/auth/#Authn">Authn</a>, params <a href="../../../../../go-boilerplate/internal/usecase/product/">product</a>.<a href="../../../../../go-boilerplate/internal/usecase/product/#UploadProductImageParams">UploadProductImageParams</a>) (<a href="../../../../../go-boilerplate/internal/usecase/product/">product</a>.<a href="../../../../../go-boilerplate/internal/usecase/product/#ProductImageView">ProductImageView</a>, <a href="../../../../../builtin/#error">error</a>)</pre>
+				<p>UploadProductImage mocks base method.
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="MockUsecaseMockRecorder">type <a href="../../../../../src/go-boilerplate/internal/usecase/product/mock/mock_product_usecase.go.gen.go.html?s=745:803#L20">MockUsecaseMockRecorder</a>
+				<a class="permalink" href="#MockUsecaseMockRecorder">¶</a>
+				
+				
+			</h2>
+			<p>MockUsecaseMockRecorder is the mock recorder for MockUsecase.
+
+			</p><pre>type MockUsecaseMockRecorder struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="MockUsecaseMockRecorder.CountProducts">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/product/mock/mock_product_usecase.go.gen.go.html?s=1587:1672#L46">CountProducts</a>
+					<a class="permalink" href="#MockUsecaseMockRecorder.CountProducts">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a>) CountProducts(ctx, authn, params <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>CountProducts indicates an expected call of CountProducts.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockUsecaseMockRecorder.CreateProduct">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/product/mock/mock_product_usecase.go.gen.go.html?s=2256:2341#L61">CreateProduct</a>
+					<a class="permalink" href="#MockUsecaseMockRecorder.CreateProduct">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a>) CreateProduct(ctx, authn, params <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>CreateProduct indicates an expected call of CreateProduct.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockUsecaseMockRecorder.GetProduct">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/product/mock/mock_product_usecase.go.gen.go.html?s=2907:2989#L76">GetProduct</a>
+					<a class="permalink" href="#MockUsecaseMockRecorder.GetProduct">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a>) GetProduct(ctx, authn, params <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>GetProduct indicates an expected call of GetProduct.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockUsecaseMockRecorder.ListLowStockProducts">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/product/mock/mock_product_usecase.go.gen.go.html?s=3633:3725#L91">ListLowStockProducts</a>
+					<a class="permalink" href="#MockUsecaseMockRecorder.ListLowStockProducts">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a>) ListLowStockProducts(ctx, authn, params <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>ListLowStockProducts indicates an expected call of ListLowStockProducts.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockUsecaseMockRecorder.ListProducts">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/product/mock/mock_product_usecase.go.gen.go.html?s=4325:4409#L106">ListProducts</a>
+					<a class="permalink" href="#MockUsecaseMockRecorder.ListProducts">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a>) ListProducts(ctx, authn, params <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>ListProducts indicates an expected call of ListProducts.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockUsecaseMockRecorder.UpdateProduct">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/product/mock/mock_product_usecase.go.gen.go.html?s=5009:5098#L121">UpdateProduct</a>
+					<a class="permalink" href="#MockUsecaseMockRecorder.UpdateProduct">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a>) UpdateProduct(ctx, authn, id, params <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>UpdateProduct indicates an expected call of UpdateProduct.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockUsecaseMockRecorder.UpdateProductStock">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/product/mock/mock_product_usecase.go.gen.go.html?s=5734:5828#L136">UpdateProductStock</a>
+					<a class="permalink" href="#MockUsecaseMockRecorder.UpdateProductStock">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a>) UpdateProductStock(ctx, authn, id, params <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>UpdateProductStock indicates an expected call of UpdateProductStock.
+
+				
+				
+				
+			
+				
+				</p><h3 id="MockUsecaseMockRecorder.UploadProductImage">func (*MockUsecaseMockRecorder) <a href="../../../../../src/go-boilerplate/internal/usecase/product/mock/mock_product_usecase.go.gen.go.html?s=6466:6556#L151">UploadProductImage</a>
+					<a class="permalink" href="#MockUsecaseMockRecorder.UploadProductImage">¶</a>
+					
+					
+				</h3>
+				<pre>func (mr *<a href="#MockUsecaseMockRecorder">MockUsecaseMockRecorder</a>) UploadProductImage(ctx, authn, params <a href="../../../../../builtin/#any">any</a>) *<a href="../../../../../go.uber.org/mock/gomock/">gomock</a>.<a href="../../../../../go.uber.org/mock/gomock/#Call">Call</a></pre>
+				<p>UploadProductImage indicates an expected call of UploadProductImage.
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+</p><div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

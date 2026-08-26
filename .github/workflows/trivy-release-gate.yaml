@@ -1,39 +1,96 @@
 name: Release Dependency Scan
 
+# Blocking half of the Trivy double gate, and the counterpart of osv-release-gate.yaml:
+# trivy-fs.yaml reports on every PR without failing, this one runs at the promotion
+# boundary and fails on a finding.
+#
+# The `push` trigger covers that boundary crossed without a promotion PR. A commit
+# landing on a deploy branch directly is the one promotion this gate would otherwise
+# never see. It cannot block what has already landed, so on push the failing job is a
+# record rather than a gate.
+
 on:
-  pull_request:
+  push:
     branches:
       - develop
       - staging
       - production
+  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
-  security-events: write
   pull-requests: write
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   trivy-fs-release:
+    # The pull-request half of this workflow's trigger, moved out of `on:` and into the job. A
+    # `branches:` filter that excludes a pull request starts no run at all, and a required context
+    # that is never reported is not read as "not applicable" — the merge waits with nothing to wait
+    # for. A job the condition skips reports `skipped` instead, which a required check counts as
+    # success. The `push` filter above is left where it is: that half reports no context.
+    if: ${{ github.event_name != 'pull_request' || contains(fromJSON('["develop", "staging", "production"]'), github.base_ref) }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+            mirror.gcr.io:443
+            ghcr.io:443
+            pkg-containers.githubusercontent.com:443
+
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
+        with:
+          tools: aqua:aquasecurity/trivy
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Trivy FS scan (JSON, include unfixed)
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          scan-type: fs
-          scanners: 'vuln'
-          format: json
-          ignore-unfixed: false
-          vuln-type: 'library'
-          severity: 'CRITICAL,HIGH,MEDIUM'
-          output: trivy-fs-release.json
+        run: make -s trivy-fs-release-ci TRIVY_FORMAT=json > trivy-fs-release.json
+        shell: bash
 
       - name: Create Trivy summary (Markdown)
         id: summarize
@@ -89,12 +146,21 @@ jobs:
             trivy-fs-release-summary.md
 
       - name: Comment Trivy FS release result on PR
-        if: ${{ github.event_name == 'pull_request' }}
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- trivy-fs-release-result -->'
-          title: ${{ steps.summarize.outputs.title }}
+          status: "${{ steps.summarize.outputs.count == '0' && 'success' || 'findings' }}"
+          title: "${{ steps.summarize.outputs.title || '## ⚠️ Release Dependency Scan: CUT OFF (no result produced)' }}"
           body-file: trivy-fs-release-summary.md
           details-summary: '📄 Summary'
+
+      # release-gate is the strict gate for PRs targeting a deploy branch. It fails on every finding,
+      # including unfixed ones — osv-release-gate.yaml applies the same policy to its own HIGH /
+      # CRITICAL verdict. It also fails when summarize did not run and count is empty, so a
+      # failed scan / aggregation is never mistaken for a pass.
+      - name: Fail if any vulnerability was found
+        if: always() && steps.summarize.outputs.count != '0'
+        run: exit 1

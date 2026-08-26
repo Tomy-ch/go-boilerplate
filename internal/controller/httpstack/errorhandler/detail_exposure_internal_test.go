@@ -1,6 +1,9 @@
 package errorhandler
 
 import (
+	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"go-boilerplate/internal/controller/httpstack/oapi/validator"
@@ -17,7 +20,7 @@ import (
 // 期待集合は policy とは独立した方法で導出します: 各 operation の error レスポンス JSON スキーマが
 // components.schemas.ErrorResponseWithDetails と同一(kin-openapi は $ref を共有ポインタへ解決する)
 // かをポインタ同一性で判定します。両者が一致することで「details プロパティ有無 ⇔ WithDetails 参照」の
-// 暗黙依存(ADR-0041)が壊れていないことを保証します。
+// 暗黙依存(ADR-0049 (error-details-opt-in-gate))が壊れていないことを保証します。
 func Test_buildDetailExposureMap_matchesContract(t *testing.T) {
 	t.Parallel()
 
@@ -41,6 +44,11 @@ func Test_buildDetailExposureMap_matchesContract(t *testing.T) {
 			assert.Equal(t, expected, actual)
 		})
 
+		// sample-api:begin
+		// どちらもサンプル撤去とともに消える。details を宣言する operation はサンプルにしか
+		// 無く、撤去後は expected も actual も空になるため、「空でない」は必ず落ちる
+		// （0 件と壊れた走査の区別は、上の 1:1 一致と operationsReferencingSchema の
+		// 独立導出が担う）。
 		t.Run("スキーマ分割が実際に効いている(空でない)", func(t *testing.T) {
 			t.Parallel()
 			assert.NotEmpty(t, expected)
@@ -52,6 +60,7 @@ func Test_buildDetailExposureMap_matchesContract(t *testing.T) {
 			assert.True(t, actual["PutUsersDetail"])
 			assert.True(t, actual["PatchUsersDetail"])
 		})
+		// sample-api:end
 	})
 }
 
@@ -90,6 +99,94 @@ func responseReferencesSchema(respRef *openapi3.ResponseRef, target *openapi3.Sc
 		return false
 	}
 	return mediaType.Schema.Value == target
+}
+
+func Test_openAPIDetailPolicy_Allows(t *testing.T) {
+	t.Parallel()
+
+	spec, err := validator.GetValidator()
+	require.NoError(t, err)
+	built, err := NewOpenAPIDetailPolicy(spec)
+	require.NoError(t, err)
+	policy, ok := built.(*openAPIDetailPolicy)
+	require.True(t, ok)
+
+	// sample-api:begin
+	// 撤去後に details を opt-in する operation は 1 つも残らないため、許可される側の観点が
+	// 成立しなくなる。拒否側（異常系）は撤去後も残る operation で成立する。
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("opt-in済みoperationは許可される", func(t *testing.T) {
+			t.Parallel()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/v1/users", nil)
+			assert.True(t, policy.Allows(req))
+		})
+	})
+	// sample-api:end
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未opt-inのoperationはfail-closedで拒否される", func(t *testing.T) {
+			t.Parallel()
+			// sample-api:replace-begin
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/v1/users/123e4567-e89b-12d3-a456-426614174000", nil)
+			// sample-api:replace-with
+			// = req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/health", nil)
+			// sample-api:replace-end
+			assert.False(t, policy.Allows(req))
+		})
+
+		t.Run("ルート解決に失敗するパスはfail-closedで拒否される", func(t *testing.T) {
+			t.Parallel()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/no/such/path", nil)
+			assert.False(t, policy.Allows(req))
+		})
+	})
+}
+
+func Test_operationExposesDetails(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("errorレスポンスにdetailsを持つoperationはtrue", func(t *testing.T) {
+			t.Parallel()
+			withDetails := openapi3.NewResponse().WithJSONSchema(
+				openapi3.NewObjectSchema().WithProperty(detailsPropertyName, openapi3.NewArraySchema()),
+			)
+			responses := openapi3.NewResponses()
+			responses.Set("422", &openapi3.ResponseRef{Value: withDetails})
+
+			assert.True(t, operationExposesDetails(&openapi3.Operation{Responses: responses}))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("エラーステータスでないレスポンスのdetailsは無視される", func(t *testing.T) {
+			t.Parallel()
+			withDetails := openapi3.NewResponse().WithJSONSchema(
+				openapi3.NewObjectSchema().WithProperty(detailsPropertyName, openapi3.NewArraySchema()),
+			)
+			responses := openapi3.NewResponses()
+			responses.Set("200", &openapi3.ResponseRef{Value: withDetails})
+
+			assert.False(t, operationExposesDetails(&openapi3.Operation{Responses: responses}))
+		})
+
+		t.Run("errorレスポンスにdetailsが無ければfalse", func(t *testing.T) {
+			t.Parallel()
+			base := openapi3.NewResponse().WithJSONSchema(openapi3.NewObjectSchema())
+			responses := openapi3.NewResponses()
+			responses.Set("404", &openapi3.ResponseRef{Value: base})
+
+			assert.False(t, operationExposesDetails(&openapi3.Operation{Responses: responses}))
+		})
+	})
 }
 
 func Test_isErrorStatusCode(t *testing.T) {
@@ -261,6 +358,65 @@ func Test_buildDetailExposureMap(t *testing.T) {
 			spec.Paths.Set("/anon", &openapi3.PathItem{Get: &openapi3.Operation{OperationID: "", Responses: responses}})
 
 			assert.Empty(t, buildDetailExposureMap(spec))
+		})
+	})
+}
+
+func Test_newHostAgnosticRouter(t *testing.T) {
+	t.Parallel()
+
+	newServersSpec := func(t *testing.T) *openapi3.T {
+		t.Helper()
+
+		paths := openapi3.NewPaths()
+		paths.Set("/items", &openapi3.PathItem{Get: &openapi3.Operation{OperationID: "GetItems"}})
+		return &openapi3.T{
+			OpenAPI: "3.0.0",
+			Info:    &openapi3.Info{Title: "host-agnostic", Version: "1"},
+			Paths:   paths,
+			Servers: openapi3.Servers{{URL: "http://spec-host.example"}},
+		}
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("specのserversと異なるHostのリクエストでもルートを解決できる", func(t *testing.T) {
+			t.Parallel()
+
+			router, err := newHostAgnosticRouter(newServersSpec(t))
+			require.NoError(t, err)
+
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "http://request-host.example/items", nil)
+			route, _, err := router.FindRoute(req)
+			require.NoError(t, err)
+			assert.Equal(t, "/items", route.Path)
+		})
+
+		t.Run("引数のspecのserversは書き換えられない", func(t *testing.T) {
+			t.Parallel()
+
+			spec := newServersSpec(t)
+			_, err := newHostAgnosticRouter(spec)
+			require.NoError(t, err)
+
+			require.Len(t, spec.Servers, 1)
+			assert.Equal(t, "http://spec-host.example", spec.Servers[0].URL)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("router構築に失敗するspecの場合、エラーを握り潰さず返す", func(t *testing.T) {
+			t.Parallel()
+
+			spec := &openapi3.T{Paths: openapi3.NewPaths()}
+			spec.Paths.Set("/{id:(}", &openapi3.PathItem{Get: openapi3.NewOperation()})
+
+			router, err := newHostAgnosticRouter(spec)
+			require.Error(t, err)
+			assert.Nil(t, router)
 		})
 	})
 }

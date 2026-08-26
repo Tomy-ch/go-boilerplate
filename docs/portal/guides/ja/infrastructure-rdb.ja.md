@@ -32,6 +32,7 @@ flowchart TB
 |---|---|
 |Repository|Aggregate 永続化（Domain Repository Interface の実装）|
 |QueryService|検索専用クエリーの提供（Usecase Interface の実装）|
+|CommandService|複数集約への原子的な書き込み（QueryService の write 側対称物）|
 |driver|DB 接続 / トランザクション管理、および pgx クエリトレーサーによる SQL ログ / トレース|
 |PostgreSQL|実際の DB|
 
@@ -41,23 +42,19 @@ flowchart TB
 |---|---|
 |sqlc|SQL から生成された型安全なクエリ実行コード|
 |pgerror|PostgreSQL エラー → アプリケーションエラー変換|
-|metrics|コネクションプール統計の Prometheus メトリクス|
+|metrics|コネクションプール統計とクエリ duration / error の Prometheus メトリクス|
 |system_cqrs|システム運用クエリ（ヘルスチェック等）|
 |testkit|RDB テストユーティリティ（実DB + rollback）|
 
 ## ディレクトリ構成
 
-```txt
-internal/infrastructure/rdb
- ├ repository/        Repository 実装
- ├ query_service/     QueryService 実装
- ├ system_cqrs/      システム運用クエリ（ヘルスチェック等）
- ├ driver/            DB 接続 / トランザクション + pgx クエリトレーサー（ログ / トレース）
- ├ sqlc/              sqlc 生成コード + SQL helper
- ├ pgerror/           PostgreSQL エラー正規化
- ├ metrics/           コネクションプール Prometheus メトリクス
- └ testkit/           RDB テストユーティリティ
-```
+データアクセスのディレクトリは `database/dml/` の DML 区分と 1 対 1 で対応する
+（`repository/` / `query_service/` / `command_service/` / `system_cqrs/`）。SQL 側にあって Go 側に
+無い区分（またはその逆）は、誰も決めていない区分だからである。
+
+残りはこの 4 つが必要とするものである。`driver/` は接続・トランザクション・pgx のトレーサ、
+`sqlc/` は生成コード、`pgerror/` は PostgreSQL エラーの正規化、`metrics/` はプールとクエリの計装、
+`testkit/` はテスト用の足場を担う。
 
 ## Repository
 
@@ -179,7 +176,7 @@ flowchart TB
 
 ## metrics
 
-`metrics` は **pgxpool コネクションプールの統計情報を Prometheus メトリクスとして公開する**パッケージです。
+`metrics` は **pgxpool コネクションプールの統計情報と、クエリ単位の duration / error を Prometheus メトリクスとして公開する**パッケージです。
 
 Gauge（接続数）と Counter（取得回数・破棄回数等）を提供します。
 
@@ -196,6 +193,36 @@ Repository / QueryService とは異なり、ビジネスドメインに属さな
 詳細は以下を参照してください。
 
 [system_cqrs ディレクトリの README](system_cqrs/README.ja.md)
+
+## command_service
+
+`command_service` は **CommandService** を実装します。QueryService の書き込み側の対称物で、
+インターフェースは QueryService と並んで Usecase 層に、実装はここに置きます。単一トランザクションでの
+原子性を要する複数集約への書き込みのために予約されています
+（[ADR-0032 (lightweight-cqrs)](../../../docs/adr/0032-lightweight-cqrs.md) /
+<!-- sample-api:replace-begin -->
+[ADR-0034 (commandservice-atomicity-criterion)](../../../docs/adr/0034-commandservice-atomicity-criterion.md)）。最初の実装は
+`command_service/purchase`（在庫減算 + 購入 / 明細 INSERT。
+[ADR-0036 (ordered-pessimistic-row-locks)](../../../docs/adr/0036-ordered-pessimistic-row-locks.md) 参照）です。
+<!-- sample-api:replace-with -->
+<!-- = [ADR-0034 (commandservice-atomicity-criterion)](../../../docs/adr/0034-commandservice-atomicity-criterion.md)）。書き込み順序は -->
+<!-- = [ADR-0036 (ordered-pessimistic-row-locks)](../../../docs/adr/0036-ordered-pessimistic-row-locks.md) に従います。 -->
+<!-- sample-api:replace-end -->
+
+CommandService は `ctx` で渡されたトランザクション上で書き込みを実行し（自前では開かない。境界は
+Usecase が所有し、`idempotency.Run` の内側に入る）、outbox イベントは発行しません（Usecase の責務で
+`system_cqrs` カテゴリ）。メソッドは決定済みの Domain 集約を受け取り、sqlc のエラーは
+`pgerror.NormalizeError` で正規化します。
+
+**ここに置いてよいもの。** 集約を読み込んで保存する形では表現できない書き込みだけです。相対更新、
+集合演算、ロックを取らずに原子性を得る操作。読んで変更して保存できるものは Repository に属します。
+この線引きが無いと、このパッケージは「SQL を直接書きたいときの置き場」になります。
+
+**条件は導出であって独立の著作ではない。** ここで SQL に書くガードは、既に存在するドメインの不変条件を
+言い換えたものでなければなりません。相対更新の文の中のガードはドメインが既に検査した条件を言い換えたもので、返す
+sentinel も同じものです。つまり下流であり、ドメインの規則が変わればこちらも変わりますが、逆はありません。
+1 つの規則を独立に 2 度書くと、片方だけが動いた瞬間に黙って乖離します。
+[ADR-0032 (lightweight-cqrs)](../../../docs/adr/0032-lightweight-cqrs.md) § Derivation を参照。
 
 ## testkit
 
@@ -257,7 +284,7 @@ SQL 実行トレースは driver の接続層に結線した pgx クエリトレ
 
 ### 7. テスト戦略（Integration 前提）
 
-Repository / QueryService テストは
+Repository / QueryService / CommandService テストは
 
 実DB + rollback
 
@@ -271,4 +298,51 @@ Repository / QueryService テストは
 - 全 sqlc 戻り値への `pgerror.NormalizeError` 適用（生 `pg` / 接続エラー → `apperror`）
 - row → entity 変換（カラム → フィールド対応、NULL 処理）
 
+CommandService テストは加えて次を検証します:
+
+<!-- sample-api:replace-begin -->
+- 触れた全テーブルへの atomic な書き込み効果（例: 在庫の減算、purchase / detail 行の挿入、
+  業務コードから解決された `status_id`）を書き込み後の `SELECT` で確認する
+<!-- sample-api:replace-with -->
+<!-- = - 触れた全テーブルへの atomic な書き込み効果（業務コードから解決された id を含む）を -->
+<!-- =   書き込み後の `SELECT` で確認する -->
+<!-- sample-api:replace-end -->
+- fail-closed のガード（例: 防御的な `WHERE quantity >= :qty` → 0 行 → `ErrConflict`）を、
+  ドメイン検査は通るが DB 述語が弾くよう stale なロック値を使って確認する
+- 制約違反の正規化（`pgerror.NormalizeError`: FK `23503` → `ErrInvalidArgument`、
+  unique `23505` → `ErrConflict`）
+
 並行 / ロック競合は既定の `testkit` ヘルパでは再現できません: `WithinTx` はトランザクションを直列化します（最後に rollback する単一 tx）。真に並行なコネクションでしか発火しない分岐 — 例: `Claim` の `lock_timeout` `55P03`（lock_not_available）— は、独立した `TransactionManager.Do` を 2 本（2 コネクション / トランザクション）走らせ、片方が行ロックを保持しもう片方をタイムアウトさせる専用の統合テストが要ります。
+
+#### カバレッジ例外（到達不能な防御分岐）
+
+ドメインの値は `pkg/safecast` を通して sqlc のカラム幅へ絞り込むため、各書き込み箇所には
+`if err != nil` が付きます。ドメインが範囲を保証している以上、呼び出し側からこの分岐へは到達
+できません。範囲チェック本体は `pkg/safecast` にあり全分岐がテスト済みで、呼び出し側に残るのは
+エラープラミングだけなので、[`testing-conventions.md` §9](../../../docs/testing-conventions.md)
+に従い作為的なテストで色を付けるのではなくここに記録します。
+
+<!-- sample-api:replace-begin -->
+|ファイル|関数|未被覆の分岐|到達不能な理由|
+|---|---|---|---|
+|`repository/product/product_repository.go`|`Create`|`safecast.IntToInt32(p.Quantity())` のエラー|`product` が `quantity` を `[0, math.MaxInt32]` に検証済み|
+|`repository/product/product_repository.go`|`Create`|`safecast.IntPtrToInt32Ptr(p.StockWarningThreshold())` のエラー|`product` が閾値を `[0, math.MaxInt32]` に検証済み|
+|`repository/product/product_repository.go`|`Update`|`safecast.IntToInt32(p.Quantity())` のエラー|同上|
+|`repository/product/product_repository.go`|`Update`|`safecast.IntPtrToInt32Ptr(p.StockWarningThreshold())` のエラー|同上|
+|`repository/product/product_repository.go`|`UpdateStock`|`safecast.IntToInt32(p.Quantity())` のエラー|同上|
+|`repository/product/product_repository.go`|`insertImages`|`safecast.IntToInt16(img.SortKey())` のエラー|`product` が `sortKey` を `[1, math.MaxInt16]` に検証済み|
+|`repository/product/product_repository.go`|`syncImages`|`safecast.IntToInt16(img.SortKey())` のエラー|同上|
+<!-- sample-api:replace-with -->
+<!-- = |ファイル|関数|未被覆の分岐|到達不能な理由| -->
+<!-- = |---|---|---|---| -->
+<!-- = |（まだ記録なし）|||| -->
+<!-- sample-api:replace-end -->
+
+そうした呼び出し箇所の `version` 変換は例外ではありません。ドメインが課すのは `version >= 1` だけで
+<!-- sample-api:replace-begin -->
+範囲外の version は到達可能なため、テストで被覆しています。purchase の `statusCode` / 明細数量の
+変換も同様です。
+<!-- sample-api:replace-with -->
+<!-- = 範囲外の version は到達可能なため、テストで被覆しています。ドメイン型が列より狭い範囲しか許さない -->
+<!-- = 変換も同様です。 -->
+<!-- sample-api:replace-end -->

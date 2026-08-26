@@ -1,21 +1,75 @@
 name: Generated Database Artifacts Check
 
+# `paths` lists the generated output as well as the inputs — see README.md for why.
 on:
   pull_request:
-    paths:
-      - '.github/workflows/gen-db-artifacts-check.yaml'
-      - 'database/**/*.sql'
-      - 'docker/database/**/*.sql'
-      - '.makefiles/**/*.mk'
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  generate-db-check:
+  # The pull-request half of this workflow's trigger, moved out of `on:` and into a job. A `paths:`
+  # filter that excludes a pull request starts no run at all, and a required context that is never
+  # reported is not read as "not applicable" — the merge waits with nothing to wait for. A job the
+  # filter skips reports `skipped` instead, which a required check counts as success.
+  changes:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      relevant: ${{ steps.filter.outputs.relevant }}
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+
+      - name: Filter the changed paths
+        id: filter
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
+        with:
+          filters: |
+            relevant:
+              - '.github/workflows/gen-db-artifacts-check.yaml'
+              - '.github/actions/setup-postgres/**'
+              - 'database/**/*.sql'
+              - 'docker/database/**/*.sql'
+              - '.makefiles/**/*.mk'
+              - 'sqlc.yaml'
+              - 'mise.toml'
+              - 'internal/cli/dumpschema/**'
+              - 'internal/cli/mergedml/**'
+              - 'cmd/dump_schema.go'
+              - 'cmd/merge_dml.go'
+              - 'internal/infrastructure/rdb/sqlc/gen/**'
+
+  generate-db-check:
+    needs: changes
+    # Fail open. `relevant` is empty wherever the filter reached no verdict — skipped on a
+    # non-pull-request event, or failed outright — and an empty value is not `false`, so the work
+    # runs and reports what it finds. Skipping there would hand the required context a green it
+    # never earned, and a broken filter is exactly when that matters.
+    if: ${{ !cancelled() && needs.changes.outputs.relevant != 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       pull-requests: write
@@ -27,7 +81,7 @@ jobs:
 
     services:
       database:
-        image: postgres:18.3-bookworm
+        image: postgres:18.4-trixie
         env:
           POSTGRES_USER: ${{ env.DB_USER }}
           POSTGRES_PASSWORD: ${{ env.DB_PASSWORD }}
@@ -45,8 +99,75 @@ jobs:
           --health-start-period=20s
 
     steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+            docker.io:443
+            index.docker.io:443
+            registry-1.docker.io:443
+            auth.docker.io:443
+            *.docker.io:443
+            production.cloudflare.docker.com:443
+            production.cloudfront.docker.com:443
+            mirror.gcr.io:443
+            ghcr.io:443
+            pkg-containers.githubusercontent.com:443
+            dl-cdn.alpinelinux.org:443
+            dl-cdn.alpinelinux.org:80
+            deb.debian.org:443
+            deb.debian.org:80
+            security.debian.org:443
+            security.debian.org:80
+            apt.postgresql.org:443
+            apt.postgresql.org:80
+            www.postgresql.org:443
+            archive.ubuntu.com:80
+            azure.archive.ubuntu.com:80
+            security.ubuntu.com:80
+            esm.ubuntu.com:443
+            motd.ubuntu.com:443
+
+      # fetch-depth: 0 so the PR's base and head commits are present locally. The default
+      # shallow checkout fetches only the merge commit, so the `git diff` that classifies the
+      # cause below cannot resolve either parent.
       - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Setup Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
@@ -54,15 +175,12 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Setup mise
-        uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
         with:
-          version: 2026.6.0
-          install: false
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tools: sqlc
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install sqlc
-        run: mise install sqlc
       - name: Setup DB
         uses: ./.github/actions/setup-postgres
         with:
@@ -73,7 +191,7 @@ jobs:
       - name: Materialize ci env for embedding
         run: make materialize-env
       - name: Initialize Database Table
-        run: make db-migrate-ci-up DB=${{ env.DB }}
+        run: make db-migrate-ci-up DB="$DB"
       - name: Dump schema
         run: make dump-schema-ci work-dir="."
       - name: Merge DML
@@ -84,7 +202,7 @@ jobs:
         run: make sqlc-generate-ci
       - name: Format generated code
         run: make fmt
-      # 材料化した env/.env は生成物ではないため、ドリフト判定の対象から外す。
+      # The materialized env/.env is not generated output, so exclude it from the drift check.
       - name: Restore embedded env
         run: make restore-env
       - name: Detect generated changes (file list)
@@ -101,57 +219,107 @@ jobs:
             echo "has_diff=false" >> "$GITHUB_OUTPUT"
             : > /tmp/changed_files.txt
           fi
-      # PR の source（database/**/*.sql / docker/database/**/*.sql）が触られているかを判定。
-      # 触られていない場合は generator 側（sqlc）のドリフトの可能性が高い。
+      # Classify the PR so the report can name the actual cause:
+      #   - source_modified:   the SQL source changed, so a forgotten `make gen-query` is likely
+      #   - artifact_modified: the generated output was edited directly, which is a rule violation
+      #   - neither:           generator-side (sqlc) drift is the likely cause
+      # `database/gen/**` is generated output, so it is excluded from the source set even though it
+      # is SQL under `database/`.
       - name: Detect source modifications in this PR
         id: source_mod
         if: github.event_name == 'pull_request' && steps.gen_diff.outputs.has_diff == 'true'
         shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          base_sha="${{ github.event.pull_request.base.sha }}"
-          head_sha="${{ github.event.pull_request.head.sha }}"
-          git fetch --no-tags --depth=200 origin "${{ github.event.pull_request.base.ref }}" || true
-          changed="$(git diff --name-only "$base_sha" "$head_sha" || true)"
-          if echo "$changed" | grep -qE '^(database|docker/database)/.*\.sql$'; then
+          base_sha="${BASE_SHA-}"
+          head_sha="${HEAD_SHA-}"
+          # Surface a diff failure rather than degrading to an empty file list, which would
+          # silently misreport every cause below as generator-side drift.
+          if ! changed="$(git diff --name-only "$base_sha" "$head_sha")"; then
+            echo "::warning::failed to diff ${base_sha}..${head_sha}; cause classification skipped"
+            changed=""
+          fi
+          if echo "$changed" | grep -E '^(database|docker/database)/.*\.sql$' | grep -qvE '^database/gen/'; then
             echo "source_modified=true" >> "$GITHUB_OUTPUT"
           else
             echo "source_modified=false" >> "$GITHUB_OUTPUT"
+          fi
+          if echo "$changed" | grep -qE '^(database/gen/|internal/infrastructure/rdb/sqlc/gen/)'; then
+            echo "artifact_modified=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "artifact_modified=false" >> "$GITHUB_OUTPUT"
           fi
       - name: Build PR comment body
         id: comment
         if: github.event_name == 'pull_request'
         shell: bash
+        env:
+          HAS_DIFF: ${{ steps.gen_diff.outputs.has_diff }}
+          SOURCE_MODIFIED: ${{ steps.source_mod.outputs.source_modified }}
+          ARTIFACT_MODIFIED: ${{ steps.source_mod.outputs.artifact_modified }}
         run: |
           set -euo pipefail
           out=/tmp/gen-db-comment.md
-          if [ "${{ steps.gen_diff.outputs.has_diff }}" != "true" ]; then
+          if [ "${HAS_DIFF-}" != "true" ]; then
             echo "title=## ✅ No differences in database output were detected" >> "$GITHUB_OUTPUT"
             echo "No differences in database output were found." > "$out"
             exit 0
           fi
-          if [ "${{ steps.source_mod.outputs.source_modified }}" = "true" ]; then
+          # Disable SC2016: `make ...` in the notification message is shown literally (must not expand)
+          # shellcheck disable=SC2016
+          if [ "${SOURCE_MODIFIED-}" = "true" ]; then
             echo "title=## 🧾 Differences in database output have been detected" >> "$GITHUB_OUTPUT"
-            printf '%s\n' 'データベース生成コマンド（例: `make gen` / `make gen-query`）をローカルで実行し、変更をコミットしてください。' > "$out"
+            printf '%s\n' "Run the database generation command (e.g. \`make gen\` / \`make gen-query\`) locally and commit the changes." > "$out"
+          elif [ "${ARTIFACT_MODIFIED-}" = "true" ]; then
+            echo "title=## ✋ DB generated output was edited directly" >> "$GITHUB_OUTPUT"
+            printf '%s\n' "This PR changes the DB generated output without changing any SQL source. Generated files must not be hand-edited (see \`AGENTS.md\`). Discard the edit, run \`make gen-query\` so the output comes from the generator, and commit that instead." > "$out"
           else
-            echo "title=## ⚠️ DB 生成物のドリフトを検知（SQL source 未変更）" >> "$GITHUB_OUTPUT"
-            printf '%s\n' '本 PR では SQL source が変更されていないため、generator 側（sqlc バージョン差・base 側の古い生成物 等）のドリフトの可能性があります。`make gen-query` をローカル実行してコミットするか、`auto-generate-docs` 経由で base 側を更新してから rebase / merge してください。' > "$out"
+            echo "title=## ⚠️ Drift in DB generated output detected (SQL source unchanged)" >> "$GITHUB_OUTPUT"
+            printf '%s\n' "This PR does not modify any SQL source, so this may be generator-side drift (a change to \`sqlc.yaml\` / \`mise.toml\` / the DB setup action, sqlc version differences, stale generated artifacts on the base, etc.). Run \`make gen-query\` locally and commit, or update the base via \`auto-generate-docs\` and then rebase / merge." > "$out"
           fi
+          # fence_for mirrors upsert-pr-comment's fenceFor: this call passes the body through untouched, so it sizes its own fence. See README.md § PR comment fencing.
+          # `-a`: without it a single NUL byte makes grep report a binary match and print nothing,
+          # collapsing the fence back to three backticks.
+          fence_for() {
+            local longest len
+            longest="$({ grep -a -o '`\{1,\}' "$1" || true; } | awk '{ if (length($0) > n) n = length($0) } END { print n + 0 }')"
+            len=$(( longest + 1 ))
+            if [ "$len" -lt 3 ]; then len=3; fi
+            printf '%*s' "$len" '' | tr ' ' '\140'
+          }
+
+          # The list is fenced, never put in an inline span: a path may carry a backtick. See README.md § PR comment fencing.
+          list=/tmp/gen-db-filelist.txt
+          # The action's length cap slices a body without regard for fences and does not re-fence on
+          # this path, so a list trimmed there would lose the closing fence. Trimming here, before
+          # the fence is sized, keeps the block closed and stays under the 45000 character default.
+          # The fence cannot outgrow that budget either: a backtick run never spans a `/`, so the
+          # longest one a path can hold is bounded by NAME_MAX — 255 bytes — and the fence by 256.
+          list_limit=40000
+          head -c "$list_limit" /tmp/changed_files.txt > "$list"
+          if [ "$(wc -c < /tmp/changed_files.txt)" -gt "$list_limit" ]; then
+            printf '\n... (file list truncated)\n' >> "$list"
+          fi
+          fence="$(fence_for "$list")"
           {
             echo ""
-            while IFS= read -r f; do
-              [ -n "$f" ] && printf -- '- `%s`\n' "$f"
-            done < /tmp/changed_files.txt
+            echo "${fence}text"
+            cat "$list"
+            echo "${fence}"
           } >> "$out"
 
       - name: Comment generated artifacts result on PR
-        if: github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request'
         continue-on-error: true
         uses: ./.github/actions/upsert-pr-comment
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           marker: '<!-- generated-artifacts-filelist -->'
-          title: ${{ steps.comment.outputs.title }}
+          status: "${{ steps.gen_diff.outputs.has_diff == 'false' && 'success' || 'drift' }}"
+          title: "${{ steps.comment.outputs.title || '## ⚠️ Generated Database Artifacts Check: CUT OFF (no result produced)' }}"
           body-file: /tmp/gen-db-comment.md
       - name: Fail if diff exists
         if: steps.gen_diff.outputs.has_diff == 'true'

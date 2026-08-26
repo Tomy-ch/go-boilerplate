@@ -4,3 +4,5 @@ description: 次ページ取得用の不透明カーソル。先頭ページを�
 required: false
 schema:
   type: string
+  pattern: '^[A-Za-z0-9_-]+$'
+  maxLength: 512

@@ -13,6 +13,8 @@ import (
 	"go-boilerplate/internal/usecase/boundary/job"
 )
 
+const loggerName = "job.Hooks"
+
 // RegisterJobHooks は、ジョブのライフサイクルフックを登録します。
 //
 // OnStop で実行 context がキャンセルされるため、`--timeout` 超過で cli が
@@ -32,9 +34,7 @@ func RegisterJobHooks(
 
 // runJobAndShutdown は、スナップショットしたジョブを実行し done に結果を送って停止を要求する。
 // ジョブ未設定時（done==nil）はログ出力のみ行って停止する。
-//
-// jobCtx は [lifecycle.SupervisedRunner] が供給する実行 context で、Background 由来かつ
-// OnStop でのみキャンセルされる。よって起動 ctx のキャンセルには巻き込まれず、停止時のみ中断される。
+// jobCtx は [lifecycle.SupervisedRunner] が供給する実行 context。
 func runJobAndShutdown(
 	jobCtx context.Context,
 	sd shutdowner.Shutdowner,
@@ -45,7 +45,7 @@ func runJobAndShutdown(
 ) {
 	name, args, done := state.Snapshot()
 	if done == nil {
-		logger.Named("job.Hooks").Info(
+		logger.Named(loggerName).Info(
 			jobCtx,
 			"No job to run",
 			logging.String(logging.EventTypeKey, logging.EventTypeStart),
@@ -66,10 +66,9 @@ func runJobAndShutdown(
 }
 
 // shutdown は、ジョブ完了後のアプリ停止を要求し、失敗時はジョブ系のログ様式に合わせて記録します。
-// エラーは黙殺せずログ記録する。
 func shutdown(ctx context.Context, sd shutdowner.Shutdowner, logger logging.Logger) {
 	if err := sd.Shutdown(); err != nil {
-		logger.Named("job.Hooks").Error(
+		logger.Named(loggerName).Error(
 			ctx,
 			"failed to shutdown",
 			logging.Error(logging.JobErrorKey, err),

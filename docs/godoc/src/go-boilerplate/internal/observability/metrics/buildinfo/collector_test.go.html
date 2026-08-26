@@ -194,140 +194,151 @@
 <span id="L137" class="ln">   137  </span>
 <span id="L138" class="ln">   138  </span>			labels, value := gatherLabels(t, NewCollector(appCfg, bi))
 <span id="L139" class="ln">   139  </span>
-<span id="L140" class="ln">   140  </span>			<span class="comment">// float 値の比較は testifylint(float-compare)が InDelta/InEpsilon を要求するため Equal は使わない。</span>
-<span id="L141" class="ln">   141  </span>			assert.InDelta(t, 1.0, value, 0)
-<span id="L142" class="ln">   142  </span>			assert.Equal(t, &#34;TestApp&#34;, labels[labelService])
-<span id="L143" class="ln">   143  </span>			assert.Equal(t, &#34;test&#34;, labels[labelEnvironment])
-<span id="L144" class="ln">   144  </span>			assert.Equal(t, &#34;v1.5.0&#34;, labels[labelVersion])
-<span id="L145" class="ln">   145  </span>			assert.Equal(t, &#34;abcdef1&#34;, labels[labelRevision])
-<span id="L146" class="ln">   146  </span>			assert.Equal(t, &#34;2026-06-28T17:00:00Z&#34;, labels[labelBuildDate])
-<span id="L147" class="ln">   147  </span>			assert.Equal(t, runtime.Version(), labels[labelGoVersion])
-<span id="L148" class="ln">   148  </span>		})
-<span id="L149" class="ln">   149  </span>
-<span id="L150" class="ln">   150  </span>		t.Run(&#34;ビルド情報が空の場合はunknownに丸められる&#34;, func(t *testing.T) {
-<span id="L151" class="ln">   151  </span>			t.Parallel()
-<span id="L152" class="ln">   152  </span>
-<span id="L153" class="ln">   153  </span>			ctrl := gomock.NewController(t)
-<span id="L154" class="ln">   154  </span>			bi := mock_system.NewMockBuildInfo(ctrl)
-<span id="L155" class="ln">   155  </span>			bi.EXPECT().Version().Return(&#34;&#34;)
-<span id="L156" class="ln">   156  </span>			bi.EXPECT().Revision().Return(&#34;&#34;)
-<span id="L157" class="ln">   157  </span>			bi.EXPECT().BuildDate().Return(&#34;&#34;)
-<span id="L158" class="ln">   158  </span>
-<span id="L159" class="ln">   159  </span>			appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
-<span id="L160" class="ln">   160  </span>			appCfg.SetApplicationEnv(t, &#34;&#34;)
-<span id="L161" class="ln">   161  </span>
-<span id="L162" class="ln">   162  </span>			labels, value := gatherLabels(t, NewCollector(appCfg, bi))
-<span id="L163" class="ln">   163  </span>
-<span id="L164" class="ln">   164  </span>			<span class="comment">// float 値の比較は testifylint(float-compare)が InDelta/InEpsilon を要求するため Equal は使わない。</span>
-<span id="L165" class="ln">   165  </span>			assert.InDelta(t, 1.0, value, 0)
-<span id="L166" class="ln">   166  </span>			assert.Equal(t, unknownValue, labels[labelEnvironment])
-<span id="L167" class="ln">   167  </span>			assert.Equal(t, unknownValue, labels[labelVersion])
-<span id="L168" class="ln">   168  </span>			assert.Equal(t, unknownValue, labels[labelRevision])
-<span id="L169" class="ln">   169  </span>			assert.Equal(t, unknownValue, labels[labelBuildDate])
-<span id="L170" class="ln">   170  </span>			<span class="comment">// go_version は runtime.Version() のため常に非空であり unknown にならない。</span>
-<span id="L171" class="ln">   171  </span>			assert.NotEqual(t, unknownValue, labels[labelGoVersion])
-<span id="L172" class="ln">   172  </span>		})
-<span id="L173" class="ln">   173  </span>
-<span id="L174" class="ln">   174  </span>		t.Run(&#34;禁止ラベルが含まれない&#34;, func(t *testing.T) {
-<span id="L175" class="ln">   175  </span>			t.Parallel()
-<span id="L176" class="ln">   176  </span>
-<span id="L177" class="ln">   177  </span>			ctrl := gomock.NewController(t)
-<span id="L178" class="ln">   178  </span>			bi := mock_system.NewMockBuildInfo(ctrl)
-<span id="L179" class="ln">   179  </span>			bi.EXPECT().Version().Return(&#34;v1.5.0&#34;)
-<span id="L180" class="ln">   180  </span>			bi.EXPECT().Revision().Return(&#34;abcdef1&#34;)
-<span id="L181" class="ln">   181  </span>			bi.EXPECT().BuildDate().Return(&#34;2026-06-28T17:00:00Z&#34;)
+<span id="L140" class="ln">   140  </span>			assert.InDelta(t, 1.0, value, 0)
+<span id="L141" class="ln">   141  </span>			assert.Equal(t, &#34;TestApp&#34;, labels[labelService])
+<span id="L142" class="ln">   142  </span>			assert.Equal(t, &#34;test&#34;, labels[labelEnvironment])
+<span id="L143" class="ln">   143  </span>			assert.Equal(t, &#34;v1.5.0&#34;, labels[labelVersion])
+<span id="L144" class="ln">   144  </span>			assert.Equal(t, &#34;abcdef1&#34;, labels[labelRevision])
+<span id="L145" class="ln">   145  </span>			assert.Equal(t, &#34;2026-06-28T17:00:00Z&#34;, labels[labelBuildDate])
+<span id="L146" class="ln">   146  </span>			assert.Equal(t, runtime.Version(), labels[labelGoVersion])
+<span id="L147" class="ln">   147  </span>		})
+<span id="L148" class="ln">   148  </span>
+<span id="L149" class="ln">   149  </span>		t.Run(&#34;ビルド情報が空の場合はunknownに丸められる&#34;, func(t *testing.T) {
+<span id="L150" class="ln">   150  </span>			t.Parallel()
+<span id="L151" class="ln">   151  </span>
+<span id="L152" class="ln">   152  </span>			ctrl := gomock.NewController(t)
+<span id="L153" class="ln">   153  </span>			bi := mock_system.NewMockBuildInfo(ctrl)
+<span id="L154" class="ln">   154  </span>			bi.EXPECT().Version().Return(&#34;&#34;)
+<span id="L155" class="ln">   155  </span>			bi.EXPECT().Revision().Return(&#34;&#34;)
+<span id="L156" class="ln">   156  </span>			bi.EXPECT().BuildDate().Return(&#34;&#34;)
+<span id="L157" class="ln">   157  </span>
+<span id="L158" class="ln">   158  </span>			appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
+<span id="L159" class="ln">   159  </span>			appCfg.SetApplicationEnv(t, &#34;&#34;)
+<span id="L160" class="ln">   160  </span>
+<span id="L161" class="ln">   161  </span>			labels, value := gatherLabels(t, NewCollector(appCfg, bi))
+<span id="L162" class="ln">   162  </span>
+<span id="L163" class="ln">   163  </span>			assert.InDelta(t, 1.0, value, 0)
+<span id="L164" class="ln">   164  </span>			assert.Equal(t, unknownValue, labels[labelEnvironment])
+<span id="L165" class="ln">   165  </span>			assert.Equal(t, unknownValue, labels[labelVersion])
+<span id="L166" class="ln">   166  </span>			assert.Equal(t, unknownValue, labels[labelRevision])
+<span id="L167" class="ln">   167  </span>			assert.Equal(t, unknownValue, labels[labelBuildDate])
+<span id="L168" class="ln">   168  </span>			<span class="comment">// go_version は runtime.Version() のため常に非空であり unknown にならない。</span>
+<span id="L169" class="ln">   169  </span>			assert.NotEqual(t, unknownValue, labels[labelGoVersion])
+<span id="L170" class="ln">   170  </span>		})
+<span id="L171" class="ln">   171  </span>
+<span id="L172" class="ln">   172  </span>		t.Run(&#34;禁止ラベルが含まれない&#34;, func(t *testing.T) {
+<span id="L173" class="ln">   173  </span>			t.Parallel()
+<span id="L174" class="ln">   174  </span>
+<span id="L175" class="ln">   175  </span>			ctrl := gomock.NewController(t)
+<span id="L176" class="ln">   176  </span>			bi := mock_system.NewMockBuildInfo(ctrl)
+<span id="L177" class="ln">   177  </span>			bi.EXPECT().Version().Return(&#34;v1.5.0&#34;)
+<span id="L178" class="ln">   178  </span>			bi.EXPECT().Revision().Return(&#34;abcdef1&#34;)
+<span id="L179" class="ln">   179  </span>			bi.EXPECT().BuildDate().Return(&#34;2026-06-28T17:00:00Z&#34;)
+<span id="L180" class="ln">   180  </span>
+<span id="L181" class="ln">   181  </span>			appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
 <span id="L182" class="ln">   182  </span>
-<span id="L183" class="ln">   183  </span>			appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
+<span id="L183" class="ln">   183  </span>			labels, _ := gatherLabels(t, NewCollector(appCfg, bi))
 <span id="L184" class="ln">   184  </span>
-<span id="L185" class="ln">   185  </span>			labels, _ := gatherLabels(t, NewCollector(appCfg, bi))
-<span id="L186" class="ln">   186  </span>
-<span id="L187" class="ln">   187  </span>			forbidden := []string{
-<span id="L188" class="ln">   188  </span>				&#34;hostname&#34;, &#34;pod_name&#34;, &#34;container_id&#34;, &#34;instance_id&#34;,
-<span id="L189" class="ln">   189  </span>				&#34;git_branch&#34;, &#34;build_url&#34;, &#34;image_digest&#34;, &#34;full_image&#34;,
-<span id="L190" class="ln">   190  </span>				&#34;token&#34;, &#34;registry&#34;, &#34;commit&#34;,
-<span id="L191" class="ln">   191  </span>			}
-<span id="L192" class="ln">   192  </span>			for _, key := range forbidden {
-<span id="L193" class="ln">   193  </span>				_, ok := labels[key]
-<span id="L194" class="ln">   194  </span>				assert.False(t, ok, &#34;禁止ラベル %q が含まれてはならない&#34;, key)
-<span id="L195" class="ln">   195  </span>			}
-<span id="L196" class="ln">   196  </span>			assert.Len(t, labels, 6)
-<span id="L197" class="ln">   197  </span>		})
-<span id="L198" class="ln">   198  </span>	})
-<span id="L199" class="ln">   199  </span>}
-<span id="L200" class="ln">   200  </span>
-<span id="L201" class="ln">   201  </span>func TestRegister(t *testing.T) {
-<span id="L202" class="ln">   202  </span>	t.Parallel()
-<span id="L203" class="ln">   203  </span>
-<span id="L204" class="ln">   204  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
-<span id="L205" class="ln">   205  </span>		t.Parallel()
-<span id="L206" class="ln">   206  </span>
-<span id="L207" class="ln">   207  </span>		t.Run(&#34;初回登録は成功する&#34;, func(t *testing.T) {
-<span id="L208" class="ln">   208  </span>			t.Parallel()
-<span id="L209" class="ln">   209  </span>
-<span id="L210" class="ln">   210  </span>			reg := prometheus.NewRegistry()
-<span id="L211" class="ln">   211  </span>
-<span id="L212" class="ln">   212  </span>			ctrl := gomock.NewController(t)
-<span id="L213" class="ln">   213  </span>			bi := mock_system.NewMockBuildInfo(ctrl)
-<span id="L214" class="ln">   214  </span>			bi.EXPECT().Version().Return(&#34;v1.5.0&#34;)
-<span id="L215" class="ln">   215  </span>			bi.EXPECT().Revision().Return(&#34;abcdef1&#34;)
-<span id="L216" class="ln">   216  </span>			bi.EXPECT().BuildDate().Return(&#34;2026-06-28T17:00:00Z&#34;)
-<span id="L217" class="ln">   217  </span>
-<span id="L218" class="ln">   218  </span>			appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
-<span id="L219" class="ln">   219  </span>
-<span id="L220" class="ln">   220  </span>			require.NoError(t, register(reg, NewCollector(appCfg, bi)))
-<span id="L221" class="ln">   221  </span>		})
-<span id="L222" class="ln">   222  </span>
-<span id="L223" class="ln">   223  </span>		t.Run(&#34;デフォルトレジストリに登録できる&#34;, func(t *testing.T) { <span class="comment">//nolint:paralleltest // DefaultRegisterer(プロセス共有)を変更するため直列実行</span>
-<span id="L224" class="ln">   224  </span>			ctrl := gomock.NewController(t)
-<span id="L225" class="ln">   225  </span>			bi := mock_system.NewMockBuildInfo(ctrl)
-<span id="L226" class="ln">   226  </span>			bi.EXPECT().Version().Return(&#34;v1.5.0&#34;).AnyTimes()
-<span id="L227" class="ln">   227  </span>			bi.EXPECT().Revision().Return(&#34;abcdef1&#34;).AnyTimes()
-<span id="L228" class="ln">   228  </span>			bi.EXPECT().BuildDate().Return(&#34;2026-06-28T17:00:00Z&#34;).AnyTimes()
-<span id="L229" class="ln">   229  </span>
-<span id="L230" class="ln">   230  </span>			appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
+<span id="L185" class="ln">   185  </span>			forbidden := []string{
+<span id="L186" class="ln">   186  </span>				&#34;hostname&#34;, &#34;pod_name&#34;, &#34;container_id&#34;, &#34;instance_id&#34;,
+<span id="L187" class="ln">   187  </span>				&#34;git_branch&#34;, &#34;build_url&#34;, &#34;image_digest&#34;, &#34;full_image&#34;,
+<span id="L188" class="ln">   188  </span>				&#34;token&#34;, &#34;registry&#34;, &#34;commit&#34;,
+<span id="L189" class="ln">   189  </span>			}
+<span id="L190" class="ln">   190  </span>			for _, key := range forbidden {
+<span id="L191" class="ln">   191  </span>				_, ok := labels[key]
+<span id="L192" class="ln">   192  </span>				assert.False(t, ok, &#34;禁止ラベル %q が含まれてはならない&#34;, key)
+<span id="L193" class="ln">   193  </span>			}
+<span id="L194" class="ln">   194  </span>			assert.Len(t, labels, 6)
+<span id="L195" class="ln">   195  </span>		})
+<span id="L196" class="ln">   196  </span>	})
+<span id="L197" class="ln">   197  </span>}
+<span id="L198" class="ln">   198  </span>
+<span id="L199" class="ln">   199  </span>func Test_normalize(t *testing.T) {
+<span id="L200" class="ln">   200  </span>	t.Parallel()
+<span id="L201" class="ln">   201  </span>
+<span id="L202" class="ln">   202  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L203" class="ln">   203  </span>		t.Parallel()
+<span id="L204" class="ln">   204  </span>
+<span id="L205" class="ln">   205  </span>		t.Run(&#34;非空の値はそのまま返す&#34;, func(t *testing.T) {
+<span id="L206" class="ln">   206  </span>			t.Parallel()
+<span id="L207" class="ln">   207  </span>
+<span id="L208" class="ln">   208  </span>			assert.Equal(t, &#34;v1.5.0&#34;, normalize(&#34;v1.5.0&#34;))
+<span id="L209" class="ln">   209  </span>		})
+<span id="L210" class="ln">   210  </span>
+<span id="L211" class="ln">   211  </span>		t.Run(&#34;空文字は unknown へ丸める&#34;, func(t *testing.T) {
+<span id="L212" class="ln">   212  </span>			t.Parallel()
+<span id="L213" class="ln">   213  </span>
+<span id="L214" class="ln">   214  </span>			assert.Equal(t, unknownValue, normalize(&#34;&#34;))
+<span id="L215" class="ln">   215  </span>		})
+<span id="L216" class="ln">   216  </span>	})
+<span id="L217" class="ln">   217  </span>}
+<span id="L218" class="ln">   218  </span>
+<span id="L219" class="ln">   219  </span>func TestRegister(t *testing.T) {
+<span id="L220" class="ln">   220  </span>	t.Parallel()
+<span id="L221" class="ln">   221  </span>
+<span id="L222" class="ln">   222  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L223" class="ln">   223  </span>		t.Parallel()
+<span id="L224" class="ln">   224  </span>
+<span id="L225" class="ln">   225  </span>		t.Run(&#34;デフォルトレジストリへ登録する&#34;, func(t *testing.T) { <span class="comment">//nolint:paralleltest // DefaultRegisterer(プロセス共有)を変更するため直列実行</span>
+<span id="L226" class="ln">   226  </span>			ctrl := gomock.NewController(t)
+<span id="L227" class="ln">   227  </span>			bi := mock_system.NewMockBuildInfo(ctrl)
+<span id="L228" class="ln">   228  </span>			bi.EXPECT().Version().Return(&#34;v1.5.0&#34;).AnyTimes()
+<span id="L229" class="ln">   229  </span>			bi.EXPECT().Revision().Return(&#34;abcdef1&#34;).AnyTimes()
+<span id="L230" class="ln">   230  </span>			bi.EXPECT().BuildDate().Return(&#34;2026-06-28T17:00:00Z&#34;).AnyTimes()
 <span id="L231" class="ln">   231  </span>
-<span id="L232" class="ln">   232  </span>			require.NoError(t, Register(NewCollector(appCfg, bi)))
-<span id="L233" class="ln">   233  </span>		})
-<span id="L234" class="ln">   234  </span>	})
-<span id="L235" class="ln">   235  </span>
-<span id="L236" class="ln">   236  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
-<span id="L237" class="ln">   237  </span>		t.Parallel()
+<span id="L232" class="ln">   232  </span>			appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
+<span id="L233" class="ln">   233  </span>
+<span id="L234" class="ln">   234  </span>			require.NoError(t, Register(NewCollector(appCfg, bi)))
+<span id="L235" class="ln">   235  </span>		})
+<span id="L236" class="ln">   236  </span>	})
+<span id="L237" class="ln">   237  </span>}
 <span id="L238" class="ln">   238  </span>
-<span id="L239" class="ln">   239  </span>		t.Run(&#34;重複登録は無視される&#34;, func(t *testing.T) {
-<span id="L240" class="ln">   240  </span>			t.Parallel()
+<span id="L239" class="ln">   239  </span>func Test_register(t *testing.T) {
+<span id="L240" class="ln">   240  </span>	t.Parallel()
 <span id="L241" class="ln">   241  </span>
-<span id="L242" class="ln">   242  </span>			reg := prometheus.NewRegistry()
-<span id="L243" class="ln">   243  </span>
-<span id="L244" class="ln">   244  </span>			ctrl := gomock.NewController(t)
-<span id="L245" class="ln">   245  </span>			bi := mock_system.NewMockBuildInfo(ctrl)
-<span id="L246" class="ln">   246  </span>			bi.EXPECT().Version().Return(&#34;v1.5.0&#34;).AnyTimes()
-<span id="L247" class="ln">   247  </span>			bi.EXPECT().Revision().Return(&#34;abcdef1&#34;).AnyTimes()
-<span id="L248" class="ln">   248  </span>			bi.EXPECT().BuildDate().Return(&#34;2026-06-28T17:00:00Z&#34;).AnyTimes()
-<span id="L249" class="ln">   249  </span>
-<span id="L250" class="ln">   250  </span>			appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
-<span id="L251" class="ln">   251  </span>			c := NewCollector(appCfg, bi)
-<span id="L252" class="ln">   252  </span>
-<span id="L253" class="ln">   253  </span>			require.NoError(t, register(reg, c))
-<span id="L254" class="ln">   254  </span>			require.NoError(t, register(reg, c))
-<span id="L255" class="ln">   255  </span>		})
-<span id="L256" class="ln">   256  </span>
-<span id="L257" class="ln">   257  </span>		t.Run(&#34;AlreadyRegisteredError以外のエラーはそのまま返される&#34;, func(t *testing.T) {
-<span id="L258" class="ln">   258  </span>			t.Parallel()
-<span id="L259" class="ln">   259  </span>
-<span id="L260" class="ln">   260  </span>			ctrl := gomock.NewController(t)
-<span id="L261" class="ln">   261  </span>			bi := mock_system.NewMockBuildInfo(ctrl)
-<span id="L262" class="ln">   262  </span>			bi.EXPECT().Version().Return(&#34;v1.5.0&#34;).AnyTimes()
-<span id="L263" class="ln">   263  </span>			bi.EXPECT().Revision().Return(&#34;abcdef1&#34;).AnyTimes()
-<span id="L264" class="ln">   264  </span>			bi.EXPECT().BuildDate().Return(&#34;2026-06-28T17:00:00Z&#34;).AnyTimes()
-<span id="L265" class="ln">   265  </span>
-<span id="L266" class="ln">   266  </span>			appCfg := config.NewApplicationConfig(config.MockConfigForTest(t))
-<span id="L267" class="ln">   267  </span>
-<span id="L268" class="ln">   268  </span>			err := register(fakeRegisterer{}, NewCollector(appCfg, bi))
-<span id="L269" class="ln">   269  </span>			require.ErrorIs(t, err, errRegisterFailed)
-<span id="L270" class="ln">   270  </span>		})
-<span id="L271" class="ln">   271  </span>	})
-<span id="L272" class="ln">   272  </span>}
-<span id="L273" class="ln">   273  </span>
+<span id="L242" class="ln">   242  </span>	newCollector := func(t *testing.T) *Collector {
+<span id="L243" class="ln">   243  </span>		t.Helper()
+<span id="L244" class="ln">   244  </span>		ctrl := gomock.NewController(t)
+<span id="L245" class="ln">   245  </span>		bi := mock_system.NewMockBuildInfo(ctrl)
+<span id="L246" class="ln">   246  </span>		bi.EXPECT().Version().Return(&#34;v1.5.0&#34;).AnyTimes()
+<span id="L247" class="ln">   247  </span>		bi.EXPECT().Revision().Return(&#34;abcdef1&#34;).AnyTimes()
+<span id="L248" class="ln">   248  </span>		bi.EXPECT().BuildDate().Return(&#34;2026-06-28T17:00:00Z&#34;).AnyTimes()
+<span id="L249" class="ln">   249  </span>		return NewCollector(config.NewApplicationConfig(config.MockConfigForTest(t)), bi)
+<span id="L250" class="ln">   250  </span>	}
+<span id="L251" class="ln">   251  </span>
+<span id="L252" class="ln">   252  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L253" class="ln">   253  </span>		t.Parallel()
+<span id="L254" class="ln">   254  </span>
+<span id="L255" class="ln">   255  </span>		t.Run(&#34;初回登録は成功する&#34;, func(t *testing.T) {
+<span id="L256" class="ln">   256  </span>			t.Parallel()
+<span id="L257" class="ln">   257  </span>
+<span id="L258" class="ln">   258  </span>			require.NoError(t, register(prometheus.NewRegistry(), newCollector(t)))
+<span id="L259" class="ln">   259  </span>		})
+<span id="L260" class="ln">   260  </span>
+<span id="L261" class="ln">   261  </span>		t.Run(&#34;重複登録はエラーにせず無視する&#34;, func(t *testing.T) {
+<span id="L262" class="ln">   262  </span>			t.Parallel()
+<span id="L263" class="ln">   263  </span>
+<span id="L264" class="ln">   264  </span>			reg := prometheus.NewRegistry()
+<span id="L265" class="ln">   265  </span>			c := newCollector(t)
+<span id="L266" class="ln">   266  </span>
+<span id="L267" class="ln">   267  </span>			require.NoError(t, register(reg, c))
+<span id="L268" class="ln">   268  </span>			require.NoError(t, register(reg, c))
+<span id="L269" class="ln">   269  </span>		})
+<span id="L270" class="ln">   270  </span>	})
+<span id="L271" class="ln">   271  </span>
+<span id="L272" class="ln">   272  </span>	t.Run(&#34;異常系&#34;, func(t *testing.T) {
+<span id="L273" class="ln">   273  </span>		t.Parallel()
+<span id="L274" class="ln">   274  </span>
+<span id="L275" class="ln">   275  </span>		t.Run(&#34;AlreadyRegisteredError以外のエラーはそのまま返される&#34;, func(t *testing.T) {
+<span id="L276" class="ln">   276  </span>			t.Parallel()
+<span id="L277" class="ln">   277  </span>
+<span id="L278" class="ln">   278  </span>			err := register(fakeRegisterer{}, newCollector(t))
+<span id="L279" class="ln">   279  </span>
+<span id="L280" class="ln">   280  </span>			require.ErrorIs(t, err, errRegisterFailed)
+<span id="L281" class="ln">   281  </span>		})
+<span id="L282" class="ln">   282  </span>	})
+<span id="L283" class="ln">   283  </span>}
+<span id="L284" class="ln">   284  </span>
 </pre><p><a href="../../../../../../src/go-boilerplate/internal/observability/metrics/buildinfo/collector_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

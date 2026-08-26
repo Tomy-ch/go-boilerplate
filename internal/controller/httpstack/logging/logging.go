@@ -9,25 +9,27 @@ import (
 	"go-boilerplate/internal/controller/server"
 	"go-boilerplate/internal/logging"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 )
 
 type requestLog struct {
-	c  echo.Context
-	lf logging.LogFieldBuilder
+	c   *echo.Context
+	res *echo.Response
+	lf  logging.LogFieldBuilder
 }
 
 // Middleware は、Echoフレームワークのミドルウェアで、リクエストのログを出力します。
 // ただし /health, /metrics 等の運用系エンドポイントはログ出力をスキップします。
+// レスポンスを取り出せない場合はログを出さず素通しします。
 func Middleware(logger logging.Logger, lf logging.LogFieldBuilder) echo.MiddlewareFunc {
-	return loggingMiddleware(logger, lf)
-}
-
-// loggingMiddleware は、リクエストのログを出力するミドルウェアを返します。
-func loggingMiddleware(logger logging.Logger, lf logging.LogFieldBuilder) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
+		return func(c *echo.Context) error {
 			if ops.IsOpsPath(c.Request().URL.Path) {
+				return next(c)
+			}
+
+			res := server.ResponseOf(c)
+			if res == nil {
 				return next(c)
 			}
 
@@ -35,19 +37,21 @@ func loggingMiddleware(logger logging.Logger, lf logging.LogFieldBuilder) echo.M
 			ctx := c.Request().Context()
 
 			l := requestLog{
-				c:  c,
-				lf: lf,
+				c:   c,
+				res: res,
+				lf:  lf,
 			}
 
 			reqFields := l.buildRequestLogFields(start)
 			logger.Named("http.request").Info(ctx, "request received", reqFields...)
 
-			c.Response().After(func() {
-				latency := time.Since(start)
+			res.After(func() {
+				end := time.Now()
+				latency := end.Sub(start)
 
-				fields := l.buildResponseLogFields(latency)
+				fields := l.buildResponseLogFields(end, latency)
 				resLogger := logger.Named("http.response")
-				if c.Response().Status >= MinStatusError {
+				if res.Status >= MinStatusError {
 					resLogger.Error(ctx, "request handled", fields...)
 				} else {
 					resLogger.Info(ctx, "request handled", fields...)
@@ -83,15 +87,15 @@ func (l requestLog) buildRequestLogFields(start time.Time) []*logging.Field {
 }
 
 // buildResponseLogFields は、レスポンスの情報を含むFieldのスライスを生成します。
-func (l requestLog) buildResponseLogFields(latency time.Duration) []*logging.Field {
+// eventAt はレスポンス完了時刻で、呼び出し元が単一ソースとして確定した値を注入します。
+func (l requestLog) buildResponseLogFields(eventAt time.Time, latency time.Duration) []*logging.Field {
 	req := l.c.Request()
-	res := l.c.Response()
 	resIn := logging.HTTPResponseLogInput{
-		EventAt:   time.Now(),
+		EventAt:   eventAt,
 		Method:    req.Method,
 		Path:      req.URL.Path,
 		URI:       req.RequestURI,
-		Status:    res.Status,
+		Status:    l.res.Status,
 		Latency:   latency,
 		RequestID: requestid.GetRequestIDFromResponse(l.c),
 	}

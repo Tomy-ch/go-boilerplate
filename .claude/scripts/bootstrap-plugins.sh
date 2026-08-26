@@ -44,6 +44,7 @@ done
 
 # 3. Verify each plugin's files resolved on disk.
 for p in "${PLUGINS[@]}"; do
+  # shellcheck disable=SC2012 # glob の最初の一致を取るだけで、ファイル名は解釈しない
   hit=$(ls -d ~/.claude/plugins/marketplaces/*/plugins/"$p" 2>/dev/null | head -1 || true)
   if [ -n "$hit" ]; then
     echo "✔ resolved: $p ($hit)"

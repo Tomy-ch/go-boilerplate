@@ -33,8 +33,8 @@ func TestConfigConstructors_WithProvidedConfig(t *testing.T) {
 				dbConnCfg  *config.DBConnectionConfig
 				secCfg     *config.SecurityConfig
 				secCookie  *config.SecureCookieConfig
-				authCfg    *config.AuthConfig
 				workerCfg  *config.WorkerConfig
+				queueCfg   *config.ConsumerQueueConfig
 				outboxCfg  *config.OutboxConfig
 				loc        *time.Location
 			)
@@ -44,7 +44,7 @@ func TestConfigConstructors_WithProvidedConfig(t *testing.T) {
 				// テスト対象: 実装側のモジュール
 				ConfigModule(),
 				fx.Populate(&osCfg, &appCfg, &serverCfg, &dbCfg, &dbConnCfg, &metricsCfg, &obsCfg, &secCfg,
-					&secCookie, &authCfg, &workerCfg, &outboxCfg, &loc),
+					&secCookie, &workerCfg, &queueCfg, &outboxCfg, &loc),
 				fx.NopLogger,
 			)
 
@@ -61,9 +61,60 @@ func TestConfigConstructors_WithProvidedConfig(t *testing.T) {
 			assert.Equal(t, config.NewDBConnectionConfig(cfg).MaxConns(), dbConnCfg.MaxConns())
 			assert.Equal(t, config.NewSecurityConfig(cfg).AllowedOrigins(), secCfg.AllowedOrigins())
 			assert.Equal(t, config.NewSecureCookieConfig(cfg).Domain(), secCookie.Domain())
-			assert.Equal(t, config.NewAuthConfig(cfg).CookieName(), authCfg.CookieName())
 			assert.Equal(t, config.NewWorkerConfig(cfg).Concurrency(), workerCfg.Concurrency())
-			assert.Equal(t, config.NewOutboxConfig(cfg).Endpoint(), outboxCfg.Endpoint())
+			assert.Equal(t, config.NewConsumerQueueConfig(cfg).URL(), queueCfg.URL())
+			assert.Equal(t, config.NewOutboxConfig(cfg).Publisher(), outboxCfg.Publisher())
+		})
+	})
+}
+
+func TestConfigModule(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("宣言した全SubConfigとタイムゾーンを提供する", func(t *testing.T) {
+			t.Parallel()
+
+			var (
+				osCfg      *config.OperatingSystemConfig
+				appCfg     *config.ApplicationConfig
+				serverCfg  *config.ServerConfig
+				dbCfg      *config.DatabaseConfig
+				dbConnCfg  *config.DBConnectionConfig
+				metricsCfg *config.MetricsConfig
+				obsCfg     *config.ObservabilityConfig
+				secCfg     *config.SecurityConfig
+				secCookie  *config.SecureCookieConfig
+				workerCfg  *config.WorkerConfig
+				queueCfg   *config.ConsumerQueueConfig
+				outboxCfg  *config.OutboxConfig
+				authCfg    *config.AuthConfig
+				storageCfg *config.ObjectStorageConfig
+				loc        *time.Location
+			)
+
+			// fx.ValidateApp は結線のみを検証し SetUpConfig を実行しないため、env に依存せず
+			// 「どの SubConfig を提供する module か」だけを固定できる。
+			require.NoError(t, fx.ValidateApp(
+				ConfigModule(),
+				fx.Populate(&osCfg, &appCfg, &serverCfg, &dbCfg, &dbConnCfg, &metricsCfg, &obsCfg,
+					&secCfg, &secCookie, &workerCfg, &queueCfg, &outboxCfg, &authCfg, &storageCfg, &loc),
+				fx.NopLogger,
+			))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未配線ではApplicationConfigが解決できずグラフ検証に失敗する", func(t *testing.T) {
+			t.Parallel()
+
+			var appCfg *config.ApplicationConfig
+
+			require.Error(t, fx.ValidateApp(fx.Populate(&appCfg), fx.NopLogger))
 		})
 	})
 }

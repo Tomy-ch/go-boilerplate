@@ -1,0 +1,12 @@
+description: 購入履歴一覧（cursor ページネーション）のレスポンススキーマ
+allOf:
+- type: object
+  required:
+    - items
+  properties:
+    items:
+      type: array
+      description: 購入履歴の概要一覧（注文日時の降順）。購入がない場合は空配列です。
+      items:
+        $ref: '../../schemas/PurchaseSummaryResponse.yaml'
+- $ref: '../../schemas/CursorPaginationMetadataResponse.yaml'

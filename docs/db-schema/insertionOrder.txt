@@ -2,10 +2,16 @@ prefectures
 product_categories
 product_statuses
 purchase_statuses
+roles
 users
 products
+carts
 purchases
+product_images
+user_identities
+cart_items
 purchase_details
+user_roles
 idempotency_keys
 outbox
 schema_migrations

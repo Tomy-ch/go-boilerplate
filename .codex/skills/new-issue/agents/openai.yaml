@@ -1,0 +1,3 @@
+interface:
+  display_name: "New Issue"
+  short_description: "Create GitHub issues with verified premises"

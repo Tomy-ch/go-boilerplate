@@ -14,6 +14,6 @@ var (
 	ErrUnauthorizedInvalidToken = xerrors.Wrap(apperror.ErrUnauthenticated, "invalid token")
 	// ErrUnauthorizedTokenNotProvided は、認証トークンが提供されていない場合のエラー。
 	ErrUnauthorizedTokenNotProvided = xerrors.Wrap(apperror.ErrUnauthenticated, "authorization token not provided")
-	// ErrAuthnSlotNotFound は、Authn スロット未装着の場合のエラー。実経路では認証失敗(401)として返るため誤解を避け 401 に寄せる。
-	ErrAuthnSlotNotFound = xerrors.Wrap(apperror.ErrUnauthenticated, "authn slot not found in request context")
+	// ErrAuthnSlotNotFound は、Authn スロット未装着の場合のエラー（資格情報と無関係な結線の不具合）。
+	ErrAuthnSlotNotFound = xerrors.Wrap(apperror.ErrInternal, "authn slot not found in request context")
 )

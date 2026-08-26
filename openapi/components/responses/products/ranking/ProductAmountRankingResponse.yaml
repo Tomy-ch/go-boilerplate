@@ -1,0 +1,10 @@
+type: object
+description: 売上金額ランキングのレスポンススキーマ。売上金額の降順（同額は商品 ID 昇順）で並びます。
+required:
+  - rankings
+properties:
+  rankings:
+    type: array
+    description: 売上金額の降順で並んだ商品ランキングです。
+    items:
+      $ref: '../../../schemas/products/ProductAmountRankingItem.yaml'

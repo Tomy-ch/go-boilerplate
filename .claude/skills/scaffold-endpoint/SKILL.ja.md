@@ -10,22 +10,22 @@ feature を「今いる地点」— ラフなアイデアでも、書き上げ�
 
 - 新規 feature / endpoint を end-to-end で立ち上げる — アイデアしか無くても、2 spec（`domain.md` + `usecase.md`）+ OpenAPI YAML + SQL が用意済みでも。
 - コードを書く*前*に上流の設計フェーズ（曖昧点の明確化 → 既存パターンの探索 → アプローチの比較）を回したい。
-- 全層を同じ規約で構築し 1 つの統合レポートを得た上で、`local-review` / `arch-check` / `test-review` でレビューしたい。
+- 全層を同じ規約で構築し 1 つの統合レポートを得た上で、`impl-review` / `arch-check` / `test-review` でレビューしたい。
 
 以下の用途には使いません:
 
 - 既存の単一 layer の変更 — 該当 layer skill（`scaffold-domain` / `-infra-db` / `-usecase` / `-controller`）を単独実行。
 - 空の spec テンプレートだけの scaffold — それは `new-spec`。
-- 既存コードのレビューのみ — `local-review` / `arch-check` / `test-review` を直接実行。
+- 既存コードのレビューのみ — `impl-review` / `arch-check` / `test-review` を直接実行。
 
 ## 2 つのエントリモード（Phase 0 で自動判定）
 
 | モード | トリガ | 上流フェーズ (Phase 1–4) | コア (Phase 5–7) |
 | --- | --- | --- | --- |
 | **A. idea-first** | アイデア / 要件から開始。`docs/spec/<feature>/` が無い、または `domain.md`/`usecase.md` を欠く | **実行** — 明確化 → 探索 → 設計 → 入力ドラフト | 実行 |
-| **B. specs-ready** | `docs/spec/<feature>/{domain,usecase}.md` + OpenAPI gen + sqlc gen が既に存在 | **スキップ**（fast path — 従来 scaffold-endpoint と後方互換） | 実行 |
+| **B. specs-ready** | `docs/spec/<feature>/{domain,usecase}.md` + OpenAPI gen + sqlc gen が既に存在 | **スキップ**（fast path） | 実行 |
 
-モード B は従来の挙動そのもの。有効な入力を既に持つユーザーに上流フェーズを強制しない — 検出してスキップする。逆に、spec がまだ無いのに `verify-spec` へ直行してはいけない — そこが上流フェーズの埋める穴。
+有効な入力を既に持つユーザーに上流フェーズを強制しない — 検出してスキップする。逆に、spec がまだ無いのに `verify-spec` へ直行してはいけない — そこが上流フェーズの埋める穴。
 
 ## 読み書き範囲
 
@@ -58,7 +58,7 @@ feature を「今いる地点」— ラフなアイデアでも、書き上げ�
 
 > **環境に関する注記（前提 3〜5）:** `make gen-query` は `pg_dump` で稼働中の DB スキーマをダンプするため、**DB が起動している必要がある**（未起動だと `make gen-query` / `make test` が `could not translate host name "database"` で失敗する）。環境は**生 `docker compose` ではなく専用 make ターゲット**で起動すること: `make serve`（development プロファイル、`database` サービス含む）→ **`make db-init`**（local/test 両 DB を migrate **かつ seed**。テストは seed 前提のため、`db-*-migrate-up` 単体では不十分）→ その後に `make gen-query` / `make gen-api`。
 >
-> **ツールチェーンに関する注記（最終 `make fix` / `make test`）:** `make fix` や `make lint` が**ツールのバージョン不整合**（例: `golangci-lint` の "you are using a configuration file for golangci-lint v2 with golangci-lint v1"）で失敗した場合は回避策を取らず、`make install-tools` でローカルのツールを `tools.yaml` 固定バージョンに揃えてから再実行する（`tools.yaml` 自体を変更した場合は先に `make sync-tools`）。`PATH` の手動書き換えやバージョン指定バイナリの直叩きで代替しないこと。
+> **ツールチェーンに関する注記（最終 `make fix` / `make test`）:** `make fix` や `make lint` が**ツールのバージョン不整合**（例: `golangci-lint` の "you are using a configuration file for golangci-lint v2 with golangci-lint v1"）で失敗した場合は回避策を取らず、`make install-tools` でローカルのツールを `mise.toml` 固定バージョンに揃えてから再実行する（`mise.toml` 自体を変更した場合は先に `make sync-versions`）。`PATH` の手動書き換えやバージョン指定バイナリの直叩きで代替しないこと。
 
 ---
 
@@ -169,7 +169,7 @@ child skill 間で成否ステータスを伝播:
 - 書き込み後 `make fix` + `make test` 実行
 - 失敗時 TODO + FB を surface
 
-将来 "完全 unattended モード" が必要なら `--auto-approve` フラグを追加可能 — ただし既定は layer ごと確認で human-in-the-loop を維持。
+layer ごとにユーザー確認を挟むので、判断を要する箇所で human-in-the-loop が保たれる。
 
 ### Phase 7. 統合検証（make test + ランタイム curl + o11y）
 
@@ -213,7 +213,7 @@ cross-layer 統合（handler → usecase → domain → infra）が全体とし�
 
 scaffold + ランタイム確認は feature が*構築され起動する*ことを示す。このフェーズは*良いか*を判定する — 汎用 reviewer ではなくリポジトリ自身のレビュースキルを使う。これらはこのコードベースのルールを内包し、実装者とは別モデルで reviewer を走らせるため:
 
-- **`local-review`** — 新変更に対する敵対的な correctness / security / architecture / runtime-gap + コメント品質。
+- **`impl-review`** — 新変更に対する敵対的な correctness / security / architecture / runtime-gap + コメント品質。
 - **`arch-check`** — 触れた層の layer-compliance 監査（depguard レベルの境界、lean A 規約）。
 - **`test-review`** — 生成テストの品質（構造準拠 + 観点カバレッジ + 意味的強度）。
 
@@ -234,7 +234,7 @@ scaffold-endpoint 完了（feature: <feature>, mode: <A/B>）。
   ✓ scaffold-controller: <N> ファイル作成、coverage 100%
   ✓ make test: 全体 OK
   ✓ ランタイム動作確認: curl 到達 / 認証 / 主要異常系 / o11y トレース OK
-  ✓ 品質レビュー: local-review / arch-check / test-review 実施（指摘 <n> 件、対応方針: <...>）
+  ✓ 品質レビュー: impl-review / arch-check / test-review 実施（指摘 <n> 件、対応方針: <...>）
 
 次のアクション:
   - /commit で 変更をコミット
@@ -268,7 +268,7 @@ commit しない。push しない。
 - ✅ 実行した全フェーズ + 最終 `make test` を統合した最終レポートを surface。
 - ✅ 各 child skill が自身の確認を layer ごとに取る（judgment-heavy step で human-in-the-loop）。
 - ✅ ランタイム curl + o11y 確認（Phase 7）を実施 — `make test` だけでは DI / ミドルウェア / DB を通らない。
-- ✅ 品質レビュー（Phase 8）は汎用 reviewer でなく `local-review` / `arch-check` / `test-review` を再利用。
+- ✅ 品質レビュー（Phase 8）は汎用 reviewer でなく `impl-review` / `arch-check` / `test-review` を再利用。
 - ✅ 元に戻す手段が `make db-init` しかない破壊的 curl は実行前にユーザー確認。
 
 ## チェックリスト
@@ -278,7 +278,7 @@ commit しない。push しない。
 - [ ] `verify-spec` 実行、違反時は chain 中断（Phase 5）
 - [ ] `scaffold-domain` / `-infra-db` / `-usecase` / `-controller` 各々成功実行（または失敗時 chain 停止）（Phase 6）
 - [ ] 全 child 成功後に最終 `make fix` + `make test`; ランタイム curl / 認証 / 主要異常系 / o11y トレース確認（Phase 7）
-- [ ] 品質レビュー実行（`local-review` + `arch-check` + `test-review`）; 指摘 surface と対応判断（Phase 8）
+- [ ] 品質レビュー実行（`impl-review` + `arch-check` + `test-review`）; 指摘 surface と対応判断（Phase 8）
 - [ ] layer ごとのファイル数 + カバレッジを含む統合日本語サマリ（Phase 9）
 - [ ] commit / push なし
 - [ ] いずれの失敗時も書き込み済みファイルを自動 rollback していない

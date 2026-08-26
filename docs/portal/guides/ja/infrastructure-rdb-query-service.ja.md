@@ -37,6 +37,19 @@ flowchart TB
 
 QS が返すのは **Aggregate の完全な再構成ではなく、ユースケースが必要とする射影（projection）** です。これは Domain の関心事ではなく Usecase の関心事であるため、interface は Usecase 層（`internal/usecase/<aggregate>/query`）に配置します。
 
+> **注記（Repository も小さな read model を返しうる）。** 上表の「返却型 = DTO」は*典型的な*切り分けで
+> あって絶対ではありません。*固定の参照マスタ*を JOIN する Repository の読み取りは、解決済みの表示値を
+> 持つ小さな read model を返しても、なお単一 Aggregate の Repository 読み取り（QS ではない）です。
+> <!-- 撤去後にこの箇所へ自分の例を置くための指針。
+>      目的: どの表からどの表への JOIN かが見えないと、例外の範囲が伝わらない。
+>      意義: 効くのは「参照マスタであること」で、JOIN の向きや表の数ではない。
+>      書き方: 集約の表 → 参照マスタの表、を矢印 1 本で示す。 -->
+> <!-- sample-api:begin -->
+> （サンプルでの例は `purchases` → `purchase_statuses`）
+> <!-- sample-api:end -->
+> 読み取りを QS へ動かすのは、*独立した* Aggregate をまたぐことや派生した射影であって、単に Entity 以外を
+> 返すことではありません。`docs/rules.md` の「Repository / QueryService Rules」節を参照してください。
+
 ### CQRS との関係
 
 QS の導入は **軽量 CQRS（Command Query Responsibility Segregation）** のアプローチです。
@@ -54,9 +67,15 @@ QS の導入は **軽量 CQRS（Command Query Responsibility Segregation）** �
 - ページネーション付きの一覧取得
 - 全文検索やキーワード検索
 - 集計・グルーピングが必要なクエリ
-- Aggregate の完全な再構成が不要な読み取り
+- 自然な形が projection であり、full Aggregate として再構成するのが無駄になる読み取り
+  （重い Aggregate から数カラムだけ、または結合ビュー）
 
-逆に、ID による単一取得や件数カウントなどの単純なクエリは Repository に留めて構いません。
+逆に、**単一 Aggregate の単純な読み取りは Repository に留めます** — ID による取得、および
+Aggregate 自身の属性による単純なフィルタ・一覧・件数取得（`SELECT * FROM <table> ORDER BY ...`
+のような無フィルタの全件一覧を含む）。多数の行を返すことや、結果をレスポンス DTO へ写像すること
+それ自体では QS に移す理由にはなりません — Aggregate を横断するか、上記の検索複雑性のケースに
+該当する場合のみ QS を使います。[`docs/rules.md`](../../../../docs/rules.md) の
+§ "Repository / QueryService Rules" を参照してください。
 
 ## 役割
 

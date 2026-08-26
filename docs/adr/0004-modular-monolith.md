@@ -13,7 +13,7 @@ accepted
 
 ## Context
 
-This template targets backend services for business systems expected to be operated and
+This repository targets backend services for business systems expected to be operated and
 evolved over a long period — from PoC to early-scaling phases — by teams with Tech
 Lead-level technical judgment. The primary design goals are maintainability, structural
 safety, and long-term operability, not independent scalability of individual capabilities.
@@ -27,8 +27,8 @@ Two deployment philosophies were considered:
 
 Microservices introduce significant operational complexity: distributed tracing, network
 failure modes, cross-service transactions, and independent deployment pipelines. For the
-class of systems this template targets, that complexity is premature. At the same time, the
-template should not trap adopters: the strict layer separation and interface-defined
+class of systems targeted here, that complexity is premature. At the same time, the
+architecture should not become a trap: the strict layer separation and interface-defined
 boundaries (see [ADR-0002](0002-onion-architecture.md) and
 [ADR-0003](0003-interface-based-decoupling.md)) should make future service extraction a
 deliberate and tractable refactor.
@@ -37,7 +37,7 @@ deliberate and tractable refactor.
 
 Adopt a **modular monolith** as the deployment architecture. The system runs as a single
 deployable application. Internal module boundaries are enforced by layer separation and
-depguard rules. Microservices are explicitly a non-goal for this template.
+depguard rules. Microservices are explicitly a non-goal for this system.
 
 ## Consequences
 
@@ -63,10 +63,10 @@ depguard rules. Microservices are explicitly a non-goal for this template.
 
 ### Microservices from day one
 
-Independent services per domain capability. Rejected for the template's primary target:
+Independent services per domain capability. Rejected for the primary target:
 operational overhead is disproportionate for systems in the PoC-through-early-scaling scope.
-Adopters who need microservices should treat this template as an extraction source rather
-than a starting point.
+A system that needs microservices from the outset should treat this structure as an
+extraction source rather than a starting point.
 
 ### Flat monolith (no enforced module boundaries)
 

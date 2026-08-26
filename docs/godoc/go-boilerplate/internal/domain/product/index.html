@@ -1,0 +1,1223 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>product - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package product
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import &#34;go-boilerplate/internal/domain/product&#34;</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+				<dd><a href="#pkg-subdirectories">Subdirectories</a></dd>
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package product は、商品ドメインを定義します。名称・価格・在庫などの不変条件を持つ Product エンティティと、
+公開商品の cursor 一覧取得を含む Repository インターフェースを提供します。price はサブセント精度を保持する
+価格スケール（Decimal）の値オブジェクト money.Price で保持します。
+
+				
+			</p></div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+				<dd><a href="#pkg-variables">Variables</a></dd>
+			
+			
+				
+				<dd><a href="#IsPublished">func IsPublished(publishedAt *time.Time) bool</a></dd>
+			
+			
+				
+				<dd><a href="#AllListParams">type AllListParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Attributes">type Attributes</a></dd>
+				
+				
+			
+				
+				<dd><a href="#CategoryRef">type CategoryRef</a></dd>
+				
+					
+					<dd>    <a href="#NewCategoryRef">func NewCategoryRef(id uuid.UUID, name string) (CategoryRef, error)</a></dd>
+				
+				
+					
+					<dd>    <a href="#CategoryRef.ID">func (c CategoryRef) ID() uuid.UUID</a></dd>
+				
+					
+					<dd>    <a href="#CategoryRef.Name">func (c CategoryRef) Name() string</a></dd>
+				
+			
+				
+				<dd><a href="#Counts">type Counts</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Image">type Image</a></dd>
+				
+					
+					<dd>    <a href="#NewImage">func NewImage(id uuid.UUID, attrs ImageAttributes) Image</a></dd>
+				
+				
+					
+					<dd>    <a href="#Image.DisplaySort">func (i Image) DisplaySort() int</a></dd>
+				
+					
+					<dd>    <a href="#Image.ID">func (i Image) ID() uuid.UUID</a></dd>
+				
+					
+					<dd>    <a href="#Image.ImagePath">func (i Image) ImagePath() string</a></dd>
+				
+			
+				
+				<dd><a href="#ImageAttributes">type ImageAttributes</a></dd>
+				
+				
+			
+				
+				<dd><a href="#ListParams">type ListParams</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Product">type Product</a></dd>
+				
+					
+					<dd>    <a href="#New">func New(id uuid.UUID, attrs Attributes, createdAt time.Time) (*Product, error)</a></dd>
+				
+					
+					<dd>    <a href="#Reconstruct">func Reconstruct(id uuid.UUID, attrs Attributes, version int, createdAt time.Time) (*Product, error)</a></dd>
+				
+				
+					
+					<dd>    <a href="#Product.AdjustStock">func (p *Product) AdjustStock(delta int) error</a></dd>
+				
+					
+					<dd>    <a href="#Product.Category">func (p *Product) Category() CategoryRef</a></dd>
+				
+					
+					<dd>    <a href="#Product.CreatedAt">func (p *Product) CreatedAt() time.Time</a></dd>
+				
+					
+					<dd>    <a href="#Product.Description">func (p *Product) Description() *string</a></dd>
+				
+					
+					<dd>    <a href="#Product.EnsureVersion">func (p *Product) EnsureVersion(expected int) error</a></dd>
+				
+					
+					<dd>    <a href="#Product.ID">func (p *Product) ID() uuid.UUID</a></dd>
+				
+					
+					<dd>    <a href="#Product.Images">func (p *Product) Images() []Image</a></dd>
+				
+					
+					<dd>    <a href="#Product.IsLowStock">func (p *Product) IsLowStock() bool</a></dd>
+				
+					
+					<dd>    <a href="#Product.IsPublished">func (p *Product) IsPublished() bool</a></dd>
+				
+					
+					<dd>    <a href="#Product.Name">func (p *Product) Name() string</a></dd>
+				
+					
+					<dd>    <a href="#Product.Price">func (p *Product) Price() money.Price</a></dd>
+				
+					
+					<dd>    <a href="#Product.PrimaryImage">func (p *Product) PrimaryImage() (Image, bool)</a></dd>
+				
+					
+					<dd>    <a href="#Product.PublishedAt">func (p *Product) PublishedAt() *time.Time</a></dd>
+				
+					
+					<dd>    <a href="#Product.Quantity">func (p *Product) Quantity() int</a></dd>
+				
+					
+					<dd>    <a href="#Product.Status">func (p *Product) Status() StatusRef</a></dd>
+				
+					
+					<dd>    <a href="#Product.StockWarningThreshold">func (p *Product) StockWarningThreshold() *int</a></dd>
+				
+					
+					<dd>    <a href="#Product.Update">func (p *Product) Update(attrs Attributes) error</a></dd>
+				
+					
+					<dd>    <a href="#Product.Version">func (p *Product) Version() int</a></dd>
+				
+			
+				
+				<dd><a href="#Products">type Products</a></dd>
+				
+				
+			
+				
+				<dd><a href="#Repository">type Repository</a></dd>
+				
+				
+			
+				
+				<dd><a href="#SearchFilter">type SearchFilter</a></dd>
+				
+				
+			
+				
+				<dd><a href="#StatusRef">type StatusRef</a></dd>
+				
+					
+					<dd>    <a href="#NewStatusRef">func NewStatusRef(id uuid.UUID, name string) (StatusRef, error)</a></dd>
+				
+				
+					
+					<dd>    <a href="#StatusRef.ID">func (s StatusRef) ID() uuid.UUID</a></dd>
+				
+					
+					<dd>    <a href="#StatusRef.Name">func (s StatusRef) Name() string</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="../../../../src/go-boilerplate/internal/domain/product/constant.go.html">constant.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/domain/product/error.go.html">error.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/domain/product/product_domain.go.html">product_domain.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/domain/product/product_image.go.html">product_image.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/domain/product/product_repository.go.html">product_repository.go</a>
+			
+				<a href="../../../../src/go-boilerplate/internal/domain/product/reference.go.html">reference.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+			<h2 id="pkg-variables">Variables</h2>
+			
+				
+				<pre>var (
+
+    <span class="comment">// ErrInvalidID は、商品 ID の検証に失敗した場合のエラーです。</span>
+    <span id="ErrInvalidID">ErrInvalidID</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;id failed&#34;)
+    <span class="comment">// ErrInvalidName は、商品名の検証に失敗した場合のエラーです。</span>
+    <span id="ErrInvalidName">ErrInvalidName</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;name failed&#34;)
+    <span class="comment">// ErrInvalidQuantity は、在庫数の検証に失敗した場合のエラーです。</span>
+    <span id="ErrInvalidQuantity">ErrInvalidQuantity</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;quantity failed&#34;)
+    <span class="comment">// ErrInvalidStockWarningThreshold は、在庫警告閾値の検証に失敗した場合のエラーです。</span>
+    <span id="ErrInvalidStockWarningThreshold">ErrInvalidStockWarningThreshold</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;stockWarningThreshold failed&#34;)
+    <span class="comment">// ErrInvalidImagePath は、商品画像の画像パスの検証に失敗した場合のエラーです。</span>
+    <span id="ErrInvalidImagePath">ErrInvalidImagePath</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;imagePath failed&#34;)
+    <span class="comment">// ErrInvalidImageDisplaySort は、商品画像の表示順の検証に失敗した場合のエラーです。</span>
+    <span id="ErrInvalidImageDisplaySort">ErrInvalidImageDisplaySort</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;imageDisplaySort failed&#34;)
+    <span class="comment">// ErrDuplicateImageDisplaySort は、同一商品内で商品画像の表示順が重複している場合のエラーです。</span>
+    <span id="ErrDuplicateImageDisplaySort">ErrDuplicateImageDisplaySort</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;duplicate imageDisplaySort&#34;)
+    <span class="comment">// ErrInvalidStatusID は、商品ステータス ID の検証に失敗した場合のエラーです。</span>
+    <span id="ErrInvalidStatusID">ErrInvalidStatusID</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;statusID failed&#34;)
+    <span class="comment">// ErrInvalidStatusName は、商品ステータス名の検証に失敗した場合のエラーです。</span>
+    <span id="ErrInvalidStatusName">ErrInvalidStatusName</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;statusName failed&#34;)
+    <span class="comment">// ErrInvalidCategoryID は、商品カテゴリ ID の検証に失敗した場合のエラーです。</span>
+    <span id="ErrInvalidCategoryID">ErrInvalidCategoryID</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;categoryID failed&#34;)
+    <span class="comment">// ErrInvalidCategoryName は、商品カテゴリ名の検証に失敗した場合のエラーです。</span>
+    <span id="ErrInvalidCategoryName">ErrInvalidCategoryName</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;categoryName failed&#34;)
+    <span class="comment">// ErrInvalidCreatedAt は、登録日時の検証に失敗した場合のエラーです。</span>
+    <span id="ErrInvalidCreatedAt">ErrInvalidCreatedAt</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;createdAt failed&#34;)
+    <span class="comment">// ErrInvalidVersion は、楽観ロックのバージョンの検証に失敗した場合のエラーです。</span>
+    <span id="ErrInvalidVersion">ErrInvalidVersion</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(errInvalid, &#34;version failed&#34;)
+    <span class="comment">// ErrVersionConflict は、読み込み後に他者が更新しており、楽観ロックのバージョンが一致しない場合のエラーです。</span>
+    <span class="comment">// 同じ内容の再送では解消しないため、呼び出し元は最新を取得し直したうえでやり直す必要があります。</span>
+    <span id="ErrVersionConflict">ErrVersionConflict</span> = <a href="../../../../go-boilerplate/pkg/xerrors/">xerrors</a>.<a href="../../../../go-boilerplate/pkg/xerrors/#Wrap">Wrap</a>(<a href="../../../../go-boilerplate/internal/apperror/">apperror</a>.<a href="../../../../go-boilerplate/internal/apperror/#ErrConflict">ErrConflict</a>, &#34;product version conflict&#34;)
+)</pre>
+			
+		
+		
+			
+			
+			<h2 id="IsPublished">func <a href="../../../../src/go-boilerplate/internal/domain/product/product_domain.go.html?s=10919:10964#L242">IsPublished</a>
+				<a class="permalink" href="#IsPublished">¶</a>
+				
+				
+			</h2>
+			<pre>func IsPublished(publishedAt *<a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>) <a href="../../../../builtin/#bool">bool</a></pre>
+			<p>IsPublished は、公開日時から商品が公開中かどうかを判定します。
+</p><p>「公開中」の定義はここ 1 箇所にあります。集約を再構築しない読み取り——集計や射影を返す経路——にも
+同じ定義を当てられるよう、エンティティのメソッドとは別に値に対する形でも公開します。
+
+			
+			
+
+		
+		
+			
+			
+			</p><h2 id="AllListParams">type <a href="../../../../src/go-boilerplate/internal/domain/product/product_repository.go.html?s=1447:1921#L22">AllListParams</a>
+				<a class="permalink" href="#AllListParams">¶</a>
+				
+				
+			</h2>
+			<p>AllListParams は、公開状態を問わない商品一覧取得の絞り込み・並び順・keyset 境界を表すクエリ条件です。
+keyset 境界は (AfterCreatedAt, AfterID) の組で表し、先頭ページは両方 nil、継続ページは両方が
+直前ページ末尾の値になります。
+境界に公開日時ではなく登録日時を用いるのは、未公開の商品が公開日時を持たないためです。
+
+			</p><pre>type AllListParams struct {
+    <a href="#SearchFilter">SearchFilter</a>
+
+<span id="AllListParams.Limit"></span>    <span class="comment">// Limit は、取得件数の上限です。</span>
+    Limit <a href="../../../../builtin/#int32">int32</a>
+<span id="AllListParams.Ascending"></span>    <span class="comment">// Ascending は、登録日時の昇順で取得する場合に true、降順の場合に false です。</span>
+    Ascending <a href="../../../../builtin/#bool">bool</a>
+<span id="AllListParams.AfterCreatedAt"></span>    <span class="comment">// AfterCreatedAt は、keyset 境界となる登録日時です。先頭ページでは nil です。</span>
+    AfterCreatedAt *<a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+<span id="AllListParams.AfterID"></span>    <span class="comment">// AfterID は、keyset 境界となる商品 ID です。先頭ページでは nil です。</span>
+    AfterID *<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Attributes">type <a href="../../../../src/go-boilerplate/internal/domain/product/product_domain.go.html?s=1353:1663#L29">Attributes</a>
+				<a class="permalink" href="#Attributes">¶</a>
+				
+				
+			</h2>
+			<p>Attributes は、商品の属性一式です。
+ポインタのフィールドは未設定を nil で表し、不変条件は受け取り側が検証します。
+
+			</p><pre>type Attributes struct {
+<span id="Attributes.Name"></span>    Name                  <a href="../../../../builtin/#string">string</a>
+<span id="Attributes.Description"></span>    Description           *<a href="../../../../builtin/#string">string</a>
+<span id="Attributes.Price"></span>    Price                 <a href="../../../../go-boilerplate/internal/domain/lexicon/money/">money</a>.<a href="../../../../go-boilerplate/internal/domain/lexicon/money/#Price">Price</a>
+<span id="Attributes.Quantity"></span>    Quantity              <a href="../../../../builtin/#int">int</a>
+<span id="Attributes.StockWarningThreshold"></span>    StockWarningThreshold *<a href="../../../../builtin/#int">int</a>
+<span id="Attributes.Status"></span>    Status                <a href="#StatusRef">StatusRef</a>
+<span id="Attributes.Category"></span>    Category              <a href="#CategoryRef">CategoryRef</a>
+<span id="Attributes.PublishedAt"></span>    PublishedAt           *<a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+<span id="Attributes.Images"></span>    Images                []<a href="#Image">Image</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="CategoryRef">type <a href="../../../../src/go-boilerplate/internal/domain/product/reference.go.html?s=601:657#L8">CategoryRef</a>
+				<a class="permalink" href="#CategoryRef">¶</a>
+				
+				
+			</h2>
+			<p>CategoryRef は、商品カテゴリの ID と名称の組を表す値オブジェクトです。
+name は id に対応する表示専用の値で、呼び出し側での名称の別解決は不要です。
+
+			</p><pre>type CategoryRef struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewCategoryRef">func <a href="../../../../src/go-boilerplate/internal/domain/product/reference.go.html?s=1664:1731#L33">NewCategoryRef</a>
+					<a class="permalink" href="#NewCategoryRef">¶</a>
+					
+					
+				</h3>
+				<pre>func NewCategoryRef(id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, name <a href="../../../../builtin/#string">string</a>) (<a href="#CategoryRef">CategoryRef</a>, <a href="../../../../builtin/#error">error</a>)</pre>
+				<p>NewCategoryRef は、商品カテゴリ参照の検証と生成を行います。
+id が nil、name が長さ制約（minRefNameLength〜maxRefNameLength）外の場合は検証エラーを返します。
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="CategoryRef.ID">func (CategoryRef) <a href="../../../../src/go-boilerplate/internal/domain/product/reference.go.html?s=2099:2134#L44">ID</a>
+					<a class="permalink" href="#CategoryRef.ID">¶</a>
+					
+					
+				</h3>
+				<pre>func (c <a href="#CategoryRef">CategoryRef</a>) ID() <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a></pre>
+				<p>ID は、商品カテゴリ ID を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="CategoryRef.Name">func (CategoryRef) <a href="../../../../src/go-boilerplate/internal/domain/product/reference.go.html?s=2206:2240#L47">Name</a>
+					<a class="permalink" href="#CategoryRef.Name">¶</a>
+					
+					
+				</h3>
+				<pre>func (c <a href="#CategoryRef">CategoryRef</a>) Name() <a href="../../../../builtin/#string">string</a></pre>
+				<p>Name は、商品カテゴリ名を返します。
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="Counts">type <a href="../../../../src/go-boilerplate/internal/domain/product/product_repository.go.html?s=3935:4102#L62">Counts</a>
+				<a class="permalink" href="#Counts">¶</a>
+				
+				
+			</h2>
+			<p>Counts は、商品の登録件数の集計です。
+
+			</p><pre>type Counts struct {
+<span id="Counts.Total"></span>    <span class="comment">// Total は未公開を含む登録商品の総数、Published はそのうち公開済みの件数です。</span>
+    Total     <a href="../../../../builtin/#int64">int64</a>
+<span id="Counts.Published"></span>    Published <a href="../../../../builtin/#int64">int64</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Image">type <a href="../../../../src/go-boilerplate/internal/domain/product/product_image.go.html?s=606:687#L5">Image</a>
+				<a class="permalink" href="#Image">¶</a>
+				
+				
+			</h2>
+			<p>Image は、商品画像を表す商品集約の子エンティティです。id は更新をまたいで同じ画像を指し続けるため、
+内容の差し替えは新しい id の画像として表現します。imagePath はオブジェクトストレージ上のキーで、
+表示 URL は上位が配信ベース URL と組み立てます。displaySort は同一商品内での表示順であり、表示順の
+入れ替えで使い回されるため同一性を担いません。
+
+			</p><pre>type Image struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewImage">func <a href="../../../../src/go-boilerplate/internal/domain/product/product_image.go.html?s=1090:1146#L19">NewImage</a>
+					<a class="permalink" href="#NewImage">¶</a>
+					
+					
+				</h3>
+				<pre>func NewImage(id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, attrs <a href="#ImageAttributes">ImageAttributes</a>) <a href="#Image">Image</a></pre>
+				<p>NewImage は、商品画像を構築します。不変条件は集約が保持する集合として検証されるため
+（兄弟間の表示順の重複はここでは判定できません）、ここでは組み立てのみを行います。
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="Image.DisplaySort">func (Image) <a href="../../../../src/go-boilerplate/internal/domain/product/product_image.go.html?s=1530:1562#L34">DisplaySort</a>
+					<a class="permalink" href="#Image.DisplaySort">¶</a>
+					
+					
+				</h3>
+				<pre>func (i <a href="#Image">Image</a>) DisplaySort() <a href="../../../../builtin/#int">int</a></pre>
+				<p>DisplaySort は、同一商品内での表示順を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Image.ID">func (Image) <a href="../../../../src/go-boilerplate/internal/domain/product/product_image.go.html?s=1305:1334#L28">ID</a>
+					<a class="permalink" href="#Image.ID">¶</a>
+					
+					
+				</h3>
+				<pre>func (i <a href="#Image">Image</a>) ID() <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a></pre>
+				<p>ID は、商品画像の ID を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Image.ImagePath">func (Image) <a href="../../../../src/go-boilerplate/internal/domain/product/product_image.go.html?s=1402:1435#L31">ImagePath</a>
+					<a class="permalink" href="#Image.ImagePath">¶</a>
+					
+					
+				</h3>
+				<pre>func (i <a href="#Image">Image</a>) ImagePath() <a href="../../../../builtin/#string">string</a></pre>
+				<p>ImagePath は、画像パスを返します。
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="ImageAttributes">type <a href="../../../../src/go-boilerplate/internal/domain/product/product_image.go.html?s=769:837#L12">ImageAttributes</a>
+				<a class="permalink" href="#ImageAttributes">¶</a>
+				
+				
+			</h2>
+			<p>ImageAttributes は、商品画像の構築に必要な属性一式です。
+
+			</p><pre>type ImageAttributes struct {
+<span id="ImageAttributes.ImagePath"></span>    ImagePath   <a href="../../../../builtin/#string">string</a>
+<span id="ImageAttributes.DisplaySort"></span>    DisplaySort <a href="../../../../builtin/#int">int</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="ListParams">type <a href="../../../../src/go-boilerplate/internal/domain/product/product_repository.go.html?s=520:995#L5">ListParams</a>
+				<a class="permalink" href="#ListParams">¶</a>
+				
+				
+			</h2>
+			<p>ListParams は、公開商品一覧取得の絞り込み・並び順・keyset 境界を表すクエリ条件です。
+keyset 境界は (AfterPublishedAt, AfterID) の組で表し、先頭ページは両方 nil、継続ページは両方が
+直前ページ末尾の値になります。
+
+			</p><pre>type ListParams struct {
+    <a href="#SearchFilter">SearchFilter</a>
+
+<span id="ListParams.Limit"></span>    <span class="comment">// Limit は、取得件数の上限です。</span>
+    Limit <a href="../../../../builtin/#int32">int32</a>
+<span id="ListParams.Ascending"></span>    <span class="comment">// Ascending は、公開日時の昇順で取得する場合に true、降順の場合に false です。</span>
+    Ascending <a href="../../../../builtin/#bool">bool</a>
+<span id="ListParams.AfterPublishedAt"></span>    <span class="comment">// AfterPublishedAt は、keyset 境界となる公開日時です。先頭ページでは nil です。</span>
+    AfterPublishedAt *<a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>
+<span id="ListParams.AfterID"></span>    <span class="comment">// AfterID は、keyset 境界となる商品 ID です。先頭ページでは nil です。</span>
+    AfterID *<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Product">type <a href="../../../../src/go-boilerplate/internal/domain/product/product_domain.go.html?s=783:1183#L12">Product</a>
+				<a class="permalink" href="#Product">¶</a>
+				
+				
+			</h2>
+			<p>Product は、商品を表すドメインエンティティです。
+
+			</p><pre>type Product struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="New">func <a href="../../../../src/go-boilerplate/internal/domain/product/product_domain.go.html?s=2338:2417#L47">New</a>
+					<a class="permalink" href="#New">¶</a>
+					
+					
+				</h3>
+				<pre>func New(id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, attrs <a href="#Attributes">Attributes</a>, createdAt <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>) (*<a href="#Product">Product</a>, <a href="../../../../builtin/#error">error</a>)</pre>
+				<p>New は、商品エンティティの検証と生成を行います。Price は非負の money.Price（非負検証は Price VO が担保）、
+Quantity と StockWarningThreshold（指定時）は、いずれも在庫が保持できる範囲に収まる必要があります。
+PublishedAt は nil（未公開）を許容し、Images は空（画像未設定）を許容します。
+id が nil、Name が長さ制約外、Status / Category がゼロ値の場合はそれぞれ検証エラーを返します。
+createdAt は商品が登録された日時で、ゼロ値は検証エラーです。
+生成直後のバージョンは initialVersion です。
+
+				
+				
+			
+				
+				</p><h3 id="Reconstruct">func <a href="../../../../src/go-boilerplate/internal/domain/product/product_domain.go.html?s=2800:2900#L54">Reconstruct</a>
+					<a class="permalink" href="#Reconstruct">¶</a>
+					
+					
+				</h3>
+				<pre>func Reconstruct(id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, attrs <a href="#Attributes">Attributes</a>, version <a href="../../../../builtin/#int">int</a>, createdAt <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a>) (*<a href="#Product">Product</a>, <a href="../../../../builtin/#error">error</a>)</pre>
+				<p>Reconstruct は、永続化済みの商品を再構築します。
+version は永続化されている楽観ロックのバージョンで、initialVersion 未満の場合は検証エラーを返します。
+createdAt は永続化されている登録日時です。その他の検証は New と同一です。
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="Product.AdjustStock">func (*Product) <a href="../../../../src/go-boilerplate/internal/domain/product/product_domain.go.html?s=6132:6178#L136">AdjustStock</a>
+					<a class="permalink" href="#Product.AdjustStock">¶</a>
+					
+					
+				</h3>
+				<pre>func (p *<a href="#Product">Product</a>) AdjustStock(delta <a href="../../../../builtin/#int">int</a>) <a href="../../../../builtin/#error">error</a></pre>
+				<p>AdjustStock は、在庫数を delta の分だけ増減します。delta は正で補充、負で差し引きを表します。
+増減後の在庫が負になる場合は、在庫を変更せずに検証エラーを返します。
+バージョンの採番タイミングは Update と同じです。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Product.Category">func (*Product) <a href="../../../../src/go-boilerplate/internal/domain/product/product_domain.go.html?s=8982:9022#L209">Category</a>
+					<a class="permalink" href="#Product.Category">¶</a>
+					
+					
+				</h3>
+				<pre>func (p *<a href="#Product">Product</a>) Category() <a href="#CategoryRef">CategoryRef</a></pre>
+				<p>Category は、商品カテゴリ参照（ID + 名称）を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Product.CreatedAt">func (*Product) <a href="../../../../src/go-boilerplate/internal/domain/product/product_domain.go.html?s=9280:9319#L215">CreatedAt</a>
+					<a class="permalink" href="#Product.CreatedAt">¶</a>
+					
+					
+				</h3>
+				<pre>func (p *<a href="#Product">Product</a>) CreatedAt() <a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a></pre>
+				<p>CreatedAt は、商品が登録された日時を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Product.Description">func (*Product) <a href="../../../../src/go-boilerplate/internal/domain/product/product_domain.go.html?s=8241:8280#L194">Description</a>
+					<a class="permalink" href="#Product.Description">¶</a>
+					
+					
+				</h3>
+				<pre>func (p *<a href="#Product">Product</a>) Description() *<a href="../../../../builtin/#string">string</a></pre>
+				<p>Description は、商品説明を返します。未設定の場合は nil です。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Product.EnsureVersion">func (*Product) <a href="../../../../src/go-boilerplate/internal/domain/product/product_domain.go.html?s=7730:7781#L177">EnsureVersion</a>
+					<a class="permalink" href="#Product.EnsureVersion">¶</a>
+					
+					
+				</h3>
+				<pre>func (p *<a href="#Product">Product</a>) EnsureVersion(expected <a href="../../../../builtin/#int">int</a>) <a href="../../../../builtin/#error">error</a></pre>
+				<p>EnsureVersion は、更新要求が指すバージョンが現在のバージョンと一致することを確認します。
+一致しない場合は、読み込み後に他者が更新したものとして ErrVersionConflict を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Product.ID">func (*Product) <a href="../../../../src/go-boilerplate/internal/domain/product/product_domain.go.html?s=8011:8043#L188">ID</a>
+					<a class="permalink" href="#Product.ID">¶</a>
+					
+					
+				</h3>
+				<pre>func (p *<a href="#Product">Product</a>) ID() <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a></pre>
+				<p>ID は、商品の ID を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Product.Images">func (*Product) <a href="../../../../src/go-boilerplate/internal/domain/product/product_domain.go.html?s=9451:9485#L218">Images</a>
+					<a class="permalink" href="#Product.Images">¶</a>
+					
+					
+				</h3>
+				<pre>func (p *<a href="#Product">Product</a>) Images() []<a href="#Image">Image</a></pre>
+				<p>Images は、商品画像を表示順の昇順で返します。画像未設定の場合は空です。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Product.IsLowStock">func (*Product) <a href="../../../../src/go-boilerplate/internal/domain/product/product_domain.go.html?s=11349:11384#L248">IsLowStock</a>
+					<a class="permalink" href="#Product.IsLowStock">¶</a>
+					
+					
+				</h3>
+				<pre>func (p *<a href="#Product">Product</a>) IsLowStock() <a href="../../../../builtin/#bool">bool</a></pre>
+				<p>IsLowStock は、商品の在庫が補充を要する水準まで減っているかどうかを返します。
+在庫警告閾値が未設定の商品は警告対象を持たないため、常に false です。
+</p><p>「在庫僅少」の定義はこのメソッドが持ちます（SQL の絞り込みとの関係は IsPublished と同じ）。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Product.IsPublished">func (*Product) <a href="../../../../src/go-boilerplate/internal/domain/product/product_domain.go.html?s=10468:10504#L236">IsPublished</a>
+					<a class="permalink" href="#Product.IsPublished">¶</a>
+					
+					
+				</h3>
+				<pre>func (p *<a href="#Product">Product</a>) IsPublished() <a href="../../../../builtin/#bool">bool</a></pre>
+				<p>IsPublished は、商品が公開中かどうかを返します。公開中とは公開日時が設定されていることを指します。
+「公開中」の定義は <a href="#IsPublished">IsPublished</a> が持ちます。SQL の絞り込みとの関係は
+internal/domain/README.md § Query and Aggregate を参照してください。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Product.Name">func (*Product) <a href="../../../../src/go-boilerplate/internal/domain/product/product_domain.go.html?s=8103:8134#L191">Name</a>
+					<a class="permalink" href="#Product.Name">¶</a>
+					
+					
+				</h3>
+				<pre>func (p *<a href="#Product">Product</a>) Name() <a href="../../../../builtin/#string">string</a></pre>
+				<p>Name は、商品名を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Product.Price">func (*Product) <a href="../../../../src/go-boilerplate/internal/domain/product/product_domain.go.html?s=8411:8448#L197">Price</a>
+					<a class="permalink" href="#Product.Price">¶</a>
+					
+					
+				</h3>
+				<pre>func (p *<a href="#Product">Product</a>) Price() <a href="../../../../go-boilerplate/internal/domain/lexicon/money/">money</a>.<a href="../../../../go-boilerplate/internal/domain/lexicon/money/#Price">Price</a></pre>
+				<p>Price は、価格（サブセント精度を保持する money.Price）を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Product.PrimaryImage">func (*Product) <a href="../../../../src/go-boilerplate/internal/domain/product/product_domain.go.html?s=9833:9879#L223">PrimaryImage</a>
+					<a class="permalink" href="#Product.PrimaryImage">¶</a>
+					
+					
+				</h3>
+				<pre>func (p *<a href="#Product">Product</a>) PrimaryImage() (<a href="#Image">Image</a>, <a href="../../../../builtin/#bool">bool</a>)</pre>
+				<p>PrimaryImage は、商品を 1 枚で表すときに使う代表画像と、それを持つかどうかを返します。
+画像を持たない商品は代表画像を持たないため、ok は false です。
+何を代表とするかは docs/spec/product/domain.md の PrimaryImage が定めます。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Product.PublishedAt">func (*Product) <a href="../../../../src/go-boilerplate/internal/domain/product/product_domain.go.html?s=9133:9175#L212">PublishedAt</a>
+					<a class="permalink" href="#Product.PublishedAt">¶</a>
+					
+					
+				</h3>
+				<pre>func (p *<a href="#Product">Product</a>) PublishedAt() *<a href="../../../../time/">time</a>.<a href="../../../../time/#Time">Time</a></pre>
+				<p>PublishedAt は、公開日時を返します。未公開の場合は nil です。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Product.Quantity">func (*Product) <a href="../../../../src/go-boilerplate/internal/domain/product/product_domain.go.html?s=8515:8547#L200">Quantity</a>
+					<a class="permalink" href="#Product.Quantity">¶</a>
+					
+					
+				</h3>
+				<pre>func (p *<a href="#Product">Product</a>) Quantity() <a href="../../../../builtin/#int">int</a></pre>
+				<p>Quantity は、在庫数を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Product.Status">func (*Product) <a href="../../../../src/go-boilerplate/internal/domain/product/product_domain.go.html?s=8846:8882#L206">Status</a>
+					<a class="permalink" href="#Product.Status">¶</a>
+					
+					
+				</h3>
+				<pre>func (p *<a href="#Product">Product</a>) Status() <a href="#StatusRef">StatusRef</a></pre>
+				<p>Status は、商品ステータス参照（ID + 名称）を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Product.StockWarningThreshold">func (*Product) <a href="../../../../src/go-boilerplate/internal/domain/product/product_domain.go.html?s=8674:8720#L203">StockWarningThreshold</a>
+					<a class="permalink" href="#Product.StockWarningThreshold">¶</a>
+					
+					
+				</h3>
+				<pre>func (p *<a href="#Product">Product</a>) StockWarningThreshold() *<a href="../../../../builtin/#int">int</a></pre>
+				<p>StockWarningThreshold は、在庫警告閾値を返します。未設定の場合は nil です。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Product.Update">func (*Product) <a href="../../../../src/go-boilerplate/internal/domain/product/product_domain.go.html?s=5356:5404#L115">Update</a>
+					<a class="permalink" href="#Product.Update">¶</a>
+					
+					
+				</h3>
+				<pre>func (p *<a href="#Product">Product</a>) Update(attrs <a href="#Attributes">Attributes</a>) <a href="../../../../builtin/#error">error</a></pre>
+				<p>Update は、商品の属性を更新します。生成時と同一の不変条件を課し、違反する場合はエンティティを
+変更せずに検証エラーを返します。attrs は部分更新を解決した後の確定値であり、据え置く属性には現在値が渡されます。
+バージョンは永続化の成否に依存するためここでは進めません（採番は Repository の条件付き更新が行います）。
+
+				
+				
+				
+			
+				
+				</p><h3 id="Product.Version">func (*Product) <a href="../../../../src/go-boilerplate/internal/domain/product/product_domain.go.html?s=10088:10119#L231">Version</a>
+					<a class="permalink" href="#Product.Version">¶</a>
+					
+					
+				</h3>
+				<pre>func (p *<a href="#Product">Product</a>) Version() <a href="../../../../builtin/#int">int</a></pre>
+				<p>Version は、並行更新による上書き（lost update）を防ぐ楽観ロックのバージョンを返します。
+
+				
+				
+				
+			
+		
+			
+			
+			</p><h2 id="Products">type <a href="../../../../src/go-boilerplate/internal/domain/product/product_domain.go.html?s=685:709#L9">Products</a>
+				<a class="permalink" href="#Products">¶</a>
+				
+				
+			</h2>
+			<p>Products は、Product エンティティのスライス型です。
+
+			</p><pre>type Products []*<a href="#Product">Product</a></pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="Repository">type <a href="../../../../src/go-boilerplate/internal/domain/product/product_repository.go.html?s=4417:10222#L71">Repository</a>
+				<a class="permalink" href="#Repository">¶</a>
+				
+				
+			</h2>
+			<p>Repository は、商品の永続化操作を定義するドメインリポジトリインターフェースです。
+
+			</p><pre>type Repository interface {
+    <span class="comment">// FindPublishedList は、公開済みの商品を keyset ページネーションで取得します。</span>
+    <span class="comment">// 並び順は公開日時（同時刻は ID）で、params.Ascending により昇順／降順を切り替えます。</span>
+    <span class="comment">// params.CategoryID / StatusID / CategoryCodes / StatusCodes / Keyword / price・quantity の上下限が</span>
+    <span class="comment">// 指定された場合は該当条件で絞り込みます。</span>
+    FindPublishedList(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, params <a href="#ListParams">ListParams</a>) (<a href="#Products">Products</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// CountPublished は、公開済み商品のうち指定された検索条件に一致する件数を返します。</span>
+    <span class="comment">// filter は FindPublishedList と同じ条件で、両者は同じ母集団を指します。</span>
+    CountPublished(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, filter <a href="#SearchFilter">SearchFilter</a>) (<a href="../../../../builtin/#int64">int64</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// FindAllList は、公開状態を問わない商品を keyset ページネーションで取得します。</span>
+    <span class="comment">// 並び順は登録日時（同時刻は ID）で、params.Ascending により昇順／降順を切り替えます。</span>
+    <span class="comment">// 未公開の商品は公開日時を持たないため、FindPublishedList と並び順の軸が異なります。</span>
+    <span class="comment">// 絞り込みの条件は FindPublishedList と同一で、母集団の差は公開状態だけです。</span>
+    FindAllList(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, params <a href="#AllListParams">AllListParams</a>) (<a href="#Products">Products</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// CountAll は、公開状態を問わない商品のうち指定された検索条件に一致する件数を返します。</span>
+    <span class="comment">// filter は FindAllList と同じ条件で、両者は同じ母集団を指します。</span>
+    CountAll(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, filter <a href="#SearchFilter">SearchFilter</a>) (<a href="../../../../builtin/#int64">int64</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// FindAllLowStock は、在庫が在庫警告閾値以下まで減った商品を、在庫の少ない順（同数は ID の昇順）で</span>
+    <span class="comment">// 最大 limit 件返します。在庫警告閾値が未設定の商品は警告対象を持たないため含みません。</span>
+    <span class="comment">// 補充の要否は公開状態に依存しないため、未公開の商品も含めます。</span>
+    FindAllLowStock(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, limit <a href="../../../../builtin/#int32">int32</a>) (<a href="#Products">Products</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// FindPublishedByID は、ID から公開中の単一商品を取得します。</span>
+    <span class="comment">// 未存在・非公開のいずれも NotFound を返します（未ログイン経路への存在秘匿）。</span>
+    FindPublishedByID(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (*<a href="#Product">Product</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// FindByID は、ID から公開状態を問わない単一商品を取得します。未存在は NotFound を返します。</span>
+    <span class="comment">// 公開日時の設定そのものを更新対象とするため、FindPublishedByID と異なり未公開商品も返します。</span>
+    FindByID(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (*<a href="#Product">Product</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// FindByIDs は、ID の集合から公開状態を問わない商品群を、ID 昇順にまとめて取得します。</span>
+    <span class="comment">// 不存在の ID は結果に現れないため、要素数は ids より少なくなり得ます</span>
+    <span class="comment">// （不存在の検証は呼び出し側の責務です）。</span>
+    <span class="comment">// 行はロックしないため、取得後に他者が更新することを妨げません。</span>
+    FindByIDs(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, ids []<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (<a href="#Products">Products</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// LockByID は、更新のために ID から公開状態を問わない単一商品を取得します。未存在は NotFound を返します。</span>
+    <span class="comment">// 同一商品への並行更新は、先行する更新が終わるまで待機したうえで最新の状態を取得します。</span>
+    LockByID(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (*<a href="#Product">Product</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// LockByIDs は、更新のために ID の集合から公開状態を問わない商品群を、ID 昇順にまとめて取得します</span>
+    <span class="comment">// （順序を固定する理由は ADR-0036 (ordered-pessimistic-row-locks)）。</span>
+    <span class="comment">// 不存在の ID はロックできず結果に現れないため、要素数は ids より少なくなり得ます</span>
+    <span class="comment">// （不存在の検証は呼び出し側の責務です）。</span>
+    LockByIDs(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, ids []<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>) (<a href="#Products">Products</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// Create は、商品を新規登録します。p が保持する画像も併せて登録します。</span>
+    Create(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, p *<a href="#Product">Product</a>) <a href="../../../../builtin/#error">error</a>
+    <span class="comment">// Update は、p が保持するバージョンを条件に商品を更新し、採番後のバージョンを返します。</span>
+    <span class="comment">// 画像は p が保持する集合へ ID で一致させます。集合から外れた画像は論理削除として残り、現在の参照</span>
+    <span class="comment">// からは外れます。同じ ID の画像はそのまま生存し続けるため、内容の差し替えは新しい ID の画像として</span>
+    <span class="comment">// 表現します。</span>
+    <span class="comment">// 読み込み後に他者が更新しておりバージョンが一致しない場合は ErrVersionConflict を返し、画像には</span>
+    <span class="comment">// 触れません。</span>
+    Update(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, p *<a href="#Product">Product</a>) (<a href="../../../../builtin/#int">int</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// UpdateStock は、p が保持するバージョンを条件に在庫数を更新し、採番後のバージョンを返します。</span>
+    <span class="comment">// 読み込み後に他者が更新しておりバージョンが一致しない場合は ErrVersionConflict を返します。</span>
+    UpdateStock(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, p *<a href="#Product">Product</a>) (<a href="../../../../builtin/#int">int</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// Count は、登録商品の総数と、そのうち公開済みの件数を返します。商品が 1 件もない場合はゼロ値を返します。</span>
+    Count(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>) (<a href="#Counts">Counts</a>, <a href="../../../../builtin/#error">error</a>)
+    <span class="comment">// FilterExistingImagePaths は、paths のうち、いずれかの商品が現在の画像として参照しているものを返します。</span>
+    <span class="comment">// 重複は取り除き、順序は保証しません。paths が空の場合は空を返します。</span>
+    <span class="comment">// 返らなかったパスは、どの商品からも参照されていないことを意味します。</span>
+    <span class="comment">// 置き換えで論理削除された画像は現在の参照ではないため、参照元として数えません。</span>
+    FilterExistingImagePaths(ctx <a href="../../../../context/">context</a>.<a href="../../../../context/#Context">Context</a>, paths []<a href="../../../../builtin/#string">string</a>) ([]<a href="../../../../builtin/#string">string</a>, <a href="../../../../builtin/#error">error</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="SearchFilter">type <a href="../../../../src/go-boilerplate/internal/domain/product/product_repository.go.html?s=2306:3877#L38">SearchFilter</a>
+				<a class="permalink" href="#SearchFilter">¶</a>
+				
+				
+			</h2>
+			<p>SearchFilter は、商品の絞り込み条件です。一覧と一致件数は同じ母集団を指すため双方がこれを
+共有します。片方にだけ条件が増えた状態は、この型を経由する限り表現できません。
+公開状態は絞り込み条件ではなく取得メソッドの選択で表します（FindPublishedList / FindAllList）。
+
+			</p><pre>type SearchFilter struct {
+<span id="SearchFilter.CategoryID"></span>    <span class="comment">// CategoryID は、商品カテゴリ ID による絞り込みです。nil の場合は絞り込みません。非推奨で、</span>
+<span id="SearchFilter.CategoryCodes"></span>    <span class="comment">// CategoryCodes とは同時に指定できません。この排他を保証するのは型ではなく呼び出し側です。</span>
+    CategoryID *<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+<span id="SearchFilter.StatusID"></span>    <span class="comment">// StatusID は、商品ステータス ID による絞り込みです。nil の場合は絞り込みません。非推奨で、</span>
+<span id="SearchFilter.StatusCodes"></span>    <span class="comment">// StatusCodes とは同時に指定できません。この排他を保証するのは型ではなく呼び出し側です。</span>
+    StatusID *<a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>
+    <span class="comment">// CategoryCodes は、商品カテゴリコードによる絞り込みです。いずれかに一致する商品を対象とし、</span>
+    <span class="comment">// 空の場合は絞り込みません。存在しないコードは一致 0 件として扱います。</span>
+    CategoryCodes []<a href="../../../../builtin/#int16">int16</a>
+    <span class="comment">// StatusCodes は、商品ステータスコードによる絞り込みです。いずれかに一致する商品を対象とし、</span>
+    <span class="comment">// 空の場合は絞り込みません。存在しないコードは一致 0 件として扱います。</span>
+    StatusCodes []<a href="../../../../builtin/#int16">int16</a>
+<span id="SearchFilter.Keyword"></span>    <span class="comment">// Keyword は、商品名・説明への部分一致検索キーワードです。nil の場合は絞り込みません。</span>
+    Keyword *<a href="../../../../builtin/#string">string</a>
+<span id="SearchFilter.MinPrice"></span>    <span class="comment">// MinPrice / MaxPrice は、価格の包含下限／包含上限です。nil の側は制限しません。</span>
+    MinPrice *<a href="../../../../go-boilerplate/internal/domain/lexicon/money/">money</a>.<a href="../../../../go-boilerplate/internal/domain/lexicon/money/#Price">Price</a>
+<span id="SearchFilter.MaxPrice"></span>    MaxPrice *<a href="../../../../go-boilerplate/internal/domain/lexicon/money/">money</a>.<a href="../../../../go-boilerplate/internal/domain/lexicon/money/#Price">Price</a>
+<span id="SearchFilter.MinQuantity"></span>    <span class="comment">// MinQuantity / MaxQuantity は、在庫数の包含下限／包含上限です。nil の側は制限しません。</span>
+    MinQuantity *<a href="../../../../builtin/#int32">int32</a>
+<span id="SearchFilter.MaxQuantity"></span>    MaxQuantity *<a href="../../../../builtin/#int32">int32</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="StatusRef">type <a href="../../../../src/go-boilerplate/internal/domain/product/reference.go.html?s=332:386#L1">StatusRef</a>
+				<a class="permalink" href="#StatusRef">¶</a>
+				
+				
+			</h2>
+			<p>StatusRef は、商品ステータスの ID と名称の組を表す値オブジェクトです。
+name は id に対応する表示専用の値で、呼び出し側での名称の別解決は不要です。
+
+			</p><pre>type StatusRef struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewStatusRef">func <a href="../../../../src/go-boilerplate/internal/domain/product/reference.go.html?s=871:934#L15">NewStatusRef</a>
+					<a class="permalink" href="#NewStatusRef">¶</a>
+					
+					
+				</h3>
+				<pre>func NewStatusRef(id <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a>, name <a href="../../../../builtin/#string">string</a>) (<a href="#StatusRef">StatusRef</a>, <a href="../../../../builtin/#error">error</a>)</pre>
+				<p>NewStatusRef は、商品ステータス参照の検証と生成を行います。
+id が nil、name が長さ制約（minRefNameLength〜maxRefNameLength）外の場合は検証エラーを返します。
+
+				
+				
+			
+
+			
+				
+				</p><h3 id="StatusRef.ID">func (StatusRef) <a href="../../../../src/go-boilerplate/internal/domain/product/reference.go.html?s=1293:1326#L26">ID</a>
+					<a class="permalink" href="#StatusRef.ID">¶</a>
+					
+					
+				</h3>
+				<pre>func (s <a href="#StatusRef">StatusRef</a>) ID() <a href="../../../../go-boilerplate/pkg/uuid/">uuid</a>.<a href="../../../../go-boilerplate/pkg/uuid/#UUID">UUID</a></pre>
+				<p>ID は、商品ステータス ID を返します。
+
+				
+				
+				
+			
+				
+				</p><h3 id="StatusRef.Name">func (StatusRef) <a href="../../../../src/go-boilerplate/internal/domain/product/reference.go.html?s=1401:1433#L29">Name</a>
+					<a class="permalink" href="#StatusRef.Name">¶</a>
+					
+					
+				</h3>
+				<pre>func (s <a href="#StatusRef">StatusRef</a>) Name() <a href="../../../../builtin/#string">string</a></pre>
+				<p>Name は、商品ステータス名を返します。
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+	
+	
+		</p><h2 id="pkg-subdirectories">Subdirectories</h2>
+	
+	<div class="pkg-dir">
+		<table>
+			<tbody><tr>
+				<th class="pkg-name">Name</th>
+				<th class="pkg-synopsis">Synopsis</th>
+			</tr>
+
+			
+			<tr>
+				<td colspan="2"><a href="..">..</a></td>
+			</tr>
+			
+
+			
+		</tbody></table>
+	</div>
+
+
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

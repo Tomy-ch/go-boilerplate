@@ -1,0 +1,27 @@
+# graphify のセマンティック抽出プロンプトの pin。
+#
+# schema:
+#   graphify_version = "<抽出を行った graphify のバージョン>"
+#   spec_fingerprint = "<references/extraction-spec.md の fingerprint（12 桁 hex）>"
+#
+# なぜ要るか: graphify は セマンティック抽出のキャッシュを
+# `graphify-out/cache/semantic/p<fingerprint>/` へ置き、この fingerprint は抽出プロンプト
+# （`references/extraction-spec.md`）の内容から決まる。版は python/graphify.in が決め、実体は
+# .claude/scripts/bootstrap-external-skills.sh がそのロックからスキルディレクトリへ展開するので、
+# プロンプト自体はリポジトリが決めている。ただしそれはインストール済みの環境でしか読めない。
+# ここへ写しておくことで、graphify を持たない CI でも、コミット済みキャッシュがどのプロンプトで
+# 焼かれたものかを検査できる。値は版から一意に決まるので、人が選ぶものではない。
+#
+# fingerprint の求め方（graphify.cache.prompt_fingerprint と同じ）:
+#   CRLF/CR を LF へ正規化 → 各行の行末空白を落とす → LF で連結 → 前後の空白を落とす
+#   → SHA-256 → 先頭 12 桁
+# 手で計算する必要はない。`make graphify-check SPEC=<extraction-spec.md のパス>` が
+# 突き合わせる。
+#
+# 更新するとき: プロンプトは版ごとに変わり得るが、必ず変わるわけではない（0.9.25 と 0.9.40 は
+# 同一で、fingerprint も同じ）。変わった場合は既存のキャッシュが名前空間ごと無効になる
+# （upstream #1939 の意図した挙動で、素性の違うプロンプトの結果を再生しないための仕組み）。
+# この値を書き換えるのは、新しいプロンプトで焼き直したキャッシュに差し替えるときだけにする。
+# 値だけ先に変えるとキャッシュとの不一致を graphify-check が検出する。
+graphify_version = "0.9.40"
+spec_fingerprint = "d5fd89c46bb5"

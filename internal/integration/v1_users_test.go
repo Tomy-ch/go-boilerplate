@@ -17,8 +17,9 @@ import (
 	"go-boilerplate/internal/usecase/user"
 	mock_user "go-boilerplate/internal/usecase/user/mock"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v5"
 	"github.com/oapi-codegen/runtime/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -42,12 +43,13 @@ func TestV1Users_Integration(t *testing.T) {
 
 			mockApp := mock_user.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
-				ListUsersWithTotal(gomock.Any(), gomock.Any(), gomock.Any()).
+				ListUsersWithTotal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(&user.UserListView{Items: []user.UserView{expectedDTO}, Total: 1}, nil)
 
 			v1users.BindHandler(e, tf, mockApp, idempotency.Deps{})
 
-			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/users", nil, nil)
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "list-admin"))
+			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/users", nil, headers)
 			AssertJSONResponseType[gen.UsersResponse](t, actual)
 		})
 
@@ -76,7 +78,6 @@ func TestV1Users_Integration(t *testing.T) {
 					City:       "Shibuya",
 					Street:     "1-1-1",
 					Building:   new("Building"),
-					Password:   "secret",
 				},
 			}
 
@@ -100,7 +101,7 @@ func TestV1Users_Integration(t *testing.T) {
 				Return(user.UserView{Email: "idem@example.com"}, nil)
 
 			// 実 Deps を組んだ BindHandler に Idempotency-Key 付きリクエストを通し、
-			// middleware→Run 配線（claim→complete）が実スタックで動くことを検証する。
+			// middleware→Run 配線が実スタックで動くことを検証する。
 			store := mock_idempotency.NewMockStore(ctrl)
 			store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(true, nil)
 			store.EXPECT().Complete(gomock.Any(), gomock.Any()).Return(nil)
@@ -122,7 +123,6 @@ func TestV1Users_Integration(t *testing.T) {
 					City:       "Shibuya",
 					Street:     "1-1-1",
 					Building:   new("Building"),
-					Password:   "secret",
 				},
 			}
 
@@ -148,12 +148,13 @@ func TestV1Users_Integration(t *testing.T) {
 
 			mockApp := mock_user.NewMockUsecase(ctrl)
 			mockApp.EXPECT().
-				ListUsersWithTotal(gomock.Any(), gomock.Any(), gomock.Any()).
+				ListUsersWithTotal(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(nil, apperror.ErrInternal)
 
 			v1users.BindHandler(e, tf, mockApp, idempotency.Deps{})
 
-			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/users", nil, nil)
+			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "list-admin"))
+			actual := StartServer(t, e).DoJSON(http.MethodGet, "/v1/users", nil, headers)
 			AssertErrorResponse(t, actual, http.StatusInternalServerError)
 		})
 	})

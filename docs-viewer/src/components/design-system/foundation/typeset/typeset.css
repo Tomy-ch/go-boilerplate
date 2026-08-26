@@ -1,0 +1,250 @@
+/* Markdown などから得た HTML を整える、低詳細度の組版基盤。 */
+.typeset {
+  --typeset-font-body: var(--font-sans);
+  --typeset-font-heading: var(--font-sans);
+  --typeset-font-mono: var(--font-mono);
+  --typeset-size: 1em;
+  --typeset-leading: 1.75;
+  --typeset-flow: 1.25em;
+
+  color: var(--color-foreground);
+  font-family: var(--typeset-font-body);
+  font-size: var(--typeset-size);
+  line-height: var(--typeset-leading);
+}
+
+/* ドキュメント用の既定 preset。用途に応じて追加・上書きできる。 */
+.typeset-docs {
+  --typeset-size: 15px;
+  --typeset-leading: 1.75;
+  --typeset-flow: 1.25em;
+}
+
+/* 小さい viewport でも本文の可読性を保つ。 */
+@media (width < 40rem) {
+  .typeset {
+    --typeset-size: max(1em, 16px);
+  }
+}
+
+/* `not-typeset` を付けた subtree は、子孫を含めて組版対象から外す。 */
+.typeset
+:where(
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p,
+  ul,
+  ol,
+  li,
+  blockquote,
+  pre,
+  hr,
+  figure,
+  table,
+  thead,
+  tbody,
+  tr,
+  th,
+  td,
+  a,
+  code,
+  strong,
+  em,
+  img
+):not(.not-typeset):not(.not-typeset *):not([data-not-typeset]):not([data-not-typeset] *) {
+  box-sizing: border-box;
+}
+
+.typeset
+  :where(h1, h2, h3, h4, h5, h6):not(.not-typeset):not(.not-typeset *):not([data-not-typeset]):not(
+    [data-not-typeset] *
+  ) {
+  color: var(--color-foreground);
+  font-family: var(--typeset-font-heading);
+  font-weight: 700;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+.typeset
+  :where(h1):not(.not-typeset):not(.not-typeset *):not([data-not-typeset]):not(
+    [data-not-typeset] *
+  ) {
+  font-size: 2em;
+}
+
+.typeset
+  :where(h2):not(.not-typeset):not(.not-typeset *):not([data-not-typeset]):not(
+    [data-not-typeset] *
+  ) {
+  font-size: 1.5em;
+}
+
+.typeset
+  :where(h3):not(.not-typeset):not(.not-typeset *):not([data-not-typeset]):not(
+    [data-not-typeset] *
+  ) {
+  font-size: 1.25em;
+}
+
+.typeset
+  :where(h4, h5, h6):not(.not-typeset):not(.not-typeset *):not([data-not-typeset]):not(
+    [data-not-typeset] *
+  ) {
+  font-size: 1em;
+}
+
+.typeset
+  :where(p, ul, ol, blockquote, pre, figure, table, hr):not(.not-typeset):not(.not-typeset *):not(
+    [data-not-typeset]
+  ):not([data-not-typeset] *) {
+  margin: 0;
+}
+
+/* 余白は後続 block 自身にだけ付け、streaming append で既存 block を再スタイルしない。 */
+.typeset
+  :where(p, ul, ol, blockquote, pre, figure, table, hr, h1, h2, h3, h4, h5, h6)
+  + :where(p, ul, ol, blockquote, pre, figure, table, hr):not(.not-typeset):not(.not-typeset *):not(
+    [data-not-typeset]
+  ):not([data-not-typeset] *) {
+  margin-block-start: var(--typeset-flow);
+}
+
+.typeset
+  :where(p, ul, ol, blockquote, pre, figure, table, hr, h1, h2, h3, h4, h5, h6)
+  + :where(h1, h2, h3, h4, h5, h6):not(.not-typeset):not(.not-typeset *):not(
+    [data-not-typeset]
+  ):not([data-not-typeset] *) {
+  margin-block-start: calc(var(--typeset-flow) * 2);
+}
+
+.typeset
+  :where(ul, ol):not(.not-typeset):not(.not-typeset *):not([data-not-typeset]):not(
+    [data-not-typeset] *
+  ) {
+  padding-inline-start: 1.5em;
+}
+
+/* marker は base layer の reset で消えるため、組版の対象範囲だけ戻す。 */
+.typeset
+:where(ul):not(.not-typeset):not(.not-typeset *):not([data-not-typeset]):not([data-not-typeset] *) {
+  list-style-type: disc;
+}
+
+.typeset
+  :where(ol):not(.not-typeset):not(.not-typeset *):not([data-not-typeset]):not(
+    [data-not-typeset] *
+  ) {
+  list-style-type: decimal;
+}
+
+.typeset
+  :where(li + li):not(.not-typeset):not(.not-typeset *):not([data-not-typeset]):not(
+    [data-not-typeset] *
+  ) {
+  margin-block-start: calc(var(--typeset-flow) / 3);
+}
+
+.typeset
+  :where(blockquote):not(.not-typeset):not(.not-typeset *):not([data-not-typeset]):not(
+    [data-not-typeset] *
+  ) {
+  border-inline-start: 0.25rem solid var(--color-border);
+  color: var(--color-muted-foreground);
+  padding-inline-start: 1em;
+}
+
+.typeset
+  :where(a):not(.not-typeset):not(.not-typeset *):not([data-not-typeset]):not(
+    [data-not-typeset] *
+  ) {
+  color: inherit;
+  text-decoration-line: underline;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.16em;
+}
+
+.typeset
+  :where(code):not(.not-typeset):not(.not-typeset *):not([data-not-typeset]):not(
+    [data-not-typeset] *
+  ) {
+  border-radius: var(--radius-sm);
+  font-family: var(--typeset-font-mono);
+}
+
+.typeset
+  :where(:not(pre) > code):not(.not-typeset):not(.not-typeset *):not([data-not-typeset]):not(
+    [data-not-typeset] *
+  ) {
+  background: var(--color-muted);
+  color: var(--color-foreground);
+  padding: 0.1em 0.3em;
+}
+
+.typeset
+  :where(pre):not(.not-typeset):not(.not-typeset *):not([data-not-typeset]):not(
+    [data-not-typeset] *
+  ) {
+  background: var(--color-muted);
+  border-radius: var(--radius-md);
+  color: var(--color-foreground);
+  overflow-x: auto;
+  padding: 1em;
+}
+
+.typeset
+  :where(pre code):not(.not-typeset):not(.not-typeset *):not([data-not-typeset]):not(
+    [data-not-typeset] *
+  ) {
+  font-size: 0.9em;
+}
+
+.typeset
+  :where(img):not(.not-typeset):not(.not-typeset *):not([data-not-typeset]):not(
+    [data-not-typeset] *
+  ) {
+  border-radius: var(--radius-md);
+  height: auto;
+  max-width: 100%;
+}
+
+.typeset
+  :where(table):not(.not-typeset):not(.not-typeset *):not([data-not-typeset]):not(
+    [data-not-typeset] *
+  ) {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.typeset
+  :where(th, td):not(.not-typeset):not(.not-typeset *):not([data-not-typeset]):not(
+    [data-not-typeset] *
+  ) {
+  border-block-start: 1px solid var(--color-border);
+  padding: 0.6em 0.75em;
+  text-align: start;
+  vertical-align: top;
+}
+
+.typeset
+  :where(th):not(.not-typeset):not(.not-typeset *):not([data-not-typeset]):not(
+    [data-not-typeset] *
+  ) {
+  font-weight: 700;
+}
+
+.typeset
+  :where(hr):not(.not-typeset):not(.not-typeset *):not([data-not-typeset]):not(
+    [data-not-typeset] *
+  ) {
+  border: 0;
+  border-block-start: 1px solid var(--color-border);
+}
+
+.typeset-scroll {
+  overflow-x: auto;
+}

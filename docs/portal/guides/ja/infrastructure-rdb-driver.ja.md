@@ -63,6 +63,13 @@ func NewTracedDB(..., tracer pgx.QueryTracer) (DatabaseDriver, error) // クエ�
 
 Ping に失敗した場合は **起動時にエラーを返す (fail fast)** 設計です。
 
+`DB_PING_TIMEOUT` は `Ping` 単体ではなく、この一連の処理全体に対する予算です（プール生成と `Ping` が同一の
+context を共有します）。さらに `pgxpool` はプール生成の直後に `MinConns` 本の接続を並行して張るため、その
+確立も同じ締切を `Ping` と奪い合います。1 つのデータベースに対して多数のプロセスが同時にプールを作る状況
+（並列 `go test`、レプリカ群の同時コールドスタート、フェイルオーバー後の再接続）では、データベースが実際に
+到達不能なのではなく順番待ちで予算を使い切ることがあります。この形の負荷では失敗を「DB が落ちている」と
+読まず、`DBCONN_MIN_CONNS` / `DB_PING_TIMEOUT` を環境ごとに調整してください（`env/README.md` 参照）。
+
 ## DatabaseDriver
 
 `DatabaseDriver` は `pgxpool.Pool` を抽象化したインターフェースです。
@@ -145,7 +152,7 @@ err := tx.Do(ctx, func(ctx context.Context) error {
 5. 成功 → commit
 6. error → rollback
 
-※ pgx.Tx を利用したトランザクション管理です。
+- pgx.Tx を利用したトランザクション管理です。
 
 これにより **ネストトランザクションを安全に扱うことができます。**
 
@@ -168,12 +175,10 @@ context.WithTimeout(
 
 cleanup は **リクエストライフサイクルに依存してはいけません**。
 
-もし元の `ctx` をそのまま使うと:
-
-- request timeout / client cancel により
-- rollback / commit がキャンセルされ
-- トランザクションが開いたまま残り
-- connection pool が枯渇する可能性があります
+- リクエストがキャンセル（timeout / client 切断）された場合、元の `ctx` をそのまま使うと次が起きます:
+  - rollback / commit がキャンセルされる
+  - トランザクションが開いたまま残る
+  - connection が pool へ返らない
 
 `context.WithoutCancel(ctx)` を使うことで:
 
@@ -196,26 +201,6 @@ cleanup は **リクエストライフサイクルに依存してはいけませ
   - cleanup 未完了
 
 そのため、環境変数ではなく driver 内の定数として管理しています。
-
-ポイント:
-
-- `context.WithoutCancel(ctx)`
-  - リクエストキャンセルの影響を受けずに cleanup を実行
-  - trace / logger / correlation ID は維持される
-
-- `cleanupTimeout`
-  - cleanup（rollback / commit）に対する最大待機時間
-  - 現在は `5秒` に固定
-
-この値は**ビジネス設定ではなくインフラ保護のためのセーフティ値**です。
-
-- 長くしすぎると:
-  - goroutine 詰まり
-  - connection pool 枯渇
-- 短すぎると:
-  - cleanup 未完了
-
-そのため、通常は driver 内の定数として管理し、環境変数などで外部化しない方針としています。
 
 ### Context を必ず伝搬する
 

@@ -48,6 +48,64 @@ func (q *Queries) CountDeletedUsers(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const countSearchActiveUsers = `-- name: CountSearchActiveUsers :one
+SELECT COUNT(*)
+FROM users AS u
+WHERE u.search_text ILIKE ANY($1::TEXT[])
+    AND u.deleted_at IS NULL
+`
+
+// CountSearchActiveUsers
+//
+//	SELECT COUNT(*)
+//	FROM users AS u
+//	WHERE u.search_text ILIKE ANY($1::TEXT[])
+//	    AND u.deleted_at IS NULL
+func (q *Queries) CountSearchActiveUsers(ctx context.Context, patternsParam []string) (int64, error) {
+	row := q.db.QueryRow(ctx, countSearchActiveUsers, patternsParam)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countSearchDeletedUsers = `-- name: CountSearchDeletedUsers :one
+SELECT COUNT(*)
+FROM users AS u
+WHERE u.search_text ILIKE ANY($1::TEXT[])
+    AND u.deleted_at IS NOT NULL
+`
+
+// CountSearchDeletedUsers
+//
+//	SELECT COUNT(*)
+//	FROM users AS u
+//	WHERE u.search_text ILIKE ANY($1::TEXT[])
+//	    AND u.deleted_at IS NOT NULL
+func (q *Queries) CountSearchDeletedUsers(ctx context.Context, patternsParam []string) (int64, error) {
+	row := q.db.QueryRow(ctx, countSearchDeletedUsers, patternsParam)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countSearchUsers = `-- name: CountSearchUsers :one
+SELECT COUNT(*)
+FROM users AS u
+WHERE u.search_text ILIKE ANY($1::TEXT[])
+`
+
+// === source: database/dml/repository/user/count_users_by_keyword.sql ===
+//
+//	SELECT COUNT(*)
+//	FROM users AS u
+//	WHERE u.search_text ILIKE ANY($1::TEXT[])
+func (q *Queries) CountSearchUsers(ctx context.Context, patternsParam []string) (int64, error) {
+	row := q.db.QueryRow(ctx, countSearchUsers, patternsParam)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countUsers = `-- name: CountUsers :one
 SELECT COUNT(*)
 FROM users
@@ -69,7 +127,6 @@ INSERT INTO users (
     id,
     first_name,
     last_name,
-    password_hash,
     email,
     phone,
     prefecture_id,
@@ -92,8 +149,7 @@ INSERT INTO users (
     $9,
     $10,
     $11,
-    $12,
-    $13
+    $12
 )
 `
 
@@ -101,7 +157,6 @@ type CreateUserParams struct {
 	ID           uuid.UUID
 	FirstName    string
 	LastName     string
-	PasswordHash string
 	Email        string
 	Phone        string
 	PrefectureID uuid.UUID
@@ -119,7 +174,6 @@ type CreateUserParams struct {
 //	    id,
 //	    first_name,
 //	    last_name,
-//	    password_hash,
 //	    email,
 //	    phone,
 //	    prefecture_id,
@@ -142,15 +196,13 @@ type CreateUserParams struct {
 //	    $9,
 //	    $10,
 //	    $11,
-//	    $12,
-//	    $13
+//	    $12
 //	)
 func (q *Queries) CreateUser(ctx context.Context, arg *CreateUserParams) error {
 	_, err := q.db.Exec(ctx, createUser,
 		arg.ID,
 		arg.FirstName,
 		arg.LastName,
-		arg.PasswordHash,
 		arg.Email,
 		arg.Phone,
 		arg.PrefectureID,
@@ -164,8 +216,79 @@ func (q *Queries) CreateUser(ctx context.Context, arg *CreateUserParams) error {
 	return err
 }
 
+const deleteUserIdentitiesByUserIDs = `-- name: DeleteUserIdentitiesByUserIDs :exec
+DELETE FROM user_identities
+WHERE user_id IN (
+        SELECT u.id
+        FROM users AS u
+        WHERE u.id = ANY($1::UUID[])
+            AND u.deleted_at IS NOT NULL
+    )
+`
+
+// === source: database/dml/repository/user/delete_purged_users.sql ===
+// users より先に呼ぶこと（FK 違反を避ける）。論理削除済みに限る条件は DeleteUsersByIDs の
+// WHERE と揃えること — ずれると、削除されないユーザーの従属行だけが失われる。
+//
+//	DELETE FROM user_identities
+//	WHERE user_id IN (
+//	        SELECT u.id
+//	        FROM users AS u
+//	        WHERE u.id = ANY($1::UUID[])
+//	            AND u.deleted_at IS NOT NULL
+//	    )
+func (q *Queries) DeleteUserIdentitiesByUserIDs(ctx context.Context, userIds []uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteUserIdentitiesByUserIDs, userIds)
+	return err
+}
+
+const deleteUserRolesByUserIDs = `-- name: DeleteUserRolesByUserIDs :exec
+DELETE FROM user_roles
+WHERE user_id IN (
+        SELECT u.id
+        FROM users AS u
+        WHERE u.id = ANY($1::UUID[])
+            AND u.deleted_at IS NOT NULL
+    )
+`
+
+// users より先に呼ぶこと（FK 違反を避ける）。論理削除済みに限る理由は
+// DeleteUserIdentitiesByUserIDs と同じ。
+//
+//	DELETE FROM user_roles
+//	WHERE user_id IN (
+//	        SELECT u.id
+//	        FROM users AS u
+//	        WHERE u.id = ANY($1::UUID[])
+//	            AND u.deleted_at IS NOT NULL
+//	    )
+func (q *Queries) DeleteUserRolesByUserIDs(ctx context.Context, userIds []uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteUserRolesByUserIDs, userIds)
+	return err
+}
+
+const deleteUsersByIDs = `-- name: DeleteUsersByIDs :execrows
+DELETE FROM users
+WHERE id = ANY($1::UUID[])
+    AND deleted_at IS NOT NULL
+`
+
+// 削除件数を返す。従属行の削除後に呼ぶこと（参照の残存はここでは検査しない）。
+// 論理削除済みを永続化側でも検査する理由は docs/spec/user/domain.md の PurgeByIDs を参照。
+//
+//	DELETE FROM users
+//	WHERE id = ANY($1::UUID[])
+//	    AND deleted_at IS NOT NULL
+func (q *Queries) DeleteUsersByIDs(ctx context.Context, ids []uuid.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteUsersByIDs, ids)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getUserByID = `-- name: GetUserByID :one
-SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 FROM users AS u
 WHERE u.id = $1
     AND u.deleted_at IS NULL
@@ -177,7 +300,7 @@ type GetUserByIDRow struct {
 
 // === source: database/dml/repository/user/select_user_by_id.sql ===
 //
-//	SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+//	SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 //	FROM users AS u
 //	WHERE u.id = $1
 //	    AND u.deleted_at IS NULL
@@ -188,7 +311,6 @@ func (q *Queries) GetUserByID(ctx context.Context, userIDParam uuid.UUID) (*GetU
 		&i.Users.ID,
 		&i.Users.FirstName,
 		&i.Users.LastName,
-		&i.Users.PasswordHash,
 		&i.Users.Email,
 		&i.Users.Phone,
 		&i.Users.PrefectureID,
@@ -204,8 +326,56 @@ func (q *Queries) GetUserByID(ctx context.Context, userIDParam uuid.UUID) (*GetU
 	return &i, err
 }
 
+const getUserRolesByUserID = `-- name: GetUserRolesByUserID :many
+SELECT
+    r.id,
+    r.name,
+    r.code
+FROM user_roles AS ur
+INNER JOIN roles AS r ON ur.role_id = r.id
+WHERE ur.user_id = $1
+ORDER BY r.sort_key
+`
+
+type GetUserRolesByUserIDRow struct {
+	ID   uuid.UUID
+	Name string
+	Code int16
+}
+
+// === source: database/dml/repository/user/select_roles_by_user_id.sql ===
+// 指定ユーザーのロールをマスタの表示順（sort_key 昇順）で返す。並び順の出所は code ではない。
+//
+//	SELECT
+//	    r.id,
+//	    r.name,
+//	    r.code
+//	FROM user_roles AS ur
+//	INNER JOIN roles AS r ON ur.role_id = r.id
+//	WHERE ur.user_id = $1
+//	ORDER BY r.sort_key
+func (q *Queries) GetUserRolesByUserID(ctx context.Context, userIDParam uuid.UUID) ([]*GetUserRolesByUserIDRow, error) {
+	rows, err := q.db.Query(ctx, getUserRolesByUserID, userIDParam)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*GetUserRolesByUserIDRow
+	for rows.Next() {
+		var i GetUserRolesByUserIDRow
+		if err := rows.Scan(&i.ID, &i.Name, &i.Code); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listActiveUsers = `-- name: ListActiveUsers :many
-SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 FROM users AS u
 WHERE u.deleted_at IS NULL
 ORDER BY u.created_at DESC
@@ -223,7 +393,7 @@ type ListActiveUsersRow struct {
 
 // ListActiveUsers
 //
-//	SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+//	SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 //	FROM users AS u
 //	WHERE u.deleted_at IS NULL
 //	ORDER BY u.created_at DESC
@@ -241,7 +411,6 @@ func (q *Queries) ListActiveUsers(ctx context.Context, arg *ListActiveUsersParam
 			&i.Users.ID,
 			&i.Users.FirstName,
 			&i.Users.LastName,
-			&i.Users.PasswordHash,
 			&i.Users.Email,
 			&i.Users.Phone,
 			&i.Users.PrefectureID,
@@ -265,7 +434,7 @@ func (q *Queries) ListActiveUsers(ctx context.Context, arg *ListActiveUsersParam
 }
 
 const listDeletedUsers = `-- name: ListDeletedUsers :many
-SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 FROM users AS u
 WHERE u.deleted_at IS NOT NULL
 ORDER BY u.created_at DESC
@@ -283,7 +452,7 @@ type ListDeletedUsersRow struct {
 
 // ListDeletedUsers
 //
-//	SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+//	SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 //	FROM users AS u
 //	WHERE u.deleted_at IS NOT NULL
 //	ORDER BY u.created_at DESC
@@ -301,7 +470,6 @@ func (q *Queries) ListDeletedUsers(ctx context.Context, arg *ListDeletedUsersPar
 			&i.Users.ID,
 			&i.Users.FirstName,
 			&i.Users.LastName,
-			&i.Users.PasswordHash,
 			&i.Users.Email,
 			&i.Users.Phone,
 			&i.Users.PrefectureID,
@@ -324,8 +492,97 @@ func (q *Queries) ListDeletedUsers(ctx context.Context, arg *ListDeletedUsersPar
 	return items, nil
 }
 
+const listPurgeCandidateUserIDsAfter = `-- name: ListPurgeCandidateUserIDsAfter :many
+SELECT id
+FROM users
+WHERE deleted_at IS NOT NULL
+    AND deleted_at < $1
+    AND id > $2
+ORDER BY id ASC
+LIMIT $3
+`
+
+type ListPurgeCandidateUserIDsAfterParams struct {
+	Cutoff     *time.Time
+	AfterID    uuid.UUID
+	LimitParam int32
+}
+
+// 論理削除日時が cutoff より古いユーザーの ID を、ID 昇順の keyset で最大 limit_param 件取得する（after_id 以降）。
+// 境界を offset でなく ID で受け取る理由は docs/spec/user/domain.md の FindDeletedBefore を参照。
+//
+//	SELECT id
+//	FROM users
+//	WHERE deleted_at IS NOT NULL
+//	    AND deleted_at < $1
+//	    AND id > $2
+//	ORDER BY id ASC
+//	LIMIT $3
+func (q *Queries) ListPurgeCandidateUserIDsAfter(ctx context.Context, arg *ListPurgeCandidateUserIDsAfterParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listPurgeCandidateUserIDsAfter, arg.Cutoff, arg.AfterID, arg.LimitParam)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPurgeCandidateUserIDsFirst = `-- name: ListPurgeCandidateUserIDsFirst :many
+SELECT id
+FROM users
+WHERE deleted_at IS NOT NULL
+    AND deleted_at < $1
+ORDER BY id ASC
+LIMIT $2
+`
+
+type ListPurgeCandidateUserIDsFirstParams struct {
+	Cutoff     *time.Time
+	LimitParam int32
+}
+
+// === source: database/dml/repository/user/select_purge_candidate_users.sql ===
+// 論理削除日時が cutoff より古いユーザーの ID を、ID 昇順の keyset で最大 limit_param 件取得する（先頭ページ）。
+//
+//	SELECT id
+//	FROM users
+//	WHERE deleted_at IS NOT NULL
+//	    AND deleted_at < $1
+//	ORDER BY id ASC
+//	LIMIT $2
+func (q *Queries) ListPurgeCandidateUserIDsFirst(ctx context.Context, arg *ListPurgeCandidateUserIDsFirstParams) ([]uuid.UUID, error) {
+	rows, err := q.db.Query(ctx, listPurgeCandidateUserIDsFirst, arg.Cutoff, arg.LimitParam)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUsers = `-- name: ListUsers :many
-SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 FROM users AS u
 ORDER BY u.created_at DESC
 LIMIT $2 OFFSET $1
@@ -342,7 +599,7 @@ type ListUsersRow struct {
 
 // === source: database/dml/repository/user/select_users.sql ===
 //
-//	SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+//	SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 //	FROM users AS u
 //	ORDER BY u.created_at DESC
 //	LIMIT $2 OFFSET $1
@@ -359,7 +616,6 @@ func (q *Queries) ListUsers(ctx context.Context, arg *ListUsersParams) ([]*ListU
 			&i.Users.ID,
 			&i.Users.FirstName,
 			&i.Users.LastName,
-			&i.Users.PasswordHash,
 			&i.Users.Email,
 			&i.Users.Phone,
 			&i.Users.PrefectureID,
@@ -383,7 +639,7 @@ func (q *Queries) ListUsers(ctx context.Context, arg *ListUsersParams) ([]*ListU
 }
 
 const listUsersFeedAfter = `-- name: ListUsersFeedAfter :many
-SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 FROM users AS u
 WHERE u.deleted_at IS NULL
     AND (
@@ -406,7 +662,7 @@ type ListUsersFeedAfterRow struct {
 
 // (created_at DESC, id DESC) の keyset 境界より過去の未削除ユーザーを返します。
 //
-//	SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+//	SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 //	FROM users AS u
 //	WHERE u.deleted_at IS NULL
 //	    AND (
@@ -428,7 +684,6 @@ func (q *Queries) ListUsersFeedAfter(ctx context.Context, arg *ListUsersFeedAfte
 			&i.Users.ID,
 			&i.Users.FirstName,
 			&i.Users.LastName,
-			&i.Users.PasswordHash,
 			&i.Users.Email,
 			&i.Users.Phone,
 			&i.Users.PrefectureID,
@@ -452,7 +707,7 @@ func (q *Queries) ListUsersFeedAfter(ctx context.Context, arg *ListUsersFeedAfte
 }
 
 const listUsersFeedFirst = `-- name: ListUsersFeedFirst :many
-SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 FROM users AS u
 WHERE u.deleted_at IS NULL
 ORDER BY u.created_at DESC, u.id DESC
@@ -465,7 +720,7 @@ type ListUsersFeedFirstRow struct {
 
 // === source: database/dml/repository/user/select_users_feed.sql ===
 //
-//	SELECT u.id, u.first_name, u.last_name, u.password_hash, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+//	SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
 //	FROM users AS u
 //	WHERE u.deleted_at IS NULL
 //	ORDER BY u.created_at DESC, u.id DESC
@@ -483,7 +738,277 @@ func (q *Queries) ListUsersFeedFirst(ctx context.Context, limitParam int32) ([]*
 			&i.Users.ID,
 			&i.Users.FirstName,
 			&i.Users.LastName,
-			&i.Users.PasswordHash,
+			&i.Users.Email,
+			&i.Users.Phone,
+			&i.Users.PrefectureID,
+			&i.Users.City,
+			&i.Users.Street,
+			&i.Users.Building,
+			&i.Users.PostalCode,
+			&i.Users.DeletedAt,
+			&i.Users.CreatedAt,
+			&i.Users.UpdatedAt,
+			&i.Users.SearchText,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockUserByID = `-- name: LockUserByID :one
+SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+FROM users AS u
+WHERE u.id = $1
+    AND u.deleted_at IS NULL
+FOR UPDATE
+`
+
+type LockUserByIDRow struct {
+	Users Users
+}
+
+// === source: database/dml/repository/user/lock_user_by_id.sql ===
+// ID から未削除のユーザーを 1 件、悲観ロック（FOR UPDATE）して取得する。
+// 論理削除済み・不存在はいずれも 0 行（NotFound）。
+// 取得位置の不変条件は docs/spec/user/usecase.md の DeleteUser を参照（ADR-0036 (ordered-pessimistic-row-locks)）。
+//
+//	SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+//	FROM users AS u
+//	WHERE u.id = $1
+//	    AND u.deleted_at IS NULL
+//	FOR UPDATE
+func (q *Queries) LockUserByID(ctx context.Context, userIDParam uuid.UUID) (*LockUserByIDRow, error) {
+	row := q.db.QueryRow(ctx, lockUserByID, userIDParam)
+	var i LockUserByIDRow
+	err := row.Scan(
+		&i.Users.ID,
+		&i.Users.FirstName,
+		&i.Users.LastName,
+		&i.Users.Email,
+		&i.Users.Phone,
+		&i.Users.PrefectureID,
+		&i.Users.City,
+		&i.Users.Street,
+		&i.Users.Building,
+		&i.Users.PostalCode,
+		&i.Users.DeletedAt,
+		&i.Users.CreatedAt,
+		&i.Users.UpdatedAt,
+		&i.Users.SearchText,
+	)
+	return &i, err
+}
+
+const lockUserShareByID = `-- name: LockUserShareByID :one
+SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+FROM users AS u
+WHERE u.id = $1
+FOR SHARE
+`
+
+type LockUserShareByIDRow struct {
+	Users Users
+}
+
+// === source: database/dml/repository/user/lock_user_share_by_id.sql ===
+// ID からユーザーを 1 件、悲観ロック（FOR SHARE）して取得する。不存在は 0 行（NotFound）。
+// 退会済みを除外しないこと — ロックは機構で、在籍かどうかの判定はドメイン（User.IsActive）が持つ。
+// 退会との直列化は docs/spec/purchase/usecase.md の CreatePurchase を参照。
+// ADR-0036 (ordered-pessimistic-row-locks)。
+//
+//	SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+//	FROM users AS u
+//	WHERE u.id = $1
+//	FOR SHARE
+func (q *Queries) LockUserShareByID(ctx context.Context, userIDParam uuid.UUID) (*LockUserShareByIDRow, error) {
+	row := q.db.QueryRow(ctx, lockUserShareByID, userIDParam)
+	var i LockUserShareByIDRow
+	err := row.Scan(
+		&i.Users.ID,
+		&i.Users.FirstName,
+		&i.Users.LastName,
+		&i.Users.Email,
+		&i.Users.Phone,
+		&i.Users.PrefectureID,
+		&i.Users.City,
+		&i.Users.Street,
+		&i.Users.Building,
+		&i.Users.PostalCode,
+		&i.Users.DeletedAt,
+		&i.Users.CreatedAt,
+		&i.Users.UpdatedAt,
+		&i.Users.SearchText,
+	)
+	return &i, err
+}
+
+const searchActiveUsers = `-- name: SearchActiveUsers :many
+SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+FROM users AS u
+WHERE u.search_text ILIKE ANY($1::TEXT[])
+    AND u.deleted_at IS NULL
+ORDER BY u.created_at DESC
+LIMIT $3 OFFSET $2
+`
+
+type SearchActiveUsersParams struct {
+	PatternsParam []string
+	OffsetParam   int32
+	LimitParam    int32
+}
+
+type SearchActiveUsersRow struct {
+	Users Users
+}
+
+// SearchActiveUsers
+//
+//	SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+//	FROM users AS u
+//	WHERE u.search_text ILIKE ANY($1::TEXT[])
+//	    AND u.deleted_at IS NULL
+//	ORDER BY u.created_at DESC
+//	LIMIT $3 OFFSET $2
+func (q *Queries) SearchActiveUsers(ctx context.Context, arg *SearchActiveUsersParams) ([]*SearchActiveUsersRow, error) {
+	rows, err := q.db.Query(ctx, searchActiveUsers, arg.PatternsParam, arg.OffsetParam, arg.LimitParam)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*SearchActiveUsersRow
+	for rows.Next() {
+		var i SearchActiveUsersRow
+		if err := rows.Scan(
+			&i.Users.ID,
+			&i.Users.FirstName,
+			&i.Users.LastName,
+			&i.Users.Email,
+			&i.Users.Phone,
+			&i.Users.PrefectureID,
+			&i.Users.City,
+			&i.Users.Street,
+			&i.Users.Building,
+			&i.Users.PostalCode,
+			&i.Users.DeletedAt,
+			&i.Users.CreatedAt,
+			&i.Users.UpdatedAt,
+			&i.Users.SearchText,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchDeletedUsers = `-- name: SearchDeletedUsers :many
+SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+FROM users AS u
+WHERE u.search_text ILIKE ANY($1::TEXT[])
+    AND u.deleted_at IS NOT NULL
+ORDER BY u.created_at DESC
+LIMIT $3 OFFSET $2
+`
+
+type SearchDeletedUsersParams struct {
+	PatternsParam []string
+	OffsetParam   int32
+	LimitParam    int32
+}
+
+type SearchDeletedUsersRow struct {
+	Users Users
+}
+
+// SearchDeletedUsers
+//
+//	SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+//	FROM users AS u
+//	WHERE u.search_text ILIKE ANY($1::TEXT[])
+//	    AND u.deleted_at IS NOT NULL
+//	ORDER BY u.created_at DESC
+//	LIMIT $3 OFFSET $2
+func (q *Queries) SearchDeletedUsers(ctx context.Context, arg *SearchDeletedUsersParams) ([]*SearchDeletedUsersRow, error) {
+	rows, err := q.db.Query(ctx, searchDeletedUsers, arg.PatternsParam, arg.OffsetParam, arg.LimitParam)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*SearchDeletedUsersRow
+	for rows.Next() {
+		var i SearchDeletedUsersRow
+		if err := rows.Scan(
+			&i.Users.ID,
+			&i.Users.FirstName,
+			&i.Users.LastName,
+			&i.Users.Email,
+			&i.Users.Phone,
+			&i.Users.PrefectureID,
+			&i.Users.City,
+			&i.Users.Street,
+			&i.Users.Building,
+			&i.Users.PostalCode,
+			&i.Users.DeletedAt,
+			&i.Users.CreatedAt,
+			&i.Users.UpdatedAt,
+			&i.Users.SearchText,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchUsers = `-- name: SearchUsers :many
+SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+FROM users AS u
+WHERE u.search_text ILIKE ANY($1::TEXT[])
+ORDER BY u.created_at DESC
+LIMIT $3 OFFSET $2
+`
+
+type SearchUsersParams struct {
+	PatternsParam []string
+	OffsetParam   int32
+	LimitParam    int32
+}
+
+type SearchUsersRow struct {
+	Users Users
+}
+
+// === source: database/dml/repository/user/select_users_by_keyword.sql ===
+//
+//	SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.prefecture_id, u.city, u.street, u.building, u.postal_code, u.deleted_at, u.created_at, u.updated_at, u.search_text
+//	FROM users AS u
+//	WHERE u.search_text ILIKE ANY($1::TEXT[])
+//	ORDER BY u.created_at DESC
+//	LIMIT $3 OFFSET $2
+func (q *Queries) SearchUsers(ctx context.Context, arg *SearchUsersParams) ([]*SearchUsersRow, error) {
+	rows, err := q.db.Query(ctx, searchUsers, arg.PatternsParam, arg.OffsetParam, arg.LimitParam)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*SearchUsersRow
+	for rows.Next() {
+		var i SearchUsersRow
+		if err := rows.Scan(
+			&i.Users.ID,
+			&i.Users.FirstName,
+			&i.Users.LastName,
 			&i.Users.Email,
 			&i.Users.Phone,
 			&i.Users.PrefectureID,
@@ -511,24 +1036,22 @@ UPDATE users
 SET
     first_name = $1,
     last_name = $2,
-    password_hash = $3,
-    email = $4,
-    phone = $5,
-    prefecture_id = $6,
-    city = $7,
-    street = $8,
-    building = $9,
-    postal_code = $10,
-    updated_at = $11,
-    deleted_at = $12
-WHERE id = $13
+    email = $3,
+    phone = $4,
+    prefecture_id = $5,
+    city = $6,
+    street = $7,
+    building = $8,
+    postal_code = $9,
+    updated_at = $10,
+    deleted_at = $11
+WHERE id = $12
     AND deleted_at IS NULL
 `
 
 type UpdateUserParams struct {
 	FirstName    string
 	LastName     string
-	PasswordHash string
 	Email        string
 	Phone        string
 	PrefectureID uuid.UUID
@@ -547,23 +1070,21 @@ type UpdateUserParams struct {
 //	SET
 //	    first_name = $1,
 //	    last_name = $2,
-//	    password_hash = $3,
-//	    email = $4,
-//	    phone = $5,
-//	    prefecture_id = $6,
-//	    city = $7,
-//	    street = $8,
-//	    building = $9,
-//	    postal_code = $10,
-//	    updated_at = $11,
-//	    deleted_at = $12
-//	WHERE id = $13
+//	    email = $3,
+//	    phone = $4,
+//	    prefecture_id = $5,
+//	    city = $6,
+//	    street = $7,
+//	    building = $8,
+//	    postal_code = $9,
+//	    updated_at = $10,
+//	    deleted_at = $11
+//	WHERE id = $12
 //	    AND deleted_at IS NULL
 func (q *Queries) UpdateUser(ctx context.Context, arg *UpdateUserParams) (int64, error) {
 	result, err := q.db.Exec(ctx, updateUser,
 		arg.FirstName,
 		arg.LastName,
-		arg.PasswordHash,
 		arg.Email,
 		arg.Phone,
 		arg.PrefectureID,

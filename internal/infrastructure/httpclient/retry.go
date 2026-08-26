@@ -48,6 +48,11 @@ func isRetryableOutcome(resp *Response, err error) bool {
 		return resp.StatusCode == retryableStatusTooManyRequests ||
 			resp.StatusCode >= retryableStatusServerErrorMin
 	}
+	// レスポンス上限超過は ErrUnavailable(503) だが再試行しても改善しない決定的失敗なので明示除外する
+	// （HTTP ステータス写像は 503 のまま保ち、retry 可否だけをここで分離する）。
+	if xerrors.Is(err, errResponseTooLarge) {
+		return false
+	}
 	// 応答未取得は transport 失敗(ErrUnavailable)のみ retry 対象。
 	// buildRequest 由来の client エラー(ErrInvalidArgument 等)は決定的なので retry しない。
 	return xerrors.Is(err, apperror.ErrUnavailable)

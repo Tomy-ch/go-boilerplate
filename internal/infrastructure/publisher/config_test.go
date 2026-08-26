@@ -115,10 +115,10 @@ func TestNewEndpoint(t *testing.T) {
 			t.Parallel()
 
 			const raw = "http://localhost:8080/events"
-			cfg := config.NewOutboxConfig(config.MockConfigForTest(t))
-			cfg.SetOutboxEndpoint(t, raw)
+			epCfg := config.NewEndpointConfig(config.MockConfigForTest(t))
+			epCfg.SetEndpointOutbox(t, raw)
 
-			got, err := NewEndpoint(cfg)
+			got, err := NewEndpoint(epCfg)
 
 			require.NoError(t, err)
 			assert.Equal(t, Endpoint(raw), got)
@@ -131,9 +131,9 @@ func TestNewEndpoint(t *testing.T) {
 		t.Run("config の endpoint が未設定なら ErrInvalidEndpoint を返す", func(t *testing.T) {
 			t.Parallel()
 
-			cfg := config.NewOutboxConfig(config.MockConfigForTest(t))
+			epCfg := config.NewEndpointConfig(config.MockConfigForTest(t))
 
-			got, err := NewEndpoint(cfg)
+			got, err := NewEndpoint(epCfg)
 
 			require.ErrorIs(t, err, ErrInvalidEndpoint)
 			assert.Empty(t, got)

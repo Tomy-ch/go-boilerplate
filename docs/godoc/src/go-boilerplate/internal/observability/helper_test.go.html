@@ -284,28 +284,73 @@
 <span id="L227" class="ln">   227  </span>	})
 <span id="L228" class="ln">   228  </span>}
 <span id="L229" class="ln">   229  </span>
-<span id="L230" class="ln">   230  </span>func TestTraceContext_IDs(t *testing.T) {
+<span id="L230" class="ln">   230  </span>func TestTraceContext_TraceID(t *testing.T) {
 <span id="L231" class="ln">   231  </span>	t.Parallel()
 <span id="L232" class="ln">   232  </span>
 <span id="L233" class="ln">   233  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
 <span id="L234" class="ln">   234  </span>		t.Parallel()
 <span id="L235" class="ln">   235  </span>
-<span id="L236" class="ln">   236  </span>		t.Run(&#34;TraceID/SpanIDのgetterはコンストラクタに渡した値を返す&#34;, func(t *testing.T) {
+<span id="L236" class="ln">   236  </span>		t.Run(&#34;保持しているtraceIDを返す&#34;, func(t *testing.T) {
 <span id="L237" class="ln">   237  </span>			t.Parallel()
 <span id="L238" class="ln">   238  </span>
-<span id="L239" class="ln">   239  </span>			traceID := &#34;trace-id-123&#34;
-<span id="L240" class="ln">   240  </span>			spanID := &#34;span-id-456&#34;
-<span id="L241" class="ln">   241  </span>			tc := TraceContext{
-<span id="L242" class="ln">   242  </span>				traceID: traceID,
-<span id="L243" class="ln">   243  </span>				spanID:  spanID,
-<span id="L244" class="ln">   244  </span>			}
-<span id="L245" class="ln">   245  </span>
-<span id="L246" class="ln">   246  </span>			assert.Equal(t, traceID, tc.TraceID())
-<span id="L247" class="ln">   247  </span>			assert.Equal(t, spanID, tc.SpanID())
-<span id="L248" class="ln">   248  </span>		})
-<span id="L249" class="ln">   249  </span>	})
-<span id="L250" class="ln">   250  </span>}
-<span id="L251" class="ln">   251  </span>
+<span id="L239" class="ln">   239  </span>			<span class="comment">// spanID / parentSpanID と取り違えていないことを、異なる値を与えて区別する。</span>
+<span id="L240" class="ln">   240  </span>			tc := TraceContext{traceID: &#34;trace-id-123&#34;, spanID: &#34;span-id-456&#34;, parentSpanID: &#34;parent-span-id-789&#34;}
+<span id="L241" class="ln">   241  </span>
+<span id="L242" class="ln">   242  </span>			assert.Equal(t, &#34;trace-id-123&#34;, tc.TraceID())
+<span id="L243" class="ln">   243  </span>		})
+<span id="L244" class="ln">   244  </span>
+<span id="L245" class="ln">   245  </span>		t.Run(&#34;未設定の場合は空文字を返す&#34;, func(t *testing.T) {
+<span id="L246" class="ln">   246  </span>			t.Parallel()
+<span id="L247" class="ln">   247  </span>
+<span id="L248" class="ln">   248  </span>			assert.Empty(t, (&amp;TraceContext{}).TraceID())
+<span id="L249" class="ln">   249  </span>		})
+<span id="L250" class="ln">   250  </span>	})
+<span id="L251" class="ln">   251  </span>}
+<span id="L252" class="ln">   252  </span>
+<span id="L253" class="ln">   253  </span>func TestTraceContext_SpanID(t *testing.T) {
+<span id="L254" class="ln">   254  </span>	t.Parallel()
+<span id="L255" class="ln">   255  </span>
+<span id="L256" class="ln">   256  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L257" class="ln">   257  </span>		t.Parallel()
+<span id="L258" class="ln">   258  </span>
+<span id="L259" class="ln">   259  </span>		t.Run(&#34;保持しているspanIDを返す&#34;, func(t *testing.T) {
+<span id="L260" class="ln">   260  </span>			t.Parallel()
+<span id="L261" class="ln">   261  </span>
+<span id="L262" class="ln">   262  </span>			tc := TraceContext{traceID: &#34;trace-id-123&#34;, spanID: &#34;span-id-456&#34;, parentSpanID: &#34;parent-span-id-789&#34;}
+<span id="L263" class="ln">   263  </span>
+<span id="L264" class="ln">   264  </span>			assert.Equal(t, &#34;span-id-456&#34;, tc.SpanID())
+<span id="L265" class="ln">   265  </span>		})
+<span id="L266" class="ln">   266  </span>
+<span id="L267" class="ln">   267  </span>		t.Run(&#34;未設定の場合は空文字を返す&#34;, func(t *testing.T) {
+<span id="L268" class="ln">   268  </span>			t.Parallel()
+<span id="L269" class="ln">   269  </span>
+<span id="L270" class="ln">   270  </span>			assert.Empty(t, (&amp;TraceContext{}).SpanID())
+<span id="L271" class="ln">   271  </span>		})
+<span id="L272" class="ln">   272  </span>	})
+<span id="L273" class="ln">   273  </span>}
+<span id="L274" class="ln">   274  </span>
+<span id="L275" class="ln">   275  </span>func TestTraceContext_ParentSpanID(t *testing.T) {
+<span id="L276" class="ln">   276  </span>	t.Parallel()
+<span id="L277" class="ln">   277  </span>
+<span id="L278" class="ln">   278  </span>	t.Run(&#34;正常系&#34;, func(t *testing.T) {
+<span id="L279" class="ln">   279  </span>		t.Parallel()
+<span id="L280" class="ln">   280  </span>
+<span id="L281" class="ln">   281  </span>		t.Run(&#34;保持しているparentSpanIDを返す&#34;, func(t *testing.T) {
+<span id="L282" class="ln">   282  </span>			t.Parallel()
+<span id="L283" class="ln">   283  </span>
+<span id="L284" class="ln">   284  </span>			tc := TraceContext{traceID: &#34;trace-id-123&#34;, spanID: &#34;span-id-456&#34;, parentSpanID: &#34;parent-span-id-789&#34;}
+<span id="L285" class="ln">   285  </span>
+<span id="L286" class="ln">   286  </span>			assert.Equal(t, &#34;parent-span-id-789&#34;, tc.ParentSpanID())
+<span id="L287" class="ln">   287  </span>		})
+<span id="L288" class="ln">   288  </span>
+<span id="L289" class="ln">   289  </span>		t.Run(&#34;親spanが無く未設定の場合は空文字を返す&#34;, func(t *testing.T) {
+<span id="L290" class="ln">   290  </span>			t.Parallel()
+<span id="L291" class="ln">   291  </span>
+<span id="L292" class="ln">   292  </span>			assert.Empty(t, (&amp;TraceContext{}).ParentSpanID())
+<span id="L293" class="ln">   293  </span>		})
+<span id="L294" class="ln">   294  </span>	})
+<span id="L295" class="ln">   295  </span>}
+<span id="L296" class="ln">   296  </span>
 </pre><p><a href="../../../../src/go-boilerplate/internal/observability/helper_test.go.html?m=text">View as plain text</a></p>
 
 <div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>

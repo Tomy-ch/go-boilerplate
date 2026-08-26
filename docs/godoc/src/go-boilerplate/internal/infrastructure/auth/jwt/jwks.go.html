@@ -1,0 +1,428 @@
+<!DOCTYPE html><html><head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="theme-color" content="#375EAB"/>
+
+  <title>jwt - go-boilerplate godoc</title>
+
+
+
+
+
+
+
+
+
+
+<link type="text/css" rel="stylesheet" href="../../../../../../lib/style.css"/></head>
+<body>
+
+<div id="lowframe" style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<div class="top-heading" id="heading-narrow"><a href="../../../../../../">go-boilerplate godoc</a></div>
+<!--<a href="#" id="menu-button"><span id="menu-button-arrow">▽</span></a>-->
+<div id="menu">
+<a href="../../../../../../" style="margin-right: 10px;">Package Index</a>
+</div>
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Source file
+    <a href="/src">src</a>/<a href="../../../../../../src/go-boilerplate">go-boilerplate</a>/<a href="../../../../../../src/go-boilerplate/internal">internal</a>/<a href="../../../../../../src/go-boilerplate/internal/infrastructure">infrastructure</a>/<a href="../../../../../../src/go-boilerplate/internal/infrastructure/auth">auth</a>/<a href="../../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt">jwt</a>/<span class="text-muted">jwks.go</span>
+  </h1>
+
+
+
+
+
+  <h2>
+    Documentation: <a href="../../../../../../go-boilerplate/internal/infrastructure/auth/jwt">go-boilerplate/internal/infrastructure/auth/jwt</a>
+  </h2>
+
+
+
+<div id="nav"></div>
+
+
+
+<pre><span id="L1" class="ln">     1  </span>package jwt
+<span id="L2" class="ln">     2  </span>
+<span id="L3" class="ln">     3  </span>import (
+<span id="L4" class="ln">     4  </span>	&#34;context&#34;
+<span id="L5" class="ln">     5  </span>	&#34;crypto&#34;
+<span id="L6" class="ln">     6  </span>	&#34;crypto/rsa&#34;
+<span id="L7" class="ln">     7  </span>	&#34;encoding/json&#34;
+<span id="L8" class="ln">     8  </span>	&#34;slices&#34;
+<span id="L9" class="ln">     9  </span>	&#34;sync&#34;
+<span id="L10" class="ln">    10  </span>	&#34;time&#34;
+<span id="L11" class="ln">    11  </span>
+<span id="L12" class="ln">    12  </span>	jose &#34;github.com/go-jose/go-jose/v4&#34;
+<span id="L13" class="ln">    13  </span>
+<span id="L14" class="ln">    14  </span>	&#34;go-boilerplate/internal/apperror&#34;
+<span id="L15" class="ln">    15  </span>	&#34;go-boilerplate/internal/infrastructure/httpclient&#34;
+<span id="L16" class="ln">    16  </span>	&#34;go-boilerplate/internal/observability&#34;
+<span id="L17" class="ln">    17  </span>	&#34;go-boilerplate/internal/usecase/boundary/clock&#34;
+<span id="L18" class="ln">    18  </span>	&#34;go-boilerplate/pkg/xerrors&#34;
+<span id="L19" class="ln">    19  </span>)
+<span id="L20" class="ln">    20  </span>
+<span id="L21" class="ln">    21  </span>const (
+<span id="L22" class="ln">    22  </span>	<span class="comment">// defaultJWKSCacheTTL は、取得した JWKS を再取得するまでの既定の保持期間です（config 既定 AUTH_JWKS_CACHE_TTL と同値）。</span>
+<span id="L23" class="ln">    23  </span>	defaultJWKSCacheTTL = 1 * time.Hour
+<span id="L24" class="ln">    24  </span>	<span class="comment">// jwksRefreshCooldown は、cache miss（未知 kid / 期限切れ / 取得失敗）時の再取得の最小間隔です（config 既定 AUTH_JWKS_UNKNOWN_KID_COOLDOWN と同値）。</span>
+<span id="L25" class="ln">    25  </span>	<span class="comment">// 未知 kid の連打抑止に加え、取得失敗後のリトライ間隔も兼ねます（DoS 抑止）。</span>
+<span id="L26" class="ln">    26  </span>	jwksRefreshCooldown = 60 * time.Second
+<span id="L27" class="ln">    27  </span>	<span class="comment">// jwksDownstream は、httpclient substrate の論理依存名です（profile / breaker / budget / metrics のキー）。</span>
+<span id="L28" class="ln">    28  </span>	jwksDownstream httpclient.Downstream = &#34;jwks&#34;
+<span id="L29" class="ln">    29  </span>
+<span id="L30" class="ln">    30  </span>	<span class="comment">// jwksOverallTimeout は、JWKS/discovery 取得の全体タイムアウトです（substrate 既定 10s から短縮）。</span>
+<span id="L31" class="ln">    31  </span>	<span class="comment">// 認証は未知 kid 時に同期ブロックするホットパスのため、全体上限を短くする。</span>
+<span id="L32" class="ln">    32  </span>	jwksOverallTimeout = 5 * time.Second
+<span id="L33" class="ln">    33  </span>	<span class="comment">// jwksMaxAttempts は、JWKS/discovery 取得の最大試行回数です（初回 + retry）。</span>
+<span id="L34" class="ln">    34  </span>	jwksMaxAttempts = 2
+<span id="L35" class="ln">    35  </span>	<span class="comment">// jwksMaxResponseBytes は、読み込む JWKS/discovery 応答の上限バイト数です（substrate 既定 4 MiB から縮小）。</span>
+<span id="L36" class="ln">    36  </span>	<span class="comment">// JWKS/discovery 文書は KB オーダーのため、メモリ DoS を抑制する。</span>
+<span id="L37" class="ln">    37  </span>	jwksMaxResponseBytes = 1 &lt;&lt; 20 <span class="comment">// 1 MiB</span>
+<span id="L38" class="ln">    38  </span>)
+<span id="L39" class="ln">    39  </span>
+<span id="L40" class="ln">    40  </span>var (
+<span id="L41" class="ln">    41  </span>	<span class="comment">// errJWKSMalformed は、JWKS(JSON) の解釈に失敗した場合のエラーです。</span>
+<span id="L42" class="ln">    42  </span>	<span class="comment">// 文書ごと使えない失敗は、どのトークンについても検証を遂行できないことを意味するため、</span>
+<span id="L43" class="ln">    43  </span>	<span class="comment">// 特定 kid の不在（errJWKSKIDKnownAbsent / errJWKSNoMatchingKID）と違い利用不能として分類します。</span>
+<span id="L44" class="ln">    44  </span>	errJWKSMalformed = xerrors.Wrap(apperror.ErrUnavailable, &#34;jwks: malformed key set&#34;)
+<span id="L45" class="ln">    45  </span>	<span class="comment">// errJWKSNoKeys は、JWKS に利用可能な鍵（kid 付き）が無い場合のエラーです。</span>
+<span id="L46" class="ln">    46  </span>	errJWKSNoKeys = xerrors.Wrap(apperror.ErrUnavailable, &#34;jwks: no usable keys with kid&#34;)
+<span id="L47" class="ln">    47  </span>	<span class="comment">// errJWKSDuplicateKID は、JWKS に重複した kid が含まれる場合のエラーです（文書ごと不採用）。</span>
+<span id="L48" class="ln">    48  </span>	errJWKSDuplicateKID = xerrors.Wrap(apperror.ErrUnavailable, &#34;jwks: duplicate kid&#34;)
+<span id="L49" class="ln">    49  </span>	<span class="comment">// errJWKSKIDKnownAbsent は、現世代の JWKS で不在が確定済みの kid を要求された場合のエラーです。</span>
+<span id="L50" class="ln">    50  </span>	errJWKSKIDKnownAbsent = xerrors.New(&#34;jwks: kid known-absent in current key set&#34;)
+<span id="L51" class="ln">    51  </span>	<span class="comment">// errJWKSNoMatchingKID は、取得した JWKS に kid に対応する鍵が無い場合のエラーです。</span>
+<span id="L52" class="ln">    52  </span>	errJWKSNoMatchingKID = xerrors.New(&#34;jwks: no matching key for kid&#34;)
+<span id="L53" class="ln">    53  </span>)
+<span id="L54" class="ln">    54  </span>
+<span id="L55" class="ln">    55  </span><span class="comment">// jwksResolver は、JWKS エンドポイントから kid で公開鍵を解決する KeyResolver 実装です。</span>
+<span id="L56" class="ln">    56  </span><span class="comment">// 取得は httpclient に委ね、取得した JWK Set を TTL でキャッシュします。期限切れ・未知 kid のときに再取得します（遅延取得）。</span>
+<span id="L57" class="ln">    57  </span>type jwksResolver struct {
+<span id="L58" class="ln">    58  </span>	client      httpclient.Client
+<span id="L59" class="ln">    59  </span>	tracer      observability.LayerTracer
+<span id="L60" class="ln">    60  </span>	urlFn       func(context.Context) (string, error)
+<span id="L61" class="ln">    61  </span>	cacheTTL    time.Duration
+<span id="L62" class="ln">    62  </span>	cooldown    time.Duration
+<span id="L63" class="ln">    63  </span>	allowedAlgs []string
+<span id="L64" class="ln">    64  </span>	clk         clock.Clock
+<span id="L65" class="ln">    65  </span>
+<span id="L66" class="ln">    66  </span>	<span class="comment">// fetchSem は取得を直列化し、同時に高々 1 回だけ HTTP させます（stampede 防止）。</span>
+<span id="L67" class="ln">    67  </span>	<span class="comment">// 送信で獲得し受信で解放します。獲得を待つ側が自分の ctx で離脱できるよう、mutex ではなくチャネルで持ちます。</span>
+<span id="L68" class="ln">    68  </span>	fetchSem chan struct{}
+<span id="L69" class="ln">    69  </span>
+<span id="L70" class="ln">    70  </span>	<span class="comment">// inFlight は切り離して走っている取得の本数です（停止時の待ち合わせに使います）。</span>
+<span id="L71" class="ln">    71  </span>	inFlight sync.WaitGroup
+<span id="L72" class="ln">    72  </span>
+<span id="L73" class="ln">    73  </span>	<span class="comment">// mu は keys / fetchedAt / lastAttempt / lastErr / negative を保護します（取得の HTTP I/O 中は保持しません）。</span>
+<span id="L74" class="ln">    74  </span>	mu          sync.RWMutex
+<span id="L75" class="ln">    75  </span>	keys        map[string]crypto.PublicKey
+<span id="L76" class="ln">    76  </span>	fetchedAt   time.Time
+<span id="L77" class="ln">    77  </span>	lastAttempt time.Time
+<span id="L78" class="ln">    78  </span>	lastErr     error
+<span id="L79" class="ln">    79  </span>
+<span id="L80" class="ln">    80  </span>	<span class="comment">// negative は「取得済みの現世代で不在が確定した kid」の集合です（不在 kid の再取得連打を抑止）。</span>
+<span id="L81" class="ln">    81  </span>	<span class="comment">// 現世代（fetchedAt から cacheTTL 以内）でのみ有効で、公開鍵集合が変わる取得成功でクリアします。</span>
+<span id="L82" class="ln">    82  </span>	<span class="comment">// これにより、回転で新規追加された kid は negative に載らないため次の取得で解決でき、確定的に不在な kid の再問い合わせだけを抑えます。</span>
+<span id="L83" class="ln">    83  </span>	negative map[string]struct{}
+<span id="L84" class="ln">    84  </span>}
+<span id="L85" class="ln">    85  </span>
+<span id="L86" class="ln">    86  </span><span class="comment">// NewDownstreamProfile は、JWKS/discovery 取得向けの httpclient resilient プロファイルを返します。</span>
+<span id="L87" class="ln">    87  </span><span class="comment">// 外部 IdP へ内部相関 ID を漏らさないよう trace は伝搬しません。</span>
+<span id="L88" class="ln">    88  </span><span class="comment">// allowPrivateNetwork は private 網宛て接続の可否で、環境に応じた解決は DI が行います（infra は env を知らない）。</span>
+<span id="L89" class="ln">    89  </span><span class="comment">// 認証ホットパス向けに全体タイムアウト・試行回数・応答上限を substrate 既定より絞ります。</span>
+<span id="L90" class="ln">    90  </span>func NewDownstreamProfile(allowPrivateNetwork bool) httpclient.DownstreamProfile {
+<span id="L91" class="ln">    91  </span>	p := httpclient.DefaultProfile()
+<span id="L92" class="ln">    92  </span>	p.PropagateTrace = false
+<span id="L93" class="ln">    93  </span>	p.AllowPrivateNetwork = allowPrivateNetwork
+<span id="L94" class="ln">    94  </span>	p.OverallTimeout = jwksOverallTimeout
+<span id="L95" class="ln">    95  </span>	p.MaxAttempts = jwksMaxAttempts
+<span id="L96" class="ln">    96  </span>	p.MaxResponseBytes = jwksMaxResponseBytes
+<span id="L97" class="ln">    97  </span>	return httpclient.DownstreamProfile{Name: jwksDownstream, Profile: p}
+<span id="L98" class="ln">    98  </span>}
+<span id="L99" class="ln">    99  </span>
+<span id="L100" class="ln">   100  </span><span class="comment">// RequiredDownstream は、JWKS 取得に用いる Downstream を返します。</span>
+<span id="L101" class="ln">   101  </span><span class="comment">// required_downstreams へ供給することで、起動失敗になることを保証します。</span>
+<span id="L102" class="ln">   102  </span>func RequiredDownstream() httpclient.Downstream {
+<span id="L103" class="ln">   103  </span>	return jwksDownstream
+<span id="L104" class="ln">   104  </span>}
+<span id="L105" class="ln">   105  </span>
+<span id="L106" class="ln">   106  </span><span class="comment">// newJWKSResolver は、JWKS 解決器を生成します（この時点では取得しません＝遅延取得）。</span>
+<span id="L107" class="ln">   107  </span><span class="comment">// cacheTTL / cooldown が非正、allowedAlgs が空のときは、それぞれ既定値へフォールバックします。</span>
+<span id="L108" class="ln">   108  </span>func newJWKSResolver(
+<span id="L109" class="ln">   109  </span>	client httpclient.Client,
+<span id="L110" class="ln">   110  </span>	urlFn func(context.Context) (string, error),
+<span id="L111" class="ln">   111  </span>	cacheTTL time.Duration,
+<span id="L112" class="ln">   112  </span>	allowedAlgs []string,
+<span id="L113" class="ln">   113  </span>	cooldown time.Duration,
+<span id="L114" class="ln">   114  </span>	clk clock.Clock,
+<span id="L115" class="ln">   115  </span>	tf observability.TracerFactory,
+<span id="L116" class="ln">   116  </span>) *jwksResolver {
+<span id="L117" class="ln">   117  </span>	if tf == nil {
+<span id="L118" class="ln">   118  </span>		tf = observability.NewDisabledTracerFactory()
+<span id="L119" class="ln">   119  </span>	}
+<span id="L120" class="ln">   120  </span>	if cacheTTL &lt;= 0 {
+<span id="L121" class="ln">   121  </span>		cacheTTL = defaultJWKSCacheTTL
+<span id="L122" class="ln">   122  </span>	}
+<span id="L123" class="ln">   123  </span>	if cooldown &lt;= 0 {
+<span id="L124" class="ln">   124  </span>		cooldown = jwksRefreshCooldown
+<span id="L125" class="ln">   125  </span>	}
+<span id="L126" class="ln">   126  </span>	if len(allowedAlgs) == 0 {
+<span id="L127" class="ln">   127  </span>		allowedAlgs = defaultAllowedAlgs
+<span id="L128" class="ln">   128  </span>	}
+<span id="L129" class="ln">   129  </span>	return &amp;jwksResolver{
+<span id="L130" class="ln">   130  </span>		client:      client,
+<span id="L131" class="ln">   131  </span>		tracer:      tf.Infra(),
+<span id="L132" class="ln">   132  </span>		urlFn:       urlFn,
+<span id="L133" class="ln">   133  </span>		cacheTTL:    cacheTTL,
+<span id="L134" class="ln">   134  </span>		cooldown:    cooldown,
+<span id="L135" class="ln">   135  </span>		allowedAlgs: allowedAlgs,
+<span id="L136" class="ln">   136  </span>		clk:         clk,
+<span id="L137" class="ln">   137  </span>		fetchSem:    make(chan struct{}, 1),
+<span id="L138" class="ln">   138  </span>		keys:        map[string]crypto.PublicKey{},
+<span id="L139" class="ln">   139  </span>	}
+<span id="L140" class="ln">   140  </span>}
+<span id="L141" class="ln">   141  </span>
+<span id="L142" class="ln">   142  </span><span class="comment">// ResolveKey は、kid に対応する署名検証用公開鍵を返します（KeyResolver 実装）。</span>
+<span id="L143" class="ln">   143  </span><span class="comment">// キャッシュに無い / 期限切れの場合は JWKS を再取得します。</span>
+<span id="L144" class="ln">   144  </span>func (r *jwksResolver) ResolveKey(ctx context.Context, kid string) (crypto.PublicKey, error) {
+<span id="L145" class="ln">   145  </span>	if key := r.lookup(kid); key != nil {
+<span id="L146" class="ln">   146  </span>		return key, nil
+<span id="L147" class="ln">   147  </span>	}
+<span id="L148" class="ln">   148  </span>	<span class="comment">// 現世代で不在が確定済みの kid は再取得せず即座に拒否する（再取得連打の抑止）。</span>
+<span id="L149" class="ln">   149  </span>	if r.negativelyCached(kid) {
+<span id="L150" class="ln">   150  </span>		return nil, errJWKSKIDKnownAbsent
+<span id="L151" class="ln">   151  </span>	}
+<span id="L152" class="ln">   152  </span>	fetched, err := r.refresh(ctx)
+<span id="L153" class="ln">   153  </span>	if err != nil {
+<span id="L154" class="ln">   154  </span>		return nil, err
+<span id="L155" class="ln">   155  </span>	}
+<span id="L156" class="ln">   156  </span>	if key := r.lookup(kid); key != nil {
+<span id="L157" class="ln">   157  </span>		return key, nil
+<span id="L158" class="ln">   158  </span>	}
+<span id="L159" class="ln">   159  </span>	<span class="comment">// 実際に取得した世代でのみ不在を確定する。cooldown で未取得（throttle）のときに記録すると、</span>
+<span id="L160" class="ln">   160  </span>	<span class="comment">// その後 cooldown が明けても cacheTTL 満了まで再取得がブロックされ、回転追加の kid を取りこぼす。</span>
+<span id="L161" class="ln">   161  </span>	if fetched {
+<span id="L162" class="ln">   162  </span>		r.recordAbsent(kid)
+<span id="L163" class="ln">   163  </span>	}
+<span id="L164" class="ln">   164  </span>	return nil, errJWKSNoMatchingKID
+<span id="L165" class="ln">   165  </span>}
+<span id="L166" class="ln">   166  </span>
+<span id="L167" class="ln">   167  </span><span class="comment">// Drain は、切り離して走っている取得の完了を待ちます（Drainer 実装）。停止時に取得を途中で失わせないための待ち合わせで、</span>
+<span id="L168" class="ln">   168  </span><span class="comment">// ctx が先に終わった場合はその時点で待つのをやめます（取得側の上限は substrate のタイムアウトが持つ）。</span>
+<span id="L169" class="ln">   169  </span>func (r *jwksResolver) Drain(ctx context.Context) error {
+<span id="L170" class="ln">   170  </span>	waited := make(chan struct{})
+<span id="L171" class="ln">   171  </span>	go func() {
+<span id="L172" class="ln">   172  </span>		defer close(waited)
+<span id="L173" class="ln">   173  </span>		r.inFlight.Wait()
+<span id="L174" class="ln">   174  </span>	}()
+<span id="L175" class="ln">   175  </span>
+<span id="L176" class="ln">   176  </span>	select {
+<span id="L177" class="ln">   177  </span>	case &lt;-waited:
+<span id="L178" class="ln">   178  </span>		return nil
+<span id="L179" class="ln">   179  </span>	case &lt;-ctx.Done():
+<span id="L180" class="ln">   180  </span>		return xerrors.Wrap(apperror.ErrUnavailable, &#34;jwks: gave up waiting for the in-flight refresh&#34;)
+<span id="L181" class="ln">   181  </span>	}
+<span id="L182" class="ln">   182  </span>}
+<span id="L183" class="ln">   183  </span>
+<span id="L184" class="ln">   184  </span><span class="comment">// negativelyCached は、現世代（鮮度内）で kid が不在確定として記録済みかを返します。</span>
+<span id="L185" class="ln">   185  </span><span class="comment">// キャッシュが空 / 期限切れのとき、および kid が negative に未記録のときも false を返します。</span>
+<span id="L186" class="ln">   186  </span><span class="comment">// false は「再取得で解決を試みるべき」を意味し、kid の存在は保証しません。</span>
+<span id="L187" class="ln">   187  </span>func (r *jwksResolver) negativelyCached(kid string) bool {
+<span id="L188" class="ln">   188  </span>	r.mu.RLock()
+<span id="L189" class="ln">   189  </span>	defer r.mu.RUnlock()
+<span id="L190" class="ln">   190  </span>	if r.fetchedAt.IsZero() || r.clk.Now().Sub(r.fetchedAt) &gt;= r.cacheTTL {
+<span id="L191" class="ln">   191  </span>		return false
+<span id="L192" class="ln">   192  </span>	}
+<span id="L193" class="ln">   193  </span>	_, ok := r.negative[kid]
+<span id="L194" class="ln">   194  </span>	return ok
+<span id="L195" class="ln">   195  </span>}
+<span id="L196" class="ln">   196  </span>
+<span id="L197" class="ln">   197  </span><span class="comment">// recordAbsent は、現世代で不在が確定した kid を negative へ記録します。</span>
+<span id="L198" class="ln">   198  </span><span class="comment">// 鮮度外（fetchedAt ゼロ / cacheTTL 超過）では記録しません。</span>
+<span id="L199" class="ln">   199  </span>func (r *jwksResolver) recordAbsent(kid string) {
+<span id="L200" class="ln">   200  </span>	r.mu.Lock()
+<span id="L201" class="ln">   201  </span>	defer r.mu.Unlock()
+<span id="L202" class="ln">   202  </span>	if r.fetchedAt.IsZero() || r.clk.Now().Sub(r.fetchedAt) &gt;= r.cacheTTL {
+<span id="L203" class="ln">   203  </span>		return
+<span id="L204" class="ln">   204  </span>	}
+<span id="L205" class="ln">   205  </span>	if r.negative == nil {
+<span id="L206" class="ln">   206  </span>		r.negative = map[string]struct{}{}
+<span id="L207" class="ln">   207  </span>	}
+<span id="L208" class="ln">   208  </span>	r.negative[kid] = struct{}{}
+<span id="L209" class="ln">   209  </span>}
+<span id="L210" class="ln">   210  </span>
+<span id="L211" class="ln">   211  </span><span class="comment">// lookup は、鮮度内のキャッシュから kid に対応する鍵を返します（無ければ nil）。</span>
+<span id="L212" class="ln">   212  </span>func (r *jwksResolver) lookup(kid string) crypto.PublicKey {
+<span id="L213" class="ln">   213  </span>	r.mu.RLock()
+<span id="L214" class="ln">   214  </span>	defer r.mu.RUnlock()
+<span id="L215" class="ln">   215  </span>	if r.fetchedAt.IsZero() || r.clk.Now().Sub(r.fetchedAt) &gt;= r.cacheTTL {
+<span id="L216" class="ln">   216  </span>		return nil
+<span id="L217" class="ln">   217  </span>	}
+<span id="L218" class="ln">   218  </span>	return r.keys[kid]
+<span id="L219" class="ln">   219  </span>}
+<span id="L220" class="ln">   220  </span>
+<span id="L221" class="ln">   221  </span><span class="comment">// refresh は、cooldown を尊重して JWKS を再取得します。HTTP I/O 中は mu を保持しません。</span>
+<span id="L222" class="ln">   222  </span><span class="comment">// 第 1 戻り値は実際に HTTP 取得を行ったかを表し、cooldown 中の throttle・呼び出し元の離脱では false になります</span>
+<span id="L223" class="ln">   223  </span><span class="comment">// （呼び出し元が「取得済み世代での不在確定」と「未取得」を区別し、後者を negative へ誤記録しないため）。</span>
+<span id="L224" class="ln">   224  </span><span class="comment">//</span>
+<span id="L225" class="ln">   225  </span><span class="comment">// 取得そのものは呼び出し元のキャンセルから切り離して走ります。鍵集合の更新は全リクエスト共通の作業であり、</span>
+<span id="L226" class="ln">   226  </span><span class="comment">// たまたまそれを引き当てた 1 リクエストの寿命に支配させると、切断のたびに cooldown を消費しない再取得が起き、</span>
+<span id="L227" class="ln">   227  </span><span class="comment">// 未知 kid による再取得を絞るという cooldown の目的が失われます。</span>
+<span id="L228" class="ln">   228  </span>func (r *jwksResolver) refresh(ctx context.Context) (bool, error) {
+<span id="L229" class="ln">   229  </span>	<span class="comment">// 取得権の獲得も呼び出し元の予算に従わせる。先行する取得は切り離されて走るため、</span>
+<span id="L230" class="ln">   230  </span>	<span class="comment">// 待機を中断不能にすると、待つ側だけが自分の deadline を超えてブロックされる。</span>
+<span id="L231" class="ln">   231  </span>	select {
+<span id="L232" class="ln">   232  </span>	case r.fetchSem &lt;- struct{}{}:
+<span id="L233" class="ln">   233  </span>	case &lt;-ctx.Done():
+<span id="L234" class="ln">   234  </span>		return false, detachedErr(ctx)
+<span id="L235" class="ln">   235  </span>	}
+<span id="L236" class="ln">   236  </span>
+<span id="L237" class="ln">   237  </span>	r.mu.RLock()
+<span id="L238" class="ln">   238  </span>	throttled := !r.lastAttempt.IsZero() &amp;&amp; r.clk.Now().Sub(r.lastAttempt) &lt; r.cooldown
+<span id="L239" class="ln">   239  </span>	lastErr := r.lastErr
+<span id="L240" class="ln">   240  </span>	r.mu.RUnlock()
+<span id="L241" class="ln">   241  </span>	if throttled {
+<span id="L242" class="ln">   242  </span>		&lt;-r.fetchSem
+<span id="L243" class="ln">   243  </span>		<span class="comment">// cooldown 中は再取得せず直近取得の結果を伝播する。</span>
+<span id="L244" class="ln">   244  </span>		<span class="comment">// 直近が失敗なら原因を返し（インフラ障害を「無効トークン」と誤認させない）、成功なら nil。</span>
+<span id="L245" class="ln">   245  </span>		return false, lastErr
+<span id="L246" class="ln">   246  </span>	}
+<span id="L247" class="ln">   247  </span>
+<span id="L248" class="ln">   248  </span>	<span class="comment">// バッファ付き。呼び出し元が離脱した後も取得 goroutine が送信でブロックしない。</span>
+<span id="L249" class="ln">   249  </span>	done := make(chan error, 1)
+<span id="L250" class="ln">   250  </span>	r.inFlight.Go(func() {
+<span id="L251" class="ln">   251  </span>		defer func() { &lt;-r.fetchSem }()
+<span id="L252" class="ln">   252  </span>		done &lt;- r.fetchAndRecord(context.WithoutCancel(ctx))
+<span id="L253" class="ln">   253  </span>	})
+<span id="L254" class="ln">   254  </span>
+<span id="L255" class="ln">   255  </span>	select {
+<span id="L256" class="ln">   256  </span>	case err := &lt;-done:
+<span id="L257" class="ln">   257  </span>		return true, err
+<span id="L258" class="ln">   258  </span>	case &lt;-ctx.Done():
+<span id="L259" class="ln">   259  </span>		return false, detachedErr(ctx)
+<span id="L260" class="ln">   260  </span>	}
+<span id="L261" class="ln">   261  </span>}
+<span id="L262" class="ln">   262  </span>
+<span id="L263" class="ln">   263  </span><span class="comment">// fetchAndRecord は、JWKS を取得して結果を共有キャッシュへ記録します。</span>
+<span id="L264" class="ln">   264  </span><span class="comment">// 記録は fetchMu を解放する前に完了するため、待機していた次の呼び出し元は必ず更新後の lastAttempt を観測します。</span>
+<span id="L265" class="ln">   265  </span>func (r *jwksResolver) fetchAndRecord(ctx context.Context) error {
+<span id="L266" class="ln">   266  </span>	keys, err := r.fetch(ctx)
+<span id="L267" class="ln">   267  </span>
+<span id="L268" class="ln">   268  </span>	now := r.clk.Now()
+<span id="L269" class="ln">   269  </span>	r.mu.Lock()
+<span id="L270" class="ln">   270  </span>	defer r.mu.Unlock()
+<span id="L271" class="ln">   271  </span>
+<span id="L272" class="ln">   272  </span>	r.lastAttempt = now
+<span id="L273" class="ln">   273  </span>	r.lastErr = err
+<span id="L274" class="ln">   274  </span>	if err != nil {
+<span id="L275" class="ln">   275  </span>		return err
+<span id="L276" class="ln">   276  </span>	}
+<span id="L277" class="ln">   277  </span>
+<span id="L278" class="ln">   278  </span>	<span class="comment">// 公開鍵集合が変わった取得成功では、不在確定（negative）を破棄して再評価する。</span>
+<span id="L279" class="ln">   279  </span>	if !sameKeySet(r.keys, keys) {
+<span id="L280" class="ln">   280  </span>		r.negative = nil
+<span id="L281" class="ln">   281  </span>	}
+<span id="L282" class="ln">   282  </span>	r.keys = keys
+<span id="L283" class="ln">   283  </span>	r.fetchedAt = now
+<span id="L284" class="ln">   284  </span>
+<span id="L285" class="ln">   285  </span>	return nil
+<span id="L286" class="ln">   286  </span>}
+<span id="L287" class="ln">   287  </span>
+<span id="L288" class="ln">   288  </span><span class="comment">// detachedErr は、取得の完了を待たずに離脱した呼び出し元へ返すエラーを、離脱の理由に応じて分類します。</span>
+<span id="L289" class="ln">   289  </span><span class="comment">// 切断（499）と予算切れ（503）を取り違えないよう、httpclient の transport エラーと同じ写像に揃えます。</span>
+<span id="L290" class="ln">   290  </span>func detachedErr(ctx context.Context) error {
+<span id="L291" class="ln">   291  </span>	if xerrors.Is(ctx.Err(), context.Canceled) {
+<span id="L292" class="ln">   292  </span>		return xerrors.Wrap(apperror.ErrCanceled, &#34;jwks: caller left the in-flight refresh&#34;)
+<span id="L293" class="ln">   293  </span>	}
+<span id="L294" class="ln">   294  </span>	return xerrors.Wrap(apperror.ErrUnavailable, &#34;jwks: caller budget exhausted during refresh&#34;)
+<span id="L295" class="ln">   295  </span>}
+<span id="L296" class="ln">   296  </span>
+<span id="L297" class="ln">   297  </span><span class="comment">// sameKeySet は、2 つの鍵マップが同一の kid 集合を持つかを返します。</span>
+<span id="L298" class="ln">   298  </span>func sameKeySet(a, b map[string]crypto.PublicKey) bool {
+<span id="L299" class="ln">   299  </span>	if len(a) != len(b) {
+<span id="L300" class="ln">   300  </span>		return false
+<span id="L301" class="ln">   301  </span>	}
+<span id="L302" class="ln">   302  </span>	for kid := range a {
+<span id="L303" class="ln">   303  </span>		if _, ok := b[kid]; !ok {
+<span id="L304" class="ln">   304  </span>			return false
+<span id="L305" class="ln">   305  </span>		}
+<span id="L306" class="ln">   306  </span>	}
+<span id="L307" class="ln">   307  </span>	return true
+<span id="L308" class="ln">   308  </span>}
+<span id="L309" class="ln">   309  </span>
+<span id="L310" class="ln">   310  </span><span class="comment">// fetch は、httpclient substrate 経由で JWKS を取得し、kid→公開鍵のマップへ変換します。</span>
+<span id="L311" class="ln">   311  </span><span class="comment">// タイムアウト・キャンセルは ctx と substrate の profile が担います。</span>
+<span id="L312" class="ln">   312  </span>func (r *jwksResolver) fetch(ctx context.Context) (map[string]crypto.PublicKey, error) {
+<span id="L313" class="ln">   313  </span>	ctx, endSpan := r.tracer.Start(ctx)
+<span id="L314" class="ln">   314  </span>	defer endSpan()
+<span id="L315" class="ln">   315  </span>
+<span id="L316" class="ln">   316  </span>	url, err := r.urlFn(ctx)
+<span id="L317" class="ln">   317  </span>	if err != nil {
+<span id="L318" class="ln">   318  </span>		return nil, err
+<span id="L319" class="ln">   319  </span>	}
+<span id="L320" class="ln">   320  </span>	resp, err := r.client.Do(ctx, httpclient.NewRequest(httpclient.MethodGet(), jwksDownstream, url))
+<span id="L321" class="ln">   321  </span>	if err != nil {
+<span id="L322" class="ln">   322  </span>		return nil, err
+<span id="L323" class="ln">   323  </span>	}
+<span id="L324" class="ln">   324  </span>	return parseJWKSKeys(resp.Body, r.allowedAlgs)
+<span id="L325" class="ln">   325  </span>}
+<span id="L326" class="ln">   326  </span>
+<span id="L327" class="ln">   327  </span><span class="comment">// parseJWKSKeys は、JWKS(JSON) を kid→公開鍵のマップへパースします。</span>
+<span id="L328" class="ln">   328  </span><span class="comment">// 署名用途（use=sig）の KeyID 付き RSA 公開鍵のみ採用し、JWK が alg を宣言している場合は</span>
+<span id="L329" class="ln">   329  </span><span class="comment">// allowedAlgs（許可署名アルゴリズム）に含まれるものだけ採用します（RFC 7517 §4.4）。</span>
+<span id="L330" class="ln">   330  </span><span class="comment">// 1 件も無ければエラーを返します。</span>
+<span id="L331" class="ln">   331  </span>func parseJWKSKeys(data []byte, allowedAlgs []string) (map[string]crypto.PublicKey, error) {
+<span id="L332" class="ln">   332  </span>	var set jose.JSONWebKeySet
+<span id="L333" class="ln">   333  </span>	if err := json.Unmarshal(data, &amp;set); err != nil {
+<span id="L334" class="ln">   334  </span>		return nil, xerrors.Join(errJWKSMalformed, err)
+<span id="L335" class="ln">   335  </span>	}
+<span id="L336" class="ln">   336  </span>
+<span id="L337" class="ln">   337  </span>	keys := make(map[string]crypto.PublicKey, len(set.Keys))
+<span id="L338" class="ln">   338  </span>	for i := range set.Keys {
+<span id="L339" class="ln">   339  </span>		k := set.Keys[i]
+<span id="L340" class="ln">   340  </span>		<span class="comment">// 署名用途以外（use==&#34;enc&#34; 等）は採用しない。use 未指定は RFC 7517 上 optional のため許容する。</span>
+<span id="L341" class="ln">   341  </span>		if k.Use != &#34;&#34; &amp;&amp; k.Use != &#34;sig&#34; {
+<span id="L342" class="ln">   342  </span>			continue
+<span id="L343" class="ln">   343  </span>		}
+<span id="L344" class="ln">   344  </span>		if k.Algorithm != &#34;&#34; &amp;&amp; !slices.Contains(allowedAlgs, k.Algorithm) {
+<span id="L345" class="ln">   345  </span>			continue
+<span id="L346" class="ln">   346  </span>		}
+<span id="L347" class="ln">   347  </span>		pub, ok := k.Key.(*rsa.PublicKey)
+<span id="L348" class="ln">   348  </span>		if k.KeyID == &#34;&#34; || !ok {
+<span id="L349" class="ln">   349  </span>			continue
+<span id="L350" class="ln">   350  </span>		}
+<span id="L351" class="ln">   351  </span>		<span class="comment">// 重複 kid は silent な last-wins を避け、文書ごと不採用にする（攻撃・設定事故の兆候として loud に失敗する）。</span>
+<span id="L352" class="ln">   352  </span>		if _, dup := keys[k.KeyID]; dup {
+<span id="L353" class="ln">   353  </span>			return nil, xerrors.Wrap(errJWKSDuplicateKID, k.KeyID)
+<span id="L354" class="ln">   354  </span>		}
+<span id="L355" class="ln">   355  </span>		keys[k.KeyID] = pub
+<span id="L356" class="ln">   356  </span>	}
+<span id="L357" class="ln">   357  </span>	if len(keys) == 0 {
+<span id="L358" class="ln">   358  </span>		return nil, errJWKSNoKeys
+<span id="L359" class="ln">   359  </span>	}
+<span id="L360" class="ln">   360  </span>	return keys, nil
+<span id="L361" class="ln">   361  </span>}
+<span id="L362" class="ln">   362  </span>
+</pre><p><a href="../../../../../../src/go-boilerplate/internal/infrastructure/auth/jwt/jwks.go.html?m=text">View as plain text</a></p>
+
+<div id="footer">Generated by <a href="https://godoc.org/golang.org/x/tools/godoc" target="_blank">godoc</a> + <a href="https://codeberg.org/tslocum/godoc-static" target="_blank">godoc-static</a></div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+
+
+</body></html>

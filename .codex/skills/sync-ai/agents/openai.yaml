@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sync AI Skills"
+  short_description: "Claude と Codex のスキル差分を安全に同期する"
+  default_prompt: "Claude と Codex のスキル差分を同期して"

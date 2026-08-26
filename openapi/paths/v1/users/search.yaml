@@ -4,6 +4,8 @@ get:
     - v1/users/search
   summary: ユーザー一覧の取得
   description: 検索条件に基づいてユーザーの一覧を取得します。ページネーションを指定できます。
+  security:
+    - BearerAuth: []
   parameters:
     - $ref: '../../../components/parameters/search/KeywordParam.yaml'
     - $ref: '../../../components/parameters/search/ActiveParam.yaml'
@@ -22,6 +24,8 @@ get:
       $ref: '../../../components/schemas/errors/Unauthorized401.yaml'
     '403':
       $ref: '../../../components/schemas/errors/Forbidden403.yaml'
+    '405':
+      $ref: '../../../components/schemas/errors/MethodNotAllowed405.yaml'
     '500':
       $ref: '../../../components/schemas/errors/InternalServerError500.yaml'
     '503':

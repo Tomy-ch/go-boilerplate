@@ -79,7 +79,6 @@ func TestEngine_Run(t *testing.T) {
 					outboxuc.RelayResult{Claimed: int(testBatchSize), Published: int(testBatchSize)}, nil),
 				uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).Return(outboxuc.RelayResult{}, nil),
 			)
-			// 満杯かつ進捗ありの回は Sleep されず、捌き切った回だけ PollInterval で待機する。
 			sleeper.EXPECT().Sleep(gomock.Any(), testPollInterval).Return(context.Canceled).Times(1)
 
 			require.NoError(t, newEngine(t, uc, sleeper).Run(context.Background()))
@@ -92,7 +91,6 @@ func TestEngine_Run(t *testing.T) {
 			uc.EXPECT().RecordLag(gomock.Any()).Return(nil).AnyTimes()
 			sleeper := mock_clock.NewMockSleeper(ctrl)
 
-			// 全件 publish 失敗（Published==0）の満杯バッチは、待機ゼロで再 claim せず PollInterval を挟む。
 			uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).Return(
 				outboxuc.RelayResult{Claimed: int(testBatchSize), Published: 0}, nil)
 			sleeper.EXPECT().Sleep(gomock.Any(), testPollInterval).Return(context.Canceled).Times(1)

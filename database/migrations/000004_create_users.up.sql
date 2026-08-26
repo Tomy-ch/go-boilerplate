@@ -2,7 +2,6 @@ CREATE TABLE IF NOT EXISTS users (
     id UUID NOT NULL,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
     email VARCHAR(100) NOT NULL,
     phone VARCHAR(20) NOT NULL,
     prefecture_id UUID NOT NULL,
@@ -22,7 +21,6 @@ COMMENT ON TABLE users IS 'ユーザ';
 COMMENT ON COLUMN users.id IS 'ID';
 COMMENT ON COLUMN users.first_name IS '名前';
 COMMENT ON COLUMN users.last_name IS '苗字';
-COMMENT ON COLUMN users.password_hash IS 'パスワードハッシュ';
 COMMENT ON COLUMN users.email IS 'メールアドレス';
 COMMENT ON COLUMN users.phone IS '電話番号';
 COMMENT ON COLUMN users.prefecture_id IS '都道府県ID';

@@ -95,66 +95,157 @@ func TestNewCursor(t *testing.T) {
 	})
 }
 
-func TestCursor_Getters(t *testing.T) {
+func TestCursor_Limit(t *testing.T) {
 	t.Parallel()
 
-	t.Run("Limitが正しい値を返す", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		c := &Cursor{limit: 30, keys: []string{"k"}}
 
-		assert.Equal(t, 30, c.Limit())
+		t.Run("Limitが正しい値を返す", func(t *testing.T) {
+			t.Parallel()
+			c := &Cursor{limit: 30, keys: []string{"k"}}
+
+			assert.Equal(t, 30, c.Limit())
+		})
+	})
+}
+
+func TestCursor_Limit32(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Limit32が正しい値を返す", func(t *testing.T) {
+			t.Parallel()
+			c := &Cursor{limit: 30, keys: nil}
+
+			assert.Equal(t, int32(30), c.Limit32())
+		})
+
+		t.Run("Limit32がmaxPerPageを超える場合はクランプされる", func(t *testing.T) {
+			t.Parallel()
+			c := &Cursor{limit: maxPerPage + 100, keys: nil}
+
+			assert.Equal(t, int32(maxPerPage), c.Limit32())
+		})
+	})
+}
+
+func TestCursor_HasCursor(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("HasCursorはキーがある場合にtrueを返す", func(t *testing.T) {
+			t.Parallel()
+			c := &Cursor{limit: 10, keys: []string{"a"}}
+
+			assert.True(t, c.HasCursor())
+		})
+
+		t.Run("HasCursorはキーが無い場合にfalseを返す", func(t *testing.T) {
+			t.Parallel()
+			c := &Cursor{limit: 10, keys: nil}
+
+			assert.False(t, c.HasCursor())
+		})
+	})
+}
+
+func TestCursor_Keys(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Keysが復号済みのキーを返す", func(t *testing.T) {
+			t.Parallel()
+			c := &Cursor{limit: 10, keys: []string{"a", "b"}}
+
+			assert.Equal(t, []string{"a", "b"}, c.Keys())
+		})
+
+		t.Run("Keysは先頭ページの場合に空スライスを返す", func(t *testing.T) {
+			t.Parallel()
+			c := &Cursor{limit: 10, keys: nil}
+
+			assert.Empty(t, c.Keys())
+		})
+
+		t.Run("Keysが返すスライスを変更しても内部状態は不変である", func(t *testing.T) {
+			t.Parallel()
+			c := &Cursor{limit: 10, keys: []string{"a", "b"}}
+
+			got := c.Keys()
+			got[0] = "mutated"
+
+			assert.Equal(t, []string{"a", "b"}, c.Keys())
+		})
+	})
+}
+
+func Test_decodeCursor(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("nil の場合、nil を返す", func(t *testing.T) {
+			t.Parallel()
+			keys, err := decodeCursor(nil)
+
+			require.NoError(t, err)
+			assert.Nil(t, keys)
+		})
+
+		t.Run("空文字の場合、nil を返す", func(t *testing.T) {
+			t.Parallel()
+			keys, err := decodeCursor(ptr.To(""))
+
+			require.NoError(t, err)
+			assert.Nil(t, keys)
+		})
+
+		t.Run("有効なカーソルの場合、ソートキーのタプルを返す", func(t *testing.T) {
+			t.Parallel()
+			encoded := EncodeCursor("a", "b")
+			keys, err := decodeCursor(&encoded)
+
+			require.NoError(t, err)
+			assert.Equal(t, []string{"a", "b"}, keys)
+		})
 	})
 
-	t.Run("Limit32が正しい値を返す", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
-		c := &Cursor{limit: 30, keys: nil}
 
-		assert.Equal(t, int32(30), c.Limit32())
-	})
+		t.Run("base64 として不正な場合、ErrInvalidArgument を返す", func(t *testing.T) {
+			t.Parallel()
+			keys, err := decodeCursor(ptr.To("!!!not-base64!!!"))
 
-	t.Run("Limit32がmaxPerPageを超える場合はクランプされる", func(t *testing.T) {
-		t.Parallel()
-		c := &Cursor{limit: maxPerPage + 100, keys: nil}
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+			assert.Nil(t, keys)
+		})
 
-		assert.Equal(t, int32(maxPerPage), c.Limit32())
-	})
+		t.Run("JSON 配列として不正な場合、ErrInvalidArgument を返す", func(t *testing.T) {
+			t.Parallel()
+			invalid := base64.RawURLEncoding.EncodeToString([]byte("not-json"))
+			keys, err := decodeCursor(&invalid)
 
-	t.Run("HasCursorはキーがある場合にtrueを返す", func(t *testing.T) {
-		t.Parallel()
-		c := &Cursor{limit: 10, keys: []string{"a"}}
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+			assert.Nil(t, keys)
+		})
 
-		assert.True(t, c.HasCursor())
-	})
+		t.Run("空のキーセットの場合、ErrInvalidArgument を返す", func(t *testing.T) {
+			t.Parallel()
+			empty := base64.RawURLEncoding.EncodeToString([]byte("[]"))
+			keys, err := decodeCursor(&empty)
 
-	t.Run("HasCursorはキーが無い場合にfalseを返す", func(t *testing.T) {
-		t.Parallel()
-		c := &Cursor{limit: 10, keys: nil}
-
-		assert.False(t, c.HasCursor())
-	})
-
-	t.Run("Keysが復号済みのキーを返す", func(t *testing.T) {
-		t.Parallel()
-		c := &Cursor{limit: 10, keys: []string{"a", "b"}}
-
-		assert.Equal(t, []string{"a", "b"}, c.Keys())
-	})
-
-	t.Run("Keysは先頭ページの場合に空スライスを返す", func(t *testing.T) {
-		t.Parallel()
-		c := &Cursor{limit: 10, keys: nil}
-
-		assert.Empty(t, c.Keys())
-	})
-
-	t.Run("Keysが返すスライスを変更しても内部状態は不変である", func(t *testing.T) {
-		t.Parallel()
-		c := &Cursor{limit: 10, keys: []string{"a", "b"}}
-
-		got := c.Keys()
-		got[0] = "mutated"
-
-		assert.Equal(t, []string{"a", "b"}, c.Keys())
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+			assert.Nil(t, keys)
+		})
 	})
 }
 

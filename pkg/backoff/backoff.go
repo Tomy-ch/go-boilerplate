@@ -19,6 +19,7 @@ type Exponential struct {
 
 // Duration は、attempt 回目（0 起算）の待機時間を返します。
 // Initial * Multiplier^attempt を計算し、Max が正なら Max で上限を設けます。
+// Initial が 0 以下なら常に 0 を返し、attempt が負の場合は 0 として扱います。
 func (e Exponential) Duration(attempt int) time.Duration {
 	if e.Initial <= 0 {
 		return 0
@@ -43,7 +44,7 @@ func (e Exponential) Duration(attempt int) time.Duration {
 		return e.Max
 	}
 	// Max 上限なし（Max<=0）かつ高 attempt で d が +Inf / int64 範囲外になりうる。
-	// time.Duration(+Inf) は負値になり cooldown が即発火するため、MaxInt64 で頭打ちにする。
+	// time.Duration(+Inf) は負値になり呼び出し側の待機処理を誤らせるため、MaxInt64 で頭打ちにする。
 	if d > float64(math.MaxInt64) {
 		return time.Duration(math.MaxInt64)
 	}

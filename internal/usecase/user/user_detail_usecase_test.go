@@ -2,12 +2,15 @@ package user
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/prefecture"
 	mock_prefecture "go-boilerplate/internal/domain/prefecture/mock"
+	"go-boilerplate/internal/domain/purchase"
+	mock_purchase "go-boilerplate/internal/domain/purchase/mock"
 	"go-boilerplate/internal/domain/user"
 	mock_user "go-boilerplate/internal/domain/user/mock"
 	"go-boilerplate/internal/observability"
@@ -15,9 +18,13 @@ import (
 	"go-boilerplate/internal/usecase/boundary/authz"
 	mock_authz "go-boilerplate/internal/usecase/boundary/authz/mock"
 	clocktest "go-boilerplate/internal/usecase/boundary/clock/testkit"
-	mock_security "go-boilerplate/internal/usecase/boundary/security/mock"
+	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
+	"go-boilerplate/internal/usecase/outbox"
+	mock_outbox "go-boilerplate/internal/usecase/outbox/mock"
 	"go-boilerplate/internal/usecase/testkit"
+	"go-boilerplate/internal/usecase/user/event"
 	"go-boilerplate/pkg/uuid"
+	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
@@ -42,17 +49,28 @@ func newDenyAuthorizer(ctrl *gomock.Controller) *mock_authz.MockAuthorizer {
 // newTestAuthn は、テスト用の認証主体（Authn）を返します。
 func newTestAuthn(t *testing.T) *authbd.Authn {
 	t.Helper()
-	authn, err := authbd.New(uuid.NewTestFromSalt(t, "caller").String(), authbd.ProviderMock, nil, nil)
+	authn, err := authbd.New(uuidtestkit.NewTestFromSalt(t, "caller").String(), authbd.IssuerMock, nil, nil)
 	require.NoError(t, err)
 	return authn
 }
 
 func newActiveUser(t *testing.T, id, prefID uuid.UUID, ts time.Time) *user.User {
 	t.Helper()
-	u, err := user.New(
-		id, "John", "Doe", "hashed_password", "john@example.com", "1234567890",
-		prefID, "Shibuya", "1-2-3", new("Building A"), "150-0001", ts, ts, nil,
-	)
+	u, err := user.New(id, user.Attributes{
+		Profile: user.Profile{
+			FirstName:    "John",
+			LastName:     "Doe",
+			Email:        "john@example.com",
+			Phone:        "1234567890",
+			PrefectureID: prefID,
+			City:         "Shibuya",
+			Street:       "1-2-3",
+			Building:     new("Building A"),
+			PostalCode:   "150-0001",
+		},
+		CreatedAt: ts,
+		UpdatedAt: ts,
+	})
 	require.NoError(t, err)
 	return u
 }
@@ -71,9 +89,9 @@ func Test_usecase_GetUser(t *testing.T) {
 	authn := newTestAuthn(t)
 	ctx := context.Background()
 	lt := observability.NewMockUsecaseLayerTracer(t)
-	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.Local)
-	id := uuid.NewTestFromSalt(t, "user")
-	prefID := uuid.NewTestFromSalt(t, "prefecture")
+	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+	id := uuidtestkit.NewTestFromSalt(t, "user")
+	prefID := uuidtestkit.NewTestFromSalt(t, "prefecture")
 
 	pft, err := prefecture.New(prefID, "Tokyo", 13)
 	require.NoError(t, err)
@@ -166,9 +184,9 @@ func Test_usecase_UpdateUser(t *testing.T) {
 	ctx := context.Background()
 	lt := observability.NewMockUsecaseLayerTracer(t)
 	txm := testkit.NewMockTransactionManager(t)
-	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.Local)
-	id := uuid.NewTestFromSalt(t, "user")
-	prefID := uuid.NewTestFromSalt(t, "prefecture")
+	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+	id := uuidtestkit.NewTestFromSalt(t, "user")
+	prefID := uuidtestkit.NewTestFromSalt(t, "prefecture")
 	prefName := "Tokyo"
 
 	pft, err := prefecture.New(prefID, prefName, 13)
@@ -277,161 +295,6 @@ func Test_usecase_UpdateUser(t *testing.T) {
 	})
 }
 
-func Test_usecase_ChangePassword(t *testing.T) {
-	t.Parallel()
-
-	ctx := context.Background()
-	lt := observability.NewMockUsecaseLayerTracer(t)
-	txm := testkit.NewMockTransactionManager(t)
-	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.Local)
-	id := uuid.NewTestFromSalt(t, "user")
-	prefID := uuid.NewTestFromSalt(t, "prefecture")
-
-	const (
-		currentPassword = "current_password"
-		newPassword     = "new_valid_password" //nolint:gosec // G101: テスト用のダミーパスワードで実際の資格情報ではない
-		storedHash      = "hashed_password"    // newActiveUser が設定する passwordHash
-	)
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("パスワード変更が成功する", func(t *testing.T) {
-			t.Parallel()
-			ctrl := gomock.NewController(t)
-			u := newActiveUser(t, id, prefID, now)
-			clock := clocktest.NewMockClockOnce(t, now)
-			encrypter := mock_security.NewMockHasher(ctrl)
-			encrypter.EXPECT().Compare(storedHash, currentPassword).Return(true, nil)
-			encrypter.EXPECT().Hash(newPassword).Return("new_hashed", nil)
-			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
-			userRepo.EXPECT().Update(gomock.Any(), gomock.AssignableToTypeOf(u)).Return(nil)
-
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, encrypter: encrypter, userRepo: userRepo}
-			err := uc.ChangePassword(ctx, id, currentPassword, newPassword)
-			require.NoError(t, err)
-		})
-	})
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("現パスワードの検証エラー", func(t *testing.T) {
-			t.Parallel()
-			clock := clocktest.NewMockClockOnce(t, now)
-
-			uc := &usecase{tracer: lt, clock: clock}
-			err := uc.ChangePassword(ctx, id, "short", newPassword)
-			require.ErrorIs(t, err, user.ErrInvalidRawPassword)
-		})
-
-		t.Run("新パスワードの検証エラー", func(t *testing.T) {
-			t.Parallel()
-			clock := clocktest.NewMockClockOnce(t, now)
-
-			uc := &usecase{tracer: lt, clock: clock}
-			err := uc.ChangePassword(ctx, id, currentPassword, "short")
-			require.ErrorIs(t, err, user.ErrInvalidRawPassword)
-		})
-
-		t.Run("対象ユーザーが存在しない", func(t *testing.T) {
-			t.Parallel()
-			ctrl := gomock.NewController(t)
-			expectedErr := xerrors.New("not found")
-			clock := clocktest.NewMockClockOnce(t, now)
-			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(nil, expectedErr)
-
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, userRepo: userRepo}
-			err := uc.ChangePassword(ctx, id, currentPassword, newPassword)
-			require.ErrorIs(t, err, expectedErr)
-		})
-
-		t.Run("現パスワードが一致しない", func(t *testing.T) {
-			t.Parallel()
-			ctrl := gomock.NewController(t)
-			u := newActiveUser(t, id, prefID, now)
-			clock := clocktest.NewMockClockOnce(t, now)
-			encrypter := mock_security.NewMockHasher(ctrl)
-			encrypter.EXPECT().Compare(storedHash, currentPassword).Return(false, nil)
-			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
-
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, encrypter: encrypter, userRepo: userRepo}
-			err := uc.ChangePassword(ctx, id, currentPassword, newPassword)
-			require.ErrorIs(t, err, user.ErrCurrentPasswordMismatch)
-		})
-
-		t.Run("パスワード照合でエラー", func(t *testing.T) {
-			t.Parallel()
-			ctrl := gomock.NewController(t)
-			expectedErr := xerrors.New("compare failed")
-			u := newActiveUser(t, id, prefID, now)
-			clock := clocktest.NewMockClockOnce(t, now)
-			encrypter := mock_security.NewMockHasher(ctrl)
-			encrypter.EXPECT().Compare(storedHash, currentPassword).Return(false, expectedErr)
-			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
-
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, encrypter: encrypter, userRepo: userRepo}
-			err := uc.ChangePassword(ctx, id, currentPassword, newPassword)
-			require.ErrorIs(t, err, expectedErr)
-		})
-
-		t.Run("新パスワードのハッシュ化エラー", func(t *testing.T) {
-			t.Parallel()
-			ctrl := gomock.NewController(t)
-			expectedErr := xerrors.New("hash failed")
-			u := newActiveUser(t, id, prefID, now)
-			clock := clocktest.NewMockClockOnce(t, now)
-			encrypter := mock_security.NewMockHasher(ctrl)
-			encrypter.EXPECT().Compare(storedHash, currentPassword).Return(true, nil)
-			encrypter.EXPECT().Hash(newPassword).Return("", expectedErr)
-			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
-
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, encrypter: encrypter, userRepo: userRepo}
-			err := uc.ChangePassword(ctx, id, currentPassword, newPassword)
-			require.ErrorIs(t, err, expectedErr)
-		})
-
-		t.Run("ドメインのパスワード変更で検証エラー", func(t *testing.T) {
-			t.Parallel()
-			ctrl := gomock.NewController(t)
-			u := newActiveUser(t, id, prefID, now)
-			clock := clocktest.NewMockClockOnce(t, now)
-			encrypter := mock_security.NewMockHasher(ctrl)
-			encrypter.EXPECT().Compare(storedHash, currentPassword).Return(true, nil)
-			encrypter.EXPECT().Hash(newPassword).Return("", nil) // 空ハッシュ → ドメイン ChangePassword で失敗
-			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
-
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, encrypter: encrypter, userRepo: userRepo}
-			err := uc.ChangePassword(ctx, id, currentPassword, newPassword)
-			require.ErrorIs(t, err, user.ErrInvalidPasswordHash)
-		})
-
-		t.Run("永続化エラー", func(t *testing.T) {
-			t.Parallel()
-			ctrl := gomock.NewController(t)
-			expectedErr := xerrors.New("update failed")
-			u := newActiveUser(t, id, prefID, now)
-			clock := clocktest.NewMockClockOnce(t, now)
-			encrypter := mock_security.NewMockHasher(ctrl)
-			encrypter.EXPECT().Compare(storedHash, currentPassword).Return(true, nil)
-			encrypter.EXPECT().Hash(newPassword).Return("new_hashed", nil)
-			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
-			userRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(expectedErr)
-
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, encrypter: encrypter, userRepo: userRepo}
-			err := uc.ChangePassword(ctx, id, currentPassword, newPassword)
-			require.ErrorIs(t, err, expectedErr)
-		})
-	})
-}
-
 func Test_usecase_UpdateUserPartially(t *testing.T) {
 	t.Parallel()
 
@@ -439,9 +302,9 @@ func Test_usecase_UpdateUserPartially(t *testing.T) {
 	ctx := context.Background()
 	lt := observability.NewMockUsecaseLayerTracer(t)
 	txm := testkit.NewMockTransactionManager(t)
-	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.Local)
-	id := uuid.NewTestFromSalt(t, "user")
-	prefID := uuid.NewTestFromSalt(t, "prefecture")
+	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+	id := uuidtestkit.NewTestFromSalt(t, "user")
+	prefID := uuidtestkit.NewTestFromSalt(t, "prefecture")
 
 	pft, err := prefecture.New(prefID, "Osaka", 27)
 	require.NoError(t, err)
@@ -590,10 +453,10 @@ func Test_usecase_DeleteUser(t *testing.T) {
 	ctx := context.Background()
 	lt := observability.NewMockUsecaseLayerTracer(t)
 	txm := testkit.NewMockTransactionManager(t)
-	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.Local)
-	id := uuid.NewTestFromSalt(t, "user")
-	prefID := uuid.NewTestFromSalt(t, "prefecture")
-	authn, err := authbd.New(id.String(), authbd.ProviderMock, nil, nil)
+	now := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
+	id := uuidtestkit.NewTestFromSalt(t, "user")
+	prefID := uuidtestkit.NewTestFromSalt(t, "prefecture")
+	authn, err := authbd.New(id.String(), authbd.IssuerMock, nil, nil)
 	require.NoError(t, err)
 
 	allowAuthorizer := func(ctrl *gomock.Controller) *mock_authz.MockAuthorizer {
@@ -602,22 +465,82 @@ func Test_usecase_DeleteUser(t *testing.T) {
 		return a
 	}
 
+	// noInProgressPurchase は、終端に達した購入しか持たないユーザーを表す購入 Repository モックを返します。
+	noInProgressPurchase := func(ctrl *gomock.Controller) *mock_purchase.MockRepository {
+		r := mock_purchase.NewMockRepository(ctrl)
+		r.EXPECT().FindStatusesByUserID(gomock.Any(), id).
+			Return([]purchase.Status{purchase.StatusCompleted}, nil)
+		return r
+	}
+
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("論理削除が成功する", func(t *testing.T) {
+		t.Run("論理削除と退会イベントの発行が単一トランザクションで完了する", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
+			userLock := mock_user.NewMockLockRepository(ctrl)
 			u := newActiveUser(t, id, prefID, now)
 
 			clock := clocktest.NewMockClockOnce(t, now)
 			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(u, nil)
+			userLock.EXPECT().LockByID(gomock.Any(), id).Return(u, nil)
 			userRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl), userRepo: userRepo}
-			err := uc.DeleteUser(ctx, authn, id)
-			require.NoError(t, err)
+			var emitted outbox.EmitInput
+			emit := mock_outbox.NewMockEmitUsecase(ctrl)
+			emit.EXPECT().Emit(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, in outbox.EmitInput) (uuid.UUID, error) {
+					emitted = in
+					return uuid.UUID{}, nil
+				})
+
+			// 論理削除とイベント発行を別々の tx に分けると退会だけが残るため、tx は 1 回に固定する。
+			singleTx := mock_tx.NewMockManager(ctrl)
+			singleTx.EXPECT().Do(gomock.Any(), gomock.Any()).Times(1).DoAndReturn(
+				func(ctx context.Context, fn func(ctx context.Context) error) error { return fn(ctx) })
+
+			uc := &usecase{
+				tracer: lt, txm: singleTx, clock: clock, authorizer: allowAuthorizer(ctrl),
+				userRepo: userRepo, userLock: userLock, purchaseRepo: noInProgressPurchase(ctrl), emit: emit,
+			}
+			require.NoError(t, uc.DeleteUser(ctx, authn, id))
+
+			assert.Equal(t, "user", emitted.AggregateType)
+			assert.Equal(t, id.String(), emitted.AggregateID)
+			assert.Equal(t, event.TypeWithdrawn, emitted.EventType)
+
+			var payload struct {
+				UserID    string `json:"userId"`
+				DeletedAt string `json:"deletedAt"`
+			}
+			require.NoError(t, json.Unmarshal(emitted.Payload, &payload))
+			assert.Equal(t, id.String(), payload.UserID)
+			assert.Equal(t, now.Format(time.RFC3339Nano), payload.DeletedAt)
+		})
+
+		t.Run("ユーザー行のロックを進行中購入の判定より前に取る", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			userLock := mock_user.NewMockLockRepository(ctrl)
+			u := newActiveUser(t, id, prefID, now)
+
+			clock := clocktest.NewMockClockOnce(t, now)
+			userRepo := mock_user.NewMockRepository(ctrl)
+			purchaseRepo := mock_purchase.NewMockRepository(ctrl)
+			gomock.InOrder(
+				userLock.EXPECT().LockByID(gomock.Any(), id).Return(u, nil),
+				purchaseRepo.EXPECT().FindStatusesByUserID(gomock.Any(), id).Return(nil, nil),
+			)
+			userRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+			emit := mock_outbox.NewMockEmitUsecase(ctrl)
+			emit.EXPECT().Emit(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, nil)
+
+			uc := &usecase{
+				tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl),
+				userRepo: userRepo, userLock: userLock, purchaseRepo: purchaseRepo, emit: emit,
+			}
+			require.NoError(t, uc.DeleteUser(ctx, authn, id))
 		})
 	})
 
@@ -637,6 +560,104 @@ func Test_usecase_DeleteUser(t *testing.T) {
 			require.ErrorIs(t, err, apperror.ErrPermissionDenied)
 		})
 
+		t.Run("進行中の購入が残っている場合_ErrConflict", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			userLock := mock_user.NewMockLockRepository(ctrl)
+			u := newActiveUser(t, id, prefID, now)
+
+			clock := clocktest.NewMockClockOnce(t, now)
+			userRepo := mock_user.NewMockRepository(ctrl)
+			userLock.EXPECT().LockByID(gomock.Any(), id).Return(u, nil)
+			// 退会を拒否するため論理削除もイベント発行も行わない。
+			purchaseRepo := mock_purchase.NewMockRepository(ctrl)
+			purchaseRepo.EXPECT().FindStatusesByUserID(gomock.Any(), id).
+				Return([]purchase.Status{purchase.StatusUnprocessed}, nil)
+
+			uc := &usecase{
+				tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl),
+				userRepo: userRepo, userLock: userLock, purchaseRepo: purchaseRepo, emit: mock_outbox.NewMockEmitUsecase(ctrl),
+			}
+			err := uc.DeleteUser(ctx, authn, id)
+			require.ErrorIs(t, err, apperror.ErrConflict)
+			assert.Nil(t, u.DeletedAt())
+		})
+
+		t.Run("進行中の購入の確認でエラー", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			userLock := mock_user.NewMockLockRepository(ctrl)
+			expectedErr := xerrors.New("purchase lookup failed")
+			u := newActiveUser(t, id, prefID, now)
+
+			clock := clocktest.NewMockClockOnce(t, now)
+			userRepo := mock_user.NewMockRepository(ctrl)
+			userLock.EXPECT().LockByID(gomock.Any(), id).Return(u, nil)
+			purchaseRepo := mock_purchase.NewMockRepository(ctrl)
+			purchaseRepo.EXPECT().FindStatusesByUserID(gomock.Any(), id).Return(nil, expectedErr)
+
+			uc := &usecase{
+				tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl),
+				userRepo: userRepo, userLock: userLock, purchaseRepo: purchaseRepo, emit: mock_outbox.NewMockEmitUsecase(ctrl),
+			}
+			require.ErrorIs(t, uc.DeleteUser(ctx, authn, id), expectedErr)
+		})
+
+		t.Run("トランザクションの実行に失敗した場合、エラーが伝播される", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			expectedErr := testkit.ExpectedDBError()
+
+			clock := clocktest.NewMockClockOnce(t, now)
+			// tx.Manager 自体が失敗する経路（接続断等）。fn は実行されないため repo 呼び出しはない。
+			failingTx := mock_tx.NewMockManager(ctrl)
+			failingTx.EXPECT().Do(gomock.Any(), gomock.Any()).Return(expectedErr)
+
+			uc := &usecase{tracer: lt, txm: failingTx, clock: clock, authorizer: allowAuthorizer(ctrl)}
+			require.ErrorIs(t, uc.DeleteUser(ctx, authn, id), expectedErr)
+		})
+
+		t.Run("論理削除の永続化でエラー", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			userLock := mock_user.NewMockLockRepository(ctrl)
+			expectedErr := xerrors.New("update failed")
+			u := newActiveUser(t, id, prefID, now)
+
+			clock := clocktest.NewMockClockOnce(t, now)
+			userRepo := mock_user.NewMockRepository(ctrl)
+			userLock.EXPECT().LockByID(gomock.Any(), id).Return(u, nil)
+			userRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(expectedErr)
+
+			uc := &usecase{
+				tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl),
+				// 永続化に失敗した場合はイベントを発行しない（EXPECT を張らず未呼び出しを担保する）。
+				userRepo: userRepo, userLock: userLock, purchaseRepo: noInProgressPurchase(ctrl), emit: mock_outbox.NewMockEmitUsecase(ctrl),
+			}
+			require.ErrorIs(t, uc.DeleteUser(ctx, authn, id), expectedErr)
+		})
+
+		t.Run("退会イベントの発行でエラー", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			userLock := mock_user.NewMockLockRepository(ctrl)
+			expectedErr := xerrors.New("emit failed")
+			u := newActiveUser(t, id, prefID, now)
+
+			clock := clocktest.NewMockClockOnce(t, now)
+			userRepo := mock_user.NewMockRepository(ctrl)
+			userLock.EXPECT().LockByID(gomock.Any(), id).Return(u, nil)
+			userRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+			emit := mock_outbox.NewMockEmitUsecase(ctrl)
+			emit.EXPECT().Emit(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, expectedErr)
+
+			uc := &usecase{
+				tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl),
+				userRepo: userRepo, userLock: userLock, purchaseRepo: noInProgressPurchase(ctrl), emit: emit,
+			}
+			require.ErrorIs(t, uc.DeleteUser(ctx, authn, id), expectedErr)
+		})
+
 		t.Run("authnがnilの場合_ErrUnauthenticated", func(t *testing.T) {
 			t.Parallel()
 			// authn が nil のため認可判定以前に弾かれ、authorizer / repository は呼ばれない。
@@ -648,12 +669,13 @@ func Test_usecase_DeleteUser(t *testing.T) {
 		t.Run("対象ユーザーが存在しない", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
+			userLock := mock_user.NewMockLockRepository(ctrl)
 			expectedErr := xerrors.New("not found")
 			clock := clocktest.NewMockClockOnce(t, now)
 			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(nil, expectedErr)
+			userLock.EXPECT().LockByID(gomock.Any(), id).Return(nil, expectedErr)
 
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl), userRepo: userRepo}
+			uc := &usecase{tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl), userRepo: userRepo, userLock: userLock}
 			err := uc.DeleteUser(ctx, authn, id)
 			require.ErrorIs(t, err, expectedErr)
 		})
@@ -661,18 +683,33 @@ func Test_usecase_DeleteUser(t *testing.T) {
 		t.Run("既に削除済みの場合_ErrAlreadyDeleted", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
-			deletedUser, err := user.New(
-				id, "John", "Doe", "hashed_password", "john@example.com", "1234567890",
-				prefID, "Shibuya", "1-2-3", new("Building A"), "150-0001",
-				now, now, new(now),
-			)
+			userLock := mock_user.NewMockLockRepository(ctrl)
+			deletedUser, err := user.New(id, user.Attributes{
+				Profile: user.Profile{
+					FirstName:    "John",
+					LastName:     "Doe",
+					Email:        "john@example.com",
+					Phone:        "1234567890",
+					PrefectureID: prefID,
+					City:         "Shibuya",
+					Street:       "1-2-3",
+					Building:     new("Building A"),
+					PostalCode:   "150-0001",
+				},
+				CreatedAt: now,
+				UpdatedAt: now,
+				DeletedAt: new(now),
+			})
 			require.NoError(t, err)
 
 			clock := clocktest.NewMockClockOnce(t, now.Add(time.Hour))
 			userRepo := mock_user.NewMockRepository(ctrl)
-			userRepo.EXPECT().FindByID(gomock.Any(), id).Return(deletedUser, nil)
+			userLock.EXPECT().LockByID(gomock.Any(), id).Return(deletedUser, nil)
 
-			uc := &usecase{tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl), userRepo: userRepo}
+			uc := &usecase{
+				tracer: lt, txm: txm, clock: clock, authorizer: allowAuthorizer(ctrl),
+				userRepo: userRepo, userLock: userLock, purchaseRepo: noInProgressPurchase(ctrl), emit: mock_outbox.NewMockEmitUsecase(ctrl),
+			}
 			err = uc.DeleteUser(ctx, authn, id)
 			require.ErrorIs(t, err, user.ErrAlreadyDeleted)
 		})
