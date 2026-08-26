@@ -33,14 +33,7 @@ docs/
 
 These files are displayed in the **Architecture (English)** section.
 
-## 2. Japanese Documents
-
-A Japanese document sits **beside its English canonical**, named `<name>.ja.md`. The suffix is what
-separates the languages; there is no separate directory, and the generator splits them by suffix.
-
-These files are displayed in the **Architecture (Japanese)** section.
-
-## 3. Section Documents
+## 2. Section Documents
 
 If a subdirectory is created, a documentation section is automatically generated.
 
@@ -68,16 +61,7 @@ Generated section:
 Project (English)
 ```
 
-## 4. Japanese Section Documents
-
-A section's Japanese documents live in that same section directory, as `<name>.ja.md`. Nothing else
-is needed — the generator finds them by suffix and files them under:
-
-```txt
-Project (Japanese)
-```
-
-## 5. Reserved Directories
+## 3. Reserved Directories
 
 The generator treats only this one as a non-section:
 
@@ -115,14 +99,12 @@ Example:
 
 ```txt
 docs/security/auth.md
-docs/security/auth.ja.md
 ```
 
 The portal will automatically add the following.
 
 ```txt
 Security (English)
-Security (Japanese)
 ```
 
 ## 8. CI Integration
@@ -138,8 +120,6 @@ make gen-docs-json
 |配置場所|言語|
 |--------|--------|
 |docs/*.md|English|
-|docs/*.ja.md|Japanese|
 |docs/<section>/*.md|English セクション|
-|docs/<section>/*.ja.md|Japanese セクション|
 
 By following these rules, the documentation portal can be maintained with a consistent structure.

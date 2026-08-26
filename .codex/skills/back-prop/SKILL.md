@@ -5,8 +5,6 @@ description: Detect and reconcile drift between implementation, canonical README
 
 # Documentation Drift Review
 
-For the Japanese reference translation, see `SKILL.ja.md` (not loaded as a skill).
-
 The authority order is **README > code > skill**. This skill discovers drift; it does not use implementation behavior to silently overwrite a documented decision.
 
 ## Scope and categories
@@ -30,7 +28,7 @@ the `corpus` globs from `.agents/ddd-audit/pattern-ledger.yaml` at runtime (neve
 intersect them with the changed files; inspect the complete corpus for a full scan. Run
 `.codex/agents/drift-detector-ddd.toml` whenever D has an in-scope corpus, alongside layer detectors.
 For E, resolve the prose corpus at runtime: `internal/**/README.md`, `pkg/**/README.md`,
-`docs/adr/*.md`, `docs/rules.md`, and `docs/architecture.md`, excluding `*.ja.md`. Run
+`docs/adr/*.md`, `docs/rules.md`, and `docs/architecture.md`. Run
 `.codex/agents/drift-detector-glossary.toml` when the E intersection with changed files is non-empty,
 or always for a full scan. Pass it the resolved prose file list and no categories, in the same
 parallel fan-out as the layer detectors. If `docs/spec/glossary.md` is absent, skip the detector and

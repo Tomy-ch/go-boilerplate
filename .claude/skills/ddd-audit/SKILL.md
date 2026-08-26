@@ -10,7 +10,6 @@ Integrator for auditing the repository's **DDD interpretation** against Evans's 
 language. Fans out read-only `ddd-origin-auditor` agents — **one per pattern** — verifies the
 findings, then drives the ledger-write loop itself.
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory
 (not loaded as a skill; for human reference only).
 
 ## The three-layer model this skill serves

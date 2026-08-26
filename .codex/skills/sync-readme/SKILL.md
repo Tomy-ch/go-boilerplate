@@ -7,8 +7,6 @@ description: Update a specified canonical README so it matches the actual files 
 
 This skill reconciles a README document with the actual file/directory layout under its directory. It rewrites the README to fix drift while respecting nested README boundaries: when a subdirectory has its own README, that subdirectory is summarized via a one-line digest and a reference link, not recursively expanded.
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
-
 ## When to Use
 
 Use this skill when:
@@ -27,10 +25,6 @@ This skill **MUST call `ask the user explicitly` immediately after invocation** 
 2. **Scope confirmation** — confirm the directory boundary (the directory containing the target README) and the depth limit (default: only direct children; nested directories are summarized via their own README if present).
 
 Do NOT read the file tree or write any file until these are confirmed.
-
-This skill always operates on the **canonical** (English) README. Translation files (`README.ja.md` etc.) are re-synced automatically by chaining into the `canonicalize-doc` skill after the canonical update completes — do NOT modify translation files inline within this skill.
-
-If the target the user supplied is itself a translation file (e.g., `README.ja.md` without a sibling `README.md`), ask whether to:
 
 - Treat it as the canonical (rare; only when no English version exists).
 - Generate the canonical first via the `canonicalize-doc` skill, then re-run this skill against the canonical.
@@ -64,7 +58,6 @@ Compare the README's documented entries against the actual entries:
 
 ## Repo Conventions
 
-- The canonical README is `README.md` (English). The Japanese translation, if present, is `README.ja.md` co-located in the same directory.
 - When updating both, keep heading structure, list order, and table columns 1:1 between the two files.
 - Preserve existing section ordering and styling (tables vs lists vs prose) unless the user explicitly asks to restructure.
 - Preserve existing prose that is still accurate. Do not rewrite for stylistic reasons.
@@ -127,21 +120,9 @@ Rewrite the README so it reflects reality:
 - Confirm no real entry (other than ignored ones) is missing.
 - Confirm no nested README was inadvertently expanded.
 
-### 6. Chain into `canonicalize-doc` to sync the translation
+### 6. Verify with Markdown Lint
 
-After the canonical README is written:
-
-1. Check whether a sibling translation file exists (e.g., `README.ja.md` next to the updated `README.md`).
-2. If it does, invoke the `canonicalize-doc` skill via the Skill tool with:
-    - source path: the canonical README that was just updated
-    - direction: `translation-from-canonical` (or `sync-both` with the canonical as source of truth, if the translation already exists)
-3. If no translation file exists, skip this step and report that the canonical was updated standalone.
-
-The chained `canonicalize-doc` call will perform its own `ask the user explicitly` confirmation; that is expected and not redundant — it lets the user veto the translation sync if needed.
-
-### 7. Verify with Markdown Lint
-
-After writing the canonical README (and after `canonicalize-doc` has produced any translation), run:
+After writing the canonical README, run:
 
 ```sh
 make md-fix
@@ -160,7 +141,7 @@ Do NOT report the skill as complete until `make md-lint` exits cleanly.
 
 `make md-fix` operates on the entire repository, so it may modify Markdown files unrelated to the README pair. List any such files when reporting completion so the user can review the broader change set.
 
-### 8. Final verification
+### 7. Final verification
 
 - Confirm both files (canonical and translation) have parity if the translation was synced.
 - Report which entries were added / removed / updated and which files were written.

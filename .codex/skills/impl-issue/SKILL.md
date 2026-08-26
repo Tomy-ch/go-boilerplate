@@ -18,7 +18,6 @@ notes. Repository detail that genuinely does drift stays behind pointers: `.make
 (full target registry), `docs/maintenance/db-worktree-pool.md` (slot pool), `docs/development-flow.md`
 (per-change-type flows).
 
-A Japanese reference translation lives at `SKILL.ja.md` in this directory (for human reference only;
 not loaded as a skill).
 
 ## When to Use

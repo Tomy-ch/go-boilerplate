@@ -7,8 +7,6 @@ description: Create the usecase layer spec template at `docs/spec/<feature>/usec
 
 Create the usecase layer spec template for one feature.
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
-
 ## When to Use
 
 - Starting a new feature and need the usecase layer spec template.

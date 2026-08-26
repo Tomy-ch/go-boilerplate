@@ -14,7 +14,6 @@ you are about to assert is true of the code as it stands right now**, and refusi
 plausible guesses. An issue is read months later by someone who will act on it; a confident sentence
 that was never verified costs more than no issue at all.
 
-A Japanese reference translation lives at `SKILL.ja.md` in this directory (for human reference only;
 not loaded as a skill).
 
 ## When to Use

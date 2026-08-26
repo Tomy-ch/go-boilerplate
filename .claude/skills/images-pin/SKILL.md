@@ -12,8 +12,6 @@ It is the sibling of `actions-pin` — that skill pins GitHub Actions `uses:` to
 
 **The tag is not this skill's to change.** `golang:1.26.5-alpine`, `node:24.18.0-alpine`, etc. are version-pinned by `make sync-versions` (from `mise.toml`) and bumped by `go-upgrade` / `tools-upgrade`; compose service-image tags (`postgres:18.3-bookworm`, `grafana/otel-lgtm:0.28.0`, …) are owned upstream / by whoever set the compose service. This skill only manages the `@sha256:...` digest that follows the tag, for Dockerfile and compose images alike. Never edit a tag here — if a version bump is needed, stop and defer to the owning skill.
 
-A Japanese reference translation is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
-
 ## How Pinning Works in This Repo
 
 Read this before doing anything — the mechanism determines every step below. Read the actual `scripts/pin-images/main.go` and `.makefiles/docker/pin.mk` at runtime; this section is the summary, the code is the source of truth.
@@ -150,5 +148,4 @@ Confirm before reporting completion:
 - [ ] `make pin-images-check` + `make docker-lint` run and reported
 - [ ] No `FROM` / compose `image:` **tag** changed (digest-only); every managed `FROM` / compose `image:` is digest-pinned (no tag-only) and registered in the lockfile
 - [ ] Rule 2 held images listed for later re-run once aged
-- [ ] After updating `SKILL.md`, also update `SKILL.ja.md` to keep the Japanese translation in sync
 - [ ] No commit / stage / push performed

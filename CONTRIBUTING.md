@@ -105,7 +105,6 @@ as in code. The threshold is recurrence: a decision that will be re-litigated, o
 reader will otherwise have to reverse-engineer from the diff.
 
 Documentation follows the code in the same change. Canonical documents are English, each paired
-with a Japanese translation (`*.ja.md`); the rules that keep the pair and the documentation portal
 consistent are in [docs/maintenance/docs-structure.md](docs/maintenance/docs-structure.md).
 
 ## Security
