@@ -328,6 +328,24 @@ export const DOC_REPLACEMENTS: readonly DocReplacement[] = [
     ["env/README.ja.md:generic-api-key:242\n"],
     ["env/README.ja.md:generic-api-key:217\n"],
   ]),
+  // gitleaks のフィンガープリントは行番号を含むので、畳んで行が動けば無視が外れて検出が復活する。
+  // 残る側がどちらの言語かで行数が違うため、モードごとに宣言する。
+  ...forFile(
+    ".gitleaksignore",
+    [
+      ["env/README.md:generic-api-key:244", "env/README.md:generic-api-key:243"],
+      ["env/README.md:generic-api-key:219", "env/README.md:generic-api-key:218"],
+    ],
+    "en",
+  ),
+  ...forFile(
+    ".gitleaksignore",
+    [
+      ["env/README.md:generic-api-key:244", "env/README.md:generic-api-key:241"],
+      ["env/README.md:generic-api-key:219", "env/README.md:generic-api-key:216"],
+    ],
+    "ja",
+  ),
   ...forFile(".graphifyignore", [
     ["*.ja.md\n**/*.ja.md\n"],
   ]),
