@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { type ReadFile, planRemoval } from "./plan";
+import { type ReadFile, planKeepBoth, planRemoval } from "./plan";
 
 /** 本文の読み出しを固定表で差し替える。 */
 function reader(files: Readonly<Record<string, string>>): ReadFile {
@@ -305,6 +305,13 @@ describe("planRemoval", () => {
       expect(plan.undeclared.map(({ file }) => file)).toEqual(["a/b.ts", "z/b.ts"]);
     });
 
+    // 名前空間の名前を散文で説明している文書がある。綴りだけで書き換えると本文が壊れる。
+    it("マーカーの形をしていない綴りだけの行を書き換えない", () => {
+      const source = "この撤去は `doc-pair:begin` で囲む。\n";
+
+      expect(planKeepBoth(["a.md"], reader({ "a.md": source }))).toEqual([]);
+    });
+
     it("読めないファイルを黙って飛ばす", () => {
       const plan = planRemoval("ja", ["gone.ja.md"], reader({}));
 
@@ -315,6 +322,58 @@ describe("planRemoval", () => {
       const plan = planRemoval("en", ["README.md"], reader({ "README.md": "# Title\n" }));
 
       expect(plan.operations).toEqual([]);
+    });
+  });
+});
+
+describe("planKeepBoth", () => {
+  describe("正常系", () => {
+    // 選び終えたツリーに宣言が残ると、次に読む人が「まだ選べる」と読み違える。
+    it("本文を残してマーカーの宣言だけを落とす", () => {
+      const source = "# T\n\n<!-- doc-pair:begin -->\n対訳の話\n<!-- doc-pair:end -->\n";
+      const operations = planKeepBoth(["a.md"], reader({ "a.md": source }));
+
+      expect(operations).toEqual([{ kind: "write", path: "a.md", content: "# T\n\n対訳の話\n" }]);
+    });
+
+    it("Markdown 以外のマーカーも解決する", () => {
+      const operations = planKeepBoth(
+        ["x.ts"],
+        reader({ "x.ts": 'const a = 1;\nconst b = 2; // doc-pair:line\n' }),
+      );
+
+      expect(operations).toEqual([
+        { kind: "write", path: "x.ts", content: "const a = 1;\nconst b = 2;\n" },
+      ]);
+    });
+
+    it("マーカーを持たないファイルを書き換え対象に挙げない", () => {
+      expect(planKeepBoth(["a.md"], reader({ "a.md": "# T\n" }))).toEqual([]);
+    });
+
+    it("読めないファイルを黙って飛ばす", () => {
+      expect(planKeepBoth(["gone.md"], reader({}))).toEqual([]);
+    });
+
+    it("走査対象でないファイルを見ない", () => {
+      expect(planKeepBoth(["a.png"], reader({ "a.png": "// doc-pair:line\n" }))).toEqual([]);
+    });
+
+    // 自消滅する対象を書き換えても、コミットの時点では 1 行も残っていない。
+    it("消える予定のパスを外す", () => {
+      const files = ["tool/x.ts", "a.md"];
+      const source = { "tool/x.ts": "const a = 1; // doc-pair:line\n", "a.md": "# T\n" };
+
+      expect(planKeepBoth(files, reader(source), ["tool"])).toEqual([]);
+    });
+
+    it("出力を名前順に並べる", () => {
+      const operations = planKeepBoth(
+        ["z.md", "a.md"],
+        reader({ "z.md": "z <!-- doc-pair:line -->\n", "a.md": "a <!-- doc-pair:line -->\n" }),
+      );
+
+      expect(operations.map((operation) => operation.path)).toEqual(["a.md", "z.md"]);
     });
   });
 });

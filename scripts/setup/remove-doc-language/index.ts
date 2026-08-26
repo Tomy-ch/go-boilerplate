@@ -21,7 +21,7 @@ import {
   REMOVED_PATHS,
   SELF_DESTRUCT_PATHS,
 } from "./language-manifest";
-import { type Operation, planRemoval } from "./plan";
+import { type Operation, planKeepBoth, planRemoval } from "./plan";
 
 /** `--lang` に渡せる値。`both` は両方残す（何もしない）。 */
 type LanguageChoice = Mode | "both";
@@ -149,20 +149,8 @@ function rewriteMarkerBaseline(dryRun: boolean): string[] {
   return ["scripts/marker-baseline/baseline.json"];
 }
 
-function run(choice: LanguageChoice, dryRun: boolean): void {
-  if (choice === "both") {
-    console.log("両方を残すため、ドキュメントには手を付けません。");
-    console.log("この選択は取り消せます — 撤去ツールもそのまま残します。");
-
-    return;
-  }
-
-  // ドライランは何も書かないので、作業ツリーの状態を問わない。プレビューを見るために
-  // 手元の変更をコミットさせるのは、確かめてから決めるという手順そのものを壊す。
-  if (!dryRun) {
-    assertCleanWorktree();
-  }
-
+/** 畳む 2 モードの計画。宣言と食い違ったら、1 バイトも書かずに投げる。 */
+function planFold(choice: Mode): Operation[] {
   const plan = planRemoval(
     choice,
     realFiles(),
@@ -183,11 +171,31 @@ function run(choice: LanguageChoice, dryRun: boolean): void {
     throw new UndeclaredProseError(plan.undeclared);
   }
 
-  const touched = plan.operations.flatMap((operation) => applyOperation(operation, dryRun));
-  const declared = removeDeclaredPaths(dryRun);
+  return plan.operations;
+}
+
+function run(choice: LanguageChoice, dryRun: boolean): void {
+  // ドライランは何も書かないので、作業ツリーの状態を問わない。プレビューを見るために
+  // 手元の変更をコミットさせるのは、確かめてから決めるという手順そのものを壊す。
+  if (!dryRun) {
+    assertCleanWorktree();
+  }
+
+  const operations =
+    choice === "both"
+      ? planKeepBoth(realFiles(), readRepoFile, SELF_DESTRUCT_PATHS)
+      : planFold(choice);
+
+  const touched = operations.flatMap((operation) => applyOperation(operation, dryRun));
+  // 対訳を運ぶ仕組みは `both` では残る。使い続けると決めた選択だからである。
+  const declared = choice === "both" ? [] : removeDeclaredPaths(dryRun);
   const subject = COMMIT_SUBJECTS[choice];
 
-  console.log(`▶ ${plan.operations.length} 件のファイルを畳みました（${choice}）`);
+  console.log(
+    choice === "both"
+      ? `▶ ${operations.length} 件のファイルから言語選択のマーカーを解決しました（both）`
+      : `▶ ${operations.length} 件のファイルを畳みました（${choice}）`,
+  );
   console.log(`  - 削除 / 改名 / 書き換え: ${touched.length} パス`);
 
   for (const relativePath of declared) {
@@ -230,8 +238,8 @@ function parseChoice(value: string | undefined): LanguageChoice {
 
 const program = newSetupCommand("remove-doc-language");
 program
-  .description("ドキュメント / スキルの対訳ペアを、選んだ言語 1 本へ畳む")
-  .option("--lang <lang>", `残す言語（${MODES.join(" / ")}）`)
+  .description("ドキュメント / スキルの対訳ペアを、選んだ言語で解決する")
+  .option("--lang <lang>", `残す言語（${MODES.join(" / ")}）。both は畳まずマーカーだけ解決する`)
   .action((options: Options) => {
     try {
       run(parseChoice(options.lang), options.dryRun);

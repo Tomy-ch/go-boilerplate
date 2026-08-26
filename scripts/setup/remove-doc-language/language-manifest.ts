@@ -11,9 +11,10 @@ import { type Mode } from "./doc-language";
 export const MODES: readonly (Mode | "both")[] = ["en", "ja", "both"];
 
 /** 撤去のコミット件名。commitlint の type-enum に合わせる。 */
-export const COMMIT_SUBJECTS: Readonly<Record<Mode, string>> = {
+export const COMMIT_SUBJECTS: Readonly<Record<Mode | "both", string>> = {
   en: "Docs: 日本語の対訳を撤去し英語 1 本へ畳む",
   ja: "Docs: 英語正本を撤去し日本語 1 本へ畳む",
+  both: "Docs: 英日の両方を残すと決め、言語選択のマーカーを解決する",
 };
 
 /**

@@ -180,7 +180,50 @@ function uncommentSubstitute(line: string, marker: string): string {
   return matched[1] + (matched[2] ?? matched[3].trimEnd());
 }
 
+/**
+ * マーカーの解決方向。
+ *
+ * @remarks
+ * `remove` は対象が消えたツリーを作ります（有効側を落とし、退避コメントを本文へ戻す）。
+ * `keep` は対象が在り続けると決めたツリーを作ります（有効側を残し、退避コメントを落とす）。
+ * どちらもマーカー行そのものは消えます —— 解決済みのツリーに宣言だけが残ると、次に読む人が
+ * 「まだ選べる」と読み違えるためです。
+ */
+export type Resolution = "remove" | "keep";
+
+/**
+ * 行末に置かれた `<marker>:line` の宣言だけを剥がす。
+ *
+ * @remarks
+ * `//` / `#` / `%%` は行末コメントなので行の残りごと落とします。`<!-- -->` は閉じ記号を
+ * 持つので、その範囲だけを抜きます —— Markdown の表セルのように、宣言の**後ろ**に本文が
+ * 続く置き方があるためです。
+ */
+function stripLineMarker(line: string, marker: string): string {
+  const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  return line
+    .replace(new RegExp(String.raw`[ \t]*(?:\/\/|#|%%)[ \t]*${escaped}:line\b.*$`), "")
+    .replace(new RegExp(String.raw`[ \t]*<!--[ \t]*${escaped}:line\b[ \t]*-->`), "");
+}
+
 export function stripMarkers(content: string, marker: string): StripResult {
+  return resolveMarkers(content, marker, "remove");
+}
+
+/**
+ * マーカーで囲まれた本文を残したまま、マーカーの宣言だけを取り除く。
+ *
+ * @remarks
+ * 退避コメント（`replace-with` 〜 `replace-end`）は落とします。有効側が残る以上、あれは
+ * 二度と使われない複製であり、残せば読む人が二つの正解を突き合わせる羽目になります。
+ */
+export function keepMarked(content: string, marker: string): StripResult {
+  return resolveMarkers(content, marker, "keep");
+}
+
+function resolveMarkers(content: string, marker: string, resolution: Resolution): StripResult {
+  const keeping = resolution === "keep";
   const patterns: MarkerPatterns = {
     blockBegin: markerPattern(marker, "begin"),
     blockEnd: markerPattern(marker, "end"),
@@ -201,13 +244,16 @@ export function stripMarkers(content: string, marker: string): StripResult {
       cut(sink);
       continue;
     }
-    // 有効側（対象が在るときのコード）は除去し、差し替え側は退避コメントを外して残す。
+    // `remove` は有効側（対象が在るときのコード）を落として退避コメントを本文へ戻し、
+    // `keep` はその逆を行う。退避コメントの形の検査は残す側でだけ意味を持つ。
     if (replaceState === ACTIVE) {
-      cut(sink);
+      if (keeping) keep(sink, line);
+      else cut(sink);
       continue;
     }
     if (replaceState === SUBSTITUTE) {
-      keep(sink, uncommentSubstitute(line, marker));
+      if (keeping) cut(sink);
+      else keep(sink, uncommentSubstitute(line, marker));
       continue;
     }
 
@@ -217,8 +263,14 @@ export function stripMarkers(content: string, marker: string): StripResult {
       cut(sink);
       continue;
     }
-    if (depth > 0 || patterns.lineMarker.test(line)) {
-      cut(sink);
+    if (depth > 0) {
+      if (keeping) keep(sink, line);
+      else cut(sink);
+      continue;
+    }
+    if (patterns.lineMarker.test(line)) {
+      if (keeping) keep(sink, stripLineMarker(line, marker));
+      else cut(sink);
       continue;
     }
 

@@ -581,9 +581,9 @@ make setup-remove-doc-language LANG_CHOICE=en
 | --- | --- |
 | `en` | Deletes every `*.ja.md` and removes the references the surviving English documents make to them |
 | `ja` | Deletes every English canonical and **renames** each `<name>.ja.md` to `<name>.md`, so the filename contract (`SKILL.md`, `README.md`) still holds. A skill's YAML frontmatter is transplanted from the canonical onto the translation, which is what keeps the skills loadable |
-| `both` | Keeps the pairs. Nothing is written, and the tool stays so you can decide later |
+| `both` | Keeps the pairs. The markers that mark the fold sites are resolved and the tool retires itself, so this is a decision, not a deferral — revert the commit to reopen it |
 
-Whichever you pick, no `*.ja.md` remains afterwards, so the checks that require a translation pair
+Picking `en` or `ja` leaves no `*.ja.md`, so the checks that require a translation pair
 are removed too: `doc-ref-lint`'s pair check, `skill-lint`'s `SKILL.ja.md` requirement, the portal's
 Japanese entries and the viewer's language switch. The `canonicalize-doc` skill goes with them —
 it exists to create and sync the pairs, and it has no subject once there is one language.

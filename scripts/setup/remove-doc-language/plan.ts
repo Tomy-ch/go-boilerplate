@@ -6,7 +6,7 @@
 
 import path from "node:path";
 
-import { stripMarkers } from "../lib/markers";
+import { keepMarked, stripMarkers } from "../lib/markers";
 import {
   type Mode,
   type UndeclaredLine,
@@ -54,6 +54,14 @@ const MARKED_FILES: ReadonlySet<string> = new Set([
   ".graphifyignore",
   "sonar-project.properties",
 ]);
+
+/** Markdown ではないが、マーカーを持ち得る走査対象か。 */
+function isMarkedNonMarkdown(file: string): boolean {
+  return (
+    (MARKED_EXTENSIONS.some((extension) => file.endsWith(extension)) || MARKED_FILES.has(file)) &&
+    !EXCLUDED_PREFIXES.some((prefix) => file.startsWith(prefix))
+  );
+}
 
 /** 撤去で行う 1 手。 */
 export type Operation =
@@ -117,12 +125,7 @@ export function planRemoval(
     .filter((file) => !removedPaths.some((prefix) => file === prefix || file.startsWith(`${prefix}/`)));
   const pairs = listDocPairs(markdown);
   const marked = files
-    .filter(
-      (file) =>
-        MARKED_EXTENSIONS.some((extension) => file.endsWith(extension)) ||
-        MARKED_FILES.has(file),
-    )
-    .filter((file) => !EXCLUDED_PREFIXES.some((prefix) => file.startsWith(prefix)))
+    .filter(isMarkedNonMarkdown)
     .filter((file) => !removedPaths.some((prefix) => file === prefix || file.startsWith(`${prefix}/`)))
     .sort((a, b) => a.localeCompare(b));
   const applicable = replacements.filter((entry) => entry.mode === undefined || entry.mode === mode);
@@ -168,6 +171,46 @@ export function planRemoval(
     ),
     staleReplacements: stale,
   };
+}
+
+/**
+ * 両方の言語を残すと決めたときの計画。マーカーの宣言だけを剥がし、本文は残す。
+ *
+ * @remarks
+ * 何もしないのではありません。マーカーは「まだ選べる」という宣言なので、選び終えたツリーに
+ * 残すと次に読む人が選択の余地を読み違えます。退避コメントも同じ理由で落とします —— 有効側が
+ * 残る以上あれは二度と使われない複製で、残せば読む人が二つの正解を突き合わせる羽目になります。
+ *
+ * 対訳を運ぶ仕組み（`canonicalize-doc`、ポータルの言語切り替え、日本語ガイドの出力先）は
+ * `REMOVED_PATHS` に載っていますが、ここでは消しません。両方を残す選択とは、それらを使い
+ * 続けるという意味だからです。畳む 2 モードとの違いはそこにあります。
+ *
+ * 宣言（`DOC_REPLACEMENTS` / `DECLARED_LINES`）も使いません。あれは消える名前への言及を
+ * 直すためのもので、何も消えないこの経路では当たる相手が居ません。
+ */
+export function planKeepBoth(
+  files: readonly string[],
+  read: ReadFile,
+  removedPaths: readonly string[] = [],
+): Operation[] {
+  const excluded = (file: string) =>
+    removedPaths.some((prefix) => file === prefix || file.startsWith(`${prefix}/`));
+
+  return files
+    .filter((file) => isScanTarget(file) || isMarkedNonMarkdown(file))
+    .filter((file) => !excluded(file))
+    .sort((a, b) => a.localeCompare(b))
+    .flatMap((file) => {
+      const original = read(file);
+
+      if (original === null || !original.includes(`${MARKER}:`)) {
+        return [];
+      }
+
+      const content = keepMarked(original, MARKER).content;
+
+      return content === original ? [] : [{ kind: "write" as const, path: file, content }];
+    });
 }
 
 /**

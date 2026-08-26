@@ -53,9 +53,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 2 つは行き先が同じ（対訳ペアの無い 1 言語）で、違うのはどちらのファイルが残るかだけ。
-        # 別々に回すのは、`ja` の改名とフロントマター移植が `en` には無い経路だからである。
-        lang: [en, ja]
+        # `en` と `ja` は行き先が同じ（対訳ペアの無い 1 言語）で、違うのはどちらのファイルが
+        # 残るかだけ。別々に回すのは、`ja` の改名とフロントマター移植が `en` には無い経路
+        # だからである。`both` は畳まないが何もしないわけでもなく、マーカーを解決して
+        # ツール自身を撤去する —— 行き先が違うので、後段の検査だけを分ける。
+        lang: [en, ja, both]
 
     steps:
       - name: Harden the runner
@@ -125,19 +127,6 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
         shell: bash
 
-      # `both` は何もしない選択肢である。何もしないことは、何かをすることと同じだけ壊れ得る。
-      - name: Keeping both languages writes nothing
-        run: |
-          set -euo pipefail
-          make setup-remove-doc-language LANG_CHOICE=both
-          if [ -n "$(git status --porcelain)" ]; then
-            echo "::error::LANG_CHOICE=both の実行が作業ツリーを変更しました"
-            git status --porcelain
-            exit 1
-          fi
-          echo "both: no writes"
-        shell: bash
-
       - name: Dry run writes nothing
         run: |
           set -euo pipefail
@@ -150,7 +139,7 @@ jobs:
           echo "dry run: no writes"
         shell: bash
 
-      - name: Fold the documentation into one language
+      - name: Resolve the documentation language
         run: |
           set -euo pipefail
           BEFORE=$(git rev-parse HEAD)
@@ -163,6 +152,7 @@ jobs:
         shell: bash
 
       - name: No translation pair survives
+        if: matrix.lang != 'both'
         run: |
           set -euo pipefail
           LEFTOVER=$(git ls-files '*.ja.md')
@@ -172,6 +162,37 @@ jobs:
             exit 1
           fi
           echo "fold: no *.ja.md remains"
+        shell: bash
+
+      # `both` は畳まないので、残っていることと解決済みであることの両方を見る。片方だけでは
+      # 「何もしなかった」と「正しく解決した」が区別できない。
+      - name: Both languages survive with the markers resolved
+        if: matrix.lang == 'both'
+        run: |
+          set -euo pipefail
+          if [ -z "$(git ls-files '*.ja.md')" ]; then
+            echo "::error::両方を残す選択なのに対訳が 1 つも残っていません"
+            exit 1
+          fi
+          LEFTOVER=$(git grep -nE '(//|#|%%|<!--) ?doc-pair:(begin|end|line|replace-)' -- . || true)
+          if [ -n "${LEFTOVER}" ]; then
+            echo "::error::言語選択のマーカーが解決されずに残っています"
+            echo "${LEFTOVER}"
+            exit 1
+          fi
+          for kept in .claude/skills/canonicalize-doc docs-viewer/src/lang-filter docs/portal/guides/ja; do
+            if [ ! -e "${kept}" ]; then
+              echo "::error::${kept} が消えました。両方を残す選択では対訳を運ぶ仕組みも残ります"
+              exit 1
+            fi
+          done
+          for gone in scripts/setup/remove-doc-language .github/workflows/doc-language-removal-check.yaml; do
+            if [ -e "${gone}" ]; then
+              echo "::error::${gone} が残っています。選び終えた以上このツールは自消滅します"
+              exit 1
+            fi
+          done
+          echo "both: pairs kept, markers resolved, tool retired"
         shell: bash
 
       # `ja` だけの退行。対訳は本文しか持たないため、正本のフロントマターを移植し損ねると

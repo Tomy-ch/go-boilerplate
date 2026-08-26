@@ -160,7 +160,7 @@ setup-remove-licensed-scanners:
 
 # doc-pair:begin
 
-# ドキュメント / スキルの対訳ペアを、選んだ言語 1 本へ畳む（LANG=en|ja|both）。
+# ドキュメント / スキルの対訳ペアを LANG_CHOICE で解決する（en|ja|both）。
 # 他の setup ターゲットと違いツールランナーを経由せずホストで走らせる。400 件超のファイルを
 # 消す・改名するため撤去を 1 コミットに畳んでおり、setup-repo と同じくホストの git が要る
 # （worktree では .git がマウント外の実体を指すファイルなので、コンテナ内からは辿れない）。
@@ -171,7 +171,7 @@ setup-remove-doc-language:
 		echo "❌ LANG_CHOICE を指定してください。例: make setup-remove-doc-language LANG_CHOICE=en"; \
 		echo "   en   = 英語 1 本に畳む（日本語の対訳を撤去）"; \
 		echo "   ja   = 日本語 1 本に畳む（英語正本を撤去し対訳を正本の名前へ改名）"; \
-		echo "   both = 両方残す（何もしない）"; \
+		echo "   both = 両方残す（マーカーだけ解決してツールを撤去）"; \
 		exit 1; \
 	fi
 	@$(TSX) scripts/setup/remove-doc-language --lang $(LANG_CHOICE) $(SETUP_DRY_RUN_FLAG)

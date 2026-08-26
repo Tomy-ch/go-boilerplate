@@ -113,7 +113,7 @@ Node の設定とパッケージ横断のゲートは直下に置く。各ツー
 |`replace-codeowners/`|`.github/CODEOWNERS` の全ルールの所有者を置換。コメント行は記載例を保つため対象外で、所有者欄を判定できないルール行は書き換えずに報告する。 <!-- setup-localize:line -->|
 |`remove-sample-api/`|サンプルAPI(`user`/`prefecture`/`product`/`order`)を削除。`sample-manifest.ts` に宣言したパスを削除し、共有 DI モジュールと `openapi.yaml` の `sample-api` マーカーブロックを除去する。再生成・整形・Lint まで行うには `make setup-remove-sample-api` 経由で実行する。 <!-- sample-api:line -->|
 |`repo-setup/`|boilerplate を自分のリポジトリとして初期化する際の git / gh 側の手順。`preflight` は `v0.0.0` タグがあれば中止し、`bootstrap` はタグを作り直して develop / staging / production を用意しデフォルトブランチを移し、`prune-release-notes` は `v0.0.0.md` 以外のリリースノートを削除する。ラベル・ルールセット・ワークフローの有効化は全体の連鎖を持つ `setup-repository.mk` に残る。ここも Go なのは、タグの一括削除やデフォルトブランチの移動が、実物のリポジトリを壊さずには試せないためである。|
-|`remove-doc-language/`|ドキュメント / スキルの対訳ペアを 1 言語へ畳む（`--lang en\|ja\|both`）。`en` は `*.ja.md` を全削除し、`ja` は対訳を正本の名前へ改名して正本のフロントマターを移植する（`SKILL.md` が読み込み可能なまま保たれる）。対訳規約を説明している散文は機械的に畳まず、`doc-pair` マーカーか `language-manifest.ts` の宣言が持つ。宣言の無い行に当たると 1 バイトも書かずに中止する。 <!-- doc-pair:line -->|
+|`remove-doc-language/`|ドキュメント / スキルの対訳ペアを 1 言語へ畳む（`--lang en\|ja\|both`）。`en` は `*.ja.md` を全削除し、`ja` は対訳を正本の名前へ改名して正本のフロントマターを移植する（`SKILL.md` が読み込み可能なまま保たれる）。`both` は対訳を残してマーカーだけを解決する —— 選び終えたツリーに宣言が残ると、まだ選べると読み違えるためである。対訳規約を説明している散文は機械的に畳まず、`doc-pair` マーカーか `language-manifest.ts` の宣言が持つ。宣言の無い行に当たると 1 バイトも書かずに中止する。 <!-- doc-pair:line -->|
 
 すべての setup スクリプトはプレビュー用の `--dry-run` をサポートしています。
 <!-- sample-api:begin -->
