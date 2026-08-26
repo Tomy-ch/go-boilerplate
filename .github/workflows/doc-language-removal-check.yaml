@@ -185,10 +185,16 @@ jobs:
           echo "fold: every SKILL.md keeps its frontmatter"
         shell: bash
 
+      # `skill-lint` はここでしか出ない退行を捕まえる。frontmatter の `description` は YAML の
+      # ブロックスカラーで、マーカーを置けないぶん宣言だけが頼りになる。畳んだ後に空になっても
+      # ファイルは在るので、行頭の `---` を見るだけの検査では通ってしまう。
       - name: The folded repository is green
         run: |
           set -euo pipefail
           make md-markdownlint-ci
+          pnpm --dir scripts run tsx scripts/skill-lint
+          pnpm --dir scripts run tsx scripts/doc-ref-lint
+          pnpm --dir scripts run tsx scripts/premise-lint
           pnpm --dir scripts run typecheck
           pnpm --dir scripts test
         shell: bash

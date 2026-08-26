@@ -248,7 +248,10 @@ function planJapaneseOnly(
       continue;
     }
 
-    const withFrontmatter = transplantFrontmatter(read(canonical) ?? "", source);
+    // 移植元も差し替え済みの本文にする。生のまま移すと、正本の frontmatter が語る対訳が
+    // 改名後の正本へそのまま乗る。YAML のブロックスカラーはマーカーを置けないので、
+    // そこを直せるのは宣言だけである。
+    const withFrontmatter = transplantFrontmatter(rewrite(canonical) ?? "", source);
     // 冒頭の翻訳注記は位置が規約で決まっているので、参照の検査に載せず先に落とす。
     // 参照だけを見ると、`SKILL.md` という最頻出の名前に触れた散文まで巻き込みます。
     const withoutNote = stripLeadingTranslationNote(withFrontmatter, path.posix.basename(canonical));

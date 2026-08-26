@@ -840,6 +840,36 @@ export const DOC_REPLACEMENTS: readonly DocReplacement[] = [
     to: "const README_JA = \".github/workflows/README.md\";",
     mode: "ja",
   },
+  {
+    file: ".claude/skills/manage-skill/SKILL.md",
+    from: " + mandatory `SKILL.ja.md` translation pair",
+    to: "",
+  },
+  {
+    file: ".claude/skills/manage-skill/SKILL.md",
+    from: "ALWAYS use it before hand-editing a `SKILL.md` or `SKILL.ja.md`.",
+    to: "ALWAYS use it before hand-editing a `SKILL.md`.",
+  },
+  {
+    file: ".claude/skills/manage-skill/SKILL.md",
+    from: "those have `sync-readme` / `canonicalize-doc` / `back-prop`",
+    to: "those have `sync-readme` / `back-prop`",
+  },
+  {
+    file: ".codex/skills/manage-skill/SKILL.md",
+    from: " + mandatory `SKILL.ja.md` translation pair",
+    to: "",
+  },
+  {
+    file: ".codex/skills/manage-skill/SKILL.md",
+    from: "ALWAYS use it before hand-editing a `SKILL.md` or `SKILL.ja.md`.",
+    to: "ALWAYS use it before hand-editing a `SKILL.md`.",
+  },
+  {
+    file: ".codex/skills/manage-skill/SKILL.md",
+    from: "those have `sync-readme` / `canonicalize-doc` / `back-prop`",
+    to: "those have `sync-readme` / `back-prop`",
+  },
 ];
 
 /**
