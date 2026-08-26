@@ -1,7 +1,7 @@
 ---
 name: manage-skill
 description: >-
-  Create, update, evaluate, and optimize skills under this repository's `.codex/skills/`, carrying this repo's conventions for them (English-canonical SKILL.md + mandatory `SKILL.ja.md` translation pair, dense "pushy" description frontmatter, AGENTS.md scope + hard-protected paths, eval artifacts kept out of version control). This is the single entry point for ANY change to an existing skill under `.codex/skills/`; ALWAYS use it before hand-editing a `SKILL.md` or `SKILL.ja.md`. Use this WHENEVER the user wants to update / modify / change / edit / fix / improve / refactor / rename / extend / adjust / tune an existing skill — its steps, `description`, frontmatter, or behavior — or to build a new skill, author/scaffold a `/<name>` command, turn a repeated workflow into a skill, tune a skill's triggering description, or run evals/benchmarks on a skill — even if they don't say the word "skill-creator". Japanese triggers also apply, e.g. 「スキルを更新したい」「スキルを修正して」「このスキルの手順 / description / 挙動を変えて」. Do NOT use it for editing canonical docs (`docs/**`, per-package `README.md` — those have `sync-readme` / `canonicalize-doc` / `back-prop`), other AI-tool configs (`.cursor/`, `.gemini/`, Copilot), or generated files.
+  Create, update, evaluate, and optimize skills under this repository's `.codex/skills/`, carrying this repo's conventions for them (English-canonical SKILL.md, dense "pushy" description frontmatter, AGENTS.md scope + hard-protected paths, eval artifacts kept out of version control). This is the single entry point for ANY change to an existing skill under `.codex/skills/`; ALWAYS use it before hand-editing a `SKILL.md`. Use this WHENEVER the user wants to update / modify / change / edit / fix / improve / refactor / rename / extend / adjust / tune an existing skill — its steps, `description`, frontmatter, or behavior — or to build a new skill, author/scaffold a `/<name>` command, turn a repeated workflow into a skill, tune a skill's triggering description, or run evals/benchmarks on a skill — even if they don't say the word "skill-creator". Japanese triggers also apply, e.g. 「スキルを更新したい」「スキルを修正して」「このスキルの手順 / description / 挙動を変えて」. Do NOT use it for editing canonical docs (`docs/**`, per-package `README.md` — those have `sync-readme` / `back-prop`), other AI-tool configs (`.cursor/`, `.gemini/`, Copilot), or generated files.
 argument-hint: '[skill-name] [--update|--new|--optimize]'
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, ask the user explicitly, Skill, Agent
 ---
@@ -16,7 +16,6 @@ description) and the repository's own conventions, so the produced skill fits in
 `new-env`, `canonicalize-doc`, and the rest. An external methodology plugin, when one is installed,
 supplements it — see Step 0; nothing here depends on that.
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory
 (not loaded as a skill; for human reference only).
 
 ## When to Use
@@ -27,11 +26,7 @@ Use this skill when the user wants to:
   conversation into one.
 - Update, modify, improve, refactor, rename, extend, or fix an existing skill under
   `.codex/skills/` — this is the entry point for any such change, used before hand-editing a
-  <!-- doc-pair:replace-begin -->
-  `SKILL.md` / `SKILL.ja.md`.
-  <!-- doc-pair:replace-with -->
-  <!-- = `SKILL.md`. -->
-  <!-- doc-pair:replace-end -->
+  `SKILL.md`.
 - Optimize a skill's `description` for better triggering, or run evals/benchmarks on a skill.
 
 Do NOT use it for:
@@ -107,22 +102,7 @@ Apply the following repository rules whether or not an optional external methodo
   (responses, generated code comments, test case names, PR/commit text) must be **Japanese**. When
   authoring a skill, bake that requirement into its instructions.
 
-<!-- doc-pair:begin -->
-### 4. Mandatory Japanese translation pair
-
-Every skill in this repo ships a `SKILL.ja.md` reference translation next to `SKILL.md`. This is not
-optional here. After the canonical `SKILL.md` is finalized (create) or changed (update):
-
-- Chain the `canonicalize-doc` skill to produce/sync `SKILL.ja.md` from the canonical `SKILL.md`.
-- The translation carries the standard sync-note header and is not itself loaded as a skill. Confirm
-  the pair is in sync before considering the task done.
-
-<!-- doc-pair:end -->
-<!-- doc-pair:replace-begin -->
-### 5. Eval artifacts stay out of version control
-<!-- doc-pair:replace-with -->
-<!-- = ### 4. Eval artifacts stay out of version control -->
-<!-- doc-pair:replace-end -->
+### 4. Eval artifacts stay out of version control
 
 Evaluation writes a `<skill-name>-workspace/` with iteration/eval dirs, benchmarks, and viewer
 output. A sibling of the skill directory would land inside the tracked `.codex/skills/**`.
@@ -131,11 +111,7 @@ output. A sibling of the skill directory would land inside the tracked `.codex/s
 (plans/artifacts live outside git; `tmp/` is ignored). Never commit eval runs, benchmarks, feedback
 JSON, or viewer HTML.
 
-<!-- doc-pair:replace-begin -->
-### 6. Reuse repo patterns when they fit the skill's shape
-<!-- doc-pair:replace-with -->
-<!-- = ### 5. Reuse repo patterns when they fit the skill's shape -->
-<!-- doc-pair:replace-end -->
+### 5. Reuse repo patterns when they fit the skill's shape
 
 - If the new skill fans out read-only analysis across layers, mirror the **integrator + per-layer
   subagent** pattern (`arch-check` / `back-prop` spawn `*-auditor-*` / `*-detector-*` agents in
@@ -150,12 +126,7 @@ JSON, or viewer HTML.
 
 Capture the intent, identify concrete invocation cases, write `SKILL.md`, and review the draft against
 those cases. Then apply the repository workflow: correct placement, matching frontmatter/description
-<!-- doc-pair:replace-begin -->
-density, English-canonical body, and the eval workspace under `tmp/`. When the draft stabilizes,
-generate `SKILL.ja.md` via `canonicalize-doc`.
-<!-- doc-pair:replace-with -->
-<!-- = density, English-canonical body, and the eval workspace under `tmp/`. -->
-<!-- doc-pair:replace-end -->
+density, English-canonical body, and the eval workspace under `tmp/`.
 
 ## Updating an existing skill
 
@@ -164,7 +135,6 @@ generate `SKILL.ja.md` via `canonicalize-doc`.
   `.codex/skills/<name>/`; there is no read-only copy-to-`/tmp` dance.
 - For a material behavior change, snapshot the pre-edit skill into `tmp/` and compare representative
   invocation cases before and after the update.
-- After editing, re-sync `SKILL.ja.md` via `canonicalize-doc` — an updated `SKILL.md` with a stale
   Japanese pair is drift.
 
 ## Evaluating / optimizing
@@ -179,7 +149,6 @@ workflow, it may supplement this review.
 - The self-contained workflow was followed: intent captured, representative invocation cases reviewed,
   and the draft improved before validation.
 - `.codex/skills/<name>/SKILL.md` present, kebab `name` = dir, dense English "pushy" `description`.
-- `SKILL.ja.md` generated/synced from the canonical `SKILL.md` and in sync.
 - No eval artifacts committed (workspace under gitignored `tmp/`).
 - No hard-protected path touched; only `.codex/skills/**` modified.
 - The user has reviewed outputs (viewer or inline) and is satisfied.

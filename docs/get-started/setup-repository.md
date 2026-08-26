@@ -124,15 +124,13 @@ curl http://localhost:8080/ready
 
 ## Phase 7: Manual Rewrites
 
-1. Rewrite the contents of README.md and README.ja.md according to your project; replace or remove
-   the repository-specific branch-rule exception in the maintainer-policy section.
-2. If your project keeps its documentation in a single language, you may collapse the pair — for
-   example by replacing README.md with the contents of README.ja.md.
+1. Rewrite the contents of README.md according to your project; replace or remove the
+   repository-specific branch-rule exception in the maintainer-policy section.
     - [gen-docs-json.ts](../../scripts/portal/gen-docs-json.ts) and the
       [manifest.yaml](../../docs/portal/manifest.yaml) it generates from both reference README.md,
       so a full replacement has to rewrite those scripts as well.
     - The portal UI carries an En / Jp switch of its own, so it needs the same treatment.
-3. Rewrite the contents of [openapi.yaml](../../openapi/openapi.yaml) according to your project.
+2. Rewrite the contents of [openapi.yaml](../../openapi/openapi.yaml) according to your project.
     - Rewrite the entire Info section according to your project.
         - title
         - termsOfService
@@ -558,43 +556,3 @@ is one nobody reads and nobody maintains. `bearer.yaml` is deliberately outside 
 Elastic License 2.0 costs nothing to run in CI and constrains only redistribution as a service, which
 is a different question with its own answer in
 [the workflows README](../../.github/workflows/README.md#bearers-licence-and-removal).
-
-<!-- doc-pair:begin -->
-## Phase 19: Choose the documentation language
-
-This repository ships every document twice: an English canonical and a Japanese translation beside
-it (`<name>.ja.md`), and the same for every skill (`SKILL.md` / `SKILL.ja.md`). That is 422 pairs.
-A project that reads only one of the two languages maintains the other for nobody.
-
-Run this **last**. The earlier removals declare exact strings in the documents they edit, and folding
-the languages first would delete the text they are waiting for.
-
-```bash
-# Preview: writes nothing and commits nothing. Works on a dirty tree.
-DRY_RUN=1 make setup-remove-doc-language LANG_CHOICE=en
-
-# Fold. The working tree must be clean — the script commits the whole fold at once.
-make setup-remove-doc-language LANG_CHOICE=en
-```
-
-| `LANG_CHOICE` | What happens |
-| --- | --- |
-| `en` | Deletes every `*.ja.md` and removes the references the surviving English documents make to them |
-| `ja` | Deletes every English canonical and **renames** each `<name>.ja.md` to `<name>.md`, so the filename contract (`SKILL.md`, `README.md`) still holds. A skill's YAML frontmatter is transplanted from the canonical onto the translation, which is what keeps the skills loadable |
-| `both` | Keeps the pairs. Nothing is written, and the tool stays so you can decide later |
-
-Whichever you pick, no `*.ja.md` remains afterwards, so the checks that require a translation pair
-are removed too: `doc-ref-lint`'s pair check, `skill-lint`'s `SKILL.ja.md` requirement, the portal's
-Japanese entries and the viewer's language switch. The `canonicalize-doc` skill goes with them —
-it exists to create and sync the pairs, and it has no subject once there is one language.
-
-`ja` is the more expensive choice and worth a moment's thought. The English canonical exists because
-agents read it: Japanese costs roughly 1.5–2.0× the tokens and carries a higher misreading risk
-([ADR-0011](../adr/0011-docs-as-canonical-source.md)). Choosing `ja` accepts that for every agent
-run in the project's life. Choose it when the team reads Japanese and the documents are for people
-first.
-
-The script refuses to run rather than guess. Prose that explains the translation convention itself
-cannot be folded mechanically, so anything not covered by a `doc-pair` marker or declared in
-`language-manifest.ts` stops the run with its file and line — and nothing is written when it does.
-<!-- doc-pair:end -->

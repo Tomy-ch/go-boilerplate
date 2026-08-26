@@ -10,8 +10,6 @@ allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git a
 
 You have been invoked via `/commit`. Argument string: `$ARGUMENTS`
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
-
 This command analyzes uncommitted changes in the working tree and produces one or more git commits with appropriate granularity and the project's prefix convention. All commit messages are in Japanese, per `CLAUDE.md`.
 
 This command intentionally bypasses lefthook on every commit (`git commit --no-verify`) so that pre-commit checks (`make lint` / `make test` / `make sql-lint` / migration checks) do not fire N times during multi-commit splits. Instead, after all commits succeed, Step 6 runs the whole pre-commit hook once via `lefthook run pre-commit --force` plus `make fix` as a single verification pass. The `--force` flag is what makes this work: after this command stages and commits everything the working tree is clean, so a bare `lefthook run pre-commit` would skip every command ("no matching staged files") — `--force` runs the hook anyway. Driving the real hook keeps the gate in sync with `.lefthook.yaml` and runs the commands in parallel.
@@ -119,7 +117,7 @@ Use exactly **one** of the following prefixes per commit (capitalized, English, 
 | `Fix:` | Bug fix (correcting behavior that deviates from intent) | Error-handling fix, logic correction |
 | `Refactor:` | Internal cleanup without changing external behavior | Function split, rename, responsibility move, layer reorganization |
 | `Perf:` | Performance improvement | Query optimization, N+1 elimination, allocation reduction |
-| `Docs:` | Documentation change | `README*`, `docs/`, `*.ja.md`, code comments, release notes |
+| `Docs:` | Documentation change | `README*`, `docs/`, code comments, release notes |
 | `Test:` | Adding or fixing tests | `*_test.go`, test fixtures, test helpers |
 | `Build:` | Build system, dependencies, tooling | `Dockerfile`, `go.mod` / `go.sum`, `makefile`, `.makefiles/**`, `mise.toml` |
 | `CI:` | CI/CD configuration | `.github/workflows/**`, `.lefthook.yaml`, GitHub Actions related |
@@ -138,7 +136,7 @@ Do not invent prefixes outside this list. When ambiguous, choose the closest mat
 | `openapi/**/*.yaml` | `Feat` (API change) |
 | `database/migrations/**/*.sql` | `Feat` (schema change) |
 | `database/dml/**/*.sql` | `Feat` / `Refactor` (new query vs. cleanup) |
-| `docs/**/*.md`, `README*.md`, `*.ja.md` | `Docs` |
+| `docs/**/*.md`, `README*.md` | `Docs` |
 | `Dockerfile`, `docker/**`, `go.mod`, `go.sum`, `makefile`, `.makefiles/**`, `mise.toml` | `Build` |
 | `.github/workflows/**`, `.lefthook.yaml` | `CI` |
 | `.gitignore`, `.claude/**`, editor settings | `Chore` |

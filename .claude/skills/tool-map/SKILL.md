@@ -38,7 +38,7 @@ Scan only project-level paths under the current working directory:
 | Type | Path glob | Entry file |
 | --- | --- | --- |
 | commands | `.claude/commands/` | `<name>.md` <!-- skill-lint-ignore --> |
-| skills | `.claude/skills/` | `<name>/SKILL.md` (skip `SKILL.ja.md` and other `*.ja.md` translation files) |
+| skills | `.claude/skills/` | `<name>/SKILL.md` |
 | agents | `.claude/agents/` | `<name>.md` |
 
 Discovery commands (use `Bash` with `find` / `ls`, then `Read` per file):
@@ -51,7 +51,6 @@ test -d .claude/agents   && find .claude/agents   -maxdepth 1 -type f -name '*.m
 
 Skip:
 
-- `*.ja.md` translation files (they are not loaded as entries).
 - Any directory under `.claude/skills/` that lacks a `SKILL.md`.
 - Hidden files (`.DS_Store` etc.).
 
@@ -184,7 +183,6 @@ Before reporting completion, confirm:
 
 - [ ] All required inputs resolved (via `$ARGUMENTS` or `AskUserQuestion`)
 - [ ] Only project-level `.claude/{commands,skills,agents}/` scanned
-- [ ] `*.ja.md` files excluded from the skills scan
 - [ ] Frontmatter parsed for each entry (name, description, type-specific fields)
 - [ ] Dependencies detected per the documented rules (self-refs excluded; broken edges recorded)
 - [ ] Report contains Summary, Inventory Tables, Dependency Graph (Mermaid), Notes

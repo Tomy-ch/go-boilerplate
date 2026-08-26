@@ -10,7 +10,6 @@ allowed-tools: Bash, Read, Glob, Grep
 Compares `docs/design/context-map.md` against the contact points the repository actually has, and
 reports where the two disagree.
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory
 (not loaded as a skill; for human reference only).
 
 ## Why this is read-only

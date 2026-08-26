@@ -10,8 +10,6 @@ Top-level orchestrator that takes a feature from wherever you are — a rough id
 
 The core's strength is that it is deterministic: specs + OpenAPI + SQL fully determine the generated code. These upstream phases exist only to *produce* those inputs when you don't have them yet — it never bypasses or weakens the core.
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
-
 ## When to Use
 
 - Starting a new feature / endpoint end-to-end — whether you have only an idea, or the 2 specs (`domain.md` + `usecase.md`) + OpenAPI YAML + SQL are already prepared.

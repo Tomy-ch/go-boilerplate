@@ -10,8 +10,6 @@ Generate the HTTP-boundary integration test for a feature under `internal/integr
 
 This layer is **not** about DB or usecase internals — it boots a real Echo server (`httptest`) and asserts the behavior of the **whole HTTP path** (Router → Middleware → Handler → Presenter) with the **usecase mocked**. See `internal/integration/README.md` for the canonical test strategy and scope.
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
-
 ## When to Use
 
 - Immediately after a feature's controller handler is implemented and compiles.
