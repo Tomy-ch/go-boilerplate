@@ -184,6 +184,13 @@ describe("describesAPair", () => {
     it("当たるファイルが無くなるグロブに当たる", () => {
       expect(describesAPair("skip `*.ja.md` files")).toBe(true);
     });
+
+    // basename を伴わない綴りはファイルではなく対訳規約そのものを指しており、畳めば宛先を失う。
+    it("basename を伴わない接尾辞だけの言及に当たる", () => {
+      expect(describesAPair("- 書き込み: `docs/design/context-map.md` と隣の `.ja.md` のみ")).toBe(
+        true,
+      );
+    });
   });
 
   describe("異常系", () => {

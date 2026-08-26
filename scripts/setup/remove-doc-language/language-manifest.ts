@@ -233,6 +233,16 @@ export const DOC_REPLACEMENTS: readonly DocReplacement[] = [
   ...forFile(".codex/skills/comment-sweep/SKILL.ja.md", [
     ["英語の正本・隣の `.ja.md`・英日両方の ADR ログ表を揃えて更新する", "正本と ADR ログ表を揃えて更新する"],
   ]),
+  ...forFile(".claude/skills/context-map/SKILL.ja.md", [
+    [" と隣の `.ja.md`"],
+  ]),
+  ...forFile(".claude/skills/glossary/SKILL.ja.md", [
+    ["で、**`.ja.md`\nペアを持たない**——作らないこと、`canonicalize-doc` へ繋がないこと。", "である。"],
+    ["、`.ja.md` ペアの作成"],
+  ]),
+  ...forFile(".codex/skills/glossary/SKILL.ja.md", [
+    ["用語集には `.ja.md` ペアを作りません。"],
+  ]),
   ...forFile(".claude/skills/commit/SKILL.ja.md", [
     ["、`*.ja.md`"],
   ]),
@@ -308,6 +318,7 @@ export const DOC_REPLACEMENTS: readonly DocReplacement[] = [
   ...forFile("docs/maintenance/portal-manifest.ja.md", [
     ["\n| `docs/*.ja.md` | section `architecture` の item (lang: ja) | 日本語版 |"],
     ["\n| `docs/<dir>/*.ja.md` | section `<dir>` の item (lang: ja) | 日本語版 |"],
+    [" (`.md` / `.ja.md`)", " `.md`"],
   ]),
   ...forFile(".claude/skills/back-prop/SKILL.ja.md", [
     ["、`docs/architecture.md`。`*.ja.md` は除く）", "、`docs/architecture.md`）"],

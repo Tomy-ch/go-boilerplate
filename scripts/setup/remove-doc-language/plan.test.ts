@@ -52,6 +52,39 @@ describe("planRemoval", () => {
       });
     });
 
+    // ペアを持たない文書も対訳規約を語る。ここを歩かないと、残った言及が報告もされず作成先へ渡る。
+    it("ja では対訳を持たない文書のリンクも正本の名前へ寄せる", () => {
+      const plan = planRemoval(
+        "ja",
+        ["agent.md", "b/README.md", "b/README.ja.md"],
+        reader({
+          "agent.md": "[b](b/README.ja.md)\n",
+          "b/README.md": "# B\n",
+          "b/README.ja.md": "# ビー\n",
+        }),
+      );
+
+      expect(plan.operations).toContainEqual({
+        kind: "write",
+        path: "agent.md",
+        content: "[b](b/README.md)\n",
+      });
+    });
+
+    it("ja では対訳に触れない文書を書き換え対象に挙げない", () => {
+      const plan = planRemoval("ja", ["plain.md"], reader({ "plain.md": "# 平文\n" }));
+
+      expect(plan.operations).toEqual([]);
+    });
+
+    it("ja では対訳を持たない文書の宣言なき散文も報告する", () => {
+      const plan = planRemoval("ja", ["agent.md"], reader({ "agent.md": "skip `*.ja.md` files\n" }));
+
+      expect(plan.undeclared).toEqual([
+        { file: "agent.md", line: 1, text: "skip `*.ja.md` files" },
+      ]);
+    });
+
     it("ja では対訳どうしのリンクを正本の名前へ寄せる", () => {
       const plan = planRemoval(
         "ja",
@@ -232,6 +265,18 @@ describe("planRemoval", () => {
       );
 
       expect(plan.operations).toEqual([{ kind: "delete", path: "a.ja.md" }]);
+    });
+
+    it("ja でも読めない Markdown を黙って飛ばす", () => {
+      const plan = planRemoval(
+        "ja",
+        ["a.md", "a.ja.md", "gone.md"],
+        reader({ "a.md": "# A\n", "a.ja.md": "# あ\n" }),
+      );
+
+      expect(plan.operations).toEqual([
+        { kind: "rename", from: "a.ja.md", to: "a.md", content: "# あ\n" },
+      ]);
     });
 
     it("読めない非 Markdown を黙って飛ばす", () => {

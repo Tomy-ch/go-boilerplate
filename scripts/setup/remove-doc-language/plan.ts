@@ -133,7 +133,7 @@ export function planRemoval(
   const plan =
     mode === "en"
       ? planEnglishOnly(markdown, pairs.map((pair) => pair.translation), read, rewrite, declaredLines)
-      : planJapaneseOnly(pairs, read, rewrite, declaredLines);
+      : planJapaneseOnly(markdown, pairs, read, rewrite, declaredLines);
 
   const stripped: Operation[] = [];
   const strayMentions: UndeclaredLine[] = [];
@@ -242,6 +242,7 @@ function planEnglishOnly(
 }
 
 function planJapaneseOnly(
+  markdown: readonly string[],
   pairs: readonly { canonical: string; translation: string }[],
   read: ReadFile,
   rewrite: ReadFile,
@@ -249,6 +250,7 @@ function planJapaneseOnly(
 ): Omit<Plan, "staleReplacements"> {
   const operations: Operation[] = [];
   const undeclared: UndeclaredLine[] = [];
+  const paired = new Set(pairs.flatMap(({ canonical, translation }) => [canonical, translation]));
 
   for (const { canonical, translation } of pairs) {
     const source = rewrite(translation);
@@ -280,6 +282,28 @@ function planJapaneseOnly(
       // 相手の名前へ寄せるのは最後。先に済ませると、対訳への言及と自己参照が見分けられなくなる。
       content: rewriteTranslationLinks(result.content),
     });
+  }
+
+  // ペアを持たない文書も同じ基準で見る。対訳規約を語るのは対訳を持つ文書だけではなく、
+  // 規約を運用する側の指示（検査エージェントの除外指定など）も同じ前提の上に立っている。
+  // ペアだけを歩くと、そこに残った `*.ja.md` は報告もされないまま作成先へ渡る。
+  for (const file of markdown.filter((file) => !paired.has(file))) {
+    const original = read(file);
+    const source = rewrite(file);
+
+    if (original === null || source === null) {
+      continue;
+    }
+
+    const result = redactReferences(source, file, () => false, declaredLines, describesAPair);
+
+    undeclared.push(...result.undeclared);
+
+    const content = rewriteTranslationLinks(result.content);
+
+    if (content !== original) {
+      operations.push({ kind: "write", path: file, content });
+    }
   }
 
   return { operations, undeclared };

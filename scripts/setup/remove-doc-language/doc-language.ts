@@ -189,16 +189,22 @@ export const namesAnyTranslation: MentionProbe = (line) =>
  *
  * @remarks
  * `ja` では対訳が正本の名前へ改名されるので、他の文書への `other.ja.md` という言及は
- * 書き換えで生き残ります。生き残らないのは、同じ行が正本と対訳を並べている場合
- * （`env/README.md`, `env/README.ja.md` —— 畳めば同じ 1 ファイルを 2 回挙げることになる）と、
- * `*.ja.md` のように当たるファイルが 1 つも無くなるグロブです。
+ * 書き換えで生き残ります。生き残らないのは 3 つで、同じ行が正本と対訳を並べている場合
+ * （`env/README.md`, `env/README.ja.md` —— 畳めば同じ 1 ファイルを 2 回挙げることになる）、
+ * `*.ja.md` のように当たるファイルが 1 つも無くなるグロブ、そして basename を伴わない
+ * `.ja.md` という綴りです。最後のものはファイルではなく対訳規約そのものを名指しており、
+ * 畳んだ後は指し先を持ちません。`canonicalOf` が返す `.md` も同じくファイル名ではないので、
+ * 同じ行に正本が並んでいるかを問う経路では拾えません。
  */
 export const describesAPair: MentionProbe = (line) => {
   const targets = [...line.matchAll(BARE_MENTION)].map(([target]) => target);
   const translations = targets.filter((target) => target.endsWith(TRANSLATION_SUFFIX));
 
   return translations.some(
-    (target) => TRANSLATION_GLOB.test(target) || targets.includes(canonicalOf(target)),
+    (target) =>
+      TRANSLATION_GLOB.test(target) ||
+      target === TRANSLATION_SUFFIX ||
+      targets.includes(canonicalOf(target)),
   );
 };
 
