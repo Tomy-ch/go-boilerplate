@@ -1,7 +1,5 @@
 # インフラ層のRDB（`internal/infrastructure/rdb`）ガイド
 
-[English](README.md) | 日本語
-
 ## 役割
 
 `internal/infrastructure/rdb` は **RDB（PostgreSQL）を利用するための Infrastructure サブシステム**です。

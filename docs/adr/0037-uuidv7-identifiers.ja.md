@@ -7,8 +7,6 @@ tags: [persistence, identifiers]
 
 # ADR-0037: すべてのエンティティ主キーに UUIDv7（時刻順）識別子を使用する
 
-English canonical: [0037-uuidv7-identifiers.md](0037-uuidv7-identifiers.md)
-
 ## ステータス
 
 accepted

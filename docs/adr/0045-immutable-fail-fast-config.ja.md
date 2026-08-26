@@ -7,8 +7,6 @@ tags: [config]
 
 # ADR-0045: 設定は不変、起動時に 1 回だけロード、フェイルファスト
 
-English canonical: [0045-immutable-fail-fast-config.md](0045-immutable-fail-fast-config.md)
-
 ## ステータス
 
 accepted

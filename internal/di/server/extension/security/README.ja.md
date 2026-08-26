@@ -1,7 +1,5 @@
 # security
 
-[English](README.md) | 日本語
-
 このディレクトリは、HTTP レイヤーにおける **セキュリティ関連ミドルウェア**（CORS・セキュリティヘッダ・Cookie 設定）を DI 経由で Echo に組み込むための fx モジュール群を提供します。
 
 これらは統一された Priority で controller 層のミドルウェアパイプラインに適用されます。

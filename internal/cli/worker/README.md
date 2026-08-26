@@ -1,7 +1,5 @@
 # worker
 
-English | [日本語](README.ja.md)
-
 Starts a named pull-ack worker as a resident process and runs it until a termination signal arrives.
 
 ## Command

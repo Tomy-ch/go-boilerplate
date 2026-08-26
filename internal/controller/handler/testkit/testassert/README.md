@@ -1,7 +1,5 @@
 # testassert
 
-English | [日本語](README.ja.md)
-
 Assertion helpers for Controller layer tests.
 
 ## Role

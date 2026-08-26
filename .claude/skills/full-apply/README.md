@@ -13,8 +13,6 @@ full-apply   ──applies──────▶  code fixes + commits
                           └─ tmp/skills/reviews/mod_*.md top comment (per-finding status + commit hash)
 ```
 
-See [README.ja.md](README.ja.md) for the Japanese version.
-
 ## Role
 
 - Processes findings one at a time in the loop "read the actual code → judge whether it needs no

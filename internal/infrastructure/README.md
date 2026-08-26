@@ -1,7 +1,5 @@
 # Infrastructure Layer (`internal/infrastructure`) Guide
 
-English | [日本語](README.ja.md)
-
 ## Role
 
 The Infrastructure layer is responsible for **implementing access to external technologies (DB, external APIs, authentication, etc.)**.

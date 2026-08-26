@@ -1,7 +1,5 @@
 # tx
 
-English | [日本語](README.ja.md)
-
 Provides a `Manager` interface for transaction boundary management and a generic helper for returning values from transactions.
 
 ## Design Intent

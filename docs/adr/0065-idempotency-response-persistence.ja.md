@@ -7,8 +7,6 @@ tags: [idempotency, privacy]
 
 # ADR-0065: 決定論的リプレイを可能にするためレスポンスボディを JSON で永続化する（PII トレードオフを許容）
 
-English canonical: [0065-idempotency-response-persistence.md](0065-idempotency-response-persistence.md)
-
 ## ステータス
 
 accepted

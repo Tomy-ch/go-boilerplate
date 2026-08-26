@@ -1,7 +1,5 @@
 # idempotency
 
-English | [日本語](README.ja.md)
-
 Defines the `Store` persistence boundary for idempotency keys (claim / replay /
 409 / 422 decisions). Every method requires a `scope` (no id-only lookup, to
 prevent cross-boundary access).

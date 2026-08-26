@@ -7,8 +7,6 @@ tags: [deploy, migration, exclusion, setup-review]
 
 # ADR-0100: マイグレーションはデプロイ前のワンショットとして実行し、アプリケーション起動時の自動マイグレーションは行わない
 
-English canonical: [0100-predeploy-oneshot-migration.md](0100-predeploy-oneshot-migration.md)
-
 ## ステータス
 
 accepted

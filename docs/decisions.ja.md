@@ -3,7 +3,6 @@
 > **移動しました。** この一枚岩の決定ドキュメントは、決定ごとに 1 ファイルの
 > **アーキテクチャ決定記録（ADR）** に分割されました。完全な索引付き決定ログは
 > **[`docs/adr/`](adr/README.ja.md)**（不変の記録 1 決定 = 1 ファイル）を参照してください。
-> 英語正典: [decisions.md](decisions.md)
 
 かつてここにあった技術選定の根拠（オニオンアーキテクチャ、OpenAPI-first、SQL-first、sqlc、
 Echo、Fx、worker scaffold、ライブラリ選定ポリシー、observability gating）は、個別の ADR に

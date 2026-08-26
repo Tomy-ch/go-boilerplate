@@ -1,7 +1,5 @@
 # local (Simple Authentication for Local Development)
 
-English | [日本語](README.ja.md)
-
 This directory contains a simple `Authenticator` implementation intended for use in local development and CI / test environments. It is a lightweight implementation for emulating external authentication providers, and is **not intended for production use**.
 
 ## Role

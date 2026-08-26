@@ -1,7 +1,5 @@
 # webapi
 
-[English](README.md) | 日本語
-
 `internal/infrastructure/webapi` は、**外部 Web API gateway の親サブシステム**です。各 leaf は `httpclient` の resilient な substrate 上で usecase の `boundary.Gateway` インターフェースを実装します。
 
 ## アーキテクチャ上の位置づけ

@@ -1,7 +1,5 @@
 # retry
 
-English | [日本語](README.ja.md)
-
 A bounded-retry behavior layer that *consumes* a failure classification: `classify → bounded attempts → backoff + full jitter → deadline-aware`. Implemented once and shared by any caller that classifies its own failures as retryable.
 
 ## Why this package

@@ -1,7 +1,5 @@
 # job hook
 
-[English](README.md) | 日本語
-
 `internal/di/job/hook` は、アプリケーション起動時に CLI で指定されたジョブを自動実行するための **ライフサイクルフック**を登録するパッケージです。
 
 ## 役割

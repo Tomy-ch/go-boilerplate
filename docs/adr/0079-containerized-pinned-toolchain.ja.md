@@ -7,8 +7,6 @@ tags: [toolchain, build]
 
 # ADR-0079: 再現性のために mise でバージョン固定されたコンテナ化ツールチェーンを使用する
 
-English canonical: [0079-containerized-pinned-toolchain.md](0079-containerized-pinned-toolchain.md)
-
 ## ステータス
 
 accepted

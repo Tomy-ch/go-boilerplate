@@ -1,7 +1,5 @@
 # server Dockerfile
 
-[English](README.md) | 日本語
-
 アプリケーションサーバーの Docker イメージを定義する Dockerfile です。マルチステージビルドにより、本番・ローカル開発の各ターゲットを提供します。
 
 ## 役割

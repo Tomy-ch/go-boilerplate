@@ -1,7 +1,5 @@
 # search
 
-English | [日本語](README.ja.md)
-
 Provides utilities for tokenizing search keyword strings — splitting, deduplicating, and limiting token count.
 
 ## Role

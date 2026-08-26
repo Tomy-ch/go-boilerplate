@@ -1,7 +1,5 @@
 # Boilerplate-only Conventions
 
-English | [日本語](boilerplate-only-conventions.ja.md)
-
 This file collects the statements in this repository whose premise holds only while it *is* the
 upstream boilerplate — that it is a template, that its readers instantiate it, that its sample feature
 set exists to be harvested and then removed. **Setup deletes this file whole** (see

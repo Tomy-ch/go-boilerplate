@@ -1,7 +1,5 @@
 # jwt (JWT Authentication)
 
-English | [日本語](README.ja.md)
-
 This directory contains an `Authenticator` implementation that verifies an access token (JWT). The signing key is resolved either from a **fixed RSA public key** (`New`) or **dynamically from a JWKS endpoint by `kid`** (`NewJWKS`). It is the production-oriented counterpart to the development-only `local` implementation, and covers the **de-facto standard verification core** only.
 
 ## Role

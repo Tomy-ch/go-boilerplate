@@ -7,8 +7,6 @@ tags: [process, ai, review]
 
 # ADR-0093: ファインダー・ベリファイアーサブエージェントによるマルチモデル敵対的レビューを使用する
 
-English canonical: [0093-multi-model-adversarial-review.md](0093-multi-model-adversarial-review.md)
-
 ## ステータス
 
 accepted

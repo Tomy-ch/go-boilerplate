@@ -1,7 +1,5 @@
 # merge-dml
 
-[English](README.md) | 日本語
-
 `database/dml/<type>/<category>/` 配下の複数の DML SQL ファイルを、sqlc コード生成用に単一ファイルへ結合します。出力先は `database/gen/<category>_<type>.gen.sql` です。
 
 ## コマンド

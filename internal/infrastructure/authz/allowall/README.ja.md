@@ -1,7 +1,5 @@
 # allowall（ローカル開発用の全許可 Authorizer）
 
-[English](README.md) | 日本語
-
 **すべての要求を許可する**単純な `Authorizer` 実装です。ローカル開発・CI / テスト環境専用であり、**本番利用は想定していません**。
 
 ## 役割

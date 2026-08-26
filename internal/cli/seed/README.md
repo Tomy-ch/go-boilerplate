@@ -1,7 +1,5 @@
 # db-seed
 
-English | [日本語](README.ja.md)
-
 Inserts seed data into the database for development and testing purposes.
 
 ## Command

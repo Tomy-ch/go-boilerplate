@@ -1,7 +1,5 @@
 # CommandService DML
 
-English | [日本語](README.ja.md)
-
 Write SQL for state changes (INSERT / UPDATE / DELETE) that do not fit the load-mutate-save shape of a Repository.
 
 ## Purpose

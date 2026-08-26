@@ -1,7 +1,5 @@
 # token
 
-English | [日本語](README.ja.md)
-
 Implements the `boundary/token.Generator` interface using the operating system's
 cryptographically secure randomness source.
 

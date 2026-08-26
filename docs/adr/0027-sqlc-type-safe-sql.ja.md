@@ -7,8 +7,6 @@ tags: [persistence, codegen]
 
 # ADR-0027: sqlcによる型安全なSQLアクセスの生成
 
-English canonical: [0027-sqlc-type-safe-sql.md](0027-sqlc-type-safe-sql.md)
-
 ## ステータス
 
 accepted

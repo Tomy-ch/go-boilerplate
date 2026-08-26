@@ -1,7 +1,5 @@
 # docker
 
-English | [日本語](README.ja.md)
-
 `docker/` is the directory for **Docker-related configuration files** required for development, building, and operations.
 
 ## Directory Structure

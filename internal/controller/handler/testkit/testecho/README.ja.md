@@ -1,7 +1,5 @@
 # testecho
 
-[English](README.md) | 日本語
-
 Echo ハンドラテスト用のビルダーパターン HTTP テストクライアントです。
 
 ## 役割

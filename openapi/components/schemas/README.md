@@ -1,7 +1,5 @@
 # OpenAPI Schemas
 
-English | [日本語](README.ja.md)
-
 `openapi/components/schemas/` stores **reusable OpenAPI schema definitions** — data structures for requests, responses, and security schemes.
 
 ## Directory Contents

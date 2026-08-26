@@ -7,8 +7,6 @@ tags: [idempotency, reliability]
 
 # ADR-0062: claim・ビジネス関数・complete を単一トランザクションで実行してアットモストワンスを保証する
 
-English canonical: [0062-single-tx-at-most-once-idempotency.md](0062-single-tx-at-most-once-idempotency.md)
-
 ## ステータス
 
 accepted

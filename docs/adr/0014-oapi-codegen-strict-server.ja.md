@@ -7,8 +7,6 @@ tags: [contract, openapi, codegen]
 
 # ADR-0014: oapi-codegen の strict-server モードでタグ/ハンドラーごとに生成する
 
-English canonical: [0014-oapi-codegen-strict-server.md](0014-oapi-codegen-strict-server.md)
-
 ## ステータス
 
 accepted

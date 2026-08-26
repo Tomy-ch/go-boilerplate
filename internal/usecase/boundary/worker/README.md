@@ -1,7 +1,5 @@
 # worker
 
-English | [日本語](README.ja.md)
-
 Defines the seams (ports) for workers that consume a pull-ack class queue, plus
 a broker-agnostic message envelope. Both the engine (controller layer) and the
 broker adapter (infrastructure layer) depend on this boundary.

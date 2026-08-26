@@ -1,7 +1,5 @@
 # outbound
 
-English | [日本語](README.ja.md)
-
 `outbound` is a directory that groups **DI middleware modules for extending HTTP response (output) processing**.
 
 It handles **response transformation / error handling / output format enforcement / panic recovery** after request processing.

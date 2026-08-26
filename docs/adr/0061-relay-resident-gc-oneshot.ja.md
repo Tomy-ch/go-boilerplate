@@ -7,8 +7,6 @@ tags: [outbox, async, ops]
 
 # ADR-0061: リレーは常駐プロセス、GC はワンショット cron ジョブ
 
-English canonical: [0061-relay-resident-gc-oneshot.md](0061-relay-resident-gc-oneshot.md)
-
 ## ステータス
 
 accepted

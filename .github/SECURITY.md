@@ -5,8 +5,6 @@ the template; **downstream inheritors should adjust the contact points, supporte
 other environment-specific details to match their own setup** (environment-specific spots are
 marked `※ adjust for your environment`).
 
-A Japanese translation of this document is available at [SECURITY.ja.md](SECURITY.ja.md).
-
 ## Reporting a Vulnerability
 
 > [!IMPORTANT]

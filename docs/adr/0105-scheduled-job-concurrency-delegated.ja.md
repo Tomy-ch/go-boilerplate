@@ -7,8 +7,6 @@ tags: [exclusion, setup-review]
 
 # ADR-0105: スケジュールジョブの同時実行制御をアプリ内で行わず、スケジューラに委譲する
 
-English canonical: [0105-scheduled-job-concurrency-delegated.md](0105-scheduled-job-concurrency-delegated.md)
-
 ## ステータス
 
 accepted

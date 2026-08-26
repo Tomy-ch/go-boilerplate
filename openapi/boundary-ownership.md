@@ -1,7 +1,5 @@
 # Input Boundary Value Ownership
 
-English | [日本語](boundary-ownership.ja.md)
-
 A constraint like `maxLength: 50` looks like a single fact, but the **same boundary value can live in several layers, owned by different concerns**. This guide defines who owns what, so that an OpenAPI constraint is **not mistaken for the domain's business rule**.
 
 > [!IMPORTANT]

@@ -1,7 +1,5 @@
 # job
 
-English | [日本語](README.ja.md)
-
 Runs a registered job by name via the CLI. The job executes synchronously and blocks until completion.
 
 ## Command

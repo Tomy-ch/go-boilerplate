@@ -7,8 +7,6 @@ tags: [ci, codegen]
 
 # ADR-0088: 生成成果物ドリフトゲートとリリースブランチ集約型自動生成ボット
 
-English canonical: [0088-generated-artifact-drift-gate.md](0088-generated-artifact-drift-gate.md)
-
 ## ステータス
 
 accepted

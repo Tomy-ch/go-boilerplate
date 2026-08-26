@@ -7,8 +7,6 @@ tags: [persistence, migration]
 
 # ADR-0029: マイグレーションを追記専用かつイミュータブルとして扱う
 
-English canonical: [0029-append-only-immutable-migrations.md](0029-append-only-immutable-migrations.md)
-
 ## ステータス
 
 accepted

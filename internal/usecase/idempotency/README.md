@@ -1,7 +1,5 @@
 # Idempotency (Idempotency-Key)
 
-English | [日本語](README.ja.md)
-
 Make non-idempotent writes (POST/PATCH/PUT) safe against client retries: a side effect runs **at most once**, and a retry gets the **same response**.
 
 ## 1. Concept — why a transaction is not enough

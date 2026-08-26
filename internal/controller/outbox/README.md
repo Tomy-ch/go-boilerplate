@@ -1,7 +1,5 @@
 # Outbox Relay Engine Guide (`internal/controller/outbox`)
 
-English | [日本語](README.ja.md)
-
 ## Role in Onion Architecture
 
 - A **poll-driven driving adapter**, on par with the HTTP handler and the worker engine — it is **another entry point into the Usecase layer**, not a new architectural layer.

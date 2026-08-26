@@ -1,7 +1,5 @@
 # CommandService 実装ガイド
 
-[English](README.md) | 日本語
-
 ## 空でもこのディレクトリが存在する理由
 
 データアクセスのディレクトリは `database/dml/` の DML カテゴリと 1 対 1 で対応します。SQL には存在

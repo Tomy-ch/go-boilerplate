@@ -7,8 +7,6 @@ tags: [toolchain, build]
 
 # ADR-0081: Make を単一のツールエントリポイントとし、.mk 登録とセルフドキュメンティングなヘルプを提供する
 
-English canonical: [0081-make-single-entrypoint.md](0081-make-single-entrypoint.md)
-
 ## ステータス
 
 accepted

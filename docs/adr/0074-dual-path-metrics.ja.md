@@ -7,8 +7,6 @@ tags: [observability, metrics]
 
 # ADR-0074: メトリクスは 2 経路を通る — OTLP プッシュと Prometheus スクレイプ
 
-English canonical: [0074-dual-path-metrics.md](0074-dual-path-metrics.md)
-
 ## ステータス
 
 accepted

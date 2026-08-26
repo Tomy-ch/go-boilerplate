@@ -1,7 +1,5 @@
 # outbox-relay
 
-[English](README.md) | 日本語
-
 outbox relay プロセスを起動し、dead 行を復帰させる `replay` サブコマンドを提供します。
 
 ## 役割

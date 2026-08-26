@@ -1,7 +1,5 @@
 # allowall (Allow-All Authorizer for Local Development)
 
-English | [日本語](README.ja.md)
-
 A trivial `Authorizer` implementation that **grants every request**. Intended for local development and CI / test environments only — **not for production use**.
 
 ## Role

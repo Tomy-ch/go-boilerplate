@@ -7,8 +7,6 @@ tags: [di, lifecycle]
 
 # ADR-0040: 依存性注入とライフサイクル管理に Uber Fx を採用する
 
-English canonical: [0040-uber-fx-di.md](0040-uber-fx-di.md)
-
 ## ステータス
 
 accepted

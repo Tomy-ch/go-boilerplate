@@ -1,7 +1,5 @@
 # worker/testkit
 
-[English](README.md) | 日本語
-
 `worker` seam（`Consumer` / `FailureHandler`）の in-memory テストダブルです。
 実 broker 無しで engine の receive → process → ack/nack 不変条件テストを green に
 するために用います（broker 非依存の 2nd 実装、SDK 非依存）。

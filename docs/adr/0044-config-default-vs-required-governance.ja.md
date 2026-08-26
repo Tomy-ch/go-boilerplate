@@ -7,8 +7,6 @@ tags: [config, governance]
 
 # ADR-0044: ガバナンス: コードデフォルト（不変）対ファイル必須（可変）
 
-English canonical: [0044-config-default-vs-required-governance.md](0044-config-default-vs-required-governance.md)
-
 ## ステータス
 
 accepted

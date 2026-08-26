@@ -7,8 +7,6 @@ tags: [ci, tooling]
 
 # ADR-0085: ローカル git フックは CI 契約を複製する（local == CI、グロブスコープ、バイパス後に一度検証）
 
-English canonical: [0085-local-hooks-mirror-ci.md](0085-local-hooks-mirror-ci.md)
-
 ## ステータス
 
 accepted

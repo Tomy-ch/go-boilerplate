@@ -1,7 +1,5 @@
 # QueryService DML
 
-[English](README.md) | 日本語
-
 検索・一覧取得の最適化を目的とした読み取り専用SQLを管理します。
 
 ## 目的

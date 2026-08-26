@@ -1,7 +1,5 @@
 # Product Image GC Job Guide (`internal/controller/job/productimagegc`)
 
-English | [日本語](README.ja.md)
-
 ## Role in Onion Architecture
 
 - A **one-shot reclamation entry point** (Controller layer / CLI driving adapter): another entry point into the Usecase layer, not a new architectural layer.

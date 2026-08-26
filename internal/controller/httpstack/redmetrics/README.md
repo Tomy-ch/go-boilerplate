@@ -1,7 +1,5 @@
 # redmetrics
 
-English | [日本語](README.ja.md)
-
 HTTP RED (Rate / Errors / Duration) metrics recorder and its Echo middleware.
 
 ## Role

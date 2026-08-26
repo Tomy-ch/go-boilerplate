@@ -7,8 +7,6 @@ tags: [http, security, infrastructure]
 
 # ADR-0025: アウトバウンドHTTPに対するエグレスSSRF / ダイヤルガードセキュリティポスチャの採用
 
-English canonical: [0025-egress-ssrf-guard.md](0025-egress-ssrf-guard.md)
-
 ## ステータス
 
 accepted

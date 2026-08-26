@@ -1,7 +1,5 @@
 # Agent Environment
 
-日本語: [agent-environment.ja.md](agent-environment.ja.md)
-
 This document explains how the repository's agent environment turns its declared properties into daily practice. It is an interpretation of [ADR-0008 (agent-environment-alignment)](../adr/0008-agent-environment-alignment.md) — both the properties a control must satisfy and the loop that later retires it — not a checklist or a second source of rules. Why AI assistance is the standard path at all is [ADR-0007 (agents-md-operational-contract)](../adr/0007-agents-md-operational-contract.md).
 
 ```mermaid

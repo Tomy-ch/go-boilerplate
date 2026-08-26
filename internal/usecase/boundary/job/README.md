@@ -1,7 +1,5 @@
 # job
 
-English | [日本語](README.ja.md)
-
 Provides interfaces for job definition, execution, and state management.
 
 ## Interfaces

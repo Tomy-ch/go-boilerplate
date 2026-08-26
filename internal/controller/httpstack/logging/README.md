@@ -1,7 +1,5 @@
 # logging
 
-English | [日本語](README.ja.md)
-
 HTTP request/response structured logging middleware with trace context.
 
 Skips ops endpoints (`/health`, `/metrics`, etc.).

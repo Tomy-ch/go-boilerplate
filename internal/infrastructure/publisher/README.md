@@ -1,7 +1,5 @@
 # publisher
 
-English | [日本語](README.ja.md)
-
 `internal/infrastructure/publisher` is **the only place that chooses the implementation of the transactional outbox publish boundary** (`publisher.Publisher`). It ships the HTTP implementation, which POSTs outbox messages claimed by the relay engine to a receiving endpoint, and selects between implementations by the `OUTBOX_PUBLISHER` discriminator.
 
 ## Architectural Position

@@ -1,7 +1,5 @@
 # forcejson
 
-[English](README.md) | 日本語
-
 レスポンスの Content-Type が未設定または `text/html` の場合に `application/json` へ強制します。
 
 ## 役割

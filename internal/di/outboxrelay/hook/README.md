@@ -1,7 +1,5 @@
 # outbox relay hook
 
-English | [日本語](README.ja.md)
-
 `internal/di/outboxrelay/hook` is a module that registers **lifecycle hooks** to drive the outbox relay engine's poll loop across application start/stop. It is used only by the relay-dedicated process (`cmd outbox-relay`).
 
 ## Role

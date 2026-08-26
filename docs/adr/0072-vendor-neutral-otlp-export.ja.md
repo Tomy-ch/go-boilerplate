@@ -7,8 +7,6 @@ tags: [observability]
 
 # ADR-0072: ベンダー中立の OTLP 専用エクスポート（バックエンドは Collector に委譲）
 
-English canonical: [0072-vendor-neutral-otlp-export.md](0072-vendor-neutral-otlp-export.md)
-
 ## ステータス
 
 accepted

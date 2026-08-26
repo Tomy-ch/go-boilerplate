@@ -1,7 +1,5 @@
 # Security Posture
 
-日本語: [security.ja.md](security.ja.md)
-
 This document records **how security controls in this repository are reasoned about** — what
 they assume, what each one is actually for, and where each one fires. It does not enumerate
 the tools; that inventory lives in [`.github/workflows/README.md`](../../.github/workflows/README.md)

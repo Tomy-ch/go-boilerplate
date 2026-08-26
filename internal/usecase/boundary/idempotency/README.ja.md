@@ -1,7 +1,5 @@
 # idempotency
 
-[English](README.md) | 日本語
-
 冪等性キーの永続化境界 `Store` を定義します（claim / replay / 409 / 422 判定）。
 すべてのメソッドは `scope` 必須です（id 単独 lookup を持たない＝越境防止）。
 

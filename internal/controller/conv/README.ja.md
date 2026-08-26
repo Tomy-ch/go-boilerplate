@@ -1,7 +1,5 @@
 # conv
 
-[English](README.md) | 日本語
-
 OpenAPI 生成型をドメイン型へ変換する境界ヘルパー。**controller 層のみ**が利用します。
 
 ## 目的

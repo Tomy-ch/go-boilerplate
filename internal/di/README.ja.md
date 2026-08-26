@@ -1,7 +1,5 @@
 # DI Layer (`internal/di`)
 
-[English](README.md) | 日本語
-
 `internal/di` は、このアプリケーションにおける **依存性注入 (Dependency Injection: DI)** の中枢レイヤです。
 
 この層は **Uber Fx** をベースとした DI コンテナを構築し、  

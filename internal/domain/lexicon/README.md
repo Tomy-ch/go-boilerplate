@@ -1,7 +1,5 @@
 # lexicon
 
-English | [日本語](README.ja.md)
-
 The domain's shared **lexicon**: a deliberately small set of business-semantic value objects used by
 more than one aggregate. Other `internal/domain/**` packages may import `lexicon/`; `lexicon/` itself
 depends only on `pkg/**` and `internal/apperror`, never on an aggregate.

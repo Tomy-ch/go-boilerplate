@@ -1,7 +1,5 @@
 # testspan
 
-[English](README.md) | 日本語
-
 Echo リクエストコンテキストにテスト用トレーススパンを注入します。
 
 ## 役割

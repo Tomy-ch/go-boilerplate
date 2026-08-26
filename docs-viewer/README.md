@@ -1,7 +1,5 @@
 # docs-viewer
 
-English | [日本語](README.ja.md)
-
 The viewer for the documentation portal. It is a standalone static site: it reads the generated
 `docs/portal/docs.json`, renders the cards and the document body, and holds no source of truth of
 its own.

@@ -7,8 +7,6 @@ tags: [architecture, persistence, http]
 
 # ADR-0038: 量を 2 つのスケールで保持する — 精度は正確な十進、決済は最小単位の整数
 
-English canonical: [0038-two-scale-quantity-model.md](0038-two-scale-quantity-model.md)
-
 ## ステータス
 
 accepted

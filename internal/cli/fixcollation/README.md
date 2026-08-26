@@ -1,7 +1,5 @@
 # fix-collation
 
-English | [日本語](README.ja.md)
-
 Fixes PostgreSQL collation version mismatch by running `REINDEX DATABASE` and `ALTER DATABASE ... REFRESH COLLATION VERSION`.
 
 ## Role

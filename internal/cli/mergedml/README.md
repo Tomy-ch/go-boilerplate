@@ -1,7 +1,5 @@
 # merge-dml
 
-English | [日本語](README.ja.md)
-
 Merges multiple DML SQL files under `database/dml/<type>/<category>/` into single consolidated files for sqlc code generation. Output files are written to `database/gen/<category>_<type>.gen.sql`.
 
 ## Command

@@ -7,8 +7,6 @@ tags: [observability, exclusion, setup-review]
 
 # ADR-0073: 公式 OpenTelemetry セマンティック規約のみを使用し、カスタム semconv の発明や型付き設定へのベンダーキー追加は行わない
 
-English canonical: [0073-official-otel-semconv.md](0073-official-otel-semconv.md)
-
 ## ステータス
 
 accepted

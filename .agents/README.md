@@ -1,7 +1,5 @@
 # .agents
 
-English | [日本語](README.ja.md)
-
 `.agents/` holds **artifacts produced and consumed by skills, for machines rather than for people**.
 
 The human-facing counterpart of anything in here is the report a skill prints, or the canonical

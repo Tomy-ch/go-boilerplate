@@ -7,8 +7,6 @@ tags: [dependencies, policy]
 
 # ADR-0077: 単一責任のライブラリ選定ポリシー
 
-English canonical: [0077-library-selection-policy.md](0077-library-selection-policy.md)
-
 ## ステータス
 
 accepted

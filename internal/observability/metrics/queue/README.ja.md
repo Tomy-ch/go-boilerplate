@@ -1,7 +1,5 @@
 # queue
 
-[English](README.md) | 日本語
-
 `internal/observability/metrics/queue` は、**worker の broker キュー滞留量（queue depth / DLQ count）
 を Prometheus メトリクスとして公開する**パッケージです。
 

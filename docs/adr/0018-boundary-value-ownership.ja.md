@@ -7,8 +7,6 @@ tags: [contract, openapi, domain]
 
 # ADR-0018: OpenAPI はワイヤー契約であってドメインルールではない。リクエストはドメインのサブセット、ドメインはレスポンスのサブセット
 
-English canonical: [0018-boundary-value-ownership.md](0018-boundary-value-ownership.md)
-
 ## ステータス
 
 accepted

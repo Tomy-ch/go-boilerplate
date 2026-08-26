@@ -7,8 +7,6 @@ tags: [persistence, transaction, concurrency]
 
 # ADR-0035: シリアライゼーション競合時はトランザクションをリトライする。呼び出し元は冪等性を保証しなければならない
 
-English canonical: [0035-transaction-retry-idempotent-callers.md](0035-transaction-retry-idempotent-callers.md)
-
 ## ステータス
 
 accepted

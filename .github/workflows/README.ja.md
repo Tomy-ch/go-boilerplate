@@ -1,7 +1,5 @@
 # GitHub Actions Workflows
 
-[English](README.md) | 日本語
-
 このディレクトリには CI/CD 用の GitHub Actions ワークフロー定義を格納しています。ワークフローは目的別にグルーピングされており、PR ゲート（lint / test / セキュリティスキャン）、push 起点のデプロイ、リリースブランチ起点のドキュメント再生成という構成です。
 
 ## トリガー戦略

@@ -1,7 +1,5 @@
 # core module
 
-English | [日本語](README.ja.md)
-
 `internal/di/module/core` provides **DI module groups for core components** commonly used in the HTTP stack.
 
 Each module returns an `fx.Option` that registers the corresponding component in the DI container.

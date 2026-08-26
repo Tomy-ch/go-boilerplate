@@ -1,7 +1,5 @@
 # healthcheck
 
-[English](README.md) | 日本語
-
 サービスの健全性を報告するユースケースです。`Clock` 境界からアプリケーション
 時刻を取得し、データベースを probe して、単一の health DTO を返します。
 

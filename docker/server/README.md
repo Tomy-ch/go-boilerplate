@@ -1,7 +1,5 @@
 # server Dockerfile
 
-English | [日本語](README.ja.md)
-
 This Dockerfile defines the application server images. It uses multi-stage builds to provide targets for production and local development.
 
 ## Role

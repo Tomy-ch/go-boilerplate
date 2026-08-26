@@ -1,7 +1,5 @@
 # Contributing
 
-English | [日本語](CONTRIBUTING.ja.md)
-
 This page covers **how a change travels** — where to branch from, how to commit, what has to be
 green, and what a reviewer will ask. It states no architectural rules of its own: those live in
 [docs/rules.md](docs/rules.md) and the per-package `README.md`, and a change that disagrees with

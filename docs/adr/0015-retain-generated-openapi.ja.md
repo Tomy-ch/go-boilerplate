@@ -7,8 +7,6 @@ tags: [contract, openapi, codegen]
 
 # ADR-0015: バンドル済み openapi.gen.yaml をコミット済みのクロスリポジトリ契約アーティファクトとして保持する
 
-English canonical: [0015-retain-generated-openapi.md](0015-retain-generated-openapi.md)
-
 ## ステータス
 
 accepted

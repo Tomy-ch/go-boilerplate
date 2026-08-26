@@ -1,7 +1,5 @@
 # docs-viewer
 
-[English](README.md) | 日本語
-
 ドキュメントポータルのビューアーです。単体で成立する静的サイトで、生成物
 `docs/portal/docs.json` を読んでカードと本文を描くだけの役割を持ち、内容の SSOT は持ちません。
 

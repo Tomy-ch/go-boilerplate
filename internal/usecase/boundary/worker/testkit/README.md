@@ -1,7 +1,5 @@
 # worker/testkit
 
-English | [日本語](README.ja.md)
-
 An in-memory test double for the `worker` seams (`Consumer` / `FailureHandler`),
 so the engine's receive → process → ack/nack invariants can be tested green
 without a real broker (a broker-agnostic 2nd implementation, no SDK dependency).

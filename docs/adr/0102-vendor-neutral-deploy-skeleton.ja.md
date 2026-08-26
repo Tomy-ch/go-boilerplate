@@ -7,8 +7,6 @@ tags: [deploy]
 
 # ADR-0102: デプロイはベンダー中立のスケルトン（ビルド/署名は実装済み；クラウド CD はスタブ；レジストリは固定しない）
 
-English canonical: [0102-vendor-neutral-deploy-skeleton.md](0102-vendor-neutral-deploy-skeleton.md)
-
 ## ステータス
 
 accepted

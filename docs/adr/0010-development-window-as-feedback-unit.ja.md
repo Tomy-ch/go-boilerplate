@@ -7,8 +7,6 @@ tags: [process, ai, observability]
 
 # ADR-0010: フィードバックループが観測する単位を開発の窓とする
 
-English canonical: [0010-development-window-as-feedback-unit.md](0010-development-window-as-feedback-unit.md)
-
 ## Status
 
 accepted

@@ -1,7 +1,5 @@
 # infrastructure/awsclient
 
-[English](README.md) | 日本語
-
 ## 役割
 
 本リポジトリの AWS SDK v2 アダプタ — 現在は SQS のキューアダプタと S3 のオブジェクトストレージ

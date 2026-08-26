@@ -1,7 +1,5 @@
 # bodylimit
 
-English | [日本語](README.ja.md)
-
 Caps the request body size (`SERVER_BODY_LIMIT_MB`, in MB).
 
 ## Role

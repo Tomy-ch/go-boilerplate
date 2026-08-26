@@ -1,7 +1,5 @@
 # decimal
 
-English | [日本語](README.ja.md)
-
 Exact-decimal type wrapping `github.com/shopspring/decimal`. Represents money, rates, and other precise decimal quantities without `float64` error.
 
 ## Role

@@ -1,7 +1,5 @@
 # outbox
 
-English | [日本語](README.ja.md)
-
 Usecases for the transactional outbox: **emit** (record an outbox entry in the
 same transaction as the domain change), **relay** (claim pending entries and
 publish them), **GC** (prune old published entries), and **replay** (return dead

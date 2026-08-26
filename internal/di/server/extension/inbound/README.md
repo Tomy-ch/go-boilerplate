@@ -1,7 +1,5 @@
 # inbound
 
-English | [日本語](README.ja.md)
-
 `inbound` is a layer that provides **middleware and server configuration for HTTP request (input) preprocessing** via DI.
 
 It centrally manages OpenAPI validation / URI normalization / request timeout / body-size limits / IP extraction executed at request reception, ensuring quality, safety, and consistency at the API entry point.

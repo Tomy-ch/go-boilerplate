@@ -7,8 +7,6 @@ tags: [process, ai, architecture]
 
 # ADR-0008: エージェント環境を宣言された検査可能な性質へ整合させ、閉じたループで改善する
 
-English canonical: [0008-agent-environment-alignment.md](0008-agent-environment-alignment.md)
-
 ## Status
 
 accepted

@@ -1,7 +1,5 @@
 # authz ディレクトリ
 
-[English](README.md) | 日本語
-
 `internal/infrastructure/authz` は **認可（authz）インフラストラクチャ** を提供します。`internal/infrastructure/auth`（認証）と対になる存在です。
 
 `Authorizer` の **実装** を格納します。その抽象は Usecase 層の Boundary として定義されます。

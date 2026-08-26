@@ -1,7 +1,5 @@
 # error response
 
-[English](README.md) | 日本語
-
 このパッケージは、HTTPエラーレスポンスの生成と管理を行います。
 
 ## 役割

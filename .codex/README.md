@@ -5,8 +5,6 @@ reusable skills, read-only agent roles, and the spec templates used by scaffold 
 workflows. A trusted clone receives the same repository-level development workflow without receiving
 any personal credentials or account settings.
 
-For the Japanese reference translation, see [README.ja.md](README.ja.md).
-
 ## Relationship to `AGENTS.md`
 
 [`AGENTS.md`](../AGENTS.md) is the human-maintained operational contract. It defines what an agent may

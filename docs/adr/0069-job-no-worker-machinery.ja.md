@@ -7,8 +7,6 @@ tags: [job, async, exclusion, setup-review]
 
 # ADR-0069: ジョブにはブローカー・サーキットブレーカー・ドレイン・ヘルス機構を意図的に設けない
 
-English canonical: [0069-job-no-worker-machinery.md](0069-job-no-worker-machinery.md)
-
 ## ステータス
 
 accepted

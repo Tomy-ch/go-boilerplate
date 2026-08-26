@@ -7,8 +7,6 @@ tags: [ci, lint]
 
 # ADR-0084: 2 層の golangci 設定——最小デフォルトと完全な権威ゲート
 
-English canonical: [0084-two-layer-golangci-config.md](0084-two-layer-golangci-config.md)
-
 ## ステータス
 
 accepted

@@ -1,7 +1,5 @@
 # Repository Settings
 
-English | [日本語](README.ja.md)
-
 This directory holds repository-level GitHub settings as JSON — the branch ruleset and the label set — so a repository derived from this boilerplate is configured reproducibly instead of by clicking through the web UI.
 
 ## These files declare intent, they do not reflect state

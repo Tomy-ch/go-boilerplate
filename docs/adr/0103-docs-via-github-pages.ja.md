@@ -7,8 +7,6 @@ tags: [docs, deploy]
 
 # ADR-0103: docs/ の静的コンテンツを GitHub Pages で公開（production プッシュ時にリリース）
 
-English canonical: [0103-docs-via-github-pages.md](0103-docs-via-github-pages.md)
-
 ## ステータス
 
 accepted

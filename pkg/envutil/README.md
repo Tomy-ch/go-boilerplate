@@ -1,7 +1,5 @@
 # envutil
 
-English | [日本語](README.ja.md)
-
 Small utilities for working with environment variables.
 
 ## Usage

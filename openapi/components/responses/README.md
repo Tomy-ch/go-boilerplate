@@ -1,7 +1,5 @@
 # OpenAPI Response Schemas
 
-English | [日本語](README.ja.md)
-
 `openapi/components/responses/` stores **endpoint response-body schemas**. They are plain OpenAPI **schemas** (not the `responses` component object type — see [`schemas/README.md`](../schemas/README.md)) and are referenced from a path under `responses.<status>.content.<media>.schema.$ref`.
 
 ## Role boundary vs `schemas/`

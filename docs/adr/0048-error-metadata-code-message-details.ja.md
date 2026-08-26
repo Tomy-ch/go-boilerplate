@@ -7,8 +7,6 @@ tags: [errors, architecture, api]
 
 # ADR-0048: apperror の上に載せるプロトコル中立なエラーメタ情報（code / message / details）
 
-English canonical: [0048-error-metadata-code-message-details.md](0048-error-metadata-code-message-details.md)
-
 ## ステータス
 
 accepted

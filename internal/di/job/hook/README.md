@@ -1,7 +1,5 @@
 # job hook
 
-English | [日本語](README.ja.md)
-
 `internal/di/job/hook` is a module that registers **lifecycle hooks** to automatically execute CLI-specified jobs at application startup.
 
 ## Role

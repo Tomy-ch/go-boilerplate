@@ -1,7 +1,5 @@
 # User Purge Job Guide (`internal/controller/job/userpurge`)
 
-English | [日本語](README.ja.md)
-
 ## Role in Onion Architecture
 
 - A **one-shot purge entry point** (Controller layer / CLI driving adapter): another entry point into the Usecase layer, not a new architectural layer.

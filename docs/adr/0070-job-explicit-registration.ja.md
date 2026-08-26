@@ -7,8 +7,6 @@ tags: [job, async]
 
 # ADR-0070: Job は明示的に登録する（自動検出なし）
 
-English canonical: [0070-job-explicit-registration.md](0070-job-explicit-registration.md)
-
 ## ステータス
 
 accepted

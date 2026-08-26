@@ -7,8 +7,6 @@ tags: [persistence, data]
 
 # ADR-0026: SQLファーストのデータアクセス
 
-English canonical: [0026-sql-first-data-access.md](0026-sql-first-data-access.md)
-
 ## ステータス
 
 accepted

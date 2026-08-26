@@ -7,8 +7,6 @@ tags: [outbox, async, gc]
 
 # ADR-0059: 発行済み行の 7 日間保持 GC（10,000 件単位のバッチ）
 
-English canonical: [0059-outbox-retention-gc.md](0059-outbox-retention-gc.md)
-
 ## ステータス
 
 accepted

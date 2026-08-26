@@ -7,8 +7,6 @@ tags: [observability, di]
 
 # ADR-0075: オブザーバビリティプロバイダーはライフサイクル非依存（ProviderShutdowner）
 
-English canonical: [0075-lifecycle-independent-provider.md](0075-lifecycle-independent-provider.md)
-
 ## ステータス
 
 accepted

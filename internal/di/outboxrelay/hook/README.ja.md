@@ -1,7 +1,5 @@
 # outbox relay hook
 
-[English](README.md) | 日本語
-
 `internal/di/outboxrelay/hook` は、outbox relay engine の poll ループをアプリケーションの起動／停止にまたがって駆動するための **ライフサイクルフック**を登録するパッケージです。relay 専用プロセス（`cmd outbox-relay`）でのみ使用します。
 
 ## 役割

@@ -7,8 +7,6 @@ tags: [observability, config]
 
 # ADR-0071: 設定駆動によるオブザーバビリティゲーティング
 
-English canonical: [0071-config-driven-observability-gating.md](0071-config-driven-observability-gating.md)
-
 ## ステータス
 
 accepted

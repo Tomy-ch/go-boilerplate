@@ -1,7 +1,5 @@
 # uuid
 
-[English](README.md) | 日本語
-
 `github.com/google/uuid` をラップした UUID 型です。UUIDv7 を生成し、データベース連携をサポートします。
 
 ## ラップ対象

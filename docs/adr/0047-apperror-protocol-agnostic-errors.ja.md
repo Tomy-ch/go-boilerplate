@@ -7,8 +7,6 @@ tags: [errors, architecture]
 
 # ADR-0047: プロトコル非依存の集約エラー分類 (apperror)
 
-English canonical: [0047-apperror-protocol-agnostic-errors.md](0047-apperror-protocol-agnostic-errors.md)
-
 ## ステータス
 
 accepted

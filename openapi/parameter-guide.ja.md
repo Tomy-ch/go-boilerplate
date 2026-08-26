@@ -1,7 +1,5 @@
 # OpenAPI パラメータ クイックリファレンス
 
-[English](parameter-guide.md) | 日本語
-
 ## $ref の例
 
 <!-- sample-api:replace-begin -->

@@ -1,7 +1,5 @@
 # outbox
 
-[English](README.md) | 日本語
-
 トランザクショナル outbox のユースケース群です。**emit**（ドメイン変更と同一
 トランザクションで outbox へ 1 件記録する）、**relay**（pending のエントリを claim
 して publish する）、**GC**（古い published のエントリを刈り取る）、**replay**（dead のエントリを

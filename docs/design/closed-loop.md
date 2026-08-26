@@ -1,7 +1,5 @@
 # Closed Loop
 
-日本語: [closed-loop.ja.md](closed-loop.ja.md)
-
 This document explains how the AI-feedback closed loop actually runs, day to day. It is an
 interpretation of [ADR-0008 (agent-environment-alignment)](../adr/0008-agent-environment-alignment.md)
 — which decides that the agent environment is improved in a loop rather than only added to — and of

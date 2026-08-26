@@ -7,8 +7,6 @@ tags: [cli, build]
 
 # ADR-0096: すべてのロールを 1 つのマルチコマンドバイナリに集約する
 
-English canonical: [0096-single-multi-command-binary.md](0096-single-multi-command-binary.md)
-
 ## ステータス
 
 accepted

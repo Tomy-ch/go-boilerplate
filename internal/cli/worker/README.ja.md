@@ -1,7 +1,5 @@
 # worker
 
-[English](README.md) | 日本語
-
 名前を指定した pull-ack worker を常駐プロセスとして起動し、終了シグナルを受け取るまで実行します。
 
 ## コマンド

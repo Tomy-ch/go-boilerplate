@@ -1,7 +1,5 @@
 # patch
 
-[English](README.md) | 日本語
-
 部分更新（PATCH）入力の 3 状態を表す値。
 
 ## 役割

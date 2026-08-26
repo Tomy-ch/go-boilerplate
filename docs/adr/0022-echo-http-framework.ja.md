@@ -7,8 +7,6 @@ tags: [http, framework]
 
 # ADR-0022: HTTP フレームワークとして Echo を採用する
 
-English canonical: [0022-echo-http-framework.md](0022-echo-http-framework.md)
-
 ## ステータス
 
 accepted

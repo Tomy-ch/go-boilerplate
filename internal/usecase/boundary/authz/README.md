@@ -1,7 +1,5 @@
 # authz
 
-English | [日本語](README.ja.md)
-
 Provides interfaces and value objects for authorization (authz) — the counterpart to authentication (`auth`).
 
 ## Authorizer

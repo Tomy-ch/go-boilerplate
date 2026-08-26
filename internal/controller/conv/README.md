@@ -1,7 +1,5 @@
 # conv
 
-English | [日本語](README.ja.md)
-
 Boundary helpers that convert OpenAPI-generated types into domain types, used **only** by the controller layer.
 
 ## Why

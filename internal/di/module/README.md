@@ -1,7 +1,5 @@
 # DI Module (`internal/di/module`)
 
-English | [日本語](README.ja.md)
-
 A directory containing **DI module groups** that wire up each application layer using `fx`.
 
 Each file exposes a function returning `fx.Option` to register the necessary components in the DI container at application startup.

@@ -1,7 +1,5 @@
 # xerrors
 
-[English](README.md) | 日本語
-
 `github.com/cockroachdb/errors` をラップし、スタックトレース付きのエラー操作を提供します。
 
 ## ラップ対象

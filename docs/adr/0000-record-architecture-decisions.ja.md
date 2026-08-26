@@ -7,8 +7,6 @@ tags: [meta, documentation]
 
 # ADR-0000: アーキテクチャ上の決定を ADR として記録する
 
-English canonical: [0000-record-architecture-decisions.md](0000-record-architecture-decisions.md)
-
 ## ステータス
 
 accepted

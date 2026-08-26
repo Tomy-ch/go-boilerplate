@@ -7,8 +7,6 @@ tags: [idempotency]
 
 # ADR-0064: 冪等性キーの TTL を 24 時間に固定しルート別設定を設けない
 
-English canonical: [0064-idempotency-fixed-ttl.md](0064-idempotency-fixed-ttl.md)
-
 ## ステータス
 
 accepted

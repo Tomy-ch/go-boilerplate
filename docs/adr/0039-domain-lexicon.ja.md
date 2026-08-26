@@ -7,8 +7,6 @@ tags: [architecture]
 
 # ADR-0039: 集約横断の値オブジェクトはキュレートされたドメイン lexicon に置く
 
-English canonical: [0039-domain-lexicon.md](0039-domain-lexicon.md)
-
 ## ステータス
 
 accepted

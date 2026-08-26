@@ -7,8 +7,6 @@ tags: [contract, api, openapi]
 
 # ADR-0012: API 契約を OpenAPI ファーストで定義する
 
-English canonical: [0012-openapi-first.md](0012-openapi-first.md)
-
 ## ステータス
 
 accepted

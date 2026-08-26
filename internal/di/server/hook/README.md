@@ -1,7 +1,5 @@
 # server hook
 
-English | [日本語](README.ja.md)
-
 `internal/di/server/hook` is a package that **registers lifecycle hooks** tied to the application server.
 
 ## Hook List

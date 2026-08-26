@@ -7,8 +7,6 @@ tags: [persistence, cqrs]
 
 # ADR-0033: CQRSの分割の外に位置する第4のDMLカテゴリとしてsystem_cqrsを導入する
 
-English canonical: [0033-system-cqrs-dml-category.md](0033-system-cqrs-dml-category.md)
-
 ## ステータス
 
 accepted

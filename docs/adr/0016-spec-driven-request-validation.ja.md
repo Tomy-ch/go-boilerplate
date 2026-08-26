@@ -7,8 +7,6 @@ tags: [contract, openapi, security]
 
 # ADR-0016: リクエスト検証と認証を実行時に仕様から強制する。レスポンスは検証しない
 
-English canonical: [0016-spec-driven-request-validation.md](0016-spec-driven-request-validation.md)
-
 ## ステータス
 
 accepted

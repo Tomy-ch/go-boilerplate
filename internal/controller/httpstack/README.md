@@ -1,7 +1,5 @@
 # httpstack
 
-English | [日本語](README.ja.md)
-
 A directory of **common HTTP middleware** registered when starting the Echo server.
 
 Each sub-package is split into small responsibilities and combined during application startup.

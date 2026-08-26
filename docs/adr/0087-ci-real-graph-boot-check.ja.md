@@ -7,8 +7,6 @@ tags: [ci, testing]
 
 # ADR-0087: CI は実際の Postgres に対して実際の fx グラフを起動する（スタートアップ検証）
 
-English canonical: [0087-ci-real-graph-boot-check.md](0087-ci-real-graph-boot-check.md)
-
 ## ステータス
 
 accepted

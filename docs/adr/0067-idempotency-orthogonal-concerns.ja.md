@@ -7,8 +7,6 @@ tags: [idempotency, exclusion, setup-review]
 
 # ADR-0067: 冪等性をオプティミスティックロックおよびレート制限と直交に保つ
 
-English canonical: [0067-idempotency-orthogonal-concerns.md](0067-idempotency-orthogonal-concerns.md)
-
 ## ステータス
 
 accepted

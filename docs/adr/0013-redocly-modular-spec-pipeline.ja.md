@@ -7,8 +7,6 @@ tags: [contract, openapi, tooling]
 
 # ADR-0013: 仕様をモジュラーな Redocly ファイルで作成し、バンドルしてから生成する
 
-English canonical: [0013-redocly-modular-spec-pipeline.md](0013-redocly-modular-spec-pipeline.md)
-
 ## ステータス
 
 accepted

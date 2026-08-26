@@ -1,7 +1,5 @@
 # metrics
 
-English | [日本語](README.ja.md)
-
 `internal/infrastructure/rdb/metrics` is a package that **exposes pgxpool (PostgreSQL connection pool) statistics as Prometheus metrics**.
 
 ## Role

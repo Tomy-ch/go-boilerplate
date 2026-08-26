@@ -7,8 +7,6 @@ tags: [exclusion, outbox, messaging, reliability, setup-review]
 
 # ADR-0107: outbox relay はバランス型で出荷し、ハードニングは運用で得た事実に委ねる
 
-English canonical: [0107-outbox-relay-hardening-delegated.md](0107-outbox-relay-hardening-delegated.md)
-
 ## ステータス
 
 accepted

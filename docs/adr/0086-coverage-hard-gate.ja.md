@@ -7,8 +7,6 @@ tags: [ci, testing]
 
 # ADR-0086: 総カバレッジ 90% を CI のハードゲートとし、例外ガバナンスパスを設ける
 
-English canonical: [0086-coverage-hard-gate.md](0086-coverage-hard-gate.md)
-
 ## ステータス
 
 accepted

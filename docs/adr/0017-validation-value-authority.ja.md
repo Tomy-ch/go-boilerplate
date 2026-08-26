@@ -7,8 +7,6 @@ tags: [contract, domain, validation]
 
 # ADR-0017: バリデーションのビジネス有効性における唯一の権威をドメイン層に定める
 
-English canonical: [0017-validation-value-authority.md](0017-validation-value-authority.md)
-
 ## ステータス
 
 accepted

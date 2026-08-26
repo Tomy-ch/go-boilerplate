@@ -7,8 +7,6 @@ tags: [http, middleware]
 
 # ADR-0023: ミドルウェアチェーンを優先順位付きのデータ駆動リストとして構築する
 
-English canonical: [0023-priority-ordered-middleware-chain.md](0023-priority-ordered-middleware-chain.md)
-
 ## ステータス
 
 accepted

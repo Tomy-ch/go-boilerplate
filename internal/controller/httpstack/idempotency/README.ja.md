@@ -1,7 +1,5 @@
 # idempotency
 
-[English](README.md) | 日本語
-
 `Idempotency-Key` ベースのリクエスト重複排除の入り口です。oapi-codegen の StrictMiddleware スロット用に提供され、`e.Use` では登録しません。
 
 ## 役割

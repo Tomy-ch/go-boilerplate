@@ -7,8 +7,6 @@ tags: [dependencies, observability, exception]
 
 # ADR-0078: ブリッジ / 計装ライブラリを有界な SRP 例外として認める
 
-English canonical: [0078-bridge-instrumentation-exceptions.md](0078-bridge-instrumentation-exceptions.md)
-
 ## ステータス
 
 accepted

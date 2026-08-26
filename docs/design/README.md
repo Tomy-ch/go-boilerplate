@@ -1,7 +1,5 @@
 # Design References
 
-日本語: [README.ja.md](README.ja.md)
-
 This directory holds the **per-subsystem design references**. Each one consolidates a single subsystem's *role theory, state transitions / lifecycles, implementation locations, what an integrator must implement, and glossary* into one page, **derived from a close reading of the implementation**.
 
 These complement — they do not replace — the package `README`s: a README is the API/overview for one package, while a design reference is the cross-package narrative for a whole subsystem. Where a design judgment has an ADR, it lives in [`docs/adr/`](../adr/README.md).

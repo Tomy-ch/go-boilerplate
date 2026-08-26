@@ -1,7 +1,5 @@
 # uri
 
-English | [日本語](README.ja.md)
-
 Removes trailing slashes from request URIs.
 
 ## Role

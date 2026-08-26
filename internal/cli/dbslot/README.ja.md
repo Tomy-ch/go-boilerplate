@@ -1,7 +1,5 @@
 # db-slot
 
-[English](README.md) | 日本語
-
 単一の共有インフラ上で per-worktree のスロットをリースし、複数の `git worktree` がホストポート衝突なく DB を使う並列作業を可能にする。各スロットは共有 DB コンテナ（固定 infra compose プロジェクト `gobp-shared`・ホスト 5432）内の専用データベース（`wt<N>_local` / `wt<N>_test`）と、ホスト公開ポートをスロット番号で相対化した専用の app 層 compose プロジェクト（`gobp-wt-N`）を占有する。スロットを取らない checkout も同じ共有インフラへ繋がるため、スロット取得は**並列作業を衝突なく行うための opt-in** に留まる。全体像は `docs/maintenance/db-worktree-pool.md` を参照。
 
 **ホスト**で実行する（tool-runner コンテナ内ではない）: ホストのファイルシステム上のリースを管理し、ホストの `docker compose` を駆動し、共有 DB へは pgx で `localhost:5432` へ接続するため。

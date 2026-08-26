@@ -1,7 +1,5 @@
 # security
 
-English | [日本語](README.ja.md)
-
 This directory provides fx module groups for incorporating **HTTP layer security middleware** (CORS, security headers, Cookie settings) into Echo via DI.
 
 These are applied with unified Priority to the controller layer's middleware pipeline.

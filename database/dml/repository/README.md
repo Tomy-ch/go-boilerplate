@@ -1,7 +1,5 @@
 # Repository DML
 
-English | [日本語](README.ja.md)
-
 SQL for Aggregate persistence and simple single-Aggregate reads (CRUD, plus simple filter / list / count by the Aggregate's own attributes).
 
 ## Purpose

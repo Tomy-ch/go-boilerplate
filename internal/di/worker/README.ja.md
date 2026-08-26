@@ -1,7 +1,5 @@
 # worker DI モジュール
 
-[English](README.md) | 日本語
-
 `internal/di/worker` は、worker 実行に関わる **DI（依存性注入）コンポーネント**を提供するパッケージです。
 
 ## 役割

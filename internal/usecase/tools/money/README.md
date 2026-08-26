@@ -1,7 +1,5 @@
 # money
 
-English | [日本語](README.ja.md)
-
 Provides the money-settlement **policy** for the Usecase tier. The exact arithmetic, rounding,
 and minor-unit scaling mechanism lives in [`pkg/decimal`](../../../../pkg/decimal/README.md);
 this package only chooses *which* minor-unit digit count and *which* rounding mode a settlement

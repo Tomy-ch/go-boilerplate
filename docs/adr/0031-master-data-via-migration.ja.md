@@ -7,8 +7,6 @@ tags: [persistence, migration, data]
 
 # ADR-0031: マスターデータをマイグレーション経由で投入する。トランザクショナルシードを本番から除外する
 
-English canonical: [0031-master-data-via-migration.md](0031-master-data-via-migration.md)
-
 ## ステータス
 
 accepted

@@ -1,7 +1,5 @@
 # system_cqrs
 
-English | [日本語](README.ja.md)
-
 `internal/infrastructure/rdb/system_cqrs` is an Infrastructure layer package that provides **system-operational DB queries**.
 
 ## Position in Onion Architecture

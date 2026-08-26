@@ -1,7 +1,5 @@
 # SystemQuery DML
 
-English | [日本語](README.ja.md)
-
 System operational queries for health checks, metrics collection, and infrastructure monitoring.
 
 ## Purpose

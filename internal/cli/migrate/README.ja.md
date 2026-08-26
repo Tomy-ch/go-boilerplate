@@ -1,7 +1,5 @@
 # migrate-up / migrate-down
 
-[English](README.md) | 日本語
-
 データベーススキーマのマイグレーションを管理します。`migrate-up` は未適用のマイグレーションを適用し、`migrate-down` は適用済みのマイグレーションをロールバックします（既定では全件、または指定した段数）。
 
 ## コマンド

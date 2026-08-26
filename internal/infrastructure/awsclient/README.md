@@ -1,7 +1,5 @@
 # infrastructure/awsclient
 
-English | [日本語](README.ja.md)
-
 ## Role
 
 Builds the `aws.Config` that every AWS SDK v2 adapter in this repository starts from — currently the

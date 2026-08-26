@@ -1,7 +1,5 @@
 # Metrics Handler (`internal/controller/handler/metrics`)
 
-English | [日本語](README.ja.md)
-
 ## Role
 
 `metrics` exposes the Prometheus scrape endpoint **`GET /metrics`**.

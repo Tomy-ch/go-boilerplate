@@ -1,7 +1,5 @@
 # testecho
 
-English | [日本語](README.ja.md)
-
 Builder-pattern HTTP test client for Echo handler tests.
 
 ## Role

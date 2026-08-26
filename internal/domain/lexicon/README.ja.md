@@ -1,7 +1,5 @@
 # lexicon
 
-[English](README.md) | 日本語
-
 ドメインが共有する**語彙**。複数の集約から使われる、業務意味論を持つ値オブジェクトを意図的に小さく
 保った集合です。他の `internal/domain/**` パッケージは `lexicon/` を import してよく、`lexicon/` 自身は
 `pkg/**` と `internal/apperror` にのみ依存し、集約には依存しません。

@@ -1,7 +1,5 @@
 # ユーザー物理削除ジョブガイド (`internal/controller/job/userpurge`)
 
-[English](README.md) | 日本語
-
 ## オニオンアーキテクチャにおける役割
 
 - **ワンショットの物理削除エントリポイント**（Controller 層 / CLI driving adapter）。新しいアーキテクチャ層ではなく、Usecase 層への入口の一つです。

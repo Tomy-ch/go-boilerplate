@@ -7,8 +7,6 @@ tags: [idempotency, gc, ops]
 
 # ADR-0066: 冪等性キーのガベージコレクションを独立したワンショット CLI ジョブとして実行する
 
-English canonical: [0066-idempotency-gc-separate-job.md](0066-idempotency-gc-separate-job.md)
-
 ## ステータス
 
 accepted

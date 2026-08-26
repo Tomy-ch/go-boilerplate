@@ -1,7 +1,5 @@
 # cookie
 
-[English](README.md) | 日本語
-
 Set-Cookie ヘッダのセキュリティ属性（Secure / HttpOnly / SameSite / Path / Domain / Max-Age）を強制するミドルウェアです。
 
 ## 役割

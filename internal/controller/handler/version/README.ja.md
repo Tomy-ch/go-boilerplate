@@ -1,7 +1,5 @@
 # Version ハンドラ (`internal/controller/handler/version`)
 
-[English](README.md) | 日本語
-
 ## 役割
 
 `version` は、ビルド情報エンドポイント **`GET /version`** を公開します。

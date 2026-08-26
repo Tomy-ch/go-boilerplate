@@ -1,7 +1,5 @@
 # outbox
 
-English | [日本語](README.ja.md)
-
 Defines the `Store` persistence boundary for the transactional outbox.
 Both `emit` (usecase layer) and the relay engine (controller layer) depend on
 this boundary.

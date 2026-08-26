@@ -1,7 +1,5 @@
 # boundary
 
-English | [日本語](README.ja.md)
-
 `internal/usecase/boundary` defines the **interfaces that the Usecase layer requires from external layers (Infrastructure)**.
 
 ## Position in Onion Architecture

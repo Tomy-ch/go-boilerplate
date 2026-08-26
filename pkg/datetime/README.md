@@ -1,7 +1,5 @@
 # datetime
 
-English | [日本語](README.ja.md)
-
 Provides date/time parsing utilities supporting multiple formats with timezone awareness.
 
 ## Role

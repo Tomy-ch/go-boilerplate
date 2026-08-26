@@ -1,7 +1,5 @@
 # worker hook
 
-[English](README.md) | 日本語
-
 `internal/di/worker/hook` は、CLI で選択された worker engine（とその health listener）をアプリケーションの起動／停止にまたがって実行するための **ライフサイクルフック**を登録するパッケージです。
 
 ## 役割

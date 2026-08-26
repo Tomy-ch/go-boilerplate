@@ -1,7 +1,5 @@
 # buildinfo
 
-English | [日本語](README.ja.md)
-
 `internal/observability/metrics/buildinfo` is a package that **exposes the application's build / version / runtime information as a Prometheus info gauge (`app_build_info`)**.
 
 It complements the `/version` HTTP endpoint by making the running version observable from the metrics backend (Prometheus / Grafana), which is useful for deployment confirmation, incident investigation, and rollback decisions.

@@ -1,7 +1,5 @@
 # DI Layer (`internal/di`)
 
-English | [日本語](README.ja.md)
-
 `internal/di` is the **central layer for Dependency Injection (DI)** in this application.
 
 This layer builds a DI container based on **Uber Fx**,  

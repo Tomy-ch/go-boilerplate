@@ -1,7 +1,5 @@
 # Outbox relay エンジンガイド（`internal/controller/outbox`）
 
-[English](README.md) | 日本語
-
 ## オニオンアーキテクチャでの役割
 
 - HTTP ハンドラや worker engine と同格の **poll 駆動 driving adapter**。新しいアーキテクチャ層ではなく、**Usecase 層へのもう 1 つの入口**。

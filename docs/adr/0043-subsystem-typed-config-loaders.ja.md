@@ -7,8 +7,6 @@ tags: [config]
 
 # ADR-0043: サブシステムスコープの envPrefix 型付き設定ローダー
 
-English canonical: [0043-subsystem-typed-config-loaders.md](0043-subsystem-typed-config-loaders.md)
-
 ## ステータス
 
 accepted

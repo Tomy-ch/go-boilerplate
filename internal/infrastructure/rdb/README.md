@@ -1,7 +1,5 @@
 # RDB Infrastructure Guide (`internal/infrastructure/rdb`)
 
-English | [日本語](README.ja.md)
-
 ## Role
 
 `internal/infrastructure/rdb` is an **Infrastructure subsystem for using RDB (PostgreSQL)**.

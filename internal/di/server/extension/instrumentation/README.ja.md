@@ -1,7 +1,5 @@
 # instrumentation
 
-[English](README.md) | 日本語
-
 `instrumentation` は、HTTP レイヤーにおける **可観測性（Observability）と ID 付与（RequestID）を提供するミドルウェア DI モジュール群**をまとめたディレクトリです。
 
 Tracing / Logging / Metrics の基盤となる **リクエスト識別子の生成**と**トレース連携ミドルウェア**を提供します。

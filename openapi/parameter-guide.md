@@ -1,7 +1,5 @@
 # OpenAPI Parameter Quick Reference
 
-English | [日本語](parameter-guide.ja.md)
-
 ## $ref Examples
 
 <!-- sample-api:replace-begin -->

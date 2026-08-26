@@ -7,8 +7,6 @@ tags: [persistence, migration, ci]
 
 # ADR-0030: CIで強制するギャップ・ペアチェックを伴う6桁連番マイグレーションIDの使用
 
-English canonical: [0030-sequential-migration-ids.md](0030-sequential-migration-ids.md)
-
 ## ステータス
 
 accepted

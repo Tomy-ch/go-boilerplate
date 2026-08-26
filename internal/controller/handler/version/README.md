@@ -1,7 +1,5 @@
 # Version Handler (`internal/controller/handler/version`)
 
-English | [日本語](README.ja.md)
-
 ## Role
 
 `version` exposes the build-information endpoint **`GET /version`**.
