@@ -26,6 +26,17 @@ import {
 const MARKER = "doc-pair";
 
 /**
+ * 「このツールが在るときだけ生きる記述」を囲むマーカー名。
+ *
+ * @remarks
+ * `doc-pair` と分けているのは、落ちる契機が違うからです。`doc-pair` は対訳が消えたときに
+ * 落ちるので `both` では残りますが、こちらは言語を選び終えた時点でツールごと消えるため
+ * 3 モードとも落ちます。同じ名前空間では表せません —— 手順書や ADR のように、対訳規約の
+ * 説明とツールへの言及が同じファイルに同居しているためです。
+ */
+const TOOL_MARKER = "lang-choice";
+
+/**
  * マーカーを持ち得るファイルの拡張子。
  *
  * @remarks
@@ -173,6 +184,78 @@ export function planRemoval(
       ({ text }) => !allowedMentions.has(text.trim()),
     ),
     staleReplacements: stale,
+  };
+}
+
+/** ツールの痕跡を落とした計画と、それを解決済みで読む読み出し。 */
+export type FootprintPlan = {
+  operations: WriteOperation[];
+  stale: DocReplacement[];
+  read: ReadFile;
+};
+
+/**
+ * ツールと共に死ぬ記述を落とす計画。3 モードで同じものを返す。
+ *
+ * @remarks
+ * 畳む 2 モードでは `doc-pair` の除去がこれを兼ねられますが、`both` はマーカーの中身を
+ * 残す向きに解決するため、ツールへの言及だけが取り残されます。呼べば失敗する make ターゲットが
+ * 手順書つきで残る状態になるので、契機の違うこちらを先に解決します。
+ *
+ * 返す `read` は痕跡を解決済みの本文を返します。後段の計画にこれを渡すのは、`doc-pair` の
+ * 走査より前に落としておかないと、撤去されるはずの散文が「宣言の無い散文」として報告され、
+ * 撤去そのものが止まるためです。
+ */
+export function planToolFootprint(
+  files: readonly string[],
+  read: ReadFile,
+  replacements: readonly DocReplacement[] = [],
+  removedPaths: readonly string[] = [],
+): FootprintPlan {
+  const byFile = new Map<string, DocReplacement[]>();
+
+  for (const replacement of replacements) {
+    byFile.set(replacement.file, [...(byFile.get(replacement.file) ?? []), replacement]);
+  }
+
+  const resolveContent = (relativePath: string, source: string) => {
+    const replaced = (byFile.get(relativePath) ?? []).reduce(
+      (text, { from, to }) => text.split(from).join(to),
+      source,
+    );
+
+    return stripMarkers(replaced, TOOL_MARKER).content;
+  };
+
+  const resolve: ReadFile = (relativePath) => {
+    const source = read(relativePath);
+
+    return source === null ? null : resolveContent(relativePath, source);
+  };
+
+  const excluded = (file: string) =>
+    removedPaths.some((prefix) => file === prefix || file.startsWith(`${prefix}/`));
+
+  const operations = files
+    .filter((file) => isScanTarget(file) || isMarkedNonMarkdown(file) || byFile.has(file))
+    .filter((file) => !excluded(file))
+    .sort((a, b) => a.localeCompare(b))
+    .flatMap<WriteOperation>((file) => {
+      const original = read(file);
+
+      if (original === null) {
+        return [];
+      }
+
+      const content = resolveContent(file, original);
+
+      return content === original ? [] : [{ kind: "write", path: file, content }];
+    });
+
+  return {
+    operations,
+    stale: replacements.filter(({ file, from }) => !(read(file) ?? "").includes(from)),
+    read: resolve,
   };
 }
 

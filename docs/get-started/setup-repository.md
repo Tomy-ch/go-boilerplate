@@ -559,7 +559,7 @@ Elastic License 2.0 costs nothing to run in CI and constrains only redistributio
 is a different question with its own answer in
 [the workflows README](../../.github/workflows/README.md#bearers-licence-and-removal).
 
-<!-- doc-pair:begin -->
+<!-- lang-choice:begin -->
 ## Phase 19: Choose the documentation language
 
 This repository ships every document twice: an English canonical and a Japanese translation beside
@@ -597,4 +597,10 @@ first.
 The script refuses to run rather than guess. Prose that explains the translation convention itself
 cannot be folded mechanically, so anything not covered by a `doc-pair` marker or declared in
 `language-manifest.ts` stops the run with its file and line — and nothing is written when it does.
-<!-- doc-pair:end -->
+
+**Do it now, before anything is built on top of it.** Everything past this phase is ordinary
+development, and every day of it pays for both languages: each documentation edit is written twice,
+each agent run reads past the pairs it does not need, and the two sides drift the moment one is
+updated alone. That cost recurs; the decision does not — it is one command. Leaving this step for
+later is not deferring the cost, it is paying it.
+<!-- lang-choice:end -->

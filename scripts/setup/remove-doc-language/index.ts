@@ -22,9 +22,10 @@ import {
   REMOVED_PATHS,
   SELF_DESTRUCT_PATHS,
   SELF_EGRESS_JOBS,
+  TOOL_REPLACEMENTS,
 } from "./language-manifest";
 import { removeEgressSections } from "../lib/egress";
-import { type Operation, planKeepBoth, planRemoval } from "./plan";
+import { type Operation, type ReadFile, planKeepBoth, planRemoval, planToolFootprint } from "./plan";
 
 /** `--lang` に渡せる値。`both` は両方残す（何もしない）。 */
 type LanguageChoice = Mode | "both";
@@ -179,11 +180,11 @@ function rewriteMarkerBaseline(dryRun: boolean): string[] {
 }
 
 /** 畳む 2 モードの計画。宣言と食い違ったら、1 バイトも書かずに投げる。 */
-function planFold(choice: Mode): Operation[] {
+function planFold(choice: Mode, files: readonly string[], read: ReadFile): Operation[] {
   const plan = planRemoval(
     choice,
-    realFiles(),
-    readRepoFile,
+    files,
+    read,
     new Set(DECLARED_LINES),
     // 自消滅する対象も畳む対象から外す。このツール自身のソースとテストは `.ja.md` を語るが、
     // 撤去し終えた後には 1 行も残らない。
@@ -210,10 +211,28 @@ function run(choice: LanguageChoice, dryRun: boolean): void {
     assertCleanWorktree();
   }
 
-  const operations =
+  const files = realFiles();
+  // ツールの痕跡は言語の選択より先に落とす。`doc-pair` の走査より後だと、撤去されるはずの
+  // 散文が「宣言の無い散文」として報告され、撤去そのものが止まる。
+  const footprint = planToolFootprint(files, readRepoFile, TOOL_REPLACEMENTS, SELF_DESTRUCT_PATHS);
+
+  if (footprint.stale.length > 0) {
+    throw new StaleReplacementError(footprint.stale);
+  }
+
+  const planned =
     choice === "both"
-      ? planKeepBoth(realFiles(), readRepoFile, SELF_DESTRUCT_PATHS)
-      : planFold(choice);
+      ? planKeepBoth(files, footprint.read, SELF_DESTRUCT_PATHS)
+      : planFold(choice, files, footprint.read);
+  const plannedPaths = new Set(
+    planned.flatMap((operation) =>
+      operation.kind === "rename" ? [operation.from, operation.to] : [operation.path],
+    ),
+  );
+  const operations: Operation[] = [
+    ...planned,
+    ...footprint.operations.filter((operation) => !plannedPaths.has(operation.path)),
+  ];
 
   const touched = operations.flatMap((operation) => applyOperation(operation, dryRun));
   // 対訳を運ぶ仕組みは `both` では残る。使い続けると決めた選択だからである。

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { type ReadFile, planKeepBoth, planRemoval } from "./plan";
+import { type ReadFile, planKeepBoth, planRemoval, planToolFootprint } from "./plan";
 
 /** 本文の読み出しを固定表で差し替える。 */
 function reader(files: Readonly<Record<string, string>>): ReadFile {
@@ -374,6 +374,76 @@ describe("planKeepBoth", () => {
       );
 
       expect(operations.map((operation) => operation.path)).toEqual(["a.md", "z.md"]);
+    });
+  });
+
+});
+
+describe("planToolFootprint", () => {
+  describe("正常系", () => {
+    it("ツールに紐づくマーカーを 3 モード共通で落とす", () => {
+      const source = { "a.md": "残る\n<!-- lang-choice:begin -->\n消える\n<!-- lang-choice:end -->\n" };
+      const [operation] = planToolFootprint(["a.md"], reader(source)).operations;
+
+      expect(operation).toEqual({ kind: "write", path: "a.md", content: "残る\n" });
+    });
+
+    it("対訳に紐づくマーカーには触れない", () => {
+      const source = { "a.md": "<!-- doc-pair:begin -->\n残る\n<!-- doc-pair:end -->\n" };
+
+      expect(planToolFootprint(["a.md"], reader(source)).operations).toEqual([]);
+    });
+
+    it("マーカーを置けない箇所を宣言で落とす", () => {
+      const source = { "x.properties": "keys=alive,dead\n" };
+      const declared = [{ file: "x.properties", from: "dead", to: "" }];
+      const [operation] = planToolFootprint(["x.properties"], reader(source), declared).operations;
+
+      expect(operation).toEqual({ kind: "write", path: "x.properties", content: "keys=alive,\n" });
+    });
+
+    it("痕跡を解決済みの読み出しを返す", () => {
+      const source = { "a.md": "残る\n消える <!-- lang-choice:line -->\n" };
+
+      expect(planToolFootprint(["a.md"], reader(source)).read("a.md")).toBe("残る\n");
+    });
+
+    it("出力を名前順に並べる", () => {
+      const source = {
+        "z.md": "z <!-- lang-choice:line -->\n",
+        "a.md": "a <!-- lang-choice:line -->\n",
+      };
+      const { operations } = planToolFootprint(["z.md", "a.md"], reader(source));
+
+      expect(operations.map((operation) => operation.path)).toEqual(["a.md", "z.md"]);
+    });
+
+    it("自消滅する対象は書き換えない", () => {
+      const source = { "tool/x.ts": "const a = 1; // lang-choice:line\n" };
+
+      expect(planToolFootprint(["tool/x.ts"], reader(source), [], ["tool"]).operations).toEqual([]);
+    });
+  });
+
+  describe("異常系", () => {
+    it("宣言が空振りしたら報告する", () => {
+      const declared = [{ file: "x.properties", from: "居ない", to: "" }];
+
+      expect(planToolFootprint(["x.properties"], reader({ "x.properties": "keys=alive\n" }), declared).stale).toEqual(declared);
+    });
+
+    it("読めないファイルの読み出しは null を返す", () => {
+      expect(planToolFootprint(["gone.md"], reader({})).read("gone.md")).toBeNull();
+    });
+
+    it("読めないファイルへの宣言は空振りとして報告する", () => {
+      const declared = [{ file: "gone.properties", from: "何か", to: "" }];
+
+      expect(planToolFootprint([], reader({}), declared).stale).toEqual(declared);
+    });
+
+    it("読めないファイルを飛ばす", () => {
+      expect(planToolFootprint(["gone.md"], reader({})).operations).toEqual([]);
     });
   });
 });

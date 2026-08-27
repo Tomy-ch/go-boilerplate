@@ -195,6 +195,32 @@ jobs:
           echo "both: pairs kept, markers resolved, tool retired"
         shell: bash
 
+      # 3 モード共通。ツールは自分で消えるが、それを宣言している側 —— make ターゲット、
+      # ターゲット表の行、この手順書の節、静的解析の除外パス —— は別の契機で落とす必要がある。
+      # 残ると「呼べば失敗するターゲットが手順書つきで残る」状態になり、`both` は畳まないぶん
+      # マーカーの中身を残す向きに解決するので、そこだけが取り残される。
+      #
+      # `docs/adr` を外すのは、ADR-0011 の言及が `boilerplate-only` ブロックの中に在るためである。
+      # あれは Phase 12 のボイラープレート撤去で先に落ちるが、ここではこのツールしか走らせない。
+      - name: Nothing still declares the retired tool
+        run: |
+          set -euo pipefail
+          LEFTOVER=$(git grep -nE 'setup-remove-doc-language|remove-doc-language|LANG_CHOICE' -- . \
+            ':!docs/portal/dist' ':!docs/adr' || true)
+          if [ -n "${LEFTOVER}" ]; then
+            echo "::error::自消滅したツールへの言及が残っています"
+            echo "${LEFTOVER}"
+            exit 1
+          fi
+          LEFTOVER=$(git grep -nE '(//|#|%%|<!--) ?lang-choice:(begin|end|line|replace-)' -- . || true)
+          if [ -n "${LEFTOVER}" ]; then
+            echo "::error::ツールに紐づくマーカーが解決されずに残っています"
+            echo "${LEFTOVER}"
+            exit 1
+          fi
+          echo "retire: nothing declares the tool"
+        shell: bash
+
       # `ja` だけの退行。対訳は本文しか持たないため、正本のフロントマターを移植し損ねると
       # ファイルは全て在るのにスキルが 1 本も読み込まれない状態になる。
       - name: Every skill still carries its frontmatter

@@ -13,9 +13,9 @@
 # boilerplate-only:end
 .PHONY: setup-remove-sample-api ## サンプルAPI(user/product/order)を一括削除し再生成・検証まで実行 # sample-api:line
 .PHONY: setup-remove-licensed-scanners ## 資格情報/課金を要するスキャナ2件を撤去し製品ごとにコミット
-# doc-pair:begin
+# lang-choice:begin
 .PHONY: setup-remove-doc-language ## ドキュメント/スキルの対訳ペアを選んだ言語1本へ畳む
-# doc-pair:end
+# lang-choice:end
 
 SETUP_DRY_RUN_FLAG := $(if $(DRY_RUN),--dry-run,)
 
@@ -158,7 +158,7 @@ setup-remove-sample-api:
 setup-remove-licensed-scanners:
 	@$(TSX) scripts/setup/remove-licensed-scanners $(SETUP_DRY_RUN_FLAG)
 
-# doc-pair:begin
+# lang-choice:begin
 
 # ドキュメント / スキルの対訳ペアを LANG_CHOICE で解決する（en|ja|both）。
 # 他の setup ターゲットと違いツールランナーを経由せずホストで走らせる。400 件超のファイルを
@@ -176,4 +176,4 @@ setup-remove-doc-language:
 	fi
 	@$(TSX) scripts/setup/remove-doc-language --lang $(LANG_CHOICE) $(SETUP_DRY_RUN_FLAG)
 
-# doc-pair:end
+# lang-choice:end
