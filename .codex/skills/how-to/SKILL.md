@@ -170,6 +170,10 @@ FOUND | AMBIGUOUS | UNDEFINED | BLOCKED
 ```bash
 <正規に定義されたコマンド。存在するものだけ>
 ```
+<UNDEFINED の場合は「なし」と書き、もっともらしい候補を提示しない理由を 1 行添える>
+
+## 近いもの
+- `<target / 手順>` — <ただし〜の点で目的が異なる>（FOUND 以外の場合に記載）
 
 ## 成功の判定
 <どうなれば成功か>
@@ -179,6 +183,10 @@ FOUND | AMBIGUOUS | UNDEFINED | BLOCKED
 
 ## 注意
 - <破壊性 / 環境差 / 共有インフラへの影響 / 未検証の点>
+
+## 探索範囲
+<通読したレジストリ / 確認した所有スキル / 検索した glob / 回さなかった掃引とその理由>
+<UNDEFINED / AMBIGUOUS の場合は必須>
 
 ## エスカレーション
 <未定義・矛盾・権限超過のとき、誰が何を決めれば進むか>
@@ -196,6 +204,13 @@ Interpret the four states exactly:
 Use `UNDEFINED` only after reading every owning registry in full and publishing the exact search
 frontier. Otherwise report `AMBIGUOUS` or `確認できず`, and name each unread index. A false
 `UNDEFINED` is presented as a repository fact, so downgrade whenever the frontier is incomplete.
+
+For `UNDEFINED`, write **なし** under `コマンド` and add one line explaining why the
+obvious-looking command is not being offered. An empty field invites the next reader to fill in a
+command independently, recreating the exact failure this skill prevents one step later. Record the
+rejected near miss under `近いもの`, including how its purpose differs. A reader told only that no
+procedure exists will search again and is likely to find the same candidate already inspected and
+rejected here.
 
 ## Step 5 — Run Only in Run Mode
 
@@ -235,6 +250,9 @@ steps here would create the duplicate this skill exists to prevent.
 - Do cite the file and target, section, or job behind every step.
 - Do check shared-infrastructure impact and explicit `DRY_RUN=1` support every time.
 - Do publish the search frontier for `UNDEFINED`; otherwise downgrade the result.
+- Do write `なし` with a reason under `コマンド` for `UNDEFINED`, and list the rejected near miss
+  under `近いもの` with the purpose mismatch.
+- Do record any sweep deliberately omitted from `探索範囲`, together with the reason.
 - Do warn and wait with numbered choices before every destructive step.
 - Do answer in Japanese.
 - Do not invent a command, flag, target, rollback, or success signal.
@@ -253,6 +271,8 @@ steps here would create the duplicate this skill exists to prevent.
 - [ ] Prerequisites, expected result, recovery, and warnings each came from a source.
 - [ ] Shared-infrastructure impact and explicit `DRY_RUN=1` support checked.
 - [ ] Full Japanese output contract emitted with an explicit state.
-- [ ] `UNDEFINED` used only after exhausting indexes and publishing the frontier.
+- [ ] `UNDEFINED` used only after exhausting indexes and publishing the frontier in `探索範囲`.
+- [ ] Under `UNDEFINED`, `コマンド` says `なし` with a reason and `近いもの` identifies the
+  rejected near miss.
 - [ ] Every command traced to the source that defines it; nothing was invented.
 - [ ] Every destructive step was described and separately confirmed; lookup-only commands were not run.

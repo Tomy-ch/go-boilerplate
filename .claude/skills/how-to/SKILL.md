@@ -163,6 +163,10 @@ FOUND | AMBIGUOUS | UNDEFINED | BLOCKED
 ```bash
 <正規に定義されたコマンド。存在するものだけ>
 ```
+<UNDEFINED のときは「なし」と書き、なぜ近そうなコマンドを出さないのかを 1 行添える>
+
+## 近いもの
+- `<target / 手順>` — <ただし〜の点で目的が異なる>   ← FOUND 以外のときに書く
 
 ## 成功の判定
 <どうなれば成功か>
@@ -172,6 +176,10 @@ FOUND | AMBIGUOUS | UNDEFINED | BLOCKED
 
 ## 注意
 - <破壊性 / 環境差 / 共有インフラへの影響 / 未検証の点>
+
+## 探索範囲
+<通読したレジストリ / 確認した所有スキル / 検索した glob / 回さなかった掃引とその理由>
+← UNDEFINED / AMBIGUOUS のときは必須
 
 ## エスカレーション
 <未定義・矛盾・権限超過のとき、誰が何を決めれば進むか>
@@ -190,6 +198,13 @@ The four states are not interchangeable:
 and the frontier published with it. Short of that the state is `AMBIGUOUS` or the answer is 確認できず
 — naming which index was left unread. Downgrading costs nothing; a wrong `UNDEFINED` reads as a fact
 about the repository.
+
+Under `UNDEFINED` the `コマンド` field says **なし**, and says in one line why the obvious-looking
+command is not being offered. Leaving the field empty invites the next reader to supply the command
+themselves, which is the failure this skill exists to prevent, one step removed. What *does* belong is
+the near miss — under `近いもの`, named together with the respect in which its purpose differs. A
+reader who is told only "there is no procedure" will go looking, and the nearest thing they find is
+the one this skill already examined and rejected.
 
 ## Step 5 — Running it
 
@@ -223,6 +238,9 @@ It also does not absorb the skills it routes to. Routing to `new-env` is the who
 - ✅ Cite the file and the target / section each step came from.
 - ✅ Check shared-infrastructure impact and `DRY_RUN=1` availability every time.
 - ✅ Report `UNDEFINED` with the frontier, or downgrade to `AMBIGUOUS` / 確認できず.
+- ✅ Under `UNDEFINED`, write `なし` in `コマンド` with the reason, and name the near miss under
+  `近いもの` — including the respect in which its purpose differs.
+- ✅ Record a sweep you deliberately did **not** run, with its reason.
 - ✅ Warn before anything destructive and wait.
 - ✅ Answer in Japanese.
 - ❌ Invent a command, a flag, or a target that you did not read in a registry.
@@ -242,6 +260,7 @@ It also does not absorb the skills it routes to. Routing to `new-env` is the who
 - [ ] Prerequisites, expected result, recovery, and warnings each established from a source.
 - [ ] Shared-infrastructure impact and `DRY_RUN=1` availability checked.
 - [ ] Contract emitted in full, in Japanese, with an explicit state.
-- [ ] `UNDEFINED` only on exhausted indexes, with the frontier published.
+- [ ] `UNDEFINED` only on exhausted indexes, with the frontier published in `探索範囲`.
+- [ ] Under `UNDEFINED`: `コマンド` says なし with a reason, and `近いもの` names the near miss.
 - [ ] Nothing invented; every command traced to the file that defines it.
 - [ ] Destructive steps flagged and confirmed before running; nothing run that was only to be shown.

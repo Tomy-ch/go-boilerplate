@@ -147,6 +147,11 @@ This repository has a precedent worth starting from — 業界的正しさ / DDD
 does not have a DDD axis; a question about vocabulary is almost entirely the DDD one. Pick what the
 question actually turns on, and say why each axis is there.
 
+**Write down the axes you did not raise, too.** An axis can be absent because the question does not
+turn on it, or because this run could not source it — `--sources=repo` removes the industry-practice
+axis outright, and a reader who is shown four axes has no way to tell which of the two happened. The
+comparison's shape is itself a claim about what mattered.
+
 The last of those four is the one most easily forgotten and most often decisive: **this repository's
 product is the state a project receives at `useTemplate` time**, not the history that produced it.
 Weigh each option for someone who has never seen this repository and will never read its git log.
@@ -175,6 +180,10 @@ about 30 files" is a number the graph produces rather than estimates, so reverse
 symbols each option would change (`node .claude/scripts/graph-affected.ts <symbol> --depth 2`) and
 report what it returned.
 
+When a cost genuinely could not be measured, it goes under `未確認` with what measuring it would
+change — not into the cost field hedged with a qualifier. A hedged number still reads as a number,
+and it is the one the reader carries into the decision.
+
 ## Step 4 — Recommend, and say what would reverse it
 
 **Give a recommendation.** A comparison handed over without one returns the work to the person who
@@ -200,6 +209,7 @@ Always this shape, in Japanese. Lead with the recommendation; the comparison is 
 
 ## 評価軸
 - <軸> — <なぜこの問いでこの軸なのか>
+- 立てなかった軸: <軸> — <なぜこの問いでは立てられない / 関係しないのか>
 
 ## 選択肢
 ### <案の名前>
@@ -210,6 +220,9 @@ Always this shape, in Japanese. Lead with the recommendation; the comparison is 
 
 ## 推奨が変わる条件
 - <この事実が違えば結論が変わる>
+
+## 未確認
+- <測れなかったコスト / 確認できなかった主張> — <なぜ測れなかったか、測れば何が変わるか>
 
 ## 決めるべきこと
 - <人間が決める事項> — 記録先: ADR / issue / spec のどれか
@@ -254,7 +267,10 @@ one somebody chose. The route onward is human approval, then `new-issue`, then `
 - ✅ Traverse the graph for structural precedents and for blast radius, then confirm in source.
 - ✅ Say which layers were enumerated before asserting no precedent exists; mark the options
   provisional when the sweep was partial or the graph was unavailable.
-- ✅ Fix the evaluation axes before naming any option, and justify each axis.
+- ✅ Fix the evaluation axes before naming any option, and justify each axis — including the ones
+  you did not raise, and why.
+- ✅ Put a cost you could not measure under `未確認` with what measuring it would change, never
+  into the cost field as a hedged number.
 - ✅ Weigh options for the `useTemplate`-time reader, not for this repository's history.
 - ✅ State cost plainly, as information, alongside the recommendation.
 - ✅ Give a recommendation with its basis, and the conditions that reverse it.
@@ -277,7 +293,9 @@ one somebody chose. The route onward is human approval, then `new-issue`, then `
       the answer if one exists.
 - [ ] Isomorphic-mechanism check done by shape over enumerated layers; "no design branch" reported
       when it applies, and the enumerated scope stated when claiming none exists.
-- [ ] Evaluation axes fixed and justified before any option was named.
+- [ ] Evaluation axes fixed and justified before any option was named; axes deliberately not
+      raised are listed with the reason.
+- [ ] Costs and claims that could not be established are under `未確認`, not hedged inline.
 - [ ] Options enumerated by what the question has, not to a target count.
 - [ ] Each option carries consequences, risk, structural fit, and a stated cost.
 - [ ] Recommendation given with its basis, and reversal conditions written.

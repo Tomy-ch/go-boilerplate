@@ -109,7 +109,9 @@ question, while why those tests require a DB slot is a Rationale question.
 ## Step 2 — Establish the Search Frontier and Locate the Source
 
 Write down the intended frontier before drawing conclusions. Track indexes read in full, README
-chains walked, globs searched, structural traversal performed, and relevant areas left uncovered.
+chains walked, globs searched, structural traversal performed, and every relevant sweep deliberately
+left undone with its reason. Listing only covered ground makes an intentional exclusion
+indistinguishable from an overlooked sweep.
 
 ### Search Index-First by Owned Concern
 
@@ -226,7 +228,7 @@ Always answer in Japanese with every section below. Keep `回答` to one to thre
 
 ## 矛盾 / 欠落
 - <矛盾する出典と鮮度> / <未定義または確認できず> / <古い可能性>
-- 探索範囲: <通読した索引 / README 連鎖 / 検索 glob / 構造探索>
+- 探索範囲: <通読した索引 / README 連鎖 / 検索 glob / 構造探索 / 回さなかった掃引とその理由>
 
 ## 確度
 High | Medium | Low — <根拠>
@@ -271,12 +273,14 @@ user decide whether to run it.
 
 - Do route the request elsewhere when this is the wrong entry point.
 - Do search concern-owning indexes before keyword search.
-- Do publish the frontier and distinguish `未定義` from `確認できず`.
+- Do publish the frontier, including deliberately omitted sweeps and their reasons, and distinguish
+  `未定義` from `確認できず`.
 - Do open every cited source and cite stable symbols, targets, or sections.
 - Do separate Evidence from Interpretation.
 - Do report conflicts with both sources and their freshness.
-- Do use Graphify for structural and scope questions, verify its discoveries in source, and state
-  graph freshness.
+- Do account for Graphify in either direction: use it where structure dominates text, verify its
+  discoveries in source, and state freshness; or deliberately skip it and record why in the
+  frontier.
 - Do answer in Japanese.
 - Do NOT answer from memory about repository-decided behavior.
 - Do NOT read or cite `*.ja.md` or generated documentation as authority.
@@ -295,12 +299,15 @@ user decide whether to run it.
 - [ ] Question classified before searching.
 - [ ] Concern-owning indexes inspected before keyword search; `repo-ops` §0 read at runtime with
       its possible Codex-side staleness noted.
-- [ ] Frontier recorded: full indexes, README chain, globs, structural traversal, and omissions.
+- [ ] Frontier recorded: full indexes, README chain, globs, structural traversal, and every
+      deliberately omitted sweep with its reason.
 - [ ] No `*.ja.md` read and generated trees excluded.
 - [ ] Every cited source opened; stable symbols and paths used instead of line numbers.
 - [ ] Evidence and Interpretation separated; scope claims supported exhaustively.
 - [ ] Currency checked when material; conflicts reported without resolution.
-- [ ] Graphify used where structure dominates text; results verified in source and freshness stated.
+- [ ] Graphify accounted for in either direction: used where structure dominates text with results
+      verified in source and freshness stated, or deliberately skipped with the fact and reason
+      recorded in the frontier.
 - [ ] Full Japanese output contract emitted with a source-based confidence reason.
 - [ ] `未定義` reserved for exhausted owning indexes; otherwise `確認できず` names what is unread.
 - [ ] Nothing edited or mutated, and no follow-on skill invoked.

@@ -138,6 +138,12 @@ This is not a fixed scorecard. A build-gate question may have no DDD dimension; 
 may turn almost entirely on it. Retain only the axes that decide this question and justify every
 one.
 
+Also record axes that were not raised and explain why. An axis may be absent because the question
+does not turn on it, or because this run could not obtain the evidence needed to assess it.
+`--sources=repo`, for example, excludes an industry-practice axis when that axis depends on external
+evidence. Without this distinction, the reader cannot tell irrelevance from an evidence gap. The
+shape of the comparison is itself a claim about what mattered.
+
 Always consider the repository's actual product: the coherent snapshot received at `useTemplate`
 time by a reader who has never seen the repository history and will never consult its Git log.
 
@@ -159,7 +165,9 @@ Compare every option against the frozen axes and include:
 
 Measure checkable claims. Count hot-path queries instead of merely asserting that an option adds a
 read. Use reverse graph traversal to estimate blast radius rather than inventing an approximate file
-count. If measurement is unavailable, remove the number or label it unverified.
+count. Put a cost that could not be measured under `未確認`, together with why it was not measured and
+what the result would change. Do not leave a qualified estimate in the cost field: a hedged number is
+still read and carried into the decision as a number.
 
 ## Step 4 — Recommend and State Reversal Conditions
 
@@ -187,6 +195,7 @@ meanings:
 
 ## 評価軸
 - <軸> — <なぜこの問いでこの軸なのか>
+- 立てなかった軸: <軸> — <なぜこの問いでは立てられない / 関係しないのか>
 
 ## 選択肢
 ### <案の名前>
@@ -197,6 +206,9 @@ meanings:
 
 ## 推奨が変わる条件
 - <この事実が違えば結論が変わる>
+
+## 未確認
+- <測れなかったコスト / 確認できなかった主張> — <なぜ測れなかったか、測れば何が変わるか>
 
 ## 決めるべきこと
 - <人間が決める事項> — 記録先: ADR / issue / spec のどれか
@@ -245,7 +257,9 @@ approval, use numbered alternatives in the response and wait.
 - [ ] Report and stop for a standing ADR or spec decision.
 - [ ] Search enumerated layers for isomorphic mechanisms by shape, using the graph when current.
 - [ ] State the enumeration frontier before claiming there is no precedent.
-- [ ] Freeze and justify axes before naming any option.
+- [ ] Freeze and justify axes before naming any option; list deliberately omitted axes and why.
+- [ ] Put costs and claims that could not be established under `未確認`, not as qualified inline
+      estimates.
 - [ ] Enumerate the question's genuine alternatives without targeting a count.
 - [ ] Give every option consequences, risks, structural fit, and cost.
 - [ ] Keep cost out of the recommendation weight.

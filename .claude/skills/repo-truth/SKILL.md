@@ -148,7 +148,9 @@ Keyword search comes **last**, as a net for what the indexes missed — never as
 ### Record the frontier before concluding
 
 Keep track of what was actually covered: which indexes were read in full, which README chain was
-walked, which globs were searched. This is not bookkeeping — it is what makes an absence falsifiable,
+walked, which globs were searched — **and which sweeps you decided not to run, with the reason**.
+A frontier listing only what was covered reads identically whether the rest was ruled out or
+forgotten, and only one of those is a finding about the repository. This is not bookkeeping — it is what makes an absence falsifiable,
 and it draws a line this skill must not blur:
 
 | Verdict | Requires |
@@ -250,7 +252,8 @@ Always this shape, in Japanese. Keep the Answer short enough to be read first.
 
 ## 矛盾 / 欠落
 - <食い違う出典と、それぞれの鮮度> / <未定義 または 確認できず> / <古い可能性のある記述>
-- 探索範囲: <通読した索引 / 辿った README 連鎖 / 検索した glob>   ← 欠落を報告するときは必須
+- 探索範囲: <通読した索引 / 辿った README 連鎖 / 検索した glob / 回さなかった掃引とその理由>
+  ← 欠落を報告するときは必須
 
 ## 確度
 High | Medium | Low — <そう判断した理由>
@@ -315,6 +318,8 @@ in this skill's judgment would then silently redirect every flow that passed thr
 - ✅ Report an absence as the answer, with what was searched.
 - ✅ Reach for the graph where structure beats text — `affected` for callers and scope claims — then
   confirm what it pointed at in source, and state its freshness.
+- ✅ Record a sweep you deliberately did **not** run, with its reason. A frontier that lists only what
+  was covered cannot be told apart from one where the rest was forgotten.
 - ✅ Answer in Japanese.
 - ❌ Answer from memory about anything the repository decides.
 - ❌ Read or cite a `*.ja.md`, or cite generated output (`docs/portal/**`, `docs/godoc/**`,
@@ -339,8 +344,9 @@ in this skill's judgment would then silently redirect every flow that passed thr
 - [ ] Every cited source actually opened; symbols and paths, no line numbers.
 - [ ] Evidence and Interpretation separated; scope claims backed by exhaustive search.
 - [ ] Currency checked where the answer depends on it; conflicts reported with both sources.
-- [ ] Graph used where structure beats text (`affected` for any scope claim); its output confirmed in
-      source, its freshness stated, and its absence counted into the frontier.
+- [ ] Graph accounted for either way — used where structure beats text (`affected` for any scope
+      claim) with its output confirmed in source and its freshness stated, or deliberately not run
+      with that stated in the frontier alongside the reason.
 - [ ] Contract emitted in full, in Japanese, with Confidence and its reason.
 - [ ] 未定義 used only on exhausted indexes; otherwise 確認できず, naming what was left unread.
 - [ ] Gaps stated as results with the frontier attached; nothing invented to fill one.
