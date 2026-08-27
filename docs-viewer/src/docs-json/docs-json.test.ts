@@ -14,11 +14,7 @@ const minimalDocs = {
           id: "adr",
           slug: "adr",
           title: "ADR",
-// doc-pair:replace-begin
           items: [{ name: "0001", path: "./guides/0001.md", lang: "ja" }],
-// doc-pair:replace-with
-// =           items: [{ name: "0001", path: "./guides/0001.md" }],
-// doc-pair:replace-end
         },
       ],
     },
@@ -58,7 +54,6 @@ describe("parseDocsJson", () => {
   });
 
   describe("異常系", () => {
-// doc-pair:begin
     it("未知の言語を持つ項目を拒否する", () => {
       const invalid = {
         ...minimalDocs,
@@ -80,7 +75,6 @@ describe("parseDocsJson", () => {
 
       expect(() => parseDocsJson(invalid)).toThrow(z.ZodError);
     });
-// doc-pair:end
     it("groups を欠いた生成物を拒否する", () => {
       expect(() => parseDocsJson({ title: "Docs", subtitle: "x" })).toThrow(z.ZodError);
     });

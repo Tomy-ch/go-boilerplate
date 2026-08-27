@@ -490,7 +490,6 @@ git revert <「CI: SonarQube Cloud のワークフローを撤去する」のコ
 
 有効/無効を切り替えるスイッチはありません。理由は Phase 17 と同じで、設定されたまま無効なスキャナは誰も読まず誰も保守しないものになるからです。`bearer.yaml` は意図的にこの集合の外です。Elastic License 2.0 は CI で走らせる分には何のコストも生まず、制約するのはサービスとしての再配布だけであり、それは別の問いとして [workflows の README](../../.github/workflows/README.ja.md#bearer-のライセンスと撤去) に自分の答えを持っています。
 
-<!-- doc-pair:begin -->
 ## Phase 19: ドキュメントの言語を選ぶ
 
 このリポジトリは全ドキュメントを 2 部持っています。英語の正本と、その隣に置いた日本語訳
@@ -528,4 +527,3 @@ make setup-remove-doc-language LANG_CHOICE=en
 このスクリプトは推測せず、止まります。対訳規約そのものを説明している散文は機械的に畳めないため、
 `doc-pair` マーカーにも `language-manifest.ts` の宣言にも載っていない箇所があると、その
 ファイルと行番号を示して中止します。そのとき 1 ファイルも書き換えていません。
-<!-- doc-pair:end -->
