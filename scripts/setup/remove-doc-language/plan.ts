@@ -63,10 +63,13 @@ function isMarkedNonMarkdown(file: string): boolean {
   );
 }
 
+/** ファイルを残したまま中身だけ差し替える 1 手。 */
+export type WriteOperation = { kind: "write"; path: string; content: string };
+
 /** 撤去で行う 1 手。 */
 export type Operation =
   | { kind: "delete"; path: string }
-  | { kind: "write"; path: string; content: string }
+  | WriteOperation
   /** `from` を消して `to` として書き直す（`ja` の改名）。 */
   | { kind: "rename"; from: string; to: string; content: string };
 
@@ -192,7 +195,7 @@ export function planKeepBoth(
   files: readonly string[],
   read: ReadFile,
   removedPaths: readonly string[] = [],
-): Operation[] {
+): WriteOperation[] {
   const excluded = (file: string) =>
     removedPaths.some((prefix) => file === prefix || file.startsWith(`${prefix}/`));
 
