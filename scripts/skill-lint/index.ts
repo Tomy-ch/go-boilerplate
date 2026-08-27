@@ -23,6 +23,7 @@ import {
   literalParentDir,
   makeTargetExists,
   placeholderToRegExp,
+  extractNumberedSections,
 } from "./checks";
 import {
   type EnvLayout,
@@ -33,6 +34,7 @@ import {
   checkFrontmatter,
   checkPlatformOnlyAllowlist,
   checkReferences,
+  checkSectionReferences,
   checkSkillParity,
   checkTranslationPair, // doc-pair:line
   formatFindings,
@@ -143,6 +145,50 @@ function readMakefileSources(): string[] {
   }
 
   return files.map((file) => fs.readFileSync(file, "utf8"));
+}
+
+/** ツリー配下の `*.md` を再帰収集する。外部スキルと除外ディレクトリは踏まない。 */
+function collectMarkdown(rootDir: string): string[] {
+  const out: string[] = [];
+
+  const walk = (dir: string) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const abs = path.join(dir, entry.name);
+
+      if (entry.isDirectory()) {
+        if (EXCLUDE_DIRS.has(entry.name) || EXTERNAL_SKILL_DIRS.has(abs)) continue;
+        walk(abs);
+        continue;
+      }
+      if (entry.name.endsWith(".md")) out.push(path.relative(REPO_ROOT, abs));
+    }
+  };
+
+  if (!exists(rootDir)) return [];
+
+  walk(path.join(REPO_ROOT, rootDir));
+  return out.sort();
+}
+
+/**
+ * スキルが宣言している節番号の索引を、そのツリーの `SKILL.md` から作る。
+ *
+ * @remarks
+ * ツリーごとに作るのは、`.codex/` の文書の `` `repo-ops` §19 `` が Codex 側の `repo-ops` を
+ * 指すためです。片方の索引で両方を判定すると、同期途中に実在する節を違反として出します。
+ */
+function buildSectionIndex(skillsDir: string, names: readonly string[]): Map<string, Set<number>> {
+  const index = new Map<string, Set<number>>();
+
+  for (const name of names) {
+    const rel = path.join(skillsDir, name, "SKILL.md");
+    if (!exists(rel)) continue;
+
+    const sections = extractNumberedSections(readFile(rel));
+    if (sections.size > 0) index.set(name, sections);
+  }
+
+  return index;
 }
 
 function collectClaudeMarkdown(): string[] {
@@ -278,9 +324,22 @@ for (const rel of markdownFiles) {
   findings.push(...checkReferences(rel, readFile(rel), resolvers));
 }
 
+// 節番号の参照だけは両ツリーを見る。make ターゲットとパスの検査を `.codex/` へ広げると、
+// これまで一度も検査されていない側の既存違反がまとめて出て、この変更とは別の判断になる。
+const claudeSections = buildSectionIndex(LAYOUT.claudeSkills, skillDirs);
+const codexSections = buildSectionIndex(LAYOUT.codexSkills, codexSkillDirs);
+const codexMarkdownFiles = collectMarkdown(CODEX_DIR);
+
+for (const rel of markdownFiles) {
+  findings.push(...checkSectionReferences(rel, readFile(rel), claudeSections));
+}
+for (const rel of codexMarkdownFiles) {
+  findings.push(...checkSectionReferences(rel, readFile(rel), codexSections));
+}
+
 const summary =
   `${CLAUDE_DIR} ${skillDirs.length} スキル / ${agentFiles.length} エージェント / ${markdownFiles.length} Markdown、` +
-  `${CODEX_DIR} ${codexSkillDirs.length} スキル / ${codexAgentFiles.length} エージェント`;
+  `${CODEX_DIR} ${codexSkillDirs.length} スキル / ${codexAgentFiles.length} エージェント / ${codexMarkdownFiles.length} Markdown`;
 
 if (findings.length > 0) {
   console.error(`✘ skill-lint: ${findings.length} 件の違反\n`);

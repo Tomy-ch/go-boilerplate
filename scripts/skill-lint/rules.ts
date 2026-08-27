@@ -12,6 +12,7 @@ import {
   eachLineOutsideFence,
   extractHeadings, // doc-pair:line
   extractInlineCode,
+  extractSectionRefs,
   extractMakeTargets,
   hasTranslationNote, // doc-pair:line
   onlyIn,
@@ -384,6 +385,56 @@ function missingPath(span: string, fromDir: string, resolvers: ReferenceResolver
   return CONFIG_FILE_RE.test(span) && !resolvers.configFileExists(span)
     ? [`リポジトリに存在しない設定ファイルを参照しています: \`${span}\``]
     : [];
+}
+
+/**
+ * スキル名 → そのスキルが宣言している節番号。節番号を持たないスキルは載りません。
+ *
+ * @remarks
+ * ツリーごとに 1 つ作ります。`.codex/` の文書が書く `` `repo-ops` §19 `` は Codex 側の
+ * `repo-ops` を指すので、Claude 側の節番号で判定すると同期途中に偽陽性が出ます。
+ */
+export type SectionIndex = ReadonlyMap<string, ReadonlySet<number>>;
+
+/**
+ * 他スキルの節番号参照が、その節の実在と一致しているかを検査する。
+ *
+ * @remarks
+ * `make` ターゲットやパスと違い、節番号は参照先が改番しても構文としては壊れません。壊れた参照は
+ * 「別の節の手順を実行させる」形で表に出るため、`checkReferences` と同じ読み取り規則
+ * （フェンス外のみ・`<!-- skill-lint-ignore -->` を尊重）で見ます。
+ *
+ * 参照先が索引に無い場合と、参照先が節番号を 1 つも宣言していない場合は判定しません。前者は
+ * スキル名と同綴りの別語、後者は番号でない見出し規約を採っている可能性があり、どちらも
+ * 「番号がずれている」とは別の話だからです。
+ */
+export function checkSectionReferences(
+  rel: string,
+  content: string,
+  sections: SectionIndex,
+): Finding[] {
+  return [...eachLineOutsideFence(content)]
+    .filter(({ line }) => !line.includes(IGNORE_DIRECTIVE))
+    .flatMap(({ line, lineNo }) =>
+      extractSectionRefs(line)
+        .filter((ref) => {
+          const declared = sections.get(ref.skill);
+          return declared !== undefined && declared.size > 0 && !declared.has(ref.section);
+        })
+        .map((ref) => ({
+          file: rel,
+          line: lineNo,
+          rule: "section-ref",
+          message:
+            `\`${ref.skill}\` に存在しない節を参照しています: §${ref.section}` +
+            `（実在するのは ${describeSections(sections.get(ref.skill))}）`,
+        })),
+    );
+}
+
+/** 節番号の集合を昇順の一覧文字列にする。件数が多いので範囲へは畳まず、そのまま並べる。 */
+function describeSections(declared: ReadonlySet<number> | undefined): string {
+  return [...(declared ?? [])].sort((a, b) => a - b).map((n) => `§${n}`).join(" / ");
 }
 
 /** ルートの makefile として読むファイル名か。綴りは処理系依存なので実エントリ名で拾う。 */
