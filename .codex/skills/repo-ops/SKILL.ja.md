@@ -10,9 +10,18 @@
 2. **インフラは単一の共有 compose プロジェクト**。`database` / `observability` / `garage` は固定プロジェクト `gobp-shared` に**全 checkout で 1 インスタンス**だけ起動し、checkout 毎に分かれるのは `api_server` / `mock_auth_server` のみ。worktree の分離軸はポートではなく**データベース名**（`wt<N>_local` / `wt<N>_test`）。設計の正本は `docs/maintenance/db-worktree-pool.md`、全体像は `docs/maintenance/local-environment.md`。
 3. **`make lint` / `fix` / `test` はホスト実行**（mise 経由）。「全部 docker 化」の例外であり、ローカルと CI が食い違う原因になる。
 
+## 契約
+
+| | |
+| --- | --- |
+| **所管** | 既知の運用症状から是正手順への索引（§1–21）と、問いに対する正本の所在（§0） |
+| **しないこと** | 索引に無い手順を発明する / 「未定義」を宣告する / 設計判断 / 実行承認の代行 |
+| **開始条件** | 症状・失敗したゲート・想定外の挙動が提示されたとき |
+| **停止条件** | 症状が索引に無い（`how-to` / `repo-truth` へ渡す）、資料が矛盾する、要求が許可範囲を超える |
+
 ## 症状インデックス
 
-| 症状 | 節 |
+| 症状 | 修正がある場所 |
 | --- | --- |
 | `docker compose ps` が空 / "port 5432 already allocated" / サービスが見つからない | §1 |
 | `schema.gen.sql` や sqlc 出力がドリフトし `gen-db-artifacts-check` が落ちる | §2 |
@@ -21,28 +30,42 @@
 | `make slot-acquire` 後にテスト・マイグレーションが別 DB を見る | §5 |
 | ブランチ切り替え直後に統合テストが落ちる | §5 |
 | pre-push の `secret-scan` が自分の追加していない秘密を検出する | §6 |
-| `sample-removal-check` が CI で落ちる | §21 <!-- sample-api:line --> |
+| `sample-removal-check` が CI で落ちる | §99 <!-- sample-api:line --> |
 | 触っていないのに `env/.env` が dirty | §7 |
 | ローカル golangci-lint が CI と食い違う / `golangci-lint: not found` | §8 |
-| `commitlint: not found` / `orval: not found` / ツールが古い | §9 |
+| `commitlint: not found` / `orval: not found` / ツールが古い | §9 → `tools-upgrade`（版の更新） |
 | コンテナ経由のゲートが `ERR_PNPM_VERIFY_DEPS_BEFORE_RUN` で落ちる / Docker 内でだけ落ちる | §9 |
 | 触っていないパッケージの依存が無いとコンテナ側のゲートが言う / `make` では落ちるのに素の `docker compose run` では通る | §9 |
 | 自分の変更と無関係な理由でフックが落ちる | §10 |
 | 複数の worktree を開いている状態で、変更と無関係にゲートが落ちる／異常に遅い | §19 |
 | `make lint` がスキップ・低速化・CI 委譲された理由を知りたい | §19 |
-| `pin-images-check` / `pin-actions-check` が未固定・未登録で落ちる | §11 |
-| `tool-cooldown` / `go-cooldown` が宣言したばかりの版を弾く | §20 |
-| ランタイムの昇格が、まだ上げられないツールを経由してゲートを壊す | §20 |
+| `pin-images-check` / `pin-actions-check` が未固定・未登録で落ちる | §11 → `images-pin` / `actions-pin` |
+| `tool-cooldown` / `go-cooldown` が宣言したばかりの版を弾く | §20 → `supply-chain-triage` |
+| ランタイムの昇格が、まだ上げられないツールを経由してゲートを壊す | §20 → `tools-upgrade` |
 | pre-commit の "Migration version gap / duplicate" | §12 |
 | ローカルの S3 呼び出しが 503 を返す | §13 |
 | 特定環境向けイメージのビルド | §14 |
-| CI で `sync-versions` のドリフト | §15 |
+| CI で `sync-versions` のドリフト | §15 → `go-upgrade`（Go の版上げ） |
 | 新しい worktree で air やイメージビルドが `go: inconsistent vendoring` になる（`vendor/` 未生成） | §18 |
-| どのドキュメントが答えを決めるのか分からない / `grep` が対訳・生成物に埋もれる | §0 |
+| どのドキュメントが答えを決めるのか分からない / `grep` が対訳・生成物に埋もれる | §0 → `repo-truth` |
+| ベース取り込み後に衝突した / 生成物・pin lockfile にマーカーが出た | §21 → `resolve-merge` |
+| マージ後、ブランチが触っていないファイルで `gen-*-artifacts-check` が落ちる | §21 → `resolve-merge` |
+
+**スキルが修正を所管する場合、索引はその名前を示し、節は境界で止まる。** 節には症状の意味、
+ゲートが鳴った理由、何が破壊的かという診断を残し、手順は複製せず所管スキルへ渡す。再掲した
+手順はコピーであり、所管が変わったときに腐るのはコピー側だからである。索引で渡すことにも意味が
+ある。節を最後まで読んでから委譲を知る読者は、委譲が節約するはずだった読解を既に払い終えている。
+
+**`make setup-remove-sample-api` が削除する節は、連番の外に §99 として置く。** 連番内に置くと、
+削除後も番号に恒久的な穴が残る。新しい恒久節には次の連番を与える。
+
+**索引に無い症状は、このスキルの所管ではない。** これは既知の gotcha のルックアップ表であり、
+「修正は §N」と答えるものであって「修正は存在しない」と宣告する検索ではない。目的から手順を探す
+問いは `how-to` へ、リポジトリの事実や規則を問うものは `repo-truth` へ渡す。
 
 ## 0. 正本の見つけ方
 
-このツリーの Markdown の大半は、読んではいけない日本語ミラーか、コードに遅れて追随する生成物のどちらかである。そのためリポジトリ全体を素朴に検索すると、実際に答えを決めている唯一のファイルが埋もれる。追跡されている `*.md` はおよそ 1,000 件あり、その **4 割超が `*.ja.md` 対訳**、**72 件が README を写した生成物 `docs/portal/guides/**`**。さらに `docs/godoc/**` が約 1,250 件、`docs/db-schema/**` が約 390 件ある。
+このツリーの Markdown の大半は、読んではいけない日本語ミラーか、コードに遅れて追随する生成物のどちらかである。そのためリポジトリ全体を素朴に検索すると、実際に答えを決めている唯一のファイルが埋もれる。追跡されている `*.md` はおよそ 1,000 件あり、その **4 割超が `*.ja.md` 対訳**、**72 件が README を写した生成物 `docs/portal/guides/**`**。さらに `docs/godoc/**` が約 1,800 件、`docs/db-schema/**` が約 400 件ある。
 
 ### 正本の所在
 
@@ -205,6 +228,10 @@ make tool-runners-build-clean     # --no-cache --pull。キャッシュ層が原
 node ランナーは `/app/scripts/node_modules` を匿名ボリュームとして持つ（バインドマウントによる shadow を防ぐため）。補助スクリプトはここからバイナリを解決するので、イメージが古いとこれらが壊れる。
 
 commit-msg フックは `node_tool_runner` 経由で `make commitlint COMMIT_MSG_FILE={1}` を実行するため、コミット失敗の典型原因はこれ。`commitlint.config.js` は意図的に `type-case` を無効化し（prefix は Cap-first の `Feat`/`Fix`/… だが CI のメッセージは全大文字＝単一 case を強制できない）、`type-enum` をプロジェクトの prefix に固定している。`Merge` / `Revert` は既定で無視される。
+
+この節が扱うのは、ツールが**イメージ内で**欠けているか古い場合である。固定された版を意図的に
+上げるのは供給網の窓を伴う別の仕事で、`tools-upgrade` が所管する。この症状を消すためだけに
+`mise.toml` の pin を上げてはならない。
 
 ## 10. フック対応表 — 何がいつ走るか、自分の変更と無関係に落ちたときどうするか
 
@@ -376,8 +403,22 @@ backend ごとに決めており、影響範囲からではありません。定
 `verifyLocks` からの違反です。`make py-lock` を回して両方をコミットしてください。ピンと lockfile は
 1 つの変更です。
 
+## 21. ベースを取り込んだ後の衝突マーカー
+
+見た目には clean なマージでも完了とは限らない理由が 2 つあり、是正手順は `resolve-merge` が所管する。
+
+**マーカーの大半は編集してはいけないファイルに現れる。** `*.gen.go`、`*.sql.go`、`*_mock.go`、
+`openapi.gen.yaml`、`database/gen/*.gen.sql`、生成された `docs/` ツリー、pin lockfile には、それぞれ
+generator または resolver がある。片側を選ぶとマーカーは消えてレビューも通るが、元から再現できない
+生成物が残り、後の `gen-*-artifacts-check` が他人の PR で落ちる。
+
+**マーカーが無いマージも finished とは限らない。** `database/gen/*.gen.sql` は DML ファイルの連結物
+なので、2 ブランチが別々の入力を足した場合、テキスト衝突が 0 件でも派生出力は古くなりうる。
+処理は `resolve-merge` へ渡す。ベースには PR の `baseRefName` を使い、rebase ではなく merge し、
+hotfix 中はベースを明示的に渡す。
+
 <!-- sample-api:begin -->
-## 21. `sample-removal-check` が CI で落ちる
+## 99. `sample-removal-check` が CI で落ちる
 
 `scripts/setup/remove-sample-api/sample-manifest.ts` は、テンプレート利用者がサンプル API を剥がすときに `make setup-remove-sample-api` が削除する全パスを宣言している。サンプルドメイン（user / product / purchase / …）配下でファイルを追加・移動・改名したのに登録しないと、削除後に参照が宙に浮く。CI はこれを、実際に削除を実行してから build / lint / test することで検出する。ローカルでは何も落ちない＝自分で走らせない限り CI 専用で見つかる。 <!-- skill-lint-ignore -->
 

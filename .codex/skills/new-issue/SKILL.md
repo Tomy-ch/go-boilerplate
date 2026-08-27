@@ -80,8 +80,12 @@ Then establish, for each thing you intend to assert:
 
 - **Is it current?** The file may have changed in a branch that merged this week. Check recent history
   for the paths involved (`git log --oneline -15 -- <paths>`) and recently merged PRs touching them.
-- **Is the radius complete?** If the claim is "only X does this", search for every caller and every
-  sibling. A claim of scope is a claim about absence, and absence is what searches are for.
+- **Is the radius complete?** If the claim is "only X does this", reverse-traverse the graph with
+  `node .claude/scripts/graph-affected.ts <symbol> --depth 2` instead of inferring its call sites.
+  The result identifies each site by relation label and `file:line`, providing the evidence an
+  absence claim requires. Check graph freshness first as directed by `AGENTS.md`; if it is stale or
+  the symbol is new, fall back to an exhaustive search of callers and siblings. A claim of scope is
+  a claim about absence, and absence is what searches are for.
 - **Does a cost comparison rest on anything?** "Adds a read on the hot path" is checkable — count the
   queries in both designs. An unmeasured cost is not a trade-off, it is a guess.
 
@@ -98,7 +102,7 @@ author who is asked to *notice* that they are unsure will usually not notice.
 | 1 | The draft asserts runtime behavior that was never executed | Run it (Step 5), or mark the claim unverified and say so in the body |
 | 2 | Cited implementation was not checked for currency | Check history for those paths |
 | 3 | An option comparison has no measured basis | Measure it, or drop the comparison and present the options without a cost claim |
-| 4 | An impact-radius claim rests on a partial search | Search exhaustively, or narrow the claim to what was searched |
+| 4 | An impact-radius claim rests on a partial search | Reverse-traverse the graph, search exhaustively, or narrow the claim to what was covered |
 | 5 | Existing issues were not searched | Search |
 
 **When information is missing, ask — do not estimate.** This is the instruction the user gave when
@@ -219,6 +223,12 @@ Report the URL, and say which premises were verified at runtime and which only s
 If the user selected `--output=draft`, stop before this and hand over the body.
 
 ## Handoff to `impl-issue`
+
+`research` sits upstream of this skill: it compares unresolved options and deliberately stops at
+`決めるべきこと`. Its recommendation supports a choice but does not settle one. Only human approval
+turns it into a decision, and this skill records that approved outcome so it remains traceable. If
+the input still carries an unapproved recommendation, preserve that gap explicitly: raise it under
+論点 instead of presenting it as an agreed plan.
 
 An issue produced here is meant to be picked up by `impl-issue`, whose first step compares the issue
 against the base and reports every discrepancy in the kickoff comment. The 前提 section is what makes
