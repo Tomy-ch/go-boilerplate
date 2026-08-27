@@ -49,6 +49,21 @@ export const SELF_DESTRUCT_PATHS: readonly string[] = [
   "scripts/setup/remove-doc-language",
 ];
 
+/** egress SSOT のパス。自消滅する workflow の宣言はここから落とす。 */
+export const EGRESS_FILE = ".github/egress.toml";
+
+/**
+ * 自消滅する workflow が egress SSOT に持つジョブ宣言。
+ *
+ * @remarks
+ * 落とす契機は言語の選択ではなく workflow の消滅なので、`both` を含む 3 モードで落とします。
+ * マーカーでは表せません —— `both` はマーカーの中身を残す向きに解決するため、宣言だけが
+ * 対応する workflow を失い、`make egress-check` が孤児として鳴きます。
+ */
+export const SELF_EGRESS_JOBS: readonly string[] = [
+  "doc-language-removal-check.yaml:doc-language-removal-check",
+];
+
 /** 行は残したまま、文字列だけを差し替える宣言。 */
 export type DocReplacement = {
   file: string;

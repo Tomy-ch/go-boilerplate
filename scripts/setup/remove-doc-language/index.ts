@@ -17,10 +17,13 @@ import {
   COMMIT_SUBJECTS,
   DECLARED_LINES,
   DOC_REPLACEMENTS,
+  EGRESS_FILE,
   MODES,
   REMOVED_PATHS,
   SELF_DESTRUCT_PATHS,
+  SELF_EGRESS_JOBS,
 } from "./language-manifest";
+import { removeEgressSections } from "../lib/egress";
 import { type Operation, planKeepBoth, planRemoval } from "./plan";
 
 /** `--lang` に渡せる値。`both` は両方残す（何もしない）。 */
@@ -115,6 +118,32 @@ function applyOperation(operation: Operation, dryRun: boolean): string[] {
 
       return [operation.from, operation.to];
   }
+}
+
+/**
+ * 自消滅する workflow の egress 宣言を落とす。
+ *
+ * @remarks
+ * 3 モードとも呼びます。`both` は畳まないぶんマーカーの中身を残す向きに解決するので、
+ * この宣言をマーカーに委ねると、workflow だけが消えて宣言が孤児として残ります。
+ */
+function removeSelfEgressJobs(): string[] {
+  const absolute = toAbsolutePath(EGRESS_FILE);
+
+  if (!fs.existsSync(absolute)) {
+    return [];
+  }
+
+  const original = fs.readFileSync(absolute, "utf8");
+  const content = removeEgressSections(original, SELF_EGRESS_JOBS);
+
+  if (content === original) {
+    return [];
+  }
+
+  fs.writeFileSync(absolute, content);
+
+  return [EGRESS_FILE];
 }
 
 function removeDeclaredPaths(dryRun: boolean): string[] {
@@ -217,11 +246,13 @@ function run(choice: LanguageChoice, dryRun: boolean): void {
     fs.rmSync(toAbsolutePath(relativePath), { recursive: true, force: true });
   }
 
+  const egress = removeSelfEgressJobs();
+
   // ベースラインは最後に引く。このツール自身のテストがマーカーの形を入力として持つため、
   // 自消滅より先に引くと「在るはずのマーカーが無くなった」と鳴り続ける。
   const baseline = rewriteMarkerBaseline(dryRun);
 
-  if (commitPaths([...touched, ...declared, ...baseline, ...selfDestruct], subject)) {
+  if (commitPaths([...touched, ...declared, ...egress, ...baseline, ...selfDestruct], subject)) {
     console.log(`  → コミットしました: ${subject}`);
   }
 

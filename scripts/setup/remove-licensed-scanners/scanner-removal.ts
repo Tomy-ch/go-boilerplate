@@ -47,29 +47,6 @@ export function removePinEntries(content: string, keys: readonly string[]): stri
     .join("\n");
 }
 
-/** egress SSOT から `[job."<key>"]` セクションを、次のセクション見出しまで本文ごと落とす。 */
-export function removeEgressSections(content: string, jobKeys: readonly string[]): string {
-  if (jobKeys.length === 0) {
-    return content;
-  }
-
-  const targets = new Set(jobKeys.map((key) => `[job."${key}"]`));
-  const kept: string[] = [];
-  let dropping = false;
-
-  for (const line of content.split("\n")) {
-    if (/^\[(class|job)\./.test(line)) {
-      dropping = targets.has(line.trim());
-    }
-
-    if (!dropping) {
-      kept.push(line);
-    }
-  }
-
-  return kept.join("\n");
-}
-
 /** 宣言した文字列が本文に無い（README が動いた）ことを表す。 */
 export class MissingDeclarationError extends Error {
   constructor(file: string, kind: string, needle: string) {
