@@ -10,8 +10,6 @@ This skill audits and upgrades the SHA-pinned GitHub Actions in `.github/workflo
 
 It is the sibling of `tools-upgrade` — that skill covers `mise.toml` `[tools]`; this one covers GitHub Actions pins. They share the same quarantine philosophy but operate on different SSOTs.
 
-A Japanese reference translation is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
-
 ## How Pinning Works in This Repo
 
 Read this before doing anything — the mechanism determines every step below.
@@ -194,5 +192,4 @@ Confirm before reporting completion:
 - [ ] `make pin-actions-resolve PIN_ACTIONS_MIN_AGE_DAYS=<N>` + `make pin-actions-apply` run
 - [ ] `make pin-actions-check` + `make actions-lint` run and reported
 - [ ] Exact-version step-back pins introduced are listed for later revisit
-- [ ] After updating `SKILL.md`, also update `SKILL.ja.md` to keep the Japanese translation in sync
 - [ ] No commit / stage / push performed

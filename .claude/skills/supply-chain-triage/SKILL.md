@@ -27,7 +27,6 @@ The last sentence of the quote is the design constraint that shapes everything h
 could not answer is **not** a passing grade. A verdict is a claim about evidence obtained, so this
 skill reports "unanswerable" explicitly and refuses to launder silence into a low score.
 
-A Japanese reference translation is available at `SKILL.ja.md` in the same directory (not loaded as
 a skill; for human reference only). The per-ecosystem procedures under `references/` are English
 only — they are command recipes, not prose for human readers.
 
@@ -289,4 +288,3 @@ Four walls to restate in the report whenever they apply:
 - [ ] Japanese report printed with band, recommendation, and the explicit statement that nothing was changed
 - [ ] pnpm `minimumReleaseAge` / PyPI `tool-cooldown` / `images-pin` rule 3 walls restated when they apply
 - [ ] No file modified, no window lowered, no upgrade applied
-- [ ] After updating `SKILL.md`, re-sync `SKILL.ja.md`

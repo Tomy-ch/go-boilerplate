@@ -5,8 +5,6 @@ description: Audit this repository's pinned tool versions against upstream lates
 
 # Tool Version Upgrade
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
-
 This skill audits every pinned tool version against upstream latest, with a **supply-chain quarantine gate**: releases newer than `min_age_days` are surfaced as informational only and are never applied automatically. The gate exists because malicious uploads to npm / PyPI / Go module proxies are typically detected and revoked within hours to days; waiting reduces exposure.
 
 The audit surface is **both** declaration sites, because a tool that is not read is a tool that never gets upgraded:
@@ -48,7 +46,7 @@ Per the "Exception: Skill Execution" clause in `AGENTS.md`, the following paths 
 
 - `mise.toml` (the `[tools]` table — write only entries the user explicitly approved)
 - `python/*.in` (the version pin — only entries the user explicitly approved) and `python/*.txt` — the latter only as the output of `make py-lock`, never hand-edited
-- `go.mod`, `docker/**/Dockerfile`, `docker/**/README.md`, `docker/**/README.ja.md` — only as the downstream output of `make sync-versions` (the script handles these atomically)
+- `go.mod`, `docker/**/Dockerfile`, `docker/**/README.md` — only as the downstream output of `make sync-versions` (the script handles these atomically)
 - `docker/**/Dockerfile` `FROM` `@sha256:...` digests + `docker/images-pin.toml` — only via `make pin-images-apply` / `pin-images-resolve`, when a `go` / `node` / `python` runtime bump changed a base-image tag
 
 The following remain protected even during skill execution:

@@ -5,13 +5,10 @@ import {
   allowlistLocation,
   asRepoPath,
   collectMakeTargets,
-  compareHeadingStructure, // doc-pair:line
   eachLineOutsideFence,
   expandBraces,
-  extractHeadings, // doc-pair:line
   extractInlineCode,
   extractMakeTargets,
-  hasTranslationNote, // doc-pair:line
   makeTargetExists,
   onlyIn,
   parseFrontmatterKeys,
@@ -192,72 +189,6 @@ describe("parseFrontmatterKeys", () => {
   });
 });
 
-// doc-pair:begin
-describe("extractHeadings", () => {
-  describe("正常系", () => {
-    it("レベルとテキストと行番号を取り出す", () => {
-      expect(extractHeadings("# A\n\n## B")).toEqual([
-        { level: 1, text: "A", lineNo: 1 },
-        { level: 2, text: "B", lineNo: 3 },
-      ]);
-    });
-    it("フェンス内の # を見出しにしない", () => {
-      expect(extractHeadings("```sh\n# コメント\n```")).toEqual([]);
-    });
-  });
-});
-
-describe("compareHeadingStructure", () => {
-  describe("正常系", () => {
-    it("レベル列が一致すれば null を返す", () => {
-      expect(compareHeadingStructure(extractHeadings("# A\n## B"), extractHeadings("# あ\n## い"))).toBeNull();
-    });
-    it("見出しテキストの違いはずれと見なさない（翻訳で変わる）", () => {
-      expect(compareHeadingStructure(extractHeadings("# Overview"), extractHeadings("# 概要"))).toBeNull();
-    });
-  });
-
-  describe("異常系", () => {
-    it("対訳に見出しが足りなければ最初の欠落位置を返す", () => {
-      const mismatch = compareHeadingStructure(extractHeadings("# A\n## B"), extractHeadings("# あ"));
-
-      expect(mismatch).toMatchObject({ index: 1, translation: null });
-      expect(mismatch?.canonical).toMatchObject({ level: 2, text: "B" });
-    });
-    it("対訳に余分な見出しがあれば最初の余りを返す", () => {
-      const mismatch = compareHeadingStructure(extractHeadings("# A"), extractHeadings("# あ\n## い"));
-
-      expect(mismatch).toMatchObject({ index: 1, canonical: null });
-    });
-    it("レベルの違いをずれとして返す", () => {
-      const mismatch = compareHeadingStructure(extractHeadings("## A"), extractHeadings("### あ"));
-
-      expect(mismatch?.index).toBe(0);
-    });
-  });
-});
-
-describe("hasTranslationNote", () => {
-  describe("正常系", () => {
-    it("冒頭の引用行が canonical を指していれば通す", () => {
-      expect(hasTranslationNote("\n> これは SKILL.md の翻訳です\n", "SKILL.md")).toBe(true);
-    });
-  });
-
-  describe("異常系", () => {
-    it("引用行でなければ注記と見なさない", () => {
-      expect(hasTranslationNote("SKILL.md の翻訳です", "SKILL.md")).toBe(false);
-    });
-    it("canonical のファイル名を含まなければ注記と見なさない", () => {
-      expect(hasTranslationNote("> 翻訳です", "SKILL.md")).toBe(false);
-    });
-    it("空のファイルを注記ありと見なさない", () => {
-      expect(hasTranslationNote("", "SKILL.md")).toBe(false);
-    });
-  });
-});
-
-// doc-pair:end
 describe("onlyIn", () => {
   describe("正常系", () => {
     it("片側にしかない名前を返す", () => {

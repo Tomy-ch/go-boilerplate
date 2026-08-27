@@ -22,46 +22,20 @@ function markdownIn(directory: string): string[] {
   return existsSync(directory) ? readdirSync(directory).filter(isMarkdownFile).sort() : [];
 }
 
-// doc-pair:replace-begin
-/** 対訳は正本と同じディレクトリに居る。分けるのは接尾辞であって置き場所ではない。 */
-function markdownByLanguage(directory: string): { en: string[]; ja: string[] } {
-  const files = markdownIn(directory);
-
-  return { en: files.filter((file) => !file.endsWith(".ja.md")), ja: files.filter((file) => file.endsWith(".ja.md")) };
-}
-// doc-pair:replace-with
-// =
-// doc-pair:replace-end
-
 function discover(): DiscoveredDocs {
   const sectionNames = readdirSync(DOCS_DIR, { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && isSectionDirectory(entry.name))
     .map((entry) => entry.name);
 
   const directories: DiscoveredDirectory[] = sortSectionNames(sectionNames).map((name) => {
-// doc-pair:replace-begin
-    const byLanguage = markdownByLanguage(join(DOCS_DIR, name));
-
     return {
       name,
       hasIndexHtml: existsSync(join(DOCS_DIR, name, "index.html")),
-      enFiles: byLanguage.en,
-      jaFiles: byLanguage.ja,
+      files: markdownIn(join(DOCS_DIR, name)),
     };
   });
-  const root = markdownByLanguage(DOCS_DIR);
 
-  return { directories, rootEnFiles: root.en, rootJaFiles: root.ja };
-// doc-pair:replace-with
-// =     return {
-// =       name,
-// =       hasIndexHtml: existsSync(join(DOCS_DIR, name, "index.html")),
-// =       files: markdownIn(join(DOCS_DIR, name)),
-// =     };
-// =   });
-// =
-// =   return { directories, rootFiles: markdownIn(DOCS_DIR) };
-// doc-pair:replace-end
+  return { directories, rootFiles: markdownIn(DOCS_DIR) };
 }
 
 function main(): void {
