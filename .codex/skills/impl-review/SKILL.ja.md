@@ -17,6 +17,15 @@
 - spec 検証 — `verify-spec`
 - 修正の適用 — 本スキルはソースに対し read-only。指摘するだけで直すのはユーザー。
 
+## 責務契約
+
+| | |
+| --- | --- |
+| **所管** | 変更そのもの（`architecture` / `ddd-modeling` / `security` / `correctness` / `runtime-gap` / `type-design`） |
+| **しないこと** | テスト観点（`test-review`）/ コメント観点（`comment-sweep`）/ 他スキルの呼び出し |
+| **開始条件** | レビュー可能な差分とその意図が存在するとき |
+| **停止条件** | tier 1 の finding が人間の設計判断を要するとき |
+
 ## 中核アイデア — reviewer ≠ implementer
 
 バイアス低減が設計上の制約であって、おまけではない。よって reviewer は **コードを書いた者とは別モデルの subagent** として動く:

@@ -29,6 +29,15 @@ not loaded as a skill).
 Do NOT use it for a change with no issue behind it (`commit` + `submit-pr` directly), for reviewing an
 existing diff (`impl-review` / `test-review`), or for authoring skills (`manage-skill`).
 
+## Contract
+
+| | |
+| --- | --- |
+| **Owns** | Progressing the issue → merged PR pipeline, reconciling the approved plan with the implementation, and mechanically detecting when human judgment is required |
+| **Never** | Fill in unresolved design decisions independently / make implementation judgments (delegatees own them) |
+| **Starts when** | An accepted issue is presented |
+| **Stops when** | Any of the five trip-wires fires, or runtime verification does not pass |
+
 ## What this skill does NOT do
 
 It holds no implementation judgment. It never decides which design to adopt, whether a reviewer is

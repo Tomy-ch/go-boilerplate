@@ -89,6 +89,9 @@ skills:
   - skill: go-upgrade
     usage_class: lifecycle
     opportunity_predicate: "`mise.toml` の go バージョンが更新可能になった"
+  - skill: how-to
+    usage_class: situational
+    opportunity_predicate: "ユーザーの発話が「〜したい」「〜するには」の形で操作の手順を尋ねた"
   - skill: images-pin
     usage_class: lifecycle
     opportunity_predicate: "`docker/**` に未 pin の image が現れた"
@@ -119,6 +122,9 @@ skills:
   - skill: portal-manifest-sync
     usage_class: situational
     opportunity_predicate: "`README.md` が追加・削除されたのに `docs/portal/manifest.yaml` が変更されていない"
+  - skill: question
+    usage_class: situational
+    opportunity_predicate: "ユーザーの発話が範囲を述べない指示語（「今」「これ」「どうなの」）を含み、その窓が `AskUserQuestion` を一度も呼ばずに回答した"
   - skill: readme-review
     usage_class: situational
     opportunity_predicate: null
@@ -128,6 +134,15 @@ skills:
   - skill: repo-ops
     usage_class: situational
     opportunity_predicate: null
+  - skill: repo-truth
+    usage_class: frequent
+    opportunity_predicate: "その窓のツール呼び出しに `Read` / `Grep` が現れ、コードを変更せずに終わった（＝リポジトリへの問いに答えた窓）"
+  - skill: research
+    usage_class: situational
+    opportunity_predicate: "ユーザーの発話に選択を求める形（「どっち」「すべきか」「選択肢」）が現れた"
+  - skill: resolve-merge
+    usage_class: lifecycle
+    opportunity_predicate: "その窓の Bash 呼び出しに `git merge` が現れた"
   - skill: scaffold-controller
     usage_class: situational
     opportunity_predicate: "`internal/controller/handler/` にファイルが追加された"
