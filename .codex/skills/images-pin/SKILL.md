@@ -4,106 +4,106 @@ description: >-
   Audit and refresh the digest pins for the Docker images referenced by `FROM` in `docker/*/Dockerfile` and by `image:` in `docker-compose*.yaml`, with a supply-chain cooldown that refuses freshly-rebuilt digests. The image tag (`golang:1.26.5-alpine`, `postgres:18.3-bookworm`) is the version source of truth and is owned by `go-upgrade` / `tools-upgrade` / `make sync-versions` (or upstream, for compose service images) — this skill NEVER changes tags, only the trailing `@sha256:...` digest. `docker/images-pin.toml` is the resolved `image:tag → digest` lockfile (single flat SSOT shared by Dockerfile and compose images), driven by `make pin-images-resolve` / `pin-images-apply` / `pin-images-check` (backed by `scripts/pin-images`). `resolve` re-resolves each tag's current digest via `docker buildx imagetools inspect` and quarantines any whose image-config `created` is younger than `PIN_IMAGES_MIN_AGE_DAYS` (default 14; pass `days=N` to override, `0` disables). Because a mutable tag has no queryable history, the step-back target is the tool's own prior lock entry; a fresh image with no prior lock has no aged step-back target and is unsafe to adopt, so `resolve` refuses it (exits non-zero) rather than leaving it tag-only — bootstrap such an image only deliberately via `days=0`, and only after chaining `supply-chain-triage` for what direct evidence a rebuild can offer (SBOM package diff, image-config diff, provenance), which for a mutable tag is often inconclusive by construction. `apply` / `check` are fail-closed: every managed `FROM` / compose `image:` must be digest-pinned AND registered in the lockfile — a lock-absent image is an `未登録` error and a tag-only (un-pinned) reference is an `未固定` error, both non-zero (apply never strips a digest to normalize an image away). Verifies with `make pin-images-check` + `make docker-lint` (hadolint). Sibling of `actions-pin` (which pins GitHub Actions `uses:`). Use on a routine cadence, after a base-image / registry security advisory, or to pin an image that was previously quarantined once it has aged.
 ---
 
-# Docker Base Image Pin Refresh
+# Docker base image の pin 更新
 
-This skill audits and refreshes the **digest pins** of the `FROM` base images in `docker/*/Dockerfile` **and the `image:` service images in `docker-compose*.yaml`**, with a **supply-chain cooldown gate**: a digest whose image-config `created` timestamp is newer than the exclusion window (`PIN_IMAGES_MIN_AGE_DAYS`, default 14) is never adopted. A freshly-published (possibly compromised) rebuild is thus never pulled in before upstream has time to detect and revoke it.
+このスキルは `docker/*/Dockerfile` の `FROM` base image **および `docker-compose*.yaml` のサービス `image:`** の **digest 固定**を監査・更新する。**サプライチェーン cooldown ゲート**を備え、image-config の `created` が除外期間（`PIN_IMAGES_MIN_AGE_DAYS`、既定 14 日）より新しい digest は採用しない。公開直後の（侵害されている可能性のある）再ビルドを、upstream が検知・取り下げる前に取り込まないため。
 
-It is the sibling of `actions-pin` — that skill pins GitHub Actions `uses:` to commit SHAs; this one pins Docker base images to digests. They share the same cooldown philosophy but operate on different SSOTs.
+`actions-pin` の姉妹スキル。あちらは GitHub Actions の `uses:` を commit SHA へ、こちらは Docker image を digest へ固定する。cooldown の思想は共通だが SSOT が異なる。
 
-**The tag is not this skill's to change.** `golang:1.26.5-alpine`, `node:24.18.0-alpine`, etc. are version-pinned by `make sync-versions` (from `mise.toml`) and bumped by `go-upgrade` / `tools-upgrade`; compose service-image tags (`postgres:18.3-bookworm`, `grafana/otel-lgtm:0.28.0`, …) are owned upstream / by whoever set the compose service. This skill only manages the `@sha256:...` digest that follows the tag, for Dockerfile and compose images alike. Never edit a tag here — if a version bump is needed, stop and defer to the owning skill.
+**tag はこのスキルが触るものではない。** `golang:1.26.5-alpine` / `node:24.18.0-alpine` 等のバージョンは `make sync-versions`（`mise.toml` 由来）で pin され、`go-upgrade` / `tools-upgrade` が bump する。compose のサービス image の tag（`postgres:18.3-bookworm` / `grafana/otel-lgtm:0.28.0` …）は upstream / compose サービスを設定した者が管掌する。このスキルは Dockerfile・compose いずれの image でも、tag に続く `@sha256:...` digest のみを管理する。ここで tag を編集しないこと——バージョン bump が必要なら止めて管掌スキルへ委ねる。
 
-A Japanese reference translation is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+## このリポジトリでの pin の仕組み
 
-## How Pinning Works in This Repo
+着手前に必ず読むこと。以降の全手順はこの仕組みに依存する。実物の `scripts/pin-images/main.go` と `.makefiles/docker/pin.mk` を実行時に読むこと。本節は要約であり、コードが正である。
 
-Read this before doing anything — the mechanism determines every step below. Read the actual `scripts/pin-images/main.go` and `.makefiles/docker/pin.mk` at runtime; this section is the summary, the code is the source of truth.
+- 管理対象は 2 種類の参照で、いずれも `image:tag@sha256:<hex>` へ固定される：Dockerfile の `FROM image:tag@sha256:<hex> [AS <stage>]` と、compose サービスの `image: image:tag@sha256:<hex>`（各行の `AS <stage>` / 末尾コメントは保持される）。**バージョンの正は tag**、`@sha256` digest は不変性のロック。
+- `docker/images-pin.toml` が lockfile: `"image:tag" = "sha256:<hex>"`（`apply` の SSOT・`resolve` が再生成）。**単一のフラットな map** であり、Dockerfile 由来と compose 由来の image が、どのファイル出身かに関わらず `image:tag` をキーに同居する。ヘッダは `Docker base image / docker compose image の pin 対象 digest（SSOT）`。
+- `make pin-images-resolve` — `docker/*/Dockerfile` の各 `FROM` **と `docker-compose*.yaml` の各 `image:`** を集め、各 `image:tag` を `docker buildx imagetools inspect` で現在 digest へ解決し、cooldown を適用して lockfile を書き換える。環境変数 `PIN_IMAGES_MIN_AGE_DAYS`（既定 14）がゲートを制御。
+- `make pin-images-apply` — lockfile を元に各 `FROM` / compose `image:` を `image:tag@<digest>` へ固定する。**fail-closed**：lockfile 非登録の image は tag のみへ正規化*しない*（digest を剥がさない）——`未登録` エラーとして報告し非ゼロ終了する。lockfile が唯一の正で、参照は lockfile に登録済みの image しか指せない。
+- `make pin-images-check` — 書き換えずに、全 `FROM` / compose `image:` が digest 固定済みかつ lockfile 登録済みかを検証する（CI / hook）。network 不要（lockfile・Dockerfile・compose ファイルのみ読む）。fail-closed：`未固定`（tag のみ・digest 無し）・`未登録`（digest はあるが lockfile 未登録）・drift（digest ≠ lockfile）で非ゼロ終了し、`❌ image 参照が未固定か lockfile と不一致です …` として報告する。CI gate は `.github/workflows/pin-images-check.yaml`。
 
-- Two reference kinds are managed, both pinned to `image:tag@sha256:<hex>`: a Dockerfile `FROM image:tag@sha256:<hex> [AS <stage>]`, and a compose service `image: image:tag@sha256:<hex>` (the `AS <stage>` / trailing comment on each line is preserved). The **tag is the version source of truth**; the `@sha256` digest is the immutability lock.
-- `docker/images-pin.toml` is the lockfile: `"image:tag" = "sha256:<hex>"` (SSOT for `apply`, regenerated by `resolve`). It is a **single flat map** — Dockerfile and compose images coexist in it, keyed by `image:tag` regardless of which file they came from; its header reads `Docker base image / docker compose image の pin 対象 digest（SSOT）`.
-- `make pin-images-resolve` — collects every `FROM` in `docker/*/Dockerfile` **and every `image:` in `docker-compose*.yaml`**, resolves each `image:tag`'s current digest via `docker buildx imagetools inspect`, applies the cooldown, and rewrites the lockfile. Env `PIN_IMAGES_MIN_AGE_DAYS` (default 14) controls the gate.
-- `make pin-images-apply` — pins each `FROM` / compose `image:` to `image:tag@<digest>` from the lockfile. **fail-closed**: an image absent from the lockfile is NOT normalized to tag-only (no digest stripping) — it is reported as an `未登録` error and the run exits non-zero. The lockfile is the single source of truth: a reference may only point at an image registered in it.
-- `make pin-images-check` — verifies every `FROM` / compose `image:` is digest-pinned AND registered in the lockfile without writing (CI / hook); network-free (reads lockfile + Dockerfiles + compose files only). fail-closed: exits non-zero on `未固定` (tag-only, no digest), `未登録` (digest but not in lockfile), or drift (digest ≠ lockfile) — reported as `❌ image 参照が未固定か lockfile と不一致です …`. The CI gate is `.github/workflows/pin-images-check.yaml`.
+## cooldown & quarantine ルール（このスキルの核）
 
-## The Cooldown & Quarantine Rule (core of this skill)
+各 `image:tag` について（`N` = 除外日数、cutoff = `now - N 日`）：
 
-For each `image:tag` (`N` = exclusion days, cutoff = `now - N days`):
+1. **十分に古い → 採用。** 現在 digest の image-config `created` が cutoff より古ければ → lockfile に書き出し、`apply` が pin する。
+2. **新しすぎる・前回 lock あり → 前回を維持。** 現在 digest が窓の内側だが、lockfile に当該 `image:tag` の既存エントリがあれば → 既存（より古く検証済み）の pin を維持し、quarantine として報告する。
+3. **新しすぎる・前回 lock なし（初回）→ 拒否（非ゼロ終了）。** 現在 digest が窓の内側で前回 lock も無ければ、退行できる検証済みの古い digest が無い——新しいものを採るのも、tag のまま（未固定）残すのも、未検証の base image を出荷することになる。よって `resolve` は tag のまま残さず、当該 image と採用可能日（`created + N 日`）を報告して非ゼロ終了する。採用は、古くなってから意図的に行うか、`days=0` でブートストラップする（リスクを受容する）場合のみ。
 
-1. **Aged → adopt.** If the current digest's image-config `created` is older than the cutoff → write it to the lockfile; `apply` pins it.
-2. **Fresh, with a prior lock → keep prior.** If the current digest is inside the window but the lockfile already has an entry for this `image:tag` → keep the existing (older, already-vetted) pin, and report the quarantine.
-3. **Fresh, no prior lock (bootstrap) → refuse (non-zero).** If the current digest is inside the window and there is no prior lock entry, there is no aged, already-vetted digest to fall back to — adopting the fresh one, or leaving the image tag-only (un-pinned), both mean shipping an unverified base image. `resolve` therefore does NOT leave it tag-only: it exits non-zero, reporting the image and its adoptable date (`created + N days`). Adopt such an image only deliberately, once it has aged, or by bootstrapping with `days=0` (and accepting the risk).
+`actions-pin` と異なる理由：git tag/release は列挙可能で不変な履歴を持つため、`actions-pin` は「1つ前の exact version」へ step-back できる。**mutable な image tag には問い合わせ可能な履歴が無い**——レジストリは「その tag が*今*指す先」しか答えない。よって step-back 先はツール自身の前回 lock（ルール 2）のみ。初回は step-back 先が無く、退行先の無い出来立て image こそが危険なケース（未検証・侵害されている可能性のある再ビルド）なので、ルール 3 は pin も tag 出荷もせず fail-closed で失敗させる。
 
-Why this differs from `actions-pin`: a Git tag/release has an enumerable, immutable history, so `actions-pin` can step back to an older exact version. A **mutable image tag has no queryable history** — the registry only answers "what does this tag point to *now*." So the only step-back target is the tool's own prior lock entry (rule 2). On first-ever pin there is nothing to step back to; a freshly-published image with no aged step-back target is exactly the dangerous case (an unvetted, possibly-compromised rebuild), so rule 3 fails closed rather than pinning or tag-only-shipping it.
+公式イメージは頻繁に再ビルドされる（base OS の CVE パッチ）ため、現在 digest が新しいことは普通で、ルール 2（前回の古い pin を維持）は想定内でありエラーではない——退行先の無いルール 3 のみが run を失敗させる。
 
-Official images are rebuilt often (base-OS CVE patches), so a fresh current digest is common; rule 2 (keep the prior aged pin) is expected and not an error — only rule 3 (no prior pin to fall back to) fails the run.
+## いつ使うか
 
-## When to Use
+- base image digest pin の定期リフレッシュ。
+- base image / レジストリのサプライチェーン advisory の後。
+- 前回 quarantine された image が窓を越えて古くなったので pin する。
 
-- Routine periodic refresh of the base-image digest pins.
-- After a base-image or registry supply-chain advisory.
-- To pin an image that a previous run left quarantined, once it has aged past the window.
+以下には使わない：
 
-Do NOT use this skill for:
+- image の**バージョン/tag**（Go/node/python ランタイム）の bump — `/go-upgrade` または `/tools-upgrade`（+ `make sync-versions`）。
+- GitHub Actions `uses:` の pin — `/actions-pin`。
+- Dockerfile lint の指摘 — `make docker-lint`。
 
-- Bumping an image **version/tag** (Go/node/python runtime) — use `/go-upgrade` or `/tools-upgrade` (+ `make sync-versions`).
-- GitHub Actions `uses:` pins — use `/actions-pin`.
-- Dockerfile lint findings — use `make docker-lint`.
+## 引数
 
-## Arguments
+呼び出し引数を解析する（順序非依存）：
 
-Parse the invocation arguments (order-independent):
-
-| Token | Meaning | Default |
+| トークン | 意味 | 既定 |
 | --- | --- | --- |
-| a bare integer, or `days=N` (or `--days N`) | Exclusion window in days = `PIN_IMAGES_MIN_AGE_DAYS`. | `14` |
+| 裸の整数、または `days=N`（`--days N`） | 除外期間（日）= `PIN_IMAGES_MIN_AGE_DAYS`。 | `14` |
 
-Examples: `/images-pin` (14d) · `/images-pin 30` (30d) · `/images-pin days=7`.
+例: `/images-pin`（14日）・`/images-pin 30`（30日）・`/images-pin days=7`。
 
-The exclusion days must be a non-negative integer. `0` disables the cooldown (adopt even brand-new digests) — only honor it when the user explicitly passes `0`, and surface the supply-chain risk.
+除外日数は非負整数。`0` は cooldown を無効化（新品 digest も採用）——ユーザーが明示的に `0` を渡したときだけ従い、サプライチェーンリスクを明示すること。
 
-## AI Modification Scope
+## AI 変更スコープ
 
-Per the "Exception: Skill Execution" clause in `AGENTS.md`, the following paths may be modified while this skill runs (this skill touches the sensitive `docker/` area — that is intentional and scoped to pinning only):
+`AGENTS.md` の「Exception: Skill Execution」条項により、本スキル実行中は以下を変更してよい（本スキルは機微な `docker/` を触る——これは意図的で、pin に限定される）：
 
-- `docker/*/Dockerfile` — the `@sha256:...` digest on `FROM` lines (written by `make pin-images-apply`)
-- `docker-compose*.yaml` — the `@sha256:...` digest on service `image:` lines (written by `make pin-images-apply`)
-- `docker/images-pin.toml` — the lockfile (written by `make pin-images-resolve`)
+- `docker/*/Dockerfile` — `FROM` 行の `@sha256:...` digest（`make pin-images-apply` が書き込む）
+- `docker-compose*.yaml` — サービス `image:` 行の `@sha256:...` digest（`make pin-images-apply` が書き込む）
+- `docker/images-pin.toml` — lockfile（`make pin-images-resolve` が書き込む）
 
-The following remain protected even during skill execution:
+実行中も保護されるもの：
 
-- `AGENTS.md`
-- Generated files (`**/*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`, generated content under `docs/`)
-- Any file unrelated to the digest pin. Do NOT change a `FROM` / compose `image:` **tag**, `RUN`/`COPY` steps or other compose keys, or `scripts/pin-images` (the tool itself — it already scans both file kinds; extending it is a separate dev task, not part of a pin run) — if a tag bump is needed, surface it and stop.
+- `AGENTS.md` / `AGENTS.md`
+- 生成ファイル（`**/*.gen.go`、`*.sql.go`、`*_mock.go`、`**/openapi.gen.yaml`、`docs/` 配下の生成物）
+- digest pin と無関係な全ファイル。`FROM` / compose `image:` の **tag**、`RUN`/`COPY` 手順やその他の compose キー、`scripts/pin-images`（ツール本体——既に両方のファイル種を走査する。拡張は pin 実行ではなく別個の開発タスク）を変更しないこと——tag bump が必要なら明示して止まる。
 
-## Execution Steps
+## 実行手順
 
-### 0. Pre-flight: vendor consistency + registry access
+### 0. 事前確認: vendor 整合 + レジストリアクセス
 
-`make pin-images-*` runs `go run ./scripts/pin-images`, which compiles against `vendor/`. `vendor/` is gitignored, so a parallel checkout can leave it inconsistent with the current branch's `go.mod`, failing with `vendor/modules.txt: ... inconsistent`. If so, run `go mod vendor` once, then proceed.
+`make pin-images-*` は `go run ./scripts/pin-images` を実行し、`vendor/` に対してコンパイルする。`vendor/` は gitignore されるため、並行 checkout があると現ブランチの `go.mod` と不整合になり `vendor/modules.txt: ... inconsistent` で失敗しうる。その場合は一度 `go mod vendor` を実行してから進む。
 
-`resolve` calls `docker buildx imagetools inspect`, which hits the registry. Docker Hub's **anonymous pull rate limit** returns `429 Too Many Requests` after a burst. If `resolve` fails with 429, have the user authenticate (raises the limit) — suggest they type `! docker login` in the prompt — then retry. `apply` / `check` are network-free and unaffected.
+`resolve` は `docker buildx imagetools inspect` を呼びレジストリへアクセスする。Docker Hub の**匿名 pull レート制限**は burst 後に `429 Too Many Requests` を返す。`resolve` が 429 で失敗したらユーザーに認証してもらう（上限が上がる）——プロンプトで `! docker login` の入力を提案——後に再実行する。`apply` / `check` は network 不要で影響なし。
 
-### 1. Parse Arguments and Inventory
+### 1. 引数解析とインベントリ
 
-Parse the arguments into `<N>` (exclusion days). Then:
+引数を `<N>`（除外日数）へ解析する。次に：
 
-- Read `docker/images-pin.toml` for the current `image:tag → digest` set.
-- Grep `FROM` across `docker/*/Dockerfile` **and `image:` across `docker-compose*.yaml`** to map each image to its file locations and tag (note images referenced in multiple stages / files — e.g. `golang:*-alpine` appears in several stages; compose services each carry one `image:`).
+- `docker/images-pin.toml` を読み、現在の `image:tag → digest` セットを把握。
+- `docker/*/Dockerfile` の `FROM` **と `docker-compose*.yaml` の `image:`** を grep し、各 image のファイル位置と tag を対応づける（複数ステージ／ファイルに現れる image に注意——例: `golang:*-alpine` は複数ステージに登場。compose サービスは各々 `image:` を 1 つ持つ）。
 
 ### 2. Resolve
 
 ```sh
-make pin-images-resolve PIN_IMAGES_MIN_AGE_DAYS=<N>   # the parsed exclusion days
+make pin-images-resolve PIN_IMAGES_MIN_AGE_DAYS=<N>   # 解析した除外日数
 ```
 
-`resolve` re-resolves every `image:tag`. Rule 2 prints `⚠️ ... のため既存ピンを維持` and keeps the prior aged pin — expected, not a failure. Rule 3 (fresh + no prior lock) is now a **hard failure**: `resolve` exits non-zero with `❌ 退行先の無い出来立て image は採用できません ...`, listing the offending `image:tag`. Note each quarantined (rule 2) image; for a rule 3 failure, surface it to the user with its adoptable date (`created + N days`) and stop — do NOT force it through. The user either waits for it to age and re-runs, or, if the adoption is intentional and the risk accepted, re-runs with `days=0`.
+`resolve` は全 `image:tag` を再解決する。ルール 2 は `⚠️ ... のため既存ピンを維持` を出力し前回の古い pin を維持する——想定内でありエラーではない。ルール 3（新しすぎる・前回 lock なし）は今や**ハード失敗**：`resolve` は `❌ 退行先の無い出来立て image は採用できません ...` を出力し、該当 `image:tag` を列挙して非ゼロ終了する。ルール 2 の quarantine 対象は記録し、ルール 3 の失敗は採用可能日（`created + N 日`）とともにユーザーへ提示して止まる——無理に通さない。ユーザーは古くなるのを待って再実行するか、採用が意図的でリスクを受容するなら `days=0` で再実行する。
 
-### 3. Triage a Rule 3 Refusal (only when a decision needs it)
+### 3. ルール 3 の拒否をトリアージする（判断が必要なときのみ）
 
-A **rule 2** hold needs no triage: the gate kept an aged, already-vetted digest, nothing is pending, and re-running once the image ages is the whole answer. Do not spend a triage there.
+**ルール 2** の維持にトリアージは不要である。ゲートは aged で既に検証済みの digest を維持しており、保留中のものは何も無く、image が古くなってから再実行することが答えのすべてである。ここでトリアージを費やしてはならない。
 
-A **rule 3** refusal is different. There is no aged digest to fall back to, so the run is stopped and the only paths forward are waiting until `created + N days` or a deliberate `days=0` bootstrap. The window is a proxy: skipping both it and the evidence protects nothing. When the user wants to decide now rather than wait, chain the sibling `supply-chain-triage` skill with `docker-image` as the ecosystem, the `image:tag`, the current digest as the candidate, and the prior lock entry as the baseline if one exists.
+**ルール 3** の拒否は異なる。退行先となる aged digest が無いため run は止まり、前進する道は `created + N 日` まで待つか意図的に `days=0` でブートストラップするかの二つしかない——そして設計文書は後者を盲目的に取ることを排除している（窓は代理指標であり、窓と証拠の両方を飛ばす組み合わせは何も守らない）。待つのではなく今判断したいときに、エコシステムに `docker-image`、`image:tag`、候補として現在 digest、baseline として前回 lock エントリ（あれば）を渡して **`/supply-chain-triage`** を chain する。
 
-Triage is report-only. It never runs `resolve` / `apply`, edits neither the lockfile nor a `FROM` / `image:` line, and never passes `days=0` on the user's behalf.
+ここで何が返り得るかについては正直であること。可変 tag には問い合わせ可能な履歴が無く、再ビルドは source 差分を公開しないため、4 エコシステム中で最も薄い。存在する証拠は **SBOM のパッケージ差分**（どの OS パッケージが実際に動いたか——再ビルドの実体）、image-config の差分（セキュリティ再ビルドで `Entrypoint` / `Cmd` / `User` / `Env` が動いてはならない）、そして発行者が出している場合の provenance / OCI source ラベルである。答えられない軸が 2 つになることは普通で、その場合の判定は INSUFFICIENT-EVIDENCE——cooldown が既に出していた答えと同じである。それでもルール 3 の判断には正しい出力である。待つことが単に不便なのではなく防御的であることを述べているからである。
+
+トリアージは報告のみ。`resolve` / `apply` を実行せず、lockfile も `FROM` / `image:` 行も編集せず、ユーザーに代わって `days=0` を渡すこともしない。
 
 ### 4. Apply
 
@@ -111,45 +111,41 @@ Triage is report-only. It never runs `resolve` / `apply`, edits neither the lock
 make pin-images-apply
 ```
 
-Pins every `FROM` / compose `image:` from the lockfile (aged images gain / refresh `@sha256:...`). fail-closed: an image not registered in the lockfile is NOT stripped to tag-only — `apply` reports it as `未登録` and exits non-zero. If this fires, an image reached a `FROM` / `image:` without going through `resolve`; re-run resolve (or remove the stray reference).
+lockfile を元に全 `FROM` / compose `image:` を固定する（古い image は `@sha256:...` を付与/更新）。fail-closed：lockfile 未登録の image は tag のみへ剥がさず、`未登録` として報告し非ゼロ終了する。これが出たら、`resolve` を通さずに `FROM` / `image:` へ image が到達した状態——resolve を再実行する（または不要な参照を除く）。
 
-### 5. Verify
+### 5. 検証
 
 ```sh
-make pin-images-check     # FROM + compose image: match lockfile (network-free)
-make docker-lint          # hadolint over docker/*/Dockerfile
+make pin-images-check     # FROM + compose image: が lockfile と一致（network 不要）
+make docker-lint          # docker/*/Dockerfile に hadolint
 ```
 
-Report OK / FAIL per command. Do NOT auto-roll-back on failure — the user decides.
+各コマンドの OK / FAIL を報告する。失敗時に自動ロールバックしない——ユーザーが判断する。
 
-### 6. Final Report
+### 6. 最終報告
 
-Summarize in Japanese: images newly pinned / digest-refreshed (with the digest age), images kept on their prior aged pin (rule 2, with reason), any rule 3 hard failure (fresh + no prior lock — reported with its adoptable date, its triage band if step 3 ran, and whether the user chose to wait or bootstrap with `days=0`), and the verification result. List rule 2 held images so the user knows to re-run once they age. Do NOT commit, stage, or push — the user runs `/commit` (these changes are `CI:`- or `Build:`-prefixed) manually.
+日本語で要約する：新規 pin / digest 更新した image（digest の経過日数つき）、前回の古い pin を維持した image（ルール 2、理由つき）、ルール 3 のハード失敗があればそれ（新しすぎる・前回 lock なし——採用可能日、手順 2.5 を実行した場合はトリアージのバンド、そしてユーザーが待機を選んだか `days=0` でブートストラップしたか）、検証結果。ルール 2 で維持した image を列挙し、古くなったら再実行すべきことを示す。commit / stage / push はしない——ユーザーが `/commit`（これらは `CI:` または `Build:` 接頭辞）を手動実行する。
 
-## Notes
+## 補足
 
-- **The tag is off-limits.** This skill only moves digests. A version bump is `go-upgrade` / `tools-upgrade` + `make sync-versions`.
-- **Rule 2 quarantine is normal, not a failure; rule 3 is.** Official base images rebuild frequently, so a fresh current digest is common; when a prior aged pin exists the gate keeps it (rule 2) — expected. But a fresh image with *no* prior pin (rule 3) has no vetted step-back target, so `resolve` fails closed rather than shipping it tag-only or adopting it.
-- **A fast-moving tag can stall.** If a tag is rebuilt more often than every `N` days, the current digest is always fresh and the pin never advances past the last aged one. That is the accepted cooldown cost; lower `N` deliberately (and note the risk) only if a security patch must be adopted sooner — triage the digest first (step 3), rather than overriding on urgency alone.
-- **Thin evidence is a property of the ecosystem, not a gap in the triage.** A rebuild has no source diff to read, so `supply-chain-triage` here leans on the SBOM package diff and image config and frequently returns INSUFFICIENT-EVIDENCE. Rule 2 and rule 3 exist precisely because this ecosystem cannot answer directly; that is why the cooldown is 14 days rather than 7.
-- **Multi-arch digest.** `resolve` pins the top-level image-index digest (Docker resolves the per-platform manifest from it), and reads the earliest per-platform `created` for the age check (most conservative).
-- **`check` is network-free.** It reads the lockfile + Dockerfiles + compose files only, so it is safe as a CI / pre-commit gate even without registry access.
-- **Enforcement.** The local gate is the lefthook `pin-images` pre-commit hook (glob-filtered to `docker/**/Dockerfile` + `docker-compose*.yaml` + `docker/images-pin.toml`) plus the `pin-images-check.yaml` CI workflow (paths filter likewise includes `docker-compose*.yaml`) — both mirror `pin-actions`. Escalating to a *required* status check (a hard merge block via the branch ruleset) is intentionally **left to the downstream template consumer**: the boilerplate ships the check, not the mandate. Note a path-filtered workflow made a required check blocks PRs that do not touch those paths, so that escalation also needs an always-run adjustment — another reason it is deferred to the consumer.
-- **Idempotency**: a second `apply` is a no-op and `pin-images-check` passes.
-- The skill never auto-pushes.
+- **速く動く tag は停滞しうる。** tag が `N` 日より短い周期で再ビルドされると現在 digest が常に新しく、pin が最後の古い digest から進まない。これは cooldown の受容コスト。セキュリティパッチを早く採る必要があるときだけ意図的に `N` を下げる（リスクを明示）——その際は緊急性だけで override せず、先に digest をトリアージする（手順 2.5）。
+- **証拠が薄いのはエコシステムの性質であってトリアージの不足ではない。** 再ビルドには読むべき source 差分が存在しないため、ここでの `/supply-chain-triage` は SBOM のパッケージ差分と image config に頼り、しばしば INSUFFICIENT-EVIDENCE を返す。ルール 2・3 が存在するのはまさにこのエコシステムが直接答えられないからであり、cooldown が 7 日ではなく 14 日である理由もそれである。
+- **マルチアーキ digest。** `resolve` は最上位の image-index digest を pin し（Docker がそこから各プラットフォームの manifest を解決）、経過日数判定には各プラットフォームで最も古い `created` を読む（最も保守的）。
+- **強制のレベル。** ローカルゲートは lefthook の `pin-images` pre-commit フック（glob は `docker/**/Dockerfile` + `docker-compose*.yaml` + `docker/images-pin.toml`）＋ `pin-images-check.yaml` の CI workflow（paths フィルタも同様に `docker-compose*.yaml` を含む）——いずれも `pin-actions` と対称。branch ruleset の *required* status check（マージのハードブロック）まで強めるかは**意図的に template 利用者（downstream）の判断に委ねる**：boilerplate は check を提供するが強制はしない。なお paths フィルタ付き workflow を required 化すると、当該 paths を触らない PR がブロックされるため always-run 化の調整も要る——これも利用者へ委ねる理由。
+- **冪等性**: 2 回目の `apply` は no-op で `pin-images-check` は通る。
+- スキルは自動 push しない。
 
-## Checklist
+## チェックリスト
 
-Confirm before reporting completion:
+完了報告の前に確認：
 
-- [ ] Exclusion days `<N>` parsed (default 14)
-- [ ] `vendor/` consistency ensured (`go mod vendor` if needed); registry reachable (`docker login` if 429)
-- [ ] Current pins inventoried from `images-pin.toml` + `FROM` / compose `image:` grep
-- [ ] `make pin-images-resolve PIN_IMAGES_MIN_AGE_DAYS=<N>` run; rule 2 held images noted with reason; any rule 3 hard failure surfaced (image + adoptable date) and NOT forced through
-- [ ] Rule 3 refusal triaged via `supply-chain-triage` only if the user wants to decide now instead of waiting (rule 2 holds left untriaged by design); any `days=0` bootstrap preceded by that evidence, never taken on urgency alone
-- [ ] `make pin-images-apply` run (no `未登録` error; every `FROM` / compose `image:` registered in the lockfile)
-- [ ] `make pin-images-check` + `make docker-lint` run and reported
-- [ ] No `FROM` / compose `image:` **tag** changed (digest-only); every managed `FROM` / compose `image:` is digest-pinned (no tag-only) and registered in the lockfile
-- [ ] Rule 2 held images listed for later re-run once aged
-- [ ] After updating `SKILL.md`, also update `SKILL.ja.md` to keep the Japanese translation in sync
-- [ ] No commit / stage / push performed
+- [ ] 除外日数 `<N>` を解析（既定 14）
+- [ ] `vendor/` 整合を確保（必要なら `go mod vendor`）; レジストリ到達可（429 なら `docker login`）
+- [ ] 現在の pin を `images-pin.toml` + `FROM` / compose `image:` grep からインベントリ化
+- [ ] `make pin-images-resolve PIN_IMAGES_MIN_AGE_DAYS=<N>` 実行; ルール 2 で維持した image を理由つきで記録; ルール 3 のハード失敗（image + 採用可能日）は提示し無理に通さない
+- [ ] ルール 3 の拒否は、待たずに今判断したい場合にのみ `/supply-chain-triage` でトリアージ（ルール 2 の維持は設計どおりトリアージしない）; `days=0` のブートストラップはその証拠を前提とし、緊急性だけで採らない
+- [ ] `make pin-images-apply` 実行（`未登録` エラー無し; 全 `FROM` / compose `image:` が lockfile 登録済み）
+- [ ] `make pin-images-check` + `make docker-lint` 実行・報告
+- [ ] `FROM` / compose `image:` の **tag** は不変（digest のみ）; 全 `FROM` / compose `image:` が digest 固定済み（tag のみ無し）かつ lockfile 登録済み
+- [ ] ルール 2 で維持した image を後日再実行用に列挙
+- [ ] commit / stage / push を行っていない

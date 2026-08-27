@@ -42,7 +42,6 @@ business word" would make every run disagree with the last one.**
   itself removed with the sample; its absence means there is no sample left to exclude, so carry on
   with the remaining inputs rather than reporting the read as a failure.
 - The prose corpus: `internal/**/README.md`, `pkg/**/README.md`, `docs/adr/*.md`, `docs/rules.md`,
-  `docs/architecture.md`. Exclude `*.ja.md` — a translation mirrors its canonical file, so a finding
   there is the same finding twice.
 
 Read all three at runtime. Do not carry a term list, an exclusion, or a corpus glob in this file:

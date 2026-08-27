@@ -1,31 +1,31 @@
 # auth Directory
 
-`internal/infrastructure/auth` is a directory that provides **Authentication Infrastructure**.
+`internal/infrastructure/auth` は **認証インフラストラクチャ** を提供するディレクトリです。
 
-This directory contains the **implementations of the auth Boundary interfaces** (`Authenticator` and `IdentityResolver`) used by the application.  
-Authenticator implementations are **separated by verification method (local / jwt, etc.)**, and the DI layer selects which method to wire **per environment**.
+このディレクトリは、アプリケーションで用いる **auth Boundary インターフェース（`Authenticator` と `IdentityResolver`）の実装** を格納します。  
+Authenticator の実装は **検証方式（local / jwt など）ごとに分離** され、DI 層がどの方式を配線するかを **環境ごとに** 選択します。
 
-The abstraction interface for authentication is defined as a **Boundary in the Usecase layer**.
+認証の抽象インターフェースは **Usecase 層の Boundary** として定義されます。
 
 ```txt
 internal/usecase/boundary/auth
 ```
 
-In the Infrastructure layer, this Boundary is **implemented concretely**.
+Infrastructure 層では、この Boundary を **具体的に実装** します。
 
-## Role
+## 役割
 
-The responsibilities of this directory are as follows.
+このディレクトリの責務は次のとおりです。
 
-- Provide **method-specific implementations** of `Authenticator`
-- Implement integration with external authentication systems (JWT / OAuth / OIDC, etc.)
-- Generate **Authn information from authentication tokens**
+- `Authenticator` の **方式別実装** を提供する
+- 外部認証システム（JWT / OAuth / OIDC など）との連携を実装する
+- **認証トークンから Authn 情報を生成** する
 
-This layer **does not handle business logic**.
+この層は **ビジネスロジックを扱いません**。
 
-## Position in Architecture
+## アーキテクチャ上の位置づけ
 
-Authentication processing is implemented in the following layered structure.
+認証処理は次の層構造で実装されます。
 
 ```mermaid
 flowchart TB
@@ -35,80 +35,79 @@ Usecase --> Boundary["Boundary (Authenticator interface)"]
 Infrastructure["Infrastructure (auth implementation)"] -. implements .-> Boundary
 ```
 
-Infrastructure **only implements the Boundary**,  
-and is the concrete implementation directly invoked from the Usecase.
+Infrastructure は **Boundary を実装するのみ** であり、Usecase から直接呼び出される具体実装です。
 
-## Separation Axis: Method, not Environment
+## 分離軸: 環境ではなく方式
 
-Implementations are separated by **verification method**, and the DI layer chooses which method a given environment uses. This keeps each package focused on one verification strategy while the environment-to-method mapping lives in a single place (`provideAuthenticator`).
+実装は **検証方式** ごとに分離され、DI 層が各環境でどの方式を使うかを選択します。これにより各パッケージは 1 つの検証戦略に専念でき、環境と方式の対応付けは 1 箇所（`provideAuthenticator`）に集約されます。
 
-- `local` — no signature verification; extracts the subject from the token string. A CI / test stub only.
-- `jwt` — JWT verification (de-facto standard core) with the signing key from either a fixed public key or a JWKS endpoint. The production-oriented method.
+- `local` — 署名検証を行わず、トークン文字列から subject を抽出する。CI / test 用のスタブのみ。
+- `jwt` — JWT 検証（デファクト標準のコア）。署名鍵は固定公開鍵か JWKS エンドポイントのいずれかから解決する。本番向けの方式。
 
-The environment → method mapping is applied in DI (see "Registration to DI"): CI / test use the `local` stub, while `jwt` handles local development (verifying real JWTs from the mock auth server) and the environments that wire real token verification.
+環境 → 方式の対応付けは DI で適用されます（「DI への登録」を参照）。CI / test は `local` スタブを使い、`jwt` はローカル開発（mock 認証サーバーの実 JWT を検証）と、実トークン検証を配線する環境を担当します。
 
-## local Implementation
+## local 実装
 
-`local` is an **authentication stub for CI / test** (no signature verification).
+`local` は **CI / test 用の認証スタブ** です（署名検証なし）。
 
-Characteristics
+特徴
 
-- Does not perform token signature verification
-- Extracts Subject from the token string
-- Used as a simple stub for CI / test
+- トークンの署名検証を行わない
+- トークン文字列から Subject を抽出する
+- CI / test 用の簡易スタブとして使う
 
-Example
+例
 
 ```txt
 Authorization: Bearer debug:user123
 ```
 
-In this case
+この場合
 
 ```txt
 subject = user123
 provider = mock
 ```
 
-Authn is generated.
+として Authn を生成します。
 
-See `local/README.md` for details.
+詳細は `local/README.md` を参照してください。
 
-## jwt Implementation
+## jwt 実装
 
-`jwt` verifies an access token (JWT), covering the de-facto standard verification core. The signing key is resolved from either a **fixed RSA public key** (`New`) or a **JWKS endpoint by `kid`** (`NewJWKS`); the claim-verification logic is shared.
+`jwt` は access token（JWT）を検証し、デファクト標準の検証コアをカバーします。署名鍵は **固定 RSA 公開鍵**（`New`）か **`kid` による JWKS エンドポイント**（`NewJWKS`）のいずれかから解決し、クレーム検証ロジックは共通です。
 
-Here, the following are performed.
+ここでは次を行います。
 
-- signature verification (asymmetric, algorithm allowlist; `alg=none` / `HS256` rejected)
-- key resolution (fixed public key, or JWKS with `kid` lookup / TTL cache, parsed via `go-jose` and fetched lazily through the `httpclient` substrate)
-- claim validation (`iss` / `aud` / `exp` / `nbf` / `sub`)
-- scope extraction (standard `scope` claim)
+- 署名検証（非対称・アルゴリズム allowlist。`alg=none` / `HS256` は拒否）
+- 鍵解決（固定公開鍵、または `kid` ルックアップ / TTL キャッシュ付き JWKS。`go-jose` でパースし `httpclient` substrate 経由で遅延取得）
+- クレーム検証（`iss` / `aud` / `exp` / `nbf` / `sub`）
+- スコープ抽出（標準 `scope` クレーム）
 
-IdP-specific dialects (Cognito `token_use`, Azure AD `scp`, opaque tokens, EC keys) are out of scope and documented as extension points. See `jwt/README.md` for details.
+IdP 固有の方言（Cognito `token_use`、Azure AD `scp`、opaque token、EC 鍵）は対象外で、拡張ポイントとして文書化されています。詳細は `jwt/README.md` を参照してください。
 
-## IdentityResolver Implementations
+## IdentityResolver 実装
 
-Besides `Authenticator`, this directory also holds implementations of the `IdentityResolver` boundary (resolving an authenticated external identity — issuer + subject — to an internal user):
+`Authenticator` に加えて、このディレクトリは `IdentityResolver` Boundary の実装（認証済みの外部アイデンティティ — issuer + subject — を内部ユーザーへ解決する）も格納します。
 
-- `identity` — the substrate default (`passthrough`) that leaves the internal UserID unresolved; wired when no user store is present.
-- `useridentity` — resolves the internal user from the `user_identities` table (sample; removed together with the user sample, after which DI falls back to `identity`). <!-- sample-api:line -->
+- `identity` — substrate 既定（`passthrough`）。内部 UserID を未解決のまま通す。ユーザーストアが無い場合に配線される。
+- `useridentity` — `user_identities` テーブルから内部ユーザーを解決する（サンプル。user サンプルと同梱削除され、削除後は DI が `identity` にフォールバックする）。 <!-- sample-api:line -->
 
-## Registration to DI
+## DI への登録
 
-Authenticator is registered in the DI module.
+Authenticator は DI モジュールに登録されます。
 
 ```txt
 internal/di/module/core/auth.go
 ```
 
-Example
+例
 
 ```txt
 func provideAuthenticator(...) auth.Authenticator
 ```
 
-Based on the environment,
+環境
 
 ```txt
 local
@@ -117,72 +116,57 @@ stg
 prd
 ```
 
-the **verification method** is selected (e.g. `local` stub for CI / test; `jwt` for local / development).
+に応じて **検証方式** が選択されます（例: CI / test は `local` スタブ、local / development は `jwt`）。
 
 ## Test Strategy
 
-This directory has no single substrate. What a test must stand up is decided by the verification method,
-not by the directory, so the infrastructure layer's real-DB strategy does not govern it as a whole. Each
-implementation below states what it closes over; the one that genuinely needs a database says so.
+このディレクトリに単一の基盤はありません。テストが何を立ち上げる必要があるかは、ディレクトリではなく検証方式が決めます。したがって infrastructure 層の実 DB 戦略がここ全体を統治することはありません。以下の各実装が、自分が何で閉じるかを述べます。本当に DB を要する実装だけが、そう述べます。
 
-- **`local`** — string parsing with nothing to double. Plain unit tests over the token forms it accepts
-  and rejects. Because it is the stub that skips signature verification, the rejections matter more than
-  the acceptances: a malformed token must produce the sentinel, never a partially built `Authn`.
-- **`jwt`** — the only implementation with an external dependency, and it is reached solely through the
-  `httpclient.Client` boundary, so a generated mock scripts the JWKS / discovery responses and no network
-  is touched. Signing material is built in-process (`go-jose`, a fresh key pair per test) rather than
-  committed as a fixture, which is what makes an unknown `kid`, a rotated key and an algorithm outside
-  the allowlist all reachable. Time-dependent claims (`exp` / `nbf` / leeway) go through the injected
-  `clock` testkit — a test that waits on wall time for a token to expire is flaky by construction.
-- **`identity`** — a passthrough with no branch. Its test exists to pin that it *stays* one: the resolver
-  must leave the internal UserID unresolved rather than inventing a value for it.
-<!-- sample-api:begin -->
-- **`useridentity`** — the exception here. It reads `user_identities` through the RDB driver, so the
-  real-DB strategy in [`../README.md`](../README.md) governs it: a real database, `rdb/testkit`, and
-  transaction rollback for state isolation. The identities it reads come from the seed, whose issuer is
-  environment-dependent, so it runs through `make test` rather than a bare `go test`.
-<!-- sample-api:end -->
+- **`local`** — 代替物を必要としない文字列パース。受理する / 拒否するトークン形に対する素のユニットテストです。署名検証を省くスタブである以上、受理よりも拒否のほうが重要です。不正なトークンは sentinel を返さねばならず、途中まで組み立てた `Authn` を返してはなりません。
+- **`jwt`** — 外部依存を持つ唯一の実装であり、その依存は `httpclient.Client` Boundary のみを経由します。したがって JWKS / discovery の応答は生成モックで組み立て、ネットワークには一切触れません。署名材料はフィクスチャとしてコミットするのではなく、テストごとに新しい鍵ペアを in-process で生成します（`go-jose`）。未知の `kid`・鍵ローテーション・allowlist 外のアルゴリズムに到達できるのは、これによります。時刻依存のクレーム（`exp` / `nbf` / leeway）は注入した `clock` testkit を通します。トークンの失効を実時間の経過で待つテストは、構造的に flaky です。
+- **`identity`** — 分岐を持たない passthrough です。そのテストは、これが passthrough の **ままである** ことを固定するために存在します。resolver は内部 UserID に値を捏造せず、未解決のまま通さねばなりません。
+- **`useridentity`** — このディレクトリにおける例外です。RDB driver を通じて `user_identities` を読むため、[`../README.md`](../README.md) の実 DB 戦略が統治します。実 DB・`rdb/testkit`・トランザクション rollback による状態隔離です。読み取る identity は seed 由来で、その issuer は環境依存であるため、素の `go test` ではなく `make test` 経由で実行します。 <!-- sample-api:line -->
 
-Which method a given environment receives is DI-layer scope and is verified there, not here.
+どの環境がどの方式を受け取るかは DI 層のスコープであり、検証もそちらで行います。ここでは行いません。
 
-## Design Policy
+## 設計方針
 
-This directory is designed based on the following policies.
+このディレクトリは次の方針に基づいて設計されています。
 
-### 1 Implement the Boundary
+### 1 Boundary を実装する
 
-Infrastructure implements the `Authenticator` in:
+Infrastructure は次の `Authenticator` を実装します。
 
 ```txt
 usecase/boundary/auth
 ```
 
-### 2 Do not include business logic
+### 2 ビジネスロジックを含めない
 
-This package is responsible for **authentication processing only**.
+このパッケージは **認証処理のみ** を責務とします。
 
-The following are not handled.
+次は扱いません。
 
-- authorization checks
-- role determination
-- business rules
+- 認可チェック
+- ロール判定
+- ビジネスルール
 
-These are handled in the **Usecase layer**.
+これらは **Usecase 層** で扱います。
 
-### 3 Separate by verification method
+### 3 検証方式ごとに分離する
 
-Since authentication may use different verification strategies,
+認証は異なる検証戦略を取りうるため、
 
 ```txt
 local
 jwt
 ```
 
-they are separated into directories by method, and DI selects the method per environment.
+を方式ごとにディレクトリ分離し、DI が環境ごとに方式を選択します。
 
-### 4 Constructor convention
+### 4 コンストラクタ規約
 
-Authenticator constructors follow a consistent shape based on their inputs:
+Authenticator のコンストラクタは、入力に応じた一貫した形をとります。
 
-- A lightweight constructor that takes no verification parameters returns the interface only — `func New() Authenticator` (e.g. `local`).
-- A constructor that takes verification parameters requiring validation (key parsing, required fields) returns `(Authenticator, error)` and fails at construction time — `func New(Params) (Authenticator, error)` (e.g. `jwt`).
+- 検証パラメータを取らない軽量なコンストラクタはインターフェースのみを返す — `func New() Authenticator`（例: `local`）。
+- 検証を要するパラメータ（鍵パース・必須項目）を取るコンストラクタは `(Authenticator, error)` を返し、構築時に失敗する — `func New(Params) (Authenticator, error)`（例: `jwt`）。

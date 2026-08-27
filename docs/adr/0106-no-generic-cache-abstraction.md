@@ -5,98 +5,59 @@ deciders: [maintainers]
 tags: [exclusion, setup-review]
 ---
 
-# ADR-0106: Do not provide a generic Cache abstraction
+# ADR-0106: 汎用 Cache 抽象化を提供しない
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Caching is a common performance optimization, and it is natural to expect a `Cache`
-interface analogous to the domain `Repository` interfaces. Such an interface
-would appear to support the lock-in avoidance principle from [ADR-0001](0001-avoid-lock-in.md)
-by hiding the cache technology behind a seam.
+キャッシュは一般的なパフォーマンス最適化であり、ドメイン `Repository` インターフェースに類似した `Cache` インターフェースがあることは自然に思える。そのようなインターフェースは [ADR-0001](0001-avoid-lock-in.md) のロックイン回避原則を支持するように見える——キャッシュ技術を継ぎ目（seam）で隠蔽することで。
 
-However, a neutral `Cache` interface degrades to a lowest-common-denominator contract — in
-practice, a TTL-backed get/set map. That contract:
+しかし、中立的な `Cache` インターフェースは最小公倍数的な契約に退化してしまう。実態として TTL 付きの get/set マップになり、その契約は:
 
-- Leaks implementation semantics: a TTL that is meaningful for an in-process map is a
-  different concept from a Redis key expiry or a Memcached slab eviction.
-- Discards technology-specific capabilities: Redis pipelines, Lua scripts, pub/sub channels,
-  and sorted-set operations cannot be expressed through a generic interface without exposing
-  them as extension methods that break the abstraction anyway.
+- 実装セマンティクスをリークする: インプロセスマップに有意な TTL は、Redis のキー有効期限や Memcached のスラブ立ち退きとは異なる概念である。
+- 技術固有の機能を捨て去る: Redis のパイプライン、Lua スクリプト、pub/sub チャンネル、ソート済みセット操作は、いずれにせよ抽象化を壊す拡張メソッドとして公開しない限り、汎用インターフェース越しに表現できない。
 
-This is precisely the lock-in trade-off examined in [ADR-0001](0001-avoid-lock-in.md): a
-neutral seam can cost technology-specific capabilities. In the case of a cache, the cost is
-high enough that the seam does more harm than good.
+これは [ADR-0001](0001-avoid-lock-in.md) で検討したロックインのトレードオフそのものだ: 中立的な継ぎ目は技術固有の能力を犠牲にすることがある。キャッシュの場合、そのコストは高く、継ぎ目は利益より害をもたらす。
 
-The domain `Repository` interface already provides the correct seam. Caching is a
-read-path optimization over repository access, not a separate domain concept.
+ドメイン `Repository` インターフェースはすでに正しい継ぎ目を提供している。キャッシュはリポジトリアクセスに対する読み取りパス最適化であり、独立したドメイン概念ではない。
 
-## Decision
+## 決定
 
-We deliberately do NOT provide a generic `Cache` interface or cache abstraction layer. When
-caching is needed, it is implemented as a **decorator** that satisfies the existing
-domain `Repository` interface. Domain and usecase layers remain unaware of caching because
-the decorator is wired at the infrastructure / dependency-injection layer — domain code
-calls the same repository method; the decorator decides whether to serve from cache or
-delegate to the real repository.
+汎用 `Cache` インターフェースやキャッシュ抽象化レイヤーは意図的に**提供しない**。キャッシュが必要な場合、それは既存のドメイン `Repository` インターフェースを満たす**デコレーター**として実装する。デコレーターはインフラ / 依存性注入層で組み込まれるため、ドメイン層とユースケース層はキャッシュを意識しない——ドメインコードは同じリポジトリメソッドを呼び出し、デコレーターがキャッシュから返すか実際のリポジトリに委譲するかを決定する。
 
-The `Repository` interface is the swap seam; no additional abstraction is required.
+`Repository` インターフェースが交換継ぎ目であり、追加の抽象化は不要である。
 
-**The seam is whichever inner-layer interface already exists — not the `Repository`
-specifically.** The paragraph above names `Repository` because it is the commonest cached seam,
-but the principle is about the shape: cache by decorating an interface an inner layer already
-declares, never by introducing a generic cache abstraction beside it. It therefore applies
-unchanged to an outbound `usecase/boundary` port — a decorator satisfying that `Gateway`
-interface, wired at the infrastructure / DI layer, leaves usecase and domain exactly as unaware
-of caching as the `Repository` case does, and the wall-clock dependency a TTL introduces stays
-inside the infrastructure decorator instead of reaching an inner layer. The subject differs; the
-seam principle is identical. What a given decorator's TTL is, and what staleness that implies for
-callers, is feature content and belongs with the feature.
+## 影響
 
-## Consequences
+### ポジティブな影響
 
-### Positive Consequences
+- ドメイン層とユースケース層はキャッシュを意識せず、キャッシュ固有の型が内側へリークしない。
+- 技術固有の機能（パイプライン、Lua、pub/sub）は、内側レイヤーのインターフェースを損なうことなくデコレーター内で利用できる。
+- キャッシュデコレーターの追加はインフラ層の関心事であり、オニオンモデルと整合する（[ADR-0002](0002-onion-architecture.md) 参照）。
+- キャッシュバックエンドの機能をサイレントに捨て去る最小公倍数的な抽象化が生まれない。
 
-- Domain and usecase layers stay unaware of caching — no cache-specific types leak inward.
-- Technology-specific capabilities (pipelines, Lua, pub/sub) are available in the decorator
-  without compromising the inner-layer interface.
-- Adding a cache decorator is an infrastructure concern, consistent with the onion model
-  (see [ADR-0002](0002-onion-architecture.md)).
-- No lowest-common-denominator abstraction that silently discards cache-backend features.
+### ネガティブな影響
 
-### Negative Consequences
+- デコレーターは対象ごとに書く必要があり、すぐに使える汎用キャッシュヘルパーは提供されない。
+- キャッシュを適用する各リポジトリに独自のデコレーターが必要となり、単一の共有キャッシュラッパーに比べてリポジトリあたりのコードが増える。
+- 共通インターフェースが存在しないため、「すべてのキャッシュ」を対象とするツールやインストルメンテーションはデコレーターごとに個別に実装しなければならない。
 
-- The decorator must be written per case; no off-the-shelf generic cache helper is
-  provided.
-- Each cached repository requires its own decorator, which increases per-repository
-  code compared to a single shared cache wrapper.
-- Without a common interface, tooling or instrumentation that operates on "all caches" must
-  be implemented individually per decorator.
+## 検討した代替案
 
-## Alternatives Considered
+### TTL 付き get/set を持つ汎用 `Cache[K, V]` インターフェース
 
-### Generic `Cache[K, V]` interface with TTL get/set
+一貫した継ぎ目を提供し、スタブによりキャッシュをテスト可能にする。しかし、そのインターフェースは TTL 付きマップに収束し、モダンなキャッシュバックエンドの機能（パイプライン、アトミック操作、pub/sub、ソート済みセット）を表現できない。それらの機能を必要とするコードはバックエンド固有のメソッドを追加しなければならず、インターフェースを壊してその価値を無にする。中立的な継ぎ目のコストについては [ADR-0001](0001-avoid-lock-in.md) を参照。
 
-Provides a consistent seam and makes caching testable via a stub. Rejected because the
-interface collapses to a TTL-backed map that cannot express the capabilities of modern cache
-backends (pipelines, atomics, pub/sub, sorted sets). Code needing those capabilities
-would have to add backend-specific methods, breaking the interface and negating its value.
-See [ADR-0001](0001-avoid-lock-in.md) on the cost of neutral seams.
+### ユースケース層へ技術固有のキャッシュクライアントを直接注入
 
-### Technology-specific cache client injected directly into usecase
+Redis や Memcached の型をユースケース層に公開することになり、依存ルールに違反する（ユースケースはインフラに依存してはならない）。オニオンアーキテクチャの制約（[ADR-0002](0002-onion-architecture.md)）により却下。
 
-Would expose Redis or Memcached types to the usecase layer, violating the dependency rule
-(usecase must not depend on infrastructure). Rejected by the onion architecture constraints
-([ADR-0002](0002-onion-architecture.md)).
+## 補足
 
-## Notes
-
-- Source: [`docs/project/out-of-scope.md`](../project/out-of-scope.md) lines 49–57.
-- Related: [ADR-0001](0001-avoid-lock-in.md) (lock-in avoidance — neutral seams can cost
-  technology-specific capabilities; this is a deliberate exception).
-- Related: [ADR-0002](0002-onion-architecture.md) (onion architecture — cache decorator
-  wired at the infrastructure layer).
-- Full ADR set and ordering: [the ADR log](README.md).
+- ソース: [`docs/project/out-of-scope.md`](../project/out-of-scope.md) 行 49–57。
+- 関連: [ADR-0001](0001-avoid-lock-in.md)（ロックイン回避——中立的な継ぎ目は技術固有の能力を犠牲にすることがある。これは意図的な例外である）。
+- 関連: [ADR-0002](0002-onion-architecture.md)（オニオンアーキテクチャ——キャッシュデコレーターはインフラ層で組み込まれる）。
+- ADR の全体像と順序: [ADR ログ](README.md)。

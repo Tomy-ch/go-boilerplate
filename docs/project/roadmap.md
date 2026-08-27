@@ -1,166 +1,145 @@
-# Roadmap
+# ロードマップ
 
 <!-- boilerplate-only:replace-begin -->
-This page records the **direction** this project is being maintained in — the standing commitments
-that shape what gets accepted, not a schedule. Individual work items live in the issue tracker,
-where they can be closed; a list of them here would be a second copy that goes stale the moment one
-of them lands.
+このページは、このプロジェクトが維持されている**方向**を記録します。スケジュールではなく、何を受け入れる
+かを形づくる恒常的な方針です。個々の作業項目は、閉じることのできる issue トラッカーにあります。ここに
+一覧を置けば、1 つ着地した瞬間に陳腐化する二重管理になります。
 <!-- boilerplate-only:replace-with -->
-<!-- = This page records the **direction** this project is being maintained in — the standing -->
-<!-- = commitments that shape what gets accepted, not a schedule. Individual work items belong in -->
-<!-- = the issue tracker, where they can be closed. -->
+<!-- = このページは、このプロジェクトが維持されている**方向**を記録します。スケジュールではなく、何を -->
+<!-- = 受け入れるかを形づくる恒常的な方針です。個々の作業項目は、閉じることのできる issue トラッカーに -->
+<!-- = 置いてください。 -->
 <!-- = -->
-<!-- = Replace the sections below with your project's own direction. What is inherited from the -->
-<!-- = template is the shape of the page, not its content. -->
+<!-- = 以下の節は自分のプロジェクトの方向で置き換えてください。テンプレートから引き継ぐのはページの形で -->
+<!-- = あって、その中身ではありません。 -->
 <!-- boilerplate-only:replace-end -->
 
-Nothing here is a commitment to a date. What the maintainer does and does not undertake is stated
-in [policy.md](policy.md), and it is deliberately narrower than a roadmap normally implies.
+ここに書かれたことはいずれも期日の約束ではありません。メンテナが引き受けること・引き受けないことは
+[policy.md](policy.md) に記載があり、それは通常ロードマップという語が含意するより意図的に狭く
+とられています。
 
 <!-- boilerplate-only:begin -->
-## What each release line was about
+## 各リリース線が何を主題にしていたか
 
-A release line here is a **subject**, not a batch of features: one question the template was trying
-to answer, worked until it was answered. Reading them in order is the fastest way to see why the
-repository is shaped the way it is — and the per-release detail stays in the release notes rather
-than being copied here.
+ここでのリリース線は機能の束ではなく**主題**です。テンプレートが答えようとしていた 1 つの問いを、
+答えが出るまで進めた単位です。順に読むことが、このリポジトリが今の形をしている理由への最短路であり、
+リリースごとの詳細はここへ写さずリリースノートに置いたままにしています。
 
-### v1 — becoming a template you can grow, not a sample you read once
+### v1 — 一度読んで終わるサンプルではなく、育てられるテンプレートにする
 
-The v1 line took a working API server and made it something a team could adopt: the layering stated
-as rules rather than implied by the code, the contracts generated rather than hand-kept, and the
-setup and release operations owned by the repository itself.
+v1 の線は、動く API サーバをチームが採用できるものにするための線でした。レイヤリングはコードから
+察するものではなくルールとして述べられ、契約は手で保つのではなく生成され、セットアップとリリース運用は
+リポジトリ自身が持つようになりました。
 
-- **[v1.0.0](https://github.com/Tomy-ch/go-boilerplate/releases/tag/v1.0.0)** established the base —
-  the canonical documents (`architecture` / `rules` / `development-flow`), the agent contract, the
-  move to `pgx/v5`, the documentation portal, the setup helpers, and release-centric branching.
-- **[v1.1.0](https://github.com/Tomy-ch/go-boilerplate/releases/tag/v1.1.0)** answered the first
-  round of adoption feedback: hardened setup scripts, and the English / Japanese README pairing that
-  the repository has kept since.
-- **[v1.2.0](https://github.com/Tomy-ch/go-boilerplate/releases/tag/v1.2.0)** ran one feature through
-  every layer at once (the user detail / update / soft-delete operations), pinned the toolchain to a
-  single source of truth, and added the first security and generated-artifact-drift gates.
-- **[v1.3.0](https://github.com/Tomy-ch/go-boilerplate/releases/tag/v1.3.0)** deliberately added
-  almost nothing: a repository-wide quality review, with the findings applied back into the
-  implementation, the comments, and the error classification.
-- **[v1.4.0](https://github.com/Tomy-ch/go-boilerplate/releases/tag/v1.4.0)** closed the line by
-  making it learnable and removable — a tutorial that builds one feature from nothing, a
-  multi-level documentation portal, a supply-chain layer in CI, and the tool that deletes the
-  sample API.
+- **[v1.0.0](https://github.com/Tomy-ch/go-boilerplate/releases/tag/v1.0.0)** が土台を据えました。
+  正本文書（`architecture` / `rules` / `development-flow`）、エージェント契約、`pgx/v5` への移行、
+  ドキュメントポータル、セットアップヘルパー、リリース中心のブランチ運用。
+- **[v1.1.0](https://github.com/Tomy-ch/go-boilerplate/releases/tag/v1.1.0)** は最初の採用
+  フィードバックへの応答です。セットアップスクリプトの堅牢化と、以後維持している README 日英対の整備。
+- **[v1.2.0](https://github.com/Tomy-ch/go-boilerplate/releases/tag/v1.2.0)** は 1 つの機能を全層に
+  一度に通し（ユーザーの詳細取得 / 更新 / 論理削除）、ツールチェーンを単一の出所へ固定し、最初の
+  セキュリティ検査と生成物ドリフト検知を入れました。
+- **[v1.3.0](https://github.com/Tomy-ch/go-boilerplate/releases/tag/v1.3.0)** は意図的にほとんど
+  何も足していません。リポジトリ全体の品質レビューと、その指摘を実装・コメント・エラー分類へ
+  書き戻す線でした。
+- **[v1.4.0](https://github.com/Tomy-ch/go-boilerplate/releases/tag/v1.4.0)** は、学べて剥がせる状態に
+  することで線を閉じました。1 機能をゼロから作るチュートリアル、多階層のドキュメントポータル、
+  CI のサプライチェーン層、そしてサンプル API を削除するツール。
 
-### v2 — running as a backend, not as an API server
+### v2 — API サーバとしてではなく、バックエンドとして動く
 
-The v2 line is about everything a service needs that a request / response cycle does not show:
-work that happens after the response, state that survives a retry, and the ability to see what
-happened. Its second theme is **self-containment** — the stack a developer starts should be the
-whole system, not the parts that happen to run without a cloud account.
+v2 の線は、リクエスト / レスポンスの往復には現れないもの — 応答後に走る処理、リトライを越えて残る
+状態、何が起きたかを見る手段 — を扱う線です。もう 1 つの主題は**自己完結**であり、開発者が起動する
+スタックが、クラウドのアカウント無しで動く部分ではなくシステム全体であることを目指しています。
 
-- **[v2.0.0](https://github.com/Tomy-ch/go-boilerplate/releases/tag/v2.0.0)** added the
-  quasi-distributed foundation: the worker scaffold, the transactional outbox, idempotent request
-  handling, authorization, resilient outbound HTTP, and OpenTelemetry with a local collector stack
-  to receive it.
-- **[v2.1.0](https://github.com/Tomy-ch/go-boilerplate/releases/tag/v2.1.0)** hardened exactly those
-  subsystems rather than extending them, and raised the quality of the API contract itself — error
-  metadata with opt-in detail exposure, domain inputs as value objects with collect-all validation,
-  and SSRF / idempotency / relay hardening.
-- **The current line** completes the self-contained stack by emulating the remaining external
-  dependencies locally — S3-compatible object storage, an SQS-compatible broker, and a development
-  OIDC provider — alongside the supply-chain controls and the setup tooling that a template needs in
-  order to be instantiated safely.
+- **[v2.0.0](https://github.com/Tomy-ch/go-boilerplate/releases/tag/v2.0.0)** が準分散の土台を
+  入れました。ワーカー基盤、Transactional Outbox、冪等なリクエスト処理、認可、レジリエントな外向き
+  HTTP、そしてそれを受けるローカルのコレクタスタックを伴う OpenTelemetry。
+- **[v2.1.0](https://github.com/Tomy-ch/go-boilerplate/releases/tag/v2.1.0)** は同じサブシステムを
+  拡張ではなく堅牢化し、API 契約そのものの質を上げました。エラーのメタ情報と詳細露出の opt-in 化、
+  ドメイン入力の値オブジェクト化と collect-all 検証、SSRF / 冪等性 / relay のハードニング。
+- **現在の線**は、残る外部依存をローカルでエミュレートすることで自己完結スタックを完成させます —
+  S3 互換のオブジェクトストレージ、SQS 互換のブローカー、開発用 OIDC プロバイダ。加えて、テンプレートが
+  安全にテンプレート作成されるために要るサプライチェーン統制とセットアップ用ツール。
 
-Development with AI assistance runs across both lines rather than belonging to either: it entered in
-v1.2.0 as skills, was parallelized in v1.4.0, and became an agent contract plus the mechanical gates
-that check what an agent produced. It is no longer an addition to the two lines but the path they are
-developed on — **AI-assisted development is the project's standard method**, with manual development
-kept as a not-recommended compatibility path and the application itself deliberately AI-independent.
+AI 支援開発はどちらか一方に属するのではなく両方の線を貫いています。v1.2.0 でスキルとして入り、
+v1.4.0 で並列化され、エージェント契約と、エージェントの成果物を検査する機械的ゲートになりました。
+いまやそれは 2 つの線への追加物ではなく、線が開発される経路そのものです — **AI 支援開発が本プロジェクト
+の標準的な開発方式であり**、手動開発は推奨されない互換経路として残し、アプリケーション自体は意図的に
+AI 非依存に保ちます。
 
-### v3 — staying a modular monolith while being ready to distribute
+### v3 — モジュラーモノリスのまま、分散する用意がある状態にする
 
-The next line's subject is support for genuine distribution: **a boilerplate that keeps its modular
-monolith and behaves as a distributed system the moment a boundary is crossed.** Becoming
-microservices is not the premise — the point is that inter-module calls go through a contract, so
-distributing one boundary becomes a swap of the adapter behind it rather than a redesign.
+次の線の主題は純分散環境へのサポートです。すなわち、**モジュラーモノリスを維持したまま、境界を
+越えた瞬間に分散システムとして振る舞えるボイラープレート**。マイクロサービス化は前提にしません。
+要点はモジュール間の呼び出しが契約を経由することであり、それによって 1 つの境界を分散化することが
+設計のやり直しではなく、契約の裏側にある Adapter の差し替えになります。
 
-The requirements that follow from that, and how they are prioritized, are in
-[distributed-ready-architecture.md](../plan/distributed-ready-architecture.md).
+そこから導かれる要件と優先度は
+[distributed-ready-architecture.md](../plan/distributed-ready-architecture.md) にあります。
 
 <!-- boilerplate-only:end -->
-## Standing directions
+## 恒常的な方向
 
-**Runtimes and toolchains follow their stable lines, on the upstream's clock.** A new major is
-adopted once it reaches the support status the project depends on — for a language runtime, its LTS
-designation — rather than when it is announced. The consequence is that some upgrades sit visibly
-pending for months with a known date attached; that is the policy working, not a backlog.
-The procedure for the Go runtime is [go-upgrade.md](../maintenance/go-upgrade.md).
+**ランタイムとツールチェーンは、上流の時計に従って安定線を追う。** 新しいメジャーを採用するのは、
+アナウンスされた時点ではなく、プロジェクトが依存するサポート状態（言語ランタイムであれば LTS 指定）に
+到達した時点です。結果として、期日の判明している更新が数か月にわたり保留のまま見えることがあります。
+それは滞留ではなく方針が働いている状態です。Go ランタイムの手順は
+[go-upgrade.md](../maintenance/go-upgrade.md)。
 
-**Supply-chain controls deepen; they do not loosen.** Cooldown windows before a fresh release can be
-adopted, pinning by digest rather than by tag, and attestations over released artifacts are treated
-as the floor. A change that removes one of them needs to argue against the threat model in
-[security.md](../design/security.md), not merely against the inconvenience.
+**サプライチェーンの統制は深める方向にのみ動かす。** 公開直後のバージョンを一定期間採用しないクール
+ダウン、タグではなくダイジェストによる固定、リリース成果物への attestation は下限として扱います。
+これらを外す変更は、不便さではなく [security.md](../design/security.md) の脅威モデルに対して
+論じる必要があります。
 
-**Mechanically decidable rules keep moving into tooling.** Where a convention is currently enforced
-by review, the preferred direction is to make it a lint rule, an architecture test, or a
-generation-drift check — so the rule is enforced identically for every contributor and every agent,
-and review spends itself on the judgements that cannot be automated.
+**機械的に判定できる規約は、順次ツールへ移す。** 現在レビューで守られている規約は、lint ルール・
+アーキテクチャテスト・生成物ドリフト検査へ移すことを優先します。そうすればその規約は寄与者にも
+エージェントにも同一に効き、レビューは自動化できない判断にだけ費やせます。
 
-**The agent environment is measured, not accumulated.** Skills, agent-facing rules, documents, and
-the automation around them carry a lifecycle rather than only an introduction: what an AI session
-finds hard is collected, attributed to the control it implicates, and re-evaluated after a change
-lands, so a control can be simplified, deleted, or reverted on evidence. A development foundation
-that only grows becomes the thing it was built to prevent. The decisions inside that loop stay with a
-human. See [ADR-0008 (agent-environment-alignment)](../adr/0008-agent-environment-alignment.md).
-
-**Deliberate exclusions stay excluded.** The list in [out-of-scope.md](out-of-scope.md) is not a
-backlog. Items move off it only when the reason recorded there stops holding, and that is an ADR-level
-decision.
+**意図的な非採用は非採用のまま維持する。** [out-of-scope.md](out-of-scope.md) の一覧はバック
+ログではありません。項目がそこから外れるのは、記録された理由が成り立たなくなったときだけであり、それは
+ADR 相当の判断です。
 
 <!-- boilerplate-only:begin -->
-## Microservices are permanently out of scope
+## マイクロサービスは恒久的に対象外
 
-What v3 provides is the ability to distribute a boundary once it needs to be distributed — not a
-microservice platform. That gap is not scheduled to close, and there is no intention to close it.
+v3 が用意するのは「必要になった境界を分散化できること」であって、マイクロサービス基盤ではありません。
+この差は将来縮まる予定が無く、縮める意図も持ちません。
 
-- **The unit being optimized for differs.** A microservice template optimizes for the minimum shape
-  of one service: one bounded context, thin enough to deploy alone. This repository optimizes for
-  holding several boundaries inside one deployable while enforcing the boundaries between them. v3
-  makes the move to the former possible, and **making something possible is not the same as being
-  the best fit for it**.
-- **The hard part sits outside the application.** An orchestration platform, a distributed tracing
-  backend, service discovery and traffic control, per-service CI and deployment. Kubernetes is the
-  common instance of this rather than a requirement; the point is that none of it is territory this
-  repository owns. Deployment implementation, IaC, and observability operations are already listed
-  in [out-of-scope.md](out-of-scope.md).
-- **A template should not pre-empt that decision.** By the time microservices are genuinely needed,
-  the constraint that produced the need — organizational structure, regulation, fault isolation — is
-  concrete, and the platform is chosen against that constraint. A template that bakes in one answer
-  first ends the choice before anyone has looked at the constraint.
+- **最適化する単位が違う。** マイクロサービス向けのテンプレートは 1 サービスの最小形（1 つの境界づけ
+  られたコンテキスト、単独でデプロイできる薄さ）に最適化されます。こちらは複数の境界を 1 つのデプロイ
+  単位に保ったまま、その内側の境界を強制することに最適化されています。v3 は前者への移行を可能に
+  しますが、**可能にすることと最適であることは別**です。
+- **難しい部分がアプリケーションの外にあります。** オーケストレーション基盤、分散トレースのバック
+  エンド、サービス検出とトラフィック制御、サービス単位の CI とデプロイ。Kubernetes はその代表例で
+  あって必須ではなく、要点はいずれもこのリポジトリが所有しない領域だという一点です。デプロイ実装と
+  IaC、可観測性の運用設定は既に [out-of-scope.md](out-of-scope.md) にあります。
+- **その判断をテンプレートが先回りすべきではありません。** マイクロサービスが本当に必要になる段階
+  では、必要を生んだ制約 — 組織構造、規制、障害分離の要求 — が既に具体的にあり、基盤はその制約に
+  合わせて選ばれます。テンプレートが先に 1 つの答えを焼き込むと、制約を見る前に選択が終わります。
 
-So Kubernetes manifests, service-mesh-dependent communication, and per-service deployment pipelines
-will not arrive here. What this line defends instead is that **choosing not to distribute stays valid
-all the way through**.
+したがって、ここに Kubernetes マニフェスト、サービスメッシュ前提の通信、サービス単位のデプロイ
+パイプラインが入ることはありません。分散化を選ばないという選択が最後まで有効であり続けることのほうを、
+この線は守ります。
 
-**Out of scope is not forbidden.** It means this repository does not supply it, not that you may not
-reshape what is here into a microservice architecture. The obligation on this side is to keep it
-**traceable which premises you would be rewriting** if you decided to. Every deliberate exclusion is
-recorded as an ADR, and a project rewrites those directly at setup time to establish its own baseline
-(Phase 13 of [setup-repository.md](../get-started/setup-repository.md)).
+**対象外は禁止ではありません。** 提供しないというだけで、この構成を改造してマイクロサービス
+アーキテクチャへ適合させることを妨げてはいません。こちら側の責任は、そうすると決めたときに
+**どの前提を書き換えることになるかが辿れる状態を保つこと**です。意図的な非採用はいずれも ADR として
+記録され、作成先はセットアップの段階でそれを直接書き換えて自分のベースラインにできます
+（[setup-repository.md](../get-started/setup-repository.md) の Phase 13）。
 
-## Beyond this repository
+## このリポジトリの外側
 
-Companion boilerplates are planned along the same lines — frontend, infrastructure, and
-observability — so that the boundaries this repository assumes on its edges have a counterpart that
-assumes the same ones. They are separate repositories rather than additions here: nothing in this
-project's scope changes when they land.
+同じ方針に沿った姉妹ボイラープレート（フロントエンド・インフラ・可観測性）を計画しています。この
+リポジトリが境界の外側に対して置いている前提を、同じ前提を置く相手側が持てるようにするためです。
+これらはここへの追加ではなく別リポジトリであり、着地してもこのプロジェクトのスコープは変わりません。
 
-A microservice platform, if it is ever taken on, takes the same form: one product that integrates
-the orchestration platform, the observability platform and the application, built separately rather
-than bolted on here — because, as above, the difficulty lives in that integration and not on the
-application side.
+マイクロサービス基盤を扱うとすれば、それも同じ形を取ります。オーケストレーション基盤・可観測性
+基盤・アプリケーションを 1 つの製品として統合したものを別に作るのであって、ここへ後から足す形には
+しません。前段で述べたとおり、難所はアプリケーション側ではなくその統合にあるためです。
 
 <!-- boilerplate-only:end -->
-## Where the actual work is
+## 実際の作業がある場所
 
-Planned and in-progress work lives in the issue tracker. Anything that changes *why* the system is
-shaped the way it is is additionally recorded as an ADR under [adr/](../adr/README.md) — read in
-sequence, those records are the honest history of the project's direction, and this page is only its
-current summary.
+計画中および進行中の作業は issue トラッカーにあります。システムが今の形をしている**理由**を変える
+ものは、加えて [adr/](../adr/README.md) の ADR として記録されます。順に読めばそれらの記録が
+プロジェクトの方向の正直な履歴であり、このページはその現在の要約に過ぎません。

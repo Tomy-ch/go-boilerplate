@@ -1,22 +1,22 @@
 # worker hook
 
-`internal/di/worker/hook` is a module that registers **lifecycle hooks** to run the CLI-selected worker engine (and its health listener) across application start/stop.
+`internal/di/worker/hook` は、CLI で選択された worker engine（とその health listener）をアプリケーションの起動／停止にまたがって実行するための **ライフサイクルフック**を登録するパッケージです。
 
-## Role
+## 役割
 
-`RegisterWorkerHooks` registers a Start hook and a Stop hook with `lifecycle.Registrar`:
+`RegisterWorkerHooks` が `lifecycle.Registrar` に Start フックと Stop フックを登録し、以下の処理を行います。
 
 ```mermaid
 flowchart TB
-    Start["OnStart hook"]
+    Start["OnStart フック"]
     Health["startHealth()"]
     Snapshot["state.Snapshot()"]
     Check{"done == nil?"}
-    NoWorker["log → engine not started"]
-    RunWorker["engine.Run() in a goroutine"]
+    NoWorker["ログ出力 → engine 起動せず"]
+    RunWorker["goroutine で engine.Run()"]
     Done["done <- err"]
-    Stop["OnStop hook"]
-    Cancel["cancel() → await drain"]
+    Stop["OnStop フック"]
+    Cancel["cancel() → drain 待ち"]
     StopHealth["stopHealth()"]
 
     Start --> Health --> Snapshot --> Check
@@ -25,24 +25,24 @@ flowchart TB
     Stop --> Cancel --> StopHealth
 ```
 
-1. On Start: starts the health listener, then calls `state.Snapshot()` to get the worker name and done channel
-2. If `done == nil`: logs "No worker to run" and returns without starting the engine
-3. Otherwise: runs `engine.Run(engineCtx, name)` in a detached goroutine and sends the result to `done`
-4. On Stop: cancels `engineCtx`, waits for the engine to drain within `stopCtx`, then stops the health listener
+1. Start 時: health listener を起動し、`state.Snapshot()` で worker 名と done チャネルを取得する
+2. `done == nil` の場合: 「実行する worker なし」をログに出し、engine を起動せず戻る
+3. それ以外: detached goroutine で `engine.Run(engineCtx, name)` を実行し、結果を `done` へ送る
+4. Stop 時: `engineCtx` をキャンセルし、`stopCtx` の範囲で engine の drain を待ってから health listener を停止する
 
-## Usage Flow
+## 使用フロー
 
-Set `State` before application startup from the CLI:
+CLI 側で起動前に `State` をセットしておきます。
 
 ```go
 done := make(chan error, 1)
 state.Set("user-events", nil, done)
-// Application starts → Start hook runs the worker until stop
+// アプリケーション起動 → Start フックで worker が停止まで実行される
 err := <-done
 ```
 
-## Notes
+## 注意点
 
-- The Start/Stop plumbing (detached goroutine, cancel-on-stop, grace-bounded drain) is delegated to `lifecycle.SupervisedRunner`; the health listener is passed as its `OnStartAux` / `OnStopAux`
-- `state.Set(name, args, done)` must be called before application startup
-- Work unfinished past the drain deadline is not Acked and is redelivered
+- Start/Stop 配線（detached goroutine・停止時キャンセル・grace 内 drain）は `lifecycle.SupervisedRunner` に委譲し、health listener をその `OnStartAux` / `OnStopAux` として渡す
+- `state.Set(name, args, done)` をアプリケーション起動前に行う必要がある
+- drain 期限を超えた未完了処理は Ack されず再配送される

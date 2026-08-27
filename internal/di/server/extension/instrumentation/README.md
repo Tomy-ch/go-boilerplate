@@ -1,27 +1,27 @@
 # instrumentation
 
-`instrumentation` is a directory that groups **DI middleware modules for HTTP layer observability and request identification**.
+`instrumentation` は、HTTP レイヤーにおける **可観測性（Observability）と ID 付与（RequestID）を提供するミドルウェア DI モジュール群**をまとめたディレクトリです。
 
-It provides the foundation for Tracing / Logging / Metrics through **request identifier generation** and **trace integration middleware**.
+Tracing / Logging / Metrics の基盤となる **リクエスト識別子の生成**と**トレース連携ミドルウェア**を提供します。
 
-## Modules
+## モジュール一覧
 
-|Module|Type|Priority|Description|
+|モジュール|種別|Priority|説明|
 |---|---|---|---|
-|`RequestIDModule()`|Use|1|Generate unique Request ID per request|
-|`ObservabilityModule()`|Use|2|OpenTelemetry tracing integration|
-|`HTTPRedMetricsModule()`|Use|8|HTTP RED metrics (request count / duration / status) via a Prometheus recorder|
-|`LoggingModule()`|Use|9|Structured HTTP request/response logging|
+|`RequestIDModule()`|Use|1|リクエスト単位の一意な ID を生成|
+|`ObservabilityModule()`|Use|2|OpenTelemetry トレーシング統合|
+|`HTTPRedMetricsModule()`|Use|8|HTTP RED メトリクス（request count / duration / status）を Prometheus recorder で計測|
+|`LoggingModule()`|Use|9|HTTP リクエスト / レスポンスの構造化ログ|
 
-## Priority Order
+## Priority 順序
 
-RequestID (Priority 1) → Observability (Priority 2) ensures **ID assignment occurs before trace start**.
+RequestID（Priority 1）→ Observability（Priority 2）の順で、**ID 付与 → トレース開始**となるよう設計されています。
 
-HTTPRedMetrics (Priority 8) runs after Observability so a trace context already exists, and is placed after forceJSON (7) / before Logging (9) / before Cookie (10). It sits **outside** Logging (9) on purpose: its `After` hook then fires before Logging's `After`, so the measured duration does not include Logging's I/O. Priority 7 is **not** used because `forceJSON` (in `outbound`) already occupies it, and duplicate Use priorities are rejected at apply time.
+HTTPRedMetrics（Priority 8）は Observability の後に動くためトレースコンテキスト確立後に計測でき、forceJSON（7）の後・Logging（9）の前・Cookie（10）の前に配置されます。Logging（9）より**外側**に置くのは意図的で、その After フックが Logging の After より先に発火し、計測した duration に Logging の I/O が混入しないようにするためです。Priority 7 は `outbound` の `forceJSON` が占有済みのため使いません（Use の Priority 重複は適用時にエラー）。
 
-## Notes
+## 注意点
 
-- RequestID / Observability / HTTPRedMetrics / Logging are applied as **UseMiddleware with Priority**
-- Observability depends on `ObservabilityConfig` — **behavior may differ between production and non-production**
-- `HTTPRedMetricsModule()` registers the recorder against the `prometheus.Registerer` provided by the DB module, so the metrics are exposed on the same `/metrics` endpoint; ops paths (`/metrics`, `/health`, etc.) are excluded from measurement
-- When adding middleware or changing priorities, watch for Priority conflicts with other UseMiddleware
+- RequestID / Observability / HTTPRedMetrics / Logging は **UseMiddleware として Priority 付きで適用**
+- Observability は `ObservabilityConfig` に依存 — **本番 / 非本番で挙動が変わる可能性あり**
+- `HTTPRedMetricsModule()` は DB モジュールが提供する `prometheus.Registerer` に recorder を登録するため、メトリクスは同一の `/metrics` エンドポイントで公開される。運用系パス（`/metrics`, `/health` 等）は計測対象から除外される
+- ミドルウェア追加や Priority 変更時は、他の UseMiddleware との衝突に注意

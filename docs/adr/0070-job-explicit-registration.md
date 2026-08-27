@@ -5,70 +5,70 @@ deciders: [maintainers]
 tags: [job, async]
 ---
 
-# ADR-0070: Jobs are explicitly registered (no auto-discovery)
+# ADR-0070: Job は明示的に登録する（自動検出なし）
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-The job subsystem's runner dispatches a CLI invocation to a named `Job` implementation.
-The runner must know which jobs are available at startup. Two general patterns exist:
+Job サブシステムのランナーは CLI の呼び出しを名前付きの `Job` 実装へディスパッチする。
+ランナーは起動時にどの Job が利用可能かを把握していなければならない。
+一般的なアプローチとして次の 2 つがある。
 
-1. **Auto-discovery** — the process scans a directory, uses reflection, or relies on
-   `init`-function side effects to find all registered jobs at boot.
-2. **Explicit registration** — each job constructor is deliberately listed in a central
-   wiring file; the DI container aggregates them at compile time.
+1. **自動検出** — プロセスがディレクトリをスキャンするか、リフレクションを使うか、あるいは
+   `init` 関数のサイドエフェクトに依存して、起動時にすべての登録済み Job を検出する。
+2. **明示的登録** — 各 Job のコンストラクタを中央のワイヤリングファイルに明示的にリストアップし、
+   DI コンテナがコンパイル時にそれらを集約する。
 
-The repository uses Uber Fx for dependency injection (see [ADR-0040](0040-uber-fx-di.md)),
-which provides the `fx.Annotate` / `group` tag mechanism for collecting multiple
-implementations of the same interface into a slice.
+本リポジトリは依存性注入に Uber Fx を使用しており（[ADR-0040](0040-uber-fx-di.md) 参照）、
+Fx の `fx.Annotate` / `group` タグ機構によって同じインターフェースの複数の実装をスライスに
+集約できる。
 
-## Decision
+## 決定
 
-Jobs are **explicitly registered** via Fx's value-group mechanism — there is no
-auto-discovery. Each job constructor is added to `provideJobs(...)` inside `JobModule()`
-(`internal/di/module/job.go`). Fx collects all tagged constructors into the slice that
-`NewRunner` consumes.
+Job は Fx の value-group 機構を通じて**明示的に登録**する。自動検出は行わない。
+各 Job のコンストラクタは `JobModule()` 内の `provideJobs(...)` に追加される
+（`internal/di/module/job.go`）。Fx がタグ付きのすべてのコンストラクタを
+`NewRunner` が受け取るスライスに集約する。
 
-Duplicate job names are rejected at build time (`ErrDuplicateJob`), so a mis-registration
-is caught before the process starts.
+Job 名の重複はビルド時に拒否される（`ErrDuplicateJob`）ため、誤った登録はプロセス起動前に
+検出される。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- The full list of available jobs is visible in a single file (`internal/di/module/job.go`)
-  — easy to audit and review.
-- No reflection or `init`-based side effects; the dependency graph is statically verifiable
-  by Fx.
-- Duplicate names produce a deterministic build-time error, not a silent runtime collision.
+- 利用可能な Job の全リストが単一ファイル（`internal/di/module/job.go`）で確認できる
+  — 監査・レビューが容易。
+- リフレクションや `init` ベースのサイドエフェクトがないため、依存グラフを Fx によって
+  静的に検証できる。
+- 名前の重複は決定的なビルド時エラーとなり、サイレントなランタイム衝突は発生しない。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Adding a new job requires editing `internal/di/module/job.go` in addition to the job
-  package itself — two touch points instead of one.
-- There is no automatic enforcement that a newly authored `Job` is actually wired; a job
-  implementation can be written but omitted from the registration list.
+- 新しい Job を追加する際は、Job パッケージ本体に加えて `internal/di/module/job.go` も
+  編集する必要がある — タッチポイントが 1 つではなく 2 つになる。
+- 新たに実装した `Job` が実際にワイヤリングされているかどうかを自動で強制する仕組みがない。
+  Job の実装を書いても登録リストから漏れる可能性がある。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Auto-discovery via init functions or reflection
+### init 関数またはリフレクションによる自動検出
 
-Rejected: `init`-based registries introduce implicit global state that makes the dependency
-graph invisible to Fx and harder to test in isolation. Reflection-based discovery couples
-the runner to naming conventions or package paths, which are fragile refactoring targets.
+却下: `init` ベースのレジストリは暗黙的なグローバル状態を導入し、Fx から依存グラフが
+見えなくなるうえ、独立してテストしにくくなる。リフレクションによる検出はランナーを
+命名規則やパッケージパスに結合させるが、これらはリファクタリング時に壊れやすい。
 
-### Code generation for the registration list
+### 登録リストのコード生成
 
-Not adopted: the explicit list is short and human-readable; the overhead of a generation
-step is not justified at this scale.
+採用せず: 明示的なリストは短く人間が読める。この規模ではコード生成ステップのオーバーヘッドは
+正当化されない。
 
-## Notes
+## 補足
 
-- The same explicit-registration pattern is used for workers (`provideWorkers` in
-  `internal/di/module/worker.go`).
-- Source: `docs/design/job.md` (§ 4 "What an integrator implements", intro sentence and
-  registration table).
-- Related: [ADR-0040](0040-uber-fx-di.md) (Uber Fx DI).
+- 同じ明示的登録パターンはワーカーにも使用されている（`internal/di/module/worker.go` の
+  `provideWorkers`）。
+- 出典: `docs/design/job.md`（§4「What an integrator implements」のイントロ文と登録テーブル）。
+- 関連: [ADR-0040](0040-uber-fx-di.md)（Uber Fx DI）。

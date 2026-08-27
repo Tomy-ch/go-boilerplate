@@ -5,31 +5,21 @@ deciders: [maintainers]
 tags: [contract, http, observability, security]
 ---
 
-# ADR-0020: /metrics is an auth exception — outside OpenAPI validation, protected by a separate BasicAuth middleware
+# ADR-0020: /metrics は認証例外 — OpenAPI 検証の外に置き、独立した BasicAuth ミドルウェアで保護する
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-[ADR-0016](0016-spec-driven-request-validation.md) establishes that the OpenAPI middleware
-validates every inbound request and enforces security requirements declared in the spec.
-The Prometheus metrics endpoint (`GET /metrics`) exposes operational data and must be
-protected against unauthenticated access. However, `/metrics` is an ops path that is not
-part of the OpenAPI API contract: it is not versioned as a public resource, it is not
-consumed by API clients, and its response format (Prometheus text exposition) is not
-described by the OpenAPI spec. Routing it through the OpenAPI validation pipeline would
-require adding it to the spec and generating a handler interface for it, which is
-architecturally wrong.
+[ADR-0016](0016-spec-driven-request-validation.md) は OpenAPI ミドルウェアがすべての受信リクエストを検証し、仕様内で宣言されたセキュリティ要件を強制することを確立している。Prometheus メトリクスエンドポイント（`GET /metrics`）は運用データを公開しており、未認証アクセスから保護されなければならない。しかし、`/metrics` は OpenAPI API 契約の一部ではないオペレーションパスである。パブリックリソースとしてバージョン管理されておらず、API クライアントによって消費されることもなく、そのレスポンスフォーマット（Prometheus テキスト形式）は OpenAPI 仕様に記述されていない。これを OpenAPI 検証パイプラインに通すには仕様に追加してハンドラーインターフェースを生成する必要があるが、それはアーキテクチャ上誤っている。
 
-## Decision
+## 決定
 
-Register `/metrics` **outside the OpenAPI validation pipeline** and protect it with a
-dedicated Echo `BasicAuth` middleware.
+`/metrics` を **OpenAPI 検証パイプラインの外に**登録し、専用の Echo `BasicAuth` ミドルウェアで保護する。
 
-The oapi middleware skipper classifies `/metrics` as an ops path and bypasses spec
-validation entirely:
+oapi ミドルウェアスキッパーは `/metrics` をオペレーションパスとして分類し、仕様検証を完全にバイパスする：
 
 ```go
 // internal/controller/httpstack/oapi/skipper/skipper.go
@@ -40,7 +30,7 @@ func New() echomw.Skipper {
 }
 ```
 
-The route is registered with `echomw.BasicAuth(validator)` applied inline:
+ルートは `echomw.BasicAuth(validator)` をインラインで適用して登録される：
 
 ```go
 // internal/controller/handler/metrics/metrics_handler.go
@@ -52,66 +42,44 @@ func BindHandler(e *echo.Echo, bav echomw.BasicAuthValidator) {
 }
 ```
 
-The BasicAuth validator uses constant-time comparison to resist timing attacks
-(`internal/controller/httpstack/basicauth/basic.go`). Credentials are read from
-`MetricsConfig`.
+BasicAuth バリデーターはタイミング攻撃に対抗するために定数時間比較を使用する（`internal/controller/httpstack/basicauth/basic.go`）。クレデンシャルは `MetricsConfig` から読み取られる。
 
-Any `security:` annotation for `/metrics` in the OpenAPI spec is **documentation only** —
-it does not drive runtime enforcement. The actual authentication is the BasicAuth
-middleware registered on the route.
+OpenAPI 仕様内の `/metrics` への `security:` アノテーションは**ドキュメント目的のみ**——ランタイムの強制を駆動しない。実際の認証はルートに登録された BasicAuth ミドルウェアである。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- `/metrics` is protected without being forced into the OpenAPI contract, keeping the spec
-  limited to API resources that consumers depend on.
-- Credentials for the metrics endpoint are independently configurable via `MetricsConfig`,
-  separate from JWT/BearerAuth used for API endpoints.
-- The constant-time comparison in the validator prevents credential leakage via timing
-  analysis.
-- App-level BasicAuth and infrastructure-level access control are **not mutually exclusive** —
-  running both is defense in depth: if one silently breaks (a misconfigured network rule, a
-  disabled gateway policy), the other still guards the endpoint.
+- `/metrics` は OpenAPI 契約に強制されることなく保護される。仕様はコンシューマーが依存する API リソースのみに制限される。
+- メトリクスエンドポイントのクレデンシャルは `MetricsConfig` を通じて独立して設定可能であり、API エンドポイントに使用される JWT/BearerAuth とは分離されている。
+- バリデーター内の定数時間比較がタイミング分析によるクレデンシャル漏洩を防ぐ。
+- アプリレベルの BasicAuth とインフラレベルのアクセス制御は**排他的ではない**——両方を設定することが多層防御になる。片方が静かに壊れても（ネットワークルールの設定ミス、ゲートウェイポリシーの無効化）、もう片方がこのエンドポイントを守る。
 
-### Negative Consequences
+### ネガティブな影響
 
-- The `/metrics` security mechanism lives outside the spec, so it is not discoverable from
-  the OpenAPI document alone — developers must know to check the handler registration and
-  `MetricsConfig`.
-- If the OpenAPI spec includes a `security:` annotation for `/metrics`, it is silently
-  inoperative at runtime; readers may incorrectly assume the oapi middleware enforces it.
+- `/metrics` のセキュリティ機構は仕様の外に存在するため、OpenAPI ドキュメント単体では発見できない——開発者はハンドラー登録と `MetricsConfig` を確認することを知っていなければならない。
+- OpenAPI 仕様が `/metrics` に `security:` アノテーションを含む場合、ランタイムでは静かに無効化される。読者は oapi ミドルウェアがそれを強制していると誤解する可能性がある。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Include /metrics in the OpenAPI spec and generate a handler interface for it
+### /metrics を OpenAPI 仕様に含めてハンドラーインターフェースを生成する
 
-Would make the security enforcement consistent with other endpoints. Rejected: the metrics
-endpoint is an operational concern, not an API resource — adding it to the spec pollutes
-the consumer contract and requires generating types for a Prometheus response format that
-oapi-codegen cannot model.
+セキュリティ強制を他のエンドポイントと一貫させることができる。却下：メトリクスエンドポイントは運用上の関心事であり API リソースではない——仕様に追加するとコンシューマー契約が汚染され、oapi-codegen がモデル化できない Prometheus レスポンスフォーマットの型を生成することが必要になる。
 
-### Route /metrics through the application Authenticator (Authn)
+### /metrics をアプリケーションの Authenticator（Authn）経由にする
 
-Reuse the same per-request `Authenticator` used for API endpoints. Rejected: full
-per-request authentication is over-engineering for an operational endpoint that is scraped
-frequently, and adds latency on the hot scrape path. BasicAuth has low setup and
-verification cost and fits an ops endpoint. The trade-off is that the operator must manage
-the metrics username/password and keep them out of source control (do not commit real
-values in `env/.env.*`).
+API エンドポイントと同じリクエスト単位の `Authenticator` を再利用する。却下：頻繁にスクレイプされる運用エンドポイントに対してリクエスト単位のフル認証はオーバーエンジニアリングであり、スクレイプのホットパスにレイテンシを加える。BasicAuth は設定・検証コストが低く運用エンドポイントに適する。トレードオフとして、運用者はメトリクスのユーザー名/パスワードを管理し、ソース管理外に保つ必要がある（`env/.env.*` に実際の値をコミットしない）。
 
-### Skip auth on /metrics and rely on network-level access control
+### /metrics の認証をスキップしてネットワークレベルのアクセス制御に委ねる
 
-Simpler operationally. Rejected: this project should provide a usable auth mechanism out
-of the box; leaving the endpoint open shifts the security responsibility entirely to
-infrastructure configuration.
+運用上はシンプルになる。却下：テンプレートはすぐに使える認証機構を提供すべきであり、エンドポイントを開放したままにすることはセキュリティ責任を完全にインフラ設定に転嫁する。
 
-## Notes
+## 補足
 
-- Skipper implementation: [`internal/controller/httpstack/oapi/skipper/skipper.go`](../../internal/controller/httpstack/oapi/skipper/skipper.go).
-- Route registration and BasicAuth wiring: [`internal/controller/handler/metrics/metrics_handler.go`](../../internal/controller/handler/metrics/metrics_handler.go).
-- Validator: [`internal/controller/httpstack/basicauth/basic.go`](../../internal/controller/httpstack/basicauth/basic.go).
-- Ops-path classification: `internal/controller/httpstack/ops/paths.go`.
-- Security note in [`openapi/README.md`](../../openapi/README.md) (§ Security): the `/metrics` `security:` declaration is documentation-only.
-- Related decision: [ADR-0016](0016-spec-driven-request-validation.md) (spec-driven request validation — this ADR is its companion exception record).
-- Parent decision: [ADR-0012](0012-openapi-first.md) (OpenAPI-first).
+- スキッパー実装: [`internal/controller/httpstack/oapi/skipper/skipper.go`](../../internal/controller/httpstack/oapi/skipper/skipper.go)。
+- ルート登録と BasicAuth ワイヤリング: [`internal/controller/handler/metrics/metrics_handler.go`](../../internal/controller/handler/metrics/metrics_handler.go)。
+- バリデーター: [`internal/controller/httpstack/basicauth/basic.go`](../../internal/controller/httpstack/basicauth/basic.go)。
+- オペレーションパス分類: `internal/controller/httpstack/ops/paths.go`。
+- [`openapi/README.md`](../../openapi/README.md)（§ Security）のセキュリティ注記: `/metrics` の `security:` 宣言はドキュメント目的のみ。
+- 関連する決定: [ADR-0016](0016-spec-driven-request-validation.md)（仕様駆動リクエスト検証——この ADR はその付随する例外記録）。
+- 親の決定: [ADR-0012](0012-openapi-first.md)（OpenAPI ファースト）。

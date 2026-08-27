@@ -5,93 +5,68 @@ deciders: [maintainers]
 tags: [persistence, cqrs]
 ---
 
-# ADR-0033: Introduce system_cqrs as a fourth DML category outside the CQRS split
+# ADR-0033: CQRSの分割の外に位置する第4のDMLカテゴリとしてsystem_cqrsを導入する
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-The DML directory organizes SQL source files by their architectural role:
+DMLディレクトリはSQLソースファイルをアーキテクチャ上の役割ごとに整理する。
 
-| Category | Purpose |
+| カテゴリ | 目的 |
 | --- | --- |
-| `repository/` | Aggregate CRUD (domain layer interface) |
-| `query_service/` | Use-case-specific read queries (usecase layer interface) |
-| `command_service/` | Write-side commands (usecase layer, reserved) |
+| `repository/` | 集約CRUD（ドメインレイヤーインターフェース） |
+| `query_service/` | ユースケース固有の読み込みクエリ（ユースケースレイヤーインターフェース） |
+| `command_service/` | 書き込み側コマンド（ユースケースレイヤー、予約済み） |
 
-Some queries do not belong to any of these three roles. Health checks, idempotency key
-lookups, and outbox row polling are infrastructure-level operations that:
+これらの3つの役割のいずれにも属さないクエリが存在する。ヘルスチェック・べき等キーの検索・outbox行のポーリングはインフラレベルの操作であり、以下の性質を持つ。
 
-- Are not driven by a user-facing use case
-- Do not correspond to a domain aggregate
-- Must exist in every deployment regardless of business features
+- ユーザー向けのユースケースによって駆動されない
+- ドメイン集約に対応しない
+- ビジネスフィーチャーに関わらずすべてのデプロイに存在しなければならない
 
-Forcing these queries into `repository/` or `query_service/` is misleading — they have no
-aggregate owner and no use-case interface. A dedicated category makes the distinction
-explicit.
+これらのクエリを`repository/`や`query_service/`に強制的に入れることは誤解を招く — 集約のオーナーもユースケースインターフェースも持たない。専用のカテゴリがその区別を明示的にする。
 
-## Decision
+## 決定
 
-`database/dml/system_cqrs/` is a **fourth DML category** for system operational queries
-(health verification, idempotency enforcement, outbox delivery). Its implementations live
-in `internal/infrastructure/rdb/system_cqrs/` and are registered under a dedicated
-`system_cqrs` sub-module in `persistenceModule`
-(`internal/di/module/persistence.go`).
+`database/dml/system_cqrs/`はシステム運用クエリ（ヘルス検証・べき等性強制・outbox配信）のための**第4のDMLカテゴリ**である。その実装は`internal/infrastructure/rdb/system_cqrs/`に置かれ、`persistenceModule`内の専用`system_cqrs`サブモジュール（`internal/di/module/persistence.go`）に登録される。
 
-The `system_cqrs` category is explicitly outside the CQRS read/write split described in
-[ADR-0032](0032-lightweight-cqrs.md). It serves infrastructure concerns, not application
-business logic.
+`system_cqrs`カテゴリは[ADR-0032](0032-lightweight-cqrs.md)で説明したCQRSの読み込み/書き込み分割の明示的な外側に位置する。アプリケーションのビジネスロジックではなくインフラの関心事に対応する。
 
-`make gen-query` processes all four categories through the same merge-dml and sqlc pipeline
-(see [ADR-0028](0028-merged-dml-schema-as-sqlc-input.md)), so system_cqrs participates
-in the same type-safe code generation as the other categories.
+`make gen-query`は4つのカテゴリすべてを同じmerge-dmlとsqlcパイプライン（[ADR-0028](0028-merged-dml-schema-as-sqlc-input.md)参照）で処理するため、system_cqrsは他のカテゴリと同じ型安全なコード生成に参加する。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- System operational queries are isolated from application DML; there is no risk of mixing
-  domain persistence with health checks or idempotency writes.
-- Infrastructure implementations (health check, idempotency, outbox) are cleanly registered
-  in their own DI sub-module without polluting Repository or QueryService modules.
-- The four-category model maps directly to four sub-modules in `persistenceModule`,
-  providing a consistent structure for both DML and DI.
+- システム運用クエリがアプリケーションDMLから分離され、ドメイン永続化とヘルスチェックやべき等性書き込みが混在するリスクがない。
+- インフラ実装（ヘルスチェック・べき等性・outbox）がRepositoryやQueryServiceモジュールを汚染することなく専用のDIサブモジュールに明確に登録される。
+- 4カテゴリモデルが`persistenceModule`内の4つのサブモジュールに直接対応し、DMLとDIの両方で一貫した構造を提供する。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Developers must be aware of the four-category model when placing new queries, adding
-  cognitive overhead compared to a two-category or flat model.
-- The name `system_cqrs` sounds read-only but includes idempotency writes and outbox
-  inserts; "infrastructure-operational" would be more precise but longer.
+- 新しいクエリを配置する際に開発者が4カテゴリモデルを把握しなければならず、2カテゴリまたはフラットモデルと比較して認知オーバーヘッドが増える。
+- `system_cqrs`という名称は読み込み専用に聞こえるが、べき等性書き込みとoutboxの挿入を含む。「インフラ運用」という言葉の方が正確だが長い。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Merge system queries into repository/
+### システムクエリをrepository/にマージする
 
-Simple structure, but `repository/` maintains a strict 1:1 structure with domain aggregates,
-so system operational concerns that have no aggregate owner must not live there. It conflates
-domain-aggregate concerns with infrastructure-operational concerns. Health checks and
-idempotency keys have no aggregate; placing them in `repository/` is misleading and makes the
-Repository concept less coherent.
+シンプルな構造だが、`repository/` はドメイン集約と厳密な 1:1 構造を維持しているため、集約のオーナーを持たないシステム運用上の関心事をここに置くべきではない。ドメイン集約の関心事とインフラ運用の関心事を混在させる。ヘルスチェックとべき等キーは集約を持たない。それらを`repository/`に置くことは誤解を招きRepositoryの概念の一貫性を損なう。
 
-### A single infrastructure/ category
+### 単一のinfrastructure/カテゴリ
 
-More general — all non-CQRS queries go in one place. Loses the per-role clarity that the
-four-category model provides and obscures which SQL is domain-related vs
-infrastructure-related.
+より汎用的 — CQRS以外のすべてのクエリを1か所に置く。4カテゴリモデルが提供するロールごとの明確さが失われ、どのSQLがドメイン関連かインフラ関連かが不明瞭になる。
 
-### No dedicated DML category (inline SQL in Go files)
+### 専用のDMLカテゴリなし（GoファイルにインラインSQL）
 
-Removes the extra directory but foregoes sqlc type safety for system queries. The
-compile-time guarantees sqlc provides are worth the additional structure.
+追加のディレクトリを排除するがシステムクエリのsqlc型安全性を放棄する。sqlcが提供するコンパイル時の保証は追加の構造に見合う価値がある。
 
-## Notes
+## 補足
 
-- Source: [`database/dml/README.md`](../../database/dml/README.md) § "Directory
-  Structure" and § "Subdirectory Mapping to Onion Architecture".
-- Source: [`database/dml/system_cqrs/README.md`](../../database/dml/system_cqrs/README.md).
-- DI registration: [`internal/di/module/persistence.go`](../../internal/di/module/persistence.go).
-- Related: [ADR-0032](0032-lightweight-cqrs.md) (CQRS split that system_cqrs falls
-  outside of); [ADR-0028](0028-merged-dml-schema-as-sqlc-input.md) (merge-dml pipeline).
+- Source: [`database/dml/README.md`](../../database/dml/README.md)の§ "Directory Structure"および§ "Subdirectory Mapping to Onion Architecture"。
+- Source: [`database/dml/system_cqrs/README.md`](../../database/dml/system_cqrs/README.md)。
+- DI登録: [`internal/di/module/persistence.go`](../../internal/di/module/persistence.go)。
+- 関連: [ADR-0032](0032-lightweight-cqrs.md)（system_cqrsが外側に位置するCQRS分割）；[ADR-0028](0028-merged-dml-schema-as-sqlc-input.md)（merge-dmlパイプライン）。

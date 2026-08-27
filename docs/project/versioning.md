@@ -1,35 +1,35 @@
-# Versioning Policy
+# バージョン管理方針（Versioning Policy）
 
-This project adopts **Semantic Versioning (SemVer)**.
+プロジェクトは **Semantic Versioning（SemVer）** を採用しています。
 
 - MAJOR
 - MINOR
 - PATCH
 
-## Version Definitions
+## バージョン定義
 
 - **MAJOR**  
-  Breaking changes (changes that break backward compatibility)
+  破壊的変更（後方互換性を壊す変更）
 
 - **MINOR**  
-  Feature additions that maintain backward compatibility
+  後方互換性を維持した機能追加
 
 - **PATCH**  
-  Bug fixes and non-breaking improvements
+  バグ修正および非破壊的な改善
 
-## Release Branch Strategy
+## リリースブランチ戦略
 
-This project adopts a **release-centric branching model**.
+プロジェクトは **release-centric branching model** を採用しています。
 
-- Feature development branches off from the latest `release/*` branch
-- Changes are reflected to `develop`, `staging`, and `production` only via release branches
-- Direct commits to protected branches are prohibited
+- 機能開発は最新の `release/*` ブランチから分岐します
+- `develop`, `staging`, `production` へは release 経由でのみ反映されます
+- 保護ブランチへの直接コミットは禁止されています
 
-## Release Procedure
+## リリース手順
 
-### Tagging
+### タグ発行
 
-Issue tags using the following commands:
+以下のコマンドでタグを発行します：
 
 ```bash
 make release-major-tag
@@ -37,9 +37,9 @@ make release-minor-tag
 make release-patch-tag
 ```
 
-Manual creation of tags is prohibited.
+タグの手動作成は禁止です。
 
-### Creating the Next Release Branch
+### 次リリースブランチの作成
 
 ```bash
 make release-major-branch
@@ -47,24 +47,24 @@ make release-minor-branch
 make release-patch-branch
 ```
 
-### Hotfix Procedure
+### Hotfix手順
 
-When an urgent fix is required:
+緊急修正が必要な場合：
 
-- Create a `hotfix/*` branch from the `production` branch using `make hotfix-patch-branch`
-- Apply the fix on the `hotfix/*` branch and merge it into `production`
-- From the updated `production`, create the next `release/*` branch using `make release-patch-branch`, and merge into `develop` / `staging` / `production` via that `release/*` branch
-- When the `release/*` branch is merged into `production`, issue a PATCH version tag (`make release-patch-tag`)
+- `production` ブランチから `make hotfix-patch-branch` で `hotfix/*` ブランチを作成
+- `hotfix/*` ブランチで修正を適用し、`production` へ取り込む
+- 修正が取り込まれた `production` から `make release-patch-branch` で次の `release/*` ブランチを作成し、`develop` / `staging` / `production` へはその `release/*` ブランチ経由でマージ
+- `release/*` ブランチが `production` にマージされたタイミングで PATCH バージョンのタグを発行（`make release-patch-tag`）
 
-## Rules for Breaking Changes
+## 破壊的変更に関するルール
 
-- Breaking changes are allowed only in MAJOR versions
-- API contract changes must follow the OpenAPI-first policy
-- If OpenAPI changes are involved, code generation must always be executed
+- 破壊的変更は MAJOR バージョンでのみ許可されます
+- API契約変更は OpenAPI-first ポリシーに従う必要があります
+- OpenAPI変更を伴う場合は必ずコード生成を行ってください
 
-## Principles
+## 原則
 
-- Direct editing of version numbers is prohibited
-- Tags must be issued only via predefined make commands
-- Follow branch protection rules
-- Strictly adhere to semantic versioning
+- バージョン番号の直接編集は禁止
+- タグは定義済みの make コマンド経由のみ
+- ブランチ保護ルールに従うこと
+- セマンティックバージョニングを厳守すること

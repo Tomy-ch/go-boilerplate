@@ -1,40 +1,40 @@
 # server
 
-`server` is the package that **creates and configures the HTTP server** and provides HTTP request logging / parameter-extraction utilities for the Echo context.
+`server` は、アプリケーションの **HTTP サーバーを生成・設定する**とともに、Echo コンテキスト向けの HTTP リクエストログ／パラメータ抽出ユーティリティを提供するパッケージです。
 
-It builds the Echo instance and the `http.Server` that serves it with the timeouts from `ServerConfig`; middleware application and DI-lifecycle (start / shutdown) registration are handled by other packages (see Role).
+Echo インスタンスと、それを配信する `ServerConfig` のタイムアウトを反映した `http.Server` を構築します。ミドルウェアの適用と DI ライフサイクル（起動・停止）への登録は別パッケージが担います（役割を参照）。
 
-## Role
+## 役割
 
-- Echo instance creation (`NewAppServer`)
-- HTTP server creation (`NewHTTPServer`) -- serves the Echo instance and applies the timeouts from `ServerConfig`
-- Build HTTP request log input (`BuildHTTPRequestLogInput`) -- the shared construction point for error / recovery log paths
-- Provide Echo context parameter extraction utilities (`ExtractPathParams` / `ExtractQueryParams`) and Echo response access (`ResponseOf`)
+- Echo インスタンスの生成（`NewAppServer`）
+- HTTP サーバーの生成（`NewHTTPServer`）—— Echo を配信し、`ServerConfig` のタイムアウトを適用
+- HTTP リクエストのログ入力の組み立て（`BuildHTTPRequestLogInput`）—— エラー／リカバリのログ経路の共通生成点
+- Echo コンテキストからのパラメータ抽出ユーティリティ（`ExtractPathParams` / `ExtractQueryParams`）とレスポンス取得（`ResponseOf`）
 
-This package **does not define middleware directly**. Middleware application is handled by `internal/controller/httpstack` and `internal/di/server/extension`. Registering the server's start / shutdown with the DI lifecycle (`lifecycle.Registrar`) is handled by `internal/di/server/hook`, not this package.
+このパッケージでは **ミドルウェアを直接定義しません**。ミドルウェアの適用は `internal/controller/httpstack` と `internal/di/server/extension` が担います。サーバーの起動・停止処理の DI ライフサイクル（`lifecycle.Registrar`）への登録は、本パッケージではなく `internal/di/server/hook` が担います。
 
-## Test Strategy
+## テスト戦略
 
-The package holds two kinds of subject, tested differently.
+本パッケージには性質の異なる 2 種類の対象があり、それぞれ別の方針でテストする。
 
-### Echo context utilities
+### Echo コンテキストのユーティリティ
 
-`BuildHTTPRequestLogInput` / `ExtractPathParams` / `ExtractQueryParams` / `ResponseOf` are driven against a real context (`echo.New().NewContext(httptest.NewRequestWithContext(...), httptest.NewRecorder())`) — there is nothing to mock:
+`BuildHTTPRequestLogInput` / `ExtractPathParams` / `ExtractQueryParams` / `ResponseOf` は実体のコンテキスト（`echo.New().NewContext(httptest.NewRequestWithContext(...), httptest.NewRecorder())`）に対して駆動する —— モックにする対象は無い。
 
-- **Empty vs populated** — no path values / no query yields a **non-nil empty** map, not nil (callers range over it unconditionally); populated input is extracted in full, including a repeated query key keeping every value.
-- **Field mapping** — `BuildHTTPRequestLogInput` copies each request attribute into the matching log-input field for the given event type. Assert per field; `EventAt` is clock-derived, so assert it is non-zero rather than pinning a literal.
-- **`ResponseOf` unwrap chain** — a response writer wrapped by a middleware still resolves to the *same* `*echo.Response` (`assert.Same`), and a writer that does not lead back to Echo returns `nil`. Every caller's degradation path (`logging` / `redmetrics` / `forcejson` / `cookie` / `errorhandler`) rests on that nil branch, and the production stack never produces it — so it is pinned here, at the definition, not only at the call sites.
+- **空と非空** — パス値やクエリが無い場合は nil ではなく **非 nil の空マップ**を返すこと（呼び出し側は無条件に range する）。値がある場合は全件抽出され、同名クエリキーは全ての値を保持すること。
+- **フィールドの写像** — `BuildHTTPRequestLogInput` が、指定イベント種別に対しリクエストの各属性を対応するログ入力フィールドへ写すこと。フィールド単位で検証する。`EventAt` は時刻由来のため、リテラル固定ではなくゼロ値でないことを検証する。
+- **`ResponseOf` の unwrap 連鎖** — ミドルウェアに包まれたレスポンスライタでも *同一の* `*echo.Response` に辿り着くこと（`assert.Same`）。Echo へ辿れないライタでは `nil` を返すこと。各呼び出し側の縮退経路（`logging` / `redmetrics` / `forcejson` / `cookie` / `errorhandler`）はこの nil 分岐に依存しており、本番スタックではこの分岐が発生しないため、呼び出し側ではなく定義側の本テストで固定する。
 
-### Server construction
+### サーバーの構築
 
-- `NewHTTPServer` copies each timeout from `ServerConfig` onto the `http.Server` and keeps the given Echo as `Handler`. Assert per field — a mis-mapped timeout is silent at runtime.
-- Listening, serving, and graceful shutdown are **not** exercised here; they belong to the lifecycle hooks in [`internal/di/server/hook`](../../di/server/hook/README.md).
+- `NewHTTPServer` が `ServerConfig` の各タイムアウトを `http.Server` へ写し、渡された Echo を `Handler` として保持すること。フィールド単位で検証する —— タイムアウトの写し違いは実行時に無症状のため。
+- リッスン・配信・graceful shutdown は **ここでは検証しない**。それらは [`internal/di/server/hook`](../../di/server/hook/README.md) のライフサイクルフックの担当。
 
-## Notes
+## 注意点
 
-- The Echo instance created by `NewAppServer` receives middleware from subsequent extensions -- this package **does not define middleware directly**
-- Echo v5 concentrates server start / stop in `echo.StartConfig`, whose blocking model does not fit the DI container's separate start / stop hooks; this project therefore owns an `http.Server` (`NewHTTPServer`) and that is also where the request timeouts live (see [ADR-0022 (echo-http-framework)](../../../docs/adr/0022-echo-http-framework.md))
-- `Context.Response()` returns an `http.ResponseWriter` in Echo v5; use `ResponseOf` when the Echo-specific status or `Before` / `After` hooks are needed
-- Use `logging.Logger` for logging; direct use of zap is prohibited (sealed layer)
-- Graceful shutdown timeout follows `ServerConfig` -- ensure the configuration is correct
-- The recovered-panic flag previously exposed here (`MarkRecovered` / `IsRecovered`) has moved to `internal/controller/ctxhelper` as the typed helpers `SetRecoveredToEcho` / `GetRecoveredFromEcho`; depend on `ctxhelper` directly rather than going through this package
+- `NewAppServer` で生成した Echo インスタンスには、後続の extension でミドルウェアが適用される —— 本パッケージは **ミドルウェアを直接定義しない**
+- Echo v5 はサーバの起動 / 停止を `echo.StartConfig` へ集約するが、そのブロッキングモデルは DI コンテナの起動 / 停止フック分離と噛み合わないため、本プロジェクトは `http.Server` を自前で持つ（`NewHTTPServer`）。リクエストのタイムアウトもそこに置く（[ADR-0022 (echo-http-framework)](../../../docs/adr/0022-echo-http-framework.md) 参照）
+- Echo v5 の `Context.Response()` は `http.ResponseWriter` を返すため、Echo 固有のステータスや `Before` / `After` フックが必要な場合は `ResponseOf` を使う
+- ログには `logging.Logger` を使用し、zap の直接利用は禁止（sealed layer）
+- Graceful shutdown の Timeout は `ServerConfig` に従う —— 設定が正しいことを確認すること
+- かつて本パッケージで公開していた「パニックが上流で復旧済みか」のフラグ（`MarkRecovered` / `IsRecovered`）は `internal/controller/ctxhelper` に移し、typed helper の `SetRecoveredToEcho` / `GetRecoveredFromEcho` として提供しています。利用側は本パッケージ経由ではなく `ctxhelper` を直接参照してください

@@ -1,9 +1,9 @@
 # logging
 
-HTTP request/response structured logging middleware with trace context.
+トレースコンテキスト付きの HTTP リクエスト / レスポンス構造化ログミドルウェアです。
 
-Skips ops endpoints (`/health`, `/metrics`, etc.).
+ops エンドポイント（`/health`, `/metrics` 等）はスキップします。
 
-## Role
+## 役割
 
-Per-request access logging is a cross-cutting concern that every endpoint shares, so embedding it in handlers would scatter and duplicate it. Isolating it as a middleware produces one consistent structured log line per request — correlated with the trace context — while letting handlers stay focused on business logic. High-volume ops endpoints are skipped to keep the logs signal-rich.
+リクエストごとのアクセスログはすべてのエンドポイントが共有する横断的関心事であり、ハンドラに埋め込むと分散・重複します。ミドルウェアとして分離することで、リクエストごとにトレースコンテキストと相関した一貫性のある構造化ログを 1 行出力しつつ、ハンドラを業務ロジックに集中させられます。大量に発生する ops エンドポイントはスキップし、ログのシグナルを保ちます。

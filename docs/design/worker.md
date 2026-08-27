@@ -1,85 +1,85 @@
-# Worker Subsystem Design Reference
+# Worker サブシステム設計リファレンス
 
-This document consolidates the worker scaffold's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. For the overview see the README; for the adoption rationale see the worker ADRs ([ADR-0050 (broker-agnostic-worker-scaffold)](../adr/0050-broker-agnostic-worker-scaffold.md) onward).
+本書は worker scaffold の **役割論・状態遷移・実装箇所・integrator が書く箇所・用語** を、実装を精査して 1 枚にまとめた参照資料です。概要は README、採用判断は worker ADR（[ADR-0050](../adr/0050-broker-agnostic-worker-scaffold.md) 以降）を参照。
 
 ---
 
-## 1. Role theory (what, and what for)
+## 1. 役割論（なにが・なんのために）
 
-A worker is a **"message-in driving adapter," a peer of the HTTP handler**. It is not a new architectural layer but **another entry point into the Usecase layer**, this time via a queue. If HTTP is "the mouth that takes a synchronous request," the worker is "the mouth that takes a message from a pull-ack queue."
+worker は **HTTP handler と同格の「message-in driving adapter」**。新しいアーキテクチャ層ではなく、**キュー経由で Usecase 層に入るもう 1 つの入口**。HTTP が「同期リクエストを受ける口」なら worker は「pull-ack キューからメッセージを受ける口」。
 
-Responsibility split (who owns what):
+責務の分担（誰が何を持つか）:
 
-| Component | Layer | Responsibility | Does NOT hold |
+| 構成要素 | 層 | 責務 | 持たないもの |
 | --- | --- | --- | --- |
-| **engine** (`Engine`) | controller | transport orchestration: poll / concurrency & ordering / Ack-Nack discipline / circuit / drain / O11Y | business logic, broker-specifics |
-| **seam** (`Consumer`/`Handler`/`FailureHandler`/`Worker`/`State`) | usecase/boundary | the contract between the engine and the outside (broker adapters & business) | implementations |
-| **Handler** (business) | implemented by the integrator (calls usecases) | per-message business processing (**idempotent**) | ack/nack/redelivery control (engine's job) |
-| **Consumer / FailureHandler** (broker adapter) | infrastructure | broker-specific API ↔ broker-agnostic `Message` conversion | business logic, concurrency control |
-| **DI / cli / cmd** | di / cli / cmd(main) | composition / subcommand / lifecycle / health listener | business logic |
-| **WorkerConfig** | config | engine-core settings (broker-agnostic) | broker-specific settings (adapter side) |
+| **engine**（`Engine`） | controller | transport のオーケストレーション：poll / 並列・順序制御 / Ack-Nack 規律 / サーキット / drain / O11Y | 業務ロジック・broker 固有知識 |
+| **seam**（`Consumer`/`Handler`/`FailureHandler`/`Worker`/`State`） | usecase/boundary | engine と外界（broker adapter・業務）の契約 | 実装 |
+| **Handler**（業務処理） | integrator が実装（usecase を呼ぶ） | メッセージ 1 件の業務処理（**冪等**） | ack/nack/再送制御（engine の責務） |
+| **Consumer / FailureHandler**（broker adapter） | infrastructure | broker 固有 API ↔ broker 非依存 `Message` の変換 | 業務ロジック・並行制御 |
+| **DI / cli / cmd** | di / cli / cmd(main) | 合成・サブコマンド・lifecycle・health listener | 業務ロジック |
+| **WorkerConfig** | config | engine-core の設定（broker 非依存） | broker 固有設定（adapter 側） |
 
-Design principle (invariant): **the engine depends only on the seam and never imports broker implementations** (mechanically enforced by depguard). This lets the engine be **completed against the fake** and have every invariant tested without a real broker.
+設計原則（不変）: **engine は seam のみに依存し broker 実装を import しない**（depguard で機械担保）。これにより engine は **fake に対して完成**し、実 broker 無しで全不変条件をテストできる。
 
 ---
 
-## 2. State transitions
+## 2. 状態遷移図
 
-### 2.1 engine lifecycle (`Engine.Run` / `run.loop` / `run.drain`)
+### 2.1 engine ライフサイクル（`Engine.Run` / `run.loop` / `run.drain`）
 
 ```mermaid
 stateDiagram-v2
     [*] --> Idle: New(workers, settings, ...)
     Idle --> Running: Run(ctx, name)  // active=true, markProgress
-    Running --> Running: poll → dispatch → process (resident)
-    Running --> Draining: ctx done (SIGTERM/OnStop) or Fatal
-    Draining --> Stopped: in-flight done or DrainTimeout elapsed
-    Stopped --> [*]: Run returns its result (nil / Fatal / unknown)
+    Running --> Running: poll → dispatch → process（常駐）
+    Running --> Draining: ctx 完了(SIGTERM/OnStop) または Fatal
+    Draining --> Stopped: in-flight 完了 or DrainTimeout 経過
+    Stopped --> [*]: Run が結果を返す（nil / Fatal / unknown）
 
     note right of Running
-      poll loop updates markProgress (basis for C2 readiness)
-      an unknown name returns ErrUnknownWorker immediately → Stopped
+      poll loop が markProgress を更新（C2 readiness の基準）
+      未登録 name の場合は即 ErrUnknownWorker で Stopped
     end note
     note right of Draining
-      unfinished messages are not Acked = left for redelivery
+      未完メッセージは Ack しない＝再配送に委ねる
     end note
 ```
 
-### 2.2 circuit breaker (`circuit.go`, B4)
+### 2.2 サーキットブレーカ（`circuit.go`、B4）
 
 ```mermaid
 stateDiagram-v2
     [*] --> Closed
-    Closed --> Closed: onSuccess (failures=0) / onFailure (failures++ and < threshold)
-    Closed --> Open: onFailure with failures ≥ FailureThreshold (trip)
-    Open --> HalfOpen: after cooldown the poll loop calls toHalfOpen<br/>cooldown = backoff(openCount)
-    HalfOpen --> Closed: onSuccess (failures=0, openCount=0)
-    HalfOpen --> Open: onFailure (trip, cooldown grows exponentially)
+    Closed --> Closed: onSuccess（failures=0） / onFailure（failures++ かつ < threshold）
+    Closed --> Open: onFailure で failures ≥ FailureThreshold（trip）
+    Open --> HalfOpen: cooldown 経過後に poll loop が toHalfOpen<br/>cooldown = backoff(openCount)
+    HalfOpen --> Closed: onSuccess（failures=0, openCount=0）
+    HalfOpen --> Open: onFailure（trip、cooldown 指数増分）
 
     note right of Open
-      Receive is not called during this time (intake stopped).
-      Process stays alive and self-heals.
+      この間 Receive を呼ばない（intake 停止）。
+      プロセスは生存・自己回復。
     end note
     note right of Closed
-      If FailureThreshold ≤ 0 it never trips (circuit disabled).
-      Default is 10 (enabled).
+      FailureThreshold ≤ 0 なら trip しない（サーキット無効）。
+      既定は 10（有効）。
     end note
 ```
 
-- **Signals**: `onFailure` = handler Retryable failure + poll error / `onSuccess` = handler success + Permanent routed.
-- AIMD is not used. cooldown is the exponential backoff from `pkg/backoff` (default 1s → 30s cap).
+- **信号**: `onFailure` = handler の Retryable 失敗 ＋ poll エラー / `onSuccess` = handler 成功 ＋ Permanent 退避完了。
+- AIMD は不採用。cooldown は `pkg/backoff` の指数バックオフ（既定 1s→30s 上限）。
 
-### 2.3 message processing (`run.process` / `run.handleResult`, A1/A2/A5/A6)
+### 2.3 メッセージ処理（`run.process` / `run.handleResult`、A1/A2/A5/A6）
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Received: obtained via Receive (in-flight token acquired)
-    Received --> Skipped: ctx done before concurrency acquire (no Ack/Nack = redelivered)
-    Received --> Handling: acquire concurrency semaphore → Handle (Extend heartbeat alongside)
-    Handling --> Acked: success(nil) → Ack (A1) / circuit.onSuccess
-    Handling --> Nacked: Retryable / recovered panic → Nack = redeliver (A2/A6) / circuit.onFailure
-    Handling --> DeadLettered: Permanent → FailureHandler.Fail → Ack (A5) / circuit.onSuccess
-    Handling --> EngineStop: Fatal → triggerFatal (engine stops, this message not Acked)
+    [*] --> Received: Receive で取得（in-flight トークン取得）
+    Received --> Skipped: ctx 完了で conc 取得前に離脱（Ack/Nack せず＝再配送）
+    Received --> Handling: concurrency セマフォ取得 → Handle（Extend ハートビート併走）
+    Handling --> Acked: 成功(nil) → Ack（A1） / circuit.onSuccess
+    Handling --> Nacked: Retryable / panic recover → Nack＝再配送（A2/A6） / circuit.onFailure
+    Handling --> DeadLettered: Permanent → FailureHandler.Fail → Ack（A5） / circuit.onSuccess
+    Handling --> EngineStop: Fatal → triggerFatal（engine 停止、当該は Ack しない）
     Acked --> [*]
     Nacked --> [*]
     DeadLettered --> [*]
@@ -87,16 +87,16 @@ stateDiagram-v2
     EngineStop --> [*]
 
     note right of Handling
-      classify(err): Fatal > Permanent > Retryable;
-      unclassified defaults to Retryable (the "do not drop" side).
+      classify(err): Fatal > Permanent > Retryable、
+      未分類は Retryable 既定（消さない側）。
     end note
 ```
 
 ---
 
-## 3. Implementation locations (where in the architecture it lives and acts)
+## 3. 実装箇所（このアーキテクチャ上のどこに・どう作用するか）
 
-### 3.1 Package placement and dependency direction
+### 3.1 パッケージ配置と依存方向
 
 ```mermaid
 flowchart TD
@@ -104,34 +104,34 @@ flowchart TD
         CMD["cmd/worker.go<br/>newWorkerCommand / SIGTERM"]
     end
     subgraph cliL["internal/cli/worker"]
-        CLI["worker.go: RunWorkerWith / resident + drain"]
+        CLI["worker.go: RunWorkerWith / 常駐・drain"]
         HL["health.go: NewHealthServer (/healthz,/readyz)"]
     end
     subgraph diL["internal/di"]
         DIW["worker.go: RunWorker / NewWorkerCore"]
         DIR["worker/runner.go: ProvideEngine (config→Settings)"]
-        DIH["worker/hook: RegisterWorkerHooks (engine run + health)"]
+        DIH["worker/hook: RegisterWorkerHooks (engine実行+health)"]
         DIM["module/worker.go: WorkerModule (group: workers)"]
         DIC["module/config.go: NewWorkerConfig"]
     end
-    subgraph ctrlL["internal/controller/worker  = engine"]
+    subgraph ctrlL["internal/controller/worker  ＝ engine"]
         ENG["runner.go/run.go: Engine, poll, dispatch, drain, Healthy"]
         CIR["circuit.go / classify.go / settings.go / dispatch.go / state.go / errors.go"]
         OBS["metrics.go / telemetry.go (D2/D1/D3)"]
     end
-    subgraph seamL["internal/usecase/boundary/worker  = seam"]
+    subgraph seamL["internal/usecase/boundary/worker  ＝ seam"]
         PORT["consumer/handler/failure/worker/state.go + message.go (port + Message)"]
-        FAKE["fake/: test 2nd impl"]
-        MOCK["mock/: generated mocks"]
+        FAKE["fake/: テスト用 2nd impl"]
+        MOCK["mock/: 生成モック"]
     end
-    subgraph infraL["internal/infrastructure/queue/sqs  = broker adapter (reference, not wired)"]
+    subgraph infraL["internal/infrastructure/queue/sqs  ＝ broker adapter（参考・非配線）"]
         SQS["sqs.go: Consumer / failure.go: DeadLetter / config.go"]
     end
-    subgraph crossL["cross-cutting"]
+    subgraph crossL["横断"]
         APPERR["apperror: ErrRetryable/Permanent/Fatal"]
-        BO["pkg/backoff: exponential backoff"]
-        CFG["config: WorkerConfig (default tags)"]
-        LOG["logging: WorkerNameKey/MessageIDKey/..., PanicKey"]
+        BO["pkg/backoff: 指数バックオフ"]
+        CFG["config: WorkerConfig (default タグ)"]
+        LOG["logging: WorkerNameKey/MessageIDKey/...,PanicKey"]
         OTEL["observability: TracerFactory / otel.Meter"]
     end
 
@@ -156,102 +156,103 @@ flowchart TD
     ENG --> LOG
 
     classDef done fill:#e6ffed,stroke:#2da44e;
+    classDef need fill:#fff8c5,stroke:#bf8700;
     class CMD,CLI,HL,DIW,DIR,DIH,DIM,DIC,ENG,CIR,OBS,PORT,FAKE,MOCK,SQS,APPERR,BO,CFG,LOG,OTEL done;
 ```
 
-> Green = implemented here. Dependencies always point inward (`controller→usecase/boundary`, `infrastructure→usecase/boundary`). The `controller` (engine) does not import `infrastructure` (depguard `maintain_a_sound_controller`).
+> 緑＝本プロジェクトの実装済み。依存方向は常に内向き（`controller→usecase/boundary`、`infrastructure→usecase/boundary`）。`controller`(engine) は `infrastructure` を import しない（depguard `maintain_a_sound_controller`）。
 
-### 3.2 Per-message action sequence (when a real broker is wired)
+### 3.2 メッセージ 1 件の作用シーケンス（実 broker 配線時）
 
 ```mermaid
 sequenceDiagram
     participant Q as Broker (e.g. SQS)
     participant C as Consumer (infra adapter)
     participant E as Engine (controller)
-    participant H as Handler (business)
+    participant H as Handler (業務)
     participant F as FailureHandler
-    E->>C: Receive(ctx, n)  // poll loop, two-stage gate (circuit/prefetch)
+    E->>C: Receive(ctx, n)  // poll loop, 二段ゲート(circuit/prefetch)
     C->>Q: ReceiveMessage(long-poll)
     Q-->>C: messages
-    C-->>E: []Message (ReceiveCount/PartitionKey/traceparent/handle normalized)
-    E->>E: dispatch (empty key = parallel / non-empty = per-key serialized) + count in-flight
-    E->>H: Handle(ctx, m)  // span continued, Extend heartbeat alongside
-    alt success(nil)
-        E->>C: Ack (= DeleteMessage)
+    C-->>E: []Message (ReceiveCount/PartitionKey/traceparent/handle 正規化)
+    E->>E: dispatch（空 key=並列 / 非空=key 直列）+ in-flight 計上
+    E->>H: Handle(ctx, m)  // span 継続, Extend ハートビート併走
+    alt 成功(nil)
+        E->>C: Ack（=DeleteMessage）
     else Retryable / panic
-        E->>C: Nack (= visibility 0, redeliver)
+        E->>C: Nack（=可視性0, 再配送）
     else Permanent
-        E->>F: Fail (= DLQ SendMessage)
+        E->>F: Fail（=DLQ SendMessage）
         E->>C: Ack
     else Fatal
-        E->>E: triggerFatal → engine stops
+        E->>E: triggerFatal → engine 停止
     end
 ```
 
 ---
 
-## 4. What an integrator implements (the parts this project does not provide)
+## 4. integrator が実装する箇所（本プロジェクトが用意しない部分）
 
-This project provides the **engine, seam, fake, SQS reference adapter, and wiring templates**. To run an actual worker in production, the consumer supplies the following (no worker is registered by default).
+本プロジェクトは **engine・seam・fake・SQS 参考 adapter・配線雛形** を提供する。実際に 1 つの worker を本番で動かすには、利用側が次を用意する（既定では登録 worker 0 件）。
 
 ```mermaid
 flowchart LR
-    H["① business Handler<br/>Handle(ctx,m) idempotent"]:::need
-    C["② Consumer adapter<br/>SQS bundled (wire it) / other brokers: new"]:::need
-    FW["③ Worker impl<br/>bundle Name/Consumer/Handler/FailureHandler + constructor"]:::need
-    R["④ register in WorkerModule<br/>provideWorkers(<pkg>.New)"]:::need
-    W["⑤ DI-provide the broker client/config<br/>(SQS client, adapter Config)"]:::need
-    ENVV["⑥ env / IaC<br/>WORKER_*(optional) + broker auth + redrive(maxReceiveCount→DLQ)"]:::need
+    H["① 業務 Handler 実装<br/>Handle(ctx,m) 冪等"]:::need
+    C["② Consumer adapter<br/>SQS は同梱(要配線) / 他 broker は新規"]:::need
+    FW["③ Worker 実装<br/>Name/Consumer/Handler/FailureHandler を束ねる + コンストラクタ"]:::need
+    R["④ WorkerModule に登録<br/>provideWorkers(<pkg>.New)"]:::need
+    W["⑤ broker クライアント/設定の DI provide<br/>(SQS client, adapter Config)"]:::need
+    ENVV["⑥ env / IaC<br/>WORKER_*(任意) + broker 認証 + redrive(maxReceiveCount→DLQ)"]:::need
     H --> FW
     C --> FW
     FW --> R --> W --> ENVV
     classDef need fill:#fff8c5,stroke:#bf8700;
 ```
 
-| # | Required implementation | Location (recommended) | Reference |
+| # | 必要な実装 | 置き場（推奨） | 参考 |
 | --- | --- | --- | --- |
-| ① | business `Handler` (idempotent, calls usecases) | `internal/controller/worker/<name>/` | `worker.Handler` IF |
-| ② | `Consumer` (+ `FailureHandler`) adapter | wire `infrastructure/queue/sqs` for SQS / new package otherwise | `sqs.NewConsumer` / `NewDeadLetter` |
-| ③ | `Worker` (returns Name/Consumer/Handler/FailureHandler) + `New(...)` | `internal/controller/worker/<name>/` | `worker.Worker` IF |
-| ④ | add the constructor to `provideWorkers(...)` in `WorkerModule()` | `internal/di/module/worker.go` | same shape as `provideJobs` |
-| ⑤ | `fx.Provide` the broker client and adapter `Config` | `internal/di/...` | `sqs.Config` |
-| ⑥ | env (`WORKER_*` have defaults, override optional) / broker auth / DLQ & redrive (IaC) | `env/` & IaC | `CONSUMER_QUEUE_*` / `WorkerConfig` defaults |
+| ① | 業務 `Handler`（冪等、usecase を呼ぶ） | `internal/controller/worker/<name>/` | `worker.Handler` IF |
+| ② | `Consumer`(+`FailureHandler`) adapter | SQS は `infrastructure/queue/sqs` を配線 / 他は新規 package | `sqs.NewConsumer` / `NewDeadLetter` |
+| ③ | `Worker`（Name/Consumer/Handler/FailureHandler を返す）+ `New(...)` | `internal/controller/worker/<name>/` | `worker.Worker` IF |
+| ④ | `WorkerModule()` の `provideWorkers(...)` に コンストラクタ追加 | `internal/di/module/worker.go` | `provideJobs` と同形 |
+| ⑤ | broker クライアント・adapter `Config` の `fx.Provide` | `internal/di/...` | `sqs.Config` |
+| ⑥ | env（`WORKER_*` は既定あり・上書き任意）／broker 認証／DLQ・redrive(IaC) | `env/` ・IaC | `CONSUMER_QUEUE_*` / `WorkerConfig` 既定 |
 
-> `CONSUMER_QUEUE_*` names *a* consumer queue, not *the* consumer queue — it is sized for the one worker shipped here. A second worker consuming a different queue gets its own prefix carrying the worker's name (`<WORKER_NAME>_QUEUE_*`); do not overload the existing one. `WORKER_*` stays shared, because engine-core settings are broker-agnostic and per-process.
+> `CONSUMER_QUEUE_*` が指すのは *the* consumer キューではなく *a* consumer キューであり、同梱する 1 つの worker に合わせた大きさになっている。別のキューを消費する 2 つ目の worker には、worker 名を含む独自の接頭辞（`<WORKER_NAME>_QUEUE_*`）を与えること。既存のものを兼用しない。`WORKER_*` は engine-core 設定でありプロセス単位・broker 非依存なので共有のままでよい。
 
 <!-- sample-api:begin -->
-> A worked example of all six ships as part of the removable sample set: `internal/controller/worker/withdrawalarchive` consumes the withdrawal event the outbox emits and archives it to object storage. `make setup-remove-sample-api` removes it and leaves `provideWorkers()` empty again.
+> ①〜⑥ すべての実例が、削除可能なサンプル群の一部として同梱されている。`internal/controller/worker/withdrawalarchive` が outbox の emit する退会イベントを消費し、オブジェクトストレージへ証跡を書き出す。`make setup-remove-sample-api` はそれを削除し、`provideWorkers()` を再び空へ戻す。
 <!-- sample-api:end -->
 
-> A wired broker adapter links its SDK into the binary, and `serve` / `worker` / `outbox-relay` share one binary, so linkage cannot be scoped to the role that consumes a queue. Isolation is therefore defined over **coupling**: a concrete broker is named only by its adapter package and the wiring that selects it (E3, [ADR-0053 (broker-sdk-isolation-measured-as-coupling)](../adr/0053-broker-sdk-isolation-measured-as-coupling.md)).
+> ブローカー adapter を配線すると、その SDK はバイナリに入る。`serve` / `worker` / `outbox-relay` は同一バイナリのため、リンクをキューを消費する役割へ絞ることはできない。したがって分離は**結合**で定義する。具体的なブローカーを名指すのは、その adapter のパッケージと、それを選ぶ配線だけである（E3、[ADR-0053](../adr/0053-broker-sdk-isolation-measured-as-coupling.md)）。
 
 ---
 
-## 5. Glossary
+## 5. 用語集
 
-| Term | Meaning |
+| 用語 | 意味 |
 | --- | --- |
-| **seam** | The port set that forms the boundary between the engine and the outside (broker adapters & business Handler). `internal/usecase/boundary/worker`. |
-| **port** | The interfaces that make up the seam: `Consumer` / `Handler` / `FailureHandler` / `Worker` / `State`. |
-| **Message** | The broker-agnostic message envelope (`ID`/`Body`/`Attributes`/`ReceiveCount`/`PartitionKey`). |
-| **PartitionKey** | The normalization key that serializes the same key (empty = parallel). The adapter fills it from a broker value (e.g. SQS MessageGroupId). |
-| **ReceiveCount** | Redelivery count. Used for poison detection (A7). |
-| **reserved key (`_receipt_handle`)** | A `_`-prefixed key that isolates broker-specific handle/lease in `Attributes`. The engine passes it through without interpreting it. |
-| **`event_type` attribute** | The `Attributes` key under which an adapter surfaces the event kind, so a `Handler` can decide whether a message is its own before decoding the body. Permanent seam vocabulary, not sample-specific: one queue carrying several kinds is a property of the pull-ack model, not of the bundled example, so it survives `make setup-remove-sample-api` like the rest of the seam. |
-| **engine** | The driving adapter that runs the selected worker via pull-ack (`controller/worker.Engine`). |
-| **poll loop** | The single goroutine that drives `Receive`. It has a two-stage gate (circuit and prefetch). |
-| **dispatch** | Routes received messages to processing units. Empty key = parallel, non-empty = per-key serialized. |
-| **in-flight / prefetch (`MaxInFlight`)** | The cap on received-but-unsettled (pre Ack/Nack) messages. Do not Receive more than can be handled (B2). |
-| **concurrency (`Concurrency`)** | The cap on concurrent `Handle` executions (B1). |
-| **circuit breaker** | The 3-state machine (Closed/Open/HalfOpen) that stops intake on continued downstream failure (B4). |
-| **cooldown** | How long it stays Open. Grows per trip via the exponential backoff in `pkg/backoff`. |
-| **Ack / Nack / Extend** | Confirm-and-delete / return for redelivery / extend lease (visibility). Methods of the Consumer port. |
-| **Retryable / Permanent / Fatal** | Error classification sentinels (`apperror`). Nack-redeliver / route to FailureHandler then Ack / stop the engine. |
-| **FailureHandler / DeadLetter / DLQ** | The dead-letter seam for permanent failures / its SQS implementation / the dead-letter queue. |
-| **redrive** | The SQS IaC setting that auto-sends to the DLQ past `maxReceiveCount`. The app's general path is the FailureHandler. |
-| **drain (`DrainTimeout`)** | On stop, wait for in-flight up to a deadline. Unfinished messages are not Acked = redelivered. |
-| **readiness / liveness / health listener** | A plain net/http that serves `/readyz` (`Healthy()` = progress within `ProgressStaleAfter`) and `/healthz`. |
-| **Settings** | The engine-core behavior settings (an engine-local struct). Mapped from `config.WorkerConfig` via DI. |
-| **WorkerConfig** | The engine-core settings (broker-agnostic, `WORKER_*` with `default` tags). Broker-specific settings live in the adapter `Config`. |
-| **traceparent / continuation** | W3C trace context. `Extract`ed from `Message.Attributes` to continue the span (D1). |
-| **E1/E2/E3** | engine does not import infra / engine is green on the fake alone / knowledge of a concrete broker is confined to its adapter package and the wiring that selects it — no core `*.go` and no core document names a broker adapter ([ADR-0053 (broker-sdk-isolation-measured-as-coupling)](../adr/0053-broker-sdk-isolation-measured-as-coupling.md)). |
+| **seam** | engine と外界（broker adapter・業務 Handler）の境界となる port 群。`internal/usecase/boundary/worker`。 |
+| **port** | seam を構成する interface：`Consumer` / `Handler` / `FailureHandler` / `Worker` / `State`。 |
+| **Message** | broker 非依存のメッセージ封筒（`ID`/`Body`/`Attributes`/`ReceiveCount`/`PartitionKey`）。 |
+| **PartitionKey** | 同一 key を直列化する正規化キー（空＝並列）。adapter が broker 値（SQS の MessageGroupId 等）を詰める。 |
+| **ReceiveCount** | 再配送回数。poison 検出（A7）に使用。 |
+| **予約キー（`_receipt_handle`）** | broker 固有の handle/lease を `Attributes` に隔離する `_` 接頭辞のキー。engine は解釈せず素通し。 |
+| **`event_type` 属性** | adapter がイベント種別を載せる `Attributes` のキー。`Handler` が本文を復元する前に、そのメッセージが自分宛かを判断できるようにする。サンプル固有ではなく seam の恒久的な語彙 — 1 つのキューに複数種別が流れるのは pull-ack モデルの性質であって同梱例の都合ではないため、seam の他の要素と同じく `make setup-remove-sample-api` の後も残る。 |
+| **engine** | 選択された worker を pull-ack で実行する driving adapter（`controller/worker.Engine`）。 |
+| **poll loop** | `Receive` を回す単一 goroutine。circuit と prefetch の二段ゲートを持つ。 |
+| **dispatch** | 受信メッセージを処理単位へ振り分ける。空 key＝並列、非空＝per-key 直列。 |
+| **in-flight / prefetch（`MaxInFlight`）** | 受信済み・未確定（Ack/Nack 前）の上限。捌ける以上に Receive しない（B2）。 |
+| **concurrency（`Concurrency`）** | 同時に `Handle` を実行する上限（B1）。 |
+| **circuit breaker** | 下流失敗継続時に intake を止める 3 状態機械（Closed/Open/HalfOpen、B4）。 |
+| **cooldown** | Open でいる時間。`pkg/backoff` の指数バックオフで trip ごとに伸長。 |
+| **Ack / Nack / Extend** | 確定削除 / 再配送へ戻す / lease（可視性）延長。Consumer port のメソッド。 |
+| **Retryable / Permanent / Fatal** | エラー分類 sentinel（`apperror`）。Nack 再配送 / FailureHandler 退避→Ack / engine 停止。 |
+| **FailureHandler / DeadLetter / DLQ** | 永久失敗の退避 seam / その SQS 実装 / dead-letter queue。 |
+| **redrive** | SQS が `maxReceiveCount` 超で自動的に DLQ へ送る IaC 設定。app の一般経路は FailureHandler。 |
+| **drain（`DrainTimeout`）** | 停止時に in-flight を期限まで待つ。未完は Ack しない＝再配送。 |
+| **readiness / liveness / health listener** | `/readyz`（`Healthy()`＝進捗が `ProgressStaleAfter` 内）/ `/healthz` を出す plain net/http。 |
+| **Settings** | engine-core の挙動設定（engine-local struct）。`config.WorkerConfig` から DI でマッピング。 |
+| **WorkerConfig** | engine-core 設定（broker 非依存、`WORKER_*`・`default` タグ付き）。broker 固有は adapter `Config`。 |
+| **traceparent / 継続** | W3C trace context。`Message.Attributes` から `Extract` して span を継続（D1）。 |
+| **E1/E2/E3** | engine が infra を import しない / fake のみで engine green / 具体的なブローカーの知識が、その adapter のパッケージとそれを選ぶ配線だけに閉じている（core の `*.go` も core のドキュメントも broker adapter を名指さない。[ADR-0053](../adr/0053-broker-sdk-isolation-measured-as-coupling.md)）。 |

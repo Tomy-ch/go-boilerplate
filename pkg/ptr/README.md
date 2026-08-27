@@ -1,11 +1,11 @@
 # ptr
 
-Pointer manipulation utilities using generics.
+ジェネリクスを利用したポインタ操作ユーティリティです。
 
-## Role
+## 役割
 
-Centralizes nil-safe conversions between values and pointers and defensive copying of pointer fields, so callers do not repeat manual nil-checks or accidentally share mutable pointer state. These conversions recur wherever optional fields cross the boundary between outer-layer DTOs and domain values, so a single generic helper keeps that repetitive conversion code consistent and framework-agnostic.
+値とポインタ間の nil 安全な変換や、ポインタフィールドの防御的コピーを一箇所に集約し、利用側が手書きの nil チェックを繰り返したり、可変なポインタを誤って共有したりしないようにします。これらの変換は、オプショナルなフィールドが外側の層の DTO とドメインの値の境界をまたぐたびに繰り返し発生するため、汎用ヘルパーに集約することで定型処理を一貫させ、フレームワーク非依存に保ちます。
 
-## Notes
+## 注意点
 
-Requires Go 1.18+ (generics).
+Go 1.18 以降が必要（ジェネリクス）。

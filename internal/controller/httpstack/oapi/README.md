@@ -1,78 +1,74 @@
 # oapi
 
-`oapi` is the **OpenAPI integration layer** that provides request validation and authentication for the Echo HTTP stack.
+`oapi` は、Echo HTTP スタックに **リクエストバリデーションと認証を提供する OpenAPI 統合レイヤー**です。
 
-This package is the entry point that wires together schema validation, authentication, and route skipping into a single Echo middleware.
+スキーマバリデーション・認証・ルートスキップを1つの Echo ミドルウェアに統合するエントリポイントです。
 
-## Architecture
+## アーキテクチャ
 
 ```mermaid
 flowchart TB
-    Request["HTTP Request"]
+    Request["HTTP リクエスト"]
     Skipper{"Skipper"}
-    Validate["OpenAPI Schema Validation"]
-    Auth["Authentication (auth/)"]
-    Authn["Authn → Request Context slot"]
+    Validate["OpenAPI スキーマバリデーション"]
+    Auth["認証 (auth/)"]
+    Authn["Authn → リクエストコンテキストのスロット"]
     Handler["Handler"]
-
-    FailClosed{"Authentication failed?"}
+    FailClosed{"認証に失敗したか"}
 
     Request --> Skipper
-    Skipper -- skip --> Handler
-    Skipper -- validate --> Validate
+    Skipper -- スキップ --> Handler
+    Skipper -- バリデーション --> Validate
     Validate --> Auth
     Auth --> Authn --> FailClosed
-    FailClosed -- yes --> Deny["Deny (401 / 5xx)"]
-    FailClosed -- no --> Handler
+    FailClosed -- はい --> Deny["拒否 (401 / 5xx)"]
+    FailClosed -- いいえ --> Handler
 ```
 
-1. **Skipper** checks if the request is an ops endpoint — if so, validation is bypassed
-2. **Validator** validates the request against the OpenAPI spec (path, params, body, content-type)
-3. **Auth** extracts the token, authenticates via boundary `Authenticator`, and writes `Authn` into the request-context slot
-4. **Fail-closed** denies the request if authentication failed, whatever the spec permits
-5. Handler receives a validated, authenticated request
+1. **Skipper** がリクエストが ops エンドポイントかを判定 — ops ならバリデーションをバイパス
+2. **Validator** がリクエストを OpenAPI 仕様に照合してバリデーション（パス、パラメータ、ボディ、Content-Type）
+3. **Auth** がトークンを抽出し、boundary の `Authenticator` 経由で認証し、`Authn` をリクエストコンテキストのスロットに書き込む
+4. **Fail-closed** が、spec が何を許していようと認証に失敗したリクエストを拒否する
+5. Handler はバリデーション済み・認証済みのリクエストを受け取る
 
-## Fail-closed authentication
+## Fail-closed な認証
 
-An operation may declare authentication optional by listing several security requirements,
-one of them empty. Validation of such an operation succeeds as soon as any one requirement
-holds, and an empty requirement always holds — so a presented-but-rejected credential, and an
-infrastructure failure while resolving an identity, both leave validation reporting success.
-Without a further step an unauthenticated caller would reach the handler, and a database
-outage would surface as an anonymous success rather than as an outage.
+operation は、複数の security requirement を並べ、そのうち 1 つを空にすることで認証を任意と宣言できます。
+その operation のバリデーションは、いずれか 1 つの requirement が満たされた時点で成功し、空の requirement は
+常に満たされます。したがって、提示されたが拒否された資格情報も、identity の解決中に起きたインフラ障害も、
+バリデーションの結果としては成功として現れます。さらに一段を挟まなければ、認証されていない呼び出し元が
+ハンドラへ到達し、DB の障害が匿名の成功として見えることになります。
 
-The authentication function therefore records its failure into the same request-context slot
-it uses for the authenticated `Authn`, and this package re-reads that slot after validation
-and before the handler. A failure denies the request with the status it carried (401 for a
-rejected credential, 503 / 500 for an infrastructure failure). Absence of a credential is not
-a failure, so anonymous access remains available where the spec allows it.
+そこで認証関数は、認証済みの `Authn` に用いるのと同じリクエストコンテキストのスロットへ失敗を記録し、
+このパッケージがバリデーションの後・ハンドラの前にそのスロットを読み直します。失敗していれば、それが
+持っていたステータス（資格情報の拒否なら 401、インフラ障害なら 503 / 500）でリクエストを拒否します。
+資格情報が提示されなかったことは失敗ではないため、spec が許す限り匿名のアクセスは従来どおり通ります。
 
-This is what keeps "authentication is optional" from meaning "a failed authentication is
-accepted", per the fail-closed rule in `docs/design/auth.md` and deny-by-default in
-`docs/design/security.md`.
+これが、「認証は任意」という宣言が「認証の失敗を受け入れる」という意味にならないようにしている仕組みで、
+根拠は `docs/design/auth.md` の fail-closed 規則と `docs/design/security.md` の deny-by-default です。
 
-## Subpackages
+## サブパッケージ
 
-|Package|Description|Details|
+|パッケージ|説明|詳細|
 |---|---|---|
-|`auth/`|Token authentication from the `Authorization` header|[README](auth/README.md)|
-|`skipper/`|Skip validation for ops endpoints|[README](skipper/README.md)|
-|`validator/`|Load and provide OpenAPI schema|[README](validator/README.md)|
+|`auth/`|`Authorization` ヘッダからのトークン認証|[README](auth/README.md)|
+|`skipper/`|ops エンドポイントのバリデーションスキップ|[README](skipper/README.md)|
+|`validator/`|OpenAPI スキーマの読み込みと提供|[README](validator/README.md)|
 
-## Dependencies
+## 依存関係
 
-|Package|Role|
+|パッケージ|役割|
 |---|---|
-|`kin-openapi/openapi3`|OpenAPI 3.x schema model|
-|`kin-openapi/openapi3filter`|Request validation and auth filter|
-|`oapi-codegen/echo-v5-middleware`|Echo adapter for OpenAPI validation|
-|`ctxhelper`|Authn slot injection & get/set on the request context|
-|`boundary/auth`|Authentication interface and `Authn` value object|
+|`kin-openapi/openapi3`|OpenAPI 3.x スキーマモデル|
+|`kin-openapi/openapi3filter`|リクエストバリデーションと認証フィルタ|
+|`oapi-codegen/echo-v5-middleware`|OpenAPI バリデーションの Echo アダプタ|
+|`ctxhelper`|リクエストコンテキストへの Authn スロット注入と get/set|
+|`boundary/auth`|認証インターフェースと `Authn` 値オブジェクト|
 
-## Notes
+## 注意点
 
-- OpenAPI validation covers path parameters, query parameters, request body, and content-type
-- Authentication is only triggered for endpoints with `security` defined in the OpenAPI spec
-- The `Skipper` ensures ops endpoints are never validated or authenticated
-- Before delegating to the oapi-codegen validator, the middleware injects an empty `Authn` slot into `request.Context()` via `ctxhelper.WithAuthn`, so the authentication function (which receives only a plain `context.Context`) can write the authenticated `Authn` into that slot via `ctxhelper.SetAuthn`; downstream handlers read it via `ctxhelper.GetAuthn`
-- All errors from this layer are caught by `errorhandler` and converted to appropriate HTTP responses
+- OpenAPI バリデーションはパスパラメータ、クエリパラメータ、リクエストボディ、Content-Type をカバー
+- 認証は OpenAPI 仕様に `security` が定義されたエンドポイントでのみトリガーされる
+- `Skipper` により ops エンドポイントはバリデーション・認証の対象外
+- oapi-codegen バリデータに委譲する前に、`ctxhelper.WithAuthn` で空の `Authn` スロットを `request.Context()` に注入し、認証関数（`context.Context` のみを受け取る）が `ctxhelper.SetAuthn` で認証済みの `Authn` をそのスロットに書き込めるようにする。後段のハンドラは `ctxhelper.GetAuthn` で読み出す
+- このレイヤーからのエラーは `errorhandler` で捕捉され、適切な HTTP レスポンスに変換される

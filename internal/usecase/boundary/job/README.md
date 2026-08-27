@@ -1,29 +1,29 @@
 # job
 
-Provides interfaces for job definition, execution, and state management.
+ジョブの定義・実行・状態管理のためのインターフェースを提供します。
 
-## Interfaces
+## インターフェース
 
-|Interface|Description|
+|インターフェース|説明|
 |---|---|
-|`Job`|`Name()` + `Execute(ctx, args)` — defines a single job|
-|`Runner`|`Run(ctx, jobName, args)` + `Names()` — executes and lists registered jobs|
-|`State`|`Set(name, args, done)` + `Snapshot()` — holds job execution state for lifecycle hooks|
+|`Job`|`Name()` + `Execute(ctx, args)` — 単一ジョブの定義|
+|`Runner`|`Run(ctx, jobName, args)` + `Names()` — 登録済みジョブの実行・一覧|
+|`State`|`Set(name, args, done)` + `Snapshot()` — ライフサイクルフック用のジョブ実行状態保持|
 
-## Design Intent
+## 設計意図
 
-- Abstract execution units to eliminate implementation dependencies
-- Separate job definition (`Job`) from dispatch (`Runner`) and lifecycle (`State`)
-- Enable testable batch infrastructure via mock substitution
+- 実行単位を抽象化し、実装依存を排除
+- ジョブ定義（`Job`）とディスパッチ（`Runner`）とライフサイクル（`State`）を分離
+- モック差し替えによるテスト可能なバッチ基盤
 
-## Implementation
+## 実装
 
-- `Job`: Implemented per job in `internal/controller/job/<name>/`
-- `Runner`: Assembled in `internal/controller/job/` from registered jobs
-- `State`: Implemented in `internal/controller/job/` for lifecycle hook coordination
+- `Job`: `internal/controller/job/<name>/` にジョブごとに実装
+- `Runner`: `internal/controller/job/` で登録済みジョブから組み立て
+- `State`: `internal/controller/job/` でライフサイクルフック連携用に実装
 
-## Notes
+## 注意点
 
-- `Runner.Run` returns an error with available job names when a job is not found
-- Each job must respect `context.Context` for cancellation and timeout
-- Job names must be unique — duplicate names cause an error at Runner creation
+- `Runner.Run` はジョブが見つからない場合、利用可能なジョブ名を含むエラーを返す
+- 各ジョブは `context.Context` を尊重しキャンセル・タイムアウトに対応すること
+- ジョブ名は一意である必要がある — 重複名は Runner 生成時にエラー

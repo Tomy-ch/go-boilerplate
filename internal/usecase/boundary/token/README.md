@@ -1,6 +1,6 @@
 # token
 
-Provides a `Generator` interface for producing unguessable, opaque token strings.
+推測できない不透明なトークン文字列を生成するための `Generator` インターフェースを提供します。
 
 ```go
 type Generator interface {
@@ -8,26 +8,22 @@ type Generator interface {
 }
 ```
 
-## Why Abstract?
+## なぜ抽象化するか
 
-Randomness is an effect, so a caller that reaches for it directly stops being reproducible: the
-same inputs no longer produce the same result, and a test can only assert shape rather than value.
-This is the same reason `Clock` exists for time — see
-[Time Handling Policy](../../README.md#time-handling-policy) for the argument in full.
+乱数は副作用であり、直接手を伸ばした呼び出し元はその時点で再現性を失います。同じ入力から同じ結果が
+得られなくなり、テストは値ではなく形しか検証できなくなります。時刻に対して `Clock` が存在するのと
+同じ理由で、根拠は [時刻の扱い方針](../../README.md#time-handling-policy) に書かれています。
 
-Abstracting it also keeps the two halves of a token in their own layers. How long a token is and
-which alphabet it uses are properties of the value being generated, so they stay with the
-implementation; whether a given string is an acceptable token is a rule about the domain's own
-value object, which validates what it is handed. Neither half needs to know the other, and the
-generator returns a plain string rather than a domain type so the boundary carries no business
-vocabulary.
+抽象化はまた、トークンの 2 つの側面をそれぞれの層に留めます。長さと文字集合は生成される値そのものの
+性質なので実装側に置き、ある文字列がトークンとして妥当かどうかはドメインの値オブジェクトが持つ規則なので、
+受け取った値を値オブジェクト自身が検証します。どちらも相手を知る必要はなく、Generator がドメインの型では
+なく素の文字列を返すため、この境界に業務の語彙は乗りません。
 
-`Generate` takes no argument. A caller that needs a token needs *a* token, and no caller yet asks
-for a particular length — the same reason `Clock.Now()` takes none. It returns an error because
-reading from the system's randomness source can genuinely fail, and a failure that is not
-logically unreachable is propagated rather than turned into a panic.
+`Generate` は引数を取りません。トークンを必要とする呼び出し元が欲しいのは「トークン 1 つ」であって、
+特定の長さを要求する呼び出し元は今のところ存在しないためです（`Clock.Now()` が引数を持たないのと同じ）。
+error を返すのは、システムの乱数源からの読み出しが実障害として失敗しうるからで、論理的に到達不能でない
+失敗は panic ではなく伝播させます。
 
-## Implementation
+## 実装
 
-`internal/infrastructure/token/` provides the concrete implementation, which reads from the
-operating system's cryptographically secure randomness source.
+`internal/infrastructure/token/` が具象実装を提供し、OS の暗号論的に安全な乱数源から読み出します。

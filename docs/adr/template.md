@@ -1,56 +1,52 @@
 ---
 status: proposed        # proposed | accepted | superseded | deprecated
 date: YYYY-MM-DD
-deciders: []            # who made the call, e.g. [maintainers]
-supersedes:             # ADR number this replaces, if any (e.g. 0003)
-superseded-by:          # ADR number that replaces this one, if any
+deciders: []            # 決定者, 例: [maintainers]
+supersedes:             # この ADR が置き換える ADR 番号（あれば, 例: 0003）
+superseded-by:          # この ADR を置き換える ADR 番号（あれば）
 # boilerplate-only:replace-begin
-tags: []                # e.g. [architecture, http]; exclusions add: setup-review
+tags: []                # 例: [architecture, http]; exclusion は追加: setup-review
 # boilerplate-only:replace-with
-# = tags: []                # e.g. [architecture, http]
+# = tags: []                # 例: [architecture, http]
 # boilerplate-only:replace-end
 ---
 
-# ADR-NNNN: imperative decision title
+# ADR-NNNN: 命令形の決定タイトル
 
-## Status
+## ステータス
 
 proposed | accepted | superseded by [ADR-XXXX](XXXX-....md)
 
-## Context
+## 背景
 
-What forces are at play — the problem, constraints, and goals that make a decision
-necessary. State the *why*, not the solution. (For an **exclusion** ADR, state what
-capability is being deliberately left out and the pressure to include it.)
+どのような力が働いているか — 決定を必要とする問題・制約・目標。解決策ではなく *なぜ* を述べる。（**exclusion** ADR の場合は、意図的に除外する機能と、それを含める方向への圧力を述べる。）
 
-## Decision
+## 決定
 
-The choice, stated in one or two sentences. For an exclusion: "We deliberately do NOT
-provide X." Be specific about scope and boundary.
+1〜2 文で選択内容を述べる。exclusion の場合:「我々は意図的に X を提供しない。」スコープと境界を具体的に。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
 - ...
 
-### Negative Consequences
+### ネガティブな影響
 
 - ...
 
-<!-- Optional: ### Neutral Consequences -->
+<!-- 任意: ### 中立な影響 -->
 
-## Alternatives Considered
+## 検討した代替案
 
-### Alternative A
+### 代替案 A
 
-Why it was weighed and why it was rejected.
+検討した理由と却下した理由。
 
-### Alternative B
+### 代替案 B
 
 ...
 
-## Notes
+## 補足
 
-Links to design docs, rules that enforce this decision (`docs/rules.md#...`), related
-ADRs. Optional.
+設計ドキュメント・この決定を強制するルール（`../../../rules.md#...`）・関連 ADR へのリンク。任意。

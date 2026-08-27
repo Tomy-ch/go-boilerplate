@@ -5,152 +5,141 @@ deciders: [maintainers]
 tags: [toolchain, scripts]
 ---
 
-# ADR-0082: Operational scripts live in scripts/ as TypeScript or Go; shell scripting is not used
+# ADR-0082: 運用スクリプトは scripts/ に TypeScript または Go で配置し、シェルスクリプトは使用しない
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-The project needs a variety of utility programs beyond the application itself:
-documentation-portal generation, Makefile help output, semantic versioning, runtime
-version synchronisation, Mermaid diagram linting, GitHub Actions pinning, and
-initial-project setup. These operations are too complex for one-liner Makefile recipes
-but do not belong in the application code.
+このプロジェクトはアプリケーション本体以外にも様々なユーティリティプログラムを必要とする:
+ドキュメントポータル生成、Makefile ヘルプ出力、セマンティックバージョニング、ランタイムバージョン同期、
+Mermaid ダイアグラムリント、GitHub Actions ピン留め、初期プロジェクトセットアップ。
+これらのオペレーションは 1 行の Makefile レシピには複雑すぎるが、アプリケーションコードには属さない。
 
-Shell scripting is fragile under edge cases (word splitting, filename glob expansion,
-missing tools, portability differences across sh/bash/zsh), difficult to test, and hard
-to maintain as complexity grows. The project already depends on Node.js and Go for the
-application stack.
+シェルスクリプトはエッジケース（単語分割、ファイル名グロブ展開、ツールの欠如、sh/bash/zsh 間の移植性の差異）で
+脆弱であり、テストが困難で、複雑さが増すにつれてメンテナンスが難しくなる。プロジェクトはすでに
+アプリケーションスタックとして Node.js と Go に依存している。
 
-## Decision
+## 決定
 
-Operational scripts live in `scripts/` and are written in TypeScript (run through `tsx`) or
-Go, depending on the nature of the task.
+運用スクリプトは `scripts/` に配置し、タスクの性質に応じて TypeScript（`tsx` 経由で実行）または Go で
+記述する。
 
-**TypeScript** is used for documentation generation, Makefile help output, versioning, and
-repository gates — work that involves text manipulation, file I/O, and Markdown or YAML
-processing:
+**TypeScript** は、テキスト操作、ファイル I/O、Markdown や YAML の処理を伴う作業——ドキュメント生成、
+Makefile ヘルプ出力、バージョニング、リポジトリのゲート——に使用する:
 
-- `portal/gen-portal-docs.ts`, `portal/gen-docs-json.ts` — portal generation.
-- `make-help/` — parse `.makefiles/*.mk` and render the help output.
-- `semver/` — semantic-version bumping.
-- `stamp-openapi-version/` — derive version from branch name and write it to `openapi.yaml`.
-- `mermaid-lint/`, `skill-lint/`, `pr-comment-secret-lint/`, `pr-comment-fence-lint/`,
-  `actions-cutoff-lint/` — repository gates over Markdown and workflow YAML.
-- `setup/replace-*.ts` — one-time rewrites of the Go module path, app metadata, repository
-  references, the LICENSE holder and the CODEOWNERS owner field.
-- `setup/remove-sample-api/`, `setup/verify-sample-removal/` — sample-API removal and the
-  check that it was exact.
+- `portal/gen-portal-docs.ts`、`portal/gen-docs-json.ts` — ポータル生成。
+- `make-help/` — `.makefiles/*.mk` をパースしてヘルプ出力を描画する。
+- `semver/` — セマンティックバージョンバンプ。
+- `stamp-openapi-version/` — ブランチ名からバージョンを導出して `openapi.yaml` に書き込む。
+- `mermaid-lint/`、`skill-lint/`、`pr-comment-secret-lint/`、`pr-comment-fence-lint/`、
+  `actions-cutoff-lint.ts` — Markdown とワークフロー YAML に対するリポジトリのゲート。
+- `setup/replace-*.ts` — Go モジュールパス、アプリのメタデータ、リポジトリ参照、LICENSE の権利者、
+  CODEOWNERS の所有者欄を 1 回限りで書き換える。
+- `setup/remove-sample-api/`、`setup/verify-sample-removal/` — サンプル API の削除と、
+  それが過不足なく行われたことの検証。
 
-Each script keeps its decision logic in a pure module under `scripts/lib/` (or
-`scripts/portal/`) with a `vitest` suite next to it, leaving the entry file to do file I/O
-and exit codes. Several of these scripts are gates whose failure mode is to inspect nothing
-and still exit `0`, which a type checker and a test can pin and an untyped script cannot.
+各スクリプトは判定ロジックを `scripts/lib/`（または `scripts/portal/`）配下の純粋なモジュールに置き、
+その隣に `vitest` のテストを持つ。入口のファイルはファイル I/O と終了コードだけを担う。これらのうち
+いくつかはゲートであり、壊れ方が「何も検査しないまま `0` で終了する」方向に出る。型検査とテストは
+それを固定できるが、型の無いスクリプトはできない。
 
-The one-time initial-setup scripts under `setup/` follow the same split, and are the reason the
-split is not merely a convention. Five of them are never executed by CI at all, and every one of
-them rewrites the repository in place — a Go module path across every file in the tree, the
-LICENSE holder, the owner field of every CODEOWNERS rule. When a replacement rule over-matches or
-misses a file type, the failure surfaces in a tree that has already been rewritten, in front of
-someone holding no context to debug it with. So the replacement rules live in pure modules under
-`setup/lib/` with a `vitest` suite next to each, and what those tests pin is the rule itself: what
-it matches, what it must not match, and which file types it must not miss.
+`setup/` 配下の 1 回限りの初期セットアップスクリプトも同じ分け方に従う。そして、この分け方が単なる
+慣習ではない理由がここにある。5 本は CI から一度も実行されず、いずれもリポジトリをその場で書き換える
+——ツリー全体の Go モジュールパス、LICENSE の権利者、CODEOWNERS の全ルールの所有者欄。置換規則が
+過剰にマッチしたりファイル種別を取りこぼしたりしたとき、その失敗が現れるのは既に書き換わったツリーの
+上であり、目の前にいるのはデバッグの文脈を何も持たない人間である。
+そのため置換規則は `setup/lib/` 配下の純粋なモジュールに置き、隣に `vitest` のテストを持つ。テストが
+固定するのは規則そのもの——何にマッチし、何にマッチしてはならず、どのファイル種別を取りこぼしては
+ならないか——である。
 
-Two of them delete themselves. `remove-sample-api.ts` removes its own manifest and marker logic
-along with the sample, and `verify-sample-removal.ts` removes itself, its decision module and that
-module's test once the verification passes. A decision module extracted out of a self-deleting
-script has to be deleted with it, or the tool survives in fragments in the user's repository.
+うち 2 本は自分自身を削除する。`remove-sample-api.ts` はサンプルと一緒に自身の manifest とマーカー除去
+ロジックを消し、`verify-sample-removal.ts` は検証を通した後に自身と判定モジュール・そのテストを消す。
+自消滅するスクリプトから切り出した判定モジュールは一緒に消さねばならない。さもなければツールの断片だけが
+利用者のリポジトリに残る。
 
-**Go** is used where stronger type safety, error handling, or richer standard-library
-support is needed, and for anything a gate invokes on the host without a Node toolchain:
+**Go** は、より強力な型安全性、エラーハンドリング、豊富な標準ライブラリサポートが必要な場合、および
+Node ツールチェーンの無いホスト上でゲートから呼ばれるものに使用する:
 
-- `sync-versions/` — parse `mise.toml` and propagate language-runtime versions to
-  `go.mod` and Dockerfile `FROM` lines; atomic writes, pre-validation.
-- `genctxkey/` — Echo context key code generator; driven by `//go:generate` directives.
-- `pin-actions/` / `pin-images/` — resolve and apply commit-SHA and digest pins; network
-  I/O, lockfile management, supply-chain quarantine.
-- `go-cooldown/` / `tool-cooldown/` — supply-chain cooldown gates.
-- `migration-lint/` / `cover-gate/` / `load-band/` — gates and resolvers called from
-  `.makefiles/**`, where the alternative was leaving the decision in a shell recipe.
+- `sync-versions/` — `mise.toml` をパースして言語ランタイムバージョンを `go.mod` および Dockerfile の
+  `FROM` 行に伝播させる。アトミック書き込み、事前検証。
+- `genctxkey/` — Echo コンテキストキーのコードジェネレータ。`//go:generate` ディレクティブにより実行される。
+- `pin-actions/` / `pin-images/` — コミット SHA と digest のピンを解決して適用する。
+  ネットワーク I/O、ロックファイル管理、サプライチェーン隔離。
+- `go-cooldown/` / `tool-cooldown/` — 供給網 cooldown のゲート。
+- `migration-lint/` / `cover-gate/` / `load-band/` — `.makefiles/**` から呼ばれるゲートと解決器。
+  代替案が「判定をシェルのレシピに置いたままにする」ことだった領域である。
 
-Shell scripting is not used for any of these tasks.
+これらのタスクにシェルスクリプトは使用しない。
 
-**Role separation from the rest of the codebase:**
+**コードベースの他の部分との役割分担:**
 
-- `scripts/` — utility programs for build, CI, and setup; not consumed as libraries.
-- `pkg/` — reusable library packages consumed by `internal/` and potentially by
-  external callers; must stay framework-agnostic and free of `internal/` imports.
-- `internal/` — application business logic (domain, usecase, controller, infrastructure).
+- `scripts/` — ビルド、CI、セットアップ用のユーティリティプログラム。ライブラリとして消費されない。
+- `pkg/` — `internal/` および潜在的な外部呼び出し元が消費する再利用可能なライブラリパッケージ。
+  フレームワーク非依存を維持し、`internal/` インポートを持たないこと。
+- `internal/` — アプリケーションビジネスロジック（domain、usecase、controller、infrastructure）。
 
-Scripts invoke application code only at arm's length (e.g. through generated artefacts
-or by reading configuration files), never by importing `internal/` packages directly.
+スクリプトは `internal/` パッケージを直接インポートするのではなく、アームズレングスで
+（例: 生成された成果物を通じて、または設定ファイルを読み取ることで）アプリケーションコードを呼び出す。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Both TypeScript and Go provide proper error handling, testability, and cross-platform
-  behaviour absent from shell.
-- A type checker plus a test suite covers the failure mode that matters for a gate — a
-  script that stops inspecting anything while still exiting `0`. Shell cannot express
-  either check, and untyped JavaScript only the second.
-- Go scripts share the project's primary toolchain and run via `go run` without
-  additional installation, so a gate in a `make` recipe needs no Node on the host.
-- The role separation keeps `pkg/` and `internal/` clean of build-tooling concerns.
+- TypeScript と Go はともに、シェルには存在しない適切なエラーハンドリング、テスト可能性、クロスプラットフォーム動作を提供する。
+- 型検査とテストの組み合わせは、ゲートにとって重要な壊れ方——何も検査しなくなったまま `0` で終了する——を
+  カバーする。シェルはどちらの検査も表現できず、型の無い JavaScript は後者しか表現できない。
+- Go スクリプトはプロジェクトの主要ツールチェーンを共有し、追加インストールなしに `go run` で実行できる。
+  そのため `make` のレシピに置くゲートはホストに Node を必要としない。
+- 役割分担により `pkg/` と `internal/` がビルドツーリングの懸念事項から切り離されたクリーンな状態を保つ。
 
-### Negative Consequences
+### ネガティブな影響
 
-- The `scripts/` directory houses two runtimes (Node and Go); contributors must identify
-  which runtime applies before editing a script.
-- No TypeScript script is dependency-free: every one of them needs `tsx` to run, so
-  `scripts/` carries a `package.json` + `pnpm-lock.yaml` and the scripts cannot run on a
-  bare host until `pnpm install --dir scripts` has been done. That cost is why a gate
-  reachable from a `make` recipe is written in Go instead.
-- Setup scripts are one-time use; they remain in the repository after initial setup is
-  complete, which adds volume without ongoing value.
-- The self-deleting setup tools take their tests with them, so the guarantee those tests carry
-  ends at the moment of use. That is the correct trade — the alternative is shipping a test suite
-  for a tool that no longer exists.
+- `scripts/` ディレクトリに 2 つのランタイム（Node と Go）が混在するため、コントリビューターはスクリプトを
+  編集する前にどちらのランタイムが適用されるかを特定しなければならない。
+- 依存なしで動く TypeScript スクリプトは 1 つも無い。いずれも実行に `tsx` を要するため `scripts/` は
+  `package.json` + `pnpm-lock.yaml` を抱え、`pnpm install --dir scripts` を済ませるまでベアホストでは
+  実行できない。`make` のレシピから到達するゲートを Go で書いているのはこのコストが理由である。
+- セットアップスクリプトは 1 回限りの使用であり、初期セットアップ完了後もリポジトリに残り続け、継続的な価値なく
+  ボリュームを増やす。
+- 自消滅するセットアップツールはテストも道連れにするため、そのテストが担う保証は使用の瞬間で終わる。
+  これは正しい取引である——代替案は既に存在しないツールのテストスイートを同梱することだ。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Shell scripts
+### シェルスクリプト
 
-Ubiquitous and zero-dependency, but fragile under edge cases and hard to test. The
-project's scripts involve enough conditional logic and file manipulation that shell
-becomes a maintenance liability. Shell is also poorly suited for tasks such as numeric
-computation, conditional branching over multiple states, or format-specific tooling such
-as Mermaid diagram linting — all of which appear in this project's script inventory.
+ユビキタスで依存ゼロだが、エッジケースで脆弱でテストが困難。このプロジェクトのスクリプトは条件分岐ロジックと
+ファイル操作が十分に複雑であり、シェルはメンテナンス上の負債となる。また、数値計算、複数条件による分岐処理、
+Mermaid ダイアグラムリントのような形式固有のツーリングはそもそもシェルが不向きな領域であり、
+これらはいずれも本プロジェクトのスクリプト群に存在するタスクである。
 
-### Plain JavaScript (ESM `.mjs`)
+### 素の JavaScript（ESM の `.mjs`）
 
-Runs with no build step and no dependency. That was the argument for leaving `setup/` on `.mjs`,
-and it did not survive the observation that those scripts are the least observed code in the
-repository: a mistyped field or a renamed key surfaces as a silently empty result set rather than
-an error, and for a setup script nobody is watching the result set. Once a test harness is
-warranted anyway, the marginal cost of adding types over it is small, and `scripts/` now holds a
-single JavaScript dialect rather than two.
+ビルドステップも依存も無しに動く。`setup/` を `.mjs` のまま残す論拠はそれだったが、それらのスクリプトが
+リポジトリ内で最も観測されないコードだという事実に耐えられなかった。フィールドの打ち間違いやキーの改名は、
+エラーではなく「静かに空の結果集合」として表面化する。そしてセットアップスクリプトでは、その結果集合を
+誰も見ていない。いずれにせよテストハーネスが必要になる以上、その上に型を足す限界コストは小さく、
+`scripts/` が抱える JavaScript 方言も 2 つから 1 つになる。
 
 ### Python
 
-The project has a Python tool runner (`python_tool_runner`) but Python is used
-exclusively for SQL linting (sqlfluff). Introducing Python for general scripting would
-add a third scripting runtime without clear benefit over Node for text-manipulation
-tasks.
+プロジェクトには Python ツールランナー（`python_tool_runner`）があるが、Python は SQL リント（sqlfluff）
+専用で使用されている。汎用スクリプトに Python を導入すると、テキスト操作タスクにおいて Node に対して
+明確なメリットなく 3 つ目のスクリプトランタイムが追加される。
 
 ### Deno
 
-Shares the ESM model with Node but is not present in the tool stack; introducing it
-adds a dependency.
+Node と同じ ESM モデルを共有するが、ツールスタックに存在せず、導入すると依存が増える。
 
-## Notes
+## 補足
 
-- Scripts directory overview and per-script descriptions:
-  [`scripts/README.md`](../../scripts/README.md).
-- Toolchain container definitions (node_tool_runner, go_tool_runner):
-  [ADR-0079](0079-containerized-pinned-toolchain.md).
-- Make target entrypoint for invoking scripts:
-  [ADR-0081](0081-make-single-entrypoint.md).
-- **Upstream deviations**: while this repository is distributed as a boilerplate, the setup scripts carry an argument for the split that does not transfer, recorded in [`docs/get-started/boilerplate-only-conventions.md`](../get-started/boilerplate-only-conventions.md). <!-- boilerplate-only:line -->
+- スクリプトディレクトリの概要とスクリプトごとの説明:
+  [`scripts/README.md`](../../scripts/README.md)。
+- ツールチェーンコンテナ定義（node_tool_runner、go_tool_runner）:
+  [ADR-0079](0079-containerized-pinned-toolchain.md)。
+- スクリプトを呼び出す Make ターゲットエントリポイント:
+  [ADR-0081](0081-make-single-entrypoint.md)。
+- **上流の逸脱**: 本リポジトリがボイラープレートとして配布される間、セットアップスクリプトはこの分け方を支える継承されない論拠を持っており、それは [`docs/get-started/boilerplate-only-conventions.md`](../get-started/boilerplate-only-conventions.md) に記録されている。 <!-- boilerplate-only:line -->

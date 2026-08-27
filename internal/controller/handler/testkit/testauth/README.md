@@ -1,17 +1,17 @@
 # testauth
 
-Provides utilities for setting authentication context inside test code that is normally populated by middleware.
+通常 MW で設定される認証情報を、テストコード内で設定するためのユーティリティを提供します。
 
-## Usage
+## 使い方
 
-Use the `MakeAvailableAuthn` function to attach authentication context to a test context.
+`MakeAvailableAuthn` 関数を使用して、テストコンテキストに認証情報を設定します。
 
 ```go
   ctx := context.Background()
-  ctx = testauth.MakeAvailableAuthn(ctx, t, userID.String()) // set auth context here
+  ctx = testauth.MakeAvailableAuthn(ctx, t, userID.String()) // ここで認証情報を設定
   ctrl := gomock.NewController(t)
 ```
 
-This function attaches an authentication context carrying the given user ID, making it available to controllers under test.
+この関数は、指定されたユーザーIDを持つ認証情報をコンテキストに追加し、テスト対象のコントローラーで利用できるようにします。
 
-The subject doubles as the internal UserID: when it parses as a UUID the returned `Authn` has its UserID resolved, and otherwise it stays unresolved — which is how a test reaches the "authenticated but no internal user" path. A zero-value UUID subject fails the test, because `auth.Authn` refuses to resolve one (`ErrUserIDZero`).
+subject は内部 UserID を兼ねます。UUID として解釈できる場合は返される `Authn` の UserID が解決済みになり、そうでない場合は未解決のままです（「認証済みだが内部ユーザー未解決」の経路はこれで作ります）。ゼロ値 UUID の subject は `auth.Authn` が解決を拒否する（`ErrUserIDZero`）ため、テストが失敗します。

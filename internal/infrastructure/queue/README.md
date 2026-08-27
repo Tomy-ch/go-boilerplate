@@ -1,68 +1,41 @@
 # infrastructure/queue
 
-Adapters that implement the worker seam (`internal/usecase/boundary/worker`) against a
-concrete message broker.
+worker シーム（`internal/usecase/boundary/worker`）を具体的なメッセージブローカーに対して
+実装するアダプタ群です。
 
-## Layout convention
+## 配置規約
 
-- **Broker-agnostic contract** lives at `internal/usecase/boundary/worker` (the seam), above
-  this layer — not here. Infrastructure implements those ports; it does not own the abstraction.
-- **Broker-specific adapter** lives at `queue/<broker>/` (e.g. `queue/sqs`). The package name is
-  the broker, so the concrete technology stays visible at the import site.
-- **Code shared across brokers** lives directly under `queue/`. Shared code is extracted only
-  when two or more adapters duplicate a concrete implementation detail, so a helper is hoisted
-  from observed duplication rather than designed up front.
+- **ブローカー非依存の契約**は、この層ではなく上位の `internal/usecase/boundary/worker`
+  （シーム）に置きます。infrastructure はそのポートを実装するだけで、抽象そのものは保持しません。
+- **ブローカー固有のアダプタ**は `queue/<broker>/`（例: `queue/sqs`）に置きます。パッケージ名を
+  ブローカー名にすることで、import 箇所で具体技術が見えるようにします。
+- **ブローカー間で共有するコード**は `queue/` 直下に置きます。共有コードは、2 つ以上のアダプタが
+  具体的な実装詳細を重複させたときにのみ抽出します。先回りして設計するのではなく、観測された重複から
+  ヘルパを引き上げます。
 
-## SQS is one worked example, not the target
+## SQS は実例の一つであって前提ではない
 
-The seam is broker-agnostic, but an abstraction shipped with nothing behind it proves nothing — the
-port is only credible once something real is wired through it. So one broker is implemented
-concretely, and SQS is that one. It is the **reference**, not the assumption: retargeting means
-adding a sibling package under `queue/`, with nothing above this layer changing.
+seam はブローカー非依存ですが、背後に何も無いまま出された抽象は何も証明しません。ポートは、実物が 1 本通って初めて信用できるものになります。そこで 1 つのブローカーだけを具体的に実装しており、SQS がそれにあたります。これは**リファレンス**であって前提ではありません。差し替えは `queue/` 配下に兄弟パッケージを足すだけで、この層より上は何も変わりません。
 
-To keep that claim honest rather than aspirational, here is the local container each major
-provider's queue is developed against, so the equivalent loop can be stood up on day one after
-retargeting.
+この主張を建前で終わらせないために、各クラウドのキューをローカルで開発する際のコンテナを挙げます。差し替えた側が初日から同じ開発ループを立ち上げられるようにするためです。
 
-|Provider|Service|Local container|License|Published by|
+|プロバイダ|サービス|ローカルコンテナ|ライセンス|提供元|
 |---|---|---|---|---|
 |AWS|SQS|`softwaremill/elasticmq-native`|Apache-2.0|SoftwareMill|
 |Azure|Queue Storage|`mcr.microsoft.com/azure-storage/azurite`|MIT|Microsoft|
-|GCP|Pub/Sub|`gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators`|Google Cloud SDK terms|Google|
+|GCP|Pub/Sub|`gcr.io/google.com/cloudsdktool/google-cloud-cli:emulators`|Google Cloud SDK の条項|Google|
 
-Selection follows the same rule as every other dependency here — one replaceable job per
-component ([ADR-0077 (library-selection-policy)](../../../docs/adr/0077-library-selection-policy.md)) — so a single-purpose
-emulator is preferred over a suite that emulates a whole cloud. Notes per choice:
+選定基準はここでの他の依存と同じく「1 コンポーネント 1 責務」（[ADR-0077 (library-selection-policy)](../../../docs/adr/0077-library-selection-policy.md)）です。したがって、クラウド一式をエミュレートするスイートよりも単機能のエミュレータを優先します。各選択の補足は次のとおりです。
 
-- **ElasticMQ** emulates SQS and nothing else, and its native image is small enough to start per
-  test run. A multi-service AWS emulator would cover more surface, but it buys that with a
-  many-jobs-one-container dependency and a commercially gated feature line
-- **Azurite** is Microsoft's own emulator and covers Blob *and* Queue, so Azure needs one
-  container for both seams. For Service Bus semantics (topics / subscriptions / sessions) there
-  is a separate first-party emulator, but it ships under a proprietary EULA and pulls SQL Server
-  alongside it — reach for it only when Queue Storage genuinely does not fit
-- **Pub/Sub** has no standalone first-party image; the emulator is a component of the Google
-  Cloud CLI, published by Google under the `:emulators` tag. It is heavier than the other two.
-  Third-party slim wrappers exist and are correspondingly less accountable
+- **ElasticMQ** は SQS だけをエミュレートし、native イメージはテスト実行ごとに起動できる程度に小さい。多サービス対応の AWS エミュレータはより広い範囲を賄いますが、その代償として 1 コンテナに多数の責務を抱えた依存と、商用ゲートのある機能ラインを持ち込みます
+- **Azurite** は Microsoft 自身のエミュレータで、Blob と Queue の**両方**を賄います。したがって Azure は 2 つの seam に対して 1 コンテナで済みます。Service Bus のセマンティクス（トピック / サブスクリプション / セッション）が必要な場合はファーストパーティのエミュレータが別にありますが、proprietary な EULA で配布され SQL Server を同伴するため、Queue Storage では本当に足りない場合にのみ選んでください
+- **Pub/Sub** にはファーストパーティの単体イメージがなく、エミュレータは Google Cloud CLI のコンポーネントとして `:emulators` タグで Google から提供されます。他の 2 つより重量級です。第三者による軽量ラッパーも存在しますが、その分だけ責任の所在は弱くなります
 
 ## Test Strategy
 
-The substrate is a message broker, not a database, so the infrastructure layer's real-DB strategy does
-not apply. `queue/` itself holds no Go code; these viewpoints govern the adapters under it, and an
-adapter that needs its own is expected to declare one in its package README rather than widen this.
+基盤は DB ではなくメッセージブローカーであるため、infrastructure 層の実 DB 戦略は適用されません。`queue/` 自身は Go コードを持ちません。以下の観点はその配下のアダプタを統治します。自前の観点を要するアダプタは、この節を広げるのではなく自パッケージの README で宣言することが期待されます。
 
-- **The broker is a generated mock of the SDK's API client, and the container above is not a test
-  dependency.** `make test` starts nothing: the emulator table exists for `make serve` and for manual
-  verification of behaviour an SDK mock cannot represent (real visibility timeouts, redrive). Naming a
-  queue URL in a test is a fixture string, never a connection.
-- **The SDK call is asserted, not just the outcome.** An adapter's job is to translate a boundary call
-  into one SDK request, so the input handed to the mock is inspected — queue URL, body, and the message
-  attributes carrying the boundary's headers. Asserting only the returned error would let that
-  translation drift unnoticed.
-- **Error normalisation is pinned per broker error class**, because that mapping is the whole reason the
-  adapter exists as a layer: a retryable broker fault, a permanent rejection, and a cancelled context
-  must each reach the worker seam as the matching `apperror` sentinel, asserted with `errors.Is` rather
-  than by inspecting the SDK error type. `nil` staying `nil` is its own case — a normaliser that
-  manufactures an error from a success is silent and total.
-- **Sensitive headers are pinned against normalisation gaps**, so header matching cannot be defeated by
-  case or surrounding whitespace.
+- **ブローカーは SDK API クライアントの生成モックであり、上表のコンテナはテストの依存ではない。** `make test` は何も起動しません。エミュレータの表は `make serve` のため、および SDK モックでは表現できない挙動（実際の visibility timeout、redrive）を手で確認するために存在します。テストにキュー URL を書くのはフィクスチャ文字列であって、接続ではありません。
+- **結果だけでなく SDK 呼び出しを assert する。** アダプタの仕事は境界の呼び出しを 1 つの SDK リクエストへ翻訳することなので、モックへ渡された入力を検査します。キュー URL・ボディ・境界のヘッダを運ぶメッセージ属性です。返り値のエラーだけを assert すると、この翻訳が気づかれずにドリフトします。
+- **エラーの正規化はブローカーのエラー種別ごとに固定する。** この写像こそ、アダプタが層として存在する理由そのものだからです。再試行可能なブローカー障害・恒久的な拒否・キャンセルされた context は、それぞれ対応する `apperror` sentinel として worker seam に届かねばならず、SDK のエラー型を検査するのではなく `errors.Is` で assert します。`nil` が `nil` のままであることも独立したケースです。成功からエラーを捏造する正規化は、無言かつ全面的に効きます。
+- **機微ヘッダは正規化の抜けに対して固定する。** ヘッダの照合が大文字小文字や前後の空白で破られないようにするためです。

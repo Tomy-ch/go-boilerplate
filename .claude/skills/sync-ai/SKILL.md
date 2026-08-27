@@ -6,129 +6,64 @@ argument-hint: '[skill-name] [--from=claude|codex] [--to=claude|codex]'
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, Skill
 ---
 
-# Sync AI Skills (Claude)
+# AI スキル同期（Claude）
 
-Synchronize a skill as a **one-way semantic port**, never as a raw directory copy. The source skill
-is authoritative only for this run; the receiving skill remains native to its AI environment.
+スキルを生のディレクトリコピーではなく、**片方向の意味的移植**として同期する。今回だけ送信元スキルを正典とし、受信側スキルは各 AI 環境にネイティブな形を保つ。
 
-`manage-skill` invokes this after every new or material Claude skill change unless the skill is
-explicitly Claude-only. For a Codex-originated change, use the same flow with Codex as the source.
+`manage-skill` は、新規 Claude スキルの作成または大きな変更後、そのスキルが Claude 専用でない限りこの手順を起動する。Codex 起点の変更も、Codex を送信元として同じ流れで扱う。
 
-## 1. Resolve direction and unit
+## 1. 方向と単位を確定する
 
-Require exactly one skill name and one direction:
+スキル名を 1 つ、方向を 1 つだけ確定する。
 
 ```text
 source: .claude/skills/<name>/  → target: .codex/skills/<name>/
 source: .codex/skills/<name>/   → target: .claude/skills/<name>/
 ```
 
-Infer the source only when the user clearly names it. Do not infer direction from file mtimes.
-If both copies changed, stop and ask which copy is authoritative; never merge two edited skills
-automatically.
+ユーザーが送信元を明示した場合だけ推定する。ファイル時刻から方向を推定してはならない。両方が変更されている場合は、どちらを正典とするか確認して停止する。2 つの編集済みスキルを自動マージしない。
 
-<!-- doc-pair:replace-begin -->
-Inspect the complete source unit and the target unit if it exists. Treat `SKILL.md`,
-`SKILL.ja.md`, UI metadata, scripts, references, and assets as one unit. Record only a temporary
-transfer note under `tmp/skills/sync-ai/`; do not create a durable third copy or a synchronization manifest.
-<!-- doc-pair:replace-with -->
-<!-- = Inspect the complete source unit and the target unit if it exists. Treat `SKILL.md`, UI metadata, -->
-<!-- = scripts, references, and assets as one unit. Record only a temporary transfer note under -->
-<!-- = `tmp/skills/sync-ai/`; do not create a durable third copy or a synchronization manifest. -->
-<!-- doc-pair:replace-end -->
+## 2. 転送契約を作る
 
-## 2. Build the transfer contract
+目的、起動・非起動条件、入力、承認、副作用、検証、再利用資産を抽出する。各項目を **port**、**adapt**、**omit** に分類する。プラットフォーム機構はコピーでなく変換する。Codex の delegation／ツール指示を Claude 構文としてコピーしてはならず、Claude の `AskUserQuestion` / `Agent` 指示も Codex 構文のままにはしない。
 
-Extract purpose, trigger and non-trigger cases, inputs, approvals, side effects, validation, and
-reusable resources. Classify each item as **port**, **adapt**, or **omit**. Translate platform
-mechanisms instead of copying them: Codex delegation and tool instructions must not become Claude
-syntax, and Claude's `AskUserQuestion` / `Agent` instructions must not become Codex syntax unchanged.
+契約は `tmp/skills/sync-ai/<name>-contract.md` へ書く。これは**非対話**の受信側に渡され、受信側はこちらに何も尋ねられない。したがって契約の完全性は上品さの問題ではない。受信側が質問したくなる事柄は、契約の中で決着させておくか、受信側の判断に委ねると明記するかのどちらかでなければならない。曖昧さは引き渡し前に、こちら側でユーザーと解消する。
 
-Write the contract to `tmp/skills/sync-ai/<name>-contract.md`. It is handed to a **headless** receiver that
-cannot ask you anything, so completeness is not a nicety here: anything the receiver would otherwise
-raise a question about must be settled in the contract, or explicitly delegated to its judgement.
-Resolve ambiguity with the user on this side, before the handoff.
+## 3. 受信側ネイティブのワークフローで反映する
 
-## 3. Receive through the native skill workflow
+書き込みは常に受信側環境自身の `manage-skill` が行う。どちらの側も相手のスキルディレクトリを書かない——受信側を迂回した移植は、正しい場所に誤ったイディオムのファイルを置くことになり、それこそこのスキルが防ごうとしている失敗である。
 
-The receiving environment's own `manage-skill` always performs the write. Neither side writes the
-other's skill directory — a port that bypasses the receiver lands a file in the right place with the
-wrong idioms, which is the failure this skill exists to prevent.
-
-For a target under `.claude/skills/`, invoke `/manage-skill` with the transfer contract. It creates
-or updates the target in place, preserves Claude-native metadata, applies the skill-creator flow,
-and synchronizes `SKILL.ja.md` from canonical English `SKILL.md`.
-
-For a target under `.codex/skills/`, hand the contract to Codex's `manage-skill` by running Codex
-headlessly:
+対象が `.codex/skills/` の場合は、Codex を非対話で起動して契約を Codex の `manage-skill` に渡す。
 
 ```sh
 sh .claude/skills/sync-ai/scripts/handoff-to-codex.sh tmp/skills/sync-ai/<name>-contract.md
 ```
 
-The script exists so the invocation posture lives in one place rather than being rediscovered each
-run. It pins `codex exec --sandbox workspace-write` plus one narrow config override that re-adds
-`<repo>/.codex` to the writable roots: Codex excludes its own configuration directory by default, so
-without it the receiver cannot write the very skill it was asked to write and fails with
-`patch rejected: writing outside of the project`. The override adds that one path and does not
-replace the sandbox. Approval policy is already `never` under `codex exec`, which is why widening
-the roots is the fix and loosening approvals is not. Read the script's header before changing a flag.
+このスクリプトは、起動時の姿勢を毎回発見し直すのではなく 1 箇所に置くために存在する。`codex exec --sandbox workspace-write` と、writable roots へ `<repo>/.codex` を戻す狭い設定上書きを固定している。Codex は自身の設定ディレクトリを既定で除外するため、これが無いと受信側は「書けと言われたスキルそのもの」を書けず、`patch rejected: writing outside of the project` で失敗する。上書きはその 1 パスを追加するだけで、サンドボックスを置き換えない。`codex exec` では approval policy が既に `never` であり、だからこそ roots を広げることが解であって承認を緩めることは解ではない。フラグを変える前にスクリプト冒頭のコメントを読むこと。
 
-The script also carries the child-operation preamble — no questions, no starting another agent,
-writes confined to `.codex/` and `tmp/` for the single named skill. That preamble is what stops a
-headless receiver from stalling on a question nobody can answer.
+スクリプトは子操作としての前置きも運ぶ——質問しない、別のエージェントを起動しない、書き込みは指定された 1 スキルのために `.codex/` と `tmp/` に限る。この前置きが、非対話の受信側が誰も答えられない質問で止まるのを防いでいる。
 
-**The recursion bound is the lock, not the preamble.** Both handoff scripts take the same lease
-(`tmp/skills/sync-ai/.handoff.lock`) and refuse to start when it is already held, so a receiver that runs
-either script is turned away rather than deepening the chain. This is deliberately not left to the
-preamble: an instruction can be ignored, and a chain that ignores it loops while spending real money
-on both agents. A refusal (exit 3) means one of exactly two things, and the message says which — a
-chain tried to recurse, which is the guard doing its job, or a previous run was killed and left the
-lease behind, which you clear by removing the path it prints. It is a lock file rather than an
-exported variable because Codex filters the environment it forwards to model-run commands, so a
-marker may not survive the hop; the working tree is the one channel both agents certainly share.
-Same shape as this repo's worktree slot leases — a lease plus a stale TTL.
+**再帰の上限を与えているのは前置きではなくロックである。** 両方の handoff スクリプトが同じリース（`tmp/skills/sync-ai/.handoff.lock`）を取り、既に保持されていれば起動を拒否する。よって受信側がどちらのスクリプトを走らせても、連鎖が深まるのではなく追い返される。これを前置きに委ねないのは意図的である——指示は無視され得るし、無視した連鎖は両方のエージェントに実費を払わせながら回り続ける。拒否（exit 3）が意味するのはちょうど 2 つのうちどちらかで、どちらかはメッセージが告げる——連鎖が再帰しようとした（ガードが働いた）か、前回の run が kill されてリースが残った（表示されるパスを消せばよい）か。環境変数ではなくロックファイルなのは、Codex がモデル実行コマンドへ転送する環境を絞るため marker が hop を越えられるとは限らないからで、両エージェントが確実に共有しているのは作業ツリーである。形はこのリポジトリの worktree スロットリースと同じ——リース＋stale TTL。
 
-Do not delete the source skill, commit, push, publish, or change unrelated skills.
+送信元スキルを削除しない。commit、push、公開、無関係なスキルの変更をしない。
 
-## 4. Verify and report
+## 4. 検証と報告
 
-Run the receiving environment's structural validation and inspect the target diff. Confirm that the
-target preserves the source behavior while using only target-supported tools and configuration.
-Report the direction, source commit/diff basis, port/adapt/omit decisions, files changed, and any
-intent the target cannot express.
+受信側環境の構造検証を実行し、受信側の差分を確認する。送信元の振る舞いを保ちつつ、受信側がサポートするツールと設定だけを使っていることを確認する。
 
-The receiver ran in a separate process, so its own summary is a claim rather than evidence — read
-`git status` / `git diff` over the target directory and judge from that. A handoff that reports
-success while writing nothing is the failure mode worth checking for first.
+方向、送信元の commit／差分基準、port/adapt/omit の判断、変更ファイル、受信側で表現できない意図を報告する。
 
-If the report asks for a synchronization in the other direction — the follow-up the preamble told
-the receiver to report rather than run — **do not start it as part of this run.** Confirm with the
-user first (`AskUserQuestion`), because a return trip that the run initiates on its own behalf is,
-from the inside, indistinguishable from the first turn of a loop. Note where this gate can exist at
-all: only at the top of the chain, since every process below it is headless and has no user to ask.
-That asymmetry is exactly why the lock above bounds recursion and this gate does not.
+受信側は別プロセスで動いたので、その自己申告は証拠ではなく主張である。対象ディレクトリの `git status` / `git diff` を読んで判断すること。何も書かずに成功を報告する引き渡しが、最初に疑うべき失敗モードである。
 
-Check the receiver's own checklist items against the filesystem too, not just against its prose.
-The properties that go wrong quietly are the ones a diff does not surface: a newly created file
-appears in `git status` without its mode, so verify the executable bit on any bundled script
-<!-- doc-pair:replace-begin -->
-(`ls -l`), run `sh -n` over it, and confirm the `SKILL.md` / `SKILL.ja.md` heading counts still
-match. A receiver reporting these as passed is exactly the claim this paragraph exists to distrust.
-<!-- doc-pair:replace-with -->
-<!-- = (`ls -l`) and run `sh -n` over it. A receiver reporting these as passed is exactly the claim this -->
-<!-- = paragraph exists to distrust. -->
-<!-- doc-pair:replace-end -->
+報告が逆方向の同期を求めていた場合——前置きが「実行せず報告せよ」と指示した follow-up にあたる——**この run の一部として着手してはならない**。先にユーザーへ確認する（`AskUserQuestion`）。run が自らの判断で始める折り返しは、内側から見ればループの 1 周目と区別がつかないからである。このゲートが存在し得る場所にも注意する——連鎖の最上位だけである。それより下のプロセスはすべて非対話で、尋ねる相手がいない。この非対称性こそが、再帰の上限を与えるのが上のロックであってこのゲートではない理由である。
 
-## Guardrails
+受信側のチェックリスト項目も、散文ではなく実物と突き合わせる。静かに壊れるのは diff に現れない性質である——新規ファイルは mode を伴わずに `git status` へ出るため、バンドルされたスクリプトの実行ビットは `ls -l`（表示が切れない形で）確認し、`sh -n` を通す。受信側がこれらを「通過した」と報告していること自体が、この段落が疑うべきとしている主張である。
 
-- The source-side `manage-skill` starts synchronization; the receiver-side `manage-skill` is a
-  child operation and must not start a second outbound synchronization.
-- Each side hands off to the other CLI headlessly through its own bundled script
-  (`scripts/handoff-to-codex.sh` here, `scripts/handoff-to-claude.sh` on the Codex side). Keeping the <!-- skill-lint-ignore -->
-  posture in a script rather than in prose is what stops the two directions from drifting apart.
-- A headless receiver has no user. Never hand it a contract that depends on a question being asked,
-  and never give it flags that would let it wait for an approval nobody can grant.
-- Keep platform-only skills platform-only and report why.
-- Never use bidirectional automatic sync, timestamp conflict resolution, or wholesale overwrite.
-- Keep transfer artifacts under ignored `tmp/`; maintain only the two native skill directories.
+## ガードレール
+
+- 送信側の `manage-skill` が同期を開始する。受信側の `manage-skill` は子操作として扱い、再び外向きの同期を開始しない。
+- 各側は、自分がバンドルするスクリプト経由で相手の CLI を非対話起動して引き渡す（こちらは `scripts/handoff-to-codex.sh`、Codex 側は `scripts/handoff-to-claude.sh`）。姿勢を散文でなくスクリプトに置くことが、両方向の乖離を防ぐ。 <!-- skill-lint-ignore -->
+- 非対話の受信側にユーザーはいない。質問が行われることを前提にした契約を渡さないこと。また、誰も与えられない承認を待てるようなフラグを渡さないこと。
+- 特定プラットフォーム専用スキルは専用のままにする。理由を報告する。
+- 双方向自動同期、タイムスタンプによる競合解決、ディレクトリ全上書きを禁止する。
+- 転送成果物は gitignore された `tmp/` に置く。保守対象は 2 つのネイティブなスキルディレクトリだけとする。

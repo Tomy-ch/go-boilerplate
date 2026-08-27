@@ -1,44 +1,44 @@
 # worker/testkit
 
-An in-memory test double for the `worker` seams (`Consumer` / `FailureHandler`),
-so the engine's receive → process → ack/nack invariants can be tested green
-without a real broker (a broker-agnostic 2nd implementation, no SDK dependency).
+`worker` seam（`Consumer` / `FailureHandler`）の in-memory テストダブルです。
+実 broker 無しで engine の receive → process → ack/nack 不変条件テストを green に
+するために用います（broker 非依存の 2nd 実装、SDK 非依存）。
 
 ## `Fake`
 
-`NewFake() *Fake` implements both `worker.Consumer` and `worker.FailureHandler`.
-It holds an in-memory queue, in-flight set, and per-ID delivery counter, and
-records every Ack / Nack / Extend / Fail call for assertions.
+`NewFake() *Fake` は `worker.Consumer` と `worker.FailureHandler` の両方を実装
+します。in-memory のキュー・in-flight 集合・ID ごとの配送回数カウンタを保持し、
+すべての Ack / Nack / Extend / Fail 呼び出しを検証用に記録します。
 
-### Seam methods (`Consumer` / `FailureHandler`)
+### seam メソッド（`Consumer` / `FailureHandler`）
 
-- `Receive(ctx, limit) ([]worker.Message, error)` — returns up to `limit`
-  messages; **blocks** until an enqueue / redelivery or `ctx` completion when the
-  queue is empty. Each delivery increments the message's `ReceiveCount`.
-- `Ack(ctx, m) error` — removes the message from in-flight and records it.
-- `Nack(ctx, m) error` — redelivers immediately (back to the queue tail) and
-  records it.
-- `NackWithBackoff(ctx, m, d) error` — records the requested delay `d`, then
-  redelivers (the fake does not simulate real-time delay).
-- `Extend(ctx, m, d) error` — records the Extend call count; returns the error
-  set by `SetExtendErr` if any.
-- `Fail(ctx, m, cause) error` — records the dead-letter (`FailureHandler`) call.
+- `Receive(ctx, limit) ([]worker.Message, error)` — 最大 `limit` 件を返します。
+  キューが空の場合は投入 / 再配送または `ctx` 完了まで **ブロック** します。
+  配送のたびにメッセージの `ReceiveCount` を加算します。
+- `Ack(ctx, m) error` — メッセージを in-flight から除去し、記録します。
+- `Nack(ctx, m) error` — 即時に再配送（キュー末尾へ戻す）し、記録します。
+- `NackWithBackoff(ctx, m, d) error` — 要求された遅延 `d` を記録してから再配送
+  します（fake は実時間の遅延を模しません）。
+- `Extend(ctx, m, d) error` — Extend の呼び出し回数を記録します。`SetExtendErr`
+  でエラーが設定されている場合はそのエラーを返します。
+- `Fail(ctx, m, cause) error` — dead-letter（`FailureHandler`）の呼び出しを記録
+  します。
 
-### Test operation / assertion helpers
+### テスト操作・検証用ヘルパー
 
-- `Enqueue(msgs ...worker.Message)` — enqueues messages.
-- `FailReceiveOnce(err error)` — queues one error to be returned by an upcoming
-  `Receive` (call repeatedly to consume in order).
-- `SetExtendErr(err error)` — makes every subsequent `Extend` return `err`.
-- `AckedIDs() []string` / `NackedIDs() []string` — IDs in call order.
-- `ExtendCount(id string) int` — Extend call count for the given ID.
-- `NackBackoffOf(id string) time.Duration` — last requested backoff for the ID
-  (0 if none).
-- `NackBackoffApplied(id string) bool` — whether `NackWithBackoff` was called for
-  the ID (checked by presence, since full jitter can make the delay 0).
-- `Failed() []FailedRecord` — the `Fail` records in call order; `FailedRecord`
-  carries `Message` and `Cause`.
-- `QueueLen() int` — messages waiting to be received.
-- `InflightLen() int` — messages received but not yet Ack/Nack'd.
+- `Enqueue(msgs ...worker.Message)` — メッセージを投入します。
+- `FailReceiveOnce(err error)` — 次回以降の `Receive` で返すエラーを 1 件
+  キューイングします（複数回呼べば順に消費）。
+- `SetExtendErr(err error)` — 以降の `Extend` が常に `err` を返すようにします。
+- `AckedIDs() []string` / `NackedIDs() []string` — 呼び出し順の ID 一覧。
+- `ExtendCount(id string) int` — 指定 ID の Extend 呼び出し回数。
+- `NackBackoffOf(id string) time.Duration` — 指定 ID に対し最後に要求された
+  backoff（未記録は 0）。
+- `NackBackoffApplied(id string) bool` — 指定 ID に対し `NackWithBackoff` が
+  呼ばれたか（full jitter で遅延が 0 になり得るため、有無で判定）。
+- `Failed() []FailedRecord` — 呼び出し順の `Fail` 記録。`FailedRecord` は
+  `Message` と `Cause` を保持します。
+- `QueueLen() int` — 受信待ちのメッセージ数。
+- `InflightLen() int` — 受信済み・未 Ack/Nack のメッセージ数。
 
-`Fake` is safe for concurrent use (guarded by a mutex).
+`Fake` は mutex で保護されており、並行利用は安全です。

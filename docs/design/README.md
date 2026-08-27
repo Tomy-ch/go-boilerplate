@@ -1,44 +1,43 @@
-# Design References
+# 設計リファレンス
 
-This directory holds the **per-subsystem design references**. Each one consolidates a single subsystem's *role theory, state transitions / lifecycles, implementation locations, what an integrator must implement, and glossary* into one page, **derived from a close reading of the implementation**.
+本ディレクトリは **サブシステム別の設計リファレンス**を収めています。各文書は 1 つのサブシステムの *役割論・状態遷移 / ライフサイクル・実装箇所・integrator が書く箇所・用語* を、**実装を精査して 1 枚に**まとめたものです。
 
-These complement — they do not replace — the package `README`s: a README is the API/overview for one package, while a design reference is the cross-package narrative for a whole subsystem. Where a design judgment has an ADR, it lives in [`docs/adr/`](../adr/README.md).
+これらはパッケージの `README` を置き換えるものではなく**補完**します。README は 1 パッケージの API / 概要、設計リファレンスはサブシステム全体を跨ぐ物語です。設計判断の ADR は [`docs/adr/`](../adr/README.md) にあります。
 
-## How to read these
+## 読み方
 
-You do **not** need to read every document. Each subsystem is adopted independently — read
-only the reference for the subsystem you are actually using.
+すべてを読む必要は**ありません**。各サブシステムは独立して採用でき、実際に使うサブシステムの
+リファレンスだけを読めば十分です。
 
-Two invariants underpin all of them:
+すべての文書に共通する 2 つの不変条件があります。
 
-- **REST / Job / Worker are *driving adapters* into the Usecase layer. They are not package
-  split axes for Usecase or Domain.** Usecase and Domain are split by business capability,
-  business context, and transaction boundary — never by transport (REST vs Job vs Worker).
-- **Layer boundaries are enforced by `golangci-lint` depguard, not only by documentation.**
-  A cross-layer import (e.g. `domain` importing `infrastructure`) fails CI, so these design
-  docs describe *why* the boundaries exist while the linter guarantees they hold.
+- **REST / Job / Worker は Usecase 層への *driving adapter* であり、Usecase / Domain の
+  分割軸ではありません。** Usecase / Domain は業務能力・業務文脈・トランザクション境界で
+  分割し、transport(REST / Job / Worker)では分割しません。
+- **レイヤ境界は設計方針に留めず、`golangci-lint` の depguard により CI で強制されます。**
+  cross-layer import(例: `domain` が `infrastructure` を import）は CI で落ちます。設計
+  リファレンスは境界が存在する *理由* を説明し、linter がその遵守を保証します。
 
-## Documents
+## 文書一覧
 
-| Document | Subsystem | What it covers | Package README |
+| 文書 | サブシステム | 対象 | パッケージ README |
 | --- | --- | --- | --- |
-| [rest.md](rest.md) | REST (HTTP) scaffold | the synchronous request entry point: handler authoring, routing, error mapping | [controller](../../internal/controller/README.md) |
-| [worker.md](worker.md) | Worker scaffold | the pull-ack queue entry point: engine, seam, Ack/Nack, circuit, drain | [worker](../../internal/controller/worker/README.md) |
-| [job.md](job.md) | Job scaffold | the CLI / scheduled entry point and its state transitions | [job](../../internal/controller/job/README.md) |
-| [outbox.md](outbox.md) | Transactional outbox | reliable event publication via the outbox pattern | [outbox](../../internal/usecase/boundary/outbox/README.md) |
-| [idempotency.md](idempotency.md) | Idempotency | the `Idempotency-Key` subsystem and its GC job | [idempotency](../../internal/usecase/idempotency/README.md) |
-| [observability.md](observability.md) | Observability | the cross-cutting traces / metrics / logs substrate | [observability](../../internal/observability/README.md) |
-| [auth.md](auth.md) | Authentication | RS-side JWT / JWKS verification and the development OIDC provider | [jwt](../../internal/infrastructure/auth/jwt/README.md) |
-| [security.md](security.md) | Security posture | the threat model, what each control is for (enforcement / detection / deterrence), and where it fires | [workflows](../../.github/workflows/README.md) |
-| [context-map.md](context-map.md) | Context Map | how this system relates to the systems around it, edge by edge | [boundary](../../internal/usecase/boundary/README.md) |
-| [data-access-pattern.md](data-access-pattern.md) | Data access placement | which of Repository / QueryService / CommandService owns a given read or write, and why | [rdb](../../internal/infrastructure/rdb/README.md) |
-| [agent-environment.md](agent-environment.md) | Agent environment | how instructions, mechanical gates, independent review, and load-aware verification work together | [AGENTS.md](../../AGENTS.md) |
-| [closed-loop.md](closed-loop.md) | AI feedback loop | what a development window is, what is observed about it, and how a landed improvement is re-measured | [.agents/](../../.agents/README.md) |
+| [rest.md](rest.md) | REST (HTTP) scaffold | 同期リクエストの入口：handler 実装・routing・エラーマッピング | [controller](../../internal/controller/README.md) |
+| [worker.md](worker.md) | Worker scaffold | pull-ack queue の入口：engine・seam・Ack/Nack・circuit・drain | [worker](../../internal/controller/worker/README.md) |
+| [job.md](job.md) | Job scaffold | CLI / スケジュール実行の入口と状態遷移 | [job](../../internal/controller/job/README.md) |
+| [outbox.md](outbox.md) | Transactional outbox | outbox パターンによる信頼性のあるイベント送出 | [outbox](../../internal/usecase/boundary/outbox/README.md) |
+| [idempotency.md](idempotency.md) | Idempotency | `Idempotency-Key` サブシステムと GC ジョブ | [idempotency](../../internal/usecase/idempotency/README.md) |
+| [observability.md](observability.md) | Observability | 横断的な traces / metrics / logs 基盤 | [observability](../../internal/observability/README.md) |
+| [auth.md](auth.md) | 認証 | RS 側の JWT / JWKS 検証と開発用 OIDC provider | [jwt](../../internal/infrastructure/auth/jwt/README.md) |
+| [security.md](security.md) | セキュリティ姿勢 | 脅威モデル、各制御が何のためにあるか（強制 / 検知 / 抑止）、どこで発火するか | [workflows](../../.github/workflows/README.md) |
+| [context-map.md](context-map.md) | コンテキストマップ | このシステムが周囲のシステムとどう関係しているかを辺ごとに | [boundary](../../internal/usecase/boundary/README.md) |
+| [agent-environment.md](agent-environment.md) | エージェント環境 | 指示、機械的 gate、独立 review、負荷を考慮した検証がどう協調するか | [AGENTS.md](../../AGENTS.md) |
+| [closed-loop.md](closed-loop.md) | AI フィードバックループ | 開発の窓とは何か、何を観測するか、入れた改善をどう測り直すか | [.agents/](../../.agents/README.md) |
 
-## Reading order
+## 読む順序
 
-The documents are independent, but they read naturally as **entry points → reliability subsystems → cross-cutting**:
+各文書は独立していますが、**入口 → 信頼性サブシステム → 横断**の順で自然に読めます：
 
-1. **Entry points** — [rest](rest.md) (sync), [worker](worker.md) (async), [job](job.md) (CLI / scheduled)
-2. **Reliability subsystems** — [outbox](outbox.md), [idempotency](idempotency.md)
-3. **Cross-cutting** — [observability](observability.md), [auth](auth.md), [security](security.md)
+1. **入口** — [rest](rest.md)（同期）, [worker](worker.md)（非同期）, [job](job.md)（CLI / スケジュール）
+2. **信頼性サブシステム** — [outbox](outbox.md), [idempotency](idempotency.md)
+3. **横断** — [observability](observability.md), [auth](auth.md), [security](security.md)

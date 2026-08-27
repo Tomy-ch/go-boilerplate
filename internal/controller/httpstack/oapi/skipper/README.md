@@ -1,8 +1,8 @@
 # oapi/skipper
 
-Skipper function that bypasses OpenAPI validation for operational endpoints.
+運用系エンドポイントの OpenAPI バリデーションをバイパスする Skipper 関数です。
 
-## Skipped Paths
+## スキップ対象パス
 
 - `/metrics`
 - `/health`
@@ -10,12 +10,12 @@ Skipper function that bypasses OpenAPI validation for operational endpoints.
 - `/ready`
 - `/version`
 
-Uses `ops.IsOpsPath()` internally. These endpoints typically do not have OpenAPI definitions and should not be validated or authenticated.
+内部で `ops.IsOpsPath()` を使用します。これらのエンドポイントは通常 OpenAPI 定義を持たず、バリデーションや認証の対象にすべきではありません。
 
-## Why Skip?
+## なぜスキップするのか
 
-Ops endpoints are infrastructure-level and:
+ops エンドポイントはインフラレベルのため：
 
-- Have no OpenAPI schema definitions
-- Must remain accessible without authentication (health checks by load balancers)
-- Should not trigger validation errors in logs
+- OpenAPI スキーマ定義がない
+- 認証なしでアクセス可能である必要がある（ロードバランサーによるヘルスチェック）
+- バリデーションエラーをログに出力すべきではない

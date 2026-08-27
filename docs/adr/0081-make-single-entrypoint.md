@@ -5,99 +5,91 @@ deciders: [maintainers]
 tags: [toolchain, build]
 ---
 
-# ADR-0081: Make is the single tool entrypoint with .mk registration and self-documenting help
+# ADR-0081: Make を単一のツールエントリポイントとし、.mk 登録とセルフドキュメンティングなヘルプを提供する
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-The project spans many domains: database migrations, code generation, linting, testing,
-documentation, GitHub repository configuration, and more. Without a unified entrypoint,
-contributors must memorise per-domain commands, and automation (CI, git hooks, skills)
-must hard-code tool invocations that can drift from the canonical way to run a task.
+このプロジェクトはデータベースマイグレーション、コード生成、リント、テスト、ドキュメント、
+GitHub リポジトリ設定など多くのドメインにまたがる。統一されたエントリポイントがなければ、
+コントリビューターはドメインごとのコマンドを記憶しなければならず、自動化（CI、git フック、スキル）は
+タスクの実行方法がドリフトし得る具体的なツール呼び出しをハードコードしなければならない。
 
-Adding a new target should not require editing the top-level file. Targets should be
-self-documenting so that `make help` is always accurate without a separately maintained
-reference.
+新しいターゲットを追加するためにトップレベルのファイルを編集する必要があってはならない。
+ターゲットはセルフドキュメンティングであるべきであり、`make help` が別途管理されるリファレンスなしに
+常に正確であること。
 
-## Decision
+## 決定
 
-The top-level `makefile` is the single entrypoint for all developer and automation
-operations. Its structure embodies two conventions.
+トップレベルの `makefile` をすべての開発者・自動化オペレーションの単一エントリポイントとする。
+その構造は 2 つの規約を体現している。
 
-**`.mk` registration:** `.makefiles/` is the central registry. Each thematic `.mk`
-file groups related targets (e.g. `.makefiles/go/lint.mk`, `.makefiles/database/migrate.mk`).
-The top-level `makefile` includes every registered `.mk` file. Adding a new target
-means placing it in the appropriate `.mk` file; no top-level edit is required.
+**`.mk` 登録:** `.makefiles/` は中央レジストリである。各テーマ別の `.mk` ファイルが関連する
+ターゲットをグループ化する（例: `.makefiles/go/lint.mk`、`.makefiles/database/migrate.mk`）。
+トップレベルの `makefile` は登録されたすべての `.mk` ファイルをインクルードする。新しいターゲットの追加は
+適切な `.mk` ファイルに配置するだけでよく、トップレベルの編集は不要である。
 
-**Self-documenting help contract:** `make help` is the default goal
-(`.DEFAULT_GOAL := help`). It is implemented by running `scripts/make-help/index.ts` through `tsx`,
-which walks every `.mk` file recursively and prints each `.PHONY` target whose line
-carries a trailing `## description` comment, grouped under the `## Category` headings
-defined in the `.mk` file. Targets missing the `## description` comment do not appear
-in the help output; `make-help.ts` emits a warning to stderr for each such target.
+**セルフドキュメンティングなヘルプ契約:** `make help` がデフォルトゴール（`.DEFAULT_GOAL := help`）である。
+これは `scripts/make-help/index.ts` を `tsx` で実行することで実装されており、すべての `.mk` ファイルを再帰的に走査し、
+`.mk` ファイルで定義された `## Category` 見出しの下にグループ化して、末尾に `## description` コメントが付いた
+`.PHONY` ターゲットを出力する。`## description` コメントが欠けているターゲットはヘルプ出力に表示されず、
+`make-help.ts` がそのようなターゲットごとに stderr へ警告を出力する。
 
-Target-naming convention: dash-separated lower case (e.g. `make new-migrate-name`,
-`make gen-api`).
+ターゲット命名規則: ダッシュ区切りの小文字（例: `make new-migrate-name`、`make gen-api`）。
 
-Two execution flavours:
+2 種類の実行フレーバー:
 
-- **Normal targets** — invoke tools inside Docker containers for reproducibility; this
-  is the standard path for developers and automation.
-- **`-ci` targets** — invoke tools on bare metal; intended for CI runners or inside
-  containers themselves.
+- **通常ターゲット** — 再現性のために Docker コンテナ内でツールを実行する。開発者と自動化の標準パスである。
+- **`-ci` ターゲット** — ベアメタル上でツールを実行する。CI ランナーまたはコンテナ内部での使用を想定する。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- `make help` provides a self-updating, always-accurate reference for every registered
-  target; documentation never drifts from the actual command surface.
-- `make-help.ts` discovers new `.mk` files automatically (recursive scan of `.makefiles/`),
-  so `make help` stays accurate; making `make` *execute* a new group still requires adding an
-  explicit `include` line to the top-level `makefile`.
-- CI, git hooks, and skills share one stable entrypoint. Because CI, lefthook, and the
-  developer terminal all ultimately invoke the same `make` target implementation, command
-  mistakes and environment divergence are reduced — there is no separate set of commands
-  to get wrong in different contexts.
-- The normal / `-ci` flavour split keeps the same logical operation available in both
-  containerised and bare-metal contexts.
+- `make help` が登録されたすべてのターゲットについて自動更新される正確なリファレンスを提供する。
+  ドキュメントが実際のコマンド面からドリフトすることがない。
+- `make-help.ts` は新しい `.mk` ファイルを自動的に検出する（`.makefiles/` の再帰走査）ため
+  `make help` は正確さを保つ。ただし新しいグループを `make` に**実行**させるには、トップレベル
+  `makefile` への明示的な `include` 行の追加が必要である。
+- CI、git フック、スキルが 1 つの安定したエントリポイントを共有する。CI・lefthook・開発者
+  ターミナルのいずれも最終的に同一の `make` ターゲット実装を呼び出すため、コマンドミスや
+  環境ごとの乖離が減る。異なるコンテキストで別々のコマンドを覚えて間違える余地がない。
+- 通常 / `-ci` フレーバーの分割により、同じ論理オペレーションがコンテナ化とベアメタルの両方のコンテキストで利用できる。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Contributors must follow the `.PHONY` + `## comment` convention; omitting the comment
-  causes the target to disappear from `make help` silently (only a stderr warning from
-  `make-help.ts` signals the problem).
-- GNU Make must be available on contributor machines.
-- The `.mk` file structure requires contributors to know which group file to edit when
-  adding a target.
+- コントリビューターは `.PHONY` + `## comment` の規約に従わなければならない。コメントを省略すると
+  ターゲットが `make help` からサイレントに消える（`make-help.ts` からの stderr 警告のみが問題を通知する）。
+- コントリビューターマシンに GNU Make が必要である。
+- `.mk` ファイル構造では、ターゲットを追加するときにコントリビューターがどのグループファイルを編集すべきかを
+  把握していなければならない。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Task (Taskfile)
+### Task（Taskfile）
 
-YAML-based and more readable for simple tasks, but less universally available than
-Make. The self-documenting convention in Make achieves the same discoverability goal.
+YAML ベースでシンプルなタスクに対してより読みやすいが、Make ほど普遍的に利用可能ではない。
+Make のセルフドキュメンティング規約は同じ探索可能性の目標を達成できる。
 
 ### Just
 
-Similar advantages to Task; introduces an additional tool dependency that is not
-present in most CI images by default.
+Task と同様のメリットがあるが、ほとんどの CI イメージにデフォルトで存在しない追加のツール依存を導入する。
 
-### Bare shell scripts
+### ベアシェルスクリプト
 
-No structured discovery mechanism; contributors must read the filesystem. CI must
-hard-code invocations that can diverge from the developer-facing commands.
+構造化された探索メカニズムがない。コントリビューターはファイルシステムを読まなければならない。
+CI は開発者向けコマンドから乖離し得る呼び出しをハードコードしなければならない。
 
-## Notes
+## 補足
 
-- Top-level makefile and include list:
-  [`makefile`](../../makefile).
-- `.makefiles/` conventions (normal vs `-ci`, naming, group layout):
-  [`.makefiles/README.md`](../../.makefiles/README.md).
-- Help generator source:
-  [`scripts/make-help/index.ts`](../../scripts/make-help/index.ts).
-- Toolchain execution rules (container vs bare-metal):
-  [`docs/rules.md`](../rules.md) § "Toolchain Execution Rules".
+- トップレベルの makefile とインクルードリスト:
+  [`makefile`](../../makefile)。
+- `.makefiles/` の規約（通常 vs `-ci`、命名、グループレイアウト）:
+  [`.makefiles/README.md`](../../.makefiles/README.md)。
+- ヘルプジェネレータのソース:
+  [`scripts/make-help/index.ts`](../../scripts/make-help/index.ts)。
+- ツールチェーン実行ルール（コンテナ vs ベアメタル）:
+  [`docs/rules.md`](../rules.md) § "Toolchain Execution Rules"。

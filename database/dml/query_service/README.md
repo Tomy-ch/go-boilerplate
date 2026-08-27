@@ -1,24 +1,23 @@
 # QueryService DML
 
-Read-only SQL for search and list optimization, bypassing the domain layer.
+検索・一覧取得の最適化を目的とした読み取り専用SQLを管理します。
 
-## Purpose
+## 目的
 
-- Provide optimized read-only queries with JOINs, aggregation, and filtering at the SQL level.
-- Separate read concerns from write operations and transaction management.
-- Generate type-safe Go code via sqlc for compile-time parameter and scan validation.
+- JOIN・集計・フィルタリングをSQLレベルで最適化し、高速な読み取り専用クエリを提供します。
+- 書き込み処理やトランザクション管理から参照処理を分離します。
+- sqlc によるコード生成で、パラメータやスキャンの型をコンパイル時に検証します。
 
-## Predicates That Mirror a Domain Invariant
+## ドメインの不変条件を写した述語
 
 <!-- sample-api:replace-begin -->
-Some predicates restate, in SQL, a condition an aggregate already guarantees. `canceled_at IS NULL`
-is the negation of `Purchase.IsCanceled()` (`status == StatusCanceled`), and `published_at IS NOT NULL`
-is `product.IsPublished()`. The two forms stay equivalent because the aggregate validates that
-correspondence when it is reconstructed — `(status == StatusCanceled) != (canceledAt != nil)` in
-`internal/domain/purchase`.
+一部の述語は、集約が既に保証している条件を SQL で言い直したものである。`canceled_at IS NULL` は
+`Purchase.IsCanceled()`（`status == StatusCanceled`）の否定であり、`published_at IS NOT NULL` は
+`product.IsPublished()` に当たる。両者が等価であり続けるのは、集約が再構築時にその対応を検証するため
+である（`internal/domain/purchase` の `(status == StatusCanceled) != (canceledAt != nil)`）。
 <!-- sample-api:replace-with -->
-<!-- = Some predicates restate, in SQL, a condition an aggregate already guarantees. The two forms stay -->
-<!-- = equivalent because the aggregate validates that correspondence when it is reconstructed. -->
+<!-- = 一部の述語は、集約が既に保証している条件を SQL で言い直したものである。両者が等価であり続けるのは、 -->
+<!-- = 集約が再構築時にその対応を検証するためである。 -->
 <!-- sample-api:replace-end -->
 
 <!-- 撤去後にこの箇所へ自分の例を置くための指針。
@@ -27,24 +26,24 @@ correspondence when it is reconstructed — `(status == StatusCanceled) != (canc
      書き方: 自分の集約で、列に対する条件とそれを保証するメソッド名を 1 組挙げ、
              再構築時にその対応を検証している箇所を指す。 -->
 
-The definition lives on the domain method, not in the query. A query's comment therefore names which
-method its predicate mirrors and stops there; when the domain rule changes, this section and the
-method move together and the queries need no edit.
+定義を持つのはドメインのメソッドであってクエリではない。したがってクエリのコメントは、その述語が
+どのメソッドを写したものかを名指すに留める。ドメイン規則が変われば、この節とメソッドが一緒に動き、
+クエリ側は編集を要しない。
 
-## Infrastructure Mapping
+## インフラストラクチャマッピング
 
-Implementation: `internal/infrastructure/rdb/query_service/`
+実装: `internal/infrastructure/rdb/query_service/`
 
-## Directory Structure
+## ディレクトリ構成
 
-One directory per read model, named after the aggregate the projection is read from.
+読み取りモデルごとに 1 つのディレクトリを置き、投影の起点となる集約の名前を付ける。
 
-## Naming Convention
+## 命名規則
 
-- Files: verb + target (e.g., `list_published_<noun>s.sql`)
-- `-- name:` annotation required on all queries
+- ファイル名: 動詞 + 対象名（例: `list_published_<noun>s.sql`）
+- 全てのクエリに `-- name:` アノテーションが必須
 
-## Code Generation
+## コード生成
 
 ```sh
 make gen-query

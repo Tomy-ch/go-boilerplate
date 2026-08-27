@@ -1,27 +1,27 @@
 # SystemQuery DML
 
-System operational queries for health checks, metrics collection, and infrastructure monitoring.
+ヘルスチェック、メトリクス収集、インフラ監視のためのシステム運用クエリを管理します。
 
-## Purpose
+## 目的
 
-- Provide queries for system health verification and operational metrics.
-- Separate system-level concerns from application business logic.
-- Generate type-safe Go code via sqlc for compile-time parameter and scan validation.
+- システムの健全性確認や運用メトリクスのためのクエリを提供します。
+- システムレベルの関心事をアプリケーションのビジネスロジックから分離します。
+- sqlc によるコード生成で、パラメータやスキャンの型をコンパイル時に検証します。
 
-## Infrastructure Mapping
+## インフラストラクチャマッピング
 
-Implementation: `internal/infrastructure/rdb/system_cqrs/`
+実装: `internal/infrastructure/rdb/system_cqrs/`
 
-## Directory Structure
+## ディレクトリ構成
 
-One directory per operational concern, named after it — none of them is a business aggregate.
+運用上の関心事ごとに 1 つのディレクトリを置き、その名前を付ける。いずれも業務の集約ではない。
 
-## Naming Convention
+## 命名規則
 
-- Files: verb + target (e.g., `select_system_health.sql`)
-- `-- name:` annotation required on all queries
+- ファイル名: 動詞 + 対象名（例: `select_system_health.sql`）
+- 全てのクエリに `-- name:` アノテーションが必須
 
-## Code Generation
+## コード生成
 
 ```sh
 make gen-query

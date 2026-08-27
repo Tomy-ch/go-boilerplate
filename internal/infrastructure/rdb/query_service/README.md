@@ -1,44 +1,43 @@
-# Query Service Implementation Guide
+# Query Service 実装ガイド
 
-## Position of Query Service in Onion Architecture
+## オニオンアーキテクチャにおける Query Service の位置づけ
 
-In Onion Architecture, persistence abstractions are defined as **Repository interfaces** in the Domain layer. Repository handles per-Aggregate CRUD and guards Domain invariants.
+オニオンアーキテクチャでは、永続化の抽象は Domain 層の **Repository interface** として定義されます。Repository は Aggregate 単位の CRUD を担い、Domain の不変条件を守ります。
 
-Query Service (QS), on the other hand, is an **intentional exception to this principle**.
+一方、Query Service（QS）は **この原則に対する意図的な例外**です。
 
 ```mermaid
 flowchart TB
-    subgraph "Domain Layer"
+    subgraph "Domain 層"
         RepoIF["Repository interface"]
     end
-    subgraph "Usecase Layer"
+    subgraph "Usecase 層"
         QSIF["QueryService interface"]
     end
-    subgraph "Infrastructure Layer"
-        RepoImpl["Repository impl"]
-        QSImpl["QueryService impl"]
+    subgraph "Infrastructure 層"
+        RepoImpl["Repository 実装"]
+        QSImpl["QueryService 実装"]
     end
 
     RepoImpl -. implements .-> RepoIF
     QSImpl -. implements .-> QSIF
 ```
 
-### Why QS Interface Lives in Usecase, Not Domain
+### なぜ QS の interface を Domain ではなく Usecase に置くのか
 
-|Aspect|Repository|Query Service|
+|観点|Repository|Query Service|
 |---|---|---|
-|Concern|Aggregate persistence|Usecase-specific search|
-|Granularity|Per Aggregate|Per screen / API response|
-|Return type|Domain Entity|DTO (display projection)|
-|Invariants|Guaranteed by Domain|Not involved|
-|Interface placement|Domain layer|Usecase layer|
+|関心事|Aggregate の永続化|ユースケース固有の検索|
+|粒度|Aggregate 単位|画面 / API レスポンス単位|
+|返却型|Domain Entity|DTO（表示用の射影）|
+|不変条件|Domain が保証|関与しない|
+|interface 配置|Domain 層|Usecase 層|
 
-QS returns **projections that a usecase needs, not complete Aggregate reconstructions**. This is a Usecase concern, not a Domain concern, so the interface is placed in the Usecase layer (`internal/usecase/<aggregate>/query`).
+QS が返すのは **Aggregate の完全な再構成ではなく、ユースケースが必要とする射影（projection）** です。これは Domain の関心事ではなく Usecase の関心事であるため、interface は Usecase 層（`internal/usecase/<aggregate>/query`）に配置します。
 
-> **Note (Repository may also return a small read model).** The "Return type = DTO" row above is the
-> *typical* split, not an absolute — a Repository read that JOINs a *fixed reference master* may
-> return a small read model with the resolved display value and still be a single-Aggregate
-> Repository read (not a QS).
+> **注記（Repository も小さな read model を返しうる）。** 上表の「返却型 = DTO」は*典型的な*切り分けで
+> あって絶対ではありません。*固定の参照マスタ*を JOIN する Repository の読み取りは、解決済みの表示値を
+> 持つ小さな read model を返しても、なお単一 Aggregate の Repository 読み取り（QS ではない）です。
 > <!-- 撤去後にこの箇所へ自分の例を置くための指針。
 >      目的: どの表からどの表への JOIN かが見えないと、例外の範囲が伝わらない。
 >      意義: 効くのは「参照マスタであること」で、JOIN の向きや表の数ではない。
@@ -46,61 +45,60 @@ QS returns **projections that a usecase needs, not complete Aggregate reconstruc
 > <!-- sample-api:begin -->
 > （サンプルでの例は `purchases` → `purchase_statuses`）
 > <!-- sample-api:end -->
-> What moves a read to QS is crossing
-> *independent* Aggregates / a derived projection, not merely returning a non-Entity. See
-> `docs/rules.md` § "Repository / QueryService Rules".
+> 読み取りを QS へ動かすのは、*独立した* Aggregate をまたぐことや派生した射影であって、単に Entity 以外を
+> 返すことではありません。`docs/rules.md` の「Repository / QueryService Rules」節を参照してください。
 
-### Relationship to CQRS
+### CQRS との関係
 
-Introducing QS is a **lightweight CQRS (Command Query Responsibility Segregation)** approach.
+QS の導入は **軽量 CQRS（Command Query Responsibility Segregation）** のアプローチです。
 
-- **Command (write)**: Goes through Repository, guarding Domain Entity invariants
-- **Query (read)**: Goes through QS, executing performance-optimized search queries directly
+- **Command（書き込み）**: Repository を経由し、Domain Entity の不変条件を守る
+- **Query（読み取り）**: QS を経由し、パフォーマンス最適化された検索クエリを直接実行
 
-This is not full CQRS (separate DB / event sourcing), but a **practical design that separates read/write responsibilities on the same DB**.
+完全な CQRS（別 DB / イベントソーシング）ではなく、**同一 DB 上で読み書きの責務を分離する実用的な設計**です。
 
-### When to Use QS Over Repository
+### QS を採用する判断基準
 
-Consider QS instead of Repository when:
+以下に該当する場合、Repository ではなく QS を検討します。
 
-- Searches requiring multi-table JOINs
-- Paginated list retrieval
-- Full-text or keyword search
-- Queries requiring aggregation or grouping
-- Reads whose natural shape is a projection wasteful to reconstruct as a full Aggregate
-  (a few columns from a heavy Aggregate, or a joined view)
+- 複数テーブルの JOIN が必要な検索
+- ページネーション付きの一覧取得
+- 全文検索やキーワード検索
+- 集計・グルーピングが必要なクエリ
+- 自然な形が projection であり、full Aggregate として再構成するのが無駄になる読み取り
+  （重い Aggregate から数カラムだけ、または結合ビュー）
 
-Conversely, **simple single-Aggregate reads stay in Repository** — fetch by ID, and simple
-filter / list / count by the Aggregate's own attributes (including an unfiltered full list such
-as `SELECT * FROM <table> ORDER BY ...`). Returning many rows, or mapping the result to a
-response DTO, does **not** by itself move a read to QS — only crossing Aggregates or the
-query-complexity cases above do. See
-[`docs/rules.md`](../../../../docs/rules.md) § "Repository / QueryService Rules".
+逆に、**単一 Aggregate の単純な読み取りは Repository に留めます** — ID による取得、および
+Aggregate 自身の属性による単純なフィルタ・一覧・件数取得（`SELECT * FROM <table> ORDER BY ...`
+のような無フィルタの全件一覧を含む）。多数の行を返すことや、結果をレスポンス DTO へ写像すること
+それ自体では QS に移す理由にはなりません — Aggregate を横断するか、上記の検索複雑性のケースに
+該当する場合のみ QS を使います。[`docs/rules.md`](../../../../docs/rules.md) の
+§ "Repository / QueryService Rules" を参照してください。
 
-## Role
+## 役割
 
-Query Service is a layer that provides **read-only queries such as search and list retrieval**.
+Query Service は **検索・一覧取得などの読み取り専用クエリーを提供する層**です。
 
 ```mermaid
 flowchart TB
     Controller --> Usecase --> QS["QueryService"] --> Sqlc["sqlc"] --> DB["Database"]
 ```
 
-The responsibilities of Query Service are as follows:
+Query Service の責務は次の通りです。
 
-1. Execute SQL search
-2. Convert Row → Domain Entity / DTO
-3. Normalize DB errors
+1. SQL検索の実行
+2. Row → Domain Entity / DTO 変換
+3. DBエラー正規化
 
-Query Service **does not contain business logic.**
+Query Service は **ビジネスロジックを持ちません。**
 
-## Architecture Position
+## アーキテクチャ上の位置
 
-QueryService implementations are placed in the following location.
+QueryService 実装は次の場所に配置します。
 
 `internal/infrastructure/rdb/query_service/<aggregate>/`
 
-Example
+例
 
 ```txt
 query_service/
@@ -108,84 +106,84 @@ query_service/
      └ <aggregate>_query_service.go
 ```
 
-QueryService interfaces are placed in the **Usecase layer**.
+QueryService Interface は **Usecase 層**に配置します。
 
 `internal/usecase/<aggregate>/query`
 
-Example
+例
 
 ```txt
 internal/usecase/<aggregate>/query/<aggregate>_query_service.go
 ```
 
-Infrastructure **only implements this interface**.
+Infra はこの Interface を **実装するのみ**です。
 
-## QueryService Responsibilities
+## QueryService の責務
 
-QueryService is responsible for **search-specific data retrieval**.
+QueryService は **検索専用のデータ取得**を担当します。
 
 ```mermaid
 flowchart TB
     Query --> Sqlc --> Row --> Domain["Domain Entity or DTO"] --> Ret["return"]
 ```
 
-QueryService does not perform the following:
+QueryService は次を行いません。
 
-- Business rules
-- Usecase logic
-- Controller processing
-- Transaction management
+- ビジネスルール
+- Usecaseロジック
+- Controller処理
+- トランザクション管理
 
-## sqlc Usage
+## sqlc の利用
 
-QueryService uses **sqlc generated queries**.
+QueryService は **sqlc 生成クエリ**を利用します。
 
 ```go
 rows, err := db.Search<Entities>(ctx, &gen.Search<Entities>Params{...})
 ```
 
-## SQL Splitting Design
+## SQL分割設計
 
-Search conditions (active / deleted / all) are not branched within SQL, but implemented as separate queries.
+検索条件（active / deleted / all）は SQL 内で分岐せず、クエリを分割して実装します。
 
-Example:
+例：
 
 - Search<Entities>
 - SearchActive<Entities>
 - SearchDeleted<Entities>
 
-Reasons:
+理由：
 
-- Improve SQL readability
-- Improve index efficiency
-- Simplify sqlc generated code
+- SQLの可読性向上
+- インデックス効率の向上
+- sqlc生成コードの単純化
 
-## LIKE Search Helper
+## LIKE検索ヘルパー
 
-For keyword search, use helpers from `internal/infrastructure/rdb/sqlc`.
+キーワード検索では`internal/infrastructure/rdb/sqlc`のヘルパーを利用します。
 
-Example
+例
 
 ```go
 escaped := sqlc.EscapeForLike(keyword, sqlc.DefaultLikeEscapeChar)
 pattern := sqlc.WrapContainsLikePattern(escaped)
 ```
 
-Purpose:
+目的
 
-- Prevent LIKE injection
-- Standardize search patterns
+- LIKEインジェクション防止
+- 検索パターン統一
 
-Keyword search is executed with OR conditions (ILIKE ANY).
+キーワード検索は OR 条件（ILIKE ANY）で実行されます。
 
-## Deleted State Control
+## 削除状態の制御
 
-Filtering by deleted state is handled by branching in Go and calling dedicated queries.
+削除状態のフィルタリングは、Go側で分岐し、専用クエリを呼び分けます。
 
 ```go
 switch {
 case filter.Active == nil:
-    // all
+    // 全件
 case *filter.Active:
     // active
 case !*filter.Active:
@@ -193,22 +191,22 @@ case !*filter.Active:
 }
 ```
 
-With this design:
+この設計により：
 
-- Prevent SQL complexity
-- Maintain index efficiency
-- Improve readability
+- SQLの複雑化を防ぐ
+- インデックス効率を維持する
+- 可読性を向上させる
 
-## Row → Return Type Conversion
+## Row → 返却型への変換
 
-Row structs returned by sqlc are **Infrastructure-specific types**.
+sqlc が返す Row 構造体は **Infrastructure 専用型**です。
 
-However, in this project, type conversions are applied at generation time using sqlc override:
+ただし、本プロジェクトでは sqlc の override を利用して、生成時に次のような型変換を適用しています。
 
-- nullable → pointer type
-- UUID → `pkg/uuid` type
+- nullable → pointer 型
+- UUID → `pkg/uuid` 型
 
-Therefore, QueryService can pass generated types directly to Domain constructors or DTOs with minimal additional conversion.
+そのため QueryService では、追加の変換処理をほとんど行わず、生成済みの型をそのまま Domain constructor または DTO に渡せます。
 
 ```go
 u, err := <aggregate>.New(
@@ -219,60 +217,59 @@ u, err := <aggregate>.New(
 )
 ```
 
-Important rules:
+重要ルール
 
-- Do not return sqlc Row directly to upper layers
-- Convert to Domain Entity or DTO
+- sqlc Row をそのまま上位層へ返さない
+- Domain Entity または DTO に変換する
 
-## About UUID
+## UUID について
 
-In this project, sqlc override aligns UUID in DB and `pkg/uuid` used in Domain.
+本プロジェクトでは sqlc override により、DB 上の UUID と Domain で利用する `pkg/uuid` を同一の扱いに寄せています。
 
-Therefore, explicit UUID conversion in QueryService is generally unnecessary.
+そのため QueryService での明示的な UUID 変換は基本的に不要です。
 
 ```go
-row.<Entity>.ID // usable as-is
+row.<Entity>.ID // そのまま利用可能
 ```
 
-Use the `pkg/uuid` wrapper for UUID generation, comparison, and helper operations.
+UUID の生成・比較・補助処理は `pkg/uuid` のラッパーを利用します。
 
-## About Nullable
+## Nullable について
 
-Nullable values are handled as pointer types via sqlc override.
+nullable 値は sqlc override により pointer 型として扱われます。
 
-Therefore, additional conversion in QueryService is unnecessary.
+そのため QueryService では追加の変換処理は不要です。
 
 ```go
 row.<Entity>.OptionalText  // *string
 row.<Entity>.DeletedAt     // *time.Time
 ```
 
-## DB Access (driver)
+## DB アクセス（driver）
 
-QueryService accesses the DB through `driver.DatabaseDriver`.
+QueryService は `driver.DatabaseDriver` を通じて DB にアクセスします。
 
 ```go
 db := gen.New(driver.New(ctx, s.db))
 ```
 
-`driver.New(ctx, db)` provides:
+`driver.New(ctx, db)` は次を提供します。
 
-- Transparent switching between DB / Tx (picks the tx in context if present)
-- Context-based connection retrieval
+- DB / Tx の透過切り替え（context に tx があればそれを採用）
+- Context ベース接続取得
 
-SQL logging / tracing is applied transparently by the pgx query tracer wired at the driver
-connection level (see `driver/README.md`), so QueryService is designed to **not be aware of DB
-connection state**.
+SQL のログ / トレースは driver の接続層に結線した pgx クエリトレーサーが透過的に付与します
+（`driver/README.md` 参照）。そのため QueryService は **DB 接続状態を意識しない設計**になります。
 
-## Error Normalization
+## エラー正規化
 
-PostgreSQL errors are normalized in `internal/infrastructure/rdb/pgerror`.
+PostgreSQL エラーは`internal/infrastructure/rdb/pgerror`で正規化します。
 
 ```go
 return pgerror.NormalizeError(err)
 ```
 
-Main mappings:
+主な変換
 
 ```mermaid
 flowchart TB
@@ -282,40 +279,44 @@ flowchart TB
     G["others"] --> H["ErrInternal"]
 ```
 
-## Observability (Tracing)
+## Observability（Tracing）
 
-QueryService uses:
+QueryService では
 
 `observability.LayerTracer`
+
+を利用します。
 
 ```go
 ctx, endSpan := s.tracer.Start(ctx)
 defer endSpan()
 ```
 
-QueryService is responsible only for:
+QueryService は
 
-- span start
-- span end
+- span開始
+- span終了
 
-### About span name
+のみを責務とします。
 
-Span names are uniformly assigned by LayerTracer, so QueryService does not need to explicitly specify them.
+### span名について
 
-### Design Intent
+span名は LayerTracer 側で統一的に付与されるため、QueryService 側で明示的に指定する必要はありません。
 
-- Ensure tracing consistency
-- Separate responsibilities across layers
-- Eliminate direct dependency on OpenTelemetry
+### 設計意図
 
-## DI (Dependency Injection) Mechanism (Query Service)
+- トレーシングの一貫性確保
+- 各レイヤーでの責務分離
+- OpenTelemetry への直接依存排除
 
-Query Service is created using **DI with Uber Fx**.  
-Like Repository, it is implemented in the Infrastructure layer and injected into the Usecase layer interface.
+## DI（Dependency Injection）の仕組み（Query Service）
 
-### Overall Structure
+Query Service は **Uber Fx による DI** で生成されます。  
+Repository と同様に、Infrastructure 層で実装し、Usecase 層の interface に注入されます。
 
-Query Service is registered via `fx.Provide` and injected into Usecase.
+### 全体構成
+
+Query Service は `fx.Provide` により登録され、Usecase に注入されます。
 
 ```mermaid
 flowchart TB
@@ -327,10 +328,10 @@ flowchart TB
     Module --> Provide --> IF --> Usecase
 ```
 
-### Role of internal/di/module/persistence.go
+### internal/di/module/persistence.go の役割
 
-Persistence providers (repository / query_service / system_cqrs) are registered in
-`persistenceModule`, which `InfrastructureModule()` composes.
+永続化系のプロバイダ（repository / query_service / system_cqrs）は `persistenceModule`
+に登録され、`InfrastructureModule()` がこれを合成します。
 
 ```go
 func persistenceModule() fx.Option {
@@ -345,11 +346,11 @@ func persistenceModule() fx.Option {
 ```
 
 - `fx.Provide`
-  - Registers the Query Service constructor
-- Return value is the **interface defined in the Usecase layer**
-  - Example: `query.<Aggregate>QueryService`
+  - Query Service のコンストラクタを登録
+- 戻り値は **Usecase 層で定義された interface**
+  - 例: `query.<Aggregate>QueryService`
 
-### Query Service Constructor Design
+### Query Service のコンストラクタ設計
 
 ```go
 func New(
@@ -363,24 +364,24 @@ func New(
 }
 ```
 
-Key points:
+ポイント：
 
-- Return value must be an **interface (Usecase definition)**
-- All dependencies must be received as arguments (new is prohibited)
-- External dependencies such as DB / Tracer are confined to Infrastructure
+- 戻り値は **interface（Usecase定義）**
+- 依存はすべて引数で受け取る（new禁止）
+- DB / Tracer などの外部依存は Infrastructure に閉じ込める
 
-### DI Flow
+### DI の流れ
 
 ```mermaid
 flowchart TB
     Provide["fx.Provide(<aggregate>qs.New)"]
     IF["query.<Aggregate>QueryService"]
-    Usecase["Usecase (dependency)"]
+    Usecase["Usecase (依存)"]
 
     Provide --> IF --> Usecase
 ```
 
-On the Usecase side:
+Usecase 側では
 
 ```go
 type service struct {
@@ -388,32 +389,32 @@ type service struct {
 }
 ```
 
-is used to receive via interface.
+のように interface で受け取ります。
 
-### Difference from Repository (DI perspective)
+### Repository との違い（DI観点）
 
 ||Repository|Query Service|
 |---|---|---|
-|interface definition location|domain|usecase|
-|return type|domain.Repository|query.QueryService|
-|purpose|persistence|search|
+|interface 定義場所|domain|usecase|
+|返却型|domain.Repository|query.QueryService|
+|用途|永続化|検索|
 
-### Why return Usecase interface
+### なぜ Usecase interface を返すのか
 
-- Query is a Usecase concern (per usecase)
-- Not placed in Domain because it is not aggregate-based
-- Allows flexible handling of search specification changes
+- Query は Usecase の関心事（ユースケース単位）
+- Aggregate単位ではないため Domain に置かない
+- 検索仕様変更に柔軟に対応できる
 
-### Rules for AI / Developers
+### AI / 開発者向けルール
 
-- Query Service constructor must always be defined as `New`
-- Return value must be the Usecase interface
-- Do not new dependencies inside Query Service
-- Register DI in `internal/di/module/persistence.go` (`persistenceModule`)
+- Query Service の constructor は必ず `New` で定義すること
+- 戻り値は Usecase interface にすること
+- Query Service 内で依存を new しないこと
+- DI登録は `internal/di/module/persistence.go`（`persistenceModule`）に追加すること
 
-## QueryService Structure
+## QueryService 構造体
 
-QueryService has the following dependencies.
+QueryService は次の依存を持ちます。
 
 ```go
 type service struct {
@@ -436,34 +437,34 @@ func New(
 }
 ```
 
-## Difference from Repository
+## Repository との違い
 
-Repository and QueryService have different roles.
+Repository と QueryService の役割は異なります。
 
 ||Repository|QueryService|
 |---|---|---|
-|purpose|Aggregate persistence|search|
-|operation|CRUD|search|
-|responsibility|Aggregate unit|search-specific|
-|placement|domain interface|usecase interface|
+|目的|Aggregate 永続化|検索|
+|操作|CRUD|検索|
+|責務|Aggregate単位|検索専用|
+|配置|domain interface|usecase interface|
 
 ## Anti-Patterns
 
-### 1. Writing search in Repository
+### 1. Repository に検索を書く
 
-Search processing should be implemented in QueryService, not Repository.
+検索処理は Repository ではなく QueryService に実装します。
 
-However, the following simple filters are allowed in Repository:
+ただし Repository では、次のような単純なフィルタは許容されます。
 
-- Retrieval by ID / foreign key
-- Simple condition filtering
-- Count retrieval (COUNT)
+- ID / 外部キーによる取得
+- 単純な条件絞り込み
+- 件数取得（COUNT）
 
-More complex searches (multiple conditions, full-text search, etc.) should be implemented in QueryService.
+それ以上の検索（複数条件・全文検索など）は QueryService に実装します。
 
-### 2. Writing business logic
+### 2. ビジネスロジックを書く
 
-QueryService is **data retrieval only**.
+QueryService は **データ取得のみ**です。
 
 NG
 
@@ -472,7 +473,7 @@ if entity.IsPremium() {
 }
 ```
 
-### 3. Returning sqlc Row
+### 3. sqlc Row を返す
 
 NG
 
@@ -480,20 +481,20 @@ NG
 return rows
 ```
 
-Always convert to Domain.
+必ず Domain に変換します。
 
-## Implementation Example
+## 実装例
 
 ```go
-// service is the implementation of QueryService.
-// It is responsible for DB access and tracing.
+// service は QueryService の実装です。
+// DBアクセスとトレーシングを責務として持ちます。
 type service struct {
     db     driver.DatabaseDriver
     tracer observability.LayerTracer
 }
 
-// New is the constructor for QueryService.
-// All dependencies are injected externally; no new is performed internally.
+// New は QueryService のコンストラクタです。
+// 依存はすべて外から注入し、内部で new は行いません。
 func New(
     db driver.DatabaseDriver,
     tf observability.TracerFactory,
@@ -504,7 +505,7 @@ func New(
     }
 }
 
-// buildLikeTokens converts keywords into LIKE patterns. Returns ["%"] (match-all) when empty.
+// buildLikeTokens は、キーワードを LIKE パターンへ変換します。空の場合は全件マッチの ["%"] を返します。
 func buildLikeTokens(keywords []string) []string {
     if len(keywords) == 0 {
         return []string{"%"}
@@ -517,10 +518,10 @@ func buildLikeTokens(keywords []string) []string {
     return tokens
 }
 
-// FindByFilter searches based on keywords and deleted state.
-// - Keywords are converted to LIKE patterns
-// - Deleted state is branched in Go
-// - SQL uses dedicated queries
+// FindByFilter は、キーワードと削除状態に基づいて検索します。
+// - キーワードは LIKE パターンに変換
+// - 削除状態は Go 側で分岐
+// - SQL は専用クエリを呼び分ける
 func (s *service) FindByFilter(ctx context.Context, filter *query.<Aggregate>SearchFilter, limit, offset int32) (query.<Aggregate>SearchResults, error) {
     ctx, endSpan := s.tracer.Start(ctx)
     defer endSpan()
@@ -528,7 +529,7 @@ func (s *service) FindByFilter(ctx context.Context, filter *query.<Aggregate>Sea
     tokens := buildLikeTokens(filter.Keywords)
     db := gen.New(driver.New(ctx, s.db))
 
-    // Switch queries based on deleted state
+    // 削除状態に応じてクエリを切り替える
     switch {
     case filter.Active == nil:
         return fetchSearchAll(ctx, db, &gen.Search<Entities>Params{
@@ -551,8 +552,8 @@ func (s *service) FindByFilter(ctx context.Context, filter *query.<Aggregate>Sea
     }
 }
 
-// fetchSearchAll is a helper function to search all rows.
-// It separates logic from the service method and clarifies responsibilities.
+// fetchSearchAll は、全件を検索するヘルパー関数です。
+// service メソッドからロジックを分離し、責務を明確にします。
 func fetchSearchAll(
     ctx context.Context,
     db *gen.Queries,
@@ -563,9 +564,9 @@ func fetchSearchAll(
         return nil, pgerror.NormalizeError(err)
     }
 
-    // Row → DTO conversion
-    // sqlc override already maps nullable → pointer and UUID → pkg/uuid,
-    // so each column is copied into the DTO with minimal additional conversion.
+    // Row → DTO 変換
+    // sqlc override により nullable → pointer / UUID → pkg/uuid は変換済みのため、
+    // 各カラムを最小限の追加変換で DTO へ詰め替えます。
     results := make(query.<Aggregate>SearchResults, len(rows))
     for i, row := range rows {
         results[i] = &query.<Aggregate>SearchResult{

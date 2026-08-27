@@ -1,106 +1,94 @@
 ---
 name: portal-manifest-sync
 description: >-
-  Audit `docs/portal/manifest.yaml` against the real `README.md` / `README.ja.md` files on disk. The manifest is treated as a **curated reading list**, not a complete mirror of disk. Workflow has three quality gates before any reporting: (1) **pair_drift preflight** — if translation sibling files are missing, offer to chain into `canonicalize-doc` to resolve before continuing; (2) **API-doc filter** — applies the N1 (Pure API reference) criterion defined in `.codex/skills/readme-review/SKILL.md` to exclude READMEs that are dominantly Go API references (godoc's responsibility); (3) **manual-worthiness judgment** — each remaining uncurated README is evaluated by applying the P1–P7 positive criteria and the N2–N4 negative criteria from `readme-review`, then classified using its thresholds (manual-worthy / borderline / not-yet-manual-grade / out-of-scope-for-portal). After the gates, the skill surfaces: `stale` (removable), `manual-worthy`, `borderline`, `not-yet-manual-grade`, and `out-of-scope-for-portal` (count only). Edits only `docs/portal/manifest.yaml`; never touches `docs/portal/guides/**`. Criteria are NOT duplicated here — they live in `readme-review` SKILL.md as the single source of truth.
+  Audit `docs/portal/manifest.yaml` against the real `README.md` files on disk. The manifest is treated as a **curated reading list**, not a complete mirror of disk. Workflow has three quality gates before any reporting: (1) **pair_drift preflight** — if translation sibling files are missing, offer to chain into `canonicalize-doc` to resolve before continuing; (2) **API-doc filter** — applies the N1 (Pure API reference) criterion defined in `.codex/skills/readme-review/SKILL.md` to exclude READMEs that are dominantly Go API references (godoc's responsibility); (3) **manual-worthiness judgment** — each remaining uncurated README is evaluated by applying the P1–P7 positive criteria and the N2–N4 negative criteria from `readme-review`, then classified using its thresholds (manual-worthy / borderline / not-yet-manual-grade / out-of-scope-for-portal). After the gates, the skill surfaces: `stale` (removable), `manual-worthy`, `borderline`, `not-yet-manual-grade`, and `out-of-scope-for-portal` (count only). Edits only `docs/portal/manifest.yaml`; never touches `docs/portal/guides/**`. Criteria are NOT duplicated here — they live in `readme-review` SKILL.md as the single source of truth.
 ---
 
 # Portal Manifest Sync
 
-This skill audits `docs/portal/manifest.yaml` against the real `README.md` / `README.ja.md` files on disk. The manifest drives `scripts/portal/gen-portal-docs.ts`, which copies each `src` to its `dst` under `docs/portal/guides/`.
+このスキルは `docs/portal/manifest.yaml` をディスク上の実体（`README.md`）と照合します。manifest は `scripts/portal/gen-portal-docs.ts` の入力で、各 `src` を `docs/portal/guides/` 配下の `dst` にコピーします。
 
-## Key Assumptions
+## 重要な前提
 
-### 1. manifest is a manual, not a dictionary
+### 1. manifest は manual であって辞書ではない
 
-The portal is a **curated, narrative manual for humans to read**. It is intentionally NOT a complete dictionary of every README in the repo:
+portal は **キュレートされた読み物としての manual** です。全 README の完全な辞書ではありません:
 
-- An exhaustive enumeration of every sub-package's README would bury the conceptual flow under noise (a `di/server/extension/decoration/README.md`-level entry adds little to a reader trying to understand the architecture).
-- The `dst` filenames inside `manifest.yaml` are curated for human navigability (e.g., `database/dml/README.md` → `sqlc-query-guide.md`, not a mechanical `database-dml.md`). Bulk additions break this curation discipline.
+- 全サブパッケージの README を網羅的に並べると、概念の流れがノイズに埋もれる（`di/server/extension/decoration/README.md` 級のエントリは、アーキテクチャを理解しようとする読者にほとんど寄与しない）。
+- `manifest.yaml` 内の `dst` ファイル名は人が辿りやすいようキュレートされている（例: 機械的な `database-dml.md` ではなく `database/dml/README.md` → `sqlc-query-guide.md`）。一括追加はこのキュレーション規律を壊す。
 
-Therefore an on-disk README that is not registered is **not drift** — it is a candidate awaiting human curation judgment.
+manifest 未登録のディスク README は **drift ではなく** 人間の判断待ち候補。
 
-### 2. API surface is godoc's responsibility, not the portal's
+### 2. API surface は godoc の責務
 
-Public Go API (functions, types, methods) is documented at the source level and surfaced via godoc — handled by a separate generator pipeline (out of scope for this skill). READMEs that primarily list API surface (heuristic: have a `## Public API` heading) are therefore **filtered out of candidates** by this skill. They are reported as a count only ("godoc 領域として除外"), never proposed as portal additions.
+公開 Go API は source レベルで godoc 経由 — 別の生成系で対応する（このスキルの責務外）。`readme-review` の N1（Pure API reference）基準を満たす README は **候補から除外**。件数のみ surface。
 
-### 3. Candidate quality is judged by the criteria in `readme-review`
+### 3. 評価基準は `readme-review` を参照（重複定義しない）
 
-The evaluation criteria for "manual-worthy" are NOT duplicated in this skill. They live in `.codex/skills/readme-review/SKILL.md` as the single source of truth (the P1–P7 positive criteria, the N1–N4 negative criteria, and the four-class thresholds). This skill **applies** those criteria during Step 3; if the criteria evolve, only `readme-review` needs editing and this skill's behavior follows.
+「manual-worthy か」の評価基準は本スキルにハードコードせず、`.codex/skills/readme-review/SKILL.md` を **single source of truth** として扱う（P1〜P7 positive、N1〜N4 negative、4 クラス閾値）。本スキルは Step 3 で **その基準を適用** する。基準が進化したら `readme-review` だけ編集すれば本スキルの挙動も追従。
 
-Result classes (per `readme-review` thresholds):
+4 クラスの結果（`readme-review` の閾値に従う）:
 
-- **`manual-worthy`** — positive score ≥ 3 and no negative trigger → suitable for curation
-- **`borderline`** — positive 1–2 and no negative trigger → README needs minor補強 before being portal-grade
-- **`not-yet-manual-grade`** — stub / index-only (N2/N3 triggered) → README needs substantial work or stays out
-- **`out-of-scope-for-portal`** — Pure API ref (N1) or Operational ref (N4) → belongs in godoc / CLI docs, never in portal
+- **`manual-worthy`** — positive ≥ 3、negative トリガなし → curation に適する
+- **`borderline`** — positive 1〜2、negative トリガなし → 少し補強で manual 化可能
+- **`not-yet-manual-grade`** — N2/N3 トリガ（stub / index-only）→ README 充実が先、または portal 対象外
+- **`out-of-scope-for-portal`** — N1（Pure API ref）/ N4（Operational ref）トリガ → godoc / CLI 領域、portal 不要
 
-All four classes are reported but **none are auto-added**. Adding from any class remains the user's deliberate curation decision.
+4 クラスとも自動追加しない。追加は人間の curation 判断。
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+## 使うとき
 
-## When to Use
+- ファイル移動 / 削除後、stale な `src` を掃除したい
+- 翻訳ペアのギャップを検出・解消したい
+- フィーチャーブランチをマージする前のリグレッション確認
+- portal 未登録 README のスナップショットを取って手動キュレーション判断の材料にしたい
+- 定期的な健康診断
 
-Use this skill when:
+以下の用途には使いません:
 
-- Files have been moved or removed and you want to clean up stale `src` entries that produce `gen-portal-docs.ts` warnings.
-- You want to detect translation pair gaps (`README.md` without a `README.ja.md` sibling, or vice versa).
-- Before merging a feature branch, to verify no portal regression was introduced.
-- You want a snapshot of which on-disk READMEs are *not* currently exposed in the portal — to inform a manual curation decision, NOT to mass-add them.
-- Periodically as a hygiene pass.
+- portal そのものを生成 → `make gen-portal-docs`
+- 未登録 README を一括追加 — manual のキュレーション意図を破壊するため
+- 不足翻訳ファイルの生成 → `canonicalize-doc`
+- README 本文の更新 → `sync-readme`
+- 単一 README の **深堀レビュー**（強み・ギャップ・補強提案付き）→ `/readme-review <path>`
 
-Do NOT use this skill for:
+## 読み書き範囲
 
-- Generating the portal output itself — use `make gen-portal-docs`.
-- Mass-adding undocumented READMEs to the manifest — that defeats the manual's curation intent. Treat additions as a deliberate per-file editorial decision.
-- Creating the missing translation file — chain into `canonicalize-doc` (this skill only flags the drift).
-- Rewriting individual README contents — use `sync-readme`.
+**読み込み（常時）**:
 
-## What This Skill Reads / Writes
+- `docs/portal/manifest.yaml`
+- `.codex/skills/readme-review/SKILL.md`（評価基準の source of truth、実行ごとに再読込）
+- リポジトリ全体の `README.md`。次は常に除外する:
+  - `docs/portal/guides/**`（原本の生成コピー）
+  - `vendor/**`、`node_modules/**`
+  - `.git/**`、`.codex/**`（スキル / 設定ファイル。portal のコンテンツではない）
+  - `.gitignore` に一致するパス
+- `scripts/portal/gen-portal-docs.ts`
 
-**Reads (always)**:
+**書き込み（承認後のみ）**:
 
-- `docs/portal/manifest.yaml` — source of truth for which READMEs are exposed.
-- All `README.md` / `README.ja.md` files in the repo, with these always excluded:
-  - `docs/portal/guides/**` (generated copies of the originals)
-  - `vendor/**`, `node_modules/**`
-  - `.git/**`, `.codex/**` (skill / config files; not portal content)
-  - Any path matching `.gitignore`
-- `scripts/portal/gen-portal-docs.ts` — to confirm the dst convention is still `docs/portal/guides/<flat-name>.md`.
+- `docs/portal/manifest.yaml` — `stale` 削除 / 明示的なキュレーション要求での追加
 
-**Writes (only with confirmation)**:
+**触らない**:
 
-- `docs/portal/manifest.yaml` — adds new entries, removes stale entries.
+- `docs/portal/guides/**`（`make gen-portal-docs` が毎回再生成する）
+- ソースの README そのもの
+- `docs/` 配下の生成物
 
-**Never touches**:
+## 最初のステップ: スコープ確認
 
-- `docs/portal/guides/**` (regenerated by `make gen-portal-docs` on every run)
-- The source READMEs themselves
-- Generated artifacts under `docs/`
-
-## First Step: Confirm Scope
-
-This skill **MUST call `ask the user explicitly` immediately after invocation** to confirm scope.
-
-Question text (Japanese):
+`ask the user explicitly`:
 
 - 「manifest 同期のモードを選んでください」
-- Options:
+- 選択肢:
   - 「検出 + 適用（差分を提示して、承認後に manifest.yaml を更新）」
   - 「検出のみ（dry-run、書き込みなし）」
   - 「キャンセル」
 
-Do not read any files (beyond what's needed for the question) before scope is confirmed.
-
-## Step 1. Enumerate Sources
-
-Build two sets:
+## Step 1. ソース列挙
 
 ```sh
-# manifest_srcs: every `src:` value in docs/portal/manifest.yaml
-# (parse the YAML and collect across all groups)
-
-# disk_srcs: every README{,.ja}.md present on disk, excluding the exclusion list above
-find . -name 'README*.md' -type f \
+find . -name '*README*.md' -type f \
   -not -path './docs/portal/guides/*' \
   -not -path './vendor/*' \
   -not -path './node_modules/*' \
@@ -109,62 +97,58 @@ find . -name 'README*.md' -type f \
   | sed 's|^\./||' | sort
 ```
 
-Then compute:
+そこから:
 
-- **`stale`** (actionable) = `manifest_srcs - disk_srcs` — manifest entries whose source files no longer exist
-- **`pair_drift`** (preflight target) — for each disk README, check the sibling translation exists in both directions
-- **`uncurated_raw`** = `disk_srcs - manifest_srcs` — on-disk READMEs not in the manifest. Will be passed through filtering (Step 3) before being shown.
+- **`stale`**（修正対象）= `manifest_srcs - disk_srcs`
+- **`pair_drift`**（プリフライト対象）= 各 disk README の sibling 翻訳の有無（両方向）
+- **`uncurated_raw`** = `disk_srcs - manifest_srcs` — Step 3 の判定を通してから surface
 
-## Step 2. Pair_drift Preflight
+## Step 2. Pair_drift プリフライト
 
-Pair_drift fragments the portal: an entry that gets registered while its sibling translation is still missing leads to broken navigation and creates immediate drift in subsequent runs of this skill. Resolve it before continuing.
+pair_drift を残したまま entry を登録すると portal navigation が壊れる。本流前に解消する。
 
-If `pair_drift` is empty: skip to Step 3.
+`pair_drift` 空: Step 3 へ。
 
-If `pair_drift` is non-empty: show the list and ask the user via `ask the user explicitly`:
+非空:
 
-- Question: 「pair_drift が N 件あります。本流に進む前に解消しますか？」
-- Options:
-  - 「canonicalize-doc を chain して順次解消」 — for each pair_drift item, invoke the `canonicalize-doc` skill. After all are processed, re-enumerate (Step 1) and continue.
-  - 「未解消のまま続行（レポートに残す）」 — leave pair_drift as a reported item in Step 6; the rest of the workflow proceeds.
-  - 「中断」 — stop the skill entirely; user will handle pair_drift externally.
+- 質問: 「pair_drift が N 件あります。本流に進む前に解消しますか？」
+- 選択肢:
+  - 「canonicalize-doc を chain して順次解消」 — 各 pair_drift に対し `canonicalize-doc` 起動、全件処理後に Step 1 再列挙
+  - 「未解消のまま続行（レポートに残す）」
+  - 「中断」
 
-If chained into `canonicalize-doc`, do NOT silently auto-translate: the chained skill itself confirms each file with the user.
+## Step 3. `readme-review` の基準で分類
 
-## Step 3. Classify Uncurated via `readme-review` Criteria
+本スキルは独自の評価基準を持たない。`.codex/skills/readme-review/SKILL.md`（Step 2「Evaluate Each Criterion」+ 4 クラス閾値）を **実行時に再読込** して適用する。基準更新を取りこぼさないこと。
 
-This skill does NOT define its own evaluation criteria. It applies the criteria specified in `.codex/skills/readme-review/SKILL.md` (Step 2 "Evaluate Each Criterion" plus the classification thresholds). Before running this step, **re-read `readme-review`'s SKILL.md** to pick up any updates to the criteria.
+各 `uncurated_raw` エントリについて:
 
-For each entry in `uncurated_raw`:
+1. README を読み込む
+2. `readme-review` の P1〜P7（positive）/ N1〜N4（negative）を適用
+3. `readme-review` の閾値で判定し、上記「重要な前提」に列挙した 4 クラスのいずれかに分類する。
 
-1. Read the English README content (and the `*.ja.md` sibling for completeness check; sibling existence already established via Step 2 preflight).
-2. Apply the P1–P7 positive criteria and N1–N4 negative criteria from `readme-review`.
-3. Compute the verdict using `readme-review`'s thresholds, into one of the four result classes listed under *Key Assumptions* above.
+4. 各ファイルに対して記録:
+   - 判定
+   - 1 行の根拠（manual-worthy / borderline では満たした positive 基準、それ以外ではトリガした negative）
+   - `manual-worthy` / `borderline` のみ、inferred group (Step 4) と hypothetical dst (Step 5) を併記
 
-4. For each file, record:
-   - The verdict
-   - A one-line rationale citing the dominant positive criteria met (for `manual-worthy` / `borderline`) or the dominant negative trigger (for the other two)
-   - For `manual-worthy` and `borderline` only: the inferred group (Step 4) and hypothetical dst (Step 5), so the user can curate quickly
+Step をスキップしたり全部を `manual-worthy` 扱いにしてはならない。4 クラス分類こそが本スキルのユーザー価値。
 
-Do NOT skip this step or treat everything as `manual-worthy`. The four-class breakdown is the main user-facing value of this skill — getting it right matters more than getting through it fast.
+注: 各ファイルの評価は inline で行い、`readme-review` スキル本体を 32 回呼ばないこと（個別 scorecard を 32 個出されても読めない）。`readme-review` は単一 README の **深堀レビュー** 用に温存する。
 
-Note: the per-file evaluation can be performed inline; you do not need to invoke the `readme-review` skill as a sub-skill 32 times (that would just generate 32 separate scorecards). Apply the criteria mentally and produce one aggregate report. The `readme-review` skill itself remains useful for **deep-dive single-file review** (longer explanation, improvement suggestions); for batch classification, this skill applies the criteria directly.
+## Step 4. パス → カテゴリ対応の学習（参考情報のみ、manual-worthy / borderline のみ対象）
 
-## Step 4. Infer Path → Category Mapping (no hardcoding) — for manual-worthy and borderline only
+manifest のパス → グループ対応は **実行時に既存 manifest から導出**。manifest 編集の駆動には使わない。
 
-Derive the path → manifest-category mapping **from the existing manifest at runtime** so that, if the user *does* decide to add a `manual-worthy` or `borderline` entry manually later, the proposed category and dst can be shown alongside.
+アルゴリズム:
 
-This information is informational only. Do NOT use it to drive bulk additions.
+1. 各 manifest グループの `src` を集める
+2. 最長共通パス prefix を計算
+3. lookup テーブル構築
+4. 各 `manual-worthy` / `borderline` ファイルに対して最長一致 prefix で group を tag
+5. マッチしないものは `unmatched`
 
-Algorithm:
-
-1. For each manifest group, collect all `src` paths.
-2. For each group, compute the longest common path prefix of its srcs (treat root README as prefix `""`).
-3. Build a lookup table: `prefix → group`.
-4. For each `manual-worthy` or `borderline` file, find the longest matching prefix and tag it with the inferred group (just for the report).
-5. If no prefix matches, tag it `unmatched` (also just for the report).
-
-Example (from the current manifest):
+参考表（実行時にmanifest から構築する例）:
 
 | Prefix | Group |
 | --- | --- |
@@ -184,28 +168,25 @@ Example (from the current manifest):
 | `scripts/` | `scripts` |
 | `.github/workflows/` | `ci` |
 
-(The actual table is built from `manifest.yaml` at run time, not from this list.)
+## Step 5. dst パスの導出（参考情報のみ、manual-worthy / borderline のみ対象）
 
-## Step 5. Derive dst Path (no hardcoding) — for manual-worthy and borderline only
+各 manual-worthy / borderline ファイルについて、既存規約から hypothetical dst を派生させてレポートに併記。追加提案ではない。
 
-For each `manual-worthy` or `borderline` file, derive a hypothetical `dst` by inspecting how the assigned group already names its dsts. This is shown in the report so that a human curator can quickly see what the dst *would* be if they chose to add it — it is NOT an addition proposal.
+観測される規約:
 
-Observed convention (verify per group at runtime):
+- 英語: `docs/portal/guides/<flat-hyphenated-name>.md`
 
-- English: `docs/portal/guides/<flat-hyphenated-name>.md`
-- Japanese: `docs/portal/guides/ja/<flat-hyphenated-name>.ja.md`
-
-Where `<flat-hyphenated-name>` is the src path with the layer prefix stripped and `/` replaced by `-`. Examples from the existing manifest:
+`<flat-hyphenated-name>` は src パスからレイヤー接頭辞を落とし `/` を `-` に置換したもの。既存 manifest の例:
 
 - `internal/controller/handler/README.md` → `docs/portal/guides/controller-handler.md`
-- `internal/controller/handler/debug/README.md` → `docs/portal/guides/controller-handler-debug.md` (if it were added)
+- `internal/controller/handler/debug/README.md` → `docs/portal/guides/controller-handler-debug.md`（仮に追加するなら） <!-- skill-lint-ignore -->
 - `internal/controller/README.md` → `docs/portal/guides/controller.md`
 
-If a group's dsts deviate from this pattern, follow that group's actual convention. Some groups use bespoke names (e.g., `database/dml/README.md` → `sqlc-query-guide.md`); do not try to mechanically rename — show the convention literally.
+bespoke 命名（例: `database/dml/README.md` → `sqlc-query-guide.md`）もあるため、機械的置換せずグループ実態に倣う。
 
-## Step 6. Report
+## Step 6. レポート
 
-Format the report in three sections: actionable, candidates (for human curation), informational counts. Use the four-class taxonomy from `readme-review`. Japanese output.
+3 セクション、4 クラス分類。日本語。
 
 ```text
 Portal Manifest Sync 結果
@@ -214,12 +195,12 @@ Portal Manifest Sync 結果
 
 [削除候補 = stale] N 件
   - src: foo/bar/README.md  (ファイルが存在しない)
-  - src: foo/bar/README.ja.md
+  - src: foo/bar/README.md
 
 [翻訳ペアの欠落 = pair_drift] N 件
   ※ Step 2 で「未解消のまま続行」を選んだ場合のみここに残ります
   internal/controller/handler/testkit/testauth/README.md
-    → README.ja.md が存在しない（canonicalize-doc で生成推奨）
+    → README.md が存在しない（canonicalize-doc で生成推奨）
 
 == キュレーション候補 ==
 
@@ -257,140 +238,134 @@ godoc / CLI ドキュメント領域で portal 不要）
     既存グループのどれにも prefix が一致しない（新規グループ要否は人間判断）
 ```
 
-If all classes are empty, report and stop:
+全クラス 0 件:
 
 ```text
 Portal Manifest Sync 結果
 ドリフトなし、追加候補なし、除外なし。
 ```
 
-## Step 7. Confirm Each Class of Change
+## Step 7. 修正対象クラスのみ承認
 
-Confirm only the **actionable** class (`stale`) via `ask the user explicitly`. For the four candidate classes (`manual-worthy` / `borderline` / `not-yet-manual-grade` / `out-of-scope-for-portal`), NO confirmation is asked — the skill never proposes additions on its own initiative.
+**`stale` のみ** `ask the user explicitly` で承認。4 つの候補クラスには承認を求めない。
 
-### Removals (stale)
+### 削除（stale）
 
-- Question: 「manifest に残っているが実体のない N 件を削除しますか？」
-- Options: 「すべて削除」/「一部のみ削除」/「スキップ」
+- 質問: 「manifest に残っているが実体のない N 件を削除しますか？」
+- 選択肢: 「すべて削除」/「一部のみ削除」/「スキップ」
 
-Stale removal is generally safe, but ask anyway — the file may be moved temporarily during a refactor and the user wants to keep the entry.
+### Pair drift（Step 2 で未解消を選んだ場合のみ）
 
-### Pair drift (only if Step 2 left it unresolved)
+レポートに残すだけ。ここで再質問しない。
 
-If pair_drift was deferred at Step 2, just keep the report entry. Do not re-prompt here.
+### 任意のキュレーションフロー（ユーザーが明示要求した場合のみ）
 
-### Optional curation flow (only if the user requests after seeing the report)
+レポート閲覧後にユーザーが「これとこれを追加したい」と要求した場合のみ:
 
-If — after seeing the report — the user explicitly asks to add specific manual-worthy entries, switch into a curation sub-flow:
+1. 追加したいファイル名をユーザーに指定してもらう
+2. 各ファイルについて推定 group と提案 dst を提示し、ファイル単位（または ≤4 件チャンク）で確認
+3. Step 8 で適用
 
-1. Ask the user to name the specific files they want added (paths or copy-paste from the report).
-2. For each, present the inferred group and proposed dst, and ask for confirmation per file (or batched in small chunks of ≤4 with `ask the user explicitly`).
-3. Then apply the additions via Step 8.
+**デフォルトではこのフローに入らない**。
 
-Default behavior is NOT to enter this flow. The skill's responsibility ends at surfacing the candidates with quality classification.
+## Step 8. manifest.yaml の更新
 
-## Step 8. Update manifest.yaml
+**in-place 編集**:
 
-Apply the approved changes by **editing the existing file in place** (not by re-serializing the whole YAML, which would lose comments and formatting).
+追加（任意キュレーションフロー経由のみ）:
 
-For additions (only via the optional curation flow above):
+1. 対象グループの最後のエントリを特定
+2. 新規エントリペアを挿入（既存 `# English` / `# Japanese` スタイル継承）
 
-1. Locate the target group's last entry in the file.
-2. Insert the new entry pair (English entry + Japanese entry) preserving the file's existing `# English` / `# Japanese` comment style if present in that group.
+削除（承認された stale）:
 
-For removals (from approved `stale` deletions):
+1. 該当 `src:` / `dst:` 行を特定
+2. 2 行のエントリブロックを削除する（そのコメント配下の唯一のエントリだった場合は、先行するカテゴリマーカーのコメントも削除する）
 
-1. Locate the specific `src:` / `dst:` lines.
-2. Remove the two-line entry block (and any leading category-marker comment if the entry was the only one under that comment).
+常に:
 
-Always:
+- インデント（2 スペース）を維持する。
+- 末尾の空行とセクション区切りを維持する。
+- グループ内で en / ja のエントリを隣接させたままにする。
 
-- Preserve indentation (2 spaces).
-- Preserve trailing blank lines and section separators.
-- Keep en/ja entries together within a group.
+## Step 9. 検証
 
-## Step 9. Verification
-
-After writing, run:
+manifest を実際に編集した場合のみ:
 
 ```sh
 make gen-portal-docs
 ```
 
-If the command fails or warns about missing `src`s, surface the output and stop. The user must reconcile before this skill's contract is fulfilled.
+警告 / 失敗があれば surface。
 
-If it succeeds, also run:
+成功したら:
 
 ```sh
 git diff docs/portal/manifest.yaml
 ```
 
-Show the diff so the user can verify the manifest edits.
+`docs/portal/guides/**` の差分は期待されるもの。本スキルでは stage しない。
 
-`docs/portal/guides/**` changes produced by `make gen-portal-docs` are expected; do NOT stage them in this skill (they are regenerated by CI and protected per `AGENTS.md`).
+## Step 10. クロージング
 
-## Step 10. Closing
-
-- The skill does NOT commit. Commits are the user's call (chain into `/commit` if desired).
-- The skill does NOT bulk-add candidates of any class. Adding is the user's editorial decision after seeing the report.
-- If the user wants a deeper per-file analysis (full scorecard with improvement suggestions) for a specific README, recommend invoking `/readme-review <path>`.
-- Print a short summary using the four-class taxonomy:
+- コミットしない
+- 候補を一括追加しない
+- 単一 README の **深堀レビュー** が必要なら `/readme-review <path>` を案内
+- 4 クラス分類のサマリ:
   - stale M 件削除（または スキップ）
-  - pair_drift K 件: P 件 canonicalize-doc で解消 / Q 件は未解消（情報のみ）
+  - pair_drift K 件: P 件 canonicalize-doc 解消 / Q 件未解消
   - manual-worthy A 件（追加要否は user 判断）
   - borderline B 件（補強候補、/readme-review で深堀推奨）
   - not-yet-manual-grade C 件（情報のみ、README 充実が先）
   - out-of-scope-for-portal D 件（godoc / CLI 領域）
 
-## AI Modification Scope
+## AI 修正スコープ
 
-Per the "Exception: Skill Execution" clause in `AGENTS.md`, the AI modification scope is relaxed during this skill's run, scoped to:
+`AGENTS.md` / `AGENTS.md` の「Exception: Skill Execution」条項により、本スキルの実行中は AI Modification Scope が次に限って緩和される。
 
-- `docs/portal/manifest.yaml` — the only file this skill writes.
+- `docs/portal/manifest.yaml` — 本スキルが書き込む唯一のファイル。
 
-Remains protected (do not touch):
+保護対象（触らない）:
 
-- `docs/portal/guides/**` (generated)
-- `docs/portal/docs.json` (generated by `make gen-docs-json`)
-- The source README files themselves
-- Anything else outside the manifest
+- `docs/portal/guides/**`（生成物）
+- `docs/portal/docs.json`（`make gen-docs-json` の生成物）
+- ソースの README そのもの
+- manifest 以外のすべて
 
-## Constraints
+## 制約事項
 
-- ❌ Hardcode the category list — always derive from the existing manifest
-- ❌ Skip Step 2 (pair_drift preflight); always offer the resolution choice when pair_drift is non-empty
-- ❌ Skip Step 3 by classifying everything as `manual-worthy` without reading content
-- ❌ Duplicate `readme-review`'s criteria here — always re-read its SKILL.md at runtime so updates flow automatically
-- ❌ Use the deprecated "any `## Public API` → exclude" heuristic. Always use N1's full condition (Public API + H2 ≤3 + prose <150 + no Role/Design/Architecture). Pure-heading detection over-rejects hybrid READMEs (already-registered manifest entries proved this)
-- ❌ Auto-create missing translation files directly (chain `canonicalize-doc` instead, which itself confirms per file)
-- ❌ Touch `docs/portal/guides/**` directly
-- ❌ Re-serialize the whole YAML (loses comments / order)
-- ❌ Skip the scope-confirmation `ask the user explicitly`
-- ❌ Apply changes without per-class confirmation
-- ❌ **Bulk-add candidates from any class.** The manifest is a curated manual, not a dictionary
-- ❌ Frame uncurated entries as "drift to fix" — they are candidates for human editorial judgment
-- ✅ Japanese user-facing output
-- ✅ Edit `manifest.yaml` in place, preserving formatting (only for stale removals or explicit curation requests)
-- ✅ Run `make gen-portal-docs` after writing to verify
-- ✅ Exclude generated / vendor / `.claude` / `.git` from disk enumeration
-- ✅ Surface dst collisions explicitly
+- ❌ カテゴリリストをハードコードする — 必ず既存 manifest から導出
+- ❌ Step 2（pair_drift プリフライト）をスキップ — 非空なら必ず解消選択を提示
+- ❌ Step 3 をスキップ — 内容を読まずに全部 manual-worthy にしない
+- ❌ **`readme-review` の基準を本スキルに重複定義する** — 必ず実行時に SKILL.md を再読込
+- ❌ 旧式の "any `## Public API` → exclude" を使う。N1 の完全条件（Public API + H2 ≤3 + prose <150 + Role/Design/Architecture なし）を必ず適用。単純見出し検知は hybrid 型 README を誤除外する（既存 manifest 登録済みエントリで実証済み）
+- ❌ 不足翻訳ファイルを直接自動生成（`canonicalize-doc` chain を使う）
+- ❌ `docs/portal/guides/**` を直接触る
+- ❌ YAML 全体を再シリアライズ
+- ❌ スコープ確認 `ask the user explicitly` をスキップ
+- ❌ 種別承認なしで変更を適用
+- ❌ **どのクラスからも候補を一括追加しない**
+- ❌ uncurated を「修正対象のドリフト」としてフレーミングする
+- ✅ ユーザー向け出力は日本語
+- ✅ `manifest.yaml` を in-place 編集してフォーマットを維持
+- ✅ 書き込み後に `make gen-portal-docs` で検証
+- ✅ ディスク列挙から生成物 / vendor / `.claude` / `.git` を除外
+- ✅ dst 衝突は明示的に surface
 
-## Checklist
+## チェックリスト
 
-Before reporting completion, confirm:
-
-- [ ] Scope was confirmed via `ask the user explicitly`
-- [ ] manifest.yaml was parsed and `src` set was extracted
-- [ ] Disk README enumeration excluded `docs/portal/guides/`, vendor, .git, .claude
-- [ ] Step 2 pair_drift preflight was offered (or skipped because pair_drift was empty)
-- [ ] `readme-review` SKILL.md was re-read for the current criteria
-- [ ] Step 3 applied P1–P7 / N1–N4 + thresholds from `readme-review`, with per-file one-line rationale
-- [ ] Path→category mapping was derived from the manifest (not hardcoded)
-- [ ] dst convention was derived from existing entries (not hardcoded)
-- [ ] Stale class was confirmed before deletion
-- [ ] No candidate class was auto-added — all surfaced with explicit "curation is user's call" framing
-- [ ] `manifest.yaml` was edited in place (no full re-serialization)
-- [ ] `make gen-portal-docs` was run as verification (only when manifest was actually edited)
-- [ ] `docs/portal/guides/**` was not modified by this skill
-- [ ] No commits / pushes were performed
-- [ ] Final report is in Japanese, with the four-class breakdown (manual-worthy / borderline / not-yet-manual-grade / out-of-scope-for-portal) plus stale and pair_drift
+- [ ] `ask the user explicitly` でスコープを確認した
+- [ ] manifest.yaml をパースして `src` 集合を抽出した
+- [ ] ディスク README 列挙から `docs/portal/guides/`, vendor, .git, .claude を除外した
+- [ ] Step 2 pair_drift プリフライトを提示した（または pair_drift 空でスキップ）
+- [ ] `readme-review` SKILL.md を再読込して現在の基準を取得した
+- [ ] Step 3 で各 uncurated に P1〜P7 / N1〜N4 + 閾値を適用し、1 行根拠付きで分類した
+- [ ] パス→カテゴリ対応を manifest から導出した
+- [ ] dst 規約を既存エントリから導出した
+- [ ] stale クラスは削除前に承認を取った
+- [ ] どの候補クラスも自動追加していない — すべて "curation はユーザー判断" として明示
+- [ ] `manifest.yaml` を in-place 編集した（再シリアライズしていない）
+- [ ] manifest 編集時のみ `make gen-portal-docs` を実行した
+- [ ] `docs/portal/guides/**` を本スキルで変更していない
+- [ ] commit / push を行っていない
+- [ ] 最終レポートは日本語、4 クラス（manual-worthy / borderline / not-yet-manual-grade / out-of-scope-for-portal）+ stale + pair_drift の breakdown 入り

@@ -1,28 +1,28 @@
-# local (Simple Authentication for Local Development)
+# local（ローカル向け簡易認証）
 
-This directory contains a simple `Authenticator` implementation intended for use in local development and CI / test environments. It is a lightweight implementation for emulating external authentication providers, and is **not intended for production use**.
+ローカル開発環境や CI / テスト環境で利用する **簡易的な `Authenticator` 実装**です。外部認証プロバイダのエミュレーション用であり、**本番運用での使用は想定していません**。
 
-## Role
+## 役割
 
-- Provide authentication information (via `Authenticator` interface) for quick verification during development
-- Return a simply authenticated subject (`Authn`) as a substitute for production authentication services
+- 開発時の手早い動作確認のために、`Authenticator` インターフェース経由で認証情報を提供
+- 本番認証サービスの代替として、簡易的に認証済みの主体（`Authn`）を返す
 
-## Token Format
+## トークン形式
 
 ```text
 Authorization: Bearer debug:user123
 ```
 
-- Prefix `debug:` is stripped to extract the subject
-- Subject: `user123`, Provider: `mock`
-- No signature verification is performed
+- プレフィックス `debug:` を除去して Subject を抽出
+- Subject: `user123`、Provider: `mock`
+- 署名検証は行わない
 
-## Replacing for Production
+## 本番への置き換え
 
-Edit `provideAuthenticator` in `internal/di/module/core/auth.go` to switch the DI-registered implementation based on environment (local / stg / prd).
+`internal/di/module/core/auth.go` の `provideAuthenticator` を編集し、環境（local / stg / prd）に応じて DI 登録する実装を切り替えてください。
 
-## Notes
+## 注意点
 
-- This implementation does not guarantee security (no signature verification, token expiry check, or replay prevention)
-- Do not use in production
-- Security-related settings or hardcoded values in this code must not be carried into production environments
+- 署名検証・トークン有効期限チェック・リプレイ防止を行わないため、セキュリティは担保されない
+- 本番環境では使用しないこと
+- コード内のセキュリティ関連設定やハードコード値を運用環境に持ち込まないこと

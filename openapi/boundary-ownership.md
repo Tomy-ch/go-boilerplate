@@ -1,66 +1,66 @@
-# Input Boundary Value Ownership
+# 入力境界値のオーナーシップ
 
-A constraint like `maxLength: 50` looks like a single fact, but the **same boundary value can live in several layers, owned by different concerns**. This guide defines who owns what, so that an OpenAPI constraint is **not mistaken for the domain's business rule**.
+`maxLength: 50` のような制約は単一の事実に見えますが、**同じ境界値が複数のレイヤに存在し、それぞれ別の関心事がオーナー**になっていることがあります。本ガイドは「誰が何を所有するか」を定義し、OpenAPI の制約が **domain の業務ルールと取り違えられること**を防ぎます。
 
 > [!IMPORTANT]
-> OpenAPI's `minLength` / `maxLength` / `minimum` / `maximum` / `pattern` express the **wire contract** — what the HTTP API accepts and promises over the network. They are **not** the source of truth for the domain's business rules. The numbers may legitimately differ. Do not read an OpenAPI constraint as "this is the domain limit."
+> OpenAPI の `minLength` / `maxLength` / `minimum` / `maximum` / `pattern` は **ワイヤー契約**（HTTP API がネットワーク越しに受け入れる／約束する形）を表します。domain の業務ルールの正本（source of truth）では **ありません**。値が一致しないことは正当にあり得ます。OpenAPI の制約を「これが domain の上限だ」と読まないでください。
 
-## Two different owners for the "same" number
+## 「同じ」数値に対する2つの別オーナー
 
-|Concern|Owner|Where it lives|What it means|
+|関心事|オーナー|置き場所|意味|
 |---|---|---|---|
-|**Wire contract**|OpenAPI|`openapi/components/schemas/*.yaml`|What the API accepts (request) / promises (response) over HTTP|
-|**Business rule**|domain|`internal/domain/<aggregate>/constant.go`|What value the business considers valid|
-|**Storage capacity**|DB|`database/migrations/*.sql`|Physical column limit (e.g. `VARCHAR(100)`)|
+|**ワイヤー契約**|OpenAPI|`openapi/components/schemas/*.yaml`|API が HTTP 越しに受け入れる（リクエスト）／約束する（レスポンス）形|
+|**業務ルール**|domain|`internal/domain/<aggregate>/constant.go`|業務として valid と認める値|
+|**格納容量**|DB|`database/migrations/*.sql`|物理カラムの上限（例: `VARCHAR(100)`）|
 
-These often share a number by coincidence, but they answer **different questions** and are changed for **different reasons**. OpenAPI does not own the domain's value; it only declares the contract the wire must satisfy.
+これらは偶然同じ数値を共有することが多いですが、**答えている問いが違い**、**変更される理由も違います**。OpenAPI は domain の値を所有しているのではなく、ワイヤーが満たすべき契約を宣言しているだけです。
 
-## The direction invariant
+## 方向ごとの不変条件
 
-The relationship between the layers is **asymmetric by direction**:
+レイヤ間の関係は**方向によって非対称**です：
 
 ```text
-OpenAPI request constraint  ⊆  domain rule  ⊆  OpenAPI response capacity
-        (tightest)                                    (loosest)
+OpenAPI リクエスト制約  ⊆  domain ルール  ⊆  OpenAPI レスポンス容量
+       (最も厳しい)                                (最も緩い)
 ```
 
-- **Request** — OpenAPI may be *stricter* than domain. The request-validation middleware (`internal/controller/httpstack/oapi/`) rejects out-of-range input **before** the domain sees it, so a stricter wire limit is the safe direction.
-- **Response** — the OpenAPI response constraint must be a **superset** of what the domain can emit. If the domain (or any non-HTTP write path) can produce a value the response schema forbids, the server emits a contract violation that **nothing on the server catches** (there is no runtime response validation — see [`internal/controller/httpstack/oapi/README`](../internal/controller/httpstack/oapi)). The only place it surfaces is the client's generated validation (e.g. `orval` + `zod`), which is the wrong side to discover a server-side contract break.
+- **リクエスト** — OpenAPI は domain より*厳しく*てよい。リクエスト検証ミドルウェア（`internal/controller/httpstack/oapi/`）が範囲外の入力を domain に届く**前に**弾くため、ワイヤー側を厳しくするのは安全な向きです。
+- **レスポンス** — OpenAPI レスポンス制約は domain が出しうる値を**包含（superset）**していなければなりません。domain（または HTTP 以外の書き込み経路）がレスポンススキーマの禁じる値を生成できると、サーバは契約違反のレスポンスを出し、それを**サーバ側では誰も捕捉できません**（実行時のレスポンス検証は行っていません。[`internal/controller/httpstack/oapi/README`](../internal/controller/httpstack/oapi) 参照）。唯一それが表面化するのはクライアント側で生成された検証（例: `orval` + `zod`）であり、サーバ側の契約違反を発見する場所として裏返っています。
 
 <!-- sample-api:begin -->
-## Worked example (teaching material): `firstName` length
+## 教材としての具体例：`firstName` の長さ
 
-This repository **intentionally keeps a divergent value on the request side** as a teaching example:
+本リポジトリは**リクエスト側に意図的に食い違った値を教材として残しています**：
 
-|Layer|`firstName` max|Who enforces it|
+|レイヤ|`firstName` の最大長|強制する主体|
 |---|---|---|
-|OpenAPI request (`UserBaseInputRequest.yaml`)|`50`|request-validation middleware (runtime)|
-|domain (`maxFirstNameLength` in `constant.go`)|`100`|entity constructor|
-|DB (`first_name`)|`VARCHAR(100)`|the database|
-|OpenAPI response (`UserResponse.yaml`)|`100`|contract promise — aligned to domain so `domain ⊆ response` holds|
+|OpenAPI リクエスト (`UserBaseInputRequest.yaml`)|`50`|リクエスト検証ミドルウェア（実行時）|
+|domain (`constant.go` の `maxFirstNameLength`)|`100`|エンティティのコンストラクタ|
+|DB (`first_name`)|`VARCHAR(100)`|データベース|
+|OpenAPI レスポンス (`UserResponse.yaml`)|`100`|契約上の約束——`domain ⊆ レスポンス` を満たすよう domain に揃えた|
 
-What this teaches:
+この例が教えること：
 
-- **The request wire contract (50) is deliberately tighter than the domain capacity (100).** Reading the OpenAPI `50` as "the domain rule" would be wrong — the domain rule is `100`. This is the **legitimate, safe direction** (`request ⊆ domain`): the middleware rejects input over 50 before the domain ever sees it.
-- **The response constraint is aligned to the domain (100), not to the request (50).** Response and request are different concerns: the response must cover *everything the domain can emit* (`domain ⊆ response`), so even a value written through a non-HTTP path (seed, batch, a future endpoint) can never violate the response contract. Making the response 50 would reintroduce that gap — a server-side contract break only the client's `zod` would catch.
+- **リクエストのワイヤー契約（50）は domain 容量（100）より意図的に厳しい。** OpenAPI の `50` を「domain のルール」と読むのは誤り——domain のルールは `100` です。これは**正当で安全な向き**（`リクエスト ⊆ domain`）：ミドルウェアが 50 超の入力を domain に届く前に弾きます。
+- **レスポンス制約はリクエスト（50）ではなく domain（100）に揃える。** レスポンスとリクエストは別の関心事で、レスポンスは*domain が出しうるすべて*を包含する必要があります（`domain ⊆ レスポンス`）。こうすれば HTTP 以外の経路（seed・バッチ・将来のエンドポイント）で書かれた値でもレスポンス契約に違反しません。ここを 50 にすると、その隙間が再発し、クライアントの `zod` だけが気づくサーバ側の契約違反に戻ってしまいます。
 
-The point of the example is not that the numbers *should* all match — it is that they are **owned by different layers for different reasons**. The request may be tighter than the domain (a teaching divergence); the response may not be tighter than the domain (an invariant we keep). Conflating "OpenAPI constraint" with "domain rule" is the mistake to avoid.
+この例の主旨は「すべての数値が*一致すべき*」ということ**ではなく**、各値が**別のレイヤに別の理由で所有されている**ことです。リクエストは domain より厳しくてよい（教材としての食い違い）が、レスポンスは domain より厳しくしてはいけない（守るべき不変条件）。「OpenAPI の制約」と「domain のルール」を混同するのが避けるべき誤りです。
 
 <!-- sample-api:end -->
 
-## Rules for maintainers
+## メンテナー向けルール
 
-- **Do not** copy a domain constant into OpenAPI (or vice versa) and assume they must stay equal. Decide each value from its own concern.
-- **Do** keep the direction invariant: `request ⊆ domain ⊆ response capacity`.
-- When a request constraint is **stricter** than the domain rule, that is fine (middleware rejects first).
-- When tightening a **response** constraint, confirm no write path can emit a value outside it.
-- If you want CI to guard the invariant, add a test that reads `openapi.gen.yaml` and the domain constants and asserts `request ≤ domain ≤ response`.
+- domain 定数を OpenAPI に（あるいは逆に）コピーして「常に等しく保たねばならない」と**思い込まない**こと。各値はそれ自身の関心事から決める。
+- 方向の不変条件を**保つ**こと：`リクエスト ⊆ domain ⊆ レスポンス容量`。
+- リクエスト制約が domain ルールより**厳しい**のは問題なし（ミドルウェアが先に弾く）。
+- **レスポンス**制約を厳しくするときは、どの書き込み経路もその範囲外の値を出さないことを確認する。
+- 不変条件を CI で守りたい場合は、`openapi.gen.yaml` と domain 定数を読み `リクエスト ≤ domain ≤ レスポンス` を assert するテストを追加する。
 
-## Where each value lives
+## 各値の置き場所
 
-|Layer|Path|
+|レイヤ|パス|
 |---|---|
-|OpenAPI request / response constraints|`openapi/components/schemas/*.yaml`|
-|domain boundary constants|`internal/domain/<aggregate>/constant.go`|
-|DB column limits|`database/migrations/*.sql`|
-|Client-side validation (consumer's own concern)|generated from this spec (e.g. `orval` + `zod`)|
+|OpenAPI リクエスト／レスポンス制約|`openapi/components/schemas/*.yaml`|
+|domain 境界定数|`internal/domain/<aggregate>/constant.go`|
+|DB カラム上限|`database/migrations/*.sql`|
+|クライアント側検証（消費者自身の関心事）|本 spec から生成（例: `orval` + `zod`）|

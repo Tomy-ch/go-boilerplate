@@ -1,32 +1,32 @@
-# DI Module (`internal/di/module`)
+# DI モジュール (`internal/di/module`)
 
-A directory containing **DI module groups** that wire up each application layer using `fx`.
+アプリケーションの各レイヤを `fx` ベースで束ねる **DI モジュール群**を配置するディレクトリです。
 
-Each file exposes a function returning `fx.Option` to register the necessary components in the DI container at application startup.
+各ファイルは `fx.Option` を返す関数を公開し、アプリ起動時に必要なコンポーネントを DI コンテナに登録します。
 
-## Module List
+## モジュール一覧
 
-|Function|File|Provided Components|
+|関数|ファイル|提供するコンポーネント|
 |---|---|---|
-|`ConfigModule()`|`config.go`|Config (`*Config` + all SubConfig providers + `*time.Location`)|
-|`ControllerModule()`|`controller.go`|HTTP handler registration (`fx.Invoke` to run `BindHandler`)|
-|`DatabaseModule()`|`db.go`|DB connection (`*pgxpool.Pool`) + driver / transaction manager / metrics|
-|`InfrastructureModule()`|`infrastructure.go`|Aggregation of per-concern submodules: persistence (repository / query service / command service / system query) + clock + httpclient + webapi gateway + object storage + auth (JWKS profile) + authz|
-|`JobModule()`|`job.go`|Job registration (`group:"jobs"`) + Runner + State + Hook|
+|`ConfigModule()`|`config.go`|設定（`*Config` + 全 SubConfig プロバイダー + `*time.Location`）|
+|`ControllerModule()`|`controller.go`|HTTP ハンドラの登録（`fx.Invoke` で `BindHandler` を実行）|
+|`DatabaseModule()`|`db.go`|DB 接続（`*pgxpool.Pool`）+ ドライバ / トランザクションマネージャ / メトリクス|
+|`InfrastructureModule()`|`infrastructure.go`|concern ごとのサブモジュールの集約: persistence（repository / query service / command service / system query）+ clock + httpclient + webapi gateway + object storage + auth（JWKS profile）+ authz|
+|`JobModule()`|`job.go`|ジョブ登録（`group:"jobs"`）+ Runner + State + Hook|
 |`LoggingModule()`|`logging.go`|Logger + LogFieldBuilder|
 |`ObservabilityModule()`|`observability.go`|TracerProvider + TracerFactory|
-|`OutboxRelayModule()`|`outboxrelay.go`|Outbox relay engine + `provideRelaySettings` + `NewRelay` usecase + `OutboxMetrics` + Hook (`RegisterRelayHooks`); bundles `outboxPublisherModule()`. Relay-dedicated process only (`cmd outbox-relay`)|
-|`SystemModule()`|`system.go`|BuildInfo (version / revision / build date)|
-|`UsecaseModule()`|`usecase.go`|Usecase implementation registration|
-|`WorkerModule()`|`worker.go`|Worker registration (`group:"workers"`) + Engine (`ProvideEngine`) + State + `WorkerMetrics` + queue-stats collector (`provideQueueStatsCollector`) + shutdown-grace validation (`ValidateShutdownGrace`) + Hook (`RegisterWorkerHooks`). No worker is registered by default|
+|`OutboxRelayModule()`|`outboxrelay.go`|outbox relay engine + `provideRelaySettings` + `NewRelay` usecase + `OutboxMetrics` + Hook（`RegisterRelayHooks`）。`outboxPublisherModule()` を内包。relay 専用プロセス（`cmd outbox-relay`）のみで使用|
+|`SystemModule()`|`system.go`|BuildInfo（バージョン / リビジョン / ビルド日時）|
+|`UsecaseModule()`|`usecase.go`|ユースケース実装の登録|
+|`WorkerModule()`|`worker.go`|worker 登録（`group:"workers"`）+ Engine（`ProvideEngine`）+ State + `WorkerMetrics` + queue stats 収集器（`provideQueueStatsCollector`）+ 停止猶予検証（`ValidateShutdownGrace`）+ Hook（`RegisterWorkerHooks`）。既定では worker を 1 つも登録しない|
 
-### Subdirectories
+### サブディレクトリ
 
-|Directory|Description|Details|
+|ディレクトリ|説明|詳細|
 |---|---|---|
-|`core/`|DI modules for HTTP stack common components (auth, etc.)|[README](core/README.md)|
+|`core/`|HTTP スタック共通コンポーネント（認証等）の DI モジュール群|[README](core/README.md)|
 
-## Architecture
+## アーキテクチャ
 
 ```mermaid
 flowchart TB
@@ -43,25 +43,25 @@ flowchart TB
     end
 ```
 
-## Design Policy
+## 設計方針
 
-- Each module corresponds to a layer boundary (config / logging / db / infra / usecase / controller / job / worker / outbox-relay)
-- Inter-module dependencies are automatically resolved by fx
-- Adding a module is as simple as creating a new file and adding it to the app's root module
-- `InfrastructureModule()` is purely an **aggregation point**: it only composes per-concern submodules so the fx dependency graph stays readable per component group. Each concern lives in its own file — `persistence.go` (`persistenceModule()`), `clock.go` (`clockModule()`), `httpclient.go` (`httpClientModule()`), `webapi.go` (`webapiModule()`), `objectstorage.go` (`objectStorageModule()`), `auth.go` (`authModule()`), `authz.go` (`authzModule()`) — and `infrastructure.go` simply binds them under the `infrastructure` module. Each concern file has a sibling `*_test.go` with its own `Test<Concern>Module_GraphIsValid`, while `infrastructure_test.go` validates the aggregated whole.
-  - The RDB-backed providers (`repository` / `query_service` / `command_service` / `system_cqrs`) are nested under the `persistence` submodule, distinguishing them from `DatabaseModule()`'s `db` connection layer. The `clock` submodule is named `clock` (not `system`) to avoid colliding with `SystemModule()`'s `system` label. `webapi` / `outbox_publisher` depend on the `httpclient` substrate. The `authz` submodule (`provideAuthorizer`) is environment-gated: it wires the allow-all stub only for local / CI / test and fails closed (returns an error) elsewhere, emitting a startup WARN when the stub is wired (mirroring the `core` `authn` provider).
+- 各モジュールはレイヤの境界に対応（config / logging / db / infra / usecase / controller / job / worker / outbox-relay）
+- モジュール間の依存は fx が自動解決する
+- モジュールの追加は新しいファイルを作成し、アプリのルートモジュールに追加するだけ
+- `InfrastructureModule()` は純粋な**集約ポイント**であり、concern ごとのサブモジュールを束ねるだけ。これにより fx の依存グラフをコンポーネント単位で読みやすく保つ。各 concern はそれぞれ独立したファイルに置く — `persistence.go`（`persistenceModule()`）/ `clock.go`（`clockModule()`）/ `httpclient.go`（`httpClientModule()`）/ `webapi.go`（`webapiModule()`）/ `objectstorage.go`（`objectStorageModule()`）/ `auth.go`（`authModule()`）/ `authz.go`（`authzModule()`） — `infrastructure.go` はこれらを `infrastructure` モジュール配下に束ねるだけ。各 concern ファイルには対の `*_test.go` があり個別の `Test<Concern>Module_GraphIsValid` を持つ。`infrastructure_test.go` は集約後の全体を検証する。
+  - RDB 系プロバイダ（`repository` / `query_service` / `command_service` / `system_cqrs`）は `persistence` サブモジュール配下に入れ子化し、`DatabaseModule()` の `db`（接続レイヤ）と区別している。clock サブモジュールは `SystemModule()` の `system` ラベルとの衝突を避けるため `system` ではなく `clock` と命名している。`webapi` / `outbox_publisher` は `httpclient` substrate に依存する。`authz` サブモジュール（`provideAuthorizer`）は環境ゲート付きで、全許可スタブを local / CI / test のみに配線し、それ以外では fail-closed（エラーを返す）。スタブ配線時には起動時 WARN を出す（`core` の `authn` プロバイダと対をなす）。
 
-## Test Strategy
+## テスト戦略
 
-Each module has a sibling `*_test.go` with a `Test<Module>_GraphIsValid` that calls `fx.ValidateApp` (see `graph_helper_test.go`'s `validateGraph` / `commonDeps`). This validates the dependency graph is wired with no missing types — **without** standing up real infrastructure (DB / network), because `fx.ValidateApp` does not execute constructors or lifecycle hooks.
+各モジュールには対の `*_test.go` があり、`fx.ValidateApp` を呼ぶ `Test<Module>_GraphIsValid` を持つ（`graph_helper_test.go` の `validateGraph` / `commonDeps` 参照）。これは依存グラフが型欠落なく結線されることを検証する — `fx.ValidateApp` はコンストラクタやライフサイクルフックを実行しないため、実インフラ（DB / ネットワーク）を立てずに済む。
 
-Avoiding real infrastructure is the reason for that shape, so a module that does not depend on any may additionally start a minimal app and assert the component it provides. That is the case throughout [`core/`](core/README.md), which layers the second tier on top of this baseline; the criterion is the module's closure, not its directory.
+実インフラを避けることがこの形の理由なので、実インフラに依存しないモジュールは追加で最小アプリを起動し、提供コンポーネントを assert してよい。[`core/`](core/README.md) 配下が全てこれに当たり、本ベースラインの上に 2 段目を重ねている。基準はディレクトリではなくモジュールのクロージャにある。
 
-That same property means a provider / `fx.Invoke` body carrying its own logic (e.g. `provideQueueStatsCollector`) is **not** exercised by the graph-validation test — it needs a direct unit test (call the function) for branch coverage.
+同じ性質ゆえ、独自ロジックを持つ provider / `fx.Invoke` 本体（例: `provideQueueStatsCollector`）はグラフ検証テストでは**実行されない** — 分岐網羅には直接の単体テスト（関数を実際に呼ぶ）が要る。
 
-Graph validation also only covers what the module *does* enumerate, so a `BindHandler` missing from `ControllerModule()`'s `fx.Invoke` stays invisible to it. That the enumeration is *complete* — one entry per handler package declaring a `BindHandler` — is machine-verified separately by `TestBindHandlerDIParity` in `internal/architest`.
+グラフ検証が見るのはモジュールが*列挙している*ものだけなので、`ControllerModule()` の `fx.Invoke` から漏れた `BindHandler` はこのテストからは見えない。列挙が*網羅的である*こと — `BindHandler` を宣言するハンドラパッケージ 1 つにつき 1 エントリ — は `internal/architest` の `TestBindHandlerDIParity` が別途機械検証する。
 
-## Notes
+## 注意点
 
-- Each module depends on the `fx.App` Start / Stop lifecycle
-- Disabling a module will prevent its components from being injected, causing the app to fail to start
+- 各モジュールは `fx.App` の Start / Stop ライフサイクルに依存する
+- モジュールを無効化すると、そのコンポーネントが注入されずアプリが起動しなくなる

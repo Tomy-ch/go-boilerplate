@@ -1,40 +1,42 @@
 # Go Version Upgrade Procedure
 
-This document explains the **procedure for updating the Go version** in this project.
+このドキュメントは、このプロジェクトで **Go のバージョンを更新する際の手順**を説明します。
 
-Updating the Go version affects the following.
+Go のバージョン更新は以下に影響します。
 
 - Go toolchain
-- Dependency packages
+- 依存パッケージ
 - Go tools
 - Code generation
 - CI
 - Docker images
 
-Therefore, update according to the following steps.
+そのため、以下の手順に従って更新してください。
 
-## 1. Check Release Notes
+## 1. Release Notes の確認
 
 Go programming language
 
-Check the Release Notes of the target version.
+対象バージョンの Release Notes を確認します。
 
-Main items to check
+確認する主な項目
 
-- Changes to the language spec
-- Breaking changes in the standard library
-- Changes to `go vet`
-- Changes to the toolchain
+- language spec の変更
+- standard library の breaking change
+- `go vet` の変更
+- toolchain の変更
 
-Example
+例
 
 ```text
-<https://go.dev/doc/devel/release>
+https://go.dev/doc/devel/release
 ```
 
-## 2. Update `mise.toml` (SSOT) and run sync
+## 2. `mise.toml` を更新し sync を実行
 
-This project pins the Go version (along with all other tool versions) in `mise.toml` as the single source of truth. The Go runtime version specifically needs to be mirrored to several files for compatibility with `actions/setup-go` and the `golang:` Docker base image. The `make sync-versions` target handles this propagation.
+このプロジェクトでは Go バージョンを含む全ツールのバージョンを `mise.toml` を SSOT として管理しています。
+Go ランタイムは `actions/setup-go` や `golang:X.Y.Z-alpine` base image との互換のために
+いくつかのファイルへ複製する必要があり、`make sync-versions` でこの伝播を行います。
 
 ```toml
 # mise.toml
@@ -43,49 +45,50 @@ go = "1.26.3"
 # ...
 ```
 
-Then run the sync target:
+そのあと sync を実行します。
 
 ```sh
 make sync-versions
 ```
 
-This updates the following files automatically from `mise.toml`:
+これにより `mise.toml` の go 値が以下のファイルに反映されます。
 
-- `go.mod` — `go X.Y.Z` directive (read by `actions/setup-go` in CI workflows via `go-version-file: go.mod`)
-- `docker/server/Dockerfile` — `FROM golang:X.Y.Z-alpine` lines (builder + tooling stages)
-- `docker/tools/Dockerfile` — `FROM golang:X.Y.Z-alpine` lines (go_tools stage)
+- `go.mod` ― `go X.Y.Z` directive（CI の `actions/setup-go` が `go-version-file: go.mod` で読む）
+- `docker/server/Dockerfile` ― `FROM golang:X.Y.Z-alpine` の行（builder + tooling）
+- `docker/tools/Dockerfile` ― `FROM golang:X.Y.Z-alpine` の行（go_tools）
 
-Commit the resulting changes together with the `mise.toml` bump.
+生成された差分は `mise.toml` の bump と一緒にコミットしてください。
 
-## 3. Update Local Go Environment
+## 3. ローカル Go 環境の更新
 
-This project **requires mise** as the version manager for tools, and the same mise installation can manage the Go runtime locally. After step 2, install the pinned Go runtime:
+このプロジェクトではツール管理に **mise が必須** です。同じ mise でローカルの Go ランタイムも管理します。
+ステップ 2 のあと、pin された Go をインストールします。
 
 ```sh
 make go-update
 ```
 
-Internally this runs `mise install go`, which reads the `go` value from `mise.toml`.
+内部では `mise install go` が走り、`mise.toml` の go 値を読みます。
 
-Verification
+確認
 
 ```sh
 go version
 ```
 
-### IDE / Editor Integration (VSCode + mise)
+### IDE / エディタ統合（VSCode + mise）
 
-When VSCode is launched from Dock / Spotlight, the shell init (where mise is
-activated) is not applied, so the Go extension may pick up a stale `go` binary
-from the system `PATH`. Use one of the following to keep the editor in sync
-with `mise.toml`:
+VSCode を Dock / Spotlight から起動した場合、shell の初期化処理（mise を
+activate している箇所）が実行されないため、Go 拡張がシステム `PATH` から
+古い `go` バイナリを拾ってしまうことがあります。プロジェクトの `mise.toml`
+と editor を同期させるには、以下のいずれかを実施します:
 
-1. **Install the [mise VSCode extension](https://marketplace.visualstudio.com/items?itemName=hverlin.mise-vscode) (recommended)** —
-   activates the project's mise environment automatically inside VSCode.
-   Already listed in `.vscode/extensions.json` as a recommended extension.
-2. **Launch VSCode from a terminal where mise is active** —
-   `code /path/to/repo` inherits the shell environment.
-3. **Set `go.alternateTools.go` to the mise shim in your VSCode User Settings** —
+1. **[mise VSCode 拡張](https://marketplace.visualstudio.com/items?itemName=hverlin.mise-vscode) をインストール（推奨）** —
+   VSCode 内部でプロジェクトの mise 環境を自動 activate。
+   `.vscode/extensions.json` の recommended extensions に登録済み。
+2. **mise が active なターミナルから VSCode を起動する** —
+   `code /path/to/repo` で shell の環境を継承。
+3. **VSCode の User Settings で `go.alternateTools.go` を mise shim に設定** —
 
    ```json
    "go.alternateTools": {
@@ -93,60 +96,61 @@ with `mise.toml`:
    }
    ```
 
-   Apply this in **User Settings**, not project `.vscode/settings.json`,
-   to keep the project portable.
+   この設定は **User Settings** に書くこと（プロジェクト `.vscode/settings.json`
+   ではなく、プロジェクトのポータビリティ維持のため）。
 
-After applying any of the above, restart VSCode and confirm via
-**Command Palette → Go: Locate Configured Go Tools** that the active Go binary
-matches `mise current`.
+設定後 VSCode を再起動し、**コマンドパレット → Go: Locate Configured Go Tools**
+で active な `go` バイナリが `mise current` の結果と一致することを確認してください。
 
-## 4. CI uses `go.mod` automatically
+## 4. CI は `go.mod` を自動参照
 
-GitHub Actions workflows use `actions/setup-go` with `go-version-file: go.mod`. Because step 2's `make sync-versions` already rewrote `go.mod`'s `go` directive from `mise.toml`, no manual workflow edit and no separate `go mod edit -go=...` is required.
+GitHub Actions の workflow は `actions/setup-go` の `go-version-file: go.mod` を使用しています。
+ステップ 2 の `make sync-versions` が `go.mod` の `go` directive も書き換えるため、
+workflow 自体の編集も `go mod edit -go=X.Y.Z` の手動実行も不要です。
 
-## 5. Update dependencies and vendor
+## 5. 依存関係と vendor の更新
 
-This project uses **Makefile task `tidy-lib`** for dependency management.
+このプロジェクトでは依存関係の整理に **Makefile タスク `tidy-lib`** を使用します。
 
 ```sh
 make tidy-lib
 ```
 
-This task executes the following.
+このタスクは以下を実行します。
 
 - `go mod tidy`
 - `go mod vendor`
 
-## 5.5. (Optional) Update Go module dependencies
+## 5.5. （任意）Go モジュール依存の更新
 
-A Go runtime upgrade is a natural point to also refresh the module dependencies. This step is optional — decide whether to update, and at which level:
+Go ランタイムのアップグレードは依存ライブラリをまとめて更新する好機でもあります。このステップは任意で、更新の有無とレベルを選びます。
 
-- **Latest minor** — `go get -u ./...` updates all direct/indirect deps to the latest minor/patch within the same major.
-- **Patch only** — `go get -u=patch ./...` stays within the current minor (safest).
-- **Skip** — leave dependencies untouched (Go directive bump only).
+- **マイナー含む最新** — `go get -u ./...` で全 direct/indirect 依存を同一メジャー内の最新マイナー/パッチへ更新。
+- **パッチのみ** — `go get -u=patch ./...` で現行マイナー内に留める（最も安全）。
+- **スキップ** — 依存は触らない（Go directive の更新のみ）。
 
-`go get -u` never crosses a major version, so major upgrades remain a separate, deliberate task.
+`go get -u` は仕様上メジャーを跨がないため、メジャー更新は別途の意図的な作業とします。
 
-If updating:
+更新する場合:
 
 ```sh
-go get -u ./...        # or: go get -u=patch ./...
-make tidy-lib          # re-run go mod tidy + go mod vendor
+go get -u ./...        # または: go get -u=patch ./...
+make tidy-lib          # go mod tidy + go mod vendor を再実行
 ```
 
-Then review the `go.mod` diff: keep the `go` directive at the upgraded version and make sure no unintended `toolchain` line was added. The later rebuild / gen / test / lint steps verify the runtime bump and the dependency update together.
+実行後は `go.mod` の差分を確認し、`go` directive はアップグレード後のバージョンのまま維持、意図しない `toolchain` 行が追加されていないことを確認します。以降の再ビルド / gen / test / lint で、ランタイム更新と依存更新をまとめて検証します。
 
-This repository has a thick test + lint suite (including real-DB infrastructure tests), so a green run gives high confidence for minor/patch updates — but it is not a guarantee. For runtime-sensitive core deps (DB driver, OpenTelemetry, web framework), skim their CHANGELOG even when green.
+本リポジトリは（実 DB を使う infrastructure テストを含む）厚い test + lint を備えており、グリーンならマイナー/パッチ更新は高い信頼度を持ちますが、保証ではありません。DB ドライバ・OpenTelemetry・Web フレームワーク等のランタイム挙動が効くコア依存は、グリーンでも CHANGELOG に目を通してください。
 
-## 6. Reinstall Go tools
+## 6. Go tools の再インストール
 
-When the Go runtime is updated, Go tools built against the previous runtime should be rebuilt. Reinstall them via mise:
+Go ランタイムを更新した場合、以前のランタイムでビルドされたツールは再ビルドが望ましいです。mise で再 install します。
 
 ```sh
 make install-tools
 ```
 
-Main tools installed (versions pinned in `mise.toml`):
+インストールされる主なツール（バージョンは `mise.toml` で pin）
 
 - gopls
 - golangci-lint
@@ -157,71 +161,86 @@ Main tools installed (versions pinned in `mise.toml`):
 - zizmor
 - shellcheck
 
-## 7. Docker images pick up the new Go base via sync
+## 7. Docker イメージは sync で自動反映
 
-`docker/server/Dockerfile` and `docker/tools/Dockerfile` both use `FROM golang:X.Y.Z-alpine` as the base for stages that need the Go runtime. Step 2's `make sync-versions` already rewrote these `FROM` lines. No manual Dockerfile edit is needed for a Go bump.
+`docker/server/Dockerfile` と `docker/tools/Dockerfile` は Go ランタイムが必要なステージで
+`FROM golang:X.Y.Z-alpine` を使っています。ステップ 2 の `make sync-versions` がこの
+`FROM` 行を自動で書き換えるため、Dockerfile を手動で編集する必要はありません。
 
-The non-Go tools (air, dlv, golangci-lint, etc.) inside these Dockerfiles continue to be installed via `mise install <tool>`, so their versions are also driven by `mise.toml`.
+Dockerfile 内の Go 以外のツール（air / dlv / golangci-lint 等）も `mise install <tool>` で導入されており、
+バージョンは `mise.toml` から解決されます。
 
-## 7.5. Re-pin the base image digests
+## 7.5. base image の digest pin を貼り直す
 
-`make sync-versions` rewrites the `FROM golang:` **tag**, but the `@sha256:...` digest pinned beside it still points at the OLD Go image. Docker honors the digest, so a build would silently keep using the old image. Re-resolve the pins from the registry so the digest tracks the new tag:
+`make sync-versions` が書き換えるのは `FROM golang:` の**タグ**であり、その隣に固定されている
+`@sha256:...` digest は古い Go イメージを指したままです。Docker は digest を優先するため、
+放置するとビルドは黙って古いイメージを使い続けます。digest がタグに追随するよう、レジストリから
+解決し直してください。
 
 ```sh
-make pin-images-resolve   # run `docker login` first if Docker Hub returns 429
+make pin-images-resolve   # Docker Hub が 429 を返す場合は先に `docker login`
 make pin-images-apply
 make pin-images-check
 ```
 
-**A Go upgrade normally cannot complete this step on the day the release lands.** The new `golang:` tag has no prior lockfile entry, and the image is inside the `PIN_IMAGES_MIN_AGE_DAYS` cooldown (default 14 days). With no aged digest to fall back to, `pin-images-resolve` fails closed rather than adopting a fresh digest or dropping the pin to tag-only, and `pin-images-check` then rejects the surviving stale digest as `未登録`. The lockfile is `docker/images-pin.toml`; the targets and the cooldown knob are documented in `.makefiles/README.md`.
+**Go のリリース当日にこの手順を完了できることは通常ありません。** 新しい `golang:` タグは
+lockfile に前回のエントリを持たず、イメージは `PIN_IMAGES_MIN_AGE_DAYS`（既定 14 日）の
+クールダウン期間内にあります。退行先となる枯れた digest が無いため、`pin-images-resolve` は
+出来立ての digest を採用したりタグのみへ緩めたりせず fail-closed し、続く `pin-images-check` は
+残った古い digest を `未登録` として弾きます。lockfile は `docker/images-pin.toml`、ターゲットと
+クールダウンの設定値は `.makefiles/README.md` にあります。
 
-So the upgrade and its base-image pin are coupled: it lands cleanly once the new Go image has aged past the window, or when a human deliberately bootstraps it with `days=0`. That is a decision to raise, not one to take — and the tag/digest mismatch must not be left in the tree either way.
+つまり Go の更新と base image の pin は連動しています。片付くのは、新しい Go イメージが
+クールダウンを抜けたときか、人が意図して `days=0` で bootstrap したときのいずれかです。これは
+提起すべき判断であって自分で決めるものではありません。どちらにせよ、タグと digest が食い違った
+状態をツリーに残してはいけません。
 
-## 8. Rebuild Docker containers
+## 8. Docker コンテナ再ビルド
 
-Bumping the Go base image invalidates layers in the Dockerfile. Use the clean (`--no-cache --pull`) variants so the new `golang:` image is actually pulled.
+Go base image のタグが変わるとレイヤキャッシュが失効するため、新しい `golang:` イメージを確実に
+pull するために `-clean`（`--no-cache --pull`）バリアントを使います。
 
-Server containers
+サーバー系コンテナ
 
 ```sh
 make serve-build-clean
 ```
 
-Tool containers
+ツール系コンテナ
 
 ```sh
 make tool-runners-build-clean
 ```
 
-## 9. Re-run code generation
+## 9. Code generation の再実行
 
-Generated code may change due to Go version changes.
+Go version の変更により生成コードが変わる可能性があります。
 
 ```sh
 make gen
 ```
 
-## 10. Run tests
+## 10. テスト実行
 
 ```sh
 make test
 ```
 
-or
+または
 
 ```sh
 go test ./...
 ```
 
-## 11. Run lint
+## 11. Lint 実行
 
 ```sh
 make lint
 ```
 
-## 12. Final check
+## 12. 最終確認
 
-Ensure that all of the following commands succeed.
+以下のコマンドがすべて成功することを確認してください。
 
 ```sh
 make sync-versions
@@ -235,21 +254,21 @@ make serve-build-clean
 make tool-runners-build-clean
 ```
 
-`make sync-versions` is repeated here so that any leftover drift between `mise.toml` and the files derived from it is caught before the upgrade is reported as done.
+`make sync-versions` をここで再度回すのは、`mise.toml` とそこから導出されるファイルの間に取りこぼしたずれが残っていないかを、完了を報告する前に検出するためです。
 
 ## Upgrade Checklist
 
-When updating the Go version, check the following.
+Go version を更新する際は以下を確認してください。
 
-- [ ] Check Release Notes
-- [ ] Update `mise.toml` (`go = "..."`)
-- [ ] Run `make sync-versions` (regenerates `go.mod` go directive + Dockerfile FROM)
-- [ ] Run `make go-update` (installs Go on host) and confirm `go version`
-- [ ] Run `make tidy-lib`
-- [ ] (Optional) Decide whether to update Go module dependencies; if yes, run `go get -u[=patch] ./...` + `make tidy-lib` (keep the `go` directive unchanged)
-- [ ] Run `make install-tools`
-- [ ] Re-pin the base image digests (`make pin-images-resolve` → `apply` → `check`); if `resolve` fails closed on the cooldown, raise the choice instead of forcing it
-- [ ] Rebuild Docker containers (`make serve-build-clean`, `make tool-runners-build-clean`)
-- [ ] Re-run code generation
-- [ ] Run test
-- [ ] Run lint
+- [ ] Release Notes 確認
+- [ ] `mise.toml` の `go = "..."` 更新
+- [ ] `make sync-versions` 実行（`go.mod` の go directive + Dockerfile FROM 再生成）
+- [ ] `make go-update` 実行（host 上の Go install）し `go version` で確認
+- [ ] `make tidy-lib` 実行
+- [ ] （任意）Go モジュール依存を更新するか判断。更新する場合は `go get -u[=patch] ./...` + `make tidy-lib` 実行（`go` directive は据え置き）
+- [ ] `make install-tools` 実行
+- [ ] base image の digest pin を貼り直す（`make pin-images-resolve` → `apply` → `check`）。クールダウンで `resolve` が fail-closed した場合は押し通さずに判断を提起する
+- [ ] Docker コンテナ再ビルド（`make serve-build-clean`, `make tool-runners-build-clean`）
+- [ ] code generation 再実行
+- [ ] test 実行
+- [ ] lint 実行

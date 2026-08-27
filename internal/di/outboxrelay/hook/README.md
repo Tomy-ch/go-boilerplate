@@ -1,34 +1,34 @@
 # outbox relay hook
 
-`internal/di/outboxrelay/hook` is a module that registers **lifecycle hooks** to drive the outbox relay engine's poll loop across application start/stop. It is used only by the relay-dedicated process (`cmd outbox-relay`).
+`internal/di/outboxrelay/hook` は、outbox relay engine の poll ループをアプリケーションの起動／停止にまたがって駆動するための **ライフサイクルフック**を登録するパッケージです。relay 専用プロセス（`cmd outbox-relay`）でのみ使用します。
 
-## Role
+## 役割
 
-`RegisterRelayHooks` registers a Start hook and a Stop hook with `lifecycle.Registrar`:
+`RegisterRelayHooks` が `lifecycle.Registrar` に Start フックと Stop フックを登録し、以下の処理を行います。
 
 ```mermaid
 flowchart TB
-    Start["OnStart hook"]
-    Run["engine.Run() in a goroutine"]
-    Stop["OnStop hook"]
+    Start["OnStart フック"]
+    Run["goroutine で engine.Run()"]
+    Stop["OnStop フック"]
     Cancel["cancel()"]
-    Wait["await engineDone / stopCtx"]
+    Wait["engineDone / stopCtx 待ち"]
 
     Start --> Run
     Stop --> Cancel --> Wait
 ```
 
-1. On Start: launches `engine.Run(engineCtx)` (the poll loop) in a detached goroutine and returns immediately (Start does not block)
-2. On Stop: cancels `engineCtx` and waits for the loop to finish within `stopCtx`
+1. Start 時: poll ループ（`engine.Run(engineCtx)`）を detached goroutine で起動し、即座に返す（Start はブロックしない）
+2. Stop 時: `engineCtx` をキャンセルし、`stopCtx` の範囲でループの終了を待つ
 
-## Usage Flow
+## 使用フロー
 
-1. The relay-dedicated process (`cmd outbox-relay`) starts with `OutboxRelayModule`
-2. The Start hook launches the poll loop in a detached goroutine
-3. On shutdown, the Stop hook cancels the engine context and awaits loop termination within `stopCtx`
+1. relay 専用プロセス（`cmd outbox-relay`）が `OutboxRelayModule` で起動する
+2. Start フックが poll ループを detached goroutine で起動する
+3. 停止時に Stop フックが engine の context をキャンセルし、`stopCtx` の範囲でループ終了を待つ
 
-## Notes
+## 注意点
 
-- The Start/Stop plumbing (detached goroutine, cancel-on-stop, grace-bounded drain) is delegated to `lifecycle.SupervisedRunner`
-- The return value of `engine.Run` is intentionally ignored; the loop owns its own retry / backoff
-- This hook is wired by `OutboxRelayModule` in `internal/di/module/outboxrelay.go`
+- Start/Stop 配線（detached goroutine・停止時キャンセル・grace 内 drain）は `lifecycle.SupervisedRunner` に委譲する
+- `engine.Run` の戻り値は意図的に無視される（リトライ／バックオフはループ自身が管理する）
+- このフックは `internal/di/module/outboxrelay.go` の `OutboxRelayModule` から配線される

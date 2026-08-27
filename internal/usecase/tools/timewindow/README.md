@@ -1,46 +1,42 @@
 # timewindow
 
-Provides the half-open interval that bounds an aggregation or filter by ordered time.
+集計・絞り込みを注文日時で区切るための半開区間を提供します。
 
-## Role
+## 役割
 
-This package holds the one shape every period-bounded read shares: a lower bound that is included, an
+このパッケージは、期間で区切るすべての読み取りが共有する 1 つの形を持ちます。含む下限、含まない上限、
 <!-- sample-api:replace-begin -->
-upper bound that is not, and the rule that rejects an empty interval. Centralizing it means the dashboard,
-purchase, purchase-summary, and product-ranking reads all agree on what "no bound" and "this instant"
-mean, instead of each usecase deciding separately.
+そして空区間を拒否する規則です。ここへ集約することで、ダッシュボード・購入履歴・購入集計・商品ランキングの
 <!-- sample-api:replace-with -->
-<!-- = upper bound that is not, and the rule that rejects an empty interval. Centralizing it means every -->
-<!-- = period-bounded read agrees on what "no bound" and "this instant" mean, instead of each usecase -->
-<!-- = deciding separately. -->
+<!-- = そして空区間を拒否する規則です。ここへ集約することで、期間で区切る -->
 <!-- sample-api:replace-end -->
+各読み取りが「境界なし」と「この瞬時」の意味について一致します。usecase ごとに個別に決めることはありません。
 
-It resolves nothing. A relative period — "today", "this month", "the last 30 days" — is resolved by the
-caller into instants before it reaches this package, so the server holds neither a clock nor a calendar and
-the same URL always names the same interval. That is the whole reason the type carries instants rather
-than calendar days: a calendar day is meaningless without a timezone, and a timezone in the aggregation
-path is what let one endpoint's "month" mean something different from another's.
+このパッケージは何も解決しません。「今日」「今月」「直近 30 日」のような相対的な期間は、ここへ届く前に
+呼び出し側が瞬時へ解決します。そのためサーバは時計も暦も持たず、同じ URL は常に同じ区間を指します。
+型が暦日ではなく瞬時を持つ理由はそこにあります。暦日はタイムゾーンなしでは意味を成さず、集計経路に
+タイムゾーンが入り込んだことが、ある endpoint の「月」を別の endpoint の「月」と違う意味にしていました。
 
-The interval is half-open rather than closed because an inclusive upper bound cannot express "up to and
-including this instant" at any finite precision — pick one and two adjacent windows either overlap on the
-boundary instant or leave a gap around it. A half-open upper bound lets them meet exactly, so windows can
-be tiled without double-counting and without losing a row between them.
+区間を閉区間ではなく半開区間にしているのは、含む上限では「この瞬時まで（を含む）」をどんな有限の精度でも
+表現できないためである。どの精度を選んでも、隣り合う 2 つの区間は境界の瞬時で重なるか、その周りに隙間を
+作るかのどちらかになる。上限を含まない形にすれば両者はちょうど接するので、二重計上も取りこぼしもなく
+区間を並べられる。
 
-## Behavior
+## 振る舞い
 
-- Both bounds omitted → the zero `Window`, meaning the whole period
-- One bound omitted → that side is unbounded
-- `Before` at or before `After` → `apperror.ErrInvalidArgument`
+- 両方の境界を省略 → ゼロ値の `Window`（全期間を意味します）
+- 片方の境界を省略 → その側に制限を設けません
+- `Before` が `After` 以前 → `apperror.ErrInvalidArgument`
 
-An empty interval is rejected rather than allowed to return zero rows, because a caller cannot otherwise
-tell "nothing matched" from "I passed the bounds the wrong way round".
+空区間は 0 件を返させるのではなく拒否します。そうしないと、呼び出し側が「一致するものが無かった」と
+「境界を逆に渡した」を区別できないためです。
 
-## Usage
+## 使い方
 
 ```go
 window, err := timewindow.New(timewindow.Bounds{After: params.OrderedAfter, Before: params.OrderedBefore})
 if err != nil {
     return nil, err
 }
-// window.After() / window.Before() return nil for an unbounded side.
+// 制限を設けない側では window.After() / window.Before() が nil を返します。
 ```

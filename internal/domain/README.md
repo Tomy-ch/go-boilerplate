@@ -1,19 +1,19 @@
-# Domain Layer (`internal/domain`) Guide
+# ドメイン層（`internal/domain`）ガイド
 
-## Role in Onion Architecture
+## オニオンアーキテクチャでの役割
 
-- The **core of the business**. It represents **essential rules** such as entities, value objects, domain services, and domain events.
-- It has no concern for external systems (HTTP / DB / UI) and defines behavior using **pure models and language**.
-- The most resilient layer to change. It is protected under the assumption that **as long as this layer does not break, the product remains maintainable**.
+- **ビジネスの中心（核）**。エンティティ、値オブジェクト、ドメインサービス、ドメインイベントなどの **本質的なルール** を表現する。
+- 外界（HTTP / DB / UI）への関心は一切持たず、**純粋なモデルと言語** で振る舞いを定義する。
+- 変更に最も強い層。**ここが壊れない限りプロダクトは保守できる** という前提で守る。
 
-## Role in this project
+## このプロジェクトでの役割
 
-- Place **Entity / ValueObject / Repository (IF)** under `internal/domain/<aggregate>/`. A
-  **Domain Service** does *not* belong here: it exists because the operation is the natural
-  responsibility of no entity and no value object, so no aggregate package owns it — see
-  [Where a Domain Service lives](#where-a-domain-service-lives).
+- `internal/domain/<aggregate>/` 配下に **Entity / ValueObject / Repository(IF)** を配置する。
+  **Domain Service** は置かない。どのエンティティ・値オブジェクトの自然な責務でもないからこそ存在する
+  ものであり、それを所有する集約パッケージが無いためである
+  （[Domain Service をどこに置くか](#domain-service-をどこに置くか)を参照）。
 
-One package per aggregate, named after it, holding these files:
+集約 1 つにつき 1 パッケージ。集約の名前を付け、以下のファイルを持つ。
 
 ```mermaid
 flowchart TB
@@ -31,196 +31,183 @@ flowchart TB
     Root --> F
 ```
 
-- As a principle, describe rules using **functions without side effects (pure functions)**.  
-  I/O, time retrieval, and random generation should depend on **values injected via arguments**.
+- **副作用を持たない関数（純関数）** でルールを記述するのが原則。  
+  I/O・時刻取得・乱数生成などは **引数で注入された値** に依存させる。
 
-- **No `context.Context` in domain logic.** A Repository interface signature may declare one, because
-  the seam it describes is crossed by an implementation that needs it for propagation. Nothing else
-  here takes one: a rule that accepts a deadline or a cancellation signal is a rule that expects to
-  perform I/O, and this layer performs none. Note that depguard cannot catch this — `context` is a
-  standard-library package that outer layers legitimately use, so the rule holds by review rather than
-  by lint.
+- **ドメインロジックに `context.Context` を持ち込まない。** Repository インターフェースのシグネチャは
+  宣言してよい。その継ぎ目を越える実装が伝播のために必要とするからである。それ以外はここでは受け取らない。
+  deadline やキャンセルを受け取るルールは I/O を行うつもりのルールであり、この層は I/O を行わない。
+  なお depguard はこれを捕まえられない — `context` は外側の層が正当に使う標準ライブラリなので、
+  この規則は lint ではなくレビューで保たれる。
 
-- State changes must be performed through **entity methods**, and must not access external resources.
+- 状態変更は **エンティティのメソッド** で行い、外部リソースへのアクセスはしない。
 
-- Types should follow an **effectively immutable** approach.
+- 型は **effectively immutable** を基本とする。
 
   - private field + getter
-  - defensive copy (`ptr.Copy`)
-  - setters are prohibited
-  - state changes occur through **behavior methods**
+  - defensive copy（`ptr.Copy`）
+  - setterは禁止
+  - 状態変更は **振る舞いメソッド**
 
-- Dependencies should be **injected via constructors**.
+- 依存関係は **コンストラクタで注入** する。
 
-- External libraries must not be imported directly; they should be used **through pkg wrappers**.
+- 外部ライブラリは直接持ち込まず **pkg wrapper経由** で使用する。
 
-Examples:
+例：
 
 - UUID → `pkg/uuid`
 - Decimal → `pkg/decimal`
 - Error → `pkg/xerrors`
 
-- A domain package must **not** import another aggregate (enforced by depguard: `internal/domain/`
-  is denied). Business-semantic value objects used by more than one aggregate, which cannot live in
-  `pkg/` because `pkg/` forbids business logic, live in the **domain lexicon**
-  [`internal/domain/lexicon`](lexicon/README.md), which every domain package may import. Placement is
-  resolved `pkg/` first, and admission is deliberately narrow — the name states the question asked at
-  the door: is this a word of the business? See its README.
-  Rationale: [ADR-0039 (domain-lexicon)](../../docs/adr/0039-domain-lexicon.md).
+- domain パッケージは他の集約を import してはならない（depguard が `internal/domain/` を拒否する）。
+  複数の集約から使われる業務意味論を持つ値オブジェクトのうち、`pkg/` が業務ロジックを禁じているために
+  そちらへ置けないものは、**ドメイン語彙** [`internal/domain/lexicon`](lexicon/README.md) に置く。
+  ここは全ての domain パッケージが import してよい。配置は `pkg/` を先に判定し、入場基準は意図的に
+  狭い。名前が入場時の問いを表している——これは業務の語か。その README を参照。
+  根拠: [ADR-0039 (domain-lexicon)](../../docs/adr/0039-domain-lexicon.md)。
 
-  The other path that may import an aggregate is `internal/domain/service/**`, where every Domain
-  Service lives; it has its own depguard rule that repeats every other domain deny. The rule permits
-  the extra edge and never requires it, so a service that speaks of one aggregate lives there too. See
-  [Where a Domain Service lives](#where-a-domain-service-lives).
+  集約を import してよいもう一つの場所は `internal/domain/service/**` であり、すべての Domain Service が
+  そこに住む。専用の depguard ルールを持ち、domain 層の他の deny はすべて再掲されている。この規則は
+  余分な辺を許可するだけで要求はしないため、単一の集約だけを語るサービスも同じくそこに置く。
+  [Domain Service をどこに置くか](#domain-service-をどこに置くか)を参照。
 
-## Domain boundaries
+## ドメインの境界
 
-The Domain layer is a layer that **expresses business rules and state transitions**.
+Domain 層は **ビジネスルールと状態遷移を表現する層**である。
 
-Domain responsibilities:
+Domain の責務：
 
-- Invariants
-- State transitions
-- Value consistency
-- Business rules
+- 不変条件（Invariant）
+- 状態遷移
+- 値の整合性
+- ビジネスルール
 
-What Domain is not responsible for:
+Domain の責務ではないもの：
 
-- Search specifications
-- DB optimization
-- SQL structure
-- External API calls
-- Aggregation processing
+- 検索仕様
+- DB最適化
+- SQL構造
+- 外部API呼び出し
+- 集計処理
 
-These are handled in the following layers:
+これらは次の層で扱う。
 
 - Usecase
 - QueryService
 - ReadModel
 
-Repository provides **only persistence abstraction**.
+Repository は **永続化の抽象のみ提供する**。
 
-Simple queries are acceptable in practice.
+単純な Query は実務上許容する。
 
-Allowed examples:
+許容例：
 
 - `FindByXXX`
 - `FindByActive`
 - `CountByXXX`
 
-## Entity or Value Object
+## Entity か Value Object か
 
-Before deciding how to implement a domain type, decide **what it is**. The two kinds are separated by
-one question, and it is not "does it deserve invariants" — every domain type deserves those.
+ドメイン型をどう実装するかを決める前に、**それが何であるか**を決める。両者を分けるのは 1 つの問いで、
+それは「不変条件を持つに値するか」ではない。ドメイン型はどれも不変条件を持つに値する。
 
-**An Entity has an identity that outlives its attributes.** Change every field of a user and it is
-still the same user; that continuity is what an identity is for. Two entities are the same when their
-identities match, whatever their attributes say.
+**Entity は属性より長生きする同一性を持つ。** ユーザーの全フィールドを変えても同じユーザーのままであり、
+その連続性のために同一性がある。2 つの Entity は、属性が何と言おうと同一性が一致するときに同じものである。
 
-**A Value Object has no identity.** It is the value it holds, so two of them are the same exactly when
-their contents are equal. Nothing about it persists across a change, because changing it produces a
-different value rather than the same thing in a new state. Replace it whole; never mutate it in place.
+**Value Object は同一性を持たない。** それは保持している値そのものなので、2 つが同じであるのは中身が
+等しいとき、ちょうどそのときである。変更を跨いで持続するものが何も無い。変更は「同じものの新しい状態」
+ではなく別の値を生むからである。丸ごと置き換えること。その場で書き換えてはいけない。
 
-Deciding for a new type:
+新しい型を決める手順:
 
-1. Ask whether the thing needs to be traceable as *the same one* over time — through updates,
-   through persistence, through being handed around. If yes, it is an Entity and it needs an identity
-   field that never changes.
-2. If it does not, it is a Value Object. Give it equality by content and make it immutable.
-3. If the answer depends on the context — an address is an Entity to a delivery service and a Value
-   Object to a customer record — the answer is the one that holds *in this model*, not in general.
+1. そのものが時間を越えて*同じ一つのもの*として追跡される必要があるかを問う（更新を跨いで、永続化を
+   跨いで、受け渡しを跨いで）。必要なら Entity であり、決して変わらない同一性のフィールドを持つ。
+2. 必要でなければ Value Object。等価は中身で決まり、不変にする。
+3. 文脈次第で答えが変わる場合——住所は配送業者にとって Entity だが顧客レコードにとって Value Object
+   ——採るのは*このモデルにおいて*成り立つほうであって、一般論ではない。
 
-### How far Value Objects go here
+### このリポジトリで Value Object をどこまで使うか
 
-Evans models an attribute as a Value Object wherever the attribute carries meaning of its own. **This
-repository does not go that far**: an attribute is wrapped only when it has an invariant worth
-enforcing (a non-negative price, a bounded string), and stays a primitive otherwise.
+Evans は、属性がそれ自体の意味を持つならその属性を Value Object としてモデル化する。**このリポジトリは
+そこまでしない。** 属性を包むのは強制するに値する不変条件を持つときだけで（非負の価格、長さ制約のある
+文字列）、それ以外は基本型のまま置く。
 
-This is a deliberate departure. Wrapping every attribute buys type-level protection against
-mixing up two same-typed fields, but it multiplies the type count and the conversion noise at every
-boundary, and the protection it adds over a well-named field with a validated constructor is small.
-The cost outruns the benefit at this size. Where the swap risk is real — same-typed adjacent
-parameters — the remedy this repository uses is bundling into an attribute struct instead; see the
-struct-bundling section below.
+これは意図的な逸脱である。全属性を包めば同型フィールドの取り違えに対する型レベルの防御が手に入るが、
+型の数と境界ごとの変換ノイズが増える一方で、適切に命名され検証付きコンストラクタを持つフィールドに対して
+上乗せされる防御は小さい。この規模では費用が便益を上回る。取り違えのリスクが実在する箇所——同型の隣接
+引数——に対しては、属性構造体への束ねを対処として用いる（後述の該当節を参照）。
 
-**When a value carries business meaning, give the domain the question, not the type.** Callers rarely
-want the value; they want to know whether something is in a state — published, still active, able
-to move to the next status. Put that predicate on whatever owns the value and let the
-representation stay inside. The caller then reads in the language of the model, and the value is free
-to change shape without touching anything that asks about it.
+**値が業務上の意味を持つとき、ドメインへ渡すべきは問いであって型ではない。** 呼び出し側が欲しいのは値では
+なく、対象がある状態にあるかどうかである——公開中か、まだ在籍しているか、次のステータスへ
+移れるか。その述語を値の所有者に置き、表現は内側に留める。呼び出し側はモデルの語彙で読むことになり、
+値の表現は、それについて問う側に触れずに変えられる。
 
-These are two separate tests, and a value can pass either, both, or neither. Wrapping asks whether the
-value has an invariant to enforce at construction; a predicate asks whether anything decides on it. A
-status passes both — it rejects codes it does not know, and it owns the questions others ask — so it is
-a type. An opaque identifier passes neither, and stays a primitive with nothing attached. The common
-mistake is to read "this value carries meaning" as a reason to wrap it: meaning is carried by the
-question, and a wrapper with no invariant and no caller is a name and a conversion.
+この 2 つは別の試験で、値はどちらか一方だけ通ることも、両方通ることも、どちらも通らないこともある。包むかを
+決めるのは「生成時に強制すべき不変条件を持つか」、述語を置くかを決めるのは「何かがそれを見て判断するか」。
+ステータスは両方を通る——知らないコードを拒み、他者が投げる問いを所有している——ので型になる。不透明な
+識別子はどちらも通らないので、何も付けずに基本型のまま置く。よくある誤りは「この値は意味を持つ」を包む
+理由として読むことで、意味を担うのは問いのほうである。不変条件も呼び出し元も無い包みは、名前と変換でしかない。
 
-**`pkg/` does not contain Value Objects in this sense.** Types there wrap a vendor library or a
-primitive without carrying business meaning, which is exactly what disqualifies them from this layer;
-see [`pkg/README.md`](../../pkg/README.md).
+**`pkg/` はこの意味での Value Object を含まない。** あちらの型はベンダーライブラリや基本型を包むが業務上の
+意味を担わず、それがまさにこの層から外れる理由である。[`pkg/README.md`](../../pkg/README.md) を参照。
 
-## Domain events
+## ドメインイベント
 
-A transition that the outside world needs to hear about **returns the fact it produced**:
+外界へ伝える必要のある遷移は、**起きた事実を返します**。
 
 ```go
 func (e *Entity) Cancel(now time.Time) (Event, error)
 ```
 
-The aggregate that underwent the change is the only thing that knows it happened, so the aggregate
-is what declares it. Returning the event from the transition means the compiler ties the two
-together: a caller cannot obtain the event without the transition having succeeded, and cannot
-succeed at the transition without being handed the event. "State changed but no event was emitted"
-and "an event was emitted but nothing changed" stop being writable.
+その変化が起きたことを知っているのは、変化を起こした集約だけです。だから宣言するのも集約です。
+遷移メソッドが事実を返す形にすると、両者をコンパイラが結び付けます。呼び出し側は遷移が成功しない限り
+イベントを手に入れられず、遷移に成功すればイベントを受け取らざるを得ません。「状態は変わったが
+イベントが出ていない」「イベントは出たが何も変わっていない」が書けなくなります。
 
-An event is a **fact**, so it is past-tense, immutable, and carries the time it occurred — the same
-instant the transition recorded, not a second reading of the clock.
+イベントは**事実**なので、過去形で、不変で、起きた時刻を伴います。時刻は遷移が記録したものと同一で、
+時計を二度読むことはしません。
 
-**The name is domain vocabulary; the wire format is not.** What the event is called (`canceled`,
-`shipped`) belongs here. The versioned type string, the JSON field names, and the payload shape are
-a transport contract owned by the layer that publishes it — this layer holds no serialization. A
-mapping in that layer turns a domain event into its published form, which is also where a version
-rises when the payload changes shape while the fact stays the same.
+**名前はドメインの語彙ですが、ワイヤ表現は違います。** その事象を何と呼ぶか（`canceled` / `shipped`）は
+この層のものです。版付きの種別文字列・JSON のフィールド名・payload の形は、公開する層が所有する転送契約で
+あり、この層は serialization を持ちません。ドメインの事象を公開形へ写す対応表はその層に置き、事実は同じ
+まま payload の形が変わったときに版が上がるのもそちらです。
 
-Collecting events on the aggregate to be drained after save (pending events) is **not** used here.
-Returning them from the transition gets the same guarantee without giving the aggregate mutable
-state to manage.
+保存後に drain するためイベントを集約へ溜める形（pending events）は**採用しません**。遷移から返せば同じ
+保証が得られ、集約に管理すべき可変状態を増やさずに済みます。
 
-## Implementation notes
+## 実装上の注意点
 
-### Naming / structure
+### 命名/構造
 
-- Struct names should be **domain names**
-- Slice types may be defined when necessary
+- 構造体名は **ドメイン名**
+- スライス型は必要に応じて定義
 
 ```go
 type Users []*User
 ```
 
-- Repository interface name should be `Repository`
-- Package name should be the domain name
-- Constructor name should be `New`
+- Repository インターフェース名は `Repository`
+- パッケージ名はドメイン名
+- コンストラクタは `New`
 
-> **Departure from Evans.** For Evans a Module is part of the model: the dividing lines and the names
-> are meant to carry an insight about the domain, and the structure is expected to evolve as the model
-> does. The rules above are mechanical beside that — they say what to call things, not what a division
-> should reveal. The gap is deliberate: the lines drawn here are the ones the architecture implies, and
-> a line that expresses a model is drawn by whoever holds the model. Where a real domain is present,
-> read the mechanical rules as the floor and add the model-revealing divisions on top.
-> While this repository is distributed as a boilerplate, why it stops at the floor is an upstream-only reason recorded in [`docs/get-started/boilerplate-only-conventions.md`](../../docs/get-started/boilerplate-only-conventions.md). <!-- boilerplate-only:line -->
+> **Evans からの逸脱。** Evans にとって Module はモデルの一部である。分割線と名前はドメインへの洞察を
+> 担うことを意図され、構造はモデルと共に進化することが期待される。上記の規則はそれに比べれば機械的で、
+> 何と呼ぶかは言うが、その分割が何を明かすべきかは言わない。この差は意図的である。ここで引かれている
+> 線はアーキテクチャが含意するものであり、モデルを表現する線はモデルを持つ者が引く。実ドメインがある
+> 場面では、機械的な規則を下限と読み、モデルを明かす分割をその上に足すこと。
+> 本リポジトリがボイラープレートとして頒布されている間、下限で留めている理由は上流限定のものであり、[`docs/get-started/boilerplate-only-conventions.md`](../../docs/get-started/boilerplate-only-conventions.md) に記録している。 <!-- boilerplate-only:line -->
 
-### Bundle attributes into a struct when positional arguments can be swapped
+### 位置引数を取り違えうる場合は属性を構造体へ束ねる
 
-The criteria — when a same-typed-parameter swap is a real risk, when it is not, and whether to remedy it
-with distinct VO types or with a struct — are layer-independent and live in `docs/rules.md`
-("Function Signature Rules"). This section covers only how the domain layer applies them.
+判断基準（同型引数の取り違えが実際にリスクとなるのはどんな場合か、ならないのはどんな場合か、対処を
+VO 化と構造体化のどちらにするか）は層非依存であり `docs/rules.md`（"Function Signature Rules"）に置く。
+この節では domain 層での適用のみを扱う。
 
-An entity whose attributes trigger the rule bundles them into a value struct shared by every entry point,
-so creation, reconstruction, and update cannot drift apart:
+ルールのトリガーを満たす属性を持つエンティティは、それらを値構造体へ束ね、全入口で共有する。これに
+より生成・再構築・更新の各入口が乖離しない。
 
 ```go
-// The attribute set shared by the constructor and the behavior methods.
+// コンストラクタと振る舞いメソッドが共有する属性一式。
 type Attributes struct {
     Name        string
     Description *string
@@ -233,79 +220,73 @@ func Reconstruct(id uuid.UUID, attrs Attributes, version int) (*Entity, error)
 func (e *Entity) Update(attrs Attributes) error
 ```
 
-The identity (`id`) and the optimistic-lock version stay positional — they are distinctly typed and are
-not part of the attribute set the update entry point replaces. When only a subset of the attributes is
-replaceable, name that subset as its own struct and embed it (`user.Profile` inside `user.Attributes`)
-rather than declaring two overlapping structs.
+識別子（`id`）と楽観ロックのバージョンは位置引数のままとする。型が相異なるうえ、更新の入口が置き換える
+属性集合には含まれないためである。置き換え可能なのが属性の一部だけの場合は、その部分集合を独立した
+構造体として命名し埋め込む（`user.Attributes` に `user.Profile` を埋め込む形）。重複するフィールドを
+持つ構造体を 2 つ宣言しないこと。
 
-Reconstruction from a DB row is the most exposed caller in this layer, so the mapping test the rule
-requires belongs on the Repository's row-to-entity conversion as well as on the constructor.
+この層で最も晒されるのは DB 行からの再構築であるため、ルールが要求する写像テストはコンストラクタ側に
+加えて Repository の行→エンティティ変換にも置く。
 
-### Do not set outside constructor
+### コンストラクタ経由以外でセットしない
 
-- Invariants are guaranteed in `New(...)`
-- setters are prohibited
-- state changes occur through **behavior methods**
+- 不変条件は `New(...)` で保証
+- setterは禁止
+- 状態変更は **振る舞いメソッド**
 
-`Reconstruct(...)` runs the same invariants as `New(...)`. There is no relaxed path for data that is
-already stored.
+`Reconstruct(...)` は `New(...)` と同じ不変条件を課す。既に永続化されているデータのための緩い経路は
+用意しない。
 
-**An aggregate is constructed whole, children included.** One call produces the root and the parts it
-owns, and that call is where the invariants are checked — including the ones no part can judge alone,
-such as uniqueness across siblings or a total that has to agree with the lines it sums. A child's own
-constructor assembles a part; it is not the gate. Giving it one would split a single rule across two
-places and leave the cross-child half with nowhere to live. `Reconstruct(...)` is bound by this too:
-the children arrive already assembled from storage, so the root is the only point at which the set
-can still be rejected.
+**集約は子ごと丸ごと構築する。** 1 回の呼び出しがルートと配下の部品を生成し、不変条件はそこで判定する
+——兄弟間の一意性や、明細の合計と一致すべき合計額のように、部品 1 つでは判定できないものを含めて。
+子のコンストラクタは部品を組み立てるだけで、関門ではない。関門にすると 1 つの規則が 2 箇所へ分かれ、
+子をまたぐ側は置き場所を失う。`Reconstruct(...)` も同じ縛りを受ける。子は永続化から組み立て済みで
+上がってくるため、その集合を棄却できる地点はルートだけになる。
 
-> **Departure from Evans.** Evans warns that reconstituting an object from storage is not the same
-> problem as creating one: the data already exists, so a violated invariant may call for a repair
-> strategy rather than a flat refusal. This model always fails hard — a row that breaks an invariant
-> surfaces as an error at load time. A stored violation is a defect to be found, and repairing it
-> silently would hide that defect at the exact moment it becomes observable. The cost is accepted:
-> such a row blocks reads of that aggregate until it is corrected.
+> **Evans からの逸脱。** Evans は、永続化から再構築することは生成とは別の問題だと注意する。データは
+> 既に存在しているので、不変条件違反に対しては一律の拒否ではなく修復戦略が要り得る、と。このモデルは
+> 常に hard-fail する——不変条件を破る行は読み込み時にエラーとして表面化する。保存された違反は
+> 見つけられるべき欠陥であり、黙って修復することは、それが観測可能になったまさにその瞬間に欠陥を
+> 隠すことになる。代償は受け入れる。そうした行は、修正されるまでその集約の読み取りを止める。
 
-### The constructor is the Factory
+### コンストラクタが Factory である
 
-`New(...)` and `Reconstruct(...)` are this model's Factory, and there is no separate Factory type.
-A Factory exists to take the knowledge of how to assemble a valid whole away from the client and give
-it to something that owns it; a constructor in the aggregate's own package does that already. The
-client supplies values, the constructor decides what counts as valid, and a half-built instance is
-never observable. Reconstitution's Factory is the Repository — it reads the row and hands it to
-`Reconstruct(...)`, which is why no outer layer assembles an aggregate field by field.
+`New(...)` と `Reconstruct(...)` がこのモデルの Factory であり、独立した Factory 型は持たない。
+Factory とは「妥当な全体をどう組み立てるか」の知識を呼び出し側から取り上げ、それを所有する場所へ
+渡すためのもので、集約自身のパッケージにあるコンストラクタが既にそれを果たしている。呼び出し側は値を
+渡し、コンストラクタが何を妥当とするかを決め、半端に組み上がったインスタンスは決して観測されない。
+再構築側の Factory は Repository が務める——行を読んで `Reconstruct(...)` へ渡す。外側の層が集約を
+フィールド単位で組み立てないのはこのためである。
 
-**A Factory type appears when construction acquires configuration** — something fixed across
-creations, such as a numbering scheme or a rule that varies by tenant. The type holds that
-configuration and its method takes the per-creation data. Data that changes every call is an argument,
-not a field; when nothing is left to hold, the type has no reason to exist and `New(...)` is already
-the whole pattern.
+**Factory 型が現れるのは、生成が設定を持ったとき。** 生成をまたいで固定されるもの——コード体系、
+テナントごとに切り替わる規則など——がそれにあたる。型がその設定を保持し、メソッドが 1 回ごとのデータを
+受け取る。呼び出しごとに変わるデータは引数であってフィールドではなく、保持するものが何も残らなければ
+その型に存在する理由は無い。`New(...)` がそのままパターンの全体である。
 
-**Construction takes values, never injected collaborators.** Do not give the domain a generator or a
-policy interface to build with. A generator makes the domain perform an effect, so the same inputs
-stop producing the same aggregate. A policy interface is worse: it moves the very rule the constructor
-exists to state back outside the domain and leaves only its name behind — the criterion is then
-authored where it cannot be seen (see § Query and Aggregate for the same failure in a query path).
-Outer layers run the effects — identifiers, clocks — and pass in the results, exactly as behavior
-methods already take `now`. If a choice must be configurable, pass the choice as a domain value and
-keep the branching in the domain.
+**生成が受け取るのは値であって、注入された協力者ではない。** 生成のために生成器やポリシーの interface を
+domain へ渡してはならない。生成器は domain に効果を実行させるので、同じ入力から同じ集約が出なくなる。
+ポリシーの interface はさらに悪く、コンストラクタが述べるべき規則そのものを domain の外へ戻し、名前だけを
+残す——基準が見えない場所で著作される（クエリ経路で同じ壊れ方をした例は § Query and Aggregate）。
+効果——識別子・時刻——を実行するのは外側の層で、その結果を渡す。振る舞いメソッドが既に `now` を受け取って
+いるのと同じ形である。選択を設定可能にする必要があるなら、選択をドメインの値として渡し、分岐は domain に
+置いたままにする。
 
-**Variation is data by default; types are the exception.** The other reason to reach for a Factory is
-to choose which concrete type to build, and that presumes a model with several. Business domains do
-carry real variety, so the question is where to put it, not whether it exists. Put it in a value the
-domain interprets — a status code, a period kind — and keep one type whose behavior switches on that
-value. Move the distinction into separate types only when the variants differ in their **fields and
-invariants**, not merely in behavior: the signal is a single struct accumulating fields that are
-meaningless for half of its instances, each guarded by a check that some other field is set.
+**変種は既定でデータとして表し、型で表すのは例外。** Factory に手を伸ばすもう一つの理由は「どの具象型を
+生成するかを選ぶこと」で、これはモデルが複数の型を持っていることを前提にしている。業務ドメインに多様性は
+実在するので、問いは「あるかないか」ではなく「どこに置くか」である。ドメインが解釈する値——ステータス
+コード、期間区分——として置き、振る舞いはその値で分岐する 1 つの型に持たせる。区別を型へ移すのは、変種が
+**フィールドと不変条件まで**異にするときに限る。振る舞いだけが違う段階では移さない。移すべき合図は、
+単一の構造体が「半分のインスタンスにとって無意味なフィールド」を溜め込み、その一つひとつが別のフィールドの
+有無を見る検査で守られている状態になったときである。
 
-Moving early costs twice here. Reconstitution then has to pick the type from a discriminator column,
-which drags that choice — and the schema it reads — into the domain, the one place that is supposed to
-know nothing about storage. And the static exhaustiveness checks that cover a switch over values do
-not cover a switch over implementations, so the compiler stops telling you where to go when a variant
-is added. Keeping variation as data keeps both properties.
+早すぎる移行はこの積み方では二重に高くつく。再構成が判別列から型を選ぶことになり、その選択と、選択が読む
+スキーマが domain——ストレージについて何も知らないはずの場所——へ引きずり込まれる。加えて、値に対する switch
+を守る静的な網羅チェックは実装に対する switch を守らないので、変種を足したときにコンパイラがどこを直すべきか
+教えてくれなくなる。変種をデータのまま保てば、この 2 つの性質を両方とも保てる。
 
-### Access via getter
+### 取得は getter 経由
 
-- Fields must not be exported
+- フィールド公開禁止
 
 ```go
 ID()
@@ -313,17 +294,17 @@ FirstName()
 Email()
 ```
 
-- pointer types must use **defensive copy**
+- pointer型は **defensive copy**
 
 ```go
 ptr.Copy(...)
 ```
 
-### Do not add tags to struct
+### 構造体にタグを打たない
 
-Domain must not know the outside world.
+Domainは外界を知らない。
 
-Forbidden:
+禁止：
 
 ```text
 json
@@ -331,77 +312,77 @@ db
 validate
 ```
 
-These belong to DTO / Infrastructure.
+これらは DTO / Infra に置く。
 
-### Not every DB column is an entity field
+### DB のすべてのカラムをエンティティのフィールドにしない
 
-An entity models only state that carries **domain meaning**. Columns that exist purely for persistence or search infrastructure are intentionally left off the entity, even when present in the table:
+エンティティは**ドメイン上の意味を持つ状態**のみを表現する。永続化や検索インフラのためだけに存在するカラムは、テーブルに存在してもエンティティには意図的に含めない：
 
-- Audit columns (`created_at` / `updated_at`) — read them directly from the DB when needed; they need not become entity fields or invariants.
-- DB-generated / computed columns (e.g. `GENERATED ALWAYS AS ... STORED` search-text columns) — infrastructure search optimization, not domain state.
+- 監査列（`created_at` / `updated_at`）— 必要なら DB を直接参照すればよく、エンティティのフィールドや不変条件にする必要はない。
+- DB 生成列・計算列（例: `GENERATED ALWAYS AS ... STORED` の検索用テキスト列）— インフラの検索最適化であり、ドメインの状態ではない。
 
-So a 1:1 entity ↔ column correspondence is **not** required; absence of such columns from an entity is a deliberate design choice, not drift.
+したがって entity ↔ カラムの 1 対 1 対応は**必須ではない**。こうしたカラムがエンティティに無いのは意図的な設計判断であり、ドリフトではない。
 
-### Handling time and ID
+### 時刻・ID の扱い
 
-- Do not use `time.Now()` in Domain
-- Do not generate UUID in Domain
+- `time.Now()` は Domain で使わない
+- UUID 生成も Domain で行わない
 
-Generation must be done in:
+生成は：
 
 - Controller
 - Usecase
 
-Domain receives only **typed values**
+Domainは **型付き値のみ受け取る**
 
 ```go
 uuid.UUID
 time.Time
 ```
 
-### Validation
+### バリデーション
 
-#### Format check
+#### 形式チェック
 
-Principle: **Value Objects**
+原則 **値オブジェクト**
 
-Example:
+例：
 
 ```go
 NewEmail(...)
 ```
 
-Primitive types may be allowed in lightweight domains.
+軽量ドメインでは基本型も許容。
 
-#### Boundary value check
+#### 境界値チェック
 
-Boundary values are defined in `constant.go`
+境界値は `constant.go`
 
 ```go
 minLength
 maxEmailLength
 ```
 
-#### Why validate here when OpenAPI already validates the request?
+#### oapi 側で検証しているのに、なぜここでも検証するのか
 
-The OpenAPI request-validation middleware and this layer are **not redundant** — they have different owners and different scopes:
+OpenAPI のリクエスト検証ミドルウェアとこのレイヤは **冗長ではありません**。オーナーもスコープも異なります。
 
-- **Different owner.** OpenAPI constraints are the *wire contract* (what the HTTP API accepts); the domain constants are the *business rule* (what the business considers valid). They may legitimately differ — see [Input Boundary Value Ownership](../../openapi/boundary-ownership.md).
-- **The only universal chokepoint — both inbound and from persistence.** Every entity is built through `New(...)`. Not only do non-HTTP write paths (seed, CLI, batch jobs, tests, any future entrypoint) bypass the request middleware entirely — reconstruction from the database goes through the same validating constructor, because the Repository rebuilds every row through it rather than assigning fields directly. So `New(...)` also guards against invalid data coming *from* infra: a corrupt, manually-inserted, or legacy row that violates a domain invariant fails at reconstruction instead of surfacing as a valid-looking entity. The middleware cannot protect this read path at all; only the domain can.
-- **Framework-agnostic self-protection.** The domain must be correct independent of its caller. Delegating validation to the transport layer would couple the domain's correctness to Echo / the middleware, violating the layer's framework-agnostic rule.
+- **オーナーが違う。** OpenAPI の制約は *ワイヤー契約*（HTTP API が受け入れる形）、domain の定数は *業務ルール*（業務が valid と認める値）。両者は正当に食い違える — [入力境界値のオーナーシップ](../../openapi/boundary-ownership.md) を参照。
+- **唯一の共通チョークポイント — 入力側と永続化側の両方。** すべてのエンティティは `New(...)` を通って構築される。非HTTPの書き込み経路（seed・CLI・バッチ・テスト・将来の入口）がリクエストミドルウェアを完全に迂回するだけでなく、**DB からの再構築も同じ検証付きコンストラクタを通る**（Repository がフィールドを直接代入せず、全行をそれ経由で組み立てる）。したがって `New(...)` は **infra 側から来る不正データ**も弾く：破損・手動 INSERT・レガシーなど、ドメイン不変条件に違反する行は、valid に見えるエンティティとして上がってくるのではなく再構築時にエラーになる。この読み取り経路はミドルウェアでは一切守れず、domain だけが守れる。
+- **framework-agnostic な自己防衛。** domain は呼び出し元に依存せず常に正しくある必要がある。検証をトランスポート層に委ねると domain の正しさが Echo／ミドルウェアに結合し、レイヤの framework-agnostic 規約に反する。
 
-In short: the middleware protects the HTTP boundary; the domain protects the *business rule itself*, for all callers.
+要するに：ミドルウェアは HTTP 境界を守り、domain は *業務ルールそのもの* を全呼び出し元に対して守る。
 
-#### Errors
+#### エラー
 
-Errors must be **specific errors**
+エラーは **具体エラー**
 
 ```go
 ErrInvalidEmail
 ErrInvalidPostalCode
 ```
 
-Do not return abstract errors directly.
+抽象エラーは直接返さない。
 
 ```go
 if ok, msg := stringkit.ValidateInRange(email, minLength, maxEmailLength); !ok {
@@ -409,44 +390,44 @@ if ok, msg := stringkit.ValidateInRange(email, minLength, maxEmailLength); !ok {
 }
 ```
 
-For **user-correctable input fields**, do not stop at the first failure: validate all
-fields, join the per-field errors, and attach the invalid field identifiers via
-`apperror.WithDetails` so the API can report every invalid field at once
-(see the Error Metadata section of [`internal/apperror/README.md`](../apperror/README.md)):
+**ユーザーが修正できる入力フィールド**については、最初の失敗で止めない: 全フィールドを
+検証し、フィールドごとのエラーを結合した上で、不正フィールドの識別子を
+`apperror.WithDetails` で付与する。これにより API は不正フィールドを一度にすべて報告できる
+（[`internal/apperror/README.md`](../apperror/README.md) のエラーメタ情報節を参照）:
 
 ```go
 errs = append(errs, xerrors.Wrap(ErrInvalidEmail, msg))
-fields = append(fields, FieldEmail) // constant matching the API property name
+fields = append(fields, FieldEmail) // API プロパティ名と一致する定数
 ...
 return apperror.WithDetails(xerrors.Join(errs...), fields...)
 ```
 
-The field identifiers are domain constants (`FieldEmail = "email"`) matching the API
-request property names; the reason text stays in the wrapped error message (log-only).
-Server-internal invariants (id, timestamps) keep first-error return —
-they are not user-correctable input.
+フィールド識別子は API リクエストのプロパティ名と一致するドメイン定数
+（`FieldEmail = "email"`）で、理由文はラップしたエラーメッセージ側に残す（ログ専用）。
+サーバ内部の不変条件（id・タイムスタンプ）は first-error return の
+まま — ユーザーが修正できる入力ではないため。
 
-### Invariants (Domain Invariant)
+### 不変条件（Domain Invariant）
 
-Entities must **always satisfy invariants**.
+エンティティは **Invariantを常に満たす**。
 
-Examples:
+例：
 
 - `updatedAt >= createdAt`
 - `deletedAt >= createdAt`
 - `deletedAt >= updatedAt`
 
-Invariant enforcement points:
+Invariant保証箇所：
 
 - `New(...)`
-- state transition methods
+- 状態変更メソッド
 
-Usecase / Repository  
-**do not have responsibility to enforce invariants**.
+Usecase / Repository は  
+**Invariant保証責務を持たない**。
 
 ## Aggregate Design
 
-In this project, **Aggregate is the design unit**.
+このプロジェクトでは **Aggregate を設計単位**とする。
 
 ```text
 internal/domain/<aggregate>/
@@ -454,13 +435,13 @@ internal/domain/<aggregate>/
 
 ### Aggregate Root
 
-Each Aggregate has **one Root**.
+Aggregate には **1つの Root** が存在する。
 
-Responsibilities:
+責務：
 
-- consistency guarantee
-- external operation entry point
-- persistence target
+- 整合性保証
+- 外部操作入口
+- 永続化対象
 
 ```go
 type User struct {
@@ -468,7 +449,7 @@ type User struct {
 }
 ```
 
-Repository is defined **for the Root**
+Repository は **Root に対して定義**
 
 ```go
 type Repository interface {
@@ -476,9 +457,9 @@ type Repository interface {
 }
 ```
 
-### Aggregate consistency
+### Aggregate の整合性
 
-Changes must go **through the Root only**
+変更は **Root経由のみ**
 
 ```mermaid
 flowchart LR
@@ -487,59 +468,54 @@ flowchart LR
 
 ### Aggregate Boundary
 
-Keep Aggregate **small**
+Aggregate は **小さく保つ**
 
-Principle (the default, not an absolute — see the two departures below):
+基本原則（絶対ではなく既定。下の 2 つの逸脱を参照）：
 
 ```mermaid
 flowchart TB
     Rule["1 Aggregate = 1 Transaction Boundary"]
 ```
 
-Avoid:
+避ける：
 
-- large aggregates
-- direct DB structure mapping
-- tightly coupled models
+- 巨大Aggregate
+- DB構造直写
+- 強結合モデル
 
-**Two named situations depart from the principle**, and only these two. Both put rows belonging to
-more than one aggregate inside a single transaction, and each has to be justified against its own
-criterion before it is used — the criterion, and the default that precedes both, are the three
-branches of [ADR-0034 (commandservice-atomicity-criterion)](../../docs/adr/0034-commandservice-atomicity-criterion.md) § Decision
-procedure:
+**この原則から逸脱する状況は 2 つ**あり、その 2 つだけです。どちらも複数の集約に属する行を
+単一のトランザクションに入れるため、用いる前にそれぞれの基準に照らした正当化が必要です。
+その基準と、両者に先立つ既定とは、
+[ADR-0034 (commandservice-atomicity-criterion)](../../docs/adr/0034-commandservice-atomicity-criterion.md) § 判定手順の
+3 つの分岐です。
 
-- **A guard that must not go stale** (branch 2). An operation reads another aggregate to decide
-  whether it is permitted, and a concurrent write could invalidate that condition between the check
-  and the commit. The guard row is locked before the condition is evaluated, and held to the commit
-  ([ADR-0036 (ordered-pessimistic-row-locks)](../../docs/adr/0036-ordered-pessimistic-row-locks.md)). The other aggregate is
-  observed, never mutated, and the operation stays a regular usecase.
-- **A multi-aggregate write that must be atomic** (branch 3). The requirements say an intermediate
-  state must never be observable, so the writes run in one transaction through a CommandService
-  ([ADR-0032 (lightweight-cqrs)](../../docs/adr/0032-lightweight-cqrs.md)).
+- **陳腐化してはならないガード**（分岐 2）。操作が、それが許されるかを判断するために他の集約を
+  読み、判定と commit の間に並行する書き込みがその条件を無効化し得る場合です。ガード行は条件を
+  評価する前にロックし、commit まで保持します
+  （[ADR-0036 (ordered-pessimistic-row-locks)](../../docs/adr/0036-ordered-pessimistic-row-locks.md)）。他の集約は観測する
+  だけで変更せず、操作は通常の usecase のままです。
+- **原子的でなければならない複数集約書き込み**（分岐 3）。中間状態が観測されてはならないと要件が
+  述べる場合で、書き込みは CommandService を通して 1 トランザクションで走ります
+  （[ADR-0032 (lightweight-cqrs)](../../docs/adr/0032-lightweight-cqrs.md)）。
 
-Everything else decomposes: a single-aggregate write plus an eventually consistent cascade, which is
-the branch this principle describes without exception.
+それ以外はすべて分解します。単一集約への書き込みと、結果整合のカスケードです。この原則が例外なく
+記述しているのは、その分岐です。
 
-> **Departure from Evans.** Evans makes the aggregate the boundary of *immediate* consistency — one
-> transaction changes one aggregate, and anything beyond it is reconciled afterwards. This model
-> widens that boundary in the two situations above, and the widening is real: a single transaction may
-> hold rows from three aggregates at once — one locked purely as a guard, one locked because it is
-> about to be written, and the one being created. That is accepted because Evans's argument is about
-> *change*, and the roles are not alike. Only the written aggregates need atomicity, or the
-> intermediate state becomes observable; the guarded one is read and held, never mutated, so its root
-> keeps sole authority over its own state. What the principle protects — no mutating several
-> aggregates through one loaded graph until nobody can say which invariant belongs to which root —
-> still holds. What it would otherwise permit by default, and what this model refuses, is deciding a
-> cross-aggregate question from a read that nothing holds.
->
-> <!-- sample-api:begin -->
-> The worked instance is purchase creation: the purchaser is locked to guard membership, the products
-> are locked to reserve stock, and the purchase is written.
-> <!-- sample-api:end -->
+> **Evans からの逸脱。** Evans は集約を *即時* 整合の境界とする — 1 トランザクションは 1 集約を
+> 変更し、その外側は後から調停される。このモデルは上記 2 つの状況でその境界を広げており、その
+> 拡張は実在する。1 トランザクションが 3 つの集約の行を同時に保持することがある — 純粋にガードとして
+> ロックされるもの、書き込まれるためにロックされるもの、そして生成されるものである。
+> これを受け入れるのは、Evans の議論が *変更* についてのものであり、3 者の役割が同じではないから
+> である。原子性が要るのは書き込まれる集約だけで、そうでなければ中間状態が観測可能に
+> なる。ガードされる集約は読まれ保持されるだけで変更されず、そのルートは自身の状態に対する唯一の権威で
+> あり続ける。原則が守ろうとしているもの — 読み込んだ 1 つのグラフ越しに複数の集約を変更し続けた
+> 結果どの不変条件がどのルートのものか誰にも言えなくなること、を起こさない — は成立したままで
+> ある。原則が既定として許してしまい、このモデルが拒むのは、何にも保持されていない読み取りから
+> 集約横断の判断を下すことである。
 
-### Cross-aggregate reference
+### Aggregate 間参照
 
-References must be **ID only**
+参照は **IDのみ**
 
 ```go
 type Order struct {
@@ -547,7 +523,7 @@ type Order struct {
 }
 ```
 
-Forbidden:
+禁止：
 
 ```text
 Order {
@@ -555,287 +531,258 @@ Order {
 }
 ```
 
-**This rule governs the seam between one aggregate and another — nothing else.** What decides which
-side of that seam a type sits on is whether it has an access path of its own: a type reachable only
-through its parent is a sub-entity of that aggregate, while a type that is queried, listed, or
-maintained on its own is a separate aggregate however its package is nested.
+**この規則が支配するのは、ある集約と別の集約との継ぎ目だけです。** ある型がその継ぎ目のどちら側に
+属するかを決めるのは、独立した到達経路を持つかどうかです。親を経由しなければ到達できない型はその
+集約のサブエンティティであり、単独で照会・一覧・保守される型は、パッケージがどう入れ子になっていようと
+別の集約です。
 
-A sub-entity is inseparable from its parent, so this rule does not reach it: it holds its own
-attributes directly. Whether it exposes its own identity is a design decision, not a consequence of
-this rule — exposing it is usually right, because a caller sometimes needs the identity and because
-the alternative invites a back-reference to the parent, which becomes indistinguishable from the
-sub-entity's own fields. **Never give a sub-entity a back-reference to its parent.**
+サブエンティティは親と一体不可分なので、この規則は及びません。自身の属性をそのまま保持します。
+自身の identity を公開するかどうかは設計判断であって、この規則の帰結ではありません。公開するのが
+通常は妥当です。呼び出し側が identity を必要とする場面があり、公開しない選択は親への逆参照を招き、
+逆参照はサブエンティティ本来のフィールドと見分けがつかなくなるからです。
+**サブエンティティに親への逆参照を持たせてはいけません。**
 
-**Exception — reference master.** A reference master may be held as its identity plus whatever
-attributes are needed to present it, rather than as a bare identity. Those attributes are a
-denormalized copy carried for presentation: the value exposes none of the other aggregate's behavior
-and is never read to reach a decision. A mutable aggregate stays identity-only.
+**例外 — 参照マスタ。** 参照マスタは、identity だけでなく、それを提示するために必要な属性を伴って
+保持してよいものとします。それらの属性は提示のために持つ非正規化された複製です。その値は他集約の
+振る舞いを一切公開せず、判断に用いられることもありません。可変集約は identity のみを保持します。
 
-> **Departure from Evans.** Evans permits an aggregate to hold a direct reference to another
-> aggregate's root, trusting that root to guard its own invariants. This model does not: a mutable
-> aggregate is reachable by identity only. A direct reference makes it too easy to load a graph and
-> mutate through it, collapsing two transaction boundaries into one by accident; refusing it costs a
-> lookup and buys a boundary the compiler can see. The reference-master exception above is the single
-> place a non-identity value crosses, and it carries no behavior to mutate through.
+> **Evans からの逸脱。** Evans は、集約が他の集約ルートへの直接参照を持つことを許し、そのルートが
+> 自身の不変条件を守ることを信頼する。このモデルはそうしない。可変集約へは identity 経由でしか
+> 到達できない。直接参照があると、グラフを読み込んでそれ越しに変更するのが容易になりすぎ、2 つの
+> トランザクション境界が事故的に 1 つへ潰れる。拒否する代償は 1 回の引き直しで、得られるのは
+> コンパイラから見える境界である。上記の参照マスタ例外が、identity 以外の値が越える唯一の場所であり、
+> そこには変更を通す振る舞いが無い。
 
-### Reference master aggregates
+### 参照マスタ集約
 
-A reference master is a lighter archetype than a mutable aggregate: no state-transition method, no
-optimistic-lock version, no audit timestamps, no logical deletion, and a Repository that exposes
-lookups only, with no write operation. Do not add those to make one resemble the others — **their
-absence is the contract that says the application does not write this data.**
+参照マスタは、可変集約より軽いアーキタイプです。状態遷移メソッド・楽観ロックのバージョン・監査時刻・
+論理削除を持たず、Repository は参照系のみを公開し書き込み操作を持ちません。他の集約に似せるために
+これらを足してはいけません — **無いこと自体が、このデータをアプリケーションが書かないという契約です。**
 
-Reference masters exist for two distinct reasons; do not conflate them.
+参照マスタが存在する理由は 2 種類あり、混同しないでください。
 
-- **A copy of a distinction that exists outside the application** — a standard, a statute. Its value
-  set is not decided by the business, so it does not grow or shrink with a business decision.
-- **A vocabulary the business defines** — a classification, a status. The business itself decides the
-  value set, so a change to it *is* a business decision. These are often placed as a dimension
-  subordinate to the aggregate that references them.
+- **アプリケーションの外に存在する区分の複製** — 標準・法令など。値集合は業務が決めるものでは
+  ないため、業務上の意思決定で増減しません。
+- **業務が定義する語彙** — 分類や状態など。業務そのものが値集合を決めるため、その変更は業務上の
+  意思決定そのものです。参照元の集約に従属する次元として置かれることが多くあります。
 
-**A lookups-only Repository does not by itself make a reference master.** The test is whether the
-data is part of the owning aggregate's semantic set — no independent transactional lifecycle, and
-reached through a mandatory, uniquely-determined foreign key. A table that is standing lookup data
-but is queried and listed on its own terms is an *independent aggregate*: it stays identity-only, and
-its attributes are resolved by a usecase-layer batch fetch rather than carried across the seam. Being
-externally given and never written by the application does not settle it either — that describes the
-data's origin, not its place in another aggregate's semantic set. See
-[`docs/rules.md`](../../docs/rules.md) § Repository / QueryService Rules for the read-path
-consequences of the same distinction.
+**参照専用の Repository を持つことは、それだけでは参照マスタの根拠になりません。** 判定基準は、
+そのデータが参照元集約の意味的なまとまりの一部かどうか（独立したトランザクションライフサイクルを
+持たず、必須で一意に定まる外部キーで到達できるか）です。固定的な参照データであっても、それ自体の
+条件で問い合わせ・一覧されるものは**独立した集約**であり、identity のみで保持し、その属性は
+usecase 層のバッチ取得で解決します。外部から与えられアプリケーションが書き込まないことも決め手には
+なりません — それはデータの出自を述べているだけで、別の集約の意味的なまとまりにおける位置ではないからです。
+同じ区別が読み取り経路に及ぼす帰結は [`docs/rules.md`](../../docs/rules.md) の
+Repository / QueryService Rules を参照してください。
 
 <!-- sample-api:begin -->
-`internal/domain/prefecture` is the case to compare against — externally given and never written by
-the application, yet queried and listed on its own terms, so an independent aggregate rather than a
-reference master.
+`internal/domain/prefecture` が対比すべき事例です — 外部から与えられアプリケーションが書き込むことは
+ありませんが、それ自体の条件で問い合わせ・一覧されるため、参照マスタではなく独立した集約です。
 <!-- sample-api:end -->
 
-### Where a rule goes
+### ルールをどこに置くか
 
-Three questions, asked in this order. **The first one that answers, decides** — a later question
-never overrules an earlier one. They are not three views of one judgement; each separates a different
-pair of destinations, and reading them as competing tests is what makes the placement look ambiguous
-when it is not.
+3 つの問いを、この順で。**最初に答えが出た問いが決める** — 後の問いが前の問いを覆すことはない。
+3 つは 1 つの判断を別の角度から見たものではなく、それぞれ**別の宛先の対**を分ける。競合する試金石として
+読むと、実際には曖昧でない配置が曖昧に見える。
 
-1. **Is the question about one thing, or about a set?** — separates an entity or value object from a
-   Domain Service.
-2. **Does the rule fit on one entity or value object?** — separates an entity or value object from a
-   Domain Service, once question 1 admits either.
-3. **Does it derive, or does it map?** — separates a Domain Service from Usecase.
+1. **その問いは 1 つについてか、集合についてか** — エンティティ／値オブジェクトと Domain Service を分ける。
+2. **そのルールはどれか 1 つのエンティティ／値オブジェクトに収まるか** — 問い 1 がどちらも許すとき、
+   同じ 2 つを分ける。
+3. **導出か、写像か** — Domain Service と Usecase を分ける。
 
-#### 1. One thing or a set
+#### 1. 1 つについての問いか、集合についての問いか
 
-**A question about one thing is the entity's; a question about a set is the Domain Service's.**
+**1 つについての問いはエンティティのもの、集合についての問いは Domain Service のものである。**
 
-A question decided from one instance's own state is a method on that instance. A question whose
-answer for any one member depends on which others are in the set has no single instance that can host
-it, so it goes to a Domain Service. What separates them is how many things the question is about, not
-how many aggregates it reaches.
+1 つのインスタンス自身の状態だけで決まる問いは、そのインスタンスのメソッドになる。ある 1 件についての
+答えが集合に他のどれが含まれるかに依存する問いは、置ける単一のインスタンスが存在しないので Domain Service
+へ行く。両者を分けているのは、問いがいくつのものについてのものかであって、いくつの集約に届くかではない。
 
-This is why the admission bar below asks about responsibility and never about aggregate count. A bar
-that required spanning aggregates would send a set-shaped rule back to an instance method that cannot
-be written, or into Usecase, where [`../usecase/README.md`](../usecase/README.md) forbids it —
-leaving an operation that is plainly a business rule with nowhere in the layer to go.
+だから下の入場基準は責務を問い、集約の数を問わない。集約に跨ることを要求する基準は、集合の形をした
+ルールを書きようのないインスタンスのメソッドへ差し戻すか、
+[`../usecase/README.md`](../usecase/README.md) がそれを禁じている Usecase へ押し込むかのどちらかになり、
+明らかに業務ルールである操作をこの層のどこにも置けなくしてしまう。
 
 <!-- sample-api:begin -->
-Worked pair: `Purchase.IsShippable` answers *is this purchase ready to ship*, decided from one
-purchase's own state, so it is a method on `Purchase`. `dispatch.GroupForDispatch` answers *which of
-these purchases may go out together*, and the answer for any one of them depends on which others are
-in the set, so no single `Purchase` can host it. Both speak only of the purchase aggregate.
+対になる実例: `Purchase.IsShippable` が答えるのは*この購入は発送可能か*で、1 件の購入自身の状態だけで
+決まるので `Purchase` のメソッドである。`dispatch.GroupForDispatch` が答えるのは*これらのうちどれとどれを
+1 便にまとめてよいか*で、ある 1 件についての答えが集合に他のどれが含まれるかに依存するので、どの
+`Purchase` 1 件にも置けない。どちらも購入集約だけを語っている。
 <!-- sample-api:end -->
 
-#### 2. On one entity, or on none
+#### 2. 1 つのエンティティに載るか、どれにも載らないか
 
-A rule that is the natural responsibility of no entity and no value object belongs to a **Domain
-Service** — not to Usecase.
+どのエンティティ・値オブジェクトの自然な責務でもないルールは **Domain Service** に属する。Usecase ではない。
 
 <!-- sample-api:begin -->
 ```text
-Withdrawal        ← in-progress purchase
-Dispatch grouping ← purchases awaiting shipment
+退会       ← 進行中の購入
+まとめ発送 ← 発送待ちの購入
 ```
 <!-- sample-api:end -->
 
-#### 3. Derivation or mapping
+#### 3. 導出か写像か
 
-Once the rule does not fit on any entity or value object, this question separates a Domain Service
-from Usecase.
+そのルールがどのエンティティにも値オブジェクトにも収まらないと分かったうえで、この問いが Domain Service と
+Usecase を分ける。
 
-- **Domain Service** derives something: it computes a business-meaningful value from more than one
-  entity. It is stateless, and it exists only because the operation is the natural responsibility of
-  no one entity and no value object.
-- **Usecase** coordinates and maps. It orders the calls, owns the transaction, and turns domain
-  models into DTOs.
+- **Domain Service** は導出する。複数のエンティティから業務的に意味のある値を算出する。ステートレスであり、
+  その操作がどのエンティティにも値オブジェクトにも自然な責務として収まらないからこそ存在する。
+- **Usecase** は調整し写像する。呼び出しの順序を決め、トランザクションを所有し、ドメインモデルを
+  DTO へ変換する。
 
-**Reading more than one entity is not derivation.** Loading two entities and placing them side by
-side in a DTO is mapping, and it stays in Usecase. Routing that through a Domain Service would drag
-every two-entity read into the domain layer for nothing.
+**複数のエンティティを読むことは導出ではない。** 2 つのエンティティを読んで DTO に並べるのは写像であり、
+Usecase に留まる。これを Domain Service 経由にすると、2 エンティティを読むだけの処理が軒並みドメイン層へ
+引きずり込まれ、得るものが無い。
 
-When a value is derived and then shipped outward, the two split: the derivation is the Domain
-Service's, the copying into the DTO is the Usecase's.
+値を導出してから外へ送り出す場合、両者は分かれる。導出は Domain Service のもので、DTO への詰め替えは
+Usecase のものである。
 
-The test, when it is unclear: **if that calculation changed, would the reason be a business decision
-or a presentation decision?** A business decision means it is a domain rule. Note what this test does
-*not* decide: whether the derived value binds anything. A business judgement that is advisory —
-produced for display, stale the moment it is returned, and depended on by no invariant — is still a
-business judgement, and still belongs in the domain. Whether a value must stay true until commit is a
-transaction-boundary question, answered by
-[ADR-0034](../../docs/adr/0034-commandservice-atomicity-criterion.md), not a placement question.
+判断がつかないときの試金石: **その計算が変わるとき、理由は業務上の判断か、表示上の判断か。** 業務上の
+判断ならそれはドメインのルールである。この試金石が決め*ない*ことに注意: 導出された値が何かを拘束するか
+どうかは決めない。表示のために作られ、返した瞬間に古くなり、どの不変条件も依存しない——そうした
+「拘束力を持たない」業務判断も、業務判断であることに変わりはなく、ドメインに属する。ある値が commit まで
+真であり続けなければならないかどうかはトランザクション境界の問いで、
+[ADR-0034](../../docs/adr/0034-commandservice-atomicity-criterion.md) が答える。配置の問いではない。
 
-#### Not reaching another aggregate is not a reason to leave the domain
+#### 別の集約に届かないことは、ドメインを出る理由にならない
 
-The three questions above decide the placement. This is not a fourth one — it removes the
-objection that most often stops the first three from being asked at all.
+配置を決めるのは上の 3 つの問いである。これは 4 つ目の問いではなく、その 3 つを問うこと自体を
+最も頻繁に止めてしまう反論を取り除くためのものである。
 
-A rule frequently needs values that live in another aggregate: a quantity, a price, a status. Because
-an aggregate package may not import another aggregate, this looks like a wall that forces the rule
-outward into Usecase. **It is not.**
+ルールが別の集約にある値——数量・価格・状態——を必要とすることは頻繁にある。集約パッケージは他の集約を
+import できないため、これはルールを Usecase へ押し出す壁のように見える。**そうではない。**
 
-**The aggregate that owns the rule takes those values as a snapshot it does not keep** — a value type
-declared in its own package, carrying only the attributes the rule reads, passed in by the Usecase
-that loaded them. The rule stays where it belongs; only the loading moves. The aggregate still holds
-no reference to the other aggregate, so its invariants remain independent of that aggregate's state.
+**ルールを所有する集約が、それらの値を保持しないスナップショットとして受け取る** — 自パッケージに宣言した
+値型で、そのルールが読む属性だけを運び、それらを読み込んだ Usecase が渡す。ルールは属すべき場所に留まり、
+移るのは読み込みだけである。集約は依然として他の集約への参照を持たないので、その不変条件は相手の状態から
+独立したままになる。
 
-Reach for this before concluding that a rule cannot live in the domain. Moving a business judgement
-into Usecase because the values came from elsewhere puts it where
-[`../usecase/README.md`](../usecase/README.md) says business rules must not be defined, and splits
-one rule across two layers the first time a second caller needs it.
+ルールがドメインに置けないと結論する前に、まずこの形を検討すること。値が他所から来たという理由で業務上の
+判断を Usecase へ移すと、[`../usecase/README.md`](../usecase/README.md) が「業務ルールを定義してはならない」
+と定めている場所にそれを置くことになり、2 人目の呼び出し元が現れた時点で 1 つのルールが 2 層に割れる。
 
-A snapshot is a value, not a view of a live aggregate: it is read once, passed in, and discarded. It
-carries no behavior and no identity beyond what the rule reads, so it cannot become a back door into
-the other aggregate.
+スナップショットは生きた集約のビューではなく値である。一度読まれ、渡され、捨てられる。振る舞いも、
+ルールが読む以上の同一性も持たないので、相手の集約への裏口にはなり得ない。
 
-#### Where a Domain Service lives
+#### Domain Service をどこに置くか
 
-Under `internal/domain/service/<name>/` — outside any aggregate package. **Every Domain Service lives
-here, whether it speaks of one aggregate or several.** One placement means one question to answer;
-splitting the placement by aggregate count would restore the very decision this rule exists to
-remove.
+`internal/domain/service/<name>/` 配下、つまりどの集約パッケージの外にも属さない場所に置く。
+**単一の集約を語るか複数に跨るかを問わず、すべての Domain Service がここに住む。** 置き場が 1 つなら
+答えるべき問いも 1 つである。集約の数で置き場を分ければ、この規則が取り除いたはずの判断が戻ってくる。
 
-**That placement only means something because the path has its own depguard rule.** An aggregate
-package may not import another aggregate; a package under `internal/domain/service/**` may. Everything
-else the domain layer forbids is repeated verbatim in that rule — no framework, no infrastructure, no
-usecase or controller, no file system, process, or environment access — so the exception widens
-exactly one edge and nothing else. Without it, a rule that does reach two aggregates could not be
-written anywhere.
+**この配置が意味を持つのは、そのパスが専用の depguard ルールを持つからである。** 集約パッケージは他の
+集約を import できないが、`internal/domain/service/**` 配下のパッケージはできる。それ以外に domain 層が
+禁じているもの——フレームワーク、infrastructure、usecase / controller、ファイルシステム・プロセス・
+環境変数へのアクセス——はそのルールへ一字一句そのまま再掲されており、例外が広げるのはこの一辺だけである。
+これが無ければ、実際に 2 つの集約へ届くルールはどこにも書けない。
 
-**The exception is available, not obligatory.** A service confined to one aggregate imports that
-aggregate and stops; nothing about the path pushes it wider, and the rule permits the extra edge
-rather than requiring it.
+**例外は使えるだけであって、義務ではない。** 1 つの集約に閉じたサービスはその集約だけを import して
+そこで止まる。このパスが何かを広げさせるわけではなく、ルールは余分な一辺を許可するのであって
+要求するのではない。
 
-The name is business vocabulary — what the rule is about, never `common` / `shared` / `util`, which
-name nothing and therefore refuse nothing.
+名前は業務の語彙にする。何についてのルールかを表す名であり、`common` / `shared` / `util` のように
+何も名指さず、したがって何も拒めない名は用いない。
 
-**Admission is narrow, and the depguard exception is not an invitation.** A package belongs here only
-when both hold:
+**入場基準は狭く、depguard の例外は招待状ではない。** 次の 2 つがともに成り立つときにだけここへ置く。
 
-1. The operation is the natural responsibility of no entity and no value object. If it fits on one of
-   them, it goes there.
-2. It is stateless, and it derives (see *3. Derivation or mapping* above). Reading two aggregates to
-   place them side by side is mapping, and mapping stays in Usecase.
+1. どのエンティティ・値オブジェクトの自然な責務でもない。どれかに収まるならそちらへ置く。
+2. ステートレスで、かつ導出である（上の *3. 導出か写像か* を参照）。2 つの集約を読んで
+   並べるだけなら写像であり、写像は Usecase に留まる。
 
-A service here holds no I/O: no Repository, no `context.Context`. It receives state the Usecase has
-already loaded, and returns a derived value or a domain error. Acquiring that state, ordering the
-calls, and owning the transaction remain the Usecase's job.
+ここのサービスは I/O を持たない。Repository も `context.Context` も受け取らず、Usecase が読み込み済みの
+状態を受け取って、導出した値またはドメインのエラーを返す。その状態の取得・呼び出し順序・
+トランザクションの所有は Usecase の責務のままである。
 
 <!-- sample-api:begin -->
-**[`service/membership`](service/membership) spans two aggregates.** It carries one invariant seen
-from both sides — a user and their in-progress purchases must not be separated. `EnsurePurchasable`
-refuses a purchase by a user who is no longer active; `EnsureWithdrawable` refuses a withdrawal while
-any of that user's purchases is still in progress. Neither aggregate can host it: the user aggregate
-knows nothing about purchases, and the purchase aggregate knows nothing about membership.
+**[`service/membership`](service/membership) は 2 つの集約に跨る。** 一つの不変条件を両側から
+表している——ユーザーと進行中の購入を切り離してはならない。`EnsurePurchasable` は在籍していない
+ユーザーの購入を拒み、`EnsureWithdrawable` は進行中の購入が残っている間の退会を拒む。どちらの集約にも
+置けない。ユーザー集約は購入を知らず、購入集約は在籍を知らないからである。
 
-**[`service/dispatch`](service/dispatch) stays inside one.** `GroupForDispatch` divides purchases
-awaiting shipment into the sets that may go out together, by buyer. It imports `domain/purchase` and
-nothing else, and it is here for the reason above: the answer is about the set, so the purchase
-aggregate has no place to put it.
+**[`service/dispatch`](service/dispatch) は 1 つの集約に閉じている。** `GroupForDispatch` は発送待ちの
+購入を、購入者ごとに、まとめて発送してよい組へ分ける。import するのは `domain/purchase` だけであり、
+ここに置く理由は上のとおりである。答えが集合についてのものなので、購入集約にはその置き場が無い。
 <!-- sample-api:end -->
 
-### Query and Aggregate
+### Query と Aggregate
 
-Aggregate is a **Write Model**. Which construct executes a given aggregation, report, or complex
-search — Repository, QueryService, or CommandService — is decided by
-[`docs/design/data-access-pattern.md`](../../docs/design/data-access-pattern.md) and is not restated
-here. What this section owns is the question that criterion does not answer: **who authors the
-business condition** such a query executes.
+Aggregate は **Write Model**。ある集計・レポート・複雑検索をどの構成要素が実行するか——Repository か
+QueryService か CommandService か——は
+[`docs/design/data-access-pattern.md`](../../docs/design/data-access-pattern.md) が決めるもので、
+ここでは再掲しない。この節が所有するのは、その基準が答えない問いのほうである。すなわち
+**そうしたクエリが実行する業務条件を、誰が著すか**。
 
-**What moves out is the implementation, never the criterion.** "Which records count as stale",
-"which users count as inactive" — the rule that decides membership is domain vocabulary and
-stays in the domain layer, expressed as domain constants and domain predicates. When that rule lives
-only in a `WHERE` clause, the domain has lost a business rule to infrastructure, and nothing in this
-layer can tell you what the rule is any more.
+**外へ出すのは実装であって、基準ではない。** 「どのレコードを古いとみなすか」「どのユーザーを
+非アクティブとみなすか」——所属を決めるその規則はドメインの語彙であり、ドメイン定数とドメインの
+述語としてドメイン層に留まる。その規則が `WHERE` 句にしか存在しなくなったとき、ドメインは
+業務ルールをインフラへ手放しており、この層の何を読んでも規則が何なのか分からなくなる。
 
-The distinction matters most where selection is concerned. Naively handing a criterion to a
-Repository means fetching everything and filtering in memory, which is not viable; so the criterion
-is translated into SQL, an index, or a search engine, and the projection comes back as a DTO the
-domain never sees. That translation is expected and correct. What must not travel with it is the
-authorship of the criterion.
+この区別が最も効くのは選択（selection）である。基準を素朴に Repository へ渡すと全件取得して
+メモリ上で絞る形になり、それは現実的でない。だから基準は SQL やインデックス、あるいは検索
+エンジンへ翻訳され、射影はドメインが見ることのない DTO として返る。その翻訳は想定どおりであり
+正しい。一緒に持ち出してはならないのは、基準の作者性のほうである。
 
-**"The `WHERE` already guarantees it, so a domain predicate would be redundant" is not an argument.**
-Every row a filter returns does satisfy that filter — and that is circular. What the row satisfies is
-the condition the query happens to state; whether that condition *is* the business rule is the very
-thing left unchecked. The redundancy is real at the level of *execution* and imaginary at the level
-of *authorship*, and the argument trades one for the other. The costs are concrete: the meaning of
-the term can no longer be answered by reading this layer, a second caller has to restate the
-condition with nothing linking the two, and the rule can only be exercised through the database, so
-a change in meaning breaks no unit test.
+**「WHERE がすでに保証しているのだから、ドメイン側の述語は冗長だ」は論拠にならない。** 絞り込みが
+返す行がその絞り込みを満たすのは確かであり、そしてそれは循環している。行が満たしているのはクエリ
+がたまたま書いた条件であって、その条件が業務規則と一致しているかは検査されないまま残る。冗長性は
+*実行*の水準では実在し、*作者性*の水準では存在しない。この論法は前者を根拠に後者を明け渡している。
+代償は具体的である。その語の意味をこの層を読んで答えられなくなり、2 人目の呼び出し元は条件を書き
+直すしかなく両者を繋ぐものが無く、規則はデータベース越しにしか動かせないため意味の変更がどの
+単体テストも壊さない。
 
-**Not every condition is a criterion.** A condition is one when someone who knows the business would
-recognise it as a statement about the business — when the term it decides has a name they use.
-Identity lookup, pagination, ordering, and foreign-key joins decide nothing about the business and
-this rule does not reach them. Nor does a Repository method whose signature already says the whole
+**すべての条件が基準なのではない。** 条件が基準であるのは、業務を知る者がそれを業務についての言明
+だと認めるとき——それが決める語に、その人が使う名前があるときである。ID 一致・ページネーション・
+並び順・外部キー結合は業務について何も決めておらず、この規則は及ばない。署名がすでに条件を丸ごと
 <!-- sample-api:replace-begin -->
-condition: `FindDeletedBefore(ctx, cutoff, …)` states its own criterion, while `FindAllLowStock` does
-not. The check is one question — can the meaning of the term be answered by reading the domain
+言っている Repository メソッドも同様で、`FindDeletedBefore(ctx, cutoff, …)` は自身の基準を述べて
+いるが `FindAllLowStock` は述べていない。確認は 1 つの問いで足りる——その語の意味を、ドメイン
 <!-- sample-api:replace-with -->
-<!-- = condition: `FindDeletedBefore(ctx, cutoff, …)` states its own criterion, while a method named after -->
-<!-- = a business term does not. The check is one question — can the meaning of the term be answered by reading the domain -->
+<!-- = 言っている Repository メソッドも同様で、`FindDeletedBefore(ctx, cutoff, …)` は自身の基準を述べて -->
+<!-- = いるが、業務語を名前に持つメソッドは述べていない。確認は 1 つの問いで足りる——その語の意味を、ドメイン -->
 <!-- sample-api:replace-end -->
-package alone? If not, its authorship has left.
+パッケージだけを読んで答えられるか。答えられないなら作者性が出ていっている。
 
-The same discipline is already imposed on the write side, where a CommandService may only enforce
-conditions derived from domain invariants ([ADR-0032 (lightweight-cqrs)](../../docs/adr/0032-lightweight-cqrs.md)).
-There is no reason for the read side to be the exception.
+同じ規律は書き込み側に既に課されている。CommandService が強制してよいのはドメインの不変条件から
+導出された条件だけである（[ADR-0032 (lightweight-cqrs)](../../docs/adr/0032-lightweight-cqrs.md)）。読み取り側
+だけが例外である理由は無い。
 
-Read paths are free to skip the aggregate entirely — a search index is a projection of the system of
-record, and reconstructing every hit through `FindByID` to re-derive it is not a realistic design.
-The domain's claim on a read path is the vocabulary of the question, not the shape of the answer.
+読み取り経路は集約を丸ごと迂回してよい。検索インデックスは正本の写像であり、ヒットした全件を
+`FindByID` で再構築して導出し直すのは現実的な設計ではない。読み取り経路に対してドメインが
+主張するのは、問いの語彙であって答えの形ではない。
 
-> **Departure from Evans.** Evans gives a criterion its own object — a specification with
-> `isSatisfiedBy` and combinators (`AND` / `OR` / `NOT`) — so a criterion can be carried around as a
-> value. **This model does not reify criteria.** A criterion is a named predicate attached to whatever
-> owns the value, evaluated where it sits rather than handed to someone else.
+> **Evans からの逸脱。** Evans は基準にそれ自身のオブジェクトを与える——`isSatisfiedBy` と結合子
+> （`AND` / `OR` / `NOT`）を持つ仕様で、基準を値として持ち回れるようにする。**本モデルは基準を
+> 具象化しない。** 基準は値の所有者に張り付いた名前付きの述語であり、他所へ渡されるのではなく
+> その場で評価される。
 >
-> Evans puts a specification to three uses, and that one choice splits them. Validation and selection
-> need only that the criterion have a name and a single definition, which a predicate gives.
-> Composition and building to order both presuppose passing the criterion to something else — a
-> repository that will translate it, or a factory that will satisfy it — and neither is reachable
-> without reification. They are missing together because they share a root, not for two separate
-> reasons.
+> Evans は仕様に 3 つの用途を与えるが、この選択がそれらを分ける。validation と selection に必要なのは
+> 基準が名前と単一の定義を持つことだけで、述語がそれを与える。合成と building to order はどちらも
+> 基準を他へ渡すことを前提にしている——翻訳する Repository か、満たすファクトリか——ので、具象化なしには
+> 到達できない。2 つが揃って欠けているのは根が同じだからであって、別々の理由からではない。
 >
-> What that gives up is concrete. A composite criterion is restated per query instead of assembled
-> once — "published" is stated by four separate queries — and the authorship rule above is what keeps
-> those restatements answerable from the domain. A creation request names its values instead of
-> describing what it needs.
+> 手放すものは具体的である。複合的な基準は一度組み立てられるのではなくクエリごとに書き直される
+> ——「公開中」は 4 本のクエリが別々に述べている——上の著作規則は、その書き直しがドメインから
+> 答えられる状態を保つためにある。生成の要求は、必要を記述するのではなく値を名指しする。
 >
-> What it keeps is also concrete. Go's own `&&` and `||` compose predicates wherever a criterion is
-> evaluated in place, at no cost, so composition is absent only where it would have had to travel.
-> Predicates that gate a change return a typed error rather than a bool, and the identity of that
-> error is what the response status is derived from
-> ([ADR-0047 (apperror-protocol-agnostic-errors)](../../docs/adr/0047-apperror-protocol-agnostic-errors.md)); a composed `isSatisfiedBy`
-> collapses that to "not satisfied", and recovering which part failed rebuilds the error return.
-> Queries stay static SQL, generated and type-checked against the real schema — a criterion-to-SQL
-> translator would end that.
+> 保つものも具体的である。基準をその場で評価する限り、Go の `&&` と `||` が述語を合成し、費用は
+> かからない。合成が欠けているのは、それが移動しなければならなかった場所だけである。変更を守る述語は
+> bool ではなく型付きのエラーを返し、そのエラーの identity から応答ステータスが導かれる
+> （[ADR-0047 (apperror-protocol-agnostic-errors)](../../docs/adr/0047-apperror-protocol-agnostic-errors.md)）。合成された
+> `isSatisfiedBy` はそれを「満たさない」へ潰してしまい、どこが落ちたかを取り戻そうとすれば
+> エラー返却を作り直すことになる。クエリは静的な SQL のままで、実スキーマに対して型検査された
+> 生成物であり続ける——基準から SQL への変換器はそれを終わらせる。
 >
-> Reification earns its place when a criterion has to move: when callers assemble filters the API
-> surface does not enumerate, when a rule varies by tenant or contract and has to be carried as data,
-> or when a client can state what it needs but not what to build — the case where the criterion
-> carries less information than the values would, and something else supplies the rest. None of those
-> holds here yet, and adopting one use without that trigger would buy the indirection without the
-> reason.
+> 具象化が値打ちを持つのは基準が動かなければならないときである。API の面が列挙していない絞り込みを
+> 呼び出し側が組み立てるとき、規則がテナントや契約で変わりデータとして運ばれる必要があるとき、
+> あるいは呼び出し側が必要は述べられても何を作るかは述べられないとき——基準が値より少ない情報を運び、
+> 残りを別の誰かが供給する場合である。いずれもまだ成立しておらず、引き金が無いまま片方の用途だけを
+> 採れば、理由の無い間接だけを買うことになる。
 
-## Dependency inversion for Infrastructure layer
+## インフラ層の依存性逆転
 
-Repository is a **persistence abstraction**
+Repository は **永続化抽象**
 
 ```go
 type Repository interface {
@@ -847,125 +794,119 @@ type Repository interface {
 }
 ```
 
-Implementation:
+実装：
 
 ```text
 internal/infrastructure/rdb/repository/<aggregate>/
 ```
 
-Mapping to Domain is done by `sqlc`.
+`sqlc` でドメインへマッピング。
 
-### Methods allowed in Repository
+### Repository に許容するメソッド
 
-- `FindByXXX` / `CountByXXX` — fetch by identity, or filter / list / count by the aggregate's own
-  attributes
-- `LockByXXX` — the same read taken under a pessimistic lock, for a caller that must hold the row
-  until commit. The lock and the ordering it requires are stated in the doc comment
-  ([ADR-0036 (ordered-pessimistic-row-locks)](../../docs/adr/0036-ordered-pessimistic-row-locks.md))
-- `Create` / `Update` — aggregate persistence. A logical delete is an `Update` of `deletedAt`
-- `Delete` / `Purge` — physical removal, where the data has no reason to outlive its use and no
-  audit trail is owed. Do not add one to an aggregate that keeps history
+- `FindByXXX` / `CountByXXX` — 同一性による取得、または集約自身の属性による絞り込み・一覧・件数
+- `LockByXXX` — 同じ読み取りを悲観ロック付きで行う。commit まで行を保持しなければならない呼び出し元の
+  ため。ロックと、それが要求する順序は doc コメントに書く
+  （[ADR-0036 (ordered-pessimistic-row-locks)](../../docs/adr/0036-ordered-pessimistic-row-locks.md)）
+- `Create` / `Update` — 集約の永続化。論理削除は `deletedAt` を更新する `Update`
+- `Delete` / `Purge` — 物理削除。データが用途を越えて残る理由が無く、監査記録の義務も無い場合。
+  履歴を保つ集約に足してはならない
 
-Assumed operations:
+想定：
 
 ```text
 SELECT / WHERE / JOIN
 ```
 
-### What must not be in Repository
+### Repository に持たせないもの
 
 - GROUP BY
 - SUM / AVG
-- WITH clause
-- cross-boundary JOIN — **except** a uniquely-determined JOIN to a reference master nested in this
-  aggregate's context, which is part of its semantic set rather than a separate boundary
-  (see *Reference master aggregates* above, and
-  [`docs/rules.md`](../../docs/rules.md) § Repository / QueryService Rules)
+- WITH句
+- 境界越 JOIN — **例外**: この集約の文脈に入れ子になった参照マスタへの一意に定まる JOIN。
+  別の境界ではなくこの集約の意味的な集合の一部であるため
+  （上の *参照マスタ集約* と
+  [`docs/rules.md`](../../docs/rules.md) § Repository / QueryService Rules を参照）
 
-Place them in the read side — QueryService and its ReadModel — with the Usecase ordering the call.
-Where each belongs is decided by
-[`docs/design/data-access-pattern.md`](../../docs/design/data-access-pattern.md); that criterion is
-not restated here.
+配置先は読み取り側——QueryService とその ReadModel——で、呼び出しの順序は Usecase が決める。
+どちらに属するかは
+[`docs/design/data-access-pattern.md`](../../docs/design/data-access-pattern.md) が決めるもので、
+その基準はここでは再掲しない。
 
-### Doc comments stay in domain vocabulary
+### doc コメントはドメイン語彙で書く
 
-The SQL shapes above bound **what the Infrastructure implementation may do**; they are not the
-vocabulary of the doc comments written here. A Repository interface is the seam to persistence, which
-is exactly why its doc comment must contract the **guarantee** in domain vocabulary and leave the
-**mechanism** to the implementation: `LockByID` states that it takes a pessimistic lock and what that
-lock serializes, not that the lock is a `SELECT … FOR UPDATE`; a feed method states "ordered by
-ordered-at descending, tie-broken by ID", not `(ordered_at DESC, id DESC)`. Table names, column
-names, and SQL fragments belong to the Infrastructure doc comment that already states them — see
-[`internal/infrastructure/README.md`](../infrastructure/README.md) § Doc comments may name technical
-detail, and [`internal/usecase/README.md`](../usecase/README.md) § Doc comments: interface vs
-implementation for the rule this mirrors.
+上記の SQL の形は **インフラ層の実装に許される範囲**を定めたものであり、ここに書く doc コメントの語彙では
+ありません。Repository インターフェースは永続化への継ぎ目であり、だからこそその doc コメントは**保証**を
+ドメイン語彙で契約し、**機構**は実装側に委ねます。`LockByID` は悲観ロックを取ることと、そのロックが何を
+直列化するかを述べますが、そのロックが `SELECT … FOR UPDATE` であることは述べません。フィード系メソッドは
+「注文日時の降順（同時刻は ID 降順）」と述べ、`(ordered_at DESC, id DESC)` とは述べません。テーブル名・
+カラム名・SQL 断片は、既にそれを述べているインフラ層の doc コメントに属します
+（[`internal/infrastructure/README.md`](../infrastructure/README.md) § Doc comments may name technical
+detail、および本ルールの元になった
+[`internal/usecase/README.md`](../usecase/README.md) § Doc comments: interface vs implementation を参照）。
 
-Three consequences are specific to Domain:
+ドメイン層に固有の帰結が 3 点あります。
 
-- **A numeric bound whose reason is the storage width is expressed as a Go integer width**, not as a
-  SQL type name — `1..32767` is documented as the positive range of a signed 16-bit integer. That
-  keeps the constant from reading as a magic number while staying technology-neutral. Put the reason
-  on the constant so the exported constructor's doc stays a pure contract.
-- **A reference master is named by its domain name**, never by its table.
+- **数値の境界がストレージ幅に由来する場合は、SQL の型名ではなく Go の整数幅で表現します** — `1〜32767` は
+  符号付き 16bit 整数の正数範囲として記述します。これにより定数がマジックナンバーに見えることを避けつつ、
+  技術非依存を保てます。その理由は定数の側に置き、公開コンストラクタの doc は純粋な契約に保ちます。
+- **参照マスタはドメイン名で呼びます。** テーブル名では呼びません。
   <!-- 撤去後にこの箇所へ自分の例を置くための指針。
        目的: ドメイン名とテーブル名の対比が無いと、何を避けよという規則なのか分からない。
        意義: 避けるのはテーブル名の持ち込みであって、名前の長さや語形ではない。
        書き方: 同じマスタをドメイン名とテーブル名の両方で書き、対比させる。 -->
   <!-- sample-api:begin -->
-  例: 商品ステータスのマスタは「商品ステータス」と呼び、`product_statuses` とは呼ばない。
+  例: 商品ステータスのマスタは「商品ステータス」と呼び、`product_statuses` とは呼びません。
   <!-- sample-api:end -->
-- **A single-fetch method states its not-found behavior** — `FindByID` documents that it returns
-  NotFound when the target is absent. The caller branches on that, so it is part of the guarantee,
-  not an implementation detail.
+- **単一取得系メソッドは not-found 時の挙動を明記します** — `FindByID` は、対象が存在しない場合に
+  NotFound を返すことを doc に書きます。呼び出し側はそれで分岐するため、実装詳細ではなく保証の一部です。
 
-## Callable layers
+## 呼び出せる層
 
-Called from:
+呼び出し元：
 
 - Usecase
 
-Domain **must not call other layers**
+Domainは **他層を呼ばない**
 
-Rules that belong to no entity:
+どのエンティティにも属さないルール：
 
 - Domain Service
 
-Exception:
+例外：
 
 ```text
-read-only aggregate reference
+参照専用Aggregate
 ```
 
-## Testing strategy
+## テスト戦略
 
-Domain tests are **pure unit tests**
+Domain テストは **純粋単体テスト**
 
-Forbidden dependencies:
+依存禁止：
 
 - DB
 - HTTP
-- environment variables
+- 環境変数
 - time.Now()
 
-### Constructor validation
+### コンストラクタ検証
 
-`New(...)` guarantees **invariants**
+`New(...)` が **Invariantを保証**
 
-Examples:
+例：
 
-- zero ID
-- boundary values
-- time consistency
+- IDゼロ値
+- 境界値
+- 時刻整合性
 
 ```go
 require.ErrorIs(t, err, ErrInvalidEmail)
 ```
 
-### Getter contract test
+### Getter 契約テスト
 
-One `TestXxx` **per getter** (`Test<Type>_<Getter>`, one per accessor). Do **not** bundle getters into a single `*_Accessors` / `*_Getters` test (1:1 rule — see [`docs/testing-conventions.md`](../../docs/testing-conventions.md) §1, enforced by `internal/architest`).
-
-Target (one dedicated test each):
+対象：
 
 ```go
 func (u *User) ID() uuid.UUID
@@ -975,29 +916,27 @@ func (u *User) CreatedAt() time.Time
 func (u *User) UpdatedAt() time.Time
 ```
 
-### Immutable guarantee test
+### Immutable 保証テスト
 
-For pointer / reference-returning getters, assert immutability **inside that getter's own `TestXxx`** — not as a separate bundled `TestImmutableAccessors`.
+対象：
 
-Target:
-
-pointer types:
+pointer型：
 
 ```go
 func (u *User) Building() *string
 func (u *User) DeletedAt() *time.Time
 ```
 
-Verification:
+検証：
 
-1. modify constructor pointer
-2. modify getter return value
+1. constructorポインタ変更
+2. getter返り値変更
 
-Internal state must not change.
+Entity内部は変化しない。
 
-### Domain behavior test
+### ドメイン振る舞いテスト
 
-Example:
+例：
 
 ```go
 func (u *User) IsActive() bool {
@@ -1005,13 +944,13 @@ func (u *User) IsActive() bool {
 }
 ```
 
-### Error classification test
+### エラー分類テスト
 
 ```go
 require.ErrorIs(t, err, ErrInvalidEmail)
 ```
 
-### Test design policy
+### テスト設計ポリシー
 
 #### Deterministic
 
@@ -1019,16 +958,16 @@ require.ErrorIs(t, err, ErrInvalidEmail)
 baseTime := time.Date(2025,1,1,0,0,0,0,time.UTC)
 ```
 
-#### Parallel execution
+#### 並列実行
 
 ```go
 t.Parallel()
 ```
 
-Exception: the immutable guarantee test mutates a shared constructor-input
-pointer (e.g. `building` / `deletedAt`) to prove the entity copied it. Running
-those blocks in parallel races on the shared pointer under `go test -race`, so
-keep the mutating blocks serial (omit `t.Parallel()` on them).
+例外: 不変性保証テストは、エンティティが値をコピーしたことを検証するために
+共有のコンストラクタ入力ポインタ（例: `building` / `deletedAt`）を直接 mutate する。
+このブロックを並列実行すると `go test -race` で共有ポインタ上の競合になるため、
+mutate するブロックは直列にする（`t.Parallel()` を付けない）。
 
 #### Fail Fast
 
@@ -1038,13 +977,13 @@ require.NoError(t, err)
 
 ### Test Fixture
 
-Fixture is recommended.
+Fixtureを推奨。
 
-Reasons:
+理由：
 
-- reduce duplication
-- guarantee invariants
-- simplify tests
+- 重複削減
+- Invariant保証
+- テスト簡潔化
 
 <!-- sample-api:replace-begin -->
 ```go
@@ -1076,16 +1015,16 @@ func newTestUser(t *testing.T)*User {
 ```
 <!-- sample-api:replace-with -->
 <!-- = ```go -->
-<!-- = func newTest<Aggregate>(t *testing.T)*<Aggregate> { -->
+<!-- = func newTest<集約>(t *testing.T)*<集約> { -->
 <!-- =     baseTime := time.Date(2025,1,1,0,0,0,0,time.UTC) -->
 <!-- = -->
-<!-- =     id := uuid.NewTestFromSalt(t,"<aggregate>") -->
-<!-- =     relatedID := uuid.NewTestFromSalt(t,"<related>") -->
+<!-- =     id := uuid.NewTestFromSalt(t,"<集約>") -->
+<!-- =     relatedID := uuid.NewTestFromSalt(t,"<関連集約>") -->
 <!-- = -->
 <!-- =     entity, err := New( -->
 <!-- =         id, -->
 <!-- =         relatedID, -->
-<!-- =         // ... the remaining attributes -->
+<!-- =         // ... 残りの属性 -->
 <!-- =         baseTime, -->
 <!-- =         baseTime.Add(time.Hour), -->
 <!-- =         nil, -->
@@ -1097,16 +1036,16 @@ func newTestUser(t *testing.T)*User {
 <!-- = ``` -->
 <!-- sample-api:replace-end -->
 
-### Invariant preservation test
+### 不変条件保持テスト
 
-State transition test:
+状態遷移テスト：
 
 ```mermaid
 flowchart LR
     Before --> Behavior --> After
 ```
 
-Example:
+例：
 
 ```go
 func TestUser_UpdateEmail(t *testing.T) {
@@ -1121,40 +1060,39 @@ func TestUser_UpdateEmail(t *testing.T) {
 }
 ```
 
-Invalid case:
+不正ケース：
 
 ```go
 require.ErrorIs(t, err, ErrInvalidUpdatedAt)
 ```
 
-## Do / Don’t
+## やっていいこと / いけないこと
 
 ### Do
 
-- guarantee integrity in constructor
-- state transition via behavior methods
-- ensure consistency via Value Objects
-- Repository abstraction
-- sequential `t.Run` cases (no table-driven `for` loops — see [`docs/testing-conventions.md`](../../docs/testing-conventions.md))
+- constructorで完全性保証
+- 振る舞いメソッドで状態遷移
+- VOで整合性担保
+- Repository抽象化
+- `t.Run` を並べたケース記述（テーブル駆動の `for` ループは使わない — [`docs/testing-conventions.md`](../../docs/testing-conventions.md) を参照）
 
 ### Don’t
 
-Forbidden:
+禁止：
 
 - http.*
 - echo.*
-- sqlc types
-- json tags
+- sqlc型
+- jsonタグ
 - setter
-- DB-driven design
-- time.Now() in Domain
+- DB主導設計
+- Domainでtime.Now()
 
 <!-- sample-api:begin -->
-## Worked aggregate
+## 実例としての集約
 
-The files below are one aggregate written out end to end, so the rules above can be read against
-something concrete. They are a **sample** and are removed with the sample APIs; nothing above depends
-on them.
+以下のファイルは 1 つの集約を端から端まで書き出したもので、上の規則を具体物に当てて読めるようにしている。
+**サンプル**であり、サンプル API と共に撤去される。上の記述はこれに依存しない。
 
 ```go
 // constant.go
@@ -1228,7 +1166,7 @@ type Users []*User
 
 // エンティティ（集約ルート）
 // 形式そのものが不変条件になる値（email / postalCode）は値オブジェクトとして持つ。
-// 素の string で持つと、その形式を守る責任が呼び出し側へ散る（Value Object 節を参照）。
+// 素の string で持つと、その形式を守る責任が呼び出し側へ散る（Value Object の節を参照）。
 type User struct {
     id           uuid.UUID
     firstName    string
@@ -1335,7 +1273,7 @@ func (u *User) ensureNotDeleted() error // 削除済みなら ErrAlreadyDeleted�
 
 // バリデーション（例示・New / UpdateProfile で共有）
 // 利用者が直せる入力項目なので、最初の失敗で止めず全項目を検証し、項目識別子を添えて結合する
-// （Errors 節を参照）。1 往復で全部の誤りを返せないと、利用者は 1 項目ずつ直しに来ることになる。
+// （エラーの節を参照）。1 往復で全部の誤りを返せないと、利用者は 1 項目ずつ直しに来ることになる。
 func validateProfileFields(profile Profile) error {
     var (
         errs   []error

@@ -1,7 +1,7 @@
 # security
 
-Security headers middleware (HSTS, X-Frame-Options, Content-Type-Options, Referrer-Policy, Cross-Origin-Resource-Policy).
+セキュリティヘッダミドルウェア（HSTS, X-Frame-Options, Content-Type-Options, Referrer-Policy, Cross-Origin-Resource-Policy）です。
 
-## Role
+## 役割
 
-Browser-facing hardening headers are a baseline that must apply to every response, not something each handler should remember. Setting them in a single middleware guarantees a uniform security posture across the whole API and keeps the policy defined and auditable in one place.
+ブラウザ向けの堅牢化ヘッダは各ハンドラが覚えておくものではなく、すべてのレスポンスに適用すべきベースラインです。これを単一のミドルウェアで設定することで、API 全体に一貫したセキュリティ姿勢を保証し、ポリシーを一箇所で定義・監査可能に保ちます。

@@ -1,17 +1,17 @@
-# Repository Implementation Guide
+# Repository 実装ガイド
 
-## Position of Repository in Onion Architecture
+## オニオンアーキテクチャにおける Repository の位置づけ
 
-In Onion Architecture, Repository is the **central pattern that embodies the Dependency Inversion Principle (DIP)**.
+オニオンアーキテクチャにおいて、Repository は **依存性逆転の原則（DIP）を体現する中心的なパターン**です。
 
 ```mermaid
 flowchart TB
-    subgraph "Domain Layer (inner)"
+    subgraph "Domain 層（内側）"
         RepoIF["Repository interface"]
         Entity["Domain Entity"]
     end
-    subgraph "Infrastructure Layer (outer)"
-        RepoImpl["Repository impl"]
+    subgraph "Infrastructure 層（外側）"
+        RepoImpl["Repository 実装"]
         Sqlc["sqlc"]
         DB["PostgreSQL"]
     end
@@ -21,33 +21,32 @@ flowchart TB
     RepoImpl --> Entity
 ```
 
-### Core Role of Repository
+### Repository の核心的な役割
 
-|Principle|How Repository Achieves It|
+|原則|Repository での実現|
 |---|---|
-|Dependency Inversion|Domain defines the interface, Infrastructure implements it|
-|Aggregate Boundary Protection|Persistence is performed per Aggregate unit — what each write method must guarantee is decided by [data-access-pattern](../../../../docs/design/data-access-pattern.md) § Write side|
-|Domain Purity|Domain has no knowledge of DB / SQL / frameworks|
-|Invariant Validation|Entities are reconstructed only through Domain constructors|
+|依存性逆転|Domain が interface を定義し、Infrastructure が実装する|
+|Aggregate 境界の保護|永続化の単位は Aggregate 単位で行う。各書き込みメソッドが何を保証すべきかは [data-access-pattern](../../../../docs/design/data-access-pattern.md) § 書き側 が決める|
+|Domain の純粋性維持|Domain は DB / SQL / フレームワークを知らない|
+|不変条件の検証|Domain constructor 経由でのみ Entity を再構成する|
 
-### Responsibility Split with QueryService
+### QueryService との責務分担
 
-Repository handles **Aggregate persistence (CRUD)**. Read-only queries for search and list retrieval are separated into [QueryService](../query_service/README.md).
+Repository は **Aggregate の永続化（CRUD）** を担います。検索・一覧取得などの読み取り専用クエリは [QueryService](../query_service/README.md) に分離します。
 
-|Aspect|Repository|QueryService|
+|観点|Repository|QueryService|
 |---|---|---|
-|Purpose|Aggregate persistence|Usecase-specific search|
-|Interface placement|Domain layer|Usecase layer|
-|Return type|Domain Entity|DTO (display projection)|
-|Invariants|Guaranteed by Domain constructor|Not involved|
-|Transactions|Controlled by Usecase (`tx.Manager`)|Principally read-only|
+|目的|Aggregate の永続化|ユースケース固有の検索|
+|interface 配置|Domain 層|Usecase 層|
+|返却型|Domain Entity|DTO（表示用の射影）|
+|不変条件|Domain constructor で保証|関与しない|
+|トランザクション|Usecase が制御（`tx.Manager`）|原則 読み取り専用|
 
-This separation allows Repository to focus on Aggregate integrity while delegating search performance optimization to QS.
+この分離により、Repository は Aggregate の整合性に集中でき、検索パフォーマンスの最適化は QS に委ねることができます。
 
-> **Reference-master exception (return type / JOIN).** A Repository read MAY JOIN a *fixed reference
-> master* (enum-like lookup data with no independent write lifecycle, reached by a mandatory
-> uniquely-determined FK) and return a small read model carrying the resolved display value, rather
-> than a full Domain Entity.
+> **参照マスタの例外（返却型 / JOIN）。** Repository の読み取りは、*固定の参照マスタ*（独立した書き込み
+> ライフサイクルを持たない enum 相当の参照データで、必須かつ一意に定まる FK からたどれるもの）を JOIN し、
+> Domain Entity そのものではなく解決済みの表示値を持つ小さな read model を返してよいものとします。
 > <!-- 撤去後にこの箇所へ自分の例を置くための指針。
 >      目的: 具体の JOIN と解決される表示値が無いと、どこまでが例外なのか読めない。
 >      意義: 効くのは「参照マスタを必須 FK でたどること」で、返る型の小ささではない。
@@ -55,21 +54,21 @@ This separation allows Repository to focus on Aggregate integrity while delegati
 > <!-- sample-api:begin -->
 > （サンプルでの例は `purchases` が `purchase_statuses` を JOIN し `StatusName` を返す形）
 > <!-- sample-api:end -->
-> This is
-> still a single-Aggregate Repository read, not a cross-Aggregate QueryService. The criterion is the
-> joined data's nature, not its Go modeling. See `docs/rules.md` § "Repository / QueryService Rules".
+> これは依然として単一 Aggregate の Repository 読み取りであり、Aggregate をまたぐ QueryService では
+> ありません。判断の基準は JOIN したデータの性質であって、Go 上のモデリングではありません。
+> `docs/rules.md` の「Repository / QueryService Rules」節を参照してください。
 
-## Role
+## 役割
 
-Repository is the layer that **implements the Domain persistence abstraction (Repository Interface) in Infrastructure**.
+Repository は **Domain の永続化抽象（Repository Interface）を Infrastructure で実装する層**です。
 
-The responsibilities of this layer are limited to the following three:
+この層の責務は次の 3 つに限定されます。
 
-1. Executing queries using sqlc
-2. Converting DB Row → Domain entities
-3. Normalizing DB errors
+1. sqlc を利用したクエリ実行
+2. DB Row → Domain エンティティ変換
+3. DB エラーの正規化
 
-Repository **does not contain business logic**.
+Repository は **ビジネスロジックを持ちません**。
 
 ```mermaid
 flowchart TB
@@ -83,15 +82,15 @@ flowchart TB
     Sqlc --> DB
 ```
 
-Repository is a layer that **only implements** the Repository Interface defined by the Domain.
+Repository は Domain が定義する Repository Interface を **実装するだけ**の層です。
 
-## Architectural Position
+## アーキテクチャ上の位置
 
-Repository implementations are placed in the following location.
+Repository 実装は次の場所に配置します。
 
 `internal/infrastructure/rdb/repository/<aggregate>/`
 
-Example
+例
 
 ```txt
 repository/
@@ -99,15 +98,15 @@ repository/
      └ <aggregate>_repository.go
 ```
 
-The Repository Interface is **placed in the Domain layer**.
+Repository Interface は **Domain 層に配置**されます。
 
-Location: `internal/domain/<aggregate>/<aggregate>_repository.go`
+配置場所：`internal/domain/<aggregate>/<aggregate>_repository.go`
 
-Infra **only implements** this interface.
+Infra はこのインターフェースを **実装するのみ**です。
 
-## Repository Method Responsibilities
+## Repository メソッドの責務
 
-Repository methods perform only the following processing.
+Repository メソッドは次の処理だけを行います。
 
 ```mermaid
 flowchart TB
@@ -123,45 +122,44 @@ flowchart TB
     Domain --> Ret
 ```
 
-Repository does not perform the following:
+Repository は次を行いません。
 
-- Business rules
-- Aggregation processing
-- DTO generation (exception: a small read model resolving a *reference-master* JOIN — see the
-  Reference-master exception above)
-- Usecase logic
+- ビジネスルール
+- 集計処理
+- DTO生成
+- Usecaseロジック
 
-These are the **responsibility of Usecase / Domain**.
+これらは **Usecase / Domain の責務**です。
 
-## Using sqlc
+## sqlc の利用
 
-Repository uses **query code generated by sqlc**.
+Repository は **sqlc が生成したクエリコード**を利用します。
 
 ```go
 rows, err := db.List<Entities>(ctx, &gen.List<Entities>Params{...})
 ```
 
-With sqlc:
+sqlc により
 
-- Type-safe SQL execution
-- Compile-time validation
+- 型安全な SQL 実行
+- コンパイル時検証
 
-becomes possible.
+が可能になります。
 
-The generated code is located at:
+sqlc の生成コードは次の場所にあります。
 
 `internal/infrastructure/rdb/sqlc/gen`
 
-## Row → Domain Conversion
+## Row → Domain 変換
 
-The Row struct returned by sqlc is an **Infrastructure-only type**.
+sqlc が返す Row 構造体は **Infrastructure 専用型**です。
 
-However, in this project, sqlc override is used to apply the following type conversions at generation time:
+ただし、本プロジェクトでは sqlc の override を利用して、生成時に次のような型変換を適用しています。
 
-- nullable → pointer type
-- UUID → `pkg/uuid` type
+- nullable → pointer 型
+- UUID → `pkg/uuid` 型
 
-Therefore, in Repository, additional conversion processing is mostly unnecessary, and the generated types can be passed directly to the Domain constructor.
+そのため Repository では、追加の変換処理をほとんど行わず、生成済みの型をそのまま Domain constructor に渡せます。
 
 ```go
 entity, err := <aggregate>.New(
@@ -172,35 +170,33 @@ entity, err := <aggregate>.New(
 )
 ```
 
-Important rules
+重要ルール
 
-- Do not return `sqlc` types directly to upper layers
-- Use Domain constructors
-- Repository converts Row / Model into Domain entities and returns them
-- When the conversion goes beyond a direct constructor call, or is reused by more than one method,
-  extract it as an unexported helper named `rowToXxx` (single) / `rowsToXxx` (slice). Fixing the name
-  keeps conversion readable apart from the fetch helpers around it.
+- `sqlc` 型をそのまま上位層へ返さない
+- Domain constructor を利用する
+- Repository は Row / Model を Domain エンティティへ詰め替えて返す
+- 変換がコンストラクタの直呼び以上になる場合、または複数のメソッドで再利用する場合は、非公開ヘルパーへ
+  切り出し `rowToXxx`（単体）/ `rowsToXxx`（スライス）と命名する。名前を固定しておくことで、周囲にある
+  取得系ヘルパーと変換処理を読み分けられる。
 
-## Keyset pagination
+## keyset ページング
 
-Express keyset pagination as **two fixed sqlc queries per ordering** — one for the first page, with
-no cursor predicate, and one for "after the cursor", taking the ordering-key tuple — rather than one
-query carrying an optional predicate. Branch on the presence of the cursor in Go and call the
-matching query. Folding both into one query makes a single statement whose plan depends on its
-input.
+keyset ページングは、オプショナルな述語を持つ 1 本のクエリではなく、**並び順ごとに 2 本の固定 sqlc
+クエリ**として表現する。カーソル述語を持たない先頭ページ用と、順序キーの組を受け取るカーソル以降用の
+2 本である。カーソルの有無で Go 側が分岐し、対応するクエリを呼ぶ。1 本に畳むと、実行計画が入力に
+依存する単一のステートメントになる。
 
-## Rebuilding an aggregate that owns a subordinate collection
+## 従属コレクションを持つ集約の再構築
 
-An aggregate whose root owns a collection of subordinate entities is rebuilt from **two fixed
-queries** — one for the root row, one for the subordinate rows — joined in Go, not from a single
-JOIN. The query count stays fixed however many subordinate rows there are, so there is no N+1, and
-the root row is not repeated once per subordinate row. Share the subordinate query across every
-entry point that rebuilds that aggregate.
+ルートが従属エンティティの集合を所有する集約は、単一の JOIN ではなく**2 本の固定クエリ**——ルート行用と
+従属行用——から再構築し、Go 側で結合する。従属行が何件あってもクエリ数は固定なので N+1 が起きず、
+ルート行が従属行ごとに繰り返されることもない。従属行のクエリは、その集約を再構築する全ての入口で
+共有する。
 
 ## Domain constructor error
 
-If Domain entity creation fails,  
-the error is **returned as-is**.
+Domain エンティティ生成に失敗した場合、
+そのエラーは **そのまま返却します。**
 
 ```go
 entity, err := <aggregate>.New(...)
@@ -209,45 +205,47 @@ if err != nil {
 }
 ```
 
-Reason
+理由
 
 - Domain invariant violation
-- DB data inconsistency
-- migration mistake
+- DBデータ不整合
+- migrationミス
 
-These are treated as **responsibility of the Domain layer**.
+これらは **Domainレイヤーの責務として扱う**ためです。
 
-## About UUID
+## UUID について
 
-In this project, sqlc override aligns DB UUID and `pkg/uuid` used in Domain to the same handling.
+本プロジェクトでは sqlc override により、DB 上の UUID と Domain で利用する `pkg/uuid` を同一の扱いに寄せています。
 
-Therefore, explicit UUID conversion in Repository is generally unnecessary.
+そのため Repository での明示的な UUID 変換は基本的に不要です。
 
 ```go
-row.<Entity>.ID // can be passed directly to Domain constructor
+row.<Entity>.ID // そのまま Domain constructor に渡せる
 ```
 
-UUID generation, comparison, and auxiliary processing use the `pkg/uuid` wrapper.
+UUID の生成・比較・補助処理は `pkg/uuid` のラッパーを利用します。
 
 ## sqlc helper
 
-Auxiliary processing such as LIKE search uses:
+LIKE検索などの補助処理は
 
 `internal/infrastructure/rdb/sqlc`
 
-Example
+の helper を使用します。
+
+例
 
 ```go
 escaped := sqlc.EscapeForLike(keyword, sqlc.DefaultLikeEscapeChar)
 pattern := sqlc.WrapContainsLikePattern(escaped)
 ```
 
-Deleted state control is not performed within SQL, but is handled by branching in Go and calling dedicated queries.
+削除状態の制御は SQL 内で行わず、Go 側で分岐して専用クエリを呼び分けます。
 
 ```go
 switch {
 case active == nil:
-    // all
+    // 全件
 case *active:
     // active
 case !*active:
@@ -255,53 +253,54 @@ case !*active:
 }
 ```
 
-## About LIKE search
+## LIKE検索について
 
-LIKE search can be implemented in Repository.
+LIKE 検索は Repository で実装して問題ありません。
 
-However, it must satisfy the following conditions.
+ただし、次の条件を満たす必要があります。
 
-- It is a simple search on a single field
-- It does not include domain logic
-- It uses sqlc helper
-- It remains within the responsibility of aggregate persistence
+- 単一フィールドの単純検索であること
+- ドメインロジックを含まないこと
+- sqlc helper を利用すること
+- 集約の永続化責務の範囲に収まること
 
-The following cases are separated into QueryService.
+次のようなケースは QueryService に分離します。
 
-- Multi-field search
-- Searches combining AND / OR
-- Searches with relevance or scoring
-- Complex filter + sort + paging
-- Read-optimized searches for list screens
+- 複数フィールド検索
+- AND / OR を組み合わせた検索
+- relevance やスコアリングを伴う検索
+- 複雑なフィルタ + ソート + ページング
+- 一覧画面専用の読み取り最適化検索
 
-## DB Access (driver)
+## DB アクセス（driver）
 
-Repository accesses the DB through `driver.DatabaseDriver`.
+Repository は `driver.DatabaseDriver` を通じて DB にアクセスします。
 
 ```go
 db := gen.New(driver.New(ctx, r.db))
 ```
 
-`driver.New(ctx, db)` provides:
+`driver.New(ctx, db)` は次を提供します。
 
-- Transparent DB / Tx switching (picks the tx in context if present)
-- Context-based connection acquisition
+- DB / Tx の透過切り替え（context に tx があればそれを採用）
+- Context ベース接続取得
 
-SQL logging / tracing is applied transparently by the pgx query tracer wired at the driver
-connection level (see `driver/README.md`), so Repository is designed to **not be aware of DB
-connection state**.
+SQL のログ / トレースは driver の接続層に結線した pgx クエリトレーサーが透過的に付与します
+（`driver/README.md` 参照）。そのため Repository は **DB 接続状態を意識しない設計**になります。
 
-## Error normalization
+## エラー正規化
 
-PostgreSQL errors are converted into `apperror` in:
+PostgreSQL エラーは
 
 `internal/infrastructure/rdb/pgerror`
+
+で `apperror` に変換します。
 
 ```go
 return pgerror.NormalizeError(err)
 ```
 
-Main conversions
+主な変換
 
 ```mermaid
 flowchart TB
@@ -311,62 +310,68 @@ flowchart TB
     Others["others"] --> Internal["ErrInternal"]
 ```
 
-## Transactions
+## トランザクション
 
-Transaction boundaries are the responsibility of **Usecase**.
+トランザクション境界は **Usecase** の責務です。
 
-Transaction management is the responsibility of **Usecase**.
+トランザクション管理は **Usecase** の責務です。
 
-Query execution is performed using:
-
-```go
-gen.New(driver.New(ctx, r.db))
-```
-
-With this,
-
-Repository uses
+クエリ実行は
 
 ```go
 gen.New(driver.New(ctx, r.db))
 ```
 
-to transparently use `Tx / DB`.
+を利用して行います。
 
-## Observability (Tracing)
+これにより
 
-In the Infrastructure layer,
+Repository は
 
-`observability.LayerTracer` is used.
+```go
+gen.New(driver.New(ctx, r.db))
+```
+
+を使用して `Tx / DB` を透過的に利用します。
+
+## Observability（Tracing）
+
+Infrastructure 層では
+
+`observability.LayerTracer`
+
+を利用します。
 
 ```go
 ctx, endSpan := r.tracer.Start(ctx)
 defer endSpan()
 ```
 
-Repository is responsible only for:
+Repository は
 
-- span start
-- span end
+- span開始
+- span終了
 
-### About span name
+のみを責務とします。
 
-Span names are uniformly assigned by LayerTracer, so it is not necessary to explicitly specify them in Repository.
+### span名について
 
-### Design intention
+span名は LayerTracer 側で統一的に付与されるため、Repository 側で明示的に指定する必要はありません。
 
-- Ensure consistency of tracing
-- Separation of responsibilities across layers
-- Eliminate direct dependency on OpenTelemetry
+### 設計意図
 
-## DI (Dependency Injection) mechanism (Repository)
+- トレーシングの一貫性確保
+- 各レイヤーでの責務分離
+- OpenTelemetry への直接依存排除
 
-Repository is created by **DI using Uber Fx**.  
-In the Infrastructure layer, it implements the **Domain Repository Interface and provides it to the DI container**.
+## DI（Dependency Injection）の仕組み（Repository）
 
-### Overall structure
+Repository は **Uber Fx による DI** で生成されます。  
+Infrastructure 層では **Domain の Repository Interface を実装し、DIコンテナに提供する**役割を持ちます。
 
-Repository is registered with `fx.Provide` and injected into Usecase.
+### 全体構成
+
+Repository は `fx.Provide` により登録され、Usecase に注入されます。
 
 ```mermaid
 flowchart TB
@@ -380,10 +385,10 @@ flowchart TB
     Interface --> Usecase
 ```
 
-### Role of internal/di/module/persistence.go
+### internal/di/module/persistence.go の役割
 
-Persistence providers (repository / query_service / system_cqrs) are registered in
-`persistenceModule`, which `InfrastructureModule()` composes.
+永続化系のプロバイダ（repository / query_service / system_cqrs）は `persistenceModule`
+に登録され、`InfrastructureModule()` がこれを合成します。
 
 ```go
 func persistenceModule() fx.Option {
@@ -398,11 +403,11 @@ func persistenceModule() fx.Option {
 ```
 
 - `fx.Provide`
-  - Registers Repository constructors
-- Return value is **Domain interface type**
-  - Example: `<aggregate>.Repository`
+  - Repository のコンストラクタを登録
+- 戻り値は **Domain の interface 型**
+  - 例: `<aggregate>.Repository`
 
-### Repository constructor design
+### Repository のコンストラクタ設計
 
 ```go
 func New(
@@ -416,25 +421,25 @@ func New(
 }
 ```
 
-Points:
+ポイント：
 
-- Return value is **interface (Domain definition)**
-- All dependencies are received via arguments (no new)
-- External dependencies such as DB / Tracer are confined to Infrastructure
+- 戻り値は **interface（Domain定義）**
+- 依存はすべて引数で受け取る（new禁止）
+- DB / Tracer などの外部依存は Infrastructure に閉じ込める
 
-### DI flow
+### DI の流れ
 
 ```mermaid
 flowchart TB
     Provide["fx.Provide(<aggregate>.New)"]
     Interface["<aggregate>.Repository (interface)"]
-    Usecase["Usecase (dependency)"]
+    Usecase["Usecase (依存)"]
 
     Provide --> Interface
     Interface --> Usecase
 ```
 
-On the Usecase side:
+Usecase 側では
 
 ```go
 type service struct {
@@ -442,33 +447,33 @@ type service struct {
 }
 ```
 
-is used to receive via interface.
+のように interface で受け取ります。
 
-### Why return interface
+### なぜ interface を返すのか
 
-- Domain depends only on interface
-- Infrastructure can be replaced (mock / alternative DB)
-- Maintains dependency inversion of Onion Architecture
+- Domain が依存するのは interface のみ
+- Infrastructure の差し替えが可能（mock / 別DB）
+- Onion Architecture の依存逆転を守る
 
-### Rules for AI / developers
+### AI / 開発者向けルール
 
-- Repository constructor must be defined as `New`
-- Return value must be interface (Domain definition)
-- Do not new dependencies inside Repository
-- Add DI registration to `internal/di/module/persistence.go` (`persistenceModule`)
+- Repository の constructor は必ず `New` で定義すること
+- 戻り値は interface（Domain定義）にすること
+- Repository 内で依存を new しないこと
+- DI登録は `internal/di/module/persistence.go`（`persistenceModule`）に追加すること
 
-## Repository structure
+## Repository構造体
 
-Repository implementation has the following dependencies.
+Repository 実装は次の依存を持ちます。
 
-- driver.DatabaseDriver is the DB access entry point normally used by Repository.
-  - SQL log output
-  - trace integration
-  - transparent DB / Tx switching
-  are provided.
+- driver.DatabaseDriver は、Repository が通常利用する DB アクセス入口です。
+  - SQL ログ出力
+  - トレース連携
+  - DB / Tx の透過切り替え
+  を提供します。
 
-- observability.TracerFactory is a factory to generate LayerTracer.
-  - Repository uses tracer for Infra layer
+- observability.TracerFactory は、LayerTracer を生成するためのファクトリです。
+  - Repository では Infra レイヤー用 tracer を使用します
 
 ```go
 type repository struct {
@@ -491,14 +496,14 @@ func New(
 }
 ```
 
-## Test strategy
+## テスト戦略
 
-Repository tests are implemented as **Infrastructure Integration Tests**.
+Repository のテストは **Infrastructure Integration Test** として実装します。
 
-Because Repository includes correctness of SQL execution as responsibility,  
-it is verified using an actual DB **without using mocks**.
+Repository は SQL 実行の正しさも責務に含むため、
+**mock を使用せず実際の DB を利用して検証します。**
 
-The structure under test is as follows.
+テスト対象の構造は次の通りです。
 
 ```mermaid
 flowchart TB
@@ -512,35 +517,35 @@ flowchart TB
     Driver --> PG
 ```
 
-This entire layer is tested using a **real DB**.
+このレイヤー全体を **実 DB でテスト**します。
 
-### Purpose of tests
+### テストの目的
 
-Repository tests verify the following.
+Repository テストでは次を検証します。
 
-- SQL queries are executed correctly
-- Row → Domain conversion is correct
-- Domain constructor errors propagate correctly
-- PostgreSQL errors are normalized by `pgerror.NormalizeError`
-- Pagination (limit / offset) works correctly
+- SQL クエリが正しく実行される
+- Row → Domain 変換が正しい
+- Domain constructor エラーが正しく伝搬される
+- PostgreSQL エラーが `pgerror.NormalizeError` により正規化される
+- Pagination（limit / offset）が正しく機能する
 
-Repository tests **do not aim to verify Domain logic**.
+Repository テストは **Domain ロジックの検証を目的としません**。
 
-### Test execution environment
+### テスト実行環境
 
-Repository tests initialize DB using `testkit`.
+Repository テストは `testkit` を使用して DB を初期化します。
 
 ```go
 db := testkit.NewTestDB(t)
 ```
 
-This function provides:
+この関数は次を提供します。
 
-- `NewTestDB`: shared test DB connection (`driver.DatabaseDriver`), passed directly to the Repository constructor
+- `NewTestDB`: 共有テスト用 DB 接続（`driver.DatabaseDriver`）。Repository コンストラクタへ直接渡す
 
-### Transaction tests
+### トランザクションテスト
 
-Each test is executed **within a transaction**.
+各テストは **トランザクション内で実行されます**。
 
 ```go
 txm := testkit.NewTestTransactionRunner(t)
@@ -550,7 +555,7 @@ txm.WithinTx(func(ctx context.Context) {
 })
 ```
 
-Internal behavior
+内部動作
 
 ```mermaid
 flowchart TB
@@ -562,29 +567,29 @@ flowchart TB
     Test --> Rollback
 ```
 
-This ensures:
+これにより
 
-- DB state is not polluted
-- Test independence is maintained
+- DB 状態が汚れない
+- テストの独立性が保たれる
 
-### Parallel execution
+### 並列実行
 
-Repository tests can use `t.Parallel()` to execute tests in parallel.
+Repository テストでは `t.Parallel()` を使用してテスト自体は並列実行できます。
 
-However, the transaction manager provided by `testkit.NewTestTransactionRunner(t)`  
-**serializes transaction execution** internally.
+ただし、`testkit.NewTestTransactionRunner(t)` が提供するトランザクションマネージャは
+内部でトランザクション実行を **直列化**します。
 
-Therefore, the execution model is as follows.
+そのため実行モデルは次のようになります。
 
 ```mermaid
 flowchart TB
-    Parallel["test execution (parallel)"]
-    Serial["transaction (serialized)"]
+    Parallel["テスト実行（並列）"]
+    Serial["トランザクション（直列）"]
 
     Parallel --> Serial
 ```
 
-Each test runs inside `WithinTx`
+各テストは `WithinTx` 内で
 
 ```mermaid
 flowchart TB
@@ -596,36 +601,39 @@ flowchart TB
     Test --> Rollback
 ```
 
-By serializing transactions, even if multiple tests run simultaneously,  
-DB state conflicts and interference between tests are prevented.
+の形で実行されます。
 
-### Domain error verification
+トランザクションを直列化することで、複数テストが同時に走っても
+DB状態の競合やテスト間の干渉が発生しないようにしています。
 
-Repository uses Domain constructor for Row → Domain conversion.
+### Domain エラーの検証
 
-Therefore, if **invalid data exists in DB**,  
-Domain errors occur.
+Repository は Domain constructor を利用して
+Row → Domain 変換を行います。
 
-Tests verify this as well.
+そのため DB 内に **不正データが存在する場合**、
+Domain エラーが発生します。
+
+テストではこれも検証します。
 
 ```go
 require.ErrorIs(t, err, <aggregate>.ErrInvalid<Field>)
 ```
 
-This verifies the following cases.
+これは次のケースを検証します。
 
 ```mermaid
 flowchart TB
-    A["DB data inconsistency"]
-    B["migration mistake"]
+    A["DBデータ不整合"]
+    B["migrationミス"]
     C["Domain invariant violation"]
 ```
 
-### Test error normalization
+### テストのエラー正規化
 
-DB errors are converted to `apperror` by `pgerror.NormalizeError`.
+DB エラーは `pgerror.NormalizeError` により `apperror` に変換されます。
 
-Example
+例
 
 ```mermaid
 flowchart TB
@@ -635,52 +643,54 @@ flowchart TB
     Others["others"] --> Internal["ErrInternal"]
 ```
 
-Repository tests verify **normalized results** such as:
+Repository テストでは
 
 - `ErrConflict`
 - `ErrNotFound`
 
+などの **正規化結果**を検証します。
+
 ## Repository Anti-Patterns
 
-There are **common incorrect implementation patterns** in the Repository layer.  
-These break architectural boundaries, so they **must not be implemented**.
+Repository 層では **よくある誤った実装パターン**があります。  
+これらはアーキテクチャ境界を壊す原因になるため **実装してはいけません。**
 
-### 1. Writing business logic
+### 1. ビジネスロジックを書く
 
-Repository is a **persistence layer**.  
-Business rules must not be written.
+Repository は **永続化層**です。  
+ビジネスルールを書いてはいけません。
 
-NG example
+NG例
 
 ```go
 func (r *repository) Create(ctx context.Context, entity *<aggregate>.<Aggregate>) error {
     if entity.IsPremium() {
-        // ❌ business rule
+        // ❌ ビジネスルール
     }
 }
 ```
 
-Correct responsibility
+正しい責務
 
 ```mermaid
 flowchart TB
     Repo["Repository"]
-    Query["Query execution"]
-    Map["Row → Domain conversion"]
-    Err["Error normalization"]
+    Query["Query 実行"]
+    Map["Row → Domain 変換"]
+    Err["エラー正規化"]
 
     Repo --> Query
     Repo --> Map
     Repo --> Err
 ```
 
-Business rules are the responsibility of **Domain / Usecase layer**.
+ビジネスルールは **Domain / Usecase 層の責務**です。
 
-### 2. Creating DTO
+### 2. DTO を生成する
 
-Repository **does not create DTO**.
+Repository は **DTO を生成しません。**
 
-NG example
+NG例
 
 ```go
 return <Aggregate>DTO{
@@ -688,128 +698,128 @@ return <Aggregate>DTO{
 }
 ```
 
-Repository returns **only Domain entities**.
+Repository は **Domain エンティティのみ返却**します。
 
 ```go
 return <aggregate>.New(...)
 ```
 
-DTO conversion is the responsibility of **Usecase / Presenter layer**.
+DTO 変換は **Usecase / Presenter 層の責務**です。
 
-### 3. Returning sqlc Row as-is
+### 3. sqlc Row をそのまま返す
 
-sqlc Row type is an **Infrastructure-only type**.
+sqlc の Row 型は **Infrastructure 専用型**です。
 
-NG example
+NG例
 
 ```go
 return rows
 ```
 
-Always convert to Domain.
+必ず Domain へ変換します。
 
 ```go
 entity, err := <aggregate>.New(...)
 ```
 
-Reason: **Do not leak sqlc types to upper layers**
+理由：**sqlc 型を上位層に漏らさない**
 
-### 4. Writing QueryService
+### 4. QueryService を書く
 
-Repository is a **persistence abstraction at aggregate level**.
+Repository は **集約単位の永続化抽象**です。
 
-Therefore, the following processing can be included in Repository.
+そのため、以下のような処理は Repository に含めて問題ありません。
 
-- Simple conditional filtering
-- Count retrieval (COUNT)
-- Retrieval by ID / foreign key
-- Simple filtering within aggregate responsibility
+- 単純な条件フィルタ
+- 件数取得（COUNT）
+- ID / 外部キーによる取得
+- 集約の責務に収まる単純な絞り込み
 
-Example
+例
 
 ```go
 CountByActive(ctx context.Context, active *bool)
 ```
 
-On the other hand, the following **search-specific APIs** must not be implemented in Repository.
+一方で、以下のような **検索専用 API** は Repository に実装してはいけません。
 
-- Full-text search
-- Complex searches across multiple conditions
-- Aggregation / ranking
-- UI-dependent searches
-- Read-optimized searches for list screens
+- フルテキスト検索
+- 複数条件を横断する複雑な検索
+- 集計・ランキング
+- UI依存の検索
+- 一覧画面専用の読み取り最適化検索
 
-These are separated as `QueryService` in another layer.
+これらは `QueryService` として別レイヤーに分離します。
 
-### 5. Starting transaction
+### 5. トランザクションを開始する
 
-Repository **does not manage transaction boundaries**.
+Repository は **トランザクション境界を管理しません。**
 
-NG example
+NG例
 
 ```go
 tx, _ := db.Begin()
 ```
 
-Transaction management is the responsibility of **Usecase**.
+トランザクション管理は **Usecase** の責務です。
 
-Repository uses
+Repository は
 
 ```go
 gen.New(driver.New(ctx, r.db))
 ```
 
-to transparently use `Tx / DB`.
+を使用して `Tx / DB` を透過的に利用します。
 
-### 6. Referencing Controller type
+### 6. Controller 型を参照する
 
-Repository **does not depend on HTTP layer**.
+Repository は **HTTP 層に依存しません。**
 
-NG example
+NG例
 
 ```go
 func (r *repository) Create(ctx *echo.Context)
 ```
 
-Repository is implemented as a **pure Go interface**.
+Repository は **純粋な Go インターフェース**で実装します。
 
 ```go
 func (r *repository) Create(ctx context.Context, entity *<aggregate>.<Aggregate>)
 ```
 
-### 7. Defining Domain interface in Infra
+### 7. Domain interface を Infra に定義する
 
-Repository Interface is **defined in Domain layer**.
+Repository Interface は **Domain 層に定義します。**
 
-NG example
+NG例
 
 `internal/infrastructure/repository/<aggregate>_repository_interface.go`
 
-Correct placement
+正しい配置
 
 `internal/domain/<aggregate>/<aggregate>_repository.go`
 
-Infra **only implements Domain Interface**.
+Infra は **Domain Interface の実装のみ**を行います。
 
 ## Do / Don't
 
 ### Do
 
-- Use sqlc generated code
-- Convert Row → Domain
-- Rely on sqlc override for nullable → pointer conversion
-- Use pgerror.NormalizeError (and NormalizeExecResult for INSERT/UPDATE affected-rows → NotFound)
-- Use LIKE helper
+- sqlc 生成コードを使用
+- Row → Domain 変換
+- nullable → pointer 変換は sqlc override に任せる
+- pgerror.NormalizeError を利用（INSERT/UPDATE の影響行数 0 → NotFound は NormalizeExecResult）
+- LIKE helper を利用
 
 ### Don't
 
-- Define Domain interface in Infra
-- Return sqlc types to upper layers
-- Write business logic
-- Reference Controller type
-- Write QueryService
+- Domain interface を Infra に定義
+- sqlc 型を上位に返す
+- ビジネスロジックを書く
+- Controller 型を参照
+- QueryService を書く
 
-## Implementation example
+## 実装例
 
 ```go
 package <aggregate>
@@ -819,8 +829,8 @@ type repository struct {
     tracer observability.LayerTracer
 }
 
-// New is the constructor of Repository.
-// All dependencies are injected from outside.
+// New は Repository のコンストラクタです。
+// 依存はすべて外から注入します。
 func New(
     db driver.DatabaseDriver,
     tf observability.TracerFactory,
@@ -831,8 +841,8 @@ func New(
     }
 }
 
-// FindByActive retrieves entities based on active state.
-// Deleted state is branched in Go, and SQL calls dedicated queries.
+// FindByActive は、アクティブ状態に基づいてエンティティを取得します。
+// 削除状態は Go 側で分岐し、SQL は専用クエリを呼び分けます。
 func (r *repository) FindByActive(ctx context.Context, active *bool, limit, offset int32) (<aggregate>.<Aggregate>s, error) {
     ctx, endSpan := r.tracer.Start(ctx)
     defer endSpan()
@@ -860,8 +870,8 @@ func (r *repository) FindByActive(ctx context.Context, active *bool, limit, offs
     }
 }
 
-// fetchList performs retrieval of all entities.
-// Logic is separated from Repository to clarify responsibilities.
+// fetchList は、全エンティティ取得処理を行います。
+// Repository からロジックを分離し、責務を明確にします。
 func fetchList(
     ctx context.Context,
     db *gen.Queries,
@@ -874,8 +884,8 @@ func fetchList(
 
     entities := make(<aggregate>.<Aggregate>s, len(rows))
     for i, row := range rows {
-        // sqlc override already maps nullable → pointer and UUID → pkg/uuid,
-        // so each column is passed straight into the Domain constructor.
+        // sqlc override により nullable → pointer / UUID → pkg/uuid は変換済みのため、
+        // 各カラムをそのまま Domain constructor へ渡します。
         e, err := <aggregate>.New(
             row.<Entity>.ID,
             row.<Entity>.Field1,

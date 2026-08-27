@@ -5,253 +5,226 @@ deciders: [maintainers]
 tags: [ci, security]
 ---
 
-# ADR-0089: Multi-layer security scanning, splitting reporting from gating, on hardened runners
+# ADR-0089: 多層セキュリティスキャン——報告とゲートを分離し、ハードニングされたランナー上で行う
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-A Go web service has several distinct attack surfaces that require different scanning
-approaches:
+Go の Web サービスには、それぞれ異なるスキャン手法を要する攻撃面が複数ある。
 
-- **Known CVEs in dependencies**: Traditional dependency scanners report every CVE in
-  every transitively imported module, including ones in code paths that the application
-  never executes. This produces a high false-positive rate that erodes trust in the
-  scanner.
-- **Logic-level security bugs**: SQL injection, path traversal, insecure deserialization,
-  and similar patterns cannot be detected by dependency version checks; they require
-  semantic analysis of the source code.
-- **Leaked secrets**: API keys, passwords, or private keys accidentally committed to the
-  repository need a different detector, and a working-tree scan misses a secret that was
-  committed and later deleted. Pattern-shaped detection also cannot tell whether a matched
-  string is a live credential or a placeholder.
-- **Dependency vulnerability breadth**: A second scan covering the full dependency tree,
-  across every ecosystem in the repository rather than Go alone, provides a broader safety
-  net for prioritisation and advisory tracking.
-- **The CI definitions themselves**: Workflows hold the most privileged credentials in the
-  repository, and an untrusted expression interpolated into a `run:` block or an
-  over-scoped token is a direct compromise path. Nothing in the source-level scanners looks
-  at them.
-- **The runner's own behaviour**: A compromised action or a transitive tool download
-  exfiltrates at execution time, which no static scan observes.
+- **依存関係の既知 CVE**: 従来の依存スキャナは、推移的に取り込まれた全モジュールの全 CVE を
+  報告する。アプリケーションが決して実行しないコードパスのものも含まれるため偽陽性率が高く、
+  スキャナへの信頼を損なう。
+- **ロジックレベルのセキュリティバグ**: SQL インジェクション、パストラバーサル、安全でない
+  デシリアライズなどは依存バージョンの照合では検出できず、ソースコードの意味解析を要する。
+- **漏洩したシークレット**: 誤ってコミットされた API キー・パスワード・秘密鍵には別種の検出器が
+  必要であり、作業ツリーのスキャンではコミット後に削除されたシークレットを取りこぼす。また
+  パターンベースの検出は、一致した文字列が有効なクレデンシャルなのか単なるプレースホルダなのかを
+  判別できない。
+- **依存脆弱性の網羅**: 依存ツリー全体を、Go だけでなくリポジトリ内の全エコシステムに対して
+  走査する二本目のスキャンが、優先度付けと advisory 追跡のための広い安全網になる。
+- **CI 定義そのもの**: ワークフローはリポジトリ内で最も強い権限を握っており、信頼できない式が
+  `run:` ブロックへ展開されることや過剰なトークンスコープは、そのまま侵害経路になる。
+  ソースレベルのスキャナはどれもこれを見ていない。
+- **ランナー自身の挙動**: 侵害されたアクションやツールの推移的ダウンロードは実行時に外部送信を
+  行うため、静的スキャンでは観測できない。
 
-Further surfaces were added as the pipeline matured:
+パイプラインの成熟に伴い、さらに次の面が加わった。
 
-- **The workflows and their runners themselves**: a CI definition is code with credentials,
-  and a compromised action or a template-injected `run:` block is an attack on the build
-  rather than on the product.
-- **The shape of the API contract**: an endpoint that declares no bound on its input, or no
-  authentication, is a defect in the spec that no code scanner reads.
-- **Inputs nobody wrote a test for**: a parser accepts whatever arrives, and the cases that
-  break it are by definition the ones nobody imagined.
+- **ワークフローとそのランナーそのもの**: CI 定義は資格情報を伴うコードであり、侵害されたアクションや
+  テンプレートインジェクションを受けた `run:` ブロックは、プロダクトではなくビルドへの攻撃である。
+- **API コントラクトの形**: 入力に上限を宣言していない、あるいは認証を宣言していないエンドポイントは
+  spec 上の欠陥であり、どのコードスキャナも読まない。
+- **誰もテストを書かなかった入力**: パーサは届いたものを何でも受け取り、それを壊すケースは定義上、
+  誰も想像しなかったものである。
 
-No single tool covers these surfaces adequately, so a layered approach using purpose-fit
-tools is required.
+これらすべてを十分にカバーする単一のツールは存在しないため、目的適合のツールを組み合わせた
+層構成が必要になる。
 
-A second question sits on top of tool choice: **when may a scanner fail the build?** The
-naive answer — always — is only tenable while the scanners are quiet. The moment one
-reports a vulnerability inherited from the existing dependency tree, every unrelated PR
-turns red until the dependency update lands. That finding is not something those PRs
-introduced and not something they can fix. Suppressing unfixed advisories globally
-(`ignore-unfixed`) trades one failure for another: it also silences them at the point where
-the decision actually matters. The two questions are genuinely different — *"does this
-change make things worse?"* versus *"is what we are about to promote acceptable?"* — and
-need to be answered in different places.
+ツール選定の上にもう一つの問いが乗る。**スキャナはいつビルドを落としてよいのか。** 素朴な答え
+（常に落とす）は、スキャナが静かなうちだけ成り立つ。既存の依存ツリーから受け継いだ脆弱性を
+一度でも報告した瞬間、依存更新が入るまで無関係な PR がすべて赤くなる。その検出は当該 PR が
+持ち込んだものではなく、その PR では直せない。修正版のない advisory を一律に抑止する
+（`ignore-unfixed`）のは、別の失敗と交換しているにすぎない。判断が本当に必要な場面でも
+黙らせてしまうからである。問われている問いは本質的に別物——**「この変更は事態を悪化させるか」**
+と **「これから昇格させようとしているものは許容できるか」**——であり、別の場所で答える必要がある。
 
-## Decision
+## 決定
 
-Operate purpose-fit scanning layers, and separate reporting from gating.
+目的適合のスキャン層を運用し、報告とゲートを分離する。
 
-Layers are split by *surface × gate policy*, not by tool. The same tool appears in more than
-one workflow when the questions differ — Trivy scans dependencies, Dockerfiles and licences
-in three workflows with three thresholds — and overlapping detections are resolved by giving
-each surface a single owner rather than gating twice on one finding.
+**1. 報告とゲートを別の機構にする。**
 
-**1. Reporting and gating are distinct mechanisms.**
+通常の PR で行うのは**報告**である。finding は SARIF として GitHub code scanning へ、
+また upsert 形式の PR コメントへ送られ、既存の依存ツリーから受け継いだ脆弱性ではチェックを
+落とさない。**ゲート**は `develop` / `staging` / `production` 宛の PR で行う。そこでレビュー
+対象になっている依存の状態が、まさに昇格される状態だからである。
 
-An ordinary PR gets *reporting*: findings go to GitHub code scanning as SARIF and to an
-upsert PR comment, and the check does not fail on a vulnerability inherited from the
-existing dependency tree. *Gating* happens on a PR into `develop` / `staging` /
-`production`, where the dependency state under review is the state about to be promoted.
-
-| Gate | Fails on |
+| ゲート | fail する条件 |
 | --- | --- |
-| `trivy-release-gate.yaml` | any Trivy finding, including one with no released fix |
-| `osv-release-gate.yaml` | any OSV finding rated HIGH or CRITICAL, plus an unrated finding that has a fixed version |
+| `trivy-release-gate.yaml` | Trivy の全 finding（修正版が出ていないものを含む） |
+| `osv-release-gate.yaml` | HIGH / CRITICAL 判定の OSV finding と、判定を持たないが修正版が存在する finding |
 
-Neither release gate carries a `paths` filter: a promotion PR often changes no manifest,
-and a check has to run to be able to block. Severity for the OSV gate comes from the
-advisory's own rating and falls back to the CVSS score osv-scanner aggregates per group;
-advisories from the Go vulnerability database publish neither, so they gate only when a
-fixed version exists.
+どちらのリリースゲートにも `paths` フィルタを付けない。昇格 PR はマニフェストを一切変更しない
+ことが多く、チェックはまず実行されなければブロックできないためである。OSV ゲートの深刻度は
+advisory 自身の評価を第一とし、無ければ osv-scanner がグループ単位で集約する CVSS スコアへ
+フォールバックする。Go 脆弱性データベース由来の advisory はそのどちらも公開しないため、
+修正版が存在する場合にのみゲート対象となる。
 
-`dependency-review.yaml` is the exception that proves the rule — it evaluates only what a
-PR *adds*, so it can block on an ordinary PR without punishing anyone for inherited state.
+`dependency-review.yaml` はこの原則の例外に見えて、実は原則を裏づける。評価対象が PR の
+**追加分**だけなので、受け継いだ状態で誰かを罰することなく通常の PR でブロックできる。
 
-**2. Each surface gets a purpose-fit tool, triggered where its result can change.**
+**2. 各面に目的適合のツールを当て、結果が変わりうる場所で発火させる。**
 
-| Surface | Tool | Reports | Gates |
+| 面 | ツール | 報告 | ゲート |
 | --- | --- | --- | --- |
-| Reachable Go CVEs | `govulncheck` (reachability-filtered, trace depth > 1) | PR / protected push / weekly | — |
-| Go dependency breadth | Trivy FS | PR / protected push / weekly | `trivy-release-gate` |
-| Cross-ecosystem dependencies (Go + npm) | OSV-Scanner | PR / protected push / weekly | `osv-release-gate` |
-| Newly introduced dependencies | Dependency Review | dependency-change PRs | same workflow |
-| Logic-level bugs | CodeQL | PR / protected push / weekly | — |
-| Secrets, by pattern | gitleaks | all PRs; weekly over full history | same workflow |
-| Secrets, verified live | TruffleHog | all PRs (diff); weekly over full history | same workflow |
-| Workflow definitions | zizmor | Actions-file PRs / protected push / weekly | same workflow |
-| Container image | Trivy image + SBOM | deploy-branch PRs / weekly | same workflow |
-| Repository posture | OpenSSF Scorecard | default branch / weekly | — |
-| Dependency versions younger than the cooldown | Go cooldown + tool cooldown ([ADR-0091](0091-malicious-package-detection-via-cooldown.md); pnpm enforces its own at resolution time) | `go.mod` / `mise.toml` / `python/*.in` changes / weekly | same workflow (direct Go requirements and tool declarations) |
-| Dockerfile misconfiguration | Trivy config | Dockerfile-change PRs / protected push | same workflow (HIGH+) |
-| Dependency licences | Trivy licence | same trigger as Trivy FS / weekly | — (no policy yet) |
-| Newly introduced advisories, GHAS-independent | OSV diff | dependency-change PRs | same workflow (no threshold) |
-| First-party source patterns | Opengrep (taint-tracking) | Go / dependency / spec PRs / weekly | same workflow (ERROR) |
-| Lockfile `resolved` URLs | lockfile-lint | lockfile-change PRs | same workflow |
-| API contract shape | Spectral (OWASP API) | spec-change PRs / protected push | same workflow |
-| Inputs nobody tested | Go native fuzzing | weekly | same workflow |
-| Dependency capabilities | capslock | `go.mod`-change PRs | — (report-only) |
+| 到達可能な Go CVE | `govulncheck`（到達可能性フィルタ、trace 深さ > 1） | PR / protected push / 週次 | — |
+| Go 依存の網羅 | Trivy FS | PR / protected push / 週次 | `trivy-release-gate` |
+| エコシステム横断の依存（Go + npm） | OSV-Scanner | PR / protected push / 週次 | `osv-release-gate` |
+| 新規に導入される依存 | Dependency Review | 依存変更 PR | 同一ワークフロー |
+| ロジックレベルのバグ | CodeQL | PR / protected push / 週次 | — |
+| シークレット（パターン） | gitleaks | 全 PR / 週次で履歴全体 | 同一ワークフロー |
+| シークレット（検証済み） | TruffleHog | 全 PR の差分 / 週次で履歴全体 | 同一ワークフロー |
+| ワークフロー定義 | zizmor | Actions 関連 PR / protected push / 週次 | 同一ワークフロー |
+| コンテナイメージ | Trivy image + SBOM | デプロイ先ブランチ宛 PR / 週次 | 同一ワークフロー |
+| リポジトリの姿勢 | OpenSSF Scorecard | 既定ブランチ / 週次 | — |
+| cooldown より新しい依存バージョン | Go cooldown + tool cooldown（[ADR-0091](0091-malicious-package-detection-via-cooldown.md)。pnpm は依存解決の時点で自前の窓を課す） | `go.mod` / `mise.toml` / `python/*.in` の変更 / 週次 | 同一ワークフロー（direct な Go の require とツール宣言） |
+| Dockerfile の設定不備 | Trivy config | Dockerfile 変更の PR / protected push | 同一ワークフロー（HIGH 以上） |
+| 依存のライセンス | Trivy licence | Trivy FS と同一トリガー / 週次 | —（ポリシー未定） |
+| 新規に導入される advisory（GHAS 非依存） | OSV diff | 依存変更の PR | 同一ワークフロー（閾値なし） |
+| 自前ソースのパターン | Opengrep（taint-tracking） | Go / 依存 / spec の PR / 週次 | 同一ワークフロー（ERROR） |
+| lockfile の `resolved` URL | lockfile-lint | lockfile 変更の PR | 同一ワークフロー |
+| API コントラクトの形 | Spectral（OWASP API） | spec 変更の PR / protected push | 同一ワークフロー |
+| 誰もテストしなかった入力 | Go ネイティブ fuzzing | 週次 | 同一ワークフロー |
+| 依存の capability | capslock | `go.mod` 変更の PR | —（報告のみ） |
 
-A PR surfaces the risk the change introduces; a push to a protected branch keeps a
-code-scanning baseline for branch protection to judge; a weekly schedule exists only where
-the result can change while the code stands still — a newly disclosed CVE, a new CodeQL
-query, an action that became archived. Weekly runs are staggered in 15-minute steps so a single
-cron minute does not queue every scanner at once.
+PR はその変更が持ち込むリスクを surface し、protected branch への push はブランチ保護が
+判断材料にする code scanning のベースラインを残す。週次実行は「コードが変わらなくても結果が
+変わる」場合にだけ設ける。新規公表 CVE、新しい CodeQL クエリ、アーカイブ化されたアクションなどで
+ある。週次実行は 15 分刻みでずらし、単一の cron 分に全スキャナが並ばないようにする。
 
-The CLI-based scanners (`govulncheck`, zizmor, OSV-Scanner, TruffleHog, gitleaks, Trivy)
-declare their version in `mise.toml`, so the supply-chain surface grows by binaries pinned
-in one place rather than by additional third-party actions. Only the tools that genuinely
-cannot run as a CLI — Dependency Review (GitHub's dependency-graph API), Scorecard (OIDC
-publishing), Harden Runner (runner-level monitoring) — are consumed as actions, and those
-go through the SHA pinning and quarantine of [ADR-0090](0090-sha-pinned-actions.md).
+CLI ベースのスキャナ（`govulncheck` / zizmor / OSV-Scanner / TruffleHog / gitleaks / Trivy）は
+バージョンを `mise.toml` で宣言する。これによりサプライチェーン面の拡大が「1 箇所で固定された
+バイナリ」であり、サードパーティ製アクションの追加ではなくなる。CLI として実行できないもの——
+Dependency Review（GitHub の依存グラフ API）、Scorecard（OIDC による公開）、Harden Runner
+（ランナーレベルの監視）——だけをアクションとして取り込み、それらは
+[ADR-0090](0090-sha-pinned-actions.md) の SHA pin と隔離期間を通す。
 
-**3. Every job is hardened at the runner level.**
+**3. 全ジョブをランナーレベルでハードニングする。**
 
-Each job in `.github/workflows/**` starts with `step-security/harden-runner` in
-`egress-policy: block` with its own `allowed-endpoints`, refusing every outbound call the
-job has no business making and recording file-integrity events alongside. One job —
-`trufflehog` — stays on `audit`, because it verifies a candidate credential against an
-open-ended set of issuers and a blocked endpoint there would silently downgrade a real leak
-to an unverified result. The lists are generated from the SSOT in `.github/egress.toml` by
-capability class rather than written per job. Jobs that need no git credentials after
-checkout set `persist-credentials: false`.
+`.github/workflows/**` の各ジョブは `step-security/harden-runner` を `egress-policy: block` と
+そのジョブ専用の `allowed-endpoints` とで先頭に置き、そのジョブが本来行わない外向き通信を
+すべて拒否する。ファイル改変の記録は併走する。`trufflehog` の 1 ジョブだけは `audit` のままで、
+上限のない発行元集合へ候補資格情報を問い合わせて検証するため、ここでの遮断は本物の漏洩を黙って
+「未検証」へ格下げしてしまう。各一覧はジョブごとに手書きせず、`.github/egress.toml` の SSOT から
+能力クラス単位で生成する。checkout 後に git 認証情報を必要としないジョブは
+`persist-credentials: false` を指定する。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### 良い影響
 
-- Govulncheck's reachability filter reduces noise: only vulnerabilities in code the
-  application actually calls are reported as actionable.
-- CodeQL covers logic-level bugs that version-based scanners miss entirely.
-- The weekly schedules catch newly published CVEs and newly archived actions against the
-  current codebase even without code changes.
-- An inherited vulnerability no longer blocks unrelated work, while still being impossible
-  to promote silently — the block moves to the point where someone can act on it.
-- The release gates deliberately do *not* use `ignore-unfixed`. A vulnerability with no
-  released fix is precisely the kind that warrants a human decision before promotion.
-- Secret detection covers both axes on which it can be wrong: pattern-shaped detection over
-  the full history (gitleaks) and proof that a credential is live (TruffleHog).
-- The workflow definitions are themselves audited, closing the gap where the most
-  privileged part of CI was the least inspected.
-- Separate tools scanning separate surfaces mean a failure in one layer is independently
-  actionable.
+- govulncheck の到達可能性フィルタがノイズを減らす。アプリケーションが実際に呼び出すコードの
+  脆弱性だけが要対応として報告される。
+- CodeQL は、バージョンベースのスキャナが完全に見落とすロジックレベルのバグをカバーする。
+- 週次スケジュールにより、コード変更が無くても新規公表 CVE や新たにアーカイブ化された
+  アクションを現行コードベースに対して検知できる。
+- 受け継いだ脆弱性が無関係な作業をブロックしなくなる一方、黙って昇格させることもできない。
+  ブロック地点が「実際に対処できる人がいる場所」へ移る。
+- リリースゲートは意図的に `ignore-unfixed` を使わない。修正版のない脆弱性こそ、昇格前に
+  人間の判断を要する種類のものだからである。
+- シークレット検出が、間違いうる 2 つの軸を両方カバーする。履歴全体に対するパターン検出
+  （gitleaks）と、クレデンシャルが実際に有効であることの証明（TruffleHog）である。
+- ワークフロー定義自体が監査対象になり、「CI の中で最も権限が強い部分が最も検査されていない」
+  という穴が塞がる。
+- 別々のツールが別々の面を走査するため、ある層の失敗が独立して対処可能になる。
 
-### Negative Consequences
+### 悪い影響
 
-- The workflow count is materially more CI surface to maintain than a handful. The shared
-  `.github/actions/osv-scan` composite action keeps the OSV parser and severity policy in
-  one place, but the breadth itself is a cost, and adding a scanner is never just "add a
-  tool" — it requires deciding which surface owns the finding.
-- Blocking depends on the gates being registered as required status checks — a
-  `required_status_checks` rule listing each gate's check context in
-  `.github/settings/branch-protection.json`, which takes effect only once that ruleset is
-  applied to the repository with `make apply-branch-protection`. Until that rule is present
-  and applied, the gates report without blocking. Because a required check on a path- or
-  branch-filtered workflow hangs a PR that never triggers it, each gate carries a
-  `*-guard.yaml` companion that reports the same check context as a success on the
-  complementary path/branch set, so a PR that skips the body still reports the context — an
-  extra workflow per gate whose filter has to be kept in sync with the body it guards.
-- Detections overlap across tools, and the overlap has to be resolved by hand each time
-  (Opengrep and Trivy both flag a root-user Dockerfile; Opengrep and gosec both flag
-  `math/rand`). Left unresolved, the same finding gates twice and gets suppressed twice.
-- Govulncheck's reachability analysis requires Go module awareness; if the module graph
-  changes structure, filtering assumptions may need revisiting.
-- Secret scans run unconditionally on every PR (no path filter), adding fixed overhead.
-- `harden-runner` adds a third-party step to every job and reports to an external service.
-  Under `block` an endpoint the allowlist omits fails the job, so a new outbound dependency
-  surfaces as a red build rather than as a warning.
-- TruffleHog's `--results=verified` deliberately drops `unknown` results, so a credential
-  whose verification call failed is not reported.
-- Scheduled runs may produce findings not associated with any open PR, requiring
-  maintainers to triage proactively.
+- ワークフロー 10 本 + リリースゲート 2 本は、少数構成に比べて明確に維持すべき CI 面が広い。
+  共通の `.github/actions/osv-scan` composite action が OSV のパーサと深刻度ポリシーを 1 箇所に
+  まとめてはいるが、広さ自体がコストである。
+- リリースゲートは required status check として登録されて初めてブロックする。ブランチ保護を
+  設定していない環境では報告するだけで強制力を持たず、上記の分離はどこでも報告のみに退化する。
+- govulncheck の到達可能性解析は Go モジュールの認識を要するため、モジュールグラフの構造が
+  変わればフィルタの前提を見直す必要が生じうる。
+- シークレットスキャンは全 PR で無条件に実行される（paths フィルタなし）ため、固定の
+  オーバーヘッドが乗る。
+- `harden-runner` は全ジョブにサードパーティ製ステップを追加し、外部サービスへ送信する。
+  `block` では allowlist が漏らしたエンドポイントでジョブが落ちるため、新しい外向き依存は
+  警告ではなくビルドの赤として現れる。
+- TruffleHog の `--results=verified` は `unknown` を意図的に落とすため、検証呼び出しに失敗した
+  クレデンシャルは報告されない。
+- スケジュール実行はどの PR にも紐づかない finding を生むため、メンテナによる能動的な
+  トリアージが必要になる。
+- 定期実行は open な PR に紐づかない finding を生むことがあり、メンテナが能動的にトリアージする必要がある。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Single dependency scanner only (e.g. Dependabot)
+### 単一の依存スキャナのみ（Dependabot など）
 
-Dependabot updates dependencies reactively but does not perform reachability analysis or
-SAST. It would miss logic-level bugs entirely.
+Dependabot は依存を受動的に更新するが、到達可能性解析も SAST も行わない。ロジックレベルの
+バグを完全に見落とす。
 
-### govulncheck without reachability filtering
+### 到達可能性フィルタなしの govulncheck
 
-Running govulncheck without the `trace > 1` post-filter produces a large volume of
-advisory-level findings for code paths never exercised. PR authors would habitually
-dismiss all govulncheck output, destroying the signal.
+`trace > 1` の後段フィルタ無しで実行すると、一度も実行されないコードパスに対する advisory
+レベルの finding が大量に出る。PR 作成者は govulncheck の出力を習慣的に無視するようになり、
+シグナルが失われる。
 
-### Gate on every PR
+### 全 PR でゲートする
 
-Simplest, and correct while the scanners are quiet. Rejected because the first real
-inherited finding turns every unrelated PR red — observed directly when these scanners were
-introduced. The predictable outcome is that the team disables the check or learns to merge
-past it, which costs more than the gate was worth.
+最も単純であり、スキャナが静かなうちは正しい。却下した理由は、受け継いだ finding が一度でも
+実際に出た時点で無関係な PR がすべて赤くなるからである。これはこのスキャナ群を導入した際に
+実際に観測された。予想される帰結は、チームがチェックを無効化するか赤いまま merge する習慣が
+つくかであり、そのコストはゲートの価値を上回る。
 
-### Suppress specific advisories with an ignore list
+### ignore リストで特定 advisory を抑止する
 
-`.osv-scanner.toml` / `.trivyignore` entries would keep ordinary PRs green. Rejected
-because an allowlist keyed by vulnerability ID goes stale silently: the entry outlives the
-reason, and nothing fails when upstream ships a fix. The report/gate split needs no list —
-the moment a fix exists, the gate picks it up on its own.
+`.osv-scanner.toml` / `.trivyignore` のエントリで通常の PR を緑に保つ案。却下した理由は、
+脆弱性 ID をキーにした allowlist は静かに腐るからである。エントリが理由より長生きし、
+上流が修正版を出しても何も失敗しない。報告とゲートの分離ならリストは不要であり、
+修正版が出た瞬間にゲートが自動的に拾う。
 
-### Consolidate all scanning into a single Trivy step
+### 全スキャンを単一の Trivy ステップへ統合する
 
-Trivy can scan for both CVEs and secrets, but its semantic analysis is not equivalent to
-CodeQL, its reachability awareness is weaker than govulncheck, and it cannot audit the
-workflow definitions that invoke it. Consolidation would sacrifice depth for simplicity.
+Trivy は CVE とシークレットの両方を走査できるが、意味解析は CodeQL と同等ではなく、
+到達可能性の認識は govulncheck より弱く、自分を呼び出しているワークフロー定義を監査できない。
+統合は深さを単純さと引き換えにしてしまう。
 
-### `egress-policy: block` from the start
+### 最初から `egress-policy: block` にする
 
-Stronger than `audit`, and the eventual goal. Rejected for now because a block policy needs
-a settled allowlist of endpoints; deriving one from guesswork breaks CI on the first
-unlisted host. Audit first, then narrow.
+`audit` より強く、最終的な目標でもある。今回却下したのは、block ポリシーには許可エンドポイントの
+確定が前提であり、推測で作れば未登録ホストに当たった時点で CI が壊れるためである。
+まず audit、その後に絞る。
 
-**Since adopted.** The allowlist was derived and every job moved to `block` (`trufflehog`
-excepted, for the reason given above). What the rejection anticipated did happen — the first
-runs broke on unlisted hosts, over several rounds — and the resolution was not more accurate
-per-job lists but a coarser unit: the endpoints follow from a job's capability class, which
-is declared in `.github/egress.toml` and generated into every inline block. The rejection is
-kept here because its reasoning still holds for anyone considering the same move without an
-allowlist to move to.
+**その後、採用した。** 許可リストを導出し、全ジョブを `block` へ移した（`trufflehog` は上記の理由で
+除く）。却下が予期したことは実際に起きた — 初回の実行は未登録ホストで何度も壊れた — が、解決は
+ジョブごとの一覧をより正確にすることではなく、単位を粗くすることだった。エンドポイントはジョブの
+能力クラスから決まり、そのクラスは `.github/egress.toml` で宣言され、各インラインブロックへ生成される。
+却下の記述をここに残すのは、移行先の許可リストを持たないまま同じ移行を考える人にとって、その理屈が
+今も有効だからである。
 
-## Notes
+## 補足
 
-- Workflow inventory and the full trigger matrix:
-  [`.github/workflows/README.md`](../../.github/workflows/README.md).
-- zizmor's audit exceptions live in `.github/zizmor.yml`; `ignore` there is file-scoped so
-  a new workflow hitting the same audit still fails.
-- zizmor is the only scanner here that also runs pre-commit. The hook and CI call different
-  `make` targets — the hook's drops the online audits — but both read the `high` threshold from
-  the one variable in `.makefiles/security/zizmor.mk`, so neither can be loosened alone
-  ([ADR-0085](0085-local-hooks-mirror-ci.md)). It earns that
-  because it audits files the developer is editing right then, needs no build and no
-  service, and finishes in well under a second; the hook drops the online audits so it
-  needs no token. The rest of this layer scans dependencies and images, where the finding
-  set changes with the outside world rather than with the edit, and a local run would be
-  neither faster nor more current than CI.
-- Action pinning and the supply-chain quarantine the added actions go through:
-  [ADR-0090](0090-sha-pinned-actions.md).
-- Release-image integrity, a separate concern from these scans:
-  [ADR-0101](0101-release-image-supply-chain.md).
-- The `gosec` linter in `.golangci-full.yaml` provides an additional in-process security
-  check during static analysis (see [ADR-0084](0084-two-layer-golangci-config.md)).
+- ワークフロー一覧と完全なトリガーマトリクス:
+  [`.github/workflows/README.md`](../../.github/workflows/README.md)
+- zizmor の監査例外は `.github/zizmor.yml` にある。`ignore` はファイル単位であり、同じ audit を
+  踏む新規ワークフローは意図どおり落ちる。
+- ここに挙げたスキャナのうち pre-commit でも走るのは zizmor だけ。フックと CI が呼ぶ `make`
+  ターゲットは別で（フック側はオンライン監査を落とす）、`high` の閾値だけは
+  `.makefiles/security/zizmor.mk` の単一の変数から双方が読むため、片方だけ緩めることはできない
+  （[ADR-0085](0085-local-hooks-mirror-ci.md)）。開発者が
+  まさに編集しているファイルを監査対象とし、ビルドもサービスも要さず、1 秒を大きく下回って
+  終わることがその根拠であり、フックはオンライン監査を落とすためトークンも要らない。この層の
+  残りは依存とイメージを対象とし、指摘の集合は編集ではなく外界の変化で動く。ローカル実行は
+  CI より速くも新しくもならない。
+- 追加したアクションが通るサプライチェーンの隔離期間とアクション pin:
+  [ADR-0090](0090-sha-pinned-actions.md)
+- これらのスキャンとは別の関心事であるリリースイメージの完全性:
+  [ADR-0101](0101-release-image-supply-chain.md)
+- `.golangci-full.yaml` の `gosec` linter は静的解析時のインプロセスチェックとして追加的に機能する
+  （[ADR-0084](0084-two-layer-golangci-config.md)）

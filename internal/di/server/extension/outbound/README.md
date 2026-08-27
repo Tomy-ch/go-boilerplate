@@ -1,23 +1,23 @@
 # outbound
 
-`outbound` is a directory that groups **DI middleware modules for extending HTTP response (output) processing**.
+`outbound` は、HTTP レスポンス（出力）側の処理を拡張するための **ミドルウェア DI モジュール群**をまとめたディレクトリです。
 
-It handles **response transformation / error handling / output format enforcement / panic recovery** after request processing.
+リクエスト処理後の **レスポンス変換 / エラーハンドリング / 出力形式の強制 / パニック回復**を担当します。
 
-## Role
+## 役割
 
-This package isolates the **response (output) side** of the composable server pipeline — the mirror of the request-side `inbound` group. Bundling response transformation, error mapping, output-format enforcement, and panic recovery into a single DI unit lets the output behavior be prioritized and evolved independently of the rest of the server, while keeping this controller-layer plumbing from leaking into the domain or usecase layers.
+このパッケージは、組み合わせ可能なサーバーパイプラインのうち **レスポンス（出力）側**の関心事を、リクエスト側の `inbound` と対になる形で分離します。レスポンス変換・エラーマッピング・出力形式の強制・パニック回復をひとつの DI 単位にまとめることで、出力の挙動をサーバーの他部分と独立して優先度付け・拡張でき、この controller 層の配線が domain / usecase 層へ漏れ出すのを防ぎます。
 
-## Modules
+## モジュール一覧
 
-|Module|Type|Description|
+|モジュール|種別|説明|
 |---|---|---|
-|`RecoveryModule()`|Use|Catch panics, log with stack trace, return 500|
-|`ErrorHandlerModule()`|Configurator|Unified error-to-HTTP-response mapping with logging|
-|`ForceJSONModule()`|Use|Force response Content-Type to JSON|
+|`RecoveryModule()`|Use|panic をキャッチし、ログ出力して 500 を返す|
+|`ErrorHandlerModule()`|Configurator|アプリケーションエラーを HTTP レスポンスへ統一マッピング（ログ出力付き）|
+|`ForceJSONModule()`|Use|レスポンスの Content-Type を JSON に強制|
 
-## Notes
+## 注意点
 
-- Priority follows `extension.UseMiddleware` rules — adjusted to avoid order conflicts with other middleware
-- ErrorHandler replaces Echo's `HTTPErrorHandler` and is provided as ServeCfg
-- To add response processing, add new outbound middleware to this directory
+- Priority は `extension.UseMiddleware` のルールに従い、他のミドルウェアと順序が衝突しないよう調整済み
+- ErrorHandler は Echo の `HTTPErrorHandler` を置き換えるため ServeCfg として提供
+- レスポンス処理の追加は、このディレクトリへ新しい outbound ミドルウェアを追加することを推奨

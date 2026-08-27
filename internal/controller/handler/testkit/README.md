@@ -1,17 +1,17 @@
 # testkit
 
-Test utilities for Controller layer tests.
+Controller 層テスト用のユーティリティ群です。
 
-## Role
+## 役割
 
-Controller-layer tests repeatedly need the same scaffolding: a configured HTTP test client, an authenticated request context, an injected trace span, and structured response assertions. Collecting these into shared helpers removes that repetition and provides deterministic test doubles, so handler tests stay short, consistent, and focused on the behaviour under test rather than on setup.
+Controller 層のテストは、設定済みの HTTP テストクライアント・認証済みリクエストコンテキスト・注入されたトレーススパン・構造化レスポンスのアサーションといった同じ足場を繰り返し必要とします。これらを共有ヘルパーにまとめることでその繰り返しを排除し、決定的なテストダブルを提供するため、ハンドラテストは短く一貫し、セットアップではなく検証対象の挙動に集中できます。
 
-## Subpackages
+## サブパッケージ
 
-|Package|Description|
+|パッケージ|説明|
 |---|---|
-|`testassert`|JSON response and Echo router assertions|
-|`testauth`|Test authentication context setup|
-|`testecho`|Echo test client builder|
-|`testspan`|Test span injection for Echo context|
-|`testuuid`|Valid UUID path / query parameter values for tests|
+|`testassert`|JSON レスポンスおよび Echo ルーターのアサーション|
+|`testauth`|テスト用認証コンテキストのセットアップ|
+|`testecho`|Echo テストクライアントビルダー|
+|`testspan`|Echo コンテキストへのテストスパン注入|
+|`testuuid`|テスト用の有効な UUID パス / クエリパラメータ値|

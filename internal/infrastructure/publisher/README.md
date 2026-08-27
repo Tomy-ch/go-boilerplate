@@ -1,16 +1,16 @@
 # publisher
 
-`internal/infrastructure/publisher` is **the only place that chooses the implementation of the transactional outbox publish boundary** (`publisher.Publisher`). It ships the HTTP implementation, which POSTs outbox messages claimed by the relay engine to a receiving endpoint, and selects between implementations by the `OUTBOX_PUBLISHER` discriminator.
+`internal/infrastructure/publisher` は、**transactional outbox の publish 境界（`publisher.Publisher`）の実装を選ぶ唯一の場所**です。relay engine が claim した outbox メッセージを受信エンドポイントへ POST する HTTP 実装を同梱し、判別子 `OUTBOX_PUBLISHER` によって実装を選択します。
 
-## Architectural Position
+## アーキテクチャ上の位置づけ
 
 ```mermaid
 flowchart TB
-    subgraph "Usecase Layer"
+    subgraph "Usecase 層"
         IF["publisher.Publisher interface"]
     end
-    subgraph "Infrastructure Layer"
-        Impl["httpPublisher impl"]
+    subgraph "Infrastructure 層"
+        Impl["httpPublisher 実装"]
         Sub["httpclient.Client substrate"]
     end
 
@@ -18,52 +18,39 @@ flowchart TB
     Impl --> Sub
 ```
 
-Implements the `publisher.Publisher` interface (`internal/usecase/boundary/publisher`) in the Infrastructure layer, delegating actual transport to the `httpclient` substrate. The relay engine and usecase depend only on the boundary, not on HTTP details.
+Usecase 層の `publisher.Publisher` インターフェース（`internal/usecase/boundary/publisher`）を Infrastructure 層で実装し、実際の transport は `httpclient` substrate に委譲します。relay engine と usecase は HTTP の詳細ではなく境界のみに依存します。
 
-## Choosing an implementation
+## 実装の選択
 
-`New(cfg, client, tf)` switches on `OUTBOX_PUBLISHER` and returns the matching adapter; an unknown value fails startup rather than falling through to a default, so a typo never publishes to an unintended target. The publish target is a per-deployment decision rather than a function of the environment tier, which is why it is an explicit discriminator instead of an `APP_ENV` branch.
+`New(cfg, client, tf)` が `OUTBOX_PUBLISHER` で分岐し、対応する adapter を返します。未知の値は既定へ流さず起動エラーにするため、綴り間違いが意図しない publish 先へ流れることはありません。publish 先は環境ティアの関数ではなくデプロイ先ごとの判断であるため、`APP_ENV` 分岐ではなく明示の判別子にしています。
 
-Each branch resolves its own settings, so a deployment that publishes to a queue is never asked for `ENDPOINT_OUTBOX`, and vice versa. Both resolutions fail at relay startup rather than at the first publish — an unset target would otherwise dead-letter every message silently.
+各分岐が自分の設定だけを解決するので、キューへ publish するデプロイが `ENDPOINT_OUTBOX` を要求されることはなく、逆も同様です。どちらの解決も最初の publish 時ではなく relay 起動時に落とします。未設定のまま起動すると全メッセージが黙って dead 化するためです。
 
 <!-- sample-api:begin -->
-The `sqs` branch — the only branch besides `http` — is wiring from the removable sample set (see [ADR-0053 (broker-sdk-isolation-measured-as-coupling)](../../../docs/adr/0053-broker-sdk-isolation-measured-as-coupling.md)); after `make setup-remove-sample-api` only the HTTP branch remains, while the SQS adapter itself stays as an unwired reference implementation.
+`http` 以外の唯一の分岐である `sqs` 分岐は、削除可能なサンプル群からの配線です（[ADR-0053 (broker-sdk-isolation-measured-as-coupling)](../../../docs/adr/0053-broker-sdk-isolation-measured-as-coupling.md) を参照）。`make setup-remove-sample-api` の後は HTTP 分岐だけが残り、SQS adapter 自体は未配線の参照実装として残ります。
 <!-- sample-api:end -->
 
-## Design Policy
+## 設計方針
 
-- Transport retry is disabled (`MaxAttempts = 1`): the relay poll loop is itself the at-least-once retry body, so substrate-level retry would double up (D10). Redelivery is owned by the next relay poll.
-- The non-idempotent POST carries `MessageID` as `Idempotency-Key` for receiver-side dedup, but `AllowRetry` is explicitly `false`.
-- Trace propagation is disabled (`PropagateTrace = false`): the `traceparent` captured at emit time is propagated explicitly via message headers, so the substrate's automatic injection is suppressed.
-- The endpoint URL is resolved once from config and injected at construction; `Content-Type: application/json` plus the message's own headers (e.g. `traceparent`) are sent.
-- Non-2xx / transport failures are mapped to `apperror` sentinels by the substrate and returned as-is, signaling the relay to retry on the next poll.
+- transport retry を無効化する（`MaxAttempts = 1`）: relay の poll ループ自体が at-least-once の retry 本体であるため、substrate 層 retry は二重になる（D10）。再送は relay の次 poll が担う。
+- 非冪等な POST だが、受信側 dedup のため `MessageID` を `Idempotency-Key` として載せ、`AllowRetry` は明示的に `false` とする。
+- trace 伝搬を無効化する（`PropagateTrace = false`）: emit 時に capture した `traceparent` をメッセージヘッダで明示伝搬するため、substrate の自動 inject は抑止する。
+- エンドポイント URL は config から一度解決して構築時に注入し、`Content-Type: application/json` とメッセージ自身のヘッダ（`traceparent` 等）を送る。
+- 非 2xx / transport 失敗は substrate が `apperror` sentinel へ写像してそのまま返し、relay の次 poll での再送を促す。
 
 ## Test Strategy
 
-The substrate here is the `httpclient.Client` boundary, not a database, so the infrastructure layer's
-real-DB strategy does not apply. Everything closes in-process: the downstream is a generated
-`httpclient` mock, and nothing is sent over a network.
+ここでの基盤は DB ではなく `httpclient.Client` Boundary であるため、infrastructure 層の実 DB 戦略は適用されません。すべて in-process で閉じます。downstream は `httpclient` の生成モックで、ネットワークへは何も送出しません。
 
-- **The request is asserted, not just the outcome.** The adapter's whole job is to turn an outbox
-  message into one HTTP call, so the test inspects the `Request` handed to the substrate — method,
-  endpoint, `Content-Type`, the message's own headers (`traceparent`), and `MessageID` carried as
-  `Idempotency-Key`. Checking only the returned error would leave the mapping free to drift.
-- **The disabled knobs are pinned as deliberately off**, because they are safeguards rather than
-  defaults: `AllowRetry = false` (the relay poll loop owns redelivery) and `PropagateTrace = false`
-  (the emit-time `traceparent` travels as a message header instead). Both would fail silently if
-  flipped, which is exactly why each gets its own case.
-- **Sensitive headers are pinned against normalisation gaps.** Header matching must not be defeated by
-  case or surrounding whitespace, so those forms are tested explicitly rather than assumed.
-- **Substrate errors propagate unchanged.** A non-2xx or transport failure is already an `apperror`
-  sentinel when it arrives; the assertion is `errors.Is` against that sentinel, confirming the adapter
-  neither re-wraps nor flattens it — the relay's retry decision depends on it surviving intact.
-- **Implementation selection is its own subject.** `New` switching on `OUTBOX_PUBLISHER` is tested for
-  each known value *and* for an unknown one, since failing startup on a typo is the contract; so is each
-  branch resolving only its own settings, so a queue deployment is never asked for `ENDPOINT_OUTBOX`.
+- **結果だけでなくリクエストを assert する。** このアダプタの仕事は outbox メッセージを 1 回の HTTP 呼び出しへ変えることそのものなので、テストは substrate へ渡された `Request` を検査します。メソッド・エンドポイント・`Content-Type`・メッセージ自身のヘッダ（`traceparent`）、そして `Idempotency-Key` として載る `MessageID` です。返り値のエラーだけを見ると、この写像が自由にドリフトします。
+- **無効化した設定は「意図的に off である」ことを固定する。** これらは既定値ではなく安全装置だからです。`AllowRetry = false`（再送は relay の poll ループが所有する）と `PropagateTrace = false`（emit 時の `traceparent` はメッセージヘッダとして運ぶ）。どちらも反転しても無言で通るため、それぞれが独立したケースを持ちます。
+- **機微ヘッダは正規化の抜けに対して固定する。** ヘッダの照合が大文字小文字や前後の空白で破られてはならないため、それらの形を仮定せず明示的にテストします。
+- **substrate のエラーは加工せず伝播する。** 非 2xx / transport 失敗は到達時点で既に `apperror` sentinel です。assert はその sentinel に対する `errors.Is` で行い、アダプタが再ラップも平坦化もしていないことを確かめます。relay の再送判断は、これが無傷で届くことに依存しています。
+- **実装の選択それ自体が subject である。** `OUTBOX_PUBLISHER` で分岐する `New` は、既知の各値に加えて未知の値でもテストします。誤記で起動を失敗させることが契約だからです。各分岐が自分の設定だけを解決すること（queue 構成のデプロイが `ENDPOINT_OUTBOX` を要求されないこと）も同様です。
 
-## DI Registration
+## DI 登録
 
-Registered by the `outbox_publisher` module in `internal/di/module/outboxpublisher.go`. The downstream profile is contributed to the `httpclient_profiles` group.
+`internal/di/module/outboxpublisher.go` の `outbox_publisher` モジュールに登録します。downstream profile は `httpclient_profiles` グループへ寄与します。
 
 ```go
 fx.Module("outbox_publisher",

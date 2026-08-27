@@ -1,22 +1,20 @@
 # money
 
-Provides the money-settlement **policy** for the Usecase tier. The exact arithmetic, rounding,
-and minor-unit scaling mechanism lives in [`pkg/decimal`](../../../../pkg/decimal/README.md);
-this package only chooses *which* minor-unit digit count and *which* rounding mode a settlement
-amount is reduced to.
+Usecase 層のマネー決済 **policy** を提供します。正確な算術・丸め・最小単位スケーリングの機構は
+[`pkg/decimal`](../../../../pkg/decimal/README.md) にあり、本パッケージは決済額を *どの* 最小単位桁へ
+*どの* 丸めモードで落とすかだけを選択します。
 
-## Public API
+## 公開 API
 
-- `ApplyRateHalfUp(amount, rate decimal.Decimal, minorUnitDigits int32) (int64, error)` — computes
-  `amount × rate` exactly, then rounds to `minorUnitDigits` **half-away-from-zero** and scales to
-  the settlement-scale `int64` (`decimal.ToScaledInt64`). Rounding happens exactly once, at this
-  single settlement boundary; there is no `float` on the path, so no accumulation error. Returns
-  an error when the minor-unit integer exceeds `int64`.
+- `ApplyRateHalfUp(amount, rate decimal.Decimal, minorUnitDigits int32) (int64, error)` — `amount × rate`
+  を正確に計算し、`minorUnitDigits` 桁へ **half-away-from-zero（0 から遠い方向への四捨五入）** で丸めて
+  決済スケールの `int64` へ変換する（`decimal.ToScaledInt64`）。丸めは決済境界のこの 1 点でのみ行い、経路に
+  `float` を持たないため累積誤差が生じない。最小単位整数が `int64` を超える場合はエラーを返す。
 
-## Design policy
+## 設計方針
 
-- Rounding is centralized here so the policy cannot drift across call sites; callers never round.
-- The half-up method and the single-rounding-point rule are recorded in
-  [ADR-0038 (two-scale-quantity-model)](../../../../docs/adr/0038-two-scale-quantity-model.md); the concrete policy is stated with the feature that applies it.
-- The generic decimal mechanism is [`pkg/decimal`](../../../../pkg/decimal/README.md); this
-  package holds only the policy (`minorUnitDigits`, half-up), no infrastructure dependency.
+- 丸めをここに集約し、呼び出し側では丸めないことで方針のドリフトを防ぐ。
+- half-up 方式と丸め 1 箇所ルールは
+  [ADR-0038 (two-scale-quantity-model)](../../../../docs/adr/0038-two-scale-quantity-model.md) に、具体的な方針はそれを適用する機能とともに記録している。
+- 汎用の十進機構は [`pkg/decimal`](../../../../pkg/decimal/README.md)。本パッケージは policy
+  （`minorUnitDigits`・half-up）のみを持ち、infra 依存を持たない。

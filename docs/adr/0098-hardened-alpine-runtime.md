@@ -5,81 +5,62 @@ deciders: [maintainers]
 tags: [deploy, image, exclusion, setup-review]
 ---
 
-# ADR-0098: Use a hardened-alpine runtime base; do NOT use distroless/scratch
+# ADR-0098: ハードニング Alpine をランタイムベースとして使用し、distroless/scratch は使用しない
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Minimal runtime base images (distroless, scratch) are often proposed for Go services because
-Go compiles to a static binary and technically needs no OS layer at runtime. The appeal is a
-smaller attack surface and a smaller image.
+最小ランタイムベースイメージ（distroless、scratch）は、Go がスタティックバイナリにコンパイルされランタイムに OS レイヤーを技術的には必要としないため、Go サービスによく提案される。アピールは攻撃サーフェスの削減と小さなイメージにある。
 
-However, the runtime image here must satisfy three concrete requirements:
+しかし、ここでのランタイムイメージは 3 つの具体的な要件を満たさなければならない:
 
-1. **TLS trust** — outbound HTTPS calls require a trusted CA certificate bundle.
-2. **Timezone data** — time-zone-aware business logic (`tzdata`) must resolve correctly.
-3. **Security patching** — the base layer must be independently patchable via the distro
-   package manager without rebuilding the entire application binary.
+1. **TLS トラスト** — アウトバウンド HTTPS 呼び出しには信頼された CA 証明書バンドルが必要である。
+2. **タイムゾーンデータ** — タイムゾーン対応のビジネスロジック（`tzdata`）が正しく解決されなければならない。
+3. **セキュリティパッチ** — ベースレイヤーはアプリケーションバイナリ全体を再ビルドすることなく、ディストリのパッケージマネージャーを通じて独立してパッチ適用できなければならない。
 
-Distroless images and scratch provide neither a package manager nor an independently
-updateable `tzdata` package. Adding `ca-certificates` and `tzdata` to scratch requires
-embedding them in the binary or copying them manually, eliminating the simplicity argument
-and making future updates harder.
+Distroless イメージと scratch はパッケージマネージャーも独立して更新可能な `tzdata` パッケージも提供しない。scratch に `ca-certificates` と `tzdata` を追加するには、それらをバイナリに埋め込むか手動でコピーする必要があり、シンプルさの議論を排除して将来の更新を困難にする。
 
-## Decision
+## 決定
 
-We deliberately do NOT use distroless or scratch as the runtime base image.
+ランタイムベースイメージとして distroless または scratch を使用しないことを意図的に決定する。
 
-The `runtime` stage is based on `alpine:3.23`. The image setup:
+`runtime` ステージは `alpine:3.23` をベースとする。イメージのセットアップ:
 
-1. Runs `apk upgrade --no-cache` to apply upstream security patches at build time.
-2. Installs `ca-certificates` (TLS trust) and `tzdata` (timezone data) — the only two
-   OS-level runtime dependencies.
-3. Creates a dedicated non-root group and user (`app:app`) and switches to that user before
-   the `COPY` and `CMD` instructions, so the binary never runs as root.
+1. ビルド時に `apk upgrade --no-cache` を実行してアップストリームのセキュリティパッチを適用する。
+2. `ca-certificates`（TLS トラスト）と `tzdata`（タイムゾーンデータ）のみをインストールする — 唯一 2 つの OS レベルのランタイム依存関係。
+3. 専用の非 root グループとユーザー（`app:app`）を作成し、`COPY` と `CMD` 命令の前にそのユーザーに切り替え、バイナリが root として実行されないようにする。
 
-Setup teams reviewing this ADR should confirm whether the `alpine` pin (`3.23`) should be
-updated and whether base image digests should be added for reproducibility (the Dockerfile
-notes recommend digest pinning for production).
+この ADR をレビューするセットアップチームは、`alpine` ピン（`3.23`）を更新すべきかどうか、および再現性のためにベースイメージダイジェストを追加すべきかどうかを確認すること（Dockerfile のノートはプロダクションではダイジストピニングを推奨している）。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- `apk upgrade` at build time keeps the OS layer current without waiting for a new Alpine
-  minor release.
-- `ca-certificates` and `tzdata` are managed by the distro, not embedded in the binary,
-  so they can be updated independently.
-- Non-root execution reduces the blast radius of a container escape.
+- ビルド時の `apk upgrade` により、新しい Alpine マイナーリリースを待つことなく OS レイヤーを最新の状態に保てる。
+- `ca-certificates` と `tzdata` はバイナリに埋め込まれるのではなくディストリによって管理されるため、独立して更新できる。
+- 非 root 実行によりコンテナエスケープの爆発半径が削減される。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Alpine is a larger base than distroless or scratch. The difference is a few megabytes for
-  a statically linked binary.
-- Alpine uses musl libc; CGO is disabled (`CGO_ENABLED=0`) in the builder, so no musl
-  compatibility issues arise in practice.
+- Alpine は distroless や scratch より大きなベースである。スタティックリンクされたバイナリに対して差分は数メガバイトである。
+- Alpine は musl libc を使用するが、ビルダーで CGO は無効（`CGO_ENABLED=0`）であるため、実際には musl の互換性問題は生じない。
 
-## Alternatives Considered
+## 検討した代替案
 
-### distroless/static or distroless/base
+### distroless/static または distroless/base
 
-No shell, smaller surface — but no `apk` for patching, no convenient `tzdata` package, and
-`ca-certificates` must be copied manually. Complicates future maintenance without a
-meaningful security gain given that CGO is already disabled.
+シェルなし、小さなサーフェス — しかしパッチ適用のための `apk` なし、便利な `tzdata` パッケージなし、`ca-certificates` は手動コピーが必要。CGO がすでに無効なため、意味のあるセキュリティ上の利点なしに将来のメンテナンスを複雑化させる。
 
 ### scratch
 
-Absolute minimum size. No CA bundle, no timezone data, no package manager. Requires manual
-copy steps that are hard to keep up to date and breaks any code path that calls TLS or
-resolves timezones at runtime.
+絶対最小サイズ。CA バンドルなし、タイムゾーンデータなし、パッケージマネージャーなし。最新の状態を保つことが困難な手動コピーステップを必要とし、ランタイムで TLS を呼び出したりタイムゾーンを解決するコードパスを壊す。
 
-## Notes
+## 補足
 
-- `docker/server/Dockerfile` lines 42-53 define the `runtime` stage.
-- `docker/server/README.md` §"runtime" describes the non-root user setup and the two
-  OS-level packages.
-- Production deploys should pin the base image by digest (noted in the Dockerfile header).
-- Source: `docker/server/Dockerfile`, `docker/server/README.md`.
+- `docker/server/Dockerfile` 42-53 行が `runtime` ステージを定義する。
+- `docker/server/README.md` §"runtime" が非 root ユーザーのセットアップと 2 つの OS レベルパッケージを説明する。
+- プロダクションデプロイはベースイメージをダイジェストでピニングすべきである（Dockerfile ヘッダーに記載）。
+- ソース: `docker/server/Dockerfile`、`docker/server/README.md`。

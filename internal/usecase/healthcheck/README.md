@@ -1,36 +1,37 @@
 # healthcheck
 
-Usecase for reporting service health: it captures the application time from the
-`Clock` boundary and probes the database, returning a single health DTO.
+サービスの健全性を報告するユースケースです。`Clock` 境界からアプリケーション
+時刻を取得し、データベースを probe して、単一の health DTO を返します。
 
-## Usecase — `Usecase`
+## ユースケース — `Usecase`
 
 `New(dbSystemQuery, tracerFactory, clock) Usecase`
 
-- `CheckHealth(ctx) (*DTO, error)` reads the current time via `clock.Now()`, then
-  calls `DBSystemCqrs.CheckDBHealth(ctx)`. On success it returns a `*DTO` with
-  `Status = Ok`, `ApplicationTime`, and the `DBHealthCheck` result. On a DB error
-  it returns `nil` — the DTO must not be dereferenced.
+- `CheckHealth(ctx) (*DTO, error)` は `clock.Now()` で現在時刻を取得し、続いて
+  `DBSystemCqrs.CheckDBHealth(ctx)` を呼びます。成功時は `Status = Ok`・
+  `ApplicationTime`・`DBHealthCheck` を持つ `*DTO` を返します。DB エラー時は
+  `nil` を返すため、DTO を参照してはいけません。
 
-`DTO` carries `Status`, `ApplicationTime`, and `DBHealthCheck` (`query.DBHealth`).
-The status constants are `Ok`, `Degraded`, and `Unhealthy`; the current
-implementation only emits `Ok` on success (a DB error surfaces as the returned
-error, not as a `Degraded` / `Unhealthy` DTO).
+`DTO` は `Status`・`ApplicationTime`・`DBHealthCheck`（`query.DBHealth`）を
+保持します。ステータス定数は `Ok`・`Degraded`・`Unhealthy` ですが、現在の実装は
+成功時に `Ok` のみを出力します（DB エラーは `Degraded` / `Unhealthy` の DTO では
+なく、返り値のエラーとして表面化します）。
 
 ## DB probe — `healthcheck/query`
 
-The `query` subpackage is a thin leaf boundary: `DBSystemCqrs` with a single
-`CheckDBHealth(ctx) (DBHealth, error)`, where `DBHealth` reports `Ready`,
-`RespondedAt`, and `Latency`. The concrete implementation lives in
-`internal/infrastructure/rdb/system_cqrs/healthcheck/` and runs a lightweight
-`SELECT 1` liveness probe (`database/dml/system_cqrs/health_check/`).
+`query` サブパッケージは薄い leaf 境界です。`DBSystemCqrs` は単一の
+`CheckDBHealth(ctx) (DBHealth, error)` を持ち、`DBHealth` は `Ready`・
+`RespondedAt`・`Latency` を報告します。具体的な実装は
+`internal/infrastructure/rdb/system_cqrs/healthcheck/` にあり、軽量な
+`SELECT 1` による liveness probe を実行します
+（`database/dml/system_cqrs/health_check/`）。
 
-## Layout
+## レイアウト
 
-| Concern | Path |
+| 関心事 | パス |
 | --- | --- |
-| usecase | `internal/usecase/healthcheck/` (this package) |
-| DB probe boundary | `internal/usecase/healthcheck/query/` (`DBSystemCqrs`) |
-| clock boundary | `internal/usecase/boundary/clock/` (`Clock`) |
+| usecase | `internal/usecase/healthcheck/`（本パッケージ） |
+| DB probe 境界 | `internal/usecase/healthcheck/query/`（`DBSystemCqrs`） |
+| clock 境界 | `internal/usecase/boundary/clock/`（`Clock`） |
 | infrastructure | `internal/infrastructure/rdb/system_cqrs/healthcheck/` |
 | sqlc DML | `database/dml/system_cqrs/health_check/` |

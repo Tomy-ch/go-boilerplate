@@ -5,37 +5,28 @@ deciders: [maintainers]
 tags: [persistence, identifiers]
 ---
 
-# ADR-0037: Use UUIDv7 (time-ordered) identifiers for all entity primary keys
+# ADR-0037: すべてのエンティティ主キーに UUIDv7（時刻順）識別子を使用する
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Entity primary keys must satisfy several constraints:
+エンティティの主キーは複数の制約を満たす必要がある。
 
-- **Global uniqueness** — no coordination with a central authority required.
-- **Domain-layer generation** — IDs must be creatable in the domain without a database
-  round-trip (e.g., to check out an aggregate before persisting it).
-- **Index performance** — random primary keys (UUIDv4) cause frequent B-tree page splits
-  because each new row is inserted at a random position in the index. At scale this
-  increases write amplification and index fragmentation.
-- **No information leak** — sequential integers leak the total record count and insertion
-  order, which is undesirable for externally exposed IDs.
+- **グローバル一意性** — 中央機関との調整なしに生成できること。
+- **ドメイン層での生成** — ID はデータベースへのラウンドトリップなしにドメイン内で生成できること（例: 集約をチェックアウトしてから永続化する場合）。
+- **インデックス性能** — ランダムな主キー（UUIDv4）はインデックス内のランダムな位置に新しい行が挿入されるため、B-tree ページ分割が頻繁に発生する。大規模では書き込み増幅とインデックス断片化が増加する。
+- **情報漏洩なし** — 連番整数は総レコード数と挿入順序を漏洩するため、外部に公開される ID には適さない。
 
-UUIDv7 (RFC 9562) embeds a millisecond-precision Unix timestamp in the most-significant
-bits, producing time-ordered values. New rows append near the end of the B-tree index,
-similar to auto-increment integers, while retaining global uniqueness and requiring no
-central sequence generator.
+UUIDv7（RFC 9562）は最上位ビットにミリ秒精度の Unix タイムスタンプを埋め込むことで、時刻順の値を生成する。新しい行は B-tree インデックスの末尾付近に追加されるため、オートインクリメント整数と同様の動作をしながら、グローバル一意性を保ち、中央のシーケンスジェネレータを必要としない。
 
-## Decision
+## 決定
 
-All entity primary keys use **UUIDv7**, generated via `pkg/uuid.New()`, which wraps
-`github.com/google/uuid.NewV7()`.
+すべてのエンティティ主キーに **UUIDv7** を使用し、`github.com/google/uuid.NewV7()` をラップした `pkg/uuid.New()` で生成する。
 
-The `sqlc.yaml` type override maps the PostgreSQL `uuid` column type to `pkg/uuid.UUID`
-for both non-nullable and nullable columns:
+`sqlc.yaml` の型オーバーライドにより、PostgreSQL の `uuid` 列型を NULL 可・不可の両方で `pkg/uuid.UUID` にマッピングする。
 
 ```yaml
 overrides:
@@ -53,64 +44,44 @@ overrides:
       pointer: true
 ```
 
-This eliminates per-field UUID conversion throughout the codebase: sqlc-generated code
-uses `pkg/uuid.UUID` directly, so QueryService and Repository implementations can pass
-generated row fields to domain constructors without an intermediate conversion step.
+これにより、コードベース全体でフィールドごとの UUID 変換が不要になる。sqlc が生成するコードが `pkg/uuid.UUID` を直接使用するため、QueryService および Repository の実装は中間変換ステップなしに生成された行フィールドをドメインコンストラクタに渡せる。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Time-ordered inserts reduce B-tree page splits and fragmentation compared to UUIDv4,
-  improving write throughput and index compactness at scale.
-- IDs are generated in the domain layer without a database round-trip, keeping the domain
-  self-contained.
-- No central sequence generator is required; UUIDv7 generation is independent on every
-  process and host.
-- The sqlc type override eliminates per-field UUID conversion across QueryService and
-  Repository, removing a repeated conversion step and the opportunity for conversion bugs.
-- IDs are monotonically increasing within a millisecond, giving approximate insertion-order
-  sortability for free.
+- 時刻順の挿入により、UUIDv4 と比較して B-tree ページ分割と断片化が減少し、大規模での書き込みスループットとインデックスのコンパクトさが向上する。
+- ID はデータベースへのラウンドトリップなしにドメイン層で生成でき、ドメインの自己完結性が保たれる。
+- 中央のシーケンスジェネレータが不要で、UUIDv7 の生成はプロセスやホストごとに独立して行える。
+- sqlc の型オーバーライドにより、QueryService と Repository 全体での UUID 変換が不要になり、繰り返される変換工程と変換バグの機会が取り除かれる。
+- ID はミリ秒単位で単調増加するため、近似的な挿入順ソートが自動的に得られる。
 
-### Negative Consequences
+### ネガティブな影響
 
-- UUIDv7 encodes a millisecond-precision timestamp in the high bits. Exposing UUIDs
-  publicly reveals the approximate record creation time.
-- Millisecond granularity means multiple records created within the same millisecond are
-  not strictly ordered relative to each other.
-- Requires `github.com/google/uuid` v1.6 or later (which introduced `NewV7`).
+- UUIDv7 は上位ビットにミリ秒精度のタイムスタンプをエンコードする。UUID を公開すると、レコードの大まかな作成日時が露出する。
+- ミリ秒の粒度では、同一ミリ秒以内に作成された複数のレコードは互いに厳密な順序を持たない。
+- `github.com/google/uuid` v1.6 以降が必要（`NewV7` が導入されたバージョン）。
 
-## Alternatives Considered
+## 検討した代替案
 
-### UUIDv4 (random)
+### UUIDv4（ランダム）
 
-Widely supported and simple. However, random distribution across the full 128-bit space
-causes frequent B-tree page splits, degrading write performance and increasing storage
-overhead for the index as the table grows. Rejected in favor of time-ordered IDs.
+広くサポートされており、シンプルである。ただし、128 ビット空間全体へのランダム分布により B-tree ページ分割が頻繁に発生し、テーブルの成長に伴って書き込み性能が低下しインデックスのストレージオーバーヘッドが増加する。時刻順 ID を優先するため却下。
 
-### Auto-increment integer
+### オートインクリメント整数
 
-Compact and cache-friendly for B-tree indexes. However: leaks record counts and insertion
-order when exposed in APIs, requires a centralized sequence generator (database sequence),
-and complicates distributed or parallel test scenarios where multiple writers must not
-collide. Rejected.
+B-tree インデックスに対してコンパクトでキャッシュフレンドリーである。ただし、API で公開するとレコード数と挿入順序が漏洩し、集中型のシーケンスジェネレータ（データベースシーケンス）が必要で、複数のライターが衝突しないようにする分散・並列テストシナリオが複雑になる。却下。
 
-### ULID (Universally Unique Lexicographically Sortable Identifier)
+### ULID（Universally Unique Lexicographically Sortable Identifier）
 
-Time-ordered and lexicographically sortable like UUIDv7. Requires a separate library and
-is not a UUID-compatible type (different wire format). `github.com/google/uuid`'s `NewV7`
-provides equivalent time-ordering without an additional dependency. Rejected.
+UUIDv7 と同様に時刻順かつ辞書順ソート可能である。別のライブラリが必要で、UUID 互換の型ではない（ワイヤーフォーマットが異なる）。`github.com/google/uuid` の `NewV7` は追加依存なしに同等の時刻順を提供する。却下。
 
 ### UUIDv1
 
-Time-ordered but embeds the MAC address of the generating host, which is a privacy concern
-for externally exposed IDs, and the timestamp is encoded in a fragmented way (not
-monotonically increasing in the string representation). Rejected.
+時刻順だが、生成ホストの MAC アドレスを埋め込むため、外部に公開される ID としてはプライバシー上の問題がある。また、タイムスタンプが断片化した形でエンコードされており、文字列表現での単調増加にならない。却下。
 
-## Notes
+## 補足
 
-- Source: [`pkg/uuid/README.md`](../../pkg/uuid/README.md) — wraps `github.com/google/uuid`;
-  generates UUIDv7.
-- Source: [`sqlc.yaml`](../../sqlc.yaml) — `uuid` type override to `pkg/uuid.UUID`.
-- Related: [ADR-0027](0027-sqlc-type-safe-sql.md) (sqlc type overrides are the mechanism
-  that wires this UUID type into generated code).
+- 出典: [`pkg/uuid/README.md`](../../pkg/uuid/README.md) — `github.com/google/uuid` をラップし UUIDv7 を生成する。
+- 出典: [`sqlc.yaml`](../../sqlc.yaml) — `uuid` 型を `pkg/uuid.UUID` にオーバーライド。
+- 関連: [ADR-0027](0027-sqlc-type-safe-sql.md)（sqlc の型オーバーライドがこの UUID 型を生成コードに組み込む仕組み）。

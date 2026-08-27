@@ -1,7 +1,7 @@
 # testspan
 
-Injects test trace spans into Echo request context.
+Echo リクエストコンテキストにテスト用トレーススパンを注入します。
 
-## Role
+## 役割
 
-Handlers expect a trace span to already exist on the request context because the tracing middleware installs one in production. Tests bypass that middleware, so this helper injects a span deterministically, letting handler tests run the real tracing-dependent code paths without standing up the full middleware stack.
+ハンドラはトレーシングミドルウェアが本番でスパンを設置することを前提に、リクエストコンテキストにトレーススパンが既に存在することを期待します。テストはそのミドルウェアを経由しないため、本ヘルパーはスパンを決定的に注入し、ミドルウェアスタック全体を立ち上げずにトレーシング依存の実コード経路をハンドラテストで実行できるようにします。
