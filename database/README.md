@@ -1,52 +1,52 @@
 # database
 
-`database/` stores **all database-related artifacts**.
+`database/` は、**データベース関連のすべての成果物**を格納するディレクトリです。
 
-It manages migrations, sqlc DML sources, seed data, and generated outputs.
+マイグレーション、sqlc 用 DML、シードデータ、および生成物を管理します。
 
-## Subdirectory Roles
+## サブディレクトリの役割
 
-|Directory|Content|Generation Command|Editing|
+|ディレクトリ|内容|生成コマンド|編集|
 |---|---|---|---|
-|`migrations/`|Schema definitions (CREATE TABLE, etc.)|`make new-migrate-<name>`|Manual|
-|`dml/`|sqlc queries (SELECT / INSERT, etc.)|—|Manual|
-|`seed/`|Initial data for development and testing|—|Manual|
-|`gen/`|SQL merged from `dml/` via merge-dml + schema dump|`make gen-query`|**Do not edit**|
-|`maintenance/`|Operational SQL run by hand, outside the migration line|—|Manual|
+|`migrations/`|スキーマ定義（CREATE TABLE 等）|`make new-migrate-<name>`|手動作成|
+|`dml/`|sqlc 用クエリ（SELECT / INSERT 等）|—|手動作成|
+|`seed/`|開発・テスト用の初期データ|—|手動作成|
+|`gen/`|`dml/` から merge-dml で生成された SQL + スキーマダンプ|`make gen-query`|**編集禁止**|
+|`maintenance/`|migration の系列外で手動実行する運用 SQL|—|手動|
 
-## Data Lifecycle
+## データのライフサイクル
 
 ```mermaid
 flowchart LR
     migrations["migrations/"]
     dml["dml/"]
     gen["gen/"]
-    sqlc["sqlc (Go code generation)"]
+    sqlc["sqlc (Go コード生成)"]
     infra["internal/infrastructure/rdb/sqlc/gen/"]
 
-    migrations -->|"schema definition"| gen
+    migrations -->|"スキーマ定義"| gen
     dml -->|"merge-dml"| gen
     gen -->|"sqlc generate"| sqlc
     sqlc --> infra
 ```
 
-1. Define and apply schema in `migrations/`
-2. Write queries in `dml/`
-3. Run `make gen-query` to merge SQL into `gen/` and generate Go code via sqlc
-4. Generated code is placed in `internal/infrastructure/rdb/sqlc/gen/`
+1. `migrations/` でスキーマを定義・適用
+2. `dml/` にクエリを記述
+3. `make gen-query` で `gen/` に SQL をマージし、sqlc で Go コードを生成
+4. 生成コードは `internal/infrastructure/rdb/sqlc/gen/` に配置
 
-## Related Commands
+## 関連コマンド
 
-|Command|Description|
+|コマンド|説明|
 |---|---|
-|`make db-migrate-up DB=<name>`|Apply migrations|
-|`make db-migrate-down DB=<name>`|Rollback migrations|
-|`make new-migrate-<name>`|Generate new migration files|
-|`make gen-query`|Merge DML + sqlc code generation|
-|`make db-seed`|Insert seed data|
+|`make db-migrate-up DB=<name>`|マイグレーション適用|
+|`make db-migrate-down DB=<name>`|マイグレーションロールバック|
+|`make new-migrate-<name>`|新規マイグレーションファイル生成|
+|`make gen-query`|DML マージ + sqlc コード生成|
+|`make db-seed`|シードデータ投入|
 
-## Details
+## 詳細
 
-- [migrations/README.md](migrations/README.md) — Migration rules and naming conventions
-- [dml/README.md](dml/README.md) — sqlc DML structure and syntax
-- [seed/README.md](seed/README.md) — Seed data purpose and notes
+- [migrations/README.md](migrations/README.md) — マイグレーションのルールと命名規則
+- [dml/README.md](dml/README.md) — sqlc DML の構成と記法
+- [seed/README.md](seed/README.md) — シードデータの目的と注意点

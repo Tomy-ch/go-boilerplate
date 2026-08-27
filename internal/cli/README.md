@@ -1,77 +1,73 @@
-# CLI core
+# CLI コア
 
-`internal/cli` holds the **pure, testable core logic** for the application's CLI commands.
+`internal/cli` は、アプリケーションの CLI コマンドの**純粋でテスト可能なコアロジック**を保持します。
 
-It does NOT depend on Cobra or infrastructure wiring. The Cobra command definitions and the
-composition root that wires real dependencies (config / DB / DI / OS signals / golang-migrate)
-live in `cmd/` (package `main`). This split keeps the core unit-testable and the wiring thin.
+Cobra や infrastructure の結線には依存しません。Cobra コマンド定義と、実依存（config / DB / DI /
+OS シグナル / golang-migrate）を結線する composition root は `cmd/`（package `main`）に置きます。
+この分割により、コアはユニットテスト可能なまま、結線は薄く保たれます。
 
-## Command List
+## コマンド一覧
 
-|Command|Core package|Cobra shell|Description|
+|コマンド|コアパッケージ|Cobra 殻|説明|
 |---|---|---|---|
-|`serve`|`server/`|`cmd/serve.go`|Start HTTP server and metrics server|
-|`migrate-up`|`migrate/`|`cmd/migrate.go`|Upgrade DDL (`--steps` / `--database` options)|
-|`migrate-down`|`migrate/`|`cmd/migrate.go`|Downgrade DDL (`--steps` / `--database` options)|
-|`db-seed`|`seed/`|`cmd/seed.go`|Insert initial data into database|
-|`job`|`job/`|`cmd/job.go`|Execute a registered job (`job <job-name> [args...]`)|
-|`fix-collation`|`fixcollation/`|`cmd/fix_collation.go`|Fix PostgreSQL collation version mismatch|
-|`dump-schema`|`dumpschema/`|`cmd/dump_schema.go`|Dump and format DB schema|
-|`merge-dml`|`mergedml/`|`cmd/merge_dml.go`|Merge DML directory SQL files by type|
-|`worker`|`worker/`|`cmd/worker.go`|Run a registered worker (`worker <worker-name> [args...]`)|
-|`outbox-relay`|`outbox/`|`cmd/outbox_relay.go`|Run the outbox relay; `replay` subcommand returns dead rows to pending|
-|`db-slot`|`dbslot/`|`cmd/db-slot.go`|Lease a database slot from the shared worktree pool (`acquire` / `release` / `heartbeat` / `status` / `env` / `require-owner`)|
+|`serve`|`server/`|`cmd/serve.go`|HTTP サーバーとメトリクスサーバーを起動|
+|`migrate-up`|`migrate/`|`cmd/migrate.go`|DDL をアップグレード（`--steps` / `--database` 指定可）|
+|`migrate-down`|`migrate/`|`cmd/migrate.go`|DDL をダウングレード（`--steps` / `--database` 指定可）|
+|`db-seed`|`seed/`|`cmd/seed.go`|データベースに初期データを投入|
+|`job`|`job/`|`cmd/job.go`|登録済みジョブを実行（`job <job-name> [args...]`）|
+|`fix-collation`|`fixcollation/`|`cmd/fix_collation.go`|PostgreSQL の照合順序バージョン不一致を修正|
+|`dump-schema`|`dumpschema/`|`cmd/dump_schema.go`|DB スキーマをダンプして整形|
+|`merge-dml`|`mergedml/`|`cmd/merge_dml.go`|DML ディレクトリの SQL ファイルを種別ごとにマージ|
+|`worker`|`worker/`|`cmd/worker.go`|登録済み worker を起動（`worker <worker-name> [args...]`）|
+|`outbox-relay`|`outbox/`|`cmd/outbox_relay.go`|outbox relay を起動。`replay` サブコマンドは dead 行を pending へ戻す|
+|`db-slot`|`dbslot/`|`cmd/db-slot.go`|共有 worktree プールから DB スロットをリースする（`acquire` / `release` / `heartbeat` / `status` / `env` / `require-owner`）|
 
-## Structure
+## 構造
 
-One directory per subcommand, named after it, paired with the `cmd/<name>.go` that wires it.
-The pairing is the point: `cmd/` stays a Cobra shell with a composition root and is excluded from
-coverage, while the testable core lives here and is covered like any other package.
+サブコマンドごとに 1 つのディレクトリを置き、その名前を付ける。配線する `cmd/<name>.go` と対になる。
+この対応こそが要点である。`cmd/` は Cobra の殻と合成ルートに留めてカバレッジ対象から外し、テスト可能な
+中身はこちらに置いて他のパッケージと同様に計測する。
 
-`registerCommands` in `cmd/commands.go` registers all subcommands to the Cobra root command.
+`cmd/commands.go` の `registerCommands` で全サブコマンドを Cobra のルートコマンドに登録します。
 
-## Design Policy
+## 設計方針
 
-- Each command is one core package under `internal/cli/` + one thin shell file under `cmd/`.
-- The core must NOT import Cobra, `internal/di`, OS signals, or infrastructure (except
-  `infrastructure/rdb/driver` types). It operates on injected interfaces / function seams.
-  `internal/config` is permitted — the enforced boundary is the `independent_cli` depguard rule in
-  `.golangci-full.yaml`, which denies the layers above but not `config`.
-- The CLI layer does not contain feature business logic (that belongs in usecase / domain).
-- Adding a new command: add `cmd/<command>.go` (Cobra def + real-dependency wiring), add the core
-  logic under `internal/cli/<command>/`, and register it in `registerCommands`.
+- 各コマンドは `internal/cli/` 配下の1コアパッケージ + `cmd/` 配下の1薄殻ファイルで構成。
+- コアは Cobra・`internal/di`・OS シグナル・infrastructure（`infrastructure/rdb/driver` の型を除く）を
+  import してはならない。注入された interface / 関数シームに対して動作する。
+  `internal/config` は許可される。強制されている境界は `.golangci-full.yaml` の `independent_cli`
+  depguard ルールであり、上位の層は deny するが `config` は deny しない。
+- CLI 層は feature のビジネスロジックを持たない（それは usecase / domain の責務）。
+- コマンド追加手順: `cmd/<command>.go`（Cobra 定義 + 実依存の結線）を追加し、コアロジックを
+  `internal/cli/<command>/` に追加し、`registerCommands` に登録する。
 
-## Testing Policy
+## テスト方針
 
-The core is a **humble object**: all decision logic lives here and is unit-tested; the wiring is
-pushed out to `cmd/`. The package boundary equals the test boundary.
+コアは **humble object**: 判断ロジックは全てここに置きユニットテストし、結線は `cmd/` へ押し出す。
+パッケージ境界＝テスト境界。
 
-- **No silently-wrong logic in the shell.** Any decision (error handling, branching, formatting,
-  deletion conditions, timeout dispatch) lives in `internal/cli/*` and is **unit-tested for branch
-  coverage**. `internal/cli/*` is included in the coverage gate and is expected to meet 90%+.
-- **OS / filesystem / external-process / DB / logger dependencies are injected** (interfaces or
-  function seams). Production wires the real implementations in `cmd/`; unit tests pass fakes, so
-  **the decision logic's tests never touch the real filesystem, run external binaries
-  (`pg_dump` / `psql`), or open a DB**. The **real implementation adapter behind a seam** is the one
-  exception: its contract is that the external substrate behaves as expected, which a fake cannot
-  establish, so it may be tested against the real thing. A package doing this declares the split in
-  its own README — see [`dbslot/`](dbslot/README.md).
-- **The thin `cmd/` shells are excluded** from the coverage gate (`gen|cmd|mock|apperror|scripts`).
-  Their runtime correctness is covered by CI boot checks: `app-di-startup-check` (serve → `/ready`),
-  `job-boot-check` (job dispatch), `worker-boot-check` (worker dispatch), `migration-check`
-  (up/down round-trip), `gen-*-artifacts-check` (codegen dogfooding) — all against a real Postgres
-  service. DB access behaviour is covered by
-  repository tests against a real Postgres (`internal/infrastructure/rdb/testkit`).
+- **殻に silent-wrong なロジックを置かない。** 判断（エラー処理・分岐・整形・削除可否・タイムアウト分岐）は
+  `internal/cli/*` に置き、**分岐網羅でユニットテスト**する。`internal/cli/*` はカバレッジゲート対象で 90%+ を満たす。
+- **OS / FS / 外部プロセス / DB / ロガー依存は注入する**（interface または関数シーム）。プロダクションは
+  `cmd/` で実装を結線し、ユニットテストはフェイクを渡す。よって**判断ロジックのテストは実ファイルシステムに
+  触れず、外部バイナリ（`pg_dump` / `psql`）を実行せず、DB も開かない**。唯一の例外は**シームの裏にある
+  実装アダプタ**で、その契約は「外部基盤が期待どおり振る舞うこと」であり、フェイクでは確立できない。
+  よって実物に対してテストしてよい。これを行うパッケージは自身の README でその切り分けを宣言する
+  —— [`dbslot/`](dbslot/README.md) を参照。
+- **薄い `cmd/` 殻はカバレッジゲートから除外**（`gen|cmd|mock|apperror|scripts`）。その実行時の正しさは
+  CI boot チェックで担保: `app-di-startup-check`（serve → `/ready`）、`job-boot-check`（job dispatch）、
+  `worker-boot-check`（worker dispatch）、`migration-check`（up/down 往復）、`gen-*-artifacts-check`
+  （codegen の dogfooding）——いずれも実 Postgres。
+  DB アクセス挙動は実 Postgres に当てた repository テスト（`internal/infrastructure/rdb/testkit`）で担保。
 
-### When adding a command
+### コマンドを追加するとき
 
-- Keep the `cmd/` shell thin: parse flags → build dependencies → delegate to a core function.
-- Bind flags to **local variables**, not package globals, so commands are parallel-test-safe.
-- Inject OS / FS / exec / DB / logger through interfaces or params; provide the real implementations
-  in `cmd/`.
-- Unit-test the core for branch coverage; leave the thin `cmd/` shell to the CI gates.
+- `cmd/` 殻は薄く保つ: フラグ解釈 → 依存の組み立て → コア関数へ委譲。
+- フラグは**ローカル変数**に束縛する（パッケージグローバルにしない）。並列テスト安全のため。
+- OS / FS / exec / DB / ロガーは interface または引数で注入し、実装は `cmd/` で渡す。
+- コアを分岐網羅でユニットテストし、薄い `cmd/` 殻は CI ゲートに委ねる。
 
-## Notes
+## 注意点
 
-- Backup is recommended before running migration or seed operations.
-- Server startup settings are managed via environment variables (see `internal/config`).
+- マイグレーションやシード操作は、実行前にバックアップを取ることを推奨。
+- サーバー起動時の設定は環境変数で管理（`internal/config` 参照）。

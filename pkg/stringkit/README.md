@@ -1,7 +1,7 @@
 # stringkit
 
-String length validation functions based on rune count, with error message generation.
+文字列の長さ（ルーン数）に基づくバリデーション関数群とエラーメッセージ生成を提供します。
 
-## Notes
+## 注意点
 
-Operates on UTF-8 rune count, not byte length.
+バイト長ではなく UTF-8 ルーン数で動作します。

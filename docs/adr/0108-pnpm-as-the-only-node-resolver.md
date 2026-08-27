@@ -5,95 +5,88 @@ deciders: [maintainers]
 tags: [dependencies, security, ci, setup-review]
 ---
 
-# ADR-0108: Resolve every Node package with pnpm; do not use npm
+# ADR-0108: Node パッケージはすべて pnpm で解決し、npm を使わない
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-This repository carries two Node packages — `scripts/` (repository tooling) and `docs-viewer/`
-(the documentation portal frontend). They are
-deliberately separate packages with separate lockfiles: a dependency change is reviewed next to
-the code that uses it, and the viewer's dependency graph does not reach the tooling that gates CI.
+本リポジトリは Node パッケージを 2 つ持ちます — `scripts/`（リポジトリ補助ツール）と `docs-viewer/`
+（ドキュメントポータルのフロントエンド）。これらは
+意図的に別パッケージ・別 lockfile です。依存の変更はそれを使うコードの隣でレビューされ、ビューアーの
+依存グラフが CI を守るツール群まで届かないようにするためです。
 
-Nothing forces them to share a package manager, and for a period they did not. The question this
-record answers is whether "whichever resolver each package happened to start with" is an
-acceptable steady state.
+パッケージマネージャを揃える必然性は無く、実際ある時期まで揃っていませんでした。この記録が答えるのは
+「各パッケージがたまたま始めたリゾルバのまま」で定常状態としてよいか、という問いです。
 
-It is not, and the reason is narrower than a preference for one CLI over another. The supply-chain
-control this repository relies on is a **publication cooldown** ([ADR-0091
-(malicious-package-detection-via-cooldown)](0091-malicious-package-detection-via-cooldown.md)):
-a version published inside a window cannot enter a lockfile, because the window buys the time in
-which a malicious publish is typically detected and revoked. The two resolvers enforce that window
-in materially different places.
+答えは否で、理由は CLI の好みより狭いところにあります。本リポジトリが依拠する供給網の制御は**公開
+クールダウン**（[ADR-0091 (malicious-package-detection-via-cooldown)](0091-malicious-package-detection-via-cooldown.md)）
+です。窓の内側で公開された版は lockfile へ入れない、という制御で、悪意ある publish が検知・撤回される
+までの時間を窓が買います。2 つのリゾルバは、この窓を**効かせる場所**が実質的に異なります。
 
-npm applies `min-release-age` **while resolving**. `npm ci` does not resolve — it replays the
-lockfile — and every CI job and image build replays. So an in-window version that once reached the
-lockfile is invisible from then on: it installs cleanly, reports nothing, and after the window
-passes it is indistinguishable from a normally resolved entry. A deliberate override leaves no
-trace anywhere.
+npm が `min-release-age` を適用するのは**解決のあいだ**だけです。`npm ci` は解決せず lockfile を再生
+するだけで、CI とイメージビルドはすべて再生経路です。つまり一度 lockfile に入った窓内の版はそれ以降
+不可視になります。何事もなく install され、何も報告されず、窓が過ぎれば通常解決されたものと区別が
+つきません。意図的な迂回はどこにも痕跡を残しません。
 
-pnpm re-verifies the **entire lockfile** against the active policy on every install, including the
-`--frozen-lockfile` replay path. Taking an in-window version requires a `minimumReleaseAgeExclude`
-entry naming the exact version, and without one every later install fails — CI included. The entry
-lives in a tracked, `CODEOWNERS`-covered file, so the override is reviewed by construction.
+pnpm は install のたびに **lockfile 全体**を現行ポリシーで再検証します。`--frozen-lockfile` の再生
+経路も含みます。窓内の版を採るには版を名指しした `minimumReleaseAgeExclude` の記載が要り、無ければ
+以降のすべての install が失敗します（CI も含む）。その記載は追跡され `CODEOWNERS` が張られたファイルに
+置かれるため、迂回は構造としてレビューを通ります。
 
-The same asymmetry repeats for lifecycle scripts. pnpm's `strictDepBuilds` + `allowBuilds` fail the
-install when a dependency that was never reviewed brings a build script; npm's only lever is
-`--ignore-scripts`, which skips scripts silently rather than surfacing the new one.
+同じ非対称は依存ライフサイクルスクリプトにも繰り返されます。pnpm の `strictDepBuilds` + `allowBuilds`
+は、レビューされていない依存が build script を持ち込んだ時点で install を失敗させます。npm が持つ唯一の
+レバーは `--ignore-scripts` で、これは新しいスクリプトを表に出さず黙って飛ばします。
 
-Keeping npm therefore cost a compensating control that existed for no other reason: an audit that
-read each lockfile against its own `.npmrc`, reported entries younger than the window, and
-deliberately never failed the build. It could only report, because by the time it looked the
-decision had already been made and replayed.
+npm を残すことは、他に理由の無い補償制御を 1 つ抱えることを意味していました。各 lockfile を自身の
+`.npmrc` に照らし、窓より若いエントリを報告し、意図的に決してビルドを落とさない監査です。報告しか
+できないのは、それが見る時点では判断が既に下され再生され終わっているからです。
 
-## Decision
+## 決定
 
-**Every Node package in this repository resolves with pnpm.** Each carries its own
-`pnpm-workspace.yaml` (policy) and `pnpm-lock.yaml` (resolution).
+**本リポジトリの Node パッケージはすべて pnpm で解決します。** 各パッケージが自分の
+`pnpm-workspace.yaml`（ポリシー）と `pnpm-lock.yaml`（解決結果）を持ちます。
 
-npm is not used as a resolver anywhere — not in a package, not in a workflow, not in an image
-build. `package-lock.json` and `.npmrc` are not present, and adding one reintroduces a lockfile
-whose cooldown cannot be re-checked after the fact.
+npm はリゾルバとしてどこでも使いません — パッケージでも、workflow でも、イメージビルドでも。
+`package-lock.json` と `.npmrc` は存在せず、追加することは「事後にクールダウンを再検査できない
+lockfile」を再導入することを意味します。
 
-A new Node package copies the policy block from an existing `pnpm-workspace.yaml` rather than
-declaring a reduced one; the settings are the control, not boilerplate.
+新しい Node パッケージは、既存の `pnpm-workspace.yaml` からポリシーブロックを写して作ります。削った
+ものを宣言しないでください。あの設定群が制御そのものであって、定型文ではありません。
 
-Two consequences that look like conventions but follow from the decision:
+規約に見えて、決定から導かれる帰結が 2 つあります。
 
-- **`--ignore-scripts` is not added to a `pnpm install`.** It suppresses the `strictDepBuilds`
-  failure, which is the signal that an unreviewed build script appeared. Static analysis asks for
-  the flag on sight (`docker:S6505` / `githubactions:S6505`); those rules are excluded by rule key
-  in `sonar-project.properties` rather than followed.
-- **`npm audit` output remains a valid input.** Reading a report a person pasted is not the same as
-  running npm as a resolver.
+- **`pnpm install` に `--ignore-scripts` を付けない。** このフラグは `strictDepBuilds` の失敗を
+  消しますが、その失敗こそ「未レビューの build script が現れた」という信号です。静的解析は見つけ次第
+  このフラグを要求しますが（`docker:S6505` / `githubactions:S6505`）、従うのではなく
+  `sonar-project.properties` でルールキー単位に除外します。
+- **`npm audit` の出力は入力として有効なまま。** 人が貼った報告を読むことと、npm をリゾルバとして
+  走らせることは別です。
 
-## Consequences
+## 影響
 
-### Positive
+### 良い影響
 
-- The cooldown holds on the replay path, so an in-window version cannot enter through a lockfile
-  that CI never re-examines.
-- Taking an in-window version becomes a reviewed edit to a tracked file instead of an act detected
-  afterwards, if at all.
-- The bespoke npm cooldown audit — a tool, a make target, a workflow, and its egress declaration —
-  is deleted rather than maintained. There is nothing to detect after the fact.
-- One resolver means one set of policy keys to understand, and CI stops carrying a per-package
-  branch in every job that installs.
+- 再生経路でもクールダウンが効くため、CI が再検査しない lockfile 経由で窓内の版が入り込めません。
+- 窓内の版を採る行為が、事後に（あるいは永久に）検知されない出来事ではなく、追跡ファイルへの
+  レビュー済みの編集になります。
+- npm 専用のクールダウン監査 — ツール・make ターゲット・workflow・その egress 宣言 — を保守ではなく
+  削除できます。事後に検知すべき対象が残らないためです。
+- リゾルバが 1 つになり、理解すべきポリシーキーが 1 組になります。install を行う各 CI ジョブから
+  パッケージごとの分岐が消えます。
 
-### Negative
+### 悪い影響
 
-- pnpm's isolated `node_modules` refuses a package that a flat npm layout would have resolved by
-  accident. That is a correctness gain, but it surfaces as breakage when a dependency's own
-  declaration is incomplete.
-- A runtime image cannot simply run `npm ci`; it needs pnpm, which arrives through the pinned
-  toolchain and costs a build stage that exists only to resolve dependencies.
-- The repository is now exposed to pnpm as a single upstream. A regression in its resolution policy
-  affects all three packages at once, where two resolvers would have contained it.
+- pnpm の isolated な `node_modules` は、flat な npm レイアウトなら偶然解決できていた依存を拒否します。
+  正しさの向上ではありますが、依存側の宣言が不完全な場合に破壊として現れます。
+- ランタイムイメージが単に `npm ci` を実行することはできず、pnpm が要ります。pnpm は固定された
+  ツールチェイン経由で入り、依存解決のためだけに存在するビルド段を 1 つ支払います。
+- 単一の上流としての pnpm に晒されます。その解決ポリシーの退行は 3 パッケージ同時に影響し、
+  リゾルバが 2 つあれば封じ込められたはずのものが封じ込められません。
 
-### Neutral
+### 中立な影響
 
-- The window itself is unchanged at 7 days; only where it is enforced changed. pnpm states it in
-  minutes, so the declaration reads `minimumReleaseAge: 10080`.
+- 窓の長さ自体は 7 日のまま変わらず、変わったのは効かせる場所だけです。pnpm は分で宣言するため
+  `minimumReleaseAge: 10080` と書かれます。

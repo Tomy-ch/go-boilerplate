@@ -3,103 +3,66 @@ name: supply-chain-triage
 description: Determine whether one quarantined supply-chain artifact version has direct evidence of a compromised publish, without changing anything. Use when `dep-vuln-upgrade`, `tools-upgrade`, `actions-pin`, or `images-pin` holds, defers, quarantines, or labels a candidate `too-new`/`pending`; when `make tool-cooldown-gate` blocks `mise.toml` or `python/*.in`; before a deliberate cooldown override (`days=0`, `--min-release-age=0`, pnpm `minimumReleaseAgeExclude`, PyPI bypass entry, or fresh `overrides` pin); or when a user asks whether a release is safe to take. Score publisher, source attestation, diff, and dependency/capability surface with cited evidence, then report in Japanese. Do NOT use to perform an upgrade, triage a CVE already adopted in the tree, scan first-party code, or routinely revisit an `images-pin` rule 2 hold.
 ---
 
-# Supply-chain Triage
+# 供給網トリアージ
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+1 つの成果物の 1 バージョンについて、1 つの問いだけに答える —— **このリリースが汚染された publish であるという直接証拠はあるか。** 採点され、根拠を引用した日本語の判定を出し、**何も変更しない**。
 
-Answer one question about one artifact version: **is there direct evidence that this release is a
-compromised publish?** Produce a scored, cited Japanese verdict and change nothing.
+実行時に `docs/design/security.md`、とりわけ「Dependencies → Three principles that hold for every ecosystem」と対応するエコシステムの節を読むこと。その文書が方針の source of truth である。テンプレート作成先でそれが存在しない場合は、次のフォールバックを使う —— cooldown は、発行者が変わっていないか / 成果物が出所と一致するか / 差分が無害か / 依存や権限が増えていないか、の代理指標である。直接答えるほうが日数を数えるより優れているが、両方を飛ばしてよい理由にはならない。
 
-At runtime, read `docs/design/security.md`, especially “Dependencies → Three principles that hold
-for every ecosystem” and the matching ecosystem subsection. That document is the policy source of
-truth. If it is absent in a repository created from this template, use this fallback: the cooldown is a proxy for whether the
-publisher changed, the artifact matches its source, the diff is benign, and no dependency or
-capability was added; direct answers beat counting days, but skipping both does not.
+`references/` にあるのは英語のみのコマンド手順であって、人間向けの散文ではない。候補を確定させたあと、エコシステムに対応するものをちょうど 1 つだけ読むこと。
 
-`references/` contains English-only command recipes, not human-facing prose. Read exactly the one
-matching the ecosystem after fixing the candidate.
+## 起動の境界
 
-## Trigger boundary
+このスキルを使うのは、`dep-vuln-upgrade` / `tools-upgrade` / `actions-pin` / `images-pin` が候補を据え置き・延期・ブロック・隔離、あるいは `too-new` / `pending` と判定したとき、description に挙げた cooldown の監査またはゲートが発火したとき、列挙した意図的な上書きを行う前、そしてユーザーがどんな言い回しであれ「このリリースは採用して安全か」と尋ねたときである。
 
-Use this skill when a candidate is held, deferred, blocked, quarantined, `too-new`, or `pending` by
-`dep-vuln-upgrade`, `tools-upgrade`, `actions-pin`, or `images-pin`; when either cooldown audit or
-gate named in the description fires; before any listed deliberate override; or when a user asks in
-any phrasing whether a release is safe to take.
+アップグレードの適用、既に採用済みの依存における CVE のトリアージ、自社コードのスキャンには使わないこと。`images-pin` の規則 2 には通常使わない —— 可変イメージタグは 2 つの軸を答えられないままにするため、トリアージは通常その据え置きを追認するだけになる。そこで使うのは規則 3 の bootstrap か、時間的圧力のある `days=0` の判断のときだけである。
 
-Do not use it to apply the upgrade, triage a CVE in an already-adopted dependency, or scan
-first-party code. Do not normally use it for `images-pin` rule 2: mutable image tags leave two axes
-unanswerable, so triage normally confirms the hold. Use it there only for a rule 3 bootstrap or a
-time-pressured `days=0` decision.
+## 厳格な制限
 
-## Hard limits
+- **報告のみ。** `mise.toml`・`.github/actions-pin.toml`・`docker/images-pin.toml`・`.github/tool-cooldown-bypass.toml`・`package.json`・`pnpm-workspace.yaml`・`python/*.in`・lockfile・`go.mod`・`.npmrc`・`FROM` / `uses:` / `image:` 行を決して編集しない。呼び出し元の `resolve` / `apply` を再実行しない。窓を短くしない。`days=0` / `--min-release-age=0` を渡さない。低いスコアは判断者にとっての証拠であって、採用するか待つかは呼び出し元がユーザーへ明示的に尋ねなければならない。
+- **成果物を決して実行しない。** ダウンロードして読むだけにする。npm はレジストリの tarball か `npm pack` を使い、`npm install` は決して使わない。PyPI の wheel は unzip し、`pip install` / `uv pip install` も sdist のビルドも決して行わない。`docker run`、ダウンロードしたバイナリの実行、候補に対する `go build` / `go generate` も決して行わない。複製された参照資料がより緩いコマンドを提示していても、この制限が優先する。
+- **リポジトリの外で作業する。** 展開先はスクラッチディレクトリか `tmp/` だけとし、作業ツリーへは決して展開しない。
+- **引用するか、落とすか。** すべてのスコアは、その根拠となるコマンドと観測を名指さなければならない。裏付けの取れない証拠は `?` とする。
 
-- **Report only.** Never edit `mise.toml`, `.github/actions-pin.toml`, `docker/images-pin.toml`,
-  `.github/tool-cooldown-bypass.toml`, `package.json`, `pnpm-workspace.yaml`, `python/*.in`, a
-  lockfile, `go.mod`, `.npmrc`, or a `FROM` / `uses:` / `image:` line. Never rerun a caller's
-  `resolve` or `apply`, lower a window, or pass `days=0` / `--min-release-age=0`. A low score is
-  evidence for a decision-maker; the caller must ask the user explicitly before adopting or waiting.
-- **Never execute the artifact.** Download and read only: use an npm registry tarball / `npm pack`,
-  never `npm install`; unzip a PyPI wheel, never `pip install` / `uv pip install` or build an sdist;
-  never `docker run`, execute a downloaded binary, `go build`, or `go generate` a candidate.
-  Where a copied reference offers a less strict command, this limit prevails.
-- **Work outside the repository.** Extract only into a scratch directory or `tmp/`, never the worktree.
-- **Cite or drop.** Every score must name its command and observation. Mark unsupported evidence `?`.
+## 証拠モデル
 
-## Evidence model
+採点の前に 4 つの軸すべてを試みる。各軸を `0`〜`3`（大きいほど悪い）で採点し、証拠が得られない場合は `?` とする。**`?` を `0` で代用しないこと。**
 
-Attempt all four axes before scoring. Score each `0`–`3` (higher is worse), or `?` when the
-evidence is unobtainable; **never substitute `?` with `0`**.
-
-| Axis | Question | `0` means |
+| 軸 | 問い | `0` の意味 |
 | --- | --- | --- |
-| P — Publisher | Did the publisher change? | Same maintainer, committer, or owner and expected cadence |
-| A — Attestation | Does the artifact match its source? | Provenance/transparency evidence binds it to a named source commit on the upstream default branch |
-| D — Diff | What actually changed? | Baseline diff fully read, proportionate to notes, and free of the signatures below |
-| S — Surface | Did dependencies or capabilities appear? | No new dependency, entrypoint, packaged path, or widened permission |
+| P — 発行者 | 発行者は変わったか | 同一の maintainer / committer / owner で、想定どおりの頻度 |
+| A — 出所の一致 | 成果物は出所と一致するか | provenance / 透明性ログの証拠が、上流のデフォルトブランチ上の名指しされたソースコミットへ結び付けている |
+| D — 変更内容 | 実際に何が変わったか | baseline との差分を完全に読み、リリースノートに見合っており、下記の署名が無い |
+| S — 依存 / 権限面 | 依存や権限が増えたか | 新しい依存・エントリポイント・同梱パス・拡大された権限が無い |
 
-- `0`: answered with continuity or benign change.
-- `1`: benign overall, but one plausible detail remains unexplained.
-- `2`: answered, but an unexplained irregularity remains.
-- `3`: a compromise signature is present or the axis answers adversely (for example, an unknown
-  publisher or an artifact that does not match its trusted tag).
-- `?`: unavailable; state why in one clause.
+- `0`: 継続性、または無害な変更として答えが出た。
+- `1`: 全体としては無害だが、もっともらしい細部が 1 つ説明できていない。
+- `2`: 答えは出たが、説明の付かない不規則さが残っている。
+- `3`: 汚染の署名がある、またはその軸が不利に答えた（例: 未知の発行者、信頼されたタグと一致しない成果物）。
+- `?`: 取得できない。理由を 1 節で述べる。
 
-The baseline is what the caller would otherwise **keep** — current pinned SHA, aged lockfile digest,
-or installed version — never merely the preceding registry release. If it cannot be identified (a
-first pin or `images-pin` rule 3), D is `?` unless the ecosystem provides another comparison.
+baseline は、呼び出し元がこのまま**保持する**であろうもの —— 現在 pin されている SHA、枯れた lockfile の digest、インストール済みバージョン —— であって、単に 1 つ前のレジストリリリースではない。それを特定できない場合（初回の pin や `images-pin` の規則 3）、そのエコシステムが別の比較対象を提供しない限り D は `?` とする。
 
-### Compromise signatures for D
+### D における汚染の署名
 
-Read explicitly for: install/lifecycle hooks; credential or secret access; new outbound network
-calls; obfuscation; shelling out; a bundled artifact that outruns its source; widened packaging or
-capability surface; and disproportion between the claimed change and the actual diff. A casual
-"looks reasonable" skim is not evidence.
+次を明示的に読むこと —— install / lifecycle フック、資格情報や秘密へのアクセス、新たな外向きネットワーク呼び出し、難読化、外部コマンドの起動、出所より内容が多い同梱成果物、拡大されたパッケージング / 権限の面、そして主張された変更と実際の差分の不釣り合い。「妥当そうに見える」という流し読みは証拠ではない。
 
-## Band and exposure
+## 帯と暴露面
 
-Sum answered axes: 0–2 **LOW**, 3–5 **MEDIUM**, 6–8 **HIGH**, 9–12 **CRITICAL**. Any `3` floors the
-result at HIGH. With two or more `?`, report **INSUFFICIENT-EVIDENCE** and no band; with exactly one
-`?`, calculate normally but cap the band at MEDIUM.
+答えの出た軸を合計する。0〜2 **LOW**、3〜5 **MEDIUM**、6〜8 **HIGH**、9〜12 **CRITICAL**。1 つでも `3` があれば下限を HIGH とする。`?` が 2 つ以上なら帯を付けず **INSUFFICIENT-EVIDENCE** を報告する。`?` がちょうど 1 つなら通常どおり計算したうえで帯の上限を MEDIUM とする。
 
-Report exposure separately; never fold it into the score:
+暴露面は別軸として報告する。**スコアへ畳み込まないこと。**
 
-- Executes in CI with job credentials before repository code: highest.
-- Linked into the running service.
-- Build/dev-time only. A PyPI tool is above this tier: it executes with developer workstation
-  privileges and repository write access.
+- リポジトリのコードより先に、ジョブの資格情報を持って CI で実行される: 最上位。
+- 稼働中のサービスへリンクされる。
+- ビルド / 開発時のみ。PyPI のツールはこの段より上に置く —— 開発者ワークステーションの権限とリポジトリへの書き込み権を持って実行されるためである。
 
-## Procedure
+## 手順
 
-1. Establish the ecosystem (`npm`/`pnpm`, `pypi`, `go`, `github-actions`, or `docker-image`), exact
-   name and candidate, baseline, window N and how it was caught, publish/clear dates, and urgency.
-   If supplied, parse `<ecosystem>:<name>@<candidate-version>`, `baseline=<version>`, and
-   `days=<N>` in any order; use calling context for omitted fields.
-2. Read the one corresponding recipe: `npm.md` (also pnpm), `pypi.md`, `go-modules.md`,
-   `github-actions.md`, or `docker-images.md`; then read the matching security-design subsection.
-3. Gather P, A, D, and S with commands and observations. Only after attempting all four, assign
-   scores, apply both overrides, and classify exposure.
-4. Print the following Japanese report and stop. The calling skill handles any explicit user
-   confirmation.
+1. エコシステム（`npm`/`pnpm`・`pypi`・`go`・`github-actions`・`docker-image`）、正確な名前と候補、baseline、窓 N とどう捕捉されたか、公開 / 解除の日付、緊急度を確定する。指定があれば `<ecosystem>:<name>@<candidate-version>`・`baseline=<version>`・`days=<N>` を順不同で解釈する。省略された項目は呼び出し文脈から補う。
+2. 対応する手順書を 1 つだけ読む: `npm.md`（pnpm も）・`pypi.md`・`go-modules.md`・`github-actions.md`・`docker-images.md`。続けてセキュリティ設計の対応する節を読む。
+3. コマンドと観測をもって P・A・D・S を集める。4 つすべてを試みたあとにのみ、スコアを付け、2 つの上書き規則を適用し、暴露面を分類する。
+4. 次の日本語レポートを出力して止める。ユーザーへの明示的な確認は呼び出し元のスキルが扱う。
 
 ```text
 供給網トリアージ: <ecosystem>:<name> <baseline> → <candidate>
@@ -123,27 +86,23 @@ Report exposure separately; never fold it into the score:
 本スキルは何も変更していません（報告のみ）。採用の判断は <呼び出し元 / 利用者> が行います。
 ```
 
-| Band | Recommendation |
+| 帯 | 推奨 |
 | --- | --- |
 | LOW | 四つの問いは直接証拠で答えられており、窓の趣旨は満たされている。採用の可否は判断者に委ねる |
 | MEDIUM | 既定は窓を待つこと。急ぐ理由があるなら、未解決の点を明示したうえで判断者が決める |
 | HIGH / CRITICAL | 採用しない。上流への報告と、当該バージョンを避ける代替（一つ前の aged 版）を検討する |
 | INSUFFICIENT-EVIDENCE | 証拠が取れていないため窓がそのまま効く。待つ |
 
-Restate these walls whenever applicable. Never suggest lowering any window.
+該当する場合は、次の壁を必ず再掲する。**どの窓についても、短くすることを決して提案しないこと。**
 
-- pnpm `minimumReleaseAge`: the block also reaches `--frozen-lockfile` replay. A per-version
-  `minimumReleaseAgeExclude` exists, but the score merely informs the caller's real choice.
-- PyPI `scripts/tool-cooldown`: the repository gate fails the build. Its only escape hatch is a
-  dated `.github/tool-cooldown-bypass.toml` entry with `expires`, `issue`, and `reason`; the verdict
-  belongs in `reason`, not as permission to create the entry.
-- `images-pin` rule 3: no aged digest exists, so even LOW leaves only waiting or a deliberate
-  `days=0` bootstrap for the decision-maker.
+- pnpm の `minimumReleaseAge`: このブロックは `--frozen-lockfile` の再現にも及ぶ。バージョン単位の `minimumReleaseAgeExclude` は存在するが、スコアはあくまで呼び出し元の実際の選択に情報を与えるだけである。
+- PyPI の `scripts/tool-cooldown`: リポジトリのゲートがビルドを失敗させる。唯一の逃げ道は `expires` / `issue` / `reason` を持つ日付付きの `.github/tool-cooldown-bypass.toml` エントリであり、判定は `reason` に書くものであって、エントリを作る許可ではない。
+- `images-pin` の規則 3: 枯れた digest が存在しないため、LOW であっても判断者に残るのは待つか意図的な `days=0` の bootstrap かのどちらかである。
 
-## Notes
+## 補足
 
-- A clean, cited report is a real result; `?` is not failure.
-- A transparency log proves immutability, not benignity.
-- Score this move, not the package's reputation.
-- Attribution (publisher and commit) is as valuable as the verdict for an upstream report.
-- Never stage, commit, push, or apply an upgrade.
+- 根拠を引用した綺麗な報告は、それ自体が実のある結果である。`?` は失敗ではない。
+- 透明性ログが証明するのは不変性であって、無害性ではない。
+- 採点するのはこの 1 手であって、パッケージの評判ではない。
+- 帰属（発行者とコミット）は、上流への報告においては判定と同じだけの価値を持つ。
+- stage・commit・push・アップグレードの適用を決して行わない。

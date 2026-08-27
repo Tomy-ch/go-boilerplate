@@ -247,7 +247,7 @@ jobs:
           set -euo pipefail
           # `-l` で当たったファイル名を出す。`-c` の件数は、対象が 1 ファイルのときだけ
           # `<file>:` の前置きが付かず、`:0$` を外す条件がすり抜けて 0 件が失敗に化ける。
-          remaining="$(grep -ril 'boilerplate' README.md README.ja.md || true)"
+          remaining="$(grep -ril 'boilerplate' README.md || true)"
           if [ -n "$remaining" ]; then
             echo "FAIL: the READMEs still call this a boilerplate"
             echo "$remaining"

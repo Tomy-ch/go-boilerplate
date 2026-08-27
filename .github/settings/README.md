@@ -1,66 +1,65 @@
-# Repository Settings
+# リポジトリ設定
 
-This directory holds repository-level GitHub settings as JSON — the branch ruleset and the label set — so a repository derived from this boilerplate is configured reproducibly instead of by clicking through the web UI.
+このディレクトリには、リポジトリ単位の GitHub 設定を JSON で格納しています（ブランチルールセットとラベル定義）。このボイラープレートから派生したリポジトリを、Web UI をクリックして回るのではなく再現可能な形で構成するためのものです。
 
-## These files declare intent, they do not reflect state
+## これらは意図の宣言であり、実態の写しではない
 
-The JSON is the input to a one-directional apply, not a mirror of what GitHub currently enforces.
+JSON は一方向の適用に渡す入力であって、GitHub が現在強制している内容のミラーではありません。
 
-- `make apply-branch-protection` sends `branch-protection.json` as a repository ruleset named `branch-protection`, and `make create-default-labels` sends `labels.json`. Both are invoked once by `make setup-repo` when a derived repository is initialized.
-- Nothing runs them again, and nothing compares them against the live state afterwards. A rule removed through the web UI, or a JSON change that was never followed by an apply, leaves declaration and reality out of step with no signal.
+- `make apply-branch-protection` が `branch-protection.json` を `branch-protection` という名前のリポジトリルールセットとして送り、`make create-default-labels` が `labels.json` を送ります。いずれも派生リポジトリの初期化時に `make setup-repo` から一度だけ呼ばれます。
+- 以後これらを再実行する仕組みも、実態と突き合わせる仕組みもありません。Web UI からルールが外された場合も、JSON を変更したまま適用を走らせなかった場合も、宣言と実態は何の兆候も無いままずれます。
 
-So this directory answers "what this repository intends to enforce", never "what this repository enforces". For the latter, ask GitHub:
+したがってこのディレクトリが答えるのは「このリポジトリが何を強制するつもりか」であって、「このリポジトリが何を強制しているか」ではありません。後者は GitHub に直接問い合わせてください。
 
 ```sh
 gh api /repos/{owner}/{repo}/rulesets
 gh api /repos/{owner}/{repo}/rulesets/{ruleset_id}
 ```
 
-Both are readable with the repository's ordinary read access — on a public repository, without authenticating at all — so inspecting the live state never needs an administrative token.
+いずれもリポジトリの通常の read 権限で参照でき、public リポジトリなら未認証でも参照できます。実態の確認に管理者権限のトークンは要りません。
 
 ## branch-protection.json
 
-`conditions.ref_name.include` targets `production`, `staging`, `develop`, `release/**/*`, and `hotfix/**/*`. Each rule declares:
+`conditions.ref_name.include` の対象は `production` / `staging` / `develop` / `release/**/*` / `hotfix/**/*` です。各ルールの宣言内容は次のとおりです。
 
-| Rule | What it declares |
+| ルール | 宣言している内容 |
 | --- | --- |
-| `deletion` | A targeted branch cannot be deleted. |
-| `non_fast_forward` | Force-push to a targeted branch is rejected. |
-| `pull_request` | Changes reach a targeted branch only through a pull request: one approving review, approvals dismissed on push, re-approval required after the last push, every review thread resolved, code-owner review, and merge restricted to merge commit or squash (rebase merge excluded). |
-| `copilot_code_review` | Copilot reviews each pull request automatically, on every push and on drafts as well. |
-| `code_quality` | GitHub's code quality rule blocks at `errors` severity. |
-| `required_status_checks` | Thirteen checks must report success before merging. |
+| `deletion` | 対象ブランチを削除できない。 |
+| `non_fast_forward` | 対象ブランチへの force-push を拒否する。 |
+| `pull_request` | 対象ブランチへの変更は PR 経由に限る。承認 1 件、push 時に既存の承認を破棄、最終 push 後の再承認、全レビュースレッドの解決、CODEOWNERS レビュー、マージ方法は merge commit か squash に限定（rebase merge を除外）。 |
+| `copilot_code_review` | Copilot が各 PR を自動レビューする。push のたび、および draft に対しても実行する。 |
+| `code_quality` | GitHub の code quality ルールを `errors` 深刻度でブロックする。 |
+| `required_status_checks` | 13 件のチェックが成功してからマージする。 |
 
-### Applying `pull_request` to a single-maintainer repository
+### 単独メンテナのリポジトリに `pull_request` を適用する場合
 
-GitHub does not let an author approve their own pull request. With `required_approving_review_count: 1` and an empty `bypass_actors`, a repository whose only participant is its owner has nobody who can satisfy the rule, so every pull request targeting a protected branch becomes permanently unmergeable. Before applying this ruleset to such a repository, either list the maintainer in `bypass_actors`, or drop both parameters that ask for an approval — `required_approving_review_count: 0` and `require_last_push_approval: false`. Thread resolution and the merge-method restriction hold on their own.
+GitHub では自分の PR を自分で承認できません。`required_approving_review_count: 1` かつ `bypass_actors` が空の場合、参加者がオーナー 1 人だけのリポジトリではこのルールを満たせる人間が存在せず、保護ブランチ向けの PR がすべて恒久的にマージ不能になります。そうしたリポジトリへ適用する前に、メンテナを `bypass_actors` に列挙するか、承認を要求するパラメータを両方とも下ろしてください（`required_approving_review_count: 0` と `require_last_push_approval: false`）。スレッド解決とマージ方法の制限はそれ単体でも効きます。
 
-### `code_quality` needs its backing feature to be reporting first
+### `code_quality` は裏側の機能が先に報告している必要がある
 
-GitHub's own guidance is to confirm that the Code Quality workflow is running and reporting results back to pull requests **before** a ruleset declares a Code Quality threshold, because otherwise the rule can block every pull request from merging. Enabling the feature is a repository-level action outside this directory, so check it before applying rather than assuming the rule is inert where the feature is off.
+GitHub の案内は、ruleset に Code Quality の閾値を宣言する**前に** Code Quality のワークフローが動作し PR へ結果を報告していることを確認せよ、というものです。確認しないまま宣言すると、このルールが全 PR のマージをブロックし得ます。機能の有効化はこのディレクトリの外にあるリポジトリ単位の操作なので、機能が無効なら無害だと仮定せず、適用前に確認してください。
 
-### Required status checks need a reporting path on every PR
+### Required status check はすべての PR で報告経路を持つ必要がある
 
-The declared required contexts fall into two groups:
+宣言する required context は 2 群に分かれます。
 
-| Group | Contexts |
+| 群 | context |
 | --- | --- |
-| Security scanning (`docs/adr/0089-multi-layer-security-scanning.md`) | `trivy-fs-release`, `osv-release`, `trivy-config`, `sast`, `lockfile-lint`, `openapi-security`, `osv-diff` |
-| Build quality | `go-lint`, `go-test`, `generate-go-check`, `generate-oapi-check`, `generate-db-check`, `mod-tidy-check` |
+| セキュリティスキャン（`docs/adr/0089-multi-layer-security-scanning.md`） | `trivy-fs-release`、`osv-release`、`trivy-config`、`sast`、`lockfile-lint`、`openapi-security`、`osv-diff` |
+| ビルド品質 | `go-lint`、`go-test`、`generate-go-check`、`generate-oapi-check`、`generate-db-check`、`mod-tidy-check` |
 
-Membership of the second group is decided by whether a red check is a fact about the change rather
-than about its surroundings: each of these fails only on something the pull request itself did — a
-lint finding, a failing test, a generated artifact left out of step with its source, an untidied
-module manifest — and each is reproducible from the checkout alone. A check that reports an
-inherited state, or that depends on a service outside the runner, stays off the list.
+第 2 群の線引きは、赤が周囲ではなく変更そのものについての事実かどうかです。lint 指摘、失敗したテスト、
+ソースとずれた生成物、tidy されていないモジュール宣言 —— いずれも pull request 自身がやったことでしか
+落ちず、いずれも checkout だけで再現します。継承した状態を報告するチェックや、runner の外のサービスに
+依存するチェックはこの一覧に入れません。
 
-None of these workflows filters its `pull_request` trigger. A `paths:` or `branches:` filter that
-excludes a pull request starts no run at all, and GitHub does not read a context that was never
-reported as "not applicable" — it waits, and the pull request never becomes mergeable. The trigger
-condition therefore lives in the job's `if:`, where a skip reports `skipped` and a required check
-counts that as success. `make required-check-lint` verifies exactly this. See
-`../workflows/README.md` § Required checks report on every pull request.
+これらの workflow はいずれも `pull_request` トリガーにフィルタを持ちません。`paths:` や
+`branches:` で除外された pull request では run が 1 件も起動せず、GitHub は報告されなかった
+context を「該当しない」とは読まずに待ち続けるため、その pull request は永久にマージ可能に
+なりません。起動条件は job の `if:` に置きます。skip された job は `skipped` を報告し、required
+check はそれを成功として数えます。`make required-check-lint` がこの点を検査します。
+`../workflows/README.md` の「required check は全 pull request で報告される」節を参照してください。
 
 ## labels.json
 
-The label set — `name`, `description`, `color` — created by `make create-default-labels`. `make setup-repo` runs `make delete-all-labels` first, so this file is the entire intended label set rather than an addition to the labels GitHub creates by default.
+`make create-default-labels` が作成するラベル定義（`name` / `description` / `color`）です。`make setup-repo` は先に `make delete-all-labels` を実行するため、このファイルは GitHub が既定で作るラベルへの追加分ではなく、意図するラベル集合そのものです。

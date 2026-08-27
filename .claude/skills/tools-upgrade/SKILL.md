@@ -3,102 +3,101 @@ name: tools-upgrade
 description: Audit this repository's pinned tool versions against upstream latest, with a configurable supply-chain quarantine. The audit surface is both declaration sites — `mise.toml` `[tools]` for everything mise resolves, and `python/*.in` for the PyPI tools that install from the hash-pinned lockfiles `python/*.txt` (ADR-0080 (mise-ssot-drift-gate)). For each tool the latest release is fetched from its backend (GitHub Releases for `aqua:` / `go:` tagged modules, npm registry for `npm:`, PyPI for `python/*.in` and any `pipx:`, language download manifests for `go` / `node` / `python`). Releases newer than `min_age_days` are reported as informational only — never applied automatically — to avoid pulling in newly-published malicious versions before upstream has time to detect and revoke them; when an advisory drove the run, each quarantined release is handed to `/supply-chain-triage` for a scored evidence verdict instead of only a day count. Confirms `min_age_days` and the per-tool update set via `AskUserQuestion`, rewrites approved entries atomically, regenerates the affected lockfiles with `make py-lock` when a `python/*.in` pin changed, runs `make sync-versions` if `go` / `node` / `python` changed, and verifies with `make lint` + `make test`. Use this skill on a routine cadence (monthly / quarterly) or after a security advisory.
 ---
 
-# Tool Version Upgrade
+# ツールバージョン更新
 
-This skill audits every pinned tool version against upstream latest, with a **supply-chain quarantine gate**: releases newer than `min_age_days` are surfaced as informational only and are never applied automatically. The gate exists because malicious uploads to npm / PyPI / Go module proxies are typically detected and revoked within hours to days; waiting reduces exposure.
+このスキルはピン留めされた全ツールについて、upstream 最新版との差分を監査し、**サプライチェーン隔離ゲート（supply-chain quarantine gate）** 付きで適用候補を提示する。`min_age_days` 未満の新しいリリースは「通知のみ」として扱い、自動適用しない。
 
-The audit surface is **both** declaration sites, because a tool that is not read is a tool that never gets upgraded:
+理由: npm / PyPI / Go module proxy への悪意あるリリースの大半は、公開後 24〜72 時間以内に検知・取り下げが行われる。一定期間（既定 7 日）待つことで、コミュニティが検知する前に取り込んでしまうリスクを抑える。
 
-- `mise.toml` `[tools]` — everything mise resolves.
-- `python/*.in` — the PyPI tools, whose resolved trees are hash-pinned in `python/*.txt` ([ADR-0080 (mise-ssot-drift-gate)](../../../docs/adr/0080-mise-ssot-drift-gate.md)). Bumping one of these is a two-file change: the pin, then `make py-lock`.
+監査対象は宣言の **2 か所どちらも**である。読まれないツールは永久に更新されないためである。
 
-A Japanese reference translation is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+- `mise.toml` の `[tools]` — mise が解決するもの全部。
+- `python/*.in` — PyPI のツール。解決結果は `python/*.txt` にハッシュ付きで固定される（[ADR-0080 (mise-ssot-drift-gate)](../../../docs/adr/0080-mise-ssot-drift-gate.md)）。こちらの bump は 2 ファイルの変更になる（pin を書き換えてから `make py-lock`）。
 
-## When to Use
+## 使用タイミング
 
-Use this skill when:
+以下のような場合に使用する。
 
-- Routine periodic (monthly / quarterly) check of pinned tool versions
-- Before a release, to confirm there are no known CVEs patched since the current pins
-- After a security advisory, to see whether the relevant tool can be updated
+- 定期（月次・四半期）のツールバージョン棚卸し
+- リリース直前の、既知 CVE 修正版が出ていないかの確認
+- セキュリティアドバイザリ後の、対象ツールに更新があるかの確認
 
-Do NOT use this skill for:
+以下の用途では使用しない。
 
-- Upgrading Go itself — use `/go-upgrade` (different downstream sync via `make sync-versions`)
-- Updating Go module dependencies (`go.mod` `require` block) — use `make tidy-lib` directly
-- One-off ad-hoc version bumps — just edit the declaration (`mise.toml` + `make sync-versions`, or a `python/*.in` pin + `make py-lock`)
+- Go 自体のアップグレード → `/go-upgrade` を使う（`make sync-versions` 経由の伝播範囲が異なる）
+- Go module 依存のアップデート（`go.mod` の `require` ブロック）→ `make tidy-lib` を直接使う
+- 単発のアドホックなバージョン bump → 宣言を直接編集（`mise.toml` なら `make sync-versions`、`python/*.in` の pin なら `make py-lock`）
 
-## First Step: Confirm `min_age_days`
+## 最初に行うこと: `min_age_days` の確認
 
-This skill **MUST call `AskUserQuestion` immediately after invocation** to confirm the quarantine threshold.
+このスキルでは、**スキル起動直後に必ず `AskUserQuestion` でしきい値を確認する**。
 
-Procedure:
+手順:
 
-1. If a value is present in the skill arguments (e.g., `/tools-upgrade 14`), include it as a candidate in the question (e.g., "Candidate: `14`").
-2. Always invoke `AskUserQuestion`:
-    - Question: "Specify the minimum age (in days) for a release to be eligible for auto-apply. Recommended: `7`."
-    - Default candidate: `7`
-3. Validate the answer is a non-negative integer. Use it as `<MIN_AGE_DAYS>` throughout the rest of the procedure.
+1. スキル引数に値があれば（例 `/tools-upgrade 14`）候補として質問文に併記する（「候補: `14`」）。
+2. 必ず `AskUserQuestion` を呼ぶ。
+    - 質問: 「自動適用候補と判定するための最小経過日数を指定してください（推奨: `7`）」
+    - 既定候補: `7`
+3. 受け取った回答が 0 以上の整数であることを軽く検証し、以下の手順で `<MIN_AGE_DAYS>` として使う。
 
-Do NOT fetch any upstream API or read the declarations until `<MIN_AGE_DAYS>` is confirmed.
+`<MIN_AGE_DAYS>` 確定までは upstream API へのアクセスや宣言の読み込みは行わない。
 
-## AI Modification Scope
+## AI Modification Scope について
 
-Per the "Exception: Skill Execution" clause in `CLAUDE.md`, the following paths are permitted to be modified while this skill is running:
+`CLAUDE.md` の "Exception: Skill Execution" 節に基づき、スキル実行中に以下のパスへの変更が許可される。
 
-- `mise.toml` (the `[tools]` table — write only entries the user explicitly approved)
-- `python/*.in` (the version pin — only entries the user explicitly approved) and `python/*.txt` — the latter only as the output of `make py-lock`, never hand-edited
-- `go.mod`, `docker/**/Dockerfile`, `docker/**/README.md`, `docker/**/README.ja.md` — only as the downstream output of `make sync-versions` (the script handles these atomically)
-- `docker/**/Dockerfile` `FROM` `@sha256:...` digests + `docker/images-pin.toml` — only via `make pin-images-apply` / `pin-images-resolve`, when a `go` / `node` / `python` runtime bump changed a base-image tag
+- `mise.toml`（`[tools]` table のみ、ユーザーが承認したエントリだけを書き換え）
+- `python/*.in`（バージョンの pin のみ、ユーザーが承認したエントリだけ）と `python/*.txt` — 後者は `make py-lock` の出力としてのみで、手書きはしない
+- `go.mod`, `docker/**/Dockerfile`, `docker/**/README.md` — `make sync-versions` の下流出力としてのみ（スクリプトが atomic に処理）
+- `docker/**/Dockerfile` の `FROM` `@sha256:...` digest ＋ `docker/images-pin.toml` — `go` / `node` / `python` ランタイム bump で base image タグが変わった場合のみ、`make pin-images-apply` / `pin-images-resolve` 経由で
 
-The following remain protected even during skill execution:
+以下は引き続き保護対象（スキル実行中でも変更不可）。
 
 - `AGENTS.md` / `CLAUDE.md`
-- Generated files (`**/*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`, generated content under `docs/`)
-- Any file unrelated to the version bump
+- 生成ファイル（`**/*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`, `docs/` の生成物）
+- バージョン bump と無関係な全てのファイル
 
-## Execution Steps
+## 実行ステップ
 
-### 1. Parse the Declarations
+### 1. 宣言のパース
 
-Read `mise.toml` and enumerate every key under `[tools]`, then read every `python/*.in` and enumerate
-its `==` pins. For each entry, determine the backend:
+`mise.toml` を読んで `[tools]` 配下の全 key を列挙し、続いて `python/*.in` を読んでその `==` の pin を列挙する。各エントリについて backend を判定する。
 
-| Key format | Declared in | Backend | Latest-version source |
+| Key format | 宣言元 | Backend | 最新バージョンの取得元 |
 | --- | --- | --- | --- |
 | `aqua:owner/repo` | `mise.toml` | aqua (GitHub Releases) | `gh api repos/owner/repo/releases/latest` |
-| `go:path/to/module` | `mise.toml` | go install | GitHub Releases (if hosted there) or `go list -m -versions path/to/module` |
+| `go:path/to/module` | `mise.toml` | go install | GitHub Releases（hosted されていれば）または `go list -m -versions path/to/module` |
 | `npm:package` | `mise.toml` | npm | `https://registry.npmjs.org/{package}` |
 | `pipx:package` | `mise.toml` | pipx (PyPI) | `https://pypi.org/pypi/{package}/json` |
-| `package[extras]==X.Y.Z` | `python/<tool>.in` | PyPI (installed by `uv` from `python/<tool>.txt`) | `https://pypi.org/pypi/{package}/json` (strip the extras) |
-| Short name (e.g., `golangci-lint`) | `mise.toml` | mise registry default | Resolve via `mise registry`, then query the resolved backend |
-| `go` (runtime) | `mise.toml` | language download manifest | `https://go.dev/dl/?mode=json` |
-| `node` (runtime) | `mise.toml` | language download manifest | `https://nodejs.org/dist/index.json` |
-| `python` (runtime) | `mise.toml` | language download manifest | `https://www.python.org/api/v2/downloads/release/` |
+| `package[extras]==X.Y.Z` | `python/<tool>.in` | PyPI（`uv` が `python/<tool>.txt` から install） | `https://pypi.org/pypi/{package}/json`（extras は落とす） |
+| 短い名前（例 `golangci-lint`） | `mise.toml` | mise registry のデフォルト | `mise registry` で resolve、続いて該当 backend を query |
+| `go`（ランタイム） | `mise.toml` | 公式 download manifest | `https://go.dev/dl/?mode=json` |
+| `node`（ランタイム） | `mise.toml` | 公式 download manifest | `https://nodejs.org/dist/index.json` |
+| `python`（ランタイム） | `mise.toml` | 公式 download manifest | `https://www.python.org/api/v2/downloads/release/` |
 
-For each tool, fetch:
+各ツールについて以下を取得する。
 
-- **Latest stable version** (skip pre-release tags: `-rc`, `-beta`, `-alpha`, `-pre`, `-dev`, etc.)
-- **Release date** (ISO 8601 timestamp)
+- **stable な最新バージョン**（`-rc` / `-beta` / `-alpha` / `-pre` / `-dev` 等の pre-release タグは除外）
+- **公開日時**（ISO 8601）
 
-Prefer the `gh` CLI (it handles `GITHUB_TOKEN` automatically and raises the rate limit). For non-GitHub endpoints, use `curl -fsSL`.
+GitHub Releases 系は `gh api` を優先する（`GITHUB_TOKEN` 経由で認証され rate limit が緩和される）。それ以外のエンドポイントは `curl -fsSL` で取得する。
 
-### 2. Classify
+### 2. 分類
 
-For each tool:
+各ツールを以下のクラスに分類する。
 
-| Class | Condition |
+| クラス | 条件 |
 | --- | --- |
-| **up-to-date** | `pinned == latest` (after normalizing the optional leading `v` prefix) |
-| **eligible** | `pinned != latest` AND `now - release_date >= MIN_AGE_DAYS` |
-| **pending** | `pinned != latest` AND `now - release_date < MIN_AGE_DAYS` |
-| **resolution_failed** | Backend lookup failed (network error, 404, parsing failure) |
+| **up-to-date** | `pinned == latest`（先頭 `v` の有無を正規化したうえで一致） |
+| **eligible** | `pinned != latest` かつ `now - release_date >= MIN_AGE_DAYS` |
+| **pending** | `pinned != latest` かつ `now - release_date < MIN_AGE_DAYS` |
+| **resolution_failed** | backend lookup が失敗（ネットワークエラー / 404 / parse 失敗） |
 
-Sanity rule: refuse to "upgrade" to a strictly lower version per semver — if the parsed latest is `<` the pinned version, classify as `resolution_failed` with reason "potential downgrade".
+セーフガード: semver で「downgrade」になる場合は `resolution_failed` 扱い（reason: "potential downgrade"）。
 
-### 3. Display Summary
+### 3. サマリ表示
 
-Print a Japanese-language summary grouped by class. Example:
+分類結果を日本語で見出し別にまとめて表示する。例:
 
 ```text
 ツールバージョン監査結果（min_age_days = 7）
@@ -120,132 +119,130 @@ Print a Japanese-language summary grouped by class. Example:
   - sqlfluff（python/sqlfluff.in）: PyPI への接続失敗
 ```
 
-Show the declaration file for a `python/*.in` entry, as above. Which file holds the pin decides what
-applying the bump involves, and the user is about to approve that in step 5.
+`python/*.in` のエントリは、上のように宣言元のファイルを添えて示す。どのファイルが pin を持つかで適用時の作業が変わり、ユーザーはステップ 5 でそれを承認しようとしているためである。
 
-### 4. Triage Pending Releases the Quarantine Caught
+### 4. 隔離が捕捉した pending リリースをトリアージする
 
-A `pending` classification means the quarantine is holding a release back purely on age. That is a proxy for four questions — did the publisher change, does the artifact match its source, what actually changed, did new dependencies appear — and the proxy can be discharged by answering them directly (`docs/design/security.md` → "Dependencies"). Chain **`/supply-chain-triage`** per pending tool to do that when the answer would change what the user does:
+`pending` 分類は、隔離が経過日数だけを理由にリリースを留めていることを意味する。それは四つの問い——発行者は変わったか、artifact は source と一致するか、実際に何が変わったか、新しい依存が増えたか——の代理指標であり、直接答えることで置換できる（`docs/design/security.md` → 「Dependencies」）。答えがユーザーの行動を変える場合に、pending ツールごとに **`/supply-chain-triage`** を chain する。
 
-- Always, when the pending release is the reason the skill was invoked (a security advisory naming that tool).
-- Otherwise only on request. A routine monthly audit that reports three pending tools does not need three triages — nobody is deciding anything yet, and next month they will simply be eligible. Say the triage is available rather than spending the run on it.
+- pending リリースがこのスキルを起動した理由そのものであるとき（当該ツールを名指しするセキュリティ勧告）は常に実行する。
+- それ以外は要求されたときのみ。3 つの pending を報告する定例の月次監査で 3 回のトリアージは不要である——まだ誰も何も判断しておらず、来月にはただ eligible になる。run を費やす代わりに「トリアージが可能である」と述べる。
 
-Pass the backend, tool key, candidate version, the **version currently pinned in `mise.toml`** (the diff's other end), `<MIN_AGE_DAYS>`, and the release date. Triage is report-only: it reads the release artifact without executing it, returns a 0–12 score with a band and citations, and never edits `mise.toml` or applies anything. A pending tool stays pending — the score is what the user weighs, and adoption remains a separate, explicit decision (step 5).
+backend、ツールキー、候補バージョン、**`mise.toml` で現在ピンしているバージョン**（差分のもう一方の端）、`<MIN_AGE_DAYS>`、公開日を渡す。トリアージは報告のみ——リリース artifact を実行せずに読み、バンドと根拠を伴う 0–12 のスコアを返し、`mise.toml` の編集も適用も行わない。pending のツールは pending のままである——スコアはユーザーが秤にかけるものであり、採用は別の明示的な判断（ステップ 5）として残る。
 
-### 5. Confirm Per-tool Update Set
+### 5. 適用候補の per-tool 確認
 
-If **eligible** is empty and nothing pending was triaged into a decision, skip to step 7 with no writes.
+**eligible** が空で、かつトリアージから判断へ進んだ pending も無ければ、ステップ 7 へスキップし書き換えは行わない。
 
-Otherwise invoke `AskUserQuestion` with `multiSelect: true`. Each option corresponds to one eligible tool, with the version diff and release date as the description. Default state: all selected.
+そうでなければ `AskUserQuestion` を `multiSelect: true` で呼ぶ。各 option は 1 つの eligible ツールに対応し、description にバージョン差分と公開日を載せる。既定状態: 全選択。
 
-The user may deselect individual entries (e.g., if a specific bump is known-broken).
+ユーザーは個別 deselect 可能（特定 bump が既知の壊れもの等）。
 
-A **pending** tool may appear in this question only when it was triaged in step 4 and the user is explicitly deciding whether to adopt it early — in that case it is listed separately, **deselected by default**, with its band in the description. Never fold a pending tool into the default-selected eligible set: the quarantine's whole value is that age-based eligibility is the default and early adoption is a deliberate act.
+**pending** のツールをこの質問に載せてよいのは、ステップ 4 でトリアージ済みで、かつ早期採用するかをユーザーが明示的に判断している場合のみ。その場合は別枠に並べ、**既定では未選択**とし、description にバンドを載せる。pending を既定選択の eligible 集合へ混ぜてはならない——隔離の価値は、経過日数による eligible が既定であり早期採用が意図的な行為であることそのものにある。
 
-### 6. Update the Declarations
+### 6. 宣言の更新
 
-For each approved tool declared in `mise.toml`:
+`mise.toml` で宣言されている承認済みツールについて:
 
-- Locate the exact line in `mise.toml`
-- Replace the version literal only — preserve the original key (`aqua:owner/repo` / `go:path/to/module` / short name) and the original `v`-prefix convention if any
-- Do not reorder keys, do not touch unrelated keys, do not touch the `[settings]` table
+- `mise.toml` 内の該当行を特定する
+- バージョンリテラルだけを置換する。key（`aqua:owner/repo` / `go:path/to/module` / 短い名前）と、もとが `v` prefix を使っていた場合はその慣習を保持する
+- key の並び順を変えない、無関係な key を触らない、`[settings]` table も触らない
 
-After computing all approved changes, write `mise.toml` **once** (atomic single-pass write). Read the file → apply all replacements in memory → write.
+全承認分の置換を memory 上で計算したあと、`mise.toml` を **1 回だけ書き出す**（atomic single-pass）。
 
-For each approved tool declared in `python/*.in`:
+`python/*.in` で宣言されている承認済みツールについて:
 
-- Replace the version after `==` only — preserve the package name and its extras (`graphifyy[sql]`)
-- If the comment above the pin explains why the tool is held below latest (a quarantine note from an earlier run), rewrite or drop that comment to match reality. A stale "held back because it is too new" note outlives the condition it describes and reads as policy on the next run.
-- Then regenerate the lockfiles:
+- `==` の後ろのバージョンだけを置換する。パッケージ名と extras（`graphifyy[sql]`）は保持する
+- pin の上のコメントが「最新より前で止めている理由」（過去の run が書いた隔離のメモ）を述べている場合は、実態に合わせて書き換えるか消す。「新しすぎるので見送った」というメモは、その条件が消えたあとも残り、次の run では方針として読まれてしまう
+- そのうえで lockfile を再生成する:
 
   ```sh
   make py-lock
   ```
 
-  The `.in` and its `.txt` are one change. `make tool-cooldown-gate` fails on a pin whose lockfile still names the old version, precisely so that a forgotten regeneration cannot leave the quarantine clearing a version that is never installed. Commit both files together; never hand-edit a `.txt`.
+  `.in` と `.txt` は 1 つの変更である。`make tool-cooldown-gate` は lockfile が古い版のままの pin を失敗にする。再生成の忘れが「実際には入らない版に対して隔離が通る」状態を作らないためである。2 つのファイルは必ず一緒にコミットし、`.txt` を手書きしない。
 
-  `py-lock` regenerates **every** `python/*.txt`, so an untouched tool can still show a diff when one of its transitive dependencies published a new release. That diff is real and is part of the change — review it, do not discard it. It is also not covered by this run's quarantine decision, which was made per direct pin: say so in the final report.
+  `py-lock` は `python/*.txt` を **すべて** 再生成するため、触っていないツールでも推移依存の新リリースによって差分が出ることがある。その差分は本物で、変更の一部である——確認して残すこと。ただし今回の run の隔離判断は直接の pin ごとに下したものであり、この差分はその外にある。最終報告でその旨を述べる。
 
-### 7. Run `make sync-versions` if Necessary
+### 7. 必要なら `make sync-versions` を実行
 
-If any of `go` / `node` / `python` was updated, run `make sync-versions`. This propagates the new runtime version to `go.mod` and the hardcoded `FROM golang:` / `FROM node:` / `FROM python:` references in the Dockerfile and `docker/**/README.md` files.
+`go` / `node` / `python` のいずれかが更新されていれば `make sync-versions` を実行する。これにより `go.mod` と Dockerfile / `docker/**/README.md` 群の `FROM golang:` / `FROM node:` / `FROM python:` ハードコードが伝播する。
 
-If only non-runtime tools were updated, skip `make sync-versions`.
+非ランタイムのツールだけが更新された場合は `make sync-versions` は不要。
 
-### 8. Re-pin Base Image Digests if a Runtime Changed
+### 8. ランタイムが変わったら base image digest を再固定
 
-If step 7 ran `make sync-versions` (i.e. a `go` / `node` / `python` bump changed a `FROM` **tag**), the previously-pinned `@sha256:...` digest now points at the OLD image — a tag/digest mismatch (Docker honors the digest). Re-pin from the registry (this is the `images-pin` skill's job, chained here):
+ステップ 7 で `make sync-versions` が走った（＝`go` / `node` / `python` bump で `FROM` の**タグ**が変わった）場合、以前 pin した `@sha256:...` digest は**旧**イメージを指したまま——タグ/digest 不整合になる（Docker は digest を優先）。registry から再 pin する（`images-pin` スキルの役目、ここで chain）:
 
 ```sh
-make pin-images-resolve   # run `docker login` first if Docker Hub returns 429
+make pin-images-resolve   # Docker Hub が 429 を返す場合は先に `docker login`
 make pin-images-apply
 make pin-images-check
 ```
 
-`sync-versions` rewrites only the version portion of the tag; the trailing `@sha256:...` is left untouched and now names the *old* image. Docker honors the digest, so the tree sits in a tag/digest mismatch that must not be committed.
+`sync-versions` が書き換えるのは tag のバージョン部分だけで、末尾の `@sha256:...` はそのまま残り、*古い* イメージを指したままになる。Docker は digest を優先するため、ツリーは tag と digest が食い違った状態にあり、この状態でコミットしてはならない。
 
-Resolving that lands on `images-pin`'s **rule 3**: the new tag has no prior lockfile entry and its image was just published, so there is no aged digest to step back to. `pin-images-resolve` **fails closed** (`❌ 退行先の無い出来立て image は採用できません`) rather than adopting the fresh digest or stripping the pin to tag-only, `apply` never runs, and `pin-images-check` rejects the stale digest as `未登録`.
+これを解消しようとすると `images-pin` の **ルール 3** に当たる。新しい tag には前回の lockfile エントリが無く、イメージは公開直後なので、退行先となる aged な digest が存在しない。`pin-images-resolve` は出来立ての digest を採用することも pin を tag のみへ剥がすこともせず、**fail-closed** で止まる（`❌ 退行先の無い出来立て image は採用できません`）。`apply` は走らず、`pin-images-check` は stale な digest を `未登録` として弾く。
 
-The consequence worth stating plainly: **a runtime bump and its digest pin are coupled.** Unless the new image has already aged past `PIN_IMAGES_MIN_AGE_DAYS`, the run cannot be finished cleanly, and the choice belongs to the user — bootstrap deliberately with `days=0` (which `/images-pin` step 3 gates behind a `/supply-chain-triage` evidence check), or hold the runtime bump itself until the image ages. Do not force `resolve` through, and do not leave the mismatched digest in the tree.
+明言すべき帰結はこれである。**ランタイム bump と digest pin は結合している。** 新イメージが既に `PIN_IMAGES_MIN_AGE_DAYS` を越えている場合を除き、この run はきれいに終われず、選択はユーザーのものである——意図的に `days=0` でブートストラップするか（`/images-pin` の手順 2.5 が `/supply-chain-triage` の証拠確認を挟む）、イメージが古くなるまでランタイム bump 自体を保留するか。`resolve` を無理に通さないこと。tag と digest の食い違いをツリーに残さないこと。
 
-Skip this step entirely when step 7 was skipped (no runtime change → no tag change → digests still valid).
+ステップ 7 をスキップした場合（ランタイム変更なし → タグ変更なし → digest は有効）は本ステップも丸ごとスキップする。
 
-### 9. Verify
+### 9. 検証
 
 ```sh
 make lint
 make test
 ```
 
-If a `python/*.in` pin changed, also run:
+`python/*.in` の pin を変えた場合は、併せて以下も実行する。
 
 ```sh
 make tool-cooldown-audit
 ```
 
-It is the check that the pin and its lockfile agree, and it re-measures the window against the version now declared — the same gate the pull request will run.
+pin と lockfile が一致しているかを見る検査であり、いま宣言している版に対して窓を測り直す。pull request が回すのと同じゲートである。
 
-Report the result table to the user (OK / FAIL per command). Do NOT automatically roll back on failure — the user decides whether to amend, revert, or proceed.
+結果テーブル（OK / FAIL）をユーザーに報告する。失敗しても自動ロールバックはしない — どう扱うか（修正コミット追加 / revert / そのまま）はユーザーが判断する。
 
-### 10. Final Report
+### 10. 最終レポート
 
-Summarize:
+以下をまとめて報告する。
 
-- Number of tools updated, and for PyPI tools whether the lockfile was regenerated
-- Any transitive-dependency movement `make py-lock` pulled in, stated as outside this run's per-pin quarantine decision
-- Number quarantined (pending, not applied), and when each clears the window
-- For any pending tool that was triaged: its band and the axis that drove it (including any axis that came back unanswerable), plus whether the user adopted it early or left it pending
-- Verification result
-- Any failures to surface
+- 更新したツール数（PyPI ツールについては lockfile を再生成したかどうかも）
+- `make py-lock` が取り込んだ推移依存の移動があれば、今回の run の pin ごとの隔離判断の外にあるものとして明記
+- quarantine（pending）で見送ったツール数と、各々が窓を出る時期
+- トリアージした pending ツールについて、そのバンドとそれを決めた軸（答えられなかった軸があればそれも）、およびユーザーが早期採用したか pending のまま残したか
+- 検証結果
+- 失敗があれば内容
 
-Do NOT commit, stage, or push. The user reviews the resulting working tree and runs `/commit` (or similar) manually.
+コミット / stage / push は行わない。ユーザーが working tree をレビューしたうえで `/commit` 等を手動実行する。
 
-## Notes
+## 注意事項
 
-- **Supply-chain quarantine rationale**: typical "dependency confusion" / "malicious release" attacks (e.g., npm `ua-parser-js` 2021, PyPI `ctx` 2022) were detected and yanked within 24–72 hours. A 7-day quarantine catches the vast majority while still being responsive for routine bumps.
-- **Pre-release exclusion**: this skill always selects the latest **stable** release. Pre-release tags are visible in upstream but never chosen as `latest`.
-- **Calendar versioning**: for tools using calendar versioning (e.g., `2024.12.30`), comparison is lexicographic with semver fallback. The "potential downgrade" guard remains active.
-- **Rate limits**: GitHub API anonymous limit is 60 req/h per IP. The skill SHOULD use `gh api` which authenticates via `GITHUB_TOKEN` (1000 req/h authenticated).
-- **Idempotency**: multiple invocations are safe. A second run after a successful apply will show those tools as up-to-date.
-- The skill never auto-pushes. The user reviews the working tree, runs `make sync-versions` if needed, then commits and pushes manually.
+- **supply-chain quarantine の根拠**: 典型的な dependency confusion / malicious release インシデント（npm `ua-parser-js` 2021、PyPI `ctx` 2022 等）は公開後 24〜72 時間以内に検知・yank されている。7 日 quarantine は大半をカバーしつつルーチン bump にも追従できるバランス点。
+- **pre-release の除外**: 常に最新の **stable** リリースを選ぶ。upstream が pre-release タグを出していても latest として選択しない。
+- **calendar versioning**: `2024.12.30` のような calendar versioning を使うツールは lexicographic + semver fallback で比較する。downgrade ガードは常時有効。
+- **rate limit**: GitHub API は anonymous で 60 req/h（IP 単位）。本スキルは `gh api` を経由して `GITHUB_TOKEN` 認証で 1000 req/h に上げる。
+- **idempotency**: 複数回起動しても安全。適用後に再実行すると、適用済みツールは up-to-date として表示される。
+- スキルは auto-push しない。ユーザーが working tree をレビューし、必要なら `make sync-versions` を回したうえでコミット・push する。
 
-## Checklist
+## チェックリスト
 
-Confirm the following before reporting completion:
+完了報告時に以下を確認すること。
 
-- [ ] `<MIN_AGE_DAYS>` confirmed via `AskUserQuestion`
-- [ ] Both declaration sites enumerated: `mise.toml` `[tools]` and every `python/*.in`
-- [ ] Every entry's backend was resolved (or surfaced as resolution_failed with a reason)
-- [ ] Each tool was classified (up-to-date / eligible / pending / resolution_failed)
-- [ ] Classification table presented to the user
-- [ ] Pending releases triaged via `/supply-chain-triage` when an advisory drove the run (baseline = the version pinned in `mise.toml`); otherwise offered, not spent
-- [ ] If eligible set non-empty: user confirmed per-tool update set via `AskUserQuestion`; any early-adopted pending tool listed separately and deselected by default with its band
-- [ ] `mise.toml` rewritten atomically with only approved changes, preserving key formats and `v`-prefix convention
-- [ ] Approved `python/*.in` pins rewritten (package name and extras preserved, stale quarantine comments corrected), `make py-lock` run, and both files left in the tree; no `.txt` hand-edited
-- [ ] `make tool-cooldown-audit` run if a `python/*.in` pin changed
-- [ ] `make sync-versions` run if go / node / python was updated
-- [ ] If a runtime was bumped: base image digests re-pinned (`make pin-images-resolve` + `pin-images-apply` + `pin-images-check`). A rule 3 fail-closed on the new tag is the expected outcome for a just-published image — surfaced with the coupling (bootstrap via `days=0` after triage, or hold the bump), never forced through, and never left as a tag/digest mismatch
-- [ ] `make lint` + `make test` run after writes
-- [ ] Final result table reported to the user
-- [ ] After updating `SKILL.md`, also update `SKILL.ja.md` to keep the Japanese translation in sync
-- [ ] No commit / stage / push performed
+- [ ] `<MIN_AGE_DAYS>` を `AskUserQuestion` でユーザーに確認済み
+- [ ] 宣言の 2 か所（`mise.toml` の `[tools]` と全 `python/*.in`）を列挙済み
+- [ ] 全エントリの backend を resolve（不能なら理由付きで resolution_failed に分類）
+- [ ] 各ツールを up-to-date / eligible / pending / resolution_failed のいずれかに分類
+- [ ] 分類結果テーブルをユーザーに提示
+- [ ] 勧告が run の契機なら pending リリースを `/supply-chain-triage` でトリアージ（baseline = `mise.toml` のピン済みバージョン）。そうでなければ実行せず提示にとどめる
+- [ ] eligible が非空なら、per-tool 適用候補を `AskUserQuestion` で確定。早期採用する pending は別枠・既定未選択・バンド付きで提示
+- [ ] `mise.toml` を承認分のみ atomic に書き換え、key 形式と `v` prefix 慣習を保持
+- [ ] 承認された `python/*.in` の pin を書き換え（パッケージ名と extras を保持し、古い隔離コメントを是正）、`make py-lock` を実行し、両方のファイルを残す。`.txt` は手書きしない
+- [ ] `python/*.in` の pin を変えたなら `make tool-cooldown-audit` を実行
+- [ ] go / node / python が更新されたなら `make sync-versions` を実行
+- [ ] ランタイム bump 時は base image digest を再固定（`make pin-images-resolve` + `pin-images-apply` + `pin-images-check`）。公開直後のイメージでは新 tag に対するルール 3 の fail-closed が想定どおりの結果であり、結合（トリアージのうえ `days=0` でブートストラップするか bump を保留するか）とともに提示する。無理に通さず、tag と digest の食い違いを残さない
+- [ ] `make lint` + `make test` を実行
+- [ ] 最終結果テーブルをユーザーに報告
+- [ ] コミット / stage / push は一切実行しない

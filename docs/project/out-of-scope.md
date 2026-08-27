@@ -1,55 +1,54 @@
-# What This Project Intentionally Does NOT Include
+# このプロジェクトが意図的に含めていないもの
 
-## Items Dependent on Company Infrastructure Choices
+## 企業のインフラ選択に依存するもの
 
-- Deployment implementation  
-  - Only a skeleton is provided: [.github/workflows/deploy-app.yaml](../../.github/workflows/deploy-app.yaml)
-- Infrastructure as Code (IaC)
-- Observability operational configuration
-- Circuit breaker
-- Secret rotation
-- Rate limiting
-  - Intentionally not provided as an in-application (in-memory) limiter
-  - In a cloud-native, multi-instance deployment, per-instance in-memory
-    counters do not share state and cannot enforce a correct global limit
-  - This belongs at the infrastructure edge (API gateway / load balancer /
-    reverse proxy / service mesh)
-- Scheduled job concurrency control
-  - Overlap / multi-instance guarding for scheduled jobs (k8s CronJob
-    `concurrencyPolicy`, advisory locks) is left to the scheduler
-  - No application-level mutual exclusion is provided because the bundled
-    jobs are already concurrency-safe by design: `outbox-gc` and
-    `idempotency-gc` are age-predicate, idempotent batch deletes,
-    and the outbox relay claims rows with
-    `FOR UPDATE SKIP LOCKED`
-  - If you require strict single-run semantics, set
-    `concurrencyPolicy: Forbid` at the scheduler
+- デプロイ実装
+  - スケルトンのみ提供：[.github/workflows/deploy-app.yaml](../../.github/workflows/deploy-app.yaml)
+- IaC 実装
+- Observability 運用設定
+- サーキットブレーカー
+- シークレットローテーション
+- レートリミット
+  - アプリ内（インメモリ）リミッターとしては意図的に提供しない
+  - クラウドネイティブなマルチインスタンス構成では、インスタンスごとの
+    インメモリカウンタは状態を共有できず、正しいグローバル制限を担保できない
+  - これはインフラのエッジ（API ゲートウェイ / ロードバランサー /
+    リバースプロキシ / サービスメッシュ）の責務
+- スケジュールジョブの多重実行制御
+  - スケジュールジョブの重複 / マルチインスタンスの防護（k8s CronJob の
+    `concurrencyPolicy`、advisory lock）はスケジューラ側へ委ねる
+  - 同梱ジョブはいずれも設計上すでに並行安全なので、アプリケーション層の
+    排他は提供しない: `outbox-gc` と `idempotency-gc` は経過時間述語による
+    べき等なバッチ削除、outbox relay は
+    `FOR UPDATE SKIP LOCKED` で行を確保する
+  - 厳密な単一実行が要るなら、スケジューラ側で
+    `concurrencyPolicy: Forbid` を設定する
 
-## Items Strongly Dependent on Domain Requirements
+## ドメイン要件に強く依存するもの
 
-- Audit logging
-- RBAC / authorization model
-- Session management
-- Password policy  
-  - No in-repo credential store is provided: authentication is delegated to an external OIDC / JWT (Bearer) IdP, so this service holds no passwords. See [docs/design/auth.md](../design/auth.md).
-- Data retention policy  
-  - Soft delete is provided as a sample
-- Encryption for PII storage
+- 監査ログ
+- RBAC / 認可モデル
+- セッション管理
+- パスワードポリシー
+  - リポジトリ内のクレデンシャルストアは提供しない：認証は外部の OIDC / JWT (Bearer) IdP に委譲されるため、本サービスはパスワードを一切保持しない。[docs/design/auth.md](../design/auth.md) を参照。
+- データ保持ポリシー
+  - 論理削除はサンプルで提供
+- PII保存時の暗号化
 
-## Items Expected to Be Implemented by Users
+## 利用者が独自に実装することを想定しているもの
 
-- Authentication mechanisms (JWT, Cookie, OAuth2, etc.)  
-  - A sample implementation is provided, designed to be extensible  
-    - Interface: [internal/usecase/boundary/auth/authenticator.go](../../internal/usecase/boundary/auth/authenticator.go)  
-    - Local/test implementation: [internal/infrastructure/auth/local/auth_local.go](../../internal/infrastructure/auth/local/auth_local.go)
-- Account lockout
-- Data export / data deletion (user rights handling)
-- Caching layer
-  - A dedicated cache abstraction was considered and deliberately rejected
-  - A generic `Cache` interface degrades to a lowest-common-denominator
-    (a TTL-backed map) that leaks implementation semantics and discards
-    technology-specific capabilities (e.g. Redis pipelines / Lua / pub-sub)
-  - When caching is needed, implement it as a decorator that satisfies the
-    existing domain Repository interface, so domain and usecase stay unaware
-    of it — the Repository interface already provides the swap seam, so no
-    new abstraction is required
+- 認証形式 （JWT, Cookie, OAuth2 など）
+  - サンプル実装は提供。拡張可能な設計を採用。
+    - インターフェイス：[internal/usecase/boundary/auth/authenticator.go](../../internal/usecase/boundary/auth/authenticator.go)
+    - ローカル・テスト用：[internal/infrastructure/auth/local/auth_local.go](../../internal/infrastructure/auth/local/auth_local.go)
+- アカウントロックアウト
+- データエクスポート / 削除権対応
+- キャッシュ層
+  - 専用のキャッシュ抽象は、検討した上で意図的に棄却した
+  - 汎用的な `Cache` インターフェイスは最小公倍数（TTL 付き map）に退化し、
+    実装のセマンティクスが漏れる上に、技術固有の機能（Redis の pipeline /
+    Lua / pub-sub など）を捨ててしまう
+  - キャッシュが必要な場合は、既存の domain Repository インターフェイスを
+    満たすデコレータとして実装する。これにより domain / usecase はキャッシュの
+    存在を知らないまま済む。Repository インターフェイスが差し替えの seam を
+    既に提供しているため、新たな抽象は不要

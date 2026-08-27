@@ -1,29 +1,29 @@
 # serve
 
-Starts the HTTP server and begins accepting requests.
+HTTPサーバーを起動し、リクエストの受付を開始します。
 
-## Command
+## コマンド
 
 ```text
 serve
 ```
 
-## Flags
+## フラグ
 
-|Flag|Default|Description|
+|フラグ|デフォルト|説明|
 |---|---|---|
-|*(none)*|||
+|*(なし)*|||
 
-## Usage
+## 使い方
 
 ```bash
 ./server serve
 ```
 
-## Notes
+## 注意点
 
-- Default listening port is `:8080`. Change it via configuration as needed.
-- Ensure database connection settings are correctly configured before starting.
-- Enable appropriate middleware (logging, security, etc.) for production deployments.
-- In non-production mode only, an auxiliary metrics/pprof HTTP server (`net/http/pprof` on the default mux) is started on the address from `MetricsConfig` (`METRICS_HOST` / `METRICS_PORT`). In production mode it is not started.
-- On SIGINT / SIGTERM the server shuts down gracefully. The stop context timeout (`APP_SHUTDOWN_TIMEOUT`) is measured from the moment shutdown begins, so it is not consumed by running time. The auxiliary metrics server (when present) is stopped before the application itself.
+- デフォルトのリスニングポートは `:8080` です。必要に応じて設定で変更してください。
+- 起動前にデータベース接続設定が正しく構成されていることを確認してください。
+- 本番環境では適切なミドルウェア（ロギング、セキュリティなど）を有効にしてください。
+- 非本番モードの場合のみ、補助の metrics/pprof HTTP サーバー（デフォルト mux 上の `net/http/pprof`）を `MetricsConfig`（`METRICS_HOST` / `METRICS_PORT`）のアドレスで起動します。本番モードでは起動しません。
+- SIGINT / SIGTERM を受けるとグレースフルにシャットダウンします。停止用 context のタイムアウト（`APP_SHUTDOWN_TIMEOUT`）は停止開始時点から計測されるため、稼働時間に消費されません。補助 metrics サーバーが存在する場合はアプリ本体より先に停止されます。

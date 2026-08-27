@@ -5,209 +5,135 @@ description: >-
 argument-hint: '[<ecosystem>:<name>@<candidate-version>] [baseline=<version>] [days=<N>]'
 ---
 
-# Supply-chain Triage
+# 供給網トリアージ
 
-This skill answers one question about one artifact version: **is there direct evidence that this
-release is a compromised publish?** It produces a scored, cited verdict and changes nothing.
+このスキルは、ある 1 つの artifact バージョンについて 1 つの問いに答える。**この公開が侵害されたものであるという直接証拠はあるか。** 出力はスコアと根拠を伴う判定であり、何も変更しない。
 
-It exists because of a property recorded in `docs/design/security.md`:
+存在理由は `docs/design/security.md` に記録された性質にある。
 
-> The window is a proxy, and a proxy can be discharged by direct evidence. Waiting N days is a
-> cheap stand-in for four questions: did the publisher change, does the artifact match its source,
-> what actually changed, and did new dependencies appear. […] Answering them beats counting days.
-> Skipping *both* does not.
+> 窓は代理指標であり、代理指標は直接証拠で置換できる。N 日待つことは、次の四つの問いに対する安価な代用である——発行者は変わったか、artifact は source と一致するか、実際に何が変わったか、新しい依存が増えたか。［…］それらに答えることは日数を数えることに勝る。**両方**を飛ばすことは勝らない。
 
-`docs/design/security.md` (section "Dependencies → Three principles that hold for every ecosystem")
-is the **source of truth** for that reasoning — read it at runtime rather than trusting this
-paragraph, because the policy lives there and this skill is only its instrument. The four axes
-below are those four questions, made operational. In a repository created from this template where that document is absent, the
-quoted principle above is the fallback.
+`docs/design/security.md`（「Dependencies → Three principles that hold for every ecosystem」節）がこの論拠の**正**である。この段落を信用せず実行時に読むこと——方針はあちらに存在し、本スキルはその道具にすぎない。以下の 4 軸はその四つの問いを実務化したものである。当該文書が存在しないテンプレート作成先では、上に引用した原則が代替となる。
 
-The last sentence of the quote is the design constraint that shapes everything here: an axis you
-could not answer is **not** a passing grade. A verdict is a claim about evidence obtained, so this
-skill reports "unanswerable" explicitly and refuses to launder silence into a low score.
+引用の最後の一文が、ここでの設計をすべて規定する制約である。答えられなかった軸は**合格ではない**。判定とは得られた証拠についての主張なのだから、本スキルは「答えられない」を明示的に報告し、沈黙を低スコアへ洗い替えることを拒む。
 
-A Japanese reference translation is available at `SKILL.ja.md` in the same directory (not loaded as
-a skill; for human reference only). The per-ecosystem procedures under `references/` are English
-only — they are command recipes, not prose for human readers.
+日本語訳は同ディレクトリの `SKILL.md`（このファイル）にある（スキルとしては読み込まれない。人間の参照用）。`references/` 配下のエコシステム別手順は英語のみである——あれは人間が読む散文ではなくコマンドのレシピであるため。
 
-## When to Use
+## いつ使うか
 
-- A cooldown window caught a candidate and someone must decide whether to wait: `/dep-vuln-upgrade`
-  marked a fix `too-new` or `blocked`, `/tools-upgrade` classified a release `pending`,
-  `/actions-pin` had to step back or hold, `/images-pin` hit rule 2 / rule 3.
-  That audit is detection-only by design — it says an override happened, not whether it was safe.
-  This skill supplies the missing half.
-- `make tool-cooldown-gate` blocks a `mise.toml` or `python/*.in` declaration. That gate *does* fail
-  the build, so the question is not whether an override slipped through but whether waiting is
-  protective — which is what this skill answers, and what the bypass entry's `reason` needs.
-- Before any deliberate window override (`days=0`, `--min-release-age=0`, a pnpm
-  `minimumReleaseAgeExclude` entry, a `.github/tool-cooldown-bypass.toml` entry, pinning `overrides`
-  onto a fresh version). Overriding without evidence is the one combination the design doc rules out.
-- The user asks, in any phrasing, whether a specific release is safe to take.
+- 冷却窓が候補を捕捉し、待つべきかを誰かが判断しなければならないとき。`/dep-vuln-upgrade` が修正版を `too-new` / `blocked` とした、`/tools-upgrade` が `pending` に分類した、`/actions-pin` が step-back や hold をした、`/images-pin` が rule 2 / rule 3 に当たった、のいずれか。
+- 窓の意図的な override（`days=0`、`--min-release-age=0`、出来立てのバージョンへの `overrides` 固定）の前。証拠なしの override は、設計文書が唯一排除している組み合わせである。
+- 特定のリリースを採用して安全かを、どんな言い方であれ利用者が尋ねたとき。
 
-Do NOT use this skill for:
+以下には使わない。
 
-- Performing the upgrade — that is `/dep-vuln-upgrade` / `/tools-upgrade` / `/actions-pin` /
-  `/images-pin`. This skill only reports.
-- Triaging a CVE in a dependency already in the tree — that is `/dep-vuln-upgrade`.
-- Scanning first-party code for defects — that is `/impl-review` and the `gosec` / CodeQL gates.
-- **A routine `images-pin` rule 2 hold.** For a mutable image tag two of the four axes are usually
-  unanswerable (there is no source diff for a rebuild), so triage will normally confirm the hold
-  rather than discharge it. Run it there only when the decision actually needs it — a rule 3
-  bootstrap, or a `days=0` override under time pressure. `references/docker-images.md` explains
-  which axes survive.
+- 更新の実行——それは `/dep-vuln-upgrade` / `/tools-upgrade` / `/actions-pin` / `/images-pin` の仕事。本スキルは報告のみ。
+- 既にツリーに入っている依存の CVE 対応——それは `/dep-vuln-upgrade`。
+- 自社コードの欠陥探索——それは `/impl-review` と `gosec` / CodeQL のゲート。
+- **`images-pin` の通常の rule 2 hold。** 可変 image tag では 4 軸のうち 2 軸が通常答えられない（再ビルドに source 差分は存在しない）ため、トリアージは hold を discharge するのではなく追認するだけになる。判断が実際にそれを必要とする場合——rule 3 の bootstrap、あるいは時間的圧力下の `days=0` override——に限って実行する。どの軸が生き残るかは `references/docker-images.md` に書いてある。
 
-## Hard limits
+## 厳守事項
 
-These are what make the skill safe to invoke on a possibly-malicious artifact.
+侵害されている可能性のある artifact に対して本スキルを安全に起動できるのは、以下があるからである。
 
-- **Report-only.** Never edit `mise.toml`, `.github/actions-pin.toml`, `docker/images-pin.toml`,
-  `.github/tool-cooldown-bypass.toml`, `package.json`, `pnpm-workspace.yaml`, `python/*.in`, a
-  lockfile, `go.mod`, `.npmrc`, or a `FROM` / `uses:` / `image:` line. Never
-  re-run a caller's `resolve` / `apply`. Never lower a window or pass `days=0` /
-  `--min-release-age=0` yourself. A low score is evidence handed to a decision-maker, not a
-  decision — the caller's `AskUserQuestion`, or the user, adopts or waits.
-- **Never execute the artifact.** Download and read; do not install, build, or run it. Running an
-  install script *is* the attack for npm, so use `npm pack` / the registry tarball, never
-  `npm install`; if a resolve is unavoidable add `--ignore-scripts --dry-run`. The equivalent for
-  PyPI is an sdist's build backend, which runs on install — download and unzip the wheel, never
-  `pip install` / `uv pip install` the candidate. Never `docker run` a
-  quarantined image, never execute a downloaded binary, never `go build` / `go generate` a candidate
-  module you are about to accuse.
-- **Work outside the repo tree.** Extract artifacts into the session scratchpad (or `tmp/`), never
-  into the working tree, so nothing you fetched can be committed by accident.
-- **Cite or drop.** Every axis score carries the command and the observation it rests on. An
-  unsupported hunch is reported as unanswerable, not as a score.
+- **報告のみ。** `mise.toml` / `.github/actions-pin.toml` / `docker/images-pin.toml` / `package.json` / lockfile / `go.mod` / `.npmrc`、および `FROM` / `uses:` / `image:` 行を絶対に編集しない。呼び出し元の `resolve` / `apply` を再実行しない。窓を下げたり、自分から `days=0` / `--min-release-age=0` を渡したりしない。低スコアは判断者へ渡す証拠であって判断ではない——採用か待機かは呼び出し元の `AskUserQuestion`、または利用者が決める。
+- **artifact を絶対に実行しない。** ダウンロードして読むだけで、install / build / run はしない。npm では install script の実行こそが攻撃なのだから、`npm pack` かレジストリの tarball を使い、`npm install` は使わない。解決が避けられない場合は `--ignore-scripts --dry-run` を付ける。隔離中の image を `docker run` しない、ダウンロードしたバイナリを実行しない、これから嫌疑をかける候補モジュールを `go build` / `go generate` しない。
+- **リポジトリのツリー外で作業する。** artifact はセッションの scratchpad（または `tmp/`）へ展開し、作業ツリーへは置かない。取得したものが誤ってコミットされないようにするため。
+- **根拠を示せなければ書かない。** 各軸のスコアには、その根拠となったコマンドと観測を添える。裏づけのない勘は、スコアではなく「答えられない」として報告する。
 
-## The four evidence axes
+## 四つの証拠軸
 
-Score each axis `0`–`3`, or mark it `?` when the evidence is not obtainable for this ecosystem or
-artifact. Higher is worse. The per-ecosystem recipes in `references/` say how to obtain each one.
+各軸を `0`–`3` で採点する。当該エコシステムや artifact では証拠が得られない場合は `?` とする。大きいほど悪い。各軸の取得方法は `references/` のエコシステム別レシピにある。
 
-| Axis | Question | What a `0` looks like |
+| 軸 | 問い | `0` の姿 |
 | --- | --- | --- |
-| **P** — Publisher | Did the publisher change? | Same maintainer / committer / owner as the baseline version, with a publishing cadence in line with history |
-| **A** — Attestation | Does the artifact match its source? | Provenance or transparency-log evidence ties the artifact to a named source commit, and that commit is on the upstream default branch |
-| **D** — Diff | What actually changed? | The diff against the baseline is read in full, is proportionate to the release notes, and contains none of the signatures below |
-| **S** — Surface | Did new dependencies or capabilities appear? | No new dependency, no new `bin` / entrypoint / packaged path, no widened permissions |
+| **P** — 発行者 | 発行者は変わったか | baseline と同じ maintainer / committer / owner であり、公開ペースも履歴と整合している |
+| **A** — 出所 | artifact は source と一致するか | provenance または透明性ログの証拠が artifact を特定の source commit に結び付けており、その commit が upstream の default branch 上にある |
+| **D** — 差分 | 実際に何が変わったか | baseline との差分を最後まで読み、リリースノートに見合った量で、後述の署名をいずれも含まない |
+| **S** — 面 | 新しい依存や権限が増えたか | 新規依存なし、新規 `bin` / entrypoint / 同梱パスなし、権限の拡大なし |
 
-Score each axis on what the evidence says, not on how it feels:
+各軸は感触ではなく証拠が語る内容で採点する。
 
-- `0` — answered, and the answer is continuity or benign change.
-- `1` — answered and benign overall, but one detail is unexplained (a first-time-but-plausible
-  co-maintainer, a vendored file bump with no note).
-- `2` — answered, and something is off in a way the release notes do not account for.
-- `3` — a compromise signature below is present, or the axis is answered adversely (the publisher
-  changed to an unknown account; the artifact does not match the tag; a tag we already trust now
-  resolves to a different commit).
-- `?` — not obtainable. Say why in one clause. Never substitute `0`.
+- `0` — 答えが得られ、その答えが継続性または無害な変更である。
+- `1` — 答えが得られ全体として無害だが、説明のつかない細部が 1 つある（初出だが妥当な共同メンテナ、注記のない vendored ファイルの bump）。
+- `2` — 答えが得られ、リリースノートで説明のつかない不自然さがある。
+- `3` — 後述の侵害署名が存在する、または軸が不利に答えられた（発行者が未知のアカウントへ変わった。artifact が tag と一致しない。既に信頼している tag が別の commit へ解決される）。
+- `?` — 取得不能。理由を一句で述べる。`0` で代用してはならない。
 
-**The baseline is the version the caller would otherwise keep** — the currently-pinned SHA, the
-aged lockfile digest, the installed version — not simply the previous release in the registry. The
-question being answered is "what am I taking on by moving", so the diff has to span exactly the
-move under consideration.
+**baseline は、呼び出し元がこれを見送った場合に維持するバージョンである**——現在ピンしている SHA、aged な lockfile の digest、インストール済みバージョン——単にレジストリの 1 つ前のリリースではない。答えるべき問いは「移ることで何を引き受けるのか」なのだから、差分は検討中の移動そのものを跨がなければならない。
 
-### Compromise signatures (the teeth of axis D)
+### 侵害署名（軸 D の牙）
 
-These are what a malicious publish has actually looked like. Read for them specifically; a diff
-skimmed for "does it look reasonable" catches nothing.
+以下は、悪意ある公開が実際に取ってきた形である。これらを名指しで探すこと。「妥当に見えるか」で流し読みした差分は何も捕まえない。
 
-- **Install / lifecycle hooks** added or altered — npm `preinstall` / `install` / `postinstall`, an
-  `action.yml` gaining a `run:` step, a `go:generate` directive. Code that executes before anyone <!-- skill-lint-ignore -->
-  reviews it.
-- **Credential and secret access** — `process.env`, `~/.npmrc`, `~/.aws`, `~/.docker/config.json`,
-  `GITHUB_TOKEN`, `ACTIONS_RUNTIME_TOKEN`, SSH keys, keychain, the runner's memory.
-- **New outbound network calls**, particularly to a raw IP, a URL shortener, a paste service, a
-  webhook sink, or any domain unrelated to the project's own infrastructure.
-- **Obfuscation** — packed or minified source in a package that otherwise ships readable code, long
-  base64 / hex literals, `eval` / `new Function` / `Function(atob(...))`, string-array decoders,
-  code hidden behind a build tag or an unusual platform check.
-- **Shelling out** — `child_process`, `os/exec`, `curl | sh`, `wget`, in something with no reason to
-  spawn a process.
-- **A bundled artifact that outruns its source** — for a JS action or a package shipping `dist/`,
-  a bundle diff with no corresponding `src/` change is the highest-signal finding available, because
-  the bundle is what runs and the source is what gets reviewed.
-- **Widened packaging or capability surface** — new `files` / `bin` / `directories` entries, a new
-  entrypoint, added `permissions`, a new binary or blob.
-- **Disproportion** — a "typo fix" release carrying a 400-line diff, or a package dormant for two
-  years publishing twice in a day.
+- **install / lifecycle フック**の追加・改変——npm の `preinstall` / `install` / `postinstall`、`action.yml` への `run:` 追加、`go:generate` ディレクティブ。誰のレビューよりも先に実行されるコード。 <!-- skill-lint-ignore -->
+- **資格情報・秘密へのアクセス**——`process.env`、`~/.npmrc`、`~/.aws`、`~/.docker/config.json`、`GITHUB_TOKEN`、`ACTIONS_RUNTIME_TOKEN`、SSH 鍵、keychain、runner のメモリ。
+- **新規の外向き通信**。とくに生 IP、URL 短縮、paste サービス、webhook の受け皿、プロジェクト自身のインフラと無関係なドメイン。
+- **難読化**——他では可読なコードを配っているパッケージ内の packed / minified ソース、長い base64 / hex リテラル、`eval` / `new Function` / `Function(atob(...))`、文字列配列デコーダ、build tag や不自然なプラットフォーム判定の裏に隠れたコード。
+- **プロセス起動**——プロセスを生む理由のないものの中の `child_process`、`os/exec`、`curl | sh`、`wget`。
+- **同梱物がソースを追い越している**——JS action や `dist/` を同梱するパッケージで、対応する `src/` の変更を伴わない bundle 差分。得られる証拠の中で最も信号が強い。実行されるのは bundle であり、レビューされるのは source だからである。
+- **同梱面・権限面の拡大**——新規の `files` / `bin` / `directories`、新しい entrypoint、`permissions` の追加、新しいバイナリや blob。
+- **不釣り合い**——「typo 修正」リリースが 400 行の差分を運んでいる、2 年沈黙していたパッケージが 1 日に 2 回公開している。
 
-## Bands and the two overrides
+## バンドと二つの上書き規則
 
-Sum the answered axes:
+答えられた軸を合計する。
 
-| Sum | Band |
+| 合計 | バンド |
 | --- | --- |
 | 0–2 | **LOW** |
 | 3–5 | **MEDIUM** |
 | 6–8 | **HIGH** |
 | 9–12 | **CRITICAL** |
 
-Two rules override the sum, because averaging is the wrong operation for this data:
+このデータに対して平均は誤った演算なので、二つの規則が合計を上書きする。
 
-1. **Any axis at `3` floors the band at HIGH.** One confirmed red flag is not diluted by three clean
-   axes — a compromised publish is usually clean everywhere except the payload.
-2. **Unanswered axes cap the claim.** Two or more `?` → report **INSUFFICIENT-EVIDENCE** with no
-   band: the proxy was not discharged, so the window simply stands. Exactly one `?` → compute the
-   band but cap it at MEDIUM, because LOW asserts positive evidence on all four questions and you
-   have three.
+1. **いずれかの軸が `3` ならバンドの下限は HIGH。** 確認された赤旗 1 つが、きれいな 3 軸で薄まることはない——侵害された公開は、payload 以外はふつう全部きれいである。
+2. **答えられなかった軸は主張を制限する。** `?` が 2 つ以上 → バンドを付けず **INSUFFICIENT-EVIDENCE** として報告する。代理指標は置換されていないのだから、窓がそのまま効く。`?` が正確に 1 つ → バンドは計算するが上限を MEDIUM とする。LOW は四つの問いすべてに肯定的な証拠があるという主張であり、手元にあるのは三つだからである。
 
-### Exposure is reported next to the score, never folded into it
+### 暴露面はスコアの隣に報告し、決して混ぜない
 
-The score measures *how likely this publish is malicious*. How much damage it would do is a
-different quantity, and the design doc is explicit that window length tracks upstream detection
-latency rather than blast radius — so mixing them would corrupt both numbers. Report exposure as a
-separate line, in the terms that actually differ:
+スコアが測るのは*この公開が悪意あるものである確からしさ*である。それがどれだけの被害を出すかは別の量で、設計文書は窓の長さが blast radius ではなく上流の検知レイテンシに比例すると明言している——混ぜれば両方の数字が壊れる。暴露面は、実際に差が出る言葉で別行に報告する。
 
-- **Executes in CI with the job's credentials before our code does** — a GitHub Action, a base
-  image, an npm package with an install script. Highest; a compromise here reaches secrets directly.
-- **Linked into the running service** — a Go module, a runtime npm dependency.
-- **Build / dev-time only** — a generator or linter in the toolbox image. A **PyPI tool** sits above this line rather than on it: it runs with the developer's privileges on a workstation holding repo write access, so report it as such instead of as build-time only.
+- **CI で、自社コードより先に、job の資格情報とともに実行される**——GitHub Action、base image、install script を持つ npm パッケージ。最も高い。ここでの侵害は秘密へ直接届く。
+- **稼働サービスにリンクされる**——Go モジュール、実行時の npm 依存。
+- **ビルド / 開発時のみ**——toolbox image のジェネレータや linter。**PyPI ツール**はこの行ではなく 1 つ上に置く。リポジトリへの書き込み権を持つワークステーション上で開発者の権限で動くため、「ビルド時のみ」と書くと過小評価になる。
 
-## Procedure
+## 手順
 
-### 1. Establish the candidate
+### 1. 候補を確定する
 
-Fix these before gathering anything, from the arguments, the calling skill's context, or by asking:
+何かを収集する前に、引数・呼び出し元スキルの文脈・または質問によって以下を確定する。
 
-| Field | Note |
+| 項目 | 補足 |
 | --- | --- |
-| ecosystem | `npm` / `pnpm` / `pypi` / `go` / `github-actions` / `docker-image` — selects the reference file |
-| name + candidate version | The exact thing under consideration (tag, version, digest) |
-| baseline version | What the caller keeps if this is declined; the diff's other end |
-| window `N` and how it was caught | Which disposition fired (`blocked` / `pending` / rule 2 …), and when the candidate ages out |
-| urgency | Is a CVE forcing the move, or is this a routine bump? This does not change the score — it changes what the recommendation is worth to the reader |
+| エコシステム | `npm` / `pnpm` / `pypi` / `go` / `github-actions` / `docker-image`——参照ファイルを選ぶ |
+| 名前 + 候補バージョン | 検討対象そのもの（tag、version、digest） |
+| baseline バージョン | これを見送った場合に呼び出し元が維持するもの。差分のもう一方の端 |
+| 窓 `N` と捕捉経緯 | どの disposition が発火したか（`blocked` / `pending` / rule 2 …）、および候補が窓を出る日 |
+| 緊急度 | CVE が移動を強いているのか、定期 bump なのか。これはスコアを変えない——読み手にとって推奨がどれだけの重みを持つかを変える |
 
-If the baseline cannot be determined (a first-ever pin, `images-pin` rule 3), say so — axis D loses
-its other end and is `?` unless the ecosystem offers another comparison.
+baseline が決められない場合（初回のピン、`images-pin` rule 3）はそう述べる。軸 D はもう一方の端を失うので、当該エコシステムが別の比較対象を提供しない限り `?` である。
 
-### 2. Read the matching reference
+### 2. 該当する参照を読む
 
-Read only the one that applies. Each gives the commands per axis and states which axes that
-ecosystem cannot answer:
+該当する 1 本だけを読む。各ファイルは軸ごとのコマンドを与え、そのエコシステムが答えられない軸を明記している。
 
-- `references/npm.md` — npm **and pnpm** packages (same registry, so the same evidence commands; only the reporting differs), including transitive deps under `overrides`
-- `references/pypi.md` — PyPI tools declared in `python/*.in` and locked in `python/*.txt` (no publisher identity in the API, so axis P is answered indirectly or not at all)
-- `references/go-modules.md` — Go modules
-- `references/github-actions.md` — `uses:` references (richest evidence: a real commit range)
-- `references/docker-images.md` — Dockerfile `FROM` / compose `image:` digests (thinnest evidence)
+- `references/npm.md` — npm **および pnpm** パッケージ（同じレジストリなので証拠収集コマンドは共通。異なるのは報告の仕方だけ）。`overrides` 経由の推移的依存を含む
+- `references/pypi.md` — `python/*.in` が宣言し `python/*.txt` が固定する PyPI ツール（API が発行者の身元を出さないため、軸 P は間接的に答えるか答えられない）
+- `references/go-modules.md` — Go モジュール
+- `references/github-actions.md` — `uses:` 参照（最も証拠が濃い。実物の commit range がある）
+- `references/docker-images.md` — Dockerfile `FROM` / compose `image:` の digest（最も証拠が薄い）
 
-Also read `docs/design/security.md`'s ecosystem subsection for that ecosystem — it records what the
-toolchain already guarantees, which decides whether an axis is free (Go's transparency log) or
-absent (Go freshness, image history).
+併せて `docs/design/security.md` の当該エコシステム節を読む。ツールチェーンが既に何を保証しているかが記録されており、それがある軸を無料にするか（Go の透明性ログ）不在にするか（Go の freshness、image の履歴）を決める。
 
-### 3. Gather, score, band
+### 3. 収集し、採点し、バンドを決める
 
-Work axis by axis, recording the command and what it showed. Then score, apply both override rules,
-and derive the band. Resist scoring before all four axes are attempted — a `3` on D found early
-tempts you to skip P, and the publisher answer is what tells the maintainer whether to report the
-account upstream.
+軸ごとに作業し、実行したコマンドと観測を記録する。そのうえで採点し、二つの上書き規則を適用してバンドを導く。4 軸すべてを試みる前に採点しないこと——D で早々に `3` を見つけると P を飛ばしたくなるが、アカウントを上流へ通報すべきかを保守担当に伝えるのは発行者の答えである。
 
-### 4. Report in Japanese and stop
+### 4. 日本語で報告して止まる
 
-Print the report below, then hand back to the calling skill (which runs its own confirmation) or
-end. Make the no-op explicit — the reader must not have to wonder whether a file moved.
+以下を出力し、呼び出し元スキル（自身の確認を行う）へ返すか、終了する。何も変更していないことを明示する——読み手にファイルが動いたかを勘繰らせてはならない。
 
 ```text
 供給網トリアージ: <ecosystem>:<name> <baseline> → <candidate>
@@ -231,62 +157,41 @@ end. Make the no-op explicit — the reader must not have to wonder whether a fi
 本スキルは何も変更していません（報告のみ）。採用の判断は <呼び出し元 / 利用者> が行います。
 ```
 
-Map the band to a recommendation, and keep the ecosystem's hard walls visible — a LOW score does
-not make a blocked install possible:
+バンドを推奨へ写し、エコシステムの硬い壁を見えるままにしておく——低スコアは、install が塞がれているものを可能にはしない。
 
-| Band | Recommendation |
+| バンド | 推奨 |
 | --- | --- |
 | LOW | 四つの問いは直接証拠で答えられており、窓の趣旨は満たされている。採用の可否は判断者に委ねる |
 | MEDIUM | 既定は窓を待つこと。急ぐ理由があるなら、未解決の点を明示したうえで判断者が決める |
 | HIGH / CRITICAL | 採用しない。上流への報告と、当該バージョンを避ける代替（一つ前の aged 版）を検討する |
 | INSUFFICIENT-EVIDENCE | 証拠が取れていないため窓がそのまま効く。待つ |
 
-Four walls to restate in the report whenever they apply:
+該当する場合に報告で必ず再掲する壁が四つある。
 
-- **pnpm under a `pnpm-workspace.yaml` `minimumReleaseAge`**: likewise uninstallable, and the block
-  extends to `--frozen-lockfile` replay, so it reaches CI and every other checkout rather than only
-  the machine doing the resolve. pnpm *does* have a per-version exemption
-  (`minimumReleaseAgeExclude`), which makes the adopt-or-wait choice a real one — report the score
-  as the input to it and leave the decision with the caller. Never suggest lowering
-  `minimumReleaseAge` or turning off `minimumReleaseAgeStrict`.
-- **PyPI under `scripts/tool-cooldown`**: the window is enforced by a repository gate rather than by
-  the resolver, and that gate **fails the build** — so a blocked version is blocked by a check this
-  repository owns, and a LOW score does not clear it. The escape hatch is a dated entry in
-  `.github/tool-cooldown-bypass.toml` (`expires` / `issue` / `reason`, all required, three months
-  maximum); a triage verdict is the evidence that belongs in `reason`, not permission to add the
-  entry. Never propose editing the window constant in `scripts/tool-cooldown`.
-- **`images-pin` rule 3**: there is no aged digest to fall back to, so a LOW score still leaves the
-  choice between waiting and a deliberate `days=0` bootstrap.
+- **`minimumReleaseAge` 配下の pnpm**: スコアが何であれ、そのバージョンはそもそも install できず、npm には版指定の免除も無い。選択肢は待つことか、role による意図的な override（その場合 `minimumReleaseAgeExclude` の記載としてレビュー差分に残る）である。`min-release-age` を下げる提案は決してしない。
+- **`pnpm-workspace.yaml` `minimumReleaseAge` 配下の pnpm**: 同じく install できず、しかもブロックは `--frozen-lockfile` の再生にも及ぶため、解決を実行した端末だけでなく CI と他の全チェックアウトに届く。pnpm には版指定の免除（`minimumReleaseAgeExclude`）が **あり**、だからこそ採用か待機かが実際の選択になる。スコアはその入力として報告し、判断は呼び出し元かユーザーに残す。`minimumReleaseAge` を下げる提案も `minimumReleaseAgeStrict` を切る提案も決してしない。
+- **`scripts/tool-cooldown` 配下の PyPI**: 窓を強制するのは解決器ではなくリポジトリ側のゲートで、そのゲートは**ビルドを落とす**。つまり blocked な版はこのリポジトリが持つ検査に塞がれているのであり、LOW スコアが単独でそれを解くことはない。逃げ道は `.github/tool-cooldown-bypass.toml` の期限つきエントリ（`expires` / `issue` / `reason` すべて必須・最長 3 か月）で、トリアージの判定は `reason` に載せるべき証拠であってエントリを足す許可ではない。`scripts/tool-cooldown` の窓定数を編集する提案は決してしない。
+- **`images-pin` rule 3**: 退行先の aged digest が存在しないため、LOW スコアでも「待つ」か「意図的な `days=0` bootstrap」かの選択は残る。
 
-## Notes
+## 注記
 
-- **A clean report is a real result.** Most quarantined versions are ordinary releases that happened
-  to be recent. Saying so with citations is the output that lets a team act on a CVE inside the
-  window instead of guessing.
-- **`?` is not failure.** The ecosystems differ in what they can prove, by construction — that
-  asymmetry is documented in `docs/design/security.md`, not a gap in this skill. Reporting it
-  honestly is what keeps the score meaningful.
-- **The transparency log proves immutability, not benignity.** Go's `sum.golang.org` and an npm
-  publish attestation tell you the artifact was not swapped after publication. A maliciously
-  published version is faithfully, verifiably malicious. Axis A answers a narrower question than it
-  first appears to.
-- **Score the move, not the package's reputation.** A widely-used package with a compromised release
-  is the normal case for this skill; download counts and stars are not evidence about this version.
-- **Attribution matters as much as the verdict.** When a score lands HIGH or CRITICAL, the publisher
-  and commit identified on axes P and A are what makes an upstream report actionable. Include them.
-- The skill never commits, stages, or pushes, and never auto-pushes.
+- **きれいな報告も実結果である。** 隔離されたバージョンの大半は、たまたま最近だっただけの普通のリリースである。それを根拠付きで言えることが、窓の内側にある CVE へ推測でなく対処できるようにする。
+- **`?` は失敗ではない。** どこまで証明できるかはエコシステムごとに構造的に異なる——その非対称性は `docs/design/security.md` に記録された事実であって、本スキルの不足ではない。正直に報告することがスコアの意味を保つ。
+- **透明性ログが証明するのは不変性であって無害性ではない。** Go の `sum.golang.org` や npm の publish attestation が言うのは、artifact が公開後にすり替えられていないことである。悪意をもって公開されたバージョンは、忠実に、検証可能に悪意がある。軸 A が答える問いは、一見よりも狭い。
+- **パッケージの評判ではなく移動を採点する。** 広く使われているパッケージの侵害リリースこそ本スキルの通常ケースであり、ダウンロード数や star は*このバージョン*についての証拠ではない。
+- **判定と同じくらい attribution が重要である。** スコアが HIGH / CRITICAL に着地したとき、上流への報告を実行可能にするのは軸 P・A で特定した発行者と commit である。必ず含めること。
+- 本スキルは commit / stage / push を行わず、自動 push もしない。
 
-## Checklist
+## チェックリスト
 
-- [ ] `docs/design/security.md` "Three principles" read at runtime (or the fallback noted)
-- [ ] Candidate fixed: ecosystem, name, candidate version, **baseline the caller would keep**, window `N`, disposition, urgency
-- [ ] The one matching `references/<ecosystem>.md` read; its unanswerable axes honored
-- [ ] All four axes attempted; each score carries a command + observation, or an explicit `?` with a reason
-- [ ] Diff read against the baseline specifically, searched for the compromise signatures by name
-- [ ] Overrides applied: any `3` floors at HIGH; ≥2 `?` → INSUFFICIENT-EVIDENCE; exactly one `?` caps at MEDIUM
-- [ ] Exposure reported as a separate line, not folded into the score
-- [ ] Artifact never executed (no `npm install`, no `docker run`, no downloaded binary, no build of the candidate); extracted outside the repo tree
-- [ ] Japanese report printed with band, recommendation, and the explicit statement that nothing was changed
-- [ ] pnpm `minimumReleaseAge` / PyPI `tool-cooldown` / `images-pin` rule 3 walls restated when they apply
-- [ ] No file modified, no window lowered, no upgrade applied
-- [ ] After updating `SKILL.md`, re-sync `SKILL.ja.md`
+- [ ] `docs/design/security.md` の「Three principles」を実行時に読んだ（または代替を用いた旨を記した）
+- [ ] 候補を確定した：エコシステム、名前、候補バージョン、**呼び出し元が維持する baseline**、窓 `N`、disposition、緊急度
+- [ ] 該当する `references/<ecosystem>.md` を 1 本だけ読み、そこに明記された「答えられない軸」を尊重した
+- [ ] 4 軸すべてを試み、各スコアにコマンド + 観測を添えた。あるいは理由付きで明示的に `?` とした
+- [ ] 差分は baseline に対して読み、侵害署名を名指しで探索した
+- [ ] 上書き規則を適用した：`3` があれば下限 HIGH、`?` が 2 つ以上なら INSUFFICIENT-EVIDENCE、`?` が 1 つなら上限 MEDIUM
+- [ ] 暴露面をスコアに混ぜず別行で報告した
+- [ ] artifact を一切実行していない（`npm install` なし、`docker run` なし、ダウンロードしたバイナリの実行なし、候補の build なし）。展開先はリポジトリのツリー外
+- [ ] バンド・推奨・何も変更していない旨を含む日本語の報告を出力した
+- [ ] 該当する場合に pnpm `minimumReleaseAge` / PyPI `tool-cooldown` / `images-pin` rule 3 の壁を再掲した
+- [ ] ファイルを一切変更せず、窓を下げず、更新を適用していない

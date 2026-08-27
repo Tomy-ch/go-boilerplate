@@ -5,100 +5,68 @@ deciders: [maintainers]
 tags: [testing]
 ---
 
-# ADR-0092: Run infrastructure integration tests against a real DB with sentinel-error rollback
+# ADR-0092: インフラ統合テストはリアル DB に対してセンチネルエラーロールバックで実行する
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Repository (infrastructure) tests must verify behavior against real SQL and real PostgreSQL
-semantics — uniqueness constraints, SQLSTATE error codes, transaction isolation, and query
-shape all behave differently in an in-memory mock than against a real database. At the same
-time, tests must not leave state in the database between runs, must support parallel
-execution without interference, and must not require heavy setup or teardown per test.
+リポジトリ（インフラ）テストは、実際の SQL および実際の PostgreSQL セマンティクス（一意性制約、SQLSTATE エラーコード、トランザクション分離、クエリ形状）に対して動作を検証しなければならない。これらはいずれも、インメモリモックとリアルデータベースとでは挙動が異なる。同時に、テストはラン間でデータベースに状態を残さず、テスト間の干渉なしに並列実行をサポートし、テストごとに重い setUp / tearDown を必要としないことが求められる。
 
-Three candidate strategies exist:
+候補となる戦略は 3 つある:
 
-1. Mock the database driver (sqlmock or interface mock) — fast, but does not exercise real SQL.
-2. Full database reset between tests — correct, but too slow for a test suite.
-3. Run each test inside a transaction and roll it back unconditionally — real DB, zero cleanup cost.
+1. データベースドライバをモックする（sqlmock またはインターフェースモック）— 高速だが、実際の SQL を実行しない。
+2. テスト間でデータベースを完全リセットする — 正確だが、テストスイートに対して遅すぎる。
+3. 各テストをトランザクション内で実行し、無条件にロールバックする — リアル DB、クリーンアップコストゼロ。
 
-The project's onion architecture (see [ADR-0002](0002-onion-architecture.md)) enforces that
-infrastructure is replaceable, but Repository tests must still target the real implementation
-to be meaningful.
+プロジェクトのオニオンアーキテクチャ（[ADR-0002](0002-onion-architecture.md) 参照）はインフラを交換可能であることを強制するが、Repository テストは意味のあるものにするために依然としてリアル実装をターゲットにしなければならない。
 
-## Decision
+## 決定
 
-All infrastructure integration tests run against a real PostgreSQL instance. Each test body
-that mutates state is wrapped in a transaction that is always rolled back via a sentinel
-error (`errRollbackForTest`). No database mocking is used in Repository tests.
+すべてのインフラ統合テストはリアルの PostgreSQL インスタンスに対して実行する。状態を変更するテスト本体は、センチネルエラー（`errRollbackForTest`）を介して常にロールバックされるトランザクションでラップする。Repository テストではデータベースモッキングを使用しない。
 
-The `testkit` package (`internal/infrastructure/rdb/testkit/`) implements this pattern:
+`testkit` パッケージ（`internal/infrastructure/rdb/testkit/`）がこのパターンを実装する:
 
-- `NewTestDB` — returns a shared singleton `driver.DatabaseDriver` (single connection pool
-  per process, initialized with `sync.Once`).
-- `NewTestTransactionRunner` — constructs a `TransactionRunner` backed by the production
-  `tx.Manager`.
-- `WithinTx(fn func(ctx context.Context))` — begins a real transaction, executes `fn`, then
-  unconditionally returns `errRollbackForTest` to the transaction manager, which triggers a
-  rollback. The sentinel error is caught and treated as success; any other error fails the
-  test.
+- `NewTestDB` — プロセスごとに共有シングルトン `driver.DatabaseDriver`（`sync.Once` で初期化された単一接続プール）を返す。
+- `NewTestTransactionRunner` — プロダクションの `tx.Manager` に裏付けられた `TransactionRunner` を構築する。
+- `WithinTx(fn func(ctx context.Context))` — リアルトランザクションを開始し、`fn` を実行し、トランザクションマネージャーにロールバックをトリガーさせる `errRollbackForTest` を無条件に返す。センチネルエラーはキャッチされ成功として扱われる。その他のエラーはテストを失敗させる。
 
-Parallel execution (`t.Parallel()`) is supported at the test level. Transactions are
-serialized internally via `txLock sync.Mutex` to prevent concurrent transaction conflicts on
-the shared DB connection.
+並列実行（`t.Parallel()`）はテストレベルでサポートされる。トランザクションは `txLock sync.Mutex` によって内部的にシリアライズされ、共有 DB 接続上での並行トランザクション競合を防ぐ。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Tests verify real SQL semantics: query shape, SQLSTATE error codes, constraint behavior,
-  and transaction isolation are all exercised against the actual PostgreSQL schema.
-- No cleanup between tests — rollback restores the DB state automatically.
-- Parallel test scheduling is safe: `t.Parallel()` can be used without data interference.
-- Minimal per-test setup: wrap with `WithinTx`, assert with `require`/`assert` inside the
-  closure.
+- テストは実際の SQL セマンティクス（クエリ形状、SQLSTATE エラーコード、制約動作、トランザクション分離）を実際の PostgreSQL スキーマに対して検証する。
+- テスト間のクリーンアップ不要 — ロールバックが DB の状態を自動的に復元する。
+- 並列テストスケジューリングが安全 — `t.Parallel()` をデータ干渉なしに使用できる。
+- テストごとの準備が最小 — `WithinTx` でラップし、クロージャ内で `require`/`assert` でアサートする。
 
-### Negative Consequences
+### ネガティブな影響
 
-- A running PostgreSQL instance is required for both local development and CI. This adds an
-  infrastructure dependency to the test environment (`make db-init` must run before `make test`).
-- `WithinTx` cannot be used for tests that intentionally verify committed state (e.g.,
-  background jobs that read data written by a separate transaction). Such tests must manage
-  their own teardown.
-- Transactions are serialized by the mutex, so DB-level concurrency between simultaneous
-  tests is not achievable via this helper.
+- ローカル開発と CI の両方で PostgreSQL インスタンスが実行されている必要がある。これによりテスト環境にインフラ依存関係が追加される（`make test` 前に `make db-init` を実行しなければならない）。
+- `WithinTx` は、コミット済み状態を意図的に検証するテスト（例: 別のトランザクションが書き込んだデータを読み取るバックグラウンドジョブ）には使用できない。そのようなテストは独自の teardown を管理しなければならない。
+- トランザクションはミューテックスによってシリアライズされるため、同時テスト間の DB レベルの並行処理はこのヘルパーを介して達成できない。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Database driver mocking (sqlmock / interface mocks)
+### データベースドライバモッキング（sqlmock / インターフェースモック）
 
-Fast and hermetic, but does not exercise real SQL. Query shape mistakes, SQLSTATE-specific
-error branches, and constraint violations are invisible to mock-based tests. Rejected because
-the primary goal is to verify real Repository behavior against real PostgreSQL semantics.
+高速でハーメティックだが、実際の SQL を実行しない。クエリ形状の誤り、SQLSTATE 固有のエラー分岐、制約違反はモックベースのテストには見えない。主目的が実際の PostgreSQL セマンティクスに対してリアルな Repository 動作を検証することであるため、却下。
 
-### Full database reset between tests
+### テスト間のデータベース完全リセット
 
-Correct in terms of isolation, but prohibitively slow for a test suite with many Repository
-tests. A fixture-based or truncate-based teardown also requires coordinated ordering when
-tests run in parallel.
+分離という点では正確だが、多くの Repository テストを持つテストスイートには遅すぎて実用的でない。フィクスチャベースまたはトランケートベースの teardown も、テストが並列実行される場合に順序の調整が必要になる。
 
-### In-memory database (SQLite)
+### インメモリデータベース（SQLite）
 
-Avoids a PostgreSQL dependency but introduces schema drift (PostgreSQL-specific types,
-functions, and constraints are not available) and obscures SQLSTATE-specific error branches
-that `pgerror.NormalizeError` handles. Rejected for incompatibility with the production
-schema.
+PostgreSQL の依存関係を回避するが、スキーマの乖離（PostgreSQL 固有の型、関数、制約が利用不可）を招き、`pgerror.NormalizeError` が処理する SQLSTATE 固有のエラー分岐を隠蔽する。本番スキーマとの非互換性のため却下。
 
-## Notes
+## 補足
 
-- Source: `internal/infrastructure/rdb/testkit/README.md`,
-  `internal/infrastructure/rdb/testkit/test_kit.go`.
-- The rollback mechanism relies on `tx.Manager.Do` treating a non-nil return from its
-  callback as an error that triggers rollback. `errRollbackForTest` is a private sentinel
-  recognized and suppressed by `WithinTx`; it is never surfaced to the test as a failure.
-- Tests asserting on values produced inside `fn` must use `require`/`assert` inside the
-  closure, because `WithinTx` does not propagate `fn`'s return value.
-- Infra test coverage target: ≥ 85% (per [`.claude/skills/scaffold-infra-db/SKILL.md`](../../.claude/skills/scaffold-infra-db/SKILL.md); the repo-wide bar in [`docs/rules.md`](../rules.md) is > 90%).
+- ソース: `internal/infrastructure/rdb/testkit/README.md`、`internal/infrastructure/rdb/testkit/test_kit.go`。
+- ロールバックメカニズムは、`tx.Manager.Do` がコールバックからの非 nil 返り値をロールバックをトリガーするエラーとして扱うことに依存する。`errRollbackForTest` は `WithinTx` によって認識・抑制されるプライベートなセンチネルであり、テストに失敗として伝播されることはない。
+- `fn` 内で生成された値に対してアサートするテストは、クロージャ内で `require`/`assert` を使用しなければならない。`WithinTx` は `fn` の返り値を伝播しないためである。
+- インフラテストカバレッジ目標: ≥ 85%（[`.claude/skills/scaffold-infra-db/SKILL.md`](../../.claude/skills/scaffold-infra-db/SKILL.md) による。リポジトリ全体の基準は [`docs/rules.md`](../rules.md) の > 90%）。

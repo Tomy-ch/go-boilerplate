@@ -5,83 +5,61 @@ deciders: [maintainers]
 tags: [deploy, migration, exclusion, setup-review]
 ---
 
-# ADR-0100: Migrations run as a pre-deploy one-shot; do NOT auto-migrate at application startup
+# ADR-0100: マイグレーションはデプロイ前のワンショットとして実行し、アプリケーション起動時の自動マイグレーションは行わない
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Database schema migrations must run before the new application version starts serving
-traffic. Two common approaches exist: (1) run migrations automatically when the application
-starts (startup migration), or (2) run migrations as an explicit one-shot job before the
-application is deployed (pre-deploy migration).
+データベーススキーママイグレーションは、新しいアプリケーションバージョンがトラフィックの提供を開始する前に実行されなければならない。2 つの一般的なアプローチがある: (1) アプリケーション起動時に自動的にマイグレーションを実行する（スタートアップマイグレーション）、または (2) アプリケーションがデプロイされる前に明示的なワンショットジョブとしてマイグレーションを実行する（デプロイ前マイグレーション）。
 
-Startup migration is appealing because it requires no separate orchestration step. However,
-it has well-known failure modes: the migration runs on every replica at startup, requiring
-distributed locking to avoid parallel execution; a failed migration crashes the container,
-potentially causing a cascade restart loop; and a slow migration delays health-check
-readiness, triggering premature container replacement.
+スタートアップマイグレーションは別のオーケストレーションステップを必要としないため魅力的である。しかし、よく知られた障害モードがある: マイグレーションは起動時にすべてのレプリカで実行されるため、並列実行を避けるための分散ロックが必要となる。マイグレーションが失敗するとコンテナがクラッシュし、カスケードリスタートループを引き起こす可能性がある。また、遅いマイグレーションはヘルスチェックの準備完了を遅らせ、コンテナの早期交換をトリガーする。
 
-The `runtime` image ships the full `migrate-up` subcommand (see
-[ADR-0097](0097-single-runtime-image.md)) precisely to support the pre-deploy pattern via
-command override.
+`runtime` イメージはコマンドオーバーライードを介してデプロイ前パターンをサポートするために、完全な `migrate-up` サブコマンドをシップする（[ADR-0097](0097-single-runtime-image.md) 参照）。
 
-## Decision
+## 決定
 
-We deliberately do NOT run migrations automatically at application startup (entrypoint).
+アプリケーション起動（エントリポイント）時に自動的にマイグレーションを実行しないことを意図的に決定する。
 
-Migrations are executed as a **pre-deploy one-shot job** in the CI/CD pipeline, invoked
-before the `Deploy application` step. The expected invocation is:
+マイグレーションは CI/CD パイプラインで `Deploy application` ステップの前に呼び出される**デプロイ前ワンショットジョブ**として実行される。期待される呼び出し方:
 
 ```text
 docker run <image> /app/server migrate-up
 ```
 
-or the equivalent cloud-native one-shot job primitive (AWS ECS RunTask, EKS Kubernetes Job,
-GCP Cloud Run Job, GKE Kubernetes Job, Azure Container App Job, AKS Kubernetes Job).
+または同等のクラウドネイティブなワンショットジョブプリミティブ（AWS ECS RunTask、EKS Kubernetes Job、GCP Cloud Run Job、GKE Kubernetes Job、Azure Container App Job、AKS Kubernetes Job）。
 
-The deployment step runs only after the migration job completes successfully.
+デプロイメントステップはマイグレーションジョブが正常に完了した後にのみ実行される。
 
-The `Run migration (one-time job)` step in `.github/workflows/deploy-app.yaml` must be
-implemented for the target cloud environment, and the application start step must never
-invoke `migrate-up`.
+`.github/workflows/deploy-app.yaml` の `Run migration (one-time job)` ステップは対象クラウド環境向けに実装しなければならず、アプリケーション起動ステップが `migrate-up` を呼び出してはならない。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Migration runs exactly once per deployment, not once per replica per restart.
-- A migration failure fails the deploy pipeline; the old application version continues
-  serving traffic untouched.
-- The application container starts faster (no migration delay) and its health check reflects
-  true application readiness.
+- マイグレーションはデプロイメントごとに 1 回だけ実行され、レプリカごとの再起動ごとではない。
+- マイグレーションの失敗はデプロイパイプラインを失敗させ、古いアプリケーションバージョンがトラフィックを提供し続ける。
+- アプリケーションコンテナはより高速に起動し（マイグレーション遅延なし）、そのヘルスチェックは真のアプリケーション準備完了を反映する。
 
-### Negative Consequences
+### ネガティブな影響
 
-- The CI/CD pipeline must include an explicit migration step and its credentials / job
-  primitives, adding per-environment setup work.
-- Migration and application deployment must be sequenced correctly; a pipeline
-  misconfiguration that skips the migration step will deploy against the old schema.
+- CI/CD パイプラインには明示的なマイグレーションステップとその資格情報 / ジョブプリミティブを含めなければならず、環境ごとのセットアップ作業が増える。
+- マイグレーションとアプリケーションのデプロイメントは正しく順序付けられなければならない。マイグレーションステップをスキップするパイプラインの設定ミスは、古いスキーマに対してデプロイすることになる。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Startup migration (auto-migrate on application boot)
+### スタートアップマイグレーション（アプリケーション起動時の自動マイグレーション）
 
-Simple to implement (call `migrate.Up()` in `main()`). Rejected due to: parallel execution
-on multi-replica start, restart loops on failure, delayed readiness, and difficulty isolating
-migration failures from application failures in observability.
+実装はシンプル（`main()` で `migrate.Up()` を呼び出す）。却下理由: マルチレプリカ起動時の並列実行、失敗時のリスタートループ、準備完了の遅延、オブザーバビリティでのマイグレーション失敗とアプリケーション失敗の区別困難。
 
-### Separate migration binary or image
+### 別のマイグレーションバイナリまたはイメージ
 
-Would require maintaining a second artifact. The single-image command-override approach
-achieves the same result without the overhead (see [ADR-0097](0097-single-runtime-image.md)).
+第 2 の成果物の管理が必要となる。シングルイメージのコマンドオーバーライードアプローチがオーバーヘッドなしに同じ結果を達成する（[ADR-0097](0097-single-runtime-image.md) 参照）。
 
-## Notes
+## 補足
 
-- `.github/workflows/deploy-app.yaml` `Run migration (one-time job)` step
-  is the authoritative placeholder to implement for the target environment.
-- The workflow comment "Must NOT be executed in container startup (entrypoint)" is the
-  explicit guard against the rejected alternative.
-- Source: `.github/workflows/deploy-app.yaml`.
+- `.github/workflows/deploy-app.yaml` の `Run migration (one-time job)` ステップが、対象環境向けに実装すべき権威ある placeholder である。
+- ワークフローのコメント "Must NOT be executed in container startup (entrypoint)" が却下された代替案に対する明示的なガードである。
+- ソース: `.github/workflows/deploy-app.yaml`。

@@ -1,56 +1,56 @@
 # auth
 
-Provides interfaces and value objects for authentication.
+認証に関するインターフェースと値オブジェクトを提供します。
 
-## Credential Details
+## Credential の詳細
 
-`Credential` is a scheme-neutral representation of the inbound credential.
+`Credential` は、受信した認証情報をスキームに依存しない形で表現します。
 
-- `Scheme()` — returns the auth scheme (e.g., `"Bearer"`; see `SchemeBearer`)
-- `Token()` — returns the token
+- `Scheme()` — 認証スキームを返します（例: `"Bearer"`。`SchemeBearer` を参照）
+- `Token()` — トークンを返します
 
-## Authn Details
+## Authn の詳細
 
-The identity core is Subject (token `sub`), Issuer (token issuer) and UserID (internal user id).
+アイデンティティの中核は Subject（token `sub`）・Issuer（token の発行者）・UserID（内部ユーザー ID）です。
 
-- `Subject()` — returns the authenticated subject (token `sub`)
-- `WithUserID()` — returns a copy with the internal UserID resolved (identity resolution is separate from authentication); a zero-value UUID returns `ErrUserIDZero`
-- `HasUserID()` — returns true if the internal UserID has been resolved
-- `UserID()` — returns the internal user UUID (`ErrUserIDUnresolved` if unresolved)
-- `Issuer()` — returns the token issuer (e.g., `"mock"`, an IdP issuer)
-- `Scopes()` — returns scope list (optional)
-- `Claims()` — returns claims map (optional, for authorization / UI control)
+- `Subject()` — 認証された subject（token `sub`）を返します
+- `WithUserID()` — 内部 UserID を解決した複製を返します（アイデンティティ解決は認証とは分離されます）。ゼロ値 UUID の場合は `ErrUserIDZero` を返します
+- `HasUserID()` — 内部 UserID が解決済みかどうかを返します
+- `UserID()` — 内部ユーザーの UUID を返します（未解決の場合は `ErrUserIDUnresolved`）
+- `Issuer()` — token の発行者を返します（例: `"mock"`、IdP の issuer）
+- `Scopes()` — スコープ一覧を返します（任意）
+- `Claims()` — クレームのマップを返します（任意。認可 / UI 制御用）
 
-`New()` produces the authenticator result (subject + issuer) with the UserID **unresolved**; resolving the internal user is a separate concern (`IdentityResolver`), applied via `WithUserID()`.
+`New()` は、UserID が**未解決**の状態で認証結果（subject + issuer）を生成します。内部ユーザーの解決は別の関心事（`IdentityResolver`）であり、`WithUserID()` を通じて適用されます。
 
-`WithUserID()` rejects a zero-value UUID, so a resolved UserID is guaranteed to be non-zero. A zero value identifies no user, and letting it through would make every consumer that compares the caller against stored data (ownership checks in particular) responsible for rejecting it on its own.
+`WithUserID()` はゼロ値 UUID を拒否するため、解決済みの UserID は非ゼロであることが保証されます。ゼロ値はどのユーザーも指さず、これを通すと「呼出元 ID を保存済みデータと突き合わせる」消費側（とりわけ所有権判定）が各自でゼロ値を弾く責務を負うことになります。
 
-## IdentityResolver Details
+## IdentityResolver の詳細
 
-`IdentityResolver` resolves an authenticated external identity (`Issuer` + `Subject`) to an internal user, returning a copy of the `Authn` with the UserID resolved.
+`IdentityResolver` は、認証済みの外部アイデンティティ（`Issuer` + `Subject`）を内部ユーザーへ解決し、UserID を解決した `Authn` の複製を返します。
 
-- `Resolve(ctx, *Authn) (*Authn, error)` — looks the identity up (by `Issuer` + `Subject`) and returns the `Authn` with `WithUserID()` applied
-- No matching identity → `ErrIdentityNotFound`; the resolved user is unavailable (e.g. soft-deleted) → `ErrUserUnavailable` (both fail closed)
-- Applied after authentication succeeds, so the token-verification concern (`Authenticator`) stays independent of user lookup
+- `Resolve(ctx, *Authn) (*Authn, error)` — `Issuer` + `Subject` でアイデンティティを検索し、`WithUserID()` を適用した `Authn` を返します
+- 該当するアイデンティティが無い場合は `ErrIdentityNotFound`、解決したユーザーが利用不可（例: 論理削除済み）の場合は `ErrUserUnavailable`（いずれも fail-closed）
+- 認証成功後に適用されるため、トークン検証の関心事（`Authenticator`）はユーザー検索から独立したままになります
 
-## Errors
+## エラー
 
-|Error|Description|
+|エラー|説明|
 |---|---|
-|`ErrUnauthenticatedSubjectMissing`|Subject is empty (wraps `apperror.ErrUnauthenticated`)|
-|`ErrUserIDUnresolved`|Internal UserID is unresolved (wraps `apperror.ErrUnauthenticated`)|
-|`ErrUserIDZero`|`WithUserID()` was given a zero-value UUID (wraps `apperror.ErrUnauthenticated`)|
-|`ErrTokenMissing`|Token is empty (wraps `apperror.ErrUnauthenticated`)|
-|`ErrIdentityNotFound`|No internal user matches the issuer + subject (wraps `apperror.ErrUnauthenticated`)|
-|`ErrUserUnavailable`|The resolved user is unavailable, e.g. soft-deleted (wraps `apperror.ErrUnauthenticated`)|
+|`ErrUnauthenticatedSubjectMissing`|Subject が空（`apperror.ErrUnauthenticated` をラップ）|
+|`ErrUserIDUnresolved`|内部 UserID が未解決（`apperror.ErrUnauthenticated` をラップ）|
+|`ErrUserIDZero`|`WithUserID()` にゼロ値 UUID が渡された（`apperror.ErrUnauthenticated` をラップ）|
+|`ErrTokenMissing`|トークンが空（`apperror.ErrUnauthenticated` をラップ）|
+|`ErrIdentityNotFound`|issuer + subject に一致する内部ユーザーが存在しない（`apperror.ErrUnauthenticated` をラップ）|
+|`ErrUserUnavailable`|解決したユーザーが利用不可（例: 論理削除済み）（`apperror.ErrUnauthenticated` をラップ）|
 
-## Design Intent
+## 設計意図
 
-- Represent the "authenticated" state with types
-- Push token parsing logic to the outer layer (Infrastructure)
-- Separate authentication (subject/issuer extraction) from internal-user resolution (`IdentityResolver` / `WithUserID`)
-- Hold the "a resolved UserID is non-zero" invariant at the boundary that produces it, rather than in each consumer
+- 「認証済み」の状態を型で表現する
+- トークンのパースロジックは外側の層（Infrastructure）へ押し出す
+- 認証（subject/issuer の抽出）と内部ユーザーの解決（`IdentityResolver` / `WithUserID`）を分離する
+- 「解決済み UserID は非ゼロ」という不変条件を、消費側ごとではなく値を生成する境界で保証する
 
-## Implementation
+## 実装
 
-`internal/infrastructure/auth/` provides environment-specific implementations of the `Authenticator` interface, which generates an `Authn` from a `Credential`. The default `IdentityResolver` (`internal/infrastructure/auth/identity/`) is a passthrough that leaves the UserID unresolved; provide a project-specific implementation to resolve the internal user from your own user store.
+`internal/infrastructure/auth/` が、`Credential` から `Authn` を生成する `Authenticator` インターフェースの環境別実装を提供します。既定の `IdentityResolver`（`internal/infrastructure/auth/identity/`）は UserID を未解決のまま通す passthrough で、内部ユーザーの解決はプロジェクト固有の実装を差し替えて提供します。

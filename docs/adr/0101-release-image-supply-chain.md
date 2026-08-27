@@ -5,88 +5,59 @@ deciders: [maintainers]
 tags: [deploy, security, supply-chain]
 ---
 
-# ADR-0101: Release-image supply-chain integrity (cosign signing + provenance + SBOM)
+# ADR-0101: リリースイメージのサプライチェーン完全性（cosign 署名 + プロベナンス + SBOM）
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Container images that are pushed to a registry and deployed to production are part of the
-software supply chain. Without integrity guarantees, there is no cryptographic proof that
-the image running in production was built from the expected source commit by the expected
-CI pipeline, and no inventory of what software is inside the image.
+レジストリにプッシュされプロダクションにデプロイされるコンテナイメージはソフトウェアサプライチェーンの一部である。完全性の保証がなければ、プロダクションで実行されているイメージが期待されるソースコミットから期待される CI パイプラインによってビルドされたことを暗号学的に証明できず、イメージ内のソフトウェアのインベントリもない。
 
-Supply-chain attacks on container registries (image tag mutation, registry credential
-compromise) and build systems make these guarantees increasingly important. Industry
-standards (SLSA, SSDF) recommend provenance attestation and software bills of materials
-(SBOM) as baseline controls.
+コンテナレジストリへのサプライチェーン攻撃（イメージタグの改ざん、レジストリ資格情報の侵害）やビルドシステムへの攻撃により、これらの保証の重要性が増している。業界標準（SLSA、SSDF）はベースラインコントロールとしてプロベナンスアテストとソフトウェア部品表（SBOM）を推奨する。
 
-## Decision
+## 決定
 
-Every release image pushed to the registry receives three supply-chain integrity artifacts,
-all applied to the immutable image digest rather than a mutable tag:
+レジストリにプッシュされるすべてのリリースイメージは、可変タグではなく不変のイメージダイジェストに適用された 3 つのサプライチェーン完全性成果物を受け取る:
 
-1. **cosign keyless signing** — `cosign sign --yes` signs the image digest using Sigstore's
-   keyless flow (OIDC identity from the GitHub Actions workflow). No long-lived key material
-   is required.
+1. **cosign キーレス署名** — `cosign sign --yes` は Sigstore のキーレスフロー（GitHub Actions ワークフローからの OIDC アイデンティティ）を使用してイメージダイジェストに署名する。長命なキーマテリアルは不要である。
 
-2. **Build provenance attestation** — `actions/attest-build-provenance` records a SLSA
-   provenance statement (source commit, workflow run, actor) and attaches it to the image
-   digest. The attestation is stored in the GitHub Attestation store and optionally pushed
-   to the registry as an OCI 1.1 referrer.
+2. **ビルドプロベナンスアテスト** — `actions/attest-build-provenance` は SLSA プロベナンスステートメント（ソースコミット、ワークフロー実行、アクター）を記録し、イメージダイジェストにアタッチする。アテストは GitHub Attestation ストアに保存され、オプションで OCI 1.1 リファラーとしてレジストリにプッシュされる。
 
-3. **SBOM generation and attestation** — `anchore/sbom-action` generates an SPDX-JSON SBOM
-   from the pushed image, then `actions/attest-sbom` attaches it to the image digest as a
-   second attestation. This SBOM is distinct from any scan-time SBOM produced by
-   `image-scan.yaml`; both serve different purposes and must not be removed.
+3. **SBOM 生成とアテスト** — `anchore/sbom-action` がプッシュされたイメージから SPDX-JSON SBOM を生成し、`actions/attest-sbom` がそれをイメージダイジェストへの第 2 のアテストとしてアタッチする。この SBOM は `image-scan.yaml` によって生成されるスキャン時 SBOM とは異なり、両者は異なる目的を果たし、削除してはならない。
 
-All three artifacts target the image digest produced by the `Build and push image` step,
-ensuring they are bound to an immutable reference.
+3 つの成果物はすべて `Build and push image` ステップによって生成されたイメージダイジェストをターゲットとし、不変の参照にバインドされることを保証する。
 
-Registry portability note: the `meta_registry` step and the `Login to registry` step are
-explicitly marked as setup-team customization points. The signing and attestation steps
-reference `meta_registry` rather than a hard-coded registry, so they follow the registry
-choice without modification.
+レジストリポータビリティの注意事項: `meta_registry` ステップと `Login to registry` ステップはセットアップチームのカスタマイズポイントとして明示的にマークされている。署名とアテストのステップはハードコードされたレジストリではなく `meta_registry` を参照するため、変更なしにレジストリの選択に従う。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Consumers can verify the image was built by this workflow from the declared commit using
-  `cosign verify` and `gh attestation verify`.
-- Provenance and SBOM are stored as first-class OCI artifacts alongside the image, making
-  them discoverable through standard OCI tooling (when the registry supports OCI 1.1
-  referrers).
-- No key management overhead: the keyless flow uses the GitHub Actions OIDC token.
+- コンシューマーは `cosign verify` と `gh attestation verify` を使用して、イメージが宣言されたコミットからこのワークフローによってビルドされたことを検証できる。
+- プロベナンスと SBOM はイメージと並んで第一級の OCI 成果物として保存され、標準の OCI ツール（レジストリが OCI 1.1 リファラーをサポートする場合）で発見可能になる。
+- キー管理のオーバーヘッドなし: キーレスフローは GitHub Actions の OIDC トークンを使用する。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Registries that do not support OCI 1.1 referrers cannot store the attestation as a
-  referrer; the workflow comment (`push-to-registry: true`) must be changed to `false` for
-  such registries, falling back to GitHub Attestation store only.
-- The signing and attestation steps add to build job duration.
-- cosign and the attestation actions are pinned by commit digest; updating them requires
-  a deliberate change to the workflow file.
+- OCI 1.1 リファラーをサポートしないレジストリはアテストをリファラーとして保存できない。そのようなレジストリの場合、ワークフローコメント（`push-to-registry: true`）を `false` に変更し、GitHub Attestation ストアのみへのフォールバックが必要となる。
+- 署名とアテストのステップはビルドジョブの所要時間を増加させる。
+- cosign とアテストアクションはコミットダイジェストでピニングされており、更新にはワークフローファイルへの意図的な変更が必要となる。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Long-lived signing key (cosign with a stored key)
+### 長命な署名キー（保存されたキーを持つ cosign）
 
-Requires secret rotation, key storage, and access control. The keyless flow provides
-equivalent verification with lower operational overhead in a GitHub-hosted CI context.
+シークレットのローテーション、キーストレージ、アクセス制御が必要となる。キーレスフローは GitHub ホスト型 CI コンテキストにおいて、より低い運用オーバーヘッドで同等の検証を提供する。
 
-### No supply-chain artifacts
+### サプライチェーン成果物なし
 
-Simpler pipeline, but no way to verify image provenance or contents after the fact.
-Rejected as inconsistent with the lock-in avoidance and operability goals
-([ADR-0001](0001-avoid-lock-in.md)).
+シンプルなパイプラインになるが、事後にイメージのプロベナンスやコンテンツを検証する方法がない。ロックイン回避と運用性の目標（[ADR-0001](0001-avoid-lock-in.md)）と矛盾するため却下。
 
-## Notes
+## 補足
 
-- `.github/workflows/deploy-app.yaml` implements the three integrity steps
-  (`Attest build provenance` / `Sign image (cosign keyless)` / `Attest SBOM`).
-- The SBOM generated here is the post-push, attestation-attached SBOM; the scan-time SBOM
-  in `image-scan.yaml` serves a different purpose (vulnerability scanning) and must coexist.
-- Source: `.github/workflows/deploy-app.yaml`.
+- `.github/workflows/deploy-app.yaml` が 3 つの完全性ステップ
+  （`Attest build provenance` / `Sign image (cosign keyless)` / `Attest SBOM`）を実装する。
+- ここで生成される SBOM はプッシュ後のアテストアタッチされた SBOM であり、`image-scan.yaml` のスキャン時 SBOM は異なる目的（脆弱性スキャン）を果たし共存しなければならない。
+- ソース: `.github/workflows/deploy-app.yaml`。

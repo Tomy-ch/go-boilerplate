@@ -6,228 +6,226 @@ description: >-
 
 # Scaffold Endpoint
 
-Top-level orchestrator that takes a feature from wherever you are — a rough idea or a finished spec set — to a reviewed, running onion-architecture endpoint. It grafts a **feature-dev-style set of upstream design phases** (clarify → explore → design → draft the inputs) onto an unchanged **deterministic spec-driven core** (verify → scaffold each layer → test → curl), and closes with a **quality review built from this repo's own review skills**.
+feature を「今いる地点」— ラフなアイデアでも、書き上げた spec でも — から、レビュー済みで稼働するオニオンアーキ endpoint まで運ぶトップレベルオーケストレータ。**feature-dev 由来の上流設計フェーズ**（明確化 → 探索 → 設計 → 入力ドラフト作成）を、無改変の**決定論的な spec 駆動コア**（検証 → 各層 scaffold → テスト → curl）に接ぎ木し、最後に**このリポジトリ自身のレビュースキルで構成した品質レビュー**で締める。
 
-The core's strength is that it is deterministic: specs + OpenAPI + SQL fully determine the generated code. These upstream phases exist only to *produce* those inputs when you don't have them yet — it never bypasses or weakens the core.
+コアの強みは決定論性にある: spec + OpenAPI + SQL が生成コードを完全に決める。上流フェーズは、それらの入力がまだ無いときに*生成する*ためだけに存在し、コアを迂回・弱体化させることは決してない。
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+## 使うとき
 
-## When to Use
+- 新規 feature / endpoint を end-to-end で立ち上げる — アイデアしか無くても、2 spec（`domain.md` + `usecase.md`）+ OpenAPI YAML + SQL が用意済みでも。
+- コードを書く*前*に上流の設計フェーズ（曖昧点の明確化 → 既存パターンの探索 → アプローチの比較）を回したい。
+- 全層を同じ規約で構築し 1 つの統合レポートを得た上で、`impl-review` / `arch-check` / `test-review` でレビューしたい。
 
-- Starting a new feature / endpoint end-to-end — whether you have only an idea, or the 2 specs (`domain.md` + `usecase.md`) + OpenAPI YAML + SQL are already prepared.
-- You want the upstream design phases (clarify ambiguities → explore existing patterns → weigh approaches) *before* any code is written.
-- You want all layers built with the same conventions and one consolidated report, then reviewed by `impl-review` / `arch-check` / `test-review`.
+以下の用途には使いません:
 
-Do NOT use this skill for:
+- 既存の単一 layer の変更 — 該当 layer skill（`scaffold-domain` / `-infra-db` / `-usecase` / `-controller`）を単独実行。
+- 空の spec テンプレートだけの scaffold — それは `new-spec`。
+- 既存コードのレビューのみ — `impl-review` / `arch-check` / `test-review` を直接実行。
 
-- Modifying a single existing layer — run the specific layer skill (`scaffold-domain` / `-infra-db` / `-usecase` / `-controller`) standalone.
-- Only scaffolding empty spec templates — that is `new-spec`.
-- A review-only pass on existing code — run `impl-review` / `arch-check` / `test-review` directly.
+## 2 つのエントリモード（Phase 0 で自動判定）
 
-## Two Entry Modes (auto-detected in Phase 0)
-
-| Mode | Trigger | Upstream phases (1–4) | Core (Phases 5–7) |
+| モード | トリガ | 上流フェーズ (Phase 1–4) | コア (Phase 5–7) |
 | --- | --- | --- | --- |
-| **A. idea-first** | User starts from an idea / requirement; `docs/spec/<feature>/` is missing or lacks `domain.md`/`usecase.md` | **runs** — clarify → explore → design → draft inputs | runs |
-| **B. specs-ready** | `docs/spec/<feature>/{domain,usecase}.md` + OpenAPI gen + sqlc gen already exist | **skipped** (fast path) | runs |
+| **A. idea-first** | アイデア / 要件から開始。`docs/spec/<feature>/` が無い、または `domain.md`/`usecase.md` を欠く | **実行** — 明確化 → 探索 → 設計 → 入力ドラフト | 実行 |
+| **B. specs-ready** | `docs/spec/<feature>/{domain,usecase}.md` + OpenAPI gen + sqlc gen が既に存在 | **スキップ**（fast path） | 実行 |
 
-Never force the upstream phases on a user who already has valid inputs; detect and skip. Conversely, never skip straight to `verify-spec` when the specs don't exist yet — that is the gap the upstream phases fill.
+有効な入力を既に持つユーザーに上流フェーズを強制しない — 検出してスキップする。逆に、spec がまだ無いのに `verify-spec` へ直行してはいけない — そこが上流フェーズの埋める穴。
 
-## What This Skill Reads / Writes
+## 読み書き範囲
 
-**Reads (always)**:
+**読み込み（常時）**:
 
-- `docs/spec/<feature>/{domain,usecase}.md` — via child skills (lean A: 2 spec files only).
-- OpenAPI gen + sqlc gen + domain Repository IF — derivation sources for controller / infra (no spec).
-- `.codex/scaffold-spec/lifecycle.md` — for the canonical workflow / scaffold execution order.
-- Layer `README.md` + `docs/` at runtime (the upstream phases read them as the source of truth for existing patterns; does not hardcode design rules that would drift).
+- `docs/spec/<feature>/{domain,usecase}.md`（child skill 経由、lean A: 2 spec のみ）。
+- OpenAPI gen + sqlc gen + domain Repository IF — controller / infra の導出元（spec なし）。
+- `.codex/scaffold-spec/lifecycle.md` — canonical workflow / scaffold execution order。
+- layer `README.md` + `docs/` を実行時に参照（上流フェーズは既存パターンの真の出所として読む。drift する設計ルールをハードコードしない）。
 
-**Writes**:
+**書き込み**:
 
-- **Mode B**: nothing directly. All writes happen inside the chained child skills, each within its own scope.
-- **Mode A (upstream phases, Phase 4 only)**: *draft* input artifacts for user review — `openapi/**` (OpenAPI YAML), `database/migrations/**` (new files only) + `database/dml/**` (SQL), `docs/spec/<feature>/{domain,usecase}.md` (via `new-spec`, then filled). These are all inside the AI modification scope in `AGENTS.md`. These upstream phases never write Go source; that stays with the core's child skills.
+- **モード B**: 直接はなし。全書き込みは child skill 内、各自のスコープ内で発生。
+- **モード A（上流フェーズ、Phase 4 のみ）**: ユーザーレビュー用の*ドラフト*入力アーティファクト — `openapi/**`（OpenAPI YAML）、`database/migrations/**`（新規ファイルのみ）+ `database/dml/**`（SQL）、`docs/spec/<feature>/{domain,usecase}.md`（`new-spec` 経由 → 記入）。いずれも `AGENTS.md` の AI 修正スコープ内。上流フェーズは Go ソースを書かない — それはコアの child skill の担当。
 
-## Preconditions for the core (Phases 5+)
+## コア（Phase 5+）の前提条件
 
-These must be true before the **core** runs. In Mode A they are the *output* of the upstream phases (Phase 4); in Mode B the user has already satisfied them.
+これらは**コア**の実行前に真である必要がある。モード A では上流フェーズ（Phase 4）の*成果物*であり、モード B ではユーザーが既に満たしている。
 
-| # | Precondition | Verifier |
+| # | 前提 | 検証者 |
 | --- | --- | --- |
-| 1 | `domain.md` + `usecase.md` exist under `docs/spec/<feature>/` (lean A: 2 spec files only) | verify-spec |
-| 2 | Spec format valid + cross-spec references consistent + naming convention satisfied | verify-spec |
-| 3 | OpenAPI YAML written and `make gen-api` produced `internal/controller/handler/<path>/gen/` | scaffold-controller precondition |
-| 4 | SQL files under `database/dml/...` written and `make gen-query` produced sqlc gen files | scaffold-infra-db precondition |
-| 5 | DB running + migrated + seeded (DB schema matches the new SQL) | manual: start env with `make serve`, then `make db-init` |
-| 6 | Boundary interfaces the usecase spec depends on exist under `internal/usecase/boundary/` | scaffold-usecase precondition |
+| 1 | `domain.md` + `usecase.md` が `docs/spec/<feature>/` 配下に存在（lean A: 2 spec のみ） | verify-spec |
+| 2 | spec format 有効 + cross-spec 参照整合 + 命名規約充足 | verify-spec |
+| 3 | OpenAPI YAML 書き込み済み + `make gen-api` で `internal/controller/handler/<path>/gen/` 生成済み | scaffold-controller 前提 |
+| 4 | `database/dml/...` 配下に SQL 書き込み済み + `make gen-query` で sqlc gen 生成済み | scaffold-infra-db 前提 |
+| 5 | DB 起動中 + migrate + seed 済み（DB スキーマが新 SQL と一致） | 手動: `make serve` → `make db-init` |
+| 6 | usecase spec が依存する boundary interface が `internal/usecase/boundary/` 配下に存在 | scaffold-usecase 前提 |
 
-If any precondition fails when the core starts, the relevant child skill will surface it and this skill aborts the chain.
+コア開始時に前提未充足なら、該当 child skill が surface し本 skill が chain 中断。
 
-> **Environment note (preconditions 3–5):** `make gen-query` dumps the live DB schema via `pg_dump`, so the database **must be running** — `make gen-query` (and `make test`) fail with `could not translate host name "database"` when it is not. Bring the environment up with the **dedicated make targets, not raw `docker compose`**: `make serve` (starts the development profile incl. the `database` service), then **`make db-init`** — which migrates **and seeds** both the local and test DBs (the test suite assumes seed data exists; piecemeal `db-*-migrate-up` alone is insufficient) — and only then `make gen-query` / `make gen-api`.
+> **環境に関する注記（前提 3〜5）:** `make gen-query` は `pg_dump` で稼働中の DB スキーマをダンプするため、**DB が起動している必要がある**（未起動だと `make gen-query` / `make test` が `could not translate host name "database"` で失敗する）。環境は**生 `docker compose` ではなく専用 make ターゲット**で起動すること: `make serve`（development プロファイル、`database` サービス含む）→ **`make db-init`**（local/test 両 DB を migrate **かつ seed**。テストは seed 前提のため、`db-*-migrate-up` 単体では不十分）→ その後に `make gen-query` / `make gen-api`。
 >
-> **Toolchain note (final `make fix` / `make test`):** if `make fix` or `make lint` fails on a **tool version mismatch** (e.g. `golangci-lint` reporting "you are using a configuration file for golangci-lint v2 with golangci-lint v1"), do **not** work around it — align the local toolchain with `make install-tools` (installs the versions pinned in `mise.toml`; run `make sync-versions` first if `mise.toml` itself changed), then re-run. Do not hand-edit `PATH` or invoke version-specific binaries as a substitute.
+> **ツールチェーンに関する注記（最終 `make fix` / `make test`）:** `make fix` や `make lint` が**ツールのバージョン不整合**（例: `golangci-lint` の "you are using a configuration file for golangci-lint v2 with golangci-lint v1"）で失敗した場合は回避策を取らず、`make install-tools` でローカルのツールを `mise.toml` 固定バージョンに揃えてから再実行する（`mise.toml` 自体を変更した場合は先に `make sync-versions`）。`PATH` の手動書き換えやバージョン指定バイナリの直叩きで代替しないこと。
 
 ---
 
-## Phase 0. Confirm Feature + Detect Mode
+## Phase 0. feature 確認 + モード判定
 
-**MUST call `ask the user explicitly` immediately after invocation**:
+**起動直後に必ず `ask the user explicitly` を呼ぶ**:
 
-- Question: 「対象 feature 名 (kebab-case)」
-- Free-text.
+- 質問: 「対象 feature 名 (kebab-case)」
+- フリーテキスト。
 
-Then detect the entry mode:
+続いてエントリモードを判定:
 
-- Check `docs/spec/<feature>/`. If it contains both `domain.md` and `usecase.md` **and** the user's request reads as "scaffold from my ready specs", choose **Mode B** and go straight to Phase 5.
-- Otherwise choose **Mode A** and run the upstream phases (Phases 1–4). If the directory is missing entirely, that is the normal idea-first start — do not treat it as an error.
+- `docs/spec/<feature>/` を確認。`domain.md` と `usecase.md` の両方があり**かつ**ユーザーの依頼が「用意済み spec からの scaffold」と読めるなら、**モード B** を選び Phase 5 へ直行。
+- それ以外は**モード A** を選び上流フェーズ（Phase 1–4）を回す。ディレクトリごと無い場合は通常の idea-first 開始 — エラー扱いしない。
 
-If the mode is ambiguous (specs exist but the user is clearly still designing), ask which they want rather than guessing.
+モードが曖昧（spec はあるがユーザーはまだ設計中）なら、推測せずどちらか尋ねる。
 
 ---
 
-## Upstream design phases (Mode A only) — Phases 1–4
+## 上流の設計フェーズ（モード A のみ）— Phase 1–4
 
-These upstream phases are grafted from the official `feature-dev` workflow, but wired to this repo's agents and constrained to its architecture. It reuses the existing **`Explore`** and **`Plan`** agents rather than introducing new ones.
+上流フェーズは公式 `feature-dev` ワークフローからの接ぎ木だが、このリポジトリのエージェントに配線し、アーキテクチャに拘束する。新エージェントを導入せず既存の **`Explore`** / **`Plan`** エージェントを流用する。
 
 ### Phase 1. Discovery + Clarifying Questions
 
-**Goal**: turn the idea into concrete, unambiguous requirements before any exploration or design.
+**目的**: 探索・設計の前に、アイデアを具体的で曖昧さのない要件へ落とす。
 
-1. Restate the feature request and the problem it solves; confirm scope boundaries with the user.
-2. Identify the underspecified aspects that matter for an onion endpoint: the resource + its invariants, the operations (and their HTTP shape), error/edge cases, auth (`security:`) needs, persistence shape, idempotency / transaction needs, pagination, and backward-compatibility with existing endpoints.
-3. Present the open questions with `ask the user explicitly` (group them; recommend a default per question). **Wait for answers** — the whole point of this phase is that nothing downstream is guessed. If the user says "whatever you think is best", record your recommendation and get explicit confirmation.
+1. feature 依頼と解こうとしている問題を再述し、スコープ境界をユーザーと確認。
+2. オニオン endpoint に効く未指定点を洗い出す: リソースとその不変条件、操作（と HTTP 形）、エラー/エッジケース、認証（`security:`）要否、永続化形、冪等性/トランザクション要否、ページング、既存エンドポイントとの後方互換。
+3. 未解決点を `ask the user explicitly` で提示（グルーピングし、各質問に既定案を推奨）。**回答を待つ** — このフェーズの主旨は下流を何も推測しないこと。「お任せ」と言われたら推奨を記録し明示確認を得る。
 
-Output: a short requirements summary (kept in the run context; not a committed file) that Phases 2–4 build on.
+出力: Phase 2–4 が土台にする短い要件サマリ（実行コンテキストに保持、コミットファイルにはしない）。
 
 ### Phase 2. Codebase Exploration
 
-**Goal**: ground the design in how this repo already does things, so the new feature integrates seamlessly instead of inventing a parallel pattern.
+**目的**: 設計をこのリポジトリの既存流儀に接地させ、並行パターンを発明せず自然に統合させる。
 
-Launch 2–3 **`Explore`** agents in parallel (single message), each on a different aspect, e.g.:
+**`Explore`** エージェントを 2〜3 並列（単一メッセージ）で起動、各々別の観点を担当。例:
 
-- "Find the endpoint(s) most similar to `<feature>` and trace the full controller→usecase→domain→infra flow; return the 5–10 key files."
-- "Map the domain + usecase conventions relevant to `<feature>` (entity/VO/Repository IF shape, boundary interfaces, DTO mapping); return key files."
-- "Identify the OpenAPI + sqlc + DI wiring an endpoint like `<feature>` touches (spec layout, migration/dml layout, `internal/di/module/*`); return key files."
+- 「`<feature>` に最も近い endpoint を特定し controller→usecase→domain→infra の全フローをトレース。重要 5〜10 ファイルを返す。」
+- 「`<feature>` に関わる domain + usecase 規約（entity/VO/Repository IF 形、boundary interface、DTO マッピング）を把握。重要ファイルを返す。」
+- 「`<feature>` のような endpoint が触る OpenAPI + sqlc + DI 配線（spec 配置、migration/dml 配置、`internal/di/module/*`）を特定。重要ファイルを返す。」
 
-When the agents return, **read the key files they surface** to build first-hand context. Present a concise summary of the patterns found (with `file:line` references) before designing.
+エージェント返却後、surface された**重要ファイルを実際に読み**一次情報を作る。設計前に、見つかったパターンを `file:line` 参照付きで簡潔にまとめて提示。
 
 ### Phase 3. Architecture Design
 
-**Goal**: choose how this feature is built *within the repo's rails*, with the trade-offs made explicit.
+**目的**: この feature を*リポジトリのレール内で*どう作るかを、trade-off を明示して選ぶ。
 
-Launch the **`Plan`** agent (1–3 focuses, e.g. minimal-change / clean-boundaries / pragmatic) to produce candidate approaches. **Constrain every approach to the fixed architecture** — the design space is *within* these rails, never around them:
+**`Plan`** エージェント（1〜3 観点。例: 最小変更 / クリーン境界 / 実利バランス）で候補案を出す。**全案を固定アーキテクチャに拘束する** — 設計空間はレールの*内側*であり、外側は不可:
 
-- Onion layering: `controller → usecase → domain`; infrastructure implements domain interfaces; no layer bypass (enforced by depguard).
-- lean A constitution: only `domain.md` + `usecase.md` are spec-driven; controller is derived from OpenAPI gen, infra from sqlc gen.
-- OpenAPI-first for the HTTP contract; sqlc for queries; no new frameworks or architectural patterns (per `AGENTS.md`).
+- オニオン層: `controller → usecase → domain`; infrastructure が domain interface を実装; 層迂回なし（depguard で強制）。
+- lean A 憲法: spec 駆動は `domain.md` + `usecase.md` のみ; controller は OpenAPI gen、infra は sqlc gen から導出。
+- HTTP 契約は OpenAPI-first; クエリは sqlc; 新フレームワーク・新アーキパターンなし（`AGENTS.md` 準拠）。
 
-So the approaches differ on *repo-legal* axes — e.g. where a computed value lives (domain method vs VO), repository vs query-service for a read path, synchronous write vs outbox, pagination style, how invariants are enforced — not on framework-level choices. Present each approach's trade-offs plus your recommendation, then **`ask the user explicitly` for which approach to use**.
+したがって各案は*リポジトリ内で合法な*軸で差が出る — 計算値の置き場（domain メソッド vs VO）、読みパスの repository vs query-service、同期 write vs outbox、ページング方式、不変条件の強制方法など — フレームワークレベルの選択ではない。各案の trade-off と推奨を提示し、**`ask the user explicitly` でどの案を採るか**尋ねる。
 
-### Phase 4. Draft the Input Artifacts
+### Phase 4. 入力アーティファクトのドラフト作成
 
-**Goal**: produce the core's preconditions as reviewable drafts (per the confirmed design), then hand off to generation.
+**目的**: 確定した設計に沿って、コアの前提条件をレビュー可能なドラフトとして作り、生成へ引き渡す。
 
-Following the chosen approach:
+選択した案に沿って:
 
-1. Chain `new-spec` to scaffold the `domain.md` + `usecase.md` templates, then **fill them** with the designed content (entities/invariants/behaviors/VOs/Repository methods; usecase interface/DTOs/dependencies/workflow). `new-spec` only creates identity-level templates — the design content comes from Phases 1–3.
-2. Draft the **OpenAPI YAML** under `openapi/**` (OpenAPI-first) and the **SQL** under `database/dml/**` + a **new** migration under `database/migrations/**` (new files only — never edit an existing migration).
-3. **Present the drafts to the user for review** (`ask the user explicitly`: 「このドラフトで生成に進みますか？」 / 修正指摘 / キャンセル). These are drafts — the user is the author-of-record and must approve before generation.
-4. After approval, run `make gen-api` + `make gen-query` (DB must be up — see the environment note) so the generated `gen/` + sqlc files exist for the core.
+1. `new-spec` を連鎖して `domain.md` + `usecase.md` テンプレートを起こし、設計内容を**記入する**（entity/不変条件/behavior/VO/Repository メソッド; usecase interface/DTO/依存/workflow）。`new-spec` は identity レベルのテンプレートしか作らない — 設計内容は Phase 1–3 由来。
+2. **OpenAPI YAML** を `openapi/**`（OpenAPI-first）、**SQL** を `database/dml/**` + **新規** migration を `database/migrations/**`（新規ファイルのみ — 既存 migration は編集しない）にドラフト。
+3. **ドラフトをユーザーレビューに出す**（`ask the user explicitly`: 「このドラフトで生成に進みますか？」 / 修正指摘 / キャンセル）。これはドラフト — ユーザーが author-of-record であり、生成前に承認が要る。
+4. 承認後、`make gen-api` + `make gen-query` を実行（DB 起動必須 — 環境注記参照）し、コア向けに生成 `gen/` + sqlc ファイルを揃える。
 
-Do **not** hand-write or edit any generated file (`*.gen.go`, `*.sql.go`, `*_mock.go`, `openapi.gen.yaml`). If a draft can't be completed without a decision only the user can make, stop and ask rather than inventing business content.
+生成ファイル（`*.gen.go`, `*.sql.go`, `*_mock.go`, `openapi.gen.yaml`）は**手書き・編集しない**。ユーザーにしか決められない判断でドラフトが完成しない場合は、業務内容を発明せず停止して尋ねる。
 
-When Phase 4 completes, the Phase-5+ preconditions hold and the flow continues into the (unchanged) core.
+Phase 4 完了時に Phase 5+ の前提が成立し、（無改変の）コアへ続く。
 
 ---
 
-## Core (both modes) — Phases 5–7
+## コア（両モード）— Phase 5–7
 
-### Phase 5. Verify Specs (auto-chain)
+### Phase 5. spec 検証（自動 chain）
 
-Invoke the `verify-spec` skill with the feature name. If `verify-spec` reports `violations > 0`, abort the chain:
+`verify-spec` skill を feature 名指定で起動。`verify-spec` が `violations > 0` を報告したら chain 中断:
 
 ```text
 scaffold can not safely proceed: verify-spec で <N> 件の違反が検出されました。
 spec を修正してから再度 /scaffold-endpoint を実行してください。
 ```
 
-If only warnings are reported, continue (warnings do not block).
+warning のみなら継続（warning は block しない）。
 
-### Phase 6. Chain Child Skills in Dependency Order
+### Phase 6. 依存順序で child skill chain
 
-Invoke each child skill in turn, passing the feature name in context so each child can resolve its spec path automatically:
+各 child skill を順に起動、feature 名を context として渡し各 child が spec パスを自動解決できるように:
 
-1. **`scaffold-domain`** — entity + Repository IF + VOs + constants + errors + tests (+ `make gen-api` for mock).
-2. **`scaffold-infra-db`** — Repository impl wrapping sqlc gen (requires `make gen-query` already run, verified internally).
-3. **`scaffold-usecase`** — Application Service + DTOs + tests (+ `make gen-api` for Usecase mock).
-4. **`scaffold-controller`** — Handler implementing `ServerInterface` + tests.
+1. **`scaffold-domain`** — entity + Repository IF + VOs + constants + errors + tests（+ mock 用 `make gen-api`）。
+2. **`scaffold-infra-db`** — sqlc gen ラップの Repository 実装（事前 `make gen-query` 実行済みを内部検証）。
+3. **`scaffold-usecase`** — Application Service + DTOs + tests（+ Usecase mock 用 `make gen-api`）。
+4. **`scaffold-controller`** — `ServerInterface` 実装 handler + tests。
 
-Between each child skill, propagate the success / failure status:
+child skill 間で成否ステータスを伝播:
 
-- **Child success** → proceed to next.
-- **Child failure** → halt the chain, surface the child's FB summary, do NOT proceed.
+- **child 成功** → 次へ。
+- **child 失敗** → chain 停止、child の FB summary を surface、進めない。
 
-Each child skill independently:
+各 child skill は独立に:
 
-- Asks its own plan confirmation `ask the user explicitly` (the user approves each layer's plan separately to keep judgment per-layer)
-- Invokes its own test-perspective subagent
-- Runs `make gen-api` if needed
-- Writes its own files
-- Runs `make fix` + `make test` after its writes
-- Surfaces TODO + FB on failure
+- 自身の plan 確認 `ask the user explicitly` を実施（layer ごとに user 判断を確保）
+- 自身の test 観点 subagent を起動
+- 必要なら `make gen-api` 実行
+- 自身のファイルを書き込み
+- 書き込み後 `make fix` + `make test` 実行
+- 失敗時 TODO + FB を surface
 
-If you want a "fully unattended" mode, the user can add `--auto-approve` (future flag) — but the default is to confirm each layer to keep human-in-the-loop on judgment-heavy steps.
+layer ごとにユーザー確認を挟むので、判断を要する箇所で human-in-the-loop が保たれる。
 
-### Phase 7. Integration Verification (make test + runtime curl + o11y)
+### Phase 7. 統合検証（make test + ランタイム curl + o11y）
 
-After all 4 child skills succeed, run a final consolidated check:
+全 4 child skill 成功後、統合最終検査:
 
 ```sh
 make fix
 make test
 ```
 
-This confirms the cross-layer integration (handler → usecase → domain → infra) compiles and tests pass as a whole. Surface the per-package coverage line for the 4 packages this scaffold touched. If `make test` fails here (rare — child skills already ran their own), surface the failure with TODO + FB and stop.
+cross-layer 統合（handler → usecase → domain → infra）が全体としてコンパイル / テスト通るか確認。本 scaffold が触った 4 パッケージのカバレッジ行を surface。ここで `make test` 失敗時（child が自身でテスト済みなのでまれ）は TODO + FB で surface して停止。
 
-Then run the **runtime verification (curl + o11y)**. `make test` uses **mocked usecases/repositories**, so it does NOT construct the real Fx graph, run the HTTP middleware (auth / OpenAPI validation), or touch the DB. A whole class of bugs only surfaces at runtime: a missing `security:` declaration (endpoint reachable without auth), an unregistered/mis-wired `BindHandler`, a DI provider mismatch, or a SQL filter that behaves differently against a real DB. **This is the correct place to curl** — all layers + DI now exist. Per-layer skills cannot do this (their lower layers / DI may be absent, so the app would not even boot).
+続いて**ランタイム動作確認（curl + o11y）**を実施。`make test` は **usecase / repository をモック**するため、実際の Fx グラフ・HTTP ミドルウェア（認証 / OpenAPI バリデーション）・DB を通らない。実機でしか出ないバグ群がある: `security:` 宣言漏れ（認証なしで到達）、`BindHandler` の未登録 / 配線ミス、DI provider 不整合、実 DB での SQL フィルタ挙動差など。**curl はここでやるのが正しい** — 全層 + DI がここで初めて揃う。per-layer スキルでは不可（下位層 / DI が無く起動すらしない）。
 
-Preconditions:
+前提:
 
-- `make serve` is running and the `api_server` log reached `[Fx] RUNNING` (the DI boot check from `scaffold-controller`).
-- `make db-init` has run (seeds local + test DB — the canonical setup).
+- `make serve` 稼働中で `api_server` ログが `[Fx] RUNNING` 到達（`scaffold-controller` の DI 起動確認）。
+- `make db-init` 実行済み（local + test を seed する正準セットアップ）。
 
-Steps:
+手順:
 
-1. **Pick or create a target in a known state.** If the operation needs an existing row, use a seeded id or create one first via the create endpoint. For credential/state-sensitive checks (e.g. password change), create a row whose plaintext/state you control (a `psql` insert with a known bcrypt hash is acceptable for local verification).
-2. **curl the new endpoint(s)** (auth header for local: `Authorization: Bearer debug:<subject>`) and assert:
-   - the route is reachable — a non-404-from-router response proves the handler is registered and DI is wired;
-   - the happy path returns the expected status/body;
-   - the key error paths: NotFound (404), validation (400/422), and — **if the operation declares `security:`** — no-token ⇒ 401 (verify the endpoint is actually protected);
-   - the mutation **actually took effect** (re-read / re-auth with the new state), not merely a 2xx.
-3. **Read the o11y logs once** for a single request: confirm the trace spans the full stack (controller → usecase → infra) and the emitted SQL is what you expect. After this one capture, further re-checks can rely on o11y instead of re-curling.
+1. **既知状態の対象を用意する。** 既存行が要るなら seed 済み id を使うか、作成エンドポイントで先に作る。資格情報 / 状態依存の確認（例: パスワード変更）は、平文 / 状態を自分が把握する行を作る（ローカル検証なら既知 bcrypt ハッシュの `psql` insert でも可）。
+2. **新エンドポイントを curl**（ローカル認証は `Authorization: Bearer debug:<subject>`）し、以下を確認:
+   - ルート到達 — ルータ 404 でない応答 = ハンドラ登録 / DI 配線 OK の証拠；
+   - 正常系が期待どおりの status / body；
+   - 主要異常系: NotFound (404)、バリデーション (400/422)、**`security:` 宣言があるなら** no-token ⇒ 401（保護が効いているか）；
+   - 変更が**実際に反映**されたか（新状態で再取得 / 再認証）。2xx だけで満足しない。
+3. **o11y ログを 1 回確認**: 1 リクエスト分のトレースが全層（controller → usecase → infra）を貫き、発行 SQL が想定どおりかを見る。この 1 回の確認後は、再確認を curl ではなく o11y に頼れる。
 
-Shared-schema impact: if the change edits a **shared** OpenAPI component (e.g. a `components/schemas/*` or `components/requests/*` referenced by more than one operation), the runtime check must cover **every** endpoint that references it — not just the new/changed one. Grep the spec for `$ref`s to the edited file and curl each consumer. A shared-schema edit can silently break sibling endpoints the mocked tests never exercise (e.g. removing a property from a base used via `allOf`, or `additionalProperties: false` rejecting a sibling's property → `POST` create breaks while the new endpoint looks fine).
+共有スキーマの波及: 変更が**共有** OpenAPI コンポーネント（複数オペレーションから参照される `components/schemas/*` や `components/requests/*`）に及ぶ場合、ランタイム確認は**新規/変更したエンドポイントだけでなく、それを参照する全エンドポイント**を対象にする。編集したファイルへの `$ref` を spec から grep し、各 consumer を curl する。共有スキーマ編集は、モックテストが通らない兄弟エンドポイントを静かに壊しうる（例: `allOf` で使う基底からプロパティ削除、`additionalProperties: false` が兄弟のプロパティを拒否 → 新エンドポイントは正常に見えるのに `POST` 作成が壊れる）。
 
-Destructive guard: if a curl mutates data and the only way to restore the prior state is `make db-init` (or equivalent), **confirm with the user before running it** (per `AGENTS.md`). Clean up any rows you created for verification.
+破壊的ガード: curl がデータを変更し、元に戻す手段が `make db-init`（等）しかない場合は、**実行前にユーザー確認**（`AGENTS.md` 準拠）。検証用に作成した行は後始末する。
 
-If any check fails, surface TODO + FB and stop (do NOT commit).
+いずれか失敗時は TODO + FB を surface して停止（コミットしない）。
 
 ---
 
-## Review & closing (both modes) — Phases 8–9
+## レビュー・クロージング（両モード）— Phase 8–9
 
-### Phase 8. Quality Review (reuse the repo's review skills)
+### Phase 8. 品質レビュー（repo のレビュースキル再利用）
 
-The scaffold + runtime check proves the feature is *built and boots*. This phase judges whether it is *good* — using the repo's own review skills rather than a generic reviewer, because they encode this codebase's rules and run reviewers on a different model than the implementer:
+scaffold + ランタイム確認は feature が*構築され起動する*ことを示す。このフェーズは*良いか*を判定する — 汎用 reviewer ではなくリポジトリ自身のレビュースキルを使う。これらはこのコードベースのルールを内包し、実装者とは別モデルで reviewer を走らせるため:
 
-- **`impl-review`** — adversarial correctness / security / architecture / runtime-gap + comment quality on the new change.
-- **`arch-check`** — layer-compliance audit across the touched layers (depguard-level boundaries, lean A conventions).
-- **`test-review`** — quality of the generated tests (structural compliance + viewpoint coverage + semantic strength).
+- **`impl-review`** — 新変更に対する敵対的な correctness / security / architecture / runtime-gap + コメント品質。
+- **`arch-check`** — 触れた層の layer-compliance 監査（depguard レベルの境界、lean A 規約）。
+- **`test-review`** — 生成テストの品質（構造準拠 + 観点カバレッジ + 意味的強度）。
 
-Run them scoped to this feature's change. Consolidate the findings, surface the highest-severity ones, and **`ask the user explicitly`**: 「指摘を今修正 / 後で / このまま進む」. Address per the user's choice. This phase is read-only detection; applying fixes is a deliberate, separately-confirmed step (these reviewers never auto-edit).
+この feature の変更にスコープして実行。指摘を集約し、最重要を surface し、**`ask the user explicitly`**: 「指摘を今修正 / 後で / このまま進む」。ユーザーの選択に沿って対応。本フェーズは read-only 検出であり、修正適用は別途明示確認するステップ（これら reviewer は自動編集しない）。
 
-### Phase 9. Closing
+### Phase 9. クロージング
 
-Print a Japanese summary:
+日本語サマリ:
 
 ```text
 scaffold-endpoint 完了（feature: <feature>, mode: <A/B>）。
@@ -247,46 +245,44 @@ scaffold-endpoint 完了（feature: <feature>, mode: <A/B>）。
   - /submit-pr で PR 作成
 ```
 
-If any phase failed, output the failure status table with the FB from the failing phase/child, and the user decides whether to fix forward.
+いずれかのフェーズ失敗時は失敗ステータス表 + 失敗フェーズ/child の FB を出力、user が fix-forward を判断。
 
-Do NOT commit. Do NOT push.
+commit しない。push しない。
 
-## AI Modification Scope
+## AI 修正スコープ
 
-- **Mode B**: this skill writes no files. All scope is delegated to child skills, each within their own constraints (see their SKILL.md).
-- **Mode A**: additionally, the upstream phases draft input artifacts in Phase 4 — only under `openapi/**`, `database/dml/**`, `database/migrations/**` (new files only), and `docs/spec/<feature>/**` (all inside the `AGENTS.md` AI modification scope). It never writes Go source and never touches generated files.
+- **モード B**: 本 skill 自体はファイルを書かない。全スコープは child skill に委譲（各 SKILL.md の constraint 参照）。
+- **モード A**: 加えて上流フェーズが Phase 4 で入力アーティファクトをドラフトする — `openapi/**`、`database/dml/**`、`database/migrations/**`（新規ファイルのみ）、`docs/spec/<feature>/**`（いずれも `AGENTS.md` の AI 修正スコープ内）に限る。Go ソースは書かず、生成ファイルにも触れない。
 
-## Constraints
+## 制約事項
 
-- ❌ Force the upstream phases (Phases 1–4) when Mode B inputs already exist — detect and skip.
-- ❌ Skip straight to `verify-spec` when the specs do not exist yet — the upstream phases must produce them first (Mode A).
-- ❌ Let an architecture approach (Phase 3) step outside the onion / lean A / OpenAPI-first / sqlc rails — the design space is within them.
-- ❌ Invent business content in Phase 4 — draft from the confirmed design; stop and ask on a genuine gap.
-- ❌ Edit generated files (`*.gen.go`, `*.sql.go`, `*_mock.go`, `openapi.gen.yaml`) or an existing migration.
-- ❌ Modify any Go source directly (delegate to child skills).
-- ❌ Skip `verify-spec` (Phase 5) — it is the safety net for spec consistency.
-- ❌ Proceed past a failing child skill — halt and surface FB.
-- ❌ Auto-rollback files written by a successful earlier phase/child when a later one fails — the user decides.
-- ❌ Skip the feature-confirmation `ask the user explicitly` (Phase 0).
-- ✅ Japanese user-facing output.
-- ✅ Reuse the existing `Explore` / `Plan` agents for the upstream phases (no new agent types).
-- ✅ Run child skills in the documented dependency order (domain → infra-db → usecase → controller).
-- ✅ Surface a consolidated final report covering every phase that ran + the final `make test`.
-- ✅ Let each child skill ask its own confirmation per layer (human-in-the-loop on judgment-heavy steps).
-- ✅ Run the runtime curl + o11y verification (Phase 7) — `make test` alone does not exercise DI / middleware / DB.
-- ✅ Reuse `impl-review` / `arch-check` / `test-review` for the Quality Review (Phase 8), not a generic reviewer.
-- ✅ Confirm with the user before any destructive curl whose only restore path is `make db-init`.
+- ❌ モード B の入力が既に存在するのに上流フェーズ（Phase 1–4）を強制 — 検出してスキップ。
+- ❌ spec がまだ無いのに `verify-spec` へ直行 — 上流フェーズが先に生成すべき（モード A）。
+- ❌ アーキテクチャ案（Phase 3）を onion / lean A / OpenAPI-first / sqlc のレール外へ出す — 設計空間はレール内。
+- ❌ Phase 4 で業務内容を発明 — 確定設計からドラフトし、本当の欠落は停止して尋ねる。
+- ❌ 生成ファイル（`*.gen.go`, `*.sql.go`, `*_mock.go`, `openapi.gen.yaml`）や既存 migration を編集。
+- ❌ Go ソースを直接変更（child skill に委譲）。
+- ❌ `verify-spec`（Phase 5）をスキップ — spec 整合性の safety net。
+- ❌ 失敗した child skill を素通り — 停止して FB surface。
+- ❌ 後段フェーズ/child 失敗時に成功済み earlier の書き込みを自動 rollback — user 判断。
+- ❌ feature 確認 `ask the user explicitly`（Phase 0）をスキップ。
+- ✅ ユーザー向け出力は日本語。
+- ✅ 上流フェーズは既存の `Explore` / `Plan` エージェントを流用（新エージェント型なし）。
+- ✅ 依存順序（domain → infra-db → usecase → controller）で child 起動。
+- ✅ 実行した全フェーズ + 最終 `make test` を統合した最終レポートを surface。
+- ✅ 各 child skill が自身の確認を layer ごとに取る（judgment-heavy step で human-in-the-loop）。
+- ✅ ランタイム curl + o11y 確認（Phase 7）を実施 — `make test` だけでは DI / ミドルウェア / DB を通らない。
+- ✅ 品質レビュー（Phase 8）は汎用 reviewer でなく `impl-review` / `arch-check` / `test-review` を再利用。
+- ✅ 元に戻す手段が `make db-init` しかない破壊的 curl は実行前にユーザー確認。
 
-## Checklist
+## チェックリスト
 
-Before reporting completion, confirm:
-
-- [ ] Feature name confirmed via `ask the user explicitly`; entry mode (A/B) detected (Phase 0)
-- [ ] **Mode A**: requirements clarified (Phase 1) → codebase explored via `Explore` (Phase 2) → approach chosen via `Plan` within the rails (Phase 3) → input artifacts drafted, user-approved, and `make gen-api`/`gen-query` run (Phase 4)
-- [ ] `verify-spec` ran; chain aborted if any violation (Phase 5)
-- [ ] `scaffold-domain` / `-infra-db` / `-usecase` / `-controller` each ran successfully (or failed and chain halted) (Phase 6)
-- [ ] Final `make fix` + `make test` run after all child skills; runtime curl / auth / key error paths / o11y trace confirmed (Phase 7)
-- [ ] Quality Review ran (`impl-review` + `arch-check` + `test-review`); findings surfaced and fix decision taken (Phase 8)
-- [ ] Consolidated Japanese summary with per-layer file counts and coverage (Phase 9)
-- [ ] No commits / pushes
-- [ ] On any failure, this skill did NOT auto-rollback already-written files
+- [ ] feature 名を `ask the user explicitly` で確認; エントリモード（A/B）判定（Phase 0）
+- [ ] **モード A**: 要件明確化（Phase 1）→ `Explore` で探索（Phase 2）→ レール内で `Plan` により案選択（Phase 3）→ 入力アーティファクトをドラフト・ユーザー承認・`make gen-api`/`gen-query` 実行（Phase 4）
+- [ ] `verify-spec` 実行、違反時は chain 中断（Phase 5）
+- [ ] `scaffold-domain` / `-infra-db` / `-usecase` / `-controller` 各々成功実行（または失敗時 chain 停止）（Phase 6）
+- [ ] 全 child 成功後に最終 `make fix` + `make test`; ランタイム curl / 認証 / 主要異常系 / o11y トレース確認（Phase 7）
+- [ ] 品質レビュー実行（`impl-review` + `arch-check` + `test-review`）; 指摘 surface と対応判断（Phase 8）
+- [ ] layer ごとのファイル数 + カバレッジを含む統合日本語サマリ（Phase 9）
+- [ ] commit / push なし
+- [ ] いずれの失敗時も書き込み済みファイルを自動 rollback していない

@@ -5,51 +5,49 @@ description: Create the usecase layer spec template at `docs/spec/<feature>/usec
 
 # New Spec — Usecase
 
-Create the usecase layer spec template for one feature.
+1 feature の usecase 層 spec テンプレートを作成するスキル。
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+## 使うとき
 
-## When to Use
+- 新規 feature 開始で usecase 層 spec テンプレが欲しい
+- 既存 feature ディレクトリに usecase spec だけ追加
 
-- Starting a new feature and need the usecase layer spec template.
-- Adding the usecase spec to an existing feature directory.
+以下の用途には使いません:
 
-Do NOT use this skill for:
+- 既存 `usecase.md` の編集 — エディタで直接
+- spec から Go コード生成 — `scaffold-usecase`
+- spec 整合性検証 — `verify-spec`
+- 2 層 (domain + usecase) を一括作成 — 統合 `new-spec`（lean A: controller / infra は OpenAPI gen + sqlc gen から導出されるため spec 不要）
 
-- Editing an existing `usecase.md` — open in the editor directly.
-- Generating Go code from spec — that's `scaffold-usecase`.
-- Validating spec consistency — that's `verify-spec`.
-- Creating both layer specs (domain + usecase) in one go — use the integrator `new-spec`. lean A only requires these two specs; controller / infra are derived from OpenAPI gen + sqlc gen, no spec file.
+## 読み書き範囲
 
-## What This Skill Reads / Writes
+**読み込み（常時）**:
 
-**Reads (always)**:
+- `.claude/scaffold-spec/usecase-spec.md` — usecase 層の canonical 節リスト
+- `docs/spec/<feature>/` — `usecase.md` 既存確認
 
-- `.claude/scaffold-spec/usecase-spec.md` — canonical section list for the usecase layer.
-- `docs/spec/<feature>/` — checks whether `usecase.md` already exists.
+**書き込み（承認後）**:
 
-**Writes (with confirmation)**:
+- `docs/spec/<feature>/usecase.md` — テンプレートファイル
 
-- `docs/spec/<feature>/usecase.md` — template file.
+**触らない**:
 
-**Never touches**:
+- 既存 `usecase.md`（あれば中断）
+- 他層の spec ファイル
 
-- Existing `usecase.md` (aborts if found).
-- Any other layer's spec file.
+## 最初のステップ: identity 確認
 
-## First Step: Confirm Identity
+`AskUserQuestion` 起動直後（`new-spec` 統合から context 提供時は除く）:
 
-This skill **MUST call `AskUserQuestion` immediately after invocation** (unless invoked from `new-spec` integrator with the feature name in context):
+1. **feature 名** — フリーテキスト、kebab-case
+2. **usecase パッケージ名** — フリーテキスト、lowercase（例: `user`, `order`）
+3. **Usecase interface 名** — フリーテキスト、既定 `Usecase`（PascalCase）
 
-1. **Feature name** — free-text, kebab-case. Validate `^[a-z][a-z0-9-]*$`.
-2. **Usecase package name** — free-text, lowercase (e.g., `user`, `order`).
-3. **Usecase interface name** — free-text, default `Usecase` (PascalCase).
+`docs/spec/<feature>/usecase.md` 既存なら中断。
 
-If `docs/spec/<feature>/usecase.md` exists → abort. Otherwise create `docs/spec/<feature>/` if missing.
+## Step 1. 節定義の読み込み
 
-## Step 1. Read Section Definitions
-
-Read `.claude/scaffold-spec/usecase-spec.md` for the canonical section list:
+`.claude/scaffold-spec/usecase-spec.md` から canonical 節リスト:
 
 1. Overview
 2. Interface
@@ -57,30 +55,28 @@ Read `.claude/scaffold-spec/usecase-spec.md` for the canonical section list:
 4. Dependencies
 5. Workflow
 
-NEVER hardcode — re-read the spec format file each run.
+ハードコードしない — 実行時に spec format ファイル再読込。
 
-## Step 2. Generate the Template
+## Step 2. テンプレ生成
 
-Assemble Markdown with H1 title `<FeatureName Display> — Usecase Spec`, then per section:
+H1 `<FeatureName Display> — Usecase Spec`、続けて各節:
 
-- Overview: single `TODO:` line
-- Interface: YAML code block with `package` / `name` / `methods` (1 placeholder method)
-- DTOs: YAML code block with placeholder DTO struct
-- Dependencies: YAML code block with placeholder boundary list
-- Workflow: H3 per method with YAML block (`tx_required` / `steps` / `calls` / `errors`)
+- Overview: `TODO:` 1 行
+- Interface: YAML（`package` / `name` / `methods` プレースホルダ 1 件）
+- DTOs: YAML プレースホルダ DTO 構造体
+- Dependencies: YAML プレースホルダ boundary リスト
+- Workflow: メソッドごと H3 + YAML（`tx_required` / `steps` / `calls` / `errors`）
 
-Use the example output shown in `.claude/scaffold-spec/usecase-spec.md` as the literal template format.
+`.claude/scaffold-spec/usecase-spec.md` の出力例を template として使用。
 
-## Step 3. Confirm and Write
+## Step 3. 承認と書き込み
 
-Display proposed path + first ~20 lines, then ask:
+提案パス + テンプレ冒頭 20 行を表示:
 
 - 「以下の内容で `docs/spec/<feature>/usecase.md` を作成しますか？」
-- Options: 「作成する」 / 「キャンセル」
+- 選択肢: 「作成する」 / 「キャンセル」
 
-If approved, `mkdir -p docs/spec/<feature>` and `Write` the file.
-
-## Step 4. Closing
+## Step 4. クロージング
 
 ```text
 docs/spec/<feature>/usecase.md を作成しました。次は editor で TODO を埋めてください。
@@ -88,26 +84,26 @@ domain spec も必要なら new-spec-domain または統合 new-spec を使っ�
 （lean A 構成: controller / infra spec は不要、OpenAPI gen + sqlc gen から導出されます）。
 ```
 
-## AI Modification Scope
+## AI 修正スコープ
 
-- Write scope: new files under `docs/spec/<feature>/` only.
-- Aborts if `usecase.md` exists.
+- 書き込み: `docs/spec/<feature>/` 配下の新規ファイルのみ
+- `usecase.md` 既存時は中断
 
-## Constraints
+## 制約事項
 
-- ❌ Overwrite an existing `usecase.md`
-- ❌ Invent business content (methods / DTOs / workflow)
-- ❌ Hardcode section list (always read `.claude/scaffold-spec/usecase-spec.md`)
-- ❌ Skip the identity `AskUserQuestion`
-- ❌ Touch any layer other than `usecase.md`
-- ✅ Japanese user-facing output
-- ✅ Validate feature name kebab-case + package name lowercase
+- ❌ 既存 `usecase.md` の上書き
+- ❌ 業務内容（メソッド / DTO / workflow）を発明
+- ❌ 節リストをハードコード
+- ❌ identity `AskUserQuestion` をスキップ
+- ❌ `usecase.md` 以外の layer に触る
+- ✅ ユーザー向け出力は日本語
+- ✅ feature 名 kebab-case + パッケージ名 lowercase を検証
 
-## Checklist
+## チェックリスト
 
-- [ ] Feature + package + interface name confirmed via `AskUserQuestion`
-- [ ] `.claude/scaffold-spec/usecase-spec.md` read for current section list
-- [ ] `usecase.md` did NOT already exist (skill aborts otherwise)
-- [ ] Template written with H2 sections + YAML codeblocks + TODO markers
-- [ ] Final summary in Japanese
-- [ ] Only `docs/spec/<feature>/usecase.md` was written
+- [ ] feature + パッケージ + interface 名を `AskUserQuestion` で確認
+- [ ] `.claude/scaffold-spec/usecase-spec.md` を読んで現行節リスト取得
+- [ ] `usecase.md` 未存在（あれば中断）
+- [ ] H2 節 + YAML + TODO でテンプレを書き出し
+- [ ] 最終サマリは日本語
+- [ ] `docs/spec/<feature>/usecase.md` のみ書き込み

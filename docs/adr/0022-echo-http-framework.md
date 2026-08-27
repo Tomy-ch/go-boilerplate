@@ -5,92 +5,63 @@ deciders: [maintainers]
 tags: [http, framework]
 ---
 
-# ADR-0022: Adopt Echo as the HTTP framework
+# ADR-0022: HTTP フレームワークとして Echo を採用する
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-This repository needs an HTTP framework for routing and middleware that is lightweight,
-predictable, and imposes low abstraction over the standard library, consistent with the
-design goals of maintainability and structural safety over raw feature richness.
+このリポジトリはルーティングとミドルウェアのための HTTP フレームワークを必要としている。軽量で予測可能であり、標準ライブラリへの抽象化が低く、保守性と構造的安全性を生の機能の豊富さより重視するという設計目標に一致していることが求められる。
 
-Echo v4 receives security and bug fixes only, so a repository that gates dependency
-vulnerabilities in CI cannot keep an end-of-life HTTP framework. Echo v5 is the maintained
-line, and the surrounding ecosystem (OpenAPI validation, OpenTelemetry instrumentation)
-supplies v5 counterparts through separate modules.
+Echo v4 はセキュリティ修正とバグ修正のみを受ける状態であり、依存の脆弱性を CI でゲートするリポジトリが EOL の HTTP フレームワークを抱え続けることはできない。Echo v5 が保守される系列であり、周辺エコシステム（OpenAPI バリデーション・OpenTelemetry 計装）も別モジュールとして v5 対応を提供している。
 
-## Decision
+## 決定
 
-Adopt **Echo v5** (`labstack/echo/v5`) for HTTP routing and middleware, together with the
-two ecosystem modules the HTTP stack depends on:
+HTTP ルーティングとミドルウェアに **Echo v5**（`labstack/echo/v5`）を採用し、HTTP スタックが依存するエコシステムの 2 モジュールも併せて採用する。
 
-| Concern | Module |
+| 関心事 | モジュール |
 | --- | --- |
-| Routing / middleware | `github.com/labstack/echo/v5` |
-| OpenAPI request validation | `github.com/oapi-codegen/echo-v5-middleware` |
-| OpenTelemetry instrumentation | `github.com/labstack/echo-opentelemetry` |
+| ルーティング / ミドルウェア | `github.com/labstack/echo/v5` |
+| OpenAPI リクエストバリデーション | `github.com/oapi-codegen/echo-v5-middleware` |
+| OpenTelemetry 計装 | `github.com/labstack/echo-opentelemetry` |
 
-`echo-opentelemetry` is pre-1.0 but is listed in Echo's own "official middleware
-repositories" and is maintained by Echo maintainers; the OTel contrib instrumentation for
-Echo is v4-only and its maintainers declined v5 support, pointing at this module instead.
-The version number reflects a conservative first numbering of a new package rather than an
-unstable API, and its dependency set matches the OTel version this repository already pins.
+`echo-opentelemetry` は pre-1.0 だが、Echo 自身の「official middleware repositories」に掲載され Echo のメンテナが保守している。OTel contrib の Echo 計装は v4 専用であり、そのメンテナは v5 対応を見送ってこのモジュールを案内している。版番号は新規パッケージの保守的な採番であって API の不安定さを示すものではなく、依存する OTel のバージョンは本リポジトリが既に固定しているものと一致する。
 
-**Server lifecycle is owned by the application, not by the framework.** Echo v5 removed the
-server fields and start/stop methods on `Echo` and concentrated them in `StartConfig`,
-whose model is "block until the context is cancelled, then shut down within its own
-graceful timeout". That does not compose with a DI container that separates start and stop
-hooks, so the application constructs its own `http.Server` with `Echo` as the handler. The
-listener is opened in the start hook (so a bind failure fails fast and aborts startup) and
-`Shutdown` is driven by the stop hook's context. `http.Server` is also where the
-per-request timeouts live now that `Echo.Server` is gone.
+**サーバーのライフサイクルはフレームワークではなくアプリケーションが持つ。** Echo v5 は `Echo` からサーバーのフィールドと起動・停止メソッドを削除し `StartConfig` へ集約した。そのモデルは「context がキャンセルされるまでブロックし、その後は自前の graceful timeout 内で停止する」というもので、起動と停止のフックを分離する DI コンテナと噛み合わない。そのためアプリケーションは `Echo` をハンドラとする `http.Server` を自前で構築する。リスナは起動フックで開くため bind 失敗は即座に起動を中断でき、`Shutdown` は停止フックの context が駆動する。`Echo.Server` が無くなった今、リクエストのタイムアウトの置き場も `http.Server` である。
 
-**Error detail on spans follows semantic conventions.** The v4 instrumentation put the
-error text on the span as a non-standard `echo.error` attribute; the v5 instrumentation
-records `error.type` instead, and the error text still reaches the span status description
-for 5xx and the trace-correlated application logs. This repository does not add a hook to
-restore the old attribute.
+**span のエラー詳細は semantic conventions に従う。** v4 の計装はエラー本文を非標準の `echo.error` 属性として span に載せていたが、v5 の計装は代わりに `error.type` を記録する。エラー本文は 5xx では span status の description に入り、トレースと相関するアプリケーションログにも残る。旧属性を復元するフックは追加しない。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Simple, clear middleware structure that the priority-ordered middleware chain builds on.
-- Low abstraction over the standard `net/http` model.
-- Good performance for a general-purpose backend.
-- The client address on spans is derived from the configured `IPExtractor` rather than the
-  raw forwarded header, so a spoofed header no longer reaches telemetry.
+- 優先順位付きミドルウェアチェーンが構築するシンプルで明確なミドルウェア構造。
+- 標準の `net/http` モデルへの低い抽象化。
+- 汎用バックエンドとして十分なパフォーマンス。
+- span のクライアントアドレスが生の転送ヘッダではなく設定済みの `IPExtractor` 由来になるため、偽装ヘッダがテレメトリへ届かなくなる。
 
-### Negative Consequences
+### ネガティブな影響
 
-- A framework dependency in the controller layer; handlers couple to `*echo.Context`, kept
-  contained at the controller boundary (never leaking inward).
-- The OpenTelemetry instrumentation is a pre-1.0 module with a small maintainer base. It is
-  reachable only through one middleware slot, and disabling tracing drops the whole
-  integration back to a passthrough middleware, so a failure there degrades telemetry
-  without taking down the server.
+- コントローラー層にフレームワーク依存が生じる。ハンドラーは `*echo.Context` に結合されるが、コントローラー境界に封じ込められる（内側に漏れることはない）。
+- OpenTelemetry 計装はメンテナの少ない pre-1.0 モジュールである。到達点はミドルウェアスロット 1 箇所に限られ、トレースを無効化すれば統合全体が素通しミドルウェアへ落ちるため、そこでの障害はサーバーを落とさずテレメトリの劣化に留まる。
 
-## Alternatives Considered
+## 検討した代替案
 
 ### Gin
 
-A very similar framework, but Echo's middleware structure is slightly simpler.
+非常に似たフレームワークだが、Echo のミドルウェア構造の方がわずかにシンプルである。
 
 ### Chi
 
-An excellent router, but Echo provides a more complete set of framework features
-out of the box.
+優れたルーターだが、Echo はすぐに使えるフレームワーク機能をより完全なセットで提供する。
 
-### Wrapping the framework with `otelhttp` instead of Echo-specific instrumentation
+### Echo 固有の計装ではなく `otelhttp` で包む
 
-`otelhttp` is already a dependency and would sit outside Echo as a plain `http.Handler`,
-but it cannot see the route template, so span names degrade to the raw path and the
-metric cardinality follows. Kept as an escape hatch, not as the default.
+`otelhttp` は既に依存に入っており、Echo の外側に素の `http.Handler` として置ける。しかしルートテンプレートを参照できないため span 名が生パスへ退化し、メトリクスのカーディナリティもそれに追随する。既定ではなく避難先として保持する。
 
-## Notes
+## 補足
 
-- The middleware chain design (priority-ordered, data-driven) and the HTTP-stack layering are recorded separately (see the HTTP-layer ADRs in [the ADR log](README.md)).
-- Migrated from the former `docs/decisions.md`.
+- ミドルウェアチェーンの設計（優先順位付き・データ駆動）と HTTP スタックの層構成は別途記録している（[ADR ログ](README.md) の HTTP 層 ADR を参照）。
+- かつての `docs/decisions.md` から移行。

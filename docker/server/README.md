@@ -1,46 +1,46 @@
 # server Dockerfile
 
-This Dockerfile defines the application server images. It uses multi-stage builds to provide targets for production and local development.
+アプリケーションサーバーの Docker イメージを定義する Dockerfile です。マルチステージビルドにより、本番・ローカル開発の各ターゲットを提供します。
 
-## Role
+## 役割
 
-`docker/server/Dockerfile` is the single source of truth for every server-side container the project ships. One Dockerfile produces three targets (`builder` / `runtime` / `tooling`) so that production deploys and local hot-reload development stay aligned on the same base layers and Go toolchain version. Keeping these in one place avoids drift between "what runs in production" and "what runs on a developer's laptop" while letting each target add only what it needs (e.g., dev tools live only in `tooling`). Schema migrations run from the `runtime` image via command override, so no dedicated migration target exists.
+`docker/server/Dockerfile` はこのプロジェクトで使用するサーバーサイドコンテナすべての single source of truth です。1 つの Dockerfile から 3 ターゲット（`builder` / `runtime` / `tooling`）を生成することで、本番デプロイとローカル開発のホットリロード環境が同じベースレイヤーと Go ツールチェインバージョンに揃った状態を保ちます。本番と開発者ローカルの drift を回避しつつ、各ターゲットは必要なものだけを追加する設計（例: 開発ツールは `tooling` にのみ含める）です。スキーママイグレーションは `runtime` イメージを command override で実行するため、専用のマイグレーションターゲットは持ちません。
 
-## Build Targets
+## ビルドターゲット
 
-|Target|Base Image|Purpose|
+|ターゲット|ベースイメージ|用途|
 |---|---|---|
-|`builder`|`golang:1.26.6-alpine`|Build the Go binary with `ldflags` (version/revision/build date)|
-|`runtime`|`alpine:3.24`|Production runtime container (non-root `app` user); also runs migrations via command override|
-|`tooling`|`golang:1.26.6-alpine`|Local development environment (hot reload + debugging)|
+|`builder`|`golang:1.26.6-alpine`|Go バイナリのビルド（`ldflags` でバージョン / リビジョン / ビルド日時を埋め込み）|
+|`runtime`|`alpine:3.24`|本番実行用コンテナ（非 root ユーザー `app`）。command override でマイグレーションも実行|
+|`tooling`|`golang:1.26.6-alpine`|ローカル開発環境（ホットリロード + デバッグ）|
 
 ## runtime
 
-- Runs as non-root user (`app`)
-- Builds with `vendor` mode (`GOPROXY=off`)
-- Embeds version / revision / build date via `-ldflags`
-- Embeds `env/.env` and `database/migrations` into the binary. The `builder` stage materializes the target env via the `APP_ENV` build arg (`cp env/.env.${APP_ENV} env/.env`) before `go build`
-- Default command: `./server serve`
-- Migrations run from this same image via command override (`./server migrate-up`) as a one-shot job before deployment; no separate migration image is needed
+- 非 root ユーザー（`app`）で実行
+- `vendor` モードでビルド（`GOPROXY=off`）
+- `-ldflags` でバージョン / リビジョン / ビルド日時を埋め込み
+- `env/.env` と `database/migrations` をバイナリへ埋め込み。`builder` ステージが `APP_ENV` ビルド引数で対象 env を材料化する（`go build` 前に `cp env/.env.${APP_ENV} env/.env`）
+- デフォルトコマンド: `./server serve`
+- マイグレーションは同一イメージを command override（`./server migrate-up`）でデプロイ前に一度だけ実行。専用イメージは不要
 
-## tooling (Local Development)
+## tooling（ローカル開発）
 
-Pre-installed tools:
+プリインストールされるツール：
 
-|Tool|Purpose|
+|ツール|用途|
 |---|---|
-|`air`|Hot reload|
-|`dlv`|Go debugger|
-|`golines`|Line-length-limited formatting|
-|`gofumpt`|Enhanced gofmt|
-|`golangci-lint`|Go linter|
-|`lefthook`|Git hooks runner|
+|`air`|ホットリロード|
+|`dlv`|Go デバッガ|
+|`golines`|行長制限付き整形|
+|`gofumpt`|gofmt 強化版|
+|`golangci-lint`|Go リンター|
+|`lefthook`|Git フックランナー|
 
-OS-level packages: `build-base`, `binutils-gold`, `bash`, `curl`, `git`, `upx`, `libc6-compat`, `gcompat`, `tzdata`, `make`
+OS レベルパッケージ: `build-base`, `binutils-gold`, `bash`, `curl`, `git`, `upx`, `libc6-compat`, `gcompat`, `tzdata`, `make`
 
-Default command: `air -c .air.toml`
+デフォルトコマンド: `air -c .air.toml`
 
-## docker-compose Service
+## docker-compose サービス
 
 ```yaml
 api_server:
@@ -49,7 +49,7 @@ api_server:
   ports: 8080 (API), 2345 (dlv), 6060 (pprof)
 ```
 
-## Notes
+## 注意点
 
-- `tooling` target installs tools at the versions pinned in `mise.toml` (the version SSOT), keeping local and CI parity
-- Working directory is `/app` for all targets
+- `tooling` ターゲットはツールを `mise.toml`（バージョンの SSOT）で pin されたバージョンで install し、ローカルと CI のバージョンを揃える
+- すべてのターゲットで作業ディレクトリは `/app`

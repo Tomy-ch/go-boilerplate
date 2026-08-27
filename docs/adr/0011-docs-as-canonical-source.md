@@ -5,169 +5,71 @@ deciders: [maintainers]
 tags: [foundational, docs]
 ---
 
-# ADR-0011: Docs-as-canonical-source strategy
+# ADR-0011: ドキュメントを正典ソースとする戦略
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-The project documentation serves two distinct audiences with different needs:
+このプロジェクトのドキュメントは、異なるニーズを持つ 2 つの読者層にサービスを提供している。
 
-- **AI agents** — need precise, unambiguous English technical prose to generate correct code
-  and follow correct workflows. They must read a single authoritative source; reading
-  translations introduces translation-lag risk. Additionally, AI tools typically consume
-  approximately 1.5–2.0× more tokens when processing Japanese text and carry a higher risk of
-  misreading and hallucination, making English the more reliable input language for agents.
-<!-- doc-pair:replace-begin -->
-- **Human developers** — may prefer Japanese; benefit from a navigable portal rather than
-  raw markdown files.
-<!-- doc-pair:replace-with -->
-<!-- = - **Human developers** — benefit from a navigable portal rather than raw markdown files. -->
-<!-- doc-pair:replace-end -->
+- **AI エージェント** — 正確で曖昧さのない英語の技術文章が必要で、それによって正しいコードを生成し、正しいワークフローに従う。単一の権威あるソースを読む必要があり、翻訳を読むと翻訳ラグのリスクが生じる。加えて、Claude をはじめとする各種 AI ツールは日本語処理時におよそ 1.5〜2.0 倍のトークンを消費し、誤読やハルシネーションのリスクも高くなるため、英語がエージェントにとってより信頼性の高い入力言語となる。
+- **人間の開発者** — 生の Markdown ファイルよりもナビゲート可能なポータルから恩恵を受ける。
 
-Structural concerns arise:
+構造的な懸念が生じる：
 
-<!-- doc-pair:replace-begin -->
-1. If two languages are maintained in parallel without a clear primacy rule, they diverge. A
-   diverged translation misleads whichever audience reads it.
-2. If the portal is the primary documentation surface rather than the source files, portal
-   generation failures block documentation access and the portal format becomes a constraint
-   on content.
-3. If documentation is scattered without a stable directory convention, generators
-   (`scripts/portal/gen-docs-json.ts`) and agent harnesses (`AGENTS.md`) cannot reliably locate
-   canonical content.
-<!-- doc-pair:replace-with -->
-<!-- = 1. If the portal is the primary documentation surface rather than the source files, portal -->
-<!-- =    generation failures block documentation access and the portal format becomes a constraint -->
-<!-- =    on content. -->
-<!-- = 2. If documentation is scattered without a stable directory convention, generators -->
-<!-- =    (`scripts/portal/gen-docs-json.ts`) and agent harnesses (`AGENTS.md`) cannot reliably locate -->
-<!-- =    canonical content. -->
-<!-- doc-pair:replace-end -->
+1. ポータルがソースファイルではなく主要なドキュメントサーフェスである場合、ポータル生成の失敗がドキュメントへのアクセスをブロックし、ポータル形式がコンテンツの制約になる。
+2. 安定したディレクトリ規約なしにドキュメントが散在すると、ジェネレーター（`scripts/portal/gen-docs-json.ts`）やエージェントハーネス（`AGENTS.md`）が正典コンテンツを確実に特定できない。
 
 <!-- boilerplate-only:begin -->
-A further concern is about who the documentation is for. Every language kept here is inherited
-wholesale by the projects built from this scaffold, along with the cost of maintaining it. A team
-that reads only one of the two would carry the other for nobody. So "which languages does this
-documentation have" has two answers, and only the first of them is this repository's to give.
+もう 1 つの懸念は、このドキュメントが誰のためのものかに関わる。ここに置いた言語は、この土台から作られるプロジェクトへ保守コストごとそのまま引き継がれる。片方しか読まないチームは、もう片方を誰のためでもなく抱えることになる。つまり「このドキュメントは何語を持つか」への答えは 2 つあり、このリポジトリが出せるのはそのうち 1 つ目だけである。
 <!-- boilerplate-only:end -->
 
-## Decision
+## 決定
 
-<!-- doc-pair:replace-begin -->
-Adopt a three-layer documentation strategy:
+2 層のドキュメント戦略を採用する：
 
-1. **English canonical** — `docs/**/*.md` (excluding `*.ja.md` and `docs/portal/**`) is
-   the authoritative source. These are what agents read, what rules reference, and what the
-   portal renders.
-2. **Japanese translation** — `<name>.ja.md` beside its canonical `<name>.md`, human-maintained.
-   Agents never read it (per `AGENTS.md`: agents must not read `*.ja.md` files). **The suffix is
-   what excludes it, not its location**, so no parallel directory is needed and none is used —
-   the same co-located form every other translation pair in this repository takes
-   (`README.ja.md`, `SKILL.ja.md`).
-3. **Generated portal** — `docs/portal/docs.json` and `docs/portal/guides/**` are generated
-   by `scripts/portal/gen-docs-json.ts` from the canonical sources, driven by
-   `docs/portal/manifest.yaml`. Portal content must not be edited manually.
-<!-- doc-pair:replace-with -->
-<!-- = Adopt a two-layer documentation strategy: -->
-<!-- =  -->
-<!-- = 1. **Canonical markdown** — `docs/**/*.md` (excluding `docs/portal/**`) is the authoritative -->
-<!-- =    source. These are what agents read, what rules reference, and what the portal renders. -->
-<!-- =    The documentation is maintained in a single language. -->
-<!-- = 2. **Generated portal** — `docs/portal/docs.json` and `docs/portal/guides/**` are generated -->
-<!-- =    by `scripts/portal/gen-docs-json.ts` from the canonical sources, driven by -->
-<!-- =    `docs/portal/manifest.yaml`. Portal content must not be edited manually. -->
-<!-- doc-pair:replace-end -->
-
-<!-- doc-pair:begin -->
-**The two languages do not navigate to each other.** A canonical file does not advertise that a
-translation exists; a reader who wants the other language finds it by the suffix. That link was
-maintained on both sides of 400-odd pairs and told the reader nothing the naming convention does
-not. A translation may still declare its own source, because that states which side to edit first —
-a direction the filename cannot carry.
-<!-- doc-pair:end -->
+1. **正典 Markdown** — `docs/**/*.md`（`docs/portal/**` を除く）が権威あるソースである。エージェントが読むもの、ルールが参照するもの、ポータルがレンダリングするものである。ドキュメントは単一の言語で保守する。
+2. **生成ポータル** — `docs/portal/docs.json` と `docs/portal/guides/**` は、`docs/portal/manifest.yaml` に駆動されて `scripts/portal/gen-docs-json.ts` が正典ソースから生成する。ポータルコンテンツは手動で編集してはならない。
 
 <!-- boilerplate-only:begin -->
-**The pair belongs to this repository, not to what is built from it.** Which languages a project
-keeps is its own decision, and `make setup-remove-doc-language` folds the documentation and the
-skills down to one of them — deleting the translations, or renaming them onto the canonical names
-so the filename contract (`SKILL.md`, `README.md`) still holds. The checks that require a pair
-(`doc-ref-lint`, `skill-lint`) come out with it: a rule with nothing left to check is a rule that
-only fails.
+**対訳ペアはこのリポジトリのものであって、ここから作られるものの property ではない。** どの言語を保持するかは作成先の判断であり、`make setup-remove-doc-language` がドキュメントとスキルをそのうち 1 つへ畳む —— 訳を削除するか、訳を正本の名前へ改名して `SKILL.md` / `README.md` というファイル名の契約を保つかのいずれかで。対訳の存在を要求する検査（`doc-ref-lint` / `skill-lint`）も一緒に外れる。検査する対象が残っていない規則は、失敗することしかできない。
 <!-- boilerplate-only:end -->
 
-`docs/portal/manifest.yaml` is the structural control file for the portal: it maps source
-files to portal destinations, defines the navigation hierarchy (groups, sections,
-subgroups), and controls section display titles. It is human-maintained.
+`docs/portal/manifest.yaml` はポータルの構造制御ファイルである。ソースファイルをポータルの宛先にマッピングし、ナビゲーション階層（グループ、セクション、サブグループ）を定義し、セクションの表示タイトルを制御する。人間が保守する。
 
-The following directories are reserved by the generator and cannot be used as normal
-documentation sections: `docs/portal`, `docs/openapi`, `docs/coverage`, `docs/er-diagram`.
+以下のディレクトリはジェネレーターによって予約されており、通常のドキュメントセクションとして使用できない: `docs/portal`、`docs/openapi`、`docs/coverage`、`docs/er-diagram`。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- AI agents have a single unambiguous reading target (English canonical); the rule is
-  enforceable in agent harnesses.
-<!-- doc-pair:begin -->
-- Translation lag is bounded: the Japanese mirror may trail behind English updates, but the
-  English canonical is always authoritative.
-<!-- doc-pair:end -->
-- Portal content is always reproducible from source; `docs/portal/docs.json` is a generated
-  artifact and can be regenerated on any machine or CI runner.
-<!-- doc-pair:replace-begin -->
-- Adding a new documentation section follows a clear convention: a `docs/<section>/` directory
-  holding both languages, and an entry in `docs/portal/manifest.yaml`.
-<!-- doc-pair:replace-with -->
-<!-- = - Adding a new documentation section follows a clear convention: a `docs/<section>/` directory, -->
-<!-- =   and an entry in `docs/portal/manifest.yaml`. -->
-<!-- doc-pair:replace-end -->
+- AI エージェントは単一の明確な読取対象（英語正典）を持つ。規則はエージェントハーネスで強制できる。
+- ポータルコンテンツはソースから常に再生成可能である。`docs/portal/docs.json` は生成成果物であり、どのマシンや CI ランナーでも再生成できる。
+- 新しいドキュメントセクションの追加は明確な規約に従う: `docs/<section>/` ディレクトリと、`docs/portal/manifest.yaml` へのエントリ。
 
-### Negative Consequences
+### ネガティブな影響
 
-<!-- doc-pair:begin -->
-- Maintaining two language versions of every document is labor-intensive; Japanese mirrors
-  can lag behind English canonical updates.
-<!-- doc-pair:end -->
-- `docs/portal/manifest.yaml` must be updated when new sections are added or renamed; an
-  out-of-date manifest causes new docs to not appear in the portal.
-- The reserved directory list limits naming choices for new documentation sections.
+- 新しいセクションが追加・名称変更された場合に `docs/portal/manifest.yaml` を更新しなければならない。古いマニフェストは新しいドキュメントがポータルに表示されない原因になる。
+- 予約ディレクトリリストは新しいドキュメントセクションの命名の選択肢を制限する。
 
-## Alternatives Considered
+## 検討した代替案
 
-<!-- doc-pair:begin -->
-### Auto-translation
-
-Generate Japanese translations automatically from English. Rejected: machine-translation
-quality is insufficient for precise technical content; a mistranslated architectural rule
-can mislead developers.
-
-<!-- doc-pair:end -->
 <!-- boilerplate-only:begin -->
-### Fixing the language set here
+### 言語の組をここで確定させる
 
-Maintain the pair and hand it on as a settled property. Rejected: it makes every project built
-from this one pay for a language it may never read, and the payment recurs — each document edited
-twice, indefinitely. It is also the more expensive of the two possible errors: adding a translation
-later is ordinary work, while removing 400 of them together with the checks and the portal wiring
-that assume they exist is not.
+対訳ペアを保守し、確定した property として引き渡す。却下：ここから作られるすべてのプロジェクトに、読まないかもしれない言語の代償を払わせることになり、その支払いは繰り返される —— どの文書も 2 回編集され続ける。加えて、起こり得る 2 つの誤りのうち高くつくのはこちらである。後から訳を足すのは通常の作業だが、400 の訳を、その存在を前提にした検査とポータルの結線ごと外すのはそうではない。
 
 <!-- boilerplate-only:end -->
-### Portal as primary source
+### ポータルをプライマリソースとする
 
-Maintain documentation in the portal's native format and derive markdown from it. Rejected:
-the portal is a rendering concern; making it the canonical source ties content to a specific
-rendering pipeline and complicates direct agent consumption.
+ポータルのネイティブ形式でドキュメントを保守し、そこから Markdown を導出する。却下：ポータルはレンダリングの関心事であり、正典ソースとすることでコンテンツが特定のレンダリングパイプラインに縛られ、エージェントによる直接消費が複雑になる。
 
-## Notes
+## 注記
 
-- Source: [`docs/index.md`](../index.md) — documentation overview and recommended reading
-  order for humans and agents.
-- Source: [`docs/maintenance/docs-structure.md`](../maintenance/docs-structure.md) — full
-  structure rules for the documentation portal generator.
-- Source: [`docs/portal/manifest.yaml`](../portal/manifest.yaml) — portal navigation and
-  source-to-destination mapping.
-- Agent reading rule: `AGENTS.md` §§ "Canonical Documentation" and "Documentation scope for
-  agents".
+- 出典: [`docs/index.md`](../index.md) — ドキュメント全体の概要と、人間・エージェント向けの推奨読解順。
+- 出典: [`docs/maintenance/docs-structure.md`](../maintenance/docs-structure.md) — ドキュメントポータルジェネレーターの完全な構造ルール。
+- 出典: [`docs/portal/manifest.yaml`](../portal/manifest.yaml) — ポータルのナビゲーションとソース→宛先のマッピング。
+- エージェントの読取ルール: `AGENTS.md` の「Canonical Documentation」「Documentation scope for agents」節。

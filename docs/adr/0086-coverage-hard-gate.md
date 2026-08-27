@@ -5,98 +5,90 @@ deciders: [maintainers]
 tags: [ci, testing]
 ---
 
-# ADR-0086: Total coverage 90% is a CI hard gate, with an exception-governance path
+# ADR-0086: 総カバレッジ 90% を CI のハードゲートとし、例外ガバナンスパスを設ける
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Test coverage percentages are easy to game by writing trivially passing tests. Without a
-hard numeric floor enforced in CI, coverage tends to erode over time: new code is merged
-without tests, and the bar shifts downward by inertia. On the other hand, chasing 100%
-coverage encourages writing contrived tests solely to colour lines — particularly for
-unreachable defensive branches in infrastructure or write-once bootstrap code — which
-increases maintenance burden without improving confidence.
+テストカバレッジのパーセンテージは、自明なパステストを書くことで簡単にごまかせる。CI でハードな数値下限を
+強制しなければ、カバレッジは時間とともに侵食される傾向がある。テストなしで新しいコードがマージされ、
+基準が惰性によって下がっていく。一方、100% カバレッジを追求すると、インフラや書き捨てのブートストラップコードで
+到達不能な防御的ブランチに色を付けるためだけに作為的なテストを書くことが促される——信頼性の向上なしに
+メンテナンス負担を増やすだけである。
 
-The project needs a floor that is high enough to be meaningful but paired with a
-sanctioned, auditable path for exempting genuinely unreachable branches so that the
-number does not become a game.
+プロジェクトには意味のある程度に高い下限が必要だが、それに加えて、本当に到達不能なブランチを免除する
+公認で監査可能なパスが対になっている必要がある。そうしなければ数値がゲームになってしまう。
 
-## Decision
+## 決定
 
-Set the total coverage threshold at **90%** and enforce it as a hard CI gate.
+総カバレッジしきい値を **90%** に設定し、CI のハードゲートとして強制する。
 
-The gate is implemented in `.makefiles/go/test.mk`:
+ゲートは `.makefiles/go/test.mk` に実装されている:
 
-- `COVERAGE_THRESHOLD := 90` is the single source of truth for the floor.
-- Excluded packages (`GO_TEST_EXCLUDE`) are `gen`, `cmd`, `mock`, `apperror`,
-  and `scripts` — packages that are either generated, DI wiring, or utilities that
-  cannot meaningfully be unit-tested in isolation.
-- `make test-cover-ci` runs tests with `-coverpkg` set to the same filtered package list
-  and writes `coverage.out`.
-- `make cover-gate` reads `coverage.out`, extracts the total line from
-  `go tool cover -func`, and exits non-zero if the total falls below the threshold
-  (the `cover-gate` target).
+- `COVERAGE_THRESHOLD := 90` が下限の単一情報源である。
+- 除外パッケージ（`GO_TEST_EXCLUDE`）は `gen`、`cmd`、`mock`、`apperror`、`scripts`——
+  生成済み、DI ワイヤリング、または単独ではユニットテストが意味をなさないユーティリティのパッケージ。
+- `make test-cover-ci` は同じフィルタされたパッケージリストに対して `-coverpkg` を設定してテストを実行し
+  `coverage.out` を書き込む。
+- `make cover-gate` は `coverage.out` を読み込み、`go tool cover -func` から合計行を抽出し、
+  合計がしきい値を下回った場合に非ゼロで終了する（`cover-gate` ターゲット）。
 
-In the CI workflow (`go-test.yaml`, the `Coverage gate` step), the gate runs after the coverage report
-is uploaded to octocov:
+CI ワークフロー（`go-test.yaml` の `Coverage gate` ステップ）では、ゲートはカバレッジレポートが octocov に
+アップロードされた後に実行される:
 
 ```yaml
 - name: Coverage gate
   run: make cover-gate
 ```
 
-**Exception governance.** Branches that are structurally unreachable or cannot be
-triggered deterministically (e.g. runtime-internal error paths, no-op provider failures)
-may be formally exempted. Exemptions are recorded in the affected package's `README.md`
-under a designated section (example: `internal/observability/README.md`),
-require architect-level sign-off, and are governed by the rule that no contrived tests
-or extra production code are added solely to reach them.
+**例外ガバナンス。** 構造的に到達不能または確定的にトリガーできないブランチ
+（例: ランタイム内部エラーパス、ノーオペレーションプロバイダーの失敗）は正式に免除してよい。
+免除は影響を受けるパッケージの `README.md` の指定されたセクションに記録し
+（例: `internal/observability/README.md`）、アーキテクト レベルの承認を必要とし、
+それらに到達するためだけに作為的なテストや追加のプロダクションコードを加えないというルールのもとに管理される。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- New code cannot be merged without tests; coverage erosion is blocked at the PR boundary.
-- The threshold is a single constant — changing it is a one-line diff in the makefile,
-  visible in review.
-- The exception-governance path makes the hard gate sustainable: legitimate exemptions
-  are approved and auditable rather than suppressed with `// nolint`.
+- テストなしで新しいコードをマージできない。カバレッジの侵食が PR 境界でブロックされる。
+- しきい値は単一の定数——変更は makefile の 1 行の差分で済み、レビューで視認できる。
+- 例外ガバナンスパスによりハードゲートが持続可能になる。正当な免除は `// nolint` で抑制されるのではなく
+  承認済みで監査可能である。
 
-### Negative Consequences
+### ネガティブな影響
 
-- 90% is a total figure; a single well-tested package can mask a poorly tested one. Per-
-  package floors are not currently enforced.
-- The exception-governance path requires manual record-keeping in README files; it is not
-  machine-checked for completeness or freshness.
-- Developers working on infrastructure bootstrap code must anticipate the approval
-  overhead if they encounter genuinely unreachable branches.
+- 90% は合計数値であり、十分にテストされた単一パッケージがテストが不十分な別のパッケージを隠せる。
+  パッケージごとの下限は現在強制されていない。
+- 例外ガバナンスパスは README ファイルへの手動の記録管理を必要とし、完全性や鮮度を機械的にチェックしない。
+- インフラブートストラップコードに取り組む開発者は、本当に到達不能なブランチに遭遇した場合に
+  承認のオーバーヘッドを予期しておかなければならない。
 
-## Alternatives Considered
+## 検討した代替案
 
-### No coverage gate
+### カバレッジゲートなし
 
-Coverage would be tracked but not enforced. Historical evidence in similar projects shows
-that advisory-only coverage declines steadily without a hard gate.
+カバレッジは追跡されるが強制されない。同様のプロジェクトの歴史的な証拠は、勧告のみのカバレッジが
+ハードゲートなしで着実に低下することを示している。
 
-### 100% coverage requirement
+### 100% カバレッジ要件
 
-Eliminates the exemption path by requiring all lines to be covered. In practice this
-leads to test-quality degradation (contrived setups, mocked internals) to satisfy the
-number. Rejected in favour of a realistic floor with a governed exception path.
+免除パスを排除し、すべての行をカバーするよう要求する。実際には数値を満たすためのテスト品質の劣化
+（作為的なセットアップ、モック化された内部）につながる。管理された例外パスを持つ現実的な下限が
+支持され却下された。
 
-### Per-package thresholds
+### パッケージごとのしきい値
 
-More granular but significantly harder to configure and maintain. Deferred until there is
-evidence that the total-line gate is insufficient.
+より細粒度だが、設定とメンテナンスが大幅に難しくなる。合計行ゲートが不十分であるという証拠が
+出てくるまで延期する。
 
-## Notes
+## 補足
 
-- Source: `.makefiles/go/test.mk` (`COVERAGE_THRESHOLD` / `GO_TEST_EXCLUDE` / the `cover-gate`
-  target); `.github/workflows/go-test.yaml` (the `Coverage gate` step);
-  `internal/observability/README.md` (the coverage-exception section).
-- Coverage testing conventions (test structure, `require` vs `assert`, mocks) are in
-  [`docs/testing-conventions.md`](../testing-conventions.md).
-- The DoD requiring coverage is in [`docs/rules.md`](../rules.md).
+- ソース: `.makefiles/go/test.mk`（`COVERAGE_THRESHOLD` / `GO_TEST_EXCLUDE` / `cover-gate` ターゲット）、
+  `.github/workflows/go-test.yaml`（`Coverage gate` ステップ）、`internal/observability/README.md`
+  （カバレッジ例外の節）。
+- テスト構造（テスト構造、`require` vs `assert`、モック）は [`docs/testing-conventions.md`](../testing-conventions.md) に記載。
+- カバレッジを要求する DoD は [`docs/rules.md`](../rules.md) に記載。

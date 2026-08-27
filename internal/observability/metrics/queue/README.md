@@ -1,52 +1,48 @@
 # queue
 
-`internal/observability/metrics/queue` is a package that **exposes worker broker-queue backlog
-(queue depth / DLQ count) as Prometheus metrics**.
+`internal/observability/metrics/queue` は、**worker の broker キュー滞留量（queue depth / DLQ count）
+を Prometheus メトリクスとして公開する**パッケージです。
 
-## Role
+## 役割
 
-A worker can be perfectly healthy (processing, low error rate) while its queue still backs up —
-producers outpace consumers, or messages pile up in the DLQ. The engine's processed / failed /
-retry counters cannot show that; they describe throughput, not backlog. This package fills the gap
-by scraping the optional `worker.QueueStatsProvider` capability (implemented by broker adapters
-such as SQS) and publishing the current backlog as a gauge, so saturation is observable alongside
-throughput.
+worker 自体は正常（処理中・低エラー率）でも、キューが詰まることがあります（producer が consumer を
+上回る、DLQ にメッセージが溜まる、など）。engine の processed / failed / retry カウンタはスループットを
+表すもので滞留量は表現できません。本パッケージはその差を埋めます。broker adapter（SQS など）が実装する
+任意 capability `worker.QueueStatsProvider` を scrape し、現在の滞留量を gauge として公開することで、
+スループットと並べて滞留を観測できるようにします。
 
-The engine never depends on `QueueStatsProvider`; only this collector does. Depth is pulled at
-scrape time through the capability, keeping broker-specific APIs out of the engine.
+engine は `QueueStatsProvider` に依存しません。依存するのはこの collector だけです。depth は scrape 時に
+capability 経由で pull され、broker 固有 API を engine から隔離します。
 
-## Metrics List
+## メトリクス一覧
 
 Namespace: `worker`, Subsystem: `queue`
 
-### Gauge (Current Values)
+### Gauge（現在値）
 
-|Metric Name|Labels|Description|
+|メトリクス名|ラベル|説明|
 |---|---|---|
-|`worker_queue_depth`|`worker`, `adapter`, `queue`, `state`|Approximate backlog by state. `queue` is `source` / `dlq`; `state` is `visible` / `not_visible` / `delayed`.|
+|`worker_queue_depth`|`worker`, `adapter`, `queue`, `state`|状態別の近似滞留量。`queue` は `source` / `dlq`、`state` は `visible` / `not_visible` / `delayed`。|
 
-### Counter (Cumulative Values)
+### Counter（累積値）
 
-|Metric Name|Labels|Description|
+|メトリクス名|ラベル|説明|
 |---|---|---|
-|`worker_queue_stats_collection_failures_total`|`worker`, `adapter`, `queue`|Number of scrape-time collection failures. `queue` is `unknown` because a single `QueueStats` call does not distinguish source vs DLQ.|
+|`worker_queue_stats_collection_failures_total`|`worker`, `adapter`, `queue`|scrape 時の収集失敗回数。`QueueStats` 1 回の呼び出しでは source / DLQ を区別しないため `queue` は `unknown`。|
 
-## Labels
+## ラベル方針
 
-Allowed: `worker`, `adapter`, `queue`, `state`. Queue URL / ARN, message id, receipt handle and any
-high-cardinality or secret-bearing value are intentionally **never** used as labels — worker name
-and adapter kind are sufficient for aggregation and alerting.
+許可: `worker` / `adapter` / `queue` / `state`。queue URL / ARN、message id、receipt handle など
+高カーディナリティ・秘匿情報を含みうる値は**ラベルに入れません**。集計・アラートには worker 名と
+adapter 種別で十分です。
 
-## Notes
+## 補足
 
-- Targets are collected via the `worker.queue_stats_targets` DI group; with no targets the
-  collector emits nothing.
-- SQS attribute values are **approximate** — read `worker_queue_depth` as a backlog trend, not an
-  exact count.
-- Scrape calls the broker API directly (no cache). A TTL cache may be added later to bound API
-  rate / cost.
-- Each scrape is bounded by a 5s timeout (`collectTimeout`) covering all targets; without it an
-  unresponsive broker would let scrape goroutines accumulate and exhaust resources. Targets are
-  collected **concurrently** under that shared deadline, so one slow provider cannot consume the
-  budget and drag healthy queues into false collection failures.
-- Safely skips duplicate registration by ignoring `prometheus.AlreadyRegisteredError`.
+- 収集対象は `worker.queue_stats_targets` DI group 経由で集約します。対象が無ければ何も出力しません。
+- SQS の属性値は **approximate（近似値）** です。`worker_queue_depth` は厳密な件数ではなく滞留傾向として
+  扱ってください。
+- scrape のたびに broker API を直接呼びます（cache なし）。将来 API rate / cost を抑えるための TTL cache を
+  追加しうる設計です。
+- 1 回の scrape は全 target をまとめて 5 秒タイムアウト（`collectTimeout`）で上限を設けます。これが無いと
+  応答不能な broker のせいで scrape goroutine が蓄積し、リソースを枯渇させ得ます。
+- `prometheus.AlreadyRegisteredError` を無視して二重登録を安全にスキップします。

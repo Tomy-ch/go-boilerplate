@@ -1,12 +1,12 @@
 # observability
 
-OpenTelemetry tracing middleware for Echo.
+Echo 用の OpenTelemetry トレーシングミドルウェアです。
 
-## Role
+## 役割
 
-Distributed tracing must wrap every request uniformly to be useful, and threading span creation through each handler would be repetitive and error-prone. Isolating the trace entry point as a middleware starts a server span for every request in one place, so downstream layers inherit propagated trace context automatically and handlers stay free of repeated instrumentation code.
+分散トレーシングは有用であるためにすべてのリクエストを一律にラップする必要があり、スパン生成を各ハンドラに通すのは反復的で誤りやすくなります。トレースの起点をミドルウェアとして分離することで、リクエストごとのサーバスパンを一箇所で開始でき、下流の層は伝播されたトレースコンテキストを自動的に引き継ぎ、ハンドラは計装コードの繰り返しから解放されます。
 
-## Notes
+## 補足
 
-- `Middleware()` returns the OTel (`echootel`) tracing middleware; `PassthroughMiddleware()` returns a no-op middleware that simply forwards to the next handler. The DI layer selects the passthrough when tracing is disabled (`ObservabilityConfig.TracesEnabled()` is false), so the middleware slot is always filled without a conditional at the registration site.
-- The middleware takes no server name. `echootel`'s `Config.ServerName` is the server's canonical host name used for the `server.address` / `server.port` attributes, not the service name (that one belongs to the OTel resource); leaving it empty resolves both from the request's `Host`.
+- `Middleware()` は OTel（`echootel`）トレーシングミドルウェアを返します。`PassthroughMiddleware()` は次のハンドラへそのまま渡す no-op ミドルウェアを返します。DI 層はトレースが無効（`ObservabilityConfig.TracesEnabled()` が false）のとき passthrough を選択するため、登録側で条件分岐を持たずに常にミドルウェアスロットが埋まります。
+- ミドルウェアはサーバ名を受け取りません。`echootel` の `Config.ServerName` は `server.address` / `server.port` 属性に使うサーバの正式ホスト名であり、サービス名（OTel の Resource が持つ）ではありません。空のままにするとリクエストの `Host` から解決されます。

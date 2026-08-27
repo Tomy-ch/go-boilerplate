@@ -1,8 +1,8 @@
 # envutil
 
-Small utilities for working with environment variables.
+環境変数を扱うための小さなユーティリティを提供します。
 
-## Usage
+## 使い方
 
 ```go
 restore, err := envutil.Override("SOME_KEY", "value")
@@ -10,10 +10,10 @@ if err != nil {
     return err
 }
 defer restore()
-// ... read config while SOME_KEY is "value" ...
+// ... SOME_KEY が "value" の間に設定を読み込む ...
 ```
 
-## Notes
+## 注意点
 
-- Useful for swapping a single env var only during config loading, avoiding lingering global state and keeping the operation idempotent.
-- `pkg/` may not depend on `internal/` or other `pkg/` packages except `pkg/xerrors` (enforced by depguard); this package uses `os` and `pkg/xerrors`.
+- 設定読み込みの間だけ特定の環境変数を差し替える用途に有用で、グローバル状態の残留を防ぎ冪等性を保ちます。
+- `pkg/` は `internal/` や他の `pkg/` に依存できません（例外として `pkg/xerrors` のみ許可。depguard で強制）。本パッケージは `os` と `pkg/xerrors` を使用します。

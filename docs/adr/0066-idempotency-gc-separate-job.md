@@ -5,80 +5,54 @@ deciders: [maintainers]
 tags: [idempotency, gc, ops]
 ---
 
-# ADR-0066: Run idempotency key garbage collection as a separate one-shot CLI job
+# ADR-0066: 冪等性キーのガベージコレクションを独立したワンショット CLI ジョブとして実行する
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Idempotency keys expire after 24 hours but are not deleted automatically at that point —
-they remain in the `idempotency_keys` table until something removes them. Without active
-cleanup, the table grows without bound. There are two common approaches for managing this
-growth: inline cleanup on the request path (delete a batch of expired rows before or after
-each write) or a dedicated background job that runs on a schedule.
+冪等性キーは 24 時間後に期限切れとなるが、その時点で自動削除されるわけではなく、何かが削除するまで `idempotency_keys` テーブルに残り続ける。アクティブなクリーンアップがなければテーブルは無制限に増大する。この増大を管理する一般的なアプローチは 2 つある。リクエストパスでのインラインクリーンアップ（書き込みの前後に期限切れ行をバッチ削除する）か、スケジュールに従って実行する専用のバックグラウンドジョブである。
 
-Inline cleanup couples table maintenance to request latency, adds unpredictable spikes to
-write-path latency, and distributes the deletion load across all incoming requests —
-including periods of low traffic when the backlog grows. It also ties cleanup throughput to
-request throughput.
+インラインクリーンアップはテーブルメンテナンスをリクエストレイテンシと結びつけ、書き込みパスのレイテンシに予測不能なスパイクを加え、バックログが増大する低トラフィック期間も含めすべての受信リクエストに削除負荷を分散させる。クリーンアップのスループットもリクエストのスループットに縛られる。
 
-A separate GC job decouples cleanup entirely from the request path. It can be scheduled at
-a fixed cadence, sized independently (batch size is configurable), and monitored or
-restarted without touching the API serving path.
+独立した GC ジョブはクリーンアップをリクエストパスから完全に切り離す。固定の頻度でスケジュールでき、独立してサイズ調整（バッチサイズは設定可能）でき、API サービングパスに触れずにモニタリングや再起動ができる。
 
-This project's CLI job mechanism (`internal/controller/job/`) provides a natural home for
-one-shot batch operations, and the idempotency subsystem already ships a `GCUsecase` with
-a `SweepExpired` method designed for batch iteration.
+スキャフォールドの CLI ジョブ機構（`internal/controller/job/`）はワンショットバッチ操作の自然な置き場所であり、冪等性サブシステムはバッチイテレーション向けに設計された `SweepExpired` メソッドを持つ `GCUsecase` をすでに提供している。
 
-## Decision
+## 決定
 
-Idempotency key garbage collection is implemented as a **separate one-shot CLI job**
-(`idempotencygc`). The job calls `GCUsecase.SweepExpired(batchSize)` in a loop, each
-iteration deleting up to `batchSize` expired rows ordered by `expires_at`, until a short
-batch signals completion. The default batch size is 10,000. The job is scheduled externally
-(cron, k8s CronJob) and does not run on the request path.
+冪等性キーのガベージコレクションは**独立したワンショット CLI ジョブ**（`idempotencygc`）として実装する。ジョブは `GCUsecase.SweepExpired(batchSize)` をループで呼び出し、各イテレーションで `expires_at` 順に並べた期限切れ行を最大 `batchSize` 件削除し、短いバッチが完了を示すまで繰り返す。デフォルトのバッチサイズは 10,000 件である。ジョブは外部でスケジューリングされ（cron、k8s CronJob）、リクエストパスでは実行されない。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- The request path has no GC overhead; write latency is not affected by expired-row volume.
-- Batch size is independently tunable via `--batch-size=N` without any API change.
-- The job can be monitored, retried, and throttled independently of the API server.
-- Hourly scheduling is sufficient for a 24-hour TTL — rows linger at most 25 hours in
-  the worst case, which is acceptable.
+- リクエストパスに GC オーバーヘッドがない。書き込みレイテンシは期限切れ行の量に影響されない。
+- バッチサイズは API 変更なしに `--batch-size=N` で独立してチューニングできる。
+- ジョブは API サーバーとは独立してモニタリング・リトライ・スロットリングできる。
+- 24 時間 TTL に対して時間単位のスケジューリングで十分であり、最悪の場合でも行が残るのは最大 25 時間で許容範囲内である。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Expired rows are not removed immediately; the table retains stale rows for up to the GC
-  job interval (typically one hour).
-- An external scheduler (cron or k8s CronJob) is required; the API server alone is not
-  self-cleaning.
-- If the GC job is not scheduled or fails repeatedly, the table grows unbounded.
+- 期限切れ行は即座には削除されない。GC ジョブの間隔（通常 1 時間）分だけ古い行がテーブルに残る。
+- 外部スケジューラー（cron または k8s CronJob）が必要である。API サーバー単体では自己クリーニングしない。
+- GC ジョブがスケジュールされていないか繰り返し失敗する場合、テーブルは無制限に増大する。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Inline cleanup on the request path
+### リクエストパスでのインラインクリーンアップ
 
-Delete a batch of expired rows as part of each write request. Rejected because it adds
-unpredictable latency spikes to the write path and ties cleanup throughput to request
-throughput.
+各書き込みリクエストの一部として期限切れ行をバッチ削除する。書き込みパスに予測不能なレイテンシスパイクを加え、クリーンアップスループットがリクエストスループットに縛られるため却下した。
 
-### Background goroutine inside the API server
+### API サーバー内のバックグラウンドゴルーチン
 
-Run a goroutine in the server process that periodically sweeps expired rows. Rejected
-because it couples the server's resource usage to GC activity, makes the GC harder to
-observe and restart independently, and introduces goroutine lifecycle management concerns.
+サーバープロセス内で定期的に期限切れ行をスイープするゴルーチンを実行する。サーバーのリソース使用量が GC アクティビティと結合し、GC の独立した観測・再起動が困難になり、ゴルーチンのライフサイクル管理上の懸念が生じるため却下した。
 
-## Notes
+## 補足
 
-- Source: [`docs/design/idempotency.md`](../design/idempotency.md) §1 (responsibility table,
-  "GCUsecase + idempotencygc job") and §4 (operational notes, "Schedule the GC").
-- `GCUsecase` is at `internal/usecase/idempotency/gc.go`; the job entry point is at
-  `internal/controller/job/idempotencygc/`.
-- The `expires_at` index in `idempotency_keys` keeps each `DeleteExpired` batch scan cheap
-  regardless of total table size.
-- Related: [ADR-0064](0064-idempotency-fixed-ttl.md) (fixed 24h TTL that the GC sweeps
-  against).
+- 出典: [`docs/design/idempotency.md`](../design/idempotency.md) §1（責務表、「GCUsecase + idempotencygc job」）および §4（運用メモ、「Schedule the GC」）。
+- `GCUsecase` は `internal/usecase/idempotency/gc.go` にある。ジョブエントリポイントは `internal/controller/job/idempotencygc/` にある。
+- `idempotency_keys` の `expires_at` インデックスにより、テーブル総サイズに関わらず各 `DeleteExpired` バッチスキャンを安価に保つ。
+- 関連: [ADR-0064](0064-idempotency-fixed-ttl.md)（GC がスイープ対象とする 24 時間固定 TTL）。

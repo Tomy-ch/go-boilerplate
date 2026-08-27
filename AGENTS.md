@@ -1,374 +1,404 @@
-# Agents Documentation
+# エージェント向けドキュメント
 
-This file is the **agent operational contract** for this repository — what an AI agent may
-touch, how it must behave, and where the canonical detail lives. Architecture / rules /
-flows are **not restated here**; they live under `docs/` and are linked below. Keep this file
-lean: it is loaded every turn.
+このファイルはこのリポジトリにおける **エージェント運用契約** です —— AI エージェントが何に
+触れてよいか、どう振る舞わねばならないか、正典となる詳細がどこに在るかを定めます。
+アーキテクチャ / ルール / フローを **ここで再記述することはしません**。それらは `docs/` 配下に
+在り、下記からリンクします。このファイルは毎ターン読み込まれるため、簡潔に保ってください。
 
-This repository is a lightweight Onion Architecture RESTful-API scaffold
-(`controller → usecase → domain`; infrastructure implements domain interfaces). Do not
-introduce new architectural patterns unless explicitly instructed.
+このリポジトリは軽量な Onion Architecture の RESTful-API スキャフォールドです
+（`controller → usecase → domain`。infrastructure が domain のインターフェースを実装します）。
+明示的な指示が無い限り、新しいアーキテクチャパターンを持ち込まないでください。
 
-**AI-assisted development is this repository's standard path**; manual development stays available
-as a not-recommended compatibility path. Three constraints bound what that means, and they apply to
-every task below:
+**AI 支援による開発がこのリポジトリの標準経路** であり、手動開発は非推奨の互換経路として
+残しています。その意味を 3 つの制約が縛り、以下のすべてのタスクに適用されます。
 
-1. A **deterministic check** — test, lint, CI, architecture rule — outranks an agent's judgment
-   wherever one exists. Report what it said, not what you concluded.
-2. **Architecture, domain and policy decisions keep a human gate.** Surface the decision and its
-   options; do not take one.
-3. **The application never depends on AI.** Runtime, build, test, the domain model, the API
-   contract, the DB schema and the ordinary CI checks must succeed with no agent available. AI
-   dependence is confined to development workflow, navigation, automation, feedback and review.
+1. **決定的な検査** —— テスト、Lint、CI、アーキテクチャ規則 —— が存在する場面では、それが
+   エージェントの判断に優越します。自分が結論したことではなく、検査が言ったことを報告してください。
+2. **アーキテクチャ・ドメイン・ポリシーの決定は人間のゲートを維持します。** 決定とその選択肢を
+   提示してください。自分で選ばないこと。
+3. **アプリケーションは AI に依存しません。** ランタイム、ビルド、テスト、ドメインモデル、API
+   契約、DB スキーマ、通常の CI 検査は、エージェントが 1 つも無い状態で成功しなければなりません。
+   AI への依存は開発ワークフロー・ナビゲーション・自動化・フィードバック・レビューに限られます。
 
-Rationale: `docs/adr/0007-agents-md-operational-contract.md`. The agent environment is not
-append-only — its controls are observed and re-evaluated rather than only added:
-`docs/adr/0008-agent-environment-alignment.md`.
+根拠: `docs/adr/0007-agents-md-operational-contract.md`。エージェント環境は追記専用ではありません
+—— その統制は追加されるだけでなく、観察され再評価されます:
+`docs/adr/0008-agent-environment-alignment.md`。
 
-## Instruction Priority
+## 指示の優先順位
 
-On conflict, follow this order:
+矛盾した場合は、この順に従ってください。
 
-1. `AGENTS.md` (this file)
+1. `AGENTS.md`（このファイル）
 2. `docs/rules.md`
 3. `docs/architecture.md`
-4. User instructions
+4. ユーザーの指示
 
-## Canonical Documentation (read before changing code)
+## 正典ドキュメント（コード変更の前に読むこと）
 
-The source of truth for design, rules, and flows is under `docs/` and the per-package
-`README.md`. Read the relevant one before implementing; do not duplicate its content here.
+設計・ルール・フローの真の出所は `docs/` 配下とパッケージごとの `README.md` です。
+実装の前に該当するものを読んでください。その内容をここへ複製しないこと。
 
-| Need | Read |
+| 必要なもの | 読む先 |
 | --- | --- |
-| System structure & layer responsibilities | `docs/architecture.md` |
-| Non-negotiable rules (layer deps, generated code, domain constraints, DTO boundary, tx, errors, comments) | `docs/rules.md` |
-| How to perform a change (API / DB / business-logic flows, finding related code) | `docs/development-flow.md` |
-| Testing conventions (structure, naming, `require`/`assert`, mocks, coverage exceptions) | `docs/testing-conventions.md` (DoD in `docs/rules.md`) |
-| Technology rationale (per-file ADR: onion / OpenAPI-first / sqlc / echo / fx / worker / o11y) | `docs/adr/` (log: `docs/adr/README.md`). An ADR records what was decided and what was rejected; the criterion for deciding a given case may live in `docs/design/` instead |
-| Per-layer / per-package detail | `internal/**/README.md`, `pkg/**/README.md` |
-| Cross-cutting & subsystem design — the criterion for deciding a given case (data-access placement, auth, security posture, async subsystems, …) | `docs/design/README.md` — open the index; the examples here are not the inventory |
-| Why AI assistance is the standard path, and how a control in the agent environment is judged, re-evaluated and retired | ADR-0007 / ADR-0008, interpreted in `docs/design/agent-environment.md` |
+| システム構造と層の責務 | `docs/architecture.md` |
+| 破ってはいけないルール（層の依存、生成コード、ドメイン制約、DTO 境界、トランザクション、エラー、コメント） | `docs/rules.md` |
+| 変更の実施手順（API / DB / ビジネスロジックのフロー、関連コードの見つけ方） | `docs/development-flow.md` |
+| テスト規約（構成、命名、`require`/`assert`、モック、カバレッジ例外） | `docs/testing-conventions.md`（DoD は `docs/rules.md`） |
+| 技術選定の根拠（ファイルごとの ADR: onion / OpenAPI-first / sqlc / echo / fx / worker / o11y） | `docs/adr/`（索引: `docs/adr/README.md`）。ADR は「何を決め、何を却下したか」を記録します。個別ケースの判断基準は `docs/design/` に在ることがあります |
+| 層ごと / パッケージごとの詳細 | `internal/**/README.md`、`pkg/**/README.md` |
+| 横断的関心とサブシステム設計 —— 個別ケースの判断基準（データアクセスの配置、認証、セキュリティ方針、非同期サブシステム、…） | `docs/design/README.md` —— 索引を開いてください。ここに挙げた例は目録ではありません |
+| なぜ AI 支援が標準経路なのか、エージェント環境の統制がどう判定・再評価・撤去されるか | ADR-0007 / ADR-0008 と、その解釈である `docs/design/agent-environment.md` |
 
-**Documentation scope for agents** — the canonical sources are the English `README.md` and
-`docs/**/*.md`. **Never read `*.ja.md` files: they are human-facing Japanese translations of
-those canonical sources — read the canonical English original instead.** Also ignore the
-documentation-portal UI assets:
+**エージェントにとってのドキュメント範囲** —— 正典は `README.md` と `docs/**/*.md` です。
+ドキュメントポータルの UI アセットは無視します:
 
 ```txt
-**/*.ja.md
 docs/portal/**
 ```
 
-## Task Execution Protocol
+## タスク実行プロトコル
 
-Before implementing any change:
+あらゆる変更を実装する前に:
 
-1. Identify the change type (API / DB / Business Logic) and follow the matching flow in `docs/development-flow.md`.
-2. Locate related code (onion flow: OpenAPI → handler → usecase → domain → infrastructure → SQL; see `docs/development-flow.md` / `docs/architecture.md`).
-3. Read the `README.md` that owns every package you are about to touch (walk to the nearest ancestor when the package has none) — its declared responsibilities and prohibitions bound the change.
-4. Open the `docs/design/README.md` and `docs/adr/README.md` indexes and read the entries that own the decisions your change touches. Searching either index for your feature's words is not enough — a document is named for the concern it owns.
-5. Verify no existing implementation already covers it — search the same layer first; prefer editing an existing file over creating a new one.
+1. 変更の種類（API / DB / ビジネスロジック）を特定し、`docs/development-flow.md` の該当フローに従う。
+2. 関連コードを特定する（onion のフロー: OpenAPI → handler → usecase → domain → infrastructure → SQL。`docs/development-flow.md` / `docs/architecture.md` 参照）。
+3. これから触るすべてのパッケージが持つ `README.md` を読む（README を持たないパッケージは最も近い祖先まで遡る）。そこに宣言された責務と禁止事項が変更の範囲を縛る。
+4. `docs/design/README.md` と `docs/adr/README.md` の索引を開き、変更が触れる決定を所有するエントリを読む。索引を機能の語で検索するだけでは足りません —— 文書は、それが所有する関心事の名前で名付けられています。
+5. 既存の実装が既にそれを満たしていないか確認する。まず同じ層を探し、新規ファイル作成より既存ファイルの編集を選ぶ。
 
-For API changes: OpenAPI is defined first. For DB changes: the migration + SQL exist first.
+API 変更では OpenAPI を先に定義します。DB 変更ではマイグレーションと SQL が先に在ります。
 
-<!-- boilerplate-only:begin -->
-## Review Phase Protocol
+## レビューフェーズのプロトコル
 
-A request to review work that has already been implemented — 「レビューして」 or any equivalent —
-names **three** subjects this repository ships a skill for, not one:
+実装済みの成果物に対するレビュー依頼 —— 「レビューして」やそれに相当する言い回し —— は、
+このリポジトリがスキルを持つ **3 つ** の対象を指しており、1 つではありません。
 
-| Skill | Subject |
+| スキル | 対象 |
 | --- | --- |
-| `/impl-review` | the change itself — architecture / DDD modeling / security / correctness / runtime gap |
-| `/test-review` | the tests that pin the change down |
-| `/comment-sweep` | the comment stock carried by the files the change touched |
+| `/impl-review` | 変更そのもの —— アーキテクチャ / DDD モデリング / セキュリティ / 正しさ / ランタイムのギャップ |
+| `/test-review` | その変更を固定するテスト |
+| `/comment-sweep` | 変更が触れたファイルが抱えるコメントの蓄積 |
 
-Do not silently pick one. **Estimate each skill's return from the context you already hold** — which
-layers the change touched, whether tests or comments moved at all, what an earlier skill in this
-session already covered — then **ask the user per skill whether to run it, stating that estimate and
-its reason**, and run what they approve.
+黙って 1 つを選ばないこと。**既に持っている文脈から各スキルのリターンを見積もり** ——
+変更がどの層に触れたか、テストやコメントがそもそも動いたか、このセッションで先行するスキルが
+既に何を見たか —— **その見積もりと根拠を述べたうえで、スキルごとに実行するかをユーザーに尋ね**、
+承認されたものを実行してください。
 
-The estimate is the work. 「三つとも回しますか」 is not a question; it hands the cost back to the user
-unpriced. Say which pass you expect to pay off, which you expect to return nothing, and why.
+見積もりこそが仕事です。「三つとも回しますか」は質問ではありません。値付けをしないままコストを
+ユーザーへ投げ返しています。どのパスが割に合うと見るか、どれが何も返さないと見るか、その理由を
+述べてください。
 
-The three are **peers, and none of them invokes another.** Each is asked for, decided, and run beside
-the others — one subject to one skill, and that skill is the only place its subject is audited.
+3 つは **対等であり、互いを起動しません。** それぞれが他と並んで依頼され、判断され、実行されます
+—— 1 つの対象に 1 つのスキルであり、そのスキルがその対象を監査する唯一の場所です。
 
-A skill that offers to run the next one reads as convenience, and it costs more than it saves: the
-subjects stop being independently answerable, a drift in the entry skill's question silently removes
-the other two from every flow that went through it, and the user's decision about one subject arrives
-buried inside a run they started for another. Keep the coupling in the *asking*, where this protocol
-puts it, and out of the skills.
+次のスキルを起動しないかと申し出るスキルは便利に見えますが、節約する以上のコストを払います。
+対象が独立に答えられなくなり、入口のスキルの問いが変質すると他の 2 つが黙ってすべての経路から
+消え、ユーザーはある対象についての判断を、別の対象のために始めた実行の中に埋もれた形で受け取る
+ことになります。結合は、このプロトコルが置いている **問いかけの側** に留め、スキルの中には
+入れないでください。
 
-So `/impl-review` audits the change and nothing else — it owns no test lens and no comment lens, and
-it hands nothing off. `/test-review` and `/comment-sweep` are invoked in their own right, whether or
-not `/impl-review` runs.
-<!-- boilerplate-only:end -->
+したがって `/impl-review` は変更のみを監査します —— テストのレンズもコメントのレンズも持たず、
+何も引き継ぎません。`/test-review` と `/comment-sweep` は、`/impl-review` が走るかどうかに
+関わらず、それぞれ独立に起動されます。
 
-## Layer Rules (hard constraints — enforced by `golangci-lint` depguard)
+## 層のルール（ハード制約 —— `golangci-lint` の depguard で強制）
 
-Boundaries are enforced in CI, not just documented. Full table + rationale: `docs/rules.md`.
+境界は文書化されているだけでなく CI で強制されます。完全な表と根拠: `docs/rules.md`。
 
-- **Dependencies point inward.** `controller → usecase → domain`; `infrastructure` implements domain interfaces; never bypass a layer.
-- **Domain** is pure: no framework / infrastructure / logging / DI; no env / I/O / DB clients; no dependence on time, randomness, or system state directly (abstract via domain interfaces implemented in outer layers). **No `context.Context` in domain logic** (Repository interface signatures may declare it for propagation only). The only permitted `internal/` dependencies are `internal/apperror` and the domain lexicon `internal/domain/lexicon` (cross-aggregate business-semantic value objects that cannot live in `pkg/`; admission is narrow, and failing `pkg/`'s entry bar is not an argument for admission here — see `docs/rules.md` / ADR-0039 (domain-lexicon)); a domain package must not import another aggregate. The one exception is `internal/domain/service/<name>/`, where a rule that is the natural responsibility of no entity and no value object lives — whether it spans aggregates or stays inside one: that path has its own depguard rule permitting aggregate imports while repeating every other domain deny, and admission is narrow (see `internal/domain/README.md`). Otherwise use `pkg/`.
-- **`pkg/`** must not depend on infrastructure or framework-specific packages, must stay framework-agnostic, must not import `internal/**`, and holds no feature-specific business logic.
-- **Usecase** depends only on domain interfaces (never infrastructure), owns transaction boundaries, and maps domain models to DTOs — never exposes domain entities to outer layers.
-- **Controller** handlers stay lightweight: request/response only, no business logic, no infrastructure imports.
+- **依存は内向き。** `controller → usecase → domain`。`infrastructure` は domain のインターフェースを実装する。層を飛び越さない。
+- **Domain** は純粋である: フレームワーク / インフラ / ロギング / DI を持たない。env / I/O / DB クライアントを持たない。時刻・乱数・システム状態に直接依存しない（ドメインインターフェースで抽象化し、外側の層で実装する）。**ドメインロジックに `context.Context` を持ち込まない**（Repository インターフェースのシグネチャは伝播のためだけに宣言してよい）。許される `internal/` 依存は `internal/apperror` とドメイン語彙 `internal/domain/lexicon`（`pkg/` に置けない、集約をまたぐ業務意味の値オブジェクト。受け入れは狭く、`pkg/` の入場基準を満たさないことはここへの受け入れ理由になりません —— `docs/rules.md` / ADR-0039 (domain-lexicon) 参照）だけ。ドメインパッケージは他の集約を import してはならない。唯一の例外は `internal/domain/service/<name>/` で、エンティティにも値オブジェクトにも自然に属さない規則が —— 集約をまたぐかどうかに関わらず —— ここに置かれます。このパスには集約 import を許し他のドメイン禁止事項をすべて繰り返す専用の depguard 規則が在り、受け入れは狭いです（`internal/domain/README.md` 参照）。それ以外は `pkg/` を使ってください。
+- **`pkg/`** はインフラやフレームワーク固有のパッケージに依存してはならず、フレームワーク非依存を保ち、`internal/**` を import せず、機能固有のビジネスロジックを持ちません。
+- **Usecase** はドメインインターフェースのみに依存し（インフラには決して依存しない）、トランザクション境界を所有し、ドメインモデルを DTO へ写像します —— ドメインエンティティを外側の層へ公開しません。
+- **Controller** の handler は軽量に保ちます: リクエスト / レスポンスのみ、ビジネスロジック無し、インフラ import 無し。
 
-## Forbidden Shortcuts
+## 禁止されている近道
 
-AI agents MUST NOT:
+AI エージェントは以下を行ってはいけません:
 
-- Call infrastructure directly from a handler
-- Put business logic in a handler
-- Skip the OpenAPI definition for a new API
-- Modify generated files
-- Introduce new architectural patterns without instruction
-- Install anything on their own initiative (see below)
+- handler から直接インフラを呼ぶ
+- handler にビジネスロジックを置く
+- 新しい API で OpenAPI 定義を飛ばす
+- 生成ファイルを変更する
+- 指示無くアーキテクチャパターンを持ち込む
+- 自分の判断で何かをインストールする（後述）
 
-## Installing Things
+## インストールについて
 
-This covers every `install` surface, not one tool: package managers (`brew`, `npm i -g`, `pip`,
-`go install`), toolchain managers (`mise use -g`), IDE / agent integrations (`<tool> <platform>
-install`), plugins, and extensions.
+これは 1 つのツールではなく、あらゆる `install` の面を対象とします: パッケージマネージャー
+（`brew`、`npm i -g`、`pip`、`go install`）、ツールチェーンマネージャー（`mise use -g`）、
+IDE / エージェント連携（`<tool> <platform> install`）、プラグイン、拡張機能。
 
-1. **Never install on your own initiative.** An installation changes the machine or the repository
-   for every later session and every other checkout, and it usually writes files. Agent integrations
-   in particular write project-scope instruction files (`AGENTS.md`, `.cursor/`,
-   `.github/copilot-instructions.md`, `.agents/`, `.kiro/`) — which is how an "install" quietly
-   becomes an edit to the rules you are working under.
-2. **Install only when the user asks for it.** Wanting to *use* a tool is not the same instruction as
-   wanting to *install* one; the user issues those separately. A tool being unavailable is a finding
-   to report, not a problem to solve by installing it.
-3. **Before that, check what the current setup already does.** This repository pins its toolchain in
-   `mise.toml` and ships the rest inside the Docker tool-runner images, so the capability is usually
-   already present and reachable through a `make` target — see the *Toolchain Execution Rules* in
-   `docs/rules.md` and the target registry in `.makefiles/README.md`. Reach for an install only after
-   establishing that nothing existing covers the need, and say what you checked.
+1. **自分の判断で決してインストールしないこと。** インストールはマシンまたはリポジトリを、
+   以降のすべてのセッションと他のすべてのチェックアウトに対して変更し、たいていファイルを
+   書き込みます。特にエージェント連携はプロジェクトスコープの指示ファイル（`AGENTS.md`、
+   `.cursor/`、`.github/copilot-instructions.md`、`.agents/`、`.kiro/`）を書き込みます ——
+   こうして「インストール」が、あなたが従っているルールへの静かな編集に化けます。
+2. **ユーザーが求めたときだけインストールします。** ツールを *使いたい* ことと、ツールを
+   *インストールしたい* ことは別の指示であり、ユーザーはそれらを別々に出します。ツールが
+   利用できないことは報告すべき発見であって、インストールで解決する問題ではありません。
+3. **その前に、現在の構成が既に何を提供しているか確認します。** このリポジトリは `mise.toml`
+   でツールチェーンを固定し、残りは Docker のツールランナーイメージに同梱しているので、
+   その能力は通常すでに存在し、`make` ターゲット経由で到達できます —— `docs/rules.md` の
+   *Toolchain Execution Rules* と `.makefiles/README.md` のターゲット一覧を参照してください。
+   既存の何もその必要を満たさないと確かめてからインストールへ手を伸ばし、何を確認したかを
+   述べてください。
 
-The permission layer backs this up rather than replacing it: install-shaped commands are routed to
-`ask` in `.claude/settings.json`, so they surface for a human decision instead of running silently.
-Those entries are written as patterns (`Bash(<tool> * install*)`) precisely because an enumeration of
-platform names goes stale every time upstream adds one, and a stale enumeration opens holes nobody is
-notified about.
+権限レイヤーはこれを置き換えるのではなく裏打ちします: インストール形のコマンドは
+`.claude/settings.json` で `ask` へ回され、黙って実行される代わりに人間の判断のために表面化します。
+そのエントリがパターン（`Bash(<tool> * install*)`）で書かれているのは、プラットフォーム名の
+列挙が上流の追加のたびに陳腐化し、陳腐化した列挙は誰にも通知されない穴を開けるからです。
 
-## Conflicting Authority
+## 権限の衝突
 
-Rules live in more than one place — this file, `docs/rules.md`, `docs/adr/`, per-package READMEs,
-lint configuration, and instructions given in conversation. They occasionally disagree.
+ルールは複数の場所に在ります —— このファイル、`docs/rules.md`、`docs/adr/`、パッケージごとの
+README、Lint 設定、会話中の指示。これらは時折食い違います。
 
-**Noticing a disagreement is your job; resolving one is not.** When two sources that both claim
-authority tell you different things about *what you may change*, stop and ask before acting. Say
-which sources conflict and what each of them says. Do not pick the one that lets the work continue.
+**食い違いに気づくのはあなたの仕事ですが、それを解決するのはあなたの仕事ではありません。**
+権威を主張する 2 つの出所が *何を変更してよいか* について異なることを述べているときは、
+行動する前に止まって尋ねてください。どの出所が衝突していて、それぞれが何を述べているかを
+言ってください。作業を続けられるほうを選ばないこと。
 
-This applies to permission, not to ordinary ambiguity. A design question with no clear answer is
-yours to decide and report. A rule that says "do not do X" standing against another that says "X is
-fine" is not.
+これは権限に適用されるのであって、通常の曖昧さには適用されません。明確な答えの無い設計上の
+問いは、あなたが決めて報告するものです。「X をするな」と述べるルールが「X は問題ない」と
+述べる別のルールと対立しているのは、そうではありません。
 
-**A precedent is not an authorization.** That a human once overrode a rule — recorded in a commit, an
-ADR, an agent's memory, or an earlier turn of this conversation — establishes that the override
-exists, not that you may invoke it. Ask again each time. A standing grant of autonomy does not
-transfer this: the point of an override is that a human chose it.
+**前例は承認ではありません。** 人間が一度ルールを覆したこと —— コミット、ADR、エージェントの
+記憶、この会話の以前のターンに記録されていること —— が示すのは、その例外が存在したという事実
+だけであって、あなたがそれを援用してよいということではありません。毎回改めて尋ねてください。
+包括的な自律の付与はこれを移転しません: 例外の要点は、人間がそれを選んだことに在ります。
 
-Note the asymmetry the *Documentation Rules* in `docs/rules.md` draw between a document that
-describes and one that governs. Correcting the first to match the code is routine. Correcting the
-second is not yours to start.
+`docs/rules.md` の *Documentation Rules* が引く、記述する文書と統べる文書の非対称に注意して
+ください。前者をコードに合わせて訂正するのは日常です。後者を訂正するのは、あなたが始めることでは
+ありません。
 
-<!-- boilerplate-only:begin -->
-## What to Recommend
+## 何を推奨するか
 
-This section governs what you **recommend**, never what you may change. Authority to act is
-untouched: *Conflicting Authority* above, `docs/rules.md`, and the modification scope below still
-decide that.
+この節が統べるのは、あなたが **推奨する** ことであって、変更してよいことでは決してありません。
+行動の権限は変わりません: 上の *権限の衝突*、`docs/rules.md`、後述の変更範囲が引き続きそれを
+決めます。
 
-While this repository is distributed as the boilerplate source, its product is **the state a project
-receives at `useTemplate` time** — not the history that produced it. So when you weigh options and
-state a preference, weigh them for that snapshot: what reads as coherent to someone who has never
-seen this repository and will never read its git log.
+このリポジトリはボイラープレートのソースとして配布されますが、その製品は **`useTemplate` の
+時点でプロジェクトが受け取る状態** であり、そこへ至った履歴ではありません。したがって選択肢を
+比較して選好を述べるときは、そのスナップショットに対して比較してください: このリポジトリを
+一度も見たことがなく、その git ログを決して読まない人にとって、何が一貫して読めるか。
 
-**On that axis, quality and consistency outrank the cost of reaching them.** A numbering that
-contradicts the order it teaches, a convention followed everywhere but here, a name that survives
-only because renaming it is work — recommend fixing them. State the cost plainly instead of letting
-the cost pick the answer; "it already shipped" carries little weight while nobody has instantiated
-from this in production.
+**その軸では、品質と一貫性がそこへ到達するコストに優越します。** それが教える順序と矛盾する
+採番、ここ以外のすべてで守られている規約、リネームが手間だという理由だけで生き延びている名前 ——
+これらは直すことを推奨してください。コストに答えを選ばせるのではなく、コストを率直に述べる
+こと。「もう出荷済みだから」は、誰もこれを本番でインスタンス化していない間はほとんど重みを
+持ちません。
 
-Give the cost with the recommendation — files touched, what breaks for whom, what must be rebuilt —
-so a human can decline the scope while keeping the direction.
-<!-- boilerplate-only:end -->
+推奨と一緒にコストを示してください —— 触るファイル、誰にとって何が壊れるか、何を作り直す必要が
+あるか —— そうすれば人間は、方向を保ったまま範囲を断ることができます。
 
-## YAGNI vs Regression Safeguards
+## YAGNI と退行の安全装置
 
-- **Functional YAGNI applies to production code**: do NOT add speculative features, config, or code
-  paths that no caller exercises. Unreached "might-need-it-later" code is dead weight — untested,
-  coverage-dragging, and prone to rot.
-- **Deliberate regression safeguards are the encouraged exception**: a defensive branch/guard whose
-  purpose is to catch a future mistake (e.g. mapping the right value per environment, refusing a
-  dangerous operation) SHOULD be kept and **actively locked down with a test**. If it is unreachable
-  through its current caller, extract the logic into a testable unit and cover every branch rather
-  than deleting it. Never drop a meaningful safeguard just because it is currently unreached — make
-  it testable and add the regression test.
-- **Coverage % is a proxy, not the goal**: a test's worth is the contract it locks against
-  regression, not the number it moves. A meaningful test can add 0 % (e.g. exercising an empty
-  no-op default — an `{}` body has zero coverable statements, so its `0.0%` is a Go display artifact,
-  NOT a gap). Do NOT chase whole-function `0.0%` that are empty/no-statement bodies, and do NOT
-  delete a test that verifies a real contract just because it doesn't raise coverage. Conversely,
-  code run only to hit lines with no meaningful assertion is coverage theater — that IS meaningless.
-- **A test is meaningful only if** the contract it protects (correctness / invariant / boundary /
-  safety) (1) can actually regress, (2) is not already locked elsewhere, and (3) is owned by that
-  layer. The meaningless-test forms are the inverses: **wrong semantics** (tautology, asserting an
-  incidental implementation detail, or coverage-only), **redundant duplication** (same path verified
-  2×/3× across layers with no new viewpoint; re-testing a dependency / generated code), or **wrong
-  layer** (verifying a concern the layer does not own).
+- **機能的な YAGNI は production コードに適用されます**: 呼び出し元が誰も通らない投機的な機能・
+  設定・コードパスを追加しないこと。到達しない「後で要るかも」のコードは死荷重です —— テストされず、
+  カバレッジを引き下げ、腐ります。
+- **意図的な退行の安全装置は推奨される例外です**: 将来の間違いを捕まえることを目的とした防御的な
+  分岐 / ガード（例: 環境ごとに正しい値を対応付ける、危険な操作を拒否する）は **残し、テストで
+  積極的に固定** してください。現在の呼び出し元から到達不能なら、削除するのではなく、ロジックを
+  テスト可能な単位へ抽出してすべての分岐を覆ってください。意味のある安全装置を、現在到達しない
+  というだけで落とさないこと —— テスト可能にして退行テストを足してください。
+- **カバレッジ % は代理指標であって目的ではありません**: テストの価値は、退行に対して固定する
+  契約であって、動かす数値ではありません。意味のあるテストが 0 % を足すことはあります（例: 空の
+  no-op デフォルトを通す —— `{}` の本体はカバー可能なステートメントを持たないので、その `0.0%` は
+  Go の表示上の産物であってギャップでは **ありません**）。空 / ステートメント無しの本体による関数
+  全体の `0.0%` を追いかけないこと。逆に、意味のあるアサーション無しに行を通すだけのコードは
+  カバレッジ演技であり、それは **本当に** 無意味です。
+- **テストが意味を持つのは**、それが守る契約（正しさ / 不変条件 / 境界 / 安全性）が (1) 実際に
+  退行し得て、(2) 他所で既に固定されておらず、(3) その層が所有しているときに限ります。無意味な
+  テストの形はその裏返しです: **誤った意味論**（トートロジー、付随的な実装詳細のアサート、
+  カバレッジ目的のみ）、**冗長な重複**（同じ経路を新しい視点無しに層をまたいで 2 回・3 回検証する。
+  依存 / 生成コードの再テスト）、**誤った層**（その層が所有しない関心事の検証）。
 
-## AI Modification Scope
+## AI の変更範囲
 
-AI agents may modify code only in these directories unless explicitly instructed otherwise:
+AI エージェントは、明示的な指示が無い限り、以下のディレクトリのコードだけを変更できます:
 
 - `internal/`
 - `pkg/`
-- `database/` (`database/dml/**`; `database/migrations/**` — new files only, never edit existing migrations)
+- `database/`（`database/dml/**`。`database/migrations/**` は新規ファイルのみ。既存のマイグレーションを編集しないこと）
 - `openapi/`
 
-Do NOT modify other top-level directories (e.g. `cmd/`, `docker/`, `scripts/`, `docs/`,
-`vendor/`, `makefile`) unless the user explicitly requests it.
+ユーザーが明示的に要求しない限り、他のトップレベルディレクトリ（例: `cmd/`、`docker/`、
+`scripts/`、`docs/`、`vendor/`、`makefile`）を変更しないでください。
 
-- **CLI command exception:** each CLI subcommand is a thin `cmd/<command>.go` shell (Cobra + real-dependency wiring) paired with its testable core under `internal/cli/<command>/`. Adding / modifying a command necessarily edits the matching `cmd/<command>.go` and that is in-scope; the restriction is about not arbitrarily restructuring `cmd/` entrypoint/build wiring.
+- **CLI コマンドの例外:** 各 CLI サブコマンドは、薄い `cmd/<command>.go` のシェル（Cobra +
+  実依存の結線）と、`internal/cli/<command>/` 配下のテスト可能なコアの対です。コマンドの追加 /
+  変更は必然的に対応する `cmd/<command>.go` を編集するので、それは範囲内です。制限しているのは
+  `cmd/` のエントリポイント / ビルド結線を恣意的に再構成しないことです。
 
-**AI-tool configurations are out of scope** — do NOT create/modify/delete these unless the user explicitly requests it. Note that maintaining them is an ordinary, recurring part of the standard path rather than an exception: it is reached through the skill that owns it (`manage-skill` for a skill, `sync-ai` across environments), which is what supplies the explicit instruction. What is unchanged is the requirement — a direct user request or a running skill, never an agent's own initiative:
+**AI ツールの設定は範囲外です** —— ユーザーが明示的に要求しない限り、これらを作成 / 変更 /
+削除しないでください。ただしその保守は例外ではなく、標準経路の通常かつ反復的な一部です:
+それを所有するスキル（スキル 1 本なら `manage-skill`、環境間なら `sync-ai`）経由で到達し、
+そのスキルが明示的な指示を供給します。変わらないのは要件のほうです —— ユーザーの直接の依頼か
+実行中のスキルであって、エージェント自身の発意ではありません:
 
-- Claude Code: `.claude/` (skills, `settings.json`, `settings.local.json`, …)
+- Claude Code: `.claude/`（skills、`settings.json`、`settings.local.json`、…）
 - OpenAI Codex CLI: `.codex/skills/`
-- Cursor: `.cursor/` (incl. `.cursor/rules/*.mdc`), `.cursorrules`
-- GitHub Copilot: `.github/copilot-instructions.md`, `.github/instructions/`, `.github/prompts/`
-- Gemini CLI / Code Assist: `.gemini/`, `GEMINI.md`
+- Cursor: `.cursor/`（`.cursor/rules/*.mdc` を含む）、`.cursorrules`
+- GitHub Copilot: `.github/copilot-instructions.md`、`.github/instructions/`、`.github/prompts/`
+- Gemini CLI / Code Assist: `.gemini/`、`GEMINI.md`
 
-### Exception: Skill Execution
+### 例外: スキルの実行
 
-Invoking a skill (Claude Code `/<skill-name>`, or an equivalent mechanism) counts as an
-**explicit user instruction**. While the skill runs, the scope restrictions above are relaxed
-for the paths the skill's defined procedure needs. Conditions:
+スキルの起動（Claude Code の `/<skill-name>`、または同等の機構）は **ユーザーの明示的な指示**
+として扱われます。スキルの実行中、上記の範囲制限は、そのスキルの定義された手順が必要とする
+パスに対して緩和されます。条件:
 
-- Relaxed only for the skill's duration and only to the scope the skill defines; the skill's `SKILL.md` still governs (honor any "confirm before touching X" step).
-- **Hard-protected even during skill execution:**
+- 緩和はそのスキルの実行中のみ、かつスキルが定義する範囲に限られます。スキルの `SKILL.md` が
+  引き続き統べます（「X に触れる前に確認する」といった手順を守ってください）。
+- **スキル実行中でもハード保護されるもの:**
   - `AGENTS.md`
-  - Generated files: `**/*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`
-  - Generated content under `docs/`: `docs/openapi/**`, `docs/coverage/**`, `docs/db-schema/**`, `docs/godoc/**`, `docs/portal/docs.json`, `docs/portal/guides/**`
-  - Anything under `permissions.deny` in `.claude/settings.json`
-- Canonical Markdown under `docs/` (`architecture.md`, `rules.md`, `decisions.md`, `development-flow.md`, `testing-conventions.md`, `maintenance/**`, `ja/**`, `portal/manifest.yaml`, …) is NOT generated and remains editable per the skill's scope.
-- Skills must not be a loophole. If a procedure touches a sensitive area (`docker/`, `.github/workflows/`), the skill must document it so the user is aware.
+  - 生成ファイル: `**/*.gen.go`、`*.sql.go`、`*_mock.go`、`**/openapi.gen.yaml`
+  - `docs/` 配下の生成物: `docs/openapi/**`、`docs/coverage/**`、`docs/db-schema/**`、`docs/godoc/**`、`docs/portal/docs.json`、`docs/portal/guides/**`
+  - `.claude/settings.json` の `permissions.deny` 配下のもの
+- `docs/` 配下の正典 Markdown（`architecture.md`、`rules.md`、`decisions.md`、
+  `development-flow.md`、`testing-conventions.md`、`maintenance/**`、`ja/**`、
+  `portal/manifest.yaml`、…）は生成物ではなく、スキルの範囲に従って編集可能です。
+- スキルは抜け道であってはなりません。手順が慎重を要する領域（`docker/`、`.github/workflows/`）に
+  触れる場合、スキルはそれを文書化し、ユーザーが認識できるようにしなければなりません。
 
-## Do Not Edit Generated Files
+## 生成ファイルを編集しないこと
 
 - `**/*.gen.go`
 - `**/*.sql.go`
 - `*_mock.go`
 - `**/openapi.gen.yaml`
-- Generated content under `docs/`: `docs/openapi/**`, `docs/coverage/**`, `docs/db-schema/**`, `docs/godoc/**`, `docs/portal/docs.json`, `docs/portal/guides/**`
+- `docs/` 配下の生成物: `docs/openapi/**`、`docs/coverage/**`、`docs/db-schema/**`、`docs/godoc/**`、`docs/portal/docs.json`、`docs/portal/guides/**`
 
-## Git Rules for AI Agents
+## AI エージェント向け Git ルール
 
-1. **NEVER commit directly** to `production`, `develop`, `staging`, or any `release/*` branch. Always cut a feature branch from the branch `make base-branch` resolves: the latest `release/*` line, where **"latest" is the numeric comparison of `major` / `minor` / `patch`**, read from `origin`'s live state.
-   - **Take the base from nowhere else.** The local `refs/remotes/origin/HEAD` is fixed at clone time and `git fetch` never updates it (only `git remote set-head` does, and that only copies the GitHub default); the GitHub default branch (`gh repo view --json defaultBranchRef`) lags behind the active release line; a harness-supplied "Main branch" value reads that same stale local symref. All three answer without warning, and a feature branch cut from a generation-old base stays invisible until the files everyone expects turn out to be missing.
-   - **Where a pull request already exists, its `baseRefName` is the authority** and the resolver is the fallback. A PR's base is what it is already merging into; nothing may re-resolve it.
-   - **During a hotfix, resolve nothing — ask.** `make hotfix-patch` cuts a `hotfix/vX.Y.Z` and makes it the GitHub default, so the branch under active development is then not the latest `release/*`, and `make base-branch` — which considers `release/*` only — will not name it. That scope is deliberate: a hotfix is an emergency, its base is a human decision taken on the spot, and an agent inferring one from branch names would be guessing at the moment guessing is most expensive.
-2. Do NOT rebase, squash, or force-push unless the user explicitly requests it.
-3. After amending an existing PR branch, do NOT auto-push — ask first: 「変更はローカルにコミット済みです。これらの変更をプルリクエストにプッシュしますか？」
-4. **Syncing a feature branch with an advanced base — merge, never rebase (see rule 2).** When the base `release/*` has moved ahead and the feature branch must catch up, fast-forward the local base to its remote and **merge** it into the feature branch (`git merge origin/release/vX.Y.0`), rather than rebasing / force-pushing. The branch to merge is the one this feature branch was cut from — the pull request's base — **not** whatever `make base-branch` resolves today: if a newer release line has opened since, merging that would retarget the branch instead of catching it up. Resolve conflicts in generated artifacts (`**/*.gen.*`, `docs/openapi/**`, `openapi/openapi.gen.yaml`, …) by **regenerating from the source of truth** (`make gen-api` / `make gen-query`), not by hand-editing the generated output. Rebase only when the user explicitly requests it.
+1. **`production` / `develop` / `staging` / `release/*` ブランチへ直接コミットしないこと。**
+   常に `make base-branch` が解決するブランチからフィーチャーブランチを切ってください: 最新の
+   `release/*` 系列であり、ここでの **「最新」は `major` / `minor` / `patch` の数値比較** で、
+   `origin` のライブな状態から読みます。
+   - **ベースを他のどこからも取らないこと。** ローカルの `refs/remotes/origin/HEAD` は clone 時に
+     固定され、`git fetch` はそれを更新しません（更新するのは `git remote set-head` だけで、
+     それも GitHub のデフォルトブランチを写すだけです）。GitHub のデフォルトブランチ
+     （`gh repo view --json defaultBranchRef`）は活動中のリリース系列より遅れます。ハーネスが
+     供給する "Main branch" の値は、その同じ古い symref を読んでいます。3 つとも警告無しに
+     答えを返し、1 世代古いベースから切ったフィーチャーブランチは、皆が期待するファイルが
+     存在しないと判明するまで見えないままです。
+   - **プルリクエストが既に在る場合、その `baseRefName` が権威** であり、リゾルバは代替手段です。
+     PR のベースは、それが既にマージしようとしている先であり、何もそれを再解決してはいけません。
+   - **ホットフィックス中は何も解決せず、尋ねてください。** `make hotfix-patch` は
+     `hotfix/vX.Y.Z` を切ってそれを GitHub のデフォルトにするため、そのとき活発に開発されている
+     ブランチは最新の `release/*` ではなく、`release/*` しか見ない `make base-branch` はそれを
+     指し示しません。そのスコープは意図的です: ホットフィックスは緊急事態であり、そのベースは
+     その場で人間が下す判断であり、エージェントがブランチ名から推測することは、推測が最も
+     高くつく瞬間に推測することになります。
+2. ユーザーが明示的に要求しない限り、rebase / squash / force-push をしないこと。
+3. 既存の PR ブランチを修正した後、自動で push しないこと —— 先に尋ねてください:
+   「変更はローカルにコミット済みです。これらの変更をプルリクエストにプッシュしますか？」
+4. **進んだベースへのフィーチャーブランチの追随は merge で行い、rebase しないこと（ルール 2 参照）。**
+   ベースの `release/*` が先へ進み、フィーチャーブランチが追いつく必要があるときは、ローカルの
+   ベースをリモートへ fast-forward し、それをフィーチャーブランチへ **merge** してください
+   （`git merge origin/release/vX.Y.0`）。rebase / force-push ではありません。merge する相手は
+   このフィーチャーブランチを切った元 —— プルリクエストのベース —— であって、今日
+   `make base-branch` が解決するものでは **ありません**: 新しいリリース系列がその後に開いていた
+   場合、それを merge するとブランチを追いつかせるのではなくベースを付け替えることになります。
+   生成物（`**/*.gen.*`、`docs/openapi/**`、`openapi/openapi.gen.yaml`、…）の衝突は、生成物を
+   手で編集するのではなく **真の出所から再生成** して解決してください（`make gen-api` /
+   `make gen-query`）。rebase はユーザーが明示的に要求したときだけです。
 
-**Commit / PR execution:** split into scoped commits using the prefix convention
-(Feat / Fix / Refactor / Perf / Docs / Test / Build / CI / Chore / Style / Revert), bypass
-per-commit hooks during the split then run verification (lint / test / sql-lint / migration
-checks) once at the end, add the `Co-Authored-By` footer, and never commit to protected
-branches. If your agent provides a dedicated command/skill for this workflow, prefer it over
-manual steps (keep the concrete names in your own agent config, not here).
+**コミット / PR の実行:** プレフィックス規約（Feat / Fix / Refactor / Perf / Docs / Test /
+Build / CI / Chore / Style / Revert）でスコープを切ったコミットに分割し、分割中はコミットごとの
+フックをバイパスして最後に検証（lint / test / sql-lint / migration チェック）を 1 回実行し、
+`Co-Authored-By` フッターを付け、保護ブランチへコミットしないこと。エージェントがこのワークフロー
+専用のコマンド / スキルを提供している場合は、手作業よりそちらを優先してください（具体的な名前は
+ここではなく各エージェントの設定に置きます）。
 
-**Branch naming:** include the issue number when provided (`feature/1234-description`);
-otherwise a descriptive hyphenated name (`feature/add-authentication-check`).
+**ブランチ命名:** issue 番号が与えられていればそれを含めます（`feature/1234-description`）。
+無い場合は説明的なハイフン区切りの名前（`feature/add-authentication-check`）。
 
-**Linking to another repository's issue / PR — always go through `redirect.github.com`.**
-This repository is public, so a plain `https://github.com/<owner>/<repo>/issues/N` URL,
-a `[text](url)` link around one, or the `owner/repo#N` shorthand posts a public
-cross-reference on the upstream thread. Use `https://redirect.github.com/<owner>/<repo>/issues/N`
-instead: it is a `github.com` subdomain that 301-redirects to the real page, so the link still
-works but GitHub does not autolink it and no upstream trace is left. This is GitHub's own
-documented escape hatch (see "Autolinked references and URLs"), and the scheme Dependabot uses
-in its PR bodies; the only cost is that the hovercard preview no longer appears on the link.
-Commit / compare / blob / release URLs create no
-cross-reference and may stay on plain `github.com`. **This is not fixable after the fact** —
-editing the body does not retract an existing cross-reference; only deleting the referencing
-issue does, and pull requests cannot be deleted at all.
+**他リポジトリの issue / PR へのリンクは、必ず `redirect.github.com` を経由すること。**
+このリポジトリは public なので、素の `https://github.com/<owner>/<repo>/issues/N` URL、
+それを囲む `[text](url)` リンク、`owner/repo#N` の短縮形は、上流のスレッドへ public な
+クロスリファレンスを投稿します。代わりに `https://redirect.github.com/<owner>/<repo>/issues/N`
+を使ってください: これは `github.com` のサブドメインで、実ページへ 301 リダイレクトするため
+リンクは機能しますが、GitHub は自動リンクせず上流に痕跡が残りません。これは GitHub 自身が
+文書化した回避手段であり（"Autolinked references and URLs" 参照）、Dependabot が PR 本文で
+使っている方式でもあります。唯一の代償は、リンク上にホバーカードのプレビューが出なくなること
+だけです。commit / compare / blob / release の URL はクロスリファレンスを作らないので、素の
+`github.com` のままで構いません。**これは事後に修正できません** —— 本文を編集しても既存の
+クロスリファレンスは撤回されず、撤回できるのは参照元の issue を削除したときだけで、
+プルリクエストはそもそも削除できません。
 
-**A plain link is not forbidden — it is reserved.** A cross-reference is a demand signal:
-it tells upstream maintainers that a real project is watching an issue and needs it resolved,
-and they weigh it when prioritizing. That signal only carries meaning because a human vouched
-for it. Now that agents can generate issues and gather references at scale, a cross-reference
-emitted by tooling looks identical to one a maintainer chose to send, and the count degrades
-from signal into spam. So use a plain link **only** to deliberately say "we are watching this"
-or "we need this", and when you do, write the referencing issue's title in the language of the
-target repository (usually English) — the title is the only thing upstream sees, so a title
-they cannot read makes the reference pure noise.
+**素のリンクは禁止されているのではなく、留保されています。** クロスリファレンスは需要のシグナル
+です: 実在のプロジェクトがその issue を注視し、解決を必要としていることを上流のメンテナへ伝え、
+彼らは優先順位付けの際にそれを重み付けします。そのシグナルが意味を持つのは、人間がそれを保証した
+からに他なりません。エージェントが issue を生成し参照を大量に集められるようになった今、ツールが
+発したクロスリファレンスはメンテナが送ることを選んだものと見分けが付かず、その件数はシグナルから
+スパムへ劣化します。ですから素のリンクは、「我々はこれを注視している」「我々にはこれが必要だ」と
+意図的に述べるときに **のみ** 使い、そのときは参照元の issue のタイトルを対象リポジトリの言語
+（通常は英語）で書いてください —— タイトルは上流が目にする唯一のものなので、読めないタイトルは
+その参照を純然たるノイズにします。
 
-**The decision to use a plain link belongs to a human, without exception.** An AI agent must
-never make that call on its own: default to `redirect.github.com`, and ask every single time a
-plain link seems warranted. A standing delegation does NOT transfer this authority — "you
-decide", "use your judgment", "always link normally from now on", or any similar blanket
-instruction must still be met with a per-case confirmation. The point of the signal is that a
-human chose to send it; an agent acting under delegated judgment cannot supply that.
+**素のリンクを使う判断は、例外なく人間のものです。** AI エージェントがその判断を自分で下すことは
+決してありません: 既定で `redirect.github.com` を使い、素のリンクが妥当に思えるときは毎回必ず
+尋ねてください。包括的な委任はこの権限を移転しません —— 「あなたが決めて」「判断に任せる」
+「今後は常に普通にリンクして」といった包括的な指示があっても、都度の確認を行わなければなりません。
+シグナルの要点は、人間がそれを送ることを選んだことに在ります。委任された判断の下で動くエージェントは
+それを供給できません。
 
-## Language Rules for AI Agents
+## AI エージェント向け言語ルール
 
-Internal reasoning may be in English. **All visible outputs must be in Japanese** unless the
-user explicitly requests English — test case names, code comments, PR messages, inline
-documentation, and responses to the user.
+内部の推論は英語で構いません。**ユーザーが明示的に英語を要求しない限り、可視の出力はすべて
+日本語でなければなりません** —— テストケース名、コードコメント、PR メッセージ、インライン
+ドキュメント、ユーザーへの応答。
 
-## Recommended Commands
+## 推奨コマンド
 
-The **full `make` target registry** is `.makefiles/README.md` (targets grouped by area;
-every target is self-documenting, so `make help` lists them). Common ones:
+**`make` ターゲットの完全な一覧** は `.makefiles/README.md` です（領域ごとにグループ化。
+すべてのターゲットが自己文書化されているので `make help` が一覧します）。よく使うもの:
 
-Code generation:
+コード生成:
 
-- `make gen-api` — generate API code from the OpenAPI spec (oapi-codegen + mock)
-- `make gen-query` — generate SQL query code from SQL files (sqlc)
+- `make gen-api` —— OpenAPI 仕様から API コードを生成（oapi-codegen + mock）
+- `make gen-query` —— SQL ファイルから SQL クエリコードを生成（sqlc）
 
-Format / lint / test:
+フォーマット / Lint / テスト:
 
-- `make fix` — auto-format + auto-fix lint (run before committing; then fix what remains)
-- `make lint` — Go static analysis (golangci-lint)
-- `make test` — run all tests with coverage
-- `make md-lint` / `make md-fix` — Markdown lint / auto-fix
-- `make sql-lint` / `make sql-fix` — SQL lint / auto-fix
+- `make fix` —— 自動フォーマット + Lint の自動修正（コミット前に実行し、残ったものを直す）
+- `make lint` —— Go の静的解析（golangci-lint）
+- `make test` —— カバレッジ付きで全テストを実行
+- `make md-lint` / `make md-fix` —— Markdown の Lint / 自動修正
+- `make sql-lint` / `make sql-fix` —— SQL の Lint / 自動修正
 
-Run / DB:
+実行 / DB:
 
-- `make serve` — start the local dev environment (for runtime / `curl` verification)
-- `make db-init` — migrate + seed both the local and test DBs (prerequisite for DB-backed tests)
-- `make new-migrate-<name>` — scaffold a new migration (`.up.sql` / `.down.sql`)
-- `make job NAME=<job> ARGS="<args>"` — run an application job
+- `make serve` —— ローカル開発環境を起動（ランタイム / `curl` での確認用）
+- `make db-init` —— ローカルとテストの両 DB をマイグレート + シード（DB を使うテストの前提）
+- `make new-migrate-<name>` —— 新しいマイグレーションを雛形生成（`.up.sql` / `.down.sql`）
+- `make job NAME=<job> ARGS="<args>"` —— アプリケーションジョブを実行
 
-**Working in a `git worktree` (DB + serve isolation):** a single shared Postgres (fixed compose
-project `gobp-shared`, host 5432) is shared by all worktrees; each leases a slot = its own
-databases (`wt<N>_local` / `wt<N>_test`) inside that instance. Before DB-backed tasks or `make serve`
-in a worktree, `make slot-acquire` to lease a slot (creates + rebuilds `wt<N>_local` / `wt<N>_test`,
-propagates `DB_NAME_LOCAL` / `DB_NAME_TEST` / `API_HOST_PORT` `8080+N` / `MOCK_AUTH_HOST_PORT` `2010+N`),
-then `make test` connects to `wt<N>_test` on localhost:5432, `make serve` isolates the app in
-`gobp-wt-N` (curl `localhost:$API_HOST_PORT`) against the shared DB, and `make slot-free` when done —
-do NOT start a duplicate DB stack or hijack another checkout's containers. To retire the worktree
-entirely, `make slot-release` stops the app + removes its local images, frees the slot, and removes
-the worktree, in that order. Without `slot-acquire`,
-targets default to `local` / `test` on 5432 / 8080 / 2010 (single-stack, unchanged).
-Details: `docs/maintenance/db-worktree-pool.md`.
+**`git worktree` での作業（DB と serve の隔離）:** 単一の共有 Postgres（固定の compose プロジェクト
+`gobp-shared`、ホスト 5432）を全 worktree が共有し、各 worktree はスロットを借りる = その
+インスタンス内に自分のデータベース（`wt<N>_local` / `wt<N>_test`）を持ちます。worktree で DB を
+使うタスクや `make serve` の前に `make slot-acquire` でスロットを借り（`wt<N>_local` /
+`wt<N>_test` を作成 + 再構築し、`DB_NAME_LOCAL` / `DB_NAME_TEST` / `API_HOST_PORT` `8080+N` /
+`MOCK_AUTH_HOST_PORT` `2010+N` を伝播）、その後 `make test` は localhost:5432 の `wt<N>_test`
+へ接続し、`make serve` はアプリを `gobp-wt-N` に隔離して共有 DB に対して動かし
+（`localhost:$API_HOST_PORT` へ curl）、終わったら `make slot-free` します —— 重複した DB
+スタックを起動したり、他のチェックアウトのコンテナを乗っ取ったりしないでください。worktree を
+完全に撤収するには `make slot-release` が、アプリの停止 + ローカルイメージの削除、スロットの解放、
+worktree の削除をこの順で行います。`slot-acquire` を行わない場合、各ターゲットは 5432 / 8080 /
+2010 上の `local` / `test` を既定とします（単一スタック、従来どおり）。
+詳細: `docs/maintenance/db-worktree-pool.md`。
 
-**DB clean-up (worktree slot pool):** the pool shares one Postgres instance, so tables from another
-branch's migrations can linger in a DB you reuse. As part of clean-up — at the start of DB-backed
-work, and whenever the shared DB carries stale tables — rebuild your DB from THIS branch's migrations
-so you always work against a clean, migration-faithful schema: `make slot-acquire` re-creates the
-slot's `wt<N>` DBs this way, and `make db-local-reinit` / `db-test-reinit` drop every `public` table
-then migrate-up + seed the shared `local` / `test`.
+**DB の後片付け（worktree スロットプール）:** プールは 1 つの Postgres インスタンスを共有するため、
+再利用した DB に別ブランチのマイグレーションが作ったテーブルが残ることがあります。後片付けの一部
+として —— DB を使う作業の開始時と、共有 DB に古いテーブルが残っているときはいつでも —— **この**
+ブランチのマイグレーションから DB を再構築し、常にクリーンでマイグレーションに忠実なスキーマに
+対して作業してください: `make slot-acquire` はスロットの `wt<N>` DB をこの方式で作り直し、
+`make db-local-reinit` / `db-test-reinit` は共有の `local` / `test` の `public` テーブルを
+すべて drop してから migrate-up + シードします。
 
-## Protected Documentation
+## 保護されたドキュメント
 
-`AGENTS.md` must be maintained by humans only. AI agents must NOT modify it unless explicitly
-instructed by a human; changes must be intentional and reviewed carefully, as it defines
-repository-wide development rules.
+`AGENTS.md` は人間のみが保守します。AI エージェントは、人間から明示的に指示されない限り
+これを変更してはいけません。リポジトリ全体の開発ルールを定義するものなので、変更は意図的で
+あり、慎重にレビューされなければなりません。

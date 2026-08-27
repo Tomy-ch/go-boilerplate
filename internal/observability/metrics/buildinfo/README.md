@@ -1,28 +1,28 @@
 # buildinfo
 
-`internal/observability/metrics/buildinfo` is a package that **exposes the application's build / version / runtime information as a Prometheus info gauge (`app_build_info`)**.
+`internal/observability/metrics/buildinfo` は、**アプリケーションのビルド・バージョン・ランタイム情報を Prometheus の info gauge (`app_build_info`) として公開する**パッケージです。
 
-It complements the `/version` HTTP endpoint by making the running version observable from the metrics backend (Prometheus / Grafana), which is useful for deployment confirmation, incident investigation, and rollback decisions.
+`/version` HTTP エンドポイントを補完し、稼働中のバージョンをメトリクスバックエンド (Prometheus / Grafana) から横断的に確認できるようにします。デプロイ確認・障害調査・ロールバック判断に役立ちます。
 
-## Public API
+## 公開 API
 
-|Function / Type|Description|
+|関数 / 型|説明|
 |---|---|
-|`Collector`|Build info collector implementing `prometheus.Collector`|
-|`NewCollector(appCfg, bi)`|Resolve and normalize all label values once at wiring time and create a `Collector`|
-|`Register(c)`|Register the collector with the Prometheus default registry (ignores duplicate registration)|
+|`Collector`|`prometheus.Collector` を実装するビルド情報コレクター|
+|`NewCollector(appCfg, bi)`|全ラベル値を結線時に一度だけ解決・正規化して `Collector` を生成|
+|`Register(c)`|コレクターを Prometheus のデフォルトレジストリに登録（重複登録は無視）|
 
-## Metric
+## メトリクス
 
-|Item|Value|
+|項目|値|
 |---|---|
-|Name|`app_build_info`|
-|Type|Gauge|
-|Value|always `1` (the meaning is in the labels)|
+|名前|`app_build_info`|
+|型|Gauge|
+|値|常に `1`（意味はラベルに持たせる）|
 
-### Labels
+### ラベル
 
-|Label|Example|Source|
+|ラベル|例|取得元|
 |---|---|---|
 |`service`|`go-boilerplate`|`config.ApplicationConfig.Name()`|
 |`environment`|`production`|`config.ApplicationConfig.Env()`|
@@ -31,15 +31,15 @@ It complements the `/version` HTTP endpoint by making the running version observ
 |`build_date`|`2026-06-28T17:00:00Z`|`system.BuildInfo.BuildDate()`|
 |`go_version`|`go1.24.4`|`runtime.Version()`|
 
-## Design
+## 設計方針
 
-- **Same source of truth as `/version`**: build values come from `system.BuildInfo`, so `/version` and `app_build_info` never disagree.
-- **Resolved at wiring time**: build / version / runtime values do not change after startup, so all label values are resolved and normalized **once** in `NewCollector` and held. `Collect` only emits the held values via `MustNewConstMetric` (no per-scrape computation, unlike the mutable `pgxpool` pool stats collector).
-- **Empty values become `unknown`**: empty label values are normalized to `unknown` at wiring time.
+- **`/version` と同一の source of truth**: ビルド値は `system.BuildInfo` から取得するため、`/version` と `app_build_info` が異なる値を持つことはありません。
+- **結線時に値を実体化**: ビルド・バージョン・ランタイム情報は起動後に変化しないため、全ラベル値を `NewCollector` で**一度だけ**解決・正規化して保持します。`Collect` は保持済みの値を `MustNewConstMetric` で emit するだけで、スクレイプごとの計算は行いません（可変な `pgxpool` プール統計コレクターとは異なる方針です）。
+- **空値は `unknown` に丸める**: 空のラベル値は結線時に `unknown` へ正規化します。
 
-## Notes
+## 注意点
 
-- The following labels are intentionally **excluded** to avoid high cardinality and leaking secret / environment information: `hostname`, `pod_name`, `container_id`, `instance_id`, `git_branch`, `build_url`, `image_digest`, `full_image`, `token`, `registry`, `commit`.
-- This package does not call `os.Getenv` directly; the environment value comes from the immutable `config.ApplicationConfig`.
-- Build info is never carried into the domain / usecase layers.
-- Safely skips duplicate registration by ignoring `prometheus.AlreadyRegisteredError`.
+- 高カーディナリティ化や秘匿・環境情報の漏えいを避けるため、次のラベルは意図的に**含めません**: `hostname` / `pod_name` / `container_id` / `instance_id` / `git_branch` / `build_url` / `image_digest` / `full_image` / `token` / `registry` / `commit`。
+- 本パッケージは `os.Getenv` を直接呼びません。環境値は不変な `config.ApplicationConfig` から取得します。
+- ビルド情報を domain / usecase 層に持ち込みません。
+- `prometheus.AlreadyRegisteredError` を無視して重複登録を安全にスキップします。

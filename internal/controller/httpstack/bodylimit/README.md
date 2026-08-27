@@ -1,13 +1,13 @@
 # bodylimit
 
-Caps the request body size (`SERVER_BODY_LIMIT_MB`, in MB).
+リクエストボディのサイズを上限化します（`SERVER_BODY_LIMIT_MB`、MB 単位）。
 
-## Role
+## 役割
 
-Bounds memory pressure and DoS surface from oversized request bodies. `Middleware(limitMB int)` thinly wraps Echo's `middleware.BodyLimit`, converting the MB value to Echo's byte string (`"%dM"`; gommon/Echo treats `1M` as 1,000,000 bytes, decimal). On exceedance Echo returns **413 Request Entity Too Large**.
+過大なリクエストボディによるメモリ圧迫・DoS 面を抑えます。`Middleware(limitMB int)` は echo 標準の `middleware.BodyLimit` を薄くラップし、MB 値を echo のバイト文字式（`"%dM"`。gommon/echo は `1M` を 1,000,000 バイト＝10進として扱う）へ変換します。上限超過時は echo が **413 Request Entity Too Large** を返します。
 
-## Notes
+## 補足
 
-- Registered as a **Pre** middleware (priority 2) — see `internal/di/server/extension/inbound`. Echo's `BodyLimit` only wraps the body reader and is routing-independent, so placing it in `Pre` guarantees the limit applies **before** the OpenAPI validator (a `Use` middleware that decodes/buffers `requestBody`) reads the body. Registering it later would let the validator read an unbounded body on validated `POST`/`PUT` routes, silently defeating the limit.
-- The limit is configured as an **integer in MB** (`ServerConfig.BodyLimitMB()`) rather than a free-form string, so the unit is unambiguous and an invalid value is rejected at config load.
-- The outbound counterpart (response body) is already bounded by the HTTP client's `MaxResponseBytes`; this covers the inbound gap.
+- **Pre** ミドルウェア（priority 2）として登録します（`internal/di/server/extension/inbound` 参照）。echo の `BodyLimit` はボディ reader をラップするだけでルーティング非依存なため、`Pre` に置けば OpenAPI validator（`requestBody` を decode/buffer する `Use` ミドルウェア）がボディを読む**前**に確実に上限が効きます。後ろに置くと validated な `POST`/`PUT` で validator が無制限ボディを読み切り、上限がサイレントに無効化されます。
+- 上限は **MB の整数**（`ServerConfig.BodyLimitMB()`）で設定し、自由形式の文字列にしないことで単位を明確にし、不正値は config 読込時に弾きます。
+- outbound 側（レスポンスボディ）は HTTP クライアントの `MaxResponseBytes` で既に上限化済みで、本パッケージは inbound の穴を塞ぎます。

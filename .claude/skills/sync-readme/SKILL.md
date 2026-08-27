@@ -5,184 +5,167 @@ description: Update a specified canonical README so it matches the actual files 
 
 # Sync README
 
-This skill reconciles a README document with the actual file/directory layout under its directory. It rewrites the README to fix drift while respecting nested README boundaries: when a subdirectory has its own README, that subdirectory is summarized via a one-line digest and a reference link, not recursively expanded.
+このスキルは、指定された README ドキュメントを、その配下のファイル／ディレクトリ構成と突き合わせて再同期する。ドリフト（追加・削除・改名・記述古さ）を検出して README を実態に合わせて書き換える。サブディレクトリに独自の README が存在する場合は、そのディレクトリには再帰せず、1 行ダイジェスト + 参照リンクで扱う。
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+## 利用シーン
 
-## When to Use
+以下のいずれかに該当する場合に使用する。
 
-Use this skill when:
+- README がディレクトリ実態とずれている（ファイルの追加・削除・改名、記述の古化）。
+- ネストした README には触れず、特定の 1 ディレクトリの README だけを刷新したい。
+- 「ドキュメントには載っているが存在しない」「存在するが未記載」の項目を可視化してから対応方針を決めたい。
 
-- A README has fallen out of sync with its directory (files added/removed/renamed, descriptions outdated).
-- You want a single directory's README refreshed without touching nested READMEs.
-- You need to surface "documented but missing" or "exists but undocumented" entries before deciding what to fix.
+このスキルでツリー全体の README を一括書き換えしてはならない。1 回の起動で扱うのは 1 つの README に限る。ツリー全体を刷新したい場合は、各ディレクトリごとに 1 回ずつ起動すること。
 
-Do NOT use this skill to recursively rewrite every README in a tree. It operates on exactly one README per invocation. To refresh a whole tree, invoke it once per directory.
+## 最初に行うこと: 入力の確認
 
-## First Step: Confirm Input
+このスキルでは、**スキル起動直後に必ず `AskUserQuestion` で以下を確認する**。
 
-This skill **MUST call `AskUserQuestion` immediately after invocation** to confirm:
+1. **対象 README のパス** — 更新する canonical README。スキル引数または直近メッセージにパスがあれば候補として提示する。
+2. **スコープの確認** — 対象 README のあるディレクトリ（スコープルート）と、深さ制限（デフォルト: 直下のみ。ネストしたディレクトリは独自の README があればそれをダイジェスト参照）。
 
-1. **Target README path** — the canonical README to update. If the user supplied a path in skill arguments or the recent message, present it as a candidate.
-2. **Scope confirmation** — confirm the directory boundary (the directory containing the target README) and the depth limit (default: only direct children; nested directories are summarized via their own README if present).
+ファイルツリーの読み取りやファイル書き込みは、これらの確定後にのみ行うこと。
 
-Do NOT read the file tree or write any file until these are confirmed.
+このスキルは常に **canonical（英語）README** を対象とする。翻訳ファイル（`README.md` 等）は、canonical 更新完了後に `canonicalize-doc` スキルへ自動チェーンして再同期する。スキル内で翻訳ファイルを直接編集してはならない。
 
-This skill always operates on the **canonical** (English) README. Translation files (`README.ja.md` etc.) are re-synced automatically by chaining into the `canonicalize-doc` skill after the canonical update completes — do NOT modify translation files inline within this skill.
+- それを canonical として扱う（英語版がない場合のみ。稀）。
+- まず `canonicalize-doc` スキルで canonical を生成し、その後 canonical を対象に本スキルを再実行する。
 
-If the target the user supplied is itself a translation file (e.g., `README.ja.md` without a sibling `README.md`), ask whether to:
+## 同期の仕組み
 
-- Treat it as the canonical (rare; only when no English version exists).
-- Generate the canonical first via the `canonicalize-doc` skill, then re-run this skill against the canonical.
+### スコープ
 
-## How the Sync Works
+- README のあるディレクトリを **スコープルート** とする。
+- スコープルート直下のエントリを列挙する。
+- 各エントリの扱い:
+  - **ファイル**: README のリストに含め、1 行説明を付ける。
+  - **独自 README のないディレクトリ**: 一覧に出し（浅ければ）注目すべき直下要素を補足する。
+  - **独自 README のあるディレクトリ**: 1 行ダイジェスト + そのネスト README への参照リンクのみとする。中身には再帰しない。
 
-### Scope
+### ドリフトの検出
 
-- The README's directory is the **scope root**.
-- The skill enumerates entries directly inside the scope root.
-- For each entry:
-  - **File**: include it in the README listing with a one-line description.
-  - **Directory without its own README**: list it and (optionally, if shallow) summarize its immediate notable children.
-  - **Directory with its own README**: include only a one-line digest + a reference link to that nested README. Do NOT recurse into its contents.
+README に記載されたエントリと実態を比較する。
 
-### Detecting drift
+- **記載あり / 実態なし** → エントリを削除（他箇所からリンクされている等、影響がある場合はユーザー確認）。
+- **実態あり / 記載なし** → 追加する。
+- **改名** （記述は同じだがパスが似ている場合）→ パスを更新する。
+- **記述の古化** （ファイルの役割が変わった等）→ ファイル内容から新しい役割を推定して更新する。
 
-Compare the README's documented entries against the actual entries:
+### 触らないもの
 
-- **Documented but missing on disk** → remove the entry (or flag for user confirmation if the entry is load-bearing, e.g., links from elsewhere).
-- **Exists on disk but undocumented** → add it.
-- **Renamed** (likely: same description, similar path) → update the path.
-- **Outdated description** (e.g., the file's role has changed) → infer the new role from the file's contents and update.
+- 隠しファイル／ディレクトリ（`.git`, `.DS_Store`, `.gitkeep` 等）。README で明示的に文書化されている場合のみ扱う。
+- ビルド成果物および ignored ファイル（スコープルートかその上の `.gitignore` にマッチするもの）。
+- 生成ファイル（`**/*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`, `vendor/`）。
+- 独自 README を持つネストディレクトリの内部。
 
-### Things NOT to touch
+## リポジトリ規約
 
-- Hidden files/dirs (`.git`, `.DS_Store`, `.gitkeep`, etc.) unless the README clearly documents them.
-- Build artifacts and ignored files (anything matched by `.gitignore` at or above the scope root).
-- Generated files (`**/*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`, `vendor/`).
-- Nested directory internals when that directory has its own README.
-
-## Repo Conventions
-
-- The canonical README is `README.md` (English). The Japanese translation, if present, is `README.ja.md` co-located in the same directory.
-- When updating both, keep heading structure, list order, and table columns 1:1 between the two files.
-- Preserve existing section ordering and styling (tables vs lists vs prose) unless the user explicitly asks to restructure.
-- Preserve existing prose that is still accurate. Do not rewrite for stylistic reasons.
+- 両方を更新する際は、見出し構造・リスト順・テーブル列を 1:1 で揃える。
+- 既存のセクション順序やスタイル（テーブル / 箇条書き / 散文）は、ユーザーから明示的に再構成を依頼されない限り維持する。
+- 現状でも正確な既存散文は書き換えない。文体の好みのみで rewrite しない。
 
 ## AI Modification Scope
 
-Per the "Exception: Skill Execution" clause in AGENTS.md, the normal AI Modification Scope restrictions are relaxed during this skill's execution, scoped to:
+AGENTS.md の "Exception: Skill Execution" 節に基づき、このスキル実行中は AI Modification Scope の縛りを解放する。対象は以下に限定する。
 
-- The confirmed target canonical README file.
-- Sibling translation files are NOT modified by this skill directly; they are updated in the subsequent `canonicalize-doc` invocation (which runs under its own scope exception).
+- 確認済みの対象 canonical README ファイル。
+- 兄弟の翻訳ファイルは本スキルでは直接変更しない。後続でチェーンする `canonicalize-doc` 実行（そちらのスコープ例外下）で更新される。
 
-The following remain protected even during skill execution:
+スキル実行中でも保護対象として維持されるもの:
 
 - `AGENTS.md` / `CLAUDE.md`
-- Generated files (`**/*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`, generated content under `docs/`)
-- Any path listed under `permissions.deny` in `.claude/settings.json`
-- All other files and directories under the scope root (the skill reads them but never modifies them).
+- 生成ファイル（`**/*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`, `docs/` 配下の生成物）
+- `.claude/settings.json` の `permissions.deny` に列挙された任意のパス
+- スコープルート配下のその他全ファイル／ディレクトリ（読み取りはするが書き込みはしない）
 
-## Execution Steps
+## 実行ステップ
 
-### 1. Read the target README
+### 1. 対象 README を読む
 
-Read the target README in full to understand:
+対象 README を全文読み、以下を把握する。
 
-- Its existing section structure.
-- The entries it currently documents (files, directories, links).
-- Any custom conventions (e.g., a "Directory Layout" table, a "Subprojects" list).
+- 既存のセクション構造。
+- 現在ドキュメント化されているエントリ（ファイル、ディレクトリ、リンク）。
+- 独自の規約（例: "Directory Layout" テーブル、"Subprojects" リストなど）。
 
-### 2. Enumerate the actual file tree
+### 2. 実ファイルツリーを列挙
 
-List the entries directly inside the scope root. For each:
+スコープルート直下のエントリを列挙する。各エントリについて:
 
-- Record its name, type (file / directory), and (for directories) whether it contains its own README.
-- For files, read enough to determine the role/purpose (the file's package comment, top-level docstring, or first few lines).
-- For directories with their own README, read only the first paragraph of that nested README to extract a digest.
-- For directories without their own README, optionally list immediately-notable children (do not deep-recurse).
+- 名前、種別（ファイル / ディレクトリ）、（ディレクトリの場合）独自 README の有無を記録する。
+- ファイルは、役割／目的を判定できる程度に読む（パッケージコメント、ドキュコメ先頭、または冒頭数行）。
+- 独自 README を持つディレクトリでは、ネスト README の冒頭段落のみ読みダイジェストを抽出する。
+- 独自 README のないディレクトリでは、直下の注目要素を任意で列挙する（深く再帰しない）。
 
-### 3. Compute the diff
+### 3. 差分の算出
 
-Build three lists:
+3 つのリストを作る。
 
-- **To add**: exists on disk, absent or outdated in the README.
-- **To remove**: documented in the README, no longer exists on disk.
-- **To update**: present in both but description/path is wrong.
+- **追加**: 実態にあるが README に記載なしまたは古い。
+- **削除**: README に記載があるが実態に存在しない。
+- **更新**: 両方にあるが説明やパスが誤り。
 
-If any item in **To remove** is referenced from elsewhere (links from other docs), surface that to the user before deletion.
+**削除** 対象が他箇所（他ドキュメントからのリンク等）から参照されている場合は、削除前にユーザーへ提示する。
 
-### 4. Apply the update
+### 4. 更新の適用
 
-Rewrite the README so it reflects reality:
+README を実態に合わせて書き換える。
 
-- Insert new entries in the appropriate section, matching the existing format.
-- Remove stale entries.
-- Update outdated descriptions and paths.
-- For child directories with their own README, ensure the entry is a one-line digest with a relative link to the nested README (e.g., `- [sub/](sub/README.md) — short digest`).
-- Preserve unrelated sections (introduction, badges, license, etc.) verbatim.
+- 適切なセクションに新規エントリを挿入する。既存フォーマットに揃える。
+- 古いエントリを削除する。
+- 誤った説明・パスを更新する。
+- 独自 README を持つ子ディレクトリのエントリは、1 行ダイジェスト + ネスト README への相対リンク（例: `- [sub/](sub/README.md) — 短いダイジェスト`）にする。
+- 無関係なセクション（イントロ、バッジ、ライセンス等）はそのまま保持する。
 
-### 5. Verify the canonical update
+### 5. canonical 更新の検証
 
-- Confirm every entry in the updated README maps to a real file or directory.
-- Confirm no real entry (other than ignored ones) is missing.
-- Confirm no nested README was inadvertently expanded.
+- 更新後 README の各エントリが実ファイル／ディレクトリに対応していることを確認する。
+- 実態のあるエントリ（ignore 対象を除く）が漏れていないことを確認する。
+- ネスト README が誤って展開されていないことを確認する。
 
-### 6. Chain into `canonicalize-doc` to sync the translation
+### 6. Markdown Lint による検証
 
-After the canonical README is written:
-
-1. Check whether a sibling translation file exists (e.g., `README.ja.md` next to the updated `README.md`).
-2. If it does, invoke the `canonicalize-doc` skill via the Skill tool with:
-    - source path: the canonical README that was just updated
-    - direction: `translation-from-canonical` (or `sync-both` with the canonical as source of truth, if the translation already exists)
-3. If no translation file exists, skip this step and report that the canonical was updated standalone.
-
-The chained `canonicalize-doc` call will perform its own `AskUserQuestion` confirmation; that is expected and not redundant — it lets the user veto the translation sync if needed.
-
-### 7. Verify with Markdown Lint
-
-After writing the canonical README (and after `canonicalize-doc` has produced any translation), run:
+canonical README の書き込み（および `canonicalize-doc` による翻訳同期）が完了した後、以下を実行する。
 
 ```sh
 make md-fix
 make md-lint
 ```
 
-`make md-fix` runs `markdownlint-cli2 --fix` on the entire repository to auto-fix common issues (blank-line placement around headings / lists / code blocks, trailing whitespace, file-final newline, etc.). `make md-lint` then verifies that the result is clean against `.markdownlint-cli2.yaml`.
+`make md-fix` はリポジトリ全体に対して `markdownlint-cli2 --fix` を実行し、よくある違反（見出し / リスト / コードブロック周辺の空行、行末空白、ファイル末尾の改行など）を自動修正する。続けて `make md-lint` で `.markdownlint-cli2.yaml` 準拠かを検証する。
 
-If `make md-lint` reports remaining errors:
+`make md-lint` がエラーを報告する場合:
 
-1. Read the lint output.
-2. Fix the violations manually (rules that auto-fix cannot resolve, e.g., heading hierarchy, duplicate headings, bare URLs).
-3. Re-run `make md-fix` then `make md-lint` until clean.
+1. lint 出力を確認する。
+2. 自動修正で解消できないルール（見出し階層、重複見出し、bare URL など）を手で修正する。
+3. clean になるまで `make md-fix` → `make md-lint` を繰り返す。
 
-Do NOT report the skill as complete until `make md-lint` exits cleanly.
+`make md-lint` がクリーン終了するまでスキルを完了報告しない。
 
-`make md-fix` operates on the entire repository, so it may modify Markdown files unrelated to the README pair. List any such files when reporting completion so the user can review the broader change set.
+`make md-fix` はリポジトリ全体を対象にするため、本 README ペアとは無関係な Markdown も自動修正される可能性がある。その場合、変更された他ファイルの一覧を完了報告時にユーザーへ提示し、レビューできるようにする。
 
-### 8. Final verification
+### 7. 最終検証
 
-- Confirm both files (canonical and translation) have parity if the translation was synced.
-- Report which entries were added / removed / updated and which files were written.
+- 翻訳を同期した場合、両ファイル（canonical と翻訳）の整合を確認する。
+- 追加 / 削除 / 更新したエントリと書き込んだファイルを報告する。
 
-## Checklist
+## チェックリスト
 
-Confirm the following before reporting completion:
+完了報告時に以下を確認すること。
 
-- [ ] Target canonical README path confirmed with the user via `AskUserQuestion`
-- [ ] Scope root and depth limit confirmed
-- [ ] Drift computed (add / remove / update lists produced)
-- [ ] Canonical README rewritten with correct entries and preserved structure
-- [ ] Child directories with their own README represented as one-line digests + reference links (not expanded)
-- [ ] If a sibling translation file exists, `canonicalize-doc` was invoked to re-sync it
-- [ ] `make md-lint` exits cleanly
-- [ ] No file outside the canonical README (and the chained `canonicalize-doc` scope) modified
+- [ ] 対象 canonical README のパスを `AskUserQuestion` でユーザーに確認済み
+- [ ] スコープルートと深さ制限を確認済み
+- [ ] ドリフトを算出済み（追加 / 削除 / 更新のリスト）
+- [ ] canonical README を正しいエントリで書き換え、構造を保持済み
+- [ ] 独自 README を持つ子ディレクトリは 1 行ダイジェスト + 参照リンクで表現（展開していない）
+- [ ] 兄弟の翻訳ファイルが存在する場合は `canonicalize-doc` を起動して再同期済み
+- [ ] `make md-lint` がクリーン終了する
+- [ ] canonical README（およびチェーンされた `canonicalize-doc` のスコープ）以外のファイルを変更していない
 
-## Notes
+## 注意事項
 
-- Do NOT recursively rewrite nested READMEs. Each invocation handles exactly one README's scope.
-- Do NOT delete documented entries blindly. When an entry is removed from disk, confirm it isn't referenced from elsewhere before pruning the line.
-- Do NOT restructure or restyle sections that are still accurate. Minimize churn.
-- If the directory has no obvious convention to follow (e.g., a fresh README with no structure), ask the user whether to use a table, a bulleted list, or prose.
-- If the README intentionally documents items outside its directory (e.g., a top-level README listing project-wide entries), confirm the scope with the user before treating those external references as drift.
+- ネストした README を再帰的に書き換えてはならない。1 回の起動が扱うのは 1 つの README スコープのみ。
+- 記載エントリを盲目的に削除しないこと。実態が消えたエントリは、他からの参照がないか確認してから削る。
+- 現状でも正確なセクションを再構成・リスタイルしないこと。差分を最小化する。
+- ディレクトリに明確な既存規約がない（新規 README で構造未定義）場合は、テーブル / 箇条書き / 散文のどれを使うかユーザーに確認する。
+- README が意図的にスコープ外（例: トップレベル README がプロジェクト全体の項目を列挙）を文書化している場合は、それらの外部参照をドリフトとみなす前にスコープをユーザーへ確認する。

@@ -1,99 +1,94 @@
 # paging
 
-Provides common pagination value objects. Two strategies are offered as **equally valid application policies** (pagination is a Usecase-tier concern, not a domain rule):
+ページネーションの共通値オブジェクトを提供します。2つの戦略を**いずれも妥当なアプリケーションポリシー**として提供します（ページネーションは domain のルールではなく usecase 層の関心事）。
 
-- **Offset-based (`Page`)** — converts 1-based page/perPage into limit/offset. Simple, allows random page access, but degrades on deep pages (large `OFFSET` scans).
-- **Cursor-based / keyset (`Cursor`)** — carries an opaque cursor (the previous page's last-row sort keys) for `WHERE (sort_keys) < (:cursor)` queries. Stable and fast even on deep pages; recommended for large datasets and infinite scroll. The package owns only **transport (encode/decode), validation, and limit policy**; interpreting the keys back into typed sort columns (e.g. RFC3339 → time, UUID string → uuid) is the **query layer's** responsibility.
+- **オフセット方式（`Page`）** — 1ベースの page/perPage を limit/offset に変換。単純で任意ページへのランダムアクセスが可能だが、深いページで `OFFSET` のスキャンが増えて劣化する。
+- **カーソル方式 / keyset（`Cursor`）** — 不透明カーソル（直前ページ末尾行のソートキー）を受け取り、`WHERE (sort_keys) < (:cursor)` クエリに用いる。深いページでも安定して高速で、大規模データや無限スクロールに推奨。本パッケージは**輸送（エンコード/デコード）・検証・件数ポリシー**のみを担い、キーを型付きのソート列へ解釈し直す処理（例: RFC3339 → time、UUID 文字列 → uuid）は**クエリ層**の責務。
 
-The package also owns the **fetch-count policy on its own** (`Limit` / `LimitPolicy`), so a read
 <!-- sample-api:replace-begin -->
-with no pagination at all — a top-N list such as a ranking or a low-stock dashboard card — shares
+本パッケージは**件数ポリシーそのもの**（`Limit` / `LimitPolicy`）も担います。これにより、ページネーションを一切持たない読み取り — ランキングや在庫僅少カードのような top-N 一覧 — も「未指定なら既定値、上限超過ならクランプ」という同じ規約を再実装せずに共有できます。`Page` / `Cursor` は本パッケージ自身の `defaultPerPage` / `maxPerPage` を与えて `Limit` の上に構築されており、top-N の呼び出し元は自前の `LimitPolicy` を渡します（フィールド名を持つため、既定値と上限を呼び出し側で取り違えることがありません）。
 <!-- sample-api:replace-with -->
-<!-- = with no pagination at all — a top-N list — shares -->
+<!-- = 本パッケージは**件数ポリシーそのもの**（`Limit` / `LimitPolicy`）も担います。これにより、ページネーションを一切持たない読み取り — top-N 一覧 — も「未指定なら既定値、上限超過ならクランプ」という同じ規約を再実装せずに共有できます。`Page` / `Cursor` は本パッケージ自身の `defaultPerPage` / `maxPerPage` を与えて `Limit` の上に構築されており、top-N の呼び出し元は自前の `LimitPolicy` を渡します（フィールド名を持つため、既定値と上限を呼び出し側で取り違えることがありません）。 -->
 <!-- sample-api:replace-end -->
-the same "unspecified → default, over the ceiling → clamp" rule instead of re-implementing it.
-`Page` and `Cursor` are built on `Limit` with the package's own `defaultPerPage` / `maxPerPage`;
-top-N callers pass their own `LimitPolicy` (its named fields keep the default and the ceiling from
-being swapped at a call site).
 
-## Constants
+## 定数
 
-|Constant|Value|Description|
+|定数|値|説明|
 |---|---|---|
-|`defaultPerPage`|50|Default items per page (`Page` / `Cursor`)|
-|`maxPerPage`|200|Maximum items per page (`Page` / `Cursor`)|
-|`minPage`|1|Minimum page number|
-|`maxPage`|10,000|Maximum page number|
+|`defaultPerPage`|50|デフォルトの1ページあたり件数（`Page` / `Cursor`）|
+|`maxPerPage`|200|最大の1ページあたり件数（`Page` / `Cursor`）|
+|`minPage`|1|最小ページ番号|
+|`maxPage`|10,000|最大ページ番号|
 
-## Behavior
+## 挙動
 
-**Fetch count (`Limit`)**
+**件数（`Limit`）**
 
-- `first` ≤ 0 or nil → uses `policy.Default`
-- `first` > `policy.Max` → clamped to `policy.Max`
-- `Value32()` clamps at `math.MaxInt32` for safe int32 conversion
+- `first` ≤ 0 または nil → `policy.Default` を使用
+- `first` > `policy.Max` → `policy.Max` にクランプ
+- `Value32()` は安全な int32 変換のため `math.MaxInt32` でクランプ
 
-**Offset-based (`Page`)**
+**オフセット方式（`Page`）**
 
-- `perPage` ≤ 0 or nil → uses `defaultPerPage` (50)
-- `perPage` > `maxPerPage` → clamped to `maxPerPage` (200)
-- `page` ≤ 0 or nil → uses `minPage` (1)
-- `page` > `maxPage` → returns `apperror.ErrInvalidArgument`
-- `Limit32()` / `Offset32()` clamp values for safe int32 conversion
+- `perPage` ≤ 0 または nil → `defaultPerPage`（50）を使用
+- `perPage` > `maxPerPage` → `maxPerPage`（200）にクランプ
+- `page` ≤ 0 または nil → `minPage`（1）を使用
+- `page` > `maxPage` → `apperror.ErrInvalidArgument` を返す
+- `Limit32()` / `Offset32()` は安全な int32 変換のためクランプ
 
-**Cursor-based (`Cursor`)**
+**カーソル方式（`Cursor`）**
 
-- `first` ≤ 0 or nil → uses `defaultPerPage` (50)
-- `first` > `maxPerPage` → clamped to `maxPerPage` (200)
-- `after` nil or empty → first page (`HasCursor()` is `false`, `Keys()` empty)
-- `after` malformed (bad base64 / JSON, or empty keyset) → returns `apperror.ErrInvalidArgument`
-- keyset has **no page-number ceiling** — that is the whole point of cursor pagination, so there is no `maxPage`-style error
-- Cursor string format is **opaque**: `base64url(JSON string array)`. Treat it as a black box on the client side.
+- `first` ≤ 0 または nil → `defaultPerPage`（50）を使用
+- `first` > `maxPerPage` → `maxPerPage`（200）にクランプ
+- `after` が nil または空 → 先頭ページ（`HasCursor()` は `false`、`Keys()` は空）
+- `after` が不正（base64 / JSON 不正、または空キーセット）→ `apperror.ErrInvalidArgument` を返す
+- keyset は**ページ番号の上限を持たない** — これがカーソルページネーションの本質なので、`maxPage` 相当のエラーは存在しない
+- カーソル文字列の形式は**不透明**（`base64url(JSON 文字列配列)`）。クライアント側はブラックボックスとして扱う。
 
-## Usage
+## 使用例
 
-### Top-N (no pagination)
+### top-N（ページネーションなし）
 
 ```go
 var topNLimitPolicy = paging.LimitPolicy{Default: 20, Max: 100}
 
 limit := paging.NewLimit(req.Limit, topNLimitPolicy)
-// limit.Value() == 20 when req.Limit is nil; limit.Value32() feeds the SQL LIMIT.
+// req.Limit が nil なら limit.Value() == 20。limit.Value32() を SQL の LIMIT に渡す。
 ```
 
-### Offset-based
+### オフセット方式
 
 ```go
 pg, err := paging.NewPageFrom1Based(ptr.To(2), ptr.To(20))
 // pg.Limit() == 20, pg.Offset() == 20
 ```
 
-### Cursor-based
+### カーソル方式
 
 ```go
-// 1) Parse the incoming request (first page: after == nil).
+// 1) リクエストを解釈（先頭ページは after == nil）。
 cur, err := paging.NewCursor(req.After, req.First)
 
-// 2) Query layer: fetch limit+1 rows. If cur.HasCursor(), apply a keyset
-//    predicate using cur.Keys() (interpret strings into typed columns):
+// 2) クエリ層: limit+1 件取得する。cur.HasCursor() の場合は cur.Keys() を
+//    用いて keyset 条件を適用する（文字列を型付き列へ解釈）:
 //      WHERE (created_at, id) < ($1, $2) ORDER BY created_at DESC, id DESC
 //      LIMIT cur.Limit32() + 1
-//    Fetching one extra row tells you whether a next page exists.
+//    1件多く取得することで「次ページの有無」を判定できる。
 
-// 3) Build the next cursor from the LAST visible row's sort keys:
+// 3) 「表示した末尾行」のソートキーから次カーソルを生成:
 next := paging.EncodeCursor(last.CreatedAt.Format(time.RFC3339Nano), last.ID.String())
-// Return `next` only when the extra row was present; otherwise "" (end of list).
+// 余分な1件が存在した場合のみ next を返し、無ければ "" （末尾）。
 ```
 
-> Sort keys must be **unique and totally ordered** as a tuple (append a tie-breaker like the primary key), otherwise rows can be skipped or duplicated across pages.
+> ソートキーはタプルとして**一意かつ全順序**でなければならない（主キー等のタイブレーカーを末尾に付ける）。さもないとページ間で行のスキップや重複が起きる。
 
-## Test coverage exception
+## テストカバレッジ例外
 
-The following uncovered branch is exempt from the near-100% expectation as an **infallible
-defensive branch**; no contrived test or extra implementation is added to reach it:
+以下の未被覆分岐は**失敗しない防御分岐**として、ほぼ 100% の被覆期待の対象外とする。これを
+塗るための contrived テストや追加実装は行わない:
 
-- `cursor.go` `EncodeCursor` — the `json.Marshal(keys)` error return. `keys` is a
-  `[]string`, which the encoder can always marshal, so the error path is unreachable.
+- `cursor.go` `EncodeCursor` — `json.Marshal(keys)` のエラー return。`keys` は `[]string`
+  で常に marshal 可能なため、エラー経路は到達不能。
 
-**Governance:** coverage exceptions are **not added at will** — a new entry requires an
-appropriate approver's (e.g. architect) sign-off.
+**ガバナンス:** カバレッジ例外は**任意に追加しない**。新規エントリはアーキテクト等の適切な
+承認者の承認を要する。

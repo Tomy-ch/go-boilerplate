@@ -5,78 +5,51 @@ deciders: [maintainers]
 tags: [idempotency, privacy]
 ---
 
-# ADR-0065: Persist the response body as JSON to enable deterministic replay (accepted PII tradeoff)
+# ADR-0065: 決定論的リプレイを可能にするためレスポンスボディを JSON で永続化する（PII トレードオフを許容）
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-When a completed idempotency key is retried, the subsystem must return a response that is
-identical to the original — the caller cannot distinguish a replay from a fresh success.
-The only reliable way to achieve this is to store the original response and return it
-verbatim; reconstructing it from the business state on each retry is fragile because
-business state may have changed between the original call and the retry.
+完了済みの冪等性キーがリトライされた場合、サブシステムは元のレスポンスと同一のレスポンスを返さなければならない。呼び出し元はリプレイと新規成功を区別できない。これを実現する唯一の信頼できる方法は、元のレスポンスを保存してそのまま返すことである。リトライ時にビジネス状態からレスポンスを再構築する方法は、元の呼び出しとリトライの間にビジネス状態が変化している可能性があるため脆弱である。
 
-The alternative is to store only the success status code and replay a synthesized empty
-body, but this breaks callers that depend on the response payload (e.g., to extract the
-created resource's ID).
+代替案として、成功ステータスコードのみを保存して合成された空ボディをリプレイする方法もあるが、レスポンスボディに依存する呼び出し元（例: 作成されたリソースの ID を取得するケース）が壊れる。
 
-Persisting the full response body introduces a privacy tradeoff: if the response DTO
-contains personally identifiable information (PII), that PII is stored in the
-`idempotency_keys` table and will appear in database dumps, backups, and read replicas for
-up to 24 hours (the fixed TTL).
+レスポンスボディ全体を永続化するとプライバシーのトレードオフが生じる。レスポンス DTO に個人識別情報（PII）が含まれる場合、その PII は `idempotency_keys` テーブルに保存され、固定 TTL である 24 時間の間はデータベースダンプ・バックアップ・リードレプリカに現れる。
 
-## Decision
+## 決定
 
-The `Complete` step serializes the business function result `T` to JSON and stores it in
-the `response_payload` column of `idempotency_keys`. On replay, `Run[T]` deserializes this
-payload and returns it directly without calling the business function. The PII tradeoff is
-accepted: it is mitigated by the 24-hour TTL (after which GC removes the row) and by
-ensuring that database access controls and backup encryption cover the `idempotency_keys`
-table with the same rigor as any other table containing sensitive data.
+`Complete` ステップはビジネス関数の結果 `T` を JSON にシリアライズし、`idempotency_keys` の `response_payload` カラムに保存する。リプレイ時、`Run[T]` はこのペイロードをデシリアライズしてビジネス関数を呼び出さずに直接返す。PII トレードオフを許容する。緩和策として 24 時間 TTL（期限後に GC が行を削除）を適用し、センシティブデータを含む他のテーブルと同等の厳格さでデータベースアクセス制御とバックアップ暗号化が `idempotency_keys` テーブルをカバーすることを保証する。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Replay is deterministic and payload-complete; callers receive the same body on every
-  retry of a completed operation.
-- No business-state reconstruction logic is required in the replay path.
-- The replay path is a simple JSON unmarshal from a stored column — straightforward to
-  reason about and test.
+- リプレイは決定論的かつペイロード完全である。呼び出し元は完了済み操作のすべてのリトライで同一ボディを受け取る。
+- リプレイパスにビジネス状態の再構築ロジックが不要である。
+- リプレイパスは保存済みカラムからの単純な JSON アンマーシャルであり、理解しやすくテストが容易である。
 
-### Negative Consequences
+### ネガティブな影響
 
-- PII in response DTOs is persisted for up to 24 hours beyond the request lifecycle.
-  Database dumps and backups taken within the TTL window will contain this PII.
-- The `response_payload` column grows with the size of the serialized DTO; large response
-  bodies increase row size.
-- Schema evolution of the DTO can cause deserialization failures on replay if the stored
-  JSON no longer matches the current struct.
+- レスポンス DTO 内の PII はリクエストのライフサイクルを超えて最大 24 時間永続化される。TTL ウィンドウ内に取得されたデータベースダンプおよびバックアップにはこの PII が含まれる。
+- `response_payload` カラムはシリアライズされた DTO のサイズに応じて増大する。大きなレスポンスボディは行サイズを増加させる。
+- DTO のスキーマ変更によって、保存済み JSON が現在の構造体と一致しなくなるとリプレイ時にデシリアライズエラーが発生する可能性がある。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Store status code only, reconstruct body at replay time
+### ステータスコードのみを保存してリプレイ時にボディを再構築する
 
-Replay a synthesized response (e.g., an empty body with the stored status code) rather
-than the stored payload. Rejected because callers that depend on the response body — most
-notably to retrieve the ID of a created resource — would receive a broken replay.
+保存済みペイロードではなく合成されたレスポンス（例: 保存済みステータスコードと空ボディ）をリプレイする。レスポンスボディに依存する呼び出し元（特に作成されたリソースの ID を取得するケース）がリプレイで壊れるため却下した。
 
-### Encrypt the response payload at rest
+### レスポンスペイロードを保存時に暗号化する
 
-Store the payload encrypted so that database dumps do not expose PII in plaintext. Not
-adopted as a default because key management adds operational complexity; integrators with
-strict PII requirements can add column-level encryption as a project-specific extension
-without changing the subsystem contract.
+データベースダンプで PII がプレーンテキストで露出しないようにペイロードを暗号化して保存する。鍵管理が運用の複雑さを増すため、デフォルトとして採用しない。PII 要件が厳格なインテグレーターは、サブシステムのコントラクトを変更せずにプロジェクト固有の拡張としてカラムレベル暗号化を追加できる。
 
-## Notes
+## 補足
 
-- Source: [`docs/design/idempotency.md`](../design/idempotency.md) §4 (operational notes, "PII
-  caveat").
-- The `response_payload` column type and `Complete` SQL are defined in
-  `database/dml/system_cqrs/idempotency/`.
-- The 24-hour TTL that bounds PII retention is decided in ADR-0064.
-- Integrators with PII-bearing DTOs should ensure their database backup encryption and
-  access controls cover the `idempotency_keys` table.
+- 出典: [`docs/design/idempotency.md`](../design/idempotency.md) §4（運用メモ、「PII caveat」）。
+- `response_payload` カラム型と `Complete` SQL は `database/dml/system_cqrs/idempotency/` で定義されている。
+- PII 保持期間を制限する 24 時間 TTL は ADR-0064 で決定されている。
+- PII を含む DTO を持つインテグレーターは、データベースのバックアップ暗号化とアクセス制御が `idempotency_keys` テーブルをカバーしていることを確認すること。

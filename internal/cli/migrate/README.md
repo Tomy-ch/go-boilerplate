@@ -1,46 +1,46 @@
 # migrate-up / migrate-down
 
-Manages database schema migrations. `migrate-up` applies pending migrations; `migrate-down` rolls back applied migrations (all by default, or a given number of steps).
+データベーススキーマのマイグレーションを管理します。`migrate-up` は未適用のマイグレーションを適用し、`migrate-down` は適用済みのマイグレーションをロールバックします（既定では全件、または指定した段数）。
 
-## Commands
+## コマンド
 
 ```text
 migrate-up
 migrate-down
 ```
 
-## Flags
+## フラグ
 
-|Flag|Default|Description|
+|フラグ|デフォルト|説明|
 |---|---|---|
-|`--steps`|`0`|Number of migrations to apply relative to the current position. `0` applies all; a positive integer applies that many steps. Negative values are rejected.|
-|`--database`|`""`|Target database name (e.g. `local`, `test`). When empty, the configured default is used.|
+|`--steps`|`0`|現在位置からの相対的な適用段数。`0` で全件、正の整数でその段数だけ適用します。負値は拒否されます。|
+|`--database`|`""`|対象データベース名（例: `local`, `test`）。空の場合は設定値の既定 DB を使用します。|
 
-`--steps` is a **relative step count**, not an absolute target version. For example `migrate-up --steps 2` advances two migrations from the current position; `migrate-down --steps 2` rolls back two.
+`--steps` は**相対的な段数**であり、絶対的なターゲットバージョンではありません。例えば `migrate-up --steps 2` は現在位置から 2 段進め、`migrate-down --steps 2` は 2 段巻き戻します。
 
-## Usage
+## 使い方
 
 ```bash
-# Apply all pending migrations
+# 未適用のマイグレーションをすべて適用
 ./server migrate-up
 
-# Apply the next 2 migrations only
+# 次の 2 段だけ適用
 ./server migrate-up --steps 2
 
-# Roll back all migrations
+# すべてのマイグレーションをロールバック
 ./server migrate-down
 
-# Roll back the last 2 migrations
+# 直近 2 段をロールバック
 ./server migrate-down --steps 2
 
-# Target a specific database
+# 対象データベースを指定
 ./server migrate-up --database test
 ```
 
-## Notes
+## 注意点
 
-- Migration files are located in `database/migrations`.
-- **Use `migrate-down` with caution in production** -- it can cause data loss. Always back up the database first.
-- Never modify existing migration files; always create a new one.
-- A full `migrate-down` (no `--steps`) automatically reconciles a `dirty` database at its current version before rolling back, so a previously failed migration does not block the rollback.
-- `ErrNoChange` (already at the target position) is treated as success.
+- マイグレーションファイルは `database/migrations` に配置されています。
+- **本番環境での `migrate-down` は慎重に実行してください。** データ損失のリスクがあるため、必ず事前にバックアップを取得してください。
+- 既存のマイグレーションファイルは変更せず、常に新しいファイルを作成してください。
+- `--steps` を指定しない全件 `migrate-down` は、ロールバック前に `dirty` 状態のデータベースを現在バージョンで整合させるため、過去に失敗したマイグレーションがロールバックを妨げません。
+- `ErrNoChange`（既に対象位置にある場合）は成功として扱われます。

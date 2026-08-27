@@ -1,61 +1,26 @@
 # architest
 
-`internal/architest` holds **only tests**: machine-verified checks of cross-cutting invariants that no
-single package owns — layer dependency rules, and agreement between implementation, data and
-documentation across the repository. It contains no production code.
+`internal/architest` が持つのは **テストだけ**です。単一のパッケージが所有しない横断的な不変条件 —— レイヤ間の依存規約、およびリポジトリ内の実装とデータ・ドキュメントの一致 —— を機械検証します。実装コードは持ちません。
 
-## Role
+## 役割
 
-A regular package's tests verify that package's behaviour. The invariants here have no such owner: they
-hold *between* packages, or between code and a file that is not code at all (an OpenAPI spec, an `env`
-file, a Dockerfile, a README table). Left to review, each one fails silently — the repository stays
-green while a route quietly stops being served, or a timezone is propagated to three of four places.
+通常のパッケージのテストは、そのパッケージの振る舞いを検証します。ここで扱う不変条件にはそうした所有者がいません。パッケージ **同士のあいだ**、あるいはコードとコードではないファイル（OpenAPI spec、`env` ファイル、Dockerfile、README の表）のあいだに成り立つ性質だからです。レビュー任せにすると、どれも無言で破れます —— ルートが静かに配信されなくなっても、タイムゾーンが 4 箇所のうち 3 箇所にしか伝播していなくても、リポジトリは緑のままです。
 
-Because the subject is a contract rather than a function, these tests have no production counterpart, and
-the one-directional 1:1 mapping in [`docs/testing-conventions.md`](../../docs/testing-conventions.md)
-makes no claim about them.
+subject が関数ではなく契約であるため、これらのテストには production 側の対応物が存在しません。[`docs/testing-conventions.md`](../../docs/testing-conventions.md) の 1:1 マッピングは一方向であり、これらについて何も主張しません。
 
 ## Test Strategy
 
-This package is not a layer, so no layer README governs it; per section 11 of
-[`docs/testing-conventions.md`](../../docs/testing-conventions.md) its viewpoints live here. The
-cross-cutting structure rules (`t.Parallel()`, subtest groups, assertions) still come from that document
-— only the viewpoints below are local.
+本パッケージは層ではないため、統治する層 README が存在しません。[`docs/testing-conventions.md`](../../docs/testing-conventions.md) の section 11 に従い、観点はここに置きます。横断的な構造規則（`t.Parallel()`・サブテストのグループ・アサーション）は引き続き同文書が正本で、ローカルなのは以下の観点だけです。
 
-- **Name the sets being reconciled, and what each direction detects.** A contract test asserts a relation
-  between two or more sets (`X == Y`, `Z ⊆ X`). Each direction catches a *different* mistake and is worth
-  stating separately: one direction is usually the reason the test exists, while the reverse direction
-  exists to fail loudly if the scan itself silently shrinks. A test that only says "these must match"
-  leaves the next reader unable to tell which failure they are looking at.
-- **Pin the scanning logic against synthetic sources.** A collector whose matching is non-trivial gets a
-  companion `Test_collectXxx` / `Test_scanXxx` driving it over inline sources rather than the real tree.
-  This is the viewpoint that keeps the others honest: a scanner that stops recognising a syntax shape
-  reports "no violations" and stays green forever, so the scan's own coverage cannot be left to the
-  repository's current contents. The real-tree walk that finds files stays outside this viewpoint: it
-  reads the filesystem and has no syntax shape to recognise, so what gets a companion is the pure
-  function it hands each file's lines to.
-- **Report violations with their declaration site, in a stable order.** Findings carry the file (and line
-  where meaningful) that declared them and are sorted before assertion, so a failure is deterministic and
-  points at what to edit rather than at the invariant in the abstract. Collecting into a slice and
-  asserting once also reports every violation together, which iterating a map with a per-item assertion
-  cannot do in a reproducible order.
-- **Pin each deliberate carve-out as a case of its own.** Generated files, `main` / `init`, a test file
-  excluding itself from its own scan, and documented `t.Skip` forms are all *expected* not to trip a
-  check. Asserting that explicitly is what distinguishes a carve-out from a hole opened later by
-  accident.
+- **突き合わせる集合と、各方向が何を検出するかを明示する。** 契約テストは 2 つ以上の集合のあいだの関係（`X == Y`、`Z ⊆ X`）を主張します。各方向は **別々の** 誤りを捕まえるので、分けて述べる価値があります。通常は一方がテストの存在理由であり、逆方向は走査自体が黙って縮んだときに loud に落ちるために存在します。「これらは一致すべき」としか書かれていないテストは、次の読み手にどちらの失敗を見ているのか分からせません。
+- **走査ロジックを合成ソースで固定する。** 照合が非自明な収集器には、実ツリーではなくインラインのソースに対して駆動する対の `Test_collectXxx` / `Test_scanXxx` を用意します。これは他の観点を成立させるための観点です。ある構文形を認識しなくなったスキャナは「違反なし」を報告して永久に緑のままになるため、走査自体の網羅をリポジトリの現在の中身に委ねることはできません。ファイルを見つける実ツリーの走査はこの観点の対象外です。ファイルシステムを読むだけで認識すべき構文形を持たないため、対を持つべきなのは各ファイルの行列を受け取る純粋関数のほうです。
+- **違反は宣言元つきで、安定した順序で報告する。** 検出結果は宣言元のファイル（意味がある場合は行）を伴い、assert の前にソートされます。これにより失敗が決定的になり、不変条件を抽象的に指すのではなく、どこを直すべきかを指します。スライスへ集約して 1 回で assert することは、全ての違反をまとめて報告することでもあります。map を反復して 1 件ずつ assert する形では、再現可能な順序でそれができません。
+- **意図的な carve-out は、それぞれ独立したケースとして固定する。** 生成ファイル、`main` / `init`、自分自身を走査対象から外すテストファイル、文書化された `t.Skip` の形 —— これらはいずれもチェックに引っかからないことが **期待される** 対象です。それを明示的に assert することが、carve-out と、後から事故で開いた穴とを区別します。
 
-Allowlists are deliberately avoided: an allowlist is itself a drift source, so an exception is either
-expressed as a structural carve-out with a test pinning it, or it is a failure.
+allowlist は意図的に持ちません。allowlist 自体がドリフト源になるため、例外は「テストで固定された構造的な carve-out として表現する」か、さもなくば違反です。
 
-## Notes
+## 注意点
 
-- `depguard` forbids `go/ast` here, so detection is text scanning over gofmt-normalised sources.
-  Assuming gofmt's output (indentation depth, `var (` blocks at column 0) is what makes that tractable.
-- A check may legitimately match zero subjects — the code it scans may hold none. The scan-logic tests
-  above are what keep a zero count from being indistinguishable from a broken scanner.
-- **A `require.NotEmpty` canary over the subject set is only safe when that set survives sample removal.**
-  Removing the sample APIs empties whole categories of subject — every request body, for instance, since
-  the endpoints that carry one are all samples — so a canary guarding such a set turns `sample-removal-check`
-  permanently red. Decide it per check by asking whether the set is non-empty *after* removal, never by
-  copying a canary from a sibling: the sets differ, and a canary that is correct for routes is wrong for
-  request bodies. Where the set can legitimately empty, the companion scan-logic tests are the guard.
+- ここでは `depguard` が `go/ast` を禁じるため、検出は gofmt 済みソースに対するテキスト走査で行います。gofmt の出力（インデント段数、列 0 の `var (` ブロック）を前提にできることが、これを現実的にしています。
+- チェックの対象が 0 件になることは正当にあり得ます（走査先のコードがまだ 1 件も持たないことがあるため）。0 件と「スキャナが壊れている」状態が区別できなくなることを防いでいるのが、上記の走査ロジックのテストです。
+- **対象集合に対する `require.NotEmpty` の canary は、その集合がサンプル API の撤去後も非空である場合にのみ置けます。** サンプル API を撤去すると対象の種類ごと空になるものがあり（たとえばリクエストボディは、それを持つエンドポイントがすべてサンプルなので全滅します）、そうした集合を守る canary は `sample-removal-check` を恒久的に赤にします。可否はチェックごとに「撤去後も非空か」を問うて決め、兄弟のチェックから canary を写して決めないこと —— 集合が違うため、ルートに対して正しい canary はリクエストボディに対しては誤りです。集合が正当に空になり得る場合は、対になる走査ロジックのテストが守り手になります。

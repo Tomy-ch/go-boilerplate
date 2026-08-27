@@ -5,119 +5,105 @@ deciders: [maintainers]
 tags: [toolchain, dev-env]
 ---
 
-# ADR-0083: Local dev environment is provided via Docker Compose with profile-separated services
+# ADR-0083: ローカル開発環境はプロファイルで分離されたサービスを持つ Docker Compose で提供する
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Local development requires several independent services: a running API server with hot
-reload and debugger access, a PostgreSQL database, an observability stack, documentation
-viewing, a SQL editor, and access to containerised code generation tools. These services
-have different lifecycles and are not all needed at the same time — a contributor
-working on a feature does not need the documentation viewer or the ER diagram generator
-running.
+ローカル開発には複数の独立したサービスが必要である: ホットリロードとデバッガアクセスを持つ実行中の API サーバー、
+PostgreSQL データベース、オブザーバビリティスタック、ドキュメント閲覧、SQL エディター、コンテナ化されたコード生成ツールへのアクセス。
+これらのサービスはライフサイクルが異なり、同時にすべてが必要なわけではない——機能開発中のコントリビューターには
+ドキュメントビューアや ER ダイアグラムジェネレータが実行されている必要はない。
 
-Tool execution must also be reproducible across machines (see
-[ADR-0079](0079-containerized-pinned-toolchain.md)), which means tools run inside
-containers rather than directly on the host. A single `docker-compose.yaml` that covers
-both application services and tool runners gives one consistent mechanism for all
-container management.
+ツール実行はマシン間で再現可能でなければならない（[ADR-0079](0079-containerized-pinned-toolchain.md) 参照）。
+これはツールがホストで直接ではなくコンテナ内で実行されることを意味する。アプリケーションサービスとツールランナーの
+両方をカバーする単一の `docker-compose.yaml` が、すべてのコンテナ管理に一貫したメカニズムを提供する。
 
-## Decision
+## 決定
 
-The local development environment is defined in `docker-compose.yaml` using Docker
-Compose **profiles** to separate concerns. Contributors start only the services they
-need.
+ローカル開発環境は Docker Compose の **profiles** を使用して `docker-compose.yaml` で定義し、懸念事項を分離する。
+コントリビューターは必要なサービスだけを起動する。
 
-**Profile: `development`** — standard feature development.
+**プロファイル: `development`** — 標準的な機能開発。
 
-| Service | Image / Dockerfile | Ports | Description |
+| サービス | イメージ / Dockerfile | ポート | 説明 |
 | --- | --- | --- | --- |
-| `api_server` | `docker/server/Dockerfile` target `tooling` | 8080, 2345, 6060 | Hot reload (air), debugger (dlv), pprof metrics |
-| `database` | `postgres:18.4-trixie` | 5432 | PostgreSQL; health-checked before `api_server` starts |
-| `observability` | `grafana/otel-lgtm` | 3000, 4317, 4318, 3200 | Grafana, OTLP gRPC/HTTP, Tempo API |
+| `api_server` | `docker/server/Dockerfile` ターゲット `tooling` | 8080, 2345, 6060 | ホットリロード（air）、デバッガ（dlv）、pprof メトリクス |
+| `database` | `postgres:18.4-trixie` | 5432 | PostgreSQL。`api_server` 起動前にヘルスチェック済み |
+| `observability` | `grafana/otel-lgtm` | 3000, 4317, 4318, 3200 | Grafana、OTLP gRPC/HTTP、Tempo API |
 
-**Profile: `tools`** — auxiliary developer tools; shares the `database` service.
+**プロファイル: `tools`** — 補助的な開発者ツール。`database` サービスを共有する。
 
-| Service | Image / Dockerfile | Ports | Description |
+| サービス | イメージ / Dockerfile | ポート | 説明 |
 | --- | --- | --- | --- |
-| `docs_server` | `docker/document/Dockerfile` target `document_viewer` | 2001 | nginx serving `docs/`; portal at `/portal/` |
-| `sql_editor` | `sosedoff/pgweb` | 2000 | Web SQL editor |
+| `docs_server` | `docker/document/Dockerfile` ターゲット `document_viewer` | 2001 | `docs/` を配信する nginx。`/portal/` にポータル |
+| `sql_editor` | `sosedoff/pgweb` | 2000 | Web SQL エディター |
 
-(A lightweight **`database`** profile also exists — `database` + `sql_editor` only — for working
-against the DB without the `api_server` / observability stack; several services carry more than
-one profile tag.)
+（軽量な **`database`** プロファイルも存在する — `database` + `sql_editor` のみ — `api_server` /
+observability スタックなしで DB に対して作業する用途。複数のサービスが 2 つ以上のプロファイルタグを持つ。）
 
-**Profile: `generate`** — on-demand tool runners for codegen and documentation; started
-per `make` target invocation, not kept running.
+**プロファイル: `generate`** — コード生成とドキュメント用のオンデマンドツールランナー。
+`make` ターゲット呼び出しごとに起動され、常時稼働ではない。
 
-| Service | Dockerfile target | Description |
+| サービス | Dockerfile ターゲット | 説明 |
 | --- | --- | --- |
-| `go_tool_runner` | `go_tools` | oapi-codegen, mockgen, sqlc, migrate, trivy, hadolint, and others |
-| `node_tool_runner` | `node_tools` | redocly-cli, markdownlint-cli2, commitlint (+ script deps such as js-yaml) |
+| `go_tool_runner` | `go_tools` | oapi-codegen、mockgen、sqlc、migrate、trivy、hadolint など |
+| `node_tool_runner` | `node_tools` | redocly-cli、markdownlint-cli2、commitlint（＋ js-yaml 等のスクリプト依存） |
 | `python_tool_runner` | `python_tools` | sqlfluff |
-| `er_diagram_generator` | `schemaspy/schemaspy` image | ER diagram generation |
+| `er_diagram_generator` | `schemaspy/schemaspy` イメージ | ER ダイアグラム生成 |
 
-Tool runners run as root because mise is installed under `/root`; bind-mounted outputs
-are consequently root-owned, which is accepted behaviour consistent with generated mock
-files elsewhere in the project.
+ツールランナーは mise が `/root` 配下にインストールされているため root で実行する。バインドマウントされた
+出力は結果的に root 所有となるが、これはプロジェクト内の他の生成されたモックファイルと一致する受け入れ済みの動作である。
 
-The `tooling` target of `docker/server/Dockerfile` includes developer tools (air, dlv,
-golines, gofumpt, golangci-lint) on top of the Go runtime, providing the full
-development environment in a single image for the `api_server` service.
+`docker/server/Dockerfile` の `tooling` ターゲットは Go ランタイムの上に開発者ツール（air、dlv、golines、
+gofumpt、golangci-lint）を含み、`api_server` サービス用の完全な開発環境を単一イメージで提供する。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Profile separation means contributors start only the services required for their
-  current task, reducing resource usage.
-- Hot reload (air) and remote debugging (dlv) are available without any host tool
-  configuration.
-- Tool runner containers guarantee reproducible codegen output identical to CI.
-- A single `docker-compose.yaml` is the canonical reference for all local service
-  configuration.
+- プロファイル分離により、コントリビューターは現在のタスクに必要なサービスだけを起動でき、リソース使用を削減できる。
+- ホストツール設定なしでホットリロード（air）とリモートデバッグ（dlv）が利用できる。
+- ツールランナーコンテナが CI と同一の再現可能なコード生成出力を保証する。
+- 単一の `docker-compose.yaml` がすべてのローカルサービス設定の権威あるリファレンスとなる。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Docker must be running for all standard operations, including tool invocations.
-- The observability stack (`grafana/otel-lgtm`) is bundled into the `development`
-  profile, adding memory and CPU overhead even when observability is not the focus.
-- Tool runner bind-mounted outputs are owned by root, requiring `sudo` or group
-  configuration to delete them on some systems.
-- The `tooling` Dockerfile target bundles development tools into the server image,
-  making it larger than a pure runtime image.
+- ツール呼び出しを含む標準的なすべてのオペレーションに Docker が実行されている必要がある。
+- オブザーバビリティスタック（`grafana/otel-lgtm`）が `development` プロファイルにバンドルされており、
+  オブザーバビリティが焦点でない場合もメモリと CPU のオーバーヘッドが生じる。
+- ツールランナーのバインドマウント出力が root 所有となるため、一部のシステムでは削除に `sudo` または
+  グループ設定が必要になる。
+- `tooling` Dockerfile ターゲットが開発者ツールをサーバーイメージにバンドルするため、純粋なランタイムイメージより大きくなる。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Process-based local development (tools on host)
+### プロセスベースのローカル開発（ホスト上のツール）
 
-Running the API server directly on the host (e.g. `air` installed via `mise`) is
-faster to start but breaks the reproducibility guarantee: tool and runtime versions
-depend on what the contributor has installed. It also requires managing the database and
-observability stack separately.
+API サーバーをホスト上で直接実行する（例: `mise` 経由でインストールした `air`）と起動が速いが、
+再現性の保証が崩れる。ツールとランタイムのバージョンはコントリビューターがインストールしているものに依存する。
+データベースとオブザーバビリティスタックを個別に管理する必要もある。
 
-### Separate docker-compose files per concern
+### 懸念事項ごとに別の docker-compose ファイル
 
-More explicit separation, but sharing the `database` service across profiles (e.g.
-`tools` and `development`) becomes awkward without a common file. A single file with
-profiles achieves the same separation more simply.
+明示的な分離が得られるが、複数のプロファイル（例: `tools` と `development`）間で `database` サービスを
+共有することが単一ファイルなしでは扱いにくくなる。プロファイルを持つ単一ファイルがより単純に同様の分離を実現する。
 
-### devcontainer (VS Code Dev Containers)
+### devcontainer（VS Code Dev Containers）
 
-Editor-specific; does not cover CI or non-VS Code workflows. Docker Compose is
-editor-agnostic and usable from any terminal.
+エディター固有であり、CI や VS Code 以外のワークフローをカバーしない。Docker Compose はエディター非依存で
+任意のターミナルから使用できる。
 
-## Notes
+## 補足
 
-- Docker Compose service and profile definitions:
-  [`docker-compose.yaml`](../../docker-compose.yaml).
-- Dockerfile targets and service details:
-  [`docker/README.md`](../../docker/README.md).
-- Container-based reproducibility rationale:
-  [ADR-0079](0079-containerized-pinned-toolchain.md).
-- `make serve` (development profile), `make tools` (tools profile):
-  [`.makefiles/README.md`](../../.makefiles/README.md).
+- Docker Compose のサービスとプロファイル定義:
+  [`docker-compose.yaml`](../../docker-compose.yaml)。
+- Dockerfile ターゲットとサービス詳細:
+  [`docker/README.md`](../../docker/README.md)。
+- コンテナベース再現性の根拠:
+  [ADR-0079](0079-containerized-pinned-toolchain.md)。
+- `make serve`（development プロファイル）、`make tools`（tools プロファイル）:
+  [`.makefiles/README.md`](../../.makefiles/README.md)。

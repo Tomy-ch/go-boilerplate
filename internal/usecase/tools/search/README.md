@@ -1,25 +1,25 @@
 # search
 
-Provides utilities for tokenizing search keyword strings — splitting, deduplicating, and limiting token count.
+検索キーワード文字列をトークンに分割し、重複排除・上限制限を行うユーティリティを提供します。
 
-## Role
+## 役割
 
-This package centralizes the one rule for turning a free-text search keyword into a bounded, deduplicated token set. Keeping it here means every search-capable usecase produces tokens with identical semantics instead of each re-implementing splitting and limiting, and the hard cap on length and token count keeps untrusted input from inflating query cost. It is a deterministic, mechanical transformation only — no domain rules and no awareness of how the query layer later consumes the tokens.
+このパッケージは、自由入力の検索キーワードを「上限付き・重複排除済みのトークン集合」へ変換する唯一のルールを一箇所に集約します。ここに集約することで、検索を行う各 Usecase が分割や上限処理を個別に再実装することなく、すべて同一の意味でトークンを生成できます。また、文字数とトークン数のハードリミットにより、信頼できない入力がクエリコストを膨張させることを防ぎます。あくまで決定的・機械的な変換のみを担い、ドメインルールを持たず、生成したトークンをクエリ層がどう利用するかにも関知しません。
 
-## Processing Steps
+## 処理ステップ
 
-1. Truncate keyword to `MaxKeywordLength` runes
-2. Split by `_` and whitespace (`FieldsFunc` yields non-empty, whitespace-free tokens)
-3. Deduplicate (preserve order, first occurrence wins)
-4. Limit to `maxTokens`
+1. キーワードを `MaxKeywordLength` ルーンに切り詰め
+2. `_` と空白で分割（`FieldsFunc` は空白を含まない非空トークンを返す）
+3. 重複排除（順序保持、先に出現したものを優先）
+4. `maxTokens` で制限
 
-## Behavior
+## 挙動
 
-- `keyword` nil or empty → returns `[]string{}`
-- `maxTokens` ≤ 0 → uses `DefaultMaxTokens` (30)
-- No case normalization or Unicode normalization (NFKC/NFC) is performed
+- `keyword` が nil または空 → `[]string{}` を返す
+- `maxTokens` ≤ 0 → `DefaultMaxTokens`（30）を使用
+- 大文字小文字の正規化や Unicode 正規化（NFKC/NFC）は行わない
 
-## Usage
+## 使用例
 
 ```go
 kw := "foo_bar baz  foo"

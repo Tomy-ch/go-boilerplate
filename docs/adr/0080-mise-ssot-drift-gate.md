@@ -5,145 +5,126 @@ deciders: [maintainers]
 tags: [toolchain, ci]
 ---
 
-# ADR-0080: mise.toml is the single source of truth for mise-resolved versions; versions propagate downstream with a CI drift gate
+# ADR-0080: mise が解決するバージョンは mise.toml を単一の情報源とし、下流に伝播させ CI でドリフトを検知する
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Multiple files must agree on the same language-runtime versions:
+複数のファイルが同じ言語ランタイムバージョンに一致していなければならない。
 
-- `mise.toml` — declares the versions for developer provisioning and Docker image builds.
-- `go.mod` — the `go` directive must match the Go version in `mise.toml`.
-- `docker/server/Dockerfile` and `docker/tools/Dockerfile` — `FROM golang:X`, `FROM node:X`,
-  and `FROM python:X` tags must match `mise.toml`.
+- `mise.toml` — 開発者プロビジョニングおよび Docker イメージビルドのバージョンを宣言する。
+- `go.mod` — `go` ディレクティブは `mise.toml` の Go バージョンと一致していなければならない。
+- `docker/server/Dockerfile` および `docker/tools/Dockerfile` — `FROM golang:X`、`FROM node:X`、
+  `FROM python:X` タグは `mise.toml` と一致していなければならない。
 
-Keeping these files in sync by hand is error-prone: a contributor upgrading Go in
-`mise.toml` may forget to update `go.mod` or the Dockerfile `FROM` lines. Without a
-verification gate, the divergence silently lands on the main branch.
+これらのファイルを手動で同期し続けることはエラーが起きやすい。`mise.toml` で Go をアップグレードした
+コントリビューターが `go.mod` や Dockerfile の `FROM` 行を更新し忘れることがある。検証ゲートがなければ、
+その乖離がサイレントにメインブランチに入り込む。
 
-Some Docker image versions (for example `grafana/otel-lgtm`) cannot be managed through
-the `[tools]` table because they are not installable via the mise registry; they still
-need a single authoritative location.
+一部の Docker イメージバージョン（例: `grafana/otel-lgtm`）は、mise レジストリからインストールできないため
+`[tools]` テーブルで管理できない。それらにも単一の権威ある場所が必要である。
 
-Tools published to PyPI are a second case where a `[tools]` entry is not enough. mise
-pins a version, but nothing below it: the transitive dependencies of a Python tool are
-resolved at install time and are not pinned or hash-checked at all, so the same
-`[tools]` entry installs a different dependency tree on different days. That is the
-part of the supply chain where a compromise is most likely to arrive unnoticed, and it
-is also the part no vulnerability scanner can see, because `mise.toml` is not a lockfile
-that `osv-scanner` knows how to read.
+PyPI で公開されているツールも、`[tools]` エントリだけでは足りない 2 つ目のケースである。mise はバージョンを
+固定するが、その下は何も固定しない。Python ツールの推移依存は install 時に解決され、pin もハッシュ検証も
+一切されないため、同じ `[tools]` エントリでも日によって違う依存ツリーが入る。供給網の中で汚染が最も気づかれ
+にくく入り込む部分であり、同時にどの脆弱性スキャナからも見えない部分でもある。`mise.toml` は `osv-scanner`
+が読める lockfile ではないからである。
 
-## Decision
+## 決定
 
-`mise.toml` is the single source of truth for every tool and runtime version that mise
-resolves.
+`mise.toml` を、mise が解決するすべてのツールおよびランタイムバージョンの単一情報源とする。
 
-**PyPI tools are declared and locked outside mise.** The version is declared in
-`python/<tool>.in`, and `python/<tool>.txt` — produced by `make py-lock`
-(`uv pip compile --generate-hashes --universal`) — pins the whole transitive tree with
-sha256 hashes. Installation goes through `uv pip install --require-hashes`, which
-refuses any requirement lacking a version or a hash, so hash verification is not a
-separate check that can be skipped. One `.in`/`.txt` pair per tool keeps each tool's
-resolution independent. `mise.toml` still declares `uv` itself, and the Python runtime
-the lockfiles are resolved against.
+**PyPI のツールは mise の外で宣言し固定する。** バージョンは `python/<tool>.in` で宣言し、
+`make py-lock`（`uv pip compile --generate-hashes --universal`）が生成する `python/<tool>.txt` が
+推移依存のツリー全体を sha256 付きで固定する。install は `uv pip install --require-hashes` を通す。
+このオプションはバージョンかハッシュを欠いた要求を拒否するため、ハッシュ検証は省略できる別の検査ではない。
+ツールごとに `.in`/`.txt` を 1 組ずつ持つことで、各ツールの解決は互いに独立に保たれる。`uv` 自体と、
+lockfile の解決対象となる Python ランタイムは引き続き `mise.toml` が宣言する。
 
-**Version propagation for language runtimes:** the `go`, `node`, and `python` values
-declared under `[tools]` propagate to `go.mod` (the `go` directive) and to the
-relevant `FROM` lines in `docker/server/Dockerfile` and `docker/tools/Dockerfile` via
-`make sync-versions`, which runs `scripts/sync-versions/main.go`. The Go program
-validates preconditions (version present, files exist, expected match counts) and
-writes each file atomically, so a failure never leaves partial state.
+**言語ランタイムのバージョン伝播:** `[tools]` に宣言された `go`、`node`、`python` の値は
+`go.mod`（`go` ディレクティブ）および `docker/server/Dockerfile`・`docker/tools/Dockerfile` の
+該当 `FROM` 行へ `make sync-versions` を通じて伝播する。このコマンドは `scripts/sync-versions/main.go`
+を実行する。その Go プログラムは事前条件（バージョンの存在確認、ファイルの存在確認、期待される一致数の確認）を
+検証したうえで各ファイルをアトミックに書き込むため、失敗しても中間状態が残らない。
 
-**Docker image versions** that are outside mise's tool resolution model are declared in
-the `[env]` section of `mise.toml` (for example `OTEL_LGTM_VERSION`), keeping them in
-the same single file without polluting the `[tools]` table.
+**mise のツール解決モデルの外にある Docker イメージバージョン**は `mise.toml` の `[env]` セクションに
+宣言する（例: `OTEL_LGTM_VERSION`）。これにより `[tools]` テーブルを汚染せず、同一ファイル内に収める。
 
-**Declaration / lockfile drift gate:** `scripts/tool-cooldown` reads `python/*.in`
-alongside `mise.toml` and fails when a declared version is not the one its lockfile
-pins. Without that check, raising a `.in` without regenerating its `.txt` would leave
-the cooldown gate clearing a version that is never installed.
+**宣言と lockfile のドリフトゲート:** `scripts/tool-cooldown` は `mise.toml` と併せて `python/*.in` を
+読み、宣言したバージョンが lockfile の固定と食い違っていれば失敗する。この検査が無いと、`.in` を上げて
+`.txt` を再生成し忘れたときに、実際には入らないバージョンに対して cooldown ゲートが通ってしまう。
 
-**CI drift gate:** the `sync-versions-check` workflow triggers on pull requests that
-touch `mise.toml`, `go.mod`, the Dockerfiles, or the sync script itself. It runs
-`go run ./scripts/sync-versions` against the branch and then checks `git diff --quiet`.
-Any resulting diff causes the workflow to fail and instructs the author to run
-`make sync-versions` locally and commit the result.
+**CI ドリフトゲート:** `sync-versions-check` ワークフローは `mise.toml`・`go.mod`・Dockerfile・
+同期スクリプト自体に触れるプルリクエストでトリガーされる。ブランチに対して `go run ./scripts/sync-versions`
+を実行し、その後 `git diff --quiet` を確認する。差分が生じた場合はワークフローが失敗し、
+ローカルで `make sync-versions` を実行して結果をコミットするよう作成者に指示する。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- One change in `mise.toml` is the only edit required to upgrade a language runtime
-  everywhere; the sync script handles the rest.
-- Drift is caught at PR review time before merge, not discovered later in a broken
-  build.
-- The Go-based sync script provides strong error handling and leaves no partial state
-  on failure.
-- Docker image versions have a single canonical location even though they are not
-  `[tools]` entries.
-- Python tooling installs the same dependency tree everywhere, verified by hash, and
-  `osv-scanner` reads `python/*.txt` as a lockfile it understands — coverage that a
-  `[tools]` entry never gave.
-- The CI drift gate is a deliberate guardrail: wrong versions cannot silently enter the
-  development branch. Running `make sync-versions` and committing the result is expected,
-  intentional friction — not having this gate would be the riskier choice.
+- `mise.toml` を 1 か所変更するだけで言語ランタイムをあらゆる場所でアップグレードできる。
+  残りは同期スクリプトが処理する。
+- ドリフトはマージ前の PR レビュー時に検出される。後になってビルドが壊れて発見されることがない。
+- Go ベースの同期スクリプトは強力なエラーハンドリングを備え、失敗しても中間状態を残さない。
+- Docker イメージバージョンは `[tools]` エントリでなくても単一の権威ある場所を持つ。
+- Python のツールはどこでも同じ依存ツリーが入り、ハッシュで検証される。`osv-scanner` も
+  `python/*.txt` を lockfile として読める。`[tools]` エントリでは得られなかった範囲である。
+- CI ドリフトゲートは意図的なガードレールとして機能する。誤ったバージョンが開発ブランチに
+  サイレントに入り込むことを防ぐ。`make sync-versions` を実行して結果をコミットする手順は
+  想定された意図的なプロセスであり、むしろこのゲートがないほうが危険である。
 
-### Negative Consequences
+### ネガティブな影響
 
-- The `[env]` section for Docker image versions is a slightly different pattern from
-  the `[tools]` table; contributors must know which section applies to which kind of
-  version.
-- A PyPI tool now takes two files instead of one line, and upgrading it means editing
-  `python/<tool>.in` and regenerating the lockfile rather than editing `mise.toml`.
-  The drift gate above is what keeps that second step from being forgotten silently.
+- Docker イメージバージョン用の `[env]` セクションは `[tools]` テーブルとはパターンが若干異なる。
+  コントリビューターはどちらのセクションがどの種類のバージョンに対応するかを把握しておく必要がある。
+- PyPI のツールは 1 行ではなく 2 ファイルになり、アップグレードは `mise.toml` ではなく
+  `python/<tool>.in` の編集と lockfile の再生成になる。この 2 手目が黙って忘れられないようにするのが、
+  上記のドリフトゲートである。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Renovate / Dependabot per-file PRs
+### Renovate / Dependabot によるファイルごとの PR
 
-Automated dependency PRs keep individual files up to date but treat each file
-independently. Cross-file alignment (e.g. `go.mod` and `Dockerfile` both tracking the
-same Go version declared in `mise.toml`) still requires coordination. The single-source
-approach makes the relationship explicit and machine-verifiable.
+自動依存関係 PR は個々のファイルを最新状態に保つが、各ファイルを独立して扱う。ファイル間の整合
+（例: `go.mod` と `Dockerfile` がともに `mise.toml` で宣言された同一の Go バージョンを追跡すること）は
+依然として調整が必要になる。単一ソースアプローチはその関係を明示的かつ機械的に検証可能にする。
 
-### Shell-based sync script
+### シェルベースの同期スクリプト
 
-A shell script is simpler to write but fragile under edge cases (word splitting,
-missing tools, portability). The Go program can be run via `go run` without extra
-dependencies and provides proper error handling and atomic writes.
+シェルスクリプトは記述が簡単だが、エッジケース（単語分割、ツールの欠如、移植性）で脆弱になる。
+Go プログラムは追加の依存なしに `go run` で実行でき、適切なエラーハンドリングとアトミック書き込みを提供する。
 
-### No sync; maintain each file independently
+### 同期なし・各ファイルを独立して管理
 
-Acceptable for very small teams but does not scale; drift incidents are a recurring
-cost in multi-contributor projects.
+非常に小規模なチームでは許容できるが、スケールしない。マルチコントリビュータプロジェクトでは
+ドリフトインシデントが繰り返しコストとなる。
 
-### Keep PyPI tools in `[tools]` and accept unpinned transitive dependencies
+### PyPI のツールも `[tools]` に置き、推移依存が固定されないことを受け入れる
 
-The one-line-per-tool form is simpler, and it is what this repository used until the
-lockfiles were introduced. It was rejected because the simplicity is bought entirely
-from the part of the dependency tree nobody reviews: the tool's own dependencies float,
-so two builds a week apart install different code, and no scanner reads the declaration.
+1 ツール 1 行という形は単純で、lockfile を導入するまではこのリポジトリもそうしていた。却下したのは、
+その単純さが「誰も見ていない依存ツリー」から買われているためである。ツール自身の依存は浮いたままで、
+1 週間空けた 2 回のビルドは違うコードを install し、どのスキャナもその宣言を読めない。
 
 ### `pyproject.toml` + `uv.lock`
 
-uv's native project lockfile also records a hash per artifact and supports targeted
-upgrades. It was rejected because it models one project with one resolution, while these
-are unrelated CLI tools that happen to share an ecosystem: a dependency conflict between
-them would have to be declared and worked around rather than simply not existing. It
-would also put a Python project manifest at the root of a Go repository.
+uv 本来のプロジェクト lockfile もアーティファクトごとにハッシュを記録し、狙い撃ちの更新もできる。
+却下したのは、これが「1 つのプロジェクト・1 つの解決」をモデルにしているためである。ここにあるのは
+エコシステムを共有するだけの無関係な CLI であり、本来は起こらないはずの依存衝突を宣言して回避する
+必要が出てくる。Go リポジトリのルートに Python のプロジェクトマニフェストを置くことにもなる。
 
-## Notes
+## 補足
 
-- Related decision on container-based execution:
-  [ADR-0079](0079-containerized-pinned-toolchain.md).
-- `mise.toml` with SSOT comment and `[env]` section:
-  [`mise.toml`](../../mise.toml).
-- PyPI tool declarations and lockfiles: [`python/`](../../python/).
-- Lockfile regeneration target: [`.makefiles/python/lock.mk`](../../.makefiles/python/lock.mk).
-- CI drift-gate workflow:
-  [`.github/workflows/sync-versions-check.yaml`](../../.github/workflows/sync-versions-check.yaml).
-- Sync script: [`scripts/sync-versions/`](../../scripts/sync-versions/).
-- Declaration / lockfile drift gate: [`scripts/tool-cooldown/`](../../scripts/tool-cooldown/).
+- コンテナベース実行に関する関連決定:
+  [ADR-0079](0079-containerized-pinned-toolchain.md)。
+- SSOT コメントと `[env]` セクションを持つ `mise.toml`:
+  [`mise.toml`](../../mise.toml)。
+- PyPI ツールの宣言と lockfile: [`python/`](../../python)。
+- lockfile 再生成のターゲット: [`.makefiles/python/lock.mk`](../../.makefiles/python/lock.mk)。
+- CI ドリフトゲートワークフロー:
+  [`.github/workflows/sync-versions-check.yaml`](../../.github/workflows/sync-versions-check.yaml)。
+- 同期スクリプト: [`scripts/sync-versions/`](../../scripts/sync-versions)。
+- 宣言と lockfile のドリフトゲート: [`scripts/tool-cooldown/`](../../scripts/tool-cooldown)。

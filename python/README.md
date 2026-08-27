@@ -1,57 +1,42 @@
 # python
 
-Version declarations and lockfiles for the CLI tools this repository installs from PyPI. Nothing
-here is application code, and the repository ships no Python source: these are build-time tools
-that happen to be published as Python packages.
+このリポジトリが PyPI から入れる CLI ツールの、バージョン宣言と lockfile を置く場所です。アプリケーションのコードはここにはなく、リポジトリは Python のソースを一切持ちません。ここにあるのは、たまたま Python パッケージとして公開されているビルド時のツールです。
 
-## Why these tools are not in `mise.toml`
+## なぜ `mise.toml` に書かないのか
 
-Every other tool version lives in `mise.toml` ([ADR-0080 (mise-ssot-drift-gate)](../docs/adr/0080-mise-ssot-drift-gate.md)).
-A PyPI tool is the exception, because pinning its version pins almost nothing: its dependencies are
-resolved at install time, so the same pin installs a different tree on different days, and no
-scanner can read a version pin as a lockfile.
+他のツールのバージョンはすべて `mise.toml` にあります（[ADR-0080 (mise-ssot-drift-gate)](../docs/adr/0080-mise-ssot-drift-gate.md)）。PyPI のツールだけが例外なのは、バージョンを固定してもほとんど何も固定できないからです。依存は install 時に解決されるため、同じ pin でも日によって違うツリーが入り、バージョンの pin を lockfile として読めるスキャナも存在しません。
 
-Each tool therefore gets a pair of files:
+そのため、ツールごとに 2 つのファイルを持ちます。
 
-|File|Role|
+|ファイル|役割|
 |---|---|
-|`<tool>.in`|The declaration. One `==` pin, plus the reason it is that version|
-|`<tool>.txt`|The resolution. Every package in the transitive tree, pinned with its sha256 hashes|
+|`<tool>.in`|宣言。`==` の pin 1 行と、その版である理由|
+|`<tool>.txt`|解決結果。推移依存まで含めた全パッケージを sha256 付きで固定したもの|
 
-Installation is always `uv pip install --require-hashes -r <tool>.txt`, which refuses a requirement
-that lacks a version or a hash — so verification is part of installing, not a separate step that can
-be skipped.
+install は常に `uv pip install --require-hashes -r <tool>.txt` です。版かハッシュを欠いた要求はここで拒否されるため、検証は install の一部であって、省略できる別の手順ではありません。
 
-## One pair per tool
+## ツールごとに 1 組
 
-The tools here are unrelated CLIs that share only an ecosystem, and each is installed into its own
-environment. Keeping one pair per tool keeps their resolutions independent: a dependency conflict
-between two of them is a conflict that simply does not arise, and the Docker image that needs only
-`sqlfluff` does not carry the other tool's tree.
+ここにあるのはエコシステムを共有するだけの無関係な CLI で、それぞれ別の環境へ入ります。1 組ずつ分けておけば解決も互いに独立し、2 つの間の依存衝突はそもそも起こりません。`sqlfluff` しか要らない Docker イメージが、もう一方のツリーを抱え込むこともありません。
 
-## Changing a version
+## バージョンを変えるとき
 
-Edit the `==` pin in `<tool>.in`, then regenerate:
+`<tool>.in` の `==` の pin を書き換えてから、再生成します。
 
 ```bash
 make py-lock
 ```
 
-The two files are checked against each other: `make tool-cooldown-audit` (and the same gate on every
-pull request) fails when a declaration and its lockfile name different versions. Without that check,
-raising a `.in` and forgetting to regenerate would leave the cooldown gate clearing a version that is
-never installed.
+2 つのファイルは互いに突き合わされます。宣言と lockfile が違う版を指していれば `make tool-cooldown-audit`（および pull request 時の同じゲート）が失敗します。この検査が無いと、`.in` を上げて再生成を忘れたときに、実際には入らない版に対して cooldown が通ってしまいます。
 
-New versions are also subject to the supply-chain cooldown — 7 days for PyPI, as for any package
-registry. A pin held below the latest release says so in the `.in` file.
+新しい版は供給網のクールダウンの対象でもあります。PyPI の窓はパッケージレジストリ共通の 7 日です。最新より前の版で止めている場合は、その理由を `.in` に書きます。
 
-## Who installs from these
+## どこが install するか
 
-|Consumer|Lockfile|
+|利用側|lockfile|
 |---|---|
-|`python_tools` image (`docker/tools/Dockerfile`), used by `make sql-lint` / `make sql-fix`|`sqlfluff.txt`|
-|SQL Lint workflow (`.github/workflows/sql-lint.yaml`)|`sqlfluff.txt`|
+|`python_tools` イメージ（`docker/tools/Dockerfile`）。`make sql-lint` / `make sql-fix` が使う|`sqlfluff.txt`|
+|SQL Lint ワークフロー（`.github/workflows/sql-lint.yaml`）|`sqlfluff.txt`|
 |`.claude/scripts/bootstrap-external-skills.sh`|`graphify.txt`|
 
-The Python runtime the lockfiles are resolved against is the one `mise.toml` declares; `make py-lock`
-reads it from there rather than using whichever interpreter happens to be running.
+lockfile を解決する対象の Python ランタイムは `mise.toml` が宣言しているものです。`make py-lock` は実行中のインタプリタではなく、そこから読み取ります。

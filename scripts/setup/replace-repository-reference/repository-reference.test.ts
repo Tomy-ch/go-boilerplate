@@ -167,11 +167,7 @@ describe("replaceSonarProject", () => {
 describe("REPOSITORY_REFERENCE_TARGETS", () => {
   describe("正常系", () => {
     it("README の英日対と OpenAPI と Sonar 設定を対象にする", () => {
-// doc-pair:replace-begin
-      expect(REPOSITORY_REFERENCE_TARGETS.readmeFiles).toEqual(["README.md", "README.ja.md"]);
-// doc-pair:replace-with
-// =       expect(REPOSITORY_REFERENCE_TARGETS.readmeFiles).toEqual(["README.md"]);
-// doc-pair:replace-end
+      expect(REPOSITORY_REFERENCE_TARGETS.readmeFiles).toEqual(["README.md"]);
       expect(REPOSITORY_REFERENCE_TARGETS.openapiFile).toBe("openapi/openapi.yaml");
       expect(REPOSITORY_REFERENCE_TARGETS.sonarFile).toBe("sonar-project.properties");
     });

@@ -5,144 +5,81 @@ deciders: [maintainers]
 tags: [http, resilience, infrastructure]
 ---
 
-# ADR-0024: Provide an outbound-HTTP resilience foundation (retry / circuit breaker / retry budget / dual timeout)
+# ADR-0024: アウトバウンドHTTPレジリエンス基盤の提供（リトライ / サーキットブレーカー / リトライバジェット / デュアルタイムアウト）
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Outbound HTTP calls — to external APIs, internal services, and webhook endpoints — are an
-inherent reliability boundary. Without a shared resilience layer, each gateway or publisher
-implementation must either reinvent retry logic or skip it entirely. The failure modes without
-a shared substrate are:
+外部API・内部サービス・Webhookエンドポイントへのアウトバウンドhttp呼び出しは、固有の信頼性境界を構成する。共有レジリエンス層がなければ、各ゲートウェイやパブリッシャーの実装はリトライロジックを個別に再実装するか、あるいはまったく省略するかの二択を迫られる。共有基盤がない場合に生じる障害モードは以下の通りである。
 
-- **Retry storms.** An upstream spike triggers many gateway callers to retry concurrently,
-  amplifying load on the already-degraded downstream.
-- **Inadvertent retry of non-idempotent requests.** A POST retried blindly creates duplicate
-  side effects unless the downstream deduplicates; gateways that manage retries locally lack
-  the information to enforce the distinction safely.
-- **Goroutine accumulation from slow responses.** Without a per-attempt timeout that is
-  shorter than the overall deadline, a single slow downstream can hold goroutines open for the
-  full request lifetime.
-- **No downstream-health awareness.** Without a circuit breaker, every request attempts the
-  full retry budget even when the downstream has been consistently failing, adding latency
-  without benefit.
-- **Ad-hoc error mapping.** Callers that inspect raw HTTP status codes couple themselves to
-  HTTP semantics and diverge from the rest of the codebase's `apperror` taxonomy.
+- **リトライストーム。** 上流のスパイクにより多数のゲートウェイ呼び出し元が並列にリトライし、すでに劣化しているダウンストリームへの負荷を増幅させる。
+- **べき等でないリクエストの意図しないリトライ。** POSTをそのままリトライすると、ダウンストリームが重複排除しない限り副作用が二重に発生する。ローカルでリトライを管理するゲートウェイはその区別を安全に強制する情報を持たない。
+- **遅いレスポンスによるゴルーチン蓄積。** 全体デッドラインより短い1試行あたりのタイムアウトがなければ、単一の低速ダウンストリームがリクエスト全体の生存期間にわたってゴルーチンを保持し続ける。
+- **ダウンストリーム健全性の非認識。** サーキットブレーカーがなければ、ダウンストリームが継続的に失敗していてもすべてのリクエストがリトライバジェットを使い切るまで試行され、レイテンシを増やすだけで効果がない。
+- **場当たり的なエラーマッピング。** 生のHTTPステータスコードを検査する呼び出し元はHTTPセマンティクスに結合し、コードベース全体の`apperror`タクソノミーから乖離する。
 
-The project already has an `apperror` error taxonomy (used at every other infra boundary) and
-uses [ADR-0001](0001-avoid-lock-in.md) to prefer minimal, replaceable dependencies. A shared
-substrate that sits between the transport and the semantic gateway implementations keeps
-resilience logic in one place and keeps gateway code thin.
+プロジェクトはすでに`apperror`エラータクソノミー（他のすべてのインフラ境界で使用）を持ち、[ADR-0001](0001-avoid-lock-in.md)に従って最小限で交換可能な依存関係を優先している。トランスポートとセマンティックゲートウェイ実装の間に位置する共有基盤は、レジリエンスロジックを一か所に集約し、ゲートウェイコードを薄く保つ。
 
-## Decision
+## 決定
 
-All outbound HTTP calls are routed through `internal/infrastructure/httpclient.Client`, a
-resilient substrate (the HTTP counterpart of `rdb/driver`). Infrastructure code — gateways
-(`webapi/<service>`) and publishers — depends on this substrate; bare `net/http.Client` is
-not used directly in gateways or publishers.
+すべてのアウトバウンドHTTP呼び出しは`internal/infrastructure/httpclient.Client`（`rdb/driver`のHTTP版に相当するレジリエンス基盤）を経由する。インフラコード（ゲートウェイ `webapi/<service>` およびパブリッシャー）はこの基盤に依存し、ゲートウェイやパブリッシャー内で`net/http.Client`を直接使用しない。
 
-The substrate enforces four resilience mechanisms:
+この基盤は4つのレジリエンス機構を強制する。
 
-**Retry policy.** Idempotent methods (GET, PUT, DELETE) are always retry-safe. Non-idempotent
-methods (POST, PATCH) are retried only when the caller sets `AllowRetry` and provides a
-non-empty `IdempotencyKey`, which the substrate forwards as an `Idempotency-Key` header so
-the downstream can deduplicate. Retryable outcomes are: 5xx responses, 429, and transport
-failures (network errors). Non-retryable outcomes are: 4xx (except 429), 2xx, and context
-cancellation. Backoff is exponential with full jitter, bounded by `MaxBackoff`, and the
-substrate honours a `Retry-After` header when present.
+**リトライポリシー。** べき等なメソッド（GET・PUT・DELETE）は常にリトライ安全である。べき等でないメソッド（POST・PATCH）は、呼び出し元が`AllowRetry`を設定し空でない`IdempotencyKey`を提供した場合のみリトライされる。基盤はこれを`Idempotency-Key`ヘッダとして転送し、ダウンストリームが重複排除できるようにする。リトライ対象となる結果は5xxレスポンス・429・トランスポート障害（ネットワークエラー）である。リトライ非対象は4xx（429を除く）・2xx・コンテキストキャンセルである。バックオフはフルジッター付き指数方式で`MaxBackoff`を上限とし、`Retry-After`ヘッダが存在する場合はそれを優先する。
 
-**Retry budget.** A per-downstream token-bucket caps the fraction of requests that may be
-retries (default: 10%, `RetryBudgetRatio`). When the budget is exhausted the substrate
-returns the last response without further retry, preventing retry amplification under load.
+**リトライバジェット。** ダウンストリームごとのトークンバケットがリトライとなりうるリクエストの割合を制限する（デフォルト: 10%、`RetryBudgetRatio`）。バジェットが枯渇すると基盤はそれ以上リトライせず最後のレスポンスを返し、負荷下でのリトライ増幅を防ぐ。
 
-**Circuit breaker.** A per-downstream state machine (closed / half-open / open) tracks the
-failure ratio over the last `MinRequests` (default: 20) samples. When the failure rate exceeds
-`FailureThreshold` (default: 0.5) the breaker opens and subsequent requests fail fast with
-`ErrUnavailable` for `OpenDuration` (default: 5 s). After that it enters half-open and allows
-`HalfOpenProbes` (default: 3) probe requests to test recovery.
+**サーキットブレーカー。** ダウンストリームごとのステートマシン（closed / half-open / open）が直近`MinRequests`（デフォルト: 20）サンプルの失敗率を追跡する。失敗率が`FailureThreshold`（デフォルト: 0.5）を超えると、ブレーカーはオープンになり、`OpenDuration`（デフォルト: 5秒）の間、後続リクエストは`ErrUnavailable`で即時失敗する。その後half-openに移行し、`HalfOpenProbes`（デフォルト: 3）のプローブリクエストで回復を検証する。
 
-**Dual timeout.** Each attempt is bounded by `PerAttemptTimeout` (default: 3 s); the full
-call including all retries is bounded by `OverallTimeout` (default: 10 s). Before sleeping
-between retries the substrate checks whether the backoff wait would overrun the overall
-deadline and skips the retry if it would, so the caller's context deadline is always
-respected.
+**デュアルタイムアウト。** 各試行は`PerAttemptTimeout`（デフォルト: 3秒）で制限され、すべてのリトライを含む全体呼び出しは`OverallTimeout`（デフォルト: 10秒）で制限される。リトライ間のスリープ前に、バックオフ待機が全体デッドラインを超えるかどうかを確認し、超える場合はリトライをスキップするため、呼び出し元のコンテキストデッドラインは常に遵守される。
 
-Per-downstream profiles (`Profile`) are contributed to an fx value group (`httpclient_profiles`)
-and aggregated by `Registry`; unregistered downstreams fall back to `DefaultProfile`.
+ダウンストリームごとのプロファイル（`Profile`）はfxバリューグループ（`httpclient_profiles`）に提供され、`Registry`によって集約される。未登録のダウンストリームは`DefaultProfile`にフォールバックする。
 
-Transport events and non-2xx responses are normalised to `apperror` sentinels
-(`ErrUnavailable`, `ErrCanceled`, `ErrInvalidArgument`, etc.) before being returned to
-callers, which branch on sentinels only. `net/http` types are not exposed in the substrate's
-public API.
+トランスポートイベントおよび非2xxレスポンスは`apperror`センチネル（`ErrUnavailable`・`ErrCanceled`・`ErrInvalidArgument`等）に正規化されてから呼び出し元に返され、呼び出し元はセンチネルのみで分岐する。`net/http`型は基盤のパブリックAPIには露出しない。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Retry, budget, circuit breaker, and timeout policies are defined once and applied uniformly
-  across every outbound call, eliminating per-gateway divergence.
-- Idempotency enforcement at the substrate layer prevents accidental duplicate side effects
-  from retried POST/PATCH calls.
-- The retry-budget prevents retry amplification: the substrate stops retrying under sustained
-  load before it makes the downstream worse.
-- The circuit breaker provides fast-fail under sustained downstream faults, reducing tail
-  latency for callers.
-- Gateway and publisher code focuses on semantic mapping (domain model ↔ request/response);
-  resilience concerns are fully hidden behind the `Client` interface.
-- Per-downstream profiles allow fine-grained tuning (e.g. the outbox publisher disables
-  transport-layer retry because the relay loop provides at-least-once delivery at a higher
-  level).
+- リトライ・バジェット・サーキットブレーカー・タイムアウトポリシーが一度だけ定義され、すべてのアウトバウンド呼び出しに均一に適用されるため、ゲートウェイごとの実装差異が解消される。
+- 基盤レイヤーでのべき等性強制により、リトライされたPOST/PATCHの呼び出しによる意図しない副作用の二重発生を防ぐ。
+- リトライバジェットがリトライ増幅を防ぐ。持続的な負荷下でダウンストリームをさらに悪化させる前に基盤がリトライを停止する。
+- サーキットブレーカーが持続的なダウンストリーム障害時に即時失敗を提供し、呼び出し元のテールレイテンシを削減する。
+- ゲートウェイおよびパブリッシャーコードはセマンティックマッピング（ドメインモデル ↔ リクエスト/レスポンス）に集中できる。レジリエンスの懸念は`Client`インターフェース内に完全に隠蔽される。
+- ダウンストリームごとのプロファイルにより細かい調整が可能（例：outboxパブリッシャーはリレーループがより高いレベルでat-least-once配信を提供するため、トランスポートレイヤーのリトライを無効化する）。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Gateway implementers must use the substrate's typed `Request` builder (`NewRequest` +
-  `With*` options); they cannot construct `http.Request` directly.
-- Adding a new downstream requires registering a `DownstreamProfile` in the fx group;
-  forgetting to register falls back to `DefaultProfile` silently (though the fallback is
-  intentionally safe).
-- The per-downstream circuit breaker and budget are in-process state; they do not share state
-  across multiple application instances.
+- ゲートウェイ実装者は基盤の型付き`Request`ビルダー（`NewRequest` + `With*`オプション）を使用しなければならない。`http.Request`を直接構築することはできない。
+- 新しいダウンストリームを追加する際はfxグループに`DownstreamProfile`を登録する必要がある。登録を忘れた場合は`DefaultProfile`に無言でフォールバックする（ただしフォールバックは意図的に安全な設計となっている）。
+- ダウンストリームごとのサーキットブレーカーとバジェットはプロセス内状態であり、複数のアプリケーションインスタンス間で状態を共有しない。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Bare `net/http.Client` per consumer
+### 各コンシューマーが独自の`net/http.Client`を使用
 
-The simplest approach: each gateway constructs its own `http.Client`. Rejected because it
-pushes all retry, timeout, and error-mapping logic to each consumer individually, producing
-divergent implementations and the failure modes listed in the Context section.
+最もシンプルなアプローチ：各ゲートウェイが独自の`http.Client`を構築する。すべてのリトライ・タイムアウト・エラーマッピングロジックを各コンシューマーに押し付けることになり、実装が乖離し、背景セクションに列挙した障害モードが発生するため却下。
 
-### Third-party resiliency library (e.g. go-resilience, failsafe-go)
+### サードパーティ製レジリエンスライブラリ（go-resilience, failsafe-go 等）
 
-Libraries provide circuit breaker and retry primitives. Rejected per [ADR-0001](0001-avoid-lock-in.md):
-the project prefers thin, replaceable abstractions over framework lock-in. The substrate is
-thin enough (retry loop + token bucket + state machine) that the standard library suffices
-without an external dependency.
+ライブラリはサーキットブレーカーとリトライプリミティブを提供する。[ADR-0001](0001-avoid-lock-in.md)に従い却下：プロジェクトはフレームワークロックインよりも薄く交換可能な抽象を優先する。基盤はリトライループ + トークンバケット + ステートマシンと十分に薄く、外部依存なしで標準ライブラリで足りる。
 
-### Retry at the usecase layer
+### ユースケースレイヤーでのリトライ
 
-Usecases could wrap gateway calls in a retry loop. Rejected because: (a) retry logic would
-bleed into business logic, violating the onion-layer responsibility split
-([ADR-0002](0002-onion-architecture.md)); (b) the usecase has no access to transport-level
-signals (network errors, `Retry-After` headers) needed to make a correct retry decision; and
-(c) the circuit breaker, budget, and timeout mechanisms belong at the infrastructure boundary,
-not inside business logic.
+ユースケースがゲートウェイ呼び出しをリトライループでラップする。（a）リトライロジックがビジネスロジックに混入し、オニオンレイヤーの責務分担に違反する（[ADR-0002](0002-onion-architecture.md)）。（b）ユースケースは正しいリトライ判断に必要なトランスポートレベルのシグナル（ネットワークエラー・`Retry-After`ヘッダ）にアクセスできない。（c）サーキットブレーカー・バジェット・タイムアウト機構はビジネスロジック内ではなくインフラ境界に属する。これらの理由で却下。
 
-### Service mesh / sidecar (e.g. Envoy, Linkerd)
+### サービスメッシュ / サイドカー（Envoy・Linkerd 等）
 
-Offloads retry and circuit breaking to the mesh. Rejected because it introduces a hard
-infrastructure dependency that makes local development and testing complex, and it conflicts
-with this project's goal of running with minimal external dependencies
-(see [ADR-0001](0001-avoid-lock-in.md)).
+リトライとサーキットブレーキングをメッシュにオフロードする。ローカル開発とテストを複雑にするハードなインフラ依存が生じ、最小限の外部依存で動作するというテンプレートの目標と相反するため却下（[ADR-0001](0001-avoid-lock-in.md)参照）。
 
-## Notes
+## 補足
 
-- Substrate implementation: `internal/infrastructure/httpclient/`.
-- Transport (instrumentation + SSRF guard): `internal/observability/http_client_transport.go`
-  — see [ADR-0025](0025-egress-ssrf-guard.md).
-- DI registration: `internal/di/module/httpclient.go`.
-- Example consumer that disables transport retry in favour of relay-level at-least-once:
-  `internal/infrastructure/publisher/http_publisher.go`.
-- source: `internal/infrastructure/httpclient/README.md`.
+- 基盤実装: `internal/infrastructure/httpclient/`。
+- トランスポート（インストルメンテーション + SSRFガード）: `internal/observability/http_client_transport.go` — [ADR-0025](0025-egress-ssrf-guard.md)参照。
+- DI登録: `internal/di/module/httpclient.go`。
+- リレーレベルのat-least-once配信を優先してトランスポートリトライを無効化するコンシューマーの例: `internal/infrastructure/publisher/http_publisher.go`。
+- source: `internal/infrastructure/httpclient/README.md`。

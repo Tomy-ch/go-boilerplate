@@ -1,14 +1,14 @@
 # backoff
 
-Computes exponential backoff wait durations as a pure function of the attempt count, free of clock or randomness dependencies.
+指数バックオフの待機時間を attempt 回数のみから算出する純関数を提供し、時刻や乱数に依存しません。
 
-## Notes
+## 補足
 
-- `Duration` computes `Initial * Multiplier^attempt`, capping the result at `Max` when `Max` is positive.
-- `Initial <= 0` yields `0`; a negative `attempt` is treated as `0`.
-- A `Multiplier` below `1` is treated as `1`.
-- With no cap (`Max <= 0`), the result is clamped to `math.MaxInt64` to avoid overflow producing a negative duration.
+- `Duration` は `Initial * Multiplier^attempt` を計算し、`Max` が正なら `Max` で上限を設けます。
+- `Initial <= 0` の場合は `0` を返し、負の `attempt` は `0` として扱います。
+- `1` 未満の `Multiplier` は `1` として扱います。
+- 上限なし（`Max <= 0`）の場合は、オーバーフローによる負の待機時間を避けるため `math.MaxInt64` で頭打ちにします。
 
-## Wraps
+## ラップ対象
 
-Standard library `time` and `math` packages.
+標準ライブラリ `time` および `math` パッケージ

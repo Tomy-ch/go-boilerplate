@@ -1,12 +1,6 @@
 import Fuse from "fuse.js";
 import { type ReactNode, useCallback, useEffect, useId, useMemo, useState } from "react";
 import { SearchFieldClient } from "@/components/design-system/form/search-field-client/search-field-client";
-// doc-pair:begin
-import {
-  ToggleGroupNative,
-  ToggleGroupNativeItem,
-} from "@/components/design-system/form/toggle-group-native/toggle-group-native";
-// doc-pair:end
 import {
   Dialog,
   DialogContent,
@@ -17,7 +11,6 @@ import {
 import type { DocsJson, PortalItem } from "../docs-json/docs-json";
 import { DocumentContent } from "../document-content/document-content";
 import { parseHashRoute, resolveActiveGroupSlug } from "../hash-route/hash-route";
-import { applyLangFilter, type PortalLang } from "../lang-filter/lang-filter"; // doc-pair:line
 import { parseMarkdownDocument } from "../markdown/markdown-document";
 import { PortalCardGrid } from "../portal-card-grid/portal-card-grid";
 import { PortalSidebar } from "../portal-sidebar/portal-sidebar";
@@ -39,25 +32,15 @@ export type PortalAppProps = {
  *
  * @remarks
  * 表示状態は位置ハッシュが持ちます。静的配信されるため経路をサーバへ問い合わせられず、共有・
-// doc-pair:replace-begin
- * 履歴・戻る操作に対して復元可能なのはハッシュだけだからです。検索語と表示言語はハッシュに
- * 載せません。どちらも一時的な絞り込みであり、共有したいのは「どの文書を見ているか」だからです。
-// doc-pair:replace-with
-// =  * 履歴・戻る操作に対して復元可能なのはハッシュだけだからです。検索語はハッシュに載せません。
-// =  * 一時的な絞り込みであり、共有したいのは「どの文書を見ているか」だからです。
-// doc-pair:replace-end
+ * 履歴・戻る操作に対して復元可能なのはハッシュだけだからです。検索語はハッシュに載せません。
+ * 一時的な絞り込みであり、共有したいのは「どの文書を見ているか」だからです。
  */
 export function PortalApp({ docs }: Readonly<PortalAppProps>) {
-  const [lang, setLang] = useState<PortalLang>("EN"); // doc-pair:line
   const [query, setQuery] = useState("");
   const [hash, setHash] = useState(() => window.location.hash);
   const [openDocument, setOpenDocument] = useState<OpenDocument | null>(null);
   const searchResultsHeadingId = useId();
 
-// doc-pair:begin
-  const selectEnglish = useCallback(() => setLang("EN"), []);
-  const selectJapanese = useCallback(() => setLang("JA"), []);
-// doc-pair:end
   const closeDocument = useCallback(() => setOpenDocument(null), []);
 
   useEffect(() => {
@@ -80,11 +63,7 @@ export function PortalApp({ docs }: Readonly<PortalAppProps>) {
     document.getElementById(`section-${sectionSlug}`)?.scrollIntoView({ block: "start" });
   }, [hash]);
 
-// doc-pair:replace-begin
-  const visibleGroups = useMemo(() => applyLangFilter(docs.groups, lang), [docs.groups, lang]);
-// doc-pair:replace-with
-// =   const visibleGroups = docs.groups;
-// doc-pair:replace-end
+  const visibleGroups = docs.groups;
   const corpus = useMemo(() => buildSearchCorpus(visibleGroups), [visibleGroups]);
   const fuse = useMemo(() => new Fuse(corpus, { keys: [...searchKeys], threshold: 0.3 }), [corpus]);
 
@@ -172,24 +151,6 @@ export function PortalApp({ docs }: Readonly<PortalAppProps>) {
               label="ドキュメントを検索"
               onSearch={setQuery}
             />
-            <ToggleGroupNative aria-label="表示言語">
-              <ToggleGroupNativeItem
-                checked={lang === "EN"}
-                name="lang"
-                onChange={selectEnglish}
-                value="EN"
-              >
-                EN
-              </ToggleGroupNativeItem>
-              <ToggleGroupNativeItem
-                checked={lang === "JA"}
-                name="lang"
-                onChange={selectJapanese}
-                value="JA"
-              >
-                JA
-              </ToggleGroupNativeItem>
-            </ToggleGroupNative>
           </div>
         </div>
       </header>

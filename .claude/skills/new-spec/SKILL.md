@@ -5,81 +5,79 @@ description: Integrator skill that creates the 2-layer spec set under `docs/spec
 
 # New Spec
 
-Integrator for creating the 2-layer spec template set for one feature (lean A: `domain.md` + `usecase.md`).
+1 feature の 2 layer spec テンプレートセット（lean A: `domain.md` + `usecase.md`）を作成する統合スキル。
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+## 使うとき
 
-## When to Use
+- 新規 feature 開始で 2 layer 分の spec テンプレを 1 つの chain flow で作成
+- 既存 feature ディレクトリに片方の spec が無い状態で、欠落 layer を埋める
 
-- Starting a brand-new feature and want both spec templates created in one chained flow.
-- A feature directory exists with one spec and you want to add the missing one.
+以下の用途には使いません:
 
-Do NOT use this skill for:
-
-- Creating a single layer template — invoke the matching per-layer skill directly:
+- 単一 layer テンプレ作成 — 該当 per-layer skill を直接呼ぶ:
   - `new-spec-domain` / `new-spec-usecase`
-- Editing existing spec files — open in the editor.
-- Generating Go code from spec — that's `scaffold-endpoint` (or per-layer `scaffold-<layer>`).
-- Validating spec consistency — that's `verify-spec`.
+- 既存 spec ファイル編集 — エディタで直接
+- spec から Go コード生成 — `scaffold-endpoint`（または per-layer `scaffold-<layer>`）
+- spec 整合性検証 — `verify-spec`
 
-## Why only 2 specs (lean A)
+## なぜ 2 spec か（lean A）
 
-controller / infra layers are not spec-driven — they are derived at scaffold time from OpenAPI gen and sqlc gen, and the convention is enforced by `arch-check`. Full rationale: `.claude/scaffold-spec/lifecycle.md`.
+controller / infra layer は spec 駆動ではなく、OpenAPI gen と sqlc gen から scaffold 時に導出される。規約自体は `arch-check` で強制される。詳細は `.claude/scaffold-spec/lifecycle.md` を参照。
 
-## What This Skill Reads / Writes
+## 読み書き範囲
 
-This skill itself **does not read or write spec files directly**. All structural work is delegated to per-layer skills, each of which:
+本 skill 自体は spec ファイルを **直接読み書きしない**。全構造作業は per-layer skill に委譲し、各 per-layer skill が:
 
-- Reads its matching `.claude/scaffold-spec/<layer>-spec.md` at runtime for the section list.
-- Asks for layer-specific identity via its own `AskUserQuestion`.
-- Writes one Markdown file under `docs/spec/<feature>/`.
+- 実行時に対応する `.claude/scaffold-spec/<layer>-spec.md` を読んで節リスト取得
+- 自身の `AskUserQuestion` で layer 固有 identity 収集
+- `docs/spec/<feature>/` 配下に Markdown ファイル 1 つを書き込み
 
-This skill is purely orchestration: it confirms feature name + layer selection, then invokes per-layer skills in dependency order.
+本 skill は orchestration のみ: feature 名 + layer 選択を確認、依存順で per-layer skill を起動。
 
-## First Step: Confirm Feature and Layer Selection
+## 最初のステップ: feature と layer 選択の確認
 
-This skill **MUST call `AskUserQuestion` immediately after invocation**. Use a single batched call with two questions:
+`AskUserQuestion` を 1 回の batched call で 2 質問:
 
-### Question 1: Feature name
+### Question 1: feature 名
 
-- Free-text: 「feature 名（kebab-case）。例: `user-management`, `order-fulfillment`」
-- Validate `^[a-z][a-z0-9-]*$`. Re-ask on invalid input.
+- フリーテキスト: 「feature 名（kebab-case）。例: `user-management`, `order-fulfillment`」
+- `^[a-z][a-z0-9-]*$` を検証。無効なら再質問
 
-### Question 2: Layers to scaffold
+### Question 2: scaffold する layer
 
-- Multi-select, 2 options:
+- multi-select、2 択:
   - 「domain」
   - 「usecase」
-- Default: both. The user may deselect either (e.g., `domain` already exists and only `usecase` is needed).
+- 既定: 両方。一部 deselect 可（例: `domain` 既存で `usecase` のみ）
 
-After the answers come back:
+回答後:
 
-1. Build the work plan: feature name + ordered list of layers to scaffold (dependency order: `domain` → `usecase`).
-2. For each selected layer, check whether `docs/spec/<feature>/<layer>.md` already exists. If it does, mark it as **skip** rather than failing the entire chain.
-3. Show the plan in Japanese with skip markers, then confirm via `AskUserQuestion`:
-   - Question: 「以下の順番で per-layer skill を chain します。進めますか？」
-   - Options: 「進める」 / 「キャンセル」
+1. 作業計画作成: feature 名 + scaffold 対象 layer 順序リスト（依存順 `domain` → `usecase`）
+2. 各選択 layer について `docs/spec/<feature>/<layer>.md` 既存確認。存在すれば chain 失敗ではなく **skip** マーク
+3. 計画を日本語で skip マーク付きで表示、`AskUserQuestion` で確認:
+   - 質問: 「以下の順番で per-layer skill を chain します。進めますか？」
+   - 選択肢: 「進める」 / 「キャンセル」
 
-If after applying skips the executable list is empty, report it and stop:
+skip 適用後に実行対象が空なら報告して停止:
 
 ```text
 全 layer の spec ファイルが既に存在します。実行対象がありません。
 ```
 
-## Step 1. Chain Per-Layer Skills in Dependency Order
+## Step 1. 依存順で per-layer skill を chain
 
-For each layer remaining in the plan (in order `domain` → `usecase`):
+計画の各 layer について（依存順 `domain` → `usecase`）:
 
-1. Invoke the matching skill: `new-spec-<layer>` via the `Skill` tool.
-2. Pass the feature name in the chain context so the child skill can skip its own feature-name `AskUserQuestion` and only ask for layer-specific identity (aggregate / package / interface name).
-3. The child still asks the user to confirm and writes its own file.
-4. If the child reports failure (e.g., user cancels the per-layer confirmation), stop the chain and surface the status; do NOT auto-rollback already-written layers.
+1. `Skill` tool で `new-spec-<layer>` を起動
+2. chain context として feature 名を渡し、child の feature 名 `AskUserQuestion` をスキップ可能にする — layer 固有 identity（aggregate / package / interface 名）のみ child が質問
+3. child が自身の確認を実施しファイルを書き込む
+4. child が失敗報告（user キャンセル等）したら chain 停止 + ステータス surface、書き込み済み layer の自動 rollback はしない
 
-Each per-layer skill is independent — they only share the feature name and the layer-execution order. They do not pass aggregate or interface names between each other.
+各 per-layer skill は独立 — feature 名と layer 実行順序のみ共有、aggregate / interface 名は skill 間で受け渡さない。
 
-## Step 2. Closing Report
+## Step 2. クロージングレポート
 
-After all selected layers have been processed (chain completed or stopped early), print a Japanese summary:
+全選択 layer 処理後（chain 完了 / 中途停止のいずれも）日本語サマリ:
 
 ```text
 new-spec 完了（feature: <feature>）。
@@ -93,39 +91,39 @@ new-spec 完了（feature: <feature>）。
     (controller / infra は OpenAPI / sqlc gen から自動導出される)
 ```
 
-Adjust marks per actual result:
+マーク:
 
-- ✓ = newly created
-- `-` = skipped (file already existed)
-- ✗ = failed / cancelled
+- ✓ = 新規作成
+- `-` = スキップ（ファイル既存）
+- ✗ = 失敗 / キャンセル
 
-Do NOT commit. Do NOT trigger any scaffold skill automatically.
+commit しない。scaffold skill 自動起動しない。
 
-## AI Modification Scope
+## AI 修正スコープ
 
-This skill itself writes no files. All write scope is delegated to per-layer skills, each scoped to `docs/spec/<feature>/<layer>.md`.
+本 skill 自体はファイル書き込みなし。全 write スコープは per-layer skill に委譲、各 `docs/spec/<feature>/<layer>.md` にスコープ。
 
-## Constraints
+## 制約事項
 
-- ❌ Write spec files directly (always delegate to per-layer skills)
-- ❌ Hardcode section lists (per-layer skills read `.claude/scaffold-spec/<layer>-spec.md` at runtime)
-- ❌ Abort the entire chain because one layer's file already exists — mark as skip and continue
-- ❌ Auto-rollback earlier created layers if a later layer fails
-- ❌ Skip the feature-confirmation `AskUserQuestion`
-- ❌ Run per-layer skills out of dependency order
-- ❌ Offer controller / infra as spec options (lean A: those layers are derived, not spec-driven)
-- ✅ Japanese user-facing output
-- ✅ Multi-select layer choice (domain / usecase) with both default
-- ✅ Chain in dependency order: `domain` → `usecase`
-- ✅ Surface skip / fail status per layer in the final report
+- ❌ spec ファイル直接書き込み（必ず per-layer skill 委譲）
+- ❌ 節リストハードコード（per-layer skill が `.claude/scaffold-spec/<layer>-spec.md` を実行時読み込み）
+- ❌ 1 layer の既存ファイル理由で chain 全体中断 — skip マークして継続
+- ❌ 後段失敗時に earlier layer 自動 rollback
+- ❌ feature 確認 `AskUserQuestion` をスキップ
+- ❌ per-layer skill を依存順以外で起動
+- ❌ controller / infra を spec 選択肢として提示（lean A: 両層は導出、spec 駆動ではない）
+- ✅ ユーザー向け出力は日本語
+- ✅ multi-select layer 選択（domain / usecase）、既定は両方
+- ✅ 依存順 `domain` → `usecase` で chain
+- ✅ 最終レポートで layer ごとに skip / fail ステータス surface
 
-## Checklist
+## チェックリスト
 
-- [ ] Feature name + layer selection confirmed via `AskUserQuestion`
-- [ ] Existing layer files marked as skip (not failure)
-- [ ] Per-layer skills invoked in dependency order
-- [ ] Each per-layer skill ran its own identity `AskUserQuestion`
-- [ ] Per-layer failure stopped the chain without auto-rollback
-- [ ] Final Japanese summary uses ✓ / - / ✗ marks
-- [ ] No direct file writes by this skill
-- [ ] No commit / scaffold auto-trigger
+- [ ] feature 名 + layer 選択を `AskUserQuestion` で確認
+- [ ] 既存 layer ファイルを skip マーク（失敗扱いにしない）
+- [ ] per-layer skill を依存順で起動
+- [ ] 各 per-layer skill が自身の identity `AskUserQuestion` を実施
+- [ ] per-layer 失敗時は chain 停止、自動 rollback なし
+- [ ] 最終日本語サマリで ✓ / - / ✗ マーク使用
+- [ ] 本 skill 自身による直接 file 書き込みなし
+- [ ] commit / scaffold 自動起動なし
