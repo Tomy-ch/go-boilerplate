@@ -416,25 +416,28 @@ export function checkSectionReferences(
   return [...eachLineOutsideFence(content)]
     .filter(({ line }) => !line.includes(IGNORE_DIRECTIVE))
     .flatMap(({ line, lineNo }) =>
-      extractSectionRefs(line)
-        .filter((ref) => {
-          const declared = sections.get(ref.skill);
-          return declared !== undefined && declared.size > 0 && !declared.has(ref.section);
-        })
-        .map((ref) => ({
-          file: rel,
-          line: lineNo,
-          rule: "section-ref",
-          message:
-            `\`${ref.skill}\` に存在しない節を参照しています: §${ref.section}` +
-            `（実在するのは ${describeSections(sections.get(ref.skill))}）`,
-        })),
+      extractSectionRefs(line).flatMap((ref) => {
+        const declared = sections.get(ref.skill);
+
+        if (declared === undefined || declared.size === 0 || declared.has(ref.section)) return [];
+
+        return [
+          {
+            file: rel,
+            line: lineNo,
+            rule: "section-ref",
+            message:
+              `\`${ref.skill}\` に存在しない節を参照しています: §${ref.section}` +
+              `（実在するのは ${describeSections(declared)}）`,
+          },
+        ];
+      }),
     );
 }
 
 /** 節番号の集合を昇順の一覧文字列にする。件数が多いので範囲へは畳まず、そのまま並べる。 */
-function describeSections(declared: ReadonlySet<number> | undefined): string {
-  return [...(declared ?? [])].sort((a, b) => a - b).map((n) => `§${n}`).join(" / ");
+function describeSections(declared: ReadonlySet<number>): string {
+  return [...declared].sort((a, b) => a - b).map((n) => `§${n}`).join(" / ");
 }
 
 /** ルートの makefile として読むファイル名か。綴りは処理系依存なので実エントリ名で拾う。 */

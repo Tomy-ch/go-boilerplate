@@ -191,29 +191,20 @@ function buildSectionIndex(skillsDir: string, names: readonly string[]): Map<str
   return index;
 }
 
+/**
+ * `.claude/` 配下の `*.md`。不在なら実行を止める。
+ *
+ * @remarks
+ * 他ツリーと違い不在を許さないのは、ここが無いのはリポジトリルート以外から実行された場合だけで、
+ * そのまま続ければ「検査して 0 件」と見分けの付かない空の結果を返してしまうためです。
+ */
 function collectClaudeMarkdown(): string[] {
-  const out: string[] = [];
-
-  const walk = (dir: string) => {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      const abs = path.join(dir, entry.name);
-
-      if (entry.isDirectory()) {
-        if (EXCLUDE_DIRS.has(entry.name) || EXTERNAL_SKILL_DIRS.has(abs)) continue;
-        walk(abs);
-        continue;
-      }
-      if (entry.name.endsWith(".md")) out.push(path.relative(REPO_ROOT, abs));
-    }
-  };
-
   if (!exists(CLAUDE_DIR)) {
     console.error(`✘ skill-lint: ${CLAUDE_DIR}/ が見つかりません（リポジトリルートで実行してください）`);
     process.exit(2);
   }
 
-  walk(path.join(REPO_ROOT, CLAUDE_DIR));
-  return out.sort();
+  return collectMarkdown(CLAUDE_DIR);
 }
 
 const makeTargets = collectMakeTargets(readMakefileSources());

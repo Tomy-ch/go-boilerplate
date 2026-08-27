@@ -73,9 +73,11 @@ copy, and the copy is what decays when ownership changes. Routing in the index m
 who must finish the section before discovering the delegation has already paid the reading cost the
 delegation was meant to save.
 
+<!-- sample-api:begin -->
 **A section removed by `make setup-remove-sample-api` stays outside the sequence as §99.** Keeping it
 inside the sequence would leave a permanent numbering gap after removal. Give new permanent sections
 the next sequential number instead.
+<!-- sample-api:end -->
 
 **A symptom that is not in this index does not belong here.** This is a lookup table of known
 gotchas, not a search: it answers "the fix for this is §N", never "no fix exists". Route a goal-shaped

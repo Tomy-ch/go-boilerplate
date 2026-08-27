@@ -79,10 +79,12 @@ Routing from the index rather than from inside the section matters: a reader who
 section before learning it defers to a skill has already spent the reading the deferral was meant to
 save.
 
+<!-- sample-api:begin -->
 **A section that `make setup-remove-sample-api` deletes is numbered out of sequence (§99).** Inside
 the running sequence its removal would leave a permanent gap in the runbook this repository ships;
 out of sequence, deleting it changes nothing else. Number a removable section that way, and give
 new sections the next sequential number.
+<!-- sample-api:end -->
 
 **A symptom that is not in this index does not belong here.** This is a lookup table of known
 gotchas, not a search: it answers "the fix for this is §N", never "no fix exists". Establishing that
