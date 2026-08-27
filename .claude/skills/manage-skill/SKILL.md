@@ -27,11 +27,7 @@ Use this skill when the user wants to:
   conversation into one.
 - Update, modify, improve, refactor, rename, extend, or fix an existing skill under
   `.claude/skills/` — this is the entry point for any such change, used before hand-editing a
-  <!-- doc-pair:replace-begin -->
   `SKILL.md` / `SKILL.ja.md`.
-  <!-- doc-pair:replace-with -->
-  <!-- = `SKILL.md`. -->
-  <!-- doc-pair:replace-end -->
 - Optimize a skill's `description` for better triggering, or run evals/benchmarks on a skill.
 
 Do NOT use it for:
@@ -115,7 +111,6 @@ these win, because a skill that ignores them won't fit this repo.
   (responses, generated code comments, test case names, PR/commit text) must be **Japanese**. When
   authoring a skill, bake that requirement into its instructions.
 
-<!-- doc-pair:begin -->
 ### 4. Mandatory Japanese translation pair
 
 Every skill in this repo ships a `SKILL.ja.md` reference translation next to `SKILL.md`. This is not
@@ -125,12 +120,7 @@ optional here. After the canonical `SKILL.md` is finalized (create) or changed (
 - The translation carries the standard sync-note header and is not itself loaded as a skill. Confirm
   the pair is in sync before considering the task done.
 
-<!-- doc-pair:end -->
-<!-- doc-pair:replace-begin -->
 ### 5. Eval artifacts stay out of version control
-<!-- doc-pair:replace-with -->
-<!-- = ### 4. Eval artifacts stay out of version control -->
-<!-- doc-pair:replace-end -->
 
 The official process writes a `<skill-name>-workspace/` with iteration/eval dirs, benchmarks, and
 viewer output. A sibling of the skill directory would land inside the tracked `.claude/skills/**`.
@@ -139,11 +129,7 @@ viewer output. A sibling of the skill directory would land inside the tracked `.
 (plans/artifacts live outside git; `tmp/` is ignored). Never commit eval runs, benchmarks, feedback
 JSON, or viewer HTML.
 
-<!-- doc-pair:replace-begin -->
 ### 6. Reuse repo patterns when they fit the skill's shape
-<!-- doc-pair:replace-with -->
-<!-- = ### 5. Reuse repo patterns when they fit the skill's shape -->
-<!-- doc-pair:replace-end -->
 
 - If the new skill fans out read-only analysis across layers, mirror the **integrator + per-layer
   subagent** pattern (`arch-check` / `back-prop` spawn `*-auditor-*` / `*-detector-*` agents in
@@ -157,14 +143,9 @@ JSON, or viewer HTML.
 ## Creating a new skill
 
 Run the official **Creating a skill** flow (Capture Intent → Interview → Write SKILL.md → Test Cases),
-<!-- doc-pair:replace-begin -->
 then apply the overlay: correct placement, matching frontmatter/description density, English-canonical
 body, and the eval workspace under `tmp/`. When the draft stabilizes, generate `SKILL.ja.md` via
 `canonicalize-doc`.
-<!-- doc-pair:replace-with -->
-<!-- = then apply the overlay: correct placement, matching frontmatter/description density, English-canonical -->
-<!-- = body, and the eval workspace under `tmp/`. -->
-<!-- doc-pair:replace-end -->
 
 ## Updating an existing skill
 

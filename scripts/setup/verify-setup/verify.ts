@@ -137,9 +137,9 @@ export const LOCALIZATION_MARKER = "setup-localize";
 export const LOCALIZATION_MARKER_FILES: readonly string[] = [
   ".makefiles/github/operation/setup-repository.mk",
   ".makefiles/README.md",
-  ".makefiles/README.ja.md", // doc-pair:line
+  ".makefiles/README.ja.md",
   "scripts/README.md",
-  "scripts/README.ja.md", // doc-pair:line
+  "scripts/README.ja.md",
 ];
 
 /** `setup/` 配下の共有モジュール。使う側が全て消えたときだけ道連れにする。 */

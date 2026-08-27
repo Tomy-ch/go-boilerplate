@@ -34,7 +34,7 @@ import {
   checkPlatformOnlyAllowlist,
   checkReferences,
   checkSkillParity,
-  checkTranslationPair, // doc-pair:line
+  checkTranslationPair,
   formatFindings,
   isClaudeAgentDefinition,
   isCodexAgentDefinition,
@@ -231,17 +231,12 @@ for (const name of skillDirs) {
   }
 
   const canonical = readFile(canonicalRel);
-// doc-pair:replace-begin
   const translationRel = path.join(LAYOUT.claudeSkills, name, "SKILL.ja.md");
 
   findings.push(
     ...checkFrontmatter(canonicalRel, canonical, name),
     ...checkTranslationPair(canonicalRel, translationRel, canonical, readIfPresent(translationRel)),
   );
-// doc-pair:replace-with
-// =
-// =   findings.push(...checkFrontmatter(canonicalRel, canonical, name));
-// doc-pair:replace-end
 }
 
 const agentFiles = listFiles(LAYOUT.claudeAgents, isClaudeAgentDefinition);
@@ -260,7 +255,7 @@ for (const name of codexSkillDirs) {
     ...checkCodexSkillStructure(skillDir, {
       canonical: readIfPresent(path.join(skillDir, "SKILL.md")),
       hasMetadata: exists(path.join(skillDir, "agents", "openai.yaml")),
-      translation: readIfPresent(path.join(skillDir, "SKILL.ja.md")), // doc-pair:line
+      translation: readIfPresent(path.join(skillDir, "SKILL.ja.md")),
     }),
   );
 }

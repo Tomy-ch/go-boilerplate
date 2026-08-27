@@ -37,11 +37,7 @@ meta:
 
   # 肥大セクションを section 内の役割で更にサブグループ化する。
   # キー = section id。値 = [{title, items: [guide_id, ...]}]。
-# doc-pair:replace-begin
   # guide_id = guides 配下の basename (.ja.md / .md を除いたもの) で、EN/JA 両方に作用する。
-# doc-pair:replace-with
-# =   # guide_id = guides 配下の basename (.md を除いたもの)。
-# doc-pair:replace-end
   # ここに含まれない item は末尾の "Other" サブグループに自動集約される。
   subgroups:
     controller:
@@ -254,31 +250,25 @@ overview:
   # English
   - src: README.md
     dst: docs/portal/guides/overview.md
-# doc-pair:begin
   # Japanese
   - src: README.ja.md
     dst: docs/portal/guides/ja/overview.ja.md
-# doc-pair:end
 
 make_commands:
   # English
   - src: .makefiles/README.md
     dst: docs/portal/guides/make.md
-# doc-pair:begin
   # Japanese
   - src: .makefiles/README.ja.md
     dst: docs/portal/guides/ja/make.ja.md
-# doc-pair:end
 
 environment_variables:
   # English
   - src: env/README.md
     dst: docs/portal/guides/environment-variables.md
-# doc-pair:begin
   # Japanese
   - src: env/README.ja.md
     dst: docs/portal/guides/ja/environment-variables.ja.md
-# doc-pair:end
 
 controller:
   # English
@@ -304,7 +294,6 @@ controller:
     dst: docs/portal/guides/controller-httpstack-oapi-auth.md
   - src: internal/controller/httpstack/oapi/skipper/README.md
     dst: docs/portal/guides/controller-httpstack-oapi-skipper.md
-# doc-pair:begin
   # Japanese
   - src: internal/controller/README.ja.md
     dst: docs/portal/guides/ja/controller.ja.md
@@ -328,97 +317,78 @@ controller:
     dst: docs/portal/guides/ja/controller-httpstack-oapi-auth.ja.md
   - src: internal/controller/httpstack/oapi/skipper/README.ja.md
     dst: docs/portal/guides/ja/controller-httpstack-oapi-skipper.ja.md
-# doc-pair:end
 
 data-access-pattern-design:
   # English
   - src: docs/design/data-access-pattern.md
     dst: docs/portal/guides/data-access-pattern-design.md
-# doc-pair:begin
   # Japanese
   - src: docs/design/data-access-pattern.ja.md
     dst: docs/portal/guides/ja/data-access-pattern-design.ja.md
-# doc-pair:end
 
 context-map-design:
   # English
   - src: docs/design/context-map.md
     dst: docs/portal/guides/context-map-design.md
-# doc-pair:begin
   # Japanese
   - src: docs/design/context-map.ja.md
     dst: docs/portal/guides/ja/context-map-design.ja.md
-# doc-pair:end
 
 worker-design:
   # English
   - src: docs/design/worker.md
     dst: docs/portal/guides/worker-design.md
-# doc-pair:begin
   # Japanese
   - src: docs/design/worker.ja.md
     dst: docs/portal/guides/ja/worker-design.ja.md
-# doc-pair:end
 
 job-design:
   # English
   - src: docs/design/job.md
     dst: docs/portal/guides/job-design.md
-# doc-pair:begin
   # Japanese
   - src: docs/design/job.ja.md
     dst: docs/portal/guides/ja/job-design.ja.md
-# doc-pair:end
 
 idempotency-design:
   # English
   - src: docs/design/idempotency.md
     dst: docs/portal/guides/idempotency-design.md
-# doc-pair:begin
   # Japanese
   - src: docs/design/idempotency.ja.md
     dst: docs/portal/guides/ja/idempotency-design.ja.md
-# doc-pair:end
 
 rest-design:
   # English
   - src: docs/design/rest.md
     dst: docs/portal/guides/rest-design.md
-# doc-pair:begin
   # Japanese
   - src: docs/design/rest.ja.md
     dst: docs/portal/guides/ja/rest-design.ja.md
-# doc-pair:end
 
 outbox-design:
   # English
   - src: docs/design/outbox.md
     dst: docs/portal/guides/outbox-design.md
-# doc-pair:begin
   # Japanese
   - src: docs/design/outbox.ja.md
     dst: docs/portal/guides/ja/outbox-design.ja.md
-# doc-pair:end
 
 observability-design:
   # English
   - src: docs/design/observability.md
     dst: docs/portal/guides/observability-design.md
-# doc-pair:begin
   # Japanese
   - src: docs/design/observability.ja.md
     dst: docs/portal/guides/ja/observability-design.ja.md
-# doc-pair:end
 
 domain:
   # English
   - src: internal/domain/README.md
     dst: docs/portal/guides/domain.md
-# doc-pair:begin
   # Japanese
   - src: internal/domain/README.ja.md
     dst: docs/portal/guides/ja/domain.ja.md
-# doc-pair:end
 
 usecase:
   # English
@@ -430,7 +400,6 @@ usecase:
     dst: docs/portal/guides/usecase-tools.md
   - src: internal/usecase/boundary/clock/README.md
     dst: docs/portal/guides/usecase-boundary-clock.md
-# doc-pair:begin
   # Japanese
   - src: internal/usecase/README.ja.md
     dst: docs/portal/guides/ja/usecase.ja.md
@@ -440,7 +409,6 @@ usecase:
     dst: docs/portal/guides/ja/usecase-tools.ja.md
   - src: internal/usecase/boundary/clock/README.ja.md
     dst: docs/portal/guides/ja/usecase-boundary-clock.ja.md
-# doc-pair:end
 
 infrastructure:
   # English
@@ -464,7 +432,6 @@ infrastructure:
     dst: docs/portal/guides/infrastructure-rdb-testkit.md
   - src: internal/infrastructure/system/README.md
     dst: docs/portal/guides/infrastructure-system.md
-# doc-pair:begin
   # Japanese
   - src: internal/infrastructure/README.ja.md
     dst: docs/portal/guides/ja/infrastructure.ja.md
@@ -486,7 +453,6 @@ infrastructure:
     dst: docs/portal/guides/ja/infrastructure-rdb-testkit.ja.md
   - src: internal/infrastructure/system/README.ja.md
     dst: docs/portal/guides/ja/infrastructure-system.ja.md
-# doc-pair:end
 
 database:
   # English
@@ -500,7 +466,6 @@ database:
     dst: docs/portal/guides/database-migrations.md
   - src: database/seed/README.md
     dst: docs/portal/guides/database-seed.md
-# doc-pair:begin
   # Japanese
   - src: database/README.ja.md
     dst: docs/portal/guides/ja/database.ja.md
@@ -512,7 +477,6 @@ database:
     dst: docs/portal/guides/ja/database-migrations.ja.md
   - src: database/seed/README.ja.md
     dst: docs/portal/guides/ja/database-seed.ja.md
-# doc-pair:end
 
 cross-cutting:
   # English
@@ -526,7 +490,6 @@ cross-cutting:
     dst: docs/portal/guides/observability.md
   - src: internal/system/README.md
     dst: docs/portal/guides/system.md
-# doc-pair:begin
   # Japanese
   - src: internal/apperror/README.ja.md
     dst: docs/portal/guides/ja/apperror.ja.md
@@ -538,7 +501,6 @@ cross-cutting:
     dst: docs/portal/guides/ja/observability.ja.md
   - src: internal/system/README.ja.md
     dst: docs/portal/guides/ja/system.ja.md
-# doc-pair:end
 
 di:
   # English
@@ -560,7 +522,6 @@ di:
     dst: docs/portal/guides/di-lifecycle.md
   - src: internal/di/shutdowner/README.md
     dst: docs/portal/guides/di-shutdowner.md
-# doc-pair:begin
   # Japanese
   - src: internal/di/README.ja.md
     dst: docs/portal/guides/ja/di.ja.md
@@ -580,7 +541,6 @@ di:
     dst: docs/portal/guides/ja/di-lifecycle.ja.md
   - src: internal/di/shutdowner/README.ja.md
     dst: docs/portal/guides/ja/di-shutdowner.ja.md
-# doc-pair:end
 
 context-helper:
   # English
@@ -588,43 +548,35 @@ context-helper:
     dst: docs/portal/guides/how-to-use-context-helper.md
   - src: scripts/genctxkey/README.md
     dst: docs/portal/guides/how-to-generate-ctxhelper.md
-# doc-pair:begin
   # Japanese
   - src: internal/controller/ctxhelper/README.ja.md
     dst: docs/portal/guides/ja/how-to-use-context-helper.ja.md
   - src: scripts/genctxkey/README.ja.md
     dst: docs/portal/guides/ja/how-to-generate-ctxhelper.ja.md
-# doc-pair:end
 
 cli:
   # English
   - src: internal/cli/README.md
     dst: docs/portal/guides/cli.md
-# doc-pair:begin
   # Japanese
   - src: internal/cli/README.ja.md
     dst: docs/portal/guides/ja/cli.ja.md
-# doc-pair:end
 
 integration:
   # English
   - src: internal/integration/README.md
     dst: docs/portal/guides/integration.md
-# doc-pair:begin
   # Japanese
   - src: internal/integration/README.ja.md
     dst: docs/portal/guides/ja/integration.ja.md
-# doc-pair:end
 
 pkg:
   # English
   - src: pkg/README.md
     dst: docs/portal/guides/pkg.md
-# doc-pair:begin
   # Japanese
   - src: pkg/README.ja.md
     dst: docs/portal/guides/ja/pkg.ja.md
-# doc-pair:end
 
 docker:
   # English
@@ -636,7 +588,6 @@ docker:
     dst: docs/portal/guides/docker-tools.md
   - src: docker/database/sql/README.md
     dst: docs/portal/guides/docker-database-sql.md
-# doc-pair:begin
   # Japanese
   - src: docker/README.ja.md
     dst: docs/portal/guides/ja/docker.ja.md
@@ -646,37 +597,30 @@ docker:
     dst: docs/portal/guides/ja/docker-tools.ja.md
   - src: docker/database/sql/README.ja.md
     dst: docs/portal/guides/ja/docker-database-sql.ja.md
-# doc-pair:end
 
 scripts:
   # English
   - src: scripts/README.md
     dst: docs/portal/guides/scripts.md
-# doc-pair:begin
   # Japanese
   - src: scripts/README.ja.md
     dst: docs/portal/guides/ja/scripts.ja.md
-# doc-pair:end
 
 agent-config:
   # English
   - src: .claude/README.md
     dst: docs/portal/guides/agent-config.md
-# doc-pair:begin
   # Japanese
   - src: .claude/README.ja.md
     dst: docs/portal/guides/ja/agent-config.ja.md
-# doc-pair:end
 
 ci:
   # English
   - src: .github/workflows/README.md
     dst: docs/portal/guides/ci-workflows.md
-# doc-pair:begin
   # Japanese
   - src: .github/workflows/README.ja.md
     dst: docs/portal/guides/ja/ci-workflows.ja.md
-# doc-pair:end
 
 external:
   # English
@@ -688,7 +632,6 @@ external:
     dst: docs/portal/guides/openapi-schemas.md
   - src: openapi/components/parameters/README.md
     dst: docs/portal/guides/openapi-parameters.md
-# doc-pair:begin
   # Japanese
   - src: openapi/README.ja.md
     dst: docs/portal/guides/ja/openapi.ja.md
@@ -698,4 +641,3 @@ external:
     dst: docs/portal/guides/ja/openapi-schemas.ja.md
   - src: openapi/components/parameters/README.ja.md
     dst: docs/portal/guides/ja/openapi-parameters.ja.md
-# doc-pair:end

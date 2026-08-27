@@ -11,14 +11,10 @@ const document: PortalItem = {
   name: "ADR 0001",
   path: "./guides/0001.md",
   source: "docs/adr/0001.md",
-  lang: "ja", // doc-pair:line
+  lang: "ja",
 };
 
-// doc-pair:replace-begin
 const generated: PortalItem = { name: "Coverage", path: "./coverage/index.html", lang: "all" };
-// doc-pair:replace-with
-// = const generated: PortalItem = { name: "Coverage", path: "./coverage/index.html" };
-// doc-pair:replace-end
 
 describe("PortalCardGrid", () => {
   describe("正常系", () => {
