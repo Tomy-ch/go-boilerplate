@@ -8,8 +8,6 @@ description: >-
 
 Compare `docs/design/context-map.md` with the contact points the repository currently has.
 
-A Japanese reference translation is available at `SKILL.ja.md`; do not load it as a skill.
-
 ## Read-only rule
 
 A divergence has two valid readings: the map may be stale, or the code may have drifted from a

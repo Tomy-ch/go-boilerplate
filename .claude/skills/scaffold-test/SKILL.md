@@ -7,8 +7,6 @@ description: Generate a Go unit test file for an existing function / method in t
 
 Generate a Go unit test file for an existing function or method, applying the canonical pattern abstractly extracted from `internal/domain/<aggregate>/<aggregate>_domain_test.go` (parallel + nested `t.Run` + Japanese case names + 正常系 / 異常系 outer grouping, table-driven for-loops forbidden — always sequential `t.Run`).
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
-
 ## When to Use
 
 - Adding a unit test for a function or method whose implementation already exists and compiles.

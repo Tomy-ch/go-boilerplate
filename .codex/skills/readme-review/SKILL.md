@@ -7,8 +7,6 @@ description: Review a single README (canonical English) and judge whether it has
 
 This skill evaluates a single README against the patterns that define "manual-worthy" content in this repo's portal, then produces a structured scorecard the user can act on (improve the README, add it to the manifest, or leave it out of the portal entirely).
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
-
 ## When to Use
 
 Use this skill when:
@@ -58,8 +56,6 @@ This skill **MUST call `ask the user explicitly` immediately after invocation** 
 1. **Target README path** — the canonical English README to review. If the user supplied a path in skill arguments or the recent message, present it as the default candidate.
 2. **Output verbosity** — concise scorecard (default) or full per-pattern breakdown.
 
-If the user provided a `*.ja.md` path, ask whether to review the Japanese file directly (rare) or switch to the canonical sibling.
-
 Do NOT read any files for evaluation until the target is confirmed.
 
 ## Step 1. Read the Target
@@ -70,7 +66,6 @@ Read the full README. Capture:
 - Presence and count of ` ```mermaid ` blocks
 - Presence of tables (`|...|` lines)
 - Prose word count (text excluding code blocks, tables, headings)
-- Cross-reference to translation (`README.ja.md`) — its existence and sync convention compliance
 
 ## Step 2. Evaluate Each Criterion
 
@@ -158,7 +153,6 @@ Print a one-line suggestion based on the verdict:
 
 This skill is strictly read-only.
 
-- Reads: the confirmed target README and (optionally) its `*.ja.md` sibling
 - Writes: nothing
 - Does NOT edit, stage, commit, or push
 

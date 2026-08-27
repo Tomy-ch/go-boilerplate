@@ -16,7 +16,6 @@ change or a running skill relaxes the scope for its own duration. Read `AGENTS.m
 | Path | What it is |
 | --- | --- |
 | `settings.json` | Project-scoped permissions (`allow` / `ask` / `deny`), enabled plugins, and known marketplaces. Generated artifacts are denied for `Edit` / `Write`; `AGENTS.md` and its `CLAUDE.md` symlink require confirmation. Shared with everyone who trusts the repo. |
-| `skills/<name>/` | Reusable skills. Each has an English-canonical `SKILL.md` (+ a `SKILL.ja.md` reference translation) and optional bundled `scripts/` / `references/`. Invoked as `/<name>`. |
 | `agents/` | Subagent definitions used by the skills (e.g. the read-only `arch-auditor-*` / `drift-detector-*` per-layer workers that integrator skills fan out in parallel). |
 | `scaffold-spec/` | Spec-format definitions (`domain-spec.md`, `usecase-spec.md`, `verify-rules.md`, …) read **at runtime** by the `scaffold-*` / `verify-spec` / `new-spec-*` skills, so format changes propagate without editing the skills. |
 | `scripts/` | Repo-level agent-tooling scripts (not project build tooling — that lives in the root `scripts/`). |
@@ -62,8 +61,8 @@ Three properties differ from the plugins above and are worth knowing before runn
   `node_modules/` hold a dependency's own files: built from a pin, re-made per machine, never
   reviewed. A trusted clone does *not* carry it — every machine runs the bootstrap once. The pin is
   `python/graphify.in`, and the script reads it rather than choosing a version.
-- **`skill-lint` does not check it.** The repository's skill conventions — frontmatter, the
-  `SKILL.ja.md` pair, references that resolve — assume a skill this repository writes. This one is
+- **`skill-lint` does not check it.** The repository's skill conventions — frontmatter and
+  references that resolve — assume a skill this repository writes. This one is
   written upstream and refers to artifacts that only exist after a run, so it is declared in
   `EXTERNAL_SKILLS` (`scripts/skill-lint/checks.ts`) and skipped. Holding it to rules nobody here
   can satisfy would only teach readers to ignore the gate.
@@ -118,7 +117,6 @@ Measured on this repository, not inherited from upstream's claims:
 ## Conventions
 
 - **English is canonical.** Skill/README bodies are written in imperative English; the paired
-  `*.ja.md` is a human reference translation kept in sync via the `canonicalize-doc` skill. Runtime
   output to the user still follows `CLAUDE.md` (Japanese).
 - **Authoring skills.** Use `/manage-skill` to create or update a skill — it wraps `skill-creator` and
   applies this repo's placement, frontmatter, translation-pair, and eval-artifact conventions.

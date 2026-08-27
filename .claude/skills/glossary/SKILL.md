@@ -10,7 +10,6 @@ allowed-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion
 
 Maintains `docs/spec/glossary.md`, the single source of truth for this system's business vocabulary.
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory
 (not loaded as a skill; for human reference only).
 
 ## What this skill decides and what it does not
@@ -289,7 +288,6 @@ through the order the page requires — the language moves first and the code fo
 ## Step 5. Write
 
 Write `docs/spec/glossary.md` only. The spec tree is Japanese single-file with English headings and
-has **no `.ja.md` pair** — do not create one, and do not chain `canonicalize-doc`.
 
 <!-- sample-api:begin -->
 Sample-derived rows live between the `sample-api:begin` / `sample-api:end` markers so they leave with
@@ -333,7 +331,7 @@ the follow-ups that belong to other skills and stop there. No commit, no push.
 - ❌ 用語表のコードシンボル列を検証せずに済ませる（照合されない統べる主張は装飾）
 - ❌ 「表をコードに合わせて書き換える」を単独の選択肢として出す（索引への退化はこの瞬間に開く）
 - ❌ 器が無いときに器を作る（規則を含む設計行為であり、このスキルの担当ではない）
-- ❌ `docs/spec/glossary.md` 以外への書き込み、`.ja.md` ペアの作成、commit / push
+- ❌ `docs/spec/glossary.md` 以外への書き込み、commit / push
 - ✅ 4 種の findings を分けて報告（求められることが違うため）
 - ✅ サンプル由来の行は `sample-api` マーカーの内側へ
 - ✅ 出力は日本語
