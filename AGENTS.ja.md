@@ -381,6 +381,51 @@ Build / CI / Chore / Style / Revert）でスコープを切ったコミットに
 - `make new-migrate-<name>` —— 新しいマイグレーションを雛形生成（`.up.sql` / `.down.sql`）
 - `make job NAME=<job> ARGS="<args>"` —— アプリケーションジョブを実行
 
+**Graphify（標準装備）:** このリポジトリを問い合わせ可能な知識グラフにしたもの。版は
+`python/graphify.in` が宣言し `python/graphify.txt` が sha256 でロックする —— **`mise.toml` では
+ない**。skill は `bash .claude/scripts/bootstrap-external-skills.sh` が各アシスタントの設定
+ディレクトリへ書き込む。索引しているのは**構造**であり、それがテキスト検索の届かない 2 つに届く
+理由になっている —— 呼び出し先と語彙を共有しない呼び出し元と、問いの語ではなく所有する関心事で命名
+された文書である。
+
+```bash
+GRAPHIFY="${XDG_CACHE_HOME:-$HOME/.cache}/go-boilerplate/graphify/bin/graphify"   # 固定版。bootstrap が作る venv
+node .claude/scripts/graph-affected.ts <symbol> --depth 2   # 影響範囲・呼び出し元の逆引き
+"$GRAPHIFY" query "<question>" --budget 8000
+"$GRAPHIFY" path "<A>" "<B>"      # 2 ノード間の最短経路
+"$GRAPHIFY" explain "<node>"      # ノードと隣接の平易な説明
+make graphify-update              # グラフを現在のコードへ更新（コンテナ内、固定版）
+```
+
+- **元が取れるのは `affected`。** 逆走査は各呼び出し箇所を関係ラベルと `file:line` 付きで返す ——
+  これはスコープの主張（「これをしているのは X だけ」）が要求する証拠そのものであり、blast radius の
+  見積もりが置き換えられるべき実数である。シンボル名ではなくノード **id** を取るのでラッパー経由で。
+  `path` / `explain` / `god-nodes` は `graphify-out/graph.json` の id を直接取る。
+- **`--budget` を上げること。** 既定（約 2000 トークン）はこの規模では切り詰められ、その旨を出力する。
+  答えは切られた側にあるかもしれない。
+- **ここでは `god-nodes` を無視する。** エッジ数で順位付けするので、この repo の 1:1 テスト対応規則により
+  テストの足場（`Any()`、`NewTestFromSalt()` 等）が production code より上に来る。
+- **使ったときは必ず鮮度を述べる。** `graphify-out/GRAPH_REPORT.md` の `Built from commit:` を
+  `git rev-parse HEAD` と比べる。**未コミット**の作業についての問いにはグラフは盲目なので、
+  `make graphify-update` で更新する（決定的、API キー不要）か `grep` を使う。小さな差分なら後者が安い。
+- **グラフはファイルへ到達する手段であって、根拠そのものではない。** 指した先を開いてそちらを引用する。
+  グラフの結果には事実と推論の分離が無い。
+- **AST のみのコマンドは無料かつローカル。** `update` / `query` / `affected` / `path` / `explain` は
+  API キーを必要としない。ドキュメント / PDF / 画像の抽出、`extract`、`label`、コミュニティの*命名*、
+  `add`、`--wiki` は LLM API を呼びマシン外へ内容を送るので、これらは opt-in のままにする。
+- **`mise exec pipx:…` ではなく固定版のバイナリを使う。** `python/graphify.txt` は同じ hash から 2 回
+  入る —— `python_tool_runner`（`make graphify-*` が走らせる先）と、bootstrap の venv（上の `$GRAPHIFY`）。
+  素の `mise exec "pipx:graphifyy[sql]"` は代わりに pipx が返したものを使い、このマシンではロックより
+  **古い**。グラフを**書き換える**操作は `make graphify-update` を通す —— 理由は
+  `docker/tools/Dockerfile` にある。抽出結果とキャッシュの名前空間はツールに同梱されたプロンプトに
+  依存するので、版が固定されている必要がある。既存の `graphify-out/graph.json` への読み取りクエリは、
+  固定版であればよくコンテナである必要はない。
+- `make graphify-check` は追跡中の成果物を検証し、`make graphify-pending` は意味論抽出の滞留量を報告する。
+  グラフが何を除外するかは `.graphifyignore` が宣言する（変更には全再抽出が要る。増分 `update` は
+  fail-closed）。
+
+このリポジトリ上での実測と、ここでは元が取れないものについては `.claude/README.md`。
+
 **`git worktree` での作業（DB と serve の隔離）:** 単一の共有 Postgres（固定の compose プロジェクト
 `gobp-shared`、ホスト 5432）を全 worktree が共有し、各 worktree はスロットを借りる = その
 インスタンス内に自分のデータベース（`wt<N>_local` / `wt<N>_test`）を持ちます。worktree で DB を

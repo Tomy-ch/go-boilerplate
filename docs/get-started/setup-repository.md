@@ -36,14 +36,14 @@ make activate-tools  # runs `lefthook install` to wire git hooks
 
 ## Phase 3: Install the agent configuration (standard path)
 
-The AI-assist layer ships as configuration: project-scoped official plugins, this repository's own skills under [`.claude/`](../../.claude/README.md) / [`.codex/`](../../.codex/README.md), and one officially recommended external skill (`graphify`, a queryable knowledge graph of the repository). Two idempotent bootstraps install the parts a clone does not carry:
+The AI-assist layer ships as configuration: project-scoped official plugins, this repository's own skills under [`.claude/`](../../.claude/README.md) / [`.codex/`](../../.codex/README.md), and one external skill carried as **standard equipment** (`graphify`, a queryable knowledge graph of the repository, whose commands and usage discipline are in [AGENTS.md](../../AGENTS.md)). Two idempotent bootstraps install the parts a clone does not carry:
 
 ```sh
 bash .claude/scripts/bootstrap-plugins.sh          # official plugins (project scope)
 bash .claude/scripts/bootstrap-external-skills.sh  # external skills (user scope: Claude Code + Codex)
 ```
 
-`graphify` itself is pinned in `mise.toml` like every other tool, so `mise install` already fetched it; the bootstrap only writes the skill into each assistant's config directory. Which of its commands stay local and which reach an LLM API is documented in [`.claude/README.md`](../../.claude/README.md).
+`graphify` is pinned separately from the rest of the toolchain: the version is declared in [`python/graphify.in`](../../python/graphify.in) and locked with hashes in `python/graphify.txt`, **not in `mise.toml`**. The bootstrap installs it from that lockfile into a machine-local venv under `${XDG_CACHE_HOME:-$HOME/.cache}/go-boilerplate/graphify`, then uses that binary to write the skill into each assistant's config directory. The same lockfile installs it into the `python_tool_runner` image, which is what `make graphify-*` runs. Which of its commands stay local and which reach an LLM API is stated in [AGENTS.md](../../AGENTS.md); what pays off on this repository specifically, and what does not, is measured in [`.claude/README.md`](../../.claude/README.md).
 
 **This phase is the standard path, not an extra.** AI-assisted development is how this template expects a change to be made, and the skills under `.claude/` / `.codex/` are the executable form of the flows in [docs/development-flow.md](../development-flow.md). Rationale: [ADR-0007 (agents-md-operational-contract)](../adr/0007-agents-md-operational-contract.md).
 
@@ -52,7 +52,7 @@ bash .claude/scripts/bootstrap-external-skills.sh  # external skills (user scope
 A project that does not want the layer should remove it deliberately rather than leave it half-configured:
 
 - skip both bootstraps; no other phase of this setup depends on them, and
-- drop what you do not want to carry: `.claude/`, `.codex/`, the `pipx:graphifyy[sql]` pin in `mise.toml`, `.graphifyignore`, and the `graphify-out/` entries in `.gitignore`, `.markdownlint-cli2.yaml`, and `scripts/mermaid-lint/index.ts`.
+- drop what you do not want to carry: `.claude/`, `.codex/`, `python/graphify.in` and `python/graphify.txt`, the graphify layer in `docker/tools/Dockerfile`, `.graphifyignore`, and the `graphify-out/` entries in `.gitignore`, `.markdownlint-cli2.yaml`, and `scripts/mermaid-lint/index.ts`. That list is not exhaustive — `grep -ril graphify` over the checkout is, and it also reaches `.makefiles/graphify/`, `scripts/graphify-*`, `.github/workflows/graphify-*.yaml`, and `.agents/graphify/`.
 
 Removing it later costs the same as removing it now, so adopting the standard configuration first and deciding afterwards is a safe order.
 

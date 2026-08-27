@@ -36,14 +36,14 @@ make activate-tools  # `lefthook install` で git hooks を有効化
 
 ## Phase 3: エージェント設定のインストール（標準経路）
 
-AI 支援レイヤは設定として同梱しています。project スコープの公式プラグイン、本リポジトリ自身のスキル（[`.claude/`](../../.claude/README.md) / [`.codex/`](../../.codex/README.md)）、および公式に推奨する外部スキル 1 つ（`graphify`。リポジトリを問い合わせ可能な知識グラフにするツール）です。clone に付いてこない部分は、冪等な bootstrap 2 本で入れます。
+AI 支援レイヤは設定として同梱しています。project スコープの公式プラグイン、本リポジトリ自身のスキル（[`.claude/`](../../.claude/README.md) / [`.codex/`](../../.codex/README.md)）、および**標準装備**として同梱する外部スキル 1 つ（`graphify`。リポジトリを問い合わせ可能な知識グラフにするツール。コマンドと使い方の規律は [AGENTS.md](../../AGENTS.md) にあります）です。clone に付いてこない部分は、冪等な bootstrap 2 本で入れます。
 
 ```sh
 bash .claude/scripts/bootstrap-plugins.sh          # 公式プラグイン（project スコープ）
 bash .claude/scripts/bootstrap-external-skills.sh  # 外部スキル（user スコープ: Claude Code + Codex）
 ```
 
-`graphify` 本体は他のツールと同様に `mise.toml` で pin しているため `mise install` の時点で取得済みで、bootstrap は各アシスタントの設定ディレクトリへ skill を書くだけです。どのコマンドがローカル完結で、どれが LLM API へ出るかは [`.claude/README.md`](../../.claude/README.md) に記載しています。
+`graphify` はツールチェーンの他とは別に pin しています。版は [`python/graphify.in`](../../python/graphify.in) が宣言し `python/graphify.txt` が sha256 でロックします —— **`mise.toml` ではありません**。bootstrap はその lockfile から `${XDG_CACHE_HOME:-$HOME/.cache}/go-boilerplate/graphify` 配下のマシンローカル venv へ入れ、そのバイナリを使って各アシスタントの設定ディレクトリへ skill を書きます。同じ lockfile が `python_tool_runner` イメージにも入り、`make graphify-*` はそちらを走らせます。どのコマンドがローカル完結で、どれが LLM API へ出るかは [AGENTS.md](../../AGENTS.md) に、このリポジトリで実際に元が取れるもの・取れないものは [`.claude/README.md`](../../.claude/README.md) に記載しています。
 
 **この Phase は追加オプションではなく標準経路です。** 本テンプレートは AI 支援開発で変更が行われることを前提としており、`.claude/` / `.codex/` のスキルは [docs/development-flow.md](../development-flow.md) のフローの実行形態そのものです。根拠: [ADR-0007 (agents-md-operational-contract)](../adr/0007-agents-md-operational-contract.ja.md)。
 
@@ -52,7 +52,7 @@ bash .claude/scripts/bootstrap-external-skills.sh  # 外部スキル（user ス�
 採らないプロジェクトは、中途半端に設定を残さず意図的に外してください。
 
 - bootstrap 2 本を実行しない（以降のどの Phase もこれらに依存しません）
-- 保持しないものを削除する: `.claude/`、`.codex/`、`mise.toml` の `pipx:graphifyy[sql]` pin、`.graphifyignore`、`.gitignore` / `.markdownlint-cli2.yaml` / `scripts/mermaid-lint/index.ts` の `graphify-out/` 記述
+- 保持しないものを削除する: `.claude/`、`.codex/`、`python/graphify.in` と `python/graphify.txt`、`docker/tools/Dockerfile` の graphify レイヤ、`.graphifyignore`、`.gitignore` / `.markdownlint-cli2.yaml` / `scripts/mermaid-lint/index.ts` の `graphify-out/` 記述。この一覧は網羅ではありません —— 網羅なのは checkout 全体への `grep -ril graphify` で、`.makefiles/graphify/`・`scripts/graphify-*`・`.github/workflows/graphify-*.yaml`・`.agents/graphify/` にも及びます
 
 後から外すコストは今外すコストと同じなので、まず標準構成で入れて後から判断する順序でも安全です。
 
