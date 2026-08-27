@@ -164,8 +164,10 @@ setup-remove-licensed-scanners:
 # 他の setup ターゲットと違いツールランナーを経由せずホストで走らせる。400 件超のファイルを
 # 消す・改名するため撤去を 1 コミットに畳んでおり、setup-repo と同じくホストの git が要る
 # （worktree では .git がマウント外の実体を指すファイルなので、コンテナ内からは辿れない）。
-# 手順の最後に置くのは、先に走らせると他の撤去が宣言している完全一致の文字列が消えて
-# 空振りするため。プレビューは DRY_RUN=1 を付ける（書き込みもコミットも行わない）。
+# 手順の先頭に置くのは、他の撤去ツールが正本と対訳の対で宣言を持ち、畳みが解決した時点で
+# 自分の対の宣言を刈るためである。逆向きは成り立たない。boilerplate 撤去はこのツールが
+# 文字列を宣言している workflow を削除するので、その後では畳みが中止する。
+# プレビューは DRY_RUN=1 を付ける（書き込みもコミットも行わない）。
 setup-remove-doc-language:
 	@if [ -z "$(LANG_CHOICE)" ]; then \
 		echo "❌ LANG_CHOICE を指定してください。例: make setup-remove-doc-language LANG_CHOICE=en"; \
