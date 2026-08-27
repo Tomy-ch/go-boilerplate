@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-// doc-pair:replace-begin
-import { adrIndex, checkDocRoutes, checkPathReferences, checkReferences, checkStructuredReferences, checkTranslationExclusions, checkTranslations, expectedTranslation, isEligible, normalizeReferences, translationExclusion } from "./rules";
-// doc-pair:replace-with
-// = import { adrIndex, checkDocRoutes, checkPathReferences, checkReferences, checkStructuredReferences, isEligible, normalizeReferences } from "./rules";
-// doc-pair:replace-end
+import { adrIndex, checkDocRoutes, checkPathReferences, checkReferences, checkStructuredReferences, isEligible, normalizeReferences } from "./rules";
 
 const ADR = ["ADR", "-0006"].join("");
 const ADRS = adrIndex(["docs/adr/0006-structural-safety-via-tooling.md"]);
@@ -62,7 +58,6 @@ describe("checkPathReferences", () => {
   describe("正常系", () => {
     it("番号どおりの slug を綴ったパス参照を通す", () => {
       expect(checkPathReferences("a.md", "docs/adr/0006-structural-safety-via-tooling.md", ADRS)).toEqual([]);
-      expect(checkPathReferences("a.md", "docs/adr/0006-structural-safety-via-tooling.ja.md", ADRS)).toEqual([]); // doc-pair:line
     });
     it("ADR を指さないパスは見ない", () => {
       expect(checkPathReferences("a.md", "docs/design/0006-other.md", ADRS)).toEqual([]);
@@ -150,52 +145,3 @@ describe("checkDocRoutes", () => {
     });
   });
 });
-
-// doc-pair:begin
-describe("expectedTranslation", () => {
-  describe("正常系", () => {
-    it("通常の docs を日本語ミラーへ対応付ける", () => expect(expectedTranslation("docs/design/worker.md")).toBe("docs/design/worker.ja.md"));
-  });
-  describe("異常系", () => {
-    it("対象外の領域と形式を除外する", () => {
-      expect(expectedTranslation("internal/README.md")).toBeNull();
-      expect(expectedTranslation("docs/design/worker.txt")).toBeNull();
-      expect(expectedTranslation("docs/adr/0001-a.md")).toBeNull();
-      expect(expectedTranslation("docs/godoc/a.md")).toBeNull();
-      expect(expectedTranslation("docs/spec/user/domain.md")).toBeNull();
-    });
-  });
-});
-
-describe("translationExclusion", () => {
-  describe("正常系", () => {
-    it("意図的に英語のみの仕様領域の理由を返す", () => expect(translationExclusion("docs/spec/user/domain.md")).toContain("English-only"));
-  });
-  describe("異常系", () => {
-    it("対象外の文書には除外理由を返さない", () => expect(translationExclusion("docs/design/worker.md")).toBeNull());
-  });
-});
-
-describe("checkTranslations", () => {
-  describe("正常系", () => {
-    it("正本と翻訳が一対一なら通す", () => expect(checkTranslations(["docs/design/worker.md", "docs/design/worker.ja.md"])).toEqual([]));
-  });
-  describe("異常系", () => {
-    it("欠落と孤立した翻訳を報告する", () => {
-      const findings = checkTranslations(["docs/design/worker.md", "docs/design/orphan.ja.md"]);
-      expect(findings.map(({ message }) => message)).toContain("missing docs/design/worker.ja.md");
-      expect(findings.map(({ message }) => message)).toContain("orphan translation for docs/design/orphan.md");
-    });
-    it("対象外の ADR 翻訳を孤立として扱わない", () => expect(checkTranslations(["docs/adr/0001-a.ja.md"])).toEqual([]));
-  });
-});
-
-describe("checkTranslationExclusions", () => {
-  describe("正常系", () => {
-    it("根拠のある現役の除外を通す", () => expect(checkTranslationExclusions(["docs/spec/user/domain.md"])).toEqual([]));
-  });
-  describe("異常系", () => {
-    it("対象がない除外を古い設定として報告する", () => expect(checkTranslationExclusions([])[0].message).toBe("stale translation exclusion"));
-  });
-});
-// doc-pair:end

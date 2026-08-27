@@ -1,15 +1,15 @@
 # conv
 
-Boundary helpers that convert OpenAPI-generated types into domain types, used **only** by the controller layer.
+OpenAPI 生成型をドメイン型へ変換する境界ヘルパー。**controller 層のみ**が利用します。
 
-## Why
+## 目的
 
-OpenAPI-generated types (`github.com/oapi-codegen/runtime/types`) must not leak below the controller layer. Centralizing the conversions here keeps that import confined to the boundary — `usecase` / `domain` never depend on generated types.
+OpenAPI 生成型（`github.com/oapi-codegen/runtime/types`）を controller より下層へ漏らさないため、変換を本パッケージへ集約します。これにより生成型の import が境界に限定され、`usecase` / `domain` は生成型に依存しません。
 
-## Notes
+## 注意点
 
-- `UUID` does **not** return an error. `openapi_types.UUID` is a value type (an already-validated 16-byte array), so converting it to the domain `pkg/uuid.UUID` via `uuid.FromPrimitive` is unconditional and cannot fail — no error branch, no panic. This keeps handlers free of dead error branches.
-- `Email` returns a plain `string`; `EmailPtr` returns a `*string` and maps `nil` input to `nil`.
-- `Int16sPtr` **does** return an error, unlike the helpers above. It narrows an `int32` query array to `int16`,
-  and the target DB column is `SMALLINT`: a value outside that range is rejected rather than silently truncated.
-  It also maps both `nil` and an empty array to `nil`, so "no filter" has a single representation downstream.
+- `UUID` は**エラーを返しません**。`openapi_types.UUID` は検証済みの 16 バイト配列という値型のため、`uuid.FromPrimitive` によるドメイン `pkg/uuid.UUID` への変換は無条件に成功し失敗しません（エラー分岐も panic もありません）。これによりハンドラに死んだエラー分岐を作りません。
+- `Email` は `string` を、`EmailPtr` は `*string` を返します（`nil` 入力は `nil` を返す）。
+- `Int16sPtr` は上記と異なり **エラーを返します**。int32 のクエリ配列を int16 へ絞り込みますが、
+  変換先の DB 列が `SMALLINT` であるため、範囲外の値は黙って切り捨てず拒否します。
+  nil と空配列はいずれも nil へ揃えるので、「絞り込みなし」は下流で 1 通りの表現になります。

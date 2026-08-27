@@ -1,193 +1,112 @@
 ---
 name: manage-skill
 description: >-
-  Create, update, evaluate, and optimize skills under this repository's `.codex/skills/`, carrying this repo's conventions for them (English-canonical SKILL.md + mandatory `SKILL.ja.md` translation pair, dense "pushy" description frontmatter, AGENTS.md scope + hard-protected paths, eval artifacts kept out of version control). This is the single entry point for ANY change to an existing skill under `.codex/skills/`; ALWAYS use it before hand-editing a `SKILL.md` or `SKILL.ja.md`. Use this WHENEVER the user wants to update / modify / change / edit / fix / improve / refactor / rename / extend / adjust / tune an existing skill — its steps, `description`, frontmatter, or behavior — or to build a new skill, author/scaffold a `/<name>` command, turn a repeated workflow into a skill, tune a skill's triggering description, or run evals/benchmarks on a skill — even if they don't say the word "skill-creator". Japanese triggers also apply, e.g. 「スキルを更新したい」「スキルを修正して」「このスキルの手順 / description / 挙動を変えて」. Do NOT use it for editing canonical docs (`docs/**`, per-package `README.md` — those have `sync-readme` / `canonicalize-doc` / `back-prop`), other AI-tool configs (`.cursor/`, `.gemini/`, Copilot), or generated files.
+  Create, update, evaluate, and optimize skills under this repository's `.codex/skills/`, carrying this repo's conventions for them (English-canonical SKILL.md, dense "pushy" description frontmatter, AGENTS.md scope + hard-protected paths, eval artifacts kept out of version control). This is the single entry point for ANY change to an existing skill under `.codex/skills/`; ALWAYS use it before hand-editing a `SKILL.md`. Use this WHENEVER the user wants to update / modify / change / edit / fix / improve / refactor / rename / extend / adjust / tune an existing skill — its steps, `description`, frontmatter, or behavior — or to build a new skill, author/scaffold a `/<name>` command, turn a repeated workflow into a skill, tune a skill's triggering description, or run evals/benchmarks on a skill — even if they don't say the word "skill-creator". Japanese triggers also apply, e.g. 「スキルを更新したい」「スキルを修正して」「このスキルの手順 / description / 挙動を変えて」. Do NOT use it for editing canonical docs (`docs/**`, per-package `README.md` — those have `sync-readme` / `back-prop`), other AI-tool configs (`.cursor/`, `.gemini/`, Copilot), or generated files.
 argument-hint: '[skill-name] [--update|--new|--optimize]'
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, ask the user explicitly, Skill, Agent
 ---
 
 # Manage Skill
 
-You have been invoked via `/manage-skill`. Argument string: `$ARGUMENTS`.
+`/manage-skill` で起動されます。引数文字列: `$ARGUMENTS`。
 
-This skill authors and maintains skills under `.codex/skills/` for **this** repository. It carries
-both halves of the job: the methodology (draft → test → review → improve → optionally optimize the
-description) and the repository's own conventions, so the produced skill fits in alongside `commit`,
-`new-env`, `canonicalize-doc`, and the rest. An external methodology plugin, when one is installed,
-supplements it — see Step 0; nothing here depends on that.
+このスキルは **本** リポジトリの `.codex/skills/` 配下のスキルを作成・保守します。薄いラッパーです。*手法*（ドラフト → テスト → レビュー → 改善 → 必要なら description 最適化）は Anthropic 公式の `skill-creator` スキルに由来し、このファイルはその上にリポジトリ固有の規約を重ねて、`commit` / `new-env` / `canonicalize-doc` などの既存スキルと同じ体裁で並ぶ成果物を作ります。
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory
-(not loaded as a skill; for human reference only).
+このスキルの日本語参考訳は同ディレクトリの `SKILL.md` にあります（スキルとしては読み込まれません。参考用）。
 
-## When to Use
+## 使うとき
 
-Use this skill when the user wants to:
+以下をユーザーが望むとき:
 
-- Create a brand-new skill / `/<name>` command, or turn a repeated workflow from the current
-  conversation into one.
-- Update, modify, improve, refactor, rename, extend, or fix an existing skill under
-  `.codex/skills/` — this is the entry point for any such change, used before hand-editing a
-  <!-- doc-pair:replace-begin -->
-  `SKILL.md` / `SKILL.ja.md`.
-  <!-- doc-pair:replace-with -->
-  <!-- = `SKILL.md`. -->
-  <!-- doc-pair:replace-end -->
-- Optimize a skill's `description` for better triggering, or run evals/benchmarks on a skill.
+- 新規スキル / `/<name>` コマンドの作成、または現在の会話中の反復ワークフローのスキル化。
+- `.codex/skills/` 配下の既存スキルの更新・修正・改善・リファクタ・リネーム・拡張 — こうした変更全般の入口であり、`SKILL.md` を手で編集する前に必ずこれを使います。
+- スキルの `description` のトリガー精度最適化、またはスキルの eval / benchmark 実行。
 
-Do NOT use it for:
+以下には使いません:
 
-- Editing canonical docs (`docs/**`, per-package `README.md`) — those have their own flows
-  (`sync-readme`, `canonicalize-doc`, `back-prop`).
-- Other AI-tool configs (`.cursor/`, `.gemini/`, `.github/copilot-instructions.md`) — out of scope
-  per `AGENTS.md`.
+- canonical ドキュメント（`docs/**`、パッケージ別 `README.md`）の編集 — それぞれ専用フロー（`sync-readme` / `canonicalize-doc` / `back-prop`）があります。
+- 他の AI ツール設定（`.cursor/` / `.gemini/` / `.github/copilot-instructions.md`）— `AGENTS.md` によりスコープ外。
 
-## Scope note (AGENTS.md)
+## スコープ注記（AGENTS.md）
 
-`AGENTS.md` normally treats `.codex/**` as out of scope. **Invoking this skill is the explicit user
-instruction that relaxes that** — but only for `.codex/skills/**`, and only for the duration of this
-run. The hard-protected paths from `AGENTS.md` stay protected even here: never touch `AGENTS.md`,
-generated files (`**/*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`), or generated
-`docs/` content.
+`AGENTS.md` は通常 `.codex/**` をスコープ外として扱います。**このスキルを起動することが、それを緩和する明示的なユーザー指示** ですが、緩和は `.codex/skills/**` に限定され、この実行の間だけです。`AGENTS.md` の hard-protected パスはここでも保護されたままです。`AGENTS.md`・生成ファイル（`**/*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`）・生成された `docs/` 配下・`permissions.deny` 配下には決して触れないこと。
 
-## Step 0 — Resolve optional external methodology (do this first)
+## Step 0 — 公式手法の担保と読み込み（最初に行う）
 
-Codex CLI can manage plugins through `codex plugin marketplace` and `codex plugin add`, but this
-repository does not declare a marketplace or install `skill-creator` at project scope. Do not assume
-that an external methodology is available, and do not run a bootstrap script.
-
-Inspect the installed and available plugin entries first:
+公式の `skill-creator` が *how* の真の出所です。「存在する前提」で運用します。これは本リポジトリの `.codex/settings.json` に **project スコープ** で宣言されているため、信頼済みの clone には既に入っています。もし無ければ、リポジトリ共通のプラグイン bootstrap で担保します:
 
 ```bash
-codex plugin list
+bash .codex/scripts/bootstrap-plugins.sh
 ```
 
-If the output identifies an installed `skill-creator` plugin, read the `SKILL.md` from the exact path
-reported in its `PATH` column and use its methodology as an optional supplement. Repository rules in
-this skill remain authoritative on conflict.
+bootstrap は `claude-plugins-official` マーケットプレイスを宣言し、このリポジトリが依存する公式プラグイン（`skill-creator`・`feature-dev`）を project スコープで有効化します。冪等であり、再実行は no-op です。新たに有効化されたプラグインは次セッションで読み込まれ、そのとき `skill-creator` は `/skill-creator` としても起動可能になります。ただしこのラッパーはそれに依存しません。パスでファイルを読むため同一セッションでも動作します。
 
-If `skill-creator` is listed but not installed, ask the user before installing anything. After explicit
-approval, install the exact plugin selector that `codex plugin list` reported:
+その `SKILL.md` を全文読みます（スクリプトが表示したパス。必要なら以下の glob で探索）:
 
 ```bash
-codex plugin add <plugin@marketplace>
+ls ~/.codex/plugins/marketplaces/*/plugins/skill-creator/skills/skill-creator/SKILL.md
 ```
 
-If no installed `skill-creator` is available, continue with this skill's self-contained workflow:
-capture the intent, inspect comparable repository skills, write or revise the canonical skill, review
-it against concrete invocation cases, and improve it before final validation. Do not add a marketplace
-or install a plugin as an implicit prerequisite.
+そこに書かれた **Creating a skill**・**Running and evaluating test cases**・**Improving the skill**・**Description Optimization**・blind comparison・packaging はすべてそのまま適用されます。付属リソースは隣接して置かれ、そのまま利用します:
 
-## The repository workflow
+- `scripts/` — `aggregate_benchmark`・`run_loop`（description 最適化）・`package_skill` など。公式スキルのディレクトリから実行し、再実装しないこと。
+- `eval-viewer/generate_review.py` — レビュービューア。常にこれを使い、レビュー用 HTML を自作しないこと。
+- `agents/`（`grader.md`・`comparator.md`・`analyzer.md`）と `references/schemas.md`。
 
-Apply the following repository rules whether or not an optional external methodology is available.
+bootstrap が失敗した場合（ネットワーク無し、`claude` CLI 不在など）は、失敗をユーザーに報告し、中断する代わりにインラインで要約した手法（ドラフト → テスト → レビュー → 改善）で進めてよいか確認します。
 
-### 1. Placement and structure
+## リポジトリオーバーレイ（＝このラッパーが足すもの）
 
-- New skills live at `.codex/skills/<name>/SKILL.md`, `<name>` in kebab-case matching the `name:`
-  frontmatter. Look at neighbors first (`commit`, `new-env`, `canonicalize-doc`, the `scaffold-*`
-  family, the integrator `arch-check` / `back-prop`) and prefer editing/extending an existing skill
-  over adding a near-duplicate.
-- Bundled resources (`scripts/`, `references/`, `assets/`) follow the same layout the existing skills use.
-  Keep `SKILL.md` under ~500 lines and push detail into `references/` with clear pointers.
+公式手法に従いつつ、差異がある箇所では以下のリポジトリ固有ルールを適用します。競合時はこれらが優先されます。これらを無視したスキルはこのリポジトリに馴染まないからです。
 
-### 2. Frontmatter conventions (match the existing skills)
+### 1. 配置と構造
 
-- `name`: kebab-case, equal to the directory name.
-- `description`: **one dense paragraph**, English, written to trigger reliably
-  (state what it does AND concrete when-to-use contexts, plus explicit *when NOT* to trigger). Study
-  the descriptions of `commit` / `new-env` for the density and tone this repo uses — match it.
-- Optional: `argument-hint` and `allowed-tools` when the skill is a `/command` that takes args or runs
-  a fixed tool set (see `commit` for the pattern). Omit them when not needed (most skills do).
+- 新規スキルは `.codex/skills/<name>/SKILL.md` に置き、`<name>` は `name:` フロントマターと一致する kebab-case にします。まず近隣（`commit`・`new-env`・`canonicalize-doc`・`scaffold-*` 群・integrator の `arch-check` / `back-prop`）を見て、ほぼ重複する新規追加より既存スキルの編集・拡張を優先します。
+- 付属リソース（`scripts/`・`references/`・`assets/`）は必要時に公式の anatomy に従います。`SKILL.md` は約 500 行未満に保ち、詳細は明確なポインタ付きで `references/` に押し出します。
 
-### 3. Language rules (`AGENTS.md`)
+### 2. フロントマター規約（既存スキルに合わせる）
 
-- `SKILL.md` is **English canonical** — its body is written in imperative English, like every existing
-  skill here. Do not write the canonical `SKILL.md` in Japanese.
-- But the skill's *runtime behavior* must obey `AGENTS.md`: all user-visible output the skill produces
-  (responses, generated code comments, test case names, PR/commit text) must be **Japanese**. When
-  authoring a skill, bake that requirement into its instructions.
+- `name`: kebab-case、ディレクトリ名と一致。
+- `description`: **1 段落で密に**、英語で、公式の「pushy」なトリガー指針に従う（何をするか AND 具体的な使用コンテキスト、加えて *いつトリガーしないか* も明示）。`commit` / `new-env` の description の密度とトーンを研究し、それに合わせること。
+- 任意: `argument-hint` と `allowed-tools`（`/command` が引数を取る、または固定のツールセットを使う場合。パターンは `commit` を参照）。不要なら省略します（多くのスキルは省略）。
 
-<!-- doc-pair:begin -->
-### 4. Mandatory Japanese translation pair
+### 3. 言語ルール（`AGENTS.md`）
 
-Every skill in this repo ships a `SKILL.ja.md` reference translation next to `SKILL.md`. This is not
-optional here. After the canonical `SKILL.md` is finalized (create) or changed (update):
+- `SKILL.md` は **英語 canonical** — 本文は既存スキル同様に命令形の英語で書きます。canonical の `SKILL.md` を日本語で書かないこと。
+- ただしスキルの *実行時の振る舞い* は `AGENTS.md` に従います。スキルが生成するユーザー可視の出力（応答・生成コードのコメント・テストケース名・PR / commit 文言）はすべて **日本語** であること。スキルを書く際はその要件を当該スキルの指示に組み込みます。
 
-- Chain the `canonicalize-doc` skill to produce/sync `SKILL.ja.md` from the canonical `SKILL.md`.
-- The translation carries the standard sync-note header and is not itself loaded as a skill. Confirm
-  the pair is in sync before considering the task done.
+### 4. 日本語翻訳ペアの義務化
 
-<!-- doc-pair:end -->
-<!-- doc-pair:replace-begin -->
-### 5. Eval artifacts stay out of version control
-<!-- doc-pair:replace-with -->
-<!-- = ### 4. Eval artifacts stay out of version control -->
-<!-- doc-pair:replace-end -->
+- 翻訳は標準の同期ノート見出しを持ち、それ自体はスキルとして読み込まれません。完了とする前にペアが同期していることを確認します。
 
-Evaluation writes a `<skill-name>-workspace/` with iteration/eval dirs, benchmarks, and viewer
-output. A sibling of the skill directory would land inside the tracked `.codex/skills/**`.
-**Override the location**: put the workspace under the repo's gitignored `tmp/` (e.g.
-`tmp/skills/manage-skill/<skill-name>-workspace/`), consistent with this repo's work-artifact convention
-(plans/artifacts live outside git; `tmp/` is ignored). Never commit eval runs, benchmarks, feedback
-JSON, or viewer HTML.
+### 5. eval 成果物はバージョン管理外に置く
 
-<!-- doc-pair:replace-begin -->
-### 6. Reuse repo patterns when they fit the skill's shape
-<!-- doc-pair:replace-with -->
-<!-- = ### 5. Reuse repo patterns when they fit the skill's shape -->
-<!-- doc-pair:replace-end -->
+公式手法は iteration / eval ディレクトリ・ベンチマーク・ビューア出力を含む `<skill-name>-workspace/` を書き出します。スキルディレクトリの兄弟に置くと、追跡対象の `.codex/skills/**` 内に落ちてしまいます。**配置を上書きします**。workspace はリポジトリの gitignore された `tmp/`（例: `tmp/skills/manage-skill/<skill-name>-workspace/`）に置き、このリポジトリの作業成果物規約（計画 / 成果物は git 外、`tmp/` は ignore）に合わせます。eval 実行結果・ベンチマーク・feedback JSON・ビューア HTML は決してコミットしないこと。
 
-- If the new skill fans out read-only analysis across layers, mirror the **integrator + per-layer
-  subagent** pattern (`arch-check` / `back-prop` spawn `*-auditor-*` / `*-detector-*` agents in
-  parallel; the integrator does the single-threaded writes). Reuse existing subagent types rather than
-  inventing new ones where possible.
-- If the skill has a deterministic multi-step flow gated on user choices, use `ask the user explicitly` for the
-  gates like `new-env` / `commit` do, rather than free-text prompts.
-- Read the target layer's `README.md` / `docs/` **at runtime as the source of truth** (the `arch-*`,
-  `test-review`, `scaffold-*` skills all do this) instead of hardcoding rules that will drift.
+### 6. スキルの形に合うならリポジトリのパターンを再利用する
 
-## Creating a new skill
+- 新スキルが読み取り専用の解析をレイヤー横断でファンアウトするなら、**integrator + レイヤー別サブエージェント** パターンを踏襲します（`arch-check` / `back-prop` は `*-auditor-*` / `*-detector-*` エージェントを並列起動し、integrator が単一スレッドで書き込みます）。可能なら新規サブエージェント型を発明せず既存を再利用します。
+- スキルがユーザー選択でゲートされる決定的な多段フローなら、`new-env` / `commit` のように free-text プロンプトではなく `ask the user explicitly` でゲートします。
+- 対象レイヤーの `README.md` / `docs/` を **実行時に真の出所として読み**（`arch-*`・`test-review`・`scaffold-*` はすべてこうしています）、drift するルールをハードコードしないこと。
 
-Capture the intent, identify concrete invocation cases, write `SKILL.md`, and review the draft against
-those cases. Then apply the repository workflow: correct placement, matching frontmatter/description
-<!-- doc-pair:replace-begin -->
-density, English-canonical body, and the eval workspace under `tmp/`. When the draft stabilizes,
-generate `SKILL.ja.md` via `canonicalize-doc`.
-<!-- doc-pair:replace-with -->
-<!-- = density, English-canonical body, and the eval workspace under `tmp/`. -->
-<!-- doc-pair:replace-end -->
+## 新規スキルの作成
 
-## Updating an existing skill
+## 既存スキルの更新
 
-- Confirm which skill (`.codex/skills/<name>/`). Preserve its `name` and directory unchanged.
-- Unlike an *installed* plugin skill, repo skills are writeable in place — **edit them directly** under
-  `.codex/skills/<name>/`; there is no read-only copy-to-`/tmp` dance.
-- For a material behavior change, snapshot the pre-edit skill into `tmp/` and compare representative
-  invocation cases before and after the update.
-- After editing, re-sync `SKILL.ja.md` via `canonicalize-doc` — an updated `SKILL.md` with a stale
-  Japanese pair is drift.
+- どのスキルか確認します（`.codex/skills/<name>/`）。`name` とディレクトリは変更しないこと。
+- *インストール済み* のプラグインスキルと違い、リポジトリのスキルはその場で書き込み可能です。**`.codex/skills/<name>/` 配下を直接編集** します。read-only なコピー先を `/tmp` に作る手順は不要です。
+- eval のベースライン用に、公式指針どおり編集前のスキルをスナップショット（`tmp/` へ）し、before / after を比較できるようにします。
 
-## Evaluating / optimizing
+## 評価 / 最適化
 
-Evaluate the revised skill against representative invocation cases and review whether its description
-triggers for intended requests without capturing excluded requests. Keep any comparison artifacts under
-`tmp/` (§5). If an installed `skill-creator` provides a compatible evaluation or description-optimization
-workflow, it may supplement this review.
+公式の test-run・benchmark・viewer・**Description Optimization** フローをそのまま使い、2 点だけ適応します。workspace は `tmp/` 配下（§5）に置くこと、description 最適化にはこのセッションを動かしているモデル ID（環境 / システムプロンプト参照）を渡してトリガーを本番に合わせること。
 
 ## Definition of Done
 
-- The self-contained workflow was followed: intent captured, representative invocation cases reviewed,
-  and the draft improved before validation.
-- `.codex/skills/<name>/SKILL.md` present, kebab `name` = dir, dense English "pushy" `description`.
-- `SKILL.ja.md` generated/synced from the canonical `SKILL.md` and in sync.
-- No eval artifacts committed (workspace under gitignored `tmp/`).
-- No hard-protected path touched; only `.codex/skills/**` modified.
-- The user has reviewed outputs (viewer or inline) and is satisfied.
-- For every new or materially changed skill that is not platform-only, invoke `sync-ai` after local
-  validation with this environment as the source. Pass the transfer contract to the receiving
-  environment's `manage-skill`. When this invocation is itself the receiving child operation, do
-  not invoke `sync-ai` again.
-- `make md-skill-lint` passes. It mechanically enforces the existence aspect of the preceding
-  `sync-ai` requirement: a skill present in only one environment fails. To declare one deliberately
-  platform-only, follow the [Skill Lint section](../../../scripts/README.md#skill-lint) of
-  `scripts/README.md`.
+- 公式 `skill-creator` が解決済み（project スコープのプラグイン。無ければプラグイン bootstrap で担保）で、手法が読み込まれている。
+- `.codex/skills/<name>/SKILL.md` が存在し、kebab の `name` = ディレクトリ、密な英語「pushy」`description` を持つ。
+- eval 成果物が未コミット（workspace は gitignore された `tmp/`）。
+- hard-protected パスに未接触。変更は `.codex/skills/**` のみ。
+- 公式ループに従い、ユーザーが成果物（ビューアまたはインライン）をレビューし満足している。
+- 新規または大きく変更したスキルがプラットフォーム専用でない場合、ローカル検証後にこの環境を送信元として `sync-ai` を起動する。転送契約を受信側環境の `manage-skill` に渡す。この起動自体が受信側の子操作である場合は、`sync-ai` を再起動しない。
+- `make md-skill-lint` が通る。これは前項の存在部分を強制する検査で、片側の環境にしか無いスキルは落ちる。意図的にプラットフォーム専用と宣言する手順は `scripts/README.md` の Skill Lint 節に従う。

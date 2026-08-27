@@ -207,10 +207,10 @@ func Test_staleDocuments(t *testing.T) {
 
 		t.Run("graphifyignore の拡張子パターンは数えない", func(t *testing.T) {
 			t.Parallel()
-			files := manifest(`{"docs/rules.ja.md":{"semantic_hash":"stale"},"docs/rules.md":{"semantic_hash":"stale"}}`)
-			files["docs/rules.ja.md"] = body
+			files := manifest(`{"docs/a.gen.sql":{"semantic_hash":"stale"},"docs/rules.md":{"semantic_hash":"stale"}}`)
+			files["docs/a.gen.sql"] = body
 			files["docs/rules.md"] = body
-			files["ignore"] = "*.ja.md\n**/*.ja.md\n"
+			files["ignore"] = "*.gen.sql\n**/*.gen.sql\n"
 
 			stale, err := staleDocuments("m.json", "ignore", staticRead(files))
 
@@ -265,8 +265,8 @@ func Test_matchesIgnore(t *testing.T) {
 	}{
 		"ディレクトリ接頭辞は配下に当たる":        {"docs/godoc/a/b.html", "docs/godoc/", true},
 		"ディレクトリ接頭辞は別ディレクトリに当たらない": {"docs/adr/0001.md", "docs/godoc/", false},
-		"拡張子パターンは深い階層にも当たる":       {"docs/adr/0001.ja.md", "*.ja.md", true},
-		"拡張子パターンは正本に当たらない":        {"docs/adr/0001.md", "*.ja.md", false},
+		"拡張子パターンは深い階層にも当たる":       {"docs/adr/0001.gen.sql", "*.gen.sql", true},
+		"拡張子パターンは他の綴りに当たらない":      {"docs/adr/0001.md", "*.gen.sql", false},
 		"二重アスタリスクの拡張子パターン":        {"internal/x/y.gen.go", "**/*.gen.go", true},
 		"二重アスタリスクのディレクトリ名":        {"database/gen/a.sql", "**/gen/", true},
 		"素のパスは完全一致":               {"openapi/openapi.gen.yaml", "openapi/openapi.gen.yaml", true},
@@ -360,7 +360,7 @@ func Test_matchesGlob(t *testing.T) {
 		t.Run("先頭のアスタリスクは接尾辞一致になる", func(t *testing.T) {
 			t.Parallel()
 
-			assert.True(t, matchesGlob("rules.ja.md", "*.ja.md"))
+			assert.True(t, matchesGlob("rules.gen.sql", "*.gen.sql"))
 		})
 
 		t.Run("アスタリスクが無ければ完全一致になる", func(t *testing.T) {

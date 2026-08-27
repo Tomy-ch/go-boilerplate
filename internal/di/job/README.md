@@ -1,15 +1,17 @@
-# job DI Module
+# job DI モジュール
 
-## Role
+`internal/di/job` は、ジョブ実行に関わる **DI（依存性注入）コンポーネント**を提供するパッケージです。
 
-This directory is the DI seam between the application's job framework and `fx`. It collects all `job.Job` providers registered with the `group:"jobs"` tag, assembles them into a `Runner`, maintains the `State` that the CLI uses to specify "which job, with which args, and where to signal completion", and wires the startup lifecycle hook that actually invokes the requested job. Upper-layer code (`internal/controller/job`, `cmd/`, individual job implementations) depends on the abstractions here; this package contains all of the fx-specific glue so that the rest of the code stays framework-agnostic.
+## 役割
 
-## Structure
+このディレクトリはアプリケーションのジョブフレームワークと `fx` の DI 結合点です。`group:"jobs"` タグで登録されたすべての `job.Job` プロバイダを集約して `Runner` に組み立て、CLI が指定する「どのジョブを、どの引数で実行し、完了通知をどこに送るか」を保持する `State` を提供し、起動時に該当ジョブを実行する lifecycle hook を配線します。上位コード（`internal/controller/job`、`cmd/`、個別ジョブ実装）はここでの抽象に依存し、fx 固有のグルーコードはすべて本パッケージに閉じ込めることで、それ以外のコードを framework-agnostic に保ちます。
 
-`runner.go` provides the Runner; `hook/` runs it at startup. The hook is separate because running
-is a lifecycle event, not part of describing the graph.
+## 構成
 
-## Architecture
+`runner.go` が Runner を提供し、`hook/` が起動時にそれを走らせる。hook を分けているのは、実行が
+ライフサイクルのイベントであって、グラフの記述の一部ではないからである。
+
+## アーキテクチャ
 
 ```mermaid
 flowchart TB
@@ -28,7 +30,7 @@ flowchart TB
     Hook --> Execute --> Shutdown
 ```
 
-## DI Registration Example
+## DI 登録例
 
 ```go
 fx.Provide(
@@ -38,16 +40,16 @@ fx.Provide(
 fx.Invoke(hook.RegisterJobHooks)
 ```
 
-## Job Execution Flow
+## ジョブ実行フロー
 
-1. CLI sets job info via `state.Set(name, args, done)`
-2. Application starts
-3. Start hook references `state.Snapshot()`
-4. If `done` exists, `runner.Run()` executes the job asynchronously
-5. Result is sent to `done` channel, then application shuts down
+1. CLI が `state.Set(name, args, done)` でジョブ情報をセット
+2. アプリケーション起動
+3. Start フックが `state.Snapshot()` を参照
+4. `done` が存在すれば `runner.Run()` でジョブを非同期実行
+5. 結果を `done` チャネルに送信後、アプリケーションをシャットダウン
 
-## Notes
+## 注意点
 
-- `state.Set` must be called before application startup
-- Hook lifecycle details (immediate shutdown on `done == nil`, goroutine execution, cancellation on stop) are in [`hook/README.md`](hook/README.md)
-- To add jobs, add them to `provideJobs(...)` in `internal/di/module/job.go`
+- `state.Set` はアプリケーション起動前に行う必要がある
+- フックのライフサイクル詳細（`done == nil` での即時シャットダウン・ゴルーチン実行・停止時キャンセル）は [`hook/README.md`](hook/README.md) を参照
+- ジョブの追加は `internal/di/module/job.go` の `provideJobs(...)` に追加する

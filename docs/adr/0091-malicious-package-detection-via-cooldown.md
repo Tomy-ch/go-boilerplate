@@ -5,122 +5,74 @@ deciders: [maintainers]
 tags: [ci, security, dependencies, setup-review]
 ---
 
-# ADR-0091: Accept a publication cooldown as the primary defence against malicious packages, without a dedicated detector
+# ADR-0091: 悪意あるパッケージへの主防御として専用の検出器を持たず公開クールダウンを受け入れる
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Vulnerability scanners answer "is this dependency *known* to be vulnerable". A different
-class of supply-chain attack defeats that question entirely: a package that is not
-vulnerable but **malicious** — a typosquatted name, or a legitimate package whose
-maintainer account or release pipeline was compromised. The artifact is published through
-the normal channel with valid integrity hashes, so every lockfile, checksum, and CVE
-database agrees it is fine.
+脆弱性スキャナーが答えるのは「この依存は脆弱だと*既知*か」である。別のクラスのサプライチェーン攻撃はその問いを丸ごと無効化する: 脆弱ではないが**悪意ある**パッケージ——タイポスクワットされた名前、あるいはメンテナーアカウントやリリースパイプラインが侵害された正規のパッケージである。成果物は正規のチャネル経由で妥当な整合性ハッシュとともに公開されるため、あらゆるロックファイル、チェックサム、CVE データベースが「問題なし」と一致して答える。
 
-This is not hypothetical for this repository's dependency graph. On 2026-07-14 four
-`@asyncapi` packages were published from compromised release pipelines carrying a
-credential-stealing payload; `@asyncapi/specs` is reachable from
-`@stoplight/spectral-cli` → `@stoplight/spectral-rulesets`, which this repository uses for
-OpenAPI security linting. What protected consumers was not a scanner — it was the window
-between publication and discovery, and npm's eventual removal of the versions.
+これは本リポジトリの依存グラフにとって仮定の話ではない。2026-07-14、侵害されたリリースパイプラインから 4 つの `@asyncapi` パッケージが認証情報窃取ペイロードを載せて公開された。`@asyncapi/specs` は `@stoplight/spectral-cli` → `@stoplight/spectral-rulesets` から到達可能であり、本リポジトリはこれを OpenAPI のセキュリティ lint に使っている。利用者を守ったのはスキャナーではなく、公開から発見までの窓と、npm による当該バージョンの最終的な削除であった。
 
-The pressure to add a dedicated detector is therefore real. The problem is that the tools
-which would answer it do not exist in usable form:
+したがって専用の検出器を追加したくなる圧力は現実のものである。問題は、それに答えるツールが使える形で存在しないことだ:
 
-- **npm** has no practical open-source malicious-package detector. The credible offerings
-  (Socket, Snyk Advisor, Phylum) are commercial SaaS that require sending the dependency
-  graph to a third party — which conflicts with ADR-0001 (avoid lock-in) and adds an
-  external dependency to CI.
-- **Go** has `capslock`, which reports the capabilities (network, exec, unsafe, …) a
-  dependency can reach. It is genuinely useful, but it covers only one of the two
-  ecosystems in this repository, and it reports *capability*, not *intent*: a logging
-  library that legitimately gains file access is indistinguishable from one that gained it
-  maliciously.
+- **npm** には実用的なオープンソースの悪意あるパッケージ検出器が存在しない。信頼できる選択肢（Socket、Snyk Advisor、Phylum）は商用 SaaS であり、依存グラフをサードパーティへ送ることを要求する——これは ADR-0001（ロックイン回避）と衝突し、CI に外部依存を追加する。
+- **Go** には `capslock` があり、依存が到達し得るケイパビリティ（network、exec、unsafe、…）を報告する。これは実際に有用だが、本リポジトリの 2 つのエコシステムのうち片方しかカバーせず、報告するのは*ケイパビリティ*であって*意図*ではない: 正当にファイルアクセスを得たロギングライブラリと、悪意をもってそれを得たものとは区別がつかない。
 
-## Decision
+## 決定
 
-We deliberately do **NOT** adopt a malicious-package detector. The primary mitigation is a
-**publication cooldown**: a dependency version younger than the configured window is
-excluded from resolution, so a malicious release must survive public scrutiny before it can
-enter a lockfile.
+悪意あるパッケージの検出器は意図的に**採用しない**。主たる緩和策は**公開クールダウン**である: 設定された窓より新しい依存バージョンは解決から除外され、悪意あるリリースはロックファイルに入る前に公衆の目にさらされて生き残らなければならない。
 
-The cooldown is configured per ecosystem, sized by how fast that ecosystem detects and
-corrects a compromise rather than by blast radius:
+クールダウンはエコシステムごとに設定し、その大きさは影響範囲（blast radius）ではなく、そのエコシステムが侵害をどれだけ速く検出・是正するかで決める:
 
-| Surface | Window | Mechanism |
+| 対象 | 窓 | 機構 |
 | --- | --- | --- |
-| Node packages | 7 days | `minimumReleaseAge` in each `pnpm-workspace.yaml`, refused at resolution time ([ADR-0108](0108-pnpm-as-the-only-node-resolver.md)) |
-| Go modules | 7 days | `scripts/go-cooldown`, gating the direct requirements a change adds or raises |
-| CLI tools resolved by mise | 14 days (GitHub release) / 7 days (package registry) | `scripts/tool-cooldown`, reading `mise.toml` |
-| CLI tools installed from PyPI | 7 days | `scripts/tool-cooldown`, reading the `python/*.in` declarations ([ADR-0080](0080-mise-ssot-drift-gate.md)) |
-| GitHub Actions | 14 days | `PIN_ACTIONS_MIN_AGE_DAYS`, enforced by `scripts/pin-actions` |
-| Container images | 14 days | `PIN_IMAGES_MIN_AGE_DAYS`, enforced by `scripts/pin-images` |
-| Dependabot | 5 / 7 / 30 days (patch / minor / major) | cooldown in `.github/dependabot.yml` |
+| Node パッケージ | 7 日 | 各 `pnpm-workspace.yaml` の `minimumReleaseAge`。依存解決の時点で拒否される（[ADR-0108](0108-pnpm-as-the-only-node-resolver.md)） |
+| Go モジュール | 7 日 | `scripts/go-cooldown`。変更が追加 / 更新した direct requirement を対象にする |
+| mise が解決する CLI ツール | 14 日（GitHub リリース） / 7 日（パッケージレジストリ） | `scripts/tool-cooldown` が `mise.toml` を読む |
+| PyPI から入れる CLI ツール | 7 日 | `scripts/tool-cooldown` が `python/*.in` の宣言を読む（[ADR-0080](0080-mise-ssot-drift-gate.md)） |
+| GitHub Actions | 14 日 | `PIN_ACTIONS_MIN_AGE_DAYS`（`scripts/pin-actions` が強制） |
+| コンテナイメージ | 14 日 | `PIN_IMAGES_MIN_AGE_DAYS`（`scripts/pin-images` が強制） |
+| Dependabot | 5 / 7 / 30 日（patch / minor / major） | `.github/dependabot.yml` の cooldown |
 
-The two tiers in the mise row come from the backend rather than the tool: a version resolved
-through a GitHub release gets the same window as `pin-actions` / `pin-images`, because a tag can
-be moved onto a different commit, while a version resolved through a package registry gets the
-shorter window, because a published version there is immutable.
+mise の行が 2 段になっているのは、ツールではなく backend の性質で決まるためである。GitHub リリース経由の版は tag を別 commit へ付け替えられるため `pin-actions` / `pin-images` と同じ窓を採り、パッケージレジストリ経由の版は公開が immutable なので短いほうの窓を採る。
 
-`capability-diff.yaml` runs `capslock` on dependency-changing PRs as a **supplementary**
-signal on the Go side only. It is report-only and is not treated as a detector.
+`capability-diff.yaml` は依存を変更する PR に対して `capslock` を実行するが、これは Go 側のみの**補助的な**シグナルである。report-only であり、検出器として扱わない。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- No third party receives this repository's dependency graph, and CI gains no external
-  service dependency.
-- The mitigation applies uniformly to every ecosystem, including the npm side where no
-  detector exists.
-- A cooldown degrades gracefully: it is a delay, not a classifier, so it has no false
-  positives to triage and no model to keep current.
+- 本リポジトリの依存グラフをサードパーティが受け取ることはなく、CI に外部サービス依存が増えない。
+- この緩和策は、検出器が存在しない npm 側を含め、すべてのエコシステムに一様に適用される。
+- クールダウンは緩やかに劣化する: 分類器ではなく遅延であるため、トリアージすべき偽陽性がなく、最新に保つべきモデルも存在しない。
 
-### Negative Consequences
+### ネガティブな影響
 
-- **The cooldown protects the resolution moment, not the installed state.** It closes the
-  window in which a fresh malicious version can enter a lockfile; it does nothing about one
-  that is already pinned, and nothing about a compromise discovered after the window
-  elapses. In the `@asyncapi` case the 7-day window had already passed by the time the
-  compromise was public — removal upstream is what protected consumers, not this control.
-- Security updates are delayed by the same window they impose (Dependabot's security
-  updates deliberately bypass their cooldown for this reason).
-- **Language runtimes (`go` / `node` / `python`) are outside every window.** A compromised
-  runtime distribution is a failure of the language's trust model rather than of one supply-chain
-  link, and a delay protects nothing against it; runtimes are governed instead by the separate
-  policy of waiting for an LTS. Stated here so the gap reads as a decision rather than an
-  oversight.
-- `capslock` covers Go only, so the npm half of the graph has no capability signal at all.
+- **クールダウンが守るのは解決の瞬間であって、インストール済みの状態ではない。** 新しい悪意あるバージョンがロックファイルに入り込む窓を閉じるが、すでに pin されているものには何もせず、窓の経過後に発見された侵害にも何もしない。`@asyncapi` のケースでは、侵害が公になった時点で 7 日の窓はすでに過ぎていた——利用者を守ったのはアップストリームでの削除であって、この統制ではない。
+- セキュリティ更新は、自ら課したのと同じ窓の分だけ遅れる（Dependabot のセキュリティ更新がこの理由で意図的にクールダウンを迂回する）。
+- **言語ランタイム（`go` / `node` / `python`）はどの窓の対象でもない。** ランタイムの配布物が汚染される事態は、供給網の 1 リンクではなく言語の信頼モデルそのものの崩壊であり、遅延では守れない。ランタイムは LTS を待つという別軸の方針が担う。この穴が見落としではなく判断であることを明示しておく。
+- `capslock` は Go のみを対象とするため、グラフの npm 側にはケイパビリティのシグナルが一切ない。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Commercial malicious-package scanning (Socket / Snyk / Phylum)
+### 商用の悪意あるパッケージスキャン（Socket / Snyk / Phylum）
 
-Rejected. All require uploading the dependency graph to a vendor and introduce a paid
-external dependency into CI. ADR-0001 rules out that class of lock-in.
+却下。いずれも依存グラフをベンダーへアップロードすることを要求し、有償の外部依存を CI に持ち込む。ADR-0001 はその種のロックインを排除している。
 
-### Pinning every transitive dependency by hash and reviewing every lockfile change by hand
+### すべての推移的依存をハッシュで pin し、ロックファイルの変更をすべて手作業でレビューする
 
-Rejected as unenforceable at this graph size (the npm tooling tree alone is ~500 packages).
-The narrower version of this idea — verifying that lockfile `resolved` URLs point at the
-official registry over HTTPS — is adopted instead as `lockfile-integrity.yaml`, which
-catches lockfile poisoning without requiring human review of every entry.
+このグラフ規模では強制不能として却下（npm のツーリングツリーだけで約 500 パッケージある）。この案のより狭い版——ロックファイルの `resolved` URL が公式レジストリを HTTPS で指していることを検証する——は `lockfile-integrity.yaml` として代わりに採用しており、全エントリの人手レビューを要さずにロックファイルの汚染を捕捉する。
 
-### Lengthening the cooldown windows
+### クールダウンの窓を延ばす
 
-Rejected as a false sense of safety. The `@asyncapi` compromise was public 12 days after
-publication; a longer window would have covered that instance and still missed a slower
-one, while delaying every legitimate security patch. The windows are sized to detection
-latency, and the residual risk is accepted here explicitly rather than papered over.
+安全性の錯覚として却下。`@asyncapi` の侵害が公になったのは公開の 12 日後である。より長い窓ならこの事例はカバーできたが、それでもより遅い事例は取り逃す一方で、正当なセキュリティパッチのすべてを遅らせることになる。窓は検出レイテンシに合わせて設定されており、残存リスクはごまかさずここで明示的に受け入れる。
 
-## Notes
+## 補足
 
-- Cooldown windows and their rationale: `docs/rules.md`, `pnpm-workspace.yaml` in each Node
-  package, `.github/dependabot.yml`.
-- Related: [ADR-0090](0090-sha-pinned-actions.md) (SHA pinning),
-  [ADR-0089](0089-multi-layer-security-scanning.md) (the scanning layers this sits beside),
-  [ADR-0001](0001-avoid-lock-in.md) (why SaaS detectors are out).
-- The capability signal it is *not* a substitute for: `.github/workflows/capability-diff.yaml`.
+- クールダウンの窓とその根拠: `docs/rules.md`、各 Node パッケージの `pnpm-workspace.yaml`、`.github/dependabot.yml`。
+- 関連: [ADR-0090](0090-sha-pinned-actions.md)（SHA ピン留め）、[ADR-0089](0089-multi-layer-security-scanning.md)（これが隣り合うスキャンのレイヤー群）、[ADR-0001](0001-avoid-lock-in.md)（SaaS 検出器が対象外である理由）。
+- これが代替とは*ならない*ケイパビリティのシグナル: `.github/workflows/capability-diff.yaml`。

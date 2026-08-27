@@ -1,43 +1,43 @@
-## integration Directory
+## integration ディレクトリ
 
-This directory is a place to organize **integration tests**.
+このディレクトリは **結合テスト (integration test)** をまとめるための場所です。  
 
-It starts an Echo server and verifies through the **actual HTTP communication path**, which cannot be fully covered by unit tests.
+ユニットテストでは拾いきれない、Echo サーバを立ち上げて **実際の HTTP 通信経路** を通した検証を行います。
 
-These tests target the **HTTP boundary**: no DB, no SQL, no Repository. The one deliberate exception is the
-authentication boundary — `jwt_auth_test.go` and `jwks_rotation_test.go` drive the real
-`internal/infrastructure/auth/jwt` implementation, because a hand-rolled mock of JWKS resolution would
-drift in silence. See [`docs/design/auth.md`](../../docs/design/auth.md).
+このテストは **HTTP 境界**を対象とし、DB・SQL・Repository は使いません。唯一の意図的な例外が認証境界で、
+`jwt_auth_test.go` と `jwks_rotation_test.go` は実物の `internal/infrastructure/auth/jwt` を動かします。
+JWKS 解決を手組み mock で置くと provider と黙って乖離するためです。詳細は
+[`docs/design/auth.md`](../../docs/design/auth.md) を参照してください。
 
-## Test Strategy
+## テスト戦略
 
-This project adopts the following test strategy.
+本プロジェクトでは以下のテスト戦略を採用しています。
 
 - `Domain` → Unit Test
 - `Usecase` → Unit Test
 - `Controller` → Unit Test
 - `Integration` → HTTP boundary test
 
-Integration tests perform only **verification of the entire HTTP path behavior**.
+integration テストでは **HTTP 経路全体の動作確認**のみを行います。
 
-In other words, the following scope is verified.
+つまり次の範囲を検証します。
 
 ```mermaid
 flowchart TB
     Router --> Middleware --> Handler --> Presenter["Presenter / Response serialization"]
 ```
 
-The following are **not handled in integration tests**.
+以下は **integration テストでは扱いません**
 
-- Domain logic
-- Internal Usecase logic
-- Repository implementation
-- DB connection
-- SQL execution
+- Domain ロジック
+- Usecase 内部ロジック
+- Repository 実装
+- DB 接続
+- SQL 実行
 
-## Definition of Test Levels (Test Pyramid)
+## テストレベルの定義(Test Pyramid)
 
-This project adopts a test strategy based on the **Test Pyramid**.
+本プロジェクトでは **Test Pyramid** を前提としたテスト戦略を採用しています。
 
 ```mermaid
 flowchart TB
@@ -45,54 +45,54 @@ flowchart TB
     Usecase["Usecase Unit"]
     Controller["Controller Unit"]
     Integration["Integration"]
-    E2E["E2E (none)"]
+    E2E["E2E (なし)"]
 
     Domain --> Usecase --> Controller --> Integration --> E2E
 ```
 
-Policy:
+方針：
 
-- Write tests centered on **Domain / Usecase Unit Test**
-- Integration Test performs **only HTTP boundary verification**
-- E2E tests are not handled in this project
+- **Domain / Usecase の Unit Test を中心にテストを書く**
+- Integration Test は **HTTP 境界の検証のみ**
+- E2E テストはこのプロジェクトでは扱いません
 
-This policy provides the following benefits.
+この方針により次のメリットを得ます。
 
-- Faster test execution
-- Improved test maintainability
-- Easier root cause identification when failures occur
+- テスト実行速度の高速化
+- テストの保守性向上
+- 失敗時の原因特定の容易さ
 
-## Why Usecase is mocked
+## なぜ Usecase を mock するのか
 
-In integration tests, **Usecase is mocked**.
+integration テストでは **Usecase を mock 化**します。
 
-The reason is **to preserve layer boundaries**.
+理由は **レイヤ境界を守るため**です。
 
-The purpose of integration tests is **verification of the HTTP Layer**,  
-and only the following scope is targeted.
+integration テストの目的は **HTTP Layer の検証**であり、  
+以下の範囲のみを対象とします。
 
 ```mermaid
 flowchart TB
     Router --> Middleware --> Handler --> Response["Response serialization"]
 ```
 
-The logic of Usecase / Domain / Repository  
-belongs to **Unit Test responsibility**.
+Usecase / Domain / Repository のロジックは  
+それぞれ **Unit Test の責務**です。
 
-If Usecase is used as-is in implementation:
+もし Usecase を実装のまま利用すると
 
 - DB
 - Repository
 - Domain
 
-the test scope expands to include these,  
-and **the purpose of HTTP boundary test is broken**.
+までテスト範囲が拡大してしまい、  
+**HTTP boundary test の目的が崩れてしまいます。**
 
-## Integration Test Placement Policy
+## Integration Test の配置ポリシー
 
-Integration tests are placed as **verification of public API behavior**.
+integration テストは **公開 API の動作確認**として配置します。
 
-Example target endpoints:
+対象となるエンドポイント例：
 
 - `/health`
 - `/healthz`
@@ -100,86 +100,91 @@ Example target endpoints:
 - `/version`
 - `/v1/...`
 
-In other words, only **public HTTP APIs** are the target of integration tests.
+つまり、**公開される HTTP API** のみを integration テストの対象とします。
 
-Detailed logic of internal functions and handlers  
-is verified by **Controller Unit Test**.
+内部関数や handler の細かなロジックは  
+**Controller Unit Test で検証します。**
 
-## Reason for having the integration directory
+## integration ディレクトリがある理由
 
-### Separation of layers
+### 層の分離
 
-Unit tests target individual functions and handlers,  
-while integration tests verify the **entire flow from router → middleware → handler → response serialization**.
+ユニットテストは個々の関数やハンドラを対象としますが、  
+結合テストは **ルータ〜ミドルウェア〜ハンドラ〜レスポンス整形までの一連の流れ** を確認します。
 
-By separating this directory, **the purpose and granularity of tests are clarified**.
+このディレクトリを分けることで、**テストの目的と粒度を明確にしています。**
 
 - `internal/controller/handler/...` → Handler Unit Test
 - `internal/integration` → HTTP Integration Test
 
-### Verification close to actual operation
+### 実運用に近い検証
 
-Integration tests verify by **sending actual HTTP requests**.
+integration テストでは **実際に HTTP リクエストを送信**して検証します。
 
-This allows confirmation of the following.
+これにより以下を確認できます。
 
-- Router binding
-- Middleware application
-- Request → DTO conversion
+- Router のバインド
+- Middleware の適用
+- Request → DTO 変換
 - Response serialization
-- HTTP status codes
+- HTTP ステータスコード
 
-It can also be used for CI/CD and smoke testing.
+CI/CD やスモークテストとしても利用できます。
 
-## Scope of Integration Test
+## 統合テストの範囲
 
-The scope handled by integration tests is as follows.
+integration テストで扱う範囲は次の通りです。
 
 ```mermaid
 flowchart TB
     Router["Echo Router"] --> Middleware --> Handler --> Response
 ```
 
-Usecase uses **mock** (see [Why Usecase is mocked](#why-usecase-is-mocked)).
+Usecase は **mock を利用します。**
 
-Example
+理由：
+
+integration テストの目的は **HTTP boundary の検証**であり  
+アプリケーションロジックの検証ではないためです。
+
+例
 
 - `mock_<feature>.NewMockUsecase`
 - `mock_healthcheck.NewMockUsecase`
 
-## Test Flow
+## テストの流れ
 
-Integration tests are executed with the following steps.
+integration テストは次の手順で実行されます。
 
 ```mermaid
 flowchart TB
     New["Echo.New()"] --> Bind["BindHandler"] --> Start["StartServer"] --> Req["HTTP Request"] --> Assert["Assert Response"]
 ```
 
-Concrete example
+具体例
 
 ```mermaid
 flowchart TB
     New["echo.New()"] --> Bind["handler.BindHandler()"] --> Start["StartServer()"] --> Do["DoJSON()"] --> Assert["AssertJSONResponseType()"]
 ```
 
-## Functions defined in helper_test.go
+## helper_test.go で定義されている関数
 
-Every handler's `BindHandler` takes a tracer factory; in these tests it is a
-no-op one obtained from `observability.NewNoopTracerFactory(t)`. Feature
-handlers additionally take a **mocked usecase** (see "Why Usecase is mocked").
+各ハンドラの `BindHandler` は tracer factory を受け取ります。これらのテストでは
+`observability.NewNoopTracerFactory(t)` から得た no-op のものを渡します。feature
+ハンドラは加えて **mock 化した usecase** を受け取ります（「なぜ Usecase を mock するのか」参照）。
 
 ### `StartServer(t *testing.T, e *echo.Echo) *Server`
 
-Starts Echo using `httptest.NewServer` and returns a simple server for integration testing.
+Echo を `httptest.NewServer` で立ち上げ、結合テスト用の簡易サーバを返します。
 
-Features:
+特徴
 
-- Server automatically stops with `t.Cleanup`
-- Holds an internal HTTP client
-- Provides test helper functions `Do` / `DoJSON`
+- `t.Cleanup` によりサーバは自動停止
+- HTTP クライアントを内部で保持
+- テストヘルパー関数 `Do` / `DoJSON` を提供
 
-Usage example:
+使用例
 
 ```go
 e := echo.New()
@@ -191,35 +196,35 @@ srv := StartServer(t, e)
 
 ### `StopServer()`
 
-Stops the server explicitly.
+明示的にサーバを停止します。
 
-Normally, the server is automatically stopped by `t.Cleanup` in `StartServer`,  
-so it is not used except in special cases.
+通常は `StartServer` 内の `t.Cleanup` により自動停止されるため、  
+特別なケース以外では使用しません。
 
 ### `Do(method, path string, reqBody io.Reader, contentType string, headers http.Header)`
 
-Sends an arbitrary HTTP request.
+任意の HTTP リクエストを送信します。
 
-Functions:
+機能
 
-- Specify HTTP method
-- Specify request body
-- Specify headers
-- Specify content-type
+- HTTP method 指定
+- request body 指定
+- header 指定
+- content-type 指定
 
-Internally uses `http.NewRequestWithContext`.
+内部では `http.NewRequestWithContext` を使用しています。
 
 ### `DoJSON(method, path string, reqBody any, headers http.Header)`
 
-Shortcut function for JSON.
+JSON 用のショートカット関数です。
 
-Features:
+特徴
 
-- Encodes `reqBody` as JSON
-- Automatically sets `Content-Type: application/json`
-- Internally calls `Do`
+- `reqBody` を JSON encode
+- `Content-Type: application/json` を自動設定
+- 内部的に `Do` を呼び出す
 
-Example:
+例
 
 ```go
 actual := srv.DoJSON(http.MethodGet, "/health", nil, nil)
@@ -227,34 +232,29 @@ actual := srv.DoJSON(http.MethodGet, "/health", nil, nil)
 
 ### `AssertJSONResponseType[T any]`
 
-A reachability assertion for the HTTP boundary. It confirms that the response
-travels the full HTTP path and is serialized into the expected shape — **not**
-that individual field values are correct.
+HTTP 境界の到達確認アサーションです。レスポンスが HTTP 経路を通り、期待した型へ
+シリアライズされることを検証します。**個々のフィールド値の正しさは検証しません。**
 
-Verification contents:
+検証内容
 
 - HTTP Status Code = 200
 - Content-Type = application/json
-- The response body can be unmarshaled into type `T`
-- Every field declared as a Go slice in `T` (recursively, including nested
-  structs and slice elements) is serialized as a JSON array — never `null`.
-  Only a key that is present with a `null` value is a violation; an absent key
-  (e.g. `omitempty`) is not.
+- レスポンスボディが型 `T` に Unmarshal 可能
+- `T` に Go スライスとして宣言されたフィールド（ネストした struct / スライス要素を含む）は
+  JSON 配列としてシリアライズされ、`null` にならない。キーが存在して値が `null` の場合のみ
+  違反で、キー自体が無い（`omitempty` で absent）場合は違反ではない
 
-This helper intentionally does **not** compare field values. Per the test
-pyramid above, response value correctness (the presenter's field mapping) is the
-responsibility of the **Controller Unit Test**, which verifies it against an
-independent oracle. Duplicating value assertions here would couple the
-integration test to presenter details and make it brittle; for responses that
-carry dynamic values (e.g. build info, `RegisteredAt`) only the type is
-checkable anyway.
+このヘルパーは意図的に値比較を行いません。上記のテストピラミッドのとおり、レスポンス値の
+正しさ（Presenter のフィールドマッピング）は **Controller Unit Test** が独立したオラクルで
+検証する責務です。ここで値比較を重複させると integration テストが Presenter の詳細に結合し
+壊れやすくなります。build info や `RegisteredAt` などの動的な値を含むレスポンスでは、
+そもそも型のみが検証可能です。
 
-The array-not-`null` check is not a value assertion but a check on the
-**serialization shape**: whether an empty collection reaches the client as `[]`
-or `null` is decided at the HTTP boundary, so the integration layer owns this
-guarantee.
+配列が `null` でないことの検査は値のアサーションではなく**シリアライズの形**の検査です。
+空のコレクションがクライアントへ `[]` として届くか `null` として届くかは HTTP 境界で
+決まるため、この担保は integration 層が担います。
 
-Usage example:
+使用例
 
 ```go
 AssertJSONResponseType[gen.HealthResponse](t, actual)
@@ -262,123 +262,112 @@ AssertJSONResponseType[gen.HealthResponse](t, actual)
 
 ### `UseAppErrorHandler(t, e, extra ...extension.UseMiddleware)`
 
-Installs the production `HTTPErrorHandler` on the Echo instance. The bare
-`echo.New()` only carries Echo's default error handler, so error-path tests
-that need to observe the real `apperror` → HTTP status mapping must wire the
-production handler first.
+本番相当の `HTTPErrorHandler` を Echo に登録します。素の `echo.New()` は Echo 標準の
+エラーハンドラしか持たないため、`apperror` → HTTP ステータスの実マッピングを観測する異常系
+テストでは、先に本番ハンドラを配線する必要があります。
 
-It also wires the production `requestid` middleware, because the handler alone
-cannot produce a conformant error response: it fills the body's `requestId` by
-**reading back** the `X-Request-Id` that the middleware wrote onto the response.
-Wire only the handler and every error body carries an empty `requestId`. The two
-are one contract, so they are wired together here instead of being left for each
-test to remember.
+あわせて本番の `requestid` ミドルウェアも配線します。ハンドラはボディの `requestId` を、
+ミドルウェアがレスポンスへ書いた `X-Request-Id` を**読み戻して**埋めるため、ハンドラだけを
+配線するとすべてのエラーボディの `requestId` が空になり、契約が成立しないからです。両者で
+1 つの契約なので、各テストの記憶に委ねずここで一体に配線します。
 
-Pass `extra` to add further production middleware to that stack — take each one
-from its own DI provider and let `extension.ApplyUseMiddlewares` sort them (see
-"Wire a middleware-order contract from the DI providers, not by hand" below).
-Call sites never write the order themselves.
+`extra` には、このスタックへ追加したい本番ミドルウェアを渡します。各ミドルウェアは自身の
+DI provider から取得し、順序は `extension.ApplyUseMiddlewares` に決めさせてください（後述の
+「ミドルウェア順序の契約は手書きせず DI provider から配線する」を参照）。呼び出し側は順序を
+書きません。
 
 ### `AssertErrorResponse(t, actual, wantStatus)`
 
-Asserts that an error response carries `wantStatus` and that its body
-deserializes into the JSON error shape (`ErrorResponse`). As with
-`AssertJSONResponseType`, only the boundary concern is checked — the
-`apperror` → status mapping and the error body's shape — while the correctness
-of the `code` / `message` values stays the responsibility of the unit tests.
+異常系レスポンスが `wantStatus` を返し、ボディが JSON のエラー形式（`ErrorResponse`）へ
+デシリアライズ可能であることを検証します。`AssertJSONResponseType` と同様に、検証するのは
+境界の関心事（`apperror` → ステータスのマッピングとエラーボディの形）のみで、`code` /
+`message` の値の正しさはユニットテストの責務のままです。
 
-It additionally asserts that the body's `requestId` is non-empty **and equals
-the `X-Request-Id` header on the wire**. This is a boundary concern rather than
-a value assertion: the header and the body are produced by two different
-components (a middleware and the error handler) that only meet at the HTTP
-boundary, so nothing below this layer can catch them disagreeing. Because every
-error-path test funnels through this helper, the guarantee holds across the
-whole suite rather than in one dedicated test.
+加えて、ボディの `requestId` が非空であること、かつ**ワイヤ上の `X-Request-Id` ヘッダーと
+一致すること**を検証します。これは値の検証ではなく境界の関心事です。ヘッダーとボディは
+別々のコンポーネント（ミドルウェアとエラーハンドラ）が生成し、HTTP 境界でしか出会わないため、
+両者の食い違いはこの層より下では検出できません。すべての異常系テストがこのヘルパーを通るので、
+専用テスト 1 本ではなくスイート全体でこの保証が成立します。
 
-Usage example:
+使用例
 
 ```go
 e := echo.New()
 UseAppErrorHandler(t, e)
-// ... mock the usecase to return apperror.ErrNotFound, bind the handler ...
+// ... usecase モックが apperror.ErrNotFound を返すよう設定し、handler を bind ...
 actual := StartServer(t, e).DoJSON(http.MethodGet, path, nil, headers)
 AssertErrorResponse(t, actual, http.StatusNotFound)
 ```
 
 ### `AssertErrorResponseBody(t, actual, wantStatus)`
 
-Same boundary checks as `AssertErrorResponse`, but returns the decoded
-`ErrorResponseWithDetails` so a test can go on to assert on `details` — the one
-error-path field whose contents are a boundary concern (`apperror` decides which
-identifiers surface). Use it when the test needs the body; use
-`AssertErrorResponse` when it only needs the status and shape.
+境界の検査内容は `AssertErrorResponse` と同じで、デコード済みの
+`ErrorResponseWithDetails` を返します。`details`（`apperror` がどの識別子を露出させるかを決める、
+異常系で唯一境界の関心事となるフィールド）まで検証したいときに使います。
+ステータスと形だけでよいときは `AssertErrorResponse` を使います。
 
-## Auth Test Helper
+## Auth テストヘルパー
 
-In `EnvTest` the Authorizer is fixed to `allowall`, so an admin / non-admin difference is expressed
-through the usecase's return value rather than through the authorizer.
+`EnvTest` の Authorizer は `allowall` 固定のため、admin / 非 admin の差は authorizer ではなく
+usecase の戻り値で表現します。
 
-These helpers cover the debug-bypass path. Tests that exercise real JWT / JWKS verification build their
-own server instead — see `jwt_auth_test.go` / `jwks_rotation_test.go` and
-[`docs/design/auth.md`](../../docs/design/auth.md).
+以下のヘルパーは debug bypass 経路を扱います。実物の JWT / JWKS 検証を通すテストは自前でサーバーを
+組み立てます（`jwt_auth_test.go` / `jwks_rotation_test.go` と
+[`docs/design/auth.md`](../../docs/design/auth.md)）。
 
 ### `MakeAvailableUserID`
 
-A helper that **simulates an authenticated user** in integration tests.
+integration テストで **認証済みユーザーを模擬するヘルパー**です。
 
-Internally it adds an Echo Middleware that builds an authenticated principal
-with `auth.New` and injects it into the request context via `ctxhelper.WithAuthn`
-/ `ctxhelper.SetAuthn`, then returns an `Authorization: Bearer debug:<id>` header
-to attach to the request.
+内部では `auth.New` で認証済みプリンシパルを生成し、それを `ctxhelper.WithAuthn` /
+`ctxhelper.SetAuthn` でリクエストコンテキストに注入する Echo Middleware を追加したうえで、
+リクエストに付与する `Authorization: Bearer debug:<id>` ヘッダーを返します。
 
-Usage example:
+使用例
 
 ```go
 headers := MakeAvailableUserID(t, e, userID)
 srv.DoJSON(http.MethodPost, "/v1/<resource>", body, headers)
 ```
 
-## Test Design Policy
+## テスト設計ポリシー
 
-Integration tests follow the following principles.
+integration テストでは以下の原則を守ります。
 
-### 1 Do not use DB / SQL / Repository
+### 1 DB / SQL / Repository を使用しない
 
-Integration tests use none of them. The authentication boundary is the documented exception — see the
-note at the top of this file.
+integration テストではいずれも使用しません。認証境界だけが文書化された例外です。
+本ファイル冒頭の注記を参照してください。
 
-### 2 Mock Usecase
+### 2 Usecase は mock する
 
-In integration tests, **Usecase is mocked**.
+integration テストでは **Usecase を mock 化**します。
 
-Reason: because `integration = HTTP boundary test`.
+理由: `integration = HTTP boundary test` であるためです。
 
-### 3 Actually hit HTTP
+### 3 HTTP を実際に叩く
 
-Do not call handler directly, but use `httptest.Server`.
+handler を直接呼ぶのではなく `httptest.Server` を利用します。
 
-### 4 Verify with response types
+### 4 レスポンス型で検証
 
-Responses are verified using **OpenAPI types**.
+レスポンスは **OpenAPI 型**で検証します。
 
 - `gen.HealthResponse`
 - `gen.VersionResponse`
-- a feature handler's response type from its `gen` package — `gen.<Xxx>Response` (aliased, e.g. `detailgen.<Xxx>Response`, when one test file imports several handler `gen` packages)
+- feature ハンドラの `gen` パッケージが公開するレスポンス型 — `gen.<Xxx>Response`（1 テストファイルで複数 handler の `gen` を import する場合は `detailgen.<Xxx>Response` のようにエイリアス）
 
-### 5 Wire a middleware-order contract from the DI providers, not by hand
+### 5 ミドルウェア順序の契約は手書きせず DI provider から配線する
 
-Most tests here register only the middleware the endpoint needs, in the order the
-test writes them. That is fine while the assertion is about one middleware, but a
-contract that only holds because middleware A runs outside middleware B is not
-verified by a hand-written order — the test would keep passing after the real
-priorities changed underneath it.
+ここでのテストの多くは、エンドポイントに必要なミドルウェアだけをテストが書いた順序で登録します。
+アサーション対象が 1 つのミドルウェアに閉じている限りはそれで十分ですが、「ミドルウェア A が B の
+外側で動く」ことによってのみ成立する契約は、手書きの順序では検証できません。実際の優先度が背後で
+変わってもテストは通り続けてしまいます。
 
-For those tests, take the middleware from its own DI provider
-(`instrumentation.RequestIDMiddleware()`, `security.CookieMiddleware(...)`, …) and
-apply it with `extension.ApplyUseMiddlewares`, which performs the same `Priority`
-sort production does. The ordering then comes from the same source of truth as the
-running server, so reordering the stack breaks the test that depends on it.
+そうしたテストでは、ミドルウェアを各 DI provider（`instrumentation.RequestIDMiddleware()`、
+`security.CookieMiddleware(...)` など）から取得し、本番と同じ `Priority` ソートを行う
+`extension.ApplyUseMiddlewares` で適用します。順序が実サーバーと同一の出所から決まるため、
+スタックの並べ替えは、それに依存するテストを壊します。
 
-This is the one case where an integration test reaches into `internal/di`; it does
-not license using the DI container to assemble usecases or infrastructure, which
-stays mocked per the policies above.
+統合テストが `internal/di` に触れてよいのはこのケースだけです。DI コンテナで usecase や
+infrastructure を組み立ててよいという意味ではなく、それらは上記のポリシーどおり mock のままです。

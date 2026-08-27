@@ -8,43 +8,38 @@ allowed-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion
 
 # Context Map
 
-Produces `docs/design/context-map.md`: one page characterising every place this system touches
-something outside itself, using Evans's relationship vocabulary for the edges.
+`docs/design/context-map.md` を作る。このシステムが自分の外にあるものへ触れている場所をすべて、
+Evans の関係パターン語彙で辺として特徴づけた 1 枚である。
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory
-(not loaded as a skill; for human reference only).
+## このスキルがしてはならないこと
 
-## The one thing this skill must not do
+**ラベルを自分で決めない。** 接触点を見つけ、それぞれが何を示しているかを述べ、根拠と矛盾しない
+ラベルを候補として並べ、そこで止まる。
 
-**It never chooses a label.** It finds the contact points, states what each one shows, offers the
-labels the evidence is compatible with, and stops.
+理由は慎重さではない。Evans の関係のいくつかは、コードベースに存在しない事実で区別される。
+Customer-Supplier と Conformist は内側から見ると同じに見え——どちらも「相手のモデルを受け入れる」
+——上流がこちらの要件を通してくれるかどうかだけが違う。Partnership は誰も書き留めていない相互の
+約束を要する。推測で埋めれば、**調べた顔をして調べていない地図**ができる。地図が無いより悪い。
+**ラベルの無い辺は判断を促すが、誤ったラベルの貼られた辺は判断を閉じる。**
 
-The reason is not caution. Several of Evans's relationships are distinguished by facts that do not
-exist in the codebase. Customer-Supplier and Conformist look identical from inside — both are
-"we consume their model" — and differ only in whether the upstream team will take our requirements.
-Partnership needs a mutual commitment nobody wrote down. Guessing produces a map that reads as
-researched and is not, which is worse than no map: **an unlabelled edge invites a decision, and a
-wrongly labelled edge closes it.**
+構造的な事実（変換アダプタが在るか、契約が成果物として公開されているか）は読み取れるので、根拠
+として述べる。関係についての事実は尋ねる。
 
-Structural facts (does a translating adapter exist, is a contract published as an artifact) can be
-read and should be stated as evidence. Relational facts must be asked.
+## 使いどころ
 
-## When to Use
+- Context Map がまだ無い、あるいは外部依存が増えたのに対応する辺が地図に無い
+- このシステムが周囲のシステムとどう関係しているか、共有される概念をどちら側が所有しているかを問われた
+- DDD 台帳が `context-map` を `uninterpreted` と報告している
 
-- The Context Map does not exist yet, or an external dependency landed and the map has no edge for it.
-- Someone asks how this system relates to the systems around it, or which side owns a shared concept.
-- The DDD ledger reports `context-map` as `uninterpreted`.
+使わない場面:
 
-Do NOT use for:
+- 既存の地図と実態のズレ — `context-map-audit`
+- Evans 原義との DDD パターン照合 — `ddd-audit`
+- 機能の spec — `new-spec`。1 つの連携の機構 — 該当する `docs/design/*.md` かパッケージ README
 
-- Drift between an existing map and reality — `context-map-audit`.
-- DDD patterns against Evans's originals — `ddd-audit`.
-- Feature specs — `new-spec`; mechanics of one integration — the relevant `docs/design/*.md` or
-  package README.
+## Step 0. スコープを確認する
 
-## Step 0. Confirm scope
-
-`AskUserQuestion`, one question:
+`AskUserQuestion` を 1 問。
 
 ```text
 質問: どこまでを地図に載せますか？
@@ -53,48 +48,46 @@ Do NOT use for:
   - 新規接触点のみ（--update。既存の地図に無い辺だけを足す）
 ```
 
-With `--update`, read the existing map first and carry its edges forward unchanged; only new contact
-points reach Step 3. Never silently re-label an edge a human already decided.
+`--update` では既存の地図を先に読み、その辺をそのまま持ち越す。Step 3 へ進むのは新しい接触点だけ。
+人が一度決めた辺を黙って貼り替えない。
 
-## Step 1. Enumerate contact points (deterministic — do not delegate)
+## Step 1. 接触点を列挙する（決定的な処理。委譲しない）
 
-A contact point is a place where this system exchanges a model with something it does not own.
-Resolve them from the repository, never from a list written into this file:
+接触点とは、このシステムが自分の所有しないものとモデルをやりとりする場所である。本文に書かれた
+一覧からではなく、リポジトリから解決する。
 
 ```sh
-ls internal/usecase/boundary/          # the ports: what the inside asks for
-ls internal/infrastructure/            # the adapters: what answers, and to whom
+ls internal/usecase/boundary/          # ポート: 内側が何を求めているか
+ls internal/infrastructure/            # アダプタ: 何が、誰に対して応えるか
 ```
 
-Read `internal/usecase/boundary/README.md` and `internal/infrastructure/README.md` at runtime as the
-source of truth for what each one is. A port with no external counterpart (a clock, a transaction
-manager) is not a contact point — the test is whether a model crosses out of this system.
+`internal/usecase/boundary/README.md` と `internal/infrastructure/README.md` を実行時に読み、
+それぞれが何であるかの正本とする。外部の相手を持たないポート（時計、トランザクションマネージャ）は
+接触点ではない。判定基準は、**モデルがこのシステムの外へ渡るかどうか**である。
 
-Include the inbound direction too: the HTTP surface this system publishes, and anything that
-consumes what it emits. A map with only outbound edges says this system is nobody's upstream, which
-is a claim, not an omission.
+内向きの方向も含める。このシステムが公開している HTTP の面と、それが発行するものを消費する側。
+外向きの辺しか無い地図は「このシステムは誰の上流でもない」という主張であり、書き漏らしではない。
 
-Report the enumeration before going further. Getting the node set wrong invalidates every label.
+列挙は先に提示する。ノードの集合を誤ると、ラベルはすべて無効になる。
 
-## Step 2. Gather evidence per contact point
+## Step 2. 接触点ごとに根拠を集める
 
-For each edge, collect what the repository can actually show:
+辺ごとに、リポジトリが実際に示せるものを集める。
 
-- **Is there a translating adapter?** A port stated in this system's vocabulary with the conversion
-  confined to the adapter is the structural signature of an Anticorruption Layer.
-- **Whose vocabulary survives at the boundary?** If external names reach the inside, the edge is
-  conformist in effect whatever anyone intended.
-- **Is there a published contract artifact?** A committed, consumable schema is the signature of a
-  Published Language; an endpoint set designed for many consumers suggests Open Host Service.
-- **Which direction does the model flow, and who breaks whom?** State what happens here when the
-  other side changes shape.
+- **変換アダプタが在るか。** 自層の語彙でポートを述べ、変換をアダプタに閉じ込めている形は
+  Anticorruption Layer の構造的シグネチャである
+- **境界でどちらの語彙が生き残っているか。** 外部の名前が内側へ届いているなら、誰が何を意図して
+  いようと、その辺は事実として conformist である
+- **公開された契約の成果物が在るか。** コミットされ消費可能なスキーマは Published Language の
+  シグネチャ。多数の消費者を想定した endpoint 群は Open Host Service を示唆する
+- **モデルはどちら向きに流れ、どちらがどちらを壊すか。** 相手側が形を変えたときここで何が起きるかを述べる
 
-Cite `file:line`. Evidence the reader cannot check is not evidence.
+`file:line` を引く。読者が確認できないものは根拠ではない。
 
-## Step 3. Propose candidates — never choose
+## Step 3. 候補を出す。決めない
 
-For each edge, present the labels the evidence is compatible with, and say plainly what the evidence
-cannot settle. Phrase the gap as the question a human can answer:
+辺ごとに、根拠と矛盾しないラベルを提示し、根拠では決められないことを率直に述べる。決められない
+部分は、人が答えられる問いの形にする。
 
 ```text
 <接触点> — 候補: <A> / <B>
@@ -102,48 +95,46 @@ cannot settle. Phrase the gap as the question a human can answer:
   判別できないこと: <組織的事実。例「上流にこちらの要件を通せるか」>
 ```
 
-If the evidence is compatible with exactly one label, say so — but still confirm it. A single
-compatible label is a strong reading of structure, not a decision about a relationship.
+根拠と矛盾しないラベルがちょうど 1 つなら、そう言う。ただし確認は取る。候補が 1 つに絞れるのは
+構造の強い読み取りであって、関係についての決定ではない。
 
-## Step 4. Confirm each edge
+## Step 4. 辺ごとに確定させる
 
-`AskUserQuestion` per edge, options being the candidate labels plus 「保留（未確定として地図に残す）」.
+辺ごとに `AskUserQuestion`。選択肢は候補ラベルと「保留（未確定として地図に残す）」。
 
-**Keep 保留 available and mean it.** An edge recorded as undecided, with its evidence and its open
-question, is a correct map entry. It tells the next reader exactly what to find out. Forcing a label
-to avoid a blank is how a map stops being trustworthy.
+**保留を選べる状態を保ち、それを本気で扱う。** 未確定として、根拠と未解決の問いを伴って記録された
+辺は、正しい地図の項目である。次に読む人に、何を調べればよいかを正確に伝える。空欄を避けるために
+ラベルを埋めることが、地図が信用されなくなる道筋である。
 
-Batch at most 4 edges per call.
+1 回の呼び出しは 4 辺まで。
 
-## Step 5. Write the map
+## Step 5. 地図を書く
 
-Write `docs/design/context-map.md` (English canonical), then chain `canonicalize-doc` for the
-Japanese pair. Structure:
+`docs/design/context-map.md`（英語正本）を書き、`canonicalize-doc` を繋いで日本語ペアを作る。構成:
 
-- **The node set** — this system, and each external counterpart, with one line on what it is.
-- **The edges table** — counterpart / direction / relationship label / evidence `file:line` /
-  what would change if the other side moved. Undecided edges carry `未確定` and their open question.
-- **A mermaid diagram** — nodes and labelled edges, no styling beyond the labels.
-- **What this map does not cover** — contact points deliberately excluded, and why.
+- **ノードの集合** — このシステムと、外部の相手それぞれ。何であるかを 1 行で
+- **辺の表** — 相手 / 向き / 関係ラベル / 根拠 `file:line` / 相手が動いたら何が変わるか。
+  未確定の辺は `未確定` と、その未解決の問いを載せる
+- **mermaid 図** — ノードとラベル付きの辺。ラベル以上の装飾はしない
+- **この地図が扱わないもの** — 意図的に外した接触点と、その理由
 
-Keep the prose about *relationships*. How an integration works mechanically belongs to its own
-design doc; link, do not restate.
+散文は**関係**について書く。連携が機構としてどう動くかは、それ自身の design doc のものである。
+リンクし、書き写さない。
 
-`docs/design/**/*.md` is already inside the DDD ledger's corpus, so the map enters the audit's field
-of view the moment it lands. Do not edit the ledger here — say that `/ddd-audit` should re-run for
-`context-map`, and stop.
+`docs/design/**/*.md` は既に DDD 台帳の corpus に入っているため、地図は land した時点で監査の視野へ
+入る。ここで台帳を編集しないこと。`context-map` について `/ddd-audit` を再実行すべきだと述べて終わる。
 
-## Step 6. Closing
+## Step 6. 締め
 
-Report in Japanese: the edges landed, the edges left `未確定` with their open questions, and the
-recommendation to re-run `/ddd-audit`. No commit, no push.
+日本語で報告する。land した辺、`未確定` として残った辺とその未解決の問い、`/ddd-audit` 再実行の
+推奨。commit / push はしない。
 
 ## AI Modification Scope
 
-- Read: `internal/usecase/boundary/**`, `internal/infrastructure/**`, `docs/design/**`,
-  `docs/adr/**`, per-package `README.md`
-- Write: `docs/design/context-map.md` and its `.ja.md` pair only
-- Never touch: the DDD ledger, ADRs, source code, generated files, `AGENTS.md`
+- 読み込み: `internal/usecase/boundary/**`、`internal/infrastructure/**`、`docs/design/**`、
+  `docs/adr/**`、パッケージごとの `README.md`
+- 書き込み: `docs/design/context-map.md` のみ
+- 触らない: DDD 台帳、ADR、実装コード、生成物、`AGENTS.md`
 
 ## Constraints
 
@@ -153,9 +144,8 @@ recommendation to re-run `/ddd-audit`. No commit, no push.
 - ❌ 連携の仕組みを地図へ書き写す（関係だけを書き、機構は既存の design doc へリンク）
 - ❌ 台帳の書き換え、commit / push
 - ✅ 辺ごとに `file:line` の根拠と、構造からは判別できないことの明示
-- ✅ 出力・地図本文の日本語ミラーは日本語（英語正本 + 隣の `.ja.md`）
 
-## Checklist
+## チェックリスト
 
 - [ ] スコープを `AskUserQuestion` で確認（`--update` は既存の辺を持ち越す）
 - [ ] 接触点を boundary / infrastructure から解決し、一覧を先に提示

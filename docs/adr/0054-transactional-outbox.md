@@ -5,65 +5,48 @@ deciders: [maintainers]
 tags: [outbox, async, reliability]
 ---
 
-# ADR-0054: Transactional outbox: emit events within the business transaction
+# ADR-0054: トランザクショナルアウトボックス — ビジネストランザクション内でイベントを発行する
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Services frequently need to mutate domain state and notify an external endpoint as a single
-logical operation. When the domain write (DB) and the publish (HTTP POST) are two separate
-network calls, either can fail independently: publishing before the DB commit produces a
-phantom event if the transaction rolls back; publishing after creates a lost event if the
-process crashes or the network call fails. This dual-write anomaly is a fundamental
-reliability risk in any service that fans out domain changes to downstream consumers.
+サービスはしばしば、ドメイン状態の変更と外部エンドポイントへの通知を単一の論理操作として行う必要がある。ドメイン書き込み（DB）と発行（HTTP POST）が 2 つの独立したネットワーク呼び出しの場合、それぞれが独立して失敗し得る。DB コミット前に発行するとトランザクションがロールバックした際にファントムイベントが発生し、コミット後に発行するとプロセスクラッシュやネットワーク呼び出し失敗によりイベントが失われる。このデュアルライト異常は、ドメイン変更を下流のコンシューマーにファンアウトするサービスにおいて根本的な信頼性リスクである。
 
-## Decision
+## 決定
 
-Adopt the transactional outbox pattern. `EmitUsecase.Emit` inserts a single row into the
-`outbox` table **inside the same `tx.Manager.Do` as the domain change**. The "intent to
-publish" is persisted as part of the business transaction, so a rolled-back business
-transaction atomically discards its outbox row — no phantom events and no lost intent.
-Actual delivery is deferred to a separate, asynchronous relay process.
+トランザクショナルアウトボックスパターンを採用する。`EmitUsecase.Emit` は、ドメイン変更と**同じ `tx.Manager.Do` 内**で `outbox` テーブルに 1 行挿入する。「発行意図」はビジネストランザクションの一部として永続化されるため、ビジネストランザクションのロールバックによってそのアウトボックス行も原子的に破棄される — ファントムイベントも失われた意図も発生しない。実際のデリバリーは独立した非同期リレープロセスに委ねる。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- The dual-write anomaly is eliminated: the DB is the single write point per business
-  operation.
-- A rolled-back business transaction cannot produce a phantom outbox row.
-- The domain usecase remains decoupled from delivery details — transport, retry, and
-  ordering belong to the relay.
-- Schema-level atomicity is provided by the database; no distributed transaction or
-  two-phase commit is required.
+- デュアルライト異常が解消される。DB がビジネス操作ごとの単一書き込みポイントになる。
+- ロールバックされたビジネストランザクションはファントムのアウトボックス行を生成できない。
+- ドメインユースケースはデリバリーの詳細から切り離されたまま。トランスポート・リトライ・順序はリレーに属する。
+- スキーマレベルの原子性はデータベースが提供する。分散トランザクションや 2 フェーズコミットは不要。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Delivery is asynchronous; downstream consumers observe eventual consistency.
-- A dedicated relay process must be deployed and kept running.
-- An `outbox` table and its associated lifecycle (migrations, GC) must be maintained.
+- デリバリーは非同期。下流のコンシューマーは結果整合性を観察する。
+- 専用のリレープロセスをデプロイし、稼動し続けさせなければならない。
+- `outbox` テーブルとそのライフサイクル（マイグレーション、GC）の維持が必要。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Synchronous publish inside the business tx
+### ビジネストランザクション内での同期発行
 
-Publish the event within the same transaction and roll back on delivery failure. This
-tightly couples the business operation to transport availability: a temporarily-down
-receiver fails every business request that emits an event.
+同じトランザクション内でイベントを発行し、デリバリー失敗時にロールバックする。この方法はビジネス操作をトランスポートの可用性に強く結合する。一時的にレシーバーがダウンしているだけで、イベントを発行するすべてのビジネスリクエストが失敗する。
 
-### Change Data Capture (CDC)
+### チェンジデータキャプチャ (CDC)
 
-Capture events from the database WAL instead of inserting an explicit outbox row.
-CDC is more transparent at the application level but requires additional infrastructure
-(e.g. Debezium), complex operational setup, and is harder to reason about in application
-code.
+明示的なアウトボックス行を挿入する代わりに、データベースの WAL からイベントをキャプチャする。CDC はアプリケーションレベルでより透過的だが、追加インフラ（例: Debezium）が必要で、運用セットアップが複雑になり、アプリケーションコードでの推論が難しくなる。
 
-## Notes
+## 補足
 
-- Dual-write avoidance is a design invariant; see `docs/design/outbox.md` (§ "Design invariants").
-- Migrated from `docs/design/outbox.md` §1 (Role theory) and the invariants table.
-- Related ADRs: [ADR-0002](0002-onion-architecture.md) (onion architecture, layer ownership).
-- Related ADRs: [ADR-0055](0055-at-least-once-outbox-poll.md) (delivery guarantee), [ADR-0056](0056-skip-locked-outbox-relay.md) (relay concurrency).
+- デュアルライト回避は設計上の不変条件。`docs/design/outbox.md`（§「Design invariants」）を参照。
+- `docs/design/outbox.md` §1（Role theory）と不変条件テーブルから移行。
+- 関連 ADR: [ADR-0002](0002-onion-architecture.md)（オニオンアーキテクチャ、レイヤー所有権）。
+- 関連 ADR: [ADR-0055](0055-at-least-once-outbox-poll.md)（デリバリー保証）、[ADR-0056](0056-skip-locked-outbox-relay.md)（リレー並行性）。

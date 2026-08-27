@@ -1,135 +1,128 @@
-# Distributed Ready Architecture (v3 requirements)
+# 分散対応アーキテクチャ（v3 要件）
 
-The v3 line is trying to answer one question. **Can a modular monolith stay a modular monolith, and
-still behave as a distributed system the moment a boundary is crossed?**
+v3 の線が答えようとしている問いは 1 つです。**モジュラーモノリスを維持したまま、境界を越えた瞬間に
+分散システムとして振る舞えるか。**
 
-Becoming microservices is not the premise. Taking that premise costs the speed of early development
-and the freedom to redraw a boundary that has not settled yet. What is aimed at is one sentence:
+マイクロサービス化を前提にはしません。前提にした時点で、初期開発の速度と、境界がまだ確定していない
+段階での作り直しやすさを失うためです。目指すのは次の一文です。
 
 > Modular Monolith First, Distributed Ready Architecture
 
-Principles:
+基本方針:
 
-- Early development runs at the speed of a modular monolith
-- Module boundaries are declared, not implied
-- Distribution is chosen per boundary and later, never for the whole system up front
-- In-process calls and service-to-service calls are expressed by the same contract
-- The failures specific to a distributed environment are treated as the normal case, not the exception
+- 開発初期はモジュラーモノリスとして高速に開発できる
+- モジュール境界は暗黙ではなく明示される
+- 分散化は全体ではなく、必要な境界のみを後から選べる
+- 同一プロセス通信とサービス間通信を同一の契約で扱う
+- 分散環境に特有の失敗を、例外ではなく前提として扱う
 
-## What this line changes, and what it does not
+## この線が変えるもの、変えないもの
 
-What does not change is the onion layering, and the fact that development starts in a single
-process. What changes is one thing: **a module stops referring to another module directly and goes
-through a contract (a Port)** — which reduces distribution to swapping the adapter behind that
-contract.
+変えないのはオニオンアーキテクチャの層構造と、単一プロセスで開発を始められることです。変えるのは
+**モジュールが他のモジュールを直接参照することをやめ、契約（Port）を経由させる**という 1 点で、
+分散化はその契約の裏側にある Adapter を差し替える操作に還元されます。
 
 ```mermaid
 flowchart TB
-    subgraph mono["Today — one process"]
-        A1["module A"] --> P1["Port (contract)"]
-        P1 --> L1["Local adapter"]
-        L1 --> B1["module B implementation"]
+    subgraph mono["今 — 単一プロセス"]
+        A1["module A"] --> P1["Port（契約）"]
+        P1 --> L1["Local Adapter"]
+        L1 --> B1["module B の実装"]
     end
 
-    subgraph dist["After extraction — two services"]
-        A2["module A"] --> P2["Port (same contract)"]
-        P2 --> R2["Remote adapter"]
+    subgraph dist["抽出後 — 2 サービス"]
+        A2["module A"] --> P2["Port（同じ契約）"]
+        P2 --> R2["Remote Adapter"]
         R2 -->|"gRPC / HTTP"| B2["service B"]
     end
 
-    mono -->|"swap the adapter, nothing else"| dist
+    mono -->|"Adapter の差し替えのみ"| dist
 ```
 
-The calling code is identical in both halves of the diagram. For as long as that holds, distributing
-a boundary is a deployment choice rather than a design change.
+呼び出し側のコードは、どちらの図でも変わりません。これが成立している限り、分散化は設計変更ではなく
+配置の選択になります。
 
-## Declaring the boundaries
+## 境界を宣言する
 
 ### Module Boundary Layer
 
-Turns inter-module dependencies from direct references into contracts, so a module can later be
-extracted into a service.
+モジュール間の依存を直接参照から契約経由へ変え、後からのサービス分離を可能にします。
 
 ```mermaid
 flowchart TB
-    caller["calling module"] --> port["Order Port (published contract)"]
-    port --> local["Local adapter (in-process call)"]
-    port --> remote["Remote adapter (gRPC / HTTP)"]
-    local --> impl["order module implementation"]
-    remote --> svc["order service"]
+    caller["呼び出し側モジュール"] --> port["Order Port（公開契約）"]
+    port --> local["Local Adapter（同一プロセス呼び出し）"]
+    port --> remote["Remote Adapter（gRPC / HTTP）"]
+    local --> impl["order モジュールの実装"]
+    remote --> svc["order サービス"]
 ```
 
-Required:
+必要なもの:
 
-- Module interface definition and module contract
-- Port / adapter structure
-- Dependency-direction constraints
-- A boundary between a module's published API and its internal one
+- Module Interface の定義と Module Contract
+- Port / Adapter 構造
+- 依存方向の制約
+- モジュールの公開 API と内部 API の境界制御
 
-**Where a boundary may be cut is not a new question this layer decides.** That the aggregate is the
-design unit is settled by the [domain README](../../internal/domain/README.md), and where an
-operation crossing an aggregate boundary belongs is settled by
-[ADR-0034 (commandservice-atomicity-criterion)](../adr/0034-commandservice-atomicity-criterion.md).
-What this line adds is only what those criteria mean once they are read as an extraction decision.
+**どこで切ってよいかは、この層が新しく決める問いではありません。** 集約が設計単位であることは
+[domain の README](../../internal/domain/README.md) が、集約境界を越える操作の置き場は
+[ADR-0034（commandservice-atomicity-criterion）](../adr/0034-commandservice-atomicity-criterion.md)
+が既に定めています。ここで足すのは、その基準を分離境界の判断へ読み替えたときの 2 点だけです。
 
-- **A consistency requirement is a veto, not a selection criterion.** Invariants that must hold at
-  the same instant cannot be cut through. But that decides only where a cut is *forbidden*; the
-  reason to cut comes from elsewhere — divergent rates of change, team ownership, asymmetric load,
-  a fault-isolation requirement. Running on the veto alone permits splits that add round trips and
-  buy nothing.
-- **A condition that is only read carries the same veto.** A guard that reads another aggregate to
-  decide whether an operation is allowed writes nothing, so a write-atomicity criterion never fires
-  on it — yet under READ COMMITTED the condition it read is not held. **"No write crosses the
-  boundary" is not proof that the boundary is safe to cut.**
+- **整合性の要求は拒否権であって、選定基準ではありません。** 同時に成り立たねばならない不変条件を
+  跨いで切ることはできません。ただしこれが決めるのは「切ってはいけない場所」だけです。切る理由は
+  別の軸 — 変更頻度の差、チーム所有、負荷特性の非対称、障害隔離の要求 — から来ます。拒否権だけを
+  基準にすると、利得が無いのに往復だけが増える分割を許します。
+- **読み取りだけの条件も同じ拒否権を持ちます。** 他の集約を読んで可否を決める guard は書き込みを
+  跨がないため書き込みの原子性基準に掛かりませんが、READ COMMITTED では読んだ条件が保持されません。
+  **「書き込みが跨がない」ことは、安全に切れることの証明にはなりません。**
 
 ### Internal Communication Layer
 
-Switches between in-process and distributed communication transparently from the caller's side.
+同一プロセス通信と分散通信を、呼び出し側から見て透過的に切り替えます。
 
-| Transport | Used for | What the call actually is |
+| Transport | 用途 | 呼び出しの実体 |
 | --- | --- | --- |
-| Local | Same process | A function call |
-| HTTP | After extraction (interop with existing systems) | An HTTP request |
-| gRPC | After extraction (default for internal traffic) | A gRPC call |
+| Local | 同一プロセス | 関数呼び出し |
+| HTTP | サービス分離後（既存資産との接続） | HTTP リクエスト |
+| gRPC | サービス分離後（内部通信の既定） | gRPC 呼び出し |
 
-Required:
+必要なもの:
 
-- A transport interface with those three implementations behind it
-- Request / response DTOs
-- Error mapping that preserves meaning across transports
+- Transport Interface と、その上に載る 3 実装
+- Request / Response DTO
+- Transport 間で意味を保つ Error Mapping
 
 ### Contract Management
 
-Keeps inter-module and inter-service contracts in a form where a breaking change is detected rather
-than discovered.
+モジュール間・サービス間の契約を、破壊的変更を検出できる形で維持します。
 
-Required:
+必要なもの:
 
-- OpenAPI contract / gRPC proto contract / event schema contract
-- API versioning and breaking-change detection
-- Contract tests
+- OpenAPI Contract / gRPC Proto Contract / Event Schema Contract
+- API バージョニングと Breaking Change Detection
+- Contract Test
 
-The subjects are request, response, error and event payload — each a surface where "one side can be
-updated alone" is the shape the incident takes.
+対象は Request・Response・Error・Event Payload の 4 つで、いずれも「片側だけ更新できてしまう」
+ことが事故になる面です。
 
 ### Database Boundary Support
 
-Enables a staged move toward database-per-module. Whether the databases are actually split can be
-decided later; **who owns which table** cannot — a boundary that was never assigned cannot be cut
-afterwards.
+Database per Module への段階的な移行を可能にします。データベースを分けるかどうかは後で決められる
+一方、**誰がどのテーブルを所有するか**は先に決まっていなければ後から分けられません。
 
-Required:
+必要なもの:
 
-- Per-module schema and migration boundary
-- DB ownership rules
-- Control over cross-module queries
-- The read-model pattern
+- モジュール単位のスキーマと Migration Boundary
+- DB Ownership Rule
+- モジュールを跨ぐクエリの制御
+- Read Model パターン
 
-## Keeping asynchronous work consistent
+## 非同期の一貫性を保つ
 
 ### Domain Event Foundation
 
-The substrate for asynchronous collaboration across boundaries.
+分散環境における非同期連携の基盤です。
 
 ```json
 {
@@ -141,260 +134,254 @@ The substrate for asynchronous collaboration across boundaries.
 }
 ```
 
-Required:
+必要なもの:
 
-- Domain event definitions and an event envelope
-- Event versioning
-- Event publisher / consumer / handler
-- Retry handling and a dead letter queue
+- Domain Event の定義と Event Envelope
+- Event Versioning
+- Event Publisher / Consumer / Handler
+- リトライ処理と Dead Letter Queue
 
 ### Outbox Pattern Enhancement
 
-Guarantees that a database update and the event it announces agree. The transactional outbox
-introduced in v2 is extended into the path that carries inter-module events.
+DB 更新とイベント発行の整合性を保証します（v2 で導入済みの Transactional Outbox を、モジュール間
+イベントを運ぶ経路として拡張します）。
 
-Required:
+必要なもの:
 
-- Outbox table and publisher worker
-- Delivery-status and retry management
-- A recovery route for failures
+- Outbox テーブルと Publisher Worker
+- 配信ステータス管理とリトライ管理
+- 失敗からの復旧手段
 
 ### Inbox Pattern
 
-Stops a duplicated event from being applied twice on the receiving side. What an outbox guarantees is
-*at least once*; a receiver built on the assumption that **the same event will arrive again** is the
-other half that makes the pair behave as exactly-once.
+受信側でイベントの重複処理を防ぎます。Outbox が保証するのは「最低 1 回届く」ことであり、
+**同じイベントが 2 回届く**前提の受け口が対になって初めて実質的な exactly-once になります。
 
 ```mermaid
 flowchart TB
-    recv["event received"] --> seen{"is event_id already recorded?"}
-    seen -->|"yes"| skip["finish without applying"]
-    seen -->|"no"| exec["apply in the same transaction"]
-    exec --> record["record event_id"]
+    recv["イベント受信"] --> seen{"event_id は記録済みか"}
+    seen -->|"はい"| skip["適用せず終了"]
+    seen -->|"いいえ"| exec["同一トランザクションで適用"]
+    exec --> record["event_id を記録"]
 ```
 
-Required:
+必要なもの:
 
-- Received-event management and event-ID storage
-- Duplicate detection
+- 受信イベントの管理と Event ID の保存
+- 重複検出
 
 ### Idempotency Layer
 
-Provides retry tolerance across the three surfaces that need it: API, command, and event handler.
+分散環境におけるリトライ耐性を、API・Command・Event Handler の 3 面に対して提供します。
 
-Required:
+必要なもの:
 
-- Idempotency keys and request deduplication
-- Response caching
-- Operation-status management
+- Idempotency Key とリクエストの重複排除
+- レスポンスキャッシュ
+- 操作ステータスの管理
 
 ### Saga / Distributed Transaction
 
-Handles a business transaction that spans boundaries through compensation rather than two-phase
-commit.
+境界を跨いだ業務トランザクションを、2 相コミットではなく補償で扱います。
 
 ```mermaid
 flowchart TB
-    s1["Create order"] --> s2["Reserve inventory"]
-    s2 --> s3["Take payment"]
-    s3 -->|"success"| done["Complete"]
-    s3 -->|"failure"| c2["Release the inventory reservation"]
-    c2 --> c1["Cancel the order"]
-    c1 --> failed["Compensated"]
+    s1["注文を作成"] --> s2["在庫を引き当て"]
+    s2 --> s3["決済"]
+    s3 -->|"成功"| done["完了"]
+    s3 -->|"失敗"| c2["在庫の引き当てを解放"]
+    c2 --> c1["注文を取り消し"]
+    c1 --> failed["補償完了"]
 ```
 
-Required:
+必要なもの:
 
-- Saga state machine and coordinator
-- Compensating actions
-- Timeout handling and failure recovery
+- Saga State Machine と Coordinator
+- 補償アクション
+- タイムアウト処理と失敗からの復旧
 
-## Separating reads
+## 参照を分離する
 
 ### Query Separation Layer
 
-Once boundaries are distributed, a join across several modules can no longer be written. That
-constraint is answered structurally on the read side.
+分散環境では、複数モジュールを跨ぐ結合クエリが書けなくなります。その制約を、参照側の構造で解決
+します。
 
-Required:
+必要なもの:
 
-- Query service and read model
-- Projections / materialized views
-- Positioned as the continuation of the lightweight CQRS introduced in v2
+- Query Service と Read Model
+- Projection / Materialized View
+- v2 で導入した軽量 CQRS の延長線としての位置づけ
 
-## Observing what is distributed
+## 分散を観測する
 
 ### Distributed Context Management
 
-Keeps a single request traceable after it has crossed process boundaries.
+1 つのリクエストが複数のプロセスを跨いだあとも追跡可能であることを保証します。
 
-Required:
+必要なもの:
 
-- Trace ID / correlation ID / request ID
-- Context propagation
-- W3C Trace Context support
+- Trace ID / Correlation ID / Request ID
+- コンテキストの伝播
+- W3C Trace Context 対応
 
 ### Distributed Logging
 
-Makes a flow that spans services reconstructable from the logs alone.
+複数サービスにまたがる処理を、ログ側から再構成できるようにします。
 
-Required fields:
+必須フィールド:
 
-| Field | Meaning |
+| フィールド | 意味 |
 | --- | --- |
-| `service` | Which service emitted it |
-| `module` | Which module inside that service |
-| `trace_id` | Which request it belongs to |
-| `span_id` | Which step within it |
-| `event` | What happened |
+| `service` | どのサービスが出したか |
+| `module` | サービス内のどのモジュールか |
+| `trace_id` | どのリクエストに属するか |
+| `span_id` | その中のどの処理か |
+| `event` | 何が起きたか |
 
-Required:
+必要なもの:
 
-- Structured logging with trace integration
-- Event logging
+- 構造化ログとトレース連携
+- イベントログ
 
-## Communicating on the assumption of failure
+## 失敗を前提に通信する
 
 ### Resilience Layer
 
-Communication control that assumes the network fails. Every failure an in-process call never had to
-consider becomes possible the moment the boundary is crossed.
+ネットワーク障害を前提とした通信制御です。同一プロセス呼び出しでは考えなくてよかった失敗が、
+境界を越えた瞬間にすべて発生し得ます。
 
-Required:
+必要なもの:
 
-- Timeout, retry, exponential backoff, jitter
-- Circuit breaker, bulkhead, rate limit
+- タイムアウト、リトライ、指数バックオフ、ジッター
+- Circuit Breaker、Bulkhead、Rate Limit
 
 ### Service Discovery Support
 
-Manages where a service actually is, without binding the answer to one runtime.
+サービス化後の接続先管理を、実行環境に縛られない形で扱います。
 
-Required:
+必要なもの:
 
-- A service resolver interface
-- DNS discovery, Kubernetes services, and cloud discovery behind it
+- Service Resolver Interface
+- DNS Discovery、Kubernetes Service、クラウドの Discovery への対応
 
 ### Configuration Management
 
-Manages configuration for several modules and services, split along the same boundaries.
+複数モジュール・複数サービスの設定を、境界ごとに分離した形で管理します。
 
-Required:
+必要なもの:
 
-- Module config and service config
-- A secret-provider interface
-- Environment separation and dynamic configuration support
+- Module Config / Service Config
+- Secret Provider Interface
+- 環境分離と Dynamic Config への対応
 
-## Drawing the trust boundaries
+## 信頼境界を張る
 
 ### Authentication / Authorization Boundary
 
-Service-to-service authentication and authorization. What a calling convention was enough for inside
-one process becomes, across a boundary, the problem of **proving who the caller is**.
+サービス間の認証・認可です。単一プロセスでは呼び出し規約で足りていたものが、境界を越えると
+**呼び出し元が誰かを証明する**必要のある問題に変わります。
 
-Required:
+必要なもの:
 
-- Service identity and service-to-service authentication
-- JWT validation and JWKS
-- Permission propagation
+- Service Identity と Service-to-Service Authentication
+- JWT 検証と JWKS
+- 権限の伝播
 
 ### Distributed Security
 
-The security boundary of a distributed deployment.
+分散環境でのセキュリティ境界です。
 
-Required:
+必要なもの:
 
-- Room to adopt mTLS
-- Credential rotation and secret injection
-- Network-policy support
+- mTLS を採り得る余地
+- Credential Rotation と Secret Injection
+- Network Policy への対応
 
-## Verifying and migrating
+## 検証と移行
 
 ### Distributed Testing
 
-Quality assurance for a distributed configuration.
+分散構成での品質保証です。
 
-Required:
+必要なもの:
 
-- Contract tests
-- An integration-test environment, and tests spanning several modules
-- Event tests and failure-scenario tests
+- Contract Test
+- 統合テスト環境と複数モジュールにまたがるテスト
+- イベントのテストと、障害シナリオのテスト
 
 ### Migration Support
 
-The means of distributing a modular monolith in stages. Whether everything else in this line is
-actually usable is decided here.
+モジュラーモノリスから段階的に分散化するための手段です。この線の成果物が実際に使えるかどうかは、
+最終的にここで決まります。
 
-Required:
+必要なもの:
 
-- Support for the strangler pattern
-- Module extraction and adapter swap
-- Traffic routing and feature flags
+- Strangler パターンへの対応
+- Module Extraction と Adapter Swap
+- トラフィックのルーティングと Feature Flag
 
 ### Documentation / AI Context
 
-Keeps boundaries that have grown complex readable by humans and agents alike.
+複雑化した境界を、人間と AI の双方が読める状態に保ちます。
 
-Required:
+必要なもの:
 
-- Module map and dependency graph
-- Contract documentation and event catalog
-- ADRs and boundary rules
+- Module Map と Dependency Graph
+- Contract Documentation と Event Catalog
+- ADR と境界ルール
 
-## Priority and blast radius
+## 優先度と影響範囲
 
-The three tiers are separated by **how recoverable a late decision is**, not by difficulty. What sits
-in the core is what would force every existing call site to be rewritten if it were added afterwards.
-The candidates are what can be added when the need appears without disturbing the structure already
-there.
+3 段は難易度ではなく**取り返しのつきやすさ**で分けています。コアに置いたものは、後から入れると既存の
+呼び出し側をすべて書き換えることになるものです。追加候補は、必要になった時点で足しても既存の構造を
+壊さないものです。
 
-The *Today* column is the comparison against the current implementation: **present** means it exists
-as of v2 and extension is enough, **partial** means the substrate is there but falls short once
-boundaries are distributed, and **absent** means there is not yet a place for it.
+「現状」列は現在の実装との突き合わせで、**既存**＝ v2 までに入っており拡張で足りるもの、**一部**＝
+土台はあるが分散前提では不足するもの、**新規**＝置き場所ごと無いものを表します。
 
-### v3 core (required)
+### v3 コア（必須）
 
-| Item | Purpose | Layers affected | Today |
+| 項目 | 目的 | 影響層 | 現状 |
 | --- | --- | --- | --- |
-| Module Boundary Layer | Stop direct inter-module references; make the boundary a declaration | The layout of `internal/**` itself, `internal/architest`, the depguard configuration | Absent (layer boundaries exist; module boundaries do not) |
-| Port / Adapter | Create the seat where an implementation can be swapped behind a contract | `internal/usecase/boundary/**` (ports), `internal/infrastructure/**` (adapters), `internal/di/module/**` (selection) | Partial (already the shape for external dependencies, not between modules) |
-| Contract Management | Make a breaking change to a contract detectable | `openapi/**`, new proto definitions, `.github/workflows/**` | Partial (OpenAPI exists; inter-module contracts and compatibility checks do not) |
-| Internal Communication Layer | Express in-process and distributed calls with one contract | `internal/infrastructure/**` (transports), `internal/controller/**` (receiving side), `internal/apperror` and `pkg/xerrors` (error mapping) | Absent |
-| Domain Event | Fix the unit and vocabulary of asynchronous collaboration | `internal/domain/**` (event definitions), `internal/usecase/boundary/publisher`, `internal/infrastructure/queue/**`, `database/migrations` | Partial (`publisher.Message` already carries type + version, a dedup key, and `traceparent`; the domain-side definitions and a catalog do not exist) |
-| Outbox | Guarantee that a DB update and its event agree | `internal/usecase/outbox`, `internal/controller/outbox`, `database/**` | Present (extended into the path carrying inter-module events) |
-| Inbox | Stop a duplicated event from being applied twice | A new receiving-side usecase, `internal/controller/worker`, `internal/controller/httpstack/idempotency`, `database/migrations` | Partial (HTTP delivery is deduplicated through `Idempotency-Key`; nothing records it as a received event) |
-| Idempotency | Extend retry tolerance beyond the API surface | `internal/usecase/idempotency`, `internal/usecase/boundary/idempotency`, `internal/controller/httpstack/idempotency` | Partial (API surface exists; command and event-handler surfaces do not) |
-| Distributed Context | Keep one request traceable across processes | `internal/observability`, `internal/logging`, `internal/controller/httpstack`, the transport implementations | Partial (`service.name` and `traceparent` propagation exist; the `module` axis does not) |
-| Contract Test | Stop a contract mismatch in CI | `internal/integration`, `.github/workflows/**` | Absent |
+| Module Boundary Layer | モジュール間の直接参照をやめ、境界を宣言に変える | `internal/**` の配置そのもの、`internal/architest`、depguard 設定 | 新規（レイヤ境界は既にあるが、モジュール境界は無い） |
+| Port / Adapter | 契約の裏で実装を差し替えられる座を作る | `internal/usecase/boundary/**`（Port）、`internal/infrastructure/**`（Adapter）、`internal/di/module/**`（選択） | 一部（外部依存には既にこの形。モジュール間には無い） |
+| Contract Management | 契約の破壊的変更を検出可能にする | `openapi/**`、新設の proto、`.github/workflows/**` | 一部（OpenAPI は既にあるが、モジュール間契約と互換検査は無い） |
+| Internal Communication Layer | 同一プロセスと分散を同一契約で扱う | `internal/infrastructure/**`（transport 実装）、`internal/controller/**`（受け口）、`internal/apperror` と `pkg/xerrors`（Error Mapping） | 新規 |
+| Domain Event | 非同期連携の単位と語彙を定める | `internal/domain/**`（イベント定義）、`internal/usecase/boundary/publisher`、`internal/infrastructure/queue/**`、`database/migrations` | 一部（`publisher.Message` が種別 + version・dedup キー・`traceparent` 伝搬を既に持つ。domain 側のイベント定義とカタログが無い） |
+| Outbox | DB 更新とイベント発行の整合を保証する | `internal/usecase/outbox`、`internal/controller/outbox`、`database/**` | 既存（モジュール間イベントを運ぶ経路として拡張） |
+| Inbox | 受信側で重複適用を防ぐ | 新設の受信側 usecase、`internal/controller/worker`、`internal/controller/httpstack/idempotency`、`database/migrations` | 一部（HTTP 受信は `Idempotency-Key` 経路で重複排除される。受信イベントとしての記録が無い） |
+| Idempotency | リトライ耐性を API 以外にも広げる | `internal/usecase/idempotency`、`internal/usecase/boundary/idempotency`、`internal/controller/httpstack/idempotency` | 一部（API 面は既存。Command と Event Handler 面が未対応） |
+| Distributed Context | 1 リクエストをプロセスを跨いで追跡可能にする | `internal/observability`、`internal/logging`、`internal/controller/httpstack`、transport 実装 | 一部（`service.name` と `traceparent` 伝搬は既存。`module` 軸が無い） |
+| Contract Test | 契約の食い違いを CI で止める | `internal/integration`、`.github/workflows/**` | 新規 |
 
-### v3 candidates
+### v3 追加候補
 
-| Item | Purpose | Layers affected | Today |
+| 項目 | 目的 | 影響層 | 現状 |
 | --- | --- | --- | --- |
-| Saga | Handle a cross-boundary business transaction by compensation | `internal/domain/**` (state machine), `internal/usecase/**` (coordinator), `database/migrations` | Absent |
-| CQRS Read Model | Answer structurally the joins that distribution takes away | `internal/usecase/boundary/**`, `internal/infrastructure/rdb`, `database/dml/query_service` | Partial (lightweight CQRS exists; there is no maintained projection / read model) |
-| Database Boundary | Allow a staged move to database-per-module | `database/migrations`, `database/dml/**`, `sqlc.yaml`, `internal/infrastructure/rdb` | Absent (one schema, one owner today) |
-| Circuit Breaker | Give up early on a dependency that is down | `pkg/**` (beside `retry` / `backoff`), `internal/observability` (outbound transport), `internal/infrastructure/webapi/**` | Absent (timeout / retry / backoff exist) |
-| Service Discovery | Resolve where a service is, without binding to one runtime | A new boundary, `internal/infrastructure/**`, `internal/config` | Absent |
-| Service Authentication | Prove who the caller is across a boundary | `internal/usecase/boundary/auth` and `authz`, `internal/infrastructure/auth`, `internal/controller/httpstack` | Partial (end-user authn / authz exist; the service's own identity does not) |
+| Saga | 境界を跨ぐ業務トランザクションを補償で扱う | `internal/domain/**`（状態機械）、`internal/usecase/**`（コーディネータ）、`database/migrations` | 新規 |
+| CQRS Read Model | 分散後に書けなくなる結合参照を構造で解く | `internal/usecase/boundary/**`、`internal/infrastructure/rdb`、`database/dml/query_service` | 一部（軽量 CQRS は既存。Projection と Read Model の更新機構が無い） |
+| Database Boundary | Database per Module へ段階的に移れるようにする | `database/migrations`、`database/dml/**`、`sqlc.yaml`、`internal/infrastructure/rdb` | 新規（現在は単一スキーマ・単一所有） |
+| Circuit Breaker | 落ちている相手への呼び出しを早く諦める | `pkg/**`（`retry` / `backoff` の隣）、`internal/observability`（外向き transport）、`internal/infrastructure/webapi/**` | 新規（timeout / retry / backoff は既存） |
+| Service Discovery | 接続先解決を実行環境に縛られない形で持つ | 新設の boundary、`internal/infrastructure/**`、`internal/config` | 新規 |
+| Service Authentication | 呼び出し元が誰かを境界越しに証明する | `internal/usecase/boundary/auth` と `authz`、`internal/infrastructure/auth`、`internal/controller/httpstack` | 一部（利用者の認証・認可は既存。サービス自身の identity が無い） |
 
-### Owned by system-boilerplate (outside this line)
+### system-boilerplate の担当（この線の範囲外）
 
-| Item | Purpose | Contact point in this repository |
+| 項目 | 目的 | このリポジトリでの接点 |
 | --- | --- | --- |
-| Kubernetes / deployment patterns | Decide the runtime platform and how it is deployed | Only the skeletons in `docker/**` and `.github/workflows/deploy-app.yaml` |
-| Service mesh / mTLS | Encrypt and authenticate the transport at the infrastructure layer | The application only leaves room to adopt it (see *Distributed Security*) |
-| Dynamic config | Change configuration without a restart | `internal/config` stays immutable and fail-fast |
-| Chaos engineering | Prove resilience by injecting failure | This line stops at failure-scenario tests (see *Distributed Testing*) |
+| Kubernetes / デプロイパターン | 実行基盤とデプロイ方式を決める | `docker/**` と `.github/workflows/deploy-app.yaml` の骨組みまで |
+| Service Mesh / mTLS | 通信経路の暗号化と認証をインフラ側で担う | アプリ側は「採り得る余地」を残すのみ（Distributed Security 参照） |
+| Dynamic Config | 再起動なしの設定変更を提供する | `internal/config` は immutable / fail-fast のままにする |
+| Chaos Engineering | 障害注入で耐性を実証する | 障害シナリオテスト（Distributed Testing）までがこの線の担当 |
 
-The dividing rule is one sentence: **what the application has to express in its own code belongs to
-this line; what the runtime platform supplies belongs to system-boilerplate.** Anything handled in
-both places leaves a setting whose authoritative side nobody can name.
+境界の引き方は 1 つの原則です。**アプリケーションが自分のコードで表現しなければならないものはこの線、
+実行基盤が提供するものは system-boilerplate**。両方で扱うと、どちらが正なのか分からない設定が残ります。
 
-## Where this line is finished
+## 到達点
 
-What v3 offers is not a microservice template. It is **an architectural substrate that keeps a
-modular monolith intact while allowing exactly the parts that need it to become genuinely
-distributed**.
+v3 が提供するのは「マイクロサービス用テンプレート」ではありません。**モジュラーモノリスを維持
+しながら、必要な部分だけを純分散化できるアーキテクチャ基盤**です。
 
-Choosing not to distribute has to remain valid all the way through, and choosing to distribute has
-to cost no redesign. This line is complete when both hold at the same time.
+分散化しないという選択が最後まで有効であり続けること、そして分散化を選んだときに設計をやり直さずに
+済むこと。その両方が同時に成り立っている状態を、この線の完了とします。

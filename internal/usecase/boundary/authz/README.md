@@ -1,32 +1,32 @@
 # authz
 
-Provides interfaces and value objects for authorization (authz) — the counterpart to authentication (`auth`).
+認可（authz）のためのインターフェースと値オブジェクトを提供します。認証（`auth`）と対になる存在です。
 
 ## Authorizer
 
-`Authorize(ctx, *auth.Authn, Action, *Resource) error` decides whether the authenticated subject may perform `action` on `resource`. Returns `nil` to allow, or an error wrapping `apperror.ErrPermissionDenied` (`ErrForbidden`, HTTP 403) to deny.
+`Authorize(ctx, *auth.Authn, Action, *Resource) error` は、認証主体が `resource` に対して `action` を実行してよいかを判定します。許可する場合は `nil`、拒否する場合は `apperror.ErrPermissionDenied` をラップしたエラー（`ErrForbidden`、HTTP 403）を返します。
 
-## Types
+## 型
 
-- `Action` — the operation being authorized (e.g. `ActionUserDelete` = `"user:delete"`).
-- `Resource` — the target resource. Carries `Kind()` and an optional `OwnerID()`, so ownership-based (object-level) decisions are expressible.
+- `Action` — 認可対象の操作（例: `ActionUserDelete` = `"user:delete"`）。
+- `Resource` — 対象リソース。`Kind()` と任意の `OwnerID()` を持ち、所有権ベース（オブジェクトレベル）の判定を表現できます。
 
-## Errors
+## エラー
 
-|Error|Description|
+|エラー|説明|
 |---|---|
-|`ErrForbidden`|Authorization denied (wraps `apperror.ErrPermissionDenied`, HTTP 403)|
+|`ErrForbidden`|認可拒否（`apperror.ErrPermissionDenied` をラップ、HTTP 403）|
 
-## Design Intent
+## 設計意図
 
-- Make the authorization decision a **swappable policy (PDP)** rather than scattering ad-hoc checks across usecases.
-- Pass the full `auth.Authn` (subject / scopes / claims) plus the target `Resource`, so both RBAC (roles from claims) and ownership (subject == OwnerID) models are expressible. This is why this `authz` boundary intentionally depends on the sibling `auth` boundary (the only inter-boundary dependency in this layer) — the decision needs the whole authenticated subject, not just its id.
+- 認可判断を usecase 各所に散らさず、**差し替え可能なポリシー（PDP）** として表現する。
+- `auth.Authn`（subject / scopes / claims）と対象 `Resource` を渡すことで、RBAC（claims からロール）と所有権（subject == OwnerID）の両モデルを表現可能にする。この `authz` boundary が兄弟の `auth` boundary に意図的に依存する（本層で唯一の boundary 間依存）のはこのためで、判断には id だけでなく認証主体全体が必要になる。
 
-### Convention: how a usecase receives the caller
+### 規約: usecase が呼出元をどう受け取るか
 
-- A usecase method that performs **object-level authorization** (acts on a resource named by the request, e.g. `GetUser` / `UpdateUser` / `DeleteUser` keyed by a path `user_id`) takes the full `*auth.Authn` and calls `Authorizer.Authorize(...)` first.
-- A usecase method that only needs the **caller's own identity** as data (e.g. `CreateUser`, which acts on the authenticated user itself) takes a scalar `uuid.UUID` extracted in the controller (`authn.UserID()`) instead — there is no separate object to authorize against.
+- リクエストで指定されたリソースに対する **オブジェクトレベル認可** を行う usecase メソッド（パスの `user_id` を対象にする `GetUser` / `UpdateUser` / `DeleteUser` 等）は、`*auth.Authn` 全体を受け取り先頭で `Authorizer.Authorize(...)` を呼ぶ。
+- **呼出元自身の identity** のみをデータとして必要とするメソッド（認証ユーザー自身に作用する `CreateUser` 等）は、controller 側で抽出したスカラ `uuid.UUID`（`authn.UserID()`）を受け取る — 認可対象となる別オブジェクトが無いため。
 
-## Implementation
+## 実装
 
-`internal/infrastructure/authz/` provides implementations of the `Authorizer` interface. The default `allowall` implementation grants everything and is restricted to non-production environments.
+`internal/infrastructure/authz/` が `Authorizer` の実装を提供します。デフォルトの `allowall` 実装は全許可であり、本番以外の環境に限定されます。

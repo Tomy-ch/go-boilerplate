@@ -5,80 +5,56 @@ deciders: [maintainers]
 tags: [di, architecture]
 ---
 
-# ADR-0041: Contain fx behind a neutral DI abstraction (Registrar / Shutdowner)
+# ADR-0041: ニュートラルな DI 抽象（Registrar / Shutdowner）の背後に fx を封じ込める
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-[ADR-0040](0040-uber-fx-di.md) adopts Uber Fx as the DI and lifecycle container.
-Without an explicit containment boundary, `fx.Lifecycle` and `fx.Shutdowner` spread
-across all layers: the HTTP server, observability components, workers, and the outbox
-relay would all import `go.uber.org/fx` directly. This couples inner layers to the
-framework, violates the onion architecture dependency rule (see
-[ADR-0002](0002-onion-architecture.md)), and makes unit tests cumbersome because Fx
-types require a running container.
+[ADR-0040](0040-uber-fx-di.md) は DI およびライフサイクルコンテナとして Uber Fx を採用している。
+明示的な封じ込め境界がなければ、`fx.Lifecycle` と `fx.Shutdowner` がすべてのレイヤーに広がる。HTTP サーバー、オブザーバビリティコンポーネント、ワーカー、アウトボックスリレーが直接 `go.uber.org/fx` をインポートすることになる。これにより内側のレイヤーがフレームワークに結合し、オニオンアーキテクチャの依存関係ルール（[ADR-0002](0002-onion-architecture.md) を参照）に違反し、Fx の型がコンテナの起動を必要とするためユニットテストが煩雑になる。
 
-The same replaceability principle that governs third-party library selection
-([ADR-0001](0001-avoid-lock-in.md)) applies to the DI framework itself: fx should be
-swappable without touching components that merely need to register start/stop hooks or
-trigger a graceful shutdown.
+サードパーティライブラリの選定を規定するのと同じ置き換え可能性の原則（[ADR-0001](0001-avoid-lock-in.md)）が DI フレームワーク自体にも適用される。fx は、単に起動・停止フックを登録したりグレースフルシャットダウンをトリガーしたりするだけのコンポーネントに触れることなく、交換可能であるべきだ。
 
-## Decision
+## 決定
 
-Define two narrow, neutral interfaces in dedicated packages within `internal/di/`:
+`internal/di/` 内の専用パッケージに 2 つの狭いニュートラルなインターフェースを定義する。
 
-- **`lifecycle.Registrar`** — wraps `fx.Lifecycle`, centralizing Start/Stop hook
-  registration. All components (HTTP server, TracerProvider, workers, DB connection,
-  etc.) receive `Registrar` rather than `fx.Lifecycle`.
-- **`shutdowner.Shutdowner`** — wraps `fx.Shutdowner`, providing a typed `Shutdown()`
-  method. Application code that needs to trigger a programmatic stop depends on this
-  interface, not on `fx.Shutdowner` directly.
+- **`lifecycle.Registrar`** — `fx.Lifecycle` をラップし、Start/Stop フックの登録を集約する。すべてのコンポーネント（HTTP サーバー、TracerProvider、ワーカー、DB コネクションなど）は `fx.Lifecycle` ではなく `Registrar` を受け取る。
+- **`shutdowner.Shutdowner`** — `fx.Shutdowner` をラップし、型付きの `Shutdown()` メソッドを提供する。プログラム的な停止をトリガーする必要があるアプリケーションコードは、`fx.Shutdowner` ではなくこのインターフェースに依存する。
 
-Both wrappers are implemented in the DI layer; the fx dependency is confined there.
-Inner layers reference only the interface types.
+両方のラッパーは DI レイヤーに実装され、fx への依存はそこに閉じ込められる。内側のレイヤーはインターフェース型のみを参照する。
 
-`lifecycle` also provides `SupervisedRunner`, a shared primitive that standardizes the
-"start a background goroutine, cancel it on stop, wait for drain" pattern used by
-workers, jobs, and the outbox relay — removing duplicated Start/Stop plumbing across
-those hooks.
+`lifecycle` は `SupervisedRunner` も提供する。これは「バックグラウンドのゴルーチンを起動し、停止時にキャンセルし、ドレインを待つ」パターンを標準化する共有プリミティブで、ワーカー・ジョブ・アウトボックスリレー全体で重複していた Start/Stop の配管を排除する。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- The fx dependency is confined to the DI layer; no inner layer imports
-  `go.uber.org/fx` for lifecycle or shutdown purposes.
-- Tests can inject a no-op `Registrar` stub without standing up an `fx.App`.
-- `SupervisedRunner` eliminates copy-pasted Start/Stop goroutine plumbing.
-- Swapping the DI framework requires changing only the DI layer implementations, not
-  every component that registers hooks.
+- fx への依存は DI レイヤーに封じ込められ、内側のレイヤーはライフサイクルやシャットダウン目的で `go.uber.org/fx` をインポートしない。
+- テストは `fx.App` を起動せずに no-op の `Registrar` スタブを注入できる。
+- `SupervisedRunner` により、コピー&ペーストされていた Start/Stop のゴルーチン配管が排除される。
+- DI フレームワークの交換はフックを登録するすべてのコンポーネントではなく、DI レイヤーの実装変更だけで済む。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Two additional thin wrapper packages exist solely to contain a framework type; the
-  indirection is real even if the implementation is trivial.
-- Lifecycle hook execution in integration tests still requires starting and stopping an
-  `fx.App` (the abstraction does not remove that need when hooks must fire).
+- フレームワーク型を封じ込めるためだけに 2 つの薄いラッパーパッケージが存在する。実装が些細なものであっても、間接参照は現実のコストである。
+- インテグレーションテストでフックを発火させる必要がある場合は、依然として `fx.App` の起動と停止が必要である（抽象化はそのニーズを取り除かない）。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Use fx.Lifecycle and fx.Shutdowner directly
+### fx.Lifecycle と fx.Shutdowner を直接使用する
 
-Each component imports `go.uber.org/fx` for lifecycle registration and shutdown
-signalling. Rejected: fx types propagate into every layer, violating the containment
-principle and making unit tests dependent on the container.
+各コンポーネントがライフサイクル登録とシャットダウンシグナルのために `go.uber.org/fx` をインポートする。却下: fx の型がすべてのレイヤーに伝播し、封じ込め原則に違反し、ユニットテストがコンテナに依存することになる。
 
-### Single global hook registry (not DI-injected)
+### 単一グローバルフックレジストリ（DI 注入なし）
 
-A package-level registry avoids the fx import but introduces global mutable state,
-complicating parallel tests and making hook order implicit. Rejected in favor of an
-explicit, injected interface.
+パッケージレベルのレジストリにより fx のインポートは回避できるが、グローバルなミュータブルな状態が導入され、並列テストが複雑になり、フックの順序が暗黙的になる。明示的な注入インターフェースを優先するため却下。
 
-## Notes
+## 補足
 
-- Parent decision: [ADR-0040](0040-uber-fx-di.md) (adopting Uber Fx).
-- Lock-in avoidance principle: [ADR-0001](0001-avoid-lock-in.md).
-- Source: `internal/di/lifecycle/README.md`, `internal/di/shutdowner/README.md`.
+- 親となる決定: [ADR-0040](0040-uber-fx-di.md)（Uber Fx の採用）。
+- ロックイン回避原則: [ADR-0001](0001-avoid-lock-in.md)。
+- 出典: `internal/di/lifecycle/README.md`、`internal/di/shutdowner/README.md`。

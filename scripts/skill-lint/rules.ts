@@ -7,13 +7,9 @@ import path from "node:path";
 import {
   CONFIG_FILE_RE,
   IGNORE_DIRECTIVE,
-  type Heading, // doc-pair:line
-  compareHeadingStructure, // doc-pair:line
   eachLineOutsideFence,
-  extractHeadings, // doc-pair:line
   extractInlineCode,
   extractMakeTargets,
-  hasTranslationNote, // doc-pair:line
   onlyIn,
   parseFrontmatterKeys,
   splitFrontmatter,
@@ -71,76 +67,6 @@ export function checkFrontmatter(rel: string, content: string, expectedName: str
   return findings;
 }
 
-// doc-pair:begin
-/** 見出しを「L12 ## 見出し」の形で表す。差分のどちら側が欠けているかを読めるようにする。 */
-function describeHeading(heading: Heading | null): string {
-  return heading ? `L${heading.lineNo} ${"#".repeat(heading.level)} ${heading.text}` : "（無し）";
-}
-
-/**
- * 対訳が canonical と 1:1 であることを検査する。`translation` が null なら対訳が存在しない。
- *
- * @remarks
- * 見るのは frontmatter の不在・翻訳注記・見出し構造の 3 点です。本文の一致までは求めません。
- * 対訳は逐語コピーではないので、そこまで求めると意図した訳し分けを違反として弾くだけになります。
- */
-export function checkTranslationPair(
-  canonicalRel: string,
-  translationRel: string,
-  canonicalContent: string,
-  translation: string | null,
-): Finding[] {
-  if (translation === null) {
-    return [
-      {
-        file: canonicalRel,
-        line: 1,
-        rule: "translation",
-        message: `対訳 \`${path.basename(translationRel)}\` がありません`,
-      },
-    ];
-  }
-
-  const findings: Finding[] = [];
-
-  if (splitFrontmatter(translation)) {
-    findings.push({
-      file: translationRel,
-      line: 1,
-      rule: "translation",
-      message: "対訳に frontmatter があります（スキルとして読み込まれるのは canonical 側だけです）",
-    });
-  }
-
-  if (!hasTranslationNote(translation, path.basename(canonicalRel))) {
-    findings.push({
-      file: translationRel,
-      line: 1,
-      rule: "translation",
-      message: `冒頭に canonical (\`${path.basename(canonicalRel)}\`) を指す翻訳注記（引用行）がありません`,
-    });
-  }
-
-  const canonicalHeadings = extractHeadings(canonicalContent);
-  const translationHeadings = extractHeadings(translation);
-  const mismatch = compareHeadingStructure(canonicalHeadings, translationHeadings);
-
-  if (mismatch === null) return findings;
-
-  findings.push({
-    file: translationRel,
-    line: mismatch.translation ? mismatch.translation.lineNo : 1,
-    rule: "translation",
-    message:
-      `見出し構造が canonical とずれています（${mismatch.index + 1} 番目 / canonical ${canonicalHeadings.length} 見出し・対訳 ${translationHeadings.length} 見出し）\n` +
-      `      canonical: ${describeHeading(mismatch.canonical)}\n` +
-      `      対訳:      ${describeHeading(mismatch.translation)}`,
-  });
-
-  return findings;
-}
-
-// doc-pair:end
 /** 環境間の対応検査で使うディレクトリ配置。環境ごとに違う置き場を呼び出し側が決める。 */
 export type EnvLayout = {
   claudeSkills: string;
@@ -261,30 +187,15 @@ export function checkPlatformOnlyAllowlist(
 }
 
 /** Codex の 1 スキルを構成するファイルの有無と内容。読み取りは呼び出し側が行う。 */
-// doc-pair:replace-begin
 export type CodexSkillFiles = {
   canonical: string | null;
   hasMetadata: boolean;
-  translation: string | null;
 };
-// doc-pair:replace-with
-// = export type CodexSkillFiles = {
-// =   canonical: string | null;
-// =   hasMetadata: boolean;
-// = };
-// doc-pair:replace-end
 
 /**
  * Codex の 1 スキルの必須ファイルを検査する（`.codex/README.md` の Layout 表が正）。
  *
-// doc-pair:replace-begin
- * @remarks
- * 対訳は Claude 側と同じく必須で、欠落そのものを報告します。任意だった頃は 24 スキルが
- * 「対訳は `SKILL.ja.md` にある」と書きながらファイルを持たない状態で緑を返し続けました。
  */
-// doc-pair:replace-with
-// =  */
-// doc-pair:replace-end
 export function checkCodexSkillStructure(
   skillDir: string,
   files: CodexSkillFiles,
@@ -303,19 +214,6 @@ export function checkCodexSkillStructure(
     });
   }
 
-// doc-pair:begin
-  if (files.canonical !== null) {
-    findings.push(
-      ...checkTranslationPair(
-        path.join(skillDir, "SKILL.md"),
-        path.join(skillDir, "SKILL.ja.md"),
-        files.canonical,
-        files.translation,
-      ),
-    );
-  }
-
-// doc-pair:end
   return findings;
 }
 
@@ -396,17 +294,9 @@ export function isMakefileFragment(fileName: string): boolean {
   return fileName.endsWith(".mk");
 }
 
-// doc-pair:replace-begin
-/** Claude 側のエージェント定義ファイルか。対訳（`*.ja.md`）は定義ではない。 */
-// doc-pair:replace-with
-// = /** Claude 側のエージェント定義ファイルか。 */
-// doc-pair:replace-end
+/** Claude 側のエージェント定義ファイルか。 */
 export function isClaudeAgentDefinition(fileName: string): boolean {
-// doc-pair:replace-begin
-  return fileName.endsWith(".md") && !fileName.endsWith(".ja.md");
-// doc-pair:replace-with
-// =   return fileName.endsWith(".md");
-// doc-pair:replace-end
+  return fileName.endsWith(".md");
 }
 
 /** Codex 側のエージェント定義ファイルか。 */

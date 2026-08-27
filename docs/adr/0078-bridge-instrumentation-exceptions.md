@@ -5,67 +5,66 @@ deciders: [maintainers]
 tags: [dependencies, observability, exception]
 ---
 
-# ADR-0078: Bridge / instrumentation libraries as bounded SRP exceptions
+# ADR-0078: ブリッジ / 計装ライブラリを有界な SRP 例外として認める
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-The library-selection policy ([ADR-0077](0077-library-selection-policy.md)) requires one
-responsibility bound to a single upstream. Instrumentation and bridge libraries inherently
-stand between **two independently-versioned upstreams** (a framework/library × OpenTelemetry),
-so they cannot satisfy that criterion — yet re-implementing their glue by hand would couple
-tightly to each target's internal lifecycle and increase maintenance debt.
+ライブラリ選定ポリシー（[ADR-0077](0077-library-selection-policy.md)）は、責任が単一の
+上流に結びついていることを要求する。計装ライブラリおよびブリッジライブラリは本質的に
+**独立してバージョン管理される 2 つの上流**（フレームワーク / ライブラリ × OpenTelemetry）の間に
+立つため、この基準を満たせない。しかし、これらのグルーを手で実装すると対象の内部ライフサイクルに
+強く結合し、保守負債を増やすことになる。
 
-## Decision
+## 決定
 
-Admit bridge / instrumentation libraries as **explicit, individually-justified exceptions**
-to the single-responsibility policy, on these common grounds:
+ブリッジ / 計装ライブラリを単一責任ポリシーへの**明示的かつ個別に正当化された例外**として
+認める。共通の根拠は以下の通り。
 
-- Hand-rolling the glue would couple tightly to the target's internal lifecycle
-  (Echo / pgx / zap) and raise maintenance debt rather than reduce it.
-- Each is **small and permissively licensed** (Apache-2.0 or MIT), so worst case it can be
-  vendored / forked; the fork cost is bounded to the production line counts recorded per library.
-- The otel-contrib ones (`otelhttp`, `otelzap`) ship on **otel-contrib's monthly release
-  train**, kept lockstep with OpenTelemetry; `echootel` is Echo's own instrumentation module
-  (`github.com/labstack/echo-opentelemetry`, MIT — see [ADR-0022](0022-echo-http-framework.md))
-  and `otelpgx` is a third-party package (`github.com/exaring/otelpgx`, Apache-2.0), both
-  tracking their target framework + OpenTelemetry independently. In every case the only
-  residual drift surface is the framework-side interface, and those interfaces
-  (`echo.MiddlewareFunc` / `net/http.RoundTripper` / pgx `QueryTracer` / `zapcore.Core`)
-  are stable.
+- グルーを手で実装すると対象（Echo / pgx / zap）の内部ライフサイクルに強く結合し、
+  保守負債を削減するどころか増やすことになる。
+- それぞれ**小規模かつ寛容なライセンス**（Apache-2.0 または MIT）であるため、最悪の場合は
+  ベンダー化 / フォークが可能。フォークコストはライブラリごとに記録された本番コード行数の範囲に留まる。
+- otel-contrib 系（`otelhttp` / `otelzap`）は**otel-contrib の月次リリーストレイン**で
+  提供され、OpenTelemetry とロックステップで維持される。`echootel` は Echo 自身の計装モジュール
+  （`github.com/labstack/echo-opentelemetry`、MIT — [ADR-0022](0022-echo-http-framework.md) を参照）、
+  `otelpgx` はサードパーティパッケージ（`github.com/exaring/otelpgx`、Apache-2.0）で、
+  いずれも対象フレームワークと OpenTelemetry を独立に追従する。いずれの場合も残存するドリフト
+  サーフェスはフレームワーク側のインターフェースのみで、
+  それら（`echo.MiddlewareFunc` / `net/http.RoundTripper` / pgx `QueryTracer` / `zapcore.Core`）は
+  安定している。
 
-The currently-accepted exceptions are `echootel` (root server span), `otelhttp` (outbound
-HTTP client spans), `otelpgx` (SQL query spans), and `otelzap` (zap → OTel log bridge).
+現在受け入れられている例外は `echootel`（ルートサーバースパン）・`otelhttp`（外向き HTTP クライアント
+スパン）・`otelpgx`（SQL クエリスパン）・`otelzap`（zap → OTel ログブリッジ）である。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Observability instrumentation is obtained without hand-maintaining fragile glue.
-- Each exception is bounded: license, upstream cadence, and worst-case fork cost are known.
+- 脆いグルーを手で保守することなくオブザーバビリティ計装が得られる。
+- 各例外は有界である: ライセンス・上流のリリースサイクル・最悪のフォークコストが既知。
 
-### Negative Consequences
+### ネガティブな影響
 
-- These dependencies straddle two upstreams, so their drift surface is larger than a
-  single-upstream library's — accepted knowingly and reviewed per library.
+- これらの依存関係は 2 つの上流をまたぐため、単一上流ライブラリよりドリフトサーフェスが広い
+  — これを認識した上で受け入れ、ライブラリごとにレビューする。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Re-implement the glue by hand
+### グルーを手で実装する
 
-Rejected: couples tightly to each target's internal lifecycle and increases maintenance debt
-more than the bridge dependency does.
+却下: 各対象の内部ライフサイクルに強く結合し、ブリッジ依存関係より保守負債が増加する。
 
-### Refuse the exception (drop instrumentation)
+### 例外を拒否する（計装を断念する）
 
-Rejected: would forfeit standard, low-cost observability instrumentation for no proportionate
-gain, given the bounded worst-case fork cost.
+却下: 有界な最悪フォークコストを考慮すると、標準的かつ低コストのオブザーバビリティ計装を
+釣り合わないメリットのために放棄することになる。
 
-## Notes
+## 補足
 
-- Parent policy: [ADR-0077](0077-library-selection-policy.md). Related gating decision: [ADR-0071](0071-config-driven-observability-gating.md).
-- Per-library versions and line counts are an inventory snapshot (as investigated 2026-06-25) and belong with the dependency reference (`docs/reference/dependencies.md`), not in this immutable record.
-- Migrated from the former `docs/decisions.md`.
+- 親ポリシー: [ADR-0077](0077-library-selection-policy.md)。関連ゲーティング決定: [ADR-0071](0071-config-driven-observability-gating.md)。
+- ライブラリごとのバージョンと行数は調査時点（2026-06-25 調査）のインベントリスナップショットであり、この不変の記録ではなく依存関係リファレンス（`docs/reference/dependencies.md`）に属する。
+- 移行元: かつての `docs/decisions.md`。

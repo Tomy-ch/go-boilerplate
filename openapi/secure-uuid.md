@@ -1,33 +1,33 @@
-# UUID Exposure Security Evaluation
+# UUID 公開のセキュリティ評価
 
-This project adopts an API design that exposes UUIDs (e.g., `userId`) externally. The following multi-layered defenses eliminate or mitigate security concerns.
+`userId` など UUID を外部に公開する API 設計を採用していますが、以下の多層的な構造によってセキュリティ上の懸念を排除・緩和しています。
 
-## Prerequisites and Design Philosophy
+## 前提条件と設計思想
 
-- Domain Entity structs have no `json` tags — they cannot be directly output via API
-- API responses are composed by converting DTO → oapi-codegen types, with output fields explicitly controlled
-- All non-GET operations require JWT authentication
-  - GET requests also require JWT when accessing private user information
+- ドメイン層の Entity 構造体は `json` タグを持たず、API で直接出力されないようにしている
+- API レスポンスは DTO → oapi-codegen 型への詰め替えで構成され、出力項目は明示制御されている
+- 原則として GET 以外の操作は JWT が必須
+  - GET リクエストにおいても、その情報がユーザーのプライベート情報である場合は JWT が必須
 
-## Evaluation of UUID Exposure
+## UUID 公開に関する評価
 
-|Scenario|Conclusion|Notes|
+|状況|結論|補足|
 |---|---|---|
-|Exposing UUID externally|Safe|JWT authentication and authorization are required|
-|GET for sensitive information|Safe|JWT required; inaccessible to non-owners|
-|IDOR attacks via UUID|Structurally impossible|Authorization layer exists|
-|Response field leakage|Controlled|DTO layer explicitly selects fields|
+|UUID を外部公開する|安全|JWT 認証と認可の前提があるため|
+|GET での秘匿性の高い情報の取得|安全|JWT 必須であり、ユーザー本人でなければアクセス不可|
+|UUID からの IDOR 攻撃|構造的に不可能|認可レイヤーが存在するため|
+|レスポンス項目の漏洩|制御済み|DTO 層で明示的にフィールドを選択している|
 
-## Security Defense Layers
+## セキュリティ防御層
 
-1. **Structural defense** — Entities without `json` tags eliminate the risk of accidental output
+1. **構造的防御** — `json` タグなしの Entity により、誤って出力されるリスクを排除
 
-2. **Explicit control via DTO** — Unnecessary internal information is excluded from responses
+2. **DTO による明示制御** — 不要な内部情報をレスポンスに含めないよう設計
 
-3. **JWT authentication + sub authorization** — Request authenticity is guaranteed; third-party access is blocked
+3. **JWT 認証と sub 認可の強制** — リクエストの真正性を担保し、第三者によるアクセスをブロック
 
-4. **Responsibility separation by API classification** — Admin and general APIs have separated responsibilities, restricting internal data handling
+4. **API 分類による責務分離** — 管理 API と一般 API の責務を分け、内部データの扱いを制限
 
-## Conclusion
+## 結論
 
-In this architecture, exposing UUIDs as public identifiers is safe due to multi-layered defenses through authentication, authorization, and output control, making it a **practical and secure operational design**.
+本構成においては、UUID を主キーとして公開する設計は、認証・認可・出力制御の多層的防御によってリスクを最小化しており、**現実的かつ安全な運用が可能な構成**となっています。

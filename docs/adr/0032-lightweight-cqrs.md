@@ -5,236 +5,221 @@ deciders: [maintainers]
 tags: [persistence, cqrs, architecture]
 ---
 
-# ADR-0032: Adopt lightweight CQRS — Repository for writes, QueryService for reads
+# ADR-0032: 軽量CQRSの採用 — 書き込みにRepository、読み込みにQueryService
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-In a pure onion architecture all persistence is mediated by Repository interfaces defined
-in the domain layer. This is appropriate for aggregate-level writes and simple reads (fetch
-by ID, count by own attributes) because Repositories guard domain invariants and reconstruct
-full aggregates.
+純粋なオニオンアーキテクチャでは、永続化はすべてドメインレイヤーで定義された Repository
+インターフェースを介する。Repository はドメイン不変条件を守り full aggregate を再構成するので、
+集約レベルの書き込みと単純な読み込み（ID 取得、自身の属性による件数取得）にはこれが適している。
 
-The model breaks down for use-case-specific read requirements:
+このモデルはユースケース固有の読み込み要件で破綻する。
 
-- **Cross-aggregate joins**: building a dashboard that connects many aggregates — or
-  grouping and aggregating data across multiple aggregate boundaries — cannot be expressed
-  as a single-aggregate Repository method without leaking join and aggregation details into
-  the domain.
-- **View-shaped DTOs**: API responses often need a subset or reshaping of aggregate data
-  (pagination metadata, nested objects). Returning full aggregates and mapping in the
-  usecase layer is correct but wasteful for large read sets.
-- **Complex filtering and full-text search**: keyword search across multiple columns,
-  full-text search, and paginated results require query patterns that do not fit cleanly in
-  a domain interface.
+- **集約横断の JOIN**: 多数の集約を結ぶダッシュボードの構築 — あるいは複数の集約境界を跨いだ
+  グルーピングと集計 — は、JOIN と集計の詳細をドメインへ漏らさずには単一集約の Repository
+  メソッドとして表現できない。
+- **ビュー形状の DTO**: API レスポンスはしばしば集約データの部分集合や再整形（ページネーション
+  メタデータ、入れ子オブジェクト）を必要とする。full aggregate を返してユースケースレイヤーで
+  写像するのは正しいが、大きな読み込み集合では無駄が大きい。
+- **複雑なフィルタと全文検索**: 複数列を跨ぐキーワード検索、全文検索、ページングされた結果は、
+  ドメインインターフェースにきれいに収まらないクエリパターンを要求する。
 
-Forcing these queries into Repository pollutes domain interfaces with view-specific methods,
-erodes aggregate encapsulation, and makes the domain depend on presentation concerns. The
-opposite extreme — full CQRS with a separate read database, event projections, and eventual
-consistency — introduces significant infrastructure and operational complexity that is not
-warranted at the current scale. The project needs a middle path.
+これらのクエリを Repository へ押し込むと、ドメインインターフェースがビュー固有のメソッドで汚染され、
+集約のカプセル化が侵食され、ドメインがプレゼンテーションの関心事に依存することになる。逆の極端 —
+別個の読み込みデータベース、イベント射影、結果整合を伴うフル CQRS — は、現在の規模では正当化
+できないインフラと運用の複雑さを持ち込む。このプロジェクトには中間の道が要る。
 
-## Decision
+## 決定
 
-Adopt **lightweight CQRS** on the same PostgreSQL instance, splitting persistence into
-three responsibilities:
+同一の PostgreSQL インスタンス上で**軽量 CQRS** を採用し、永続化を 3 つの責務へ分割する。
 
-### Repository (aggregate-scoped CRUD and some aggregation)
+### Repository（集約単位に基づく CRUD と一部集計処理）
 
-- Interface defined in the **domain layer** (`internal/domain/<aggregate>/<aggregate>_repository.go`).
-- Responsible for aggregate persistence and simple single-aggregate reads: fetch by ID,
-  simple filter/list/count by the aggregate's own attributes.
-- Does not handle cross-aggregate joins, aggregation, or keyword search.
-- Implementation lives in `internal/infrastructure/rdb/repository/<aggregate>/`.
+- インターフェースは**ドメインレイヤー**（`internal/domain/<aggregate>/<aggregate>_repository.go`）
+  で定義する。
+- 集約の永続化と、単一集約の単純な読み込みを担う。ID 取得、集約自身の属性による単純な
+  フィルタ / 一覧 / 件数取得。
+- 集約横断の JOIN、集計、キーワード検索は扱わない。
+- 実装は `internal/infrastructure/rdb/repository/<aggregate>/` に置く。
 
-### QueryService (query/read path)
+### QueryService（クエリ / 読み込みパス）
 
-- Interface defined in the **usecase layer** (`internal/usecase/<aggregate>/query/`), not
-  the domain — because the read model is a usecase concern, not an aggregate invariant.
-- Handles reads that cross aggregate boundaries, require multi-table JOINs, pagination,
-  full-text search, or return a read-model projection that would be wasteful to reconstruct
-  as a full aggregate (a subset/reshape of a heavy aggregate, or a joined view).
-- Returns DTOs, not full domain entities.
-- Which reads are forbidden from decomposing into per-aggregate Repository reads — and the
-  clarifications that decide the common cases (DTO shape, storage engine, full-text search,
-  cross-aggregate field resolution, reference masters) — is stated once in
-  [`docs/design/data-access-pattern.md`](../design/data-access-pattern.md).
-- Implementation lives in `internal/infrastructure/rdb/query_service/<aggregate>/`.
+- インターフェースはドメインではなく**ユースケースレイヤー**（`internal/usecase/<aggregate>/query/`）
+  で定義する。リードモデルは集約の不変条件ではなくユースケースの関心事だからである。
+- 集約境界を跨ぐ読み込み、複数テーブルの JOIN、ページネーション、全文検索、または full aggregate
+  として再構成するのが無駄になるリードモデル射影（重い集約の部分集合 / 再整形、あるいは結合した
+  ビュー）を返す読み込みを扱う。
+- ドメインエンティティではなく DTO を返す。
+- どの読み取りが集約単位の Repository 読み取りへ分解できないか — そして一般的なケースを決める
+  明確化（DTO の形、ストレージエンジン、全文検索、集約横断のフィールド解決、参照マスタ）— は
+  [`docs/design/data-access-pattern.md`](../design/data-access-pattern.md)に一度だけ記述する。
+- 実装は `internal/infrastructure/rdb/query_service/<aggregate>/` に置く。
 
-### Command Service (command/write path)
+### Command Service（コマンド / 書き込みパス）
 
-- Interface defined in the **usecase layer** (`internal/usecase/<workflow>/command/`). Ownership of a
-  cross-aggregate write port is decided on the **workflow** axis, not the aggregate axis. Trying to
+- インターフェースは**ユースケースレイヤー**（`internal/usecase/<workflow>/command/`）で定義する。
+  集約横断の書き込みポートの所有は、集約軸ではなく**ワークフロー**軸で決める。所有する集約を
 <!-- sample-api:replace-begin -->
-  pick an owning aggregate does not generalize: one real write (a coupon redemption, say) can enforce
-  the invariants of user, product and purchase at once, so "the aggregate whose invariant it enforces"
-  is a relation, not a function. A transaction, by contrast, always has exactly one initiator, and
-  [`docs/rules.md`](../rules.md) already gives the usecase layer ownership of transaction boundaries.
-  `internal/usecase/purchase/command/` names a workflow, not an aggregate, so "why purchase and not
-  product?" does not arise.
+  選ぼうとしても一般化しない。実際の 1 つの書き込み（たとえばクーポンの利用）は user・product・
+  purchase の不変条件を同時に強制しうるので、「その不変条件を強制する集約」は関数ではなく関係で
+  ある。対してトランザクションには常にちょうど 1 つの起点があり、[`docs/rules.md`](../rules.md)
+  は既にトランザクション境界の所有をユースケースレイヤーへ与えている。
+  `internal/usecase/purchase/command/` は集約ではなくワークフローを指すので、「なぜ product では
+  なく purchase なのか」という問いは生じない。
 <!-- sample-api:replace-with -->
-<!-- =   pick an owning aggregate does not generalize: one real write can enforce the invariants of several -->
-<!-- =   aggregates at once, so "the aggregate whose invariant it enforces" is a relation, not a function. -->
-<!-- =   A transaction, by contrast, always has exactly one initiator, and -->
-<!-- =   [`docs/rules.md`](../rules.md) already gives the usecase layer ownership of transaction boundaries. -->
-<!-- =   `internal/usecase/<workflow>/command/` names a workflow, not an aggregate, so "why this aggregate -->
-<!-- =   and not that one?" does not arise. -->
+<!-- =   選ぼうとしても一般化しない。実際の 1 つの書き込みは複数の集約の不変条件を同時に強制しうるので、 -->
+<!-- =   「その不変条件を強制する集約」は関数ではなく関係である。対してトランザクションには常に -->
+<!-- =   ちょうど 1 つの起点があり、[`docs/rules.md`](../rules.md) -->
+<!-- =   は既にトランザクション境界の所有をユースケースレイヤーへ与えている。 -->
+<!-- =   `internal/usecase/<ワークフロー>/command/` は集約ではなくワークフローを指すので、 -->
+<!-- =   「なぜこの集約でなくあの集約なのか」という問いは生じない。 -->
 <!-- sample-api:replace-end -->
-- Domain Service and CommandService therefore diverge deliberately: a Domain Service is a *rule* and
-  owns no transaction; a CommandService is a *transaction tool* and is owned by whoever opens the
-  transaction. That every condition a CommandService enforces is derived from a domain invariant is
-  guaranteed by the Derivation rule below, not by where the file sits.
-- A CommandService method **receives the decided aggregate** — `CreateX(ctx, *x.X)` — symmetric to
-  how a Repository returns one, rather than a decomposed parameter bag. Passing the aggregate keeps
-  the decided write unit intact; a parameter bag scatters the write intent across a signature and
-  breaks that symmetry. This is not a DTO-boundary violation: infrastructure legitimately handles
-  domain entities, since repositories already map rows to and from them, and the DTO-boundary rule
-  targets what the *controller* is exposed to, not what infrastructure receives.
-- After executing a write operation, the Usecase calls back through the Repository for the
-  affected aggregate to validate correctness, preserving domain integrity.
-- The Usecase return value is a DTO, not a domain entity.
-- Implementation lives in `internal/infrastructure/rdb/command_service/<aggregate>/`.
+- したがって Domain Service と CommandService は意図的に分岐する。Domain Service は*規則*であり
+  トランザクションを所有しない。CommandService は*トランザクションの道具*であり、トランザクションを
+  開く者が所有する。CommandService が強制するあらゆる条件がドメイン不変条件から導出されていることは、
+  ファイルの置き場所ではなく後述の Derivation 規則が保証する。
+- CommandService のメソッドは**決定済みの集約を受け取る** — `CreateX(ctx, *x.X)` — Repository が
+  集約を返すのと対称であり、分解されたパラメータバッグではない。集約を渡すことで、決定された
+  書き込み単位が保たれる。パラメータバッグは書き込みの意図をシグネチャ全体へ散らし、その対称性を
+  壊す。これは DTO 境界の違反ではない。Repository が既に行とエンティティを相互に写像している以上、
+  infrastructure がドメインエンティティを扱うのは正当であり、DTO 境界の規則が対象にしているのは
+  *コントローラ*が何に晒されるかであって infrastructure が何を受け取るかではない。
+- 書き込み操作の実行後、Usecase は対象集約の Repository を経由して呼び戻し、正しさを検証して
+  ドメインの整合性を保つ。
+- Usecase の戻り値はドメインエンティティではなく DTO である。
+- 実装は `internal/infrastructure/rdb/command_service/<aggregate>/` に置く。
 
-> **Implementation status**: the `command_service` sub-module in `persistenceModule`
-> (`internal/di/module/persistence.go`) may legitimately hold zero providers. This section
-> describes an intended design; a system with no cross-aggregate write of its own has nothing to
-> register, and an empty sub-module is not a defect.
+> **実装状況**: `persistenceModule`（`internal/di/module/persistence.go`）の `command_service`
+> サブモジュールは、プロバイダを 1 つも持たなくても正当である。この節は意図された設計を述べたもので、
+> 自前の集約横断の書き込みを持たないシステムには登録するものが無く、空のサブモジュールは欠陥ではない。
 
 <!-- boilerplate-only:begin -->
-> The upstream boilerplate keeps one sample occupant here for a reason recorded in
-> [boilerplate-only conventions](../get-started/boilerplate-only-conventions.md); it does not
-> apply to a project built from it.
+> 上流のボイラープレートはここにサンプルの占有者を 1 つ残している。その理由は
+> [boilerplate-only conventions](../get-started/boilerplate-only-conventions.md)に記録されており、
+> そこから作られたプロジェクトには当てはまらない。
 <!-- boilerplate-only:end -->
 
-Repository, QueryService, and CommandService are all registered in `persistenceModule` in
-`internal/di/module/persistence.go` and injected via Uber Fx (see
-[ADR-0040](0040-uber-fx-di.md)). This is not full CQRS: there is no separate read store,
-event sourcing, or eventually-consistent projection pipeline.
+Repository・QueryService・CommandService はいずれも `internal/di/module/persistence.go` の
+`persistenceModule` に登録され、Uber Fx で注入される（[ADR-0040](0040-uber-fx-di.md)を参照）。
+これはフル CQRS ではない。別個の読み込みストアも、イベントソーシングも、結果整合の射影パイプラインも
+存在しない。
 
-See [`docs/rules.md`](../rules.md) § "Repository / QueryService Rules" for the
-day-to-day boundary enforcement rules.
+日々の境界の強制規則については [`docs/rules.md`](../rules.md) の
+§「Repository / QueryService ルール」を参照。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Repository stays aggregate-focused; domain interfaces do not accumulate view-specific
-  methods, preserving domain purity per [ADR-0002](0002-onion-architecture.md).
-- QueryService can freely optimize queries (joins, pagination, full-text search) without
-  touching domain logic or exposing domain entities to the read path.
-- Both Service interfaces live in the usecase layer, though they are owned on **different** axes:
-  QueryService on the aggregate axis (`<aggregate>/query/`), because a read model is shaped by the
-  aggregate whose state it projects; CommandService on the workflow axis (`<workflow>/command/`),
-  because a transaction has exactly one initiator and no single aggregate owns a cross-aggregate
-  write. Either way the domain layer keeps exactly one persistence contract: the Repository.
-- CommandService can freely optimize flexible updates, deletes, and other write operations
-  without touching domain logic. Routing back through the Repository at the end prevents
-  domain integrity from being compromised.
-- All three abstractions remain behind interfaces and are injected via DI, keeping them
-  replaceable per [ADR-0001](0001-avoid-lock-in.md).
-- No new infrastructure dependency; all three paths run against the same PostgreSQL instance.
+- Repository が集約中心のまま保たれる。ドメインインターフェースがビュー固有のメソッドを溜め込まず、
+  [ADR-0002](0002-onion-architecture.md)に沿ってドメインの純粋性が保たれる。
+- QueryService は、ドメインロジックに触れることも読み込みパスへドメインエンティティを露出させる
+  こともなく、クエリ（JOIN・ページネーション・全文検索）を自由に最適化できる。
+- 2 つの Service インターフェースはともにユースケースレイヤーに置かれるが、所有される軸は**異なる**。
+  QueryService は集約軸（`<aggregate>/query/`）——リードモデルは、それが射影する状態を持つ集約が形を
+  決めるため。CommandService はワークフロー軸（`<workflow>/command/`）——トランザクションには起点が
+  ちょうど 1 つあり、集約跨ぎの書き込みを所有する単一の集約は存在しないため。いずれにせよドメイン
+  レイヤーが持つ永続化契約は Repository ただ 1 つに保たれる。
+- CommandService は、ドメインロジックに触れることなく柔軟な更新・削除その他の書き込み操作を自由に
+  最適化できる。最後に Repository を経由して呼び戻すことで、ドメインの整合性が損なわれるのを防ぐ。
+- 3 つの抽象はいずれもインターフェースの背後に留まり DI で注入されるので、
+  [ADR-0001](0001-avoid-lock-in.md)に沿って差し替え可能なまま保たれる。
+- 新しいインフラ依存は無い。3 つの経路はすべて同一の PostgreSQL インスタンスに対して動く。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Three persistence abstractions (Repository, QueryService, and CommandService) require
-  developers to decide which to use for a given operation. The boundary is documented in
-  `docs/rules.md` but requires understanding.
-- Both Service interfaces sit in the usecase layer, further from the domain, which can make intent
-  less obvious when reading domain code in isolation. In particular, reading a domain package alone
-  does not reveal that a write path exists which does not pass through its Repository; the
-  eligibility bar and the Derivation rule below are what keep that path from becoming a general
-  escape hatch.
-- The "no complex reads in Repository" boundary must be maintained by review; there is no
-  compiler enforcement for the distinction.
+- 3 つの永続化抽象（Repository・QueryService・CommandService）があるため、開発者は特定の操作で
+  どれを使うかを判断する必要がある。境界は `docs/rules.md` に文書化されているが、理解を要する。
+- 2 つの Service インターフェースはユースケースレイヤーに置かれ、ドメインから遠い。そのためドメイン
+  コードを単独で読むときに意図が見えにくくなりうる。とりわけ、ドメインパッケージだけを読んでも、
+  その Repository を通らない書き込み経路が存在することは分からない。その経路が一般的な抜け道に
+  ならないよう保っているのが、後述の eligibility の基準と Derivation 規則である。
+- 「Repository に複雑な読み込みを置かない」という境界はレビューで維持する必要がある。この区別に
+  コンパイラによる強制は無い。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Fat Repository (all reads in Repository)
+### ファットRepository（すべての読み込みをRepositoryに）
 
-Put all reads — including joins, pagination, and keyword search — in domain Repository
-interfaces. Simple to understand and requires only one persistence abstraction.
+JOIN・ページネーション・キーワード検索を含むすべての読み込みを、ドメインの Repository
+インターフェースに置く。理解しやすく、永続化の抽象が 1 つで済む。
 
-Rejected because it pollutes domain interfaces with view-specific queries, couples the
-domain to presentation requirements, and undermines aggregate encapsulation over time. The
-domain should not know how the API shapes its response.
+却下。ドメインインターフェースをビュー固有のクエリで汚染し、ドメインをプレゼンテーション要件へ
+結合させ、時間とともに集約のカプセル化を損なう。ドメインは API がレスポンスをどう形作るかを
+知るべきではない。
 
-### Full CQRS with a separate read store
+### 別個の読み込みストアを持つフルCQRS
 
-Maintain a dedicated read database (e.g., Elasticsearch, read-replica with materialized
-views) updated via event projections. Provides strong read scalability and enables NLP-grade
-search.
+専用の読み込みデータベース（Elasticsearch、マテリアライズドビューを持つリードレプリカ等）を
+イベント射影で更新して維持する。強い読み込みスケーラビリティを提供し、NLP 級の検索を可能にする。
 
-Rejected as premature: the current dataset and query complexity do not require a separate
-store. Eventual consistency and projection maintenance would add operational overhead not
-yet warranted.
+時期尚早として却下。現在のデータセットとクエリの複雑さは別ストアを必要としない。結果整合と射影の
+維持は、まだ正当化できない運用上のオーバーヘッドを足す。
 
-### All reads via QueryService (abolish Repository reads)
+### すべての読み込みをQueryService経由（Repositoryの読み込みを廃止）
 
-Eliminate read methods from Repository entirely; route all reads through QueryService.
-Simplifies the boundary but forces QueryService overhead onto trivial single-aggregate
-lookups (e.g., fetch user by ID for a write precondition check).
+Repository から読み込みメソッドを完全に排除し、すべての読み込みを QueryService へ通す。境界は
+単純になるが、些細な単一集約のルックアップ（書き込み前提条件のチェックのための ID 取得など）にまで
+QueryService のオーバーヘッドを強いる。
 
-Rejected as a DDD anti-pattern that produces **domain anemia**. Aggregate operations
-(business rules, invariant checks, command preconditions) depend on reading aggregate state
-through the Repository; eliminating those reads strips the domain of the data it needs to
-reason about its own invariants, hollowing it into an anemic shell. This is not a mild
-trade-off — it fundamentally compromises the onion architecture established in
-[ADR-0002](0002-onion-architecture.md).
+**ドメイン貧血**を生む DDD アンチパターンとして却下。集約の操作（業務規則、不変条件のチェック、
+コマンドの前提条件）は Repository を通じて集約の状態を読むことに依存しており、その読み込みを
+排除するとドメインは自身の不変条件を推論するためのデータを奪われ、貧血な殻へ痩せる。これは軽い
+トレードオフではなく、[ADR-0002](0002-onion-architecture.md)で確立したオニオン
+アーキテクチャを根本から損なう。
 
-### CQRS at the usecase level only (no QueryService abstraction)
+### ユースケースレベルのみのCQRS（QueryService抽象なし）
 
-Have usecases call Repository methods directly for complex reads, applying in-memory joins.
-Avoids a new abstraction but transfers N+1 query and performance concerns to the application
-layer. Rejected for performance and correctness reasons.
+複雑な読み込みでも Usecase が Repository のメソッドを直接呼び、メモリ上で JOIN する。新しい抽象を
+避けられるが、N+1 クエリと性能の関心事をアプリケーションレイヤーへ転嫁する。性能と正しさの理由で
+却下。
 
-### Route every write through the aggregate Repository (abolish CommandService)
+### すべての書き込みを集約のRepositoryへ通す（CommandServiceを廃止）
 
-Express all writes as "load the aggregate, mutate it, save it", so the Repository is the only
-persistence seam and every write passes through the aggregate that owns the invariant. This is the
-shape Evans describes, and it would remove the asymmetry of having a read seam and a write seam with
-different owners.
+すべての書き込みを「集約を読み込み、変更し、保存する」形で表現し、Repository を唯一の永続化 seam
+とし、あらゆる書き込みがその不変条件を所有する集約を通るようにする。これは Evans が述べる形であり、
+読み seam と書き seam の所有者が異なるという非対称を取り除ける。
 
-Rejected because some writes cannot be expressed that way without changing their concurrency
 <!-- sample-api:replace-begin -->
-properties. Restoring stock on cancellation is a relative update that takes no lock on the product
-row at all; expressing it as "load the product, add back, save" would require introducing a lock the
-cancel path does not currently take, adding contention and a deadlock surface that does not exist
-today. The same holds for any set-based or counter-style write. The seam exists for that class of
+却下。一部の書き込みは、その並行性の性質を変えずにはその形で表現できない。キャンセル時の在庫戻しは
+product 行に一切ロックを取らない相対更新である。これを「product を読み込み、戻し、保存する」として
 <!-- sample-api:replace-with -->
-<!-- = properties. A relative counter update takes no row lock at all; expressing it as "load the row, adjust, -->
-<!-- = save" would require introducing a lock the current path does not take, adding contention and a -->
-<!-- = deadlock surface that does not exist today. The same holds for any set-based write. The seam exists for that class of -->
+<!-- = 却下。一部の書き込みは、その並行性の性質を変えずにはその形で表現できない。相対的なカウンタ更新は -->
+<!-- = 行ロックを一切取らない。これを「行を読み込み、加減し、保存する」として -->
 <!-- sample-api:replace-end -->
-write and for nothing else — the eligibility rule below is what keeps it from becoming a general
-escape hatch.
+表現すると、キャンセル経路が現在は取らないロックを導入することになり、今日は存在しない競合と
+デッドロック面を足すことになる。集合ベースやカウンタ形式の書き込みでも同じことが言える。この seam は
+そのクラスの書き込みのためだけに存在し、それ以外のためには存在しない。一般的な抜け道にならないよう
+保っているのが後述の eligibility 規則である。
 
-### Decompose the aggregate into a parameter bag on the CommandService signature
+### CommandServiceのシグネチャで集約をパラメータバッグへ分解する
 
-Pass the decided values as individual parameters instead of the aggregate, on the reading that
-infrastructure should not receive a domain entity. Rejected: it scatters the write intent across a
-signature that grows with every field, and it breaks the Repository-symmetry that gives the write
-seam its shape. The premise is also wrong — the DTO-boundary rule exists to keep domain entities out
-of *controller* responses, not out of infrastructure, which already maps rows to and from entities.
+infrastructure はドメインエンティティを受け取るべきでない、という読みに立ち、集約ではなく決定済みの
+値を個々のパラメータとして渡す。却下。書き込みの意図をフィールドが増えるたびに伸びるシグネチャへ
+散らし、書き seam に形を与えている Repository との対称性を壊す。前提自体も誤っている。DTO 境界の規則は
+ドメインエンティティを*コントローラ*のレスポンスから締め出すために存在するのであって、既に行と
+エンティティを相互に写像している infrastructure から締め出すためではない。
 
-**Eligibility.** A write belongs on CommandService only when it cannot be expressed as loading an
-aggregate and saving it: relative updates, set-based operations, and operations that obtain atomicity
-without taking a lock. Anything that can be read-modify-saved goes on the Repository. Without this
-line the seam degrades into "where I put SQL I want to write directly".
+**Eligibility。** 書き込みが CommandService に属するのは、集約を読み込んで保存する形では表現できない
+場合に限る。相対更新、集合ベースの操作、ロックを取らずに原子性を得る操作である。read-modify-save
+できるものは Repository に置く。この線が無いと、この seam は「直接 SQL を書きたいときの置き場」へ
+堕ちる。
 
-**Derivation.** Any condition CommandService enforces must be *derived from* a domain invariant, never
-authored independently. A guard in a relative-update statement restates the condition the domain has
-already checked, as a fail-closed second net ([ADR-0036](0036-ordered-pessimistic-row-locks.md));
-it is downstream of that rule, so a change to the domain rule obliges a change here, and never the
-reverse. Two independently written copies of one rule diverge silently the first time only one moves.
+**Derivation。** CommandService が強制する条件は、ドメイン不変条件から*導出された*ものでなければ
+ならず、独立に書き起こしてはならない。相対更新の文の中のガードは、ドメインが既に検査した条件を
+fail-closed な二重の網として言い直したものである（[ADR-0036](0036-ordered-pessimistic-row-locks.md)）。
+それはその規則の下流にあるので、ドメイン規則の変更はここの変更を義務づけるが、逆はない。1 つの規則の
+独立に書かれた 2 つの写しは、片方だけが動いた最初のときに黙って乖離する。
 
-## Notes
+## 補足
 
-- Source: [`internal/infrastructure/rdb/query_service/README.md`](../../internal/infrastructure/rdb/query_service/README.md)
-  § "Relationship to CQRS" and § "When to Use QS Over Repository".
-- Source: [`docs/rules.md`](../rules.md) § "Repository / QueryService Rules".
-- DI registration: [`internal/di/module/persistence.go`](../../internal/di/module/persistence.go).
-- Related: [ADR-0033](0033-system-cqrs-dml-category.md) (system_cqrs as a fourth, non-CQRS
-  category).
+- 出典: [`internal/infrastructure/rdb/query_service/README.md`](../../internal/infrastructure/rdb/query_service/README.md)
+  §「Relationship to CQRS」および §「When to Use QS Over Repository」。
+- 出典: [`docs/rules.md`](../rules.md) §「Repository / QueryService ルール」。
+- DI 登録: [`internal/di/module/persistence.go`](../../internal/di/module/persistence.go)。
+- 関連: [ADR-0033](0033-system-cqrs-dml-category.md)（CQRS の分割の外に位置する第 4 の
+  カテゴリとしての system_cqrs）。

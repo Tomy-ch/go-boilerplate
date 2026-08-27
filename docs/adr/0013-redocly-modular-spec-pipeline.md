@@ -5,81 +5,58 @@ deciders: [maintainers]
 tags: [contract, openapi, tooling]
 ---
 
-# ADR-0013: Author the spec in modular Redocly files, bundle, then generate
+# ADR-0013: 仕様をモジュラーな Redocly ファイルで作成し、バンドルしてから生成する
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-[ADR-0012](0012-openapi-first.md) establishes that OpenAPI is the single source of truth
-for the wire contract. As the spec grows it becomes impractical to maintain a single flat
-YAML file: path, schema, parameter, and response objects are all mixed in one place,
-making code review, reuse, and navigation difficult. A bundled single-file output is still
-required downstream for oapi-codegen (code generation) and Redoc (documentation
-rendering).
+[ADR-0012](0012-openapi-first.md) はワイヤー契約の唯一の真実のソースとして OpenAPI を確立している。仕様が大きくなると、単一のフラットな YAML ファイルを保守することは現実的ではなくなる。パス、スキーマ、パラメーター、レスポンスオブジェクトがすべて一箇所に混在し、コードレビュー、再利用、ナビゲーションが困難になる。それでも、バンドルされた単一ファイルの出力は oapi-codegen（コード生成）と Redoc（ドキュメントレンダリング）のダウンストリームでは引き続き必要である。
 
-## Decision
+## 決定
 
-Author the spec as a **modular Redocly project** split across dedicated directories, with
-`openapi/openapi.yaml` as the entry point and `$ref` pointers to files under `paths/`,
-`components/schemas/`, `components/parameters/`, `components/requests/`, and
-`components/responses/`. One file equals one responsibility (one schema per file, one
-endpoint per file, one parameter per file).
+仕様を**モジュラー Redocly プロジェクト**として作成する。エントリポイントは `openapi/openapi.yaml` で、`paths/`、`components/schemas/`、`components/parameters/`、`components/requests/`、`components/responses/` 配下のファイルへの `$ref` ポインターを使用する。1 ファイル = 1 責任（スキーマ 1 件につき 1 ファイル、エンドポイント 1 件につき 1 ファイル、パラメーター 1 件につき 1 ファイル）。
 
-The build pipeline is:
+ビルドパイプラインは以下の通り：
 
-1. **Lint** — `redocly lint openapi/openapi.yaml` validates the modular sources against
-   `redocly.yaml` (naming conventions, required metadata, no unused components).
-2. **Bundle** — `redocly bundle openapi/openapi.yaml -o openapi/openapi.gen.yaml` resolves
-   all `$ref` pointers into a single flat file.
-3. **Generate** — oapi-codegen reads `openapi/openapi.gen.yaml` to produce Go code (see
-   [ADR-0014](0014-oapi-codegen-strict-server.md)).
-4. **Docs** — `redocly build-docs openapi/openapi.yaml --output docs/openapi/index.html`
-   generates the static API documentation.
+1. **Lint** — `redocly lint openapi/openapi.yaml` がモジュラーソースを `redocly.yaml`（命名規約、必須メタデータ、未使用コンポーネントなし）に対して検証する。
+2. **Bundle** — `redocly bundle openapi/openapi.yaml -o openapi/openapi.gen.yaml` がすべての `$ref` ポインターを単一のフラットファイルに解決する。
+3. **Generate** — oapi-codegen が `openapi/openapi.gen.yaml` を読み取り Go コードを生成する（[ADR-0014](0014-oapi-codegen-strict-server.md) 参照）。
+4. **Docs** — `redocly build-docs openapi/openapi.yaml --output docs/openapi/index.html` が静的 API ドキュメントを生成する。
 
-All `$ref` values must use relative paths (e.g. `../components/schemas/UserResponse.yaml`);
-inline component references (`#/components/...`) are forbidden because Redocly's bundler
-requires relative-file refs to resolve correctly.
+すべての `$ref` 値は相対パスを使用しなければならない（例: `../components/schemas/UserResponse.yaml`）。Redocly のバンドラーが相対ファイル参照を正しく解決するため、インラインコンポーネント参照（`#/components/...`）は禁止される。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Split files are independently reviewable and reusable via `$ref`.
-- Naming conventions (camelCase body fields, camelCase parameters, PascalCase
-  `operationId`) are enforced at lint time before code generation runs.
-- `make gen-api` is the single command that runs bundle, docs, and codegen in sequence; `redocly lint` runs separately via `make lint-oapi` (also a CI gate).
-- Documentation is generated from the same source as the code.
-- Because handler code is generated from the bundled spec, the YAML definition always precedes the implementation; drift between definition and implementation cannot flow undetected into production.
+- 分割されたファイルは `$ref` によって独立してレビュー可能かつ再利用可能である。
+- 命名規約（ボディフィールドはキャメルケース、パラメーターはキャメルケース、`operationId` はパスカルケース）がコード生成実行前のリント時に強制される。
+- `make gen-api` はバンドル・ドキュメント・コード生成を順に実行する単一のコマンドである（`redocly lint` は `make lint-oapi` で別途実行され、CI ゲートでもある）。
+- ドキュメントはコードと同じソースから生成される。
+- ハンドラーコードはバンドルされた仕様から生成されるため、YAML 定義が常に実装に先行する形になり、定義と実装の乖離が本番環境に流れ込まない。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Contributors must learn the Redocly split-file convention and always use relative `$ref`
-  paths — a non-standard authoring style compared to a flat OpenAPI YAML.
-- The `openapi.gen.yaml` bundled file is generated output and must never be edited by hand;
-  this can cause confusion when the two files diverge during a partial edit. (The CI
-  `gen-oapi-artifacts-check` workflow detects divergence and fails the PR if the committed
-  file is stale, making manual-edit confusion discoverable before merge.)
+- コントリビューターは Redocly の分割ファイル規約を習得し、常に相対 `$ref` パスを使用しなければならない。フラットな OpenAPI YAML と比較して非標準の作成スタイルである。
+- バンドルされた `openapi.gen.yaml` ファイルは生成された出力であり、手動で編集してはならない。部分的な編集の際に 2 つのファイルが乖離すると混乱を招く可能性がある。（CI の `gen-oapi-artifacts-check` ワークフローが乖離を検知して PR を失敗させるため、手動編集による混乱はマージ前に発見可能である。）
 
-## Alternatives Considered
+## 検討した代替案
 
-### Single flat OpenAPI file
+### 単一のフラット OpenAPI ファイル
 
-Avoids the Redocly toolchain dependency. Rejected because a single file becomes
-unmaintainable at scale and prohibits per-object reuse via `$ref`.
+Redocly ツールチェーンの依存関係を回避できる。却下：単一ファイルはスケールで保守不可能になり、`$ref` によるオブジェクト単位の再利用が禁止される。
 
-### Inline `$ref` using JSON pointer fragments
+### JSON ポインターフラグメントを使用したインライン $ref
 
-`$ref: '#/components/schemas/UserResponse'` keeps everything in one file and is the
-standard OpenAPI practice. Rejected because the Redocly bundler requires separate files to
-resolve relative `$ref` pointers correctly across the modular structure.
+`$ref: '#/components/schemas/UserResponse'` はすべてを 1 ファイルにまとめ、標準的な OpenAPI の慣行である。却下：Redocly バンドラーはモジュラー構造全体で相対 `$ref` ポインターを正しく解決するために別ファイルを必要とする。
 
-## Notes
+## 補足
 
-- Build targets defined in [`.makefiles/openapi/gen.mk`](../../.makefiles/openapi/gen.mk).
-- Lint rules and naming-convention enforcement defined in [`redocly.yaml`](../../redocly.yaml).
-- Modular directory structure described in [`openapi/README.md`](../../openapi/README.md).
-- `openapi/openapi.gen.yaml` is generated output — do not edit by hand (see the generated-file rules in [`docs/rules.md`](../rules.md)).
-- Parent decision: [ADR-0012](0012-openapi-first.md) (OpenAPI-first).
+- ビルドターゲットの定義: [`.makefiles/openapi/gen.mk`](../../.makefiles/openapi/gen.mk)。
+- リントルールと命名規約の強制: [`redocly.yaml`](../../redocly.yaml)。
+- モジュラーディレクトリ構造の説明: [`openapi/README.md`](../../openapi/README.md)。
+- `openapi/openapi.gen.yaml` は生成された出力であり、手動で編集してはならない（[`docs/rules.md`](../rules.md) の生成ファイルルール参照）。
+- 親の決定: [ADR-0012](0012-openapi-first.md)（OpenAPI ファースト）。

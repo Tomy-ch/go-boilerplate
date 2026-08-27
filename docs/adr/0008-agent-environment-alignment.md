@@ -5,7 +5,7 @@ deciders: [maintainers]
 tags: [process, ai, architecture]
 ---
 
-# ADR-0008: Align the agent environment around declared, checkable properties, and improve it in a closed loop
+# ADR-0008: エージェント環境を宣言された検査可能な性質へ整合させ、閉じたループで改善する
 
 ## Status
 
@@ -13,102 +13,68 @@ accepted
 
 ## Context
 
-This repository already constrains agent work through canonical documentation, protected paths,
-layer rules, generated-artifact gates, skills, reviews, and runtime checks. Those mechanisms were
-adopted individually, but no decision states the shared intent or how a later maintainer should
-judge a proposed control.
+このリポジトリは既に、正本ドキュメント、保護パス、レイヤルール、生成物ゲート、スキル、レビュー、ランタイム検査によってエージェントの作業を制約している。これらは個別に採用されてきたが、共有された意図や、後任の保守者が提案された制御をどう判断すべきかを述べた決定がない。
 
-The external phrase "harness engineering" describes similar practices, but its terminology and
-definition are still unsettled. Binding this long-lived template to that vocabulary would create a
-new form of lock-in without improving verification.
+外部の言い回し "harness engineering" は似た実践を指すが、用語も定義もまだ定まっていない。長命なこのリポジトリをその語彙に縛ることは、検証を良くしないまま新しい形のロックインを作る。
 
-A second gap appears once AI-assisted development becomes the standard path
-([ADR-0007](0007-agents-md-operational-contract.md)): controls are added far more readily than they
-are removed. A skill nobody invokes, a rule that fires only on cases that no longer occur, and a
-document that costs a read on every session are indistinguishable from useful ones as long as
-nothing measures them. An agent environment that only grows becomes the thing it was built to
-prevent — a structure too large to hold.
+第二の欠落は、AI 支援開発が標準経路になった時点（[ADR-0007](0007-agents-md-operational-contract.md)）で現れる。制御は、退役させるよりはるかに容易に追加される。誰も起動しないスキル、もう起こらないケースにしか発火しないルール、毎セッションで読解コストを取る文書は、何も測らない限り有用なものと区別がつかない。増える一方のエージェント環境は、それが防ぐために作られたもの — 把握しきれない大きさの構造 — に自ら化ける。
 
 ## Decision
 
-We declare alignment around the repository's own checkable properties, rather than compliance with
-an external label. A control must provide a clear instruction, mechanical enforcement where the
-property is decidable, or an independently reviewable signal where it is not.
+外部ラベルへの準拠ではなく、リポジトリ自身の検査可能な性質への整合を宣言する。制御は、明確な指示を与えるか、性質が決定可能な場合は機械的に強制するか、そうでない場合は独立にレビュー可能なシグナルを与えねばならない。
 
-Existing mechanisms remain the source of their individual rules. In particular, deterministic
-properties gate through tooling; reading-comprehension judgments use the finder-to-verifier review
-shape of ADR-0093. The `ci-first` load band deliberately delegates heavy local gates to CI when a
-saturated host would make their failures untrustworthy. Signals that reliably reappear through an
-existing mechanism need not be escalated as durable human work items.
+既存の機構は引き続き個々のルールの出所である。とりわけ、決定論的な性質はツールでゲートし、読解を要する判断は ADR-0093 の finder-to-verifier 形式を用いる。`ci-first` load band は、ホスト飽和により失敗が信用できなくなる場面で重いローカルゲートを意図的に CI へ委譲する。既存の機構を通じて確実に再出現するシグナルは、耐久する人間向けの作業項目へ昇格させる必要はない。
 
-**The agent environment is not append-only.** Every control it holds — skill, rule, document, CI
-step, tooling — carries a lifecycle rather than only an introduction:
+**エージェント環境は append-only ではない。** そこにあるすべての制御 — スキル、ルール、文書、CI ステップ、ツール — は、導入だけでなくライフサイクルを持つ。
 
-1. AI development sessions are observed.
-2. The friction they hit is collected and semantically compressed into feedback.
-3. That feedback is attributed to the skill, rule, documentation, CI check, or tool it implicates.
-4. Improvement candidates are generated from it.
-5. A human takes the design decisions the change requires.
-6. The improvement lands.
-7. After an interval, its effect is re-evaluated against the friction it was meant to remove.
-8. The control is then kept, simplified, revised, deleted, or reverted.
+1. AI 開発セッションを観測する。
+2. そこで生じた摩擦を収集し、フィードバックへ意味圧縮する。
+3. それを、原因となるスキル / ルール / ドキュメント / CI 検査 / ツールへ帰属させる。
+4. 改善候補を生成する。
+5. 人間が、その変更に必要な設計判断を行う。
+6. 改善を反映する。
+7. 一定期間後、取り除こうとした摩擦に照らして効果を再評価する。
+8. その上で Keep / Simplify / Revise / Delete / Revert を判断する。
 
-Skills are inventoried on the same terms — usage frequency, the occasions on which they would have
-applied, the friction they caused, and the measured effect of the last change to them.
+スキルも同じ条件で棚卸しする — 利用頻度、適用され得たのにされなかった機会、スキル自身が生んだ摩擦、直近の変更の測定された効果。
 
-**The loop does not grant an agent unbounded self-modification.** The design decisions inside it
-stay with a human (ADR-0007, point 4), and the AI-tool configuration directories remain outside an
-agent's default modification scope: they are reachable only through an explicitly invoked skill,
-under the skill-execution exception `AGENTS.md` defines and bounded by that skill's own procedure.
-The purpose is to return what AI-assisted development reveals back into the development foundation
-itself, not to let the foundation rewrite itself.
+**このループはエージェントへ無制限な自己変更能力を与えない。** ループ内の設計判断は人間に残り（ADR-0007 の決定 4）、AI ツール設定ディレクトリはエージェントの既定変更スコープの外に留まる。到達できるのは、`AGENTS.md` が定める skill-execution 例外の下で明示的に起動されたスキル経由に限られ、そのスキル自身の手順に境界づけられる。目的は、AI を利用した開発から得られるものを開発基盤へ還流させることであって、基盤に自らを書き換えさせることではない。
 
 ## Consequences
 
 ### Positive Consequences
 
-- New controls can be judged against explicit properties without adopting a volatile external term.
-- Documentation, skills, hooks, and CI remain complementary rather than competing stores of policy.
-- The boundary between mechanical gate and human judgment stays explicit.
-- Removing a control becomes an evidenced decision rather than a nerve-holding one: a control that
-  stopped paying for itself has a record saying so.
+- 揺れ動く外部用語を採用せずに、明示された性質に対して新しい制御を判断できる。
+- ドキュメント、スキル、hook、CI が、競合するポリシー置き場ではなく相補的なまま保たれる。
+- 機械的ゲートと人間の判断の境界が明示され続ける。
+- 制御の削除が、度胸ではなく証拠に基づく判断になる。割に合わなくなった制御には、そう言える記録が残る。
 
 ### Negative Consequences
 
-- Alignment does not claim conformance to any external checklist.
-- Later work must keep the interpretation and maintenance artifacts synchronized with this decision.
-- The loop needs durable observation data of its own. It lives in the issue tracker rather than in
-  the repository, so it never becomes repository state;
-  [ADR-0009](0009-long-running-agent-state.md) draws that line and gives the reason a
-  git-maintained store is the wrong one for data that is corrected and retired routinely.
-- Re-evaluation is work that has to actually happen. A loop whose step 7 is skipped degrades into
-  the append-only accumulation it was adopted to prevent.
+- この整合は、いかなる外部チェックリストへの適合も主張しない。
+- 以後の作業は、解釈文書と保守用の成果物をこの決定と同期させ続けねばならない。
+- ループ自身が耐久する観測データを必要とする。それはリポジトリではなく issue tracker に置くため、リポジトリ状態にはならない。[ADR-0009](0009-long-running-agent-state.md) がその線と、日常的に訂正・退役するデータに対して git で維持する保管場所が適さない理由を述べる。
+- 再評価は実際に行われねばならない作業である。ステップ 7 を飛ばしたループは、防ぐために採用したはずの append-only な蓄積へ退化する。
 
 ## Alternatives Considered
 
-### Declare compliance with "harness engineering"
+### "harness engineering" への準拠を宣言する
 
-Rejected because the external term is unsettled and the declaration would outlive its current
-meaning.
+却下。外部用語が定まっておらず、宣言が現在の意味より長生きしてしまう。
 
-### Make no umbrella declaration
+### 包括的な宣言を置かない
 
-Rejected because the existing mechanisms would remain difficult to evaluate as one coherent system.
+却下。既存の機構を一つの整合したシステムとして評価することが難しいままになる。
 
-### Add controls freely and prune them when someone notices
+### 自由に制御を追加し、誰かが気づいたら間引く
 
-Rejected. Nobody notices: a skill that is never invoked produces no failure, so the signal that it
-should be removed is exactly the absence of a signal. Without a declared re-evaluation step, the
-environment only grows.
+却下。誰も気づかない。起動されないスキルは何の失敗も生まないので、削除すべきというシグナルはシグナルの不在そのものである。再評価のステップを宣言しない限り、環境は増える一方になる。
 
-### Let the loop apply its own improvements end to end
+### ループに改善の適用まで一貫して行わせる
 
-Rejected. The decisions the loop surfaces are architecture, domain, and policy decisions, which
-ADR-0007 keeps behind a human gate. An automated loop closing over its own rules would make the
-contract self-modifying and remove the reason to trust it.
+却下。ループが surface する判断はアーキテクチャ・ドメイン・ポリシーの判断であり、ADR-0007 がそれを Human Gate の後ろに置いている。自らのルールに対して閉じる自動ループは契約を自己書き換え可能にし、それを信頼する理由を消す。
 
 ## Notes
 
-- Related mechanisms: ADR-0006, ADR-0007, ADR-0009, ADR-0089, and ADR-0093.
-- The repository's interpretation is documented separately under
-  [`docs/design/agent-environment.md`](../design/agent-environment.md).
+- 関連機構: ADR-0006、ADR-0007、ADR-0009、ADR-0089、ADR-0093。
+- リポジトリの解釈は [`docs/design/agent-environment.md`](../design/agent-environment.md) に別途記述する。

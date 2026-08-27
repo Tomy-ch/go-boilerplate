@@ -5,92 +5,62 @@ deciders: [maintainers]
 tags: [exclusion, setup-review]
 ---
 
-# ADR-0105: Do not control scheduled-job concurrency in-app; delegate to the scheduler
+# ADR-0105: スケジュールジョブの同時実行制御をアプリ内で行わず、スケジューラに委譲する
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Scheduled jobs running in a multi-instance environment can overlap: a new run starts before
-the previous one finishes, or two instances start the same job at the same wall-clock tick.
-The conventional remedy is an application-level mutual exclusion mechanism — typically an
-advisory database lock (e.g. `pg_try_advisory_lock`) or a distributed lock (e.g. Redis
-`SET NX`). These mechanisms add infrastructure dependencies and coordination logic that must
-be tested, operated, and kept in sync with the job lifecycle.
+マルチインスタンス環境で動作するスケジュールジョブは、前回の実行が終わる前に新たな実行が開始したり、複数インスタンスが同じウォールクロックのティックで同じジョブを起動したりすることがある。従来の対処策はアプリケーションレベルの相互排除メカニズムであり、通常はアドバイザリデータベースロック（例: `pg_try_advisory_lock`）や分散ロック（例: Redis `SET NX`）が使われる。これらのメカニズムはインフラ依存と調整ロジックを追加し、テスト・運用・ジョブライフサイクルとの同期管理が必要になる。
 
 <!-- sample-api:replace-begin -->
-Three scheduled one-shot jobs are bundled — `outbox-gc`, `idempotency-gc`, and
-`usercount` — plus the continuously running outbox relay process (a resident engine, not a
-scheduled job; see [ADR-0061](0061-relay-resident-gc-oneshot.md)). Each is designed to be
-concurrency-safe without application-level locking:
+3 つのスケジュール（one-shot）ジョブ（`outbox-gc`、`idempotency-gc`、`usercount`）と、常駐する outbox リレープロセス（スケジュールジョブではなく常駐エンジン。[ADR-0061](0061-relay-resident-gc-oneshot.md) 参照）を含んでいる。各々はアプリケーションレベルのロックなしに並行安全となるよう設計されている:
 <!-- sample-api:replace-with -->
-<!-- = Two scheduled one-shot jobs are bundled — `outbox-gc` and `idempotency-gc` — plus the -->
-<!-- = continuously running outbox relay process (a resident engine, not a scheduled job; see -->
-<!-- = [ADR-0061](0061-relay-resident-gc-oneshot.md)). Each is designed to be concurrency-safe -->
-<!-- = without application-level locking: -->
+<!-- = 2 つのスケジュール（one-shot）ジョブ（`outbox-gc`、`idempotency-gc`）と、常駐する outbox リレープロセス（スケジュールジョブではなく常駐エンジン。[ADR-0061](0061-relay-resident-gc-oneshot.md) 参照）を含んでいる。各々はアプリケーションレベルのロックなしに並行安全となるよう設計されている: -->
 <!-- sample-api:replace-end -->
 
-- `outbox-gc` and `idempotency-gc` are age-predicate, idempotent batch deletes — running
-  them concurrently produces the same result as running them once.
+- `outbox-gc` と `idempotency-gc` は年齢述語による冪等なバッチ削除であり、並行実行しても 1 回の実行と同じ結果になる。
 <!-- sample-api:replace-begin -->
-- `usercount` is read-only.
+- `usercount` は読み取り専用である。
 <!-- sample-api:replace-with -->
 <!-- sample-api:replace-end -->
-- The outbox relay claims rows with `SELECT … FOR UPDATE SKIP LOCKED`, so concurrent
-  relays process disjoint sets of rows.
+- outbox リレーは `SELECT … FOR UPDATE SKIP LOCKED` で行を確保するため、並行するリレーは互いに素な行セットを処理する。
 
-Given this design, application-level mutual exclusion would add complexity without providing
-correctness benefits for the bundled jobs.
+この設計のもとでは、アプリケーションレベルの相互排除を追加しても、バンドルされたジョブに対して正確性上の利益をもたらさず、複雑さを増すだけである。
 
-## Decision
+## 決定
 
-We deliberately do NOT control scheduled-job concurrency inside the application. Overlap
-prevention and multi-instance guarding are delegated to the scheduler (e.g. Kubernetes
-`CronJob` with `concurrencyPolicy: Forbid` or `Replace`, or an equivalent advisory-lock
-mechanism at the scheduler layer).
+スケジュールジョブの同時実行制御はアプリケーション内で意図的に**行わない**。重複実行の防止とマルチインスタンスガードはスケジューラに委譲する（例: `concurrencyPolicy: Forbid` または `Replace` を設定した Kubernetes `CronJob`、あるいはスケジューラ層での同等のアドバイザリロック機構）。
 
-Strict single-run semantics require `concurrencyPolicy: Forbid` at the Kubernetes `CronJob`
-(or the equivalent for the scheduler in use). For jobs added later that are not
-concurrency-safe by design, the same scheduler-level policy applies; if such a job requires
-fine-grained locking beyond scheduler control, it must be implemented within that specific
-job.
+厳密な単一実行セマンティクスには、Kubernetes `CronJob` での `concurrencyPolicy: Forbid` の設定が必要である（他のスケジューラを使う場合も同等の設定を行う）。後から追加したジョブが設計上並行安全でない場合、同じスケジューラレベルのポリシーが適用される。スケジューラの制御を超えた細粒度のロックが必要な場合は、その特定のジョブ内で実装する。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- No advisory-lock infrastructure dependency in the application.
-- Bundled jobs remain concurrency-safe by design, not by lock — simpler and easier to test.
-- Concurrency policy is expressed declaratively in scheduler configuration, making it
-  visible to operators without reading application code.
+- アプリケーションにアドバイザリロックのインフラ依存が生まれない。
+- バンドルされたジョブはロックではなく設計によって並行安全であり、シンプルでテストしやすい。
+- 並行ポリシーはスケジューラ設定として宣言的に表現されるため、アプリケーションコードを読まなくてもオペレーターから可視である。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Setting `concurrencyPolicy` correctly is the operator's responsibility; the application
-  provides no guard if it is omitted.
-- A non-idempotent job added later must implement its own locking or rely on the
-  scheduler policy — neither is provided out of the box.
-- The concurrency guarantee is only as strong as the scheduler's enforcement, which may
-  vary (e.g. clock skew on multi-master Kubernetes setups).
+- `concurrencyPolicy` を正しく設定するのはオペレーターの責任である。設定しない場合、アプリケーション側でのガードは存在しない。
+- 後から冪等でないジョブを追加する場合、自身でロックを実装するか、スケジューラポリシーに頼るか——どちらもすぐに使える形では提供されない。
+- 並行保証はスケジューラの適用力に依存するため、環境によって強度が異なる可能性がある（例: マルチマスター Kubernetes セットアップでのクロックスキュー）。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Advisory database lock per job (`pg_try_advisory_lock`)
+### ジョブごとのアドバイザリデータベースロック（`pg_try_advisory_lock`）
 
-Prevents concurrent runs at the database level, independent of the scheduler. Rejected
-because it couples the job runner to the database for coordination (not data), complicates
-failure recovery (lock not released on crash), and is unnecessary for the bundled jobs which
-are already safe by design.
+スケジューラに依存せずデータベースレベルで並行実行を防止できる。しかし、調整のためにジョブランナーをデータベースに結合し（データではなく調整目的）、障害回復を複雑化させ（クラッシュ時にロックが解放されない）、バンドルされたジョブはすでに設計上安全であるため不要である。以上の理由で却下。
 
-### Distributed lock via Redis
+### Redis を使った分散ロック
 
-Robust across multiple database replicas, but introduces a Redis dependency solely for
-coordination. Rejected as over-engineering here; scheduler-level policy achieves the same
-outcome without an extra infrastructure component.
+複数のデータベースレプリカにまたがって堅牢だが、調整のためだけに Redis 依存を導入する。ここでは過剰エンジニアリングであるとして却下。スケジューラレベルのポリシーで、余分なインフラコンポーネントなしに同じ結果を達成できる。
 
-## Notes
+## 補足
 
-- Source: [`docs/project/out-of-scope.md`](../project/out-of-scope.md) lines 17–26.
-- Full ADR set and ordering: [the ADR log](README.md).
+- ソース: [`docs/project/out-of-scope.md`](../project/out-of-scope.md) 行 17–26。
+- ADR の全体像と順序: [ADR ログ](README.md)。

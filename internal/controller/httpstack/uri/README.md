@@ -1,7 +1,7 @@
 # uri
 
-Removes trailing slashes from request URIs.
+リクエスト URI の末尾スラッシュを除去します。
 
-## Role
+## 役割
 
-Treating `/path` and `/path/` as the same route avoids duplicate-path bugs and inconsistent client behaviour. Normalizing the trailing slash in one middleware before routing means every handler sees a single canonical path form, so route matching and handler logic never have to account for the variant.
+`/path` と `/path/` を同一ルートとして扱うことで、パス重複によるバグやクライアント挙動の不整合を避けられます。ルーティング前に末尾スラッシュをミドルウェアで正規化することで、すべてのハンドラが唯一の正規化されたパス形式を見ることになり、ルートマッチングやハンドラのロジックが差異を考慮する必要がなくなります。

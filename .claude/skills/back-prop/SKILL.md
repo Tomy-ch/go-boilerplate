@@ -6,37 +6,35 @@ description: >-
 
 # Back-Prop
 
-Integrator for drift detection across layers. Fans out per-layer **read-only drift-detector subagents** in parallel based on scope, aggregates, then drives the per-item approval + write loop itself.
+layer 横断の drift 検出の統合スキル。scope に応じて per-layer **read-only drift-detector サブエージェント**を並列 fan-out し、集約後に per-item 承認＋書込ループを integrator 自身が回す。
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+## 使うとき
 
-## When to Use
+- 複数 layer の refactor 後、PR レビュー前
+- 定期的な衛生チェック（未文書化規約 / skill 肥大 / README drift を横断検出）
+- layer 横断の新規約を導入する時（どこで既に守られ / まだか確認）
 
-- After multi-layer refactor, before PR review
-- Periodic hygiene sweep (catch undocumented conventions / skill bloat / README drift across all layers)
-- When introducing a new layer-wide convention (to see where it's already followed / not yet)
+単一 layer だけ確認したい時はこの統合スキルを実行し、scope 質問で「特定 layer のみ」を選ぶ。
 
-To check a single layer, run this integrator and pick that layer in the scope question (「特定 layer のみ」).
+以下には使わない:
 
-Do NOT use for:
+- 実装コード修正（surface のみ、ここでは何もコードを書かない）
+- ファイル単位のアーキ適合性 — `arch-check`（TODO hand-off 付き）
+- spec validation — `verify-spec`
 
-- Implementation code fixes (surface only; nothing here writes code)
-- Architecture compliance per file — `arch-check` (with TODO hand-off)
-- Spec validation — `verify-spec`
+## アーキテクチャ: 並列 detector サブエージェント + integrator 側承認
 
-## Architecture: parallel detector subagents + integrator-side approval
+検出は `.claude/agents/` 配下の **read-only ワーカーサブエージェント**（layer ごとに1つ）へ委譲。integrator は Agent tool（`subagent_type`）でこれらを並列起動する:
 
-Detection is delegated to five **read-only worker subagents** under `.claude/agents/`, one per layer. The integrator runs them concurrently via the Agent tool (`subagent_type`):
-
-| Detector subagent | Layer | Canonical doc(s) |
+| detector サブエージェント | layer | canonical doc |
 | --- | --- | --- |
 | `drift-detector-domain` | `internal/domain/**` | `internal/domain/README.md` |
 | `drift-detector-usecase` | `internal/usecase/**` | `internal/usecase/README.md` + `boundary/README.md` |
-| `drift-detector-controller` | `internal/controller/**` | `internal/controller/README.md` + `handler/README.md` (reference snippet) |
-| `drift-detector-infra` | `internal/infrastructure/**` | infra / rdb / pgerror README（principles-focused、sibling code が de facto reference） |
+| `drift-detector-controller` | `internal/controller/**` | `internal/controller/README.md` + `handler/README.md`（reference snippet） |
+| `drift-detector-infra` | `internal/infrastructure/**` | infra / rdb / pgerror README（principles 主体、sibling code が de facto reference） |
 | `drift-detector-pkg` | `pkg/**` | `pkg/README.md` + 各 `pkg/<name>/README.md` |
 
-Two further detectors are keyed to a corpus rather than to a layer, and each runs only when its category is selected:
+もう 2 つ、layer ではなくコーパスに紐づく detector があり、それぞれ対応する種別を選んだときだけ動く:
 
 | Detector subagent | 対象 | Canonical doc(s) |
 | --- | --- | --- |
@@ -45,7 +43,6 @@ Two further detectors are keyed to a corpus rather than to a layer, and each run
 
 これは README↔コードでなく**台帳↔正本**のドリフトを見る。台帳は「どの Evans パターンをどこで解釈したか」
 の帳簿なので、正本が動いた瞬間に静かに嘘になる — しかも誰も読まないファイルなので、放置しても誰も気づかない。
-Evans 原義に忠実かどうかは扱わない（`ddd-audit` / `ddd-origin-auditor` の担当）。
 
 (E) は**業務語彙が家を出ていないか**を見る。業務語は `docs/spec/` に住み、README / ADR は実装の構造と
 その意思決定を述べる側なので、層 README へ育った業務語は家を出た語である。同じ語がどこか別の場所で
@@ -53,29 +50,29 @@ Evans 原義に忠実かどうかは扱わない（`ddd-audit` / `ddd-origin-aud
 作らず参照するだけ**。(D) と同型である。
 
 (E) には他と違う制約が 1 つある。**findings のうち直せるのは層 README だけ**で、ADR と `docs/rules.md`
-への漏れは報告に留まる。前者は back-prop の write scope そのものだが、後者は決定記録と統べる文書で、
-検出器を満足させるために書き換えれば誰が決めるのかが反転する。detector 側が E1 / E2 として分けて返す
-ので、integrator は E2 を承認対象に載せないこと。
+への漏れは報告に留まる。前者は back-prop の書込スコープそのものだが、後者は決定記録と統べる文書で、
+検出器を満足させるために書き換えれば誰が決めるのかが反転する。detector が E1 / E2 として分けて返すので、
+integrator は E2 を承認対象に載せないこと。
+Evans 原義に忠実かどうかは扱わない（`ddd-audit` / `ddd-origin-auditor` の担当）。
 
-These detectors are the per-layer drift-detection workers. They are **strictly read-only**: they surface (A)(B)(C) findings with reasoning + candidate options, but they **never call `AskUserQuestion` and never write**. The approval + write loop runs in **this integrator**, **single-threaded after aggregation**, so the five read-only detectors can fan out in parallel with zero write contention. Priority remains **README > Code > SKILL**.
+これらは層別の drift 検出ワーカー。**厳密に read-only**: (A)(B)(C) findings を reasoning + 候補オプション付きで surface するが、**`AskUserQuestion` を呼ばず・書き込まない**。承認＋書込ループは**この integrator が集約後に単一スレッドで**回す。これにより read-only detector 5つを書込競合ゼロで並列 fan-out できる。優先順位は **README > Code > SKILL**。
 
-## First Step: Confirm Scope + Detection Categories
+## 最初のステップ: scope + 検出種別 確認
 
-`AskUserQuestion` with two batched questions (defaults auto-detected by git diff):
+`AskUserQuestion` を 2 質問 batched（既定は git diff で自動検出）:
 
 1. 質問: 「back-prop のスコープを選んでください」
-   - 選択肢: 「変更ファイルのみ（ベースブランチとの diff、touched layer のみ fan-out）」 / 「リポジトリ全体（5 layer 全部 fan-out）」 / 「特定 layer のみ（layer を続けて指定）」 / 「キャンセル」
+   - 選択肢: 「変更ファイルのみ（diff、touched layer のみ fan-out）」 / 「リポジトリ全体（5 layer 全部 fan-out）」 / 「特定 layer のみ」 / 「キャンセル」
 
 2. 質問: 「検出する drift 種別を選んでください（multi-select、既定 4 種類すべて）」
    - 選択肢: 「(A) README → Code drift」 / 「(B) Code → README undocumented pattern」 / 「(C) Skill ↔ README duplication」 / 「(D) DDD 台帳 ↔ ADR/README コーパス」 / 「(E) 業務語彙 ↔ README/ADR」
 
-Detection categories are propagated to every detector. (D) and (E) are the ones that do not depend on
-Go files, so they are worth selecting even when the diff touches no code at all — a prose-only change
-is exactly the case that rots the ledger, and the one that lets a business term settle into a README.
+検出種別は全 detector に伝播。(D) だけは Go ファイルに依存しないので、diff がコードを一切触っていない
+ときでも選ぶ価値がある — ADR だけの変更こそが台帳を腐らせる典型例である。
 
-## Step 1. Resolve Layers + File Lists in Scope
+## Step 1. scope を layer + ファイルリストに解決
 
-For "changed files" mode:
+「変更ファイルのみ」モード:
 
 ```sh
 BASE=$(gh pr view --json baseRefName -q '.baseRefName' 2>/dev/null || make -s base-branch)
@@ -83,15 +80,15 @@ test -n "$BASE" || { echo "ベースブランチを解決できませんでし�
 git diff --name-only "origin/${BASE}...HEAD" -- '*.go' | grep -vE '\.gen\.go$|\.sql\.go$|_mock\.go$|_test\.go$'
 ```
 
-An existing pull request's `baseRefName` stays the authority — the drift you report has to sit in the
-diff the PR shows. With no PR, `make base-branch` resolves the latest release line from `origin`'s live
-state; `gh repo view --json defaultBranchRef` is not the fallback, because the GitHub default branch
-keeps answering with an earlier release line. Stop on an unresolved base rather than continuing: an
-empty file list fans out zero detectors and reports no drift, which reads exactly like a clean run.
+PR が既にあるならその `baseRefName` が正である。報告する drift は PR が見せている diff の中に無ければ
+ならない。PR が無い場合は `make base-branch` が `origin` の実状態から最新のリリースラインを解決する。
+fallback に `gh repo view --json defaultBranchRef` を使ってはならない。GitHub のデフォルトブランチは前の
+リリースラインを指したまま答え続けるためである。base を解決できなければ続行せず止める。空のファイル
+リストは detector を 1 つも fan-out せず drift ゼロを報告し、それは正常な実行と区別が付かない。
 
-Map to layers by path prefix, keeping the per-layer file list (you pass it to each detector so it does not re-resolve git):
+path prefix で layer マッピングし、per-layer ファイルリストを保持（各 detector へ渡し git 再解決を防ぐ）:
 
-| Path prefix | Detector subagent |
+| path prefix | detector サブエージェント |
 | --- | --- |
 | `internal/domain/` | `drift-detector-domain` |
 | `internal/usecase/` | `drift-detector-usecase` |
@@ -99,38 +96,33 @@ Map to layers by path prefix, keeping the per-layer file list (you pass it to ea
 | `internal/infrastructure/` | `drift-detector-infra` |
 | `pkg/` | `drift-detector-pkg` |
 
-For "full repo": fan out all 5. For "specific layer": ask user which, fan out only those.
+「リポジトリ全体」: 5 detector 全部 fan-out。「特定 layer のみ」: layer を追加質問し該当のみ。
 
-When (D) is selected, additionally resolve the **DDD corpus** — not `*.go`-filtered, since the corpus is prose. Read the `corpus` globs from `.agents/ddd-audit/pattern-ledger.yaml` (never hardcode them here) and intersect with the diff for `changed` scope. Add `drift-detector-ddd` to the fan-out whenever that intersection is non-empty, or always in `full` scope.
+(D) を選んだときは、追加で **DDD コーパス**を解決する（散文なので `*.go` では絞らない）。`corpus` グロブは `.agents/ddd-audit/pattern-ledger.yaml` から読む（ここにハードコードしない）。`changed` scope では diff と交差させ、交差が空でなければ `drift-detector-ddd` を fan-out に加える。`full` scope では常に加える。
 
-When (E) is selected, resolve the **prose corpus** the same way: `internal/**/README.md`,
-`pkg/**/README.md`, `docs/adr/*.md`, `docs/rules.md`, `docs/architecture.md`, minus `*.ja.md`.
-Add `drift-detector-glossary` whenever that intersection is non-empty, or always in `full` scope.
-**Skip it, and say why, when `docs/spec/glossary.md` does not exist** — the detector's probe list is
-that page's term table, and without it there is nothing to look for.
+(E) を選んだときも同様に**散文コーパス**を解決する（`internal/**/README.md`、`pkg/**/README.md`、`docs/adr/*.md`、`docs/rules.md`、`docs/architecture.md`）。交差が空でなければ `drift-detector-glossary` を加え、`full` scope では常に加える。**`docs/spec/glossary.md` が無いときはスキップし、その理由を述べる** — detector の probe 一覧はあのページの用語表であり、無ければ探すものが無い。
 
-No Go changes **and** no corpus changes in changed-files mode → exit cleanly. Go-only changes with (D) or (E) selected still skip those detectors; a diff that touches no prose cannot rot the ledger or move a term.
+changed-files で Go 変更もコーパス変更も無い → 明示メッセージで exit。Go だけの変更で (D) や (E) を選んでいる場合はそれらの detector をスキップする（散文を触らない diff は台帳を腐らせず、用語も動かさない）。
 
-## Step 2. Fan Out Detector Subagents IN PARALLEL
+## Step 2. detector サブエージェントを並列 fan-out
 
-For each layer in scope, spawn its detector with the **Agent tool**, all in **a single message with multiple tool calls** so they run concurrently. Pass each detector:
+scope 内の各 layer について、その detector を **Agent tool** で起動。**1メッセージ内に複数 tool 呼び出し**を並べて並列実行。各 detector に渡す:
 
 - `scope` — `changed` or `full`
-- `files` — the pre-resolved newline list of in-scope `.go` files for that layer (from Step 1)
-- `baseRef` — the base branch (fallback)
-- `categories` — the selected subset of `A` / `B` / `C`
+- `files` — その layer の in-scope `.go` ファイル改行リスト（Step 1）
+- `baseRef` — base ブランチ（fallback）
+- `categories` — 選択された `A` / `B` / `C` の部分集合
 
-`drift-detector-ddd` and `drift-detector-glossary` take a prose file list instead of a Go file list,
-and no `categories` (each only ever detects its own). Spawn them in the **same message** as the layer
-detectors so everything runs concurrently.
+`drift-detector-ddd` には Go ファイルリストではなくコーパスのファイルリストを渡し、`categories` は渡さない
+（それぞれ自分の種別だけを検出する）。layer detector と**同じメッセージ**で起動して並列実行する。
 
-Each detector's final message **is** its findings (Japanese, each with reasoning + candidate options). Collect them with their layer label.
+各 detector の最終メッセージ**が** findings（日本語、各 finding に reasoning + 候補オプション）。layer ラベル付きで収集。
 
-> If the `drift-detector-*` subagents cannot be spawned in the current environment, follow each `drift-detector-<layer>.md` procedure inline instead — the integrator still runs the per-item approval + write loop (Step 4) single-threaded afterward.
+> `drift-detector-*` を起動できない環境では、各 `drift-detector-<layer>.md` の手順を本文がインラインで実行する — 承認＋書込（Step 4）は集約後に integrator が単一スレッドで行う。
 
-## Step 3. Aggregate Findings (read-only checkpoint)
+## Step 3. findings 集約（read-only チェックポイント）
 
-Combine all detector findings into a single Japanese summary grouped by layer + category, so the user sees the full surface before any decision:
+全 detector findings を layer + category 別の日本語サマリに集約し、決定前に全体像を提示:
 
 ```text
 back-prop drift 検出結果（scope: <X>, 種別: A/B/C）
@@ -146,37 +138,36 @@ back-prop drift 検出結果（scope: <X>, 種別: A/B/C）
 総 finding: <sum>。これから 1 件ずつ承認 / 棄却を確認します。
 ```
 
-If all clean:
+全 clean:
 
 ```text
 back-prop drift 検出結果（scope: <X>, 種別: A/B/C）
 全 layer で drift は検出されませんでした（チェック済み: <layer list>）。
 ```
 
-## Step 4. Per-Item Approval + Write (integrator-side, single-threaded)
+## Step 4. per-item 承認 + 書込（integrator 側、単一スレッド）
 
-Detector subagents are read-only. For each finding, **the integrator** now drives the decision — there is no write contention because this loop is single-threaded:
+detector は read-only。各 finding について **integrator** が決定を回す（単一スレッドなので書込競合なし）:
 
-1. `AskUserQuestion` with the candidate options the detector surfaced for that finding (e.g. コード修正 / README 更新 / ルール緩和 / skill 簡略化 / 無視).
-2. If the user approves a **doc / skill** change:
-   - State the reasoning explicitly, then show the draft as a diff (変更前 / 変更後).
-   - After final confirmation, write via `Edit` / `Write` — only to the **canonical README** of that layer or the relevant **skill `SKILL.md`** (and never code).
-3. If the user chooses a **code fix**: surface it as the user's task (this skill never writes implementation code).
-4. Loop over all findings; the user may abort partway.
+1. detector が surface した候補オプションで `AskUserQuestion`（例: コード修正 / README 更新 / ルール緩和 / skill 簡略化 / 無視）。
+2. user が **doc / skill** 変更を承認した場合:
+   - 理由を明示 → draft を diff（変更前 / 変更後）で提示。
+   - 最終確認後、`Edit` / `Write` で書込 — 当該 layer の **canonical README** または関連 **skill `SKILL.md`** のみ（コードは決して触らない）。
+3. user が **コード修正**を選んだ場合: user の作業として surface（このスキルは実装コードを書かない）。
+4. 全 finding をループ。途中 abort 可。
 
-Write scope is restricted to: layer READMEs (`internal/<layer>/README.md` and sub-READMEs), skill `SKILL.md` files, and — for (D) findings only — `.agents/ddd-audit/pattern-ledger.yaml`. Never implementation code, never generated files, never `AGENTS.md`.
+書込スコープ: layer README（`internal/<layer>/README.md` とサブ README）、skill `SKILL.md`、そして (D) の finding に限り `.agents/ddd-audit/pattern-ledger.yaml` のみ。実装コード・生成物・`AGENTS.md` は不可。
 
-**(E) narrows further, and the split is the detector's, not yours to re-open.** E1 findings sit in
-layer READMEs and are inside the scope above. E2 findings sit in an ADR or `docs/rules.md` and are
-**never put to approval at all** — surface them in the report and leave them there. Nor may you
-"resolve" an E2 by editing `docs/spec/glossary.md`: the vocabulary is `glossary`'s to maintain, and
-deleting a term to silence a finding would destroy the definition rather than move it.
+**(E) はさらに狭く、その線引きは detector のものであって開け直してよいものではない。** E1 は層 README にあり上記スコープの内側だが、E2 は ADR か `docs/rules.md` にあり、**そもそも承認対象に載せない**。レポートに出して、そこに置いておく。E2 を `docs/spec/glossary.md` の編集で「解消」してもいけない。用語表は `glossary` の担当であり、finding を黙らせるために語を消すことは、定義を移すのではなく壊すことである。
 
-A (D) finding may tempt you to fix the corpus instead of the ledger — rewriting the ADR section the ledger points at, so the pointer becomes true again. Do not. The ledger is bookkeeping and yours to correct; an ADR is a decision record in the maintainer's voice, and a detector editing one would convert its own finding into the record of a decision nobody made. Surface that as the user's task.
+(D) の finding では、台帳ではなく正本のほうを直したくなる — 台帳が指す ADR の節を書き換えれば、ポインタは
+また真になる。やってはいけない。台帳は帳簿であり直すのはこちらの仕事だが、ADR はメンテナの声で書かれた
+決定の記録であり、detector がそれを編集すれば、自らの finding を「誰も下していない決定の記録」に
+変えてしまう。ユーザーの作業として surface すること。
 
-After writes, run `make md-lint` (or `make md-fix` then `make md-lint`) to verify the edited Markdown.
+書込後に `make md-lint`（必要なら `make md-fix` → `make md-lint`）で編集 Markdown を検証。
 
-## Step 5. Closing Report (Japanese)
+## Step 5. クロージングレポート（日本語）
 
 ```text
 back-prop 完了（scope: <X>, 種別: A/B/C）
@@ -191,18 +182,17 @@ back-prop 完了（scope: <X>, 種別: A/B/C）
 最終 make md-lint OK
 ```
 
-- 検出は read-only detector subagent に委譲。書き込みは integrator が per-item 承認後に単一スレッドで実施
-- 実装コードへの書き込みは一切なし（surface のみ、コード修正は user 作業）
+- 検出は read-only detector サブエージェントに委譲。書込は integrator が per-item 承認後に単一スレッドで実施
+- 実装コードへの書込は一切なし（surface のみ、コード修正は user 作業）
 - commit / push なし
 
-## AI Modification Scope
+## AI 修正スコープ
 
-- 読み込み: 各 layer の README + 実装 + 関連 skill 本体（detector subagent が実施）。(E) 時は
-  `docs/spec/glossary.md` と `.agents/glossary-drift/exclusions.yaml` も読む（参照のみ）
-- 書き込み: **integrator のみ**、user の per-item 承認 + 理由明示 + draft 提示の後に、layer README / 関連 skill `SKILL.md` / (D) 時のみ `.agents/ddd-audit/pattern-ledger.yaml` へ。detector subagent は一切書き込まない。
-- 触らない: 実装コード、生成物、`AGENTS.md`、ADR 本文、`docs/spec/**`、`.agents/glossary-drift/exclusions.yaml`
+- 読み込み: 各 layer の README + 実装 + 関連 skill 本体（detector サブエージェントが実施）
+- 書き込み: **integrator のみ**、user の per-item 承認 + 理由明示 + draft 提示の後に、layer README / 関連 skill `SKILL.md` / (D) 時のみ `.agents/ddd-audit/pattern-ledger.yaml` へ。detector サブエージェントは一切書き込まない。
+- 触らない: 実装コード、生成物、`AGENTS.md`、ADR 本文
 
-## Constraints
+## 制約事項
 
 - ❌ detector を逐次起動（必ず1メッセージ内で複数 Agent 呼び出し＝並列）
 - ❌ scope + 種別 `AskUserQuestion` をスキップ
@@ -217,16 +207,16 @@ back-prop 完了（scope: <X>, 種別: A/B/C）
 - ❌ (E) の解消として `docs/spec/glossary.md` を編集する（用語表は `glossary` の担当）
 - ❌ (E) を `.agents/glossary-drift/exclusions.yaml` へ追記して黙らせる（除外の宣言は user の判断）
 - ✅ Japanese aggregated report
-- ✅ Fan out only touched layers (changed-files mode)
+- ✅ touched layer のみ fan-out（changed-files mode）
 - ✅ per-layer detector / skill が独立 standalone 動作可能であることを維持
-- ✅ Categories propagation to all detectors
+- ✅ Categories を全 detector に propagate
 - ✅ 書き込みは integrator 単一スレッドのみ（並列 detector は read-only）
 - ✅ README が canonical の前提（README > Code > SKILL）
 
-## Checklist
+## チェックリスト
 
-- [ ] Scope + 種別を `AskUserQuestion` で確認
-- [ ] Layer + per-layer ファイルリスト解決（changed files / full repo / specific layer）
+- [ ] scope + 種別を `AskUserQuestion` で確認
+- [ ] layer + per-layer ファイルリスト解決（changed files / full repo / specific layer）
 - [ ] touched layer の `drift-detector-*` を **1メッセージ内で並列起動**（scope / files / baseRef / categories を渡す）
 - [ ] (D) 選択かつコーパス変更ありなら `drift-detector-ddd` を同じメッセージで並列起動
 - [ ] (E) 選択かつ散文変更ありなら `drift-detector-glossary` を同じメッセージで並列起動（用語表が無ければスキップして理由を述べる）

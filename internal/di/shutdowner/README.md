@@ -1,15 +1,17 @@
-# shutdowner DI Wrapper
+# shutdowner DI ラッパー
 
-This package provides a `Shutdowner` interface that abstracts `fx.Shutdowner` from `go.uber.org/fx`. It wraps the `fx.Shutdowner` obtained from the DI container to make it easier to use from application code and tests.
+`go.uber.org/fx` の `fx.Shutdowner` を抽象化した `Shutdowner` インターフェースを提供するパッケージです。
 
-## Why Abstract?
+DI コンテナから取得した `fx.Shutdowner` をラップし、アプリケーションコードやテストから利用しやすくします。
 
-- Using `fx.Shutdowner` directly couples application code to the fx framework
-- The `Shutdowner` interface allows easy mock injection in tests
-- Keeps the fx dependency confined to the DI layer
+## なぜ抽象化するのか
 
-## Notes
+- `fx.Shutdowner` を直接使うと、アプリケーションコードが fx フレームワークに結合する
+- `Shutdowner` インターフェースにより、テストでのモック注入が容易になる
+- fx 依存を DI 層に閉じ込められる
 
-- The wrapper is extremely thin — it simply holds `fx.Shutdowner` and delegates `Shutdown` calls
-- `Shutdown` triggers process stop and cleanup, so callers should be aware of side effects
-- `mock/` contains auto-generated mocks via `mockgen`
+## 注意点
+
+- ラッパーは極めて薄い実装 — `fx.Shutdowner` を保持して `Shutdown` を委譲するだけ
+- `Shutdown` はプロセス停止やクリーンアップをトリガーするため、呼び出し側で副作用に注意
+- `mock/` には `mockgen` による自動生成モックが格納されている

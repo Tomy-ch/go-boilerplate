@@ -5,122 +5,78 @@ deciders: [maintainers]
 tags: [persistence, transaction, concurrency]
 ---
 
-# ADR-0035: Retry transactions on serialization conflict; require callers to be idempotent
+# ADR-0035: シリアライゼーション競合時はトランザクションをリトライする。呼び出し元は冪等性を保証しなければならない
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-PostgreSQL's REPEATABLE READ and SERIALIZABLE isolation levels can abort transactions with:
+PostgreSQL の REPEATABLE READ および SERIALIZABLE 分離レベルは、次のいずれかでトランザクションをアボートすることがある。
 
-- `serialization_failure` (SQLSTATE 40001) — concurrent transactions produced a
-  serialization anomaly
-- `deadlock_detected` (SQLSTATE 40P01) — a circular wait was broken by aborting one
-  transaction
+- `serialization_failure`（SQLSTATE 40001）— 並行トランザクションがシリアライゼーション異常を引き起こした
+- `deadlock_detected`（SQLSTATE 40P01）— 循環待機が発生し、一方のトランザクションをアボートすることで解消された
 
-Both are expected conditions under concurrent write load, not application bugs. PostgreSQL's
-own documentation recommends retrying these transactions at the application layer.
+いずれもアプリケーションバグではなく、並行書き込み負荷のもとで発生しうる想定内の状態である。PostgreSQL 公式ドキュメントも、アプリケーション層でこれらのトランザクションをリトライすることを推奨している。
 
-Without automatic retry, these errors propagate as transient failures that every usecase
-must handle individually. The resulting per-usecase handling is inconsistent, error-prone,
-and easy to omit.
+自動リトライがなければ、こうしたエラーは一時的な障害として各ユースケースに伝播し、それぞれが個別にハンドリングしなければならない。結果として生まれるユースケースごとの処理は一貫性を欠き、バグを生みやすく、見落としも起きやすい。
 
-However, automatic retry introduces a subtle safety constraint: the transaction body
-function `fn` may be executed multiple times if the transaction is retried. Any non-database
-side effect inside `fn` — sending an email, publishing a message to a broker, calling an
-external API — would also execute multiple times, producing duplicates. An unconditional
-retry guarantee is unsound without a corresponding constraint on what `fn` may do.
+ただし、自動リトライには微妙な安全制約が伴う。トランザクション本体関数 `fn` はリトライされると複数回実行される可能性がある。`fn` 内のデータベース以外の副作用（メール送信、ブローカーへのメッセージ配信、外部 API 呼び出しなど）も複数回実行され、重複が生じる。対応する制約なしに無条件のリトライを保証することは安全ではない。
 
-## Decision
+## 決定
 
-`tx.Manager.Do` (implemented in `internal/infrastructure/rdb/driver/transaction.go`)
-**automatically retries the full transaction body** a bounded number of times when
-`serialization_failure` (40001) or `deadlock_detected` (40P01) is detected, using
-exponential backoff with full jitter via `pkg/retry` and `pkg/backoff`.
+`tx.Manager.Do`（`internal/infrastructure/rdb/driver/transaction.go` に実装）は、`serialization_failure`（40001）または `deadlock_detected`（40P01）が検出された場合に、**トランザクション本体全体を上限回数までリトライする**。リトライには `pkg/retry` と `pkg/backoff` による完全ジッター付きの指数バックオフを使用する。
 
-Retry parameters are configurable without code changes:
+リトライパラメータはコード変更なしに設定できる。
 
-| Config key | Default |
+| 設定キー | デフォルト |
 | --- | --- |
-| `DB_TX_MAX_RETRIES` | 3 attempts |
-| `DB_TX_RETRY_BASE_BACKOFF` | 5 ms initial |
-| `DB_TX_RETRY_MAX_BACKOFF` | 100 ms cap |
+| `DB_TX_MAX_RETRIES` | 3 回 |
+| `DB_TX_RETRY_BASE_BACKOFF` | 初期 5 ms |
+| `DB_TX_RETRY_MAX_BACKOFF` | 上限 100 ms |
 
-**Callers must ensure `fn` is idempotent for all non-database side effects**, because `fn`
-may run up to `maxAttempts` times. The canonical pattern for external side effects is to
-write them as **outbox rows within the same transaction**: a rolled-back attempt discards
-the outbox rows, and only the committed attempt's rows are delivered downstream, making
-retries safe by construction.
+**`fn` はデータベース以外のすべての副作用に対して冪等でなければならない**。`fn` は最大 `maxAttempts` 回実行される可能性があるためである。外部副作用の標準パターンは、**同一トランザクション内でアウトボックス行として書き込む**ことである。ロールバックされた試行ではアウトボックス行も破棄され、コミットされた試行の行のみが下流に配信されるため、リトライは構造的に安全になる。
 
-Nested `Manager.Do` calls (where a transaction already exists in context) reuse the outer
-transaction and run exactly once — they are not retried. Only the outermost `Do` call
-retries.
+ネストされた `Manager.Do` 呼び出し（コンテキストにすでにトランザクションが存在する場合）は外側のトランザクションを再利用し、ちょうど 1 回だけ実行される。リトライされるのは最外側の `Do` 呼び出しのみである。
 
-The retry predicate inspects the raw error chain using `errors.As` to find
-`*pgconn.PgError`, which remains accessible even after `pgerror.NormalizeError` because
-the project uses `xerrors.Join` rather than string-flattening wraps (see
-[`docs/rules.md`](../rules.md) § "Error Handling Rules").
+リトライ判定は `errors.As` を使って生のエラーチェーンから `*pgconn.PgError` を検索する。プロジェクトは文字列でフラットにするラップではなく `xerrors.Join` を使用しているため、`pgerror.NormalizeError` の後もエラーチェーンに `*pgconn.PgError` がアクセス可能なまま残る（[`docs/rules.md`](../rules.md) § "Error Handling Rules" を参照）。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Serialization and deadlock errors are handled automatically and consistently. Usecases do
-  not need a per-call retry loop of their own.
-- Retry parameters are tunable per deployment without code changes.
-- The outbox pattern (write side effects transactionally) makes the idempotency constraint
-  easy to satisfy and auditable: retry safety is visible in the schema, not hidden in
-  application code.
-- Nested transactions are safe: only the outermost `Do` retries; inner calls inherit the
-  outer transaction and run once.
+- シリアライゼーションエラーとデッドロックエラーが自動かつ一貫して処理される。各ユースケースが呼び出しごとのリトライループを自前で持つ必要がない。
+- リトライパラメータはデプロイごとにコード変更なしで調整できる。
+- アウトボックスパターン（副作用をトランザクション内で書き込む）により冪等性制約を満たしやすくなり、監査もしやすい。リトライ安全性はアプリケーションコードに隠れることなく、スキーマで確認できる。
+- ネストされたトランザクションは安全である。リトライされるのは最外側の `Do` のみで、内側の呼び出しは外側のトランザクションを継承して 1 回だけ実行される。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Callers must actively understand and satisfy the idempotency constraint. A violation (e.g.
-  publishing to a broker directly inside `fn` rather than via an outbox row) produces
-  silent duplicates that are hard to detect in testing.
-- Under high contention, retry adds latency and can hold connections for longer than a
-  single attempt. A high `maxAttempts` without backoff cap could worsen contention.
-- The idempotency contract is enforced by convention and code review, not by a type-system
-  guarantee.
+- 呼び出し元は冪等性制約を理解し、能動的に満たさなければならない。違反（アウトボックス行ではなく `fn` 内で直接ブローカーに publish するなど）は、テストで検出しにくいサイレントな重複を引き起こす。
+- 高競合下では、リトライにより遅延が増し、単一試行よりも長くコネクションが保持される。バックオフ上限なしに `maxAttempts` を大きくすると、競合がさらに悪化する可能性がある。
+- 冪等性の契約はコンベンションとコードレビューで強制されるものであり、型システムによる保証ではない。
 
-## Alternatives Considered
+## 検討した代替案
 
-### No automatic retry — let callers handle it
+### 自動リトライなし — 呼び出し元が処理する
 
-Each usecase or handler would implement its own retry loop on detecting 40001 or 40P01.
-Error-prone (easy to forget), inconsistent (different retry counts and backoff strategies),
-and verbose. Serialization failures are the expected mechanism for conflict resolution under
-SERIALIZABLE isolation — surfacing them directly to callers is architectural noise that
-belongs in the infrastructure layer.
+各ユースケースまたはハンドラが 40001 や 40P01 を検出した際に独自のリトライループを実装する方法。エラーが起きやすく（見落としやすい）、一貫性がなく（リトライ回数やバックオフ戦略がバラバラ）、冗長になる。シリアライゼーション失敗は SERIALIZABLE 分離のもとでの競合解消として想定される仕組みであり、それを呼び出し元に直接伝達するのはインフラ層が担うべきアーキテクチャ上のノイズである。
 
-### Unlimited retries
+### 無制限リトライ
 
-Without a bound, a high-contention scenario can starve other transactions indefinitely via
-repeated failed attempts. A bounded retry with exponential backoff is the standard safe
-pattern and matches PostgreSQL's own recommendation to retry a finite number of times before
-returning an error.
+上限なしにリトライすると、高競合シナリオで失敗した試行が繰り返され、他のトランザクションを無制限に枯渇させるおそれがある。有限回数の指数バックオフによるリトライが標準の安全パターンであり、PostgreSQL の「有限回数リトライした後にエラーを返す」という推奨にも合致する。
 
-### Opt-in retry (separate DoWithRetry method)
+### オプトイン方式のリトライ（別の DoWithRetry メソッド）
 
-Callers explicitly choose `Manager.DoWithRetry` when they want retry behavior.
-More explicit but adds friction to the common case. All production transactions should be
-retry-safe by default (side effects via outbox), so opt-in creates pressure to use the
-non-retrying path as a shortcut rather than a deliberate choice. An opt-out model (retry is
-the default, nested path is opt-out automatically) is more appropriate.
+リトライが必要な場合に呼び出し元が明示的に `Manager.DoWithRetry` を選ぶ方式。より明示的ではあるが、一般的なケースに余分な手間がかかる。本番トランザクションはすべてデフォルトでリトライ安全であるべきで（副作用はアウトボックス経由）、オプトイン方式では非リトライパスが意図的な選択ではなく近道として使われる圧力が生まれる。オプトアウトモデル（リトライをデフォルトとし、ネストされたパスは自動的にオプトアウト）の方が適切である。
 
-### Savepoint-based nested retries
+### セーブポイントを使ったネストされたリトライ
 
-Retry nested `Do` calls independently using PostgreSQL savepoints. Adds significant
-complexity for the nested case; the outer transaction's retry is already sufficient because
-the whole transaction (including nested calls) is retried atomically.
+PostgreSQL のセーブポイントを使ってネストされた `Do` 呼び出しを独立してリトライする方法。ネストケースに対して大幅な複雑さを追加するが、外側のトランザクションのリトライですでに十分である（ネストされた呼び出しを含むトランザクション全体がアトミックにリトライされる）。
 
-## Notes
+## 補足
 
-- Source: [`internal/usecase/boundary/tx/README.md`](../../internal/usecase/boundary/tx/README.md)
-  § "Notes" (retry and idempotency contract).
-- Source: [`internal/infrastructure/rdb/driver/transaction.go`](../../internal/infrastructure/rdb/driver/transaction.go)
-  — `Do` (retry loop) and `doOnce` (single attempt, returns raw error for retry predicate).
-- Related: retry and backoff are implemented in `pkg/retry` and `pkg/backoff`.
+- 出典: [`internal/usecase/boundary/tx/README.md`](../../internal/usecase/boundary/tx/README.md) § "Notes"（リトライと冪等性の契約）。
+- 出典: [`internal/infrastructure/rdb/driver/transaction.go`](../../internal/infrastructure/rdb/driver/transaction.go) — `Do`（リトライループ）と `doOnce`（単一試行、リトライ判定用の生エラーを返す）。
+- 関連: リトライとバックオフは `pkg/retry` および `pkg/backoff` に実装されている。

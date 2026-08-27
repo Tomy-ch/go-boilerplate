@@ -1,22 +1,21 @@
-# Version Handler (`internal/controller/handler/version`)
+# Version ハンドラ (`internal/controller/handler/version`)
 
-## Role
+## 役割
 
-`version` exposes the build-information endpoint **`GET /version`**.
+`version` は、ビルド情報エンドポイント **`GET /version`** を公開します。
 
-It returns the version metadata baked into the binary at build time (via
-`ldflags`) plus the running service identity, so operators and clients can tell
-exactly which build and environment they are talking to.
+ビルド時に（`ldflags` で）バイナリへ埋め込まれたバージョンメタデータと、稼働中の
+サービス識別情報を返します。これにより運用者やクライアントは、いま通信している
+ビルドと実行環境を正確に判別できます。
 
-Unlike the liveness / readiness probes it is not a health check — it only
-reports static build/identity facts and never touches the database.
+liveness / readiness プローブとは異なり、これはヘルスチェックではありません。
+静的なビルド / 識別情報を報告するだけで、データベースには一切アクセスしません。
 
-## Standard handler pattern
+## 標準ハンドラパターン
 
-This is a permanent handler that follows the standard pattern documented in the
-[parent handler guide](../README.md): a `server` struct built by `BindHandler`
-through `gen.NewStrictHandler` / `gen.RegisterHandlers`, with a tracer span
-wrapping the handler body.
+これは[親ハンドラガイド](../README.md)に記載された標準パターンに従う恒久ハンドラ
+です。`server` 構造体を `BindHandler` が `gen.NewStrictHandler` /
+`gen.RegisterHandlers` を通じて組み立て、ハンドラ本体を tracer span で包みます。
 
 ```go
 func BindHandler(
@@ -28,37 +27,36 @@ func BindHandler(
 )
 ```
 
-- `bi system.BuildInfo` provides the `ldflags`-injected `Version()`,
-  `Revision()`, and `BuildDate()` values.
-- `ac *config.ApplicationConfig` provides the running `Env()` and `Name()`.
-- `loc *time.Location` is the location used to render the build date.
-- `tf observability.TracerFactory` yields the controller-layer
-  `LayerTracer`.
+- `bi system.BuildInfo` は、`ldflags` で注入された `Version()`・`Revision()`・
+  `BuildDate()` の値を提供します。
+- `ac *config.ApplicationConfig` は、稼働中の `Env()` と `Name()` を提供します。
+- `loc *time.Location` は、ビルド日時の描画に用いる location です。
+- `tf observability.TracerFactory` は、controller 層の `LayerTracer` を生成します。
 
-`BindHandler` is wired in the controller DI module
-([`internal/di/module/controller.go`](../../../di/module/controller.go)) with
-`fx.Invoke(version.BindHandler)`.
+`BindHandler` は controller DI モジュール
+（[`internal/di/module/controller.go`](../../../di/module/controller.go)）で
+`fx.Invoke(version.BindHandler)` として結線されています。
 
-## Response
+## レスポンス
 
-`GetVersion` returns `gen.VersionResponse` (`GetVersion200JSONResponse`):
+`GetVersion` は `gen.VersionResponse`（`GetVersion200JSONResponse`）を返します。
 
-| Field | Source |
+| フィールド | 由来 |
 | --- | --- |
 | `Version` | `system.BuildInfo.Version()` |
 | `Revision` | `system.BuildInfo.Revision()` |
-| `BuildDate` | `system.BuildInfo.BuildDate()` parsed to `loc` |
+| `BuildDate` | `system.BuildInfo.BuildDate()` を `loc` へ変換 |
 | `Environment` | `config.ApplicationConfig.Env()` |
 | `Service` | `config.ApplicationConfig.Name()` |
 
-`BuildDate` is parsed from the RFC 3339 UTC string via
-`datetime.ParseRFC3339UTCToLocation` into the injected `*time.Location`. If the
-injected build date is not a valid RFC 3339 UTC value, the handler returns an
-error wrapping `apperror.ErrInternal` (`invalid build date`) — a broken build,
-not a client error.
+`BuildDate` は、RFC 3339 UTC 文字列を `datetime.ParseRFC3339UTCToLocation` で
+注入された `*time.Location` へ変換して得ます。注入されたビルド日時が正しい
+RFC 3339 UTC 値でない場合、ハンドラは `apperror.ErrInternal` をラップした
+エラー（`invalid build date`）を返します。これはクライアント起因ではなく、
+壊れたビルドを表します。
 
-## Note
+## 補足
 
-This handler has no downstream usecase call: since it does not propagate the
-re-bound `ctx`, it starts the span with `_, endSpan := s.tracer.Start(ctx)` per
-the parent guide's exception for probe-style handlers.
+このハンドラは下流の usecase 呼び出しを持ちません。再束縛した `ctx` を伝搬しない
+ため、親ガイドのプローブ系ハンドラ向け例外に従い、
+`_, endSpan := s.tracer.Start(ctx)` で span を開始します。

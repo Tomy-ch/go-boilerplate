@@ -5,88 +5,64 @@ deciders: [maintainers]
 tags: [config]
 ---
 
-# ADR-0043: Subsystem-scoped envPrefix typed config loaders
+# ADR-0043: サブシステムスコープの envPrefix 型付き設定ローダー
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-The application reads configuration from environment variables covering many concerns:
-operating system settings, application identity, HTTP server timeouts, database
-connection, observability, security, authentication, workers, and the outbox relay.
+アプリケーションは、OS 設定・アプリケーション識別情報・HTTP サーバータイムアウト・データベース接続・オブザーバビリティ・セキュリティ・認証・ワーカー・アウトボックスリレーなど、多くの関心事をカバーする環境変数から設定を読み取る。
 
-A flat, unscoped namespace for all variables (e.g., `HOST`, `PORT`, `TIMEOUT`) collides
-as the number of variables grows and makes it impossible to infer which component a
-variable belongs to from its name alone. Parsing all variables into a single struct
-with no internal grouping makes the code difficult to navigate and ownership of each
-value unclear.
+すべての変数に対してフラットでスコープのない名前空間（例: `HOST`、`PORT`、`TIMEOUT`）を使用すると、変数の数が増えるにつれて衝突が発生し、変数名だけではどのコンポーネントに属するか判断できなくなる。すべての変数を内部グループなしの単一の構造体に解析すると、コードのナビゲーションが困難になり、各値のオーナーシップが不明確になる。
 
-## Decision
+## 決定
 
-Each subsystem has its own **typed struct** in `internal/config/envspec.go`, and the
-root `Loader` struct embeds all subsystems as named fields with a matching `envPrefix`
-tag. Environment variable names follow `{SUBSYSTEM}_{NAME}` in `UPPER_SNAKE_CASE`.
+各サブシステムは `internal/config/envspec.go` に独自の**型付き構造体**を持ち、ルートの `Loader` 構造体はすべてのサブシステムを対応する `envPrefix` タグとともに名前付きフィールドとして埋め込む。環境変数名は `{SUBSYSTEM}_{NAME}` の `UPPER_SNAKE_CASE` に従う。
 
-The root `Loader` in `internal/config/envspec.go` embeds each subsystem as a named
-field with a matching `envPrefix` tag. The illustrative shape is:
+`internal/config/envspec.go` のルート `Loader` は、各サブシステムを `envPrefix` タグ付きの名前付きフィールドとして埋め込む。構造のイメージ:
 
 ```go
-// Abbreviated — see internal/config/envspec.go for the definitive list of subsystems.
+// 省略形 — サブシステムの完全な一覧は internal/config/envspec.go を参照。
 type Loader struct {
     OS     OperatingSystem `envPrefix:"OS_"`
     Server Server          `envPrefix:"SERVER_"`
-    // … one field per subsystem
+    // … サブシステムごとに 1 フィールド
 }
 ```
 
-For the full subsystem list and field details, see `internal/config/envspec.go` and the
-loading flow in `internal/config/README.md`.
+サブシステムの完全な一覧とフィールド詳細は `internal/config/envspec.go` と、ローディングフローの解説は `internal/config/README.md` を参照。
 
-`env.ParseAs[Loader]()` (via `github.com/caarlos0/env/v11`) maps the prefixed
-environment variables into the corresponding typed struct fields automatically.
+`env.ParseAs[Loader]()`（`github.com/caarlos0/env/v11` 経由）がプレフィックス付きの環境変数を自動的に対応する型付き構造体フィールドにマッピングする。
 
-After loading, `config.New()` converts `Loader` into the internal `Config` type and
-exposes narrowly scoped SubConfig providers (`NewServerConfig`, `NewDatabaseConfig`,
-etc.) so each component receives only the fields it needs.
+ロード後、`config.New()` は `Loader` を内部の `Config` 型に変換し、各コンポーネントが必要なフィールドのみを受け取れるよう、スコープを絞った SubConfig プロバイダー（`NewServerConfig`、`NewDatabaseConfig` など）を公開する。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Variable ownership is immediately clear from the prefix: `DB_HOST` belongs to the
-  `Database` subsystem, `SERVER_PORT` to `Server`.
-- Adding a new subsystem is a contained change: add a struct in `envspec.go`, a field
-  in `Loader` with an `envPrefix`, and the corresponding SubConfig provider.
-- Each subsystem struct is independently readable and testable.
+- プレフィックスから変数のオーナーシップが即座に明らかになる。`DB_HOST` は `Database` サブシステムに、`SERVER_PORT` は `Server` に属する。
+- 新しいサブシステムの追加は限定的な変更で済む。`envspec.go` に構造体を追加し、`Loader` に `envPrefix` 付きフィールドを追加し、対応する SubConfig プロバイダーを追加するだけである。
+- 各サブシステム構造体は独立して読み取り・テストできる。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Adding a new subsystem requires coordinated changes across `envspec.go`, `model.go`,
-  and `config.go` (the Loader-to-Config conversion step).
-- The `envPrefix` indirection means the raw env var name and the Go field name do not
-  match; operators must refer to the canonical table in `env/README.md`.
+- 新しいサブシステムの追加は `envspec.go`、`model.go`、`config.go`（Loader から Config への変換ステップ）にまたがる協調的な変更が必要になる。
+- `envPrefix` の間接参照により、生の環境変数名と Go フィールド名が一致しない。オペレーターは `env/README.md` の正規テーブルを参照しなければならない。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Single flat struct for all variables
+### すべての変数を単一のフラット構造体に収める
 
-All env vars parsed into one struct with no subsystem grouping. Rejected: collisions
-on common names (e.g., `HOST`, `PORT`) require manual disambiguation, and the struct
-becomes unnavigable at scale.
+サブシステムのグループなしにすべての環境変数を 1 つの構造体に解析する。却下: 一般的な名前（例: `HOST`、`PORT`）での衝突には手動の曖昧さ解消が必要になり、大規模では構造体がナビゲート不能になる。
 
-### One file per subsystem
+### サブシステムごとに 1 ファイル
 
-Separate `envspec_*.go` files, one per subsystem, each with its own `ParseAs` call.
-Rejected: multiple parse passes lose the benefit of a single, validated `Loader` and
-require manual aggregation before validation.
+サブシステムごとに個別の `envspec_*.go` ファイルを用意し、それぞれが独自の `ParseAs` 呼び出しを持つ。却下: 複数の解析パスにより、単一の検証済み `Loader` の利点が失われ、検証前の手動集約が必要になる。
 
-## Notes
+## 補足
 
-- Source: `internal/config/envspec.go` (Loader struct definition),
-  `env/README.md` (variable naming conventions and subsystem tables).
-- The SubConfig provider pattern and immutability rules are recorded in
-  [ADR-0045](0045-immutable-fail-fast-config.md).
-- The governance rule for when a field uses `envDefault` vs `required` is recorded in
-  [ADR-0044](0044-config-default-vs-required-governance.md).
+- 出典: `internal/config/envspec.go`（Loader 構造体の定義）、`env/README.md`（変数命名規則とサブシステムテーブル）。
+- SubConfig プロバイダーパターンと不変性ルールは [ADR-0045](0045-immutable-fail-fast-config.md) に記録されている。
+- フィールドに `envDefault` と `required` のどちらを使用するかのガバナンスルールは [ADR-0044](0044-config-default-vs-required-governance.md) に記録されている。

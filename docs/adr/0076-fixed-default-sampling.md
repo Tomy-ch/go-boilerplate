@@ -5,77 +5,74 @@ deciders: [maintainers]
 tags: [observability, exclusion, setup-review]
 ---
 
-# ADR-0076: Fix the SDK default sampling; do not expose sampling as an env knob
+# ADR-0076: SDK デフォルトサンプリングを固定し、サンプリングを環境変数ノブとして公開しない
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-The OTel SDK allows the sampler to be replaced at provider-construction time, and
-operators of high-volume services commonly request a configurable sampling rate (e.g.,
-`OBS_SAMPLE_RATE=0.1`) to reduce trace volume and Collector load in production. Adding
-such a knob appears straightforward and is a recurring infrastructure request.
+OTel SDK はプロバイダー構築時にサンプラーを差し替えることができ、高トラフィックサービスの
+オペレーターからはトレース量と本番環境での Collector 負荷を削減するための設定可能な
+サンプリングレート（例: `OBS_SAMPLE_RATE=0.1`）を繰り返し要求される。このようなノブの
+追加は簡単に見えるし、インフラストラクチャ上の繰り返しの要求でもある。
 
-However, head-based probabilistic sampling — the most common form of configurable sampling
-— produces incomplete trace populations (some requests are recorded, others are not),
-which complicates latency analysis and incident investigation. It also introduces an
-operational footgun: setting sampling to 0 in an incident scenario silently discards all
-traces.
+しかし、最も一般的な設定可能サンプリングの形式であるヘッドベース確率サンプリングは
+不完全なトレース集合を生成し（一部のリクエストは記録され、他は記録されない）、
+レイテンシ分析やインシデント調査を複雑にする。また、インシデント発生時にサンプリングを
+0 に設定するとすべてのトレースがサイレントに破棄されるという運用上の落とし穴もある。
 
-## Decision
+## 決定
 
-We deliberately do **NOT** expose sampling as an environment variable or typed-config
-field.
+サンプリングを環境変数や型付き設定フィールドとして**公開しないことを意図的に選択する**。
 
-The sampler is fixed at the SDK default — `ParentBased(AlwaysSample)` — and is not
-currently env-configurable. If sampling reduction is required in a high-volume deployment,
-it should be delegated to the Collector (tail-based sampling, probabilistic sampling
-processor), where the full trace is available before the sampling decision is made.
+サンプラーは SDK のデフォルト — `ParentBased(AlwaysSample)` — に固定され、
+現時点では環境変数で設定可能にしない。高トラフィックデプロイメントでサンプリングの
+削減が必要な場合は、Collector（テールベースサンプリング・確率サンプリングプロセッサー）に
+委譲すべきである。Collector ではサンプリング判断を行う前にトレース全体が利用可能である。
 
-The setup reviewer must confirm that the initial project customization does not introduce
-an `OBS_SAMPLE_RATE` or equivalent field into `ObservabilityConfig`.
+セットアップレビュアーは、初期プロジェクトのカスタマイズ時に `ObservabilityConfig` に
+`OBS_SAMPLE_RATE` または同等のフィールドが追加されていないことを確認しなければならない。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- All traces are complete by default; no sampling gaps introduce blind spots in latency
-  histograms or error attribution.
-- Collector-side tail-based sampling can make decisions on the complete span tree, which
-  is more accurate than head-based sampling in the SDK.
-- Operational surface of `ObservabilityConfig` stays minimal; no sampling footgun.
+- デフォルトですべてのトレースが完全であり、サンプリングのギャップがレイテンシヒストグラムや
+  エラー帰属に盲点を生じさせない。
+- Collector 側のテールベースサンプリングは完全なスパンツリーで判断を下せるため、
+  SDK のヘッドベースサンプリングより精度が高い。
+- `ObservabilityConfig` の運用サーフェスが最小限に保たれ、サンプリングの落とし穴がない。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Without Collector-side sampling, high-traffic deployments will emit all spans over OTLP,
-  increasing Collector and storage load. Collector-side sampling must be added when
-  needed.
-- The sampling strategy cannot be changed without deploying a Collector configuration
-  change (or a code change); there is no runtime knob in the application.
+- Collector 側のサンプリングがなければ、高トラフィックデプロイメントはすべてのスパンを
+  OTLP で送信し、Collector とストレージの負荷が増加する。必要に応じて Collector 側の
+  サンプリングを追加しなければならない。
+- サンプリング戦略はアプリケーションにランタイムのノブがないため、Collector 設定変更
+  （またはコード変更）なしに変更できない。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Head-based configurable sampling via `OBS_SAMPLE_RATE`
+### `OBS_SAMPLE_RATE` によるヘッドベース設定可能サンプリング
 
-Rejected: probabilistic head sampling produces incomplete trace populations that mislead
-latency analysis. Setting the rate to zero in an incident silently discards all diagnostic
-data. Tail-based sampling in the Collector is the preferred alternative.
+却下: 確率的ヘッドサンプリングはレイテンシ分析を誤解させる不完全なトレース集合を生成する。
+インシデント時にレートをゼロに設定するとすべての診断データがサイレントに破棄される。
+Collector でのテールベースサンプリングが推奨される代替案である。
 
-### Ratio-based sampler hardcoded to a value other than 1.0
+### 1.0 以外の値にハードコードされた比率ベースサンプラー
 
-Rejected for the same reason as configurable head sampling: incomplete traces are less
-useful than complete traces, and the trade-off is better made at the Collector level where
-the full span tree is visible.
+設定可能なヘッドサンプリングと同じ理由で却下: 不完全なトレースは完全なトレースより
+有用性が低く、完全なスパンツリーが見える Collector レベルでトレードオフを行う方が良い。
 
-## Notes
+## 補足
 
-- Source: `docs/design/observability.md` §2.2, line 80: "Sampling is the SDK default
-  `ParentBased(AlwaysSample)`; it is **not** currently env-configurable."
-- Implementation confirmation: `internal/observability/README.md` §1 `NewTracerProvider`
-  ("Uses the SDK default sampler (`ParentBased(AlwaysSample)`); sampling is not currently
-  env-configurable").
-- Parent: [ADR-0071](0071-config-driven-observability-gating.md).
-- Setup reviewer action: confirm that no `ObservabilityConfig` field for sample rate is
-  added during project initialization.
+- 出典: `docs/design/observability.md` §2.2、80 行目: 「サンプリングは SDK デフォルトの
+  `ParentBased(AlwaysSample)`; 現時点では環境変数で設定可能**ではない**」。
+- 実装確認: `internal/observability/README.md` §1 `NewTracerProvider`
+  （「SDK デフォルトサンプラー（`ParentBased(AlwaysSample)`）を使用。サンプリングは
+  現時点では環境変数で設定可能ではない」）。
+- 親: [ADR-0071](0071-config-driven-observability-gating.md)。
+- セットアップレビュアーの対応: プロジェクト初期化時にサンプリングレート用の
+  `ObservabilityConfig` フィールドが追加されていないことを確認する。

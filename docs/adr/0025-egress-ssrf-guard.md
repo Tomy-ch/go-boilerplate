@@ -5,202 +5,106 @@ deciders: [maintainers]
 tags: [http, security, infrastructure]
 ---
 
-# ADR-0025: Adopt an egress SSRF / dial-guard security posture for outbound HTTP
+# ADR-0025: アウトバウンドHTTPに対するエグレスSSRF / ダイヤルガードセキュリティポスチャの採用
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-The application makes outbound HTTP calls to URLs that are at least partially under operator
-or user influence: gateway endpoints configured at deploy time, webhook receiver URLs stored
-in the database, and the outbox publisher endpoint. If any such URL can be pointed at an
-internal IP address, an attacker can leverage the server as a proxy to access internal
-services, cloud metadata endpoints, or other resources that are unreachable from the public
-internet. This class of vulnerability is Server-Side Request Forgery (SSRF).
+アプリケーションはオペレーターまたはユーザーの影響下に少なくとも部分的に置かれるURLへのアウトバウンドHTTP呼び出しを行う。具体的にはデプロイ時に設定されるゲートウェイエンドポイント、データベースに保存されたWebhookレシーバーURL、およびoutboxパブリッシャーエンドポイントである。そのようなURLが内部IPアドレスに向けられた場合、攻撃者はサーバーをプロキシとして利用し、公共インターネットから到達不能な内部サービス・クラウドメタデータエンドポイント・その他リソースへのアクセスを得ることができる。この脆弱性クラスはサーバーサイドリクエストフォージェリ（SSRF）と呼ばれる。
 
-Key threat vectors specific to this application:
+本アプリケーション特有の主要な脅威ベクター：
 
-**Cloud metadata service.** Cloud providers typically expose instance metadata (including
-temporary credentials) at `169.254.169.254` (link-local unicast). A URL like
-`http://169.254.254.169/latest/meta-data/iam/security-credentials/` would return credentials
-if reached. Standard HTTP libraries do not block this address.
+**クラウドメタデータサービス。** クラウドプロバイダーは通常`169.254.169.254`（リンクローカルユニキャスト）でインスタンスメタデータ（一時的な認証情報を含む）を公開している。`http://169.254.254.169/latest/meta-data/iam/security-credentials/`のようなURLは到達された場合に認証情報を返す。標準HTTPライブラリはこのアドレスをブロックしない。
 
-**DNS rebinding.** A DNS response may resolve a hostname to a private IP that was not
-intended. Blocking a hostname at URL-parse time is insufficient because the IP seen at
-connection time may differ. The guard must run post-DNS, at dial time, against the resolved IP.
+**DNSリバインディング。** DNSレスポンスが意図しないプライベートIPにホスト名を解決することがある。URLパース時にホスト名をブロックするだけでは不十分で、接続時に見えるIPがDNS解決後に異なる可能性があるためである。ガードはDNS後・ダイヤル時に解決済みIPに対して実行しなければならない。
 
-**Private-network access from misconfigured operator URLs.** An operator who supplies a
-webhook URL might accidentally (or intentionally) provide an RFC1918 address. Without a guard,
-the application silently connects to internal services.
+**設定ミスをしたオペレーターURLからのプライベートネットワークアクセス。** WebhookURLを提供するオペレーターが誤って（または意図的に）RFC1918アドレスを提供する場合がある。ガードがなければアプリケーションは無言で内部サービスに接続する。
 
-**Redirect-based SSRF.** A public endpoint may respond with a redirect to a private IP.
-Following redirects without validation extends the SSRF surface.
+**リダイレクトベースのSSRF。** 公開エンドポイントがプライベートIPへのリダイレクトで応答することがある。バリデーションなしでリダイレクトをたどることでSSRFの攻撃面が拡大する。
 
-Go's standard `net/http` does not guard against any of these vectors out of the box. Relying
-solely on network-layer egress controls (firewall, security-group rules) provides defence in
-depth but does not prevent DNS rebinding and is not visible at the application layer.
+GoのデフォルトHTTPライブラリはこれらのベクターを何もブロックしない。ネットワークレイヤーのエグレスコントロール（ファイアウォール・セキュリティグループルール）に単独で頼る方法は多層防御となるが、DNSリバインディングを防げずアプリケーション層では見えない。
 
-## Decision
+## 決定
 
-All outbound HTTP transport runs through `internal/observability.HTTPClientTransport`, which
-wraps the base `*http.Transport` with a `net.Dialer` whose `ControlContext` is set to
-`guardedDialControl`. The guard runs **post-DNS at dial time** — it inspects the resolved IP
-address in the `address` argument passed by the kernel after name resolution, not the original
-hostname in the URL — which also prevents DNS rebinding attacks.
+すべてのアウトバウンドHTTPトランスポートは`internal/observability.HTTPClientTransport`を経由する。これはベースの`*http.Transport`を`net.Dialer`でラップし、その`ControlContext`に`guardedDialControl`を設定する。ガードは**DNS後・ダイヤル時**に実行される。URLのオリジナルホスト名ではなく、名前解決後にカーネルが渡す`address`引数内の解決済みIPアドレスを検査するため、DNSリバインディング攻撃も防ぐ。
 
-**Scope: egress, not credential resolution.** "Outbound HTTP" here means a call this application
-makes *to somewhere else* — the destinations the Context enumerates, all of them operator- or
-user-influenced. It does not cover the AWS SDK's credential chain, which asks the platform the
-process already runs on who that process is. Those requests keep the SDK's own transport. See
-[Guarding the AWS credential chain](#guarding-the-aws-credential-chain) for why extending the
-guard there is the wrong move, and
-[`internal/infrastructure/awsclient/README.md`](../../internal/infrastructure/awsclient/README.md)
-for exactly what that leaves outside the guard.
+**適用範囲: egress であって資格情報の解決ではない。** ここでいう「アウトバウンドHTTP」とは、このアプリケーションが**どこか他所へ**行う呼び出し — 背景の節が列挙した、いずれも operator / user の影響下にある宛先 — を指す。AWS SDK の credential chain は対象外である。あれはプロセスが既に載っているプラットフォームに対して「自分は誰か」を問い合わせるものであり、SDK 自身のトランスポートをそのまま使う。ガードをそこへ広げることがなぜ誤りかは[AWS の credential chain をガードする](#aws-の-credential-chain-をガードする)に、その結果ガードの外に何が残るかは[`internal/infrastructure/awsclient/README.md`](../../internal/infrastructure/awsclient/README.md)に記す。
 
-The guard enforces a two-tier blocking policy:
+ガードは2段階のブロックポリシーを適用する。
 
-**Always blocked (regardless of configuration):**
+**常にブロック（設定によらず）:**
 
-- Link-local unicast and link-local multicast (`169.254.0.0/16`, `fe80::/10`) — cloud
-  metadata services and similar internal endpoints.
-- Unspecified address (`0.0.0.0`, `::`) — not a valid destination.
-- Bogon / reserved ranges that are never legitimate public destinations: Future Use
-  (`240.0.0.0/4`), IETF Protocol Assignments (`192.0.0.0/24`), TEST-NET-1/2/3
-  (`192.0.2.0/24`, `198.51.100.0/24`, `203.0.113.0/24`), Benchmarking (`198.18.0.0/15`),
-  IPv6 Documentation (`2001:db8::/32`).
+- リンクローカルユニキャストおよびリンクローカルマルチキャスト（`169.254.0.0/16`・`fe80::/10`）— クラウドメタデータサービスおよび類似の内部エンドポイント。
+- 未指定アドレス（`0.0.0.0`・`::`）— 有効な宛先でない。
+- 正当な公開宛先となり得ないボゴン / 予約済み範囲：Future Use（`240.0.0.0/4`）・IETF Protocol Assignments（`192.0.0.0/24`）・TEST-NET-1/2/3（`192.0.2.0/24`・`198.51.100.0/24`・`203.0.113.0/24`）・Benchmarking（`198.18.0.0/15`）・IPv6 Documentation（`2001:db8::/32`）。
 
-**Blocked by default, allow-listable per downstream:**
+**デフォルトでブロック、ダウンストリームごとに許可リスト化可能:**
 
-- Loopback (`127.0.0.0/8`, `::1`)
-- Private networks (RFC1918 `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`; ULA
-  `fc00::/7`)
-- CGNAT shared address space (RFC 6598 `100.64.0.0/10`) — Go's `net.IP.IsPrivate` does not
-  cover CGNAT, so it is checked explicitly.
+- ループバック（`127.0.0.0/8`・`::1`）
+- プライベートネットワーク（RFC1918 `10.0.0.0/8`・`172.16.0.0/12`・`192.168.0.0/16`；ULA `fc00::/7`）
+- CGNATシェアドアドレス空間（RFC 6598 `100.64.0.0/10`）— Goの`net.IP.IsPrivate`はCGNATをカバーしないため明示的にチェックする。
 
-A downstream that legitimately calls internal services (e.g. an internal gateway) sets
-`AllowPrivateNetwork = true` in its `Profile`. External-facing downstreams (e.g. the outbox
-publisher) set `AllowPrivateNetwork = false` explicitly. The flag is propagated from the
-`Profile` into a context value (`allowPrivateNetworkKey`) per attempt by the
-`httpclient.Client`, so each attempt's dial inherits the correct posture.
+内部サービスを正当に呼び出すダウンストリーム（例：内部ゲートウェイ）は`Profile`で`AllowPrivateNetwork = true`を設定する。外向きのダウンストリーム（例：outboxパブリッシャー）は`AllowPrivateNetwork = false`を明示的に設定する。このフラグは`Profile`から試行ごとのコンテキスト値（`allowPrivateNetworkKey`）として`httpclient.Client`によって伝播されるため、各試行のダイヤルは正しいポスチャを継承する。
 
-In addition, redirects are not followed (`http.ErrUseLastResponse` on `CheckRedirect`),
-preventing redirect-based SSRF where a public endpoint redirects to a private IP.
+さらに、リダイレクトはたどらない（`CheckRedirect`で`http.ErrUseLastResponse`を返す）。公開エンドポイントがプライベートIPにリダイレクトするケースのリダイレクトベースSSRFを防ぐ。
 
-The `HTTPClientTransport` also wraps the base transport with OpenTelemetry instrumentation
-(`otelhttp`) and a conditional trace-propagation filter, so the guard is wired in as part of
-the single canonical transport used by all outbound calls (see
-[ADR-0024](0024-outbound-http-resilience.md)).
+`HTTPClientTransport`はOpenTelemetryインストルメンテーション（`otelhttp`）および条件付きトレース伝播フィルターもベーストランスポートにラップするため、ガードはすべてのアウトバウンド呼び出しで使用される単一の正規トランスポートの一部として組み込まれる（[ADR-0024](0024-outbound-http-resilience.md)参照）。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- The guard runs post-DNS, so DNS rebinding attacks are blocked even when the hostname
-  appears benign at URL-parse time.
-- Every egress call shares one transport instance, so the guard cannot be accidentally omitted
-  by a new gateway or publisher implementation. The one path that does not reach it is credential
-  resolution, and that is a decision recorded below rather than an omission a new implementation
-  can repeat.
-- Link-local (`169.254.x.x`) and bogon-reserved ranges are blocked unconditionally; no
-  misconfiguration can re-enable them.
-- The `AllowPrivateNetwork` flag is per-downstream and defaults to `true` for internal
-  services, so internal-to-internal calls work without manual allowlisting.
-- No redirect-following prevents a second class of SSRF (redirect chains to internal IPs).
+- ガードはDNS後に実行されるため、URLパース時にホスト名が無害に見えてもDNSリバインディング攻撃がブロックされる。
+- すべての egress 呼び出しが1つのトランスポートインスタンスを共有するため、新しいゲートウェイやパブリッシャー実装がガードを誤って省略することができない。唯一そこへ届かないのが資格情報の解決だが、それは下に記録した決定であって、新しい実装が繰り返しうる省略ではない。
+- リンクローカル（`169.254.x.x`）およびボゴン予約済み範囲は無条件にブロックされ、いかなる設定ミスでも再有効化できない。
+- `AllowPrivateNetwork`フラグはダウンストリームごとであり内部サービスはデフォルト`true`のため、手動の許可リスト化なしに内部から内部への呼び出しが機能する。
+- リダイレクトをたどらないことで第2のSSRFクラス（内部IPへのリダイレクトチェーン）を防ぐ。
 
-### Negative Consequences
+### ネガティブな影響
 
-- A new gateway that calls an internal service must remember to set `AllowPrivateNetwork =
-  true` in its `DownstreamProfile`; forgetting causes dial failures against internal IPs.
-- The guard fires synchronously at dial time; a blocked dial results in an error that the
-  `httpclient` substrate normalises to `ErrInvalidArgument`. Callers must treat this case as a
-  configuration error rather than a transient failure.
-- Testing outbound calls against local test servers requires either the permissive dial
-  control (`permissiveDialControl`, available only in test builds) or setting
-  `AllowPrivateNetwork = true` in the test profile.
-- **The guard disables the environment-derived proxy** (`base.Proxy = nil`), because a proxy would
-  make the dial land on the proxy's IP rather than the final destination and the check would inspect
-  the wrong address. In an environment that blocks direct egress and mandates a forward proxy, this
-  means outbound HTTP stops working altogether — injecting `HTTP_PROXY` does not restore it, so the
-  proxy has to be absorbed at the network layer instead.
+- 内部サービスを呼び出す新しいゲートウェイは`DownstreamProfile`で`AllowPrivateNetwork = true`を設定することを忘れてはならない。忘れると内部IPへのダイヤルが失敗する。
+- ガードはダイヤル時に同期的に発火し、ブロックされたダイヤルは`httpclient`基盤が`ErrInvalidArgument`に正規化するエラーになる。呼び出し元はこのケースを一時的な障害ではなく設定エラーとして扱わなければならない。
+- ローカルテストサーバーに対するアウトバウンド呼び出しのテストには、パーミッシブなダイヤルコントロール（テストビルドのみ利用可能な`permissiveDialControl`）かテストプロファイルで`AllowPrivateNetwork = true`を設定するかのいずれかが必要である。
+- **ガードは環境変数由来のプロキシを無効化する**（`base.Proxy = nil`）。プロキシがあるとダイヤル先がプロキシの IP になり、検査が最終宛先ではない相手に当たってしまうためである。直接 egress を遮断して forward proxy を必須にした環境では、この結果として outbound HTTP が全断する。`HTTP_PROXY` を注入しても復活しないため、ネットワーク層で吸収する必要がある。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Host / IP allow list only
+### ホスト / IP許可リストのみ
 
-Permit only explicitly approved hosts or IP ranges; reject everything else. Provides a tighter
-posture. Rejected because it requires updating the allow list for every new downstream and
-makes the guard harder to operate in diverse environments. The deny-list approach (block known
-bad ranges, allow the rest) is more operationally practical while still covering the primary
-SSRF targets.
+明示的に承認されたホストまたはIP範囲のみを許可し、それ以外をすべて拒否する。より厳格なポスチャを提供する。ただし新しいダウンストリームのたびに許可リストの更新が必要になり、多様な環境でのガードの運用が難しくなるため却下。既知の悪いレンジをブロックする拒否リストアプローチは、主要なSSRFターゲットをカバーしつつ運用的により実際的である。
 
-### Network-level egress controls only (firewall / security group)
+### ネットワークレベルのエグレスコントロールのみ（ファイアウォール / セキュリティグループ）
 
-Cloud security groups and host-based firewalls can restrict outbound connections. Rejected as
-the sole control because: (a) firewall rules do not see DNS rebinding — the IP at connection
-time may differ from what the firewall pre-approved; (b) they are infrastructure-layer
-controls invisible to the application, making it harder to audit application-level security
-intent; (c) defence in depth is better than a single control point.
+クラウドセキュリティグループやホストベースファイアウォールがアウトバウンド接続を制限できる。唯一のコントロールとしては却下。（a）ファイアウォールルールはDNSリバインディングを検出できず、接続時のIPがファイアウォールが事前承認したものと異なる可能性がある。（b）インフラレイヤーのコントロールはアプリケーションに対して不可視であり、アプリケーションレベルのセキュリティ意図の監査が困難になる。（c）単一のコントロールポイントより多層防御が優れる。
 
-### No redirect guard
+### リダイレクトガードなし
 
-Allow `http.Client` to follow redirects (default behaviour). Rejected because a public HTTP
-endpoint may issue a 3xx redirect to a private IP, bypassing the dial guard for the initial
-request. Returning the last response (`http.ErrUseLastResponse`) forces the caller to decide
-whether to follow the redirect, keeping the decision at the application layer.
+`http.Client`がリダイレクトをたどることを許可する（デフォルト動作）。公開HTTPエンドポイントがプライベートIPへの3xxリダイレクトを発行することで、最初のリクエストのダイヤルガードを迂回できるため却下。最後のレスポンスを返す（`http.ErrUseLastResponse`）ことで、リダイレクトをたどるかどうかの判断を呼び出し元に委ね、アプリケーション層で判断を保持する。
 
-### Guarding the AWS credential chain
+### AWS の credential chain をガードする
 
-Pass a guarded transport to `config.LoadDefaultConfig` so the credential chain is covered too.
-The guard denies link-local unconditionally and EC2's IMDS (`169.254.169.254`) and ECS's task
-metadata (`169.254.170.2`) live there, so this needs a second dial control that permits
-link-local while keeping every other rule. Rejected on three independent grounds, any one of
-which is sufficient:
+`config.LoadDefaultConfig` へガード付きトランスポートを渡し、credential chain もガードの対象にする。ガードはリンクローカルを無条件に拒否し、EC2 の IMDS（`169.254.169.254`）と ECS の task metadata（`169.254.170.2`）はそこにしか無いため、リンクローカルだけを許して他の判定は残す2つ目のダイヤルコントロールが要る。独立した3つの理由で却下。いずれか1つでも十分である。
 
-- **It cannot cover the chain.** `config.resolveHTTPCredProvider` forwards `APIOptions` and
-  `Retryer` to `endpointcreds.Options` but not `HTTPClient`, so the ECS / EKS container-credential
-  provider falls back to `awshttp.NewBuildableClient()` regardless. The variant transport would
-  reach IMDS, STS, and SSO but never the container path — buying a partial perimeter with a new
-  transport type and its wiring.
-- **It breaks a legitimate deployment shape.** The guarded transport sets `Proxy = nil`, because a
-  proxied dial lands on the proxy's IP and the destination check becomes meaningless. STS
-  (web-identity / IRSA) and SSO are public HTTPS endpoints, so forcing them direct breaks
-  credential resolution wherever egress is only permitted through a forward proxy. That is the
-  "no forward proxy" situation this repository assumes.
-- **There is nothing left to defend.** What the guard would prevent is a redirected credential
-  request (`AWS_EC2_METADATA_SERVICE_ENDPOINT`, `AWS_CONTAINER_CREDENTIALS_FULL_URI`,
-  `HTTPS_PROXY`). All three are process environment variables, and whoever can set them can read
-  the credentials directly.
+- **chain を覆えない。** `config.resolveHTTPCredProvider` は `endpointcreds.Options` へ `APIOptions` と `Retryer` は渡すが `HTTPClient` を渡さないため、ECS / EKS のコンテナ資格情報プロバイダは `awshttp.NewBuildableClient()` へフォールバックする。variant トランスポートは IMDS・STS・SSO には届くが、コンテナ経路には永久に届かない。新しいトランスポート型とその配線と引き換えに、部分的な境界しか買えない
+- **正当なデプロイ形態を壊す。** ガード付きトランスポートは `Proxy = nil` を設定する。proxy 経由のダイヤルは proxy の IP に着地し、宛先の検査が意味を失うためである。STS（web identity / IRSA）と SSO はパブリックな HTTPS エンドポイントなので、直結を強いると、egress を forward proxy 経由でしか許さない環境で資格情報の解決が壊れる。それは「forward proxy は無い」という、本リポジトリが前提としている状況にあたる
+- **守る対象が残っていない。** ガードが防ぐのは資格情報リクエストの向き先の差し替え（`AWS_EC2_METADATA_SERVICE_ENDPOINT`・`AWS_CONTAINER_CREDENTIALS_FULL_URI`・`HTTPS_PROXY`）だが、3つともプロセスの環境変数であり、それを設定できる主体は資格情報を直接読める
 
-The posture here is also **already decided by the SDK**, which is the authority this repository
-defers to: `config.resolveLocalHTTPCredProvider` restricts the one env-overridable plaintext
-endpoint to loopback and the known ECS / EKS addresses (`isAllowedHost` / `isIPAllowed`). Layering
-a second, weaker perimeter over a standard that has settled the question is the kind of
-speculative abstraction this repository rejects.
+さらに、このポスチャは**SDK が既に決めている** — 本リポジトリが従う権威そのものである。`config.resolveLocalHTTPCredProvider` は、env で差し替えられる唯一の平文エンドポイントを loopback と既知の ECS / EKS アドレスに制限する（`isAllowedHost` / `isIPAllowed`）。決着済みの標準の上に、より弱い第2の境界を重ねるのは、本リポジトリが退ける投機的な抽象にあたる。
 
-A narrower variant — keep the destination-IP check but leave `Proxy` alone — does not survive
-either: with a proxy in the path the check inspects the proxy's address, so it stops being a
-destination check at all.
+より狭い variant — 宛先 IP の検査だけ掛けて `Proxy` は触らない — も成立しない。経路に proxy が入ると検査は proxy のアドレスを見ることになり、宛先の検査であることをやめてしまう。
 
-### Per-gateway custom transport
+### ゲートウェイごとのカスタムトランスポート
 
-Each gateway constructs its own transport with or without a guard. Rejected because it creates
-a footgun: a new gateway that omits the guard silently opens an SSRF surface. The single
-canonical transport in `HTTPClientTransport` makes it structurally impossible to bypass the
-guard.
+各ゲートウェイがガードあり/なしで独自のトランスポートを構築する。ガードを省略した新しいゲートウェイが無言でSSRFの攻撃面を開くという落とし穴が生じるため却下。`HTTPClientTransport`内の単一の正規トランスポートによりガードを構造的に迂回不可能にする。
 
-## Notes
+## 補足
 
-- Guard implementation: `internal/observability/http_client_transport.go`
-  (`guardedDialControl`, `reservedPrefixes`, `cgnatPrefix`, `allowPrivateNetworkFromContext`).
-- Transport construction: `NewHTTPClientTransport` wires `guardedDialControl` into the base
-  transport and wraps it with `otelhttp`.
-- Consumer that sets `AllowPrivateNetwork = false` for an external downstream:
-  `internal/infrastructure/publisher/http_publisher.go` (`NewDownstreamProfile`).
-- Resilience substrate that propagates the `AllowPrivateNetwork` context flag per attempt:
-  `internal/infrastructure/httpclient/client.go` (`attempt`).
-- Related: [ADR-0024](0024-outbound-http-resilience.md) (resilience substrate that hosts
-  this transport).
-- source: `internal/observability/http_client_transport.go`;
-  `internal/infrastructure/httpclient/README.md` (§ "Design Policy", security defaults).
+- ガード実装: `internal/observability/http_client_transport.go`（`guardedDialControl`・`reservedPrefixes`・`cgnatPrefix`・`allowPrivateNetworkFromContext`）。
+- トランスポート構築: `NewHTTPClientTransport`が`guardedDialControl`をベーストランスポートに組み込み`otelhttp`でラップする。
+- 外向きダウンストリームで`AllowPrivateNetwork = false`を設定するコンシューマー: `internal/infrastructure/publisher/http_publisher.go`（`NewDownstreamProfile`）。
+- 試行ごとに`AllowPrivateNetwork`コンテキストフラグを伝播するレジリエンス基盤: `internal/infrastructure/httpclient/client.go`（`attempt`）。
+- 関連: [ADR-0024](0024-outbound-http-resilience.md)（このトランスポートをホストするレジリエンス基盤）。
+- source: `internal/observability/http_client_transport.go`；`internal/infrastructure/httpclient/README.md`（§ "Design Policy"・セキュリティデフォルト）。

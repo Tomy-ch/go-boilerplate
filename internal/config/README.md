@@ -1,24 +1,24 @@
-# `Config` Package
+# `Config` パッケージ
 
-This directory defines configuration files used across the entire application.
+アプリケーション全体で利用するコンフィグファイルを定義しておくディレクトリです。
 
-## Implementation
+## 実装について
 
-This package is responsible for reading application settings from environment variables and providing them as typed structures across the entire application. The main implementation flow is as follows.
+このパッケージは、環境変数からアプリケーション設定を読み取り、型付きの構造体としてアプリケーション全体に提供する責務を持ちます。主要な実装の流れは次のとおりです。
 
-- Environment variables are parsed into a `Loader` (including a test `Loader`) and values are loaded using `env.ParseAs[Loader]()` (implementation files: `loader.go` / `envspec.go`).
-- The loaded values in `Loader` are converted into a `Config` type, and validation (`validateConfig()`) is performed internally as needed (implementation files: `config.go`, `model.go`).
-- The generated `*Config` is treated as immutable (no setters exposed) and is injected into the application via a setup function (`SetUpConfig`) for registering into the DI container (DI related: `internal/di/module/config.go`).
+- `Loader`（テスト用の `Loader` を含む）に環境変数をパースし、`env.ParseAs[Loader]()` によって値を読み込みます（実装ファイル: `loader.go` / `envspec.go`）。
+- 読み込んだ `Loader` の値を `Config` 型に変換し、内部で必要に応じたバリデーション（`validateConfig()`）を行います（実装ファイル: `config.go`, `model.go`）。
+- 生成された `*Config` は不変（setter を公開しない）として扱い、DI コンテナに登録するためのセットアップ関数（`SetUpConfig`）を通じてアプリケーションに注入されます（DI 関連: `internal/di/module/config.go`）。
 
-Design points:
+設計上のポイント:
 
-- Configuration is loaded collectively at initialization and values are not changed during runtime (treated as immutable).
-- Missing required values are detected in `validateConfig()`, and startup failure (explicit error return) is triggered to prevent running in an invalid state.
-- Testing helpers and mocks (`config_testing_mock.go`, `config_testing_setter.go`) are provided to allow substituting environment variables and verifying the behavior of `New()` in test environments.
+- 設定は初期化時にまとめて読み取り、ランタイム中に値を変更しない（イミュータブルに扱う）。
+- 必須値の欠落は `validateConfig()` で検出し、起動失敗（明示的なエラー返却）させることで不正な状態で稼働しないようにしています。
+- テスト用のヘルパーやモック（`config_testing_mock.go`, `config_testing_setter.go`）を用意しており、テスト環境で環境変数を差し替えて `New()` の挙動を検証できます。
 
-## Config Loading Flow
+## Config Loading フロー
 
-The configuration loading flow at application startup is as follows.
+アプリケーション起動時の設定読み込みの流れは次の通りです。
 
 ```mermaid
 flowchart TB
@@ -27,88 +27,88 @@ flowchart TB
     Parse["env.ParseAs[Loader]()"]
     Validate["validateConfig()"]
     Config["Config struct"]
-    Sub["SubConfig Provider (NewServerConfig etc.)"]
+    Sub["SubConfig Provider (NewServerConfig など)"]
     DI["DI (Uber Fx)"]
 
     Env --> Load --> Parse --> Validate --> Config --> Sub --> DI
 ```
 
-### Responsibilities of Each Step
+### 各ステップの役割
 
 - **Load()**
-  - Reads the embedded `env/.env` (via the `go:embed` `root.FS`), parses it with godotenv, and sets each variable only if it is not already set (runtime-injected environment variables take precedence). No `env/.env.<ENV>` file is read.
+  - 埋め込み（`go:embed` の `root.FS`）の `env/.env` を godotenv で読み込み、まだ設定されていない変数のみをセットします（実行時に注入済みの環境変数を優先）。`env/.env.<ENV>` は読み込みません。
 
 - **env.ParseAs[Loader]**
-  - Maps environment variables into the `Loader` struct defined in `envspec.go`.
+  - `envspec.go` に定義された `Loader` 構造体へ環境変数をマッピングします。
 
 - **validateConfig()**
-  - Validates port ranges, CIDR, timeout values, etc.
-  - Returns an error at startup if there is invalid configuration.
+  - ポート範囲、CIDR、タイムアウト値などの妥当性を検証します。
+  - 不正な設定がある場合は起動時にエラーを返します。
 
 - **Config struct**
-  - Converts `Loader` values into internal structures (`model.go`).
-  - Treated as an **immutable configuration object** that cannot be modified externally.
+  - `Loader` の値を内部構造体 (`model.go`) に変換します。
+  - 外部から直接変更できない **immutable な設定オブジェクト**として扱います。
 
 - **SubConfig Provider**
-  - Through functions such as `NewServerConfig` and `NewDatabaseConfig`
-  - Injects only the necessary configuration into each component.
+  - `NewServerConfig` や `NewDatabaseConfig` などの関数を通じて
+  - 必要な設定のみを各コンポーネントに注入します。
 
 - **DI (Uber Fx)**
-  - Registered via `fx.Provide` in `internal/di/module/config.go`
-  - Used across the entire application.
+  - `internal/di/module/config.go` で `fx.Provide` に登録され
+  - アプリケーション全体で利用されます。
 
-## Design Principles
+## 設計原則
 
-This Config package is implemented based on the following design principles.
+このConfigパッケージは、次の設計原則に基づいて実装されています。
 
 - **Configuration is immutable**
-  - Configuration is loaded only once at startup and is not changed during runtime.
+  - 設定は起動時に一度だけ読み込まれ、ランタイム中に変更されません。
 
 - **Configuration is loaded only at startup**
-  - Initialized in the order `.env → Loader → validateConfig() → Config`.
+  - `.env` → `Loader` → `validateConfig()` → `Config` の順に初期化されます。
 
-- **Domain / Usecase must not depend on environment variables**
-  - Interpretation of environment variables is confined to the Config layer.
+- **Domain / Usecase は環境変数に依存しない**
+  - 環境変数の解釈は Config 層に閉じ込めます。
 
-- **Use typed SubConfig providers to obtain configuration**
-  - Through providers such as `NewServerConfig` and `NewDatabaseConfig`,
-    only the necessary configuration is passed to each component.
+- **Typed SubConfig を通じて設定を取得する**
+  - `NewServerConfig` や `NewDatabaseConfig` などの provider を通じて、
+    必要な設定のみを各コンポーネントに渡します。
 
-This minimizes configuration dependency in the application and improves testability and maintainability.
+これにより、アプリケーションの設定依存を最小限にし、テスト容易性と保守性を高めています。
 
-## Main Libraries Used
+## メインで利用しているライブラリ
 
-- `github.com/caarlos0/env/v11` — Used to map environment variables to structs (tag-based, e.g., `env:"KEY,required"`).
-- Since the Uber Fx pattern is adopted for DI registration, configuration values are injected via `fx.Provide` (DI implementation: `internal/di/module/config.go`).
-- In tests, assertion libraries such as `testify/require` are used together with project-internal `config_testing_*` helpers to reliably verify environment-variable-based behavior.
+- `github.com/caarlos0/env/v11` — 環境変数を構造体へマッピングするために使用しています（タグベースで `env:"KEY,required"` を指定可能）。
+- DI 登録には Uber Fx のパターンを採用しているため、設定値は `fx.Provide` を通じて注入されます（DI 実装: `internal/di/module/config.go`）。
+- テストでは `testify/require` 等の断言ライブラリと、プロジェクト内の `config_testing_*` ヘルパーを併用して、環境変数ベースの振る舞いを確実に検証しています。
 
-## Importance
+## 必要度
 
-The following describes importance and expected impact in real-world operations.
+以下は現実運用での重要度と期待される影響です。
 
-### Production Importance
+### 本番運用での必須度
 
-- Level: High
-  - Reason: Values essential for operation such as database connection information, authentication information for external services, listening ports, CORS settings, and security settings (HSTS, etc.) are provided via environment variables, so failure to read them correctly leads to startup failure or critical issues.
-  - Countermeasure: Required fields should be validated by `validateConfig()` before startup, and an explicit error should be returned when missing.
+- 必須度: 高
+  - 理由: データベース接続情報、外部サービスの認証情報、リスニングポート、CORS 設定、セキュリティ設定（HSTS 等）など、稼働に必須な値が環境変数で提供されるため、正確に読み取れないと起動失敗や重大な障害につながります。
+  - 対策: 必須フィールドは `validateConfig()` で起動前に検証し、欠落時は明示的にエラーを返す設計にしてください。
 
-### Development / Test Importance
+### 開発/テスト運用での必須度
 
-- Level: High (however can be substituted with defaults or mocks)
-  - Reason: In tests, behavior is verified by setting specific ENV values, so environment variable management is important. Since test helpers are available within the project, reproducibility can be achieved in CI and local tests by combining with `t.Setenv`.
-  - Example: Use `config_testing_setter.go` to inject test configuration and verify that `New()` binds correctly.
+- 必須度: 高（ただしデフォルトやモックで代替可能）
+  - 理由: テストでは特定の ENV をセットして挙動を検証するため、環境変数の管理が重要です。プロジェクト内にテスト用ヘルパーがあるため、CI やローカルテストでは `t.Setenv` と組み合わせて再現可能にします。
+  - 例: `config_testing_setter.go` を使ってテスト用の設定を注入し、`New()` が正しくバインドすることを確認します。
 
-### Impact if Disabled
+### 無効化した場合の影響
 
-- Impact range: Minor to critical (depending on configuration items)
-  - Minor: Some options such as log level and debug flags can be safely substituted with default values.
-  - Critical: Missing DB connection information or external API keys will cause startup failure or runtime errors.
-  - Recommended action: Before production operation, run `go build` and `go test ./...` to ensure validation by `validateConfig()` passes. It is safer to establish a practice of validating required ENV in the CI pipeline.
+- 影響の範囲: 軽微〜致命的（設定項目による）
+  - 軽微: ログレベルやデバッグフラグなど、一部のオプションはデフォルト値で安全に代替できます。
+  - 致命的: DB 接続情報や外部 API キーが欠落すると起動失敗やランタイムエラーを引き起こします。
+  - 推奨対応: 本番での運用前に `go build` と `go test ./...` を実行し、`validateConfig()` によるチェックが通ることを確認してください。CI パイプラインで必須 ENV を検証する習慣を付けると安全です。
 
-### How to Add a New Category (e.g., AWS or GCP)
+### 新たなカテゴリ(例: AWSやGCPなど)を追加する方法
 
-1. Add a new struct for the category in `model.go` (e.g., `AWS` or `GCP`).  
-    - Example:
+1. `model.go`に新しいカテゴリ用の公開構造体（例: `AWS`や`GCP`など）を追加してください。  
+    - 例:
 
     ```go
     type aws struct {
@@ -118,20 +118,20 @@ The following describes importance and expected impact in real-world operations.
     }
     ```
 
-2. Add the new category struct as a field in the `Config` struct.
-    - Example:
+2. 追加したカテゴリの構造体を `Config` 構造体にフィールドとして追加してください。
+    - 例:
 
     ```go
     type Config struct {
         server server
-        aws    aws // add new category
+        aws    aws // 新しいカテゴリの追加
     }
     ```
 
-3. Define the new category struct in `envspec.go`.
-    - Add `env` tags to each field and specify `required`, `envSeparator`, etc. as needed.
-    - Also add the public struct defined in `model.go` to `envspec.go`.
-    - Example:
+3. `envspec.go` に新しいカテゴリの構造体を定義してください。
+    - 各フィールドには `env` タグを付与し、必要に応じて `required` や `envSeparator` なども指定してください。
+    - `model.go` で定義した構造体の公開構造体を `envspec.go` にも追加してください。
+    - 例:
 
     ```go
     type AWS struct {
@@ -141,19 +141,19 @@ The following describes importance and expected impact in real-world operations.
     }
     ```
 
-4. Add the new category struct as a field in the `Loader` struct.
-    - Example:
+4. 追加したカテゴリの構造体を `Loader` 構造体にフィールドとして追加してください。
+    - 例:
 
     ```go
     type Loader struct {
         Server Server
-        AWS    AWS // add new category
+        AWS    AWS // 新しいカテゴリの追加
     }
     ```
 
-5. In the `New` function of `config.go`, call `env.ParseAs[Loader]()` to automatically bind values from environment variables into `Loader`.
-    - Implement validation for the added category inside the `validateConfig()` function if necessary.
-    - Finally, convert from `Loader` to `Config` and return the `Config` struct.
+5. `config.go` の `New` 関数で `env.ParseAs[Loader]()` を呼び出すことで、環境変数から`Loader`に自動的に値がバインドされます。
+    - 必要に応じて、追加カテゴリのバリデーション処理を `validateConfig()` 関数内で実装してください。
+    - 最後に、`Loader` から `Config` への変換を行い、`Config` 構造体を返すようにしてください。
 
     ```go
     func New() (*Config, error) {
@@ -162,7 +162,7 @@ The following describes importance and expected impact in real-world operations.
             return nil, xerrors.Join(ErrFailedToParseConfig, err)
         }
 
-        if err := validateConfig(cfg); err != nil { // perform validation here
+        if err := validateConfig(cfg); err != nil { // バリデーション処理を追加はこの関数内で行います
             return nil, err
         }
 
@@ -180,9 +180,9 @@ The following describes importance and expected impact in real-world operations.
     }
     ```
 
-6. Implement getter methods for each category as needed to allow external access to values.
-    - Creating setter methods is prohibited. The purpose of config.go is limited to retrieving and binding values from environment variables, and modifying configuration values is not intended.
-    - Example:
+6. 必要に応じて、カテゴリごとのgetterメソッドを実装し、外部から値を取得できるようにしてください。
+    - setterメソッドの作成は禁止です。config.goの目的は、環境変数からの値の取得とバインドに限定されているため、設定値を変更することは想定されていません。
+    - 例:
 
     ```go
     func (c *Config) AWSAccessKey() string {
@@ -198,9 +198,9 @@ The following describes importance and expected impact in real-world operations.
     }
     ```
 
-7. Add test cases for the added category in `config_test.go`.
-    - In test cases, set environment variables and call `New()` to verify that values are correctly bound.
-    - Example:
+7. `config_test.go` に追加したカテゴリのテストケースを追加してください。
+    - テストケースでは、環境変数を設定し、`New()` 関数を呼び出して値が正しくバインドされていることを確認します。
+    - 例:
 
     ```go
     func TestNewAWSConfig(t *testing.T) {
@@ -221,12 +221,12 @@ The following describes importance and expected impact in real-world operations.
     }
     ```
 
-    - Also add tests for validation inside the `validateConfig` function.
+    - validateConfig関数内でのバリデーションのテストも追加してください。
 
-8. Similar to existing `NewHogehogeConfig`, ensure the signature where DI receives `*config.Config` and returns a public type (`*config.AWSConfig`).
+8. 既存の `NewHogehogeConfig` と同様に、DI が `*config.Config` を受け取り、公開型（`*config.AWSConfig`）を返すシグネチャにしてください。
 
 ```go
-// internal/config/aws_config.go (example)
+// internal/config/aws_config.go (例)
 package config
 
 type AWSConfig struct {
@@ -235,7 +235,8 @@ type AWSConfig struct {
     Region    string
 }
 
-// NewAWSConfig receives *config.Config from DI and returns a public type *config.AWSConfig used by services
+// NewAWSConfig は DI から渡された *config.Config を受け取り、
+// サービスで使う公開型 *config.AWSConfig を返します。
 func NewAWSConfig(cfg *Config) *AWSConfig {
     return &AWSConfig{
         AccessKey: cfg.aws.accessKey,
@@ -245,30 +246,30 @@ func NewAWSConfig(cfg *Config) *AWSConfig {
 }
 ```
 
-Points:
+ポイント:
 
-- Follow project naming conventions for field names and struct names.
-- After adding a provider to DI, register the component that receives that type (e.g., AWS client factory) in the DI container.
-- Missing additions or type mismatches will cause build errors, so verify with `go build` and `go test ./...`.
+- フィールド名や構造体名はプロジェクトの命名規則に従ってください。
+- DI に provider を追加したら、その型を受け取るコンポーネント（例: AWS クライアントの factory）を DI コンテナに登録してください。
+- 追加漏れや型の不一致があるとビルド時にエラーになるため、`go build` や `go test ./...` で確認してください。
 
-## Test Support
+## テストサポート
 
-### Test Helpers
+### テストヘルパー
 
-|Function|File|Description|
+|関数|ファイル|説明|
 |---|---|---|
-|`MockConfigForTest(t)`|`config_testing_mock.go`|Create a test `*Config` with default values for all fields|
-|`NewTestLocation(t)`|`test_kit.go`|Create a test timezone `*time.Location`|
-|`ResolvedAuthIssuer(t)`|`test_kit.go`|Resolve `AUTH_ISSUER` for this run (runtime env first, embedded `env/.env` as fallback)|
-|`EnsureRepoRootAndEnv(t, env)`|`test_kit.go`|Move to repo root and set ENV environment variable|
+|`MockConfigForTest(t)`|`config_testing_mock.go`|全項目にデフォルト値を設定したテスト用 `*Config` を生成|
+|`NewTestLocation(t)`|`test_kit.go`|テスト用タイムゾーン `*time.Location` を生成|
+|`ResolvedAuthIssuer(t)`|`test_kit.go`|この実行環境の `AUTH_ISSUER` を解決（実行時 env が先、無ければ埋め込み `env/.env`）|
+|`EnsureRepoRootAndEnv(t, env)`|`test_kit.go`|リポジトリルートに移動し、ENV 環境変数を設定|
 
-### Test Setters
+### テスト用 Setter
 
-Methods defined in `config_testing_setter.go` allow temporarily modifying SubConfig values during tests. Values are automatically restored via `t.Cleanup`.
+`config_testing_setter.go` に定義されたメソッドで、テスト中に SubConfig の値を一時的に変更できます。`t.Cleanup` で自動的に元の値に戻ります。
 
-**Do not use in production code.**
+**本番コードでは使用しないでください。**
 
-|Method|Target SubConfig|
+|メソッド|対象 SubConfig|
 |---|---|
 |`SetApplicationMode`|`ApplicationConfig`|
 |`SetApplicationEnv`|`ApplicationConfig`|
@@ -299,39 +300,38 @@ Methods defined in `config_testing_setter.go` allow temporarily modifying SubCon
 |`SetSameSite`|`SecureCookieConfig`|
 |`SetDomain`|`SecureCookieConfig`|
 
-### Test exceptions (files not required to reach full unit coverage)
+### テスト例外（ユニットで完全被覆を求めないファイル）
 
-Most of this package (SubConfig getters, `New()` binding, the test setters) is expected to
-stay near 100% unit coverage. The following are the **intentional exceptions**: their
-uncovered parts are error branches on the loading / composition boundary that cannot be
-exercised without failure injection, and the real path is already verified end-to-end by
-the boot-check CI (`app-di-startup-check` / `worker-boot-check` / `job-boot-check`, which
-run the actual binary through `SetUpConfig`).
+本パッケージの大半（SubConfig の getter・`New()` のバインド・テストセッター）はユニットで
+ほぼ 100% 被覆を維持する想定です。以下は**意図的な例外**で、未被覆部分は読み込み /
+composition 境界のエラー分岐であり、失敗注入なしには通せません。実経路は boot-check CI
+（`app-di-startup-check` / `worker-boot-check` / `job-boot-check`。実バイナリを `SetUpConfig`
+経由で起動）で E2E 検証済みです。
 
-|File|Function|Why not unit-tested|
+|ファイル|関数|ユニット非対象の理由|
 |---|---|---|
-|`loader.go`|`Load`|The remaining branches are I/O failures on the **embedded** env file (`root.FS.ReadFile` / `godotenv.Parse` / `os.Setenv`). These effectively never fail at runtime and would need an injected failing FS / env to hit.|
-|`setup.go`|`SetUpConfig`|Composition-root glue called from `cmd/` (itself excluded from the coverage gate). Only the `Load()` error early-return is uncovered; startup is exercised by the boot-check CI.|
+|`loader.go`|`Load`|残る分岐は**埋め込み** env ファイルの I/O 失敗（`root.FS.ReadFile` / `godotenv.Parse` / `os.Setenv`）。実行時にはまず失敗せず、被覆には失敗する FS / env の注入が必要。|
+|`setup.go`|`SetUpConfig`|`cmd/`（それ自体カバレッジゲート対象外）から呼ばれる composition-root の glue。未被覆は `Load()` 失敗時の early-return のみで、起動は boot-check CI が担保。|
 
-> Do **not** add contrived failure-injection tests just to color these lines. If one of
-> these functions gains real branching logic (not I/O error plumbing), that logic must be
-> unit-tested like everything else.
+> これらの行を塗るためだけの不自然な失敗注入テストは**追加しない**こと。これらの関数が
+> （I/O エラー配線ではない）実際の分岐ロジックを持つようになった場合は、他と同様に
+> ユニットテストで担保すること。
 >
-> **Governance:** coverage exceptions are **not added at will**. A new entry may be recorded
-> in this section **only with an appropriate approver's (e.g. architect) sign-off**.
+> **ガバナンス:** カバレッジ例外は**任意に追加しない**。新規エントリはアーキテクト等の
+> **適切な承認者の承認を得た場合に限り**本節へ記録する。
 
-## Notes
+## 注意点
 
-- For security reasons, do not hardcode sensitive information (e.g., API keys or passwords) in code. Manage them via environment variables.
+- セキュリティ上の理由から、機密情報（例: APIキーやパスワード）は環境変数で管理し、コード内にハードコーディングしないでください。
 
-## Test Strategy
+## テスト戦略
 
-Config is the one place that reads the process environment and the filesystem, so its tests are the exception to the parallel mandate rather than the rule.
+config はプロセスの環境変数とファイルシステムを読む唯一の場所であり、そのテストは並列化必須という原則の例外側になる。
 
-- **Per-validator boundaries** — each `validate*` function has its own `TestXxx` asserting both sides of every rule it enforces (accepted value and the specific rejection). A validator tested only on the happy path leaves a misconfiguration to be discovered at runtime, which is what these functions exist to prevent.
-- **Env / CWD mutation is serial by necessity** — subjects that call `t.Setenv` / `t.Chdir` (config loading and the test-support helpers such as `EnsureRepoRootAndEnv`) cannot call `t.Parallel()`. Mark them `//nolint:paralleltest` with the one-line reason, per `docs/testing-conventions.md` §3. Do not work around this by mutating `os.Environ` directly.
-- **Loading precedence** — when a value can come from more than one source, assert which one wins, not merely that a value was produced.
-- **The embedded env file is checked against `envspec.go`, not transcribed** — an `.env` file is data that nothing compiles against, so a variable declared without an `envDefault` yet absent from the file and a key left stranded by a rename are both invisible to a behavior test. `TestEmbeddedEnvConsistency` derives the key set from `Loader`'s struct tags by reflection and asserts **key presence** against the parsed file in both directions. Derive that set — a hand-written key list is a copy of the file it is meant to check, and drifts along with it.
-- **Value drift is caught per key, not in bulk** — values cannot be compared wholesale, because the expectations in `config_testing_mock.go` are deliberately distinct sentinels (`APP_NAME` is the sentinel `TestApp`, never the value the embedded file carries) so that a test proves *which* key it read. Pin a value one key at a time, and only where the expectation is meant to mirror the file — `OBS_TARGET_STATUS_CODES` alone today; every other key can still drift undetected. The scope is the embedded file only, which is `env/.env` locally and `env/.env.ci` under `make materialize-env`; the deploy files (`dev` / `stg` / `prd`) hold different values by design and never become the embedded file under test. Whether such a difference is that design or a propagation miss is not this package's question — it is settled across the whole env file family by `TestEnvTargetStatusCodesPolicy` in `internal/architest`, against the per-environment policy documented in `env/README.md`.
-- **The embedded env's provenance is captured, not merely loaded** — `Load` records the embedded `APP_ENV` into `embeddedAppEnv` *before* the runtime-env merge, and the production-mode provenance guard reads that captured value rather than the effective one. Assert the capture with a conflicting runtime `APP_ENV` in place and derive the expectation from the embedded file; a test that reads back the loaded value cannot distinguish the baked-in provenance from the injected one, which is the only thing the guard exists to tell apart.
-- **Test doubles are the ones this package ships** — other layers consume `MockConfigForTest(t)` and the `Set*(t, …)` setters rather than constructing a `Config` by hand; the setters restore via `t.Cleanup`, and that restoration is itself part of the contract to assert. See [Test Support](#test-support) for the inventory — do not duplicate it here.
+- **バリデータごとの境界** — 各 `validate*` 関数は自身の `TestXxx` を持ち、強制する各ルールについて両側（受理される値と、その具体的な拒否）を検証する。正常系しか通らないバリデータは設定ミスを実行時まで持ち越すが、それを防ぐために存在しているのがこれらの関数である。
+- **環境変数 / CWD の変更は必然的に直列** — `t.Setenv` / `t.Chdir` を呼ぶ対象（config のロード処理と `EnsureRepoRootAndEnv` 等のテスト支援ヘルパ）は `t.Parallel()` を呼べない。`docs/testing-conventions.md` §3 に従い `//nolint:paralleltest` と一行の理由を付す。`os.Environ` を直接いじって回避しないこと。
+- **ロードの優先順位** — 値の供給元が複数あり得る場合、値が生成されたことではなく **どちらが勝つか** を検証する。
+- **埋め込み env ファイルは `envspec.go` と突き合わせる。写経しない** — `.env` は何もコンパイルされないデータであり、`envDefault` 無しで宣言されたのにファイルに無い変数と、改名で取り残されたキーは、いずれも振る舞いのテストからは見えない。`TestEmbeddedEnvConsistency` は `Loader` の構造体タグから reflect でキー集合を導出し、パース結果と **キーの存在** を双方向に突き合わせる。集合は必ず導出すること — 手書きのキー一覧は検証対象のファイルの複製でしかなく、一緒に乖離する。
+- **値の乖離はキー単位で塞ぐ。一括では塞げない** — `config_testing_mock.go` の期待値は「どのキーを読んだか」をテストが証明できるよう意図的に別の番兵値になっている（`APP_NAME` は埋め込みファイルが持つ値ではなく番兵の `TestApp`）ため、値を一括比較することはできない。よって値はキー単位で、しかも期待値がファイルを写すことを意図しているものについてのみ固定する — 現状は `OBS_TARGET_STATUS_CODES` だけであり、他のキーの値は依然として無検出で乖離しうる。対象は埋め込みファイルだけ、すなわちローカルでは `env/.env`、`make materialize-env` 下の CI では `env/.env.ci` である。deploy 系（`dev` / `stg` / `prd`）は設計上異なる値を持ち、テスト時の埋め込みファイルになることはない。その差異が設計なのか伝播漏れなのかは本パッケージの問いではなく、`env/README.md` が文書化する環境別ポリシーに対して `internal/architest` の `TestEnvTargetStatusCodesPolicy` が env ファイル群を横断して決着させる。
+- **埋め込み env は読み込むだけでなく素性を捕捉する** — `Load` は実行時 env のマージ**前**に埋め込みの `APP_ENV` を `embeddedAppEnv` へ記録し、production モードの素性ガードは実効値ではなくこの捕捉値を読む。よって検証は、実行時 `APP_ENV` に別値を置いた状態で、期待値を埋め込みファイルから導出して行う。読み込み後の値を読み返すテストでは、焼き込まれた素性と注入された値を区別できず、ガードが唯一区別しようとしているものを検証できない。
+- **テストダブルは本パッケージが提供するもの** — 他層は `Config` を手で組まず `MockConfigForTest(t)` と `Set*(t, …)` セッタを使う。セッタは `t.Cleanup` で復元し、その復元自体も検証すべき契約である。一覧は [テストサポート](#テストサポート) を参照し、ここに再掲しないこと。

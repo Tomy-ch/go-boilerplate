@@ -1,18 +1,18 @@
 # job hook
 
-`internal/di/job/hook` is a module that registers **lifecycle hooks** to automatically execute CLI-specified jobs at application startup.
+`internal/di/job/hook` は、アプリケーション起動時に CLI で指定されたジョブを自動実行するための **ライフサイクルフック**を登録するパッケージです。
 
-## Role
+## 役割
 
-`RegisterJobHooks` wires the job into a `lifecycle.SupervisedRunner` (the shared primitive also used by the worker / outbox-relay hooks), which registers both a Start and a Stop hook with `lifecycle.Registrar`:
+`RegisterJobHooks` はジョブを `lifecycle.SupervisedRunner`（worker / outbox relay hook も使う共通プリミティブ）に載せ、`lifecycle.Registrar` に Start と Stop の両フックを登録します。Start 時に以下の処理を行います。
 
 ```mermaid
 flowchart TB
-    Start["Start hook"]
+    Start["Start フック"]
     Snapshot["state.Snapshot()"]
     Check{"done == nil?"}
-    NoJob["log → Shutdown"]
-    RunJob["runner.Run() in a goroutine"]
+    NoJob["ログ出力 → Shutdown"]
+    RunJob["goroutine で runner.Run()"]
     Done["done <- err → Shutdown"]
 
     Start --> Snapshot --> Check
@@ -20,26 +20,26 @@ flowchart TB
     Check -- no --> RunJob --> Done
 ```
 
-1. Calls `state.Snapshot()` to get job name, args, and done channel
-2. If `done == nil`: logs and triggers `sd.Shutdown()`
-3. Otherwise: executes `runner.Run(jobCtx, name, args)` in a goroutine, sends result to `done`, then calls `sd.Shutdown()`
+1. `state.Snapshot()` でジョブ名・引数・done チャネルを取得する
+2. `done == nil` の場合: ログに出して `sd.Shutdown()` を発火する
+3. それ以外: goroutine で `runner.Run(jobCtx, name, args)` を実行し、結果を `done` へ送ってから `sd.Shutdown()` を呼ぶ
 
-`jobCtx` is the run context supplied by `SupervisedRunner`: derived from `context.Background()` (so it is not affected by the start context being cancelled after `OnStart`) and **cancelled on `OnStop`**. This is what makes `--timeout` work: when the CLI exceeds the timeout and calls `app.Stop`, `OnStop` cancels `jobCtx`, interrupting the in-flight job (e.g. a long DB query). See `lifecycle/README.md` (SupervisedRunner).
+ジョブ実行 context（`jobCtx`）は `SupervisedRunner` が供給します。`context.Background()` 由来のため起動 context が `OnStart` 後にキャンセルされても巻き込まれず、かつ **`OnStop` でキャンセル**されます。これが `--timeout` を機能させます——CLI が timeout 超過で `app.Stop` を呼ぶと `OnStop` が `jobCtx` をキャンセルし、実行中のジョブ（長い DB クエリ等）を中断します。詳細は `lifecycle/README.md`（SupervisedRunner）参照。
 
-## Usage Flow
+## 使用フロー
 
-Set `State` before application startup from the CLI:
+CLI 側で起動前に `State` をセットしておきます。
 
 ```go
 done := make(chan error, 1)
 state.Set("user-count", []string{"--active-only"}, done)
-// Application starts → Start hook executes the job
+// アプリケーション起動 → Start フックでジョブが実行される
 err := <-done
 ```
 
-## Notes
+## 注意点
 
-- `state.Set(name, args, done)` must be called before application startup
-- Job execution starts asynchronously in a separate goroutine
-- The `done` channel is closed by the hook side (callers should not close it)
-- `shutdowner.Shutdown()` triggers application stop after job completion
+- `state.Set(name, args, done)` をアプリケーション起動前に行う必要がある
+- ジョブ実行は別ゴルーチンで非同期に開始される
+- `done` チャネルはフック側で `close` する（呼び出し側でクローズしないこと）
+- `shutdowner.Shutdown()` によりジョブ完了後にアプリケーション停止がトリガーされる

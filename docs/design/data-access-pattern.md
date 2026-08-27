@@ -1,91 +1,84 @@
 # Data Access Pattern
 
-## Role
+## 役割
 
-This document is the single place the **placement criterion** for a data access lives: given an
-operation, which construct does it belong to, and why.
+この文書は、データアクセスの**配置判定基準**が置かれる唯一の場所である。ある操作を与えられたとき、
+どの構築物に属するのか、そしてなぜか。
 
-The decisions are recorded in the ADRs —
-[ADR-0032 (lightweight-cqrs)](../adr/0032-lightweight-cqrs.md) (the constructs, their structure, the
-CommandService eligibility and derivation rules),
-[ADR-0033 (system-cqrs-dml-category)](../adr/0033-system-cqrs-dml-category.md) (the fourth category
-outside the split), and
+決定そのものは ADR に記録されている ——
+[ADR-0032 (lightweight-cqrs)](../adr/0032-lightweight-cqrs.md)（構築物とその構造、CommandService の
+eligibility と derivation の規則）、
+[ADR-0033 (system-cqrs-dml-category)](../adr/0033-system-cqrs-dml-category.md)（分割の外側にある
+第 4 のカテゴリ）、
 [ADR-0034 (commandservice-atomicity-criterion)](../adr/0034-commandservice-atomicity-criterion.md)
-(the cross-aggregate decision procedure). Those record *what was decided and what was rejected*; this
-document states *how to decide a given case*, and is the one that grows as the criterion is sharpened.
-`docs/rules.md` § Repository / QueryService Rules carries only the enforceable prohibitions and links
-here.
+（集約を跨ぐ操作の判定手順）。ADR は*何を決めたか・何を却下したか*を記録する。この文書は*個別のケースを
+どう判定するか*を述べるもので、基準が研がれるたびに育つのはこちらである。`docs/rules.md` の
+§ Repository / QueryService Rules は強制可能な禁止形だけを持ち、ここへリンクする。
 
-## 1. The underlying fact
+## 1. 根底にある事実
 
-> Given unlimited latency and resources, every read decomposes into per-aggregate Repository reads
-> joined in application code, and every write decomposes into a single-aggregate write followed by an
-> eventually consistent cascade. QueryService and CommandService are needed only where non-functional
-> requirements forbid that decomposition.
+> レイテンシとリソースが無制限であれば、あらゆる読み取りは集約単位の Repository 読み取りと
+> アプリケーションコードでの結合に分解でき、あらゆる書き込みは単一集約への書き込みとそれに続く
+> 結果整合のカスケードに分解できる。QueryService と CommandService が必要になるのは、非機能要件が
+> その分解を禁じる場合だけである。
 
-There is **one axis** — whether a non-functional requirement forbids decomposing the operation into
-per-aggregate work — and the direction of the operation decides which construct the residue lands on.
+軸は **1 本**しかない —— 非機能要件がその操作を集約単位の作業へ分解することを禁じるかどうか。そして
+操作の向きが、残余がどちらの構築物に着地するかを決める。
 
-Neither QueryService nor CommandService is a semantic domain category. Both are the residue that
-remains when decomposition is not available. Latency and resource cost are exactly the requirements
-that remove it; what is *not* a justification is optimization with no requirement behind it (§7).
+QueryService も CommandService も意味論的なドメインカテゴリではない。どちらも、分解が使えないときに
+残る残余である。レイテンシとリソースのコストは、まさにその分解を奪う要件そのものである。理由にならない
+のは、要件の裏付けが無い最適化のほうである（§7）。
 
-## 2. The four constructs
+## 2. 4 つの構築物
 
-| direction | decomposition is available | decomposition is forbidden |
+| 向き | 分解が使える | 分解が禁じられる |
 | --- | --- | --- |
-| **read** | Repository | QueryService |
-| **write** | Repository | CommandService |
+| **読み** | Repository | QueryService |
+| **書き** | Repository | CommandService |
 
-Repository is the default in both directions. It owns the aggregate's system-of-record state:
-persistence, fetch by ID, and simple filter / list / count over the aggregate's own attributes. On the
-write side "decomposition is available" also covers a regular usecase composed of several Repository
-calls — see §5, which is a branch of its own.
+Repository は両方向の既定である。集約の system-of-record な状態を持つ —— 永続化、ID による取得、集約
+自身の属性による単純なフィルタ / 一覧 / 件数。書き側の「分解が使える」には、複数の Repository 呼び出しで
+構成された通常の usecase も含まれる —— §5 はそれ自体が 1 つの枝である。
 
-**`system_cqrs` sits outside this table entirely.** Health verification, idempotency enforcement and
-outbox delivery are infrastructure-operational queries: not driven by a user-facing use case, with no
-aggregate owner and no usecase interface. They are not a harder case of the read/write question — they
-are not in the question. Placing them in `repository/` would break its 1:1 correspondence with domain
-aggregates. See [ADR-0033](../adr/0033-system-cqrs-dml-category.md); DML lives in
-`database/dml/system_cqrs/` and implementations in `internal/infrastructure/rdb/system_cqrs/`.
+**`system_cqrs` はこの表の外側にある。** ヘルスチェック、冪等性の強制、outbox の配信は
+インフラ運用のクエリであり、ユーザー向けユースケースに駆動されず、集約の所有者も usecase インターフェースも
+持たない。読み / 書きの問いの難しいケースなのではなく、そもそもその問いの中に無い。`repository/` へ置くと
+ドメイン集約との 1:1 対応が壊れる。[ADR-0033](../adr/0033-system-cqrs-dml-category.md) を参照。DML は
+`database/dml/system_cqrs/`、実装は `internal/infrastructure/rdb/system_cqrs/` にある。
 
-## 3. Read side: when is decomposition forbidden
+## 3. 読み側 —— 分解が禁じられるのはどんなときか
 
-Ask these in order. The first that applies decides.
+上から順に問う。最初に当てはまったものが決める。
 
-### 3.1 Is the aggregate even the source of record for what is being read?
+### 3.1 そもそも読もうとしているものの正本は集約か
 
-If the queried data is a **derived projection** — a search index, a separate search store, a
-denormalized column maintained as its own read surface, a materialized cross-aggregate view — the
-aggregate cannot be reconstructed from it, so decomposition is not merely expensive but impossible.
-**QueryService.**
+クエリの対象が**派生した射影** —— 検索インデックス、別の検索ストア、それ自体を読み取り面として維持される
+非正規化カラム、実体化された集約跨ぎのビュー —— であれば、そこから集約を再構成できないので、分解は高価
+なのではなく不可能である。**QueryService。**
 
-The clean image is a system of record in PostgreSQL with a projection in Elasticsearch. What decides is
-the **relationship between the record and its projection**, not the storage engine: PostgreSQL does not
-imply Repository and a document store does not imply QueryService.
+一番きれいな像は、正本が PostgreSQL にあり射影が Elasticsearch にある形である。決めるのは**正本と射影の
+関係**であって、ストレージエンジンではない。PostgreSQL だから Repository でもないし、ドキュメントストア
+だから QueryService でもない。
 
-Full-text search is a *typical* QueryService case because it usually rides on such a projection — not
-because "search" is inherently a read-side concern. A plain filter over the aggregate's own columns
-stays in Repository, and so does a filter that uses a generated column of the same row as an index
-while still returning the full aggregate.
+全文検索が*典型的な* QueryService のケースなのは、たいていそうした射影の上に乗っているからであって、
+「検索」が本質的に読み側の関心事だからではない。集約自身のカラムに対する素のフィルタは Repository に
+留まるし、同じ行の生成カラムを索引として使いつつ完全な集約を返すフィルタも同様である。
 
-### 3.2 Does the read span independent aggregates?
+### 3.2 その読み取りは独立した集約を跨ぐか
 
-Two shapes, landing differently.
+2 つの形があり、着地が違う。
 
-- **Attaching a field** from another independent aggregate (a name, a label) — batch-fetch that
-  aggregate through its own Repository (`FindByIDs`) and merge by key **in the usecase layer**. Each
-  read stays a single-aggregate Repository read. **Not** a QueryService case.
-- **Reading the joined shape itself** — a view or an aggregation whose rows belong to no single
-  aggregate. Decomposition would mean materializing every participating aggregate to discard most of
-  it. **QueryService.**
+- **フィールドを貼る** —— 別の独立した集約から名前やラベルを付ける場合。その集約自身の Repository
+  （`FindByIDs`）でまとめて取得し、**usecase 層で**キーによりマージする。各読み取りは単一集約の
+  Repository 読み取りのままである。**QueryService のケースではない。**
+- **結合した形そのものを読む** —— どの単一集約にも属さない行を持つビューや集計。分解するなら、参加する
+  すべての集約を実体化してその大半を捨てることになる。**QueryService。**
 
-**Reference masters are not independent aggregates.** Fixed lookup data with no independent write or
-transactional lifecycle, reached through a mandatory and uniquely-determined FK, is part of the owning
-aggregate's semantic set. JOINing it to project a display attribute is a single-aggregate Repository
-read — no QueryService, no usecase merge. The criterion is the joined data's *nature*, not whether it
-happens to have a Go type of its own — a master resolved purely by JOIN with no domain type
-of its own qualifies just as one that also has a sub-package.
+**参照マスタは独立した集約ではない。** 独立した書き込み・トランザクションのライフサイクルを持たず、必須
+かつ一意に定まる FK で到達する固定のルックアップデータは、所有する集約の意味論的な集合の一部である。表示
+属性を射影するために JOIN するのは単一集約の Repository 読み取りであり、QueryService も usecase マージも
+要らない。基準は結合されるデータの*性質*であって、それが Go の型を持っているかどうかではない —— JOIN だけで解決され
+自前のドメイン型を持たないマスタも、サブパッケージを持つマスタと同じ資格である。
 
 <!-- 撤去後にこの箇所へ自分の例を置くための指針。
      目的: 「参照マスタ」だけでは読者が自分のテーブルを当てはめられない。
@@ -95,95 +88,84 @@ of its own qualifies just as one that also has a sub-package.
 （サンプルでの例は `purchase_statuses` / `product_statuses`）
 <!-- sample-api:end -->
 
-### 3.3 Would decomposition materialize an aggregate the operation does not need?
+### 3.3 その操作が必要としない集約を、分解が実体化してしまうか
 
-A subset or reshape of a **heavy** aggregate — the read needs a few fields and reconstructing the whole
-aggregate discards the rest — is a QueryService case even though nothing crosses an aggregate boundary
-and nothing is denormalized.
+**重い**集約の subset / reshape —— 数フィールドしか要らないのに集約全体を再構成して残りを捨てる ——
+は、集約境界を跨がず非正規化もされていなくても QueryService のケースである。
 
-**This branch has no threshold, deliberately.** What counts as "heavy enough" depends on the shape of
-the aggregate and on the operational reality of the system being built, so this document sets no number.
-What it does fix is the axis you weigh on and the default:
+**この枝には意図的に閾値を置かない。** 「どれだけ重ければ重いか」は集約の形と、構築するシステムの運用実態に
+依るので、この文書は数値を定めない。定めるのは、天秤にかける軸と既定である。
 
-| weigh | against |
+| 量る | 対して |
 | --- | --- |
-| the cost of materializing what the operation discards — field count × row count, JOIN depth, how many aggregates get expanded | the cost of a second read path — duplicated SQL, duplicated DTOs, another surface to keep in sync and to test |
+| その操作が捨てるものを実体化するコスト —— フィールド数 × 行数、JOIN の深さ、いくつの集約が展開されるか | 読み取り経路をもう 1 本持つコスト —— SQL の重複、DTO の重複、同期とテストの対象がもう 1 面増える |
 
-**The default is Repository.** Use this branch only when the left side clearly outweighs the right.
-Stating the default matters: without one, every judgment call resolves toward adding a QueryService,
-because adding a path is always the nearer move.
+**既定は Repository である。** 左が右を明確に上回るときにだけこの枝を使う。既定を明示することが効く。
+既定が無いと、判断のたびに QueryService を足す方向へ倒れる —— 経路を足すほうが常に手近だからである。
 
-## 4. Write side
+## 4. 書き側
 
-A write reaches CommandService only by passing **both**. They ask different questions and neither
-implies the other.
+書き込みが CommandService に到達するには**両方**を通る必要がある。異なることを問うており、どちらも
+他方を含意しない。
 
-### Gate 1 — Eligibility: can the write be expressed as load-mutate-save?
+### 門 1 —— Eligibility: その書き込みは load-mutate-save で表現できるか
 
-If the write can be expressed as loading an aggregate, mutating it, and saving it, it belongs on the
-**Repository**, regardless of anything else.
+集約を読み込み、変更し、保存する形で表現できるなら、他が何であれ **Repository** に属する。
 
-CommandService exists for the writes that *cannot* be expressed that way without changing their
-concurrency properties: **relative updates, set-based operations, and operations that obtain atomicity
-without taking a lock**. Returning a reserved quantity when a reservation is released is the shape — a
-relative update that takes no lock on the counted row at all; expressing it as load-add-save would
-introduce a lock the cancel path does not take, adding contention and a deadlock surface that does not
-exist today.
+CommandService が存在するのは、その形では**並行性の性質を変えずには表現できない**書き込みのためである ——
+**相対更新、集合ベースの操作、ロックを取らずに原子性を得る操作**。引き当てを解放して数量を戻すのが
+その形である —— 数えている行に一切ロックを取らない相対更新であり、load-add-save として表現するとキャンセル
+経路が本来取らないロックを導入することになり、今は存在しない競合とデッドロック面を足すことになる。
 
-Without this gate the seam degrades into "where I put SQL I want to write directly".
+この門が無いと、この seam は「直接 SQL を書きたいときの置き場」へ堕ちる。
 
-### Gate 2 — Atomicity: does the multi-aggregate write require a single transaction?
+### 門 2 —— Atomicity: その集約跨ぎの書き込みは単一トランザクションを要求するか
 
-For an operation that crosses an aggregate boundary, two independent questions decide. They are
-independent because one is about reading and the other about writing, and one operation may answer yes
-to both.
+集約境界を跨ぐ操作については、独立した 2 つの問いが決める。片方が読みについて、もう片方が書きについての
+問いなので独立しており、1 つの操作が両方に「はい」と答えることもある。
 
-1. Does a condition read from another aggregate have to **hold for the rest of the transaction**? — can
-   a concurrent operation invalidate it between the check and the commit?
-2. Does the multi-aggregate write require **single-transaction atomicity**? Immediacy — all effects
-   visible at API response time — is the typical reason this arises.
+1. 別の集約から読んだ条件は、**トランザクションの残りの間ずっと成立している必要があるか** ——
+   チェックとコミットの間に並行操作がそれを無効化しうるか。
+2. その集約跨ぎの書き込みは**単一トランザクションの原子性**を要求するか。即時性 —— すべての効果が
+   API 応答時点で見えること —— がこの要求が生じる典型的な理由である。
 
-The procedure:
+手順:
 
-1. **Decomposition (default).** If the consequence for the other aggregate may be eventually consistent
-   and a condition read from it may go stale, implement it as a regular usecase and propagate the
-   consequence as an outbox event ([ADR-0054](../adr/0054-transactional-outbox.md)). No other aggregate
-   is held inside the transaction.
-2. **Guard (synchronous row lock; still a regular usecase).** See §5.
-3. **Atomicity (CommandService; exception, must be justified).** Only when single-transaction atomicity
-   of the multi-aggregate *write* remains as a requirement.
+1. **分解（既定）。** 他集約への帰結が結果整合でよく、そこから読んだ条件が陳腐化してよいなら、通常の
+   usecase として実装し、帰結を outbox イベントとして伝播する
+   （[ADR-0054](../adr/0054-transactional-outbox.md)）。他の集約をトランザクション内に保持しない。
+2. **Guard（同期的な行ロック。通常の usecase のまま）。** §5 を参照。
+3. **Atomicity（CommandService。例外であり、正当化を要する）。** 集約跨ぎの*書き込み*の単一
+   トランザクション原子性が要求として残る場合にだけ。
 
-Two justifications are not acceptable: "it spans multiple aggregates, therefore CommandService", and
-"it is only a read, therefore nothing is needed".
+受け入れられない正当化が 2 つある。「複数集約を跨ぐから CommandService」と、「読むだけだから何も要らない」。
 
-### The Repository write contract
+### Repository の書き込み契約
 
-The gates decide *where* a write goes. This decides what a write method that landed on the Repository
-has to guarantee.
+門が決めるのは書き込みが*どこへ*行くかである。ここで決めるのは、Repository に着地した書き込みメソッドが
+何を保証しなければならないかである。
 
-> **A Repository write method must leave the aggregate consistent on its own. It must not require
-> another Repository call.**
+> **Repository の書き込みメソッドは、それ単独で集約を整合した状態にしなければならない。別の Repository
+> 呼び出しを要求してはならない。**
 
-Concretely: if a doc comment says "call B after A, in the same transaction", then **A and B are one
-method**. The criterion is not how many methods an aggregate has — it is what each method's contract
-guarantees. An ordering obligation written in prose does not stop the next caller; only a method that
-cannot be half-invoked does.
+具体的には、doc コメントに「A の後に、同じトランザクションの中で B を呼ぶこと」と書かれているなら、
+**A と B は 1 本のメソッドである**。基準は集約が持つメソッドの本数ではなく、各メソッドの契約が何を保証
+するかである。散文で書かれた順序義務は次の呼び出し側を止めない。止められるのは、半分だけ呼ぶことが
+できないメソッドだけである。
 
-That makes the rule mechanically checkable: search write-method doc comments for an ordering
-obligation imposed on the caller. Each one is a split that has to be folded back.
+この規則は機械的に検査できる。書き込みメソッドの doc コメントから、呼び出し側へ課された順序義務を探せば
+よい。見つかったものはすべて、畳み戻すべき分割である。
 
-Three consequences follow, and the third is where the rule is most often misread.
+3 つの帰結が続く。読み違えられやすいのは 3 つ目である。
 
-1. **A child collection is synchronized inside the parent's write**, keyed by identity — remove the
-   rows the aggregate no longer holds, add the ones it does not have yet. Any ordering the storage
-   engine forces (a partial unique index that must be cleared before a key is reused, for instance) is
-   an invariant *of the method*, not an instruction for the caller.
-2. **Delete-everything-then-reinsert is not synchronization.** It changes the identity of every child
-   on every write, so an update that touched nothing else still rewrites the whole collection.
-3. **Several write methods per aggregate are fine** when each is consistent on its own — a
-   single-column update, or one method per state transition. Folding those together buys no
-   guarantee and costs write amplification, which is the opposite of what this rule is for. What is
-   forbidden is a split that hands the caller an ordering obligation, not a split as such.
+1. **子の集合は親の書き込みの中で、同一性を鍵に同期する** —— 集約が保持しなくなった行を取り除き、まだ
+   持っていない行を足す。ストレージが強いる順序（たとえば、鍵を使い回す前に空けておく必要のある部分
+   UNIQUE インデックス）は、**そのメソッドの**不変条件であって、呼び出し側への指示ではない。
+2. **全削除してから入れ直すのは同期ではない。** 書き込みのたびに全ての子の同一性が変わるため、他に何も
+   触れていない更新でも集合全体が書き直される。
+3. **1 つの集約が書き込みメソッドを複数持つこと自体は適法である** —— それぞれが単独で整合するなら。
+   1 列だけの更新や、状態遷移ごとの 1 本がそれにあたる。これらを畳んでも保証は何も増えず、書き込みの
+   増幅だけが増える。禁じられているのは、呼び出し側に順序義務を渡す分割であって、分割そのものではない。
 
 <!-- 撤去後にこの箇所へ自分の例を置くための指針。
      目的: 「単独で整合させる」だけでは、どの分割が適法でどれが違反なのか読者が自分の Repository を
@@ -191,101 +173,96 @@ Three consequences follow, and the third is where the rule is most often misread
      書き方: 適合例は「単独で完結する部分更新」と「状態遷移ごとのメソッド」を 1 つずつ、違反例は
      「doc コメントが呼び出し順序を課していた分割」を 1 つ、いずれもメソッド名で挙げる。 -->
 <!-- sample-api:begin -->
-Examples in the sample set: `product.UpdateStock` (a single-column update that is consistent on its
-own) and `purchase.UpdatePaid` / `UpdateShipped` / `UpdateDelivered` (one method per state transition)
-are compliant. `product.Update` writes its images in the same call, and `cart.Update` its items —
-both by keyed synchronization. The shape this rule rejects would be splitting that product write in
-two: an `Update` that excludes the images, plus a separate `ReplaceImages` the caller has to invoke
-afterwards in the same transaction.
+サンプルでの例: `product.UpdateStock`（単独で整合する 1 列の更新）と `purchase.UpdatePaid` /
+`UpdateShipped` / `UpdateDelivered`（状態遷移ごとの 1 本）は適合。`product.Update` は画像を、
+`cart.Update` は明細を、いずれも同一性を鍵とする同期で同じ呼び出しの中に書く。この規則が退けるのは、
+その product の書き込みを 2 つに割った形である —— 画像を含めない `Update` と、呼び出し側が同じ
+トランザクションの中で後から呼ぶ別の `ReplaceImages`。
 <!-- sample-api:end -->
 
-## 5. The guard branch
+## 5. Guard の枝
 
-Branch 2 above is the one shape that does not appear in the §2 table. It crosses an aggregate boundary,
-it is decided by a non-functional requirement, and it still lands on a regular usecase.
+上記の枝 2 は、§2 の表に席が無い唯一の形である。集約境界を跨ぎ、非機能要件で決まり、それでいて通常の
+usecase に着地する。
 
-If a condition read from another aggregate must hold until commit, take a row lock before evaluating it,
-in the global lock order ([ADR-0036](../adr/0036-ordered-pessimistic-row-locks.md)). Where the rule
-spans aggregates it lives in a Domain Service. This buys immediate consistency for a **read**; it makes
-no write atomic and is **never on its own a reason to introduce a CommandService**.
+別の集約から読んだ条件がコミットまで成立している必要があるなら、条件を評価する前に、グローバルなロック順で
+行ロックを取る（[ADR-0036](../adr/0036-ordered-pessimistic-row-locks.md)）。規則が集約を跨ぐ場合は
+Domain Service に置く。これが買うのは**読み取り**の即時整合性であって、いかなる書き込みも原子的にしないし、
+**それ単独では CommandService を導入する理由にならない**。
 
-The branch exists because an operation that only *reads* another aggregate never triggers a
-write-atomicity criterion, so without a branch of its own it would reach the default **by omission
-rather than by decision** — and under READ COMMITTED a condition that was merely read is not held. "It
-spans aggregates but it is only a read, so nothing is needed" is a true sentence with the right
-conclusion and an incomplete answer.
+この枝がある理由は、他集約を*読むだけ*の操作には書き込み原子性の基準が決して発火しないため、専用の枝が
+無いと**判断ではなく素通りで**既定に着地してしまうからである —— そして READ COMMITTED の下では、ただ
+読んだだけの条件は保持されない。「集約は跨ぐが読むだけなので何も要らない」は、結論の正しい真の文であり、
+かつ不完全な答えである。
 
-## 6. Derivation: what a CommandService may enforce
+## 6. Derivation —— CommandService が強制してよいもの
 
-Any condition a CommandService enforces must be **derived from a domain invariant, never authored
-independently**. A guard in a decrement statement restates the domain's own sufficiency rule as
-a fail-closed second net; it is downstream of that rule, so a change to the domain rule obliges a change
-here and never the reverse. Two independently written copies of one rule diverge silently the first time
-only one of them moves.
+CommandService が強制する条件は、**ドメイン不変条件から導出されたものでなければならず、独立に書き起こして
+はならない**。decrement 文の中のガードは、ドメインが既に検査した条件を fail-closed な二重の網として言い直した
+ものである。その規則の下流にあるので、ドメイン規則の変更はここの変更を義務づけるが、逆はない。1 つの規則の
+独立に書かれた 2 つの写しは、片方だけが動いた最初のときに黙って乖離する。
 
-This is why a CommandService and a Domain Service are different things even when they concern the same
-rule: **a Domain Service is a rule and owns no transaction; a CommandService is a transaction tool** and
-is owned by whoever opens the transaction.
+同じ規則に関わっていても CommandService と Domain Service が別物なのはこのためである ——
+**Domain Service は規則でありトランザクションを所有しない。CommandService はトランザクションの道具**であり、
+トランザクションを開く者が所有する。
 
-Two shape rules follow from the same reasoning:
+同じ理屈から、形について 2 つの規則が導かれる。
 
-- A CommandService method **receives the decided aggregate** — `CreateX(ctx, *x.X)` — symmetric to how a
-  Repository returns one, rather than a decomposed parameter bag that scatters the write intent across a
-  signature. This is not a DTO-boundary violation: that rule targets what the *controller* is exposed
-  to, not what infrastructure receives.
-- After the write, the usecase **calls back through the Repository** for the affected aggregate to
-  validate correctness.
+- CommandService のメソッドは**決定済みの集約を受け取る** —— `CreateX(ctx, *x.X)` —— Repository が集約を
+  返すのと対称であり、書き込み意図をシグネチャ全体へ散らすパラメータバッグではない。これは DTO 境界の違反
+  ではない。あの規則が対象にしているのは*コントローラ*が何に晒されるかであって、infrastructure が何を
+  受け取るかではない。
+- 書き込みの後、usecase は対象集約の **Repository を経由して呼び戻し**、正しさを検証する。
 
-## 7. What is not a criterion
+## 7. 基準ではないもの
 
-Each of these has been mistaken for the criterion at least once. None decides anything.
+以下はいずれも、少なくとも一度は基準と取り違えられたことがある。どれも何も決めない。
 
-- **Returning a DTO.** Every read is eventually mapped to a response DTO. What matters is whether the
-  operation needed the aggregate, not the shape it is returned in.
-- **Being a "search".** §3.1 — the projection decides, not the word.
-- **Spanning more than one aggregate.** §3.2 and §4 — span alone pulls work that could be eventually
-  consistent into synchronous transactions.
-- **Write-shape flexibility.** "CommandService can optimize flexible updates and deletes" describes what
-  the seam happens to permit, not what admits an operation to it. Gate 1 does.
-- **The storage engine.** §3.1.
-- **Returning many rows.** Volume is not crossing; a thousand aggregates are still aggregates.
-  Listing every row of one table is a single-aggregate `list` and stays in Repository.
+- **DTO で返すこと。** あらゆる読み取りは最終的にレスポンス DTO へ写像される。効くのはその操作が集約を
+  必要としたかどうかであって、返す形ではない。
+- **「検索」であること。** §3.1 —— 決めるのは射影であって語ではない。
+- **複数の集約を跨ぐこと。** §3.2 と §4 —— 跨ぎだけを根拠にすると、結果整合でよい仕事を同期
+  トランザクションへ引きずり込む。
+- **書き込み形の自由度。** 「CommandService は柔軟な更新や削除を自由に最適化できる」は、この seam が結果的に
+  許すことの記述であって、そこへの入場条件ではない。入場条件は門 1 である。
+- **ストレージエンジン。** §3.1。
+- **多くの行を返すこと。** 量は跨ぎではない。1,000 個の集約も集約である。
+  1 つのテーブルの全行を列挙するのは単一集約の `一覧` であり、Repository に留まる。
   <!-- 撤去後にこの箇所へ自分の例を置くための指針。
        目的: 行数の多さが集約横断の証拠だと読まれやすいため、単一テーブル全件の具体例が要る。
        意義: 効くのは「1 つのテーブルに閉じていること」であって、返る行数ではない。
        書き方: 全件取得が自然な参照マスタを 1 つ選び、SELECT 文の形で示す。 -->
   <!-- sample-api:begin -->
-  Example: `SELECT * FROM prefectures ORDER BY code`.
+  例: `SELECT * FROM prefectures ORDER BY code`。
   <!-- sample-api:end -->
 
-## 8. Where each construct lives
+## 8. 各構築物の置き場所
 
-| construct | interface | implementation | DML |
+| 構築物 | インターフェース | 実装 | DML |
 | --- | --- | --- | --- |
-| Repository | domain — `internal/domain/<aggregate>/` | `internal/infrastructure/rdb/repository/<aggregate>/` | `database/dml/repository/` |
-| QueryService | usecase — `internal/usecase/<aggregate>/query/` | `internal/infrastructure/rdb/query_service/<aggregate>/` | `database/dml/query_service/` |
-| CommandService | usecase — `internal/usecase/<workflow>/command/` | `internal/infrastructure/rdb/command_service/<aggregate>/` | `database/dml/command_service/` |
-| system_cqrs | — (no usecase interface) | `internal/infrastructure/rdb/system_cqrs/` | `database/dml/system_cqrs/` |
+| Repository | domain —— `internal/domain/<aggregate>/` | `internal/infrastructure/rdb/repository/<aggregate>/` | `database/dml/repository/` |
+| QueryService | usecase —— `internal/usecase/<aggregate>/query/` | `internal/infrastructure/rdb/query_service/<aggregate>/` | `database/dml/query_service/` |
+| CommandService | usecase —— `internal/usecase/<workflow>/command/` | `internal/infrastructure/rdb/command_service/<aggregate>/` | `database/dml/command_service/` |
+| system_cqrs | ——（usecase インターフェースを持たない） | `internal/infrastructure/rdb/system_cqrs/` | `database/dml/system_cqrs/` |
 
-Both Service interfaces live in the usecase layer rather than the domain, because the read model and the
-atomic write shape are usecase concerns, not aggregate invariants — so the domain layer keeps exactly one
-persistence contract, the Repository.
+どちらの Service インターフェースも domain ではなく usecase 層に置く。リードモデルと原子的な書き込みの形は
+usecase の関心事であって集約の不変条件ではないからである —— その結果、domain 層は永続化の契約をちょうど
+1 つ、Repository だけ保つ。
 
-**CommandService ownership is decided on the workflow axis, not the aggregate axis.** One real write can
-enforce the invariants of several aggregates at once, so "the aggregate whose invariant it enforces" is a
-relation, not a function. A transaction always has exactly one initiator, and the usecase layer already
-owns transaction boundaries — so `internal/usecase/<workflow>/command/` names a workflow, and "why this
-aggregate and not the other one it also writes?" does not arise.
+**CommandService の所有は集約軸ではなくワークフロー軸で決める。** 実際の 1 つの書き込みが複数集約の不変条件を
+同時に強制しうるので、「その不変条件を持つ集約」は関数ではなく関係である。トランザクションには常にちょうど
+1 つの起点があり、usecase 層は既にトランザクション境界を所有している —— だから
+`internal/usecase/<workflow>/command/` はワークフローを指しており、「なぜ同時に書く他方の集約ではなく
+こちらの集約なのか」という問いが生じない。
 
-All of these are registered in `persistenceModule` (`internal/di/module/persistence.go`) and injected via
-Fx. The `command_service` sub-module **may legitimately hold zero providers**: a system with no
-cross-aggregate write of its own has nothing to register, and an empty sub-module is not a defect.
+これらはすべて `persistenceModule`（`internal/di/module/persistence.go`）に登録され、Fx で注入される。
+`command_service` サブモジュールは**プロバイダが 0 個でも正当**である。自前の集約跨ぎの書き込みを持たない
+システムには登録するものが無く、空のサブモジュールは欠陥ではない。
 
-## 9. Departure from "1 Aggregate = 1 Transaction Boundary"
+## 9. 「1 集約 = 1 トランザクション境界」からの逸脱
 
-The guard branch (§5) and CommandService (§4 gate 2, branch 3) both put rows belonging to more than one
-aggregate inside a single transaction, departing from the principle
-[`internal/domain/README.md`](../../internal/domain/README.md) (§ Aggregate Boundary) states. Exactly
-those two widenings are admitted, and no others; the reasoning is recorded in
-[ADR-0034](../adr/0034-commandservice-atomicity-criterion.md) § Departure from "1 Aggregate = 1
-Transaction Boundary".
+Guard の枝（§5）と CommandService（§4 門 2 の枝 3）は、どちらも複数の集約に属する行を単一トランザクション内に
+置くため、[`internal/domain/README.md`](../../internal/domain/README.md)（§ Aggregate Boundary）が
+述べる原則から逸脱する。認めるのはちょうどこの 2 つの拡張だけであり、他は認めない。理由は
+[ADR-0034](../adr/0034-commandservice-atomicity-criterion.md) の § Departure from "1 Aggregate = 1
+Transaction Boundary" に記録されている。

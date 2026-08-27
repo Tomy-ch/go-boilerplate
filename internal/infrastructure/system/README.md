@@ -1,25 +1,25 @@
 # system
 
-`internal/infrastructure/system` provides **Infrastructure implementations for system-dependent operations** such as time retrieval and context-aware waiting.
+`internal/infrastructure/system` は、時刻取得やコンテキスト対応の待機などの **システム依存処理の Infrastructure 実装**を提供するパッケージです。
 
-It implements two interfaces from `internal/usecase/boundary/clock`:
+`internal/usecase/boundary/clock` の 2 つのインターフェースを実装します。
 
-- `clock.Clock` (`NewClock`) — `Now()` returns the current time
-- `clock.Sleeper` (`NewSleeper`) — `Sleep(ctx, d)` waits until `d` elapses, returning `ctx.Err()` if the context is canceled first (a non-positive `d` returns immediately with `ctx.Err()`)
+- `clock.Clock`（`NewClock`）— `Now()` は現在時刻を返す
+- `clock.Sleeper`（`NewSleeper`）— `Sleep(ctx, d)` は `d` 経過まで待機し、先に context がキャンセルされた場合は `ctx.Err()` を返す（`d` が非正の場合は即座に `ctx.Err()` を返す）
 
-Both are backed by the same unexported `systemClock` type.
+いずれも同一の非公開型 `systemClock` が実体です。
 
-## Architectural Position
+## アーキテクチャ上の位置づけ
 
 ```mermaid
 flowchart TB
-    subgraph "Usecase Layer"
+    subgraph "Usecase 層"
         IF["clock.Clock / clock.Sleeper interface"]
     end
-    subgraph "Infrastructure Layer"
-        Impl["systemClock impl (Clock + Sleeper)"]
+    subgraph "Infrastructure 層"
+        Impl["systemClock 実装 (Clock + Sleeper)"]
     end
-    subgraph "Domain Layer"
+    subgraph "Domain 層"
         Domain["Domain Entity"]
     end
 
@@ -27,17 +27,17 @@ flowchart TB
     Domain -. uses .-> IF
 ```
 
-If Domain / Usecase call `time.Now()` directly, time cannot be controlled in tests. By going through the `clock.Clock` interface (`internal/usecase/boundary/clock`), mock substitution becomes possible during testing.
+Domain / Usecase が `time.Now()` を直接呼ぶと、テストで時刻を制御できなくなります。`clock.Clock` インターフェース（`internal/usecase/boundary/clock`）を介することで、テスト時にモック差し替えが可能になります。
 
-## Why Abstract?
+## なぜ抽象化するのか
 
-- Preserve **determinism** in Domain / Usecase — time can be fixed in tests
-- Follow Onion Architecture principles by **pushing system dependencies outward**
-- Direct dependency on `time.Now()` is prohibited in the Domain layer
+- Domain / Usecase の **決定論性（determinism）** を守る — テストで時刻を固定できる
+- オニオンアーキテクチャの原則に従い、**システム依存を外側に押し出す**
+- `time.Now()` への直接依存は Domain 層で禁止されている
 
-## DI Registration
+## DI 登録
 
-Registered via `clockModule()` in `internal/di/module/clock.go` (aggregated by `InfrastructureModule()`). Both the `Clock` and `Sleeper` implementations are provided here.
+`internal/di/module/clock.go` の `clockModule()` で登録します（`InfrastructureModule()` に集約）。`Clock` と `Sleeper` の両実装をここで提供します。
 
 ```go
 fx.Provide(
@@ -48,31 +48,18 @@ fx.Provide(
 
 ## Test Strategy
 
-There is no database here, so the infrastructure layer's real-DB strategy does not apply. This package is
-also the one place in the repository that legitimately reads wall time: it *is* the implementation the
-rest of the codebase injects instead of calling `time.Now()`, so there is nothing left to inject in its
-place. The rule "never let a test depend on real time" holds everywhere it can be satisfied — here it
-cannot be, so the strategy is to keep the exposure small and bounded rather than to pretend it is absent.
+ここに DB は無いため、infrastructure 層の実 DB 戦略は適用されません。またこのパッケージは、リポジトリの中で実時刻を読むことが正当な唯一の場所です。他のコードが `time.Now()` を直接呼ぶ代わりに注入する実装が、まさにこれだからです。その代わりに注入できるものはもう残っていません。「テストを実時間に依存させない」という規則は、満たせる場所すべてで成り立ちます。ここでは満たせないため、戦略は「実時間が無いふりをする」ことではなく「露出を小さく、境界づけて保つ」ことです。
 
-- **Real time is used, in the smallest amount that still proves the contract.** A wait is measured in
-  tens of milliseconds and asserted with a lower bound (`elapsed >= d`), never an upper bound — an upper
-  bound turns scheduler jitter and a loaded CI machine into a red build. `Now()` is compared against
-  `time.Now()` within a generous window for the same reason.
-- **Cancellation is tested without waiting.** The context is cancelled *before* the call, so the case
-  that pins "cancellation wins over the deadline" completes immediately rather than after the duration
-  it was handed.
-- **The non-positive duration is a branch, not an edge case.** `d <= 0` returns immediately, and it must
-  still report a cancelled context — otherwise a zero backoff would silently ignore cancellation. Both
-  the cancelled and the live context are pinned for that path.
+- **実時間は使う。ただし契約を示せる最小量に留める。** 待機は数十ミリ秒で測り、下限（`elapsed >= d`）で assert します。上限では assert しません。上限は、スケジューラのゆらぎと負荷のかかった CI マシンを、そのまま赤いビルドに変えてしまいます。`Now()` を `time.Now()` と比較する窓を広く取っているのも同じ理由です。
+- **キャンセルは待たずに検証する。** context は呼び出しの **前に** キャンセルします。これにより「キャンセルが待機時間に優先する」ことを固定するケースが、渡した duration を待たずに即座に完了します。
+- **非正の待機時間は edge case ではなく分岐である。** `d <= 0` は即座に返りますが、それでもキャンセル済み context を報告せねばなりません。さもなくば backoff が 0 のとき、キャンセルが無言で無視されます。この経路はキャンセル済みと生存中の両方の context で固定します。
 
-Consumers of these interfaces do the opposite: they inject the `clock` testkit doubles and assert on a
-controlled timeline. That asymmetry is the point of the abstraction, and it is why the real-time
-exposure stops at this package.
+これらの interface の利用側は逆を行います。`clock` testkit の代替物を注入し、制御されたタイムライン上で assert します。この非対称こそが抽象化の目的であり、実時間への露出がこのパッケージで止まる理由です。
 
-## Extending
+## 拡張する場合
 
-To add system-dependent operations beyond time (random number generation, hostname retrieval, etc.):
+時刻以外のシステム依存処理（乱数生成、ホスト名取得等）を追加する場合：
 
-1. Define the interface in `internal/usecase/boundary/`
-2. Place the implementation in this package
-3. Add DI registration in `internal/di/module/infrastructure.go`
+1. `internal/usecase/boundary/` に interface を定義
+2. このパッケージに実装を配置
+3. `internal/di/module/infrastructure.go` に DI 登録を追加

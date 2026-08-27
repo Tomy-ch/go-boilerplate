@@ -1,47 +1,47 @@
-# Idempotency GC Job Guide (`internal/controller/job/idempotencygc`)
+# Idempotency GC ジョブガイド (`internal/controller/job/idempotencygc`)
 
-## Role in Onion Architecture
+## オニオンアーキテクチャにおける役割
 
-- A **one-shot GC entry point** (Controller layer / CLI driving adapter): another entry point into the Usecase layer, not a new architectural layer.
-- It is the **housekeeping half** of the [idempotency](../../../../docs/design/idempotency.md) subsystem. The request path stamps a TTL on each idempotency-key entry; this job batch-deletes the entries whose TTL has already expired so the store does not grow without bound.
-- An external scheduler (k8s CronJob / cron) runs it as a **cron, not a daemon** — a single `cmd job idempotency-gc` invocation sweeps and exits.
-- The job owns only **args parsing, span start/end, and result logging**; the `claim → sweep → count` business is fully delegated to `idempotency.GCUsecase`. It never touches the store or transactions directly.
+- **ワンショットの GC エントリポイント**（Controller 層 / CLI driving adapter）。新しいアーキテクチャ層ではなく、Usecase 層への入口の一つです。
+- [idempotency](../../../../docs/design/idempotency.md) サブシステムの **housekeeping 側**です。リクエストパスは各冪等性キーのエントリに TTL を刻みます。本ジョブは TTL がすでに失効したエントリをバッチ削除し、ストアの無制限な肥大化を防ぎます。
+- 外部スケジューラ（k8s CronJob / cron）が **デーモンではなく cron として**起動します。`cmd job idempotency-gc` の 1 回の実行で掃除して終了します。
+- ジョブが担うのは **args のパース・span の開始/終了・結果ログ**のみで、`claim → sweep → count` の業務は `idempotency.GCUsecase` に完全委譲します。store やトランザクションを直接触りません。
 
-## Public API
+## 公開 API
 
-- `New(logging logging.Logger, tf observability.TracerFactory, gc idempotency.GCUsecase) job.Job` — the DI constructor. Obtains the Controller-layer tracer via `tf.Controller()`. Registered in `internal/di/module/job.go` under `group:"jobs"`.
-- Implements the `job.Job` interface (`internal/usecase/boundary/job`):
-  - `Name() string` — returns the job key `"idempotency-gc"`.
-  - `Execute(ctx context.Context, args []string) error` — parses args, delegates to the usecase, logs the result.
+- `New(logging logging.Logger, tf observability.TracerFactory, gc idempotency.GCUsecase) job.Job` — DI コンストラクタ。`tf.Controller()` で Controller 層の tracer を取得します。`internal/di/module/job.go` の `group:"jobs"` に登録されます。
+- `job.Job` インターフェース（`internal/usecase/boundary/job`）を実装します。
+  - `Name() string` — ジョブキー `"idempotency-gc"` を返します。
+  - `Execute(ctx context.Context, args []string) error` — args をパースし、usecase へ委譲し、結果をログ出力します。
 
-## Dependencies
+## 依存
 
-| Dependency | Purpose |
+| 依存 | 目的 |
 | --- | --- |
-| `idempotency.GCUsecase` | `SweepExpired(ctx, batchSize) (int64, error)` — deletes expired entries in batches of `batchSize` and returns the total deleted count |
-| `logging.Logger` | structured result log |
-| `observability.TracerFactory` | Controller-layer tracer via `tf.Controller()` |
+| `idempotency.GCUsecase` | `SweepExpired(ctx, batchSize) (int64, error)` — 失効したエントリを `batchSize` 件ずつ削除し、合計削除件数を返す |
+| `logging.Logger` | 構造化された結果ログ |
+| `observability.TracerFactory` | `tf.Controller()` による Controller 層 tracer |
 
-## Execution semantics (`Execute`)
+## 実行セマンティクス (`Execute`)
 
-1. Start a controller span (`tracer.Start`) and `defer` its end.
-2. Parse args into a batch size, then call `gc.SweepExpired(ctx, batchSize)`.
-3. On success, log at **Info** with the deleted count under `logging.JobResultKey`.
-4. On failure, log the deleted count at **Warn** before propagating (see [job/README.md § GC / batch jobs](../README.md) for why) The error itself is then returned as-is (propagated to the Runner / CLI, which decides the exit code — the job never calls `os.Exit()`).
+1. Controller span を開始し（`tracer.Start`）、`defer` で終了します。
+2. args をバッチサイズにパースし、`gc.SweepExpired(ctx, batchSize)` を呼びます。
+3. 成功時は削除件数を `logging.JobResultKey` に載せて **Info** でログ出力します。
+4. 失敗時は、伝播する前に削除件数を **Warn** でログ出力します（理由は [job/README.md § GC / バッチジョブ](../README.md) を参照）。エラー自体はそのまま返します（Runner / CLI に伝播し、exit code は呼び出し側が決定します。ジョブは `os.Exit()` を呼びません）。
 
 ## Args
 
-Only `--batch-size=N` is accepted:
+`--batch-size=N` のみを受け付けます。
 
-| Input | Result |
+| 入力 | 結果 |
 | --- | --- |
-| (none) | batch size `0` → the usecase applies its own default |
-| `--batch-size=N` (positive int32) | sweep in batches of `N` |
-| unknown flag | error (nothing is swept) |
-| `--batch-size` given more than once | error |
-| `N <= 0` / non-numeric / negative | error |
+| （なし） | バッチサイズ `0` → usecase 側の既定値が適用される |
+| `--batch-size=N`（正の int32） | `N` 件ずつ掃除 |
+| 未知のフラグ | エラー（掃除しない） |
+| `--batch-size` の複数指定 | エラー |
+| `N <= 0` / 非数値 / 負数 | エラー |
 
-## Notes
+## 補足
 
-- Idempotent by design: re-running only deletes already-expired entries, so retries are safe.
-- Documents only what this job does. The request-path orchestration, the `Store` seam, and its infrastructure impl live in the idempotency usecase / infrastructure layers — see the [design reference](../../../../docs/design/idempotency.md).
+- 設計上べき等です。再実行しても失効済みのエントリを削除するだけなので、リトライは安全です。
+- 本ドキュメントはこのジョブの役割のみを記述します。リクエストパスのオーケストレーション、`Store` シーム、そのインフラ実装は idempotency の usecase / infrastructure 層にあります。[設計リファレンス](../../../../docs/design/idempotency.md)を参照してください。

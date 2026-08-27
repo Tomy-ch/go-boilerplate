@@ -5,22 +5,18 @@ deciders: [maintainers]
 tags: [architecture]
 ---
 
-# ADR-0039: Cross-aggregate value objects live in a curated domain lexicon
+# ADR-0039: 集約横断の値オブジェクトはキュレートされたドメイン lexicon に置く
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
 <!-- sample-api:replace-begin -->
-Introducing `money.Price` ([ADR-0038](0038-two-scale-quantity-model.md)) surfaced a gap in the
-layer rules. `Price` is a business-semantic value object (non-negativity, minor-unit conversion)
-shared by **more than one aggregate**.
+`money.Price`（[ADR-0038](0038-two-scale-quantity-model.md)）の導入により、レイヤールールの欠落が表面化した。`Price` はビジネス上の意味を持つ値オブジェクト（非負性、最小単位への換算）であり、**複数の集約**で共有される。
 <!-- sample-api:replace-with -->
-<!-- = Introducing a settlement-scale value object ([ADR-0038](0038-two-scale-quantity-model.md)) -->
-<!-- = surfaced a gap in the layer rules. It carries business semantics of its own and is shared by -->
-<!-- = **more than one aggregate**. -->
+<!-- = 決済スケールの値オブジェクト（[ADR-0038](0038-two-scale-quantity-model.md)）の導入により、レイヤールールの欠落が表面化した。それ自身がビジネス上の意味を持ち、**複数の集約**で共有される。 -->
 <!-- sample-api:replace-end -->
 <!-- 撤去後にこの箇所へ自分の例を置くための指針。
      目的: 「複数の集約から使われる」が抽象のままだと、入場基準を満たす実例が示せない。
@@ -29,101 +25,63 @@ shared by **more than one aggregate**.
 <!-- sample-api:begin -->
 サンプルでの利用者は `product.price` と `purchase_details.unit_price` / `purchases.*_amount`。
 <!-- sample-api:end -->
-It therefore cannot live in a single
-aggregate package (that would force other aggregates to reach into it, or duplicate the VO), and
-it cannot live in `pkg/` (which forbids business logic and must stay context-independent).
+したがって単一の集約パッケージに置くことはできず（他の集約がそこへ手を伸ばすか、VO を重複させることになる）、`pkg/` にも置けない（`pkg/` はビジネスロジックを禁じ、コンテキスト非依存を保たなければならない）。
 
-The existing rule — "the domain layer's only permitted `internal/` dependency is
-`internal/apperror`" — did not anticipate a value object shared *across domain aggregates*.
-Read literally it forbids the natural placement; and the depguard rule was `lax` about
-domain→domain, so it silently permitted *any* cross-aggregate import (one aggregate reaching
-directly into another),
-a latent coupling hole. A decision is needed on where such shared value objects live and how the
-boundary is enforced.
+既存のルール——「ドメイン層に許可された `internal/` 依存は `internal/apperror` のみ」——は、*ドメイン集約をまたいで*共有される値オブジェクトを想定していなかった。文字どおり読めば自然な配置を禁じてしまう。加えて depguard のルールは domain→domain について `lax` だったため、*任意の*集約横断 import（ある集約が別の集約へ直接手を伸ばす形）をサイレントに許してしまう、潜在的な結合の穴があった。こうした共有値オブジェクトをどこに置き、境界をどう強制するかの決定が必要である。
 
-## Decision
+## 決定
 
-Cross-aggregate, business-semantic value objects live in a **curated domain lexicon** at
-`internal/domain/lexicon/`. Other domain packages **may** import it; the lexicon itself depends only
-on `pkg/**` and `internal/apperror`, never on an aggregate.
+集約横断でビジネス上の意味を持つ値オブジェクトは、`internal/domain/lexicon/` に置く**キュレートされたドメイン lexicon**に住まわせる。他のドメインパッケージはこれを import **してよい**。lexicon 自身は `pkg/**` と `internal/apperror` にのみ依存し、集約には決して依存しない。
 
-The name carries the admission question: what belongs there is a **word of the business**, not merely
-something used twice. Admission is deliberately narrow — a type belongs there only when **all** hold:
+この名前は受け入れの問いそのものを担っている: そこに属するのは**ビジネスの語彙**であって、単に 2 箇所で使われているものではない。受け入れ基準は意図的に狭く、**すべて**を満たす型だけが属する:
 
-- it is a **value object / domain concept**, not an aggregate or a service tied to one aggregate;
-- it is genuinely used by **two or more aggregates** (or is imminently so) — not "might be reused someday";
-- it carries **business semantics** that bar it from `pkg/` (currency, non-negativity,
-  minor-unit, tax rules, …);
-- adding it is a **jointly-owned** decision — a change here ripples to every aggregate that
-  depends on it, so it is made conservatively.
+- **値オブジェクト / ドメイン概念**であること。集約でも、単一の集約に紐づくサービスでもないこと。
+- 実際に**2 つ以上の集約**で使われていること（あるいは間近にそうなること）——「いつか再利用するかもしれない」ではない。
+- `pkg/` に置くことを妨げる**ビジネスセマンティクス**を伴うこと（通貨、非負性、最小単位、税ルール、…）。
+- 追加が**共同所有**の決定であること——ここでの変更は依存するすべての集約に波及するため、保守的に行われる。
 
-The boundary is enforced by depguard (`maintain_a_sound_domain`): `internal/domain/` is denied
-for domain files, with an explicit allow for `internal/domain/lexicon`. So domain→lexicon is
-permitted while domain→other-aggregate is now forbidden (closing the prior lax hole).
+境界は depguard（`maintain_a_sound_domain`）が強制する: ドメインのファイルに対して `internal/domain/` を deny し、`internal/domain/lexicon` を明示的に allow する。これにより domain→lexicon は許可され、domain→他の集約は禁止される（従来の lax な穴が塞がれる）。
 
-Placement is resolved **`pkg/` first**: its bar is machine-enforced (depguard `independent_pkg`) while
-this one is prose, and a prose bar cannot push a type across a boundary a linter draws. Failing `pkg/`
-is not an argument for the lexicon — the lexicon asks its own questions, and treating it as the
-fallback would make `pkg/` the junk drawer instead. A type that clears neither stays in its aggregate.
+配置は**まず `pkg/` から**解決する: `pkg/` のバーは機械的に強制される（depguard `independent_pkg`）のに対し、こちらのバーは散文であり、散文のバーは linter が引く境界を越えて型を押し出すことはできない。`pkg/` に落ちたことは lexicon の根拠にはならない——lexicon は lexicon 自身の問いを立てるのであり、これをフォールバック扱いにすれば代わりに `pkg/` ががらくた入れになってしまう。どちらのバーも通らない型は、その集約に留まる。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- The path itself signals intent: `internal/domain/lexicon/<vo>` reads as "shared, importable",
-  so a cross-aggregate import no longer looks like a violation (the review confusion that
-  prompted this ADR).
-- depguard now both **permits** the lexicon and **forbids** ad-hoc aggregate-to-aggregate
-  coupling — a stricter, clearer boundary than the previous lax domain→domain.
-- `money` semantics live once, in the domain, reused across aggregates without
-  duplication and without leaking business logic into `pkg/`.
+- パス自体が意図を示す: `internal/domain/lexicon/<vo>` は「共有され、import 可能」と読めるため、集約横断の import が違反に見えなくなる（この ADR のきっかけとなったレビュー時の混乱）。
+- depguard は lexicon を**許可**しつつ、場当たり的な集約間の結合を**禁止**するようになった——従来の lax な domain→domain よりも厳格で明確な境界である。
+- `money` のセマンティクスがドメインに一度だけ存在し、重複なく、かつ `pkg/` へビジネスロジックを漏らすことなく、複数の集約から再利用される。
 
-### Negative Consequences
+### ネガティブな影響
 
-- A shared lexicon is a coupling point: a change to a lexicon package can affect every dependent
-  aggregate, so it must be evolved conservatively (this is the cost the admission bar manages).
-- One more placement concept for contributors to learn (aggregate vs. lexicon), documented here,
-  in `docs/rules.md`, and in `internal/domain/lexicon/README.md`.
+- 共有 lexicon は結合点である: lexicon パッケージの変更は依存するすべての集約に影響し得るため、保守的に進化させなければならない（これは受け入れバーが管理するコストである）。
+- 貢献者が学ぶ配置の概念が 1 つ増える（集約 vs lexicon）。本 ADR、`docs/rules.md`、`internal/domain/lexicon/README.md` に記載する。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Keep `money` as a flat `internal/domain/money` aggregate-level package
+### `money` をフラットな `internal/domain/money` の集約レベルパッケージとして維持する
 
-Rejected: its path is indistinguishable from an aggregate, so the domain→domain import keeps
-reading as a violation, and depguard cannot cleanly allow it without either enumerating each
-shared package (brittle) or re-opening domain→domain entirely (the lax hole).
+却下: そのパスは集約と区別がつかないため、domain→domain の import が違反に見え続ける。また depguard は、共有パッケージを個別に列挙する（壊れやすい）か、domain→domain を丸ごと再び開く（lax な穴）かのどちらかをしない限り、これをきれいに許可できない。
 
-### A generic `internal/domain/shared` (or `common` / `util`) package
+### 汎用の `internal/domain/shared`（または `common` / `util`）パッケージ
 
-Rejected: the deciding factor is **what question the name asks at the door**. `shared` / `common` /
-`util` ask "is this used in more than one place?", which anything reused can answer yes to — so the
-package fills with unrelated code and becomes a junk drawer. `lexicon` asks "is this a word of the
-business?", which a generic helper cannot answer yes to. The strict criteria above then hold the line,
-but the name is what makes them stick.
+却下: 決め手は**その名前が入口でどんな問いを立てるか**である。`shared` / `common` / `util` は「これは 2 箇所以上で使われているか?」と問うが、再利用されるものなら何でも yes と答えられる——結果としてパッケージは無関係なコードで埋まり、がらくた入れになる。`lexicon` は「これはビジネスの語彙か?」と問い、汎用のヘルパーはこれに yes と答えられない。上記の厳格な基準が線を守るのだが、それを定着させるのは名前である。
 
-### `internal/domain/kernel`, naming the DDD *Shared Kernel*
+### DDD の *Shared Kernel* を名乗る `internal/domain/kernel`
 
-Rejected on reflection (this ADR originally chose it). In Evans, Shared Kernel is a **Context Map
-relationship**: a model subset that two Bounded Contexts jointly own, which presupposes more than one
-Bounded Context. This repository has a single model and shares across *aggregates*, so the premise
-does not hold and the term would be claimed under a meaning it does not have. The discipline the term
-carries — keep it small, change it as a joint decision — is retained above on its own terms, and
-`kernel` is left free for whoever actually introduces that structure.
+再考の末に却下（この ADR は当初これを選んでいた）。Evans において Shared Kernel は **Context Map の関係**であり、2 つの Bounded Context が共同所有するモデルの部分集合を指す。すなわち複数の Bounded Context の存在を前提とする。本リポジトリは単一のモデルを持ち、共有するのは*集約*間であるため前提が成り立たず、その用語は持っていない意味のもとで占有されることになる。この用語が担う規律——小さく保つ、変更は共同の決定として行う——は上記でそれ自体の言葉として保持し、`kernel` は実際にその構造を導入する者のために空けておく。
 
-### Put `money` in `pkg/`
+### `money` を `pkg/` に置く
 
-Rejected: `pkg/` forbids business logic and must be context-independent. Currency / non-negative
-/ minor-unit are domain semantics; only the generic decimal container (`pkg/decimal`,
-[ADR-0038](0038-two-scale-quantity-model.md)) belongs in `pkg/`.
+却下: `pkg/` はビジネスロジックを禁じ、コンテキスト非依存でなければならない。通貨 / 非負性 / 最小単位はドメインのセマンティクスである。`pkg/` に属するのは汎用の decimal コンテナ（`pkg/decimal`、[ADR-0038](0038-two-scale-quantity-model.md)）だけである。
 
-## Notes
+## 補足
 
 <!-- sample-api:replace-begin -->
-- Lexicon package: `internal/domain/lexicon/money` (`Price`).
+- lexicon パッケージ: `internal/domain/lexicon/money`（`Price`）。
 <!-- sample-api:replace-with -->
-<!-- = - Lexicon package: none admitted yet; `internal/domain/lexicon/` holds only its admission bar. -->
+<!-- = - lexicon パッケージ: まだ受け入れたものは無い。`internal/domain/lexicon/` は受け入れバーだけを持つ。 -->
 <!-- sample-api:replace-end -->
-- Enforcement: depguard `maintain_a_sound_domain` in `.golangci-full.yaml` (deny
-  `internal/domain/`, allow `internal/domain/lexicon`).
-- Admission bar: `internal/domain/lexicon/README.md`; layer rule: `docs/rules.md`.
-- Two-scale quantity model this enables: [ADR-0038](0038-two-scale-quantity-model.md).
+- 強制: `.golangci-full.yaml` の depguard `maintain_a_sound_domain`（`internal/domain/` を deny、`internal/domain/lexicon` を allow）。
+- 受け入れバー: `internal/domain/lexicon/README.md`、レイヤールール: `docs/rules.md`。
+- これが可能にする 2 スケール数量モデル: [ADR-0038](0038-two-scale-quantity-model.md)。

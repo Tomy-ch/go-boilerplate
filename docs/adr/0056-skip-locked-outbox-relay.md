@@ -5,29 +5,21 @@ deciders: [maintainers]
 tags: [outbox, async, concurrency]
 ---
 
-# ADR-0056: Single-transaction relay using SELECT FOR UPDATE SKIP LOCKED (safe across instances)
+# ADR-0056: SELECT FOR UPDATE SKIP LOCKED を使った単一トランザクションリレー（複数インスタンス間で安全）
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Multiple relay instances may run simultaneously for availability or throughput scaling.
-Without row-level coordination, two instances could claim the same `pending` row and each
-deliver it to the receiver endpoint, violating the goal of minimising duplicates. The
-locking strategy must ensure that only one instance processes each row at a time, while
-not blocking other instances from making progress on different rows.
+可用性やスループットのスケーリングのために、複数のリレーインスタンスが同時に動作することがある。行レベルの調整なしでは、2 つのインスタンスが同じ `pending` 行をクレームし、それぞれがレシーバーエンドポイントにデリバリーしてしまい、重複を最小化するという目標に反する。ロック戦略は、各行を同時に 1 つのインスタンスのみが処理することを保証しつつ、他のインスタンスが異なる行で処理を続けられるようにしなければならない。
 
-## Decision
+## 決定
 
-`ClaimPending` issues `SELECT ... FOR UPDATE SKIP LOCKED` against the `outbox` table.
-The entire **claim → publish → mark** sequence runs inside a single transaction. A claimed
-row's lock is held until the surrounding transaction commits or rolls back, so a second
-relay instance that runs `ClaimPending` concurrently will skip the locked row rather than
-blocking on it.
+`ClaimPending` は `outbox` テーブルに対して `SELECT ... FOR UPDATE SKIP LOCKED` を発行する。**クレーム → 発行 → マーク**の全シーケンスが単一のトランザクション内で実行される。クレームされた行のロックは、周囲のトランザクションがコミットまたはロールバックするまで保持される。そのため、並行して `ClaimPending` を実行する 2 つ目のリレーインスタンスは、ロックされた行でブロックするのではなくスキップする。
 
-The SQL is:
+SQL は以下の通り:
 
 ```sql
 SELECT id, message_id, aggregate_type, aggregate_id,
@@ -39,44 +31,35 @@ LIMIT $1
 FOR UPDATE SKIP LOCKED;
 ```
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Multi-instance safety is enforced at the database level with no application-side
-  coordination or distributed lock manager.
-- `SKIP LOCKED` avoids head-of-line blocking: if one instance holds a row, other instances
-  skip it and continue processing other rows.
-- Rows are processed in `id` order within each batch (best-effort; strict global ordering
-  is sacrificed for lock availability).
+- マルチインスタンスの安全性が、アプリケーション側の調整や分散ロックマネージャーなしに、データベースレベルで担保される。
+- `SKIP LOCKED` により行頭ブロッキングを回避できる。あるインスタンスが行を保持していても、他のインスタンスはその行をスキップして他の行の処理を続けられる。
+- 各バッチ内では行が `id` 順に処理される（ベストエフォート。ロックの可用性のために厳密なグローバル順序は犠牲にする）。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Requires a database that supports `FOR UPDATE SKIP LOCKED` (PostgreSQL 9.5+). Portability
-  to other engines is not guaranteed.
-- A long relay transaction holding many row locks may increase contention; batch size must
-  be tuned to limit lock hold time.
+- `FOR UPDATE SKIP LOCKED` をサポートするデータベース（PostgreSQL 9.5+）が必要。他のエンジンへの移植性は保証されない。
+- 多数の行ロックを保持する長いリレートランザクションは競合を増加させる可能性がある。ロック保持時間を制限するためにバッチサイズを調整しなければならない。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Optimistic compare-and-set on status
+### ステータスに対する楽観的比較・セット
 
-`UPDATE outbox SET status = 'claimed' WHERE status = 'pending'` before processing. Avoids
-locking but risks races at high contention without careful isolation levels, and introduces
-a separate `claimed` status that must be handled in failure/crash scenarios.
+処理前に `UPDATE outbox SET status = 'claimed' WHERE status = 'pending'` を実行する。ロックを避けられるが、適切な分離レベルなしに高競合時に競合状態のリスクがあり、障害/クラッシュシナリオで処理しなければならない `claimed` ステータスが別途追加される。
 
-### Application-level advisory locks
+### アプリケーションレベルのアドバイザリーロック
 
-PostgreSQL advisory locks managed by the application. More flexible but complex to
-implement correctly and requires application-side coordination for which rows are locked.
+アプリケーションが管理する PostgreSQL アドバイザリーロック。より柔軟だが、正確に実装するには複雑で、どの行がロックされているかのアプリケーション側調整が必要。
 
-### Exclusive relay (single instance)
+### 排他的リレー（シングルインスタンス）
 
-Simpler: no concurrency issue. But introduces a single point of failure for the entire
-delivery path.
+シンプルで並行性の問題がない。しかしデリバリーパス全体の単一障害点を生む。
 
-## Notes
+## 補足
 
-- Multi-instance safety invariant: `docs/design/outbox.md` (§ "Design invariants").
-- SQL source: `database/dml/system_cqrs/outbox/claim_pending_outbox.sql`.
-- Related ADRs: [ADR-0054](0054-transactional-outbox.md), [ADR-0055](0055-at-least-once-outbox-poll.md).
+- マルチインスタンス安全性の不変条件: `docs/design/outbox.md`（§「Design invariants」）。
+- SQL ソース: `database/dml/system_cqrs/outbox/claim_pending_outbox.sql`。
+- 関連 ADR: [ADR-0054](0054-transactional-outbox.md)、[ADR-0055](0055-at-least-once-outbox-poll.md)。

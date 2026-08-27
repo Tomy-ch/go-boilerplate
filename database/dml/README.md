@@ -1,41 +1,41 @@
 # database/dml
 
-`database/dml` stores **SQL source files for sqlc code generation**.
+`database/dml` は **sqlc によるコード生成の元となる SQL ファイル**を格納するディレクトリです。
 
-SQL files placed here are converted to Go code (`internal/infrastructure/rdb/sqlc/gen/`) via `make gen-query`.
+ここに配置された SQL は `make gen-query` で Go コード（`internal/infrastructure/rdb/sqlc/gen/`）に変換されます。
 
-## Directory Structure
+## ディレクトリ構成
 
-One subdirectory per DML category; each has its own README stating what belongs in it.
+DML の区分ごとに 1 つのサブディレクトリを置き、それぞれが自分の README で受け持ちを述べる。
 
-- `repository/` — Aggregate persistence and single-aggregate reads (CRUD)
-- `query_service/` — Read projections that span aggregates, and aggregation
-- `command_service/` — Writes that must be atomic with another aggregate's state
-- `system_cqrs/` — Queries for the system's own operation rather than the business
+- `repository/` — 集約の永続化と単一集約の読み取り（CRUD）
+- `query_service/` — 集約を跨ぐ読み取り投影と集計
+- `command_service/` — 他の集約の状態と原子的に行う必要のある書き込み
+- `system_cqrs/` — 業務ではなくシステム自身の運用のためのクエリ
 
-## Subdirectory Mapping to Onion Architecture
+## サブディレクトリとオニオンアーキテクチャの対応
 
-|Directory|Infrastructure Implementation|Interface Placement|Purpose|
+|ディレクトリ|Infrastructure 実装先|interface 配置|用途|
 |---|---|---|---|
-|`repository/`|`internal/infrastructure/rdb/repository/`|Domain layer|Aggregate CRUD|
-|`query_service/`|`internal/infrastructure/rdb/query_service/`|Usecase layer|Usecase-specific search|
-|`command_service/`|(future extension)|Usecase layer|Write-only commands|
-|`system_cqrs/`|`internal/infrastructure/rdb/system_cqrs/`|Usecase layer|System operational queries|
+|`repository/`|`internal/infrastructure/rdb/repository/`|Domain 層|Aggregate の CRUD|
+|`query_service/`|`internal/infrastructure/rdb/query_service/`|Usecase 層|ユースケース固有の検索|
+|`command_service/`|（将来拡張）|Usecase 層|書き込み専用コマンド|
+|`system_cqrs/`|`internal/infrastructure/rdb/system_cqrs/`|Usecase 層|システム運用クエリ|
 
-## SQL File Placement Rules
+## SQL ファイルの配置ルール
 
-- 1 aggregate = 1 directory (e.g., `repository/user/`)
-- Each query must have `-- name: QueryName :type` annotation
-- Parameters must be named with `sqlc.arg()` or `@param`
-- Generated code must not be manually edited
+- 1集約 = 1ディレクトリ（例: `repository/user/`）
+- ファイル内の各クエリには `-- name: QueryName :type` を必ず付ける
+- パラメータは `sqlc.arg()` または `@param` で命名する
+- 生成コードは手動編集禁止
 
-## sqlc Best Practices
+## sqlc ベストプラクティス
 
-A summary of commonly used patterns for **PostgreSQL + Go** with `sqlc` code generation.
+`sqlc` でのコード生成を前提に、**PostgreSQL + Go** でよく使う記法をまとめます。
 
-## 1. `-- name:` and Execution Type
+## 1. `-- name:` と実行種別
 
-Add a comment with "query name + execution type" at the beginning of each query.
+各クエリの先頭に「クエリ名 + 実行種別」をコメントで付与します。
 
 ```sql
 -- name: GetUser :one
@@ -46,18 +46,18 @@ INSERT INTO users (name, email)
 VALUES (sqlc.arg(name), sqlc.arg(email));
 ```
 
-Representative types:
+代表的な種別：
 
-- `:one`     … returns a single record  
-- `:many`    … returns multiple records  
-- `:exec`    … no result (INSERT/UPDATE/DELETE)  
-- `:execrows`… returns `RowsAffected`  
-- `:batch`   … executes multiple queries in batch  
+- `:one`     … 単一レコードを返す  
+- `:many`    … 複数レコードを返す  
+- `:exec`    … 結果なし（INSERT/UPDATE/DELETE）  
+- `:execrows`… `RowsAffected` を返す  
+- `:batch`   … 複数クエリをバッチ実行  
 
-## 2. Fix Parameter Names with `sqlc.arg()`
+## 2. `sqlc.arg()` でパラメータ名を固定する
 
-Using `sqlc.arg()` allows you to control the field names of generated structs.  
-The `@param_name` format can also be used with the same meaning.
+`sqlc.arg()` を使うと、生成される構造体のフィールド名を制御できます。  
+`@param_name` 形式も同じ意味で利用可能です。
 
 ```sql
 WHERE age > sqlc.arg(min_age)
@@ -69,22 +69,22 @@ type GetUsersParams struct {
 }
 ```
 
-Use `sqlc.arg()` even for parameters that allow nullable values such as pagination.
+ページングなど、nullable を許容したいパラメータでも `sqlc.arg()` を使います。
 
 ```sql
 LIMIT  sqlc.arg(limit_param)
 OFFSET sqlc.arg(offset_param)
 ```
 
-Also, in PostgreSQL, you can specify parameter names using `@` as well.
+また、PostgreSQL では、@を使うことでも同様にパラメータ名を指定できます。
 
 ```sql
 WHERE age > @min_age
 ```
 
-## 3. Nest JOIN Results with `sqlc.embed()`
+## 3. `sqlc.embed()` で JOIN 結果をネスト
 
-Use this when you want to receive JOIN results as nested structs.
+JOIN 結果をネストした構造体で受け取りたい場合に使います。
 
 ```sql
 -- name: GetUserWithProfile :one
@@ -101,9 +101,9 @@ type GetUserWithProfileRow struct {
 }
 ```
 
-## 4. Nullable Parameters with `sqlc.narg()`
+## 4. `sqlc.narg()` で NULL 許容パラメータ
 
-Use `sqlc.narg()` for conditions that can take NULL.
+NULL を取り得る条件には `sqlc.narg()` を使います。
 
 ```sql
 WHERE deleted_at IS sqlc.narg(deleted_at)
@@ -115,9 +115,9 @@ type GetUsersParams struct {
 }
 ```
 
-## 5. Reinforce Go Types with CAST
+## 5. CAST で Go 側の型を補強する
 
-Explicit type casting on the PostgreSQL side helps align generated Go types.
+PostgreSQL 側で明示的に型キャストすると、生成される Go の型も揃えやすくなります。
 
 ```sql
 WHERE id = sqlc.arg(user_id)::uuid
@@ -129,9 +129,9 @@ type GetUserParams struct {
 }
 ```
 
-## 6. Override Generated Types with `overrides`
+## 6. `overrides` で生成型を上書きする
 
-You can override DB type to Go type mappings in `sqlc.yaml` (e.g. `database/sqlc/sqlc.template.yaml`).
+`sqlc.yaml`（例: `database/sqlc/sqlc.template.yaml`）で DB 型と Go 型の対応を上書きできます。
 
 ```yaml
 version: "2"
@@ -147,9 +147,9 @@ sql:
             go_type: "int"
 ```
 
-## 7. Combine Array Parameters with `ANY()`
+## 7. 配列パラメータは `ANY()` と組み合わせる
 
-To pass multiple IDs at once, use slices + `ANY()`.
+複数 ID をまとめて渡したい場合は、スライス + `ANY()` を使います。
 
 ```sql
 WHERE id = ANY(sqlc.arg(user_ids)::uuid[])
@@ -161,13 +161,12 @@ type GetUsersParams struct {
 }
 ```
 
-Batching rows into arrays instead of issuing one statement per row avoids the round trips that scale
-with the row count. Where the caller holds a row lock for the duration of a transaction, it also
-shortens how long that lock is held.
+1 行ごとに 1 文を発行する代わりに配列でまとめることで、行数に比例する往復を避けられます。呼び出し側が
+トランザクションの間ずっと行ロックを保持している場合は、その保持時間の短縮にもなります。
 
-## 8. SELECT Column Names = Go Field Names
+## 8. SELECT カラム名 = Go フィールド名
 
-Column names selected become field names of the `Row` struct as-is.
+SELECT するカラム名が、そのまま `Row` 構造体のフィールド名になります。
 
 ```sql
 -- name: GetUserEmailAndName :one
@@ -181,9 +180,9 @@ type GetUserEmailAndNameRow struct {
 }
 ```
 
-## 9. Organize Complex Queries with Subqueries / CTE
+## 9. 複雑な検索はサブクエリ / CTE で整理
 
-Split complex queries using subqueries or CTEs to maintain readability.
+長くなりがちな検索クエリは、サブクエリや CTE で分割して可読性を確保します。
 
 ```sql
 -- name: SearchUsers :many
@@ -194,18 +193,18 @@ SELECT * FROM (
 ORDER BY name;
 ```
 
-## Recommended Rules (Concise Summary)
+## 推奨ルール（超要約）
 
-1. **Required**: Add `-- name:` + type to all queries  
-2. **Required**: Always name parameters using `sqlc.arg()` / `@param`  
-3. **Required**: Use `sqlc.narg()` for nullable parameters  
-4. **Recommended**: Use `sqlc.embed()` for JOIN nesting  
-5. **Recommended**: Explicitly use CAST where types need alignment  
-6. **Recommended**: Use `ANY()` + `[]T` for arrays  
-7. **Recommended**: Split complex queries with subqueries/CTE  
+1. **必須**: すべてのクエリに `-- name:` + 種別を付ける  
+2. **必須**: パラメータは必ず `sqlc.arg()` / `@param` で命名する  
+3. **必須**: NULL 許容は `sqlc.narg()` を使う  
+4. **推奨**: JOIN は `sqlc.embed()` でネストする  
+5. **推奨**: 型を合わせたいところは CAST を明示  
+6. **推奨**: 配列は `ANY()` + `[]T` で扱う  
+7. **推奨**: 複雑なクエリはサブクエリ/CTE で切り出す  
 
-## Reference Links
+## 参考リンク
 
-- [sqlc official documentation](https://docs.sqlc.dev/en/latest/)
-- [PostgreSQL data types](https://www.postgresql.org/docs/current/datatype.html)
-- [Go `database/sql` package](https://pkg.go.dev/database/sql)
+- [sqlc 公式ドキュメント](https://docs.sqlc.dev/en/latest/)
+- [PostgreSQL 型一覧](https://www.postgresql.org/docs/current/datatype.html)
+- [Go `database/sql` パッケージ](https://pkg.go.dev/database/sql)

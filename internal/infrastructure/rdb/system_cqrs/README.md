@@ -1,46 +1,46 @@
 # system_cqrs
 
-`internal/infrastructure/rdb/system_cqrs` is an Infrastructure layer package that provides **system-operational DB queries**.
+`internal/infrastructure/rdb/system_cqrs` は、**システム運用向けの DB クエリ**を提供する Infrastructure 層のパッケージです。
 
-## Position in Onion Architecture
+## オニオンアーキテクチャにおける位置づけ
 
-system_cqrs is a **DB access category**, distinct from Repository and QueryService.
+system_cqrs は Repository や QueryService とは異なる **DB アクセスカテゴリ**です。
 
 ```mermaid
 flowchart TB
-    subgraph "Usecase Layer"
+    subgraph "Usecase 層"
         SQIF["DBSystemQuery interface"]
     end
-    subgraph "Infrastructure Layer"
-        SQImpl["system_cqrs impl"]
+    subgraph "Infrastructure 層"
+        SQImpl["system_cqrs 実装"]
     end
 
     SQImpl -. implements .-> SQIF
 ```
 
-|Category|Purpose|Interface Placement|Return Type|
+|カテゴリ|目的|interface 配置|返却型|
 |---|---|---|---|
-|Repository|Aggregate persistence|Domain layer|Domain Entity|
-|QueryService|Usecase-specific search|Usecase layer|DTO|
-|**SystemQuery**|**System operational queries**|**Usecase layer**|**Operational info DTO**|
+|Repository|Aggregate の永続化|Domain 層|Domain Entity|
+|QueryService|ユースケース固有の検索|Usecase 層|DTO|
+|**SystemQuery**|**システム運用クエリ**|**Usecase 層**|**運用情報 DTO**|
 
-SystemQuery handles **queries for operational and monitoring purposes that do not belong to the business domain**. Health checks, DB connectivity verification, metrics collection, and other queries independent of business logic are placed here.
+SystemQuery は **ビジネスドメインに属さない運用・監視目的のクエリ**を担当します。ヘルスチェック、DB 疎通確認、メトリクス収集など、ビジネスロジックとは独立した運用基盤のクエリがここに配置されます。
 
-## Current Implementation
+## 現在の実装
 
 ### healthcheck
 
-Verifies DB connectivity and measures response time.
+DB の疎通確認を行い、応答時間を計測します。
 
 ```go
 func New(provider driver.DatabaseDriver, tf observability.TracerFactory) query.DBSystemQuery
 ```
 
-|Method|Description|
+|メソッド|説明|
 |---|---|
-|`CheckDBHealth(ctx)`|Execute `SELECT 1` against DB, return `DBHealth` (Ready / RespondedAt / Latency)|
+|`CheckDBHealth(ctx)`|DB に `SELECT 1` を実行し、`DBHealth`（Ready / RespondedAt / Latency）を返す|
 
-Return type:
+返却型：
 
 ```go
 type DBHealth struct {
@@ -50,7 +50,7 @@ type DBHealth struct {
 }
 ```
 
-The interface is defined in the Usecase layer:
+interface は Usecase 層に定義されています。
 
 ```text
 internal/usecase/healthcheck/query/health_check_system_cqrs.go
@@ -58,49 +58,49 @@ internal/usecase/healthcheck/query/health_check_system_cqrs.go
 
 ### idempotency
 
-Persists idempotency keys for at-most-once request handling. Implements the `Store` boundary in `internal/usecase/boundary/idempotency/`.
+冪等性キーを永続化し、リクエストの at-most-once 処理を支えます。`internal/usecase/boundary/idempotency/` の `Store` 境界を実装します。
 
 ```go
 func New(provider driver.DatabaseDriver, tf observability.TracerFactory) idempotencybndry.Store
 ```
 
-|Method|Description|
+|メソッド|説明|
 |---|---|
-|`Claim(ctx, p)`|Create a claimed row within the business tx (`SET LOCAL lock_timeout` applies)|
-|`Get(ctx, scope, key)`|Fetch the stored `Record` for a scope + key|
-|`Complete(ctx, p)`|Record the completed response against the claimed key|
-|`DeleteExpired(ctx, cutoff, limit)`|Delete expired rows older than `cutoff` up to `limit` (GC)|
+|`Claim(ctx, p)`|業務 tx 内で claimed 行を作成（`SET LOCAL lock_timeout` が効く）|
+|`Get(ctx, scope, key)`|scope + key に対応する `Record` を取得|
+|`Complete(ctx, p)`|claim 済みキーに対し完了レスポンスを記録|
+|`DeleteExpired(ctx, cutoff, limit)`|`cutoff` より古い期限切れ行を `limit` 件まで削除（GC）|
 
-See [`internal/usecase/boundary/idempotency/README.md`](../../../usecase/boundary/idempotency/README.md) for the boundary interface details.
+境界 interface の詳細は [`internal/usecase/boundary/idempotency/README.md`](../../../usecase/boundary/idempotency/README.md) を参照。
 
 ### outbox
 
-Persists the transactional outbox table. Implements the `Store` boundary in `internal/usecase/boundary/outbox/`.
+トランザクショナル outbox テーブルを永続化します。`internal/usecase/boundary/outbox/` の `Store` 境界を実装します。
 
 ```go
 func New(provider driver.DatabaseDriver, tf observability.TracerFactory) outboxbndry.Store
 ```
 
-Key methods: `Insert` / `ClaimPending` (`FOR UPDATE SKIP LOCKED`) / `MarkPublished` / `MarkFailed` / `MarkDead` / `ReplayDead` / `DeletePublished` (GC) / `OldestPendingCreatedAt` (outbox-lag SLI).
+主なメソッド：`Insert` / `ClaimPending`（`FOR UPDATE SKIP LOCKED`）/ `MarkPublished` / `MarkFailed` / `MarkDead` / `ReplayDead` / `DeletePublished`（GC）/ `OldestPendingCreatedAt`（outbox-lag SLI）。
 
-See [`internal/usecase/boundary/outbox/README.md`](../../../usecase/boundary/outbox/README.md) for the full boundary interface details.
+境界 interface の全詳細は [`internal/usecase/boundary/outbox/README.md`](../../../usecase/boundary/outbox/README.md) を参照。
 
-## Structure
+## 構成
 
-One directory per operational concern, named after the same concern in `database/dml/system_cqrs/`.
+運用上の関心事ごとに 1 つのディレクトリを置き、`database/dml/system_cqrs/` の同じ関心事と同じ名前を付ける。
 
-## Design Policy
+## 設計方針
 
-- Interface defined in Usecase layer (`internal/usecase/<concern>/query`, or a `internal/usecase/boundary/<concern>` Store for operational persistence such as idempotency / outbox)
-- Implementation placed in Infrastructure layer
-- Does not contain business logic
-- Receives `driver.DatabaseDriver` + `observability.LayerTracer` via DI
-- DB errors normalized with `pgerror.NormalizeError`
+- interface は Usecase 層（`internal/usecase/<concern>/query`、または idempotency / outbox のような運用永続化では `internal/usecase/boundary/<concern>` の Store）に定義
+- 実装は Infrastructure 層に配置
+- ビジネスロジックを含まない
+- `driver.DatabaseDriver` + `observability.LayerTracer` を DI で受け取る
+- DB エラーは `pgerror.NormalizeError` で正規化
 
-## Extending
+## 拡張する場合
 
-To add a new system query:
+新しいシステムクエリを追加する場合：
 
-1. Define the interface in `internal/usecase/<concern>/query/`
-2. Place the implementation in `internal/infrastructure/rdb/system_cqrs/<concern>/`
-3. Add DI registration in `internal/di/module/persistence.go` (`persistenceModule`'s `system_cqrs` submodule)
+1. `internal/usecase/<concern>/query/` に interface を定義
+2. `internal/infrastructure/rdb/system_cqrs/<concern>/` に実装を配置
+3. `internal/di/module/persistence.go`（`persistenceModule` の `system_cqrs` サブモジュール）に DI 登録を追加

@@ -6,128 +6,70 @@ supersedes: 0047
 tags: [worker, outbox, async, dependencies]
 ---
 
-# ADR-0053: Measure broker-SDK isolation as coupling, not as linkage
+# ADR-0053: ブローカー SDK の分離はリンクではなく結合で測る
 
-## Status
+## ステータス
 
-accepted (supersedes [ADR-0052](0052-sqs-adapter-opt-in.md))
+accepted（[ADR-0052](0052-sqs-adapter-opt-in.md) を supersede）
 
-## Context
+## 背景
 
-[ADR-0052](0052-sqs-adapter-opt-in.md) kept the SQS reference adapter out of the default `cmd`
-wiring so that `aws-sdk-go-v2` would not be linked into the shipped binary.
-[`docs/design/worker.md`](../design/worker.md) records the resulting invariant as **E3** — "the
-shipped binary contains no broker SDK". Two things have changed since that record was written.
+[ADR-0052](0052-sqs-adapter-opt-in.md) は、出荷バイナリに `aws-sdk-go-v2` をリンクさせないために、SQS リファレンスアダプターを `cmd` のデフォルト配線から外していた。[`docs/design/worker.md`](../design/worker.md) はその結果生まれた不変条件を **E3**（「出荷バイナリはブローカー SDK を含まない」）として記録している。この記録が書かれて以降、2 つのことが変わった。
 
-**The premise drifted.** The neutral `ObjectStorage` boundary and its S3 adapter were added after
-ADR-0052 was accepted. `github.com/aws/aws-sdk-go-v2/service/s3` — and with it the SDK core
-(`aws`, `credentials`, `signer/v4`, `retry`, `transport/http`) and `smithy-go` — is now linked into
-the default binary. ADR-0052's context ("every binary — including `serve`, which never consumes a
-queue — would link `aws-sdk-go-v2`") was accurate when written and no longer holds. Wiring
-`internal/infrastructure/queue/sqs` today adds exactly five packages: `service/sqs`,
-`service/sqs/internal/endpoints`, `service/sqs/types`, `aws/protocol/restjson`, and
-`smithy-go/encoding/json`.
+**前提がドリフトした。** 中立な `ObjectStorage` 境界とその S3 アダプターが ADR-0052 の accepted 後に追加された。`github.com/aws/aws-sdk-go-v2/service/s3` と、それに伴う SDK コア（`aws` / `credentials` / `signer/v4` / `retry` / `transport/http`）および `smithy-go` は、現在デフォルトバイナリにリンクされている。ADR-0052 の背景（「キューを消費しない `serve` を含むすべてのバイナリが `aws-sdk-go-v2` をリンクする」）は執筆時点では正確だったが、現在は成り立たない。今日 `internal/infrastructure/queue/sqs` を配線して増えるのは、`service/sqs` / `service/sqs/internal/endpoints` / `service/sqs/types` / `aws/protocol/restjson` / `smithy-go/encoding/json` の 5 パッケージだけである。
 
-**The mechanism does not match the binary layout.** This repository ships a single binary with
-Cobra subcommands (`serve` / `worker` / `outbox-relay` / …). Linkage is per-binary while roles are
-per-subcommand, so "keep `serve` free of the queue SDK" is unachievable by import discipline for as
-long as `worker` lives in the same binary. What E3 actually guarantees is therefore not a lean
-`serve` — it is that the bundled reference adapter is never wired, and so never exercised end to
-end. The engine, the seam, and the adapter are all built and unit-tested, but no message has ever
-travelled through them here, and `provideWorkers()` in `internal/di/module/worker.go` is empty. The
-adapter's SQS-specific behaviour (visibility-timeout extension, receipt-handle round-trip, attribute
-mapping, `ApproximateReceiveCount` parsing) is covered only against a mocked client.
+**機構がバイナリ構成と噛み合っていない。** 本リポジトリは Cobra のサブコマンド（`serve` / `worker` / `outbox-relay` …）を持つ単一バイナリを出荷する。リンクはバイナリ単位、役割はサブコマンド単位なので、`worker` が同じバイナリにいる限り「`serve` をキュー SDK から遠ざける」は import の統制では達成できない。したがって E3 が実際に保証しているのは軽量な `serve` ではなく、**同梱のリファレンスアダプターが決して配線されず、ゆえに一度も端から端まで実行されない**という状態である。エンジン・シーム・アダプターはいずれもビルドされ単体テストもされているが、本リポジトリでメッセージが通過したことは一度もなく、`internal/di/module/worker.go` の `provideWorkers()` は空のままである。アダプター固有の挙動（可視性タイムアウトの延長、receipt handle の往復、属性マッピング、`ApproximateReceiveCount` のパース）は、モック化したクライアントに対してしか検証されていない。
 
-**The same question arises on the publish side.** `publisher.Publisher` had a single implementation,
-an HTTP POST, so no core file referenced a broker adapter. Giving the outbox a queue target means a
-core file — the implementation selector in `internal/infrastructure/publisher` — imports one. The
-direction of travel differs, but the shape of the question does not, so what follows is stated over
-both seams rather than over the worker alone.
+**同じ問いは送出側にも生じる。** `publisher.Publisher` の実装は HTTP POST の 1 つだけで、core のファイルがブローカーアダプターを参照することは無かった。outbox の publish 先にキューを与えるということは、core のファイル — `internal/infrastructure/publisher` にある実装セレクター — がそれを import するということである。流れる向きは違っても問いの形は同じなので、以下は worker だけでなく両方のシームに対して述べる。
 
-The concern behind ADR-0052 is better stated as **coupling**, not linkage: the repository must not
-become structurally dependent on one vendor. Linkage is a poor proxy for that. Replaceability is
-preserved by the seam (`worker.Consumer` / `publisher.Publisher`), and declining to import the
-adapter adds nothing to it — it only removes the worked example.
+ADR-0052 の背後にある懸念は、リンクではなく**結合**として述べたほうが正確である。すなわち、リポジトリが単一ベンダーに構造的に依存してはならない、ということだ。リンクはその代理指標として粗い。差し替え可能性を保っているのはシーム（`worker.Consumer` / `publisher.Publisher`）であり、アダプターを import しないことはそこに何も足さない。取り除いているのは動く実例だけである。
 
-## Decision
+## 決定
 
-A broker adapter **may be wired into the default build**, on either side of the queue: the consuming
-seam (`worker.Consumer` / `worker.FailureHandler`) and the outbox publish seam
-(`publisher.Publisher`) are governed alike. E3 is restated to measure coupling rather than linkage.
+ブローカーアダプターは、キューのどちら側であっても、**デフォルトビルドへ配線してよい**。受信側のシーム（`worker.Consumer` / `worker.FailureHandler`）と outbox の publish 側のシーム（`publisher.Publisher`）は同じ扱いとする。E3 は、リンクではなく結合を測る形へ述べ直す。
 
-> **E3**: knowledge of a concrete broker is confined to its adapter package and to the wiring that
-> selects it. No core `*.go` and no core document names a broker adapter; core code names only the
-> seam.
+> **E3**: 具体的なブローカーの知識は、そのアダプターのパッケージと、それを選ぶ配線だけに閉じ込める。core の `*.go` も core のドキュメントもブローカーアダプターを名指さず、core のコードが名指すのはシームだけである。
 
-E3 is mechanically verifiable, because it is a statement about which files name what rather than
-about what the linker produced. `checkNoDanglingReferences` in
-`scripts/setup/verify-sample-removal.ts` performs the `*.go` half of the check; core documents
-describe structure (`internal/controller/worker/<name>/`) and never a concrete adapter.
+E3 は機械的に検証できる。リンカが何を出力したかではなく、どのファイルが何を名指しているかについての言明だからである。`*.go` 側の検査は `scripts/setup/verify-sample-removal.ts` の `checkNoDanglingReferences` が担い、core のドキュメントは構造（`internal/controller/worker/<name>/`）を記述して具体アダプターを名指さない。
 
-What carries the vendor is the **wiring**, not the adapter. The adapter package, the local broker
-service that stands in for the real one, and the configuration they read name only their own vendor
-and are reached from nowhere else — as the object-storage adapter and its local Garage service
-already are. What puts a core file in the position of referencing a broker adapter is exactly three
-things: the import, the discriminator branch, and the value that selects it. Confining the vendor to
-those is what makes replacing it a bounded change, and it is why the adapter is left built and
-unit-tested rather than deleted when it is not the one in use.
+ベンダーを持ち込むのは**配線**であってアダプターではない。アダプターのパッケージ、本物の代わりに立てるローカルブローカーのサービス、およびそれらが読む設定は、自分のベンダーだけを名指し、他のどこからも到達されない — object storage のアダプターとローカルの Garage サービスが既にそうであるように。core のファイルをブローカーアダプター参照の立場に置くものは、ちょうど 3 つ、import・判別子の分岐・それを選ぶ値である。ベンダーをそこへ閉じ込めることが差し替えを有界な変更にし、使っていないアダプターを削除せずビルドと単体テストまで行ったうえで残す理由でもある。
 
-**E1 and E2 are unchanged**: the engine does not import infrastructure, and the engine is green
-against the in-memory fake alone.
+**E1 / E2 は変更しない**。エンジンは infrastructure を import せず、インメモリ fake だけでグリーンになる。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- The subsystem gains a demonstrated end-to-end path. The adapter and the wiring template stop
-  being code that has never run.
-- E3 can be enforced automatically, and is. Its linkage form could not be: neither `depguard` nor
-  `internal/architest/**` carried a rule for it, and none would have expressed it.
-- Replacing the broker is a bounded change: the import, the discriminator branch, and the value
-  that selects it, with nothing to find elsewhere.
+- サブシステムが端から端まで実行された経路を得る。アダプターと配線テンプレートが「一度も動いたことのないコード」でなくなる。
+- E3 は自動で強制できるし、実際に強制されている。リンクの形では強制できなかった。`depguard` にも `internal/architest/**` にも該当ルールが無く、どちらでも表現できなかったためである。
+- ブローカーの差し替えが有界な変更になる。import・判別子の分岐・それを選ぶ値だけで済み、他所に探すものがない。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Wiring an adapter links its SDK, so a deployment that targets a different broker carries packages
-  it does not use until the wiring is changed.
-- The seam's pre-wiring form has to be kept somewhere retrievable if the wiring is meant to be
-  reversible, which is harder to read than a single form.
+- アダプターを配線するとその SDK がリンクされるため、別のブローカーを狙うデプロイは、配線を変えるまで使わないパッケージを抱える。
+- 配線を戻せるようにするなら、シームの配線前の形をどこかに取り出せる状態で保つ必要があり、単一の形より読みにくい。
 
-### Neutral Consequences
+### 中立的な影響
 
-- `go.mod` already declares `service/sqs` as a direct dependency because the adapter is built and
-  tested. This decision changes what is *linked*, not what is *required*.
+- アダプターがビルド・テストされている以上、`go.mod` は既に `service/sqs` を直接依存として宣言している。本決定が変えるのは *リンクされるもの* であって *必要とされるもの* ではない。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Keep E3 in its linkage form
+### E3 をリンクの形のまま維持する
 
-Forbids any wired example, which reduces the worker subsystem to engine plus seam plus an adapter
-nobody may use. Rejected: a demonstrated path is worth more than a marginally smaller binary, and
-the isolation a linkage rule buys is not the isolation the underlying principle wants.
+配線された実例を一切禁じることになり、worker サブシステムはエンジンとシーム、そして誰も使ってはならないアダプターに縮む。却下: 実演された経路はわずかに小さいバイナリより価値がある。またリンクの規則が買う分離は、その根拠となる原則が本来求めている分離ではない。
 
-### Split the binary
+### バイナリを分割する
 
-Separate `main` packages for `serve` and `worker` would make linkage per-role and let the linkage
-form stand literally. Rejected for now: ADR-0052 already rejected build tags for this purpose, and a binary
-split is a larger structural change than the goal justifies for a deployment model that is one image
-with subcommands. It remains available where shipping constraints require it.
+`serve` と `worker` を別の `main` パッケージにすればリンクが役割単位になり、リンクの形を文字どおり維持できる。現時点では却下: ADR-0052 は同じ目的でビルドタグを既に却下しており、サブコマンドを持つ単一イメージというデプロイモデルに対して、バイナリ分割は目的に対して大きすぎる構造変更である。出荷上の制約が要求する場面には引き続き選択肢として残る。
 
-### Demonstrate with a broker that needs no SDK
+### SDK を必要としないブローカーで実演する
 
-A Postgres-backed pull-ack adapter would exercise the seam without linking any vendor SDK, and
-would additionally prove the seam is not SQS-shaped. Rejected: it means building and maintaining a
-second adapter for the example's sake, while E3 already bounds the coupling a wired example can
-introduce. The reference adapter also stays reusable because the local broker is SQS-compatible.
+Postgres ベースの pull-ack アダプターであれば、ベンダー SDK をリンクせずにシームを動かせるうえ、シームが SQS 専用の形ではないことも証明できる。却下: 実例のために 2 本目のアダプターを作り保守することになる一方、E3 が既に配線された実例の持ち込む結合を上限で抑えている。ローカルブローカーが SQS 互換であるため、リファレンスアダプターも再利用できる。
 
-## Notes
+## 補足
 
-- Supersedes [ADR-0052](0052-sqs-adapter-opt-in.md). Parent decision:
-  [ADR-0050](0050-broker-agnostic-worker-scaffold.md). Principle: [ADR-0001](0001-avoid-lock-in.md).
-- [ADR-0051](0051-out-of-scope-push-streaming-brokers.md) is unaffected: push-type and
-  streaming-log brokers remain outside the worker port. Choosing a pull-ack broker as the outbox
-  publish target was never in its scope.
-- E3 is stated in [`docs/design/worker.md`](../design/worker.md).
-- Reference: [`internal/infrastructure/queue/sqs/README.md`](../../internal/infrastructure/queue/sqs/README.md)
-  for the adapter, [`internal/infrastructure/publisher/README.md`](../../internal/infrastructure/publisher/README.md)
-  for the discriminator that selects it.
+- [ADR-0052](0052-sqs-adapter-opt-in.md) を supersede する。親の決定: [ADR-0050](0050-broker-agnostic-worker-scaffold.md)。原則: [ADR-0001](0001-avoid-lock-in.md)。
+- [ADR-0051](0051-out-of-scope-push-streaming-brokers.md) は影響を受けない。push 型・ストリーミングログ型のブローカーは引き続き worker ポートの対象外である。outbox の publish 先として pull-ack ブローカーを選ぶことは、そもそも同 ADR の対象ではなかった。
+- E3 は [`docs/design/worker.md`](../design/worker.md) に記載する。
+- 参照: アダプターは [`internal/infrastructure/queue/sqs/README.md`](../../internal/infrastructure/queue/sqs/README.md)、それを選ぶ判別子は [`internal/infrastructure/publisher/README.md`](../../internal/infrastructure/publisher/README.md)。

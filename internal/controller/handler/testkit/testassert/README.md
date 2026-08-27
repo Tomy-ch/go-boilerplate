@@ -1,7 +1,7 @@
 # testassert
 
-Assertion helpers for Controller layer tests.
+Controller 層テスト用のアサーションヘルパーです。
 
-## Role
+## 役割
 
-Verifying JSON responses and HTTP routing by hand means repeating unmarshal-and-compare and route-lookup logic in every test, which is verbose and easy to get subtly wrong. These helpers centralize those assertions so handler tests express expectations declaratively and report mismatches consistently in one place.
+JSON レスポンスや HTTP ルーティングを手作業で検証すると、アンマーシャルして比較する処理やルート探索のロジックを各テストで繰り返すことになり、冗長で微妙な誤りも生じやすくなります。本ヘルパーはそれらのアサーションを集約し、ハンドラテストが期待値を宣言的に表現し、不一致を一箇所で一貫して報告できるようにします。

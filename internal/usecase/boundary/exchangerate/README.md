@@ -1,7 +1,6 @@
 # exchangerate
 
-Provides a `Gateway` interface that acts as a semantic gateway to an external
-exchange-rate service (DTO-mode sample).
+外部為替レート取得サービスへの意味的 gateway として振る舞う `Gateway` インターフェースを提供します（DTO モードのサンプル）。
 
 ```go
 type Gateway interface {
@@ -16,16 +15,16 @@ type Rate struct {
 }
 ```
 
-`Value` is an exact `pkg/decimal.Decimal`, not a `float64`: the rate is a multiplier on the
-money path and a float would corrupt it at ingest ([ADR-0038 (two-scale-quantity-model)](../../../../docs/adr/0038-two-scale-quantity-model.md)).
+`Value` は `float64` ではなく正確な `pkg/decimal.Decimal` です。レートはマネー経路の乗数であり、
+float は取込時点で値を破壊するためです（[ADR-0038 (two-scale-quantity-model)](../../../../docs/adr/0038-two-scale-quantity-model.md)）。
 
-## Why Abstract?
+## なぜ抽象化するのか
 
-- Ensure testability of usecases that depend on an external rate provider without real HTTP calls
-- Allow mock substitution in tests for deterministic behavior
+- 外部レートプロバイダに依存する usecase を、実 HTTP 呼び出しなしでテスト可能にする
+- テストでモック差し替えにより決定論的な挙動を実現
 
-See [`internal/usecase/boundary/README.md`](../README.md#exchangerate) for why the port is semantic rather than `net/http` / SDK-shaped.
+port を `net/http` / SDK の形ではなく意味的にする理由は [`internal/usecase/boundary/README.md`](../README.md#exchangerate) を参照してください。
 
-## Implementation
+## 実装
 
-`internal/infrastructure/webapi/exchangerate/` provides the concrete implementation that calls the external service over HTTP.
+`internal/infrastructure/webapi/exchangerate/` に外部サービスを HTTP で呼び出す具体実装が配置されています。

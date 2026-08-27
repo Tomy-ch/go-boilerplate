@@ -1,83 +1,79 @@
 # docs-viewer
 
-The viewer for the documentation portal. It is a standalone static site: it reads the generated
-`docs/portal/docs.json`, renders the cards and the document body, and holds no source of truth of
-its own.
+ドキュメントポータルのビューアーです。単体で成立する静的サイトで、生成物
+`docs/portal/docs.json` を読んでカードと本文を描くだけの役割を持ち、内容の SSOT は持ちません。
 
-Its build output is committed under `docs/portal/`, which GitHub Pages serves as the site root
-(ADR 0100). The viewer sources live outside `docs/` so that a package manifest, a lockfile, and
-`node_modules` never end up inside the published tree.
+ビルド成果物は `docs/portal/` 配下にコミットし、GitHub Pages が `docs/` をサイトルートとして
+配信します（ADR 0100）。ビューアーのソースを `docs/` の外へ置くのは、パッケージ定義・lockfile・
+`node_modules` を配信ツリーへ混ぜないためです。
 
-## Why a separate package
+## なぜ別パッケージなのか
 
-**This is the only JavaScript application in the repository, and the only place that needs a
-browser toolchain.** The Node dependencies the repository already had (`docker/tools`) exist to run
-generators and linters; they are resolved with npm and installed into the tool-runner image. Mixing
-a React application's dependency graph into that set would put a browser framework on the supply
-surface of every code-generation run.
+**このリポジトリで唯一の JavaScript アプリケーションであり、browser 向けのツールチェーンを
+必要とする唯一の場所だからです。** 既存の Node 依存（`docker/tools`）は生成系と lint を動かす
+ためのもので、npm で解決して tool-runner イメージへ入れています。React アプリケーションの
+依存グラフをそこへ混ぜると、コード生成のたびに browser フレームワークが供給面へ乗ります。
 
-Keeping the viewer in its own package with its own package manager (pnpm) means its dependencies are
-reachable from nothing else. The boundary is the package, not a convention.
+パッケージマネージャごと分ける（pnpm）ことで、ビューアーの依存はどこからも到達できなくなります。
+分離を担保するのは規約ではなくパッケージ境界です。
 
-## Relationship to the design system
+## デザインシステムとの関係
 
-The UI is built from a design system ported from `nextjs-boilerplate`
-(`src/components/design-system`). The parts actually used by the viewer are vendored under
-`src/components/`, together with the design tokens in `src/tokens/tokens.css`.
+UI は `nextjs-boilerplate` の design-system（`src/components/design-system`）から移植した部品で
+組みます。ビューアーが実際に使う範囲を `src/components/` 配下へ取り込み、デザイントークンは
+`src/tokens/tokens.css` に置いています。
 
-**The vendored subset is maintained here.** There is no generator behind the tokens in this
-repository and no Storybook, so the upstream references to both were removed when the subset was
-ported. Component behaviour, accessibility contracts, and the tests that lock them came across
-unchanged.
+**取り込んだ範囲はここで保守します。** このリポジトリにはトークンの生成元も Storybook も無いため、
+移植の際に両者への参照は落としました。部品の挙動・アクセシビリティの契約・それらを固定する
+テストはそのまま持ち込んでいます。
 
-## Structure
+## 構成
 
-| Directory | Role |
+| ディレクトリ | 役割 |
 | --- | --- |
-| `src/docs-json/` | Schema and reader for the generated `docs.json`. A shape mismatch is a delivery failure, so it raises rather than recovers |
-| `src/lang-filter/` | Filtering by display language. A section with no JA content falls back to EN as a whole, so languages never mix inside one section |
-| `src/search/` | Search corpus assembly. Folds the owning section and group titles into each entry |
-| `src/hash-route/` | Reading and writing the location hash `#/<group>/<section>` |
-| `src/markdown/`, `src/sanitize/` | Markdown to a sanitized hast tree. Only values that went through sanitize carry the `SanitizedDocument` type |
-| `src/code-fence/`, `src/code-block/` | Reading a fenced code block out of the tree, and rendering it with syntax highlighting |
-| `src/mermaid-diagram/` | Rendering ` ```mermaid ` fences as diagrams |
-| `src/components/` | The vendored design system subset and the design tokens |
+| `src/docs-json/` | 生成物 `docs.json` のスキーマと読み取り。形の不一致は配信事故として例外にする |
+| `src/lang-filter/` | 表示言語での絞り込み。JA の実体が無い section は EN へ落とし、section 内で言語が混ざらないようにする |
+| `src/search/` | 検索コーパスの組み立て。所属する section / group 名を項目へ畳み込む |
+| `src/hash-route/` | 位置ハッシュ `#/<group>/<section>` の解釈と組み立て |
+| `src/markdown/`・`src/sanitize/` | Markdown を sanitize 済みの hast へ変換する。sanitize を通した値だけが `SanitizedDocument` 型を持つ |
+| `src/code-fence/`・`src/code-block/` | 木からコードフェンスを読み取り、強調表示付きで描画する |
+| `src/mermaid-diagram/` | ` ```mermaid ` フェンスを図として描画する |
+| `src/components/` | 移植した design-system の部品とデザイントークン |
 
-## Rendering documents
+## 本文の描画
 
-Documents are rendered from the hast tree into React elements directly, never through an HTML
-string. Two kinds of fenced code block are routed away from the default `pre`:
+本文は HTML 文字列を経由せず、hast の木から React 要素を直接作ります。コードフェンスのうち
+2 種類だけを既定の `pre` から振り分けます。
 
-- ` ```mermaid ` becomes a diagram. mermaid runs with `securityLevel: "strict"`, and picks its
-  palette from the same two signals as the design tokens (the OS setting and `data-theme`)
-- every other fence is highlighted by highlight.js, which escapes its input before wrapping it in
-  spans
+- ` ```mermaid ` は図にする。mermaid は `securityLevel: "strict"` で動かし、配色は
+  デザイントークンと同じ 2 経路（OS の設定と `data-theme`）から選ぶ
+- それ以外のフェンスは highlight.js が強調表示する。highlight.js は入力を escape してから
+  span で包む
 
-Both libraries are loaded on demand, so neither is part of the payload that renders the card list.
-A fence whose language highlight.js does not know, and a diagram mermaid cannot parse, are shown as
-plain text rather than dropped.
+どちらも遅延読み込みで、カード一覧の描画までの読み込みには含めません。highlight.js が知らない
+言語のフェンスと、mermaid が解釈できない図は、落とさず素のテキストとして出します。
 
-## Commands
+## コマンド
 
-Run these through `make` so they execute in the tool-runner container, which pins Node and pnpm to
-the versions declared in `mise.toml`:
+`mise.toml` が宣言する Node / pnpm のバージョンで動かすため、`make` 経由で tool-runner
+コンテナ内で実行します。
 
-| Command | What it does |
+| コマンド | 内容 |
 | --- | --- |
-| `make gen-portal-build` | Builds the viewer into `docs/portal/` |
-| `make portal-test` | Runs the test suite |
+| `make gen-portal-build` | ビューアーを `docs/portal/` へビルドする |
+| `make portal-test` | テストを実行する |
 
-Working inside this package directly (`pnpm dev`, `pnpm test`, `pnpm typecheck`) is fine for a fast
-loop; `pnpm dev` serves the viewer with hot reload, though it needs a `docs.json` next to it to have
-anything to show.
+手元の短い反復では、このパッケージで直接実行しても構いません（`pnpm dev` / `pnpm test` /
+`pnpm typecheck`）。`pnpm dev` は hot reload 付きで配信しますが、隣に `docs.json` が無いと
+表示するものがありません。
 
-## Dependency policy
+## 依存の方針
 
-- **Prefer parts that stand alone.** This viewer was ported from another repository and will likely
-  be ported again; every dependency pulled in is a cost that travels with it. Where a component has
-  a `-native` and a `-client` counterpart, take `-native` while the requirement allows
-- **Keep the pure logic dependency-free apart from zod** (`docs-json` / `lang-filter` / `search` /
-  `hash-route` / `code-fence`), so it stays portable as is
-- **Versions are pinned exactly**, and `pnpm-workspace.yaml` declares the supply-chain settings:
-  a release must be at least 7 days old to be resolved, dependency lifecycle scripts are refused
-  unless declared, and non-registry sources are blocked
+- **単独で完結する部品に寄せる。** このビューアーは別リポジトリからの移植であり、今後も移植され
+  得ます。引き込んだ依存はそのまま移植コストになります。対に `-native` / `-client` がある部品は、
+  要件が許す限り `-native` を優先します
+- **純粋ロジックは zod 以外に依存させない**（`docs-json` / `lang-filter` / `search` /
+  `hash-route` / `code-fence`）。そのまま持っていける状態を保ちます
+- **バージョンは完全固定**し、供給網の設定は `pnpm-workspace.yaml` が宣言します。公開から 7 日
+  未満の版は解決しない、宣言の無い依存ライフサイクルスクリプトは拒否する、レジストリ以外の
+  取得元を拒否する、の 3 点です

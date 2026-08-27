@@ -1,11 +1,11 @@
 # datetime
 
-Provides date/time parsing utilities supporting multiple formats with timezone awareness.
+複数の日時フォーマットに対応し、タイムゾーンを考慮したパースユーティリティを提供します。
 
-## Role
+## 役割
 
-Centralizes the layout strings and timezone handling involved in parsing date/time input, so callers across layers do not scatter raw `time.Parse` calls with inconsistent formats or location handling. This keeps date parsing a single, reusable, framework-agnostic concern with predictable behavior.
+日時入力をパースする際のレイアウト文字列やタイムゾーンの扱いを一箇所に集約し、各層が `time.Parse` をばらばらのフォーマットやロケーション指定で書き散らさないようにします。これにより日時パースを、挙動が予測可能で再利用可能なフレームワーク非依存の単一の関心事として保ちます。
 
-## Wraps
+## ラップ対象
 
-Standard library `time` package.
+標準ライブラリ `time` パッケージ

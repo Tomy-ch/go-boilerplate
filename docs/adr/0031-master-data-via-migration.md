@@ -5,84 +5,55 @@ deciders: [maintainers]
 tags: [persistence, migration, data]
 ---
 
-# ADR-0031: Ship master data via migration; keep transactional seed out of production
+# ADR-0031: マスターデータをマイグレーション経由で投入する。トランザクショナルシードを本番から除外する
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Two categories of initial data exist in the project:
+プロジェクトには2種類の初期データが存在する。
 
-1. **Master data** — reference tables that must be present for the application to function
-   correctly in any environment. These rows are stable, enumerable, and production-required.
-2. **Transactional seed data** — demo/mock data needed only in development/test
-   environments. These rows must never reach production.
+1. **マスターデータ** — アプリケーションがいかなる環境でも正しく機能するために必要な参照テーブル。これらの行は安定していて列挙可能であり、本番環境に必要である。
+2. **トランザクショナルシードデータ** — 開発・テスト環境のみで必要なデモ/モックデータ。これらの行は本番環境に絶対に到達してはならない。
 
-Mixing both categories into a single seeding mechanism creates deployment risk: a seed step
-that runs in production could insert test data. Alternatively, omitting a dedicated seed
-step forces operators to manually insert master data after every fresh deployment.
+両カテゴリを1つのシーディングメカニズムに混在させると、デプロイリスクが生じる。本番で実行されるシードステップがテストデータを挿入しうる。あるいは専用のシードステップを省略すると、オペレーターが新規デプロイ後にマスターデータを手動で挿入しなければならない。
 
-## Decision
+## 決定
 
-**Master data** is inserted inside its corresponding migration file alongside the table DDL,
-using `INSERT ... ON CONFLICT (id) DO NOTHING` for idempotency.
+**マスターデータ**は対応するマイグレーションファイル内のテーブルDDLと一緒に挿入される。べき等性のために`INSERT ... ON CONFLICT (id) DO NOTHING`を使用する。
 
-`make migrate-up` is the only command required to bring a new environment to a fully
-functional state; no separate data step is needed.
+`make migrate-up`が新規環境を完全に機能する状態にするために必要な唯一のコマンドであり、別のデータステップは必要ない。
 
-A row that references master data resolves the master row's identifier **in SQL, by the master's
-stable business key**, at insert time (a sub-`SELECT` on its `code` column) — never by carrying
-the master row's UUID as a constant in application code. The migration is then the single place
-that identifier is decided; a copy in application code would be a second place, and two places
-drift silently the first time only one of them moves. What application code holds instead is the
-business key itself, which is part of the domain vocabulary and stays meaningful regardless of
-which UUID the migration happened to assign.
+**トランザクショナルシードデータ**は`database/seed/`に置かれ、`make db-seed`（または`./server db-seed`）によってのみ適用される。このコマンドは本番環境での使用から明示的に除外されている。完全なポリシーは[`database/seed/README.md`](../../database/seed/README.md)参照。
 
-**Transactional seed data** lives in `database/seed/` and is applied only via `make
-db-seed` (or `./server db-seed`). This command is explicitly excluded from production use.
-See [`database/seed/README.md`](../../database/seed/README.md) for the full policy.
+## 影響
 
-## Consequences
+### ポジティブな影響
 
-### Positive Consequences
+- 新規の本番デプロイは`make migrate-up`のみで完了し、別のシーディングステップは不要かつ許可されない。
+- `ON CONFLICT DO NOTHING`によりマスターデータの挿入がべき等になる — マイグレーションが複数回適用された場合（例：テスト中）でも安全に再実行できる。
+- 本番必要データと開発専用データの境界が明示的に分離されたコマンドによって強制される。
+- マスター行の識別子はただ一箇所——それを挿入するマイグレーション——にのみ存在するため、再シードや訂正を経たマスターがもう持っていない UUID をアプリケーションコードが焼き込むことはできない。
 
-- A fresh production deployment is complete after `make migrate-up` alone; no separate
-  seeding step is required or allowed.
-- `ON CONFLICT DO NOTHING` makes master-data inserts idempotent — safe to re-run if a
-  migration is applied more than once (e.g., during testing).
-- The boundary between production-required data and development-only data is explicit and
-  enforced by separate commands.
-- A master row's identifier exists in exactly one place — the migration that inserts it — so
-  application code cannot pin a UUID that a re-seeded or corrected master no longer carries.
+### ネガティブな影響
 
-### Negative Consequences
+- マスターデータの値を修正する（例：表示名のスペルミス）には、[ADR-0029](0029-append-only-immutable-migrations.md)と一致して単純な行更新ではなく新しいマイグレーションファイルが必要である。
+- マイグレーションファイルにDDLとDMLの両方が含まれ、純粋なスキーマ定義を超えてその範囲が若干広がる。
 
-- Correcting a master data value (e.g., a misspelled display name) requires a new
-  migration file rather than a simple row update, consistent with
-  [ADR-0029](0029-append-only-immutable-migrations.md).
-- Migration files contain both DDL and DML, which slightly broadens their scope beyond pure
-  schema definitions.
+## 検討した代替案
 
-## Alternatives Considered
+### すべての初期データをseed/経由で投入する
 
-### All initial data via seed/
+マスターとトランザクショナルの両データを`database/seed/`に置く。本番デプロイには、マスターデータファイルのみを実行するフィルタリングされたシーディングステップが必要になる。これは運用上の複雑さとテストデータの意図しない漏洩リスクを増大させるため却下。
 
-Both master and transactional data would be in `database/seed/`. Production deployments
-would need a filtered seeding step to run only master-data files. This adds operational
-complexity and risk of accidental test data leakage. Rejected.
+### マスターデータ専用のマイグレーションカテゴリ
 
-### Separate master-data migration category
+マスターデータのマイグレーション専用のディレクトリまたはコマンド。テーブルを作成する同じマイグレーションファイルにINSERT文を埋め込むことと比較して意味のあるメリットなく新しい概念を追加するため却下。
 
-A dedicated directory or command for master-data migrations. Adds a new concept without
-meaningful benefit over embedding the INSERT statements in the same migration file that
-creates the table. Rejected.
+## 補足
 
-## Notes
-
-- Source: [`database/seed/README.md`](../../database/seed/README.md) § "Difference from
-  Migrations" and § "Notes".
-- Source: [`database/README.md`](../../database/README.md).
-- Related: [ADR-0029](0029-append-only-immutable-migrations.md) (immutability);
-  [ADR-0030](0030-sequential-migration-ids.md) (numbering).
+- Source: [`database/seed/README.md`](../../database/seed/README.md)の§ "Difference from Migrations"および§ "Notes"。
+- Source: [`database/README.md`](../../database/README.md)。
+- 関連: [ADR-0029](0029-append-only-immutable-migrations.md)（不変性）；[ADR-0030](0030-sequential-migration-ids.md)（採番）。

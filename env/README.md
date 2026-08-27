@@ -1,258 +1,255 @@
-# Environment Variables List (Mapping Table)
+# 環境変数一覧（対応表）
 
-This directory is the canonical reference for every environment variable read by the application. Variables are loaded into typed Go structs under `internal/config/` and grouped here by subsystem (OS / Application / Server / Database / Security / …). Use this README when adding a new variable, auditing what each service reads, or onboarding a new operator.
+このディレクトリは、アプリケーションが読み込むすべての環境変数の正規リファレンスです。各変数は `internal/config/` 配下の型付き Go 構造体にロードされ、本 README ではサブシステム別（OS / Application / Server / Database / Security / …）にグルーピングしています。新規変数の追加、各サービスが読む変数の棚卸し、オンボーディング資料として活用してください。
 
-## Conventions
+## 命名・型の規約
 
-- Variable names follow `{SUBSYSTEM}_{NAME}` in UPPER_SNAKE_CASE.
-- The Type column maps to a Go type loaded by `internal/config/`. The vocabulary below is closed — a cell outside it names a type nothing loads:
-  - `string` → `string`, `int` → `int`, `bool` → `bool`
-  - `duration` → `time.Duration` (parsed via `time.ParseDuration`, e.g. `500ms`, `1h30m`)
-  - `csv` → a slice split on `,` after whitespace trim — `[]string`, or `[]int` where the elements are numeric (`OBS_TARGET_STATUS_CODES`)
-- Variables marked **Secret management required** MUST be loaded from a secret manager in production — never commit them to plain `.env` files.
-- Variables marked **Secret management recommended** should be rotated periodically.
-- The Example column carries the **effective local value**: the value `env/.env` assigns to the key, or the `envDefault` tag in `internal/config/envspec.go` when the key is absent from `env/.env`. It is a single value, not a set — write the accepted values in the Description column instead (as `APP_MODE` and `OBS_TRACES_EXPORTER` do). A row whose Notes say **Example is a placeholder** is the sole exception, and only where copying the real value here would duplicate a credential the secret scanner already tracks in `env/.env`; read `env/.env` for what the local stack uses. Marking a variable **Secret management required** is *not* an exception on its own — those rows still show their real local value, because the local `.env` files commit them anyway.
-- A value that legitimately differs between `env/.env.<env>` files is marked **Per-environment value** in its Notes cell, followed by why it differs. Nothing else records whether a key is a per-environment policy or a value that should match everywhere, so an undocumented difference reads as a propagation miss and should be treated as one. An unmarked key holds the same value in every env file that declares it, and a marker left behind after the values were aligned is stale — drop it. Read the differences as **effective** values: a key with a `Code default` holds that default in every file that omits it, so overriding it in a single env file is a difference and needs the marker just as much. A key with no `Code default` has no effective value where it is absent, because the value is injected from outside; that absence is covered by **Injected at deploy time** below.
-- A key that carries no `envDefault` must appear in every env file; the one legitimate absence is a value the deploy platform injects at run time, and that is declared by marking the Notes cell **Injected at deploy time**. Without such a declaration a missing key is indistinguishable from a propagation miss, and it stays invisible until the environment actually boots and `required` validation rejects it. A marked key is committed in `local` / `ci` and absent from `dev` / `stg` / `prd`; a value that reappears in a deploy file, or a marker put on a key that has a `Code default`, means the declaration no longer describes reality.
-- The Japanese translation ([README.ja.md](README.ja.md)) duplicates this table in full, values included, and most readers of this repository read that side. Prose is translated, but the key, Type, Example, and `Code default` values are language-independent and MUST match this file, as must the document structure — the subsystem headings that group the table, and the sections and list items around it. A `Code default` that is empty cannot be written in backticks, so it is spelled out as **Code default empty** here and as **Code default は空** in the translation.
-- Variables marked **Code default `<value>`** carry an `envDefault:` tag in `internal/config/envspec.go` and are intentionally omitted from the `.env` files. They are framework-level constants that any project derived from this boilerplate keeps unchanged, so the default applies automatically; add an explicit entry to a `.env` file only when a project needs to override it. Every other variable is `required` and must be present in the relevant env file(s).
-- A key whose local value comes from the compose stack rather than an env file is the one case this directory does not fully describe. `internal/config` reads the process environment first, so an `environment` entry in a `docker-compose*.yaml` service wins over the embedded `env/.env`, and a key supplied only that way is absent from every env file — which puts it outside what `internal/architest` compares. Reach for it only when an env file genuinely cannot hold the value, keep the row's `Code default` accurate so a reader still knows what the binary does without compose, and expect no test to catch a stale compose entry.
+- 変数名は `{SUBSYSTEM}_{NAME}` の UPPER_SNAKE_CASE
+- 型欄は `internal/config/` で読み込まれる Go 型に対応。下記の語彙は閉じており、語彙に無い型欄はどこも読み込まない型を指している:
+  - `string` → `string`、`int` → `int`、`bool` → `bool`
+  - `duration` → `time.Duration`（`time.ParseDuration` でパース、例: `500ms`, `1h30m`）
+  - `csv` → `,` 区切りのスライス（空白トリム後分割）。`[]string`、要素が数値なら `[]int`（`OBS_TARGET_STATUS_CODES`）
+- 備考に **Secret management required** とあるものは本番で **必ずシークレットマネージャーから取得**。`.env` に平文で含めない
+- **Secret management recommended** は定期ローテーションを推奨
+- 例欄には**ローカル実効値**を書く。`env/.env` に記載があればその値、無ければ `internal/config/envspec.go` の `envDefault` タグの値。単一の値であって選択肢の集合ではないため、取りうる値は説明欄に書く（`APP_MODE` / `OBS_TRACES_EXPORTER` の書き方に倣う）。唯一の例外は備考に **Example is a placeholder** とある行で、実値を書くとシークレットスキャナが `env/.env` で既に追跡している資格情報を二重に持つことになる場合に限る（ローカルスタックが実際に使う値は `env/.env` を参照）。**Secret management required** であること自体は例外ではない — ローカルの `.env` にどのみち平文で入っている以上、それらの行も実値を載せる
+- `env/.env.<env>` ファイル間で値が異なってよいものは、備考欄に **Per-environment value** と明記し、続けて異なる理由を書く。キーが環境別ポリシーなのか全環境で揃うべき値なのかを記録する場所は他に無く、理由の書かれていない差異は伝播漏れとして読まれる（実際にそう扱ってよい）。マーカーの無いキーは、それを記載する全 env ファイルで同じ値であり、値を揃えた後にマーカーだけ残った状態は陳腐化した宣言なので外す。差異は**実効値**で読む。`Code default` を持つキーは記載の無いファイルでもその既定値を持つため、1 つの env ファイルだけで既定から外した場合も差であり、同じくマーカーが要る。`Code default` を持たないキーは、記載の無いファイルでは値が外部から注入されて実効値が定まらないため、その不在は下の **Injected at deploy time** が扱う
+- `envDefault` を持たないキーは全 env ファイルに記載が必須。唯一の正当な不在は、デプロイ基盤が実行時に注入する値で、備考欄に **Injected at deploy time** と明記して宣言する。宣言が無ければ、欠落と伝播漏れは見分けが付かず、その環境で実際にアプリを起動して `required` バリデーションが落ちるまで顕在化しない。マーカーのあるキーは `local` / `ci` に記載があり `dev` / `stg` / `prd` には無い。deploy 側のファイルに値が復活した場合や、`Code default` を持つキーにマーカーが付いている場合は、宣言が実態を説明できていない
+- 備考に **Code default `<値>`** とあるものは `internal/config/envspec.go` の `envDefault:` タグを持ち、`.env` ファイルには意図的に記載しない。boilerplate 派生プロジェクトが基本そのまま使うフレームワークレベルの定数で、既定値が自動適用される。プロジェクト側で上書きしたいときだけ該当 `.env` に明示エントリを追加する。それ以外の変数は `required` で、該当する env ファイルに必ず記載すること
+- ローカルの値を env ファイルではなく compose スタックから受け取るキーは、本ディレクトリが記述しきれない唯一の経路である。`internal/config` はプロセスの環境変数を先に読むため、`docker-compose*.yaml` の `environment` 指定は埋め込みの `env/.env` に優先し、その経路でしか供給されないキーはどの env ファイルにも現れない — つまり `internal/architest` の突き合わせの外に出る。env ファイルでは値を持てない場合に限って使い、compose 抜きでバイナリが何をするかは読み取れるよう行の `Code default` を正確に保つこと。compose 側の記載が陳腐化してもテストは検知しない
 
-## Adding a New Variable
+## 新規変数を追加する手順
 
-1. Add the field to the relevant struct in `internal/config/envspec.go` (and the matching getter struct in `model.go` / mapping in `config.go`).
-2. Document it in the table below under the matching subsystem (or add a new subsystem section).
-3. Decide how the value is supplied:
-   - **Project-specific or per-environment value** → mark the field `required` and add it to `env/.env` (the local default) and to every per-environment file (`env/.env.<env>`). Leave it out of `env/.env.dev` / `.stg` / `.prd` only when the deploy platform injects it at run time, and mark the row **Injected at deploy time** when you do.
-   - **Universal framework default** → give the field an `envDefault:` tag instead, omit it from the `.env` files, and mark it **Code default `<value>`** in the table.
-4. Run `make test` to confirm the config struct still loads.
+1. `internal/config/envspec.go` の対応する構造体にフィールドを追加（あわせて `model.go` の getter 構造体・`config.go` のマッピングも）
+2. 該当サブシステムのテーブル（または新規サブシステム節）に変数を記載
+3. 値の供給方法を決める:
+   - **プロジェクト固有・環境ごとに変わる値** → フィールドを `required` にし、`env/.env`（ローカル既定）と各環境ファイル（`env/.env.<env>`）に追加。`env/.env.dev` / `.stg` / `.prd` から外してよいのはデプロイ基盤が実行時に注入する場合だけで、そのときは行に **Injected at deploy time** と明記する
+   - **普遍的なフレームワーク既定値** → 代わりに `envDefault:` タグを付与し、`.env` ファイルには記載せず、テーブルに **Code default `<値>`** と明記
+4. `make test` を実行して config 構造体がロードできることを確認
 
-## Changing the Timezone
+## タイムゾーンを変更する手順
 
-The timezone is supplied by **three independent mechanisms that set different layers**, so a project that moves off `Asia/Tokyo` has to change all of them. They are listed here because nothing else in the repository records the full set.
+タイムゾーンは**別の層を設定する 3 つの独立した機構**から供給されるため、`Asia/Tokyo` から移るプロジェクトはその全てを変更する必要がある。リポジトリの他のどこにも全体像が記録されていないため、ここに一覧を置く。
 
-- **Session timezone** — `OS_TZ` becomes the `timezone` parameter of the DSN the application uses for every database connection (`internal/infrastructure/rdb/driver/config.go`). This is the only mechanism that decides what the application reads and writes, and it takes precedence over any database-side setting.
-- **Database-side default** — the `TZ` environment variable of the PostgreSQL container. `initdb` writes it into `postgresql.conf`, making it the cluster default that every database created afterwards inherits (`wt<N>_local` / `wt<N>_test` from the worktree slot pool, `gen_schema` from `make dump-schema`). It only affects what a client that does *not* specify a timezone sees, so its purpose is the developer experience of reading timestamps directly through `psql` / pgweb / SchemaSpy.
-- **Application container local time** — the `TZ` environment variable of the application image (`docker/server/Dockerfile`, both the `runtime` and `tooling` stages, which install `tzdata` for it). It is what Go reads to resolve `time.Local`, and therefore what `date` inside the container and the local-time rendering of logs show. `OS_TZ` cannot fill this role: Go reads the plain `TZ` name, and a process with neither `TZ` nor `/etc/localtime` falls back to UTC. Correctness does not rest on it — `time.Local` is banned by `forbidigo` in `.golangci-full.yaml`, so application code takes the timezone from the injected `*time.Location` (`config.NewTimeLocation`) instead. This mechanism exists so that a developer reading the container never sees a timezone the configuration did not ask for.
+- **セッションの timezone** — `OS_TZ` は、アプリが DB へ接続するときの DSN の `timezone` パラメータになる（`internal/infrastructure/rdb/driver/config.go`）。アプリが読み書きする時刻を決めるのはこの機構だけで、DB 側の設定より優先される。
+- **DB 側の既定値** — PostgreSQL コンテナの `TZ` 環境変数。`initdb` がこれを `postgresql.conf` へ書き込むためクラスタ既定となり、以降に作られる全 DB が継承する（worktree スロットプールの `wt<N>_local` / `wt<N>_test`、`make dump-schema` の `gen_schema`）。timezone を明示しないクライアントの表示にしか影響しないため、目的は `psql` / pgweb / SchemaSpy で時刻を直接読むときの開発体験である。
+- **アプリコンテナのローカルタイム** — アプリイメージの `TZ` 環境変数（`docker/server/Dockerfile` の `runtime` / `tooling` の両ステージ。そのために `tzdata` を導入している）。Go が `time.Local` を解決するときに読む値であり、コンテナ内の `date` やログのローカル時刻表示を決める。`OS_TZ` はこの役目を果たせない。Go が読むのは素の名前の `TZ` であり、`TZ` も `/etc/localtime` も無いプロセスは UTC へ退行するためである。正しさをこの機構に預けてはいない。`time.Local` は `.golangci-full.yaml` の `forbidigo` で禁止されており、アプリのコードは注入された `*time.Location`（`config.NewTimeLocation`）からタイムゾーンを受け取る。この機構は、コンテナを覗いた開発者が設定と無関係なタイムゾーンを見ないためにある。
 
-All three are needed: dropping the first would leave the application at the cluster default, dropping the second would show UTC in every direct database session, and dropping the third would show UTC in every shell and log line inside the container. Change all of the following together:
+3 つとも必要である。1 つ目を外すとアプリがクラスタ既定に従ってしまい、2 つ目を外すと DB へ直接繋いだセッションが全て UTC 表示になり、3 つ目を外すとコンテナ内のシェルとログ行が全て UTC 表示になる。次を全て揃えて変更する。
 
-1. `env/.env` and every `env/.env.<env>` — the `OS_TZ` entry (session timezone; `required`, so it exists in all six files).
-2. `docker-compose.yaml`, the `database` service — `TZ` and `PGTZ`. `TZ` only takes effect during `initdb`, so an existing volume keeps its old cluster default until the volume is recreated; `docs/maintenance/db-worktree-pool.md` owns that procedure and its worktree caveat. `PGTZ` applies per `psql` session and therefore takes effect immediately, even on an old volume.
-3. The PostgreSQL service block of each workflow under `.github/workflows/` that provisions a database — `TZ` and `PGTZ`. GitHub Actions cannot share a service definition between workflows, so the value is repeated in every one of them. Enumerate them by the service image rather than by the variable (`grep -rl 'image: postgres' .github/workflows/`) — grepping for `PGTZ` finds only the workflows that already set it and silently skips the one that still needs it.
-4. `docker/server/Dockerfile` — the `ENV TZ` of the `runtime` and `tooling` stages. Both are stated because they are separate images: `runtime` is what a deployment runs, `tooling` is what `make serve` runs. A deployment can override the value at run time without a rebuild, so treat the `ENV` as the default rather than as the only place it can come from. `ENV` is baked at build time, so — like the `initdb` caveat in item 2 — an image built before the change keeps the old value: `make serve` reuses the cached `gobp-wt-<N>-api_server` image and reports success while the container still reports the previous timezone, so run `make serve-build` to pick the change up.
-5. Test expectations that pin the value as a literal — `expectedOSTimeZone` in `internal/config/config_testing_mock.go`, plus the assertions in `internal/di/job_test.go`, `internal/di/server/hook/http_server_hook_test.go`, and `internal/infrastructure/rdb/driver/config_test.go`.
+1. `env/.env` と全ての `env/.env.<env>` — `OS_TZ` のエントリ（セッションの timezone。`required` なので 6 ファイル全てに存在する）。
+2. `docker-compose.yaml` の `database` サービス — `TZ` と `PGTZ`。`TZ` は `initdb` 時にしか効かないため、volume を作り直すまで既存 volume は旧クラスタ既定を保持する。その手順と worktree 特有の注意は `docs/maintenance/db-worktree-pool.md` が所有する。`PGTZ` は `psql` セッション単位で効くため、古い volume でも即座に反映される。
+3. `.github/workflows/` 配下で DB を用意する各 workflow の PostgreSQL サービス定義 — `TZ` と `PGTZ`。GitHub Actions はサービス定義を workflow 間で共有できないため、値は全ファイルに重複して書かれている。列挙は変数ではなくサービスの image で行うこと（`grep -rl 'image: postgres' .github/workflows/`）— `PGTZ` で grep すると既に設定済みの workflow しか見つからず、まだ設定が要る workflow を黙って取りこぼす。
+4. `docker/server/Dockerfile` — `runtime` / `tooling` の両ステージの `ENV TZ`。両方を挙げているのは別のイメージだからである。`runtime` はデプロイ先が動かすもの、`tooling` は `make serve` が動かすものである。デプロイ先は再ビルドせず実行時に値を上書きできるため、`ENV` は唯一の供給元ではなく既定値として扱うこと。`ENV` はビルド時に焼かれるため、項目 2 の `initdb` と同じく、変更前にビルドしたイメージは旧い値を保持する。`make serve` はキャッシュ済みの `gobp-wt-<N>-api_server` イメージを再利用し、コンテナが旧いタイムゾーンを返したまま成功を報告するので、変更を反映するには `make serve-build` を実行すること。
+5. 値をリテラルで固定しているテストの期待値 — `internal/config/config_testing_mock.go` の `expectedOSTimeZone`、および `internal/di/job_test.go` / `internal/di/server/hook/http_server_hook_test.go` / `internal/infrastructure/rdb/driver/config_test.go` のアサーション。
 
-`internal/architest` fails on a partially propagated change, so it is caught by `make test` rather than by reading a timestamp in production: `TestTimezoneMechanismValuesMatch` when items 1 through 4 hold different values, and `TestPostgresProvisionersDeclareTimeZone` / `TestDockerfileTzdataStagesDeclareTimeZone` when a declaration is missing outright. Item 5 is not machine-checked — a stale literal there surfaces as a failing assertion in the test that pins it.
+`internal/architest` は伝播漏れで失敗するため、本番の時刻を読んでではなく `make test` で捕まる。値が食い違う場合は 1 から 4 の項目について `TestTimezoneMechanismValuesMatch` が、宣言そのものが消えた場合は `TestPostgresProvisionersDeclareTimeZone` / `TestDockerfileTzdataStagesDeclareTimeZone` が失敗する。項目 5 は機械検証していない。陳腐化したリテラルは、それを固定しているテストのアサーションが落ちる形で表面化する。
 
-## Variables by Subsystem
+## 変数一覧（サブシステム別）
 
 ### OS
 
-|Variable Name|Description|Type|Example|Notes|
+|変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|OS_TZ|Timezone setting|string|Asia/Tokyo|Time reference for container / application. The deployment region varies per project, so it is `required` and stated in every env file rather than code-defaulted — the timezone stays where an operator looks for it. Rejected when empty, because an empty value would silently fall back to UTC. Sets the session timezone only; the database-side default and the container's local time each come from a `TZ` of their own, so see [Changing the Timezone](#changing-the-timezone) before moving off `Asia/Tokyo`|
+|OS_TZ|タイムゾーン設定|string|Asia/Tokyo|コンテナ / アプリの時刻基準。配置先の地域はプロジェクトごとに変わるため、コード側の既定値ではなく `required` として全 env ファイルに明記し、タイムゾーンを運用者の見る場所に置く。空文字は UTC へ無警告で退行するため拒否する。設定するのはセッションの timezone のみで、DB 側の既定値とコンテナのローカルタイムはそれぞれ別の `TZ` が持つため、`Asia/Tokyo` から移る前に[タイムゾーンを変更する手順](#タイムゾーンを変更する手順)を参照|
 
 ### Application
 
-|Variable Name|Description|Type|Example|Notes|
+|変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|APP_MODE|Execution mode (`development` or `production`)|string|development|Switch logs and behavior. Per-environment value — `production` from `stg` onward so pre-production runs on the same log format and behavior as production; `development` in local / ci / dev|
-|APP_LOG_LEVEL|Log output level (`debug` / `info` / `warn` / `error`)|string|debug|Output format follows Mode. Per-environment value — `debug` through `stg` for pre-production diagnosis, `info` in `prd` to hold production log volume down|
-|APP_NAME|Application name|string|Boilerplate API|Used for log / metrics identification|
-|APP_ENV|Environment identifier (`local` / `ci` / `dast` / `dev` / `stg` / `prd`)|string|local|For environment distinction. Also used as the embedded-env provenance guard (see Notes). Per-environment value — the environment identifier itself, so it differs by definition. `dast` is the execution context of the DAST scan: unlike `ci` it wires the real JWKS-backed authenticator and verifies tokens the mock auth server actually signed, and it stays out of the worktree DB slot pool (`IsLocalClassEnv` returns false for it)|
-|APP_SHUTDOWN_TIMEOUT|Graceful shutdown duration|duration|65s|Code default `65s`. Wait time on SIGTERM. On the HTTP server it must be `>= SERVER_REQUEST_TIMEOUT` (server startup fails otherwise) so drain never truncates an in-budget request|
+|APP_MODE|実行モード（`development` または `production`）|string|development|ログや挙動切り替え。Per-environment value — `stg` 以降は `production` とし、本番前の環境を本番と同じログ形式・挙動で動かす。local / ci / dev は `development`|
+|APP_LOG_LEVEL|ログ出力レベル（`debug` / `info` / `warn` / `error`）|string|debug|出力方式は Mode が決定。Per-environment value — `stg` までは本番前の調査のため `debug`、`prd` は本番のログ量を抑えるため `info`|
+|APP_NAME|アプリケーション名|string|Boilerplate API|ログ・メトリクス識別|
+|APP_ENV|環境識別子（`local` / `ci` / `dast` / `dev` / `stg` / `prd`）|string|local|環境区別用。埋め込み env の出所ガードにも使う（補足を参照）。Per-environment value — 環境識別子そのものであり、定義上すべて異なる。`dast` は DAST スキャンの実行文脈で、`ci` と違い JWKS backed の実 authenticator を配線して mock 認証サーバーが実際に署名したトークンを検証する。また worktree の DB スロットプールには参加しない（`IsLocalClassEnv` は false を返す）|
+|APP_SHUTDOWN_TIMEOUT|Graceful shutdown時間|duration|65s|Code default `65s`。SIGTERM時の待機時間。HTTP サーバーでは `SERVER_REQUEST_TIMEOUT` 以上でなければならない（未満だとサーバー起動失敗）ため、drain が予算内のリクエストを打ち切ることはない|
 
 ### Server
 
-|Variable Name|Description|Type|Example|Notes|
+|変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|SERVER_HOST|Bind host|string|localhost|0.0.0.0 recommended in Docker. Per-environment value — the host each environment is reached at|
-|SERVER_PORT|Port number|int|8080||
-|SERVER_READ_HEADER_TIMEOUT|Header read timeout|duration|5s|Code default `5s`. Protection against Slowloris|
-|SERVER_READ_TIMEOUT|Request read timeout|duration|10s|Code default `10s`|
-|SERVER_WRITE_TIMEOUT|Response write timeout|duration|65s|Code default `65s`. Must be >= SERVER_REQUEST_TIMEOUT; net/http cuts the connection before the deadline budget fires if this is shorter|
-|SERVER_IDLE_TIMEOUT|KeepAlive timeout|duration|60s|Code default `60s`|
-|SERVER_BODY_LIMIT_MB|Request body size limit in MB (decimal, 1MB=1,000,000 bytes); 413 on exceed|int|6|Code default `6`. Pre middleware, applied before OpenAPI validation reads the body. Must stay above `OBJECT_STORAGE_MAX_UPLOAD_BYTES` (plus multipart overhead) or the per-endpoint upload limit is unreachable. Enforced at server startup by `config.ValidateUploadBodyLimit`|
-|SERVER_REQUEST_TIMEOUT|Per-request deadline budget (set once at the entry, propagated to all layers via ctx)|duration|60s|Code default `60s`. Single stop-timeout axis; statement_timeout etc. are backstops|
+|SERVER_HOST|バインドホスト|string|localhost|Dockerでは0.0.0.0推奨。Per-environment value — 各環境の到達先ホスト|
+|SERVER_PORT|ポート番号|int|8080||
+|SERVER_READ_HEADER_TIMEOUT|ヘッダ読み取りタイムアウト|duration|5s|Code default `5s`。Slowloris対策|
+|SERVER_READ_TIMEOUT|リクエスト読み取りタイムアウト|duration|10s|Code default `10s`|
+|SERVER_WRITE_TIMEOUT|レスポンス書き込みタイムアウト|duration|65s|Code default `65s`。SERVER_REQUEST_TIMEOUT 以上であること必須。短いと deadline budget より先に net/http が接続を切断し budget 制御が無効化される|
+|SERVER_IDLE_TIMEOUT|KeepAliveタイムアウト|duration|60s|Code default `60s`|
+|SERVER_BODY_LIMIT_MB|リクエストボディ上限（MB, 10進・1MB=1,000,000 byte）。超過時 413|int|6|Code default `6`。Pre middleware。OpenAPI 検証がボディを読む前に適用。`OBJECT_STORAGE_MAX_UPLOAD_BYTES`（＋ multipart オーバーヘッド）を上回る値に保つこと。下回るとエンドポイント側のアップロード上限が到達不能になる。サーバー起動時に `config.ValidateUploadBodyLimit` が強制する|
+|SERVER_REQUEST_TIMEOUT|リクエスト全体の deadline budget（入口で1点設定し ctx で全層伝播）|duration|60s|Code default `60s`。停止/期限の単一軸。statement_timeout 等は backstop|
 
 ### Metrics
 
-|Variable Name|Description|Type|Example|Notes|
+|変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|METRICS_HOST|metrics bind host|string|0.0.0.0|Per-environment value — the host each environment exposes metrics on|
+|METRICS_HOST|metrics bind host|string|0.0.0.0|Per-environment value — 各環境が metrics を公開するホスト|
 |METRICS_PORT|metrics port|int|6060||
-|METRICS_USERNAME|Basic auth username|string|metrics-user|Secret management required — kept out of source control; committed only for `local` / `ci` / `dast`. Injected at deploy time for `dev` / `stg` / `prd`|
-|METRICS_PASSWORD|Basic auth password|string|metrics-password|Secret management required — kept out of source control; committed only for `local` / `ci` / `dast`. Injected at deploy time for `dev` / `stg` / `prd`|
+|METRICS_USERNAME|Basic認証ユーザー|string|metrics-user|シークレット管理必須 — ソース管理に入れない。`local` / `ci` / `dast` のみ commit。Injected at deploy time — `dev` / `stg` / `prd` はデプロイ時に注入|
+|METRICS_PASSWORD|Basic認証パスワード|string|metrics-password|シークレット管理必須 — ソース管理に入れない。`local` / `ci` / `dast` のみ commit。Injected at deploy time — `dev` / `stg` / `prd` はデプロイ時に注入|
 
 ### Observability
 
-|Variable Name|Description|Type|Example|Notes|
+|変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|OBS_TRACES_EXPORTER|Trace OTLP exporter (`otlp` to enable; empty/`none` to disable)|string|otlp|Empty disables tracing (lightweight). Per-environment value — only `local` runs the compose observability stack, so every other environment leaves it empty until a collector is wired|
-|OBS_METRICS_EXPORTER|Metric OTLP exporter (`otlp` to enable; empty/`none` to disable)|string|otlp|Empty disables metrics (lightweight). Per-environment value — only `local` runs the compose observability stack, so every other environment leaves it empty until a collector is wired|
-|OBS_LOGS_EXPORTER|Log OTLP exporter (`otlp` to enable; empty/`none` to disable)|string|otlp|Empty disables log export (zap stdout only). Per-environment value — only `local` runs the compose observability stack, so every other environment leaves it empty until a collector is wired|
-|OBS_OTLP_PROTOCOL|OTLP protocol (`http/protobuf` or `grpc`)|string|http/protobuf|Code default `http/protobuf`|
-|OBS_MASKED_DB_QUERY_ARGS|Mask DB parameters|bool|false|Security critical. Per-environment value — `false` only in local / ci / dast, where seeing the raw SQL arguments is the point while debugging a query, a failing test, or a scan finding; `true` from `dev` onward so real payloads never reach the trace backend. Never align the upper environments down to the local value|
-|OBS_TARGET_STATUS_CODES|Target status codes for tracing|csv|400,401,403,404,405,409,422,429,500,501,503|For error monitoring. Per-environment value — the set narrows monotonically as the environment gets closer to production, so a mismatch between files is the intent rather than a propagation miss. `local` / `ci` / `dast` monitor the full set for development and test visibility; `dev` / `stg` drop `429`; `prd` additionally drops `403` / `404` / `405`, keeping production monitoring on server-side and contract failures rather than on client-driven noise that dominates at production traffic volume. A lower environment never monitors a code its upper environment ignores. `TestEnvTargetStatusCodesPolicy` (`internal/architest`) enforces the policy, so adding a code to some env files but not others fails the build; excluding a new code from an environment on purpose requires updating the policy declaration in that test as well|
+|OBS_TRACES_EXPORTER|trace の OTLP exporter（`otlp` で有効化／空・`none` で無効）|string|otlp|空でトレース無効（軽量構成）。Per-environment value — compose の可観測性スタックを持つのは `local` だけで、他の環境は collector を結線するまで空にする|
+|OBS_METRICS_EXPORTER|metric の OTLP exporter（`otlp` で有効化／空・`none` で無効）|string|otlp|空でメトリクス無効（軽量構成）。Per-environment value — compose の可観測性スタックを持つのは `local` だけで、他の環境は collector を結線するまで空にする|
+|OBS_LOGS_EXPORTER|log の OTLP exporter（`otlp` で有効化／空・`none` で無効）|string|otlp|空でログ送出無効（zap は stdout のみ）。Per-environment value — compose の可観測性スタックを持つのは `local` だけで、他の環境は collector を結線するまで空にする|
+|OBS_OTLP_PROTOCOL|OTLP プロトコル（`http/protobuf` / `grpc`）|string|http/protobuf|Code default `http/protobuf`|
+|OBS_MASKED_DB_QUERY_ARGS|DBパラメータマスク|bool|false|セキュリティ重要。Per-environment value — local / ci / dast だけ `false`。クエリやテスト失敗、スキャン結果の調査では生の SQL 引数が見えること自体が目的のため。`dev` 以降は `true` とし、実データがトレースバックエンドへ届かないようにする。上位環境をローカル側の値に揃えてはならない|
+|OBS_TARGET_STATUS_CODES|トレース対象ステータス|csv|400,401,403,404,405,409,422,429,500,501,503|エラー監視用。Per-environment value — 本番に近い環境ほど単調に絞り込むため、ファイル間の不一致は伝播漏れではなく意図である。`local` / `ci` / `dast` は開発・テストでの可視性のため全件を監視し、`dev` / `stg` は `429` を落とし、`prd` はさらに `403` / `404` / `405` を落として、本番の監視をサーバー側の失敗と契約違反に寄せる（本番規模ではクライアント起因のノイズが支配的になるため）。下位の環境が上位の環境の無視するコードを監視することはない。ポリシーは `TestEnvTargetStatusCodesPolicy`（`internal/architest`）が機械検証しており、一部の env ファイルにだけコードを足せばビルドが落ちる。特定環境から意図的に外す場合は、同テストのポリシー宣言も更新する必要がある|
 
 ### Database
 
-|Variable Name|Description|Type|Example|Notes|
+|変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|DB_DRIVER|DB driver|string|pgx|Code default `pgx`. Recommended fixed|
-|DB_HOST|DB host|string|database|docker service name (change per environment). Per-environment value — the compose service name in `local`, `localhost` in `ci` / `dast`. Injected at deploy time for `dev` / `stg` / `prd`|
-|DB_PORT|DB port|int|5432|Injected at deploy time for `dev` / `stg` / `prd`|
-|DB_USER|User|string|postgres|Secret management recommended. Injected at deploy time for `dev` / `stg` / `prd`|
-|DB_PASSWORD|Password|string|postgres-password|Secret management required. Injected at deploy time for `dev` / `stg` / `prd`|
-|DB_NAME|DB name|string|local|Secret management recommended. Per-environment value — `local` uses the development database, and `ci` / `dast` the test database. Injected at deploy time for `dev` / `stg` / `prd`|
-|DB_SSL_MODE|SSL setting|string|disable|require recommended in production. Injected at deploy time for `dev` / `stg` / `prd`|
-|DB_PING_TIMEOUT|Connection check timeout|duration|5s|Per-environment value — `5s` in local, where the database sits on the same compose service so a slow ping means a broken startup and failing fast surfaces it; `30s` in `ci` / `dast`, where many test processes create a pool against one instance at the same moment, so a connect that is merely queued behind the others must not be read as a database that is down — the value is a deliberate margin over that contention, not a budget derived from any other timeout; `10s` from `dev` onward, where a managed database is reached over the network and a transient delay is expected|
-|DB_SLOW_QUERY_WARN_THRESHOLD|Slow query warning threshold|duration|500ms|Code default `500ms`. Integrated with observability|
-|DB_STATEMENT_TIMEOUT|Per-statement execution timeout (`statement_timeout`)|duration|30s|Code default `30s`. SQL-level backstop for queries that ignore ctx; 0 disables|
-|DB_LOCK_TIMEOUT|Lock acquisition wait timeout (`lock_timeout`)|duration|10s|Code default `10s`. Backstop against long lock waits; 0 disables|
-|DB_TX_MAX_RETRIES|Max tx retry attempts on serialization failure / deadlock|int|3|Code default `3`. 0 disables retry (single attempt)|
-|DB_TX_RETRY_BASE_BACKOFF|Initial backoff for tx retry|duration|5ms|Code default `5ms`. Exponential base (×2)|
-|DB_TX_RETRY_MAX_BACKOFF|Max backoff for tx retry|duration|100ms|Code default `100ms`. Upper bound per attempt|
+|DB_DRIVER|DBドライバ|string|pgx|Code default `pgx`。固定推奨|
+|DB_HOST|DBホスト|string|database|docker service名（環境ごとに変更）。Per-environment value — `local` は compose のサービス名、`ci` / `dast` は `localhost`。Injected at deploy time — `dev` / `stg` / `prd` はデプロイ時に注入|
+|DB_PORT|DBポート|int|5432|Injected at deploy time — `dev` / `stg` / `prd` はデプロイ時に注入|
+|DB_USER|ユーザー|string|postgres|シークレット管理推奨。Injected at deploy time — `dev` / `stg` / `prd` はデプロイ時に注入|
+|DB_PASSWORD|パスワード|string|postgres-password|シークレット管理必須。Injected at deploy time — `dev` / `stg` / `prd` はデプロイ時に注入|
+|DB_NAME|DB名|string|local|シークレット管理推奨。Per-environment value — `local` は開発用、`ci` / `dast` はテスト用のデータベースを指す。Injected at deploy time — `dev` / `stg` / `prd` はデプロイ時に注入|
+|DB_SSL_MODE|SSL設定|string|disable|本番はrequire推奨。Injected at deploy time — `dev` / `stg` / `prd` はデプロイ時に注入|
+|DB_PING_TIMEOUT|接続確認タイムアウト|duration|5s|Per-environment value — `local` は DB が同一の compose サービスにあり、ping が遅いことは起動不全を意味するため、早く落として顕在化させる `5s`。`ci` / `dast` は 1 つのインスタンスへ多数のテストプロセスが同時にプールを張るため、順番待ちしているだけの接続を「DB が落ちている」と読み違えないよう、その競合を吸収するマージンとして意図的に置いた `30s`（他のタイムアウトから導出した値ではない）。`dev` 以降はネットワーク越しのマネージド DB で一時的な遅延がありうるため `10s`|
+|DB_SLOW_QUERY_WARN_THRESHOLD|遅延クエリ警告閾値|duration|500ms|Code default `500ms`。observability連携|
+|DB_STATEMENT_TIMEOUT|SQL 文ごとの実行時間上限（`statement_timeout`）|duration|30s|Code default `30s`。ctx を無視する query への SQL 層 backstop。0 で無効|
+|DB_LOCK_TIMEOUT|ロック獲得待ちの上限（`lock_timeout`）|duration|10s|Code default `10s`。長時間ロック待ちへの backstop。0 で無効|
+|DB_TX_MAX_RETRIES|serialization failure / deadlock 時の tx リトライ最大試行回数|int|3|Code default `3`。0 でリトライ無効（単発実行）|
+|DB_TX_RETRY_BASE_BACKOFF|tx リトライ backoff の初期値|duration|5ms|Code default `5ms`。指数 backoff の基準値（×2）|
+|DB_TX_RETRY_MAX_BACKOFF|tx リトライ backoff の上限値|duration|100ms|Code default `100ms`。1 試行あたりの上限|
 
 ### Database Connection Pool
 
-|Variable Name|Description|Type|Example|Notes|
+|変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|DBCONN_MAX_CONNS|Maximum connections|int|10|Code default `10`|
-|DBCONN_MIN_CONNS|Minimum connections|int|5|Code default `5`. Per-environment value — pgxpool opens this many connections at once right after the pool is created, so `ci` / `dast` override it to `0` while everywhere else keeps the default: tests do not need a pre-warmed pool, and with test processes running in parallel that burst is load on the instance and nothing else|
-|DBCONN_MAX_LIFETIME|Connection lifetime|duration|30m|Code default `30m`|
-|DBCONN_MAX_IDLE_TIME|Idle time|duration|10m|Code default `10m`|
+|DBCONN_MAX_CONNS|最大接続数|int|10|Code default `10`|
+|DBCONN_MIN_CONNS|最小接続数|int|5|Code default `5`。Per-environment value — pgxpool はプール生成の直後にこの本数の接続確立を一斉に走らせるため、`ci` / `dast` だけ `0` へ上書きし他は既定値のまま。テストは事前に温めたプールを必要とせず、プロセスが並列に走る状況ではその一斉確立はインスタンスへの負荷にしかならない|
+|DBCONN_MAX_LIFETIME|接続寿命|duration|30m|Code default `30m`|
+|DBCONN_MAX_IDLE_TIME|アイドル時間|duration|10m|Code default `10m`|
 
 ### Security
 
-|Variable Name|Description|Type|Example|Notes|
+|変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|SECURITY_ALLOWED_ORIGINS|CORS allow|csv|`http://localhost:3000,http://localhost:8000`|Per-environment value — the frontend origin of each environment|
-|SECURITY_CIDR|Allowed IP range|string|127.0.0.0/8||
+|SECURITY_ALLOWED_ORIGINS|CORS許可|csv|`http://localhost:3000,http://localhost:8000`|Per-environment value — 各環境のフロントエンド origin|
+|SECURITY_CIDR|許可IPレンジ|string|127.0.0.0/8||
 |SECURITY_CONTENT_TYPE_NOSNIFF|X-Content-Type-Options|string|nosniff||
-|SECURITY_X_FRAME_OPTIONS|Clickjacking protection|string|DENY||
-|SECURITY_HSTS_MAX_AGE|HSTS duration|duration|0|Per-environment value — `0` disables HSTS in local / ci / dast because they serve plain http, and a browser that once cached the header would refuse to load them; `8760h` (1 year) from `dev` onward, where TLS terminates in front. Never align the upper environments down to the local value — that drops HSTS in production|
-|SECURITY_HSTS_EXCLUDE_SUBDOMAINS|Exclude subdomains|bool|false||
-|SECURITY_HSTS_PRELOAD_ENABLED|Enable preload|bool|false||
-|SECURITY_REFERRER_POLICY|Referrer control|string|no-referrer||
-|SECURITY_CROSS_ORIGIN_RESOURCE_POLICY|Cross-Origin-Resource-Policy|string|same-origin|Empty means the header is not sent. `same-origin` is safe alongside CORS: the policy is only checked for `no-cors` requests, so a CORS-mode fetch from an allowed origin is unaffected|
+|SECURITY_X_FRAME_OPTIONS|clickjacking対策|string|DENY||
+|SECURITY_HSTS_MAX_AGE|HSTS期間|duration|0|Per-environment value — local / ci / dast は平文 http で提供するため `0` で HSTS を無効化する（一度ヘッダをキャッシュしたブラウザは以降ロードを拒否するため）。`dev` 以降は前段で TLS を終端するため `8760h`（1 年）。上位環境をローカル側の値に揃えてはならない（本番の HSTS が消える）|
+|SECURITY_HSTS_EXCLUDE_SUBDOMAINS|サブドメイン除外|bool|false||
+|SECURITY_HSTS_PRELOAD_ENABLED|preload有効|bool|false||
+|SECURITY_REFERRER_POLICY|referrer制御|string|no-referrer||
+|SECURITY_CROSS_ORIGIN_RESOURCE_POLICY|Cross-Origin-Resource-Policy|string|same-origin|空ならヘッダーを送出しません。`same-origin` は CORS と両立します（このポリシーが検査されるのは `no-cors` リクエストのみで、許可オリジンからの CORS モードの fetch は影響を受けません）|
 
 ### Cookie
 
-|Variable Name|Description|Type|Example|Notes|
+|変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|SECURE_COOKIE_SECURE|HTTPS only|bool|true|Required in production|
-|SECURE_COOKIE_SAME_SITE|SameSite setting|string|Strict||
-|SECURE_COOKIE_DOMAIN|Cookie domain|string|localhost|Per-environment value — the cookie domain of each environment|
+|SECURE_COOKIE_SECURE|HTTPS限定|bool|true|本番必須|
+|SECURE_COOKIE_SAME_SITE|SameSite設定|string|Strict||
+|SECURE_COOKIE_DOMAIN|Cookieドメイン|string|localhost|Per-environment value — 各環境の Cookie ドメイン|
 
 ### Worker
 
-Engine-core settings for the worker engine (broker-agnostic).
+worker engine の engine-core 設定（broker 非依存）。
 
-|Variable Name|Description|Type|Example|Notes|
+|変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|WORKER_CONCURRENCY|Max number of Handle executions running concurrently|int|4|Code default `4`|
-|WORKER_MAX_IN_FLIGHT|Max received-but-unsettled messages|int|8|Code default `8`|
-|WORKER_BATCH_SIZE|Max messages fetched per Receive|int|4|Code default `4`|
-|WORKER_EXTEND_INTERVAL|Interval for calling Extend (`<= 0` disables)|duration|0s|Code default `0s`|
-|WORKER_DRAIN_TIMEOUT|Upper bound for waiting on in-flight completion at shutdown|duration|30s|Code default `30s`|
-|WORKER_RECEIVE_COUNT_WARN_THRESHOLD|Redelivery-count warning threshold (`<= 0` disables)|int|5|Code default `5`|
-|WORKER_CIRCUIT_FAILURE_THRESHOLD|Consecutive failures that open the circuit (`<= 0` disables)|int|10|Code default `10`|
-|WORKER_CIRCUIT_OPEN_BACKOFF_INITIAL|Initial cooldown while the circuit is Open|duration|1s|Code default `1s`|
-|WORKER_CIRCUIT_OPEN_BACKOFF_MAX|Max cooldown while the circuit is Open|duration|30s|Code default `30s`|
-|WORKER_CIRCUIT_HALF_OPEN_PROBE|Max probes attempted in Half-open|int|1|Code default `1`|
-|WORKER_HEALTH_LISTEN_ADDR|Listen address for the liveness/readiness health listener|string|:8081|Code default `:8081`|
-|WORKER_PROGRESS_STALE_AFTER|Time after which readiness treats progress as stale|duration|60s|Code default `60s`|
-|WORKER_NACK_BACKOFF_INITIAL|Initial per-message redelivery backoff on retryable failure|duration|1s|Code default `1s`|
-|WORKER_NACK_BACKOFF_MAX|Upper bound for per-message redelivery backoff|duration|30s|Code default `30s`|
+|WORKER_CONCURRENCY|同時に Handle を実行する最大数|int|4|Code default `4`|
+|WORKER_MAX_IN_FLIGHT|受信済み・未確定の最大メッセージ数|int|8|Code default `8`|
+|WORKER_BATCH_SIZE|1 回の Receive で取得する最大件数|int|4|Code default `4`|
+|WORKER_EXTEND_INTERVAL|Extend を呼ぶ周期（`0` 以下で無効）|duration|0s|Code default `0s`|
+|WORKER_DRAIN_TIMEOUT|停止時に in-flight の完了を待つ上限|duration|30s|Code default `30s`|
+|WORKER_RECEIVE_COUNT_WARN_THRESHOLD|再配送回数の警告閾値（`0` 以下で無効）|int|5|Code default `5`|
+|WORKER_CIRCUIT_FAILURE_THRESHOLD|サーキットを Open にする連続失敗数（`0` 以下で無効）|int|10|Code default `10`|
+|WORKER_CIRCUIT_OPEN_BACKOFF_INITIAL|Open の初回 cooldown|duration|1s|Code default `1s`|
+|WORKER_CIRCUIT_OPEN_BACKOFF_MAX|Open の cooldown 上限|duration|30s|Code default `30s`|
+|WORKER_CIRCUIT_HALF_OPEN_PROBE|Half-open 時に試行する最大件数|int|1|Code default `1`|
+|WORKER_HEALTH_LISTEN_ADDR|liveness/readiness を公開する health listener の待ち受けアドレス|string|:8081|Code default `:8081`|
+|WORKER_PROGRESS_STALE_AFTER|readiness 判定で「進捗なし」とみなすまでの時間|duration|60s|Code default `60s`|
+|WORKER_NACK_BACKOFF_INITIAL|retryable 失敗時の per-message 再配送 backoff の初回待機|duration|1s|Code default `1s`|
+|WORKER_NACK_BACKOFF_MAX|per-message 再配送 backoff の上限|duration|30s|Code default `30s`|
 
 ### Consumer Queue
 
-Adapter settings for the broker a worker consumes from. They sit on their own axis rather than under
-`WORKER_*` because those are defined as engine-core and broker-agnostic; `OUTBOX_QUEUE_*` is the
-publishing end of the same pair, and this is the consuming end.
+worker が consume する broker の adapter 設定。`WORKER_*` は engine-core かつ broker 非依存と定めて
+いるため別の軸に置く。`OUTBOX_QUEUE_*` が同じ対の publish 端で、こちらが consume 端にあたる。
 
-Every value has a code default, so only the `worker` process reads them — `serve`, `outbox-relay`,
-and `job` do not build a consumer at all. Once a worker *is* registered, the wiring rejects an
-incomplete configuration at startup rather than starting a consumer that can never receive. That is
-also why `ci` / `dast` declare unreachable placeholder values: a test boots the worker's DI graph, and the
-startup check would otherwise fail there.
+全項目に code default があるため、これらを読むのは `worker` プロセスだけで、`serve` / `outbox-relay` /
+`job` は consumer をそもそも組み立てない。worker を登録した時点からは、不完全な設定を起動時に弾く
+（受信が一度も成立しない consumer を起動させないため）。`ci` / `dast` に疎通しないプレースホルダを置いて
+あるのはそのためで、worker の DI グラフを起動するテストが無ければ起動時検査で落ちる。
 
-|Variable Name|Description|Type|Example|Notes|
+|変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|CONSUMER_QUEUE_REGION|Region used for SigV4 signing|string|us-east-1|Code default empty. Required once a worker is wired. **Per-environment value**: set only in local, where the broker runs in compose|
-|CONSUMER_QUEUE_URL|Queue URL to consume from|string|`http://elasticmq:9324/000000000000/gobp-events`|Code default empty. Required once a worker is wired. Local queue names come from `docker/elasticmq/elasticmq.conf`. **Per-environment value**: set only in local, where the broker runs in compose|
-|CONSUMER_QUEUE_DLQ_URL|DLQ URL whose backlog is collected|string|`http://elasticmq:9324/000000000000/gobp-events-dlq`|Code default empty. Used only to read DLQ depth for metrics; the dead-letter path itself is the `FailureHandler` or the broker's redrive policy. Leave empty to skip DLQ depth collection|
-|CONSUMER_QUEUE_ACCESS_KEY_ID|Static credential access key ID|string|local-dummy-access-key|Code default empty. Empty (together with the secret) hands credential resolution to the SDK's default chain, which is how an IAM role is used. ElasticMQ does not verify signatures locally, so any dummy works there|
-|CONSUMER_QUEUE_SECRET_ACCESS_KEY|Static credential secret access key|string|local-dummy-secret-key|Code default empty. Must be set together with the access key ID — setting exactly one fails startup, because it reads as neither an explicit credential nor a hand-off to the chain|
-|CONSUMER_QUEUE_MAX_MESSAGES|Max messages fetched per receive|int|10|Code default `10`, which is SQS's own ceiling|
-|CONSUMER_QUEUE_WAIT_TIME_SECONDS|Long-poll wait seconds (0–20)|int|20|Code default `20`. The maximum minimises empty-poll round trips|
-|CONSUMER_QUEUE_VISIBILITY_TIMEOUT|Visibility timeout for a received message, in seconds|int|30|Code default `30`, matching the local `elasticmq.conf`. A handler that runs longer than this without `WORKER_EXTEND_INTERVAL` heartbeats gets its message redelivered|
+|CONSUMER_QUEUE_REGION|SigV4 署名に使うリージョン|string|us-east-1|Code default は空。worker を配線した時点から必須。**Per-environment value**: ブローカーが compose で動く local でのみ設定する|
+|CONSUMER_QUEUE_URL|consume 対象キューの URL|string|`http://elasticmq:9324/000000000000/gobp-events`|Code default は空。worker を配線した時点から必須。ローカルのキュー名は `docker/elasticmq/elasticmq.conf` 由来。**Per-environment value**: ブローカーが compose で動く local でのみ設定する|
+|CONSUMER_QUEUE_DLQ_URL|滞留量を収集する DLQ の URL|string|`http://elasticmq:9324/000000000000/gobp-events-dlq`|Code default は空。Permanent メッセージの退避先であり、滞留量の収集対象でもある。空にすると app 側の退避経路を持たず、broker の redrive policy に委ねる|
+|CONSUMER_QUEUE_ACCESS_KEY_ID|静的資格情報のアクセスキー ID|string|local-dummy-access-key|Code default は空。シークレットとあわせて空にすると SDK 既定の chain へ資格情報の解決を委ね、それが IAM ロールの使い方になる。ElasticMQ は署名を検証しないためローカルは任意のダミーでよい|
+|CONSUMER_QUEUE_SECRET_ACCESS_KEY|静的資格情報のシークレットアクセスキー|string|local-dummy-secret-key|Code default は空。アクセスキー ID とセットで設定すること — 片方だけの指定は起動時に落ちる。明示注入とも chain への委譲とも読めないため|
+|CONSUMER_QUEUE_MAX_MESSAGES|1 回の受信で取得する最大件数|int|10|Code default `10`。SQS 自身の上限|
+|CONSUMER_QUEUE_WAIT_TIME_SECONDS|long-poll の待機秒数（0〜20）|int|20|Code default `20`。上限にすると空ポーリングの往復が最も減る|
+|CONSUMER_QUEUE_VISIBILITY_TIMEOUT|受信メッセージの可視性タイムアウト秒数|int|30|Code default `30`。ローカルの `elasticmq.conf` と対。`WORKER_EXTEND_INTERVAL` のハートビート無しでこれを超える Handler は、メッセージを再配送される|
 
 ### Outbox
 
-Settings for the transactional outbox relay.
+transactional outbox relay の設定。
 
-|Variable Name|Description|Type|Example|Notes|
+|変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|OUTBOX_PUBLISHER|Publish target kind (`http` / `sqs`)|string|http|Code default `http`. An unknown value fails startup (fail-closed). The publish target is a per-deployment choice, so no env file pins it; a deployment that publishes to a queue supplies the value at run time|
-|OUTBOX_POLL_INTERVAL|Wait before the next poll after draining pending rows|duration|1s|Code default `1s`|
-|OUTBOX_ERROR_BACKOFF|Wait after a relay batch returns an error|duration|5s|Code default `5s`|
-|OUTBOX_BATCH_SIZE|Pending rows claimed per poll|int|100|Code default `100`|
-|OUTBOX_QUEUE_REGION|Region used for SigV4 signing|string|us-east-1|Code default empty. Required when `OUTBOX_PUBLISHER=sqs`. **Per-environment value**: set only in local, where the broker runs in compose. Other environments leave it empty because the queue is a per-deployment resource|
-|OUTBOX_QUEUE_URL|Destination queue URL|string|`http://elasticmq:9324/000000000000/gobp-events`|Code default empty. Required when `OUTBOX_PUBLISHER=sqs`. Local queue names come from `docker/elasticmq/elasticmq.conf`. **Per-environment value**: set only in local, where the broker runs in compose. Other environments leave it empty because the queue is a per-deployment resource|
-|OUTBOX_QUEUE_ACCESS_KEY_ID|Static credential access key ID|string|local-dummy-access-key|Code default empty. Empty (together with the secret) hands credential resolution to the SDK's default chain, which is how an IAM role is used. ElasticMQ does not verify signatures locally, so any dummy works there|
-|OUTBOX_QUEUE_SECRET_ACCESS_KEY|Static credential secret access key|string|local-dummy-secret-key|Code default empty. Must be set together with the access key ID — setting exactly one fails startup, because it reads as neither an explicit credential nor a hand-off to the chain|
+|OUTBOX_PUBLISHER|publish 先の種別（`http` / `sqs`）|string|http|Code default `http`。未知の値は起動エラー（fail-closed）。publish 先はデプロイ先ごとの判断なのでどの env ファイルも値を固定せず、キューへ publish するデプロイが実行時に与える|
+|OUTBOX_POLL_INTERVAL|pending を捌き切った後、次 poll まで待機する時間|duration|1s|Code default `1s`|
+|OUTBOX_ERROR_BACKOFF|relay バッチがエラーを返した後に待機する時間|duration|5s|Code default `5s`|
+|OUTBOX_BATCH_SIZE|1 回の poll で claim する pending 行数|int|100|Code default `100`|
+|OUTBOX_QUEUE_REGION|SigV4 署名に用いるリージョン|string|us-east-1|Code default は空。`OUTBOX_PUBLISHER=sqs` のとき必須。**Per-environment value**: ブローカーが compose で動く local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま|
+|OUTBOX_QUEUE_URL|publish 先キューの URL|string|`http://elasticmq:9324/000000000000/gobp-events`|Code default は空。`OUTBOX_PUBLISHER=sqs` のとき必須。ローカルのキュー名は `docker/elasticmq/elasticmq.conf` と対。**Per-environment value**: ブローカーが compose で動く local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま|
+|OUTBOX_QUEUE_ACCESS_KEY_ID|静的資格情報のアクセスキー ID|string|local-dummy-access-key|Code default は空。シークレットとあわせて空にすると SDK 既定の chain へ資格情報の解決を委ね、それが IAM ロールの使い方になる。ElasticMQ は署名を検証しないためローカルは任意のダミーでよい|
+|OUTBOX_QUEUE_SECRET_ACCESS_KEY|静的資格情報のシークレットアクセスキー|string|local-dummy-secret-key|Code default は空。アクセスキー ID とセットで設定すること — 片方だけの指定は起動時に落ちる。明示注入とも chain への委譲とも読めないため|
 
 ### Auth (JWT)
 
-Access-token (JWT) verification settings. CI / test wire a non-signature stub; `local` / `dast` / `development` wire the real JWKS-backed JWT authenticator (`local` and `dast` verify the mock auth server) and fail closed at startup when `AUTH_ISSUER` / `AUTH_AUDIENCE` are missing; the wiring decision lives in DI (`internal/di/module/core/auth.go`). `ENDPOINT_JWKS` is an override — when empty, the `jwks_uri` is derived from `AUTH_ISSUER` via OIDC discovery (issuer strict-match + https + same-origin; `local` / `dast` allow plain http to the mock provider). The JWKS / discovery fetch goes through the `httpclient` substrate, so its HTTP timeout / retry / circuit breaker / budget come from the `jwks` downstream profile (`NewDownstreamProfile`), not an env var; that profile also blocks private-network SSRF outside `local` / `ci` / `test` / `dast`.
+access token（JWT）検証の設定。CI / test は署名検証なしのスタブを配線し、`local` / `dast` / `development` は JWKS backed の実 JWT authenticator を配線する（`local` と `dast` は mock 認証サーバーを検証）。後者は `AUTH_ISSUER` / `AUTH_AUDIENCE` が欠けていると起動時に fail-closed になる。配線判断は DI（`internal/di/module/core/auth.go`）が担う。`ENDPOINT_JWKS` は override で、空の場合は `AUTH_ISSUER` から OIDC discovery 経由で `jwks_uri` を導出する（issuer 厳密一致 + https + 同一オリジン。`local` / `dast` は mock provider への平文 http を許容）。JWKS / discovery 取得は `httpclient` substrate を通すため、HTTP タイムアウト / リトライ / circuit breaker / budget は `jwks` downstream プロファイル（`NewDownstreamProfile`）由来で、env 変数では持たない。同プロファイルは `local` / `ci` / `test` / `dast` 以外では private 網宛て SSRF も遮断する。
 
-|Variable Name|Description|Type|Example|Notes|
+|変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|AUTH_ISSUER|Expected `iss` claim value (also the OIDC issuer)|string|`http://localhost:2010/default`|Code default empty. Per-environment value — `local` / `ci` / `dast` point at the mock auth server, and every deploy environment keeps the empty default until it wires the JWT authenticator. `db-seed` also expands it into the identity seed, so an environment that seeds needs it even when it stubs authentication (CI)|
-|AUTH_AUDIENCE|Expected `aud` claim value|string|go-boilerplate-api|Code default empty. Required together with the issuer. Per-environment value — only `local` / `dast` declare the mock audience; everywhere else keeps the empty default until the authenticator is wired|
-|AUTH_ALLOWED_ALGORITHMS|Allowlist of signing algorithms (comma-separated, asymmetric only)|csv|RS256|Code default `RS256`. `none` / symmetric algorithms are always rejected|
-|AUTH_CLOCK_SKEW|Clock-skew tolerance for `exp` / `nbf`|duration|60s|Code default `60s`|
-|AUTH_JWKS_CACHE_TTL|Cache lifetime for a fetched JWKS|duration|1h|Code default `1h`|
-|AUTH_JWKS_DISCOVERY_TTL|Cache lifetime for the OIDC discovery document (separate axis from the key cache)|duration|24h|Code default `24h`. Only used when the jwks_uri is derived via discovery|
-|AUTH_JWKS_UNKNOWN_KID_COOLDOWN|Minimum interval before re-fetching JWKS on an unknown `kid` (DoS throttle)|duration|60s|Code default `60s`|
+|AUTH_ISSUER|検証する `iss` クレームの期待値（OIDC issuer 兼用）|string|`http://localhost:2010/default`|Code default は空。Per-environment value — `local` / `ci` / `dast` は mock auth server を指し、deploy 環境は JWT authenticator を配線するまで既定の空のまま。`db-seed` が identity の seed へ展開するため、認証を stub する環境（CI）でも seed するなら必要|
+|AUTH_AUDIENCE|検証する `aud` クレームの期待値|string|go-boilerplate-api|Code default は空。issuer と対で必須。Per-environment value — mock の audience を宣言するのは `local` / `dast` だけで、他は authenticator を配線するまで既定の空のまま|
+|AUTH_ALLOWED_ALGORITHMS|許可する署名アルゴリズムの allowlist（カンマ区切り・非対称のみ）|csv|RS256|Code default `RS256`。`none` / 対称鍵は常に拒否|
+|AUTH_CLOCK_SKEW|`exp` / `nbf` 検証のクロックずれ許容幅|duration|60s|Code default `60s`|
+|AUTH_JWKS_CACHE_TTL|取得した JWKS をキャッシュする期間|duration|1h|Code default `1h`|
+|AUTH_JWKS_DISCOVERY_TTL|OIDC discovery 文書をキャッシュする期間（鍵キャッシュとは別軸）|duration|24h|Code default `24h`。jwks_uri を discovery で導出する場合のみ使用|
+|AUTH_JWKS_UNKNOWN_KID_COOLDOWN|未知 `kid` での JWKS 再取得の最小間隔（DoS 抑止）|duration|60s|Code default `60s`|
 
 ### Object Storage
 
-S3-compatible object storage for uploaded assets. The usecase depends on the vendor-neutral `objectstorage.Storage` boundary; the infrastructure implementation is an S3 adapter (AWS SDK v2 S3), so `local` connects to a Garage container while deploy environments target AWS S3 by leaving `ENDPOINT_OBJECT_STORAGE` empty. The env names stay vendor-neutral even though the adapter is S3. Values are declared per environment (no code defaults); credentials are injected at deploy time.
+アップロード資産用の S3 互換オブジェクトストレージ。usecase は vendor 中立の `objectstorage.Storage` 境界に依存し、infrastructure 実装は S3 アダプタ（AWS SDK v2 S3）。`local` は Garage コンテナへ接続し、deploy 環境は `ENDPOINT_OBJECT_STORAGE` を空にして AWS S3 を対象にする。アダプタは S3 だが env 名は vendor 中立に保つ。値は環境ごとに宣言（code default を持たない）し、資格情報はデプロイ時に注入する。
 
-|Variable Name|Description|Type|Example|Notes|
+|変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|OBJECT_STORAGE_REGION|Signing region|string|us-east-1|`required,notEmpty`. Per-environment value — the Garage sample region in local / ci / dast, the AWS region of the environment from `dev` onward|
-|OBJECT_STORAGE_BUCKET|Bucket that stores objects|string|gobp-local|`required,notEmpty`. Per-environment value — one bucket per environment|
-|OBJECT_STORAGE_ACCESS_KEY_ID|Static-credential access key ID|string|gobp-local-access-key|Code default empty. Empty (together with the secret) hands credential resolution to the SDK's default chain, which is how an IAM role is used — a role-based deployment injects nothing here. Secret management required when set explicitly. Example is a placeholder: `local` uses a fixed Garage credential (`GK` + 24 hex) held in `env/.env`|
-|OBJECT_STORAGE_SECRET_ACCESS_KEY|Static-credential secret access key|string|gobp-local-secret-key|Code default empty. Must be set together with the access key ID — setting exactly one fails startup, because it reads as neither an explicit credential nor a hand-off to the chain. Example is a placeholder: `local` uses a fixed Garage credential (64 hex) held in `env/.env`, and copying it here would add a second entry to `.gitleaksignore`|
-|OBJECT_STORAGE_USE_PATH_STYLE|Use path-style addressing (Garage / MinIO require true; AWS S3 uses false)|bool|true|`required`. Per-environment value — `true` in local / ci / dast where Garage requires path-style addressing, `false` from `dev` onward for AWS S3|
-|OBJECT_STORAGE_MAX_UPLOAD_BYTES|Maximum accepted upload size in bytes|int|5242880|`required,notEmpty`. 5 MiB in the sample. Must stay below the global `SERVER_BODY_LIMIT_MB` (bytes, decimal) minus multipart overhead, otherwise the global body limit rejects first and this check never fires. Enforced at server startup by `config.ValidateUploadBodyLimit`|
+|OBJECT_STORAGE_REGION|署名リージョン|string|us-east-1|`required,notEmpty`。Per-environment value — local / ci / dast は Garage 用のサンプルリージョン、`dev` 以降は各環境の AWS リージョン|
+|OBJECT_STORAGE_BUCKET|オブジェクト格納先バケット|string|gobp-local|`required,notEmpty`。Per-environment value — 環境ごとに 1 バケット|
+|OBJECT_STORAGE_ACCESS_KEY_ID|静的資格情報のアクセスキー ID|string|gobp-local-access-key|Code default は空。シークレットとあわせて空にすると SDK 既定の chain へ資格情報の解決を委ね、それが IAM ロールの使い方になる — ロール運用のデプロイはここへ何も注入しない。明示的に設定する場合はシークレット管理必須。例欄はプレースホルダ: `local` は `env/.env` が持つ Garage の固定資格情報（`GK` + 24 hex）を使う|
+|OBJECT_STORAGE_SECRET_ACCESS_KEY|静的資格情報のシークレットアクセスキー|string|gobp-local-secret-key|Code default は空。アクセスキー ID とセットで設定すること — 片方だけの指定は起動時に落ちる。明示注入とも chain への委譲とも読めないため。例欄はプレースホルダ: `local` は `env/.env` が持つ Garage の固定資格情報（64 hex）を使い、README へ複製すると `.gitleaksignore` の登録がもう 1 件増える|
+|OBJECT_STORAGE_USE_PATH_STYLE|path-style アドレッシング（Garage / MinIO は true、AWS S3 は false）|bool|true|`required`。Per-environment value — local / ci / dast は Garage が path-style を要求するため `true`、`dev` 以降は AWS S3 のため `false`|
+|OBJECT_STORAGE_MAX_UPLOAD_BYTES|受理する最大アップロードサイズ（バイト）|int|5242880|`required,notEmpty`。サンプルは 5 MiB。グローバルな `SERVER_BODY_LIMIT_MB`（バイト・10進）から multipart オーバーヘッドを引いた値より小さく保つこと。上回るとグローバルの body limit が先に拒否し、この判定が発火しない。サーバー起動時に `config.ValidateUploadBodyLimit` が強制する|
 
-Delivery is separate from these variables: the API returns only the object key (`imagePath`) and never a full URL, so the frontend composes `<delivery origin>/<object key>`. There is therefore no delivery-origin variable on this side — the frontend owns it (`http://gobp-local.web.garage.localhost:3902` for `local`, the CDN domain in deploy environments). See [`docker/README.md`](../docker/README.md) for how the local delivery endpoint is opened for anonymous read.
+配信はこれらの変数の管轄外です。API はオブジェクトキー（`imagePath`）だけを返しフル URL を返さないため、フロントが `<配信オリジン>/<オブジェクトキー>` を組み立てます。したがって配信オリジンの変数はこちら側に存在せず、フロントが持ちます（`local` は `http://gobp-local.web.garage.localhost:3902`、デプロイ環境では CDN のドメイン）。ローカルの配信エンドポイントを匿名 read で開く方法は [`docker/README.md`](../docker/README.md) を参照してください。
 
 ### Endpoint
 
-Where this deployment connects. "Where do we point" is an axis of its own — it changes per deployment while the behaviour of each subsystem does not — so the endpoints live here instead of inside the subsystem that dials them. All are `required` with an empty value allowed; what empty means differs per endpoint and is stated in Notes. A queue's `*_URL` is not here: it identifies a resource passed as an API parameter rather than a host we connect to, and `AUTH_ISSUER` is a claim to compare, not a destination.
+このデプロイの接続先です。「どこへ繋ぐか」は独立した軸で、デプロイごとに変わる一方で各サブシステムの振る舞いは変わりません。そのため、叩く側のサブシステム設定ではなくここにまとめます。すべて `required` ですが空文字を許容し、空が何を意味するかは接続先ごとに異なるため Notes に記します。キューの `*_URL` はここに置きません（接続先ではなく API 引数として渡すリソース識別子のため）。`AUTH_ISSUER` も突き合わせる値であって接続先ではありません。
 
-|Variable Name|Description|Type|Example|Notes|
+|変数名|説明|型|例|備考|
 |---|---|---|---|---|
-|ENDPOINT_OTLP|OTLP export endpoint URL|string|`http://observability:4318`|Used when an exporter is enabled. Per-environment value — the collector of each environment; empty where no exporter is enabled|
-|ENDPOINT_JWKS|JWKS endpoint URL override; when empty the `jwks_uri` is derived from `AUTH_ISSUER` via OIDC discovery|string|`http://mock_auth_server:4000/default/jwks`|Code default empty. Per-environment value — only `local` overrides it with the compose-internal service URL; everywhere else keeps the empty default and derives the `jwks_uri` from `AUTH_ISSUER` via OIDC discovery|
-|ENDPOINT_OBJECT_STORAGE|S3-compatible endpoint URL; empty means SDK default resolution (AWS S3)|string|`http://garage:3900`|`required` (empty allowed). Per-environment value — `local` points at the Garage compose service; every other environment leaves it empty so the SDK resolves AWS S3|
-|ENDPOINT_OUTBOX|Destination endpoint URL for relayed messages|string||Code default empty. Required when `OUTBOX_PUBLISHER=http`|
-|ENDPOINT_OUTBOX_QUEUE|SQS-compatible endpoint|string|`http://elasticmq:9324`|Code default empty. Empty defers to the SDK's default resolution (real AWS SQS). **Per-environment value**: set only in local, where the broker runs in compose. Other environments leave it empty because the queue is a per-deployment resource|
-|ENDPOINT_CONSUMER_QUEUE|SQS-compatible endpoint|string|`http://elasticmq:9324`|Code default empty. Empty defers to the SDK's default resolution (real AWS SQS). **Per-environment value**: set only in local, where the broker runs in compose. Other environments leave it empty because the queue is a per-deployment resource|
-|ENDPOINT_EXCHANGE_RATE|Base URL of the exchange-rate service|string||Sample API. Empty means the feature is not used, and the endpoint answers 503. **Per-environment value**: only `dast` points at the stub the scan starts, so the scan does not train itself to accept 5xx. Removed together with the sample API<!-- sample-api:line -->|
+|ENDPOINT_OTLP|OTLP 送出先エンドポイント URL|string|`http://observability:4318`|exporter 有効時に使用。Per-environment value — 各環境の collector。exporter が無効な環境では空|
+|ENDPOINT_JWKS|JWKS エンドポイント URL の override。空の場合は `AUTH_ISSUER` から OIDC discovery で `jwks_uri` を導出|string|`http://mock_auth_server:4000/default/jwks`|Code default は空。Per-environment value — compose 内部のサービス URL で上書きするのは `local` だけで、他は既定の空のまま `AUTH_ISSUER` から OIDC discovery で `jwks_uri` を導出する|
+|ENDPOINT_OBJECT_STORAGE|S3 互換エンドポイント URL。空は SDK 既定解決（AWS S3）|string|`http://garage:3900`|`required`（空を許容）。Per-environment value — `local` は Garage の compose サービスを指し、他の環境は SDK が AWS S3 を解決するよう空にする|
+|ENDPOINT_OUTBOX|メッセージの送信先エンドポイント URL|string||Code default は空。`OUTBOX_PUBLISHER=http` のとき必須|
+|ENDPOINT_OUTBOX_QUEUE|SQS 互換エンドポイント|string|`http://elasticmq:9324`|Code default は空。空なら SDK 既定の解決に委ねる（本番 AWS SQS 等）。**Per-environment value**: ブローカーが compose で動く local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま|
+|ENDPOINT_CONSUMER_QUEUE|SQS 互換エンドポイント|string|`http://elasticmq:9324`|Code default は空。空なら SDK 既定の解決（本番 AWS SQS）に委ねる。**Per-environment value**: ブローカーが compose で動く local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま|
+|ENDPOINT_EXCHANGE_RATE|為替レートサービスのベースURL|string||サンプルAPI。空はこの機能を使わないことを表し、当該エンドポイントは 503 を返します。**環境ごとの値**: 検査が立てる疑似サービスを指すのは `dast` だけで、これにより検査が 5xx を常態として学習しません。サンプルAPI削除時に一緒に消えます<!-- sample-api:line -->|
 
-## Notes
+## 補足
 
-- The Example column is a local value and never a deploy-ready one; see Conventions for what the column is defined to hold. Which keys an environment genuinely sets differently is recorded by the **Per-environment value** marker in the table, so read the marker rather than assuming a category of variables differs.
-- The `csv` type splits on `,` after trimming whitespace; do not embed commas inside individual values.
-- The `duration` type accepts Go `time.ParseDuration` syntax (`500ms`, `1h30m`); plain numbers are invalid.
-- When introducing a new subsystem section, keep the table column layout (`Variable Name | Description | Type | Example | Notes`) so the doc stays scannable.
-- Env files are embedded into the binary at build time (`embed.go`). `env/.env` is the local default and the single embed target; `env/.env.<env>` hold the per-environment sources. The Docker `builder` stage materializes the target via the `APP_ENV` build arg (`cp env/.env.${APP_ENV} env/.env`) before `go build`. Non-Docker flows (`go run` / `go test`) embed the committed local `env/.env`, so CI that needs another environment re-bakes it the same way (e.g. `cp env/.env.ci env/.env`). Runtime environment variables still win over embedded values.
-- Embedded-env provenance guard: because the local `env/.env` (`APP_ENV=local`) is the default embed target, forgetting to materialize it before a production build would silently bake local defaults into the binary. To catch this, config validation captures the embedded `APP_ENV` before the runtime-env merge and, when the effective `APP_MODE` is `production`, rejects a non-production provenance (deny-list: `local` / `ci` / `test` / `dast` / `dev` / empty). The check is deny-based, so a new environment label is tolerated by default, and `development` mode passes unconditionally (runtime injection is trusted there). The per-environment `APP_ENV` values (`local` / `ci` / `dast` / `dev` / `stg` / `prd`) are the source of truth; the `Env*` constants in `internal/config/constant.go` mirror them and must not diverge. The guard fires only when the runtime injects `APP_MODE=production`: a production deployment that fails to inject it leaves the effective mode at `development` and the guard silent, so always set `APP_MODE=production` in production runtimes.
+- 例欄はローカルの値であってデプロイにそのまま使える値ではありません。列の定義は「命名・型の規約」を参照。どのキーを環境ごとに違う値にしているかは表の **Per-environment value** マーカーが記録しているので、変数の種類から推測せずマーカーを読むこと
+- `csv` 型は `,` 区切りで空白トリム後に分割。値そのものに `,` を含めないこと
+- `duration` 型は Go `time.ParseDuration` 構文（`500ms`, `1h30m`）。素の数値は不可
+- 新規サブシステム節を作る際もテーブル列構成（`変数名 | 説明 | 型 | 例 | 備考`）を維持してスキャン性を保つこと
+- env ファイルはビルド時にバイナリへ埋め込まれる（`embed.go`）。`env/.env` がローカル既定かつ唯一の埋め込み対象で、`env/.env.<env>` は各環境のソース。Docker の `builder` ステージが `APP_ENV` ビルド引数で対象を材料化する（`go build` 前に `cp env/.env.${APP_ENV} env/.env`）。Docker 以外（`go run` / `go test`）はコミット済みの local `env/.env` を埋め込むため、別環境が必要な CI は同様に焼き直す（例: `cp env/.env.ci env/.env`）。実行時の環境変数は埋め込み値より優先される
+- 埋め込み env の素性ガード: ローカルの `env/.env`（`APP_ENV=local`）が既定の埋め込み対象であるため、本番ビルド前に材料化し忘れるとローカル既定が黙ってバイナリへ焼き込まれる。これを捕捉するため、config の検証はランタイム env のマージ前に埋め込み値の `APP_ENV` を確保し、実効 `APP_MODE` が `production` のときに非本番の素性を拒否する（deny-list: `local` / `ci` / `test` / `dast` / `dev` / 空）。deny 方式なので新しい環境ラベルは既定で許容され、`development` モードは無条件で通す（そこではランタイム注入を信頼する）。環境別の `APP_ENV` の値（`local` / `ci` / `dast` / `dev` / `stg` / `prd`）が正であり、`internal/config/constant.go` の `Env*` 定数はそれを写したもので乖離させてはならない。このガードはランタイムが `APP_MODE=production` を注入したときにのみ発火する。本番デプロイで注入し損ねると実効モードは `development` のままガードは沈黙するため、本番ランタイムでは必ず `APP_MODE=production` を設定すること

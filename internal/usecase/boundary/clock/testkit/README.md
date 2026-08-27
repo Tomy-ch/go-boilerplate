@@ -1,31 +1,31 @@
 # clock/testkit
 
-Test doubles for the `clock` boundary (`Clock` / `Sleeper`), so time-dependent
-logic (TTL, deadlines, retry / backoff) can be verified **deterministically**
-without real time or real sleeping.
+`clock` 境界（`Clock` / `Sleeper`）のテストダブルです。時刻依存のロジック
+（TTL・deadline・retry / backoff）を、実時間や実際の待機なしで **決定的に**
+検証できるようにします。
 
-## Mock helpers
+## モックヘルパー
 
-Thin constructors over the generated gomock mocks (`clock/mock`):
+生成済み gomock モック（`clock/mock`）を薄くラップしたコンストラクタです。
 
-- `NewMockClock(t, now) clock.Clock` — always returns `now` from `Now()` (call
-  count unconstrained).
-- `NewMockClockOnce(t, now) clock.Clock` — returns `now`, asserting `Now()` is
-  called exactly once.
-- `NewNoopSleeper(t) clock.Sleeper` — `Sleep` returns `nil` immediately without
-  waiting (call count unconstrained).
+- `NewMockClock(t, now) clock.Clock` — `Now()` が常に `now` を返します（呼び出し
+  回数は問いません）。
+- `NewMockClockOnce(t, now) clock.Clock` — `now` を返し、`Now()` がちょうど 1 回
+  呼ばれることを検証します。
+- `NewNoopSleeper(t) clock.Sleeper` — `Sleep` が待機せず即座に `nil` を返します
+  （呼び出し回数は問いません）。
 
 ## `StepClock`
 
-`NewStepClock(start, step) *StepClock` is a deterministic implementation of both
-`clock.Clock` and `clock.Sleeper` that advances the fake clock by a fixed `step`
-on every `Sleep`, regardless of the requested wait duration `d`. This decouples
-retry / deadline discipline from wall-clock time and from backoff jitter — even
-when jitter varies `d`, the clock advances by a constant amount.
+`NewStepClock(start, step) *StepClock` は `clock.Clock` と `clock.Sleeper` の
+両方を実装する決定的な実装で、要求された待機時間 `d` に関わらず `Sleep` のたびに
+fake clock を固定 `step` だけ進めます。これにより retry / deadline 規律を実時間や
+backoff の jitter から切り離せます。jitter で `d` がばらついても、時刻の進みは
+一定です。
 
-- `Now() time.Time` — returns the current fake time.
-- `Sleep(ctx, d) error` — never actually waits: if `ctx` is already
-  cancelled / expired it returns that error **without** advancing the clock;
-  otherwise it advances by `step` and returns `nil`.
+- `Now() time.Time` — 現在の fake 時刻を返します。
+- `Sleep(ctx, d) error` — 実際には待機しません。`ctx` が既にキャンセル /
+  期限切れの場合は時刻を進めず **その** エラーを返し、そうでなければ `step` だけ
+  進めて `nil` を返します。
 
-It is safe for concurrent use (guarded by a mutex).
+mutex で保護されており、並行利用は安全です。

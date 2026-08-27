@@ -1,261 +1,135 @@
-# Boilerplate-only Conventions
+# ボイラープレート限定の規約
 
-This file collects the statements in this repository whose premise holds only while it *is* the
-upstream boilerplate — that it is a template, that its readers instantiate it, that its sample feature
-set exists to be harvested and then removed. **Setup deletes this file whole** (see
-[setup-repository.md](setup-repository.md) Phase 16). Nothing written here is a rule for a project
-built from the template.
+このファイルは、本リポジトリの記述のうち「**上流のボイラープレートである間だけ**成り立つ前提」に立つものを集約したものである——すなわち、これがテンプレートであること、読者がそこからリポジトリを作成する側であること、サンプル機能群が収穫されたのち削除される前提であること。**セットアップはこのファイルをファイルごと削除する**（[setup-repository.md](setup-repository.md) Phase 16 を参照）。ここに書かれているものは、テンプレートから作られたプロジェクトの規約では**ない**。
 
-What survives setup is the general form of each rule, stated in the document that owns it:
-[`docs/adr/README.md`](../adr/README.md), [`docs/rules.md`](../rules.md), the layer READMEs. This
-file records only the deviations the upstream takes from those general forms — because a deviation
-stated in a surviving document becomes a lie the moment a repository is created from the template.
+セットアップ後に生き残るのは各規則の一般形であり、それはその規則を所有する文書——[`docs/adr/README.md`](../adr/README.md)、[`docs/rules.md`](../rules.md)、各レイヤーの README——に書かれている。このファイルが記録するのは、上流がその一般形から取る逸脱だけである。生き残る文書に書かれた逸脱は、テンプレートから作成された瞬間に嘘になるからである。
 
-## Why the deviations are collected here rather than marked in place
+## なぜ現場でマーキングせず、ここへ集約するのか
 
-Marking each deviation where it stands would have the removal script cutting regions out of prose
-that was written around them. What is removed is a region; what breaks is the text on either side
-of it, and every later edit near a marker is a fresh chance to break it unnoticed.
+逸脱をそれぞれの現場でマーキングすると、削除スクリプトは「その周りを前提に書かれた散文」から領域を切り出すことになる。除去されるのは領域だが、壊れるのはその前後の文であり、マーカー近傍への後日の追記はそのたびに気づかれず壊す機会になる。
 
-Collecting them into one file that is deleted whole has no such failure mode: the surviving
-documents never contained the premise, so nothing needs repairing after the cut. Only the pointers
-back to this file stay in place, and each is a single self-contained line carrying a
-`boilerplate-only:line` marker, so removing one cannot disturb the text around it.
+1 つのファイルへ集約してファイルごと削除すれば、この破綻経路は存在しない。生き残る文書はそもそも前提を含んでいないので、切除後に修復すべきものが無い。現場に残るのはこのファイルへのポインタだけであり、それぞれ `boilerplate-only:line` マーカーを持つ自己完結した 1 行なので、除去しても周囲の文を乱さない。
 
-## Marker convention
+## マーカー規約
 
-`boilerplate-only` is the one namespace for everything that stops being true when this repository is
-instantiated, and `make setup-remove-boilerplate-identity` is the one pass that resolves it (Phase 12 of
-[setup-repository.md](setup-repository.md)).
+`boilerplate-only` は、このリポジトリからリポジトリが作成された瞬間に真でなくなるものすべてを指す唯一の名前空間であり、それを解決する唯一のパスが `make setup-remove-boilerplate-identity`（[setup-repository.md](setup-repository.md) の Phase 12）である。
 
-| Marker | Placement | Effect |
+| マーカー | 置き方 | 効果 |
 | --- | --- | --- |
-| `boilerplate-only:line` | trailing comment on the line it applies to | that line is removed |
-| `boilerplate-only:begin` / `boilerplate-only:end` | own-line comments around a region | the region and both markers are removed |
-| `boilerplate-only:replace-begin` / `replace-with` / `replace-end` | own-line comments around two regions | the first region is removed and the second, written as commented-out lines, is uncommented in its place |
+| `boilerplate-only:line` | 対象行の行末コメント | その 1 行を除去する |
+| `boilerplate-only:begin` / `boilerplate-only:end` | 領域を挟む独立行のコメント | 領域と両マーカーを除去する |
+| `boilerplate-only:replace-begin` / `replace-with` / `replace-end` | 2 つの領域を挟む独立行のコメント | 前半の領域を除去し、コメントアウトで書かれた後半の領域をアンコメントして置き換える |
 
-Reach for `replace-*` when deleting the region would take a heading or a rule down with it — where
-the created repository needs *something* said, not nothing. In Markdown the commented-out lines take the form
-`<!-- = ... -->`; `# = ...` renders as a second top-level heading and fails markdownlint MD025, and
-`// = ...` renders as literal text.
+`replace-*` を使うのは、領域を消すと見出しや規則ごと落ちてしまう場所——作成先にも*何かは*述べられている必要がある場所——である。Markdown での退避行の形式は `<!-- = ... -->` のみ。`# = ...` は 2 つ目の最上位見出しとして描画され markdownlint MD025 に落ち、`// = ...` はその文字列がそのまま描画される。
 
-Comment form follows the existing `sample-api` markers — `<!-- ... -->` in Markdown, `//` or `#` in
-code — so the same scanner shape works. The two namespaces are **not** interchangeable and must not
-be stripped by one pass: they fire at different moments (`boilerplate-only` when the template is set
-up, `sample-api` when the sample feature set is removed), and a project may reasonably do one without
-the other.
+コメント形式は既存の `sample-api` マーカーに倣う（Markdown は `<!-- ... -->`、コードは `//` または `#`）ので、スキャナの形も同じで済む。ただし 2 つの名前空間は**互換ではなく**、同一パスで剥がしてはならない。発火する契機が違い（`boilerplate-only` はテンプレートのセットアップ時、`sample-api` はサンプル機能群の削除時）、作成先が片方だけを行うことは十分あり得る。
 
-The removal **scans the repository** rather than working from a list of files. A list is something a
-marker can be written outside of, and the failure is silent: the pass reports success, and the
-premise reaches the created repository with nothing to announce it. The only files exempt are dependency
-checkouts and generated output, declared in
-[`scripts/setup/remove-boilerplate-identity/targets.ts`](../../scripts/setup/remove-boilerplate-identity/targets.ts).
+除去は対象ファイルの一覧を持たず、**リポジトリを走査する**。一覧というものはその外側にマーカーを書けてしまい、しかもその失敗は無言である——パスは成功を報告し、前提は何も告げないまま作成先へ届く。除外されるのは依存の取得物と生成物だけで、[`scripts/setup/remove-boilerplate-identity/targets.ts`](../../scripts/setup/remove-boilerplate-identity/targets.ts) に宣言してある。
 
-## The premise
+## 前提
 
-> This is a **template** repository: downstream users instantiate it and need to understand *why* each
-> choice was made, and to *supersede* individual choices with their own without editing a shared
-> monolith.
+> これは **テンプレート** リポジトリである: 下流のユーザーはこれを基にリポジトリを作成し、各選択の *理由* を理解したうえで、共有モノリスを編集することなく個々の選択を *自分自身のもので上書き* する必要がある。
 
-Every deviation below rests on that sentence, and that sentence is false for the repository you are
-setting up.
+以下の逸脱はすべてこの一文の上に立っており、そしてこの一文は、あなたがセットアップしているリポジトリにとっては偽である。
 
-## ADR conventions that apply only upstream
+## 上流でのみ適用される ADR 規約
 
-The general regime — one immutable record per file, replaced by adding a *new* ADR rather than by
-editing the old one — is stated in [`docs/adr/README.md`](../adr/README.md) and is what a created repository
-inherits. While this repository is distributed as a boilerplate, it deviates as follows.
+一般の regime——1 ファイル = 1 つの不変な記録であり、古い記録を編集するのではなく *新しい* ADR を追加して置き換える——は [`docs/adr/README.md`](../adr/README.md) に書かれており、作成先が継承するのはそちらである。本リポジトリはボイラープレートとして配布される間、次のように逸脱する。
 
-### Amendment in place
+### その場での改訂
 
-An `accepted` ADR is amended **in place**: update `date`, keep `status: accepted`, and do not create
-a superseding ADR for what is still the same decision. What this repository ships is the current
-design, not the sequence of positions that produced it, and a project that must read three ADRs to
-learn one rule pays for history it did not live. When an amendment changes the conclusion, the
-position it replaces moves to Alternatives Considered with the reason it was dropped — nothing is
-discarded, it changes section.
+`accepted` な ADR は**その場で**改訂する: `date` を更新し、`status: accepted` を保ち、同じ決定であり続けるものに対して supersede する ADR を新設しない。本リポジトリが頒布するのは現在の設計であって、そこへ至った立場の系列ではない。1 つの規則を知るために 3 本の ADR を読まされる作成先は、自分が生きていない履歴の代金を払っている。改訂で結論が変わる場合、置き換えられた立場は却下理由とともに Alternatives Considered へ移す——捨てるのではなく、節が変わるだけである。
 
-**This deviation does not transfer.** In a project built from the template, an ADR records a
-decision that project actually took, and amending it in place destroys precisely the history
-[ADR-0000 (record-architecture-decisions)](../adr/0000-record-architecture-decisions.md) exists to keep.
+**この逸脱は継承されない。** テンプレートから作られたプロジェクトでは、ADR はそのプロジェクトが実際に取った決定の記録であり、それをその場で改訂することは [ADR-0000](../adr/0000-record-architecture-decisions.md) が保とうとしている履歴そのものを破壊する。
 
-### A new ADR versus a revision
+### 新しい ADR と改訂の区別
 
-A new ADR is for a decision that should be read independently of the one beside it, not for a
-revision of one. `superseded` stays in the lifecycle for a decision genuinely replaced rather than
-revised.
+新しい ADR は、隣の決定とは独立に読まれるべき決定のために書くものであって、ある決定の改訂のために書くものではない。`superseded` は、改訂ではなく本当に置き換えられた決定のためにライフサイクルへ残す。
 
-### Consolidation pass (authorised, one-off per harvest)
+### 統合パス（承認済み。収穫ごとに一度）
 
-This repository's sample feature set is developed, harvested, and then removed. Implementing a
-sample produces ADRs that are part architectural decision and part feature detail, and they
-accumulate at the tail of the numbering in discovery order — which is exactly what the ordering
-convention in [`docs/adr/README.md`](../adr/README.md) exists to prevent. A **consolidation pass may
-therefore merge, rewrite, and retire such ADRs**, feeding the architectural residue back into the
-ordered set and moving the feature content to `docs/spec/`.
+本リポジトリのサンプル機能群は、実装され、知見を収穫され、最後に削除される。サンプルの実装が生む ADR は、アーキテクチャ上の決定と機能の詳細が混ざったものになり、しかも発見順に番号の末尾へ積み上がる——それはまさに [`docs/adr/README.md`](../adr/README.md) の順序規約が防ぐために存在する状態である。したがって**統合パスはそうした ADR を統合・書き換え・退役させてよい**。アーキテクチャとしての残滓を順序付けられた集合へ戻し、機能の内容は `docs/spec/` へ移す。
 
-The pass is bounded: it applies only to ADRs produced by sample development, it is performed as one
-reviewed change, and every retired ADR's architectural content survives in the ADR that absorbed it
-— nothing is discarded, only relocated. A number freed by a retirement is never re-assigned to a
-different decision: after a consolidation the range is contiguous again, but no surviving ADR
-inherits a retired ADR's old number.
+範囲は限定される: 対象はサンプル開発が生んだ ADR に限り、レビューされる 1 つの変更としてまとめて行い、退役した ADR のアーキテクチャ上の内容は必ずそれを吸収した ADR に残る——捨てるのではなく置き場所を変えるだけである。退役で空いた番号を別の決定へ再割り当てすることはない。統合後は番号が再び連続するが、生き残った ADR が退役した ADR の旧番号を継承することはない。
 
-Outside a consolidation pass, an ADR that is still the same decision is amended in place per the
-convention above. What this exception adds is the authority to merge and retire files, which an
-amendment does not have.
+統合パス以外では、同じ決定であり続ける ADR は上記の改訂規約に従ってその場で改訂する。この例外が加えるのはファイルを統合・退役させる権限であり、それは改訂が持たないものである。
 
-**This deviation does not transfer** unless a created repository adopts a harvest cycle of its own, which is its
-own decision to take and to record.
+**この逸脱も継承されない。** 作成先が独自の収穫サイクルを持つのであれば話は別だが、それは作成先自身が取り、自身で記録すべき決定である。
 
-### Exclusion ADRs at setup
+### セットアップ時の exclusion ADR
 
-Exclusion ADRs carry a `setup-review` tag so the repository-setup flow can enumerate them, and a
-project may edit them directly at setup to establish its own baseline rather than superseding them. The
-instruction belongs to the created repository, so it lives in [setup-repository.md](setup-repository.md) Phase 13;
-it is named here only because the tag is a boilerplate-side device that means nothing once setup is
-done.
+exclusion ADR は `setup-review` タグを持ち、リポジトリセットアップフローがそれを列挙できるようにしてある。作成先はセットアップ時にそれらを直接編集し、supersede ではなく自分のベースラインを確立してよい。この指示は作成先のものなので実体は [setup-repository.md](setup-repository.md) Phase 13 にあり、ここに挙げるのは、このタグがセットアップ完了後には何の意味も持たないボイラープレート側の仕掛けだからである。
 
-## Arguments that rest on the sample feature set
+## サンプル機能群に乗っている論拠
 
-This repository ships a sample feature set that is developed, harvested, and then removed. Several
-statements elsewhere borrow their force from it. A created repository has no sample set, so what it inherits is the
-rule, never the illustration.
+本リポジトリはサンプル機能群を同梱し、実装し、知見を収穫し、最後に削除する。他所の記述のいくつかは、その存在から論拠を借りている。作成先にサンプル機能群は無いので、継承されるのは規則のほうであって、例示ではない。
 
-### Sample occupants kept to make a rule legible
+### 規則を読ませるために残しているサンプルの占有者
 
-The only provider in `internal/infrastructure/rdb/command_service/` belongs to the sample purchase
-feature, and it is the sole registration in the `command_service` sub-module of `persistenceModule`
-(`internal/di/module/persistence.go`). Removing the samples empties the sub-module and leaves
-[ADR-0032 (lightweight-cqrs)](../adr/0032-lightweight-cqrs.md)'s CommandService section describing an intended design
-with no occupant — which is the state a created repository starts from.
+`internal/infrastructure/rdb/command_service/` の唯一の provider はサンプルの purchase 機能に属し、`persistenceModule`（`internal/di/module/persistence.go`）の `command_service` サブモジュールを占める唯一の登録である。サンプルを撤去すればこのサブモジュールは空になり、[ADR-0032](../adr/0032-lightweight-cqrs.md) の CommandService 節は占有者のいない設計を記述するだけになる。それが作成先の出発点の状態である。
 
-The upstream keeps that occupant deliberately: the eligibility bar ADR-0032 (lightweight-cqrs) states (which writes
-deserve a CommandService) is only legible against a concrete case that meets it, so the sample
-carries the bar's reading.
+上流はこの占有者を意図的に残している。ADR-0032 が定める適格性のバー（どの書き込みが CommandService に値するか）は、それを満たす具体例と並べて初めて読めるためで、サンプルは教材としてバーの読み方を支えている。
 
-**This deviation does not transfer.** In a project built from the template, what goes into
-`command_service` is decided by that project's requirements. Zero occupants is not a defect, and
-"keep an implementation so the bar can be read" is not a reason that project holds.
+**この逸脱は継承されない。** テンプレートから作られたプロジェクトでは、`command_service` に何が入るかは自分の業務要件が決める。占有者がゼロであることは欠陥ではなく、「バーを読ませるために実装を置く」という上流の理由はそこでは成り立たない。
 
-### The sample API moves the authorization gate's boundary
+### サンプル API が認可ゲートの境界を動かす
 
-Which environments the environment gate in `internal/di` (`provideAuthorizer`) names is moved by the
-presence of the sample API. With the sample present it wires the allow-all authorizer for CI / test
-and the `user_roles` authorizer for local through production; after `make setup-remove-sample-api`
-the `user_roles` case is removed, leaving local / CI / test on allow-all and every production-like
-environment fail-closed until a real RBAC / policy adapter is wired.
+`internal/di` の環境ゲート（`provideAuthorizer`）が名前で挙げる環境は、サンプル API の有無で動く。サンプルがある状態では CI / test に allow-all、local から production までに `user_roles` authorizer が結線される。`make setup-remove-sample-api` の後は `user_roles` の case が除かれ、local / CI / test が allow-all、本番相当の環境は実際の RBAC / ポリシー adapter を結線するまで fail-closed になる。
 
-[`internal/di/README.md`](../../internal/di/README.md) keeps only the general form — adding or
-removing an authorization implementation moves the boundary, so read the `switch` — because that
-prose survives the sample removal. The concrete trigger lives here instead.
+[`internal/di/README.md`](../../internal/di/README.md) が残しているのは一般形——認可実装の増減で境界が動くので `switch` を読め——だけである。あの散文はサンプル撤去後もファイルに残るためで、具体的な引き金のほうをここへ置いている。
 
-**This deviation does not transfer.** A project built from this repository has no
-`make setup-remove-sample-api`, and the "with / without the sample" distinction disappears with it.
-What moves the boundary there is that project adding or dropping an authorization implementation,
-not a setup step.
+**この逸脱は継承されない。** ここから作られたプロジェクトには `make setup-remove-sample-api` が存在せず、「サンプルがある状態／無い状態」という区分自体が消える。境界を動かすのはそのプロジェクト自身が認可実装を足すか外すかであって、セットアップ手順ではない。
 
-### Broker-SDK isolation is checked by running the sample removal
+### ブローカー SDK の隔離をサンプル削除の実行で検査している
 
-[`internal/infrastructure/queue/sqs/README.md`](../../internal/infrastructure/queue/sqs/README.md)
-states the condition a created repository inherits: `github.com/aws/aws-sdk-go-v2/service/sqs` enters
-`go list -deps ./cmd/` only when wiring that selects the adapter is present. That is a claim about
-the link graph, and it holds however the repository is distributed.
+[`internal/infrastructure/queue/sqs/README.md`](../../internal/infrastructure/queue/sqs/README.md) が述べる条件——`github.com/aws/aws-sdk-go-v2/service/sqs` が `go list -deps ./cmd/` に現れるのは、このアダプターを選ぶ配線がある場合に限る——は作成先が継承する。これはリンクグラフについての主張であり、頒布形態によらず成り立つ。
 
-How the upstream *observes* it does not. Here the wiring that selects the adapter belongs to the
-removable sample set, so the condition is checked by running the sample removal and comparing the
-dependency graph on either side — a procedure `.github/workflows/sample-removal-check.yaml` repeats
-on every pull request.
+継承されないのは、上流がそれを**どう観測しているか**のほうである。ここではアダプターを選ぶ配線が撤去可能なサンプル集合に属しているため、条件はサンプル削除を実行して前後の依存グラフを突き合わせる形で検査される。`.github/workflows/sample-removal-check.yaml` が毎 pull request でこれを繰り返している。
 
-**This does not transfer.** A project built from the template has no sample set to remove and no
-pre-sample state to compare against. The condition survives; the removal was only how the upstream
-happened to watch it. Do not read the check as evidence that the invariant is about removal — it is
-about which wiring pulls the SDK in.
+**これは継承されない。** テンプレートから作られたプロジェクトには削除すべきサンプル集合も、突き合わせる撤去前の状態も無い。残るのは条件のほうで、削除は上流がたまたまそれを見張っていた手段にすぎない。この検査を根拠に「不変条件は削除についてのものだ」と読まないこと。それはどの配線が SDK を引き込むかについてのものである。
 
-## Arguments that rest on there being no adopter yet
+## 採用者がまだ存在しないことに乗っている論拠
 
-The remaining deviations share one shape: the upstream stops somewhere, and the reason it stops
-there is that the party who would settle the question does not exist yet. In a created repository that party
-exists, so the reason is gone and the stopping point is no longer justified by it.
+残りの逸脱は 1 つの形を共有している。上流はどこかで止まっており、そこで止まる理由は「その問いを決着させる当事者がまだ存在しない」ことである。作成先にはその当事者が居るので、理由は消え、止まる位置はもはやそれによって正当化されない。
 
-### Setup scripts: why the pure-module split is a rule, not a convention
+### セットアップスクリプト: 純粋モジュールへの切り出しが慣習でなく規則である理由
 
-[ADR-0082 (scripts-in-node-go)](../adr/0082-scripts-in-node-go.md) states the general form: every script keeps its
-decision logic in a pure module with a test suite next to it, because a gate whose failure mode is
-to inspect nothing and still exit `0` can be pinned by a type checker and a test and by nothing
-else. The one-time setup scripts under `scripts/setup/` are what turned that from a convention into
-a rule, and the argument is upstream-only.
+[ADR-0082](../adr/0082-scripts-in-node-go.md) が述べる一般形は「各スクリプトは判定ロジックを純粋なモジュールに置き、隣にテストを持つ。ゲートの壊れ方は『何も検査しないまま `0` で終了する』方向に出るので、それを固定できるのは型検査とテストだけである」。これを慣習から規則へ押し上げたのが `scripts/setup/` 配下の 1 回限りのスクリプト群であり、その論拠は上流でしか成立しない。
 
-When a replacement rule over-matches or misses a file type, the person who finds out is someone who
-cloned the repository minutes ago, holds no context to debug with, and is looking at their own
-project for the first time. Several of those scripts are never executed by CI at all, and every one
-of them rewrites that person's repository — a Go module path across every file in the tree, the
-LICENSE holder, the owner field of every CODEOWNERS rule.
+置換規則が過剰にマッチしたりファイル種別を取りこぼしたりしたとき、それに気づくのは数分前にリポジトリをクローンした人であり、デバッグの文脈を何も持たず、自分のプロジェクトを初めて眺めている場面である。何本かは CI から一度も実行されず、いずれもその人自身のリポジトリを書き換える——ツリー全体の Go モジュールパス、LICENSE の権利者、CODEOWNERS の全ルールの所有者欄。
 
-The same relation bounds what the tests are worth. The self-deleting setup tools take their tests
-with them, so those tests protect this repository's own CI rather than the one created from it.
+テストの価値の範囲も同じ関係で決まる。自消滅するセットアップツールはテストも道連れにするため、そのテストが守るのはこのリポジトリ自身の CI であって、そこから作られたリポジトリではない。
 
-**This premise does not transfer.** In a project built from the template the setup scripts have
-already run — there is no stranger holding no context, and no CI whose coverage stops at the moment
-of use. What survives is the general rule in ADR-0082 (scripts-in-node-go), which stands on the gate failure mode alone.
+**この前提は継承されない。** テンプレートから作られたプロジェクトではセットアップスクリプトは既に走り終えており、文脈を持たない他人も、使用の瞬間で切れる CI も存在しない。残るのは ADR-0082 の一般形であり、それはゲートの壊れ方だけで独立に立つ。
 
-### Why the domain Module rules stop at the mechanical floor
+### ドメインの Module 規則が機械的な下限で止まっている理由
 
-[`internal/domain/README.md`](../../internal/domain/README.md) states the general form: the naming
-and structure rules for a domain package are mechanical — they say what to call things, not what a
-division should reveal — and where a real domain is present those rules are the floor, with the
-model-revealing divisions added on top. That is what a created repository inherits.
+[`internal/domain/README.md`](../../internal/domain/README.md) が述べる一般形は「ドメインパッケージの命名・構造の規則は機械的である——何と呼ぶかは言うが、その分割が何を明かすべきかは言わない。実ドメインがある場面では、その規則は下限であって、モデルを明かす分割はその上に足される」である。作成先が継承するのはこの形。
 
-What the general form no longer says is *why the upstream stops at the floor*. A template has no
-real domain to have an insight about, so the only lines it can honestly draw are the ones the
-architecture implies. Evans expects a Module's boundaries and names to carry an insight about the
-domain and to evolve as the model does; this repository can supply neither, because the model it
-would evolve against does not exist here. The sample aggregates illustrate the mechanics; they are
-not a domain anyone reasoned about.
+一般形が言わなくなったのは、**上流がなぜ下限で止まっているのか**である。テンプレートには洞察を持つべき実ドメインが無いため、正直に引ける線はアーキテクチャが含意するものだけになる。Evans は Module の分割線と名前がドメインへの洞察を担い、構造がモデルと共に進化することを期待するが、本リポジトリはそのどちらも供給できない。進化の相手となるモデルがここに存在しないからである。サンプルの集約は機構の例示であって、誰かが考え抜いたドメインではない。
 
-**This premise does not transfer.** A project built from the template has a real domain, and the
-reason for stopping at the mechanical floor is gone with it. Do not read the upstream's silence
-about model-revealing divisions as a position that they are unnecessary — read it as the upstream
-having nothing to say them about.
+**この前提は継承されない。** テンプレートから作られたプロジェクトには実ドメインがあり、機械的な下限で止まる理由もそこで消える。モデルを明かす分割について上流が黙っていることを「不要という立場」と読んではならない。上流にはそれについて語るべきものが無かった、と読むこと。
 
-### `未確定` as a terminal state, not an open task
+### `未確定` は未処理の課題ではなく終着状態である
 
-[`docs/design/context-map.md`](../design/context-map.md) records an edge whose settling fact is not
-available as `未確定`, carrying its evidence and the question that would settle it. That is the
-general form, and it is what a created repository inherits.
+[`docs/design/context-map.md`](../design/context-map.md) は、決着させる事実が手元に無い辺を、根拠と決着の問いを伴って `未確定` として記録する。これが一般形であり、作成先が継承するものである。
 
-While this repository is the upstream boilerplate, **most of those edges stay `未確定` permanently,
-and that is the correct state rather than an omission.** What would settle a downstream edge —
-whether the upstream will take our requirements — is a fact about the *adopting* organisation, and
-no such organisation exists yet. There is nobody to ask, so the map records the question instead of
-guessing at an answer.
+このリポジトリが上流のボイラープレートである間は、**その辺の多くが恒久的に `未確定` のままであり、それは書き漏らしではなく正しい状態である。** 下流側の辺を決着させる事実——上流がこちらの要件を通してくれるかどうか——は**採用する側**の組織についての事実であり、その組織はまだ存在しない。尋ねる相手が居ないので、地図は答えを当て推量する代わりに問いのほうを記録する。
 
-**This does not transfer.** A project built from the template has real counterparties on the other
-side of each edge, and the organisational fact is one somebody there can go and establish. An edge
-left `未確定` in that repository is not a correct terminal state; it is a question nobody has asked
-yet.
+**これは継承されない。** テンプレートから作られたプロジェクトには、各辺の向こう側に実在の相手方がおり、その組織的事実は誰かが確かめに行ける。そこで `未確定` のまま置かれた辺は正しい終着状態ではなく、まだ誰も尋ねていない問いである。
 
-## What applies after setup
+## セットアップ後に適用されるもの
 
-Once this file is gone, [`docs/adr/README.md`](../adr/README.md) is the whole convention, with no
-exception attached: an ADR is an immutable record, and a decision that changes is replaced by a new
-`accepted` ADR while the old one is marked `superseded`. That is the ADR form as
-[MADR](https://adr.github.io/madr/) defines it, and it is what
-[ADR-0000 (record-architecture-decisions)](../adr/0000-record-architecture-decisions.md) decided.
+このファイルが消えた後は、[`docs/adr/README.md`](../adr/README.md) がそのまま規約の全体であり、例外は付かない。ADR は不変の記録であり、変わった決定は新しい `accepted` な ADR で置き換え、古いものは `superseded` とする。それが [MADR](https://adr.github.io/madr/) の定義する ADR の形であり、[ADR-0000](../adr/0000-record-architecture-decisions.md) が決定した内容である。
 
-If your project wants the in-place regime instead — a legitimate choice for a design document that
-is shipped rather than lived — record that as your own decision, in your own ADR. Do not infer it
-from the fact that the upstream did it.
+あなたのプロジェクトがその場改訂の regime を望むなら——生きられるものではなく頒布される設計文書にとっては正当な選択である——それはあなた自身の決定として、あなた自身の ADR に記録すること。上流がそうしていたという事実から導かないこと。
 
-## Finding the pointers
+## ポインタの見つけ方
 
-There is no list of them here, and there was one until the removal learned to scan. A list is a
-second place to be right, and the way it goes wrong is silent: a pointer written outside it is
-simply never removed, while the pass still reports success. The pass reads the repository instead,
-so what is authoritative is the markers themselves:
+ここに一覧は無い。除去が走査を覚えるまでは在ったが、外した。一覧は「正しくあるべき場所」が二重になることであり、しかもその壊れ方は無言である——一覧の外に書かれたポインタはただ除去されないまま残り、パスは成功を報告し続ける。パスはリポジトリのほうを読むので、正本はマーカーそのものである。
 
 ```sh
 grep -rn "boilerplate-only:" --exclude-dir={.git,node_modules,vendor} .
 ```
 
-This file itself is removed by path rather than by marker, which is why it can hold the premise
-whole instead of in fragments.
+このファイル自身はマーカーではなくパスで消える。だからこそ前提を断片ではなく丸ごと抱えられる。

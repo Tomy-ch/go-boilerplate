@@ -1,54 +1,54 @@
-# Outbox Relay Engine Guide (`internal/controller/outbox`)
+# Outbox relay エンジンガイド（`internal/controller/outbox`）
 
-## Role in Onion Architecture
+## オニオンアーキテクチャでの役割
 
-- A **poll-driven driving adapter**, on par with the HTTP handler and the worker engine — it is **another entry point into the Usecase layer**, not a new architectural layer.
-- It is the **relay half** of the transactional outbox: a long-running engine that periodically polls the outbox store and drives delivery of not-yet-published entries. The counterpart **emit half** runs synchronously inside the caller's business transaction and lives in the usecase layer.
-- The engine owns only the **loop and wait control**; the `claim → publish → mark` business is fully delegated to `outboxuc.RelayUsecase`. It never touches the store, the broker, or transactions directly.
-- Depends only on usecase-layer ports: `outboxuc.RelayUsecase`, `clock.Sleeper`, `logging.Logger`, and `observability.LayerTracer` (obtained via `TracerFactory.Controller()`). It never imports `internal/infrastructure/*` (enforced by depguard `maintain_a_sound_controller`).
+- HTTP ハンドラや worker engine と同格の **poll 駆動 driving adapter**。新しいアーキテクチャ層ではなく、**Usecase 層へのもう 1 つの入口**。
+- transactional outbox の **relay 側**：outbox store を周期 poll し、未 publish のエントリの配送を駆動する常駐 engine。対になる **emit 側**は呼び出し元の業務トランザクション内で同期実行され、usecase 層に属する。
+- engine が担うのは **loop と待機制御だけ**。`claim → publish → mark` の業務は `outboxuc.RelayUsecase` に全委譲する。store・broker・トランザクションを直接触らない。
+- 依存は usecase 層の port のみ：`outboxuc.RelayUsecase` / `clock.Sleeper` / `logging.Logger` / `observability.LayerTracer`（`TracerFactory.Controller()` 経由で取得）。`internal/infrastructure/*` は import しない（depguard `maintain_a_sound_controller` で機械担保）。
 
-> The relay is a controller because its responsibility is **cadence orchestration** (poll interval, backoff, drain on `ctx` done, span), not domain logic. The `claim/publish/mark` transaction, the persistence port, and the HTTP send port all live behind the usecase boundary — same separation the worker engine keeps.
+> relay が controller なのは、その責務が **cadence の orchestration**（poll 間隔・backoff・`ctx` 完了時の drain・span）であって業務ロジックではないから。`claim/publish/mark` のトランザクション、永続化 port、HTTP 送出 port はすべて usecase 境界の裏にある — worker engine が保つのと同じ分離。
 
-## Public API
+## 公開 API
 
-- `Engine` — the resident poll engine. `NewEngine(uc, sleeper, log, tf, set) *Engine` wires it; `Run(ctx) error` is the loop body.
-- `Settings` — engine tuning values, populated from `OutboxConfig` by the DI layer:
-  - `BatchSize int32` — entries to claim per poll.
-  - `PollInterval time.Duration` — wait after a batch that did not fully drain (empty / partial / stalled).
-  - `ErrorBackoff time.Duration` — wait after `RelayBatch` returns an error.
-  - **Clamping (safe defaults, not silent):** `provideRelaySettings` (`internal/di/module/outboxrelay.go`) **clamps** `BatchSize` / `PollInterval` / `ErrorBackoff` to their defaults when set to `0` / a negative value, since a non-positive poll/backoff would spin (hot loop). This is a deliberate resilience choice, not a failure. The `OUTBOX_*` env vars carry non-zero `envDefault`s, so a clamp only triggers on an explicit `0` override; it is documented here and enumerated in the setup review ([`docs/get-started/setup-repository.md`](../../../docs/get-started/setup-repository.md)) so it stays reviewable rather than silent.
+- `Engine` — 常駐 poll engine。`NewEngine(uc, sleeper, log, tf, set) *Engine` で結線し、`Run(ctx) error` が loop 本体。
+- `Settings` — engine のチューニング値。DI 層が `OutboxConfig` から生成する：
+  - `BatchSize int32` — 1 回の poll で claim するエントリ数。
+  - `PollInterval time.Duration` — 捌き切らなかったバッチ（空振り / 部分消化 / stall）の後に待機する時間。
+  - `ErrorBackoff time.Duration` — `RelayBatch` がエラーを返した後に待機する時間。
+  - **clamp（安全な既定値であり、silent ではない）：** `provideRelaySettings`（`internal/di/module/outboxrelay.go`）は `BatchSize` / `PollInterval` / `ErrorBackoff` が `0` / 負値に設定された場合、それぞれの既定値へ **clamp** する。非正の poll/backoff はスピン（ホットループ）してしまうため。これは失敗ではなく意図的な回復性の選択。`OUTBOX_*` env var は非ゼロの `envDefault` を持つため、clamp が発動するのは明示的な `0` 上書きのときだけ。silent にせずレビュー可能に保つため、ここに記し、セットアップレビュー（[`docs/get-started/setup-repository.md`](../../../docs/get-started/setup-repository.md)）にも列挙する。
 
-## Loop semantics (`Run`)
+## ループ意味論（`Run`）
 
-`Run` starts a controller span, then loops until `ctx` is done (returning `nil` on completion). Each iteration calls `uc.RelayBatch(ctx, BatchSize)`, which claims up to `BatchSize` pending entries and returns a `RelayResult` (`Claimed` / `Published`). The wait decision after each iteration:
+`Run` は controller span を開始し、`ctx` 完了まで loop する（完了時は `nil` を返す）。各反復で `uc.RelayBatch(ctx, BatchSize)` を呼び、最大 `BatchSize` 件の pending エントリを claim して `RelayResult`（`Claimed` / `Published`）を返す。反復後の待機判断：
 
-| Outcome | Next action | Why |
+| 結果 | 次の動作 | 理由 |
 | --- | --- | --- |
-| **Full batch with progress** (`Claimed >= BatchSize` and `Published > 0`) | **no wait** — poll again immediately | more pending entries likely remain; keep draining at full speed |
-| Empty / partial / **full-but-zero-progress** (all publish failed) | wait `PollInterval` | nothing left to drain, or downstream is failing |
-| `RelayBatch` error | log, then wait `ErrorBackoff` | let a transient DB/broker fault settle |
+| **満杯かつ進捗あり**（`Claimed >= BatchSize` かつ `Published > 0`） | **待機せず**即座に次 poll | まだ pending が残る可能性が高い。全速で捌き続ける |
+| 空振り / 部分消化 / **満杯だが進捗ゼロ**（全件 publish 失敗） | `PollInterval` 待機 | 捌くものが無い、または下流が失敗している |
+| `RelayBatch` エラー | ログ後 `ErrorBackoff` 待機 | 一時的な DB/broker 障害を落ち着かせる |
 
-- The **full-but-zero-progress → must wait** rule is load-bearing: re-claiming a full, all-failed batch with zero wait would hot-loop while the downstream is down and burn through attempts, driving entries to `dead` instantly. A stalled full batch is always demoted to a wait.
-- Waiting goes through `clock.Sleeper.Sleep(ctx, d)`, so `ctx` cancellation breaks out of the wait immediately.
-- `ctx` completion is re-checked at loop top, after a `RelayBatch` error, and before lag recording, so shutdown never emits a spurious error log or an extra RPC.
+- **満杯だが進捗ゼロ → 必ず待機**のルールが load-bearing：全件失敗の満杯バッチを待機ゼロで再 claim すると、下流停止中にホットループして attempts を焼き切り、エントリを即座に `dead` 化する。stall した満杯バッチは常に待機へ落とす。
+- 待機は `clock.Sleeper.Sleep(ctx, d)` 経由で行い、`ctx` キャンセルで即座に抜ける。
+- `ctx` 完了は loop 先頭・`RelayBatch` エラー後・lag 記録前で再チェックし、shutdown 時に不要なエラーログや余分な RPC を出さない。
 
 ## Observability
 
-- `observeLag` records the outbox lag SLI (age of the oldest pending entry) via `uc.RecordLag(ctx)` on a **best-effort** basis: it runs **only after a successful batch** (an error batch skips it to avoid double-logging the same root cause, e.g. a DB outage), skips when `ctx` is done, and on failure logs without stopping the loop.
-- The span is started once per `Run` via the controller `LayerTracer`; the engine never touches the OpenTelemetry SDK directly.
-- Error logs use the `logging.JobErrorKey` structured field under the `outbox-relay` logger name.
+- `observeLag` は outbox lag SLI（最古 pending エントリの経過時間）を `uc.RecordLag(ctx)` でベストエフォート記録する：**バッチ成功時のみ**実行し（エラーバッチではスキップ。同一原因（DB 障害等）での二重ログを避けるため）、`ctx` 完了時はスキップ、失敗時はログのみでループを止めない。
+- span は `Run` ごとに controller `LayerTracer` で 1 回開始する。engine は OpenTelemetry SDK を直接触らない。
+- エラーログは `outbox-relay` logger 名の下で `logging.JobErrorKey` 構造化フィールドを使う。
 
-## Wiring & lifecycle
+## 配線とライフサイクル
 
-- Provided by `OutboxRelayModule` (`internal/di/module/outboxrelay.go`) and used **only in the dedicated relay process** (`cmd outbox-relay`) — the module also confines the non-standard publisher HTTP-client profile (e.g. `MaxAttempts=1`) so it cannot leak into other processes.
-- `Settings` is derived from `OutboxConfig` by `provideRelaySettings`, which clamps a non-positive `BatchSize` to `outboxuc.DefaultBatchSize` to avoid a spin loop.
-- `RegisterRelayHooks` (`internal/di/outboxrelay/hook`) binds the loop to the fx lifecycle via `SupervisedRunner`: `OnStart` launches `Run` in a detached goroutine (non-blocking), `OnStop` cancels the engine context and waits for the loop to unwind within the stop deadline.
+- `OutboxRelayModule`（`internal/di/module/outboxrelay.go`）が提供し、**relay 専用プロセス**（`cmd outbox-relay`）でのみ使う。同 module は非標準の publisher HTTP クライアント profile（`MaxAttempts=1` 等）も閉じ込め、他プロセスへ漏れないようにする。
+- `Settings` は `provideRelaySettings` が `OutboxConfig` から生成し、非正の `BatchSize` を `outboxuc.DefaultBatchSize` へ clamp してスピンループを防ぐ。
+- `RegisterRelayHooks`（`internal/di/outboxrelay/hook`）が `SupervisedRunner` で loop を fx ライフサイクルに結線する：`OnStart` は `Run` を detached goroutine で起動（ブロックしない）、`OnStop` は engine の context をキャンセルし、stop 期限内で loop の終了を待つ。
 
-## Files
+## ファイル
 
-- `relay.go` — `Engine` (`Run` / `waitDone` / `observeLag`), `NewEngine`, `Settings`. That is the entire adapter; there is no per-broker code here (the send port lives behind the usecase boundary, implemented in `internal/infrastructure/publisher`).
+- `relay.go` — `Engine`（`Run` / `waitDone` / `observeLag`）、`NewEngine`、`Settings`。adapter はこれで全て。broker 個別コードはここに無い（送出 port は usecase 境界の裏、実装は `internal/infrastructure/publisher`）。
 
-## Related
+## 関連
 
-- Store boundary (persistence port the relay drives through the usecase): [`internal/usecase/boundary/outbox/README.md`](../../usecase/boundary/outbox/README.md)
-- Design deep-dive (role theory / state transitions / implementation map / glossary): [docs/design/outbox.md](../../../docs/design/outbox.md)
+- Store 境界（relay が usecase 経由で駆動する永続化 port）: [`internal/usecase/boundary/outbox/README.md`](../../usecase/boundary/outbox/README.md)
+- 詳細設計（役割論 / 状態遷移 / 実装箇所マップ / 用語集）: [docs/design/outbox.md](../../../docs/design/outbox.md)

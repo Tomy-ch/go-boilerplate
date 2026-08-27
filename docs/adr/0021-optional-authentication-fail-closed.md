@@ -5,27 +5,27 @@ deciders: [maintainers]
 tags: [contract, http, security]
 ---
 
-# ADR-0021: Optional authentication is allowed, and a failed authentication still denies the request
+# ADR-0021: 任意認証を許し、認証に失敗したリクエストは通さない
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## コンテキスト
 
-[ADR-0016](0016-spec-driven-request-validation.md) establishes that the OpenAPI middleware
-enforces the security requirements declared in the spec, and [ADR-0020](0020-metrics-endpoint-auth-exception.md)
-records the one endpoint that sits outside that pipeline. Both assume an operation is either
-protected or public.
+[ADR-0016](0016-spec-driven-request-validation.md) は、OpenAPI ミドルウェアが仕様に宣言された
+セキュリティ要件を強制することを定め、[ADR-0020](0020-metrics-endpoint-auth-exception.md) は
+そのパイプラインの外に置かれる唯一のエンドポイントを記録している。どちらも、オペレーションは
+保護されているか公開されているかのいずれかであることを前提にしている。
 
 <!-- sample-api:replace-begin -->
-Some resources are neither. A cart belongs to a signed-in user when there is one and to an
-anonymous session otherwise, and the same operation must serve both. OpenAPI expresses this as
-several security requirements where one is empty:
+そのどちらでもない資源がある。カートはサインイン済みの利用者がいればその人のものであり、いなければ
+匿名セッションのものであって、同じオペレーションが両方に応える必要がある。OpenAPI はこれを、
+片方を空にした複数のセキュリティ要件として表現する。
 <!-- sample-api:replace-with -->
-<!-- = Some resources are neither: the same operation must serve a signed-in subject and an anonymous -->
-<!-- = one, and the resource belongs to whichever is present. OpenAPI expresses this as several -->
-<!-- = security requirements where one is empty: -->
+<!-- = そのどちらでもない資源がある。同じオペレーションがサインイン済みの主体と匿名の主体の双方に応え、 -->
+<!-- = 資源はそのとき居るほうのものになる。OpenAPI はこれを、片方を空にした複数のセキュリティ要件として -->
+<!-- = 表現する。 -->
 <!-- sample-api:replace-end -->
 
 ```yaml
@@ -34,138 +34,126 @@ security:
   - {}
 ```
 
-**This form is not safe as it stands.** `kin-openapi`'s `ValidateSecurityRequirements` tries the
-requirements in order, collects each failure, and moves on; an empty requirement names no scheme,
-so it always succeeds. The failure of the preceding `BearerAuth` is discarded, and there is no
-sentinel error that short-circuits the loop. An expired, tampered, or unknown-`kid` token
-therefore arrives at the handler indistinguishable from no token at all.
+**この形はそのままでは安全ではない。** `kin-openapi` の `ValidateSecurityRequirements` は要件を
+先頭から試し、失敗を溜めて次へ進む。空の要件はスキームを 1 つも名指さないため常に成功し、先行する
+`BearerAuth` の失敗は捨てられる。ループを短絡させる sentinel error も無い。したがって期限切れ・
+改ざん・不明な `kid` のトークンは、トークンが無い場合と区別できないままハンドラへ到達する。
 
-The same path swallows something heavier. When identity resolution fails for an infrastructure
-reason, the authentication function returns a 503 or 500, and the OR evaluation discards that too
-— so a database outage would surface as an anonymous success rather than as an outage.
+同じ経路は、より重いものも飲み込む。identity の解決がインフラ上の理由で失敗したとき、認証関数は
+503 や 500 を返すが、OR 評価はそれも捨てる。つまり DB の障害が、障害としてではなく匿名の成功として
+現れることになる。
 
-Both outcomes contradict decisions this repository has already taken: `docs/design/auth.md`
-requires that every verification failure normalize to a denial and never to a default-allow, and
-`docs/design/security.md` requires deny-by-default at every boundary, with no state in which
-forgetting something opens it.
+どちらの帰結も、このリポジトリが既に採っている決定に正面から反する。`docs/design/auth.md` は
+検証の失敗がすべて拒否へ正規化され、決して default-allow にならないことを要求し、
+`docs/design/security.md` はあらゆる境界での deny-by-default と、「何かを忘れると開いてしまう状態が
+存在しないこと」を要求している。
 
-## Decision
+## 決定
 
-**Allow an operation to declare authentication optional, and make a presented-but-rejected
-credential deny the request anyway.**
+**オペレーションが認証を任意と宣言することを許し、そのうえで、提示されたが拒否された資格情報は
+リクエストを拒否させる。**
 
-The authentication function records its failure into the same request-context slot it already
-uses to carry a successful `Authn` (`ctxhelper.SetAuthnFailure`). The oapi middleware re-reads
-that slot after validation and before the handler, and returns the recorded error if there is
-one:
+認証関数は、成功した `Authn` を運ぶのに既に使っているリクエストコンテキストのスロットへ、失敗を
+記録する（`ctxhelper.SetAuthnFailure`）。oapi ミドルウェアはバリデーションの後・ハンドラの前に
+そのスロットを読み直し、記録があればそのエラーを返す。
 
 ```go
 return oapiValidator(failClosed(next))(c)
 ```
 
-The slot survives what the return value does not, because the validator discards only the error
-it is handed.
+バリデーターが捨てるのは手渡されたエラーだけなので、スロットは戻り値が生き延びないところを
+生き延びる。
 
-Absence of a credential is not a failure and is never recorded, so an operation that admits
-anonymous callers keeps admitting them. The resulting behavior, by declaration:
+資格情報が提示されなかったことは失敗ではなく、記録もされない。したがって匿名の呼び出し元を
+受け入れるオペレーションは従来どおり受け入れる。宣言ごとの挙動は次のとおり。
 
-| `security` | Credential | Outcome |
+| `security` | 資格情報 | 結果 |
 | --- | --- | --- |
-| `[BearerAuth]` | invalid | 401 (the validator returns before `failClosed` is reached) |
-| `[]` | anything | unauthenticated, as before |
-| `[{BearerAuth}, {}]` | absent | anonymous |
-| `[{BearerAuth}, {}]` | invalid | **401** |
-| `[{BearerAuth}, {}]` | valid, identity resolution unavailable | **503 / 500** |
+| `[BearerAuth]` | 無効 | 401（`failClosed` に到達する前にバリデーターが返す） |
+| `[]` | 何でも | 従来どおり未認証で通る |
+| `[{BearerAuth}, {}]` | 無し | 匿名 |
+| `[{BearerAuth}, {}]` | 無効 | **401** |
+| `[{BearerAuth}, {}]` | 有効・identity 解決が利用不能 | **503 / 500** |
 
-An operation that uses the optional form is declaring an exception to "every endpoint is either
-protected or public", so it is named and kept narrow the same way `/metrics` is: it is listed in
-an allow-list in `internal/controller/httpstack/oapi/validator/security_declaration_test.go` with
-a reason, which keeps the set greppable and reviewable.
+任意認証の形を使うオペレーションは「すべてのエンドポイントは保護か公開のどちらかである」に対する
+例外を宣言していることになるため、`/metrics` と同じく名前を付けて範囲を狭める。すなわち
+`internal/controller/httpstack/oapi/validator/security_declaration_test.go` の許可リストへ理由付きで
+載せ、集合が grep でき、レビューできる状態を保つ。
 
-That allow-list is its own, `optionalAuthOperations`, and not the `publicOperations` list the fully
-public endpoints use. The two declarations fail differently — a public endpoint receives no
-credential and so has no invalid one to reject, while an optional-auth endpoint rejects a
-credential it was given — and `docs/design/security.md` asks that reading the `security` block be
-enough to know the posture. One list holding both readings answers "authentication is not
-required" and stops there, which is the half of the answer that does not matter. Splitting them
-also lets the test check the shape rather than just the membership: every `publicOperations` entry
-must declare no requirement at all, and every `optionalAuthOperations` entry must declare both
-`BearerAuth` and the empty requirement.
+その許可リストは専用の `optionalAuthOperations` であり、完全公開のエンドポイントが使う
+`publicOperations` とは分ける。2 つの宣言は失敗の仕方が違う — 公開エンドポイントは資格情報を受け取らず
+拒否すべき無効な資格情報がそもそも存在しないのに対し、任意認証のエンドポイントは受け取った資格情報を
+拒否する — 一方で `docs/design/security.md` は `security` の宣言を読めば姿勢が分かることを求めている。
+1 つのリストに両方を入れると「認証は必須ではない」と答えて終わり、肝心の残り半分が答えられない。
+分けることで、テストが登録の有無だけでなく形まで検査できるようにもなる。`publicOperations` の各
+エントリは要件を 1 つも宣言していないこと、`optionalAuthOperations` の各エントリは `BearerAuth` と
+空の要件の両方を宣言していることを、それぞれ表明できる。
 
-`BearerAuth` must be written before the empty requirement. Evaluation is ordered, and the empty
-requirement always succeeds, so anything after it is never reached. `TestSecurityRequirementOrder`
-enforces this against the spec, so the ordering cannot be lost by editing a `security` block.
+`BearerAuth` は空の要件より前に書かなければならない。評価には順序があり、空の要件は必ず成功するため、
+その後ろに書いたものへは到達しない。`TestSecurityRequirementOrder` が spec に対してこれを強制するため、
+`security` ブロックの編集でこの順序が失われることはない。
 
-## Consequences
+## 結果
 
-### Positive Consequences
+### ポジティブな結果
 
-- One resource can serve signed-in and anonymous callers without splitting into two endpoints,
-  and without the URL revealing which one the caller is.
-- The fail-closed rule in `docs/design/auth.md` holds for every declaration form, so reading a
-  `security:` block is enough to know what happens on failure.
-- An infrastructure failure during identity resolution surfaces as an outage rather than as an
-  empty-but-successful anonymous response — a bug that was latent and unobservable only because
-  no operation used the optional form yet.
-- No new middleware and no re-ordering of the chain: the change is confined to the existing
-  authentication function and the oapi middleware.
+- 1 つの資源が、エンドポイントを 2 つに割らずに、そして URL が呼び出し元の状態を露出させることなく、
+  サインイン済みと匿名の双方に応えられる。
+- `docs/design/auth.md` の fail-closed 規則がすべての宣言形で成り立つため、`security:` の記述を読めば
+  失敗時に何が起きるかが分かる。
+- identity 解決中のインフラ障害が、空だが成功した匿名レスポンスではなく障害として現れる。これは
+  潜在していたバグで、任意認証の形を使う operation がまだ 1 本も無かったからこそ観測されずに済んでいた。
+- 新規ミドルウェアもチェーンの並べ替えも不要で、変更は既存の認証関数と oapi ミドルウェアに閉じる。
 
-### Negative Consequences
+### ネガティブな結果
 
-- The guarantee lives in `failClosed`, not in the spec. A reader of the OpenAPI document alone
-  sees "authentication optional" and cannot tell that a rejected credential is refused; the
-  behavior is discoverable only from this ADR and the middleware.
-- The optional form is easy to write and its unsafe reading is the intuitive one, so the
-  allow-list entry and its reason are what keep a future operation from adopting it casually.
-- Anonymous access still has to be authorized. Making authentication optional does not make the
-  resource public — an operation using this form must still decide what an anonymous subject may
-  do.
+- 保証は仕様ではなく `failClosed` にある。OpenAPI 文書だけを読む者には「認証は任意」としか見えず、
+  拒否された資格情報が退けられることは分からない。挙動を知る経路はこの ADR とミドルウェアだけである。
+- 任意認証の形は書きやすく、その安全でない読み方のほうが直観的であるため、将来の operation が
+  安易に採用しないよう歯止めになるのは許可リストの登録とその理由文だけである。
+- 匿名アクセスの認可は別途必要である。認証を任意にすることは資源を公開することではなく、この形を
+  使う operation は匿名の主体に何を許すかを依然として決めなければならない。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Split each such operation into a protected one and a public one
+### 該当する operation を保護版と公開版の 2 本に割る
 
 <!-- sample-api:replace-begin -->
-`/v1/carts/me` and `/v1/carts/guest`, each with a single security form. The conflict disappears
-because the optional form is never written. Rejected: it turns five endpoints into eight or nine,
-and it puts the caller's authentication state into the URL, so a client must know which one it
-is before choosing a path. Optional authentication can be made safe, so there is no reason to pay
-for it in API shape.
+`/v1/carts/me` と `/v1/carts/guest` のように、それぞれ単一のセキュリティ形にする。任意認証の形を
+書かないので衝突自体が消える。却下: エンドポイントが 5 本から 8〜9 本へ増え、呼び出し元の認証状態が
+URL に載るため、クライアントはパスを選ぶ前に自分がどちらかを知っている必要がある。任意認証は安全に
+できるのだから、API の形を犠牲にする理由が無い。
 <!-- sample-api:replace-with -->
-<!-- = Two paths per resource, each with a single security form. The conflict disappears because the -->
-<!-- = optional form is never written. Rejected: it nearly doubles the endpoint count, and it puts the -->
-<!-- = caller's authentication state into the URL, so a client must know which one it is before choosing -->
-<!-- = a path. Optional authentication can be made safe, so there is no reason to pay for it in API shape. -->
+<!-- = 資源ごとに 2 本のパスを置き、それぞれ単一のセキュリティ形にする。任意認証の形を書かないので衝突自体が -->
+<!-- = 消える。却下: エンドポイント数がほぼ倍になり、呼び出し元の認証状態が URL に載るため、クライアントは -->
+<!-- = パスを選ぶ前に自分がどちらかを知っている必要がある。任意認証は安全にできるのだから、API の形を -->
+<!-- = 犠牲にする理由が無い。 -->
 <!-- sample-api:replace-end -->
 
-### Short-circuit inside the authentication function's return value
+### 認証関数の戻り値で短絡させる
 
-Return a distinguished error that stops requirement evaluation. Rejected after reading the
-implementation: `ValidateSecurityRequirements` has no hook for it. Every error is collected and
-evaluation continues to the next requirement.
+要件の評価を止める特別なエラーを返す。実装を読んだうえで却下: `ValidateSecurityRequirements` に
+そのためのフックが無い。すべてのエラーは収集され、評価は次の要件へ進む。
 
 <!-- sample-api:replace-begin -->
-### Require authentication everywhere and drop anonymous carts
+### 全面的に認証必須にし、ゲストカートを廃する
 
-Simplest, and the fail-closed question never arises. Rejected: it removes the ownership
-transition on login, authorization of an anonymous subject, and the merge rules — three of the
-four things the cart sample exists to demonstrate.
+最も単純で、fail-closed の問題自体が生じない。却下: ログインによる所有権の遷移、匿名主体の認可、
+マージ規則という、カートのサンプルが示すために存在する 4 つのうち 3 つを失う。
 <!-- sample-api:replace-with -->
-<!-- = ### Require authentication everywhere and drop anonymous subjects -->
+<!-- = ### 全面的に認証必須にし、匿名の主体を廃する -->
 <!-- = -->
-<!-- = Simplest, and the fail-closed question never arises. Rejected: it removes the ownership -->
-<!-- = transition on login, authorization of an anonymous subject, and whatever merge rules the -->
-<!-- = resource needs — the behaviors optional authentication exists to make possible. -->
+<!-- = 最も単純で、fail-closed の問題自体が生じない。却下: ログインによる所有権の遷移、匿名主体の認可、 -->
+<!-- = 資源が必要とするマージ規則——任意認証があって初めて成り立つ振る舞いを失う。 -->
 <!-- sample-api:replace-end -->
 
-## Notes
+## 補足
 
-- Fail-closed stage: [`internal/controller/httpstack/oapi/oapi.go`](../../internal/controller/httpstack/oapi/oapi.go).
-- Failure recording: [`internal/controller/httpstack/oapi/auth/auth.go`](../../internal/controller/httpstack/oapi/auth/auth.go).
-- The slot itself: [`internal/controller/ctxhelper/authn.go`](../../internal/controller/ctxhelper/authn.go).
-- The behavior is fixed by a middleware test driving a synthetic spec that declares all three
-  security forms.
-- `GET /v1/carts/me` is the first operation in the shipped spec to use the optional form. <!-- sample-api:line -->
-- Related decision: [ADR-0016](0016-spec-driven-request-validation.md) (spec-driven request validation).
-- Related decision: [ADR-0020](0020-metrics-endpoint-auth-exception.md) (the other named authentication exception).
-- Posture this upholds: `docs/design/auth.md` (fail-closed), `docs/design/security.md` (deny by default).
+- fail-closed の段: [`internal/controller/httpstack/oapi/oapi.go`](../../internal/controller/httpstack/oapi/oapi.go)。
+- 失敗の記録: [`internal/controller/httpstack/oapi/auth/auth.go`](../../internal/controller/httpstack/oapi/auth/auth.go)。
+- スロット本体: [`internal/controller/ctxhelper/authn.go`](../../internal/controller/ctxhelper/authn.go)。
+- 挙動は、3 つのセキュリティ形をすべて宣言した合成 spec を駆動するミドルウェアテストで固定している。
+- 出荷される spec で任意認証の形を最初に使う operation は `GET /v1/carts/me`。 <!-- sample-api:line -->
+- 関連する決定: [ADR-0016](0016-spec-driven-request-validation.md)（spec 駆動のリクエスト検証）。
+- 関連する決定: [ADR-0020](0020-metrics-endpoint-auth-exception.md)（もう 1 つの、名前を付けた認証の例外）。
+- 支えている姿勢: `docs/design/auth.md`（fail-closed）、`docs/design/security.md`（deny by default）。

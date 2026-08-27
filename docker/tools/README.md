@@ -1,99 +1,94 @@
-# Tools Container
+# Tools コンテナ
 
-This Dockerfile provides **code generation and bundling tool containers** for the project. It uses multi-stage builds to offer Go, Node.js, and Python tool environments.
+プロジェクトの**コード生成・バンドル用ツールコンテナ**を定義する Dockerfile です。マルチステージビルドにより Go / Node.js / Python のツール環境を提供します。
 
-## Role
+## 役割
 
-`docker/tools/Dockerfile` packages every code-generation / linting / security / documentation tool the build needs into language-isolated runner images, one stage per language. Developers and CI invoke these containers from `make` targets (`make gen-api`, `make gen-query`, `make sql-lint`, etc.) so nobody has to install Go, Node, or Python toolchains locally. This keeps tool versions reproducible across machines and locks generated output to a known toolchain set.
+`docker/tools/Dockerfile` はビルドで必要となるすべてのコード生成・lint・セキュリティ・ドキュメント生成ツールを、言語ごとに 1 ステージずつ隔離したランナーイメージにパッケージングします。開発者と CI はこれらのコンテナを `make` ターゲット（`make gen-api` / `make gen-query` / `make sql-lint` 等）経由で起動するため、誰も Go / Node / Python ツールチェインをローカルにインストールする必要がありません。マシン間でツールバージョンが再現可能になり、生成物が既知のツールチェインに固定されます。
 
-## Build Targets
+## ビルドターゲット
 
-|Target|Base Image|Covers|
+|ターゲット|ベースイメージ|担当範囲|
 |---|---|---|
-|`go_tools`|`golang:1.26.6-alpine`|Go code generation, linting, security scanning, documentation ([tools](#go_tools))|
-|`node_tools`|`node:24.19.0-alpine`|OpenAPI bundling, Markdown / commit linting, portal build and script tests ([tools](#node_tools))|
-|`python_tools`|`python:3.14.7-slim`|SQL linting, knowledge-graph build ([tools](#python_tools))|
+|`go_tools`|`golang:1.26.6-alpine`|Go のコード生成・lint・セキュリティスキャン・ドキュメント生成（[ツール](#go_tools)）|
+|`node_tools`|`node:24.19.0-alpine`|OpenAPI バンドル、Markdown / コミットの lint、ポータルのビルドとスクリプトのテスト（[ツール](#node_tools)）|
+|`python_tools`|`python:3.14.7-slim`|SQL の lint（[ツール](#python_tools)）|
 
 ## go_tools
 
-Code generation, linting, security, and documentation tools for Go:
+Go 用のコード生成・lint・セキュリティ・ドキュメント生成ツール：
 
-|Tool|Purpose|
+|ツール|用途|
 |---|---|
-|`oapi-codegen`|Generate Go server/types from OpenAPI spec|
-|`mockgen`|Generate mocks from Go interfaces|
-|`sqlc`|Generate type-safe Go code from SQL|
-|`migrate`|Database migration CLI|
-|`trivy`|Vulnerability and misconfiguration scanner|
-|`actionlint`|GitHub Actions workflow linter|
-|`shellcheck`|Shell script linter|
-|`hadolint`|Dockerfile linter|
-|`gitleaks`|Secret scanner for committed credentials|
-|`godoc`|Serve/generate Go package documentation|
-|`godoc-static`|Generate static HTML from godoc output|
+|`oapi-codegen`|OpenAPI 仕様から Go サーバー / 型を生成|
+|`mockgen`|Go interface からモックを生成|
+|`sqlc`|SQL から型安全な Go コードを生成|
+|`migrate`|データベースマイグレーション CLI|
+|`trivy`|脆弱性・設定ミスのスキャナー|
+|`actionlint`|GitHub Actions ワークフローの Lint|
+|`shellcheck`|シェルスクリプトの Lint|
+|`hadolint`|Dockerfile の Lint|
+|`gitleaks`|コミットされた認証情報を検出するシークレットスキャナー|
+|`godoc`|Go パッケージドキュメントの配信 / 生成|
+|`godoc-static`|godoc 出力から静的 HTML を生成|
 
 ## node_tools
 
-Tools for OpenAPI document processing and portal generation:
+OpenAPI ドキュメント処理とポータル生成用のツール：
 
-|Tool|Purpose|
+|ツール|用途|
 |---|---|
-|`redocly-cli`|Bundle OpenAPI YAML (`$ref` resolution) and generate HTML docs|
-|`markdownlint-cli2`|Markdown linter for docs (`make md-lint`)|
-|`@commitlint/cli`|Commit-message linter (`make commitlint`, wired to the `commit-msg` hook)|
-|`js-yaml`|YAML processing for portal doc generation scripts|
-|`pnpm`|Resolve the two Node packages in the repository, each with its own lockfile and its own `node_modules`: `scripts/` (installed into `/app/scripts/node_modules`) and `docs-viewer/`, which builds the portal frontend into `docs/portal/` (`make gen-portal-build`, `make portal-test`).|
-|`tsx`|Run the repository's TypeScript helper scripts (`scripts/**/*.ts`) without a build step|
-|`typescript`|Type check those scripts (`make scripts-typecheck`)|
-|`vitest`|Unit tests for the scripts' decision logic (`make scripts-test`)|
-|`mermaid`|Lets `scripts/mermaid-lint/index.ts` validate ` ```mermaid ` fences with the real parser (`make md-lint`)|
-|`linkedom`|Headless DOM that lets `mermaid.parse` run in Node for the Markdown mermaid syntax lint (`scripts/mermaid-lint/index.ts`)|
+|`redocly-cli`|OpenAPI YAML のバンドル（`$ref` 解決）と HTML ドキュメント生成|
+|`markdownlint-cli2`|ドキュメント用の Markdown リンター（`make md-lint`）|
+|`@commitlint/cli`|コミットメッセージのリンター（`make commitlint`。`commit-msg` フックに配線）|
+|`js-yaml`|ポータルドキュメント生成スクリプト用の YAML 処理|
+|`pnpm`|リポジトリ内の 2 つの Node パッケージを解決する。lockfile も `node_modules` もそれぞれ別で、`scripts/`（`/app/scripts/node_modules` へ install）と、ポータルフロントエンドを `docs/portal/` へビルドする `docs-viewer/`（`make gen-portal-build` / `make portal-test`）。|
+|`tsx`|リポジトリの TypeScript 補助スクリプト（`scripts/**/*.ts`）をビルドなしで実行する|
+|`typescript`|その型検査（`make scripts-typecheck`）|
+|`vitest`|補助スクリプトの判定ロジックの単体テスト（`make scripts-test`）|
+|`mermaid`|`scripts/mermaid-lint/index.ts` が ` ```mermaid ` フェンスを本物のパーサで構文検証するために使う（`make md-lint`）|
+|`linkedom`|`mermaid.parse` を Node で動かすためのヘッドレス DOM。Markdown 内 mermaid の構文 Lint（`scripts/mermaid-lint/index.ts`）で使用|
 
 ## python_tools
 
-|Tool|Purpose|
+SQL リンティングツール：
+
+|ツール|用途|
 |---|---|
-|`sqlfluff`|SQL linter for migrations, DML, and seed files|
-|`graphify`|Knowledge-graph build. Only the deterministic half runs here — `graphify update` re-extracts changed code with tree-sitter and needs no model. Semantic extraction over docs is driven by an assistant and never runs in this image|
+|`sqlfluff`|migration / DML / seed ファイル用の SQL リンター|
 
-Unlike the other two stages, the tools themselves do not come from `mise.toml`: mise installs
-only `uv`, which then installs each of them from its own lockfile
-([`python/sqlfluff.txt`](../../python/sqlfluff.txt) / [`python/graphify.txt`](../../python/graphify.txt))
-with `--require-hashes`, so the whole transitive tree is version- and hash-pinned
-(see [ADR-0080 (mise-ssot-drift-gate)](../../docs/adr/0080-mise-ssot-drift-gate.md)).
+他の 2 つのステージと違い、ツール本体は `mise.toml` 由来ではありません。mise が入れるのは `uv` だけで、
+`sqlfluff` はその `uv` が [`python/sqlfluff.txt`](../../python/sqlfluff.txt) から `--require-hashes` 付きで
+install します。これにより推移依存まで含めてバージョンとハッシュが固定されます
+（[ADR-0080 (mise-ssot-drift-gate)](../../docs/adr/0080-mise-ssot-drift-gate.md)）。
 
-graphify is here for reproducibility rather than speed. Its semantic extraction is driven by a
-prompt that ships with the tool, and the cache namespace is a fingerprint of that prompt
-([`.agents/graphify/spec-pin.toml`](../../.agents/graphify/spec-pin.toml)); a host-installed
-graphify makes which prompt produced a committed artifact a property of the machine that ran it.
-
-## docker-compose Services
+## docker-compose サービス
 
 ```yaml
-go_tool_runner:    # target: go_tools,    profile: generate
-node_tool_runner:  # target: node_tools,  profile: generate
+go_tool_runner:     # target: go_tools,    profile: generate
+node_tool_runner:   # target: node_tools,  profile: generate
 python_tool_runner: # target: python_tools, profile: generate
 ```
 
-All tool runners mount the project root to `/app` and run as root.
+すべてのツールランナーはプロジェクトルートを `/app` にマウントし、root で実行します。
 
-## Execution
+## 実行方法
 
 ```bash
-make gen        # Run all code generation
-make gen-api    # OpenAPI bundle + Go code generation
-make gen-query  # sqlc code generation
+make gen        # すべてのコード生成を実行
+make gen-api    # OpenAPI バンドル + Go コード生成
+make gen-query  # sqlc コード生成
 ```
 
-## When Adding a New Tool
+## ツールを追加する場合
 
-1. Install the tool in the appropriate Dockerfile stage
-2. Add a new service in `docker-compose.yaml` with `profiles: [generate]`
-3. Add a Makefile target if needed
+1. 適切な Dockerfile ステージにツールをインストール
+2. `docker-compose.yaml` に `profiles: [generate]` で新しいサービスを追加
+3. 必要に応じて Makefile ターゲットを追加
 
-## Notes
+## 注意点
 
-- Working directory is `/app` for all targets
-- Tools are installed in a builder stage and copied to the runtime stage to minimize image size (`go_tools`)
-- Tool versions are pinned in `mise.toml` (the version SSOT); update them there so local and CI images stay in sync. PyPI tools are the exception — see [python_tools](#python_tools) above
-- The Node dependencies this image installs are declared by `scripts/` and `docs-viewer/` (each with its own `package.json` / `pnpm-lock.yaml` / `pnpm-workspace.yaml`); the build copies each manifest set into the directory it belongs to and installs it there. Neither lives in this directory, so a dependency change is reviewed next to the code that uses it
+- すべてのターゲットで作業ディレクトリは `/app`
+- Go ツールはビルダーステージでインストールし、ランタイムステージにコピーしてイメージサイズを最小化（`go_tools`）
+- ツールのバージョンは `mise.toml`（バージョンの SSOT）で固定 — 更新はそこで行い、ローカルと CI のイメージを一致させること。PyPI のツールだけは例外で、詳細は上の [python_tools](#python_tools) を参照
+- このイメージが install する Node 依存を宣言するのは `scripts/` / `docs-viewer/` の 2 つ（それぞれ独自の `package.json` / `pnpm-lock.yaml` / `pnpm-workspace.yaml` を持つ）で、ビルドはそれぞれのマニフェストを本来の場所へコピーしてその場で install する。いずれもこのディレクトリには無いため、依存の変更は使う側のコードと並べてレビューされる
