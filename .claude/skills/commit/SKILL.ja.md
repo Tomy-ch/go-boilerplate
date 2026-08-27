@@ -16,7 +16,7 @@
 make gate-fix
 ```
 
-`fix` ではなく `gate-fix` を使うのは、これが `/commit` のたびに走る経路であり、かつ `fix` が `lint` と同じ full config の golangci-lint を回すためである。`.makefiles/load.mk` は `ci-first` の帯でこれを他の重いゲートと同様に委譲し（`repo-ops` §21）、フォーマットのずれは CI の lint が指摘する。素の `make fix` は帯に関わらず実行される — 明示的に打ったコマンドは書いたとおりに動く。
+`fix` ではなく `gate-fix` を使うのは、これが `/commit` のたびに走る経路であり、かつ `fix` が `lint` と同じ full config の golangci-lint を回すためである。`.makefiles/load.mk` は `ci-first` の帯でこれを他の重いゲートと同様に委譲し（`repo-ops` §19）、フォーマットのずれは CI の lint が指摘する。素の `make fix` は帯に関わらず実行される — 明示的に打ったコマンドは書いたとおりに動く。
 
 `make gate-fix` 自体が失敗した場合は中止し、失敗をユーザーに報告する。続行しない。生成された変更は作業ツリーに畳み込まれ、Step 2 で確認する候補変更セットの一部となる。帯が委譲した場合は設計上そもそも変更を生まないので、それを「既に整形済みだった証拠」と読まないこと。
 
@@ -233,7 +233,7 @@ EOF
 
 全コミットが成功した後、pre-commit フック全体を `lefthook run pre-commit --force` で 1 回実行し、続いて最終フォーマットパスとして `make fix` を実行する。`--force` フラグが肝である: コミットは `--no-verify` で作成され作業ツリーは clean なため、素の `lefthook run pre-commit` は全コマンドをスキップする（「no matching staged files」）; `--force` は staged に関わらずフック全体を実行する。手で列挙したコマンド一覧ではなく本物のフックを回すことで、このゲートは `.lefthook.yaml` と同期し（新規追加の `pre-commit` コマンドも自動で拾う）、lefthook が並列（`parallel: true`）で実行するため順次再実行よりはるかに速い。
 
-フックは自分でどれだけ全力で走るかを決める。`.makefiles/load.mk` が開いている worktree の数から重い Go ゲートの規模を決め、`ci-first` の帯ではここで走らせず CI へ委譲する（現在の帯は `make load-status`、仕組みは `repo-ops` §21）。その判断に逆らって `make lint` / `make test` を直接叩き「念のため」検証し直さないこと — 窓が複数開いている状態でのフル lint は、CI が同一に再実行する内容を再発見するために飽和したホストを数分間占有するだけである。帯が何をしたかを報告し、残りは push に運ばせる。
+フックは自分でどれだけ全力で走るかを決める。`.makefiles/load.mk` が開いている worktree の数から重い Go ゲートの規模を決め、`ci-first` の帯ではここで走らせず CI へ委譲する（現在の帯は `make load-status`、仕組みは `repo-ops` §19）。その判断に逆らって `make lint` / `make test` を直接叩き「念のため」検証し直さないこと — 窓が複数開いている状態でのフル lint は、CI が同一に再実行する内容を再発見するために飽和したホストを数分間占有するだけである。帯が何をしたかを報告し、残りは push に運ばせる。
 
 ### 手順
 

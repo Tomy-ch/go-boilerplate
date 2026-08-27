@@ -179,7 +179,7 @@ On push failure (non-fast-forward, permission denied, network error, etc.), repo
 
 ### Let the Pre-push Hook Size Itself — Do Not Pre-empt It
 
-`pre-push` runs the heavy Go gates through `make gate-go-push`. `.makefiles/load.mk` chooses from the number of open worktrees whether those gates run at full speed, throttled, or are deferred to CI. Let the hook make that decision: `make load-status` reports the resolved band, and `repo-ops` section 21 explains the policy.
+`pre-push` runs the heavy Go gates through `make gate-go-push`. `.makefiles/load.mk` chooses from the number of open worktrees whether those gates run at full speed, throttled, or are deferred to CI. Let the hook make that decision: `make load-status` reports the resolved band, and `repo-ops` section 19 explains the policy.
 
 Do **not** run `make lint` or `make test` manually before pushing "to make sure." With several worktrees open, that needlessly saturates the host for minutes to rediscover what CI runs identically, and the saturation itself can make unrelated gates fail. In the `ci-first` band, pushing is the verification step.
 
