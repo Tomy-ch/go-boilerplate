@@ -167,6 +167,33 @@ generate `SKILL.ja.md` via `canonicalize-doc`.
 - After editing, re-sync `SKILL.ja.md` via `canonicalize-doc` — an updated `SKILL.md` with a stale
   Japanese pair is drift.
 
+## Exercise it on an unknown real problem before completion
+
+The author of an instruction sheet is uniquely unable to audit it as a reader. Because the author
+already holds the context omitted from the page, they silently supply it while re-reading and cannot
+see the gap itself. Re-reading the draft, even as part of a review, therefore does not expose the
+class of failure this exercise is meant to find.
+
+Choose **one real problem whose answer you do not know**, and follow the skill from beginning to end
+without skipping any instruction. The unknown answer is essential: with a familiar problem, memory
+can carry the run past a missing field without revealing that the contract is incomplete.
+
+Record every point where the run either **needed to write information for which the contract provides
+no field, or could not supply information that the contract requires**. Treat each such point as a
+defect. Across five skills newly introduced in this repository, every defect revealed by this method
+was an omitted part of the output contract, and none was found by reading alone. Examples included:
+
+- a mandatory verdict with no field for its supporting evidence, forcing the run to invent one
+- an `UNDEFINED` state with no rule for what an adjacent field should contain
+- an execution mode that removes one analysis axis but provides nowhere to disclose the omission
+
+If the same defect shape appears in several related skills, **standardize the field across the family
+instead of applying separate patches**. A recurring gap indicates a missing convention; three
+different remedies leave three contracts that no longer read as members of one family.
+
+This exercise validates the skill contract itself, not the quality of the produced answer. The eval
+workflow below measures output quality, so keep the two checks separate.
+
 ## Evaluating / optimizing
 
 Evaluate the revised skill against representative invocation cases and review whether its description
@@ -182,6 +209,8 @@ workflow, it may supplement this review.
 - `SKILL.ja.md` generated/synced from the canonical `SKILL.md` and in sync.
 - No eval artifacts committed (workspace under gitignored `tmp/`).
 - No hard-protected path touched; only `.codex/skills/**` modified.
+- The skill was exercised once on a real problem whose answer was unknown, and every place where the
+  contract lacked a needed field or required an unfillable one was corrected.
 - The user has reviewed outputs (viewer or inline) and is satisfied.
 - For every new or materially changed skill that is not platform-only, invoke `sync-ai` after local
   validation with this environment as the source. Pass the transfer contract to the receiving
