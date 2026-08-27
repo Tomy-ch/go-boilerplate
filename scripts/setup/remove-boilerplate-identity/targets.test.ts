@@ -145,7 +145,6 @@ describe("BOILERPLATE_DELETE_PATHS", () => {
       }
     });
 
-// doc-pair:replace-begin
     it("ファイル指定では正本と対訳を対にして挙げている", () => {
       expect(BOILERPLATE_DELETE_PATHS).toContain("docs/get-started/boilerplate-only-conventions.md");
       expect(BOILERPLATE_DELETE_PATHS).toContain(
@@ -155,13 +154,6 @@ describe("BOILERPLATE_DELETE_PATHS", () => {
 
     // 対訳は正本と同じディレクトリに居るので、ディレクトリ指定は 1 つで両方を連れて行く。
     it("ディレクトリ指定は対訳の分を重ねて挙げない", () => {
-// doc-pair:replace-with
-// =     it("ファイル指定は正本を挙げている", () => {
-// =       expect(BOILERPLATE_DELETE_PATHS).toContain("docs/get-started/boilerplate-only-conventions.md");
-// =     });
-// =
-// =     it("ディレクトリ指定は配下を重ねて挙げない", () => {
-// doc-pair:replace-end
       expect(BOILERPLATE_DELETE_PATHS).toContain("docs/plan");
       expect(BOILERPLATE_DELETE_PATHS).not.toContain("docs/ja/plan");
     });
@@ -227,11 +219,7 @@ describe("BOILERPLATE_PROSE_MARKERS", () => {
 
     // 語が README に一度も現れないなら、消すものが無いか、語が変わったかのどちらか。
     it("挙げた語が実際に README へ現れる", () => {
-// doc-pair:replace-begin
       const readme = read("README.md") + read("README.ja.md");
-// doc-pair:replace-with
-// =       const readme = read("README.md");
-// doc-pair:replace-end
 
       expect(BOILERPLATE_PROSE_MARKERS.some((word) => readme.includes(word))).toBe(true);
     });

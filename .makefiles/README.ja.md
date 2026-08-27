@@ -537,7 +537,6 @@ Trivy スキャン）は放置します。ループで回すものではない�
 | `make setup-verify` | 初期化が当たったことを検証し、通れば初期化ツールを撤去します。 | `node_tool_runner` で `scripts/setup/verify-setup` を実行します。Phase 5 の値を環境変数で渡します。  <!-- setup-localize:line --> |
 | `make setup-remove-boilerplate-identity` | ボイラープレートである間だけ成り立つ記述を削除します。 | `node_tool_runner` でリポジトリを走査して `boilerplate-only` マーカーをすべて解決し、ボイラープレート限定の規約ドキュメントを削除したうえで、ツール自身も撤去します。`DRY_RUN=1` でプレビューできます。 <!-- boilerplate-only:line --> |
 | `make setup-remove-sample-api` | サンプルAPI(`user`/`product`/`order`)を一括削除します。 | `node_tool_runner` で削除後、`db-local-reinit` / `db-test-reinit` → `gen-api` → `gen-query` → `tidy-lib` → `fix` → `lint` を実行します。DB 再構築により削除済みテーブルが生成モデルに残らず、`tidy-lib` によりサンプルAPIだけが使っていた直接依存が go.mod から落ちます。**DB コンテナ(`database`)の起動が必要**（`gen-query` がライブスキーマをダンプ）。`DRY_RUN=1` で変更せずプレビューできます（`0` を含む空でない値はすべてプレビュー扱いになるため、実行時は変数自体を付けません）。 <!-- sample-api:line --> |
-| `make setup-remove-doc-language` | ドキュメント / スキルの対訳ペアを `LANG_CHOICE` で解決します。`en` / `ja` はその 1 言語へ畳み、`both` は対訳を残してマーカーだけを解決します。 | ツールランナーを経由せずホストで実行します（撤去を 1 コミットに畳むためホストの git が要る）。他のすべての撤去より**先**に実行してください。各撤去ツールは正本と対訳の対で宣言を持ち、畳みが解決した時点で自分の対の宣言を刈ります。逆に Phase 12 はこのツールが文字列を宣言している workflow を削除するため、その後に畳もうとすると中止します。`DRY_RUN=1` でプレビューできます（作業ツリーが汚れていても動作し、実行時はクリーンが必要）。 <!-- lang-choice:line --> |
 
 ### ベースブランチ解決関連
 

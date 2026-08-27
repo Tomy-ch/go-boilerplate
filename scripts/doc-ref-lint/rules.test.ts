@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-// doc-pair:replace-begin
 import { adrIndex, checkDocRoutes, checkPathReferences, checkReferences, checkStructuredReferences, checkTranslationExclusions, checkTranslations, expectedTranslation, isEligible, normalizeReferences, translationExclusion } from "./rules";
-// doc-pair:replace-with
-// = import { adrIndex, checkDocRoutes, checkPathReferences, checkReferences, checkStructuredReferences, isEligible, normalizeReferences } from "./rules";
-// doc-pair:replace-end
 
 const ADR = ["ADR", "-0006"].join("");
 const ADRS = adrIndex(["docs/adr/0006-structural-safety-via-tooling.md"]);
@@ -62,7 +58,7 @@ describe("checkPathReferences", () => {
   describe("正常系", () => {
     it("番号どおりの slug を綴ったパス参照を通す", () => {
       expect(checkPathReferences("a.md", "docs/adr/0006-structural-safety-via-tooling.md", ADRS)).toEqual([]);
-      expect(checkPathReferences("a.md", "docs/adr/0006-structural-safety-via-tooling.ja.md", ADRS)).toEqual([]); // doc-pair:line
+      expect(checkPathReferences("a.md", "docs/adr/0006-structural-safety-via-tooling.ja.md", ADRS)).toEqual([]);
     });
     it("ADR を指さないパスは見ない", () => {
       expect(checkPathReferences("a.md", "docs/design/0006-other.md", ADRS)).toEqual([]);
@@ -151,7 +147,6 @@ describe("checkDocRoutes", () => {
   });
 });
 
-// doc-pair:begin
 describe("expectedTranslation", () => {
   describe("正常系", () => {
     it("通常の docs を日本語ミラーへ対応付ける", () => expect(expectedTranslation("docs/design/worker.md")).toBe("docs/design/worker.ja.md"));
@@ -198,4 +193,3 @@ describe("checkTranslationExclusions", () => {
     it("対象がない除外を古い設定として報告する", () => expect(checkTranslationExclusions([])[0].message).toBe("stale translation exclusion"));
   });
 });
-// doc-pair:end

@@ -331,7 +331,6 @@ func Test_buildRules(t *testing.T) {
 		t.Run("各書き換え先へ対応するランタイムの版を割り当てる", func(t *testing.T) {
 			t.Parallel()
 			v := testVersions()
-			// doc-pair:replace-begin
 			want := map[string]string{
 				"go.mod (go directive)":                     v.Go,
 				"docker/server/Dockerfile (golang base)":    v.Go,
@@ -356,25 +355,6 @@ func Test_buildRules(t *testing.T) {
 				"docker/server/Dockerfile (mise version)":   v.Mise,
 				"docker-compose.yaml (otel-lgtm image)":     v.OtelLgtm,
 			}
-			// doc-pair:replace-with
-			// = want := map[string]string{
-			// = 	"go.mod (go directive)":                   v.Go,
-			// = 	"docker/server/Dockerfile (golang base)":  v.Go,
-			// = 	"docker/tools/Dockerfile (golang base)":   v.Go,
-			// = 	"docker/tools/Dockerfile (node base)":     v.Node,
-			// = 	"docker/tools/Dockerfile (python base)":   v.Python,
-			// = 	"docker/README.md (golang image)":         v.Go,
-			// = 	"docker/README.md (node image)":           v.Node,
-			// = 	"docker/README.md (python image)":         v.Python,
-			// = 	"docker/server/README.md (golang image)":  v.Go,
-			// = 	"docker/tools/README.md (golang image)":   v.Go,
-			// = 	"docker/tools/README.md (node image)":     v.Node,
-			// = 	"docker/tools/README.md (python image)":   v.Python,
-			// = 	"docker/tools/Dockerfile (mise version)":  v.Mise,
-			// = 	"docker/server/Dockerfile (mise version)": v.Mise,
-			// = 	"docker-compose.yaml (otel-lgtm image)":   v.OtelLgtm,
-			// = }
-			// doc-pair:replace-end
 
 			rules := buildRules(v)
 
@@ -709,15 +689,9 @@ func writeSyncTargets(t *testing.T, root string) {
 	writeFile(t, root, "docker-compose.yaml", composeYAML)
 
 	for _, readme := range []string{
-		// doc-pair:replace-begin
 		"docker/README.md", "docker/README.ja.md",
 		"docker/server/README.md", "docker/server/README.ja.md",
 		"docker/tools/README.md", "docker/tools/README.ja.md",
-		// doc-pair:replace-with
-		// = "docker/README.md",
-		// = "docker/server/README.md",
-		// = "docker/tools/README.md",
-		// doc-pair:replace-end
 	} {
 		writeFile(t, root, readme, imageReadme)
 	}

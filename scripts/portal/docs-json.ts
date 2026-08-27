@@ -27,28 +27,20 @@ const metaSchema = z.object({
 export type DiscoveredDirectory = {
   name: string;
   hasIndexHtml: boolean;
-// doc-pair:replace-begin
   enFiles: readonly string[];
   jaFiles: readonly string[];
-// doc-pair:replace-with
-// =   files: readonly string[];
-// doc-pair:replace-end
 };
 
 export type DiscoveredDocs = {
   directories: readonly DiscoveredDirectory[];
-// doc-pair:replace-begin
   rootEnFiles: readonly string[];
   rootJaFiles: readonly string[];
-// doc-pair:replace-with
-// =   rootFiles: readonly string[];
-// doc-pair:replace-end
 };
 
 export type DocItem = {
   name: string;
   path: string;
-  lang: "en" | "ja" | "all"; // doc-pair:line
+  lang: "en" | "ja" | "all";
   source: string;
   guideId: string;
 };
@@ -116,13 +108,10 @@ function basename(filePath: string): string {
   return filePath.slice(filePath.lastIndexOf("/") + 1);
 }
 
-// doc-pair:begin
 function langOf(destination: string): "en" | "ja" {
   return destination.includes("/ja/") || destination.endsWith(".ja.md") ? "ja" : "en";
 }
 
-// doc-pair:end
-// doc-pair:replace-begin
 /**
  * 項目を subgroup へ割り当てるための識別子を導く。
  *
@@ -135,19 +124,11 @@ export function guideIdOf(filePath: string): string {
 
   if (/\.ja\.md$/i.test(base)) return base.replace(/\.ja\.md$/i, "");
   if (/\.md$/i.test(base)) return base.replace(/\.md$/i, "");
-// doc-pair:replace-with
-// = /** 項目を subgroup へ割り当てるための識別子を導く。 */
-// = export function guideIdOf(filePath: string): string {
-// =   const base = basename(filePath);
-// =
-// =   if (/\.md$/i.test(base)) return base.replace(/\.md$/i, "");
-// doc-pair:replace-end
   if (/\.html$/i.test(base)) return base.replace(/\.html$/i, "");
 
   return base;
 }
 
-// doc-pair:begin
 /** `lang` の並び順。EN を先、JA を後、言語を持たない項目を最後にする。 */
 function langOrder(lang: DocItem["lang"]): number {
   if (lang === "en") return 0;
@@ -156,7 +137,6 @@ function langOrder(lang: DocItem["lang"]): number {
   return 2;
 }
 
-// doc-pair:end
 /** 1 つの取り込み元が寄せるセクションと、その中身。 */
 type SectionSource = {
   id: string;
@@ -174,7 +154,7 @@ function manifestSections(parsed: Record<string, unknown>): SectionSource[] {
       items: (entries as { dst: string; src: string }[]).map((entry) => ({
         name: autoTitle(basename(entry.dst)),
         path: entry.dst.replace(/^docs\/portal\//, "./"),
-        lang: langOf(entry.dst), // doc-pair:line
+        lang: langOf(entry.dst),
         source: entry.src,
         guideId: guideIdOf(entry.dst),
       })),
@@ -193,11 +173,7 @@ function directorySections(
   sectionTitles: Record<string, string>,
 ): SectionSource[] {
   return directories
-// doc-pair:replace-begin
     .filter((dir) => dir.hasIndexHtml || dir.enFiles.length > 0 || dir.jaFiles.length > 0)
-// doc-pair:replace-with
-// =     .filter((dir) => dir.hasIndexHtml || dir.files.length > 0)
-// doc-pair:replace-end
     .map((dir) => {
       const title = sectionTitles[dir.name] ?? autoTitle(dir.name);
       const indexItem: DocItem[] = dir.hasIndexHtml
@@ -205,7 +181,7 @@ function directorySections(
             {
               name: title,
               path: `../${dir.name}/index.html`,
-              lang: "all", // doc-pair:line
+              lang: "all",
               source: `docs/${dir.name}/index.html`,
               guideId: dir.name,
             },
@@ -217,14 +193,10 @@ function directorySections(
         fallbackTitle: autoTitle(dir.name),
         items: [
           ...indexItem,
-// doc-pair:replace-begin
           ...dir.enFiles.map((file) => markdownItem(file, `../${dir.name}/${file}`, "en", dir.name)),
           ...dir.jaFiles.map((file) =>
             markdownItem(file, `../ja/${dir.name}/${file}`, "ja", dir.name),
           ),
-// doc-pair:replace-with
-// =           ...dir.files.map((file) => markdownItem(file, `../${dir.name}/${file}`, dir.name)),
-// doc-pair:replace-end
         ],
       };
     });
@@ -232,29 +204,20 @@ function directorySections(
 
 /** `docs/` 直下の正本と対訳。ディレクトリを持たないため 1 つのセクションへ集約する。 */
 function rootSection(discovered: DiscoveredDocs): SectionSource[] {
-// doc-pair:replace-begin
   if (discovered.rootEnFiles.length === 0 && discovered.rootJaFiles.length === 0) return [];
-// doc-pair:replace-with
-// =   if (discovered.rootFiles.length === 0) return [];
-// doc-pair:replace-end
 
   return [
     {
       id: ROOT_MD_SECTION_ID,
       fallbackTitle: "Architecture Docs",
       items: [
-// doc-pair:replace-begin
         ...discovered.rootEnFiles.map((file) => markdownItem(file, `../${file}`, "en")),
         ...discovered.rootJaFiles.map((file) => markdownItem(file, `../ja/${file}`, "ja")),
-// doc-pair:replace-with
-// =         ...discovered.rootFiles.map((file) => markdownItem(file, `../${file}`)),
-// doc-pair:replace-end
       ],
     },
   ];
 }
 
-// doc-pair:replace-begin
 /** 走査で見つけた Markdown 1 件を項目にする。`source` は正本の位置で、対訳でも `ja/` を挟まない。 */
 function markdownItem(
   file: string,
@@ -270,17 +233,6 @@ function markdownItem(
     guideId: guideIdOf(file),
   };
 }
-// doc-pair:replace-with
-// = /** 走査で見つけた Markdown 1 件を項目にする。 */
-// = function markdownItem(file: string, path: string, directory?: string): DocItem {
-// =   return {
-// =     name: autoTitle(file),
-// =     path,
-// =     source: directory === undefined ? `docs/${file}` : `docs/${directory}/${file}`,
-// =     guideId: guideIdOf(file),
-// =   };
-// = }
-// doc-pair:replace-end
 
 /**
  * manifest と `docs/` の走査結果から docs.json を組み立てる。
@@ -338,14 +290,10 @@ export function buildDocsJson(
   }
 
   for (const section of sections.values()) {
-// doc-pair:replace-begin
     section.items.sort(
       (left, right) =>
         langOrder(left.lang) - langOrder(right.lang) || left.name.localeCompare(right.name),
     );
-// doc-pair:replace-with
-// =     section.items.sort((left, right) => left.name.localeCompare(right.name));
-// doc-pair:replace-end
   }
 
   applySubgroups(sections, meta.subgroups, warnings);
