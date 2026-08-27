@@ -7,8 +7,6 @@ description: Integrator skill that creates the 2-layer spec set under `docs/spec
 
 Integrator for creating the 2-layer spec template set for one feature (lean A: `domain.md` + `usecase.md`).
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
-
 ## When to Use
 
 - Starting a brand-new feature and want both spec templates created in one chained flow.

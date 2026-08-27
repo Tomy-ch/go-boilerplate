@@ -12,8 +12,6 @@ This skill pushes the current branch to `origin` and ensures a GitHub pull reque
 
 The PR body is filled from `.github/pull_request_template.md`. The skill never auto-pushes, never overwrites an existing PR's title/body, and never force-pushes.
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
-
 ## Preconditions
 
 - `gh` CLI is installed and authenticated (`gh auth status` succeeds).

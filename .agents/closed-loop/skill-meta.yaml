@@ -58,7 +58,6 @@ skills:
     opportunity_predicate: null
   - skill: canonicalize-doc
     usage_class: situational
-    opportunity_predicate: "対訳ペアの片側だけが変更された（`X.md` と `X.ja.md` の一方のみ）"
   - skill: comment-sweep
     usage_class: situational
     opportunity_predicate: null

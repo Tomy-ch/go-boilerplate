@@ -8,8 +8,6 @@ allowed-tools: Read, Grep, Glob, Bash
 
 # Full Verify
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
-
 Launched via `/full-verify`. A read-only skill that, for **any repository**, verifies in the
 background whether the current structure and all implementation code is "appropriate," generating a
 set of Markdown findings.

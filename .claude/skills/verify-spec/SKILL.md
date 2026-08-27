@@ -8,8 +8,6 @@ description: >-
 
 Integrator for spec validation. Fans out per-spec **read-only validator subagents** in parallel based on which spec files exist under `docs/spec/<feature>/`.
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
-
 ## When to Use
 
 - Before invoking `scaffold-endpoint` to catch spec inconsistencies upfront (`scaffold-endpoint` auto-chains this).

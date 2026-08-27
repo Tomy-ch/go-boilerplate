@@ -44,7 +44,6 @@ export type ScannerDomain = {
 };
 
 const README_EN = ".github/workflows/README.md";
-const README_JA = ".github/workflows/README.ja.md";
 const SETUP_MK = ".makefiles/github/operation/setup-repository.mk";
 const MISE_TOML = "mise.toml";
 
@@ -78,29 +77,11 @@ export const SCANNER_DOMAINS: readonly ScannerDomain[] = [
         block:
           "| `sonarqube.yaml` `sonarqube` | 15 | vendor-side analysis can queue for up to 10 minutes; test and coverage gates run in their owning workflows |\n",
       },
-      {
-        file: README_JA,
-        block:
-          "|SonarQube Cloud Scan|`sonarqube.yaml`|SonarQube Cloud による一次ソースの解析。結果は Web API から読み戻して SARIF へ変換する（**Sonar の品質ゲートでブロックする**。issue の一覧は報告専用。`SONAR_TOKEN` が必要。[資格情報を要するスキャナの撤去](#資格情報を要するスキャナの撤去)を参照）|\n",
-      },
-      {
-        file: README_JA,
-        block:
-          "| SonarQube Cloud | Go / TypeScript / `sonar-project.properties` 変更 PR | 同上 | 週次 |\n",
-      },
-      {
-        file: README_JA,
-        block:
-          "| `sonarqube.yaml` `sonarqube` | 15 | ベンダー側の解析キューが最大 10 分待つため。テストとカバレッジのゲートはそれぞれの所有ワークフローで実行する |\n",
-      },
     ],
     docFragments: [
       { file: README_EN, fragment: " + `sonarqube.yaml` (SonarQube Cloud) **(gate, quality gate)**" },
       { file: README_EN, fragment: " + `sonarqube.yaml` (SonarQube Cloud) **(gate, quality gate)**" },
       { file: README_EN, fragment: ", `05:00` SonarQube Cloud" },
-      { file: README_JA, fragment: " + `sonarqube.yaml`（SonarQube Cloud） **(gate, 品質ゲート)**" },
-      { file: README_JA, fragment: " + `sonarqube.yaml`（SonarQube Cloud） **(gate, 品質ゲート)**" },
-      { file: README_JA, fragment: "、`05:00` SonarQube Cloud" },
     ],
     docSections: [],
   },
@@ -146,21 +127,6 @@ export const SCANNER_DOMAINS: readonly ScannerDomain[] = [
         block:
           "\nThe `First-party Go source` and `First-party TypeScript source` rows carry the vendor-hosted scanner as well. Sonar is the one deliberate departure from \"one owner per rule\" in this table. Its quality gate judges static analysis and duplication alongside its own issue taxonomy, while the Go and TypeScript test workflows own coverage thresholds. A finding both engines recognize can still turn a pull request red twice; that is accepted because discarding the vendor's verdict entirely would leave the scan reporting into a run that merged regardless.\n",
       },
-      {
-        file: README_JA,
-        block:
-          "| CodeQL | Go / TypeScript / Actions 定義の変更 PR | 同上 | 週次 |\n",
-      },
-      {
-        file: README_JA,
-        block:
-          "\n最後のスロットは SonarQube Cloud です。解析がベンダーのサーバ側で走るため、DAST を全ファイル読み取り系の後ろへ置いたのと同じ理由で最後に並べています。所要時間がこのリポジトリの制御外のキューに左右されるため、自前のランナーで完結するスキャナより前に積む利点がありません。\n",
-      },
-      {
-        file: README_JA,
-        block:
-          "\n`自前の Go ソース` と `自前の TypeScript ソース` の行にはベンダーホスト型のスキャナも乗っています。Sonar はこの表で唯一「ルール単位で担当 1 つ」から意図的に外れています。品質ゲートは静的解析・重複と Sonar 自身の issue 分類をまとめて判定し、カバレッジの閾値は Go / TypeScript のテストワークフローがそれぞれ担います。両者が認識する検出で PR が 2 回赤くなり得ますが、それを受け入れているのは、ベンダーの判定を捨てると「スキャンは報告するが run はそのままマージされる」状態になるためです。\n",
-      },
       // 撤去後は呼ぶ先が無くなるので、ターゲットの宣言とレシピも一緒に落とす。
       {
         file: SETUP_MK,
@@ -182,15 +148,11 @@ setup-remove-licensed-scanners:
     ],
     docFragments: [
       { file: README_EN, fragment: ", `01:15` CodeQL" },
-      { file: README_JA, fragment: "、`01:15` CodeQL" },
       { file: README_EN, fragment: "`code-ql.yaml` (`javascript-typescript` leg) + " },
       { file: README_EN, fragment: " + `code-ql.yaml` (`actions` leg)" },
-      { file: README_JA, fragment: "`code-ql.yaml`（`javascript-typescript` レグ）+ " },
-      { file: README_JA, fragment: "+ `code-ql.yaml`（`actions` レグ）" },
     ],
     docSections: [
       { file: README_EN, heading: "#### Removing the credential-bearing scanners" },
-      { file: README_JA, heading: "#### 資格情報を要するスキャナの撤去" },
     ],
   },
 ];

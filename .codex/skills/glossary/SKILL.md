@@ -6,8 +6,6 @@ description: >-
 
 # Glossary
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
-
 Maintain `docs/spec/glossary.md` as the single source of truth for this system's business vocabulary.
 
 ## Decision boundary
@@ -131,7 +129,7 @@ make the code follow it.
 
 ## Write and close
 
-Write **only** `docs/spec/glossary.md`; do not edit feature specs, READMEs, ADRs, the DDD ledger, source, or generated files. Do not create a `.ja.md` pair for the glossary: this spec tree uses one Japanese file with English headings.
+Write **only** `docs/spec/glossary.md`; do not edit feature specs, READMEs, ADRs, the DDD ledger, source, or generated files.
 
 <!-- sample-api:begin -->
 Put sample-derived rows between `sample-api:begin` and `sample-api:end`. Put terms that survive sample removal outside those markers.

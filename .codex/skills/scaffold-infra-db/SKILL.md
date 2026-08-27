@@ -8,8 +8,6 @@ description: >-
 
 Generate the infrastructure (RDB) layer Repository for a feature. **lean A: no spec file** — Repository is derived from domain Repository IF + sqlc gen functions via naming convention.
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
-
 ## When to Use
 
 - After `scaffold-domain` has created the Repository interface AND `make gen-query` has produced the sqlc gen functions.

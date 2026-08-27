@@ -27,15 +27,9 @@ Infer the source only when the user clearly names it. Do not infer direction fro
 If both copies changed, stop and ask which copy is authoritative; never merge two edited skills
 automatically.
 
-<!-- doc-pair:replace-begin -->
-Inspect the complete source unit and the target unit if it exists. Treat `SKILL.md`,
-`SKILL.ja.md`, UI metadata, scripts, references, and assets as one unit. Record only a temporary
-transfer note under `tmp/skills/sync-ai/`; do not create a durable third copy or a synchronization manifest.
-<!-- doc-pair:replace-with -->
-<!-- = Inspect the complete source unit and the target unit if it exists. Treat `SKILL.md`, UI metadata, -->
-<!-- = scripts, references, and assets as one unit. Record only a temporary transfer note under -->
-<!-- = `tmp/skills/sync-ai/`; do not create a durable third copy or a synchronization manifest. -->
-<!-- doc-pair:replace-end -->
+Inspect the complete source unit and the target unit if it exists. Treat `SKILL.md`, UI metadata,
+scripts, references, and assets as one unit. Record only a temporary transfer note under
+`tmp/skills/sync-ai/`; do not create a durable third copy or a synchronization manifest.
 
 ## 2. Build the transfer contract
 
@@ -57,7 +51,6 @@ wrong idioms, which is the failure this skill exists to prevent.
 
 For a target under `.claude/skills/`, invoke `/manage-skill` with the transfer contract. It creates
 or updates the target in place, preserves Claude-native metadata, applies the skill-creator flow,
-and synchronizes `SKILL.ja.md` from canonical English `SKILL.md`.
 
 For a target under `.codex/skills/`, hand the contract to Codex's `manage-skill` by running Codex
 headlessly:
@@ -112,13 +105,8 @@ That asymmetry is exactly why the lock above bounds recursion and this gate does
 Check the receiver's own checklist items against the filesystem too, not just against its prose.
 The properties that go wrong quietly are the ones a diff does not surface: a newly created file
 appears in `git status` without its mode, so verify the executable bit on any bundled script
-<!-- doc-pair:replace-begin -->
-(`ls -l`), run `sh -n` over it, and confirm the `SKILL.md` / `SKILL.ja.md` heading counts still
-match. A receiver reporting these as passed is exactly the claim this paragraph exists to distrust.
-<!-- doc-pair:replace-with -->
-<!-- = (`ls -l`) and run `sh -n` over it. A receiver reporting these as passed is exactly the claim this -->
-<!-- = paragraph exists to distrust. -->
-<!-- doc-pair:replace-end -->
+(`ls -l`) and run `sh -n` over it. A receiver reporting these as passed is exactly the claim this
+paragraph exists to distrust.
 
 ## Guardrails
 

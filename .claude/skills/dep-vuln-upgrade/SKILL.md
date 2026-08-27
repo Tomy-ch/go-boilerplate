@@ -24,8 +24,6 @@ and hand the entry to the maintainer rather than inventing a selector.
 
 It is deliberately **targeted**: it changes only the packages named in the advisory, never a blanket "everything to latest". That keeps a security patch reviewable and decoupled from unrelated churn. For blanket upgrades use `/tools-upgrade` (mise tools) or `make tidy-lib` (Go modules) instead.
 
-A Japanese reference translation is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
-
 ## When to Use
 
 Use this skill when:
@@ -337,5 +335,4 @@ Confirm before reporting completion:
 - [ ] `pnpm install --frozen-lockfile` + `pnpm audit` for pnpm changes; `govulncheck` + build for Go changes; `make lint` / `make test` as scope warrants (major bumps verified more closely — typecheck / package tests)
 - [ ] Generator drift checked for generator-feeding deps; regenerated artifacts included; tool-runner images rebuilt (`make tool-runners-build`) after a `scripts/` pnpm change before claiming a containerized gate passes
 - [ ] Final Japanese report: applied set, major/too-new/exclusion decisions with removal dates, deferred/skipped items, verification results
-- [ ] After updating `SKILL.md`, re-sync `SKILL.ja.md`
 - [ ] No commit / stage / push performed

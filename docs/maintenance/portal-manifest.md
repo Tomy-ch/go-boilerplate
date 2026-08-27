@@ -67,15 +67,12 @@ Every key at the top level **other than `meta`** is a section id. The value is a
     dst: docs/portal/guides/<flat-name>.md
   - src: <another EN source>
     dst: docs/portal/guides/<another>.md
-  # Japanese
-  - src: <source path>.ja.md
-    dst: docs/portal/guides/ja/<flat-name>.ja.md
   - ...
 ```
 
 `src` is the canonical README in the repo. `dst` is where the build copies it to under `docs/portal/guides/`. The viewer fetches the `dst` path at runtime; the `src` path is shown as the small "where this came from" line on each card.
 
-**Naming rule for `dst`**: the basename (without `.md` / `.ja.md`) is the **guide id** that `meta.subgroups` references. Keep guide ids unique within the portal.
+**Naming rule for `dst`**: the basename (without `.md`) is the **guide id** that `meta.subgroups` references. Keep guide ids unique within the portal.
 
 ## 3. Filesystem auto-discovery (TypeScript construction side)
 
@@ -84,9 +81,7 @@ For documentation that lives under `docs/` directly (rather than as `**/README.m
 | Filesystem location | Becomes section | Notes |
 | --- | --- | --- |
 | `docs/*.md` | section id `architecture` | Root-level architecture docs (rules / decisions / development-flow / ...) |
-| `docs/*.ja.md` | items of section `architecture` (lang: ja) | Japanese counterparts |
 | `docs/<dir>/*.md` | section id `<dir>` | Auto for any subdir; e.g. `docs/maintenance/*.md` → section `maintenance` |
-| `docs/<dir>/*.ja.md` | items of section `<dir>` (lang: ja) | Japanese counterparts |
 | `docs/<dir>/index.html` | section id `<dir>`, single HTML item (lang: all) | For generated reference sites (godoc, coverage, ...) |
 
 To control where an auto-discovered section appears in the portal, reference its id from `meta.groups` (for placement) and optionally `meta.section_titles` (for display name) / `meta.subgroups` (for subdivision) / `meta.reference_links` (to pull it out as a quick link).
@@ -107,9 +102,6 @@ Most code-package READMEs (`internal/<layer>/<sub>/README.md`, `pkg/<sub>/README
      # English
      - src: internal/controller/<new-package>/README.md
        dst: docs/portal/guides/controller-<new-package>.md
-     # Japanese
-     - src: internal/controller/<new-package>/README.ja.md
-       dst: docs/portal/guides/ja/controller-<new-package>.ja.md
    ```
 
 3. If the section uses `meta.subgroups`, also list the new guide id (`controller-<new-package>`) in the appropriate subgroup — otherwise it lands in `Other`.
