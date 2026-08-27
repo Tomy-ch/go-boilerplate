@@ -129,20 +129,21 @@ function applyOperation(operation: Operation, dryRun: boolean): string[] {
  * この宣言をマーカーに委ねると、workflow だけが消えて宣言が孤児として残ります。
  */
 function removeSelfEgressJobs(): string[] {
-  const absolute = toAbsolutePath(EGRESS_FILE);
+  // 存在確認を挟まず読んで判断する。確認してから読むまでの間に消えうるし、消えていれば
+  // 読み出しが null を返す —— 同じ結論に、競合の窓を開けずに辿り着ける。
+  const original = readRepoFile(EGRESS_FILE);
 
-  if (!fs.existsSync(absolute)) {
+  if (original === null) {
     return [];
   }
 
-  const original = fs.readFileSync(absolute, "utf8");
   const content = removeEgressSections(original, SELF_EGRESS_JOBS);
 
   if (content === original) {
     return [];
   }
 
-  fs.writeFileSync(absolute, content);
+  fs.writeFileSync(toAbsolutePath(EGRESS_FILE), content);
 
   return [EGRESS_FILE];
 }
