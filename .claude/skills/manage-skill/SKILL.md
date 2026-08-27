@@ -176,6 +176,31 @@ body, and the eval workspace under `tmp/`. When the draft stabilizes, generate `
 - After editing, re-sync `SKILL.ja.md` via `canonicalize-doc` — an updated `SKILL.md` with a stale
   Japanese pair is drift.
 
+## Run it once on a real problem before calling it done
+
+A skill is an instruction sheet, and its author is the one reader who cannot audit it: you hold the
+context the sheet leaves out, so you fill the gaps in your head as you read and never see them. That
+is why re-reading a draft — or having it reviewed — does not surface the failure this step catches.
+
+Take **one real problem whose answer you do not already know**, and run the skill through without
+skipping steps. The unknown answer is what makes it work: on a problem you know, you complete the run
+from memory and the missing field never announces itself.
+
+Then record every place where you **wrote something the contract has no field for, or could not write
+something it demands**. Those are the defects. Measured on the five skills added in this repository,
+every gap found this way was a hole in the output contract, and none had been visible while reading:
+
+- a required verdict whose supporting evidence had nowhere to go, so the run invented a field for it
+- a state (`UNDEFINED`) with no rule for what the neighbouring field should then say
+- a run mode that removes an axis from the analysis, with no place to say the axis was removed
+
+When the same shape of hole appears in more than one skill, **align the field across them rather than
+patching each one**. A gap that recurs is a missing convention, and fixing it three different ways
+produces three contracts that no longer read as one family.
+
+This is verification of the skill, not of its output quality — that is what the official eval loop
+below measures, and the two answer different questions.
+
 ## Evaluating / optimizing
 
 Use the official test-run, benchmark, viewer, and **Description Optimization** flows unchanged, with
@@ -190,6 +215,8 @@ powering this session (see the environment/system prompt) so triggering matches 
 - `SKILL.ja.md` generated/synced from the canonical `SKILL.md` and in sync.
 - No eval artifacts committed (workspace under gitignored `tmp/`).
 - No hard-protected path touched; only `.claude/skills/**` modified.
+- The skill was run once on a real problem whose answer was not already known, and every place
+  where the contract had no field — or demanded one that could not be filled — was fixed.
 - The user has reviewed outputs (viewer or inline) and is satisfied, per the official loop.
 - For every new or materially changed skill that is not platform-only, invoke `sync-ai` after local
   validation with this environment as the source. Pass the transfer contract to the receiving
