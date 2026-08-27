@@ -13,8 +13,6 @@ The canonical examples of the target format are:
 - `.github/release/v2.1.0.md`
 - `.github/release/v2.0.0.md`
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
-
 ## First Step: Confirm the FROM Tag and the New Version
 
 This skill **MUST call `AskUserQuestion` immediately after invocation** to confirm two values, in the following order. Do NOT silently adopt a value from skill arguments or recent messages — an explicit confirmation is required to prevent misconfiguration.
@@ -233,4 +231,3 @@ Confirm the following before reporting completion:
 
 - Output language inside the file MUST be Japanese (per `CLAUDE.md` language rules), regardless of the language used during interaction with the user.
 - This skill never amends, force-pushes, tags, or pushes. Git operations remain the user's responsibility.
-- After updating `SKILL.md`, also update `SKILL.ja.md` to keep the Japanese translation in sync.

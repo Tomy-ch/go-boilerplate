@@ -38,7 +38,7 @@ Scan only project-level paths under the current working directory:
 | Type | Path glob | Entry file |
 | --- | --- | --- |
 | commands | `.codex/commands/` | `<name>.md` |
-| skills | `.codex/skills/` | `<name>/SKILL.md` (skip `SKILL.ja.md` and other `*.ja.md` translation files) |
+| skills | `.codex/skills/` | `<name>/SKILL.md` |
 | agents | `.codex/agents/` | `<name>.md` |
 
 Discovery commands (use `Bash` with `find` / `ls`, then `Read` per file):
@@ -51,7 +51,6 @@ test -d .codex/agents   && find .codex/agents   -maxdepth 1 -type f -name '*.md'
 
 Skip:
 
-- `*.ja.md` translation files (they are not loaded as entries).
 - Any directory under `.codex/skills/` that lacks a `SKILL.md`.
 - Hidden files (`.DS_Store` etc.).
 
@@ -184,7 +183,6 @@ Before reporting completion, confirm:
 
 - [ ] All required inputs resolved (via `$ARGUMENTS` or `ask the user explicitly`)
 - [ ] Only project-level `.codex/{commands,skills,agents}/` scanned
-- [ ] `*.ja.md` files excluded from the skills scan
 - [ ] Frontmatter parsed for each entry (name, description, type-specific fields)
 - [ ] Dependencies detected per the documented rules (self-refs excluded; broken edges recorded)
 - [ ] Report contains Summary, Inventory Tables, Dependency Graph (Mermaid), Notes

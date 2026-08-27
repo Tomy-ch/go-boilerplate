@@ -12,8 +12,6 @@ The audit surface is **both** declaration sites, because a tool that is not read
 - `mise.toml` `[tools]` — everything mise resolves.
 - `python/*.in` — the PyPI tools, whose resolved trees are hash-pinned in `python/*.txt` ([ADR-0080 (mise-ssot-drift-gate)](../../../docs/adr/0080-mise-ssot-drift-gate.md)). Bumping one of these is a two-file change: the pin, then `make py-lock`.
 
-A Japanese reference translation is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
-
 ## When to Use
 
 Use this skill when:
@@ -48,7 +46,7 @@ Per the "Exception: Skill Execution" clause in `CLAUDE.md`, the following paths 
 
 - `mise.toml` (the `[tools]` table — write only entries the user explicitly approved)
 - `python/*.in` (the version pin — only entries the user explicitly approved) and `python/*.txt` — the latter only as the output of `make py-lock`, never hand-edited
-- `go.mod`, `docker/**/Dockerfile`, `docker/**/README.md`, `docker/**/README.ja.md` — only as the downstream output of `make sync-versions` (the script handles these atomically)
+- `go.mod`, `docker/**/Dockerfile`, `docker/**/README.md` — only as the downstream output of `make sync-versions` (the script handles these atomically)
 - `docker/**/Dockerfile` `FROM` `@sha256:...` digests + `docker/images-pin.toml` — only via `make pin-images-apply` / `pin-images-resolve`, when a `go` / `node` / `python` runtime bump changed a base-image tag
 
 The following remain protected even during skill execution:
@@ -247,5 +245,4 @@ Confirm the following before reporting completion:
 - [ ] If a runtime was bumped: base image digests re-pinned (`make pin-images-resolve` + `pin-images-apply` + `pin-images-check`). A rule 3 fail-closed on the new tag is the expected outcome for a just-published image — surfaced with the coupling (bootstrap via `days=0` after triage, or hold the bump), never forced through, and never left as a tag/digest mismatch
 - [ ] `make lint` + `make test` run after writes
 - [ ] Final result table reported to the user
-- [ ] After updating `SKILL.md`, also update `SKILL.ja.md` to keep the Japanese translation in sync
 - [ ] No commit / stage / push performed

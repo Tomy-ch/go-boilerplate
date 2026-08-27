@@ -1,12 +1,12 @@
 ---
 name: portal-manifest-sync
 description: >-
-  Audit `docs/portal/manifest.yaml` against the real `README.md` / `README.ja.md` files on disk. The manifest is treated as a **curated reading list**, not a complete mirror of disk. Workflow has three quality gates before any reporting: (1) **pair_drift preflight** — if translation sibling files are missing, offer to chain into `canonicalize-doc` to resolve before continuing; (2) **API-doc filter** — applies the N1 (Pure API reference) criterion defined in `.codex/skills/readme-review/SKILL.md` to exclude READMEs that are dominantly Go API references (godoc's responsibility); (3) **manual-worthiness judgment** — each remaining uncurated README is evaluated by applying the P1–P7 positive criteria and the N2–N4 negative criteria from `readme-review`, then classified using its thresholds (manual-worthy / borderline / not-yet-manual-grade / out-of-scope-for-portal). After the gates, the skill surfaces: `stale` (removable), `manual-worthy`, `borderline`, `not-yet-manual-grade`, and `out-of-scope-for-portal` (count only). Edits only `docs/portal/manifest.yaml`; never touches `docs/portal/guides/**`. Criteria are NOT duplicated here — they live in `readme-review` SKILL.md as the single source of truth.
+  Audit `docs/portal/manifest.yaml` against the real `README.md` files on disk. The manifest is treated as a **curated reading list**, not a complete mirror of disk. Workflow has three quality gates before any reporting: (1) **pair_drift preflight** — if translation sibling files are missing, offer to chain into `canonicalize-doc` to resolve before continuing; (2) **API-doc filter** — applies the N1 (Pure API reference) criterion defined in `.codex/skills/readme-review/SKILL.md` to exclude READMEs that are dominantly Go API references (godoc's responsibility); (3) **manual-worthiness judgment** — each remaining uncurated README is evaluated by applying the P1–P7 positive criteria and the N2–N4 negative criteria from `readme-review`, then classified using its thresholds (manual-worthy / borderline / not-yet-manual-grade / out-of-scope-for-portal). After the gates, the skill surfaces: `stale` (removable), `manual-worthy`, `borderline`, `not-yet-manual-grade`, and `out-of-scope-for-portal` (count only). Edits only `docs/portal/manifest.yaml`; never touches `docs/portal/guides/**`. Criteria are NOT duplicated here — they live in `readme-review` SKILL.md as the single source of truth.
 ---
 
 # Portal Manifest Sync
 
-This skill audits `docs/portal/manifest.yaml` against the real `README.md` / `README.ja.md` files on disk. The manifest drives `scripts/portal/gen-portal-docs.ts`, which copies each `src` to its `dst` under `docs/portal/guides/`.
+This skill audits `docs/portal/manifest.yaml` against the real `README.md` files on disk. The manifest drives `scripts/portal/gen-portal-docs.ts`, which copies each `src` to its `dst` under `docs/portal/guides/`.
 
 ## Key Assumptions
 
@@ -36,14 +36,11 @@ Result classes (per `readme-review` thresholds):
 
 All four classes are reported but **none are auto-added**. Adding from any class remains the user's deliberate curation decision.
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
-
 ## When to Use
 
 Use this skill when:
 
 - Files have been moved or removed and you want to clean up stale `src` entries that produce `gen-portal-docs.ts` warnings.
-- You want to detect translation pair gaps (`README.md` without a `README.ja.md` sibling, or vice versa).
 - Before merging a feature branch, to verify no portal regression was introduced.
 - You want a snapshot of which on-disk READMEs are *not* currently exposed in the portal — to inform a manual curation decision, NOT to mass-add them.
 - Periodically as a hygiene pass.
@@ -60,7 +57,7 @@ Do NOT use this skill for:
 **Reads (always)**:
 
 - `docs/portal/manifest.yaml` — source of truth for which READMEs are exposed.
-- All `README.md` / `README.ja.md` files in the repo, with these always excluded:
+- All `README.md` files in the repo, with these always excluded:
   - `docs/portal/guides/**` (generated copies of the originals)
   - `vendor/**`, `node_modules/**`
   - `.git/**`, `.codex/**` (skill / config files; not portal content)
@@ -137,7 +134,7 @@ This skill does NOT define its own evaluation criteria. It applies the criteria 
 
 For each entry in `uncurated_raw`:
 
-1. Read the English README content (and the `*.ja.md` sibling for completeness check; sibling existence already established via Step 2 preflight).
+1. Read the README content.
 2. Apply the P1–P7 positive criteria and N1–N4 negative criteria from `readme-review`.
 3. Compute the verdict using `readme-review`'s thresholds, into one of the four result classes listed under *Key Assumptions* above.
 
@@ -193,7 +190,6 @@ For each `manual-worthy` or `borderline` file, derive a hypothetical `dst` by in
 Observed convention (verify per group at runtime):
 
 - English: `docs/portal/guides/<flat-hyphenated-name>.md`
-- Japanese: `docs/portal/guides/ja/<flat-hyphenated-name>.ja.md`
 
 Where `<flat-hyphenated-name>` is the src path with the layer prefix stripped and `/` replaced by `-`. Examples from the existing manifest:
 
@@ -214,12 +210,10 @@ Portal Manifest Sync 結果
 
 [削除候補 = stale] N 件
   - src: foo/bar/README.md  (ファイルが存在しない)
-  - src: foo/bar/README.ja.md
 
 [翻訳ペアの欠落 = pair_drift] N 件
   ※ Step 2 で「未解消のまま続行」を選んだ場合のみここに残ります
   internal/controller/handler/testkit/testauth/README.md
-    → README.ja.md が存在しない（canonicalize-doc で生成推奨）
 
 == キュレーション候補 ==
 

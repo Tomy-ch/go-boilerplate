@@ -95,7 +95,6 @@ describe("isMakefileSource", () => {
   describe("異常系", () => {
     it("同じディレクトリの README は読まない", () => {
       expect(isMakefileSource("README.md")).toBe(false);
-      expect(isMakefileSource("README.ja.md")).toBe(false); // doc-pair:line
     });
 
     it("mk を名前に含むだけのファイルは読まない", () => {

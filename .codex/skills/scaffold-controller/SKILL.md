@@ -8,8 +8,6 @@ description: >-
 
 Generate the controller (HTTP handler) layer for a feature. **lean A: no spec file** — handler is derived from OpenAPI gen + usecase Interface via naming convention.
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
-
 ## When to Use
 
 - After OpenAPI YAML is written and `make gen-api` has produced the handler interface.

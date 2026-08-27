@@ -50,13 +50,10 @@ The source of truth for design, rules, and flows is under `docs/` and the per-pa
 | Cross-cutting & subsystem design — the criterion for deciding a given case (data-access placement, auth, security posture, async subsystems, …) | `docs/design/README.md` — open the index; the examples here are not the inventory |
 | Why AI assistance is the standard path, and how a control in the agent environment is judged, re-evaluated and retired | ADR-0007 / ADR-0008, interpreted in `docs/design/agent-environment.md` |
 
-**Documentation scope for agents** — the canonical sources are the English `README.md` and
-`docs/**/*.md`. **Never read `*.ja.md` files: they are human-facing Japanese translations of
-those canonical sources — read the canonical English original instead.** Also ignore the
-documentation-portal UI assets:
+**Documentation scope for agents** — the canonical sources are `README.md` and `docs/**/*.md`.
+Ignore the documentation-portal UI assets:
 
 ```txt
-**/*.ja.md
 docs/portal/**
 ```
 

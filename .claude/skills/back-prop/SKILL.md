@@ -8,8 +8,6 @@ description: >-
 
 Integrator for drift detection across layers. Fans out per-layer **read-only drift-detector subagents** in parallel based on scope, aggregates, then drives the per-item approval + write loop itself.
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
-
 ## When to Use
 
 - After multi-layer refactor, before PR review
@@ -104,7 +102,7 @@ For "full repo": fan out all 5. For "specific layer": ask user which, fan out on
 When (D) is selected, additionally resolve the **DDD corpus** — not `*.go`-filtered, since the corpus is prose. Read the `corpus` globs from `.agents/ddd-audit/pattern-ledger.yaml` (never hardcode them here) and intersect with the diff for `changed` scope. Add `drift-detector-ddd` to the fan-out whenever that intersection is non-empty, or always in `full` scope.
 
 When (E) is selected, resolve the **prose corpus** the same way: `internal/**/README.md`,
-`pkg/**/README.md`, `docs/adr/*.md`, `docs/rules.md`, `docs/architecture.md`, minus `*.ja.md`.
+`pkg/**/README.md`, `docs/adr/*.md`, `docs/rules.md`, `docs/architecture.md`.
 Add `drift-detector-glossary` whenever that intersection is non-empty, or always in `full` scope.
 **Skip it, and say why, when `docs/spec/glossary.md` does not exist** — the detector's probe list is
 that page's term table, and without it there is nothing to look for.

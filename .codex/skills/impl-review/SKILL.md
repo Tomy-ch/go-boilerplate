@@ -8,8 +8,6 @@ description: >-
 
 Independent, adversarial, **different-model** code review you can run locally — no Copilot, no cloud `/code-review`. The implementer's own model has blind spots; the whole point is to review with another model so those blind spots get caught. Built on the `/code-review` finder → verify pattern, plus a runtime curl + o11y stage that mocked unit tests structurally cannot reach.
 
-A Japanese reference translation of this skill lives at `SKILL.ja.md` in this directory (for human reference only; not loaded as a skill).
-
 ## When to Use
 
 - Before committing / opening a PR, to get a second opinion the implementer's model would not produce on its own.
