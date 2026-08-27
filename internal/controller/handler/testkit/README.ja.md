@@ -1,7 +1,5 @@
 # testkit
 
-[English](README.md) | 日本語
-
 Controller 層テスト用のユーティリティ群です。
 
 ## 役割

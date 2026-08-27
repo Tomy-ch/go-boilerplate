@@ -7,8 +7,6 @@ tags: [deploy, image]
 
 # ADR-0097: コマンドオーバーライドによる単一ランタイムイメージ（目的別イメージなし）
 
-English canonical: [0097-single-runtime-image.md](0097-single-runtime-image.md)
-
 ## ステータス
 
 accepted

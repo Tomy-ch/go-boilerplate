@@ -1,7 +1,5 @@
 # system_cqrs
 
-[English](README.md) | 日本語
-
 `internal/infrastructure/rdb/system_cqrs` は、**システム運用向けの DB クエリ**を提供する Infrastructure 層のパッケージです。
 
 ## オニオンアーキテクチャにおける位置づけ

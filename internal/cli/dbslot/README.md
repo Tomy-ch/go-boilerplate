@@ -1,7 +1,5 @@
 # db-slot
 
-English | [日本語](README.ja.md)
-
 Leases a per-worktree slot on a single shared infra stack so multiple `git worktree`s can run DB-backed work in parallel without host-port conflicts. Each slot owns its own databases (`wt<N>_local` / `wt<N>_test`) inside the shared DB container (fixed infra compose project `gobp-shared`, host 5432) plus its own app-layer compose project (`gobp-wt-N`) whose host ports are slot-relative. Every checkout attaches to the same shared infra either way, so leasing a slot is **opt-in** — it is what makes parallel work collision-free. See `docs/maintenance/db-worktree-pool.md` for the full model.
 
 Runs on the **host** (not in a tool-runner container): it manages host-filesystem leases and drives host `docker compose`, and connects to the shared DB via pgx on `localhost:5432`.

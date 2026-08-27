@@ -1,7 +1,5 @@
 # exchangerate
 
-English | [日本語](README.ja.md)
-
 Provides a `Gateway` interface that acts as a semantic gateway to an external
 exchange-rate service (DTO-mode sample).
 

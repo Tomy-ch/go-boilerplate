@@ -4,8 +4,6 @@ This directory holds the Claude Code configuration that ships **with the repo**:
 subagents, the spec templates the scaffolding reads, helper scripts, and project-scoped permissions /
 plugin declarations. Anyone who clones and trusts the repo inherits the same agent behavior.
 
-For a Japanese reference translation, see [`README.ja.md`](README.ja.md).
-
 ## Relationship to `AGENTS.md`
 
 `AGENTS.md` (repo root) is the human-maintained **operational contract** — what an agent may touch and

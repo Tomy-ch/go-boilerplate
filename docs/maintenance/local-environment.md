@@ -1,7 +1,5 @@
 # Local Development Environment
 
-日本語: [local-environment.ja.md](local-environment.ja.md)
-
 A single-page map of what makes up local development — the **two-layer docker compose model
 (shared infra / per-checkout app), hot reload (air), code-generation runners, and the worktree
 slot ring behind `make serve`**. This page only shows the **overall topology and division of

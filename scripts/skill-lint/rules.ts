@@ -7,13 +7,13 @@ import path from "node:path";
 import {
   CONFIG_FILE_RE,
   IGNORE_DIRECTIVE,
-  type Heading,
-  compareHeadingStructure,
+  type Heading, // doc-pair:line
+  compareHeadingStructure, // doc-pair:line
   eachLineOutsideFence,
-  extractHeadings,
+  extractHeadings, // doc-pair:line
   extractInlineCode,
   extractMakeTargets,
-  hasTranslationNote,
+  hasTranslationNote, // doc-pair:line
   onlyIn,
   parseFrontmatterKeys,
   splitFrontmatter,
@@ -71,6 +71,7 @@ export function checkFrontmatter(rel: string, content: string, expectedName: str
   return findings;
 }
 
+// doc-pair:begin
 /** 見出しを「L12 ## 見出し」の形で表す。差分のどちら側が欠けているかを読めるようにする。 */
 function describeHeading(heading: Heading | null): string {
   return heading ? `L${heading.lineNo} ${"#".repeat(heading.level)} ${heading.text}` : "（無し）";
@@ -139,6 +140,7 @@ export function checkTranslationPair(
   return findings;
 }
 
+// doc-pair:end
 /** 環境間の対応検査で使うディレクトリ配置。環境ごとに違う置き場を呼び出し側が決める。 */
 export type EnvLayout = {
   claudeSkills: string;
@@ -259,19 +261,30 @@ export function checkPlatformOnlyAllowlist(
 }
 
 /** Codex の 1 スキルを構成するファイルの有無と内容。読み取りは呼び出し側が行う。 */
+// doc-pair:replace-begin
 export type CodexSkillFiles = {
   canonical: string | null;
   hasMetadata: boolean;
   translation: string | null;
 };
+// doc-pair:replace-with
+// = export type CodexSkillFiles = {
+// =   canonical: string | null;
+// =   hasMetadata: boolean;
+// = };
+// doc-pair:replace-end
 
 /**
  * Codex の 1 スキルの必須ファイルを検査する（`.codex/README.md` の Layout 表が正）。
  *
+// doc-pair:replace-begin
  * @remarks
  * 対訳は Claude 側と同じく必須で、欠落そのものを報告します。任意だった頃は 24 スキルが
  * 「対訳は `SKILL.ja.md` にある」と書きながらファイルを持たない状態で緑を返し続けました。
  */
+// doc-pair:replace-with
+// =  */
+// doc-pair:replace-end
 export function checkCodexSkillStructure(
   skillDir: string,
   files: CodexSkillFiles,
@@ -290,6 +303,7 @@ export function checkCodexSkillStructure(
     });
   }
 
+// doc-pair:begin
   if (files.canonical !== null) {
     findings.push(
       ...checkTranslationPair(
@@ -301,6 +315,7 @@ export function checkCodexSkillStructure(
     );
   }
 
+// doc-pair:end
   return findings;
 }
 
@@ -381,9 +396,17 @@ export function isMakefileFragment(fileName: string): boolean {
   return fileName.endsWith(".mk");
 }
 
+// doc-pair:replace-begin
 /** Claude 側のエージェント定義ファイルか。対訳（`*.ja.md`）は定義ではない。 */
+// doc-pair:replace-with
+// = /** Claude 側のエージェント定義ファイルか。 */
+// doc-pair:replace-end
 export function isClaudeAgentDefinition(fileName: string): boolean {
+// doc-pair:replace-begin
   return fileName.endsWith(".md") && !fileName.endsWith(".ja.md");
+// doc-pair:replace-with
+// =   return fileName.endsWith(".md");
+// doc-pair:replace-end
 }
 
 /** Codex 側のエージェント定義ファイルか。 */

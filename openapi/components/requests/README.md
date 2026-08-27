@@ -1,7 +1,5 @@
 # OpenAPI Request Schemas
 
-English | [日本語](README.ja.md)
-
 `openapi/components/requests/` stores **endpoint request-body schemas**. They are plain OpenAPI **schemas** (not the `requestBodies` component object type — see [`schemas/README.md`](../schemas/README.md)) and are referenced from a path under `requestBody.content.<media>.schema.$ref`.
 
 ## Role boundary vs `schemas/`

@@ -7,8 +7,6 @@ tags: [outbox, http]
 
 # ADR-0060: パブリッシャーの非標準 HTTP プロファイルをリレー内に隔離する
 
-English canonical: [0060-publisher-http-profile-isolation.md](0060-publisher-http-profile-isolation.md)
-
 ## ステータス
 
 accepted

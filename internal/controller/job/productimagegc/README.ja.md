@@ -1,7 +1,5 @@
 # 商品画像 GC ジョブガイド (`internal/controller/job/productimagegc`)
 
-[English](README.md) | 日本語
-
 ## オニオンアーキテクチャにおける役割
 
 - **ワンショットの回収エントリポイント**（Controller 層 / CLI driving adapter）です。Usecase 層へのもう 1 つの入口であり、新しいアーキテクチャ層ではありません。

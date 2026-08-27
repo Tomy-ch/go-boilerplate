@@ -7,8 +7,6 @@ tags: [outbox, async, concurrency]
 
 # ADR-0056: SELECT FOR UPDATE SKIP LOCKED を使った単一トランザクションリレー（複数インスタンス間で安全）
 
-English canonical: [0056-skip-locked-outbox-relay.md](0056-skip-locked-outbox-relay.md)
-
 ## ステータス
 
 accepted

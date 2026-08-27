@@ -1,7 +1,5 @@
 # Troubleshooting
 
-English | [日本語](troubleshooting.ja.md)
-
 Failures you are likely to meet while setting the repository up and running it locally, indexed by
 **the symptom you actually see**. Each entry names the cause and hands off to the document that
 owns the mechanism — the explanations live there, not here.

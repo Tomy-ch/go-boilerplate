@@ -7,8 +7,6 @@ tags: [ci, security]
 
 # ADR-0089: 多層セキュリティスキャン——報告とゲートを分離し、ハードニングされたランナー上で行う
 
-English canonical: [0089-multi-layer-security-scanning.md](0089-multi-layer-security-scanning.md)
-
 ## ステータス
 
 accepted

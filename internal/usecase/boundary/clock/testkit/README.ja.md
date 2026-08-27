@@ -1,7 +1,5 @@
 # clock/testkit
 
-[English](README.md) | 日本語
-
 `clock` 境界（`Clock` / `Sleeper`）のテストダブルです。時刻依存のロジック
 （TTL・deadline・retry / backoff）を、実時間や実際の待機なしで **決定的に**
 検証できるようにします。

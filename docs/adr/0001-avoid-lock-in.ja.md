@@ -7,8 +7,6 @@ tags: [foundational, architecture, dependencies]
 
 # ADR-0001: ロックイン回避を設計原則として採用する
 
-English canonical: [0001-avoid-lock-in.md](0001-avoid-lock-in.md)
-
 ## ステータス
 
 accepted

@@ -7,8 +7,6 @@ tags: [di, config]
 
 # ADR-0042: DI を通じて環境ごとに実装を切り替える（環境ゲート結線）
 
-English canonical: [0042-env-gated-wiring.md](0042-env-gated-wiring.md)
-
 ## ステータス
 
 accepted

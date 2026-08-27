@@ -1,7 +1,5 @@
 # Job Controller Layer (`internal/controller/job`) Guide
 
-English | [日本語](README.ja.md)
-
 ## Role in This Project
 
 `internal/controller/job` is the **batch/job entry point (Controller layer)** that is invoked from the CLI (Cobra).

@@ -1,7 +1,5 @@
 # QueryService DML
 
-English | [日本語](README.ja.md)
-
 Read-only SQL for search and list optimization, bypassing the domain layer.
 
 ## Purpose

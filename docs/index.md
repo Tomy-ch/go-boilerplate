@@ -1,7 +1,5 @@
 # Documentation
 
-English | [日本語](./ja/index.ja.md)
-
 This directory contains documentation related to the architecture and development of this project.
 
 These documents explain the **design philosophy, architectural rules, and development workflows** adopted in this project.

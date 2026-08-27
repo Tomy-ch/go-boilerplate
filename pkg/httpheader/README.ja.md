@@ -1,7 +1,5 @@
 # httpheader
 
-[English](README.md) | 日本語
-
 HTTP ヘッダ名の分類。
 
 ## 公開 API

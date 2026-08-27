@@ -1,7 +1,5 @@
 # GitHub Actions Workflows
 
-English | [日本語](README.ja.md)
-
 This directory contains GitHub Actions workflow definitions for CI/CD. Workflows are grouped by purpose: pull-request gates (lint / test / security scans), push-triggered deployments, and documentation regeneration on release branches.
 
 ## Trigger Strategy

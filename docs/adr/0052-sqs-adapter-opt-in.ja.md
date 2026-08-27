@@ -8,8 +8,6 @@ tags: [worker, async, dependencies]
 
 # ADR-0052: SQS アダプターはオプトインであり、デフォルトバイナリにリンクしない
 
-English canonical: [0052-sqs-adapter-opt-in.md](0052-sqs-adapter-opt-in.md)
-
 ## ステータス
 
 superseded by [ADR-0053](0053-broker-sdk-isolation-measured-as-coupling.ja.md)

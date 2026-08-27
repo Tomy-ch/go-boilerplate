@@ -1,7 +1,5 @@
 # Ready ハンドラ (`internal/controller/handler/ready`)
 
-[English](README.md) | 日本語
-
 ## 役割
 
 `ready` は、readiness プローブエンドポイント **`GET /ready`** を公開します。

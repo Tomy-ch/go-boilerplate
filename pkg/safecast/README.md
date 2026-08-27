@@ -1,7 +1,5 @@
 # safecast
 
-English | [日本語](README.ja.md)
-
 Provides safe type conversion with overflow detection.
 
 ## Role

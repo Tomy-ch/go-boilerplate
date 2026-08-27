@@ -1,7 +1,5 @@
 # ipextractor
 
-[English](README.md) | 日本語
-
 環境に応じたクライアント IP 抽出戦略を設定します。
 
 ## 役割

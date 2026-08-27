@@ -1,7 +1,5 @@
 # Shared Infra and the DB Slot Pool (parallel worktree development)
 
-English: [db-worktree-pool.md](db-worktree-pool.md)
-
 複数の git worktree（および主 checkout）が **単一の共有インフラ** を衝突なく並列利用するための仕組み。
 compose のサービスを 2 層に分ける:
 

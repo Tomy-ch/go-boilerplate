@@ -1,7 +1,5 @@
 # userrole (user_roles-based Authorizer)
 
-English | [日本語](README.ja.md)
-
 An `Authorizer` implementation backed by the `user_roles` table. It is the sample counterpart to `allowall`: wired for production-like environments so those environments start with a real (role-based) authorization policy instead of the fail-closed error.
 
 ## Role

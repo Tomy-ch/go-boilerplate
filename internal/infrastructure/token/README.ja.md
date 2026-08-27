@@ -1,7 +1,5 @@
 # token
 
-[English](README.md) | 日本語
-
 OS の暗号論的に安全な乱数源を用いて `boundary/token.Generator` インターフェースを実装します。
 
 ## 責務

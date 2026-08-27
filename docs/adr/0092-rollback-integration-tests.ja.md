@@ -7,8 +7,6 @@ tags: [testing]
 
 # ADR-0092: インフラ統合テストはリアル DB に対してセンチネルエラーロールバックで実行する
 
-English canonical: [0092-rollback-integration-tests.md](0092-rollback-integration-tests.md)
-
 ## ステータス
 
 accepted

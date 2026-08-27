@@ -1,7 +1,5 @@
 # httpclient
 
-English | [日本語](README.ja.md)
-
 `internal/infrastructure/httpclient` provides a **resilient substrate for outbound HTTP** (retry / circuit breaker / budget / tracing), consumed by semantic interface implementations such as gateways and publishers.
 
 ## Architectural Position

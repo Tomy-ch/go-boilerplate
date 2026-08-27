@@ -1,7 +1,5 @@
 # basicauth
 
-English | [日本語](README.ja.md)
-
 Provides Basic authentication validator for metrics endpoints.
 
 ## Role

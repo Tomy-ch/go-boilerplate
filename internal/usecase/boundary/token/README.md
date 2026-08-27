@@ -1,7 +1,5 @@
 # token
 
-English | [日本語](README.ja.md)
-
 Provides a `Generator` interface for producing unguessable, opaque token strings.
 
 ```go

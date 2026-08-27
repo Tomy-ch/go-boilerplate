@@ -1,7 +1,5 @@
 # bodylimit
 
-[English](README.md) | 日本語
-
 リクエストボディのサイズを上限化します（`SERVER_BODY_LIMIT_MB`、MB 単位）。
 
 ## 役割

@@ -1,7 +1,5 @@
 # Usecase Layer (`internal/usecase`) Guide
 
-English | [日本語](README.ja.md)
-
 ## Role in Onion Architecture
 
 - Acts as an **application service layer** that orchestrates **procedures (workflows)** of use cases.

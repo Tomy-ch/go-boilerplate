@@ -1,7 +1,5 @@
 # serve
 
-English | [日本語](README.ja.md)
-
 Starts the HTTP server and begins accepting requests.
 
 ## Command

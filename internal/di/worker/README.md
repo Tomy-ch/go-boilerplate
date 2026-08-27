@@ -1,7 +1,5 @@
 # worker DI Module
 
-English | [日本語](README.ja.md)
-
 ## Role
 
 This directory is the DI seam between the application's worker framework and `fx`. It collects all `worker.Worker` providers registered with the `group:"workers"` tag, builds the engine settings from `WorkerConfig`, assembles them into a `workerengine.Engine`, and wires the lifecycle hook that runs the selected worker (and its health listener) across application start/stop. Upper-layer code (`internal/controller/worker`, `cmd/`, individual worker implementations) depends on the abstractions here; this package contains all of the fx-specific glue so that the rest of the code stays framework-agnostic. It parallels `internal/di/job/` for the long-running consumer (worker) process.

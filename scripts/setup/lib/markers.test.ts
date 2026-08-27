@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { stripMarkers } from "./markers";
+import { keepMarked, stripMarkers } from "./markers";
 
 function doc(...lines: string[]): string {
   return lines.join("\n");
@@ -221,6 +221,56 @@ describe("stripMarkers", () => {
       const content = doc("# m:replace-begin", "# m:replace-with", "<!-- = unclosed", "# m:replace-end");
 
       expect(() => stripMarkers(content, "m")).toThrow(/いずれかで書いてください/);
+    });
+  });
+});
+
+describe("keepMarked", () => {
+  describe("正常系", () => {
+    it("ブロックの中身を残してマーカー行だけを落とす", () => {
+      const content = doc("a", "# m:begin", "b", "# m:end", "c");
+
+      expect(keepMarked(content, "m").content).toBe(doc("a", "b", "c"));
+    });
+
+    // 有効側が残る以上、退避コメントは二度と使われない複製になる。
+    it("置換は有効側を残し退避コメントを落とす", () => {
+      const content = doc("# m:replace-begin", "A", "# m:replace-with", "# = B", "# m:replace-end");
+
+      expect(keepMarked(content, "m").content).toBe("A");
+    });
+
+    it("行末コメントの宣言は行の残りごと落とす", () => {
+      expect(keepMarked('  lang: "ja", // m:line', "m").content).toBe('  lang: "ja",');
+    });
+
+    // 表セルでは宣言の後ろに本文が続くので、行末まで落とすと区切りごと消える。
+    it("HTML コメントの宣言はその範囲だけを抜く", () => {
+      expect(keepMarked("| x | 説明。 <!-- m:line --> |", "m").content).toBe("| x | 説明。 |");
+    });
+
+    it("入れ子のブロックも中身を残す", () => {
+      const content = doc("# m:begin", "a", "# m:begin", "b", "# m:end", "# m:end");
+
+      expect(keepMarked(content, "m").content).toBe(doc("a", "b"));
+    });
+
+    it("別名のマーカーには反応しない", () => {
+      const content = doc("a", "# other:begin", "b", "# other:end");
+
+      expect(keepMarked(content, "m").removed).toBe(0);
+    });
+  });
+
+  describe("異常系", () => {
+    it("閉じられていないブロックを検出する", () => {
+      expect(() => keepMarked(doc("# m:begin", "a"), "m")).toThrow(/m:end が見つかりません/);
+    });
+
+    it("閉じられていない replace ブロックを検出する", () => {
+      const content = doc("# m:replace-begin", "a", "# m:replace-with", "# = a");
+
+      expect(() => keepMarked(content, "m")).toThrow(/m:replace-end が見つかりません/);
     });
   });
 });

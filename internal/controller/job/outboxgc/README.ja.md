@@ -1,7 +1,5 @@
 # Outbox GC ジョブガイド (`internal/controller/job/outboxgc`)
 
-[English](README.md) | 日本語
-
 ## オニオンアーキテクチャにおける役割
 
 - **ワンショットの GC エントリポイント**（Controller 層 / CLI driving adapter）。新しいアーキテクチャ層ではなく、Usecase 層への入口の一つです。

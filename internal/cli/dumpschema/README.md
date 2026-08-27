@@ -1,7 +1,5 @@
 # dump-schema
 
-English | [日本語](README.ja.md)
-
 Dumps the database schema using `pg_dump` and sanitizes the output for sqlc consumption by removing tool-specific meta-commands.
 
 ## Command

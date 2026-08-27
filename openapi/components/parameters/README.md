@@ -1,7 +1,5 @@
 # OpenAPI Parameters
 
-English | [日本語](README.ja.md)
-
 `openapi/components/parameters/` stores **reusable OpenAPI parameter definitions** organized by concern.
 
 ## Directory Structure

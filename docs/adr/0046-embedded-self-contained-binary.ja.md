@@ -7,8 +7,6 @@ tags: [config, build]
 
 # ADR-0046: go:embed で設定（.env）とマイグレーションをバンドルし、自己完結型バイナリを実現する
 
-English canonical: [0046-embedded-self-contained-binary.md](0046-embedded-self-contained-binary.md)
-
 ## ステータス
 
 accepted

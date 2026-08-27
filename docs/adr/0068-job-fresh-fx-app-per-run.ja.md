@@ -7,8 +7,6 @@ tags: [job, async]
 
 # ADR-0068: ジョブ起動ごとに新しい fx.App を構築する（ワンショットライフサイクル）
 
-English canonical: [0068-job-fresh-fx-app-per-run.md](0068-job-fresh-fx-app-per-run.md)
-
 ## ステータス
 
 accepted

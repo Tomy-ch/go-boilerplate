@@ -1,7 +1,5 @@
 # server hook
 
-[English](README.md) | 日本語
-
 `internal/di/server/hook` は、アプリケーションサーバーのライフサイクルに結び付く **各種フックを登録する**パッケージです。
 
 ## フック一覧

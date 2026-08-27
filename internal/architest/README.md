@@ -1,7 +1,5 @@
 # architest
 
-English | [日本語](README.ja.md)
-
 `internal/architest` holds **only tests**: machine-verified checks of cross-cutting invariants that no
 single package owns — layer dependency rules, and agreement between implementation, data and
 documentation across the repository. It contains no production code.

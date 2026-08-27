@@ -1,7 +1,5 @@
 # OpenAPI スキーマ
 
-[English](README.md) | 日本語
-
 `openapi/components/schemas/` は、**再利用可能な OpenAPI スキーマ定義**（リクエスト・レスポンス・セキュリティスキームのデータ構造）を格納するディレクトリです。
 
 ## ディレクトリ内容

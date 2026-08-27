@@ -7,8 +7,6 @@ tags: [toolchain, scripts]
 
 # ADR-0082: 運用スクリプトは scripts/ に TypeScript または Go で配置し、シェルスクリプトは使用しない
 
-English canonical: [0082-scripts-in-node-go.md](0082-scripts-in-node-go.md)
-
 ## ステータス
 
 accepted

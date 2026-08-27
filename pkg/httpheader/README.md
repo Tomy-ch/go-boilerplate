@@ -1,7 +1,5 @@
 # httpheader
 
-English | [日本語](README.ja.md)
-
 Classification of HTTP header names.
 
 ## Public API

@@ -1,7 +1,5 @@
 # internal/observability
 
-English | [日本語](README.ja.md)
-
 `internal/observability` is a package that provides **tracing and observability logging integration** for this project.
 
 This package provides a **tracing mechanism based on OpenTelemetry**, and  

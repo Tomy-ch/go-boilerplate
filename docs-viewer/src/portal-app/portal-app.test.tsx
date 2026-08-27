@@ -21,11 +21,19 @@ const docs: DocsJson = {
           id: "adr",
           slug: "adr",
           title: "ADR",
+// doc-pair:replace-begin
           items: [{ name: "ADR 0001", path: "./guides/0001.md", lang: "all" }],
+// doc-pair:replace-with
+// =           items: [{ name: "ADR 0001", path: "./guides/0001.md" }],
+// doc-pair:replace-end
           subgroups: [
             {
               title: "Layer",
+// doc-pair:replace-begin
               items: [{ name: "ADR 0021", path: "./guides/0021.md", lang: "all" }],
+// doc-pair:replace-with
+// =               items: [{ name: "ADR 0021", path: "./guides/0021.md" }],
+// doc-pair:replace-end
             },
           ],
         },
@@ -39,7 +47,11 @@ const docs: DocsJson = {
           id: "setup",
           slug: "setup",
           title: "Setup",
+// doc-pair:replace-begin
           items: [{ name: "Setup", path: "./guides/setup.md", lang: "all" }],
+// doc-pair:replace-with
+// =           items: [{ name: "Setup", path: "./guides/setup.md" }],
+// doc-pair:replace-end
         },
       ],
     },
@@ -110,6 +122,7 @@ describe("PortalApp", () => {
       expect(screen.getByRole("button", { name: "ADR 0001" })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "ADR 0021" })).toBeInTheDocument();
     });
+// doc-pair:begin
     it("表示言語を切り替えると絞り込みが変わる", async () => {
       const bilingual: DocsJson = {
         ...docs,
@@ -170,6 +183,7 @@ describe("PortalApp", () => {
 
       expect(await screen.findByRole("button", { name: "ADR (EN)" })).toBeInTheDocument();
     });
+// doc-pair:end
     it("検索語に一致した項目を結果として並べる", async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true });
 

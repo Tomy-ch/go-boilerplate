@@ -1,7 +1,5 @@
 # timeout
 
-English | [日本語](README.ja.md)
-
 Sets a per-request deadline budget on the request context (`SERVER_REQUEST_TIMEOUT`).
 
 ## Role

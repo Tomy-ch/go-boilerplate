@@ -1,7 +1,5 @@
 # CommandService DML
 
-[English](README.md) | 日本語
-
 Repository の load-mutate-save の形に収まらない状態変更（INSERT / UPDATE / DELETE）のための書き込み SQL を管理します。
 
 ## 目的

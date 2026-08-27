@@ -1,7 +1,5 @@
 # OpenAPI レスポンススキーマ
 
-[English](README.md) | 日本語
-
 `openapi/components/responses/` は**エンドポイントのレスポンスボディスキーマ**を格納します。これらは OpenAPI の素の **schema** であり（`responses` の component object 型ではない。[`schemas/README.ja.md`](../schemas/README.ja.md) 参照）、パスからは `responses.<status>.content.<media>.schema.$ref` で参照します。
 
 ## `schemas/` との役割境界

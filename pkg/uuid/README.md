@@ -1,7 +1,5 @@
 # uuid
 
-English | [日本語](README.ja.md)
-
 UUID type wrapping `github.com/google/uuid`. Generates UUIDv7 and supports database integration.
 
 ## Wraps

@@ -1,7 +1,5 @@
 # CLI core
 
-English | [日本語](README.ja.md)
-
 `internal/cli` holds the **pure, testable core logic** for the application's CLI commands.
 
 It does NOT depend on Cobra or infrastructure wiring. The Cobra command definitions and the

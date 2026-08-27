@@ -1,7 +1,5 @@
 # money
 
-[English](README.md) | 日本語
-
 Usecase 層のマネー決済 **policy** を提供します。正確な算術・丸め・最小単位スケーリングの機構は
 [`pkg/decimal`](../../../../pkg/decimal/README.ja.md) にあり、本パッケージは決済額を *どの* 最小単位桁へ
 *どの* 丸めモードで落とすかだけを選択します。

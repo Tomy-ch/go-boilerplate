@@ -1,7 +1,5 @@
 # timeout
 
-[English](README.md) | 日本語
-
 リクエスト context に per-request の deadline budget（`SERVER_REQUEST_TIMEOUT`）を設定します。
 
 ## 役割

@@ -7,8 +7,6 @@ tags: [di, architecture]
 
 # ADR-0041: ニュートラルな DI 抽象（Registrar / Shutdowner）の背後に fx を封じ込める
 
-English canonical: [0041-fx-neutral-di-abstraction.md](0041-fx-neutral-di-abstraction.md)
-
 ## ステータス
 
 accepted

@@ -1,7 +1,5 @@
 # core モジュール
 
-[English](README.md) | 日本語
-
 `internal/di/module/core` は、HTTP スタックで共通利用される **コアコンポーネントの DI モジュール群**を提供するパッケージです。
 
 各モジュールは `fx.Option` を返し、対応するコンポーネントを DI コンテナに登録します。

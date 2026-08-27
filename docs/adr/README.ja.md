@@ -1,7 +1,5 @@
 # アーキテクチャ決定記録（ADR）
 
-English: [README.md](README.md)
-
 このディレクトリはプロジェクトの **アーキテクチャ上の決定** を保持する。1 ファイル = 1 つの不変な記録、[MADR-lite](https://adr.github.io/madr/) 形式。
 
 ADR は 1 時点における単一の決定を記録する: コンテキスト、検討した選択肢、選んだもの、その影響。決定を上書きするとは ADR を編集することを **意味しない** — `Status` が `accepted` の *新しい* ADR を追加し、古い ADR を `superseded` にマークすることを意味する。*なぜかつて X を選んだのか* という記録は保存される。
@@ -56,7 +54,7 @@ Exclusion ADR（意図的な「X はしない」）は、リポジトリセッ�
 | [0008](0008-agent-environment-alignment.ja.md) | エージェント環境を宣言された検査可能な性質へ整合させ、閉じたループで改善する | accepted |
 | [0009](0009-long-running-agent-state.ja.md) | 永続的なエージェント状態を所有する正本の形に保つ | accepted |
 | [0010](0010-development-window-as-feedback-unit.ja.md) | フィードバックループが観測する単位を開発の窓とする | accepted |
-| [0011](0011-docs-as-canonical-source.ja.md) | ドキュメントを正典ソースとする戦略（英語正典 + ja ミラー + ポータル） | accepted |
+| [0011](0011-docs-as-canonical-source.ja.md) | ドキュメントを正典ソースとする戦略 | accepted |
 | [0012](0012-openapi-first.ja.md) | API 契約を OpenAPI ファーストで定義する | accepted |
 | [0013](0013-redocly-modular-spec-pipeline.ja.md) | 仕様をモジュラーな Redocly ファイルで作成し、バンドルしてから生成する | accepted |
 | [0014](0014-oapi-codegen-strict-server.ja.md) | oapi-codegen の strict-server モードでタグ/ハンドラーごとに生成する | accepted |

@@ -7,8 +7,6 @@ tags: [process, ai]
 
 # ADR-0009: 永続的なエージェント状態を所有する正本の形に保つ
 
-English canonical: [0009-long-running-agent-state.md](0009-long-running-agent-state.md)
-
 ## 決定
 
 進捗ログをリポジトリ状態として蓄積しない。describing 文書を変える所見は、それを所有する README または `docs/` reference へ還元する。governing 文書との衝突は architect または tech lead へ提起する。per-run 状態は再開意味論を所有する skill 固有の gitignore された `tmp/` artifact に置く。`.agents/` へ移さず、`impl-issue`、`full-verify`、`full-apply` の異なる形式も統一しない。

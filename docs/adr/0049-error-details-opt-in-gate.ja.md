@@ -7,8 +7,6 @@ tags: [errors, architecture, api, security]
 
 # ADR-0049: スキーマ分割によるエラー details の opt-in ゲート
 
-English canonical: [0049-error-details-opt-in-gate.md](0049-error-details-opt-in-gate.md)
-
 ## ステータス
 
 accepted

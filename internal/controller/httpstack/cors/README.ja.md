@@ -1,7 +1,5 @@
 # cors
 
-[English](README.md) | 日本語
-
 セキュリティ設定に基づく CORS ミドルウェアです。
 
 ## 役割

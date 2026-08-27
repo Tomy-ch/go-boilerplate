@@ -1,7 +1,5 @@
 # xerrors
 
-English | [日本語](README.ja.md)
-
 Wraps `github.com/cockroachdb/errors` to provide error operations with stack traces.
 
 ## Wraps

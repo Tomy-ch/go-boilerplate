@@ -7,8 +7,6 @@ tags: [toolchain, dev-env]
 
 # ADR-0083: ローカル開発環境はプロファイルで分離されたサービスを持つ Docker Compose で提供する
 
-English canonical: [0083-docker-compose-dev-environment.md](0083-docker-compose-dev-environment.md)
-
 ## ステータス
 
 accepted

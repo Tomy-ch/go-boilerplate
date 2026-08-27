@@ -1,7 +1,5 @@
 # serve
 
-[English](README.md) | 日本語
-
 HTTPサーバーを起動し、リクエストの受付を開始します。
 
 ## コマンド

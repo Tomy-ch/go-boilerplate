@@ -1,7 +1,5 @@
 # ipextractor
 
-English | [日本語](README.ja.md)
-
 Configures client IP extraction strategy based on environment.
 
 ## Role

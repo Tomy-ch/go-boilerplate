@@ -7,8 +7,6 @@ tags: [deploy, image, exclusion, setup-review]
 
 # ADR-0098: ハードニング Alpine をランタイムベースとして使用し、distroless/scratch は使用しない
 
-English canonical: [0098-hardened-alpine-runtime.md](0098-hardened-alpine-runtime.md)
-
 ## ステータス
 
 accepted

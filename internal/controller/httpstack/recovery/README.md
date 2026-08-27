@@ -1,7 +1,5 @@
 # recovery
 
-English | [日本語](README.ja.md)
-
 Panic recovery middleware with structured logging.
 
 Stack size: 4KB (production), 10KB (development).

@@ -1,7 +1,5 @@
 # OpenAPI リクエストスキーマ
 
-[English](README.md) | 日本語
-
 `openapi/components/requests/` は**エンドポイントのリクエストボディスキーマ**を格納します。これらは OpenAPI の素の **schema** であり（`requestBodies` の component object 型ではない。[`schemas/README.ja.md`](../schemas/README.ja.md) 参照）、パスからは `requestBody.content.<media>.schema.$ref` で参照します。
 
 ## `schemas/` との役割境界

@@ -1,7 +1,5 @@
 # Environment Variables List (Mapping Table)
 
-English | [日本語](README.ja.md)
-
 This directory is the canonical reference for every environment variable read by the application. Variables are loaded into typed Go structs under `internal/config/` and grouped here by subsystem (OS / Application / Server / Database / Security / …). Use this README when adding a new variable, auditing what each service reads, or onboarding a new operator.
 
 ## Conventions

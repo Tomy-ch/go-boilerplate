@@ -1,7 +1,5 @@
 # worker
 
-[English](README.md) | 日本語
-
 pull-ack クラスのキューを consume する worker の seam（port）と、broker 非依存のメッセージ封筒を定義します。
 engine（controller 層）と broker adapter（infrastructure 層）の双方がこの境界に依存します。
 

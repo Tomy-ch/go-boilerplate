@@ -1,7 +1,5 @@
 # lifecycle
 
-English | [日本語](README.ja.md)
-
 A DI layer for registering hooks (Start/Stop) to be executed at application startup and shutdown. Provides a `Registrar` that wraps `fx.Lifecycle`, making it easy to register lifecycle events across the application.
 
 ## Why a Dedicated Package?

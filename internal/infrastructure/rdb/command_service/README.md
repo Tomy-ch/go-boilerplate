@@ -1,7 +1,5 @@
 # CommandService Implementation Guide
 
-English | [日本語](README.ja.md)
-
 ## Why this directory exists even when it is empty
 
 The data-access directories mirror the DML categories under `database/dml/` one for one, because a

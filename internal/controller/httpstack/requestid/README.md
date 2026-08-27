@@ -1,7 +1,5 @@
 # requestid
 
-English | [日本語](README.ja.md)
-
 Generates unique X-Request-ID header for each request.
 
 ## Role

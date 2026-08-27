@@ -1,7 +1,5 @@
 # clock/testkit
 
-English | [日本語](README.ja.md)
-
 Test doubles for the `clock` boundary (`Clock` / `Sleeper`), so time-dependent
 logic (TTL, deadlines, retry / backoff) can be verified **deterministically**
 without real time or real sleeping.

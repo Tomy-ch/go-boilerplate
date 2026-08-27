@@ -7,8 +7,6 @@ tags: [outbox, async, reliability]
 
 # ADR-0054: トランザクショナルアウトボックス — ビジネストランザクション内でイベントを発行する
 
-English canonical: [0054-transactional-outbox.md](0054-transactional-outbox.md)
-
 ## ステータス
 
 accepted

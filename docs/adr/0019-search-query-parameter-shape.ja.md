@@ -7,8 +7,6 @@ tags: [contract, openapi]
 
 # ADR-0019: 複数値フィルタはパラメータ名を繰り返し、自由入力はスカラのままにする
 
-English canonical: [0019-search-query-parameter-shape.md](0019-search-query-parameter-shape.md)
-
 ## ステータス
 
 accepted

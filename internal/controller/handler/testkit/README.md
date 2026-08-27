@@ -1,7 +1,5 @@
 # testkit
 
-English | [日本語](README.ja.md)
-
 Test utilities for Controller layer tests.
 
 ## Role

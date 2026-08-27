@@ -1,7 +1,5 @@
 # decimal
 
-[English](README.md) | 日本語
-
 `github.com/shopspring/decimal` をラップした exact-decimal 型です。金額・レートなどの正確な十進量を `float64` 誤差なく表現します。
 
 ## 役割

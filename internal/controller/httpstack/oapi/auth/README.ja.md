@@ -1,7 +1,5 @@
 # oapi/auth
 
-[English](README.md) | 日本語
-
 `Authorization` ヘッダーから Bearer トークンを抽出し、boundary の `Authenticator` で検証し、結果をリクエストコンテキスト（authn スロット）に格納する OpenAPI 認証関数です。Cookie ベースの抽出はサポートしません（Bearer / リソースサーバーモデル）。
 
 ## トークン抽出フロー

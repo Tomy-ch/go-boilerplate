@@ -1,7 +1,5 @@
 # oapi/validator
 
-[English](README.md) | 日本語
-
 埋め込まれた OpenAPI 仕様を読み込み、`oapi.Middleware()` がリクエストバリデーションに利用するパース済みスキーマを提供します。
 
 ## 仕組み

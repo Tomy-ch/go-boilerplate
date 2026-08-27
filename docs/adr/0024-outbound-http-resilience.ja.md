@@ -7,8 +7,6 @@ tags: [http, resilience, infrastructure]
 
 # ADR-0024: アウトバウンドHTTPレジリエンス基盤の提供（リトライ / サーキットブレーカー / リトライバジェット / デュアルタイムアウト）
 
-English canonical: [0024-outbound-http-resilience.md](0024-outbound-http-resilience.md)
-
 ## ステータス
 
 accepted

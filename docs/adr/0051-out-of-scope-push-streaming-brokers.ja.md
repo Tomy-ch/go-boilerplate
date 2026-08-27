@@ -7,8 +7,6 @@ tags: [worker, async, exclusion, setup-review]
 
 # ADR-0051: プッシュ型ブローカーとストリーミングログ基盤はワーカーポートのスコープ外
 
-English canonical: [0051-out-of-scope-push-streaming-brokers.md](0051-out-of-scope-push-streaming-brokers.md)
-
 ## ステータス
 
 accepted

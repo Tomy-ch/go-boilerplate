@@ -1,7 +1,5 @@
 # publisher
 
-[English](README.md) | 日本語
-
 `internal/infrastructure/publisher` は、**transactional outbox の publish 境界（`publisher.Publisher`）の実装を選ぶ唯一の場所**です。relay engine が claim した outbox メッセージを受信エンドポイントへ POST する HTTP 実装を同梱し、判別子 `OUTBOX_PUBLISHER` によって実装を選択します。
 
 ## アーキテクチャ上の位置づけ

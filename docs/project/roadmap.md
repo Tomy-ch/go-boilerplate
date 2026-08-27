@@ -1,7 +1,5 @@
 # Roadmap
 
-English | [日本語](roadmap.ja.md)
-
 <!-- boilerplate-only:replace-begin -->
 This page records the **direction** this project is being maintained in — the standing commitments
 that shape what gets accepted, not a schedule. Individual work items live in the issue tracker,

@@ -1,7 +1,5 @@
 # publisher
 
-English | [日本語](README.ja.md)
-
 Defines the outbound `Publisher` boundary for domain events and a
 substrate-agnostic message envelope. Both the relay engine (controller layer)
 and the publish adapter (infrastructure layer) depend on this boundary.

@@ -7,8 +7,6 @@ tags: [persistence, cqrs, architecture, concurrency]
 
 # ADR-0034: CommandService は単一トランザクション原子性を要する複数集約書き込みに限定する
 
-English canonical: [0034-commandservice-atomicity-criterion.md](0034-commandservice-atomicity-criterion.md)
-
 ## ステータス
 
 accepted

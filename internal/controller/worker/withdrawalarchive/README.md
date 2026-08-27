@@ -1,7 +1,5 @@
 # withdrawal-archive worker (sample)
 
-English | [日本語](README.ja.md)
-
 A worked example of the **consuming end** of the outbox path: a user withdraws, the outbox emits
 `user.withdrawn.v1` in the same transaction, the relay publishes it to the broker, and this worker
 consumes it and writes a withdrawal record to object storage.

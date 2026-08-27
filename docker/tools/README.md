@@ -1,7 +1,5 @@
 # Tools Container
 
-English | [日本語](README.ja.md)
-
 This Dockerfile provides **code generation and bundling tool containers** for the project. It uses multi-stage builds to offer Go, Node.js, and Python tool environments.
 
 ## Role

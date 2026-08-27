@@ -1,7 +1,5 @@
 # instrumentation
 
-English | [日本語](README.ja.md)
-
 `instrumentation` is a directory that groups **DI middleware modules for HTTP layer observability and request identification**.
 
 It provides the foundation for Tracing / Logging / Metrics through **request identifier generation** and **trace integration middleware**.

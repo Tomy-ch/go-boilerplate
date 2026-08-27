@@ -1,7 +1,5 @@
 # ops
 
-English | [日本語](README.ja.md)
-
 Identifies operational/infrastructure endpoints.
 
 Used by the logging, OpenAPI-validation, and metrics middleware to skip ops endpoints.

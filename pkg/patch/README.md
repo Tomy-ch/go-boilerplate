@@ -1,7 +1,5 @@
 # patch
 
-English | [日本語](README.ja.md)
-
 Three-state values for partial-update (PATCH) input.
 
 ## Role

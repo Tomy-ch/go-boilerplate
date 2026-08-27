@@ -1,7 +1,5 @@
 # app error
 
-English | [日本語](README.ja.md)
-
 The `apperror` package defines **application-wide error classifications independent of layers**.
 
 This package can be referenced from **all layers of Domain / Usecase / Controller / Infrastructure**,  

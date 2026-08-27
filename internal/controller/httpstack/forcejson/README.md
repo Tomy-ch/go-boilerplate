@@ -1,7 +1,5 @@
 # forcejson
 
-English | [日本語](README.ja.md)
-
 Forces the response Content-Type to `application/json` when it is unset or `text/html`.
 
 ## Role

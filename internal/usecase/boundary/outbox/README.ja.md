@@ -1,7 +1,5 @@
 # outbox
 
-[English](README.md) | 日本語
-
 トランザクショナル outbox の永続化境界 `Store` を定義します。
 emit（usecase 層）と relay engine（controller 層）の双方がこの境界に依存します。
 

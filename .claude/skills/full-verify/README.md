@@ -7,8 +7,6 @@ For any repository, **the skill itself detects and adapts to** the language, str
 of design documents. It is not specific to this repository — the goal is that it can be copied to a
 different repository and launched without edits.
 
-See [README.ja.md](README.ja.md) for the Japanese version.
-
 - **Changes no code.** No deletion, permission changes, or external transmission either. Only reading
   and Markdown generation under `tmp/skills/reviews/`.
 - The output Markdown is written via shell redirection. The verifying `claude -p` is granted no write

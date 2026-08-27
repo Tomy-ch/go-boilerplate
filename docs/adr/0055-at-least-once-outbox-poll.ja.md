@@ -7,8 +7,6 @@ tags: [outbox, async]
 
 # ADR-0055: ポーリングによる少なくとも1回のデリバリー（トランスポートレベルのリトライを無効化）
 
-English canonical: [0055-at-least-once-outbox-poll.md](0055-at-least-once-outbox-poll.md)
-
 ## ステータス
 
 accepted

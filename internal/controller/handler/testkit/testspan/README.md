@@ -1,7 +1,5 @@
 # testspan
 
-English | [日本語](README.ja.md)
-
 Injects test trace spans into Echo request context.
 
 ## Role

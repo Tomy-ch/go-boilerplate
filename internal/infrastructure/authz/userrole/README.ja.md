@@ -1,7 +1,5 @@
 # userrole（user_roles ベースの Authorizer）
 
-[English](README.md) | 日本語
-
 `user_roles` テーブルに基づく `Authorizer` 実装です。`allowall` のサンプル対となる実装で、本番相当環境に配線され、fail-closed エラーの代わりに実際の（ロールベースの）認可ポリシーで起動できるようにします。
 
 ## 役割

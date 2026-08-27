@@ -1,7 +1,5 @@
 # queue
 
-English | [日本語](README.ja.md)
-
 `internal/observability/metrics/queue` is a package that **exposes worker broker-queue backlog
 (queue depth / DLQ count) as Prometheus metrics**.
 

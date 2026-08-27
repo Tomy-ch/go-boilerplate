@@ -1,7 +1,5 @@
 # boundary
 
-[English](README.md) | 日本語
-
 `internal/usecase/boundary` は、**Usecase 層が外部（Infrastructure 層）に要求するインターフェース群**を定義するディレクトリです。
 
 ## オニオンアーキテクチャにおける位置づけ

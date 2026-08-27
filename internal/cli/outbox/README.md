@@ -1,7 +1,5 @@
 # outbox-relay
 
-English | [日本語](README.ja.md)
-
 Starts the outbox relay process and provides a `replay` subcommand for recovering dead rows.
 
 ## Role

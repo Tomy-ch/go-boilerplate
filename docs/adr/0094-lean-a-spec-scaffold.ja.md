@@ -7,8 +7,6 @@ tags: [process, ai, scaffold]
 
 # ADR-0094: スペックファイルからドメインとユースケースのみスキャフォールドし、コントローラーとインフラは生成コードから導出する
 
-English canonical: [0094-lean-a-spec-scaffold.md](0094-lean-a-spec-scaffold.md)
-
 ## ステータス
 
 accepted

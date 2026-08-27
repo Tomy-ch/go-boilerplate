@@ -7,8 +7,6 @@ tags: [exclusion, setup-review]
 
 # ADR-0106: 汎用 Cache 抽象化を提供しない
 
-English canonical: [0106-no-generic-cache-abstraction.md](0106-no-generic-cache-abstraction.md)
-
 ## ステータス
 
 accepted

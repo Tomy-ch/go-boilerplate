@@ -1,7 +1,5 @@
 # testuuid
 
-[English](README.md) | 日本語
-
 ハンドラのリクエストテスト用に openapi UUID を生成します。
 
 ## 役割

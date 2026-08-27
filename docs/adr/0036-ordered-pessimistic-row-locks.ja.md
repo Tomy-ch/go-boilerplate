@@ -7,8 +7,6 @@ tags: [persistence, domain, architecture, concurrency]
 
 # ADR-0036: 競合する書き込みを、守る条件より前に取る単一順序の悲観行ロックで直列化する
 
-English canonical: [0036-ordered-pessimistic-row-locks.md](0036-ordered-pessimistic-row-locks.md)
-
 ## ステータス
 
 accepted

@@ -7,8 +7,6 @@ tags: [contract, http, observability, security]
 
 # ADR-0020: /metrics は認証例外 — OpenAPI 検証の外に置き、独立した BasicAuth ミドルウェアで保護する
 
-English canonical: [0020-metrics-endpoint-auth-exception.md](0020-metrics-endpoint-auth-exception.md)
-
 ## ステータス
 
 accepted

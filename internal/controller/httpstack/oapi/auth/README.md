@@ -1,7 +1,5 @@
 # oapi/auth
 
-English | [日本語](README.ja.md)
-
 OpenAPI authentication function that extracts a Bearer token from the `Authorization` header, validates it via boundary `Authenticator`, and stores the result in the request context (an authn slot). Cookie-based extraction is not supported (Bearer / Resource Server model).
 
 ## Token Extraction Flow

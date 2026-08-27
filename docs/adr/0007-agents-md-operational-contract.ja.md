@@ -7,8 +7,6 @@ tags: [foundational, process, ai]
 
 # ADR-0007: AI-first / manual-compatible な開発と、運用契約としての AGENTS.md
 
-English canonical: [0007-agents-md-operational-contract.md](0007-agents-md-operational-contract.md)
-
 ## Status
 
 accepted

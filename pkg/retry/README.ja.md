@@ -1,7 +1,5 @@
 # retry
 
-[English](README.md) | 日本語
-
 失敗分類を*消費する*有限リトライの行動層を提供します。`classify → bounded attempts → backoff + full jitter → deadline-aware` を 1 度だけ実装し、自身の失敗をリトライ可能と分類する任意の呼び出し側が共有します。
 
 ## このパッケージの意図

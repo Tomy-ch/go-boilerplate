@@ -1,7 +1,5 @@
 # jwt（JWT 認証）
 
-[English](README.md) | 日本語
-
 > このファイルは canonical な [README.md](README.md) の日本語訳です。内容の更新は canonical 側で行い、本ファイルへ同期してください。
 
 このディレクトリは、アクセストークン（JWT）を検証する `Authenticator` 実装を提供します。署名鍵は**固定 RSA 公開鍵**（`New`）または **JWKS エンドポイントからの `kid` 動的解決**（`NewJWKS`）のいずれかで解決します。開発専用の `local` 実装に対する本番向けの対になる実装であり、**デファクト標準の検証コア**のみを扱います。

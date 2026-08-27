@@ -1,7 +1,5 @@
 # Tools コンテナ
 
-[English](README.md) | 日本語
-
 プロジェクトの**コード生成・バンドル用ツールコンテナ**を定義する Dockerfile です。マルチステージビルドにより Go / Node.js / Python のツール環境を提供します。
 
 ## 役割

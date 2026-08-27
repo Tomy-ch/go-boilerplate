@@ -7,8 +7,6 @@ tags: [outbox, async, idempotency]
 
 # ADR-0057: アウトボックスの message_id をレシーバーの Idempotency-Key として伝播する
 
-English canonical: [0057-message-id-idempotency-propagation.md](0057-message-id-idempotency-propagation.md)
-
 ## ステータス
 
 accepted

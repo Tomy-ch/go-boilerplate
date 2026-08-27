@@ -1,7 +1,5 @@
 # healthcheck
 
-English | [日本語](README.ja.md)
-
 Usecase for reporting service health: it captures the application time from the
 `Clock` boundary and probes the database, returning a single health DTO.
 

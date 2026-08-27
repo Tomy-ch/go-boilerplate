@@ -1,7 +1,5 @@
 # testauth
 
-English | [日本語](README.ja.md)
-
 Provides utilities for setting authentication context inside test code that is normally populated by middleware.
 
 ## Usage

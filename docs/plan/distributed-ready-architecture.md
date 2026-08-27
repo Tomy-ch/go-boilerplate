@@ -1,7 +1,5 @@
 # Distributed Ready Architecture (v3 requirements)
 
-English | [日本語](distributed-ready-architecture.ja.md)
-
 The v3 line is trying to answer one question. **Can a modular monolith stay a modular monolith, and
 still behave as a distributed system the moment a boundary is crossed?**
 

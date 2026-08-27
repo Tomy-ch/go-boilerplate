@@ -7,8 +7,6 @@ tags: [cli, architecture]
 
 # ADR-0095: CLI ハンブルオブジェクト分割（薄い cmd/ シェル + テスト可能な internal/cli コア）
 
-English canonical: [0095-cli-humble-object-split.md](0095-cli-humble-object-split.md)
-
 ## ステータス
 
 accepted

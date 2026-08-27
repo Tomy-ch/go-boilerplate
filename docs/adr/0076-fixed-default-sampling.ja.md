@@ -7,8 +7,6 @@ tags: [observability, exclusion, setup-review]
 
 # ADR-0076: SDK デフォルトサンプリングを固定し、サンプリングを環境変数ノブとして公開しない
 
-English canonical: [0076-fixed-default-sampling.md](0076-fixed-default-sampling.md)
-
 ## ステータス
 
 accepted

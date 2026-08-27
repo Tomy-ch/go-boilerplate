@@ -1,7 +1,5 @@
 # fs
 
-English | [日本語](README.ja.md)
-
 Provides a thin wrapper around filesystem operations so callers depend on an interface instead of `os` directly.
 
 ## Wraps

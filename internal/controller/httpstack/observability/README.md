@@ -1,7 +1,5 @@
 # observability
 
-English | [日本語](README.ja.md)
-
 OpenTelemetry tracing middleware for Echo.
 
 ## Role

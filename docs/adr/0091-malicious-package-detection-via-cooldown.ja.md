@@ -7,8 +7,6 @@ tags: [ci, security, dependencies, setup-review]
 
 # ADR-0091: 悪意あるパッケージへの主防御として専用の検出器を持たず公開クールダウンを受け入れる
 
-English canonical: [0091-malicious-package-detection-via-cooldown.md](0091-malicious-package-detection-via-cooldown.md)
-
 ## ステータス
 
 accepted

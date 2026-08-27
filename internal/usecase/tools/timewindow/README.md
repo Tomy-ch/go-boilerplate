@@ -1,7 +1,5 @@
 # timewindow
 
-English | [日本語](README.ja.md)
-
 Provides the half-open interval that bounds an aggregation or filter by ordered time.
 
 ## Role

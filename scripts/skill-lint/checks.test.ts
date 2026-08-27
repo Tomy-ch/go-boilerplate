@@ -5,13 +5,13 @@ import {
   allowlistLocation,
   asRepoPath,
   collectMakeTargets,
-  compareHeadingStructure,
+  compareHeadingStructure, // doc-pair:line
   eachLineOutsideFence,
   expandBraces,
-  extractHeadings,
+  extractHeadings, // doc-pair:line
   extractInlineCode,
   extractMakeTargets,
-  hasTranslationNote,
+  hasTranslationNote, // doc-pair:line
   makeTargetExists,
   onlyIn,
   parseFrontmatterKeys,
@@ -192,6 +192,7 @@ describe("parseFrontmatterKeys", () => {
   });
 });
 
+// doc-pair:begin
 describe("extractHeadings", () => {
   describe("正常系", () => {
     it("レベルとテキストと行番号を取り出す", () => {
@@ -256,6 +257,7 @@ describe("hasTranslationNote", () => {
   });
 });
 
+// doc-pair:end
 describe("onlyIn", () => {
   describe("正常系", () => {
     it("片側にしかない名前を返す", () => {

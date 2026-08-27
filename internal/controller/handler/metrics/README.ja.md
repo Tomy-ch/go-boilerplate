@@ -1,7 +1,5 @@
 # メトリクスハンドラー (`internal/controller/handler/metrics`)
 
-[English](README.md) | 日本語
-
 ## 役割
 
 `metrics` は Prometheus のスクレイプエンドポイント **`GET /metrics`** を公開します。

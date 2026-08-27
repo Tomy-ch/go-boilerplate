@@ -1,7 +1,5 @@
 # auth
 
-English | [日本語](README.ja.md)
-
 Provides interfaces and value objects for authentication.
 
 ## Credential Details

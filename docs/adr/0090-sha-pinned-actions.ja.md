@@ -7,8 +7,6 @@ tags: [ci, security, supply-chain]
 
 # ADR-0090: GitHub Actions を SHA でピン留めし、サプライチェーン隔離を適用する
 
-English canonical: [0090-sha-pinned-actions.md](0090-sha-pinned-actions.md)
-
 ## ステータス
 
 accepted

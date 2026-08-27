@@ -7,8 +7,6 @@ tags: [foundational, architecture, dependencies]
 
 # ADR-0003: 疎結合のためにインターフェースで境界を定義する（DIP）
 
-English canonical: [0003-interface-based-decoupling.md](0003-interface-based-decoupling.md)
-
 ## ステータス
 
 accepted

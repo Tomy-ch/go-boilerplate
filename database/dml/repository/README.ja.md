@@ -1,7 +1,5 @@
 # Repository DML
 
-[English](README.md) | 日本語
-
 単一 Aggregate の永続化と単純な読み取り（CRUD、および Aggregate 自身の属性による単純なフィルタ・一覧・件数）に使用するSQLを管理します。
 
 ## 目的

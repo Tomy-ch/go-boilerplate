@@ -1,7 +1,5 @@
 # withdrawal-archive worker（サンプル）
 
-[English](README.md) | 日本語
-
 outbox 経路の**消費側**を一通り動かして見せる実例です。ユーザーが退会すると、outbox が同一トランザ
 クションで `user.withdrawn.v1` を emit し、relay がそれを broker へ publish し、この worker が消費して
 退会証跡をオブジェクトストレージへ書き出します。

@@ -1,7 +1,5 @@
 # idempotency
 
-English | [日本語](README.ja.md)
-
 `Idempotency-Key`-based request deduplication entry point, provided as an oapi-codegen StrictMiddleware slot (not `e.Use`).
 
 ## Role

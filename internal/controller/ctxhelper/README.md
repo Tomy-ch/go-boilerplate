@@ -1,7 +1,5 @@
 # ctxhelper
 
-English | [日本語](README.ja.md)
-
 ctxhelper is a "boundary layer that controls the usage of context".
 
 This package provides helper functions for carrying request-scoped values on `context.Context`.

@@ -7,8 +7,6 @@ tags: [foundational, architecture]
 
 # ADR-0004: モジュラーモノリスを採用する（マイクロサービスは非目標）
 
-English canonical: [0004-modular-monolith.md](0004-modular-monolith.md)
-
 ## ステータス
 
 accepted

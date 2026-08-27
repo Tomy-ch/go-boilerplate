@@ -1,16 +1,20 @@
 import { z } from "zod";
 
+// doc-pair:replace-begin
 /**
  * カード 1 枚分の項目。
  *
  * `lang` の `all` は言語を問わず常に表示する項目を表し、言語フィルタの対象外になる
  * （生成物 HTML や外部リンクのように翻訳の対になる相方を持たないもの）。
  */
+// doc-pair:replace-with
+// = /** カード 1 枚分の項目。 */
+// doc-pair:replace-end
 export const portalItemSchema = z.object({
   name: z.string(),
   path: z.string(),
   source: z.string().optional(),
-  lang: z.enum(["en", "ja", "all"]),
+  lang: z.enum(["en", "ja", "all"]), // doc-pair:line
 });
 
 /** section 内を役割で再分割したまとまり。 */

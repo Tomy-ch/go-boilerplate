@@ -7,8 +7,6 @@ tags: [deploy, security, supply-chain]
 
 # ADR-0101: リリースイメージのサプライチェーン完全性（cosign 署名 + プロベナンス + SBOM）
 
-English canonical: [0101-release-image-supply-chain.md](0101-release-image-supply-chain.md)
-
 ## ステータス
 
 accepted

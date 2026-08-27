@@ -180,7 +180,97 @@ function uncommentSubstitute(line: string, marker: string): string {
   return matched[1] + (matched[2] ?? matched[3].trimEnd());
 }
 
+/**
+ * マーカーの解決方向。
+ *
+ * @remarks
+ * `remove` は対象が消えたツリーを作ります（有効側を落とし、退避コメントを本文へ戻す）。
+ * `keep` は対象が在り続けると決めたツリーを作ります（有効側を残し、退避コメントを落とす）。
+ * どちらもマーカー行そのものは消えます —— 解決済みのツリーに宣言だけが残ると、次に読む人が
+ * 「まだ選べる」と読み違えるためです。
+ */
+export type Resolution = "remove" | "keep";
+
+/**
+ * 行末に置かれた `<marker>:line` の宣言だけを剥がす。
+ *
+ * @remarks
+ * `//` / `#` / `%%` は行末コメントなので行の残りごと落とします。`<!-- -->` は閉じ記号を
+ * 持つので、その範囲だけを抜きます —— Markdown の表セルのように、宣言の**後ろ**に本文が
+ * 続く置き方があるためです。
+ */
+function stripLineMarker(line: string, marker: string): string {
+  const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
+
+  return line
+    .replace(new RegExp(String.raw`[ \t]*(?:\/\/|#|%%)[ \t]*${escaped}:line\b.*$`), "")
+    .replace(new RegExp(String.raw`[ \t]*<!--[ \t]*${escaped}:line\b[ \t]*-->`), "");
+}
+
 export function stripMarkers(content: string, marker: string): StripResult {
+  return resolveMarkers(content, marker, "remove");
+}
+
+/**
+ * マーカーで囲まれた本文を残したまま、マーカーの宣言だけを取り除く。
+ *
+ * @remarks
+ * 退避コメント（`replace-with` 〜 `replace-end`）は落とします。有効側が残る以上、あれは
+ * 二度と使われない複製であり、残せば読む人が二つの正解を突き合わせる羽目になります。
+ */
+export function keepMarked(content: string, marker: string): StripResult {
+  return resolveMarkers(content, marker, "keep");
+}
+
+/** 読み進めた位置がどのブロックの内側かを表す。 */
+type ScanState = { depth: number; replaceState: number };
+
+/** 1 行を読み終えた時点の状態と、その行の出力。`output` が `null` なら落とす。 */
+type LineOutcome = ScanState & { output: string | null };
+
+/**
+ * 1 行の行き先を決める。
+ *
+ * @remarks
+ * `remove` は有効側（対象が在るときのコード）を落として退避コメントを本文へ戻し、`keep` は
+ * その逆を行います。退避コメントの形の検査は、本文へ戻す `remove` でだけ意味を持ちます。
+ */
+function resolveLine(
+  line: string,
+  patterns: MarkerPatterns,
+  { depth, replaceState }: ScanState,
+  marker: string,
+  keeping: boolean,
+): LineOutcome {
+  const nextReplaceState = replaceTransition(line, patterns, replaceState, marker);
+
+  if (nextReplaceState !== null) {
+    return { depth, replaceState: nextReplaceState, output: null };
+  }
+  if (replaceState === ACTIVE) {
+    return { depth, replaceState, output: keeping ? line : null };
+  }
+  if (replaceState === SUBSTITUTE) {
+    return { depth, replaceState, output: keeping ? null : uncommentSubstitute(line, marker) };
+  }
+
+  const nextDepth = blockTransition(line, patterns, depth, marker);
+
+  if (nextDepth !== null) {
+    return { depth: nextDepth, replaceState, output: null };
+  }
+  if (depth > 0) {
+    return { depth, replaceState, output: keeping ? line : null };
+  }
+  if (patterns.lineMarker.test(line)) {
+    return { depth, replaceState, output: keeping ? stripLineMarker(line, marker) : null };
+  }
+
+  return { depth, replaceState, output: line };
+}
+
+function resolveMarkers(content: string, marker: string, resolution: Resolution): StripResult {
+  const keeping = resolution === "keep";
   const patterns: MarkerPatterns = {
     blockBegin: markerPattern(marker, "begin"),
     blockEnd: markerPattern(marker, "end"),
@@ -191,44 +281,20 @@ export function stripMarkers(content: string, marker: string): StripResult {
   };
 
   const sink: Sink = { out: [], removed: 0, cutJustBefore: false };
-  let depth = 0;
-  let replaceState: number = OUTSIDE;
+  let state: ScanState = { depth: 0, replaceState: OUTSIDE };
 
   for (const line of content.split("\n")) {
-    const nextReplaceState = replaceTransition(line, patterns, replaceState, marker);
-    if (nextReplaceState !== null) {
-      replaceState = nextReplaceState;
-      cut(sink);
-      continue;
-    }
-    // 有効側（対象が在るときのコード）は除去し、差し替え側は退避コメントを外して残す。
-    if (replaceState === ACTIVE) {
-      cut(sink);
-      continue;
-    }
-    if (replaceState === SUBSTITUTE) {
-      keep(sink, uncommentSubstitute(line, marker));
-      continue;
-    }
+    const { output, ...next } = resolveLine(line, patterns, state, marker, keeping);
 
-    const nextDepth = blockTransition(line, patterns, depth, marker);
-    if (nextDepth !== null) {
-      depth = nextDepth;
-      cut(sink);
-      continue;
-    }
-    if (depth > 0 || patterns.lineMarker.test(line)) {
-      cut(sink);
-      continue;
-    }
-
-    keep(sink, line);
+    state = next;
+    if (output === null) cut(sink);
+    else keep(sink, output);
   }
 
-  if (depth > 0) {
+  if (state.depth > 0) {
     throw new Error(`${marker}:begin に対応する ${marker}:end が見つかりません。`);
   }
-  if (replaceState !== OUTSIDE) {
+  if (state.replaceState !== OUTSIDE) {
     throw new Error(`${marker}:replace-begin に対応する ${marker}:replace-end が見つかりません。`);
   }
 

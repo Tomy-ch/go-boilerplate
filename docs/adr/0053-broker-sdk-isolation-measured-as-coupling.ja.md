@@ -8,8 +8,6 @@ tags: [worker, outbox, async, dependencies]
 
 # ADR-0053: ブローカー SDK の分離はリンクではなく結合で測る
 
-English canonical: [0053-broker-sdk-isolation-measured-as-coupling.md](0053-broker-sdk-isolation-measured-as-coupling.md)
-
 ## ステータス
 
 accepted（[ADR-0052](0052-sqs-adapter-opt-in.ja.md) を supersede）

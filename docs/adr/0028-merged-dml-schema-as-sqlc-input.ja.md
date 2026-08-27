@@ -7,8 +7,6 @@ tags: [persistence, codegen, tooling]
 
 # ADR-0028: マージされたDMLおよびダンプされたスキーマをsqlcの単一入力として使用する
 
-English canonical: [0028-merged-dml-schema-as-sqlc-input.md](0028-merged-dml-schema-as-sqlc-input.md)
-
 ## ステータス
 
 accepted

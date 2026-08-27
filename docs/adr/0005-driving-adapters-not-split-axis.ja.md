@@ -7,8 +7,6 @@ tags: [foundational, architecture]
 
 # ADR-0005: REST / Worker / Job はドライビングアダプター、サービス分割の軸ではない
 
-English canonical: [0005-driving-adapters-not-split-axis.md](0005-driving-adapters-not-split-axis.md)
-
 ## ステータス
 
 accepted

@@ -1,7 +1,5 @@
 # backoff
 
-English | [日本語](README.ja.md)
-
 Computes exponential backoff wait durations as a pure function of the attempt count, free of clock or randomness dependencies.
 
 ## Notes

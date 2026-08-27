@@ -7,8 +7,6 @@ tags: [foundational, ci, structural-safety]
 
 # ADR-0006: ツールと CI で構造的安全性を強制する（depguard）
 
-English canonical: [0006-structural-safety-via-tooling.md](0006-structural-safety-via-tooling.md)
-
 ## ステータス
 
 accepted

@@ -1,7 +1,5 @@
 # migrate-up / migrate-down
 
-English | [日本語](README.ja.md)
-
 Manages database schema migrations. `migrate-up` applies pending migrations; `migrate-down` rolls back applied migrations (all by default, or a given number of steps).
 
 ## Commands

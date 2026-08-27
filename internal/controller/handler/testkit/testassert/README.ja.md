@@ -1,7 +1,5 @@
 # testassert
 
-[English](README.md) | 日本語
-
 Controller 層テスト用のアサーションヘルパーです。
 
 ## 役割

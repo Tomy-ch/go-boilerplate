@@ -1,7 +1,5 @@
 # httpclient
 
-[English](README.md) | 日本語
-
 `internal/infrastructure/httpclient` は、外部 HTTP 通信の **resilient な substrate**（retry / circuit breaker / budget / tracing）を提供し、gateway や publisher などの意味的 IF 実装から利用されるパッケージです。
 
 ## アーキテクチャ上の位置づけ

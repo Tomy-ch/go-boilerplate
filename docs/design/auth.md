@@ -1,7 +1,5 @@
 # Authentication Subsystem Design Reference
 
-[jwt README](../../internal/infrastructure/auth/jwt/README.md) | [docker README](../../docker/README.md) | 日本語: [auth.ja.md](auth.ja.md)
-
 This document consolidates the authentication subsystem's **role theory, state transitions (normal + error), implementation locations, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. The subsystem has two halves that meet at one contract — a **JWKS key set** and an **access-token claim shape**:
 
 - **Resource-Server side** — the Go API *verifies* an incoming access token. It never mints one.

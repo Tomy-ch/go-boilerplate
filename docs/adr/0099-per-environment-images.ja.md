@@ -7,8 +7,6 @@ tags: [deploy, image, config]
 
 # ADR-0099: 環境別イメージ（.env マトリックス × APP_ENV ビルド引数、ビルド時に固定）
 
-English canonical: [0099-per-environment-images.md](0099-per-environment-images.md)
-
 ## ステータス
 
 accepted

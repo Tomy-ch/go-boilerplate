@@ -1,7 +1,5 @@
 # publisher
 
-[English](README.md) | 日本語
-
 ドメインイベントの outbound publish 境界 `Publisher` と、publish 先非依存のメッセージ封筒を定義します。
 relay engine（controller 層）と publish adapter（infrastructure 層）の双方がこの境界に依存します。
 

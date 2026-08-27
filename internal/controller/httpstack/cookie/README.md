@@ -1,7 +1,5 @@
 # cookie
 
-English | [日本語](README.ja.md)
-
 Middleware to enforce secure Cookie policies (Secure / HttpOnly / SameSite / Path / Domain / Max-Age).
 
 ## Role

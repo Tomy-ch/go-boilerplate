@@ -1,7 +1,5 @@
 # Ready Handler (`internal/controller/handler/ready`)
 
-English | [日本語](README.ja.md)
-
 ## Role
 
 `ready` exposes the readiness-probe endpoint **`GET /ready`**.

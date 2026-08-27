@@ -1,7 +1,5 @@
 # Idempotency GC ジョブガイド (`internal/controller/job/idempotencygc`)
 
-[English](README.md) | 日本語
-
 ## オニオンアーキテクチャにおける役割
 
 - **ワンショットの GC エントリポイント**（Controller 層 / CLI driving adapter）。新しいアーキテクチャ層ではなく、Usecase 層への入口の一つです。

@@ -1,7 +1,5 @@
 # oapi/validator
 
-English | [日本語](README.ja.md)
-
 Loads the embedded OpenAPI specification and provides the parsed schema that `oapi.Middleware()` consumes for request validation.
 
 ## How It Works

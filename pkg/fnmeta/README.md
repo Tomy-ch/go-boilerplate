@@ -1,7 +1,5 @@
 # fnmeta
 
-English | [日本語](README.ja.md)
-
 Extracts function and package names from runtime full function names.
 
 Used to derive a short, human-readable identifier (e.g. for span or log naming) from a function's runtime full name.

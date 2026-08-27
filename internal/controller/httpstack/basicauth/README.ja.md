@@ -1,7 +1,5 @@
 # basicauth
 
-[English](README.md) | 日本語
-
 メトリクスエンドポイント用の Basic 認証バリデータを提供します。
 
 ## 役割

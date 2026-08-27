@@ -1,7 +1,5 @@
 # Post-Repository Clone Task List
 
-English | [日本語](setup-repository.ja.md)
-
 For details of Make commands, refer to [Make Target List](../../.makefiles/README.md).
 
 ## Phase 1: Install mise and activate it in your shell
@@ -70,6 +68,57 @@ make db-init
 
 <!-- boilerplate-only:begin -->
 ## Phase 5: Execute Localization Script
+
+<!-- lang-choice:begin -->
+### Choose the documentation language
+
+This repository ships every document twice: an English canonical and a Japanese translation beside
+it (`<name>.ja.md`), and the same for every skill (`SKILL.md` / `SKILL.ja.md`). That is 422 pairs.
+A project that reads only one of the two languages maintains the other for nobody.
+
+Run this **first**, before the replacements below and before every later removal. The removal tools
+carry paired declarations for the canonical and the translation, and each prunes its own pair the
+moment the fold resolves it — so a folded tree is what they expect. The reverse does not hold:
+Phase 12 deletes a workflow this tool declares a string in, so a fold attempted after it aborts.
+
+The working tree must be clean, which it is here and stops being so once the replacements below run.
+
+```bash
+# Preview: writes nothing and commits nothing. Works on a dirty tree.
+DRY_RUN=1 make setup-remove-doc-language LANG_CHOICE=en
+
+# Fold. The working tree must be clean — the script commits the whole fold at once.
+make setup-remove-doc-language LANG_CHOICE=en
+```
+
+| `LANG_CHOICE` | What happens |
+| --- | --- |
+| `en` | Deletes every `*.ja.md` and removes the references the surviving English documents make to them |
+| `ja` | Deletes every English canonical and **renames** each `<name>.ja.md` to `<name>.md`, so the filename contract (`SKILL.md`, `README.md`) still holds. A skill's YAML frontmatter is transplanted from the canonical onto the translation, which is what keeps the skills loadable |
+| `both` | Keeps the pairs. The markers that mark the fold sites are resolved and the tool retires itself, so this is a decision, not a deferral — revert the commit to reopen it |
+
+Picking `en` or `ja` leaves no `*.ja.md`, so the checks that require a translation pair
+are removed too: `doc-ref-lint`'s pair check, `skill-lint`'s `SKILL.ja.md` requirement, the portal's
+Japanese entries and the viewer's language switch. The `canonicalize-doc` skill goes with them —
+it exists to create and sync the pairs, and it has no subject once there is one language.
+
+`ja` is the more expensive choice and worth a moment's thought. The English canonical exists because
+agents read it: Japanese costs roughly 1.5–2.0× the tokens and carries a higher misreading risk
+([ADR-0011](../adr/0011-docs-as-canonical-source.md)). Choosing `ja` accepts that for every agent
+run in the project's life. Choose it when the team reads Japanese and the documents are for people
+first.
+
+The script refuses to run rather than guess. Prose that explains the translation convention itself
+cannot be folded mechanically, so anything not covered by a `doc-pair` marker or declared in
+`language-manifest.ts` stops the run with its file and line — and nothing is written when it does.
+
+**Decide it here, not later.** Everything past this point — the rest of the setup and then ordinary
+development — pays for both languages every day: each documentation edit is written twice, each
+agent run reads past the pairs it does not need, and the two sides drift the moment one is updated
+alone. That cost recurs; the decision does not — it is one command.
+<!-- lang-choice:end -->
+
+### Replace the module name and the project metadata
 
 Run the following commands to execute the script that replaces the Go module name in bulk.
 

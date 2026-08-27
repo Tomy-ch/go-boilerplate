@@ -1,7 +1,5 @@
 # authz
 
-[English](README.md) | 日本語
-
 認可（authz）のためのインターフェースと値オブジェクトを提供します。認証（`auth`）と対になる存在です。
 
 ## Authorizer

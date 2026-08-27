@@ -1,7 +1,5 @@
 # cors
 
-English | [日本語](README.ja.md)
-
 CORS middleware configured from security settings.
 
 ## Role

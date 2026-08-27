@@ -7,8 +7,6 @@ tags: [outbox, async]
 
 # ADR-0058: MaxAttempts = 10 到達でメッセージをデッド状態にする（手動リプレイまで終端）
 
-English canonical: [0058-outbox-dead-after-max-attempts.md](0058-outbox-dead-after-max-attempts.md)
-
 ## ステータス
 
 accepted

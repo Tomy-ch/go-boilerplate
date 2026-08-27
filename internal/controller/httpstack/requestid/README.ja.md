@@ -1,7 +1,5 @@
 # requestid
 
-[English](README.md) | 日本語
-
 リクエストごとに一意な X-Request-ID ヘッダを生成します。
 
 ## 役割

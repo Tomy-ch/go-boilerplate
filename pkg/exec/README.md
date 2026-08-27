@@ -1,7 +1,5 @@
 # exec
 
-English | [日本語](README.ja.md)
-
 Provides a thin wrapper around external process execution so callers depend on an interface instead of `os/exec` directly.
 
 ## Wraps

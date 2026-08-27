@@ -1,7 +1,5 @@
 # fix-collation
 
-[English](README.md) | 日本語
-
 PostgreSQL の照合順序バージョン不整合を、`REINDEX DATABASE` と `ALTER DATABASE ... REFRESH COLLATION VERSION` を実行して修正します。
 
 ## 役割

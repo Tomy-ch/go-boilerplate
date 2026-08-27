@@ -7,8 +7,6 @@ tags: [worker, async, adapter]
 
 # ADR-0050: ブローカー非依存のプル・アック型ワーカースキャフォールド
 
-English canonical: [0050-broker-agnostic-worker-scaffold.md](0050-broker-agnostic-worker-scaffold.md)
-
 ## ステータス
 
 accepted

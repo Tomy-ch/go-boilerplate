@@ -1,7 +1,5 @@
 # exchangerate
 
-[English](README.md) | 日本語
-
 外部為替レート取得サービスへの意味的 gateway として振る舞う `Gateway` インターフェースを提供します（DTO モードのサンプル）。
 
 ```go

@@ -1,7 +1,5 @@
 # OpenAPI Paths
 
-English | [日本語](README.ja.md)
-
 `openapi/paths/` stores **API endpoint route definitions** organized by resource and version.
 
 ## Directory Structure

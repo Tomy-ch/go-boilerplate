@@ -7,8 +7,6 @@ tags: [architecture, layering]
 
 # ADR-0002: 実用的なオニオンアーキテクチャを採用する
 
-English canonical: [0002-onion-architecture.md](0002-onion-architecture.md)
-
 ## ステータス
 
 accepted

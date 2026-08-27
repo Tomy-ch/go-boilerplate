@@ -1,7 +1,5 @@
 # 認証サブシステム 設計リファレンス
 
-[jwt README](../../internal/infrastructure/auth/jwt/README.ja.md) | [docker README](../../docker/README.ja.md) | English: [auth.md](auth.md)
-
 本ドキュメントは認証サブシステムの **役割理論・状態遷移（通常版 / 異常版）・実装配置・インテグレーターが実装すること・用語解説** を、実装の精読から導いて1ページに統合する。本サブシステムは1つの契約 — **JWKS 鍵セット** と **access token の claim 形状** — で出会う2つの半身から成る:
 
 - **Resource Server 側** — Go API が受け取った access token を *検証* する。発行はしない。

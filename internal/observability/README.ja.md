@@ -1,7 +1,5 @@
 # internal/observability
 
-[English](README.md) | 日本語
-
 `internal/observability` は、本プロジェクトの **トレーシング（Tracing）および観測ログ連携**を提供するパッケージです。
 
 このパッケージは **OpenTelemetry をベースとしたトレーシング機構**と、  

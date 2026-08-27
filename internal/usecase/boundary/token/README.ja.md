@@ -1,7 +1,5 @@
 # token
 
-[English](README.md) | 日本語
-
 推測できない不透明なトークン文字列を生成するための `Generator` インターフェースを提供します。
 
 ```go

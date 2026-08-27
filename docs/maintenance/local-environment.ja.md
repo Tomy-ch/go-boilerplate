@@ -1,7 +1,5 @@
 # Local Development Environment
 
-English: [local-environment.md](local-environment.md)
-
 ローカル開発を構成する **docker compose の 2 層構成（共有インフラ / checkout 毎の app）・
 ホットリロード（air）・コード生成 runner・`make serve` の worktree スロットリング** を 1 枚で
 俯瞰するための地図。各要素の詳細は既存の正本ドキュメントへリンクするに留め、ここでは

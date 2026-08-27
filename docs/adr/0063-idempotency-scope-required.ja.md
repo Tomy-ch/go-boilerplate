@@ -7,8 +7,6 @@ tags: [idempotency, security]
 
 # ADR-0063: クロスユーザーのキー衝突を防ぐためすべての Store 呼び出しに明示的スコープを必須とする
 
-English canonical: [0063-idempotency-scope-required.md](0063-idempotency-scope-required.md)
-
 ## ステータス
 
 accepted

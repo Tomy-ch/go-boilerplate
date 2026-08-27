@@ -1,7 +1,5 @@
 # worker hook
 
-English | [日本語](README.ja.md)
-
 `internal/di/worker/hook` is a module that registers **lifecycle hooks** to run the CLI-selected worker engine (and its health listener) across application start/stop.
 
 ## Role

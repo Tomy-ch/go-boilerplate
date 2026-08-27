@@ -7,8 +7,6 @@ tags: [toolchain, ci]
 
 # ADR-0080: mise が解決するバージョンは mise.toml を単一の情報源とし、下流に伝播させ CI でドリフトを検知する
 
-English canonical: [0080-mise-ssot-drift-gate.md](0080-mise-ssot-drift-gate.md)
-
 ## ステータス
 
 accepted

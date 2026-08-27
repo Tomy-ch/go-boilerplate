@@ -34,7 +34,11 @@ find .claude/skills/<name> -type f | sort
 find .codex/skills/<name> -type f | sort
 ```
 
+<!-- doc-pair:replace-begin -->
 Treat `SKILL.md`, `SKILL.ja.md`, UI metadata, scripts, references, and assets as one unit.
+<!-- doc-pair:replace-with -->
+<!-- = Treat `SKILL.md`, UI metadata, scripts, references, and assets as one unit. -->
+<!-- doc-pair:replace-end -->
 Record only a temporary transfer note under `tmp/skills/sync-ai/`; do not create a durable third copy or
 a synchronization manifest.
 
@@ -123,7 +127,11 @@ Check Claude's own checklist items against the filesystem too, not merely agains
 properties that fail quietly are the ones a diff does not show: a newly created file appears in
 `git status` without its mode, so verify the executable bit on every bundled script with complete,
 non-truncated output (prefer `stat -f '%Sp %N' <file>` on BSD/macOS; otherwise read `ls -l` in
+<!-- doc-pair:replace-begin -->
 full), run `sh -n` over it, and confirm the `SKILL.md` / `SKILL.ja.md` heading counts still match.
+<!-- doc-pair:replace-with -->
+<!-- = full) and run `sh -n` over it. -->
+<!-- doc-pair:replace-end -->
 Claude reporting these checks as passed is precisely the claim this paragraph exists to distrust.
 
 ## Guardrails

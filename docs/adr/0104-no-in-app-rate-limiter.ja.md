@@ -7,8 +7,6 @@ tags: [exclusion, setup-review]
 
 # ADR-0104: アプリケーション内レートリミッターを提供しない
 
-English canonical: [0104-no-in-app-rate-limiter.md](0104-no-in-app-rate-limiter.md)
-
 ## ステータス
 
 accepted

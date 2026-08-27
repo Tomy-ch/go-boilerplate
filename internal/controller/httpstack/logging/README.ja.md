@@ -1,7 +1,5 @@
 # logging
 
-[English](README.md) | 日本語
-
 トレースコンテキスト付きの HTTP リクエスト / レスポンス構造化ログミドルウェアです。
 
 ops エンドポイント（`/health`, `/metrics` 等）はスキップします。
