@@ -200,7 +200,7 @@ export type Resolution = "remove" | "keep";
  * 続く置き方があるためです。
  */
 function stripLineMarker(line: string, marker: string): string {
-  const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 
   return line
     .replace(new RegExp(String.raw`[ \t]*(?:\/\/|#|%%)[ \t]*${escaped}:line\b.*$`), "")
@@ -222,6 +222,53 @@ export function keepMarked(content: string, marker: string): StripResult {
   return resolveMarkers(content, marker, "keep");
 }
 
+/** 読み進めた位置がどのブロックの内側かを表す。 */
+type ScanState = { depth: number; replaceState: number };
+
+/** 1 行を読み終えた時点の状態と、その行の出力。`output` が `null` なら落とす。 */
+type LineOutcome = ScanState & { output: string | null };
+
+/**
+ * 1 行の行き先を決める。
+ *
+ * @remarks
+ * `remove` は有効側（対象が在るときのコード）を落として退避コメントを本文へ戻し、`keep` は
+ * その逆を行います。退避コメントの形の検査は、本文へ戻す `remove` でだけ意味を持ちます。
+ */
+function resolveLine(
+  line: string,
+  patterns: MarkerPatterns,
+  { depth, replaceState }: ScanState,
+  marker: string,
+  keeping: boolean,
+): LineOutcome {
+  const nextReplaceState = replaceTransition(line, patterns, replaceState, marker);
+
+  if (nextReplaceState !== null) {
+    return { depth, replaceState: nextReplaceState, output: null };
+  }
+  if (replaceState === ACTIVE) {
+    return { depth, replaceState, output: keeping ? line : null };
+  }
+  if (replaceState === SUBSTITUTE) {
+    return { depth, replaceState, output: keeping ? null : uncommentSubstitute(line, marker) };
+  }
+
+  const nextDepth = blockTransition(line, patterns, depth, marker);
+
+  if (nextDepth !== null) {
+    return { depth: nextDepth, replaceState, output: null };
+  }
+  if (depth > 0) {
+    return { depth, replaceState, output: keeping ? line : null };
+  }
+  if (patterns.lineMarker.test(line)) {
+    return { depth, replaceState, output: keeping ? stripLineMarker(line, marker) : null };
+  }
+
+  return { depth, replaceState, output: line };
+}
+
 function resolveMarkers(content: string, marker: string, resolution: Resolution): StripResult {
   const keeping = resolution === "keep";
   const patterns: MarkerPatterns = {
@@ -234,53 +281,20 @@ function resolveMarkers(content: string, marker: string, resolution: Resolution)
   };
 
   const sink: Sink = { out: [], removed: 0, cutJustBefore: false };
-  let depth = 0;
-  let replaceState: number = OUTSIDE;
+  let state: ScanState = { depth: 0, replaceState: OUTSIDE };
 
   for (const line of content.split("\n")) {
-    const nextReplaceState = replaceTransition(line, patterns, replaceState, marker);
-    if (nextReplaceState !== null) {
-      replaceState = nextReplaceState;
-      cut(sink);
-      continue;
-    }
-    // `remove` は有効側（対象が在るときのコード）を落として退避コメントを本文へ戻し、
-    // `keep` はその逆を行う。退避コメントの形の検査は残す側でだけ意味を持つ。
-    if (replaceState === ACTIVE) {
-      if (keeping) keep(sink, line);
-      else cut(sink);
-      continue;
-    }
-    if (replaceState === SUBSTITUTE) {
-      if (keeping) cut(sink);
-      else keep(sink, uncommentSubstitute(line, marker));
-      continue;
-    }
+    const { output, ...next } = resolveLine(line, patterns, state, marker, keeping);
 
-    const nextDepth = blockTransition(line, patterns, depth, marker);
-    if (nextDepth !== null) {
-      depth = nextDepth;
-      cut(sink);
-      continue;
-    }
-    if (depth > 0) {
-      if (keeping) keep(sink, line);
-      else cut(sink);
-      continue;
-    }
-    if (patterns.lineMarker.test(line)) {
-      if (keeping) keep(sink, stripLineMarker(line, marker));
-      else cut(sink);
-      continue;
-    }
-
-    keep(sink, line);
+    state = next;
+    if (output === null) cut(sink);
+    else keep(sink, output);
   }
 
-  if (depth > 0) {
+  if (state.depth > 0) {
     throw new Error(`${marker}:begin に対応する ${marker}:end が見つかりません。`);
   }
-  if (replaceState !== OUTSIDE) {
+  if (state.replaceState !== OUTSIDE) {
     throw new Error(`${marker}:replace-begin に対応する ${marker}:replace-end が見つかりません。`);
   }
 

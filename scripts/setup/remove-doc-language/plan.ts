@@ -206,7 +206,7 @@ export function planKeepBoth(
     .flatMap((file) => {
       const original = read(file);
 
-      if (original === null || !original.includes(`${MARKER}:`)) {
+      if (!original?.includes(`${MARKER}:`)) {
         return [];
       }
 
