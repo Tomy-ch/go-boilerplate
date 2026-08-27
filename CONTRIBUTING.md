@@ -1,114 +1,104 @@
-# Contributing
+# コントリビューションガイド
 
-This page covers **how a change travels** — where to branch from, how to commit, what has to be
-green, and what a reviewer will ask. It states no architectural rules of its own: those live in
-[docs/rules.md](docs/rules.md) and the per-package `README.md`, and a change that disagrees with
-them is a design discussion, not a review comment.
+このページが扱うのは**変更がどう流れるか**です。どこからブランチを切り、どうコミットし、何が緑で
+なければならず、レビュアーが何を尋ねるか。アーキテクチャ上のルールはここには置きません。それらは
+[docs/rules.md](docs/rules.md) と各パッケージの `README.md` にあり、それらと食い違う変更はレビュー
+コメントではなく設計の議論です。
 
-If this is your first change here, read [docs/architecture.md](docs/architecture.md) and
-[docs/development-flow.md](docs/development-flow.md) first. The flow document is the one that says
-where to start for each kind of change — an API change begins in the OpenAPI document, a schema
-change in a migration, and neither begins in Go.
+このリポジトリで最初の変更を書くなら、まず [docs/architecture.md](docs/architecture.md) と
+[docs/development-flow.md](docs/development-flow.md) を読んでください。変更の種類ごとにどこから
+着手するかを述べているのは後者です。API の変更は OpenAPI 定義から、スキーマの変更はマイグレーション
+から始まり、どちらも Go からは始まりません。
 
-## Before you start
+## 着手する前に
 
-Set the repository up as described in
-[docs/get-started/setup-repository.md](docs/get-started/setup-repository.md), and confirm the git
-hooks are wired (`make activate-tools`). Hooks that were never installed are the most common reason
-a pull request fails on something that would have been caught in a second locally.
+[docs/get-started/setup-repository.md](docs/get-started/setup-repository.md) の手順でリポジトリを
+セットアップし、git フックが配線されていること（`make activate-tools`）を確認してください。フックを
+入れていないことは、手元なら 1 秒で捕まえられたものでプルリクエストが落ちる最も多い原因です。
 
-When something in that setup does not behave, check
-[docs/get-started/troubleshooting.md](docs/get-started/troubleshooting.md) before digging — several
-of the failures are the environment working as designed.
+そのセットアップで想定どおりに動かないものがあれば、調べ始める前に
+[docs/get-started/troubleshooting.md](docs/get-started/troubleshooting.md) を見てください。いくつかの
+失敗は環境が設計どおりに働いている結果です。
 
-**Install the agent configuration too** (Phase 3 of that page). AI-assisted development is this
-repository's standard path: the flows in `docs/development-flow.md` have an executable form as skills
-under `.claude/` / `.codex/`, and the conventions a reviewer will ask about are the ones those skills
-already apply. Working without them is allowed but is a compatibility path — you perform by hand what
-a skill would otherwise drive, and no manual equivalent is maintained alongside it. What is *not*
-optional is the outcome: every gate below is the same for a change made either way, and a
-deterministic check outranks whatever an assistant reported. Rationale:
-[ADR-0007 (agents-md-operational-contract)](docs/adr/0007-agents-md-operational-contract.md).
+**エージェント設定も入れてください**（同ページの Phase 3）。AI 支援開発はこのリポジトリの標準経路です。
+`docs/development-flow.md` のフローは `.claude/` / `.codex/` のスキルという実行形態を持ち、レビュアーが
+指摘する規約は、それらのスキルが既に適用しているものです。これら無しで作業することは許されていますが
+互換経路であり、本来スキルが駆動する作業を手で行うことになります。手動側に同等のツールは保守されて
+いません。一方で **結果は任意ではありません**。以下のゲートはどちらの経路で作られた変更にも同じように
+適用され、決定論的な検査はアシスタントの報告に優先します。根拠:
+[ADR-0007 (agents-md-operational-contract)](docs/adr/0007-agents-md-operational-contract.md)。
 
-## Branching
+## ブランチ
 
-Feature branches are cut from the **latest `release/*` branch**, never from a protected branch and
-never from a stale base. `make base-branch` resolves which one that is from the remote's live state;
-a base picked by memory is how a branch ends up missing files everyone else already has.
+フィーチャーブランチは**最新の `release/*` ブランチ**から切ります。保護ブランチからは切らず、古い
+ベースからも切りません。どれが最新かは `make base-branch` がリモートの生きた状態から解決します。
+記憶で選んだベースは、他の全員が既に持っているファイルがブランチに無い、という形で表面化します。
 
-Name the branch after what it does, and include the issue number when there is one:
+ブランチ名は何をするものかを表し、issue 番号があるときは含めます:
 
 ```txt
 feature/1234-add-authentication-check
 feature/add-authentication-check
 ```
 
-Direct commits to `production` / `staging` / `develop` / `release/*` are rejected by branch
-protection. When your base moves ahead while you work, **merge** it into your branch rather than
-rebasing — the full rule, including how to resolve conflicts in generated artifacts, is in
-[docs/rules.md](docs/rules.md).
+`production` / `staging` / `develop` / `release/*` への直接コミットはブランチ保護が拒否します。作業中に
+ベースが進んだときは、rebase ではなく**マージ**で取り込んでください。生成物の衝突をどう解消するかを
+含む完全な規則は [docs/rules.md](docs/rules.md) にあります。
 
-## Commits
+## コミット
 
-Each commit message starts with a type prefix, and `commitlint` enforces the set on
-`commit-msg`:
+コミットメッセージは種別のプレフィックスで始め、その集合は `commit-msg` で `commitlint` が強制します:
 
 ```txt
 Feat | Fix | Refactor | Perf | Docs | Test | Build | CI | Chore | Style | Revert
 ```
 
-Only the prefix and a non-empty subject are enforced mechanically. Everything else is convention:
-one scope per commit, so that a revert is a decision about one thing, and a subject that says what
-changed rather than which files moved. The commit messages in this repository are written in
-Japanese; the enforced part is language-independent, so a project created from this template sets its own.
+機械的に強制されるのはプレフィックスと件名が空でないことだけです。それ以外は規約です。1 コミット
+1 スコープ（revert が 1 つの事柄についての判断になるように）、そして件名はどのファイルが動いたかでは
+なく何が変わったかを述べること。このリポジトリのコミットメッセージは日本語で書かれていますが、強制
+される部分は言語に依存しないので、テンプレートから作成したプロジェクトは自分で決められます。
 
-## Before pushing
+## プッシュする前に
 
-The gates that run on `pre-commit` and `pre-push` are the same ones CI runs, so the fastest review
-is one where you ran them first:
+`pre-commit` / `pre-push` で走るゲートは CI が走らせるものと同じです。最も速いレビューは、先にそれらを
+自分で通したものです:
 
 ```sh
-make fix     # format + lint auto-fix
-make lint    # the authoritative golangci-lint gate
-make test    # tests with coverage (run `make db-init` first)
-make gen     # only when you changed OpenAPI, SQL, or anything else generated
+make fix     # フォーマット + lint 自動修正
+make lint    # 権威ある golangci-lint ゲート
+make test    # カバレッジ付きテスト（先に `make db-init`）
+make gen     # OpenAPI・SQL など生成対象を変更したときだけ
 ```
 
-How much of this actually runs on your machine is sized from the number of open worktrees — past a
-threshold the heavy gates are deferred to CI and re-run there identically. `make load-status` says
-which band you are in.
+このうち実際に手元で走る量は、開いている worktree の数から決まります。閾値を超えると重いゲートは CI へ
+繰り延べられ、そこで同一に再実行されます。どの帯域にいるかは `make load-status` が答えます。
 
-A change is done when it is **tested**, not when it compiles. The coverage bar, the layer-by-layer
-expectation, and the runtime verification that unit tests cannot replace are defined in
-[docs/rules.md](docs/rules.md) (*Testing & Definition of Done*) and
-[docs/testing-conventions.md](docs/testing-conventions.md).
+変更が「完了」なのはコンパイルが通ったときではなく、**テストされた**ときです。カバレッジの基準、
+レイヤーごとに検証するという前提、ユニットテストでは代替できないランタイム検証は
+[docs/rules.md](docs/rules.md)（*Testing & Definition of Done*）と
+[docs/testing-conventions.md](docs/testing-conventions.md) が定義しています。
 
-## Pull requests
+## プルリクエスト
 
-Fill the three sections the template asks for — what changed, the change itself, and how to verify
-it. The third is the one reviewers rely on: a reviewer who cannot reproduce your verification is
-reviewing the diff alone.
+テンプレートが求める 3 つの節（概要・変更内容・動作確認方法）を埋めてください。レビュアーが頼りにする
+のは 3 つ目です。あなたの検証を再現できないレビュアーは、差分だけを見ていることになります。
 
-- **Required checks** must pass; the promotion gates into deploy branches are stricter than the
-  per-pull-request ones, and both are listed in
-  [.github/workflows/README.md](.github/workflows/README.md).
-- **CODEOWNERS review** is required, and is what makes "this decision belongs to a role" real rather
-  than advisory.
-- **Generated files are never hand-edited.** CI regenerates them and fails on a diff, so an edited
-  artifact does not survive review.
+- **必須チェック**が通る必要があります。デプロイブランチへの昇格ゲートはプルリクエスト単位のものより
+  厳しく、どちらも [.github/workflows/README.md](.github/workflows/README.md) に一覧があります。
+- **CODEOWNERS レビュー**が必須であり、「この判断はこの役割のものだ」を助言ではなく実効にしています。
+- **生成ファイルは手編集しません。** CI が再生成して差分で落とすため、編集された生成物はレビューを
+  生き延びません。
 
-## When a change needs a decision record
+## 判断の記録が要るとき
 
-A change that alters *why* the system is shaped the way it is — a boundary moves, a technology is
-replaced, a constraint is dropped — belongs in an ADR under [docs/adr/](docs/adr/README.md) as well
-as in code. The threshold is recurrence: a decision that will be re-litigated, or that a later
-reader will otherwise have to reverse-engineer from the diff.
+システムが今の形をしている*理由*を変える変更 — 境界が動く、技術が入れ替わる、制約が外れる — は、
+コードだけでなく [docs/adr/](docs/adr/README.md) の ADR としても残します。基準は再発性です。将来
+蒸し返される判断か、後の読み手が差分から逆算する羽目になる判断かどうかです。
 
-Documentation follows the code in the same change. Canonical documents are English, each paired
-with a Japanese translation (`*.ja.md`); the rules that keep the pair and the documentation portal
-consistent are in [docs/maintenance/docs-structure.md](docs/maintenance/docs-structure.md).
+なります。対とドキュメントポータルの整合を保つ規則は
+[docs/maintenance/docs-structure.md](docs/maintenance/docs-structure.md) にあります。
 
-## Security
+## セキュリティ
 
-Do not report a vulnerability through an issue or a pull request. Use the private route in
-[.github/SECURITY.md](.github/SECURITY.md).
+脆弱性を issue やプルリクエストで報告しないでください。[.github/SECURITY.md](.github/SECURITY.md) の
+非公開の窓口を使ってください。

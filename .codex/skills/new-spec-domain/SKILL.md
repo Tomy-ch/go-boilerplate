@@ -5,55 +5,53 @@ description: Create the domain layer spec template at `docs/spec/<feature>/domai
 
 # New Spec — Domain
 
-Create the domain layer spec template for one feature.
+1 feature の domain 層 spec テンプレートを作成するスキル。
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+## 使うとき
 
-## When to Use
+- 新規 feature 開始で domain 層 spec テンプレが欲しい
+- 既存 feature ディレクトリに domain spec だけ追加（他層は既存）
 
-- Starting a new feature and need the domain layer spec template.
-- Adding the domain spec to an existing feature directory (e.g., other layer specs are already in place).
+以下の用途には使いません:
 
-Do NOT use this skill for:
+- 既存 `domain.md` の編集 — エディタで直接
+- spec から Go コード生成 — `scaffold-domain`
+- spec 整合性検証 — `verify-spec`
+- 2 層 (domain + usecase) を一括作成 — 統合 `new-spec`（lean A: controller / infra は OpenAPI gen + sqlc gen から導出されるため spec 不要）
 
-- Editing an existing `domain.md` — open in the editor directly.
-- Generating Go code from spec — that's `scaffold-domain`.
-- Validating spec consistency — that's `verify-spec`.
-- Creating both layer specs (domain + usecase) in one go — use the integrator `new-spec`. lean A only requires these two specs; controller / infra are derived from OpenAPI gen + sqlc gen, no spec file.
+## 読み書き範囲
 
-## What This Skill Reads / Writes
+**読み込み（常時）**:
 
-**Reads (always)**:
+- `.codex/scaffold-spec/domain-spec.md` — domain 層の canonical 節リスト
+- `docs/spec/<feature>/` — `domain.md` 既存確認
+- `docs/spec/glossary.md` — 業務語彙の統括 spec。集約名を突き合わせる
 
-- `.codex/scaffold-spec/domain-spec.md` — canonical section list for the domain layer.
-- `docs/spec/<feature>/` — checks whether `domain.md` already exists.
-- `docs/spec/glossary.md` — the business-vocabulary spec, to check the aggregate name against.
+**書き込み（承認後）**:
 
-**Writes (with confirmation)**:
+- `docs/spec/<feature>/domain.md` — テンプレートファイル
+- `docs/spec/glossary.md` — 集約 1 行のみ。ユーザーが承認したときだけ
 
-- `docs/spec/<feature>/domain.md` — template file.
-- `docs/spec/glossary.md` — one row for the aggregate, only when the user approves it.
+**触らない**:
 
-**Never touches**:
+- 既存 `domain.md`（あれば中断）
+- 他層の spec ファイル
+- 追加する 1 行以外の用語表の行
 
-- Existing `domain.md` (aborts if found).
-- Any other layer's spec file.
-- Any glossary row other than the one being added.
+## 最初のステップ: identity 確認
 
-## First Step: Confirm Identity
+`ask the user explicitly` を起動直後（`new-spec` 統合から context 提供時は除く）に使う:
 
-This skill **MUST call `ask the user explicitly` immediately after invocation** (unless invoked from `new-spec` integrator with the feature name in context):
+1. **feature 名** — フリーテキスト、kebab-case。`^[a-z][a-z0-9-]*$` 検証
+2. **aggregate 名** — フリーテキスト、PascalCase（例: `User`, `Order`）。Go struct 名になる
 
-1. **Feature name** — free-text, kebab-case. Validate `^[a-z][a-z0-9-]*$`.
-2. **Aggregate name** — free-text, PascalCase (e.g., `User`, `Order`). Becomes the Go struct name.
+`docs/spec/<feature>/domain.md` 既存なら中断。未存在なら `docs/spec/<feature>/` を作成。
 
-If `docs/spec/<feature>/domain.md` exists → abort. Otherwise create `docs/spec/<feature>/` if missing.
+## Step 1. 節定義の読み込み
 
-## Step 1. Read Section Definitions
+`.codex/scaffold-spec/domain-spec.md` から canonical 節リストを抽出。ハードコードしない — このファイルが source of truth。
 
-Read `.codex/scaffold-spec/domain-spec.md` and extract the canonical section list. NEVER hardcode — this file is the source of truth.
-
-Current section list (mirror dynamically):
+現行節リスト（実行時にミラー）:
 
 1. Overview
 2. Entity
@@ -62,58 +60,48 @@ Current section list (mirror dynamically):
 5. Value Objects
 6. Repository Methods
 
-## Step 2. Generate the Template
+## Step 2. テンプレ生成
 
-Assemble Markdown with H1 title `<FeatureName Display> — Domain Spec`, then per section:
+H1 `<FeatureName Display> — Domain Spec`、続けて各節:
 
-- Overview: single `TODO:` line
-- Entity: YAML code block with `package` / `struct` / `fields` (1 placeholder field)
-- Cross-field Invariants: bullet list with `TODO:` line
-- Behavior Methods: YAML code block with placeholder method
-- Value Objects: YAML code block with note "利用しない場合は節ごと削除"
-- Repository Methods: YAML code block with placeholder method
+- Overview: `TODO:` 1 行
+- Entity: YAML（`package` / `struct` / `fields` プレースホルダ 1 件）
+- Cross-field Invariants: bullet + `TODO:`
+- Behavior Methods: YAML プレースホルダ
+- Value Objects: YAML + 注「利用しない場合は節ごと削除」
+- Repository Methods: YAML プレースホルダ
 
-Use the example output shown in `.codex/scaffold-spec/domain-spec.md` as the literal template format.
+`.codex/scaffold-spec/domain-spec.md` の出力例を template として使用。
 
-## Step 3. Confirm and Write
+## Step 3. 承認と書き込み
 
-Display proposed path + first ~20 lines of template, then ask:
+提案パス + テンプレ冒頭 20 行を表示し、以下を尋ねる:
 
 - 「以下の内容で `docs/spec/<feature>/domain.md` を作成しますか？」
-- Options: 「作成する」 / 「キャンセル」
+- 選択肢: 「作成する」 / 「キャンセル」
 
-If approved, `mkdir -p docs/spec/<feature>` and `Write` the file.
+承認時は `mkdir -p docs/spec/<feature>` + `Write`。
 
-## Step 4. Register the aggregate in the glossary
+## Step 4. 集約を用語表へ登録する
 
-**Only the aggregate name is a term at this point.** This skill writes a template of TODOs; the
-fields, value objects and behaviours are not decided yet, so there is nothing else to register. One
-row, or none.
+**この時点で用語なのは集約名だけである。** このスキルが書くのは TODO のテンプレートであり、フィールド・値オブジェクト・振る舞いはまだ決まっていない。登録できるものが他に無い。1 行、あるいはゼロ行である。
 
-Read `docs/spec/glossary.md` and compare the aggregate name against the existing rows.
+`docs/spec/glossary.md` を読み、集約名を既存の行と突き合わせる。
 
-- **Already present with a different owner** — a homonym. Report both rows side by side and stop:
-  the same word owned by two features is the finding this page exists to surface, and which name
-  wins is a decision about how the business will talk. **Never resolve it here.**
-- **Already present with the same owner** — nothing to do; say so.
-- **Not present** — propose one row, announce plainly that its definition is a draft, then ask the
-  user explicitly whether to add it or skip it for now.
+- **別の所有 feature で既出** — 同音異義である。両方の行を並べて報告し、そこで止まる。同じ語を 2 つの feature が所有している状態こそがこのページの捕まえる findings であり、どちらの名前が勝つかは業務がこれからどう話すかについての決定である。**ここで解決しないこと。**
+- **同じ所有 feature で既出** — することは無い。その旨を述べる
+- **未登録** — 1 行を提案し、その定義が草案であることを明言してから、追加するか今回は見送るかを `ask the user explicitly` で尋ねる
 
-Draft the definition from the feature and aggregate names. A definition nobody edited is a
-definition nobody agreed to; the row is worth more empty than plausibly wrong.
+定義文は feature 名と aggregate 名から草案を起こす。誰も編集していない定義は誰も合意していない定義であり、もっともらしく誤っている行より空の行のほうが価値がある。
 
 <!-- sample-api:begin -->
-Place the row inside the `sample-api:begin` / `sample-api:end` markers when the feature is
-sample-derived, outside them otherwise. A row on the wrong side of a marker either vanishes with the
-sample or outlives it.
+feature がサンプル由来なら行を `sample-api:begin` / `sample-api:end` の内側へ、そうでなければ外側へ置く。マーカーの反対側に置かれた行は、サンプルと共に消えるか、サンプルより長生きするかのどちらかになる。
+
 <!-- sample-api:end -->
+この責務は、domain 層が用語を導入する場合にだけ成り立つ。aggregate も `domain.md` もなく、QueryService
+だけの projection-only feature では、read-side の語を導入する者がいなくなるため、その場合は `/glossary` が担う。このスキルは aggregate を作るときにだけ動くので、projection まで対象を広げると `/glossary` の責務と重複する。
 
-This responsibility exists only when a domain layer introduces the terms. A projection-only feature
-with no aggregate or `domain.md` — only a QueryService — would otherwise have nobody to introduce
-its read-side words, so `/glossary` owns that case. This skill runs precisely when an aggregate is
-being created; extending it to projections would duplicate `/glossary`'s responsibility.
-
-## Step 5. Closing
+## Step 5. クロージング
 
 ```text
 docs/spec/<feature>/domain.md を作成しました。次は editor で TODO を埋めてください。
@@ -123,37 +111,33 @@ usecase spec も必要なら new-spec-usecase または統合 new-spec を使っ
 （lean A 構成: controller / infra spec は不要、OpenAPI gen + sqlc gen から導出されます）。
 ```
 
-**`new-spec-usecase` has no equivalent step, deliberately.** A usecase spec declares an Interface,
-DTOs and a Workflow — application-layer names like `Create<Aggregate>` or `<Aggregate>View`, which do not
-pass the glossary's bar (would someone who knows the business recognise it as a word of the
-business?). The domain layer introduces terms; the usecase layer uses them.
+**`new-spec-usecase` に同じステップは無い。意図的である。** usecase spec が宣言するのは Interface・DTO・Workflow であり、`Create<集約>` や `<集約>View` のようなアプリケーション層の名前は用語表の基準（業務を知っている人がこれは業務の語だと認めるか）を通らない。ドメイン層が用語を導入し、usecase 層はそれを使う。
 
-## AI Modification Scope
+## AI 修正スコープ
 
-- Write scope: new files under `docs/spec/<feature>/`, plus one appended row in
-  `docs/spec/glossary.md`.
-- Aborts if `domain.md` exists.
+- 書き込み: `docs/spec/<feature>/` 配下の新規ファイルと、`docs/spec/glossary.md` への 1 行追記
+- `domain.md` 既存時は中断
 
-## Constraints
+## 制約事項
 
-- ❌ Overwrite an existing `domain.md`
-- ❌ Invent business content (fields / methods)
-- ❌ Hardcode section list (always read `.codex/scaffold-spec/domain-spec.md`)
-- ❌ Skip the identity `ask the user explicitly`
-- ❌ Touch any layer other than `domain.md`
-- ❌ Resolve a glossary homonym, or decide which name wins
-- ❌ Register anything beyond the aggregate name (the rest are still TODOs)
-- ❌ Write a definition without saying it is a draft to be rewritten
-- ✅ Japanese user-facing output
-- ✅ Validate feature name kebab-case + aggregate name PascalCase
+- ❌ 既存 `domain.md` の上書き
+- ❌ 業務内容（フィールド / メソッド）を発明
+- ❌ 節リストをハードコード（必ず `.codex/scaffold-spec/domain-spec.md` から読む）
+- ❌ identity `ask the user explicitly` をスキップ
+- ❌ `domain.md` 以外の layer に触る
+- ❌ 用語表の同音異義を解決する / どちらの名前が勝つかを決める
+- ❌ 集約名以外を登録する（他はまだ TODO）
+- ❌ 草案であると述べずに定義文を書く
+- ✅ ユーザー向け出力は日本語
+- ✅ feature 名 kebab-case + aggregate 名 PascalCase を検証
 
-## Checklist
+## チェックリスト
 
-- [ ] Feature name + aggregate name confirmed via `ask the user explicitly`
-- [ ] `.codex/scaffold-spec/domain-spec.md` read for current section list
-- [ ] `domain.md` did NOT already exist (skill aborts otherwise)
-- [ ] Template written with H2 sections + YAML codeblocks + TODO markers
-- [ ] Aggregate name checked against `docs/spec/glossary.md` (homonym → report and stop)
-- [ ] Glossary row added only after asking the user explicitly, on the correct side of the sample markers
-- [ ] Final summary in Japanese, handing the remaining terms to `/glossary`
-- [ ] Only `docs/spec/<feature>/domain.md` and one glossary row were written
+- [ ] feature 名 + aggregate 名を `ask the user explicitly` で確認
+- [ ] `.codex/scaffold-spec/domain-spec.md` を読んで現行節リスト取得
+- [ ] `domain.md` 未存在（あれば中断）
+- [ ] H2 節 + YAML コードブロック + TODO でテンプレを書き出し
+- [ ] 集約名を `docs/spec/glossary.md` と突き合わせ（同音異義なら報告して停止）
+- [ ] 用語表への追記は `ask the user explicitly` の後、サンプルマーカーの正しい側へ
+- [ ] 最終サマリは日本語で、残りの用語を `/glossary` へ引き継ぐ
+- [ ] `docs/spec/<feature>/domain.md` と用語表 1 行のみ書き込み

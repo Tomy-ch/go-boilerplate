@@ -1,19 +1,19 @@
-# Architecture Decisions
+# アーキテクチャ決定事項
 
-> **Moved.** This monolithic decisions document has been split into per-file
-> **Architecture Decision Records (ADR)**. See **[`docs/adr/`](adr/README.md)**
-> for the full, indexed decision log (one immutable record per decision).
+> **移動しました。** この一枚岩の決定ドキュメントは、決定ごとに 1 ファイルの
+> **アーキテクチャ決定記録（ADR）** に分割されました。完全な索引付き決定ログは
+> **[`docs/adr/`](adr/README.md)**（不変の記録 1 決定 = 1 ファイル）を参照してください。
 
-The technology-rationale content that used to live here (onion architecture, OpenAPI-first,
-SQL-first, sqlc, Echo, Fx, the worker scaffold, library-selection policy, and the
-observability gating) now lives as individual ADRs:
+かつてここにあった技術選定の根拠（オニオンアーキテクチャ、OpenAPI-first、SQL-first、sqlc、
+Echo、Fx、worker scaffold、ライブラリ選定ポリシー、observability gating）は、個別の ADR に
+なりました。
 
-- Start at the [ADR log](adr/README.md) for the full list and ordering.
-- The formerly-inline **direct dependency table** is a living inventory, not a decision, and
-  moved to [`docs/reference/dependencies.md`](reference/dependencies.md) (where the
-  previously-missing `net/http/otelhttp` and `otel/sdk/log` entries are now recorded).
+- 全体の一覧と順序は [ADR ログ](adr/README.md) から。
+- かつてインラインにあった**直接依存表**は決定ではなくコード追従の「生きた目録」であり、
+  [`docs/reference/dependencies.md`](reference/dependencies.md) へ移動しました
+  （欠落していた `net/http/otelhttp` / `otel/sdk/log` もそこで補完済み）。
 
-Why the split: a single mutable file lost decision history on in-place edits and mixed
-immutable decisions with a `go.mod`-tracking dependency table. Per-file ADRs let one decision be
-superseded by adding one file, and keep the dependency inventory separate from the immutable
-records. See [ADR-0000 (record-architecture-decisions)](adr/0000-record-architecture-decisions.md).
+分割の理由: 単一の可変ファイルはその場編集で決定履歴を失い、不変であるべき決定と
+`go.mod` 追従の依存表が混在していました。per-file ADR にすれば、モノリスを
+触らず 1 ファイル追加で個別の決定を supersede でき、依存目録も不変記録から分離できます。
+[ADR-0000](adr/0000-record-architecture-decisions.md) を参照。

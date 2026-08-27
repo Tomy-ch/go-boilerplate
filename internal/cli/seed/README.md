@@ -1,45 +1,38 @@
 # db-seed
 
-Inserts seed data into the database for development and testing purposes.
+開発・テスト用のシードデータをデータベースに投入します。
 
-## Command
+## コマンド
 
 ```text
 db-seed
 ```
 
-## Flags
+## フラグ
 
-|Flag|Default|Description|
+|フラグ|デフォルト|説明|
 |---|---|---|
-|`--database`|`""`|Target database name (e.g. `local`). Empty uses the configured default.|
+|*(なし)*|||
 
-## Usage
+## 使い方
 
 ```bash
 ./server db-seed
 ```
 
-## Notes
+## 注意点
 
-- **Not intended for production use.** Use only in development and test environments.
-- Seed files are loaded from the `database/seed` directory.
-- If a target table does not exist, the corresponding seed file is skipped and a warning is logged.
-- Always verify seed data contents before running against shared environments.
+- **本番環境での使用は想定していません。** 開発・テスト環境でのみ使用してください。
+- シードファイルは `database/seed` ディレクトリから読み込まれます。
+- 対象テーブルが存在しない場合、該当するシードファイルはスキップされ、警告がログに記録されます。
+- 共有環境で実行する前に、投入するデータの内容を十分に確認してください。
 
-### Placeholders
+### プレースホルダ
 
-Before executing a file, the command expands every `${NAME}` it contains — see
-[`database/seed/README.md`](../../../database/seed/README.md). The runner substitutes only the names it
-is handed, so which environment-dependent value exists is decided here, at the command (`AUTH_ISSUER` =
-the JWT issuer read from the configuration), not by the runner. A placeholder with no value — undefined
-or empty — aborts the run rather than being inserted as an empty string.
+ファイルを実行する前に、コマンドはファイル中の `${NAME}` をすべて展開します（[`database/seed/README.md`](../../../database/seed/README.md) を参照）。ランナーは渡された名前を置き換えるだけなので、どの環境依存値を持つかはランナーではなくコマンド側（`AUTH_ISSUER` = 設定から読む JWT の issuer）で決まります。値の無い（未定義または空の）プレースホルダは、空文字として投入せず実行を中止します。
 
-### Seed objects
+### シードオブジェクト
 
-After the SQL files, the command uploads everything under `storage/seed`, deriving each object key from
-the path relative to that directory — see [`storage/README.md`](../../../storage/README.md). It only
-uploads; a column that holds an object key is written by the SQL, like any other column.
+SQL ファイルの投入後、コマンドは `storage/seed` 配下のすべてを投入し、そのディレクトリからの相対パスからオブジェクトキーを導きます（[`storage/README.md`](../../../storage/README.md) を参照）。行うのは投入だけで、オブジェクトキーを保持する列は他の列と同じく SQL が書きます。
 
-Nothing is uploaded when the directory holds no file, or when `ENDPOINT_OBJECT_STORAGE` is empty — see
-[`storage/README.md`](../../../storage/README.md) for why an empty endpoint must never receive seed content.
+ディレクトリにファイルが 1 つも無い場合、または `ENDPOINT_OBJECT_STORAGE` が空の場合は何も投入しません。エンドポイントが空のときになぜ投入してはならないかは [`storage/README.md`](../../../storage/README.md) を参照してください。

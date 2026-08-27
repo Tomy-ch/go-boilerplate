@@ -5,75 +5,54 @@ deciders: [maintainers]
 tags: [outbox, async, ops]
 ---
 
-# ADR-0061: The relay is a resident process; GC is a one-shot cron job
+# ADR-0061: リレーは常駐プロセス、GC はワンショット cron ジョブ
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-The relay and the GC operation have fundamentally different runtime characteristics:
+リレーと GC 操作は実行時の特性が根本的に異なる。
 
-- The **relay** must minimise delivery lag. It must be continuously responsive to new
-  `pending` rows, sleeping only when there is nothing to claim, and resuming immediately
-  when new rows appear. A restart-on-each-run model introduces latency spikes proportional
-  to the cron interval.
+- **リレー**は配信遅延を最小化しなければならない。新しい `pending` 行に継続的に応答し、何もクレームするものがない場合のみスリープし、新行が出現したらすぐに再開する必要がある。実行ごとに再起動するモデルでは cron 間隔に比例したレイテンシスパイクが発生する。
 
-- **GC** is periodic maintenance — it sweeps `published` rows older than the retention
-  window. It has no latency requirement and needs to run only often enough to prevent
-  unbounded table growth. Running it continuously wastes resources and complicates the
-  relay process unnecessarily.
+- **GC** は定期メンテナンスである。保持期間ウィンドウを過ぎた `published` 行を掃除する。レイテンシ要件はなく、テーブルが無制限に増長しない程度の頻度で実行すれば十分である。継続的に実行するとリソースが無駄になり、リレープロセスが不必要に複雑になる。
 
-Both operations share the same binary (`cmd outbox-relay` for the relay; `cmd job
-outbox-gc` via the main binary's `job` subcommand).
+両操作は同一バイナリを共有する（リレーは `cmd outbox-relay`、GC はメインバイナリの `job` サブコマンド経由で `cmd job outbox-gc`）。
 
-## Decision
+## 決定
 
-- **Relay** — runs as a **resident process** (`cmd outbox-relay`). It starts, enters the
-  poll loop, and stays up until it receives `SIGTERM`. On `SIGTERM` it drains in-flight
-  batches gracefully before exiting. Lifecycle is managed by `SupervisedRunner` wired in
-  `OutboxRelayModule`.
+- **リレー** — **常駐プロセス**（`cmd outbox-relay`）として実行する。起動後ポールループに入り、`SIGTERM` を受信するまで稼働し続ける。`SIGTERM` 受信時はインフライトバッチをグレースフルにドレインしてから終了する。ライフサイクルは `OutboxRelayModule` 内で配線された `SupervisedRunner` が管理する。
 
-- **GC** — runs as a **one-shot job** (`cmd job outbox-gc`). It executes one sweep of
-  `published` rows past the retention window and then exits. Scheduling cadence is
-  delegated to an external scheduler (Kubernetes CronJob or system cron).
+- **GC** — **ワンショットジョブ**（`cmd job outbox-gc`）として実行する。保持期間ウィンドウを過ぎた `published` 行を 1 回掃除して終了する。スケジューリングの頻度は外部スケジューラー（Kubernetes CronJob またはシステム cron）に委ねる。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- The relay process is simple: a single poll loop with a well-defined shutdown path.
-- GC scheduling cadence is controlled by the external scheduler without code changes.
-- Failure isolation: a GC crash or misconfiguration does not affect the relay, and a relay
-  restart does not disrupt a running GC job.
-- Resource consumption is separated: the relay runs continuously at low CPU; GC runs
-  briefly and then exits.
+- リレープロセスがシンプルになる。明確なシャットダウンパスを持つ単一のポールループになる。
+- GC のスケジューリング頻度は、コード変更なしに外部スケジューラーで制御できる。
+- 障害の分離: GC のクラッシュや設定ミスはリレーに影響しない。リレーの再起動も実行中の GC ジョブを中断しない。
+- リソース消費が分離される。リレーは低 CPU で継続稼働し、GC は短時間実行して終了する。
 
-### Negative Consequences
+### ネガティブな影響
 
-- An external scheduler must be provisioned and monitored independently. A missing or
-  misconfigured cron leaves `published` rows accumulating until the scheduler is corrected.
-- Two operational concerns — relay uptime and GC schedule — must be managed separately,
-  adding to deployment complexity.
+- 外部スケジューラーを独立してプロビジョニングおよびモニタリングする必要がある。cron が欠落または誤設定されると、修正されるまで `published` 行が蓄積し続ける。
+- リレーのアップタイムと GC スケジュールという 2 つの運用上の懸念を別々に管理しなければならず、デプロイメントの複雑さが増す。
 
-## Alternatives Considered
+## 検討した代替案
 
-### GC embedded in the relay process on a timer
+### GC をタイマーでリレープロセスに組み込む
 
-Reduces deployment units. But couples two unrelated concerns in one process: a GC bug or
-panic could affect relay availability, and GC downtime equals relay downtime.
+デプロイメントユニットが減る。しかし無関係な 2 つの懸念を 1 つのプロセスに結合してしまう。GC のバグやパニックがリレーの可用性に影響する可能性があり、GC のダウンタイムはリレーのダウンタイムと等しくなる。
 
-### Relay as a cron job (run-to-drain then exit)
+### リレーを cron ジョブにする（ドレインして終了）
 
-Simpler deployment: no long-lived process to monitor. However, this introduces a latency
-spike on every cron interval; continuous delivery with sub-second `PollInterval` is not
-achievable without a resident process.
+デプロイメントが単純になる。長期稼働プロセスのモニタリングが不要になる。しかし、cron 間隔ごとにレイテンシスパイクが発生する。サブ秒の `PollInterval` による継続配信は常駐プロセスなしでは実現できない。
 
-## Notes
+## 補足
 
-- Responsibility split: `docs/design/outbox.md` (§ "Role theory", table rows for
-  `outbox-gc job` and relay `Engine`).
-- Integrator checklist ⑤–⑥: `docs/design/outbox.md` §4.
-- Related ADRs: [ADR-0054](0054-transactional-outbox.md),
-  [ADR-0059](0059-outbox-retention-gc.md).
+- 責務の分割: `docs/design/outbox.md`（§「ロール理論」、`outbox-gc job` とリレー `Engine` の表の行）。
+- インテグレーターチェックリスト ⑤〜⑥: `docs/design/outbox.md` §4。
+- 関連 ADR: [ADR-0054](0054-transactional-outbox.md)、[ADR-0059](0059-outbox-retention-gc.md)。

@@ -4,60 +4,48 @@ description: >-
   Detect drift between `docs/design/context-map.md` and the system's real contact points. Re-enumerate boundary ports and infrastructure adapters, compare them with map edges, and report separately an unmapped contact, a recorded edge whose counterpart disappeared, and a recorded label whose cited structural evidence no longer holds (for example, a removed translating adapter, external vocabulary reaching inside, or a published contract added or withdrawn). Use after adding or removing an external dependency, before relying on the map, after changes under `internal/usecase/boundary/**`, `internal/infrastructure/**`, or `docs/design/**`, or for a periodic sweep; Japanese triggers include 「コンテキストマップは最新か」「地図に載っていない外部連携がないか」「接触点の棚卸し」. Read-only: a divergence may mean the map is stale or code violates a decided relationship, and only a human can distinguish them. Do NOT use to create or extend the map (`context-map`), audit DDD patterns against Evans (`ddd-audit`), or check README-to-code drift (`back-prop`).
 ---
 
-# Context Map Audit
+# コンテキストマップ監査
 
-Compare `docs/design/context-map.md` with the contact points the repository currently has.
+`docs/design/context-map.md` と、リポジトリが現在持つ接触点を比較します。
 
-A Japanese reference translation is available at `SKILL.ja.md`; do not load it as a skill.
+日本語訳は人間向けの参照であり、スキルとしては読み込みません。
 
-## Read-only rule
+## 読み取り専用の規則
 
-A divergence has two valid readings: the map may be stale, or the code may have drifted from a
-relationship that someone decided. Never edit the map: doing so silently assumes the former and can
-hide the latter. Report the observation and its evidence; leave the decision to the maintainer.
+乖離には二つの妥当な読み方があります。地図が古くなったか、誰かが決めた関係からコードが逸脱したかです。地図を編集してはいけません。編集すると前者を暗黙に仮定し、後者を隠してしまいます。観察結果と根拠を報告し、判断は保守者に委ねます。
 
-## Workflow
+## ワークフロー
 
-### 1. Load the map
+### 1. 地図を読み込む
 
-Read `docs/design/context-map.md`. If it is absent, report that it is absent and point to
-`/context-map`. Do not treat absence as a finding and do not invent a baseline.
+`docs/design/context-map.md` を読みます。存在しない場合は、存在しないことを報告して `/context-map` を案内します。不在を検出事項として扱わず、基準線を推測してはいけません。
 
-Extract every edge's counterpart, direction, label, and cited evidence. Keep `未確定` edges: they
-are real map entries and may drift like any other edge.
+各辺について、相手、方向、ラベル、引用根拠を取り出します。`未確定` の辺も残します。これらも実在する地図の項目であり、他の辺と同様に乖離し得ます。
 
-### 2. Re-enumerate contact points deterministically
+### 2. 接触点を決定的に再列挙する
 
-Resolve the current set from the repository at runtime, rather than from a list in this skill:
+このスキル内の一覧ではなく、実行時にリポジトリから現在の集合を解決します。
 
 ```sh
 ls internal/usecase/boundary/
 ls internal/infrastructure/
 ```
 
-Read `internal/usecase/boundary/README.md` and `internal/infrastructure/README.md`. Apply the same
-test as `/context-map`: identify a model crossing this system's boundary, not a port merely because
-it is a port. Include inbound contacts.
+`internal/usecase/boundary/README.md` と `internal/infrastructure/README.md` を読みます。`/context-map` と同じ判定を適用します。単に port だからではなく、このシステムの境界をモデルが越えるものを特定します。inbound の接触点も含めます。
 
-### 3. Compare edge by edge
+### 3. 辺ごとに比較する
 
-Keep these divergences separate because they call for different follow-up:
+必要な追跡作業が異なるため、次の乖離を分けます。
 
-- **地図に無い接触点**: a repository contact point absent from the map.
-- **相手が消えた辺**: a map edge whose counterpart is no longer present.
-- **根拠が変わった辺**: an edge exists in both places, but current structure no longer supports the
-  map's label. Inspect the evidence cited by the map for each edge, including whether a translating
-  adapter remains, whether external vocabulary now crosses inward, and whether a published contract
-  artifact was added or withdrawn.
+- **地図に無い接触点**: リポジトリにはあるが、地図にない接触点。
+- **相手が消えた辺**: 地図にはあるが、相手が現在は存在しない辺。
+- **根拠が変わった辺**: 両方に辺はあるが、現在の構造が地図上のラベルを支えなくなったもの。各辺で地図が引用する根拠を調べ、変換アダプターが残っているか、外部語彙が内側へ入っていないか、公開契約成果物が追加・撤回されていないかを確認します。
 
-Give particular attention to `根拠が変わった辺`: the other two are visually apparent, while this
-one can look correct until somebody relies on its relationship label.
+`根拠が変わった辺` を特に重視します。前二者は見れば分かりますが、これは関係ラベルに依存するまで正しく見えるためです。
 
-### 4. Report in Japanese
+### 4. 日本語で報告する
 
-Use `file:line` evidence and this structure. State observations only: never use
-「修正してください」, 「対応必須」, or 「違反」. Where an observation can lead to work, name the
-responsible skill, such as `/context-map --update` for a missing edge, and stop there.
+`file:line` の根拠を使い、以下の構造で報告します。観察のみを記載し、「修正してください」、「対応必須」、「違反」は使いません。観察が作業につながる場合は、欠落した辺に対する `/context-map --update` のように担当スキルを挙げて、そこで止めます。
 
 ```text
 context-map-audit 結果（辺 <N> 件 / 接触点 <M> 件）
@@ -79,20 +67,20 @@ context-map-audit 結果（辺 <N> 件 / 接触点 <M> 件）
 総計: 追加候補 <n>, 消滅 <n>, 根拠変化 <n>, 未確定 <n>
 ```
 
-List all `未確定` edges on every run. An open question cannot be answered if it stops being visible.
+毎回、すべての `未確定` の辺を列挙します。見えなくなった未解決の問いには答えられません。
 
-## Boundaries
+## 境界
 
-- Read only the map and the relevant boundary, infrastructure, package, and design documentation.
-- Write nothing: never change the map, source code, the DDD ledger, or `AGENTS.md`.
-- Never hardcode contact points, infer a missing baseline, or omit `未確定` edges.
-- Do not commit or push.
+- 地図および関連する boundary、infrastructure、package、design 文書だけを読みます。
+- 何も書き込みません。地図、ソースコード、DDD 台帳、`AGENTS.md` を変更してはいけません。
+- 接触点をハードコードせず、欠けた基準線を推測せず、`未確定` の辺を省きません。
+- commit / push はしません。
 
-## Checklist
+## チェックリスト
 
-- [ ] Read the map and extract all edges, including `未確定`.
-- [ ] Re-enumerate inbound and outbound contact points from boundary and infrastructure directories.
-- [ ] Separate the three divergence types and inspect cited evidence for each possible label change.
-- [ ] Report in Japanese with neutral wording and `file:line` evidence.
-- [ ] Include every unresolved edge and the totals line.
-- [ ] Make no writes, commit, or push.
+- [ ] 地図を読み、`未確定` を含む全辺を取り出す。
+- [ ] boundary / infrastructure ディレクトリから inbound / outbound の接触点を再列挙する。
+- [ ] 3 種の乖離を分け、ラベルが変わり得る辺ごとに引用根拠を調べる。
+- [ ] 中立的な文言と `file:line` の根拠で日本語報告する。
+- [ ] すべての未解決の辺と総計行を含める。
+- [ ] 書き込み、commit、push をしない。

@@ -3,52 +3,50 @@ name: commit
 description: Analyze working-tree changes, propose coherent Japanese Git commits, and create them after explicit approval. Use when the user asks to commit current changes or split a mixed change set. Enforce this repository's protected-branch, explicit-staging, commit-prefix, verification, and automatic normal-push rules. Support `--dry-run` and `--scope=staged|all`.
 ---
 
-# Scoped Git Commit
+# スコープ付き Git コミット
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+`--dry-run` と `--scope=staged|all`（既定は `all`）を解釈する。**提案したグループ分けを提示し、明示的な承認を得るまで、決してコミットしないこと。**
 
-Parse `--dry-run` and `--scope=staged|all` (`all` is default). Never commit without first presenting the proposed grouping and receiving explicit approval.
+## 事前確認
 
-## Preflight
+1. `make gate-fix` を 1 回実行する。これは全コミットで走る一方、`fix` は `lint` と同じフル設定の lint を使うため、負荷帯が `ci-first` のときは委譲され、整形のずれは CI の lint が報告する（素の `make fix` は帯に関わらず無条件で走る）。帯が委譲した場合、変更が出ないのは設計どおりであって、ツリーが既に整形済みだったことを意味しない。失敗したら止める。生じた変更は候補集合に含める。
+2. ブランチ・`HEAD`・staged / unstaged の状態・diff の要約・merge / cherry-pick / rebase の進行状態を確認する。
+3. 次のいずれかなら、何も書かずに止める。ブランチが `production` / `develop` / `staging` / `release/*` である。スコープ内の変更が無い。Git の操作が進行中である。
+4. 可能なら現在のブランチの PR を確認する。マージ済みなら、コミット前に新しい feature ブランチを切ることを勧める。その base は `origin` の生の状態から `make base-branch` が解決する**現在アクティブなリリース線**であり、マージ済み PR の `baseRefName`（古い作業がマージされた線を記録しているだけで、いまや 1 リリース遅れている可能性がある）でも、`gh repo view --json defaultBranchRef`（デフォルトブランチはアクティブな線から遅れ得る）でもない。base を解決できない場合は推測せず、止めて報告する。`origin/<base>` からの `git switch -c` によって保護ブランチが新ブランチの upstream になった場合、後の push は必ず明示的な refspec `git push -u origin <new-branch>` を使い、素の `git push` は使わない。**承認なしにブランチを切り替えないこと。** PR が open ならブランチを保ち、検証が通ったあと自動で push する。
+5. `.lefthook.yaml` があれば読み、分割コミットの後に 1 回だけ走らせる検査を提案の中で名指しできるようにする。
 
-1. Run `make gate-fix` once. It runs on every commit, while `fix` uses the same full-config lint as `lint`, so the load band defers it in `ci-first` and CI's lint reports formatting drift instead; a bare `make fix` still runs unconditionally. When the band defers it, producing no changes is by design and does not mean the tree was already formatted. Stop if it fails; include its resulting changes in the candidate set.
-2. Inspect branch, `HEAD`, staged and unstaged status, diff summaries, and merge/cherry-pick/rebase state.
-3. Stop without writing if the branch is `production`, `develop`, `staging`, or `release/*`; if there is no in-scope change; or if a Git operation is in progress.
-4. When available, inspect the current branch's PR. If it is merged, recommend a fresh feature branch before committing from the current active release line resolved by `make base-branch` from `origin`'s live state—not the merged PR's `baseRefName`, which records the line where the old work merged and may now be one release behind, nor `gh repo view --json defaultBranchRef`, whose default branch can lag behind the active line. Stop and report rather than guessing if that base cannot be resolved. If `git switch -c` from `origin/<base>` establishes the protected base as the new branch's upstream, the eventual push must use the explicit refspec `git push -u origin <new-branch>`, never a bare `git push`. Do not switch branches without approval. If the PR is open, retain the branch and push automatically after successful verification.
-5. Read `.lefthook.yaml` when present so the proposal can name the checks that will be run once after all split commits.
+## 調査と提案
 
-## Inspect and propose
+`--scope=staged` が渡されていない限り、staged と unstaged の両方の diff を読む。生成物と `vendor/` は**随伴物**として扱う。それらを生んだソース変更と同じコミットに属する。
 
-Read both staged and unstaged diffs, unless `--scope=staged` was supplied. Treat generated output and `vendor/` as riders: they belong with the source change that caused them.
+コミット 1 本につき接頭辞はちょうど 1 つ。
 
-Use exactly one prefix per commit:
+`Feat:` / `Fix:` / `Refactor:` / `Perf:` / `Docs:` / `Test:` / `Build:` / `CI:` / `Chore:` / `Style:` / `Revert:`
 
-`Feat:`, `Fix:`, `Refactor:`, `Perf:`, `Docs:`, `Test:`, `Build:`, `CI:`, `Chore:`, `Style:`, or `Revert:`.
+意味的な変更 1 つにつきコミット 1 本を作る。テストは、それが検証する実装に同行してよい。ドキュメントはそれ以外では独立させる。無関係な整形は別の `Style:` コミットとする。結果は日本語で、全ファイルと短い根拠を添えて提案する。各コミットが `--no-verify` を使うこと、そして最終コミットの後に pre-commit ゲート一式を 1 回走らせることを明記する。
 
-Create one commit per semantic change. Tests can accompany the implementation they validate; documentation is otherwise independent; unrelated formatting is a separate `Style:` commit. Propose the result in Japanese, with every file and a short rationale. State that each commit uses `--no-verify`, then that the complete pre-commit gate runs once after the final commit.
+`--dry-run` では提案だけを返す。
 
-For `--dry-run`, provide the proposal only.
+## 承認されたコミットの作成
 
-## Create approved commits
+承認された各グループについて:
 
-For each approved group:
+1. 列挙されたパスだけを stage する。`git add .` / `git add -A` / `git commit -a` は決して使わない。
+2. `git commit --no-verify` で、`<Prefix>: <タイトル>` を件名とする日本語メッセージでコミットする。Codex 用の `Co-Authored-By` フッタを含める。記録されたレビュー findings を適用した変更なら、その `Refs:` フッタも足す。
+3. amend・force push・署名の無効化・破壊的な reset は行わない。
 
-1. Stage only the listed paths. Never use `git add .`, `git add -A`, or `git commit -a`.
-2. Commit with `git commit --no-verify` and a Japanese message headed `<Prefix>: <title>`. Include the required `Co-Authored-By` footer for Codex. If the change applies a documented review finding, add its `Refs:` footer.
-3. Do not amend, force-push, disable signing, or use destructive reset commands.
+1 つでも失敗したら直ちに止める。完了したコミットとエラーを報告する。復旧手段として `git reset --mixed <元の HEAD>` を提示してよいが、**承認なしに実行しないこと。`--hard` は決して使わないこと。**
 
-If one group fails, stop immediately. Report completed commits and the error. Offer the user a recoverable `git reset --mixed <original-head>`; never run it without approval and never use `--hard`.
+## 検証と引き渡し
 
-## Verify and hand off
+全コミットが成功したあと、可能なら `lefthook run pre-commit --force` を実行し、続けて `make gate-fix` を実行する。
 
-After every commit succeeds, run `lefthook run pre-commit --force` when available, then `make gate-fix`.
+フックは自分で規模を決める。`.makefiles/load.mk` が開いている worktree の数から、重い Go ゲートを全速で走らせるか、絞るか、CI へ委譲するかを決定する。現在の帯は `make load-status` が報告し、`repo-ops` の §21 が方針を説明している。**この決定を迂回して `make lint` や `make test` を直接叩き、「本当に」検証しようとしないこと。** 窓が複数開いているとき、フルのローカル lint は、CI が同じものを走らせ直すだけの内容を再発見するために、飽和したホストを数分間占有する。帯が何をしたかを報告し、残りは push に運ばせること。
 
-The hook sizes itself: `.makefiles/load.mk` decides from the number of open worktrees whether heavy Go gates run at full speed, throttled, or are deferred to CI. `make load-status` reports the current band; `repo-ops` section 21 explains it. Do not work around that decision by invoking `make lint` or `make test` directly to "really" verify: with several worktrees open, a full local lint costs minutes of saturated host to rediscover what CI re-runs identically. Report what the band did and let the push carry the rest.
+1. `make -s load-status` を実行して解決された帯を控える。後の要約で、実際にどの検証が行われたか——`full` / `low` でローカルか、`ci-first` で CI へ委譲されたか——を述べられるようにする。
+2. 可能なら `lefthook run pre-commit --force`、続けて `make gate-fix` を実行する。
+3. 検証が失敗したら、失敗したコマンドを報告して止める。コミットは巻き戻さない。
+4. 最後の formatter がファイルを書き換えたら、その diff を示し、追随コミットを作るか尋ねる。
+5. 検証済みのコミットを既存 PR ブランチの upstream へ自動で push する。force push・rebase・保護ブランチへの直接 push は決して行わない。
 
-1. Run `make -s load-status` and note the resolved band, so the later summary can state which verification actually happened: locally under `full` / `low`, or deferred to CI under `ci-first`.
-2. Run `lefthook run pre-commit --force` when available, then `make gate-fix`.
-3. If verification fails, report the failed command and stop; do not roll back commits.
-4. If the final formatter changes files, show the diff and ask whether to create a follow-up commit.
-5. Push the verified commits to the existing PR branch's upstream automatically. Never force-push, rebase, or push directly to a protected branch.
-
-Report created commits, verification outcome, remaining changes, and the push result. When the band was `ci-first`, state plainly which gates were deferred and that CI is what verifies them; do not say 「検証が通りました」 without that qualification.
+作成したコミット・検証結果・残った変更・push の結果を報告する。帯が `ci-first` だった場合は、どのゲートが委譲されたか、そしてそれらを検証するのは CI であることを明確に述べる。**その但し書きなしに「検証が通りました」と言わないこと。**

@@ -5,111 +5,100 @@ deciders: [maintainers]
 tags: [ci, security, supply-chain]
 ---
 
-# ADR-0090: Pin GitHub Actions by SHA with a supply-chain quarantine
+# ADR-0090: GitHub Actions を SHA でピン留めし、サプライチェーン隔離を適用する
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-GitHub Actions references of the form `uses: owner/repo@v1.2.3` resolve the tag at
-workflow execution time. Tags are mutable: a compromised maintainer or a tag-hijacking
-attack can change what `v1.2.3` points to after the tag was reviewed. This is a
-well-documented supply-chain attack vector — a malicious actor who controls an action
-repository can silently replace a tagged release with code that exfiltrates secrets from
-the runner environment.
+`uses: owner/repo@v1.2.3` 形式の GitHub Actions 参照はワークフロー実行時にタグを解決する。タグは
+ミュータブルである。侵害されたメンテナーやタグハイジャック攻撃は、タグがレビューされた後に
+`v1.2.3` が指すものを変更できる。これはよく記録されたサプライチェーン攻撃ベクターである——
+アクションリポジトリを制御する悪意ある攻撃者は、ランナー環境からシークレットを外部に流出させる
+コードでタグ付きリリースをサイレントに置き換えることができる。
 
-Pinning by commit SHA (`uses: owner/repo@<40-char-sha>`) makes the reference immutable:
-the SHA is content-addressed and cannot be silently redirected. The cost is that SHA
-strings are opaque to human reviewers, and there is no standard mechanism in YAML to
-annotate them with the corresponding tag.
+コミット SHA によるピン留め（`uses: owner/repo@<40文字のsha>`）は参照をイミュータブルにする:
+SHA はコンテンツアドレス指定であり、サイレントにリダイレクトできない。コストは SHA 文字列が人間の
+レビュアーには不透明であり、対応するタグでアノテーションするための YAML の標準的なメカニズムが
+存在しないことである。
 
-Additionally, even a legitimately published new release may be untrustworthy for a short
-window after publication: the upstream repository may have been recently compromised and
-the tag could point to a malicious commit that has not yet been detected by the community.
-A quarantine period guards against adopting brand-new releases immediately.
+さらに、正当に公開された新しいリリースでも、公開直後の短い期間は信頼できない可能性がある:
+アップストリームリポジトリが最近侵害されていて、タグがコミュニティにまだ検出されていない悪意のある
+コミットを指しているかもしれない。隔離期間は新しいリリースをすぐに採用することへの防御として機能する。
 
-The lock-in concern from [ADR-0001](0001-avoid-lock-in.md) applies here too: updating
-pinned SHAs should require a conscious, auditable action rather than silent drift.
+[ADR-0001](0001-avoid-lock-in.md) のロックイン懸念もここに適用される: ピン留めされた SHA の
+更新は、サイレントなドリフトではなく意識的で監査可能なアクションを必要とすべきである。
 
-## Decision
+## 決定
 
-Maintain a TOML lockfile (`.github/actions-pin.toml`) as the single source of truth for
-all external GitHub Actions SHA pins. The lockfile maps each `owner/repo@tag` key to the
-resolved 40-character commit SHA.
+TOML ロックファイル（`.github/actions-pin.toml`）をすべての外部 GitHub Actions SHA ピンの単一情報源として管理する。
+ロックファイルは各 `owner/repo@tag` キーを解決された 40 文字のコミット SHA にマッピングする。
 
-A Go tool (`scripts/pin-actions/main.go`) provides three subcommands:
+Go ツール（`scripts/pin-actions/main.go`）が 3 つのサブコマンドを提供する:
 
-- `resolve`: walks `.github/workflows/*.yaml` and `.github/actions/*/action.yaml`,
-  collects all external `uses:` references, resolves each tag to a commit SHA via
-  `git ls-remote`, and writes the result to `.github/actions-pin.toml`. For annotated
-  tags, the dereferenced commit SHA (`^{}`) is used. Accepts a `--min-age-days` flag:
-  when set, any SHA whose corresponding release (or commit) is younger than the given
-  number of days is quarantined — if a previous pin exists it is retained, otherwise the
-  reference is skipped entirely.
-- `apply`: reads the lockfile and rewrites every `uses:` line in the workflow files to
-  `uses: owner/repo@<sha> # <tag>`, preserving the tag in a trailing comment for human
-  readability.
-- `check`: performs the same rewrite logic in dry-run mode and exits non-zero if any
-  workflow line is unpinned, stale, or absent from the lockfile. Used in CI and the
-  pre-commit hook.
+- `resolve`: `.github/workflows/*.yaml` と `.github/actions/*/action.yaml` を走査してすべての外部 `uses:` 参照を
+  収集し、`git ls-remote` 経由で各タグをコミット SHA に解決し、結果を `.github/actions-pin.toml` に書き込む。
+  アノテーション付きタグの場合は逆参照されたコミット SHA（`^{}`）を使用する。`--min-age-days` フラグを受け付ける:
+  設定された場合、対応するリリース（またはコミット）が指定日数より新しい SHA は隔離される——
+  前のピンが存在する場合はそれを保持し、そうでなければ参照を完全にスキップする。
+- `apply`: ロックファイルを読み込み、ワークフローファイルのすべての `uses:` 行を
+  `uses: owner/repo@<sha> # <tag>` に書き換え、人間が読みやすいようにタグを末尾のコメントに保持する。
+- `check`: 同じ書き換えロジックをドライランモードで実行し、ワークフロー行がアンピン済み、古い、または
+  ロックファイルに存在しない場合に非ゼロで終了する。CI とプレコミットフックで使用される。
 
-The pre-commit hook (`pin-actions` in `.lefthook.yaml`, glob-scoped to workflow YAML, action YAML, and
-`actions-pin.toml`) runs `make pin-actions-check` on every commit that touches workflow
-files, ensuring that un-pinned or stale references are blocked before they reach the
-remote.
+プレコミットフック（`.lefthook.yaml` の `pin-actions`、ワークフロー YAML・action YAML・`actions-pin.toml` に
+グロブスコープ）はワークフローファイルに触れるすべてのコミットで `make pin-actions-check` を実行し、
+アンピン済みまたは古い参照がリモートに到達する前にブロックされることを保証する。
 
-Already-pinned lines (`@<sha> # <tag>`) are idempotently handled: the tool reads the
-tag from the comment and re-resolves it, so running `resolve` repeatedly is safe.
+すでにピン留めされた行（`@<sha> # <tag>`）は冪等に処理される: ツールはコメントからタグを読み取って
+再解決するため、`resolve` を繰り返し実行しても安全である。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- All external action references are immutable at execution time; a compromised upstream
-  tag cannot silently change what runs in CI.
-- The lockfile is the SSOT: updating a pin requires a deliberate `resolve` + `apply`
-  cycle, producing a reviewable diff.
-- The `--min-age-days` quarantine flag allows adopting a cautious stance toward newly
-  published releases.
-- Human reviewers can read the tag from the inline comment without needing to look up
-  the SHA.
-- The pre-commit check prevents unpinned references from being committed.
+- すべての外部アクション参照が実行時にイミュータブルである。侵害されたアップストリームタグは
+  CI で何が実行されるかをサイレントに変更できない。
+- ロックファイルが SSOT である: ピンの更新には意図的な `resolve` + `apply` サイクルが必要で、
+  レビュー可能な差分を生成する。
+- `--min-age-days` 隔離フラグにより、新たに公開されたリリースへの慎重なスタンスを採用できる。
+- 人間のレビュアーは SHA を調べることなくインラインコメントからタグを読み取れる。
+- プレコミットチェックがアンピン済みの参照のコミットを防ぐ。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Updating any action requires running `make pin-actions-resolve && make pin-actions-apply`
-  and committing the result; it cannot be done by simply changing a version string.
-- The lockfile must be kept in sync with the workflow files; a workflow added without
-  running `resolve` will fail the `check` step.
-- The quarantine period means the team may not be able to immediately adopt a critical
-  security fix in an upstream action if it was published too recently.
+- アクションを更新するには `make pin-actions-resolve && make pin-actions-apply` を実行して結果をコミットする
+  必要がある。バージョン文字列を単純に変更するだけでは更新できない。
+- ロックファイルはワークフローファイルと同期した状態を保たなければならない。`resolve` を実行せずに
+  ワークフローを追加すると `check` ステップが失敗する。
+- 隔離期間は、アップストリームアクションの重要なセキュリティ修正が最近公開された場合に
+  チームがすぐに採用できない可能性を意味する。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Tag-based references without pinning
+### ピン留めなしのタグベース参照
 
-Simple, human-readable. Vulnerable to tag mutation attacks. Rejected on supply-chain
-security grounds.
+シンプルで人間が読みやすい。タグミューテーション攻撃に対して脆弱である。サプライチェーンセキュリティの
+観点から却下された。
 
-### Dependabot for Actions updates
+### Actions 更新のための Dependabot
 
-Dependabot can open PRs to update SHA pins. Compatible with this approach but does not
-enforce pins for new workflow additions or handle the quarantine requirement. Can be
-layered on top of this mechanism as a complementary update automation.
+Dependabot は SHA ピンを更新する PR を開くことができる。このアプローチと互換性があるが、新しいワークフロー
+追加のピンを強制したり、隔離要件を処理したりしない。このメカニズムの上に補完的な更新自動化として
+重ねることができる。
 
-### Third-party SHA-pinning tools (e.g. Renovate with `pinDigests`)
+### サードパーティの SHA ピン留めツール（例: Renovate の `pinDigests`）
 
-Functionally similar. Rejected in favour of a purpose-built in-repo tool to avoid
-adding an external SaaS dependency on the CI configuration management path — consistent
-with [ADR-0001](0001-avoid-lock-in.md).
+機能的に類似している。CI 設定管理パスに外部 SaaS 依存を追加することを避けるため、目的に特化した
+インリポジトリツールを優先して却下された——[ADR-0001](0001-avoid-lock-in.md) と一致する。
 
-## Notes
+## 補足
 
-- Sources: `.github/actions-pin.toml` (lockfile SSOT),
-  `scripts/pin-actions/main.go` (resolve / apply / check tool),
-  `.github/workflows/` (`uses:` lines use the `@sha # tag` format).
-- The pre-commit enforcement is defined in `.lefthook.yaml` (`pin-actions` command).
-- Related: [ADR-0001](0001-avoid-lock-in.md) — the general lock-in avoidance principle
-  that motivates keeping the tooling in-repo.
+- ソース: `.github/actions-pin.toml`（ロックファイル SSOT）、
+  `scripts/pin-actions/main.go`（resolve / apply / check ツール）、
+  `.github/workflows/`（`uses:` 行は `@sha # tag` 形式を使用）。
+- プレコミット強制は `.lefthook.yaml`（`pin-actions` コマンド）で定義される。
+- 関連: [ADR-0001](0001-avoid-lock-in.md) — ツーリングをインリポジトリに保つことを動機付ける
+  一般的なロックイン回避原則。

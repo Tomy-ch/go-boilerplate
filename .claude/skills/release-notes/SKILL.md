@@ -4,38 +4,37 @@ description: >-
   Generate a Japanese release note Markdown file under `.github/release/` summarizing changes between a specified `origin` git tag and `HEAD`. Confirms both the FROM tag and the new release version with the user via `AskUserQuestion`, gathers commit history / diff statistics, categorizes changes, and writes the document in the project's canonical `v2.1.0`-style sectioned format. Triggers: "リリースノートを作成", "release notes", "v1.x.y のリリースノート".
 ---
 
-# Release Notes Generation Procedure
+# リリースノート生成手順
 
-This skill defines the work procedure for generating a Japanese release note that summarizes the changes between a specified `origin` git tag and the current `HEAD`, and writes it to `.github/release/<NEW_VERSION>.md`.
+このスキルは、指定された `origin` の git タグから現在の `HEAD` までの変更を要約した日本語のリリースノートを生成し、`.github/release/<NEW_VERSION>.md` に書き出すための作業手順を定義する。
 
-The canonical examples of the target format are:
+正式な書式の参照例は以下を参照すること。
 
 - `.github/release/v2.1.0.md`
 - `.github/release/v2.0.0.md`
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+## 最初に行うこと: FROM タグと新バージョンの確認
 
-## First Step: Confirm the FROM Tag and the New Version
+このスキルでは、**スキル起動直後に必ず `AskUserQuestion` で 2 つの値を順に確認する**。
+スキル引数や直近メッセージに値らしき文字列があっても、それを採用して即実行に進んではならない（誤指定を防ぐため、明示的な確認を必須とする）。
 
-This skill **MUST call `AskUserQuestion` immediately after invocation** to confirm two values, in the following order. Do NOT silently adopt a value from skill arguments or recent messages — an explicit confirmation is required to prevent misconfiguration.
+### 1. FROM タグ（比較元）
 
-### 1. FROM tag (comparison base)
-
-1. Run `git fetch --tags --prune origin` to ensure local tag refs are up to date.
-2. Collect the most recent SemVer tags from `origin`:
+1. `git fetch --tags --prune origin` を実行し、ローカルのタグ参照を最新化する。
+2. `origin` の最新 SemVer タグを収集する:
 
     ```sh
     git ls-remote --tags origin | awk -F/ '{print $NF}' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -5
     ```
 
-3. Invoke `AskUserQuestion`:
-    - Question: "比較元 (FROM) の origin タグを指定してください。"
-    - Provide the top 3 most recent tags as options, plus an "Other" fallback for older tags.
-4. Validate that the answer matches `^v[0-9]+\.[0-9]+\.[0-9]+$` and that `git rev-parse <FROM>^{commit}` succeeds. Use it as `<FROM_TAG>`.
+3. `AskUserQuestion` を呼び出す:
+    - 質問: 「比較元 (FROM) の origin タグを指定してください。」
+    - 直近 3 件のタグを選択肢として提示し、それ以外は「Other」フォールバックで受ける。
+4. 受け取った回答が `^v[0-9]+\.[0-9]+\.[0-9]+$` にマッチし、`git rev-parse <FROM>^{commit}` が成功することを検証する。値を `<FROM_TAG>` として後段で使用する。
 
-### 2. New version (NEW_VERSION)
+### 2. 新バージョン（NEW_VERSION）
 
-1. Compute candidate bumps using the in-repo helper:
+1. リポジトリ内のヘルパーで bump 候補を計算する:
 
     ```sh
     tsx scripts/semver <FROM_TAG> patch
@@ -43,93 +42,93 @@ This skill **MUST call `AskUserQuestion` immediately after invocation** to confi
     tsx scripts/semver <FROM_TAG> major
     ```
 
-2. Also detect a hint from the current branch (`git rev-parse --abbrev-ref HEAD`). If it matches `release/v[0-9]+\.[0-9]+\.[0-9]+`, surface that value as an additional candidate.
-3. Invoke `AskUserQuestion`:
-    - Question: "新しいリリースのバージョン (NEW_VERSION) を指定してください。"
-    - Options: patch / minor / major candidates from `scripts/semver/index.ts`, plus the branch-derived candidate if present.
-4. Validate the answer matches `^v[0-9]+\.[0-9]+\.[0-9]+$`. Use it as `<NEW_VERSION>`.
+2. 現在ブランチ名から推測値も取得する（`git rev-parse --abbrev-ref HEAD`）。`release/v[0-9]+\.[0-9]+\.[0-9]+` にマッチする場合は、その値も追加候補として提示する。
+3. `AskUserQuestion` を呼び出す:
+    - 質問: 「新しいリリースのバージョン (NEW_VERSION) を指定してください。」
+    - 選択肢: `scripts/semver/index.ts` の patch / minor / major 候補と、存在すればブランチ由来候補。
+4. 受け取った回答が `^v[0-9]+\.[0-9]+\.[0-9]+$` にマッチすることを検証する。値を `<NEW_VERSION>` として後段で使用する。
 
-Do NOT read git history, run diffs, or write any file until both values are confirmed.
+両方の値が確定するまで、git 履歴の解析やファイル書き込みは一切行わないこと。
 
-## Preconditions
+## 前提
 
-- `<FROM_TAG>` exists on `origin` and is reachable from `HEAD`.
-- The working tree may be dirty, but only changes that are committed (i.e., between `<FROM_TAG>` and `HEAD`) will appear in the release notes. If `git status --porcelain` is non-empty, mention this to the user once before writing.
-- Do NOT work directly on the `production` / `develop` / `staging` / `release/*` branches when committing the generated file (see Git rules in AGENTS.md). Use the current branch as-is for *reading* git state, but instruct the user to commit on an appropriate feature branch if they are currently on a protected branch.
+- `<FROM_TAG>` は `origin` に存在し、`HEAD` から到達可能であること。
+- 作業ツリーが dirty でも構わないが、リリースノートに反映されるのは `<FROM_TAG>..HEAD` のコミット済み差分のみ。`git status --porcelain` が空でない場合、書き込み前に一度ユーザーへ知らせる。
+- 生成ファイルをコミットする際は、`production` / `develop` / `staging` / `release/*` ブランチで直接作業しないこと（AGENTS.md の Git ルール参照）。git 状態の*読み取り*は現在ブランチで構わないが、保護ブランチ上にいる場合は、適切な feature ブランチでコミットするようユーザーに案内する。
 
-## AI Modification Scope
+## AI Modification Scope について
 
-Per the "Exception: Skill Execution" clause in AGENTS.md, the normal AI Modification Scope restrictions are relaxed for the duration of this skill's execution. The following paths are permitted to be **created** while this skill is running:
+このスキルは AGENTS.md の "Exception: Skill Execution" 節に基づき、スキル実行中に限り通常の AI Modification Scope の縛りを解放する。具体的には以下のパスへの**新規作成**がスキル実行中に許可される:
 
-- `.github/release/<NEW_VERSION>.md` (new file only)
+- `.github/release/<NEW_VERSION>.md`（新規作成のみ）
 
-The following remain protected even during skill execution:
+以下はスキル実行中も保護対象のまま:
 
 - `AGENTS.md` / `CLAUDE.md`
-- Existing release notes under `.github/release/` (this skill never modifies or overwrites an existing file — if `.github/release/<NEW_VERSION>.md` already exists, stop and ask the user)
-- Generated files (`**/*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`, generated content under `docs/`)
-- Everything outside `.github/release/`
+- `.github/release/` 配下の既存ファイル（このスキルは既存ファイルの上書きを一切行わない。`.github/release/<NEW_VERSION>.md` が既に存在する場合は処理を中止してユーザーに確認する）
+- 生成物（`**/*.gen.go`, `*.sql.go`, `*_mock.go`, `**/openapi.gen.yaml`, `docs/` 配下の生成物）
+- `.github/release/` 以外のすべて
 
-## Execution Steps
+## 実行手順
 
-Once `<FROM_TAG>` and `<NEW_VERSION>` are confirmed, execute the following.
+`<FROM_TAG>` と `<NEW_VERSION>` が確定したあとに以下を実行する。
 
-### 1. Guard: Output File Does Not Exist
+### 1. ガード: 出力先ファイルが存在しないこと
 
 ```sh
 test ! -e .github/release/<NEW_VERSION>.md
 ```
 
-If the file already exists, stop and ask the user how to proceed (do not overwrite silently).
+既に存在する場合は処理を中止し、進め方をユーザーに確認する（無断で上書きしないこと）。
 
-### 2. Collect Diff Metadata
+### 2. 差分メタデータを収集する
 
-Gather the following from `<FROM_TAG>..HEAD`:
+`<FROM_TAG>..HEAD` から以下を取得する:
 
 ```sh
-# Commit count
+# コミット数
 git rev-list --count <FROM_TAG>..HEAD
 
-# File change count and +/- lines (diffstat summary)
+# 変更ファイル数と +/- 行数（diffstat サマリ）
 git diff --shortstat <FROM_TAG>..HEAD
 
-# Commit log with subjects (non-merge first, then merges for context)
+# コミットログ（マージ以外を先に、文脈としてマージも取得）
 git log --no-merges --pretty=format:'%h %s' <FROM_TAG>..HEAD
 git log --merges     --pretty=format:'%h %s' <FROM_TAG>..HEAD
 
-# Changed files grouped by top-level directory (for scope inference)
+# トップレベルディレクトリでまとめた変更ファイル一覧（スコープ推定用）
 git diff --name-only <FROM_TAG>..HEAD | awk -F/ '{print $1}' | sort -u
 ```
 
-Optionally, for richer context on individual commits:
+個々のコミットの文脈をより詳しく見たい場合は以下:
 
 ```sh
 git log --no-merges --pretty=format:'%h%n%s%n%b%n---' <FROM_TAG>..HEAD
 ```
 
-### 3. Categorize Commits
+### 3. コミットを分類する
 
-Inspect each non-merge commit subject and bucket it. Match both English and Japanese-style prefixes used in this repo (`Feat:`, `Fix:`, `Refactor:`, `Docs:`, `Chore:`, `Test:`, etc.):
+各非マージコミットの subject を確認し、バケットに振り分ける。このリポジトリで使われている英語／日本語スタイルのプレフィックス（`Feat:` / `Fix:` / `Refactor:` / `Docs:` / `Chore:` / `Test:` など）に両対応する:
 
-| Bucket | Section in the output |
+| バケット | 出力先セクション |
 | --- | --- |
 | Feat / Feature | `### 新機能・改善` |
-| Refactor / Perf / Chore (impl-affecting) | `### 新機能・改善` (as sub-bullet) |
+| Refactor / Perf / Chore（実装に影響するもの） | `### 新機能・改善`（サブ箇条として） |
 | Fix / Bugfix | `## 不具合修正` |
 | Docs | `### 新機能・改善` → `#### ドキュメント整備` |
-| Test / CI / Build | `### 新機能・改善` → `#### 開発ツールチェーンの同期` or `#### その他の改善` |
+| Test / CI / Build | `### 新機能・改善` → `#### 開発ツールチェーンの同期` または `#### その他の改善` |
 
-When the bucket is ambiguous, inspect the changed file paths from step 2 to infer scope (e.g., `database/` → DB, `openapi/` → API, `.github/workflows/` → CI).
+判断が曖昧な場合は、手順 2 で取得した変更ファイルパスからスコープを推定する（例: `database/` → DB 周り、`openapi/` → API、`.github/workflows/` → CI など）。
 
-### 4. Compose the Release Note
+### 4. リリースノートを作成する
 
-Write `.github/release/<NEW_VERSION>.md` in **Japanese**, following the canonical `v2.1.0` format. The required top-level structure is:
+`.github/release/<NEW_VERSION>.md` を**日本語で**、`v2.1.0` 形式に従って書き出す。必須のトップレベル構造は以下:
 
 ```markdown
 <!-- markdownlint-disable MD041 -->
 ## 概要
 
-{2–4 行で、このリリースの趣旨を要約する。FROM_TAG → NEW_VERSION の位置づけ（パッチ/マイナー/メジャー）に触れる。}
+{2〜4 行で、このリリースの趣旨を要約する。FROM_TAG → NEW_VERSION の位置づけ（パッチ／マイナー／メジャー）に触れる。}
 
 変更規模は以下です。
 
@@ -169,68 +168,67 @@ Write `.github/release/<NEW_VERSION>.md` in **Japanese**, following the canonica
 - {OpenAPI の破壊的変更の有無、portal 反映、リリースブランチ運用などのメモ}
 ```
 
-Rules for the content:
+内容に関するルール:
 
-- **Do not paste raw commit subjects.** Summarize them in human-readable Japanese sentences.
-- **Group by theme**, not by chronology.
-- **Reference concrete file paths or component names** when they help readers locate the change (e.g., `scripts/semver/index.ts`, `internal/controller/handler/...`).
-- **Be honest about scope.** If a section has no content (e.g., no bug fixes), write `- 該当なし` rather than fabricating items.
-- **Match existing tone.** Compare to `.github/release/v2.1.0.md` for sentence style.
+- **コミット subject の貼り付けで済ませない。** 読んで理解できる粒度の日本語文に要約する。
+- **時系列ではなくテーマでグルーピングする。**
+- **具体のファイルパス／コンポーネント名を引用する**と、読者が変更箇所に辿りやすい（例: `scripts/semver/index.ts`、`internal/controller/handler/...`）。
+- **空セクションを捏造しない。** 該当する変更がなければ `- 該当なし` と書く。
+- **既存のトーンに合わせる。** `.github/release/v2.1.0.md` の文体を比較対象として参考にする。
 
-### 5. Show a Preview Before Writing
+### 5. 書き込み前にプレビューを提示する
 
-Before calling `Write`, present the proposed content to the user (either inline or via a short summary plus the file path), and confirm with one final `AskUserQuestion`:
+`Write` を呼ぶ前に、作成内容をユーザーに提示し（インライン、または要約 + ファイルパス）、最後にもう一度 `AskUserQuestion` で確定する:
 
-- Question: "この内容で `.github/release/<NEW_VERSION>.md` に書き出してよいですか？"
-- Options: "書き出す" / "修正したい箇所を指摘する"
+- 質問: 「この内容で `.github/release/<NEW_VERSION>.md` に書き出してよいですか？」
+- 選択肢: 「書き出す」 / 「修正したい箇所を指摘する」
 
-Only proceed with `Write` after the user confirms.
+ユーザーが確定したあとに限り `Write` を実行する。
 
-### 6. Verify with Markdown Lint
+### 6. Markdown Lint による検証
 
-After writing, run:
+書き込み後、以下を実行する。
 
 ```sh
 make md-fix
 make md-lint
 ```
 
-`make md-fix` runs `markdownlint-cli2 --fix` on the entire repository to auto-fix common issues (blank-line placement around headings / lists / code blocks, trailing whitespace, file-final newline, etc.). `make md-lint` then verifies that the result is clean against `.markdownlint-cli2.yaml`.
+`make md-fix` はリポジトリ全体に対して `markdownlint-cli2 --fix` を実行し、よくある違反（見出し / リスト / コードブロック周辺の空行、行末空白、ファイル末尾の改行など）を自動修正する。続けて `make md-lint` で `.markdownlint-cli2.yaml` 準拠かを検証する。
 
-If `make md-lint` reports remaining errors:
+`make md-lint` がエラーを報告する場合:
 
-1. Read the lint output.
-2. Fix the violations manually (rules that auto-fix cannot resolve, e.g., heading hierarchy, duplicate headings, bare URLs).
-3. Re-run `make md-fix` then `make md-lint` until clean.
+1. lint 出力を確認する。
+2. 自動修正で解消できないルール（見出し階層、重複見出し、bare URL など）を手で修正する。
+3. clean になるまで `make md-fix` → `make md-lint` を繰り返す。
 
-Do NOT report the skill as complete until `make md-lint` exits cleanly.
+`make md-lint` がクリーン終了するまでスキルを完了報告しない。
 
-`make md-fix` operates on the entire repository, so it may modify Markdown files unrelated to this release note. List any such files when reporting completion so the user can review the broader change set.
+`make md-fix` はリポジトリ全体を対象にするため、本リリースノートとは無関係な Markdown も自動修正される可能性がある。その場合、変更された他ファイルの一覧を完了報告時にユーザーへ提示し、レビューできるようにする。
 
-### 7. Final Verification
+### 7. 最終確認
 
-After writing and lint:
+書き込みおよび lint 後:
 
-- Confirm the file exists at `.github/release/<NEW_VERSION>.md`.
-- Do NOT stage, commit, or push the file. Inform the user that the file has been created and let them handle git operations per AGENTS.md rules.
+- `.github/release/<NEW_VERSION>.md` が存在することを確認する。
+- ステージ・コミット・プッシュは行わない。ファイルを作成した旨をユーザーに伝え、git 操作は AGENTS.md のルールに従ってユーザー自身に委ねる。
 
-## Checklist
+## チェックリスト
 
-Confirm the following before reporting completion:
+完了報告の前に以下を確認する:
 
-- [ ] `<FROM_TAG>` confirmed with the user via `AskUserQuestion` and verified to exist on `origin`
-- [ ] `<NEW_VERSION>` confirmed with the user via `AskUserQuestion` and validated against SemVer
-- [ ] `.github/release/<NEW_VERSION>.md` does not already exist
-- [ ] Diff metadata (commit count / file count / +/- lines) collected from `git`
-- [ ] Commits categorized into the v2.1.0 sections
-- [ ] Release note drafted in Japanese, matching the canonical format
-- [ ] Preview confirmed by the user
-- [ ] `.github/release/<NEW_VERSION>.md` written
-- [ ] `make md-lint` exits cleanly
-- [ ] User informed that no git operations were performed
+- [ ] `<FROM_TAG>` を `AskUserQuestion` で確認し、`origin` に存在することを検証した
+- [ ] `<NEW_VERSION>` を `AskUserQuestion` で確認し、SemVer に対して検証した
+- [ ] `.github/release/<NEW_VERSION>.md` がまだ存在しない
+- [ ] 差分メタデータ（コミット数 / ファイル数 / +/- 行数）を `git` から取得した
+- [ ] コミットを `v2.1.0` 形式のセクションに分類した
+- [ ] リリースノートを日本語で、正規フォーマットに沿って起草した
+- [ ] プレビューをユーザーが承認した
+- [ ] `.github/release/<NEW_VERSION>.md` を書き出した
+- [ ] `make md-lint` がクリーン終了する
+- [ ] git 操作を行っていないことをユーザーに伝えた
 
-## Notes
+## 注意事項
 
-- Output language inside the file MUST be Japanese (per `CLAUDE.md` language rules), regardless of the language used during interaction with the user.
-- This skill never amends, force-pushes, tags, or pushes. Git operations remain the user's responsibility.
-- After updating `SKILL.md`, also update `SKILL.ja.md` to keep the Japanese translation in sync.
+- 出力ファイル本文の言語は `CLAUDE.md` の言語ルールに従い**日本語**とする（対話中のやり取りの言語に関わらず）。
+- このスキルは amend、force push、tag 操作、push を一切行わない。git 操作はユーザーの責任で行う。

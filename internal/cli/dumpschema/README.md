@@ -1,20 +1,20 @@
 # dump-schema
 
-Dumps the database schema using `pg_dump` and sanitizes the output for sqlc consumption by removing tool-specific meta-commands.
+`pg_dump` を使用してデータベーススキーマをダンプし、ツール固有のメタコマンドを除去して sqlc で読み込める形式に整形します。
 
-## Command
+## コマンド
 
 ```text
 dump-schema [flags]
 ```
 
-## Flags
+## フラグ
 
-|Flag|Default|Description|
+|フラグ|デフォルト|説明|
 |---|---|---|
-|`--work-dir`|`/app`|Working directory (project root)|
+|`--work-dir`|`/app`|作業ディレクトリ（プロジェクトルート）|
 
-## Usage
+## 使い方
 
 ```bash
 ./server dump-schema
@@ -22,9 +22,9 @@ dump-schema [flags]
 ./server dump-schema --work-dir /app
 ```
 
-## Notes
+## 注意点
 
-- Output is written to `database/gen/schema.gen.sql`.
-- Requires `pg_dump` on `PATH` and a valid database connection configured via the application DSN.
-- The following lines are automatically stripped from the output: lines starting with `\` (psql meta-commands), `-- Dumped from database version` / `-- Dumped by pg_dump version` version-comment lines, and all blank lines (whitespace-only or empty).
-- Default `pg_dump` flags: `--schema-only --no-owner --no-privileges --format=plain`.
+- 出力先は `database/gen/schema.gen.sql` です。
+- `pg_dump` が `PATH` 上に存在し、アプリケーションの DSN でデータベースに接続できる必要があります。
+- 次の行は出力から自動的に除去されます: `\` で始まる行（psql メタコマンド）、`-- Dumped from database version` / `-- Dumped by pg_dump version` のバージョンコメント行、およびすべての空行（空白のみ・空の行）。
+- デフォルトの `pg_dump` フラグ: `--schema-only --no-owner --no-privileges --format=plain`。

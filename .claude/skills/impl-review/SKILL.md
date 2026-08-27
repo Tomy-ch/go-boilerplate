@@ -6,86 +6,73 @@ description: >-
 
 # Impl Review
 
-Independent, adversarial, **different-model** code review you can run locally — no Copilot, no cloud `/code-review`. The implementer's own model has blind spots; the whole point is to review with another model so those blind spots get caught. Built on the `/code-review` finder → verify pattern, plus a runtime curl + o11y stage that mocked unit tests structurally cannot reach.
+実装者とは**別モデル**で回す、ローカルの敵対的・低バイアスなコードレビュー。Copilot もクラウド `/code-review` も使わない。実装者自身のモデルには盲点があり、その盲点を別モデルで拾うのが本質。`/code-review` の finder → verify パターンを下敷きにしつつ、すべてローカルで完結させ、さらにモック単体テストでは構造的に届かない **ランタイム（curl + o11y）検証** を足す。既定では、verifier を通過した CONFIRMED / PLAUSIBLE の指摘を、ブランチの PR に各指摘の行へアンカーした**インラインレビューコメント**として投稿する（`--no-comment` でオプトアウト。PR が無ければローカルレポートのみにフォールバック）。
 
-A Japanese reference translation of this skill lives at `SKILL.ja.md` in this directory (for human reference only; not loaded as a skill).
+## 使うとき
 
-## When to Use
+- commit / PR 前に、実装者のモデル単独では出ないセカンドオピニオンが欲しいとき。
+- 複数 layer に跨る変更で、モックテストは通るが DI / middleware / 実 DB 挙動が未検証のとき。
+- バグ・認証/IDOR・レイヤ違反に絞った敵対的パスをかけたいとき。
 
-- Before committing / opening a PR, to get a second opinion the implementer's model would not produce on its own.
-- After a multi-layer change where mocked tests pass but DI / middleware / real-DB behavior is unverified.
-- Whenever you want an adversarial pass focused on bugs, auth/IDOR, and layer violations.
+以下には使わない:
 
-Do NOT use this skill for:
+- formatting / style — `make fix` / `make lint`
+- 網羅的なレイヤ適合監査 — `arch-check`（本スキルの `architecture` lens は高シグナルな違反のみ）
+- spec 検証 — `verify-spec`
+- 修正の適用 — 本スキルはソースに対し read-only。指摘するだけで直すのはユーザー。
+- テストの監査（`/test-review`）・コメントの監査（`/comment-sweep`）— 下位ステップではなく対等な別スキル
 
-- Style / formatting — `make fix` / `make lint`.
-- Exhaustive layer-compliance auditing — `arch-check` (this skill's `architecture` lens flags only high-signal violations).
-- Spec validation — `verify-spec`.
-- Applying fixes — this skill is read-only on source; it reports, the user fixes.
-- Auditing the tests (`/test-review`) or the comments (`/comment-sweep`) — peers, not sub-steps.
+## 中核アイデア — reviewer ≠ implementer
 
-## Core Idea — reviewer ≠ implementer
+バイアス低減が設計上の制約であって、おまけではない。よって reviewer は **コードを書いた者とは別モデルの subagent** として動く:
 
-Bias reduction is the design constraint, not a nicety. Reviewers therefore run as **subagents on a different model than whoever wrote the code**:
+- reviewer エージェント（`adversarial-reviewer` / `review-verifier`）は frontmatter で既定 **`sonnet`**。通常の Opus 実装者と異なる。
+- **reviewer のモデルは Step 0 でユーザーが選ぶ。** 選択肢は `fable`（Fable 5）/ `sonnet` / `opus` / `haiku`、加えて実装者と異なるモデルへ解決される *自動* 既定。選んだモデルを `Agent` ツールの `model` 引数で各 reviewer subagent に渡す（この引数はエージェント定義の `sonnet` 既定より優先）— 深さなら `opus`、安価な発散なら `haiku`、独立した新しい視点なら `fable`。
+- **オーケストレーターは reviewer ≠ implementer を必ず保証する。** ユーザーが本セッションの実装者と同一モデルを選んだ場合は、別モデルによるバイアス低減が損なわれる旨を警告し、確認してから進める。reviewer と implementer を無言で同一モデルにしない。
+- reviewer は **read-only**（エージェント定義に Edit/Write 権限なし）— finding を返すだけであり、本スキルはソースを一切書き換えない。何を直すかはレポートを読んだユーザーの判断である。
 
-- The reviewer agents (`adversarial-reviewer`, `review-verifier`) default to **`sonnet`** in their frontmatter, which differs from the usual Opus implementer.
-- **The reviewer model is chosen by the user in Step 0.** The options are `fable` (Fable 5) / `sonnet` / `opus` / `haiku`, plus an *auto* default that resolves to a model ≠ the session's implementer. Pass the chosen model to every reviewer subagent via the `Agent` tool's `model` parameter (it takes precedence over the agent file's `sonnet` default) — e.g. `opus` for depth, `haiku` for a cheap divergent pass, `fable` for a fresh independent perspective.
-- **The orchestrator MUST guarantee reviewer ≠ implementer.** If the user selects the same model as the session's implementer, warn that it undermines the different-model bias reduction and confirm before proceeding. Never silently let reviewer and implementer be the same model.
-- Reviewer subagents are **read-only** (their agent files grant no Edit/Write) — they only return findings, and this skill never mutates source at all. What to change is the user's call, made from the report.
+**本スキルが監査するのは変更そのものだけである。** テスト lens もコメント lens も持たず、他のスキルを起動もしない。それらは `/test-review` と `/comment-sweep` の主題であり、`AGENTS.md` の Review Phase Protocol のとおり、本スキルの横で個別に依頼され個別に走る。次のスキルの実行を提案するレビュースキルは、3 つの主題を独立に答えられないものにし、1 つのスキルの質問のずれが、そこを通った全ての流れから残り 2 つを黙って落とす。
 
-**This skill audits the change and nothing else.** It has no test lens and no comment lens, and it
-invokes no other skill. Those are `/test-review`'s and `/comment-sweep`'s subjects, each asked for and
-run in its own right beside this one, per the Review Phase Protocol in `AGENTS.md`. A review skill
-that offers to run the next one makes the subjects stop being independently answerable and lets a
-drift in one skill's question silently drop the other two from every flow that went through it.
+## 評価順 — 指摘は集めるだけでなく順位を付ける
 
-## Precedence — findings are ranked, not just collected
+レビュアーは食い違い、重なり、同じ事実を別の語彙で報告する。順位が無ければレポートは平坦な一覧に
+なり、finder が「high」と呼んだだけのコメント指摘が、誤った集約境界より上に出る。Step 2 の表の
+階層がその順位である。
 
-Reviewers disagree, overlap, and report the same fact in two vocabularies. Without a ranking the
-report is a flat list in which a comment nit outranks a wrong aggregate boundary because its finder
-called it "high". The tiers in the Step 2 table are that ranking:
-
-| Tier | Lenses | What it decides |
+| 階層 | lens | 何を決めるか |
 | --- | --- | --- |
-| 1 | `architecture`, `ddd-modeling` | what the code should *be* |
-| 2 | `security`, `correctness` | whether what it is, works |
-| 3 | `runtime-gap`, type design | whether it holds up in the real system and in its types |
+| 1 | `architecture` / `ddd-modeling` | コードが何で**あるべきか** |
+| 2 | `security` / `correctness` | それが**動くか** |
+| 3 | `runtime-gap` / 型設計 | 実システムと型の上で**保つか** |
 
-**A change at a higher tier propagates downward; a lower tier does not, as a rule, act on a higher
-one.** Rewriting an aggregate boundary invalidates the behavior verified against it; a naming nit
-never justifies changing a boundary. Four consequences follow, and each of them is a rule, not a
-suggestion:
+**上位の変更は下位へ伝播するが、下位が上位に働きかけることは原則としてない。** 集約境界を書き直せば、
+それに対して検証していた振る舞いも前提ごと消える。逆に命名の些事が境界の変更を正当化することはない。
+帰結は 4 つあり、いずれも提案ではなく規則である。
 
-1. **Order the report by tier, then by severity within a tier** — never by severity alone. A tier-3
-   `high` sits below an architecture `medium`, because the architecture finding may delete the code
-   the lower one is about.
-2. **Mark a lower-tier finding 保留 while a higher-tier finding it depends on is unresolved.** Report
-   it, say what it is waiting on, and do not present it as actionable. Re-check it after the
-   higher-tier decision lands; it often disappears.
-3. **When two tiers report the same fact, keep the higher tier's framing and fold the lower one in as
-   corroboration** — one finding, not two. Two entries for one fact reads as two problems and
-   double-counts the change's apparent risk.
-4. **Agreement among lenses at the same tier raises confidence; agreement from a lower tier does
-   not raise a higher finding's severity.** Two tier-2 lenses independently reaching the same defect
-   is strong evidence — say so. A tier-3 lens agreeing with a tier-1 finding adds nothing to its
-   severity, though it may be cited as support.
+1. **レポートは階層順に並べ、階層内で重大度順にする** — 重大度だけで並べない。階層 3 の `high` は
+   architecture の `medium` より下に置く。後者が、下位が語っているコードごと消すかもしれないため。
+2. **上位の未決な指摘に依存する下位の指摘は `保留` として出す。** 報告はするが、何を待っているかを書き、
+   着手可能なものとして提示しない。上位の決着後に見直すと、多くは消えている。
+3. **同じ事実を 2 階層が報告したら、上位の枠組みを残し、下位はその裏付けとして畳む** — 指摘は 1 件。
+   1 つの事実に 2 エントリは 2 つの問題に見え、変更のリスクを二重に数える。
+4. **同一階層どうしの合致は確度を上げてよいが、下位からの合致は上位の重大度を引き上げない。** 階層 2 の
+   2 つの lens が独立に同じ欠陥へ到達したなら、それは強い証拠なので明記する。階層 3 が階層 1 に同意しても
+   重大度は動かない（裏付けとして引用するのは構わない）。
 
-**The exception is criticality, and it is yours to notice, not to resolve.** A lower-tier finding
-can be the more urgent one — an exploitable hole surfaced by the `runtime-gap` lens does not wait for
-an architecture debate. When a lower-tier finding looks critical enough to outrank the tier above it,
-**do not silently reorder: present both and ask the user.** The ranking exists so that ordinary
-disagreements resolve without a human; a finding that breaks the ranking is exactly the case a human
-should see.
+**例外はクリティカルさであり、気づくのは担当だが裁定は担当ではない。** 下位の指摘のほうが緊急なことは
+ある — `runtime-gap` が露呈させた悪用可能な穴は、アーキテクチャの議論を待たない。下位の指摘が上の階層を
+outrank しそうなときは、**黙って並べ替えず、両方を提示してユーザーに問う。** 順位は普通の食い違いを
+人間なしで解くために在るのであって、順位を破る指摘こそ人間が見るべき場面である。
 
-## Step 0 — Confirm Scope
+## Step 0 — スコープ確認
 
-Call `AskUserQuestion` immediately. Default-detect scope by checking branch vs base; if there are unmerged commits, default to "changed files", otherwise "whole working tree / specific paths".
+即座に `AskUserQuestion`。未マージのコミットがあれば「変更ファイルのみ」を既定、なければ作業ツリー / 指定パスを既定。
 
-Resolve the base like this — the review has to cover the same diff the pull request shows, so an
-existing PR's `baseRefName` wins; with no PR, `make base-branch` resolves the latest release line
-(this repo's base is always a `release/*` branch) from `origin`'s live state. Do not fall back to
-`gh repo view --json defaultBranchRef`: the GitHub default branch keeps answering with an earlier
-release line, which silently widens the diff to a generation of changes nobody asked to review.
+ベースは次の手順で解決する。レビュー対象は PR が見せている diff と一致していなければならないので、PR が
+既にあるならその `baseRefName` が正。PR が無い場合は `make base-branch` が `origin` の実状態から最新の
+リリースライン（本リポジトリのベースは常に `release/*`）を解決する。fallback に
+`gh repo view --json defaultBranchRef` を使ってはならない。GitHub のデフォルトブランチは前のリリース
+ラインを指したまま答え続け、diff が誰も依頼していない 1 世代分の変更まで黙って広がる。
 
 ```sh
 BASE=$(gh pr view --json baseRefName -q '.baseRefName' 2>/dev/null || make -s base-branch)
@@ -102,10 +89,10 @@ git diff --name-only "origin/${BASE}...HEAD"
   - キャンセル
 ```
 
-### Reviewer model selection
+### reviewer モデルの選択
 
-In the same `AskUserQuestion` call (a second question alongside scope), ask which model the
-reviewer subagents run on. `fable` (Fable 5) is available alongside the existing tiers:
+同じ `AskUserQuestion` 呼び出しの中で（スコープと並べて2つ目の質問として）、reviewer subagent を
+どのモデルで動かすかを聞く。既存のティアに加え `fable`（Fable 5）が利用可能:
 
 ```text
 質問: レビュアーをどのモデルで実行しますか？（バイアス低減のため 実装者 ≠ レビュアー を推奨）
@@ -117,86 +104,80 @@ reviewer subagents run on. `fable` (Fable 5) is available alongside the existing
   - haiku（安価・高速な発散パス）
 ```
 
-*Auto* resolves to the agent-file default (`sonnet`) when the implementer is not `sonnet`,
-otherwise to a different tier. If the user picks the implementer's own model, warn (per Core
-Idea) that it weakens the different-model guarantee and confirm before continuing. The chosen
-model is passed to every `adversarial-reviewer` / `review-verifier` `Agent` call via the
-`model` parameter in Step 2 and Step 3.
+*自動* は、実装者が `sonnet` でなければエージェント定義の既定（`sonnet`）に、そうでなければ別ティアに
+解決する。ユーザーが実装者と同一モデルを選んだ場合は（中核アイデアのとおり）別モデル保証が弱まる旨を
+警告し、確認してから進める。選んだモデルは Step 2・Step 3 の各 `Agent` 呼び出しへ `model` 引数で渡す。
 
-**Two questions, and no more.** There is no test question and no comment question here. Those
-subjects belong to `/test-review` and `/comment-sweep`, which the user asks for separately; folding
-them in would put a decision about one subject inside a run started for another, and would make this
-skill the single point through which the other two are remembered.
+**質問は 2 つ、それ以上は無い。** ここにテストの質問もコメントの質問も置かない。それらは `/test-review` と
+`/comment-sweep` の主題で、ユーザーが個別に依頼する。畳み込めば、ある主題についての判断が別の主題のために
+始めた実行の中に埋まり、しかも残り 2 つを思い出す唯一の入口が本スキルになってしまう。
 
-### Flags
+### フラグ
 
-- `--no-comment` — suppress Step 6 (do not post to the PR); produce the local report only. **Default is opt-out**: when an open PR exists for the current branch, Step 6 posts the surviving findings as inline review comments unless this flag is given.
+- `--no-comment` — Step 6 を抑止（PR に投稿せず）ローカルレポートのみ。**既定はオプトアウト**: ブランチに open な PR があれば、このフラグが無い限り Step 6 が残った指摘をインラインコメントとして投稿する。
 
-## Step 1 — Gather Context
+## Step 1 — コンテキスト収集
 
-Stamp the review boundary first — it is the one moment nothing else observes, and the loop reads
-it to separate time spent reviewing from time spent implementing:
+最初にレビュー境界を打刻する。ここは他の何もが観測していない瞬間であり、ループはこれを読んで
+レビューに費やした時間と実装に費やした時間を分ける。
 
 ```sh
 .agents/closed-loop/marks.sh reviewStartedAt 2>/dev/null || true
 ```
 
-- Resolve the base ref and produce the review target: `git diff <base>...HEAD` (or `git diff` for uncommitted), plus the changed-file list (`git diff --name-only ...`).
-- Detect which layers/areas are touched (`internal/controller/**`, `usecase`, `domain`, `infrastructure`, `pkg`, `openapi/**`, `database/**`).
-- Note whether any **endpoint** is touched (controller handler or `openapi/**`) — this decides whether Step 4 runs.
-- Note whether any **shared** OpenAPI component is edited (a `components/*` referenced by more than one operation) — this widens Step 4 to every consumer.
-- Note whether the diff touches **domain types** (`internal/domain/**/*.go`) — this decides whether the type-design lens runs.
+- ベース ref を解決しレビュー対象を作る: `git diff <base>...HEAD`（未コミットなら `git diff`）+ 変更ファイル一覧（`git diff --name-only ...`）。
+- どの layer/領域が触られたか検出（`internal/controller/**`, `usecase`, `domain`, `infrastructure`, `pkg`, `openapi/**`, `database/**`）。
+- **エンドポイント** が触られたか（controller handler か `openapi/**`）— Step 4 を回すかの判定。
+- **共有** OpenAPI コンポーネント（複数 operation から参照される `components/*`）が編集されたか — Step 4 を全 consumer に広げる判定。
+- diff が **domain 型**（`internal/domain/**/*.go`）に触れたか — 型設計 lens を回すかの判定。
 
-## Step 2 — Fan-out Finders (different model, concurrent)
+## Step 2 — Finder の fan-out（別モデル、並列）
 
-Spawn all finders concurrently (issue every `Agent` call in a single message). Apply the model rule from Core Idea — pass the Step 0 user-selected reviewer model to every `Agent` call via the `model` parameter (omit only when *auto* already resolves to the agent-file default). Two agent types:
+全 finder を並列起動する（`Agent` 呼び出しを1メッセージにまとめる）。中核アイデアのモデル規則を適用し、Step 0 で選んだ reviewer モデルを各 `Agent` 呼び出しの `model` 引数で渡す（*自動* がエージェント定義の既定に解決するときのみ省略可）。エージェント種別は 2 つ。
 
-- The four **code lenses** run `adversarial-reviewer` — one per lens, `agentType: "adversarial-reviewer"`, `label` like `find:security`.
-- The **DDD modeling dimension** runs the dedicated `ddd-modeling-reviewer` — `agentType: "ddd-modeling-reviewer"`, `label: "find:ddd"` — when the diff touches `internal/domain/**` or `internal/usecase/**`. It asks whether the change models the domain well by this repository's own written interpretation (aggregate boundary vs transaction boundary, where a rule belongs, cross-aggregate reference discipline, ubiquitous language, Factory / Repository semantics). It is a **tier 1** lens: its findings decide what the code should be, so they are settled before the lower tiers act. Do NOT point it at Evans directly — that is `ddd-origin-auditor`'s subject, and its subject is the repo's documents rather than code.
-- The **type-design dimension** runs the dedicated `type-design-reviewer` — `agentType: "type-design-reviewer"`, `label: "find:type-design"` — ONLY when the diff touches domain types (`internal/domain/**/*.go`). It scores each type on the four-axis rubric (Encapsulation / Invariant Expression / Invariant Usefulness / Invariant Enforcement); its findings are suggestion-level (not auto-fixed).
+- 4 つの **コード lens** は `adversarial-reviewer` を使う。lens ごとに1体、`agentType: "adversarial-reviewer"`、`label` は `find:security` のように。
+- **DDD モデリング次元**は専用の `ddd-modeling-reviewer` を使う（`agentType: "ddd-modeling-reviewer"`, `label: "find:ddd"`）。diff が `internal/domain/**` または `internal/usecase/**` に触れた時。この変更がドメインをうまくモデル化できているかを、このリポジトリ自身が書き残した解釈で問う（集約境界とトランザクション境界の一致、規則の配置先、集約間参照の規律、ユビキタス言語、Factory / Repository の意味論）。**階層 1** の lens であり、その指摘は「コードが何であるべきか」を決めるため、下位の階層が動く前に決着させる。Evans の原典を直接の基準にしないこと — それは `ddd-origin-auditor` の担当で、対象も文書でありコードではない。
+- **型設計次元**は専用の `type-design-reviewer` を使う（`agentType: "type-design-reviewer"`, `label: "find:type-design"`）。diff が domain 型（`internal/domain/**/*.go`）に触れた時のみ。4 軸ルーブリック（Encapsulation / Invariant Expression / Invariant Usefulness / Invariant Enforcement）で各型を採点し、指摘は suggestion 級（自動修正しない）。
 
-| Finder | Tier | Agent | Run when |
+| Finder | 階層 | エージェント | 起動条件 |
 | --- | --- | --- | --- |
-| `architecture` | 1 | adversarial-reviewer | always |
-| `ddd-modeling` | 1 | **ddd-modeling-reviewer** | when the diff touches `internal/domain/**` or `internal/usecase/**` |
-| `security` | 2 | adversarial-reviewer | always (especially when a handler / auth / DTO / `openapi/**` is touched) |
-| `correctness` | 2 | adversarial-reviewer | always |
-| `runtime-gap` | 3 | adversarial-reviewer | when a controller / DI / `openapi/**` / `database/**` is touched |
-| type design | 3 | **type-design-reviewer** | when the diff touches domain types (`internal/domain/**/*.go`) |
+| `architecture` | 1 | adversarial-reviewer | 常時 |
+| `ddd-modeling` | 1 | **ddd-modeling-reviewer** | diff が `internal/domain/**` または `internal/usecase/**` に触れた時 |
+| `security` | 2 | adversarial-reviewer | 常時（handler / auth / DTO / `openapi/**` が触られた時は特に） |
+| `correctness` | 2 | adversarial-reviewer | 常時 |
+| `runtime-gap` | 3 | adversarial-reviewer | controller / DI / `openapi/**` / `database/**` が触られた時 |
+| 型設計 | 3 | **type-design-reviewer** | diff が domain 型（`internal/domain/**/*.go`）に触れた時 |
 
-Each `adversarial-reviewer` prompt MUST include: the lens name + its definition, the base ref + changed-file list + the diff, and pointers to `CLAUDE.md` / the relevant `README.md` / OpenAPI spec / migrations.
+各 `adversarial-reviewer` プロンプトに必ず含める: lens 名 + その定義、ベース ref + 変更ファイル一覧 + diff、`CLAUDE.md` / 該当 `README.md` / OpenAPI spec / migrations へのポインタ。
 
-**No lens here audits the tests or the comments.** A finding that the change is untested belongs to
-`/test-review`, and one about a comment's content belongs to `/comment-sweep`. If a lens surfaces
-either in passing, say so in the 補足 section as an observation and name the skill that owns it —
-do not grow a lens to cover it, which is how this skill acquired the two it just shed.
+**ここのどの lens もテストやコメントを監査しない。** 「変更が未テストである」は `/test-review` の、
+コメントの内容についての指摘は `/comment-sweep` の主題である。lens がついでに気づいた場合は、補足節に
+観察として書き、所管するスキル名を添える — lens を広げて覆おうとするのが、本スキルが今そぎ落とした
+2 つを抱え込んだ経緯そのものである。
 
-## Step 3 — Adversarial Verify
+## Step 3 — 敵対的 verify
 
-Collect all findings and **dedup** by (file, line, claim) — and when two lenses report the same fact,
-apply Precedence rule 4: keep the higher tier's framing, fold the lower one in as corroboration, and
-carry ONE finding forward. Textual dedup alone does not catch this: the same defect arrives worded as
-an architecture violation and as a type-design suggestion, and shipping both double-counts it. For each surviving finding, spawn one `review-verifier` subagent (concurrently), handing it the single finding + the base ref. Use `agentType: "review-verifier"`, `label` like `verify:<file>`, and the Step 0 user-selected reviewer `model` (same reviewer ≠ implementer rule).
+全 finding を集め、(file, line, claim) で **dedup**。加えて 2 つの lens が同じ事実を報告した場合は評価順の規則 4 を適用する — 上位の枠組みを残し、下位はその裏付けとして畳み、指摘は 1 件だけ先へ送る。文言一致の dedup ではこれを捕まえられない（同じ欠陥が architecture の違反と型設計の suggestion という別の言葉で届き、両方を通すと二重に数える）。残った finding ごとに `review-verifier` subagent を1体（並列）起動し、単一 finding + ベース ref を渡す。`agentType: "review-verifier"`、`label` は `verify:<file>`、Step 0 で選んだ reviewer `model`（reviewer ≠ implementer は同様に維持）。
 
-- Keep **CONFIRMED** and **PLAUSIBLE** findings. Drop **REFUTED** (but keep a count for the report).
-- For a critical/high finding where a single verdict feels shaky, spawn 2–3 verifiers and go by majority — diversity beats one opinion on the findings that matter.
+- **CONFIRMED** と **PLAUSIBLE** を残す。**REFUTED** は落とす（件数はレポート用に保持）。
+- critical/high で単一判定が頼りないときは verifier を 2〜3 体立て多数決。重要な finding ほど単一意見より多様性。
 
-## Step 4 — Runtime Verification (curl + o11y) — endpoints only
+## Step 4 — ランタイム検証（curl + o11y）— エンドポイント時のみ
 
-Run this **only if Step 1 found a touched endpoint**, and run it from the **orchestrator (main session)**, not a subagent — it needs interactive bash, real DB/state, log reading, and possibly user confirmation. Follow `scaffold-endpoint` Phase 7:
+**Step 1 でエンドポイントが触られた場合のみ** 実行し、subagent ではなく **オーケストレーター（メインセッション）** が行う（対話的 bash・実 DB/状態・ログ読み・ユーザー確認が要るため）。`scaffold-endpoint` Phase 7 に倣う:
 
-1. `make test` (mocked) does NOT build the real Fx graph, run auth/OpenAPI middleware, or touch the DB — so this stage exists to catch what Step 2's `runtime-gap` lens only *predicts*.
-2. Pick/seed a target row in a known state. For credential/state-sensitive checks, create a row whose plaintext/state you control.
-3. `curl` the touched endpoint(s) (local auth: `Authorization: Bearer debug:<subject>`) and assert: happy path; key error paths (404 / 400 / 422); and — **if the operation declares `security:`** — no-token ⇒ 401 (prove it is actually protected). For IDOR-shaped findings, curl as a *different* subject and assert it cannot reach another subject's resource.
-4. **Shared-schema impact:** if a shared `components/*` was edited (Step 1), curl **every** consumer endpoint, not just the changed one — `grep` the spec for `$ref`s and exercise each.
-5. Read the o11y logs once for a single request: confirm the trace spans controller → usecase → infra and the emitted SQL is what you expect. Later re-checks can rely on o11y instead of re-curling.
-6. **Destructive guard:** if a curl mutates data and the only restore path is `make db-init` (or similar), confirm with the user before running it (per `CLAUDE.md`). Clean up rows you created.
+1. `make test`（モック）は実 Fx グラフを組まず、auth/OpenAPI middleware も DB も通らない。だから本ステージは Step 2 の `runtime-gap` lens が *予測* したものを実地で拾う場。
+2. 既知状態の対象行を用意/seed。認証/状態依存の検査は平文/状態を自分で握る行を作る。
+3. 対象エンドポイントを `curl`（ローカル認証: `Authorization: Bearer debug:<subject>`）し検証: 正常系 / 主要異常系（404 / 400 / 422）/ — **operation が `security:` 宣言を持つなら** トークン無し ⇒ 401（実際に保護されているか証明）。IDOR 形の finding は *別の* subject で curl し他 subject のリソースに到達できないことを検証。
+4. **共有スキーマ波及:** 共有 `components/*` を編集した場合（Step 1）、変更分だけでなく **全 consumer** を curl。spec を `$ref` で grep し各々を叩く。
+5. o11y ログを1リクエスト分だけ読む: trace が controller → usecase → infra を貫き、発行 SQL が期待どおりか確認。以降の再確認は再 curl せず o11y で足りる。
+6. **破壊ガード:** データを変える curl で復旧手段が `make db-init`（等）しかない場合、実行前にユーザー確認（`CLAUDE.md` 準拠）。検証で作った行は片付ける。
 
-Fold any runtime-confirmed defect into the report as CONFIRMED with the curl/o11y evidence.
+ランタイムで確証した不具合は CONFIRMED として curl/o11y 証拠付きでレポートに統合。
 
-## Step 5 — Synthesize Report (Japanese)
+## Step 5 — レポート合成（日本語）
 
-Produce one Japanese report:
+1つの日本語レポートを出す:
 
 ```text
 ## ローカルレビュー結果（reviewer: <model> / implementer: <model>）
@@ -219,51 +200,43 @@ Produce one Japanese report:
 - 他スキルが所管する観点として気づいた点（あれば。所管スキル名を添える）
 ```
 
-The `lens:` line lists only the lenses that actually ran.
+`lens:` 行には実際に走った lens だけを並べる。
 
-The **`未監査の観点:` line is mandatory**, and it is not boilerplate: this skill audits one of the
-three review subjects, and a report that says nothing about the other two reads as a full review to
-anyone who did not run them. State plainly that the tests and the comments were not looked at here,
-so the omission is visible rather than inferred from a `lens:` list that never mentioned them. Do not
-soften it into a recommendation — whether to run the other two is the user's call under the Review
-Phase Protocol, and this line only records what this run did not cover.
+**`未監査の観点:` 行は必須**であり、定型句ではない。本スキルが監査するのはレビューの 3 主題のうち 1 つで
+あって、残り 2 つに何も触れないレポートは、それらを回していない読み手には完全なレビューとして読める。
+テストとコメントはここでは見ていないと明記し、省略が推測ではなく可視になるようにする。推奨に和らげない
+こと — 残り 2 つを回すかは Review Phase Protocol の下でユーザーが決めることであり、この行が記録するのは
+この実行が覆わなかった範囲だけである。
 
-Order by **tier first, then severity within the tier**, CONFIRMED before PLAUSIBLE (Precedence rule 1).
-Mark every finding that is waiting on a higher-tier decision as `保留` and name what it waits on
-(rule 2). Always state what runtime checks ran and what was skipped — silent omission reads as "covered everything" when it was not.
+**階層順に並べ、階層内で重大度順**、CONFIRMED を PLAUSIBLE より先に（評価順の規則 1）。上位の決着を
+待っている指摘は `保留` と明記し、何を待っているかを書く（規則 2）。ランタイムで何を検査し何をスキップ
+したかは必ず明記（黙って省くと「全部見た」と誤読される）。
 
-## Step 6 — Post Findings as Inline PR Comments (default; opt out with `--no-comment`)
+## Step 6 — 指摘を PR にインラインコメント投稿（既定。`--no-comment` でオプトアウト）
 
-By default, post the surviving **CONFIRMED + PLAUSIBLE** findings to the branch's PR as **inline review comments** — one per finding, anchored to its `path:line`, instead of a single wall-of-text comment. **Never post REFUTED.** The Step 5 local report is still produced regardless; this step is additive.
+既定で、残った **CONFIRMED + PLAUSIBLE** の指摘を、ブランチの PR に **インラインレビューコメント**として投稿する — 1 指摘につき 1 コメント、その `path:行` にアンカーし、1 つの長文コメントにまとめない。**REFUTED は投稿しない。** Step 5 のローカルレポートは常に出す（本ステップは追加動作）。
 
-Only this skill's own findings are posted. `/test-review` and `/comment-sweep` produce their own output for the user to act on, and nothing here reaches into them — posting another skill's findings under this skill's review would make one subject's audit look like it happened inside another's.
+投稿するのは本スキル自身の指摘だけである。`/test-review` と `/comment-sweep` はそれぞれ自分の出力を出し、ここからそれらへ手を伸ばすことはない — 他スキルの指摘を本スキルのレビューとして投稿すれば、ある主題の監査が別の主題の中で行われたように見えてしまう。
 
-Skip this step entirely when:
+### 手順
 
-- invoked with `--no-comment`, OR
-- no open PR exists for the current branch (`gh pr view` returns nothing) — keep the local report only and optionally offer to open a PR.
-
-Posting to GitHub is an outward-facing action, so confirm **once** before posting — show the count and the target PR (`AskUserQuestion`: 「<N> 件の指摘を PR #<番号> にインラインコメントとして投稿しますか？」/「投稿する」「投稿しない（ローカルレポートのみ）」).
-
-### Procedure
-
-1. Resolve PR number, repo, and the commit the comments anchor to:
+1. PR 番号・リポジトリ・コメントをアンカーする commit を解決:
 
    ```sh
-   gh pr view --json number,url -q '.number'        # PR number
+   gh pr view --json number,url -q '.number'
    gh repo view --json nameWithOwner -q '.nameWithOwner'
-   git rev-parse HEAD                                # anchor SHA
-   git rev-parse @{u}                                # pushed head — warn if it differs from HEAD
+   git rev-parse HEAD                                # アンカー SHA
+   git rev-parse @{u}                                # push 済み head — HEAD と異なれば警告
    ```
 
-   The anchor commit MUST be the commit pushed to the PR. If local `HEAD` ≠ `@{u}`, warn the user to push first (the API rejects comments whose `commit_id` is not on the PR).
+   アンカー commit は PR に push 済みの commit でなければならない。ローカル `HEAD` ≠ `@{u}` なら先に push するよう警告（`commit_id` が PR に無いコメントは API が拒否する）。
 
-2. Decide which findings can be inline. A GitHub inline comment must target a line present in the PR diff. Parse the diff hunks (`gh pr diff <PR> --patch` or `git diff <base>...HEAD`):
-   - `(path, line)` inside an added/context hunk → inline comment, `side: "RIGHT"`.
-   - `(path, line)` on a removed line → inline comment, `side: "LEFT"`.
-   - Off-diff (the reviewer referenced unchanged context) → **cannot** be inline; fold it into the review summary `body`.
+2. どの指摘をインラインにできるか判定。GitHub のインラインコメントは PR diff に含まれる行にしか付けられない。diff の hunk を解析（`gh pr diff <PR> --patch` か `git diff <base>...HEAD`）:
+   - `(path, line)` が追加/文脈の hunk 内 → インライン、`side: "RIGHT"`。
+   - `(path, line)` が削除行 → インライン、`side: "LEFT"`。
+   - diff 外（reviewer が未変更の文脈を参照）→ インライン不可。レビュー要約 `body` にまとめる。
 
-3. Build one review and post all comments atomically (a single review, not N standalone comments):
+3. 1つのレビューに全コメントをまとめて atomic に投稿（N 個の単発コメントにしない）:
 
    ```sh
    gh api --method POST repos/<owner>/<repo>/pulls/<PR>/reviews --input payload.json
@@ -287,36 +260,34 @@ Posting to GitHub is an outward-facing action, so confirm **once** before postin
    }
    ```
 
-   Use `event: "COMMENT"` — this is an advisory review, never `REQUEST_CHANGES` / `APPROVE`. Prefix every comment body with `🔎 impl-review` (or the `🔎 [verdict · severity]` tag) so the posts are distinguishable from human review.
+   `event: "COMMENT"` を使う — これは助言的レビューであり `REQUEST_CHANGES` / `APPROVE` にしない。各コメント本文の先頭に `🔎 impl-review`（または `🔎 [判定 · 重大度]` タグ）を付け、人間のレビューと区別できるようにする。
 
-4. Robustness: if the API rejects the batch (422 — a line is not in the diff), move the offending comment(s) to the summary `body` and retry. Report afterward what was posted inline vs. summarized — never silently drop a finding.
+4. 堅牢性: API がバッチを拒否（422 — 行が diff に無い）したら、該当コメントを要約 `body` へ移して再投稿。最後にインライン投稿分と要約分を報告 — 指摘を黙って落とさない。
 
-## Do / Do NOT
+## やる / やらない
 
-- ✅ Guarantee reviewer model ≠ implementer model (user selects it in Step 0; warn + confirm if they pick the implementer's model).
-- ✅ Rank findings by tier (Precedence): order the report by tier, hold lower-tier findings that wait on a higher one, fold duplicate facts into the higher tier's framing, and ask the user when a lower-tier finding looks critical enough to outrank the tier above it.
-- ✅ Run finders concurrently (one message, multiple `Agent` calls): the code lenses via `adversarial-reviewer`, plus `ddd-modeling-reviewer` / `type-design-reviewer` when their trigger applies.
-- ✅ Independently verify every finding before reporting; drop REFUTED.
-- ✅ Run the runtime stage for touched endpoints; widen to all consumers on a shared-schema edit.
-- ✅ State on the `未監査の観点:` line of every report that the tests and the comment stock were not audited here.
-- ✅ Confirm with the user before any destructive curl whose only restore path is `make db-init`.
-- ✅ By default, post the CONFIRMED + PLAUSIBLE findings to the branch's PR as inline review comments (Step 6); suppress with `--no-comment` or when no open PR exists.
-- ✅ Confirm once before posting to the PR (outward action); anchor each comment to its `path:line`, fold off-diff findings into the review summary.
-- ❌ Post REFUTED findings, or use `REQUEST_CHANGES` / `APPROVE` — the posted review is advisory `COMMENT` only.
-- ❌ Mutate source at all — every lens reports, the user fixes.
-- ❌ Grow a lens that audits the tests or the comments, or invoke `/test-review` or `/comment-sweep` from here. They are peers under the Review Phase Protocol; surface such an observation in 補足 and name the skill that owns it.
-- ❌ Order the report by severity alone, report one fact as two findings from two tiers, let a lower-tier lens raise a higher finding's severity, or silently reorder the tiers when a lower finding looks critical — present both and ask.
-- ❌ Let a reviewer run on the same model as the implementer.
-- ❌ Report speculative style nits as findings, or pad the list to look thorough.
+- ✅ reviewer モデル ≠ implementer モデルを保証（Step 0 でユーザーが選択。実装者と同一を選んだ場合は警告して確認）。
+- ✅ 指摘を階層で順位づける（評価順）: レポートを階層順に並べ、上位待ちの下位指摘は保留にし、同じ事実は上位の枠組みへ畳み、下位がクリティカルで上位を outrank しそうなときはユーザーに問う。
+- ✅ finder は並列（1メッセージ・複数 `Agent` 呼び出し）、lens ごとに1体。
+- ✅ レポート前に全 finding を独立 verify、REFUTED は落とす。
+- ✅ 触られたエンドポイントはランタイム検証、共有スキーマ編集なら全 consumer に拡大。
+- ✅ どのレポートでも、テストとコメント在庫をここでは監査していないことを `未監査の観点:` 行に明記。
+- ✅ 復旧手段が `make db-init` しかない破壊系 curl は事前にユーザー確認。
+- ✅ 既定で CONFIRMED + PLAUSIBLE をブランチの PR にインラインコメント投稿（Step 6）。`--no-comment` か PR 無しのとき抑止。
+- ✅ PR 投稿前に一度だけ確認（外向きアクション）。各コメントは `path:行` にアンカーし、diff 外の指摘はレビュー要約にまとめる。
+- ❌ REFUTED を投稿する / `REQUEST_CHANGES`・`APPROVE` を使う — 投稿レビューは助言的 `COMMENT` のみ。
+- ❌ ソースを書き換える — どの lens も指摘までで、直すのはユーザー。
+- ❌ テストやコメントを監査する lens を生やす / ここから `/test-review` や `/comment-sweep` を起動する。Review Phase Protocol の下では対等な別スキルであり、気づいた点は補足節に所管スキル名を添えて書く。
+- ❌ reviewer を implementer と同一モデルで回す。
+- ❌ 思いつきの style nit を finding として出す / 網羅に見せるための水増し。
 
-## Checklist
+## チェックリスト
 
-- [ ] Scope confirmed via `AskUserQuestion`; base ref resolved.
-- [ ] Reviewer model selected in Step 0 and verified ≠ implementer model (warn + confirm if same).
-- [ ] Finders fanned out concurrently: the code lenses (`adversarial-reviewer`) plus `ddd-modeling-reviewer` / `type-design-reviewer` where triggered — no test lens, no comment lens.
-- [ ] Duplicate facts folded into the higher tier; report ordered by tier then severity; lower-tier findings waiting on a higher one marked `保留`.
-- [ ] Every finding independently verified; REFUTED dropped (count kept).
-- [ ] Runtime curl + o11y done for touched endpoints (shared-schema → all consumers); destructive curls confirmed.
-- [ ] No other skill invoked from this run.
-- [ ] Single Japanese report: CONFIRMED → PLAUSIBLE, runtime coverage stated, `未監査の観点:` line present.
-- [ ] Unless `--no-comment` / no PR: confirmed once, then posted CONFIRMED + PLAUSIBLE as inline PR comments (off-diff → summary body); REFUTED excluded; `event: COMMENT`.
+- [ ] `AskUserQuestion` でスコープ確認、ベース ref 解決。
+- [ ] reviewer モデル ≠ implementer モデルを確認。
+- [ ] finder を並列 fan-out（コード lens は `adversarial-reviewer`、条件を満たせば `ddd-modeling-reviewer` / `type-design-reviewer`）。テスト lens もコメント lens も無い。
+- [ ] 同じ事実を上位の階層へ畳んだ。レポートは階層順→重大度順。上位待ちの下位指摘は `保留` と明記。
+- [ ] 全 finding を独立 verify、REFUTED は除外（件数は保持）。
+- [ ] 触られたエンドポイントの curl + o11y 実施（共有スキーマ → 全 consumer）、破壊系は確認済み。
+- [ ] この実行から他スキルを起動していない。
+- [ ] 1 つの日本語レポート: CONFIRMED → PLAUSIBLE、ランタイムのカバー範囲を明記、`未監査の観点:` 行が存在。

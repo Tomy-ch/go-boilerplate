@@ -1,40 +1,40 @@
 # seed
 
-`database/seed` stores **transactional data (seed data) for non-production environments** (local / CI / staging).
+`database/seed` は、**非本番環境（ローカル / CI / ステージング）向けのトランザクションデータ（シードデータ）**を格納するディレクトリです。
 
-## Role
+## 役割
 
-Used to insert **initial data** needed to verify application behavior in development, test, and demo environments.
+開発・テスト・デモ環境で、アプリケーションの動作確認に必要な **初期データ**を投入するために使用します。
 
 <!-- sample-api:replace-begin -->
-- User data
-- Product data
-- Other business data
+- ユーザーデータ
+- 商品データ
+- その他ビジネスデータ
 <!-- sample-api:replace-with -->
-<!-- = - Business data -->
+<!-- = - ビジネスデータ -->
 <!-- sample-api:replace-end -->
 
-Targets **transactional data**, not master data.
+など、マスタデータではなく **トランザクション系のデータ**を対象とします。
 
-## Execution
+## 実行方法
 
 ```bash
 make db-seed
 ```
 
-Or via CLI:
+または CLI から：
 
 ```bash
 ./server db-seed
 ```
 
-## Naming Convention
+## 命名規則
 
 ```text
-{6-digit sequence}_{description}.sql
+{6桁連番}_{説明}.sql
 ```
 
-Example:
+例：
 
 <!-- sample-api:replace-begin -->
 ```text
@@ -44,67 +44,66 @@ Example:
 ```
 <!-- sample-api:replace-with -->
 <!-- = ```text -->
-<!-- = 000001_<aggregate>.sql -->
-<!-- = 000002_<aggregate>_additional.sql -->
-<!-- = 000007_<aggregate>_<group>_01.sql -->
+<!-- = 000001_<集約>.sql -->
+<!-- = 000002_<集約>_additional.sql -->
+<!-- = 000007_<集約>_<グループ>_01.sql -->
 <!-- = ``` -->
 <!-- sample-api:replace-end -->
 
-- Executed in ascending order of sequence number
+- 連番の昇順で実行される
 <!-- sample-api:replace-begin -->
-- Control order via sequence numbers when dependencies exist (e.g., users → products → purchases)
+- 依存関係がある場合は連番で順序を制御する（例: users → products → purchases）
 <!-- sample-api:replace-with -->
-<!-- = - Control order via sequence numbers when dependencies exist (a referenced row is seeded before the row referencing it) -->
+<!-- = - 依存関係がある場合は連番で順序を制御する（参照される側の行を、参照する側より先に投入する） -->
 <!-- sample-api:replace-end -->
-- A group that does not fit in one file is split with a two-digit suffix (`_01`, `_02`, …)
+- 1 ファイルに収まらないまとまりは 2 桁の連番（`_01`、`_02`、…）で分割する
 
-## Placeholders
+## プレースホルダ
 
-A seed file may write an environment-dependent value as `${NAME}`; the runner expands it at execution
-time. Use it wherever a literal would be correct in one environment only — the port a local provider
-publishes, for instance, shifts per worktree slot.
+seed ファイルは環境依存の値を `${NAME}` で書ける。実行時に seed ランナーが展開する。リテラルで書くと
+特定の環境でしか正しくない値（例: ローカルの認証プロバイダの公開ポートは worktree のスロットでずれる）に
+用いる。
 
 <!-- sample-api:replace-begin -->
 ```sql
--- issuer follows the environment (the mock auth server's published port shifts per worktree slot)
+-- issuer は環境に追従する（mock 認証サーバーの公開ポートは worktree のスロットでずれる）
 INSERT INTO user_identities (id, user_id, issuer, subject) VALUES
 ('...', '...', '${AUTH_ISSUER}', 'user-john-doe') ON CONFLICT (id) DO NOTHING;
 ```
 <!-- sample-api:replace-with -->
 <!-- = ```sql -->
-<!-- = -- issuer follows the environment (the mock auth server's published port shifts per worktree slot) -->
-<!-- = INSERT INTO <table> (id, issuer, subject) VALUES -->
+<!-- = -- issuer は環境に追従する（mock 認証サーバーの公開ポートは worktree のスロットでずれる） -->
+<!-- = INSERT INTO <テーブル> (id, issuer, subject) VALUES -->
 <!-- = ('...', '${AUTH_ISSUER}', '<subject>') ON CONFLICT (id) DO NOTHING; -->
 <!-- = ``` -->
 <!-- sample-api:replace-end -->
 
-The available names are supplied by the `db-seed` command (`cmd/seed.go`) — currently `AUTH_ISSUER`,
-the JWT issuer taken from the configuration. A placeholder with no value (undefined or empty) is **not**
-filled with an empty string: the run errors out and **the whole file is left unexecuted** — rows in it
-that use no placeholder are skipped too. Data holding an empty environment value would leave a state
-where seeding succeeded yet only the runtime path fails, which is hard to trace back, so the file is the
-unit of fail-closed. A value containing a single quote is rejected the same way: the expansion is textual,
-so a value that can escape its string literal would run as a statement of its own.
+使える名前は `db-seed` コマンド（`cmd/seed.go`）が与える。現在は設定から取る JWT の issuer
+`AUTH_ISSUER` のみ。値の無い（未定義または空の）プレースホルダは空文字で埋めずエラーになり、**その
+ファイルは丸ごと未実行になる**（同じファイル内のプレースホルダを使わない行も投入されない）。環境依存の
+値が空のまま入ったデータは、seed は成功したのに実行時だけ失敗する状態を作り原因を辿りにくいため、
+fail-closed の単位をファイルに置いている。単一引用符を含む値も同様に拒否する。展開はテキスト置換で、
+文字列リテラルを抜け出せる値は独立したステートメントとして実行されうるため。
 
-## Difference from Migrations
+## マイグレーションとの違い
 
-|Aspect|migrations|seed|
+|観点|migrations|seed|
 |---|---|---|
-|Target|DDL (schema definitions)|DML (data insertion)|
-|Production use|Required|Not recommended|
-|Rollback|up / down pairs|None (delete or re-insert data)|
-|Idempotency|Required|Recommended (`ON CONFLICT`, etc.)|
+|対象|DDL（スキーマ定義）|DML（データ投入）|
+|本番利用|必須|非推奨|
+|ロールバック|up / down ペア|なし（データは削除 or 再投入）|
+|冪等性|必須|推奨（`ON CONFLICT` 等）|
 
-## Notes
+## 注意点
 
-- **Not intended for production execution** — seed data is for development and testing
+- **本番環境での実行は想定していない** — シードデータは開発・テスト用
 <!-- sample-api:replace-begin -->
-- Master data (prefectures, status definitions, etc.) should be managed via migrations
+- マスタデータ（都道府県、ステータス定義等）はマイグレーションで管理する
 <!-- sample-api:replace-with -->
-<!-- = - Master data (a fixed reference table with no independent write lifecycle) should be managed via migrations -->
+<!-- = - マスタデータ（独立した書き込みライフサイクルを持たない固定の参照テーブル）はマイグレーションで管理する -->
 <!-- sample-api:replace-end -->
-- When tables have foreign key constraints, pay attention to insertion order (sequence numbers)
-- For large datasets, split into multiple files and manage with sequence numbers. Keep each file
-  under 20000 bytes: `make sql-lint` skips a larger file instead of parsing it, so the whole file
-  silently loses lint coverage
-- Make idempotent where possible (`INSERT ... ON CONFLICT DO NOTHING`, etc.)
+- テーブル間に外部キー制約がある場合は、投入順序（連番）に注意する
+- 大量データを投入する場合は、ファイルを分割して連番で管理する。1 ファイルは 20000 バイト未満に
+  収める（`make sql-lint` は上限を超えたファイルを解析せずスキップするため、ファイルごと lint の
+  対象から静かに外れる）
+- 可能な限り冪等にする（`INSERT ... ON CONFLICT DO NOTHING` 等）

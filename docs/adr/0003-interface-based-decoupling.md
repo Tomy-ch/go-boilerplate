@@ -5,89 +5,63 @@ deciders: [maintainers]
 tags: [foundational, architecture, dependencies]
 ---
 
-# ADR-0003: Define boundaries with interfaces for loose coupling (DIP)
+# ADR-0003: 疎結合のためにインターフェースで境界を定義する（DIP）
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-[ADR-0002](0002-onion-architecture.md) defines the layer shape — dependencies point inward
-and infrastructure cannot be imported by domain or usecase. The mechanism that makes this
-rule enforceable and testable in practice is the Dependency Inversion Principle (DIP): every
-cross-layer boundary is expressed as a Go interface **owned by the inner layer**, and the
-outer layer provides the concrete implementation.
+[ADR-0002](0002-onion-architecture.md) はレイヤーの形状を定義する — 依存関係は内側を向き、インフラストラクチャはドメインやユースケースからインポートされてはならない。このルールを実践において強制可能かつテスト可能にするメカニズムが依存性逆転の原則（DIP）である: すべてのクロスレイヤー境界は **内側のレイヤーが所有する** Go インターフェースとして表現され、外側のレイヤーが具象実装を提供する。
 
-Without this constraint, outer layers would depend on inner-layer concrete types, and the
-inner layers would need to be aware of the outer layers — either direction introduces
-coupling that makes infrastructure replacement and isolated unit testing impractical.
+この制約がなければ、外側のレイヤーが内側レイヤーの具象型に依存し、内側のレイヤーが外側のレイヤーを意識する必要が生じる — どちらの方向でも、インフラストラクチャの交換と独立したユニットテストが困難になる結合が生まれる。
 
-The forces driving this decision:
+この決定を導く力:
 
-- Domain code must be testable without a database or external system present.
-- Infrastructure (database, external APIs) must be replaceable without touching business logic
-  (consistent with [ADR-0001](0001-avoid-lock-in.md)).
-- Usecase must orchestrate domain behavior without knowing which infrastructure adapter
-  satisfies each Repository or Boundary interface.
-- DI resolution (see ADR-0040) wires implementations to interfaces at startup, so the
-  cross-layer seam must be an interface for the DI container to inject.
-- Defining interfaces as cross-layer contracts allows each layer to own its processing
-  logic independently, unbound from the implementation details behind the interface.
-  Without interface definitions — coupling layers through concrete types — callers must
-  track callee internals, reducing refactorability across the boundary.
+- ドメインコードはデータベースや外部システムなしにテスト可能でなければならない。
+- インフラストラクチャ（データベース、外部 API）はビジネスロジックに触れることなく交換可能でなければならない（[ADR-0001](0001-avoid-lock-in.md) と一貫）。
+- ユースケースは、どのインフラストラクチャアダプターが各 Repository または Boundary インターフェースを満たすかを知ることなく、ドメインの振る舞いをオーケストレーションしなければならない。
+- DI 解決（ADR-0040 参照）は起動時に実装をインターフェースに結線するため、クロスレイヤーの継ぎ目は DI コンテナがインジェクトできるインターフェースでなければならない。
+- インターフェースをクロスレイヤーの契約として定義することで、各レイヤーはインターフェースの奥にある実装の詳細に縛られることなく、自身の処理ロジックを独立して担うことができる。インターフェース定義なしに — 具象型でレイヤーを結合すると — 呼び出し元が呼び出し先の内部実装を意識する必要が生じ、境界をまたいだリファクタリング性（保守性）が低下する。
 
-## Decision
+## 決定
 
-Define every cross-layer boundary as a Go interface owned by the inner layer; outer layers
-implement those interfaces and inject them via DI.
+すべてのクロスレイヤー境界を内側のレイヤーが所有する Go インターフェースとして定義し、外側のレイヤーがそれらのインターフェースを実装して DI 経由でインジェクトする。
 
-Concretely:
+具体的には:
 
-- **Repository interfaces** are declared in the domain layer; infrastructure provides the
-  implementations.
-- **Boundary interfaces** (e.g. clock, auth, outbox, idempotency, tx) are declared in
-  `internal/usecase/boundary`; infrastructure provides the implementations.
-- Usecase depends on domain interfaces and boundary interfaces — never on infrastructure
-  packages directly.
-- Controller depends on usecase interfaces — never on domain entities or infrastructure types.
+- **Repository インターフェース** はドメインレイヤーで宣言され、インフラストラクチャが実装を提供する。
+- **Boundary インターフェース**（例: クロック、認証、アウトボックス、べき等性、tx）は `internal/usecase/boundary` で宣言され、インフラストラクチャが実装を提供する。
+- ユースケースはドメインインターフェースと Boundary インターフェースに依存し、インフラストラクチャパッケージには直接依存しない。
+- コントローラーはユースケースインターフェースに依存し、ドメインエンティティやインフラストラクチャ型には依存しない。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Domain and usecase layers are unit-testable with mock implementations; no real database
-  or HTTP client is required.
-- Infrastructure adapters (database engine, queue broker, external API client) are swappable
-  without modifying business logic.
-- The interface boundary is the natural seam for depguard enforcement: a forbidden import
-  (e.g., usecase importing infrastructure) fails CI.
+- ドメインとユースケースのレイヤーはモック実装でユニットテスト可能; 実際のデータベースや HTTP クライアントは不要。
+- インフラストラクチャアダプター（データベースエンジン、キューブローカー、外部 API クライアント）はビジネスロジックを変更することなく交換可能。
+- インターフェース境界は depguard 強制の自然な継ぎ目: 禁止されたインポート（例: ユースケースがインフラストラクチャをインポートする）は CI を失敗させる。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Every cross-layer concern requires an interface declaration plus at least one concrete
-  implementation, increasing file count.
-- Mapping between layer-local types (domain entity to DTO, DTO to OpenAPI response) adds
-  repetitive conversion code at each boundary crossing.
+- すべてのクロスレイヤーの関心事にインターフェース宣言と少なくとも 1 つの具象実装が必要で、ファイル数が増える。
+- レイヤーローカルな型間のマッピング（ドメインエンティティから DTO、DTO から OpenAPI レスポンス）が各境界横断で反復的な変換コードを追加する。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Direct concrete-type coupling
+### 直接的な具象型結合
 
-Outer layers import inner-layer concrete structs directly. Simpler initially, but test
-isolation becomes impractical and infrastructure changes ripple across layers.
+外側のレイヤーが内側レイヤーの具象構造体を直接インポートする。初期はシンプルだが、テスト分離が困難になり、インフラストラクチャの変更がレイヤー全体に波及する。
 
-### Generic / type-parameter seams
+### ジェネリクス / 型パラメーター境界
 
-Go generics could express some boundaries without explicit interface types. Rejected: adds
-complexity without meaningful benefit for the Repository and Boundary use cases targeted here.
+Go ジェネリクスを使って明示的なインターフェース型なしにいくつかの境界を表現できる。却下: ここで対象とする Repository と Boundary のユースケースに対して、意味のある利益のない複雑さが加わる。
 
-## Notes
+## 補足
 
-- Layer dependency rules and the forbidden import table: [`docs/rules.md`](../rules.md)
-  §§ "Layer Dependency Rules", "Usecase Dependency Rules", "Infrastructure Implementation
-  Rules".
-- The DI container that wires implementations to interfaces at startup: ADR-0040.
-- Related layer shape: [ADR-0002](0002-onion-architecture.md).
-- Source: `docs/architecture.md` § "Dependency Inversion"; `docs/rules.md` §§ "Layer
-  Dependency Rules", "Usecase Dependency Rules", "Infrastructure Implementation Rules".
+- レイヤー依存関係ルールと禁止インポートテーブル: [`docs/rules.md`](../rules.md) §§「Layer Dependency Rules」「Usecase Dependency Rules」「Infrastructure Implementation Rules」。
+- 起動時に実装をインターフェースに結線する DI コンテナ: ADR-0040。
+- 関連するレイヤー形状: [ADR-0002](0002-onion-architecture.md)。
+- ソース: `docs/architecture.md` §「Dependency Inversion」; `docs/rules.md` §§「Layer Dependency Rules」「Usecase Dependency Rules」「Infrastructure Implementation Rules」。

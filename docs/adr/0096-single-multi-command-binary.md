@@ -5,71 +5,57 @@ deciders: [maintainers]
 tags: [cli, build]
 ---
 
-# ADR-0096: All roles are one multi-command binary
+# ADR-0096: すべてのロールを 1 つのマルチコマンドバイナリに集約する
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-A Go API scaffold needs to ship multiple operational roles: HTTP server, database migrations
-(up and down), seeding, schema dump, DML merge, job dispatch, background worker, and outbox
-relay. Each role could be distributed as a separate binary, but that multiplies build
-artifacts, complicates image distribution, and duplicates shared initialization code.
+Go API スキャフォールドは複数のオペレーショナルロールをシップする必要がある: HTTP サーバー、データベースマイグレーション（up と down）、シーディング、スキーマダンプ、DML マージ、ジョブディスパッチ、バックグラウンドワーカー、アウトボックスリレー。各ロールを個別のバイナリとして配布することもできるが、それはビルド成果物を増やし、イメージ配布を複雑化し、共有の初期化コードを重複させる。
 
-## Decision
+## 決定
 
-Compile all roles into a single binary produced from `./cmd/`. The binary exposes each role
-as a Cobra subcommand registered in `registerCommands`:
+すべてのロールを `./cmd/` から生成される単一のバイナリにコンパイルする。バイナリは各ロールを `registerCommands` に登録された Cobra サブコマンドとして公開する:
 
-- `serve` — HTTP server (long-running)
-- `migrate-up` / `migrate-down` — database migrations
-- `db-seed` — data seeding
-- `fix-collation` — collation repair utility
-- `dump-schema` — schema dump
-- `merge-dml` — DML merge
-- `job` — application job dispatch
-- `worker` — background worker
-- `outbox-relay` — transactional outbox relay
+- `serve` — HTTP サーバー（長時間実行）
+- `migrate-up` / `migrate-down` — データベースマイグレーション
+- `db-seed` — データシーディング
+- `fix-collation` — 照合順序修復ユーティリティ
+- `dump-schema` — スキーマダンプ
+- `merge-dml` — DML マージ
+- `job` — アプリケーションジョブディスパッチ
+- `worker` — バックグラウンドワーカー
+- `outbox-relay` — トランザクショナルアウトボックスリレー
 
-The entry point (`cmd/main.go`) creates a root Cobra command, delegates subcommand
-registration to `registerCommands`, and exits with a non-zero code on error.
+エントリポイント（`cmd/main.go`）はルート Cobra コマンドを作成し、サブコマンド登録を `registerCommands` にデリゲートし、エラー時に非ゼロコードで終了する。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- One build artifact to version, push, and pull. The same image can run any role via command
-  override (see [ADR-0097](0097-single-runtime-image.md)).
-- Shared initialization paths (config, DI, logging) are compiled once and reused across all
-  subcommands.
-- Version metadata (`Version`, `Revision`, `BuildDate`) is embedded once via `-ldflags` and
-  reported by `--version` for all roles.
+- バージョン管理、プッシュ、プルのための 1 つのビルド成果物。同じイメージをコマンドオーバーライドで任意のロールとして実行できる（[ADR-0097](0097-single-runtime-image.md) 参照）。
+- 共有の初期化パス（設定、DI、ロギング）は 1 回コンパイルされ、すべてのサブコマンドで再利用される。
+- バージョンメタデータ（`Version`、`Revision`、`BuildDate`）は `-ldflags` を介して 1 回埋め込まれ、すべてのロールで `--version` によって報告される。
 
-### Negative Consequences
+### ネガティブな影響
 
-- The binary includes code for all roles regardless of which one is active at runtime,
-  increasing binary size slightly.
-- A defect in one role's init path could theoretically crash another role's startup if
-  shared initialization is not isolated correctly.
+- バイナリはランタイムでアクティブなロールに関わらずすべてのロールのコードを含み、バイナリサイズがわずかに増加する。
+- あるロールの init パスの欠陥が、共有の初期化が正しく分離されていない場合、別のロールの起動をクラッシュさせる可能性が理論上ある。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Separate binary per role
+### ロールごとに別のバイナリ
 
-Produces the smallest per-role artifact but multiplies CI build steps, image layers, and
-operational procedures. Sharing config / DI code requires a shared library, adding a
-dependency boundary that Go module layout does not naturally enforce.
+ロールごとの成果物は最小になるが、CI ビルドステップ、イメージレイヤー、オペレーション手順が増加する。設定 / DI コードを共有するには共有ライブラリが必要となり、Go モジュールレイアウトが自然には強制しない依存関係の境界が追加される。
 
-### Single binary with sub-process model
+### サブプロセスモデルを持つ単一バイナリ
 
-The root binary spawns child processes for each role. Adds complexity (process supervision,
-signal forwarding) with no benefit for a scaffold that already isolates roles at the Cobra
-subcommand level.
+ルートバイナリが各ロールのために子プロセスを生成する。Cobra サブコマンドレベルですでにロールを分離しているスキャフォールドには利点のない複雑さ（プロセス管理、シグナル転送）が加わる。
 
-## Notes
+## 補足
 
-- `cmd/main.go` and `cmd/commands.go` are the authoritative entry points.
-- Command logic lives in `internal/cli/<command>/` per [ADR-0095](0095-cli-humble-object-split.md).
-- Source: `cmd/main.go`, `cmd/commands.go`.
+- `cmd/main.go` と `cmd/commands.go` が権威あるエントリポイントである。
+- コマンドロジックは [ADR-0095](0095-cli-humble-object-split.md) に従って `internal/cli/<command>/` に置かれる。
+- ソース: `cmd/main.go`、`cmd/commands.go`。

@@ -1,39 +1,39 @@
 # app error
 
-The `apperror` package defines **application-wide error classifications independent of layers**.
+`apperror` パッケージは、層に依存しない「アプリケーション共通のエラー分類」を定義します。
 
-This package can be referenced from **all layers of Domain / Usecase / Controller / Infrastructure**,  
-and provides **base errors for classifying errors that occur within the application in a protocol-independent manner**.
+このパッケージは **Domain / Usecase / Controller / Infrastructure のすべての層から参照可能**であり、
+アプリケーション内で発生するエラーを **プロトコル非依存の形で分類するための基底エラー**を提供します。
 
-HTTP status codes and API response formats are not handled here.  
-Those are **converted in the Controller layer**.
+HTTP ステータスコードや API レスポンス形式はここでは扱いません。
+それらは **Controller 層で変換されます。**
 
-## Basic Policy
+## 基本方針
 
-- Can be referenced from Domain / Usecase / Controller / Infra
-- Defines only **application-wide base error categories**
-- Does not include HTTP status or response formats
-- Designed with classification using `xerrors.Is` / `xerrors.As` as a premise
+- Domain / Usecase / Controller / Infra のいずれからも参照可能
+- 定義するのは **アプリケーション共通の基底エラーカテゴリのみ**
+- HTTP ステータスやレスポンス形式は持たない
+- `xerrors.Is` / `xerrors.As` による判定を前提に設計
 
-Examples
+例
 
 - `ErrInvalidArgument`
 - `ErrNotFound`
 - `ErrConflict`
 
-## Usage Rules
+## 利用ルール
 
-When returning errors, it is recommended to **always wrap them with an apperror base category**.
+エラーを返す際は **必ず apperror の基底カテゴリをラップすること**を推奨します。
 
-Reason
+理由
 
-- Enables error classification via `xerrors.Is`
-- Allows conversion to HTTP status in the Controller layer
-- Preserves the original error for logging / tracing
+- `xerrors.Is` によるエラー分類が可能になる
+- Controller 層で HTTP ステータスへ変換できる
+- 元エラーをログ / トレースで保持できる
 
-## Recommended Error Wrapping Pattern
+## エラーラップの推奨パターン
 
-Errors should **always be wrapped with a base error**.
+エラーは **必ず基底エラーをラップして返す**ことを推奨します。
 
 ```go
 // Wrap domain error with app error category
@@ -42,7 +42,7 @@ if err != nil {
 }
 ```
 
-In the Controller layer, classification is performed using `xerrors.Is`.
+Controller 層では `xerrors.Is` を使って判定します。
 
 ```go
 // Map app error to HTTP status
@@ -51,16 +51,16 @@ if xerrors.Is(err, apperror.ErrNotFound) {
 }
 ```
 
-## Infra Error Translation
+## Infra エラーの変換
 
-In the Infrastructure layer, it is recommended to **convert external dependency errors into apperror**.
+Infrastructure 層では **外部依存のエラーを apperror に変換する**ことを推奨します。
 
-Reason
+理由
 
-- To convert DB / external API errors into application vocabulary
-- To eliminate the need for upper layers to know DB-dependent errors
+- DB / 外部 API のエラーをアプリケーション語彙へ変換するため
+- 上位層が DB 依存のエラーを知る必要をなくすため
 
-Example
+例
 
 ```go
 // Translate database error to application error
@@ -71,7 +71,7 @@ if xerrors.Is(err, pgx.ErrNoRows) {
 var pgErr *pgconn.PgError
 if xerrors.As(err, &pgErr) {
     switch pgErr.Code {
-    case "23505": // unique constraint violation
+    case "23505": // ユニーク制約違反
         return xerrors.Join(apperror.ErrConflict, err)
     }
 }
@@ -79,18 +79,21 @@ if xerrors.As(err, &pgErr) {
 return xerrors.Join(apperror.ErrInternal, err)
 ```
 
-This conversion is typically performed in:
+通常この変換は
 
 - Repository
 - Infra Adapter
 
-## HTTP Error Mapping (Controller Layer)
+で行います。
 
-The `apperror` package **does not know HTTP**.
+## HTTP エラー変換（Controller 層）
 
-Conversion to HTTP status codes is the **responsibility of the Controller layer**.
+`apperror` パッケージは **HTTP を知りません。**
 
-In this project, the Controller’s `errorhandler` middleware performs the following two-step conversion.
+HTTP ステータスコードへの変換は **Controller 層の責務**です。
+
+このプロジェクトでは Controller の `errorhandler` ミドルウェアで
+次の2段階変換を行います。
 
 ```mermaid
 flowchart TB
@@ -101,85 +104,90 @@ flowchart TB
     AppErr --> HTTP --> Meta
 ```
 
-Example
+例
 
 ```go
 case xerrors.Is(err, apperror.ErrNotFound):
     return lookupErrorMetaByHTTPStatus(http.StatusNotFound)
 ```
 
-`lookupErrorMetaByHTTPStatus` returns **HTTP error metadata** that contains:
+`lookupErrorMetaByHTTPStatus` は
 
 - HTTP Status
 - Error Code
 - Message
 
-This provides the following benefits:
+を持つ **HTTP エラーメタ情報**を返します。
 
-- Domain / Usecase remain HTTP-independent
-- Error messages are centrally managed in the Controller
-- Domain does not need to be changed when API specifications change
+これにより
 
-## Error Metadata (`Meta`)
+- Domain / Usecase は HTTP 非依存
+- エラーメッセージを Controller で一元管理
+- API 仕様変更時に Domain を変更しなくてよい
 
-`Meta` / `WithMeta` / `WithDetails` / `MetaFrom` let the error-raising site attach **dynamic, protocol-neutral response metadata** on top of the sentinel classification.
+という利点があります。
+
+## エラーメタ情報（`Meta`）
+
+`Meta` / `WithMeta` / `WithDetails` / `MetaFrom` により、エラー発生箇所がセンチネル分類の上に**動的でプロトコル中立なレスポンス向けメタ情報**を付与できます。
 
 ```go
-// Attach the identifiers of the invalid fields (domain layer)
+// 不正フィールドの識別子を付与する（domain 層）
 return apperror.WithDetails(xerrors.Join(errs...), "firstName", "email")
 
-// Attach a code (any layer); override the user-facing message (controller only)
+// code を付与する（任意の層）/ 利用者向け文言を上書きする（controller のみ）
 return apperror.WithMeta(err, apperror.NewMeta("CUSTOM_CODE", "firstName"))
 return apperror.WithMeta(err, apperror.NewMeta("CUSTOM_CODE").WithMessage("..."))
 
-// Extract at the transport edge (controller layer)
+// transport の境界で抽出する（controller 層）
 if meta, ok := apperror.MetaFrom(err); ok { ... meta.Code() / meta.Message() / meta.Details() ... }
 ```
 
-Rules:
+ルール:
 
-- **`Meta` never carries an HTTP status.** The status is resolved solely from the sentinel classification; to change the status, change the sentinel. This keeps the decision of [ADR-0047 (apperror-protocol-agnostic-errors)](../../docs/adr/0047-apperror-protocol-agnostic-errors.md) intact (see [ADR-0048 (error-metadata-code-message-details)](../../docs/adr/0048-error-metadata-code-message-details.md)).
-- Fields are unexported; `Meta` is built only via `NewMeta(code, details...)` (which defensively copies `details`). Everything is optional — empty values fall back to the controller's default `code` / `message` for the resolved status.
-- The user-facing message can be set only through the explicit, greppable `WithMessage` — its source of truth is the controller catalog, so **only the controller layer may call it**; Domain / Usecase set `code` / `details` only.
-- `Details` values are exposed verbatim in the API response. Put **public-safe identifiers only** (e.g., invalid field names) — never reason texts or raw input values. Reason texts belong in the wrapped error message, which stays log-only.
-- **`details` exposure is opt-in per endpoint and fail-closed.** Attaching `details` here is necessary but not sufficient: the client only receives them if the operation declares the `ErrorResponseWithDetails` schema in OpenAPI. The controller's `errorhandler` drops `details` from the wire for any non-opted-in operation (logs keep them). See [ADR-0049 (error-details-opt-in-gate)](../../docs/adr/0049-error-details-opt-in-gate.md).
-- When `WithMeta` is applied multiple times in a chain, **the outermost one wins** (`MetaFrom` uses `xerrors.As`). Re-wrapping is the intended way for an upper layer to override.
-- `WithMeta` decorates, it does not classify: `xerrors.Is` / `IsAppError` still see the wrapped sentinel(s), including all branches of a `xerrors.Join`.
+- **`Meta` は HTTP ステータスを運びません。** ステータスはセンチネル分類のみで解決されます。ステータスを変えたい場合はセンチネルを変えてください。これにより [ADR-0047 (apperror-protocol-agnostic-errors)](../../docs/adr/0047-apperror-protocol-agnostic-errors.md) の決定は不変のまま保たれます（[ADR-0048 (error-metadata-code-message-details)](../../docs/adr/0048-error-metadata-code-message-details.md) 参照）。
+- フィールドは非公開で、`Meta` の構築は `NewMeta(code, details...)` 経由のみです（`details` は防御的コピーされます）。全項目任意で、空の値は解決されたステータスに対する controller の既定 `code` / `message` にフォールバックします。
+- 利用者向け文言は明示的で grep 可能な `WithMessage` を通してのみ設定できます。文言の正は controller のカタログにあるため、**呼び出しは controller 層に限ります**。Domain / Usecase は `code` / `details` のみを設定してください。
+- `Details` の値は API レスポンスにそのまま公開されます。**公開して安全な識別子のみ**（例: 不正フィールド名）を入れ、理由文や入力値そのものを入れてはいけません。理由文はラップしたエラーメッセージ側に残し、ログ専用とします。
+- **`details` の露出はエンドポイントごとの opt-in かつ fail-closed。** ここで `details` を付与するのは必要条件だが十分条件ではありません。クライアントが受け取るのは、その operation が OpenAPI で `ErrorResponseWithDetails` スキーマを宣言している場合のみ。opt-in していない operation では controller の `errorhandler` が wire から `details` を落とします（ログには残る）。[ADR-0049 (error-details-opt-in-gate)](../../docs/adr/0049-error-details-opt-in-gate.md) を参照。
+- チェーン内で `WithMeta` が多重に付与された場合、**最も外側が勝ちます**（`MetaFrom` は `xerrors.As` を使用）。上位層が上書きしたい場合は意図的に再ラップしてください。
+- `WithMeta` は装飾であり分類ではありません。`xerrors.Is` / `IsAppError` はラップされたセンチネル（`xerrors.Join` の全枝を含む）をそのまま検知します。
 
-### How it works: a wrapper, not a mutation
+### 仕組み: センチネルへの埋め込みではなくラッパー
 
-`WithMeta` does **not** put anything into the sentinels — they are shared package
-variables, so storing request-scoped data in them would leak across requests. Instead
-it wraps the whole error chain in a `MetaError` that holds the original error inside:
+`WithMeta` はセンチネルに何かを入れるのでは**ありません** — センチネルは共有のパッケージ変数
+なので、リクエスト固有のデータを持たせると別リクエストへ漏れます。代わりに、元のエラーを
+内側に抱える `MetaError` でチェーン全体を包みます:
 
 ```go
 type MetaError struct {
-    meta Meta  // request-scoped payload
-    err  error // the original chain, sentinels included
+    meta Meta  // リクエスト固有の荷物
+    err  error // 元のチェーン丸ごと（センチネルを含む）
 }
 
 func (e *MetaError) Unwrap() error { return e.err }
 ```
 
-The method **must** be named `Unwrap() error` — that is the standard library's chain
-contract, not a stylistic choice: `errors.Is` / `errors.As` (and therefore
-`xerrors.Is` / `As`) look for exactly this signature (or `Unwrap() []error` for joins)
-to traverse a chain. Renaming it would make the wrapper opaque and break the 422
-classification.
+メソッド名は **`Unwrap() error` でなければなりません** — これはスタイルの選択ではなく標準
+ライブラリのチェーン契約です: `errors.Is` / `errors.As`（したがって `xerrors.Is` / `As`）は
+まさにこのシグネチャ（Join の場合は `Unwrap() []error`）を探してチェーンを辿ります。改名
+するとラッパーが不透明になり、422 分類が壊れます。
 
-Note the division of labor: `Unwrap` only peels **one layer** — it returns the inner
-chain as-is, not the sentinel. Reaching the sentinel is `errors.Is`'s job, which calls
-`Unwrap` recursively while walking the chain. Each wrapper type implements "remove my
-own wrapping"; the traversal logic lives once, in the standard library.
+役割分担に注意してください: `Unwrap` は**1枚だけ**剥がします — 返すのは内側のチェーン
+そのままで、センチネルではありません。センチネルへの到達は `errors.Is` の仕事で、チェーンを
+降りながら `Unwrap` を再帰的に呼びます。各ラッパー型は「自分の包装を外す」だけを実装し、
+走査ロジックは標準ライブラリに一箇所だけ存在します。
 
-## Error Handling in Job / CLI
+## Job / CLI でのエラー扱い
 
-`apperror` can be used not only for HTTP but also for **Job / CLI Controller**.
+`apperror` は HTTP だけでなく **Job / CLI Controller** でも利用できます。
 
-In job execution, it is typically:
+Job 実行では通常
 
-- Output error to logs
-- Exit code is determined by the Runner
+- エラーをログ出力
+- Exit code を Runner が決定
+
+という形になります。
 
 ```mermaid
 flowchart TB
@@ -194,21 +202,21 @@ flowchart TB
     Controller --> Log --> Runner --> Exit
 ```
 
-## When Adding New Error Categories
+## 新しいエラーカテゴリを追加する場合
 
-It is recommended to **not add new error categories casually**.
+新しいエラーカテゴリは **安易に追加しない**ことを推奨します。
 
-Criteria
+判断基準
 
 ```mermaid
 flowchart TB
     OK["OK"]
-    OK1["Occurs across multiple usecases"]
-    OK2["Common concept across the application"]
+    OK1["複数のユースケースで発生する"]
+    OK2["アプリケーション全体で共通概念"]
 
     NG["NG"]
-    NG1["Used only in a specific usecase"]
-    NG2["Added only for HTTP status convenience"]
+    NG1["特定ユースケースだけで使う"]
+    NG2["HTTP ステータスの都合だけで追加"]
 
     OK --> OK1
     OK --> OK2
@@ -216,69 +224,69 @@ flowchart TB
     NG --> NG2
 ```
 
-When adding, document the following in README:
+追加する場合は README に次を記載してください。
 
-- Background
-- Use cases
-- HTTP status mapping
+- 背景
+- 利用シーン
+- HTTP ステータス対応
 
-## Mapping Table
+## 対応表
 
-| app error 定義 | Meaning / Usage | HTTP Status |
+| app error 定義 | 意味 / 使い所 | HTTP Status |
 | -------------- | ----------- | ----------- |
-| `ErrInvalidArgument` | Invalid argument (syntactically valid but semantically invalid) | 400 Bad Request |
-| `ErrUnauthenticated` | Authentication failure (such as not logged in) | 401 Unauthorized |
-| `ErrPermissionDenied` | Insufficient permissions | 403 Forbidden |
-| `ErrNotFound` | Target does not exist | 404 Not Found |
-| `ErrConflict` | Conflict (unique constraint violation, concurrent update conflict, etc.) | 409 Conflict |
-| `ErrValidation` | Domain / Usecase validation failure | 422 Unprocessable Entity |
-| `ErrUnsupportedMediaType` | Unsupported Content-Type / media format | 415 Unsupported Media Type |
-| `ErrPayloadTooLarge` | Request payload exceeds the allowed size | 413 Payload Too Large |
-| `ErrTooManyRequests` | Too many requests (request throttling, upstream API throttling propagation, etc.) | 429 Too Many Requests |
-| `ErrCanceled` | Client cancelled / disconnected the request | 499 Client Closed Request |
-| `ErrInternal` | Unexpected internal error | 500 Internal Server Error |
-| `ErrUnimplemented` | Not implemented / unsupported feature | 501 Not Implemented |
-| `ErrUnavailable` | Temporary unavailability (external dependency failure, etc.) | 503 Service Unavailable |
+| `ErrInvalidArgument` | 不正な引数（構文的には正しいが意味が不正） | 400 Bad Request |
+| `ErrUnauthenticated` | 認証失敗（未ログインなど） | 401 Unauthorized |
+| `ErrPermissionDenied` | 権限不足 | 403 Forbidden |
+| `ErrNotFound` | 対象が存在しない | 404 Not Found |
+| `ErrConflict` | 競合（ユニーク制約違反・同時更新衝突など） | 409 Conflict |
+| `ErrValidation` | ドメイン/ユースケースの検証失敗 | 422 Unprocessable Entity |
+| `ErrUnsupportedMediaType` | サポートされていない Content-Type / メディア形式 | 415 Unsupported Media Type |
+| `ErrPayloadTooLarge` | リクエストペイロードが許容サイズを超過 | 413 Payload Too Large |
+| `ErrTooManyRequests` | リクエスト過多（流量制限・外部 API のスロットリング応答の伝播など） | 429 Too Many Requests |
+| `ErrCanceled` | クライアントがリクエストをキャンセル/切断 | 499 Client Closed Request |
+| `ErrInternal` | 想定外の内部エラー | 500 Internal Server Error |
+| `ErrUnimplemented` | 未実装 / 非サポート機能 | 501 Not Implemented |
+| `ErrUnavailable` | 一時的な利用不可（外部依存障害など） | 503 Service Unavailable |
 
-## Classification Helper (`IsAppError`)
+## 分類ヘルパー（`IsAppError`）
 
-`IsAppError(err error) bool` reports whether `err` matches any of the HTTP-taxonomy sentinels listed in the mapping table above.
+`IsAppError(err error) bool` は、`err` が上記の対応表に載る HTTP taxonomy センチネルのいずれかに該当するかを返します。
 
-- Matching uses `xerrors.Is`, so wrapped errors (`xerrors.Wrap(apperror.ErrConflict, ...)`) are detected as well.
-- The worker classification sentinels (`ErrRetryable` / `ErrPermanent` / `ErrFatal`, see below) are intentionally **not** covered by `IsAppError`.
-- `nil` returns `false`.
+- 判定には `xerrors.Is` を使うため、ラップされたエラー（`xerrors.Wrap(apperror.ErrConflict, ...)`）も検出されます。
+- worker 分類センチネル（`ErrRetryable` / `ErrPermanent` / `ErrFatal`、後述）は意図的に `IsAppError` の対象外です。
+- `nil` は `false` を返します。
 
 ```go
-// True: sentinel itself or an error wrapping it
+// true: センチネルそのもの、またはそれをラップしたエラー
 apperror.IsAppError(apperror.ErrNotFound)                        // true
 apperror.IsAppError(xerrors.Wrap(apperror.ErrConflict, "dup"))   // true
 
-// False: non-app error, nil, or a worker sentinel
+// false: app error でない / nil / worker センチネル
 apperror.IsAppError(xerrors.New("generic"))                      // false
 apperror.IsAppError(nil)                                         // false
 apperror.IsAppError(apperror.ErrRetryable)                       // false
 ```
 
-## Worker Classification Sentinels
+## worker 分類センチネル
 
-Separately from the HTTP taxonomy above, the package defines three sentinels used by the message-processing worker `engine` to classify the errors returned by a `Handler` and change its behavior accordingly.
+上記の HTTP taxonomy とは別に、メッセージ処理 worker の `engine` が `Handler` の返すエラーを分類して挙動を変えるために使用する3つのセンチネルを定義しています。
 
-| Sentinel | Meaning | engine behavior |
-| -------- | ------- | --------------- |
-| `ErrRetryable` | Transient failure | Nack and redeliver |
-| `ErrPermanent` | Permanent failure | Move to `FailureHandler`, then Ack |
-| `ErrFatal` | Process cannot continue | Drain and stop the engine |
+| センチネル | 意味 | engine の挙動 |
+| ---------- | ---- | ------------- |
+| `ErrRetryable` | 一時障害 | Nack で再配送 |
+| `ErrPermanent` | 永久失敗 | `FailureHandler` へ退避してから Ack |
+| `ErrFatal` | プロセス継続不能 | drain して engine を停止 |
 
-These are **not** part of the HTTP error taxonomy: they have no HTTP status mapping and are excluded from `IsAppError`.
+これらは HTTP エラー taxonomy には **含まれません**。HTTP ステータス対応を持たず、`IsAppError` の対象外です。
 
-## Test Strategy
+## テスト戦略
 
-This package defines sentinels and the metadata carried alongside them; it performs no I/O and knows nothing about HTTP. Tests are pure unit tests with no mocks — the subjects are the sentinel set, `Meta`, and the wrapping helpers.
+本パッケージはセンチネルとそれに付随するメタデータを定義するのみで、I/O を行わず HTTP を知らない。テストはモックを使わない純粋な単体テストで、対象はセンチネル集合・`Meta`・ラップ用ヘルパである。
 
-- **Sentinel identity survives wrapping** — assert with `errors.Is` after the error has passed through `WithMeta` / `WithDetails` and an outer `%w` wrap. Comparing error strings would pass even when the sentinel is lost, which is the failure this layer exists to prevent.
-- **Mapping completeness** — every sentinel has an entry in the mapping table, verified mechanically rather than by eye (`TestAppErrorsCompleteness`). A sentinel added without an entry must fail the build; this is the one test that must be extended whenever the taxonomy grows.
-- **`Meta` derivation is non-destructive** — `Meta.WithMessage` returns a derived `Meta` and leaves the receiver untouched. Assert the original after deriving, not just the derived value. (`WithDetails` is a different shape — it attaches a freshly built `Meta` to an *error*, so what it must preserve is the wrapped error's sentinel classification, covered by the first bullet.)
-- **Unwrap chain and formatting** — `MetaError` exposes the wrapped error via `Unwrap` and renders the documented form under `%v` / `%+v`. Assert the chain with `errors.Is` / `errors.As`; assert formatting only where the format itself is the contract.
-- **Classification boundary** — `IsAppError` accepts the HTTP taxonomy and rejects what is deliberately outside it (the worker sentinels `ErrRetryable` / `ErrPermanent` / `ErrFatal`). Assert both sides; the rejection is what keeps worker failures from being mapped to an HTTP status.
+- **ラップを跨いでセンチネルの同一性が保たれること** — `WithMeta` / `WithDetails` を通し、さらに外側で `%w` ラップした後に `errors.Is` で検証する。エラー文字列の比較ではセンチネルが失われても通ってしまい、それこそが本層の防ごうとしている失敗である。
+- **マッピングの網羅性** — 全センチネルがマッピング表に登録されていることを目視でなく機械的に検証する（`TestAppErrorsCompleteness`）。表に無いセンチネルを追加したらビルドが落ちること。taxonomy が増えるたびに拡張が要る唯一のテストがこれ。
+- **`Meta` の派生が非破壊であること** — `Meta.WithMessage` は派生した `Meta` を返し、レシーバを変更しない。派生後の値だけでなく元の値も検証する。（`WithDetails` は形が異なり、新規に構築した `Meta` を **エラー** へ付与する関数である。保たれるべきはラップ元のセンチネル分類であり、それは 1 つ目の箇条書きが担当する。）
+- **Unwrap 連鎖とフォーマット** — `MetaError` は `Unwrap` でラップ元を公開し、`%v` / `%+v` で文書化された形へ整形する。連鎖は `errors.Is` / `errors.As` で検証し、整形自体が契約である箇所に限りフォーマットを検証する。
+- **分類の境界** — `IsAppError` は HTTP taxonomy を受理し、意図的に対象外としたもの（worker センチネル `ErrRetryable` / `ErrPermanent` / `ErrFatal`）を拒否する。両側を検証すること。この拒否が worker の失敗を HTTP ステータスへ写してしまうのを防いでいる。
 
-HTTP status mapping is **not** tested here — it belongs to the controller layer's error handler.
+HTTP ステータスへのマッピングはここでは **検証しない** —— controller 層のエラーハンドラの担当である。

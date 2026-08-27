@@ -5,79 +5,58 @@ deciders: [maintainers]
 tags: [docs, deploy]
 ---
 
-# ADR-0103: Publish static docs/ via GitHub Pages (released on production push)
+# ADR-0103: docs/ の静的コンテンツを GitHub Pages で公開（production プッシュ時にリリース）
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-The repository maintains a `docs/` directory as the canonical source for architecture
-documentation, design decisions, API references, and guides (see ADR-0011). This content
-is useful to contributors and readers when browsable in a rendered form, not just as raw
-Markdown in the repository.
+このリポジトリは `docs/` ディレクトリをアーキテクチャドキュメント・設計上の意思決定・API リファレンス・ガイドの正典として管理している（ADR-0011 参照）。このコンテンツは、生の Markdown としてリポジトリで閲覧するだけでなく、レンダリングされた形式でブラウズできると、コントリビューターや読み手にとって価値が高い。
 
-A hosting solution is needed that requires no additional infrastructure, aligns with the
-existing GitHub-hosted workflow, and publishes automatically when documentation changes
-land in production.
+追加インフラを必要とせず、既存の GitHub ホスト型ワークフローと整合し、ドキュメントの変更が production に反映されたときに自動公開されるホスティング手段が必要である。
 
-## Decision
+## 決定
 
-Publish the contents of `docs/` as a static site via GitHub Pages on every push to the
-`production` branch that touches `docs/**` or the workflow file itself
-(`.github/workflows/deploy-docs.yaml`).
+`docs/` 以下または ワークフロー定義ファイル（`.github/workflows/deploy-docs.yaml`）自体に変更があった `production` ブランチへのプッシュのたびに、`docs/` の内容を GitHub Pages の静的サイトとして公開する。
 
-The workflow:
+ワークフローは次のとおり:
 
-1. **build** job: checks out the repository and uploads the `docs/` directory as a GitHub
-   Pages artifact using `actions/upload-pages-artifact`.
-2. **deploy** job: deploys the uploaded artifact to GitHub Pages using
-   `actions/deploy-pages`, writing the resulting URL to the `github-pages` environment.
+1. **build** ジョブ: リポジトリをチェックアウトし、`actions/upload-pages-artifact` を使って `docs/` ディレクトリを GitHub Pages アーティファクトとしてアップロードする。
+2. **deploy** ジョブ: `actions/deploy-pages` を使ってアップロードしたアーティファクトを GitHub Pages にデプロイし、生成された URL を `github-pages` 環境に書き込む。
 
-The workflow is triggered only on `production` pushes to paths under `docs/` or the
-workflow definition itself. Non-documentation pushes to `production` do not trigger a Pages
-deploy. The `concurrency` group `"pages"` prevents concurrent deploys; in-progress deploys
-are not cancelled (`cancel-in-progress: false`) to avoid partial publishes.
+ワークフローは `docs/` 以下またはワークフロー定義自体のパスに触れる `production` プッシュ時にのみトリガーされる。ドキュメントに関係しない `production` へのプッシュでは Pages のデプロイは起動しない。`concurrency` グループ `"pages"` によって同時デプロイを防ぐ。進行中のデプロイはキャンセルしない（`cancel-in-progress: false`）ことで、部分的な公開を回避する。
 
-Required permissions: `contents: read`, `pages: write`, `id-token: write`.
+必要な権限: `contents: read`、`pages: write`、`id-token: write`。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Documentation is browsable at a stable URL without any external hosting infrastructure.
-- The deployment pipeline is minimal (two workflow steps) and entirely within GitHub's
-  hosted runner ecosystem.
-- Path filtering (`docs/**`) ensures documentation deploys are not triggered by unrelated
-  code changes, keeping the Pages environment stable.
-- Non-cancellable concurrent deploys (`cancel-in-progress: false`) prevent a partial
-  publication from leaving the Pages site in a broken state.
+- 外部ホスティングインフラを一切持たず、安定した URL でドキュメントをブラウズできる。
+- デプロイパイプラインは 2 ステップと最小限であり、GitHub のホスト型ランナーエコシステム内で完結する。
+- パスフィルタリング（`docs/**`）により、ドキュメントに無関係なコード変更によって Pages デプロイが起動されず、Pages 環境を安定に保てる。
+- 同時デプロイのキャンセル無効化（`cancel-in-progress: false`）により、部分的な公開によって Pages サイトが破損した状態になることを防ぐ。
 
-### Negative Consequences
+### ネガティブな影響
 
-- GitHub Pages is a GitHub-specific feature; migrating to another hosting platform
-  (e.g., Netlify, Cloudflare Pages) requires replacing the workflow.
-- The published site reflects only the `production` branch; documentation on feature
-  branches is not automatically previewed.
-- Only the raw `docs/` directory is served; if a static-site generator is introduced in
-  the future, the workflow must be extended to include a build step.
+- GitHub Pages は GitHub 固有の機能であり、別のホスティングプラットフォーム（例: Netlify、Cloudflare Pages）に移行する場合はワークフローを置き換える必要がある。
+- 公開サイトは `production` ブランチの内容のみを反映する。フィーチャーブランチのドキュメントは自動的にプレビューされない。
+- 生の `docs/` ディレクトリのみが配信される。将来 静的サイトジェネレーターを導入する場合は、ワークフローにビルドステップを追加しなければならない。
 
-## Alternatives Considered
+## 検討した代替案
 
-### External static hosting (Netlify, Cloudflare Pages, Vercel)
+### 外部静的ホスティング（Netlify、Cloudflare Pages、Vercel）
 
-Provides branch previews and richer build pipelines, but introduces an external service
-dependency. Inconsistent with the vendor-neutral posture described in
-[ADR-0001](0001-avoid-lock-in.md) when a built-in GitHub feature meets the requirement.
+ブランチプレビューや高機能なビルドパイプラインを提供するが、外部サービスへの依存を導入する。組み込みの GitHub 機能で要件を満たせるときに外部ベンダーに依存することは、[ADR-0001](0001-avoid-lock-in.md) のベンダー中立方針と矛盾するため却下。
 
-### Manual publishing
+### 手動公開
 
-Eliminates automation overhead but risks stale published docs and requires human
-coordination for every documentation change. Rejected.
+自動化のオーバーヘッドをなくせるが、ドキュメントが古くなるリスクがあり、変更のたびに人間が調整しなければならない。却下。
 
-## Notes
+## 補足
 
-- `.github/workflows/deploy-docs.yaml` is the complete workflow definition.
-- The canonical-source documentation principle is ADR-0011.
-- Source: `.github/workflows/deploy-docs.yaml`.
+- `.github/workflows/deploy-docs.yaml` がワークフロー定義の全体である。
+- 正典ソース原則は ADR-0011 に定められている。
+- ソース: `.github/workflows/deploy-docs.yaml`。

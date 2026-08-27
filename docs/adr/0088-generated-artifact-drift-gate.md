@@ -5,113 +5,99 @@ deciders: [maintainers]
 tags: [ci, codegen]
 ---
 
-# ADR-0088: Generated-artifact drift gate + release-branch-centralized auto-generation bot
+# ADR-0088: 生成成果物ドリフトゲートとリリースブランチ集約型自動生成ボット
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-The project generates several categories of artifacts from source:
+プロジェクトはソースから複数カテゴリの成果物を生成する:
 
-- **Go code**: OpenAPI server stubs, mocks, and embedded validation spec
-  (`make gen-go-code`).
-- **Database artifacts**: sqlc type-safe query code, schema dump, merged DML
-  (`make gen-query` and related targets).
-- **Documentation**: OpenAPI HTML docs, ER diagram, test coverage HTML, godoc, portal
-  docs bundle.
+- **Go コード**: OpenAPI サーバースタブ、モック、埋め込み検証スペック（`make gen-go-code`）。
+- **データベース成果物**: sqlc 型安全クエリコード、スキーマダンプ、マージ済み DML
+  （`make gen-query` および関連ターゲット）。
+- **ドキュメント**: OpenAPI HTML ドキュメント、ER ダイアグラム、テストカバレッジ HTML、godoc、ポータルドキュメントバンドル。
 
-When a developer modifies a source (`.go`, `.sql`, OpenAPI definition) and forgets to
-regenerate, the committed generated files lag behind the source. Tests may still pass
-because they test the stale generated code, while runtime or API consumers see the
-un-regenerated version. Detecting this drift requires re-running the generators in CI
-and checking for uncommitted differences.
+開発者がソース（`.go`、`.sql`、OpenAPI 定義）を変更して再生成を忘れると、コミットされた生成ファイルがソースより
+遅れる。テストはまだパスするかもしれない——陳腐化した生成コードをテストしているため——一方でランタイムや
+API コンシューマーは未再生成のバージョンを見る。このドリフトを検出するには、CI でジェネレータを再実行して
+コミットされていない差分を確認する必要がある。
 
-At the same time, running doc regeneration on every PR would require a full database
-setup, portal build, and parallel generation pipeline — too heavy for routine PR
-verification. Documentation generation also has a natural cadence tied to releases.
+同時に、すべての PR でドキュメント再生成を実行すると、完全なデータベースセットアップ、ポータルビルド、
+並列生成パイプラインが必要になる——通常の PR 検証には重すぎる。ドキュメント生成にはリリースに結びついた
+自然なケーデンスもある。
 
-## Decision
+## 決定
 
-Split the generated-artifact CI story into two complementary mechanisms:
+生成成果物の CI ストーリーを 2 つの補完的なメカニズムに分割する:
 
-### 1. PR-time drift gate (two workflows)
+### 1. PR 時ドリフトゲート（2 つのワークフロー）
 
-**`gen-go-artifacts-check.yaml`**: On every PR that touches `.go`,
-`go.mod`, `go.sum`, or makefile files, run `make gen-go-code`, then `git add -A` and
-inspect the diff. If generated files changed:
+**`gen-go-artifacts-check.yaml`**: `.go`、`go.mod`、`go.sum`、または makefile ファイルに
+触れるすべての PR で、`make gen-go-code` を実行し、次に `git add -A` を行って差分を検査する。
+生成ファイルが変更された場合:
 
-- Determine whether the PR's source files (`.go`, excluding `*.gen.go`, `*.sql.go`,
-  `*_mock.go`) were themselves modified. If yes, the developer forgot to commit the
-  regenerated output. If no, the drift is in the generator itself (e.g. mockgen or
-  oapi-codegen version difference on base).
-- Post an upsert PR comment with the appropriate diagnosis and the list of drifted files.
-- Exit non-zero unconditionally if any diff exists.
+- PR のソースファイル（`.go`、`*.gen.go`・`*.sql.go`・`*_mock.go` を除く）が変更されたかどうかを判断する。
+  変更があれば、開発者が再生成された出力のコミットを忘れた。変更がなければ、ドリフトはジェネレータ自体にある
+  （例: ベース上の mockgen または oapi-codegen のバージョン差異）。
+- 適切な診断とドリフトしたファイルのリストを含む upsert PR コメントを投稿する。
+- 差分が存在する場合は無条件に非ゼロで終了する。
 
-**`gen-db-artifacts-check.yaml`**: Same pattern for database artifacts. Runs the full
-DB generation pipeline (migrate, dump schema, merge DML, regenerate sqlc, format),
-then checks for drift. Distinguishes between SQL source modified in the PR (developer
-forgot to commit) versus generator-side drift (sqlc version difference).
+**`gen-db-artifacts-check.yaml`**: データベース成果物に対する同じパターン。完全な DB 生成パイプライン
+（マイグレーション、スキーマダンプ、DML マージ、sqlc 再生成、フォーマット）を実行し、ドリフトを確認する。
+PR で SQL ソースが変更されたか（開発者がコミットを忘れた）対ジェネレータ側のドリフト（sqlc バージョン差異）を区別する。
 
-Both workflows post a persistent upsert comment on the PR so the diagnosis is visible
-without reading workflow logs.
+両方のワークフローはワークフローログを読まなくても診断が見えるよう PR に永続的な upsert コメントを投稿する。
 
-### 2. Release-branch auto-generation bot (`auto-generate-docs.yaml`)
+### 2. リリースブランチ自動生成ボット（`auto-generate-docs.yaml`）
 
-Triggered on every push to `release/**` branches (not PRs). Runs the full generation
-pipeline — OpenAPI bundle, docs, ER diagram, test coverage report, godoc, portal build
-— and if the result differs from HEAD, opens (or updates) a PR targeting the same
-release branch via `peter-evans/create-pull-request`. The PR is tagged `[skip ci]` on
-its commit message and is safe to auto-merge once CI passes.
+`release/**` ブランチへのすべてのプッシュでトリガーされる（PR ではない）。完全な生成パイプライン——
+OpenAPI バンドル、ドキュメント、ER ダイアグラム、テストカバレッジレポート、godoc、ポータルビルド——を実行し、
+結果が HEAD と異なる場合は `peter-evans/create-pull-request` を通じて同じリリースブランチを対象とする PR を
+開く（または更新する）。PR はそのコミットメッセージに `[skip ci]` がタグ付けされ、CI がパスすれば
+自動マージしても安全である。
 
-This centralises documentation generation to the release branch rather than requiring
-every developer to run the full pipeline locally, while ensuring generated docs are
-always in sync with the released source.
+これによりドキュメント生成がリリースブランチに集約され、すべての開発者がローカルで完全なパイプラインを
+実行する必要がなくなる一方、生成されたドキュメントがリリースされたソースと常に同期していることが保証される。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Generated code drift is caught at PR time with a clear, actionable diagnosis (forgot
-  to regenerate vs. generator version mismatch).
-- Documentation generation burden is removed from individual developers; the bot handles
-  it automatically on release branches.
-- The PR comment pinpoints exactly which files drifted, reducing investigation time.
+- 生成コードのドリフトが PR 時に明確で実行可能な診断（再生成を忘れた vs. ジェネレータバージョンの不一致）で検出される。
+- ドキュメント生成の負担が個々の開発者から取り除かれ、ボットがリリースブランチで自動的に処理する。
+- PR コメントがどのファイルがドリフトしたかを正確に示し、調査時間を削減する。
 
-### Negative Consequences
+### ネガティブな影響
 
-- The DB drift gate requires a real Postgres container and a full sqlc pipeline, making
-  it the heaviest of the PR checks.
-- The auto-generation bot requires `contents: write` and `pull-requests: write`
-  permissions on the release branch, which is a broader scope than read-only CI checks.
-- If the generator itself is broken (e.g. a new sqlc version produces invalid code), the
-  drift gate will fail but the error message may not be obvious.
+- DB ドリフトゲートは実際の Postgres コンテナと完全な sqlc パイプラインを必要とし、PR チェックの中で最も重い。
+- 自動生成ボットはリリースブランチへの `contents: write` と `pull-requests: write` 権限を必要とし、
+  読み取り専用 CI チェックより広いスコープである。
+- ジェネレータ自体が壊れている場合（例: 新しい sqlc バージョンが無効なコードを生成する）、
+  ドリフトゲートは失敗するがエラーメッセージが明確でない可能性がある。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Commit generated artifacts manually as part of every PR
+### すべての PR の一部として手動で生成成果物をコミット
 
-Currently attempted but error-prone: developers forget, and there is no systematic
-feedback until another developer or reviewer notices the stale file.
+現在試みられているが、エラーが起きやすい。開発者が忘れ、別の開発者またはレビュアーが古いファイルに
+気づくまで系統的なフィードバックがない。
 
-### Run full doc generation on every PR
+### すべての PR で完全なドキュメント生成を実行する
 
-Too slow. The portal build, godoc generation, and test coverage pipeline require several
-minutes and a full database. The cost is not justified for every PR when the docs are
-only consumed at release time.
+低速すぎる。ポータルビルド、godoc 生成、テストカバレッジパイプラインには数分と完全なデータベースが必要。
+ドキュメントはリリース時にのみ消費されるため、すべての PR でのコストは正当化されない。
 
-### Store generated artifacts outside the repository (e.g. release assets)
+### 生成成果物をリポジトリ外に保存する（例: リリースアセット）
 
-Possible but breaks IDE tooling and `go build` flows that depend on generated `.go`
-files being present in the tree.
+可能だが、ツリーに生成済み `.go` ファイルが存在することに依存する IDE ツーリングと `go build` フローが壊れる。
 
-## Notes
+## 補足
 
-- Sources: `.github/workflows/gen-go-artifacts-check.yaml`,
-  `.github/workflows/gen-db-artifacts-check.yaml`,
-  `.github/workflows/auto-generate-docs.yaml` (the `Create PR` step).
-- Related: [ADR-0012](0012-openapi-first.md) — the OpenAPI-first contract that drives Go
-  code generation.
-- Related: [ADR-0027](0027-sqlc-type-safe-sql.md) — sqlc, the source of DB artifact
-  generation.
+- ソース: `.github/workflows/gen-go-artifacts-check.yaml`、
+  `.github/workflows/gen-db-artifacts-check.yaml`、
+  `.github/workflows/auto-generate-docs.yaml`（`Create PR` ステップ）。
+- 関連: [ADR-0012](0012-openapi-first.md) — Go コード生成を駆動する OpenAPI ファースト契約。
+- 関連: [ADR-0027](0027-sqlc-type-safe-sql.md) — DB 成果物生成のソースである sqlc。

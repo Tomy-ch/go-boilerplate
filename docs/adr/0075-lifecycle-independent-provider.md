@@ -5,83 +5,82 @@ deciders: [maintainers]
 tags: [observability, di]
 ---
 
-# ADR-0075: Observability providers are lifecycle-independent (ProviderShutdowner)
+# ADR-0075: オブザーバビリティプロバイダーはライフサイクル非依存（ProviderShutdowner）
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-The OTel SDK providers (`TracerProvider`, `MeterProvider`, `LoggerProvider`) each have a
-`Shutdown` method that must be called on graceful exit to flush buffered spans/metrics/logs.
-The natural registration point for this teardown is the DI lifecycle hook.
+OTel SDK プロバイダー（`TracerProvider`・`MeterProvider`・`LoggerProvider`）にはそれぞれ
+グレースフルシャットダウン時にバッファリングされたスパン / メトリクス / ログをフラッシュするために
+呼び出さなければならない `Shutdown` メソッドがある。このシャットダウンの登録場所として
+DI ライフサイクルフックが自然な選択肢となる。
 
-The straightforward approach — having the provider constructors register their own `OnStop`
-hooks — would require `internal/observability` to import `internal/di/lifecycle`. This
-reverses the intended dependency direction: `observability` is a substrate that the DI
-layer wires; it must not depend on DI internals. An import of `di/lifecycle` from
-`observability` would create a circular or layering-violating dependency.
+素朴なアプローチ — プロバイダーコンストラクタが自身の `OnStop` フックを登録する — では、
+`internal/observability` が `internal/di/lifecycle` をインポートする必要が生じる。
+これは意図した依存関係の方向を逆転させる: `observability` は DI レイヤーがワイヤリングする
+基盤であり、DI の内部に依存してはならない。`observability` から `di/lifecycle` への
+インポートは循環または層違反の依存関係を生み出す。
 
-## Decision
+## 決定
 
-Provider constructors (`NewTracerProvider`, `NewMeterProvider`, `NewLoggerProvider`) are
-**lifecycle-agnostic**. Each returns the concrete SDK provider type (e.g.
-`*sdktrace.TracerProvider`, `*sdkmetric.MeterProvider`) so the concrete `Shutdown` method
-is available to the caller, but the constructors do not register any shutdown hook
-themselves.
+プロバイダーコンストラクタ（`NewTracerProvider`・`NewMeterProvider`・`NewLoggerProvider`）は
+**ライフサイクルに依存しない**。各コンストラクタは具体的な SDK プロバイダー型（例:
+`*sdktrace.TracerProvider`・`*sdkmetric.MeterProvider`）を返すため、呼び出し元は具体的な
+`Shutdown` メソッドを利用できるが、コンストラクタ自身はシャットダウンフックを登録しない。
 
-The `ProviderShutdowner` type (in `shutdown.go`) provides an otel-agnostic shutdown handle
-that the DI module composes from the concrete providers. The DI layer
-(`hook.RegisterObservabilityShutdownHooks`, in `internal/di`) owns shutdown registration.
-This keeps `internal/observability` free of any `internal/di/lifecycle` dependency.
+`ProviderShutdowner` 型（`shutdown.go`）は DI モジュールが具体的なプロバイダーから
+組み立てる OTel 非依存のシャットダウンハンドルを提供する。DI レイヤー
+（`internal/di` 内の `hook.RegisterObservabilityShutdownHooks`）がシャットダウン登録を所有する。
+これにより `internal/observability` は `internal/di/lifecycle` への依存を持たない。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- `internal/observability` has no dependency on `internal/di`; the dependency direction
-  remains clean (DI wires observability, never the reverse).
-- The concrete provider types expose `Shutdown` directly to the DI hook without an
-  additional adapter; no wrapper interface is needed in the provider package.
-- Shutdown order is controlled entirely by the DI layer, which can sequence hook
-  registration consistently with other subsystems.
+- `internal/observability` は `internal/di` に依存しない。依存関係の方向が
+  クリーンに保たれる（DI がオブザーバビリティをワイヤリングし、逆はない）。
+- 具体的なプロバイダー型がプロバイダーパッケージに追加のアダプターなしで DI フックに
+  `Shutdown` を直接公開する。
+- シャットダウン順序は DI レイヤーによって完全に制御され、他のサブシステムとのフック
+  登録を一貫して順序付けできる。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Provider construction and shutdown registration are split across two packages
-  (`observability` constructs; `di` registers), so understanding the full lifecycle
-  requires reading both.
-- The concrete provider types are exposed as return values rather than the narrower
-  `trace.TracerProvider` / `metric.MeterProvider` interfaces; callers that only need the
-  interface use the adapter functions `ProvideTracerProvider` / `ProvideMeterProvider`.
+- プロバイダーの構築とシャットダウン登録が 2 つのパッケージに分かれる（`observability` が
+  構築し、`di` が登録する）ため、ライフサイクル全体を理解するには両方を読む必要がある。
+- 具体的なプロバイダー型がより狭い `trace.TracerProvider` / `metric.MeterProvider`
+  インターフェースではなく戻り値として公開される。インターフェースのみが必要な呼び出し元は
+  アダプター関数 `ProvideTracerProvider` / `ProvideMeterProvider` を使用する。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Provider constructors register their own lifecycle hooks
+### プロバイダーコンストラクタが自身のライフサイクルフックを登録する
 
-Rejected: requires `internal/observability` to import `internal/di/lifecycle`, inverting
-the dependency and coupling the observability substrate to the DI framework.
+却下: `internal/observability` が `internal/di/lifecycle` をインポートする必要が生じ、
+依存関係が逆転し、オブザーバビリティ基盤が DI フレームワークに結合する。
 
-### A lifecycle interface injected into provider constructors
+### プロバイダーコンストラクタに注入するライフサイクルインターフェース
 
-Rejected: would thread a DI-framework concern into the observability API signature,
-coupling the constructor to the lifecycle abstraction while solving the import-cycle only
-partially.
+却下: DI フレームワークの関心事をオブザーバビリティの API シグネチャに埋め込むことになり、
+コンストラクタをライフサイクル抽象に結合させる一方で、インポートサイクルは部分的にしか
+解消されない。
 
-### Rely on process exit (no explicit Shutdown)
+### プロセス終了に依存する（明示的な Shutdown なし）
 
-Rejected: without `Shutdown`, buffered spans and metrics are silently dropped on graceful
-exit, producing incomplete traces and metric gaps.
+却下: `Shutdown` なしでは、バッファリングされたスパンとメトリクスがグレースフルシャットダウン時に
+サイレントにドロップされ、不完全なトレースとメトリクスのギャップが生じる。
 
-## Notes
+## 補足
 
-- Design invariant (source): `docs/design/observability.md` §1 "Role theory", line 30:
-  "the providers are lifecycle-agnostic — they return the concrete SDK providers (which
-  expose `Shutdown`) and let the DI hook own shutdown registration, so `observability`
-  never imports `di/lifecycle`."
-- Implementation: `internal/observability/shutdown.go` (`ProviderShutdowner`),
-  `internal/observability/provider.go` (`NewTracerProvider`, `NewMeterProvider`,
-  `ProvideTracerProvider`, `ProvideMeterProvider`),
-  `internal/observability/log_provider.go` (`NewLoggerProvider`).
-- Parent: [ADR-0071](0071-config-driven-observability-gating.md).
+- 設計上の不変条件（出典）: `docs/design/observability.md` §1「Role theory」、30 行目:
+  「プロバイダーはライフサイクルに依存しない — 具体的な SDK プロバイダー（`Shutdown` を
+  公開する）を返し、DI フックにシャットダウン登録を委ねることで、`observability` が
+  `di/lifecycle` をインポートしない」。
+- 実装: `internal/observability/shutdown.go`（`ProviderShutdowner`）、
+  `internal/observability/provider.go`（`NewTracerProvider`・`NewMeterProvider`・
+  `ProvideTracerProvider`・`ProvideMeterProvider`）、
+  `internal/observability/log_provider.go`（`NewLoggerProvider`）。
+- 親: [ADR-0071](0071-config-driven-observability-gating.md)。

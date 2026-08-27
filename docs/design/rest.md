@@ -1,149 +1,149 @@
-# REST Subsystem Design Reference
+# REST サブシステム設計リファレンス
 
-This document consolidates the REST (HTTP) scaffold's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. For the handler-authoring detail see the [handler README](../../internal/controller/handler/README.md); the worker and job are its async / CLI siblings — see [worker.md](worker.md) and [job.md](job.md).
+本書は REST（HTTP）scaffold の **役割論・状態遷移・実装箇所・integrator が書く箇所・用語** を、実装を精査して 1 枚にまとめた参照資料です。handler 実装の詳細は [handler README（日本語）](../../internal/controller/handler/README.md)、非同期 / CLI の兄弟は [worker.md](worker.md)・[job.md](job.md) を参照。
 
 ---
 
-## 1. Role theory (what, and what for)
+## 1. 役割論（なにが・なんのために）
 
-REST is the **"request-in driving adapter," the synchronous HTTP entry point into the Usecase layer**, and the original peer that the worker ("message-in") and job ("command-in") were modelled after. The Echo server is the transport; the handler is a thin template that adapts HTTP I/O to a usecase call. **All business logic stays in the usecase layer** — the handler binds, calls one usecase method, and shapes the response.
+REST は **「request-in driving adapter」、Usecase 層への同期 HTTP 入口**であり、worker（message-in）・job（command-in）が手本とした元祖の同格。Echo サーバが transport、handler は HTTP I/O を usecase 呼び出しへ橋渡しする薄いテンプレート。**業務ロジックはすべて usecase 層に留まる**——handler は bind し、usecase を 1 メソッド呼び、応答を整形するだけ。
 
-Responsibility split (who owns what):
+責務の分担（誰が何を持つか）:
 
-| Component | Layer | Responsibility | Does NOT hold |
+| 構成要素 | 層 | 責務 | 持たないもの |
 | --- | --- | --- | --- |
-| **HTTP server** (`server.NewAppServer` / `server.NewHTTPServer`) | controller | Echo instance + the `http.Server` that serves it: read·write·idle timeouts / route table via generated `RegisterHandlers` | business logic, middleware policy |
-| **middleware chain** (`httpstack/*`) | controller | cross-cutting concerns in a fixed order: uri(pre) → timeout(pre) → bodyLimit(pre) → requestID → observability → recovery → cors → security → openapi → forcejson → httpredmetrics → logging → cookie | business logic |
-| **handler** (`controller/handler/**`) | controller | parse typed request (`StrictHandler`) → call **one** usecase method → convert DTO → `gen` response | business logic, persistence, tx |
-| **error handler** (`httpstack/errorhandler`) | controller | map `apperror` / Echo / OpenAPI errors → HTTP status + code, unified error body | business policy |
-| **usecase** | usecase | **all** business logic, transaction boundaries, domain orchestration, error policy | HTTP, framework, presentation |
-| **DI server + hook** (`di/server`) | di | compose Echo + ordered middleware (by priority) + lifecycle (listen / graceful shutdown) | business logic |
-| **ServerConfig** | config | host / port / read-header·read·write·idle timeouts, per-request deadline (`SERVER_REQUEST_TIMEOUT`), body-size limit (`SERVER_BODY_LIMIT_MB`) | business logic |
+| **HTTP サーバ**（`server.NewAppServer` / `server.NewHTTPServer`） | controller | Echo インスタンスとそれを配信する `http.Server`：read·write·idle タイムアウト / 生成 `RegisterHandlers` によるルート表 | 業務ロジック・middleware 方針 |
+| **middleware チェーン**（`httpstack/*`） | controller | 固定順の横断関心事：uri(pre) → timeout(pre) → bodyLimit(pre) → requestID → observability → recovery → cors → security → openapi → forcejson → httpredmetrics → logging → cookie | 業務ロジック |
+| **handler**（`controller/handler/**`） | controller | 型付きリクエスト解釈（`StrictHandler`）→ usecase を**1 メソッド**呼ぶ → DTO → `gen` 応答へ変換 | 業務ロジック・永続化・tx |
+| **error handler**（`httpstack/errorhandler`） | controller | `apperror` / Echo / OpenAPI エラー → HTTP ステータス＋コード、統一エラーボディ | 業務方針 |
+| **usecase** | usecase | **すべての**業務ロジック・トランザクション境界・ドメインオーケストレーション・エラー方針 | HTTP・フレームワーク・表現 |
+| **DI server ＋ hook**（`di/server`） | di | Echo ＋ 順序付き middleware（priority）＋ lifecycle（listen / graceful shutdown）の合成 | 業務ロジック |
+| **ServerConfig** | config | host / port / read-header·read·write·idle タイムアウト、リクエスト期限（`SERVER_REQUEST_TIMEOUT`）、ボディサイズ上限（`SERVER_BODY_LIMIT_MB`） | 業務ロジック |
 
-Design principles (invariants):
+設計原則（不変）:
 
-- **Contract-first.** Routes, request, and response types are generated from OpenAPI (`make gen-api`); handlers implement the generated `StrictServerInterface`. Handlers and usecases must not precede the contract.
-- **Thin handler.** A handler is a template (bind → usecase → present); it holds no business logic and **does not import infrastructure** (depguard `maintain_a_sound_controller`).
-- **Ordered middleware by priority.** Each middleware declares an integer priority in its `*_di.go`; the extension engine sorts and applies `Pre`/`Use` deterministically, so the chain order is data, not call-site ordering.
+- **Contract-first。** ルート・リクエスト・レスポンス型は OpenAPI から生成（`make gen-api`）し、handler は生成された `StrictServerInterface` を実装する。handler・usecase は契約に先行してはならない。
+- **薄い handler。** handler はテンプレート（bind → usecase → present）で、業務ロジックを持たず **infrastructure を import しない**（depguard `maintain_a_sound_controller`）。
+- **priority による順序付き middleware。** 各 middleware は `*_di.go` に整数 priority を宣言し、extension エンジンが `Pre`/`Use` を決定的にソート・適用する。チェーン順は呼び出し位置ではなくデータ。
 
 ---
 
-## 2. State transitions
+## 2. 状態遷移図
 
-### 2.1 server lifecycle (`cli/server.RunServer` + fx + signal)
+### 2.1 サーバライフサイクル（`cli/server.RunServer` ＋ fx ＋ signal）
 
 ```mermaid
 stateDiagram-v2
     [*] --> Building: NewApplicationCore() → fx.New (config→logging→o11y→db→infra→usecase→controller→server)
-    Building --> Wired: BindHandler×N (RegisterHandlers) + ApplyExtends (sort & apply middleware) + RegisterHTTPServerHooks
+    Building --> Wired: BindHandler×N (RegisterHandlers) ＋ ApplyExtends (middleware ソート＆適用) ＋ RegisterHTTPServerHooks
     Wired --> Listening: fx OnStart → net listen port → go srv.Serve(ln)
-    Listening --> Serving: request → middleware chain → handler → response (resident)
-    Serving --> Listening: response sent
-    Listening --> Draining: SIGINT/SIGTERM → ctx.Done() in RunServer
-    Draining --> Stopped: srv.Shutdown(stopCtx) drains in-flight within shutdownTimeout
-    Stopped --> [*]: fx OnStop done → process exits
+    Listening --> Serving: request → middleware チェーン → handler → 応答（常駐）
+    Serving --> Listening: 応答送出
+    Listening --> Draining: SIGINT/SIGTERM → RunServer の ctx.Done()
+    Draining --> Stopped: srv.Shutdown(stopCtx) が in-flight を shutdownTimeout 内で drain
+    Stopped --> [*]: fx OnStop 完了 → プロセス終了
 
     note right of Draining
-      stopCtx is a fresh context timed from shutdown start (not consumed by uptime).
+      stopCtx は停止開始時点から計る新規 context（稼働時間に消費されない）。
     end note
     note right of Building
-      a metrics server is started in non-production mode only (ResolveMetricsStop).
+      メトリクスサーバは非本番モードでのみ起動（ResolveMetricsStop）。
     end note
 ```
 
-### 2.2 per-request flow (middleware order → handler → usecase → present)
+### 2.2 リクエスト 1 件の流れ（middleware 順 → handler → usecase → present）
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Pre: e.Pre 1 — uri (path normalization)
-    Pre --> TimeoutPre: e.Pre 2 — timeout (SERVER_REQUEST_TIMEOUT)
-    TimeoutPre --> BodyLimitPre: e.Pre 3 — bodyLimit (SERVER_BODY_LIMIT_MB)
-    BodyLimitPre --> RequestID: 1 requestID (X-Request-ID)
-    RequestID --> Observability: 2 observability (OTel span, traceparent)
-    Observability --> Recovery: 3 recovery (defer/recover → 500)
-    Recovery --> CORS: 4 cors (origin / preflight)
-    CORS --> Security: 5 security (HSTS, X-Frame-Options, …)
-    Security --> OpenAPI: 6 openapi (request schema + auth validation)
-    OpenAPI --> ForceJSON: 7 forcejson (Content-Type)
-    ForceJSON --> HTTPREDMetrics: 8 httpredmetrics (RED metrics)
-    HTTPREDMetrics --> Logging: 9 logging (start time + deferred response log)
-    Logging --> Cookie: 10 cookie (Secure/SameSite enforcement)
+    [*] --> Pre: e.Pre 1 — uri（パス正規化）
+    Pre --> TimeoutPre: e.Pre 2 — timeout（SERVER_REQUEST_TIMEOUT）
+    TimeoutPre --> BodyLimitPre: e.Pre 3 — bodyLimit（SERVER_BODY_LIMIT_MB）
+    BodyLimitPre --> RequestID: 1 requestID（X-Request-ID）
+    RequestID --> Observability: 2 observability（OTel span, traceparent）
+    Observability --> Recovery: 3 recovery（defer/recover → 500）
+    Recovery --> CORS: 4 cors（origin / preflight）
+    CORS --> Security: 5 security（HSTS, X-Frame-Options, …）
+    Security --> OpenAPI: 6 openapi（リクエストスキーマ＋認証検証）
+    OpenAPI --> ForceJSON: 7 forcejson（Content-Type）
+    ForceJSON --> HTTPREDMetrics: 8 httpredmetrics（RED メトリクス）
+    HTTPREDMetrics --> Logging: 9 logging（開始時刻＋遅延応答ログ）
+    Logging --> Cookie: 10 cookie（Secure/SameSite 強制）
     Cookie --> Handler: StrictHandler.<Op>
-    Handler --> Usecase: parse typed request → s.uc.<Method>(ctx, …)
+    Handler --> Usecase: 型付きリクエスト解釈 → s.uc.<Method>(ctx, …)
     Usecase --> Present: DTO → gen.<Op><Status>JSONResponse
     Present --> Respond: VisitResponse → c.JSON(status, body)
     Respond --> [*]
 
     note right of OpenAPI
-      validation/auth failure short-circuits here → error handler (400/401).
+      検証/認証失敗はここで短絡 → error handler（400/401）。
     end note
     note right of Handler
-      adopting handlers add StrictMiddleware (e.g. idempotency) in NewStrictHandler.
+      採用 handler は NewStrictHandler に StrictMiddleware（例: 冪等性）を差す。
     end note
 ```
 
-### 2.3 error path (`apperror` → HTTP)
+### 2.3 エラー経路（`apperror` → HTTP）
 
 ```mermaid
 stateDiagram-v2
-    [*] --> HandlerErr: handler / usecase returns error (or middleware short-circuits)
-    HandlerErr --> EchoCore: error propagates to Echo core
-    EchoCore --> Recovered: recovery already logged a panic? → skip re-log
-    EchoCore --> Normalize: else → HTTPErrorHandler
+    [*] --> HandlerErr: handler / usecase が error 返却（または middleware が短絡）
+    HandlerErr --> EchoCore: error が Echo コアへ伝播
+    EchoCore --> Recovered: recovery が既に panic を記録済み? → 再ログ省略
+    EchoCore --> Normalize: それ以外 → HTTPErrorHandler
     Normalize --> MapAppError: apperror → status+code (lookupErrorMetaByAppError)
-    Normalize --> MapEcho: status-carrying error (echo / openapi validation) → normalizeEchoHTTPError
-    MapAppError --> Write: write HTTPErrorResponse (JSON) + headers
+    Normalize --> MapEcho: ステータスを持つエラー（echo / openapi 検証）→ normalizeEchoHTTPError
+    MapAppError --> Write: HTTPErrorResponse（JSON）＋ヘッダを書く
     MapEcho --> Write
-    Write --> LogIf: log if status ∈ ObservabilityConfig target set
+    Write --> LogIf: status ∈ ObservabilityConfig 対象集合 ならログ
     Recovered --> Write
     LogIf --> [*]
 
     note right of Normalize
-      the deferred logging middleware still records the final status + latency.
+      遅延 logging middleware が最終 status ＋ latency を記録する。
     end note
 ```
 
 ---
 
-## 3. Implementation locations (where in the architecture it lives and acts)
+## 3. 実装箇所（このアーキテクチャ上のどこに・どう作用するか）
 
-### 3.1 Package placement and dependency direction
+### 3.1 パッケージ配置と依存方向
 
 ```mermaid
 flowchart TD
     subgraph cmdL["cmd (main)"]
-        CMD["cmd/serve.go<br/>newServeCommand / config + signals + RunServer"]
+        CMD["cmd/serve.go<br/>newServeCommand / config ＋ signals ＋ RunServer"]
     end
     subgraph cliL["internal/cli/server"]
-        CLI["server.go: RunServer / ResolveMetricsStop<br/>start → wait signal → graceful stop"]
+        CLI["server.go: RunServer / ResolveMetricsStop<br/>start → signal 待ち → graceful stop"]
     end
     subgraph diL["internal/di"]
         DIA["server.go: NewApplicationCore / NewApplicationServer (fx.App)"]
         DISRV["server/server.go: Module / MiddlewareModule / HookModule"]
-        DIEXT["server/extension: ApplyExtends (priority sort, Pre/Use/SrvCfg)"]
-        DIHOOK["server/hook: RegisterHTTPServerHooks (listen + shutdown)"]
+        DIEXT["server/extension: ApplyExtends (priority ソート, Pre/Use/SrvCfg)"]
+        DIHOOK["server/hook: RegisterHTTPServerHooks (listen ＋ shutdown)"]
         DICTRL["module/controller.go: ControllerModule (fx.Invoke BindHandler×N)"]
     end
     subgraph srvL["internal/controller/server"]
-        APPSRV["app_server.go: NewAppServer (echo) / NewHTTPServer (http.Server + timeouts)"]
-        ECHOH["echo.go: request/response extraction helpers"]
+        APPSRV["app_server.go: NewAppServer (echo) / NewHTTPServer (http.Server ＋ timeouts)"]
+        ECHOH["echo.go: request/response 抽出ヘルパ"]
     end
-    subgraph mwL["internal/controller/httpstack  = middleware + errors"]
+    subgraph mwL["internal/controller/httpstack  ＝ middleware ＋ errors"]
         MW["requestid / observability / recovery / cors / security / oapi / logging / cookie / idempotency"]
         EH["errorhandler: HTTPErrorHandler, apperror→status"]
     end
     subgraph hdlL["internal/controller/handler/**"]
-        HDL["<path>/*_handler.go: BindHandler + server{} + one method per operationId"]
-        GEN["<path>/gen: server.gen.go (ServerInterface, RegisterHandlers, NewStrictHandler) + type.gen.go"]
+        HDL["<path>/*_handler.go: BindHandler ＋ server{} ＋ operationId ごと 1 メソッド"]
+        GEN["<path>/gen: server.gen.go (ServerInterface, RegisterHandlers, NewStrictHandler) ＋ type.gen.go"]
     end
     subgraph ucL["internal/usecase/**"]
-        UC["Usecase interfaces + Application Services (business logic)"]
+        UC["Usecase interface ＋ Application Service（業務ロジック）"]
     end
-    subgraph crossL["cross-cutting"]
-        APPERR["apperror: error taxonomy"]
+    subgraph crossL["横断"]
+        APPERR["apperror: エラー分類"]
         CFG["config: ServerConfig / SecurityConfig / ApplicationConfig"]
         OTEL["observability: TracerFactory"]
-        LOG["logging: HTTP request/response fields"]
+        LOG["logging: HTTP request/response フィールド"]
     end
 
     CMD --> CLI
@@ -168,83 +168,83 @@ flowchart TD
     class CMD,CLI,DIA,DISRV,DIEXT,DIHOOK,DICTRL,APPSRV,ECHOH,MW,EH,HDL,GEN,UC,APPERR,CFG,OTEL,LOG done;
 ```
 
-> Dependencies point inward (`controller→usecase`). The handler depends on its generated `gen` package and a usecase interface only; it never imports infrastructure. Middleware ordering is owned by the DI extension engine, not by handlers.
+> 依存方向は内向き（`controller→usecase`）。handler は自身の生成 `gen` パッケージと usecase interface のみに依存し、infrastructure を import しない。middleware 順序は DI extension エンジンが所有し、handler は持たない。
 
-### 3.2 Per-request action sequence
+### 3.2 リクエスト 1 件の作用シーケンス
 
 ```mermaid
 sequenceDiagram
     participant C as Client
-    participant E as Echo (router + middleware)
+    participant E as Echo (router ＋ middleware)
     participant H as StrictHandler.<Op> (handler)
     participant U as Usecase
     participant EH as ErrorHandler
-    C->>E: HTTP request
-    E->>E: middleware chain (uri→…→cookie), span started, request validated
-    E->>H: typed <Op>RequestObject
-    H->>H: tracer.Start, parse/convert request
+    C->>E: HTTP リクエスト
+    E->>E: middleware チェーン（uri→…→cookie）, span 開始, リクエスト検証
+    E->>H: 型付き <Op>RequestObject
+    H->>H: tracer.Start, リクエスト解釈/変換
     H->>U: s.uc.<Method>(ctx, params)
-    alt success
+    alt 成功
         U-->>H: DTO
-        H->>H: convert DTO → gen.<Op><Status>JSONResponse
+        H->>H: DTO → gen.<Op><Status>JSONResponse へ変換
         H-->>E: response object → VisitResponse → c.JSON(status, body)
-        E-->>C: 2xx + JSON
-    else error (apperror)
+        E-->>C: 2xx ＋ JSON
+    else エラー（apperror）
         U-->>H: error
         H-->>E: return error
         E->>EH: HTTPErrorHandler
-        EH->>EH: apperror → status + code, write HTTPErrorResponse
-        EH-->>C: 4xx/5xx + JSON
+        EH->>EH: apperror → status ＋ code, HTTPErrorResponse を書く
+        EH-->>C: 4xx/5xx ＋ JSON
     end
-    Note over E: deferred logging middleware records status + latency
+    Note over E: 遅延 logging middleware が status ＋ latency を記録
 ```
 
 ---
 
-## 4. What an integrator implements (contract-first endpoint flow)
+## 4. integrator が実装する箇所（contract-first のエンドポイント手順）
 
-This project provides the **server bootstrap, ordered middleware chain, error handler, DI wiring, and the `scaffold-*` skills**. To add an endpoint, follow the contract-first order (OpenAPI changes must precede handler/usecase code).
+本プロジェクトは **サーバ起動・順序付き middleware チェーン・error handler・DI 配線・`scaffold-*` スキル**を提供する。エンドポイント追加は contract-first 順（OpenAPI 変更が handler/usecase コードに先行する）に従う。
 
 ```mermaid
 flowchart LR
-    O["① OpenAPI source<br/>openapi/**/*.yaml"]:::need
+    O["① OpenAPI ソース<br/>openapi/**/*.yaml"]:::need
     G["② make gen-api<br/>server.gen.go / type.gen.go"]:::need
-    H["③ handler<br/>BindHandler + one method/operationId"]:::need
-    U["④ usecase<br/>business logic (if new)"]:::need
-    R["⑤ register in DI<br/>fx.Invoke(<pkg>.BindHandler)"]:::need
+    H["③ handler<br/>BindHandler ＋ operationId ごと 1 メソッド"]:::need
+    U["④ usecase<br/>業務ロジック（新規なら）"]:::need
+    R["⑤ DI に登録<br/>fx.Invoke(<pkg>.BindHandler)"]:::need
     O --> G --> H --> U --> R
     classDef need fill:#fff8c5,stroke:#bf8700;
 ```
 
-| # | Required implementation | Location | Reference |
+| # | 必要な実装 | 置き場 | 参考 |
 | --- | --- | --- | --- |
-| ① | define the path / operation / schemas in OpenAPI source, re-bundle | `openapi/**/*.yaml` → `openapi/openapi.gen.yaml` | existing paths |
-| ② | regenerate the server interface + types | `make gen-api` → `internal/controller/handler/<path>/gen/` | — |
-| ③ | implement `BindHandler(echo, tracerFactory, usecase, …)` + one method per `operationId` (tracer span → parse → usecase → response) | `internal/controller/handler/<path>/*_handler.go` | `scaffold-controller`, existing handlers |
-| ④ | implement the usecase method (if it does not exist), mapping domain → DTO | `internal/usecase/<feature>/` | `scaffold-usecase` |
-| ⑤ | wire the handler: `fx.Invoke(<pkg>.BindHandler)` | `internal/di/module/controller.go` | existing invokes |
+| ① | OpenAPI ソースにパス / operation / スキーマを定義し再 bundle | `openapi/**/*.yaml` → `openapi/openapi.gen.yaml` | 既存パス |
+| ② | サーバ interface ＋ 型を再生成 | `make gen-api` → `internal/controller/handler/<path>/gen/` | — |
+| ③ | `BindHandler(echo, tracerFactory, usecase, …)` ＋ `operationId` ごと 1 メソッド（tracer span → 解釈 → usecase → 応答）を実装 | `internal/controller/handler/<path>/*_handler.go` | `scaffold-controller`, 既存のハンドラ |
+| ④ | usecase メソッドを実装（無ければ）、domain → DTO へ写像 | `internal/usecase/<feature>/` | `scaffold-usecase` |
+| ⑤ | handler を配線：`fx.Invoke(<pkg>.BindHandler)` | `internal/di/module/controller.go` | 既存の invoke |
 
-> Use the `scaffold-endpoint` orchestrator (or per-layer `scaffold-*` skills) to generate domain → infra → usecase → controller from the spec. A new cross-cutting middleware is added as a `*_di.go` with a priority constant under `internal/di/server/extension/` — the engine sorts it into the chain.
+> `scaffold-endpoint` オーケストレータ（または各層の `scaffold-*` スキル）で spec から domain → infra → usecase → controller を生成できる。新しい横断 middleware は `internal/di/server/extension/` 配下に priority 定数付きの `*_di.go` として追加すると、エンジンがチェーンへソートして組み込む。
 
 ---
 
-## 5. Glossary
+## 5. 用語集
 
-| Term | Meaning |
+| 用語 | 意味 |
 | --- | --- |
-| **driving adapter** | An entry point that drives the usecase layer. REST (HTTP) is the synchronous one; the [worker](worker.md) (queue) and [job](job.md) (CLI) are its siblings. |
-| **Echo** | The HTTP framework. `server.NewAppServer()` builds the `*echo.Echo` and `server.NewHTTPServer(e, ServerConfig)` wraps it in an `http.Server` carrying the timeouts; routes are registered by generated code. |
-| **ServerInterface / StrictServerInterface** | The OpenAPI-generated route interface / its strongly-typed (request-object, response-object) variant. Handlers implement the strict form. |
-| **RegisterHandlers / NewStrictHandler** | Generated functions: register routes on Echo / wrap the strict handler with a `StrictMiddlewareFunc` slice (e.g. idempotency). |
-| **BindHandler** | The handler package's constructor: builds the `server{}` (tracer + usecase) and calls `RegisterHandlers(e, NewStrictHandler(...))`. Wired via `fx.Invoke`. |
-| **handler / `server{}`** | The thin controller type with one method per `operationId`: tracer span → parse request → call one usecase method → convert DTO → `gen` response. |
-| **presenter** | The DTO → `gen.<Op><Status>JSONResponse` conversion, implemented inline in the handler method. |
-| **middleware (Use) / Pre** | Per-request cross-cutting functions applied in priority order (`Use`), plus `Pre` (path normalization, request deadline, body-size limit) that runs before routing. |
-| **priority** | The integer in each middleware's `*_di.go` that the extension engine sorts on (uri-pre 1, timeout-pre 2, bodyLimit-pre 3; requestID 1, observability 2, recovery 3, cors 4, security 5, openapi 6, forcejson 7, httpredmetrics 8, logging 9, cookie 10). |
-| **extension engine** (`ApplyExtends`) | Collects `Pre`/`Use`/`SrvCfg` providers, sorts by priority, and applies them to Echo; also applies non-middleware configurators (IP extractor, error handler). |
-| **error handler** | `HTTPErrorHandler` set on Echo; normalizes `apperror` and status-carrying errors (`echo.HTTPError`, OpenAPI validation failures) into a unified `HTTPErrorResponse` with the mapped status + code. |
-| **apperror** | The framework-agnostic error taxonomy; the error handler maps it to HTTP status (e.g. `ErrConflict`→409, `ErrValidation`→422, `ErrInvalidArgument`→400). |
-| **graceful shutdown** | On SIGINT/SIGTERM, `RunServer` stops accepting and calls `srv.Shutdown(stopCtx)` to drain in-flight within `shutdownTimeout` (timed from shutdown start). |
-| **lifecycle / Registrar** | The fx hook seam: `RegisterHTTPServerHooks` registers OnStart (listen + serve) and OnStop (shutdown). |
-| **ServerConfig** | Host / port / read-header / read / write / idle timeouts (`SERVER_*`). Injected into `NewHTTPServer`. |
-| **idempotency middleware** | A `StrictMiddleware` slot adopting handlers add to make non-idempotent writes safe. See [idempotency.md](idempotency.md). |
+| **driving adapter** | usecase 層を駆動する入口。REST（HTTP）が同期、[worker](worker.md)（キュー）・[job](job.md)（CLI）が兄弟。 |
+| **Echo** | HTTP フレームワーク。`server.NewAppServer()` が `*echo.Echo` を構築し、`server.NewHTTPServer(e, ServerConfig)` が timeouts を持つ `http.Server` で包む。ルートは生成コードが登録。 |
+| **ServerInterface / StrictServerInterface** | OpenAPI 生成のルート interface / その強型（request-object, response-object）版。handler は strict 版を実装。 |
+| **RegisterHandlers / NewStrictHandler** | 生成関数：Echo にルート登録 / strict handler を `StrictMiddlewareFunc` スライス（例: 冪等性）で包む。 |
+| **BindHandler** | handler パッケージのコンストラクタ：`server{}`（tracer ＋ usecase）を作り `RegisterHandlers(e, NewStrictHandler(...))` を呼ぶ。`fx.Invoke` で配線。 |
+| **handler / `server{}`** | `operationId` ごと 1 メソッドの薄い controller 型：tracer span → リクエスト解釈 → usecase 1 メソッド → DTO → `gen` 応答へ変換。 |
+| **presenter** | DTO → `gen.<Op><Status>JSONResponse` 変換。handler メソッド内にインラインで実装。 |
+| **middleware (Use) / Pre** | priority 順に適用される per-request 横断関数（`Use`）と、ルーティング前に走る `Pre`（パス正規化・リクエスト期限・ボディサイズ上限）。 |
+| **priority** | 各 middleware の `*_di.go` の整数で extension エンジンがソート（uri-pre 1, timeout-pre 2, bodyLimit-pre 3; requestID 1, observability 2, recovery 3, cors 4, security 5, openapi 6, forcejson 7, httpredmetrics 8, logging 9, cookie 10）。 |
+| **extension エンジン**（`ApplyExtends`） | `Pre`/`Use`/`SrvCfg` provider を集約し priority でソートして Echo に適用。非 middleware の構成器（IP extractor, error handler）も適用。 |
+| **error handler** | Echo に設定する `HTTPErrorHandler`。`apperror` と、ステータスを持つエラー（`echo.HTTPError` / OpenAPI 検証エラー）を統一 `HTTPErrorResponse`（status ＋ code 写像付き）へ正規化。 |
+| **apperror** | フレームワーク非依存のエラー分類。error handler が HTTP ステータスへ写像（例 `ErrConflict`→409, `ErrValidation`→422, `ErrInvalidArgument`→400）。 |
+| **graceful shutdown** | SIGINT/SIGTERM で `RunServer` が受付停止し `srv.Shutdown(stopCtx)` で in-flight を `shutdownTimeout` 内に drain（停止開始時点から計る）。 |
+| **lifecycle / Registrar** | fx フックの seam：`RegisterHTTPServerHooks` が OnStart（listen ＋ serve）と OnStop（shutdown）を登録。 |
+| **ServerConfig** | host / port / read-header / read / write / idle タイムアウト（`SERVER_*`）。`NewHTTPServer` に注入。 |
+| **冪等性 middleware** | 採用 handler が非冪等書き込みを安全にするために差す `StrictMiddleware` スロット。[idempotency.md](idempotency.md) 参照。 |

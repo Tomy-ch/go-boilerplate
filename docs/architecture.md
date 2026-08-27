@@ -1,52 +1,53 @@
-# Architecture
+# アーキテクチャ
 
-## Overview
+## 概要
 
-This project is a backend architecture for Go applications based on the following three primary objectives.
+このプロジェクトは、以下の3つの主要な目的に基づいた  
+Goアプリケーション向けバックエンドアーキテクチャです。
 
-- **Contract-driven development**
-- **Type safety**
-- **Clear layer separation**
+- **契約駆動開発（Contract-driven development）**
+- **型安全性（Type safety）**
+- **明確なレイヤ分離（Clear layer separation）**
 
-This architecture combines the following approaches.
+このアーキテクチャは、以下のアプローチを組み合わせています。
 
 - Pragmatic Onion Architecture
-- OpenAPI-first development
-- SQL-first data access
+- OpenAPI-first 開発
+- SQL-first データアクセス
 - Dependency Injection
-- Structural safety guaranteed by CI
+- CIによる構造的安全性の担保
 
-With these elements,  
-it provides a backend foundation that emphasizes **maintainability, predictability, and structural safety**.
+これらの要素により、  
+**保守性・予測可能性・構造的安全性**を重視したバックエンド基盤を提供します。
 
-This architecture is not suitable for all systems.  
-It is particularly effective for the following types of systems.
+このアーキテクチャはすべてのシステムに適しているわけではありません。  
+特に以下のようなシステムで効果を発揮します。
 
-- **Business systems**
-- **Backend services operated over a long period**
+- **業務システム**
+- **長期間運用されるバックエンドサービス**
 
-## Architectural Principles
+## アーキテクチャ原則
 
-This architecture is based on several design principles.
+このアーキテクチャは、いくつかの設計原則に基づいています。
 
 ### Contract-first API
 
-API contracts are defined using **OpenAPI**.
+API契約は **OpenAPI** を使用して定義されます。
 
-Through code generation, the implementation is always kept consistent with the API specification.
+コード生成により、実装がAPI仕様と常に一致するようにします。
 
-Typical development flow:
+典型的な開発フロー：
 
 ```mermaid
 flowchart TB
     OpenAPI["OpenAPI specification"] --> Gen["Code generation"] --> Handler["Handler implementation"] --> Usecase["Usecase implementation"]
 ```
 
-Generated code **must not be edited manually**.
+生成コードは **手動で編集してはいけません**。
 
 ### Dependency Inversion
 
-Dependencies must always point **toward inner layers**.
+依存関係は常に **内側のレイヤに向かう** 必要があります。
 
 ```mermaid
 flowchart LR
@@ -54,58 +55,59 @@ flowchart LR
     Infra["infrastructure"] --> Domain
 ```
 
-Key ideas:
+重要な考え方：
 
-- Inner layers do not depend on outer layers
-- Domain does not depend on frameworks
-- Infrastructure implements interfaces of the Domain
+- 内側のレイヤは外側に依存しない
+- Domain はフレームワークに依存しない
+- Infrastructure は Domain のインターフェースを実装する
 
-This rule ensures **core domain stability**.
+このルールにより、**コアドメインの安定性**が保たれます。
 
 ### SQL-first Data Access
 
-Data access is designed to be **SQL-centric rather than ORM-based**.
+データアクセスは **ORMではなくSQL中心** に設計されています。
 
-SQL queries are explicitly defined and converted into type-safe Go code by `sqlc`.
+SQLクエリは明示的に定義され、`sqlc` により型安全なGoコードへ変換されます。
 
-Benefits:
+利点：
 
-- Full control over queries
-- Compile-time type safety
-- Clear performance characteristics
+- クエリの完全な制御
+- コンパイル時の型安全性
+- 明確なパフォーマンス特性
 
 ### Structural Safety
 
-This project emphasizes **structural safety**, rather than implicit conventions.
+このプロジェクトは、暗黙的な慣習ではなく、**構造的安全性（Structural Safety）** を重視します。
 
-Instead of relying only on code reviews or team rules,  
-safety is ensured by tools.
+コードレビューやチームルールのみに依存するのではなく、  
+ツールによって安全性を担保します。
 
-Examples:
+例：
 
-- Code generation
-- Lint rules
-- CI validation
-- Layer boundary constraints
+- コード生成
+- Lintルール
+- CI検証
+- レイヤ境界の制約
 
-With these mechanisms,  
-architectural violations can be prevented.
+これらの仕組みにより、  
+アーキテクチャ違反を防ぐことができます。
 
 ### Vendor Neutrality
 
-This project avoids strong dependencies on specific SaaS or proprietary tools.
+このプロジェクトは、特定のSaaSやプロプライエタリツールへの  
+強い依存を避けています。
 
-As much as possible, the following are prioritized.
+可能な限り以下を優先します。
 
-- OSS-based tools
-- Replaceable components
-- Vendor-neutral integrations
+- OSSベースのツール
+- 交換可能なコンポーネント
+- ベンダーニュートラルな統合
 
-This ensures long-term flexibility.
+これにより、長期的な柔軟性を確保します。
 
-## System Architecture
+## システムアーキテクチャ
 
-This system adopts a **Pragmatic Onion Architecture**.
+このシステムは **Pragmatic Onion Architecture** を採用しています。
 
 ```mermaid
 flowchart TB
@@ -113,219 +115,210 @@ flowchart TB
     Infrastructure --> Domain
 ```
 
-Characteristics:
+特徴：
 
-- Outer layers depend on inner layers
-- Domain is the most stable layer
-- Infrastructure implements Domain interfaces
+- 外側のレイヤは内側に依存する
+- Domain が最も安定したレイヤ
+- Infrastructure は Domain のインターフェースを実装する
 
-With this structure, even if external systems change,  
-domain logic can remain stable.
+この構造により、外部システムが変更されても  
+ドメインロジックは安定したまま維持できます。
 
-## Layer Responsibilities
+## レイヤ責務
 
 ### Controller
 
-The Controller layer is responsible for the **HTTP transport layer**.
+Controller レイヤは **HTTPトランスポート層** を担当します。
 
-Responsibilities:
+責務：
 
-- HTTP request / response handling
-- Input validation
-- Error transformation
-- Calling Usecase
+- HTTPリクエスト / レスポンス処理
+- 入力バリデーション
+- エラー変換
+- Usecase 呼び出し
 
-Controller **must not contain business logic**.
+Controller には **ビジネスロジックを含めてはいけません**。
 
 ### Usecase
 
-The Usecase layer implements **application-level processing**.
+Usecase レイヤは **アプリケーションレベルの処理** を実装します。
 
-Responsibilities:
+責務：
 
-- Application workflows
-- Coordination of domain objects
-- Transaction boundaries
-- Coordination between Domain and Infrastructure
+- アプリケーションワークフロー
+- ドメインオブジェクトの協調
+- トランザクション境界
+- Domain と Infrastructure の調整
 
-Usecase orchestrates domain behavior,  
-but does not handle low-level infrastructure details.
+Usecase はドメインの振る舞いをオーケストレーションしますが、  
+低レベルなインフラ詳細は扱いません。
 
 ### Domain
 
-The Domain layer represents the **core of business logic**.
+Domain レイヤは **ビジネスロジックの中核** を表します。
 
-Responsibilities:
+責務：
 
 - Entity
 - Value Object
-- Domain rules
+- ドメインルール
 - Repository Interface
 
-Domain code must be **completely independent of frameworks**.
+Domain コードは **フレームワークから完全に独立**している必要があります。
 
 ### Infrastructure
 
-The Infrastructure layer is responsible for integration with external systems.
+Infrastructure レイヤは外部システムとの統合を担当します。
 
-Responsibilities:
+責務：
 
-- Database access
-- External service integration
-- Repository implementation
+- データベースアクセス
+- 外部サービス連携
+- Repository 実装
 
-Infrastructure implements interfaces defined in the Domain layer.
+Infrastructure は Domain レイヤで定義されたインターフェースを実装します。
 
-## Request Flow
+## リクエストフロー
 
-A typical request is processed in the following flow.
+典型的なリクエストは以下の流れで処理されます。
 
 ```mermaid
 flowchart TB
     Req["HTTP Request"] --> Router["Echo Router"] --> Controller --> Usecase --> Domain --> Repo["Repository Interface"] --> Infra["Infrastructure"] --> DB["Database"]
 ```
 
-With this structure:
+この構造により、
 
-- HTTP logic is handled in Controller
-- Application control is handled in Usecase
-- Business logic is handled in Domain
+- HTTPロジックは Controller に
+- アプリケーション制御は Usecase に
+- ビジネスロジックは Domain に
 
-Each is clearly separated.
+それぞれ明確に分離されます。
 
 ## Dependency Injection
 
-This project uses **Uber Fx** as the DI container.
+このプロジェクトでは **Uber Fx** をDIコンテナとして使用しています。
 
-Role of the DI container:
+DIコンテナの役割：
 
-- Component initialization
-- Dependency resolution
-- Lifecycle management
+- コンポーネント初期化
+- 依存関係解決
+- ライフサイクル管理
 
-Typical dependency assembly order:
+典型的な依存関係の組み立て順：
 
 ```mermaid
 flowchart TB
     Repo["Repository"] --> Usecase --> Handler --> Router
 ```
 
-By using DI, coupling between layers can be kept low.
+DIを利用することで、レイヤ間の結合度を低く保つことができます。
 
-## Code Generation
+## コード生成
 
-Code generation is an important element of this architecture.
+コード生成はこのアーキテクチャの重要な要素です。
 
-It is used in the following components.
+以下のコンポーネントで生成が利用されています。
 
 - OpenAPI server interface (`oapi-codegen`)
 - SQL query binding (`sqlc`)
 
-Rules:
+ルール：
 
-- Generated code must not be edited manually
-- Generated code must always be reproducible
-- CI verifies consistency of generated code
+- 生成コードを手動で編集してはいけません
+- 生成コードは常に再生成可能である必要があります
+- CI により生成コードの整合性が検証されます
 
-## Project Structure
+## プロジェクト構成
 
-Main directories:
+主要ディレクトリ：
 
 ```txt
 cmd/
-Application entry point
+アプリケーションのエントリポイント
 
 internal/
-Application code
+アプリケーションコード
 
 database/
-SQL queries and migrations
+SQLクエリとマイグレーション
 
 openapi/
-API contracts
+API契約
 
 docs/
-Documentation
+ドキュメント
 ```
 
-The `internal/` directory contains application code with a layered structure.
+`internal/` ディレクトリにはレイヤ構造のアプリケーションコードが配置されます。
 
-## Modular Monolith Strategy
+## Modular Monolith 戦略
 
-This project assumes a **modular monolith architecture**.
+このプロジェクトは **モジュラーモノリスアーキテクチャ** を前提としています。
 
-Characteristics:
+特徴：
 
-- Single deployable application
-- Internal module boundaries
-- Strict layer separation
+- 単一のデプロイ可能アプリケーション
+- 内部モジュール境界
+- 厳格なレイヤ分離
 
-Microservices are **not the primary goal**.
+マイクロサービスは **主目的ではありません**。
 
-However, because clear module boundaries exist,  
-future service decomposition is possible.
+ただし明確なモジュール境界を持つため、  
+将来的なサービス分割は可能です。
 
-## Extensibility
+## 拡張性
 
-Components under `internal/`  
-are connected through Dependency Injection.
+`internal/` 配下のコンポーネントは  
+Dependency Injection によって接続されています。
 
-This makes the following replacements relatively easy.
+これにより以下の差し替えが比較的容易になります。
 
 - repository
 - middleware
 - infrastructure integration
 
-This architecture is designed with the premise that  
-**infrastructure can be changed without modifying domain logic**.
+このアーキテクチャは  
+**ドメインロジックを変更せずにインフラを変更できること**  
+を前提に設計されています。
 
-## AI-assisted Development
+## AI支援開発
 
-AI-assisted development is the **standard development path** of this project. Manual development
-remains technically possible, as a not-recommended compatibility path that is not held to the same
-developer experience. See
-[ADR-0007 (agents-md-operational-contract)](adr/0007-agents-md-operational-contract.md).
+AI 支援開発はこのプロジェクトの**標準開発経路**です。手動開発も技術的には可能ですが、同等の開発者体験を保証しない、推奨されない互換経路として扱います。[ADR-0007 (agents-md-operational-contract)](adr/0007-agents-md-operational-contract.md) を参照してください。
 
-Architectural constraints prevent  
-AI-generated code from violating design rules.
+アーキテクチャ制約により、  
+AI生成コードが設計ルールを破ることを防ぎます。
 
-AI agents should refer to the following before generating code.
+AIエージェントはコード生成前に以下を参照してください。
 
 - `rules.md`
 - `architecture.md`
 
-### What the architecture never depends on
+### アーキテクチャが依存しないもの
 
-Making development AI-first does not make the **application** depend on AI. The following stay
-AI-independent, and must succeed with no AI service or agent available:
+開発を AI-first にすることは、**アプリケーション**を AI 依存にすることを意味しません。以下は AI 非依存を保ち、AI サービスやエージェントが利用できなくても成立しなければなりません。
 
-- Application runtime and production runtime
-- Build and test
-- The architecture itself, and the domain model
-- The API contract and the database schema
-- The ordinary CI checks
+- アプリケーションランタイムと本番ランタイム
+- ビルドとテスト
+- アーキテクチャそのもの、およびドメインモデル
+- API コントラクトとデータベーススキーマ
+- 通常の CI 検査
 
-AI dependence is confined to the surrounding development workflow — navigation, automation,
-feedback, and review. The resulting system can therefore be operated without an AI vendor, which is
-the property that actually carries risk.
+AI 依存は、その周囲の開発ワークフロー — ナビゲーション、自動化、フィードバック、レビュー — に限定します。結果として得られるシステムは AI ベンダーなしで運用でき、実際にリスクを持つのはその性質です。
 
-### Structure stays human-readable
+### 構造は人間に読めるまま保つ
 
-AI-first is not a licence to restructure the code into something only a machine can follow. This
-project assumes that **explicit structure an agent can traverse and explicit structure a human can
-read are strongly correlated**: the responsibility separation, explicit naming, layer boundaries,
-and documentation structure described above are the shared substrate.
+AI-first は、機械にしか辿れない構造への作り替えを許可しません。このプロジェクトは、**エージェントが辿れる明示的な構造と、人間が読める明示的な構造は強く相関する**という前提を置きます。上で述べた責務分離、明示的な命名、レイヤ境界、ドキュメント構造が、その共有基盤です。
 
-Agent-facing context, skills, and automation are therefore added *over* that structure as a control
-surface for exploring and using it accurately — never as a replacement for it.
+したがって AI 向けのコンテキスト・スキル・自動化は、その構造を正確に探索・利用するための制御面としてその *上に* 追加するものであり、置き換えではありません。
 
 ## Non-Goals
 
-This project does not aim to be:
+このプロジェクトは以下を目的としていません。
 
-- A microservices framework
-- An ultra low-latency architecture
-- A universal architecture applicable to all systems
+- マイクロサービスフレームワーク
+- 超低レイテンシアーキテクチャ
+- あらゆるシステムに適用可能な万能アーキテクチャ
 
-The goal of this project is  
-**to provide a backend foundation with maintainability and structural safety for general business systems**.
+このプロジェクトの目的は、  
+**一般的な業務システム向けに保守性と構造安全性を備えたバックエンド基盤を提供すること**です。

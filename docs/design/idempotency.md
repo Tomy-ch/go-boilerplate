@@ -1,78 +1,78 @@
-# Idempotency Subsystem Design Reference
+# 冪等性サブシステム設計リファレンス
 
-This document consolidates the idempotency (`Idempotency-Key`) subsystem's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. For the overview see the README; for the HTTP path it plugs into see [rest.md](rest.md), and the GC side runs as a [job](job.md).
+本書は冪等性（`Idempotency-Key`）サブシステムの **役割論・状態遷移・実装箇所・integrator が書く箇所・用語** を、実装を精査して 1 枚にまとめた参照資料です。概要は README、接続先の HTTP 経路は [rest.md](rest.md)、GC 側は [job](job.md) として動きます。
 
 ---
 
-## 1. Role theory (what, and what for)
+## 1. 役割論（なにが・なんのために）
 
-A database transaction guarantees atomicity **within one request**; it does **not** deduplicate client retries (network timeout, double-submit, auto-retry). When a write has no natural unique key — a `POST` that allocates its own id, a balance increment, a charge, an email send — a retry runs the side effect **again**.
+DB トランザクションは **1 リクエスト内**の原子性を保証するが、クライアントのリトライ（ネットワークタイムアウト・二重送信・自動リトライ）を**重複排除しない**。自然な一意キーを持たない書き込み（自前で id を採番する `POST`・残高加算・課金・メール送信）では、リトライが副作用を**もう一度**実行してしまう。
 
-Idempotency makes such writes safe via a client-supplied **`Idempotency-Key` header**: the side effect runs **at most once**, and a retry of a completed operation **replays the stored response**. It is a cross-layer mechanism (entry middleware → usecase orchestration → persistence), **opt-in per handler**, and **orthogonal** to optimistic locking (lost-update prevention) and rate limiting (edge concern).
+冪等性はクライアント供給の **`Idempotency-Key` ヘッダ**でこれを安全にする。副作用は**高々 1 回**、完了済み操作のリトライは**保存済み応答を再生**する。入口 middleware → usecase オーケストレーション → 永続化にまたがる横断機構で、**handler 単位のオプトイン**、楽観ロック（lost-update 防止）やレート制限（エッジの関心事）とは**直交**する。
 
-Responsibility split (who owns what):
+責務の分担（誰が何を持つか）:
 
-| Component | Layer | Responsibility | Does NOT hold |
+| 構成要素 | 層 | 責務 | 持たないもの |
 | --- | --- | --- | --- |
-| **middleware** (`httpstack/idempotency`) | controller | extract + validate `Idempotency-Key`, require authn, compute the request **fingerprint**, thread `Request` into ctx | transaction, persistence, replay decision |
-| **Run[T]** orchestrator | usecase (`usecase/idempotency`) | `claim → businessFn → complete` in **one tx** / replay·409·422 routing / TTL stamping / metrics | HTTP parsing, SQL, business rules |
-| **Store** (seam) | usecase/boundary | persistence contract: `Claim` / `Get` / `Complete` / `DeleteExpired` + `Status` / `Record` / `ErrLockTimeout` | implementation, business policy |
-| **store** impl | infrastructure (`rdb/system_cqrs`) | sqlc wrap / `SET LOCAL lock_timeout` / `ON CONFLICT DO NOTHING` / `pgerror.NormalizeError` | replay decision, HTTP |
-| **GCUsecase + `idempotencygc` job** | usecase + controller/job | batch-delete expired keys (TTL housekeeping) | the request path |
-| **`idempotency_keys` table** | database | persisted state (scope / key / fingerprint / status / response / `expires_at`) | — |
+| **middleware**（`httpstack/idempotency`） | controller | `Idempotency-Key` の抽出・検証、認証必須化、**fingerprint** 計算、`Request` を ctx へ載せる | tx・永続化・replay 判定 |
+| **Run[T]** オーケストレータ | usecase（`usecase/idempotency`） | `claim → businessFn → complete` を**単一 tx**で / replay・409・422 振り分け / TTL 付与 / metrics | HTTP 解釈・SQL・業務ルール |
+| **Store**（seam） | usecase/boundary | 永続化契約：`Claim` / `Get` / `Complete` / `DeleteExpired` ＋ `Status` / `Record` / `ErrLockTimeout` | 実装・業務方針 |
+| **store** 実装 | infrastructure（`rdb/system_cqrs`） | sqlc ラップ / `SET LOCAL lock_timeout` / `ON CONFLICT DO NOTHING` / `pgerror.NormalizeError` | replay 判定・HTTP |
+| **GCUsecase ＋ `idempotencygc` job** | usecase ＋ controller/job | 失効キーの一括削除（TTL 後始末） | リクエスト経路 |
+| **`idempotency_keys` テーブル** | database | 保存状態（scope / key / fingerprint / status / response / `expires_at`） | — |
 
-Design principles (invariants):
+設計原則（不変）:
 
-- **At most once per `(scope, key)`.** Claim, `businessFn`, and Complete share **one transaction**, so a business failure rolls the claim back too — the key is **auto-released** for a clean retry.
-- **Scope is mandatory.** Every `Store` method takes `scope` (the authenticated principal); there is **no id-only lookup**, which prevents cross-scope key collision / IDOR. The DB enforces `UNIQUE(scope, idempotency_key)`.
-- **Fail-closed fingerprint.** If the request cannot be marshalled the middleware returns an error rather than forging a weak fingerprint.
+- **`(scope, key)` ごとに高々 1 回。** Claim・`businessFn`・Complete は**単一 tx**を共有するため、業務失敗は claim ごとロールバックされ、キーは**自動解放**されてクリーンに再試行できる。
+- **scope 必須。** `Store` の全メソッドが `scope`（認証プリンシパル）を取り、**id 単独 lookup を持たない**ため越境（IDOR）を防ぐ。DB は `UNIQUE(scope, idempotency_key)` を強制。
+- **fail-closed な fingerprint。** リクエストを marshal できない場合、弱い fingerprint を作らずエラーを返す。
 
 ---
 
-## 2. State transitions
+## 2. 状態遷移図
 
-### 2.1 record lifecycle (one row in `idempotency_keys`)
+### 2.1 レコードのライフサイクル（`idempotency_keys` の 1 行）
 
 ```mermaid
 stateDiagram-v2
     [*] --> Claimed: Claim — INSERT ... ON CONFLICT DO NOTHING (status='claimed', expires_at=now+24h)
     Claimed --> Completed: Complete — UPDATE claimed→completed (+response_status, +response_payload)
-    Claimed --> Released: businessFn / Complete fails → tx ROLLBACK (row never persisted = key free again)
-    Completed --> Expired: expires_at < now → swept by the GC job
+    Claimed --> Released: businessFn / Complete 失敗 → tx ROLLBACK（行は未確定＝キー再び空き）
+    Completed --> Expired: expires_at < now → GC job が掃除
     Released --> [*]
     Expired --> [*]
 
     note right of Claimed
-      a concurrent duplicate sees status='claimed' (or a lock timeout) → 409.
+      並行重複は status='claimed'（またはロックタイムアウト）を見る → 409。
     end note
     note right of Completed
-      a retry with the same fingerprint replays the stored response (no businessFn).
-      a retry with a different fingerprint → 422.
+      同一 fingerprint のリトライは保存済み応答を再生（businessFn 無し）。
+      異なる fingerprint のリトライ → 422。
     end note
 ```
 
-### 2.2 per-request decision (`Run[T]`)
+### 2.2 リクエスト 1 件の判定（`Run[T]`）
 
 ```mermaid
 stateDiagram-v2
-    [*] --> KeyPresent: Idempotency-Key in ctx AND Scope≠""?
-    KeyPresent --> Passthrough: no → businessFn directly → (res, replayed=false, err)
-    KeyPresent --> OpenTx: yes → Txm.Do (one tx)
+    [*] --> KeyPresent: ctx に Idempotency-Key かつ Scope≠"" ?
+    KeyPresent --> Passthrough: いいえ → businessFn を直実行 → (res, replayed=false, err)
+    KeyPresent --> OpenTx: はい → Txm.Do（単一 tx）
     Passthrough --> [*]
 
     OpenTx --> Claim: Store.Claim(scope,key,fingerprint,expires_at)
-    Claim --> Business: claimed=true (new key)
-    Claim --> Existing: claimed=false (key exists)
+    Claim --> Business: claimed=true（新規）
+    Claim --> Existing: claimed=false（既存キー）
     Claim --> Conflict: ErrLockTimeout → IncConflict → 409 (ErrConflict)
-    Claim --> TxErr: other error → return (tx rollback)
+    Claim --> TxErr: その他 error → return（tx ロールバック）
 
-    Business --> Complete: businessFn ok → marshal(T) → Store.Complete(successStatus, payload)
-    Business --> BizErr: businessFn err → return err (tx rollback, claim released)
+    Business --> Complete: businessFn 成功 → marshal(T) → Store.Complete(successStatus, payload)
+    Business --> BizErr: businessFn 失敗 → return err（tx ロールバック、claim 解放）
     Complete --> CommitOK: COMMIT → (result, replayed=false, nil)
 
     Existing --> Get: Store.Get(scope,key)
     Get --> RaceGone: nil → IncConflict → 409 (ErrConflict)
-    Get --> FpCheck: record found
+    Get --> FpCheck: レコードあり
     FpCheck --> Mismatch: fingerprint ≠ → IncFingerprintMismatch → 422 (ErrValidation)
     FpCheck --> StillClaimed: status≠completed → IncConflict → 409 (ErrConflict)
     FpCheck --> Replay: status=completed → Unmarshal → IncHit → (result, replayed=true, nil)
@@ -87,39 +87,39 @@ stateDiagram-v2
     Replay --> [*]
 
     note right of Claim
-      Claim is INSERT ... ON CONFLICT DO NOTHING under SET LOCAL lock_timeout='3s'.
-      Lock unavailable within 3s → ErrLockTimeout (concurrent in-flight claim).
+      Claim は SET LOCAL lock_timeout='3s' 下の INSERT ... ON CONFLICT DO NOTHING。
+      3s 以内にロックを取れなければ ErrLockTimeout（並行 in-flight claim）。
     end note
 ```
 
-> Branch → status mapping: **409 `ErrConflict`** = a concurrent/in-flight claim (lock timeout, `status='claimed'`, or a vanished record); **422 `ErrValidation`** = same key reused with a different request body; **replay** = same key + same fingerprint on a completed op (response restored, `businessFn` not called). `Run` returns `(T, replayed bool, error)`; on replay only the saved body `T` is restored, not the stored status code (the op is assumed single-success-status, e.g. 201).
+> 分岐 → ステータス対応：**409 `ErrConflict`** ＝ 並行／in-flight claim（ロックタイムアウト・`status='claimed'`・claim 衝突直後に消えた行）、**422 `ErrValidation`** ＝ 同一キーを別ボディで再利用、**replay** ＝ 完了済み操作への同一キー＋同一 fingerprint（応答復元、`businessFn` 未実行）。`Run` は `(T, replayed bool, error)` を返し、replay 時は保存済みボディ `T` のみ復元し保存済みステータスコードは伝播しない（操作は単一成功ステータス前提、例: 201）。
 
-### 2.3 TTL & GC
+### 2.3 TTL ＆ GC
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Live: row inserted with expires_at = claimed_at + 24h (ttl)
+    [*] --> Live: expires_at = claimed_at + 24h (ttl) で行挿入
     Live --> Stale: expires_at < now
-    Stale --> Deleted: idempotency-gc job → SweepExpired(batchSize) loops DeleteExpired until a short batch
+    Stale --> Deleted: idempotency-gc job → SweepExpired(batchSize) が短いバッチまで DeleteExpired をループ
     Deleted --> [*]
 
     note right of Stale
-      after TTL a retry is treated as a fresh operation (no cached state).
-      DeleteExpired removes ≤ limit rows ordered by expires_at; the index keeps it cheap.
+      TTL 後はリトライを新規操作として扱う（キャッシュ状態なし）。
+      DeleteExpired は expires_at 順に ≤ limit 行を削除、index で安価に保つ。
     end note
 ```
 
 ---
 
-## 3. Implementation locations (where in the architecture it lives and acts)
+## 3. 実装箇所（このアーキテクチャ上のどこに・どう作用するか）
 
-### 3.1 Package placement and dependency direction
+### 3.1 パッケージ配置と依存方向
 
 ```mermaid
 flowchart TD
     subgraph ctrlL["internal/controller"]
-        MW["httpstack/idempotency: Middleware / StrictMiddleware<br/>key validate + fingerprint + WithRequest"]
-        JOB["job/idempotencygc: SweepExpired CLI job"]
+        MW["httpstack/idempotency: Middleware / StrictMiddleware<br/>key 検証 ＋ fingerprint ＋ WithRequest"]
+        JOB["job/idempotencygc: SweepExpired CLI ジョブ"]
     end
     subgraph ucL["internal/usecase/idempotency"]
         RUN["run.go: Run[T], decideExisting, Metrics, ttl=24h"]
@@ -129,19 +129,19 @@ flowchart TD
     end
     subgraph seamL["internal/usecase/boundary"]
         PORT["idempotency/store.go: Store, Status, Record, ClaimParams, CompleteParams, ErrLockTimeout"]
-        TXP["tx.Manager (transaction boundary)"]
+        TXP["tx.Manager (トランザクション境界)"]
         CLK["clock.Clock (now)"]
-        MOCK["idempotency/mock/: generated mock"]
+        MOCK["idempotency/mock/: 生成モック"]
     end
     subgraph infraL["internal/infrastructure/rdb"]
-        IMPL["system_cqrs/idempotency: store impl<br/>SET LOCAL lock_timeout='3s' + ON CONFLICT + pgerror"]
+        IMPL["system_cqrs/idempotency: store 実装<br/>SET LOCAL lock_timeout='3s' ＋ ON CONFLICT ＋ pgerror"]
         SQLC["sqlc/gen: ClaimIdempotencyKey/Get/Complete/DeleteExpired"]
     end
     subgraph dbL["database"]
         DML["dml/system_cqrs/idempotency/*.sql"]
         MIG["migrations: idempotency_keys (UNIQUE(scope,key), expires_at idx)"]
     end
-    subgraph crossL["cross-cutting"]
+    subgraph crossL["横断"]
         APPERR["apperror: ErrConflict / ErrValidation / ErrInvalidArgument / ErrInternal"]
         AUTHN["ctxhelper: GetAuthn → Subject() = Scope"]
     end
@@ -167,9 +167,9 @@ flowchart TD
     class MW,JOB,RUN,CTX,DEPS,GC,PORT,TXP,CLK,MOCK,IMPL,SQLC,DML,MIG,APPERR,AUTHN done;
 ```
 
-> Dependencies point inward (`controller→usecase`, `infrastructure→usecase/boundary`). The orchestrator (`Run`) knows nothing about SQL — it depends only on the `Store` seam and the `tx.Manager`; the RDB `store` implements `Store` and is the only place that touches sqlc and `pgerror`.
+> 依存方向は内向き（`controller→usecase`、`infrastructure→usecase/boundary`）。オーケストレータ（`Run`）は SQL を知らず、`Store` seam と `tx.Manager` のみに依存する。RDB `store` が `Store` を実装し、sqlc と `pgerror` に触れる唯一の場所。
 
-### 3.2 Per-request action sequence (a `POST` adopting idempotency)
+### 3.2 リクエスト 1 件の作用シーケンス（冪等性を採用した `POST`）
 
 ```mermaid
 sequenceDiagram
@@ -180,22 +180,22 @@ sequenceDiagram
     participant S as Store (rdb)
     participant U as businessFn (usecase)
     C->>MW: POST /v1/x (Idempotency-Key: k)
-    MW->>MW: validate key, GetAuthn→Scope, fingerprint=sha256(method · path · json(req))
-    MW->>H: next(ctx with Request{Scope,Key,Fingerprint,...})
+    MW->>MW: key 検証, GetAuthn→Scope, fingerprint=sha256(method · path · json(req))
+    MW->>H: next(ctx に Request{Scope,Key,Fingerprint,...})
     H->>R: Run(ctx, deps, 201, businessFn)
     R->>S: Claim(scope,k,fp,now+24h)  // BEGIN tx, SET LOCAL lock_timeout=3s
-    alt claimed=true (new)
+    alt claimed=true（新規）
         R->>U: businessFn(ctx)
         U-->>R: dto
         R->>S: Complete(scope,k, 201, json(dto))  // COMMIT
         R-->>H: (dto, replayed=false, nil) → 201
-    else claimed=false (exists)
+    else claimed=false（既存）
         R->>S: Get(scope,k)
-        alt completed & fingerprint match
-            R-->>H: (stored dto, replayed=true, nil) → 201 (replay)
-        else status=claimed / lock timeout
+        alt completed ＆ fingerprint 一致
+            R-->>H: (保存済み dto, replayed=true, nil) → 201（replay）
+        else status=claimed / ロックタイムアウト
             R-->>H: 409 ErrConflict
-        else fingerprint mismatch
+        else fingerprint 不一致
             R-->>H: 422 ErrValidation
         end
     end
@@ -203,51 +203,51 @@ sequenceDiagram
 
 ---
 
-## 4. What an integrator implements (adoption is opt-in, two steps)
+## 4. integrator が実装する箇所（採用はオプトイン・2 ステップ）
 
-This project provides the **middleware, `Run[T]` orchestrator, `Store` seam + RDB impl, schema, GC usecase/job, and a reference adoption** on one sample resource-creating endpoint. A handler is idempotent **only if both steps are done** — otherwise it behaves normally.
+本プロジェクトは **middleware・`Run[T]` オーケストレータ・`Store` seam ＋ RDB 実装・スキーマ・GC usecase/job・参考採用例**をサンプルのリソース作成エンドポイント 1 本に対して提供する。handler が冪等になるのは**両ステップを行ったときのみ**——でなければ通常動作のまま。
 
 ```mermaid
 flowchart LR
-    M["① slot the middleware<br/>StrictMiddleware in NewStrictHandler"]:::need
-    W["② wrap the usecase call<br/>idempotency.Run(ctx, deps, status, fn)"]:::need
-    O["③ (optional) metrics / scope<br/>Deps.Metrics, scope composition"]:::need
+    M["① middleware を差す<br/>NewStrictHandler に StrictMiddleware"]:::need
+    W["② usecase 呼び出しを包む<br/>idempotency.Run(ctx, deps, status, fn)"]:::need
+    O["③（任意）metrics / scope<br/>Deps.Metrics, scope 合成"]:::need
     M --> W --> O
     classDef need fill:#fff8c5,stroke:#bf8700;
 ```
 
-| # | Required implementation | Location | Reference |
+| # | 必要な実装 | 置き場 | 参考 |
 | --- | --- | --- | --- |
-| ① | add `idempotency.StrictMiddleware[gen.StrictHandlerFunc]()` to the handler's `NewStrictHandler` middleware slice; take `idempotency.Deps` in `BindHandler` | `internal/controller/handler/<path>/*_handler.go` | the sample POST handler |
-| ② | wrap the usecase call: `idempotency.Run(ctx, s.idem, http.StatusCreated, func(ctx) (T, error) { return s.uc.Create(...) })` | same handler method | its `Post<Resource>` method |
-| ③ (opt) | inject `Deps.Metrics` when an o11y backend exists; widen `Scope` (e.g. `subject:operationID`) in the middleware if per-endpoint isolation is wanted | DI / middleware | `NewDeps`, `WithRequest` |
+| ① | handler の `NewStrictHandler` の middleware スライスへ `idempotency.StrictMiddleware[gen.StrictHandlerFunc]()` を追加、`BindHandler` で `idempotency.Deps` を受け取る | `internal/controller/handler/<path>/*_handler.go` | サンプルの POST handler |
+| ② | usecase 呼び出しを包む：`idempotency.Run(ctx, s.idem, http.StatusCreated, func(ctx) (T, error) { return s.uc.Create(...) })` | 同 handler メソッド | その `Post<Resource>` メソッド |
+| ③（任意） | o11y バックエンドがあれば `Deps.Metrics` を注入、エンドポイント単位で隔離したければ middleware で `Scope` を拡張（例 `subject:operationID`） | DI / middleware | `NewDeps`, `WithRequest` |
 
-Operational notes (no per-route config flags — these are coded constants):
+運用上の注意（ルート単位の設定フラグは無く、すべてコード定数）:
 
-- **TTL = 24h**, **header = `Idempotency-Key`**, **key ≤ 255 printable-ASCII chars**, **GC default batch = 10,000** (overridable via the job's `--batch-size=N`).
-- Schedule the GC: `<binary> job idempotency-gc --batch-size=10000` on an external cron / k8s CronJob (hourly is plenty for a 24h TTL).
-- **PII caveat:** the response body is stored as JSON; for PII-bearing DTOs, dumps/backups expose it (mitigated by the 24h TTL).
+- **TTL = 24h**、**ヘッダ = `Idempotency-Key`**、**キー ≤ 255 印字可能 ASCII**、**GC 既定バッチ = 10,000**（ジョブの `--batch-size=N` で上書き可）。
+- GC をスケジュール：外部 cron / k8s CronJob で `<binary> job idempotency-gc --batch-size=10000`（24h TTL なら毎時で十分）。
+- **PII 注意:** 応答ボディは JSON で保存される。PII を含む DTO ではダンプ／バックアップに露出する（24h TTL で緩和）。
 
 ---
 
-## 5. Glossary
+## 5. 用語集
 
-| Term | Meaning |
+| 用語 | 意味 |
 | --- | --- |
-| **Idempotency-Key** | Client-supplied request header (≤255 printable-ASCII chars) identifying one logical operation within a scope. |
-| **scope** | The namespace for key uniqueness = the authenticated principal (`authn.Subject()`). `UNIQUE(scope, key)` prevents cross-user collision / IDOR. Every `Store` call requires it. |
-| **fingerprint** | `SHA-256(method + "\n" + path + "\n" + json(request))`. Detects the same key reused with a different body (→ 422). Computed fail-closed by the middleware. |
-| **Claim** | `INSERT ... ON CONFLICT DO NOTHING` under `SET LOCAL lock_timeout='3s'`. Returns `claimed=true` (new), `false` (exists), or `ErrLockTimeout`. Runs inside the business tx. |
-| **claimed / completed** | The two `status` values. `claimed` = reserved, result not yet saved; `completed` = `businessFn` succeeded and the response is stored. |
-| **Complete** | `UPDATE claimed→completed` saving `response_status` + `response_payload` (JSON of `T`), in the same tx. |
-| **replay** | Returning the stored response for a same-`(scope,key,fingerprint)` completed op; `businessFn` is not run. `Run` returns `replayed=true`. Counter `IncHit`. |
-| **409 `ErrConflict`** | A concurrent / in-flight claim — lock timeout, `status='claimed'`, or a record that vanished after a claim collision. Client should retry later. Counter `IncConflict`. |
-| **422 `ErrValidation`** | Same key reused with a different request body (fingerprint mismatch). Client bug. Counter `IncFingerprintMismatch`. |
-| **ErrLockTimeout** | Boundary sentinel from `Claim` when the row lock is unavailable after 3s; the usecase maps it to 409. |
-| **Run[T]** | The orchestrator. `Run(ctx, deps, successStatus, businessFn) (T, bool, error)`. No key in ctx (or empty scope) → `businessFn` runs directly. |
-| **Deps** | Injected bundle for `Run`: `Txm` (`tx.Manager`), `Store`, `Clock`, optional `Metrics` (nil = no-op). |
-| **Request (context)** | In-flight metadata threaded by the middleware: `Scope` / `Key` / `Fingerprint` / `Method` / `Path` / `OperationID`. |
-| **ttl** | `24 * time.Hour`. `expires_at = now + ttl`. After it, a retry is a fresh op. |
-| **GCUsecase / idempotencygc** | `SweepExpired(batchSize)` loops `Store.DeleteExpired` until a short batch; run from the bundled CLI [job](job.md). Default batch 10,000. |
-| **Store** | The persistence seam (`internal/usecase/boundary/idempotency`): `Claim` / `Get` / `Complete` / `DeleteExpired`, all scope-mandatory. |
-| **Metrics** | Optional o11y counters labelled by `operationID`: `IncHit` / `IncMiss` / `IncConflict` / `IncFingerprintMismatch` / `IncClaimFailure` / `IncCompleteFailure`. Default no-op. |
+| **Idempotency-Key** | クライアント供給のリクエストヘッダ（≤255 印字可能 ASCII）。scope 内で 1 つの論理操作を識別。 |
+| **scope** | キー一意性の名前空間 ＝ 認証プリンシパル（`authn.Subject()`）。`UNIQUE(scope, key)` で越境（IDOR）を防ぐ。`Store` の全呼び出しで必須。 |
+| **fingerprint** | `SHA-256(method + "\n" + path + "\n" + json(request))`。同一キーの別ボディ再利用を検出（→ 422）。middleware が fail-closed で計算。 |
+| **Claim** | `SET LOCAL lock_timeout='3s'` 下の `INSERT ... ON CONFLICT DO NOTHING`。`claimed=true`（新規）/ `false`（既存）/ `ErrLockTimeout` を返す。業務 tx 内で実行。 |
+| **claimed / completed** | 2 つの `status` 値。`claimed` ＝ 予約済み・結果未保存、`completed` ＝ `businessFn` 成功・応答保存済み。 |
+| **Complete** | `UPDATE claimed→completed` し `response_status` ＋ `response_payload`（`T` の JSON）を同一 tx で保存。 |
+| **replay** | 同一 `(scope,key,fingerprint)` の完了済み操作へ保存済み応答を返す。`businessFn` は走らない。`Run` は `replayed=true`。カウンタ `IncHit`。 |
+| **409 `ErrConflict`** | 並行／in-flight claim——ロックタイムアウト・`status='claimed'`・claim 衝突後に消えた行。後で再試行。カウンタ `IncConflict`。 |
+| **422 `ErrValidation`** | 同一キーを別ボディで再利用（fingerprint 不一致）。クライアントのバグ。カウンタ `IncFingerprintMismatch`。 |
+| **ErrLockTimeout** | 3s 以内に行ロックを取れなかったときの `Claim` の境界 sentinel。usecase が 409 へマップ。 |
+| **Run[T]** | オーケストレータ。`Run(ctx, deps, successStatus, businessFn) (T, bool, error)`。ctx にキー無し（または scope 空）→ `businessFn` を直実行。 |
+| **Deps** | `Run` の注入束：`Txm`（`tx.Manager`）/ `Store` / `Clock` / 任意 `Metrics`（nil ＝ no-op）。 |
+| **Request（context）** | middleware が載せる in-flight メタ：`Scope` / `Key` / `Fingerprint` / `Method` / `Path` / `OperationID`。 |
+| **ttl** | `24 * time.Hour`。`expires_at = now + ttl`。経過後はリトライを新規操作として扱う。 |
+| **GCUsecase / idempotencygc** | `SweepExpired(batchSize)` が短いバッチまで `Store.DeleteExpired` をループ。同梱 [job](job.md) から実行。既定バッチ 10,000。 |
+| **Store** | 永続化 seam（`internal/usecase/boundary/idempotency`）：`Claim` / `Get` / `Complete` / `DeleteExpired`、すべて scope 必須。 |
+| **Metrics** | `operationID` ラベルの任意 o11y カウンタ：`IncHit` / `IncMiss` / `IncConflict` / `IncFingerprintMismatch` / `IncClaimFailure` / `IncCompleteFailure`。既定 no-op。 |

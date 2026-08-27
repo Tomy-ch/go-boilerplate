@@ -5,89 +5,65 @@ deciders: [maintainers]
 tags: [config, build]
 ---
 
-# ADR-0046: go:embed bundles config (.env) and migrations for a self-contained binary
+# ADR-0046: go:embed で設定（.env）とマイグレーションをバンドルし、自己完結型バイナリを実現する
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-The application needs two sets of files available at runtime:
+アプリケーションは 2 種類のファイルをランタイムで利用できる必要がある。
 
-1. **Configuration defaults** (`env/.env`) — environment variables that seed the
-   process before runtime overrides are applied.
-2. **Database migrations** (`database/migrations/`) — SQL files run by the migration
-   tool at startup or deployment.
+1. **設定のデフォルト値**（`env/.env`）— ランタイムのオーバーライドが適用される前にプロセスにシードする環境変数。
+2. **データベースマイグレーション**（`database/migrations/`）— 起動時またはデプロイ時にマイグレーションツールによって実行される SQL ファイル。
 
-Distributing these as external files alongside the binary requires operators to manage
-file placement and introduces deployment surface. A binary that depends on external
-files present at a specific path is harder to containerize consistently and easier to
-misconfigure.
+これらをバイナリとは別の外部ファイルとして配布すると、オペレーターがファイル配置を管理する必要があり、デプロイサーフェスが増加する。特定のパスに外部ファイルが存在することを前提とするバイナリは、コンテナ化が一貫して難しくなり、設定ミスも起きやすくなる。
 
-## Decision
+## 決定
 
-The repo root `embed.go` uses `//go:embed` to bundle both asset groups into the binary
-at build time:
+リポジトリルートの `embed.go` は `//go:embed` を使って、ビルド時に両方のアセットグループをバイナリにバンドルする。
 
 ```go
 //go:embed env/.env database/migrations
 var FS embed.FS
 ```
 
-`FS` is an `embed.FS` exported from the `root` package. The config loader reads
-`env/.env` from `FS` via godotenv and sets each variable **only if it is not already
-set** in the process environment, so runtime-injected environment variables always take
-precedence over the embedded defaults.
+`FS` は `root` パッケージからエクスポートされた `embed.FS` である。設定ローダーは godotenv 経由で `FS` から `env/.env` を読み取り、各変数をプロセス環境にまだ**設定されていない場合にのみ**設定するため、ランタイムで注入された環境変数は常に埋め込みデフォルトより優先される。
 
-**Per-environment builds:** `env/.env` is the single embed target. The Docker `builder`
-stage materializes the target environment's file before `go build` via:
+**パーエンバイロメントビルド:** `env/.env` が唯一の埋め込みターゲットである。Docker の `builder` ステージは `go build` の前に以下によってターゲット環境のファイルを具体化する。
 
 ```text
 cp env/.env.${APP_ENV} env/.env
 ```
 
-Non-Docker flows (`go run`, `go test`) embed the committed local `env/.env`. CI that
-needs another environment re-bakes it the same way.
+Docker を使わないフロー（`go run`、`go test`）はコミットされたローカルの `env/.env` を埋め込む。別の環境が必要な CI も同じ方法で再ベイクする。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- A single binary carries its configuration defaults and migrations; no external file
-  placement is required at runtime.
-- The embedded `env/.env` acts as the local default; any value can be overridden by
-  setting the corresponding environment variable at runtime.
-- Migration files are always in sync with the binary that was built (version drift
-  between binary and migration files is impossible).
+- 単一のバイナリが設定のデフォルトとマイグレーションを保持するため、ランタイムでの外部ファイル配置が不要になる。
+- 埋め込まれた `env/.env` がローカルデフォルトとして機能し、対応する環境変数をランタイムに設定することで任意の値をオーバーライドできる。
+- マイグレーションファイルはビルドされたバイナリと常に同期している（バイナリとマイグレーションファイル間のバージョンずれは起きない）。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Changing configuration defaults requires a rebuild and redeployment, not just a file
-  update.
-- Only one `.env` file can be embedded at a time; the per-environment swap must happen
-  before `go build` (a Docker-layer concern, not a Go concern).
-- `FS` is package-level state; tests that need to read from it must be aware of the
-  embedded content.
+- 設定のデフォルト値を変更するには、ファイルの更新だけではなく再ビルドと再デプロイが必要になる。
+- 一度に埋め込めるのは 1 つの `.env` ファイルのみであり、パーエンバイロメントの切り替えは `go build` の前に行わなければならない（これは Go の関心事ではなく Docker レイヤーの関心事である）。
+- `FS` はパッケージレベルの状態であり、それを読み取る必要があるテストは埋め込みコンテンツを意識しなければならない。
 
-## Alternatives Considered
+## 検討した代替案
 
-### External config files only
+### 外部設定ファイルのみ
 
-Require operators to place `.env` and migration directories alongside the binary.
-Rejected: increases deployment surface and makes container images dependent on
-out-of-band file distribution.
+オペレーターに `.env` とマイグレーションディレクトリをバイナリの横に配置することを要求する。却下: デプロイサーフェスが増加し、コンテナイメージが帯域外のファイル配布に依存することになる。
 
-### Config server / remote key-value store
+### 設定サーバー / リモートキーバリューストア
 
-Fetch configuration from a remote source at startup. Rejected for defaults: adds a
-network dependency before the application is ready and does not address the migration
-bundling need.
+起動時にリモートソースから設定を取得する。デフォルト値には却下: アプリケーションが準備できる前にネットワーク依存が追加され、マイグレーションのバンドル需要にも対応できない。
 
-## Notes
+## 補足
 
-- Source: `embed.go` (repo root, `//go:embed env/.env database/migrations`),
-  `internal/config/README.md` (Load step — embedded file read via `root.FS`),
-  `env/README.md` (Notes section — per-environment build flow).
-- The config loading sequence that consumes `FS` is described in
-  [ADR-0045](0045-immutable-fail-fast-config.md).
+- 出典: `embed.go`（リポジトリルート、`//go:embed env/.env database/migrations`）、`internal/config/README.md`（ロードステップ — `root.FS` 経由での埋め込みファイル読み取り）、`env/README.md`（Notes セクション — パーエンバイロメントビルドフロー）。
+- `FS` を消費する設定ロードシーケンスは [ADR-0045](0045-immutable-fail-fast-config.md) に記載されている。

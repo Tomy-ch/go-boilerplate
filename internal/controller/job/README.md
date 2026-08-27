@@ -1,26 +1,26 @@
-# Job Controller Layer (`internal/controller/job`) Guide
+# コントローラー層のジョブ（`internal/controller/job`）ガイド
 
-## Role in This Project
+## このプロジェクトでの役割
 
-`internal/controller/job` is the **batch/job entry point (Controller layer)** that is invoked from the CLI (Cobra).
+internal/controller/job は、CLI（Cobra）から起動される **バッチ/ジョブのエントリポイント（Controller層）**です。
 
-- Normalize job input/output (interpretation of args, output format of results)
-  - Extract and convert parameters required for job business logic from args
-- Start and end spans with Observability (LayerTracer)
-- Call the Usecase layer
-- Normalize errors to apperror / errorresponse (or an error representation for Job)
-- Format and output results to logs
+- ジョブの入出力（引数 args の解釈、結果の出力形式）を整える
+  - args からジョブのビジネスロジックに必要なパラメーターを抽出・変換する
+- Observability（LayerTracer）で span を開始・終了する
+- ユースケース（Usecase層）を呼び出す
+- エラーを apperror / errorresponse（または Job 用のエラー表現）に寄せる
+- 結果をログに整形して出す
 
-Delegate "business logic", "DB access", and "domain model operations" to Usecase / Domain / Infra, and keep the Controller thin.
+「ビジネスロジック」「DBアクセス」「ドメインモデルの操作」は Usecase / Domain / Infra に寄せ、Controller は薄く保ちます。
 
 <!-- sample-api:begin -->
-The `usercount/`, `userpurge/` and `productimagegc/` directories are sample implementations. When building an actual service, use them as a reference and remove them if unnecessary.
+配下の `usercount/` / `userpurge/` / `productimagegc/` はサンプル実装です。実際のサービス構築時には参考にした上で、不要であれば削除してください。
 
 <!-- sample-api:end -->
 
-## Architecture
+## アーキテクチャ
 
-### Processing Flow When Running a Job
+### ジョブ実行時の処理フロー
 
 ```mermaid
 flowchart LR
@@ -32,78 +32,78 @@ Usecase --> Infrastructure
 Infrastructure --> Database
 ```
 
-Jobs enter the Controller directly from the CLI without going through HTTP.
+ジョブは HTTP を経由せず、CLI から直接 Controller に入ります。
 
-The processing flow is as follows:
+処理の流れは次の通りです。
 
-1. Cobra receives the CLI command
-2. Job Controller interprets args
-3. Calls Usecase
-4. Domain / Infrastructure perform data processing
-5. Outputs results to logs
+1. Cobra が CLI コマンドを受け取る
+2. Job Controller が args を解釈する
+3. Usecase を呼び出す
+4. Domain / Infrastructure がデータ処理を行う
+5. 結果をログとして出力する
 
-HTTP Controller and Job Controller **have the same role, differing only in input protocol**.
+HTTP Controller と Job Controller は **入力プロトコルが異なるだけで役割は同じ**です。
 
-## Types of Controller
+## Controller の種類
 
-This project has two types of Controllers.
+このプロジェクトでは Controller は2種類存在します。
 
-- HTTP Controller: Converts HTTP requests into Usecase calls
-- Job Controller: Converts CLI execution into Usecase calls
+- HTTP Controller: HTTP リクエストを Usecase 呼び出しに変換する
+- Job Controller: CLI 実行を Usecase 呼び出しに変換する
 
-You can think of Job Controller as a **Controller without HTTP**.
+Job Controller は **HTTP を持たない Controller** と考えると理解しやすいです。
 
-### Differences Between Job Controller and HTTP Controller
+### Job Controller と HTTP Controller の違い
 
 HTTP Controller
 
-- Processes HTTP requests
-- Returns OpenAPI responses
-- Passes through middleware
+- HTTP request を処理
+- OpenAPI response を返す
+- middleware を通る
 
 Job Controller
 
-- Processes CLI args
-- Represents results via log output
-- No HTTP middleware exists
+- CLI args を処理
+- ログ出力で結果を表現
+- HTTP middleware は存在しない
 
-## Responsibility for args Parsing
+## args 解析の責務
 
-Parsing of args is the responsibility of the Controller.
+args の解析は Controller の責務です。
 
-The Controller's role is to **convert CLI syntax into typed values**.
+Controller は **CLI 構文を型付き値に変換する役割**を持ちます。
 
-Example
+例
 
 ```mermaid
 flowchart TB
     Arg["Arg: --since 2024-01-01"]
-    Controller["Controller: convert to time.Time"]
-    Usecase["Usecase: used in business logic"]
+    Controller["Controller: time.Time に変換"]
+    Usecase["Usecase: ビジネスロジックで利用"]
 
     Arg --> Controller --> Usecase
 ```
 
 Controller
 
-- Syntax interpretation of CLI arguments
-- Type conversion
-- Range checking
+- CLI 引数の構文解釈
+- 型変換
+- 範囲チェック
 
 Usecase
 
-- Application of business rules
+- ビジネスルールの適用
 
-## Handling Exit Code
+## Exit Code の扱い
 
-Job Controller **must not call `os.Exit()`**.
+Job Controller は `os.Exit()` を呼び出してはいけません。
 
-Reason
+理由
 
-- Exit codes are managed by the CLI / Runner layer
-- If Controller controls process termination, responsibilities are broken
+- CLI / Runner 層が終了コードを管理するため
+- Controller がプロセス終了を制御すると責務が壊れるため
 
-Recommended
+推奨
 
 ```mermaid
 flowchart TB
@@ -112,11 +112,11 @@ flowchart TB
     Runner --> Exit["Exit code decision"]
 ```
 
-## Recommended Log Output Structure
+## ログ出力の推奨構造
 
-It is recommended to output job execution results as **structured logs**.
+ジョブ実行結果は **構造化ログ**で出力することを推奨します。
 
-Recommended fields
+推奨フィールド
 
 ```mermaid
 flowchart TB
@@ -126,7 +126,7 @@ flowchart TB
     Error["error"]
 ```
 
-Example
+例
 
 ```go
 // Log job execution result
@@ -136,11 +136,11 @@ u.logging.Named(jobName).Info(
 )
 ```
 
-## How to Parse args
+## args パースの方法
 
-For simple jobs, you may parse `args` directly.
+単純なジョブは `args` を直接解析して構いません。
 
-For complex jobs, it is recommended to use `flag` or `pflag`.
+複雑なジョブでは `flag` または `pflag` の利用を推奨します。
 
 ```mermaid
 flowchart TB
@@ -148,16 +148,16 @@ flowchart TB
     Complex["Complex job: use flag / pflag"]
 ```
 
-## Guidelines for Job Design
+## Job 設計の指針
 
-Design jobs to be **idempotent whenever possible**.
+可能な限り **冪等性 (idempotency)** を保つよう設計してください。
 
-Reason
+理由
 
-- Batch jobs are likely to be re-executed
-- Makes retries during operation easier
+- バッチは再実行される可能性が高い
+- 運用時にリトライしやすくするため
 
-Example
+例
 
 ```mermaid
 flowchart TB
@@ -172,16 +172,16 @@ flowchart TB
     Bad --> C
 ```
 
-## Granularity of Job
+## Job の粒度
 
-Recommended
+推奨
 
 ```mermaid
 flowchart TB
     Rule["1 job = 1 operational task"]
 ```
 
-Example
+例
 
 ```mermaid
 flowchart TB
@@ -191,81 +191,81 @@ flowchart TB
     D["cleanup-sessions"]
 ```
 
-Design jobs at the granularity of **a single operational task**.
+ジョブは **単一の運用タスク**を表す粒度で設計してください。
 
-## Implementation Notes
+## 実装上の注意点
 
-### Naming/Structure
+### 命名/構造
 
-The recommended structure is "1 job type = 1 package (1 directory)".
+推奨の構造は「ジョブ 1 種類 = 1 パッケージ（1 ディレクトリ）」です。
 
-The following naming policy is stable.
+命名は以下の方針が安定します。
 
 <!-- sample-api:replace-begin -->
-- Package name: Go style lower (not lower_snake) (e.g., usercount, fixcollation)
+- パッケージ名：lower_snake ではなく Go 流儀の lower（例：usercount, fixcollation）
 <!-- sample-api:replace-with -->
-<!-- = - Package name: Go style lower (not lower_snake) (e.g., idempotencygc, fixcollation) -->
+<!-- = - パッケージ名：lower_snake ではなく Go 流儀の lower（例：idempotencygc, fixcollation） -->
 <!-- sample-api:replace-end -->
-- Job name (key used by Runner): kebab-case is recommended
-  - e.g., user-count / fix-collation / dump-schema
-- Makes it easy to match with Cobra's job <name> and to document in README
+- Job 名（Runner が引くキー）：kebab-case を推奨
+  - 例：user-count / fix-collation / dump-schema
+- Cobra の job <name> と一致させやすく、README にも書きやすい
 
-## Layers That Can Be Called
+## 呼び出せる層
 
-- **Controller → Usecase only** (plus generated code `gen`, DTO/Presenter, `apperror`/`errorresponse`)
-- **Do not call Infra / Domain directly**
-- In DI (`fx`), each job receives the specific Usecase interface it needs (e.g., `user.Usecase`)
+- **Controller → Usecase のみ**（＋生成物`gen`、DTO/Presenter、`apperror`/`errorresponse`）。  
+- **Infra / Domain を直接呼ばない**。  
+- DI（`fx`）で各 Job は必要な Usecase インターフェース（例：`user.Usecase`）を受け取る。
 
-## Do's and Don'ts (Summary)
+## やっていいこと / いけないこと(まとめ)
 
 ### Do
 
-- Interpret args as "the minimum arguments required by the job"
-  - e.g.: --dry-run, --limit, --since, etc.
-- Perform input value validation (type conversion, range checking) in the Controller
-  - Do not go as far as business rules (e.g., whether state transitions are allowed)
-- Call Usecase, receive results, and format them for logs or standard output
-- Return apperror / convert and return errors (to make unified handling in JobRunner easier)
-- Start a span with LayerTracer and always close it with defer
-- Leave job start/end, input, and result (record count, etc.) as structured logs
+- args を「そのジョブが必要とする引数」に 最小限に解釈する
+  - 例：--dry-run、--limit、--since など
+- 入力値のバリデーション（型変換・範囲チェック）を Controller で行う
+  - ビジネスルール（例：状態遷移の可否）まではやらない
+- Usecase を呼び出して結果を受け取り、ログや標準出力に整形して出す
+- apperror を返す / 変換して返す（JobRunner 側で統一的に処理しやすい）
+- LayerTracer で span を開始して、必ず defer で閉じる
+- Job の開始/終了、入力、結果（件数など）を 構造化ログで残す
 
 ### Don’t
 
-- Directly touch DB drivers or sqlc Querier in the Controller (Infra's responsibility)
-- Call Repository directly in the Controller (do not skip Usecase)
-- Write logic for creating/persisting domain entities in the Controller
-- Directly touch OTel SDK (do not write sdktrace.NewTracerProvider() etc. in the Controller)
-- Call os.Exit() in the middle of a job (may conflict with Runner/CLI control)
-- Ignore unified rules for output format (log/standard output) (will be a nightmare in operation)
+- DB ドライバや sqlc の Querier を Controller で直接触る（Infra の責務）
+- Repository を Controller で直接呼ぶ（Usecase を飛ばさない）
+- ドメインエンティティの生成・永続化ロジックを Controller に書く
+- OTel SDK を直接触る（sdktrace.NewTracerProvider() 等を Controller で書かない）
+- ジョブの途中で os.Exit() する（Runner/CLI の制御と衝突しやすい）
+- 出力フォーマット（ログ/標準出力）の統一ルールを無視する（運用で地獄を見る）
 
-## Test Strategy
+## テスト戦略
 
-Tests for the Job Controller layer verify **the behavior at the CLI boundary**.
+Job Controller 層のテストは **CLI 境界の振る舞い** を検証します。
 
-In this layer, **do not use the Usecase implementation, use mocks**.
+この層では **Usecase の実装は使用せず mock を利用**します。
 
-### Test Dependencies
+### テストの依存関係
 
-|Dependency|Test Method|
+|依存|テスト方法|
 |---|---|
 |Usecase|mock|
-|Domain|not used|
-|Infrastructure|not used|
+|Domain|使用しない|
+|Infrastructure|使用しない|
 |Logger|test logger|
 |Tracer|noop tracer|
 
-### Test Targets
+### テスト対象
 
-Job Controller tests verify the following:
+Job Controller テストでは次の内容を検証します。
 
-- Parsing of CLI args
-- Usecase invocation
-- Error propagation
-- Log output
+- CLI args の解析
+- Usecase 呼び出し
+- エラー伝播
+- ログ出力
 
-### Test Structure
+### テスト構成
 
-Job Controller tests are implemented in the following structure.
+Job Controller のテストは次の構成で実装します。
 
 ```go
 func TestNew(t *testing.T) {
@@ -279,15 +279,15 @@ func TestJob_Execute(t *testing.T) {
 }
 ```
 
-### Success Case Tests
+### 正常系テスト
 
-In success cases, verify the following:
+正常系では以下を確認します。
 
-- args are correctly interpreted
-- Usecase is called with correct arguments
-- No error occurs
+- args が正しく解釈される
+- Usecase が正しい引数で呼び出される
+- エラーが発生しない
 
-Example:
+例：
 
 ```go
 mockApp.EXPECT().
@@ -295,9 +295,9 @@ mockApp.EXPECT().
     Return(int64(42), nil)
 ```
 
-### Error Case Tests
+### 異常系テスト
 
-In error cases, verify that errors returned by Usecase are returned as-is.
+異常系では Usecase が返すエラーがそのまま返ることを確認します。
 
 ```go
 mockApp.EXPECT().
@@ -307,9 +307,9 @@ mockApp.EXPECT().
 require.Equal(t, assertError, err)
 ```
 
-### Runner Tests
+### Runner のテスト
 
-Runner tests **only the registry/dispatch of jobs**.
+Runner は **Job の registry / dispatch のみ**をテストします。
 
 ```go
 func Test_NewRunner(t *testing.T) {
@@ -323,15 +323,15 @@ func TestRunner_Names(t *testing.T) {
 }
 ```
 
-Verification targets
+確認対象
 
-- Detection of duplicate job names
-- Error for unregistered jobs
-- Execution of jobs
+- 重複 job 名検出
+- 未登録 job のエラー
+- job の実行
 
-### State Tests
+### State のテスト
 
-state tests **only the state holding logic including mutex**.
+state は **mutex を含む状態保持ロジック**のみをテストします。
 
 ```go
 func TestState(t *testing.T) {
@@ -339,29 +339,29 @@ func TestState(t *testing.T) {
 }
 ```
 
-Verification targets
+確認対象
 
-- Consistency between Set → Snapshot
-- Usability of the channel
+- Set → Snapshot の整合性
+- channel の利用可能性
 
-### Test Policy
+### テストポリシー
 
-Job Controller tests do not perform the following.
+Job Controller テストでは次を行いません。
 
-- DB connection
-- SQL execution
-- Domain logic verification
-- Verification of internal Usecase logic
+- DB 接続
+- SQL 実行
+- Domain ロジック検証
+- Usecase 内部ロジック検証
 
-These are the responsibility of **Usecase / Domain / Infrastructure tests**.
+これらは **Usecase / Domain / Infrastructure テストの責務**です。
 
-## DI (Dependency Injection) Mechanism
+## DI（Dependency Injection）の仕組み
 
-In this project, Job Controller is dependency-injected (DI) by Uber Fx.
+このプロジェクトでは、Job Controller は Uber Fx によって依存性注入（DI）されます。
 
-### Overall Structure
+### 全体構成
 
-Jobs are grouped into `group:"jobs"` and aggregated in Runner.
+Job は `group:"jobs"` にまとめられ、Runner に集約されます。
 
 ```mermaid
 flowchart TB
@@ -371,7 +371,7 @@ flowchart TB
     %% = A["fx.Provide(someJob.New)"]
     %% sample-api:replace-end
     B["fx.Provide(otherJob.New)"]
-    Group["group:\"jobs\""]
+    Group["group:”jobs”"]
     Jobs["[]job.Job"]
     Runner["JobRunner"]
 
@@ -380,13 +380,13 @@ flowchart TB
     Group --> Jobs --> Runner
 ```
 
-### Role of module/job.go
+### module/job.go の役割
 
 ```go
 func JobModule() fx.Option {
     return fx.Module("job",
         provideJobs(
-            // Add job constructors here.
+            // ここにジョブのコンストラクタを追加します。
             idempotencygc.New,
             outboxgc.New,
             usercount.New,      // sample-api:line
@@ -403,15 +403,15 @@ func JobModule() fx.Option {
 ```
 
 - `provideJobs(...)`
-  - Registers constructors for each Job to `group:"jobs"`
+  - 各 Job のコンストラクタを `group:"jobs"` に登録
 - `ProvideRunner`
-  - Receives the list of Jobs and creates a Runner to manage execution
+  - Job の一覧を受け取り、実行を管理する Runner を生成
 - `RegisterJobHooks`
-  - Binds Jobs to the CLI at app startup
+  - アプリ起動時に Job を CLI にバインド
 
-### Job Constructor Design
+### Job のコンストラクタ設計
 
-Jobs should **receive Usecase / Logger / Tracer via DI**.
+Job は **Usecase / Logger / Tracer を DI で受け取る**構造にします。
 
 ```go
 func New(
@@ -427,60 +427,60 @@ func New(
 }
 ```
 
-Points:
+ポイント：
 
-- Controller does not create dependencies itself
-- Always receive dependencies from DI (fx)
-- This allows replacement with mocks during testing
+- Controller は自分で依存を生成しない
+- 必ず DI（fx）から受け取る
+- これによりテスト時は mock に差し替え可能
 
-### Why Use group:"jobs"
+### なぜ group:"jobs" を使うのか
 
-- Adding Jobs does not require modification of Runner
-- Jobs can be added in a plug-in manner
-- Satisfies the Open/Closed Principle
+- Job を追加しても Runner 側の修正が不要
+- Plug-in 的に Job を増やせる
+- Open/Closed Principle を満たす
 
-### Rules for AI/Developers
+### AI/開発者向けルール
 
-- When adding a Job, add it to `provideJobs(...)` in `module/job.go`
-- Do not bypass DI to instantiate with new
-- Always receive dependencies via constructor
+- Job を追加する場合は `module/job.go` の `provideJobs(...)` に追加すること
+- DI をバイパスして new しないこと
+- 依存は必ず constructor 経由で受け取ること
 
-## Observability (Tracing) Usage
+## Observability（Tracing）の使い方
 
-In this project, the Controller layer does not directly handle the OpenTelemetry SDK,
-but starts/ends spans via observability.LayerTracer.
+このプロジェクトでは、Controller層で直接OpenTelemetrySDKを扱わず、
+observability.LayerTracerを経由してspanの開始・終了を行います。
 
-### 1. Starting and Ending a Span in the Controller Layer
+### 1. Controller層でのspanの開始と終了
 
-At the beginning of each handler, always write the following two lines.
+各ハンドラーの先頭で必ず次の2行を記述してください。
 
 ```go
 ctx, endSpan := s.tracer.Start(ctx)
 defer endSpan()
 ```
 
-- Start(ctx) starts a span and associates trace_id/span_id with the context.
-- endSpan() ends the span (span.End).
-- defer endSpan() ensures the span is always ended even on exceptions or early returns.
+- Start(ctx)でspanが開始され、trace_id/span_idがcontextに紐づきます。
+- endSpan()は、spanの終了（span.End）を行います。
+- defer endSpan()により例外や早期returnがあっても必ず終了されます。
 
-Points:
+ポイント：
 
-- Controller only knows how to start/end spans, and does not touch OpenTelemetry SDK details.
-- Job Controller also starts a span in the same way. This allows CLI executions to be integrated into the same trace infrastructure as HTTP traces.
+- Controllerはspanの開始・終了だけを知り、OpenTelemetry SDK の詳細には一切触れません。
+- Job Controller でも同様に span を開始します。これにより CLI 実行のトレースも HTTP トレースと同じトレース基盤に統合されます。
 
-### 2. DI of Tracer (observability.LayerTracer)
+### 2. TracerのDI（observability.LayerTracer）
 
-Controllers receive observability.LayerTracer as a dependency as follows.
+Controllerは以下のようにobservability.LayerTracerを依存として受け取ります。
 
 ```go
 type jobImpl struct {
-    logging logging.Logger // For result log output
-    tracer  observability.LayerTracer // Tracer for observability
-    usecase user.Usecase // Usecase used by each job
+    logging logging.Logger // 結果ログ出力用
+    tracer  observability.LayerTracer // o11y用のトレーサー
+    usecase user.Usecase // それぞれのジョブで使うユースケース
 }
 ```
 
-In the `New` constructor, the Controller-layer tracer is obtained via `tf.Controller()` (a `TracerFactory` method). Jobs have no `BindHandler`; the tracer is wired here.
+`New` コンストラクタで、Controller 層のトレーサーを `tf.Controller()`（`TracerFactory` のメソッド）から取得します。Job に `BindHandler` はなく、トレーサーはここで結線します。
 
 ```go
 func New(
@@ -496,21 +496,20 @@ func New(
 }
 ```
 
-Here, raw SDK instances are not used directly,
-and the observability layer hides the tracer generation rules (layer name, package name, function name extraction) internally.
+ここではSDKの生インスタンスを直接使わず、
+observability層がtracerの生成ルール（レイヤー名やパッケージ名・関数名の抽出）を内部で隠蔽します。
 
-## GC / batch jobs
+## GC / バッチ系ジョブ
 
-A job that sweeps rows or objects in batches follows two conventions beyond the reference snippet.
+行やオブジェクトをバッチで掃除するジョブは、参考スニペットに加えて 2 つの規約に従う。
 
-- **Flag parsing is strict.** An unknown flag, a repeated flag, and mutually exclusive flags are all
-  errors. A job runs unattended, so a typo that silently changes nothing is worse than a failure.
-- **A failed sweep still reports what it committed.** When the usecase returns an error partway
-  through, log the counts it did get through at `Warn` before propagating. Those deletions are
-  already committed and cannot be taken back, so dropping the number destroys the only record that
-  the work happened.
+- **フラグの解析は厳格にする。** 未知のフラグ・同一フラグの重複・相反するフラグの併用は、いずれも
+  エラーにする。ジョブは無人で走るため、打ち間違いが黙って何もしないほうが、失敗するより悪い。
+- **失敗した掃除も、コミットした分は報告する。** usecase が途中でエラーを返した場合でも、そこまでに
+  通した件数を `Warn` で出してから伝播する。その削除は既にコミット済みで取り消せないため、件数を
+  落とすと作業が行われた唯一の記録が消える。
 
-## Reference Snippet
+## 参考スニペット
 
 ```go
 // sample-api:replace-begin
@@ -523,19 +522,19 @@ import (
     "context"
 
     "go-boilerplate/internal/observability"
-    // Import packages used in the implementation
+    // それぞれ実装で使うパッケージをimport
 )
 
-// Definition of job name
+// ジョブ名の定義
 const jobName = "user-count"
 
 type jobImpl struct {
-    logging logging.Logger // For result log output
-    tracer  observability.LayerTracer // Tracer for observability
-    usecase user.Usecase // Usecase called from controller
+    logging logging.Logger // 結果ログ出力用
+    tracer  observability.LayerTracer // o11y用のトレーサー
+    usecase user.Usecase // コントローラからはUsecaseを呼び出す
 }
 
-// Register this function in internal/di/module/job.go as [<package>.New,]
+// この関数をinternal/di/module/job.goで、[<package>.New,]として登録する。
 func New(
     logging logging.Logger,
     tf observability.TracerFactory,
@@ -548,37 +547,37 @@ func New(
     }
 }
 
-// Name implements the Name method of the job.Job interface.
-// Unless you have a specific intention, use this implementation as is.
+// Name は、job.Job インターフェースの Name メソッドを実装します。
+// 特に意図がなければこの実装をそのまま使ってください。
 func (u *jobImpl) Name() string {
     return jobName
 }
 
-// Execute implements the Execute method of the job.Job interface.
+// Execute は、job.Job インターフェースの Execute メソッドを実装します。
 func (u *jobImpl) Execute(ctx context.Context, args []string) error {
-    // Start a span for tracing
+    // トレース用のspanを開始
     ctx, endSpan := u.tracer.Start(ctx)
     defer endSpan()
 
-    // Implement the main logic of the job here (argument parsing)
-    // Parse in a dedicated function and reject anything unexpected: an unknown flag,
-    // a repeated flag, and two flags that contradict each other are all errors.
-    // For complex jobs, it is recommended to use flag or pflag.
+    // ジョブの主要ロジックをここに実装(引数の解析)
+    // 解析は専用関数に切り出し、想定外はすべて拒否します。未知のフラグ・同一フラグの重複・
+    // 相反するフラグの併用は、いずれも後勝ちで黙殺せずエラーにします。
+    // 複雑なジョブでは flag または pflag の利用を推奨します。
     active, err := parseFilter(args)
     if err != nil {
         return err
     }
 
-    // Call the usecase
+    // ユースケースを呼び出し
     count, err := u.usecase.CountUsers(ctx, active)
     if err != nil {
         return err
     }
 
-    // Output the result to logs
-    u.logging.Named(jobName).Info( // Output is recommended at Info level, add job name with Name
+    // 結果をログに出力
+    u.logging.Named(jobName).Info( // 出力はInfoレベル推奨 Nameでジョブ名を付与
         "Result: total user count",
-        logging.Int64(logging.JobResultKey, count), // Use constant key for result
+        logging.Int64(logging.JobResultKey, count), // 結果の定数キーを使う
     )
 
     return nil

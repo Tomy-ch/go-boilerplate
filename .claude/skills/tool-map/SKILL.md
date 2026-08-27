@@ -8,40 +8,39 @@ allowed-tools: Bash(ls:*), Bash(find:*), Bash(test:*), Bash(make md-fix:*), Bash
 
 # Tool Map
 
-You have been invoked via `/tool-map`. The user's argument string is: `$ARGUMENTS`
+`/tool-map` として起動された。ユーザーの引数文字列は `$ARGUMENTS`。
 
-This command inventories every customization entry under the **project-level** `.claude/` directory (it does NOT scan `~/.claude/`). It covers three types — commands, skills, and agents — and produces a single Markdown report.
+このコマンドは、**プロジェクトレベル**の `.claude/` ディレクトリ配下に登録された全カスタマイズエントリを棚卸しする（`~/.claude/` はスキャンしない）。commands・skills・agents の 3 種を対象とし、単一の Markdown レポートを生成する。
 
-## Step 1. Resolve Inputs
+## Step 1. 入力の解決
 
-Parse `$ARGUMENTS` for the following optional flags. For each flag missing or invalid, fall back to `AskUserQuestion` to confirm.
+`$ARGUMENTS` を以下の任意フラグとしてパースする。欠落または不正なフラグは `AskUserQuestion` で確認する。
 
-| Flag | Values | Default |
+| フラグ | 値 | 既定 |
 | --- | --- | --- |
 | `--lang` | `en` / `ja` | `ja` |
 | `--output` | `inline` / `file` | `inline` |
-| `--output-path` | any relative path | `./TOOL_MAP.md` (en) or `./TOOL_MAP.ja.md` (ja) — only used if `--output=file` |
-| `--include` | comma-separated subset of `commands,skills,agents` | `commands,skills,agents` (all three) |
+| `--output-path` | 任意の相対パス | `./TOOL_MAP.md`（en）または `./TOOL_MAP.md`（ja）— `--output=file` のときのみ使用 |
+| `--include` | `commands,skills,agents` のカンマ区切り部分集合 | `commands,skills,agents`（3 種すべて） |
 
-`AskUserQuestion` fallback questions (only ask for unresolved flags):
+`AskUserQuestion` のフォールバック質問（未解決のフラグのみ尋ねる）:
 
-1. Output language? — `en` / `ja`
-2. Output destination? — `inline` / `file` (if `file`, also ask `--output-path`)
-3. Which entry types to include? — `commands` / `skills` / `agents` / `all`
+1. 出力言語は？ — `en` / `ja`
+2. 出力先は？ — `inline` / `file`（`file` の場合は `--output-path` も尋ねる）
+3. 含めるエントリ種別は？ — `commands` / `skills` / `agents` / `all`
 
-Do NOT scan or write anything until all required values are resolved.
+必要な値がすべて解決するまで、スキャンも書き込みも行わない。
 
-## Step 2. Enumerate Entries
+## Step 2. エントリの列挙
 
-Scan only project-level paths under the current working directory:
+現在の作業ディレクトリ配下のプロジェクトレベルのパスのみをスキャンする:
 
-| Type | Path glob | Entry file |
+| 種別 | パス glob | エントリファイル |
 | --- | --- | --- |
 | commands | `.claude/commands/` | `<name>.md` <!-- skill-lint-ignore --> |
-| skills | `.claude/skills/` | `<name>/SKILL.md` (skip `SKILL.ja.md` and other `*.ja.md` translation files) |
 | agents | `.claude/agents/` | `<name>.md` |
 
-Discovery commands (use `Bash` with `find` / `ls`, then `Read` per file):
+探索コマンド（`Bash` の `find` / `ls` を使い、ファイルごとに `Read`）:
 
 ```sh
 test -d .claude/commands && find .claude/commands -maxdepth 1 -type f -name '*.md'
@@ -49,52 +48,51 @@ test -d .claude/skills   && find .claude/skills   -mindepth 2 -maxdepth 2 -type 
 test -d .claude/agents   && find .claude/agents   -maxdepth 1 -type f -name '*.md'
 ```
 
-Skip:
+除外:
 
-- `*.ja.md` translation files (they are not loaded as entries).
-- Any directory under `.claude/skills/` that lacks a `SKILL.md`.
-- Hidden files (`.DS_Store` etc.).
+- `SKILL.md` を持たない `.claude/skills/` 配下のディレクトリ。
+- 隠しファイル（`.DS_Store` など）。
 
-## Step 3. Extract Metadata
+## Step 3. メタデータの抽出
 
-For each entry found, read its frontmatter and body. Extract:
+見つかった各エントリについて frontmatter と本文を読み、以下を抽出する:
 
-| Field | commands | skills | agents |
+| フィールド | commands | skills | agents |
 | --- | --- | --- | --- |
-| Name | filename stem | `name:` (fallback: dir name) | filename stem (also frontmatter `name:` if present) |
+| Name | ファイル名の語幹 | `name:`（フォールバック: ディレクトリ名） | ファイル名の語幹（frontmatter `name:` があればそれも） |
 | Description | `description:` | `description:` | `description:` |
 | Argument hint | `argument-hint:` | — | — |
 | Allowed tools | `allowed-tools:` | — | `tools:` |
 | Model override | `model:` | — | `model:` |
-| Path | relative to working dir | relative to working dir | relative to working dir |
+| Path | 作業ディレクトリからの相対 | 作業ディレクトリからの相対 | 作業ディレクトリからの相対 |
 
-Description should be truncated to the first sentence (or ~120 characters) for the inventory table.
+Description は棚卸し表向けに最初の 1 文（または約 120 文字）に切り詰める。
 
-## Step 4. Detect Dependencies
+## Step 4. 依存の検出
 
-A dependency is any cross-reference where one entry invokes or explicitly references another entry by name. Detect them in the body text by:
+依存とは、あるエントリが別のエントリを名前で呼び出す・明示的に参照する相互参照のこと。本文テキストから以下で検出する:
 
-1. **Explicit invocation phrases**: `invoke the` + name + `skill`, `chains into` + name, `via the Skill tool with` + name, `Agent({ subagent_type: '` + name + `' })`, `/<name>` literal invocations of other commands.
-2. **Backtick-wrapped names** that match the `name:` of another scanned entry.
-3. **Section headers** like `Chain`, `Calls`, `Depends on`, `Chains into` followed by name references.
+1. **明示的な呼び出し表現**: `invoke the` + name + `skill`、`chains into` + name、`via the Skill tool with` + name、`Agent({ subagent_type: '` + name + `' })`、他コマンドの `/<name>` リテラル呼び出し。
+2. スキャン済み別エントリの `name:` に一致する **バッククォート囲みの名前**。
+3. `Chain`・`Calls`・`Depends on`・`Chains into` などの **セクション見出し** に続く名前参照。
 
-Record dependencies as directed edges `caller → callee`. Tag each edge with the caller type and callee type (e.g., `skill → skill`, `skill → command`).
+依存は有向辺 `caller → callee` として記録する。各辺に caller 種別と callee 種別のタグを付ける（例: `skill → skill`、`skill → command`）。
 
-Exclude:
+除外:
 
-- Self-references (an entry mentioning its own name).
-- Mentions inside fenced code blocks whose language is unrelated (`bash`, `sh`, `make`, `sql`, etc.) **unless** the snippet is clearly an invocation example.
-- Generic English words that coincidentally match a name. Require the match to be backtick-wrapped or follow one of the invocation phrases.
+- 自己参照（自分の名前に言及するエントリ）。
+- 無関係な言語のフェンス済みコードブロック内の言及（`bash`・`sh`・`make`・`sql` など）。**ただし** 明らかに呼び出し例である場合を除く。
+- 偶然名前に一致する一般的な英単語。一致はバッククォート囲みか、上記の呼び出し表現のいずれかに従うことを要求する。
 
-If a detected reference targets a name that does not exist in the scanned set, record it as a **broken edge** for the Notes section.
+検出した参照がスキャン集合に存在しない名前を指す場合は、Notes セクション用に **broken edge**（壊れた辺）として記録する。
 
-## Step 5. Render the Report
+## Step 5. レポートの描画
 
-Produce the four sections below in the chosen language. Skill names and paths remain verbatim regardless of language.
+選択した言語で以下の 4 セクションを生成する。skill 名とパスは言語に関わらずそのまま。
 
 ### 1. Summary
 
-A one-line count per type. Only show types that were included.
+種別ごとの 1 行カウント。含めた種別のみ表示する。
 
 - `Commands: N`
 - `Skills:   M`
@@ -103,17 +101,17 @@ A one-line count per type. Only show types that were included.
 
 ### 2. Inventory Tables
 
-One table per included type, in this order: commands → skills → agents. Omit a table if its type has 0 entries (still report 0 in Summary).
+含めた種別ごとに 1 表を、commands → skills → agents の順で。種別が 0 件なら表は省略する（Summary では 0 を報告する）。
 
-- **Commands table**: Name | Description | Args | Allowed Tools | Model | Dependencies | Path
-- **Skills table**: Name | Description | Dependencies | Path
-- **Agents table**: Name | Description | Tools | Model | Dependencies | Path
+- **Commands 表**: Name | Description | Args | Allowed Tools | Model | Dependencies | Path
+- **Skills 表**: Name | Description | Dependencies | Path
+- **Agents 表**: Name | Description | Tools | Model | Dependencies | Path
 
-`Dependencies` is a comma-separated list of `<callee-name> (<callee-type>)` entries; empty if none.
+`Dependencies` は `<callee-name> (<callee-type>)` のカンマ区切り一覧。無ければ空。
 
 ### 3. Dependency Graph
 
-A Mermaid `graph LR` diagram. Apply a class to each node based on its type so the reader can distinguish:
+Mermaid の `graph LR` 図。読者が区別できるよう、各ノードに種別ごとの class を適用する:
 
 ```mermaid
 graph LR
@@ -125,69 +123,68 @@ graph LR
   %% class assignments
 ```
 
-Use the entry name as the node id (replace any disallowed Mermaid characters with `_`).
+ノード id にはエントリ名を使う（Mermaid で不許可の文字は `_` に置換する）。
 
 ### 4. Notes
 
-A short prose section calling out:
+以下を指摘する短い散文セクション:
 
-- **Leaf entries** (no outgoing or incoming edges).
-- **Hub entries** (depended on by 2 or more).
-- **Broken edges** (references to names not present in the scan).
-- **Cross-type chains** (e.g., a skill that invokes a command — possible but unusual).
-- **Empty types** (e.g., "No project-level agents found").
+- **Leaf エントリ**（出入りの辺が無い）。
+- **Hub エントリ**（2 つ以上から依存される）。
+- **Broken edges**（スキャンに存在しない名前への参照）。
+- **種別をまたぐ連鎖**（例: command を呼ぶ skill — あり得るが珍しい）。
+- **空の種別**（例: 「プロジェクトレベルの agents は見つからなかった」）。
 
 ### Language
 
-- `en`: section headings, prose, table headers in English.
-- `ja`: section headings, prose, table headers in Japanese.
+- `en`: セクション見出し・散文・表ヘッダを英語で。
+- `ja`: セクション見出し・散文・表ヘッダを日本語で。
 
-## Step 6. Emit
+## Step 6. 出力
 
-- `inline`: include the full report in the response and stop.
-- `file`: write the report to `--output-path` and respond with a short confirmation (one-line summary + the file path). Do NOT also duplicate the full report in the response.
+- `inline`: レポート全文を応答に含めて終了する。
+- `file`: レポートを `--output-path` に書き込み、短い確認（1 行サマリ + ファイルパス）で応答する。レポート全文を応答に重複させない。
 
-## Step 7. Verify with Markdown Lint (only when `--output=file`)
+## Step 7. Markdown Lint で検証（`--output=file` のときのみ）
 
-When `--output=file`, after writing the report run:
+`--output=file` のとき、レポート書き込み後に実行する:
 
 ```sh
 make md-fix
 make md-lint
 ```
 
-`make md-fix` runs `markdownlint-cli2 --fix` on the entire repository to auto-fix common issues (blank-line placement around headings / lists / code blocks, trailing whitespace, file-final newline, etc.). `make md-lint` then verifies that the result is clean against `.markdownlint-cli2.yaml`.
+`make md-fix` はリポジトリ全体に `markdownlint-cli2 --fix` を走らせ、よくある問題（見出し / リスト / コードブロック周りの空行、末尾空白、ファイル末尾改行など）を自動修正する。`make md-lint` はその結果が `.markdownlint-cli2.yaml` に対してクリーンかを検証する。
 
-If `make md-lint` reports remaining errors:
+`make md-lint` が残るエラーを報告した場合:
 
-1. Read the lint output.
-2. Fix the violations manually (rules that auto-fix cannot resolve, e.g., heading hierarchy, duplicate headings, bare URLs).
-3. Re-run `make md-fix` then `make md-lint` until clean.
+1. lint 出力を読む。
+2. 自動修正で解決できない違反（見出し階層、重複見出し、裸 URL など）を手で直す。
+3. `make md-fix` → `make md-lint` をクリーンになるまで繰り返す。
 
-Do NOT report the command as complete until `make md-lint` exits cleanly.
+`make md-lint` がクリーンに終了するまで、コマンド完了を報告しない。
 
-`make md-fix` operates on the entire repository, so it may modify Markdown files unrelated to the report. List any such files when reporting completion so the user can review the broader change set.
+`make md-fix` はリポジトリ全体を対象とするため、レポートと無関係な Markdown を変更し得る。完了報告時にそうしたファイルを列挙し、ユーザーが広い変更セットをレビューできるようにする。
 
-When `--output=inline`, skip this step (no file was written).
+`--output=inline` のときはこのステップをスキップする（ファイルを書いていない）。
 
 ## Constraints
 
-- This command is **read-only by default**. Writes are only allowed when the user explicitly chose `--output=file`, and only to the confirmed output path.
-- Scan scope is **project-level only**. Do NOT read or list anything under `~/.claude/`.
-- Plugin-provided entries are out of scope.
-- Do NOT modify any scanned entry. This command only inspects.
-- If `.claude/commands/`, `.claude/skills/`, or `.claude/agents/` does not exist, treat its entry count as 0 and note it in the report rather than erroring. <!-- skill-lint-ignore -->
+- このコマンドは **既定で読み取り専用**。書き込みはユーザーが明示的に `--output=file` を選んだ場合のみ、確認済みの出力パスに限り許される。
+- スキャン範囲は **プロジェクトレベルのみ**。`~/.claude/` 配下は読み取りも列挙もしない。
+- プラグイン提供のエントリは対象外。
+- スキャンしたエントリを一切変更しない。このコマンドは検査のみ。
+- `.claude/commands/`・`.claude/skills/`・`.claude/agents/` が存在しない場合、そのエントリ数を 0 として扱い、エラーにせずレポートに注記する。 <!-- skill-lint-ignore -->
 
 ## Checklist
 
-Before reporting completion, confirm:
+完了報告の前に確認する:
 
-- [ ] All required inputs resolved (via `$ARGUMENTS` or `AskUserQuestion`)
-- [ ] Only project-level `.claude/{commands,skills,agents}/` scanned
-- [ ] `*.ja.md` files excluded from the skills scan
-- [ ] Frontmatter parsed for each entry (name, description, type-specific fields)
-- [ ] Dependencies detected per the documented rules (self-refs excluded; broken edges recorded)
-- [ ] Report contains Summary, Inventory Tables, Dependency Graph (Mermaid), Notes
-- [ ] Standalone entries appear as isolated nodes in the graph
-- [ ] If `--output=file`, the file was written and `make md-lint` exits cleanly
-- [ ] If `--output=file`, no other path outside the confirmed output (and `make md-fix` side effects) was modified
+- [ ] 必要な入力がすべて解決した（`$ARGUMENTS` または `AskUserQuestion` 経由）
+- [ ] プロジェクトレベルの `.claude/{commands,skills,agents}/` のみをスキャンした
+- [ ] 各エントリの frontmatter をパースした（name・description・種別固有フィールド）
+- [ ] 文書化ルールどおり依存を検出した（自己参照は除外、broken edge は記録）
+- [ ] レポートに Summary・Inventory Tables・Dependency Graph（Mermaid）・Notes を含む
+- [ ] 単独エントリがグラフに孤立ノードとして現れる
+- [ ] `--output=file` の場合、ファイルを書き `make md-lint` がクリーンに終了した
+- [ ] `--output=file` の場合、確認済み出力（および `make md-fix` の副作用）以外のパスを変更していない

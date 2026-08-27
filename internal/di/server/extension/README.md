@@ -1,10 +1,10 @@
 # extension
 
-An **extension layer that centrally manages the application of middleware and configurators** to the Echo server.
+Echo サーバーに対して **ミドルウェア・設定関数（Configurator）の適用を統一管理する拡張レイヤー**です。
 
-Uses Uber FX DI groups to extend the server through three channels: `middlewares.pre`, `middlewares.use`, and `server.configurators`.
+Uber FX の DI グループを利用し、`middlewares.pre`・`middlewares.use`・`server.configurators` の3系統でサーバーを拡張します。
 
-## How It Works
+## 適用の仕組み
 
 ```mermaid
 flowchart TB
@@ -14,58 +14,58 @@ flowchart TB
         Cfg["server.configurators"]
     end
 
-    Pre --> Sort["Sort by Priority"]
+    Pre --> Sort["Priority でソート"]
     Use --> Sort
     Sort --> Apply["ApplyExtends()"]
     Cfg --> Apply
     Apply --> Echo["echo.Echo"]
 ```
 
-- **Pre middleware**: Executed before routing (`e.Pre()`)
-- **Use middleware**: Executed after routing (`e.Use()`)
-- **Configurator**: Configuration applied to Echo instance (client IP extraction, error handler, etc.)
-- Duplicate priorities are automatically detected and cause an error
+- **Pre ミドルウェア**: ルーティング前に実行（`e.Pre()`）
+- **Use ミドルウェア**: ルーティング後に実行（`e.Use()`）
+- **Configurator**: Echo インスタンスへの設定適用（クライアント IP 抽出・エラーハンドラ等）
+- Priority の重複は自動検出されエラーになる
 
-## Subdirectory List
+## サブディレクトリ一覧
 
-### inbound (Request Receiving)
+### inbound（リクエスト受信）
 
-|Module|Type|Description|
+|モジュール|種別|説明|
 |---|---|---|
-|`URIModule()`|Pre|Remove trailing slashes|
-|`TimeoutModule()`|Pre|Request deadline budget (`SERVER_REQUEST_TIMEOUT`)|
-|`BodyLimitModule()`|Pre|Request body size limit (`SERVER_BODY_LIMIT_MB`)|
-|`IPExtractorModule()`|Configurator|Client IP extraction|
-|`OpenAPIModule()`|Use|OpenAPI validation|
+|`URIModule()`|Pre|末尾スラッシュ除去|
+|`TimeoutModule()`|Pre|リクエスト deadline budget（`SERVER_REQUEST_TIMEOUT`）|
+|`BodyLimitModule()`|Pre|リクエストボディ上限（`SERVER_BODY_LIMIT_MB`）|
+|`IPExtractorModule()`|Configurator|クライアント IP 抽出|
+|`OpenAPIModule()`|Use|OpenAPI バリデーション|
 
-### instrumentation (Instrumentation)
+### instrumentation（計装）
 
-|Module|Type|Description|
+|モジュール|種別|説明|
 |---|---|---|
-|`RequestIDModule()`|Use|X-Request-ID generation|
-|`ObservabilityModule()`|Use|OpenTelemetry tracing|
-|`HTTPRedMetricsModule()`|Use|HTTP RED (Rate / Errors / Duration) metrics|
-|`LoggingModule()`|Use|HTTP request / response logging|
+|`RequestIDModule()`|Use|X-Request-ID 生成|
+|`ObservabilityModule()`|Use|OpenTelemetry トレーシング|
+|`HTTPRedMetricsModule()`|Use|HTTP RED（Rate / Errors / Duration）メトリクス|
+|`LoggingModule()`|Use|HTTP リクエスト / レスポンスログ|
 
-### outbound (Response Output)
+### outbound（レスポンス出力）
 
-|Module|Type|Description|
+|モジュール|種別|説明|
 |---|---|---|
-|`ErrorHandlerModule()`|Configurator|Unified error handler|
-|`ForceJSONModule()`|Use|Force Content-Type to JSON|
-|`RecoveryModule()`|Use|Catch panics and log|
+|`ErrorHandlerModule()`|Configurator|統一エラーハンドラ|
+|`ForceJSONModule()`|Use|Content-Type を JSON に強制|
+|`RecoveryModule()`|Use|パニックキャッチとログ出力|
 
-### security (Security)
+### security（セキュリティ）
 
-|Module|Type|Description|
+|モジュール|種別|説明|
 |---|---|---|
-|`Module()`|Use|Security headers (HSTS, etc.)|
-|`CORSModule()`|Use|CORS configuration|
-|`CookieModule()`|Use|Cookie security attributes|
+|`Module()`|Use|セキュリティヘッダ（HSTS 等）|
+|`CORSModule()`|Use|CORS 設定|
+|`CookieModule()`|Use|Cookie セキュリティ属性|
 
-## Notes
+## 注意点
 
-- Pre / Use middleware must always be defined with a Priority
-- Duplicate priorities are automatically detected, but maintaining a priority management table per category is recommended
-- Configurators should only contain processing that intentionally changes Echo instance state
-- Middleware implementation belongs to `internal/controller/httpstack`; this layer only handles DI registration
+- Pre / Use ミドルウェアは必ず Priority を付けて定義する
+- Priority の重複は自動検出されるが、カテゴリごとに Priority 管理表を持つことを推奨
+- Configurator は Echo インスタンスの状態変化を意図した処理のみを書くこと
+- ミドルウェア実装は `internal/controller/httpstack` の責務であり、ここは DI 登録のみ行う

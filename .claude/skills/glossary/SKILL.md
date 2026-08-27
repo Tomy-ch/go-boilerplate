@@ -8,41 +8,36 @@ allowed-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion
 
 # Glossary
 
-Maintains `docs/spec/glossary.md`, the single source of truth for this system's business vocabulary.
+`docs/spec/glossary.md`——このシステムの業務語彙の正本——を保守する。
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory
-(not loaded as a skill; for human reference only).
+## このスキルが決めること、決めないこと
 
-## What this skill decides and what it does not
+機械が決着させられることを決着させる。どの識別子が存在するか、どれに行が無いか、どれが 2 回定義
+されているか、どれがもう解決しないか。**正名は決して選ばず、2 つの語が同義だとも決して宣言しない。**
 
-It settles what a machine can settle: which identifiers exist, which are missing a row, which are
-defined twice, which no longer resolve. **It never chooses the canonical name and never declares two
-words synonymous.**
+この線引きは慎重さではなく、証拠が尽きる場所である。識別子の衝突は文字列比較だが、2 つの定義が
+実際に*違う*かどうかは散文の読み取りである。2 つの語が 1 つの概念を指しているという事態には機械的な
+痕跡がまったく残らない——両方の行を人が読んで気づいたときにだけ表面化する。そしてどちらの名前が
+勝つかは業務がどう話すかの決定であり、コードをいくら積んでも供給できない。
 
-The split is not caution, it is where the evidence stops. Identifier collision is a string
-comparison; whether the two definitions actually *differ* is a reading of prose. Two different words
-naming one concept leaves no mechanical trace at all — it surfaces only when a person reads both rows
-and recognises them. And which name wins is a decision about how the business will talk, which no
-amount of code can supply.
+findings を報告し、文言を提案し、判断は渡す。
 
-Report the finding, propose wording, and hand the decision over.
+## 使いどころ
 
-## When to Use
+- feature が入り、その新出用語が用語集に無い
+- ある業務語の意味、あるいは 2 つの語が同じものかを問われた
+- 用語集がコードに対して陳腐化して見える
+- 定期的な語彙の棚卸し
 
-- A feature landed and its new terms are not in the glossary.
-- Someone asks what a business word means, or whether two words mean the same thing.
-- The glossary looks stale against the code.
-- Periodic vocabulary sweep.
+**使わない**もの:
 
-Do NOT use for:
+- feature 自身の spec — `new-spec` / `new-spec-domain`。spec の形式 — `verify-spec`
+- Evans に対する DDD パターン — `ddd-audit`
+- README / ADR へ漏れた業務語彙 — `back-prop` の glossary detector
 
-- A feature's own spec — `new-spec` / `new-spec-domain`; spec format — `verify-spec`.
-- DDD patterns against Evans — `ddd-audit`.
-- Business vocabulary that leaked into READMEs / ADRs — `back-prop`'s glossary detector.
+## Step 0. スコープを確認する
 
-## Step 0. Confirm scope
-
-`AskUserQuestion`, one question:
+`AskUserQuestion`、質問は 1 つ。
 
 ```text
 質問: どこまで見ますか？
@@ -51,224 +46,209 @@ Do NOT use for:
   - 特定 feature のみ（--feature <name>。新出用語の登録向け）
 ```
 
-## Step 1. Read the glossary as the baseline (deterministic — do not delegate)
+## Step 1. 器をベースラインとして読む（決定的な処理。委譲しない）
 
-Read `docs/spec/glossary.md`. It gives three things the run depends on, and none of them may be
-hardcoded here:
+`docs/spec/glossary.md` を読む。実行が依存するものを 3 つ与えてくれる。どれもここへハードコード
+してはならない。
 
-- the existing rows (term, owner, code symbol, public name),
-- the **Mechanism vocabulary** section — names already judged *not* to be business terms,
-- the **Watch list** — homonyms and synonyms already known.
+- 既存の行（用語・所有・コードシンボル・公開名）
+- **Mechanism vocabulary** 節——業務語ではないと既に判断された名前
+- **Watch list**——既知の同音異義と同義
 
-There are two more suppression sources, and skipping either produces a report nobody finishes
-reading.
+抑止の一次情報はさらに 2 つあり、どちらを飛ばしても誰も読み終えない報告ができあがる。
 
-**Names the spec format declares auto-derived.** `.claude/scaffold-spec/domain-spec.md` names the
-families a domain package generates from its fields — errors, bound constants, field identifiers.
-They are written by convention, not chosen by anyone, and they arrive in the dozens. Read that file
-for those families and subtract them, whole-name matching being useless against a family that shares
-a prefix.
+**spec の形式が自動派生と宣言している名前。** `.claude/scaffold-spec/domain-spec.md` が、domain
+パッケージがフィールドから生成する族——エラー、境界値の定数、フィールド識別子——を名指ししている。
+これらは規約で書かれるものであって誰かが選んだ語ではなく、数十の単位で現れる。あのファイルからその
+族を読んで差し引くこと。接頭辞を共有する族に対して完全一致の照合は役に立たない。
 
-**The Watch list.** A term already sitting there has been seen and is awaiting a decision. Proposing
-it again is not new information; it is the same question asked twice by something that did not
-notice the first was open.
+**Watch list。** そこに既に載っている語は、見られたうえで判断を待っている状態である。もう一度提案
+するのは新しい情報ではなく、最初の問いが開いたままであることに気づかなかった何かが同じ問いを
+2 度したにすぎない。
 
-The Mechanism section is the suppression channel. **Subtract it from every orphan set before
-reporting.** Match on the bare identifier and match it whole: the section lists names without a
-package because the same structural name recurs across packages, and a prefix match would suppress
-`DetailInput` on the strength of `Detail`. A sweep that re-proposes the same structural names every
-run is a sweep nobody reads, which is the failure this section exists to prevent.
+Mechanism 節は抑止のチャネルである。**orphan の集合を報告する前に必ず差し引くこと。** 照合は裸の
+識別子に対して、完全一致で行う。この節がパッケージを付けずに名前を挙げているのは、同じ構造の名前が
+複数のパッケージに繰り返し現れるからであり、前方一致で照合すると `Detail` を根拠に `DetailInput`
+まで抑止してしまう。毎回同じ構造名を提案し直す sweep は誰も読まない sweep であり、それがこの節の
+存在理由となっている失敗である。
 
-If the glossary does not exist, say so and stop. Creating the container is a design act with rules in
-it; this skill fills a container, it does not invent one.
+用語集が存在しないなら、そう言って止まること。器を作るのは規則を含む設計行為である。このスキルは
+器を満たすのであって、器を発明しない。
 
-## Step 2. Extract the inventory
+## Step 2. インベントリを抽出する
 
-Read every one of these at runtime:
+以下をすべて実行時に読む。
 
 ```sh
-# terms declared by the specs
+# spec が宣言している用語
 grep -n '^package:\|^struct:' docs/spec/*/domain.md
 
-# exported types in the domain — the nouns
+# domain の公開型 — 名詞
 grep -rn '^type [A-Z][A-Za-z0-9]* ' internal/domain --include='*.go'
 
-# exported behaviours in the domain — the verbs
+# domain の公開振る舞い — 動詞
 grep -rn '^func \(([a-z]* \*\?[A-Z][A-Za-z0-9]*) \)\?[A-Z][A-Za-z0-9]*(' internal/domain --include='*.go'
 
-# exported package-level values in the domain — the named states and roles
+# domain の公開パッケージ値 — 名前を持つ状態と役割
 grep -rn '^[ \t]*[A-Z][A-Za-z0-9]* \(=\|[A-Z][A-Za-z0-9]* =\)' internal/domain --include='*.go'
 
-# read-side concepts, for features that have no aggregate to introduce them
-#   resolve the packages per feature (see below) — do not fix a path glob here
-#   same three shapes as the domain sweep: types, behaviours, package-level values
+# 読み取り側の概念 — 語を導入する集約を持たない feature のため
+#   パッケージは feature ごとに解決する（後述）。ここでパスの glob を固定しない
+#   domain の掃き出しと同じ 3 つの形: 型・振る舞い・パッケージレベルの値
 grep -rn '^type [A-Z][A-Za-z0-9]* ' internal/usecase --include='*.go'
 grep -rn '^func [A-Z][A-Za-z0-9]*(' internal/usecase --include='*.go'
 grep -rn '^[ \t]*[A-Z][A-Za-z0-9]* \(=\|[A-Z][A-Za-z0-9]* =\)' internal/usecase --include='*.go'
 
-# published names — the whole spec, not one directory of it
+# 公開名 — 一部のディレクトリではなく spec 全体
 grep -rn '' openapi --include='*.yaml' -l
 ```
 
-Excluding `_test.go` and `mock/`. Read `.claude/scaffold-spec/domain-spec.md` at runtime for the
-YAML shape rather than assuming it — the section list is that file's to change.
+`_test.go` と `mock/` は除く。YAML の形は仮定せず `.claude/scaffold-spec/domain-spec.md` を実行時に
+読む——節の一覧はあちらが変えるものである。
 
-**Do not narrow the type sweep to `struct` and `interface`.** A named slice or a named scalar is a
-type the business may have a word for — a collection with behaviour on it, a code, a kind. Narrowing
-there is the same mistake as sweeping types and skipping behaviours, one level down, and it silently
-drops the one shape a homonym is most likely to take: the same name declared as a struct in one
-package and a bare string in another.
+**型の掃き出しを `struct` と `interface` に狭めないこと。** 名前付きスライスや名前付きスカラは、
+業務が語を持っているかもしれない型である——振る舞いを持つ集まり、符号、区分。ここで狭めるのは、
+型を掃いて振る舞いを飛ばすのと同じ誤りが 1 段下で起きているだけであり、しかも**同音異義が最も
+取りやすい形——あるパッケージでは struct、別のパッケージでは素の文字列として宣言された同じ名前——を
+黙って落とす。**
 
-**Take the package-level values as seriously as the types.** A named state or role is a `const`, not
-a struct, and the code-symbol column already carries them in the `package.Value` shape. An inventory
-that omits them cannot produce the very rows the page most depends on, and — worse — it reports them
-as resolving while never having been able to propose them.
+**公開パッケージ値を型と同じだけ真剣に扱うこと。** 名前を持つ状態や役割は struct ではなく `const`
+であり、コードシンボル列は既に `package.Value` 形でそれらを担いでいる。値を落とした在庫は、この
+ページが最も依存している行をそもそも提案できない——しかも、より悪いことに、提案できたことが一度も
+無いまま解決だけを報告する。
 
-**The published-name source fills the last column and nothing else.** It does not produce findings —
-a term the business uses need not cross the API boundary, so a blank there is normal and a mismatch
-is not evidence of anything until someone reads both.
+**公開名の一次情報は最後の列を埋めるためだけにあり、findings を生まない。** 業務が使う語が API 境界を
+越える必要はないので、そこが空欄なのは普通のことであり、食い違いも誰かが両方を読むまでは何の証拠にも
+ならない。
 
-Search the whole of `openapi/`, not a chosen directory. A published name can be a schema, a property
-inside a response body, a parameter, or **a path segment** — a verb-shaped operation name is a path
-segment and appears in no schema at all. Each narrowing of the search reads as "this term
-is not published" when the term is on the wire, and that is the one wrong answer this column can
-give.
+探すのは `openapi/` 全体であって、選んだディレクトリではない。公開名は schema のことも、レスポンス
+本体の中のプロパティのことも、パラメータのことも、**パスセグメント**のこともある——このリポジトリの
+購入 API の動詞はパスセグメントであり、schema には 1 つも現れない。探索を狭めるたびに、その語が
+実際は公開されているのに「この語は公開されていない」と読める。この列が出しうる唯一の誤答がそれである。
 
-Resolve each feature's packages from what the spec itself declares:
+feature のパッケージは、spec 自身が宣言しているものから解決する。
 
 ```sh
 grep -n '^package:' docs/spec/*/domain.md docs/spec/*/usecase.md
 ```
 
-Guessing from the directory name fails — a kebab-case feature is sometimes one concatenated package
-and sometimes nested under a parent, and the spec states which.
+ディレクトリ名からの推測は外れる——kebab-case の feature は 1 語に連結されたパッケージのことも、
+親の下に入れ子のこともあり、どちらであるかは spec が述べている。
 
-**Then walk the directories anyway**, because the declaration is not complete, in three ways.
+**そのうえでディレクトリも走査すること。** 宣言は 3 つの意味で完全ではない。
 
-- A spec names the one package it is about. The `query/` sub-package and the boundary port that
-  feature reads through are declared nowhere.
-- A declaration can be stale. When it points at a directory that does not exist, that is a finding
-  in its own right — and the real package still has to be found before the sweep can go on.
-- A package can have no spec at all. Build the feature set from `docs/spec/*/` alone and it is
-  invisible, and **vocabulary nobody wrote a spec for is the vocabulary least likely to be right.**
+- spec が名指しするのは、それが扱う 1 つのパッケージだけである。`query/` サブパッケージも、その
+  feature が読み取りに使う boundary port も、どこにも宣言されていない
+- 宣言は古びうる。存在しないディレクトリを指しているなら、それ自体が finding であり——そのうえで
+  本物のパッケージを見つけないと掃き出しが先へ進まない
+- そもそも spec を持たないパッケージがある。feature の集合を `docs/spec/*/` だけから作れば見えず、
+  **誰も spec を書かなかった語彙こそ、正しい見込みが最も薄い語彙である**
 
-Use the declaration to resolve what it covers and a directory listing to find what it omits;
-neither alone reaches everything.
+宣言はそれが覆う範囲を解決するために使い、それが落としているものはディレクトリの一覧で見つける。
+どちらか一方ではすべてに届かない。
 
-**Subtract the accessors from the behaviour set.** A method that hands a field back says nothing
-its own name did not already say — `Name()`, `Email()`, `PublishedAt()`.
+**振る舞いからアクセサを差し引く。** フィールドを返すだけのメソッドは、自身の名前が既に言ったこと
+以上を何も言わない——`Name()`・`Email()`・`PublishedAt()`。
 
-The fields are unexported, so no grep above yields them: **open the receiver's source and read the
-struct.** Then judge by what the method does, not by string equality with a field name. That test
-alone is too narrow to work — a getter may copy before returning, may delegate to an embedded value,
-and may spell the field in an abbreviated form. The question is whether the body reaches one field
-and returns it; if it does, it is an accessor whatever it is called.
+フィールドは非公開なので、上のどの grep からも得られない。**レシーバのソースを開いて struct を読む
+こと。** そのうえで、フィールド名との文字列一致ではなく、メソッドが何をしているかで判定する。文字列
+一致だけでは網が狭すぎて機能しない——getter は返す前にコピーすることがあり、埋め込んだ値へ委譲する
+ことがあり、フィールド名が省略形のこともある。問うべきは、本体が 1 つのフィールドに到達してそれを
+返しているかどうかであり、そうであれば名前が何であれアクセサである。
 
-What survives carries a verb or a judgement: `Cancel`, `IsCanceled`, `Update<Attribute>`.
+残るのは動詞か判断を担うもの——`Cancel`・`IsCanceled`・`Is<Judgement>`・`UpdateEmail` である。
 
-Take the verbs as seriously as the nouns; they are the easier half to lose. **A vocabulary of nouns
-can name what the business has and cannot say what happens to it** — and the rules live in what
-happens. An inventory drawn from types alone reads as complete while every rule is missing from it.
+動詞を名詞と同じだけ真剣に扱うこと。落としやすいのは動詞のほうである。**名詞だけの語彙は業務が何を
+持っているかを言えても、それに何が起きるかを言えない**——そして規則は起きることのほうに宿る。型だけ
+から取った在庫は、規則が丸ごと欠けたまま完全に見える。
 
-Do not cut the constructors out mechanically. `New` is Go's word for construction, and when the
-business calls the same act something else, that mismatch is a finding worth putting in front of a
-person rather than a row to suppress. They dominate a first sweep; the Mechanism
-vocabulary section is where the ones that are genuinely construction go, and Step 1 subtracts them
-from then on — so on a container that has already been through this, expect the paragraph to apply
-to nothing.
+構築子を機械的に切り落とさないこと。`New` は Go が構築に使う語であり、同じ行為を業務が別の名前で
+呼んでいるなら、その食い違いは抑制すべき行ではなく人の前に置くべき findings である。初回の棚卸しでは
+構築子が大半を占める。本当に構築であるものは Mechanism vocabulary へ回り、以後は Step 1 が差し引く
+——したがって既にこれを一度通っている器では、この段落は当てはまる対象を持たないと見てよい。
 
-### The read side, and the bound on it
+### 読み取り側と、その境界
 
-The rule elsewhere in this repo is that the domain layer introduces terms and the usecase layer only
-uses them. **That rule assumes a domain layer exists.** Under the lightweight CQRS this repo runs,
-several features are pure projections — no aggregate, no `domain.md`, nothing but a QueryService —
-and for those, no aggregate is ever going to introduce the word. Sales, ranking, a postal-code
-lookup: the business says all of them, and a vocabulary that omits them is not the vocabulary of the
-business, whatever else it is.
+このリポジトリの他の場所にある規則は「ドメイン層が用語を導入し、usecase 層はそれを使うだけ」である。
+**その規則はドメイン層が在ることを前提にしている。** 本リポジトリが敷く軽量 CQRS のもとでは、
+いくつかの feature は純粋な投影であり——集約も `domain.md` も無く、あるのは QueryService だけ——
+それらについては、語を導入する集約がそもそも現れない。売上・ランキング・郵便番号からの住所引き。
+業務はそのすべてを話す。それらを欠いた語彙は、他の何であれ業務の語彙ではない。
 
-So take the read side as a source, **bounded to the features that have no `docs/spec/<feature>/domain.md`.**
-Where an aggregate does exist, its read models restate what the aggregate already introduced, and
-proposing them again produces a second row for one concept — the exact failure this page exists to
-catch.
+したがって読み取り側を一次情報として扱う。ただし **`docs/spec/<feature>/domain.md` を持たない
+feature に限る。** 集約が在る場合、その read model は集約が既に導入したものを言い直しているだけで、
+再度提案すれば 1 概念に 2 行ができる——このページが捕まえるために在る失敗そのものである。
 
-**This bound outranks whichever rule it meets** — the orphan rule and the new-term rule alike. A
-read model can sit inside `internal/domain/**`, and be named in a spec's own section list, and so
-qualify twice over by location and by declaration while being a restatement by nature. When that
-happens it is mechanism vocabulary, not a candidate row.
+**この境界は、ぶつかった相手が何であれ優先する**——orphan の規則にも、新出用語の規則にも。read model
+が `internal/domain/**` の中に置かれ、かつ spec 自身の節に名前が挙がっていて、所在でも宣言でも
+二重に条件を満たしながら、性質としては言い直しであることがある。その場合それは候補行ではなく
+機構語である。
 
-**Sweep the read side in all three shapes, as on the write side.** The argument for taking verbs
-and named values seriously does not weaken because a feature has no aggregate — a projection's
-named states (`Ok`, `Degraded`, the period kinds) are exactly the words a dashboard is talked about
-in. Reading only the types there would repeat, one layer over, the mistake this section was written
-to correct.
+**読み取り側も、書き込み側と同じ 3 つの形で掃くこと。** 動詞と名前付きの値を真剣に扱う理由は、
+feature が集約を持たないからといって弱まらない——投影が持つ名前付きの状態（`Ok`・`Degraded`・期間の
+区分）は、まさにダッシュボードが語られるときに使われる語である。そこで型だけを読むのは、この節が
+正すために書かれた誤りを 1 層上で繰り返すことになる。
 
-Resolve each such feature's packages by name rather than by a fixed path. A projection that reads
-the database puts its types under a `query/` package; one that calls an external system puts them
-behind a boundary port, and the two live nowhere near each other. **A glob aimed at one of those
-shapes returns nothing for the other and looks exactly like a feature with no vocabulary.** Expect
-the directory name to differ from the spec directory too — a kebab-case feature is usually one
-concatenated package, sometimes nested under its parent.
+該当 feature のパッケージは、固定パスではなく名前から解決する。DB を読む投影は `query/` パッケージに
+型を置き、外部システムを呼ぶ投影は boundary の port の裏に置く。両者は互いにまったく別の場所にある。
+**片方の形に狙いを定めた glob はもう片方に対して 0 件を返し、それは語彙を持たない feature と
+見分けがつかない。** ディレクトリ名が spec のディレクトリ名と違うことも織り込むこと——kebab-case の
+feature は通常 1 語に連結されたパッケージで、親の下に入れ子になっていることもある。
 
-Strip the mechanism suffix before judging the name: `Result`, `ReadModel`, `View`, `Input`,
-`Params`, `Cursor`, `Summary`, `Breakdown`, `Item`, `List`, `Count`, `DTO` describe the shape of a
-query answer or of a DTO, not a thing the business has. Treat that list as a starting set, not a
-closed one — strip whatever plays the same role and say which you stripped. What is left is the
-candidate, and the suffix itself belongs in Mechanism vocabulary.
+名前を判定する前に機構サフィックスを落とす。`Result`・`ReadModel`・`View`・`Input`・`Params`・
+`Cursor`・`Summary`・`Breakdown`・`Item`・`List`・`Count`・`DTO` が述べているのは問い合わせの答えや
+DTO の形であって、業務が持っているものではない。この一覧は出発点であって閉じた集合ではない——同じ
+役割を果たすものは何であれ落とし、何を落としたかを述べること。残ったほうが候補であり、サフィックス
+自体は Mechanism vocabulary に属する。
 
-Drop the ports outright. A name that *is* `Usecase`, `Gateway`, `QueryService` or `Repository`
-names a seam in the architecture; strip its suffix and nothing is left, which is the tell.
+port は丸ごと落とす。`Usecase`・`Gateway`・`QueryService`・`Repository` そのものである名前は
+アーキテクチャの継ぎ目を指しており、サフィックスを落とすと何も残らない——それが見分けである。
 
-A term's owner is the feature directory the spec lives in plus the aggregate it declares. **A
-projection has no aggregate, so its owner is the feature alone** — that is not a missing half, it is
-what a term with no aggregate looks like, and forcing one in would attribute the word to a model
-that does not define it. Two owners for one term is not a data problem to reconcile; it is the
-finding.
+用語の所有は、spec が置かれている feature ディレクトリと、そこが宣言する集約である。**投影は集約を
+持たないので、所有は feature だけになる**——これは半分が欠けているのではなく、集約を持たない語とは
+そういう形をしているということであり、無理に埋めれば、その語を定義していないモデルに帰属させることに
+なる。1 つの用語に所有が 2 つあるのは、突き合わせて直すデータ上の問題ではない。それが findings である。
 
-## Step 3. Four findings, kept apart
+## Step 3. 4 種の findings を分けて扱う
 
-They ask for different things, so do not merge them into one list.
+求められることが違うので、1 つの一覧に混ぜない。
 
-- **新出用語** — declared by a spec, no row in the glossary. Read "declared" as the whole spec, not
-  only its `package:` / `struct:` lines — a Value Object named in the spec's own section list is
-  declared as surely as the aggregate is. Propose a row with the definition drafted
-  from the spec's own prose, and let the human rewrite it. The definition is the part that must not
-  read like generated text.
-- **orphan** — exported in `internal/domain/**` — a type, or a behaviour that survived the accessor
-  cut — or, for a feature with no aggregate, a read-side concept that survived the suffix strip —
-  absent from every spec and from the glossary, and not suppressed. This is the one finding that
-  catches what nobody wrote down: everything else starts from a document, so a term that was never
-  documented is invisible to it. Subtract all three suppression sources here, not the Mechanism
-  section alone. Each orphan resolves one of three ways — it becomes a row, it goes to Mechanism
-  vocabulary, or it is a naming mistake in the code.
-- **解決しない参照** — a declared code symbol that no longer resolves. Two sources, checked the same
-  way: a spec's `package` / `struct`, and **the glossary's own code-symbol column**. That column
-  takes four shapes and all four must resolve — `package.Type`, `package.Type.Method`,
-  `package.Func`, and `package.Value` for a package-level constant or variable, which is how a
-  named state or role is usually carried. A checker that knows only the first three reports a
-  false defect against the rows that matter most. Deterministic — settle it with `grep`, never with a
-  judgement call. The glossary side is the one that matters most and the one nobody was checking:
-  the page declares that it governs the code, and **a governing claim never compared against the
-  thing it governs is decoration.**
-- **同音異義** — one identifier appearing in the code of two features. Read it at the code, not at
-  the specs: a spec names its aggregate, so a type the specs never mention by that name still
-  collides in the source, and the heaviest collisions in a repo tend to be exactly those. Report
-  both definitions side by side and ask whether they are actually the same concept. Never answer
-  that question here.
+- **新出用語** — spec が宣言しているが用語集に行が無い。「宣言している」は `package:` / `struct:` の
+  行だけでなく spec 全体として読むこと——spec 自身の節に名前が挙がっている値オブジェクトは、集約と
+  同じだけ確かに宣言されている。spec 自身の散文から定義文の草案を起こして行を提案し、人が書き換え
+  られるようにする。**生成されたように読めてはいけないのは、この定義文である**
+- **orphan** — `internal/domain/**` で公開されている型、アクセサ差し引きを生き残った振る舞い、または
+  集約を持たない feature についてはサフィックス除去を生き残った読み取り側の概念でありながら、どの
+  spec にも用語集にも無く、抑止もされていないもの。**誰も書き留めなかったものを捕まえられるのはこの
+  findings だけである。**他はすべて文書から出発するので、一度も文書化されなかった語は見えない。
+  ここでも抑止の一次情報を 3 つとも差し引くこと。Mechanism 節だけではない。orphan の決着は 3 通り——
+  行になる、Mechanism vocabulary へ回る、コード側の命名が誤りである
+- **解決しない参照** — 宣言されたコードシンボルがもう解決しない。出所は 2 つあり、同じやり方で検査
+  する——spec の `package` / `struct` と、**用語集自身のコードシンボル列**である。この列は 4 形を取り、
+  4 形すべてが解決しなければならない——`package.Type`・`package.Type.Method`・`package.Func`、そして
+  パッケージレベルの定数・変数を指す `package.Value` である。名前を持つ状態や役割は最後の形で担われる
+  ことが多く、前 3 形しか知らない検査器は最も重要な行に対して偽の欠陥を報告する。決定的なので `grep`
+  で決着させ、判断で決めない。最も重要かつ誰も検査していなかったのは用語集の側である。あのページは
+  コードを統べると宣言しており、**統べる対象と一度も突き合わされない主張は装飾である**
+- **同音異義** — 1 つの識別子が 2 つの feature のコードに現れている。spec ではなくコードで読むこと
+  ——spec が名指しするのはその集約なので、spec がその名前で一度も言及しない型でもソース上では衝突する。
+  そしてリポジトリで最も重い衝突は、たいていまさにそれである。両方の定義を並べて報告し、本当に同じ
+  概念かを問う。**その問いにここで答えないこと**
 
-## Step 4. Decide per finding
+## Step 4. findings ごとに判断を返す
 
-**Group the variants of one word into one finding before asking.** A read model, its view, its
-params and its result are four names for one concept, and asking four times about them is not
-thoroughness — it is the same question spread thin enough that nobody answers the fourth. Name the
-variants inside the finding so the grouping is visible and can be disputed.
+**問う前に、1 語の別形を 1 件へ束ねること。** read model とその view、その params、その result は
+1 つの概念に対する 4 つの名前であり、それについて 4 回問うのは丁寧さではない——同じ問いを、4 つ目に
+誰も答えないほど薄く引き延ばしているだけである。束ねたことが見えて反論もできるよう、finding の中に
+別形を書き並べること。
 
-`AskUserQuestion`, batched at most 4 findings per call. Options follow what the finding supports —
-for an orphan: 「用語として登録」/「機構語として記録」/「コード側の命名が誤り」/「今回は保留」.
+`AskUserQuestion`、1 回の呼び出しは 4 件まで。選択肢は findings が支えるものに従う——orphan なら
+「用語として登録」/「機構語として記録」/「コード側の命名が誤り」/「今回は保留」。
 
-For a new term, present the drafted definition and make rewriting it the easy path. **A definition
-nobody edited is a definition nobody agreed to.**
+新出用語では草案の定義文を提示し、**書き換えるほうを楽な道にする。誰も編集していない定義は、誰も
+合意していない定義である。**
 
-For an unresolved code symbol the options are ordered, and the order is the whole point:
+解決しないコードシンボルについては、選択肢に順序があり、その順序こそが要点である。
 
 1. 「コード側の改名が誤り。シンボルを表に合わせて戻す」
 2. 「業務側で語の扱いが変わった。**先に表の行を改訂し**、そのあとコードを追随させる」
@@ -276,41 +256,39 @@ For an unresolved code symbol the options are ordered, and the order is the whol
 4. 「表とコードは一致しており、ずれているのは spec 側。`verify-spec` へ送る」
 5. 「今回は保留」
 
-Option 4 is not a formality. The unresolved reference can come from either side, and when it is the
-spec that has drifted, **none of the first three apply** — this skill does not write feature specs,
-so offering only row-or-code choices would push the run toward editing something correct.
+4 番目は形式ではない。解決しない参照はどちら側からも生じ、**ずれているのが spec だったとき、
+最初の 3 つはどれも当てはまらない**——このスキルは feature spec を書かないので、行かコードかの
+二択しか出さなければ、正しいものを書き換える方向へ実行を押しやることになる。
 
-**Never offer "rewrite the row to match the code" as an option of its own.** It is the cheapest fix
-on the table at the exact moment the page is most vulnerable, and taking it turns the glossary into
-an index of the code. An index cannot contradict what it indexes, and a vocabulary that cannot
-contradict the code can never tell anyone the model is wrong. Option 2 reaches the same end state
-through the order the page requires — the language moves first and the code follows.
+**「表をコードに合わせて書き換える」を単独の選択肢として出さないこと。** それはページが最も脆い
+まさにその瞬間に卓上で最も安い直し方であり、選んだ時点で用語集はコードの索引になる。索引は自分が
+指しているものに反対できず、コードに反対できない語彙は「モデルが誤っている」と誰にも告げられない。
+2 番目の選択肢は、ページが要求する順序——言語が先に動きコードが従う——を通って同じ終点に着く。
 
-## Step 5. Write
+## Step 5. 書き込む
 
-Write `docs/spec/glossary.md` only. The spec tree is Japanese single-file with English headings and
-has **no `.ja.md` pair** — do not create one, and do not chain `canonicalize-doc`.
+`docs/spec/glossary.md` のみを書く。spec のツリーは英語見出しの日本語単一ファイルである。
 
 <!-- sample-api:begin -->
-Sample-derived rows live between the `sample-api:begin` / `sample-api:end` markers so they leave with
-the sample; a row for a term that survives sample removal goes outside them. Getting this wrong is
-how the page starts describing terms that no longer exist.
+サンプル由来の行は `sample-api:begin` / `sample-api:end` マーカーの内側に置き、サンプルとともに去る
+ようにする。サンプル撤去後も残る語の行はマーカーの外側へ。ここを誤ると、ページはもう存在しない語を
+説明しはじめる。
 
 <!-- sample-api:end -->
-Do not touch feature specs, READMEs, ADRs, the DDD ledger, or source. A term that needs renaming in
-code is a follow-up to surface, not an edit to make here.
+feature spec・README・ADR・DDD 台帳・ソースには触れない。コード側の改名が要る語は、ここで行う編集
+ではなく、表に出すべき follow-up である。
 
-## Step 6. Closing
+## Step 6. 締め
 
-Report in Japanese: rows added, orphans classified, unresolved references, homonyms left open. Name
-the follow-ups that belong to other skills and stop there. No commit, no push.
+日本語で報告する。追加した行、分類した orphan、解決しない参照、開いたままの同音異義。他のスキルの
+担当になる follow-up を名指しして、そこで止まる。commit も push もしない。
 
 ## AI Modification Scope
 
-- Read: `docs/spec/**`, `internal/domain/**`, `internal/usecase/**`, `openapi/**`,
+- 読み込み: `docs/spec/**`、`internal/domain/**`、`internal/usecase/**`、`openapi/**`、
   `.claude/scaffold-spec/domain-spec.md`
-- Write: `docs/spec/glossary.md` only
-- Never touch: feature specs, READMEs, ADRs, the DDD ledger, source code, generated files, `AGENTS.md`
+- 書き込み: `docs/spec/glossary.md` のみ
+- 触らない: feature spec、README、ADR、DDD 台帳、実装コード、生成物、`AGENTS.md`
 
 ## Constraints
 
@@ -333,12 +311,12 @@ the follow-ups that belong to other skills and stop there. No commit, no push.
 - ❌ 用語表のコードシンボル列を検証せずに済ませる（照合されない統べる主張は装飾）
 - ❌ 「表をコードに合わせて書き換える」を単独の選択肢として出す（索引への退化はこの瞬間に開く）
 - ❌ 器が無いときに器を作る（規則を含む設計行為であり、このスキルの担当ではない）
-- ❌ `docs/spec/glossary.md` 以外への書き込み、`.ja.md` ペアの作成、commit / push
+- ❌ `docs/spec/glossary.md` 以外への書き込み、commit / push
 - ✅ 4 種の findings を分けて報告（求められることが違うため）
 - ✅ サンプル由来の行は `sample-api` マーカーの内側へ
 - ✅ 出力は日本語
 
-## Checklist
+## チェックリスト
 
 - [ ] スコープを `AskUserQuestion` で確認
 - [ ] 器を読み、既存行・Mechanism vocabulary・Watch list を取り出す（無ければ停止）

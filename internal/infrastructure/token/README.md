@@ -1,25 +1,23 @@
 # token
 
-Implements the `boundary/token.Generator` interface using the operating system's
-cryptographically secure randomness source.
+OS の暗号論的に安全な乱数源を用いて `boundary/token.Generator` インターフェースを実装します。
 
-## Responsibility
+## 責務
 
-Produces an opaque token string: 32 random bytes rendered as base64url without padding, which
-yields 43 characters. Nothing else — the value carries no structure, no encoded claims, and no
-expiry, so it can only be checked by looking it up.
+不透明なトークン文字列を生成します。32 バイトの乱数をパディング無しの base64url で表現し、43 文字に
+なります。それ以外は何もしません。値は構造を持たず、埋め込まれた主張も有効期限も持たないため、
+照合するには引くしかありません。
 
-Both properties of the value live here. 256 bits is the width at which guessing a token is not a
-realistic attack, and base64url is the encoding that survives being placed in a URL or a header
-unescaped. The domain's `cart.SessionToken` independently validates what it is handed — the length
-and the alphabet — so a change on either side that breaks the agreement fails a test rather than
-producing tokens the domain silently rejects.
+値の 2 つの性質はどちらもここに置かれます。256 ビットはトークンの推測が現実的な攻撃にならない幅であり、
+base64url は URL やヘッダへエスケープせずそのまま載せられる表現です。ドメインの `cart.SessionToken` は
+受け取った値の長さと文字集合を独立に検証するため、どちらか一方を崩す変更は、ドメインが黙って弾く
+トークンを作り続けるのではなくテストの失敗として現れます。
 
-## Notes
+## 補足
 
-- No tracer span. This component performs no real I/O, so an infrastructure span would record
-  nothing but its own overhead — see [Observability](../README.md) for where that line is drawn.
-- `crypto/rand` is used rather than `math/rand`. A token that an attacker can predict is not a
-  token, and only the cryptographic source makes that claim.
-- A read failure is returned, not swallowed. It is rare but genuinely possible, and the caller is
-  the one that knows whether it can proceed without a token.
+- tracer span は張りません。実 I/O を行わないコンポーネントなので、インフラ span は自身のオーバーヘッド
+  以外に何も記録しません。線引きは [Observability](../README.md) を参照してください。
+- `math/rand` ではなく `crypto/rand` を使います。攻撃者が予測できるトークンはトークンではなく、
+  その主張ができるのは暗号論的な乱数源だけです。
+- 読み出しの失敗は握り潰さず返します。稀ですが実際に起こりうるもので、トークン無しで進めてよいかを
+  知っているのは呼び出し元だからです。

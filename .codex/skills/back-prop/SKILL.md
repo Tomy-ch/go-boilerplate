@@ -3,113 +3,84 @@ name: back-prop
 description: Detect and reconcile drift between implementation, canonical README files, repository skills, the DDD pattern ledger, and business vocabulary. Use after a multi-layer refactor, before a major review, or for documentation hygiene. Audit changed files by default, classify README-to-code drift, undocumented recurring code patterns, skill-to-README duplication, DDD-ledger-to-ADR/README-corpus drift, and glossary terms leaked into layer READMEs, ADRs, or rules. Propose only individually approvable documentation changes; ADR/rules glossary leaks are report-only. Never change implementation code with this skill.
 ---
 
-# Documentation Drift Review
+# 文書ドリフトレビュー
 
-For the Japanese reference translation, see `SKILL.ja.md` (not loaded as a skill).
+権威の順序は **README > code > skill** です。このスキルはドリフトを見つけます。実装の挙動で、記録済みの判断を黙って上書きしません。
 
-The authority order is **README > code > skill**. This skill discovers drift; it does not use implementation behavior to silently overwrite a documented decision.
+## スコープと分類
 
-## Scope and categories
+既定では、既存 PR の `baseRefName` に対する変更済み production Go ファイルを対象にします。PR がなければ、`origin` の live state を読み最新の release line を返す `make base-branch` でベースを解決します。GitHub のデフォルトブランチは以前の release line を指すことがあるため、`gh repo view --json defaultBranchRef` には決して fallback しません。ベースを解決できなければ、日本語で報告して停止します。空の file list は detector を一つも fan-out せず、drift がない正常結果と区別できないためです。全体走査または layer 指定も受け付けます。生成物、mock、test は除外します。スコープと複数選択の分類を 1 回だけ確認し、既定では 5 分類すべてを対象にします。
 
-Default to changed production Go files against an existing PR's `baseRefName`; without a PR, resolve the base with `make base-branch`, which reads `origin`'s live state and returns the latest release line. Never fall back to `gh repo view --json defaultBranchRef`, because the GitHub default branch may name an earlier release line. If the base cannot be resolved, stop and report that in Japanese rather than continuing: an empty file list fans out zero detectors and would be indistinguishable from a clean no-drift result. Allow a requested full scan or named layers. Exclude generated files, mocks, and tests. Ask once for scope and a multi-select of categories; default to all five.
+要求された分類だけを監査します。
 
-Audit only the requested categories:
+- **A — README → code:** 実装が文書化済み規約に違反している、または一致しなくなった。
+- **B — code → README:** 意図的に見える反復パターンが文書化されていない。報告には独立した 3 件以上の根拠を要する。
+- **C — skill ↔ README:** skill が古い規則を重複させている、または正本 README と矛盾する。
+- **D — DDD ledger ↔ ADR/README corpus:** DDD パターン台帳の参照先または記載範囲が正本 corpus と一致しない。これは台帳のドリフトであり、Evans への忠実性評価ではない。比較は `ddd-audit` の担当である。
+- **E — business glossary ↔ structural prose:** `docs/spec/glossary.md` の用語が、実装構造または判断のための散文に現れた。用語は glossary の Terms 表と Mechanism vocabulary 節が決め、このスキルは決めない。
 
-- **A — README → code:** implementation violates or no longer matches a documented convention.
-- **B — code → README:** a recurring, intentional-looking implementation pattern lacks documentation. Require evidence from at least three independent occurrences before reporting it.
-- **C — skill ↔ README:** a skill duplicates stale rules or contradicts the canonical README.
-- **D — DDD ledger ↔ ADR/README corpus:** the DDD pattern ledger's pointers or stated coverage no
-  longer match the canonical corpus. This is bookkeeping drift, not an assessment of fidelity to
-  Evans; `ddd-audit` owns that external comparison.
-- **E — business glossary ↔ structural prose:** a term in `docs/spec/glossary.md` has appeared in
-  prose intended for implementation structure or decisions. The glossary's Terms table and
-  Mechanism vocabulary section decide the vocabulary; this skill never does.
+Go ファイルを `domain`、`usecase`、`controller`、`infrastructure`、`pkg` に対応付けます。D では `.agents/ddd-audit/pattern-ledger.yaml` から実行時に `corpus` glob を読み（ここにハードコードしない）、変更ファイルと交差させます。D に対象 corpus があれば、layer detector と並行して `.codex/agents/drift-detector-ddd.toml` を実行します。E では、`internal/**/README.md`、`pkg/**/README.md`、`docs/adr/*.md`、`docs/rules.md`、`docs/architecture.md` prose corpus を実行時に解決します。変更ファイルとの E の交差が空でなければ、または全体走査なら、`.codex/agents/drift-detector-glossary.toml` を実行します。解決済み prose ファイル一覧だけを渡し、categories は渡さず、layer detector と同じ並行 fan-out に含めます。`docs/spec/glossary.md` がなければ、Terms 表が probe list であるため detector を skip し、その理由を報告します。E は prose のみの変更でも選べます。これらの layer、DDD/E corpus の外にある変更ファイルは未監査として報告します。対象がなければ正常に終了します。
 
-Map Go files to `domain`, `usecase`, `controller`, `infrastructure`, or `pkg`. For category D, read
-the `corpus` globs from `.agents/ddd-audit/pattern-ledger.yaml` at runtime (never hardcode them) and
-intersect them with the changed files; inspect the complete corpus for a full scan. Run
-`.codex/agents/drift-detector-ddd.toml` whenever D has an in-scope corpus, alongside layer detectors.
-For E, resolve the prose corpus at runtime: `internal/**/README.md`, `pkg/**/README.md`,
-`docs/adr/*.md`, `docs/rules.md`, and `docs/architecture.md`, excluding `*.ja.md`. Run
-`.codex/agents/drift-detector-glossary.toml` when the E intersection with changed files is non-empty,
-or always for a full scan. Pass it the resolved prose file list and no categories, in the same
-parallel fan-out as the layer detectors. If `docs/spec/glossary.md` is absent, skip the detector and
-say why; its Terms table is the probe list. E can be selected for prose-only changes. Report changed
-files outside these layers and the DDD/E corpus as not audited. If no in-scope files exist, stop
-cleanly.
+## 読み取り専用の検出
 
-## Read-only detection
+1. `AGENTS.md`、関連する layer README、最寄りの subpackage README を読みます。C のときだけ対応する Codex skill を読みます。D は台帳と実行時解決した corpus だけを読みます。E は glossary detector が glossary、exclusions、実行時解決した prose corpus を読みます。
+2. スコープ内の code を確認し、具体的な file:line 根拠を集めます。兄弟 code は補助根拠としてだけ使い、明示された規則の代わりにはしません。
+3. 所見を権威順序と比較します。
 
-1. Read `AGENTS.md`, then the relevant layer README and nearest subpackage README. Read the matching Codex skill only for category C. For D, read the ledger and only its runtime-resolved corpus. For E, the glossary detector reads the glossary, exclusions, and only its runtime-resolved prose corpus.
-2. Inspect the scoped code and collect concrete file-and-line evidence. Use sibling code as supporting evidence, never as a substitute for an explicit rule.
-3. Compare each finding against the authority order:
+   - A では code 修正または明示的な文書化済み例外を勧め、code は編集しません。
+   - B では 3 件の反復と意図の根拠があるときだけ README 追加を提案します。それ以外は報告しません。
+   - C では skill から重複した手順規則を外すか README を参照させます。README 規則を skill に複写しません。
+   - D では D1 pointer rot、D2 semantic rot、D3 uncaptured interpretation だけを表面化します。解消のために ADR または README を書き換えず、承認可能な書き込み先は台帳だけです。
+4. 実行環境が並列検査を支援するなら、独立した layer と corpus 駆動の DDD・glossary detector を並行実行します。そうでなければ逐次実行します。検出は常に読み取り専用です。
 
-   - For A, recommend a code correction or an explicit documented exception; do not edit code.
-   - For B, offer a README addition only when the three-occurrence threshold and intent evidence are met. Otherwise report nothing.
-   - For C, remove duplicated procedural rules from the skill or update it to point at the README; do not copy README rules into the skill.
-   - For D, surface only D1 pointer rot, D2 semantic rot, or D3 uncaptured interpretation. Do not
-     rewrite an ADR or README to resolve it; the ledger is the only possible approved write target.
-4. When the runtime supports parallel inspection, inspect independent layers and the corpus-driven
-   DDD and glossary detectors concurrently. Otherwise inspect sequentially. Detection is always
-   read-only.
+## 書き込み前の報告
 
-## Report before writes
-
-Return a Japanese, layer-grouped report before proposing edits:
+書き込みを提案する前に、Japanese の layer 別レポートを返します。
 
 ```text
 back-prop 検出結果（スコープ: <scope>、種別: <A/B/C/D/E>）
 
 [<layer>]
-- A|B|C: <file:line or README section>
-  判断: <why this is drift>
+- A|B|C: <file:line または README section>
+  判断: <なぜドリフトか>
   根拠: <canonical README / repeated code evidence>
   選択肢: <code fix | README update | skill simplification | documented exception | ignore>
 
 [ddd]
-- D1|D2|D3: <ledger entry and corpus file:line>
-  判断: <why the ledger and corpus drift>
+- D1|D2|D3: <ledger entry と corpus file:line>
+  判断: <なぜ台帳と corpus がずれたか>
   根拠: <runtime-resolved canonical corpus>
   選択肢: <ledger update | ddd-audit follow-up | ignore>
 
 [glossary]
 - E1: <layer README file:line>
-  判断: <term leaked from the glossary into structural prose>
-  根拠: <glossary term and sentence context>
+  判断: <glossary の用語が構造の散文へ漏れた>
+  根拠: <glossary term と文脈>
   選択肢: <remove term | restate in structural language | ignore>
-- E2: <ADR or rules file:line>
-  判断: <term leaked into a decision record or governing document>
-  根拠: <glossary term and sentence context>
+- E2: <ADR または rules file:line>
+  判断: <用語が決定記録または統べる文書へ漏れた>
+  根拠: <glossary term と文脈>
   対応: 報告のみ。承認・書き換えの対象外
 
 [glossary exclusions]
-- <suppressed count and every active exclusion with reason and until>
+- <抑制件数、および有効な全 exclusion の reason と until>
 
 総件数: <n>
 ```
 
-Do not write anything until the user selects a resolution for each finding. If the report has no findings, say which layers and categories were checked.
+ユーザーが各所見の解消を選ぶまで何も書き込みません。所見がなければ、検査した layer と分類を示します。
 
-## Applying approved documentation changes
+## 承認済みの文書変更を適用する
 
-Only apply a README or Codex-skill change after the user explicitly approves that individual finding. Before writing, present the intended diff and explain why it preserves the authority order.
+README または Codex skill の変更は、ユーザーが当該所見を明示的に承認してからだけ適用します。書き込み前に意図する差分を示し、権威順序を保つ理由を説明します。
 
-- Never edit implementation code, generated files, or `AGENTS.md`.
-- Keep edits limited to the affected canonical English README or `.codex/skills/<name>/SKILL.md`;
-  for an individually approved D finding, `.agents/ddd-audit/pattern-ledger.yaml` is also allowed.
-- Never resolve a D finding by rewriting an ADR or README. Surface that desired decision-record
-  change as follow-up for the user.
-- For a proposed code correction, report the task instead of implementing it.
-- Preserve the detector's E1/E2 split. E1 is eligible for the usual individual approval because it
-  is a layer README. E2 (an ADR or `docs/rules.md`) is report-only: never ask for approval and never
-  edit it. Never resolve E2 by editing `docs/spec/glossary.md`; vocabulary maintenance belongs to
-  `glossary`, and deleting a term to silence a finding destroys its definition. Never edit
-  `.agents/glossary-drift/exclusions.yaml`; declaring an exclusion is a user judgment, not a way for
-  the detector or integrator to silence itself.
-- After documentation edits, run `make md-lint`; if needed, run `make md-fix` only on the approved Markdown changes, then rerun the lint.
+- 実装 code、生成物、`AGENTS.md` は絶対に編集しません。
+- 編集は影響を受ける英語正本 README または `.codex/skills/<name>/SKILL.md` に限ります。個別承認された D 所見では `.agents/ddd-audit/pattern-ledger.yaml` も許可されます。
+- D 所見を ADR または README の書き換えで解消しません。そのような決定記録の変更はユーザー向け follow-up として表面化します。
+- code 修正の提案は、実装せずタスクとして報告します。
+- detector の E1/E2 分離を保ちます。E1 は layer README のため通常の個別承認対象です。E2（ADR または `docs/rules.md`）は報告のみで、承認を求めず編集もしません。E2 を `docs/spec/glossary.md` の編集で解消しません。用語の保守は `glossary` の担当であり、finding を消すために用語を削除すると定義を壊します。`.agents/glossary-drift/exclusions.yaml` を編集しません。除外の宣言は user の判断であり、detector や integrator が自分を黙らせる手段ではありません。
+- 文書を編集した後は `make md-lint` を実行します。必要なら、承認済み Markdown 変更だけに `make md-fix` を実行してから再度 lint します。
 
-## Completion
+## 完了
 
-Report each finding as approved, rejected, deferred to code work, or ignored; always keep E2 and
-suppressed E findings visibly report-only. State all files changed and the Markdown validation result.
-Do not stage, commit, or push.
+各所見を approved、rejected、code work への deferred、または ignored として報告します。E2 と抑制済み E 所見は常に report-only として見える状態を保ちます。変更した全ファイルと Markdown validation の結果を示します。stage、commit、push はしません。

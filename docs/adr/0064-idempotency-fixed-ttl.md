@@ -5,72 +5,49 @@ deciders: [maintainers]
 tags: [idempotency]
 ---
 
-# ADR-0064: Fix idempotency key TTL at 24 hours with no per-route configuration
+# ADR-0064: 冪等性キーの TTL を 24 時間に固定しルート別設定を設けない
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Idempotency records must expire to bound table growth and to ensure that a key reused
-long after the original operation is treated as a fresh request rather than a replay.
-The question is whether the TTL should be a single system-wide constant or a value that
-can be configured per handler or per route.
+冪等性レコードはテーブルの増大を抑制し、元の操作から十分に時間が経過した後に同じキーが再利用された場合を新規リクエストとして扱うために有効期限を設ける必要がある。TTL をシステム全体で共通の定数にするか、ハンドラーやルートごとに設定可能な値にするかが問題となる。
 
-A per-route TTL would increase flexibility — a low-risk idempotent endpoint might use a
-shorter window, while a financial operation might want a longer one — but it would add
-configuration surface, require each handler to supply and document its TTL, and introduce
-edge cases when a TTL change is deployed mid-flight. It would also complicate the GC job,
-which currently iterates over expired rows without knowledge of per-route policies.
+ルート別 TTL にすれば柔軟性は向上する。低リスクな冪等エンドポイントには短いウィンドウ、金融操作には長いウィンドウを使えるようになる。しかし、設定サーフェスが増え、各ハンドラーが TTL を指定・文書化しなければならず、TTL 変更が進行中にデプロイされた場合のエッジケースが生じる。現在は `expires_at < now` というシンプルなクエリでスキャンしている GC ジョブも複雑になる。
 
-For this project's intended use cases (API writes on the order of minutes to hours of
-client retry windows), 24 hours is a practical upper bound that comfortably covers
-transient network failures and manual retries.
+テンプレートが想定するユースケース（クライアントのリトライウィンドウが数分から数時間程度の API 書き込み）では、24 時間は一時的なネットワーク障害や手動リトライを十分にカバーする実用的な上限値である。
 
-## Decision
+## 決定
 
-The TTL is fixed at **24 hours** (`ttl = 24 * time.Hour`), coded as a constant in the
-`Run[T]` orchestrator. There is no per-route or per-handler configuration flag. Every
-claim sets `expires_at = now + 24h`. After the TTL has elapsed, a retry with the same key
-is treated as a fresh operation — no cached state is present.
+TTL は `Run[T]` オーケストレーター内の定数として **24 時間**（`ttl = 24 * time.Hour`）に固定する。ルート別・ハンドラー別の設定フラグは存在しない。すべてのクレームは `expires_at = now + 24h` を設定する。TTL 経過後は同じキーでのリトライが新規操作として扱われ、キャッシュ済み状態は存在しない。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Handlers have zero TTL configuration to maintain; adoption is a two-step opt-in with no
-  policy decisions.
-- The GC job can sweep all expired rows with a single `expires_at < now` predicate,
-  independent of route metadata.
-- Behavior is uniform and predictable across all endpoints.
+- ハンドラーは TTL に関する設定を維持する必要がない。採用は 2 ステップのオプトインで、ポリシー決定は不要である。
+- GC ジョブはルートメタデータに依存せず、`expires_at < now` という単一の述語で期限切れ行を全件スイープできる。
+- すべてのエンドポイントで動作が均一かつ予測可能になる。
 
-### Negative Consequences
+### ネガティブな影響
 
-- 24 hours may be too long for some endpoints (storing a response payload for a full day)
-  or too short for others (multi-day retry scenarios).
-- Changing the TTL requires a code change and redeployment rather than a configuration
-  update.
+- 24 時間が一部のエンドポイントには長すぎる（レスポンスペイロードを丸 1 日保存）場合や、短すぎる（数日にわたるリトライシナリオ）場合がある。
+- TTL を変更するにはコード変更と再デプロイが必要で、設定更新では対応できない。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Per-route TTL configuration
+### ルート別 TTL 設定
 
-Allow each handler to pass a TTL when calling `Run[T]`. Rejected because it significantly
-increases integration surface area, makes the GC query more complex, and offers little
-practical benefit for this project's intended use cases.
+各ハンドラーが `Run[T]` 呼び出し時に TTL を渡せるようにする。インテグレーションのサーフェスが大幅に増え、GC クエリが複雑になり、テンプレートが想定するユースケースへの実質的な利益がほとんどないため却下した。
 
-### Configurable system-wide TTL via environment variable
+### 環境変数によるシステム全体の設定可能 TTL
 
-Read the TTL from an environment variable at startup. Rejected because it adds operational
-complexity (a misconfiguration silently changes replay semantics) with minimal gain over
-the 24-hour constant, which already covers the dominant retry scenarios.
+起動時に環境変数から TTL を読み込む。設定ミスが暗黙的にリプレイのセマンティクスを変えてしまうという運用上の複雑さが増す一方、主要なリトライシナリオをすでにカバーしている 24 時間定数に対する利益がほとんどないため却下した。
 
-## Notes
+## 補足
 
-- Source: [`docs/design/idempotency.md`](../design/idempotency.md) §4 (operational notes, "TTL =
-  24h") and §5 (glossary entry for "ttl").
-- The `expires_at` column is indexed in the `idempotency_keys` migration so the GC's
-  range scan remains cheap.
-- Related ADR-0066 (idempotency GC as a separate job) relies on this fixed TTL to keep
-  the sweep query simple.
+- 出典: [`docs/design/idempotency.md`](../design/idempotency.md) §4（運用メモ、「TTL = 24h」）および §5（用語集エントリ「ttl」）。
+- `expires_at` カラムは `idempotency_keys` マイグレーションでインデックスが付与されており、GC の範囲スキャンを安価に保つ。
+- 関連 ADR-0066（冪等性 GC を独立したジョブとして実行）は、スイープクエリをシンプルに保つためにこの固定 TTL に依存している。

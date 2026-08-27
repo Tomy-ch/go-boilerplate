@@ -5,70 +5,51 @@ deciders: [maintainers]
 tags: [outbox, async]
 ---
 
-# ADR-0055: At-least-once delivery via polling (transport-level retry disabled)
+# ADR-0055: ポーリングによる少なくとも1回のデリバリー（トランスポートレベルのリトライを無効化）
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-Outbox rows must reach the external endpoint despite transient network failures or receiver
-downtime. Two retry mechanisms are available independently:
+アウトボックス行は、一時的なネットワーク障害やレシーバーのダウンタイムにもかかわらず、外部エンドポイントに到達しなければならない。2 つのリトライメカニズムがそれぞれ独立して利用できる:
 
-1. **Transport-level retry** — retry the HTTP call within the same poll cycle (e.g. three
-   attempts before giving up).
-2. **Poll-loop retry** — leave the row `pending` and let the next poll cycle pick it up.
+1. **トランスポートレベルのリトライ** — 同じポールサイクル内で HTTP 呼び出しをリトライする（例: 諦める前に 3 回試みる）。
+2. **ポールループリトライ** — 行を `pending` のままにし、次のポールサイクルでピックアップさせる。
 
-Enabling both simultaneously causes double-retry amplification: a row that exhausts its
-transport retries still stays `pending` and receives the full retry budget again on every
-subsequent poll. This can inflate the `attempts` counter far faster than intended and
-obscure whether a problem is transient or permanent. The design doc calls this constraint D10.
+両方を同時に有効にするとダブルリトライ増幅が起きる。トランスポートリトライを使い果たした行でも `pending` のまま残り、以降のポールごとにリトライ予算を全額再度受け取る。これにより `attempts` カウンターが意図より大幅に早く増加し、問題が一時的か永続的かを判断しにくくなる。設計ドキュメントはこの制約を D10 と呼ぶ。
 
-## Decision
+## 決定
 
-Use **poll-loop retry** as the sole at-least-once mechanism. When `Publish` fails, the
-relay does **not** roll back the transaction; the row stays `pending`, `attempts` is
-incremented, and `last_error` is updated. The next poll cycle reclaims and retries it.
-Transport-level retry is disabled: `MaxAttempts = 1` in `NewDownstreamProfile` (D10).
+**ポールループリトライ**を唯一の少なくとも1回のメカニズムとして使用する。`Publish` が失敗した場合、リレーはトランザクションをロールバックしない。行は `pending` のままで、`attempts` がインクリメントされ、`last_error` が更新される。次のポールサイクルがそれを再取得してリトライする。トランスポートレベルのリトライは無効化: `NewDownstreamProfile` で `MaxAttempts = 1`（D10）。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Retry behaviour is deterministic: exactly one transport attempt per poll cycle.
-- A single delivery failure does not stall the relay loop or block other rows.
-- `attempts` and `last_error` provide direct, unambiguous observability of what failed
-  and how many times.
-- Eventual dead-lettering (see [ADR-0058](0058-outbox-dead-after-max-attempts.md)) is
-  predictable because `attempts` advances at most once per poll.
+- リトライ動作が決定論的になる。ポールサイクルごとに正確に 1 回のトランスポート試行。
+- 単一のデリバリー失敗がリレーループを停止させたり、他の行をブロックしたりしない。
+- `attempts` と `last_error` が、何が失敗し何回失敗したかを直接的で明確な観測可能性として提供する。
+- 最終的なデッドレター処理（[ADR-0058](0058-outbox-dead-after-max-attempts.md) を参照）が予測可能になる。`attempts` はポールごとに最大 1 回しか進まない。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Delivery latency after a failure is bounded by `PollInterval` (default 1 s), not by an
-  immediate transport retry.
-- At-least-once semantics mean the receiver must be idempotent on the `Idempotency-Key`
-  header (see [ADR-0057](0057-message-id-idempotency-propagation.md)).
+- 失敗後のデリバリーレイテンシは `PollInterval`（デフォルト 1 秒）によって制限され、即時のトランスポートリトライよりも遅い。
+- 少なくとも1回のセマンティクスにより、レシーバーは `Idempotency-Key` ヘッダー（[ADR-0057](0057-message-id-idempotency-propagation.md) を参照）に対して冪等でなければならない。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Transport-level retry enabled
+### トランスポートレベルのリトライを有効化
 
-Simpler per-attempt logic, but causes double-retry amplification: every poll cycle
-multiplies the retry budget by the transport attempt count. Also obscures the distinction
-between transient and permanent failures.
+試行ごとのロジックがシンプルになるが、ダブルリトライ増幅を引き起こす。ポールサイクルごとにリトライ予算がトランスポート試行回数倍に増幅される。また、一時的な障害と永続的な障害の区別も曖昧になる。
 
-### Exponential backoff per row
+### 行ごとの指数バックオフ
 
-More sophisticated and avoids hot-polling a failing row. Requires per-row timer state and
-complicates the `FOR UPDATE SKIP LOCKED` claim model (a back-off row must be skipped, not
-claimed). Deferred in favour of the simpler poll-loop approach.
+より洗練されており、失敗した行のホットポーリングを避けられる。ただし行ごとのタイマー状態が必要で、`FOR UPDATE SKIP LOCKED` のクレームモデルが複雑になる（バックオフ中の行はロックを消費せずスキップしなければならない）。シンプルなポールループアプローチを優先して先送り。
 
-## Notes
+## 補足
 
-- At-least-once and D10 are described in `docs/design/outbox.md` (§ "Design invariants",
-  Glossary entry "retry-by-poll").
-- Transport retry is disabled in `internal/infrastructure/publisher/http_publisher.go`
-  (`NewDownstreamProfile`, `MaxAttempts = 1`).
-- Related ADRs: [ADR-0054](0054-transactional-outbox.md), [ADR-0056](0056-skip-locked-outbox-relay.md),
-  [ADR-0058](0058-outbox-dead-after-max-attempts.md).
+- 少なくとも1回と D10 は `docs/design/outbox.md`（§「Design invariants」、用語集エントリ「retry-by-poll」）に記述されている。
+- トランスポートリトライは `internal/infrastructure/publisher/http_publisher.go` の `NewDownstreamProfile`（`MaxAttempts = 1`）で無効化されている。
+- 関連 ADR: [ADR-0054](0054-transactional-outbox.md)、[ADR-0056](0056-skip-locked-outbox-relay.md)、[ADR-0058](0058-outbox-dead-after-max-attempts.md)。

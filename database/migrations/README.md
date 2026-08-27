@@ -1,97 +1,96 @@
 # migrations
 
-`database/migrations` stores **database migration files managed by golang-migrate**.
+`database/migrations` は、**golang-migrate によるデータベースマイグレーションファイル**を格納するディレクトリです。
 
-## File Generation
+## ファイル生成
 
-Generate new migration files with:
+新しいマイグレーションファイルは以下のコマンドで生成します。
 
 ```bash
 make new-migrate-<name>
 ```
 
-Example:
+例：
 
 ```bash
 make new-migrate-create_orders
 ```
 
-This auto-generates a numbered up / down pair:
+これにより、連番付きの up / down ペアが自動生成されます。
 
 ```text
 000011_create_orders.up.sql
 000011_create_orders.down.sql
 ```
 
-## File Naming Convention
+## ファイル命名規則
 
 ```text
-{6-digit sequence}_{description}.up.sql    # Upgrade (apply)
-{6-digit sequence}_{description}.down.sql  # Downgrade (rollback)
+{6桁連番}_{説明}.up.sql    # アップグレード（適用）
+{6桁連番}_{説明}.down.sql  # ダウングレード（ロールバック）
 ```
 
-- Sequence starts at `000001`, zero-padded to 6 digits
-- Description uses snake_case to briefly describe the change
-- up and down must always be created as a pair
+- 連番は `000001` から始まる6桁ゼロ埋め
+- 説明はスネークケースで内容を簡潔に表す
+- up と down は必ずペアで作成する
 
-## Running Migrations
+## マイグレーション実行
 
-|Command|Description|
+|コマンド|説明|
 |---|---|
-|`make db-migrate-up DB=<name>`|Apply all pending migrations|
-|`make db-migrate-down DB=<name>`|Rollback the last migration|
+|`make db-migrate-up DB=<name>`|すべての未適用マイグレーションを適用|
+|`make db-migrate-down DB=<name>`|直前のマイグレーションをロールバック|
 
-Also available via CLI:
+CLI からも実行可能です。
 
 ```bash
 ./server migrate-up
 ./server migrate-down
 ```
 
-## Rules
+## ルール
 
-- **Never modify existing migration files** — changing applied files causes hash mismatches
-- **Always create new files** — schema changes must be done via new migrations
-- **Create up and down as pairs** — rollback is impossible without down
-- **down must be the exact inverse of up** — table creation → DROP, column addition → DROP COLUMN
-- **Be idempotent where possible** — use `IF NOT EXISTS` / `IF EXISTS`
-- **No gaps in sequence numbers** — CI detects gaps (`migration-check.yaml`)
+- **既存のマイグレーションファイルを変更しない** — 適用済みのファイルを変更するとハッシュ不整合が発生する
+- **必ず新しいファイルを作成する** — スキーマ変更は常に新規マイグレーションで行う
+- **up と down はペアで作成する** — down がないとロールバックできない
+- **down は up の逆操作を正確に記述する** — テーブル作成なら DROP、カラム追加なら DROP COLUMN
+- **冪等性を意識する** — `IF NOT EXISTS` / `IF EXISTS` を活用する
+- **連番に欠番を作らない** — CI でギャップ検出される（`migration-check.yaml`）
 
-## Reference-master table shape
+## 参照マスタの基本形
 
-A reference master (a table whose rows are fixed by migration and have no write API) carries these columns:
+参照マスタ（行を migration が固定し、書き込み API を持たないテーブル）は次の列を持ちます。
 
 ```sql
 id UUID, name VARCHAR(100), code SMALLINT, sort_key SMALLINT, created_at TIMESTAMPTZ, updated_at TIMESTAMPTZ
 ```
 
-`code` and `sort_key` both hold a small integer, which is exactly why the split has to be stated rather than
-inferred. They answer different questions and move for different reasons:
+`code` と `sort_key` はどちらも小さな整数を持つため、区別は推測に任せず明示しておく必要があります。
+両者は答えている問いが違い、動く理由も違います。
 
-|Column|What it is|Exposed by the API|
+|列|何であるか|API へ出すか|
 |---|---|---|
-|`code`|A **static alias** for the row. Application code, SQL and API clients refer to the row by this, and its value never moves once assigned.|**Yes** — this is what a client sends and receives|
-|`sort_key`|The **key that makes ordering idempotent**. `ORDER BY sort_key` is what fixes the display order, and it is free to move whenever the intended order changes.|**No** — the response's array order already carries it|
+|`code`|行の**静的な別名**。アプリケーションコード・SQL・API クライアントはこの値で行を指し、一度割り当てたら動かさない。|**出す**——クライアントが送受信するのはこちら|
+|`sort_key`|**並び順を冪等にするためのキー**。表示順を決めるのは `ORDER BY sort_key` であり、意図する順序が変われば自由に動かしてよい。|**出さない**——レスポンスの配列順が既に表現している|
 
-Both are `UNIQUE`. The consequence worth stating: **never order by `code`**. Ordering by `code` fuses the two
-roles, so the only way to change the display order becomes renumbering `code` — which silently breaks every
-client holding it as a constant and every `WHERE ... code = ...` in `database/dml/`.
+どちらも `UNIQUE`。ここから出る帰結は、**`code` で並べてはいけない**ということです。`code` で並べると
+2 つの役割が癒着し、表示順を変える唯一の手段が `code` の振り直しになります。それは `code` を定数として
+持つ全クライアントと、`database/dml/` の `WHERE ... code = ...` を同時に、しかも静かに壊します。
 
-A column that is not a reference master's ordering, but an order the *user* chooses and the API returns,
-is neither of these — it is named `display_sort` to keep it out of the pair
-above.
+参照マスタの並び順ではなく、**利用者が決めて API が返す**順序は、このどちらでもありません。
+上の対から外すために `display_sort` と名付けます。
 
-## CI Check
+## CI チェック
 
-The `migration-check.yaml` workflow automatically verifies:
+`migration-check.yaml` ワークフローにより、以下が自動検証されます。
 
-- No duplicate sequence numbers
-- No gaps in sequence numbers
-- up / down pairs are complete
+- 連番の重複がないこと
+- 連番に欠番がないこと
+- up / down のペアが揃っていること
 
-## Notes
+## 注意点
 
-- Only place DDL (table definitions, schema changes) in this directory
-- DML (data manipulation) belongs in `database/dml/`
-- Seed data belongs in `database/seed/`
-- Initialization SQL (DB creation, extension setup) belongs in `docker/database/sql/`
+- このディレクトリには DDL（テーブル定義・スキーマ変更）のみ配置する
+- DML（データ操作）は `database/dml/` に配置する
+- シードデータは `database/seed/` に配置する
+- 初期化用 SQL（DB 作成・拡張有効化）は `docker/database/sql/` に配置する

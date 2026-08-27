@@ -1,27 +1,27 @@
-# OpenAPI Schemas
+# OpenAPI スキーマ
 
-`openapi/components/schemas/` stores **reusable OpenAPI schema definitions** — data structures for requests, responses, and security schemes.
+`openapi/components/schemas/` は、**再利用可能な OpenAPI スキーマ定義**（リクエスト・レスポンス・セキュリティスキームのデータ構造）を格納するディレクトリです。
 
-## Directory Contents
+## ディレクトリ内容
 
-|File|Type|Description|
+|ファイル|種別|説明|
 |---|---|---|
-|`ErrorResponse.yaml`|Response|Unified error response schema (code / message / details / requestId)|
-|`errors/`|Response objects|Reusable error responses — one per HTTP status covering every `apperror` kind (`<Reason><Code>.yaml`), wrapping `ErrorResponse`|
-|`PaginationMetadataResponse.yaml`|Response|Offset pagination metadata (total / limit / offset)|
-|`CursorPaginationMetadataResponse.yaml`|Response|Cursor (keyset) pagination metadata (nextCursor / hasNext)|
-|`BasicAuth.yaml`|Security|HTTP Basic authentication scheme|
-|`BearerAuth.yaml`|Security|HTTP Bearer (JWT) authentication scheme|
-|`UserBaseInputRequest.yaml`|Request|User input fields (sample)|
-|`UserResponse.yaml`|Response|User response fields (sample)|
+|`ErrorResponse.yaml`|レスポンス|統一エラーレスポンススキーマ（code / message / details / requestId）|
+|`errors/`|レスポンスオブジェクト|`ErrorResponse` をラップする再利用エラーレスポンス — `apperror` 全種を網羅した HTTP ステータス別（`<理由句><コード>.yaml`）|
+|`PaginationMetadataResponse.yaml`|レスポンス|オフセットページネーションのメタデータ（total / limit / offset）|
+|`CursorPaginationMetadataResponse.yaml`|レスポンス|カーソル（keyset）ページネーションのメタデータ（nextCursor / hasNext）|
+|`BasicAuth.yaml`|セキュリティ|HTTP Basic 認証スキーム|
+|`BearerAuth.yaml`|セキュリティ|HTTP Bearer（JWT）認証スキーム|
+|`UserBaseInputRequest.yaml`|リクエスト|ユーザー入力フィールド（サンプル）|
+|`UserResponse.yaml`|レスポンス|ユーザーレスポンスフィールド（サンプル）|
 
-> `User*` files are **sample implementations**. Use them as reference for naming and structure conventions when building your own schemas.
+> `User*` ファイルは**サンプル実装**です。独自のスキーマを構築する際の命名・構造の参考として使用してください。
 
-## Design Policy
+## 設計ポリシー
 
-### One File = One Schema
+### 1ファイル = 1スキーマ
 
-Each file defines a single top-level schema. Do not nest multiple schemas in one file.
+各ファイルは単一のトップレベルスキーマを定義します。1ファイルに複数のスキーマを含めないでください。
 
 ```yaml
 # Good: UserResponse.yaml
@@ -37,42 +37,42 @@ properties:
     format: email
 ```
 
-### Naming Convention
+### 命名規則
 
-|Element|Convention|Example|
+|要素|規則|例|
 |---|---|---|
-|File name|PascalCase|`ErrorResponse.yaml`, `UserBaseInputRequest.yaml`|
-|Request schemas|`*Request.yaml`|`UserBaseInputRequest.yaml`|
-|Response schemas|`*Response.yaml`|`UserResponse.yaml`, `ErrorResponse.yaml`|
-|Security schemes|Descriptive name|`BasicAuth.yaml`, `BearerAuth.yaml`|
+|ファイル名|PascalCase|`ErrorResponse.yaml`, `UserBaseInputRequest.yaml`|
+|リクエストスキーマ|`*Request.yaml`|`UserBaseInputRequest.yaml`|
+|レスポンススキーマ|`*Response.yaml`|`UserResponse.yaml`, `ErrorResponse.yaml`|
+|セキュリティスキーム|説明的な名前|`BasicAuth.yaml`, `BearerAuth.yaml`|
 
-### Payloads are schemas, organized by role across three folders
+### ペイロードは schema として定義し、役割で3フォルダに分ける
 
-Because of `redocly` bundling and `oapi-codegen` generation constraints, every request / response payload is modeled as a **schema** — never as the OpenAPI `requestBodies` / `responses` **component object** types. A path references these schemas directly under `content.<media>.schema.$ref`.
+`redocly` のバンドルと `oapi-codegen` の生成の制約により、リクエスト／レスポンスのペイロードはすべて **schema** として定義します（OpenAPI の `requestBodies` / `responses` の **component object** 型は使いません）。パスからは `content.<media>.schema.$ref` で直接参照します。
 
-They are split across three folders **by role**, not by kind:
+これらは種別ではなく**役割**で3フォルダに分かれます：
 
-|Folder|Holds|Example|
+|フォルダ|格納するもの|例|
 |---|---|---|
-|`schemas/`|Base & reusable schemas + security schemes|`UserResponse.yaml`, `ErrorResponse.yaml`, `PaginationMetadataResponse.yaml`|
-|`requests/`|Endpoint **request-body** schemas (usually compose a base via `allOf`)|`UsersPostRequest.yaml` = `UserBaseInputRequest` + a `required` list|
-|`responses/`|Endpoint **response-body** schemas (usually compose a base via `allOf`)|`UsersResponse.yaml` = `UserResponse[]` + pagination metadata|
+|`schemas/`|基底・再利用スキーマ＋セキュリティスキーム|`UserResponse.yaml`, `ErrorResponse.yaml`, `PaginationMetadataResponse.yaml`|
+|`requests/`|エンドポイントの**リクエストボディ**スキーマ（多くは `allOf` で基底を合成）|`UsersPostRequest.yaml` = `UserBaseInputRequest` ＋ `required` リスト|
+|`responses/`|エンドポイントの**レスポンスボディ**スキーマ（多くは `allOf` で基底を合成）|`UsersResponse.yaml` = `UserResponse[]` ＋ ページネーションメタ|
 
-Rule of thumb: a small reusable building block lives in `schemas/`; the per-endpoint shape that composes those blocks lives in `requests/` or `responses/`. See [`requests/README.md`](../requests/README.md) and [`responses/README.md`](../responses/README.md).
+目安：再利用できる小さな部品は `schemas/`、それを合成したエンドポイント固有の形は `requests/` / `responses/`。詳細は [`requests/README.md`](../requests/README.md) と [`responses/README.md`](../responses/README.md) を参照。
 
-### $ref Usage
+### $ref の使い方
 
-All `$ref` references use **relative YAML paths** (not `#/components/...` fragment format) for compatibility with `redocly bundle`.
+すべての `$ref` 参照は `redocly bundle` との互換性のため、**相対 YAML パス**を使用します（`#/components/...` フラグメント形式は使用しない）。
 
 ```yaml
-# From a path definition
+# パス定義から
 schema:
   $ref: '../components/schemas/UserResponse.yaml'
 ```
 
-### PATCH Support
+### PATCH 対応
 
-For PATCH operations, create a dedicated wrapper schema using `allOf`:
+PATCH 操作には `allOf` を使って専用のラッパースキーマを作成します：
 
 ```yaml
 # UserPatchRequest.yaml
@@ -80,45 +80,44 @@ allOf:
   - $ref: './UserBaseInputRequest.yaml'
 ```
 
-This separates the input structure from the operation semantics.
+入力構造と操作のセマンティクスを分離します。
 
-`additionalProperties: false` stays on `UserBaseInputRequest.yaml`, which declares the properties.
-Putting it on the wrapper instead rejects **every** field: `additionalProperties` only sees properties
-declared in the same schema object, and the wrapper declares none.
+`additionalProperties: false` は、properties を宣言している `UserBaseInputRequest.yaml` の側に置いたままにします。
+ラッパーに置くと**全て**のフィールドが拒否されます。`additionalProperties` が見るのは同じスキーマオブジェクトで
+宣言された properties だけで、ラッパーは 1 つも宣言していないためです。
 
-## Core Schemas
+## コアスキーマ
 
 ### ErrorResponse / ErrorResponseWithDetails
 
-Two error envelopes. `ErrorResponse` is the base (no `details`) used by most error statuses;
-`ErrorResponseWithDetails` adds `details` and is referenced **only** by responses that
-intentionally expose it. Which operations reference `ErrorResponseWithDetails` is the
-**per-endpoint opt-in switch** for detail exposure (enforced fail-closed at the edge — see
-[ADR-0049 (error-details-opt-in-gate)](../../../docs/adr/0049-error-details-opt-in-gate.md)).
+2 つのエラーエンベロープ。`ErrorResponse` は base（`details` なし）で大半のエラーステータスが
+使う。`ErrorResponseWithDetails` は `details` を追加し、意図的に露出するレスポンスだけが参照する。
+どの operation が `ErrorResponseWithDetails` を参照するかが、details 露出の**エンドポイントごとの
+opt-in スイッチ**（edge で fail-closed に強制 — [ADR-0049 (error-details-opt-in-gate)](../../../docs/adr/0049-error-details-opt-in-gate.md) 参照）。
 
 ```yaml
 # ErrorResponse.yaml (base)
 type: object
 required: [code, message, requestId]
 properties:
-  code:       # Machine-readable error code (e.g., BAD_REQUEST)
-  message:    # Human-readable error message
-  requestId:  # Request tracking ID
+  code:       # 機械可読なエラーコード（例: BAD_REQUEST）
+  message:    # ユーザー向けエラーメッセージ
+  requestId:  # リクエスト追跡 ID
 
 # ErrorResponseWithDetails.yaml (base + details)
-#   ...same fields, plus:
-#   details:  # Public-safe identifiers (e.g., invalid field names)
+#   ...同じフィールドに加えて:
+#   details:  # 公開して安全な識別子（例: 不正フィールド名）
 ```
 
-The Go builder (`response.HTTPErrorResponse`) embeds the `ErrorResponseWithDetails` superset —
-see `internal/controller/error/response/`.
+Go 側の builder（`response.HTTPErrorResponse`）は `ErrorResponseWithDetails` superset を埋め込む
+— 詳細は `internal/controller/error/response/` を参照。
 
-### errors/ — reusable error response objects (DRY)
+### errors/ — 再利用エラーレスポンスオブジェクト（DRY）
 
-Every operation returns the same `ErrorResponse` body for its error statuses. Instead of repeating the full block in each path, `schemas/errors/` holds **one reusable response object per HTTP status — covering every `apperror` kind** — and a path references the whole status entry:
+各パスでブロックを複製せず、`schemas/errors/` に **HTTP ステータスごとの再利用レスポンスオブジェクトを1つずつ（`apperror` の全種を網羅）** 置き、パスはステータス項目ごと参照します：
 
 ```yaml
-# in a path
+# パス側
 responses:
   '401':
     $ref: '../../../components/schemas/errors/Unauthorized401.yaml'
@@ -133,57 +132,59 @@ content:
       $ref: '../ErrorResponse.yaml'
 ```
 
-These are technically OpenAPI **response objects** (they carry `description` + `content`, which a plain schema cannot), kept here next to `ErrorResponse` so all error definitions live together. `redocly bundle` hoists each into `#/components/responses/<FileName>`, which `oapi-codegen` turns into a `<FileName>JSONResponse` Go type — so **the file name must be a valid Go identifier (PascalReason + HTTP-code suffix, never a bare number)**. Keep a status **inline** only when its description is operation-specific (i.e. the wording is meaningful only for that one operation and cannot be shared).
+これらは厳密には OpenAPI の**レスポンスオブジェクト**（plain schema が持てない `description` ＋ `content` を持つ）で、エラー定義をまとめるため `ErrorResponse` の隣に置いています。
+各ファイルを `#/components/responses/<ファイル名>` へホイストし、`oapi-codegen` がそれを `<ファイル名>JSONResponse` という Go 型にします。
+したがって**ファイル名は有効な Go 識別子（Pascal の理由句 ＋ HTTP コードのサフィックス。数字始まりは不可）**である必要があります。description がオペレーション固有の場合（＝そのオペレーションだけで意味を持ち共有できない文言のとき）のみ **inline** で残します。
 
-**The full set (one per `apperror` kind).** Every fragment exists so it is ready to `$ref` the moment an endpoint needs it. A path declares **only the statuses that operation can actually produce** (derived from `internal/controller/error/response/http_error.go` + `internal/infrastructure/rdb/pgerror`):
+**全集合（`apperror` 1種につき1つ）。** すべてのフラグメントを用意しておき、エンドポイントが必要になった瞬間に `$ref` できる状態にしています。パスには**そのオペレーションが実際に返しうるステータスだけ**を宣言します（`internal/controller/error/response/http_error.go` ＋ `internal/infrastructure/rdb/pgerror` から導出）：
 
-|Fragment|Status|`apperror`|Reached by|
+|フラグメント|ステータス|`apperror`|到達経路|
 |---|---|---|---|
-|`BadRequest400`|400|`ErrInvalidArgument`|OpenAPI request validation (param/body schema violation)|
-|`Unauthorized401`|401|`ErrUnauthenticated`|auth middleware|
-|`Forbidden403`|403|`ErrPermissionDenied`|auth middleware|
-|`NotFound404`|404|`ErrNotFound`|missing resource|
-|`Conflict409`|409|`ErrConflict`|`ErrAlreadyDeleted` (delete) or unique-violation `23505` (create/update, e.g. duplicate email)|
-|`PayloadTooLarge413`|413|`ErrPayloadTooLarge`|usecase validation of an upload that exceeds the size limit|
-|`UnsupportedMediaType415`|415|`ErrUnsupportedMediaType`|usecase validation of a disallowed `Content-Type`|
-|`UnprocessableEntity422`|422|`ErrValidation`|domain validation the OpenAPI schema does not catch (e.g. email format)|
-|`TooManyRequests429`|429|`ErrTooManyRequests`|rate limiting|
-|`ClientClosedRequest499`|499|`ErrCanceled`|client disconnect mid-request|
-|`InternalServerError500`|500|`ErrInternal`|unexpected server error|
-|`NotImplemented501`|501|`ErrUnimplemented`|unimplemented operation|
-|`ServiceUnavailable503`|503|`ErrUnavailable`|DB transient errors (`40001`/`40P01`/`57014`/connection) via `pgerror`|
+|`BadRequest400`|400|`ErrInvalidArgument`|OpenAPI リクエスト検証（param/body のスキーマ違反）|
+|`Unauthorized401`|401|`ErrUnauthenticated`|認証ミドルウェア|
+|`Forbidden403`|403|`ErrPermissionDenied`|認証ミドルウェア|
+|`NotFound404`|404|`ErrNotFound`|リソース不在|
+|`Conflict409`|409|`ErrConflict`|`ErrAlreadyDeleted`（削除）または unique 違反 `23505`（作成・更新、例：email 重複）|
+|`PayloadTooLarge413`|413|`ErrPayloadTooLarge`|アップロードサイズ上限を超えた場合の usecase 検証|
+|`UnsupportedMediaType415`|415|`ErrUnsupportedMediaType`|許可しない `Content-Type` に対する usecase 検証|
+|`UnprocessableEntity422`|422|`ErrValidation`|OpenAPI スキーマで捕まらない domain 検証（例：email 形式）|
+|`TooManyRequests429`|429|`ErrTooManyRequests`|レートリミット|
+|`ClientClosedRequest499`|499|`ErrCanceled`|リクエスト中のクライアント切断|
+|`InternalServerError500`|500|`ErrInternal`|予期しないサーバエラー|
+|`NotImplemented501`|501|`ErrUnimplemented`|未実装オペレーション|
+|`ServiceUnavailable503`|503|`ErrUnavailable`|DB の一時障害（`40001`/`40P01`/`57014`/接続）を `pgerror` 経由|
 
-A fragment not referenced by any operation is not included by `redocly bundle`, so `no-unused-components` does not flag it. When a code path starts producing that status, wire it up by adding a `'<code>': { $ref: ... }` entry to the operation's `responses`.
+どのオペレーションからも `$ref` されていないフラグメントは `redocly bundle` がバンドルに含めないため `no-unused-components` にも掛かりません。そのステータスを返す経路ができたら、オペレーションの `responses` に `'<コード>': { $ref: ... }` を足すだけで使えます。
 
 ### PaginationMetadataResponse
 
-**Offset** pagination metadata returned with list endpoints:
+一覧エンドポイントで返される**オフセット**ページネーションのメタデータ：
 
 ```yaml
 type: object
 required: [total, limit, offset]
 properties:
-  total:   # Total item count
-  limit:   # Items per page
-  offset:  # Current offset
+  total:   # 全件数
+  limit:   # 1ページあたりの件数
+  offset:  # 現在のオフセット
 ```
 
 ### CursorPaginationMetadataResponse
 
-**Cursor (keyset)** pagination metadata — the alternative strategy to offset:
+**カーソル（keyset）**ページネーションのメタデータ — オフセットに対するもう一方の戦略：
 
 ```yaml
 type: object
 required: [nextCursor, hasNext]
 properties:
-  nextCursor:  # Opaque cursor for the next page; null on the last page
-  hasNext:     # Whether a next page exists
+  nextCursor:  # 次ページ用の不透明カーソル。最終ページは null
+  hasNext:     # 次ページが存在するか
 ```
 
-Reuse pattern: the cursor pieces are **resource-agnostic and shared**. To add a cursor-paginated endpoint, you do **not** create new pagination components — reuse the existing ones:
+再利用パターン：カーソル部品は**リソース非依存で共有**です。カーソルページネーションのエンドポイントを足すとき、新しいページネーションコンポーネントは**作りません**。既存のものを再利用します：
 
-- Query parameters: `parameters/pagination/CursorAfterParam.yaml` (`after`) + `parameters/pagination/CursorFirstParam.yaml` (`first`)
-- Response: compose the item array with this metadata via `allOf` in a per-resource wrapper. Only that wrapper is feature-specific:
+- クエリパラメータ：`parameters/pagination/CursorAfterParam.yaml`（`after`）＋ `parameters/pagination/CursorFirstParam.yaml`（`first`）
+- レスポンス：リソースごとのラッパーで、items 配列とこのメタデータを `allOf` で合成する。feature 固有なのはそのラッパーだけ：
 
 ```yaml
 # responses/users/UsersFeedResponse.yaml
@@ -198,19 +199,19 @@ allOf:
   - $ref: '../../schemas/CursorPaginationMetadataResponse.yaml'
 ```
 
-## Rules
+## ルール
 
-- Avoid defining schemas inline in path definitions — always extract to `schemas/`
-- Do not make schemas serve both request and response purposes
-- Include `description` and `example` on all properties
-- Use `required` to explicitly list mandatory fields
-- Declare `additionalProperties: false` on the request schema object that holds the properties — never on an `allOf` wrapper, which cannot see them (see [PATCH Support](#patch-support))
-- Boundary values like `maxLength` are a **wire contract**, not the domain's business rule (different owner) — see [Input Boundary Value Ownership](../../boundary-ownership.md)
+- パス定義内でインラインにスキーマを定義しない — 必ず `schemas/` に切り出す
+- リクエストとレスポンスの兼用スキーマは極力避ける
+- すべてのプロパティに `description` と `example` を記述する
+- `required` で必須フィールドを明示する
+- `additionalProperties: false` は、properties を持つリクエストスキーマオブジェクト自身に置く — properties が見えない `allOf` のラッパーには置かない（[PATCH 対応](#patch-対応) を参照）
+- `maxLength` などの境界値は**ワイヤー契約**であり domain の業務ルールではない（オーナーが別） — [入力境界値のオーナーシップ](../../boundary-ownership.md) を参照
 
-## Checklist
+## チェックリスト
 
-- [ ] One file = one schema
-- [ ] File name matches schema purpose (PascalCase)
-- [ ] `$ref` uses relative path format
-- [ ] PATCH uses a dedicated wrapper schema
-- [ ] `description` and `example` on all properties
+- [ ] 1ファイル = 1スキーマになっているか
+- [ ] ファイル名がスキーマの目的と一致しているか（PascalCase）
+- [ ] `$ref` が相対パス形式で統一されているか
+- [ ] PATCH には専用ラッパースキーマを作成しているか
+- [ ] すべてのプロパティに `description` と `example` があるか

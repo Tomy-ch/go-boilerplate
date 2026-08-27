@@ -6,114 +6,112 @@ description: >-
 
 # Verify Spec
 
-Integrator for spec validation. Fans out per-spec **read-only validator subagents** in parallel based on which spec files exist under `docs/spec/<feature>/`.
+spec 検証の統合スキル。`docs/spec/<feature>/` 配下に存在する spec ファイルに応じて per-spec **read-only validator サブエージェント**を並列 fan-out。
 
-A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
+## 使うとき
 
-## When to Use
+- `scaffold-endpoint` 起動前の spec 不整合検知（`scaffold-endpoint` が自動 chain）
+- spec 編集後の全 check 確認
+- spec 作成中のクイックチェック
 
-- Before invoking `scaffold-endpoint` to catch spec inconsistencies upfront (`scaffold-endpoint` auto-chains this).
-- Standalone after editing specs, to confirm all checks pass.
-- During spec authoring as a quick check.
+単一 spec だけ確認したい時はこの統合スキルを実行する — `domain.md` / `usecase.md` のうち存在するものを検出し、該当 validator のみ fan-out する。
 
-To validate a single spec, run this integrator — it detects which of `domain.md` / `usecase.md` exist and fans out only the matching validator.
+以下の用途には使いません:
 
-Do NOT use for:
+- 生成コードの検証 — `make test`
+- 実装 ↔ spec drift — `arch-check`
+- 不整合の修正 — read-only、レポートのみ
 
-- Verifying generated code — that's `make test`.
-- Implementation ↔ spec drift — that's `arch-check`.
-- Fixing inconsistencies — read-only, reports only.
+## アーキテクチャ: 並列 validator サブエージェント
 
-## Architecture: parallel validator subagents
+検証は `.claude/agents/` 配下の **read-only ワーカーサブエージェント**（spec ファイルごとに1つ）へ委譲。integrator は Agent tool（`subagent_type`）でこれらを並列起動:
 
-Validation is delegated to two **read-only worker subagents** under `.claude/agents/`, one per spec file. The integrator runs them concurrently via the Agent tool (`subagent_type`):
-
-| Validator subagent | Spec | Checks |
+| validator サブエージェント | spec | チェック内容 |
 | --- | --- | --- |
-| `spec-validator-domain` | `docs/spec/<feature>/domain.md` | format + entity ↔ SQL soft + internal consistency |
-| `spec-validator-usecase` | `docs/spec/<feature>/usecase.md` | format + cross-spec to domain + 命名規約 + Workflow consistency |
+| `spec-validator-domain` | `docs/spec/<feature>/domain.md` | format + entity ↔ SQL soft + 内部整合性 |
+| `spec-validator-usecase` | `docs/spec/<feature>/usecase.md` | format + cross-spec to domain + 命名規約 + Workflow 整合性 |
 
 lean A 構成では controller.md / infra.md は存在しないため spec 検証は不要（controller / infra は実装時に OpenAPI + sqlc gen から導出され、verify は `arch-check`（controller / infra 監査）が implementation 側で実施）。
 
-The validators are the per-spec validation workers and are **strictly read-only** (no auto-fix, no writes). The two validators read independently — `spec-validator-usecase` reads `domain.md` itself to resolve its cross-spec references — so there is **no write dependency** between them and they can run in parallel.
+validator は per-spec 検証ワーカーで**厳密に read-only**（auto-fix なし・書込なし）。両 validator は独立に読む — `spec-validator-usecase` は cross-spec 参照の解決のため `domain.md` を自分で読む — ため**書込依存がなく並列実行可能**。
 
-## First Step: Confirm Target Feature
+## 最初のステップ: 対象 feature 確認
 
-This skill **MUST call `AskUserQuestion` immediately after invocation** (unless invoked from `scaffold-endpoint` with the feature name already in context):
+`AskUserQuestion` を起動直後に必ず呼ぶ（`scaffold-endpoint` から呼ばれて context に feature 名がある場合は除く）:
 
 - 質問: 「検証対象の feature 名を選んでください」
 - 選択肢: `docs/spec/` 直下のサブディレクトリを列挙 + 規約外パス用のフリーテキスト
 
-If the feature directory is missing or contains no spec files, abort with a clear message.
+feature ディレクトリが無い or spec ファイル無い時は明確メッセージで中断。
 
-## Step 1. Detect Existing Spec Files
+## Step 1. 存在する spec ファイル検出
 
-For the confirmed feature, check existence of:
+確認済み feature について、以下の存在を確認:
 
 - `docs/spec/<feature>/domain.md`
 - `docs/spec/<feature>/usecase.md`
 
-If neither exists → abort with message. If only one exists → fan out only the matching validator. (If `usecase.md` exists alone, its cross-spec check will surface "domain.md not found" as a `violation`.)
+両方なし → メッセージ出して中断。片方のみ → 該当 validator のみ fan-out（`usecase.md` 単独存在時は cross-spec チェックが「domain.md not found」を `violation` として surface）。
 
-## Step 2. Fan Out Validator Subagents IN PARALLEL
+## Step 2. validator サブエージェントを並列 fan-out
 
-For the existing spec files, spawn the matching validators with the **Agent tool**, all in **a single message with multiple tool calls** so they run concurrently. Pass each validator:
+存在する spec ファイルについて、該当 validator を **Agent tool** で起動。**1メッセージ内に複数 tool 呼び出し**を並べて並列実行。各 validator に渡す:
 
-- `feature` — the confirmed feature name
-- `specPath` — the spec file path (`docs/spec/<feature>/domain.md` or `.../usecase.md`)
+- `feature` — 確認済み feature 名
+- `specPath` — spec ファイルパス（`docs/spec/<feature>/domain.md` または `.../usecase.md`）
 
-Each validator's final message **is** its findings (Japanese), ending in a machine-readable `SUMMARY violations=<v> suggestions=<s>` line. Collect them with their spec label and parse the SUMMARY counts.
+各 validator の最終メッセージ**が** findings（日本語）で、末尾に機械可読な `SUMMARY violations=<v> suggestions=<s>` 行を持つ。spec ラベル付きで収集し SUMMARY をパース。
 
-> If the `spec-validator-*` subagents cannot be spawned in the current environment, follow each `spec-validator-<layer>.md` procedure inline instead (domain first, since usecase references it).
+> `spec-validator-*` を起動できない環境では、各 `spec-validator-<layer>.md` の手順を本文がインラインで実行する（domain 先行、usecase が参照するため）。
 
-## Step 3. Aggregate Report (Japanese)
+## Step 3. 集約レポート（日本語）
 
 ```text
 verify-spec 統合結果（feature: <feature>）
 
 [domain] violations: N, suggestions: K
-  - <findings from spec-validator-domain>
+  - <spec-validator-domain の findings>
 
 [usecase] violations: N, suggestions: K
-  - <findings from spec-validator-usecase>
+  - <spec-validator-usecase の findings>
 
 総計: violations <sum>, suggestions <sum>
 ```
 
-All clean:
+全 clean:
 
 ```text
 verify-spec 統合結果（feature: <feature>）
 全 spec で違反は検出されませんでした（チェック済み: <spec list>）。
 ```
 
-## Step 4. Closing
+## Step 4. クロージング
 
-- **Standalone invocation**: print the report and exit. Even with violations, exit status is 0 (informational).
-- **Chained from `scaffold-endpoint`**: when aggregated `violations > 0`, signal the parent to abort the downstream chain with a clear "scaffold can not safely proceed" message. (Suggestions do not abort.)
+- **単独実行**: レポート出力して exit。違反があっても exit 0（情報的）
+- **`scaffold-endpoint` から chain**: 集約 `violations > 0` のとき親に下流 chain 中断を通知。「scaffold can not safely proceed」を明示（suggestion では中断しない）
 
-## AI Modification Scope
+## AI 修正スコープ
 
-Strictly read-only. The integrator and all validator subagents touch no spec or source files. The integrator only runs `AskUserQuestion` (feature confirmation, standalone) and spawns read-only validators.
+完全 read-only。integrator と全 validator サブエージェントは spec / source ファイルを一切触らない。integrator が行うのは `AskUserQuestion`（feature 確認、単独時）と read-only validator の起動のみ。
 
-## Constraints
+## 制約事項
 
 - ❌ validator を逐次起動（必ず1メッセージ内で複数 Agent 呼び出し＝並列）
-- ❌ Hardcode rules — validators read `.claude/scaffold-spec/<layer>-spec.md` + `verify-rules.md` every run
-- ❌ Auto-fix violations / modify any file
-- ❌ Skip the target-confirmation `AskUserQuestion` (unless supplied by `scaffold-endpoint`)
-- ❌ Fan out a validator when its target spec file is missing
-- ✅ Japanese aggregated report
-- ✅ Fan out only existing spec files
-- ✅ Per-spec validator / skill が独立 standalone 動作可能であることを維持
-- ✅ Run all per-spec checks in one pass (no fail-fast); abort downstream only when chained from `scaffold-endpoint` with violations
+- ❌ ルールをハードコード — validator が `.claude/scaffold-spec/<layer>-spec.md` + `verify-rules.md` を毎回読む
+- ❌ 違反の自動修正 / ファイル変更
+- ❌ 対象確認 `AskUserQuestion` をスキップ（`scaffold-endpoint` 供与時を除く）
+- ❌ 対象 spec ファイルが無い validator を fan-out
+- ✅ 日本語集約レポート
+- ✅ 存在する spec のみ fan-out
+- ✅ per-spec validator / skill が独立 standalone 動作可能であることを維持
+- ✅ 全 per-spec チェックを 1 パスで実施（fail-fast しない）；`scaffold-endpoint` から chain かつ violations 時のみ下流中断
 
-## Checklist
+## チェックリスト
 
-- [ ] Target feature confirmed via `AskUserQuestion` (or supplied by `scaffold-endpoint`)
-- [ ] Existing spec files detected (domain.md / usecase.md)
-- [ ] Matching `spec-validator-*` を **1メッセージ内で並列起動**（feature / specPath を渡す）
+- [ ] 対象 feature を `AskUserQuestion` で確認（または `scaffold-endpoint` から供与）
+- [ ] 存在する spec ファイル検出（domain.md / usecase.md）
+- [ ] 該当 `spec-validator-*` を **1メッセージ内で並列起動**（feature / specPath を渡す）
 - [ ] 各 validator の SUMMARY を集約
-- [ ] Aggregated Japanese report emitted
-- [ ] scaffold-endpoint から chain 時のみ violations>0 で downstream abort
-- [ ] No file modifications
+- [ ] 集約日本語レポート出力
+- [ ] `scaffold-endpoint` から chain 時のみ violations>0 で下流中断
+- [ ] ファイル変更なし

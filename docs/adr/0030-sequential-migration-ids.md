@@ -5,83 +5,60 @@ deciders: [maintainers]
 tags: [persistence, migration, ci]
 ---
 
-# ADR-0030: Use sequential 6-digit migration IDs with CI-enforced gap and pair checks
+# ADR-0030: CIで強制するギャップ・ペアチェックを伴う6桁連番マイグレーションIDの使用
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-golang-migrate applies migrations in filename order. Two common ID schemes are timestamps
-(e.g., `20240101120000_`) and sequential integers. Timestamp IDs avoid numbering conflicts
-between parallel branches but are verbose, harder to read at a glance, and still require
-CI verification of pairs. Sequential integer IDs are compact and unambiguous in ordering,
-but parallel branches can accidentally claim the same number — a collision that must be
-caught before merge.
+golang-migrateはファイル名順にマイグレーションを適用する。一般的なIDスキームにはタイムスタンプ（例：`20240101120000_`）と連番整数の2種類がある。タイムスタンプIDは並列ブランチ間での採番衝突を避けられるが、冗長で一見して読みにくく、ペアチェックにもCIが必要である。連番整数IDはコンパクトで順序が明確だが、並列ブランチが同じ番号を誤って取得することがあり、その衝突はマージ前に検出しなければならない。
 
-Without tooling enforcement, any ID scheme can accumulate gaps (a deleted or skipped file),
-missing down files (making rollback impossible), or duplicate IDs (undefined apply order).
-Silent failures in these cases are costly in production.
+ツールによる強制がなければ、どのIDスキームでもギャップ（削除またはスキップされたファイル）・ダウンファイルの欠落（ロールバックを不可能にする）・重複ID（適用順序が未定義になる）が蓄積しうる。本番環境でこれらの問題を発見した場合の修正コストは高い。
 
-## Decision
+## 決定
 
-Migration files use a zero-padded **6-digit sequential integer** prefix starting at
-`000001`, in the format `{6-digit sequence}_{description}.{up|down}.sql`. Every migration
-must be created as a **up/down pair** using `make new-migrate-<name>`, which auto-generates
-the next number.
+マイグレーションファイルは`000001`から始まるゼロ埋めの**6桁連番整数**プレフィックスを使用し、`{6桁シーケンス}_{説明}.{up|down}.sql`のフォーマットとする。すべてのマイグレーションは次の番号を自動生成する`make new-migrate-<name>`を使用して**up/downペア**として作成しなければならない。
 
-The `migration-check.yaml` CI workflow runs on every pull request that touches
-`database/migrations/**` and enforces:
+`migration-check.yaml` CIワークフローが`database/migrations/**`を変更するすべてのプルリクエストで実行され、以下を強制する。
 
-- No duplicate sequence numbers (separate checks for `.up.sql` and `.down.sql`)
-- No gaps in the sequence for either set
-- Every up file has a matching down file (pair completeness check via diff)
+- 重複するシーケンス番号がないこと（`.up.sql`と`.down.sql`を個別にチェック）
+- どちらのセットにもシーケンスのギャップがないこと
+- すべてのupファイルに対応するdownファイルがあること（diffによるペアの完全性チェック）
 
-A PR that violates any of these checks fails CI and cannot merge. See
-[ADR-0029](0029-append-only-immutable-migrations.md) for the immutability rule that this
-numbering discipline supports.
+いずれかのチェックに違反するPRはCIが失敗しマージできない。このナンバリング規律が支援する不変性ルールについては[ADR-0029](0029-append-only-immutable-migrations.md)参照。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Application order is unambiguous and human-readable (numeric sort = apply order).
-- A numbering collision between parallel branches fails CI immediately, forcing coordination
-  before merge rather than after deployment.
-- CI guarantees that every environment can apply the full sequence and roll back any step.
-- The 6-digit zero-padding keeps filenames lexicographically sortable up to 999,999
-  migrations — sufficient for any realistic project lifetime.
+- 適用順序が明確で人間が読みやすい（数値ソート = 適用順序）。
+- 並列ブランチ間のナンバリング衝突がCIで即座に検出され、デプロイ後ではなくマージ前に調整を強制する。
+- CIがすべての環境でフルシーケンスを適用し任意のステップをロールバックできることを保証する。
+- 6桁ゼロ埋めにより99万9999件のマイグレーションまで辞書順ソート可能 — 現実的なプロジェクトライフタイムには十分。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Parallel feature branches that both add migrations must coordinate sequence number
-  assignment; the second branch to open a PR must renumber if there is a conflict.
-- The CI check runs only on PR files touching `database/migrations/**`; local development
-  must use `make new-migrate-<name>` to avoid manually picking numbers.
+- どちらもマイグレーションを追加する並列フィーチャーブランチは、シーケンス番号の割り当てを調整しなければならない。衝突がある場合、PRを2番目に開いたブランチが採番をやり直す必要がある。
+- CIチェックは`database/migrations/**`を変更するPRファイルにのみ実行される。ローカル開発では番号を手動で選ばないよう`make new-migrate-<name>`を使用しなければならない。
 
-## Alternatives Considered
+## 検討した代替案
 
-### Timestamp-based IDs
+### タイムスタンプベースのID
 
-Avoids numbering collisions between branches because timestamps are naturally unique per
-developer per second. However, timestamps are verbose (14 characters vs 6), sort less
-cleanly in directory listings, and still require gap and pair checks. The project prefers
-the compactness of sequential integers.
+タイムスタンプは開発者ごと・秒ごとに自然に一意であるため、ブランチ間のナンバリング衝突を避けられる。ただしタイムスタンプは冗長（14文字対6文字）でディレクトリ一覧での並びが分かりにくく、ギャップとペアのチェックも依然として必要である。プロジェクトは連番整数のコンパクトさを優先する。
 
-### 4-digit IDs
+### 4桁のID
 
-Simpler but collide at 9,999 migrations. The 6-digit convention is already established and
-provides ample headroom.
+よりシンプルだが9,999件のマイグレーションで衝突する。6桁の慣習はすでに確立されており十分な余裕を提供する。
 
-### No CI enforcement (honor system)
+### CIによる強制なし（性善説）
 
-Relies on developer discipline. Migration issues discovered after deployment are expensive
-to fix under the immutability constraint. CI enforcement is non-negotiable.
+開発者の規律に依存する。不変性の制約下でデプロイ後に発見されたマイグレーションの問題は修正コストが高い。CIによる強制は必須である。
 
-## Notes
+## 補足
 
-- Source: [`database/migrations/README.md`](../../database/migrations/README.md) § "File
-  Naming Convention" and § "CI Check".
-- CI workflow: [`.github/workflows/migration-check.yaml`](../../.github/workflows/migration-check.yaml).
-- Related: [ADR-0029](0029-append-only-immutable-migrations.md) (immutability).
+- Source: [`database/migrations/README.md`](../../database/migrations/README.md)の§ "File Naming Convention"および§ "CI Check"。
+- CIワークフロー: [`.github/workflows/migration-check.yaml`](../../.github/workflows/migration-check.yaml)。
+- 関連: [ADR-0029](0029-append-only-immutable-migrations.md)（不変性）。

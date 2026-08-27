@@ -1,72 +1,71 @@
-# Project Scope
+# プロジェクトスコープ
 
-This document describes the **intended scope** of this project.
+このドキュメントでは、このプロジェクトの **想定スコープ** を説明します。
 
-The goal is to clarify **what kind of systems this architecture is designed for**  
-and **what use cases are not intended**.
+目的は、このアーキテクチャが **どのようなシステム向けに設計されているのか**、  
+そして **どのような用途を想定していないのか** を明確にすることです。
 
-## Target Team
+## 想定チーム
 
-This project assumes a team that understands the following technologies and practices:
+このプロジェクトは、以下の技術や開発手法を理解しているチームを想定しています。
 
-- Architecture using Go + Echo + Fx + OpenAPI + sqlc
-- Contract-driven API development using OpenAPI
-- SQL-centric data access design
-- Layered architecture (Onion / Clean Architecture)
-- Development environments using Docker / Docker Compose
-- Configuration management using `.env`
-- Basic understanding of security boundaries
+- Go + Echo + Fx + OpenAPI + sqlc を用いたアーキテクチャ
+- OpenAPI を利用した契約駆動型 API 開発
+- SQL を中心としたデータアクセス設計
+- レイヤードアーキテクチャ（Onion / Clean Architecture）
+- Docker / Docker Compose を利用した開発環境
+- `.env` を用いた設定管理
+- 基本的なセキュリティ境界の理解
 
-It is also assumed that the team includes members capable of making **initial architectural decisions**.  
-As a guideline, this targets teams with **Tech Lead-level technical judgment**.
+また、チームには **初期アーキテクチャの意思決定ができるメンバー** が存在することを前提としています。  
+目安として **Tech Lead レベルの技術判断が可能なチーム** を想定しています。
 
-## Assumed Development Method
+## 想定する開発方式
 
-This project assumes **AI-assisted development as the standard path**. The documentation, the skills
-under `.claude/` / `.codex/`, the agent contract, and the automation around them are built for a team
-that works with an AI assistant, and full feature symmetry with a manual path is not maintained.
+本プロジェクトは **AI 支援開発を標準経路として** 前提します。ドキュメント、`.claude/` / `.codex/` の
+スキル、エージェント契約、およびその周辺の自動化は、AI アシスタントと共に作業するチームに向けて
+作られており、手動経路との完全な機能対称性は維持しません。
 
-Developing without that layer is possible and not forbidden, but it is a **not-recommended
-compatibility path**: the flows stay documented, while the tooling that drives them is not maintained
-in a manual form.
+そのレイヤ無しの開発も可能で禁止もしませんが、**推奨されない互換経路**です。フローは文書として
+残る一方、それを駆動するツールは手動の形では保守されません。
 
-This says nothing about the system you build. The application never depends on an AI service —
-runtime, build, test, the domain model, the API contract, the database schema and the ordinary CI
-checks all succeed without one. See
-[ADR-0007 (agents-md-operational-contract)](../adr/0007-agents-md-operational-contract.md).
+これは、あなたが作るシステムについては何も述べていません。アプリケーションが AI サービスへ依存する
+ことはなく、ランタイム、ビルド、テスト、ドメインモデル、API 契約、データベーススキーマ、通常の CI 検査
+はいずれも AI 無しで成立します。[ADR-0007 (agents-md-operational-contract)](../adr/0007-agents-md-operational-contract.md)
+を参照してください。
 
-## Target Systems
+## 想定システム
 
-This architecture is suitable for the following types of systems:
+このアーキテクチャは、以下のようなシステムに適しています。
 
-- Backend services for new products
-- Applications in PoC to early scaling phases
-- Systems requiring clear layer separation
-- Projects requiring type-safe SQL management
-- Systems with strong domain constraints (e.g., regulations, business rules)
-- Backend systems intended for long-term maintenance
-- Enterprise-grade domain-driven applications
+- 新規プロダクトのバックエンドサービス
+- PoC から初期スケールフェーズのアプリケーション
+- 明確なレイヤ分離を必要とするシステム
+- 型安全な SQL 管理を必要とするプロジェクト
+- 強いドメイン制約を持つシステム（法規制、業務ルールなど）
+- 長期間の保守を前提としたバックエンドシステム
+- エンタープライズ向けのドメイン駆動型アプリケーション
 
-This architecture assumes a **modular monolith based on Onion Architecture**.
+このアーキテクチャは **Onion Architecture をベースとしたモジュラーモノリス** を前提としています。
 
-## Non-Target Use Cases
+## 想定していない用途
 
-This architecture may not be suitable for the following cases:
+以下のようなケースでは、このアーキテクチャは適さない場合があります。
 
-- Extremely small APIs implemented in a single file
-- Rapid prototyping without architectural boundaries
-- Ultra low-latency systems where abstraction must be minimized
-- Systems designed as microservices from the beginning
+- 単一ファイルで実装されるような極めて小さな API
+- アーキテクチャ境界を設けない高速プロトタイピング
+- 抽象化を極力排除した超低レイテンシシステム
+- 最初からマイクロサービスとして設計されるシステム
 
-## Architectural Assumptions
+## アーキテクチャ前提
 
-This project is based on a **modular monolith architecture**.
+このプロジェクトは **モジュラーモノリスアーキテクチャ** を前提としています。
 
-Characteristics:
+特徴：
 
-- A single deployable application
-- Clear module boundaries
-- Layer separation based on Onion Architecture
+- 単一のデプロイ可能アプリケーション
+- 明確なモジュール境界
+- Onion Architecture によるレイヤ分離
 
-It is possible to split into microservices in the future if needed,  
-but that is **not the primary goal of this project**.
+必要に応じて将来的にマイクロサービスへ分割することは可能ですが、  
+それは **このプロジェクトの主目的ではありません**。

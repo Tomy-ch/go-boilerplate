@@ -3,117 +3,114 @@
 ![Go Version](https://img.shields.io/github/go-mod/go-version/Tomy-ch/go-boilerplate)
 ![License](https://img.shields.io/github/license/Tomy-ch/go-boilerplate)
 
-A backend base project built with **Golang × Echo × OpenAPI × PostgreSQL × Onion Architecture**.
+**Golang × Echo × OpenAPI × PostgreSQL × オニオンアーキテクチャ** で構築したバックエンド基盤プロジェクトです。
 
-It integrates widely used OSS — `uber/fx` (DI), `sqlc` (type-safe SQL), `golang-migrate`
-(migrations), `oapi-codegen` (OpenAPI codegen) and OpenTelemetry — into a **contract-driven,
-type-safe, layered backend** with production-grade concerns (background processing,
-reliability, observability) already wired.
+広く使われる OSS — `uber/fx`（DI）・`sqlc`（型安全 SQL）・`golang-migrate`（マイグレーション）・
+`oapi-codegen`（OpenAPI コード生成）・OpenTelemetry — を統合し、**契約駆動・型安全・レイヤード**な
+バックエンドに、本番運用で必要となる関心事（バックグラウンド処理・信頼性・可観測性）をあらかじめ配線しています。
 
-> This README is intentionally minimal. Each topic links out to the README / design doc that
-> owns it — see the [Documentation Map](#documentation-map). Those documents are the source of
-> truth; this page is only the entry point.
+> この README は意図的に最小限に留めています。各トピックは、それを所有する README / 設計ドキュメントへ
+> リンクで飛ばします（[ドキュメントマップ](#ドキュメントマップ)を参照）。真の出所はそれらのドキュメントで、
+> このページは入口に過ぎません。
 >
-> **Almost every directory carries its own README.** Read the one that owns the area before
-> implementing in it or investigating it — it states the responsibilities and the prohibitions that
-> bound a change. **A README does not inventory what is on disk** — an editor already shows that. It
-> carries what a name cannot: why a set of directories is drawn the way it is, and the convention that
-> explains the rest.
+> **ほぼすべてのディレクトリが自分の README を持っています。** その領域を実装する / 調べるときは、
+> まず所有する README を読んでください。責務と禁止事項が書かれており、変更の範囲を決めます。
+> **README はディスク上にあるものの目録を持ちません**（エディタが見せるためです）。書いてあるのは名前が
+> 運べないもの — なぜその区切りなのか、そして残りを説明する規則です。
 
-## Capabilities
+## 主な機能（Capabilities）
 
-Each item is a thin seam you extend; follow the link for the design and rules.
+いずれも拡張用の薄い seam です。設計とルールはリンク先を参照してください。
 
-- **Onion Architecture + OpenAPI-first** — [docs/architecture.md](docs/architecture.md) / [docs/development-flow.md](docs/development-flow.md)
-- **Background workers** (pull-ack, graceful drain) — [docs/design/worker.md](docs/design/worker.md)
-- **Transactional Outbox** (relay / replay / GC) — [docs/design/outbox.md](docs/design/outbox.md)
-- **Idempotent request handling** — [docs/design/idempotency.md](docs/design/idempotency.md)
-- **Application jobs** — [docs/design/job.md](docs/design/job.md)
-- **REST reliability** (timeouts / body limit / deadline budget / tx retry) — [docs/design/rest.md](docs/design/rest.md)
-- **Authentication** (resource-server-side JWT / JWKS verification, with a development OIDC provider) — [docs/design/auth.md](docs/design/auth.md)
-- **Observability** (OpenTelemetry traces / metrics / logs, config-driven) — [docs/design/observability.md](docs/design/observability.md)
-- **Object storage** (vendor-neutral boundary behind an S3-compatible adapter; local container, seeding and public read delivery included) — [internal/usecase/boundary/README.md](internal/usecase/boundary/README.md) / [storage/README.md](storage/README.md)
-- **Single self-contained binary** (env + migrations embedded → one image) — [docker/README.md](docker/README.md)
+- **オニオンアーキテクチャ + OpenAPI ファースト** — [docs/architecture.md](docs/architecture.md) / [docs/development-flow.md](docs/development-flow.md)
+- **バックグラウンド worker**（pull-ack・graceful drain） — [docs/design/worker.md](docs/design/worker.md)
+- **Transactional Outbox**（relay / replay / GC） — [docs/design/outbox.md](docs/design/outbox.md)
+- **冪等なリクエスト処理** — [docs/design/idempotency.md](docs/design/idempotency.md)
+- **アプリケーションジョブ** — [docs/design/job.md](docs/design/job.md)
+- **REST の信頼性**（タイムアウト / ボディ上限 / deadline budget / tx リトライ） — [docs/design/rest.md](docs/design/rest.md)
+- **認証**（リソースサーバ側の JWT / JWKS 検証。開発用の OIDC プロバイダを同梱） — [docs/design/auth.md](docs/design/auth.md)
+- **可観測性**（OpenTelemetry の traces / metrics / logs・config 駆動） — [docs/design/observability.md](docs/design/observability.md)
+- **オブジェクトストレージ**（S3 互換アダプタの背後にある中立な境界。ローカルコンテナ・シード投入・匿名 read の公開配信を同梱） — [internal/usecase/boundary/README.md](internal/usecase/boundary/README.md) / [storage/README.md](storage/README.md)
+- **自己完結の単一バイナリ**（env とマイグレーションを埋め込み → 単一イメージ） — [docker/README.md](docker/README.md)
 
-## Scope & Non-goals
+## スコープと非目標
 
-Who and what this architecture is *for* is stated in
-[docs/project/scope.md](docs/project/scope.md) (and in *Intended system types* below). This section
-covers the other half — what a backend eventually needs and this project **deliberately does not
-ship**. None of it is unfinished work:
+このアーキテクチャが*誰の・何のため*かは [docs/project/scope.md](docs/project/scope.md)（および後述の
+「想定するシステム種別」）に記載しています。この節が扱うのはもう一方 — バックエンドがいずれ必要と
+するもののうち、本プロジェクトが**意図的に同梱しない**ものです。いずれも未完成ではありません。
 
-- **Deployment and IaC** — only a workflow skeleton; the platform is the adopter's choice
-- **Rate limiting** — belongs at the infrastructure edge, because per-instance in-memory counters cannot enforce a global limit
-- **Caching layer** — added as a decorator behind the existing Repository interface, so no separate cache abstraction exists to degrade into a TTL map
-- **RBAC / audit logging / retention policy / PII encryption** — determined by the domain, not guessable by a template
-- **Scheduled-job concurrency control** — left to the scheduler; the bundled jobs are concurrency-safe by design
+- **デプロイと IaC** — ワークフローの骨組みのみ。プラットフォームは採用側の選択
+- **レートリミット** — インスタンス単位のインメモリカウンタでは全体の上限を強制できないため、インフラのエッジに属する
+- **キャッシュ層** — 既存の Repository インターフェースの背後にデコレータとして足す。TTL 付きマップへ退化する専用の抽象は置かない
+- **RBAC / 監査ログ / 保持ポリシー / PII 暗号化** — ドメインが決めるものであり、テンプレートが推測できない
+- **定期ジョブの多重起動制御** — スケジューラに委ねる。同梱ジョブは設計上多重実行に耐える
 
-Full list with the reasoning: [docs/project/out-of-scope.md](docs/project/out-of-scope.md). The
-architectural non-choices are additionally recorded as ADRs tagged `setup-review`, so a new project
-reviews them as one set rather than discovering them one at a time.
+理由付きの全一覧は [docs/project/out-of-scope.md](docs/project/out-of-scope.md)。アーキテクチャ上の
+非採用は `setup-review` タグ付きの ADR としても記録されており、新規プロジェクトが 1 件ずつ発見する
+のではなく、ひとまとまりとして見直せるようにしてあります。
 
-Authentication and authorization are the one gap that is **enforced rather than documented**:
-outside `local` / `ci` / `test` the DI providers are fail-closed, so the application refuses to
-start until real implementations are wired ([docs/design/auth.md](docs/design/auth.md)).
+認証と認可だけは、この欠落が**記述ではなく強制**されています。`local` / `ci` / `test` 以外では DI の
+プロバイダが fail-closed であり、実装を配線するまでアプリケーションは起動を拒否します
+（[docs/design/auth.md](docs/design/auth.md)）。
 
-## Prerequisites
+## 前提条件
 
-The following tools must be installed before running:
+実行前に以下のツールが必要です。
 
-- [mise](https://mise.jdx.dev) — tool / runtime version manager (**required**; must be activated in your shell)
-- Docker Desktop — runs PostgreSQL and other services via Docker Compose
-- Make — development command entry point
-- GitHub CLI (`gh`) — GitHub automation (optional but recommended)
-- Visual Studio Code (recommended) — with Go / OpenAPI extensions
+- [mise](https://mise.jdx.dev) — ツール / ランタイムのバージョン管理（**必須**。シェルで有効化すること）
+- Docker Desktop — PostgreSQL などを Docker Compose で起動
+- Make — 開発コマンドの入口
+- GitHub CLI（`gh`） — GitHub 自動化（任意・推奨）
+- Visual Studio Code（推奨） — Go / OpenAPI 拡張と併用
 
-### Supported Platforms
+### 対応プラットフォーム
 
-This project assumes a **Unix-like development environment** (`make`, `mise`, `lefthook`,
-Docker bind-mount performance all depend on POSIX shells and Linux paths).
+本プロジェクトは **Unix ライクな開発環境**を前提とします（`make`・`mise`・`lefthook`・Docker の
+bind-mount 性能はいずれも POSIX シェルと Linux パスに依存します）。
 
-- **macOS / Linux** — primary, supported.
-- **Windows** — use **WSL2 + the Remote-WSL VSCode extension**. Native Windows is **not
-  supported**. Inside WSL2 the project behaves identically to Linux.
+- **macOS / Linux** — 主対象・サポート対象。
+- **Windows** — **WSL2 + Remote-WSL VSCode 拡張**を使用してください。Windows ネイティブ実行は
+  **非対応**です。WSL2 内では Linux と同一に動作します。
 
-## Quick Start
+## クイックスタート
 
-Starting from a clean machine (mise not yet installed):
+まっさらな環境（mise 未導入）からの手順です。
 
 ```bash
 git clone https://github.com/Tomy-ch/go-boilerplate.git
 cd go-boilerplate
 
-# 1. Install mise (https://mise.jdx.dev/getting-started.html), then activate it in your
-#    shell — mandatory, the Make targets resolve tools through mise shims.
-echo 'eval "$(mise activate zsh)"' >> ~/.zshrc   # bash: append `mise activate bash` to ~/.bashrc
-# then open a new terminal (or reload your shell) so the mise shims are on PATH
+# 1. mise を導入し（https://mise.jdx.dev/getting-started.html）、シェルで有効化する。
+#    Make ターゲットは mise の shim 経由でツールを解決するため必須です。
+echo 'eval "$(mise activate zsh)"' >> ~/.zshrc   # bash は ~/.bashrc に `mise activate bash` を追記
+# 新しいターミナルを開く（またはシェルを再読み込みする）と mise の shim が PATH に載る
 
-# 2. Install the pinned Go runtime + dev tools, and wire git hooks.
+# 2. 固定バージョンの Go ランタイム + 開発ツールを導入し、git hook を設定する。
 make go-update
 make install-tools
 make activate-tools
 
-# 3. Start locally (API + PostgreSQL + otel-lgtm) and initialize the DBs.
+# 3. ローカル起動（API + PostgreSQL + otel-lgtm）と DB 初期化。
 make serve
 make tools
 make db-init
 ```
 
-`make serve` starts the API on <http://localhost:8080> and Grafana on <http://localhost:3000>.
-Full setup (incl. module localization) is in
-[docs/get-started/setup-repository.md](docs/get-started/setup-repository.md); every target is in
-[.makefiles/README.md](.makefiles/README.md). Worker / relay / job entry points are
-`make worker`, `make outbox-relay`, `make job`.
+`make serve` は API を <http://localhost:8080>、Grafana を <http://localhost:3000> で起動します。
+モジュール名の一括置換などを含む完全なセットアップは
+[docs/get-started/setup-repository.md](docs/get-started/setup-repository.md) を参照してください。
+全ターゲットは [.makefiles/README.md](.makefiles/README.md) にあります。worker / relay / job の
+起動口はそれぞれ `make worker`・`make outbox-relay`・`make job` です。
 
-> **`mise` is the single source of truth for tool & runtime versions.** Every version (Go,
-> `golangci-lint`, `sqlc`, `oapi-codegen`, `mockgen`, `lefthook`, …) is pinned in
-> [`mise.toml`](mise.toml); the Dockerfiles, the local installer, and CI all install from that
-> same file via `mise install <tool>`, so local and CI stay identical. `make sync-versions`
-> propagates it to `go.mod` and the Dockerfile `FROM` lines. Tools published to PyPI are the one
-> exception: they are declared and hash-locked in [`python/`](python/README.md), since a version
-> pin alone would leave their dependencies unpinned.
+> **`mise` がツール & ランタイムのバージョンの単一の真実源（SSOT）です。** すべてのバージョン
+> （Go・`golangci-lint`・`sqlc`・`oapi-codegen`・`mockgen`・`lefthook` …）は [`mise.toml`](mise.toml)
+> に固定され、Dockerfile・ローカルインストーラ・CI はいずれも同じファイルから `mise install <tool>`
+> で導入します。そのためローカルと CI が一致します。`make sync-versions` がこれを `go.mod` と
+> Dockerfile の `FROM` 行へ反映します。PyPI で公開されているツールだけは例外で、
+> [`python/`](python/README.md) で宣言しハッシュ付きで固定します。バージョンの pin だけでは
+> 依存が固定されないためです。
 
-## Example API
+## API の例
 
 ```bash
 curl http://localhost:8080/health
@@ -125,70 +122,68 @@ curl http://localhost:8080/health
 }
 ```
 
-## Getting Started
+## はじめに
 
-Before development, follow the setup steps: [docs/get-started/setup-repository.md](docs/get-started/setup-repository.md).
+開発の前にセットアップ手順を実施してください: [docs/get-started/setup-repository.md](docs/get-started/setup-repository.md)。
 
 <!-- boilerplate-only:begin -->
-## Using This as a Template
+## テンプレートとして使う
 
-Create a repository from it with GitHub's *Use this template*, then localize it. The setup is a
-**scripted, gated sequence** rather than a search and replace —
-[docs/get-started/setup-repository.md](docs/get-started/setup-repository.md) walks the phases in
-order, and the summary below is only there to show what kind of work it is.
+GitHub の *Use this template* でリポジトリを作成し、自分のものに置き換えます。セットアップは文字列置換ではなく、**スクリプト化され検証される
+一連の手順**です。順序は [docs/get-started/setup-repository.md](docs/get-started/setup-repository.md)
+が示しており、以下はそれがどういう性質の作業かを示すための要約に過ぎません。
 
-- **Localizing identity is verified, not trusted.** The `make setup-replace-*` targets rewrite the
-  module path, repository references, app metadata, licence holder and CODEOWNERS; `make
-  setup-verify` fails while any upstream identifier survives, and deletes the one-shot tooling only
-  once it passes — so a half-finished localization cannot go unnoticed.
-- **Two removal passes, deliberately separate.** `make setup-remove-boilerplate-identity` strips
-  what holds only while this *is* the upstream template, and `make setup-remove-sample-api` strips
-  the sample feature set. A project may reasonably do one without the other: keeping the sample keeps
-  the one place where the layering rules exist as working code rather than prose.
-- **The decisions the template refuses to make for you** are numbered phases, not TODOs left in the
-  code — authn / authz implementations, the deployment target, the dependency-licence threshold,
-  whether to keep the DAST and credential-bearing scanners, and the exclusion ADRs to re-baseline.
+- **識別子の置き換えは信用ではなく検証で担保する。** `make setup-replace-*` がモジュールパス・
+  リポジトリ参照・アプリメタデータ・ライセンス保持者・CODEOWNERS を書き換え、`make setup-verify` は
+  上流の識別子が 1 つでも残っている限り落ちます。通ったときにだけ使い捨てのツールを削除するので、
+  やり残した置換が見過ごされることはありません。
+- **除去は 2 パスに分かれており、それは意図的。** `make setup-remove-boilerplate-identity` は
+  「これが上流のテンプレートである間だけ成り立つ記述」を、`make setup-remove-sample-api` はサンプル
+  機能一式を落とします。片方だけ実行するのは正当です。サンプルを残すことは、レイヤリング規則が散文
+  ではなく動くコードとして存在する唯一の場所を残すことでもあります。
+- **テンプレートが代わりに決めないこと**は、コードに残された TODO ではなく番号付きの Phase です。
+  認証 / 認可の実装、デプロイ先、依存ライセンスの閾値、DAST と資格情報を要するスキャナを残すかどうか、
+  そして再設定すべき非採用 ADR 群。
 
-Which statements stop being true the moment a repository is created from this template, and how they
-are marked so a script can remove them, is documented in
-[docs/get-started/boilerplate-only-conventions.md](docs/get-started/boilerplate-only-conventions.md).
+テンプレートから作成した瞬間に成り立たなくなる記述と、それをスクリプトが除去できるようにするマーカーの規約は
+[docs/get-started/boilerplate-only-conventions.md](docs/get-started/boilerplate-only-conventions.md)
+にあります。
 
 <!-- boilerplate-only:end -->
-## Development Workflow
+## 開発フロー
 
-The local loop and CI run the same gates, so a green run locally means the same thing it means in
-a pull request.
+ローカルのループと CI は同じゲートを走らせます。手元で緑であることは、プルリクエストで緑であること
+と同じ意味を持ちます。
 
-| Step | Command | Notes |
+| ステップ | コマンド | 補足 |
 | --- | --- | --- |
-| Generate | `make gen` | OpenAPI → server code / mocks, SQL → type-safe Go, then the docs. Generated files are never hand-edited; CI regenerates and fails on a diff. |
-| Auto-fix | `make fix` | Go formatting and lint auto-fix. `make md-fix` / `make sql-fix` for Markdown and SQL. |
-| Static analysis | `make lint` | golangci-lint, including the depguard rules that make the layer boundaries a build error. |
-| Test | `make test` | Go tests with coverage. Run `make db-init` first — the suite expects a DB that is migrated **and** seeded. |
+| 生成 | `make gen` | OpenAPI → サーバコード / モック、SQL → 型安全な Go、続いてドキュメント。生成ファイルは手編集せず、CI が再生成して差分で落とします。 |
+| 自動修正 | `make fix` | Go の整形と lint 自動修正。Markdown / SQL は `make md-fix` / `make sql-fix`。 |
+| 静的解析 | `make lint` | golangci-lint。レイヤ境界をビルドエラーにする depguard ルールを含みます。 |
+| テスト | `make test` | カバレッジ付きの Go テスト。先に `make db-init` が必要です（マイグレーション**とシード**を前提とします）。 |
 
-What is checked mechanically, so review does not have to:
+レビューに頼らず機械的に検査されるもの:
 
-- **Layer boundaries** — depguard rejects a forbidden import, and `internal/architest` asserts the structural rules as ordinary tests
-- **Contract-first** — the OpenAPI document and the SQL files are the inputs; CI fails when a committed generated artifact differs from what regeneration produces
-- **Commit hygiene** — lefthook runs the gates on `pre-commit` / `commit-msg` / `pre-push`, and how much runs locally is sized from the number of open worktrees, with everything deferred re-run identically in CI ([load bands](.makefiles/README.md))
+- **レイヤ境界** — depguard が禁止インポートを弾き、`internal/architest` が構造上の規則を通常のテストとして表明します
+- **契約優先** — 入力は OpenAPI 定義と SQL ファイルであり、コミットされた生成物が再生成結果と食い違えば CI が落ちます
+- **コミットの衛生** — lefthook が `pre-commit` / `commit-msg` / `pre-push` でゲートを走らせ、ローカルでどこまで走らせるかは開いている worktree の数から決まります。繰り延べたものは CI で同一に再実行されます（[負荷帯域](.makefiles/README.md)）
 
-Conventions: [docs/development-flow.md](docs/development-flow.md) ·
+規約: [docs/development-flow.md](docs/development-flow.md) ·
 [docs/testing-conventions.md](docs/testing-conventions.md) ·
-[CONTRIBUTING.md](CONTRIBUTING.md). Every target is in
-[.makefiles/README.md](.makefiles/README.md); every workflow in
-[.github/workflows/README.md](.github/workflows/README.md).
+[CONTRIBUTING.md](CONTRIBUTING.md)。全ターゲットは
+[.makefiles/README.md](.makefiles/README.md)、全ワークフローは
+[.github/workflows/README.md](.github/workflows/README.md) にあります。
 
-## Architecture Overview
+## アーキテクチャ概要
 
-This project adopts **Onion Architecture**: dependencies always point inward, the domain stays
-pure and side-effect free, infrastructure implements domain interfaces, and controllers hold no
-business logic.
+本プロジェクトは**オニオンアーキテクチャ**を採用します。依存は常に内側を向き、ドメインは純粋で副作用を
+持たず、インフラがドメインインターフェースを実装し、コントローラはビジネスロジックを持ちません。
 
 ```txt
 controller → usecase → domain ← infrastructure
 ```
 
-Every arrow below is a **dependency**, and each box sits in the layer that owns it:
+以下の矢印はすべて**依存**を表し、各ボックスはそれを所有するレイヤに置いています。
 
 ```mermaid
 flowchart TB
@@ -214,7 +209,7 @@ subgraph domain["Domain"]
 end
 
 subgraph infrastructure["Infrastructure"]
-    Infra["RDB / object storage / queue adapters"]
+    Infra["RDB / オブジェクトストレージ / キューのアダプタ"]
 end
 
 External["External systems"]
@@ -241,325 +236,302 @@ Infra --> Domain
 Infra --> External
 ```
 
-Persistence is split into three interfaces, and they are deliberately not owned by the same
-layer. `Repository` is an aggregate's own contract, so the domain owns it — and it is the only
-persistence contract the domain has. `QueryService` (a read model) and `CommandService` (a
-transaction tool for writes that cannot be expressed as load-modify-save) are usecase concerns
-and live there.
+永続化は 3 つのインターフェースに分かれており、所属レイヤが揃っていないのは意図的です。`Repository` は
+集約自身の契約なのでドメインが所有し、これがドメインの持つ唯一の永続化契約です。`QueryService`（read
+model）と `CommandService`（読み込み・変更・保存の形では表現できない書き込みのためのトランザクションの
+道具）はいずれも usecase の関心事なので usecase レイヤに置きます。
 
-The read and write sides are asymmetric on purpose, which is why only one of them has an arrow
-into the domain: `QueryService` returns DTOs and never touches a domain type, whereas
-`CommandService` receives the decided aggregate. The discriminator between all three is in
-[ADR-0032 (lightweight-cqrs)](docs/adr/0032-lightweight-cqrs.md).
+読み側と書き側が非対称なのも意図的で、ドメインへの矢印が片方にしか無いのはそのためです。`QueryService`
+は DTO を返しドメイン型に一切触れませんが、`CommandService` は決定済みの集約を受け取ります。3 者の
+判別基準は [ADR-0032 (lightweight-cqrs)](docs/adr/0032-lightweight-cqrs.md) にあります。
 
-Boundaries are enforced in CI (`golangci-lint` depguard), not just documented. Full detail:
-[docs/architecture.md](docs/architecture.md) and [docs/rules.md](docs/rules.md).
+レイヤ境界は CI（`golangci-lint` depguard）で強制されており、ドキュメント上の約束事に留まりません。
+詳細: [docs/architecture.md](docs/architecture.md) / [docs/rules.md](docs/rules.md)。
 
-## Documentation Map
+## ドキュメントマップ
 
-The source of truth lives close to the code. Start here and follow the link that owns your topic.
+真の出所はコードの近くにあります。ここを起点に、トピックを所有するリンクへ辿ってください。
 
-### Core
+### コア
 
-- [docs/index.md](docs/index.md) — documentation index
-- [docs/architecture.md](docs/architecture.md) — system structure & layer responsibilities
-- [docs/rules.md](docs/rules.md) — non-negotiable rules (layer deps, generated code, DTO, tx, errors)
-- [docs/development-flow.md](docs/development-flow.md) — how to perform a change (API / DB / logic)
-- [docs/adr/](docs/adr/README.md) — architecture decision records (ADR); technology rationale
-- [docs/testing-conventions.md](docs/testing-conventions.md) — testing conventions
-- [docs/tutorial/build-user-feature.md](docs/tutorial/build-user-feature.md) — worked example: one feature end to end <!-- sample-api:line -->
-- [docs/spec/glossary.md](docs/spec/glossary.md) — business vocabulary (ubiquitous language)
-- [CONTRIBUTING.md](CONTRIBUTING.md) — how to propose and land a change (branch, commit, gates, review)
-- [docs/get-started/troubleshooting.md](docs/get-started/troubleshooting.md) — setup & local-run failures, and what each one actually means
-- [docs/project/scope.md](docs/project/scope.md) · [docs/project/out-of-scope.md](docs/project/out-of-scope.md) — intended scope, and what is deliberately excluded
-- [docs/project/policy.md](docs/project/policy.md) · [docs/project/versioning.md](docs/project/versioning.md) · [docs/project/roadmap.md](docs/project/roadmap.md) — maintenance, versioning, direction
-- [docs/reference/dependencies.md](docs/reference/dependencies.md) — direct dependency inventory, one responsibility per entry
-- [docs/maintenance/](docs/maintenance/db-worktree-pool.md) — operational runbooks (worktree DB pool, doc structure, upgrades)
-- [docs/deployment/](docs/deployment/github-page.md) — deployment procedures (documentation portal via GitHub Pages)
-- [docs/get-started/boilerplate-only-conventions.md](docs/get-started/boilerplate-only-conventions.md) — the statements that hold only while this is the upstream template <!-- boilerplate-only:line -->
+- [docs/index.md](docs/index.md) — ドキュメント索引
+- [docs/architecture.md](docs/architecture.md) — システム構造とレイヤ責務
+- [docs/rules.md](docs/rules.md) — 非交渉ルール（レイヤ依存・生成コード・DTO・tx・エラー）
+- [docs/development-flow.md](docs/development-flow.md) — 変更の進め方（API / DB / ロジック）
+- [docs/adr/](docs/adr/README.md) — アーキテクチャ決定記録（ADR）。技術選定の根拠
+- [docs/testing-conventions.md](docs/testing-conventions.md) — テスト規約
+- [docs/tutorial/build-user-feature.md](docs/tutorial/build-user-feature.md) — 実例: 1 つの機能を端から端まで作る <!-- sample-api:line -->
+- [docs/spec/glossary.md](docs/spec/glossary.md) — 業務語彙（ユビキタス言語）
+- [CONTRIBUTING.md](CONTRIBUTING.md) — 変更の提案から着地まで（ブランチ・コミット・ゲート・レビュー）
+- [docs/get-started/troubleshooting.md](docs/get-started/troubleshooting.md) — セットアップとローカル実行の失敗、およびそれが実際に意味するもの
+- [docs/project/scope.md](docs/project/scope.md) · [docs/project/out-of-scope.md](docs/project/out-of-scope.md) — 想定スコープと、意図的に除外したもの
+- [docs/project/policy.md](docs/project/policy.md) · [docs/project/versioning.md](docs/project/versioning.md) · [docs/project/roadmap.md](docs/project/roadmap.md) — メンテナンス・バージョニング・方向性
+- [docs/reference/dependencies.md](docs/reference/dependencies.md) — 直接依存の目録。1 エントリ = 1 責務
+- [docs/maintenance/](docs/maintenance/db-worktree-pool.md) — 運用 runbook（worktree DB プール・ドキュメント構造・アップグレード）
+- [docs/deployment/](docs/deployment/github-page.md) — デプロイ手順（GitHub Pages によるドキュメントポータル）
+- [docs/get-started/boilerplate-only-conventions.md](docs/get-started/boilerplate-only-conventions.md) — これが上流テンプレートである間だけ成り立つ記述 <!-- boilerplate-only:line -->
 
-### Subsystem design
+### サブシステム設計
 
-- [docs/design/README.md](docs/design/README.md) — index
+- [docs/design/README.md](docs/design/README.md) — 索引
 - [rest](docs/design/rest.md) · [worker](docs/design/worker.md) · [job](docs/design/job.md) · [outbox](docs/design/outbox.md) · [idempotency](docs/design/idempotency.md) · [observability](docs/design/observability.md)
 - [auth](docs/design/auth.md) · [security](docs/design/security.md) · [context-map](docs/design/context-map.md) · [agent-environment](docs/design/agent-environment.md)
 
-### Layer READMEs (`internal/`, `pkg/`)
+### レイヤ README（`internal/`・`pkg/`）
 
 - [domain](internal/domain/README.md) · [usecase](internal/usecase/README.md) · [controller](internal/controller/README.md) · [infrastructure](internal/infrastructure/README.md) · [di](internal/di/README.md)
-- [pkg](pkg/README.md) — shared, framework-agnostic utilities
+- [pkg](pkg/README.md) — フレームワーク非依存の共有ユーティリティ
 
-### Contracts, data & tooling
+### 契約・データ・ツール
 
-- [openapi/README.md](openapi/README.md) — API contracts (OpenAPI-first)
-- [database/README.md](database/README.md) — migrations & SQL (sqlc)
-- [storage/README.md](storage/README.md) — object-storage seed content (directory layout = key layout)
-- [env/README.md](env/README.md) — environment variables (embedded per-environment)
-- [.makefiles/README.md](.makefiles/README.md) — every `make` target
-- [docker/README.md](docker/README.md) — images, compose profiles, single-container operation
-- [scripts/README.md](scripts/README.md) — utility scripts & repository gates (codegen, docs, versioning, supply-chain pins, setup)
-- [python/README.md](python/README.md) — PyPI-published CLI tools, declared and hash-locked
-- [docs-viewer/README.md](docs-viewer/README.md) — documentation portal frontend (renders the generated `docs/portal/docs.json`)
-- [.github/workflows/README.md](.github/workflows/README.md) — CI workflows & the repository's security-control inventory
+- [openapi/README.md](openapi/README.md) — API 契約（OpenAPI ファースト）
+- [database/README.md](database/README.md) — マイグレーション & SQL（sqlc）
+- [storage/README.md](storage/README.md) — オブジェクトストレージのシード内容（ディレクトリ構造 = キー構造）
+- [env/README.md](env/README.md) — 環境変数（環境別にバイナリ埋め込み）
+- [.makefiles/README.md](.makefiles/README.md) — すべての `make` ターゲット
+- [docker/README.md](docker/README.md) — イメージ・compose プロファイル・単一コンテナ運用
+- [scripts/README.md](scripts/README.md) — ユーティリティスクリプトとリポジトリのゲート（コード生成・ドキュメント・バージョニング・供給網ピン・セットアップ）
+- [python/README.md](python/README.md) — PyPI 公開の CLI ツール。宣言とハッシュ固定
+- [docs-viewer/README.md](docs-viewer/README.md) — ドキュメントポータルのフロントエンド（生成された `docs/portal/docs.json` を描画）
+- [.github/workflows/README.md](.github/workflows/README.md) — CI ワークフローとリポジトリのセキュリティ統制の目録
 
-## Directory Structure
+## ディレクトリ構成
 
-The top level is split by **what a directory is answerable for**, not by file type.
+トップレベルは、ファイルの種類ではなく**そのディレクトリが何に責任を持つか**で分けている。
 
-- `cmd/` — the entrypoint, and nothing else; each subcommand is a thin Cobra shell over `internal/cli/`
-- `internal/` — the application, laid out by onion layer. Its own README states the layers and their dependency direction
-- `pkg/` — utilities that do not know this application exists, so they stay framework-agnostic and reusable
-- `openapi/` — the API contract, written before the code that serves it
-- `database/` — migrations and the SQL that code generation reads
-- `storage/` — objects seeded into the bucket; the directory layout is the key layout
-- `env/` — per-environment variables, embedded into the binary
-- `docker/` — one image or service per directory
-- `docs/` — the canonical documentation, including ADRs and the design reference
-- `scripts/` — repository tooling and the gates that enforce these rules
-- `.github/` — workflows, composite actions, and repository settings
-- `.makefiles/` — the make target registry; `makefile` only includes it
-- `.agents/` — machine-readable artifacts shared by every AI tool, so no assistant owns them
-- `.claude/` / `.codex/` — configuration for one assistant each
+- `cmd/` — エントリポイントだけを置く。各サブコマンドは `internal/cli/` を包む薄い Cobra の殻である
+- `internal/` — アプリケーション本体。オニオンの層で配置する。層とその依存方向は自身の README が述べる
+- `pkg/` — このアプリケーションの存在を知らないユーティリティ。だからフレームワーク非依存で再利用できる
+- `openapi/` — API 契約。これを提供するコードより先に書く
+- `database/` — マイグレーションと、コード生成が読む SQL
+- `storage/` — バケットへ投入するオブジェクト。ディレクトリ構造がそのままキー構造になる
+- `env/` — 環境ごとの変数。バイナリへ埋め込まれる
+- `docker/` — イメージまたはサービスごとに 1 ディレクトリ
+- `docs/` — 正典のドキュメント。ADR と設計リファレンスを含む
+- `scripts/` — リポジトリのツールと、ここに書かれた規則を強制するゲート
+- `.github/` — workflow・composite action・リポジトリ設定
+- `.makefiles/` — make ターゲットの登録簿。`makefile` はこれを include するだけである
+- `.agents/` — すべての AI ツールが共有する機械可読の成果物。どのアシスタントにも所有させない
+- `.claude/` / `.codex/` — それぞれ 1 つのアシスタント向けの設定
 
-`docs-viewer/` and `python/` are supporting projects with their own toolchains: the documentation
-portal frontend and the hash-locked PyPI CLI tools. The development OIDC provider is not one of them —
-it is an upstream image the compose file pins, configured by `docker/mock-auth-server/config.json`.
+`docs-viewer/` / `python/` は独自のツールチェーンを持つ補助プロジェクトで、
+順にドキュメントポータルのフロントエンド・ハッシュ固定した PyPI 製 CLI である。開発用 OIDC
+プロバイダはここに含まれない——compose が digest 固定した上流イメージを引き、設定は
+`docker/mock-auth-server/config.json` が持つ。
 
-## Stack
+## 技術スタック
 
-| Category | Technology |
+| カテゴリ | 技術 |
 | --- | --- |
-| Language | Go |
-| Web Framework | Echo |
-| Dependency Injection | uber/fx |
-| API Definition | OpenAPI + oapi-codegen |
-| Database | PostgreSQL (pgx) |
-| Object Storage | S3-compatible (AWS SDK v2; Garage for local) |
-| Message Queue | SQS-compatible (AWS SDK v2; ElasticMQ for local) |
-| Authentication | JWT / JWKS verification (golang-jwt, go-jose) |
-| Query | sqlc |
-| Migration | golang-migrate |
-| Logging | zap (+ OpenTelemetry via otelzap) |
-| Observability | OpenTelemetry (OTLP) / Prometheus |
-| Testing | testify / uber-go/mock |
+| 言語 | Go |
+| Web フレームワーク | Echo |
+| 依存性注入 | uber/fx |
+| API 定義 | OpenAPI + oapi-codegen |
+| データベース | PostgreSQL（pgx） |
+| オブジェクトストレージ | S3 互換（AWS SDK v2・ローカルは Garage） |
+| メッセージキュー | SQS 互換（AWS SDK v2・ローカルは ElasticMQ） |
+| 認証 | JWT / JWKS 検証（golang-jwt・go-jose） |
+| クエリ | sqlc |
+| マイグレーション | golang-migrate |
+| ロギング | zap（otelzap 経由で OpenTelemetry へ） |
+| 可観測性 | OpenTelemetry（OTLP）/ Prometheus |
+| テスト | testify / uber-go/mock |
 | CLI | cobra |
-| Dev Tools | Docker / docker-compose / air |
+| 開発ツール | Docker / docker-compose / air |
 
-## Branch Strategy
+## ブランチ戦略
 
-This repository uses a **release-centric branching model**: feature branches are cut from
-`release/*`, protected branches (`develop` / `staging` / `production`) accept changes only via
-release branches, and all changes go through Pull Requests. Rules: [docs/rules.md](docs/rules.md).
+本リポジトリは**リリース中心のブランチモデル**を採用します。フィーチャーブランチは `release/*` から
+切り、保護ブランチ（`develop` / `staging` / `production`）へはリリースブランチ経由でのみ反映し、
+すべての変更は Pull Request を通します。ルール: [docs/rules.md](docs/rules.md)。
 
-## Security
+## セキュリティ
 
-**Reporting a vulnerability** — do not open a public issue. Use the private advisory route in
-[.github/SECURITY.md](.github/SECURITY.md), which also documents how to verify a released image
-before deploying it (cosign signature, build provenance, SBOM attestation) and how to make that
-verification a deploy gate.
+**脆弱性の報告** — 公開 issue を立てないでください。[.github/SECURITY.md](.github/SECURITY.md)
+の非公開の窓口を使ってください。同じ文書には、デプロイ前にリリース済みイメージを検証する手順
+（cosign 署名・ビルド provenance・SBOM attestation）と、その検証をデプロイのゲートにする方法も
+記載しています。
 
-The posture, the threat model it is shaped by, and its **stated limits** are in
-[docs/design/security.md](docs/design/security.md). Controls sit at four places, and each mechanism
-is deliberately one of *enforcement* / *detection* / *deterrence* rather than a blur of all three:
+姿勢と、それを形づくる脅威モデル、そして**明示された限界**は
+[docs/design/security.md](docs/design/security.md) にあります。統制は 4 か所に置かれ、各機構は
+*強制* / *検知* / *抑止* のいずれか 1 つであることを意図しています（3 つを混ぜないこと自体が方針です）:
 
-- **What CI executes** — Actions pinned to a SHA and base images to a digest, resolved through
-  lockfiles that are the single source of truth, plus a per-job egress allowlist. Fail-closed.
-- **What the code links** — cooldown windows that keep a freshly published version out of reach
-  until it has aged, and vulnerability scanning across several independent databases.
-- **What the service does with a request** — deny-by-default at each boundary (outbound dial guard,
-  error-detail exposure), with request validation and authentication driven from the OpenAPI
-  document, which makes reviewing the spec diff part of reviewing the security posture.
-- **What must never be committed** — two secret scanners chosen for different failure modes, and
-  one rule above convenience: a detected secret's value never reaches a log, a PR comment, or an
-  artifact.
+- **CI が実行するもの** — Actions は SHA、ベースイメージはダイジェストで固定し、その解決は単一の
+  出所であるロックファイルを通します。加えてジョブ単位の egress 許可リスト。いずれも fail-closed。
+- **コードがリンクするもの** — 公開直後のバージョンが一定期間採用されないクールダウン窓と、
+  互いに独立した複数の脆弱性データベースによるスキャン。
+- **サービスがリクエストに対して行うこと** — 境界ごとの deny-by-default（送信先ガード、エラー詳細の
+  露出）。リクエスト検証と認証は OpenAPI 定義から駆動されるため、spec の差分を読むことが
+  セキュリティ姿勢のレビューそのものになります。
+- **決してコミットしてはならないもの** — 異なる失敗の仕方を狙って選んだ 2 つのシークレットスキャナと、
+  利便性に優先する 1 つの規則: 検出されたシークレットの値がログ・PR コメント・成果物に出ることはない。
 
-Reporting and gating are split on purpose. An ordinary pull request **reports** — findings reach
-code scanning without turning an unrelated change red — while promotion into `develop` / `staging`
-/ `production` is **gated** by a fixed set of required checks. Which mechanism does which:
-[.github/workflows/README.md](.github/workflows/README.md).
+報告とゲートは意図的に分けています。通常のプルリクエストは**報告**し（無関係な変更を赤くせずに
+code scanning へ届く）、`develop` / `staging` / `production` への昇格は固定の必須チェック群で
+**ゲート**します。どちらがどれかは [.github/workflows/README.md](.github/workflows/README.md)。
 
-Out of reach: what runs on a developer's own machine — see *Out of scope: developer-machine
-hygiene* below.
+守備範囲外: 開発者自身のマシンで動くもの — 後述の「守備範囲外: 開発者マシンの衛生」を参照。
 
-## Design Intent
+## 設計思想
 
 <!-- boilerplate-only:begin -->
-### Why it exists
+### なぜ存在するのか
 
-Backend projects tend to re-litigate architecture, library choice, directory layout and
-workflow every time. This boilerplate provides a **baseline that reduces initial design cost**
-so teams start safely and quickly.
+バックエンド開発では、アーキテクチャ・ライブラリ選定・ディレクトリ構成・開発ワークフローを毎回
+一から議論しがちです。本ボイラープレートは**初期設計コストを下げるベースライン**を提供し、チームが
+安全かつ迅速に着手できるようにします。
 
-Its value is not any single library but **the integration of widely used OSS, design principles
-and development constraints into a coherent whole, each kept as loosely coupled and as
-replaceable as it can be**.
+その価値は特定ライブラリではなく、**広く使われる OSS・設計原則・開発上の制約を、一貫したかたちで
+統合し、それぞれを可能な限り疎結合かつ置換可能に保っていること**にあります。
 
 <!-- boilerplate-only:end -->
 ### Opinionated, but replaceable
 
-This repository holds a deliberate design position, and avoids baking that position implicitly
-into the code. Design intent, responsibilities, invariants and extension points are stated in
-the README / Design Reference / ADR that owns them, and the boundaries that can be decided
-mechanically are enforced by lint, architecture tests, and generation / drift checks.
+本リポジトリは意図的に強い設計思想を持ちますが、その思想をコード全体へ暗黙に焼き付けることを
+避けています。設計上の意図・責務・不変条件・拡張点は、それを所有する README / Design Reference / ADR に
+明示し、機械的に判定可能な境界は lint・architecture test・generation / drift check で強制します。
 
-The goal is not to forbid every other design. It is to keep it **traceable which premise
-conflicts, and what has to be rewritten**, when a requirement does not fit the existing
-position. Changing the design itself is possible — it is simply the most expensive kind of
-extension, because the artifacts that explain and verify that design have to change with the
-code.
+目的は「この設計以外を許さない」ことではありません。**要件と既存思想が合わない場合に、どの前提が
+衝突し、どこを書き換えればよいかを追跡可能にすること**です。設計そのものを変更することも可能ですが、
+コードだけでなく、その設計を説明・検証する artifact も同期して変更する必要があるため、最も高コストな
+拡張になります。
 
-### Making change observable
+### 変更を観測可能にする
 
-What is tracked here is not only the *result* of a change, but its **reason, blast radius, and
-the properties it must preserve**. Design decisions are owned by an ADR, subsystem roles and
-state transitions by the Design Reference, local contracts by a package README, and
-mechanically decidable constraints by tooling.
+ここで追跡するのは変更の「結果」だけではなく、その**理由・影響範囲・守るべき性質**です。設計判断は
+ADR、サブシステムの役割と状態遷移は Design Reference、局所的な契約は package README、機械的に判定
+可能な制約は tooling がそれぞれ所有します。
 
-Together they aim to make the following answerable without reading the code line by line:
+これにより、コードの精読だけに頼らず次を追跡できる構成を目指します。
 
-- why an implementation has the shape it has
-- which design decision it rests on
-- what is affected when a given boundary changes
-- whether the implementation or the design document is the side that drifted
+- この実装がなぜこの形なのか
+- どの設計判断に基づくのか
+- どの境界を変更すると何が影響を受けるのか
+- 実装と設計ドキュメントのどちらが drift したのか
 
-### Feeding implementation back into design
+### 実装から設計へ書き戻す
 
-A design is a hypothesis, and the constraints and breakages that surface during implementation
-and review are observations against it.
+設計は仮説であり、実装・レビュー中に露出した制約や破綻は、その仮説に対する観測結果です。
 
-A bug or an architectural deviation is therefore not only fixed where it appeared: where the
-cause has recurrence value, it is investigated, triaged, and reflected back into an ADR, the
-Design Reference, a README, or tooling.
+そのためバグやアーキテクチャ逸脱をその場限りで修正するだけでなく、再発価値の高いものは原因を
+調査・トリアージし、ADR・Design Reference・README・tooling へ反映します。
 
-Not every individual problem is promoted into a rule — **only causes that carry reuse value
-across several places or implementations are kept as design assets**.
+個別の問題をすべて規則へ昇格させるのではなく、**複数箇所・複数実装で再利用価値を持つ原因だけを
+設計資産として残す**ことを重視します。
 
-### AI-assisted development
+### AI 支援開発
 
-This repository separates two things that are easy to conflate: **the application, which never
-depends on AI**, and **the development foundation around it, which is designed for AI assistance as
-its standard path**.
+本リポジトリは、混同されやすい 2 つを分けています。**AI に依存しないアプリケーション**と、
+**AI 支援を標準経路として設計された、その周囲の開発基盤**です。
 
-**The application is AI-independent.** Runtime, build, test, production runtime, the architecture
-itself, the domain model, the API contract, the database schema and the ordinary CI checks all
-succeed with no AI service or agent available. Nothing you ship inherits a dependency on a model, a
-vendor or an agent.
+**アプリケーションは AI 非依存です。** ランタイム、ビルド、テスト、本番ランタイム、アーキテクチャ
+そのもの、ドメインモデル、API 契約、データベーススキーマ、通常の CI 検査は、AI サービスやエージェント
+が利用できなくても成立します。あなたが出荷するものは、モデル・ベンダー・エージェントへの依存を
+引き継ぎません。
 
-**The development foundation is AI-first.** Agent configuration, skills, agent-facing rules and
-context, AI-assisted review and the automation around them are part of the maintained development
-system, not an optional side layer. Being AI-specific is not by itself a reason to hold a mechanism
-optional, and full feature symmetry with a manual path is not maintained. Developing without the
-assist layer stays possible and is not forbidden — it is a **not-recommended compatibility path**
-with no guarantee of an equivalent developer experience.
+**開発基盤は AI-first です。** エージェント設定、スキル、エージェント向けルールとコンテキスト、
+AI レビューとその周辺の自動化は、任意の付属レイヤではなく、リポジトリが保守する開発システムの一部です。
+AI 固有であることのみを理由に機構を任意化することはせず、手動経路との完全な機能対称性も維持しません。
+支援レイヤ無しの開発は引き続き可能で禁止もしませんが、それは同等の開発者体験を保証しない
+**推奨されない互換経路**です。
 
-The reason is size. Every individual directory here stays readable, but continuously holding the
-*whole* of it — structure, conventions, dependencies, design intent, and what a change reaches — is
-expensive for one person. An agent is the navigation layer over that: it finds the document that
-owns a topic, reads the rules that bound a change, and traces what the change affects.
+理由は規模です。個々のディレクトリはいまも読めますが、*全体* — 構造、規約、依存関係、設計意図、
+変更が届く範囲 — を継続的に把握し続けるコストは、ひとりの人間には高い。エージェントはその上の
+ナビゲーション層として、話題を所有する文書を見つけ、変更を縛るルールを読み、影響範囲を辿ります。
 
-What that does **not** license is a structure only a machine can follow. Explicit structure an agent
-can traverse and explicit structure a human can read are treated as correlated, so the layer
-boundaries, generated code, the OpenAPI contract, the ADRs, the Design Reference and the per-package
-READMEs are the shared substrate — reused as agent context rather than duplicated into an
-agent-only one.
+これは、機械にしか辿れない構造を許可するものでは **ありません**。エージェントが辿れる明示的な構造と
+人間が読める明示的な構造は相関するものとして扱うため、レイヤ境界・生成コード・OpenAPI 契約・ADR・
+Design Reference・各 package README が共有の基盤であり、エージェント専用のものへ複製するのではなく、
+そのまま context として再利用します。
 
-The aim is not to widen AI's freedom. It is to **narrow the search space deliberately within
-decisions that have already been approved, and return only the changes that need a design decision
-to a human**. Properties that can be decided mechanically are checked by tooling, whose verdict
-outranks an agent's reading; judgements that require reading are checked by review signal; and
-architecture, domain and policy decisions keep a human gate.
+目的は AI の自由度を増やすことではなく、**既に承認された設計判断の範囲では探索空間を意図的に狭め、
+設計判断が必要な変更だけを人間へ戻すこと**です。機械的に判定可能な性質は tooling が検証し、その判定が
+エージェントの読解に優先します。読解を要する判断は review signal で検証し、アーキテクチャ・ドメイン・
+ポリシーの判断には Human Gate を維持します。
 
-The controls themselves are not append-only: skills, rules, documents and checks are observed,
-re-evaluated after they land, and kept, simplified, revised, deleted or reverted on that evidence.
+制御そのものは append-only ではありません。スキル・ルール・文書・検査は観測され、反映後に再評価され、
+その証拠に基づいて Keep / Simplify / Revise / Delete / Revert されます。
 
-See [docs/design/agent-environment.md](docs/design/agent-environment.md) /
+参照: [docs/design/agent-environment.md](docs/design/agent-environment.md) /
 [docs/rules.md](docs/rules.md) /
-[docs/adr/0007-agents-md-operational-contract.md](docs/adr/0007-agents-md-operational-contract.md).
+[docs/adr/0007-agents-md-operational-contract.md](docs/adr/0007-agents-md-operational-contract.md)。
 
-#### Agent compatibility
+#### エージェントの対応状況
 
-Agent-specific configuration is treated as part of the repository's maintained development
-system, not as disposable local state. Repository-owned skills, hooks and automation may therefore
-need to evolve together with the code and the constraints they enforce.
+エージェント向けの設定は、使い捨てのローカル状態ではなく、**リポジトリが保守する開発システムの一部**と
+して扱います。したがってリポジトリが所有する skill・hook・自動化は、コードおよびそれらが強制する制約と
+ともに変化していく必要があります。
 
-**Codex CLI currently has a limitation for fully autonomous harness maintenance.** Under its
-`workspace-write` sandbox, repository-local `.agents/` and `.codex/` directories are protected as
-read-only paths, and there is currently no supported per-repository override that keeps the
-workspace sandbox enabled while allowing those paths to be maintained by the agent.
+**Codex CLI には現在、ハーネスの完全自律保守に関する制限があります。** その `workspace-write` サンドボックス
+では、リポジトリ配下の `.agents/` および `.codex/` が読み取り専用パスとして保護されており、ワークスペース
+サンドボックスを有効に保ったままこれらのパスをエージェントに保守させる、リポジトリ単位の上書き手段は現状
+提供されていません。
 
-Codex remains usable for ordinary implementation, review and other changes within the writable
-workspace. However, workflows that must update repository-owned skills, Codex hooks or other
-automation under `.agents/` / `.codex/` cannot currently complete end to end without additional
-user intervention or broader sandbox permissions. For that reason, Codex CLI is **therefore
-considered partially supported for agent-driven development: ordinary implementation workflows are
-supported, while fully autonomous workflows that maintain the repository's own agent harness are
-not**.
+Codex は、書き込み可能なワークスペース内での通常の実装・レビュー・その他の変更には引き続き利用できます。
+一方で、`.agents/` / `.codex/` 配下のリポジトリ所有の skill・Codex の hook・その他の自動化を更新しなければ
+ならないワークフローは、追加のユーザー介入かより広いサンドボックス権限なしには現状 end to end で完了でき
+ません。このため Codex CLI は **エージェント駆動開発においては部分対応と位置づけます。通常の実装ワーク
+フローは対応、リポジトリ自身のエージェントハーネスを保守する完全自律ワークフローは非対応です**。
 
-This is an agent-runtime limitation rather than an architectural dependency of this project; the
-repository does not require Codex, and the restriction can be removed from this documentation once
-Codex provides a safe repository-scoped mechanism for explicitly trusted writable paths.
+これは本プロジェクトのアーキテクチャ上の依存ではなく、エージェントランタイム側の制限です。リポジトリは
+Codex を必要としませんし、明示的に信頼された書き込み可能パスをリポジトリスコープで安全に扱う仕組みを
+Codex が提供した時点で、この記述は削除できます。
 
-### Intended system types
+### 想定するシステム種別
 
-Designed for new backend products, PoC → early-scale phases, strict layered team development,
-and systems with strong domain rules — as a **modular monolith**. Less suited to single-file
-micro APIs, architecture-less prototypes, ultra-low-latency systems, or strong microservice
-decomposition.
+新規バックエンドプロダクト、PoC 〜 初期スケール期、厳格なレイヤードのチーム開発、強いドメインルールを
+持つシステムに向け、**モジュラモノリス**として設計しています。単一ファイルのマイクロ API・アーキテクチャの
+無いプロトタイプ・超低レイテンシシステム・強いマイクロサービス分割にはあまり向きません。
 
-### Vendor neutrality & extensibility
+### ベンダー中立性と拡張性
 
-Observability and tooling are OSS-first and vendor-neutral. Components under `internal/` are
-loosely coupled, so DI allows infrastructure, implementations and middleware to be replaced per
-runtime environment.
+可観測性・ツールは OSS ファーストでベンダー中立です。`internal/` 配下は疎結合で、DI によりインフラ・
+実装・ミドルウェアを実行環境ごとに差し替えられます。
 
-### Out of scope: developer-machine hygiene
+### 守備範囲外: 開発者マシンの衛生
 
-Supply-chain defence here stops at the repository: dependency cooldown windows, pinned actions and
-base images, SBOM and vulnerability scanning. What runs on a *developer's* laptop — globally
-installed packages, editor and browser extensions, agent/MCP configuration — is outside a project
-template's reach and belongs to whoever administers those machines.
+ここでの供給網対策はリポジトリで止まります。依存の cooldown 窓、pin した Actions とベースイメージ、
+SBOM と脆弱性スキャンまでです。**開発者の**マシンで動くもの — グローバルに入れたパッケージ、エディタや
+ブラウザの拡張、エージェント / MCP の設定 — はプロジェクトテンプレートの手が届く範囲になく、それらの
+マシンを管理する主体の領域です。
 
-If you need to answer "an advisory names this package and version; which of our machines match right
-now?", [`perplexityai/bumblebee`](https://github.com/perplexityai/bumblebee) is a read-only endpoint
-scanner built for exactly that question. It is mentioned as a pointer, not a dependency — nothing
-here installs, invokes or requires it, and note that it needs an exposure catalog of its own to flag
-anything.
+「advisory がこのパッケージとバージョンを名指した。今どのマシンが一致するか」に答える必要があるなら、
+[`perplexityai/bumblebee`](https://github.com/perplexityai/bumblebee) がまさにその問いのために作られた
+read-only のエンドポイントスキャナです。依存としてではなく参照として挙げています。ここでは何も導入せず、
+呼び出さず、必要ともしません。なお、何かをフラグさせるには別途 exposure catalog が要ります。
 
-## Maintainer Policy / Disclaimer
+## メンテナ方針 / 免責事項
 
-This repository is **independently maintained by the author** and is not affiliated with any
-organization. It is provided in good faith, but **no guarantees are made regarding security,
-stability, or suitability**. Before use, verify dependency vulnerabilities, security
-configuration and operational compatibility yourself.
+本リポジトリは**著者が個人で維持**しており、いかなる組織にも属しません。善意で提供していますが、
+**セキュリティ・安定性・特定用途への適合性について保証はありません**。利用前に、依存の脆弱性・
+セキュリティ設定・運用互換性をご自身で検証してください。
 
-Libraries are selected for active maintenance, community adoption, replaceability and avoidance
-of strong framework lock-in. The maintainer may provide dependency updates, security fixes and
-architectural improvements, but issue-response deadlines, guaranteed bug fixes and long-term
-maintenance commitments are **not guaranteed**.
+ライブラリは、活発なメンテナンス・コミュニティ採用・置換可能性・強いフレームワークロックインの回避を
+基準に選定しています。メンテナは依存更新・セキュリティ修正・アーキテクチャ改善を提供する場合が
+ありますが、Issue 応答期限・バグ修正の保証・長期メンテナンスの確約は**保証しません**。
 
-### This repository's branch-rule exception
+### このリポジトリのブランチ規則の例外
 
-The template declares code-owner review and seven required status checks in
-`.github/settings/branch-protection.json`. This repository applies them with single-maintainer
-relaxations: no approving review or last-push approval is required, unresolved review threads do
-not block, and rebase merge is allowed. The seven status checks and CODEOWNERS review remain
-required. This is this repository's operational state, not a recommendation for a derived project;
-replace or remove this subsection when rewriting this README during setup.
+テンプレートは `.github/settings/branch-protection.json` で CODEOWNERS レビューと 7 件の required
+status check を宣言しています。本リポジトリでは単独メンテナ向けに、承認数・最終 push 後の承認・
+未解決レビューのスレッド解消を必須にせず、rebase merge も許可しています。一方で 7 件の status check
+と CODEOWNERS レビューは必須です。これはこのリポジトリ固有の運用状態であり、派生先への推奨では
+ありません。セットアップ時に README を書き換える際、この小節を置き換えるか削除してください。
 
 <!-- boilerplate-only:begin -->
-Planned future releases: Frontend / Infrastructure / Observability boilerplates — see
-[docs/project/roadmap.md](docs/project/roadmap.md).
+今後のリリース予定: フロントエンド / インフラ / 可観測性の各ボイラープレート —
+[docs/project/roadmap.md](docs/project/roadmap.md) を参照。
 
 <!-- boilerplate-only:end -->
-## License
+## ライセンス
 
-This project's own source code is released under the **MIT License** — see [LICENSE](LICENSE).
+本プロジェクト自身のソースコードは **MIT License** で公開しています — [LICENSE](LICENSE) を参照してください。
 
-The container images the project ships bundle third-party OS packages from their base images —
-for example the production `runtime` image is built on `alpine:3.24`, whose base packages
-(`busybox`, `apk-tools`, `alpine-baselayout`, `ssl_client`, …) are licensed under
-**GPL-2.0-only**. These are included as *mere aggregation*: they run as independent programs and
-are **not** linked into the Go binary, so their copyleft terms do not extend to this project's
-code and do **not** restrict commercial use. The only obligation is the ordinary one for
-redistributing any Linux base image — make the corresponding package sources available, which
-upstream Alpine already does. Image details: [docker/README.md](docker/README.md).
+配布するコンテナイメージには、ベースイメージ由来のサードパーティ OS パッケージが同梱されます。
+たとえば本番用の `runtime` イメージは `alpine:3.24` をベースにしており、その基本パッケージ
+（`busybox` / `apk-tools` / `alpine-baselayout` / `ssl_client` など）は **GPL-2.0-only** です。
+これらは *mere aggregation（単なる同梱）* にあたります。独立したプログラムとして動作し、Go バイナリには
+**リンクされない**ため、コピーレフトの条件が本プロジェクトのコードに波及することはなく、商用利用を
+**制限しません**。義務は Linux ベースイメージを再配布する際の通常の対応（対応するパッケージソースの
+入手手段を提供すること。upstream の Alpine が既に提供済み）のみです。イメージ詳細:
+[docker/README.md](docker/README.md)。

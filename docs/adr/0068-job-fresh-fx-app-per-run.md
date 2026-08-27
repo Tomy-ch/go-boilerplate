@@ -5,74 +5,52 @@ deciders: [maintainers]
 tags: [job, async]
 ---
 
-# ADR-0068: Each job launch constructs a fresh fx.App (one-shot lifecycle)
+# ADR-0068: ジョブ起動ごとに新しい fx.App を構築する（ワンショットライフサイクル）
 
-## Status
+## ステータス
 
 accepted
 
-## Context
+## 背景
 
-The job subsystem is a CLI-driven entry point into the Usecase layer — on par with the HTTP
-handler and the worker, but invoked once and expected to exit. It uses the same Uber Fx
-dependency-injection container as the resident `serve` and `worker` commands (see
-[ADR-0040](0040-uber-fx-di.md)).
+ジョブサブシステムはユースケースレイヤーへの CLI 駆動エントリポイントであり、HTTP ハンドラーやワーカーと同等だが、一度だけ呼び出されて終了することが期待される。常駐の `serve` コマンドや `worker` コマンドと同じ Uber Fx 依存性注入コンテナを使用する（[ADR-0040](0040-uber-fx-di.md) 参照）。
 
-Two lifecycle models were possible:
+2 つのライフサイクルモデルが考えられた。
 
-1. **Shared / resident app** — a single long-lived `fx.App` instance started at process
-   boot, with jobs dispatched into it across invocations.
-2. **Per-invocation app** — a fresh `fx.App` constructed, started, and stopped for each
-   job invocation.
+1. **共有/常駐アプリ** — プロセス起動時に開始された単一の長期稼働 `fx.App` インスタンスで、複数の呼び出しにわたってジョブがディスパッチされる。
+2. **呼び出しごとのアプリ** — 各ジョブ呼び出しに対して新しい `fx.App` を構築・起動・停止する。
 
-The job command must exit cleanly after running exactly one job, returning a well-defined
-exit code, with no residual state leaking between invocations.
+`job` コマンドはちょうど 1 つのジョブを実行した後に明確な終了コードとともにクリーンに終了しなければならず、呼び出し間でリザルアルステートが漏洩してはならない。
 
-## Decision
+## 決定
 
-Each `job` subcommand invocation constructs a **fresh `fx.App`** (no resident process).
-`di.RunJob` / `NewJobCore` compose the container, `app.Start` fires lifecycle hooks, the
-job executes on a detached goroutine whose run context comes from `SupervisedRunner`
-(`context.WithCancel(context.Background())`), so it is not cancelled when the `OnStart`
-start-context returns, and `app.Stop` tears everything down before the process exits. The job result is returned to the CLI as a non-zero exit code on failure.
+各 `job` サブコマンドの呼び出しは**新しい `fx.App`** を構築する（常駐プロセスなし）。`di.RunJob` / `NewJobCore` がコンテナを合成し、`app.Start` がライフサイクルフックを起動し、ジョブはデタッチされたゴルーチン上で実行される（実行コンテキストは `SupervisedRunner` の `context.WithCancel(context.Background())` 由来のため、`OnStart` の start-context が返ってもキャンセルされない）。`app.Stop` がプロセス終了前にすべてをティアダウンする。ジョブの結果は失敗時に非ゼロ終了コードとして CLI に返される。
 
-## Consequences
+## 影響
 
-### Positive Consequences
+### ポジティブな影響
 
-- Each invocation gets a clean dependency graph with no shared mutable state from a prior
-  run.
-- Startup and teardown ordering are fully managed by Fx lifecycle hooks (OnStart / OnStop),
-  the same mechanism used by `serve` and `worker`.
-- The one-shot pattern maps directly to the "run exactly one job, then exit" requirement
-  without special-casing inside a long-lived process.
+- 各呼び出しは前回の実行から共有される可変状態を持たないクリーンな依存グラフを得る。
+- 起動とティアダウンの順序は Fx ライフサイクルフック（OnStart / OnStop）によって完全に管理される。`serve` や `worker` と同じメカニズムである。
+- ワンショットパターンは「ちょうど 1 つのジョブを実行して終了する」という要件に、長期稼働プロセス内の特殊ケースなしで直接対応する。
 
-### Negative Consequences
+### ネガティブな影響
 
-- Fx startup overhead (container construction, OnStart hooks) occurs on every invocation,
-  even for trivially short jobs.
-- Connection pools and other expensive resources (e.g. database) are initialised and torn
-  down per invocation; this is acceptable for infrequent CLI jobs but would be wasteful for
-  high-frequency automated dispatch.
+- Fx の起動オーバーヘッド（コンテナ構築、OnStart フック）が、ごく短時間のジョブでも呼び出しごとに発生する。
+- 接続プールや他のコストのかかるリソース（例: データベース）が呼び出しごとに初期化・ティアダウンされる。頻度の低い CLI ジョブには許容範囲だが、高頻度の自動ディスパッチには非効率である。
 
-## Alternatives Considered
+## 検討した代替案
 
-### A resident process that dispatches jobs on demand
+### ジョブをオンデマンドでディスパッチする常駐プロセス
 
-Rejected: the job command is a one-shot CLI invocation, not a daemon. A resident process
-would require a separate dispatch protocol, complicate lifecycle management, and add
-supervisory machinery that belongs to the worker subsystem instead.
+却下: `job` コマンドはワンショットの CLI 呼び出しであり、デーモンではない。常駐プロセスには独立したディスパッチプロトコルが必要となり、ライフサイクル管理が複雑になり、ワーカーサブシステムに属する監視機構が追加される。
 
-### Reusing the serve / worker fx.App
+### serve / worker の fx.App を再利用する
 
-Rejected: different commands wire different dependencies; a shared app would either
-over-provide (unused infrastructure) or require conditional wiring that obscures the
-dependency graph.
+却下: コマンドごとに異なる依存関係を配線する。共有アプリは過剰提供（未使用のインフラ）またはデペンデンシーグラフを不明瞭にする条件付き配線が必要になる。
 
-## Notes
+## 補足
 
-- The Shutdowner (`fx.Shutdowner`) is used by the job hook goroutine to request `app.Stop`
-  after the job finishes, completing the one-shot lifecycle.
-- Source: `docs/design/job.md` (§ 1 Role theory, design principle paragraph and
-  responsibility table row "DI / cli / cmd").
-- Related: [ADR-0040](0040-uber-fx-di.md) (Uber Fx DI).
+- Shutdowner（`fx.Shutdowner`）は、ジョブが完了した後にジョブフックゴルーチンが `app.Stop` を要求するために使用され、ワンショットライフサイクルを完結させる。
+- 出典: `docs/design/job.md`（§1 ロール理論、設計原則パラグラフおよび責務表の「DI / cli / cmd」行）。
+- 関連: [ADR-0040](0040-uber-fx-di.md)（Uber Fx DI）。
