@@ -13,7 +13,7 @@
  */
 export const ALLOWED_PREFIXES: readonly string[] = [
   "README.md",
-  "README.ja.md", // doc-pair:line
+  "README.ja.md",
   "docs/get-started/",
 ];
 
@@ -29,15 +29,11 @@ export const CHECKED_PREFIXES: readonly string[] = [
   "docs/decisions.md",
   "docs/index.md",
   ".makefiles/README.md",
-  ".makefiles/README.ja.md", // doc-pair:line
+  ".makefiles/README.ja.md",
 ];
 
 /** 層 README も対象。`internal/**` / `pkg/**` の README は テンプレート作成後も読まれ続ける。 */
-// doc-pair:replace-begin
 const LAYER_README_RE = /^(?:internal|pkg)\/.*README(?:\.ja)?\.md$/;
-// doc-pair:replace-with
-// = const LAYER_README_RE = /^(?:internal|pkg)\/.*README\.md$/;
-// doc-pair:replace-end
 
 /**
  * 前提の焼き込みが取る言い回し。
@@ -167,7 +163,6 @@ export function isChecked(relativePath: string): boolean {
   if (!rel.endsWith(".md")) return false;
   if (ALLOWED_PREFIXES.some((prefix) => rel === prefix || rel.startsWith(prefix))) return false;
 
-// doc-pair:begin
   if (rel.startsWith("docs/") && rel.endsWith(".ja.md")) {
     // CHECKED_PREFIXES はディレクトリだけでなく `docs/rules.md` のようなファイル名も持つため、
     // 対訳は正本の綴りへ戻してから領域を見る。許可域の再判定は要らない —— 対訳は正本の隣に
@@ -177,7 +172,6 @@ export function isChecked(relativePath: string): boolean {
 
     return CHECKED_PREFIXES.some((prefix) => canonical.startsWith(prefix));
   }
-// doc-pair:end
 
   return CHECKED_PREFIXES.some((prefix) => rel.startsWith(prefix)) || LAYER_README_RE.test(rel);
 }

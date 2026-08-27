@@ -20,16 +20,11 @@ The project documentation serves two distinct audiences with different needs:
   translations introduces translation-lag risk. Additionally, AI tools typically consume
   approximately 1.5–2.0× more tokens when processing Japanese text and carry a higher risk of
   misreading and hallucination, making English the more reliable input language for agents.
-<!-- doc-pair:replace-begin -->
 - **Human developers** — may prefer Japanese; benefit from a navigable portal rather than
   raw markdown files.
-<!-- doc-pair:replace-with -->
-<!-- = - **Human developers** — benefit from a navigable portal rather than raw markdown files. -->
-<!-- doc-pair:replace-end -->
 
 Structural concerns arise:
 
-<!-- doc-pair:replace-begin -->
 1. If two languages are maintained in parallel without a clear primacy rule, they diverge. A
    diverged translation misleads whichever audience reads it.
 2. If the portal is the primary documentation surface rather than the source files, portal
@@ -38,14 +33,6 @@ Structural concerns arise:
 3. If documentation is scattered without a stable directory convention, generators
    (`scripts/portal/gen-docs-json.ts`) and agent harnesses (`AGENTS.md`) cannot reliably locate
    canonical content.
-<!-- doc-pair:replace-with -->
-<!-- = 1. If the portal is the primary documentation surface rather than the source files, portal -->
-<!-- =    generation failures block documentation access and the portal format becomes a constraint -->
-<!-- =    on content. -->
-<!-- = 2. If documentation is scattered without a stable directory convention, generators -->
-<!-- =    (`scripts/portal/gen-docs-json.ts`) and agent harnesses (`AGENTS.md`) cannot reliably locate -->
-<!-- =    canonical content. -->
-<!-- doc-pair:replace-end -->
 
 <!-- boilerplate-only:begin -->
 A further concern is about who the documentation is for. Every language kept here is inherited
@@ -56,7 +43,6 @@ documentation have" has two answers, and only the first of them is this reposito
 
 ## Decision
 
-<!-- doc-pair:replace-begin -->
 Adopt a three-layer documentation strategy:
 
 1. **English canonical** — `docs/**/*.md` (excluding `*.ja.md` and `docs/portal/**`) is
@@ -70,24 +56,12 @@ Adopt a three-layer documentation strategy:
 3. **Generated portal** — `docs/portal/docs.json` and `docs/portal/guides/**` are generated
    by `scripts/portal/gen-docs-json.ts` from the canonical sources, driven by
    `docs/portal/manifest.yaml`. Portal content must not be edited manually.
-<!-- doc-pair:replace-with -->
-<!-- = Adopt a two-layer documentation strategy: -->
-<!-- =  -->
-<!-- = 1. **Canonical markdown** — `docs/**/*.md` (excluding `docs/portal/**`) is the authoritative -->
-<!-- =    source. These are what agents read, what rules reference, and what the portal renders. -->
-<!-- =    The documentation is maintained in a single language. -->
-<!-- = 2. **Generated portal** — `docs/portal/docs.json` and `docs/portal/guides/**` are generated -->
-<!-- =    by `scripts/portal/gen-docs-json.ts` from the canonical sources, driven by -->
-<!-- =    `docs/portal/manifest.yaml`. Portal content must not be edited manually. -->
-<!-- doc-pair:replace-end -->
 
-<!-- doc-pair:begin -->
 **The two languages do not navigate to each other.** A canonical file does not advertise that a
 translation exists; a reader who wants the other language finds it by the suffix. That link was
 maintained on both sides of 400-odd pairs and told the reader nothing the naming convention does
 not. A translation may still declare its own source, because that states which side to edit first —
 a direction the filename cannot carry.
-<!-- doc-pair:end -->
 
 <!-- boilerplate-only:begin -->
 **The pair belongs to this repository, not to what is built from it.** Which languages a project
@@ -111,40 +85,29 @@ documentation sections: `docs/portal`, `docs/openapi`, `docs/coverage`, `docs/er
 
 - AI agents have a single unambiguous reading target (English canonical); the rule is
   enforceable in agent harnesses.
-<!-- doc-pair:begin -->
 - Translation lag is bounded: the Japanese mirror may trail behind English updates, but the
   English canonical is always authoritative.
-<!-- doc-pair:end -->
 - Portal content is always reproducible from source; `docs/portal/docs.json` is a generated
   artifact and can be regenerated on any machine or CI runner.
-<!-- doc-pair:replace-begin -->
 - Adding a new documentation section follows a clear convention: a `docs/<section>/` directory
   holding both languages, and an entry in `docs/portal/manifest.yaml`.
-<!-- doc-pair:replace-with -->
-<!-- = - Adding a new documentation section follows a clear convention: a `docs/<section>/` directory, -->
-<!-- =   and an entry in `docs/portal/manifest.yaml`. -->
-<!-- doc-pair:replace-end -->
 
 ### Negative Consequences
 
-<!-- doc-pair:begin -->
 - Maintaining two language versions of every document is labor-intensive; Japanese mirrors
   can lag behind English canonical updates.
-<!-- doc-pair:end -->
 - `docs/portal/manifest.yaml` must be updated when new sections are added or renamed; an
   out-of-date manifest causes new docs to not appear in the portal.
 - The reserved directory list limits naming choices for new documentation sections.
 
 ## Alternatives Considered
 
-<!-- doc-pair:begin -->
 ### Auto-translation
 
 Generate Japanese translations automatically from English. Rejected: machine-translation
 quality is insufficient for precise technical content; a mistranslated architectural rule
 can mislead developers.
 
-<!-- doc-pair:end -->
 <!-- boilerplate-only:begin -->
 ### Fixing the language set here
 
