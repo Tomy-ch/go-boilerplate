@@ -12,6 +12,7 @@ import (
 	config "go-boilerplate/internal/config"
 	outboxengine "go-boilerplate/internal/controller/outbox"
 	"go-boilerplate/internal/di/module"
+	"go-boilerplate/internal/infrastructure/publisher"
 	outboxbndry "go-boilerplate/internal/usecase/boundary/outbox"
 	outboxuc "go-boilerplate/internal/usecase/outbox"
 )
@@ -39,6 +40,16 @@ func TestNewOutboxRelayApp(t *testing.T) {
 	})
 
 	t.Run("異常系", func(t *testing.T) {
+		t.Run("配送できる publisher 実装が無いチャネルは起動時に弾かれる", func(t *testing.T) {
+			t.Setenv("OUTBOX_PUBLISHER", "http")
+			t.Setenv("ENDPOINT_OUTBOX", "http://localhost:9999")
+
+			// fx.ValidateApp は invoke の本体を実行しないため、ガードの検証は実際の構築で行う。
+			app := NewOutboxRelayApp(30*time.Second, outboxbndry.ChannelRealtime)
+
+			require.ErrorIs(t, app.Err(), publisher.ErrChannelUnsupported)
+		})
+
 		t.Run("ENDPOINT_OUTBOX が空なら起動時に弾かれる", func(t *testing.T) {
 			t.Setenv("OUTBOX_PUBLISHER", "http")
 			t.Setenv("ENDPOINT_OUTBOX", "")

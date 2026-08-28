@@ -68,23 +68,3 @@ func TestOutboxRelayModule(t *testing.T) {
 		})
 	})
 }
-
-func TestOutboxRelayModule_ChannelGuard(t *testing.T) {
-	t.Parallel()
-
-	relayDeps := func() []fx.Option {
-		return append(commonDeps(), InfrastructureModule(), UsecaseModule())
-	}
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("配送できるpublisher実装が無いチャネルでは起動を拒否する", func(t *testing.T) {
-			t.Parallel()
-
-			// realtime publisher はまだ無いため、誤配線を無言で許さず構築時点で失敗する。
-			opts := append(relayDeps(), OutboxRelayModule(outboxbndry.ChannelRealtime), fx.NopLogger)
-			require.Error(t, fx.ValidateApp(opts...))
-		})
-	})
-}
