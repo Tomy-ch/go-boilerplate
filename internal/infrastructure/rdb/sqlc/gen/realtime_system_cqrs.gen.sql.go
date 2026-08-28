@@ -17,7 +17,7 @@ INSERT INTO realtime_stream_sequences (
     $1, 1
 )
 ON CONFLICT (stream_id) DO UPDATE
-SET last_sequence = realtime_stream_sequences.last_sequence + 1
+    SET last_sequence = realtime_stream_sequences.last_sequence + 1
 RETURNING last_sequence
 `
 
@@ -32,7 +32,7 @@ RETURNING last_sequence
 //	    $1, 1
 //	)
 //	ON CONFLICT (stream_id) DO UPDATE
-//	SET last_sequence = realtime_stream_sequences.last_sequence + 1
+//	    SET last_sequence = realtime_stream_sequences.last_sequence + 1
 //	RETURNING last_sequence
 func (q *Queries) AllocateStreamSequence(ctx context.Context, streamID string) (int64, error) {
 	row := q.db.QueryRow(ctx, allocateStreamSequence, streamID)

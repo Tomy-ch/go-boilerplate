@@ -5,10 +5,6 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
-// Channel は、outbox 行の配送レーンです。relay は 1 つの Channel だけを claim するため、
-// あるレーンの遅延・障害・再試行待ちが別のレーンの進行を止めません。
-type Channel string
-
 const (
 	// ChannelHTTP は、受信エンドポイントへ HTTP で配送するレーンです。
 	ChannelHTTP Channel = "http"
@@ -18,6 +14,10 @@ const (
 
 // ErrUnknownChannel は、既知でない配送チャネルが指定されたことを示すエラーです。
 var ErrUnknownChannel = xerrors.Wrap(apperror.ErrInvalidArgument, "unknown outbox delivery channel")
+
+// Channel は、outbox 行の配送レーンです。relay は 1 つの Channel だけを claim するため、
+// あるレーンの遅延・障害・再試行待ちが別のレーンの進行を止めません。
+type Channel string
 
 // ParseChannel は、文字列を Channel へ変換します。既知でない値は ErrUnknownChannel を返します。
 // 未知のチャネルの行はどの relay も claim しないため、値の検証は emit と relay 起動の両方で行います。

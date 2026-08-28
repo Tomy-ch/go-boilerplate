@@ -10,7 +10,7 @@ INSERT INTO realtime_stream_sequences (
     $1, 1
 )
 ON CONFLICT (stream_id) DO UPDATE
-SET last_sequence = realtime_stream_sequences.last_sequence + 1
+    SET last_sequence = realtime_stream_sequences.last_sequence + 1
 RETURNING last_sequence;
 
 -- === source: database/dml/system_cqrs/realtime/current_stream_sequence.sql ===

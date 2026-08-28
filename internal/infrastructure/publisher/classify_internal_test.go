@@ -7,7 +7,6 @@ import (
 	"go-boilerplate/internal/infrastructure/httpclient"
 	"go-boilerplate/pkg/xerrors"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -27,30 +26,30 @@ func Test_classifyOutcome(t *testing.T) {
 			t.Parallel()
 
 			err := classifyOutcome(&httpclient.Response{StatusCode: 400}, apperror.ErrInvalidArgument)
-			assert.ErrorIs(t, err, apperror.ErrPermanent)
+			require.ErrorIs(t, err, apperror.ErrPermanent)
 			// 元のエラーは調査のために保持する。
-			assert.ErrorIs(t, err, apperror.ErrInvalidArgument)
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 		})
 
 		t.Run("429 は一時失敗として分類する", func(t *testing.T) {
 			t.Parallel()
 
 			err := classifyOutcome(&httpclient.Response{StatusCode: 429}, apperror.ErrTooManyRequests)
-			assert.ErrorIs(t, err, apperror.ErrRetryable)
+			require.ErrorIs(t, err, apperror.ErrRetryable)
 		})
 
 		t.Run("5xx は一時失敗として分類する", func(t *testing.T) {
 			t.Parallel()
 
 			err := classifyOutcome(&httpclient.Response{StatusCode: 503}, apperror.ErrUnavailable)
-			assert.ErrorIs(t, err, apperror.ErrRetryable)
+			require.ErrorIs(t, err, apperror.ErrRetryable)
 		})
 
 		t.Run("応答を得られない transport 失敗は一時失敗として分類する", func(t *testing.T) {
 			t.Parallel()
 
 			err := classifyOutcome(nil, xerrors.Wrap(apperror.ErrUnavailable, "dial failed"))
-			assert.ErrorIs(t, err, apperror.ErrRetryable)
+			require.ErrorIs(t, err, apperror.ErrRetryable)
 		})
 	})
 
@@ -64,8 +63,8 @@ func Test_classifyOutcome(t *testing.T) {
 			err := classifyOutcome(nil, canceled)
 
 			require.ErrorIs(t, err, apperror.ErrCanceled)
-			assert.NotErrorIs(t, err, apperror.ErrPermanent)
-			assert.NotErrorIs(t, err, apperror.ErrRetryable)
+			require.NotErrorIs(t, err, apperror.ErrPermanent)
+			require.NotErrorIs(t, err, apperror.ErrRetryable)
 		})
 	})
 }

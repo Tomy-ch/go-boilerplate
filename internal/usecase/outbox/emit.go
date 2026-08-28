@@ -15,6 +15,9 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
+// ErrInvalidOrdering は、順序キーと位置の指定が対になっていないことを示すエラーです。
+var ErrInvalidOrdering = xerrors.Wrap(apperror.ErrInvalidArgument, "invalid outbox ordering")
+
 // EmitInput は、ドメインイベントを outbox へ emit する入力です。
 type EmitInput struct {
 	// AggregateType は集約種別です（観測・調査用）。
@@ -36,9 +39,6 @@ type EmitInput struct {
 	// OrderingSequence は OrderingKey 内の位置（1 起算）です。OrderingKey が空なら 0 にします。
 	OrderingSequence int64
 }
-
-// ErrInvalidOrdering は、順序キーと位置の指定が対になっていないことを示すエラーです。
-var ErrInvalidOrdering = xerrors.Wrap(apperror.ErrInvalidArgument, "invalid outbox ordering")
 
 // EmitUsecase は、ドメイン変更と同一 tx で outbox へ 1 件記録するユースケースです。
 type EmitUsecase interface {

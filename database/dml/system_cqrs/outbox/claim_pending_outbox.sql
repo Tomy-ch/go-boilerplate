@@ -18,7 +18,7 @@ WHERE o.status = 'pending'
     AND o.delivery_channel = $1
     AND o.next_attempt_at <= NOW()
     AND NOT EXISTS (
-        SELECT 1
+        SELECT prior.id
         FROM outbox AS prior
         WHERE prior.ordering_key = o.ordering_key
             AND prior.ordering_sequence < o.ordering_sequence
