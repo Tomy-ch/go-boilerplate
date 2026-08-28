@@ -5,7 +5,6 @@ import (
 
 	outboxbndry "go-boilerplate/internal/usecase/boundary/outbox"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -40,28 +39,28 @@ func Test_validateEmit(t *testing.T) {
 			t.Parallel()
 
 			err := validateEmit(EmitInput{})
-			assert.ErrorIs(t, err, outboxbndry.ErrUnknownChannel)
+			require.ErrorIs(t, err, outboxbndry.ErrUnknownChannel)
 		})
 
 		t.Run("既知でないチャネルを拒否する", func(t *testing.T) {
 			t.Parallel()
 
 			err := validateEmit(EmitInput{Channel: outboxbndry.Channel("broker")})
-			assert.ErrorIs(t, err, outboxbndry.ErrUnknownChannel)
+			require.ErrorIs(t, err, outboxbndry.ErrUnknownChannel)
 		})
 
 		t.Run("順序キーの無い位置指定を拒否する", func(t *testing.T) {
 			t.Parallel()
 
 			err := validateEmit(EmitInput{Channel: outboxbndry.ChannelHTTP, OrderingSequence: 1})
-			assert.ErrorIs(t, err, ErrInvalidOrdering)
+			require.ErrorIs(t, err, ErrInvalidOrdering)
 		})
 
 		t.Run("位置の無い順序キー指定を拒否する", func(t *testing.T) {
 			t.Parallel()
 
 			err := validateEmit(EmitInput{Channel: outboxbndry.ChannelRealtime, OrderingKey: "thread-1"})
-			assert.ErrorIs(t, err, ErrInvalidOrdering)
+			require.ErrorIs(t, err, ErrInvalidOrdering)
 		})
 	})
 }

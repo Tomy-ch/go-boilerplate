@@ -42,6 +42,18 @@ func newRelayWithMetrics(
 		logging.NewTestLogger(t), observability.NewNoopTracerFactory(t), outboxbndry.ChannelHTTP)
 }
 
+// newRelayForChannel は、担当チャネルを差し替えた RelayUsecase を組み立てます。
+// 既定チャネル固定のヘルパーだけで検証すると、実装が u.channel を参照せず定数へ退行しても
+// mock の期待値と実引数が同じ定数で一致し続けるため、退行が検出できません。
+func newRelayForChannel(
+	t *testing.T, txm tx.Manager, store outboxbndry.Store, pub publisher.Publisher,
+	metrics outbox.Metrics, channel outboxbndry.Channel,
+) outbox.RelayUsecase {
+	t.Helper()
+	return outbox.NewRelay(txm, store, pub, metrics, testkit.NewMockClock(t, time.Time{}),
+		logging.NewTestLogger(t), observability.NewNoopTracerFactory(t), channel)
+}
+
 func newRelay(t *testing.T, txm tx.Manager, store outboxbndry.Store, pub publisher.Publisher) outbox.RelayUsecase {
 	t.Helper()
 	return newRelayWithMetrics(t, txm, store, pub, observability.NewNoopOutboxMetrics(t))
@@ -179,6 +191,23 @@ func Test_relayUsecase_RelayBatch(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, 2, got.Claimed)
 			assert.Equal(t, 1, got.Published)
+		})
+
+		t.Run("realtime チャネルで構築すると claim も lag もそのチャネルで行う", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			store := mock_outbox.NewMockStore(ctrl)
+			pub := mock_publisher.NewMockPublisher(ctrl)
+			metrics := mock_relay.NewMockMetrics(ctrl)
+
+			store.EXPECT().ClaimPending(gomock.Any(), outboxbndry.ChannelRealtime, int32(100)).Return(nil, nil)
+
+			got, err := newRelayForChannel(t, passthroughManager(t, ctrl), store, pub, metrics,
+				outboxbndry.ChannelRealtime).
+				RelayBatch(context.Background(), 100)
+
+			require.NoError(t, err)
+			assert.Equal(t, 0, got.Claimed)
 		})
 
 		t.Run("保存済みヘッダ JSON を復元して publish へ渡す", func(t *testing.T) {

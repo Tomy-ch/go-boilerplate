@@ -172,6 +172,38 @@ func Test_relayUsecase_deliver(t *testing.T) {
 			assert.Equal(t, 1, metrics.deadCount)
 		})
 
+		t.Run("一時失敗の待機は毎回ゼロではない", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			store := mock_outbox.NewMockStore(ctrl)
+			pub := mock_publisher.NewMockPublisher(ctrl)
+			msg := deliverMessage(t)
+
+			// full jitter は [0, d] の一様乱数なので、1 回の呼び出しでは「待機 0」と
+			// 「バックオフの加算そのものが無い」を区別できない。繰り返して 1 度でも
+			// 前進すれば、加算を落とす退行を捕まえられる。
+			const attempts = 32
+			var advanced bool
+
+			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).
+				Return(xerrors.Join(apperror.ErrRetryable, xerrors.New("publish failed"))).Times(attempts)
+			store.EXPECT().MarkFailed(gomock.Any(), msg.ID, gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, _ int64, _ string, nextAttemptAt time.Time) error {
+					if nextAttemptAt.After(deliverNow) {
+						advanced = true
+					}
+					return nil
+				}).Times(attempts)
+
+			u := newDeliverUsecase(t, store, pub, observability.NewNoopOutboxMetrics(t))
+			for range attempts {
+				_, err := u.deliver(context.Background(), msg)
+				require.NoError(t, err)
+			}
+
+			assert.True(t, advanced, "一時失敗は次回試行時刻を前進させる")
+		})
+
 		t.Run("分類の無い失敗は一時失敗として扱い dead にしない", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)

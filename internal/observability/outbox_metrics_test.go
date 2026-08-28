@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/embedded"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
@@ -251,6 +252,52 @@ func TestOutboxMetrics_SetBlockedStreams(t *testing.T) {
 			require.True(t, ok)
 			require.NotEmpty(t, g.DataPoints)
 			assert.Equal(t, int64(0), g.DataPoints[0].Value)
+		})
+	})
+}
+
+// lagSecondsOfChannel は、channel 属性で該当するデータ点の値を返します。
+// 単一系列前提の DataPoints[0] 読みでは、複数チャネルが同時に記録されたときに
+// 系列が混ざる退行（属性を落として 1 系列へ潰す等）を検出できません。
+func lagSecondsOfChannel(t *testing.T, rm metricdata.ResourceMetrics, channel string) int64 {
+	t.Helper()
+
+	g, ok := metricByName(t, rm, "outbox.lag_seconds").Data.(metricdata.Gauge[int64])
+	require.True(t, ok)
+	for _, dp := range g.DataPoints {
+		v, found := dp.Attributes.Value(attribute.Key("channel"))
+		if found && v.AsString() == channel {
+			return dp.Value
+		}
+	}
+	t.Fatalf("channel %s のデータ点が見つかりません", channel)
+	return 0
+}
+
+func TestOutboxMetrics_SetLagSeconds_channelSeries(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("チャネルごとに独立した系列として記録する", func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			reader := sdkmetric.NewManualReader()
+			provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+
+			om, err := observability.NewOutboxMetrics(provider)
+			require.NoError(t, err)
+
+			om.SetLagSeconds(ctx, "http", 42)
+			om.SetLagSeconds(ctx, "realtime", 7)
+
+			var rm metricdata.ResourceMetrics
+			require.NoError(t, reader.Collect(ctx, &rm))
+
+			assert.Equal(t, int64(42), lagSecondsOfChannel(t, rm, "http"))
+			assert.Equal(t, int64(7), lagSecondsOfChannel(t, rm, "realtime"))
 		})
 	})
 }

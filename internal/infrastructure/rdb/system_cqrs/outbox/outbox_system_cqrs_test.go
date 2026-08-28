@@ -15,6 +15,7 @@ import (
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
 	outboxbndry "go-boilerplate/internal/usecase/boundary/outbox"
+	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
@@ -679,19 +680,38 @@ func Test_store_ClaimPending_headOfLine(t *testing.T) {
 			})
 		})
 
-		t.Run("順序キーを持たない行は他ストリームの停止に巻き込まれない", func(t *testing.T) {
+		t.Run("順序キーを持たない行は同一チャネルの停止ストリームにも互いにも塞がれない", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				_, err := s.Insert(ctx, orderedEmitParams("stream-hol-unordered", 1))
+				// 停止したストリームと順序を持たない行を同一チャネルに置く。チャネル違いで
+				// 分けると外側の絞り込みで先に落ちてしまい、順序キーが NULL の行同士が
+				// 互いを先行行と見なさないことを確かめられない。
+				blocked := orderedEmitParams("stream-hol-unordered", 1)
+				blocked.Channel = outboxbndry.ChannelHTTP
+				_, err := s.Insert(ctx, blocked)
 				require.NoError(t, err)
-				unordered, err := s.Insert(ctx, emitParams())
+				next := orderedEmitParams("stream-hol-unordered", 2)
+				next.Channel = outboxbndry.ChannelHTTP
+				_, err = s.Insert(ctx, next)
+				require.NoError(t, err)
+
+				first, err := s.Insert(ctx, emitParams())
+				require.NoError(t, err)
+				second, err := s.Insert(ctx, emitParams())
 				require.NoError(t, err)
 
 				claimed, err := s.ClaimPending(ctx, outboxbndry.ChannelHTTP, 10)
 				require.NoError(t, err)
-				require.Len(t, claimed, 1)
-				assert.Equal(t, unordered, claimed[0].MessageID)
+
+				got := make([]uuid.UUID, 0, len(claimed))
+				for _, m := range claimed {
+					got = append(got, m.MessageID)
+				}
+				// 停止ストリームの先頭 1 件と、順序を持たない 2 件。後続 sequence だけが外れる。
+				require.Len(t, got, 3)
+				assert.Contains(t, got, first)
+				assert.Contains(t, got, second)
 			})
 		})
 	})
