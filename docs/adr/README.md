@@ -125,6 +125,10 @@ can enumerate them. The tag has no reader once setup is done.
 | [0068](0068-job-fresh-fx-app-per-run.md) | Each job launch constructs a fresh fx.App (one-shot lifecycle) | accepted |
 | [0069](0069-job-no-worker-machinery.md) | Jobs deliberately have no broker, circuit breaker, drain, or health machinery | accepted (exclusion) |
 | [0070](0070-job-explicit-registration.md) | Jobs are explicitly registered (no auto-discovery) | accepted |
+| [0071](0071-realtime-delivery-driving-mechanism.md) | Adopt Realtime Delivery as an independent driving mechanism for server-to-client event delivery | accepted |
+| [0072](0072-postgres-state-dynamodb-eventlog.md) | PostgreSQL holds current state; the DynamoDB EventLog is a bounded replay store, not an event-sourced log | accepted |
+| [0073](0073-sns-sqs-instance-fanout.md) | Fan out realtime wakeups to serve instances with SNS to per-instance SQS queues | accepted |
+| [0074](0074-query-ticket-stream-authentication.md) | Authenticate SSE streams with an opaque query ticket bound to subject, destination, scope, and expiry | accepted |
 | [0075](0075-config-driven-observability-gating.md) | Config-driven observability gating | accepted |
 | [0076](0076-vendor-neutral-otlp-export.md) | Vendor-neutral OTLP-only export (delegate backend to the Collector) | accepted |
 | [0077](0077-official-otel-semconv.md) | Use only official OpenTelemetry semantic conventions; do not invent custom semconv or put vendor keys in typed config | accepted (exclusion) |

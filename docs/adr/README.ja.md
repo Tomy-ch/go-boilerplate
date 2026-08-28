@@ -114,6 +114,10 @@ Exclusion ADR（意図的な「X はしない」）は、リポジトリセッ�
 | [0068](0068-job-fresh-fx-app-per-run.ja.md) | ジョブ起動ごとに新しい fx.App を構築する（ワンショットライフサイクル） | accepted |
 | [0069](0069-job-no-worker-machinery.ja.md) | ジョブにはブローカー・サーキットブレーカー・ドレイン・ヘルス機構を意図的に設けない | accepted (exclusion) |
 | [0070](0070-job-explicit-registration.ja.md) | Job は明示的に登録する（自動検出なし） | accepted |
+| [0071](0071-realtime-delivery-driving-mechanism.ja.md) | server→client のイベント配送に、独立した駆動機構 Realtime Delivery を採用する | accepted |
+| [0072](0072-postgres-state-dynamodb-eventlog.ja.md) | 現在状態は PostgreSQL が持ち、DynamoDB EventLog は有限の replay store であって event-sourced log ではない | accepted |
+| [0073](0073-sns-sqs-instance-fanout.ja.md) | realtime の wakeup は SNS から instance ごとの SQS queue へ fan-out する | accepted |
+| [0074](0074-query-ticket-stream-authentication.ja.md) | SSE stream は subject / destination / scope / expiry に bind した opaque な query ticket で認証する | accepted |
 | [0075](0075-config-driven-observability-gating.ja.md) | 設定駆動によるオブザーバビリティゲーティング | accepted |
 | [0076](0076-vendor-neutral-otlp-export.ja.md) | ベンダー中立の OTLP 専用エクスポート（バックエンドは Collector に委譲） | accepted |
 | [0077](0077-official-otel-semconv.ja.md) | 公式 OpenTelemetry セマンティック規約のみを使用し、カスタム semconv の発明や型付き設定へのベンダーキー追加は行わない | accepted (exclusion) |
