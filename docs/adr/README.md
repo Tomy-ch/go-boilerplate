@@ -112,7 +112,7 @@ can enumerate them. The tag has no reader once setup is done.
 | [0055](0055-at-least-once-outbox-poll.md) | At-least-once delivery via polling (transport-level retry disabled) | accepted |
 | [0056](0056-skip-locked-outbox-relay.md) | Single-transaction relay using SELECT FOR UPDATE SKIP LOCKED (safe across instances) | accepted |
 | [0057](0057-message-id-idempotency-propagation.md) | Propagate the outbox message_id as the receiver's Idempotency-Key | accepted |
-| [0058](0058-outbox-dead-after-max-attempts.md) | MaxAttempts = 10, then the message is dead (terminal until manual replay) | accepted |
+| [0058](0058-outbox-dead-on-permanent-error.md) | An outbox row dies on a permanent error; transient failures retry with per-message backoff | accepted |
 | [0059](0059-outbox-retention-gc.md) | 7-day retention GC of published rows (batches of 10,000) | accepted |
 | [0060](0060-publisher-http-profile-isolation.md) | Isolate the publisher's non-standard HTTP profile inside the relay | accepted |
 | [0061](0061-relay-resident-gc-oneshot.md) | The relay is a resident process; GC is a one-shot cron job | accepted |

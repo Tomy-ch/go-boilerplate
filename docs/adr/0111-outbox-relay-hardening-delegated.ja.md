@@ -181,6 +181,6 @@ end-to-end で重複を閉じられるが、出荷済み契約を超えた受信
 [ADR-0055]: 0055-at-least-once-outbox-poll.ja.md
 [ADR-0056]: 0056-skip-locked-outbox-relay.ja.md
 [ADR-0057]: 0057-message-id-idempotency-propagation.ja.md
-[ADR-0058]: 0058-outbox-dead-after-max-attempts.ja.md
+[ADR-0058]: 0058-outbox-dead-on-permanent-error.ja.md
 [ADR-0108]: 0108-no-in-app-rate-limiter.ja.md
 [ADR-0109]: 0109-scheduled-job-concurrency-delegated.ja.md

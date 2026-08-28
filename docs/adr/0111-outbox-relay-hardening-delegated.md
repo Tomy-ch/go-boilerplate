@@ -195,6 +195,6 @@ mechanism.
 [ADR-0055]: 0055-at-least-once-outbox-poll.md
 [ADR-0056]: 0056-skip-locked-outbox-relay.md
 [ADR-0057]: 0057-message-id-idempotency-propagation.md
-[ADR-0058]: 0058-outbox-dead-after-max-attempts.md
+[ADR-0058]: 0058-outbox-dead-on-permanent-error.md
 [ADR-0108]: 0108-no-in-app-rate-limiter.md
 [ADR-0109]: 0109-scheduled-job-concurrency-delegated.md

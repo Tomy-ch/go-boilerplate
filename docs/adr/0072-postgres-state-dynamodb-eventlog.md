@@ -153,5 +153,5 @@ no information in it.
 [ADR-0037]: 0037-uuidv7-identifiers.md
 [ADR-0054]: 0054-transactional-outbox.md
 [ADR-0056]: 0056-skip-locked-outbox-relay.md
-[ADR-0058]: 0058-outbox-dead-after-max-attempts.md
+[ADR-0058]: 0058-outbox-dead-on-permanent-error.md
 [ADR-0071]: 0071-realtime-delivery-driving-mechanism.md

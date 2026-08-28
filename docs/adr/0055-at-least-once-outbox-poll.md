@@ -40,7 +40,7 @@ Transport-level retry is disabled: `MaxAttempts = 1` in `NewDownstreamProfile` (
 - A single delivery failure does not stall the relay loop or block other rows.
 - `attempts` and `last_error` provide direct, unambiguous observability of what failed
   and how many times.
-- Eventual dead-lettering (see [ADR-0058](0058-outbox-dead-after-max-attempts.md)) is
+- Eventual dead-lettering (see [ADR-0058](0058-outbox-dead-on-permanent-error.md)) is
   predictable because `attempts` advances at most once per poll.
 
 ### Negative Consequences
@@ -71,4 +71,4 @@ claimed). Deferred in favour of the simpler poll-loop approach.
 - Transport retry is disabled in `internal/infrastructure/publisher/http_publisher.go`
   (`NewDownstreamProfile`, `MaxAttempts = 1`).
 - Related ADRs: [ADR-0054](0054-transactional-outbox.md), [ADR-0056](0056-skip-locked-outbox-relay.md),
-  [ADR-0058](0058-outbox-dead-after-max-attempts.md).
+  [ADR-0058](0058-outbox-dead-on-permanent-error.md).

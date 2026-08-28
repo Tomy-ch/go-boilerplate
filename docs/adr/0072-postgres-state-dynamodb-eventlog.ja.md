@@ -141,5 +141,5 @@ floor を進めるために全 stream を走査する job は情報を持たな�
 [ADR-0037]: 0037-uuidv7-identifiers.ja.md
 [ADR-0054]: 0054-transactional-outbox.ja.md
 [ADR-0056]: 0056-skip-locked-outbox-relay.ja.md
-[ADR-0058]: 0058-outbox-dead-after-max-attempts.ja.md
+[ADR-0058]: 0058-outbox-dead-on-permanent-error.ja.md
 [ADR-0071]: 0071-realtime-delivery-driving-mechanism.ja.md
