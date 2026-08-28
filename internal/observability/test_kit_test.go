@@ -8,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
@@ -338,6 +340,193 @@ func Test_counterLabelValues(t *testing.T) {
 
 			assert.False(t, ok)
 			assert.Nil(t, got)
+		})
+	})
+}
+
+func TestNewRecordingTracerProvider(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("終了した span を名前と属性ごと保持する", func(t *testing.T) {
+			t.Parallel()
+
+			tp, recorded := NewRecordingTracerProvider(t)
+			_, span := tp.Tracer("test").Start(context.Background(), "probe", trace.WithAttributes(attribute.String("k", "v")))
+			span.End()
+
+			spans := recorded()
+			require.Len(t, spans, 1)
+			assert.Equal(t, "probe", spans[0].Name())
+			assert.Contains(t, spans[0].Attributes(), attribute.String("k", "v"))
+		})
+
+		t.Run("親 span へのリンクを保持する", func(t *testing.T) {
+			t.Parallel()
+
+			tp, recorded := NewRecordingTracerProvider(t)
+			ctx, parent := tp.Tracer("test").Start(context.Background(), "parent")
+			_, child := tp.Tracer("test").Start(ctx, "child")
+			child.End()
+			parent.End()
+
+			spans := recorded()
+			require.Len(t, spans, 2)
+			assert.Equal(t, "child", spans[0].Name())
+			assert.Equal(t, parent.SpanContext().SpanID(), spans[0].Parent().SpanID())
+		})
+
+		t.Run("終了していない span は保持しない", func(t *testing.T) {
+			t.Parallel()
+
+			tp, recorded := NewRecordingTracerProvider(t)
+			_, span := tp.Tracer("test").Start(context.Background(), "open")
+			defer span.End()
+
+			assert.Empty(t, recorded())
+		})
+
+		t.Run("取り出した span の列は複製で、書き換えても保持側に影響しない", func(t *testing.T) {
+			t.Parallel()
+
+			tp, recorded := NewRecordingTracerProvider(t)
+			_, span := tp.Tracer("test").Start(context.Background(), "kept")
+			span.End()
+
+			first := recorded()
+			require.Len(t, first, 1)
+			first[0] = nil
+
+			again := recorded()
+			require.Len(t, again, 1)
+			assert.Equal(t, "kept", again[0].Name())
+		})
+	})
+}
+
+//nolint:paralleltest // otel の global provider を差し替えるため並列化しない
+func TestInstallRecordingTracerProvider(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
+		t.Run("global の provider から得た tracer の span を保持する", func(t *testing.T) {
+			recorded := InstallRecordingTracerProvider(t)
+			_, span := otel.Tracer("test").Start(context.Background(), "global-probe")
+			span.End()
+
+			spans := recorded()
+			require.Len(t, spans, 1)
+			assert.Equal(t, "global-probe", spans[0].Name())
+		})
+
+		t.Run("テスト終了時に global の provider を元へ戻す", func(t *testing.T) {
+			before := otel.GetTracerProvider()
+
+			t.Run("差し替え中は別の provider になる", func(t *testing.T) {
+				InstallRecordingTracerProvider(t)
+				assert.NotSame(t, before, otel.GetTracerProvider())
+			})
+
+			assert.Same(t, before, otel.GetTracerProvider())
+		})
+	})
+}
+
+func Test_spanRecorder_ExportSpans(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("複数回の export を順に累積する", func(t *testing.T) {
+			t.Parallel()
+
+			tp, recorded := NewRecordingTracerProvider(t)
+			tracer := tp.Tracer("test")
+			_, first := tracer.Start(context.Background(), "first")
+			first.End()
+			_, second := tracer.Start(context.Background(), "second")
+			second.End()
+			source := recorded()
+			require.Len(t, source, 2)
+
+			rec := &spanRecorder{}
+			require.NoError(t, rec.ExportSpans(context.Background(), source[:1]))
+			require.NoError(t, rec.ExportSpans(context.Background(), source[1:]))
+
+			require.Len(t, rec.spans, 2)
+			assert.Equal(t, "first", rec.spans[0].Name())
+			assert.Equal(t, "second", rec.spans[1].Name())
+		})
+	})
+}
+
+func Test_spanRecorder_Shutdown(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("停止は常に成功する", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, (&spanRecorder{}).Shutdown(context.Background()))
+		})
+	})
+}
+
+func TestSpanAttributeValues(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("絞り込みに一致した span の全属性値を返す", func(t *testing.T) {
+			t.Parallel()
+
+			tp, recorded := NewRecordingTracerProvider(t)
+			tracer := tp.Tracer("test")
+			_, hit := tracer.Start(context.Background(), "hit",
+				trace.WithAttributes(attribute.String("url.path", "/a"), attribute.String("k", "v")))
+			hit.End()
+			_, miss := tracer.Start(context.Background(), "miss",
+				trace.WithAttributes(attribute.String("url.path", "/b"), attribute.String("k", "w")))
+			miss.End()
+
+			values := SpanAttributeValues(recorded(), "url.path", "/a")
+
+			assert.ElementsMatch(t, []string{"/a", "v"}, values)
+		})
+
+		t.Run("一致する span が無ければ空", func(t *testing.T) {
+			t.Parallel()
+
+			tp, recorded := NewRecordingTracerProvider(t)
+			_, span := tp.Tracer("test").Start(context.Background(), "other")
+			span.End()
+
+			assert.Empty(t, SpanAttributeValues(recorded(), "url.path", "/a"))
+		})
+	})
+}
+
+func Test_hasAttribute(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("keyとvalueの両方が一致するときだけtrue", func(t *testing.T) {
+			t.Parallel()
+
+			tp, recorded := NewRecordingTracerProvider(t)
+			_, span := tp.Tracer("test").Start(context.Background(), "s", trace.WithAttributes(attribute.String("k", "v")))
+			span.End()
+			spans := recorded()
+			require.Len(t, spans, 1)
+
+			assert.True(t, hasAttribute(spans[0], "k", "v"))
+			assert.False(t, hasAttribute(spans[0], "k", "x"))
+			assert.False(t, hasAttribute(spans[0], "other", "v"))
 		})
 	})
 }

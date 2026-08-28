@@ -235,6 +235,7 @@ When adding, document the following in README:
 | `ErrUnsupportedMediaType` | Unsupported Content-Type / media format | 415 Unsupported Media Type |
 | `ErrPayloadTooLarge` | Request payload exceeds the allowed size | 413 Payload Too Large |
 | `ErrTooManyRequests` | Too many requests (request throttling, upstream API throttling propagation, etc.) | 429 Too Many Requests |
+| `ErrGone` | The target is gone for good; re-requesting cannot recover it without re-fetching the canonical state (e.g. resuming from a position outside the retention window) | 410 Gone |
 | `ErrCanceled` | Client cancelled / disconnected the request | 499 Client Closed Request |
 | `ErrInternal` | Unexpected internal error | 500 Internal Server Error |
 | `ErrUnimplemented` | Not implemented / unsupported feature | 501 Not Implemented |

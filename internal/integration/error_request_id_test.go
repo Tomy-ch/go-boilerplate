@@ -7,6 +7,7 @@ import (
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/controller/handler/health"
 	"go-boilerplate/internal/controller/httpstack/cookie"
+	"go-boilerplate/internal/controller/httpstack/redaction"
 	"go-boilerplate/internal/di/server/extension/instrumentation"
 	"go-boilerplate/internal/di/server/extension/security"
 	"go-boilerplate/internal/logging"
@@ -29,7 +30,7 @@ func newRequestIDStackServer(t *testing.T, logger logging.Logger) *Server {
 
 	e := echo.New()
 	UseAppErrorHandler(t, e,
-		instrumentation.LoggingMiddleware(logger, logging.NewTestLogFieldBuilder(t)).Middleware,
+		instrumentation.LoggingMiddleware(logger, logging.NewTestLogFieldBuilder(t), redaction.Redactor{}).Middleware,
 		security.CookieMiddleware(secCookie).Middleware,
 	)
 

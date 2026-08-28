@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"go-boilerplate/internal/controller/httpstack/ops"
+	"go-boilerplate/internal/controller/httpstack/redaction"
 	"go-boilerplate/internal/controller/httpstack/requestid"
 	"go-boilerplate/internal/controller/server"
 	"go-boilerplate/internal/logging"
@@ -16,12 +17,14 @@ type requestLog struct {
 	c   *echo.Context
 	res *echo.Response
 	lf  logging.LogFieldBuilder
+	red redaction.Redactor
 }
 
 // Middleware は、Echoフレームワークのミドルウェアで、リクエストのログを出力します。
 // ただし /health, /metrics 等の運用系エンドポイントはログ出力をスキップします。
 // レスポンスを取り出せない場合はログを出さず素通しします。
-func Middleware(logger logging.Logger, lf logging.LogFieldBuilder) echo.MiddlewareFunc {
+// URI と query は red を通してから出すため、query で運ばれる資格情報はログに残りません。
+func Middleware(logger logging.Logger, lf logging.LogFieldBuilder, red redaction.Redactor) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c *echo.Context) error {
 			if ops.IsOpsPath(c.Request().URL.Path) {
@@ -40,6 +43,7 @@ func Middleware(logger logging.Logger, lf logging.LogFieldBuilder) echo.Middlewa
 				c:   c,
 				res: res,
 				lf:  lf,
+				red: red,
 			}
 
 			reqFields := l.buildRequestLogFields(start)
@@ -70,7 +74,7 @@ func (l requestLog) buildRequestLogFields(start time.Time) []*logging.Field {
 		EventType:     logging.EventTypeStart,
 		EventAt:       start,
 		Method:        req.Method,
-		URI:           req.RequestURI,
+		URI:           l.red.URI(req.RequestURI),
 		Path:          req.URL.Path,
 		RemoteIP:      req.RemoteAddr,
 		Host:          req.Host,
@@ -80,7 +84,7 @@ func (l requestLog) buildRequestLogFields(start time.Time) []*logging.Field {
 		ContentType:   req.Header.Get(echo.HeaderContentType),
 		ContentLength: req.ContentLength,
 		PathParams:    server.ExtractPathParams(l.c),
-		QueryParams:   server.ExtractQueryParams(l.c),
+		QueryParams:   l.red.QueryParams(server.ExtractQueryParams(l.c)),
 	}
 
 	return l.lf.BuildHTTPRequestFields(reqIn)
@@ -94,7 +98,7 @@ func (l requestLog) buildResponseLogFields(eventAt time.Time, latency time.Durat
 		EventAt:   eventAt,
 		Method:    req.Method,
 		Path:      req.URL.Path,
-		URI:       req.RequestURI,
+		URI:       l.red.URI(req.RequestURI),
 		Status:    l.res.Status,
 		Latency:   latency,
 		RequestID: requestid.GetRequestIDFromResponse(l.c),

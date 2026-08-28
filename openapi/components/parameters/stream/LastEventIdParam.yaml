@@ -1,0 +1,6 @@
+name: Last-Event-ID
+in: header
+required: false
+description: ブラウザの EventSource が自動再接続時に付ける、最後に受け取った business event の `id`（sequence）。`after` より優先されます。
+schema:
+  $ref: '../../schemas/StreamCursor.yaml'

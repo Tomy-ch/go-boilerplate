@@ -42,7 +42,7 @@ var envValueFiles = []string{envLocalFile, "env/.env.ci", "env/.env.dast", "env/
 var targetStatusCodesPolicy = []statusCodeTier{
 	{files: []string{"env/.env", "env/.env.ci", "env/.env.dast"}},
 	{files: []string{"env/.env.dev", "env/.env.stg"}, excluded: []string{"429"}},
-	{files: []string{"env/.env.prd"}, excluded: []string{"403", "404", "405"}},
+	{files: []string{"env/.env.prd"}, excluded: []string{"403", "404", "405", "410"}},
 }
 
 // statusCodeTier は、OBS_TARGET_STATUS_CODES の環境別ポリシーにおける 1 段を表します。

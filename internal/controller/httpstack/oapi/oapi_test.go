@@ -11,6 +11,7 @@ import (
 	"go-boilerplate/internal/controller/httpstack/oapi/auth"
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
 	mock_auth "go-boilerplate/internal/usecase/boundary/auth/mock"
+	rt "go-boilerplate/internal/usecase/boundary/realtime"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -88,7 +89,9 @@ func newTestAuthFunc(t *testing.T, stub authnStub) openapi3filter.Authentication
 		resolver.EXPECT().Resolve(gomock.Any(), gomock.Any()).Return(authn, nil).AnyTimes()
 	}
 
-	return auth.NewAuthenticator(authenticator, resolver)
+	fn, err := auth.NewAuthenticator(authenticator, resolver, nil)
+	require.NoError(t, err)
+	return fn
 }
 
 // serveTestSpec は、合成 spec のミドルウェアへ 1 リクエスト通し、ステータスとハンドラ到達の有無を返す。
@@ -159,6 +162,37 @@ func TestMiddleware(t *testing.T) {
 			got, ok := ctxhelper.GetAuthn(c.Request().Context())
 			assert.True(t, ok)
 			assert.Equal(t, a.Subject(), got.Subject())
+		})
+
+		t.Run("StreamGrantスロットが仕込まれている", func(t *testing.T) {
+			t.Parallel()
+
+			spec, err := openapi3.NewLoader().LoadFromData([]byte(testSpec))
+			require.NoError(t, err)
+			mw := Middleware(spec, nil, nil)
+
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/public", nil)
+			rec := httptest.NewRecorder()
+			e := echo.New()
+			c := e.NewContext(req, rec)
+
+			grant := rt.StreamGrant{Subject: "s", Destination: "d"}
+			reached := false
+			handler := mw(func(c *echo.Context) error {
+				// 後段が見る request の context にスロットがあり、仕込まれた直後は未設定で、書き込めること。
+				reached = true
+				_, ok := ctxhelper.GetStreamGrant(c.Request().Context())
+				assert.False(t, ok)
+				assert.True(t, ctxhelper.SetStreamGrant(c.Request().Context(), grant))
+				return nil
+			})
+
+			require.NoError(t, handler(c))
+			require.True(t, reached)
+
+			got, ok := ctxhelper.GetStreamGrant(c.Request().Context())
+			assert.True(t, ok)
+			assert.Equal(t, grant, got)
 		})
 
 		t.Run("完全公開のoperationは認証を要求しない", func(t *testing.T) {

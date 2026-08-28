@@ -29,14 +29,13 @@ import (
 const callerSkipCount = 1
 
 // accessTokenType は、access token に期待する RFC 9068 の typ ヘッダ値です。
-// mock 認証サーバーは access token に付与し ID Token には付与しないため、typ 不一致で ID Token 誤用を拒否します。
+// 根拠と ID Token 誤用拒否の扱いは docs/design/auth.md を参照してください。
 const accessTokenType = "at+jwt"
 
 // errNoAuthenticatorForEnv は、現在の環境に対応する Authenticator が無く配線に失敗した場合のエラーです。
 var errNoAuthenticatorForEnv = xerrors.New("no authenticator configured for environment")
 
 // authenticatorParams は、provideAuthenticator の依存を集約する fx パラメータです。
-// HTTPClient は JWKS 取得に用いる outbound HTTP substrate で、infra 層（InfrastructureModule）が全プロファイルで提供する常設依存です。
 type authenticatorParams struct {
 	fx.In
 
@@ -61,14 +60,13 @@ func AuthnModule() fx.Option {
 			// sample-api:replace-with
 			// = identity.New,
 			// sample-api:replace-end
-			auth.NewAuthenticator,
+			fx.Annotate(auth.NewAuthenticator, fx.ParamTags("", "", `group:"`+auth.SchemeGroup+`"`)),
 		),
 	)
 }
 
 // provideAuthenticator は、環境に対応した Authenticator を選んで返します。
-// 対応する case が無い環境（staging / production 等）は誤った Authenticator を配線しないよう
-// default で起動エラーにします（fail-closed）。
+// 対応する case が無い環境は誤った Authenticator を配線しないよう起動エラーにします（fail-closed）。
 func provideAuthenticator(p authenticatorParams) (authbd.Authenticator, error) {
 	logger := p.Logger.Named("core.authn").CallerSkip(callerSkipCount)
 
@@ -95,7 +93,7 @@ func provideAuthenticator(p authenticatorParams) (authbd.Authenticator, error) {
 }
 
 // allowInsecureJWKSURL は、指定環境で JWKS URL に非 https を許すかを返します。
-// local と dast だけが疑似 provider（http）へ接続するため許容され、それ以外の環境では https を強制します。
+// 疑似 provider（http）へ繋ぐ環境だけが対象で、それ以外は https を強制します。
 func allowInsecureJWKSURL(env string) bool {
 	switch env {
 	case config.EnvLocal, config.EnvDast:

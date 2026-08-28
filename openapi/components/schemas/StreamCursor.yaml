@@ -1,0 +1,7 @@
+type: string
+description: |
+  stream 内の位置（stream-local な単調増加 sequence）。JavaScript の数値精度に依存しないよう 10 進文字列で表します。
+  business event の SSE `id` と同じ値で、`0` は stream の先頭を意味します。
+pattern: '^(0|[1-9][0-9]{0,18})$'
+maxLength: 19
+example: "1001"

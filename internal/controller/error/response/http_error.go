@@ -28,6 +28,8 @@ const (
 	codePayloadTooLarge = "PAYLOAD_TOO_LARGE"
 	// codeTooManyRequests は、リクエストが多すぎる場合に使用されるエラーコードです。
 	codeTooManyRequests = "TOO_MANY_REQUESTS"
+	// codeGone は、対象が既に失われ取り直しが必要な場合に使用されるエラーコードです。
+	codeGone = "GONE"
 	// codeClientClosedRequest は、クライアントがリクエストをキャンセル/切断した場合に使用されるエラーコードです。
 	codeClientClosedRequest = "CLIENT_CLOSED_REQUEST"
 	// codeInternalError は、サーバー内部で予期しないエラーが発生した場合に使用されるエラーコードです。
@@ -62,6 +64,8 @@ const (
 	errorMessagePayloadTooLarge = "ファイルサイズが大きすぎます。上限を超えないファイルで再度お試しください。"
 	// errorMessageTooManyRequests は、リクエストが多すぎる場合に使用されるエラーメッセージです。
 	errorMessageTooManyRequests = "リクエストが多すぎます。しばらくしてから再度お試しください。"
+	// errorMessageGone は、対象が既に失われ取り直しが必要な場合のエラーメッセージです。
+	errorMessageGone = "この情報は利用できなくなりました。最新の状態を取得し直してください。"
 	// errorMessageClientClosedRequest は、クライアントがリクエストをキャンセル/切断した場合に使用されるエラーメッセージです。
 	errorMessageClientClosedRequest = "リクエストがキャンセルされました。"
 	// errorMessageInternalError は、サーバー内部で予期しないエラーが発生した場合に使用されるエラーメッセージです。
@@ -103,6 +107,11 @@ var errorMeta = map[int]httpErrorMeta{
 		Status:  http.StatusConflict,
 		Code:    codeResourceConflict,
 		Message: errorMessageResourceConflict,
+	},
+	http.StatusGone: {
+		Status:  http.StatusGone,
+		Code:    codeGone,
+		Message: errorMessageGone,
 	},
 	http.StatusUnprocessableEntity: {
 		Status:  http.StatusUnprocessableEntity,
@@ -165,31 +174,33 @@ func lookupErrorMetaByHTTPStatus(status int) httpErrorMeta {
 // 既知のエラー型に一致しない場合は 500 Internal Server Error のメタを返します。
 func lookupErrorMetaByAppError(err error) httpErrorMeta {
 	switch {
-	case xerrors.Is(err, apperror.ErrInvalidArgument): // 400
+	case xerrors.Is(err, apperror.ErrInvalidArgument):
 		return lookupErrorMetaByHTTPStatus(http.StatusBadRequest)
-	case xerrors.Is(err, apperror.ErrValidation): // 422
+	case xerrors.Is(err, apperror.ErrValidation):
 		return lookupErrorMetaByHTTPStatus(http.StatusUnprocessableEntity)
-	case xerrors.Is(err, apperror.ErrUnsupportedMediaType): // 415
+	case xerrors.Is(err, apperror.ErrUnsupportedMediaType):
 		return lookupErrorMetaByHTTPStatus(http.StatusUnsupportedMediaType)
-	case xerrors.Is(err, apperror.ErrPayloadTooLarge): // 413
+	case xerrors.Is(err, apperror.ErrPayloadTooLarge):
 		return lookupErrorMetaByHTTPStatus(http.StatusRequestEntityTooLarge)
-	case xerrors.Is(err, apperror.ErrUnauthenticated): // 401
+	case xerrors.Is(err, apperror.ErrUnauthenticated):
 		return lookupErrorMetaByHTTPStatus(http.StatusUnauthorized)
-	case xerrors.Is(err, apperror.ErrPermissionDenied): // 403
+	case xerrors.Is(err, apperror.ErrPermissionDenied):
 		return lookupErrorMetaByHTTPStatus(http.StatusForbidden)
-	case xerrors.Is(err, apperror.ErrNotFound): // 404
+	case xerrors.Is(err, apperror.ErrNotFound):
 		return lookupErrorMetaByHTTPStatus(http.StatusNotFound)
-	case xerrors.Is(err, apperror.ErrConflict): // 409
+	case xerrors.Is(err, apperror.ErrConflict):
 		return lookupErrorMetaByHTTPStatus(http.StatusConflict)
-	case xerrors.Is(err, apperror.ErrCanceled): // 499
+	case xerrors.Is(err, apperror.ErrGone):
+		return lookupErrorMetaByHTTPStatus(http.StatusGone)
+	case xerrors.Is(err, apperror.ErrCanceled):
 		return lookupErrorMetaByHTTPStatus(statusClientClosedRequest)
-	case xerrors.Is(err, apperror.ErrUnavailable): // 503
+	case xerrors.Is(err, apperror.ErrUnavailable):
 		return lookupErrorMetaByHTTPStatus(http.StatusServiceUnavailable)
-	case xerrors.Is(err, apperror.ErrUnimplemented): // 501
+	case xerrors.Is(err, apperror.ErrUnimplemented):
 		return lookupErrorMetaByHTTPStatus(http.StatusNotImplemented)
-	case xerrors.Is(err, apperror.ErrTooManyRequests): // 429
+	case xerrors.Is(err, apperror.ErrTooManyRequests):
 		return lookupErrorMetaByHTTPStatus(http.StatusTooManyRequests)
-	case xerrors.Is(err, apperror.ErrInternal): // 500
+	case xerrors.Is(err, apperror.ErrInternal):
 		return lookupErrorMetaByHTTPStatus(http.StatusInternalServerError)
 	default:
 		return lookupErrorMetaByHTTPStatus(http.StatusInternalServerError)

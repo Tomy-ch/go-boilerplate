@@ -8,6 +8,10 @@ on:
       - '.makefiles/openapi/**'
       - '.github/workflows/oapi-lint.yaml'
       - 'mise.toml'
+      - 'scripts/openapi-client-check/**'
+      - 'scripts/package.json'
+      - 'scripts/pnpm-lock.yaml'
+      - 'scripts/pnpm-workspace.yaml'
   workflow_dispatch:
 
 concurrency:
@@ -72,3 +76,66 @@ jobs:
 
       - name: Run redocly lint
         run: make lint-oapi-ci
+
+  # The frontend generator contract check: a consumer's generator must be able to type the SSE
+  # contract components — a break redocly and Spectral cannot see. See README.md § Workflow List.
+  openapi-client:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup mise and required tools
+        uses: ./.github/actions/setup-mise
+        with:
+          tools: node npm:pnpm npm:@redocly/cli
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install script dependencies
+        run: pnpm install --dir scripts --frozen-lockfile
+
+      - name: Bundle the spec
+        run: make gen-bundle-oapi-ci
+
+      - name: Run the frontend generator contract check
+        run: make openapi-client-check-ci

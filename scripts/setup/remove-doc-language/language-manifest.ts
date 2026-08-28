@@ -383,7 +383,7 @@ export const DOC_REPLACEMENTS: readonly DocReplacement[] = [
     ["grep -ril 'boilerplate' README.md README.ja.md", "grep -ril 'boilerplate' README.md"],
   ]),
   ...forFile(".gitleaksignore", [
-    ["env/README.ja.md:generic-api-key:242\n"],
+    ["env/README.ja.md:generic-api-key:253\n"],
     ["env/README.ja.md:generic-api-key:217\n"],
   ]),
   // gitleaks のフィンガープリントは行番号を含むので、畳んで行が動けば無視が外れて検出が復活する。
@@ -391,7 +391,7 @@ export const DOC_REPLACEMENTS: readonly DocReplacement[] = [
   ...forFile(
     ".gitleaksignore",
     [
-      ["env/README.md:generic-api-key:244", "env/README.md:generic-api-key:243"],
+      ["env/README.md:generic-api-key:255", "env/README.md:generic-api-key:254"],
       ["env/README.md:generic-api-key:219", "env/README.md:generic-api-key:218"],
     ],
     "en",
@@ -399,7 +399,7 @@ export const DOC_REPLACEMENTS: readonly DocReplacement[] = [
   ...forFile(
     ".gitleaksignore",
     [
-      ["env/README.md:generic-api-key:244", "env/README.md:generic-api-key:241"],
+      ["env/README.md:generic-api-key:255", "env/README.md:generic-api-key:252"],
       ["env/README.md:generic-api-key:219", "env/README.md:generic-api-key:216"],
     ],
     "ja",
@@ -539,8 +539,7 @@ export const ALLOWED_MENTIONS: readonly string[] = [
  * 手順のように、対訳を含む節を別の言い回しへ差し替える必要があるもの——はここではなく、
  * 本文側の `doc-pair:replace-begin` / `replace-with` / `replace-end` が持ちます。
  *
- * 宣言を最小に保つのは、これが完全一致だからです。本文が 1 文字動けば当たらなくなり、
- * そのとき撤去は黙って素通りせず止まります（それが宣言を完全一致にしている理由でもあります）。
+ * 宣言は最小に保ってください。完全一致がなぜ fail-closed になるかは DOC_REPLACEMENTS の @remarks。
  */
 export const DECLARED_LINES: readonly string[] = [
   "| skill | `SKILL.md` | `SKILL.ja.md` |",

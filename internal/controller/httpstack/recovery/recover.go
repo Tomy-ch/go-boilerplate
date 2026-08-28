@@ -6,6 +6,7 @@ import (
 
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/controller/ctxhelper"
+	"go-boilerplate/internal/controller/httpstack/redaction"
 	"go-boilerplate/internal/controller/server"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/xerrors"
@@ -26,9 +27,11 @@ const (
 // [middleware.RecoverWithConfig] は復帰した panic を [middleware.PanicStackError] へ包んで
 // 戻り値のエラーとして返すため、その外側でスタック付きのログを出し、
 // エラーハンドラへは包む前のエラーを渡します。
-func Middleware(z logging.Logger, lf logging.LogFieldBuilder, appCfg *config.ApplicationConfig) echo.MiddlewareFunc {
+func Middleware(
+	z logging.Logger, lf logging.LogFieldBuilder, appCfg *config.ApplicationConfig, red redaction.Redactor,
+) echo.MiddlewareFunc {
 	recoverMW := middleware.RecoverWithConfig(newRecoverConfig(z, appCfg))
-	logPanic := newPanicLogFunc(z, lf)
+	logPanic := newPanicLogFunc(z, lf, red)
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		recovered := recoverMW(next)
@@ -63,9 +66,11 @@ func newRecoverConfig(logger logging.Logger, appCfg *config.ApplicationConfig) m
 }
 
 // newPanicLogFunc は、復帰したパニックのログ出力関数を生成します。
-func newPanicLogFunc(logger logging.Logger, lf logging.LogFieldBuilder) func(c *echo.Context, err error, stack []byte) {
+func newPanicLogFunc(
+	logger logging.Logger, lf logging.LogFieldBuilder, red redaction.Redactor,
+) func(c *echo.Context, err error, stack []byte) {
 	return func(c *echo.Context, err error, stack []byte) {
-		reqIn := server.BuildHTTPRequestLogInput(c, logging.EventTypePanic)
+		reqIn := server.BuildHTTPRequestLogInput(c, logging.EventTypePanic, red)
 		recoverFields := []*logging.Field{
 			logging.String(logging.InternalErrorKey, err.Error()),
 			logging.Strings(logging.InternalStackTraceKey, logging.SplitStackLines(string(stack))),

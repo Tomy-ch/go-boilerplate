@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/httpstack/redaction"
 	"go-boilerplate/internal/logging"
 
 	"github.com/stretchr/testify/assert"
@@ -17,7 +18,7 @@ func TestRecoveryMiddleware(t *testing.T) {
 	lf := logging.NewTestLogFieldBuilder(t)
 	logger := logging.NewTestLogger(t)
 
-	mw := RecoveryMiddleware(logger, lf, appCfg)
+	mw := RecoveryMiddleware(logger, lf, appCfg, redaction.Redactor{})
 
 	assert.Equal(t, recoveryPriority, mw.Middleware.Priority)
 	assert.NotNil(t, mw.Middleware.Middleware)

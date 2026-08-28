@@ -47,10 +47,11 @@ presents it as a query parameter when opening the stream.
   the HTTP stack, not left to each handler.
 - **Revocation inside this service is immediate.** When this service withdraws access — a
   membership soft-delete, which the identity resolver already enforces per request for REST
-  ([ADR-0021]), or a feature revoking a subject's access to a destination — the feature calls a
-  revocation seam in `boundary/realtime`. The seam invalidates every ticket held by that subject
-  for that destination and notifies every serve instance through the existing fan-out
-  ([ADR-0073]); each instance closes the matching connections with a `STOP` control event. The
+  ([ADR-0021]), or a feature revoking a subject's access to a destination — the feature calls the
+  revocation seam (`usecase/realtime.AccessRevoker`, beside the ticket-issuing seam a feature already
+  uses). The seam invalidates every ticket held by that subject for that destination first, then
+  notifies every serve instance through the existing fan-out ([ADR-0073]) via the
+  `boundary/realtime.RevocationNotifier` that infrastructure implements; each instance closes the matching connections with a `STOP` control event. The
   connection registry is indexed by subject for this purpose. Because the ticket is invalidated
   too, a client that ignores `STOP` cannot reconnect with it.
 - **Revocation at the identity provider is not observed.** An account deactivated at the IdP

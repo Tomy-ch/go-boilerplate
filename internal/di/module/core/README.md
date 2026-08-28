@@ -13,6 +13,7 @@ Each module returns an `fx.Option` that registers the corresponding component in
 |`SecurityCookieModule()`|`security_cookie.go`|Cookie security attribute configuration|
 |`SkipperModule()`|`skipper.go`|Skip OpenAPI validation for ops endpoints|
 |`ValidatorModule()`|`validator.go`|OpenAPI schema validator|
+|`RedactionModule()`|`redaction.go`|Log redactor for query credentials, derived from the OpenAPI security schemes|
 
 ## Design Policy
 
@@ -42,7 +43,7 @@ The second tier is available **only because no module here needs real infrastruc
 the criterion, not the directory: a module whose closure would require a live database or network
 connection belongs in the parent, where `fx.ValidateApp` alone is the strategy.
 
-Four of the five modules are thin wrappers over a constructor from `internal/controller/httpstack` and
+Five of the six modules are thin wrappers over a constructor from `internal/controller/httpstack` and
 friends. `AuthnModule` is the exception: `provideAuthenticator` branches per environment and takes an
 `httpclient.Client`. Provider bodies carrying their own logic (`provideAuthenticator` /
 `provideJWKSAuthenticator`) are unit-tested directly, per the DI layer baseline in

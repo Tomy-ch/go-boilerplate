@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/httpstack/redaction"
 	"go-boilerplate/internal/logging"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -31,7 +32,7 @@ func Test_provideErrorHandlerServeConfig(t *testing.T) {
 	obsCfg := config.NewObservabilityConfig(config.MockConfigForTest(t))
 	lf := logging.NewTestLogFieldBuilder(t)
 
-	out := provideErrorHandlerServeConfig(stubDetailPolicy{}, stubAllowPolicy{}, log, lf, obsCfg)
+	out := provideErrorHandlerServeConfig(stubDetailPolicy{}, stubAllowPolicy{}, redaction.Redactor{}, log, lf, obsCfg)
 	require.NotNil(t, out.SrvCfg.Config)
 	assert.Equal(t, "errorhandler", out.SrvCfg.Name)
 

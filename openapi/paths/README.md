@@ -43,6 +43,8 @@ Business API endpoints following a **URL versioning strategy**.
 
 > `v1/` contents are **sample implementations**. Replace with your own resources when building a service.
 
+One path under `v1/` is not a sample: `/v1/streams/{destination}` (`v1/streams/destination.yaml`) is the generic SSE endpoint of the Realtime Delivery mechanism. It survives sample removal, is authenticated by the `StreamTicket` query scheme instead of Bearer, and is the only operation generated without `strict-server` — its handler lives in `internal/controller/stream/`, beside `handler/`, not under it (see that package README and `docs/design/realtime-delivery.md` §3.1).
+
 #### Versioning Strategy
 
 This project recommends **URL path versioning** (`/v1/`, `/v2/`, etc.):

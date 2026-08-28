@@ -94,7 +94,7 @@ parameters:
 |要素|規則|例|
 |---|---|---|
 <!-- sample-api:replace-begin -->
-|ディレクトリ|小文字・関心事別|`pagination/`, `search/`, `user/`|
+|ディレクトリ|小文字・関心事別|`pagination/`, `search/`, `stream/`, `user/`|
 |ファイル名|PascalCase + `Param`|`PageParam.yaml`, `UserIdParam.yaml`|
 <!-- sample-api:replace-with -->
 <!-- = |ディレクトリ|小文字・関心事別|`pagination/`, `<リソース>/`| -->

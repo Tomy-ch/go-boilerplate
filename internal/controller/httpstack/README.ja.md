@@ -23,6 +23,7 @@ Echo サーバ起動時に登録する **HTTP 周りの共通ミドルウェア�
 |`requestid`|`Middleware`|X-Request-ID ヘッダの自動生成|
 |`logging`|`Middleware`|HTTP リクエスト / レスポンスの構造化ログ|
 |`recovery`|`Middleware`|パニックのキャッチとログ出力|
+|`redaction`|`Redactor`|ログ出力前に URI / query から資格情報（spec 由来の名前）を除去|
 |`cors`|`Middleware`|CORS 設定|
 |`security`|`Middleware`|セキュリティヘッダ（HSTS, X-Frame-Options 等）|
 |`cookie`|`Middleware`|Set-Cookie ヘッダのセキュリティ属性強制|
@@ -105,7 +106,7 @@ func ConfigureHTTP(e *echo.Echo, cfg *config.ApplicationConfig, logger logging.L
 - **アダプタのスロットに入る関数**（`oapi/auth`）— Echo ではなくアダプタが要求するシグネチャ（`openapi3filter.AuthenticationFunc`）で駆動する。結果は戻り値ではなくリクエストコンテキストへの副作用として現れることが多いため、書き込まれた値を検証する。拒否経路では「エラーが返った」ではなくエラーの同一性を検証する。
 - **spec プロバイダ**（`oapi/validator`）— 返る `*openapi3.T` そのものが検証対象であり、テストは spec に対する契約になる（例: 公開許可リスト外の全 operation が認証必須の `security` を宣言している）。production 側に対応関数を持たないのは設計どおり。
 
-`errorhandler` は `e.HTTPErrorHandler` を差し替えるもので観点がパッケージ固有になるため、自前の *テスト戦略* 節を持つ — [`errorhandler/README.ja.md`](errorhandler/README.ja.md) を参照。
+`errorhandler` は `e.HTTPErrorHandler` を差し替えるもので観点がパッケージ固有になるため、自前の *テスト戦略* 節を持つ — [`errorhandler/README.ja.md`](errorhandler/README.ja.md) を参照。 `redaction` は 3 つの形のどれにも当たらない — Echo にも oapi-codegen のスロットにも入らない純粋な値変換 — ため、同じく自分の節を持つ: [`redaction/README.ja.md`](redaction/README.ja.md)。
 
 ### 全ミドルウェア共通で押さえる観点
 

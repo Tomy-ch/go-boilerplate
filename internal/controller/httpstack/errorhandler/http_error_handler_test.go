@@ -13,6 +13,7 @@ import (
 	"go-boilerplate/internal/controller/error/response"
 	"go-boilerplate/internal/controller/error/response/gen"
 	"go-boilerplate/internal/controller/handler/testkit/testspan"
+	"go-boilerplate/internal/controller/httpstack/redaction"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/xerrors"
 
@@ -61,7 +62,7 @@ func TestNew(t *testing.T) {
 			obsCfg := config.NewObservabilityConfig(config.MockConfigForTest(t))
 			lf := logging.NewTestLogFieldBuilder(t)
 
-			New(e, Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}}, z, lf, obsCfg)
+			New(e, NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{}, redaction.Redactor{}), z, lf, obsCfg)
 			require.NotNil(t, e.HTTPErrorHandler)
 
 			// echo 既定ハンドラは apperror を解釈しないため、ErrNotFound を 404 へ写像することで
@@ -87,7 +88,7 @@ func TestNewHTTPErrorHandler(t *testing.T) {
 			z := logging.NewTestLogger(t)
 			obsCfg := config.NewObservabilityConfig(config.MockConfigForTest(t))
 			lf := logging.NewTestLogFieldBuilder(t)
-			handler := NewHTTPErrorHandler(Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}}, z, lf, obsCfg)
+			handler := NewHTTPErrorHandler(NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{}, redaction.Redactor{}), z, lf, obsCfg)
 
 			e := echo.New()
 			ctx := context.Background()
@@ -163,6 +164,24 @@ func Test_writeErrorResponse(t *testing.T) {
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
+
+		t.Run("ステータスによらずCache-Controlにno-storeを付ける", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/v1/streams/s?ticket=raw", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			he := &response.HTTPErrorResponse{
+				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{Code: "GONE", Message: "m", RequestId: "rid"},
+				HTTPStatus:               http.StatusGone,
+			}
+
+			require.NoError(t, writeErrorResponse(c, he, true))
+
+			assert.Equal(t, http.StatusGone, rec.Code)
+			assert.Equal(t, "no-store", rec.Header().Get(echo.HeaderCacheControl))
+		})
 
 		t.Run("HTTPErrorResponseがステータスとJSONボディとして書き出される", func(t *testing.T) {
 			t.Parallel()
@@ -271,10 +290,37 @@ func Test_handleHTTPError(t *testing.T) {
 			c, end := testspan.StartTestSpanForEcho(t, c)
 			defer end()
 
-			handleHTTPError(c, Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}}, logger, lf, obsCfg, xerrors.New("boom"))
+			handleHTTPError(
+				c, NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{}, redaction.Redactor{}), logger, lf, obsCfg, xerrors.New("boom"),
+			)
 
 			assert.Equal(t, http.StatusInternalServerError, rec.Code)
 			assert.Equal(t, 1, observed.FilterMessage("errorhandler.server_error").Len())
+		})
+
+		t.Run("Policiesのredactがエラーログに届きqueryの資格情報が秘匿される", func(t *testing.T) {
+			t.Parallel()
+
+			logger, observed := logging.NewObservedTestLogger(t)
+
+			e := echo.New()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/v1/streams/s?ticket=raw-secret", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			c, end := testspan.StartTestSpanForEcho(t, c)
+			defer end()
+
+			handleHTTPError(
+				c, NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{}, redaction.New([]string{"ticket"})),
+				logger, lf, obsCfg, xerrors.New("boom"),
+			)
+
+			entries := observed.FilterMessage("errorhandler.server_error").All()
+			require.Len(t, entries, 1)
+			raw, err := json.Marshal(entries[0].ContextMap())
+			require.NoError(t, err)
+			assert.NotContains(t, string(raw), "raw-secret")
+			assert.Equal(t, "/v1/streams/s?ticket="+redaction.RedactedValue, entries[0].ContextMap()[logging.URIKey])
 		})
 
 		t.Run("405はAllowPolicyが解決した許可メソッドをAllowヘッダーとして返す", func(t *testing.T) {
@@ -291,7 +337,7 @@ func Test_handleHTTPError(t *testing.T) {
 
 			handleHTTPError(
 				c,
-				Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{allow: "OPTIONS, GET"}},
+				NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{allow: "OPTIONS, GET"}, redaction.Redactor{}),
 				logger,
 				lf,
 				obsCfg,
@@ -317,7 +363,7 @@ func Test_handleHTTPError(t *testing.T) {
 
 			handleHTTPError(
 				c,
-				Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{allow: "OPTIONS, GET"}},
+				NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{allow: "OPTIONS, GET"}, redaction.Redactor{}),
 				logger,
 				lf,
 				obsCfg,
@@ -344,7 +390,7 @@ func Test_handleHTTPError(t *testing.T) {
 
 			handleHTTPError(
 				c,
-				Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{allow: "OPTIONS, GET"}},
+				NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{allow: "OPTIONS, GET"}, redaction.Redactor{}),
 				logger,
 				lf,
 				obsCfg,
@@ -368,7 +414,7 @@ func Test_handleHTTPError(t *testing.T) {
 
 			handleHTTPError(
 				c,
-				Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{allow: "OPTIONS, GET"}},
+				NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{allow: "OPTIONS, GET"}, redaction.Redactor{}),
 				logger,
 				lf,
 				obsCfg,
@@ -392,7 +438,7 @@ func Test_handleHTTPError(t *testing.T) {
 			defer end()
 
 			metaErr := apperror.WithDetails(xerrors.Wrap(apperror.ErrValidation, "invalid"), "firstName")
-			handleHTTPError(c, Policies{Detail: stubDetailPolicy{allow: false}, Allow: stubAllowPolicy{}}, logger, lf, obsCfg, metaErr)
+			handleHTTPError(c, NewPolicies(stubDetailPolicy{allow: false}, stubAllowPolicy{}, redaction.Redactor{}), logger, lf, obsCfg, metaErr)
 
 			assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 			var got map[string]any
@@ -418,7 +464,7 @@ func Test_handleHTTPError(t *testing.T) {
 			defer end()
 
 			metaErr := apperror.WithDetails(xerrors.Wrap(apperror.ErrValidation, "invalid"), "firstName")
-			handleHTTPError(c, Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}}, logger, lf, obsCfg, metaErr)
+			handleHTTPError(c, NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{}, redaction.Redactor{}), logger, lf, obsCfg, metaErr)
 
 			assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 			var got map[string]any
@@ -440,8 +486,12 @@ func Test_handleHTTPError(t *testing.T) {
 			defer end()
 
 			// 2 回目は ctxhelper.GetErrorHandledFromEcho ガードで抑止されるため、ボディは二重に書かれない。
-			handleHTTPError(c, Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}}, logger, lf, obsCfg, xerrors.New("boom"))
-			handleHTTPError(c, Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}}, logger, lf, obsCfg, xerrors.New("boom"))
+			handleHTTPError(
+				c, NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{}, redaction.Redactor{}), logger, lf, obsCfg, xerrors.New("boom"),
+			)
+			handleHTTPError(
+				c, NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{}, redaction.Redactor{}), logger, lf, obsCfg, xerrors.New("boom"),
+			)
 
 			assert.Equal(t, http.StatusInternalServerError, rec.Code)
 
@@ -464,7 +514,9 @@ func Test_handleHTTPError(t *testing.T) {
 			defer end()
 			ctxhelper.SetRecoveredToEcho(c, true)
 
-			handleHTTPError(c, Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}}, logger, lf, obsCfg, xerrors.New("boom"))
+			handleHTTPError(
+				c, NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{}, redaction.Redactor{}), logger, lf, obsCfg, xerrors.New("boom"),
+			)
 
 			assert.Equal(t, http.StatusInternalServerError, rec.Code)
 			var got map[string]any
@@ -491,7 +543,9 @@ func Test_handleHTTPError(t *testing.T) {
 			c, end := testspan.StartTestSpanForEcho(t, c)
 			defer end()
 
-			handleHTTPError(c, Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}}, logger, lf, obsCfg, xerrors.New("boom2"))
+			handleHTTPError(
+				c, NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{}, redaction.Redactor{}), logger, lf, obsCfg, xerrors.New("boom2"),
+			)
 
 			assert.Equal(t, []int{http.StatusInternalServerError}, bw.wroteHeaders)
 			assert.Equal(t, 1, observed.FilterMessage("failed to write error response").Len())
@@ -513,7 +567,7 @@ func Test_handleHTTPError(t *testing.T) {
 
 			handleHTTPError(
 				c,
-				Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}},
+				NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{}, redaction.Redactor{}),
 				logger,
 				lf,
 				obsCfg,
@@ -742,7 +796,7 @@ func Test_logHTTPError(t *testing.T) {
 				HTTPStatus: http.StatusFound,
 			}
 
-			logHTTPError(c, logger, lf, obsCfg, he)
+			logHTTPError(c, redaction.Redactor{}, logger, lf, obsCfg, he)
 
 			assert.Equal(t, 0, observed.Len())
 		})
@@ -763,7 +817,7 @@ func Test_logHTTPError(t *testing.T) {
 				HTTPStatus: http.StatusInternalServerError,
 			}
 
-			logHTTPError(c, logger, lf, obsCfg, he)
+			logHTTPError(c, redaction.Redactor{}, logger, lf, obsCfg, he)
 
 			entries := observed.FilterMessage("errorhandler.server_error").All()
 			require.Len(t, entries, 1)
@@ -787,7 +841,7 @@ func Test_logHTTPError(t *testing.T) {
 				HTTPStatus: http.StatusServiceUnavailable,
 			}
 
-			logHTTPError(c, logger, lf, obsCfg, he)
+			logHTTPError(c, redaction.Redactor{}, logger, lf, obsCfg, he)
 
 			assert.Equal(t, 1, observed.FilterMessage("errorhandler.server_error").Len())
 			assert.Equal(t, 0, observed.FilterMessage("errorhandler.client_error").Len())
@@ -809,7 +863,7 @@ func Test_logHTTPError(t *testing.T) {
 				HTTPStatus: http.StatusNotFound,
 			}
 
-			logHTTPError(c, logger, lf, obsCfg, he)
+			logHTTPError(c, redaction.Redactor{}, logger, lf, obsCfg, he)
 
 			entries := observed.FilterMessage("errorhandler.client_error").All()
 			require.Len(t, entries, 1)
@@ -877,7 +931,7 @@ func Test_httpErrorField(t *testing.T) {
 				HTTPStatus: http.StatusBadRequest,
 			}
 
-			fields := httpErrorField(c, lf, he)
+			fields := httpErrorField(c, lf, redaction.Redactor{}, he)
 
 			assert.GreaterOrEqual(t, len(fields), 4)
 			assert.Contains(t, fields, logging.Int(logging.StatusKey, he.HTTPStatus))
@@ -903,11 +957,30 @@ func Test_httpErrorField(t *testing.T) {
 				Internal:   internalErr,
 			}
 
-			fields := httpErrorField(c, lf, he)
+			fields := httpErrorField(c, lf, redaction.Redactor{}, he)
 
 			assert.Contains(t, fields, logging.Strings(logging.ErrorDetailsKey, details))
 			assert.Contains(t, fields, logging.String(logging.InternalErrorKey, he.Internal.Error()))
 			assert.Contains(t, fields, logging.Stacktrace(logging.InternalStackTraceKey, he.Internal))
+		})
+
+		t.Run("秘匿対象のqueryはリクエストフィールドから値が置き換わる", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/v1/streams/s?ticket=raw-secret", nil)
+			c := e.NewContext(req, httptest.NewRecorder())
+			he := &response.HTTPErrorResponse{
+				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{Code: "UNAUTHORIZED", Message: "m", RequestId: "rid"},
+				HTTPStatus:               http.StatusUnauthorized,
+			}
+
+			fields := httpErrorField(c, lf, redaction.New([]string{"ticket"}), he)
+
+			assert.Contains(t, fields, logging.String(logging.URIKey, "/v1/streams/s?ticket="+redaction.RedactedValue))
+			text := loggedJSON(c.Request().Context(), t, fields)
+			assert.NotContains(t, text, "raw-secret")
+			assert.Contains(t, text, redaction.RedactedValue)
 		})
 
 		t.Run("Detailsのみがある場合、detailsフィールドが追加されInternal系フィールドは追加されない", func(t *testing.T) {
@@ -924,10 +997,10 @@ func Test_httpErrorField(t *testing.T) {
 				HTTPStatus: http.StatusBadRequest,
 			}
 
-			baseline := httpErrorField(c, lf, he)
+			baseline := httpErrorField(c, lf, redaction.Redactor{}, he)
 			he.Details = &details
 
-			fields := httpErrorField(c, lf, he)
+			fields := httpErrorField(c, lf, redaction.Redactor{}, he)
 
 			assert.Contains(t, fields, logging.Strings(logging.ErrorDetailsKey, details))
 			assert.Len(t, fields, len(baseline)+1)
@@ -947,14 +1020,48 @@ func Test_httpErrorField(t *testing.T) {
 				HTTPStatus: http.StatusInternalServerError,
 			}
 
-			baseline := httpErrorField(c, lf, he)
+			baseline := httpErrorField(c, lf, redaction.Redactor{}, he)
 			he.Internal = internalErr
 
-			fields := httpErrorField(c, lf, he)
+			fields := httpErrorField(c, lf, redaction.Redactor{}, he)
 
 			assert.Contains(t, fields, logging.String(logging.InternalErrorKey, internalErr.Error()))
 			assert.Contains(t, fields, logging.Stacktrace(logging.InternalStackTraceKey, internalErr))
 			assert.Len(t, fields, len(baseline)+2)
+		})
+	})
+}
+
+// loggedJSON は、fields をそのままログに書いたときに出力へ載る全フィールドを JSON にしたものです。
+// どのキーに載ったかを問わず生値の有無を見るために使います。
+func loggedJSON(ctx context.Context, t *testing.T, fields []*logging.Field) string {
+	t.Helper()
+	logger, observed := logging.NewObservedTestLogger(t)
+	logger.Info(ctx, "probe", fields...)
+	entries := observed.All()
+	require.Len(t, entries, 1)
+	raw, err := json.Marshal(entries[0].ContextMap())
+	require.NoError(t, err)
+	return string(raw)
+}
+
+func TestNewPolicies(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("detailとallowとredactの3つを保持したPoliciesを返す", func(t *testing.T) {
+			t.Parallel()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/v1/streams/s", nil)
+
+			p := NewPolicies(
+				stubDetailPolicy{allow: true}, stubAllowPolicy{allow: "OPTIONS, GET"}, redaction.New([]string{"ticket"}),
+			)
+
+			assert.True(t, p.detail.Allows(req))
+			assert.Equal(t, "OPTIONS, GET", p.allow.Allow(req))
+			assert.Equal(t, "/v1/streams/s?ticket="+redaction.RedactedValue, p.redact.URI("/v1/streams/s?ticket=raw"))
 		})
 	})
 }

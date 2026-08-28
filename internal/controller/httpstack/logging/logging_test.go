@@ -2,11 +2,13 @@ package logging
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
+	"go-boilerplate/internal/controller/httpstack/redaction"
 	"go-boilerplate/internal/controller/server"
 	"go-boilerplate/internal/logging"
 
@@ -27,7 +29,7 @@ func TestMiddleware(t *testing.T) {
 			logger := logging.NewTestLogger(t)
 			lf := logging.NewTestLogFieldBuilder(t)
 
-			assert.NotNil(t, Middleware(logger, lf))
+			assert.NotNil(t, Middleware(logger, lf, redaction.Redactor{}))
 		})
 
 		t.Run("非運用系APIでは2xxをInfoレベルで出力する", func(t *testing.T) {
@@ -47,7 +49,7 @@ func TestMiddleware(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			handler := Middleware(logger, lf)(next)
+			handler := Middleware(logger, lf, redaction.Redactor{})(next)
 			require.NoError(t, handler(c))
 
 			handled := observed.FilterMessage("request handled")
@@ -72,7 +74,7 @@ func TestMiddleware(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			handler := Middleware(logger, lf)(next)
+			handler := Middleware(logger, lf, redaction.Redactor{})(next)
 			require.NoError(t, handler(c))
 
 			assert.Zero(t, observed.Len())
@@ -99,7 +101,7 @@ func TestMiddleware(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			handler := Middleware(logger, lf)(next)
+			handler := Middleware(logger, lf, redaction.Redactor{})(next)
 			require.NoError(t, handler(c))
 
 			handled := observed.FilterMessage("request handled")
@@ -119,7 +121,7 @@ func TestMiddleware(t *testing.T) {
 			c.SetResponse(httptest.NewRecorder())
 
 			called := false
-			handler := Middleware(logger, lf)(func(_ *echo.Context) error {
+			handler := Middleware(logger, lf, redaction.Redactor{})(func(_ *echo.Context) error {
 				called = true
 				return nil
 			})
@@ -159,6 +161,22 @@ func Test_requestLog_buildRequestLogFields(t *testing.T) {
 			assert.Contains(t, fields, logging.String(logging.RemoteIPKey, "1.2.3.4:5678"))
 			assert.Contains(t, fields, logging.String(logging.HostKey, "example.local"))
 			assert.Contains(t, fields, logging.String(logging.UserAgentKey, "ua-test"))
+		})
+
+		t.Run("秘匿対象のqueryはURIとquery_paramsの両方で値が置き換わる", func(t *testing.T) {
+			t.Parallel()
+
+			secretReq := httptest.NewRequestWithContext(ctx, http.MethodGet, "/v1/streams/s?ticket=raw-secret&after=1", nil)
+			sc := e.NewContext(secretReq, httptest.NewRecorder())
+
+			l := requestLog{c: sc, lf: lf, red: redaction.New([]string{"ticket"})}
+			fields := l.buildRequestLogFields(time.Now())
+
+			assert.Contains(t, fields, logging.String(logging.URIKey, "/v1/streams/s?ticket="+redaction.RedactedValue+"&after=1"))
+			assert.Contains(t, fields, logging.Any(logging.QueryParamsKey, map[string][]string{"ticket": {redaction.RedactedValue}, "after": {"1"}}))
+			text := loggedJSON(sc.Request().Context(), t, fields) //nolint:contextcheck // テスト内で組み立てた request の context を渡すため
+			assert.NotContains(t, text, "raw-secret")
+			assert.Contains(t, text, redaction.RedactedValue)
 		})
 	})
 }
@@ -202,5 +220,36 @@ func Test_requestLog_buildResponseLogFields(t *testing.T) {
 			assert.Contains(t, fields, logging.String(logging.RequestIDKey, expectedRequestID))
 			assert.Contains(t, fields, logging.Time(logging.EventAtKey, expectedEventAt))
 		})
+
+		t.Run("秘匿対象のqueryはレスポンス側のURIでも値が置き換わる", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/v1/streams/s?ticket=raw-secret", nil)
+			c := e.NewContext(req, httptest.NewRecorder())
+			res := server.ResponseOf(c)
+			require.NotNil(t, res)
+
+			l := requestLog{c: c, res: res, lf: lf, red: redaction.New([]string{"ticket"})}
+			fields := l.buildResponseLogFields(time.Now(), time.Millisecond)
+
+			assert.Contains(t, fields, logging.String(logging.URIKey, "/v1/streams/s?ticket="+redaction.RedactedValue))
+			text := loggedJSON(c.Request().Context(), t, fields)
+			assert.NotContains(t, text, "raw-secret")
+			assert.Contains(t, text, redaction.RedactedValue)
+		})
 	})
+}
+
+// loggedJSON は、fields をそのままログに書いたときに出力へ載る全フィールドを JSON にしたものです。
+// どのキーに載ったかを問わず生値の有無を見るために使います。
+func loggedJSON(ctx context.Context, t *testing.T, fields []*logging.Field) string {
+	t.Helper()
+	logger, observed := logging.NewObservedTestLogger(t)
+	logger.Info(ctx, "probe", fields...)
+	entries := observed.All()
+	require.Len(t, entries, 1)
+	raw, err := json.Marshal(entries[0].ContextMap())
+	require.NoError(t, err)
+	return string(raw)
 }

@@ -18,6 +18,7 @@ import (
 	responsegen "go-boilerplate/internal/controller/error/response/gen"
 	"go-boilerplate/internal/controller/httpstack/errorhandler"
 	"go-boilerplate/internal/controller/httpstack/oapi/validator"
+	"go-boilerplate/internal/controller/httpstack/redaction"
 	"go-boilerplate/internal/di/server/extension"
 	"go-boilerplate/internal/di/server/extension/instrumentation"
 	"go-boilerplate/internal/logging"
@@ -269,6 +270,14 @@ func isJSONNull(raw json.RawMessage) bool {
 func UseAppErrorHandler(t *testing.T, e *echo.Echo, extra ...extension.UseMiddleware) {
 	t.Helper()
 
+	UseAppErrorHandlerWithLogger(t, e, logging.NewTestLogger(t), extra...)
+}
+
+// UseAppErrorHandlerWithLogger は、[UseAppErrorHandler] と同じ配線を、エラーハンドラのログ出力先を差し替えて行う。
+// エラーハンドラが出すログの内容を検証する場合に、観測可能な Logger を渡す。
+func UseAppErrorHandlerWithLogger(t *testing.T, e *echo.Echo, logger logging.Logger, extra ...extension.UseMiddleware) {
+	t.Helper()
+
 	mws := append([]extension.UseMiddleware{instrumentation.RequestIDMiddleware().Middleware}, extra...)
 	require.NoError(t, extension.ApplyUseMiddlewares(e, logging.NewTestLogger(t), mws))
 
@@ -283,7 +292,11 @@ func UseAppErrorHandler(t *testing.T, e *echo.Echo, extra ...extension.UseMiddle
 	allowPolicy, err := errorhandler.NewOpenAPIAllowPolicy(spec)
 	require.NoError(t, err)
 
-	errorhandler.New(e, errorhandler.Policies{Detail: detailPolicy, Allow: allowPolicy}, logging.NewTestLogger(t), lf, obsCfg)
+	errorhandler.New(
+		e,
+		errorhandler.NewPolicies(detailPolicy, allowPolicy, redaction.FromSpec(spec)),
+		logger, lf, obsCfg,
+	)
 }
 
 // AssertErrorResponse は、異常系レスポンスの HTTP ステータスが wantStatus と一致し、

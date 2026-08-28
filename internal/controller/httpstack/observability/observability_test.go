@@ -6,8 +6,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	obs "go-boilerplate/internal/observability"
+
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMiddleware(t *testing.T) {
@@ -68,6 +71,29 @@ func TestMiddleware_Integration(t *testing.T) {
 			e.ServeHTTP(rec, req)
 
 			assert.Equal(t, http.StatusNotFound, rec.Code)
+		})
+
+		t.Run("span属性にqueryの値を載せない", func(t *testing.T) { //nolint:paralleltest // otel の global provider を差し替えるため
+			// 秘匿すべき資格情報（stream ticket）は query で運ばれる（ADR-0074）。ミドルウェアが記録する span 属性は
+			// url.path までで url.query を持たないことを、属性名の許可リストではなく値の全走査で固定する
+			// （upstream が属性を増やしても、生値が現れた時点で落ちる）。
+			recorded := obs.InstallRecordingTracerProvider(t)
+
+			e := echo.New()
+			e.Use(Middleware())
+			e.GET("/v1/streams/:destination", func(c *echo.Context) error { return c.NoContent(http.StatusOK) })
+
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/v1/streams/s?ticket=raw-secret-value", nil)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			require.Equal(t, http.StatusOK, rec.Code)
+			// 並行する別ケースの span が混ざりうるので、被験リクエストの span（url.path が一致するもの）に絞ってから走査する。
+			values := obs.SpanAttributeValues(recorded(), "url.path", "/v1/streams/s")
+			require.NotEmpty(t, values, "被験リクエストの span が記録されていない")
+			for _, v := range values {
+				assert.NotContains(t, v, "raw-secret-value")
+			}
 		})
 	})
 }

@@ -1,0 +1,5 @@
+description: 要求した位置の情報は既に利用できません。正本を取得し直してから接続し直してください。
+content:
+  application/json:
+    schema:
+      $ref: '../ErrorResponse.yaml'

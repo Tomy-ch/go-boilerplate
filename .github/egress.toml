@@ -1,8 +1,5 @@
-# harden-runner の allowed-endpoints の SSOT。ジョブは自分がどの能力クラスかを宣言し、
-# ホストの列挙はクラスが持つ。base は全ジョブへ暗黙に適用される。
-#
-# 反映は make egress-apply、ドリフト検査は make egress-check。
-# クラスの意味と追加手順は .github/workflows/README.md の Runner Hardening 節。
+# harden-runner の allowed-endpoints の SSOT。インラインブロックを手で編集してはならない。
+# クラスの意味・追加手順・反映と検査のコマンドは .github/workflows/README.md の Runner Hardening 節。
 
 [class.base]
 hosts = [
@@ -261,6 +258,9 @@ extra = [
 ]
 
 [job."oapi-lint.yaml:oapi-lint"]
+classes = ["mise"]
+
+[job."oapi-lint.yaml:openapi-client"]
 classes = ["mise"]
 
 [job."openapi-security.yaml:changes"]

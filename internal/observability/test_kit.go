@@ -2,13 +2,17 @@ package observability
 
 import (
 	"context"
+	"sync"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	metricnoop "go.opentelemetry.io/otel/metric/noop"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
 )
 
@@ -25,6 +29,12 @@ type ObservedHTTPClientMetrics struct {
 	*HTTPClientMetrics
 
 	reader *sdkmetric.ManualReader
+}
+
+// spanRecorder は、終了した span をそのまま保持する同期 exporter です。
+type spanRecorder struct {
+	mu    sync.Mutex
+	spans []sdktrace.ReadOnlySpan
 }
 
 // NewNoopTracerFactory は、テスト用に TracerFactory を無効化して返します。
@@ -180,4 +190,68 @@ func NewStubSpanContext(t *testing.T) (context.Context, func()) {
 		span.End()
 		_ = tp.Shutdown(context.Background())
 	}
+}
+
+func (r *spanRecorder) ExportSpans(_ context.Context, spans []sdktrace.ReadOnlySpan) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.spans = append(r.spans, spans...)
+	return nil
+}
+
+func (r *spanRecorder) Shutdown(context.Context) error { return nil }
+
+// NewRecordingTracerProvider は、終了した span を保持する TracerProvider と、保持した span を返す関数を返します。
+// 計装が span の属性に何を載せたかをテストで検証するためのもので、テスト終了時に provider を停止します。
+func NewRecordingTracerProvider(t *testing.T) (trace.TracerProvider, func() []sdktrace.ReadOnlySpan) {
+	t.Helper()
+
+	rec := &spanRecorder{}
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(rec))
+	t.Cleanup(func() { require.NoError(t, tp.Shutdown(context.Background())) })
+
+	return tp, func() []sdktrace.ReadOnlySpan {
+		rec.mu.Lock()
+		defer rec.mu.Unlock()
+		return append([]sdktrace.ReadOnlySpan(nil), rec.spans...)
+	}
+}
+
+// InstallRecordingTracerProvider は、NewRecordingTracerProvider の provider をプロセス全体の既定（otel の global）に
+// 据え、テスト終了時に元へ戻します。global の provider から tracer を得る計装（HTTP の OTel ミドルウェアなど）が
+// span に何を載せたかを、その計装自身を通して検証するために使います。
+func InstallRecordingTracerProvider(t *testing.T) func() []sdktrace.ReadOnlySpan {
+	t.Helper()
+
+	tp, recorded := NewRecordingTracerProvider(t)
+	previous := otel.GetTracerProvider()
+	otel.SetTracerProvider(tp)
+	t.Cleanup(func() { otel.SetTracerProvider(previous) })
+
+	return recorded
+}
+
+// SpanAttributeValues は、属性 filterKey が filterValue に一致する span について、その全属性の値を文字列で返します。
+// 計装が span に載せた値の中に特定の文字列（資格情報など）が無いことを表明するために使います。
+func SpanAttributeValues(spans []sdktrace.ReadOnlySpan, filterKey, filterValue string) []string {
+	var values []string
+	for _, span := range spans {
+		if !hasAttribute(span, filterKey, filterValue) {
+			continue
+		}
+		for _, attr := range span.Attributes() {
+			values = append(values, attr.Value.AsString())
+		}
+	}
+	return values
+}
+
+// hasAttribute は、span が key に value を持つかを返します。
+func hasAttribute(span sdktrace.ReadOnlySpan, key, value string) bool {
+	for _, attr := range span.Attributes() {
+		if string(attr.Key) == key && attr.Value.AsString() == value {
+			return true
+		}
+	}
+	return false
 }

@@ -334,6 +334,8 @@ overridden by `.gobp-db-slot` when a DB slot is held (see `internal/cli/dbslot/R
 | `make stamp-openapi-version` | Rewrites `info.version` from a release branch name. | Invokes `make stamp-openapi-version-ci` inside the `node_tool_runner` container. Takes `REF=release/vX.Y.Z`, falling back to `GITHUB_REF_NAME`; any other ref is a no-op. |
 | `make stamp-openapi-version-ci` | Runs `scripts/stamp-openapi-version/index.ts` directly. | CI target |
 | `make lint-oapi-security-ci` | Runs Spectral with the OWASP API Security ruleset. | CI target. Runs outside `node_tool_runner` so a spec-only check does not build the tool image; run `pnpm install --dir scripts --frozen-lockfile` first. |
+| `make openapi-client-check` | Confirms the frontend generator (orval) can generate the SSE contract types (`DeliveryEvent` / `ControlEvent` / `StreamCursor`) from the bundled spec. | Invokes `make openapi-client-check-ci` inside the `node_tool_runner` container. Output goes to `tmp/openapi-client/` and is never committed. |
+| `make openapi-client-check-ci` | Runs `tsx scripts/openapi-client-check` directly. | CI target. Same preparation as `lint-oapi-security-ci`. |
 
 ## `.makefiles/load` group
 

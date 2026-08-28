@@ -22,6 +22,8 @@ var (
 	ErrPayloadTooLarge = xerrors.New("payload too large")
 	// ErrTooManyRequests はリクエストが多すぎる場合に使用します。
 	ErrTooManyRequests = xerrors.New("too many requests")
+	// ErrGone は対象が既に失われ、正本を取得し直さない限り回復しない場合に使用します。
+	ErrGone = xerrors.New("gone")
 	// ErrCanceled はクライアントがリクエストをキャンセル/切断した場合に使用します。
 	ErrCanceled = xerrors.New("request canceled")
 	// ErrInternal はサーバ内部で予期しないエラーが発生した場合に使用します。
@@ -43,7 +45,7 @@ var (
 	ErrFatal = xerrors.New("fatal")
 )
 
-// appErrors は、定義済みの全 apperror センチネルです。
+// appErrors は、HTTP taxonomy に属する全センチネルです。
 var appErrors = []error{
 	ErrInvalidArgument,
 	ErrUnauthenticated,
@@ -54,6 +56,7 @@ var appErrors = []error{
 	ErrUnsupportedMediaType,
 	ErrPayloadTooLarge,
 	ErrTooManyRequests,
+	ErrGone,
 	ErrCanceled,
 	ErrInternal,
 	ErrUnimplemented,

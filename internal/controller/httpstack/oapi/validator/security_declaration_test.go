@@ -15,6 +15,10 @@ import (
 // bearerSchemeName は、Bearer トークンによる認証を宣言する securityScheme の名前。
 const bearerSchemeName = "BearerAuth"
 
+// streamTicketSchemeName は、query の stream ticket による認証を宣言する securityScheme の名前
+// （ADR-0074 (query-ticket-stream-authentication)）。
+const streamTicketSchemeName = "StreamTicket"
+
 const (
 	// authRequired は、資格情報を必ず要求する。
 	authRequired securityKind = iota
@@ -75,6 +79,16 @@ var optionalAuthOperations = map[string]string{
 	// sample-api:end
 }
 
+// streamTicketOperations は、stream ticket 認証（security に StreamTicket だけを宣言）が意図どおりである
+// operation の許可リスト。キーは "METHOD /path" 形式。
+//
+// ここに載る operation は Bearer を受け取らず、EventSource が付けられる query の ticket だけで認証する
+// （ADR-0074 (query-ticket-stream-authentication)）。認証必須である点は Bearer の operation と同じだが、
+// 資格情報の経路が違うため、姿勢を読めるように分けて持つ。
+var streamTicketOperations = map[string]string{
+	"GET /v1/streams/{destination}": "SSE 接続。ブラウザの EventSource はヘッダを設定できないため query の ticket で認証する",
+}
+
 // securityKind は、security 要件が表す認証の姿勢。
 type securityKind int
 
@@ -114,6 +128,16 @@ func declaresBearer(reqs openapi3.SecurityRequirements) bool {
 	return false
 }
 
+// declaresStreamTicket は、要件リストのいずれかが StreamTicket を名指ししているかを返す。
+func declaresStreamTicket(reqs openapi3.SecurityRequirements) bool {
+	for _, req := range reqs {
+		if _, ok := req[streamTicketSchemeName]; ok {
+			return true
+		}
+	}
+	return false
+}
+
 // emptyRequirementIndex は、匿名アクセスを許す空の要件が要件リストの何番目にあるかを返す。
 // 空の要件が無い場合は -1。
 func emptyRequirementIndex(reqs openapi3.SecurityRequirements) int {
@@ -138,7 +162,7 @@ func staleEntries(allowList map[string]string, seen map[string]bool) []string {
 }
 
 // assertAllowListMembership は、operation の姿勢に対応する許可リストにだけ載っていることを表明する。
-func assertAllowListMembership(t *testing.T, key string, kind securityKind) {
+func assertAllowListMembership(t *testing.T, key string, kind securityKind, reqs openapi3.SecurityRequirements) {
 	t.Helper()
 
 	switch kind {
@@ -147,18 +171,26 @@ func assertAllowListMembership(t *testing.T, key string, kind securityKind) {
 			"%s は認証必須のため許可リストのエントリが不要です。publicOperations から削除してください", key)
 		assert.NotContains(t, optionalAuthOperations, key,
 			"%s は認証必須のため許可リストのエントリが不要です。optionalAuthOperations から削除してください", key)
+		if _, ok := streamTicketOperations[key]; ok {
+			assert.False(t, declaresBearer(reqs),
+				"%s は stream ticket 認証として登録されていますが BearerAuth も宣言しています。経路はどちらか一方です", key)
+		}
 	case fullyPublic:
 		assert.Contains(t, publicOperations, key,
 			"%s に認証必須の security 宣言がありません。認証が必要なら OpenAPI 定義に security: [BearerAuth] を追加し、"+
 				"意図的な公開 API なら publicOperations に理由コメント付きで追加してください", key)
 		assert.NotContains(t, optionalAuthOperations, key,
 			"%s は資格情報を受け取らないため任意認証ではありません。publicOperations へ移してください", key)
+		assert.NotContains(t, streamTicketOperations, key,
+			"%s は資格情報を受け取らないため stream ticket 認証ではありません。publicOperations へ移してください", key)
 	case optionalAuth:
 		assert.Contains(t, optionalAuthOperations, key,
 			"%s は任意認証（BearerAuth と空要件の両方を宣言）です。意図どおりなら optionalAuthOperations へ "+
 				"理由コメント付きで追加してください（ADR-0021 (optional-authentication-fail-closed)）", key)
 		assert.NotContains(t, publicOperations, key,
 			"%s は無効な資格情報を 401 で拒否するため完全公開ではありません。optionalAuthOperations へ移してください", key)
+		assert.NotContains(t, streamTicketOperations, key,
+			"%s は任意認証であり stream ticket 認証ではありません。optionalAuthOperations へ移してください", key)
 	}
 }
 
@@ -176,7 +208,8 @@ func assertAllowListsCoverSpec(t *testing.T) {
 		for method, op := range item.Operations() {
 			key := fmt.Sprintf("%s %s", method, path)
 			seen[key] = true
-			assertAllowListMembership(t, key, classifySecurity(effectiveSecurity(spec, op)))
+			reqs := effectiveSecurity(spec, op)
+			assertAllowListMembership(t, key, classifySecurity(reqs), reqs)
 		}
 	}
 
@@ -184,6 +217,8 @@ func assertAllowListsCoverSpec(t *testing.T) {
 		"publicOperations に spec に存在しない operation があります。削除してください")
 	assert.Empty(t, staleEntries(optionalAuthOperations, seen),
 		"optionalAuthOperations に spec に存在しない operation があります。削除してください")
+	assert.Empty(t, staleEntries(streamTicketOperations, seen),
+		"streamTicketOperations に spec に存在しない operation があります。削除してください")
 }
 
 // assertOptionalAuthDeclaresBearer は、任意認証として登録した operation が BearerAuth を宣言していることを表明する。
@@ -210,6 +245,26 @@ func assertOptionalAuthDeclaresBearer(t *testing.T) {
 	}
 }
 
+// assertStreamTicketDeclaration は、StreamTicket を宣言する operation と streamTicketOperations が 1:1 であることを表明する。
+// 登録漏れは「Bearer で守られている」と読まれ、登録だけ残った entry は実体の無い姿勢になる。
+func assertStreamTicketDeclaration(t *testing.T) {
+	t.Helper()
+
+	spec, err := gen.GetSpec()
+	require.NoError(t, err)
+	require.NotNil(t, spec.Paths)
+
+	for path, item := range spec.Paths.Map() {
+		for method, op := range item.Operations() {
+			key := fmt.Sprintf("%s %s", method, path)
+			_, listed := streamTicketOperations[key]
+			assert.Equal(t, listed, declaresStreamTicket(effectiveSecurity(spec, op)),
+				"%s の StreamTicket 宣言と streamTicketOperations の登録が一致しません（宣言=%v, 登録=%v）",
+				key, declaresStreamTicket(effectiveSecurity(spec, op)), listed)
+		}
+	}
+}
+
 func TestSecurityDeclaration(t *testing.T) {
 	t.Parallel()
 
@@ -228,10 +283,22 @@ func TestSecurityDeclaration(t *testing.T) {
 			assertOptionalAuthDeclaresBearer(t)
 		})
 
-		t.Run("2つの許可リストは同じoperationを重複して持たない", func(t *testing.T) {
+		t.Run("stream ticket認証として登録したoperationはStreamTicketを宣言している", func(t *testing.T) {
+			t.Parallel()
+
+			assertStreamTicketDeclaration(t)
+		})
+
+		t.Run("3つの許可リストは同じoperationを重複して持たない", func(t *testing.T) {
 			t.Parallel()
 
 			for key := range optionalAuthOperations {
+				assert.NotContains(t, publicOperations, key,
+					"%s が両方の許可リストに登録されています。姿勢はどちらか一方です", key)
+				assert.NotContains(t, streamTicketOperations, key,
+					"%s が両方の許可リストに登録されています。姿勢はどちらか一方です", key)
+			}
+			for key := range streamTicketOperations {
 				assert.NotContains(t, publicOperations, key,
 					"%s が両方の許可リストに登録されています。姿勢はどちらか一方です", key)
 			}

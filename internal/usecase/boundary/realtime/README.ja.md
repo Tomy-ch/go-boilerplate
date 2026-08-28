@@ -76,5 +76,6 @@ test できなければならないので、乱数の seam を自前で持ちま
 | `InstanceLeaseStore` | `internal/infrastructure/instancelease/dynamodb/` |
 | `SecretGenerator` | `internal/infrastructure/realtimesecret/` |
 | `SequenceAllocator`（`sequence.go`） | `internal/infrastructure/rdb/system_cqrs/realtime/` |
+| `RevocationNotifier`（`revocation.go`） | SNS fan-out の publisher（Phase 7、#1414）。`usecase/realtime.AccessRevoker` が ticket を無効にした後に呼ぶ |
 
 mock はファイルごとに `mock/` へ生成します（`go generate ./...`）。

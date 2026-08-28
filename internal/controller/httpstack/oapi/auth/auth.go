@@ -12,19 +12,69 @@ import (
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/pkg/xerrors"
 
+	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/labstack/echo/v5"
 )
 
 const prefixBearer = "Bearer "
 
+// SchemeGroup は、Bearer 以外の securityScheme を担当する SchemeAuthenticator を集める fx group の名前です。
+// 集めた認証器の選び方は NewAuthenticator を参照。
+const SchemeGroup = "oapi.security.schemes"
+
+const (
+	// securitySchemeTypeHTTP は、OpenAPI の securityScheme type のうち HTTP 認証（Bearer を含む）を表す値です。
+	securitySchemeTypeHTTP = "http"
+	// securitySchemeBearer は、HTTP 認証の scheme のうち Bearer を表す値です。
+	securitySchemeBearer = "bearer"
+)
+
+// SchemeAuthenticator は、Bearer 以外の 1 つの securityScheme を担当する認証器です。
+// NewAuthenticator が選び、検証結果は request の context スロットへ書き込みます。
+type SchemeAuthenticator interface {
+	// Scheme は、この認証器が担当する securityScheme の名前（spec の securitySchemes のキー）を返します。
+	Scheme() string
+	// Authenticate は、input の資格情報を検証します。失敗は apperror の分類を持つエラーで返します。
+	Authenticate(ctx context.Context, input *openapi3filter.AuthenticationInput) error
+}
+
 // NewAuthenticator は、認証用のOpenAPIオプションを返します。
+// operation が宣言した securityScheme の名前が schemes のいずれかと一致すればその認証器へ委譲し、
+// 一致しなければ Bearer として扱います。Bearer でもない scheme に認証器が無い場合は検証できないため拒否します。
+// 同じ scheme を担当する認証器が 2 つあれば ErrDuplicateScheme を返します（起動時に結線の不具合として落とす）。
 func NewAuthenticator(
 	authenticator authbd.Authenticator,
 	resolver authbd.IdentityResolver,
-) openapi3filter.AuthenticationFunc {
-	return func(_ context.Context, input *openapi3filter.AuthenticationInput) error {
+	schemes []SchemeAuthenticator,
+) (openapi3filter.AuthenticationFunc, error) {
+	byName := make(map[string]SchemeAuthenticator, len(schemes))
+	for _, s := range schemes {
+		if _, dup := byName[s.Scheme()]; dup {
+			return nil, xerrors.Wrap(ErrDuplicateScheme, s.Scheme())
+		}
+		byName[s.Scheme()] = s
+	}
+
+	return func(ctx context.Context, input *openapi3filter.AuthenticationInput) error {
 		req := input.RequestValidationInput.Request
+
+		if s, ok := byName[input.SecuritySchemeName]; ok {
+			if err := s.Authenticate(ctx, input); err != nil {
+				failure := withHTTPStatus(err)
+				//nolint:contextcheck // input が内包する request の context のスロットへ書き戻すため
+				ctxhelper.SetAuthnFailure(req.Context(), failure)
+				return failure
+			}
+			return nil
+		}
+
+		if !isBearerScheme(input.SecurityScheme) {
+			failure := withHTTPStatus(xerrors.Wrap(ErrUnauthorizedSchemeUnsupported, input.SecuritySchemeName))
+			//nolint:contextcheck // 同上
+			ctxhelper.SetAuthnFailure(req.Context(), failure)
+			return failure
+		}
 
 		// OpenAPI バリデータが渡す context は context.Background() から組み立てられており、
 		// スパン・deadline・キャンセルのいずれも持たない。認証は request の予算の内側で行う。
@@ -50,7 +100,16 @@ func NewAuthenticator(
 			return failure
 		}
 		return nil
+	}, nil
+}
+
+// isBearerScheme は、scheme を Bearer 経路で扱ってよいかを返します。
+// 宣言が渡されない場合（nil）は Bearer とみなします — 既定の経路であり、spec 外からの呼び出しがこれに当たります。
+func isBearerScheme(scheme *openapi3.SecurityScheme) bool {
+	if scheme == nil {
+		return true
 	}
+	return scheme.Type == securitySchemeTypeHTTP && strings.EqualFold(scheme.Scheme, securitySchemeBearer)
 }
 
 // withHTTPStatus は、認証フェーズのエラーへ apperror の分類に対応するステータスを持たせます（元のエラーは保持）。
@@ -98,7 +157,7 @@ func authExtractor(
 		return nil, nil
 	}
 
-	// 認証済みの外部アイデンティティ（issuer + subject）を内部ユーザーへ解決する。エラーは分類を変えずに返す。
+	// 認証済みの外部アイデンティティ（issuer + subject）を内部ユーザーへ解決する。
 	resolved, err := resolver.Resolve(ctx, authn)
 	if err != nil {
 		return nil, err

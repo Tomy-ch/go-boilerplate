@@ -1,0 +1,44 @@
+type: object
+description: |
+  SSE で配送される business event の封筒。feature に依らず同じ形で、`payload` の形は `type` ごとに feature が定めます。
+  SSE の `id` には `sequence` がそのまま入ります。
+required:
+  - eventId
+  - streamId
+  - sequence
+  - type
+  - occurredAt
+  - schemaVersion
+  - payload
+properties:
+  eventId:
+    type: string
+    format: uuid
+    description: event の一意な識別子。同じ event が再送されても値は変わりません。
+    example: "123e4567-e89b-12d3-a456-426614174000"
+  streamId:
+    type: string
+    description: この event が属する stream の識別子。接続先の destination と一致します。
+    example: "inquiry-thread-8f3c"
+  sequence:
+    $ref: './StreamCursor.yaml'
+  type:
+    type: string
+    description: feature が定める event 種別。末尾の `.vN` で契約の世代を表します。
+    example: "inquiry.message.created.v1"
+  occurredAt:
+    type: string
+    format: date-time
+    description: event が発生した時刻（UTC）。
+    example: "2026-08-15T12:00:00Z"
+  schemaVersion:
+    type: integer
+    minimum: 1
+    description: payload の schema 世代。`type` の `.vN` と同じ値を保ちます。
+    example: 1
+  payload:
+    type: object
+    additionalProperties: true
+    description: event の本体。形は `type` ごとに feature が定めます。
+    example:
+      messageId: "123e4567-e89b-12d3-a456-426614174000"

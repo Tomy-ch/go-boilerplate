@@ -41,6 +41,8 @@ tags:
     description: アプリケーションのバージョン情報。
   - name: metrics
     description: Prometheus メトリクス。
+  - name: v1/streams
+    description: Server-Sent Events による配信（query の stream ticket で認証・cursor から再開）。
   - name: v1/users
     description: ユーザーリソース（一覧取得・作成）。
   - name: v1/users/detail
@@ -201,6 +203,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponseWithDetails'
+  /v1/streams/{destination}:
+    get:
+      operationId: GetStream
+      tags:
+        - v1/streams
+      summary: SSE stream への接続
+      description: |
+        ticket に束縛された destination の event を Server-Sent Events で受信します。接続時に cursor（`Last-Event-ID` → `after` →
+        ticket の初期位置の順）を解決し、その位置より後の event を sequence 順に配信したのち、新しい event を届け続けます。
+        拒否はすべてレスポンス確定前に行われます（ticket の不備は 401、cursor の形式不正は 400、保持期間外の cursor は 410、
+        受け入れ余力が無いときは 503）。確定後の指示は `event: control` の ControlEvent で伝えます。
+      security:
+        - StreamTicket: []
+      parameters:
+        - $ref: '#/components/parameters/StreamDestinationParam'
+        - $ref: '#/components/parameters/StreamAfterParam'
+        - $ref: '#/components/parameters/LastEventIdParam'
+      responses:
+        '200':
+          description: |
+            SSE stream。business event は `id` に sequence を持ち `data` が DeliveryEvent、制御指示は `event: control` で `data` が
+            ControlEvent です。`id` を持たないコメント行が 15 秒ごとの heartbeat として流れます。
+            レスポンスは常に `Cache-Control: no-store`（中間キャッシュに stream を保持させない）と
+            `X-Accel-Buffering: no`（リバースプロキシのバッファリングを無効にする）を伴います。
+          content:
+            text/event-stream:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/DeliveryEvent'
+                  - $ref: '#/components/schemas/ControlEvent'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
+        '410':
+          $ref: '#/components/responses/Gone410'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
   /v1/users:
     get:
       operationId: GetUsers
@@ -1852,6 +1896,30 @@ components:
         minLength: 1
         maxLength: 255
         example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+    StreamDestinationParam:
+      name: destination
+      in: path
+      required: true
+      description: 購読する stream の識別子。ticket に束縛された destination と一致しなければ 401 になります。
+      schema:
+        type: string
+        pattern: ^[A-Za-z0-9._:-]{1,128}$
+        maxLength: 128
+        example: inquiry-thread-8f3c
+    StreamAfterParam:
+      name: after
+      in: query
+      required: false
+      description: この位置より後の event から配信を再開します。`Last-Event-ID` があればそちらが優先され、どちらも無ければ ticket に許可された初期位置から始まります。
+      schema:
+        $ref: '#/components/schemas/StreamCursor'
+    LastEventIdParam:
+      name: Last-Event-ID
+      in: header
+      required: false
+      description: ブラウザの EventSource が自動再接続時に付ける、最後に受け取った business event の `id`（sequence）。`after` より優先されます。
+      schema:
+        $ref: '#/components/schemas/StreamCursor'
     KeywordParam:
       name: keyword
       in: query
@@ -2235,6 +2303,16 @@ components:
       type: http
       description: 認証にBasic認証を使用することを示します。
       scheme: basic
+    StreamTicket:
+      type: apiKey
+      in: query
+      name: ticket
+      description: |
+        SSE 接続の認証に用いる不透明な stream ticket（ADR-0074 (query-ticket-stream-authentication)）。
+        EventSource はリクエストヘッダを設定できないため query に載せます。
+        feature の認可を通った後に発行され、subject / destination / scope / expiry に束縛されます。
+        発行から 5 分間は新しい接続に再利用でき、期限後・失効後の新規接続は 401 で拒否されます。
+        サーバは hash だけを保存し、生値を log / trace / error に出しません。
   schemas:
     ErrorResponse:
       type: object
@@ -2263,6 +2341,98 @@ components:
       $ref: '#/components/schemas/ReadyResponse'
     ResponseVersion:
       $ref: '#/components/schemas/VersionResponse'
+    StreamCursor:
+      type: string
+      description: |
+        stream 内の位置（stream-local な単調増加 sequence）。JavaScript の数値精度に依存しないよう 10 進文字列で表します。
+        business event の SSE `id` と同じ値で、`0` は stream の先頭を意味します。
+      pattern: ^(0|[1-9][0-9]{0,18})$
+      maxLength: 19
+      example: '1001'
+    DeliveryEvent:
+      type: object
+      description: |
+        SSE で配送される business event の封筒。feature に依らず同じ形で、`payload` の形は `type` ごとに feature が定めます。
+        SSE の `id` には `sequence` がそのまま入ります。
+      required:
+        - eventId
+        - streamId
+        - sequence
+        - type
+        - occurredAt
+        - schemaVersion
+        - payload
+      properties:
+        eventId:
+          type: string
+          format: uuid
+          description: event の一意な識別子。同じ event が再送されても値は変わりません。
+          example: 123e4567-e89b-12d3-a456-426614174000
+        streamId:
+          type: string
+          description: この event が属する stream の識別子。接続先の destination と一致します。
+          example: inquiry-thread-8f3c
+        sequence:
+          $ref: '#/components/schemas/StreamCursor'
+        type:
+          type: string
+          description: feature が定める event 種別。末尾の `.vN` で契約の世代を表します。
+          example: inquiry.message.created.v1
+        occurredAt:
+          type: string
+          format: date-time
+          description: event が発生した時刻（UTC）。
+          example: '2026-08-15T12:00:00Z'
+        schemaVersion:
+          type: integer
+          minimum: 1
+          description: payload の schema 世代。`type` の `.vN` と同じ値を保ちます。
+          example: 1
+        payload:
+          type: object
+          additionalProperties: true
+          description: event の本体。形は `type` ごとに feature が定めます。
+          example:
+            messageId: 123e4567-e89b-12d3-a456-426614174000
+    ControlEvent:
+      type: object
+      description: |
+        レスポンス確定後にサーバから client へ送る制御指示（SSE の `event: control`）。SSE `id` を持たないため `Last-Event-ID` を汚しません。
+        client は `action` だけで分岐し、`reason` は記録用の安定値として扱います。`STOP` / `REAUTHENTICATE` / `RESYNC` は
+        サーバの切断を待たず client 側で接続を閉じてから遷移します。
+      required:
+        - action
+        - reason
+      properties:
+        action:
+          type: string
+          description: |
+            client がとる動作。`RECONNECT` は通常の再接続、`RETRY_LATER` は `retryAfterMs` 後の再接続、
+            `REAUTHENTICATE` は新しい ticket を取得しての再接続、`RESYNC` は正本の再取得後の再接続、`STOP` は再接続しない。
+          enum:
+            - RECONNECT
+            - RETRY_LATER
+            - REAUTHENTICATE
+            - RESYNC
+            - STOP
+          example: RECONNECT
+        reason:
+          type: string
+          description: 指示の理由を表す安定した値。人が読む文言は含みません。
+          enum:
+            - SERVER_DRAINING
+            - TEMPORARILY_OVERLOADED
+            - AUTH_REFRESH_REQUIRED
+            - AUTHORIZATION_REVOKED
+            - CURSOR_TOO_OLD
+            - STREAM_RECOVERY_FAILED
+          example: SERVER_DRAINING
+        retryAfterMs:
+          type: integer
+          minimum: 0
+          maximum: 86400000
+          description: 再接続までの待ち時間（ミリ秒）。目安であり、client は jitter を加えてよい。レスポンス確定前の `Retry-After` ヘッダは秒単位です。
+          example: 5000
     UserBaseInputRequest:
       description: |
         ユーザー情報の基本入力スキーマ。
@@ -4274,8 +4444,8 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
-    Forbidden403:
-      description: 権限が必要です。
+    Gone410:
+      description: 要求した位置の情報は既に利用できません。正本を取得し直してから接続し直してください。
       content:
         application/json:
           schema:
@@ -4288,6 +4458,12 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
     ServiceUnavailable503:
       description: サービスが一時的に利用できません。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden403:
+      description: 権限が必要です。
       content:
         application/json:
           schema:

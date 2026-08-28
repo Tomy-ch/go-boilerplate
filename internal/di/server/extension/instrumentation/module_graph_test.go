@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/httpstack/redaction"
 	"go-boilerplate/internal/di/server/extension"
 	"go-boilerplate/internal/di/server/extension/testkit"
 	"go-boilerplate/internal/logging"
@@ -17,6 +18,7 @@ func TestLoggingModule(t *testing.T) {
 		LoggingModule(),
 		fx.Provide(func() logging.Logger { return logging.NewTestLogger(t) }),
 		fx.Provide(func() logging.LogFieldBuilder { return logging.NewTestLogFieldBuilder(t) }),
+		fx.Supply(redaction.Redactor{}),
 	)
 }
 

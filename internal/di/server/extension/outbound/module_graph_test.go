@@ -5,6 +5,7 @@ import (
 
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/controller/httpstack/oapi/validator"
+	"go-boilerplate/internal/controller/httpstack/redaction"
 	"go-boilerplate/internal/di/server/extension"
 	"go-boilerplate/internal/di/server/extension/testkit"
 	"go-boilerplate/internal/logging"
@@ -23,6 +24,7 @@ func TestErrorHandlerModule(t *testing.T) {
 		fx.Provide(func() logging.LogFieldBuilder { return logging.NewTestLogFieldBuilder(t) }),
 		fx.Supply(config.NewObservabilityConfig(config.MockConfigForTest(t))),
 		fx.Supply(spec),
+		fx.Supply(redaction.FromSpec(spec)),
 	)
 }
 
@@ -38,5 +40,6 @@ func TestRecoveryModule(t *testing.T) {
 		fx.Provide(func() logging.Logger { return logging.NewTestLogger(t) }),
 		fx.Provide(func() logging.LogFieldBuilder { return logging.NewTestLogFieldBuilder(t) }),
 		fx.Supply(config.NewApplicationConfig(config.MockConfigForTest(t))),
+		fx.Supply(redaction.Redactor{}),
 	)
 }

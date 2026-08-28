@@ -3,6 +3,7 @@ package instrumentation
 
 import (
 	hslogger "go-boilerplate/internal/controller/httpstack/logging"
+	"go-boilerplate/internal/controller/httpstack/redaction"
 	"go-boilerplate/internal/di/server/extension"
 	"go-boilerplate/internal/logging"
 
@@ -23,12 +24,12 @@ func LoggingModule() fx.Option {
 }
 
 // LoggingMiddleware は、HTTPリクエスト／レスポンスのアクセスログを出力するミドルウェアを提供します（OTel トレースコンテキストの TraceID・SpanID を含む）。
-func LoggingMiddleware(z logging.Logger, lf logging.LogFieldBuilder) extension.UseMiddlewareOut {
+func LoggingMiddleware(z logging.Logger, lf logging.LogFieldBuilder, red redaction.Redactor) extension.UseMiddlewareOut {
 	return extension.UseMiddlewareOut{
 		Middleware: extension.UseMiddleware{
 			Name:       "logging",
 			Priority:   loggingPriority,
-			Middleware: hslogger.Middleware(z, lf),
+			Middleware: hslogger.Middleware(z, lf, red),
 		},
 	}
 }

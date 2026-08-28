@@ -126,7 +126,7 @@ func Test_ticketService_Verify(t *testing.T) {
 
 			got, err := s.Verify(t.Context(), ticketValue, "stream-a")
 			require.NoError(t, err)
-			assert.Equal(t, VerifiedTicketView{Subject: "alice", Destination: "stream-a", Scope: "read", InitialCursor: 7}, got)
+			assert.Equal(t, rt.StreamGrant{Subject: "alice", Destination: "stream-a", Scope: "read", InitialCursor: 7}, got)
 		})
 	})
 
@@ -138,8 +138,9 @@ func Test_ticketService_Verify(t *testing.T) {
 
 			s, _, _ := newTicketServiceForTest(t)
 
-			_, err := s.Verify(t.Context(), "", "stream-a")
+			got, err := s.Verify(t.Context(), "", "stream-a")
 			require.ErrorIs(t, err, ErrTicketInvalid)
+			assert.Equal(t, rt.StreamGrant{}, got)
 			require.ErrorIs(t, err, apperror.ErrUnauthenticated)
 		})
 
@@ -149,8 +150,9 @@ func Test_ticketService_Verify(t *testing.T) {
 			s, store, _ := newTicketServiceForTest(t)
 			store.EXPECT().Find(gomock.Any(), hashTicket(ticketValue), now).Return(rt.StreamTicket{}, false, nil)
 
-			_, err := s.Verify(t.Context(), ticketValue, "stream-a")
+			got, err := s.Verify(t.Context(), ticketValue, "stream-a")
 			require.ErrorIs(t, err, ErrTicketInvalid)
+			assert.Equal(t, rt.StreamGrant{}, got)
 		})
 
 		t.Run("destination が違えば ErrTicketInvalid", func(t *testing.T) {
@@ -159,8 +161,9 @@ func Test_ticketService_Verify(t *testing.T) {
 			s, store, _ := newTicketServiceForTest(t)
 			store.EXPECT().Find(gomock.Any(), hashTicket(ticketValue), now).Return(savedTicket(), true, nil)
 
-			_, err := s.Verify(t.Context(), ticketValue, "stream-b")
+			got, err := s.Verify(t.Context(), ticketValue, "stream-b")
 			require.ErrorIs(t, err, ErrTicketInvalid)
+			assert.Equal(t, rt.StreamGrant{}, got)
 		})
 
 		t.Run("store が読めなければそのエラーをそのまま返す", func(t *testing.T) {

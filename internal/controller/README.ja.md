@@ -19,6 +19,10 @@
 - `worker/` — キューのメッセージ
 - `outbox/` — outbox を polling して publish する relay
 
+`stream/` は 5 種目ではなく、ひとつの機構（Realtime Delivery の SSE transport）の HTTP 入口である。HTTP リクエストで
+あることは変わらず、feature 中立・非 strict・機構自身の DI module が結線する、という理由で `handler/` の隣に置く
+（`docs/design/realtime-delivery.md` §3.1）。
+
 残りのディレクトリはこの 4 つに奉仕する。`server/` は Echo インスタンスの構築、`httpstack/` は
 ミドルウェアスタック、`error/response/` はエラーボディ、`conv/` は生成型とドメイン型の境界、
 `ctxhelper/` は Echo context のアクセサである。
@@ -28,6 +32,7 @@
 |ディレクトリ|説明|詳細|
 |---|---|---|
 |`handler/`|HTTP リクエストを受け取り Usecase へ委譲するハンドラ|[README](handler/README.ja.md)|
+|`stream/`|Realtime Delivery の SSE endpoint。確定前の検証（ticket・cursor）と `Streamer` seam|[README](stream/README.ja.md)|
 |`job/`|CLI から起動されるジョブのコントローラ|[README](job/README.ja.md)|
 |`worker/`|pull-ack メッセージキューを消費し Usecase へディスパッチするワーカーエンジン|[README](worker/README.ja.md)|
 |`outbox/`|outbox を周期的に poll し未 publish メッセージを送るリレーエンジン|[README](outbox/README.ja.md)|
@@ -65,7 +70,7 @@ detail を参照）。ハンドラのメソッドは非公開の `server` に対
 
 ## テスト戦略
 
-ここに書くのは層の基準である。controller は inbound adapter の総称であり、全てが HTTP を話すわけではない。以下を適用する前に、駆動方式に対応するサブセクションを読むこと。独自の節を持つサブツリーはその節が観点を専有する: [`handler/`](handler/README.ja.md)、[`job/`](job/README.ja.md)、[`httpstack/`](httpstack/README.ja.md)、[`server/`](server/README.ja.md)。
+ここに書くのは層の基準である。controller は inbound adapter の総称であり、全てが HTTP を話すわけではない。以下を適用する前に、駆動方式に対応するサブセクションを読むこと。独自の節を持つサブツリーはその節が観点を専有する: [`handler/`](handler/README.ja.md)、[`stream/`](stream/README.ja.md)、[`job/`](job/README.ja.md)、[`httpstack/`](httpstack/README.ja.md)、[`server/`](server/README.ja.md)。
 
 ### HTTP ハンドラ
 

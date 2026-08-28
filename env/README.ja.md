@@ -94,7 +94,7 @@
 |OBS_LOGS_EXPORTER|log の OTLP exporter（`otlp` で有効化／空・`none` で無効）|string|otlp|空でログ送出無効（zap は stdout のみ）。Per-environment value — compose の可観測性スタックを持つのは `local` だけで、他の環境は collector を結線するまで空にする|
 |OBS_OTLP_PROTOCOL|OTLP プロトコル（`http/protobuf` / `grpc`）|string|http/protobuf|Code default `http/protobuf`|
 |OBS_MASKED_DB_QUERY_ARGS|DBパラメータマスク|bool|false|セキュリティ重要。Per-environment value — local / ci / dast だけ `false`。クエリやテスト失敗、スキャン結果の調査では生の SQL 引数が見えること自体が目的のため。`dev` 以降は `true` とし、実データがトレースバックエンドへ届かないようにする。上位環境をローカル側の値に揃えてはならない|
-|OBS_TARGET_STATUS_CODES|トレース対象ステータス|csv|400,401,403,404,405,409,422,429,500,501,503|エラー監視用。Per-environment value — 本番に近い環境ほど単調に絞り込むため、ファイル間の不一致は伝播漏れではなく意図である。`local` / `ci` / `dast` は開発・テストでの可視性のため全件を監視し、`dev` / `stg` は `429` を落とし、`prd` はさらに `403` / `404` / `405` を落として、本番の監視をサーバー側の失敗と契約違反に寄せる（本番規模ではクライアント起因のノイズが支配的になるため）。下位の環境が上位の環境の無視するコードを監視することはない。ポリシーは `TestEnvTargetStatusCodesPolicy`（`internal/architest`）が機械検証しており、一部の env ファイルにだけコードを足せばビルドが落ちる。特定環境から意図的に外す場合は、同テストのポリシー宣言も更新する必要がある|
+|OBS_TARGET_STATUS_CODES|トレース対象ステータス|csv|400,401,403,404,405,409,410,422,429,500,501,503|エラー監視用。Per-environment value — 本番に近い環境ほど単調に絞り込むため、ファイル間の不一致は伝播漏れではなく意図である。`local` / `ci` / `dast` は開発・テストでの可視性のため全件を監視し、`dev` / `stg` は `429` を落とし、`prd` はさらに `403` / `404` / `405` / `410` を落として、本番の監視をサーバー側の失敗と契約違反に寄せる（本番規模ではクライアント起因のノイズが支配的になるため）。下位の環境が上位の環境の無視するコードを監視することはない。ポリシーは `TestEnvTargetStatusCodesPolicy`（`internal/architest`）が機械検証しており、一部の env ファイルにだけコードを足せばビルドが落ちる。特定環境から意図的に外す場合は、同テストのポリシー宣言も更新する必要がある|
 
 ### Database
 

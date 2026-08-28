@@ -24,6 +24,13 @@ Hand-written (`authn.go`) — the `Authn` slot:
 - `SetAuthnFailure(ctx, err) bool` — record an authentication failure; returns `false` when no slot is present
 - `AuthnFailure(ctx) error` — read the recorded failure; `nil` when authentication did not fail
 
+Hand-written (`stream_grant.go`) — the `StreamGrant` slot, filled by the `StreamTicket` security scheme (ADR-0074 (query-ticket-stream-authentication)) with the verified ticket's bindings. A rejected ticket is recorded through `SetAuthnFailure`, so the same fail-closed stage denies it:
+
+- `WithStreamGrant(ctx) context.Context` — install an empty slot (call before authentication)
+- `SetStreamGrant(ctx, grant) bool` — write the verified `realtime.StreamGrant`; `false` when no slot is present
+- `GetStreamGrant(ctx) (realtime.StreamGrant, bool)` — read; `ok=false` when unset
+- `RequireStreamGrant(ctx) (realtime.StreamGrant, error)` — read, returning `ErrStreamGrantMissing` when unset
+
 The slot carries failures as well as successes because a spec may declare authentication
 optional, and validation of such an operation succeeds even when a presented credential was
 rejected. The failure survives in the slot, so a later stage can still deny the request.
@@ -91,6 +98,14 @@ make gen-go-code
 
 - specifying only import path (e.g., `github.com/foo/bar`) is not allowed
 - external types must always specify both `--type` and `--import`
+
+## Test Strategy
+
+The package is neither an inbound adapter nor a middleware, so nothing in [`../README.md`](../README.md) applies; the viewpoints here are its own.
+
+- **Three slot states, both sides** — every accessor is asserted with no slot installed, a slot installed but unset, and a slot written: `With*` seeds an *empty* slot (the immediate `Get*` must report unset), `Set*` reports `false` without a slot and `true` with one, `Get*` / `Require*` distinguish unset from written. The unset-after-install case is the one that matters: a slot that reads as set with a zero value is how an unauthenticated request would pass as authenticated.
+- **Failure carried beside success** — for the `Authn` slot, a recorded failure survives a later read; assert it independently of the success path.
+- **Generated flags** — the `genctxkey` outputs are pinned by their generated tests; do not duplicate them here.
 
 ## About editing
 

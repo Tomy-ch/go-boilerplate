@@ -3,6 +3,7 @@ package outbound
 import (
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/controller/httpstack/recovery"
+	"go-boilerplate/internal/controller/httpstack/redaction"
 	"go-boilerplate/internal/di/server/extension"
 	"go-boilerplate/internal/logging"
 
@@ -22,13 +23,13 @@ func RecoveryModule() fx.Option {
 
 // RecoveryMiddleware は、リカバリ制御ミドルウェアを提供します。
 func RecoveryMiddleware(
-	logger logging.Logger, lf logging.LogFieldBuilder, appCfg *config.ApplicationConfig,
+	logger logging.Logger, lf logging.LogFieldBuilder, appCfg *config.ApplicationConfig, red redaction.Redactor,
 ) extension.UseMiddlewareOut {
 	return extension.UseMiddlewareOut{
 		Middleware: extension.UseMiddleware{
 			Name:       "recovery",
 			Priority:   recoveryPriority,
-			Middleware: recovery.Middleware(logger, lf, appCfg),
+			Middleware: recovery.Middleware(logger, lf, appCfg, red),
 		},
 	}
 }

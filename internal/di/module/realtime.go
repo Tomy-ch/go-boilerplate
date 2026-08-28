@@ -7,6 +7,9 @@ import (
 	"go.uber.org/fx"
 
 	"go-boilerplate/internal/config"
+	oapiauth "go-boilerplate/internal/controller/httpstack/oapi/auth"
+	"go-boilerplate/internal/controller/stream"
+	streamauth "go-boilerplate/internal/controller/stream/auth"
 	"go-boilerplate/internal/infrastructure/dynamodbclient"
 	"go-boilerplate/internal/infrastructure/eventlog"
 	"go-boilerplate/internal/infrastructure/instancelease"
@@ -19,9 +22,10 @@ import (
 )
 
 // realtimeModule は、Realtime Delivery の store（EventLog / StreamTicket / InstanceLease / SecretGenerator）と
-// 機構側 usecase（CursorValidator / TicketIssuer / TicketVerifier）を提供する fx.Module です。
-// 設計正本（docs/design/realtime-delivery.md §3.1）のとおり、feature の realtime adapter が 1 つ以上あるときに
-// だけ app graph へ組み込みます。まだ無いので InfrastructureModule() には含めず、graph の検証だけを持ちます。
+// 機構側 usecase（CursorValidator / TicketIssuer / TicketVerifier）、StreamTicket securityScheme の認証器を提供し、
+// SSE の stream handler を Echo に登録する fx.Module です。
+// InfrastructureModule() には束ねず、feature の realtime adapter が現れたときに app graph へ組み込みます
+// （docs/design/realtime-delivery.md §3.1）。
 func realtimeModule() fx.Option {
 	return fx.Module("realtime",
 		fx.Provide(
@@ -33,6 +37,10 @@ func realtimeModule() fx.Option {
 			provideCursorValidator,
 			provideTicketIssuer,
 			provideTicketVerifier,
+			fx.Annotate(provideStreamTicketScheme, fx.ResultTags(`group:"`+oapiauth.SchemeGroup+`"`)),
+		),
+		fx.Invoke(
+			stream.BindHandler,
 		),
 	)
 }
@@ -81,4 +89,9 @@ func provideTicketIssuer(
 
 func provideTicketVerifier(store rt.StreamTicketStore, clk clock.Clock, tf observability.TracerFactory) ucrealtime.TicketVerifier {
 	return ucrealtime.NewTicketVerifier(store, clk, tf)
+}
+
+// provideStreamTicketScheme は、query の stream ticket を検証する認証器を oapi/auth の scheme group へ出します。
+func provideStreamTicketScheme(verifier ucrealtime.TicketVerifier) oapiauth.SchemeAuthenticator {
+	return streamauth.New(verifier)
 }

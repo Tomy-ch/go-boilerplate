@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"go-boilerplate/internal/controller/httpstack/redaction"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v5"
@@ -519,6 +520,22 @@ func Test_newTestAllowPolicy(t *testing.T) {
 			// = req := httptest.NewRequestWithContext(context.Background(), http.MethodDelete, "/health", nil)
 			// sample-api:replace-end
 			assert.Equal(t, "OPTIONS, GET", policy.Allow(req))
+		})
+	})
+}
+
+func Test_newTestRedactor(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("実specのquery apiKeyを秘匿するRedactorを返す", func(t *testing.T) {
+			t.Parallel()
+
+			r := newTestRedactor(t)
+
+			assert.Equal(t, "/v1/streams/s?ticket="+redaction.RedactedValue, r.URI("/v1/streams/s?ticket=raw-value"))
 		})
 	})
 }
