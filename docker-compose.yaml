@@ -167,15 +167,29 @@ services:
       - development
       - tools
 
+  dynamodb_init: # dynamodb_local の data volume の所有者を合わせる one-shot（冪等）
+    image: amazon/dynamodb-local:3.3.1@sha256:ff89bd48ff32cd8d9be5fee8873b65b8854dc408f1afe881be6eb00247bc0dab
+    # image は非 root（dynamodblocal）で動くが /home/dynamodblocal/data を持たないため、named volume は
+    # root 所有で作られて java が書けない。本体を root で動かす代わりに、所有者合わせだけをここへ切り出す
+    # （garage_init と同じ形。同じ compose project 内なので depends_on で順序が付き、make 側の細工は要らない）。
+    user: root
+    entrypoint: ["sh", "-c", "chown dynamodblocal:dynamodblocal /home/dynamodblocal/data"]
+    volumes:
+      - dynamodb_data:/home/dynamodblocal/data
+    restart: "no"
+    profiles:
+      - development
+      - tools
+
   dynamodb_local: # DynamoDB 互換ストア（Realtime Delivery の EventLog / StreamTicket / InstanceLease。ローカル開発用）
     image: amazon/dynamodb-local:3.3.1@sha256:ff89bd48ff32cd8d9be5fee8873b65b8854dc408f1afe881be6eb00247bc0dab
     # image 既定の -inMemory は再起動で table が消えるため、./data（WorkingDir /home/dynamodblocal 相対）へ
     # 永続化する。-sharedDb は region / credential によらず単一の DB を見せる設定で、checkout 間の分離は
     # table 名の prefix で行う（docs/design/realtime-delivery.md）。
     command: ["-jar", "DynamoDBLocal.jar", "-sharedDb", "-dbPath", "./data", "-disableTelemetry"]
-    # image は非 root（dynamodblocal）で動くが /home/dynamodblocal/data を持たないため、named volume は
-    # root 所有で作られて java が書けない。AWS 公式の compose 例と同じく root で起動する。
-    user: root
+    depends_on:
+      dynamodb_init:
+        condition: service_completed_successfully
     ports:
       - "8000:8000" # DynamoDB API
     volumes:

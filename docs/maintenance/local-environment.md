@@ -52,7 +52,7 @@ worktrees can `make serve` at the same time. The variables below are defined in
 
 | Layer | compose project | Services | Lifecycle |
 | --- | --- | --- | --- |
-| **infra** | `INFRA_PROJECT` = `gobp-shared` (fixed name) | `database` / `observability` / `garage` (+ `garage_init`) / `elasticmq` / `dynamodb_local` / `goaws` — everything that can only run on a fixed port | `make infra-up` starts it; `make serve` / `job` / `worker` / `outbox-relay` call it idempotently first. `make infra-down` stops it **for every checkout** |
+| **infra** | `INFRA_PROJECT` = `gobp-shared` (fixed name) | `database` / `observability` / `garage` (+ `garage_init`) / `elasticmq` / `dynamodb_local` (+ `dynamodb_init`) / `goaws` — everything that can only run on a fixed port | `make infra-up` starts it; `make serve` / `job` / `worker` / `outbox-relay` call it idempotently first. `make infra-down` stops it **for every checkout** |
 | **app** | `APP_PROJECT` = `gobp-wt-N` while a DB slot is held, otherwise `gobp-app-<directory name>` | `api_server` / `mock_auth_server` | `make serve` starts it; `make serve-stop` stops **only this checkout's** app |
 
 - The app layer is started as `docker compose -p $(APP_PROJECT) -f docker-compose.yaml -f docker-compose.attach.yaml --profile development`.
@@ -82,6 +82,7 @@ worktrees can `make serve` at the same time. The variables below are defined in
 | `garage` | infra | `dxflrs/garage` | `3900` (S3 API) / `3902` (Web API) | S3-compatible object storage for local development (tests use in-process gofakes3 instead). The Web API delivers objects anonymously — see [`docker/README.md`](../../docker/README.md) |
 | `garage_init` | infra | build `docker/garage/Dockerfile` | none (one-shot) | Idempotent provisioning of the garage layout / bucket / access key / website access |
 | `elasticmq` | infra | `softwaremill/elasticmq-native` | `9324` (SQS API) | SQS-compatible broker for local development (tests use an in-process fake). Shared across checkouts and **cannot** be isolated per slot — see [`db-worktree-pool.md`](db-worktree-pool.md) |
+| `dynamodb_init` | infra | `amazon/dynamodb-local` | none (one-shot) | Fixes the owner of the `dynamodb_data` volume so `dynamodb_local` runs non-root (idempotent; `depends_on` orders it) |
 | `dynamodb_local` | infra | `amazon/dynamodb-local` | `8000` (DynamoDB API) | DynamoDB-compatible store for Realtime Delivery (EventLog / StreamTicket / InstanceLease); `-sharedDb`, persisted in the `dynamodb_data` volume. Shared across checkouts; nothing isolates it per slot yet — see [`db-worktree-pool.md`](db-worktree-pool.md) |
 | `goaws` | infra | `admiralpiett/goaws` (config: `docker/goaws/goaws.yaml`) | `4100` (SNS / SQS API) | SNS / SQS emulator for Realtime Delivery's instance fan-out; the worker-side outbox queue stays on `elasticmq`. `make realtime-smoke` verifies both emulators against the calls Realtime Delivery makes — see [`docker/README.md`](../../docker/README.md) |
 | `docs_server` | infra | build `docker/document/Dockerfile` | `2001:80` | Serves `docs/` for local development |
