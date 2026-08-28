@@ -233,7 +233,7 @@ func Test_newPanicLogFunc(t *testing.T) {
 			logged, err := json.Marshal(entries[0].ContextMap())
 			require.NoError(t, err)
 			assert.NotContains(t, string(logged), "raw-secret")
-			assert.Contains(t, string(logged), redaction.RedactedValue)
+			assert.Equal(t, "/v1/streams/s?ticket="+redaction.RedactedValue, entries[0].ContextMap()[logging.URIKey])
 		})
 	})
 }

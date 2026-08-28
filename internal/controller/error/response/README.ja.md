@@ -125,6 +125,14 @@ HTTP ステータス列は [`internal/apperror/README.ja.md`](../../../apperror/
 - **エラーコード / メッセージの追加**: `http_error.go` に定数とマッピングを追加
 - **型定義の更新**: OpenAPI 仕様を更新後、`make gen-api` で再生成
 
+## テスト戦略
+
+この package は adapter ではなく写像表なので、[`../../README.ja.md`](../../README.ja.md) の観点は当てはまらない。観点はここで持つ。
+
+- **全エントリを全列で** — 写像にある `apperror` の sentinel ごとに status・`code`・message を一度に表明する（`lookupErrorMetaByAppError`）。status ごとにも同じ 3 つ組を status から引いて表明する（`lookupErrorMetaByHTTPStatus`）。status を足すとき（`410` がそうだった）は両方のケースを足す。
+- **fallback は独立したケース** — 未登録のエラーは 500 のメタに落ちる。sentinel の登録忘れは黙ってここへ落ちるので、明示的に表明する。
+- **Meta が置き換えるのは code だけ** — エラーに載った `apperror.Meta` は `code`（与えられれば message も）を置き換えるが、sentinel が決めた status は変えない。両側を表明する。
+
 ## 注意点
 
 - `Details` にスタックトレースや機密情報を含めないこと。内部情報はログにのみ出力する

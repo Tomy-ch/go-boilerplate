@@ -72,7 +72,7 @@ no HTTP-level detail worth adding, omit it rather than restating.
 
 ## Test Strategy
 
-This is the layer baseline. A controller is any inbound adapter, and they do not all speak HTTP, so read the sub-section that matches the driver before applying anything below. Sub-trees with their own section own their viewpoints outright: [`handler/`](handler/README.md), [`job/`](job/README.md), [`httpstack/`](httpstack/README.md), [`server/`](server/README.md).
+This is the layer baseline. A controller is any inbound adapter, and they do not all speak HTTP, so read the sub-section that matches the driver before applying anything below. Sub-trees with their own section own their viewpoints outright: [`handler/`](handler/README.md), [`stream/`](stream/README.md), [`job/`](job/README.md), [`httpstack/`](httpstack/README.md), [`server/`](server/README.md).
 
 ### HTTP handlers
 

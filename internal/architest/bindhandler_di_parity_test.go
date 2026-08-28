@@ -139,7 +139,7 @@ func Test_collectHandlerImports(t *testing.T) {
 			t.Parallel()
 
 			imports := collectHandlerImports(controllerModuleSource(
-				"\tprefectureshandler \""+handlerImportPrefix+"/v1/prefectures\"", ""), nil)
+				"\tprefectureshandler \""+handlerImportPrefix+"/handler/v1/prefectures\"", ""), nil)
 
 			assert.Equal(t,
 				map[string]string{"prefectureshandler": handlerTreeDir + "/v1/prefectures"},
@@ -153,7 +153,7 @@ func Test_collectHandlerImports(t *testing.T) {
 			// 食い違う（categories は package productcategories）。ディレクトリ名で代用すると
 			// 正しく配線されたハンドラを解決できず落とすため、宣言名の優先をここで固定する。
 			imports := collectHandlerImports(
-				controllerModuleSource("\t\""+handlerImportPrefix+"/v1/products/categories\"", ""),
+				controllerModuleSource("\t\""+handlerImportPrefix+"/handler/v1/products/categories\"", ""),
 				map[string]string{handlerTreeDir + "/v1/products/categories": "productcategories"})
 
 			assert.Equal(t,
@@ -165,7 +165,7 @@ func Test_collectHandlerImports(t *testing.T) {
 			t.Parallel()
 
 			imports := collectHandlerImports(controllerModuleSource(
-				"\t\""+handlerImportPrefix+"/v1/users/detail\"", ""), nil)
+				"\t\""+handlerImportPrefix+"/handler/v1/users/detail\"", ""), nil)
 
 			assert.Equal(t, map[string]string{"detail": handlerTreeDir + "/v1/users/detail"}, imports)
 		})
@@ -174,11 +174,30 @@ func Test_collectHandlerImports(t *testing.T) {
 			t.Parallel()
 
 			imports := collectHandlerImports(controllerModuleSource(
-				"\tdashboardhandler \""+handlerImportPrefix+"/v1/dashboard\" // sample-api:line", ""), nil)
+				"\tdashboardhandler \""+handlerImportPrefix+"/handler/v1/dashboard\" // sample-api:line", ""), nil)
 
 			assert.Equal(t,
 				map[string]string{"dashboardhandler": handlerTreeDir + "/v1/dashboard"},
 				imports)
+		})
+
+		t.Run("handler配下でない機構transportのimportは走査で得たパッケージ名で解決する", func(t *testing.T) {
+			t.Parallel()
+
+			imports := collectHandlerImports(
+				controllerModuleSource("\t\""+handlerImportPrefix+"/stream\"", ""),
+				map[string]string{streamTreeDir: "stream"})
+
+			assert.Equal(t, map[string]string{"stream": streamTreeDir}, imports)
+		})
+
+		t.Run("handler配下でないcontroller層パッケージのエイリアス付きimportを読み取る", func(t *testing.T) {
+			t.Parallel()
+
+			imports := collectHandlerImports(controllerModuleSource(
+				"\toapiauth \""+handlerImportPrefix+"/httpstack/oapi/auth\"", ""), nil)
+
+			assert.Equal(t, map[string]string{"oapiauth": controllerTreeDir + "/httpstack/oapi/auth"}, imports)
 		})
 
 		t.Run("ハンドラ以外の import は読み取らない", func(t *testing.T) {

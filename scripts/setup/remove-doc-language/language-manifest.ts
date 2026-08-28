@@ -383,7 +383,7 @@ export const DOC_REPLACEMENTS: readonly DocReplacement[] = [
     ["grep -ril 'boilerplate' README.md README.ja.md", "grep -ril 'boilerplate' README.md"],
   ]),
   ...forFile(".gitleaksignore", [
-    ["env/README.ja.md:generic-api-key:242\n"],
+    ["env/README.ja.md:generic-api-key:253\n"],
     ["env/README.ja.md:generic-api-key:217\n"],
   ]),
   // gitleaks のフィンガープリントは行番号を含むので、畳んで行が動けば無視が外れて検出が復活する。

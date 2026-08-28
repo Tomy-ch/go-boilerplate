@@ -355,6 +355,8 @@ Available test tracers
 |`NewMockInfraLayerTracer`|For Infrastructure|
 |`NewNoopLayerTracer`|Generic|
 |`NewStubSpanContext`|Generate Context with a valid Span|
+|`NewRecordingTracerProvider`|A `TracerProvider` that keeps every ended span, plus a function returning them — for asserting what an instrumentation put on a span|
+|`InstallRecordingTracerProvider`|The same provider installed as the otel global for the test's lifetime (restored on cleanup) — for instrumentation that takes its tracer from the global, such as the HTTP OTel middleware|
 
 ### StubSpanContext
 

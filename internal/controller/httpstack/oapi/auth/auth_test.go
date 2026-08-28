@@ -24,6 +24,9 @@ import (
 // ctxKeyForTest は、バリデータが渡す context を識別するためのテスト用キーです。
 type ctxKeyForTest struct{}
 
+// apiKeyScheme は、query の apiKey として宣言された securityScheme（StreamTicket と同じ形）です。
+var apiKeyScheme = &openapi3.SecurityScheme{Type: "apiKey", In: "query", Name: "ticket"}
+
 // stubScheme は、dispatch の検証に使う SchemeAuthenticator です。
 type stubScheme struct {
 	name   string
@@ -95,6 +98,40 @@ func TestNewAuthenticator(t *testing.T) {
 
 			err = fn(validatorCtx, in)
 			require.NoError(t, err)
+		})
+
+		t.Run("宣言されたschemeの認証器があればそれへ委譲しBearer経路を通らない", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			m := mock_auth.NewMockAuthenticator(ctrl)
+			mr := mock_auth.NewMockIdentityResolver(ctrl)
+			called := false
+			fn, err := NewAuthenticator(m, mr, []SchemeAuthenticator{stubScheme{name: "StreamTicket", called: &called}})
+			require.NoError(t, err)
+
+			in := newSchemeInput(t, "StreamTicket", apiKeyScheme)
+			require.NoError(t, fn(context.Background(), in))
+
+			assert.True(t, called)
+			require.NoError(t, ctxhelper.AuthnFailure(in.RequestValidationInput.Request.Context()))
+		})
+
+		t.Run("同じ形の別名schemeは名前で取り違えずそれぞれの認証器へ委譲する", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			m := mock_auth.NewMockAuthenticator(ctrl)
+			mr := mock_auth.NewMockIdentityResolver(ctrl)
+			calledA, calledB := false, false
+			fn, err := NewAuthenticator(m, mr, []SchemeAuthenticator{
+				stubScheme{name: "StreamTicket", called: &calledA},
+				stubScheme{name: "OtherTicket", called: &calledB},
+			})
+			require.NoError(t, err)
+
+			require.NoError(t, fn(context.Background(), newSchemeInput(t, "OtherTicket", apiKeyScheme)))
+
+			assert.False(t, calledA)
+			assert.True(t, calledB)
 		})
 	})
 
@@ -308,6 +345,80 @@ func TestNewAuthenticator(t *testing.T) {
 			err = fn(context.Background(), in)
 			require.ErrorIs(t, err, ErrUnauthorizedTokenNotProvided)
 			assert.NoError(t, ctxhelper.AuthnFailure(req.Context()))
+		})
+
+		t.Run("宣言が無ければBearer経路へ落ちticketの認証器は呼ばれない", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			m := mock_auth.NewMockAuthenticator(ctrl)
+			mr := mock_auth.NewMockIdentityResolver(ctrl)
+			called := false
+			fn, err := NewAuthenticator(m, mr, []SchemeAuthenticator{stubScheme{name: "StreamTicket", called: &called}})
+			require.NoError(t, err)
+
+			in := newSchemeInput(t, "", nil)
+			in.RequestValidationInput.Request.Header.Set("Authorization", "")
+			err = fn(context.Background(), in)
+
+			require.ErrorIs(t, err, ErrUnauthorizedTokenNotProvided)
+			assert.False(t, called)
+		})
+
+		t.Run("委譲先が失敗すれば失敗をスロットへ記録し401を返す", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			m := mock_auth.NewMockAuthenticator(ctrl)
+			mr := mock_auth.NewMockIdentityResolver(ctrl)
+			want := xerrors.Wrap(apperror.ErrUnauthenticated, "ticket is unknown")
+			fn, err := NewAuthenticator(m, mr, []SchemeAuthenticator{stubScheme{name: "StreamTicket", err: want}})
+			require.NoError(t, err)
+
+			in := newSchemeInput(t, "StreamTicket", apiKeyScheme)
+			err = fn(context.Background(), in)
+
+			require.ErrorIs(t, err, want)
+			requireHTTPStatus(t, err, http.StatusUnauthorized)
+			require.ErrorIs(t, ctxhelper.AuthnFailure(in.RequestValidationInput.Request.Context()), want)
+		})
+
+		t.Run("委譲先の依存不達は503のまま返す", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			m := mock_auth.NewMockAuthenticator(ctrl)
+			mr := mock_auth.NewMockIdentityResolver(ctrl)
+			fn, err := NewAuthenticator(m, mr, []SchemeAuthenticator{stubScheme{name: "StreamTicket", err: apperror.ErrUnavailable}})
+			require.NoError(t, err)
+
+			err = fn(context.Background(), newSchemeInput(t, "StreamTicket", apiKeyScheme))
+
+			requireHTTPStatus(t, err, http.StatusServiceUnavailable)
+		})
+
+		t.Run("同じschemeを担当する認証器が2つあればErrDuplicateScheme", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			m := mock_auth.NewMockAuthenticator(ctrl)
+			mr := mock_auth.NewMockIdentityResolver(ctrl)
+
+			_, err := NewAuthenticator(m, mr, []SchemeAuthenticator{stubScheme{name: "StreamTicket"}, stubScheme{name: "StreamTicket"}})
+
+			require.ErrorIs(t, err, ErrDuplicateScheme)
+		})
+
+		t.Run("認証器の無いBearer以外のschemeは401で拒否し失敗を記録する", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			m := mock_auth.NewMockAuthenticator(ctrl)
+			mr := mock_auth.NewMockIdentityResolver(ctrl)
+			fn, err := NewAuthenticator(m, mr, nil)
+			require.NoError(t, err)
+
+			in := newSchemeInput(t, "StreamTicket", apiKeyScheme)
+			err = fn(context.Background(), in)
+
+			require.ErrorIs(t, err, ErrUnauthorizedSchemeUnsupported)
+			requireHTTPStatus(t, err, http.StatusUnauthorized)
+			require.ErrorIs(t, ctxhelper.AuthnFailure(in.RequestValidationInput.Request.Context()), ErrUnauthorizedSchemeUnsupported)
 		})
 	})
 }
@@ -572,112 +683,8 @@ func newSchemeInput(t *testing.T, name string, scheme *openapi3.SecurityScheme) 
 func requireHTTPStatus(t *testing.T, err error, want int) {
 	t.Helper()
 	var he *echo.HTTPError
-	require.True(t, xerrors.As(err, &he))
+	require.ErrorAs(t, err, &he)
 	assert.Equal(t, want, he.Code)
-}
-
-func TestNewAuthenticator_schemeDispatch(t *testing.T) {
-	t.Parallel()
-
-	apiKey := &openapi3.SecurityScheme{Type: "apiKey", In: "query", Name: "ticket"}
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("宣言されたschemeの認証器があればそれへ委譲しBearer経路を通らない", func(t *testing.T) {
-			t.Parallel()
-			ctrl := gomock.NewController(t)
-			m := mock_auth.NewMockAuthenticator(ctrl)
-			mr := mock_auth.NewMockIdentityResolver(ctrl)
-			called := false
-			fn, err := NewAuthenticator(m, mr, []SchemeAuthenticator{stubScheme{name: "StreamTicket", called: &called}})
-			require.NoError(t, err)
-
-			in := newSchemeInput(t, "StreamTicket", apiKey)
-			require.NoError(t, fn(context.Background(), in))
-
-			assert.True(t, called)
-			require.NoError(t, ctxhelper.AuthnFailure(in.RequestValidationInput.Request.Context()))
-		})
-
-		t.Run("宣言が無い呼び出しは従来どおりBearer経路で扱う", func(t *testing.T) {
-			t.Parallel()
-			ctrl := gomock.NewController(t)
-			m := mock_auth.NewMockAuthenticator(ctrl)
-			mr := mock_auth.NewMockIdentityResolver(ctrl)
-			called := false
-			fn, err := NewAuthenticator(m, mr, []SchemeAuthenticator{stubScheme{name: "StreamTicket", called: &called}})
-			require.NoError(t, err)
-
-			in := newSchemeInput(t, "", nil)
-			in.RequestValidationInput.Request.Header.Set("Authorization", "")
-			err = fn(context.Background(), in)
-
-			require.ErrorIs(t, err, ErrUnauthorizedTokenNotProvided)
-			assert.False(t, called)
-		})
-	})
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("委譲先が失敗すれば失敗をスロットへ記録し401を返す", func(t *testing.T) {
-			t.Parallel()
-			ctrl := gomock.NewController(t)
-			m := mock_auth.NewMockAuthenticator(ctrl)
-			mr := mock_auth.NewMockIdentityResolver(ctrl)
-			want := xerrors.Wrap(apperror.ErrUnauthenticated, "ticket is unknown")
-			fn, err := NewAuthenticator(m, mr, []SchemeAuthenticator{stubScheme{name: "StreamTicket", err: want}})
-			require.NoError(t, err)
-
-			in := newSchemeInput(t, "StreamTicket", apiKey)
-			err = fn(context.Background(), in)
-
-			require.ErrorIs(t, err, want)
-			requireHTTPStatus(t, err, http.StatusUnauthorized)
-			require.ErrorIs(t, ctxhelper.AuthnFailure(in.RequestValidationInput.Request.Context()), want)
-		})
-
-		t.Run("委譲先の依存不達は503のまま返す", func(t *testing.T) {
-			t.Parallel()
-			ctrl := gomock.NewController(t)
-			m := mock_auth.NewMockAuthenticator(ctrl)
-			mr := mock_auth.NewMockIdentityResolver(ctrl)
-			fn, err := NewAuthenticator(m, mr, []SchemeAuthenticator{stubScheme{name: "StreamTicket", err: apperror.ErrUnavailable}})
-			require.NoError(t, err)
-
-			err = fn(context.Background(), newSchemeInput(t, "StreamTicket", apiKey))
-
-			requireHTTPStatus(t, err, http.StatusServiceUnavailable)
-		})
-
-		t.Run("同じschemeを担当する認証器が2つあればErrDuplicateScheme", func(t *testing.T) {
-			t.Parallel()
-			ctrl := gomock.NewController(t)
-			m := mock_auth.NewMockAuthenticator(ctrl)
-			mr := mock_auth.NewMockIdentityResolver(ctrl)
-
-			_, err := NewAuthenticator(m, mr, []SchemeAuthenticator{stubScheme{name: "StreamTicket"}, stubScheme{name: "StreamTicket"}})
-
-			require.ErrorIs(t, err, ErrDuplicateScheme)
-		})
-
-		t.Run("認証器の無いBearer以外のschemeは401で拒否し失敗を記録する", func(t *testing.T) {
-			t.Parallel()
-			ctrl := gomock.NewController(t)
-			m := mock_auth.NewMockAuthenticator(ctrl)
-			mr := mock_auth.NewMockIdentityResolver(ctrl)
-			fn, err := NewAuthenticator(m, mr, nil)
-			require.NoError(t, err)
-
-			in := newSchemeInput(t, "StreamTicket", apiKey)
-			err = fn(context.Background(), in)
-
-			require.ErrorIs(t, err, ErrUnauthorizedSchemeUnsupported)
-			requireHTTPStatus(t, err, http.StatusUnauthorized)
-			require.ErrorIs(t, ctxhelper.AuthnFailure(in.RequestValidationInput.Request.Context()), ErrUnauthorizedSchemeUnsupported)
-		})
-	})
 }
 
 func Test_isBearerScheme(t *testing.T) {
@@ -695,10 +702,6 @@ func Test_isBearerScheme(t *testing.T) {
 			t.Parallel()
 			assert.True(t, isBearerScheme(&openapi3.SecurityScheme{Type: "http", Scheme: "Bearer"}))
 		})
-	})
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
 
 		t.Run("httpでもbasicはBearerではない", func(t *testing.T) {
 			t.Parallel()

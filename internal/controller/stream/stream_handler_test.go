@@ -28,13 +28,15 @@ var errStreamClosed = xerrors.New("stream closed")
 // stubStreamer は、handler が渡した StreamRequest を捕まえる Streamer です。
 type stubStreamer struct {
 	got    *StreamRequest
+	gotCtx context.Context
 	err    error
 	called bool
 }
 
-func (s *stubStreamer) Stream(_ *echo.Context, req StreamRequest) error {
+func (s *stubStreamer) Stream(c *echo.Context, req StreamRequest) error {
 	s.called = true
 	s.got = &req
+	s.gotCtx = c.Request().Context()
 	return s.err
 }
 
@@ -42,7 +44,9 @@ func newServer(t *testing.T) (*server, *mock_realtime.MockCursorValidator, *stub
 	t.Helper()
 	cursors := mock_realtime.NewMockCursorValidator(gomock.NewController(t))
 	streamer := &stubStreamer{}
-	return &server{tracer: observability.NewMockControllerLayerTracer(t), cursors: cursors, streamer: streamer}, cursors, streamer
+	tp, _ := observability.NewRecordingTracerProvider(t)
+	s := &server{tracer: observability.NewTracerFactory(tp).Controller(), cursors: cursors, streamer: streamer}
+	return s, cursors, streamer
 }
 
 // newContext は、StreamGrant スロットを仕込んだ request の echo.Context を返します。grant が nil ならスロットは空のままです。
@@ -86,12 +90,16 @@ func Test_server_GetStream(t *testing.T) {
 			cursors.EXPECT().Validate(gomock.Any(), rt.StreamID("stream-1"), rt.Sequence(12)).Return(nil)
 			lastEventID, after := "12", "7"
 
-			err := s.GetStream(newContext(t, "/v1/streams/stream-1?after=7", grantFor()), "stream-1",
-				gen.GetStreamParams{After: &after, LastEventID: &lastEventID})
+			c := newContext(t, "/v1/streams/stream-1?after=7", grantFor())
+			original := c.Request().Context()
+			err := s.GetStream(c, "stream-1", gen.GetStreamParams{After: &after, LastEventID: &lastEventID})
 
 			require.NoError(t, err)
 			require.NotNil(t, streamer.got)
 			assert.Equal(t, StreamRequest{Subject: "subject-1", Destination: "stream-1", Scope: "read", Cursor: 12}, *streamer.got)
+			// handler が張った span 付きの context が request に据え直され、その request が Streamer に渡ること。
+			assert.NotEqual(t, original, streamer.gotCtx)
+			assert.Equal(t, c.Request().Context(), streamer.gotCtx)
 		})
 
 		t.Run("afterだけならその位置を使う", func(t *testing.T) {

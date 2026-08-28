@@ -43,7 +43,28 @@ func TestNew(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("担当するschemeはspecに宣言されたStreamTicketである", func(t *testing.T) {
+		t.Run("渡したverifierで検証する認証器を返す", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			v := mock_realtime.NewMockTicketVerifier(ctrl)
+			v.EXPECT().Verify(gomock.Any(), "raw", rt.StreamID("stream-1")).Return(rt.StreamGrant{Subject: "s"}, nil)
+
+			s := New(v)
+			in := newInput(t, "/v1/streams/stream-1?ticket=raw", apiKeyScheme, true)
+			require.NoError(t, s.Authenticate(context.Background(), in))
+		})
+	})
+}
+
+// TestStreamTicketSchemeDeclaration は、担当する scheme が openapi.yaml に query の apiKey として宣言されていることを固定する
+// contract test です（production の対応物は無い）。
+func TestStreamTicketSchemeDeclaration(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("StreamTicketはspecにapiKey/queryとして宣言されている", func(t *testing.T) {
 			t.Parallel()
 			spec, err := validator.GetValidator()
 			require.NoError(t, err)
@@ -51,9 +72,6 @@ func TestNew(t *testing.T) {
 			require.True(t, ok, "openapi.yaml の securitySchemes に %s が無い", SchemeName)
 			assert.Equal(t, "apiKey", declared.Value.Type)
 			assert.Equal(t, "query", declared.Value.In)
-
-			s := New(mock_realtime.NewMockTicketVerifier(gomock.NewController(t)))
-			assert.Equal(t, SchemeName, s.Scheme())
 		})
 	})
 }
@@ -126,6 +144,16 @@ func Test_streamTicket_Authenticate(t *testing.T) {
 			require.ErrorIs(t, err, ucrealtime.ErrTicketInvalid)
 			_, ok := ctxhelper.GetStreamGrant(in.RequestValidationInput.Request.Context())
 			assert.False(t, ok)
+		})
+
+		t.Run("schemeにパラメータ名が無ければ検証せずErrSchemeDeclarationMissing", func(t *testing.T) {
+			t.Parallel()
+			v := mock_realtime.NewMockTicketVerifier(gomock.NewController(t))
+			unnamed := &openapi3.SecurityScheme{Type: "apiKey", In: "query"}
+
+			err := New(v).Authenticate(context.Background(), newInput(t, "/v1/streams/stream-1?ticket=raw", unnamed, true))
+
+			require.ErrorIs(t, err, ErrSchemeDeclarationMissing)
 		})
 
 		t.Run("schemeの宣言が渡されなければ検証せずErrSchemeDeclarationMissing", func(t *testing.T) {

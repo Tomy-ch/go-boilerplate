@@ -125,6 +125,14 @@ a status that neither source can produce would be speculative.
 - **Add error codes / messages**: Add constants and mapping to `http_error.go`
 - **Update type definitions**: After updating the OpenAPI spec, regenerate with `make gen-api`
 
+## Test Strategy
+
+This package is a mapping table, not an adapter, so nothing in [`../../README.md`](../../README.md) applies; the viewpoints are its own.
+
+- **Every entry, all columns** — for each `apperror` sentinel in the mapping, one case asserts status, `code` and message together (`lookupErrorMetaByAppError`), and for each status one case asserts the same triple by status (`lookupErrorMetaByHTTPStatus`). Adding a status (as `410` was) means adding both cases.
+- **The fallback is its own case** — an unmapped error lands on the 500 meta; assert it explicitly, since a sentinel forgotten here falls into it silently.
+- **Meta overrides only the code** — an `apperror.Meta` on the error replaces the `code` (and the message when given) but never the status the sentinel decided; assert both halves.
+
 ## Notes
 
 - Do not include stack traces or sensitive information in `Details`. Internal information should only be output to logs

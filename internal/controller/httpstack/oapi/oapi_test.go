@@ -176,14 +176,16 @@ func TestMiddleware(t *testing.T) {
 			e := echo.New()
 			c := e.NewContext(req, rec)
 
-			handler := mw(func(_ *echo.Context) error {
+			grant := rt.StreamGrant{Subject: "s", Destination: "d"}
+			handler := mw(func(c *echo.Context) error {
+				// 後段が見る request の context にスロットがあり、仕込まれた直後は未設定で、書き込めること。
+				_, ok := ctxhelper.GetStreamGrant(c.Request().Context())
+				assert.False(t, ok)
+				assert.True(t, ctxhelper.SetStreamGrant(c.Request().Context(), grant))
 				return nil
 			})
 
-			_ = handler(c)
-
-			grant := rt.StreamGrant{Subject: "s", Destination: "d"}
-			require.True(t, ctxhelper.SetStreamGrant(c.Request().Context(), grant))
+			require.NoError(t, handler(c))
 
 			got, ok := ctxhelper.GetStreamGrant(c.Request().Context())
 			assert.True(t, ok)

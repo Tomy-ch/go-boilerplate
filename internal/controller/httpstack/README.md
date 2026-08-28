@@ -106,7 +106,7 @@ The dividing line is whether the sub-package takes a `next`, not which table it 
 - **Adapter-slot functions** (`oapi/auth`) — driven through the signature the adapter demands (`openapi3filter.AuthenticationFunc`), not through Echo. The result is usually a side effect on the request context rather than a return value, so assert the written value, and on each rejection path assert the error identity rather than merely that an error occurred.
 - **Spec providers** (`oapi/validator`) — the returned `*openapi3.T` is itself the subject, so the tests are contracts over the spec (e.g. every operation outside the public allowlist declares an authenticated `security`). They have no production counterpart by design.
 
-`errorhandler` replaces `e.HTTPErrorHandler` and its viewpoints are package-specific, so it carries its own *Test Strategy* section — see [`errorhandler/README.md`](errorhandler/README.md).
+`errorhandler` replaces `e.HTTPErrorHandler` and its viewpoints are package-specific, so it carries its own *Test Strategy* section — see [`errorhandler/README.md`](errorhandler/README.md). `redaction` fits none of the three shapes — a pure value transformation that goes into no Echo or oapi-codegen slot — and carries its own section too: [`redaction/README.md`](redaction/README.md).
 
 ### Viewpoints every middleware covers
 

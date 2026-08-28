@@ -73,10 +73,6 @@ func TestSecretQueryParamNames(t *testing.T) {
 			spec := newSpecWithSchemes(map[string]*openapi3.SecurityScheme{"Bearer": {Type: "http", Scheme: "bearer"}})
 			assert.Empty(t, SecretQueryParamNames(spec))
 		})
-	})
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
 
 		t.Run("specがnilなら空", func(t *testing.T) {
 			t.Parallel()
@@ -138,14 +134,14 @@ func TestRedactor_URI(t *testing.T) {
 			var zero Redactor
 			assert.Equal(t, "/p?ticket=abc", zero.URI("/p?ticket=abc"))
 		})
-	})
 
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("構文解析できないqueryは全体を置き換える", func(t *testing.T) {
+		t.Run("復号できない符号化を含むqueryは全体を置き換える", func(t *testing.T) {
 			t.Parallel()
 			assert.Equal(t, "/p?"+RedactedValue, r.URI("/p?%zz=abc&a=1"))
+		})
+
+		t.Run("セミコロン区切りのqueryは全体を置き換える", func(t *testing.T) {
+			t.Parallel()
 			assert.Equal(t, "/p?"+RedactedValue, r.URI("/p?a=1;ticket=abc"))
 		})
 	})
@@ -191,9 +187,13 @@ func TestRedactor_secret(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("復号した名前が秘匿対象ならtrue", func(t *testing.T) {
+		t.Run("秘匿対象の名前ならtrue", func(t *testing.T) {
 			t.Parallel()
 			assert.True(t, r.secret("ticket"))
+		})
+
+		t.Run("符号化された名前は復号して判定する", func(t *testing.T) {
+			t.Parallel()
 			assert.True(t, r.secret("%74icket"))
 		})
 
@@ -201,10 +201,6 @@ func TestRedactor_secret(t *testing.T) {
 			t.Parallel()
 			assert.False(t, r.secret("after"))
 		})
-	})
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
 
 		t.Run("復号できない名前は秘匿対象として扱う", func(t *testing.T) {
 			t.Parallel()

@@ -87,11 +87,15 @@ func Test_parseCursor(t *testing.T) {
 			require.ErrorIs(t, err, ErrCursorMalformed)
 		})
 
-		t.Run("符号付きと先頭ゼロはErrCursorMalformed", func(t *testing.T) {
+		t.Run("符号付きはErrCursorMalformed", func(t *testing.T) {
 			t.Parallel()
 			_, err := parseCursor("+1")
 			require.ErrorIs(t, err, ErrCursorMalformed)
-			_, err = parseCursor("007")
+		})
+
+		t.Run("先頭ゼロはErrCursorMalformed", func(t *testing.T) {
+			t.Parallel()
+			_, err := parseCursor("007")
 			require.ErrorIs(t, err, ErrCursorMalformed)
 		})
 

@@ -70,7 +70,7 @@ detail を参照）。ハンドラのメソッドは非公開の `server` に対
 
 ## テスト戦略
 
-ここに書くのは層の基準である。controller は inbound adapter の総称であり、全てが HTTP を話すわけではない。以下を適用する前に、駆動方式に対応するサブセクションを読むこと。独自の節を持つサブツリーはその節が観点を専有する: [`handler/`](handler/README.ja.md)、[`job/`](job/README.ja.md)、[`httpstack/`](httpstack/README.ja.md)、[`server/`](server/README.ja.md)。
+ここに書くのは層の基準である。controller は inbound adapter の総称であり、全てが HTTP を話すわけではない。以下を適用する前に、駆動方式に対応するサブセクションを読むこと。独自の節を持つサブツリーはその節が観点を専有する: [`handler/`](handler/README.ja.md)、[`stream/`](stream/README.ja.md)、[`job/`](job/README.ja.md)、[`httpstack/`](httpstack/README.ja.md)、[`server/`](server/README.ja.md)。
 
 ### HTTP ハンドラ
 

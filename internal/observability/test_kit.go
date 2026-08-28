@@ -2,11 +2,11 @@ package observability
 
 import (
 	"context"
-	"go.opentelemetry.io/otel"
 	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	metricnoop "go.opentelemetry.io/otel/metric/noop"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
@@ -32,6 +32,12 @@ type ObservedHTTPClientMetrics struct {
 }
 
 // NewNoopTracerFactory は、テスト用に TracerFactory を無効化して返します。
+// spanRecorder は、終了した span をそのまま保持する同期 exporter です。
+type spanRecorder struct {
+	mu    sync.Mutex
+	spans []sdktrace.ReadOnlySpan
+}
+
 func NewNoopTracerFactory(t *testing.T) TracerFactory {
 	t.Helper()
 
@@ -184,12 +190,6 @@ func NewStubSpanContext(t *testing.T) (context.Context, func()) {
 		span.End()
 		_ = tp.Shutdown(context.Background())
 	}
-}
-
-// spanRecorder は、終了した span をそのまま保持する同期 exporter です。
-type spanRecorder struct {
-	mu    sync.Mutex
-	spans []sdktrace.ReadOnlySpan
 }
 
 func (r *spanRecorder) ExportSpans(_ context.Context, spans []sdktrace.ReadOnlySpan) error {

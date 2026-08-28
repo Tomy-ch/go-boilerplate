@@ -30,7 +30,7 @@
 
 2 段目が成立するのは、**ここのモジュールが起動に実インフラを必要としないから**です。基準はディレクトリではなくこの性質にあります。クロージャが実 DB やネットワーク接続を要求するモジュールは上位に置き、そこでは `fx.ValidateApp` だけが戦略になります。
 
-5 つのうち 4 つは `internal/controller/httpstack` 等のコンストラクタを薄くラップするだけです。`AuthnModule` だけが例外で、`provideAuthenticator` は環境ごとに分岐し `httpclient.Client` を受け取ります。固有のロジックを持つ provider 本体（`provideAuthenticator` / `provideJWKSAuthenticator`）は、[`../../README.md`](../../README.ja.md) の DI 層ベースラインに従って直接ユニットテストします。グラフ検証はどちらにも到達せず、環境ゲートの拒否ケースこそが要点だからです。
+6 つのうち 5 つは `internal/controller/httpstack` 等のコンストラクタを薄くラップするだけです。`AuthnModule` だけが例外で、`provideAuthenticator` は環境ごとに分岐し `httpclient.Client` を受け取ります。固有のロジックを持つ provider 本体（`provideAuthenticator` / `provideJWKSAuthenticator`）は、[`../../README.md`](../../README.ja.md) の DI 層ベースラインに従って直接ユニットテストします。グラフ検証はどちらにも到達せず、環境ゲートの拒否ケースこそが要点だからです。
 
 ## 注意点
 

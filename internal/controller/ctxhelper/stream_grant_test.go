@@ -23,6 +23,8 @@ func TestWithStreamGrant(t *testing.T) {
 		t.Run("スロットを仕込むとSetStreamGrantが成功する", func(t *testing.T) {
 			t.Parallel()
 			ctx := WithStreamGrant(context.Background())
+			_, ok := GetStreamGrant(ctx)
+			assert.False(t, ok, "仕込んだ直後のスロットは空")
 			assert.True(t, SetStreamGrant(ctx, newTestStreamGrant()))
 		})
 	})

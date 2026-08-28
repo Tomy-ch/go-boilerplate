@@ -351,6 +351,8 @@ lt := observability.NewMockUsecaseLayerTracer(t)
 |`NewMockInfraLayerTracer`|Infra用|
 |`NewNoopLayerTracer`|汎用|
 |`NewStubSpanContext`|有効な Span を持つ Context 生成|
+|`NewRecordingTracerProvider`|終了した span をすべて保持する `TracerProvider` と、それを返す関数。計装が span に何を載せたかを表明するために使う|
+|`InstallRecordingTracerProvider`|同じ provider をテストの間だけ otel の global に据える（終了時に復元）。HTTP の OTel ミドルウェアのように global から tracer を得る計装向け|
 
 ### StubSpanContext
 

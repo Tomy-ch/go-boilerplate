@@ -3,7 +3,6 @@ package errorhandler
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -166,6 +165,24 @@ func Test_writeErrorResponse(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
+		t.Run("ステータスによらずCache-Controlにno-storeを付ける", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/v1/streams/s?ticket=raw", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			he := &response.HTTPErrorResponse{
+				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{Code: "GONE", Message: "m", RequestId: "rid"},
+				HTTPStatus:               http.StatusGone,
+			}
+
+			require.NoError(t, writeErrorResponse(c, he, true))
+
+			assert.Equal(t, http.StatusGone, rec.Code)
+			assert.Equal(t, "no-store", rec.Header().Get(echo.HeaderCacheControl))
+		})
+
 		t.Run("HTTPErrorResponseがステータスとJSONボディとして書き出される", func(t *testing.T) {
 			t.Parallel()
 
@@ -188,7 +205,6 @@ func Test_writeErrorResponse(t *testing.T) {
 			require.NoError(t, err)
 
 			assert.Equal(t, he.HTTPStatus, rec.Code)
-			assert.Equal(t, "no-store", rec.Header().Get(echo.HeaderCacheControl))
 
 			var got map[string]any
 			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
@@ -274,10 +290,37 @@ func Test_handleHTTPError(t *testing.T) {
 			c, end := testspan.StartTestSpanForEcho(t, c)
 			defer end()
 
-			handleHTTPError(c, NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{}, redaction.Redactor{}), logger, lf, obsCfg, xerrors.New("boom"))
+			handleHTTPError(
+				c, NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{}, redaction.Redactor{}), logger, lf, obsCfg, xerrors.New("boom"),
+			)
 
 			assert.Equal(t, http.StatusInternalServerError, rec.Code)
 			assert.Equal(t, 1, observed.FilterMessage("errorhandler.server_error").Len())
+		})
+
+		t.Run("Policiesのredactがエラーログに届きqueryの資格情報が秘匿される", func(t *testing.T) {
+			t.Parallel()
+
+			logger, observed := logging.NewObservedTestLogger(t)
+
+			e := echo.New()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/v1/streams/s?ticket=raw-secret", nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			c, end := testspan.StartTestSpanForEcho(t, c)
+			defer end()
+
+			handleHTTPError(
+				c, NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{}, redaction.New([]string{"ticket"})),
+				logger, lf, obsCfg, xerrors.New("boom"),
+			)
+
+			entries := observed.FilterMessage("errorhandler.server_error").All()
+			require.Len(t, entries, 1)
+			raw, err := json.Marshal(entries[0].ContextMap())
+			require.NoError(t, err)
+			assert.NotContains(t, string(raw), "raw-secret")
+			assert.Equal(t, "/v1/streams/s?ticket="+redaction.RedactedValue, entries[0].ContextMap()[logging.URIKey])
 		})
 
 		t.Run("405はAllowPolicyが解決した許可メソッドをAllowヘッダーとして返す", func(t *testing.T) {
@@ -443,8 +486,12 @@ func Test_handleHTTPError(t *testing.T) {
 			defer end()
 
 			// 2 回目は ctxhelper.GetErrorHandledFromEcho ガードで抑止されるため、ボディは二重に書かれない。
-			handleHTTPError(c, NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{}, redaction.Redactor{}), logger, lf, obsCfg, xerrors.New("boom"))
-			handleHTTPError(c, NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{}, redaction.Redactor{}), logger, lf, obsCfg, xerrors.New("boom"))
+			handleHTTPError(
+				c, NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{}, redaction.Redactor{}), logger, lf, obsCfg, xerrors.New("boom"),
+			)
+			handleHTTPError(
+				c, NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{}, redaction.Redactor{}), logger, lf, obsCfg, xerrors.New("boom"),
+			)
 
 			assert.Equal(t, http.StatusInternalServerError, rec.Code)
 
@@ -467,7 +514,9 @@ func Test_handleHTTPError(t *testing.T) {
 			defer end()
 			ctxhelper.SetRecoveredToEcho(c, true)
 
-			handleHTTPError(c, NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{}, redaction.Redactor{}), logger, lf, obsCfg, xerrors.New("boom"))
+			handleHTTPError(
+				c, NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{}, redaction.Redactor{}), logger, lf, obsCfg, xerrors.New("boom"),
+			)
 
 			assert.Equal(t, http.StatusInternalServerError, rec.Code)
 			var got map[string]any
@@ -927,7 +976,9 @@ func Test_httpErrorField(t *testing.T) {
 			fields := httpErrorField(c, lf, redaction.New([]string{"ticket"}), he)
 
 			assert.Contains(t, fields, logging.String(logging.URIKey, "/v1/streams/s?ticket="+redaction.RedactedValue))
-			assert.NotContains(t, fmt.Sprint(fields), "raw-secret")
+			text := loggedJSON(t, fields)
+			assert.NotContains(t, text, "raw-secret")
+			assert.Contains(t, text, redaction.RedactedValue)
 		})
 
 		t.Run("Detailsのみがある場合、detailsフィールドが追加されInternal系フィールドは追加されない", func(t *testing.T) {
@@ -975,6 +1026,40 @@ func Test_httpErrorField(t *testing.T) {
 			assert.Contains(t, fields, logging.String(logging.InternalErrorKey, internalErr.Error()))
 			assert.Contains(t, fields, logging.Stacktrace(logging.InternalStackTraceKey, internalErr))
 			assert.Len(t, fields, len(baseline)+2)
+		})
+	})
+}
+
+// loggedJSON は、fields をそのままログに書いたときに出力へ載る全フィールドを JSON にしたものです。
+// どのキーに載ったかを問わず生値の有無を見るために使います。
+func loggedJSON(t *testing.T, fields []*logging.Field) string {
+	t.Helper()
+	logger, observed := logging.NewObservedTestLogger(t)
+	logger.Info(context.Background(), "probe", fields...)
+	entries := observed.All()
+	require.Len(t, entries, 1)
+	raw, err := json.Marshal(entries[0].ContextMap())
+	require.NoError(t, err)
+	return string(raw)
+}
+
+func TestNewPolicies(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("detailとallowとredactの3つを保持したPoliciesを返す", func(t *testing.T) {
+			t.Parallel()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/v1/streams/s", nil)
+
+			p := NewPolicies(
+				stubDetailPolicy{allow: true}, stubAllowPolicy{allow: "OPTIONS, GET"}, redaction.New([]string{"ticket"}),
+			)
+
+			assert.True(t, p.detail.Allows(req))
+			assert.Equal(t, "OPTIONS, GET", p.allow.Allow(req))
+			assert.Equal(t, "/v1/streams/s?ticket="+redaction.RedactedValue, p.redact.URI("/v1/streams/s?ticket=raw"))
 		})
 	})
 }

@@ -1,15 +1,13 @@
 package module
 
 import (
+	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
-	"github.com/labstack/echo/v5"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/fx"
-	"go.uber.org/mock/gomock"
-
 	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/ctxhelper"
 	oapiauth "go-boilerplate/internal/controller/httpstack/oapi/auth"
 	"go-boilerplate/internal/controller/stream"
 	streamauth "go-boilerplate/internal/controller/stream/auth"
@@ -18,6 +16,15 @@ import (
 	mock_clock "go-boilerplate/internal/usecase/boundary/clock/mock"
 	rt "go-boilerplate/internal/usecase/boundary/realtime"
 	ucrealtime "go-boilerplate/internal/usecase/realtime"
+	mock_realtime "go-boilerplate/internal/usecase/realtime/mock"
+
+	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/getkin/kin-openapi/openapi3filter"
+	"github.com/labstack/echo/v5"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/fx"
+	"go.uber.org/mock/gomock"
 )
 
 // securitySchemes は、oapi/auth の scheme group に出された認証器を受け取る fx パラメータです。
@@ -165,8 +172,22 @@ func Test_provideStreamTicketScheme(t *testing.T) {
 		t.Run("StreamTicket scheme を担当する認証器を返す", func(t *testing.T) {
 			t.Parallel()
 
-			s := provideStreamTicketScheme(ucrealtime.NewTicketVerifier(nil, mock_clock.NewMockClock(gomock.NewController(t)), observability.NewNoopTracerFactory(t)))
+			ctrl := gomock.NewController(t)
+			v := mock_realtime.NewMockTicketVerifier(ctrl)
+			v.EXPECT().Verify(gomock.Any(), "raw", rt.StreamID("d")).Return(rt.StreamGrant{Subject: "s"}, nil)
+
+			s := provideStreamTicketScheme(v)
 			assert.Equal(t, streamauth.SchemeName, s.Scheme())
+
+			// 受け取った verifier がそのまま認証器に渡っていること（検証が mock に届く）。
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/v1/streams/d?ticket=raw", nil)
+			req = req.WithContext(ctxhelper.WithStreamGrant(req.Context()))
+			in := &openapi3filter.AuthenticationInput{
+				RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req, PathParams: map[string]string{"destination": "d"}},
+				SecuritySchemeName:     streamauth.SchemeName,
+				SecurityScheme:         &openapi3.SecurityScheme{Type: "apiKey", In: "query", Name: "ticket"},
+			}
+			require.NoError(t, s.Authenticate(context.Background(), in))
 		})
 	})
 }

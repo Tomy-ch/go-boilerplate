@@ -73,8 +73,7 @@ func TestMiddleware_Integration(t *testing.T) {
 			assert.Equal(t, http.StatusNotFound, rec.Code)
 		})
 
-		t.Run("span属性にqueryの値を載せない", func(t *testing.T) {
-			t.Parallel()
+		t.Run("span属性にqueryの値を載せない", func(t *testing.T) { //nolint:paralleltest // otel の global provider を差し替えるため
 
 			// 秘匿すべき資格情報（stream ticket）は query で運ばれる（ADR-0074）。ミドルウェアが記録する span 属性は
 			// url.path までで url.query を持たないことを、属性名の許可リストではなく値の全走査で固定する
@@ -90,13 +89,25 @@ func TestMiddleware_Integration(t *testing.T) {
 			e.ServeHTTP(rec, req)
 
 			require.Equal(t, http.StatusOK, rec.Code)
-			spans := recorded()
-			require.NotEmpty(t, spans)
-			for _, span := range spans {
+			// 並行する別ケースの span が混ざりうるので、被験リクエストの span（url.path が一致するもの）に絞ってから走査する。
+			var targets []string
+			for _, span := range recorded() {
+				matched := false
 				for _, attr := range span.Attributes() {
-					assert.NotContainsf(t, attr.Value.Emit(), "raw-secret-value", "span 属性 %s に query の値が載っている", attr.Key)
+					if attr.Key == "url.path" && attr.Value.AsString() == "/v1/streams/s" {
+						matched = true
+					}
+				}
+				if !matched {
+					continue
+				}
+				targets = append(targets, span.Name())
+				for _, attr := range span.Attributes() {
+					assert.NotContainsf(t, attr.Value.AsString(), "raw-secret-value",
+						"span 属性 %s に query の値が載っている", attr.Key)
 				}
 			}
+			require.NotEmpty(t, targets, "被験リクエストの span が記録されていない")
 		})
 	})
 }

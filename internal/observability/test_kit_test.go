@@ -2,13 +2,14 @@ package observability
 
 import (
 	"context"
-	"go.opentelemetry.io/otel"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
@@ -353,43 +354,80 @@ func TestNewRecordingTracerProvider(t *testing.T) {
 			t.Parallel()
 
 			tp, recorded := NewRecordingTracerProvider(t)
-			_, span := tp.Tracer("test").Start(context.Background(), "probe")
+			_, span := tp.Tracer("test").Start(context.Background(), "probe", trace.WithAttributes(attribute.String("k", "v")))
 			span.End()
 
 			spans := recorded()
 			require.Len(t, spans, 1)
 			assert.Equal(t, "probe", spans[0].Name())
+			assert.Contains(t, spans[0].Attributes(), attribute.String("k", "v"))
+		})
+
+		t.Run("親 span へのリンクを保持する", func(t *testing.T) {
+			t.Parallel()
+
+			tp, recorded := NewRecordingTracerProvider(t)
+			ctx, parent := tp.Tracer("test").Start(context.Background(), "parent")
+			_, child := tp.Tracer("test").Start(ctx, "child")
+			child.End()
+			parent.End()
+
+			spans := recorded()
+			require.Len(t, spans, 2)
+			assert.Equal(t, "child", spans[0].Name())
+			assert.Equal(t, parent.SpanContext().SpanID(), spans[0].Parent().SpanID())
 		})
 
 		t.Run("終了していない span は保持しない", func(t *testing.T) {
 			t.Parallel()
 
 			tp, recorded := NewRecordingTracerProvider(t)
-			_, _ = tp.Tracer("test").Start(context.Background(), "open")
+			_, span := tp.Tracer("test").Start(context.Background(), "open")
+			defer span.End()
 
 			assert.Empty(t, recorded())
+		})
+
+		t.Run("取り出した span の列は複製で、書き換えても保持側に影響しない", func(t *testing.T) {
+			t.Parallel()
+
+			tp, recorded := NewRecordingTracerProvider(t)
+			_, span := tp.Tracer("test").Start(context.Background(), "kept")
+			span.End()
+
+			first := recorded()
+			require.Len(t, first, 1)
+			first[0] = nil
+
+			again := recorded()
+			require.Len(t, again, 1)
+			assert.Equal(t, "kept", again[0].Name())
 		})
 	})
 }
 
+//nolint:paralleltest // otel の global provider を差し替えるため並列化しない
 func TestInstallRecordingTracerProvider(t *testing.T) {
-	t.Parallel()
-
 	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
 		t.Run("global の provider から得た tracer の span を保持する", func(t *testing.T) {
-			t.Parallel()
-
 			recorded := InstallRecordingTracerProvider(t)
 			_, span := otel.Tracer("test").Start(context.Background(), "global-probe")
 			span.End()
 
-			names := make([]string, 0, 1)
-			for _, s := range recorded() {
-				names = append(names, s.Name())
-			}
-			assert.Contains(t, names, "global-probe")
+			spans := recorded()
+			require.Len(t, spans, 1)
+			assert.Equal(t, "global-probe", spans[0].Name())
+		})
+
+		t.Run("テスト終了時に global の provider を元へ戻す", func(t *testing.T) {
+			before := otel.GetTracerProvider()
+
+			t.Run("差し替え中は別の provider になる", func(t *testing.T) {
+				InstallRecordingTracerProvider(t)
+				assert.NotSame(t, before, otel.GetTracerProvider())
+			})
+
+			assert.Same(t, before, otel.GetTracerProvider())
 		})
 	})
 }
@@ -409,11 +447,16 @@ func Test_spanRecorder_ExportSpans(t *testing.T) {
 			first.End()
 			_, second := tracer.Start(context.Background(), "second")
 			second.End()
+			source := recorded()
+			require.Len(t, source, 2)
 
-			spans := recorded()
-			require.Len(t, spans, 2)
-			assert.Equal(t, "first", spans[0].Name())
-			assert.Equal(t, "second", spans[1].Name())
+			rec := &spanRecorder{}
+			require.NoError(t, rec.ExportSpans(context.Background(), source[:1]))
+			require.NoError(t, rec.ExportSpans(context.Background(), source[1:]))
+
+			require.Len(t, rec.spans, 2)
+			assert.Equal(t, "first", rec.spans[0].Name())
+			assert.Equal(t, "second", rec.spans[1].Name())
 		})
 	})
 }
