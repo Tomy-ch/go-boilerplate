@@ -32,7 +32,7 @@ WHERE ordering_key IS NOT NULL AND status <> 'published';
 CREATE UNIQUE INDEX outbox_ordering_unique_idx ON outbox (ordering_key, ordering_sequence)
 WHERE ordering_key IS NOT NULL;
 
--- ストリームの採番元。業務トランザクション内で UPDATE ... RETURNING し、行ロックを commit まで保持する。
+-- ストリームのシーケンス採番元（採番機構は ADR-0072）。
 CREATE TABLE IF NOT EXISTS realtime_stream_sequences (
     stream_id TEXT NOT NULL,
     last_sequence BIGINT NOT NULL,

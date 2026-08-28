@@ -1,10 +1,9 @@
 
 -- === source: database/dml/system_cqrs/outbox/claim_pending_outbox.sql ===
 -- name: ClaimPendingOutbox :many
--- 指定チャネルの pending 行を最大 $2 件 claim する。SKIP LOCKED により多インスタンスでも同一行を二重取得しない。
+-- 指定チャネルの pending 行を最大 $2 件、SKIP LOCKED で claim する（多重取得防止は ADR-0056）。
 -- バックオフ中（next_attempt_at が未来）の行は述語段階で外れるためロックもされず、SKIP LOCKED と干渉しない。
--- NOT EXISTS は head-of-line 規則。同一 ordering_key に未 published の先行 sequence がある行は claim しない。
--- 先行行が他インスタンスに claim されている間もその行は pending のままなので、ロックを SKIP して順序を飛ばすことはない。
+-- NOT EXISTS は head-of-line 規則（ADR-0072）。同一 ordering_key の先行 sequence が未 published なら claim しない。
 -- ordering_key が NULL の行は NULL 比較で NOT EXISTS が真になり、順序を持たないチャネルは除外されない。
 SELECT
     o.id,
@@ -32,8 +31,7 @@ FOR UPDATE OF o SKIP LOCKED;
 
 -- === source: database/dml/system_cqrs/outbox/count_blocked_streams_outbox.sql ===
 -- name: CountBlockedStreamsOutbox :one
--- 先頭（最小の未 published sequence）が dead のストリーム数。head が dead のストリームは
--- head-of-line 規則により後続が claim されないため、復旧が要る対象として数える。
+-- 先頭が dead のストリーム数（blocked stream の定義は docs/design/outbox.md の用語集）。
 SELECT COUNT(*)
 FROM (
     SELECT DISTINCT ON (ordering_key) status
@@ -61,7 +59,7 @@ WHERE id IN (
 -- === source: database/dml/system_cqrs/outbox/insert_outbox.sql ===
 -- name: InsertOutbox :one
 -- 業務 tx 内で outbox 行を 1 行 INSERT する（emit）。message_id は DB が採番し返す。
--- delivery_channel は既定値を持たないため、呼び出し側が必ず指定する。
+-- delivery_channel は必須（既定値なし。EmitParams.Channel 参照）。
 INSERT INTO outbox (
     aggregate_type,
     aggregate_id,

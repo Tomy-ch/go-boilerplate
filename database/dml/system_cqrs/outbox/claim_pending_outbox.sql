@@ -1,8 +1,7 @@
 -- name: ClaimPendingOutbox :many
--- 指定チャネルの pending 行を最大 $2 件 claim する。SKIP LOCKED により多インスタンスでも同一行を二重取得しない。
+-- 指定チャネルの pending 行を最大 $2 件、SKIP LOCKED で claim する（多重取得防止は ADR-0056）。
 -- バックオフ中（next_attempt_at が未来）の行は述語段階で外れるためロックもされず、SKIP LOCKED と干渉しない。
--- NOT EXISTS は head-of-line 規則。同一 ordering_key に未 published の先行 sequence がある行は claim しない。
--- 先行行が他インスタンスに claim されている間もその行は pending のままなので、ロックを SKIP して順序を飛ばすことはない。
+-- NOT EXISTS は head-of-line 規則（ADR-0072）。同一 ordering_key の先行 sequence が未 published なら claim しない。
 -- ordering_key が NULL の行は NULL 比較で NOT EXISTS が真になり、順序を持たないチャネルは除外されない。
 SELECT
     o.id,

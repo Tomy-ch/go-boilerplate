@@ -68,14 +68,13 @@ func (u *emitUsecase) Emit(ctx context.Context, in EmitInput) (uuid.UUID, error)
 
 	headers := make(map[string]string, len(in.Headers)+1)
 	for k, v := range in.Headers {
-		// 呼び出し側契約（EmitInput.Headers の doc）に加えた defense-in-depth として、
-		// egress の起点であるここで、誤って混入した既知の機微ヘッダを保守的に落とします。
+		// defense-in-depth としての除去（契約は EmitInput.Headers を参照）。
 		if httpheader.IsSensitive(k) {
 			continue
 		}
 		headers[k] = v
 	}
-	// emit span の trace context を traceparent として載せる（消費側が同一 trace に繋がる）。
+	// trace context を headers へ注入する（契約は Emit の doc を参照）。
 	observability.InjectTraceContextToCarrier(ctx, headers)
 
 	var headerBytes []byte

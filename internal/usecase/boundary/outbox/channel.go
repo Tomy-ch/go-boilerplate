@@ -15,8 +15,8 @@ const (
 // ErrUnknownChannel は、既知でない配送チャネルが指定されたことを示すエラーです。
 var ErrUnknownChannel = xerrors.Wrap(apperror.ErrInvalidArgument, "unknown outbox delivery channel")
 
-// Channel は、outbox 行の配送レーンです。relay は 1 つの Channel だけを claim するため、
-// あるレーンの遅延・障害・再試行待ちが別のレーンの進行を止めません。
+// Channel は、outbox 行の配送レーンです
+// （レーン分離の帰結は internal/usecase/boundary/outbox/README.md を参照）。
 type Channel string
 
 // ParseChannel は、文字列を Channel へ変換します。既知でない値は ErrUnknownChannel を返します。

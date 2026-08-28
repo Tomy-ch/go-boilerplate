@@ -25,9 +25,7 @@ const (
 
 // OutboxRelayModule は、1 つの配送チャネルを担う outbox relay engine とそのライフサイクルフックを
 // 提供するfx.Moduleです。relay 専用プロセス（cmd outbox-relay）でのみ使用します。
-// claim も失敗時の進行も channel の中で閉じるため、あるチャネルの停止が別のチャネルを止めません。
-// outboxPublisherModule は非標準の httpclient profile（MaxAttempts=1 等）を value group へ寄与するため、
-// relay 以外のプロセスへ漏れないよう共有 InfrastructureModule ではなくここに閉じ込めます。
+// チャネル隔離と publisher profile の閉じ込めは internal/di/README.md の Optional を参照。
 func OutboxRelayModule(channel outboxbndry.Channel) fx.Option {
 	return fx.Module("outbox-relay",
 		outboxPublisherModule(),
@@ -46,9 +44,8 @@ func OutboxRelayModule(channel outboxbndry.Channel) fx.Option {
 	)
 }
 
-// provideRelaySettings は、OutboxConfig から relay engine の設定を生成します。
-// BatchSize / PollInterval / ErrorBackoff は 0 以下だとホットループ（スピン / Sleep 即 return）を
-// 招くため、それぞれ既定値へ clamp します。
+// provideRelaySettings は、OutboxConfig から relay engine の設定を生成します
+// （clamp の理由は internal/controller/outbox/README.md の Public API を参照）。
 // BatchSize が engine の int32 に収まらないときは、既定値へ丸めて誤設定を隠すのではなく起動を失敗させます。
 func provideRelaySettings(cfg *config.OutboxConfig) (outboxengine.Settings, error) {
 	batchSize := outboxuc.DefaultBatchSize

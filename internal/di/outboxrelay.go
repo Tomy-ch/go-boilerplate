@@ -35,8 +35,7 @@ func NewOutboxRelayCore(channel outboxbndry.Channel) fx.Option {
 }
 
 // NewOutboxRelayApp は、channel を担う relay 常駐プロセス用の fx.App を生成します。
-// grace（APP_SHUTDOWN_TIMEOUT）を fx.StopTimeout に設定し、fx 既定（15s）が停止猶予より
-// 先に teardown を打ち切らないようにします（停止軸を grace に一本化）。
+// 停止軸を grace へ一本化する理由は internal/di/README.md の Execution Profile Switching を参照。
 func NewOutboxRelayApp(grace time.Duration, channel outboxbndry.Channel) *fx.App {
 	return fx.New(NewOutboxRelayCore(channel), fx.StopTimeout(grace), fx.WithLogger(NewFxEventLogger))
 }
@@ -55,7 +54,7 @@ func RunOutboxReplay(ctx context.Context, messageID *uuid.UUID) (int64, error) {
 		fx.Populate(&replay, &appCfg), fx.WithLogger(NewFxEventLogger))
 	app := fx.New(opts...)
 
-	// RunJob と同じく、fx.Populate が nil を残す構築失敗を replay / appCfg 参照より先に返す。
+	// fx.Populate は構築失敗時に nil を残すため、replay / appCfg の参照より先にエラーを返す。
 	if err := app.Err(); err != nil {
 		return 0, err
 	}

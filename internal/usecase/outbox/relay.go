@@ -33,8 +33,7 @@ const (
 	relayLoggerName = "outbox-relay"
 )
 
-// retryBackoff は、一時失敗した行を次に claim してよくなるまでの間隔です。
-// 全 jitter を重ねて、同時に失敗した行が同じ poll に殺到しないようにします。
+// retryBackoff は、retryDelay が使う指数バックオフのパラメータです。
 var retryBackoff = backoff.Exponential{
 	Initial:    retryInitialInterval,
 	Max:        retryMaxInterval,
@@ -84,8 +83,8 @@ type relayUsecase struct {
 	channel   outboxbndry.Channel
 }
 
-// NewRelay は、1 つの配送チャネルを担う RelayUsecase を生成します。
-// claim も失敗時の進行も channel の中で閉じるため、あるチャネルの停止が別のチャネルを止めません。
+// NewRelay は、1 つの配送チャネルを担う RelayUsecase を生成します
+// （チャネル隔離は docs/design/outbox.md の Design invariants を参照）。
 func NewRelay(
 	txm tx.Manager,
 	store outboxbndry.Store,
@@ -166,9 +165,8 @@ func (u *relayUsecase) RelayBatch(ctx context.Context, batchSize int32) (RelayRe
 	})
 }
 
-// deliver は、1 件を publish し、結果に応じて published / failed / dead をマークします。
-// publish 成功なら published=true を返します。publish 失敗は tx を巻き戻さず（次 poll の再送に委ねる）
-// published=false・error=nil を返し、DB マークの失敗のみエラーを返します。
+// deliver は、1 件を publish し、結果に応じて published / failed / dead をマークします（tx 方針は RelayBatch を参照）。
+// publish 成功なら published=true を、DB マーク自体の失敗時のみ error を返します。
 func (u *relayUsecase) deliver(ctx context.Context, m outboxbndry.PendingMessage) (bool, error) {
 	perr := u.publisher.Publish(ctx, publisher.Message{
 		MessageID: m.MessageID,
@@ -208,12 +206,13 @@ func (u *relayUsecase) deliver(ctx context.Context, m outboxbndry.PendingMessage
 }
 
 // isPermanent は、publish の失敗が再試行で結果の変わらない永久失敗かを返します。
-// どちらの分類も持たないエラーは一時失敗として扱います（worker engine の分類と同じ既定）。
+// どちらの分類も持たないエラーは一時失敗として扱います（既定の理由は ADR-0058）。
 func isPermanent(err error) bool {
 	return xerrors.Is(err, apperror.ErrPermanent)
 }
 
-// retryDelay は、attempts 回失敗した行を次に claim してよくなるまでの間隔を返します。
+// retryDelay は、attempts 回失敗した行を次に claim してよくなるまでの間隔を、指数バックオフへ
+// full jitter を重ねて返します（同時に失敗した行が同じ poll へ殺到しないため）。
 func retryDelay(attempts int32) time.Duration {
 	return retry.Full(retryBackoff.Duration(int(attempts)))
 }

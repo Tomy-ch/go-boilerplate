@@ -30,12 +30,14 @@ flowchart TB
 - `Method` は**閉じた型**（struct ベース・非公開フィールド）: `Method("garbage")` のような任意のメソッド文字列は実行時ではなくコンパイル時に弾かれる——定義済みファクトリ関数（`MethodGet()` … `MethodDelete()`）を使う。ゼロ値 `Method{}` は構築可能なため、`Do` が `ErrInvalidArgument` で弾く。リクエストは `NewRequest(method, downstream, url, opts...)` で生成する——`method` / `downstream` / `url` はシグネチャで必須化され、任意項目は `WithHeader` / `WithBody` / `WithIdempotencyKey` / `WithRetry` で設定する（`WithRetry` は `AllowRetry` と `IdempotencyKey` を同時に設定するが、`WithRetry("")` の空 key は `Do` で弾かれる）。
 - `Request` は**イミュータブルな値オブジェクト**: 全フィールドが非公開で、構築は `NewRequest` + `With*` オプション経由のみ、参照は getter 経由のみ（`Header()` / `Body()` は防御的コピーを返すため内部状態を変更できない）。型は任意メソッド文字列をコンパイル時に排除するが、型で表現を防ぎきれない残りの不正状態——ゼロ値 `Method{}`、`WithRetry("")` による空 `IdempotencyKey` での `AllowRetry`——は `Do` 実行時に `ErrInvalidArgument` で弾く。
 - `Downstream` ごとの resilient 設定は `Registry` が解決する: 各 gateway が `DownstreamProfile` を `httpclient_profiles` fx グループへ寄与し、未登録キーは `DefaultProfile` へ fallback する。
+- profile の欠落を無言で fallback させてはならない Downstream は、`RequiredDownstream()` でキーを `required_downstreams` fx グループへ寄与する（`internal/di/module/httpclient.go`）。必須キーが未登録なら `DefaultProfile` へ落ちるのではなく DI の起動が失敗する。
 - retry の安全性はメソッド依存: 冪等メソッド（GET / PUT / DELETE）は常に retry 安全、非冪等メソッド（POST / PATCH）は `AllowRetry` 明示時のみ安全で、その場合 `IdempotencyKey` が必須。
 - retry 対象は 5xx / 429 / transport 失敗。4xx / 成功 / ctx cancel は対象外。backoff は指数 + full jitter で、`Retry-After` ヘッダがあればそれを優先する。
 - Downstream ごとの retry budget（トークンバケット）が retry の増幅を抑え、Downstream ごとの circuit breaker（closed / half-open / open）が継続的な downstream 障害時に fail-fast する。
 - 2 段のタイムアウトを強制: 1 試行ごとの per-attempt timeout と、呼び出し全体の overall timeout。backoff 待機が overall deadline を超える場合は retry を打ち切る。
 - セキュリティ既定: リダイレクトは追従せず（`http.ErrUseLastResponse`、SSRF 面の縮小）、応答ボディは `MaxResponseBytes` までしか読まず、エラーメッセージは query / userinfo / fragment を redact し、trace 伝搬 / private-network 接続は Downstream ごとに opt-out できる。名前解決後の dial guard（`internal/observability`）は link-local（クラウドメタデータ `169.254.169.254`）/ unspecified / bogon 予約帯（TEST-NET、将来予約、IETF 割当、ベンチマーク用、IPv6 ドキュメント用）を常時拒否し、loopback / private(RFC1918, ULA) / CGNAT(RFC 6598 `100.64.0.0/10`) は `AllowPrivateNetwork` 未設定時に拒否する。
 - transport / status 事象は `apperror` sentinel（`ErrUnavailable` / `ErrCanceled` / `ErrInvalidArgument` 等）へ正規化する。呼び出し側は raw status ではなく sentinel で分岐する。
+- `RetryableOutcome` は substrate 唯一の retry verdict として公開する。恒久失敗と一時失敗を区別しなければならない呼び出し側（現在は outbox relay の dead 判定）のためであり、sentinel だけではこの区別を運べないことが理由である: substrate 内部の事情で決定的になる結果 —— `MaxResponseBytes` 超過の応答 —— は HTTP の語彙を保つため `ErrUnavailable` のままであり、再試行すべき 503 と分かれるのはここだけである。呼び出し側がステータス表を再現すると、この 1 件を黙って取りこぼし、規則が 2 つの package に割れる。
 
 ## DI 登録
 

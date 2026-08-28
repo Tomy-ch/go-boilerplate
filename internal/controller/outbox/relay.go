@@ -92,7 +92,7 @@ func (e *Engine) waitDone(ctx context.Context, d time.Duration) bool {
 }
 
 // observeLag は、outbox lag(SLI) と停止中ストリーム数をベストエフォートで記録します。
-// ctx 完了時は記録をスキップし、記録失敗はループを止めずログのみ行います。
+// 記録の詳細は README の Observability を参照。
 func (e *Engine) observeLag(ctx context.Context, log logging.Logger) {
 	if ctx.Err() != nil {
 		return

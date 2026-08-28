@@ -14,7 +14,7 @@ import (
 // downstream は、profile / breaker / metrics / budget の論理依存名です。
 const downstream httpclient.Downstream = "outbox"
 
-// Endpoint は、メッセージの送信先エンドポイント URL です（構築時に config から固定注入）。
+// Endpoint は、メッセージの送信先エンドポイント URL です。
 type Endpoint string
 
 // httpPublisher は、boundary.Publisher の HTTP 実装です。
@@ -36,8 +36,8 @@ func NewDownstreamProfile() httpclient.DownstreamProfile {
 }
 
 // RequiredDownstream は、本 publisher が使用する Downstream を返します。
-// required_downstreams へ供給することで、対応 profile が未登録のまま起動した場合に
-// silent な DefaultProfile fallback ではなく loud な起動失敗になることを保証します。
+// required_downstreams へ供給し、profile 未登録時は fallback ではなく起動失敗にします
+// （仕組みは httpclient の README の Design Policy を参照）。
 func RequiredDownstream() httpclient.Downstream {
 	return downstream
 }

@@ -37,8 +37,7 @@ func isRetrySafe(req *Request) bool {
 
 // RetryableOutcome は、試行結果が retry 対象かを返します。
 // 5xx / 429 / 応答未取得の transport 失敗は retry 対象、4xx / 成功 / ctx cancel は対象外です。
-// substrate 自身の再試行判断そのものであり、呼び出し側が同じ判定表を複製せずに済むよう公開しています
-// （outbox relay の dead 判定は、この verdict から永久失敗 / 一時失敗の分類を導出します）。
+// この判定表を持つのはこの関数だけです（公開理由は README の Design Policy を参照）。
 func RetryableOutcome(resp *Response, err error) bool {
 	if err == nil {
 		return false

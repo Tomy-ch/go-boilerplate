@@ -1,6 +1,5 @@
 -- name: CountBlockedStreamsOutbox :one
--- 先頭（最小の未 published sequence）が dead のストリーム数。head が dead のストリームは
--- head-of-line 規則により後続が claim されないため、復旧が要る対象として数える。
+-- 先頭が dead のストリーム数（blocked stream の定義は docs/design/outbox.md の用語集）。
 SELECT COUNT(*)
 FROM (
     SELECT DISTINCT ON (ordering_key) status
