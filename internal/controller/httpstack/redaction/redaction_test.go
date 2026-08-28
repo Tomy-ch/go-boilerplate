@@ -143,9 +143,10 @@ func TestRedactor_URI(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("復号できない名前の値は秘匿対象として置き換える", func(t *testing.T) {
+		t.Run("構文解析できないqueryは全体を置き換える", func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, "/p?%zz="+RedactedValue+"&a=1", r.URI("/p?%zz=abc&a=1"))
+			assert.Equal(t, "/p?"+RedactedValue, r.URI("/p?%zz=abc&a=1"))
+			assert.Equal(t, "/p?"+RedactedValue, r.URI("/p?a=1;ticket=abc"))
 		})
 	})
 }

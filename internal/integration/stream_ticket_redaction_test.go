@@ -8,20 +8,23 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap/zaptest/observer"
 
 	"go-boilerplate/internal/controller/httpstack/redaction"
 	"go-boilerplate/internal/logging"
 )
 
-// loggedText は、観測したログのメッセージと全フィールドを 1 本の文字列にする（どのキーに出たかを問わず生値を探すため）。
-func loggedText(t *testing.T, entries []observer.LoggedEntry) string {
+// contextMapper は、観測したログ 1 件のフィールドを map で返す（zap の observer が持つ LoggedEntry の形）。
+type contextMapper interface {
+	ContextMap() map[string]any
+}
+
+// loggedText は、観測したログの全フィールドを 1 本の文字列にする（どのキーに出たかを問わず生値を探すため）。
+func loggedText[E contextMapper](t *testing.T, entries []E) string {
 	t.Helper()
 	var sb strings.Builder
 	for _, entry := range entries {
 		raw, err := json.Marshal(entry.ContextMap())
 		require.NoError(t, err)
-		sb.WriteString(entry.Message)
 		sb.Write(raw)
 		sb.WriteByte('\n')
 	}
@@ -29,11 +32,11 @@ func loggedText(t *testing.T, entries []observer.LoggedEntry) string {
 }
 
 // entriesMentioning は、path を含むログだけを返す（並列に走る別ケースのログと混ざらないよう destination で絞る）。
-func entriesMentioning(t *testing.T, observed *observer.ObservedLogs, path string) []observer.LoggedEntry {
+func entriesMentioning[E contextMapper](t *testing.T, entries []E, path string) []E {
 	t.Helper()
-	var out []observer.LoggedEntry
-	for _, entry := range observed.All() {
-		if strings.Contains(loggedText(t, []observer.LoggedEntry{entry}), path) {
+	var out []E
+	for _, entry := range entries {
+		if strings.Contains(loggedText(t, []E{entry}), path) {
 			out = append(out, entry)
 		}
 	}
@@ -56,7 +59,7 @@ func TestStreamTicketRedaction_Integration(t *testing.T) {
 			res := srv.DoJSON(http.MethodGet, "/v1/streams/stream-rejected?ticket="+raw+"&after=1", nil, nil)
 			require.Equal(t, http.StatusUnauthorized, res.StatusCode)
 
-			entries := entriesMentioning(t, observed, "/v1/streams/stream-rejected")
+			entries := entriesMentioning(t, observed.All(), "/v1/streams/stream-rejected")
 			require.NotEmpty(t, entries, "401 はエラーハンドラがログに出すはず")
 			text := loggedText(t, entries)
 			assert.NotContains(t, text, raw)
@@ -69,7 +72,7 @@ func TestStreamTicketRedaction_Integration(t *testing.T) {
 			res := srv.DoJSON(http.MethodGet, "/v1/streams/stream-1?ticket="+streamTestTicket+"&after=10", nil, nil)
 			require.Equal(t, http.StatusOK, res.StatusCode)
 
-			entries := entriesMentioning(t, observed, "/v1/streams/stream-1")
+			entries := entriesMentioning(t, observed.All(), "/v1/streams/stream-1?")
 			require.NotEmpty(t, entries, "200 はアクセスログに出るはず")
 			text := loggedText(t, entries)
 			assert.NotContains(t, text, streamTestTicket)
@@ -84,7 +87,7 @@ func TestStreamTicketRedaction_Integration(t *testing.T) {
 			res := srv.DoJSON(http.MethodGet, "/_internal/types/error-response?ticket="+raw, nil, nil)
 			require.Equal(t, http.StatusNotFound, res.StatusCode)
 
-			entries := entriesMentioning(t, observed, "/_internal/types/error-response")
+			entries := entriesMentioning(t, observed.All(), "/_internal/types/error-response")
 			require.NotEmpty(t, entries)
 			text := loggedText(t, entries)
 			assert.NotContains(t, text, raw)

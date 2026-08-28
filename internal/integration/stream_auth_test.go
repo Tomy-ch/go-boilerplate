@@ -6,11 +6,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/labstack/echo/v5"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
-
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/httpstack/oapi/auth"
 	"go-boilerplate/internal/controller/httpstack/oapi/skipper"
@@ -26,6 +21,11 @@ import (
 	rt "go-boilerplate/internal/usecase/boundary/realtime"
 	ucrealtime "go-boilerplate/internal/usecase/realtime"
 	"go-boilerplate/pkg/xerrors"
+
+	"github.com/labstack/echo/v5"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 const (
@@ -42,6 +42,14 @@ const (
 // stubTicketVerifier は、固定の生値 × destination だけを受け入れる TicketVerifier。それ以外は ErrTicketInvalid。
 type stubTicketVerifier struct{}
 
+// stubCursorValidator は、streamTestFloor より前の cursor を失効とみなす CursorValidator。unavailable なら常に ErrUnavailable。
+type stubCursorValidator struct {
+	unavailable bool
+}
+
+// stubStreamer は、検証を通った接続の要求をそのまま JSON で返す Streamer（本物は Phase 6）。
+type stubStreamer struct{}
+
 func (stubTicketVerifier) Verify(_ context.Context, value string, destination rt.StreamID) (ucrealtime.VerifiedTicketView, error) {
 	if value != streamTestTicket || destination != streamTestDestination {
 		return ucrealtime.VerifiedTicketView{}, ucrealtime.ErrTicketInvalid
@@ -49,11 +57,6 @@ func (stubTicketVerifier) Verify(_ context.Context, value string, destination rt
 	return ucrealtime.VerifiedTicketView{
 		Subject: "subject-1", Destination: streamTestDestination, Scope: "read", InitialCursor: streamTestInitialCursor,
 	}, nil
-}
-
-// stubCursorValidator は、streamTestFloor より前の cursor を失効とみなす CursorValidator。unavailable なら常に ErrUnavailable。
-type stubCursorValidator struct {
-	unavailable bool
 }
 
 func (v stubCursorValidator) Validate(_ context.Context, _ rt.StreamID, cursor rt.Sequence) error {
@@ -65,9 +68,6 @@ func (v stubCursorValidator) Validate(_ context.Context, _ rt.StreamID, cursor r
 	}
 	return nil
 }
-
-// stubStreamer は、検証を通った接続の要求をそのまま JSON で返す Streamer（本物は Phase 6）。
-type stubStreamer struct{}
 
 func (stubStreamer) Stream(c *echo.Context, req stream.StreamRequest) error {
 	return c.JSON(http.StatusOK, map[string]string{
@@ -87,7 +87,7 @@ func newStreamServer(t *testing.T, logger logging.Logger, cursors ucrealtime.Cur
 	authFunc := auth.NewAuthenticator(bearer, stubIdentityResolver{}, []auth.SchemeAuthenticator{streamauth.New(stubTicketVerifier{})})
 
 	e := echo.New()
-	UseAppErrorHandler(t, e,
+	UseAppErrorHandlerWithLogger(t, e, logger,
 		instrumentation.LoggingMiddleware(logger, logging.NewTestLogFieldBuilder(t), redaction.FromSpec(spec)).Middleware,
 		inbound.OpenAPIMiddleware(spec, skipper.New(), authFunc).Middleware,
 	)

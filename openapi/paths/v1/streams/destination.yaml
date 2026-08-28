@@ -19,17 +19,8 @@ get:
       description: |
         SSE stream。business event は `id` に sequence を持ち `data` が DeliveryEvent、制御指示は `event: control` で `data` が
         ControlEvent です。`id` を持たないコメント行が 15 秒ごとの heartbeat として流れます。
-      headers:
-        Cache-Control:
-          description: 常に `no-store`。中間キャッシュに stream を保持させません。
-          schema:
-            type: string
-            example: "no-store"
-        X-Accel-Buffering:
-          description: 常に `no`。リバースプロキシのバッファリングを無効にします。
-          schema:
-            type: string
-            example: "no"
+        レスポンスは常に `Cache-Control: no-store`（中間キャッシュに stream を保持させない）と
+        `X-Accel-Buffering: no`（リバースプロキシのバッファリングを無効にする）を伴います。
       content:
         text/event-stream:
           schema:

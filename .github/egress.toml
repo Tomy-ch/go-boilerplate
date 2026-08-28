@@ -263,6 +263,9 @@ extra = [
 [job."oapi-lint.yaml:oapi-lint"]
 classes = ["mise"]
 
+[job."oapi-lint.yaml:openapi-client"]
+classes = ["mise"]
+
 [job."openapi-security.yaml:changes"]
 classes = []
 

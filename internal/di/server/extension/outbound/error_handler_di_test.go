@@ -1,12 +1,12 @@
 package outbound
 
 import (
-	"go-boilerplate/internal/controller/httpstack/redaction"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"go-boilerplate/internal/config"
+	"go-boilerplate/internal/controller/httpstack/redaction"
 	"go-boilerplate/internal/logging"
 
 	"github.com/getkin/kin-openapi/openapi3"

@@ -24,6 +24,13 @@ import (
 // ctxKeyForTest は、バリデータが渡す context を識別するためのテスト用キーです。
 type ctxKeyForTest struct{}
 
+// stubScheme は、dispatch の検証に使う SchemeAuthenticator です。
+type stubScheme struct {
+	name   string
+	err    error
+	called *bool
+}
+
 func TestNewAuthenticator(t *testing.T) {
 	t.Parallel()
 
@@ -528,13 +535,6 @@ func Test_extractBearerToken(t *testing.T) {
 			assert.Empty(t, tok)
 		})
 	})
-}
-
-// stubScheme は、dispatch の検証に使う SchemeAuthenticator です。
-type stubScheme struct {
-	name   string
-	err    error
-	called *bool
 }
 
 func (s stubScheme) Scheme() string { return s.name }

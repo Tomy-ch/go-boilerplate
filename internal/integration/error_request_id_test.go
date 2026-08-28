@@ -1,13 +1,13 @@
 package integration
 
 import (
-	"go-boilerplate/internal/controller/httpstack/redaction"
 	"net/http"
 	"testing"
 
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/controller/handler/health"
 	"go-boilerplate/internal/controller/httpstack/cookie"
+	"go-boilerplate/internal/controller/httpstack/redaction"
 	"go-boilerplate/internal/di/server/extension/instrumentation"
 	"go-boilerplate/internal/di/server/extension/security"
 	"go-boilerplate/internal/logging"

@@ -2,12 +2,12 @@
 package errorhandler
 
 import (
-	"go-boilerplate/internal/controller/httpstack/redaction"
 	"net/http"
 
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/error/response"
+	"go-boilerplate/internal/controller/httpstack/redaction"
 	"go-boilerplate/internal/controller/httpstack/requestid"
 	"go-boilerplate/internal/controller/server"
 	"go-boilerplate/internal/logging"

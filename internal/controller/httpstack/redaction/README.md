@@ -22,8 +22,8 @@ second list in Go to keep in step (ADR-0016 (spec-driven-request-validation)).
 - `FromSpec(spec *openapi3.T) Redactor` — derive the names from the spec.
 - `SecretQueryParamNames(spec) []string` — the derived names, sorted, for tests and diagnostics.
 - `Redactor.URI(raw string) string` — replace the value of each secret pair in the raw request URI
-  with `[REDACTED]`, preserving pair order and encoding. A pair whose name cannot be decoded is
-  treated as secret.
+  with `[REDACTED]`, preserving pair order and encoding. A query the standard parser rejects (`;`
+  separators, broken escapes) cannot be judged pair by pair and is replaced whole (fail-closed).
 - `Redactor.QueryParams(map[string][]string) map[string][]string` — return a copy with every
   value of a secret name replaced; the input map is not modified.
 

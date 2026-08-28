@@ -341,3 +341,32 @@ func Test_counterLabelValues(t *testing.T) {
 		})
 	})
 }
+
+func TestNewRecordingTracerProvider(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("終了した span を名前と属性ごと保持する", func(t *testing.T) {
+			t.Parallel()
+
+			tp, recorded := NewRecordingTracerProvider(t)
+			_, span := tp.Tracer("test").Start(context.Background(), "probe")
+			span.End()
+
+			spans := recorded()
+			require.Len(t, spans, 1)
+			assert.Equal(t, "probe", spans[0].Name())
+		})
+
+		t.Run("終了していない span は保持しない", func(t *testing.T) {
+			t.Parallel()
+
+			tp, recorded := NewRecordingTracerProvider(t)
+			_, _ = tp.Tracer("test").Start(context.Background(), "open")
+
+			assert.Empty(t, recorded())
+		})
+	})
+}

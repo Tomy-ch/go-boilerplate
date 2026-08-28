@@ -2,13 +2,16 @@ package observability
 
 import (
 	"context"
+	"sync"
 	"testing"
 
+	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
 	metricnoop "go.opentelemetry.io/otel/metric/noop"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
 )
 
@@ -179,5 +182,36 @@ func NewStubSpanContext(t *testing.T) (context.Context, func()) {
 	return ctx, func() {
 		span.End()
 		_ = tp.Shutdown(context.Background())
+	}
+}
+
+// spanRecorder は、終了した span をそのまま保持する同期 exporter です。
+type spanRecorder struct {
+	mu    sync.Mutex
+	spans []sdktrace.ReadOnlySpan
+}
+
+func (r *spanRecorder) ExportSpans(_ context.Context, spans []sdktrace.ReadOnlySpan) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.spans = append(r.spans, spans...)
+	return nil
+}
+
+func (r *spanRecorder) Shutdown(context.Context) error { return nil }
+
+// NewRecordingTracerProvider は、終了した span を保持する TracerProvider と、保持した span を返す関数を返します。
+// 計装が span の属性に何を載せたかをテストで検証するためのもので、テスト終了時に provider を停止します。
+func NewRecordingTracerProvider(t *testing.T) (trace.TracerProvider, func() []sdktrace.ReadOnlySpan) {
+	t.Helper()
+
+	rec := &spanRecorder{}
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(rec))
+	t.Cleanup(func() { require.NoError(t, tp.Shutdown(context.Background())) })
+
+	return tp, func() []sdktrace.ReadOnlySpan {
+		rec.mu.Lock()
+		defer rec.mu.Unlock()
+		return append([]sdktrace.ReadOnlySpan(nil), rec.spans...)
 	}
 }

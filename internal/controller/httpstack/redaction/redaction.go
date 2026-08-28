@@ -58,7 +58,8 @@ func SecretQueryParamNames(spec *openapi3.T) []string {
 }
 
 // URI は、raw（path と query を含むリクエスト URI）から秘匿対象パラメータの値を取り除いた文字列を返します。
-// query の並びと符号化はそのまま保ちます。名前を復号できない組は値を読めないため、秘匿対象とみなして置き換えます。
+// query の並びと符号化はそのまま保ちます。標準の構文解析が受け付けない query（`;` 区切りや壊れた符号化）は
+// 組ごとに判定できないため、query 全体を置き換えます（fail-closed）。
 func (r Redactor) URI(raw string) string {
 	if len(r.names) == 0 {
 		return raw
@@ -67,6 +68,10 @@ func (r Redactor) URI(raw string) string {
 	path, query, found := strings.Cut(raw, "?")
 	if !found {
 		return raw
+	}
+
+	if _, err := url.ParseQuery(query); err != nil {
+		return path + "?" + RedactedValue
 	}
 
 	pairs := strings.Split(query, "&")

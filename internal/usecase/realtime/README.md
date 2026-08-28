@@ -12,12 +12,11 @@ It depends on `boundary/realtime` and `boundary/clock` only and carries no featu
 | `TicketVerifier.Verify(value, destination)` → `VerifiedTicketView` | The value's hash exists, is not expired at `clock.Now()`, and is bound to this destination | `ErrTicketInvalid` (wraps `apperror.ErrUnauthenticated`) for every failure — unknown, expired and wrong destination are deliberately indistinguishable |
 | `AccessRevoker.Revoke(subject, destination)` | The revocation seam a feature calls when it withdraws a subject's access to a destination ([ADR-0074](../../../docs/adr/0074-query-ticket-stream-authentication.md)): every ticket of that pair is invalidated **first** (`StreamTicketStore.Invalidate` — a revoked ticket then fails `Verify`, so a client that ignores `STOP` cannot reconnect), and only then every serve instance is told through `RevocationNotifier` to close the matching connections. An invalidated ticket stays invalidated even when the notification fails | store and notifier failures pass through |
 
-`ErrCursorExpired` is a package sentinel rather than an `apperror` entry: the taxonomy has no `410`
-and nothing outside this package maps it yet; the stream handler (Phase 6) owns that mapping.
+`ErrCursorExpired` is a package sentinel rather than an `apperror` entry: this package does not know HTTP.
+The stream handler (`internal/controller/stream`) maps it to `410` by joining `apperror.ErrGone`.
 
 Out of this package: replay reads and catch-up (the stream handler owns them together with the
-connection state), lease heartbeat (serve lifecycle), orphan-cleanup ownership (the cleanup job),
-and the revocation seam (Phase 5).
+connection state), lease heartbeat (serve lifecycle), and orphan-cleanup ownership (the cleanup job).
 
 ## Test strategy
 

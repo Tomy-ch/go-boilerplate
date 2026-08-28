@@ -21,7 +21,8 @@ panic 復帰 — はすべて、URI と query の map を先に `Redactor` へ�
 - `FromSpec(spec *openapi3.T) Redactor` — spec から名前を導出する。
 - `SecretQueryParamNames(spec) []string` — 導出した名前を名前順で返す（テスト・診断用）。
 - `Redactor.URI(raw string) string` — 生のリクエスト URI の秘匿対象の値を `[REDACTED]` に置き換える。
-  組の並びと符号化は保つ。名前を復号できない組は秘匿対象として扱う。
+  組の並びと符号化は保つ。標準の構文解析が受け付けない query（`;` 区切り・壊れた符号化）は組ごとに判定できないため
+  全体を置き換える（fail-closed）。
 - `Redactor.QueryParams(map[string][]string) map[string][]string` — 秘匿対象の値を置き換えた複製を返す。
   入力の map は変更しない。
 

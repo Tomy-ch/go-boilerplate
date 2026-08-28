@@ -28,10 +28,8 @@ fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
 await generate(
   {
-    client: {
-      input: { target: INPUT },
-      output: { target: path.join(OUTPUT_DIR, "api.ts"), client: "fetch", mode: "single", clean: true },
-    },
+    input: { target: INPUT },
+    output: { target: path.join(OUTPUT_DIR, "api.ts"), client: "fetch", mode: "single", clean: true },
   },
   REPO_ROOT,
 );

@@ -65,6 +65,7 @@ func (s *streamTicket) Authenticate(_ context.Context, input *openapi3filter.Aut
 		return err
 	}
 
+	//nolint:contextcheck // input が内包する request の context のスロットへ書き戻すため
 	if !ctxhelper.SetStreamGrant(ctx, grant) {
 		return ErrStreamGrantSlotNotFound
 	}

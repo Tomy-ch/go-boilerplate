@@ -84,7 +84,7 @@ overrides:
   # hash 保存・log / trace からの除去を前提にした限定的な採用で、他の scheme へは広げない。
   # ルール自体は有効なまま「この 1 scheme だけ」を対象外にする。
   - files:
-      - "openapi/openapi.yaml#/components/securitySchemes/StreamTicket"
+      - "openapi/components/schemas/StreamTicket.yaml"
     rules:
       owasp:api2:2023-no-api-keys-in-url: off
 

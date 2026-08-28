@@ -12,11 +12,11 @@ stream 接続を commit する前に決めるべきこと — 提示された cu
 | `TicketVerifier.Verify(value, destination)` → `VerifiedTicketView` | 値の hash が存在し、`clock.Now()` で期限内で、この destination に束ねられていること | すべての失敗が `ErrTicketInvalid`（`apperror.ErrUnauthenticated` を包む）— 未知・期限切れ・destination 違いはわざと区別しない |
 | `AccessRevoker.Revoke(subject, destination)` | feature が subject の destination への権利を取り下げるときに呼ぶ失効の seam（[ADR-0074](../../../docs/adr/0074-query-ticket-stream-authentication.ja.md)）。その組の ticket を**先に**すべて無効にし（`StreamTicketStore.Invalidate` — 無効化された ticket は `Verify` を通らないので、`STOP` を無視した client も再接続できない）、そのうえで `RevocationNotifier` を通じて各 serve instance に該当接続を閉じさせる。通知に失敗しても無効化は成立している | store と notifier の失敗はそのまま通す |
 
-`ErrCursorExpired` を `apperror` に足さず package の sentinel にしているのは、taxonomy に `410` が無く、本 package の
-外にまだ写す側が無いため。stream handler（Phase 6）がその写像を持ちます。
+`ErrCursorExpired` を `apperror` に足さず package の sentinel にしているのは、本 package が HTTP を知らないため。
+`410` への写像は stream handler（`internal/controller/stream`）が `apperror.ErrGone` を重ねて行う。
 
 本 package の外: replay の読み取りと catch-up（stream handler が接続状態と一緒に持つ）、lease の heartbeat
-（serve lifecycle）、orphan cleanup の引き受け（cleanup job）、revocation seam（Phase 5）。
+（serve lifecycle）、orphan cleanup の引き受け（cleanup job）。
 
 ## テスト戦略
 

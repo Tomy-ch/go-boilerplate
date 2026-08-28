@@ -270,6 +270,14 @@ func isJSONNull(raw json.RawMessage) bool {
 func UseAppErrorHandler(t *testing.T, e *echo.Echo, extra ...extension.UseMiddleware) {
 	t.Helper()
 
+	UseAppErrorHandlerWithLogger(t, e, logging.NewTestLogger(t), extra...)
+}
+
+// UseAppErrorHandlerWithLogger は、[UseAppErrorHandler] と同じ配線を、エラーハンドラのログ出力先を差し替えて行う。
+// エラーハンドラが出すログの内容を検証する場合に、観測可能な Logger を渡す。
+func UseAppErrorHandlerWithLogger(t *testing.T, e *echo.Echo, logger logging.Logger, extra ...extension.UseMiddleware) {
+	t.Helper()
+
 	mws := append([]extension.UseMiddleware{instrumentation.RequestIDMiddleware().Middleware}, extra...)
 	require.NoError(t, extension.ApplyUseMiddlewares(e, logging.NewTestLogger(t), mws))
 
@@ -287,7 +295,7 @@ func UseAppErrorHandler(t *testing.T, e *echo.Echo, extra ...extension.UseMiddle
 	errorhandler.New(
 		e,
 		errorhandler.Policies{Detail: detailPolicy, Allow: allowPolicy, Redact: redaction.FromSpec(spec)},
-		logging.NewTestLogger(t), lf, obsCfg,
+		logger, lf, obsCfg,
 	)
 }
 

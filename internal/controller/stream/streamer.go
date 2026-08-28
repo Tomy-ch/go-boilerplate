@@ -10,7 +10,7 @@ import (
 type StreamRequest struct {
 	// Subject は、ticket を発行された subject です。
 	Subject string
-	// Destination は、接続先の stream です。path の destination と ticket の束縛が一致していることは検証済みです。
+	// Destination は、接続先を表す stream の識別子です。path の destination と ticket の束縛が一致していることは検証済みです。
 	Destination rt.StreamID
 	// Scope は、feature が ticket に与えた権限の範囲です。機構は解釈しません。
 	Scope string

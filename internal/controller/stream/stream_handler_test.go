@@ -56,8 +56,9 @@ func newContext(t *testing.T, target string, grant *ucrealtime.VerifiedTicketVie
 	return echo.New().NewContext(req, httptest.NewRecorder())
 }
 
-func grantFor(destination rt.StreamID) *ucrealtime.VerifiedTicketView {
-	return &ucrealtime.VerifiedTicketView{Subject: "subject-1", Destination: destination, Scope: "read", InitialCursor: 3}
+// grantFor は、stream-1 に束縛された検証済み ticket を返します。
+func grantFor() *ucrealtime.VerifiedTicketView {
+	return &ucrealtime.VerifiedTicketView{Subject: "subject-1", Destination: "stream-1", Scope: "read", InitialCursor: 3}
 }
 
 func TestBindHandler(t *testing.T) {
@@ -85,7 +86,7 @@ func Test_server_GetStream(t *testing.T) {
 			cursors.EXPECT().Validate(gomock.Any(), rt.StreamID("stream-1"), rt.Sequence(12)).Return(nil)
 			lastEventID, after := "12", "7"
 
-			err := s.GetStream(newContext(t, "/v1/streams/stream-1?after=7", grantFor("stream-1")), "stream-1",
+			err := s.GetStream(newContext(t, "/v1/streams/stream-1?after=7", grantFor()), "stream-1",
 				gen.GetStreamParams{After: &after, LastEventID: &lastEventID})
 
 			require.NoError(t, err)
@@ -99,7 +100,7 @@ func Test_server_GetStream(t *testing.T) {
 			cursors.EXPECT().Validate(gomock.Any(), rt.StreamID("stream-1"), rt.Sequence(7)).Return(nil)
 			after := "7"
 
-			require.NoError(t, s.GetStream(newContext(t, "/v1/streams/stream-1?after=7", grantFor("stream-1")), "stream-1", gen.GetStreamParams{After: &after}))
+			require.NoError(t, s.GetStream(newContext(t, "/v1/streams/stream-1?after=7", grantFor()), "stream-1", gen.GetStreamParams{After: &after}))
 
 			assert.Equal(t, rt.Sequence(7), streamer.got.Cursor)
 		})
@@ -109,7 +110,7 @@ func Test_server_GetStream(t *testing.T) {
 			s, cursors, streamer := newServer(t)
 			cursors.EXPECT().Validate(gomock.Any(), rt.StreamID("stream-1"), rt.Sequence(3)).Return(nil)
 
-			require.NoError(t, s.GetStream(newContext(t, "/v1/streams/stream-1", grantFor("stream-1")), "stream-1", gen.GetStreamParams{}))
+			require.NoError(t, s.GetStream(newContext(t, "/v1/streams/stream-1", grantFor()), "stream-1", gen.GetStreamParams{}))
 
 			assert.Equal(t, rt.Sequence(3), streamer.got.Cursor)
 		})
@@ -133,7 +134,7 @@ func Test_server_GetStream(t *testing.T) {
 			t.Parallel()
 			s, _, streamer := newServer(t)
 
-			err := s.GetStream(newContext(t, "/v1/streams/stream-2", grantFor("stream-1")), "stream-2", gen.GetStreamParams{})
+			err := s.GetStream(newContext(t, "/v1/streams/stream-2", grantFor()), "stream-2", gen.GetStreamParams{})
 
 			require.ErrorIs(t, err, ucrealtime.ErrTicketInvalid)
 			assert.False(t, streamer.called)
@@ -144,7 +145,7 @@ func Test_server_GetStream(t *testing.T) {
 			s, _, streamer := newServer(t)
 			after := "-1"
 
-			err := s.GetStream(newContext(t, "/v1/streams/stream-1?after=-1", grantFor("stream-1")), "stream-1", gen.GetStreamParams{After: &after})
+			err := s.GetStream(newContext(t, "/v1/streams/stream-1?after=-1", grantFor()), "stream-1", gen.GetStreamParams{After: &after})
 
 			require.ErrorIs(t, err, ErrCursorMalformed)
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
@@ -160,7 +161,7 @@ func Test_server_GetStream(t *testing.T) {
 			cursors.EXPECT().Validate(gomock.Any(), rt.StreamID("stream-1"), rt.Sequence(3)).
 				Return(xerrors.Wrap(ucrealtime.ErrCursorExpired, "gone"))
 
-			err := s.GetStream(newContext(t, "/v1/streams/stream-1", grantFor("stream-1")), "stream-1", gen.GetStreamParams{})
+			err := s.GetStream(newContext(t, "/v1/streams/stream-1", grantFor()), "stream-1", gen.GetStreamParams{})
 
 			require.ErrorIs(t, err, apperror.ErrGone)
 			require.ErrorIs(t, err, ucrealtime.ErrCursorExpired)
@@ -175,7 +176,7 @@ func Test_server_GetStream(t *testing.T) {
 			s, cursors, streamer := newServer(t)
 			cursors.EXPECT().Validate(gomock.Any(), rt.StreamID("stream-1"), rt.Sequence(3)).Return(apperror.ErrUnavailable)
 
-			err := s.GetStream(newContext(t, "/v1/streams/stream-1", grantFor("stream-1")), "stream-1", gen.GetStreamParams{})
+			err := s.GetStream(newContext(t, "/v1/streams/stream-1", grantFor()), "stream-1", gen.GetStreamParams{})
 
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
 			require.NotErrorIs(t, err, apperror.ErrGone)
@@ -188,7 +189,7 @@ func Test_server_GetStream(t *testing.T) {
 			cursors.EXPECT().Validate(gomock.Any(), rt.StreamID("stream-1"), rt.Sequence(3)).Return(nil)
 			streamer.err = errStreamClosed
 
-			err := s.GetStream(newContext(t, "/v1/streams/stream-1", grantFor("stream-1")), "stream-1", gen.GetStreamParams{})
+			err := s.GetStream(newContext(t, "/v1/streams/stream-1", grantFor()), "stream-1", gen.GetStreamParams{})
 
 			require.ErrorIs(t, err, errStreamClosed)
 		})

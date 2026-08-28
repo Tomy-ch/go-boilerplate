@@ -17,7 +17,7 @@ func TestControllerModule_GraphIsValid(t *testing.T) {
 	// テストに任せ、ここでは BindHandler 群が依存（ユースケース・echo・ミドルウェア等）と
 	// 正しく結線されることを確認する。
 	opts := append(commonDeps(),
-		core.ValidatorModule(), core.SecurityCookieModule(),
+		core.ValidatorModule(), core.RedactionModule(), core.SecurityCookieModule(),
 		core.AuthnModule(), core.BasicAuthModule(), core.SkipperModule(),
 		InfrastructureModule(), UsecaseModule(),
 		server.MiddlewareModule(), server.Module(), server.HookModule(),
@@ -47,7 +47,7 @@ func TestControllerModule(t *testing.T) {
 			t.Parallel()
 
 			opts := append(commonDeps(),
-				core.ValidatorModule(), core.SecurityCookieModule(),
+				core.ValidatorModule(), core.RedactionModule(), core.SecurityCookieModule(),
 				core.AuthnModule(), core.BasicAuthModule(), core.SkipperModule(),
 				InfrastructureModule(),
 				server.MiddlewareModule(), server.Module(), server.HookModule(),

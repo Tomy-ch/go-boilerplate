@@ -1,9 +1,9 @@
 package server
 
 import (
-	"go-boilerplate/internal/controller/httpstack/redaction"
 	"time"
 
+	"go-boilerplate/internal/controller/httpstack/redaction"
 	"go-boilerplate/internal/logging"
 
 	"github.com/labstack/echo/v5"

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"go-boilerplate/internal/controller/httpstack/redaction"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -15,6 +14,7 @@ import (
 	"go-boilerplate/internal/controller/error/response"
 	"go-boilerplate/internal/controller/error/response/gen"
 	"go-boilerplate/internal/controller/handler/testkit/testspan"
+	"go-boilerplate/internal/controller/httpstack/redaction"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/xerrors"
 
