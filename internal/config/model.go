@@ -5,6 +5,13 @@ import (
 	"time"
 )
 
+// Realtime Delivery の table の固定名。環境ごとの識別子（RealtimeConfig.TableSuffix）を末尾に付けて使う。
+const (
+	realtimeEventLogTable      = "realtime_event_log"
+	realtimeStreamTicketTable  = "realtime_stream_ticket"
+	realtimeInstanceLeaseTable = "realtime_instance_lease"
+)
+
 // Config は、アプリケーション全体の設定をサブ設定ごとに束ねたルート設定です。
 type Config struct {
 	os            OperatingSystemConfig
@@ -21,6 +28,7 @@ type Config struct {
 	outbox        OutboxConfig
 	auth          AuthConfig
 	objectStorage ObjectStorageConfig
+	realtime      RealtimeConfig
 	endpoint      EndpointConfig
 }
 
@@ -180,12 +188,21 @@ type ObjectStorageConfig struct {
 	maxUploadBytes  int64
 }
 
+// RealtimeConfig は、Realtime Delivery の store（DynamoDB 互換）の接続設定を保持します。
+type RealtimeConfig struct {
+	region          string
+	tableSuffix     string
+	accessKeyID     string
+	secretAccessKey string
+}
+
 // EndpointConfig は、このアプリが接続する外部サービスの所在を保持します。
 // いずれも空文字を取り得ます。空が何を意味するかは接続先ごとに異なるため、各アクセサに記します。
 type EndpointConfig struct {
 	otlp          string
 	jwks          string
 	objectStorage string
+	realtime      string
 	outbox        string
 	outboxQueue   string
 	consumerQueue string
@@ -572,6 +589,34 @@ func (o *ObjectStorageConfig) UsePathStyle() bool { return o.usePathStyle }
 // グローバルな body limit が先に 413 を返すためこの上限は到達不能になります。
 func (o *ObjectStorageConfig) MaxUploadBytes() int64 { return o.maxUploadBytes }
 
+// NewRealtimeConfig は、Realtime Delivery の store の設定を返します。
+func NewRealtimeConfig(cfg *Config) *RealtimeConfig { return &cfg.realtime }
+
+// Region は、署名に用いるリージョンを返します。
+func (r *RealtimeConfig) Region() string { return r.region }
+
+// TableSuffix は、table 名の末尾に付く環境識別子を返します。
+func (r *RealtimeConfig) TableSuffix() string { return r.tableSuffix }
+
+// EventLogTable は、EventLog の table 名（realtime_event_log_<suffix>）を返します。
+func (r *RealtimeConfig) EventLogTable() string { return realtimeEventLogTable + "_" + r.tableSuffix }
+
+// StreamTicketTable は、StreamTicket の table 名（realtime_stream_ticket_<suffix>）を返します。
+func (r *RealtimeConfig) StreamTicketTable() string {
+	return realtimeStreamTicketTable + "_" + r.tableSuffix
+}
+
+// InstanceLeaseTable は、InstanceLease の table 名（realtime_instance_lease_<suffix>）を返します。
+func (r *RealtimeConfig) InstanceLeaseTable() string {
+	return realtimeInstanceLeaseTable + "_" + r.tableSuffix
+}
+
+// AccessKeyID は、静的資格情報のアクセスキー ID を返します。
+func (r *RealtimeConfig) AccessKeyID() string { return r.accessKeyID }
+
+// SecretAccessKey は、静的資格情報のシークレットアクセスキーを返します。
+func (r *RealtimeConfig) SecretAccessKey() string { return r.secretAccessKey }
+
 // NewEndpointConfig は、接続先の設定を返します。
 func NewEndpointConfig(cfg *Config) *EndpointConfig { return &cfg.endpoint }
 
@@ -583,6 +628,9 @@ func (e *EndpointConfig) JWKS() string { return e.jwks }
 
 // ObjectStorage は、S3 互換エンドポイントを返します。空なら SDK 既定の解決に委ねます。
 func (e *EndpointConfig) ObjectStorage() string { return e.objectStorage }
+
+// Realtime は、Realtime Delivery の store のエンドポイントを返します。空なら SDK 既定の解決に委ねます。
+func (e *EndpointConfig) Realtime() string { return e.realtime }
 
 // Outbox は、PUBLISHER=http のときの送出先を返します。
 func (e *EndpointConfig) Outbox() string { return e.outbox }

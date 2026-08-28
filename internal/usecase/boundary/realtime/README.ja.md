@@ -11,7 +11,7 @@ partition / TTL）も feature の語彙（会話 / メッセージ / operator）
 type DeliveryEvent struct {
     EventID       string
     StreamID      StreamID
-    Sequence      Sequence        // uint64。String() が 10 進の wire 形
+    Sequence      Sequence        // int64。String() が 10 進の wire 形
     Type          string
     OccurredAt    time.Time
     SchemaVersion int

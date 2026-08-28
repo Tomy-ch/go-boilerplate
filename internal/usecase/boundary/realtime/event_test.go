@@ -2,6 +2,7 @@ package realtime
 
 import (
 	"encoding/json"
+	"math"
 	"strings"
 	"testing"
 	"time"
@@ -45,7 +46,7 @@ func TestSequence_String(t *testing.T) {
 
 	assert.Equal(t, "0", Sequence(0).String())
 	assert.Equal(t, "42", Sequence(42).String())
-	assert.Equal(t, "18446744073709551615", Sequence(^uint64(0)).String(), "ゼロ埋めなしの 10 進")
+	assert.Equal(t, "9223372036854775807", Sequence(math.MaxInt64).String(), "ゼロ埋めなしの 10 進")
 }
 
 func TestDeliveryEvent_MarshalJSON(t *testing.T) {
@@ -156,6 +157,14 @@ func TestDeliveryEvent_Validate(t *testing.T) {
 
 			e := validEvent()
 			e.Sequence = 0
+			require.ErrorIs(t, e.Validate(), ErrInvalidEvent)
+		})
+
+		t.Run("sequence が負なら ErrInvalidEvent を返す", func(t *testing.T) {
+			t.Parallel()
+
+			e := validEvent()
+			e.Sequence = -1
 			require.ErrorIs(t, e.Validate(), ErrInvalidEvent)
 		})
 

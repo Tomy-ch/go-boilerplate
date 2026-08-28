@@ -22,11 +22,12 @@ type StreamID string
 
 // Sequence は、stream 内の位置です。1 から始まり gap 無く増え、0 値は「位置を持たない」ことを
 // 意味しません（未採番かどうかは SequenceAllocator.Current の ok で表します）。
-type Sequence uint64
+// int64 なのは allocator の PostgreSQL BIGINT と同じ幅にするためで、非負性は採番側が保証します。
+type Sequence int64
 
 // String は、sequence の 10 進表記（ゼロ埋めなし）を返します。SSE の id と cursor はこの形です。
 func (s Sequence) String() string {
-	return strconv.FormatUint(uint64(s), 10)
+	return strconv.FormatInt(int64(s), 10)
 }
 
 // DeliveryEvent は、feature 中立な配送封筒です。EventID は outbox の message_id と同じ値で、
@@ -91,8 +92,8 @@ func (e DeliveryEvent) Validate() error {
 		return xerrors.Wrap(ErrInvalidEvent, "event id is empty")
 	case e.StreamID == "":
 		return xerrors.Wrap(ErrInvalidEvent, "stream id is empty")
-	case e.Sequence == 0:
-		return xerrors.Wrap(ErrInvalidEvent, "sequence is zero")
+	case e.Sequence <= 0:
+		return xerrors.Wrap(ErrInvalidEvent, "sequence must be positive")
 	case e.Type == "":
 		return xerrors.Wrap(ErrInvalidEvent, "type is empty")
 	case e.OccurredAt.IsZero():

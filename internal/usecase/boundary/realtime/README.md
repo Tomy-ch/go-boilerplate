@@ -12,7 +12,7 @@ implement it. Neither vendor vocabulary (table / partition / TTL) nor feature vo
 type DeliveryEvent struct {
     EventID       string
     StreamID      StreamID
-    Sequence      Sequence        // uint64; String() is the decimal wire form
+    Sequence      Sequence        // int64; String() is the decimal wire form
     Type          string
     OccurredAt    time.Time
     SchemaVersion int

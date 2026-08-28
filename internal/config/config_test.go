@@ -140,10 +140,17 @@ func TestNew(t *testing.T) {
 					usePathStyle:    expectedObjectStorageUsePathStyle,
 					maxUploadBytes:  expectedObjectStorageMaxUploadBytes,
 				},
+				realtime: RealtimeConfig{
+					region:          expectedRealtimeRegion,
+					tableSuffix:     expectedRealtimeTableSuffix,
+					accessKeyID:     expectedRealtimeAccessKeyID,
+					secretAccessKey: expectedRealtimeSecretAccessKey,
+				},
 				endpoint: EndpointConfig{
 					otlp:          expectedEndpointOTLP,
 					jwks:          expectedEndpointJWKS,
 					objectStorage: expectedEndpointObjectStorage,
+					realtime:      expectedEndpointRealtime,
 					outbox:        expectedEndpointOutbox,
 					outboxQueue:   expectedEndpointOutboxQueue,
 					consumerQueue: expectedEndpointConsumerQueue,

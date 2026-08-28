@@ -232,6 +232,17 @@ access token（JWT）検証の設定。CI / test は署名検証なしのスタ�
 
 配信はこれらの変数の管轄外です。API はオブジェクトキー（`imagePath`）だけを返しフル URL を返さないため、フロントが `<配信オリジン>/<オブジェクトキー>` を組み立てます。したがって配信オリジンの変数はこちら側に存在せず、フロントが持ちます（`local` は `http://gobp-local.web.garage.localhost:3902`、デプロイ環境では CDN のドメイン）。ローカルの配信エンドポイントを匿名 read で開く方法は [`docker/README.md`](../docker/README.md) を参照してください。
 
+### Realtime Delivery
+
+Realtime Delivery（[`docs/design/realtime-delivery.ja.md`](../docs/design/realtime-delivery.ja.md)）の背後にある DynamoDB 互換 store — EventLog（有界の replay）、stream ticket、instance lease — の設定です。usecase は vendor 非依存の `realtime` 境界に依存し、adapter は DynamoDB（AWS SDK v2）なので、`local` / `ci` は DynamoDB Local へ、デプロイ環境は `ENDPOINT_REALTIME` を空にして AWS DynamoDB へ繋ぎます。table 名は固定名（`realtime_event_log` / `realtime_stream_ticket` / `realtime_instance_lease`）に `_<REALTIME_TABLE_SUFFIX>` を付けた形で、1 つの DynamoDB（あるいは共有の DynamoDB Local）に複数環境を並べられます。table は one-shot の `make realtime-init` が作り、application の起動時には作りません。
+
+|変数名|説明|型|例|Notes|
+|---|---|---|---|---|
+|REALTIME_REGION|署名に用いるリージョン|string|us-east-1|`required,notEmpty`。環境ごとの値 — local / ci / dast は DynamoDB Local 向けのサンプル値、`dev` 以降はその環境の AWS リージョン|
+|REALTIME_TABLE_SUFFIX|全 table 名の末尾に付く環境識別子（`realtime_event_log_<suffix>` …）|string|local|`required,notEmpty`。小文字・数字・アンダースコア。環境ごとの値 — 環境名。worktree の slot はここに独自の suffix を注入し、DynamoDB Local を共有する checkout 同士が table を共有しないようにする|
+|REALTIME_ACCESS_KEY_ID|静的資格情報のアクセスキー ID|string|local-dummy-access-key|Code default は空。secret と揃って空なら資格情報の解決を SDK 既定の chain に委ねる（IAM ロールの使い方）— ロール運用のデプロイは何も注入しない。DynamoDB Local は認証しないので local / ci / dast は SDK の署名を満たすだけのダミー|
+|REALTIME_SECRET_ACCESS_KEY|静的資格情報のシークレットアクセスキー|string|local-dummy-secret-key|Code default は空。アクセスキー ID と揃えて設定する — 片方だけの設定は明示注入とも chain 委譲とも読めないため起動に失敗する|
+
 ### Endpoint
 
 このデプロイの接続先です。「どこへ繋ぐか」は独立した軸で、デプロイごとに変わる一方で各サブシステムの振る舞いは変わりません。そのため、叩く側のサブシステム設定ではなくここにまとめます。すべて `required` ですが空文字を許容し、空が何を意味するかは接続先ごとに異なるため Notes に記します。キューの `*_URL` はここに置きません（接続先ではなく API 引数として渡すリソース識別子のため）。`AUTH_ISSUER` も突き合わせる値であって接続先ではありません。
@@ -241,6 +252,7 @@ access token（JWT）検証の設定。CI / test は署名検証なしのスタ�
 |ENDPOINT_OTLP|OTLP 送出先エンドポイント URL|string|`http://observability:4318`|exporter 有効時に使用。Per-environment value — 各環境の collector。exporter が無効な環境では空|
 |ENDPOINT_JWKS|JWKS エンドポイント URL の override。空の場合は `AUTH_ISSUER` から OIDC discovery で `jwks_uri` を導出|string|`http://mock_auth_server:4000/default/jwks`|Code default は空。Per-environment value — compose 内部のサービス URL で上書きするのは `local` だけで、他は既定の空のまま `AUTH_ISSUER` から OIDC discovery で `jwks_uri` を導出する|
 |ENDPOINT_OBJECT_STORAGE|S3 互換エンドポイント URL。空は SDK 既定解決（AWS S3）|string|`http://garage:3900`|`required`（空を許容）。Per-environment value — `local` は Garage の compose サービスを指し、他の環境は SDK が AWS S3 を解決するよう空にする|
+|ENDPOINT_REALTIME|Realtime Delivery の store の DynamoDB 互換エンドポイント URL。空なら SDK 既定の解決（AWS DynamoDB）|string|`http://dynamodb_local:8000`|`required`（空を許容）。環境ごとの値 — `local` は compose の DynamoDB Local、`ci` は service container の `localhost:8000`。他の環境は空にして SDK に AWS DynamoDB を解決させる|
 |ENDPOINT_OUTBOX|メッセージの送信先エンドポイント URL|string||Code default は空。`OUTBOX_PUBLISHER=http` のとき必須|
 |ENDPOINT_OUTBOX_QUEUE|SQS 互換エンドポイント|string|`http://elasticmq:9324`|Code default は空。空なら SDK 既定の解決に委ねる（本番 AWS SQS 等）。**Per-environment value**: ブローカーが compose で動く local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま|
 |ENDPOINT_CONSUMER_QUEUE|SQS 互換エンドポイント|string|`http://elasticmq:9324`|Code default は空。空なら SDK 既定の解決（本番 AWS SQS）に委ねる。**Per-environment value**: ブローカーが compose で動く local でのみ設定する。キューはデプロイ先ごとのリソースなので他環境は空のまま|
