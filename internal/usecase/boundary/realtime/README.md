@@ -77,5 +77,6 @@ after that removal, so it carries its own randomness seam; the implementation li
 | `InstanceLeaseStore` | `internal/infrastructure/instancelease/dynamodb/` |
 | `SecretGenerator` | `internal/infrastructure/realtimesecret/` |
 | `SequenceAllocator` (`sequence.go`, #1410) | `internal/infrastructure/rdb/system_cqrs/realtime/` |
+| `RevocationNotifier` (`revocation.go`) | the SNS fan-out publisher (Phase 7, #1414); called by `usecase/realtime.AccessRevoker` after the tickets are invalidated |
 
 Mocks are generated per file into `mock/` (`go generate ./...`).
