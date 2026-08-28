@@ -46,8 +46,8 @@ type TicketIssuer interface {
 // TicketVerifier は、接続時に提示された ticket を検証します。
 type TicketVerifier interface {
 	// Verify は、生値の hash に対応する ticket が期限内にあり、destination が一致するときその束縛（StreamGrant）を
-	// 返します。無い・期限切れ・destination 違いはいずれも ErrTicketInvalid です（理由は区別しない —
-	// 区別すると存在の有無を推測する手がかりになるため）。store が読めなければ apperror.ErrUnavailable です。
+	// 返します。無い・期限切れ・destination 違いはいずれも ErrTicketInvalid で、理由は区別しません（README）。
+	// store が読めなければ apperror.ErrUnavailable です。
 	Verify(ctx context.Context, value string, destination rt.StreamID) (rt.StreamGrant, error)
 }
 

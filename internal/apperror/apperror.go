@@ -45,7 +45,7 @@ var (
 	ErrFatal = xerrors.New("fatal")
 )
 
-// appErrors は、定義済みの全 apperror センチネルです。
+// appErrors は、HTTP taxonomy に属する全センチネルです。
 var appErrors = []error{
 	ErrInvalidArgument,
 	ErrUnauthenticated,

@@ -97,7 +97,7 @@ overrides:
     rules:
       owasp:api9:2023-inventory-environment: off
 
-  # パラメータ（path / query / header）には body limit が効かないため、制約系を厳格に有効化する。
+  # パラメータに限って制約系を有効化する。理由は rules の owasp:api4:2023-string-limit ブロック。
   - files:
       - "openapi/components/parameters/**"
     rules:

@@ -539,8 +539,7 @@ export const ALLOWED_MENTIONS: readonly string[] = [
  * 手順のように、対訳を含む節を別の言い回しへ差し替える必要があるもの——はここではなく、
  * 本文側の `doc-pair:replace-begin` / `replace-with` / `replace-end` が持ちます。
  *
- * 宣言を最小に保つのは、これが完全一致だからです。本文が 1 文字動けば当たらなくなり、
- * そのとき撤去は黙って素通りせず止まります（それが宣言を完全一致にしている理由でもあります）。
+ * 宣言は最小に保ってください。完全一致がなぜ fail-closed になるかは DOC_REPLACEMENTS の @remarks。
  */
 export const DECLARED_LINES: readonly string[] = [
   "| skill | `SKILL.md` | `SKILL.ja.md` |",

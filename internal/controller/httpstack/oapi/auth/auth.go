@@ -20,7 +20,7 @@ import (
 const prefixBearer = "Bearer "
 
 // SchemeGroup は、Bearer 以外の securityScheme を担当する SchemeAuthenticator を集める fx group の名前です。
-// 担当する scheme を持つモジュールがこの group へ出し、NewAuthenticator が scheme の名前で dispatch します。
+// 集めた認証器の選び方は NewAuthenticator を参照。
 const SchemeGroup = "oapi.security.schemes"
 
 const (
@@ -31,7 +31,7 @@ const (
 )
 
 // SchemeAuthenticator は、Bearer 以外の 1 つの securityScheme を担当する認証器です。
-// operation が宣言した scheme の名前で選ばれ、検証結果は request の context スロットへ書き込みます。
+// NewAuthenticator が選び、検証結果は request の context スロットへ書き込みます。
 type SchemeAuthenticator interface {
 	// Scheme は、この認証器が担当する securityScheme の名前（spec の securitySchemes のキー）を返します。
 	Scheme() string

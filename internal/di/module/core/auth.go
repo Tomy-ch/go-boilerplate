@@ -29,7 +29,7 @@ import (
 const callerSkipCount = 1
 
 // accessTokenType は、access token に期待する RFC 9068 の typ ヘッダ値です。
-// mock 認証サーバーは access token に付与し ID Token には付与しないため、typ 不一致で ID Token 誤用を拒否します。
+// 根拠と ID Token 誤用拒否の扱いは docs/design/auth.md を参照してください。
 const accessTokenType = "at+jwt"
 
 // errNoAuthenticatorForEnv は、現在の環境に対応する Authenticator が無く配線に失敗した場合のエラーです。

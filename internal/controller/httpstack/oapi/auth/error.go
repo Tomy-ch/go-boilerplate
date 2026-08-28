@@ -6,9 +6,9 @@ import (
 )
 
 var (
-	// ErrInvalidAuthDefaultMode は、既定の認証ポリシーが見つからない場合のサーバ内部エラー。
+	// ErrInvalidAuthDefaultMode は、既定の認証ポリシーが見つからない場合のサーバ内部エラー（予約: 現在は返らない）。
 	ErrInvalidAuthDefaultMode = xerrors.Wrap(apperror.ErrInternal, "default auth policy not found")
-	// ErrUnauthorizedTokenMissing は、認証トークンが欠如している場合のエラー。
+	// ErrUnauthorizedTokenMissing は、認証トークンが欠如している場合のエラー（予約: 現在は返らない。実際の未提示は ErrUnauthorizedTokenNotProvided）。
 	ErrUnauthorizedTokenMissing = xerrors.Wrap(apperror.ErrUnauthenticated, "authorization token missing")
 	// ErrUnauthorizedInvalidToken は、認証トークンが無効な場合のエラー。
 	ErrUnauthorizedInvalidToken = xerrors.Wrap(apperror.ErrUnauthenticated, "invalid token")
