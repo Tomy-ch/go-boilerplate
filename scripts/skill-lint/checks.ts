@@ -271,6 +271,7 @@ export function extractHeadings(content: string): Heading[] {
   return headings;
 }
 
+// doc-pair:end
 /**
  * `## 12. …` 形式の節見出しが宣言している節番号。
  *
@@ -315,6 +316,7 @@ export function extractSectionRefs(line: string): SectionRef[] {
   return refs;
 }
 
+// doc-pair:begin
 /** 見出し構造のずれ。`canonical` / `translation` は該当位置の見出し（無ければ `null`）。 */
 export type HeadingMismatch = {
   index: number;
