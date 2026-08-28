@@ -57,7 +57,7 @@ func NewHTTP(
 
 // Publish は、メッセージを受信エンドポイントへ POST します。
 // message_id を Idempotency-Key として伝搬します。非 2xx / transport 失敗は substrate が
-// apperror へ写像して返します。
+// apperror へ写像し、本メソッドがさらに永久失敗 / 一時失敗の分類を付けて返します。
 func (p *httpPublisher) Publish(ctx context.Context, m boundary.Message) error {
 	ctx, endSpan := p.tracer.Start(ctx)
 	defer endSpan()
@@ -71,11 +71,11 @@ func (p *httpPublisher) Publish(ctx context.Context, m boundary.Message) error {
 		header[k] = []string{v}
 	}
 
-	_, err := p.client.Do(ctx, httpclient.NewRequest(
+	resp, err := p.client.Do(ctx, httpclient.NewRequest(
 		httpclient.MethodPost(), downstream, string(p.endpoint),
 		httpclient.WithHeader(header),
 		httpclient.WithBody(m.Payload),
 		httpclient.WithIdempotencyKey(m.MessageID.String()),
 	))
-	return err
+	return classifyOutcome(resp, err)
 }

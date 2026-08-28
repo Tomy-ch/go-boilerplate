@@ -28,5 +28,9 @@ type Message struct {
 type Publisher interface {
 	// Publish は、m を publish 先へ送ります。
 	// 送信失敗時はエラーを返し、relay の次 poll で再送されます（at-least-once）。
+	// 実装は失敗を apperror.ErrPermanent（再試行しても結果が変わらない）または
+	// apperror.ErrRetryable（変わりうる）で分類してよく、relay は前者だけを dead 化します。
+	// どちらの分類も運ばないエラーは一時失敗として扱われるため、判断が付かない実装が
+	// メッセージを失わせることはありません。
 	Publish(ctx context.Context, m Message) error
 }

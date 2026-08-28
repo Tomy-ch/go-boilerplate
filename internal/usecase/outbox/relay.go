@@ -7,29 +7,49 @@ import (
 	"encoding/json"
 	"time"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/clock"
 	outboxbndry "go-boilerplate/internal/usecase/boundary/outbox"
 	"go-boilerplate/internal/usecase/boundary/publisher"
 	"go-boilerplate/internal/usecase/boundary/tx"
+	"go-boilerplate/pkg/backoff"
+	"go-boilerplate/pkg/retry"
+	"go-boilerplate/pkg/xerrors"
 )
 
 const (
 	// DefaultBatchSize は、1 回の relay で claim する pending エントリ数の既定値です。
 	DefaultBatchSize int32 = 100
-	// DefaultMaxAttempts は、dead 化までの publish 試行回数の既定値です。
-	DefaultMaxAttempts int32 = 10
+
+	// retryInitialInterval は、1 回目の publish 失敗後に空ける待機時間です。
+	retryInitialInterval = 1 * time.Second
+	// retryMaxInterval は、再試行間隔の上限です（ADR-0058）。
+	retryMaxInterval = 60 * time.Second
+	// retryMultiplier は、失敗を重ねるごとの間隔の倍率です。
+	retryMultiplier = 2.0
 
 	relayLoggerName = "outbox-relay"
 )
 
+// retryBackoff は、一時失敗した行を次に claim してよくなるまでの間隔です。
+// 全 jitter を重ねて、同時に失敗した行が同じ poll に殺到しないようにします。
+var retryBackoff = backoff.Exponential{
+	Initial:    retryInitialInterval,
+	Max:        retryMaxInterval,
+	Multiplier: retryMultiplier,
+}
+
 // Metrics は、relay engine が記録する outbox 固有の o11y シンクです。
+// channel はチャネル名で、いずれの記録もチャネル単位で識別されます。
 type Metrics interface {
 	// SetLagSeconds は、最古 pending エントリの経過秒数（SLI=outbox lag）を記録します。
-	SetLagSeconds(ctx context.Context, seconds int64)
+	SetLagSeconds(ctx context.Context, channel string, seconds int64)
 	// IncDead は、dead 化したメッセージ数を計上します。
-	IncDead(ctx context.Context)
+	IncDead(ctx context.Context, channel string)
+	// SetBlockedStreams は、先頭エントリが dead で進行が止まっているストリーム数を記録します。
+	SetBlockedStreams(ctx context.Context, channel string, count int64)
 }
 
 // RelayResult は、1 回の RelayBatch の結果です。
@@ -49,20 +69,23 @@ type RelayUsecase interface {
 	// RecordLag は、最古 pending エントリの経過時間（outbox lag）を SLI メトリクスへ記録します。
 	// pending のエントリが無ければ 0 を記録します。
 	RecordLag(ctx context.Context) error
+	// RecordBlockedStreams は、先頭エントリが dead で進行が止まっているストリーム数をメトリクスへ記録します。
+	RecordBlockedStreams(ctx context.Context) error
 }
 
 type relayUsecase struct {
-	txm         tx.Manager
-	store       outboxbndry.Store
-	publisher   publisher.Publisher
-	metrics     Metrics
-	clock       clock.Clock
-	logging     logging.Logger
-	tracer      observability.LayerTracer
-	maxAttempts int32
+	txm       tx.Manager
+	store     outboxbndry.Store
+	publisher publisher.Publisher
+	metrics   Metrics
+	clock     clock.Clock
+	logging   logging.Logger
+	tracer    observability.LayerTracer
+	channel   outboxbndry.Channel
 }
 
-// NewRelay は、RelayUsecase を生成します。
+// NewRelay は、1 つの配送チャネルを担う RelayUsecase を生成します。
+// claim も失敗時の進行も channel の中で閉じるため、あるチャネルの停止が別のチャネルを止めません。
 func NewRelay(
 	txm tx.Manager,
 	store outboxbndry.Store,
@@ -71,16 +94,17 @@ func NewRelay(
 	clk clock.Clock,
 	log logging.Logger,
 	tf observability.TracerFactory,
+	channel outboxbndry.Channel,
 ) RelayUsecase {
 	return &relayUsecase{
-		txm:         txm,
-		store:       store,
-		publisher:   pub,
-		metrics:     metrics,
-		clock:       clk,
-		logging:     log,
-		tracer:      tf.Usecase(),
-		maxAttempts: DefaultMaxAttempts,
+		txm:       txm,
+		store:     store,
+		publisher: pub,
+		metrics:   metrics,
+		clock:     clk,
+		logging:   log,
+		tracer:    tf.Usecase(),
+		channel:   channel,
 	}
 }
 
@@ -88,7 +112,7 @@ func (u *relayUsecase) RecordLag(ctx context.Context) error {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 
-	createdAt, ok, err := u.store.OldestPendingCreatedAt(ctx)
+	createdAt, ok, err := u.store.OldestPendingCreatedAt(ctx, u.channel)
 	if err != nil {
 		return err
 	}
@@ -99,7 +123,19 @@ func (u *relayUsecase) RecordLag(ctx context.Context) error {
 			lag = 0
 		}
 	}
-	u.metrics.SetLagSeconds(ctx, int64(lag.Seconds()))
+	u.metrics.SetLagSeconds(ctx, u.channel.String(), int64(lag.Seconds()))
+	return nil
+}
+
+func (u *relayUsecase) RecordBlockedStreams(ctx context.Context) error {
+	ctx, endSpan := u.tracer.Start(ctx)
+	defer endSpan()
+
+	count, err := u.store.CountBlockedStreams(ctx, u.channel)
+	if err != nil {
+		return err
+	}
+	u.metrics.SetBlockedStreams(ctx, u.channel.String(), count)
 	return nil
 }
 
@@ -112,7 +148,7 @@ func (u *relayUsecase) RelayBatch(ctx context.Context, batchSize int32) (RelayRe
 	}
 
 	return tx.DoWithResult(ctx, u.txm, func(ctx context.Context) (RelayResult, error) {
-		msgs, err := u.store.ClaimPending(ctx, batchSize)
+		msgs, err := u.store.ClaimPending(ctx, u.channel, batchSize)
 		if err != nil {
 			return RelayResult{}, err
 		}
@@ -144,24 +180,42 @@ func (u *relayUsecase) deliver(ctx context.Context, m outboxbndry.PendingMessage
 		return true, u.store.MarkPublished(ctx, m.ID)
 	}
 
-	attempts, ferr := u.store.MarkFailed(ctx, m.ID, perr.Error())
-	if ferr != nil {
+	// 失敗理由は dead でも残すため、dead 化の前に必ず記録する。
+	permanent := isPermanent(perr)
+	nextAttemptAt := u.clock.Now()
+	if !permanent {
+		nextAttemptAt = nextAttemptAt.Add(retryDelay(m.Attempts))
+	}
+	if ferr := u.store.MarkFailed(ctx, m.ID, perr.Error(), nextAttemptAt); ferr != nil {
 		return false, ferr
 	}
-	if attempts >= u.maxAttempts {
-		if derr := u.store.MarkDead(ctx, m.ID); derr != nil {
-			return false, derr
-		}
-		u.metrics.IncDead(ctx)
-		u.logging.Named(relayLoggerName).Warn(
-			ctx,
-			"outbox message marked dead after reaching max attempts",
-			logging.String(logging.MessageIDKey, m.MessageID.String()),
-			logging.String(logging.EventTypeKey, m.EventType),
-			logging.Error(logging.JobErrorKey, perr),
-		)
+	if !permanent {
+		return false, nil
 	}
+
+	if derr := u.store.MarkDead(ctx, m.ID); derr != nil {
+		return false, derr
+	}
+	u.metrics.IncDead(ctx, u.channel.String())
+	u.logging.Named(relayLoggerName).Warn(
+		ctx,
+		"outbox message marked dead by permanent publish failure",
+		logging.String(logging.MessageIDKey, m.MessageID.String()),
+		logging.String(logging.EventTypeKey, m.EventType),
+		logging.Error(logging.JobErrorKey, perr),
+	)
 	return false, nil
+}
+
+// isPermanent は、publish の失敗が再試行で結果の変わらない永久失敗かを返します。
+// どちらの分類も持たないエラーは一時失敗として扱います（worker engine の分類と同じ既定）。
+func isPermanent(err error) bool {
+	return xerrors.Is(err, apperror.ErrPermanent)
+}
+
+// retryDelay は、attempts 回失敗した行を次に claim してよくなるまでの間隔を返します。
+func retryDelay(attempts int32) time.Duration {
+	return retry.Full(retryBackoff.Duration(int(attempts)))
 }
 
 // decodeHeaders は、保存済みヘッダ JSON を map へ復元します。壊れていても publish は継続するため nil を返します。

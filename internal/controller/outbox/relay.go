@@ -91,7 +91,7 @@ func (e *Engine) waitDone(ctx context.Context, d time.Duration) bool {
 	return e.sleeper.Sleep(ctx, d) != nil
 }
 
-// observeLag は、outbox lag(SLI) をベストエフォートで記録します。
+// observeLag は、outbox lag(SLI) と停止中ストリーム数をベストエフォートで記録します。
 // ctx 完了時は記録をスキップし、記録失敗はループを止めずログのみ行います。
 func (e *Engine) observeLag(ctx context.Context, log logging.Logger) {
 	if ctx.Err() != nil {
@@ -99,5 +99,8 @@ func (e *Engine) observeLag(ctx context.Context, log logging.Logger) {
 	}
 	if err := e.uc.RecordLag(ctx); err != nil {
 		log.Error(ctx, "failed to record outbox lag", logging.Error(logging.JobErrorKey, err))
+	}
+	if err := e.uc.RecordBlockedStreams(ctx); err != nil {
+		log.Error(ctx, "failed to record blocked outbox streams", logging.Error(logging.JobErrorKey, err))
 	}
 }

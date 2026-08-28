@@ -8,7 +8,9 @@ import (
 	"go-boilerplate/internal/config"
 	outboxengine "go-boilerplate/internal/controller/outbox"
 	relayhook "go-boilerplate/internal/di/outboxrelay/hook"
+	"go-boilerplate/internal/infrastructure/publisher"
 	"go-boilerplate/internal/observability"
+	outboxbndry "go-boilerplate/internal/usecase/boundary/outbox"
 	outboxuc "go-boilerplate/internal/usecase/outbox"
 	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/xerrors"
@@ -21,13 +23,16 @@ const (
 	defaultRelayErrorBackoff = 5 * time.Second
 )
 
-// OutboxRelayModule は、outbox relay engine とそのライフサイクルフックを提供するfx.Moduleです。
-// relay 専用プロセス（cmd outbox-relay）でのみ使用します。
+// OutboxRelayModule は、1 つの配送チャネルを担う outbox relay engine とそのライフサイクルフックを
+// 提供するfx.Moduleです。relay 専用プロセス（cmd outbox-relay）でのみ使用します。
+// claim も失敗時の進行も channel の中で閉じるため、あるチャネルの停止が別のチャネルを止めません。
 // outboxPublisherModule は非標準の httpclient profile（MaxAttempts=1 等）を value group へ寄与するため、
 // relay 以外のプロセスへ漏れないよう共有 InfrastructureModule ではなくここに閉じ込めます。
-func OutboxRelayModule() fx.Option {
+func OutboxRelayModule(channel outboxbndry.Channel) fx.Option {
 	return fx.Module("outbox-relay",
 		outboxPublisherModule(),
+		fx.Supply(channel),
+		fx.Invoke(publisher.VerifyChannel),
 		fx.Provide(
 			fx.Annotate(
 				observability.NewOutboxMetrics,

@@ -32,7 +32,7 @@ var (
 
 	// errResponseTooLarge は、レスポンスボディが上限を超過したことを表します。下流起因の応答異常なので
 	// HTTP 語彙は transport 失敗と同じ ErrUnavailable(503) を保ちます（400 にすると下流障害がクライアント
-	// 過失として誤帰属する）。決定的失敗としての非 retry 化は retry.go の isRetryableOutcome が担います。
+	// 過失として誤帰属する）。決定的失敗としての非 retry 化は retry.go の RetryableOutcome が担います。
 	errResponseTooLarge = xerrors.Wrap(apperror.ErrUnavailable, "response body exceeds max bytes")
 )
 

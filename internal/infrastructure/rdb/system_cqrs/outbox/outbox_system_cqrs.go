@@ -42,13 +42,23 @@ func (s *store) Insert(ctx context.Context, p outboxbndry.EmitParams) (uuid.UUID
 		headers = []byte("{}")
 	}
 
+	var orderingKey *string
+	var orderingSequence *int64
+	if p.OrderingKey != "" {
+		orderingKey = &p.OrderingKey
+		orderingSequence = &p.OrderingSequence
+	}
+
 	db := gen.New(driver.New(ctx, s.db))
 	row, err := db.InsertOutbox(ctx, &gen.InsertOutboxParams{
-		AggregateType: p.AggregateType,
-		AggregateID:   p.AggregateID,
-		EventType:     p.EventType,
-		Payload:       p.Payload,
-		Headers:       headers,
+		AggregateType:    p.AggregateType,
+		AggregateID:      p.AggregateID,
+		EventType:        p.EventType,
+		Payload:          p.Payload,
+		Headers:          headers,
+		DeliveryChannel:  p.Channel.String(),
+		OrderingKey:      orderingKey,
+		OrderingSequence: orderingSequence,
 	})
 	if err != nil {
 		return uuid.UUID{}, pgerror.NormalizeError(err)
@@ -56,13 +66,21 @@ func (s *store) Insert(ctx context.Context, p outboxbndry.EmitParams) (uuid.UUID
 	return row.MessageID, nil
 }
 
-// ClaimPending は、pending 行を最大 limit 件ロックして返します。並行ワーカーが同一行を取得しません。
-func (s *store) ClaimPending(ctx context.Context, limit int32) ([]outboxbndry.PendingMessage, error) {
+// ClaimPending は、指定チャネルの claim 可能な pending 行を最大 limit 件ロックして返します。
+// 並行ワーカーが同一行を取得せず、先行 sequence が未 publish の行も返しません（順序保証は SQL 側の述語）。
+func (s *store) ClaimPending(
+	ctx context.Context,
+	channel outboxbndry.Channel,
+	limit int32,
+) ([]outboxbndry.PendingMessage, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
 	db := gen.New(driver.New(ctx, s.db))
-	rows, err := db.ClaimPendingOutbox(ctx, limit)
+	rows, err := db.ClaimPendingOutbox(ctx, &gen.ClaimPendingOutboxParams{
+		DeliveryChannel: channel.String(),
+		Limit:           limit,
+	})
 	if err != nil {
 		return nil, pgerror.NormalizeError(err)
 	}
@@ -93,24 +111,21 @@ func (s *store) MarkPublished(ctx context.Context, id int64) error {
 	return nil
 }
 
-// MarkFailed は、attempts を加算し last_error を記録し、加算後の attempts を返します。
-// 既に pending でない（並行処理で遷移済み）場合は 0 を返します。
-func (s *store) MarkFailed(ctx context.Context, id int64, lastErr string) (int32, error) {
+// MarkFailed は、last_error を記録し、次に claim してよい時刻を nextAttemptAt へ進めます。
+// 行は pending のまま残ります。既に pending でない（並行処理で遷移済み）場合は何もしません。
+func (s *store) MarkFailed(ctx context.Context, id int64, lastErr string, nextAttemptAt time.Time) error {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
 	db := gen.New(driver.New(ctx, s.db))
-	attempts, err := db.MarkOutboxFailed(ctx, &gen.MarkOutboxFailedParams{
-		ID:        id,
-		LastError: &lastErr,
-	})
-	if err != nil {
-		if xerrors.Is(err, pgx.ErrNoRows) {
-			return 0, nil
-		}
-		return 0, pgerror.NormalizeError(err)
+	if _, err := db.MarkOutboxFailed(ctx, &gen.MarkOutboxFailedParams{
+		ID:            id,
+		LastError:     &lastErr,
+		NextAttemptAt: nextAttemptAt,
+	}); err != nil {
+		return pgerror.NormalizeError(err)
 	}
-	return attempts, nil
+	return nil
 }
 
 // MarkDead は、行を dead へ遷移します。
@@ -154,13 +169,16 @@ func (s *store) DeletePublished(ctx context.Context, cutoff time.Time, limit int
 	return affected, nil
 }
 
-// OldestPendingCreatedAt は、最古 pending 行の created_at を返します（SLI=outbox lag 用）。
-func (s *store) OldestPendingCreatedAt(ctx context.Context) (time.Time, bool, error) {
+// OldestPendingCreatedAt は、指定チャネルの最古 pending 行の created_at を返します（SLI=outbox lag 用）。
+func (s *store) OldestPendingCreatedAt(
+	ctx context.Context,
+	channel outboxbndry.Channel,
+) (time.Time, bool, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
 	db := gen.New(driver.New(ctx, s.db))
-	createdAt, err := db.OldestPendingOutbox(ctx)
+	createdAt, err := db.OldestPendingOutbox(ctx, channel.String())
 	if err != nil {
 		if xerrors.Is(err, pgx.ErrNoRows) {
 			return time.Time{}, false, nil
@@ -168,4 +186,17 @@ func (s *store) OldestPendingCreatedAt(ctx context.Context) (time.Time, bool, er
 		return time.Time{}, false, pgerror.NormalizeError(err)
 	}
 	return createdAt, true, nil
+}
+
+// CountBlockedStreams は、先頭行が dead であるストリームの数を返します。
+func (s *store) CountBlockedStreams(ctx context.Context, channel outboxbndry.Channel) (int64, error) {
+	ctx, endSpan := s.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, s.db))
+	count, err := db.CountBlockedStreamsOutbox(ctx, channel.String())
+	if err != nil {
+		return 0, pgerror.NormalizeError(err)
+	}
+	return count, nil
 }
