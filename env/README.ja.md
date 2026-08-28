@@ -240,8 +240,8 @@ Realtime Delivery（[`docs/design/realtime-delivery.ja.md`](../docs/design/realt
 |---|---|---|---|---|
 |REALTIME_REGION|署名に用いるリージョン|string|us-east-1|`required,notEmpty`。環境ごとの値 — local / ci / dast は DynamoDB Local 向けのサンプル値、`dev` 以降はその環境の AWS リージョン|
 |REALTIME_TABLE_SUFFIX|全 table 名の末尾に付く環境識別子（`realtime_event_log_<suffix>` …）|string|local|`required,notEmpty`。小文字・数字・アンダースコア。環境ごとの値 — 環境名。worktree の slot はここに独自の suffix を注入し、DynamoDB Local を共有する checkout 同士が table を共有しないようにする|
-|REALTIME_ACCESS_KEY_ID|静的資格情報のアクセスキー ID|string|local-dummy-access-key|Code default は空。secret と揃って空なら資格情報の解決を SDK 既定の chain に委ねる（IAM ロールの使い方）— ロール運用のデプロイは何も注入しない。DynamoDB Local は認証しないので local / ci / dast は SDK の署名を満たすだけのダミー|
-|REALTIME_SECRET_ACCESS_KEY|静的資格情報のシークレットアクセスキー|string|local-dummy-secret-key|Code default は空。アクセスキー ID と揃えて設定する — 片方だけの設定は明示注入とも chain 委譲とも読めないため起動に失敗する|
+|REALTIME_ACCESS_KEY_ID|静的資格情報のアクセスキー ID|string|localdummyaccesskey|Code default は空。secret と揃って空なら資格情報の解決を SDK 既定の chain に委ねる（IAM ロールの使い方）— ロール運用のデプロイは何も注入しない。DynamoDB Local は認証しないので local / ci / dast は SDK の署名を満たすだけのダミー — ただし**英数字のみ**: `-` を含む key は DynamoDB Local が `UnrecognizedClientException` で拒否する|
+|REALTIME_SECRET_ACCESS_KEY|静的資格情報のシークレットアクセスキー|string|localdummysecretkey|Code default は空。アクセスキー ID と揃えて設定する — 片方だけの設定は明示注入とも chain 委譲とも読めないため起動に失敗する|
 
 ### Endpoint
 

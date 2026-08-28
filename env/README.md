@@ -242,8 +242,8 @@ The DynamoDB-compatible store behind Realtime Delivery ([`docs/design/realtime-d
 |---|---|---|---|---|
 |REALTIME_REGION|Signing region|string|us-east-1|`required,notEmpty`. Per-environment value — the DynamoDB Local sample region in local / ci / dast, the AWS region of the environment from `dev` onward|
 |REALTIME_TABLE_SUFFIX|Environment identifier appended to every table name (`realtime_event_log_<suffix>` …)|string|local|`required,notEmpty`. Lowercase letters, digits and underscores. Per-environment value — the environment name; a worktree slot will inject its own suffix here so checkouts sharing DynamoDB Local do not share tables|
-|REALTIME_ACCESS_KEY_ID|Static-credential access key ID|string|local-dummy-access-key|Code default empty. Empty (together with the secret) hands credential resolution to the SDK's default chain, which is how an IAM role is used — a role-based deployment injects nothing here. DynamoDB Local does not authenticate, so `local` / `ci` / `dast` carry a dummy that only satisfies the SDK's signing|
-|REALTIME_SECRET_ACCESS_KEY|Static-credential secret access key|string|local-dummy-secret-key|Code default empty. Must be set together with the access key ID — setting exactly one fails startup, because it reads as neither an explicit credential nor a hand-off to the chain|
+|REALTIME_ACCESS_KEY_ID|Static-credential access key ID|string|localdummyaccesskey|Code default empty. Empty (together with the secret) hands credential resolution to the SDK's default chain, which is how an IAM role is used — a role-based deployment injects nothing here. DynamoDB Local does not authenticate, so `local` / `ci` / `dast` carry a dummy that only satisfies the SDK's signing — **alphanumeric only**: DynamoDB Local rejects a key containing `-` with `UnrecognizedClientException`|
+|REALTIME_SECRET_ACCESS_KEY|Static-credential secret access key|string|localdummysecretkey|Code default empty. Must be set together with the access key ID — setting exactly one fails startup, because it reads as neither an explicit credential nor a hand-off to the chain|
 
 ### Endpoint
 
