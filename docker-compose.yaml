@@ -167,6 +167,65 @@ services:
       - development
       - tools
 
+  dynamodb_init: # dynamodb_local の data volume の所有者を合わせる one-shot（冪等）
+    image: amazon/dynamodb-local:3.3.1@sha256:ff89bd48ff32cd8d9be5fee8873b65b8854dc408f1afe881be6eb00247bc0dab
+    # image は非 root（dynamodblocal）で動くが /home/dynamodblocal/data を持たないため、named volume は
+    # root 所有で作られて java が書けない。本体を root で動かす代わりに、所有者合わせだけをここへ切り出す
+    # （garage_init と同じ形。同じ compose project 内なので depends_on で順序が付き、make 側の細工は要らない）。
+    user: root
+    entrypoint: ["sh", "-c", "chown dynamodblocal:dynamodblocal /home/dynamodblocal/data"]
+    volumes:
+      - dynamodb_data:/home/dynamodblocal/data
+    restart: "no"
+    profiles:
+      - development
+      - tools
+
+  dynamodb_local: # DynamoDB 互換ストア（Realtime Delivery の EventLog / StreamTicket / InstanceLease。ローカル開発用）
+    image: amazon/dynamodb-local:3.3.1@sha256:ff89bd48ff32cd8d9be5fee8873b65b8854dc408f1afe881be6eb00247bc0dab
+    # image 既定の -inMemory は再起動で table が消えるため、./data（WorkingDir /home/dynamodblocal 相対）へ
+    # 永続化する。-sharedDb は region / credential によらず単一の DB を見せる設定で、checkout 間の分離は
+    # table 名の prefix で行う（docs/design/realtime-delivery.md）。
+    command: ["-jar", "DynamoDBLocal.jar", "-sharedDb", "-dbPath", "./data", "-disableTelemetry"]
+    depends_on:
+      dynamodb_init:
+        condition: service_completed_successfully
+    ports:
+      - "8000:8000" # DynamoDB API
+    volumes:
+      - dynamodb_data:/home/dynamodblocal/data
+    healthcheck:
+      # nc / wget が無く curl だけがあるため curl で API ポートの受付可否を見る。/ は 400 を返すので
+      # -f は付けず、接続できたことだけを判定に使う。
+      test: ["CMD", "curl", "-s", "-o", "/dev/null", "http://localhost:8000"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 3s
+    profiles:
+      - development
+      - tools
+
+  goaws: # SNS / SQS 互換エミュレータ（Realtime Delivery の instance fan-out 用。Worker 側の elasticmq とは分離）
+    image: admiralpiett/goaws:v0.5.4@sha256:18589afe16517751cc981354536c148854157a718bee9059494d6cdee3dc4e2d
+    # 設定ファイルの環境名（Local）は positional で渡す。topic / queue は application が実行時に作るため
+    # 事前宣言しない（elasticmq と違い、起動時に読むのは port / region / account だけ）。
+    command: ["-config", "/app/conf/goaws.yaml", "Local"]
+    ports:
+      - "4100:4100" # SNS / SQS API（1 ポートで両方を受ける）
+    volumes:
+      - ./docker/goaws/goaws.yaml:/app/conf/goaws.yaml:ro
+    healthcheck:
+      # elasticmq と同じく API ポートの受付可否だけを見る。
+      test: ["CMD", "nc", "-z", "localhost", "4100"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+      start_period: 3s
+    profiles:
+      - development
+      - tools
+
 # -------------------------------------
 # 補助サービス
 # -------------------------------------
@@ -284,4 +343,6 @@ volumes:
   garage_meta:
     external: false
   garage_data:
+    external: false
+  dynamodb_data:
     external: false

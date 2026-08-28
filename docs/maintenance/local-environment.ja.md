@@ -50,7 +50,7 @@ compose のサービスは 2 層に分かれており、主 checkout と任意�
 
 | 層 | compose プロジェクト | サービス | ライフサイクル |
 | --- | --- | --- | --- |
-| **infra** | `INFRA_PROJECT` = `gobp-shared`（固定名） | `database` / `observability` / `garage`（+ `garage_init`）— 固定ポートでしか動けないもの全て | `make infra-up` で起動。`make serve` / `job` / `worker` / `outbox-relay` が冒頭で冪等に呼ぶ。`make infra-down` は**全 checkout に影響する**停止 |
+| **infra** | `INFRA_PROJECT` = `gobp-shared`（固定名） | `database` / `observability` / `garage`（+ `garage_init`）/ `elasticmq` / `dynamodb_local`（+ `dynamodb_init`）/ `goaws` — 固定ポートでしか動けないもの全て | `make infra-up` で起動。`make serve` / `job` / `worker` / `outbox-relay` が冒頭で冪等に呼ぶ。`make infra-down` は**全 checkout に影響する**停止 |
 | **app** | `APP_PROJECT` = DB スロット保持時は `gobp-wt-N`、未取得なら `gobp-app-<ディレクトリ名>` | `api_server` / `mock_auth_server` | `make serve` で起動。`make serve-stop` は**この checkout の app だけ**を停止 |
 
 - app 層は `docker compose -p $(APP_PROJECT) -f docker-compose.yaml -f docker-compose.attach.yaml --profile development` で起動する。
@@ -79,6 +79,9 @@ compose のサービスは 2 層に分かれており、主 checkout と任意�
 | `garage` | infra | `dxflrs/garage` | `3900`（S3 API）/ `3902`（Web API） | ローカル開発用の S3 互換オブジェクトストレージ（テストは in-process の gofakes3 を使う）。Web API はオブジェクトを匿名配信する — [`docker/README.md`](../../docker/README.md) 参照 |
 | `garage_init` | infra | build `docker/garage/Dockerfile` | なし（one-shot） | garage のレイアウト / バケット / アクセスキー / 公開配信の許可の冪等プロビジョニング |
 | `elasticmq` | infra | `softwaremill/elasticmq-native` | `9324`（SQS API） | 開発用の SQS 互換ブローカー（テストは in-process の fake）。全 checkout で共有され、スロット単位に隔離**できない** — [`db-worktree-pool.ja.md`](db-worktree-pool.ja.md) 参照 |
+| `dynamodb_init` | infra | `amazon/dynamodb-local` | なし（one-shot） | `dynamodb_data` volume の所有者を合わせ、`dynamodb_local` を非 root で動かす（冪等。`depends_on` で順序付け） |
+| `dynamodb_local` | infra | `amazon/dynamodb-local` | `8000`（DynamoDB API） | Realtime Delivery（EventLog / StreamTicket / InstanceLease）向けの DynamoDB 互換ストア。`-sharedDb`、`dynamodb_data` volume に永続化。全 checkout で共有され、スロット単位の隔離はまだ無い — [`db-worktree-pool.ja.md`](db-worktree-pool.ja.md) 参照 |
+| `goaws` | infra | `admiralpiett/goaws`（設定: `docker/goaws/goaws.yaml`） | `4100`（SNS / SQS API） | Realtime Delivery の instance fan-out 用の SNS / SQS エミュレータ。Worker 側の outbox queue は `elasticmq` のまま。`make realtime-smoke` が両エミュレータを Realtime Delivery の呼び出しで検証する — [`docker/README.ja.md`](../../docker/README.ja.md) 参照 |
 | `docs_server` | infra | build `docker/document/Dockerfile` | `2001:80` | 開発時に `docs/` を配信する |
 | `sql_editor` | infra | `sosedoff/pgweb` | `2000:8081` | ブラウザ DB クライアント |
 | `er_diagram_generator` | infra | `schemaspy/schemaspy` | `2002:3000` | ER 図生成 |
@@ -92,8 +95,8 @@ compose のサービスは 2 層に分かれており、主 checkout と任意�
 > `2000` 番台に連番で置く。**
 
 `5432` / `8080+N` / `2345+N` / `6060+N` / `4317` / `4318` / `3000` / `3200` / `3900` / `3902` /
-`9324` は PostgreSQL・Delve・Go pprof・OpenTelemetry・Grafana・Tempo・garage・elasticmq の
-上流既定なので、読者が期待する位置に置いたままにする。`sql_editor` / `docs_server` /
+`9324` / `8000` / `4100` は PostgreSQL・Delve・Go pprof・OpenTelemetry・Grafana・Tempo・garage・
+elasticmq・DynamoDB Local・GoAWS の上流既定なので、読者が期待する位置に置いたままにする。`sql_editor` / `docs_server` /
 `er_diagram_generator` / `mock_auth_server` にはその番号が無い（pgweb・nginx・schemaspy が固定して
 いるのは*コンテナ内部*の 8081 / 80 / 3000 だけで、しかも pgweb の 8081 は API スロット帯（`8080+N`）
 の内側に入る）。よって `2000` / `2001` / `2002` / `2010+N` を占める。
@@ -104,6 +107,11 @@ compose のサービスは 2 層に分かれており、主 checkout と任意�
 **`2048` を超えないこと — `2049` は NFS。**
 
 サービスを追加するときは、固定ポートなら `2003`–`2009`、スロット毎の帯が要るなら `2030` 以降。
+
+`8000` は既定の `SECURITY_ALLOWED_ORIGINS` の 2 つ目の origin（`http://localhost:8000`）でもある — Grafana が
+`3000` を握っているときにフロントエンドの dev server が取りがちなポートである。DynamoDB Local を `8000` に置くのは、
+外部のあらゆるスニペットが前提にする上流既定だから。フロントエンドの dev server は別のポート（例えば Vite の
+`5173`）で動かし、その origin を `SECURITY_ALLOWED_ORIGINS` に足すこと。
 
 ### `database` のベース OS 変更後に出る collation version mismatch
 

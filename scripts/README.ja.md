@@ -103,6 +103,12 @@ make ターゲットやパスと違い、採番し直された節は参照を構
 |`migration-lint/`|`database/migrations` の連番について、重複（`-check duplicate`）と欠番（`-check gap`）を検査する。読むのは `<連番>_<名前>.<kind>.sql` の最初の `_` より前で、up / down は `-kind` で切り替える。lefthook の pre-commit ゲートから呼ばれる。判定がシェルのレシピではなく Go に在るのは、この検査の壊れ方が「何も検査しなくなる」方向に出るためで、そこはテストで固定できるがシェルのパイプラインでは固定できない。|`make check-migration-up-version` / `check-migration-down-version` / `check-migration-up-gap` / `check-migration-down-gap`|
 |`cover-gate/`|`go tool cover -func` が報告する総カバレッジを `-threshold` の値と比較し、下回れば非 0 で終了する。`total:` 行の抽出と判定を別々の純粋関数に分けてあるため双方をテストで固定できる。置き換え前の `awk` パイプラインは数値でないパーセント表記を `t+0` で `0` に丸めていたため、壊れたプロファイルを「ツールの失敗」ではなく「カバレッジ不足」として報告していた。|`make cover-gate`|
 
+### ローカル環境の検証
+
+|スクリプト|説明|実行元|
+|---|---|---|
+|`realtime-smoke/`|Realtime Delivery が production で行う呼び出し — DynamoDB の conditional put / `ConsistentRead` query / pagination / TTL、SNS topic → N 個の SQS queue への `RawMessageDelivery` 配送と queue policy — を AWS SDK Go v2 で DynamoDB Local と GoAWS に投げ、呼び出しごとに 互換（受理され事後条件も成立）/ 非互換（受理されたが事後条件が不成立、または拒否）/ 未対応（エミュレータが未実装を明示）/ 検証不能（transport 失敗、または先行検査の失敗）を表にする。local compatibility implementation の範囲になるのは 非互換 / 未対応 の行だけで、末尾の要約はそれだけを列挙する。resource は実行ごとの乱数名で作り終了時に削除する（`-keep` で残せる）。検証不能が 1 件でもあれば非 0 で終了し（何も見ていない実行がクリーンに読めてはならない）、`-strict` は CI 向けにそれを 非互換 / 未対応 へ広げる。wire protocol の probe（AWS JSON 1.0 での `ListQueues`）を最初に置くのは後続の全呼び出しがそれに依存するためで、先行検査の失敗は依存する行を落とさず 検証不能 として表に残す。|`make realtime-smoke`|
+
 ### AI フィードバックループ（`closed-loop/`）
 
 |スクリプト|説明|実行元|

@@ -4,7 +4,7 @@
 # checkout 毎に要る api_server / mock_auth_server だけを per-checkout のプロジェクトへ分ける。
 # 各変数の役割は .makefiles/README.md「Compose project definitions (compose.mk)」参照。
 INFRA_PROJECT ?= $(if $(GOBP_DB_SHARED_PROJECT),$(GOBP_DB_SHARED_PROJECT),gobp-shared)
-INFRA_SERVICES ?= database observability garage elasticmq
+INFRA_SERVICES ?= database observability garage elasticmq dynamodb_local goaws
 APP_SERVICES ?= api_server mock_auth_server
 
 # DB ツーリング（go_tool_runner / docker compose exec database）は共有 DB と同じネットワークで
