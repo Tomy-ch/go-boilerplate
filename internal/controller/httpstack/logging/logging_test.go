@@ -174,7 +174,7 @@ func Test_requestLog_buildRequestLogFields(t *testing.T) {
 
 			assert.Contains(t, fields, logging.String(logging.URIKey, "/v1/streams/s?ticket="+redaction.RedactedValue+"&after=1"))
 			assert.Contains(t, fields, logging.Any(logging.QueryParamsKey, map[string][]string{"ticket": {redaction.RedactedValue}, "after": {"1"}}))
-			text := loggedJSON(t.Context(), t, fields)
+			text := loggedJSON(sc.Request().Context(), t, fields)
 			assert.NotContains(t, text, "raw-secret")
 			assert.Contains(t, text, redaction.RedactedValue)
 		})
@@ -234,7 +234,7 @@ func Test_requestLog_buildResponseLogFields(t *testing.T) {
 			fields := l.buildResponseLogFields(time.Now(), time.Millisecond)
 
 			assert.Contains(t, fields, logging.String(logging.URIKey, "/v1/streams/s?ticket="+redaction.RedactedValue))
-			text := loggedJSON(t.Context(), t, fields)
+			text := loggedJSON(c.Request().Context(), t, fields)
 			assert.NotContains(t, text, "raw-secret")
 			assert.Contains(t, text, redaction.RedactedValue)
 		})

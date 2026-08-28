@@ -37,6 +37,7 @@ type spanRecorder struct {
 	spans []sdktrace.ReadOnlySpan
 }
 
+// NewNoopTracerFactory は、テスト用に TracerFactory を無効化して返します。
 func NewNoopTracerFactory(t *testing.T) TracerFactory {
 	t.Helper()
 
@@ -191,7 +192,6 @@ func NewStubSpanContext(t *testing.T) (context.Context, func()) {
 	}
 }
 
-// NewNoopTracerFactory は、テスト用に TracerFactory を無効化して返します。
 func (r *spanRecorder) ExportSpans(_ context.Context, spans []sdktrace.ReadOnlySpan) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

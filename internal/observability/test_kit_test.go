@@ -485,9 +485,11 @@ func TestSpanAttributeValues(t *testing.T) {
 
 			tp, recorded := NewRecordingTracerProvider(t)
 			tracer := tp.Tracer("test")
-			_, hit := tracer.Start(context.Background(), "hit", trace.WithAttributes(attribute.String("url.path", "/a"), attribute.String("k", "v")))
+			_, hit := tracer.Start(context.Background(), "hit",
+				trace.WithAttributes(attribute.String("url.path", "/a"), attribute.String("k", "v")))
 			hit.End()
-			_, miss := tracer.Start(context.Background(), "miss", trace.WithAttributes(attribute.String("url.path", "/b"), attribute.String("k", "w")))
+			_, miss := tracer.Start(context.Background(), "miss",
+				trace.WithAttributes(attribute.String("url.path", "/b"), attribute.String("k", "w")))
 			miss.End()
 
 			values := SpanAttributeValues(recorded(), "url.path", "/a")

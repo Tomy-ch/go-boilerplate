@@ -978,7 +978,7 @@ func Test_httpErrorField(t *testing.T) {
 			fields := httpErrorField(c, lf, redaction.New([]string{"ticket"}), he)
 
 			assert.Contains(t, fields, logging.String(logging.URIKey, "/v1/streams/s?ticket="+redaction.RedactedValue))
-			text := loggedJSON(t.Context(), t, fields)
+			text := loggedJSON(c.Request().Context(), t, fields)
 			assert.NotContains(t, text, "raw-secret")
 			assert.Contains(t, text, redaction.RedactedValue)
 		})
