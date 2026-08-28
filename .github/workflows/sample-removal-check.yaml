@@ -40,6 +40,18 @@ jobs:
           --health-timeout=5s
           --health-retries=5
           --health-start-period=20s
+      dynamodb_local:
+        # Realtime Delivery の store の contract test が繋ぐ DynamoDB Local。docker-compose.yaml の
+        # dynamodb_local と同じ版。service には command を渡せないため image 既定の -inMemory で動く。
+        image: amazon/dynamodb-local:3.3.1
+        ports:
+          - "8000:8000"
+        options: >-
+          --health-cmd="curl -s -o /dev/null http://localhost:8000"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+          --health-start-period=10s
     steps:
       - name: Harden the runner
         uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1

@@ -181,7 +181,7 @@ flowchart LR
   stream -. "never" .-x feature
 ```
 
-architecture rule（機械的に検査する）:
+architecture rule（`internal/architest/realtime_isolation_test.go` が機械的に検査する）:
 
 1. `boundary/realtime`、`usecase/realtime`、`controller/stream`、4 つの infrastructure package は `internal/domain/<feature>` も `internal/usecase/<feature>` も import しない。
 2. `InstanceLeaseStore` を import できるのは realtime package 群、realtime DI module、orphan-cleanup job の入口だけ。

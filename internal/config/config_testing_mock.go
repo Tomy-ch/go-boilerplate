@@ -193,6 +193,13 @@ var (
 	expectedObjectStorageUsePathStyleStr         = strconv.FormatBool(expectedObjectStorageUsePathStyle)
 	expectedObjectStorageMaxUploadBytes    int64 = 5242880
 	expectedObjectStorageMaxUploadBytesStr       = strconv.FormatInt(expectedObjectStorageMaxUploadBytes, 10)
+
+	// realtime（Endpoint は空文字＝SDK 既定解決の意味を持つため空。他は required,notEmpty のため実値）
+	expectedEndpointRealtime        = ""
+	expectedRealtimeRegion          = "us-east-1"
+	expectedRealtimeTableSuffix     = "test"
+	expectedRealtimeAccessKeyID     = "test-access-key"
+	expectedRealtimeSecretAccessKey = "test-secret-key"
 )
 
 // MockConfigForTest は、テスト用のConfigを返します。
@@ -326,10 +333,17 @@ func MockConfigForTest(tb testing.TB) *Config {
 			usePathStyle:    expectedObjectStorageUsePathStyle,
 			maxUploadBytes:  expectedObjectStorageMaxUploadBytes,
 		},
+		realtime: RealtimeConfig{
+			region:          expectedRealtimeRegion,
+			tableSuffix:     expectedRealtimeTableSuffix,
+			accessKeyID:     expectedRealtimeAccessKeyID,
+			secretAccessKey: expectedRealtimeSecretAccessKey,
+		},
 		endpoint: EndpointConfig{
 			otlp:          expectedEndpointOTLP,
 			jwks:          expectedEndpointJWKS,
 			objectStorage: expectedEndpointObjectStorage,
+			realtime:      expectedEndpointRealtime,
 			outbox:        expectedEndpointOutbox,
 			outboxQueue:   expectedEndpointOutboxQueue,
 			consumerQueue: expectedEndpointConsumerQueue,
@@ -369,10 +383,17 @@ func mockLoader(tb testing.TB) Loader {
 			MaskedDBQueryArgs: expectedObservabilityMaskedDBQueryArgs,
 			TargetStatusCodes: expectedObservabilityTargetStatusCodes,
 		},
+		Realtime: Realtime{
+			Region:          expectedRealtimeRegion,
+			TableSuffix:     expectedRealtimeTableSuffix,
+			AccessKeyID:     expectedRealtimeAccessKeyID,
+			SecretAccessKey: expectedRealtimeSecretAccessKey,
+		},
 		Endpoint: Endpoint{
 			OTLP:          expectedEndpointOTLP,
 			JWKS:          expectedEndpointJWKS,
 			ObjectStorage: expectedEndpointObjectStorage,
+			Realtime:      expectedEndpointRealtime,
 			Outbox:        expectedEndpointOutbox,
 			OutboxQueue:   expectedEndpointOutboxQueue,
 			ConsumerQueue: expectedEndpointConsumerQueue,
@@ -495,6 +516,7 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // テスト用の環�
 	t.Setenv("ENDPOINT_OTLP", expectedEndpointOTLP)
 	t.Setenv("ENDPOINT_JWKS", expectedEndpointJWKS)
 	t.Setenv("ENDPOINT_OBJECT_STORAGE", expectedEndpointObjectStorage)
+	t.Setenv("ENDPOINT_REALTIME", expectedEndpointRealtime)
 	t.Setenv("ENDPOINT_OUTBOX", expectedEndpointOutbox)
 	t.Setenv("ENDPOINT_OUTBOX_QUEUE", expectedEndpointOutboxQueue)
 	t.Setenv("ENDPOINT_CONSUMER_QUEUE", expectedEndpointConsumerQueue)
@@ -515,6 +537,11 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // テスト用の環�
 	t.Setenv("OBJECT_STORAGE_SECRET_ACCESS_KEY", expectedObjectStorageSecretAccessKey)
 	t.Setenv("OBJECT_STORAGE_USE_PATH_STYLE", expectedObjectStorageUsePathStyleStr)
 	t.Setenv("OBJECT_STORAGE_MAX_UPLOAD_BYTES", expectedObjectStorageMaxUploadBytesStr)
+
+	t.Setenv("REALTIME_REGION", expectedRealtimeRegion)
+	t.Setenv("REALTIME_TABLE_SUFFIX", expectedRealtimeTableSuffix)
+	t.Setenv("REALTIME_ACCESS_KEY_ID", expectedRealtimeAccessKeyID)
+	t.Setenv("REALTIME_SECRET_ACCESS_KEY", expectedRealtimeSecretAccessKey)
 }
 
 // testDBName は、ホストから見たテスト用データベース名を返します。環境変数 DB_NAME_TEST があればそれを、

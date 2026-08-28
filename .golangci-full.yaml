@@ -248,6 +248,10 @@ linters:
           files:
             - "**/internal/cli/**.go"
           list-mode: lax
+          # depguard の pkg は正規表現ではなく prefix 一致。lax では deny に当たっても、より長い allow の prefix が
+          # 当たれば通るので、driver の例外は allow 側に長い prefix として置く（deny に否定先読みを書いても何も検出しない）。
+          allow:
+            - go-boilerplate/internal/infrastructure/rdb/driver
           deny:
             - pkg: go-boilerplate/internal/domain/
               desc: "cliパッケージは他のdomain層に依存してはいけません。"
@@ -255,8 +259,8 @@ linters:
               desc: "cliパッケージは他のusecase層に依存してはいけません。"
             - pkg: go-boilerplate/internal/controller/
               desc: "cliパッケージは他のcontroller層に依存してはいけません。"
-            - pkg: go-boilerplate/internal/infrastructure/(?!.*driver)
-              desc: "cliパッケージは他のinfrastructure層に依存してはいけません。ただし、driver配下のものは、コマンド実装のために必要な場合があるため例外とします。"
+            - pkg: go-boilerplate/internal/infrastructure/
+              desc: "cliパッケージは他のinfrastructure層に依存してはいけません。ただし、rdb/driver 配下のものは、コマンド実装のために必要な場合があるため例外とします（allow 側で許可）。"
             - pkg: go-boilerplate/internal/di
               desc: "cliパッケージはDIコンテナ(internal/di)に依存してはいけません。DIの結線は cmd 層で行います。"
         independent_config: # configパッケージが責務の実装層にも依存しないことを保証します

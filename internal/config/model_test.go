@@ -1566,3 +1566,103 @@ func TestNewEndpointConfig(t *testing.T) {
 		})
 	})
 }
+
+func TestNewRealtimeConfig(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("Config が保持する Realtime Delivery の store 設定への参照を返す", func(t *testing.T) {
+			t.Parallel()
+			cfg := MockConfigForTest(t)
+			assert.Same(t, &cfg.realtime, NewRealtimeConfig(cfg))
+		})
+	})
+}
+
+func TestRealtimeConfig_Region(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("リージョンを取得できる", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, expectedRealtimeRegion, MockConfigForTest(t).realtime.Region())
+		})
+	})
+}
+
+func TestRealtimeConfig_TableSuffix(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("table 名の末尾に付く環境識別子を取得できる", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, expectedRealtimeTableSuffix, MockConfigForTest(t).realtime.TableSuffix())
+		})
+	})
+}
+
+func TestRealtimeConfig_EventLogTable(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("固定名に環境識別子を付けた table 名を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "realtime_event_log_"+expectedRealtimeTableSuffix, MockConfigForTest(t).realtime.EventLogTable())
+		})
+	})
+}
+
+func TestRealtimeConfig_StreamTicketTable(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("固定名に環境識別子を付けた table 名を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "realtime_stream_ticket_"+expectedRealtimeTableSuffix, MockConfigForTest(t).realtime.StreamTicketTable())
+		})
+	})
+}
+
+func TestRealtimeConfig_InstanceLeaseTable(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("固定名に環境識別子を付けた table 名を返す", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, "realtime_instance_lease_"+expectedRealtimeTableSuffix, MockConfigForTest(t).realtime.InstanceLeaseTable())
+		})
+	})
+}
+
+func TestRealtimeConfig_AccessKeyID(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("アクセスキー ID を取得できる", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, expectedRealtimeAccessKeyID, MockConfigForTest(t).realtime.AccessKeyID())
+		})
+	})
+}
+
+func TestRealtimeConfig_SecretAccessKey(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("シークレットアクセスキーを取得できる", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, expectedRealtimeSecretAccessKey, MockConfigForTest(t).realtime.SecretAccessKey())
+		})
+	})
+}
+
+func TestEndpointConfig_Realtime(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("Realtime Delivery の store のエンドポイントを取得できる", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, expectedEndpointRealtime, MockConfigForTest(t).endpoint.Realtime())
+		})
+	})
+}
