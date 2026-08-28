@@ -22,6 +22,9 @@ var (
 	ErrPayloadTooLarge = xerrors.New("payload too large")
 	// ErrTooManyRequests はリクエストが多すぎる場合に使用します。
 	ErrTooManyRequests = xerrors.New("too many requests")
+	// ErrGone は対象が既に失われ、正本を取得し直さない限り再要求しても回復しない場合に使用します
+	// （保持期間を過ぎた位置からの再開など）。
+	ErrGone = xerrors.New("gone")
 	// ErrCanceled はクライアントがリクエストをキャンセル/切断した場合に使用します。
 	ErrCanceled = xerrors.New("request canceled")
 	// ErrInternal はサーバ内部で予期しないエラーが発生した場合に使用します。
@@ -54,6 +57,7 @@ var appErrors = []error{
 	ErrUnsupportedMediaType,
 	ErrPayloadTooLarge,
 	ErrTooManyRequests,
+	ErrGone,
 	ErrCanceled,
 	ErrInternal,
 	ErrUnimplemented,

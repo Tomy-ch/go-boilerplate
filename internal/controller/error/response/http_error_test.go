@@ -52,6 +52,12 @@ func Test_lookupErrorMetaByHTTPStatus(t *testing.T) {
 			assert.Equal(t, want, lookupErrorMetaByHTTPStatus(http.StatusConflict))
 		})
 
+		t.Run("410の場合、Goneが返される", func(t *testing.T) {
+			t.Parallel()
+			want := httpErrorMeta{Status: http.StatusGone, Code: codeGone, Message: errorMessageGone}
+			assert.Equal(t, want, lookupErrorMetaByHTTPStatus(http.StatusGone))
+		})
+
 		t.Run("413の場合、PayloadTooLargeが返される", func(t *testing.T) {
 			t.Parallel()
 			want := httpErrorMeta{Status: http.StatusRequestEntityTooLarge, Code: codePayloadTooLarge, Message: errorMessagePayloadTooLarge}
@@ -136,6 +142,12 @@ func Test_lookupErrorMetaByAppError(t *testing.T) {
 			t.Parallel()
 			want := httpErrorMeta{Status: http.StatusRequestEntityTooLarge, Code: codePayloadTooLarge, Message: errorMessagePayloadTooLarge}
 			assert.Equal(t, want, lookupErrorMetaByAppError(apperror.ErrPayloadTooLarge))
+		})
+
+		t.Run("ErrGoneの場合、Gone(410)が返される", func(t *testing.T) {
+			t.Parallel()
+			want := httpErrorMeta{Status: http.StatusGone, Code: codeGone, Message: errorMessageGone}
+			assert.Equal(t, want, lookupErrorMetaByAppError(apperror.ErrGone))
 		})
 
 		t.Run("ErrUnauthenticatedの場合、Unauthorizedが返される", func(t *testing.T) {

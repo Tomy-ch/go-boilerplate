@@ -30,9 +30,9 @@ func TestAppErrorsCompleteness(t *testing.T) {
 
 	declared := declaredErrNames(t)
 
-	// 検出ロジックが命名変更等で空振りすると完全性検証が常に成功してしまう。既知の宣言数（13 app +
-	// 3 worker = 16）を下限として直接検証し、正規表現の陳腐化を検出する。
-	require.GreaterOrEqual(t, len(declared), 16,
+	// 検出ロジックが命名変更等で空振りすると完全性検証が常に成功してしまう。既知の宣言数（14 app +
+	// 3 worker = 17）を下限として直接検証し、正規表現の陳腐化を検出する。
+	require.GreaterOrEqual(t, len(declared), 17,
 		"Err* 宣言の検出数が想定を下回る（errDeclRe の陳腐化を疑う）: %v", declared)
 
 	require.Len(t, appErrors, len(declared)-len(workerSentinels),

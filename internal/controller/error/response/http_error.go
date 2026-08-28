@@ -28,6 +28,8 @@ const (
 	codePayloadTooLarge = "PAYLOAD_TOO_LARGE"
 	// codeTooManyRequests は、リクエストが多すぎる場合に使用されるエラーコードです。
 	codeTooManyRequests = "TOO_MANY_REQUESTS"
+	// codeGone は、対象が既に失われ取り直しが必要な場合に使用されるエラーコードです。
+	codeGone = "GONE"
 	// codeClientClosedRequest は、クライアントがリクエストをキャンセル/切断した場合に使用されるエラーコードです。
 	codeClientClosedRequest = "CLIENT_CLOSED_REQUEST"
 	// codeInternalError は、サーバー内部で予期しないエラーが発生した場合に使用されるエラーコードです。
@@ -62,6 +64,8 @@ const (
 	errorMessagePayloadTooLarge = "ファイルサイズが大きすぎます。上限を超えないファイルで再度お試しください。"
 	// errorMessageTooManyRequests は、リクエストが多すぎる場合に使用されるエラーメッセージです。
 	errorMessageTooManyRequests = "リクエストが多すぎます。しばらくしてから再度お試しください。"
+	// errorMessageGone は、対象が既に失われ取り直しが必要な場合のエラーメッセージです。
+	errorMessageGone = "この情報は利用できなくなりました。最新の状態を取得し直してください。"
 	// errorMessageClientClosedRequest は、クライアントがリクエストをキャンセル/切断した場合に使用されるエラーメッセージです。
 	errorMessageClientClosedRequest = "リクエストがキャンセルされました。"
 	// errorMessageInternalError は、サーバー内部で予期しないエラーが発生した場合に使用されるエラーメッセージです。
@@ -103,6 +107,11 @@ var errorMeta = map[int]httpErrorMeta{
 		Status:  http.StatusConflict,
 		Code:    codeResourceConflict,
 		Message: errorMessageResourceConflict,
+	},
+	http.StatusGone: {
+		Status:  http.StatusGone,
+		Code:    codeGone,
+		Message: errorMessageGone,
 	},
 	http.StatusUnprocessableEntity: {
 		Status:  http.StatusUnprocessableEntity,
@@ -181,6 +190,8 @@ func lookupErrorMetaByAppError(err error) httpErrorMeta {
 		return lookupErrorMetaByHTTPStatus(http.StatusNotFound)
 	case xerrors.Is(err, apperror.ErrConflict): // 409
 		return lookupErrorMetaByHTTPStatus(http.StatusConflict)
+	case xerrors.Is(err, apperror.ErrGone): // 410
+		return lookupErrorMetaByHTTPStatus(http.StatusGone)
 	case xerrors.Is(err, apperror.ErrCanceled): // 499
 		return lookupErrorMetaByHTTPStatus(statusClientClosedRequest)
 	case xerrors.Is(err, apperror.ErrUnavailable): // 503

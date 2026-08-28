@@ -73,6 +73,7 @@ The HTTP Status column mirrors the sentinel classification owned by [`internal/a
 |`ErrPermissionDenied`|403 Forbidden|`ACCESS_DENIED`|
 |`ErrNotFound`|404 Not Found|`NOT_FOUND`|
 |`ErrConflict`|409 Conflict|`RESOURCE_CONFLICT`|
+|`ErrGone`|410 Gone|`GONE`|
 |`ErrPayloadTooLarge`|413 Payload Too Large|`PAYLOAD_TOO_LARGE`|
 |`ErrUnsupportedMediaType`|415 Unsupported Media Type|`UNSUPPORTED_MEDIA_TYPE`|
 |`ErrValidation`|422 Unprocessable Entity|`VALIDATION_FAILED`|
