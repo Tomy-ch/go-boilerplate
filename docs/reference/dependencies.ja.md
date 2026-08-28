@@ -5,9 +5,9 @@
 参照であり、不変の記録ではありません。
 
 - 依存採用の**ポリシー**（一責務 = 一関心）は決定であり ADR です:
-  [`ADR-0077`](../adr/0077-library-selection-policy.ja.md)。
+  [`ADR-0081`](../adr/0081-library-selection-policy.ja.md)。
 - 2 つの上流にまたがる **bridge / instrumentation** ライブラリは、そのポリシーの
-  境界のある例外として受容します: [`ADR-0078`](../adr/0078-bridge-instrumentation-exceptions.ja.md)。
+  境界のある例外として受容します: [`ADR-0082`](../adr/0082-bridge-instrumentation-exceptions.ja.md)。
 
 > この表は `go.mod`（`require` ブロックの非 indirect エントリ）と同期を保つこと。以下の
 > バージョンはスナップショットであり正ではありません（正は `go.mod`）。
@@ -54,12 +54,12 @@
 otel core グループには pre-v1.0（`v0.x`）モジュール（OTLP ログエクスポータと `sdk/log`）が
 含まれますが、いずれも**単一**の上流（OpenTelemetry 自体）に結合しており 2 つではないため、
 ポリシー内で例外扱いしません。OTLP エクスポータは `contrib/exporters/autoexport` ではなく
-typed な `OBS_*` config から明示的に構築されます（[ADR-0071](../adr/0071-config-driven-observability-gating.ja.md) 参照）。
+typed な `OBS_*` config から明示的に構築されます（[ADR-0075](../adr/0075-config-driven-observability-gating.ja.md) 参照）。
 
 ## bridge / instrumentation 例外
 
 以下は**独立にバージョニングされる 2 つの上流**（フレームワーク/ライブラリ × OpenTelemetry）に
-またがるため「一関心・一上流」から外れ、[ADR-0078](../adr/0078-bridge-instrumentation-exceptions.ja.md)
+またがるため「一関心・一上流」から外れ、[ADR-0082](../adr/0082-bridge-instrumentation-exceptions.ja.md)
 に基づき境界のある例外として受容します。
 
 | ライブラリ | 結合 | 役割 |
@@ -76,5 +76,5 @@ typed な `OBS_*` config から明示的に構築されます（[ADR-0071](../ad
 
 - 以前この依存表は `docs/decisions.md` にインラインでしたが、ドリフトしていました
   （`net/http/otelhttp` 計装と `otel/sdk/log` SDK が欠落）。**目録**（本ファイル）を
-  **ポリシー**（[ADR-0077](../adr/0077-library-selection-policy.ja.md)）から分離した理由がこれで、
+  **ポリシー**（[ADR-0081](../adr/0081-library-selection-policy.ja.md)）から分離した理由がこれで、
   不変の決定が `go.mod` を追う一覧を抱えなくて済むようになりました。

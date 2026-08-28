@@ -45,7 +45,7 @@ T1:                                 そのまま書き込む
 
 ### ポジティブな影響
 
-- 不変条件は確率的にではなく並行下で成立する: 上記のインターリーブは構造的に到達不能になり、順序は 2 つの実トランザクションをデータベースに対して走らせる結合テストで固定される（[ADR-0092](0092-rollback-integration-tests.ja.md)）。
+- 不変条件は確率的にではなく並行下で成立する: 上記のインターリーブは構造的に到達不能になり、順序は 2 つの実トランザクションをデータベースに対して走らせる結合テストで固定される（[ADR-0096](0096-rollback-integration-tests.ja.md)）。
 - デッドロックはトランザクションリトライ（[ADR-0035](0035-transaction-retry-idempotent-callers.ja.md)）に吸収されるのではなく構成上回避されるため、リトライ予算は本来の serialization failure のために残る。
 - ガードのラウンドトリップ数はロックなしの存在確認と同じ——主キーへの `SELECT` 1 回——なので、ここでの厳密さは追加クエリと引き換えではない。
 - 1 つの業務衝突は双方向とも 409 で答えるため、不変条件を閉じても API サーフェスに新しいステータスコードは増えない。
@@ -89,7 +89,7 @@ T1:                                 そのまま書き込む
 
 ## 補足
 
-- 関連: [ADR-0032](0032-lightweight-cqrs.ja.md)（Repository と CommandService の区分、および再掲されたガードを縛る Derivation ルール）、[ADR-0034](0034-commandservice-atomicity-criterion.ja.md)（集約横断の条件を保持する必要が *あるか* を決める 3 分岐の判定手順。その分岐 2 が本 ADR への入口であり、あわせて直列化ではなく書き込みの原子性を要する場合も扱う）、[ADR-0035](0035-transaction-retry-idempotent-callers.ja.md)（serialization failure のリトライ）、[ADR-0047](0047-apperror-protocol-agnostic-errors.ja.md)（`ErrConflict` → 409）、[ADR-0056](0056-skip-locked-outbox-relay.ja.md)（対照的な「キュー行を奪い合う」プロファイル）、[ADR-0092](0092-rollback-integration-tests.ja.md)（実データベースに対する結合テスト）。
+- 関連: [ADR-0032](0032-lightweight-cqrs.ja.md)（Repository と CommandService の区分、および再掲されたガードを縛る Derivation ルール）、[ADR-0034](0034-commandservice-atomicity-criterion.ja.md)（集約横断の条件を保持する必要が *あるか* を決める 3 分岐の判定手順。その分岐 2 が本 ADR への入口であり、あわせて直列化ではなく書き込みの原子性を要する場合も扱う）、[ADR-0035](0035-transaction-retry-idempotent-callers.ja.md)（serialization failure のリトライ）、[ADR-0047](0047-apperror-protocol-agnostic-errors.ja.md)（`ErrConflict` → 409）、[ADR-0056](0056-skip-locked-outbox-relay.ja.md)（対照的な「キュー行を奪い合う」プロファイル）、[ADR-0096](0096-rollback-integration-tests.ja.md)（実データベースに対する結合テスト）。
 <!-- sample-api:replace-begin -->
 - どのワークフローがどの行をロックし、各ロックがどの業務ルールを守るのかは、アーキテクチャ上の決定ではなく機能の内容であり、機能とともに記述する。本リポジトリではそれは削除可能なサンプル群（`docs/spec/purchase/` / `docs/spec/user/`）を指す。`make setup-remove-sample-api` で削除される一方で本 ADR は残るため、リンクではなくパスで示す。
 <!-- sample-api:replace-with -->

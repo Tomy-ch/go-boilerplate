@@ -5,9 +5,9 @@ single responsibility each fulfils. Unlike an ADR, this list is *expected to dri
 `go.mod` — it is a reference, not an immutable record.
 
 - The **policy** for adopting a dependency (one responsibility = one concern) is a decision:
-  [`ADR-0077 (library-selection-policy)`](../adr/0077-library-selection-policy.md).
+  [`ADR-0081 (library-selection-policy)`](../adr/0081-library-selection-policy.md).
 - **Bridge / instrumentation** libraries that straddle two upstreams are accepted as bounded
-  exceptions to that policy: [`ADR-0078 (bridge-instrumentation-exceptions)`](../adr/0078-bridge-instrumentation-exceptions.md).
+  exceptions to that policy: [`ADR-0082 (bridge-instrumentation-exceptions)`](../adr/0082-bridge-instrumentation-exceptions.md).
 
 > Keep this table in sync with `go.mod` (`require` block, non-indirect entries). Versions
 > below are a snapshot and are not authoritative — `go.mod` is.
@@ -55,13 +55,13 @@ The otel core group includes pre-v1.0 (`v0.x`) modules (the OTLP log exporters a
 `sdk/log`), but each couples to a **single** upstream (OpenTelemetry itself), not two, so
 they are in-policy and not treated as exceptions. The OTLP exporters are constructed
 explicitly from typed `OBS_*` config rather than via `contrib/exporters/autoexport`
-(see [ADR-0071 (config-driven-observability-gating)](../adr/0071-config-driven-observability-gating.md)).
+(see [ADR-0075 (config-driven-observability-gating)](../adr/0075-config-driven-observability-gating.md)).
 
 ## Bridge / instrumentation exceptions
 
 These stand between **two independently-versioned upstreams** (a framework/library ×
 OpenTelemetry), so they fall outside "one concern, one upstream" and are accepted as bounded
-exceptions per [ADR-0078 (bridge-instrumentation-exceptions)](../adr/0078-bridge-instrumentation-exceptions.md).
+exceptions per [ADR-0082 (bridge-instrumentation-exceptions)](../adr/0082-bridge-instrumentation-exceptions.md).
 
 | Library | Coupling | Role |
 | --- | --- | --- |
@@ -77,5 +77,5 @@ exceptions per [ADR-0078 (bridge-instrumentation-exceptions)](../adr/0078-bridge
 
 - Previously the dependency table lived inline in `docs/decisions.md`; it drifted (the
   `net/http/otelhttp` instrumentation and `otel/sdk/log` SDK were missing). Splitting the
-  *inventory* (this file) from the *policy* ([ADR-0077 (library-selection-policy)](../adr/0077-library-selection-policy.md))
+  *inventory* (this file) from the *policy* ([ADR-0081 (library-selection-policy)](../adr/0081-library-selection-policy.md))
   is why: the immutable decision no longer carries a list that must track `go.mod`.

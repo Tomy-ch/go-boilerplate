@@ -89,7 +89,7 @@ Usecase → Boundary(interface) → Infrastructure
 
 ## Generated Code Rules
 
-> Rationale: [ADR-0014 (oapi-codegen-strict-server)](adr/0014-oapi-codegen-strict-server.md), [ADR-0027 (sqlc-type-safe-sql)](adr/0027-sqlc-type-safe-sql.md), [ADR-0028 (merged-dml-schema-as-sqlc-input)](adr/0028-merged-dml-schema-as-sqlc-input.md); drift gated by [ADR-0088 (generated-artifact-drift-gate)](adr/0088-generated-artifact-drift-gate.md).
+> Rationale: [ADR-0014 (oapi-codegen-strict-server)](adr/0014-oapi-codegen-strict-server.md), [ADR-0027 (sqlc-type-safe-sql)](adr/0027-sqlc-type-safe-sql.md), [ADR-0028 (merged-dml-schema-as-sqlc-input)](adr/0028-merged-dml-schema-as-sqlc-input.md); drift gated by [ADR-0092 (generated-artifact-drift-gate)](adr/0092-generated-artifact-drift-gate.md).
 
 Some files are **automatically generated code**.
 
@@ -516,7 +516,7 @@ Three constraints bound what being the standard path means:
 - **A deterministic check outranks an agent's judgment.** Where tests, lint, CI, or an architecture
   rule decide a property, their verdict is the answer, and an agent's reading does not override it.
   Where no such check exists, the judgment is reviewed independently, not asserted
-  ([ADR-0093 (multi-model-adversarial-review)](adr/0093-multi-model-adversarial-review.md)).
+  ([ADR-0097 (multi-model-adversarial-review)](adr/0097-multi-model-adversarial-review.md)).
 - **Architecture, domain, and policy decisions keep a human gate.** An agent surfaces the decision
   and the options; it does not take one. This is the same asymmetry the *Documentation Rules* draw
   between describing and governing documents.
@@ -532,13 +532,13 @@ what may be persisted to support it: [ADR-0009 (long-running-agent-state)](adr/0
 
 ## Toolchain Execution Rules
 
-> Rationale: [ADR-0079 (containerized-pinned-toolchain)](adr/0079-containerized-pinned-toolchain.md), [ADR-0080 (mise-ssot-drift-gate)](adr/0080-mise-ssot-drift-gate.md).
+> Rationale: [ADR-0083 (containerized-pinned-toolchain)](adr/0083-containerized-pinned-toolchain.md), [ADR-0084 (mise-ssot-drift-gate)](adr/0084-mise-ssot-drift-gate.md).
 
 Tool versions are pinned in `mise.toml` (the single source of truth for everything mise resolves)
 and executed in the containerized tool-runners so they stay reproducible across machines. Tools
 installed from PyPI are declared in `python/*.in` and locked with per-package hashes in
 `python/*.txt` instead, because a mise pin leaves their transitive dependencies floating
-([ADR-0080 (mise-ssot-drift-gate)](adr/0080-mise-ssot-drift-gate.md)).
+([ADR-0084 (mise-ssot-drift-gate)](adr/0084-mise-ssot-drift-gate.md)).
 
 - Tool execution — lint / format / codegen / doc generation / commit-message lint / etc. — runs
   through the `make` targets that execute inside the tool-runners (`go_tool_runner` /

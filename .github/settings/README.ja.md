@@ -45,7 +45,7 @@ GitHub の案内は、ruleset に Code Quality の閾値を宣言する**前に*
 
 | 群 | context |
 | --- | --- |
-| セキュリティスキャン（`docs/adr/0089-multi-layer-security-scanning.md`） | `trivy-fs-release`、`osv-release`、`trivy-config`、`sast`、`lockfile-lint`、`openapi-security`、`osv-diff` |
+| セキュリティスキャン（`docs/adr/0093-multi-layer-security-scanning.md`） | `trivy-fs-release`、`osv-release`、`trivy-config`、`sast`、`lockfile-lint`、`openapi-security`、`osv-diff` |
 | ビルド品質 | `go-lint`、`go-test`、`generate-go-check`、`generate-oapi-check`、`generate-db-check`、`mod-tidy-check` |
 
 第 2 群の線引きは、赤が周囲ではなく変更そのものについての事実かどうかです。lint 指摘、失敗したテスト、
