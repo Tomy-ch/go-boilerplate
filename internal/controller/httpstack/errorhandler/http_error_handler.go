@@ -24,12 +24,18 @@ const (
 
 // Policies は、OpenAPI spec から起動時に前計算し、リクエストごとに参照するポリシー群です。
 type Policies struct {
-	// Detail は、レスポンスに details を含めてよいエンドポイントかを判定します(未 opt-in なら fail-closed で落とす)。
-	Detail DetailPolicy
-	// Allow は、405 レスポンスへ返す Allow ヘッダーの値を解決します。
-	Allow AllowPolicy
-	// Redact は、ログへ出す前に URI と query から資格情報を取り除きます。ゼロ値は何も秘匿しません。
-	Redact redaction.Redactor
+	// detail は、レスポンスに details を含めてよいエンドポイントかを判定します(未 opt-in なら fail-closed で落とす)。
+	detail DetailPolicy
+	// allow は、405 レスポンスへ返す Allow ヘッダーの値を解決します。
+	allow AllowPolicy
+	// redact は、ログへ出す前に URI と query から資格情報を取り除きます。
+	redact redaction.Redactor
+}
+
+// NewPolicies は、エラーハンドラが request ごとに参照するポリシーをまとめます。
+// 3 つを一度に要求するのは、秘匿（redact）だけを埋め忘れた Policies を組み立てられないようにするためです。
+func NewPolicies(detail DetailPolicy, allow AllowPolicy, redact redaction.Redactor) Policies {
+	return Policies{detail: detail, allow: allow, redact: redact}
 }
 
 // New は、NewHTTPErrorHandler で生成したハンドラを Echo の HTTPErrorHandler として登録します。
@@ -73,12 +79,12 @@ func handleHTTPError(
 
 	// details を持つレスポンスは、エンドポイントが OpenAPI で opt-in している場合のみクライアントへ返す。
 	// resp 本体(とログ)には details を残し、クライアント wire だけを落とす(fail-closed)。
-	exposeDetails := resp.Details == nil || policies.Detail.Allows(c.Request())
+	exposeDetails := resp.Details == nil || policies.detail.Allows(c.Request())
 
 	if !responseCommitted(c) {
-		setAllowHeader(c, policies.Allow, resp.HTTPStatus)
+		setAllowHeader(c, policies.allow, resp.HTTPStatus)
 		if writeErr := writeErrorResponse(c, resp, exposeDetails); writeErr != nil {
-			reqIn := server.BuildHTTPRequestLogInput(c, logging.EventTypeError, policies.Redact)
+			reqIn := server.BuildHTTPRequestLogInput(c, logging.EventTypeError, policies.redact)
 			writeErrFields := []*logging.Field{logging.String(logging.InternalErrorKey, writeErr.Error())}
 			fields := append(lf.BuildHTTPRequestFields(reqIn), writeErrFields...)
 			logger.Named("errorhandler.handleHTTPError").Error(c.Request().Context(), "failed to write error response", fields...)
@@ -92,7 +98,7 @@ func handleHTTPError(
 
 	// リカバリ済みのパニックは middleware.recover が既にログ済みのため、二重ログを抑止する（500 応答は返す）。
 	if recovered, _ := ctxhelper.GetRecoveredFromEcho(c); !recovered {
-		logHTTPError(c, policies.Redact, logger, lf, obsCfg, resp)
+		logHTTPError(c, policies.redact, logger, lf, obsCfg, resp)
 	}
 }
 
@@ -100,6 +106,10 @@ func handleHTTPError(
 // exposeDetails が false の場合、wire に送る body の details のみを落とします
 // (resp 本体は温存し、ログには従来どおり details を残す)。
 func writeErrorResponse(c *echo.Context, resp *response.HTTPErrorResponse, exposeDetails bool) error {
+	// エラー応答は共有キャッシュに残さない。410 のような発見的に cache 可能なステータスでも、資格情報を query に持つ
+	// URL（stream ticket）ごと保存されないようにする。
+	c.Response().Header().Set(echo.HeaderCacheControl, "no-store")
+
 	body := resp.ErrorResponseWithDetails
 	if !exposeDetails {
 		body.Details = nil

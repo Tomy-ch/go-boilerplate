@@ -294,7 +294,7 @@ func UseAppErrorHandlerWithLogger(t *testing.T, e *echo.Echo, logger logging.Log
 
 	errorhandler.New(
 		e,
-		errorhandler.Policies{Detail: detailPolicy, Allow: allowPolicy, Redact: redaction.FromSpec(spec)},
+		errorhandler.NewPolicies(detailPolicy, allowPolicy, redaction.FromSpec(spec)),
 		logger, lf, obsCfg,
 	)
 }

@@ -17,7 +17,9 @@ accepted
 
 ## 決定
 
-**oapi-codegen を `--generate=echo-server,strict-server` で使用し**、OpenAPI タグごとにスコープを絞る。これによって各ハンドラーパッケージは自身のタグのインターフェースのみを持つ。
+**oapi-codegen を `--generate=echo-server,strict-server` で使用し**、OpenAPI タグごとにスコープを絞る。これによって各ハンドラーパッケージは自身のタグのインターフェースのみを持つ。唯一の例外はレスポンスが 1 つの値で表せない
+operation — SSE stream（`v1/streams` タグ、`internal/controller/stream/`）— で、`text/event-stream` のレスポンスは flush を伴う
+event の列として独自の deadline と in-band の切断を持ち `ResponseObject` では表現できないため、`echo5-server` のみで生成する。
 
 各ハンドラーファイルの先頭に 2 つの `go:generate` ディレクティブを記述する：
 
@@ -65,11 +67,11 @@ type StrictServerInterface interface {
 
 ### プレーンな echo-server モード（strict-server なし）
 
-タグごとにスコープを絞るが、各ハンドラーメソッドは生の `*echo.Context` を受け取り、自身でバインディングとシリアライズを行う必要がある。却下：すべてのハンドラーで同じバインド処理を再現することになり、一貫性のないエラー処理の余地が残る。この処理を各ハンドラーに書いていくだけで全体の行数が著しく増加する問題もある。
+タグごとにスコープを絞るが、各ハンドラーメソッドは生の `*echo.Context` を受け取り、自身でバインディングとシリアライズを行う必要がある。既定としては却下：すべてのハンドラーで同じバインド処理を再現することになり、一貫性のないエラー処理の余地が残る。この処理を各ハンドラーに書いていくだけで全体の行数が著しく増加する問題もある。strict モードがレスポンスを表現できない場合 — SSE stream handler — に限って用い、その package もボディのバインドは行わない。
 
 ## 補足
 
-- `//go:generate` ディレクティブは [`internal/controller/handler/`](../../internal/controller/handler) 配下の各 `*_handler.go` ファイルの先頭にある。
+- `//go:generate` ディレクティブは [`internal/controller/handler/`](../../internal/controller/handler) 配下の各 `*_handler.go` ファイルの先頭と、SSE の例外である `internal/controller/stream/stream_handler.go` の先頭にある。
 - 生成ファイルは各ハンドラーディレクトリの `gen/` サブパッケージにあり、手動で編集してはならない。
 - ハンドラー層の契約（`operationId` ごとに 1 つの `StrictServerInterface` メソッド、ハンドラー内にビジネスロジックなし）は [`docs/rules.md`](../rules.ja.md) のアーキテクチャルールで強制される。
 - 親の決定: [ADR-0012](0012-openapi-first.ja.md)（OpenAPI ファースト）。

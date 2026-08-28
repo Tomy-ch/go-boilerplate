@@ -32,12 +32,12 @@ event を書き続ける長寿命の stream で、1 つの返り値を持ちま�
 
 この package は `handler/` の下ではなく隣に置きます。feature のリソースではなく機構の transport であり、
 `internal/architest/realtime_isolation_test.go` が `internal/domain/<feature>` と `internal/usecase/<feature>` の import を
-禁じています。`BindHandler` は `Streamer` が揃った時点（Phase 6）で Realtime の DI module が登録し、
-`di/module/controller.go` には載せません。
+禁じています。`BindHandler` は Realtime の DI module（`internal/di/module/realtime.go`）が登録し、`di/module/controller.go` には載せません。
+module が serve graph に加わるのは `Streamer` と feature adapter が揃う Phase 6 です。
 
 ## handler を結線する前に Phase 6 が決めること
 
-- **`BindHandler` はまだどこにも登録されていない**ので、Realtime の DI module が `Streamer` と一緒に登録するまで、どの環境でもこの operation は 401（`ErrUnauthorizedSchemeUnsupported`）を返す。その隙間を検知する architecture test は無い — `TestBindHandlerDIParity` は `internal/controller/handler/` しか走査しない。
+- **Realtime の DI module（`realtimeModule()`）が `BindHandler` を登録するが、その module はまだ serve graph に入っていない**ので、Phase 6 が `Streamer` を供給し feature adapter が module を束ねるまで、どの環境でもこの operation は 401（`ErrUnauthorizedSchemeUnsupported`）を返す。`TestBindHandlerDIParity` はこの package を走査する（宣言 ⇔ `realtime.go` の列挙）ので、module から `BindHandler` を落とせば赤になる。module 自体が app graph の外にあるのは Phase 5 の境界として文書化済み。
 - **共有の request timeout と write timeout が stream を切る**: `timeout.Middleware`（Pre priority 2）は全 request に `SERVER_REQUEST_TIMEOUT`（既定 60s）を張り、`http.Server.WriteTimeout`（65s）がその後に接続を閉じる。どちらも path 単位の除外を持たないため、設計の「stream path は request timeout から除外する」を作ってからでないと SSE のレスポンスは 1 分を超えられない。
 - **410 はどの環境の `OBS_TARGET_STATUS_CODES` にも無い**ので、`STREAM_CURSOR_EXPIRED` の拒否は client に届いてもログには出ない。足すかどうかは env のポリシー判断（`env/README.md`）。
 

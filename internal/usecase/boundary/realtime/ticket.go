@@ -29,6 +29,20 @@ type StreamTicket struct {
 	ExpiresAt time.Time
 }
 
+// StreamGrant は、検証を通った ticket が接続に与える束縛です。生値は含まず、ticket と違い保存もされません。
+// InitialCursor は cursor を持たずに接続したときの開始位置であって認可の下限ではありません — client は replay floor が
+// まだ覆う範囲なら、それより前の位置からも再開できます。履歴の可視範囲を分けたい feature は destination を分けます。
+type StreamGrant struct {
+	// Subject は、ticket を発行された subject です。
+	Subject string
+	// Destination は、接続を許す stream です。
+	Destination StreamID
+	// Scope は、feature が ticket に与えた権限の範囲です。機構は解釈しません。
+	Scope string
+	// InitialCursor は、cursor 無しで接続したときの開始位置です。
+	InitialCursor Sequence
+}
+
 // StreamTicketStore は、発行済み ticket の保存境界です。失敗は apperror sentinel で返します。
 type StreamTicketStore interface {
 	// Save は、ticket を保存します。同じ Hash への再保存は上書きです。

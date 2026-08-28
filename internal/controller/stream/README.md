@@ -35,11 +35,12 @@ This is the one exception the design reference names.
 The package lives beside `handler/`, not under it: it is transport for a mechanism, not a feature
 resource, and `internal/architest/realtime_isolation_test.go` forbids it from importing any
 `internal/domain/<feature>` or `internal/usecase/<feature>`. `BindHandler` is registered by the
-Realtime DI module when the `Streamer` exists (Phase 6), never in `di/module/controller.go`.
+Realtime DI module (`internal/di/module/realtime.go`), never in `di/module/controller.go`; the module joins the
+serve graph when the `Streamer` and a feature adapter exist (Phase 6).
 
 ## What Phase 6 must settle before the handler is wired
 
-- **`BindHandler` is not registered anywhere yet**, so on every environment the operation answers 401 (`ErrUnauthorizedSchemeUnsupported`) until the Realtime DI module registers it together with a `Streamer`. No architecture test notices that gap — `TestBindHandlerDIParity` scans `internal/controller/handler/` only.
+- **The Realtime DI module (`realtimeModule()`) registers `BindHandler`, but that module is not in the serve graph yet**, so on every environment the operation answers 401 (`ErrUnauthorizedSchemeUnsupported`) until Phase 6 provides the `Streamer` and a feature adapter binds the module. `TestBindHandlerDIParity` covers this package (declared ⇔ invoked in `realtime.go`), so a `BindHandler` left out of the module is red; the module itself being out of the app graph is the documented Phase 5 boundary.
 - **The shared request timeout and write timeout cut a stream**: `timeout.Middleware` (Pre priority 2) applies `SERVER_REQUEST_TIMEOUT` (60s by default) to every request and `http.Server.WriteTimeout` (65s) closes the connection after that. Neither has a per-path exclusion today; the design's "stream path is excluded from the request timeout" has to be built before an SSE response can outlive a minute.
 - **410 is not in `OBS_TARGET_STATUS_CODES`** in any environment, so a `STREAM_CURSOR_EXPIRED` refusal reaches the client but no log — adding it is an env-policy decision (`env/README.md`).
 

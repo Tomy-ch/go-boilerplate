@@ -46,7 +46,7 @@ func newServer(t *testing.T) (*server, *mock_realtime.MockCursorValidator, *stub
 }
 
 // newContext は、StreamGrant スロットを仕込んだ request の echo.Context を返します。grant が nil ならスロットは空のままです。
-func newContext(t *testing.T, target string, grant *ucrealtime.VerifiedTicketView) *echo.Context {
+func newContext(t *testing.T, target string, grant *rt.StreamGrant) *echo.Context {
 	t.Helper()
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, target, nil)
 	req = req.WithContext(ctxhelper.WithStreamGrant(req.Context()))
@@ -57,8 +57,8 @@ func newContext(t *testing.T, target string, grant *ucrealtime.VerifiedTicketVie
 }
 
 // grantFor は、stream-1 に束縛された検証済み ticket を返します。
-func grantFor() *ucrealtime.VerifiedTicketView {
-	return &ucrealtime.VerifiedTicketView{Subject: "subject-1", Destination: "stream-1", Scope: "read", InitialCursor: 3}
+func grantFor() *rt.StreamGrant {
+	return &rt.StreamGrant{Subject: "subject-1", Destination: "stream-1", Scope: "read", InitialCursor: 3}
 }
 
 func TestBindHandler(t *testing.T) {

@@ -8,6 +8,7 @@ import (
 
 	"go-boilerplate/internal/config"
 	oapiauth "go-boilerplate/internal/controller/httpstack/oapi/auth"
+	"go-boilerplate/internal/controller/stream"
 	streamauth "go-boilerplate/internal/controller/stream/auth"
 	"go-boilerplate/internal/infrastructure/dynamodbclient"
 	"go-boilerplate/internal/infrastructure/eventlog"
@@ -21,7 +22,8 @@ import (
 )
 
 // realtimeModule は、Realtime Delivery の store（EventLog / StreamTicket / InstanceLease / SecretGenerator）と
-// 機構側 usecase（CursorValidator / TicketIssuer / TicketVerifier）、StreamTicket securityScheme の認証器を提供する fx.Module です。
+// 機構側 usecase（CursorValidator / TicketIssuer / TicketVerifier）、StreamTicket securityScheme の認証器を提供し、
+// SSE の stream handler を Echo に登録する fx.Module です。handler が要る stream.Streamer は Phase 6 が提供します。
 // 設計正本（docs/design/realtime-delivery.md §3.1）のとおり、feature の realtime adapter が 1 つ以上あるときに
 // だけ app graph へ組み込みます。まだ無いので InfrastructureModule() には含めず、graph の検証だけを持ちます。
 func realtimeModule() fx.Option {
@@ -36,6 +38,9 @@ func realtimeModule() fx.Option {
 			provideTicketIssuer,
 			provideTicketVerifier,
 			fx.Annotate(provideStreamTicketScheme, fx.ResultTags(`group:"`+oapiauth.SchemeGroup+`"`)),
+		),
+		fx.Invoke(
+			stream.BindHandler,
 		),
 	)
 }

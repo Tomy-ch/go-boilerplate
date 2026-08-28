@@ -63,7 +63,7 @@ func TestNew(t *testing.T) {
 			obsCfg := config.NewObservabilityConfig(config.MockConfigForTest(t))
 			lf := logging.NewTestLogFieldBuilder(t)
 
-			New(e, Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}}, z, lf, obsCfg)
+			New(e, NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{}, redaction.Redactor{}), z, lf, obsCfg)
 			require.NotNil(t, e.HTTPErrorHandler)
 
 			// echo 既定ハンドラは apperror を解釈しないため、ErrNotFound を 404 へ写像することで
@@ -89,7 +89,7 @@ func TestNewHTTPErrorHandler(t *testing.T) {
 			z := logging.NewTestLogger(t)
 			obsCfg := config.NewObservabilityConfig(config.MockConfigForTest(t))
 			lf := logging.NewTestLogFieldBuilder(t)
-			handler := NewHTTPErrorHandler(Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}}, z, lf, obsCfg)
+			handler := NewHTTPErrorHandler(NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{}, redaction.Redactor{}), z, lf, obsCfg)
 
 			e := echo.New()
 			ctx := context.Background()
@@ -188,6 +188,7 @@ func Test_writeErrorResponse(t *testing.T) {
 			require.NoError(t, err)
 
 			assert.Equal(t, he.HTTPStatus, rec.Code)
+			assert.Equal(t, "no-store", rec.Header().Get(echo.HeaderCacheControl))
 
 			var got map[string]any
 			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
@@ -273,7 +274,7 @@ func Test_handleHTTPError(t *testing.T) {
 			c, end := testspan.StartTestSpanForEcho(t, c)
 			defer end()
 
-			handleHTTPError(c, Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}}, logger, lf, obsCfg, xerrors.New("boom"))
+			handleHTTPError(c, NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{}, redaction.Redactor{}), logger, lf, obsCfg, xerrors.New("boom"))
 
 			assert.Equal(t, http.StatusInternalServerError, rec.Code)
 			assert.Equal(t, 1, observed.FilterMessage("errorhandler.server_error").Len())
@@ -293,7 +294,7 @@ func Test_handleHTTPError(t *testing.T) {
 
 			handleHTTPError(
 				c,
-				Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{allow: "OPTIONS, GET"}},
+				NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{allow: "OPTIONS, GET"}, redaction.Redactor{}),
 				logger,
 				lf,
 				obsCfg,
@@ -319,7 +320,7 @@ func Test_handleHTTPError(t *testing.T) {
 
 			handleHTTPError(
 				c,
-				Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{allow: "OPTIONS, GET"}},
+				NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{allow: "OPTIONS, GET"}, redaction.Redactor{}),
 				logger,
 				lf,
 				obsCfg,
@@ -346,7 +347,7 @@ func Test_handleHTTPError(t *testing.T) {
 
 			handleHTTPError(
 				c,
-				Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{allow: "OPTIONS, GET"}},
+				NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{allow: "OPTIONS, GET"}, redaction.Redactor{}),
 				logger,
 				lf,
 				obsCfg,
@@ -370,7 +371,7 @@ func Test_handleHTTPError(t *testing.T) {
 
 			handleHTTPError(
 				c,
-				Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{allow: "OPTIONS, GET"}},
+				NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{allow: "OPTIONS, GET"}, redaction.Redactor{}),
 				logger,
 				lf,
 				obsCfg,
@@ -394,7 +395,7 @@ func Test_handleHTTPError(t *testing.T) {
 			defer end()
 
 			metaErr := apperror.WithDetails(xerrors.Wrap(apperror.ErrValidation, "invalid"), "firstName")
-			handleHTTPError(c, Policies{Detail: stubDetailPolicy{allow: false}, Allow: stubAllowPolicy{}}, logger, lf, obsCfg, metaErr)
+			handleHTTPError(c, NewPolicies(stubDetailPolicy{allow: false}, stubAllowPolicy{}, redaction.Redactor{}), logger, lf, obsCfg, metaErr)
 
 			assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 			var got map[string]any
@@ -420,7 +421,7 @@ func Test_handleHTTPError(t *testing.T) {
 			defer end()
 
 			metaErr := apperror.WithDetails(xerrors.Wrap(apperror.ErrValidation, "invalid"), "firstName")
-			handleHTTPError(c, Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}}, logger, lf, obsCfg, metaErr)
+			handleHTTPError(c, NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{}, redaction.Redactor{}), logger, lf, obsCfg, metaErr)
 
 			assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
 			var got map[string]any
@@ -442,8 +443,8 @@ func Test_handleHTTPError(t *testing.T) {
 			defer end()
 
 			// 2 回目は ctxhelper.GetErrorHandledFromEcho ガードで抑止されるため、ボディは二重に書かれない。
-			handleHTTPError(c, Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}}, logger, lf, obsCfg, xerrors.New("boom"))
-			handleHTTPError(c, Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}}, logger, lf, obsCfg, xerrors.New("boom"))
+			handleHTTPError(c, NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{}, redaction.Redactor{}), logger, lf, obsCfg, xerrors.New("boom"))
+			handleHTTPError(c, NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{}, redaction.Redactor{}), logger, lf, obsCfg, xerrors.New("boom"))
 
 			assert.Equal(t, http.StatusInternalServerError, rec.Code)
 
@@ -466,7 +467,7 @@ func Test_handleHTTPError(t *testing.T) {
 			defer end()
 			ctxhelper.SetRecoveredToEcho(c, true)
 
-			handleHTTPError(c, Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}}, logger, lf, obsCfg, xerrors.New("boom"))
+			handleHTTPError(c, NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{}, redaction.Redactor{}), logger, lf, obsCfg, xerrors.New("boom"))
 
 			assert.Equal(t, http.StatusInternalServerError, rec.Code)
 			var got map[string]any
@@ -493,7 +494,7 @@ func Test_handleHTTPError(t *testing.T) {
 			c, end := testspan.StartTestSpanForEcho(t, c)
 			defer end()
 
-			handleHTTPError(c, Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}}, logger, lf, obsCfg, xerrors.New("boom2"))
+			handleHTTPError(c, NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{}, redaction.Redactor{}), logger, lf, obsCfg, xerrors.New("boom2"))
 
 			assert.Equal(t, []int{http.StatusInternalServerError}, bw.wroteHeaders)
 			assert.Equal(t, 1, observed.FilterMessage("failed to write error response").Len())
@@ -515,7 +516,7 @@ func Test_handleHTTPError(t *testing.T) {
 
 			handleHTTPError(
 				c,
-				Policies{Detail: stubDetailPolicy{allow: true}, Allow: stubAllowPolicy{}},
+				NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{}, redaction.Redactor{}),
 				logger,
 				lf,
 				obsCfg,

@@ -13,6 +13,7 @@ import (
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/controller/httpstack/errorhandler"
 	"go-boilerplate/internal/controller/httpstack/oapi/validator"
+	"go-boilerplate/internal/controller/httpstack/redaction"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/xerrors"
 
@@ -63,10 +64,18 @@ func (c *EchoTestClient) WithAppErrorHandler() *EchoTestClient {
 	lf := logging.NewTestLogFieldBuilder(c.t)
 	errorhandler.New(
 		c.e,
-		errorhandler.Policies{Detail: newTestDetailPolicy(c.t), Allow: newTestAllowPolicy(c.t)},
+		errorhandler.NewPolicies(newTestDetailPolicy(c.t), newTestAllowPolicy(c.t), newTestRedactor(c.t)),
 		logging.NewTestLogger(c.t), lf, obsCfg,
 	)
 	return c
+}
+
+// newTestRedactor は、実 OpenAPI spec から query 資格情報の秘匿(本番相当)を構築します。
+func newTestRedactor(t *testing.T) redaction.Redactor {
+	t.Helper()
+	spec, err := validator.GetValidator()
+	require.NoError(t, err)
+	return redaction.FromSpec(spec)
 }
 
 // newTestDetailPolicy は、実 OpenAPI spec から details 公開ポリシー(本番相当)を構築します。

@@ -11,7 +11,7 @@ import (
 	"go-boilerplate/internal/controller/httpstack/oapi/auth"
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
 	mock_auth "go-boilerplate/internal/usecase/boundary/auth/mock"
-	ucrealtime "go-boilerplate/internal/usecase/realtime"
+	rt "go-boilerplate/internal/usecase/boundary/realtime"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -182,7 +182,7 @@ func TestMiddleware(t *testing.T) {
 
 			_ = handler(c)
 
-			grant := ucrealtime.VerifiedTicketView{Subject: "s", Destination: "d"}
+			grant := rt.StreamGrant{Subject: "s", Destination: "d"}
 			require.True(t, ctxhelper.SetStreamGrant(c.Request().Context(), grant))
 
 			got, ok := ctxhelper.GetStreamGrant(c.Request().Context())

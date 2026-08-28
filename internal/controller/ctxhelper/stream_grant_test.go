@@ -4,14 +4,14 @@ import (
 	"context"
 	"testing"
 
-	ucrealtime "go-boilerplate/internal/usecase/realtime"
+	rt "go-boilerplate/internal/usecase/boundary/realtime"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func newTestStreamGrant() ucrealtime.VerifiedTicketView {
-	return ucrealtime.VerifiedTicketView{Subject: "subject-1", Destination: "stream-1", Scope: "read", InitialCursor: 7}
+func newTestStreamGrant() rt.StreamGrant {
+	return rt.StreamGrant{Subject: "subject-1", Destination: "stream-1", Scope: "read", InitialCursor: 7}
 }
 
 func TestWithStreamGrant(t *testing.T) {

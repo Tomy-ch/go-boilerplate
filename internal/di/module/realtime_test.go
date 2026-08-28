@@ -3,6 +3,7 @@ package module
 import (
 	"testing"
 
+	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
@@ -10,6 +11,7 @@ import (
 
 	"go-boilerplate/internal/config"
 	oapiauth "go-boilerplate/internal/controller/httpstack/oapi/auth"
+	"go-boilerplate/internal/controller/stream"
 	streamauth "go-boilerplate/internal/controller/stream/auth"
 	"go-boilerplate/internal/infrastructure/dynamodbclient/testkit"
 	"go-boilerplate/internal/observability"
@@ -25,9 +27,18 @@ type securitySchemes struct {
 	Schemes []oapiauth.SchemeAuthenticator `group:"oapi.security.schemes"`
 }
 
+// stubStreamer は、graph 検証に要るだけの Streamer です（本物は Phase 6）。
+type stubStreamer struct{}
+
+func (stubStreamer) Stream(*echo.Context, stream.StreamRequest) error { return nil }
+
 // realtimeDeps は、realtime module の graph 検証に要る下位モジュール群です（clock は infrastructure 側の module）。
+// stream handler の登録が要る *echo.Echo と Streamer は、server module と Phase 6 の代わりにここで供給します。
 func realtimeDeps() []fx.Option {
-	return append(commonDeps(), clockModule(), realtimeModule())
+	return append(commonDeps(), clockModule(), realtimeModule(),
+		fx.Provide(echo.New),
+		fx.Provide(func() stream.Streamer { return stubStreamer{} }),
+	)
 }
 
 func Test_realtimeModule_GraphIsValid(t *testing.T) {

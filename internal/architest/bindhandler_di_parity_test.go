@@ -18,19 +18,26 @@ import (
 const (
 	// controllerModuleFile は、ControllerModule が fx.Invoke で BindHandler を列挙する宣言元です。
 	controllerModuleFile = "internal/di/module/controller.go"
+	// realtimeModuleFile は、Realtime Delivery の DI module が機構の transport（controller/stream）の
+	// BindHandler を列挙する宣言元です。
+	realtimeModuleFile = "internal/di/module/realtime.go"
+	// controllerTreeDir は、controller 層のディレクトリです。import path をここからの相対へ写します。
+	controllerTreeDir = "internal/controller"
 	// handlerTreeDir は、ハンドラパッケージを収めるディレクトリです。
-	handlerTreeDir = "internal/controller/handler"
-	// handlerImportPrefix は、ハンドラパッケージの import path 接頭辞です。
-	handlerImportPrefix = "go-boilerplate/" + handlerTreeDir
+	handlerTreeDir = controllerTreeDir + "/handler"
+	// streamTreeDir は、機構の transport（SSE の非 strict handler）を収めるディレクトリです。
+	streamTreeDir = controllerTreeDir + "/stream"
+	// handlerImportPrefix は、controller 層パッケージの import path 接頭辞です。
+	handlerImportPrefix = "go-boilerplate/" + controllerTreeDir
 	// generatedServerSuffix は、oapi-codegen が RegisterHandlers を出力するファイルの、
 	// パッケージディレクトリから見た位置です。
 	generatedServerSuffix = "/gen/server.gen.go"
 )
 
 var (
-	// handlerImportRe は、controller.go の import 行からエイリアス（省略可）とハンドラの import path を
+	// handlerImportRe は、DI module の import 行からエイリアス（省略可）と controller 層の import path を
 	// 捕捉します。サンプル API の import 行は末尾に // sample-api:line を持つため、末尾はアンカーしません。
-	// 接頭辞の直後に / を要求するのは、handler と同じ綴りで始まる兄弟パッケージを取り違えないためです。
+	// 接頭辞の直後に / を要求するのは、controller と同じ綴りで始まる兄弟パッケージを取り違えないためです。
 	handlerImportRe = regexp.MustCompile(`^\t(?:(\w+)\s+)?"(` + regexp.QuoteMeta(handlerImportPrefix) + `/[^"]*)"`)
 	// bindHandlerInvokeRe は、fx.Invoke の引数として縦に並んだ <ident>.BindHandler 行を捕捉します。
 	// gofmt は縦並びの引数に末尾カンマを強制するためカンマまで要求し、コメントアウトされた行は
@@ -53,9 +60,11 @@ type handlerTreeIndex struct {
 //
 // 突き合わせるのは 3 つの集合で、いずれもモジュールルートからの相対パッケージディレクトリで表す。
 //
-//	X: func BindHandler を宣言するパッケージ（ハンドラツリーの走査）
-//	Y: ControllerModule() の fx.Invoke が列挙する BindHandler の所属パッケージ（controller.go の走査）
-//	Z: gen/server.gen.go に RegisterHandlers を持つパッケージ（同じくハンドラツリーの走査）
+//	X: func BindHandler を宣言するパッケージ（ハンドラツリー internal/controller/handler と
+//	   機構 transport internal/controller/stream の走査）
+//	Y: DI module の fx.Invoke が列挙する BindHandler の所属パッケージ（ControllerModule() の controller.go と、
+//	   機構 transport を所有する realtimeModule() の realtime.go の走査）
+//	Z: gen/server.gen.go に RegisterHandlers を持つパッケージ（同じ走査）
 //
 // 主張する契約は X == Y と Z ⊆ X で、それぞれ次の書き忘れを検出する。
 //
@@ -89,20 +98,27 @@ func TestBindHandlerDIParity(t *testing.T) {
 	require.NotEmpty(t, index.declared, "BindHandler の宣言を 1 件も検出できない（走査ルートの誤りを疑う）")
 	require.NotEmpty(t, index.generated, "RegisterHandlers を持つ生成物を 1 件も検出できない（走査ルートの誤りを疑う）")
 
-	src := readRepoFile(t, moduleRoot(t), controllerModuleFile)
-	invoked, unresolved := collectInvokedBindHandlers(src, collectHandlerImports(src, index.packages))
+	invoked := map[string]struct{}{}
+	for _, moduleFile := range []string{controllerModuleFile, realtimeModuleFile} {
+		src := readRepoFile(t, moduleRoot(t), moduleFile)
+		found, unresolved := collectInvokedBindHandlers(src, collectHandlerImports(src, index.packages))
+		require.Empty(t, unresolved,
+			"%s の fx.Invoke が呼ぶ BindHandler のパッケージを import から解決できない。"+
+				"ハンドラは internal/controller 配下から import すること", moduleFile)
+		for dir := range found {
+			invoked[dir] = struct{}{}
+		}
+	}
 	require.NotEmpty(t, invoked, "fx.Invoke から BindHandler を 1 件も読み取れない（列挙の書式変更を疑う）")
-	require.Empty(t, unresolved,
-		"fx.Invoke が呼ぶ BindHandler のパッケージを import から解決できない。"+
-			"ハンドラは internal/controller/handler 配下から import すること")
 
 	t.Logf("BindHandler の宣言: %d 件 / fx.Invoke の列挙: %d 件 / RegisterHandlers を持つ生成物: %d 件",
 		len(index.declared), len(invoked), len(index.generated))
 
 	assert.Empty(t, index.missingFromDI(invoked),
-		"BindHandler を宣言しているのに ControllerModule() の fx.Invoke へ列挙されていない。"+
+		"BindHandler を宣言しているのに DI module の fx.Invoke へ列挙されていない。"+
 			"実行時に Echo へルートが生えず 404 になるため、"+
-			"internal/di/module/controller.go の fx.Invoke へ <pkg>.BindHandler, を 1 行として加えること")
+			"internal/di/module/controller.go（handler/）または realtime.go（stream/）の fx.Invoke へ "+
+			"<pkg>.BindHandler, を 1 行として加えること")
 	assert.Empty(t, index.unknownInvocations(invoked),
 		"fx.Invoke が列挙する BindHandler の宣言をハンドラツリーの走査で見つけられない。"+
 			"走査条件（生成物の除外・func 宣言の検出）が実態からずれていることを疑うこと")
@@ -578,18 +594,20 @@ func scanHandlerTree(t *testing.T) handlerTreeIndex {
 	root := moduleRoot(t)
 	index := newHandlerTreeIndex()
 
-	err := filepath.WalkDir(handlerRoot(t), func(p string, d fs.DirEntry, walkErr error) error {
-		if walkErr != nil || d.IsDir() {
-			return walkErr
-		}
-		src, readErr := pkgfs.OS{}.ReadFile(p)
-		if readErr != nil {
-			return readErr
-		}
-		index.addFile(repoRelative(root, p), string(src))
-		return nil
-	})
-	require.NoError(t, err)
+	for _, treeRoot := range []string{handlerRoot(t), filepath.Join(root, streamTreeDir)} {
+		err := filepath.WalkDir(treeRoot, func(p string, d fs.DirEntry, walkErr error) error {
+			if walkErr != nil || d.IsDir() {
+				return walkErr
+			}
+			src, readErr := pkgfs.OS{}.ReadFile(p)
+			if readErr != nil {
+				return readErr
+			}
+			index.addFile(repoRelative(root, p), string(src))
+			return nil
+		})
+		require.NoError(t, err)
+	}
 
 	return index
 }
@@ -603,7 +621,7 @@ func newHandlerTreeIndex() handlerTreeIndex {
 	}
 }
 
-// collectHandlerImports は、controller.go の import 節から ident → パッケージディレクトリ
+// collectHandlerImports は、DI module の import 節から ident → controller 層のパッケージディレクトリ
 // （モジュールルートからの相対）の対応を返します。
 //
 // エイリアスの無い import が束縛する ident はパッケージが名乗る名前であって、ディレクトリ名では
@@ -618,7 +636,7 @@ func collectHandlerImports(src string, packages map[string]string) map[string]st
 		if m == nil {
 			continue
 		}
-		dir := handlerTreeDir + strings.TrimPrefix(m[2], handlerImportPrefix)
+		dir := controllerTreeDir + strings.TrimPrefix(m[2], handlerImportPrefix)
 		ident := m[1]
 		if ident == "" {
 			ident = packages[dir]

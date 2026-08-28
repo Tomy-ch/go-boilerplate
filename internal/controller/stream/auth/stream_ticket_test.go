@@ -82,7 +82,7 @@ func Test_streamTicket_Authenticate(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			v := mock_realtime.NewMockTicketVerifier(ctrl)
-			want := ucrealtime.VerifiedTicketView{Subject: "subject-1", Destination: "stream-1", Scope: "read", InitialCursor: 3}
+			want := rt.StreamGrant{Subject: "subject-1", Destination: "stream-1", Scope: "read", InitialCursor: 3}
 			v.EXPECT().Verify(gomock.Any(), "raw-ticket", rt.StreamID("stream-1")).Return(want, nil)
 
 			in := newInput(t, "/v1/streams/stream-1?ticket=raw-ticket&after=1", apiKeyScheme, true)
@@ -102,9 +102,9 @@ func Test_streamTicket_Authenticate(t *testing.T) {
 			req := in.RequestValidationInput.Request
 			in.RequestValidationInput.Request = req.WithContext(context.WithValue(req.Context(), ctxKey{}, "request"))
 			v.EXPECT().Verify(gomock.Any(), "raw-ticket", rt.StreamID("stream-1")).
-				DoAndReturn(func(ctx context.Context, _ string, _ rt.StreamID) (ucrealtime.VerifiedTicketView, error) {
+				DoAndReturn(func(ctx context.Context, _ string, _ rt.StreamID) (rt.StreamGrant, error) {
 					assert.Equal(t, "request", ctx.Value(ctxKey{}))
-					return ucrealtime.VerifiedTicketView{}, nil
+					return rt.StreamGrant{}, nil
 				})
 
 			require.NoError(t, New(v).Authenticate(context.WithValue(context.Background(), ctxKey{}, "validator"), in))
@@ -118,7 +118,7 @@ func Test_streamTicket_Authenticate(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			v := mock_realtime.NewMockTicketVerifier(ctrl)
-			v.EXPECT().Verify(gomock.Any(), "", rt.StreamID("stream-1")).Return(ucrealtime.VerifiedTicketView{}, ucrealtime.ErrTicketInvalid)
+			v.EXPECT().Verify(gomock.Any(), "", rt.StreamID("stream-1")).Return(rt.StreamGrant{}, ucrealtime.ErrTicketInvalid)
 
 			in := newInput(t, "/v1/streams/stream-1", apiKeyScheme, true)
 			err := New(v).Authenticate(context.Background(), in)
@@ -141,7 +141,7 @@ func Test_streamTicket_Authenticate(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			v := mock_realtime.NewMockTicketVerifier(ctrl)
-			v.EXPECT().Verify(gomock.Any(), "raw", rt.StreamID("stream-1")).Return(ucrealtime.VerifiedTicketView{}, nil)
+			v.EXPECT().Verify(gomock.Any(), "raw", rt.StreamID("stream-1")).Return(rt.StreamGrant{}, nil)
 
 			err := New(v).Authenticate(context.Background(), newInput(t, "/v1/streams/stream-1?ticket=raw", apiKeyScheme, false))
 

@@ -26,7 +26,8 @@ type IssueTicketInput struct {
 	Destination rt.StreamID
 	// Scope は、feature が定めた権限の範囲です。機構は解釈しません。
 	Scope string
-	// InitialCursor は、cursor 無しで接続したときの開始位置です。
+	// InitialCursor は、cursor 無しで接続したときの開始位置です。認可の下限ではなく、client は replay floor が覆う範囲なら
+	// それより前からも再開できます。履歴の可視範囲を分けたいときは destination を分けます。
 	InitialCursor rt.Sequence
 }
 
@@ -34,15 +35,6 @@ type IssueTicketInput struct {
 type TicketView struct {
 	Value     string
 	ExpiresAt time.Time
-}
-
-// VerifiedTicketView は、検証を通った ticket の bindings です。接続を許す stream と、cursor 無しの接続の開始位置を
-// 呼び出し元（stream handler）に渡します。
-type VerifiedTicketView struct {
-	Subject       string
-	Destination   rt.StreamID
-	Scope         string
-	InitialCursor rt.Sequence
 }
 
 // TicketIssuer は、ticket を発行します。feature の ticket-issuing usecase が認可の後に呼びます。
@@ -53,10 +45,10 @@ type TicketIssuer interface {
 
 // TicketVerifier は、接続時に提示された ticket を検証します。
 type TicketVerifier interface {
-	// Verify は、生値の hash に対応する ticket が期限内にあり、destination が一致するときその bindings を
+	// Verify は、生値の hash に対応する ticket が期限内にあり、destination が一致するときその束縛（StreamGrant）を
 	// 返します。無い・期限切れ・destination 違いはいずれも ErrTicketInvalid です（理由は区別しない —
 	// 区別すると存在の有無を推測する手がかりになるため）。store が読めなければ apperror.ErrUnavailable です。
-	Verify(ctx context.Context, value string, destination rt.StreamID) (VerifiedTicketView, error)
+	Verify(ctx context.Context, value string, destination rt.StreamID) (rt.StreamGrant, error)
 }
 
 type ticketService struct {
@@ -106,28 +98,28 @@ func (s *ticketService) Issue(ctx context.Context, in IssueTicketInput) (TicketV
 	return TicketView{Value: value, ExpiresAt: ticket.ExpiresAt}, nil
 }
 
-func (s *ticketService) Verify(ctx context.Context, value string, destination rt.StreamID) (VerifiedTicketView, error) {
+func (s *ticketService) Verify(ctx context.Context, value string, destination rt.StreamID) (rt.StreamGrant, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
 	if value == "" {
-		return VerifiedTicketView{}, xerrors.Wrap(ErrTicketInvalid, "ticket is empty")
+		return rt.StreamGrant{}, xerrors.Wrap(ErrTicketInvalid, "ticket is empty")
 	}
 
 	ticket, ok, err := s.store.Find(ctx, hashTicket(value), s.clock.Now())
 	if err != nil {
-		return VerifiedTicketView{}, err
+		return rt.StreamGrant{}, err
 	}
 
 	if !ok {
-		return VerifiedTicketView{}, xerrors.Wrap(ErrTicketInvalid, "ticket is unknown or expired")
+		return rt.StreamGrant{}, xerrors.Wrap(ErrTicketInvalid, "ticket is unknown or expired")
 	}
 
 	if ticket.Destination != destination {
-		return VerifiedTicketView{}, xerrors.Wrap(ErrTicketInvalid, "ticket is bound to another destination")
+		return rt.StreamGrant{}, xerrors.Wrap(ErrTicketInvalid, "ticket is bound to another destination")
 	}
 
-	return VerifiedTicketView{
+	return rt.StreamGrant{
 		Subject: ticket.Subject, Destination: ticket.Destination, Scope: ticket.Scope, InitialCursor: ticket.InitialCursor,
 	}, nil
 }

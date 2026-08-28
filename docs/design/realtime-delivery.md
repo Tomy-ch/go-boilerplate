@@ -22,8 +22,8 @@ Responsibility split (who owns what):
 | --- | --- | --- | --- |
 | **realtime adapter** (`usecase/<feature>/`) | usecase (feature side) | turn a committed feature change into `DeliveryEvent`s; choose the destination(s); obtain the stream-local sequence from the sequence allocator inside the business tx; emit through the outbox | transport, replay, connection state, the sequence itself (it is mechanism state, never a field of the feature's aggregate) |
 | **ticket-issuing usecase** (`usecase/<feature>/`) | usecase (feature side) | authorize the subject for a destination, then ask Realtime Delivery for a ticket | the ticket's format or storage |
-| **boundary/realtime** | usecase/boundary | the seam: `DeliveryEvent`, `SequenceAllocator`, `EventLogStore`, `StreamTicketStore`, `InstanceLeaseStore`, the revocation seam | implementations, feature vocabulary |
-| **usecase/realtime** | usecase | ticket issue / verify, cursor validation and expiry, replay reads, lease heartbeat, orphan cleanup ownership | the HTTP transport, the poll loop |
+| **boundary/realtime** | usecase/boundary | the seam: `DeliveryEvent`, `SequenceAllocator`, `EventLogStore`, `StreamTicketStore`, `InstanceLeaseStore`, `RevocationNotifier` | implementations, feature vocabulary |
+| **usecase/realtime** | usecase | ticket issue / verify, the revocation seam (`AccessRevoker`), cursor validation and expiry, replay reads, lease heartbeat, orphan cleanup ownership | the HTTP transport, the poll loop |
 | **realtime relay** (`controller/outbox` + realtime publisher) | controller / infrastructure | claim realtime-channel rows in stream order, append to the EventLog, publish the wakeup | business decisions, retry policy beyond [ADR-0058] |
 | **Streamer** (`controller/stream/`) | controller | connection registry (indexed by subject), capacity gate, replay / catch-up scheduling, heartbeat, backpressure, drain, the control-event protocol | authorization, feature vocabulary |
 | **EventLog / ticket / lease stores** (`infrastructure/eventlog`, `streamticket`, `instancelease`) | infrastructure | DynamoDB implementations of the boundary stores | business decisions |
@@ -107,7 +107,7 @@ stateDiagram-v2
     Closed --> [*]: capacity returned
 ```
 
-Cursor resolution, in order: a valid `Last-Event-ID` wins; otherwise `after`; otherwise the initial cursor the ticket permits. A cursor is never valid for a destination other than the ticket's.
+Cursor resolution, in order: a valid `Last-Event-ID` wins; otherwise `after`; otherwise the ticket's initial cursor. The initial cursor is a starting position, not an authorization floor — a client may resume from any earlier position the replay floor still covers; a feature that must narrow the visible history separates destinations. A cursor is never valid for a destination other than the ticket's.
 
 Everything that can be refused is refused **before** the response is committed; after commit the only channel back to the client is an in-band control event followed by close (§4.3).
 
@@ -161,8 +161,8 @@ This section states the **planned** placement. The dependency direction and the 
 
 | Package | Contents |
 | --- | --- |
-| `internal/usecase/boundary/realtime/` | `DeliveryEvent` (eventId / streamId / sequence as a decimal string / type / occurredAt / schemaVersion / payload ≤ 64 KiB); `SequenceAllocator` (`Allocate(streamID)` — next sequence, row locked to commit; `Current(streamID)` — the stream's current position, used as a History cursor); `EventLogStore` (conditional append, read after cursor with `ConsistentRead`, latest by descending read); `StreamTicketStore` (hashed ticket, bindings, invalidate); `InstanceLeaseStore` (heartbeat, expiry, conditional cleanup ownership); the revocation seam |
-| `internal/usecase/realtime/` | ticket issue / verify; cursor validation and replay-floor derivation; replay reads; lease heartbeat and orphan cleanup ownership |
+| `internal/usecase/boundary/realtime/` | `DeliveryEvent` (eventId / streamId / sequence as a decimal string / type / occurredAt / schemaVersion / payload ≤ 64 KiB); `SequenceAllocator` (`Allocate(streamID)` — next sequence, row locked to commit; `Current(streamID)` — the stream's current position, used as a History cursor); `EventLogStore` (conditional append, read after cursor with `ConsistentRead`, latest by descending read); `StreamTicketStore` (hashed ticket, bindings, invalidate); `InstanceLeaseStore` (heartbeat, expiry, conditional cleanup ownership); `RevocationNotifier` (tell every instance a subject lost a destination) |
+| `internal/usecase/realtime/` | ticket issue / verify; the revocation seam `AccessRevoker` (invalidate the tickets, then notify); cursor validation and replay-floor derivation; replay reads; lease heartbeat and orphan cleanup ownership |
 | `internal/controller/stream/` | connection registry indexed by subject; capacity gate; initial-replay admission; replay / catch-up semaphore and jittered scheduler; heartbeat; write deadline; buffer and close-on-full; drain; control-event writer; the non-strict SSE handler |
 | `internal/infrastructure/rdb/system_cqrs/realtime/` | the `SequenceAllocator` over a PostgreSQL `system_cqrs` table (`stream_id`, `last_sequence`) — the same category as the outbox and idempotency tables ([ADR-0033 (system-cqrs-dml-category)](../adr/0033-system-cqrs-dml-category.md)) |
 | `internal/infrastructure/eventlog/dynamodb/`, `internal/infrastructure/streamticket/dynamodb/`, `internal/infrastructure/instancelease/dynamodb/` | the DynamoDB stores; idempotent one-shot table initializer (never at application start) |
@@ -173,7 +173,8 @@ This section states the **planned** placement. The dependency direction and the 
 
 ```mermaid
 flowchart LR
-  feature["usecase/&lt;feature&gt;<br/>adapter · ticket issue"] --> boundary["usecase/boundary/realtime"]
+  feature["usecase/&lt;feature&gt;<br/>adapter · ticket issue · revoke"] --> boundary["usecase/boundary/realtime"]
+  feature --> ucrt
   ucrt["usecase/realtime"] --> boundary
   stream["controller/stream"] --> ucrt
   infra["infrastructure/eventlog · streamticket · instancelease · realtime"] --> boundary
@@ -293,7 +294,8 @@ stateDiagram-v2
 | **blocked stream** | A stream whose head row is dead; halted until replayed; counted by `realtime_blocked_streams`. |
 | **ticket** | The opaque 256-bit credential presented on connect, stored hashed, bound to subject / destination / scope / expiry, reusable for its 5-minute TTL. |
 | **connection maximum lifetime** | The 1-hour bound on an established connection, after which `REAUTHENTICATE` is sent. Independent of the ticket TTL. |
-| **revocation seam** | The boundary call a feature makes when a subject loses access to a destination inside this service; invalidates tickets and closes connections via the fan-out. |
+| **grant** | The bindings a verified ticket confers on a connection (`boundary/realtime.StreamGrant`): subject, destination, scope, initial cursor. The ticket is the credential; the grant is what verifying it yields, carried in the request context to the stream handler. |
+| **revocation seam** | The call a feature makes when a subject loses access to a destination inside this service (`usecase/realtime.AccessRevoker`); invalidates tickets first, then closes connections via the fan-out (`boundary/realtime.RevocationNotifier`). |
 | **control event** | `event: control`, no `id`; actions `RECONNECT` / `RETRY_LATER` / `REAUTHENTICATE` / `RESYNC` / `STOP`. |
 | **instance lease** | A serve instance's liveness record (heartbeat 30 s, expiry 2 min) used only to reclaim its queue and subscription after a crash. Not a lock, not a leader election. |
 | **orphan** | A queue / subscription whose instance lease has expired past the safety margin. |

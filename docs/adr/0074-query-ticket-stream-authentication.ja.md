@@ -42,8 +42,9 @@ runtime はそれが user か operator かを知らない）、**destination**�
   しない。
 - **この service 内での失効は即時である。** この service がアクセスを取り消すとき——REST では identity
   resolver が request ごとに強制している membership の soft-delete（[ADR-0021]）、または feature による
-  subject の destination アクセス剥奪——feature は `boundary/realtime` の失効 seam を呼ぶ。seam はその
-  subject がその destination に持つ全 ticket を無効化し、既存の fan-out（[ADR-0073]）で全 serve instance
+  subject の destination アクセス剥奪——feature は失効 seam（`usecase/realtime.AccessRevoker`。feature が既に使う ticket 発行の seam の隣）を呼ぶ。seam は
+  先にその subject がその destination に持つ全 ticket を無効化し、次に infrastructure が実装する
+  `boundary/realtime.RevocationNotifier` を通じ既存の fan-out（[ADR-0073]）で全 serve instance
   に通知する。各 instance は該当する接続を `STOP` control event で閉じる。connection registry はこのために
   subject で索引する。ticket も無効化されるので、`STOP` を無視するクライアントはそれで再接続できない。
 - **identity provider での失効は観測しない。** IdP で無効化された account の発行済み JWT は `exp` まで

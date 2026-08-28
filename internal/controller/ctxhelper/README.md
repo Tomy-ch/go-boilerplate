@@ -27,9 +27,9 @@ Hand-written (`authn.go`) — the `Authn` slot:
 Hand-written (`stream_grant.go`) — the `StreamGrant` slot, filled by the `StreamTicket` security scheme (ADR-0074 (query-ticket-stream-authentication)) with the verified ticket's bindings. A rejected ticket is recorded through `SetAuthnFailure`, so the same fail-closed stage denies it:
 
 - `WithStreamGrant(ctx) context.Context` — install an empty slot (call before authentication)
-- `SetStreamGrant(ctx, grant) bool` — write the verified `realtime.VerifiedTicketView`; `false` when no slot is present
-- `GetStreamGrant(ctx) (realtime.VerifiedTicketView, bool)` — read; `ok=false` when unset
-- `RequireStreamGrant(ctx) (realtime.VerifiedTicketView, error)` — read, returning `ErrStreamGrantMissing` when unset
+- `SetStreamGrant(ctx, grant) bool` — write the verified `realtime.StreamGrant`; `false` when no slot is present
+- `GetStreamGrant(ctx) (realtime.StreamGrant, bool)` — read; `ok=false` when unset
+- `RequireStreamGrant(ctx) (realtime.StreamGrant, error)` — read, returning `ErrStreamGrantMissing` when unset
 
 The slot carries failures as well as successes because a spec may declare authentication
 optional, and validation of such an operation succeeds even when a presented credential was

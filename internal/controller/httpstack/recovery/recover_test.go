@@ -111,7 +111,7 @@ func TestMiddleware(t *testing.T) {
 			require.NoError(t, err)
 
 			e := echo.New()
-			errorhandler.New(e, errorhandler.Policies{Detail: detailPolicy, Allow: allowPolicy}, obsLogger, lf, obsCfg)
+			errorhandler.New(e, errorhandler.NewPolicies(detailPolicy, allowPolicy, redaction.Redactor{}), obsLogger, lf, obsCfg)
 			e.Use(Middleware(obsLogger, lf, appCfg, redaction.Redactor{}))
 			e.GET("/panic", func(_ *echo.Context) error { panic("boom-panic") })
 

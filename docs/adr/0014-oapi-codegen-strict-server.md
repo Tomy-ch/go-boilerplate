@@ -24,7 +24,11 @@ this is repetitive code that every handler author must reproduce consistently.
 ## Decision
 
 Use **oapi-codegen with `--generate=echo-server,strict-server`**, scoped per OpenAPI tag,
-so each handler package owns only the interface for its own tag.
+so each handler package owns only the interface for its own tag. The one exception is an operation
+whose response is not a single value — the SSE stream (`v1/streams` tag, `internal/controller/stream/`):
+it is generated with `echo5-server` only, because a `text/event-stream` response is written as a
+sequence of flushed events with its own deadlines and an in-band close, which a `ResponseObject`
+cannot express.
 
 Each handler file carries two `go:generate` directives at the top:
 
@@ -89,10 +93,11 @@ generated file also produce frequent merge conflicts.
 ### Plain echo-server mode (without strict-server)
 
 Still scoped per tag, but each handler method receives a raw `*echo.Context` and must
-perform its own binding and serialisation. Rejected because it reproduces the same
+perform its own binding and serialisation. Rejected as the default because it reproduces the same
 binding code in every handler and leaves room for inconsistent error handling. Writing this
 binding and serialisation code in every handler also significantly inflates overall
-line count.
+line count. It is used only where strict mode cannot express the response at all — the SSE
+stream handler — and that package still performs no body binding of its own.
 
 ## Notes
 

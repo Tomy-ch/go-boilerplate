@@ -50,11 +50,11 @@ type stubCursorValidator struct {
 // stubStreamer は、検証を通った接続の要求をそのまま JSON で返す Streamer（本物は Phase 6）。
 type stubStreamer struct{}
 
-func (stubTicketVerifier) Verify(_ context.Context, value string, destination rt.StreamID) (ucrealtime.VerifiedTicketView, error) {
+func (stubTicketVerifier) Verify(_ context.Context, value string, destination rt.StreamID) (rt.StreamGrant, error) {
 	if value != streamTestTicket || destination != streamTestDestination {
-		return ucrealtime.VerifiedTicketView{}, ucrealtime.ErrTicketInvalid
+		return rt.StreamGrant{}, ucrealtime.ErrTicketInvalid
 	}
-	return ucrealtime.VerifiedTicketView{
+	return rt.StreamGrant{
 		Subject: "subject-1", Destination: streamTestDestination, Scope: "read", InitialCursor: streamTestInitialCursor,
 	}, nil
 }

@@ -27,9 +27,9 @@ ctxhelperは「contextの利用を制御する境界レイヤ」です。
 手書き（`stream_grant.go`）— `StreamGrant` スロット。`StreamTicket` security scheme（ADR-0074 (query-ticket-stream-authentication)）が検証済み ticket の束縛を書き込む。拒否された ticket は `SetAuthnFailure` で記録され、同じ fail-closed の段で拒否される:
 
 - `WithStreamGrant(ctx) context.Context` — 空のスロットを仕込む（認証前に呼ぶ）
-- `SetStreamGrant(ctx, grant) bool` — 検証済みの `realtime.VerifiedTicketView` を書き込む。スロットが無ければ `false`
-- `GetStreamGrant(ctx) (realtime.VerifiedTicketView, bool)` — 読む。未設定なら `ok=false`
-- `RequireStreamGrant(ctx) (realtime.VerifiedTicketView, error)` — 読む。未設定なら `ErrStreamGrantMissing` を返す
+- `SetStreamGrant(ctx, grant) bool` — 検証済みの `realtime.StreamGrant` を書き込む。スロットが無ければ `false`
+- `GetStreamGrant(ctx) (realtime.StreamGrant, bool)` — 読む。未設定なら `ok=false`
+- `RequireStreamGrant(ctx) (realtime.StreamGrant, error)` — 読む。未設定なら `ErrStreamGrantMissing` を返す
 
 スロットが成功だけでなく失敗も運ぶのは、spec が認証を任意と宣言することがあり、その operation の
 バリデーションは提示された資格情報が拒否されても成功してしまうためです。失敗がスロットに残ることで、

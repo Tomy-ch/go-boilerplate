@@ -20,6 +20,10 @@ nothing else may be one:
 - `worker/` — a message on a queue
 - `outbox/` — the relay that polls the outbox and publishes
 
+`stream/` is the HTTP entry point of one mechanism (the SSE transport of Realtime Delivery) rather
+than a fifth kind: it is still an HTTP request, kept beside `handler/` because it is feature-neutral,
+non-strict, and wired by the mechanism's own DI module (`docs/design/realtime-delivery.md` §3.1).
+
 The remaining directories exist to serve those four: `server/` builds the Echo instance,
 `httpstack/` the middleware stack, `error/response/` the error body, `conv/` the
 generated-type ↔ domain-type boundary, and `ctxhelper/` the Echo context accessors.
@@ -29,6 +33,7 @@ generated-type ↔ domain-type boundary, and `ctxhelper/` the Echo context acces
 |Directory|Description|Details|
 |---|---|---|
 |`handler/`|Handlers that receive HTTP requests and delegate to Usecase|[README](handler/README.md)|
+|`stream/`|The SSE endpoint of Realtime Delivery: pre-commit verification (ticket, cursor) and the `Streamer` seam|[README](stream/README.md)|
 |`job/`|Job controllers invoked from CLI|[README](job/README.md)|
 |`worker/`|Worker engine consuming a pull-ack message queue and dispatching to Usecase|[README](worker/README.md)|
 |`outbox/`|Relay engine that periodically polls the outbox and publishes pending messages|[README](outbox/README.md)|

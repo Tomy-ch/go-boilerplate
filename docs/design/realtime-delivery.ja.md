@@ -22,7 +22,7 @@ Realtime Delivery は、**feature が commit 済みの event を、それを待�
 | --- | --- | --- | --- |
 | **realtime adapter**（`usecase/<feature>/`） | usecase（feature 側） | commit 済みの feature の変更を `DeliveryEvent` に変換し、destination を選び、業務 tx の中で sequence allocator から stream-local sequence を得て、outbox 経由で emit する | transport、replay、connection の状態、sequence そのもの（機構の状態であり feature の aggregate の field には決してならない） |
 | **ticket 発行 usecase**（`usecase/<feature>/`） | usecase（feature 側） | subject × destination を認可してから Realtime Delivery に ticket を求める | ticket の形式や保存 |
-| **boundary/realtime** | usecase/boundary | 継ぎ目: `DeliveryEvent`、`SequenceAllocator`、`EventLogStore`、`StreamTicketStore`、`InstanceLeaseStore`、失効 seam | 実装、feature の語彙 |
+| **boundary/realtime** | usecase/boundary | 継ぎ目: `DeliveryEvent`、`SequenceAllocator`、`EventLogStore`、`StreamTicketStore`、`InstanceLeaseStore`、`RevocationNotifier` | 実装、feature の語彙 |
 | **usecase/realtime** | usecase | ticket の発行 / 検証、cursor の検証と失効、replay の読み出し、lease heartbeat、orphan cleanup の所有権 | HTTP transport、poll loop |
 | **realtime relay**（`controller/outbox` + realtime publisher） | controller / infrastructure | realtime channel の行を stream 順に claim し、EventLog へ append し、wakeup を publish する | 業務判断、[ADR-0058] を超える retry 方針 |
 | **Streamer**（`controller/stream/`） | controller | connection registry（subject で索引）、capacity gate、replay / catch-up のスケジューリング、heartbeat、backpressure、drain、control-event protocol | 認可、feature の語彙 |
@@ -107,7 +107,7 @@ stateDiagram-v2
     Closed --> [*]: capacity returned
 ```
 
-cursor の解決順: 有効な `Last-Event-ID` が勝つ。無ければ `after`。それも無ければ ticket が許す初期 cursor。cursor は ticket の destination 以外に対して決して有効ではない。
+cursor の解決順: 有効な `Last-Event-ID` が勝つ。無ければ `after`。それも無ければ ticket の初期 cursor。初期 cursor は開始位置であって認可の下限ではない — client は replay floor がまだ覆う範囲なら、それより前の位置からも再開できる。可視範囲を狭めたい feature は destination を分ける。cursor は ticket の destination 以外に対して決して有効ではない。
 
 拒否できるものはすべて response の commit **前**に拒否する。commit 後にクライアントへ戻る経路は in-band の control event と close だけである（§4.3）。
 
@@ -161,8 +161,8 @@ stateDiagram-v2
 
 | package | 内容 |
 | --- | --- |
-| `internal/usecase/boundary/realtime/` | `DeliveryEvent`（eventId / streamId / 10 進文字列の sequence / type / occurredAt / schemaVersion / payload ≤ 64 KiB）、`SequenceAllocator`（`Allocate(streamID)` — 次の sequence、行ロックは commit まで / `Current(streamID)` — stream の現在位置。History の cursor に使う）、`EventLogStore`（conditional append、cursor 以降の `ConsistentRead` 読み出し、降順 1 件の latest）、`StreamTicketStore`（hash 化 ticket、bind、無効化）、`InstanceLeaseStore`（heartbeat、expiry、conditional な cleanup 所有権）、失効 seam |
-| `internal/usecase/realtime/` | ticket の発行 / 検証、cursor 検証と replay floor の導出、replay 読み出し、lease heartbeat と orphan cleanup の所有権 |
+| `internal/usecase/boundary/realtime/` | `DeliveryEvent`（eventId / streamId / 10 進文字列の sequence / type / occurredAt / schemaVersion / payload ≤ 64 KiB）、`SequenceAllocator`（`Allocate(streamID)` — 次の sequence、行ロックは commit まで / `Current(streamID)` — stream の現在位置。History の cursor に使う）、`EventLogStore`（conditional append、cursor 以降の `ConsistentRead` 読み出し、降順 1 件の latest）、`StreamTicketStore`（hash 化 ticket、bind、無効化）、`InstanceLeaseStore`（heartbeat、expiry、conditional な cleanup 所有権）、`RevocationNotifier`（subject が destination を失ったことを全 instance へ伝える） |
+| `internal/usecase/realtime/` | ticket の発行 / 検証、失効 seam `AccessRevoker`（ticket を無効化してから通知）、cursor の検証と replay floor の導出、replay の読み取り、lease の heartbeat と orphan cleanup の引き受け |
 | `internal/controller/stream/` | subject で索引する connection registry、capacity gate、初回 replay の admission、replay / catch-up の semaphore と jitter 付き scheduler、heartbeat、write deadline、buffer と満杯時 close、drain、control-event writer、非 strict の SSE handler |
 | `internal/infrastructure/rdb/system_cqrs/realtime/` | PostgreSQL の `system_cqrs` table（`stream_id`、`last_sequence`）上の `SequenceAllocator`——outbox / idempotency の table と同じ区分（[ADR-0033 (system-cqrs-dml-category)](../adr/0033-system-cqrs-dml-category.ja.md)） |
 | `internal/infrastructure/eventlog/dynamodb/`、`internal/infrastructure/streamticket/dynamodb/`、`internal/infrastructure/instancelease/dynamodb/` | DynamoDB の store。idempotent な one-shot table initializer（application 起動時には作らない） |
@@ -173,7 +173,8 @@ stateDiagram-v2
 
 ```mermaid
 flowchart LR
-  feature["usecase/&lt;feature&gt;<br/>adapter · ticket issue"] --> boundary["usecase/boundary/realtime"]
+  feature["usecase/&lt;feature&gt;<br/>adapter · ticket issue · revoke"] --> boundary["usecase/boundary/realtime"]
+  feature --> ucrt
   ucrt["usecase/realtime"] --> boundary
   stream["controller/stream"] --> ucrt
   infra["infrastructure/eventlog · streamticket · instancelease · realtime"] --> boundary
@@ -293,7 +294,8 @@ stateDiagram-v2
 | **blocked stream** | 先頭行が dead の stream。replay されるまで停止。`realtime_blocked_streams` で数える。 |
 | **ticket** | 接続時に提示する opaque な 256-bit credential。hash で保存し、subject / destination / scope / expiry に bind し、5 分の TTL の間は再利用可。 |
 | **connection maximum lifetime** | 確立済み接続の 1 時間の上限。到達で `REAUTHENTICATE` を送る。ticket TTL とは独立。 |
-| **revocation seam** | この service 内で subject が destination へのアクセスを失ったときに feature が呼ぶ boundary の呼び出し。ticket を無効化し fan-out 経由で接続を閉じる。 |
+| **grant** | 検証を通った ticket が接続に与える束縛（`boundary/realtime.StreamGrant`）: subject、destination、scope、initial cursor。ticket は credential、grant はそれを検証して得られるもので、request の context に載せて stream handler へ渡す。 |
+| **revocation seam** | この service 内で subject が destination へのアクセスを失ったときに feature が呼ぶ呼び出し（`usecase/realtime.AccessRevoker`）。先に ticket を無効化し、次に fan-out（`boundary/realtime.RevocationNotifier`）経由で接続を閉じる。 |
 | **control event** | `event: control`、`id` なし。action は `RECONNECT` / `RETRY_LATER` / `REAUTHENTICATE` / `RESYNC` / `STOP`。 |
 | **instance lease** | serve instance の生存記録（heartbeat 30 s、expiry 2 分）。crash 後に queue と subscription を回収するためだけに使う。lock でも leader election でもない。 |
 | **orphan** | instance lease が safety margin を超えて失効した queue / subscription。 |

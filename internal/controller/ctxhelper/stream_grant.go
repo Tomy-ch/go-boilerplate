@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"go-boilerplate/internal/apperror"
-	ucrealtime "go-boilerplate/internal/usecase/realtime"
+	rt "go-boilerplate/internal/usecase/boundary/realtime"
 	"go-boilerplate/pkg/xerrors"
 )
 
@@ -13,10 +13,10 @@ var ErrStreamGrantMissing = xerrors.Wrap(apperror.ErrUnauthenticated, "requires 
 
 type streamGrantSlotKey struct{}
 
-// streamGrantSlot は、認証前に仕込んで後段ハンドラと共有する、検証済み stream ticket の可変スロット。
+// streamGrantSlot は、認証前に仕込んで後段ハンドラと共有する、検証済み ticket の束縛（StreamGrant）の可変スロット。
 // 失敗は Authn スロットが運ぶ（stream ticket の不備も認証の失敗であり、拒否へ結びつける経路は同じ）。
 type streamGrantSlot struct {
-	grant ucrealtime.VerifiedTicketView
+	grant rt.StreamGrant
 	set   bool
 }
 
@@ -26,7 +26,7 @@ func WithStreamGrant(ctx context.Context) context.Context {
 }
 
 // SetStreamGrant は、ctx のスロットへ検証済み ticket を書き込む。スロットが無ければ false。
-func SetStreamGrant(ctx context.Context, grant ucrealtime.VerifiedTicketView) bool {
+func SetStreamGrant(ctx context.Context, grant rt.StreamGrant) bool {
 	slot, ok := ctx.Value(streamGrantSlotKey{}).(*streamGrantSlot)
 	if !ok {
 		return false
@@ -36,20 +36,20 @@ func SetStreamGrant(ctx context.Context, grant ucrealtime.VerifiedTicketView) bo
 }
 
 // GetStreamGrant は、ctx のスロットから検証済み ticket を読む。未設定なら ok=false。
-func GetStreamGrant(ctx context.Context) (ucrealtime.VerifiedTicketView, bool) {
+func GetStreamGrant(ctx context.Context) (rt.StreamGrant, bool) {
 	slot, ok := ctx.Value(streamGrantSlotKey{}).(*streamGrantSlot)
 	if !ok || !slot.set {
-		return ucrealtime.VerifiedTicketView{}, false
+		return rt.StreamGrant{}, false
 	}
 	return slot.grant, true
 }
 
 // RequireStreamGrant は、ctx のスロットから検証済み ticket を読みます。未設定の場合は ErrStreamGrantMissing を返します。
 // stream ticket による認証を前提とするハンドラは、GetStreamGrant を直接呼ばずこちらを使います。
-func RequireStreamGrant(ctx context.Context) (ucrealtime.VerifiedTicketView, error) {
+func RequireStreamGrant(ctx context.Context) (rt.StreamGrant, error) {
 	grant, ok := GetStreamGrant(ctx)
 	if !ok {
-		return ucrealtime.VerifiedTicketView{}, ErrStreamGrantMissing
+		return rt.StreamGrant{}, ErrStreamGrantMissing
 	}
 	return grant, nil
 }

@@ -43,7 +43,7 @@ func provideErrorHandlerServeConfig(
 	red redaction.Redactor,
 	log logging.Logger, lf logging.LogFieldBuilder, obsCfg *config.ObservabilityConfig,
 ) extension.ServeCfgOut {
-	policies := errorhandler.Policies{Detail: detailPolicy, Allow: allowPolicy, Redact: red}
+	policies := errorhandler.NewPolicies(detailPolicy, allowPolicy, red)
 
 	return extension.ServeCfgOut{
 		SrvCfg: extension.SrvCfg{

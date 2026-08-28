@@ -82,10 +82,10 @@ func (m *MockTicketVerifier) EXPECT() *MockTicketVerifierMockRecorder {
 }
 
 // Verify mocks base method.
-func (m *MockTicketVerifier) Verify(ctx context.Context, value string, destination realtime.StreamID) (realtime0.VerifiedTicketView, error) {
+func (m *MockTicketVerifier) Verify(ctx context.Context, value string, destination realtime.StreamID) (realtime.StreamGrant, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Verify", ctx, value, destination)
-	ret0, _ := ret[0].(realtime0.VerifiedTicketView)
+	ret0, _ := ret[0].(realtime.StreamGrant)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

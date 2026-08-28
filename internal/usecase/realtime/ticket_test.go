@@ -126,7 +126,7 @@ func Test_ticketService_Verify(t *testing.T) {
 
 			got, err := s.Verify(t.Context(), ticketValue, "stream-a")
 			require.NoError(t, err)
-			assert.Equal(t, VerifiedTicketView{Subject: "alice", Destination: "stream-a", Scope: "read", InitialCursor: 7}, got)
+			assert.Equal(t, rt.StreamGrant{Subject: "alice", Destination: "stream-a", Scope: "read", InitialCursor: 7}, got)
 		})
 	})
 
