@@ -9,15 +9,19 @@ This command implements the delivery side of the transactional outbox pattern â€
 ## Command
 
 ```text
-outbox-relay
+outbox-relay --channel=<channel>
 outbox-relay replay [flags]
 ```
 
 ## Flags
 
-`outbox-relay` itself takes no flags.
+`outbox-relay`:
 
-`outbox-relay replay`:
+|Flag|Default|Description|
+|---|---|---|
+|`--channel`|*(required)*|The delivery channel this process serves (`http` / `realtime`). One process drains exactly one channel, and there is no default: a relay started for the wrong channel leaves the intended one with no consumer, and an unattended channel records no lag either, so the stall would be invisible rather than merely slow|
+
+`outbox-relay replay` (channel-independent â€” a dead row keeps its own channel):
 
 |Flag|Default|Description|
 |---|---|---|
@@ -26,8 +30,8 @@ outbox-relay replay [flags]
 ## Usage
 
 ```bash
-# Start the relay (runs until SIGINT / SIGTERM)
-./server outbox-relay
+# Start the relay for one delivery channel (runs until SIGINT / SIGTERM)
+./server outbox-relay --channel=http
 
 # Replay every dead outbox row back to pending
 ./server outbox-relay replay

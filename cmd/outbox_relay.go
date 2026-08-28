@@ -24,7 +24,11 @@ func newOutboxRelayCommand() *cobra.Command {
 			"SIGTERM まで常駐します。--channel で担当する配送チャネルを 1 つ選び、そのチャネルの行だけを配送します。",
 		RunE: func(_ *cobra.Command, _ []string) error { return outboxRelayRun(channel) },
 	}
-	cmd.Flags().StringVar(&channel, "channel", outboxbndry.ChannelHTTP.String(), "担当する配送チャネル（http / realtime）")
+	// 既定値を持たせない。指定を忘れた relay が別チャネルのレーンとして起動すると、担当者が
+	// 居ないチャネルの行は claim されないまま滞留し、その滞留を記録する relay も存在しないため
+	// lag メトリクスにすら現れない（欠測になる）。
+	cmd.Flags().StringVar(&channel, "channel", "", "担当する配送チャネル（http / realtime）")
+	_ = cmd.MarkFlagRequired("channel")
 	cmd.AddCommand(newOutboxReplayCommand())
 	return cmd
 }

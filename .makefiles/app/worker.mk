@@ -9,6 +9,7 @@ worker:
 	@$(COMPOSE_APP) run --rm api_server go run ./cmd/ worker $(NAME) $(ARGS)
 
 outbox-relay:
+	@test -n "$(ARGS)" || { echo "❌ ARGS は必須です。例: make outbox-relay ARGS=\"--channel=http\""; exit 1; }
 	@echo "🏃 outbox relay を起動します: $(ARGS)（停止は Ctrl-C）"
 	@$(MAKE) infra-up
 	@$(COMPOSE_APP) run --rm api_server go run ./cmd/ outbox-relay $(ARGS)
