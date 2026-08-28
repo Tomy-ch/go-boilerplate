@@ -1,6 +1,6 @@
 ---
 status: accepted
-date: 2026-07-10
+date: 2026-08-28
 deciders: [maintainers]
 tags: [exclusion, outbox, messaging, reliability, setup-review]
 ---
@@ -29,9 +29,10 @@ mark する（[ADR-0055]、[ADR-0056]）。この種の設計はすべて不可�
   `lock_timeout` のみを設定する）: 暴走トランザクションをバックストップできるほど短い一律値は、
   relay 自身の長命な claim→publish→mark tx を kill してしまう。pool 全体への有効化が安全に
   なるのは、設計図の第 2 層が publish をトランザクション外へ移した後である。
-- **per-message backoff の不在**: max attempts はハードコードされ（`DefaultMaxAttempts = 10`）、
-  失敗行は次 poll（既定 1s）で再 claim される。数十秒の下流停止だけで pending 全量が `dead` へ
-  落ちる。
+- **per-message backoff の不在** *（[ADR-0058] が閉じた）*: 出荷当初は max attempts がハード
+  コードされ（`DefaultMaxAttempts = 10`）、失敗行は次 poll（既定 1s）で再 claim されていた。数十秒
+  の下流停止だけで pending 全量が `dead` へ落ちた。この窓を閉じるために下記設計図の第 3 項だけを
+  単独で採択した — そこに注記がある。
 - **tx リトライ再送**: serialization failure / deadlock リトライ（[ADR-0035]）は claim →
   publish → mark の関数全体を再実行し、配送済みメッセージを同一 poll 内で再送する。relay は
   ドレイン本体であり退避先の outbox を持たないため、「外部副作用は outbox 行に置く」という
@@ -81,6 +82,12 @@ dedup 義務を統合要件として引き継ぐ）。この一点は可用性�
    含まれなくなるため、relay は ADR-0035 の一般則を満たし、公認例外そのものが消滅する。
 3. **per-message 指数 backoff**（`next_attempt_at`）+ max attempts の設定化 — 下流停止時の
    dead 化は数十秒から分〜時間オーダーへ。
+   **採択済み — 他項に先んじて、この項だけ。** [ADR-0058] が full jitter 付き指数 backoff の
+   `next_attempt_at` を導入し、attempt 回数を error 分類へ置き換えたため、dead 化は設定可能な回数
+   ではなく失敗の種類で決まる。引き金は運用の事実ではなく構造上の必要である: realtime 配送 channel
+   （[ADR-0072]）は未 publish の最初の sequence で stream を止めるため、一時的な停止でその行を dead
+   にし得る規則は全 active stream を止めてしまう。第 1・2・4〜7 項は本 ADR の記述どおり延期のまま
+   であり、第 3 項の採択は claim トランザクションもトポロジも変えない。
 4. **singleton トポロジ**: セッションスコープの Postgres advisory lock で、インスタンス間の併走
    publish をトポロジレベルで閉じる。保持セッションの死でロックは自動解放される。
 5. **自己 deadline fence**: 各バッチの publish を `claimed_until − margin` で打ち切る。基準時刻は
@@ -136,9 +143,9 @@ dedup 義務を統合要件として引き継ぐ）。この一点は可用性�
 
 ### ネガティブな帰結
 
-- 出荷される relay には列挙した窓が残る: 多インスタンス運用では正常運転中にも重複が起こりえ、
-  短い下流停止で backlog が dead 化する。出荷既定は低ボリュームまたは単一インスタンスの relay に
-  適する。
+- 出荷される relay には backoff 以外の列挙した窓が残る: 多インスタンス運用では正常運転中にも重複が
+  起こりうる（短い下流停止で backlog が dead 化することはもう無い — [ADR-0058] がその窓を閉じた）。
+  出荷既定は低ボリュームまたは単一インスタンスの relay に適する。
 - ハードニングは実装作業（migration、claim/mark 書き換え、lock、fence、テスト）そのものであり、
   実施後は出荷既定との乖離が広がる — 上記の設計図と拡張継ぎ目により乖離は列挙可能な面に
   限定されるが、消えはしない。
@@ -174,7 +181,11 @@ end-to-end で重複を閉じられるが、出荷済み契約を超えた受信
 - 関連 ADR: [ADR-0035]（tx リトライ冪等性契約。出荷状態の relay はその唯一の公認例外であり、
   設計図の第 2 層がこの例外を除去する）、[ADR-0055]（at-least-once poll）、[ADR-0056]
   （SKIP LOCKED claim）、[ADR-0057]（message-id / Idempotency-Key 伝搬）、[ADR-0058]
-  （max attempts 到達での dead 化）。
+  （恒久エラーでの dead 化 — 設計図の第 3 項を採択した決定）。
+- Realtime Delivery が instance ごとの queue を回収するために持つ instance lease（[ADR-0071]、
+  [ADR-0073]）は、本 ADR が待つ運用の事実では**ない**。別の resource を別の障害から守るものであり、
+  その import allowlist が relay の lease として再利用されることを防ぐ。設計図の第 1・4〜6 項の
+  引き金は、上述のとおり重複の軸が効くことだけである。
 - ADR 全体の一覧と順序: [ADR ログ](README.ja.md)。
 
 [ADR-0035]: 0035-transaction-retry-idempotent-callers.ja.md
@@ -182,5 +193,8 @@ end-to-end で重複を閉じられるが、出荷済み契約を超えた受信
 [ADR-0056]: 0056-skip-locked-outbox-relay.ja.md
 [ADR-0057]: 0057-message-id-idempotency-propagation.ja.md
 [ADR-0058]: 0058-outbox-dead-on-permanent-error.ja.md
+[ADR-0071]: 0071-realtime-delivery-driving-mechanism.ja.md
+[ADR-0072]: 0072-postgres-state-dynamodb-eventlog.ja.md
+[ADR-0073]: 0073-sns-sqs-instance-fanout.ja.md
 [ADR-0108]: 0108-no-in-app-rate-limiter.ja.md
 [ADR-0109]: 0109-scheduled-job-concurrency-delegated.ja.md

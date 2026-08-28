@@ -1,6 +1,6 @@
 ---
 status: accepted
-date: 2026-07-10
+date: 2026-08-28
 deciders: [maintainers]
 tags: [exclusion, outbox, messaging, reliability, setup-review]
 ---
@@ -30,9 +30,11 @@ The shipped single-transaction relay carries these windows:
   a blanket value short enough to backstop runaway transactions would kill the relay's own
   long-lived claim→publish→mark tx. It becomes safe to enable pool-wide once blueprint layer 2
   moves publish outside the transaction.
-- **No per-message backoff**: max attempts is hard-coded (`DefaultMaxAttempts = 10`) and failed
-  rows are re-claimed on the next poll (default 1s), so a downstream outage of only tens of
-  seconds drives the whole pending backlog to `dead`.
+- **No per-message backoff** *(closed by [ADR-0058])*: as first shipped, max attempts was
+  hard-coded (`DefaultMaxAttempts = 10`) and failed rows were re-claimed on the next poll
+  (default 1s), so a downstream outage of only tens of seconds drove the whole pending backlog to
+  `dead`. Blueprint item 3 below was adopted on its own to close this window — see the note
+  there.
 - **Tx-retry republish**: a serialization-failure/deadlock retry ([ADR-0035]) re-runs the whole
   claim → publish → mark function, re-sending already-delivered messages within one poll. The
   relay is the sole sanctioned exception to ADR-0035's rule that external side effects must live
@@ -86,6 +88,14 @@ implementation cost plus an availability window.
    exception ceases to exist.
 3. **Per-message exponential backoff** via `next_attempt_at`, with max attempts made configurable —
    a downstream outage then costs minutes-to-hours before dead-lettering instead of seconds.
+   **Adopted — on its own, ahead of the rest.** [ADR-0058] introduces `next_attempt_at` with
+   full-jitter exponential backoff and replaces the attempt count with error classification, so
+   dead-lettering is decided by kind of failure rather than by a configurable count. The trigger
+   was not operational evidence but a structural need: the realtime delivery channel
+   ([ADR-0072]) halts a stream at its first unpublished sequence, and a rule that could dead-letter
+   that row on a transient outage would halt every active stream. Items 1, 2, and 4–7 remain
+   deferred exactly as stated in this ADR; adopting item 3 changes neither the claim transaction
+   nor the topology.
 4. **Singleton topology** via a session-scoped Postgres advisory lock — closes inter-instance
    concurrent publish at the topology level; the lock auto-releases when the holder's session dies.
 5. **Self-deadline fence**: bound each batch's publishing by `claimed_until − margin`, anchored to
@@ -146,9 +156,10 @@ Deferring a decision is only safe while taking it later stays cheap. Four things
 
 ### Negative Consequences
 
-- The shipped relay retains the enumerated windows: under multi-instance operation duplicates
-  can occur in normal operation, and a short downstream outage dead-letters the backlog. The
-  shipped defaults therefore suit low-volume or single-instance relays.
+- The shipped relay retains the enumerated windows other than the backoff one: under
+  multi-instance operation duplicates can occur in normal operation. (A short downstream outage
+  no longer dead-letters the backlog — [ADR-0058] closed that window.) The shipped defaults
+  therefore suit low-volume or single-instance relays.
 - Hardening is real implementation work (migration, claim/mark rewrite, lock, fence, tests);
   divergence from the shipped default grows once it is done — mitigated, not eliminated, by
   the blueprint and the extension seams above, which bound the divergence to an enumerated surface.
@@ -188,7 +199,12 @@ mechanism.
 - Related ADRs: [ADR-0035] (tx-retry idempotency contract; the shipped relay is its sole
   sanctioned exception, which blueprint layer 2 removes), [ADR-0055] (at-least-once poll),
   [ADR-0056] (SKIP LOCKED claim), [ADR-0057] (message-id / Idempotency-Key propagation),
-  [ADR-0058] (dead-lettering after max attempts).
+  [ADR-0058] (dead on a permanent error — the decision that adopted blueprint item 3).
+- The instance lease that Realtime Delivery keeps for reclaiming per-instance queues
+  ([ADR-0071], [ADR-0073]) is **not** the operational evidence this ADR waits for: it guards a
+  different resource against a different failure, and its import allowlist keeps it from being
+  reused as a relay lease. Blueprint items 1 and 4–6 are triggered only by the duplicate axis
+  binding, as stated above.
 - Full ADR set and ordering: [the ADR log](README.md).
 
 [ADR-0035]: 0035-transaction-retry-idempotent-callers.md
@@ -196,5 +212,8 @@ mechanism.
 [ADR-0056]: 0056-skip-locked-outbox-relay.md
 [ADR-0057]: 0057-message-id-idempotency-propagation.md
 [ADR-0058]: 0058-outbox-dead-on-permanent-error.md
+[ADR-0071]: 0071-realtime-delivery-driving-mechanism.md
+[ADR-0072]: 0072-postgres-state-dynamodb-eventlog.md
+[ADR-0073]: 0073-sns-sqs-instance-fanout.md
 [ADR-0108]: 0108-no-in-app-rate-limiter.md
 [ADR-0109]: 0109-scheduled-job-concurrency-delegated.md
