@@ -17,7 +17,7 @@ func validEvent() DeliveryEvent {
 		StreamID:      "stream-1",
 		Sequence:      7,
 		Type:          "inquiry.message.appended.v1",
-		OccurredAt:    time.Date(2026, 8, 29, 1, 2, 3, 0, time.UTC),
+		OccurredAt:    time.Date(2026, time.August, 29, 1, 2, 3, 0, time.UTC),
 		SchemaVersion: 1,
 		Payload:       json.RawMessage(`{"body":"hi"}`),
 	}
@@ -78,7 +78,7 @@ func TestDeliveryEvent_MarshalJSON(t *testing.T) {
 			t.Parallel()
 
 			e := validEvent()
-			e.OccurredAt = time.Date(2026, 8, 29, 10, 2, 3, 0, time.FixedZone("JST", 9*60*60))
+			e.OccurredAt = time.Date(2026, time.August, 29, 10, 2, 3, 0, time.FixedZone("JST", 9*60*60))
 			b, err := e.MarshalJSON()
 			require.NoError(t, err)
 			assert.Contains(t, string(b), `"occurredAt":"2026-08-29T01:02:03Z"`)

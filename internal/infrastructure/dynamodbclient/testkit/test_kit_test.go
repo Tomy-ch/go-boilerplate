@@ -1,7 +1,7 @@
 package testkit
 
 import (
-	"regexp"
+	"context"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -25,7 +25,7 @@ func TestTableName(t *testing.T) {
 	a := TableName(t, "event_log")
 	b := TableName(t, "event_log")
 
-	assert.Regexp(t, regexp.MustCompile(`^test_event_log_[0-9a-f]{12}$`), a)
+	assert.Regexp(t, `^test_event_log_[0-9a-f]{12}$`, a)
 	assert.NotEqual(t, a, b, "呼び出しごとに異なる")
 }
 
@@ -35,17 +35,22 @@ func TestDeleteOnCleanup(t *testing.T) {
 	c := NewTestClient(t)
 	table := TableName(t, "cleanup")
 	_, err := c.CreateTable(t.Context(), &dynamodb.CreateTableInput{
-		TableName:            aws.String(table),
-		AttributeDefinitions: []dynamodbtypes.AttributeDefinition{{AttributeName: aws.String("pk"), AttributeType: dynamodbtypes.ScalarAttributeTypeS}},
-		KeySchema:            []dynamodbtypes.KeySchemaElement{{AttributeName: aws.String("pk"), KeyType: dynamodbtypes.KeyTypeHash}},
-		BillingMode:          dynamodbtypes.BillingModePayPerRequest,
+		TableName: aws.String(table),
+		AttributeDefinitions: []dynamodbtypes.AttributeDefinition{
+			{AttributeName: aws.String("pk"), AttributeType: dynamodbtypes.ScalarAttributeTypeS},
+		},
+		KeySchema:   []dynamodbtypes.KeySchemaElement{{AttributeName: aws.String("pk"), KeyType: dynamodbtypes.KeyTypeHash}},
+		BillingMode: dynamodbtypes.BillingModePayPerRequest,
 	})
 	require.NoError(t, err)
 
-	t.Run("後片付けを登録すると terminal で table が消える", func(t *testing.T) {
-		DeleteOnCleanup(t, c, table)
-	})
+	// cleanup は LIFO で走るので、後から登録する DeleteOnCleanup の削除が先に済んでからここで確かめる。
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), deleteTimeout)
+		defer cancel()
 
-	_, err = c.DescribeTable(t.Context(), &dynamodb.DescribeTableInput{TableName: aws.String(table)})
-	require.Error(t, err, "subtest の cleanup 後には table が無い")
+		_, err := c.DescribeTable(ctx, &dynamodb.DescribeTableInput{TableName: aws.String(table)})
+		assert.Error(t, err, "DeleteOnCleanup の後には table が無い")
+	})
+	DeleteOnCleanup(t, c, table)
 }
