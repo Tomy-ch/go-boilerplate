@@ -167,16 +167,19 @@ Persistence boundary for the transactional outbox table. The emit usecase and th
 |Type / Function|Description|
 |---|---|
 |`Store`|Outbox table persistence boundary interface|
+|`Channel`|The delivery lane a row belongs to (`ChannelHTTP` / `ChannelRealtime`); one relay process drains exactly one|
+|`ParseChannel(s)`|Convert a string to a `Channel`, rejecting anything unknown (`ErrUnknownChannel`)|
 |`Insert(ctx, p)`|INSERT one outbox row within the business tx, returning the assigned `message_id`|
-|`ClaimPending(ctx, limit)`|Claim up to `limit` pending rows (`FOR UPDATE SKIP LOCKED`)|
+|`ClaimPending(ctx, channel, limit)`|Claim up to `limit` of the channel's pending rows whose retry time has come (`FOR UPDATE SKIP LOCKED`), skipping any row an earlier unpublished sequence on its ordering key still blocks|
 |`MarkPublished(ctx, id)`|Transition a published row to `published` (no-op unless still pending)|
-|`MarkFailed(ctx, id, lastErr)`|Increment `attempts`, record `last_error`, return the new attempt count|
+|`MarkFailed(ctx, id, lastErr, nextAttemptAt)`|Record `last_error` and push the row's next claimable time out; the row stays `pending`|
 |`MarkDead(ctx, id)`|Transition a row to `dead` (no-op unless still pending)|
 |`ReplayDead(ctx, messageID)`|Return `dead` rows to `pending` (all dead rows when `messageID` is nil), returning the count|
 |`DeletePublished(ctx, cutoff, limit)`|Delete published rows older than `cutoff` up to `limit` (GC), returning the count|
-|`OldestPendingCreatedAt(ctx)`|Return the oldest pending row's `created_at` for the outbox-lag SLI (`ok=false` when none)|
+|`OldestPendingCreatedAt(ctx, channel)`|Return the channel's oldest pending row's `created_at` for the outbox-lag SLI (`ok=false` when none)|
+|`CountBlockedStreams(ctx, channel)`|Count the streams whose head row is `dead`, so nothing behind them can be claimed|
 
-Input / output value objects: `EmitParams` (INSERT input) and `PendingMessage` (claimed unpublished row).
+Input / output value objects: `EmitParams` (INSERT input, carrying the channel and the optional ordering key / sequence) and `PendingMessage` (claimed unpublished row).
 
 ### publisher
 

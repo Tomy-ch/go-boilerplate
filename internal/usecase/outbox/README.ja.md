@@ -23,8 +23,8 @@ pending へ戻す）を提供します。永続化はすべて `Store` 境界
 stateDiagram-v2
     [*] --> pending: Emit (業務 tx 内)
     pending --> published: relay ClaimPending (FOR UPDATE SKIP LOCKED) + publish 成功
-    pending --> pending: publish 失敗 (attempts++), 次 poll で再送
-    pending --> dead: publish 失敗, attempts ≥ maxAttempts
+    pending --> pending: 一時失敗, next_attempt_at 以降の poll で再送
+    pending --> dead: 恒久失敗（エラー分類。ADR-0058）
     published --> [*]: SweepPublished (GC) でエントリ削除
     dead --> pending: ReplayDead
 ```
@@ -48,7 +48,10 @@ stateDiagram-v2
   relay → consumer が同一 trace に繋がります。
 - `EmitInput` のフィールド: `AggregateType`・`AggregateID`（観測用）、
   `EventType`（種別 + version）、`Payload`（呼び出し側が marshal 済みのイベント
-  本文 JSON）、`Headers`（外部エンドポイントへ伝搬）。`Headers` に
+  本文 JSON）、`Headers`（外部エンドポイントへ伝搬）、`Channel`（配送レーン。既定値は
+  無く、既知でない値は行を書く前に拒否される）、および任意の `OrderingKey` /
+  `OrderingSequence` の対（エントリをストリームに載せる）。この対は全か無かで、
+  両方を 1 以上の位置とともに指定するか、どちらも指定しないかのいずれかです。`Headers` に
   `Authorization` / `Cookie` 等の機微ヘッダを入れてはいけません。そのまま外部
   エンドポイントへ送出されます。
 - **`Payload` の構築場所 — usecase 本体には書かない。** marshal は呼び出し側の
@@ -60,23 +63,32 @@ stateDiagram-v2
 
 ### relay — `RelayUsecase`
 
-`NewRelay(txm, store, publisher, metrics, clock, logger, tracerFactory) RelayUsecase`
+`NewRelay(txm, store, publisher, metrics, clock, logger, tracerFactory, channel) RelayUsecase`
 
-- `RelayBatch(ctx, batchSize) (RelayResult, error)` は最大 `batchSize` 件の
-  pending のエントリを claim して publish します。すべて **1 トランザクション** 内で
+- relay インスタンスは構築時に固定された **1 つの配送チャネル**を担当します。claim も
+  失敗時の進行もその中で閉じるため、下流が停止したチャネルが別のチャネルのエントリを
+  止めることはありません。
+- `RelayBatch(ctx, batchSize) (RelayResult, error)` は当該チャネルの pending のエントリを
+  最大 `batchSize` 件 claim して publish します。すべて **1 トランザクション** 内で
   行うため、複数の relay インスタンスが同一行を二重 publish しません。
   `batchSize <= 0` は `DefaultBatchSize`（100）にフォールバックします。
   `RelayResult` は `Claimed` と `Published` を報告します。
-  - **publish 失敗はトランザクションを巻き戻しません**。エントリは failed
-    （`attempts++`）としてマークされ、次 poll の再送に委ねられます。`attempts`
-    が `DefaultMaxAttempts`（10）に達するとエントリは `dead` にマークされ、
-    `Metrics.IncDead` が計上され、warning がログ出力されます。
+  - **publish 失敗はトランザクションを巻き戻しません**。次に何が起きるかは失敗の分類で
+    決まり、試行回数では決まりません（[ADR-0058](../../../docs/adr/0058-outbox-dead-on-permanent-error.md)）:
+    恒久失敗（`apperror.ErrPermanent`）は理由を記録してエントリを `dead` にマークし、
+    `Metrics.IncDead` を計上して warning をログ出力します。それ以外は — 分類を一切
+    持たないエラーも含めて — エントリを `pending` のまま残し、次に claim してよい時刻を
+    上限 60 秒の指数バックオフ + full jitter だけ先へ進めます。
   - **DB アクセス失敗**（claim / mark）のみ、トランザクションを巻き戻すエラー
     として返します。
-- `RecordLag(ctx) error` は最古 pending エントリの経過時間を outbox lag SLI として
-  `Metrics.SetLagSeconds` に記録します。pending のエントリが無ければ `0` を記録します。
-- `Metrics` は outbox 固有の o11y シンクです: `SetLagSeconds(ctx, seconds)` と
-  `IncDead(ctx)`。
+- `RecordLag(ctx) error` は当該チャネルの最古 pending エントリの経過時間を outbox lag SLI
+  として `Metrics.SetLagSeconds` に記録します。pending のエントリが無ければ `0` を記録
+  します。バックオフ待ちのエントリも未配送であることに変わりはないため除外しません。
+- `RecordBlockedStreams(ctx) error` は、`dead` の先頭エントリの後ろで止まっている
+  ストリーム数を `Metrics.SetBlockedStreams` に記録します。
+- `Metrics` は outbox 固有の o11y シンクで、いずれのメソッドもチャネルを伴います:
+  `SetLagSeconds(ctx, channel, seconds)`・`IncDead(ctx, channel)`・
+  `SetBlockedStreams(ctx, channel, count)`。
 
 ### GC — `GCUsecase`
 

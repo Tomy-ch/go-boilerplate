@@ -16,6 +16,12 @@ type Message struct {
 }
 ```
 
+実装は返すエラーを `apperror.ErrPermanent`（再試行しても結果が変わらない）または
+`apperror.ErrRetryable`（変わりうる）で分類してよい。relay は前者でエントリを dead 化し、
+後者では再試行を続ける。どちらの分類も持たないエラーは一時失敗として扱われるため、判断が
+つかない publisher がメッセージを失わせることはない
+（[ADR-0058](../../../../docs/adr/0058-outbox-dead-on-permanent-error.md)）。
+
 ## なぜ抽象化するのか
 
 - relay ロジックを、実メッセージを送信せずにテスト可能にする

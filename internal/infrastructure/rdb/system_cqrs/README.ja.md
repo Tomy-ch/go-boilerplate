@@ -81,9 +81,22 @@ func New(provider driver.DatabaseDriver, tf observability.TracerFactory) idempot
 func New(provider driver.DatabaseDriver, tf observability.TracerFactory) outboxbndry.Store
 ```
 
-主なメソッド：`Insert` / `ClaimPending`（`FOR UPDATE SKIP LOCKED`）/ `MarkPublished` / `MarkFailed` / `MarkDead` / `ReplayDead` / `DeletePublished`（GC）/ `OldestPendingCreatedAt`（outbox-lag SLI）。
+主なメソッド：`Insert` / `ClaimPending`（配送チャネル単位。`FOR UPDATE SKIP LOCKED` に加えて再試行時刻と head-of-line の述語を持つ）/ `MarkPublished` / `MarkFailed`（理由と次に claim してよい時刻を記録）/ `MarkDead` / `ReplayDead` / `DeletePublished`（GC）/ `OldestPendingCreatedAt`（outbox-lag SLI、チャネル単位）/ `CountBlockedStreams`（先頭が dead で止まっているストリーム数）。
 
 境界 interface の全詳細は [`internal/usecase/boundary/outbox/README.ja.md`](../../../usecase/boundary/outbox/README.ja.md) を参照。
+
+### realtime
+
+ストリームの連番を採番する。`internal/usecase/boundary/realtime/` の `SequenceAllocator` 境界を実装する。
+
+```go
+func NewSequenceAllocator(provider driver.DatabaseDriver, tf observability.TracerFactory) realtimebndry.SequenceAllocator
+```
+
+|メソッド|説明|
+|---|---|
+|`Allocate(ctx, streamID)`|業務 tx 内でストリームの次の位置を採番する。採番行のロックは commit まで保持されるため、同一ストリームの採番は直列化される|
+|`Current(ctx, streamID)`|ストリームの現在位置を読み出す（未採番なら `ok=false`）|
 
 ## 構成
 

@@ -36,7 +36,8 @@ The `sqs` branch — the only branch besides `http` — is wiring from the remov
 - The non-idempotent POST carries `MessageID` as `Idempotency-Key` for receiver-side dedup, but `AllowRetry` is explicitly `false`.
 - Trace propagation is disabled (`PropagateTrace = false`): the `traceparent` captured at emit time is propagated explicitly via message headers, so the substrate's automatic injection is suppressed.
 - The endpoint URL is resolved once from config and injected at construction; `Content-Type: application/json` plus the message's own headers (e.g. `traceparent`) are sent.
-- Non-2xx / transport failures are mapped to `apperror` sentinels by the substrate and returned as-is, signaling the relay to retry on the next poll.
+- Non-2xx / transport failures are mapped to `apperror` sentinels by the substrate, and the adapter adds the class the relay's dead-letter decision needs: `ErrPermanent` for an outcome the substrate itself judged non-retryable (4xx other than 429, an unfollowed redirect, an over-sized response), `ErrRetryable` for 5xx / 429 / transport failures. The verdict comes from `httpclient.RetryableOutcome` rather than from a status table copied here, because part of what makes an outcome deterministic is internal to the substrate and cannot be re-derived from the status code alone. A cancelled context is a shutdown rather than a delivery failure, so it is returned unclassified.
+- Only the delivery channels a publisher implementation actually serves may be relayed; `VerifyChannel` fails relay startup for any other, so a row is never handed to a substrate that cannot carry it.
 
 ## Test Strategy
 
@@ -54,9 +55,10 @@ real-DB strategy does not apply. Everything closes in-process: the downstream is
   flipped, which is exactly why each gets its own case.
 - **Sensitive headers are pinned against normalisation gaps.** Header matching must not be defeated by
   case or surrounding whitespace, so those forms are tested explicitly rather than assumed.
-- **Substrate errors propagate unchanged.** A non-2xx or transport failure is already an `apperror`
-  sentinel when it arrives; the assertion is `errors.Is` against that sentinel, confirming the adapter
-  neither re-wraps nor flattens it — the relay's retry decision depends on it surviving intact.
+- **Substrate errors survive their classification.** A non-2xx or transport failure is already an
+  `apperror` sentinel when it arrives, and the adapter joins the permanent / retryable class onto it;
+  the assertions are `errors.Is` against both, confirming that the original sentinel is neither
+  re-wrapped away nor flattened, and that the class the relay's dead-letter decision reads is present.
 - **Implementation selection is its own subject.** `New` switching on `OUTBOX_PUBLISHER` is tested for
   each known value *and* for an unknown one, since failing startup on a typo is the contract; so is each
   branch resolving only its own settings, so a queue deployment is never asked for `ENDPOINT_OUTBOX`.

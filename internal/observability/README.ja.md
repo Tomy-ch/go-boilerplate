@@ -472,7 +472,7 @@ OTLP 送出）と **Prometheus collector**（プロセスから scrape）の双�
 
 |Meter (`go-boilerplate/...`)|Instruments|所有|
 |---|---|---|
-|`/outbox`|`outbox.lag_seconds`（gauge）, `outbox.dead`（counter）|outbox relay|
+|`/outbox`|`outbox.lag_seconds`（gauge）, `outbox.dead`（counter）, `outbox.blocked_streams`（gauge）。いずれも `channel` ラベルを持つ|outbox relay|
 |`/worker`|`received` / `processed` / `failed` / `retried` / `dlq` / poll・extend errors（counter）, latency（histogram）, in-flight（up-down）|worker engine（broker 非依存）|
 |`/idempotency`|`requests` / `failures` / `expiredCleanup`（counter）。ラベルは `operation_id` / `result` / `phase` / `job` に限定|冪等性サブシステム|
 |`/httpclient`|RED（`requests` / `errors`, latency histogram）+ `retries`, in-flight, `breakerState` gauge|外向き HTTP client substrate|

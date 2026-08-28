@@ -23,8 +23,8 @@ stable dedup key propagated into the `Idempotency-Key`.
 stateDiagram-v2
     [*] --> pending: Emit (in business tx)
     pending --> published: relay ClaimPending (FOR UPDATE SKIP LOCKED), publish ok
-    pending --> pending: publish fail (attempts++), retried next poll
-    pending --> dead: publish fail, attempts ≥ maxAttempts
+    pending --> pending: transient publish failure, retried once next_attempt_at passes
+    pending --> dead: permanent publish failure (error classification, ADR-0058)
     published --> [*]: SweepPublished (GC), entry deleted
     dead --> pending: ReplayDead
 ```
@@ -48,7 +48,11 @@ touches `dead`, and replay never touches `published`.
   relay → consumer stays on the same trace.
 - `EmitInput` fields: `AggregateType`, `AggregateID` (observation only),
   `EventType` (type + version), `Payload` (caller-marshaled event body JSON),
-  and `Headers` (propagated to the external endpoint). Do **not** put sensitive
+  `Headers` (propagated to the external endpoint), `Channel` (the delivery lane —
+  there is no default, and an unknown one is rejected before the row is written),
+  and the optional `OrderingKey` / `OrderingSequence` pair that puts the entry in a
+  stream. The pair is all-or-nothing: either both are set with a positive sequence,
+  or neither is. Do **not** put sensitive
   headers in `Headers` — unnamed secrets are sent verbatim, and named ones
   (`Authorization` / `Cookie` / `Proxy-Authorization` / `Set-Cookie`) are stripped
   as a defense-in-depth backstop, not a substitute for keeping them out.
@@ -62,22 +66,31 @@ touches `dead`, and replay never touches `published`.
 
 ### relay — `RelayUsecase`
 
-`NewRelay(txm, store, publisher, metrics, clock, logger, tracerFactory) RelayUsecase`
+`NewRelay(txm, store, publisher, metrics, clock, logger, tracerFactory, channel) RelayUsecase`
 
+- A relay instance serves **one delivery channel**, fixed at construction. Claiming
+  and failure progression stay inside it, so a channel whose downstream is down
+  cannot hold up another channel's entries.
 - `RelayBatch(ctx, batchSize) (RelayResult, error)` claims up to `batchSize`
-  pending entries and publishes them, all in **one transaction** so multiple relay
-  instances never double-publish the same entry. `batchSize <= 0` falls back to
-  `DefaultBatchSize` (100). `RelayResult` reports `Claimed` and `Published`.
-  - A **publish failure does not roll back the transaction**: the entry is marked
-    failed (`attempts++`) and left for the next poll to retry; once `attempts`
-    reaches `DefaultMaxAttempts` (10) the entry is marked `dead`, `Metrics.IncDead`
-    is counted, and a warning is logged.
+  pending entries of that channel and publishes them, all in **one transaction** so
+  multiple relay instances never double-publish the same entry. `batchSize <= 0`
+  falls back to `DefaultBatchSize` (100). `RelayResult` reports `Claimed` and `Published`.
+  - A **publish failure does not roll back the transaction**. What happens next is
+    decided by the failure's class, never by a try count ([ADR-0058](../../../docs/adr/0058-outbox-dead-on-permanent-error.md)):
+    a permanent failure (`apperror.ErrPermanent`) records the reason, marks the entry
+    `dead`, counts `Metrics.IncDead` and logs a warning; anything else — including an
+    error carrying no classification at all — leaves the entry `pending` with its next
+    claimable time pushed out by an exponential backoff with full jitter, capped at 60 s.
   - Only a **DB access failure** (claim / mark) returns an error that rolls the
     transaction back.
-- `RecordLag(ctx) error` records the age of the oldest pending entry as the outbox
-  lag SLI via `Metrics.SetLagSeconds`; with no pending entries it records `0`.
-- `Metrics` is the outbox-specific o11y sink: `SetLagSeconds(ctx, seconds)` and
-  `IncDead(ctx)`.
+- `RecordLag(ctx) error` records the age of the channel's oldest pending entry as the
+  outbox lag SLI via `Metrics.SetLagSeconds`; with no pending entries it records `0`.
+  Entries waiting out a backoff are still undelivered, so they are not excluded.
+- `RecordBlockedStreams(ctx) error` records how many of the channel's streams are
+  stalled behind a `dead` head entry via `Metrics.SetBlockedStreams`.
+- `Metrics` is the outbox-specific o11y sink, and every method carries the channel:
+  `SetLagSeconds(ctx, channel, seconds)`, `IncDead(ctx, channel)` and
+  `SetBlockedStreams(ctx, channel, count)`.
 
 ### GC — `GCUsecase`
 
