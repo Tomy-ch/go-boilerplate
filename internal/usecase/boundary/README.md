@@ -48,7 +48,7 @@ Domain Repository abstracts "how to persist Aggregates", while Usecase Boundary 
 |`objectstorage`|`Storage`|Substrate-agnostic object-storage boundary (`Put` / `List` / `Delete` objects by key)|`internal/infrastructure/objectstorage/s3/`|
 |`outbox`|`Store`|Transactional outbox table persistence boundary|`internal/infrastructure/rdb/system_cqrs/outbox/`|
 |`publisher`|`Publisher`|Substrate-agnostic outbound message publish boundary|`internal/infrastructure/publisher/`|
-|`realtime`|`EventLogStore`, `StreamTicketStore`, `InstanceLeaseStore`, `SecretGenerator`|Realtime Delivery seam: the feature-neutral `DeliveryEvent` envelope plus the replay store, ticket store, instance lease and ticket-secret boundaries (see the package README)|`internal/infrastructure/{eventlog,streamticket,instancelease}/dynamodb/`, `internal/infrastructure/realtimesecret/`|
+|`realtime`|`SequenceAllocator`, `EventLogStore`, `StreamTicketStore`, `InstanceLeaseStore`, `SecretGenerator`|Realtime Delivery seam: the feature-neutral `DeliveryEvent` envelope plus the replay store, ticket store, instance lease and ticket-secret boundaries (see the package README)|`internal/infrastructure/{eventlog,streamticket,instancelease}/dynamodb/`, `internal/infrastructure/realtimesecret/`|
 |`token`|`Generator`|Generate unguessable opaque token strings|`internal/infrastructure/token/`<!-- sample-api:line -->|
 |`tx`|`Manager`|Transaction boundary management|`internal/infrastructure/rdb/driver/`|
 |`worker`|`Consumer`, `Handler`, `FailureHandler`, `Worker`, `State`|Broker-agnostic worker seam (pull-ack)|`internal/infrastructure/queue/sqs/`|

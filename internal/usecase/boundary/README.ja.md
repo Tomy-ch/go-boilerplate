@@ -48,7 +48,7 @@ Domain Repository は「Aggregate をどう保存するか」を抽象化する�
 |`objectstorage`|`Storage`|実体非依存のオブジェクトストレージ境界（キー指定でオブジェクトを `Put` / `List` / `Delete` する）|`internal/infrastructure/objectstorage/s3/`|
 |`outbox`|`Store`|トランザクショナル outbox テーブルの永続化境界|`internal/infrastructure/rdb/system_cqrs/outbox/`|
 |`publisher`|`Publisher`|publish 先非依存の outbound メッセージ publish 境界|`internal/infrastructure/publisher/`|
-|`realtime`|`EventLogStore`, `StreamTicketStore`, `InstanceLeaseStore`, `SecretGenerator`|Realtime Delivery の seam。feature 中立な封筒 `DeliveryEvent` と、replay store / ticket store / instance lease / ticket 生値の各境界（詳細は package README）|`internal/infrastructure/{eventlog,streamticket,instancelease}/dynamodb/`、`internal/infrastructure/realtimesecret/`|
+|`realtime`|`SequenceAllocator`, `EventLogStore`, `StreamTicketStore`, `InstanceLeaseStore`, `SecretGenerator`|Realtime Delivery の seam。feature 中立な封筒 `DeliveryEvent` と、replay store / ticket store / instance lease / ticket 生値の各境界（詳細は package README）|`internal/infrastructure/{eventlog,streamticket,instancelease}/dynamodb/`、`internal/infrastructure/realtimesecret/`|
 |`token`|`Generator`|推測できない不透明なトークン文字列を生成する|`internal/infrastructure/token/`<!-- sample-api:line -->|
 |`tx`|`Manager`|トランザクション境界の管理|`internal/infrastructure/rdb/driver/`|
 |`worker`|`Consumer`, `Handler`, `FailureHandler`, `Worker`, `State`|broker 非依存の worker seam（pull-ack）|`internal/infrastructure/queue/sqs/`|
