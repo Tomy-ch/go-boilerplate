@@ -20,6 +20,8 @@
   ".codex/skills/repo-ops/SKILL.md": 5,
   ".codex/skills/sync-ai/SKILL.md": 6,
   ".github/egress.toml": 2,
+  ".github/workflows/README.ja.md": 5,
+  ".github/workflows/README.md": 5,
   ".github/workflows/setup-scripts-check.yaml": 4,
   ".github/workflows/zap-api-scan.yaml": 8,
   ".gitleaksignore": 2,
