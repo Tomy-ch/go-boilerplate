@@ -101,6 +101,14 @@ type Outbox struct {
 	CreatedAt time.Time
 	// publish 完了日時（published 遷移時刻）
 	PublishedAt *time.Time
+	// 配送チャネル（http / realtime）。relay は 1 チャネルのみを claim する
+	DeliveryChannel string
+	// 順序保証の単位（ストリーム）。順序を持たないチャネルは NULL
+	OrderingKey *string
+	// ordering_key 内の位置。順序を持たないチャネルは NULL
+	OrderingSequence *int64
+	// 次に claim してよい時刻（再試行のバックオフ）
+	NextAttemptAt time.Time
 }
 
 // 都道府県
@@ -263,6 +271,14 @@ type Purchases struct {
 	CreatedAt time.Time
 	// 更新日時
 	UpdatedAt time.Time
+}
+
+// ストリーム採番（1 ストリーム 1 行、gap なし単調増加）
+type RealtimeStreamSequences struct {
+	// ストリーム識別子
+	StreamID string
+	// 採番済みの最後の位置（1 起算）
+	LastSequence int64
 }
 
 // ロール

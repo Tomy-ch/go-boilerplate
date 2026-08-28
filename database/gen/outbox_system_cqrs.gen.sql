@@ -1,22 +1,49 @@
 
 -- === source: database/dml/system_cqrs/outbox/claim_pending_outbox.sql ===
 -- name: ClaimPendingOutbox :many
--- pending 行を最大 $1 件 claim する。SKIP LOCKED により多インスタンスでも同一行を二重取得しない。
--- 順序保証は捨てているため id 昇順で十分。呼び出し側 tx の保持中だけロックされる。
+-- 指定チャネルの pending 行を最大 $2 件 claim する。SKIP LOCKED により多インスタンスでも同一行を二重取得しない。
+-- バックオフ中（next_attempt_at が未来）の行は述語段階で外れるためロックもされず、SKIP LOCKED と干渉しない。
+-- NOT EXISTS は head-of-line 規則。同一 ordering_key に未 published の先行 sequence がある行は claim しない。
+-- 先行行が他インスタンスに claim されている間もその行は pending のままなので、ロックを SKIP して順序を飛ばすことはない。
+-- ordering_key が NULL の行は NULL 比較で NOT EXISTS が真になり、順序を持たないチャネルは除外されない。
 SELECT
-    id,
-    message_id,
-    aggregate_type,
-    aggregate_id,
-    event_type,
-    payload,
-    headers,
-    attempts
-FROM outbox
-WHERE status = 'pending'
-ORDER BY id
-LIMIT $1
-FOR UPDATE SKIP LOCKED;
+    o.id,
+    o.message_id,
+    o.aggregate_type,
+    o.aggregate_id,
+    o.event_type,
+    o.payload,
+    o.headers,
+    o.attempts
+FROM outbox AS o
+WHERE o.status = 'pending'
+    AND o.delivery_channel = $1
+    AND o.next_attempt_at <= NOW()
+    AND NOT EXISTS (
+        SELECT 1
+        FROM outbox AS prior
+        WHERE prior.ordering_key = o.ordering_key
+            AND prior.ordering_sequence < o.ordering_sequence
+            AND prior.status <> 'published'
+    )
+ORDER BY o.id
+LIMIT $2
+FOR UPDATE OF o SKIP LOCKED;
+
+-- === source: database/dml/system_cqrs/outbox/count_blocked_streams_outbox.sql ===
+-- name: CountBlockedStreamsOutbox :one
+-- 先頭（最小の未 published sequence）が dead のストリーム数。head が dead のストリームは
+-- head-of-line 規則により後続が claim されないため、復旧が要る対象として数える。
+SELECT COUNT(*)
+FROM (
+    SELECT DISTINCT ON (ordering_key) status
+    FROM outbox
+    WHERE delivery_channel = $1
+        AND ordering_key IS NOT NULL
+        AND status <> 'published'
+    ORDER BY ordering_key, ordering_sequence
+) AS heads
+WHERE heads.status = 'dead';
 
 -- === source: database/dml/system_cqrs/outbox/delete_published_outbox.sql ===
 -- name: DeletePublishedOutbox :execrows
@@ -34,14 +61,18 @@ WHERE id IN (
 -- === source: database/dml/system_cqrs/outbox/insert_outbox.sql ===
 -- name: InsertOutbox :one
 -- 業務 tx 内で outbox 行を 1 行 INSERT する（emit）。message_id は DB が採番し返す。
+-- delivery_channel は既定値を持たないため、呼び出し側が必ず指定する。
 INSERT INTO outbox (
     aggregate_type,
     aggregate_id,
     event_type,
     payload,
-    headers
+    headers,
+    delivery_channel,
+    ordering_key,
+    ordering_sequence
 ) VALUES (
-    $1, $2, $3, $4, $5
+    $1, $2, $3, $4, $5, $6, sqlc.narg('ordering_key'), sqlc.narg('ordering_sequence')
 )
 RETURNING id, message_id;
 
@@ -54,16 +85,16 @@ WHERE id = $1
     AND status = 'pending';
 
 -- === source: database/dml/system_cqrs/outbox/mark_outbox_failed.sql ===
--- name: MarkOutboxFailed :one
--- publish 失敗時に attempts を加算し last_error を記録する。加算後の attempts を返し、
--- 呼び出し側が max 到達判定（dead 化）に用いる。
+-- name: MarkOutboxFailed :execrows
+-- publish 失敗時に last_error を記録し、次に claim してよい時刻をバックオフ後の時刻へ進める。
+-- attempts は診断のために加算し続けるが、dead 判定の基準ではない（判定はエラー分類。ADR-0058）。
 UPDATE outbox
 SET
     attempts = attempts + 1,
-    last_error = $2
+    last_error = $2,
+    next_attempt_at = $3
 WHERE id = $1
-    AND status = 'pending'
-RETURNING attempts;
+    AND status = 'pending';
 
 -- === source: database/dml/system_cqrs/outbox/mark_outbox_published.sql ===
 -- name: MarkOutboxPublished :execrows
@@ -77,10 +108,12 @@ WHERE id = $1
 
 -- === source: database/dml/system_cqrs/outbox/oldest_pending_outbox.sql ===
 -- name: OldestPendingOutbox :one
--- SLI(outbox lag) 算出用。最古 pending 行の created_at を返す。pending 行が無ければ 0 行を返す。
+-- SLI(outbox lag) 算出用。指定チャネルの最古 pending 行の created_at を返す。pending 行が無ければ 0 行を返す。
+-- バックオフ中の行も未配送なので除外しない（lag は未配送の最古行の年齢）。
 SELECT created_at
 FROM outbox
 WHERE status = 'pending'
+    AND delivery_channel = $1
 ORDER BY id
 LIMIT 1;
 
@@ -88,10 +121,12 @@ LIMIT 1;
 -- name: ReplayDeadOutbox :execrows
 -- dead 行を pending へ戻し再 publish 対象に復帰させる（運用 replay）。
 -- $1 が NULL の場合は全 dead 行、指定時は当該 message_id のみを対象とする。
+-- next_attempt_at を現在時刻へ戻さないと、dead 化前のバックオフ済み時刻が残って直後に claim されない。
 UPDATE outbox
 SET
     status = 'pending',
     attempts = 0,
-    last_error = NULL
+    last_error = NULL,
+    next_attempt_at = NOW()
 WHERE status = 'dead'
     AND (sqlc.narg('message_id')::UUID IS NULL OR message_id = sqlc.narg('message_id')::UUID);
