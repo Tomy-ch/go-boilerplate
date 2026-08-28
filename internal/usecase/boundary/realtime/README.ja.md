@@ -56,8 +56,9 @@ type SecretGenerator interface {
 | cursor は ticket 自身の `Destination` に対してだけ意味を持つ | `StreamTicket.Destination`。stream handler が比較する |
 | 期限の判定は呼び出し側の時計（`asOf`）で行い、store の掃除を正本にしない | `StreamTicketStore.Find`、`InstanceLeaseStore.ListExpired` / `AcquireCleanup` |
 
-保持期間（7 日）、ticket TTL、lease の heartbeat / expiry / cleanup margin は `internal/usecase/realtime/` が
-持つ機構の固定値で、store はその結果の時刻だけを受け取り、数値は知りません。
+`EventLogRetention`（7 日）は store（item の掃除）と usecase（replay floor の導出）の両方が読むためここに
+定義します。ticket TTL、lease の heartbeat / expiry / cleanup margin は `internal/usecase/realtime/` が持ち、
+store はその結果の時刻だけを受け取り、数値は知りません。
 
 ## `SecretGenerator` を別に持つ理由
 

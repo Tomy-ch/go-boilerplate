@@ -5,6 +5,7 @@ package dynamodbclient
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -24,6 +25,8 @@ const (
 	MaxAttempts = 3
 	// MaxBackoff は、retry 間の待ち時間の上限です。SSE の write deadline（10 秒）の内側に収めます。
 	MaxBackoff = 2 * time.Second
+	// tableWaitTimeout は、table が ACTIVE になるのを待つ上限です。
+	tableWaitTimeout = 60 * time.Second
 )
 
 // Config は、DynamoDB 互換 store への接続設定です。
@@ -40,6 +43,16 @@ type Config struct {
 	// HTTPClient は、SDK が API 呼び出しに使う HTTP クライアントです。SSRF ガード付きの実装を DI が
 	// 注入します。nil を渡すと SDK 既定のトランスポートになり、ガードを素通りします。
 	HTTPClient aws.HTTPClient
+}
+
+// TableSpec は、EnsureTable が作る table の定義です。各 adapter package が自分の table の定義を返します。
+type TableSpec struct {
+	Name                   string
+	Attributes             []types.AttributeDefinition
+	KeySchema              []types.KeySchemaElement
+	GlobalSecondaryIndexes []types.GlobalSecondaryIndex
+	// TTLAttribute は、期限切れ item の掃除に使う属性名（epoch 秒）です。空なら TTL を設定しません。
+	TTLAttribute string
 }
 
 // New は、設定から DynamoDB クライアントを生成します。
@@ -84,19 +97,6 @@ func Normalize(err error, op string) error {
 	}
 
 	return xerrors.Wrap(apperror.ErrUnavailable, op+": "+err.Error())
-}
-
-// tableWaitTimeout は、table が ACTIVE になるのを待つ上限です。
-const tableWaitTimeout = 60 * time.Second
-
-// TableSpec は、EnsureTable が作る table の定義です。各 adapter package が自分の table の定義を返します。
-type TableSpec struct {
-	Name                   string
-	Attributes             []types.AttributeDefinition
-	KeySchema              []types.KeySchemaElement
-	GlobalSecondaryIndexes []types.GlobalSecondaryIndex
-	// TTLAttribute は、期限切れ item の掃除に使う属性名（epoch 秒）です。空なら TTL を設定しません。
-	TTLAttribute string
 }
 
 // EnsureTable は、table が無ければ作り、ACTIVE を待ち、TTL が未設定なら設定します。
@@ -154,4 +154,30 @@ func isResourceInUse(err error) bool {
 	var target *types.ResourceInUseException
 
 	return xerrors.As(err, &target)
+}
+
+// StringAttr は、item の S 属性を返します。無い、または S でなければ空文字です。
+func StringAttr(item map[string]types.AttributeValue, name string) string {
+	if s, ok := item[name].(*types.AttributeValueMemberS); ok {
+		return s.Value
+	}
+
+	return ""
+}
+
+// NumberAttr は、item の N 属性を int64 として返します。無い・N でない・整数に読めない場合は
+// ErrInternal です（この adapter が書いた覚えの無い形が store にあることを意味します）。
+// kind はエラー文に載せる item の種類（例 "event log"）です。
+func NumberAttr(item map[string]types.AttributeValue, name, kind string) (int64, error) {
+	n, ok := item[name].(*types.AttributeValueMemberN)
+	if !ok {
+		return 0, xerrors.Wrap(apperror.ErrInternal, kind+" item: "+name+" is not a number")
+	}
+
+	v, err := strconv.ParseInt(n.Value, 10, 64)
+	if err != nil {
+		return 0, xerrors.Wrap(apperror.ErrInternal, kind+" item: "+name+": "+err.Error())
+	}
+
+	return v, nil
 }

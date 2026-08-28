@@ -243,3 +243,47 @@ func Test_ensureTimeToLive(t *testing.T) {
 		})
 	})
 }
+
+func TestStringAttr(t *testing.T) {
+	t.Parallel()
+
+	item := map[string]types.AttributeValue{"a": &types.AttributeValueMemberS{Value: "v"}, "n": &types.AttributeValueMemberN{Value: "1"}}
+	assert.Equal(t, "v", StringAttr(item, "a"))
+	assert.Empty(t, StringAttr(item, "n"), "S 以外は空")
+	assert.Empty(t, StringAttr(item, "missing"))
+}
+
+func TestNumberAttr(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("N を int64 に読む", func(t *testing.T) {
+			t.Parallel()
+
+			v, err := NumberAttr(map[string]types.AttributeValue{"n": &types.AttributeValueMemberN{Value: "42"}}, "n", "test")
+			require.NoError(t, err)
+			assert.Equal(t, int64(42), v)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("N でなければ ErrInternal", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := NumberAttr(map[string]types.AttributeValue{"n": &types.AttributeValueMemberS{Value: "42"}}, "n", "test")
+			require.ErrorIs(t, err, apperror.ErrInternal)
+			assert.Contains(t, err.Error(), "test item: n")
+		})
+
+		t.Run("整数に読めなければ ErrInternal", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := NumberAttr(map[string]types.AttributeValue{"n": &types.AttributeValueMemberN{Value: "1.5"}}, "n", "test")
+			require.ErrorIs(t, err, apperror.ErrInternal)
+		})
+	})
+}

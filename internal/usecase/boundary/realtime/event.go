@@ -13,9 +13,16 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
-// MaxSerializedBytes は、DeliveryEvent を JSON に直列化したときの上限（64 KiB）です。
-// payload 単体ではなく封筒全体で判定します（SSE の 1 event として送る大きさがこれだからです）。
-const MaxSerializedBytes = 64 * 1024
+const (
+	// MaxSerializedBytes は、DeliveryEvent を JSON に直列化したときの上限（64 KiB）です。
+	// payload 単体ではなく封筒全体で判定します（SSE の 1 event として送る大きさがこれだからです）。
+	MaxSerializedBytes = 64 * 1024
+
+	// EventLogRetention は、event を replay できる期間です。store はこの期間を過ぎた item を掃除してよく、
+	// usecase は OccurredAt がこの期間より古い位置への cursor を失効と判定します（ADR-0072）。
+	// 掃除と判定の両方が同じ値を見るよう、定義はここ 1 箇所です。
+	EventLogRetention = 7 * 24 * time.Hour
+)
 
 // StreamID は、event が属する stream（= 配送先 destination）の識別子です。
 type StreamID string
@@ -24,11 +31,6 @@ type StreamID string
 // 意味しません（未採番かどうかは SequenceAllocator.Current の ok で表します）。
 // int64 なのは allocator の PostgreSQL BIGINT と同じ幅にするためで、非負性は採番側が保証します。
 type Sequence int64
-
-// String は、sequence の 10 進表記（ゼロ埋めなし）を返します。SSE の id と cursor はこの形です。
-func (s Sequence) String() string {
-	return strconv.FormatInt(int64(s), 10)
-}
 
 // DeliveryEvent は、feature 中立な配送封筒です。EventID は outbox の message_id と同じ値で、
 // 同じ (StreamID, Sequence) への再 append が冪等かどうかを判定する基準になります。
@@ -58,6 +60,11 @@ type wireEvent struct {
 	OccurredAt    time.Time       `json:"occurredAt"`
 	SchemaVersion int             `json:"schemaVersion"`
 	Payload       json.RawMessage `json:"payload"`
+}
+
+// String は、sequence の 10 進表記（ゼロ埋めなし）を返します。SSE の id と cursor はこの形です。
+func (s Sequence) String() string {
+	return strconv.FormatInt(int64(s), 10)
 }
 
 // MarshalJSON は、client に届く形（sequence は 10 進文字列、時刻は RFC 3339）で直列化します。

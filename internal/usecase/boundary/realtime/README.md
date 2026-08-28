@@ -57,8 +57,9 @@ type SecretGenerator interface {
 | A cursor is only meaningful for the ticket's own `Destination` | `StreamTicket.Destination`; the stream handler compares them |
 | Expiry is decided by the caller's clock (`asOf`), never by the store's clean-up | `StreamTicketStore.Find`, `InstanceLeaseStore.ListExpired` / `AcquireCleanup` |
 
-Retention (7 days), ticket TTL, lease heartbeat / expiry / cleanup margin are mechanism constants owned
-by `internal/usecase/realtime/`; the stores receive the resulting timestamps and do not know the numbers.
+`EventLogRetention` (7 days) is defined here because both sides read it — the store to expire items, the
+usecase to derive the replay floor. Ticket TTL and lease heartbeat / expiry / cleanup margin are owned by
+`internal/usecase/realtime/`; the stores receive the resulting timestamps and do not know the numbers.
 
 ## Why a separate `SecretGenerator`
 
