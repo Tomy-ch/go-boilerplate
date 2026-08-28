@@ -36,7 +36,7 @@ flowchart TB
 - Downstream ごとの retry budget（トークンバケット）が retry の増幅を抑え、Downstream ごとの circuit breaker（closed / half-open / open）が継続的な downstream 障害時に fail-fast する。
 - 2 段のタイムアウトを強制: 1 試行ごとの per-attempt timeout と、呼び出し全体の overall timeout。backoff 待機が overall deadline を超える場合は retry を打ち切る。
 - セキュリティ既定: リダイレクトは追従せず（`http.ErrUseLastResponse`、SSRF 面の縮小）、応答ボディは `MaxResponseBytes` までしか読まず、エラーメッセージは query / userinfo / fragment を redact し、trace 伝搬 / private-network 接続は Downstream ごとに opt-out できる。名前解決後の dial guard（`internal/observability`）は link-local（クラウドメタデータ `169.254.169.254`）/ unspecified / bogon 予約帯（TEST-NET、将来予約、IETF 割当、ベンチマーク用、IPv6 ドキュメント用）を常時拒否し、loopback / private(RFC1918, ULA) / CGNAT(RFC 6598 `100.64.0.0/10`) は `AllowPrivateNetwork` 未設定時に拒否する。
-- transport / status 事象は `apperror` sentinel（`ErrUnavailable` / `ErrCanceled` / `ErrInvalidArgument` 等）へ正規化する。呼び出し側は raw status ではなく sentinel で分岐する。
+- transport / status 事象は `apperror` sentinel（`ErrUnavailable` / `ErrCanceled` / `ErrInvalidArgument` 等）へ正規化する。呼び出し側は raw status ではなく sentinel で分岐する（公開された例外は下段の再試行 verdict だけ。[ADR-0024](../../../docs/adr/0024-outbound-http-resilience.ja.md)）。
 - `RetryableOutcome` は substrate 唯一の retry verdict として公開する。恒久失敗と一時失敗を区別しなければならない呼び出し側（現在は outbox relay の dead 判定）のためであり、sentinel だけではこの区別を運べないことが理由である: substrate 内部の事情で決定的になる結果 —— `MaxResponseBytes` 超過の応答 —— は HTTP の語彙を保つため `ErrUnavailable` のままであり、再試行すべき 503 と分かれるのはここだけである。呼び出し側がステータス表を再現すると、この 1 件を黙って取りこぼし、規則が 2 つの package に割れる。
 
 ## DI 登録

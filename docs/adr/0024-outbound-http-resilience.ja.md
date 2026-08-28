@@ -39,7 +39,9 @@ accepted
 
 ダウンストリームごとのプロファイル（`Profile`）はfxバリューグループ（`httpclient_profiles`）に提供され、`Registry`によって集約される。未登録のダウンストリームは`DefaultProfile`にフォールバックする。
 
-トランスポートイベントおよび非2xxレスポンスは`apperror`センチネル（`ErrUnavailable`・`ErrCanceled`・`ErrInvalidArgument`等）に正規化されてから呼び出し元に返され、呼び出し元はセンチネルのみで分岐する。`net/http`型は基盤のパブリックAPIには露出しない。
+トランスポートイベントおよび非2xxレスポンスは`apperror`センチネル（`ErrUnavailable`・`ErrCanceled`・`ErrInvalidArgument`等）に正規化されてから呼び出し元に返され、呼び出し元はステータスコードではなくセンチネルで分岐する。`net/http`型は基盤のパブリックAPIには露出しない。
+
+**再試行の verdict だけが例外であり、呼び出し元に導出させるのではなく基盤が公開する。** 恒久失敗と一時失敗を区別しなければならない呼び出し元 —— このリポジトリでは outbox relay の dead 判定（[ADR-0058](0058-outbox-dead-on-permanent-error.ja.md)）—— は、センチネルだけからその区別を得られない。基盤が決定的だと知っている結果も、HTTP の意味が要求するセンチネルをそのまま纏うためである。`MaxResponseBytes`超過の応答は、再試行すべき503と並んで`ErrUnavailable`として届き、追従しないリダイレクトも同様になる。したがって`RetryableOutcome`を公開し、この区別が存在する場所を1か所に保つ。これはステータス解釈を呼び出し元へ開き直すものではない（verdict は真偽値で、ステータスは内部に留まる）。むしろ代替案のほうが悪い。呼び出し元がステータス表を組み直せば、基盤が自分の失敗について知っていることを欠いたまま不完全な規則の写しを二重に保守することになる。
 
 ## 影響
 
@@ -82,4 +84,5 @@ accepted
 - トランスポート（インストルメンテーション + SSRFガード）: `internal/observability/http_client_transport.go` — [ADR-0025](0025-egress-ssrf-guard.ja.md)参照。
 - DI登録: `internal/di/module/httpclient.go`。
 - リレーレベルのat-least-once配信を優先してトランスポートリトライを無効化するコンシューマーの例: `internal/infrastructure/publisher/http_publisher.go`。
+- 公開された再試行 verdict: `internal/infrastructure/httpclient/retry.go` の`RetryableOutcome`。利用箇所は`internal/infrastructure/publisher/classify.go`のみ。
 - source: `internal/infrastructure/httpclient/README.md`。
