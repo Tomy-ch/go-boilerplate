@@ -44,6 +44,10 @@ func TestNewCursorValidator(t *testing.T) {
 	assert.NotNil(t, v)
 }
 
+func readAfter(streamID rt.StreamID, after rt.Sequence) rt.ReadAfterQuery {
+	return rt.ReadAfterQuery{StreamID: streamID, After: after, Limit: 1}
+}
+
 func Test_cursorValidator_Validate(t *testing.T) {
 	t.Parallel()
 
@@ -54,7 +58,7 @@ func Test_cursorValidator_Validate(t *testing.T) {
 			t.Parallel()
 
 			v, log := newValidator(t)
-			log.EXPECT().Find(gomock.Any(), rt.StreamID("s"), rt.Sequence(4)).Return(eventAt(4, now.Add(-time.Hour)), true, nil)
+			log.EXPECT().ReadAfter(gomock.Any(), readAfter("s", 3)).Return(rt.ReadAfterResult{Events: []rt.DeliveryEvent{eventAt(4, now.Add(-time.Hour))}}, nil)
 
 			require.NoError(t, v.Validate(t.Context(), "s", 3))
 		})
@@ -63,7 +67,8 @@ func Test_cursorValidator_Validate(t *testing.T) {
 			t.Parallel()
 
 			v, log := newValidator(t)
-			log.EXPECT().Find(gomock.Any(), rt.StreamID("s"), rt.Sequence(4)).Return(eventAt(4, now.Add(-rt.EventLogRetention)), true, nil)
+			log.EXPECT().ReadAfter(gomock.Any(), readAfter("s", 3)).
+				Return(rt.ReadAfterResult{Events: []rt.DeliveryEvent{eventAt(4, now.Add(-rt.EventLogRetention))}}, nil)
 
 			require.NoError(t, v.Validate(t.Context(), "s", 3))
 		})
@@ -72,8 +77,7 @@ func Test_cursorValidator_Validate(t *testing.T) {
 			t.Parallel()
 
 			v, log := newValidator(t)
-			log.EXPECT().Find(gomock.Any(), rt.StreamID("s"), rt.Sequence(4)).Return(rt.DeliveryEvent{}, false, nil)
-			log.EXPECT().Latest(gomock.Any(), rt.StreamID("s")).Return(eventAt(3, now), true, nil)
+			log.EXPECT().ReadAfter(gomock.Any(), readAfter("s", 3)).Return(rt.ReadAfterResult{}, nil)
 			log.EXPECT().Find(gomock.Any(), rt.StreamID("s"), rt.Sequence(3)).Return(eventAt(3, now), true, nil)
 
 			require.NoError(t, v.Validate(t.Context(), "s", 3))
@@ -83,8 +87,7 @@ func Test_cursorValidator_Validate(t *testing.T) {
 			t.Parallel()
 
 			v, log := newValidator(t)
-			log.EXPECT().Find(gomock.Any(), rt.StreamID("s"), rt.Sequence(1)).Return(rt.DeliveryEvent{}, false, nil)
-			log.EXPECT().Latest(gomock.Any(), rt.StreamID("s")).Return(rt.DeliveryEvent{}, false, nil)
+			log.EXPECT().ReadAfter(gomock.Any(), readAfter("s", 0)).Return(rt.ReadAfterResult{}, nil)
 
 			require.NoError(t, v.Validate(t.Context(), "s", 0))
 		})
@@ -97,17 +100,17 @@ func Test_cursorValidator_Validate(t *testing.T) {
 			t.Parallel()
 
 			v, log := newValidator(t)
-			log.EXPECT().Find(gomock.Any(), rt.StreamID("s"), rt.Sequence(4)).Return(eventAt(4, now.Add(-rt.EventLogRetention-time.Second)), true, nil)
+			log.EXPECT().ReadAfter(gomock.Any(), readAfter("s", 3)).
+				Return(rt.ReadAfterResult{Events: []rt.DeliveryEvent{eventAt(4, now.Add(-rt.EventLogRetention-time.Second))}}, nil)
 
 			require.ErrorIs(t, v.Validate(t.Context(), "s", 3), ErrCursorExpired)
 		})
 
-		t.Run("cursor+1 が無いのに後ろに event があれば（gap）ErrCursorExpired", func(t *testing.T) {
+		t.Run("cursor より後ろに現存する最初の event が cursor+1 でなければ（gap）ErrCursorExpired", func(t *testing.T) {
 			t.Parallel()
 
 			v, log := newValidator(t)
-			log.EXPECT().Find(gomock.Any(), rt.StreamID("s"), rt.Sequence(4)).Return(rt.DeliveryEvent{}, false, nil)
-			log.EXPECT().Latest(gomock.Any(), rt.StreamID("s")).Return(eventAt(9, now), true, nil)
+			log.EXPECT().ReadAfter(gomock.Any(), readAfter("s", 3)).Return(rt.ReadAfterResult{Events: []rt.DeliveryEvent{eventAt(9, now)}}, nil)
 
 			require.ErrorIs(t, v.Validate(t.Context(), "s", 3), ErrCursorExpired)
 		})
@@ -116,8 +119,7 @@ func Test_cursorValidator_Validate(t *testing.T) {
 			t.Parallel()
 
 			v, log := newValidator(t)
-			log.EXPECT().Find(gomock.Any(), rt.StreamID("s"), rt.Sequence(1)).Return(rt.DeliveryEvent{}, false, nil)
-			log.EXPECT().Latest(gomock.Any(), rt.StreamID("s")).Return(eventAt(5, now), true, nil)
+			log.EXPECT().ReadAfter(gomock.Any(), readAfter("s", 0)).Return(rt.ReadAfterResult{Events: []rt.DeliveryEvent{eventAt(5, now)}}, nil)
 
 			require.ErrorIs(t, v.Validate(t.Context(), "s", 0), ErrCursorExpired)
 		})
@@ -126,8 +128,7 @@ func Test_cursorValidator_Validate(t *testing.T) {
 			t.Parallel()
 
 			v, log := newValidator(t)
-			log.EXPECT().Find(gomock.Any(), rt.StreamID("s"), rt.Sequence(4)).Return(rt.DeliveryEvent{}, false, nil)
-			log.EXPECT().Latest(gomock.Any(), rt.StreamID("s")).Return(rt.DeliveryEvent{}, false, nil)
+			log.EXPECT().ReadAfter(gomock.Any(), readAfter("s", 3)).Return(rt.ReadAfterResult{}, nil)
 			log.EXPECT().Find(gomock.Any(), rt.StreamID("s"), rt.Sequence(3)).Return(rt.DeliveryEvent{}, false, nil)
 
 			require.ErrorIs(t, v.Validate(t.Context(), "s", 3), ErrCursorExpired)
@@ -137,29 +138,18 @@ func Test_cursorValidator_Validate(t *testing.T) {
 			t.Parallel()
 
 			v, log := newValidator(t)
-			log.EXPECT().Find(gomock.Any(), rt.StreamID("s"), rt.Sequence(4)).Return(rt.DeliveryEvent{}, false, errStoreOff)
+			log.EXPECT().ReadAfter(gomock.Any(), readAfter("s", 3)).Return(rt.ReadAfterResult{}, errStoreOff)
 
 			err := v.Validate(t.Context(), "s", 3)
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
 			require.NotErrorIs(t, err, ErrCursorExpired)
 		})
 
-		t.Run("Latest が読めなければ store のエラーをそのまま返す", func(t *testing.T) {
-			t.Parallel()
-
-			v, log := newValidator(t)
-			log.EXPECT().Find(gomock.Any(), rt.StreamID("s"), rt.Sequence(4)).Return(rt.DeliveryEvent{}, false, nil)
-			log.EXPECT().Latest(gomock.Any(), rt.StreamID("s")).Return(rt.DeliveryEvent{}, false, errStoreOff)
-
-			require.ErrorIs(t, v.Validate(t.Context(), "s", 3), apperror.ErrUnavailable)
-		})
-
 		t.Run("cursor 自身の読み取りに失敗すれば store のエラーをそのまま返す", func(t *testing.T) {
 			t.Parallel()
 
 			v, log := newValidator(t)
-			log.EXPECT().Find(gomock.Any(), rt.StreamID("s"), rt.Sequence(4)).Return(rt.DeliveryEvent{}, false, nil)
-			log.EXPECT().Latest(gomock.Any(), rt.StreamID("s")).Return(rt.DeliveryEvent{}, false, nil)
+			log.EXPECT().ReadAfter(gomock.Any(), readAfter("s", 3)).Return(rt.ReadAfterResult{}, nil)
 			log.EXPECT().Find(gomock.Any(), rt.StreamID("s"), rt.Sequence(3)).Return(rt.DeliveryEvent{}, false, errStoreOff)
 
 			require.ErrorIs(t, v.Validate(t.Context(), "s", 3), apperror.ErrUnavailable)

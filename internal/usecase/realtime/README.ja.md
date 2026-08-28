@@ -7,9 +7,9 @@ stream 接続を commit する前に決めるべきこと — 提示された cu
 
 | usecase | 決めること | エラー |
 | --- | --- | --- |
-| `CursorValidator.Validate(streamID, cursor)` | replay floor。保存せず EventLog から**導出**する（[ADR-0072](../../../docs/adr/0072-postgres-state-dynamodb-eventlog.ja.md)）: `cursor+1` があれば `realtime.EventLogRetention` より古くない限り replay 可、`cursor+1` が無いのに後ろに event があれば gap、初期位置でない cursor 自身の event が無ければ消失 | `ErrCursorExpired`（client は canonical recovery path — History — へ戻る）。store の失敗は `apperror.ErrUnavailable` のまま通し、呼び出し側が `503 + Retry-After` を返せるようにする |
-| `TicketIssuer.Issue(in)` | `SecretGenerator` の新しい 256 bit の値。SHA-256 の hash を subject / destination / scope / initial cursor に束ねて保存し、`TicketTTL`（5 分）だけ有効 | store の失敗はそのまま通す |
-| `TicketVerifier.Verify(value, destination)` | 値の hash が存在し、`clock.Now()` で期限内で、この destination に束ねられていること | すべての失敗が `ErrTicketInvalid`（`apperror.ErrUnauthenticated` を包む）— 未知・期限切れ・destination 違いはわざと区別しない |
+| `CursorValidator.Validate(streamID, cursor)` | replay floor。保存せず EventLog から**導出**する（[ADR-0072](../../../docs/adr/0072-postgres-state-dynamodb-eventlog.ja.md)）: `cursor` より後ろに現存する最初の event を強い一貫性で 1 回読む: それが `cursor+1` なら `realtime.EventLogRetention` より古くない限り replay 可、`cursor+1` より後ろなら gap、何も無く初期位置でない cursor 自身の event も無ければ消失。1 回で読むのは、`cursor+1` と最新を別々に読むと、その間に挟まった普通の append が gap に見えるため | `ErrCursorExpired`（client は canonical recovery path — History — へ戻る）。store の失敗は `apperror.ErrUnavailable` のまま通し、呼び出し側が `503 + Retry-After` を返せるようにする |
+| `TicketIssuer.Issue(in)` → `TicketView` | `SecretGenerator` の新しい 256 bit の値。SHA-256 の hash を subject / destination / scope / initial cursor に束ねて保存し、`TicketTTL`（5 分）だけ有効 | store の失敗はそのまま通す |
+| `TicketVerifier.Verify(value, destination)` → `VerifiedTicketView` | 値の hash が存在し、`clock.Now()` で期限内で、この destination に束ねられていること | すべての失敗が `ErrTicketInvalid`（`apperror.ErrUnauthenticated` を包む）— 未知・期限切れ・destination 違いはわざと区別しない |
 
 `ErrCursorExpired` を `apperror` に足さず package の sentinel にしているのは、taxonomy に `410` が無く、本 package の
 外にまだ写す側が無いため。stream handler（Phase 6）がその写像を持ちます。

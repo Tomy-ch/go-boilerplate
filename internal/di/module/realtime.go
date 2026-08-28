@@ -73,7 +73,9 @@ func provideCursorValidator(log rt.EventLogStore, clk clock.Clock, tf observabil
 	return ucrealtime.NewCursorValidator(log, clk, tf)
 }
 
-func provideTicketIssuer(store rt.StreamTicketStore, secrets rt.SecretGenerator, clk clock.Clock, tf observability.TracerFactory) ucrealtime.TicketIssuer {
+func provideTicketIssuer(
+	store rt.StreamTicketStore, secrets rt.SecretGenerator, clk clock.Clock, tf observability.TracerFactory,
+) ucrealtime.TicketIssuer {
 	return ucrealtime.NewTicketIssuer(store, secrets, clk, tf)
 }
 

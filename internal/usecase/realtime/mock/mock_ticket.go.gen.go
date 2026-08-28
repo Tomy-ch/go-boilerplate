@@ -43,10 +43,10 @@ func (m *MockTicketIssuer) EXPECT() *MockTicketIssuerMockRecorder {
 }
 
 // Issue mocks base method.
-func (m *MockTicketIssuer) Issue(ctx context.Context, in realtime0.IssueTicketInput) (realtime0.IssuedTicket, error) {
+func (m *MockTicketIssuer) Issue(ctx context.Context, in realtime0.IssueTicketInput) (realtime0.TicketView, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Issue", ctx, in)
-	ret0, _ := ret[0].(realtime0.IssuedTicket)
+	ret0, _ := ret[0].(realtime0.TicketView)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -82,10 +82,10 @@ func (m *MockTicketVerifier) EXPECT() *MockTicketVerifierMockRecorder {
 }
 
 // Verify mocks base method.
-func (m *MockTicketVerifier) Verify(ctx context.Context, value string, destination realtime.StreamID) (realtime.StreamTicket, error) {
+func (m *MockTicketVerifier) Verify(ctx context.Context, value string, destination realtime.StreamID) (realtime0.VerifiedTicketView, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Verify", ctx, value, destination)
-	ret0, _ := ret[0].(realtime.StreamTicket)
+	ret0, _ := ret[0].(realtime0.VerifiedTicketView)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

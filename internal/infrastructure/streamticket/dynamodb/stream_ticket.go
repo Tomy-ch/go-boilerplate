@@ -19,10 +19,6 @@ import (
 // itemKind は、item の形が崩れていたときのエラー文に載せる種類です。
 const itemKind = "stream ticket"
 
-// subjectDestinationSeparator は、GSI の key に subject と destination を連結する区切りです。
-// subject にも destination にも現れない文字を選びます。
-const subjectDestinationSeparator = "\x1f"
-
 // store は、realtime.StreamTicketStore の DynamoDB 実装です。
 type store struct {
 	c      *dynamodb.Client
@@ -82,7 +78,7 @@ func (s *store) Find(ctx context.Context, hash realtime.TicketHash, asOf time.Ti
 	return ticket, true, nil
 }
 
-// Invalidate は、subject × destination の ticket を GSI で引いてすべて削除します。
+// Invalidate は、subject × destination の ticket を複合キーの GSI で引いてすべて削除します。
 // GSI は結果整合なので、直前に Save した ticket が見えないことがあります。revocation の主機構は
 // fan-out による接続の close で、ここは STOP を無視する client への保険です（設計正本 §2.4）。
 func (s *store) Invalidate(ctx context.Context, subject string, destination realtime.StreamID) error {
@@ -94,9 +90,10 @@ func (s *store) Invalidate(ctx context.Context, subject string, destination real
 		out, err := s.c.Query(ctx, &dynamodb.QueryInput{
 			TableName:              aws.String(s.table),
 			IndexName:              aws.String(indexBySubjectDestination),
-			KeyConditionExpression: aws.String(attrSubjectDestination + " = :sd"),
+			KeyConditionExpression: aws.String(attrSubject + " = :s AND " + attrDestination + " = :d"),
 			ExpressionAttributeValues: map[string]types.AttributeValue{
-				":sd": &types.AttributeValueMemberS{Value: subjectDestination(subject, destination)},
+				":s": &types.AttributeValueMemberS{Value: subject},
+				":d": &types.AttributeValueMemberS{Value: string(destination)},
 			},
 			ExclusiveStartKey: start,
 		})
@@ -130,11 +127,6 @@ func key(hash realtime.TicketHash) map[string]types.AttributeValue {
 	return map[string]types.AttributeValue{attrTicketHash: &types.AttributeValueMemberS{Value: string(hash)}}
 }
 
-// subjectDestination は、GSI の key を返します。
-func subjectDestination(subject string, destination realtime.StreamID) string {
-	return subject + subjectDestinationSeparator + string(destination)
-}
-
 // toItem は、ticket を item に写します。expires_at は epoch 秒（TTL 属性でもある）なので秒精度です。
 func toItem(t realtime.StreamTicket) map[string]types.AttributeValue {
 	item := key(t.Hash)
@@ -144,7 +136,6 @@ func toItem(t realtime.StreamTicket) map[string]types.AttributeValue {
 	item[attrInitialCursor] = &types.AttributeValueMemberN{Value: t.InitialCursor.String()}
 	item[attrIssuedAt] = &types.AttributeValueMemberS{Value: t.IssuedAt.UTC().Format(time.RFC3339Nano)}
 	item[attrExpiresAt] = &types.AttributeValueMemberN{Value: strconv.FormatInt(t.ExpiresAt.Unix(), 10)}
-	item[attrSubjectDestination] = &types.AttributeValueMemberS{Value: subjectDestination(t.Subject, t.Destination)}
 
 	return item
 }

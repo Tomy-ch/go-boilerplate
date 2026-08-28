@@ -74,7 +74,8 @@ func Test_provideRealtimeClient(t *testing.T) {
 			t.Parallel()
 
 			mock := config.MockConfigForTest(t)
-			c, err := provideRealtimeClient(config.NewRealtimeConfig(mock), config.NewEndpointConfig(mock), observability.NewDisabledOutboundHTTPClient(true))
+			c, err := provideRealtimeClient(
+				config.NewRealtimeConfig(mock), config.NewEndpointConfig(mock), observability.NewDisabledOutboundHTTPClient(true))
 			require.NoError(t, err)
 			assert.Nil(t, c.Options().BaseEndpoint, "テスト設定の endpoint は空＝SDK 既定の解決")
 			assert.Equal(t, config.NewRealtimeConfig(mock).Region(), c.Options().Region)

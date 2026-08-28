@@ -49,9 +49,10 @@ func waitIndexed(t *testing.T, s *store, subject string, destination realtime.St
 		out, err := s.c.Query(t.Context(), &dynamodb.QueryInput{
 			TableName:              aws.String(s.table),
 			IndexName:              aws.String(indexBySubjectDestination),
-			KeyConditionExpression: aws.String(attrSubjectDestination + " = :sd"),
+			KeyConditionExpression: aws.String(attrSubject + " = :s AND " + attrDestination + " = :d"),
 			ExpressionAttributeValues: map[string]types.AttributeValue{
-				":sd": &types.AttributeValueMemberS{Value: subjectDestination(subject, destination)},
+				":s": &types.AttributeValueMemberS{Value: subject},
+				":d": &types.AttributeValueMemberS{Value: string(destination)},
 			},
 		})
 
@@ -221,13 +222,6 @@ func Test_key(t *testing.T) {
 	assert.Equal(t, &types.AttributeValueMemberS{Value: "h"}, key("h")[attrTicketHash])
 }
 
-func Test_subjectDestination(t *testing.T) {
-	t.Parallel()
-
-	assert.Equal(t, "alice"+subjectDestinationSeparator+"stream-a", subjectDestination("alice", "stream-a"))
-	assert.NotEqual(t, subjectDestination("ab", "c"), subjectDestination("a", "bc"), "連結の境界が曖昧にならない")
-}
-
 func Test_toItem(t *testing.T) {
 	t.Parallel()
 
@@ -235,7 +229,8 @@ func Test_toItem(t *testing.T) {
 	assert.Equal(t, &types.AttributeValueMemberS{Value: "h1"}, item[attrTicketHash])
 	assert.Equal(t, &types.AttributeValueMemberN{Value: "3"}, item[attrInitialCursor])
 	assert.Equal(t, &types.AttributeValueMemberN{Value: strconv.FormatInt(expires.Unix(), 10)}, item[attrExpiresAt])
-	assert.Equal(t, &types.AttributeValueMemberS{Value: subjectDestination("alice", "stream-a")}, item[attrSubjectDestination])
+	assert.Equal(t, &types.AttributeValueMemberS{Value: "alice"}, item[attrSubject])
+	assert.Equal(t, &types.AttributeValueMemberS{Value: "stream-a"}, item[attrDestination])
 }
 
 func Test_fromItem(t *testing.T) {
@@ -285,4 +280,6 @@ func TestTableSpec(t *testing.T) {
 	require.Len(t, spec.GlobalSecondaryIndexes, 1)
 	assert.Equal(t, indexBySubjectDestination, aws.ToString(spec.GlobalSecondaryIndexes[0].IndexName))
 	assert.Equal(t, types.ProjectionTypeKeysOnly, spec.GlobalSecondaryIndexes[0].Projection.ProjectionType)
+	assert.Equal(t, attrSubject, aws.ToString(spec.GlobalSecondaryIndexes[0].KeySchema[0].AttributeName))
+	assert.Equal(t, attrDestination, aws.ToString(spec.GlobalSecondaryIndexes[0].KeySchema[1].AttributeName))
 }

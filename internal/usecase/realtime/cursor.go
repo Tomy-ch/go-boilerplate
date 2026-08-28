@@ -33,19 +33,26 @@ func NewCursorValidator(log rt.EventLogStore, clk clock.Clock, tf observability.
 	return &cursorValidator{log: log, clock: clk, tracer: tf.Usecase()}
 }
 
-// Validate は、replay floor を EventLog の状態から導出します。判定は 3 つで、順に見ます:
-// cursor+1 の item があればそれが保持期間内かどうか、無ければ後ろに item があるか（あれば gap）、
-// 最後に cursor 自身の item が残っているか（初期位置でなければ必要）。
+// Validate は、replay floor を EventLog の状態から導出します。cursor より後ろに現存する最初の event を
+// 1 回の強い一貫性の読み取りで取り、それが cursor+1 なら保持期間内かどうか、cursor+1 より後ろなら gap、
+// 無ければ（初期位置でない限り）cursor 自身の event が残っているかを見ます。「cursor+1 の有無」と
+// 「後ろの event の有無」を別々に読むと、その間に relay が cursor+1 を append しただけで gap に見えるため、
+// 1 回の読み取りにまとめます。
 func (v *cursorValidator) Validate(ctx context.Context, streamID rt.StreamID, cursor rt.Sequence) error {
 	ctx, endSpan := v.tracer.Start(ctx)
 	defer endSpan()
 
-	next, ok, err := v.log.Find(ctx, streamID, cursor+1)
+	res, err := v.log.ReadAfter(ctx, rt.ReadAfterQuery{StreamID: streamID, After: cursor, Limit: 1})
 	if err != nil {
 		return err
 	}
 
-	if ok {
+	if len(res.Events) > 0 {
+		next := res.Events[0]
+		if next.Sequence != cursor+1 {
+			return xerrors.Wrap(ErrCursorExpired, "the next event is gone while a later one exists")
+		}
+
 		if v.clock.Now().Sub(next.OccurredAt) > rt.EventLogRetention {
 			return xerrors.Wrap(ErrCursorExpired, "the next event is older than the retention")
 		}
@@ -53,20 +60,11 @@ func (v *cursorValidator) Validate(ctx context.Context, streamID rt.StreamID, cu
 		return nil
 	}
 
-	latest, hasLatest, err := v.log.Latest(ctx, streamID)
-	if err != nil {
-		return err
-	}
-
-	if hasLatest && latest.Sequence > cursor {
-		return xerrors.Wrap(ErrCursorExpired, "the next event is gone while a later one exists")
-	}
-
 	if cursor == 0 {
 		return nil
 	}
 
-	_, ok, err = v.log.Find(ctx, streamID, cursor)
+	_, ok, err := v.log.Find(ctx, streamID, cursor)
 	if err != nil {
 		return err
 	}

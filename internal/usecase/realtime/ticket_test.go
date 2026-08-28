@@ -17,7 +17,8 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
-const secretValue = "opaque-256-bit-value"
+// ticketValue は、SecretGenerator が返す生値の代わりです。
+const ticketValue = "opaque-256-bit-value"
 
 var errRandom = xerrors.New("random unavailable")
 
@@ -33,9 +34,9 @@ func newTicketServiceForTest(t *testing.T) (*ticketService, *mock_realtime.MockS
 	return &ticketService{store: store, secrets: secrets, clock: clk, tracer: observability.NewNoopTracerFactory(t).Usecase()}, store, secrets
 }
 
-func savedTicket(destination rt.StreamID) rt.StreamTicket {
+func savedTicket() rt.StreamTicket {
 	return rt.StreamTicket{
-		Hash: hashTicket(secretValue), Subject: "alice", Destination: destination, Scope: "read", InitialCursor: 7,
+		Hash: hashTicket(ticketValue), Subject: "alice", Destination: "stream-a", Scope: "read", InitialCursor: 7,
 		IssuedAt: now, ExpiresAt: now.Add(TicketTTL),
 	}
 }
@@ -76,12 +77,12 @@ func Test_ticketService_Issue(t *testing.T) {
 			t.Parallel()
 
 			s, store, secrets := newTicketServiceForTest(t)
-			secrets.EXPECT().Generate().Return(secretValue, nil)
-			store.EXPECT().Save(gomock.Any(), savedTicket("stream-a")).Return(nil)
+			secrets.EXPECT().Generate().Return(ticketValue, nil)
+			store.EXPECT().Save(gomock.Any(), savedTicket()).Return(nil)
 
 			got, err := s.Issue(t.Context(), IssueTicketInput{Subject: "alice", Destination: "stream-a", Scope: "read", InitialCursor: 7})
 			require.NoError(t, err)
-			assert.Equal(t, IssuedTicket{Value: secretValue, ExpiresAt: now.Add(TicketTTL)}, got)
+			assert.Equal(t, TicketView{Value: ticketValue, ExpiresAt: now.Add(TicketTTL)}, got)
 		})
 	})
 
@@ -102,7 +103,7 @@ func Test_ticketService_Issue(t *testing.T) {
 			t.Parallel()
 
 			s, store, secrets := newTicketServiceForTest(t)
-			secrets.EXPECT().Generate().Return(secretValue, nil)
+			secrets.EXPECT().Generate().Return(ticketValue, nil)
 			store.EXPECT().Save(gomock.Any(), gomock.Any()).Return(errStoreOff)
 
 			_, err := s.Issue(t.Context(), IssueTicketInput{Subject: "alice", Destination: "stream-a"})
@@ -117,15 +118,15 @@ func Test_ticketService_Verify(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("hash が一致し destination も合えば ticket を返す", func(t *testing.T) {
+		t.Run("hash が一致し destination も合えば bindings を返す（store の型は素通ししない）", func(t *testing.T) {
 			t.Parallel()
 
 			s, store, _ := newTicketServiceForTest(t)
-			store.EXPECT().Find(gomock.Any(), hashTicket(secretValue), now).Return(savedTicket("stream-a"), true, nil)
+			store.EXPECT().Find(gomock.Any(), hashTicket(ticketValue), now).Return(savedTicket(), true, nil)
 
-			got, err := s.Verify(t.Context(), secretValue, "stream-a")
+			got, err := s.Verify(t.Context(), ticketValue, "stream-a")
 			require.NoError(t, err)
-			assert.Equal(t, savedTicket("stream-a"), got)
+			assert.Equal(t, VerifiedTicketView{Subject: "alice", Destination: "stream-a", Scope: "read", InitialCursor: 7}, got)
 		})
 	})
 
@@ -146,9 +147,9 @@ func Test_ticketService_Verify(t *testing.T) {
 			t.Parallel()
 
 			s, store, _ := newTicketServiceForTest(t)
-			store.EXPECT().Find(gomock.Any(), hashTicket(secretValue), now).Return(rt.StreamTicket{}, false, nil)
+			store.EXPECT().Find(gomock.Any(), hashTicket(ticketValue), now).Return(rt.StreamTicket{}, false, nil)
 
-			_, err := s.Verify(t.Context(), secretValue, "stream-a")
+			_, err := s.Verify(t.Context(), ticketValue, "stream-a")
 			require.ErrorIs(t, err, ErrTicketInvalid)
 		})
 
@@ -156,9 +157,9 @@ func Test_ticketService_Verify(t *testing.T) {
 			t.Parallel()
 
 			s, store, _ := newTicketServiceForTest(t)
-			store.EXPECT().Find(gomock.Any(), hashTicket(secretValue), now).Return(savedTicket("stream-a"), true, nil)
+			store.EXPECT().Find(gomock.Any(), hashTicket(ticketValue), now).Return(savedTicket(), true, nil)
 
-			_, err := s.Verify(t.Context(), secretValue, "stream-b")
+			_, err := s.Verify(t.Context(), ticketValue, "stream-b")
 			require.ErrorIs(t, err, ErrTicketInvalid)
 		})
 
@@ -166,9 +167,9 @@ func Test_ticketService_Verify(t *testing.T) {
 			t.Parallel()
 
 			s, store, _ := newTicketServiceForTest(t)
-			store.EXPECT().Find(gomock.Any(), hashTicket(secretValue), now).Return(rt.StreamTicket{}, false, errStoreOff)
+			store.EXPECT().Find(gomock.Any(), hashTicket(ticketValue), now).Return(rt.StreamTicket{}, false, errStoreOff)
 
-			_, err := s.Verify(t.Context(), secretValue, "stream-a")
+			_, err := s.Verify(t.Context(), ticketValue, "stream-a")
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
 			require.NotErrorIs(t, err, ErrTicketInvalid)
 		})
@@ -178,8 +179,8 @@ func Test_ticketService_Verify(t *testing.T) {
 func Test_hashTicket(t *testing.T) {
 	t.Parallel()
 
-	sum := sha256.Sum256([]byte(secretValue))
-	assert.Equal(t, rt.TicketHash(hex.EncodeToString(sum[:])), hashTicket(secretValue))
+	sum := sha256.Sum256([]byte(ticketValue))
+	assert.Equal(t, rt.TicketHash(hex.EncodeToString(sum[:])), hashTicket(ticketValue))
 	assert.NotEqual(t, hashTicket("a"), hashTicket("b"))
 	assert.Len(t, hashTicket("a"), 64)
 }

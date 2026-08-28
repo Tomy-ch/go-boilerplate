@@ -30,24 +30,33 @@ type IssueTicketInput struct {
 	InitialCursor rt.Sequence
 }
 
-// IssuedTicket は、client に 1 度だけ渡す ticket の生値と期限です。生値はどこにも保存されません。
-type IssuedTicket struct {
+// TicketView は、発行の結果として client に 1 度だけ渡す ticket の生値と期限です。生値はどこにも保存されません。
+type TicketView struct {
 	Value     string
 	ExpiresAt time.Time
+}
+
+// VerifiedTicketView は、検証を通った ticket の bindings です。接続を許す stream と、cursor 無しの接続の開始位置を
+// 呼び出し元（stream handler）に渡します。
+type VerifiedTicketView struct {
+	Subject       string
+	Destination   rt.StreamID
+	Scope         string
+	InitialCursor rt.Sequence
 }
 
 // TicketIssuer は、ticket を発行します。feature の ticket-issuing usecase が認可の後に呼びます。
 type TicketIssuer interface {
 	// Issue は、生値を生成し、その hash を bindings と共に保存して、生値と期限を返します。
-	Issue(ctx context.Context, in IssueTicketInput) (IssuedTicket, error)
+	Issue(ctx context.Context, in IssueTicketInput) (TicketView, error)
 }
 
 // TicketVerifier は、接続時に提示された ticket を検証します。
 type TicketVerifier interface {
-	// Verify は、生値の hash に対応する ticket が期限内にあり、destination が一致するときその ticket を
+	// Verify は、生値の hash に対応する ticket が期限内にあり、destination が一致するときその bindings を
 	// 返します。無い・期限切れ・destination 違いはいずれも ErrTicketInvalid です（理由は区別しない —
 	// 区別すると存在の有無を推測する手がかりになるため）。store が読めなければ apperror.ErrUnavailable です。
-	Verify(ctx context.Context, value string, destination rt.StreamID) (rt.StreamTicket, error)
+	Verify(ctx context.Context, value string, destination rt.StreamID) (VerifiedTicketView, error)
 }
 
 type ticketService struct {
@@ -71,13 +80,13 @@ func newTicketService(store rt.StreamTicketStore, secrets rt.SecretGenerator, cl
 	return &ticketService{store: store, secrets: secrets, clock: clk, tracer: tf.Usecase()}
 }
 
-func (s *ticketService) Issue(ctx context.Context, in IssueTicketInput) (IssuedTicket, error) {
+func (s *ticketService) Issue(ctx context.Context, in IssueTicketInput) (TicketView, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
 	value, err := s.secrets.Generate()
 	if err != nil {
-		return IssuedTicket{}, xerrors.Wrap(err, "issue ticket")
+		return TicketView{}, xerrors.Wrap(err, "issue ticket")
 	}
 
 	now := s.clock.Now()
@@ -91,34 +100,36 @@ func (s *ticketService) Issue(ctx context.Context, in IssueTicketInput) (IssuedT
 		ExpiresAt:     now.Add(TicketTTL),
 	}
 	if err := s.store.Save(ctx, ticket); err != nil {
-		return IssuedTicket{}, err
+		return TicketView{}, err
 	}
 
-	return IssuedTicket{Value: value, ExpiresAt: ticket.ExpiresAt}, nil
+	return TicketView{Value: value, ExpiresAt: ticket.ExpiresAt}, nil
 }
 
-func (s *ticketService) Verify(ctx context.Context, value string, destination rt.StreamID) (rt.StreamTicket, error) {
+func (s *ticketService) Verify(ctx context.Context, value string, destination rt.StreamID) (VerifiedTicketView, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
 
 	if value == "" {
-		return rt.StreamTicket{}, xerrors.Wrap(ErrTicketInvalid, "ticket is empty")
+		return VerifiedTicketView{}, xerrors.Wrap(ErrTicketInvalid, "ticket is empty")
 	}
 
 	ticket, ok, err := s.store.Find(ctx, hashTicket(value), s.clock.Now())
 	if err != nil {
-		return rt.StreamTicket{}, err
+		return VerifiedTicketView{}, err
 	}
 
 	if !ok {
-		return rt.StreamTicket{}, xerrors.Wrap(ErrTicketInvalid, "ticket is unknown or expired")
+		return VerifiedTicketView{}, xerrors.Wrap(ErrTicketInvalid, "ticket is unknown or expired")
 	}
 
 	if ticket.Destination != destination {
-		return rt.StreamTicket{}, xerrors.Wrap(ErrTicketInvalid, "ticket is bound to another destination")
+		return VerifiedTicketView{}, xerrors.Wrap(ErrTicketInvalid, "ticket is bound to another destination")
 	}
 
-	return ticket, nil
+	return VerifiedTicketView{
+		Subject: ticket.Subject, Destination: ticket.Destination, Scope: ticket.Scope, InitialCursor: ticket.InitialCursor,
+	}, nil
 }
 
 // hashTicket は、生値の保存形（SHA-256 の 16 進）を返します。生値は 256 bit の乱数なので salt は要りません。

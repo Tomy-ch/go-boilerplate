@@ -320,7 +320,8 @@ func Test_toItem(t *testing.T) {
 			assert.Equal(t, &types.AttributeValueMemberS{Value: "2026-08-29T01:02:03.456Z"}, item[attrOccurredAt])
 			assert.Equal(t, &types.AttributeValueMemberN{Value: "1"}, item[attrSchemaVersion])
 			assert.Equal(t, &types.AttributeValueMemberB{Value: []byte(`{"seq":7}`)}, item[attrPayload])
-			assert.Equal(t, &types.AttributeValueMemberN{Value: strconv.FormatInt(e.OccurredAt.Add(realtime.EventLogRetention).Unix(), 10)}, item[attrExpiresAt])
+			wantExpires := strconv.FormatInt(e.OccurredAt.Add(realtime.EventLogRetention).Unix(), 10)
+			assert.Equal(t, &types.AttributeValueMemberN{Value: wantExpires}, item[attrExpiresAt])
 		})
 
 		t.Run("payload が空なら属性を持たない", func(t *testing.T) {

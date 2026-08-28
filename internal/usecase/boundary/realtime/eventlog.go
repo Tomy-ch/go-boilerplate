@@ -37,6 +37,7 @@ type ReadAfterQuery struct {
 type ReadAfterResult struct {
 	// Events は、sequence 昇順の event です。gap はありません。
 	Events []DeliveryEvent
-	// HasMore は、Limit で打ち切られ続きがあることを示します。
+	// HasMore は、Limit（または store の 1 回の読み取り上限）で打ち切られたことを示します。true でも次の読み取りが
+	// 0 件のことはあり、false なら続きは無い、という片方向の保証です。
 	HasMore bool
 }
