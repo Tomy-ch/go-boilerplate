@@ -17,6 +17,9 @@ var (
 	// ErrUnauthorizedSchemeUnsupported は、operation が宣言した securityScheme を検証できる認証器が配線されていない場合のエラー。
 	// 検証できない資格情報は受け入れない（fail-closed）。
 	ErrUnauthorizedSchemeUnsupported = xerrors.Wrap(apperror.ErrUnauthenticated, "security scheme is not supported")
+	// ErrDuplicateScheme は、同じ securityScheme を担当する認証器が 2 つ以上配線された場合のエラー（結線の不具合）。
+	// 後勝ちで黙って片方を捨てると検証が片方にしか効かないため、起動時に落とす。
+	ErrDuplicateScheme = xerrors.Wrap(apperror.ErrInternal, "duplicate security scheme authenticator")
 	// ErrAuthnSlotNotFound は、Authn スロット未装着の場合のエラー（資格情報と無関係な結線の不具合）。
 	ErrAuthnSlotNotFound = xerrors.Wrap(apperror.ErrInternal, "authn slot not found in request context")
 )

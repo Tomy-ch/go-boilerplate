@@ -84,7 +84,8 @@ func newStreamServer(t *testing.T, logger logging.Logger, cursors ucrealtime.Cur
 	require.NoError(t, err)
 
 	bearer := mock_auth.NewMockAuthenticator(gomock.NewController(t))
-	authFunc := auth.NewAuthenticator(bearer, stubIdentityResolver{}, []auth.SchemeAuthenticator{streamauth.New(stubTicketVerifier{})})
+	authFunc, err := auth.NewAuthenticator(bearer, stubIdentityResolver{}, []auth.SchemeAuthenticator{streamauth.New(stubTicketVerifier{})})
+	require.NoError(t, err)
 
 	e := echo.New()
 	UseAppErrorHandlerWithLogger(t, e, logger,

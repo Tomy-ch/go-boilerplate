@@ -7,6 +7,17 @@ const SAMPLE = [
   "export type StreamCursor = string;\nexport interface ControlEvent {}\n",
 ];
 
+describe("DegenerateOutputError", () => {
+  describe("正常系", () => {
+    it("名前とメッセージを保つ", () => {
+      const error = new DegenerateOutputError("empty");
+      expect(error.name).toBe("DegenerateOutputError");
+      expect(error.message).toBe("empty");
+      expect(error).toBeInstanceOf(Error);
+    });
+  });
+});
+
 describe("declaredTypeNames", () => {
   describe("正常系", () => {
     it("interface と type の宣言名を集める", () => {

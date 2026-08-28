@@ -2,6 +2,7 @@ package observability
 
 import (
 	"context"
+	"go.opentelemetry.io/otel"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -367,6 +368,65 @@ func TestNewRecordingTracerProvider(t *testing.T) {
 			_, _ = tp.Tracer("test").Start(context.Background(), "open")
 
 			assert.Empty(t, recorded())
+		})
+	})
+}
+
+func TestInstallRecordingTracerProvider(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("global の provider から得た tracer の span を保持する", func(t *testing.T) {
+			t.Parallel()
+
+			recorded := InstallRecordingTracerProvider(t)
+			_, span := otel.Tracer("test").Start(context.Background(), "global-probe")
+			span.End()
+
+			names := make([]string, 0, 1)
+			for _, s := range recorded() {
+				names = append(names, s.Name())
+			}
+			assert.Contains(t, names, "global-probe")
+		})
+	})
+}
+
+func Test_spanRecorder_ExportSpans(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("複数回の export を順に累積する", func(t *testing.T) {
+			t.Parallel()
+
+			tp, recorded := NewRecordingTracerProvider(t)
+			tracer := tp.Tracer("test")
+			_, first := tracer.Start(context.Background(), "first")
+			first.End()
+			_, second := tracer.Start(context.Background(), "second")
+			second.End()
+
+			spans := recorded()
+			require.Len(t, spans, 2)
+			assert.Equal(t, "first", spans[0].Name())
+			assert.Equal(t, "second", spans[1].Name())
+		})
+	})
+}
+
+func Test_spanRecorder_Shutdown(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("停止は常に成功する", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, (&spanRecorder{}).Shutdown(context.Background()))
 		})
 	})
 }

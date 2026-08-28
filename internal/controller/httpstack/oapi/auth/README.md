@@ -76,6 +76,8 @@ flowchart TB
 - Every failure, delegated or not, is recorded with `ctxhelper.SetAuthnFailure` and carries an HTTP
   status, exactly like the Bearer flow.
 
+The spec also declares `BasicAuth` for `/metrics`; that operation never reaches this function because the ops skipper keeps it out of the validation pipeline (ADR-0020 (metrics-endpoint-auth-exception)). A non-ops operation declaring `BasicAuth` would be refused here until a `SchemeAuthenticator` for it exists.
+
 The only `SchemeAuthenticator` today is the stream ticket (`internal/controller/stream/auth`,
 ADR-0074 (query-ticket-stream-authentication)); it writes the verified bindings into the
 `StreamGrant` slot that `oapi.Middleware` seeds beside the `Authn` slot.

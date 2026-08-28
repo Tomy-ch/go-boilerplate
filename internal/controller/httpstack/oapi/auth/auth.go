@@ -42,13 +42,17 @@ type SchemeAuthenticator interface {
 // NewAuthenticator は、認証用のOpenAPIオプションを返します。
 // operation が宣言した securityScheme の名前が schemes のいずれかと一致すればその認証器へ委譲し、
 // 一致しなければ Bearer として扱います。Bearer でもない scheme に認証器が無い場合は検証できないため拒否します。
+// 同じ scheme を担当する認証器が 2 つあれば ErrDuplicateScheme を返します（起動時に結線の不具合として落とす）。
 func NewAuthenticator(
 	authenticator authbd.Authenticator,
 	resolver authbd.IdentityResolver,
 	schemes []SchemeAuthenticator,
-) openapi3filter.AuthenticationFunc {
+) (openapi3filter.AuthenticationFunc, error) {
 	byName := make(map[string]SchemeAuthenticator, len(schemes))
 	for _, s := range schemes {
+		if _, dup := byName[s.Scheme()]; dup {
+			return nil, xerrors.Wrap(ErrDuplicateScheme, s.Scheme())
+		}
 		byName[s.Scheme()] = s
 	}
 
@@ -96,7 +100,7 @@ func NewAuthenticator(
 			return failure
 		}
 		return nil
-	}
+	}, nil
 }
 
 // isBearerScheme は、scheme を Bearer 経路で扱ってよいかを返します。

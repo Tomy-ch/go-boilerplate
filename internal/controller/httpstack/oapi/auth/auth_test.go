@@ -46,7 +46,8 @@ func TestNewAuthenticator(t *testing.T) {
 			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(want, nil)
 			mr.EXPECT().Resolve(gomock.Any(), gomock.Any()).Return(want, nil)
 
-			fn := NewAuthenticator(m, mr, nil)
+			fn, err := NewAuthenticator(m, mr, nil)
+			require.NoError(t, err)
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 			req.Header.Set("Authorization", "Bearer user123")
@@ -54,7 +55,7 @@ func TestNewAuthenticator(t *testing.T) {
 
 			in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
 
-			err := fn(context.Background(), in)
+			err = fn(context.Background(), in)
 			require.NoError(t, err)
 
 			got, ok := ctxhelper.GetAuthn(req.Context())
@@ -87,11 +88,12 @@ func TestNewAuthenticator(t *testing.T) {
 					return want, nil
 				})
 
-			fn := NewAuthenticator(m, mr, nil)
+			fn, err := NewAuthenticator(m, mr, nil)
+			require.NoError(t, err)
 
 			in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
 
-			err := fn(validatorCtx, in)
+			err = fn(validatorCtx, in)
 			require.NoError(t, err)
 		})
 	})
@@ -108,13 +110,14 @@ func TestNewAuthenticator(t *testing.T) {
 			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(want, nil)
 			mr.EXPECT().Resolve(gomock.Any(), gomock.Any()).Return(want, nil)
 
-			fn := NewAuthenticator(m, mr, nil)
+			fn, err := NewAuthenticator(m, mr, nil)
+			require.NoError(t, err)
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 			req.Header.Set("Authorization", "Bearer user123")
 			in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
 
-			err := fn(context.Background(), in)
+			err = fn(context.Background(), in)
 			require.ErrorIs(t, err, ErrAuthnSlotNotFound)
 			var he *echo.HTTPError
 			require.ErrorAs(t, err, &he)
@@ -128,13 +131,14 @@ func TestNewAuthenticator(t *testing.T) {
 			mr := mock_auth.NewMockIdentityResolver(ctrl)
 			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, xerrors.Wrap(apperror.ErrUnauthenticated, "invalid token"))
 
-			fn := NewAuthenticator(m, mr, nil)
+			fn, err := NewAuthenticator(m, mr, nil)
+			require.NoError(t, err)
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 			req.Header.Set("Authorization", "Bearer tok")
 			in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
 
-			err := fn(context.Background(), in)
+			err = fn(context.Background(), in)
 			require.ErrorIs(t, err, ErrUnauthorizedInvalidToken)
 			var he *echo.HTTPError
 			require.ErrorAs(t, err, &he)
@@ -148,13 +152,14 @@ func TestNewAuthenticator(t *testing.T) {
 			mr := mock_auth.NewMockIdentityResolver(ctrl)
 			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, xerrors.Wrap(apperror.ErrUnavailable, "jwks unavailable"))
 
-			fn := NewAuthenticator(m, mr, nil)
+			fn, err := NewAuthenticator(m, mr, nil)
+			require.NoError(t, err)
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 			req.Header.Set("Authorization", "Bearer tok")
 			in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
 
-			err := fn(context.Background(), in)
+			err = fn(context.Background(), in)
 			var he *echo.HTTPError
 			require.ErrorAs(t, err, &he)
 			assert.Equal(t, http.StatusServiceUnavailable, he.Code)
@@ -170,13 +175,14 @@ func TestNewAuthenticator(t *testing.T) {
 			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(want, nil)
 			mr.EXPECT().Resolve(gomock.Any(), gomock.Any()).Return(nil, xerrors.Wrap(apperror.ErrCanceled, "client gone"))
 
-			fn := NewAuthenticator(m, mr, nil)
+			fn, err := NewAuthenticator(m, mr, nil)
+			require.NoError(t, err)
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 			req.Header.Set("Authorization", "Bearer tok")
 			in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
 
-			err := fn(context.Background(), in)
+			err = fn(context.Background(), in)
 			var he *echo.HTTPError
 			require.ErrorAs(t, err, &he)
 			assert.Equal(t, 499, he.Code)
@@ -190,13 +196,14 @@ func TestNewAuthenticator(t *testing.T) {
 			mr := mock_auth.NewMockIdentityResolver(ctrl)
 			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, xerrors.New("bad"))
 
-			fn := NewAuthenticator(m, mr, nil)
+			fn, err := NewAuthenticator(m, mr, nil)
+			require.NoError(t, err)
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 			req.Header.Set("Authorization", "Bearer tok")
 			in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
 
-			err := fn(context.Background(), in)
+			err = fn(context.Background(), in)
 			var he *echo.HTTPError
 			require.ErrorAs(t, err, &he)
 			assert.Equal(t, http.StatusInternalServerError, he.Code)
@@ -208,12 +215,13 @@ func TestNewAuthenticator(t *testing.T) {
 			m := mock_auth.NewMockAuthenticator(ctrl)
 			mr := mock_auth.NewMockIdentityResolver(ctrl)
 
-			fn := NewAuthenticator(m, mr, nil)
+			fn, err := NewAuthenticator(m, mr, nil)
+			require.NoError(t, err)
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 			in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
 
-			err := fn(context.Background(), in)
+			err = fn(context.Background(), in)
 			require.ErrorIs(t, err, ErrUnauthorizedTokenNotProvided)
 		})
 
@@ -224,13 +232,14 @@ func TestNewAuthenticator(t *testing.T) {
 			mr := mock_auth.NewMockIdentityResolver(ctrl)
 			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, nil)
 
-			fn := NewAuthenticator(m, mr, nil)
+			fn, err := NewAuthenticator(m, mr, nil)
+			require.NoError(t, err)
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 			req.Header.Set("Authorization", "Bearer tok")
 			in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
 
-			err := fn(context.Background(), in)
+			err = fn(context.Background(), in)
 			require.ErrorIs(t, err, ErrUnauthorizedTokenNotProvided)
 		})
 
@@ -241,14 +250,15 @@ func TestNewAuthenticator(t *testing.T) {
 			mr := mock_auth.NewMockIdentityResolver(ctrl)
 			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, xerrors.Wrap(apperror.ErrUnauthenticated, "bad"))
 
-			fn := NewAuthenticator(m, mr, nil)
+			fn, err := NewAuthenticator(m, mr, nil)
+			require.NoError(t, err)
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 			req.Header.Set("Authorization", "Bearer tok")
 			req = req.WithContext(ctxhelper.WithAuthn(req.Context()))
 			in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
 
-			err := fn(context.Background(), in)
+			err = fn(context.Background(), in)
 			require.ErrorIs(t, err, ErrUnauthorizedInvalidToken)
 			assert.Equal(t, err, ctxhelper.AuthnFailure(req.Context()))
 		})
@@ -263,14 +273,15 @@ func TestNewAuthenticator(t *testing.T) {
 			mr.EXPECT().Resolve(gomock.Any(), gomock.Any()).
 				Return(nil, xerrors.Wrap(apperror.ErrUnavailable, "database is down"))
 
-			fn := NewAuthenticator(m, mr, nil)
+			fn, err := NewAuthenticator(m, mr, nil)
+			require.NoError(t, err)
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 			req.Header.Set("Authorization", "Bearer tok")
 			req = req.WithContext(ctxhelper.WithAuthn(req.Context()))
 			in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
 
-			err := fn(context.Background(), in)
+			err = fn(context.Background(), in)
 			require.Error(t, err)
 
 			recorded := ctxhelper.AuthnFailure(req.Context())
@@ -287,13 +298,14 @@ func TestNewAuthenticator(t *testing.T) {
 			m := mock_auth.NewMockAuthenticator(ctrl)
 			mr := mock_auth.NewMockIdentityResolver(ctrl)
 
-			fn := NewAuthenticator(m, mr, nil)
+			fn, err := NewAuthenticator(m, mr, nil)
+			require.NoError(t, err)
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 			req = req.WithContext(ctxhelper.WithAuthn(req.Context()))
 			in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
 
-			err := fn(context.Background(), in)
+			err = fn(context.Background(), in)
 			require.ErrorIs(t, err, ErrUnauthorizedTokenNotProvided)
 			assert.NoError(t, ctxhelper.AuthnFailure(req.Context()))
 		})
@@ -578,7 +590,8 @@ func TestNewAuthenticator_schemeDispatch(t *testing.T) {
 			m := mock_auth.NewMockAuthenticator(ctrl)
 			mr := mock_auth.NewMockIdentityResolver(ctrl)
 			called := false
-			fn := NewAuthenticator(m, mr, []SchemeAuthenticator{stubScheme{name: "StreamTicket", called: &called}})
+			fn, err := NewAuthenticator(m, mr, []SchemeAuthenticator{stubScheme{name: "StreamTicket", called: &called}})
+			require.NoError(t, err)
 
 			in := newSchemeInput(t, "StreamTicket", apiKey)
 			require.NoError(t, fn(context.Background(), in))
@@ -593,11 +606,12 @@ func TestNewAuthenticator_schemeDispatch(t *testing.T) {
 			m := mock_auth.NewMockAuthenticator(ctrl)
 			mr := mock_auth.NewMockIdentityResolver(ctrl)
 			called := false
-			fn := NewAuthenticator(m, mr, []SchemeAuthenticator{stubScheme{name: "StreamTicket", called: &called}})
+			fn, err := NewAuthenticator(m, mr, []SchemeAuthenticator{stubScheme{name: "StreamTicket", called: &called}})
+			require.NoError(t, err)
 
 			in := newSchemeInput(t, "", nil)
 			in.RequestValidationInput.Request.Header.Set("Authorization", "")
-			err := fn(context.Background(), in)
+			err = fn(context.Background(), in)
 
 			require.ErrorIs(t, err, ErrUnauthorizedTokenNotProvided)
 			assert.False(t, called)
@@ -613,10 +627,11 @@ func TestNewAuthenticator_schemeDispatch(t *testing.T) {
 			m := mock_auth.NewMockAuthenticator(ctrl)
 			mr := mock_auth.NewMockIdentityResolver(ctrl)
 			want := xerrors.Wrap(apperror.ErrUnauthenticated, "ticket is unknown")
-			fn := NewAuthenticator(m, mr, []SchemeAuthenticator{stubScheme{name: "StreamTicket", err: want}})
+			fn, err := NewAuthenticator(m, mr, []SchemeAuthenticator{stubScheme{name: "StreamTicket", err: want}})
+			require.NoError(t, err)
 
 			in := newSchemeInput(t, "StreamTicket", apiKey)
-			err := fn(context.Background(), in)
+			err = fn(context.Background(), in)
 
 			require.ErrorIs(t, err, want)
 			requireHTTPStatus(t, err, http.StatusUnauthorized)
@@ -628,11 +643,23 @@ func TestNewAuthenticator_schemeDispatch(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			m := mock_auth.NewMockAuthenticator(ctrl)
 			mr := mock_auth.NewMockIdentityResolver(ctrl)
-			fn := NewAuthenticator(m, mr, []SchemeAuthenticator{stubScheme{name: "StreamTicket", err: apperror.ErrUnavailable}})
+			fn, err := NewAuthenticator(m, mr, []SchemeAuthenticator{stubScheme{name: "StreamTicket", err: apperror.ErrUnavailable}})
+			require.NoError(t, err)
 
-			err := fn(context.Background(), newSchemeInput(t, "StreamTicket", apiKey))
+			err = fn(context.Background(), newSchemeInput(t, "StreamTicket", apiKey))
 
 			requireHTTPStatus(t, err, http.StatusServiceUnavailable)
+		})
+
+		t.Run("同じschemeを担当する認証器が2つあればErrDuplicateScheme", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			m := mock_auth.NewMockAuthenticator(ctrl)
+			mr := mock_auth.NewMockIdentityResolver(ctrl)
+
+			_, err := NewAuthenticator(m, mr, []SchemeAuthenticator{stubScheme{name: "StreamTicket"}, stubScheme{name: "StreamTicket"}})
+
+			require.ErrorIs(t, err, ErrDuplicateScheme)
 		})
 
 		t.Run("認証器の無いBearer以外のschemeは401で拒否し失敗を記録する", func(t *testing.T) {
@@ -640,10 +667,11 @@ func TestNewAuthenticator_schemeDispatch(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			m := mock_auth.NewMockAuthenticator(ctrl)
 			mr := mock_auth.NewMockIdentityResolver(ctrl)
-			fn := NewAuthenticator(m, mr, nil)
+			fn, err := NewAuthenticator(m, mr, nil)
+			require.NoError(t, err)
 
 			in := newSchemeInput(t, "StreamTicket", apiKey)
-			err := fn(context.Background(), in)
+			err = fn(context.Background(), in)
 
 			require.ErrorIs(t, err, ErrUnauthorizedSchemeUnsupported)
 			requireHTTPStatus(t, err, http.StatusUnauthorized)

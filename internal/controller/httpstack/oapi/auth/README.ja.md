@@ -71,6 +71,8 @@ flowchart TB
   （ADR-0021 (optional-authentication-fail-closed)）。Realtime module を持たない `serve` graph が stream ticket に返すのがこれ
 - 委譲の有無にかかわらず、失敗は `ctxhelper.SetAuthnFailure` で記録され HTTP ステータスを持つ（Bearer フローと同じ）
 
+spec は `/metrics` に `BasicAuth` も宣言しているが、その operation は ops skipper が検証パイプラインの外に置くためここへ到達しない（ADR-0020 (metrics-endpoint-auth-exception)）。ops でない operation が `BasicAuth` を宣言すると、その `SchemeAuthenticator` が現れるまでここで拒否される。
+
 現在の `SchemeAuthenticator` は stream ticket（`internal/controller/stream/auth`、
 ADR-0074 (query-ticket-stream-authentication)）だけで、検証済みの束縛を `oapi.Middleware` が `Authn` スロットと並べて
 仕込む `StreamGrant` スロットへ書きます。

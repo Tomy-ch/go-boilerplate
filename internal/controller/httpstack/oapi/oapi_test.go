@@ -89,7 +89,9 @@ func newTestAuthFunc(t *testing.T, stub authnStub) openapi3filter.Authentication
 		resolver.EXPECT().Resolve(gomock.Any(), gomock.Any()).Return(authn, nil).AnyTimes()
 	}
 
-	return auth.NewAuthenticator(authenticator, resolver, nil)
+	fn, err := auth.NewAuthenticator(authenticator, resolver, nil)
+	require.NoError(t, err)
+	return fn
 }
 
 // serveTestSpec は、合成 spec のミドルウェアへ 1 リクエスト通し、ステータスとハンドラ到達の有無を返す。

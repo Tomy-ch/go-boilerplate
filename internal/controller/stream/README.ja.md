@@ -35,6 +35,12 @@ event を書き続ける長寿命の stream で、1 つの返り値を持ちま�
 禁じています。`BindHandler` は `Streamer` が揃った時点（Phase 6）で Realtime の DI module が登録し、
 `di/module/controller.go` には載せません。
 
+## handler を結線する前に Phase 6 が決めること
+
+- **`BindHandler` はまだどこにも登録されていない**ので、Realtime の DI module が `Streamer` と一緒に登録するまで、どの環境でもこの operation は 401（`ErrUnauthorizedSchemeUnsupported`）を返す。その隙間を検知する architecture test は無い — `TestBindHandlerDIParity` は `internal/controller/handler/` しか走査しない。
+- **共有の request timeout と write timeout が stream を切る**: `timeout.Middleware`（Pre priority 2）は全 request に `SERVER_REQUEST_TIMEOUT`（既定 60s）を張り、`http.Server.WriteTimeout`（65s）がその後に接続を閉じる。どちらも path 単位の除外を持たないため、設計の「stream path は request timeout から除外する」を作ってからでないと SSE のレスポンスは 1 分を超えられない。
+- **410 はどの環境の `OBS_TARGET_STATUS_CODES` にも無い**ので、`STREAM_CURSOR_EXPIRED` の拒否は client に届いてもログには出ない。足すかどうかは env のポリシー判断（`env/README.md`）。
+
 ## サブパッケージ
 
 | Package | 役割 |

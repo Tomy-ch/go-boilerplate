@@ -2,6 +2,7 @@ package observability
 
 import (
 	"context"
+	"go.opentelemetry.io/otel"
 	"sync"
 	"testing"
 
@@ -214,4 +215,18 @@ func NewRecordingTracerProvider(t *testing.T) (trace.TracerProvider, func() []sd
 		defer rec.mu.Unlock()
 		return append([]sdktrace.ReadOnlySpan(nil), rec.spans...)
 	}
+}
+
+// InstallRecordingTracerProvider は、NewRecordingTracerProvider の provider をプロセス全体の既定（otel の global）に
+// 据え、テスト終了時に元へ戻します。global の provider から tracer を得る計装（HTTP の OTel ミドルウェアなど）が
+// span に何を載せたかを、その計装自身を通して検証するために使います。
+func InstallRecordingTracerProvider(t *testing.T) func() []sdktrace.ReadOnlySpan {
+	t.Helper()
+
+	tp, recorded := NewRecordingTracerProvider(t)
+	previous := otel.GetTracerProvider()
+	otel.SetTracerProvider(tp)
+	t.Cleanup(func() { otel.SetTracerProvider(previous) })
+
+	return recorded
 }
