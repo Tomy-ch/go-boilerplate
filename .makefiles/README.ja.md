@@ -332,6 +332,8 @@ hadolint により Dockerfile を lint し、`FROM` の base image を不変の 
 | `make stamp-openapi-version` | リリースブランチ名から `info.version` を書き換えます。 | `node_tool_runner` コンテナ内で `make stamp-openapi-version-ci` を実行します。`REF=release/vX.Y.Z` を取り、未指定なら `GITHUB_REF_NAME` を使います。それ以外の ref は何もしません。 |
 | `make stamp-openapi-version-ci` | `scripts/stamp-openapi-version/index.ts` を直接実行します。 | CI 用ターゲットです。 |
 | `make lint-oapi-security-ci` | Spectral + OWASP API Security ルールセットで検証します。 | CI 用ターゲット。spec だけを見る検査のためにツールランナーのイメージを起こさないので、コンテナを介さず実行します。事前に `pnpm install --dir scripts --frozen-lockfile` が必要です。 |
+| `make openapi-client-check` | frontend generator（orval）が bundle 済み spec から SSE の契約型（`DeliveryEvent` / `ControlEvent` / `StreamCursor`）を生成できることを確認します。 | `node_tool_runner` コンテナ内で `make openapi-client-check-ci` を呼び出します。生成物は `tmp/openapi-client/` に出し、コミットしません。 |
+| `make openapi-client-check-ci` | `tsx scripts/openapi-client-check` を直接実行します。 | CI 用ターゲット。事前準備は `lint-oapi-security-ci` と同じです。 |
 
 ## `.makefiles/load` 系
 

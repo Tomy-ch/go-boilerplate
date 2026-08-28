@@ -9,7 +9,8 @@
     "tsx": "cd .. && tsx",
     "lint:security": "eslint .",
     "lint:security:json": "eslint . --format json --output-file node_modules/.eslint-report.json",
-    "lint:openapi-security": "cd .. && spectral lint openapi/openapi.yaml --ruleset .spectral.yaml"
+    "lint:openapi-security": "cd .. && spectral lint openapi/openapi.yaml --ruleset .spectral.yaml",
+    "check:openapi-client": "cd .. && tsx scripts/openapi-client-check"
   },
   "dependencies": {
     "@stoplight/spectral-cli": "6.16.2",

@@ -10,6 +10,8 @@
 .PHONY: gen-api-docs-ci ## OpenAPIに基づき、APIドキュメントを生成します（CI用）
 .PHONY: lint-oapi-ci ## OpenAPI定義を redocly lint で検証します（CI用）
 .PHONY: lint-oapi-security-ci ## OpenAPI定義を OWASP API Security ルールセットで検証します（CI用）
+.PHONY: openapi-client-check ## frontend generator（orval）が bundle 済み OpenAPI から component 型を生成できることを確認します
+.PHONY: openapi-client-check-ci ## frontend generator（orval）が bundle 済み OpenAPI から component 型を生成できることを確認します（CI用）
 
 # -----Dockerコンテナ内で実行するコマンド群-----
 gen-bundle-oapi:
@@ -20,6 +22,9 @@ gen-api-docs:
 
 lint-oapi:
 	@docker compose run --rm node_tool_runner make lint-oapi-ci
+
+openapi-client-check:
+	@docker compose run --rm node_tool_runner make openapi-client-check-ci
 
 # REF 未指定なら環境変数 GITHUB_REF_NAME を使う。コンテナへは環境変数が渡らないため、
 # 呼び出し側が読んだ値を make 変数として内側へ引き継ぐ。
@@ -46,3 +51,9 @@ stamp-openapi-version-ci:
 # .makefiles/README.md の lint-oapi-security-ci 行。
 lint-oapi-security-ci:
 	$(PNPM_SCRIPTS) lint:openapi-security
+
+# frontend generator の contract check。bundle（openapi/openapi.gen.yaml）を orval に渡し、SSE の契約として公開する
+# component 型（DeliveryEvent / ControlEvent / StreamCursor）が生成物に現れることを確認する。生成物は tmp/ に出す。
+# 事前準備は lint-oapi-security-ci と同じ（pnpm install --dir scripts --frozen-lockfile）。
+openapi-client-check-ci:
+	$(PNPM_SCRIPTS) check:openapi-client
