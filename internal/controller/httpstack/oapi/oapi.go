@@ -13,7 +13,8 @@ import (
 )
 
 // Middleware は、OpenAPI スキーマに基づくリクエストバリデーション（認証は authFunc 経由）を行うミドルウェアを返します。
-// バリデーション実行前にリクエストコンテキストへ authn スロット（ctxhelper.WithAuthn）を注入するため、authFunc はそのスロットへ認証結果を書き込めます。
+// バリデーション実行前にリクエストコンテキストへ authn スロット（ctxhelper.WithAuthn）と stream grant スロット
+// （ctxhelper.WithStreamGrant）を注入するため、authFunc はそのスロットへ認証結果を書き込めます。
 // 認証が失敗したリクエストは、spec がそれを任意と宣言していてもハンドラへ到達しません（failClosed）。
 func Middleware(
 	spec *openapi3.T,
@@ -31,7 +32,7 @@ func Middleware(
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c *echo.Context) error {
 			req := c.Request()
-			req = req.WithContext(ctxhelper.WithAuthn(req.Context()))
+			req = req.WithContext(ctxhelper.WithStreamGrant(ctxhelper.WithAuthn(req.Context())))
 			c.SetRequest(req)
 
 			return oapiValidator(failClosed(next))(c)

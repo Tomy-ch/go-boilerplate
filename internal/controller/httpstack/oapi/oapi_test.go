@@ -11,6 +11,7 @@ import (
 	"go-boilerplate/internal/controller/httpstack/oapi/auth"
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
 	mock_auth "go-boilerplate/internal/usecase/boundary/auth/mock"
+	ucrealtime "go-boilerplate/internal/usecase/realtime"
 	"go-boilerplate/pkg/xerrors"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -88,7 +89,7 @@ func newTestAuthFunc(t *testing.T, stub authnStub) openapi3filter.Authentication
 		resolver.EXPECT().Resolve(gomock.Any(), gomock.Any()).Return(authn, nil).AnyTimes()
 	}
 
-	return auth.NewAuthenticator(authenticator, resolver)
+	return auth.NewAuthenticator(authenticator, resolver, nil)
 }
 
 // serveTestSpec は、合成 spec のミドルウェアへ 1 リクエスト通し、ステータスとハンドラ到達の有無を返す。
@@ -159,6 +160,32 @@ func TestMiddleware(t *testing.T) {
 			got, ok := ctxhelper.GetAuthn(c.Request().Context())
 			assert.True(t, ok)
 			assert.Equal(t, a.Subject(), got.Subject())
+		})
+
+		t.Run("StreamGrantスロットが仕込まれている", func(t *testing.T) {
+			t.Parallel()
+
+			spec := &openapi3.T{}
+			mw := Middleware(spec, nil, nil)
+
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
+			e := echo.New()
+			c := e.NewContext(req, rec)
+
+			handler := mw(func(_ *echo.Context) error {
+				return nil
+			})
+
+			_ = handler(c)
+
+			grant := ucrealtime.VerifiedTicketView{Subject: "s", Destination: "d"}
+			require.True(t, ctxhelper.SetStreamGrant(c.Request().Context(), grant))
+
+			got, ok := ctxhelper.GetStreamGrant(c.Request().Context())
+			assert.True(t, ok)
+			assert.Equal(t, grant, got)
 		})
 
 		t.Run("完全公開のoperationは認証を要求しない", func(t *testing.T) {

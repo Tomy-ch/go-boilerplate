@@ -13,6 +13,7 @@ import (
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 	"go-boilerplate/pkg/xerrors"
 
+	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/labstack/echo/v5"
 	"github.com/stretchr/testify/assert"
@@ -38,7 +39,7 @@ func TestNewAuthenticator(t *testing.T) {
 			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(want, nil)
 			mr.EXPECT().Resolve(gomock.Any(), gomock.Any()).Return(want, nil)
 
-			fn := NewAuthenticator(m, mr)
+			fn := NewAuthenticator(m, mr, nil)
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 			req.Header.Set("Authorization", "Bearer user123")
@@ -79,7 +80,7 @@ func TestNewAuthenticator(t *testing.T) {
 					return want, nil
 				})
 
-			fn := NewAuthenticator(m, mr)
+			fn := NewAuthenticator(m, mr, nil)
 
 			in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
 
@@ -100,7 +101,7 @@ func TestNewAuthenticator(t *testing.T) {
 			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(want, nil)
 			mr.EXPECT().Resolve(gomock.Any(), gomock.Any()).Return(want, nil)
 
-			fn := NewAuthenticator(m, mr)
+			fn := NewAuthenticator(m, mr, nil)
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 			req.Header.Set("Authorization", "Bearer user123")
@@ -120,7 +121,7 @@ func TestNewAuthenticator(t *testing.T) {
 			mr := mock_auth.NewMockIdentityResolver(ctrl)
 			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, xerrors.Wrap(apperror.ErrUnauthenticated, "invalid token"))
 
-			fn := NewAuthenticator(m, mr)
+			fn := NewAuthenticator(m, mr, nil)
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 			req.Header.Set("Authorization", "Bearer tok")
@@ -140,7 +141,7 @@ func TestNewAuthenticator(t *testing.T) {
 			mr := mock_auth.NewMockIdentityResolver(ctrl)
 			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, xerrors.Wrap(apperror.ErrUnavailable, "jwks unavailable"))
 
-			fn := NewAuthenticator(m, mr)
+			fn := NewAuthenticator(m, mr, nil)
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 			req.Header.Set("Authorization", "Bearer tok")
@@ -162,7 +163,7 @@ func TestNewAuthenticator(t *testing.T) {
 			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(want, nil)
 			mr.EXPECT().Resolve(gomock.Any(), gomock.Any()).Return(nil, xerrors.Wrap(apperror.ErrCanceled, "client gone"))
 
-			fn := NewAuthenticator(m, mr)
+			fn := NewAuthenticator(m, mr, nil)
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 			req.Header.Set("Authorization", "Bearer tok")
@@ -182,7 +183,7 @@ func TestNewAuthenticator(t *testing.T) {
 			mr := mock_auth.NewMockIdentityResolver(ctrl)
 			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, xerrors.New("bad"))
 
-			fn := NewAuthenticator(m, mr)
+			fn := NewAuthenticator(m, mr, nil)
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 			req.Header.Set("Authorization", "Bearer tok")
@@ -200,7 +201,7 @@ func TestNewAuthenticator(t *testing.T) {
 			m := mock_auth.NewMockAuthenticator(ctrl)
 			mr := mock_auth.NewMockIdentityResolver(ctrl)
 
-			fn := NewAuthenticator(m, mr)
+			fn := NewAuthenticator(m, mr, nil)
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 			in := &openapi3filter.AuthenticationInput{RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req}}
@@ -216,7 +217,7 @@ func TestNewAuthenticator(t *testing.T) {
 			mr := mock_auth.NewMockIdentityResolver(ctrl)
 			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, nil)
 
-			fn := NewAuthenticator(m, mr)
+			fn := NewAuthenticator(m, mr, nil)
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 			req.Header.Set("Authorization", "Bearer tok")
@@ -233,7 +234,7 @@ func TestNewAuthenticator(t *testing.T) {
 			mr := mock_auth.NewMockIdentityResolver(ctrl)
 			m.EXPECT().Authenticate(gomock.Any(), gomock.Any()).Return(nil, xerrors.Wrap(apperror.ErrUnauthenticated, "bad"))
 
-			fn := NewAuthenticator(m, mr)
+			fn := NewAuthenticator(m, mr, nil)
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 			req.Header.Set("Authorization", "Bearer tok")
@@ -255,7 +256,7 @@ func TestNewAuthenticator(t *testing.T) {
 			mr.EXPECT().Resolve(gomock.Any(), gomock.Any()).
 				Return(nil, xerrors.Wrap(apperror.ErrUnavailable, "database is down"))
 
-			fn := NewAuthenticator(m, mr)
+			fn := NewAuthenticator(m, mr, nil)
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 			req.Header.Set("Authorization", "Bearer tok")
@@ -279,7 +280,7 @@ func TestNewAuthenticator(t *testing.T) {
 			m := mock_auth.NewMockAuthenticator(ctrl)
 			mr := mock_auth.NewMockIdentityResolver(ctrl)
 
-			fn := NewAuthenticator(m, mr)
+			fn := NewAuthenticator(m, mr, nil)
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
 			req = req.WithContext(ctxhelper.WithAuthn(req.Context()))
@@ -525,6 +526,160 @@ func Test_extractBearerToken(t *testing.T) {
 			scheme, tok := extractBearerToken(req)
 			assert.Empty(t, scheme)
 			assert.Empty(t, tok)
+		})
+	})
+}
+
+// stubScheme は、dispatch の検証に使う SchemeAuthenticator です。
+type stubScheme struct {
+	name   string
+	err    error
+	called *bool
+}
+
+func (s stubScheme) Scheme() string { return s.name }
+
+func (s stubScheme) Authenticate(_ context.Context, _ *openapi3filter.AuthenticationInput) error {
+	if s.called != nil {
+		*s.called = true
+	}
+	return s.err
+}
+
+func newSchemeInput(t *testing.T, name string, scheme *openapi3.SecurityScheme) *openapi3filter.AuthenticationInput {
+	t.Helper()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/v1/streams/s?ticket=raw", nil)
+	req = req.WithContext(ctxhelper.WithAuthn(req.Context()))
+	return &openapi3filter.AuthenticationInput{
+		RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req},
+		SecuritySchemeName:     name,
+		SecurityScheme:         scheme,
+	}
+}
+
+func requireHTTPStatus(t *testing.T, err error, want int) {
+	t.Helper()
+	var he *echo.HTTPError
+	require.True(t, xerrors.As(err, &he))
+	assert.Equal(t, want, he.Code)
+}
+
+func TestNewAuthenticator_schemeDispatch(t *testing.T) {
+	t.Parallel()
+
+	apiKey := &openapi3.SecurityScheme{Type: "apiKey", In: "query", Name: "ticket"}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("宣言されたschemeの認証器があればそれへ委譲しBearer経路を通らない", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			m := mock_auth.NewMockAuthenticator(ctrl)
+			mr := mock_auth.NewMockIdentityResolver(ctrl)
+			called := false
+			fn := NewAuthenticator(m, mr, []SchemeAuthenticator{stubScheme{name: "StreamTicket", called: &called}})
+
+			in := newSchemeInput(t, "StreamTicket", apiKey)
+			require.NoError(t, fn(context.Background(), in))
+
+			assert.True(t, called)
+			require.NoError(t, ctxhelper.AuthnFailure(in.RequestValidationInput.Request.Context()))
+		})
+
+		t.Run("宣言が無い呼び出しは従来どおりBearer経路で扱う", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			m := mock_auth.NewMockAuthenticator(ctrl)
+			mr := mock_auth.NewMockIdentityResolver(ctrl)
+			called := false
+			fn := NewAuthenticator(m, mr, []SchemeAuthenticator{stubScheme{name: "StreamTicket", called: &called}})
+
+			in := newSchemeInput(t, "", nil)
+			in.RequestValidationInput.Request.Header.Set("Authorization", "")
+			err := fn(context.Background(), in)
+
+			require.ErrorIs(t, err, ErrUnauthorizedTokenNotProvided)
+			assert.False(t, called)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("委譲先が失敗すれば失敗をスロットへ記録し401を返す", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			m := mock_auth.NewMockAuthenticator(ctrl)
+			mr := mock_auth.NewMockIdentityResolver(ctrl)
+			want := xerrors.Wrap(apperror.ErrUnauthenticated, "ticket is unknown")
+			fn := NewAuthenticator(m, mr, []SchemeAuthenticator{stubScheme{name: "StreamTicket", err: want}})
+
+			in := newSchemeInput(t, "StreamTicket", apiKey)
+			err := fn(context.Background(), in)
+
+			require.ErrorIs(t, err, want)
+			requireHTTPStatus(t, err, http.StatusUnauthorized)
+			require.ErrorIs(t, ctxhelper.AuthnFailure(in.RequestValidationInput.Request.Context()), want)
+		})
+
+		t.Run("委譲先の依存不達は503のまま返す", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			m := mock_auth.NewMockAuthenticator(ctrl)
+			mr := mock_auth.NewMockIdentityResolver(ctrl)
+			fn := NewAuthenticator(m, mr, []SchemeAuthenticator{stubScheme{name: "StreamTicket", err: apperror.ErrUnavailable}})
+
+			err := fn(context.Background(), newSchemeInput(t, "StreamTicket", apiKey))
+
+			requireHTTPStatus(t, err, http.StatusServiceUnavailable)
+		})
+
+		t.Run("認証器の無いBearer以外のschemeは401で拒否し失敗を記録する", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			m := mock_auth.NewMockAuthenticator(ctrl)
+			mr := mock_auth.NewMockIdentityResolver(ctrl)
+			fn := NewAuthenticator(m, mr, nil)
+
+			in := newSchemeInput(t, "StreamTicket", apiKey)
+			err := fn(context.Background(), in)
+
+			require.ErrorIs(t, err, ErrUnauthorizedSchemeUnsupported)
+			requireHTTPStatus(t, err, http.StatusUnauthorized)
+			require.ErrorIs(t, ctxhelper.AuthnFailure(in.RequestValidationInput.Request.Context()), ErrUnauthorizedSchemeUnsupported)
+		})
+	})
+}
+
+func Test_isBearerScheme(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("宣言が無ければBearerとみなす", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, isBearerScheme(nil))
+		})
+
+		t.Run("httpのbearerはBearer", func(t *testing.T) {
+			t.Parallel()
+			assert.True(t, isBearerScheme(&openapi3.SecurityScheme{Type: "http", Scheme: "Bearer"}))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("httpでもbasicはBearerではない", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, isBearerScheme(&openapi3.SecurityScheme{Type: "http", Scheme: "basic"}))
+		})
+
+		t.Run("apiKeyはBearerではない", func(t *testing.T) {
+			t.Parallel()
+			assert.False(t, isBearerScheme(&openapi3.SecurityScheme{Type: "apiKey", In: "query", Name: "ticket"}))
 		})
 	})
 }

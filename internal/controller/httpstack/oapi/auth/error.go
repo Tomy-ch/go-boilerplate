@@ -14,6 +14,9 @@ var (
 	ErrUnauthorizedInvalidToken = xerrors.Wrap(apperror.ErrUnauthenticated, "invalid token")
 	// ErrUnauthorizedTokenNotProvided は、認証トークンが提供されていない場合のエラー。
 	ErrUnauthorizedTokenNotProvided = xerrors.Wrap(apperror.ErrUnauthenticated, "authorization token not provided")
+	// ErrUnauthorizedSchemeUnsupported は、operation が宣言した securityScheme を検証できる認証器が配線されていない場合のエラー。
+	// 検証できない資格情報は受け入れない（fail-closed）。
+	ErrUnauthorizedSchemeUnsupported = xerrors.Wrap(apperror.ErrUnauthenticated, "security scheme is not supported")
 	// ErrAuthnSlotNotFound は、Authn スロット未装着の場合のエラー（資格情報と無関係な結線の不具合）。
 	ErrAuthnSlotNotFound = xerrors.Wrap(apperror.ErrInternal, "authn slot not found in request context")
 )

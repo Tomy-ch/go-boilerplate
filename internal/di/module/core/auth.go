@@ -61,7 +61,7 @@ func AuthnModule() fx.Option {
 			// sample-api:replace-with
 			// = identity.New,
 			// sample-api:replace-end
-			auth.NewAuthenticator,
+			fx.Annotate(auth.NewAuthenticator, fx.ParamTags("", "", `group:"`+auth.SchemeGroup+`"`)),
 		),
 	)
 }

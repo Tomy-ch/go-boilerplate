@@ -9,12 +9,21 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"go-boilerplate/internal/config"
+	oapiauth "go-boilerplate/internal/controller/httpstack/oapi/auth"
+	streamauth "go-boilerplate/internal/controller/stream/auth"
 	"go-boilerplate/internal/infrastructure/dynamodbclient/testkit"
 	"go-boilerplate/internal/observability"
 	mock_clock "go-boilerplate/internal/usecase/boundary/clock/mock"
 	rt "go-boilerplate/internal/usecase/boundary/realtime"
 	ucrealtime "go-boilerplate/internal/usecase/realtime"
 )
+
+// securitySchemes は、oapi/auth の scheme group に出された認証器を受け取る fx パラメータです。
+type securitySchemes struct {
+	fx.In
+
+	Schemes []oapiauth.SchemeAuthenticator `group:"oapi.security.schemes"`
+}
 
 // realtimeDeps は、realtime module の graph 検証に要る下位モジュール群です（clock は infrastructure 側の module）。
 func realtimeDeps() []fx.Option {
@@ -33,7 +42,7 @@ func Test_realtimeModule(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("3 つの store と機構側 usecase を提供する", func(t *testing.T) {
+		t.Run("3 つの store と機構側 usecase と StreamTicket scheme の認証器を提供する", func(t *testing.T) {
 			t.Parallel()
 
 			var (
@@ -44,9 +53,10 @@ func Test_realtimeModule(t *testing.T) {
 				cursor   ucrealtime.CursorValidator
 				issuer   ucrealtime.TicketIssuer
 				verifier ucrealtime.TicketVerifier
+				schemes  securitySchemes
 			)
 
-			validateGraph(t, append(realtimeDeps(), fx.Populate(&log, &tickets, &leases, &secrets, &cursor, &issuer, &verifier))...)
+			validateGraph(t, append(realtimeDeps(), fx.Populate(&log, &tickets, &leases, &secrets, &cursor, &issuer, &verifier, &schemes))...)
 		})
 	})
 
@@ -133,4 +143,19 @@ func Test_provideTicketVerifier(t *testing.T) {
 	cfg := config.NewRealtimeConfig(config.MockConfigForTest(t))
 	store := provideStreamTicketStore(testkit.NewTestClient(t), cfg, observability.NewNoopTracerFactory(t))
 	assert.NotNil(t, provideTicketVerifier(store, mock_clock.NewMockClock(gomock.NewController(t)), observability.NewNoopTracerFactory(t)))
+}
+
+func Test_provideStreamTicketScheme(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("StreamTicket scheme を担当する認証器を返す", func(t *testing.T) {
+			t.Parallel()
+
+			s := provideStreamTicketScheme(ucrealtime.NewTicketVerifier(nil, mock_clock.NewMockClock(gomock.NewController(t)), observability.NewNoopTracerFactory(t)))
+			assert.Equal(t, streamauth.SchemeName, s.Scheme())
+		})
+	})
 }
