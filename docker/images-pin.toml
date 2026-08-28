@@ -1,6 +1,8 @@
 # Docker base image / docker compose image の pin 対象 digest（SSOT）。
 # make pin-images-resolve で解決・make pin-images-apply で Dockerfile / docker-compose へ反映する。
+"admiralpiett/goaws:v0.5.4" = "sha256:18589afe16517751cc981354536c148854157a718bee9059494d6cdee3dc4e2d"
 "alpine:3.24" = "sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b"
+"amazon/dynamodb-local:3.3.1" = "sha256:ff89bd48ff32cd8d9be5fee8873b65b8854dc408f1afe881be6eb00247bc0dab"
 "dxflrs/garage:v2.3.0" = "sha256:866bd13ed2038ba7e7190e840482bc27234c4afaf77be8cfa439ae088c1e4690"
 "ghcr.io/navikt/mock-oauth2-server:6.0.0" = "sha256:b9fa251aefee22a97c32534d23a1c400f01dbd483ab263b013d89f6d60d96691"
 "golang:1.26.6-alpine" = "sha256:3889b425f035be855a72fb4755265311293b6d414521f0a519d819df32222d83"

@@ -1,0 +1,14 @@
+# ローカル開発用 GoAWS（SNS / SQS 互換エミュレータ）の環境定義。Realtime Delivery の instance fan-out
+# 専用で、Worker 側の elasticmq とは分離している（docs/design/realtime-delivery.md）。
+# topic / queue は application が実行時に作るためここでは宣言しない。起動時に読むのは接続と
+# ARN の形を決める値だけで、AccountId は elasticmq の queue URL と揃えて ARN の account を 1 つにする。
+Local:
+  Host: localhost
+  Port: 4100
+  Region: us-east-1
+  AccountId: "000000000000"
+  LogToFile: false
+  QueueAttributeDefaults:
+    VisibilityTimeout: 30
+    ReceiveMessageWaitTimeSeconds: 0
+    MaximumMessageSize: 262144
