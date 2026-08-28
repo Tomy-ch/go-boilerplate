@@ -23,7 +23,7 @@ import (
 )
 
 // deliverNow は、deliver テストで clock が返す固定時刻です。
-var deliverNow = time.Date(2026, 8, 29, 12, 0, 0, 0, time.UTC)
+var deliverNow = time.Date(2026, time.August, 29, 12, 0, 0, 0, time.UTC)
 
 // countingMetrics は、IncDead の呼び出し回数を記録する Metrics スタブです。
 type countingMetrics struct{ deadCount int }

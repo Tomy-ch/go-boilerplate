@@ -27,11 +27,11 @@ WHERE o.status = 'pending'
     AND o.delivery_channel = $1
     AND o.next_attempt_at <= NOW()
     AND NOT EXISTS (
-        SELECT prior.id
-        FROM outbox AS prior
-        WHERE prior.ordering_key = o.ordering_key
-            AND prior.ordering_sequence < o.ordering_sequence
-            AND prior.status <> 'published'
+        SELECT earlier.id
+        FROM outbox AS earlier
+        WHERE earlier.ordering_key = o.ordering_key
+            AND earlier.ordering_sequence < o.ordering_sequence
+            AND earlier.status <> 'published'
     )
 ORDER BY o.id
 LIMIT $2
@@ -75,11 +75,11 @@ type ClaimPendingOutboxRow struct {
 //	    AND o.delivery_channel = $1
 //	    AND o.next_attempt_at <= NOW()
 //	    AND NOT EXISTS (
-//	        SELECT prior.id
-//	        FROM outbox AS prior
-//	        WHERE prior.ordering_key = o.ordering_key
-//	            AND prior.ordering_sequence < o.ordering_sequence
-//	            AND prior.status <> 'published'
+//	        SELECT earlier.id
+//	        FROM outbox AS earlier
+//	        WHERE earlier.ordering_key = o.ordering_key
+//	            AND earlier.ordering_sequence < o.ordering_sequence
+//	            AND earlier.status <> 'published'
 //	    )
 //	ORDER BY o.id
 //	LIMIT $2
