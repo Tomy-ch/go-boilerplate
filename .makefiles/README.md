@@ -39,7 +39,7 @@ Make targets are mainly organized into the following units.
 This is a group of targets related to application development environment startup and Job execution.
 
 Compose services are split into two layers (see `.makefiles/docker` group below): the shared **infra**
-layer (`database` / `observability` / `garage`) lives once in the fixed `gobp-shared` project, and the
+layer (`database` / `observability` / `garage` / `elasticmq` / `dynamodb_local` / `goaws`) lives once in the fixed `gobp-shared` project, and the
 per-checkout **app** layer (`api_server` / `mock_auth_server`) runs in this checkout's `APP_PROJECT`.
 
 ### Application startup related
@@ -111,6 +111,12 @@ that step (and its undo for drift checks).
 | --- | --- | --- |
 | `make materialize-env` | Copies `env/.env.$(APP_ENV)` over `env/.env` (defaults to `APP_ENV=ci`). | Materialize the embed target in CI / build before `go build` / `go run` |
 | `make restore-env` | Restores `env/.env` to its git-tracked content via `git restore`. | Undo materialization before a generated-artifact drift / commit check |
+
+### Realtime Delivery smoke related
+
+| Command | Description | Main Use |
+| --- | --- | --- |
+| `make realtime-smoke` | Brings up the shared infra, then runs `scripts/realtime-smoke` against DynamoDB Local and GoAWS with the AWS SDK Go v2 and prints one verdict per call (互換 / 非互換 / 未対応 / 検証不能). Resources are created under a per-run random name and deleted afterwards. `ARGS` passes flags through (`-format markdown` / `-subscribers N` / `-keep` / `-strict`). | Confirm the emulators still accept the calls Realtime Delivery makes — e.g. after bumping either image |
 
 ## `.makefiles/database` group
 
@@ -294,7 +300,7 @@ overridden by `.gobp-db-slot` when a DB slot is held (see `internal/cli/dbslot/R
 | --- | --- | --- |
 | `INFRA_PROJECT` | `gobp-shared` | Fixed compose project holding the single shared infra instance. |
 | `APP_PROJECT` | `gobp-app-$(notdir $(CURDIR))` | Per-checkout compose project for the app layer. Becomes `SERVE_PROJECT` (`gobp-wt-N`) when a DB slot is held. |
-| `INFRA_SERVICES` | `database observability garage elasticmq` | Services that can only run on fixed ports, hence shared. |
+| `INFRA_SERVICES` | `database observability garage elasticmq dynamodb_local goaws` | Services that can only run on fixed ports, hence shared. |
 | `APP_SERVICES` | `api_server mock_auth_server` | Services started per checkout. |
 | `COMPOSE_INFRA` | `docker compose -p $(INFRA_PROJECT)` | Compose invocation for the infra layer. |
 | `INFRA_NO_RECREATE` | `--no-recreate` in a worktree, empty otherwise | Keeps a shared-infra container another checkout is using instead of re-creating it. Empty in a single checkout, where compose re-converges on a definition change as usual. Set it explicitly for a topology the worktree test misses, such as several independent clones. Resolved inside the recipe by `db-slot env`, not at make's parse time. |

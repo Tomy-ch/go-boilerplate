@@ -204,6 +204,11 @@ make slot-release    # app 停止+イメージ削除 → スロット解放 → 
   止めることになる。スロット毎のキューを事前宣言していないのは、プールのサイズが可変
   （`GOBP_DB_POOL_MAX`）で、conf 側の静的な一覧はその値が変わった時点で黙ってプールを覆わなくなる
   ためである。
+- **Realtime Delivery のエミュレータも共有だが、共有のされ方が 2 つで違う。** `dynamodb_local` は `-sharedDb` で
+  動くため全 checkout が同じ table 群を見る。worktree 毎の table prefix が予定している隔離で、まだ入っていない。
+  `goaws` は topic / queue を実行時に作る（`docker/goaws/goaws.yaml` は何も宣言しない）ので、`elasticmq` と違い
+  名前だけでブランチを隔離でき、conf の変更も `infra-down` も要らない。`make realtime-smoke` はまさにそれに
+  依存していて、実行ごとの乱数名で resource を作り終了時に削除するため、複数 worktree から同時に走っても衝突しない。
 - `sql_editor` / `docs_server` / `er_diagram_generator` / `mock_auth_server` は、いずれも自前のデファクト
   ポートを持たないため `2000` 番台に置いている。規則とその帯が安全な理由は
   [`local-environment.ja.md`](local-environment.ja.md) にある。

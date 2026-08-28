@@ -229,6 +229,13 @@ not passed. Run by mistake in the main checkout, it exits with an error without 
   checkout. Per-slot queues are not pre-declared because the pool size is configurable
   (`GOBP_DB_POOL_MAX`), and a static list in the conf would silently stop covering the pool as soon as
   that value changed.
+- **The Realtime Delivery emulators are shared too, in two different ways.** `dynamodb_local` runs
+  `-sharedDb`, so every checkout sees one set of tables; per-worktree table prefixes are the planned
+  isolation and are not in place yet. `goaws` creates topics and queues at runtime
+  (`docker/goaws/goaws.yaml` declares none), so unlike `elasticmq` a branch can isolate itself by naming
+  alone, with no conf change and no `infra-down`. `make realtime-smoke` relies on exactly that: it
+  creates its resources under a per-run random name and deletes them on exit, so concurrent runs from
+  several worktrees do not collide.
 - `sql_editor` / `docs_server` / `er_diagram_generator` / `mock_auth_server` sit in the `2000` range
   because none of them has a de-facto port of its own. The rule, and why that range is safe, are in
   [`local-environment.md`](local-environment.md).

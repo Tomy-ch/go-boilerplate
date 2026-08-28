@@ -52,7 +52,7 @@ worktrees can `make serve` at the same time. The variables below are defined in
 
 | Layer | compose project | Services | Lifecycle |
 | --- | --- | --- | --- |
-| **infra** | `INFRA_PROJECT` = `gobp-shared` (fixed name) | `database` / `observability` / `garage` (+ `garage_init`) — everything that can only run on a fixed port | `make infra-up` starts it; `make serve` / `job` / `worker` / `outbox-relay` call it idempotently first. `make infra-down` stops it **for every checkout** |
+| **infra** | `INFRA_PROJECT` = `gobp-shared` (fixed name) | `database` / `observability` / `garage` (+ `garage_init`) / `elasticmq` / `dynamodb_local` / `goaws` — everything that can only run on a fixed port | `make infra-up` starts it; `make serve` / `job` / `worker` / `outbox-relay` call it idempotently first. `make infra-down` stops it **for every checkout** |
 | **app** | `APP_PROJECT` = `gobp-wt-N` while a DB slot is held, otherwise `gobp-app-<directory name>` | `api_server` / `mock_auth_server` | `make serve` starts it; `make serve-stop` stops **only this checkout's** app |
 
 - The app layer is started as `docker compose -p $(APP_PROJECT) -f docker-compose.yaml -f docker-compose.attach.yaml --profile development`.
@@ -82,6 +82,8 @@ worktrees can `make serve` at the same time. The variables below are defined in
 | `garage` | infra | `dxflrs/garage` | `3900` (S3 API) / `3902` (Web API) | S3-compatible object storage for local development (tests use in-process gofakes3 instead). The Web API delivers objects anonymously — see [`docker/README.md`](../../docker/README.md) |
 | `garage_init` | infra | build `docker/garage/Dockerfile` | none (one-shot) | Idempotent provisioning of the garage layout / bucket / access key / website access |
 | `elasticmq` | infra | `softwaremill/elasticmq-native` | `9324` (SQS API) | SQS-compatible broker for local development (tests use an in-process fake). Shared across checkouts and **cannot** be isolated per slot — see [`db-worktree-pool.md`](db-worktree-pool.md) |
+| `dynamodb_local` | infra | `amazon/dynamodb-local` | `8000` (DynamoDB API) | DynamoDB-compatible store for Realtime Delivery (EventLog / StreamTicket / InstanceLease); `-sharedDb`, persisted in the `dynamodb_data` volume. Shared across checkouts; nothing isolates it per slot yet — see [`db-worktree-pool.md`](db-worktree-pool.md) |
+| `goaws` | infra | `admiralpiett/goaws` (config: `docker/goaws/goaws.yaml`) | `4100` (SNS / SQS API) | SNS / SQS emulator for Realtime Delivery's instance fan-out; the worker-side outbox queue stays on `elasticmq`. `make realtime-smoke` verifies both emulators against the calls Realtime Delivery makes — see [`docker/README.md`](../../docker/README.md) |
 | `docs_server` | infra | build `docker/document/Dockerfile` | `2001:80` | Serves `docs/` for local development |
 | `sql_editor` | infra | `sosedoff/pgweb` | `2000:8081` | Browser DB client |
 | `er_diagram_generator` | infra | `schemaspy/schemaspy` | `2002:3000` | ER diagram generation |
@@ -95,8 +97,9 @@ A host port is chosen by one rule:
 > arbitrary — put it in the `2000` range as a contiguous block.**
 
 `5432` / `8080+N` / `2345+N` / `6060+N` / `4317` / `4318` / `3000` / `3200` / `3900` / `3902` /
-`9324` are the upstream defaults of PostgreSQL, Delve, Go pprof, OpenTelemetry, Grafana, Tempo,
-garage and elasticmq, so they stay where a reader already expects them. `sql_editor`,
+`9324` / `8000` / `4100` are the upstream defaults of PostgreSQL, Delve, Go pprof, OpenTelemetry,
+Grafana, Tempo, garage, elasticmq, DynamoDB Local and GoAWS, so they stay where a reader already
+expects them. `sql_editor`,
 `docs_server`, `er_diagram_generator` and `mock_auth_server` have no such number — pgweb, nginx and
 schemaspy only fix their *container-internal* ports (8081 / 80 / 3000), and pgweb's 8081 falls inside
 the API slot band (`8080+N`) anyway — so they occupy `2000`, `2001`, `2002` and `2010+N`.
@@ -107,6 +110,11 @@ implementation on any current OS, unlike `5000` and `7000`, which the macOS AirP
 for real. **Do not go past `2048`: `2049` is NFS.**
 
 Adding a service: `2003`–`2009` for a fixed port, `2030+` for one that needs a per-slot range.
+
+`8000` is also the second origin in the default `SECURITY_ALLOWED_ORIGINS` (`http://localhost:8000`) —
+the port a frontend dev server tends to take once Grafana holds `3000`. DynamoDB Local keeps `8000`
+because it is the upstream default that every external snippet assumes; run a frontend dev server on
+another port (Vite's `5173`, for instance) and add that origin to `SECURITY_ALLOWED_ORIGINS` instead.
 
 ### Collation version mismatch after a `database` base-OS change
 

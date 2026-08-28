@@ -38,7 +38,7 @@ Make ターゲットは主に以下の単位で整理されています。
 アプリケーションの開発環境起動や Job 実行に関するターゲット群です。
 
 compose のサービスは 2 層に分かれます（後述の `.makefiles/docker` 系を参照）。共有の **infra 層**
-（`database` / `observability` / `garage`）は固定プロジェクト `gobp-shared` に 1 インスタンスだけ置き、
+（`database` / `observability` / `garage` / `elasticmq` / `dynamodb_local` / `goaws`）は固定プロジェクト `gobp-shared` に 1 インスタンスだけ置き、
 checkout 毎の **app 層**（`api_server` / `mock_auth_server`）は自 checkout の `APP_PROJECT` で起動します。
 
 ### アプリケーション起動関連
@@ -110,6 +110,12 @@ make outbox-relay ARGS="replay --message-id=<id>"
 | --- | --- | --- |
 | `make materialize-env` | `env/.env.$(APP_ENV)` を `env/.env` へコピーします（既定は `APP_ENV=ci`）。 | CI / ビルドで `go build` / `go run` 前に埋め込み対象を材料化する |
 | `make restore-env` | `git restore` で `env/.env` を git 管理の内容へ戻します。 | 生成物ドリフト / コミット判定の前に材料化を取り消す |
+
+### Realtime Delivery smoke 関連
+
+| コマンド | 説明 | 主な用途 |
+| --- | --- | --- |
+| `make realtime-smoke` | 共有インフラを起動し、`scripts/realtime-smoke` を AWS SDK Go v2 で DynamoDB Local / GoAWS に対して実行して、呼び出しごとの判定（互換 / 非互換 / 未対応 / 検証不能）を表にします。resource は実行ごとの乱数名で作り終了時に削除します。`ARGS` で flag を渡します（`-format markdown` / `-subscribers N` / `-keep` / `-strict`）。 | Realtime Delivery が行う呼び出しをエミュレータが今も受け付けるかの確認（image を上げたときなど） |
 
 ## `.makefiles/database` 系
 
@@ -293,7 +299,7 @@ hadolint により Dockerfile を lint し、`FROM` の base image を不変の 
 | --- | --- | --- |
 | `INFRA_PROJECT` | `gobp-shared` | 共有インフラの唯一のインスタンスを置く固定 compose プロジェクト。 |
 | `APP_PROJECT` | `gobp-app-$(notdir $(CURDIR))` | app 層の checkout 毎 compose プロジェクト。DB スロット保持時は `SERVE_PROJECT`（`gobp-wt-N`）になります。 |
-| `INFRA_SERVICES` | `database observability garage elasticmq` | 固定ポートでしか動けないため共有するサービス。 |
+| `INFRA_SERVICES` | `database observability garage elasticmq dynamodb_local goaws` | 固定ポートでしか動けないため共有するサービス。 |
 | `APP_SERVICES` | `api_server mock_auth_server` | checkout 毎に起動するサービス。 |
 | `COMPOSE_INFRA` | `docker compose -p $(INFRA_PROJECT)` | infra 層向けの compose 呼び出し。 |
 | `INFRA_NO_RECREATE` | worktree では `--no-recreate`、それ以外は空 | 他の checkout が使っている共有インフラのコンテナを作り直さずそのまま使います。単一 checkout では空で、compose は従来どおり定義変更へ再収束します。独立した clone を複数持つなど worktree 判定で拾えない構成では明示的に指定してください。解決は make のパース時ではなく、レシピ内の `db-slot env` が行います。 |

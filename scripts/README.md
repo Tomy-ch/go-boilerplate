@@ -146,6 +146,12 @@ See [genctxkey/README.md](genctxkey/README.md) for details.
 |`migration-lint/`|Check the sequence numbers under `database/migrations` for duplicates (`-check duplicate`) and gaps (`-check gap`), reading the number before the first `_` of `<seq>_<name>.<kind>.sql` and selecting up / down with `-kind`. Called from the lefthook pre-commit gate. The decision lives in Go rather than in the shell recipe because this check fails towards *inspecting nothing*, which a test can pin and a shell pipeline cannot.|`make check-migration-up-version` / `check-migration-down-version` / `check-migration-up-gap` / `check-migration-down-gap`|
 |`cover-gate/`|Compare the total coverage `go tool cover -func` reports against the `-threshold` value and exit non-zero below it. Extracting the `total:` line and judging it are separate pure functions, so both are pinned by tests — the `awk` pipeline this replaced coerced any non-numeric percentage to `0` through `t+0`, which reported a malformed profile as a coverage failure rather than as the tooling failure it is.|`make cover-gate`|
 
+### Local Environment Verification
+
+|Script|Description|Invoked By|
+|---|---|---|
+|`realtime-smoke/`|Check that DynamoDB Local and GoAWS accept, over the AWS SDK Go v2, the calls Realtime Delivery makes in production — DynamoDB conditional put / `ConsistentRead` query / pagination / TTL, and SNS topic → N SQS queues with `RawMessageDelivery` plus the queue policy — and print one verdict per call: 互換 (accepted and the postcondition holds), 非互換 (accepted but the postcondition fails, or refused), 未対応 (the emulator says it is not implemented), 検証不能 (transport failure, or a halted prerequisite). Only the 非互換 / 未対応 rows are the scope of a local compatibility implementation, and the summary lists just those. Resources carry a per-run random name and are deleted on exit (`-keep` retains them for inspection). A 検証不能 row makes the exit code non-zero — a run that looked at nothing must not read as clean — and `-strict` extends that to 非互換 / 未対応 for CI use. The wire-protocol probe (`ListQueues` over AWS JSON 1.0) runs first because every later call depends on it, and a failed prerequisite leaves its dependants in the table as 検証不能 rather than dropping them.|`make realtime-smoke`|
+
 ### AI Feedback Loop (`closed-loop/`)
 
 |Script|Description|Invoked By|
