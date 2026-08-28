@@ -8,24 +8,18 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"go-boilerplate/internal/config"
-	"go-boilerplate/internal/infrastructure/dynamodbclient"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/xerrors"
 )
 
 var errBoom = xerrors.New("boom")
 
-func TestSpecs(t *testing.T) {
+func TestTableNames(t *testing.T) {
 	t.Parallel()
 
-	specs := Specs(config.NewRealtimeConfig(config.MockConfigForTest(t)))
+	names := TableNames(config.NewRealtimeConfig(config.MockConfigForTest(t)))
 
-	require.Len(t, specs, 3)
-	assert.Equal(t, "realtime_event_log_test", specs[0].Name)
-	assert.Equal(t, "realtime_stream_ticket_test", specs[1].Name)
-	assert.Equal(t, "realtime_instance_lease_test", specs[2].Name)
-	assert.NotEmpty(t, specs[0].TTLAttribute, "EventLog は TTL を持つ")
-	assert.Empty(t, specs[2].TTLAttribute, "InstanceLease は TTL を持たない")
+	assert.Equal(t, []string{"realtime_event_log_test", "realtime_stream_ticket_test", "realtime_instance_lease_test"}, names)
 }
 
 func TestRun(t *testing.T) {
@@ -38,15 +32,15 @@ func TestRun(t *testing.T) {
 			t.Parallel()
 
 			var names []string
-			ensure := func(_ context.Context, spec dynamodbclient.TableSpec) error {
-				names = append(names, spec.Name)
+			ensure := func(_ context.Context, table string) error {
+				names = append(names, table)
 
 				return nil
 			}
 
 			cfg := config.NewRealtimeConfig(config.MockConfigForTest(t))
 			require.NoError(t, Run(t.Context(), cfg, ensure, logging.NewTestLogger(t)))
-			assert.Equal(t, []string{"realtime_event_log_test", "realtime_stream_ticket_test", "realtime_instance_lease_test"}, names)
+			assert.Equal(t, TableNames(cfg), names)
 		})
 	})
 
@@ -57,9 +51,9 @@ func TestRun(t *testing.T) {
 			t.Parallel()
 
 			calls := 0
-			ensure := func(_ context.Context, spec dynamodbclient.TableSpec) error {
+			ensure := func(_ context.Context, table string) error {
 				calls++
-				if spec.Name == "realtime_stream_ticket_test" {
+				if table == "realtime_stream_ticket_test" {
 					return errBoom
 				}
 

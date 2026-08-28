@@ -8,9 +8,15 @@ import (
 	clirealtimeinit "go-boilerplate/internal/cli/realtimeinit"
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/dynamodbclient"
+	eventlogdynamo "go-boilerplate/internal/infrastructure/eventlog/dynamodb"
+	instanceleasedynamo "go-boilerplate/internal/infrastructure/instancelease/dynamodb"
+	streamticketdynamo "go-boilerplate/internal/infrastructure/streamticket/dynamodb"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/xerrors"
 )
+
+// errUnknownRealtimeTable は、CLI コアが要求した table 名に対応する定義が無い場合のエラーです。
+var errUnknownRealtimeTable = xerrors.New("realtime-init: no table definition for")
 
 // newRealtimeInitCommand は、Realtime Delivery の table を作る one-shot コマンドを生成します。
 func newRealtimeInitCommand() *cobra.Command {
@@ -47,10 +53,23 @@ func runRealtimeInit(ctx context.Context) error {
 		return xerrors.Wrap(err, "failed to build dynamodb client")
 	}
 
-	logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError(), nil)
-	ensure := func(ctx context.Context, spec dynamodbclient.TableSpec) error {
+	// table の定義（キー / index / TTL）は各 adapter package が持つ。CLI コアは名前と順序だけを扱うので、
+	// 名前 → 定義の束ね方はこの composition root が持つ。
+	specs := map[string]dynamodbclient.TableSpec{
+		rtCfg.EventLogTable():      eventlogdynamo.TableSpec(rtCfg.EventLogTable()),
+		rtCfg.StreamTicketTable():  streamticketdynamo.TableSpec(rtCfg.StreamTicketTable()),
+		rtCfg.InstanceLeaseTable(): instanceleasedynamo.TableSpec(rtCfg.InstanceLeaseTable()),
+	}
+	ensure := func(ctx context.Context, table string) error {
+		spec, ok := specs[table]
+		if !ok {
+			return xerrors.Wrap(errUnknownRealtimeTable, table)
+		}
+
 		return dynamodbclient.EnsureTable(ctx, client, spec)
 	}
+
+	logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError(), nil)
 
 	return clirealtimeinit.Run(ctx, rtCfg, ensure, logger)
 }

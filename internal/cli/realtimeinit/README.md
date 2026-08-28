@@ -9,11 +9,13 @@ running it again converges on the same state. The application never creates tabl
 
 |Function|Role|
 |---|---|
-|`Specs(cfg)`|The three table definitions, named through `RealtimeConfig` (`realtime_<kind>_<suffix>`), taken from each adapter package's `TableSpec`|
+|`TableNames(cfg)`|The three table names in creation order, taken from `RealtimeConfig` (`realtime_<kind>_<suffix>`)|
 |`Run(ctx, cfg, ensure, logger)`|Ensures the tables in order and stops at the first failure with the table name attached — the rest is left for the next run, which is safe because every step is idempotent|
 
-`Ensurer` is the seam: `cmd/realtime_init.go` passes `dynamodbclient.EnsureTable` bound to a real
-client, the tests pass a recording function.
+`Ensurer` is the seam and takes a table *name*: `cmd/realtime_init.go` (the composition root, where
+infrastructure may be imported) maps each name to its adapter package's `TableSpec` and binds
+`dynamodbclient.EnsureTable` to a real client; the tests pass a recording function. The core itself imports
+no infrastructure package, as `internal/cli/README.md` requires.
 
 ## Test strategy
 
