@@ -1,7 +1,5 @@
 # Controller Layer Guide (`internal/controller`)
 
-English | [日本語](README.ja.md)
-
 ## Role in Onion Architecture
 
 - Acts as the **boundary between the external world (HTTP/CLI) and the application**

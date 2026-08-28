@@ -1,7 +1,5 @@
 # OpenAPI ガイド（`openapi/`）
 
-[English](README.md) | 日本語
-
 このディレクトリには、本プロジェクトで使用する **OpenAPI 定義**が格納されています。
 
 - Redocly による分割構成

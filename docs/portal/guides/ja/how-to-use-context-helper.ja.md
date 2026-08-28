@@ -1,7 +1,5 @@
 # ctxhelper
 
-[English](README.md) | 日本語
-
 ctxhelperは「contextの利用を制御する境界レイヤ」です。
 
 このパッケージは、リクエストスコープの値を context.Context で受け渡すためのヘルパー関数を提供します。

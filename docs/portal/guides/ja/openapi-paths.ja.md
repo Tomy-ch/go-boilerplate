@@ -1,7 +1,5 @@
 # OpenAPI Paths
 
-[English](README.md) | 日本語
-
 `openapi/paths/` は、**API エンドポイントのルーティング定義**をリソース・バージョン単位で格納するディレクトリです。
 
 ## ディレクトリ構成

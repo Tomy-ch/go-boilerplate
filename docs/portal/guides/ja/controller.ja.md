@@ -1,7 +1,5 @@
 # コントローラー層（`internal/controller`）ガイド
 
-[English](README.md) | 日本語
-
 ## オニオンアーキテクチャでの役割
 
 - **外界（HTTP/CLI）とアプリケーションの境界面**

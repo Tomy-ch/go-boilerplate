@@ -1,7 +1,5 @@
 # errorhandler
 
-[English](README.md) | 日本語
-
 Echo / OpenAPI バリデーション / アプリケーションレベルのエラーを統一的な JSON レスポンスに正規化し、構造化ログとともに処理する統一 HTTP エラーハンドラです。
 
 ## アーキテクチャ

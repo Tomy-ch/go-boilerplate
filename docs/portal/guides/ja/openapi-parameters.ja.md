@@ -1,7 +1,5 @@
 # OpenAPI パラメータ
 
-[English](README.md) | 日本語
-
 `openapi/components/parameters/` は、**再利用可能な OpenAPI パラメータ定義**を関心事ごとに整理して格納するディレクトリです。
 
 ## ディレクトリ構成
