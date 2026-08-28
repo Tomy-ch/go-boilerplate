@@ -46,7 +46,7 @@ feature が commit 済みのイベントを受け取り、接続中のクライ�
 
 | 責務 | package |
 | --- | --- |
-| feature 非依存の契約: `DeliveryEvent`、event-log / stream-ticket / instance-lease の store、失効 seam | `internal/usecase/boundary/realtime/` |
+| feature 非依存の契約: `DeliveryEvent`、stream ごとの sequence allocator、event-log / stream-ticket / instance-lease の store、失効 seam | `internal/usecase/boundary/realtime/` |
 | transport を要しない orchestration: ticket の発行 / 検証、cursor 検証、replay 読み出し、lease と cleanup | `internal/usecase/realtime/` |
 | 長寿命 transport: connection registry、replay と catch-up のスケジューリング、heartbeat、backpressure、drain、control-event protocol | `internal/controller/stream/` |
 | store と fan-out substrate | `internal/infrastructure/eventlog/`、`internal/infrastructure/streamticket/`、`internal/infrastructure/instancelease/`、`internal/infrastructure/realtime/` |
@@ -54,7 +54,9 @@ feature が commit 済みのイベントを受け取り、接続中のクライ�
 イベントを配送してほしい feature は、自分の domain / usecase package（`internal/domain/<aggregate>`、
 `internal/usecase/<feature>`）をそのまま持ち、自分の側に **realtime adapter**（`internal/usecase/<feature>/`）
 を足す。adapter は feature の commit 済み変更を destination 宛ての `DeliveryEvent` に変換し、同じ業務
-transaction の中で stream-local sequence を採番し、transactional outbox（[ADR-0054]）経由で emit する。
+transaction の中で機構の allocator から stream-local sequence を得て（sequence 行は outbox 行と並ぶ機構の
+状態であり、feature の aggregate の field には決してならない）、transactional outbox（[ADR-0054]）経由で
+emit する。
 Realtime Delivery は feature の語彙を決して知らない: `thread`、`message`、`notice`、`operator`、event type
 による `switch` は、その型・分岐・package 名のどこにも現れない。見えるのは event、destination、stream、
 subject、sequence、opaque な payload だけである。

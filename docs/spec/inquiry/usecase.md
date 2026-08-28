@@ -13,7 +13,8 @@
 
 投稿と回答は同じ手順で 2 つの outbox 行を同一 tx に emit する: 問い合わせ stream 宛ての `inquiry.message.created.v1`
 （会話画面へ）と、feed stream 宛ての軽量な `inquiry.thread.updated.v1`（一覧画面へ）。1 event = 1 stream を守るため、
-2 つの destination には 2 つの event を出す。連番はそれぞれの stream の所有行（問い合わせ行 / feed 行）から採番する。
+2 つの destination には 2 つの event を出す。連番は Realtime Delivery の `SequenceAllocator` が stream ごとの行（会話 stream は
+問い合わせ ID、feed は feed ID）から採番し、行ロックを commit まで保持する。連番はどの集約の field でもない。
 
 投稿と回答はクライアントの timeout 後再送でメッセージを二重に生まないよう idempotency middleware に opt-in する
 （[ADR-0067 (idempotency-orthogonal-concerns)] のとおり handler ごとに独立）。
@@ -24,7 +25,7 @@
 package: internal/usecase/inquiry
 interface: Usecase
 methods:
-  - name: AppendMessage        # 利用者の投稿。active な問い合わせを取得または作成して append
+  - name: AppendMessage      # 利用者の投稿。active な問い合わせを取得または作成して append
     signature: AppendMessage(ctx context.Context, params AppendMessageParams) (MessageView, error)
   - name: GetHistory         # 利用者の履歴（自分の問い合わせ、sequence 昇順 keyset）。streamCursor 付き
     signature: GetHistory(ctx context.Context, params HistoryParams) (*HistoryView, error)
@@ -112,7 +113,7 @@ output:
         type: "[]MessageView"
       - name: NextAfterSequence   # 次ページの cursor。無ければ nil
         type: "*int64"
-      - name: StreamCursor        # 問い合わせの lastSequence。Messages と同じ snapshot から確定
+      - name: StreamCursor        # 問い合わせ stream の現在位置。Messages はこれ以下の sequence だけを含む
         type: int64
   - struct: TicketView
     fields:
@@ -125,7 +126,7 @@ output:
   - struct: InquiryListView
     fields:
       - name: Items
-        type: "[]InquirySummaryView"   # { ID, UserID, LastSequence, UpdatedAt, CreatedAt }
+        type: "[]InquirySummaryView"   # { ID, UserID, UpdatedAt, CreatedAt }
       - name: NextCursor
         type: "*InquiryCursor"
 ```
@@ -133,12 +134,13 @@ output:
 ## Dependencies
 
 ```yaml
-- name: tx.Manager                        # 投稿 / 回答の業務 tx（採番 + 追加 + emit）。履歴も同じ tx 境界で読み、streamCursor と messages を同一 snapshot にする
+- name: tx.Manager                        # 投稿 / 回答の業務 tx（採番 + 追加 + emit）。履歴も同じ tx 境界で読む
 - name: clock                             # boundary.Clock（updatedAt / createdAt）
-- name: inquiry.Repository                # FindByID / FindActiveByUserID / Create / AllocateSequence / AllocateFeedSequence / Touch / ListForOperator
+- name: inquiry.Repository                # FindByID / FindActiveByUserID / Create / Touch / ListForOperator
 - name: inquirymessage.Repository         # Create / ListByInquiry
+- name: realtime.SequenceAllocator        # boundary/realtime。Allocate(streamID)（行ロックを commit まで保持）/ Current(streamID)（現在位置の読み出し）
 - name: outbox.EmitUsecase                # 2 行 emit（realtime channel、ordering_key / ordering_sequence 付き）
-- name: realtime.TicketIssuer             # boundary/realtime。subject × destination × scope × expiry に bind した ticket の発行
+- name: realtime.TicketIssuer             # internal/usecase/realtime（機構の usecase）。subject × destination × scope × expiry に bind した ticket を発行し boundary/realtime.StreamTicketStore へ保存する
 - name: authz.Authorizer                  # 運営操作の admin ロール判定
 - name: observability.TracerFactory
 - name: pkg/uuid                          # id の UUIDv7 採番
@@ -151,43 +153,45 @@ output:
   tx_required: true
   steps:
     - "message id を UUIDv7 で採番する"
-    - "txm.Do 内で:"
-    - "  ① inquiryRepo.FindActiveByUserID(UserID)。ErrNotFound なら inquiry.New で作成し inquiryRepo.Create（UNIQUE 違反の ErrConflict は最初の投稿の競合。1 度だけ FindActiveByUserID を読み直す）"
-    - "  ② seq = inquiryRepo.AllocateSequence(inquiry.ID)（行ロックは commit まで保持。同一問い合わせへの並行投稿はここで直列化）"
-    - "  ③ inquirymessage.New(id, inquiry.ID, NewAuthor(user, UserID), Body, seq) で検証し msgRepo.Create"
-    - "  ④ inquiry.Touch(now) → inquiryRepo.Touch"
-    - "  ⑤ feedSeq = inquiryRepo.AllocateFeedSequence()"
-    - "  ⑥ emit.Emit(inquiry.message.created.v1; channel=realtime, ordering_key=inquiry.ID, ordering_sequence=seq, payload={messageId, inquiryId, author{kind}, body, sequence, createdAt})"
-    - "  ⑦ emit.Emit(inquiry.thread.updated.v1; channel=realtime, ordering_key=feed ID, ordering_sequence=feedSeq, payload={inquiryId, userId, lastSequence=seq, updatedAt})"
+    - "txm.Do（1 回目）内で: inquiryRepo.FindActiveByUserID(UserID)。無ければ inquiry.New で作成し inquiryRepo.Create。Create が ErrConflict（最初の投稿の競合）なら fn からそのまま返して tx を rollback する — UNIQUE 違反は tx を中断させるため同じ tx の中では読み直せない（docs/spec/cart/usecase.md の SetItem と同じ）"
+    - "ErrConflict のときだけ txm.Do をもう 1 回（Create を試みず FindActiveByUserID から）やり直す。2 回目も見つからなければ ErrConflict を返す"
+    - "取得または作成した問い合わせに対して、同じ txm.Do 内で:"
+    - "  ① seq = seqAlloc.Allocate(inquiry.ID)（会話 stream の連番。行ロックは commit まで保持。同一問い合わせへの並行投稿はここで直列化）"
+    - "  ② inquirymessage.New(id, inquiry.ID, NewAuthor(user, UserID), Body, seq) で検証し msgRepo.Create"
+    - "  ③ inquiry.Touch(now) → inquiryRepo.Touch"
+    - "  ④ feedSeq = seqAlloc.Allocate(feedID)（feed stream の連番。組織全体の投稿・回答はここで直列化する）"
+    - "  ⑤ emit.Emit(inquiry.message.created.v1; channel=realtime, ordering_key=inquiry.ID, ordering_sequence=seq, payload={messageId, inquiryId, author{kind}, body, sequence, createdAt})"
+    - "  ⑥ emit.Emit(inquiry.thread.updated.v1; channel=realtime, ordering_key=feedID, ordering_sequence=feedSeq, payload={inquiryId, userId, sequence=seq, updatedAt})"
     - MessageView へ写像して返す
   calls:
     - tx.Manager.Do
     - inquiry.Repository.FindActiveByUserID
     - inquiry.New
     - inquiry.Repository.Create
-    - inquiry.Repository.AllocateSequence
+    - realtime.SequenceAllocator.Allocate
     - inquirymessage.New
     - inquirymessage.Repository.Create
     - inquiry.Touch
     - inquiry.Repository.Touch
-    - inquiry.Repository.AllocateFeedSequence
     - outbox.EmitUsecase.Emit
     - clock.Now
   errors:
     - ErrEmptyBody / ErrBodyTooLong → 422
-    - ErrConflict（active な問い合わせの二重作成が再読でも解けない）→ 409
+    - ErrConflict（active な問い合わせの二重作成が再試行でも解けない）→ 409
 
 - method: GetHistory
-  tx_required: true          # 読み取りのみの tx。streamCursor と messages を同じ snapshot から取るため
+  tx_required: true          # 読み取りのみの tx。cursor を先に読み、その位置までの messages を読む
   steps:
     - "txm.Do 内で（読み取りのみ）:"
     - "  ① inquiryRepo.FindActiveByUserID(UserID)。無ければ空の HistoryView（InquiryID ゼロ値、StreamCursor 0）を返す"
-    - "  ② msgRepo.ListByInquiry(inquiry.ID, AfterSequence, Limit+1)"
-    - "  ③ StreamCursor = inquiry.LastSequence（同じ snapshot）"
+    - "  ② cursor = seqAlloc.Current(inquiry.ID)（会話 stream の現在位置）"
+    - "  ③ msgRepo.ListByInquiry(inquiry.ID, AfterSequence, upTo=cursor, Limit+1)"
+    - "  ④ StreamCursor = cursor"
     - Limit を超えた分で NextAfterSequence を決め、HistoryView へ写像して返す
   calls:
     - tx.Manager.Do
     - inquiry.Repository.FindActiveByUserID
+    - realtime.SequenceAllocator.Current
     - inquirymessage.Repository.ListByInquiry
   errors:
     - なし（自分の問い合わせしか読めない構造のため 403 は生じない）
@@ -217,15 +221,16 @@ output:
     - ErrPermissionDenied → 403
 
 - method: GetInquiryHistory
-  tx_required: true          # 読み取りのみの tx（GetHistory と同じ理由）
+  tx_required: true          # 読み取りのみの tx（GetHistory と同じ手順）
   steps:
     - "authz.Authorize(authn, admin)"
-    - "txm.Do 内で（読み取りのみ） inquiryRepo.FindByID(InquiryID) と msgRepo.ListByInquiry(...)、StreamCursor = LastSequence"
+    - "txm.Do 内で inquiryRepo.FindByID(InquiryID) → cursor = seqAlloc.Current(InquiryID) → msgRepo.ListByInquiry(InquiryID, AfterSequence, upTo=cursor, Limit+1) → StreamCursor = cursor"
     - HistoryView へ写像して返す
   calls:
-    - tx.Manager.Do
     - authz.Authorizer.Authorize
+    - tx.Manager.Do
     - inquiry.Repository.FindByID
+    - realtime.SequenceAllocator.Current
     - inquirymessage.Repository.ListByInquiry
   errors:
     - ErrPermissionDenied → 403
@@ -236,18 +241,17 @@ output:
   steps:
     - "authz.Authorize(authn, admin)"
     - "message id を UUIDv7 で採番する"
-    - "txm.Do 内で: inquiryRepo.FindByID(InquiryID) → AllocateSequence → inquirymessage.New(author=NewAuthor(operator, OperatorID)) → msgRepo.Create → Touch → AllocateFeedSequence → 2 行 emit（AppendMessage の ②〜⑦ と同じ）"
+    - "txm.Do 内で: inquiryRepo.FindByID(InquiryID) → seq = seqAlloc.Allocate(InquiryID) → inquirymessage.New(author=NewAuthor(operator, OperatorID)) → msgRepo.Create → Touch → feedSeq = seqAlloc.Allocate(feedID) → 2 行 emit（AppendMessage の ⑤⑥ と同じ）"
     - MessageView へ写像して返す
   calls:
-    - tx.Manager.Do
     - authz.Authorizer.Authorize
+    - tx.Manager.Do
     - inquiry.Repository.FindByID
-    - inquiry.Repository.AllocateSequence
+    - realtime.SequenceAllocator.Allocate
     - inquirymessage.New
     - inquirymessage.Repository.Create
     - inquiry.Touch
     - inquiry.Repository.Touch
-    - inquiry.Repository.AllocateFeedSequence
     - outbox.EmitUsecase.Emit
     - clock.Now
   errors:
@@ -259,7 +263,7 @@ output:
   tx_required: false
   steps:
     - "authz.Authorize(authn, admin)"
-    - "ticket = ticketIssuer.Issue(subject=authn.Subject, destination=feed ID, scope=inquiry-feed:read)"
+    - "ticket = ticketIssuer.Issue(subject=authn.Subject, destination=feedID, scope=inquiry-feed:read)"
     - TicketView へ写像して返す
   calls:
     - authz.Authorizer.Authorize
@@ -271,25 +275,37 @@ output:
 ## Notes
 
 - **realtime adapter の置き場所。** feature event → `DeliveryEvent` の変換（destination の決定、event type、payload の組み立て、
-  ordering_key / ordering_sequence の付与）は `internal/usecase/inquiry/` 内の adapter が担う。Realtime Delivery 側の package は
-  `inquiry` を import しない（architecture test で強制。[ADR-0071 (realtime-delivery-driving-mechanism)]）。
+  `SequenceAllocator` からの採番、ordering_key / ordering_sequence の付与）は `internal/usecase/inquiry/` 内の adapter が担う。
+  Realtime Delivery 側の package は `inquiry` を import しない（architecture test で強制。
+  [ADR-0071 (realtime-delivery-driving-mechanism)]）。
 - **2 つの destination。** 会話画面は問い合わせ stream（`streamId` = 問い合わせ ID）、一覧画面は組織 feed stream（`streamId` =
-  feed ID、単一組織のため固定値 1 つ）を購読する。1 event = 1 stream を守るため 2 行 emit し、連番は各 stream の所有行から
-  採番する。feed の event は本文を持たない軽量なもの（`inquiryId / userId / lastSequence / updatedAt`）。
-- **streamCursor と snapshot。** History の `StreamCursor` は `inquiry.lastSequence` を messages と同じ読み取り専用 tx で読んだ値。
-  クライアントはこの値を `after` にして接続すれば、History 取得と SSE 接続の間の event を取りこぼさない
-  （親 issue 受入基準「History 取得と SSE 接続の間の event を取りこぼさない」）。
+  feed ID、単一組織のため固定値 1 つ）を購読する。1 event = 1 stream を守るため 2 行 emit し、連番は `SequenceAllocator` の
+  stream ごとの行から採番する。feed の行は組織で 1 つなので、feed の採番は組織内のあらゆる投稿・回答を直列化する
+  （[ADR-0072 (postgres-state-dynamodb-eventlog)] の「1 stream の書き込みは 1 行で直列化する」がそのまま feed に当たる。
+  sample の規模では見えない制約で、feed をシャーディングする設計はこの spec の範囲外）。feed の event は本文を持たない軽量なもの
+  （`inquiryId / userId / sequence / updatedAt`）。
+- **最初の投稿の競合。** 同じ利用者の初回投稿が並行すると片方の `Create` が UNIQUE 違反になる。UNIQUE 違反は PostgreSQL の
+  tx を中断させるため同じ tx の中では読み直せず、usecase は tx を丸ごと 1 回だけやり直す（`docs/spec/cart/usecase.md` の
+  SetItem / MergeOnLogin と同じ扱い。`tx.Manager.Do` の自動 retry は serialization failure / deadlock だけが対象で、UNIQUE 違反は
+  対象外）。
+- **streamCursor と snapshot。** History は先に `SequenceAllocator.Current` で stream の現在位置（cursor）を読み、次に
+  `sequence <= cursor` で messages を読む。採番の行ロックが commit まで保持されるため、cursor = c を読めた時点で sequence ≤ c の
+  message はすべて commit 済みであり、c より大きいものは除外する——既定の READ COMMITTED（文ごとに snapshot）のままで
+  「cursor と messages を同一 snapshot で読んだ」のと等価になる。分離レベルの変更も単一 SQL 化も要らない。クライアントは
+  この値を `after` にして接続すれば、History 取得と SSE 接続の間の event を取りこぼさない（親 issue 受入基準）。
 - **認可の場所。** 利用者は `UserID` で自分の問い合わせに閉じ（構造的に他者の問い合わせへ到達しない）、運営は `authz` で
   admin ロールを判定する。ticket 発行時に認可した subject × destination を Realtime Delivery が保持し、Streamer は認可を
   行わない（[ADR-0074 (query-ticket-stream-authentication)]）。
 - **失効の呼び出し。** 利用者の退会（`docs/spec/user/usecase.md` の `DeleteUser`）は、soft-delete と同じ tx の後に
-  `realtime` の失効 seam を subject × 問い合わせ stream で呼ぶ。運営の admin ロール剥奪も同様に feed stream について呼ぶ。
-  これらは当該 feature の spec 側に書く義務であり、本 spec は呼び出す責務の所在だけを記す。
+  `realtime` の失効 seam を subject × 問い合わせ stream で呼ぶ義務を負う。これは当該 feature の spec 側に書く義務であり、
+  本 spec は責務の所在だけを記す。`user/usecase.md` への追記と実装は Phase 9（inquiry feature）で行う。運営の admin ロールを
+  剥奪する書き込み経路は現時点で存在しない（`internal/usecase/user/role` は読み取りのみ）ため呼び出し元も存在しない。
+  剥奪経路を追加する変更は、同時に feed stream について失効 seam を呼ぶ義務を負う。
 - **idempotency。** `AppendMessage` と `Reply` の handler は idempotency middleware に opt-in する。Idempotency-Key の scope は
   認証済み主体。
-- **placeholder。** feed ID は単一組織の固定値（migration で seed した `inquiry_feed` 行の ID）。組織が複数になれば
-  `ListInquiries` / `IssueFeedTicket` に組織の軸が入る。
+- **placeholder。** feed ID は単一組織の固定値。組織が複数になれば `ListInquiries` / `IssueFeedTicket` に組織の軸が入る。
 
 [ADR-0067 (idempotency-orthogonal-concerns)]: ../../adr/0067-idempotency-orthogonal-concerns.md
 [ADR-0071 (realtime-delivery-driving-mechanism)]: ../../adr/0071-realtime-delivery-driving-mechanism.md
+[ADR-0072 (postgres-state-dynamodb-eventlog)]: ../../adr/0072-postgres-state-dynamodb-eventlog.md
 [ADR-0074 (query-ticket-stream-authentication)]: ../../adr/0074-query-ticket-stream-authentication.md

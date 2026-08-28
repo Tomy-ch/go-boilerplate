@@ -20,9 +20,9 @@ Realtime Delivery は、**feature が commit 済みの event を、それを待�
 
 | 部品 | 層 | 責務 | 持たないもの |
 | --- | --- | --- | --- |
-| **realtime adapter**（`usecase/<feature>/`） | usecase（feature 側） | commit 済みの feature の変更を `DeliveryEvent` に変換し、destination を選び、業務 tx の中で stream-local sequence を採番し、outbox 経由で emit する | transport、replay、connection の状態 |
+| **realtime adapter**（`usecase/<feature>/`） | usecase（feature 側） | commit 済みの feature の変更を `DeliveryEvent` に変換し、destination を選び、業務 tx の中で sequence allocator から stream-local sequence を得て、outbox 経由で emit する | transport、replay、connection の状態、sequence そのもの（機構の状態であり feature の aggregate の field には決してならない） |
 | **ticket 発行 usecase**（`usecase/<feature>/`） | usecase（feature 側） | subject × destination を認可してから Realtime Delivery に ticket を求める | ticket の形式や保存 |
-| **boundary/realtime** | usecase/boundary | 継ぎ目: `DeliveryEvent`、`EventLogStore`、`StreamTicketStore`、`InstanceLeaseStore`、失効 seam | 実装、feature の語彙 |
+| **boundary/realtime** | usecase/boundary | 継ぎ目: `DeliveryEvent`、`SequenceAllocator`、`EventLogStore`、`StreamTicketStore`、`InstanceLeaseStore`、失効 seam | 実装、feature の語彙 |
 | **usecase/realtime** | usecase | ticket の発行 / 検証、cursor の検証と失効、replay の読み出し、lease heartbeat、orphan cleanup の所有権 | HTTP transport、poll loop |
 | **realtime relay**（`controller/outbox` + realtime publisher） | controller / infrastructure | realtime channel の行を stream 順に claim し、EventLog へ append し、wakeup を publish する | 業務判断、[ADR-0058] を超える retry 方針 |
 | **Streamer**（`controller/stream/`） | controller | connection registry（subject で索引）、capacity gate、replay / catch-up のスケジューリング、heartbeat、backpressure、drain、control-event protocol | 認可、feature の語彙 |
@@ -50,7 +50,7 @@ Realtime Delivery は、**feature が commit 済みの event を、それを待�
 ```mermaid
 flowchart LR
   cmd["Feature command<br/>(business tx)"]
-  seq["allocate sequence<br/>UPDATE stream row … RETURNING<br/>lock held to commit"]
+  seq["allocate sequence<br/>UPDATE sequence row (system_cqrs) … RETURNING<br/>lock held to commit"]
   outbox["outbox row<br/>delivery_channel=realtime<br/>ordering_key / ordering_sequence"]
   relay["realtime relay<br/>claim in stream order"]
   log["EventLog append<br/>conditional on (streamId, sequence)"]
@@ -62,7 +62,7 @@ flowchart LR
   streamer -. "periodic catch-up (30 s + jitter)" .-> log
 ```
 
-- sequence は、feature 自身の書き込みと同じ transaction の中で stream を所有する行を更新して採番し、行ロックは commit まで保持する。したがって採番順 = commit 順で、rollback は増分を戻す: **gap なし**。
+- sequence は機構の **sequence allocator** が採番する——Realtime Delivery が所有する `system_cqrs` の table に stream ごと 1 行を持ち、feature 自身の書き込みと同じ transaction の中で `UPDATE … RETURNING` し、行ロックを commit まで保持する。この行は outbox 行と並ぶ機構の状態であり、sequence を field に持つ aggregate も採番する Repository も無い。したがって採番順 = commit 順で、rollback は増分を戻す: **gap なし**。
 - 複数の destination（たとえば会話 stream と operator feed）に届ける feature は、同じ transaction で destination ごとに 1 行の outbox 行を emit する。各行は自分の ordering key と sequence を持ち、機構は 1 つの event を複数 stream に分割しない。
 - EventLog の append は `(streamId, sequence)` が存在しないことを条件とするので、部分的な失敗の後の outbox retry は冪等である。
 
@@ -161,9 +161,10 @@ stateDiagram-v2
 
 | package | 内容 |
 | --- | --- |
-| `internal/usecase/boundary/realtime/` | `DeliveryEvent`（eventId / streamId / 10 進文字列の sequence / type / occurredAt / schemaVersion / payload ≤ 64 KiB）、`EventLogStore`（conditional append、cursor 以降の `ConsistentRead` 読み出し、降順 1 件の latest）、`StreamTicketStore`（hash 化 ticket、bind、無効化）、`InstanceLeaseStore`（heartbeat、expiry、conditional な cleanup 所有権）、失効 seam |
+| `internal/usecase/boundary/realtime/` | `DeliveryEvent`（eventId / streamId / 10 進文字列の sequence / type / occurredAt / schemaVersion / payload ≤ 64 KiB）、`SequenceAllocator`（`Allocate(streamID)` — 次の sequence、行ロックは commit まで / `Current(streamID)` — stream の現在位置。History の cursor に使う）、`EventLogStore`（conditional append、cursor 以降の `ConsistentRead` 読み出し、降順 1 件の latest）、`StreamTicketStore`（hash 化 ticket、bind、無効化）、`InstanceLeaseStore`（heartbeat、expiry、conditional な cleanup 所有権）、失効 seam |
 | `internal/usecase/realtime/` | ticket の発行 / 検証、cursor 検証と replay floor の導出、replay 読み出し、lease heartbeat と orphan cleanup の所有権 |
 | `internal/controller/stream/` | subject で索引する connection registry、capacity gate、初回 replay の admission、replay / catch-up の semaphore と jitter 付き scheduler、heartbeat、write deadline、buffer と満杯時 close、drain、control-event writer、非 strict の SSE handler |
+| `internal/infrastructure/rdb/system_cqrs/realtime/` | PostgreSQL の `system_cqrs` table（`stream_id`、`last_sequence`）上の `SequenceAllocator`——outbox / idempotency の table と同じ区分（[ADR-0033 (system-cqrs-dml-category)](../adr/0033-system-cqrs-dml-category.ja.md)） |
 | `internal/infrastructure/eventlog/dynamodb/`、`internal/infrastructure/streamticket/dynamodb/`、`internal/infrastructure/instancelease/dynamodb/` | DynamoDB の store。idempotent な one-shot table initializer（application 起動時には作らない） |
 | `internal/infrastructure/realtime/aws/` | realtime publisher（EventLog append → SNS publish）、instance ごとの SQS queue / subscription の lifecycle、consumer loop。`…/local/` は emulator の wire 非互換が判明した呼び出しだけ |
 | `internal/controller/job/<orphan-cleanup>/` + `internal/cli/` | cleanup job の入口 |
@@ -225,10 +226,10 @@ trace: command → outbox → relay → EventLog は outbox header を通じて 
 | --- | --- |
 | **destination の対応付け** | この feature にとって stream が*何であるか*を決める（会話、user ごとの受信箱、組織の feed）。サブシステムは何も解釈しない。 |
 | **event type と payload schema** | `<feature>.<noun>.<verb>.vN` + `schemaVersion`。どちらも維持する。client generator が型付けできるよう OpenAPI component として宣言する。payload は 64 KiB 以下で自己完結し、credential・token・ticket・cookie・binary・feature が既に公開している範囲を超える生の個人情報を含まない。 |
-| **sequence の採番** | 業務 transaction の中で stream を所有する行を `UPDATE` し、次の sequence を `RETURNING` する。lock は commit まで保持する。 |
+| **sequence の採番** | 業務 transaction の中で `SequenceAllocator.Allocate(streamID)` を呼ぶ——機構自身の stream 行を `UPDATE … RETURNING` し、commit まで lock を保持する。aggregate に sequence の field を持たせず、Repository で採番しない。 |
 | **emit** | destination ごとに 1 行の outbox 行。`delivery_channel = realtime`、`ordering_key` = stream、`ordering_sequence` = 採番した sequence。 |
 | **ticket 発行 endpoint** | subject × destination を認可してから ticket を得る。destination の種類ごとに 1 endpoint。scope は feature が定義する。 |
-| **正規の recovery 経路** | 返す行と**同じ** PostgreSQL snapshot から取った `streamCursor` を response に持つ読み出し endpoint（History、一覧）。`RESYNC` と `410` はどちらもクライアントをここへ送る。 |
+| **正規の recovery 経路** | 返す行と整合する `streamCursor` を response に持つ読み出し endpoint（History、一覧）。cursor を**先に**読み（`SequenceAllocator.Current`）、次に `sequence <= cursor` の行を読む: 採番が行ロックを commit まで保持するため、読めた cursor 以下の行はすべて commit 済みで、それより上は除外される——既定の `READ COMMITTED` のままで単一 snapshot と等価になり、分離レベルの変更も単一 SQL の join も要らない。`RESYNC` と `410` はどちらもクライアントをここへ送る。 |
 | **失効の呼び出し** | feature が subject の destination アクセスを取り消すとき、および membership の soft-delete 経路から、失効 seam を呼ぶ。 |
 | **command の idempotency** | timeout 後のクライアント再送で効果が重複する変更 endpoint を idempotency middleware に opt-in する。 |
 
@@ -236,7 +237,7 @@ trace: command → outbox → relay → EventLog は outbox header を通じて 
 
 - **DynamoDB**: 3 table（`occurredAt` 由来の失効で TTL 7 日の EventLog、TTL 付きの StreamTicket、InstanceLease）。partition = stream。at-rest 暗号化。point-in-time recovery、backup、alarm はこの repository の外で provisioning する（[ADR-0106 (vendor-neutral-deploy-skeleton)](../adr/0106-vendor-neutral-deploy-skeleton.ja.md)）。単一の hot stream は 1 partition と 1 PostgreSQL 行で有界であり、機構はそれを shard しない。
 - **SNS / SQS**: 1 topic。その topic ARN だけを許可する policy を持つ instance ごとの queue。`RawMessageDelivery=true`。long polling。visibility timeout。DLQ への redrive。暗号化。create / subscribe / receive / delete の最小 IAM action。
-- **edge**: HTTPS。固定の CORS origin。クライアントの CSP `connect-src`。load balancer / proxy の idle timeout は heartbeat 間隔より長く、stream path では response buffering を無効化。reconnect の rate limiting があるなら edge で。
+- **edge**: HTTPS。固定の CORS origin。クライアントの CSP `connect-src`。load balancer / proxy の idle timeout は heartbeat 間隔より長く、stream path では response buffering を無効化。reconnect の rate limiting があるなら edge で。**stream path の query string を edge / proxy / load balancer の access log から除外または redact する**——ticket は query parameter で運ばれ、プロセス内の除去はプロセス外で書かれる log には届かない。
 - **local**: shared infrastructure profile の DynamoDB Local と SNS/SQS emulator。table は idempotent な initializer が作り、table 名は worktree ごとに prefix する。
 
 ### 4.3 クライアントの契約
@@ -280,13 +281,14 @@ stateDiagram-v2
 | **stream** | 順序と replay の単位。`streamId` は EventLog の partition key。1 つの event はちょうど 1 つの stream に属する。 |
 | **subject** | ticket が bind され connection registry が索引する feature 非依存の principal。サブシステムはそれが user か operator かを知らない。 |
 | **sequence** | feature の業務 transaction で採番される、stream-local で gap の無い単調増加の event 位置。wire では 10 進文字列。 |
+| **sequence 行** | 機構が stream ごとに持つ行（`stream_id`、`last_sequence`）。`system_cqrs` の table にあり、feature の transaction の中で allocator が更新し commit まで lock する。outbox 行と並ぶ機構の状態で、aggregate の一部ではない。 |
 | **ordering key / ordering sequence** | relay が head-of-line 規則を保てるよう stream と sequence を運ぶ outbox の列。 |
 | **head-of-line blocking** | claim 規則: 同じ ordering key でより小さい sequence が未 published の間、行は claim できない。 |
 | **contiguous prefix** | クライアントが stream 上で見られるものはすべて穴の無い `1..N` である、という不変条件。 |
 | **cursor** | クライアントが見た sequence。ブラウザ再接続時は `Last-Event-ID`、明示的な resume 時は `after`。 |
 | **replay** | 接続が開いたときに cursor 以降の EventLog を読むこと。 |
 | **catch-up** | wakeup を受けて、または periodic（30 s、jitter 付き）schedule で、現在の cursor 以降の EventLog を読むこと。 |
-| **replay floor** | まだ replay できる最古の sequence。保存せず導出する: `cursor + 1` が無く後続が存在する、または存在しても retention より古い → `410`。 |
+| **replay floor** | まだ replay できる最古の sequence。保存せず導出する: `cursor + 1` が無く後続が存在する、または存在しても retention より古い、または cursor 自身の item が無い（初期 cursor を除く）→ `410`。 |
 | **wakeup** | SNS → SQS の通知「stream S を cursor の後から読み直せ」。状態を持たず、重複は畳まれ、欠落は catch-up が覆う。 |
 | **blocked stream** | 先頭行が dead の stream。replay されるまで停止。`realtime_blocked_streams` で数える。 |
 | **ticket** | 接続時に提示する opaque な 256-bit credential。hash で保存し、subject / destination / scope / expiry に bind し、5 分の TTL の間は再利用可。 |

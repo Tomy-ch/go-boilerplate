@@ -42,10 +42,13 @@ stream の replay と resume のためだけに、有限期間（7 日）配送 
 correctness は「sequence が正しく採番されること」ではない。**feature の commit 順 → outbox → EventLog
 可視化 → client cursor** という chain が決して壊れないことである。3 つの規則がそれを 1 つの不変条件にする。
 
-1. **sequence に gap は無い。** feature は stream を所有する行を `UPDATE … RETURNING` で更新して
-   stream-local sequence を業務 transaction の中で採番し、その行ロックを commit まで保持する。したがって
-   採番順 = commit 順であり、rollback した transaction は増分も戻す。1 つの stream への書き込みはその行で
-   直列化する——DynamoDB の partition が読み出し側に課すのと同じ、単一 stream の天井である。
+1. **sequence に gap は無い。** feature の adapter は、機構の **sequence allocator** を通じて業務
+   transaction の中で stream-local sequence を採番する: Realtime Delivery が所有する `system_cqrs` の
+   table（[ADR-0033]）に stream ごと 1 行を持ち、`UPDATE … RETURNING` で更新して commit まで行ロックを
+   保持する。この行は outbox 行と同じ機構の状態であり、sequence を field として持つ aggregate も、採番する
+   Repository も存在しない。したがって採番順 = commit 順であり、rollback した transaction は増分も戻す。
+   1 つの stream への書き込みはその行で直列化する——DynamoDB の partition が読み出し側に課すのと同じ、
+   単一 stream の天井である。
 2. **client-visible な sequence は連続した prefix を成す。** outbox relay は、同一 ordering key で
    より小さい sequence が未 published のうちは行を claim しない——既存の `FOR UPDATE SKIP LOCKED`
    （[ADR-0056]）と並ぶ claim 述語で表現する stream-local な head-of-line blocking。publish 中の行はまだ
@@ -67,6 +70,11 @@ gap が無く prefix が連続なら、store に replay metadata は要らない
 - latest sequence は降順読み出しの先頭 item である。
 - cursor が失効しているのは、`cursor + 1` の item が無いのに後続が存在するとき、または存在しても
   `occurredAt` が保持期間より古いとき——DynamoDB の非同期 TTL 削除を「失効」の正本にはしない。
+- **cursor 自身の item が無い**とき（cursor が stream の初期位置でない限り）も失効である。cursor は
+  クライアントが受信した event（または History の `streamCursor`——これも commit 済み event を指す）を
+  名指すので、その item が無いなら cursor は保持期間より古く、その後に append され既に失効したもの
+  もすべて古い。idle のまま丸ごと期限切れになった stream が「追いついている」と偽装してしまうケースは
+  この分岐で捕まえる。
 - EventLog が読めないのは retry 可能な server error であり、cursor の推測ではない。
 
 ## 影響
@@ -134,10 +142,12 @@ floor を進めるために全 stream を走査する job は情報を持たな�
   `sequence`、`cursor`、`replay floor`）。
 - 関連: [ADR-0071]（機構）、[ADR-0054]（event は業務 transaction の中で emit する）、[ADR-0056]
   （本決定が拡張する claim 述語）、[ADR-0058]（outbox 行が dead になる条件——head-of-line blocking が
-  dead な先頭で stream を止める理由）、[ADR-0037]（UUIDv7 の event 識別子）。
+  dead な先頭で stream を止める理由）、[ADR-0037]（UUIDv7 の event 識別子）、[ADR-0033]（sequence table
+  が属する `system_cqrs` 区分——feature の集約ではなく outbox と並ぶ機構の状態）。
 - sequence 採番と claim 述語は親 issue の別フェーズ（feature adapter と outbox routing）で入る。各フェーズ
   の test が chain の自分の半分を固定する。
 
+[ADR-0033]: 0033-system-cqrs-dml-category.ja.md
 [ADR-0037]: 0037-uuidv7-identifiers.ja.md
 [ADR-0054]: 0054-transactional-outbox.ja.md
 [ADR-0056]: 0056-skip-locked-outbox-relay.ja.md

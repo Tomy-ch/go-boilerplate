@@ -85,6 +85,11 @@ that introduces `next_attempt_at`); `docs/design/outbox.md` is updated in that c
 - A permanent failure that nobody classified — a receiver returning `500` forever, a bug that
   surfaces as a transport error — retries indefinitely at the backoff cap. Nothing terminates it
   automatically; the lag SLI and the alert on it are the only guard, and they must be watched.
+  On the realtime channel this is the only way a stream head can stall, because that channel has
+  no permanent class at all: such a row never becomes `dead`, so `outbox-relay replay` does not
+  apply to it, and recovery is fixing the misclassified cause and deploying — deliberately, since
+  an operator command that forced the row to `dead` would be a way to skip a sequence, which
+  [ADR-0072] forbids.
 - The `next_attempt_at` column and the claim-predicate change are a schema migration and an
   index change, not a configuration flip.
 - Backoff parameters (initial interval, cap, jitter) are fixed values in code. A deployment that
@@ -122,8 +127,9 @@ principled value, and it re-creates the outage-to-dead path at a different scale
 
 ## Notes
 
-- Design reference: `docs/design/outbox.md` (§ "State transitions", glossary entries "dead" and
-  "backoff").
+- Design reference: `docs/design/outbox.md` — its state diagram and glossary still describe the
+  previous count-based rule and are rewritten together with the implementation (see Decision);
+  until then this ADR is the only statement of the classification rule.
 - This decision adopts item 3 of the hardening blueprint in [ADR-0111] (per-message backoff via
   `next_attempt_at`) on its own — not on operational evidence, but because the realtime channel
   cannot tolerate count-based dead-lettering. The other blueprint items stay deferred as that ADR

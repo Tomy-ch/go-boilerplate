@@ -20,9 +20,9 @@ Responsibility split (who owns what):
 
 | Component | Layer | Responsibility | Does NOT hold |
 | --- | --- | --- | --- |
-| **realtime adapter** (`usecase/<feature>/`) | usecase (feature side) | turn a committed feature change into `DeliveryEvent`s; choose the destination(s); allocate the stream-local sequence inside the business tx; emit through the outbox | transport, replay, connection state |
+| **realtime adapter** (`usecase/<feature>/`) | usecase (feature side) | turn a committed feature change into `DeliveryEvent`s; choose the destination(s); obtain the stream-local sequence from the sequence allocator inside the business tx; emit through the outbox | transport, replay, connection state, the sequence itself (it is mechanism state, never a field of the feature's aggregate) |
 | **ticket-issuing usecase** (`usecase/<feature>/`) | usecase (feature side) | authorize the subject for a destination, then ask Realtime Delivery for a ticket | the ticket's format or storage |
-| **boundary/realtime** | usecase/boundary | the seam: `DeliveryEvent`, `EventLogStore`, `StreamTicketStore`, `InstanceLeaseStore`, the revocation seam | implementations, feature vocabulary |
+| **boundary/realtime** | usecase/boundary | the seam: `DeliveryEvent`, `SequenceAllocator`, `EventLogStore`, `StreamTicketStore`, `InstanceLeaseStore`, the revocation seam | implementations, feature vocabulary |
 | **usecase/realtime** | usecase | ticket issue / verify, cursor validation and expiry, replay reads, lease heartbeat, orphan cleanup ownership | the HTTP transport, the poll loop |
 | **realtime relay** (`controller/outbox` + realtime publisher) | controller / infrastructure | claim realtime-channel rows in stream order, append to the EventLog, publish the wakeup | business decisions, retry policy beyond [ADR-0058] |
 | **Streamer** (`controller/stream/`) | controller | connection registry (indexed by subject), capacity gate, replay / catch-up scheduling, heartbeat, backpressure, drain, the control-event protocol | authorization, feature vocabulary |
@@ -50,7 +50,7 @@ Design invariants:
 ```mermaid
 flowchart LR
   cmd["Feature command<br/>(business tx)"]
-  seq["allocate sequence<br/>UPDATE stream row … RETURNING<br/>lock held to commit"]
+  seq["allocate sequence<br/>UPDATE sequence row (system_cqrs) … RETURNING<br/>lock held to commit"]
   outbox["outbox row<br/>delivery_channel=realtime<br/>ordering_key / ordering_sequence"]
   relay["realtime relay<br/>claim in stream order"]
   log["EventLog append<br/>conditional on (streamId, sequence)"]
@@ -62,7 +62,7 @@ flowchart LR
   streamer -. "periodic catch-up (30 s + jitter)" .-> log
 ```
 
-- The sequence is allocated by updating the row that owns the stream inside the same transaction as the feature's own write, and the row lock is held until commit. Allocation order therefore equals commit order and a rollback rolls the increment back: **no gaps**.
+- The sequence is allocated by the mechanism's **sequence allocator** — one row per stream in a `system_cqrs` table owned by Realtime Delivery, updated with `UPDATE … RETURNING` inside the same transaction as the feature's own write, with the row lock held until commit. The row is mechanism state beside the outbox row; no aggregate carries a sequence field and no Repository allocates one. Allocation order therefore equals commit order and a rollback rolls the increment back: **no gaps**.
 - A feature that addresses more than one destination (a conversation stream and an operator feed, say) emits one outbox row per destination in the same transaction. Each row carries its own ordering key and sequence; the mechanism never splits one event across streams.
 - The EventLog append is conditional on `(streamId, sequence)` not existing, so an outbox retry after a partial failure is idempotent.
 
@@ -161,9 +161,10 @@ This section states the **planned** placement. The dependency direction and the 
 
 | Package | Contents |
 | --- | --- |
-| `internal/usecase/boundary/realtime/` | `DeliveryEvent` (eventId / streamId / sequence as a decimal string / type / occurredAt / schemaVersion / payload ≤ 64 KiB); `EventLogStore` (conditional append, read after cursor with `ConsistentRead`, latest by descending read); `StreamTicketStore` (hashed ticket, bindings, invalidate); `InstanceLeaseStore` (heartbeat, expiry, conditional cleanup ownership); the revocation seam |
+| `internal/usecase/boundary/realtime/` | `DeliveryEvent` (eventId / streamId / sequence as a decimal string / type / occurredAt / schemaVersion / payload ≤ 64 KiB); `SequenceAllocator` (`Allocate(streamID)` — next sequence, row locked to commit; `Current(streamID)` — the stream's current position, used as a History cursor); `EventLogStore` (conditional append, read after cursor with `ConsistentRead`, latest by descending read); `StreamTicketStore` (hashed ticket, bindings, invalidate); `InstanceLeaseStore` (heartbeat, expiry, conditional cleanup ownership); the revocation seam |
 | `internal/usecase/realtime/` | ticket issue / verify; cursor validation and replay-floor derivation; replay reads; lease heartbeat and orphan cleanup ownership |
 | `internal/controller/stream/` | connection registry indexed by subject; capacity gate; initial-replay admission; replay / catch-up semaphore and jittered scheduler; heartbeat; write deadline; buffer and close-on-full; drain; control-event writer; the non-strict SSE handler |
+| `internal/infrastructure/rdb/system_cqrs/realtime/` | the `SequenceAllocator` over a PostgreSQL `system_cqrs` table (`stream_id`, `last_sequence`) — the same category as the outbox and idempotency tables ([ADR-0033 (system-cqrs-dml-category)](../adr/0033-system-cqrs-dml-category.md)) |
 | `internal/infrastructure/eventlog/dynamodb/`, `internal/infrastructure/streamticket/dynamodb/`, `internal/infrastructure/instancelease/dynamodb/` | the DynamoDB stores; idempotent one-shot table initializer (never at application start) |
 | `internal/infrastructure/realtime/aws/` | realtime publisher (EventLog append → SNS publish), per-instance SQS queue / subscription lifecycle, consumer loop; `…/local/` only for an emulator call that proves wire-incompatible |
 | `internal/controller/job/<orphan-cleanup>/` + `internal/cli/` | the cleanup job entry point |
@@ -225,10 +226,10 @@ Traces: command → outbox → relay → EventLog share one trace through the ou
 | --- | --- |
 | **Destination mapping** | Decide what a stream *is* for this feature (a conversation, a per-user inbox, an organization feed). The subsystem interprets nothing about it. |
 | **Event type and payload schema** | `<feature>.<noun>.<verb>.vN` plus `schemaVersion`; both stay. Declared as an OpenAPI component so a client generator can type it. Payload ≤ 64 KiB, self-contained, and free of credentials, tokens, tickets, cookies, binaries, and raw personal data beyond what the feature already exposes. |
-| **Sequence allocation** | In the business transaction, `UPDATE` the row that owns the stream and `RETURNING` the next sequence; hold the lock to commit. |
+| **Sequence allocation** | In the business transaction, call `SequenceAllocator.Allocate(streamID)` — the mechanism's own row for the stream is updated with `UPDATE … RETURNING` and stays locked to commit. Do not give the aggregate a sequence field and do not allocate in a Repository. |
 | **Emit** | One outbox row per destination, `delivery_channel = realtime`, `ordering_key` = the stream, `ordering_sequence` = the allocated sequence. |
 | **Ticket-issuing endpoint** | Authorize subject × destination, then obtain a ticket. One endpoint per destination kind; the scope is the feature's to define. |
-| **Canonical recovery path** | A read endpoint (History, list) whose response carries a `streamCursor` taken from the **same** PostgreSQL snapshot as the rows it returns. `RESYNC` and `410` both send the client here. |
+| **Canonical recovery path** | A read endpoint (History, list) whose response carries a `streamCursor` consistent with the rows it returns. Read the cursor **first** (`SequenceAllocator.Current`), then read rows with `sequence <= cursor`: because allocation holds the row lock to commit, every row at or below a cursor you could read is already committed, and anything above it is excluded — equivalent to one snapshot under the default `READ COMMITTED`, with no isolation change and no single-statement join. `RESYNC` and `410` both send the client here. |
 | **Revocation calls** | Invoke the revocation seam when the feature withdraws a subject's access to a destination, and from the membership soft-delete path. |
 | **Idempotency on commands** | Opt the feature's mutating endpoints into the idempotency middleware where a client retry after a timeout would otherwise duplicate the effect. |
 
@@ -236,7 +237,7 @@ Traces: command → outbox → relay → EventLog share one trace through the ou
 
 - **DynamoDB**: three tables (EventLog with TTL 7 days on `occurredAt`-derived expiry, StreamTicket with TTL, InstanceLease); partition = stream; encryption at rest; point-in-time recovery, backup, and alarms are provisioned outside this repository ([ADR-0106 (vendor-neutral-deploy-skeleton)](../adr/0106-vendor-neutral-deploy-skeleton.md)). A single hot stream is bounded by one partition and one PostgreSQL row; the mechanism does not shard it.
 - **SNS / SQS**: one topic; per-instance queues with a policy admitting only that topic ARN; `RawMessageDelivery=true`; long polling; visibility timeout; redrive to a DLQ; encryption; the minimal IAM actions for create / subscribe / receive / delete.
-- **Edge**: HTTPS; a fixed CORS origin; the client's CSP `connect-src`; load-balancer / proxy idle timeout above the heartbeat interval and response buffering disabled for the stream path; reconnect rate limiting, if any, at the edge.
+- **Edge**: HTTPS; a fixed CORS origin; the client's CSP `connect-src`; load-balancer / proxy idle timeout above the heartbeat interval and response buffering disabled for the stream path; reconnect rate limiting, if any, at the edge; **query strings excluded or redacted from edge / proxy / load-balancer access logs** on the stream path — the ticket travels as a query parameter, and the in-process excision does not reach logs written outside the process.
 - **Local**: DynamoDB Local and an SNS/SQS emulator in the shared infrastructure profile, tables created by the idempotent initializer, table names prefixed per worktree.
 
 ### 4.3 The client contract
@@ -280,13 +281,14 @@ stateDiagram-v2
 | **stream** | The unit of ordering and replay; `streamId` is the EventLog partition key. One event belongs to exactly one stream. |
 | **subject** | The feature-neutral principal a ticket is bound to and the connection registry is indexed by. The subsystem does not know whether it is a user or an operator. |
 | **sequence** | The stream-local, gap-free, monotonically increasing position of an event, allocated in the feature's business transaction. Wire form is a decimal string. |
+| **sequence row** | The mechanism's per-stream row (`stream_id`, `last_sequence`) in a `system_cqrs` table, updated by the allocator inside the feature's transaction and locked to commit. Mechanism state beside the outbox row; never part of an aggregate. |
 | **ordering key / ordering sequence** | The outbox columns that carry the stream and sequence so the relay can hold the head-of-line rule. |
 | **head-of-line blocking** | The claim rule: a row is claimable only when no earlier sequence on its ordering key is unpublished. |
 | **contiguous prefix** | The invariant that everything a client can see on a stream is `1..N` with no holes. |
 | **cursor** | A sequence a client has seen; `Last-Event-ID` on browser reconnect, `after` on explicit resume. |
 | **replay** | Reading the EventLog after a cursor when a connection opens. |
 | **catch-up** | Reading the EventLog after the current cursor because of a wakeup or on the periodic (30 s, jittered) schedule. |
-| **replay floor** | The oldest sequence still replayable. Derived, not stored: `cursor + 1` absent while a later item exists, or present but older than retention → `410`. |
+| **replay floor** | The oldest sequence still replayable. Derived, not stored: `cursor + 1` absent while a later item exists, or present but older than retention, or the item at the cursor itself absent (cursor not initial) → `410`. |
 | **wakeup** | The SNS → SQS notification "re-read stream S after your cursor". Stateless; duplicates coalesce; loss is covered by catch-up. |
 | **blocked stream** | A stream whose head row is dead; halted until replayed; counted by `realtime_blocked_streams`. |
 | **ticket** | The opaque 256-bit credential presented on connect, stored hashed, bound to subject / destination / scope / expiry, reusable for its 5-minute TTL. |

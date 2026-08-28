@@ -52,7 +52,7 @@ The mechanism is named for what it does. Container names (`core`, `base`, `commo
 
 | Responsibility | Package |
 | --- | --- |
-| Feature-neutral contracts: `DeliveryEvent`, the event-log, stream-ticket, and instance-lease stores, the revocation seam | `internal/usecase/boundary/realtime/` |
+| Feature-neutral contracts: `DeliveryEvent`, the per-stream sequence allocator, the event-log, stream-ticket, and instance-lease stores, the revocation seam | `internal/usecase/boundary/realtime/` |
 | Orchestration that needs no transport: ticket issue / verify, cursor validation, replay reads, lease and cleanup | `internal/usecase/realtime/` |
 | The long-lived transport: connection registry, replay and catch-up scheduling, heartbeat, backpressure, drain, the control-event protocol | `internal/controller/stream/` |
 | The stores and the fan-out substrate | `internal/infrastructure/eventlog/`, `internal/infrastructure/streamticket/`, `internal/infrastructure/instancelease/`, `internal/infrastructure/realtime/` |
@@ -60,8 +60,10 @@ The mechanism is named for what it does. Container names (`core`, `base`, `commo
 A feature that wants its events delivered keeps its own domain and usecase packages
 (`internal/domain/<aggregate>`, `internal/usecase/<feature>`) and adds a **realtime adapter** on
 its own side — in `internal/usecase/<feature>/` — that turns the feature's committed change into
-a `DeliveryEvent` addressed to a destination, allocates the stream-local sequence inside the same
-business transaction, and emits it through the transactional outbox ([ADR-0054]). Realtime Delivery
+a `DeliveryEvent` addressed to a destination, obtains the stream-local sequence from the
+mechanism's allocator inside the same business transaction (the sequence row is mechanism state
+beside the outbox row, never a field of the feature's aggregate), and emits it through the
+transactional outbox ([ADR-0054]). Realtime Delivery
 never learns the feature's vocabulary: no `thread`, `message`, `notice`, `operator`, or event-type
 `switch` appears in its types, branches, or package names. It sees an event, a destination, a
 stream, a subject, a sequence, and an opaque payload.

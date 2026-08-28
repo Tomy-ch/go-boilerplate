@@ -73,7 +73,11 @@ pending 行の timestamp である。
 
 - 誰も分類しなかった恒久失敗——永遠に `500` を返す receiver、transport error として現れる bug——は
   backoff 上限で無期限に retry する。自動で終端させるものは無く、lag SLI とその alert だけが守りで
-  あり、それは監視されなければならない。
+  あり、それは監視されなければならない。realtime channel で stream の先頭が詰まる経路はこれだけである
+  ——この channel には permanent class がそもそも無いため、その行は決して `dead` にならず、
+  `outbox-relay replay` は適用されない。復旧は誤分類の原因を直して deploy することであり、行を `dead` へ
+  強制する operator command は意図的に提供しない。それは sequence を飛ばす手段になり、[ADR-0072] が
+  禁じているからである。
 - `next_attempt_at` 列と claim 述語の変更は schema migration と index の変更であり、設定の切り替え
   ではない。
 - backoff の parameter（初期間隔、上限、jitter）は code 上の固定値である。違う値が欲しい deployment は
@@ -108,7 +112,8 @@ realtime channel の順序規則の下では、短い障害で全 active stream 
 
 ## 備考
 
-- 設計正本: `docs/design/outbox.md`（§「State transitions」、用語集の「dead」と「backoff」）。
+- 設計正本: `docs/design/outbox.md`——その状態遷移図と用語集はまだ以前の回数基準の規則を記述しており、
+  実装と一緒に書き換える（決定の節を参照）。それまでは本 ADR が分類規則の唯一の記述である。
 - 本決定は [ADR-0111] の hardening blueprint の項 3（`next_attempt_at` による message ごとの backoff）
   を単独で採択する——運用エビデンスによってではなく、realtime channel が回数基準の dead を許容できない
   からである。blueprint の他の項はその ADR が述べるとおり延期のまま。

@@ -44,11 +44,14 @@ replayed and resumed. Nothing is rebuilt from it. It is not an audit log.
 Correctness is not "sequences are assigned correctly". It is that the chain **feature commit order →
 outbox → EventLog visibility → client cursor** is never broken. Three rules make it one invariant:
 
-1. **Sequences have no gaps.** The feature allocates the stream-local sequence inside its own
-   business transaction by updating the row that owns the stream (`UPDATE … RETURNING`) and holding
-   that row lock until commit. Allocation order therefore equals commit order, and a rolled-back
-   transaction rolls its increment back with it. Writes to one stream serialize on that row —
-   the same single-stream ceiling the DynamoDB partition imposes on the read side.
+1. **Sequences have no gaps.** The feature's adapter allocates the stream-local sequence inside
+   the feature's own business transaction through the mechanism's **sequence allocator**: one row
+   per stream in a `system_cqrs` table owned by Realtime Delivery ([ADR-0033]), updated with
+   `UPDATE … RETURNING` and held locked until commit. The row is mechanism state, like an outbox
+   row — no aggregate carries a sequence field, and no Repository allocates one. Allocation order
+   therefore equals commit order, and a rolled-back transaction rolls its increment back with it.
+   Writes to one stream serialize on that row — the same single-stream ceiling the DynamoDB
+   partition imposes on the read side.
 2. **Client-visible sequences form a contiguous prefix.** The outbox relay claims a row only when
    no earlier sequence on the same ordering key is still unpublished — stream-local head-of-line
    blocking expressed in the claim predicate, alongside the existing `FOR UPDATE SKIP LOCKED`
@@ -73,6 +76,11 @@ With no gaps and a contiguous prefix, the store needs no replay metadata — no 
 - a cursor is expired when the item at `cursor + 1` is absent while a later one exists, or when it
   exists with an `occurredAt` older than the retention window — DynamoDB's asynchronous TTL
   deletion is never the authority for "expired";
+- a cursor is also expired when **the item at the cursor itself is absent** and the cursor is not
+  the stream's initial position. A cursor names an event the client received (or a History
+  `streamCursor`, which likewise names a committed event), so its item missing means the cursor
+  predates retention — and so does everything appended after it that has since expired. This is
+  the case a stream that went idle and aged out entirely would otherwise hide as "caught up";
 - an unreadable EventLog is a retryable server error, never a guess about the cursor.
 
 ## Consequences
@@ -145,11 +153,13 @@ no information in it.
 - Related: [ADR-0071] (the mechanism), [ADR-0054] (events are emitted in the business
   transaction), [ADR-0056] (the claim predicate this decision extends), [ADR-0058] (what makes an
   outbox row dead — head-of-line blocking is why a dead head halts a stream), [ADR-0037]
-  (UUIDv7 event identifiers).
+  (UUIDv7 event identifiers), [ADR-0033] (the `system_cqrs` category the sequence table belongs
+  to — mechanism state beside the outbox, not a feature's aggregate).
 - The sequence allocation and the claim predicate land in different phases of the parent issue
   (the feature adapter and the outbox routing respectively); each phase's tests pin its half of the
   chain.
 
+[ADR-0033]: 0033-system-cqrs-dml-category.md
 [ADR-0037]: 0037-uuidv7-identifiers.md
 [ADR-0054]: 0054-transactional-outbox.md
 [ADR-0056]: 0056-skip-locked-outbox-relay.md
