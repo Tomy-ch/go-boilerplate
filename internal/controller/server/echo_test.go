@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"go-boilerplate/internal/controller/httpstack/redaction"
 	"go-boilerplate/internal/logging"
 
 	"github.com/labstack/echo/v5"
@@ -111,7 +112,7 @@ func TestBuildHTTPRequestLogInput(t *testing.T) {
 			c.SetPath("/users/:id")
 			c.SetPathValues(echo.PathValues{{Name: "id", Value: "123"}})
 
-			got := BuildHTTPRequestLogInput(c, logging.EventTypeError)
+			got := BuildHTTPRequestLogInput(c, logging.EventTypeError, redaction.Redactor{})
 
 			assert.Equal(t, logging.EventTypeError, got.EventType)
 			assert.Equal(t, http.MethodPost, got.Method)
@@ -124,6 +125,20 @@ func TestBuildHTTPRequestLogInput(t *testing.T) {
 			assert.Equal(t, map[string]string{"id": "123"}, got.PathParams)
 			assert.Equal(t, []string{"v"}, got.QueryParams["q"])
 			assert.False(t, got.EventAt.IsZero())
+		})
+
+		t.Run("秘匿対象のqueryはURIとQueryParamsの両方で値が置き換わる", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/v1/streams/s?ticket=raw-secret&after=1", nil)
+			c := e.NewContext(req, httptest.NewRecorder())
+
+			got := BuildHTTPRequestLogInput(c, logging.EventTypeError, redaction.New([]string{"ticket"}))
+
+			assert.Equal(t, "/v1/streams/s?ticket="+redaction.RedactedValue+"&after=1", got.URI)
+			assert.Equal(t, []string{redaction.RedactedValue}, got.QueryParams["ticket"])
+			assert.Equal(t, []string{"1"}, got.QueryParams["after"])
 		})
 	})
 }

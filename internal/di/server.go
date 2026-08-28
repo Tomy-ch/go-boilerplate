@@ -34,6 +34,7 @@ func applicationCoreOptions() []fx.Option {
 		module.ConfigModule(),
 		// Core Module
 		core.ValidatorModule(),
+		core.RedactionModule(),
 		core.SecurityCookieModule(),
 		core.AuthnModule(),
 		core.BasicAuthModule(),

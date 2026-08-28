@@ -149,7 +149,7 @@ func newProtectedServer(t *testing.T, authenticator authbd.Authenticator) *Serve
 
 	resolvedUserID, err := uuid.Parse(jwtTestResolvedUserID)
 	require.NoError(t, err)
-	authFunc := auth.NewAuthenticator(authenticator, stubIdentityResolver{userID: resolvedUserID})
+	authFunc := auth.NewAuthenticator(authenticator, stubIdentityResolver{userID: resolvedUserID}, nil)
 
 	e := echo.New()
 	UseAppErrorHandler(t, e)

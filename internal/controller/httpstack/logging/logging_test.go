@@ -2,11 +2,13 @@ package logging
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
+	"go-boilerplate/internal/controller/httpstack/redaction"
 	"go-boilerplate/internal/controller/server"
 	"go-boilerplate/internal/logging"
 
@@ -27,7 +29,7 @@ func TestMiddleware(t *testing.T) {
 			logger := logging.NewTestLogger(t)
 			lf := logging.NewTestLogFieldBuilder(t)
 
-			assert.NotNil(t, Middleware(logger, lf))
+			assert.NotNil(t, Middleware(logger, lf, redaction.Redactor{}))
 		})
 
 		t.Run("非運用系APIでは2xxをInfoレベルで出力する", func(t *testing.T) {
@@ -47,7 +49,7 @@ func TestMiddleware(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			handler := Middleware(logger, lf)(next)
+			handler := Middleware(logger, lf, redaction.Redactor{})(next)
 			require.NoError(t, handler(c))
 
 			handled := observed.FilterMessage("request handled")
@@ -72,7 +74,7 @@ func TestMiddleware(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			handler := Middleware(logger, lf)(next)
+			handler := Middleware(logger, lf, redaction.Redactor{})(next)
 			require.NoError(t, handler(c))
 
 			assert.Zero(t, observed.Len())
@@ -99,7 +101,7 @@ func TestMiddleware(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			handler := Middleware(logger, lf)(next)
+			handler := Middleware(logger, lf, redaction.Redactor{})(next)
 			require.NoError(t, handler(c))
 
 			handled := observed.FilterMessage("request handled")
@@ -119,7 +121,7 @@ func TestMiddleware(t *testing.T) {
 			c.SetResponse(httptest.NewRecorder())
 
 			called := false
-			handler := Middleware(logger, lf)(func(_ *echo.Context) error {
+			handler := Middleware(logger, lf, redaction.Redactor{})(func(_ *echo.Context) error {
 				called = true
 				return nil
 			})
@@ -159,6 +161,20 @@ func Test_requestLog_buildRequestLogFields(t *testing.T) {
 			assert.Contains(t, fields, logging.String(logging.RemoteIPKey, "1.2.3.4:5678"))
 			assert.Contains(t, fields, logging.String(logging.HostKey, "example.local"))
 			assert.Contains(t, fields, logging.String(logging.UserAgentKey, "ua-test"))
+		})
+
+		t.Run("秘匿対象のqueryはURIとquery_paramsの両方で値が置き換わる", func(t *testing.T) {
+			t.Parallel()
+
+			secretReq := httptest.NewRequestWithContext(ctx, http.MethodGet, "/v1/streams/s?ticket=raw-secret&after=1", nil)
+			sc := e.NewContext(secretReq, httptest.NewRecorder())
+
+			l := requestLog{c: sc, lf: lf, red: redaction.New([]string{"ticket"})}
+			fields := l.buildRequestLogFields(time.Now())
+
+			assert.Contains(t, fields, logging.String(logging.URIKey, "/v1/streams/s?ticket="+redaction.RedactedValue+"&after=1"))
+			assert.Contains(t, fields, logging.Any(logging.QueryParamsKey, map[string][]string{"ticket": {redaction.RedactedValue}, "after": {"1"}}))
+			assert.NotContains(t, fmt.Sprint(fields), "raw-secret")
 		})
 	})
 }
@@ -201,6 +217,22 @@ func Test_requestLog_buildResponseLogFields(t *testing.T) {
 			assert.Contains(t, fields, logging.Int(logging.StatusKey, expectedStatus))
 			assert.Contains(t, fields, logging.String(logging.RequestIDKey, expectedRequestID))
 			assert.Contains(t, fields, logging.Time(logging.EventAtKey, expectedEventAt))
+		})
+
+		t.Run("秘匿対象のqueryはレスポンス側のURIでも値が置き換わる", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/v1/streams/s?ticket=raw-secret", nil)
+			c := e.NewContext(req, httptest.NewRecorder())
+			res := server.ResponseOf(c)
+			require.NotNil(t, res)
+
+			l := requestLog{c: c, res: res, lf: lf, red: redaction.New([]string{"ticket"})}
+			fields := l.buildResponseLogFields(time.Now(), time.Millisecond)
+
+			assert.Contains(t, fields, logging.String(logging.URIKey, "/v1/streams/s?ticket="+redaction.RedactedValue))
+			assert.NotContains(t, fmt.Sprint(fields), "raw-secret")
 		})
 	})
 }

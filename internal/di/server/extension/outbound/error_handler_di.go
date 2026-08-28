@@ -4,6 +4,7 @@ package outbound
 import (
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/controller/httpstack/errorhandler"
+	"go-boilerplate/internal/controller/httpstack/redaction"
 	"go-boilerplate/internal/di/server/extension"
 	"go-boilerplate/internal/logging"
 
@@ -39,9 +40,10 @@ func provideAllowPolicy(spec *openapi3.T) (errorhandler.AllowPolicy, error) {
 func provideErrorHandlerServeConfig(
 	detailPolicy errorhandler.DetailPolicy,
 	allowPolicy errorhandler.AllowPolicy,
+	red redaction.Redactor,
 	log logging.Logger, lf logging.LogFieldBuilder, obsCfg *config.ObservabilityConfig,
 ) extension.ServeCfgOut {
-	policies := errorhandler.Policies{Detail: detailPolicy, Allow: allowPolicy}
+	policies := errorhandler.Policies{Detail: detailPolicy, Allow: allowPolicy, Redact: red}
 
 	return extension.ServeCfgOut{
 		SrvCfg: extension.SrvCfg{

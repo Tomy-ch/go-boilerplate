@@ -13,6 +13,7 @@ Each module returns an `fx.Option` that registers the corresponding component in
 |`SecurityCookieModule()`|`security_cookie.go`|Cookie security attribute configuration|
 |`SkipperModule()`|`skipper.go`|Skip OpenAPI validation for ops endpoints|
 |`ValidatorModule()`|`validator.go`|OpenAPI schema validator|
+|`RedactionModule()`|`redaction.go`|Log redactor for query credentials, derived from the OpenAPI security schemes|
 
 ## Design Policy
 

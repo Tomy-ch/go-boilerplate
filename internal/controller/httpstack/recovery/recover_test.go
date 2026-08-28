@@ -2,6 +2,7 @@ package recovery
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -10,6 +11,7 @@ import (
 	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/httpstack/errorhandler"
 	"go-boilerplate/internal/controller/httpstack/oapi/validator"
+	"go-boilerplate/internal/controller/httpstack/redaction"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/xerrors"
 
@@ -32,7 +34,7 @@ func TestMiddleware(t *testing.T) {
 			lf := logging.NewTestLogFieldBuilder(t)
 			logger := logging.NewTestLogger(t)
 
-			require.NotNil(t, Middleware(logger, lf, appCfg))
+			require.NotNil(t, Middleware(logger, lf, appCfg, redaction.Redactor{}))
 		})
 
 		t.Run("パニックが無ければ後続の戻り値をそのまま返しログも残さない", func(t *testing.T) {
@@ -49,7 +51,7 @@ func TestMiddleware(t *testing.T) {
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/ok", nil)
 			c := e.NewContext(req, httptest.NewRecorder())
 
-			handler := Middleware(obsLogger, lf, appCfg)(func(_ *echo.Context) error { return wantErr })
+			handler := Middleware(obsLogger, lf, appCfg, redaction.Redactor{})(func(_ *echo.Context) error { return wantErr })
 
 			require.ErrorIs(t, handler(c), wantErr)
 			assert.Equal(t, 0, observed.Len())
@@ -66,7 +68,7 @@ func TestMiddleware(t *testing.T) {
 			obsLogger, observed := logging.NewObservedTestLogger(t)
 
 			e := echo.New()
-			e.Use(Middleware(obsLogger, lf, appCfg))
+			e.Use(Middleware(obsLogger, lf, appCfg, redaction.Redactor{}))
 			e.GET("/panic", func(_ *echo.Context) error { panic("boom-panic") })
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/panic", nil)
@@ -110,7 +112,7 @@ func TestMiddleware(t *testing.T) {
 
 			e := echo.New()
 			errorhandler.New(e, errorhandler.Policies{Detail: detailPolicy, Allow: allowPolicy}, obsLogger, lf, obsCfg)
-			e.Use(Middleware(obsLogger, lf, appCfg))
+			e.Use(Middleware(obsLogger, lf, appCfg, redaction.Redactor{}))
 			e.GET("/panic", func(_ *echo.Context) error { panic("boom-panic") })
 
 			rec := httptest.NewRecorder()
@@ -138,7 +140,7 @@ func TestMiddleware(t *testing.T) {
 			e := echo.New()
 			var got error
 			e.HTTPErrorHandler = func(_ *echo.Context, err error) { got = err }
-			e.Use(Middleware(obsLogger, lf, appCfg))
+			e.Use(Middleware(obsLogger, lf, appCfg, redaction.Redactor{}))
 			e.GET("/panic", func(_ *echo.Context) error { panic(panicked) })
 
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/panic", nil)
@@ -158,7 +160,7 @@ func TestMiddleware(t *testing.T) {
 			obsLogger, observed := logging.NewObservedTestLogger(t)
 
 			e := echo.New()
-			e.Use(Middleware(obsLogger, lf, appCfg))
+			e.Use(Middleware(obsLogger, lf, appCfg, redaction.Redactor{}))
 			e.GET("/abort", func(_ *echo.Context) error { panic(http.ErrAbortHandler) })
 
 			rec := httptest.NewRecorder()
@@ -193,7 +195,7 @@ func Test_newPanicLogFunc(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			newPanicLogFunc(obsLogger, lf)(c, xerrors.New("boom"), []byte("stack"))
+			newPanicLogFunc(obsLogger, lf, redaction.Redactor{})(c, xerrors.New("boom"), []byte("stack"))
 
 			assert.Equal(t, 1, observed.FilterMessage("panic recovered").Len())
 			recovered, _ := ctxhelper.GetRecoveredFromEcho(c)
@@ -210,11 +212,28 @@ func Test_newPanicLogFunc(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 
-			newPanicLogFunc(obsLogger, lf)(c, xerrors.New("boom2"), []byte("stack2"))
+			newPanicLogFunc(obsLogger, lf, redaction.Redactor{})(c, xerrors.New("boom2"), []byte("stack2"))
 
 			assert.Equal(t, 1, observed.FilterMessage("panic recovered").Len())
 			recovered, _ := ctxhelper.GetRecoveredFromEcho(c)
 			assert.True(t, recovered)
+		})
+
+		t.Run("秘匿対象のqueryはパニックログでも値が置き換わる", func(t *testing.T) {
+			t.Parallel()
+
+			obsLogger, observed := logging.NewObservedTestLogger(t)
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/v1/streams/s?ticket=raw-secret", nil)
+			c := e.NewContext(req, httptest.NewRecorder())
+
+			newPanicLogFunc(obsLogger, lf, redaction.New([]string{"ticket"}))(c, xerrors.New("boom3"), []byte("stack3"))
+
+			entries := observed.FilterMessage("panic recovered").All()
+			require.Len(t, entries, 1)
+			logged, err := json.Marshal(entries[0].ContextMap())
+			require.NoError(t, err)
+			assert.NotContains(t, string(logged), "raw-secret")
+			assert.Contains(t, string(logged), redaction.RedactedValue)
 		})
 	})
 }

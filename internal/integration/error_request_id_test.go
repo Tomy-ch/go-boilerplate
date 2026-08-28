@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"go-boilerplate/internal/controller/httpstack/redaction"
 	"net/http"
 	"testing"
 
@@ -29,7 +30,7 @@ func newRequestIDStackServer(t *testing.T, logger logging.Logger) *Server {
 
 	e := echo.New()
 	UseAppErrorHandler(t, e,
-		instrumentation.LoggingMiddleware(logger, logging.NewTestLogFieldBuilder(t)).Middleware,
+		instrumentation.LoggingMiddleware(logger, logging.NewTestLogFieldBuilder(t), redaction.Redactor{}).Middleware,
 		security.CookieMiddleware(secCookie).Middleware,
 	)
 

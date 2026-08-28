@@ -18,6 +18,7 @@ import (
 	responsegen "go-boilerplate/internal/controller/error/response/gen"
 	"go-boilerplate/internal/controller/httpstack/errorhandler"
 	"go-boilerplate/internal/controller/httpstack/oapi/validator"
+	"go-boilerplate/internal/controller/httpstack/redaction"
 	"go-boilerplate/internal/di/server/extension"
 	"go-boilerplate/internal/di/server/extension/instrumentation"
 	"go-boilerplate/internal/logging"
@@ -283,7 +284,11 @@ func UseAppErrorHandler(t *testing.T, e *echo.Echo, extra ...extension.UseMiddle
 	allowPolicy, err := errorhandler.NewOpenAPIAllowPolicy(spec)
 	require.NoError(t, err)
 
-	errorhandler.New(e, errorhandler.Policies{Detail: detailPolicy, Allow: allowPolicy}, logging.NewTestLogger(t), lf, obsCfg)
+	errorhandler.New(
+		e,
+		errorhandler.Policies{Detail: detailPolicy, Allow: allowPolicy, Redact: redaction.FromSpec(spec)},
+		logging.NewTestLogger(t), lf, obsCfg,
+	)
 }
 
 // AssertErrorResponse は、異常系レスポンスの HTTP ステータスが wantStatus と一致し、

@@ -23,6 +23,7 @@ Each sub-package is split into small responsibilities and combined during applic
 |`requestid`|`Middleware`|Auto-generate X-Request-ID header|
 |`logging`|`Middleware`|Structured logging for HTTP request / response|
 |`recovery`|`Middleware`|Catch panics and log them|
+|`redaction`|`Redactor`|Remove query credentials (spec-derived names) from URI / query before logging|
 |`cors`|`Middleware`|CORS configuration|
 |`security`|`Middleware`|Security headers (HSTS, X-Frame-Options, etc.)|
 |`cookie`|`Middleware`|Enforce security attributes on Set-Cookie headers|

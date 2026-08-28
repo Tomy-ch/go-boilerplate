@@ -13,6 +13,7 @@
 |`SecurityCookieModule()`|`security_cookie.go`|Cookie セキュリティ属性の設定|
 |`SkipperModule()`|`skipper.go`|OpenAPI バリデーションの ops エンドポイントスキップ|
 |`ValidatorModule()`|`validator.go`|OpenAPI スキーマバリデータ|
+|`RedactionModule()`|`redaction.go`|OpenAPI の securityScheme から導出する、query 資格情報のログ秘匿|
 
 ## 設計方針
 

@@ -23,6 +23,7 @@ Echo サーバ起動時に登録する **HTTP 周りの共通ミドルウェア�
 |`requestid`|`Middleware`|X-Request-ID ヘッダの自動生成|
 |`logging`|`Middleware`|HTTP リクエスト / レスポンスの構造化ログ|
 |`recovery`|`Middleware`|パニックのキャッチとログ出力|
+|`redaction`|`Redactor`|ログ出力前に URI / query から資格情報（spec 由来の名前）を除去|
 |`cors`|`Middleware`|CORS 設定|
 |`security`|`Middleware`|セキュリティヘッダ（HSTS, X-Frame-Options 等）|
 |`cookie`|`Middleware`|Set-Cookie ヘッダのセキュリティ属性強制|

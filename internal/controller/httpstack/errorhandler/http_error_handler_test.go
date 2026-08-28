@@ -3,6 +3,8 @@ package errorhandler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"go-boilerplate/internal/controller/httpstack/redaction"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -742,7 +744,7 @@ func Test_logHTTPError(t *testing.T) {
 				HTTPStatus: http.StatusFound,
 			}
 
-			logHTTPError(c, logger, lf, obsCfg, he)
+			logHTTPError(c, redaction.Redactor{}, logger, lf, obsCfg, he)
 
 			assert.Equal(t, 0, observed.Len())
 		})
@@ -763,7 +765,7 @@ func Test_logHTTPError(t *testing.T) {
 				HTTPStatus: http.StatusInternalServerError,
 			}
 
-			logHTTPError(c, logger, lf, obsCfg, he)
+			logHTTPError(c, redaction.Redactor{}, logger, lf, obsCfg, he)
 
 			entries := observed.FilterMessage("errorhandler.server_error").All()
 			require.Len(t, entries, 1)
@@ -787,7 +789,7 @@ func Test_logHTTPError(t *testing.T) {
 				HTTPStatus: http.StatusServiceUnavailable,
 			}
 
-			logHTTPError(c, logger, lf, obsCfg, he)
+			logHTTPError(c, redaction.Redactor{}, logger, lf, obsCfg, he)
 
 			assert.Equal(t, 1, observed.FilterMessage("errorhandler.server_error").Len())
 			assert.Equal(t, 0, observed.FilterMessage("errorhandler.client_error").Len())
@@ -809,7 +811,7 @@ func Test_logHTTPError(t *testing.T) {
 				HTTPStatus: http.StatusNotFound,
 			}
 
-			logHTTPError(c, logger, lf, obsCfg, he)
+			logHTTPError(c, redaction.Redactor{}, logger, lf, obsCfg, he)
 
 			entries := observed.FilterMessage("errorhandler.client_error").All()
 			require.Len(t, entries, 1)
@@ -877,7 +879,7 @@ func Test_httpErrorField(t *testing.T) {
 				HTTPStatus: http.StatusBadRequest,
 			}
 
-			fields := httpErrorField(c, lf, he)
+			fields := httpErrorField(c, lf, redaction.Redactor{}, he)
 
 			assert.GreaterOrEqual(t, len(fields), 4)
 			assert.Contains(t, fields, logging.Int(logging.StatusKey, he.HTTPStatus))
@@ -903,11 +905,28 @@ func Test_httpErrorField(t *testing.T) {
 				Internal:   internalErr,
 			}
 
-			fields := httpErrorField(c, lf, he)
+			fields := httpErrorField(c, lf, redaction.Redactor{}, he)
 
 			assert.Contains(t, fields, logging.Strings(logging.ErrorDetailsKey, details))
 			assert.Contains(t, fields, logging.String(logging.InternalErrorKey, he.Internal.Error()))
 			assert.Contains(t, fields, logging.Stacktrace(logging.InternalStackTraceKey, he.Internal))
+		})
+
+		t.Run("秘匿対象のqueryはリクエストフィールドから値が置き換わる", func(t *testing.T) {
+			t.Parallel()
+
+			e := echo.New()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/v1/streams/s?ticket=raw-secret", nil)
+			c := e.NewContext(req, httptest.NewRecorder())
+			he := &response.HTTPErrorResponse{
+				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{Code: "UNAUTHORIZED", Message: "m", RequestId: "rid"},
+				HTTPStatus:               http.StatusUnauthorized,
+			}
+
+			fields := httpErrorField(c, lf, redaction.New([]string{"ticket"}), he)
+
+			assert.Contains(t, fields, logging.String(logging.URIKey, "/v1/streams/s?ticket="+redaction.RedactedValue))
+			assert.NotContains(t, fmt.Sprint(fields), "raw-secret")
 		})
 
 		t.Run("Detailsのみがある場合、detailsフィールドが追加されInternal系フィールドは追加されない", func(t *testing.T) {
@@ -924,10 +943,10 @@ func Test_httpErrorField(t *testing.T) {
 				HTTPStatus: http.StatusBadRequest,
 			}
 
-			baseline := httpErrorField(c, lf, he)
+			baseline := httpErrorField(c, lf, redaction.Redactor{}, he)
 			he.Details = &details
 
-			fields := httpErrorField(c, lf, he)
+			fields := httpErrorField(c, lf, redaction.Redactor{}, he)
 
 			assert.Contains(t, fields, logging.Strings(logging.ErrorDetailsKey, details))
 			assert.Len(t, fields, len(baseline)+1)
@@ -947,10 +966,10 @@ func Test_httpErrorField(t *testing.T) {
 				HTTPStatus: http.StatusInternalServerError,
 			}
 
-			baseline := httpErrorField(c, lf, he)
+			baseline := httpErrorField(c, lf, redaction.Redactor{}, he)
 			he.Internal = internalErr
 
-			fields := httpErrorField(c, lf, he)
+			fields := httpErrorField(c, lf, redaction.Redactor{}, he)
 
 			assert.Contains(t, fields, logging.String(logging.InternalErrorKey, internalErr.Error()))
 			assert.Contains(t, fields, logging.Stacktrace(logging.InternalStackTraceKey, internalErr))

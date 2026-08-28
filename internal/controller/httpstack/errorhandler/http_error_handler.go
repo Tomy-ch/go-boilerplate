@@ -2,6 +2,7 @@
 package errorhandler
 
 import (
+	"go-boilerplate/internal/controller/httpstack/redaction"
 	"net/http"
 
 	"go-boilerplate/internal/config"
@@ -27,6 +28,8 @@ type Policies struct {
 	Detail DetailPolicy
 	// Allow は、405 レスポンスへ返す Allow ヘッダーの値を解決します。
 	Allow AllowPolicy
+	// Redact は、ログへ出す前に URI と query から資格情報を取り除きます。ゼロ値は何も秘匿しません。
+	Redact redaction.Redactor
 }
 
 // New は、NewHTTPErrorHandler で生成したハンドラを Echo の HTTPErrorHandler として登録します。
@@ -75,7 +78,7 @@ func handleHTTPError(
 	if !responseCommitted(c) {
 		setAllowHeader(c, policies.Allow, resp.HTTPStatus)
 		if writeErr := writeErrorResponse(c, resp, exposeDetails); writeErr != nil {
-			reqIn := server.BuildHTTPRequestLogInput(c, logging.EventTypeError)
+			reqIn := server.BuildHTTPRequestLogInput(c, logging.EventTypeError, policies.Redact)
 			writeErrFields := []*logging.Field{logging.String(logging.InternalErrorKey, writeErr.Error())}
 			fields := append(lf.BuildHTTPRequestFields(reqIn), writeErrFields...)
 			logger.Named("errorhandler.handleHTTPError").Error(c.Request().Context(), "failed to write error response", fields...)
@@ -89,7 +92,7 @@ func handleHTTPError(
 
 	// リカバリ済みのパニックは middleware.recover が既にログ済みのため、二重ログを抑止する（500 応答は返す）。
 	if recovered, _ := ctxhelper.GetRecoveredFromEcho(c); !recovered {
-		logHTTPError(c, logger, lf, obsCfg, resp)
+		logHTTPError(c, policies.Redact, logger, lf, obsCfg, resp)
 	}
 }
 
@@ -146,6 +149,7 @@ func responseCommitted(c *echo.Context) bool {
 func httpErrorField(
 	c *echo.Context,
 	lf logging.LogFieldBuilder,
+	red redaction.Redactor,
 	he *response.HTTPErrorResponse,
 ) []*logging.Field {
 	fields := []*logging.Field{
@@ -154,7 +158,7 @@ func httpErrorField(
 		logging.String(logging.ErrorMessageKey, he.Message),
 		logging.String(logging.RequestIDKey, he.RequestId),
 	}
-	fields = append(fields, lf.BuildHTTPRequestFields(server.BuildHTTPRequestLogInput(c, logging.EventTypeError))...)
+	fields = append(fields, lf.BuildHTTPRequestFields(server.BuildHTTPRequestLogInput(c, logging.EventTypeError, red))...)
 	if he.Details != nil {
 		fields = append(fields, logging.Strings(logging.ErrorDetailsKey, *he.Details))
 	}
@@ -171,6 +175,7 @@ func httpErrorField(
 // logHTTPError は、HTTPエラーをログに記録します。
 func logHTTPError(
 	c *echo.Context,
+	red redaction.Redactor,
 	logger logging.Logger,
 	lf logging.LogFieldBuilder,
 	obsCfg *config.ObservabilityConfig,
@@ -179,7 +184,7 @@ func logHTTPError(
 	if !obsCfg.TargetStatusCodeSet()[he.HTTPStatus] {
 		return
 	}
-	fields := httpErrorField(c, lf, he)
+	fields := httpErrorField(c, lf, red, he)
 	ctx := c.Request().Context()
 	switch {
 	case he.HTTPStatus >= errorLevelBoundHTTPStatus:
