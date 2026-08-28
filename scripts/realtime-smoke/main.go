@@ -50,6 +50,7 @@ var (
 	errSubscribers = xerrors.New("-subscribers は 1 以上を指定してください")
 	errFormat      = xerrors.New("-format は markdown か text を指定してください")
 	errNotReady    = xerrors.New("endpoint が ready にならず、検査を 1 件も実行していません")
+	errEndpoint    = xerrors.New("endpoint は scheme 付きの URL（http://host:port）で指定してください")
 )
 
 // options は、コマンドラインで決まる実行条件です。
@@ -202,6 +203,11 @@ func hostPort(endpoint string) (string, error) {
 	u, err := url.Parse(endpoint)
 	if err != nil {
 		return "", xerrors.Wrap(err, "parse endpoint")
+	}
+
+	// "localhost:8000" は scheme=localhost / host="" に解釈されるので、host 空は入力ミスとして止める。
+	if u.Hostname() == "" || (u.Scheme != "http" && u.Scheme != "https") {
+		return "", xerrors.Wrap(errEndpoint, endpoint)
 	}
 
 	port := u.Port()

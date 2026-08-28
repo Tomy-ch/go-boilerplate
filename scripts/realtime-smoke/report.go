@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"strings"
+	"time"
 
 	"go-boilerplate/pkg/xerrors"
 )
@@ -23,6 +24,10 @@ const (
 
 	// maxDetailLen は、表に載せるエラー本文の上限です。SDK のエラーは複数行になるため要約します。
 	maxDetailLen = 200
+
+	// cleanupTimeout は、後片付けに与える独立の上限時間です。検査本体が実行全体の期限を使い切っても
+	// 共有インフラに resource を残さないよう、cleanup は本体の ctx を引き継がずここで張り直します。
+	cleanupTimeout = 30 * time.Second
 )
 
 var (
@@ -208,6 +213,11 @@ func runChain(ctx context.Context, subject string, steps []step, rec *recorder) 
 	}
 
 	return firstPassed
+}
+
+// cleanupContext は、後片付け専用の ctx を返します。親の値は引き継ぎ、期限と cancel は引き継ぎません。
+func cleanupContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.WithoutCancel(ctx), cleanupTimeout)
 }
 
 // count は、Verdict ごとの件数を返します。

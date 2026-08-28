@@ -17,7 +17,7 @@ type failingReader struct{}
 
 func (failingReader) Read([]byte) (int, error) { return 0, errRandom }
 
-func TestNewRunID(t *testing.T) {
+func Test_newRunID(t *testing.T) {
 	t.Parallel()
 
 	t.Run("16 進 12 桁を返し、呼び出しごとに異なる", func(t *testing.T) {
@@ -40,14 +40,27 @@ func TestNewRunID(t *testing.T) {
 	})
 }
 
-func TestNames(t *testing.T) {
+func Test_names_table(t *testing.T) {
 	t.Parallel()
 
 	n := names{runID: "0123456789ab"}
 
 	assert.Equal(t, "gobp_smoke_0123456789ab", n.table())
-	assert.Equal(t, "gobp-smoke-0123456789ab", n.topic())
+	assert.Equal(t, strings.ToLower(n.table()), n.table(), "DynamoDB の table 名は小文字")
+}
+
+func Test_names_topic(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "gobp-smoke-0123456789ab", names{runID: "0123456789ab"}.topic())
+}
+
+func Test_names_queue(t *testing.T) {
+	t.Parallel()
+
+	n := names{runID: "0123456789ab"}
+
 	assert.Equal(t, "gobp-smoke-0123456789ab-0", n.queue(0))
 	assert.Equal(t, "gobp-smoke-0123456789ab-2", n.queue(2))
-	assert.Equal(t, strings.ToLower(n.table()), n.table(), "DynamoDB の table 名は小文字")
+	assert.NotEqual(t, n.queue(0), n.queue(1))
 }

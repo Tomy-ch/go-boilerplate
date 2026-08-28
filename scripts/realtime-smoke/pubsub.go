@@ -28,6 +28,8 @@ const (
 	receiveWait = 5
 	// receiveBatch は、1 回の ReceiveMessage で受け取る最大件数です。重複配送を検出するため 1 より大きくします。
 	receiveBatch = 10
+	// drainWait は、最初の message を受けた後に重複配送を拾うための追加 poll の WaitTimeSeconds です。
+	drainWait = 2
 )
 
 // notification は、production が SNS に載せる本文と同じ形です（eventId / streamId / sequence のみ）。
@@ -54,10 +56,11 @@ type policyStatement struct {
 
 // pubSubSmoke は、SNS / SQS 検査の状態です。
 type pubSubSmoke struct {
-	sns   *sns.Client
-	sqs   *sqs.Client
-	names names
-	n     int
+	sns    *sns.Client
+	sqs    *sqs.Client
+	names  names
+	n      int
+	window time.Duration
 
 	topicArn  string
 	queueURLs []string
@@ -69,10 +72,14 @@ type pubSubSmoke struct {
 
 // runPubSub は、instance fan-out が依存する呼び出しを順に検査し、結果を記録します。
 func runPubSub(ctx context.Context, snsClient *sns.Client, sqsClient *sqs.Client, n names, subscribers int, keep bool, rec *recorder) {
-	s := &pubSubSmoke{sns: snsClient, sqs: sqsClient, names: n, n: subscribers}
+	s := &pubSubSmoke{sns: snsClient, sqs: sqsClient, names: n, n: subscribers, window: receiveWindow}
 
 	runChain(ctx, pubSubSubject, s.steps(), rec)
-	s.cleanup(ctx, keep, rec)
+
+	cctx, cancel := cleanupContext(ctx)
+	defer cancel()
+
+	s.cleanup(cctx, keep, rec)
 }
 
 func (s *pubSubSmoke) steps() []step {
@@ -347,34 +354,52 @@ func (s *pubSubSmoke) publishAndReceive(ctx context.Context) (string, error) {
 	return s.verifyDelivery()
 }
 
-// receive は、1 queue で配送を待ち、届いた message をすべて返します。
-func (s *pubSubSmoke) receive(ctx context.Context, url string) ([]sqstypes.Message, error) {
-	ctx, cancel := context.WithTimeout(ctx, receiveWindow)
+// receive は、1 queue で配送を待ち、届いた message をすべて返します。窓の中に届かなければ空を返し
+// （非互換の判定は verifyDelivery が行う）、実行全体の期限切れは transport 失敗としてそのまま返します。
+// 最初の message を受けた後にもう 1 回短く poll し、別 batch に着地した重複配送も拾います。
+func (s *pubSubSmoke) receive(parent context.Context, url string) ([]sqstypes.Message, error) {
+	ctx, cancel := context.WithTimeout(parent, s.window)
 	defer cancel()
 
 	for {
-		out, err := s.sqs.ReceiveMessage(ctx, &sqs.ReceiveMessageInput{
-			QueueUrl:              aws.String(url),
-			MaxNumberOfMessages:   receiveBatch,
-			WaitTimeSeconds:       receiveWait,
-			MessageAttributeNames: []string{"All"},
-		})
+		msgs, err := s.pollOnce(ctx, url, receiveWait)
 		if err != nil {
+			if parent.Err() != nil {
+				return nil, err // 実行全体の期限。窓切れではないので検証不能として classify へ渡す
+			}
+
 			if ctx.Err() != nil {
-				return nil, nil // 窓を使い切った。届かなかったことは verifyDelivery が非互換として扱う
+				return nil, nil // 窓を使い切った
 			}
 
 			return nil, err
 		}
 
-		if len(out.Messages) > 0 {
-			return out.Messages, nil
+		if len(msgs) == 0 {
+			continue
 		}
 
-		if ctx.Err() != nil {
-			return nil, nil
+		extra, err := s.pollOnce(ctx, url, drainWait)
+		if err != nil && ctx.Err() == nil {
+			return nil, err
 		}
+
+		return append(msgs, extra...), nil
 	}
+}
+
+func (s *pubSubSmoke) pollOnce(ctx context.Context, url string, wait int32) ([]sqstypes.Message, error) {
+	out, err := s.sqs.ReceiveMessage(ctx, &sqs.ReceiveMessageInput{
+		QueueUrl:              aws.String(url),
+		MaxNumberOfMessages:   receiveBatch,
+		WaitTimeSeconds:       wait,
+		MessageAttributeNames: []string{"All"},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return out.Messages, nil
 }
 
 func (s *pubSubSmoke) verifyDelivery() (string, error) {
@@ -475,24 +500,27 @@ func (s *pubSubSmoke) cleanup(ctx context.Context, keep bool, rec *recorder) {
 	}
 }
 
+// teardown は、全 resource の削除をベストエフォートで試み、失敗をまとめて返します。1 件目で止めると
+// 残りが共有インフラに孤児として残るため、途中で打ち切りません。
 func (s *pubSubSmoke) teardown(ctx context.Context) error {
+	var errs []error
 	for _, arn := range s.subArns {
 		if _, err := s.sns.Unsubscribe(ctx, &sns.UnsubscribeInput{SubscriptionArn: aws.String(arn)}); err != nil {
-			return xerrors.Wrap(err, "unsubscribe "+arn)
+			errs = append(errs, xerrors.Wrap(err, "unsubscribe "+arn))
 		}
 	}
 
 	for _, url := range s.queueURLs {
 		if _, err := s.sqs.DeleteQueue(ctx, &sqs.DeleteQueueInput{QueueUrl: aws.String(url)}); err != nil {
-			return xerrors.Wrap(err, "delete queue "+url)
+			errs = append(errs, xerrors.Wrap(err, "delete queue "+url))
 		}
 	}
 
 	if s.topicArn != "" {
 		if _, err := s.sns.DeleteTopic(ctx, &sns.DeleteTopicInput{TopicArn: aws.String(s.topicArn)}); err != nil {
-			return xerrors.Wrap(err, "delete topic "+s.topicArn)
+			errs = append(errs, xerrors.Wrap(err, "delete topic "+s.topicArn))
 		}
 	}
 
-	return nil
+	return xerrors.Join(errs...)
 }

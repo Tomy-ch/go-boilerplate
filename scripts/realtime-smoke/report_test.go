@@ -6,6 +6,7 @@ import (
 	"net"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,7 +31,7 @@ func (fakeNetError) Error() string   { return "dial tcp: connection refused" }
 func (fakeNetError) Timeout() bool   { return false }
 func (fakeNetError) Temporary() bool { return false }
 
-func TestClassify(t *testing.T) {
+func Test_classify(t *testing.T) {
 	t.Parallel()
 
 	var _ net.Error = fakeNetError{}
@@ -63,7 +64,26 @@ func TestClassify(t *testing.T) {
 	}
 }
 
-func TestDescribe(t *testing.T) {
+func Test_isTransportFailure(t *testing.T) {
+	t.Parallel()
+
+	assert.True(t, isTransportFailure(context.DeadlineExceeded))
+	assert.True(t, isTransportFailure(xerrors.Wrap(context.Canceled, "x")))
+	assert.True(t, isTransportFailure(fakeNetError{}))
+	assert.False(t, isTransportFailure(&fakeAPIError{code: "InvalidAction", msg: "x"}))
+	assert.False(t, isTransportFailure(xerrors.New("plain")))
+}
+
+func Test_hasUnsupportedMarker(t *testing.T) {
+	t.Parallel()
+
+	assert.True(t, hasUnsupportedMarker("Operation Not Implemented"), "大文字小文字を無視する")
+	assert.True(t, hasUnsupportedMarker("https response error StatusCode: 501"))
+	assert.False(t, hasUnsupportedMarker("StatusCode: 400, InvalidParameterValue"))
+	assert.False(t, hasUnsupportedMarker(""))
+}
+
+func Test_describe(t *testing.T) {
 	t.Parallel()
 
 	t.Run("API エラーはコードとメッセージに要約する", func(t *testing.T) {
@@ -80,9 +100,76 @@ func TestDescribe(t *testing.T) {
 		assert.Len(t, got, maxDetailLen+len("…"))
 		assert.True(t, strings.HasSuffix(got, "…"))
 	})
+
+	t.Run("上限ちょうどは切り詰めない", func(t *testing.T) {
+		t.Parallel()
+
+		got := describe(xerrors.New(strings.Repeat("x", maxDetailLen)))
+		assert.Len(t, got, maxDetailLen)
+	})
 }
 
-func TestRunChain(t *testing.T) {
+func Test_incompatible(t *testing.T) {
+	t.Parallel()
+
+	err := incompatible("detail")
+
+	var inc *incompatibleError
+	require.ErrorAs(t, err, &inc)
+	assert.Equal(t, VerdictIncompatible, classify(err))
+}
+
+func Test_incompatibleError_Error(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "body が違う", (&incompatibleError{detail: "body が違う"}).Error())
+}
+
+func Test_recorder_add(t *testing.T) {
+	t.Parallel()
+
+	rec := &recorder{}
+	rec.add("D1", "s", "c", VerdictCompatible, "d")
+	rec.add("D2", "s", "c2", VerdictUnsupported, "d2")
+
+	require.Len(t, rec.results, 2)
+	assert.Equal(t, Result{ID: "D2", Subject: "s", Check: "c2", Verdict: VerdictUnsupported, Detail: "d2"}, rec.results[1])
+}
+
+func Test_recorder_record(t *testing.T) {
+	t.Parallel()
+
+	t.Run("成功は渡された detail をそのまま載せる", func(t *testing.T) {
+		t.Parallel()
+
+		rec := &recorder{}
+		got := rec.record("D1", "s", "c", "ok detail", nil)
+		assert.Equal(t, VerdictCompatible, got)
+		assert.Equal(t, "ok detail", rec.results[0].Detail)
+	})
+
+	t.Run("失敗はエラーの要約で detail を置き換える", func(t *testing.T) {
+		t.Parallel()
+
+		rec := &recorder{}
+		got := rec.record("D1", "s", "c", "ignored", &fakeAPIError{code: "InvalidAction", msg: "no"})
+		assert.Equal(t, VerdictUnsupported, got)
+		assert.Equal(t, "InvalidAction: no", rec.results[0].Detail)
+	})
+}
+
+func Test_recorder_skip(t *testing.T) {
+	t.Parallel()
+
+	rec := &recorder{}
+	rec.skip("G9", "s", "c", "先行検査 G1 により実行不能")
+
+	require.Len(t, rec.results, 1)
+	assert.Equal(t, VerdictUnverifiable, rec.results[0].Verdict)
+	assert.Equal(t, "先行検査 G1 により実行不能", rec.results[0].Detail)
+}
+
+func Test_runChain(t *testing.T) {
 	t.Parallel()
 
 	pass := func(context.Context) (string, error) { return "ok", nil }
@@ -121,9 +208,45 @@ func TestRunChain(t *testing.T) {
 		assert.Equal(t, VerdictCompatible, rec.results[2].Verdict)
 		assert.Equal(t, "ok", rec.results[2].Detail)
 	})
+
+	t.Run("先頭が非 halt で失敗しても後続は走り、戻り値は false", func(t *testing.T) {
+		t.Parallel()
+
+		rec := &recorder{}
+		first := runChain(t.Context(), "s", []step{{id: "1", check: "a", fn: fail}, {id: "2", check: "b", fn: pass}}, rec)
+
+		assert.False(t, first)
+		assert.Equal(t, VerdictCompatible, rec.results[1].Verdict)
+	})
 }
 
-func TestExitCode(t *testing.T) {
+func Test_cleanupContext(t *testing.T) {
+	t.Parallel()
+
+	parent, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	ctx, cleanup := cleanupContext(parent)
+	defer cleanup()
+
+	require.NoError(t, ctx.Err(), "親の cancel を引き継がない")
+
+	deadline, ok := ctx.Deadline()
+	require.True(t, ok)
+	assert.WithinDuration(t, time.Now().Add(cleanupTimeout), deadline, time.Second)
+}
+
+func Test_count(t *testing.T) {
+	t.Parallel()
+
+	c := count([]Result{{Verdict: VerdictCompatible}, {Verdict: VerdictCompatible}, {Verdict: VerdictUnsupported}})
+
+	assert.Equal(t, 2, c[VerdictCompatible])
+	assert.Equal(t, 1, c[VerdictUnsupported])
+	assert.Equal(t, 0, c[VerdictIncompatible])
+}
+
+func Test_exitCode(t *testing.T) {
 	t.Parallel()
 
 	compatible := Result{ID: "1", Verdict: VerdictCompatible}
@@ -164,7 +287,7 @@ func TestExitCode(t *testing.T) {
 	}
 }
 
-func TestWriteMarkdown(t *testing.T) {
+func Test_writeMarkdown(t *testing.T) {
 	t.Parallel()
 
 	results := []Result{
@@ -184,10 +307,39 @@ func TestWriteMarkdown(t *testing.T) {
 	assert.NotContains(t, out, "- G9", "検証不能は compatibility implementation 候補に載せない")
 }
 
-func TestWriteMarkdown_noCandidates(t *testing.T) {
+func Test_writeSummary(t *testing.T) {
+	t.Parallel()
+
+	t.Run("候補が無ければ「なし」", func(t *testing.T) {
+		t.Parallel()
+
+		var buf bytes.Buffer
+		require.NoError(t, writeSummary(&buf, []Result{{ID: "D1", Verdict: VerdictCompatible}}))
+		assert.Contains(t, buf.String(), "- なし")
+	})
+
+	t.Run("未対応も候補に載る", func(t *testing.T) {
+		t.Parallel()
+
+		var buf bytes.Buffer
+		require.NoError(t, writeSummary(&buf, []Result{{ID: "G0", Check: "probe", Verdict: VerdictUnsupported, Detail: "404"}}))
+		assert.Contains(t, buf.String(), "- G0 probe: 未対応 — 404")
+	})
+}
+
+func Test_writeText(t *testing.T) {
 	t.Parallel()
 
 	var buf bytes.Buffer
-	require.NoError(t, writeMarkdown(&buf, []Result{{ID: "D1", Verdict: VerdictCompatible}}))
-	assert.Contains(t, buf.String(), "- なし")
+	require.NoError(t, writeText(&buf, []Result{{ID: "D1", Subject: "s", Check: "c", Verdict: VerdictCompatible, Detail: "d"}}))
+
+	assert.True(t, strings.HasPrefix(buf.String(), "D1 "))
+	assert.Contains(t, buf.String(), "互換 1 / 非互換 0 / 未対応 0 / 検証不能 0")
+}
+
+func Test_escapeCell(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "a\\|b c", escapeCell("a|b\nc"))
+	assert.Equal(t, "plain", escapeCell("plain"))
 }

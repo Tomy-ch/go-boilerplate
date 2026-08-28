@@ -48,7 +48,11 @@ func runDynamoDB(ctx context.Context, c *dynamodb.Client, table string, keep boo
 	s := &ddbSmoke{c: c, table: table}
 
 	created := runChain(ctx, ddbSubject, s.steps(), rec)
-	s.cleanup(ctx, created, keep, rec)
+
+	cctx, cancel := cleanupContext(ctx)
+	defer cancel()
+
+	s.cleanup(cctx, created, keep, rec)
 }
 
 func (s *ddbSmoke) steps() []step {
