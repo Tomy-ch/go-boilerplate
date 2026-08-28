@@ -6,15 +6,25 @@ emit（usecase 層）と relay engine（controller 層）の双方がこの境�
 ```go
 type Store interface {
     Insert(ctx context.Context, p EmitParams) (uuid.UUID, error)
-    ClaimPending(ctx context.Context, limit int32) ([]PendingMessage, error)
+    ClaimPending(ctx context.Context, channel Channel, limit int32) ([]PendingMessage, error)
     MarkPublished(ctx context.Context, id int64) error
-    MarkFailed(ctx context.Context, id int64, lastErr string) (attempts int32, err error)
+    MarkFailed(ctx context.Context, id int64, lastErr string, nextAttemptAt time.Time) error
     MarkDead(ctx context.Context, id int64) error
     ReplayDead(ctx context.Context, messageID *uuid.UUID) (int64, error)
     DeletePublished(ctx context.Context, cutoff time.Time, limit int32) (int64, error)
-    OldestPendingCreatedAt(ctx context.Context) (createdAt time.Time, ok bool, err error)
+    OldestPendingCreatedAt(ctx context.Context, channel Channel) (createdAt time.Time, ok bool, err error)
+    CountBlockedStreams(ctx context.Context, channel Channel) (int64, error)
 }
 ```
+
+行はちょうど 1 つの**配送チャネル**（`Channel`）に属し、relay プロセスはちょうど 1 チャネルを
+claim します。したがって停止したチャネルが別のチャネルを止めることはありません。行はさらに
+**順序キー**とその中の位置を持てます。`ClaimPending` は同一キーの先行位置が未 publish の間その行を
+選ばないため、ストリームの配送は穴のある集合ではなく連続 prefix になります。
+
+`MarkFailed` は dead 化しません。行が `dead` になるのは `MarkDead` を通る場合だけで、relay は
+publisher が失敗を恒久的と分類したときにこれを呼びます
+（[ADR-0058](../../../../docs/adr/0058-outbox-dead-on-permanent-error.md)）。
 
 ## なぜ抽象化するのか
 

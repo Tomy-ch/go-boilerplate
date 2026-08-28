@@ -9,15 +9,19 @@ outbox relay プロセスを起動し、dead 行を復帰させる `replay` サ�
 ## コマンド
 
 ```text
-outbox-relay
+outbox-relay --channel=<channel>
 outbox-relay replay [flags]
 ```
 
 ## フラグ
 
-`outbox-relay` 本体にフラグはありません。
+`outbox-relay`:
 
-`outbox-relay replay`:
+|フラグ|デフォルト|説明|
+|---|---|---|
+|`--channel`|*(必須)*|このプロセスが担当する配送チャネル（`http` / `realtime`）。1 プロセスがちょうど 1 チャネルを捌き、既定値は持たない。誤ったチャネルで起動した relay は、本来のチャネルに担当者が居ない状態を作る。担当者の居ないチャネルは lag も記録されないため、滞留は「遅い」ではなく「見えない」形になる|
+
+`outbox-relay replay`（チャネル非依存。dead 行は自分のチャネルを保持したまま戻る）:
 
 |フラグ|デフォルト|説明|
 |---|---|---|
@@ -26,8 +30,8 @@ outbox-relay replay [flags]
 ## 使い方
 
 ```bash
-# relay を起動（SIGINT / SIGTERM まで常駐）
-./server outbox-relay
+# 1 つの配送チャネルを担当する relay を起動（SIGINT / SIGTERM まで常駐）
+./server outbox-relay --channel=http
 
 # 全 dead 行を pending へ戻す
 ./server outbox-relay replay

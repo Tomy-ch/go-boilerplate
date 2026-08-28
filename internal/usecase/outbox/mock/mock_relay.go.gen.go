@@ -42,27 +42,39 @@ func (m *MockMetrics) EXPECT() *MockMetricsMockRecorder {
 }
 
 // IncDead mocks base method.
-func (m *MockMetrics) IncDead(ctx context.Context) {
+func (m *MockMetrics) IncDead(ctx context.Context, channel string) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "IncDead", ctx)
+	m.ctrl.Call(m, "IncDead", ctx, channel)
 }
 
 // IncDead indicates an expected call of IncDead.
-func (mr *MockMetricsMockRecorder) IncDead(ctx any) *gomock.Call {
+func (mr *MockMetricsMockRecorder) IncDead(ctx, channel any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IncDead", reflect.TypeOf((*MockMetrics)(nil).IncDead), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IncDead", reflect.TypeOf((*MockMetrics)(nil).IncDead), ctx, channel)
+}
+
+// SetBlockedStreams mocks base method.
+func (m *MockMetrics) SetBlockedStreams(ctx context.Context, channel string, count int64) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "SetBlockedStreams", ctx, channel, count)
+}
+
+// SetBlockedStreams indicates an expected call of SetBlockedStreams.
+func (mr *MockMetricsMockRecorder) SetBlockedStreams(ctx, channel, count any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetBlockedStreams", reflect.TypeOf((*MockMetrics)(nil).SetBlockedStreams), ctx, channel, count)
 }
 
 // SetLagSeconds mocks base method.
-func (m *MockMetrics) SetLagSeconds(ctx context.Context, seconds int64) {
+func (m *MockMetrics) SetLagSeconds(ctx context.Context, channel string, seconds int64) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "SetLagSeconds", ctx, seconds)
+	m.ctrl.Call(m, "SetLagSeconds", ctx, channel, seconds)
 }
 
 // SetLagSeconds indicates an expected call of SetLagSeconds.
-func (mr *MockMetricsMockRecorder) SetLagSeconds(ctx, seconds any) *gomock.Call {
+func (mr *MockMetricsMockRecorder) SetLagSeconds(ctx, channel, seconds any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetLagSeconds", reflect.TypeOf((*MockMetrics)(nil).SetLagSeconds), ctx, seconds)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetLagSeconds", reflect.TypeOf((*MockMetrics)(nil).SetLagSeconds), ctx, channel, seconds)
 }
 
 // MockRelayUsecase is a mock of RelayUsecase interface.
@@ -87,6 +99,20 @@ func NewMockRelayUsecase(ctrl *gomock.Controller) *MockRelayUsecase {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockRelayUsecase) EXPECT() *MockRelayUsecaseMockRecorder {
 	return m.recorder
+}
+
+// RecordBlockedStreams mocks base method.
+func (m *MockRelayUsecase) RecordBlockedStreams(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RecordBlockedStreams", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RecordBlockedStreams indicates an expected call of RecordBlockedStreams.
+func (mr *MockRelayUsecaseMockRecorder) RecordBlockedStreams(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordBlockedStreams", reflect.TypeOf((*MockRelayUsecase)(nil).RecordBlockedStreams), ctx)
 }
 
 // RecordLag mocks base method.

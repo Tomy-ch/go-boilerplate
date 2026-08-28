@@ -17,6 +17,12 @@ type Message struct {
 }
 ```
 
+An implementation may classify a failure it returns with `apperror.ErrPermanent`
+(a retry cannot change the outcome) or `apperror.ErrRetryable` (it might). The relay
+dead-letters an entry on the former and keeps retrying on the latter; an error carrying
+neither classification is treated as retryable, so a publisher that cannot tell never
+costs a message (see [ADR-0058](../../../../docs/adr/0058-outbox-dead-on-permanent-error.md)).
+
 ## Why Abstract?
 
 - Ensure testability of relay logic without sending real messages

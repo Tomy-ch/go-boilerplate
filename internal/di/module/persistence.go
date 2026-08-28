@@ -17,6 +17,7 @@ import (
 	"go-boilerplate/internal/infrastructure/rdb/system_cqrs/healthcheck"
 	idempotencysq "go-boilerplate/internal/infrastructure/rdb/system_cqrs/idempotency"
 	outboxsq "go-boilerplate/internal/infrastructure/rdb/system_cqrs/outbox"
+	realtimesq "go-boilerplate/internal/infrastructure/rdb/system_cqrs/realtime"
 
 	"go.uber.org/fx"
 )
@@ -68,6 +69,7 @@ func persistenceModule() fx.Option {
 				healthcheck.New,
 				idempotencysq.New,
 				outboxsq.New,
+				realtimesq.NewSequenceAllocator,
 			),
 		),
 	)

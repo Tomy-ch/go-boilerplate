@@ -125,7 +125,7 @@ func (c *client) doWithRetry(ctx context.Context, req *Request, profile Profile,
 		resp, err = c.attempt(ctx, req, profile)
 		// retryable は retry 継続判定に加え breaker への計上も兼ねる（!retryable を成功として記録するため、
 		// 429 や応答未取得の transport 失敗は breaker 上の失敗、4xx は成功扱いになる）。
-		retryable := isRetryableOutcome(resp, err)
+		retryable := RetryableOutcome(resp, err)
 		br.record(!retryable, c.clk.Now(), generation)
 
 		if !retrySafe || !retryable {
@@ -179,7 +179,7 @@ func (c *client) attempt(ctx context.Context, req *Request, profile Profile) (*R
 
 	body, err := readBody(httpResp.Body, profile.MaxResponseBytes)
 	if err != nil {
-		// 上限超過は決定的失敗なのでそのまま返す（非 retry 化は isRetryableOutcome が担う）。
+		// 上限超過は決定的失敗なのでそのまま返す（非 retry 化は RetryableOutcome が担う）。
 		// それ以外は応答未完了の transport 失敗として正規化する（Do 失敗経路と一貫）。
 		if xerrors.Is(err, errResponseTooLarge) {
 			return nil, err

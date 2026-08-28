@@ -8,7 +8,13 @@ import (
 	"go-boilerplate/internal/config"
 	outboxengine "go-boilerplate/internal/controller/outbox"
 	relayhook "go-boilerplate/internal/di/outboxrelay/hook"
+	"go-boilerplate/internal/infrastructure/publisher"
+	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/boundary/clock"
+	outboxbndry "go-boilerplate/internal/usecase/boundary/outbox"
+	publisherbndry "go-boilerplate/internal/usecase/boundary/publisher"
+	"go-boilerplate/internal/usecase/boundary/tx"
 	outboxuc "go-boilerplate/internal/usecase/outbox"
 	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/xerrors"
@@ -21,19 +27,35 @@ const (
 	defaultRelayErrorBackoff = 5 * time.Second
 )
 
-// OutboxRelayModule は、outbox relay engine とそのライフサイクルフックを提供するfx.Moduleです。
-// relay 専用プロセス（cmd outbox-relay）でのみ使用します。
-// outboxPublisherModule は非標準の httpclient profile（MaxAttempts=1 等）を value group へ寄与するため、
-// relay 以外のプロセスへ漏れないよう共有 InfrastructureModule ではなくここに閉じ込めます。
-func OutboxRelayModule() fx.Option {
+// relayUsecaseIn は、relay usecase の依存を DI から集約します。
+// 依存を 1 つずつ引数に並べると構築子の引数が増え続けるため、集約は DI 側に置きます。
+type relayUsecaseIn struct {
+	fx.In
+
+	Txm       tx.Manager
+	Store     outboxbndry.Store
+	Publisher publisherbndry.Publisher
+	Metrics   outboxuc.Metrics
+	Clock     clock.Clock
+	Logging   logging.Logger
+	Tracer    observability.TracerFactory
+	Channel   outboxbndry.Channel
+}
+
+// OutboxRelayModule は、1 つの配送チャネルを担う outbox relay engine とそのライフサイクルフックを
+// 提供するfx.Moduleです。relay 専用プロセス（cmd outbox-relay）でのみ使用します。
+// チャネル隔離と publisher profile の閉じ込めは internal/di/README.md の Optional を参照。
+func OutboxRelayModule(channel outboxbndry.Channel) fx.Option {
 	return fx.Module("outbox-relay",
 		outboxPublisherModule(),
+		fx.Supply(channel),
+		fx.Invoke(publisher.VerifyChannel),
 		fx.Provide(
 			fx.Annotate(
 				observability.NewOutboxMetrics,
 				fx.As(new(outboxuc.Metrics)),
 			),
-			outboxuc.NewRelay,
+			provideRelayUsecase,
 			provideRelaySettings,
 			outboxengine.NewEngine,
 		),
@@ -41,9 +63,21 @@ func OutboxRelayModule() fx.Option {
 	)
 }
 
-// provideRelaySettings は、OutboxConfig から relay engine の設定を生成します。
-// BatchSize / PollInterval / ErrorBackoff は 0 以下だとホットループ（スピン / Sleep 即 return）を
-// 招くため、それぞれ既定値へ clamp します。
+// provideRelayUsecase は、集約した依存から channel を担う RelayUsecase を生成します。
+func provideRelayUsecase(in relayUsecaseIn) outboxuc.RelayUsecase {
+	return outboxuc.NewRelay(outboxuc.RelayDeps{
+		Txm:       in.Txm,
+		Store:     in.Store,
+		Publisher: in.Publisher,
+		Metrics:   in.Metrics,
+		Clock:     in.Clock,
+		Logging:   in.Logging,
+		Tracer:    in.Tracer,
+	}, in.Channel)
+}
+
+// provideRelaySettings は、OutboxConfig から relay engine の設定を生成します
+// （clamp の理由は internal/controller/outbox/README.md の Public API を参照）。
 // BatchSize が engine の int32 に収まらないときは、既定値へ丸めて誤設定を隠すのではなく起動を失敗させます。
 func provideRelaySettings(cfg *config.OutboxConfig) (outboxengine.Settings, error) {
 	batchSize := outboxuc.DefaultBatchSize

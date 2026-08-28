@@ -7,15 +7,26 @@ this boundary.
 ```go
 type Store interface {
     Insert(ctx context.Context, p EmitParams) (uuid.UUID, error)
-    ClaimPending(ctx context.Context, limit int32) ([]PendingMessage, error)
+    ClaimPending(ctx context.Context, channel Channel, limit int32) ([]PendingMessage, error)
     MarkPublished(ctx context.Context, id int64) error
-    MarkFailed(ctx context.Context, id int64, lastErr string) (attempts int32, err error)
+    MarkFailed(ctx context.Context, id int64, lastErr string, nextAttemptAt time.Time) error
     MarkDead(ctx context.Context, id int64) error
     ReplayDead(ctx context.Context, messageID *uuid.UUID) (int64, error)
     DeletePublished(ctx context.Context, cutoff time.Time, limit int32) (int64, error)
-    OldestPendingCreatedAt(ctx context.Context) (createdAt time.Time, ok bool, err error)
+    OldestPendingCreatedAt(ctx context.Context, channel Channel) (createdAt time.Time, ok bool, err error)
+    CountBlockedStreams(ctx context.Context, channel Channel) (int64, error)
 }
 ```
+
+A row belongs to exactly one **delivery channel** (`Channel`), and a relay process
+claims exactly one channel, so a stalled channel never holds up another. A row may
+additionally carry an **ordering key** and a position within it; `ClaimPending`
+refuses a row while an earlier position on the same key is still unpublished, which
+is what makes a stream's delivery a contiguous prefix rather than a set with holes.
+
+`MarkFailed` does not dead-letter. A row becomes `dead` only through `MarkDead`,
+which the relay calls when the publisher classified the failure as permanent
+(see [ADR-0058](../../../../docs/adr/0058-outbox-dead-on-permanent-error.md)).
 
 ## Why Abstract?
 

@@ -33,6 +33,7 @@ func TestRegisterRelayHooks(t *testing.T) {
 			// pending は常に空。Sleep は ctx 完了（OnStop の cancel）まで待機する。
 			uc.EXPECT().RelayBatch(gomock.Any(), gomock.Any()).Return(outboxuc.RelayResult{}, nil).AnyTimes()
 			uc.EXPECT().RecordLag(gomock.Any()).Return(nil).AnyTimes()
+			uc.EXPECT().RecordBlockedStreams(gomock.Any()).Return(nil).AnyTimes()
 			sleeper.EXPECT().Sleep(gomock.Any(), gomock.Any()).DoAndReturn(
 				func(ctx context.Context, _ time.Duration) error {
 					<-ctx.Done()

@@ -35,9 +35,10 @@ func isRetrySafe(req *Request) bool {
 	}
 }
 
-// isRetryableOutcome は、試行結果が retry 対象かを返します。
+// RetryableOutcome は、試行結果が retry 対象かを返します。
 // 5xx / 429 / 応答未取得の transport 失敗は retry 対象、4xx / 成功 / ctx cancel は対象外です。
-func isRetryableOutcome(resp *Response, err error) bool {
+// この判定表を持つのはこの関数だけです（公開理由は README の Design Policy を参照）。
+func RetryableOutcome(resp *Response, err error) bool {
 	if err == nil {
 		return false
 	}

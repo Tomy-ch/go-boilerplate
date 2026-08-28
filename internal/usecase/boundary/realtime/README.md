@@ -52,7 +52,7 @@ type SecretGenerator interface {
 | Invariant | Where it is enforced |
 | --- | --- |
 | A serialized event is at most `MaxSerializedBytes` (64 KiB) — the whole envelope, not the payload alone | `DeliveryEvent.Validate`, called by the emitting adapter before the outbox row is written and by every `EventLogStore.Append` before it stores |
-| `Sequence` is decimal on the wire, gap-free in a stream, and its zero value carries no meaning — "not yet allocated" is the `ok` of `SequenceAllocator.Current`, never a sentinel value | `Sequence.String`; the allocator (#1410) and ADR-0072 |
+| `Sequence` is decimal on the wire, gap-free in a stream, and its zero value carries no meaning — "not yet allocated" is the `ok` of `SequenceAllocator.Current`, never a sentinel value | `Sequence.String`; the allocator and ADR-0072 |
 | Re-appending the same `EventID` at the same position succeeds; a different `EventID` there is `ErrSequenceConflict` | `EventLogStore.Append` (the outbox relay retries without a special case) |
 | A cursor is only meaningful for the ticket's own `Destination` | `StreamTicket.Destination`; the stream handler compares them |
 | Expiry is decided by the caller's clock (`asOf`), never by the store's clean-up | `StreamTicketStore.Find`, `InstanceLeaseStore.ListExpired` / `AcquireCleanup` |
@@ -76,7 +76,7 @@ after that removal, so it carries its own randomness seam; the implementation li
 | `StreamTicketStore` | `internal/infrastructure/streamticket/dynamodb/` |
 | `InstanceLeaseStore` | `internal/infrastructure/instancelease/dynamodb/` |
 | `SecretGenerator` | `internal/infrastructure/realtimesecret/` |
-| `SequenceAllocator` (`sequence.go`, #1410) | `internal/infrastructure/rdb/system_cqrs/realtime/` |
+| `SequenceAllocator` (`sequence.go`) | `internal/infrastructure/rdb/system_cqrs/realtime/` |
 | `RevocationNotifier` (`revocation.go`) | the SNS fan-out publisher (Phase 7, #1414); called by `usecase/realtime.AccessRevoker` after the tickets are invalidated |
 
 Mocks are generated per file into `mock/` (`go generate ./...`).

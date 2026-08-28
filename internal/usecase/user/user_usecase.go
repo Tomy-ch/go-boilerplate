@@ -16,6 +16,7 @@ import (
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/internal/usecase/boundary/authz"
 	"go-boilerplate/internal/usecase/boundary/clock"
+	outboxbndry "go-boilerplate/internal/usecase/boundary/outbox"
 	"go-boilerplate/internal/usecase/boundary/tx"
 	"go-boilerplate/internal/usecase/outbox"
 	"go-boilerplate/internal/usecase/tools/paging"
@@ -459,6 +460,7 @@ func (u *usecase) DeleteUser(ctx context.Context, authn *authbd.Authn, id uuid.U
 			AggregateID:   id.String(),
 			EventType:     event.TypeWithdrawn,
 			Payload:       payload,
+			Channel:       outboxbndry.ChannelHTTP,
 		})
 		return err
 	})

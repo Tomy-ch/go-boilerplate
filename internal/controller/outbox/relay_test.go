@@ -59,6 +59,7 @@ func TestEngine_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			uc := mock_relay.NewMockRelayUsecase(ctrl)
 			uc.EXPECT().RecordLag(gomock.Any()).Return(nil).AnyTimes()
+			uc.EXPECT().RecordBlockedStreams(gomock.Any()).Return(nil).AnyTimes()
 			sleeper := mock_clock.NewMockSleeper(ctrl)
 
 			uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).Return(outboxuc.RelayResult{}, nil)
@@ -72,6 +73,7 @@ func TestEngine_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			uc := mock_relay.NewMockRelayUsecase(ctrl)
 			uc.EXPECT().RecordLag(gomock.Any()).Return(nil).AnyTimes()
+			uc.EXPECT().RecordBlockedStreams(gomock.Any()).Return(nil).AnyTimes()
 			sleeper := mock_clock.NewMockSleeper(ctrl)
 
 			gomock.InOrder(
@@ -89,6 +91,7 @@ func TestEngine_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			uc := mock_relay.NewMockRelayUsecase(ctrl)
 			uc.EXPECT().RecordLag(gomock.Any()).Return(nil).AnyTimes()
+			uc.EXPECT().RecordBlockedStreams(gomock.Any()).Return(nil).AnyTimes()
 			sleeper := mock_clock.NewMockSleeper(ctrl)
 
 			uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).Return(
@@ -120,6 +123,7 @@ func TestEngine_Run(t *testing.T) {
 
 			uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).Return(outboxuc.RelayResult{}, nil).AnyTimes()
 			uc.EXPECT().RecordLag(gomock.Any()).Return(xerrors.New("lag failed")).AnyTimes()
+			uc.EXPECT().RecordBlockedStreams(gomock.Any()).Return(nil).AnyTimes()
 			sleeper.EXPECT().Sleep(gomock.Any(), testPollInterval).Return(context.Canceled)
 
 			require.NoError(t, newEngine(t, uc, sleeper).Run(context.Background()))
@@ -130,6 +134,7 @@ func TestEngine_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			uc := mock_relay.NewMockRelayUsecase(ctrl)
 			uc.EXPECT().RecordLag(gomock.Any()).Return(nil).AnyTimes()
+			uc.EXPECT().RecordBlockedStreams(gomock.Any()).Return(nil).AnyTimes()
 			sleeper := mock_clock.NewMockSleeper(ctrl)
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -179,6 +184,7 @@ func TestEngine_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			uc := mock_relay.NewMockRelayUsecase(ctrl)
 			uc.EXPECT().RecordLag(gomock.Any()).Return(nil).AnyTimes()
+			uc.EXPECT().RecordBlockedStreams(gomock.Any()).Return(nil).AnyTimes()
 			sleeper := mock_clock.NewMockSleeper(ctrl)
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -202,6 +208,7 @@ func TestEngine_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			uc := mock_relay.NewMockRelayUsecase(ctrl)
 			uc.EXPECT().RecordLag(gomock.Any()).Return(nil).AnyTimes()
+			uc.EXPECT().RecordBlockedStreams(gomock.Any()).Return(nil).AnyTimes()
 			sleeper := mock_clock.NewMockSleeper(ctrl)
 
 			ctx, cancel := context.WithCancel(context.Background())

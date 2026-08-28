@@ -60,7 +60,7 @@ func Test_isRetrySafe(t *testing.T) {
 	})
 }
 
-func Test_isRetryableOutcome(t *testing.T) {
+func TestRetryableOutcome(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -68,57 +68,57 @@ func Test_isRetryableOutcome(t *testing.T) {
 
 		t.Run("成功は対象外", func(t *testing.T) {
 			t.Parallel()
-			assert.False(t, isRetryableOutcome(&Response{StatusCode: 200}, nil))
+			assert.False(t, RetryableOutcome(&Response{StatusCode: 200}, nil))
 		})
 
 		t.Run("ctxキャンセルは対象外", func(t *testing.T) {
 			t.Parallel()
-			assert.False(t, isRetryableOutcome(nil, apperror.ErrCanceled))
+			assert.False(t, RetryableOutcome(nil, apperror.ErrCanceled))
 		})
 
 		t.Run("500は対象", func(t *testing.T) {
 			t.Parallel()
-			assert.True(t, isRetryableOutcome(&Response{StatusCode: 500}, apperror.ErrUnavailable))
+			assert.True(t, RetryableOutcome(&Response{StatusCode: 500}, apperror.ErrUnavailable))
 		})
 
 		t.Run("503は対象", func(t *testing.T) {
 			t.Parallel()
-			assert.True(t, isRetryableOutcome(&Response{StatusCode: 503}, apperror.ErrUnavailable))
+			assert.True(t, RetryableOutcome(&Response{StatusCode: 503}, apperror.ErrUnavailable))
 		})
 
 		t.Run("429は対象", func(t *testing.T) {
 			t.Parallel()
-			assert.True(t, isRetryableOutcome(&Response{StatusCode: 429}, apperror.ErrTooManyRequests))
+			assert.True(t, RetryableOutcome(&Response{StatusCode: 429}, apperror.ErrTooManyRequests))
 		})
 
 		t.Run("404は対象外", func(t *testing.T) {
 			t.Parallel()
-			assert.False(t, isRetryableOutcome(&Response{StatusCode: 404}, apperror.ErrNotFound))
+			assert.False(t, RetryableOutcome(&Response{StatusCode: 404}, apperror.ErrNotFound))
 		})
 
 		t.Run("400は対象外", func(t *testing.T) {
 			t.Parallel()
-			assert.False(t, isRetryableOutcome(&Response{StatusCode: 400}, apperror.ErrInvalidArgument))
+			assert.False(t, RetryableOutcome(&Response{StatusCode: 400}, apperror.ErrInvalidArgument))
 		})
 
 		t.Run("応答未取得のtransport失敗(ErrUnavailable)は対象", func(t *testing.T) {
 			t.Parallel()
-			assert.True(t, isRetryableOutcome(nil, xerrors.Wrap(apperror.ErrUnavailable, "dial error")))
+			assert.True(t, RetryableOutcome(nil, xerrors.Wrap(apperror.ErrUnavailable, "dial error")))
 		})
 
 		t.Run("応答未取得でもErrInvalidArgument(不正URL等)は対象外", func(t *testing.T) {
 			t.Parallel()
-			assert.False(t, isRetryableOutcome(nil, xerrors.Wrap(apperror.ErrInvalidArgument, "bad url")))
+			assert.False(t, RetryableOutcome(nil, xerrors.Wrap(apperror.ErrInvalidArgument, "bad url")))
 		})
 
 		t.Run("応答未取得のcircuit_open(ErrUnavailable内包)は対象", func(t *testing.T) {
 			t.Parallel()
-			assert.True(t, isRetryableOutcome(nil, errCircuitOpen))
+			assert.True(t, RetryableOutcome(nil, errCircuitOpen))
 		})
 
 		t.Run("レスポンス上限超過(errResponseTooLarge=ErrUnavailable内包)は決定的失敗なので対象外", func(t *testing.T) {
 			t.Parallel()
-			assert.False(t, isRetryableOutcome(nil, errResponseTooLarge))
+			assert.False(t, RetryableOutcome(nil, errResponseTooLarge))
 		})
 	})
 }

@@ -14,7 +14,7 @@ import (
 // downstream は、profile / breaker / metrics / budget の論理依存名です。
 const downstream httpclient.Downstream = "outbox"
 
-// Endpoint は、メッセージの送信先エンドポイント URL です（構築時に config から固定注入）。
+// Endpoint は、メッセージの送信先エンドポイント URL です。
 type Endpoint string
 
 // httpPublisher は、boundary.Publisher の HTTP 実装です。
@@ -36,8 +36,8 @@ func NewDownstreamProfile() httpclient.DownstreamProfile {
 }
 
 // RequiredDownstream は、本 publisher が使用する Downstream を返します。
-// required_downstreams へ供給することで、対応 profile が未登録のまま起動した場合に
-// silent な DefaultProfile fallback ではなく loud な起動失敗になることを保証します。
+// required_downstreams へ供給し、profile 未登録時は fallback ではなく起動失敗にします
+// （仕組みは httpclient の README の Design Policy を参照）。
 func RequiredDownstream() httpclient.Downstream {
 	return downstream
 }
@@ -57,7 +57,7 @@ func NewHTTP(
 
 // Publish は、メッセージを受信エンドポイントへ POST します。
 // message_id を Idempotency-Key として伝搬します。非 2xx / transport 失敗は substrate が
-// apperror へ写像して返します。
+// apperror へ写像し、本メソッドがさらに永久失敗 / 一時失敗の分類を付けて返します。
 func (p *httpPublisher) Publish(ctx context.Context, m boundary.Message) error {
 	ctx, endSpan := p.tracer.Start(ctx)
 	defer endSpan()
@@ -71,11 +71,11 @@ func (p *httpPublisher) Publish(ctx context.Context, m boundary.Message) error {
 		header[k] = []string{v}
 	}
 
-	_, err := p.client.Do(ctx, httpclient.NewRequest(
+	resp, err := p.client.Do(ctx, httpclient.NewRequest(
 		httpclient.MethodPost(), downstream, string(p.endpoint),
 		httpclient.WithHeader(header),
 		httpclient.WithBody(m.Payload),
 		httpclient.WithIdempotencyKey(m.MessageID.String()),
 	))
-	return err
+	return classifyOutcome(resp, err)
 }

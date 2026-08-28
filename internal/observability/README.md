@@ -483,7 +483,7 @@ Each subsystem owns its meter and instruments, constructed from the injected
 
 |Meter (`go-boilerplate/...`)|Instruments|Owner|
 |---|---|---|
-|`/outbox`|`outbox.lag_seconds` (gauge), `outbox.dead` (counter)|outbox relay|
+|`/outbox`|`outbox.lag_seconds` (gauge), `outbox.dead` (counter), `outbox.blocked_streams` (gauge); all labelled by `channel`|outbox relay|
 |`/worker`|`received` / `processed` / `failed` / `retried` / `dlq` / poll & extend errors (counters), latency (histogram), in-flight (up-down)|worker engine (broker-agnostic)|
 |`/idempotency`|`requests` / `failures` / `expiredCleanup` (counters); labels limited to `operation_id` / `result` / `phase` / `job`|idempotency subsystem|
 |`/httpclient`|RED (`requests` / `errors`, latency histogram) + `retries`, in-flight, `breakerState` gauge|outbound HTTP client substrate|

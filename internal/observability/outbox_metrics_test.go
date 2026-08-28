@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/embedded"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
@@ -45,8 +46,9 @@ func TestNewOutboxMetrics(t *testing.T) {
 			om, err := observability.NewOutboxMetrics(provider)
 			require.NoError(t, err)
 
-			om.SetLagSeconds(ctx, 42)
-			om.IncDead(ctx)
+			om.SetLagSeconds(ctx, "http", 42)
+			om.IncDead(ctx, "http")
+			om.SetBlockedStreams(ctx, "http", 1)
 
 			var rm metricdata.ResourceMetrics
 			require.NoError(t, reader.Collect(ctx, &rm))
@@ -58,7 +60,7 @@ func TestNewOutboxMetrics(t *testing.T) {
 				}
 			}
 
-			for _, want := range []string{"outbox.lag_seconds", "outbox.dead"} {
+			for _, want := range []string{"outbox.lag_seconds", "outbox.dead", "outbox.blocked_streams"} {
 				assert.Contains(t, names, want)
 			}
 		})
@@ -108,7 +110,7 @@ func TestOutboxMetrics_IncDead(t *testing.T) {
 			om, err := observability.NewOutboxMetrics(provider)
 			require.NoError(t, err)
 
-			om.IncDead(ctx)
+			om.IncDead(ctx, "http")
 
 			var rm metricdata.ResourceMetrics
 			require.NoError(t, reader.Collect(ctx, &rm))
@@ -118,6 +120,7 @@ func TestOutboxMetrics_IncDead(t *testing.T) {
 			require.True(t, ok)
 			require.NotEmpty(t, s.DataPoints)
 			assert.Equal(t, int64(1), s.DataPoints[0].Value)
+			assert.Equal(t, "http", attributeOf(t, rm, "outbox.dead", "channel"))
 			// lag gauge 側へ取り違えて計上していないこと。
 			assert.False(t, metricPresent(rm, "outbox.lag_seconds"))
 		})
@@ -132,9 +135,9 @@ func TestOutboxMetrics_IncDead(t *testing.T) {
 			om, err := observability.NewOutboxMetrics(provider)
 			require.NoError(t, err)
 
-			om.IncDead(ctx)
-			om.IncDead(ctx)
-			om.IncDead(ctx)
+			om.IncDead(ctx, "http")
+			om.IncDead(ctx, "http")
+			om.IncDead(ctx, "http")
 
 			var rm metricdata.ResourceMetrics
 			require.NoError(t, reader.Collect(ctx, &rm))
@@ -160,7 +163,7 @@ func TestOutboxMetrics_SetLagSeconds(t *testing.T) {
 			om, err := observability.NewOutboxMetrics(provider)
 			require.NoError(t, err)
 
-			om.SetLagSeconds(ctx, 42)
+			om.SetLagSeconds(ctx, "http", 42)
 
 			var rm metricdata.ResourceMetrics
 			require.NoError(t, reader.Collect(ctx, &rm))
@@ -170,6 +173,7 @@ func TestOutboxMetrics_SetLagSeconds(t *testing.T) {
 			require.True(t, ok)
 			require.NotEmpty(t, g.DataPoints)
 			assert.Equal(t, int64(42), g.DataPoints[0].Value)
+			assert.Equal(t, "http", attrOfAny(t, rm, "outbox.lag_seconds", "channel"))
 			// dead counter 側へ取り違えて計上していないこと。
 			assert.False(t, metricPresent(rm, "outbox.dead"))
 		})
@@ -184,9 +188,9 @@ func TestOutboxMetrics_SetLagSeconds(t *testing.T) {
 			om, err := observability.NewOutboxMetrics(provider)
 			require.NoError(t, err)
 
-			om.SetLagSeconds(ctx, 42)
+			om.SetLagSeconds(ctx, "http", 42)
 			// pending 無しは 0 を記録する運用のため、直近値へ落ちることを固定する。
-			om.SetLagSeconds(ctx, 0)
+			om.SetLagSeconds(ctx, "http", 0)
 
 			var rm metricdata.ResourceMetrics
 			require.NoError(t, reader.Collect(ctx, &rm))
@@ -195,6 +199,105 @@ func TestOutboxMetrics_SetLagSeconds(t *testing.T) {
 			require.True(t, ok)
 			require.NotEmpty(t, g.DataPoints)
 			assert.Equal(t, int64(0), g.DataPoints[0].Value)
+		})
+	})
+}
+
+func TestOutboxMetrics_SetBlockedStreams(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("outbox.blocked_streams を Gauge[int64] として値を記録する", func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			reader := sdkmetric.NewManualReader()
+			provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+
+			om, err := observability.NewOutboxMetrics(provider)
+			require.NoError(t, err)
+
+			om.SetBlockedStreams(ctx, "realtime", 2)
+
+			var rm metricdata.ResourceMetrics
+			require.NoError(t, reader.Collect(ctx, &rm))
+
+			// Gauge[int64] への型アサートで、型誤実装（Sum 化等）を検出可能にする。
+			g, ok := metricByName(t, rm, "outbox.blocked_streams").Data.(metricdata.Gauge[int64])
+			require.True(t, ok)
+			require.NotEmpty(t, g.DataPoints)
+			assert.Equal(t, int64(2), g.DataPoints[0].Value)
+			assert.Equal(t, "realtime", attrOfAny(t, rm, "outbox.blocked_streams", "channel"))
+		})
+
+		t.Run("後の記録で上書きされ累積しない", func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			reader := sdkmetric.NewManualReader()
+			provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+
+			om, err := observability.NewOutboxMetrics(provider)
+			require.NoError(t, err)
+
+			om.SetBlockedStreams(ctx, "realtime", 2)
+			om.SetBlockedStreams(ctx, "realtime", 0)
+
+			var rm metricdata.ResourceMetrics
+			require.NoError(t, reader.Collect(ctx, &rm))
+
+			g, ok := metricByName(t, rm, "outbox.blocked_streams").Data.(metricdata.Gauge[int64])
+			require.True(t, ok)
+			require.NotEmpty(t, g.DataPoints)
+			assert.Equal(t, int64(0), g.DataPoints[0].Value)
+		})
+	})
+}
+
+// lagSecondsOfChannel は、channel 属性で該当するデータ点の値を返します。
+// 単一系列前提の DataPoints[0] 読みでは、複数チャネルが同時に記録されたときに
+// 系列が混ざる退行（属性を落として 1 系列へ潰す等）を検出できません。
+func lagSecondsOfChannel(t *testing.T, rm metricdata.ResourceMetrics, channel string) int64 {
+	t.Helper()
+
+	g, ok := metricByName(t, rm, "outbox.lag_seconds").Data.(metricdata.Gauge[int64])
+	require.True(t, ok)
+	for _, dp := range g.DataPoints {
+		v, found := dp.Attributes.Value(attribute.Key("channel"))
+		if found && v.AsString() == channel {
+			return dp.Value
+		}
+	}
+	t.Fatalf("channel %s のデータ点が見つかりません", channel)
+	return 0
+}
+
+func TestOutboxMetrics_SetLagSeconds_channelSeries(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("チャネルごとに独立した系列として記録する", func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			reader := sdkmetric.NewManualReader()
+			provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
+
+			om, err := observability.NewOutboxMetrics(provider)
+			require.NoError(t, err)
+
+			om.SetLagSeconds(ctx, "http", 42)
+			om.SetLagSeconds(ctx, "realtime", 7)
+
+			var rm metricdata.ResourceMetrics
+			require.NoError(t, reader.Collect(ctx, &rm))
+
+			assert.Equal(t, int64(42), lagSecondsOfChannel(t, rm, "http"))
+			assert.Equal(t, int64(7), lagSecondsOfChannel(t, rm, "realtime"))
 		})
 	})
 }

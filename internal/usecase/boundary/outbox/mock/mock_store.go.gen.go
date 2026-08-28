@@ -44,18 +44,33 @@ func (m *MockStore) EXPECT() *MockStoreMockRecorder {
 }
 
 // ClaimPending mocks base method.
-func (m *MockStore) ClaimPending(ctx context.Context, limit int32) ([]outbox.PendingMessage, error) {
+func (m *MockStore) ClaimPending(ctx context.Context, channel outbox.Channel, limit int32) ([]outbox.PendingMessage, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ClaimPending", ctx, limit)
+	ret := m.ctrl.Call(m, "ClaimPending", ctx, channel, limit)
 	ret0, _ := ret[0].([]outbox.PendingMessage)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ClaimPending indicates an expected call of ClaimPending.
-func (mr *MockStoreMockRecorder) ClaimPending(ctx, limit any) *gomock.Call {
+func (mr *MockStoreMockRecorder) ClaimPending(ctx, channel, limit any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClaimPending", reflect.TypeOf((*MockStore)(nil).ClaimPending), ctx, limit)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClaimPending", reflect.TypeOf((*MockStore)(nil).ClaimPending), ctx, channel, limit)
+}
+
+// CountBlockedStreams mocks base method.
+func (m *MockStore) CountBlockedStreams(ctx context.Context, channel outbox.Channel) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountBlockedStreams", ctx, channel)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountBlockedStreams indicates an expected call of CountBlockedStreams.
+func (mr *MockStoreMockRecorder) CountBlockedStreams(ctx, channel any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountBlockedStreams", reflect.TypeOf((*MockStore)(nil).CountBlockedStreams), ctx, channel)
 }
 
 // DeletePublished mocks base method.
@@ -103,18 +118,17 @@ func (mr *MockStoreMockRecorder) MarkDead(ctx, id any) *gomock.Call {
 }
 
 // MarkFailed mocks base method.
-func (m *MockStore) MarkFailed(ctx context.Context, id int64, lastErr string) (int32, error) {
+func (m *MockStore) MarkFailed(ctx context.Context, id int64, lastErr string, nextAttemptAt time.Time) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MarkFailed", ctx, id, lastErr)
-	ret0, _ := ret[0].(int32)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret := m.ctrl.Call(m, "MarkFailed", ctx, id, lastErr, nextAttemptAt)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // MarkFailed indicates an expected call of MarkFailed.
-func (mr *MockStoreMockRecorder) MarkFailed(ctx, id, lastErr any) *gomock.Call {
+func (mr *MockStoreMockRecorder) MarkFailed(ctx, id, lastErr, nextAttemptAt any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarkFailed", reflect.TypeOf((*MockStore)(nil).MarkFailed), ctx, id, lastErr)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarkFailed", reflect.TypeOf((*MockStore)(nil).MarkFailed), ctx, id, lastErr, nextAttemptAt)
 }
 
 // MarkPublished mocks base method.
@@ -132,9 +146,9 @@ func (mr *MockStoreMockRecorder) MarkPublished(ctx, id any) *gomock.Call {
 }
 
 // OldestPendingCreatedAt mocks base method.
-func (m *MockStore) OldestPendingCreatedAt(ctx context.Context) (time.Time, bool, error) {
+func (m *MockStore) OldestPendingCreatedAt(ctx context.Context, channel outbox.Channel) (time.Time, bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "OldestPendingCreatedAt", ctx)
+	ret := m.ctrl.Call(m, "OldestPendingCreatedAt", ctx, channel)
 	ret0, _ := ret[0].(time.Time)
 	ret1, _ := ret[1].(bool)
 	ret2, _ := ret[2].(error)
@@ -142,9 +156,9 @@ func (m *MockStore) OldestPendingCreatedAt(ctx context.Context) (time.Time, bool
 }
 
 // OldestPendingCreatedAt indicates an expected call of OldestPendingCreatedAt.
-func (mr *MockStoreMockRecorder) OldestPendingCreatedAt(ctx any) *gomock.Call {
+func (mr *MockStoreMockRecorder) OldestPendingCreatedAt(ctx, channel any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OldestPendingCreatedAt", reflect.TypeOf((*MockStore)(nil).OldestPendingCreatedAt), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OldestPendingCreatedAt", reflect.TypeOf((*MockStore)(nil).OldestPendingCreatedAt), ctx, channel)
 }
 
 // ReplayDead mocks base method.

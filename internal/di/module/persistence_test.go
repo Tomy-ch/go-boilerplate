@@ -8,6 +8,7 @@ import (
 
 	idempotencybndry "go-boilerplate/internal/usecase/boundary/idempotency"
 	outboxbndry "go-boilerplate/internal/usecase/boundary/outbox"
+	realtimebndry "go-boilerplate/internal/usecase/boundary/realtime"
 	"go-boilerplate/internal/usecase/healthcheck/query"
 )
 
@@ -26,17 +27,20 @@ func Test_persistenceModule(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("system_cqrs のヘルスチェック / 冪等 / outbox ストアを提供する", func(t *testing.T) {
+		t.Run("system_cqrs のヘルスチェック / 冪等 / outbox / ストリーム採番を提供する", func(t *testing.T) {
 			t.Parallel()
 
 			var (
 				dbsq        query.DBSystemCqrs
 				idempotency idempotencybndry.Store
 				outbox      outboxbndry.Store
+				sequence    realtimebndry.SequenceAllocator
 			)
 
+			// fx は要求された型しか解決しないため、provide しただけの構築子は populate しない限り
+			// 一度も実行されない（引数の取り違えがグラフ検証を素通りする）。
 			validateGraph(t, append(commonDeps(), persistenceModule(),
-				fx.Populate(&dbsq, &idempotency, &outbox))...)
+				fx.Populate(&dbsq, &idempotency, &outbox, &sequence))...)
 		})
 	})
 

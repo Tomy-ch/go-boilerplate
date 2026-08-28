@@ -75,8 +75,21 @@ and aggregated by `Registry`; unregistered downstreams fall back to `DefaultProf
 
 Transport events and non-2xx responses are normalised to `apperror` sentinels
 (`ErrUnavailable`, `ErrCanceled`, `ErrInvalidArgument`, etc.) before being returned to
-callers, which branch on sentinels only. `net/http` types are not exposed in the substrate's
-public API.
+callers, which branch on sentinels rather than on status codes. `net/http` types are not
+exposed in the substrate's public API.
+
+**The retry verdict is the one exception, and the substrate exports it rather than leaving it to
+be re-derived.** A caller that must tell a permanent failure from a transient one — the outbox
+relay deciding whether a row is dead-lettered
+([ADR-0058](0058-outbox-dead-on-permanent-error.md)) is the case this repository has — cannot get
+that from the sentinels alone. An outcome the substrate knows to be deterministic keeps the
+sentinel its HTTP meaning demands, so a response exceeding `MaxResponseBytes` arrives as
+`ErrUnavailable` beside the 503s that *should* be retried, and an unfollowed redirect does the
+same. `RetryableOutcome` is therefore public: it is the single place that distinction lives.
+This does not re-open status interpretation to callers — the verdict is a boolean and the status
+stays inside — and the alternative is worse than the exception, because a caller rebuilding the
+status table would be maintaining a second copy of a rule that is incomplete without what the
+substrate knows about its own failures.
 
 ## Consequences
 
@@ -145,4 +158,6 @@ with this project's goal of running with minimal external dependencies
 - DI registration: `internal/di/module/httpclient.go`.
 - Example consumer that disables transport retry in favour of relay-level at-least-once:
   `internal/infrastructure/publisher/http_publisher.go`.
+- Exported retry verdict: `RetryableOutcome` in `internal/infrastructure/httpclient/retry.go`;
+  its only consumer is `internal/infrastructure/publisher/classify.go`.
 - source: `internal/infrastructure/httpclient/README.md`.

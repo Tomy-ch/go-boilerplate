@@ -1,13 +1,23 @@
 package module
 
 import (
+	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
+	"go.uber.org/mock/gomock"
 
 	outboxengine "go-boilerplate/internal/controller/outbox"
+	"go-boilerplate/internal/logging"
+	"go-boilerplate/internal/observability"
+	clocktestkit "go-boilerplate/internal/usecase/boundary/clock/testkit"
+	outboxbndry "go-boilerplate/internal/usecase/boundary/outbox"
+	mock_outbox "go-boilerplate/internal/usecase/boundary/outbox/mock"
 	publisherbd "go-boilerplate/internal/usecase/boundary/publisher"
+	mock_publisher "go-boilerplate/internal/usecase/boundary/publisher/mock"
+	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
 	outboxuc "go-boilerplate/internal/usecase/outbox"
 )
 
@@ -17,7 +27,7 @@ func TestOutboxRelayModule_GraphIsValid(t *testing.T) {
 	// relay engine は usecase（RelayUsecase）・clock.Sleeper・OutboxConfig 等に依存する。
 	// poll ループの振る舞いは controller 層のテストに任せ、ここでは engine と
 	// そのライフサイクルフックが依存と欠落なく結線されることを確認する。
-	opts := append(commonDeps(), InfrastructureModule(), UsecaseModule(), OutboxRelayModule())
+	opts := append(commonDeps(), InfrastructureModule(), UsecaseModule(), OutboxRelayModule(outboxbndry.ChannelHTTP))
 	validateGraph(t, opts...)
 }
 
@@ -40,7 +50,7 @@ func TestOutboxRelayModule(t *testing.T) {
 				relay    outboxuc.RelayUsecase
 			)
 
-			validateGraph(t, append(relayDeps(), OutboxRelayModule(),
+			validateGraph(t, append(relayDeps(), OutboxRelayModule(outboxbndry.ChannelHTTP),
 				fx.Populate(&engine, &settings, &relay))...)
 		})
 
@@ -50,7 +60,7 @@ func TestOutboxRelayModule(t *testing.T) {
 			// publisher は共有 InfrastructureModule には含まれず、本モジュールが持ち込む。
 			var publisher publisherbd.Publisher
 
-			validateGraph(t, append(relayDeps(), OutboxRelayModule(), fx.Populate(&publisher))...)
+			validateGraph(t, append(relayDeps(), OutboxRelayModule(outboxbndry.ChannelHTTP), fx.Populate(&publisher))...)
 		})
 	})
 
@@ -64,6 +74,39 @@ func TestOutboxRelayModule(t *testing.T) {
 
 			opts := append(relayDeps(), fx.Populate(&engine), fx.NopLogger)
 			require.Error(t, fx.ValidateApp(opts...))
+		})
+	})
+}
+
+func Test_provideRelayUsecase(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("供給されたチャネルを担う relay usecase を返す", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			store := mock_outbox.NewMockStore(ctrl)
+
+			// 集約した依存が取り違えなく渡ることを、チャネルが claim 系の呼び出しへ届くことで確かめる。
+			store.EXPECT().
+				OldestPendingCreatedAt(gomock.Any(), outboxbndry.ChannelRealtime).
+				Return(time.Time{}, false, nil)
+
+			uc := provideRelayUsecase(relayUsecaseIn{
+				Txm:       mock_tx.NewMockManager(ctrl),
+				Store:     store,
+				Publisher: mock_publisher.NewMockPublisher(ctrl),
+				Metrics:   observability.NewNoopOutboxMetrics(t),
+				Clock:     clocktestkit.NewStepClock(time.Time{}, 0),
+				Logging:   logging.NewTestLogger(t),
+				Tracer:    observability.NewNoopTracerFactory(t),
+				Channel:   outboxbndry.ChannelRealtime,
+			})
+
+			require.NotNil(t, uc)
+			require.NoError(t, uc.RecordLag(context.Background()))
 		})
 	})
 }
