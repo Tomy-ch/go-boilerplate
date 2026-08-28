@@ -174,7 +174,7 @@ func Test_requestLog_buildRequestLogFields(t *testing.T) {
 
 			assert.Contains(t, fields, logging.String(logging.URIKey, "/v1/streams/s?ticket="+redaction.RedactedValue+"&after=1"))
 			assert.Contains(t, fields, logging.Any(logging.QueryParamsKey, map[string][]string{"ticket": {redaction.RedactedValue}, "after": {"1"}}))
-			text := loggedJSON(sc.Request().Context(), t, fields)
+			text := loggedJSON(sc.Request().Context(), t, fields) //nolint:contextcheck // テスト内で組み立てた request の context を渡すため
 			assert.NotContains(t, text, "raw-secret")
 			assert.Contains(t, text, redaction.RedactedValue)
 		})
