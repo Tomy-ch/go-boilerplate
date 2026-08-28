@@ -1,0 +1,298 @@
+# Realtime Delivery Subsystem Design Reference
+
+This document consolidates the Realtime Delivery subsystem's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference. Unlike the other design references in this directory, it was written **before the implementation**: it is the design the implementation is built to, and §3 describes the planned placement rather than a reading of existing code. Where a statement here names a symbol, a default value, or a step order, treat it as the intended particular; the mechanism it belongs to — the ordering chain, the connection state machine, the ticket contract — governs. For the adoption rationale see the four realtime ADRs: [ADR-0071 (realtime-delivery-driving-mechanism)](../adr/0071-realtime-delivery-driving-mechanism.md), [ADR-0072 (postgres-state-dynamodb-eventlog)](../adr/0072-postgres-state-dynamodb-eventlog.md), [ADR-0073 (sns-sqs-instance-fanout)](../adr/0073-sns-sqs-instance-fanout.md), [ADR-0074 (query-ticket-stream-authentication)](../adr/0074-query-ticket-stream-authentication.md); and, for how an outbox row dies, [ADR-0058 (outbox-dead-on-permanent-error)](../adr/0058-outbox-dead-on-permanent-error.md).
+
+---
+
+## 1. Role theory (what, and what for)
+
+Realtime Delivery exists to **push an event a feature has already committed to the clients that are watching for it, and to let a client that was disconnected catch up without loss or duplication**. It is the fourth driving mechanism beside REST, Worker, and Job — a long-lived Server-Sent Events (SSE) response instead of a short request, a queue consumer, or a one-shot process — placed inside the existing onion with no new layer.
+
+It is deliberately **not** a chat mechanism, a notification mechanism, or an event-sourcing substrate. It sees an **event**, addressed to a **destination**, on a **stream**, for a **subject**, at a **sequence**, with an opaque **payload**. A conversation, a message, an operator, an inbox — those words belong to the feature that emits the event, and they never appear in this subsystem's types, branches, or package names.
+
+The mechanism splits into three halves that never run in the same breath:
+
+- **emit** — synchronous, inside the feature's business transaction. The feature's realtime adapter allocates the stream-local sequence and writes one outbox row per destination.
+- **relay** — asynchronous. The realtime relay drains those rows in order into the EventLog and wakes every serve instance.
+- **stream** — long-lived. A serve instance holds SSE connections, replays the EventLog from each client's cursor, and pushes what arrives.
+
+Responsibility split (who owns what):
+
+| Component | Layer | Responsibility | Does NOT hold |
+| --- | --- | --- | --- |
+| **realtime adapter** (`usecase/<feature>/`) | usecase (feature side) | turn a committed feature change into `DeliveryEvent`s; choose the destination(s); allocate the stream-local sequence inside the business tx; emit through the outbox | transport, replay, connection state |
+| **ticket-issuing usecase** (`usecase/<feature>/`) | usecase (feature side) | authorize the subject for a destination, then ask Realtime Delivery for a ticket | the ticket's format or storage |
+| **boundary/realtime** | usecase/boundary | the seam: `DeliveryEvent`, `EventLogStore`, `StreamTicketStore`, `InstanceLeaseStore`, the revocation seam | implementations, feature vocabulary |
+| **usecase/realtime** | usecase | ticket issue / verify, cursor validation and expiry, replay reads, lease heartbeat, orphan cleanup ownership | the HTTP transport, the poll loop |
+| **realtime relay** (`controller/outbox` + realtime publisher) | controller / infrastructure | claim realtime-channel rows in stream order, append to the EventLog, publish the wakeup | business decisions, retry policy beyond [ADR-0058] |
+| **Streamer** (`controller/stream/`) | controller | connection registry (indexed by subject), capacity gate, replay / catch-up scheduling, heartbeat, backpressure, drain, the control-event protocol | authorization, feature vocabulary |
+| **EventLog / ticket / lease stores** (`infrastructure/eventlog`, `streamticket`, `instancelease`) | infrastructure | DynamoDB implementations of the boundary stores | business decisions |
+| **fan-out substrate** (`infrastructure/realtime/`) | infrastructure | SNS publish, per-instance SQS queue / subscription lifecycle, consumer loop | what a wakeup means |
+| **orphan-cleanup job** | controller/job + cli | reclaim a crashed instance's queue / subscription / lease under conditional ownership | scheduling (the scheduler owns it, [ADR-0109 (scheduled-job-concurrency-delegated)](../adr/0109-scheduled-job-concurrency-delegated.md)) |
+| **DI module** | di | wire the runtime only when at least one feature adapter is present | business logic |
+| **RealtimeConfig** | config | deployment-dependent knobs only (§3.3) | fixed protocol values |
+
+Design invariants:
+
+- **One ordering chain.** Feature commit order → outbox → EventLog visibility → client cursor is a single invariant ([ADR-0072]): sequences have no gaps, client-visible sequences form a contiguous prefix, and a terminal failure halts a stream rather than skipping a sequence.
+- **The EventLog is the only thing a client is served from.** Wakeups carry no state; a duplicate wakeup is the same catch-up read, a lost one is covered by periodic catch-up.
+- **Feature neutrality is enforced, not requested.** Realtime Delivery imports no `internal/domain/<feature>` and no `internal/usecase/<feature>`; `depguard` and the architecture tests fail the build otherwise.
+- **Zero adapters, zero runtime.** With no feature adapter wired, the serve graph starts no Streamer and requires no EventLog or fan-out substrate — the sample feature is removable without removing the mechanism.
+- **Authorization happens at the edges, never in the Streamer.** The feature authorizes at ticket issue; the identity resolver authorizes every REST request; the Streamer only verifies a ticket and honors a revocation.
+- **Capacity is protected per instance, rate is not.** Connection and replay capacity are bounded inside the process; how often a client may reconnect is an edge concern ([ADR-0108 (no-in-app-rate-limiter)](../adr/0108-no-in-app-rate-limiter.md)).
+
+---
+
+## 2. State transitions
+
+### 2.1 Delivery lifecycle (one event, end to end)
+
+```mermaid
+flowchart LR
+  cmd["Feature command<br/>(business tx)"]
+  seq["allocate sequence<br/>UPDATE stream row … RETURNING<br/>lock held to commit"]
+  outbox["outbox row<br/>delivery_channel=realtime<br/>ordering_key / ordering_sequence"]
+  relay["realtime relay<br/>claim in stream order"]
+  log["EventLog append<br/>conditional on (streamId, sequence)"]
+  sns["SNS publish<br/>eventId / streamId / sequence"]
+  sqs["SQS · one queue per serve instance"]
+  streamer["Streamer<br/>coalesce wakeup → read after cursor"]
+  sse["SSE write<br/>id: sequence"]
+  cmd --> seq --> outbox --> relay --> log --> sns --> sqs --> streamer --> sse
+  streamer -. "periodic catch-up (30 s + jitter)" .-> log
+```
+
+- The sequence is allocated by updating the row that owns the stream inside the same transaction as the feature's own write, and the row lock is held until commit. Allocation order therefore equals commit order and a rollback rolls the increment back: **no gaps**.
+- A feature that addresses more than one destination (a conversation stream and an operator feed, say) emits one outbox row per destination in the same transaction. Each row carries its own ordering key and sequence; the mechanism never splits one event across streams.
+- The EventLog append is conditional on `(streamId, sequence)` not existing, so an outbox retry after a partial failure is idempotent.
+
+### 2.2 The ordering chain as a state machine (per stream, in the outbox)
+
+```mermaid
+stateDiagram-v2
+    [*] --> Pending: emit (in business tx)
+    Pending --> Pending: predecessor on same ordering_key unpublished<br/>→ not claimable (head-of-line)
+    Pending --> Claimed: claim — FOR UPDATE SKIP LOCKED<br/>AND next_attempt_at <= now()<br/>AND no earlier unpublished sequence on this key
+    Claimed --> Published: append OK → publish wakeup → MarkPublished
+    Claimed --> Pending: retryable error → next_attempt_at += backoff (full jitter, cap 60 s)
+    Claimed --> Dead: permanent error → MarkDead
+    Dead --> Pending: ReplayDead (operator)
+    note right of Dead
+      A dead head halts its stream: successors stay Pending
+      (never claimed). Surfaced as realtime_blocked_streams.
+      The realtime channel produces no permanent error of
+      its own — payload validity is checked before emit —
+      so this state is reached only through a systemic fault.
+    end note
+```
+
+Retryable versus permanent is decided by error classification, not by an attempt count ([ADR-0058]). A backed-off row is simply not selected by the claim predicate; it is never locked, so `SKIP LOCKED` semantics are untouched.
+
+### 2.3 Connection lifecycle (one SSE connection)
+
+```mermaid
+stateDiagram-v2
+    [*] --> Verify: GET stream?ticket=…&after=…<br/>Last-Event-ID (on reconnect)
+    Verify --> Rejected400: cursor malformed / negative / overflow → 400 invalid_stream_cursor
+    Verify --> Rejected401: ticket unknown, expired, or revoked → 401
+    Verify --> Rejected410: cursor below replay floor → 410 stream_cursor_expired
+    Verify --> Rejected503: instance connection cap reached,<br/>or initial-replay slot not acquired within the bounded wait,<br/>or Realtime dependencies degraded → 503 + Retry-After
+    Verify --> Streaming: 200 committed<br/>Cache-Control: no-store · X-Accel-Buffering: no
+    Streaming --> Streaming: replay after cursor → business events (id: sequence)
+    Streaming --> Streaming: wakeup or periodic catch-up → read after cursor
+    Streaming --> Streaming: heartbeat every 15 s (comment, no id)
+    Streaming --> Closed: client EOF / write deadline (10 s) exceeded
+    Streaming --> Closed: buffer full (64 events) → close, no event dropped (replay covers it)
+    Streaming --> Closed: control STOP (revoked) · REAUTHENTICATE (1 h lifetime) · RECONNECT (drain) · RETRY_LATER · RESYNC
+    Closed --> [*]: capacity returned
+```
+
+Cursor resolution, in order: a valid `Last-Event-ID` wins; otherwise `after`; otherwise the initial cursor the ticket permits. A cursor is never valid for a destination other than the ticket's.
+
+Everything that can be refused is refused **before** the response is committed; after commit the only channel back to the client is an in-band control event followed by close (§4.3).
+
+### 2.4 Ticket lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> Issued: feature authorizes subject × destination → 256-bit opaque value<br/>stored as hash, bound to subject / destination / scope / expiry (TTL 5 min)
+    Issued --> Issued: presented on connect (reusable within TTL)
+    Issued --> Expired: TTL elapsed → new connections refused
+    Issued --> Revoked: revocation seam (subject × destination) → new connections refused,<br/>open connections receive STOP
+    Expired --> [*]
+    Revoked --> [*]
+```
+
+The ticket TTL bounds when a *new* connection may start. An established connection is bounded separately by the **maximum connection lifetime (1 hour)**, at which point the server sends `REAUTHENTICATE` and closes; the client obtains a fresh ticket through the feature's authorization path. Revocation inside this service (membership soft-delete, destination access withdrawn) is immediate — ticket invalidated and matching connections closed via the fan-out; revocation at the identity provider is not observed and converges through the lifetime alone ([ADR-0074], `auth.md` §2).
+
+### 2.5 Serve instance lifecycle and the instance lease
+
+```mermaid
+stateDiagram-v2
+    [*] --> Provisioning: Start — verify EventLog reachable
+    Provisioning --> Subscribed: create SQS queue → subscribe to SNS topic → start consumer
+    Subscribed --> Ready: HTTP listen; lease heartbeat every 30 s (expiry 2 min)
+    Ready --> Draining: Stop — refuse new connections; send SERVER_DRAINING / RECONNECT; drain SSE
+    Draining --> Unsubscribing: stop consumer → unsubscribe → delete queue → delete lease
+    Unsubscribing --> [*]: HTTP shutdown
+    Ready --> Crashed: process dies without Stop
+    Crashed --> Orphaned: lease expires (2 min) + safety margin (5 min)
+    Orphaned --> Reclaimed: orphan-cleanup job takes ownership by conditional update<br/>unsubscribe → delete queue → delete lease
+```
+
+Start order is provisioning → subscription → consumer → HTTP listen / ready; stop order is the reverse with SSE drain **before** the consumer stops and before `http.Server.Shutdown`, so a long-lived connection never blocks shutdown.
+
+### 2.6 Degraded operation
+
+| Condition | Effect on new SSE connections | Effect on open connections | Effect on `/ready` |
+| --- | --- | --- | --- |
+| EventLog or fan-out unreachable at start | runtime does not start; startup fails fast | — | not ready |
+| EventLog or fan-out unreachable while running | `503` + `Retry-After` | kept open; periodic catch-up resumes delivery when the dependency returns (no mass `RETRY_LATER`, which would turn recovery into a reconnect storm) | REST stays healthy; realtime reported degraded; the instance is **not** removed from the load balancer for this alone |
+| Instance connection cap reached | `503` + `Retry-After` | unaffected | unchanged |
+| Replay concurrency saturated | initial replay waits a bounded time, then `503` | catch-up waits its turn (cancellation respected) | unchanged |
+
+---
+
+## 3. Implementation locations (where it will live)
+
+This section states the **planned** placement. The dependency direction and the allowlist are the governing part; package names are the intended particulars.
+
+### 3.1 Package placement and dependency direction
+
+| Package | Contents |
+| --- | --- |
+| `internal/usecase/boundary/realtime/` | `DeliveryEvent` (eventId / streamId / sequence as a decimal string / type / occurredAt / schemaVersion / payload ≤ 64 KiB); `EventLogStore` (conditional append, read after cursor with `ConsistentRead`, latest by descending read); `StreamTicketStore` (hashed ticket, bindings, invalidate); `InstanceLeaseStore` (heartbeat, expiry, conditional cleanup ownership); the revocation seam |
+| `internal/usecase/realtime/` | ticket issue / verify; cursor validation and replay-floor derivation; replay reads; lease heartbeat and orphan cleanup ownership |
+| `internal/controller/stream/` | connection registry indexed by subject; capacity gate; initial-replay admission; replay / catch-up semaphore and jittered scheduler; heartbeat; write deadline; buffer and close-on-full; drain; control-event writer; the non-strict SSE handler |
+| `internal/infrastructure/eventlog/dynamodb/`, `internal/infrastructure/streamticket/dynamodb/`, `internal/infrastructure/instancelease/dynamodb/` | the DynamoDB stores; idempotent one-shot table initializer (never at application start) |
+| `internal/infrastructure/realtime/aws/` | realtime publisher (EventLog append → SNS publish), per-instance SQS queue / subscription lifecycle, consumer loop; `…/local/` only for an emulator call that proves wire-incompatible |
+| `internal/controller/job/<orphan-cleanup>/` + `internal/cli/` | the cleanup job entry point |
+| `internal/di/module/realtime.go` | wired only when at least one feature adapter is provided |
+| `internal/usecase/<feature>/` | the feature's realtime adapter and ticket-issuing usecase |
+
+```mermaid
+flowchart LR
+  feature["usecase/&lt;feature&gt;<br/>adapter · ticket issue"] --> boundary["usecase/boundary/realtime"]
+  ucrt["usecase/realtime"] --> boundary
+  stream["controller/stream"] --> ucrt
+  infra["infrastructure/eventlog · streamticket · instancelease · realtime"] --> boundary
+  feature -. "never" .-x stream
+  stream -. "never" .-x feature
+```
+
+Architecture rules (mechanically checked):
+
+1. `boundary/realtime`, `usecase/realtime`, `controller/stream`, and the four infrastructure packages import no `internal/domain/<feature>` and no `internal/usecase/<feature>`.
+2. `InstanceLeaseStore` may be imported only by the realtime packages, the realtime DI module, and the orphan-cleanup job entry point.
+
+### 3.2 Outbox additions this subsystem relies on
+
+Added by the outbox delivery-channel work, shared by every channel:
+
+- `delivery_channel` — `NOT NULL`, no default (an emit that forgets the channel fails instead of silently going to HTTP).
+- `ordering_key` / `ordering_sequence` — nullable; `NULL` for channels that do not order.
+- `next_attempt_at` — per-message backoff ([ADR-0058]).
+- One relay execution loop per channel; the claim predicate adds the channel, `next_attempt_at <= now()`, and the head-of-line rule of §2.2.
+
+### 3.3 Configuration and fixed values
+
+| Kind | Values |
+| --- | --- |
+| **Typed config** (deployment-dependent) | EventLog endpoint / region / table; ticket and lease tables; credentials (empty → SDK default chain); SNS topic; SQS resource prefix; **max SSE connections per instance**; **replay / catch-up concurrency** |
+| **Fixed in code** (one canonical definition each) | write deadline 10 s; heartbeat 15 s; per-connection buffer 64; catch-up interval 30 s; jitter ratio; ticket TTL 5 min; maximum connection lifetime 1 h; lease heartbeat 30 s / expiry 2 min / cleanup margin 5 min; payload cap 64 KiB; EventLog retention 7 days; backoff cap 60 s |
+
+### 3.4 Observability contract
+
+Metrics are feature-neutral (`realtime_*`) and carry **no** subject, user, stream, destination, event, message, trace, or ticket identifier as a label; per-item correlation goes through traces and structured logs.
+
+| Group | Metrics |
+| --- | --- |
+| connection | active; accepted; rejected (capacity); reconnects (a connect carrying `Last-Event-ID` or `after`); duration; slow-client disconnects (distinct from ordinary close) |
+| replay / catch-up | replay executions; replayed events; replay depth; catch-up executions; catch-up lag; concurrency saturation |
+| delivery | EventLog appends; append failures; **delivery latency** = `occurredAt` → successful SSE write (spans two instances, so clock skew is included; an approximation by construction); **EventLog lag** = outbox `created_at` → append; delivery failures; recovery success / failure; **blocked streams** (head dead) |
+| cleanup | heartbeat failures; expired instances detected; cleanup executions; success / failure |
+| outbox | lag per delivery channel; age of the oldest pending row per channel (the alert that replaces the attempt count, [ADR-0058]) |
+
+Traces: command → outbox → relay → EventLog share one trace through the outbox headers. A long-lived connection is never a child span of the originating command; each delivery or replay operation is a short span with a span link to the event's origin trace. Only official OpenTelemetry semantic conventions are used ([ADR-0077 (official-otel-semconv)](../adr/0077-official-otel-semconv.md)). Payloads, tickets, and query credentials never appear in span attributes or log fields.
+
+---
+
+## 4. What an integrator implements (the parts the subsystem does not provide)
+
+### 4.1 On the feature side
+
+| Deliverable | Contract |
+| --- | --- |
+| **Destination mapping** | Decide what a stream *is* for this feature (a conversation, a per-user inbox, an organization feed). The subsystem interprets nothing about it. |
+| **Event type and payload schema** | `<feature>.<noun>.<verb>.vN` plus `schemaVersion`; both stay. Declared as an OpenAPI component so a client generator can type it. Payload ≤ 64 KiB, self-contained, and free of credentials, tokens, tickets, cookies, binaries, and raw personal data beyond what the feature already exposes. |
+| **Sequence allocation** | In the business transaction, `UPDATE` the row that owns the stream and `RETURNING` the next sequence; hold the lock to commit. |
+| **Emit** | One outbox row per destination, `delivery_channel = realtime`, `ordering_key` = the stream, `ordering_sequence` = the allocated sequence. |
+| **Ticket-issuing endpoint** | Authorize subject × destination, then obtain a ticket. One endpoint per destination kind; the scope is the feature's to define. |
+| **Canonical recovery path** | A read endpoint (History, list) whose response carries a `streamCursor` taken from the **same** PostgreSQL snapshot as the rows it returns. `RESYNC` and `410` both send the client here. |
+| **Revocation calls** | Invoke the revocation seam when the feature withdraws a subject's access to a destination, and from the membership soft-delete path. |
+| **Idempotency on commands** | Opt the feature's mutating endpoints into the idempotency middleware where a client retry after a timeout would otherwise duplicate the effect. |
+
+### 4.2 On the deployment side
+
+- **DynamoDB**: three tables (EventLog with TTL 7 days on `occurredAt`-derived expiry, StreamTicket with TTL, InstanceLease); partition = stream; encryption at rest; point-in-time recovery, backup, and alarms are provisioned outside this repository ([ADR-0106 (vendor-neutral-deploy-skeleton)](../adr/0106-vendor-neutral-deploy-skeleton.md)). A single hot stream is bounded by one partition and one PostgreSQL row; the mechanism does not shard it.
+- **SNS / SQS**: one topic; per-instance queues with a policy admitting only that topic ARN; `RawMessageDelivery=true`; long polling; visibility timeout; redrive to a DLQ; encryption; the minimal IAM actions for create / subscribe / receive / delete.
+- **Edge**: HTTPS; a fixed CORS origin; the client's CSP `connect-src`; load-balancer / proxy idle timeout above the heartbeat interval and response buffering disabled for the stream path; reconnect rate limiting, if any, at the edge.
+- **Local**: DynamoDB Local and an SNS/SQS emulator in the shared infrastructure profile, tables created by the idempotent initializer, table names prefixed per worktree.
+
+### 4.3 The client contract
+
+A client must implement this state machine; the server assumes it.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Connecting: EventSource(stream?ticket=…&after=…)
+    Connecting --> Connected: 200
+    Connecting --> Backoff: 503 → wait Retry-After (+ jitter)
+    Connecting --> Resync: 410 → re-read canonical state, new streamCursor
+    Connecting --> Authenticating: 401 → new ticket
+    Connected --> Reconnecting: EOF / network error (Last-Event-ID kept by the browser)
+    Connected --> Reconnecting: control RECONNECT
+    Connected --> Backoff: control RETRY_LATER (retryAfterMs, advisory; add jitter)
+    Connected --> Authenticating: control REAUTHENTICATE
+    Connected --> Resync: control RESYNC
+    Connected --> Stopped: control STOP
+    Reconnecting --> Connecting
+    Backoff --> Connecting
+    Authenticating --> Connecting: new ticket obtained
+    Resync --> Connecting: after=streamCursor, new ticket
+```
+
+- A control event is `event: control` with a JSON body `{action, reason, retryAfterMs?}` and **no SSE `id`**; only business events carry the sequence as `id`, so `Last-Event-ID` is never polluted by the control plane. `retryAfterMs` is milliseconds; the pre-commit `Retry-After` header is seconds.
+- `STOP`, `REAUTHENTICATE`, and `RESYNC` must be handled **synchronously**: the client closes the `EventSource` itself before the server's EOF arrives, because the browser would otherwise reconnect automatically and produce a reconnect loop.
+- Reason codes are stable machine-readable values (`SERVER_DRAINING`, `TEMPORARILY_OVERLOADED`, `AUTH_REFRESH_REQUIRED`, `AUTHORIZATION_REVOKED`, `CURSOR_TOO_OLD`, `STREAM_RECOVERY_FAILED`). A client never branches on a human-readable message. Feature-specific reasons do not exist at this level; a feature expresses them in its own event payloads.
+- Delivery of a control event is not guaranteed. A client must recover from a bare EOF as well — control events improve recovery, they are not its correctness.
+- A test-only reference client in Go, in the integration tests, pins this contract; it is not a shipped SDK.
+
+---
+
+## 5. Glossary
+
+| Term | Meaning |
+| --- | --- |
+| **Realtime Delivery** | The subsystem: emit → relay → stream, with replay. Named for what it does; never `core`, `platform`, or another container name. |
+| **DeliveryEvent** | The feature-neutral envelope: `eventId` (= outbox `message_id`), `streamId`, `sequence`, `type`, `occurredAt`, `schemaVersion`, `payload`. |
+| **destination** | What a stream is *for*, decided by the feature (a conversation, an inbox, a feed). The subsystem interprets nothing about it. |
+| **stream** | The unit of ordering and replay; `streamId` is the EventLog partition key. One event belongs to exactly one stream. |
+| **subject** | The feature-neutral principal a ticket is bound to and the connection registry is indexed by. The subsystem does not know whether it is a user or an operator. |
+| **sequence** | The stream-local, gap-free, monotonically increasing position of an event, allocated in the feature's business transaction. Wire form is a decimal string. |
+| **ordering key / ordering sequence** | The outbox columns that carry the stream and sequence so the relay can hold the head-of-line rule. |
+| **head-of-line blocking** | The claim rule: a row is claimable only when no earlier sequence on its ordering key is unpublished. |
+| **contiguous prefix** | The invariant that everything a client can see on a stream is `1..N` with no holes. |
+| **cursor** | A sequence a client has seen; `Last-Event-ID` on browser reconnect, `after` on explicit resume. |
+| **replay** | Reading the EventLog after a cursor when a connection opens. |
+| **catch-up** | Reading the EventLog after the current cursor because of a wakeup or on the periodic (30 s, jittered) schedule. |
+| **replay floor** | The oldest sequence still replayable. Derived, not stored: `cursor + 1` absent while a later item exists, or present but older than retention → `410`. |
+| **wakeup** | The SNS → SQS notification "re-read stream S after your cursor". Stateless; duplicates coalesce; loss is covered by catch-up. |
+| **blocked stream** | A stream whose head row is dead; halted until replayed; counted by `realtime_blocked_streams`. |
+| **ticket** | The opaque 256-bit credential presented on connect, stored hashed, bound to subject / destination / scope / expiry, reusable for its 5-minute TTL. |
+| **connection maximum lifetime** | The 1-hour bound on an established connection, after which `REAUTHENTICATE` is sent. Independent of the ticket TTL. |
+| **revocation seam** | The boundary call a feature makes when a subject loses access to a destination inside this service; invalidates tickets and closes connections via the fan-out. |
+| **control event** | `event: control`, no `id`; actions `RECONNECT` / `RETRY_LATER` / `REAUTHENTICATE` / `RESYNC` / `STOP`. |
+| **instance lease** | A serve instance's liveness record (heartbeat 30 s, expiry 2 min) used only to reclaim its queue and subscription after a crash. Not a lock, not a leader election. |
+| **orphan** | A queue / subscription whose instance lease has expired past the safety margin. |
+| **capacity protection** | Per-instance bounds on connections and concurrent replay reads, enforced before commit with `503`. Distinct from rate limiting, which is an edge concern. |
