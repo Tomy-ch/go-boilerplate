@@ -40,7 +40,7 @@ A job can stop without reaching a verdict — a timeout, a cancellation, a runne
 
 **Absence is only half the test, so every caller passes a cut-off heading too.** Most inspection steps pipe their output straight into the body file with `tee` and set their `title` output only afterwards, from the exit code. Cut off mid-inspection, such a job leaves a *partially written* file behind — the action sees a body and cannot tell it from a finished one, while the title never got set. The caller therefore carries the other half of the signal as `${{ steps.<id>.outputs.title || '## ⚠️ <check>: CUT OFF (no result produced)' }}`: the fallback fires exactly when the producing step did not reach its own conclusion, and the partial log stays visible underneath it. Where the heading is a literal rather than a step output (`image-scan.yaml`, `sync-versions-check.yaml`), the same signal is expressed as a condition on that step's `outcome` / output. Note the GitHub-expression trap when writing one: `cond && '' || X` always yields `X`, because an empty string is falsy — the heading has to sit in the truthy branch.
 
-**Every job sets `timeout-minutes`.** Without it a job runs to GitHub's 360-minute default, so one hang holds a runner for six hours. The value is the job's measured maximum × 3, rounded up to the next 5 minutes, with a floor of 10 to absorb setup variance on a contended runner; a job with no recent completed run gets 15. Only the values that depart from that formula are listed here — every other job is at the floor, and a value can be re-derived from the formula rather than looked up.
+**Every job sets `timeout-minutes`.** Without it a job runs to GitHub's 360-minute default, so one hang holds a runner for six hours. The value is the job's measured maximum × 3, rounded up to the next 5 minutes, with a floor of 10 to absorb setup variance on a contended runner; a job with no recent completed run gets 15. Only the values that depart from that formula are listed here — every other job's value is what the formula gives, and can be re-derived from it rather than looked up.
 
 | Job | Minutes | Why not the formula |
 | --- | --- | --- |
@@ -48,7 +48,7 @@ A job can stop without reaching a verdict — a timeout, a cancellation, a runne
 | `go-test.yaml` `go-test` | 20 | measured ~5m |
 | `image-scan.yaml` `build`, `deploy-app.yaml` `build` | 15 | image build with a cold layer cache varies well beyond its measured run |
 | `deploy-app.yaml` `deploy` | 30 | a placeholder today; a real deployment wired in downstream must not meet a 10-minute cap |
-| `fuzz.yaml`, `scorecard.yaml`, `notify.yaml`, `osv-release-gate.yaml`, `checkov.yaml` | 15 | no recent completed run to measure |
+| `fuzz.yaml`, `scorecard.yaml`, `notify.yaml`, `osv-release-gate.yaml`, `checkov.yaml`, `closed-loop-weekly.yaml`, `scan-issue-report.yaml` | 15 | no recent completed run to measure |
 | `zap-api-scan.yaml` `dast` | 30 | no completed run to measure, and the job builds and boots the application before a scan whose length is set by the size of the OpenAPI definition |
 | `code-ql.yaml` `codeql` | 30 | the limit covers whichever matrix leg is slowest, and no leg but `go` has a completed run to measure; `security-extended` is also a larger suite than the one the previous value was measured against |
 | `secret-scan.yaml`, `trufflehog.yaml` | 15 | measured on pull requests only, where they scan a diff; the weekly run walks the full history and has never completed one to measure |
@@ -56,6 +56,10 @@ A job can stop without reaching a verdict — a timeout, a cancellation, a runne
 | `sonarqube.yaml` `sonarqube` | 15 | vendor-side analysis can queue for up to 10 minutes; test and coverage gates run in their owning workflows |
 | `app-di-startup-check.yaml`, `gen-go-artifacts-check.yaml` | 15 | predate the formula; left as they are, since lowering a working limit only adds risk |
 | `claude.yaml`, `go-lint.yaml`, `sample-removal-check.yaml` | 30 | as above; `go-lint` additionally runs golangci-lint with its own timeout disabled, so this is that job's only cutoff |
+| `graphify-extract.yaml` `graphify-extract` | 60 | runs an assistant over however many documents changed, and carries no `--max-turns` for the reason given below, so this is the job's only bound |
+| `closed-loop-summarize.yaml` `summarize` | 20 | also runs an assistant, and was set before a completed run existed to measure |
+| `setup-scripts-check.yaml`, `doc-language-removal-check.yaml` | 20 | set at creation, before a run existed to measure; each performs a removal end to end and then re-verifies the resulting repository |
+| `eslint.yaml` `eslint` | 15 | as above; measured well under it since, and left rather than lowered |
 
 A job that starts tripping its limit has outgrown its measurement: re-measure and re-apply the formula rather than nudging the number. Jobs that call a reusable workflow cannot carry `timeout-minutes` at all — the key is invalid there — so the check skips them, and the limit lives in the called workflow's own job.
 
@@ -90,6 +94,21 @@ All three rules live in one check rather than three, because they are not three 
 |Pin Images Check|`pin-images-check.yaml`|Verify Docker base images are pinned to a digest per the lockfile (supply-chain hardening)|
 |Egress Check|`egress-check.yaml`|Verify every job's inline `allowed-endpoints` matches the SSOT (see [Runner Hardening](#runner-hardening))|
 |Graphify Check|`graphify-check.yaml`|Verify the tracked graphify artifacts stay portable: nothing outside the `.gitignore` whitelist is tracked, and no artifact carries an absolute path from the machine that produced it|
+|Setup Scripts Check|`setup-scripts-check.yaml`|Run the documented localization sequence for real, then verify the result: a dry run writes nothing, a second run changes nothing, the tools and their `make` targets self-destruct together, and the modules the sample remover still needs survive<!-- boilerplate-only:line -->|
+|Sample Removal Check|`sample-removal-check.yaml`|Remove the sample API, regenerate from the shrunken spec, and verify the resulting repository still builds, lints, tests and migrates with no dangling reference left<!-- sample-api:line -->|
+|Licensed Scanners Removal Check|`licensed-scanners-removal-check.yaml`|Remove the licence-conditional scanners and verify `make pin-actions-check` / `make egress-check` / Markdown lint stay green afterwards — each of those fails on an entry no workflow references, so a missed one surfaces only in the repository that ran the removal|
+|Doc Language Removal Check|`doc-language-removal-check.yaml`|Fold the documentation to one language and verify the resulting repository is green, including that the canonical front matter survived the `ja` path — lose it and no skill loads at all, while every file is still present, so nothing else would report it<!-- lang-choice:line -->|
+
+<!-- boilerplate-only:begin -->
+The setup and removal checks at the end of that table stand apart from the rest: they exercise the
+one-shot tooling a repository created from this template runs, and none of them protects this
+repository. The code they cover runs once, in someone else's checkout, and a failure there turns
+nothing red here — running them as ordinary checks is what puts that failure in front of the person
+who can still fix it. Each performs the removal for real and then re-verifies the resulting
+repository, because what breaks is the checks written against the artefacts the removal took away.
+Each also goes with the tooling it exercises, so a created repository loses them one at a time as it
+takes the corresponding decision.
+<!-- boilerplate-only:end -->
 
 ### Security
 
@@ -124,6 +143,7 @@ All three rules live in one check rather than three, because they are not three 
 |Capability Diff|`capability-diff.yaml`|capslock report of capability changes in the Go dependency graph (report-only)|
 |Agent Config Scan|`trustabl.yaml`|trustabl scan of the AI-agent configuration — subagent and skill declarations under `.claude/`, and MCP server declarations (report-only; see [Agent Config Scan](#agent-config-scan))|
 |Notify|`notify.yaml`|Reusable `workflow_call` target that pushes a scheduled failure, or a finding from a non-blocking scanner, to a human|
+|Scan Issue Report|`scan-issue-report.yaml`|Collect a completed scanner's report into one `Code Scan Report: <tool>` issue per tool, and close that issue when the count reaches zero — the standing record a scheduled run has, where a pull request has its comment (see [Notification triggers](#notification-triggers))|
 
 Every scanner writes SARIF to GitHub code scanning where it can, and reports a finding on the PR through the shared `upsert-pr-comment` action (see [Result Comments](#result-comments) for when a comment is written at all).
 
@@ -156,7 +176,7 @@ Each tool runs where its findings can actually change: a PR surfaces the risk th
 | DevSkim | all PRs | `develop` / `staging` / `production` / `release/*` | weekly |
 | Bearer | Go / TypeScript-change PRs | same as above | weekly |
 | ESLint (security) | TypeScript-workspace-change PRs | same as above | weekly |
-| SonarQube Cloud | Go / TypeScript / `sonar-project.properties`-change PRs | same as above | weekly |
+| SonarQube Cloud | Go / TypeScript / `sonar-project.properties`-change PRs | same as above | — (see below) |
 | lockfile-lint | lockfile-change PRs | — | — |
 | Spectral (OpenAPI) | spec-change PRs | `release/*` / deploy branches | — |
 | capslock | `go.mod`-change PRs | — | — |
@@ -164,15 +184,15 @@ Each tool runs where its findings can actually change: a PR surfaces the risk th
 | OWASP ZAP (DAST) | when `zap-api-scan.yaml` or `.github/zap/**` changes | `develop` / `staging` / `production` / `release/*` | weekly |
 | trustabl (agent config) | — | — | weekly |
 
-Weekly runs are staggered across Monday morning UTC in **15-minute steps**, one workflow per slot, so a single moment does not queue every scanner at once: `00:00` Trivy FS, `00:15` govulncheck, `00:30` TruffleHog, `00:45` OSV-Scanner, `01:00` Scorecard, `01:15` CodeQL, `01:30` Image Scan, `01:45` gitleaks (full-history), `02:00` zizmor (online audits), `02:15` Go cooldown, `02:30` Opengrep, `02:45` fuzz, `03:00` ZAP (DAST), `03:15` Grype, `03:30` DevSkim, `03:45` ESLint, `04:00` Bearer, `04:15` Checkov, `04:30` trustabl, `04:45` tool cooldown, `05:00` SonarQube Cloud, `05:15` Closed Loop Weekly.
+Weekly runs are staggered across Monday morning UTC in **15-minute steps**, one workflow per slot, so a single moment does not queue every scanner at once: `00:00` Trivy FS, `00:15` govulncheck, `00:30` TruffleHog, `00:45` OSV-Scanner, `01:00` Scorecard, `01:15` CodeQL, `01:30` Image Scan, `01:45` gitleaks (full-history), `02:00` zizmor (online audits), `02:15` Go cooldown, `02:30` Opengrep, `02:45` fuzz, `03:00` ZAP (DAST), `03:15` Grype, `03:30` DevSkim, `03:45` ESLint, `04:00` Bearer, `04:15` Checkov, `04:30` trustabl, `04:45` tool cooldown, `05:15` Closed Loop Weekly.
 
-The step is 15 minutes rather than an hour because the set has grown to 22: at hourly spacing the last one would not start until the following evening, which puts a scanner's findings a day away from the ones it should be read beside. A new scheduled workflow takes the next free slot; two sharing one is a defect, not a preference. The order encodes intent, so a new entry goes where it belongs rather than at the end.
+The step is 15 minutes rather than an hour because the set has grown to 21: at hourly spacing the last one would not start until the following evening, which puts a scanner's findings a day away from the ones it should be read beside. A new scheduled workflow takes the next free slot; two sharing one is a defect, not a preference. The order encodes intent, so a new entry goes where it belongs rather than at the end.
 
 GitHub does not honour a scheduled time exactly — a run can start well after its slot under load — so the stagger reduces the pile-up rather than eliminating it. Spacing that no scheduler guarantees is not something to tune finely.
 
 DAST takes `03:00`. It is placed behind every file-reading scanner because it is the only one that builds and boots the application before it scans, so it is the longest and the least useful to have queued ahead of anything else.
 
-SonarQube Cloud takes the last slot. Its analysis runs on a vendor's servers, and it is placed at the end for the same reason DAST is placed behind the file-reading scanners: its duration depends on a queue this repository does not control, so nothing useful is gained by having it queued ahead of a scanner that finishes on its own runner.
+SonarQube Cloud has no slot. Its free plan analyzes one branch per organization and refuses every other one, so a scheduled branch analysis cannot succeed here — it runs on pull requests, where the vendor exempts that limit, and on a push to a protected branch to keep the code-scanning baseline. `05:00` is the slot it gave up and stays free; the next scheduled workflow takes it.
 
 #### Notification triggers
 
@@ -192,7 +212,7 @@ Which trigger a detection notification fires on follows from who the right recip
 
 The other scheduled scanners need no detection notification: gitleaks, Trivy secret, TruffleHog, Opengrep, zizmor (at high), the image-scan gate and fuzzing all fail their job on a finding, so failure mode already delivers it. Four are deliberately left unconnected: the Trivy licence inventory reports licences nobody has yet agreed are problems (the same reason it writes no SARIF), while CodeQL and Scorecard publish to the code-scanning dashboard and expose no finding count to the workflow — a Scorecard "score dropped" notification would additionally need the previous score kept somewhere, which nothing here does. Checkov joins them on the same terms: its baseline over this repository is twenty findings, most of them one rule reported once per workflow file. Dockle and `trivy sbom` need no wiring of their own: they run inside `image-scan.yaml`, whose scheduled failure already reaches a human.
 
-ESLint, Bearer and trustabl are left unconnected for a different reason: their baselines are non-zero — over a hundred warnings for ESLint, fourteen findings for Bearer, and for trustabl one high finding per read-only subagent under `.claude/agents/` — so a detection notification keyed on "any finding" would fire every week regardless of what changed, which is the shape of a notification people learn to ignore. SonarQube Cloud joins them on that reason: it reports maintainability alongside security, so its baseline over an existing codebase is never zero.
+ESLint, Bearer and trustabl are left unconnected for a different reason: their baselines are non-zero — over a hundred warnings for ESLint, fourteen findings for Bearer, and for trustabl one high finding per read-only subagent under `.claude/agents/` — so a detection notification keyed on "any finding" would fire every week regardless of what changed, which is the shape of a notification people learn to ignore. SonarQube Cloud is unconnected for a plainer one: it has no scheduled run to notify from.
 
 #### Overlapping surfaces
 
@@ -425,8 +445,10 @@ Reusable composite actions live under [`.github/actions/`](../actions/):
 
 |Action|Purpose|
 |---|---|
+|`setup-mise`|Install the pinned mise binary after verifying its digest, then the tools the caller names (see [Mise setup](#mise-setup))|
 |`setup-postgres`|Wait for and initialize the Postgres service container (used by DB-dependent jobs)|
 |`upsert-pr-comment`|Marker-based PR comment upsert (detect existing → update / create) with a shared Commit / UpdatedAt footer, used by the result-commenting workflows; `status: success` updates an existing comment but creates none|
+|`notify-detail`|Reduce a scanner's Markdown summary to its finding lines, so a detection notification names what was found without carrying the prose a PR comment is written with|
 |`osv-scan`|Run osv-scanner and classify each finding against the release-gate severity policy, shared by the OSV reporting workflow and the OSV release gate|
 
 ## Notes
