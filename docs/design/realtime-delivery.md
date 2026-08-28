@@ -181,7 +181,7 @@ flowchart LR
   stream -. "never" .-x feature
 ```
 
-Architecture rules (mechanically checked):
+Architecture rules (mechanically checked by `internal/architest/realtime_isolation_test.go`):
 
 1. `boundary/realtime`, `usecase/realtime`, `controller/stream`, and the four infrastructure packages import no `internal/domain/<feature>` and no `internal/usecase/<feature>`.
 2. `InstanceLeaseStore` may be imported only by the realtime packages, the realtime DI module, and the orphan-cleanup job entry point.

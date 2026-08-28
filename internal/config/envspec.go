@@ -18,6 +18,7 @@ type Loader struct {
 	Outbox        Outbox          `envPrefix:"OUTBOX_"`
 	Auth          Auth            `envPrefix:"AUTH_"`
 	ObjectStorage ObjectStorage   `envPrefix:"OBJECT_STORAGE_"`
+	Realtime      Realtime        `envPrefix:"REALTIME_"`
 	Endpoint      Endpoint        `envPrefix:"ENDPOINT_"`
 }
 
@@ -32,6 +33,8 @@ type Endpoint struct {
 	JWKS string `env:"JWKS,required"`
 	// ObjectStorage は S3 互換エンドポイントです。空なら SDK 既定の解決に委ねます（本番 AWS S3 等）。
 	ObjectStorage string `env:"OBJECT_STORAGE,required"`
+	// Realtime は Realtime Delivery の store（DynamoDB 互換）のエンドポイントです。空なら SDK 既定の解決に委ねます（本番 DynamoDB）。
+	Realtime string `env:"REALTIME,required"`
 	// Outbox は PUBLISHER=http のときの送出先です。空のまま http を選ぶと DI で起動エラーにします。
 	Outbox string `env:"OUTBOX,required"`
 	// OutboxQueue は publish 端の SQS 互換エンドポイントです。空なら SDK 既定の解決に委ねます。
@@ -55,6 +58,20 @@ type ObjectStorage struct {
 	SecretAccessKey string `env:"SECRET_ACCESS_KEY"                  envDefault:""`
 	UsePathStyle    bool   `env:"USE_PATH_STYLE,required"`
 	MaxUploadBytes  int64  `env:"MAX_UPLOAD_BYTES,required,notEmpty"`
+}
+
+// Realtime は、Realtime Delivery の EventLog / StreamTicket / InstanceLease を置く DynamoDB 互換 store の
+// 接続設定を保持する。中立境界の実装は DynamoDB adapter だが、env 名は vendor 非依存にする。
+// table 名は固定名（realtime_event_log 等）に TableSuffix を付けた形で、環境（と Phase 11 では worktree の
+// slot）ごとに分かれる。
+type Realtime struct {
+	Region string `env:"REGION,required,notEmpty"`
+	// TableSuffix は table 名の末尾に付く環境識別子（例 local / ci / prd）。小文字・数字・アンダースコアで書く。
+	TableSuffix string `env:"TABLE_SUFFIX,required,notEmpty"`
+	// AccessKeyID / SecretAccessKey は両方空なら SDK 既定の credential chain（IAM ロール等）へ委ねるため、
+	// 未設定を許す（ObjectStorage と同じ既定）。
+	AccessKeyID     string `env:"ACCESS_KEY_ID"     envDefault:""`
+	SecretAccessKey string `env:"SECRET_ACCESS_KEY" envDefault:""`
 }
 
 // Auth は access token（JWT）検証の設定を保持する。

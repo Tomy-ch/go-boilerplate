@@ -28,6 +28,7 @@ func ConfigModule() fx.Option {
 			config.NewOutboxConfig,
 			config.NewAuthConfig,
 			config.NewObjectStorageConfig,
+			config.NewRealtimeConfig,
 			config.NewEndpointConfig,
 		),
 		fx.Provide(
