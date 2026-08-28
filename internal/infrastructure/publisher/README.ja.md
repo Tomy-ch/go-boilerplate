@@ -33,6 +33,8 @@ Usecase 層の `publisher.Publisher` インターフェース（`internal/usecas
 ## 設計方針
 
 - transport retry を無効化する（`MaxAttempts = 1`）: relay の poll ループ自体が at-least-once の retry 本体であるため、substrate 層 retry は二重になる（D10）。再送は relay の次 poll が担う。
+- 非 2xx / transport 失敗は substrate が `apperror` sentinel へ写像し、adapter が relay の dead 判定に要る分類を付け足す: substrate 自身が再試行不可と判定した結果（429 を除く 4xx・追従しないリダイレクト・応答サイズ超過）は `ErrPermanent`、5xx / 429 / transport 失敗は `ErrRetryable`。判定はここにステータス表を写すのではなく `httpclient.RetryableOutcome` から取る。決定的失敗かどうかの一部は substrate 内部にあり、ステータスコードだけからは再現できないため。ctx キャンセルは配送の失敗ではなく停止なので分類しない。
+- publisher 実装が実際に配送できるチャネルだけを relay できる。`VerifyChannel` がそれ以外のチャネルでの relay 起動を失敗させ、運べない substrate へ行が渡らないようにする。
 - 非冪等な POST だが、受信側 dedup のため `MessageID` を `Idempotency-Key` として載せ、`AllowRetry` は明示的に `false` とする。
 - trace 伝搬を無効化する（`PropagateTrace = false`）: emit 時に capture した `traceparent` をメッセージヘッダで明示伝搬するため、substrate の自動 inject は抑止する。
 - エンドポイント URL は config から一度解決して構築時に注入し、`Content-Type: application/json` とメッセージ自身のヘッダ（`traceparent` 等）を送る。

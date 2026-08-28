@@ -28,7 +28,7 @@
 | Empty / partial / **full-but-zero-progress** (all publish failed) | wait `PollInterval` | nothing left to drain, or downstream is failing |
 | `RelayBatch` error | log, then wait `ErrorBackoff` | let a transient DB/broker fault settle |
 
-- The **full-but-zero-progress → must wait** rule is load-bearing: re-claiming a full, all-failed batch with zero wait would hot-loop while the downstream is down and burn through attempts, driving entries to `dead` instantly. A stalled full batch is always demoted to a wait.
+- The **full-but-zero-progress → must wait** rule is load-bearing: re-claiming a full, all-failed batch with zero wait would hot-loop against a downstream that is already down, spending database and network capacity on failures nothing can fix yet. A stalled full batch is always demoted to a wait. (Per-entry backoff makes the re-claim itself unlikely, but the loop must not depend on that to stay calm.)
 - Waiting goes through `clock.Sleeper.Sleep(ctx, d)`, so `ctx` cancellation breaks out of the wait immediately.
 - `ctx` completion is re-checked at loop top, after a `RelayBatch` error, and before lag recording, so shutdown never emits a spurious error log or an extra RPC.
 

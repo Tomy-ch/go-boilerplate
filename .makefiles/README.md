@@ -94,10 +94,11 @@ make worker NAME=sampleworker
 #### `make outbox-relay ARGS="<arguments>"`
 
 Starts the outbox relay (periodically polls the outbox table and publishes pending
-messages). `ARGS` is optional and also reaches the `replay` subcommand.
+messages). `ARGS` is required — the relay serves exactly one delivery channel and has no
+default one — and also reaches the `replay` subcommand.
 
 ```sh
-make outbox-relay
+make outbox-relay ARGS="--channel=http"
 make outbox-relay ARGS="replay --message-id=<id>"
 ```
 

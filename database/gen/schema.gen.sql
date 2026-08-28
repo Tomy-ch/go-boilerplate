@@ -198,6 +198,12 @@ CREATE TABLE public.outbox (
     last_error text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     published_at timestamp with time zone,
+    delivery_channel text NOT NULL,
+    ordering_key text,
+    ordering_sequence bigint,
+    next_attempt_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT outbox_delivery_channel_check CHECK ((delivery_channel = ANY (ARRAY['http'::text, 'realtime'::text]))),
+    CONSTRAINT outbox_ordering_pair_check CHECK (((ordering_key IS NULL) = (ordering_sequence IS NULL))),
     CONSTRAINT outbox_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'published'::text, 'dead'::text])))
 );
 --
@@ -252,6 +258,22 @@ COMMENT ON COLUMN public.outbox.created_at IS '作成日時';
 -- Name: COLUMN outbox.published_at; Type: COMMENT; Schema: public; Owner: -
 --
 COMMENT ON COLUMN public.outbox.published_at IS 'publish 完了日時（published 遷移時刻）';
+--
+-- Name: COLUMN outbox.delivery_channel; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.outbox.delivery_channel IS '配送チャネル（http / realtime）。relay は 1 チャネルのみを claim する';
+--
+-- Name: COLUMN outbox.ordering_key; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.outbox.ordering_key IS '順序保証の単位（ストリーム）。順序を持たないチャネルは NULL';
+--
+-- Name: COLUMN outbox.ordering_sequence; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.outbox.ordering_sequence IS 'ordering_key 内の位置。順序を持たないチャネルは NULL';
+--
+-- Name: COLUMN outbox.next_attempt_at; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.outbox.next_attempt_at IS '次に claim してよい時刻（再試行のバックオフ）';
 --
 -- Name: outbox_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
@@ -661,6 +683,26 @@ COMMENT ON COLUMN public.purchases.created_at IS '作成日時';
 --
 COMMENT ON COLUMN public.purchases.updated_at IS '更新日時';
 --
+-- Name: realtime_stream_sequences; Type: TABLE; Schema: public; Owner: -
+--
+CREATE TABLE public.realtime_stream_sequences (
+    stream_id text NOT NULL,
+    last_sequence bigint NOT NULL,
+    CONSTRAINT realtime_stream_sequences_last_sequence_check CHECK ((last_sequence > 0))
+);
+--
+-- Name: TABLE realtime_stream_sequences; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON TABLE public.realtime_stream_sequences IS 'ストリーム採番（1 ストリーム 1 行、gap なし単調増加）';
+--
+-- Name: COLUMN realtime_stream_sequences.stream_id; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.realtime_stream_sequences.stream_id IS 'ストリーム識別子';
+--
+-- Name: COLUMN realtime_stream_sequences.last_sequence; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.realtime_stream_sequences.last_sequence IS '採番済みの最後の位置（1 起算）';
+--
 -- Name: roles; Type: TABLE; Schema: public; Owner: -
 --
 CREATE TABLE public.roles (
@@ -1004,6 +1046,11 @@ ALTER TABLE ONLY public.purchases
 ALTER TABLE ONLY public.purchases
     ADD CONSTRAINT purchases_id_primary PRIMARY KEY (id);
 --
+-- Name: realtime_stream_sequences realtime_stream_sequences_stream_id_primary; Type: CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.realtime_stream_sequences
+    ADD CONSTRAINT realtime_stream_sequences_stream_id_primary PRIMARY KEY (stream_id);
+--
 -- Name: roles roles_code_unique; Type: CONSTRAINT; Schema: public; Owner: -
 --
 ALTER TABLE ONLY public.roles
@@ -1071,9 +1118,17 @@ CREATE INDEX idempotency_keys_expires_at_idx ON public.idempotency_keys USING bt
 --
 CREATE INDEX outbox_dead_idx ON public.outbox USING btree (id) WHERE (status = 'dead'::text);
 --
--- Name: outbox_pending_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: outbox_ordering_head_idx; Type: INDEX; Schema: public; Owner: -
 --
-CREATE INDEX outbox_pending_idx ON public.outbox USING btree (id) WHERE (status = 'pending'::text);
+CREATE INDEX outbox_ordering_head_idx ON public.outbox USING btree (ordering_key, ordering_sequence) WHERE ((ordering_key IS NOT NULL) AND (status <> 'published'::text));
+--
+-- Name: outbox_ordering_unique_idx; Type: INDEX; Schema: public; Owner: -
+--
+CREATE UNIQUE INDEX outbox_ordering_unique_idx ON public.outbox USING btree (ordering_key, ordering_sequence) WHERE (ordering_key IS NOT NULL);
+--
+-- Name: outbox_pending_claim_idx; Type: INDEX; Schema: public; Owner: -
+--
+CREATE INDEX outbox_pending_claim_idx ON public.outbox USING btree (delivery_channel, id) WHERE (status = 'pending'::text);
 --
 -- Name: outbox_published_gc_idx; Type: INDEX; Schema: public; Owner: -
 --

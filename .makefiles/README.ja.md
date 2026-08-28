@@ -93,10 +93,11 @@ make worker NAME=sampleworker
 #### `make outbox-relay ARGS="<引数>"`
 
 outbox relay を起動します（outbox テーブルを周期 poll して未 publish メッセージを送出）。
-`ARGS` は任意で、`replay` サブコマンドにも渡ります。
+relay はちょうど 1 つの配送チャネルを担当し既定のチャネルを持たないため、`ARGS` は必須です。
+`replay` サブコマンドにも渡ります。
 
 ```sh
-make outbox-relay
+make outbox-relay ARGS="--channel=http"
 make outbox-relay ARGS="replay --message-id=<id>"
 ```
 

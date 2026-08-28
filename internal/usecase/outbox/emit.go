@@ -15,6 +15,9 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
+// ErrInvalidOrdering は、順序キーと位置の指定が対になっていないことを示すエラーです。
+var ErrInvalidOrdering = xerrors.Wrap(apperror.ErrInvalidArgument, "invalid outbox ordering")
+
 // EmitInput は、ドメインイベントを outbox へ emit する入力です。
 type EmitInput struct {
 	// AggregateType は集約種別です（観測・調査用）。
@@ -29,6 +32,12 @@ type EmitInput struct {
 	// 既知の機微ヘッダ名（Authorization / Cookie 等）は送出前に落としますが、それは defense-in-depth で
 	// あって主契約ではありません。機微情報は入れないこと。
 	Headers map[string]string
+	// Channel は配送レーンです。既定値を持たないため、必ず指定します。
+	Channel outboxbndry.Channel
+	// OrderingKey は順序保証の単位（ストリーム）です。順序を持たない配送では空にします。
+	OrderingKey string
+	// OrderingSequence は OrderingKey 内の位置（1 起算）です。OrderingKey が空なら 0 にします。
+	OrderingSequence int64
 }
 
 // EmitUsecase は、ドメイン変更と同一 tx で outbox へ 1 件記録するユースケースです。
@@ -53,16 +62,19 @@ func (u *emitUsecase) Emit(ctx context.Context, in EmitInput) (uuid.UUID, error)
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 
+	if err := validateEmit(in); err != nil {
+		return uuid.UUID{}, err
+	}
+
 	headers := make(map[string]string, len(in.Headers)+1)
 	for k, v := range in.Headers {
-		// 呼び出し側契約（EmitInput.Headers の doc）に加えた defense-in-depth として、
-		// egress の起点であるここで、誤って混入した既知の機微ヘッダを保守的に落とします。
+		// defense-in-depth としての除去（契約は EmitInput.Headers を参照）。
 		if httpheader.IsSensitive(k) {
 			continue
 		}
 		headers[k] = v
 	}
-	// emit span の trace context を traceparent として載せる（消費側が同一 trace に繋がる）。
+	// trace context を headers へ注入する（契約は Emit の doc を参照）。
 	observability.InjectTraceContextToCarrier(ctx, headers)
 
 	var headerBytes []byte
@@ -75,10 +87,31 @@ func (u *emitUsecase) Emit(ctx context.Context, in EmitInput) (uuid.UUID, error)
 	}
 
 	return u.store.Insert(ctx, outboxbndry.EmitParams{
-		AggregateType: in.AggregateType,
-		AggregateID:   in.AggregateID,
-		EventType:     in.EventType,
-		Payload:       in.Payload,
-		Headers:       headerBytes,
+		AggregateType:    in.AggregateType,
+		AggregateID:      in.AggregateID,
+		EventType:        in.EventType,
+		Payload:          in.Payload,
+		Headers:          headerBytes,
+		Channel:          in.Channel,
+		OrderingKey:      in.OrderingKey,
+		OrderingSequence: in.OrderingSequence,
 	})
+}
+
+// validateEmit は、行を作る前に配送チャネルと順序指定を検査します。
+// 未知のチャネルの行はどの relay も claim せず、対になっていない順序指定は DB の制約で弾かれるため、
+// いずれも呼び出し元へ即座に返します。
+func validateEmit(in EmitInput) error {
+	if _, err := outboxbndry.ParseChannel(in.Channel.String()); err != nil {
+		return err
+	}
+
+	switch {
+	case in.OrderingKey == "" && in.OrderingSequence != 0:
+		return xerrors.Wrap(ErrInvalidOrdering, "ordering sequence requires an ordering key")
+	case in.OrderingKey != "" && in.OrderingSequence <= 0:
+		return xerrors.Wrap(ErrInvalidOrdering, "ordering key requires a positive ordering sequence")
+	default:
+		return nil
+	}
 }

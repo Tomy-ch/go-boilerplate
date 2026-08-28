@@ -17,6 +17,7 @@ import (
 	"go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/internal/usecase/boundary/authz"
 	"go-boilerplate/internal/usecase/boundary/clock"
+	outboxbndry "go-boilerplate/internal/usecase/boundary/outbox"
 	"go-boilerplate/internal/usecase/boundary/tx"
 	"go-boilerplate/internal/usecase/outbox"
 	"go-boilerplate/internal/usecase/purchase/command"
@@ -313,6 +314,7 @@ func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParam
 			AggregateID:   draft.purchaseID.String(),
 			EventType:     event.TypeCreated,
 			Payload:       payload,
+			Channel:       outboxbndry.ChannelHTTP,
 		}); eerr != nil {
 			return eerr
 		}
@@ -373,6 +375,7 @@ func (u *usecase) CancelPurchase(ctx context.Context, params CancelPurchaseParam
 			AggregateID:   locked.ID().String(),
 			EventType:     eventType,
 			Payload:       payload,
+			Channel:       outboxbndry.ChannelHTTP,
 		}); eerr != nil {
 			return eerr
 		}
@@ -432,6 +435,7 @@ func (u *usecase) PayPurchase(ctx context.Context, params PayPurchaseParams) (Pa
 			AggregateID:   locked.ID().String(),
 			EventType:     eventType,
 			Payload:       payload,
+			Channel:       outboxbndry.ChannelHTTP,
 		}); eerr != nil {
 			return eerr
 		}
@@ -498,6 +502,7 @@ func (u *usecase) ShipPurchase(
 			AggregateID:   locked.ID().String(),
 			EventType:     eventType,
 			Payload:       payload,
+			Channel:       outboxbndry.ChannelHTTP,
 		}); eerr != nil {
 			return eerr
 		}
@@ -564,6 +569,7 @@ func (u *usecase) DeliverPurchase(
 			AggregateID:   locked.ID().String(),
 			EventType:     eventType,
 			Payload:       payload,
+			Channel:       outboxbndry.ChannelHTTP,
 		}); eerr != nil {
 			return eerr
 		}

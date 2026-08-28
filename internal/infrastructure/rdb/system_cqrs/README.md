@@ -81,9 +81,22 @@ Persists the transactional outbox table. Implements the `Store` boundary in `int
 func New(provider driver.DatabaseDriver, tf observability.TracerFactory) outboxbndry.Store
 ```
 
-Key methods: `Insert` / `ClaimPending` (`FOR UPDATE SKIP LOCKED`) / `MarkPublished` / `MarkFailed` / `MarkDead` / `ReplayDead` / `DeletePublished` (GC) / `OldestPendingCreatedAt` (outbox-lag SLI).
+Key methods: `Insert` / `ClaimPending` (per delivery channel; `FOR UPDATE SKIP LOCKED` plus the retry-time and head-of-line predicates) / `MarkPublished` / `MarkFailed` (records the reason and the next claimable time) / `MarkDead` / `ReplayDead` / `DeletePublished` (GC) / `OldestPendingCreatedAt` (outbox-lag SLI, per channel) / `CountBlockedStreams` (streams stalled behind a dead head).
 
 See [`internal/usecase/boundary/outbox/README.md`](../../../usecase/boundary/outbox/README.md) for the full boundary interface details.
+
+### realtime
+
+Allocates a stream's sequence numbers. Implements the `SequenceAllocator` boundary in `internal/usecase/boundary/realtime/`.
+
+```go
+func NewSequenceAllocator(provider driver.DatabaseDriver, tf observability.TracerFactory) realtimebndry.SequenceAllocator
+```
+
+|Method|Description|
+|---|---|
+|`Allocate(ctx, streamID)`|Take the stream's next position within the business tx; the row stays locked to commit, so a stream's numbering is serialized|
+|`Current(ctx, streamID)`|Read the stream's current position (`ok=false` when nothing has been allocated yet)|
 
 ## Structure
 

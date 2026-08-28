@@ -51,7 +51,7 @@ type SecretGenerator interface {
 | 不変条件 | 強制される場所 |
 | --- | --- |
 | 直列化した event は `MaxSerializedBytes`（64 KiB）以下 — payload 単体でなく封筒全体 | `DeliveryEvent.Validate`。emit する adapter が outbox に書く前に呼び、`EventLogStore.Append` の実装も保存前に呼ぶ |
-| `Sequence` は wire 上 10 進、stream 内で gap 無し、0 値に意味は無い — 「未採番」は `SequenceAllocator.Current` の `ok` であって番兵値ではない | `Sequence.String`、allocator（#1410）と ADR-0072 |
+| `Sequence` は wire 上 10 進、stream 内で gap 無し、0 値に意味は無い — 「未採番」は `SequenceAllocator.Current` の `ok` であって番兵値ではない | `Sequence.String`、allocator と ADR-0072 |
 | 同じ位置への同じ `EventID` の再 append は成功、異なる `EventID` は `ErrSequenceConflict` | `EventLogStore.Append`（outbox relay は特別扱い無しで retry できる） |
 | cursor は ticket 自身の `Destination` に対してだけ意味を持つ | `StreamTicket.Destination`。stream handler が比較する |
 | 期限の判定は呼び出し側の時計（`asOf`）で行い、store の掃除を正本にしない | `StreamTicketStore.Find`、`InstanceLeaseStore.ListExpired` / `AcquireCleanup` |
@@ -75,6 +75,6 @@ test できなければならないので、乱数の seam を自前で持ちま
 | `StreamTicketStore` | `internal/infrastructure/streamticket/dynamodb/` |
 | `InstanceLeaseStore` | `internal/infrastructure/instancelease/dynamodb/` |
 | `SecretGenerator` | `internal/infrastructure/realtimesecret/` |
-| `SequenceAllocator`（`sequence.go`、#1410） | `internal/infrastructure/rdb/system_cqrs/realtime/` |
+| `SequenceAllocator`（`sequence.go`） | `internal/infrastructure/rdb/system_cqrs/realtime/` |
 
 mock はファイルごとに `mock/` へ生成します（`go generate ./...`）。

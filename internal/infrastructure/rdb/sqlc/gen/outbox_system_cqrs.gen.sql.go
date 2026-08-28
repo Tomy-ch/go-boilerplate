@@ -14,20 +14,34 @@ import (
 
 const claimPendingOutbox = `-- name: ClaimPendingOutbox :many
 SELECT
-    id,
-    message_id,
-    aggregate_type,
-    aggregate_id,
-    event_type,
-    payload,
-    headers,
-    attempts
-FROM outbox
-WHERE status = 'pending'
-ORDER BY id
-LIMIT $1
-FOR UPDATE SKIP LOCKED
+    o.id,
+    o.message_id,
+    o.aggregate_type,
+    o.aggregate_id,
+    o.event_type,
+    o.payload,
+    o.headers,
+    o.attempts
+FROM outbox AS o
+WHERE o.status = 'pending'
+    AND o.delivery_channel = $1
+    AND o.next_attempt_at <= NOW()
+    AND NOT EXISTS (
+        SELECT earlier.id
+        FROM outbox AS earlier
+        WHERE earlier.ordering_key = o.ordering_key
+            AND earlier.ordering_sequence < o.ordering_sequence
+            AND earlier.status <> 'published'
+    )
+ORDER BY o.id
+LIMIT $2
+FOR UPDATE OF o SKIP LOCKED
 `
+
+type ClaimPendingOutboxParams struct {
+	DeliveryChannel string
+	Limit           int32
+}
 
 type ClaimPendingOutboxRow struct {
 	ID            int64
@@ -41,25 +55,36 @@ type ClaimPendingOutboxRow struct {
 }
 
 // === source: database/dml/system_cqrs/outbox/claim_pending_outbox.sql ===
-// pending 行を最大 $1 件 claim する。SKIP LOCKED により多インスタンスでも同一行を二重取得しない。
-// 順序保証は捨てているため id 昇順で十分。呼び出し側 tx の保持中だけロックされる。
+// 指定チャネルの pending 行を最大 $2 件、SKIP LOCKED で claim する（多重取得防止は ADR-0056）。
+// バックオフ中（next_attempt_at が未来）の行は述語段階で外れるためロックもされず、SKIP LOCKED と干渉しない。
+// NOT EXISTS は head-of-line 規則（ADR-0072）。同一 ordering_key の先行 sequence が未 published なら claim しない。
+// ordering_key が NULL の行は NULL 比較で NOT EXISTS が真になり、順序を持たないチャネルは除外されない。
 //
 //	SELECT
-//	    id,
-//	    message_id,
-//	    aggregate_type,
-//	    aggregate_id,
-//	    event_type,
-//	    payload,
-//	    headers,
-//	    attempts
-//	FROM outbox
-//	WHERE status = 'pending'
-//	ORDER BY id
-//	LIMIT $1
-//	FOR UPDATE SKIP LOCKED
-func (q *Queries) ClaimPendingOutbox(ctx context.Context, limit int32) ([]*ClaimPendingOutboxRow, error) {
-	rows, err := q.db.Query(ctx, claimPendingOutbox, limit)
+//	    o.id,
+//	    o.message_id,
+//	    o.aggregate_type,
+//	    o.aggregate_id,
+//	    o.event_type,
+//	    o.payload,
+//	    o.headers,
+//	    o.attempts
+//	FROM outbox AS o
+//	WHERE o.status = 'pending'
+//	    AND o.delivery_channel = $1
+//	    AND o.next_attempt_at <= NOW()
+//	    AND NOT EXISTS (
+//	        SELECT earlier.id
+//	        FROM outbox AS earlier
+//	        WHERE earlier.ordering_key = o.ordering_key
+//	            AND earlier.ordering_sequence < o.ordering_sequence
+//	            AND earlier.status <> 'published'
+//	    )
+//	ORDER BY o.id
+//	LIMIT $2
+//	FOR UPDATE OF o SKIP LOCKED
+func (q *Queries) ClaimPendingOutbox(ctx context.Context, arg *ClaimPendingOutboxParams) ([]*ClaimPendingOutboxRow, error) {
+	rows, err := q.db.Query(ctx, claimPendingOutbox, arg.DeliveryChannel, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -85,6 +110,39 @@ func (q *Queries) ClaimPendingOutbox(ctx context.Context, limit int32) ([]*Claim
 		return nil, err
 	}
 	return items, nil
+}
+
+const countBlockedStreamsOutbox = `-- name: CountBlockedStreamsOutbox :one
+SELECT COUNT(*)
+FROM (
+    SELECT DISTINCT ON (ordering_key) status
+    FROM outbox
+    WHERE delivery_channel = $1
+        AND ordering_key IS NOT NULL
+        AND status <> 'published'
+    ORDER BY ordering_key, ordering_sequence
+) AS heads
+WHERE heads.status = 'dead'
+`
+
+// === source: database/dml/system_cqrs/outbox/count_blocked_streams_outbox.sql ===
+// 先頭が dead のストリーム数（blocked stream の定義は docs/design/outbox.md の用語集）。
+//
+//	SELECT COUNT(*)
+//	FROM (
+//	    SELECT DISTINCT ON (ordering_key) status
+//	    FROM outbox
+//	    WHERE delivery_channel = $1
+//	        AND ordering_key IS NOT NULL
+//	        AND status <> 'published'
+//	    ORDER BY ordering_key, ordering_sequence
+//	) AS heads
+//	WHERE heads.status = 'dead'
+func (q *Queries) CountBlockedStreamsOutbox(ctx context.Context, deliveryChannel string) (int64, error) {
+	row := q.db.QueryRow(ctx, countBlockedStreamsOutbox, deliveryChannel)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const deletePublishedOutbox = `-- name: DeletePublishedOutbox :execrows
@@ -130,19 +188,25 @@ INSERT INTO outbox (
     aggregate_id,
     event_type,
     payload,
-    headers
+    headers,
+    delivery_channel,
+    ordering_key,
+    ordering_sequence
 ) VALUES (
-    $1, $2, $3, $4, $5
+    $1, $2, $3, $4, $5, $6, $7, $8
 )
 RETURNING id, message_id
 `
 
 type InsertOutboxParams struct {
-	AggregateType string
-	AggregateID   string
-	EventType     string
-	Payload       []byte
-	Headers       []byte
+	AggregateType    string
+	AggregateID      string
+	EventType        string
+	Payload          []byte
+	Headers          []byte
+	DeliveryChannel  string
+	OrderingKey      *string
+	OrderingSequence *int64
 }
 
 type InsertOutboxRow struct {
@@ -152,15 +216,19 @@ type InsertOutboxRow struct {
 
 // === source: database/dml/system_cqrs/outbox/insert_outbox.sql ===
 // 業務 tx 内で outbox 行を 1 行 INSERT する（emit）。message_id は DB が採番し返す。
+// delivery_channel は必須（既定値なし。EmitParams.Channel 参照）。
 //
 //	INSERT INTO outbox (
 //	    aggregate_type,
 //	    aggregate_id,
 //	    event_type,
 //	    payload,
-//	    headers
+//	    headers,
+//	    delivery_channel,
+//	    ordering_key,
+//	    ordering_sequence
 //	) VALUES (
-//	    $1, $2, $3, $4, $5
+//	    $1, $2, $3, $4, $5, $6, $7, $8
 //	)
 //	RETURNING id, message_id
 func (q *Queries) InsertOutbox(ctx context.Context, arg *InsertOutboxParams) (*InsertOutboxRow, error) {
@@ -170,6 +238,9 @@ func (q *Queries) InsertOutbox(ctx context.Context, arg *InsertOutboxParams) (*I
 		arg.EventType,
 		arg.Payload,
 		arg.Headers,
+		arg.DeliveryChannel,
+		arg.OrderingKey,
+		arg.OrderingSequence,
 	)
 	var i InsertOutboxRow
 	err := row.Scan(&i.ID, &i.MessageID)
@@ -198,37 +269,39 @@ func (q *Queries) MarkOutboxDead(ctx context.Context, id int64) (int64, error) {
 	return result.RowsAffected(), nil
 }
 
-const markOutboxFailed = `-- name: MarkOutboxFailed :one
+const markOutboxFailed = `-- name: MarkOutboxFailed :execrows
 UPDATE outbox
 SET
     attempts = attempts + 1,
-    last_error = $2
+    last_error = $2,
+    next_attempt_at = $3
 WHERE id = $1
     AND status = 'pending'
-RETURNING attempts
 `
 
 type MarkOutboxFailedParams struct {
-	ID        int64
-	LastError *string
+	ID            int64
+	LastError     *string
+	NextAttemptAt time.Time
 }
 
 // === source: database/dml/system_cqrs/outbox/mark_outbox_failed.sql ===
-// publish 失敗時に attempts を加算し last_error を記録する。加算後の attempts を返し、
-// 呼び出し側が max 到達判定（dead 化）に用いる。
+// publish 失敗時に last_error を記録し、次に claim してよい時刻をバックオフ後の時刻へ進める。
+// attempts は診断のために加算し続けるが、dead 判定の基準ではない（判定はエラー分類。ADR-0058）。
 //
 //	UPDATE outbox
 //	SET
 //	    attempts = attempts + 1,
-//	    last_error = $2
+//	    last_error = $2,
+//	    next_attempt_at = $3
 //	WHERE id = $1
 //	    AND status = 'pending'
-//	RETURNING attempts
-func (q *Queries) MarkOutboxFailed(ctx context.Context, arg *MarkOutboxFailedParams) (int32, error) {
-	row := q.db.QueryRow(ctx, markOutboxFailed, arg.ID, arg.LastError)
-	var attempts int32
-	err := row.Scan(&attempts)
-	return attempts, err
+func (q *Queries) MarkOutboxFailed(ctx context.Context, arg *MarkOutboxFailedParams) (int64, error) {
+	result, err := q.db.Exec(ctx, markOutboxFailed, arg.ID, arg.LastError, arg.NextAttemptAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const markOutboxPublished = `-- name: MarkOutboxPublished :execrows
@@ -261,20 +334,23 @@ const oldestPendingOutbox = `-- name: OldestPendingOutbox :one
 SELECT created_at
 FROM outbox
 WHERE status = 'pending'
+    AND delivery_channel = $1
 ORDER BY id
 LIMIT 1
 `
 
 // === source: database/dml/system_cqrs/outbox/oldest_pending_outbox.sql ===
-// SLI(outbox lag) 算出用。最古 pending 行の created_at を返す。pending 行が無ければ 0 行を返す。
+// SLI(outbox lag) 算出用。指定チャネルの最古 pending 行の created_at を返す。pending 行が無ければ 0 行を返す。
+// バックオフ中の行も未配送なので除外しない（lag は未配送の最古行の年齢）。
 //
 //	SELECT created_at
 //	FROM outbox
 //	WHERE status = 'pending'
+//	    AND delivery_channel = $1
 //	ORDER BY id
 //	LIMIT 1
-func (q *Queries) OldestPendingOutbox(ctx context.Context) (time.Time, error) {
-	row := q.db.QueryRow(ctx, oldestPendingOutbox)
+func (q *Queries) OldestPendingOutbox(ctx context.Context, deliveryChannel string) (time.Time, error) {
+	row := q.db.QueryRow(ctx, oldestPendingOutbox, deliveryChannel)
 	var created_at time.Time
 	err := row.Scan(&created_at)
 	return created_at, err
@@ -285,7 +361,8 @@ UPDATE outbox
 SET
     status = 'pending',
     attempts = 0,
-    last_error = NULL
+    last_error = NULL,
+    next_attempt_at = NOW()
 WHERE status = 'dead'
     AND ($1::UUID IS NULL OR message_id = $1::UUID)
 `
@@ -293,12 +370,14 @@ WHERE status = 'dead'
 // === source: database/dml/system_cqrs/outbox/replay_dead_outbox.sql ===
 // dead 行を pending へ戻し再 publish 対象に復帰させる（運用 replay）。
 // $1 が NULL の場合は全 dead 行、指定時は当該 message_id のみを対象とする。
+// next_attempt_at を現在時刻へ戻さないと、dead 化前のバックオフ済み時刻が残って直後に claim されない。
 //
 //	UPDATE outbox
 //	SET
 //	    status = 'pending',
 //	    attempts = 0,
-//	    last_error = NULL
+//	    last_error = NULL,
+//	    next_attempt_at = NOW()
 //	WHERE status = 'dead'
 //	    AND ($1::UUID IS NULL OR message_id = $1::UUID)
 func (q *Queries) ReplayDeadOutbox(ctx context.Context, messageID *uuid.UUID) (int64, error) {
