@@ -1,0 +1,79 @@
+# realtime
+
+Realtime Delivery（[`docs/design/realtime-delivery.ja.md`](../../../../docs/design/realtime-delivery.ja.md)）の seam です。
+feature 中立な封筒 `DeliveryEvent` と、それを保存・配送する側が実装する境界を置きます。usecase 側
+（`internal/usecase/realtime/`、feature の realtime adapter）はこの package にだけ依存し、DynamoDB の
+store と PostgreSQL の sequence allocator（infrastructure）が実装します。vendor の語彙（table /
+partition / TTL）も feature の語彙（会話 / メッセージ / operator）もここには現れません。
+
+```go
+// 封筒。EventID は outbox の message_id と同じで、冪等性の判定基準になる。
+type DeliveryEvent struct {
+    EventID       string
+    StreamID      StreamID
+    Sequence      Sequence        // uint64。String() が 10 進の wire 形
+    Type          string
+    OccurredAt    time.Time
+    SchemaVersion int
+    Payload       json.RawMessage
+}
+
+func (e DeliveryEvent) Validate() error          // ErrInvalidEvent / ErrPayloadTooLarge（直列化後 64 KiB）
+func (e DeliveryEvent) MarshalJSON() ([]byte, error)
+
+type EventLogStore interface {
+    Append(ctx context.Context, event DeliveryEvent) error                        // EventID で冪等、違えば ErrSequenceConflict
+    ReadAfter(ctx context.Context, q ReadAfterQuery) (ReadAfterResult, error)     // 強い一貫性、昇順、HasMore
+    Latest(ctx context.Context, streamID StreamID) (DeliveryEvent, bool, error)
+    Find(ctx context.Context, streamID StreamID, seq Sequence) (DeliveryEvent, bool, error)
+}
+
+type StreamTicketStore interface {
+    Save(ctx context.Context, ticket StreamTicket) error
+    Find(ctx context.Context, hash TicketHash, asOf time.Time) (StreamTicket, bool, error)  // 期限切れは ok=false
+    Invalidate(ctx context.Context, subject string, destination StreamID) error
+}
+
+type InstanceLeaseStore interface {
+    Heartbeat(ctx context.Context, lease InstanceLease) error
+    Delete(ctx context.Context, id InstanceID) error
+    ListExpired(ctx context.Context, asOf time.Time) ([]InstanceLease, error)
+    AcquireCleanup(ctx context.Context, claim CleanupClaim) (bool, error)         // 条件付き。false = 他者が引き受け済み
+}
+
+type SecretGenerator interface {
+    Generate() (string, error)   // 256 bit の不透明な ticket 生値
+}
+```
+
+## 境界が担う不変条件
+
+| 不変条件 | 強制される場所 |
+| --- | --- |
+| 直列化した event は `MaxSerializedBytes`（64 KiB）以下 — payload 単体でなく封筒全体 | `DeliveryEvent.Validate`。emit する adapter が outbox に書く前に呼び、`EventLogStore.Append` の実装も保存前に呼ぶ |
+| `Sequence` は wire 上 10 進、stream 内で gap 無し、0 値に意味は無い — 「未採番」は `SequenceAllocator.Current` の `ok` であって番兵値ではない | `Sequence.String`、allocator（#1410）と ADR-0072 |
+| 同じ位置への同じ `EventID` の再 append は成功、異なる `EventID` は `ErrSequenceConflict` | `EventLogStore.Append`（outbox relay は特別扱い無しで retry できる） |
+| cursor は ticket 自身の `Destination` に対してだけ意味を持つ | `StreamTicket.Destination`。stream handler が比較する |
+| 期限の判定は呼び出し側の時計（`asOf`）で行い、store の掃除を正本にしない | `StreamTicketStore.Find`、`InstanceLeaseStore.ListExpired` / `AcquireCleanup` |
+
+保持期間（7 日）、ticket TTL、lease の heartbeat / expiry / cleanup margin は `internal/usecase/realtime/` が
+持つ機構の固定値で、store はその結果の時刻だけを受け取り、数値は知りません。
+
+## `SecretGenerator` を別に持つ理由
+
+`boundary/token` は cart のセッション追跡のために存在し、sample feature と一緒に削除されます
+（`scripts/setup/remove-sample-api/sample-manifest.ts`）。Realtime Delivery はその削除後も compile /
+test できなければならないので、乱数の seam を自前で持ちます。実装は
+`internal/infrastructure/realtimesecret/` です。
+
+## 実装
+
+| 境界 | 実装 |
+| --- | --- |
+| `EventLogStore` | `internal/infrastructure/eventlog/dynamodb/` |
+| `StreamTicketStore` | `internal/infrastructure/streamticket/dynamodb/` |
+| `InstanceLeaseStore` | `internal/infrastructure/instancelease/dynamodb/` |
+| `SecretGenerator` | `internal/infrastructure/realtimesecret/` |
+| `SequenceAllocator`（`sequence.go`、#1410） | `internal/infrastructure/rdb/system_cqrs/realtime/` |
+
+mock はファイルごとに `mock/` へ生成します（`go generate ./...`）。
