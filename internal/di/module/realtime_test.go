@@ -123,7 +123,8 @@ func Test_provideTicketIssuer(t *testing.T) {
 
 	cfg := config.NewRealtimeConfig(config.MockConfigForTest(t))
 	store := provideStreamTicketStore(testkit.NewTestClient(t), cfg, observability.NewNoopTracerFactory(t))
-	assert.NotNil(t, provideTicketIssuer(store, provideRealtimeSecretGenerator(), mock_clock.NewMockClock(gomock.NewController(t)), observability.NewNoopTracerFactory(t)))
+	clk := mock_clock.NewMockClock(gomock.NewController(t))
+	assert.NotNil(t, provideTicketIssuer(store, provideRealtimeSecretGenerator(), clk, observability.NewNoopTracerFactory(t)))
 }
 
 func Test_provideTicketVerifier(t *testing.T) {

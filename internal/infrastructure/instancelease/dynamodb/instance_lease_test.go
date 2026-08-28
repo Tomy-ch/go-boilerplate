@@ -1,6 +1,7 @@
 package dynamodb
 
 import (
+	"strconv"
 	"testing"
 	"time"
 
@@ -279,7 +280,7 @@ func Test_nano(t *testing.T) {
 	t.Parallel()
 
 	assert.Equal(t, &types.AttributeValueMemberN{Value: "0"}, nano(time.Time{}))
-	assert.Equal(t, &types.AttributeValueMemberN{Value: "1787101200000000000"}, nano(now))
+	assert.Equal(t, &types.AttributeValueMemberN{Value: strconv.FormatInt(now.UnixNano(), 10)}, nano(now))
 }
 
 func Test_fromNano(t *testing.T) {

@@ -44,8 +44,8 @@ func TestNewCursorValidator(t *testing.T) {
 	assert.NotNil(t, v)
 }
 
-func readAfter(streamID rt.StreamID, after rt.Sequence) rt.ReadAfterQuery {
-	return rt.ReadAfterQuery{StreamID: streamID, After: after, Limit: 1}
+func readAfter(after rt.Sequence) rt.ReadAfterQuery {
+	return rt.ReadAfterQuery{StreamID: "s", After: after, Limit: 1}
 }
 
 func Test_cursorValidator_Validate(t *testing.T) {
@@ -58,7 +58,8 @@ func Test_cursorValidator_Validate(t *testing.T) {
 			t.Parallel()
 
 			v, log := newValidator(t)
-			log.EXPECT().ReadAfter(gomock.Any(), readAfter("s", 3)).Return(rt.ReadAfterResult{Events: []rt.DeliveryEvent{eventAt(4, now.Add(-time.Hour))}}, nil)
+			log.EXPECT().ReadAfter(gomock.Any(), readAfter(3)).
+				Return(rt.ReadAfterResult{Events: []rt.DeliveryEvent{eventAt(4, now.Add(-time.Hour))}}, nil)
 
 			require.NoError(t, v.Validate(t.Context(), "s", 3))
 		})
@@ -67,7 +68,7 @@ func Test_cursorValidator_Validate(t *testing.T) {
 			t.Parallel()
 
 			v, log := newValidator(t)
-			log.EXPECT().ReadAfter(gomock.Any(), readAfter("s", 3)).
+			log.EXPECT().ReadAfter(gomock.Any(), readAfter(3)).
 				Return(rt.ReadAfterResult{Events: []rt.DeliveryEvent{eventAt(4, now.Add(-rt.EventLogRetention))}}, nil)
 
 			require.NoError(t, v.Validate(t.Context(), "s", 3))
@@ -77,7 +78,7 @@ func Test_cursorValidator_Validate(t *testing.T) {
 			t.Parallel()
 
 			v, log := newValidator(t)
-			log.EXPECT().ReadAfter(gomock.Any(), readAfter("s", 3)).Return(rt.ReadAfterResult{}, nil)
+			log.EXPECT().ReadAfter(gomock.Any(), readAfter(3)).Return(rt.ReadAfterResult{}, nil)
 			log.EXPECT().Find(gomock.Any(), rt.StreamID("s"), rt.Sequence(3)).Return(eventAt(3, now), true, nil)
 
 			require.NoError(t, v.Validate(t.Context(), "s", 3))
@@ -87,7 +88,7 @@ func Test_cursorValidator_Validate(t *testing.T) {
 			t.Parallel()
 
 			v, log := newValidator(t)
-			log.EXPECT().ReadAfter(gomock.Any(), readAfter("s", 0)).Return(rt.ReadAfterResult{}, nil)
+			log.EXPECT().ReadAfter(gomock.Any(), readAfter(0)).Return(rt.ReadAfterResult{}, nil)
 
 			require.NoError(t, v.Validate(t.Context(), "s", 0))
 		})
@@ -100,7 +101,7 @@ func Test_cursorValidator_Validate(t *testing.T) {
 			t.Parallel()
 
 			v, log := newValidator(t)
-			log.EXPECT().ReadAfter(gomock.Any(), readAfter("s", 3)).
+			log.EXPECT().ReadAfter(gomock.Any(), readAfter(3)).
 				Return(rt.ReadAfterResult{Events: []rt.DeliveryEvent{eventAt(4, now.Add(-rt.EventLogRetention-time.Second))}}, nil)
 
 			require.ErrorIs(t, v.Validate(t.Context(), "s", 3), ErrCursorExpired)
@@ -110,7 +111,8 @@ func Test_cursorValidator_Validate(t *testing.T) {
 			t.Parallel()
 
 			v, log := newValidator(t)
-			log.EXPECT().ReadAfter(gomock.Any(), readAfter("s", 3)).Return(rt.ReadAfterResult{Events: []rt.DeliveryEvent{eventAt(9, now)}}, nil)
+			log.EXPECT().ReadAfter(gomock.Any(), readAfter(3)).
+				Return(rt.ReadAfterResult{Events: []rt.DeliveryEvent{eventAt(9, now)}}, nil)
 
 			require.ErrorIs(t, v.Validate(t.Context(), "s", 3), ErrCursorExpired)
 		})
@@ -119,7 +121,8 @@ func Test_cursorValidator_Validate(t *testing.T) {
 			t.Parallel()
 
 			v, log := newValidator(t)
-			log.EXPECT().ReadAfter(gomock.Any(), readAfter("s", 0)).Return(rt.ReadAfterResult{Events: []rt.DeliveryEvent{eventAt(5, now)}}, nil)
+			log.EXPECT().ReadAfter(gomock.Any(), readAfter(0)).
+				Return(rt.ReadAfterResult{Events: []rt.DeliveryEvent{eventAt(5, now)}}, nil)
 
 			require.ErrorIs(t, v.Validate(t.Context(), "s", 0), ErrCursorExpired)
 		})
@@ -128,7 +131,7 @@ func Test_cursorValidator_Validate(t *testing.T) {
 			t.Parallel()
 
 			v, log := newValidator(t)
-			log.EXPECT().ReadAfter(gomock.Any(), readAfter("s", 3)).Return(rt.ReadAfterResult{}, nil)
+			log.EXPECT().ReadAfter(gomock.Any(), readAfter(3)).Return(rt.ReadAfterResult{}, nil)
 			log.EXPECT().Find(gomock.Any(), rt.StreamID("s"), rt.Sequence(3)).Return(rt.DeliveryEvent{}, false, nil)
 
 			require.ErrorIs(t, v.Validate(t.Context(), "s", 3), ErrCursorExpired)
@@ -138,7 +141,7 @@ func Test_cursorValidator_Validate(t *testing.T) {
 			t.Parallel()
 
 			v, log := newValidator(t)
-			log.EXPECT().ReadAfter(gomock.Any(), readAfter("s", 3)).Return(rt.ReadAfterResult{}, errStoreOff)
+			log.EXPECT().ReadAfter(gomock.Any(), readAfter(3)).Return(rt.ReadAfterResult{}, errStoreOff)
 
 			err := v.Validate(t.Context(), "s", 3)
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
@@ -149,7 +152,7 @@ func Test_cursorValidator_Validate(t *testing.T) {
 			t.Parallel()
 
 			v, log := newValidator(t)
-			log.EXPECT().ReadAfter(gomock.Any(), readAfter("s", 3)).Return(rt.ReadAfterResult{}, nil)
+			log.EXPECT().ReadAfter(gomock.Any(), readAfter(3)).Return(rt.ReadAfterResult{}, nil)
 			log.EXPECT().Find(gomock.Any(), rt.StreamID("s"), rt.Sequence(3)).Return(rt.DeliveryEvent{}, false, errStoreOff)
 
 			require.ErrorIs(t, v.Validate(t.Context(), "s", 3), apperror.ErrUnavailable)
