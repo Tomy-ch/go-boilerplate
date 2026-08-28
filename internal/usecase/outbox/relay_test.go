@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/clock/testkit"
@@ -38,7 +39,7 @@ func newRelayWithMetrics(
 ) outbox.RelayUsecase {
 	t.Helper()
 	return outbox.NewRelay(txm, store, pub, metrics, testkit.NewMockClock(t, time.Time{}),
-		logging.NewTestLogger(t), observability.NewNoopTracerFactory(t))
+		logging.NewTestLogger(t), observability.NewNoopTracerFactory(t), outboxbndry.ChannelHTTP)
 }
 
 func newRelay(t *testing.T, txm tx.Manager, store outboxbndry.Store, pub publisher.Publisher) outbox.RelayUsecase {
@@ -86,7 +87,7 @@ func Test_relayUsecase_RelayBatch(t *testing.T) {
 			store := mock_outbox.NewMockStore(ctrl)
 			pub := mock_publisher.NewMockPublisher(ctrl)
 
-			store.EXPECT().ClaimPending(gomock.Any(), int32(100)).Return(nil, nil)
+			store.EXPECT().ClaimPending(gomock.Any(), outboxbndry.ChannelHTTP, int32(100)).Return(nil, nil)
 
 			got, err := newRelay(t, passthroughManager(t, ctrl), store, pub).
 				RelayBatch(context.Background(), 100)
@@ -103,7 +104,7 @@ func Test_relayUsecase_RelayBatch(t *testing.T) {
 			pub := mock_publisher.NewMockPublisher(ctrl)
 			msg := pendingMessage(t)
 
-			store.EXPECT().ClaimPending(gomock.Any(), int32(100)).Return([]outboxbndry.PendingMessage{msg}, nil)
+			store.EXPECT().ClaimPending(gomock.Any(), outboxbndry.ChannelHTTP, int32(100)).Return([]outboxbndry.PendingMessage{msg}, nil)
 			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).DoAndReturn(
 				func(_ context.Context, m publisher.Message) error {
 					assert.Equal(t, msg.MessageID, m.MessageID)
@@ -127,7 +128,7 @@ func Test_relayUsecase_RelayBatch(t *testing.T) {
 			store := mock_outbox.NewMockStore(ctrl)
 			pub := mock_publisher.NewMockPublisher(ctrl)
 
-			store.EXPECT().ClaimPending(gomock.Any(), outbox.DefaultBatchSize).Return(nil, nil)
+			store.EXPECT().ClaimPending(gomock.Any(), outboxbndry.ChannelHTTP, outbox.DefaultBatchSize).Return(nil, nil)
 
 			_, err := newRelay(t, passthroughManager(t, ctrl), store, pub).
 				RelayBatch(context.Background(), 0)
@@ -135,16 +136,16 @@ func Test_relayUsecase_RelayBatch(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		t.Run("publish 失敗かつ attempts が上限未満なら MarkFailed のみ行い dead 化しない", func(t *testing.T) {
+		t.Run("publish が一時失敗なら MarkFailed のみ行い dead 化しない", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			store := mock_outbox.NewMockStore(ctrl)
 			pub := mock_publisher.NewMockPublisher(ctrl)
 			msg := pendingMessage(t)
 
-			store.EXPECT().ClaimPending(gomock.Any(), int32(100)).Return([]outboxbndry.PendingMessage{msg}, nil)
+			store.EXPECT().ClaimPending(gomock.Any(), outboxbndry.ChannelHTTP, int32(100)).Return([]outboxbndry.PendingMessage{msg}, nil)
 			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(xerrors.New("publish failed"))
-			store.EXPECT().MarkFailed(gomock.Any(), msg.ID, gomock.Any()).Return(int32(1), nil)
+			store.EXPECT().MarkFailed(gomock.Any(), msg.ID, gomock.Any(), gomock.Any()).Return(nil)
 
 			got, err := newRelay(t, passthroughManager(t, ctrl), store, pub).
 				RelayBatch(context.Background(), 100)
@@ -163,11 +164,11 @@ func Test_relayUsecase_RelayBatch(t *testing.T) {
 			msg2 := pendingMessage(t)
 			msg2.ID = 2
 
-			store.EXPECT().ClaimPending(gomock.Any(), int32(100)).
+			store.EXPECT().ClaimPending(gomock.Any(), outboxbndry.ChannelHTTP, int32(100)).
 				Return([]outboxbndry.PendingMessage{msg1, msg2}, nil)
 			gomock.InOrder(
 				pub.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(xerrors.New("publish failed")),
-				store.EXPECT().MarkFailed(gomock.Any(), msg1.ID, gomock.Any()).Return(int32(1), nil),
+				store.EXPECT().MarkFailed(gomock.Any(), msg1.ID, gomock.Any(), gomock.Any()).Return(nil),
 				pub.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(nil),
 				store.EXPECT().MarkPublished(gomock.Any(), msg2.ID).Return(nil),
 			)
@@ -188,7 +189,7 @@ func Test_relayUsecase_RelayBatch(t *testing.T) {
 			msg := pendingMessage(t)
 			msg.Headers = []byte(`{"traceparent":"00-x"}`)
 
-			store.EXPECT().ClaimPending(gomock.Any(), int32(100)).Return([]outboxbndry.PendingMessage{msg}, nil)
+			store.EXPECT().ClaimPending(gomock.Any(), outboxbndry.ChannelHTTP, int32(100)).Return([]outboxbndry.PendingMessage{msg}, nil)
 			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).DoAndReturn(
 				func(_ context.Context, m publisher.Message) error {
 					assert.Equal(t, map[string]string{"traceparent": "00-x"}, m.Headers)
@@ -210,7 +211,7 @@ func Test_relayUsecase_RelayBatch(t *testing.T) {
 			msg := pendingMessage(t)
 			msg.Headers = []byte(`not json`)
 
-			store.EXPECT().ClaimPending(gomock.Any(), int32(100)).Return([]outboxbndry.PendingMessage{msg}, nil)
+			store.EXPECT().ClaimPending(gomock.Any(), outboxbndry.ChannelHTTP, int32(100)).Return([]outboxbndry.PendingMessage{msg}, nil)
 			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).DoAndReturn(
 				func(_ context.Context, m publisher.Message) error {
 					assert.Nil(t, m.Headers)
@@ -224,19 +225,20 @@ func Test_relayUsecase_RelayBatch(t *testing.T) {
 			require.NoError(t, err)
 		})
 
-		t.Run("publish 失敗かつ attempts が上限到達なら MarkDead する", func(t *testing.T) {
+		t.Run("publish が恒久失敗なら MarkDead する", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			store := mock_outbox.NewMockStore(ctrl)
 			pub := mock_publisher.NewMockPublisher(ctrl)
 			msg := pendingMessage(t)
 
-			store.EXPECT().ClaimPending(gomock.Any(), int32(100)).Return([]outboxbndry.PendingMessage{msg}, nil)
-			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(xerrors.New("publish failed"))
-			store.EXPECT().MarkFailed(gomock.Any(), msg.ID, gomock.Any()).Return(outbox.DefaultMaxAttempts, nil)
+			store.EXPECT().ClaimPending(gomock.Any(), outboxbndry.ChannelHTTP, int32(100)).Return([]outboxbndry.PendingMessage{msg}, nil)
+			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).
+				Return(xerrors.Join(apperror.ErrPermanent, xerrors.New("rejected")))
+			store.EXPECT().MarkFailed(gomock.Any(), msg.ID, gomock.Any(), gomock.Any()).Return(nil)
 			store.EXPECT().MarkDead(gomock.Any(), msg.ID).Return(nil)
 			metrics := mock_relay.NewMockMetrics(ctrl)
-			metrics.EXPECT().IncDead(gomock.Any()).Times(1)
+			metrics.EXPECT().IncDead(gomock.Any(), outboxbndry.ChannelHTTP.String()).Times(1)
 
 			got, err := newRelayWithMetrics(t, passthroughManager(t, ctrl), store, pub, metrics).
 				RelayBatch(context.Background(), 100)
@@ -257,7 +259,7 @@ func Test_relayUsecase_RelayBatch(t *testing.T) {
 			pub := mock_publisher.NewMockPublisher(ctrl)
 			wantErr := xerrors.New("claim failed")
 
-			store.EXPECT().ClaimPending(gomock.Any(), int32(100)).Return(nil, wantErr)
+			store.EXPECT().ClaimPending(gomock.Any(), outboxbndry.ChannelHTTP, int32(100)).Return(nil, wantErr)
 
 			got, err := newRelay(t, passthroughManager(t, ctrl), store, pub).
 				RelayBatch(context.Background(), 100)
@@ -275,7 +277,7 @@ func Test_relayUsecase_RelayBatch(t *testing.T) {
 			msg := pendingMessage(t)
 			wantErr := xerrors.New("mark failed")
 
-			store.EXPECT().ClaimPending(gomock.Any(), int32(100)).Return([]outboxbndry.PendingMessage{msg}, nil)
+			store.EXPECT().ClaimPending(gomock.Any(), outboxbndry.ChannelHTTP, int32(100)).Return([]outboxbndry.PendingMessage{msg}, nil)
 			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(nil)
 			store.EXPECT().MarkPublished(gomock.Any(), msg.ID).Return(wantErr)
 
@@ -293,9 +295,10 @@ func Test_relayUsecase_RelayBatch(t *testing.T) {
 			msg := pendingMessage(t)
 			wantErr := xerrors.New("dead failed")
 
-			store.EXPECT().ClaimPending(gomock.Any(), int32(100)).Return([]outboxbndry.PendingMessage{msg}, nil)
-			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(xerrors.New("publish failed"))
-			store.EXPECT().MarkFailed(gomock.Any(), msg.ID, gomock.Any()).Return(outbox.DefaultMaxAttempts, nil)
+			store.EXPECT().ClaimPending(gomock.Any(), outboxbndry.ChannelHTTP, int32(100)).Return([]outboxbndry.PendingMessage{msg}, nil)
+			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).
+				Return(xerrors.Join(apperror.ErrPermanent, xerrors.New("rejected")))
+			store.EXPECT().MarkFailed(gomock.Any(), msg.ID, gomock.Any(), gomock.Any()).Return(nil)
 			store.EXPECT().MarkDead(gomock.Any(), msg.ID).Return(wantErr)
 
 			_, err := newRelay(t, passthroughManager(t, ctrl), store, pub).
@@ -315,7 +318,7 @@ func Test_relayUsecase_RelayBatch(t *testing.T) {
 			msg2 := pendingMessage(t)
 			msg2.ID = 2
 
-			store.EXPECT().ClaimPending(gomock.Any(), int32(100)).
+			store.EXPECT().ClaimPending(gomock.Any(), outboxbndry.ChannelHTTP, int32(100)).
 				Return([]outboxbndry.PendingMessage{msg1, msg2}, nil)
 			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(nil).Times(2)
 			store.EXPECT().MarkPublished(gomock.Any(), msg1.ID).Return(nil)
@@ -337,9 +340,9 @@ func Test_relayUsecase_RelayBatch(t *testing.T) {
 			msg := pendingMessage(t)
 			wantErr := xerrors.New("mark failed")
 
-			store.EXPECT().ClaimPending(gomock.Any(), int32(100)).Return([]outboxbndry.PendingMessage{msg}, nil)
+			store.EXPECT().ClaimPending(gomock.Any(), outboxbndry.ChannelHTTP, int32(100)).Return([]outboxbndry.PendingMessage{msg}, nil)
 			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(xerrors.New("publish failed"))
-			store.EXPECT().MarkFailed(gomock.Any(), msg.ID, gomock.Any()).Return(int32(0), wantErr)
+			store.EXPECT().MarkFailed(gomock.Any(), msg.ID, gomock.Any(), gomock.Any()).Return(wantErr)
 
 			_, err := newRelay(t, passthroughManager(t, ctrl), store, pub).
 				RelayBatch(context.Background(), 100)
@@ -360,7 +363,7 @@ func Test_relayUsecase_RecordLag(t *testing.T) {
 		return outbox.NewRelay(
 			mock_tx.NewMockManager(ctrl), store, mock_publisher.NewMockPublisher(ctrl),
 			metrics, testkit.NewMockClock(t, now),
-			logging.NewTestLogger(t), observability.NewNoopTracerFactory(t))
+			logging.NewTestLogger(t), observability.NewNoopTracerFactory(t), outboxbndry.ChannelHTTP)
 	}
 
 	t.Run("正常系", func(t *testing.T) {
@@ -370,9 +373,9 @@ func Test_relayUsecase_RecordLag(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			store := mock_outbox.NewMockStore(ctrl)
-			store.EXPECT().OldestPendingCreatedAt(gomock.Any()).Return(now.Add(-time.Minute), true, nil)
+			store.EXPECT().OldestPendingCreatedAt(gomock.Any(), outboxbndry.ChannelHTTP).Return(now.Add(-time.Minute), true, nil)
 			metrics := mock_relay.NewMockMetrics(ctrl)
-			metrics.EXPECT().SetLagSeconds(gomock.Any(), int64(60)).Times(1)
+			metrics.EXPECT().SetLagSeconds(gomock.Any(), outboxbndry.ChannelHTTP.String(), int64(60)).Times(1)
 
 			require.NoError(t, build(t, store, metrics).RecordLag(context.Background()))
 		})
@@ -381,9 +384,9 @@ func Test_relayUsecase_RecordLag(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			store := mock_outbox.NewMockStore(ctrl)
-			store.EXPECT().OldestPendingCreatedAt(gomock.Any()).Return(time.Time{}, false, nil)
+			store.EXPECT().OldestPendingCreatedAt(gomock.Any(), outboxbndry.ChannelHTTP).Return(time.Time{}, false, nil)
 			metrics := mock_relay.NewMockMetrics(ctrl)
-			metrics.EXPECT().SetLagSeconds(gomock.Any(), int64(0)).Times(1)
+			metrics.EXPECT().SetLagSeconds(gomock.Any(), outboxbndry.ChannelHTTP.String(), int64(0)).Times(1)
 
 			require.NoError(t, build(t, store, metrics).RecordLag(context.Background()))
 		})
@@ -392,9 +395,9 @@ func Test_relayUsecase_RecordLag(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			store := mock_outbox.NewMockStore(ctrl)
-			store.EXPECT().OldestPendingCreatedAt(gomock.Any()).Return(now.Add(time.Minute), true, nil)
+			store.EXPECT().OldestPendingCreatedAt(gomock.Any(), outboxbndry.ChannelHTTP).Return(now.Add(time.Minute), true, nil)
 			metrics := mock_relay.NewMockMetrics(ctrl)
-			metrics.EXPECT().SetLagSeconds(gomock.Any(), int64(0)).Times(1)
+			metrics.EXPECT().SetLagSeconds(gomock.Any(), outboxbndry.ChannelHTTP.String(), int64(0)).Times(1)
 
 			require.NoError(t, build(t, store, metrics).RecordLag(context.Background()))
 		})
@@ -408,11 +411,56 @@ func Test_relayUsecase_RecordLag(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			store := mock_outbox.NewMockStore(ctrl)
 			wantErr := xerrors.New("lag query failed")
-			store.EXPECT().OldestPendingCreatedAt(gomock.Any()).Return(time.Time{}, false, wantErr)
+			store.EXPECT().OldestPendingCreatedAt(gomock.Any(), outboxbndry.ChannelHTTP).Return(time.Time{}, false, wantErr)
 			// エラー時は SetLagSeconds を呼ばない。
 			metrics := mock_relay.NewMockMetrics(ctrl)
 
 			require.ErrorIs(t, build(t, store, metrics).RecordLag(context.Background()), wantErr)
+		})
+	})
+}
+
+func Test_relayUsecase_RecordBlockedStreams(t *testing.T) {
+	t.Parallel()
+
+	build := func(t *testing.T, store outboxbndry.Store, metrics outbox.Metrics) outbox.RelayUsecase {
+		t.Helper()
+		ctrl := gomock.NewController(t)
+		return outbox.NewRelay(
+			mock_tx.NewMockManager(ctrl), store, mock_publisher.NewMockPublisher(ctrl),
+			metrics, testkit.NewMockClock(t, time.Time{}),
+			logging.NewTestLogger(t), observability.NewNoopTracerFactory(t), outboxbndry.ChannelHTTP)
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("停止中ストリーム数を自チャネルの属性付きで記録し nil を返す", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			store := mock_outbox.NewMockStore(ctrl)
+			metrics := mock_relay.NewMockMetrics(ctrl)
+
+			store.EXPECT().CountBlockedStreams(gomock.Any(), outboxbndry.ChannelHTTP).Return(int64(3), nil)
+			metrics.EXPECT().SetBlockedStreams(gomock.Any(), outboxbndry.ChannelHTTP.String(), int64(3)).Times(1)
+
+			require.NoError(t, build(t, store, metrics).RecordBlockedStreams(context.Background()))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("CountBlockedStreams のエラーを伝播し記録しない", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			store := mock_outbox.NewMockStore(ctrl)
+			metrics := mock_relay.NewMockMetrics(ctrl)
+			wantErr := xerrors.New("count failed")
+
+			store.EXPECT().CountBlockedStreams(gomock.Any(), outboxbndry.ChannelHTTP).Return(int64(0), wantErr)
+
+			require.ErrorIs(t, build(t, store, metrics).RecordBlockedStreams(context.Background()), wantErr)
 		})
 	})
 }

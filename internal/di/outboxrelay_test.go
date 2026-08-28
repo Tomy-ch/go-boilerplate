@@ -12,13 +12,14 @@ import (
 	config "go-boilerplate/internal/config"
 	outboxengine "go-boilerplate/internal/controller/outbox"
 	"go-boilerplate/internal/di/module"
+	outboxbndry "go-boilerplate/internal/usecase/boundary/outbox"
 	outboxuc "go-boilerplate/internal/usecase/outbox"
 )
 
 func TestNewOutboxRelayCore(t *testing.T) {
 	t.Parallel()
 
-	require.NoError(t, fx.ValidateApp(NewOutboxRelayCore(), fx.WithLogger(NewFxEventLogger)))
+	require.NoError(t, fx.ValidateApp(NewOutboxRelayCore(outboxbndry.ChannelHTTP), fx.WithLogger(NewFxEventLogger)))
 }
 
 func TestNewOutboxRelayApp(t *testing.T) {
@@ -30,7 +31,7 @@ func TestNewOutboxRelayApp(t *testing.T) {
 			t.Setenv("OUTBOX_PUBLISHER", "http")
 			t.Setenv("ENDPOINT_OUTBOX", "http://localhost:9999")
 
-			app := NewOutboxRelayApp(30 * time.Second)
+			app := NewOutboxRelayApp(30*time.Second, outboxbndry.ChannelHTTP)
 
 			// fx.New はコンストラクタ（NewEndpoint 等）を実行しエラーを app.Err() に格納する。
 			require.NoError(t, app.Err())
@@ -42,7 +43,7 @@ func TestNewOutboxRelayApp(t *testing.T) {
 			t.Setenv("OUTBOX_PUBLISHER", "http")
 			t.Setenv("ENDPOINT_OUTBOX", "")
 
-			app := NewOutboxRelayApp(30 * time.Second)
+			app := NewOutboxRelayApp(30*time.Second, outboxbndry.ChannelHTTP)
 
 			require.Error(t, app.Err())
 		})
@@ -121,7 +122,7 @@ func Test_outboxRelayCommonOptions(t *testing.T) {
 			require.Error(t, fx.ValidateApp(withoutRelay...))
 
 			withRelay := append(outboxRelayCommonOptions(),
-				module.OutboxRelayModule(), fx.Populate(&engine), fx.NopLogger)
+				module.OutboxRelayModule(outboxbndry.ChannelHTTP), fx.Populate(&engine), fx.NopLogger)
 			require.NoError(t, fx.ValidateApp(withRelay...))
 		})
 	})

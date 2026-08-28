@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/infrastructure/httpclient"
 	mock_httpclient "go-boilerplate/internal/infrastructure/httpclient/mock"
 	"go-boilerplate/internal/infrastructure/publisher"
@@ -135,6 +136,42 @@ func Test_httpPublisher_Publish(t *testing.T) {
 				})
 
 			require.ErrorIs(t, err, wantErr)
+		})
+
+		t.Run("受信側が拒否した応答は恒久失敗として分類して返す", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			client := mock_httpclient.NewMockClient(ctrl)
+
+			client.EXPECT().Do(gomock.Any(), gomock.Any()).
+				Return(&httpclient.Response{StatusCode: 400}, apperror.ErrInvalidArgument)
+
+			err := publisher.NewHTTP(publisher.Endpoint(testEndpoint), client, observability.NewNoopTracerFactory(t)).
+				Publish(context.Background(), pubbndry.Message{
+					MessageID: uuidtestkit.NewTestFromSalt(t, "msg"),
+					EventType: "e.v1",
+					Payload:   []byte(`{}`),
+				})
+
+			require.ErrorIs(t, err, apperror.ErrPermanent)
+		})
+
+		t.Run("受信側の一時障害は一時失敗として分類して返す", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			client := mock_httpclient.NewMockClient(ctrl)
+
+			client.EXPECT().Do(gomock.Any(), gomock.Any()).
+				Return(&httpclient.Response{StatusCode: 503}, apperror.ErrUnavailable)
+
+			err := publisher.NewHTTP(publisher.Endpoint(testEndpoint), client, observability.NewNoopTracerFactory(t)).
+				Publish(context.Background(), pubbndry.Message{
+					MessageID: uuidtestkit.NewTestFromSalt(t, "msg"),
+					EventType: "e.v1",
+					Payload:   []byte(`{}`),
+				})
+
+			require.ErrorIs(t, err, apperror.ErrRetryable)
 		})
 	})
 }

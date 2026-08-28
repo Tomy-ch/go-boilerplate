@@ -63,6 +63,7 @@ func Test_emitUsecase_Emit(t *testing.T) {
 					EventType:     "resource.created.v1",
 					Payload:       []byte(`{"v":1}`),
 					Headers:       nil,
+					Channel:       outboxbndry.ChannelHTTP,
 				}).
 				Return(want, nil)
 
@@ -72,6 +73,7 @@ func Test_emitUsecase_Emit(t *testing.T) {
 					AggregateID:   "p-1",
 					EventType:     "resource.created.v1",
 					Payload:       []byte(`{"v":1}`),
+					Channel:       outboxbndry.ChannelHTTP,
 				})
 
 			require.NoError(t, err)
@@ -98,6 +100,7 @@ func Test_emitUsecase_Emit(t *testing.T) {
 					EventType: "e.v1",
 					Payload:   []byte(`{}`),
 					Headers:   map[string]string{"traceparent": "00-abc"},
+					Channel:   outboxbndry.ChannelHTTP,
 				})
 
 			require.NoError(t, err)
@@ -133,6 +136,7 @@ func Test_emitUsecase_Emit(t *testing.T) {
 					EventType: "e.v1",
 					Payload:   []byte(`{}`),
 					Headers:   headers,
+					Channel:   outboxbndry.ChannelHTTP,
 				})
 
 			require.NoError(t, err)
@@ -164,6 +168,7 @@ func Test_emitUsecase_Emit(t *testing.T) {
 				Emit(ctx, outbox.EmitInput{
 					EventType: "e.v1",
 					Payload:   []byte(`{}`),
+					Channel:   outboxbndry.ChannelHTTP,
 				})
 
 			require.NoError(t, err)
@@ -198,6 +203,7 @@ func Test_emitUsecase_Emit(t *testing.T) {
 					EventType: "e.v1",
 					Payload:   []byte(`{}`),
 					Headers:   map[string]string{"traceparent": "00-abc", "foo": "bar"},
+					Channel:   outboxbndry.ChannelHTTP,
 				})
 
 			require.NoError(t, err)
@@ -217,7 +223,9 @@ func Test_emitUsecase_Emit(t *testing.T) {
 			store.EXPECT().Insert(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, wantErr)
 
 			_, err := outbox.NewEmit(store, observability.NewNoopTracerFactory(t)).
-				Emit(context.Background(), outbox.EmitInput{EventType: "e.v1", Payload: []byte(`{}`)})
+				Emit(context.Background(), outbox.EmitInput{
+					EventType: "e.v1", Payload: []byte(`{}`), Channel: outboxbndry.ChannelHTTP,
+				})
 
 			require.ErrorIs(t, err, wantErr)
 		})

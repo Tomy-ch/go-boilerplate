@@ -7,6 +7,7 @@ import (
 	"go.uber.org/fx"
 
 	outboxengine "go-boilerplate/internal/controller/outbox"
+	outboxbndry "go-boilerplate/internal/usecase/boundary/outbox"
 	publisherbd "go-boilerplate/internal/usecase/boundary/publisher"
 	outboxuc "go-boilerplate/internal/usecase/outbox"
 )
@@ -17,7 +18,7 @@ func TestOutboxRelayModule_GraphIsValid(t *testing.T) {
 	// relay engine は usecase（RelayUsecase）・clock.Sleeper・OutboxConfig 等に依存する。
 	// poll ループの振る舞いは controller 層のテストに任せ、ここでは engine と
 	// そのライフサイクルフックが依存と欠落なく結線されることを確認する。
-	opts := append(commonDeps(), InfrastructureModule(), UsecaseModule(), OutboxRelayModule())
+	opts := append(commonDeps(), InfrastructureModule(), UsecaseModule(), OutboxRelayModule(outboxbndry.ChannelHTTP))
 	validateGraph(t, opts...)
 }
 
@@ -40,7 +41,7 @@ func TestOutboxRelayModule(t *testing.T) {
 				relay    outboxuc.RelayUsecase
 			)
 
-			validateGraph(t, append(relayDeps(), OutboxRelayModule(),
+			validateGraph(t, append(relayDeps(), OutboxRelayModule(outboxbndry.ChannelHTTP),
 				fx.Populate(&engine, &settings, &relay))...)
 		})
 
@@ -50,7 +51,7 @@ func TestOutboxRelayModule(t *testing.T) {
 			// publisher は共有 InfrastructureModule には含まれず、本モジュールが持ち込む。
 			var publisher publisherbd.Publisher
 
-			validateGraph(t, append(relayDeps(), OutboxRelayModule(), fx.Populate(&publisher))...)
+			validateGraph(t, append(relayDeps(), OutboxRelayModule(outboxbndry.ChannelHTTP), fx.Populate(&publisher))...)
 		})
 	})
 
@@ -63,6 +64,26 @@ func TestOutboxRelayModule(t *testing.T) {
 			var engine *outboxengine.Engine
 
 			opts := append(relayDeps(), fx.Populate(&engine), fx.NopLogger)
+			require.Error(t, fx.ValidateApp(opts...))
+		})
+	})
+}
+
+func TestOutboxRelayModule_ChannelGuard(t *testing.T) {
+	t.Parallel()
+
+	relayDeps := func() []fx.Option {
+		return append(commonDeps(), InfrastructureModule(), UsecaseModule())
+	}
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("配送できるpublisher実装が無いチャネルでは起動を拒否する", func(t *testing.T) {
+			t.Parallel()
+
+			// realtime publisher はまだ無いため、誤配線を無言で許さず構築時点で失敗する。
+			opts := append(relayDeps(), OutboxRelayModule(outboxbndry.ChannelRealtime), fx.NopLogger)
 			require.Error(t, fx.ValidateApp(opts...))
 		})
 	})

@@ -30,7 +30,17 @@ func emitParams() outboxbndry.EmitParams {
 		AggregateID:   "p-1",
 		EventType:     "resource.created.v1",
 		Payload:       []byte(`{"v":1}`),
+		Channel:       outboxbndry.ChannelHTTP,
 	}
+}
+
+// orderedEmitParams は、順序保証を持つチャネル（realtime）の行を作る入力を返します。
+func orderedEmitParams(orderingKey string, sequence int64) outboxbndry.EmitParams {
+	p := emitParams()
+	p.Channel = outboxbndry.ChannelRealtime
+	p.OrderingKey = orderingKey
+	p.OrderingSequence = sequence
+	return p
 }
 
 // newTestStore は、共有テストDB上の store と tx 直列化ランナーを組み立てるテストヘルパーです。
@@ -82,7 +92,7 @@ func Test_store_Insert(t *testing.T) {
 				assert.False(t, msgID.IsNil())
 
 				// 挿入行は pending として claim できる。
-				msgs, err := s.ClaimPending(ctx, 10)
+				msgs, err := s.ClaimPending(ctx, outboxbndry.ChannelHTTP, 10)
 				require.NoError(t, err)
 				require.Len(t, msgs, 1)
 				assert.Equal(t, msgID, msgs[0].MessageID)
@@ -117,7 +127,7 @@ func Test_store_ClaimPending(t *testing.T) {
 				msgID, err := s.Insert(ctx, emitParams())
 				require.NoError(t, err)
 
-				msgs, err := s.ClaimPending(ctx, 10)
+				msgs, err := s.ClaimPending(ctx, outboxbndry.ChannelHTTP, 10)
 				require.NoError(t, err)
 				require.Len(t, msgs, 1)
 				assert.Equal(t, msgID, msgs[0].MessageID)
@@ -136,7 +146,7 @@ func Test_store_ClaimPending(t *testing.T) {
 					require.NoError(t, err)
 				}
 
-				msgs, err := s.ClaimPending(ctx, 2)
+				msgs, err := s.ClaimPending(ctx, outboxbndry.ChannelHTTP, 2)
 				require.NoError(t, err)
 				require.Len(t, msgs, 2)
 			})
@@ -146,7 +156,7 @@ func Test_store_ClaimPending(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				msgs, err := s.ClaimPending(ctx, 10)
+				msgs, err := s.ClaimPending(ctx, outboxbndry.ChannelHTTP, 10)
 				require.NoError(t, err)
 				assert.Empty(t, msgs)
 			})
@@ -159,7 +169,7 @@ func Test_store_ClaimPending(t *testing.T) {
 		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化して返す", func(t *testing.T) {
 			t.Parallel()
 
-			_, err := s.ClaimPending(canceledContext(t), 10)
+			_, err := s.ClaimPending(canceledContext(t), outboxbndry.ChannelHTTP, 10)
 			require.ErrorIs(t, err, apperror.ErrCanceled)
 		})
 	})
@@ -212,7 +222,7 @@ func Test_store_ClaimPending_concurrentSkipLocked(t *testing.T) {
 	// release 後は行が pending へ戻り、新規 tx から再 claim できる（ロック解放後は取得可能）。
 	// SELECT のみのため rollback で pending のまま残し、次の部分 skip フェーズで再利用する。
 	reclaimErr := txm.Do(context.Background(), func(ctx context.Context) error {
-		claimed, err := s.ClaimPending(ctx, 10)
+		claimed, err := s.ClaimPending(ctx, outboxbndry.ChannelHTTP, 10)
 		if err != nil {
 			return err
 		}
@@ -247,7 +257,7 @@ func assertSkipLockedContention(
 
 	go func() {
 		holderDone <- do(context.Background(), func(ctx context.Context) error {
-			claimed, err := s.ClaimPending(ctx, holderLimit)
+			claimed, err := s.ClaimPending(ctx, outboxbndry.ChannelHTTP, holderLimit)
 			if err != nil {
 				return err
 			}
@@ -268,7 +278,7 @@ func assertSkipLockedContention(
 	}
 
 	contenderErr := do(context.Background(), func(ctx context.Context) error {
-		claimed, err := s.ClaimPending(ctx, 10)
+		claimed, err := s.ClaimPending(ctx, outboxbndry.ChannelHTTP, 10)
 		if err != nil {
 			return err
 		}
@@ -295,13 +305,13 @@ func Test_store_MarkPublished(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				_, err := s.Insert(ctx, emitParams())
 				require.NoError(t, err)
-				msgs, err := s.ClaimPending(ctx, 10)
+				msgs, err := s.ClaimPending(ctx, outboxbndry.ChannelHTTP, 10)
 				require.NoError(t, err)
 				require.Len(t, msgs, 1)
 
 				require.NoError(t, s.MarkPublished(ctx, msgs[0].ID))
 
-				after, err := s.ClaimPending(ctx, 10)
+				after, err := s.ClaimPending(ctx, outboxbndry.ChannelHTTP, 10)
 				require.NoError(t, err)
 				assert.Empty(t, after)
 			})
@@ -327,29 +337,48 @@ func Test_store_MarkFailed(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("attemptsを加算し加算後の値を返す", func(t *testing.T) {
+		t.Run("次回試行時刻まで進めた行はその時刻までclaimされない", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
 				_, err := s.Insert(ctx, emitParams())
 				require.NoError(t, err)
-				msgs, err := s.ClaimPending(ctx, 10)
+				msgs, err := s.ClaimPending(ctx, outboxbndry.ChannelHTTP, 10)
 				require.NoError(t, err)
 				require.Len(t, msgs, 1)
 
-				attempts, err := s.MarkFailed(ctx, msgs[0].ID, "boom")
+				require.NoError(t, s.MarkFailed(ctx, msgs[0].ID, "boom", time.Now().Add(time.Hour)))
+
+				backedOff, err := s.ClaimPending(ctx, outboxbndry.ChannelHTTP, 10)
 				require.NoError(t, err)
-				assert.Equal(t, int32(1), attempts)
+				assert.Empty(t, backedOff)
 			})
 		})
 
-		t.Run("pendingでないidに対しては0を返す", func(t *testing.T) {
+		t.Run("次回試行時刻が過ぎていれば再びclaimできる", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				attempts, err := s.MarkFailed(ctx, 1<<60, "boom")
+				_, err := s.Insert(ctx, emitParams())
 				require.NoError(t, err)
-				assert.Equal(t, int32(0), attempts)
+				msgs, err := s.ClaimPending(ctx, outboxbndry.ChannelHTTP, 10)
+				require.NoError(t, err)
+				require.Len(t, msgs, 1)
+
+				require.NoError(t, s.MarkFailed(ctx, msgs[0].ID, "boom", time.Now().Add(-time.Hour)))
+
+				again, err := s.ClaimPending(ctx, outboxbndry.ChannelHTTP, 10)
+				require.NoError(t, err)
+				require.Len(t, again, 1)
+				assert.Equal(t, int32(1), again[0].Attempts)
+			})
+		})
+
+		t.Run("pendingでないidに対しては何もしない", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				require.NoError(t, s.MarkFailed(ctx, 1<<60, "boom", time.Now()))
 			})
 		})
 	})
@@ -360,7 +389,7 @@ func Test_store_MarkFailed(t *testing.T) {
 		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化して返す", func(t *testing.T) {
 			t.Parallel()
 
-			_, err := s.MarkFailed(canceledContext(t), 1, "boom")
+			err := s.MarkFailed(canceledContext(t), 1, "boom", time.Now())
 			require.ErrorIs(t, err, apperror.ErrCanceled)
 		})
 	})
@@ -380,13 +409,13 @@ func Test_store_MarkDead(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				_, err := s.Insert(ctx, emitParams())
 				require.NoError(t, err)
-				msgs, err := s.ClaimPending(ctx, 10)
+				msgs, err := s.ClaimPending(ctx, outboxbndry.ChannelHTTP, 10)
 				require.NoError(t, err)
 				require.Len(t, msgs, 1)
 
 				require.NoError(t, s.MarkDead(ctx, msgs[0].ID))
 
-				none, err := s.ClaimPending(ctx, 10)
+				none, err := s.ClaimPending(ctx, outboxbndry.ChannelHTTP, 10)
 				require.NoError(t, err)
 				assert.Empty(t, none)
 			})
@@ -418,7 +447,7 @@ func Test_store_ReplayDead(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				_, err := s.Insert(ctx, emitParams())
 				require.NoError(t, err)
-				msgs, err := s.ClaimPending(ctx, 10)
+				msgs, err := s.ClaimPending(ctx, outboxbndry.ChannelHTTP, 10)
 				require.NoError(t, err)
 				require.Len(t, msgs, 1)
 				require.NoError(t, s.MarkDead(ctx, msgs[0].ID))
@@ -427,7 +456,31 @@ func Test_store_ReplayDead(t *testing.T) {
 				require.NoError(t, err)
 				assert.GreaterOrEqual(t, replayed, int64(1))
 
-				back, err := s.ClaimPending(ctx, 10)
+				back, err := s.ClaimPending(ctx, outboxbndry.ChannelHTTP, 10)
+				require.NoError(t, err)
+				assert.Len(t, back, 1)
+			})
+		})
+
+		t.Run("バックオフ済みの行でも戻した直後にclaimできる", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				_, err := s.Insert(ctx, emitParams())
+				require.NoError(t, err)
+				msgs, err := s.ClaimPending(ctx, outboxbndry.ChannelHTTP, 10)
+				require.NoError(t, err)
+				require.Len(t, msgs, 1)
+
+				// dead 化の前に次回試行時刻を遠い未来へ進めておく。戻すときに現在時刻へ引き直さないと、
+				// pending に戻っても claim されないまま止まる。
+				require.NoError(t, s.MarkFailed(ctx, msgs[0].ID, "boom", time.Now().Add(24*time.Hour)))
+				require.NoError(t, s.MarkDead(ctx, msgs[0].ID))
+
+				_, err = s.ReplayDead(ctx, nil)
+				require.NoError(t, err)
+
+				back, err := s.ClaimPending(ctx, outboxbndry.ChannelHTTP, 10)
 				require.NoError(t, err)
 				assert.Len(t, back, 1)
 			})
@@ -443,7 +496,7 @@ func Test_store_ReplayDead(t *testing.T) {
 				otherMsgID, err := s.Insert(ctx, emitParams())
 				require.NoError(t, err)
 
-				claimed, err := s.ClaimPending(ctx, 10)
+				claimed, err := s.ClaimPending(ctx, outboxbndry.ChannelHTTP, 10)
 				require.NoError(t, err)
 				require.Len(t, claimed, 2)
 				for _, m := range claimed {
@@ -456,7 +509,7 @@ func Test_store_ReplayDead(t *testing.T) {
 				assert.Equal(t, int64(1), replayed)
 
 				// 戻ったのは指定行のみ（再 claim で targetMsgID だけが返る）。
-				back, err := s.ClaimPending(ctx, 10)
+				back, err := s.ClaimPending(ctx, outboxbndry.ChannelHTTP, 10)
 				require.NoError(t, err)
 				require.Len(t, back, 1)
 				assert.Equal(t, targetMsgID, back[0].MessageID)
@@ -491,7 +544,7 @@ func Test_store_DeletePublished(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				_, err := s.Insert(ctx, emitParams())
 				require.NoError(t, err)
-				msgs, err := s.ClaimPending(ctx, 10)
+				msgs, err := s.ClaimPending(ctx, outboxbndry.ChannelHTTP, 10)
 				require.NoError(t, err)
 				require.Len(t, msgs, 1)
 				require.NoError(t, s.MarkPublished(ctx, msgs[0].ID))
@@ -508,7 +561,7 @@ func Test_store_DeletePublished(t *testing.T) {
 			txm.WithinTx(func(ctx context.Context) {
 				_, err := s.Insert(ctx, emitParams())
 				require.NoError(t, err)
-				msgs, err := s.ClaimPending(ctx, 10)
+				msgs, err := s.ClaimPending(ctx, outboxbndry.ChannelHTTP, 10)
 				require.NoError(t, err)
 				require.Len(t, msgs, 1)
 				require.NoError(t, s.MarkPublished(ctx, msgs[0].ID))
@@ -546,14 +599,14 @@ func Test_store_OldestPendingCreatedAt(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				// 空状態では ok=false。
-				_, ok, err := s.OldestPendingCreatedAt(ctx)
+				_, ok, err := s.OldestPendingCreatedAt(ctx, outboxbndry.ChannelHTTP)
 				require.NoError(t, err)
 				assert.False(t, ok)
 
 				_, err = s.Insert(ctx, emitParams())
 				require.NoError(t, err)
 
-				createdAt, ok, err := s.OldestPendingCreatedAt(ctx)
+				createdAt, ok, err := s.OldestPendingCreatedAt(ctx, outboxbndry.ChannelHTTP)
 				require.NoError(t, err)
 				assert.True(t, ok)
 				assert.False(t, createdAt.IsZero())
@@ -567,7 +620,173 @@ func Test_store_OldestPendingCreatedAt(t *testing.T) {
 		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化して返す", func(t *testing.T) {
 			t.Parallel()
 
-			_, _, err := s.OldestPendingCreatedAt(canceledContext(t))
+			_, _, err := s.OldestPendingCreatedAt(canceledContext(t), outboxbndry.ChannelHTTP)
+			require.ErrorIs(t, err, apperror.ErrCanceled)
+		})
+	})
+}
+
+func Test_store_ClaimPending_headOfLine(t *testing.T) {
+	t.Parallel()
+
+	s, txm := newTestStore(t)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("先行sequenceが未publishの間は後続sequenceをclaimしない", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				key := "stream-hol-pending"
+				first, err := s.Insert(ctx, orderedEmitParams(key, 1))
+				require.NoError(t, err)
+				second, err := s.Insert(ctx, orderedEmitParams(key, 2))
+				require.NoError(t, err)
+
+				claimed, err := s.ClaimPending(ctx, outboxbndry.ChannelRealtime, 10)
+				require.NoError(t, err)
+				require.Len(t, claimed, 1)
+				assert.Equal(t, first, claimed[0].MessageID)
+
+				require.NoError(t, s.MarkPublished(ctx, claimed[0].ID))
+
+				next, err := s.ClaimPending(ctx, outboxbndry.ChannelRealtime, 10)
+				require.NoError(t, err)
+				require.Len(t, next, 1)
+				assert.Equal(t, second, next[0].MessageID)
+			})
+		})
+
+		t.Run("先頭がdeadのストリームは後続をclaimしない", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				key := "stream-hol-dead"
+				_, err := s.Insert(ctx, orderedEmitParams(key, 1))
+				require.NoError(t, err)
+				_, err = s.Insert(ctx, orderedEmitParams(key, 2))
+				require.NoError(t, err)
+
+				claimed, err := s.ClaimPending(ctx, outboxbndry.ChannelRealtime, 10)
+				require.NoError(t, err)
+				require.Len(t, claimed, 1)
+				require.NoError(t, s.MarkDead(ctx, claimed[0].ID))
+
+				blocked, err := s.ClaimPending(ctx, outboxbndry.ChannelRealtime, 10)
+				require.NoError(t, err)
+				assert.Empty(t, blocked)
+			})
+		})
+
+		t.Run("順序キーを持たない行は他ストリームの停止に巻き込まれない", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				_, err := s.Insert(ctx, orderedEmitParams("stream-hol-unordered", 1))
+				require.NoError(t, err)
+				unordered, err := s.Insert(ctx, emitParams())
+				require.NoError(t, err)
+
+				claimed, err := s.ClaimPending(ctx, outboxbndry.ChannelHTTP, 10)
+				require.NoError(t, err)
+				require.Len(t, claimed, 1)
+				assert.Equal(t, unordered, claimed[0].MessageID)
+			})
+		})
+	})
+}
+
+func Test_store_ClaimPending_channelIsolation(t *testing.T) {
+	t.Parallel()
+
+	s, txm := newTestStore(t)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("停止しているチャネルの行は別チャネルのclaimを妨げない", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				// realtime 側は先頭を dead にして停止させる。
+				_, err := s.Insert(ctx, orderedEmitParams("stream-isolated", 1))
+				require.NoError(t, err)
+				realtime, err := s.ClaimPending(ctx, outboxbndry.ChannelRealtime, 10)
+				require.NoError(t, err)
+				require.Len(t, realtime, 1)
+				require.NoError(t, s.MarkDead(ctx, realtime[0].ID))
+
+				httpMsg, err := s.Insert(ctx, emitParams())
+				require.NoError(t, err)
+
+				claimed, err := s.ClaimPending(ctx, outboxbndry.ChannelHTTP, 10)
+				require.NoError(t, err)
+				require.Len(t, claimed, 1)
+				assert.Equal(t, httpMsg, claimed[0].MessageID)
+			})
+		})
+	})
+}
+
+func Test_store_CountBlockedStreams(t *testing.T) {
+	t.Parallel()
+
+	s, txm := newTestStore(t)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("先頭がdeadのストリームだけを数える", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				// 先頭が pending のストリームは停止していない。
+				_, err := s.Insert(ctx, orderedEmitParams("stream-count-alive", 1))
+				require.NoError(t, err)
+
+				_, err = s.Insert(ctx, orderedEmitParams("stream-count-dead", 1))
+				require.NoError(t, err)
+				_, err = s.Insert(ctx, orderedEmitParams("stream-count-dead", 2))
+				require.NoError(t, err)
+
+				claimed, err := s.ClaimPending(ctx, outboxbndry.ChannelRealtime, 10)
+				require.NoError(t, err)
+				require.Len(t, claimed, 2)
+				// claim は id 昇順なので、2 件目が stream-count-dead の先頭にあたる。
+				require.NoError(t, s.MarkDead(ctx, claimed[1].ID))
+
+				count, err := s.CountBlockedStreams(ctx, outboxbndry.ChannelRealtime)
+				require.NoError(t, err)
+				assert.Equal(t, int64(1), count)
+			})
+		})
+
+		t.Run("順序を持たないチャネルは常に0を返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				_, err := s.Insert(ctx, emitParams())
+				require.NoError(t, err)
+				claimed, err := s.ClaimPending(ctx, outboxbndry.ChannelHTTP, 10)
+				require.NoError(t, err)
+				require.Len(t, claimed, 1)
+				require.NoError(t, s.MarkDead(ctx, claimed[0].ID))
+
+				count, err := s.CountBlockedStreams(ctx, outboxbndry.ChannelHTTP)
+				require.NoError(t, err)
+				assert.Equal(t, int64(0), count)
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化して返す", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := s.CountBlockedStreams(canceledContext(t), outboxbndry.ChannelRealtime)
 			require.ErrorIs(t, err, apperror.ErrCanceled)
 		})
 	})

@@ -3,9 +3,13 @@ package outbox
 import (
 	"context"
 	"testing"
+	"time"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/boundary/clock"
+	clocktestkit "go-boilerplate/internal/usecase/boundary/clock/testkit"
 	outboxbndry "go-boilerplate/internal/usecase/boundary/outbox"
 	mock_outbox "go-boilerplate/internal/usecase/boundary/outbox/mock"
 	"go-boilerplate/internal/usecase/boundary/publisher"
@@ -20,6 +24,9 @@ import (
 
 // countingMetrics は、IncDead の呼び出し回数を記録する Metrics スタブです。
 type countingMetrics struct{ deadCount int }
+
+// deliverNow は、deliver テストで clock が返す固定時刻です。
+var deliverNow = time.Date(2026, 8, 29, 12, 0, 0, 0, time.UTC)
 
 func Test_decodeHeaders(t *testing.T) {
 	t.Parallel()
@@ -60,17 +67,24 @@ func newDeliverUsecase(
 ) *relayUsecase {
 	t.Helper()
 	return &relayUsecase{
-		store:       store,
-		publisher:   pub,
-		metrics:     metrics,
-		logging:     logging.NewTestLogger(t),
-		tracer:      observability.NewNoopLayerTracer(t),
-		maxAttempts: DefaultMaxAttempts,
+		store:     store,
+		publisher: pub,
+		metrics:   metrics,
+		clock:     newFixedClock(deliverNow),
+		logging:   logging.NewTestLogger(t),
+		tracer:    observability.NewNoopLayerTracer(t),
+		channel:   outboxbndry.ChannelHTTP,
 	}
 }
 
-func (*countingMetrics) SetLagSeconds(context.Context, int64) {}
-func (m *countingMetrics) IncDead(context.Context)            { m.deadCount++ }
+// newFixedClock は、常に at を返す clock.Clock を生成します。
+func newFixedClock(at time.Time) clock.Clock {
+	return clocktestkit.NewStepClock(at, 0)
+}
+
+func (*countingMetrics) SetLagSeconds(context.Context, string, int64)     {}
+func (m *countingMetrics) IncDead(context.Context, string)                { m.deadCount++ }
+func (*countingMetrics) SetBlockedStreams(context.Context, string, int64) {}
 
 func deliverMessage(t *testing.T) outboxbndry.PendingMessage {
 	t.Helper()
@@ -111,24 +125,7 @@ func Test_relayUsecase_deliver(t *testing.T) {
 			assert.True(t, published)
 		})
 
-		t.Run("publish 失敗かつ attempts が上限未満なら MarkFailed のみで published=false・error=nil", func(t *testing.T) {
-			t.Parallel()
-			ctrl := gomock.NewController(t)
-			store := mock_outbox.NewMockStore(ctrl)
-			pub := mock_publisher.NewMockPublisher(ctrl)
-			msg := deliverMessage(t)
-
-			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(xerrors.New("publish failed"))
-			store.EXPECT().MarkFailed(gomock.Any(), msg.ID, gomock.Any()).Return(int32(1), nil)
-
-			u := newDeliverUsecase(t, store, pub, observability.NewNoopOutboxMetrics(t))
-			published, err := u.deliver(context.Background(), msg)
-
-			require.NoError(t, err)
-			assert.False(t, published)
-		})
-
-		t.Run("publish 失敗かつ attempts が上限到達なら MarkDead し IncDead を計上して published=false・error=nil", func(t *testing.T) {
+		t.Run("一時失敗なら dead にせず次回試行時刻を進めて published=false・error=nil", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			store := mock_outbox.NewMockStore(ctrl)
@@ -136,8 +133,35 @@ func Test_relayUsecase_deliver(t *testing.T) {
 			metrics := &countingMetrics{}
 			msg := deliverMessage(t)
 
-			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(xerrors.New("publish failed"))
-			store.EXPECT().MarkFailed(gomock.Any(), msg.ID, gomock.Any()).Return(DefaultMaxAttempts, nil)
+			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).
+				Return(xerrors.Join(apperror.ErrRetryable, xerrors.New("publish failed")))
+			store.EXPECT().MarkFailed(gomock.Any(), msg.ID, gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, _ int64, _ string, nextAttemptAt time.Time) error {
+					// バックオフは full jitter なので、初回失敗の待機幅 [0, 1s] に収まることを表明する。
+					assert.False(t, nextAttemptAt.Before(deliverNow))
+					assert.False(t, nextAttemptAt.After(deliverNow.Add(retryInitialInterval)))
+					return nil
+				})
+
+			u := newDeliverUsecase(t, store, pub, metrics)
+			published, err := u.deliver(context.Background(), msg)
+
+			require.NoError(t, err)
+			assert.False(t, published)
+			assert.Equal(t, 0, metrics.deadCount)
+		})
+
+		t.Run("恒久失敗なら理由を残してから MarkDead し IncDead を計上する", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			store := mock_outbox.NewMockStore(ctrl)
+			pub := mock_publisher.NewMockPublisher(ctrl)
+			metrics := &countingMetrics{}
+			msg := deliverMessage(t)
+
+			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).
+				Return(xerrors.Join(apperror.ErrPermanent, xerrors.New("rejected")))
+			store.EXPECT().MarkFailed(gomock.Any(), msg.ID, gomock.Any(), deliverNow).Return(nil)
 			store.EXPECT().MarkDead(gomock.Any(), msg.ID).Return(nil)
 
 			u := newDeliverUsecase(t, store, pub, metrics)
@@ -146,6 +170,25 @@ func Test_relayUsecase_deliver(t *testing.T) {
 			require.NoError(t, err)
 			assert.False(t, published)
 			assert.Equal(t, 1, metrics.deadCount)
+		})
+
+		t.Run("分類の無い失敗は一時失敗として扱い dead にしない", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			store := mock_outbox.NewMockStore(ctrl)
+			pub := mock_publisher.NewMockPublisher(ctrl)
+			metrics := &countingMetrics{}
+			msg := deliverMessage(t)
+
+			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(xerrors.New("publish failed"))
+			store.EXPECT().MarkFailed(gomock.Any(), msg.ID, gomock.Any(), gomock.Any()).Return(nil)
+
+			u := newDeliverUsecase(t, store, pub, metrics)
+			published, err := u.deliver(context.Background(), msg)
+
+			require.NoError(t, err)
+			assert.False(t, published)
+			assert.Equal(t, 0, metrics.deadCount)
 		})
 	})
 
@@ -180,7 +223,7 @@ func Test_relayUsecase_deliver(t *testing.T) {
 			wantErr := xerrors.New("mark failed")
 
 			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(xerrors.New("publish failed"))
-			store.EXPECT().MarkFailed(gomock.Any(), msg.ID, gomock.Any()).Return(int32(0), wantErr)
+			store.EXPECT().MarkFailed(gomock.Any(), msg.ID, gomock.Any(), gomock.Any()).Return(wantErr)
 
 			u := newDeliverUsecase(t, store, pub, observability.NewNoopOutboxMetrics(t))
 			published, err := u.deliver(context.Background(), msg)
@@ -189,7 +232,7 @@ func Test_relayUsecase_deliver(t *testing.T) {
 			assert.False(t, published)
 		})
 
-		t.Run("attempts 上限到達で MarkDead のエラーはそのまま返す", func(t *testing.T) {
+		t.Run("恒久失敗で MarkDead のエラーはそのまま返す", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			store := mock_outbox.NewMockStore(ctrl)
@@ -197,8 +240,9 @@ func Test_relayUsecase_deliver(t *testing.T) {
 			msg := deliverMessage(t)
 			wantErr := xerrors.New("mark dead failed")
 
-			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).Return(xerrors.New("publish failed"))
-			store.EXPECT().MarkFailed(gomock.Any(), msg.ID, gomock.Any()).Return(DefaultMaxAttempts, nil)
+			pub.EXPECT().Publish(gomock.Any(), gomock.Any()).
+				Return(xerrors.Join(apperror.ErrPermanent, xerrors.New("rejected")))
+			store.EXPECT().MarkFailed(gomock.Any(), msg.ID, gomock.Any(), deliverNow).Return(nil)
 			store.EXPECT().MarkDead(gomock.Any(), msg.ID).Return(wantErr)
 
 			u := newDeliverUsecase(t, store, pub, observability.NewNoopOutboxMetrics(t))
@@ -206,6 +250,56 @@ func Test_relayUsecase_deliver(t *testing.T) {
 
 			require.ErrorIs(t, err, wantErr)
 			assert.False(t, published)
+		})
+	})
+}
+
+func Test_isPermanent(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ErrPermanent を運ぶエラーは恒久失敗と判定する", func(t *testing.T) {
+			t.Parallel()
+
+			assert.True(t, isPermanent(xerrors.Join(apperror.ErrPermanent, xerrors.New("rejected"))))
+		})
+
+		t.Run("ErrRetryable を運ぶエラーは恒久失敗と判定しない", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, isPermanent(xerrors.Join(apperror.ErrRetryable, xerrors.New("unavailable"))))
+		})
+
+		t.Run("分類を運ばないエラーは恒久失敗と判定しない", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, isPermanent(xerrors.New("unclassified")))
+		})
+	})
+}
+
+func Test_retryDelay(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("初回失敗の待機は初期間隔を超えない", func(t *testing.T) {
+			t.Parallel()
+
+			d := retryDelay(0)
+			assert.GreaterOrEqual(t, d, time.Duration(0))
+			assert.LessOrEqual(t, d, retryInitialInterval)
+		})
+
+		t.Run("失敗を重ねても待機は上限を超えない", func(t *testing.T) {
+			t.Parallel()
+
+			d := retryDelay(100)
+			assert.GreaterOrEqual(t, d, time.Duration(0))
+			assert.LessOrEqual(t, d, retryMaxInterval)
 		})
 	})
 }
