@@ -1,7 +1,5 @@
 # インフラ層（`internal/infrastructure`）ガイド
 
-[English](README.md) | 日本語
-
 ## 役割
 
 Infrastructure 層は、**外部技術（DB・外部API・認証等）へのアクセス実装**を担う層です。

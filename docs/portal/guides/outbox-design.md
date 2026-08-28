@@ -1,8 +1,6 @@
 # Outbox Subsystem Design Reference
 
-[Outbox Store README](../../internal/usecase/boundary/outbox/README.md) | 日本語: [outbox.ja.md](outbox.ja.md)
-
-This document consolidates the transactional outbox subsystem's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. For per-package overviews see the READMEs; for the adoption rationale see the outbox ADRs ([ADR-0054 (transactional-outbox)](../adr/0054-transactional-outbox.md) onward); for the decision to ship the balanced relay and defer hardening to operational evidence (with the full multi-layer blueprint) see [ADR-0107 (outbox-relay-hardening-delegated)](../adr/0107-outbox-relay-hardening-delegated.md).
+This document consolidates the transactional outbox subsystem's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference, derived from a close reading of the implementation. For per-package overviews see the READMEs; for the adoption rationale see the outbox ADRs ([ADR-0054 (transactional-outbox)](../adr/0054-transactional-outbox.md) onward); for the decision to ship the balanced relay and defer hardening to operational evidence (with the full multi-layer blueprint) see [ADR-0111 (outbox-relay-hardening-delegated)](../adr/0111-outbox-relay-hardening-delegated.md).
 
 ---
 

@@ -1,7 +1,5 @@
 # Make Command List
 
-English | [日本語](README.ja.md)
-
 ## Role
 
 `.makefiles/` is the central registry for every `make` target used by the project. Each `.mk` file groups related targets by area (application / database / sql / go / openapi / docs / github / tools). The top-level `makefile` simply `include`s them, so adding a new target means dropping it into the right group file — no top-level edits required.
@@ -41,7 +39,7 @@ Make targets are mainly organized into the following units.
 This is a group of targets related to application development environment startup and Job execution.
 
 Compose services are split into two layers (see `.makefiles/docker` group below): the shared **infra**
-layer (`database` / `observability` / `garage`) lives once in the fixed `gobp-shared` project, and the
+layer (`database` / `observability` / `garage` / `elasticmq` / `dynamodb_local` / `goaws`) lives once in the fixed `gobp-shared` project, and the
 per-checkout **app** layer (`api_server` / `mock_auth_server`) runs in this checkout's `APP_PROJECT`.
 
 ### Application startup related
@@ -113,6 +111,12 @@ that step (and its undo for drift checks).
 | --- | --- | --- |
 | `make materialize-env` | Copies `env/.env.$(APP_ENV)` over `env/.env` (defaults to `APP_ENV=ci`). | Materialize the embed target in CI / build before `go build` / `go run` |
 | `make restore-env` | Restores `env/.env` to its git-tracked content via `git restore`. | Undo materialization before a generated-artifact drift / commit check |
+
+### Realtime Delivery smoke related
+
+| Command | Description | Main Use |
+| --- | --- | --- |
+| `make realtime-smoke` | Brings up the shared infra, then runs `scripts/realtime-smoke` against DynamoDB Local and GoAWS with the AWS SDK Go v2 and prints one verdict per call (互換 / 非互換 / 未対応 / 検証不能). Resources are created under a per-run random name and deleted afterwards. `ARGS` passes flags through (`-format markdown` / `-subscribers N` / `-keep` / `-strict`). | Confirm the emulators still accept the calls Realtime Delivery makes — e.g. after bumping either image |
 
 ## `.makefiles/database` group
 
@@ -296,7 +300,7 @@ overridden by `.gobp-db-slot` when a DB slot is held (see `internal/cli/dbslot/R
 | --- | --- | --- |
 | `INFRA_PROJECT` | `gobp-shared` | Fixed compose project holding the single shared infra instance. |
 | `APP_PROJECT` | `gobp-app-$(notdir $(CURDIR))` | Per-checkout compose project for the app layer. Becomes `SERVE_PROJECT` (`gobp-wt-N`) when a DB slot is held. |
-| `INFRA_SERVICES` | `database observability garage elasticmq` | Services that can only run on fixed ports, hence shared. |
+| `INFRA_SERVICES` | `database observability garage elasticmq dynamodb_local goaws` | Services that can only run on fixed ports, hence shared. |
 | `APP_SERVICES` | `api_server mock_auth_server` | Services started per checkout. |
 | `COMPOSE_INFRA` | `docker compose -p $(INFRA_PROJECT)` | Compose invocation for the infra layer. |
 | `INFRA_NO_RECREATE` | `--no-recreate` in a worktree, empty otherwise | Keeps a shared-infra container another checkout is using instead of re-creating it. Empty in a single checkout, where compose re-converges on a definition change as usual. Set it explicitly for a topology the worktree test misses, such as several independent clones. Resolved inside the recipe by `db-slot env`, not at make's parse time. |
@@ -433,7 +437,7 @@ several of these scripts are gates, and a broken gate reports a clean run rather
 ## `.makefiles/python` group
 
 The CLI tools this repository installs from PyPI are declared in `python/*.in` and locked, with a
-sha256 hash per package, in `python/*.txt` ([ADR-0080 (mise-ssot-drift-gate)](../docs/adr/0080-mise-ssot-drift-gate.md)).
+sha256 hash per package, in `python/*.txt` ([ADR-0084 (mise-ssot-drift-gate)](../docs/adr/0084-mise-ssot-drift-gate.md)).
 These targets regenerate the lockfiles; nothing installs from a `.in` file directly.
 
 | Command | Description | Notes |
@@ -589,6 +593,7 @@ This is the initial setup command when launching a new repository.
 | `make setup-verify` | Verifies the localization landed, then removes the localization tooling. | Runs `scripts/setup/verify-setup` in `node_tool_runner`; expects the Phase 5 values in the environment.  <!-- setup-localize:line --> |
 | `make setup-remove-boilerplate-identity` | Removes what only holds while this repository is a boilerplate. | Scans the repository for `boilerplate-only` markers and resolves each via `node_tool_runner`, deletes the boilerplate-only conventions doc, then removes itself. Preview with `DRY_RUN=1`. <!-- boilerplate-only:line --> |
 | `make setup-remove-sample-api` | Removes the sample API (`user`/`product`/`order`) in batch. | Deletes via `node_tool_runner`, then runs `db-local-reinit` / `db-test-reinit` → `gen-api` → `gen-query` → `tidy-lib` → `fix` → `lint`. The DB rebuild keeps dropped tables out of the generated models, and `tidy-lib` drops the direct dependencies the sample API was the only user of. **Requires the DB container (`database`) running** (`gen-query` dumps the live schema). Preview without changing anything with `DRY_RUN=1` (any non-empty value counts as preview, `0` included, so omit the variable entirely for a real run). <!-- sample-api:line --> |
+| `make setup-remove-doc-language` | Resolves the documentation / skill translation pairs against `LANG_CHOICE` — `en` / `ja` fold into that language, `both` keeps the pairs and resolves the markers. | Runs on the host, not through the tool runner: it commits the whole fold at once and needs the host's git. Run it **before** every other removal — each removal tool carries paired declarations and prunes its own pair when the fold resolves it, while Phase 12 deletes a workflow this tool declares a string in, so a fold attempted afterwards aborts. Preview with `DRY_RUN=1` (works on a dirty tree; the real run requires a clean one). <!-- lang-choice:line --> |
 
 ### Base branch resolution related
 

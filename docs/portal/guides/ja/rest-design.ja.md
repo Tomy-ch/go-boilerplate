@@ -1,7 +1,5 @@
 # REST サブシステム設計リファレンス
 
-[Controller README（日本語）](../../internal/controller/README.ja.md) | English: [rest.md](rest.md)
-
 本書は REST（HTTP）scaffold の **役割論・状態遷移・実装箇所・integrator が書く箇所・用語** を、実装を精査して 1 枚にまとめた参照資料です。handler 実装の詳細は [handler README（日本語）](../../internal/controller/handler/README.ja.md)、非同期 / CLI の兄弟は [worker.ja.md](worker.ja.md)・[job.ja.md](job.ja.md) を参照。
 
 ---

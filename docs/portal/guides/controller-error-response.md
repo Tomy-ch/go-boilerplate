@@ -1,7 +1,5 @@
 # error response
 
-English | [日本語](README.ja.md)
-
 This package handles the generation and management of HTTP error responses.
 
 ## Role

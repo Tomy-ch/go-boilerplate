@@ -1,8 +1,6 @@
 # Outbox サブシステム設計リファレンス
 
-[Outbox Store README（日本語）](../../internal/usecase/boundary/outbox/README.ja.md) | English: [outbox.md](outbox.md)
-
-本書は transactional outbox サブシステムの **役割論・状態遷移・実装箇所・integrator が書く箇所・用語** を、実装を精査して 1 枚にまとめた参照資料です。各パッケージの概要は README、採用判断は outbox ADR（[ADR-0054](../adr/0054-transactional-outbox.ja.md) 以降）、バランス型の relay を出荷しハードニングは運用で得た事実に委ねる決定（多層ハードニングの設計図込み）は [ADR-0107](../adr/0107-outbox-relay-hardening-delegated.ja.md) を参照。
+本書は transactional outbox サブシステムの **役割論・状態遷移・実装箇所・integrator が書く箇所・用語** を、実装を精査して 1 枚にまとめた参照資料です。各パッケージの概要は README、採用判断は outbox ADR（[ADR-0054](../adr/0054-transactional-outbox.ja.md) 以降）、バランス型の relay を出荷しハードニングは運用で得た事実に委ねる決定（多層ハードニングの設計図込み）は [ADR-0111](../adr/0111-outbox-relay-hardening-delegated.ja.md) を参照。
 
 ---
 

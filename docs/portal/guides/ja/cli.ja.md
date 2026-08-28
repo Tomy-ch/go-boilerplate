@@ -1,7 +1,5 @@
 # CLI コア
 
-[English](README.md) | 日本語
-
 `internal/cli` は、アプリケーションの CLI コマンドの**純粋でテスト可能なコアロジック**を保持します。
 
 Cobra や infrastructure の結線には依存しません。Cobra コマンド定義と、実依存（config / DB / DI /

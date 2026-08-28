@@ -1,7 +1,5 @@
 # lifecycle
 
-[English](README.md) | 日本語
-
 `internal/di/lifecycle` は、アプリケーションの起動 / 停止時に実行するフック（Start / Stop）を登録するための **DI 抽象化レイヤ**です。
 
 `fx.Lifecycle` をラップした `Registrar` インターフェースを提供し、アプリケーションコードが fx に直接依存しないようにします。

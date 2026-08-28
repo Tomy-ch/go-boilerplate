@@ -1,7 +1,5 @@
 # logging
 
-English | [日本語](README.ja.md)
-
 `internal/logging` provides a **structured logging foundation** used across the entire application.
 
 This package is based on `zap`, while providing an abstraction layer that allows application code to handle logging **without directly depending on zap**.

@@ -1,7 +1,5 @@
 # app error
 
-[English](README.md) | 日本語
-
 `apperror` パッケージは、層に依存しない「アプリケーション共通のエラー分類」を定義します。
 
 このパッケージは **Domain / Usecase / Controller / Infrastructure のすべての層から参照可能**であり、

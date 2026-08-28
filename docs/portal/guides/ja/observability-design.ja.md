@@ -1,7 +1,5 @@
 # Observability サブシステム設計リファレンス
 
-[Observability README（日本語）](../../internal/observability/README.ja.md) | English: [observability.md](observability.md)
-
 本書は observability サブシステムの **役割論・シグナルのライフサイクル・実装箇所・提供機能・integrator が書く箇所・用語** を、実装を精査して 1 枚にまとめた参照資料です。パッケージ API の概要は README、計装対象のサブシステムは [worker.ja.md](worker.ja.md) / [outbox.ja.md](outbox.ja.md) / [idempotency.ja.md](idempotency.ja.md) / [rest.ja.md](rest.ja.md) を参照。
 
 ---

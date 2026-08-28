@@ -1,7 +1,5 @@
 # errorhandler
 
-English | [日本語](README.ja.md)
-
 Unified HTTP error handler that normalizes errors from Echo, OpenAPI validation, and application-level errors into consistent JSON responses with structured logging.
 
 ## Architecture

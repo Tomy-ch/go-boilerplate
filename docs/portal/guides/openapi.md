@@ -1,7 +1,5 @@
 # OpenAPI Guide (`openapi/`)
 
-English | [日本語](README.ja.md)
-
 This directory contains the **OpenAPI definitions** used in this project.
 
 - Modular structure using Redocly
