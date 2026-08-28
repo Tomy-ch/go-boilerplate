@@ -69,7 +69,7 @@ seam は基盤非依存ですが、背後に何も無いまま出された抽象
 |Azure|Blob Storage|`mcr.microsoft.com/azure-storage/azurite`|MIT|Microsoft|
 |GCP|Cloud Storage|`fsouza/fake-gcs-server`|BSD-2-Clause|fsouza（個人メンテナ）|
 
-選定基準はここでの他の依存と同じく「1 コンポーネント 1 責務」（[ADR-0077 (library-selection-policy)](../../../docs/adr/0077-library-selection-policy.md)）です。したがって、クラウド一式をエミュレートするスイートよりも単機能のエミュレータを優先します。各選択の補足は次のとおりです。
+選定基準はここでの他の依存と同じく「1 コンポーネント 1 責務」（[ADR-0081 (library-selection-policy)](../../../docs/adr/0081-library-selection-policy.md)）です。したがって、クラウド一式をエミュレートするスイートよりも単機能のエミュレータを優先します。各選択の補足は次のとおりです。
 
 - **Garage** は S3 API だけを話し、checkout ごとに動かせる程度に小さいままです。AGPL-3.0 の義務は改変した Garage を配布する場合に生じるものであり、公開イメージを開発時の依存として動かす分には、それと通信するアプリケーション側に義務は生じません
 - **Azurite** は Microsoft 自身のエミュレータで、Blob と Queue の**両方**を賄います。したがって Azure は、この seam と worker seam の 2 つに対して 1 コンテナで済みます

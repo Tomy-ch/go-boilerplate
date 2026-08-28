@@ -31,7 +31,7 @@ accepted
 - リトライ動作が決定論的になる。ポールサイクルごとに正確に 1 回のトランスポート試行。
 - 単一のデリバリー失敗がリレーループを停止させたり、他の行をブロックしたりしない。
 - `attempts` と `last_error` が、何が失敗し何回失敗したかを直接的で明確な観測可能性として提供する。
-- 最終的なデッドレター処理（[ADR-0058](0058-outbox-dead-after-max-attempts.ja.md) を参照）が予測可能になる。`attempts` はポールごとに最大 1 回しか進まない。
+- 最終的なデッドレター処理（[ADR-0058](0058-outbox-dead-on-permanent-error.ja.md) を参照）が予測可能になる。`attempts` はポールごとに最大 1 回しか進まない。
 
 ### ネガティブな影響
 
@@ -52,4 +52,4 @@ accepted
 
 - 少なくとも1回と D10 は `docs/design/outbox.md`（§「Design invariants」、用語集エントリ「retry-by-poll」）に記述されている。
 - トランスポートリトライは `internal/infrastructure/publisher/http_publisher.go` の `NewDownstreamProfile`（`MaxAttempts = 1`）で無効化されている。
-- 関連 ADR: [ADR-0054](0054-transactional-outbox.ja.md)、[ADR-0056](0056-skip-locked-outbox-relay.ja.md)、[ADR-0058](0058-outbox-dead-after-max-attempts.ja.md)。
+- 関連 ADR: [ADR-0054](0054-transactional-outbox.ja.md)、[ADR-0056](0056-skip-locked-outbox-relay.ja.md)、[ADR-0058](0058-outbox-dead-on-permanent-error.ja.md)。

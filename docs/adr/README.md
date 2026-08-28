@@ -112,7 +112,7 @@ can enumerate them. The tag has no reader once setup is done.
 | [0055](0055-at-least-once-outbox-poll.md) | At-least-once delivery via polling (transport-level retry disabled) | accepted |
 | [0056](0056-skip-locked-outbox-relay.md) | Single-transaction relay using SELECT FOR UPDATE SKIP LOCKED (safe across instances) | accepted |
 | [0057](0057-message-id-idempotency-propagation.md) | Propagate the outbox message_id as the receiver's Idempotency-Key | accepted |
-| [0058](0058-outbox-dead-after-max-attempts.md) | MaxAttempts = 10, then the message is dead (terminal until manual replay) | accepted |
+| [0058](0058-outbox-dead-on-permanent-error.md) | An outbox row dies on a permanent error; transient failures retry with per-message backoff | accepted |
 | [0059](0059-outbox-retention-gc.md) | 7-day retention GC of published rows (batches of 10,000) | accepted |
 | [0060](0060-publisher-http-profile-isolation.md) | Isolate the publisher's non-standard HTTP profile inside the relay | accepted |
 | [0061](0061-relay-resident-gc-oneshot.md) | The relay is a resident process; GC is a one-shot cron job | accepted |
@@ -125,44 +125,48 @@ can enumerate them. The tag has no reader once setup is done.
 | [0068](0068-job-fresh-fx-app-per-run.md) | Each job launch constructs a fresh fx.App (one-shot lifecycle) | accepted |
 | [0069](0069-job-no-worker-machinery.md) | Jobs deliberately have no broker, circuit breaker, drain, or health machinery | accepted (exclusion) |
 | [0070](0070-job-explicit-registration.md) | Jobs are explicitly registered (no auto-discovery) | accepted |
-| [0071](0071-config-driven-observability-gating.md) | Config-driven observability gating | accepted |
-| [0072](0072-vendor-neutral-otlp-export.md) | Vendor-neutral OTLP-only export (delegate backend to the Collector) | accepted |
-| [0073](0073-official-otel-semconv.md) | Use only official OpenTelemetry semantic conventions; do not invent custom semconv or put vendor keys in typed config | accepted (exclusion) |
-| [0074](0074-dual-path-metrics.md) | Metrics travel two paths — OTLP push and Prometheus scrape | accepted |
-| [0075](0075-lifecycle-independent-provider.md) | Observability providers are lifecycle-independent (ProviderShutdowner) | accepted |
-| [0076](0076-fixed-default-sampling.md) | Fix the SDK default sampling; do not expose sampling as an env knob | accepted (exclusion) |
-| [0077](0077-library-selection-policy.md) | Single-responsibility library selection policy | accepted |
-| [0078](0078-bridge-instrumentation-exceptions.md) | Bridge / instrumentation libraries as bounded SRP exceptions | accepted |
-| [0079](0079-containerized-pinned-toolchain.md) | Use a containerized toolchain pinned by mise for reproducibility | accepted |
-| [0080](0080-mise-ssot-drift-gate.md) | mise.toml is the single source of truth for mise-resolved versions; versions propagate downstream with a CI drift gate | accepted |
-| [0081](0081-make-single-entrypoint.md) | Make is the single tool entrypoint with .mk registration and self-documenting help | accepted |
-| [0082](0082-scripts-in-node-go.md) | Operational scripts live in scripts/ as TypeScript or Go; shell scripting is not used | accepted |
-| [0083](0083-docker-compose-dev-environment.md) | Local dev environment is provided via Docker Compose with profile-separated services | accepted |
-| [0084](0084-two-layer-golangci-config.md) | Two-layer golangci config: minimal default vs full authoritative gate | accepted |
-| [0085](0085-local-hooks-mirror-ci.md) | Local git hooks duplicate the CI contract (local == CI, glob-scoped, bypass-then-verify-once) | accepted |
-| [0086](0086-coverage-hard-gate.md) | Total coverage 90% is a CI hard gate, with an exception-governance path | accepted |
-| [0087](0087-ci-real-graph-boot-check.md) | CI boots the real fx graph against real Postgres (startup verification) | accepted |
-| [0088](0088-generated-artifact-drift-gate.md) | Generated-artifact drift gate + release-branch-centralized auto-generation bot | accepted |
-| [0089](0089-multi-layer-security-scanning.md) | Multi-layer security scanning, splitting reporting from gating, on hardened runners | accepted |
-| [0090](0090-sha-pinned-actions.md) | Pin GitHub Actions by SHA with a supply-chain quarantine | accepted |
-| [0091](0091-malicious-package-detection-via-cooldown.md) | Malicious packages are mitigated by a publication cooldown, with no dedicated detector adopted | accepted |
-| [0092](0092-rollback-integration-tests.md) | Run infrastructure integration tests against a real DB with sentinel-error rollback | accepted |
-| [0093](0093-multi-model-adversarial-review.md) | Use multi-model adversarial review with finder and verifier subagents | accepted |
-| [0094](0094-lean-a-spec-scaffold.md) | Scaffold only domain and usecase from spec files; derive controller and infra from generated code | accepted |
-| [0095](0095-cli-humble-object-split.md) | CLI humble-object split (thin cmd/ shell + testable internal/cli core) | accepted |
-| [0096](0096-single-multi-command-binary.md) | All roles are one multi-command binary | accepted |
-| [0097](0097-single-runtime-image.md) | A single runtime image with command override (no purpose-specific images) | accepted |
-| [0098](0098-hardened-alpine-runtime.md) | Use a hardened-alpine runtime base; do NOT use distroless/scratch | accepted (exclusion) |
-| [0099](0099-per-environment-images.md) | Per-environment images (.env matrix x APP_ENV build-arg, fixed at build time) | accepted |
-| [0100](0100-predeploy-oneshot-migration.md) | Migrations run as a pre-deploy one-shot; do NOT auto-migrate at application startup | accepted (exclusion) |
-| [0101](0101-release-image-supply-chain.md) | Release-image supply-chain integrity (cosign signing + provenance + SBOM) | accepted |
-| [0102](0102-vendor-neutral-deploy-skeleton.md) | Deploy is a vendor-neutral skeleton (build/sign implemented; cloud CD is a stub; registry not fixed) | accepted |
-| [0103](0103-docs-via-github-pages.md) | Publish static docs/ via GitHub Pages (released on production push) | accepted |
-| [0104](0104-no-in-app-rate-limiter.md) | Do not provide an in-application rate limiter | accepted (exclusion) |
-| [0105](0105-scheduled-job-concurrency-delegated.md) | Do not control scheduled-job concurrency in-app; delegate to the scheduler | accepted (exclusion) |
-| [0106](0106-no-generic-cache-abstraction.md) | Do not provide a generic Cache abstraction | accepted (exclusion) |
-| [0107](0107-outbox-relay-hardening-delegated.md) | Ship a balanced outbox relay; delegate hardening (multi-layer lease redesign) to operational evidence | accepted (exclusion) |
-| [0108](0108-pnpm-as-the-only-node-resolver.md) | Resolve every Node package with pnpm; do not use npm | accepted |
+| [0071](0071-realtime-delivery-driving-mechanism.md) | Adopt Realtime Delivery as an independent driving mechanism for server-to-client event delivery | accepted |
+| [0072](0072-postgres-state-dynamodb-eventlog.md) | PostgreSQL holds current state; the DynamoDB EventLog is a bounded replay store, not an event-sourced log | accepted |
+| [0073](0073-sns-sqs-instance-fanout.md) | Fan out realtime wakeups to serve instances with SNS to per-instance SQS queues | accepted |
+| [0074](0074-query-ticket-stream-authentication.md) | Authenticate SSE streams with an opaque query ticket bound to subject, destination, scope, and expiry | accepted |
+| [0075](0075-config-driven-observability-gating.md) | Config-driven observability gating | accepted |
+| [0076](0076-vendor-neutral-otlp-export.md) | Vendor-neutral OTLP-only export (delegate backend to the Collector) | accepted |
+| [0077](0077-official-otel-semconv.md) | Use only official OpenTelemetry semantic conventions; do not invent custom semconv or put vendor keys in typed config | accepted (exclusion) |
+| [0078](0078-dual-path-metrics.md) | Metrics travel two paths — OTLP push and Prometheus scrape | accepted |
+| [0079](0079-lifecycle-independent-provider.md) | Observability providers are lifecycle-independent (ProviderShutdowner) | accepted |
+| [0080](0080-fixed-default-sampling.md) | Fix the SDK default sampling; do not expose sampling as an env knob | accepted (exclusion) |
+| [0081](0081-library-selection-policy.md) | Single-responsibility library selection policy | accepted |
+| [0082](0082-bridge-instrumentation-exceptions.md) | Bridge / instrumentation libraries as bounded SRP exceptions | accepted |
+| [0083](0083-containerized-pinned-toolchain.md) | Use a containerized toolchain pinned by mise for reproducibility | accepted |
+| [0084](0084-mise-ssot-drift-gate.md) | mise.toml is the single source of truth for mise-resolved versions; versions propagate downstream with a CI drift gate | accepted |
+| [0085](0085-make-single-entrypoint.md) | Make is the single tool entrypoint with .mk registration and self-documenting help | accepted |
+| [0086](0086-scripts-in-node-go.md) | Operational scripts live in scripts/ as TypeScript or Go; shell scripting is not used | accepted |
+| [0087](0087-docker-compose-dev-environment.md) | Local dev environment is provided via Docker Compose with profile-separated services | accepted |
+| [0088](0088-two-layer-golangci-config.md) | Two-layer golangci config: minimal default vs full authoritative gate | accepted |
+| [0089](0089-local-hooks-mirror-ci.md) | Local git hooks duplicate the CI contract (local == CI, glob-scoped, bypass-then-verify-once) | accepted |
+| [0090](0090-coverage-hard-gate.md) | Total coverage 90% is a CI hard gate, with an exception-governance path | accepted |
+| [0091](0091-ci-real-graph-boot-check.md) | CI boots the real fx graph against real Postgres (startup verification) | accepted |
+| [0092](0092-generated-artifact-drift-gate.md) | Generated-artifact drift gate + release-branch-centralized auto-generation bot | accepted |
+| [0093](0093-multi-layer-security-scanning.md) | Multi-layer security scanning, splitting reporting from gating, on hardened runners | accepted |
+| [0094](0094-sha-pinned-actions.md) | Pin GitHub Actions by SHA with a supply-chain quarantine | accepted |
+| [0095](0095-malicious-package-detection-via-cooldown.md) | Malicious packages are mitigated by a publication cooldown, with no dedicated detector adopted | accepted |
+| [0096](0096-rollback-integration-tests.md) | Run infrastructure integration tests against a real DB with sentinel-error rollback | accepted |
+| [0097](0097-multi-model-adversarial-review.md) | Use multi-model adversarial review with finder and verifier subagents | accepted |
+| [0098](0098-lean-a-spec-scaffold.md) | Scaffold only domain and usecase from spec files; derive controller and infra from generated code | accepted |
+| [0099](0099-cli-humble-object-split.md) | CLI humble-object split (thin cmd/ shell + testable internal/cli core) | accepted |
+| [0100](0100-single-multi-command-binary.md) | All roles are one multi-command binary | accepted |
+| [0101](0101-single-runtime-image.md) | A single runtime image with command override (no purpose-specific images) | accepted |
+| [0102](0102-hardened-alpine-runtime.md) | Use a hardened-alpine runtime base; do NOT use distroless/scratch | accepted (exclusion) |
+| [0103](0103-per-environment-images.md) | Per-environment images (.env matrix x APP_ENV build-arg, fixed at build time) | accepted |
+| [0104](0104-predeploy-oneshot-migration.md) | Migrations run as a pre-deploy one-shot; do NOT auto-migrate at application startup | accepted (exclusion) |
+| [0105](0105-release-image-supply-chain.md) | Release-image supply-chain integrity (cosign signing + provenance + SBOM) | accepted |
+| [0106](0106-vendor-neutral-deploy-skeleton.md) | Deploy is a vendor-neutral skeleton (build/sign implemented; cloud CD is a stub; registry not fixed) | accepted |
+| [0107](0107-docs-via-github-pages.md) | Publish static docs/ via GitHub Pages (released on production push) | accepted |
+| [0108](0108-no-in-app-rate-limiter.md) | Do not provide an in-application rate limiter | accepted (exclusion) |
+| [0109](0109-scheduled-job-concurrency-delegated.md) | Do not control scheduled-job concurrency in-app; delegate to the scheduler | accepted (exclusion) |
+| [0110](0110-no-generic-cache-abstraction.md) | Do not provide a generic Cache abstraction | accepted (exclusion) |
+| [0111](0111-outbox-relay-hardening-delegated.md) | Ship a balanced outbox relay; delegate hardening (multi-layer lease redesign) to operational evidence | accepted (exclusion) |
+| [0112](0112-pnpm-as-the-only-node-resolver.md) | Resolve every Node package with pnpm; do not use npm | accepted |
 
 Frontmatter fields: `status`, `date`, `deciders`, `supersedes` / `superseded-by`, `tags`.
 Consequences follow the MADR standard (`Positive` / `Negative`; optional `Neutral`).

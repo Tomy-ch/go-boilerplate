@@ -1,7 +1,7 @@
 # Exchange Rate — Usecase Spec
 
 > exchange-rate は外部の為替レート配信サービスを参照するだけの非永続 API であり、固有の domain
-> エンティティ・テーブルを持たない。そのため lean-a-spec（[ADR-0094 (lean-a-spec-scaffold)]）の「原則 domain + usecase」から
+> エンティティ・テーブルを持たない。そのため lean-a-spec（[ADR-0098 (lean-a-spec-scaffold)]）の「原則 domain + usecase」から
 > domain.md を省略し、本 usecase.md のみで表現する。外部レート取得への意味的 gateway は
 > `internal/usecase/boundary/exchangerate.Gateway`（boundary IF）として Dependencies 節に明示する。
 
@@ -125,7 +125,7 @@ errors:
 叩くのは無駄であり、リクエストのレイテンシを外部依存に結びつけてしまう。キャッシュは
 **`boundary.Gateway` を満たす TTL decorator**（`internal/infrastructure/webapi/exchangerate/cache.go`）として
 infra 層に置き、DI で生の gateway を包む。usecase・domain はキャッシュの存在を知らない。汎用の Cache 抽象を
-作らず既存の継ぎ目を decorate するという判断そのものは [ADR-0106 (no-generic-cache-abstraction)]。
+作らず既存の継ぎ目を decorate するという判断そのものは [ADR-0110 (no-generic-cache-abstraction)]。
 
 - **TTL は `rateTTL = 24h` の定数**であり、config 値にはしない。環境ごとに変える理由を述べられないため。
   配信元が日次更新であることが 24h の根拠である。
@@ -177,5 +177,5 @@ responses: [400, 405, 500, 503]
 - 決済スケール（USD セント整数）の仕様は [`docs/spec/purchase/domain.md`](../purchase/domain.md)。
 
 [ADR-0038 (two-scale-quantity-model)]: ../../adr/0038-two-scale-quantity-model.md
-[ADR-0094 (lean-a-spec-scaffold)]: ../../adr/0094-lean-a-spec-scaffold.md
-[ADR-0106 (no-generic-cache-abstraction)]: ../../adr/0106-no-generic-cache-abstraction.md
+[ADR-0098 (lean-a-spec-scaffold)]: ../../adr/0098-lean-a-spec-scaffold.md
+[ADR-0110 (no-generic-cache-abstraction)]: ../../adr/0110-no-generic-cache-abstraction.md

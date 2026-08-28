@@ -27,6 +27,7 @@
 | [job.ja.md](job.ja.md) | Job scaffold | CLI / スケジュール実行の入口と状態遷移 | [job](../../internal/controller/job/README.ja.md) |
 | [outbox.ja.md](outbox.ja.md) | Transactional outbox | outbox パターンによる信頼性のあるイベント送出 | [outbox](../../internal/usecase/boundary/outbox/README.ja.md) |
 | [idempotency.ja.md](idempotency.ja.md) | Idempotency | `Idempotency-Key` サブシステムと GC ジョブ | [idempotency](../../internal/usecase/idempotency/README.ja.md) |
+| [realtime-delivery.ja.md](realtime-delivery.ja.md) | Realtime Delivery | 長寿命の server→client 入口: SSE、commit から cursor までの ordering chain、replay / catch-up、fan-out、ticket、control-event protocol（実装に先行して記述） | —（実装と共に追加。それまでは上記 ADR が唯一の参照） |
 | [observability.ja.md](observability.ja.md) | Observability | 横断的な traces / metrics / logs 基盤 | [observability](../../internal/observability/README.ja.md) |
 | [auth.ja.md](auth.ja.md) | 認証 | RS 側の JWT / JWKS 検証と開発用 OIDC provider | [jwt](../../internal/infrastructure/auth/jwt/README.ja.md) |
 | [security.ja.md](security.ja.md) | セキュリティ姿勢 | 脅威モデル、各制御が何のためにあるか（強制 / 検知 / 抑止）、どこで発火するか | [workflows](../../.github/workflows/README.ja.md) |
@@ -39,5 +40,5 @@
 各文書は独立していますが、**入口 → 信頼性サブシステム → 横断**の順で自然に読めます：
 
 1. **入口** — [rest](rest.ja.md)（同期）, [worker](worker.ja.md)（非同期）, [job](job.ja.md)（CLI / スケジュール）
-2. **信頼性サブシステム** — [outbox](outbox.ja.md), [idempotency](idempotency.ja.md)
+2. **信頼性サブシステム** — [outbox](outbox.ja.md), [idempotency](idempotency.ja.md)、[realtime-delivery](realtime-delivery.ja.md)
 3. **横断** — [observability](observability.ja.md), [auth](auth.ja.md), [security](security.ja.md)

@@ -1,6 +1,6 @@
 ---
 status: accepted
-date: 2026-07-04
+date: 2026-08-28
 deciders: [maintainers]
 tags: [worker, async, exclusion, setup-review]
 ---
@@ -42,7 +42,11 @@ burden.
   push-type brokers.
 - **Streaming-log consumers** (Kafka / Kinesis) require offset commit, consumer-group
   coordination, and per-partition state — a fundamentally different engine, not an extension
-  of the pull-ack port.
+  of the pull-ack port. For the server-to-client direction that engine exists: **Realtime
+  Delivery** ([ADR-0071](0071-realtime-delivery-driving-mechanism.md)) owns the stream-local
+  sequence, cursor replay, and per-instance fan-out, and lives beside this port rather than
+  inside it. Consuming an *inbound* streaming log into this service remains unbuilt; when it is
+  needed it belongs beside Realtime Delivery, never inside the pull-ack port.
 
 Generalising the port to accommodate both models would produce a lowest-common-denominator
 interface that leaks protocol details or weakens the Ack / Nack / Extend guarantees that
@@ -62,7 +66,9 @@ the engine relies on.
 ### Negative Consequences
 
 - Push-type and streaming workloads require a separate subsystem (outside the worker port)
-  when they cannot be served by HTTP webhooks.
+  when they cannot be served by HTTP webhooks. Realtime Delivery
+  ([ADR-0071](0071-realtime-delivery-driving-mechanism.md)) is that subsystem for the
+  server-to-client direction; inbound streaming-log consumption still has none.
 - The constraint must be communicated to whoever wires a new adapter, to prevent incorrect
   adapter attempts.
 
@@ -76,13 +82,18 @@ extension of this port.
 
 ### A separate streaming-log port alongside the pull-ack port
 
-Not rejected in principle, but out of scope for the worker port — no concrete demand, and
-adding it speculatively violates [ADR-0001](0001-avoid-lock-in.md)'s preference for
-concrete over hypothetical abstraction.
+Not rejected in principle. Server-to-client streaming has since gained a concrete demand and
+its own mechanism — Realtime Delivery ([ADR-0071](0071-realtime-delivery-driving-mechanism.md)),
+built beside this port and not as an extension of it, which is the shape this alternative
+anticipated. Inbound streaming-log consumption still has no concrete demand and remains
+unbuilt, per [ADR-0001](0001-avoid-lock-in.md)'s preference for concrete over hypothetical
+abstraction.
 
 ## Notes
 
 - Related: [ADR-0050](0050-broker-agnostic-worker-scaffold.md) (pull-ack worker scaffold,
-  the port this ADR qualifies).
+  the port this ADR qualifies); [ADR-0071](0071-realtime-delivery-driving-mechanism.md)
+  (Realtime Delivery — the separate engine this ADR pointed at, for the server-to-client
+  direction).
 - Source: the former `docs/decisions.md`.
 - Source: `docs/design/worker.md` (§ 1 Role theory).

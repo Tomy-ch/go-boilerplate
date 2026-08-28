@@ -27,6 +27,7 @@ Two invariants underpin all of them:
 | [job.md](job.md) | Job scaffold | the CLI / scheduled entry point and its state transitions | [job](../../internal/controller/job/README.md) |
 | [outbox.md](outbox.md) | Transactional outbox | reliable event publication via the outbox pattern | [outbox](../../internal/usecase/boundary/outbox/README.md) |
 | [idempotency.md](idempotency.md) | Idempotency | the `Idempotency-Key` subsystem and its GC job | [idempotency](../../internal/usecase/idempotency/README.md) |
+| [realtime-delivery.md](realtime-delivery.md) | Realtime Delivery | the long-lived server-to-client entry point: SSE, the ordering chain from commit to cursor, replay / catch-up, fan-out, tickets, the control-event protocol (written ahead of the implementation) | — (arrives with the implementation; until then the ADRs above are the only reference) |
 | [observability.md](observability.md) | Observability | the cross-cutting traces / metrics / logs substrate | [observability](../../internal/observability/README.md) |
 | [auth.md](auth.md) | Authentication | RS-side JWT / JWKS verification and the development OIDC provider | [jwt](../../internal/infrastructure/auth/jwt/README.md) |
 | [security.md](security.md) | Security posture | the threat model, what each control is for (enforcement / detection / deterrence), and where it fires | [workflows](../../.github/workflows/README.md) |
@@ -40,5 +41,5 @@ Two invariants underpin all of them:
 The documents are independent, but they read naturally as **entry points → reliability subsystems → cross-cutting**:
 
 1. **Entry points** — [rest](rest.md) (sync), [worker](worker.md) (async), [job](job.md) (CLI / scheduled)
-2. **Reliability subsystems** — [outbox](outbox.md), [idempotency](idempotency.md)
+2. **Reliability subsystems** — [outbox](outbox.md), [idempotency](idempotency.md), [realtime-delivery](realtime-delivery.md)
 3. **Cross-cutting** — [observability](observability.md), [auth](auth.md), [security](security.md)

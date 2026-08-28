@@ -98,7 +98,7 @@ after retargeting.
 |GCP|Cloud Storage|`fsouza/fake-gcs-server`|BSD-2-Clause|fsouza (individual maintainer)|
 
 Selection follows the same rule as every other dependency here — one replaceable job per component
-([ADR-0077 (library-selection-policy)](../../../docs/adr/0077-library-selection-policy.md)) — so a single-purpose emulator is
+([ADR-0081 (library-selection-policy)](../../../docs/adr/0081-library-selection-policy.md)) — so a single-purpose emulator is
 preferred over a suite that emulates a whole cloud. Notes per choice:
 
 - **Garage** speaks the S3 API and nothing else, and stays small enough to run per checkout. Its

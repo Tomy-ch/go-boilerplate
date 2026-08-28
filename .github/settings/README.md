@@ -45,7 +45,7 @@ The declared required contexts fall into two groups:
 
 | Group | Contexts |
 | --- | --- |
-| Security scanning (`docs/adr/0089-multi-layer-security-scanning.md`) | `trivy-fs-release`, `osv-release`, `trivy-config`, `sast`, `lockfile-lint`, `openapi-security`, `osv-diff` |
+| Security scanning (`docs/adr/0093-multi-layer-security-scanning.md`) | `trivy-fs-release`, `osv-release`, `trivy-config`, `sast`, `lockfile-lint`, `openapi-security`, `osv-diff` |
 | Build quality | `go-lint`, `go-test`, `generate-go-check`, `generate-oapi-check`, `generate-db-check`, `mod-tidy-check` |
 
 Membership of the second group is decided by whether a red check is a fact about the change rather

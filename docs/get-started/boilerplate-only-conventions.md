@@ -179,7 +179,7 @@ exists, so the reason is gone and the stopping point is no longer justified by i
 
 ### Setup scripts: why the pure-module split is a rule, not a convention
 
-[ADR-0082 (scripts-in-node-go)](../adr/0082-scripts-in-node-go.md) states the general form: every script keeps its
+[ADR-0086 (scripts-in-node-go)](../adr/0086-scripts-in-node-go.md) states the general form: every script keeps its
 decision logic in a pure module with a test suite next to it, because a gate whose failure mode is
 to inspect nothing and still exit `0` can be pinned by a type checker and a test and by nothing
 else. The one-time setup scripts under `scripts/setup/` are what turned that from a convention into
@@ -196,7 +196,7 @@ with them, so those tests protect this repository's own CI rather than the one c
 
 **This premise does not transfer.** In a project built from the template the setup scripts have
 already run — there is no stranger holding no context, and no CI whose coverage stops at the moment
-of use. What survives is the general rule in ADR-0082 (scripts-in-node-go), which stands on the gate failure mode alone.
+of use. What survives is the general rule in ADR-0086 (scripts-in-node-go), which stands on the gate failure mode alone.
 
 ### Why the domain Module rules stop at the mechanical floor
 

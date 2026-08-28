@@ -114,7 +114,7 @@ the answers: what the application returns when the guarded condition turns out t
 
 - The invariant holds under concurrency rather than probabilistically: the interleaving above
   becomes structurally unreachable, and the ordering is pinned by an integration test that runs two
-  real transactions against the database ([ADR-0092](0092-rollback-integration-tests.md)).
+  real transactions against the database ([ADR-0096](0096-rollback-integration-tests.md)).
 - Deadlock is avoided by construction rather than absorbed by the transaction retry
   ([ADR-0035](0035-transaction-retry-idempotent-callers.md)), so the retry budget stays available
   for genuine serialization failures.
@@ -194,7 +194,7 @@ invariant cannot justify deciding on its own.
   [ADR-0035](0035-transaction-retry-idempotent-callers.md) (serialization-failure retry),
   [ADR-0047](0047-apperror-protocol-agnostic-errors.md) (`ErrConflict` → 409),
   [ADR-0056](0056-skip-locked-outbox-relay.md) (the contrasting claim-a-queue-row profile),
-  [ADR-0092](0092-rollback-integration-tests.md) (integration tests against a real database).
+  [ADR-0096](0096-rollback-integration-tests.md) (integration tests against a real database).
 <!-- sample-api:replace-begin -->
 - Which rows a given workflow locks, and which business rule each lock protects, is feature content
   rather than an architectural decision, so it is specified with the feature. In this repository

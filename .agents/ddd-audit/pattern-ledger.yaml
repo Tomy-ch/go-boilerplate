@@ -357,7 +357,7 @@ patterns:
         id: "0002"
         slug: onion-architecture
       - kind: adr
-        id: "0094"
+        id: "0098"
         slug: lean-a-spec-scaffold
     deviation_declared: false
     deviation_note: ""
@@ -862,7 +862,7 @@ patterns:
         id: "0047"
         slug: apperror-protocol-agnostic-errors
       - kind: adr
-        id: "0106"
+        id: "0110"
         slug: no-generic-cache-abstraction
     deviation_declared: true
     deviation_note: >-

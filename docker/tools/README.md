@@ -60,7 +60,7 @@ Unlike the other two stages, the tools themselves do not come from `mise.toml`: 
 only `uv`, which then installs each of them from its own lockfile
 ([`python/sqlfluff.txt`](../../python/sqlfluff.txt) / [`python/graphify.txt`](../../python/graphify.txt))
 with `--require-hashes`, so the whole transitive tree is version- and hash-pinned
-(see [ADR-0080 (mise-ssot-drift-gate)](../../docs/adr/0080-mise-ssot-drift-gate.md)).
+(see [ADR-0084 (mise-ssot-drift-gate)](../../docs/adr/0084-mise-ssot-drift-gate.md)).
 
 graphify is here for reproducibility rather than speed. Its semantic extraction is driven by a
 prompt that ships with the tool, and the cache namespace is a fingerprint of that prompt
