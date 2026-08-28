@@ -12,6 +12,10 @@
 |`CursorPaginationMetadataResponse.yaml`|レスポンス|カーソル（keyset）ページネーションのメタデータ（nextCursor / hasNext）|
 |`BasicAuth.yaml`|セキュリティ|HTTP Basic 認証スキーム|
 |`BearerAuth.yaml`|セキュリティ|HTTP Bearer（JWT）認証スキーム|
+|`StreamTicket.yaml`|Security|SSE endpoint 用の query stream ticket scheme（ADR-0074 (query-ticket-stream-authentication)）|
+|`StreamCursor.yaml`|Value|10 進文字列の stream 位置（SSE `id`・`after`・`Last-Event-ID`）|
+|`DeliveryEvent.yaml`|Event|feature 中立な SSE business event の封筒|
+|`ControlEvent.yaml`|Event|in-band の SSE 制御指示（`action` / `reason` / `retryAfterMs`）|
 |`UserBaseInputRequest.yaml`|リクエスト|ユーザー入力フィールド（サンプル）|
 |`UserResponse.yaml`|レスポンス|ユーザーレスポンスフィールド（サンプル）|
 
@@ -44,7 +48,7 @@ properties:
 |ファイル名|PascalCase|`ErrorResponse.yaml`, `UserBaseInputRequest.yaml`|
 |リクエストスキーマ|`*Request.yaml`|`UserBaseInputRequest.yaml`|
 |レスポンススキーマ|`*Response.yaml`|`UserResponse.yaml`, `ErrorResponse.yaml`|
-|セキュリティスキーム|説明的な名前|`BasicAuth.yaml`, `BearerAuth.yaml`|
+|セキュリティスキーム|説明的な名前|`BasicAuth.yaml`, `BearerAuth.yaml`, `StreamTicket.yaml`|
 
 ### ペイロードは schema として定義し、役割で3フォルダに分ける
 

@@ -1,0 +1,50 @@
+get:
+  operationId: GetStream
+  tags:
+    - v1/streams
+  summary: SSE stream への接続
+  description: |
+    ticket に束縛された destination の event を Server-Sent Events で受信します。接続時に cursor（`Last-Event-ID` → `after` →
+    ticket の初期位置の順）を解決し、その位置より後の event を sequence 順に配信したのち、新しい event を届け続けます。
+    拒否はすべてレスポンス確定前に行われます（ticket の不備は 401、cursor の形式不正は 400、保持期間外の cursor は 410、
+    受け入れ余力が無いときは 503）。確定後の指示は `event: control` の ControlEvent で伝えます。
+  security:
+    - StreamTicket: []
+  parameters:
+    - $ref: '../../../components/parameters/stream/StreamDestinationParam.yaml'
+    - $ref: '../../../components/parameters/stream/StreamAfterParam.yaml'
+    - $ref: '../../../components/parameters/stream/LastEventIdParam.yaml'
+  responses:
+    '200':
+      description: |
+        SSE stream。business event は `id` に sequence を持ち `data` が DeliveryEvent、制御指示は `event: control` で `data` が
+        ControlEvent です。`id` を持たないコメント行が 15 秒ごとの heartbeat として流れます。
+      headers:
+        Cache-Control:
+          description: 常に `no-store`。中間キャッシュに stream を保持させません。
+          schema:
+            type: string
+            example: "no-store"
+        X-Accel-Buffering:
+          description: 常に `no`。リバースプロキシのバッファリングを無効にします。
+          schema:
+            type: string
+            example: "no"
+      content:
+        text/event-stream:
+          schema:
+            oneOf:
+              - $ref: '../../../components/schemas/DeliveryEvent.yaml'
+              - $ref: '../../../components/schemas/ControlEvent.yaml'
+    '400':
+      $ref: '../../../components/schemas/errors/BadRequest400.yaml'
+    '401':
+      $ref: '../../../components/schemas/errors/Unauthorized401.yaml'
+    '405':
+      $ref: '../../../components/schemas/errors/MethodNotAllowed405.yaml'
+    '410':
+      $ref: '../../../components/schemas/errors/Gone410.yaml'
+    '500':
+      $ref: '../../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../../components/schemas/errors/ServiceUnavailable503.yaml'

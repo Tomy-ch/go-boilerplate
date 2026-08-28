@@ -1,0 +1,9 @@
+name: destination
+in: path
+required: true
+description: 購読する stream の識別子。ticket に束縛された destination と一致しなければ 401 になります。
+schema:
+  type: string
+  pattern: '^[A-Za-z0-9._:-]{1,128}$'
+  maxLength: 128
+  example: "inquiry-thread-8f3c"

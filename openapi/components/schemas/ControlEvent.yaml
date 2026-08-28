@@ -1,0 +1,38 @@
+type: object
+description: |
+  レスポンス確定後にサーバから client へ送る制御指示（SSE の `event: control`）。SSE `id` を持たないため `Last-Event-ID` を汚しません。
+  client は `action` だけで分岐し、`reason` は記録用の安定値として扱います。`STOP` / `REAUTHENTICATE` / `RESYNC` は
+  サーバの切断を待たず client 側で接続を閉じてから遷移します。
+required:
+  - action
+  - reason
+properties:
+  action:
+    type: string
+    description: |
+      client がとる動作。`RECONNECT` は通常の再接続、`RETRY_LATER` は `retryAfterMs` 後の再接続、
+      `REAUTHENTICATE` は新しい ticket を取得しての再接続、`RESYNC` は正本の再取得後の再接続、`STOP` は再接続しない。
+    enum:
+      - RECONNECT
+      - RETRY_LATER
+      - REAUTHENTICATE
+      - RESYNC
+      - STOP
+    example: "RECONNECT"
+  reason:
+    type: string
+    description: 指示の理由を表す安定した値。人が読む文言は含みません。
+    enum:
+      - SERVER_DRAINING
+      - TEMPORARILY_OVERLOADED
+      - AUTH_REFRESH_REQUIRED
+      - AUTHORIZATION_REVOKED
+      - CURSOR_TOO_OLD
+      - STREAM_RECOVERY_FAILED
+    example: "SERVER_DRAINING"
+  retryAfterMs:
+    type: integer
+    minimum: 0
+    maximum: 86400000
+    description: 再接続までの待ち時間（ミリ秒）。目安であり、client は jitter を加えてよい。レスポンス確定前の `Retry-After` ヘッダは秒単位です。
+    example: 5000

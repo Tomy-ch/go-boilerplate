@@ -48,6 +48,8 @@ tags:
     description: アプリケーションのバージョン情報。
   - name: metrics
     description: Prometheus メトリクス。
+  - name: v1/streams
+    description: Server-Sent Events による配信（query の stream ticket で認証・cursor から再開）。
   # sample-api:begin
   - name: v1/users
     description: ユーザーリソース（一覧取得・作成）。
@@ -120,6 +122,8 @@ paths:
     $ref: './paths/version.yaml'
   /_internal/types/error-response:
     $ref: './paths/internal/types/error_response.yaml'
+  /v1/streams/{destination}:
+    $ref: './paths/v1/streams/destination.yaml'
   # sample-api:begin
   /v1/users:
     $ref: './paths/v1/users.yaml'
@@ -196,6 +200,12 @@ components:
       $ref: './components/parameters/pagination/CursorFirstParam.yaml'
     IdempotencyKeyParam:
       $ref: './components/parameters/idempotency/IdempotencyKeyParam.yaml'
+    StreamDestinationParam:
+      $ref: './components/parameters/stream/StreamDestinationParam.yaml'
+    StreamAfterParam:
+      $ref: './components/parameters/stream/StreamAfterParam.yaml'
+    LastEventIdParam:
+      $ref: './components/parameters/stream/LastEventIdParam.yaml'
     # sample-api:begin
     KeywordParam:
       $ref: './components/parameters/search/KeywordParam.yaml'
@@ -223,6 +233,8 @@ components:
     # sample-api:end
     BasicAuth:
       $ref: './components/schemas/BasicAuth.yaml'
+    StreamTicket:
+      $ref: './components/schemas/StreamTicket.yaml'
   schemas:
     ErrorResponse:
       $ref: './components/schemas/ErrorResponse.yaml'
@@ -232,6 +244,12 @@ components:
       $ref: './components/responses/health-check/ReadyResponse.yaml'
     ResponseVersion:
       $ref: './components/responses/version/VersionResponse.yaml'
+    StreamCursor:
+      $ref: './components/schemas/StreamCursor.yaml'
+    DeliveryEvent:
+      $ref: './components/schemas/DeliveryEvent.yaml'
+    ControlEvent:
+      $ref: './components/schemas/ControlEvent.yaml'
     # sample-api:begin
     UserBaseInputRequest:
       $ref: './components/schemas/UserBaseInputRequest.yaml'

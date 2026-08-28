@@ -96,7 +96,7 @@ parameters:
 |Element|Convention|Example|
 |---|---|---|
 <!-- sample-api:replace-begin -->
-|Directory|lowercase by concern|`pagination/`, `search/`, `user/`|
+|Directory|lowercase by concern|`pagination/`, `search/`, `stream/`, `user/`|
 |File name|PascalCase + `Param`|`PageParam.yaml`, `UserIdParam.yaml`|
 <!-- sample-api:replace-with -->
 <!-- = |Directory|lowercase by concern|`pagination/`, `<resource>/`| -->

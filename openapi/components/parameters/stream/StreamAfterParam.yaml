@@ -1,0 +1,6 @@
+name: after
+in: query
+required: false
+description: この位置より後の event から配信を再開します。`Last-Event-ID` があればそちらが優先され、どちらも無ければ ticket に許可された初期位置から始まります。
+schema:
+  $ref: '../../schemas/StreamCursor.yaml'

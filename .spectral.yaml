@@ -79,6 +79,15 @@ overrides:
     rules:
       owasp:api8:2023-no-server-http: off
 
+  # SSE の stream ticket は query に載せる。ブラウザの EventSource がリクエストヘッダを設定できないため、
+  # Bearer を使えない（ADR-0074 (query-ticket-stream-authentication)）。TTL 5 分・destination 束縛・
+  # hash 保存・log / trace からの除去を前提にした限定的な採用で、他の scheme へは広げない。
+  # ルール自体は有効なまま「この 1 scheme だけ」を対象外にする。
+  - files:
+      - "openapi/openapi.yaml#/components/securitySchemes/StreamTicket"
+    rules:
+      owasp:api2:2023-no-api-keys-in-url: off
+
   # servers[3] は development 環境。ルールが許容する語は
   # local|sandbox|alpha|beta|test|testing|stag|staging|prod|production|next|preprod|preproduction
   # で development を含まないが、これは本リポジトリの実際の環境名（deploy ブランチ develop に対応）
