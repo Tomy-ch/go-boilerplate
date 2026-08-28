@@ -126,6 +126,11 @@ flowchart TB
     Auth["auth/"]
     Authz["authz/"]
     AwsClient["awsclient/"]
+    DDBClient["dynamodbclient/"]
+    EventLog["eventlog/"]
+    StreamTicket["streamticket/"]
+    InstanceLease["instancelease/"]
+    RealtimeSecret["realtimesecret/"]
     HTTP["httpclient/"]
     ObjStorage["objectstorage/"]
     Pub["publisher/"]
@@ -140,6 +145,11 @@ flowchart TB
     Root --> Auth
     Root --> Authz
     Root --> AwsClient
+    Root --> DDBClient
+    Root --> EventLog
+    Root --> StreamTicket
+    Root --> InstanceLease
+    Root --> RealtimeSecret
     Root --> HTTP
     Root --> ObjStorage
     Root --> Pub
@@ -158,7 +168,12 @@ flowchart TB
 |---|---|---|---|
 |`auth/`|認証基盤（環境別 Authenticator 実装）|Usecase boundary|[README](auth/README.ja.md)|
 |`authz/`|認可基盤（Authorizer 実装。本番以外はデフォルトの `allowall`）|Usecase boundary|[README](authz/README.ja.md)|
-|`awsclient/`|`objectstorage/s3` と `queue/sqs` が共用する AWS 資格情報の解決|—（substrate、domain/usecase IF なし）|[README](awsclient/README.ja.md)|
+|`awsclient/`|`objectstorage/s3`・`queue/sqs`・`dynamodbclient` が共用する AWS 資格情報の解決|—（substrate、domain/usecase IF なし）|[README](awsclient/README.ja.md)|
+|`dynamodbclient/`|Realtime Delivery の store が共用する DynamoDB client substrate: endpoint 上書き、固定の retry 上限、エラー正規化、冪等な `EnsureTable`。`testkit/` は contract test 用|—（substrate、domain/usecase IF なし）|[README](dynamodbclient/README.ja.md)|
+|`eventlog/`|Realtime Delivery の EventLog adapter（`realtime.EventLogStore` の DynamoDB 実装。有界の replay store）|Usecase boundary|[README](eventlog/README.ja.md)|
+|`streamticket/`|Realtime Delivery の stream ticket adapter（`realtime.StreamTicketStore` の DynamoDB 実装）|Usecase boundary|[README](streamticket/README.ja.md)|
+|`instancelease/`|Realtime Delivery の instance lease adapter（`realtime.InstanceLeaseStore` の DynamoDB 実装）|Usecase boundary|[README](instancelease/README.ja.md)|
+|`realtimesecret/`|OS の乱数源による ticket 生値の生成（`realtime.SecretGenerator` の実装。sample 専用の `token/` とは独立）|Usecase boundary|[README](realtimesecret/README.ja.md)|
 |`httpclient/`|resilient な HTTP client substrate（retry / circuit breaker / tracing）。`webapi/` と `publisher/` が共用する driver 相当の基盤|—（substrate、domain/usecase IF なし）|[README](httpclient/README.ja.md)|
 |`objectstorage/`|オブジェクトストレージ adapter（`boundary.Storage` 実装。endpoint / 資格情報の差し替えで Garage / MinIO / 本番 S3 に接続）|Usecase boundary|[README](objectstorage/README.md)|
 |`publisher/`|transactional outbox の publish 先（`boundary.Publisher` の HTTP 実装）|Usecase boundary|[README](publisher/README.ja.md)|

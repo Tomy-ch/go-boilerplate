@@ -129,6 +129,11 @@ flowchart TB
     Auth["auth/"]
     Authz["authz/"]
     AwsClient["awsclient/"]
+    DDBClient["dynamodbclient/"]
+    EventLog["eventlog/"]
+    StreamTicket["streamticket/"]
+    InstanceLease["instancelease/"]
+    RealtimeSecret["realtimesecret/"]
     HTTP["httpclient/"]
     ObjStorage["objectstorage/"]
     Pub["publisher/"]
@@ -143,6 +148,11 @@ flowchart TB
     Root --> Auth
     Root --> Authz
     Root --> AwsClient
+    Root --> DDBClient
+    Root --> EventLog
+    Root --> StreamTicket
+    Root --> InstanceLease
+    Root --> RealtimeSecret
     Root --> HTTP
     Root --> ObjStorage
     Root --> Pub
@@ -161,7 +171,12 @@ flowchart TB
 |---|---|---|---|
 |`auth/`|Authentication infrastructure (environment-specific Authenticator impl)|Usecase boundary|[README](auth/README.md)|
 |`authz/`|Authorization infrastructure (Authorizer impl; default `allowall` for non-production)|Usecase boundary|[README](authz/README.md)|
-|`awsclient/`|AWS credential resolution shared by `objectstorage/s3` and `queue/sqs`|— (substrate, no domain/usecase IF)|[README](awsclient/README.md)|
+|`awsclient/`|AWS credential resolution shared by `objectstorage/s3`, `queue/sqs` and `dynamodbclient`|— (substrate, no domain/usecase IF)|[README](awsclient/README.md)|
+|`dynamodbclient/`|DynamoDB client substrate shared by the Realtime Delivery stores: endpoint override, fixed retry bound, error normalization, idempotent `EnsureTable`; `testkit/` for the contract tests|— (substrate, no domain/usecase IF)|[README](dynamodbclient/README.md)|
+|`eventlog/`|Realtime Delivery EventLog adapter (DynamoDB impl of `realtime.EventLogStore`; bounded replay store)|Usecase boundary|[README](eventlog/README.md)|
+|`streamticket/`|Realtime Delivery stream-ticket adapter (DynamoDB impl of `realtime.StreamTicketStore`)|Usecase boundary|[README](streamticket/README.md)|
+|`instancelease/`|Realtime Delivery instance-lease adapter (DynamoDB impl of `realtime.InstanceLeaseStore`)|Usecase boundary|[README](instancelease/README.md)|
+|`realtimesecret/`|Ticket-secret generation from the OS randomness source (impl of `realtime.SecretGenerator`; independent of the sample-only `token/`)|Usecase boundary|[README](realtimesecret/README.md)|
 |`httpclient/`|Resilient HTTP client substrate (retry / circuit breaker / tracing); shared driver-level base consumed by `webapi/` and `publisher/`|— (substrate, no domain/usecase IF)|[README](httpclient/README.md)|
 |`objectstorage/`|Object storage adapter (impl of `boundary.Storage`; endpoint / credential swap connects to Garage / MinIO / production S3)|Usecase boundary|[README](objectstorage/README.md)|
 |`publisher/`|Transactional outbox publish destination (HTTP impl of `boundary.Publisher`)|Usecase boundary|[README](publisher/README.md)|

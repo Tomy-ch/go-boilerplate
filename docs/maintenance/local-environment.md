@@ -90,6 +90,11 @@ worktrees can `make serve` at the same time. The variables below are defined in
 | `er_diagram_generator` | infra | `schemaspy/schemaspy` | `2002:3000` | ER diagram generation |
 | `go_tool_runner` / `node_tool_runner` / `python_tool_runner` | infra | build `docker/tools/Dockerfile` (per target) | none (run/exec) | Toolboxes for code generation / lint. **`user: root`**, profile: `generate`, repo bind-mounted at `.:/app` |
 
+The Realtime Delivery tables are not created by the emulator or by the application. Run
+`make realtime-init` once per checkout (and again after changing `REALTIME_TABLE_SUFFIX`) — it is
+idempotent. The contract tests of the DynamoDB adapters (`internal/infrastructure/{eventlog,streamticket,instancelease}`)
+create their own uniquely named tables and need `dynamodb_local` up, which `make infra-up` guarantees.
+
 ### Host port allocation
 
 A host port is chosen by one rule:
