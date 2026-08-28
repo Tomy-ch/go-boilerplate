@@ -37,8 +37,8 @@ func BindHandler(e *echo.Echo, tf observability.TracerFactory, cursors ucrealtim
 	gen.RegisterHandlers(e, &server{tracer: tf.Controller(), cursors: cursors, streamer: streamer})
 }
 
-// GetStream は、接続を検証してから Streamer へ渡します。拒否はすべてレスポンスを確定する前に返します:
-// ticket の不備は 401、cursor の形式不正は 400、replay floor より前の cursor は 410、EventLog の不達は 503。
+// GetStream は、接続を検証してから Streamer へ渡します。拒否はすべてレスポンスを確定する前に返します。
+// 拒否の内訳と HTTP ステータスは README.md「What happens on connect」を参照。
 func (s *server) GetStream(c *echo.Context, destination gen.StreamDestinationParam, params gen.GetStreamParams) error {
 	ctx, endSpan := s.tracer.Start(c.Request().Context())
 	defer endSpan()

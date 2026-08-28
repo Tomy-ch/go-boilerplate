@@ -20,7 +20,7 @@ const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..
 const INPUT = path.join(REPO_ROOT, "openapi/openapi.gen.yaml");
 const OUTPUT_DIR = path.join(REPO_ROOT, "tmp/openapi-client");
 
-/** 生成物に現れなければならない component 型。SSE の契約（DeliveryEvent / ControlEvent / StreamCursor）。 */
+/** 生成物に現れなければならない component 型。SSE の契約として公開しているもの。 */
 const EXPECTED_TYPES = ["DeliveryEvent", "ControlEvent", "StreamCursor"] as const;
 
 fs.rmSync(OUTPUT_DIR, { recursive: true, force: true });

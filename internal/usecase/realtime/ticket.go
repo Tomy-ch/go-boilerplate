@@ -26,8 +26,8 @@ type IssueTicketInput struct {
 	Destination rt.StreamID
 	// Scope は、feature が定めた権限の範囲です。機構は解釈しません。
 	Scope string
-	// InitialCursor は、cursor 無しで接続したときの開始位置です。認可の下限ではなく、client は replay floor が覆う範囲なら
-	// それより前からも再開できます。履歴の可視範囲を分けたいときは destination を分けます。
+	// InitialCursor は、cursor 無しで接続したときの開始位置です。認可の下限ではありません
+	// （design/realtime-delivery.md §2.3）。
 	InitialCursor rt.Sequence
 }
 

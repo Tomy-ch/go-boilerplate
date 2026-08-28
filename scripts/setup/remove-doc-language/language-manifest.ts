@@ -391,7 +391,7 @@ export const DOC_REPLACEMENTS: readonly DocReplacement[] = [
   ...forFile(
     ".gitleaksignore",
     [
-      ["env/README.md:generic-api-key:244", "env/README.md:generic-api-key:243"],
+      ["env/README.md:generic-api-key:255", "env/README.md:generic-api-key:254"],
       ["env/README.md:generic-api-key:219", "env/README.md:generic-api-key:218"],
     ],
     "en",
@@ -399,7 +399,7 @@ export const DOC_REPLACEMENTS: readonly DocReplacement[] = [
   ...forFile(
     ".gitleaksignore",
     [
-      ["env/README.md:generic-api-key:244", "env/README.md:generic-api-key:241"],
+      ["env/README.md:generic-api-key:255", "env/README.md:generic-api-key:252"],
       ["env/README.md:generic-api-key:219", "env/README.md:generic-api-key:216"],
     ],
     "ja",

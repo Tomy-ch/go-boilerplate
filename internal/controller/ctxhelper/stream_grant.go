@@ -14,7 +14,7 @@ var ErrStreamGrantMissing = xerrors.Wrap(apperror.ErrUnauthenticated, "requires 
 type streamGrantSlotKey struct{}
 
 // streamGrantSlot は、認証前に仕込んで後段ハンドラと共有する、検証済み ticket の束縛（StreamGrant）の可変スロット。
-// 失敗は Authn スロットが運ぶ（stream ticket の不備も認証の失敗であり、拒否へ結びつける経路は同じ）。
+// 成功のみを保持し、失敗は Authn スロットが運ぶ（README「Provided helpers」）。
 type streamGrantSlot struct {
 	grant rt.StreamGrant
 	set   bool

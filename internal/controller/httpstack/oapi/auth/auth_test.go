@@ -21,11 +21,11 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-// ctxKeyForTest は、バリデータが渡す context を識別するためのテスト用キーです。
-type ctxKeyForTest struct{}
-
 // apiKeyScheme は、query の apiKey として宣言された securityScheme（StreamTicket と同じ形）です。
 var apiKeyScheme = &openapi3.SecurityScheme{Type: "apiKey", In: "query", Name: "ticket"}
+
+// ctxKeyForTest は、バリデータが渡す context を識別するためのテスト用キーです。
+type ctxKeyForTest struct{}
 
 // stubScheme は、dispatch の検証に使う SchemeAuthenticator です。
 type stubScheme struct {

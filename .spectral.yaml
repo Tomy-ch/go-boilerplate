@@ -1,18 +1,17 @@
 # Spectral 設定 / OWASP API Security ルールセット。`make lint-oapi-security`（CI: openapi-security.yaml）で
 # openapi/openapi.yaml を検証する。規約・命名・メタデータの検証は redocly.yaml の担当で、ここは重複しない。
 #
-# この設定の方針:
-#   - ルールの無効化は一括では行わない。off にしたものは必ず理由を書き、根拠となる ADR か実装を示す。
-#   - 抑止は可能な限りファイルスコープ（overrides）にし、新しいファイルが同じ問題を持てば再び落ちるようにする。
-#   - 実在の欠落はルールを緩めるのではなく spec 側を直す。
+# 無効化と抑止の方針（一括で off にしない・根拠を必ず書く・path スコープに寄せる）は
+# .github/workflows/README.md の Notes、`.spectral.yaml` の行。
+# ここで加えるのは 1 点: 実在の欠落はルールを緩めるのではなく spec 側を直す。
 
 # ruleset は node の解決規則でこのファイルの位置（リポジトリルート）から探されるため、
 # 依存を持つ scripts/ 配下を明示する。
 extends: ["./scripts/node_modules/@stoplight/spectral-owasp-ruleset/dist/ruleset.js"]
 
 rules:
-  # --- レート制限系: ADR-0106 (vendor-neutral-deploy-skeleton) と衝突するため無効化 ---
-  # ADR-0106 (vendor-neutral-deploy-skeleton) は「レート制限をアプリケーションに実装せず、API Gateway / LB / service mesh へ委譲する」
+  # --- レート制限系: ADR-0108 (no-in-app-rate-limiter) と衝突するため無効化 ---
+  # ADR-0108 (no-in-app-rate-limiter) は「レート制限をアプリケーションに実装せず、API Gateway / LB / service mesh へ委譲する」
   # ことを決定として明記している。これらのルールは 429 レスポンスと RateLimit-* ヘッダを
   # spec に宣言することを要求するが、本アプリはレート制限を一切知らないため、宣言すれば
   # 実装が保証しない契約を spec が約束することになる。
@@ -82,9 +81,10 @@ overrides:
   # SSE の stream ticket は query に載せる。ブラウザの EventSource がリクエストヘッダを設定できないため、
   # Bearer を使えない（ADR-0074 (query-ticket-stream-authentication)）。TTL 5 分・destination 束縛・
   # hash 保存・log / trace からの除去を前提にした限定的な採用で、他の scheme へは広げない。
-  # ルール自体は有効なまま「この 1 scheme だけ」を対象外にする。
+  # ルール自体は有効なまま「この 1 scheme だけ」を対象外にする。pointer で当てるため、この scheme は
+  # openapi.yaml に inline で宣言している（$ref 先ファイルに報告される finding は overrides で抑止できない）。
   - files:
-      - "openapi/components/schemas/StreamTicket.yaml"
+      - "openapi/openapi.yaml#/components/securitySchemes/StreamTicket"
     rules:
       owasp:api2:2023-no-api-keys-in-url: off
 

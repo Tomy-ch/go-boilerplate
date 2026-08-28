@@ -28,7 +28,7 @@ var errStreamClosed = xerrors.New("stream closed")
 // stubStreamer は、handler が渡した StreamRequest を捕まえる Streamer です。
 type stubStreamer struct {
 	got    *StreamRequest
-	gotCtx context.Context
+	gotReq *http.Request
 	err    error
 	called bool
 }
@@ -36,7 +36,7 @@ type stubStreamer struct {
 func (s *stubStreamer) Stream(c *echo.Context, req StreamRequest) error {
 	s.called = true
 	s.got = &req
-	s.gotCtx = c.Request().Context()
+	s.gotReq = c.Request()
 	return s.err
 }
 
@@ -98,8 +98,8 @@ func Test_server_GetStream(t *testing.T) {
 			require.NotNil(t, streamer.got)
 			assert.Equal(t, StreamRequest{Subject: "subject-1", Destination: "stream-1", Scope: "read", Cursor: 12}, *streamer.got)
 			// handler が張った span 付きの context が request に据え直され、その request が Streamer に渡ること。
-			assert.NotEqual(t, original, streamer.gotCtx)
-			assert.Equal(t, c.Request().Context(), streamer.gotCtx)
+			assert.NotEqual(t, original, streamer.gotReq.Context())
+			assert.Equal(t, c.Request().Context(), streamer.gotReq.Context())
 		})
 
 		t.Run("afterだけならその位置を使う", func(t *testing.T) {

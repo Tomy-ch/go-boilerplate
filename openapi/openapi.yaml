@@ -233,8 +233,18 @@ components:
     # sample-api:end
     BasicAuth:
       $ref: './components/schemas/BasicAuth.yaml'
+    # StreamTicket だけは $ref ではなく inline で宣言する。Spectral の overrides はルート文書に対する JSON pointer でしか
+    # 当たらず、$ref 先ファイルに報告される finding を file-scoped に抑止できないため（.spectral.yaml の同 scheme の項）。
     StreamTicket:
-      $ref: './components/schemas/StreamTicket.yaml'
+      type: apiKey
+      in: query
+      name: ticket
+      description: |
+        SSE 接続の認証に用いる不透明な stream ticket（ADR-0074 (query-ticket-stream-authentication)）。
+        EventSource はリクエストヘッダを設定できないため query に載せます。
+        feature の認可を通った後に発行され、subject / destination / scope / expiry に束縛されます。
+        発行から 5 分間は新しい接続に再利用でき、期限後・失効後の新規接続は 401 で拒否されます。
+        サーバは hash だけを保存し、生値を log / trace / error に出しません。
   schemas:
     ErrorResponse:
       $ref: './components/schemas/ErrorResponse.yaml'

@@ -23,8 +23,8 @@ panic 復帰 — はすべて、URI と query の map を先に `Redactor` へ�
 - `Redactor.URI(raw string) string` — 生のリクエスト URI の秘匿対象の値を `[REDACTED]` に置き換える。
   組の並びと符号化は保つ。標準の構文解析が受け付けない query（`;` 区切り・壊れた符号化）は組ごとに判定できないため
   全体を置き換える（fail-closed）。
-- `Redactor.QueryParams(map[string][]string) map[string][]string` — 秘匿対象の値を置き換えた複製を返す。
-  入力の map は変更しない。
+- `Redactor.QueryParams(map[string][]string) map[string][]string` — 秘匿対象の値を置き換えた map を返す。
+  入力の map は変更しない。秘匿対象が無ければ入力をそのまま返すので、返り値が複製であることは保証しない。
 
 ## 配線
 
@@ -34,7 +34,7 @@ panic 復帰 — はすべて、URI と query の map を先に `Redactor` へ�
 | 経路 | 適用箇所 |
 | --- | --- |
 | アクセスログ（`httpstack/logging`） | request / response の両フィールド |
-| エラーハンドラ（`httpstack/errorhandler`） | `Policies.Redact` → `server.BuildHTTPRequestLogInput` |
+| エラーハンドラ（`httpstack/errorhandler`） | `NewPolicies(..., redact)` → `server.BuildHTTPRequestLogInput` |
 | panic 復帰（`httpstack/recovery`） | `server.BuildHTTPRequestLogInput` |
 
 3 経路が分かれているのは意図的です。アクセスログは OpenAPI validator の内側で動くため、認証で拒否された

@@ -167,18 +167,20 @@ func TestMiddleware(t *testing.T) {
 		t.Run("StreamGrantスロットが仕込まれている", func(t *testing.T) {
 			t.Parallel()
 
-			spec := &openapi3.T{}
+			spec, err := openapi3.NewLoader().LoadFromData([]byte(testSpec))
+			require.NoError(t, err)
 			mw := Middleware(spec, nil, nil)
 
-			ctx := context.Background()
-			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/public", nil)
 			rec := httptest.NewRecorder()
 			e := echo.New()
 			c := e.NewContext(req, rec)
 
 			grant := rt.StreamGrant{Subject: "s", Destination: "d"}
+			reached := false
 			handler := mw(func(c *echo.Context) error {
 				// 後段が見る request の context にスロットがあり、仕込まれた直後は未設定で、書き込めること。
+				reached = true
 				_, ok := ctxhelper.GetStreamGrant(c.Request().Context())
 				assert.False(t, ok)
 				assert.True(t, ctxhelper.SetStreamGrant(c.Request().Context(), grant))
@@ -186,6 +188,7 @@ func TestMiddleware(t *testing.T) {
 			})
 
 			require.NoError(t, handler(c))
+			require.True(t, reached)
 
 			got, ok := ctxhelper.GetStreamGrant(c.Request().Context())
 			assert.True(t, ok)

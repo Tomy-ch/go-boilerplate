@@ -41,12 +41,8 @@ func Middleware(
 }
 
 // failClosed は、認証に失敗したリクエストをハンドラへ到達させず、その失敗を返します。
-//
-// spec が複数の security requirement を並べた operation では、そのうち 1 つでも満たされれば
-// バリデーションは成功する。資格情報を要求しない requirement は常に満たされるため、
-// 提示された資格情報の検証失敗はバリデーションの結果に現れず、認証されていない主体が
-// ハンドラへ到達する。ここで失敗を拾い直すことで、認証を任意とする宣言が
-// 「検証に失敗しても通す」という意味にならないようにする。
+// 認証を任意と宣言した operation でも、提示されたうえで検証に失敗した資格情報は通さない。
+// 根拠は ADR-0021 (optional-authentication-fail-closed) と README.md「Fail-closed authentication」。
 func failClosed(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c *echo.Context) error {
 		if err := ctxhelper.AuthnFailure(c.Request().Context()); err != nil {

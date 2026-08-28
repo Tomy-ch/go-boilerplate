@@ -23,9 +23,9 @@ import (
 
 // realtimeModule は、Realtime Delivery の store（EventLog / StreamTicket / InstanceLease / SecretGenerator）と
 // 機構側 usecase（CursorValidator / TicketIssuer / TicketVerifier）、StreamTicket securityScheme の認証器を提供し、
-// SSE の stream handler を Echo に登録する fx.Module です。handler が要る stream.Streamer は Phase 6 が提供します。
-// 設計正本（docs/design/realtime-delivery.md §3.1）のとおり、feature の realtime adapter が 1 つ以上あるときに
-// だけ app graph へ組み込みます。まだ無いので InfrastructureModule() には含めず、graph の検証だけを持ちます。
+// SSE の stream handler を Echo に登録する fx.Module です。
+// InfrastructureModule() には束ねず、feature の realtime adapter が現れたときに app graph へ組み込みます
+// （docs/design/realtime-delivery.md §3.1）。
 func realtimeModule() fx.Option {
 	return fx.Module("realtime",
 		fx.Provide(

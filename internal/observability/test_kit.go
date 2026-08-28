@@ -31,7 +31,6 @@ type ObservedHTTPClientMetrics struct {
 	reader *sdkmetric.ManualReader
 }
 
-// NewNoopTracerFactory は、テスト用に TracerFactory を無効化して返します。
 // spanRecorder は、終了した span をそのまま保持する同期 exporter です。
 type spanRecorder struct {
 	mu    sync.Mutex
@@ -192,6 +191,7 @@ func NewStubSpanContext(t *testing.T) (context.Context, func()) {
 	}
 }
 
+// NewNoopTracerFactory は、テスト用に TracerFactory を無効化して返します。
 func (r *spanRecorder) ExportSpans(_ context.Context, spans []sdktrace.ReadOnlySpan) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -229,4 +229,29 @@ func InstallRecordingTracerProvider(t *testing.T) func() []sdktrace.ReadOnlySpan
 	t.Cleanup(func() { otel.SetTracerProvider(previous) })
 
 	return recorded
+}
+
+// SpanAttributeValues は、属性 filterKey が filterValue に一致する span について、その全属性の値を文字列で返します。
+// 計装が span に載せた値の中に特定の文字列（資格情報など）が無いことを表明するために使います。
+func SpanAttributeValues(spans []sdktrace.ReadOnlySpan, filterKey, filterValue string) []string {
+	var values []string
+	for _, span := range spans {
+		if !hasAttribute(span, filterKey, filterValue) {
+			continue
+		}
+		for _, attr := range span.Attributes() {
+			values = append(values, attr.Value.AsString())
+		}
+	}
+	return values
+}
+
+// hasAttribute は、span が key に value を持つかを返します。
+func hasAttribute(span sdktrace.ReadOnlySpan, key, value string) bool {
+	for _, attr := range span.Attributes() {
+		if string(attr.Key) == key && attr.Value.AsString() == value {
+			return true
+		}
+	}
+	return false
 }

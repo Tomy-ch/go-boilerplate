@@ -9,7 +9,7 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-// BuildHTTPRequestLogInput は、Echo コンテキストから HTTP リクエストのログ入力を組み立てます（エラー/リカバリ経路の共通生成点）。
+// BuildHTTPRequestLogInput は、Echo コンテキストから HTTP リクエストのログ入力を組み立てます。
 // eventType には呼び出し経路に応じたイベント種別（logging.EventTypeError / EventTypePanic 等）を渡す。
 func BuildHTTPRequestLogInput(c *echo.Context, eventType string, red redaction.Redactor) logging.HTTPRequestLogInput {
 	req := c.Request()

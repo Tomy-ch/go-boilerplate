@@ -157,7 +157,7 @@ func authExtractor(
 		return nil, nil
 	}
 
-	// 認証済みの外部アイデンティティ（issuer + subject）を内部ユーザーへ解決する。エラーは分類を変えずに返す。
+	// 認証済みの外部アイデンティティ（issuer + subject）を内部ユーザーへ解決する。
 	resolved, err := resolver.Resolve(ctx, authn)
 	if err != nil {
 		return nil, err

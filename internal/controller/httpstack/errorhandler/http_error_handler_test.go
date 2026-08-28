@@ -543,7 +543,9 @@ func Test_handleHTTPError(t *testing.T) {
 			c, end := testspan.StartTestSpanForEcho(t, c)
 			defer end()
 
-			handleHTTPError(c, NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{}, redaction.Redactor{}), logger, lf, obsCfg, xerrors.New("boom2"))
+			handleHTTPError(
+				c, NewPolicies(stubDetailPolicy{allow: true}, stubAllowPolicy{}, redaction.Redactor{}), logger, lf, obsCfg, xerrors.New("boom2"),
+			)
 
 			assert.Equal(t, []int{http.StatusInternalServerError}, bw.wroteHeaders)
 			assert.Equal(t, 1, observed.FilterMessage("failed to write error response").Len())
@@ -976,7 +978,7 @@ func Test_httpErrorField(t *testing.T) {
 			fields := httpErrorField(c, lf, redaction.New([]string{"ticket"}), he)
 
 			assert.Contains(t, fields, logging.String(logging.URIKey, "/v1/streams/s?ticket="+redaction.RedactedValue))
-			text := loggedJSON(t, fields)
+			text := loggedJSON(t.Context(), t, fields)
 			assert.NotContains(t, text, "raw-secret")
 			assert.Contains(t, text, redaction.RedactedValue)
 		})
@@ -1032,10 +1034,10 @@ func Test_httpErrorField(t *testing.T) {
 
 // loggedJSON は、fields をそのままログに書いたときに出力へ載る全フィールドを JSON にしたものです。
 // どのキーに載ったかを問わず生値の有無を見るために使います。
-func loggedJSON(t *testing.T, fields []*logging.Field) string {
+func loggedJSON(ctx context.Context, t *testing.T, fields []*logging.Field) string {
 	t.Helper()
 	logger, observed := logging.NewObservedTestLogger(t)
-	logger.Info(context.Background(), "probe", fields...)
+	logger.Info(ctx, "probe", fields...)
 	entries := observed.All()
 	require.Len(t, entries, 1)
 	raw, err := json.Marshal(entries[0].ContextMap())

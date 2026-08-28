@@ -30,8 +30,7 @@ type StreamTicket struct {
 }
 
 // StreamGrant は、検証を通った ticket が接続に与える束縛です。生値は含まず、ticket と違い保存もされません。
-// InitialCursor は cursor を持たずに接続したときの開始位置であって認可の下限ではありません — client は replay floor が
-// まだ覆う範囲なら、それより前の位置からも再開できます。履歴の可視範囲を分けたい feature は destination を分けます。
+// InitialCursor は開始位置であって認可の下限ではありません（design/realtime-delivery.md §2.3）。
 type StreamGrant struct {
 	// Subject は、ticket を発行された subject です。
 	Subject string

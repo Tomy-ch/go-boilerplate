@@ -14,7 +14,7 @@ import (
 type AccessRevoker interface {
 	// Revoke は、subject へ destination に対して発行済みの ticket をすべて無効にしたうえで、
 	// 開いている接続を閉じるよう各 instance へ伝えます。該当する ticket や接続が無くてもエラーになりません。
-	// 無効化が先で、通知に失敗しても無効化は成立しています（STOP を無視した client が同じ ticket で戻れないため）。
+	// 無効化が先で、通知に失敗しても無効化は成立しています（順序の根拠は README / ADR-0074）。
 	Revoke(ctx context.Context, subject string, destination rt.StreamID) error
 }
 

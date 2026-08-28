@@ -83,7 +83,7 @@ All three rules live in one check rather than three, because they are not three 
 |Generated OpenAPI Artifacts Check|`gen-oapi-artifacts-check.yaml`|Verify OpenAPI bundle and docs match committed artifacts|
 |Portal Check|`portal-check.yaml`|Type-check the documentation portal viewer (`docs-viewer/`) and run its test suite|
 |Scripts Check|`scripts-check.yaml`|Type-check the repository's TypeScript helper scripts (`scripts/**/*.ts`), run the unit tests covering their decision logic, and run the 1:1 test-mapping gate, which also walks `docs-viewer/src/**`|
-|OpenAPI Lint|`oapi-lint.yaml`|`redocly lint` the OpenAPI definition (naming / casing / descriptions / unused components)|
+|OpenAPI Lint|`oapi-lint.yaml`|Two jobs with separate verdicts: `redocly lint` over the OpenAPI definition, and the frontend generator contract check — a consumer's generator (orval) must be able to turn the SSE contract components into types, which neither redocly nor Spectral can answer because both judge the spec as a document (see the `openapi-client-check/` row in [`scripts/README.md`](../../scripts/README.md)).|
 |App Boot Check|`app-di-startup-check.yaml`|Verify the application server starts successfully with DB|
 |Job Boot Check|`job-boot-check.yaml`|Verify the job entrypoint boots and rejects an unknown job|
 |Worker Boot Check|`worker-boot-check.yaml`|Verify the worker entrypoint boots (DI / DB) and rejects an unknown worker|

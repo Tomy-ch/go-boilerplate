@@ -52,8 +52,7 @@ stamp-openapi-version-ci:
 lint-oapi-security-ci:
 	$(PNPM_SCRIPTS) lint:openapi-security
 
-# frontend generator の contract check。bundle（openapi/openapi.gen.yaml）を orval に渡し、SSE の契約として公開する
-# component 型（DeliveryEvent / ControlEvent / StreamCursor）が生成物に現れることを確認する。生成物は tmp/ に出す。
-# 事前準備は lint-oapi-security-ci と同じ（pnpm install --dir scripts --frozen-lockfile）。
+# frontend generator（orval）の contract check。確認する型と生成物の扱いは
+# .makefiles/README.md の openapi-client-check 行。事前準備は lint-oapi-security-ci と同じ。
 openapi-client-check-ci:
 	$(PNPM_SCRIPTS) check:openapi-client

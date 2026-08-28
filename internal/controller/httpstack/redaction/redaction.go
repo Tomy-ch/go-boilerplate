@@ -88,7 +88,8 @@ func (r Redactor) URI(raw string) string {
 	return path + "?" + strings.Join(pairs, "&")
 }
 
-// QueryParams は、秘匿対象パラメータの値を取り除いた複製を返します。元の map は変更しません。
+// QueryParams は、秘匿対象パラメータの値を RedactedValue へ置き換えた map を返します。元の map は変更しません。
+// 秘匿対象が 1 つも無い場合は params をそのまま返すため、返り値が複製であることは保証しません。
 func (r Redactor) QueryParams(params map[string][]string) map[string][]string {
 	if len(r.names) == 0 || params == nil {
 		return params

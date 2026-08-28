@@ -174,7 +174,7 @@ func Test_requestLog_buildRequestLogFields(t *testing.T) {
 
 			assert.Contains(t, fields, logging.String(logging.URIKey, "/v1/streams/s?ticket="+redaction.RedactedValue+"&after=1"))
 			assert.Contains(t, fields, logging.Any(logging.QueryParamsKey, map[string][]string{"ticket": {redaction.RedactedValue}, "after": {"1"}}))
-			text := loggedJSON(t, fields)
+			text := loggedJSON(t.Context(), t, fields)
 			assert.NotContains(t, text, "raw-secret")
 			assert.Contains(t, text, redaction.RedactedValue)
 		})
@@ -234,7 +234,7 @@ func Test_requestLog_buildResponseLogFields(t *testing.T) {
 			fields := l.buildResponseLogFields(time.Now(), time.Millisecond)
 
 			assert.Contains(t, fields, logging.String(logging.URIKey, "/v1/streams/s?ticket="+redaction.RedactedValue))
-			text := loggedJSON(t, fields)
+			text := loggedJSON(t.Context(), t, fields)
 			assert.NotContains(t, text, "raw-secret")
 			assert.Contains(t, text, redaction.RedactedValue)
 		})
@@ -243,10 +243,10 @@ func Test_requestLog_buildResponseLogFields(t *testing.T) {
 
 // loggedJSON は、fields をそのままログに書いたときに出力へ載る全フィールドを JSON にしたものです。
 // どのキーに載ったかを問わず生値の有無を見るために使います。
-func loggedJSON(t *testing.T, fields []*logging.Field) string {
+func loggedJSON(ctx context.Context, t *testing.T, fields []*logging.Field) string {
 	t.Helper()
 	logger, observed := logging.NewObservedTestLogger(t)
-	logger.Info(context.Background(), "probe", fields...)
+	logger.Info(ctx, "probe", fields...)
 	entries := observed.All()
 	require.Len(t, entries, 1)
 	raw, err := json.Marshal(entries[0].ContextMap())

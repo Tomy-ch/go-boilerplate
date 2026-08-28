@@ -157,8 +157,8 @@ When the upstream `recovery` middleware has already logged the panic, the same c
 |`detail_exposure.go`|`DetailPolicy` — per-endpoint `details` opt-in resolved from the OpenAPI spec, plus the shared host-agnostic router constructor both policies build on|
 |`allow_methods.go`|`AllowPolicy` — per-path `Allow` header value resolved from the OpenAPI spec|
 
-Both spec-derived policies reach the handler as a single `Policies` value, so adding another one does
-not widen `New`'s signature again.
+The spec-derived policies and the redactor reach the handler as a single `Policies` value built by
+`NewPolicies`, so adding another one does not widen `New`'s signature again.
 
 ## Test Strategy
 

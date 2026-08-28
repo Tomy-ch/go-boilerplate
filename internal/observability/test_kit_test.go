@@ -473,3 +473,58 @@ func Test_spanRecorder_Shutdown(t *testing.T) {
 		})
 	})
 }
+
+func TestSpanAttributeValues(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("絞り込みに一致した span の全属性値を返す", func(t *testing.T) {
+			t.Parallel()
+
+			tp, recorded := NewRecordingTracerProvider(t)
+			tracer := tp.Tracer("test")
+			_, hit := tracer.Start(context.Background(), "hit", trace.WithAttributes(attribute.String("url.path", "/a"), attribute.String("k", "v")))
+			hit.End()
+			_, miss := tracer.Start(context.Background(), "miss", trace.WithAttributes(attribute.String("url.path", "/b"), attribute.String("k", "w")))
+			miss.End()
+
+			values := SpanAttributeValues(recorded(), "url.path", "/a")
+
+			assert.ElementsMatch(t, []string{"/a", "v"}, values)
+		})
+
+		t.Run("一致する span が無ければ空", func(t *testing.T) {
+			t.Parallel()
+
+			tp, recorded := NewRecordingTracerProvider(t)
+			_, span := tp.Tracer("test").Start(context.Background(), "other")
+			span.End()
+
+			assert.Empty(t, SpanAttributeValues(recorded(), "url.path", "/a"))
+		})
+	})
+}
+
+func Test_hasAttribute(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("keyとvalueの両方が一致するときだけtrue", func(t *testing.T) {
+			t.Parallel()
+
+			tp, recorded := NewRecordingTracerProvider(t)
+			_, span := tp.Tracer("test").Start(context.Background(), "s", trace.WithAttributes(attribute.String("k", "v")))
+			span.End()
+			spans := recorded()
+			require.Len(t, spans, 1)
+
+			assert.True(t, hasAttribute(spans[0], "k", "v"))
+			assert.False(t, hasAttribute(spans[0], "k", "x"))
+			assert.False(t, hasAttribute(spans[0], "other", "v"))
+		})
+	})
+}

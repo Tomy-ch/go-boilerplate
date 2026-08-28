@@ -103,11 +103,11 @@ func handleHTTPError(
 }
 
 // writeErrorResponse は、エラーレスポンスをクライアントに書き込みます。
-// exposeDetails が false の場合、wire に送る body の details のみを落とします
-// (resp 本体は温存し、ログには従来どおり details を残す)。
+// exposeDetails が false の場合、wire に送る body の details のみを落とします（resp 本体は変更しません）。
+// details を出す / 出さないの方針は handleHTTPError を参照。
 func writeErrorResponse(c *echo.Context, resp *response.HTTPErrorResponse, exposeDetails bool) error {
-	// エラー応答は共有キャッシュに残さない。410 のような発見的に cache 可能なステータスでも、資格情報を query に持つ
-	// URL（stream ticket）ごと保存されないようにする。
+	// エラー応答はステータスによらず共有キャッシュに残さない（資格情報を query に持つ URL ごと保存させないため）。
+	// 背景は errorhandler の README（Cache suppression）を参照。
 	c.Response().Header().Set(echo.HeaderCacheControl, "no-store")
 
 	body := resp.ErrorResponseWithDetails

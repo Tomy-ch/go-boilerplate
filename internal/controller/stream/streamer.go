@@ -12,7 +12,7 @@ type StreamRequest struct {
 	Subject string
 	// Destination は、接続先を表す stream の識別子です。path の destination と ticket の束縛が一致していることは検証済みです。
 	Destination rt.StreamID
-	// Scope は、feature が ticket に与えた権限の範囲です。機構は解釈しません。
+	// Scope は、ticket が与えた権限の範囲です（意味は boundary/realtime.StreamGrant.Scope）。
 	Scope string
 	// Cursor は、この位置より後の event から配信を始めます。replay floor 以上であることは検証済みです。
 	Cursor rt.Sequence

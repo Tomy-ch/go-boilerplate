@@ -36,7 +36,6 @@ const accessTokenType = "at+jwt"
 var errNoAuthenticatorForEnv = xerrors.New("no authenticator configured for environment")
 
 // authenticatorParams は、provideAuthenticator の依存を集約する fx パラメータです。
-// HTTPClient は JWKS 取得に用いる outbound HTTP substrate で、infra 層（InfrastructureModule）が全プロファイルで提供する常設依存です。
 type authenticatorParams struct {
 	fx.In
 
@@ -67,8 +66,7 @@ func AuthnModule() fx.Option {
 }
 
 // provideAuthenticator は、環境に対応した Authenticator を選んで返します。
-// 対応する case が無い環境（staging / production 等）は誤った Authenticator を配線しないよう
-// default で起動エラーにします（fail-closed）。
+// 対応する case が無い環境は誤った Authenticator を配線しないよう起動エラーにします（fail-closed）。
 func provideAuthenticator(p authenticatorParams) (authbd.Authenticator, error) {
 	logger := p.Logger.Named("core.authn").CallerSkip(callerSkipCount)
 
@@ -95,7 +93,7 @@ func provideAuthenticator(p authenticatorParams) (authbd.Authenticator, error) {
 }
 
 // allowInsecureJWKSURL は、指定環境で JWKS URL に非 https を許すかを返します。
-// local と dast だけが疑似 provider（http）へ接続するため許容され、それ以外の環境では https を強制します。
+// 疑似 provider（http）へ繋ぐ環境だけが対象で、それ以外は https を強制します。
 func allowInsecureJWKSURL(env string) bool {
 	switch env {
 	case config.EnvLocal, config.EnvDast:

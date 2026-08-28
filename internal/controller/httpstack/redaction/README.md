@@ -24,8 +24,9 @@ second list in Go to keep in step (ADR-0016 (spec-driven-request-validation)).
 - `Redactor.URI(raw string) string` — replace the value of each secret pair in the raw request URI
   with `[REDACTED]`, preserving pair order and encoding. A query the standard parser rejects (`;`
   separators, broken escapes) cannot be judged pair by pair and is replaced whole (fail-closed).
-- `Redactor.QueryParams(map[string][]string) map[string][]string` — return a copy with every
-  value of a secret name replaced; the input map is not modified.
+- `Redactor.QueryParams(map[string][]string) map[string][]string` — return a map with every value
+  of a secret name replaced; the input map is not modified. When nothing is secret the input itself
+  is returned, so the result is not guaranteed to be a copy.
 
 ## Wiring
 
@@ -35,7 +36,7 @@ validator uses, and the three log paths receive it through DI:
 | Path | Where it is applied |
 | --- | --- |
 | access log (`httpstack/logging`) | request and response fields |
-| error handler (`httpstack/errorhandler`) | `Policies.Redact` → `server.BuildHTTPRequestLogInput` |
+| error handler (`httpstack/errorhandler`) | `NewPolicies(..., redact)` → `server.BuildHTTPRequestLogInput` |
 | panic recovery (`httpstack/recovery`) | `server.BuildHTTPRequestLogInput` |
 
 The three paths are deliberately separate: the access log runs inside the OpenAPI validator, so a
