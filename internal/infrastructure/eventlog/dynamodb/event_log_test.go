@@ -373,6 +373,15 @@ func Test_fromItem(t *testing.T) {
 			require.ErrorIs(t, err, apperror.ErrInternal)
 		})
 
+		t.Run("schema_version が int の範囲外なら ErrInternal を返す", func(t *testing.T) {
+			t.Parallel()
+
+			item := toItem(event("s", 1, "evt-1"))
+			item[attrSchemaVersion] = &types.AttributeValueMemberN{Value: "4294967296"}
+			_, err := fromItem(item)
+			require.ErrorIs(t, err, apperror.ErrInternal)
+		})
+
 		t.Run("occurred_at が時刻でなければ ErrInternal を返す", func(t *testing.T) {
 			t.Parallel()
 

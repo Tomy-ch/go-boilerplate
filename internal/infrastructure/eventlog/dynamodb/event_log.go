@@ -3,6 +3,7 @@ package dynamodb
 import (
 	"context"
 	"encoding/json"
+	"math"
 	"strconv"
 	"time"
 
@@ -210,6 +211,10 @@ func fromItem(item map[string]types.AttributeValue) (realtime.DeliveryEvent, err
 	version, err := dynamodbclient.NumberAttr(item, attrSchemaVersion, itemKind)
 	if err != nil {
 		return realtime.DeliveryEvent{}, err
+	}
+
+	if version < 0 || version > math.MaxInt32 {
+		return realtime.DeliveryEvent{}, xerrors.Wrap(apperror.ErrInternal, "event log item: schema_version is out of range")
 	}
 
 	occurredAt, err := time.Parse(time.RFC3339Nano, dynamodbclient.StringAttr(item, attrOccurredAt))
