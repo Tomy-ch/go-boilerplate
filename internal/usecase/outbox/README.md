@@ -66,7 +66,11 @@ touches `dead`, and replay never touches `published`.
 
 ### relay — `RelayUsecase`
 
-`NewRelay(txm, store, publisher, metrics, clock, logger, tracerFactory, channel) RelayUsecase`
+`NewRelay(deps RelayDeps, channel) RelayUsecase`
+
+- `RelayDeps` bundles the collaborators (transaction manager, store, publisher, metrics, clock, logger,
+  tracer factory); the channel stays a separate argument because it is what this relay *is*, not
+  something it depends on. The DI module assembles the struct.
 
 - A relay instance serves **one delivery channel**, fixed at construction. Claiming
   and failure progression stay inside it, so a channel whose downstream is down

@@ -1,14 +1,23 @@
 package module
 
 import (
+	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
+	"go.uber.org/mock/gomock"
 
 	outboxengine "go-boilerplate/internal/controller/outbox"
+	"go-boilerplate/internal/logging"
+	"go-boilerplate/internal/observability"
+	clocktestkit "go-boilerplate/internal/usecase/boundary/clock/testkit"
 	outboxbndry "go-boilerplate/internal/usecase/boundary/outbox"
+	mock_outbox "go-boilerplate/internal/usecase/boundary/outbox/mock"
 	publisherbd "go-boilerplate/internal/usecase/boundary/publisher"
+	mock_publisher "go-boilerplate/internal/usecase/boundary/publisher/mock"
+	mock_tx "go-boilerplate/internal/usecase/boundary/tx/mock"
 	outboxuc "go-boilerplate/internal/usecase/outbox"
 )
 
@@ -65,6 +74,39 @@ func TestOutboxRelayModule(t *testing.T) {
 
 			opts := append(relayDeps(), fx.Populate(&engine), fx.NopLogger)
 			require.Error(t, fx.ValidateApp(opts...))
+		})
+	})
+}
+
+func Test_provideRelayUsecase(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("供給されたチャネルを担う relay usecase を返す", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			store := mock_outbox.NewMockStore(ctrl)
+
+			// 集約した依存が取り違えなく渡ることを、チャネルが claim 系の呼び出しへ届くことで確かめる。
+			store.EXPECT().
+				OldestPendingCreatedAt(gomock.Any(), outboxbndry.ChannelRealtime).
+				Return(time.Time{}, false, nil)
+
+			uc := provideRelayUsecase(relayUsecaseIn{
+				Txm:       mock_tx.NewMockManager(ctrl),
+				Store:     store,
+				Publisher: mock_publisher.NewMockPublisher(ctrl),
+				Metrics:   observability.NewNoopOutboxMetrics(t),
+				Clock:     clocktestkit.NewStepClock(time.Time{}, 0),
+				Logging:   logging.NewTestLogger(t),
+				Tracer:    observability.NewNoopTracerFactory(t),
+				Channel:   outboxbndry.ChannelRealtime,
+			})
+
+			require.NotNil(t, uc)
+			require.NoError(t, uc.RecordLag(context.Background()))
 		})
 	})
 }

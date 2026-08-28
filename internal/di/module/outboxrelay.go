@@ -9,8 +9,12 @@ import (
 	outboxengine "go-boilerplate/internal/controller/outbox"
 	relayhook "go-boilerplate/internal/di/outboxrelay/hook"
 	"go-boilerplate/internal/infrastructure/publisher"
+	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
+	"go-boilerplate/internal/usecase/boundary/clock"
 	outboxbndry "go-boilerplate/internal/usecase/boundary/outbox"
+	publisherbndry "go-boilerplate/internal/usecase/boundary/publisher"
+	"go-boilerplate/internal/usecase/boundary/tx"
 	outboxuc "go-boilerplate/internal/usecase/outbox"
 	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/xerrors"
@@ -36,12 +40,40 @@ func OutboxRelayModule(channel outboxbndry.Channel) fx.Option {
 				observability.NewOutboxMetrics,
 				fx.As(new(outboxuc.Metrics)),
 			),
-			outboxuc.NewRelay,
+			provideRelayUsecase,
 			provideRelaySettings,
 			outboxengine.NewEngine,
 		),
 		fx.Invoke(relayhook.RegisterRelayHooks),
 	)
+}
+
+// relayUsecaseIn は、relay usecase の依存を DI から集約します。
+// 依存を 1 つずつ引数に並べると構築子の引数が増え続けるため、集約は DI 側に置きます。
+type relayUsecaseIn struct {
+	fx.In
+
+	Txm       tx.Manager
+	Store     outboxbndry.Store
+	Publisher publisherbndry.Publisher
+	Metrics   outboxuc.Metrics
+	Clock     clock.Clock
+	Logging   logging.Logger
+	Tracer    observability.TracerFactory
+	Channel   outboxbndry.Channel
+}
+
+// provideRelayUsecase は、集約した依存から channel を担う RelayUsecase を生成します。
+func provideRelayUsecase(in relayUsecaseIn) outboxuc.RelayUsecase {
+	return outboxuc.NewRelay(outboxuc.RelayDeps{
+		Txm:       in.Txm,
+		Store:     in.Store,
+		Publisher: in.Publisher,
+		Metrics:   in.Metrics,
+		Clock:     in.Clock,
+		Logging:   in.Logging,
+		Tracer:    in.Tracer,
+	}, in.Channel)
 }
 
 // provideRelaySettings は、OutboxConfig から relay engine の設定を生成します

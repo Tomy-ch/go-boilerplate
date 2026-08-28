@@ -63,7 +63,11 @@ stateDiagram-v2
 
 ### relay — `RelayUsecase`
 
-`NewRelay(txm, store, publisher, metrics, clock, logger, tracerFactory, channel) RelayUsecase`
+`NewRelay(deps RelayDeps, channel) RelayUsecase`
+
+- `RelayDeps` は協力者（トランザクションマネージャ・store・publisher・メトリクス・clock・ロガー・
+  tracer の生成元）をまとめたものです。チャネルだけを別の引数に残すのは、それが依存ではなく
+  「この relay が何であるか」だからです。構造体の組み立ては DI 側が行います。
 
 - relay インスタンスは構築時に固定された **1 つの配送チャネル**を担当します。claim も
   失敗時の進行もその中で閉じるため、下流が停止したチャネルが別のチャネルのエントリを

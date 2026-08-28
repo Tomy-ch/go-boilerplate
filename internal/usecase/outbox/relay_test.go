@@ -38,8 +38,7 @@ func newRelayWithMetrics(
 	t *testing.T, txm tx.Manager, store outboxbndry.Store, pub publisher.Publisher, metrics outbox.Metrics,
 ) outbox.RelayUsecase {
 	t.Helper()
-	return outbox.NewRelay(txm, store, pub, metrics, testkit.NewMockClock(t, time.Time{}),
-		logging.NewTestLogger(t), observability.NewNoopTracerFactory(t), outboxbndry.ChannelHTTP)
+	return newRelayForChannel(t, txm, store, pub, metrics, outboxbndry.ChannelHTTP)
 }
 
 // newRelayForChannel は、担当チャネルを差し替えた RelayUsecase を組み立てます。
@@ -50,8 +49,24 @@ func newRelayForChannel(
 	metrics outbox.Metrics, channel outboxbndry.Channel,
 ) outbox.RelayUsecase {
 	t.Helper()
-	return outbox.NewRelay(txm, store, pub, metrics, testkit.NewMockClock(t, time.Time{}),
-		logging.NewTestLogger(t), observability.NewNoopTracerFactory(t), channel)
+	return outbox.NewRelay(relayDeps(t, txm, store, pub, metrics, time.Time{}), channel)
+}
+
+// relayDeps は、テスト用の RelayDeps を組み立てます。
+func relayDeps(
+	t *testing.T, txm tx.Manager, store outboxbndry.Store, pub publisher.Publisher,
+	metrics outbox.Metrics, now time.Time,
+) outbox.RelayDeps {
+	t.Helper()
+	return outbox.RelayDeps{
+		Txm:       txm,
+		Store:     store,
+		Publisher: pub,
+		Metrics:   metrics,
+		Clock:     testkit.NewMockClock(t, now),
+		Logging:   logging.NewTestLogger(t),
+		Tracer:    observability.NewNoopTracerFactory(t),
+	}
 }
 
 func newRelay(t *testing.T, txm tx.Manager, store outboxbndry.Store, pub publisher.Publisher) outbox.RelayUsecase {
@@ -390,9 +405,8 @@ func Test_relayUsecase_RecordLag(t *testing.T) {
 		t.Helper()
 		ctrl := gomock.NewController(t)
 		return outbox.NewRelay(
-			mock_tx.NewMockManager(ctrl), store, mock_publisher.NewMockPublisher(ctrl),
-			metrics, testkit.NewMockClock(t, now),
-			logging.NewTestLogger(t), observability.NewNoopTracerFactory(t), outboxbndry.ChannelHTTP)
+			relayDeps(t, mock_tx.NewMockManager(ctrl), store, mock_publisher.NewMockPublisher(ctrl), metrics, now),
+			outboxbndry.ChannelHTTP)
 	}
 
 	t.Run("正常系", func(t *testing.T) {
@@ -456,9 +470,8 @@ func Test_relayUsecase_RecordBlockedStreams(t *testing.T) {
 		t.Helper()
 		ctrl := gomock.NewController(t)
 		return outbox.NewRelay(
-			mock_tx.NewMockManager(ctrl), store, mock_publisher.NewMockPublisher(ctrl),
-			metrics, testkit.NewMockClock(t, time.Time{}),
-			logging.NewTestLogger(t), observability.NewNoopTracerFactory(t), outboxbndry.ChannelHTTP)
+			relayDeps(t, mock_tx.NewMockManager(ctrl), store, mock_publisher.NewMockPublisher(ctrl), metrics, time.Time{}),
+			outboxbndry.ChannelHTTP)
 	}
 
 	t.Run("正常系", func(t *testing.T) {

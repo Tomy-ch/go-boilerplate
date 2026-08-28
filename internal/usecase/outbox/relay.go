@@ -83,26 +83,35 @@ type relayUsecase struct {
 	channel   outboxbndry.Channel
 }
 
-// NewRelay は、1 つの配送チャネルを担う RelayUsecase を生成します
+// RelayDeps は、RelayUsecase が必要とする依存です。
+type RelayDeps struct {
+	// Txm は、claim → publish → mark を 1 tx で囲むトランザクション境界です。
+	Txm tx.Manager
+	// Store は、outbox の永続化境界です。
+	Store outboxbndry.Store
+	// Publisher は、publish 先への送出境界です。
+	Publisher publisher.Publisher
+	// Metrics は、outbox 固有の o11y シンクです。
+	Metrics Metrics
+	// Clock は、次回試行時刻と lag の算出に使う現在時刻です。
+	Clock clock.Clock
+	// Logging は、dead 化を運用者へ知らせるロガーです。
+	Logging logging.Logger
+	// Tracer は、usecase 層の span を開く tracer の生成元です。
+	Tracer observability.TracerFactory
+}
+
+// NewRelay は、channel を担う RelayUsecase を生成します
 // （チャネル隔離は docs/design/outbox.md の Design invariants を参照）。
-func NewRelay(
-	txm tx.Manager,
-	store outboxbndry.Store,
-	pub publisher.Publisher,
-	metrics Metrics,
-	clk clock.Clock,
-	log logging.Logger,
-	tf observability.TracerFactory,
-	channel outboxbndry.Channel,
-) RelayUsecase {
+func NewRelay(deps RelayDeps, channel outboxbndry.Channel) RelayUsecase {
 	return &relayUsecase{
-		txm:       txm,
-		store:     store,
-		publisher: pub,
-		metrics:   metrics,
-		clock:     clk,
-		logging:   log,
-		tracer:    tf.Usecase(),
+		txm:       deps.Txm,
+		store:     deps.Store,
+		publisher: deps.Publisher,
+		metrics:   deps.Metrics,
+		clock:     deps.Clock,
+		logging:   deps.Logging,
+		tracer:    deps.Tracer.Usecase(),
 		channel:   channel,
 	}
 }
