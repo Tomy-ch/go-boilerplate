@@ -1,6 +1,6 @@
 ---
 status: accepted
-date: 2026-07-04
+date: 2026-08-28
 deciders: [maintainers]
 tags: [worker, async, exclusion, setup-review]
 ---
@@ -25,7 +25,7 @@ accepted
 [ADR-0050](0050-broker-agnostic-worker-scaffold.ja.md) で定義されたワーカーポートでは、プッシュ型ブローカーとストリーミングログコンシューマーを意図的にサポートしない。この除外は、プル・アック型が唯一望ましいモデルだからではなく、プッシュ型をサポートして複数のアダプターを構築・維持することを意図的に避けたためである。プル・アック型はそのうえで選択された具体的なインスタンスにすぎない。プッシュ型やストリーミングをサポートすれば、最大公約数的なインターフェースへの希釈か、独自のメンテナンスコストを伴う個別アダプターの新設が必要になる。
 
 - **プッシュ型デリバリー**（RabbitMQ スタイル）は、このコードベースに自然な居場所がある。HTTP コントローラーレイヤーがプッシュされたリクエストを受け取る。Webhook エンドポイントがプッシュ型ブローカーの正しいアダプターである。
-- **ストリーミングログコンシューマー**（Kafka / Kinesis）はオフセットコミット、コンシューマーグループ調整、パーティション単位の状態を必要とし、プル・アック型ポートの拡張ではなく、根本的に異なるエンジンに属する。
+- **ストリーミングログコンシューマー**（Kafka / Kinesis）はオフセットコミット、コンシューマーグループ調整、パーティション単位の状態を必要とし、プル・アック型ポートの拡張ではなく、根本的に異なるエンジンに属する。server→client 方向については、そのエンジンは存在する: **Realtime Delivery**（[ADR-0071](0071-realtime-delivery-driving-mechanism.ja.md)）が stream-local sequence、cursor replay、instance ごとの fan-out を所有し、このポートの内側ではなく隣に置かれている。*inbound* のストリーミングログをこのサービスへ消費する機構は未構築のままであり、必要になったときは Realtime Delivery の隣に置き、プル・アック型ポートの内側には決して置かない。
 
 両方のモデルに対応するようポートを汎用化すると、プロトコルの詳細を漏洩させるか、エンジンが依存する Ack / Nack / Extend の保証を弱めた最大公約数的なインターフェースが生まれる。
 
@@ -39,7 +39,7 @@ accepted
 
 ### ネガティブな影響
 
-- プッシュ型やストリーミングのワークロードは、HTTP Webhook で対応できない場合、ワーカーポートの外部に独立したサブシステムを必要とする。
+- プッシュ型やストリーミングのワークロードは、HTTP Webhook で対応できない場合、ワーカーポートの外部に独立したサブシステムを必要とする。server→client 方向のそのサブシステムが Realtime Delivery（[ADR-0071](0071-realtime-delivery-driving-mechanism.ja.md)）である。inbound のストリーミングログ消費にはまだ無い。
 - この制約は、誤ったアダプター実装の試みを防ぐため、新しいアダプターを結線する者へ周知しなければならない。
 
 ## 検討した代替案
@@ -50,10 +50,10 @@ accepted
 
 ### プル・アック型ポートと並置する独立ストリーミングログポート
 
-原則としては却下しないが、ワーカーポートのスコープ外 — 具体的な需要がなく、投機的な追加は [ADR-0001](0001-avoid-lock-in.ja.md) の「仮想的な抽象より具体を優先する」方針に反する。
+原則としては却下しない。server→client のストリーミングにはその後、具体的な需要と独自の機構——Realtime Delivery（[ADR-0071](0071-realtime-delivery-driving-mechanism.ja.md)）——が生まれた。このポートの拡張ではなく隣に建てられており、まさにこの代替案が予期した形である。inbound のストリーミングログ消費にはまだ具体的な需要が無く、[ADR-0001](0001-avoid-lock-in.ja.md) の「仮想的な抽象より具体を優先する」方針に従って未構築のままである。
 
 ## 補足
 
-- 関連: [ADR-0050](0050-broker-agnostic-worker-scaffold.ja.md)（プル・アック型ワーカースキャフォールド — この ADR が限定するポート）。
+- 関連: [ADR-0050](0050-broker-agnostic-worker-scaffold.ja.md)（プル・アック型ワーカースキャフォールド — この ADR が限定するポート）、[ADR-0071](0071-realtime-delivery-driving-mechanism.ja.md)（Realtime Delivery — この ADR が指し示した独立したエンジン。server→client 方向）。
 - ソース: かつての `docs/decisions.md`。
 - ソース: `docs/design/worker.md`（§ 1 Role theory）。
