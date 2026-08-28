@@ -27,6 +27,21 @@ const (
 	defaultRelayErrorBackoff = 5 * time.Second
 )
 
+// relayUsecaseIn は、relay usecase の依存を DI から集約します。
+// 依存を 1 つずつ引数に並べると構築子の引数が増え続けるため、集約は DI 側に置きます。
+type relayUsecaseIn struct {
+	fx.In
+
+	Txm       tx.Manager
+	Store     outboxbndry.Store
+	Publisher publisherbndry.Publisher
+	Metrics   outboxuc.Metrics
+	Clock     clock.Clock
+	Logging   logging.Logger
+	Tracer    observability.TracerFactory
+	Channel   outboxbndry.Channel
+}
+
 // OutboxRelayModule は、1 つの配送チャネルを担う outbox relay engine とそのライフサイクルフックを
 // 提供するfx.Moduleです。relay 専用プロセス（cmd outbox-relay）でのみ使用します。
 // チャネル隔離と publisher profile の閉じ込めは internal/di/README.md の Optional を参照。
@@ -46,21 +61,6 @@ func OutboxRelayModule(channel outboxbndry.Channel) fx.Option {
 		),
 		fx.Invoke(relayhook.RegisterRelayHooks),
 	)
-}
-
-// relayUsecaseIn は、relay usecase の依存を DI から集約します。
-// 依存を 1 つずつ引数に並べると構築子の引数が増え続けるため、集約は DI 側に置きます。
-type relayUsecaseIn struct {
-	fx.In
-
-	Txm       tx.Manager
-	Store     outboxbndry.Store
-	Publisher publisherbndry.Publisher
-	Metrics   outboxuc.Metrics
-	Clock     clock.Clock
-	Logging   logging.Logger
-	Tracer    observability.TracerFactory
-	Channel   outboxbndry.Channel
 }
 
 // provideRelayUsecase は、集約した依存から channel を担う RelayUsecase を生成します。
