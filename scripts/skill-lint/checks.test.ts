@@ -18,6 +18,8 @@ import {
   literalParentDir,
   placeholderToRegExp,
   splitFrontmatter,
+  extractNumberedSections,
+  extractSectionRefs,
 } from "./checks";
 
 const ROOT_ENTRIES = new Set(["scripts", "docs", "internal", "pkg", "makefile"]);
@@ -428,6 +430,73 @@ describe("makeTargetExists", () => {
       const index = collectMakeTargets([".PHONY: gen-api"]);
 
       expect(makeTargetExists("gen-{api,query}", index)).toBe(false);
+    });
+  });
+});
+
+describe("extractNumberedSections", () => {
+  describe("正常系", () => {
+    it("H2 以下の番号付き見出しから節番号を拾う", () => {
+      const content = ["# 題", "## 0. 序", "### 3. 小節", "## 21. 本題"].join("\n");
+
+      expect([...extractNumberedSections(content)].sort((a, b) => a - b)).toEqual([0, 3, 21]);
+    });
+
+    it("連番の外に採番された節も拾う", () => {
+      expect([...extractNumberedSections("## 99. 削除される節")]).toEqual([99]);
+    });
+  });
+
+  describe("異常系", () => {
+    it("H1 は文書題であって節ではない", () => {
+      expect([...extractNumberedSections("# 1. 題")]).toEqual([]);
+    });
+
+    it("番号を持たない見出しは節として数えない", () => {
+      expect([...extractNumberedSections("## Contract")]).toEqual([]);
+    });
+
+    it("フェンスの中の見出しは節として数えない", () => {
+      const content = ["```md", "## 7. 出力例", "```"].join("\n");
+
+      expect([...extractNumberedSections(content)]).toEqual([]);
+    });
+  });
+});
+
+describe("extractSectionRefs", () => {
+  describe("正常系", () => {
+    it("§ 記法を拾う", () => {
+      expect(extractSectionRefs("`repo-ops` §19 を見よ")).toEqual([
+        { skill: "repo-ops", section: 19 },
+      ]);
+    });
+
+    it("section 記法を拾う", () => {
+      expect(extractSectionRefs("see `repo-ops` section 0")).toEqual([
+        { skill: "repo-ops", section: 0 },
+      ]);
+    });
+
+    it("日本語の助詞を挟んだ形も拾う", () => {
+      expect(extractSectionRefs("`repo-ops` の §21")).toEqual([{ skill: "repo-ops", section: 21 }]);
+    });
+
+    it("1 行に複数あればすべて拾う", () => {
+      expect(extractSectionRefs("`a` §1 と `b` §2")).toEqual([
+        { skill: "a", section: 1 },
+        { skill: "b", section: 2 },
+      ]);
+    });
+  });
+
+  describe("異常系", () => {
+    it("code span に入っていない名前は拾わない", () => {
+      expect(extractSectionRefs("RFC 7235 section 3")).toEqual([]);
+    });
+
+    it("節番号を伴わないスキル名は拾わない", () => {
+      expect(extractSectionRefs("`repo-ops` を読む")).toEqual([]);
     });
   });
 });

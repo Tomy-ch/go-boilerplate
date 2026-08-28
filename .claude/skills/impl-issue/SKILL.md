@@ -29,6 +29,15 @@ not loaded as a skill).
 Do NOT use it for a change with no issue behind it (`commit` + `submit-pr` directly), for reviewing an
 existing diff (`impl-review` / `test-review`), or for authoring skills (`manage-skill`).
 
+## Contract
+
+| | |
+| --- | --- |
+| **Owns** | issue → merged PR のパイプライン進行、承認済み計画と実物の突き合わせ、人間判断が要る瞬間の機械的検出 |
+| **Never** | 未決の設計を独自に補完する / 実装判断そのもの（委譲先が持つ） |
+| **Starts when** | 採択済みの issue が提示されたとき |
+| **Stops when** | 5 つの trip-wire のいずれかが発火したとき、runtime 検証が通らないとき |
+
 ## What this skill does NOT do
 
 It holds no implementation judgment. It never decides which design to adopt, whether a reviewer is

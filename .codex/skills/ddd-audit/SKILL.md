@@ -6,6 +6,15 @@ description: >-
 
 # DDD Audit
 
+## Contract
+
+| | |
+| --- | --- |
+| **Owns** | 層2（ADR / README）を層1（Evans 原義）に照らす判定と、パターン台帳の同期 |
+| **Never** | 裁定（差異が意図か見落としかの決定）/ コードの監査 / 層3 の代替 |
+| **Starts when** | 原義照合、パターン解釈の有無、台帳の陳腐化が問われたとき |
+| **Stops when** | 差異が意図的な設計選択か否かの判断に達したとき（人間へ） |
+
 Audit layer 2, the repository's documented interpretation of DDD, against layer 1, Evans's
 pattern language recorded in the ledger. Do not audit layer 3 enforcement in code; CI and
 `arch-check` own that deterministic work.

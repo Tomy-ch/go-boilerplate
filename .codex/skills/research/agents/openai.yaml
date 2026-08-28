@@ -1,0 +1,4 @@
+interface:
+  display_name: "Research"
+  short_description: "未決の選択を根拠付き比較と反転条件へ圧縮する"
+  default_prompt: "$research を使い、この未決の問いを人間が判断できる比較に整理して。"

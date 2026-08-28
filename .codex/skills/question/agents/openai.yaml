@@ -1,0 +1,4 @@
+interface:
+  display_name: "Question Router"
+  short_description: "曖昧な問いの読みを確認し、答えを所有するスキルへ引き渡す"
+  default_prompt: "$question を使い、この問いの意味を確認して担当スキルへ引き渡して。"

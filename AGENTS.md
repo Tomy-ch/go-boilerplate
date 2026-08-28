@@ -347,6 +347,55 @@ Run / DB:
 - `make new-migrate-<name>` — scaffold a new migration (`.up.sql` / `.down.sql`)
 - `make job NAME=<job> ARGS="<args>"` — run an application job
 
+**Graphify (standard equipment):** a queryable knowledge graph of this repository. The version is
+declared in `python/graphify.in` and locked with hashes in `python/graphify.txt` — **not in
+`mise.toml`** — and the skill is written into each assistant's config by
+`bash .claude/scripts/bootstrap-external-skills.sh`. It indexes **structure**, which is what makes it
+reach the two things text search cannot: a caller that shares no vocabulary with its callee, and a
+document named for the concern it owns rather than for the words in your question.
+
+```bash
+GRAPHIFY="${XDG_CACHE_HOME:-$HOME/.cache}/go-boilerplate/graphify/bin/graphify"   # 固定版。bootstrap が作る venv
+node .claude/scripts/graph-affected.ts <symbol> --depth 2   # 影響範囲・呼び出し元の逆引き
+"$GRAPHIFY" query "<question>" --budget 8000
+"$GRAPHIFY" path "<A>" "<B>"      # 2 ノード間の最短経路
+"$GRAPHIFY" explain "<node>"      # ノードと隣接の平易な説明
+make graphify-update              # グラフを現在のコードへ更新（コンテナ内、固定版）
+```
+
+- **`affected` is the paying command.** Reverse traversal returns each call site with a relation
+  label and `file:line` — which is the evidence a claim of scope ("only X does this") requires, and
+  the number a blast-radius estimate should be replaced by. It takes a node **id**, not a symbol
+  name, so go through the wrapper; `path` / `explain` / `god-nodes` take ids straight from
+  `graphify-out/graph.json`.
+- **Raise `--budget`.** The default (~2000 tokens) truncates on a repo this size and says so; the
+  answer may be in the cut part.
+- **Ignore `god-nodes` here.** It ranks by edge count, and this repo's 1:1 test-mapping rule puts
+  test scaffolding (`Any()`, `NewTestFromSalt()`, …) above production code.
+- **State freshness whenever you used it.** Compare `Built from commit:` in
+  `graphify-out/GRAPH_REPORT.md` against `git rev-parse HEAD`. For a question about *uncommitted*
+  work the graph is blind — refresh with `make graphify-update` (deterministic, no API key) or use
+  `grep`, which for a small diff is the cheaper of the two.
+- **The graph is a way to reach a file, never the evidence itself.** Open what it points at and cite
+  that. A graph result carries no separation of fact from inference.
+- **AST-only commands are free and local.** `update` / `query` / `affected` / `path` / `explain` need
+  no API key. Docs / PDF / image extraction, `extract`, `label`, community *naming*, `add`, and
+  `--wiki` call an LLM API and send content off the machine — those stay opt-in.
+- **Use the pinned binary, not `mise exec pipx:…`.** `python/graphify.txt` is installed twice from
+  the same hashes — into `python_tool_runner` (what `make graphify-*` runs) and into the
+  bootstrap's venv (the `$GRAPHIFY` path above). A bare `mise exec "pipx:graphifyy[sql]"` resolves
+  whatever pipx hands back instead, which on this machine is *behind* the lock. Anything that
+  **writes** the graph goes through `make graphify-update`: `docker/tools/Dockerfile` explains why —
+  extraction results and the cache namespace depend on the prompt bundled with the tool, so the
+  version has to be the fixed one. Read-only queries against an existing `graphify-out/graph.json`
+  only need to be at the pinned version, not in the container.
+- `make graphify-check` verifies the tracked artifacts, `make graphify-pending` reports how much
+  semantic extraction is outstanding, and `.graphifyignore` declares what the graph excludes
+  (changing it requires a full re-extraction; an incremental `update` is fail-closed).
+
+Measured behaviour on this repository, and what does *not* pay off here:
+`.claude/README.md`.
+
 **Working in a `git worktree` (DB + serve isolation):** a single shared Postgres (fixed compose
 project `gobp-shared`, host 5432) is shared by all worktrees; each leases a slot = its own
 databases (`wt<N>_local` / `wt<N>_test`) inside that instance. Before DB-backed tasks or `make serve`

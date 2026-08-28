@@ -8,6 +8,7 @@ import {
   checkFrontmatter,
   checkPlatformOnlyAllowlist,
   checkReferences,
+  checkSectionReferences,
   checkSkillParity,
   checkTranslationPair, // doc-pair:line
   formatFindings,
@@ -551,6 +552,87 @@ describe("formatFindings", () => {
   describe("異常系", () => {
     it("違反が無ければ空文字を返す", () => {
       expect(formatFindings([])).toBe("");
+    });
+  });
+});
+
+describe("checkSectionReferences", () => {
+  const SECTIONS = new Map<string, ReadonlySet<number>>([
+    ["repo-ops", new Set([0, 19, 21, 99])],
+    ["how-to", new Set<number>()],
+  ]);
+
+  describe("正常系", () => {
+    it("実在する節への参照は違反にしない", () => {
+      expect(
+        checkSectionReferences("a/SKILL.md", "負荷帯は `repo-ops` §19 が説明する", SECTIONS),
+      ).toEqual([]);
+    });
+
+    it("英語表記の section も同じく解決する", () => {
+      expect(
+        checkSectionReferences("a/SKILL.md", "see `repo-ops` section 0", SECTIONS),
+      ).toEqual([]);
+    });
+
+    it("連番の外に採番された節も実在として扱う", () => {
+      expect(checkSectionReferences("a/SKILL.md", "`repo-ops` §99", SECTIONS)).toEqual([]);
+    });
+
+    it("索引に無いスキル名は判定しない", () => {
+      expect(checkSectionReferences("a/SKILL.md", "`unknown-skill` §42", SECTIONS)).toEqual([]);
+    });
+
+    it("節番号を宣言していないスキルへの参照は判定しない", () => {
+      expect(checkSectionReferences("a/SKILL.md", "`how-to` §3", SECTIONS)).toEqual([]);
+    });
+
+    it("code span に入っていない名前は外部文書とみなして拾わない", () => {
+      expect(checkSectionReferences("a/SKILL.md", "RFC 7235 section 3 を参照", SECTIONS)).toEqual([]);
+    });
+
+    it("コードフェンスの中は参照として読まない", () => {
+      const content = doc("```md", "`repo-ops` §77", "```");
+
+      expect(checkSectionReferences("a/SKILL.md", content, SECTIONS)).toEqual([]);
+    });
+
+    it("ignore ディレクティブのある行は飛ばす", () => {
+      const content = "`repo-ops` §77 <!-- skill-lint-ignore -->";
+
+      expect(checkSectionReferences("a/SKILL.md", content, SECTIONS)).toEqual([]);
+    });
+  });
+
+  describe("異常系", () => {
+    it("存在しない節への参照を行番号付きで報告する", () => {
+      const content = doc("見出し", "", "負荷帯は `repo-ops` §77 が説明する");
+      const findings = checkSectionReferences("a/SKILL.md", content, SECTIONS);
+
+      expect(findings).toHaveLength(1);
+      expect(findings[0].line).toBe(3);
+      expect(findings[0].rule).toBe("section-ref");
+      expect(findings[0].message).toContain("§77");
+    });
+
+    it("実在する節を一覧として示す", () => {
+      const findings = checkSectionReferences("a/SKILL.md", "`repo-ops` §77", SECTIONS);
+
+      expect(findings[0].message).toContain("§0 / §19 / §21 / §99");
+    });
+
+    it("日本語の助詞を挟んだ参照も拾う", () => {
+      expect(checkSectionReferences("a/SKILL.md", "`repo-ops` の §77", SECTIONS)).toHaveLength(1);
+    });
+
+    it("1 行に複数あればそれぞれ報告する", () => {
+      const findings = checkSectionReferences(
+        "a/SKILL.md",
+        "`repo-ops` §77 と `repo-ops` §88",
+        SECTIONS,
+      );
+
+      expect(findings).toHaveLength(2);
     });
   });
 });

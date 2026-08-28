@@ -194,13 +194,44 @@ export const DOC_REPLACEMENTS: readonly DocReplacement[] = [
   ]),
   ...forFile(".claude/skills/repo-ops/SKILL.md", [
     ["-g '!**/*.ja.md' "],
-    ["Most of the Markdown in this tree is either a Japanese mirror you must not read or generated output\nthat lags the code, so a naive repo-wide search buries the one file that actually decides the answer.\nOf roughly 1,000 tracked `*.md`, **over 40% are `*.ja.md` translations** and **72 are generated\n`docs/portal/guides/**` copies of READMEs**; `docs/godoc/**` adds ~1,250 files and\n`docs/db-schema/**` ~390.", "Much of the Markdown in this tree is generated output that lags the code, so a naive repo-wide\nsearch buries the one file that actually decides the answer. Of the tracked `*.md`, **72 are\ngenerated `docs/portal/guides/**` copies of READMEs**; `docs/godoc/**` adds ~1,250 files and\n`docs/db-schema/**` ~390."],
+    ["Most of the Markdown in this tree is either a Japanese mirror you must not read or generated output\nthat lags the code, so a naive repo-wide search buries the one file that actually decides the answer.\nOf roughly 1,000 tracked `*.md`, **over 40% are `*.ja.md` translations** and **72 are generated\n`docs/portal/guides/**` copies of READMEs**; `docs/godoc/**` adds ~1,800 files and\n`docs/db-schema/**` ~400.", "Much of the Markdown in this tree is generated output that lags the code, so a naive repo-wide\nsearch buries the one file that actually decides the answer. Of the tracked `*.md`, **72 are\ngenerated `docs/portal/guides/**` copies of READMEs**; `docs/godoc/**` adds ~1,800 files and\n`docs/db-schema/**` ~400."],
     ["are *tracked*, so they need these explicit globs. Hitting a `*.ja.md` is still useful as a\n**locator** (it proves the topic is documented); read the English original beside it, per\n`AGENTS.md`'s rule never to read `*.ja.md`.", "are *tracked*, so they need these explicit globs."],
   ]),
   ...forFile(".codex/skills/repo-ops/SKILL.md", [
     ["-g '!**/*.ja.md' "],
-    ["Most of the Markdown in this tree is either a Japanese mirror you must not read or generated output\nthat lags the code, so a naive repo-wide search buries the one file that actually decides the answer.\nOf roughly 1,000 tracked `*.md`, **over 40% are `*.ja.md` translations** and **72 are generated\n`docs/portal/guides/**` copies of READMEs**; `docs/godoc/**` adds ~1,250 files and\n`docs/db-schema/**` ~390.", "Much of the Markdown in this tree is generated output that lags the code, so a naive repo-wide\nsearch buries the one file that actually decides the answer. Of the tracked `*.md`, **72 are\ngenerated `docs/portal/guides/**` copies of READMEs**; `docs/godoc/**` adds ~1,250 files and\n`docs/db-schema/**` ~390."],
+    ["Most of the Markdown in this tree is either a Japanese mirror you must not read or generated output\nthat lags the code, so a naive repo-wide search buries the one file that actually decides the answer.\nOf roughly 1,000 tracked `*.md`, **over 40% are `*.ja.md` translations** and **72 are generated\n`docs/portal/guides/**` copies of READMEs**; `docs/godoc/**` adds ~1,800 files and\n`docs/db-schema/**` ~400.", "Much of the Markdown in this tree is generated output that lags the code, so a naive repo-wide\nsearch buries the one file that actually decides the answer. Of the tracked `*.md`, **72 are\ngenerated `docs/portal/guides/**` copies of READMEs**; `docs/godoc/**` adds ~1,800 files and\n`docs/db-schema/**` ~400."],
     ["are *tracked*, so they need these explicit globs. Hitting a `*.ja.md` is still useful as a\n**locator** (it proves the topic is documented); read the English original beside it, per\n`AGENTS.md`'s rule never to read `*.ja.md`.", "are *tracked*, so they need these explicit globs."],
+  ]),
+  ...forFile(".claude/skills/repo-truth/SKILL.md", [
+    ["adversarial on top of that — 495 `*.ja.md` mirrors that must not be read and 144 generated copies", "adversarial on top of that — 144 generated copies"],
+    ["1,000 tracked `*.md`, over 40% are `*.ja.md` translations that `AGENTS.md` forbids reading, and\n`docs/portal/**` / `docs/godoc/**` / `docs/db-schema/**` / `docs/openapi/**` / `docs/coverage/**` are\ngenerated copies that lag their sources.", "the tracked `*.md`, `docs/portal/**` / `docs/godoc/**` / `docs/db-schema/**` / `docs/openapi/**` /\n`docs/coverage/**` are generated copies that lag their sources."],
+    ["Two things `repo-ops` section 0 establishes that this skill must not soften:\n\n- **Never read a `*.ja.md`.** Hitting one is still useful as a *locator* — it proves the topic is\n  documented — but read the English original beside it.\n- **Precedence when sources disagree**", "One thing `repo-ops` section 0 establishes that this skill must not soften:\n\n- **Precedence when sources disagree**"],
+    ["- ❌ Read or cite a `*.ja.md`, or cite generated output (`docs/portal/**`, `docs/godoc/**`,\n  `docs/db-schema/**`, `docs/openapi/**`, `docs/coverage/**`) as authority.", "- ❌ Cite generated output (`docs/portal/**`, `docs/godoc/**`, `docs/db-schema/**`,\n  `docs/openapi/**`, `docs/coverage/**`) as authority."],
+    ["- [ ] No `*.ja.md` read; generated trees excluded from search.", "- [ ] Generated trees excluded from search."],
+  ]),
+  ...forFile(".claude/skills/resolve-merge/SKILL.md", [
+    ["- ❌ Hand-edit or side-pick any generated artifact, lockfile, or `.ja.md`.", "- ❌ Hand-edit or side-pick any generated artifact or lockfile."],
+  ]),
+  ...forFile(".codex/skills/repo-truth/SKILL.md", [
+    ["It also carries 495 `*.ja.md` mirrors and 144 generated copies that must not be treated", "It also carries 144 generated copies that must not be treated"],
+    ["Use keyword search only after the concern-owning indexes, as a final net. Never read a `*.ja.md`.", "Use keyword search only after the concern-owning indexes, as a final net."],
+    ["- Do NOT read or cite `*.ja.md` or generated documentation as authority.", "- Do NOT cite generated documentation as authority."],
+    ["- [ ] No `*.ja.md` read and generated trees excluded.", "- [ ] Generated trees excluded."],
+  ]),
+  ...forFile(".claude/skills/repo-truth/SKILL.ja.md", [
+    ["`repo-ops` §0 が定めていて、このスキルが緩めてはならないことが 2 つある:\n\n- **`*.ja.md` を決して読まない。** ヒットすること自体は*位置特定*として有用だが —— その話題が文書化されている\n  証拠になる —— 読むのは隣にある英語原本である。\n- **出典が食い違ったときの優先順位**", "`repo-ops` §0 が定めていて、このスキルが緩めてはならないことが 1 つある:\n\n- **出典が食い違ったときの優先順位**"],
+    ["- ❌ `*.ja.md` を読む・引用する、生成物（`docs/portal/**`、`docs/godoc/**`、`docs/db-schema/**`、\n  `docs/openapi/**`、`docs/coverage/**`）を権威として引用する。", "- ❌ 生成物（`docs/portal/**`、`docs/godoc/**`、`docs/db-schema/**`、`docs/openapi/**`、\n  `docs/coverage/**`）を権威として引用する。"],
+    ["- [ ] `*.ja.md` を読んでいない。生成ツリーを検索から除外した。", "- [ ] 生成ツリーを検索から除外した。"],
+  ]),
+  ...forFile(".claude/skills/resolve-merge/SKILL.ja.md", [
+    ["- ❌ 生成物・lockfile・`.ja.md` を手で編集する、片側を選ぶ。", "- ❌ 生成物・lockfile を手で編集する、片側を選ぶ。"],
+  ]),
+  ...forFile(".claude/skills/how-to/SKILL.ja.md", [
+    ["- ❌ 生成物・lockfile・`.ja.md` を手で編集する、片側を選ぶ。", "- ❌ 生成物・lockfile を手で編集する、片側を選ぶ。"],
+  ]),
+  ...forFile(".codex/skills/repo-truth/SKILL.ja.md", [
+    ["- `*.ja.md` や生成文書を権威として読み、引用しません。", "- 生成文書を権威として読み、引用しません。"],
+    ["- [ ] `*.ja.md` を読まず、生成ツリーを除外した。", "- [ ] 生成ツリーを除外した。"],
   ]),
   ...forFile(".claude/skills/tools-upgrade/SKILL.md", [
     [", `docker/**/README.ja.md`"],

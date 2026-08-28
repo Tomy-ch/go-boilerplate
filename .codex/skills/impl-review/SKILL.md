@@ -23,6 +23,15 @@ Do NOT use this skill for:
 - Spec validation — `verify-spec`.
 - Applying non-comment fixes — for the five code lenses this skill is read-only; it reports, the user fixes. (Exception: **comment-style findings are auto-applied** in Step 7 — verbose / narrating comments are actually fixed, not just reported.)
 
+## Contract
+
+| | |
+| --- | --- |
+| **Owns** | The change itself (`architecture` / `ddd-modeling` / `security` / `correctness` / `runtime-gap` / `type-design`) |
+| **Does not** | Test viewpoint (`test-review`) / comment viewpoint (`comment-sweep`) / invoke other skills |
+| **Starts when** | A reviewable diff and its intent exist |
+| **Stops when** | A tier 1 finding requires a human design decision |
+
 ## Core Idea — reviewer ≠ implementer
 
 Bias reduction is the design constraint, not a nicety. Reviewers therefore run as **subagents on a different model than whoever wrote the code**:

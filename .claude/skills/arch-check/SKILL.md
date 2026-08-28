@@ -1,6 +1,6 @@
 ---
 name: arch-check
-description: Integrator skill for architectural compliance checks. Confirms scope + TODO opt via `AskUserQuestion` (changed files vs full repo), detects which layers are touched, resolves the file list and runs `make lint` ONCE, then fans out the relevant read-only `arch-auditor-*` subagents (`arch-auditor-domain` / `-usecase` / `-controller` / `-infra` / `-pkg`) IN PARALLEL via the Agent tool — passing scope + resolved files + the shared lint output so each auditor skips its own scope question and does not re-run lint. When domain code or the ADR / README corpus is touched, it additionally fans out `ddd-origin-auditor` in quick mode, so a change that quietly moves the repo's DDD interpretation is caught in the same pass. Aggregates findings into a single Japanese report grouped by layer. Each auditor enforces its own README rules + lean A conventions (controller / infra have additional convention enforcement since they're scaffold-derived, not spec-driven). Detection is delegated to the read-only auditor subagents; the integrator itself only writes the optional `// TODO:` hand-off comments (single-threaded, after aggregation) when the user opts in. To audit a single layer, run this integrator and pick that layer in the scope question.
+description: Integrator skill for architectural compliance checks. Confirms scope + TODO opt via `AskUserQuestion` (changed files vs full repo), detects which layers are touched, resolves the file list and runs `make lint` ONCE, then fans out the relevant read-only `arch-auditor-*` subagents (`arch-auditor-domain` / `-usecase` / `-controller` / `-infra` / `-pkg`) IN PARALLEL via the Agent tool — passing scope + resolved files + the shared lint output so each auditor skips its own scope question and does not re-run lint. When domain code or the ADR / README corpus is touched, it additionally fans out `ddd-origin-auditor` in quick mode, so a change that quietly moves the repo's DDD interpretation is caught in the same pass. Under a diff-independent scope (whole repo / a chosen layer) it also fans out `ddd-modeling-reviewer`, which is what makes this the entry point for a domain-modeling question that has no diff behind it — 「この集約境界は今のままで妥当か」「この規則はこのエンティティが持つべきか」「Order と Shipment の境界は意味的に整合するか」 — since `impl-review` owns that lens only for a change and all three of its scopes are diff-based; under "changed files" this integrator stands down and says so, so the two never double-report. Aggregates findings into a single Japanese report grouped by layer. Each auditor enforces its own README rules + lean A conventions (controller / infra have additional convention enforcement since they're scaffold-derived, not spec-driven). Detection is delegated to the read-only auditor subagents; the integrator itself only writes the optional `// TODO:` hand-off comments (single-threaded, after aggregation) when the user opts in. To audit a single layer, run this integrator and pick that layer in the scope question.
 ---
 
 # Arch Check
@@ -23,6 +23,15 @@ Do NOT use this skill for:
 - General code review — `/review` / `/ultrareview` / `impl-review`.
 - Spec validation — `verify-spec`.
 
+## Contract
+
+| | |
+| --- | --- |
+| **Owns** | コード vs リポジトリ自身の規約（層別 5 auditor）、および差分を持たないドメインモデリング監査 |
+| **Never** | 一般的な好みを違反として扱う / 実装を修正する（`// TODO:` 注記のみ） |
+| **Starts when** | 監査対象の差分または構造が存在するとき |
+| **Stops when** | 規約の出所を特定できないとき（README 不在は `back-prop` の領分） |
+
 ## Architecture: parallel auditor subagents
 
 Detection is delegated to five **read-only worker subagents** under `.claude/agents/`, one per layer. The integrator runs them concurrently via the Agent tool (`subagent_type`), so per-layer audits no longer execute sequentially:
@@ -40,12 +49,23 @@ One further auditor rides along, keyed to the change rather than to a layer:
 | Auditor subagent | Trigger | 検査内容 |
 | --- | --- | --- |
 | `ddd-origin-auditor` | `internal/domain/**` または `docs/adr/**` / `internal/**/README.md` が touched | 層2（ADR / README）の DDD 解釈と Evans 原義との差異、および逸脱宣言の有無 |
+| `ddd-modeling-reviewer` | `internal/domain/**` が in scope **かつ** スコープが「リポジトリ全体」または「特定 layer」 | 集約境界とトランザクション境界、規則の所属（entity / VO / Domain Service / Usecase）、集約間参照の規律、`docs/spec/glossary.md` に対するユビキタス言語 |
 
 その判定は他の 5 つと性質が違う。5 つはリポジトリ自身の規則にコードを照らすが、これはリポジトリの外
 （Evans）を物差しにして**文書のほう**を見る。したがって出力は `violation` ではなく 3 値のフラグであり、
 裁定は含まない。深掘りは専用スキル `ddd-audit` の担当で、ここでは変更に関係するパターンだけを見る
 `quick` モードで回す — 毎回 全パターン × 全コーパスを走らせると arch-check が重くなり、結局
 誰も回さなくなるからである。
+
+`ddd-modeling-reviewer` の trigger 条件にある**スコープ制限は意図的**である。このレンズは
+`impl-review` が tier 1 として既に所有しており、差分レビューではそちらが回る。両方が同じ差分に対して
+回れば同一 finding が二重に出て、しかもどちらの指摘なのか読者には区別できない。一方で `impl-review`
+の 3 つのスコープはすべて差分前提なので、**差分が無い問い**——「この集約境界は今のままで妥当か」——には
+入口が存在しない。ここがその入口であり、差分があるときは黙って `impl-review` に譲る。
+
+同じ理由で、このレンズは 5 つの層 auditor とも重ならない。`arch-auditor-domain` が見るのは機械的規則
+（禁止 import、`time.Now()`、entity ↔ SQL 対応）であって、境界がそもそも正しい場所に引かれているか
+という問いは誰も受けていない。
 
 These auditors are the per-layer audit workers. They are **strictly read-only** (no TODO writes) so that running five in parallel never produces concurrent writes to source. Any source write (TODO hand-off) is performed by **this integrator**, single-threaded, after aggregation.
 
@@ -145,9 +165,15 @@ Agent(subagent_type="arch-auditor-controller", prompt=<...controller>)
 Agent(subagent_type="arch-auditor-infra",      prompt=<...infra>)
 Agent(subagent_type="arch-auditor-pkg",        prompt=<...pkg>)
 Agent(subagent_type="ddd-origin-auditor",      prompt=<pattern=<id>, mode=quick, files=<changed corpus>>)   # 選択パターンごとに 1 つ
+Agent(subagent_type="ddd-modeling-reviewer",   prompt=<scope/files for domain>)   # scope が full / layer のときだけ
 ```
 
 `ddd-origin-auditor` は 1 起動＝1 パターンなので、選択パターンが複数あればその数だけ同じメッセージ内に並べる。
+
+`ddd-modeling-reviewer` は差分ではなく**現状のコード**を読む。渡すのは domain の解決済みファイル一覧で、
+`baseRef` は渡さない — 差分を渡すとこのレンズは `impl-review` の縮小版に退化する。scope が
+「変更ファイルのみ」のときは起動せず、レポートにその旨を 1 行書く（差分レビューは `impl-review` の担当、
+と読者に分かる形で）。
 
 Each auditor's final message **is** its findings (Japanese, structured). Collect them with their layer label. An auditor that returns "違反なし" contributes an empty section.
 

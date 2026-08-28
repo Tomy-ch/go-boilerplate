@@ -1,0 +1,3 @@
+interface:
+  display_name: "How To"
+  short_description: "正規の運用手順を出典・前提・復旧条件つきで案内する"

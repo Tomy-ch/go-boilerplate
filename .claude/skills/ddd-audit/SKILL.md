@@ -13,6 +13,15 @@ findings, then drives the ledger-write loop itself.
 A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory
 (not loaded as a skill; for human reference only).
 
+## Contract
+
+| | |
+| --- | --- |
+| **Owns** | 層2（ADR / README）を層1（Evans 原義）に照らす判定と、パターン台帳の同期 |
+| **Never** | 裁定（差異が意図か見落としかの決定）/ コードの監査 / 層3 の代替 |
+| **Starts when** | 原義照合、パターン解釈の有無、台帳の陳腐化が問われたとき |
+| **Stops when** | 差異が意図的な設計選択か否かの判断に達したとき（人間へ） |
+
 ## The three-layer model this skill serves
 
 | Layer | What it is | Where it lives |

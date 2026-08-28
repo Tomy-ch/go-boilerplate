@@ -271,6 +271,52 @@ export function extractHeadings(content: string): Heading[] {
   return headings;
 }
 
+// doc-pair:end
+/**
+ * `## 12. …` 形式の節見出しが宣言している節番号。
+ *
+ * @remarks
+ * 見出しレベルを 2 以上に限るのは、H1 は文書題であって節ではないためです。フェンス外だけを読むので、
+ * 出力契約のサンプルとして貼られた見出しは節として数えません。
+ */
+export function extractNumberedSections(content: string): Set<number> {
+  const sections = new Set<number>();
+
+  for (const { line } of eachLineOutsideFence(content)) {
+    const matched = /^#{2,6}\s+(\d+)\.(?:\s|$)/.exec(line);
+    if (matched) sections.add(Number(matched[1]));
+  }
+
+  return sections;
+}
+
+/** 他スキルの節への参照。`skill` はスキル名、`section` は節番号。 */
+export type SectionRef = {
+  skill: string;
+  section: number;
+};
+
+/**
+ * 1 行が含む「別スキルの節番号」参照を拾う。
+ *
+ * @remarks
+ * 拾う形は `` `repo-ops` §19 `` / `` `repo-ops` section 19 `` / `` `repo-ops` の §19 `` の 3 つ。
+ * スキル名だけが code span に入り節番号は素のテキストに出るため、code span 単位ではなく行単位で
+ * 読みます。スキル名を code span に要求するのは、`RFC 7235 §3` のような外部文書への参照を
+ * 巻き込まないためです。
+ */
+export function extractSectionRefs(line: string): SectionRef[] {
+  const refs: SectionRef[] = [];
+  const pattern = /`([a-z0-9][a-z0-9-]*)`\s*(?:の\s*)?(?:§|[Ss]ection\s+)(\d+)/g;
+
+  for (const matched of line.matchAll(pattern)) {
+    refs.push({ skill: matched[1], section: Number(matched[2]) });
+  }
+
+  return refs;
+}
+
+// doc-pair:begin
 /** 見出し構造のずれ。`canonical` / `translation` は該当位置の見出し（無ければ `null`）。 */
 export type HeadingMismatch = {
   index: number;

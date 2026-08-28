@@ -1,0 +1,4 @@
+interface:
+  display_name: "Repo Truth"
+  short_description: "一次資料と探索範囲からリポジトリの現状を確定する"
+  default_prompt: "$repo-truth を使い、このリポジトリで現在何が真かを一次資料から確認して。"

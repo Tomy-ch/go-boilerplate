@@ -186,7 +186,7 @@ push が失敗（non-fast-forward、権限エラー、ネットワークエラ�
 
 ### pre-push フックは自分で規模を決める — 先回りしない
 
-`pre-push` は重い Go ゲートを `make gate-go-push` 経由で走らせ、`.makefiles/load.mk` が開いている worktree の数から「全開・絞る・CI へ委譲」のどれかを決める（`repo-ops` §21、現在の帯は `make load-status`）。その判断はフックに任せる。
+`pre-push` は重い Go ゲートを `make gate-go-push` 経由で走らせ、`.makefiles/load.mk` が開いている worktree の数から「全開・絞る・CI へ委譲」のどれかを決める（`repo-ops` §19、現在の帯は `make load-status`）。その判断はフックに任せる。
 
 push 前に「念のため」`make lint` / `make test` を手で回さないこと。窓が複数開いている状態では、CI が同一に再実行する内容を再発見するために飽和したホストを数分間占有するだけであり、その飽和自体が無関係なゲートを落とす。`ci-first` の帯では **push そのものが検証ステップである**。自分の変更と無関係な理由でフックが落ちた場合の `--no-verify` の扱いは `repo-ops` §11 が持つ。
 

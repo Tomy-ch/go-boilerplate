@@ -12,8 +12,25 @@
 
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
 const DEFAULT_GRAPH = "graphify-out/graph.json";
+/**
+ * bootstrap が `python/graphify.txt` から作る venv 内の graphify。
+ *
+ * `mise exec "pipx:graphifyy[sql]"` ではなくこちらを呼ぶ。あちらは pipx が返したものを使うだけで
+ * lockfile を経由せず、実際にロックより古い版が走る。同じ lockfile はコンテナ側
+ * （`python_tool_runner`、`make graphify-*` が使う）にも入るので、固定版はこの 2 経路だけである。
+ * パスは `.claude/scripts/bootstrap-external-skills.sh` の `VENV` と対で、片方を動かすなら両方直す。
+ */
+const PINNED_GRAPHIFY = path.join(
+  process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), ".cache"),
+  "go-boilerplate",
+  "graphify",
+  "bin",
+  "graphify",
+);
 const USAGE =
   "使い方: node .claude/scripts/graph-affected.ts <symbol> [--depth N] [--graph PATH] [-- <graphify の追加引数>]";
 /** 曖昧なときに並べる候補の上限。全件出すと端末が流れて選べなくなる。 */
@@ -113,13 +130,13 @@ function describeNode(node: GraphNode): string {
   return `${node.id}  (${node.label} @ ${node.source_file}:${node.source_location})`;
 }
 
-/** graphify へ渡す `mise exec` の引数列を組み立てる。 */
+/** 固定版 graphify へ渡す引数列を組み立てる。 */
 function buildGraphifyArgs(
   nodeId: string,
   options: CliOptions,
   passThrough: readonly string[],
 ): string[] {
-  const args = ["exec", "pipx:graphifyy[sql]", "--", "graphify", "affected", nodeId];
+  const args = ["affected", nodeId];
 
   if (options.depth !== undefined) {
     args.push("--depth", options.depth);
@@ -139,12 +156,18 @@ function readNodes(graphPath: string): GraphNode[] {
 
 function reportMissingGraph(graphPath: string): void {
   console.error(`✘ グラフがありません: ${graphPath}`);
-  console.error('    対処: `mise exec "pipx:graphifyy[sql]" -- graphify update . --no-cluster` で生成する。');
+  console.error("    対処: `make graphify-update` で生成する（コンテナ内の固定版で走る）。");
+}
+
+/** 固定版が入っていないときの案内。ここで `mise exec` へ退避すると版のずれが黙って戻る。 */
+function reportMissingGraphify(): void {
+  console.error(`✘ 固定版の graphify がありません: ${PINNED_GRAPHIFY}`);
+  console.error("    対処: `bash .claude/scripts/bootstrap-external-skills.sh` を実行する。");
 }
 
 function reportNoMatch(symbol: string, nodeCount: number): void {
   console.error(`✘ '${symbol}' に一致するノードがありません（${nodeCount} ノードを検索）`);
-  console.error("    グラフが古い可能性があります。`graphify update .` を実行してから再試行してください。");
+  console.error("    グラフが古い可能性があります。`make graphify-update` を実行してから再試行してください。");
 }
 
 function reportAmbiguous(symbol: string, candidates: readonly GraphNode[]): void {
@@ -195,7 +218,13 @@ function main(argv: readonly string[]): number {
   // 解決結果は stderr へ出す。stdout は graphify の出力だけにして、パイプで受けられるようにする。
   console.error(`→ ${describeNode(target)}`);
 
-  const run = spawnSync("mise", buildGraphifyArgs(target.id, options, passThrough), {
+  if (!fs.existsSync(PINNED_GRAPHIFY)) {
+    reportMissingGraphify();
+
+    return EXIT_USAGE;
+  }
+
+  const run = spawnSync(PINNED_GRAPHIFY, buildGraphifyArgs(target.id, options, passThrough), {
     stdio: "inherit",
   });
 

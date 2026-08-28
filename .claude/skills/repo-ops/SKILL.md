@@ -26,9 +26,18 @@ Three facts explain almost everything below:
 3. **`make lint` / `fix` / `test` run on the host** via mise — the exception to the "everything is
    dockerized" rule, and the source of host-vs-CI mismatches.
 
+## Contract
+
+| | |
+| --- | --- |
+| **Owns** | 既知の運用症状 → 是正手順の索引（§1-21）と、どの文書が正本かの所在（§0） |
+| **Never** | 索引に無い手順を発明する / 「未定義」を宣告する / 設計判断 / 実行承認の代行 |
+| **Starts when** | 症状・失敗したゲート・想定外の挙動が提示されたとき |
+| **Stops when** | 症状が索引に無い（`how-to` / `repo-truth` へ）、資料が矛盾する、要求が許可範囲を超える |
+
 ## Symptom index
 
-| Symptom | Section |
+| Symptom | Where the fix lives |
 | --- | --- |
 | `docker compose ps` empty / "port 5432 already allocated" / service not found | §1 |
 | `schema.gen.sql` or sqlc output drifts, `gen-db-artifacts-check` fails | §2 |
@@ -37,32 +46,61 @@ Three facts explain almost everything below:
 | Tests / migrations hit the wrong database after `make slot-acquire` | §5 |
 | Integration tests fail right after switching branches | §5 |
 | pre-push `secret-scan` flags a secret you did not add | §6 |
-| `sample-removal-check` fails in CI | §21 <!-- sample-api:line --> |
+| `sample-removal-check` fails in CI | §99 <!-- sample-api:line --> |
 | `env/.env` is dirty and you did not edit it | §7 |
 | Local golangci-lint disagrees with CI, or `golangci-lint: not found` | §8 |
-| `commitlint: not found`, `orval: not found`, stale tool version | §9 |
+| `commitlint: not found`, `orval: not found`, stale tool version | §9 → `tools-upgrade` (version bumps) |
 | `ERR_PNPM_VERIFY_DEPS_BEFORE_RUN` in a containerized gate, or one gate fails only inside Docker | §9 |
 | A containerized gate reports missing dependencies for a package you never touched, or `make` fails where a bare `docker compose run` passes | §9 |
 | A hook fails for something outside your change | §10 |
 | A gate fails / crawls for reasons unrelated to the change while several worktrees are open | §19 |
 | Want to know why `make lint` skipped, throttled, or deferred itself to CI | §19 |
-| `pin-images-check` / `pin-actions-check` errors (未固定 / 未登録) | §11 |
-| `tool-cooldown` / `go-cooldown` refuses a version you just declared | §20 |
-| A runtime bump breaks a gate through a tool that cannot be upgraded yet | §20 |
+| `pin-images-check` / `pin-actions-check` errors (未固定 / 未登録) | §11 → `images-pin` / `actions-pin` |
+| `tool-cooldown` / `go-cooldown` refuses a version you just declared | §20 → `supply-chain-triage` |
+| A runtime bump breaks a gate through a tool that cannot be upgraded yet | §20 → `tools-upgrade` |
 | "Migration version gap / duplicate" from pre-commit | §12 |
 | S3 calls return 503 locally | §13 |
 | Building an image for a specific environment | §14 |
-| `sync-versions` drift in CI | §15 |
+| `sync-versions` drift in CI | §15 → `go-upgrade` (Go version bumps) |
 | `go: inconsistent vendoring` from air or the image build in a fresh worktree (`vendor/` absent) | §18 |
-| Cannot tell which document decides an answer / `grep` drowns in mirrors and generated copies | §0 |
+| Cannot tell which document decides an answer / `grep` drowns in mirrors and generated copies | §0 → `repo-truth` |
+| Conflicts after taking the base in, or markers inside a generated artifact / pin lockfile | §21 → `resolve-merge` |
+| `gen-*-artifacts-check` fails after a merge, in files the branch never touched | §21 → `resolve-merge` |
+
+**Where a skill owns the fix, the index names it, and the section stops at the boundary.** A symptom
+whose resolution is a procedure — not a command — belongs to whoever owns that procedure: pin
+lockfiles to `images-pin` / `actions-pin`, a refused version to `supply-chain-triage`, a version bump
+to `tools-upgrade` / `go-upgrade`, a merge to `resolve-merge`, "which document decides this" to
+`repo-truth`. The section keeps the diagnosis — what the symptom means, why the gate fired, what is
+destructive about it — and hands the steps over rather than restating them, because a restated
+procedure is the copy, and the copy is what rots when the owner changes.
+
+Routing from the index rather than from inside the section matters: a reader who has to finish a
+section before learning it defers to a skill has already spent the reading the deferral was meant to
+save.
+
+<!-- sample-api:begin -->
+**A section that `make setup-remove-sample-api` deletes is numbered out of sequence (§99).** Inside
+the running sequence its removal would leave a permanent gap in the runbook this repository ships;
+out of sequence, deleting it changes nothing else. Number a removable section that way, and give
+new sections the next sequential number.
+<!-- sample-api:end -->
+
+**A symptom that is not in this index does not belong here.** This is a lookup table of known
+gotchas, not a search: it answers "the fix for this is §N", never "no fix exists". Establishing that
+a procedure is genuinely undefined takes an exhaustive sweep of the owning indexes, and two other
+skills own that verdict: `how-to` for "what is the sanctioned way to do X" (goal-driven, reporting
+`UNDEFINED` with the frontier it searched), `repo-truth` for "what is the rule / how does this work"
+(distinguishing 未定義 from 確認できず the same way). Teaching this table to conclude "undefined" would
+turn it into a general search skill and make its silence indistinguishable from an answer.
 
 ## 0. Finding the authoritative source
 
 Most of the Markdown in this tree is either a Japanese mirror you must not read or generated output
 that lags the code, so a naive repo-wide search buries the one file that actually decides the answer.
 Of roughly 1,000 tracked `*.md`, **over 40% are `*.ja.md` translations** and **72 are generated
-`docs/portal/guides/**` copies of READMEs**; `docs/godoc/**` adds ~1,250 files and
-`docs/db-schema/**` ~390.
+`docs/portal/guides/**` copies of READMEs**; `docs/godoc/**` adds ~1,800 files and
+`docs/db-schema/**` ~400.
 
 ### Where the truth lives
 
@@ -314,6 +352,10 @@ the usual cause of a failing commit. `commitlint.config.js` deliberately disable
 repo prefixes are Cap-first `Feat`/`Fix`/… while CI messages are upper-case, so no single case can be
 enforced) and pins `type-enum` to the project prefixes; `Merge` / `Revert` are ignored by default.
 
+This section covers a tool that is *missing or stale in the image*. Deliberately **raising** a pinned
+version is a different job with its own supply-chain window, and `tools-upgrade` owns it — do not
+bump a pin in `mise.toml` to make this symptom go away.
+
 ## 10. Hook map — what runs when, and what to do when it fails for reasons outside your change
 
 `.lefthook.yaml`, by trigger:
@@ -542,8 +584,27 @@ Raising a `python/*.in` pin without regenerating its `.txt` fails too, from `ver
 than from the window. Run `make py-lock` and commit both files; the pin and its lockfile are one
 change.
 
+## 21. Conflict markers after taking the base in
+
+Two things about a merge here are not obvious, and both are why `resolve-merge` owns the steps.
+
+**Most markers land in files nobody should be editing.** `*.gen.go`, `*.sql.go`, `*_mock.go`,
+`openapi.gen.yaml`, `database/gen/*.gen.sql`, the generated `docs/` trees, and the pin lockfiles all
+have a generator or a resolver, so none of them has a correct side. Choosing one produces a file with
+no markers that reviews clean and no longer reproduces from its source — and `gen-*-artifacts-check`
+then fails on somebody else's pull request, in code they never touched.
+
+**A clean merge is not a finished merge.** `database/gen/*.gen.sql` is a concatenation of the DML
+files, so two branches can each add one, conflict on nothing, and leave the concatenation stale. The
+same holds for every derived artifact.
+
+Run `resolve-merge` either way — it classifies each path, rebuilds the generated classes from source,
+re-resolves the lockfiles through their resolvers, and hands back only what needs a human. Take the
+base from the pull request's `baseRefName`, and merge rather than rebase (`CLAUDE.md`); during a
+hotfix the base is a human decision, so pass it explicitly.
+
 <!-- sample-api:begin -->
-## 21. `sample-removal-check` fails in CI
+## 99. `sample-removal-check` fails in CI
 
 `scripts/setup/remove-sample-api/sample-manifest.ts` declares every path that `make setup-remove-sample-api` <!-- skill-lint-ignore -->
 deletes when a template user strips the sample APIs. Adding, moving, or renaming files under a sample

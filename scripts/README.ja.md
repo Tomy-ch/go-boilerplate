@@ -25,7 +25,7 @@ Node の設定とパッケージ横断のゲートは直下に置く。各ツー
 |`doc-ref-lint/`|ADR のファイル名 / H1 / 参照の整合と、英日ドキュメント対の存在を検査する。ADR 参照は番号と併せてファイル名の slug を持つため、再採番が黙って別の ADR を指すことはない。`docs/spec/**` は日本語版の spec 一式が入るまで対訳存在チェックから意図的に除外している。|`make md-lint` / `make md-doc-ref-lint`|
 |`premise-lint/`|[docs/rules.md](../docs/rules.md) の *No premise the document will outlive* を機械化したもの。テンプレート作成後も残る Markdown（`docs/adr/**` / `docs/design/**` / `docs/rules.md` / 各層 README …）をマーカー除去後の姿で読み、テンプレートから作成した瞬間に真でなくなる自己参照があれば落とす。前提を書いてよいのは、セットアップが書き換え・削除する `README*` / `docs/get-started/**` と、`boilerplate-only` / `sample-api` マーカーで囲った領域だけ。同じ語の別語義は `allowances.ts` へ理由付きで宣言する。|`make md-premise-lint` <!-- boilerplate-only:line -->|
 |`mermaid-lint/`|リポジトリ内 Markdown の ` ```mermaid ` フェンスを全抽出し（除外範囲は `markdownlint-cli2` と同一）、実 `mermaid.parse` で構文検証する（DOM は `linkedom` で供給）。壊れた図が 1 つでもあれば非 0 で終了。`markdownlint` は Markdown の体裁しか見ず図の文法を見ない、その穴を塞ぐ。|`make md-lint` / `make md-mermaid-lint`|
-|`skill-lint/`|`.claude/**` のスキル / エージェント定義を意味的に検査する: frontmatter（`name` がディレクトリ / ファイル名と一致、`name` + `description` の存在）、対訳ペア（`SKILL.ja.md` の存在・frontmatter 不在・冒頭の翻訳注記・見出しレベル列が `SKILL.md` と一致）、参照の実在性（本文の `` `make <target>` `` が `Makefile` / `.makefiles/**` に実在、インラインコード中のリポジトリルート相対パスが実在）。あわせて各 skill / agent が `.codex/**` にも存在することを検査する。スキル定義はエージェントの指示書でありながら、記述と実態の一致を誰も検査しておらず、片側の AI 環境にだけ入った skill にも誰も気づかない — その穴を塞ぐ。検査範囲と ignore ディレクティブは [Skill Lint](#skill-lint) を参照。|`make md-lint` / `make md-skill-lint`|
+|`skill-lint/`|`.claude/**` のスキル / エージェント定義を意味的に検査する: frontmatter（`name` がディレクトリ / ファイル名と一致、`name` + `description` の存在）、対訳ペア（`SKILL.ja.md` の存在・frontmatter 不在・冒頭の翻訳注記・見出しレベル列が `SKILL.md` と一致）、参照の実在性（本文の `` `make <target>` `` が `Makefile` / `.makefiles/**` に実在、インラインコード中のリポジトリルート相対パスが実在）、スキル横断の節番号参照（`` `repo-ops` §19 `` が `repo-ops/SKILL.md` の実際に宣言する番号付き節に解決する。この検査だけは `.codex/**` も読む）。あわせて各 skill / agent が `.codex/**` にも存在することを検査する。スキル定義はエージェントの指示書でありながら、記述と実態の一致を誰も検査しておらず、片側の AI 環境にだけ入った skill にも誰も気づかない — その穴を塞ぐ。検査範囲と ignore ディレクティブは [Skill Lint](#skill-lint) を参照。|`make md-lint` / `make md-skill-lint`|
 |`actions-shellcheck/`|`.github/actions/**` の `action.yaml` / `action.yml` を解析し、composite action の `runs.steps[].run` を抽出して各スクリプトを標準入力経由で `shellcheck` に掛け、指摘を `action.yaml` 上の行番号へ写し戻す。`actionlint` は `.github/workflows` しか走査せず、action マニフェストを直接渡してもワークフローとして解釈して失敗するため、composite action 内のシェルはどのゲートにも掛かっていなかった。その死角を埋める。方言はステップの `shell:` から決め、shebang として渡すことで `-s` を使わずに対象シェルを確定させる。`pwsh` / `python` / `cmd` や式で指定された `shell:` は検査せず skip として数える。`${{ }}` 式は行数を保つプレースホルダへ置換する（ワークフローの `run:` に対して `actionlint` が採る方式と同じ）。抽出したステップ数は、同じ YAML をそのままデコードして数えた件数とファイル単位で一致していなければならず、食い違えば非 0 で終了する。2 つの経路は独立に壊れるため、抽出が壊れた状態が「緑」として通ることはない。`run:` をブロック折り畳み（`>`）で書いた場合は拒否する（折り畳みは指摘の位置を写し戻す基準である改行を落とすため）。式がクオートされていたかどうかを本スクリプトが何も言わないのもこのプレースホルダ置換のためで、その問いが残るのは展開位置そのものを読む検査に限られる。担当は `make actions-zizmor`。|`make actions-lint` / `make actions-shellcheck`|
 |`pr-comment-secret-lint/`|`.github/workflows/` の各ワークフローをジョブ単位に切り出し、`./.github/actions/upsert-pr-comment` を使うジョブが `GITHUB_TOKEN` 以外の secret を参照していれば失敗する（ワークフロー全体の `env:` も対象）。`actionlint` では表現できない規約を機械化したもので、規約の理由は [`.github/workflows/README.ja.md`](../.github/workflows/README.ja.md) を参照。検出範囲は `${{ }}` 式に現れる secrets の直接参照（`secrets.NAME` / `secrets['NAME']` / `toJSON(secrets)` のようなコンテキスト全体）。別ジョブで読んで `needs.<job>.outputs` 経由で渡す間接参照は静的には追えず、検査を通る。|`make actions-lint` / `make actions-comment-secret-lint`|
 |`pr-comment-fence-lint/`|ワークフローの `run:` ブロックが PR コメント本文を固定長の Markdown フェンスで囲んでいる場合、複製されている `fence_for` の実装が互いに一致しなくなった場合、本文を素通しさせるワークフローが inline code span の内側へ値を補間している場合に失敗する。`actionlint` では表現できない規約を機械化したもので、フェンスを囲む本文から算出すべき理由は [`.github/workflows/README.ja.md`](../.github/workflows/README.ja.md) を参照。検出範囲は `echo` 中のリテラルなフェンス、実装同士の文字列一致、そしてシェル展開をリテラルな span で囲んだ形。変数経由や `jq` の連結で組んだ span はここからは見えず、ある本文が攻撃者制御かどうかはそもそも判定できない。いずれも規約に委ねる。span 検査はファイル単位で、まだ安全な形に乗っていない本文のための除外マップを持つ。エントリは追跡 issue を明記し、検査を素通りしたファイルが検査済みと区別できなくならないよう毎回出力され、その issue が解決したら消える。|`make actions-lint` / `make actions-comment-fence-lint`|
@@ -42,6 +42,17 @@ Node の設定とパッケージ横断のゲートは直下に置く。各ツー
 ```markdown
 - `internal/controller/handler/debug/README.md` → `docs/portal/guides/controller-handler-debug.md` (if it were added) <!-- skill-lint-ignore -->
 ```
+
+**スキル横断の節番号参照** —— `` `repo-ops` §19 ``、`` `repo-ops` section 19 ``、`` `repo-ops` の §19 ``
+—— は、そのスキルの `SKILL.md` が宣言する番号付き見出し `## N.` に照らして解決する。この検査だけは
+`.claude/**` に加えて `.codex/**` も読み、索引はツリーごとに別で作る。Codex 側の文書の参照は Codex 側の
+写しを指すので、Claude 側の採番で判定すると、同期途中に実在する節を「無い」と報告してしまう。
+
+make ターゲットやパスと違い、採番し直された節は参照を構文として壊さない —— 別の場所を指すだけであり、
+それは「エージェントが誤った手順を実行する」形で表に出る。意図的に**判定しない**ケースが 2 つある:
+インストール済みスキルでない名前（code span 中の無関係な語かもしれない）と、番号付き節を 1 つも宣言して
+いないスキル（別の見出し規約かもしれない）。スキル名が code span に入っていることを要求しているのが、
+`RFC 7235 section 3` を巻き込まない仕掛けである。
 
 2 つの AI 環境をまたぐ検査は**存在のみ**に限る: `.claude/skills/<name>/` には `.codex/skills/<name>/` があり（逆も同様）、`.claude/agents/<name>.md` には `.codex/agents/<name>.toml` があり（逆も同様）、Codex の各スキルは README が定める `SKILL.md` + `agents/openai.yaml` を持つこと。Codex 側の `SKILL.ja.md` は任意なので、存在するときだけ対訳ペアとして検査する。
 

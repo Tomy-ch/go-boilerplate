@@ -24,6 +24,15 @@ Do NOT use this skill for:
 - Applying fixes — this skill is read-only on source; it reports, the user fixes.
 - Auditing the tests (`/test-review`) or the comments (`/comment-sweep`) — peers, not sub-steps.
 
+## Contract
+
+| | |
+| --- | --- |
+| **Owns** | 変更そのもの（architecture / ddd-modeling / security / correctness / runtime-gap / type-design） |
+| **Never** | テスト観点（`test-review`）/ コメント観点（`comment-sweep`）/ 他スキルの呼び出し |
+| **Starts when** | レビュー可能な差分とその意図が存在するとき |
+| **Stops when** | tier 1 の finding が人間の設計判断を要するとき |
+
 ## Core Idea — reviewer ≠ implementer
 
 Bias reduction is the design constraint, not a nicety. Reviewers therefore run as **subagents on a different model than whoever wrote the code**:

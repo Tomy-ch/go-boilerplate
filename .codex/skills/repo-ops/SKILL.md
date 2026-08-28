@@ -25,9 +25,18 @@ Three facts explain almost everything below:
 3. **`make lint` / `fix` / `test` run on the host** via mise — the exception to the "everything is
    dockerized" rule, and the source of host-vs-CI mismatches.
 
+## Contract
+
+| | |
+| --- | --- |
+| **Owns** | The index from known operational symptoms to their corrective procedures (§1–21), plus the location of the authoritative source for a question (§0) |
+| **Never** | Invent a procedure absent from the index / declare a procedure "undefined" / make design decisions / stand in for execution approval |
+| **Starts when** | A symptom, failed gate, or unexpected behavior is presented |
+| **Stops when** | The symptom is absent from the index (route to `how-to` / `repo-truth`), sources conflict, or the request exceeds the permitted scope |
+
 ## Symptom index
 
-| Symptom | Section |
+| Symptom | Where the fix lives |
 | --- | --- |
 | `docker compose ps` empty / "port 5432 already allocated" / service not found | §1 |
 | `schema.gen.sql` or sqlc output drifts, `gen-db-artifacts-check` fails | §2 |
@@ -36,32 +45,51 @@ Three facts explain almost everything below:
 | Tests / migrations hit the wrong database after `make slot-acquire` | §5 |
 | Integration tests fail right after switching branches | §5 |
 | pre-push `secret-scan` flags a secret you did not add | §6 |
-| `sample-removal-check` fails in CI | §21 <!-- sample-api:line --> |
+| `sample-removal-check` fails in CI | §99 <!-- sample-api:line --> |
 | `env/.env` is dirty and you did not edit it | §7 |
 | Local golangci-lint disagrees with CI, or `golangci-lint: not found` | §8 |
-| `commitlint: not found`, `orval: not found`, stale tool version | §9 |
+| `commitlint: not found`, `orval: not found`, stale tool version | §9 → `tools-upgrade` (version bumps) |
 | `ERR_PNPM_VERIFY_DEPS_BEFORE_RUN` in a containerized gate, or one gate fails only inside Docker | §9 |
 | A containerized gate reports missing dependencies for a package you never touched, or `make` fails where a bare `docker compose run` passes | §9 |
 | A hook fails for something outside your change | §10 |
 | A gate fails / crawls for reasons unrelated to the change while several worktrees are open | §19 |
 | Want to know why `make lint` skipped, throttled, or deferred itself to CI | §19 |
-| `pin-images-check` / `pin-actions-check` errors (未固定 / 未登録) | §11 |
-| `tool-cooldown` / `go-cooldown` refuses a version you just declared | §20 |
-| A runtime bump breaks a gate through a tool that cannot be upgraded yet | §20 |
+| `pin-images-check` / `pin-actions-check` errors (未固定 / 未登録) | §11 → `images-pin` / `actions-pin` |
+| `tool-cooldown` / `go-cooldown` refuses a version you just declared | §20 → `supply-chain-triage` |
+| A runtime bump breaks a gate through a tool that cannot be upgraded yet | §20 → `tools-upgrade` |
 | "Migration version gap / duplicate" from pre-commit | §12 |
 | S3 calls return 503 locally | §13 |
 | Building an image for a specific environment | §14 |
-| `sync-versions` drift in CI | §15 |
+| `sync-versions` drift in CI | §15 → `go-upgrade` (Go version bumps) |
 | `go: inconsistent vendoring` from air or the image build in a fresh worktree (`vendor/` absent) | §18 |
-| Cannot tell which document decides an answer / `grep` drowns in mirrors and generated copies | §0 |
+| Cannot tell which document decides an answer / `grep` drowns in mirrors and generated copies | §0 → `repo-truth` |
+| Conflicts after taking the base in, or markers inside a generated artifact / pin lockfile | §21 → `resolve-merge` |
+| `gen-*-artifacts-check` fails after a merge, in files the branch never touched | §21 → `resolve-merge` |
+
+**When a skill owns the fix, the index names it and the section stops at that boundary.** The
+section retains the diagnosis — what the symptom means, why the gate fired, and what would be
+destructive — but delegates the procedure instead of duplicating it. A duplicated procedure is a
+copy, and the copy is what decays when ownership changes. Routing in the index matters too: a reader
+who must finish the section before discovering the delegation has already paid the reading cost the
+delegation was meant to save.
+
+<!-- sample-api:begin -->
+**A section removed by `make setup-remove-sample-api` stays outside the sequence as §99.** Keeping it
+inside the sequence would leave a permanent numbering gap after removal. Give new permanent sections
+the next sequential number instead.
+<!-- sample-api:end -->
+
+**A symptom that is not in this index does not belong here.** This is a lookup table of known
+gotchas, not a search: it answers "the fix for this is §N", never "no fix exists". Route a goal-shaped
+question to `how-to`, and a question about repository truth or governing rules to `repo-truth`.
 
 ## 0. Finding the authoritative source
 
 Most of the Markdown in this tree is either a Japanese mirror you must not read or generated output
 that lags the code, so a naive repo-wide search buries the one file that actually decides the answer.
 Of roughly 1,000 tracked `*.md`, **over 40% are `*.ja.md` translations** and **72 are generated
-`docs/portal/guides/**` copies of READMEs**; `docs/godoc/**` adds ~1,250 files and
-`docs/db-schema/**` ~390.
+`docs/portal/guides/**` copies of READMEs**; `docs/godoc/**` adds ~1,800 files and
+`docs/db-schema/**` ~400.
 
 ### Where the truth lives
 
@@ -313,6 +341,10 @@ the usual cause of a failing commit. `commitlint.config.js` deliberately disable
 repo prefixes are Cap-first `Feat`/`Fix`/… while CI messages are upper-case, so no single case can be
 enforced) and pins `type-enum` to the project prefixes; `Merge` / `Revert` are ignored by default.
 
+This section covers tools that are missing or stale **inside the image**. Deliberately raising a
+pinned version is a separate supply-chain-window task owned by `tools-upgrade`. Do not bump a pin in
+`mise.toml` merely to clear this symptom.
+
 ## 10. Hook map — what runs when, and what to do when it fails for reasons outside your change
 
 `.lefthook.yaml`, by trigger:
@@ -541,8 +573,24 @@ Raising a `python/*.in` pin without regenerating its `.txt` fails too, from `ver
 than from the window. Run `make py-lock` and commit both files; the pin and its lockfile are one
 change.
 
+## 21. Conflict markers after taking the base in
+
+Two facts make an apparently clean merge incomplete, and `resolve-merge` owns the corrective
+procedure.
+
+**Most conflict markers land in files that must not be edited.** `*.gen.go`, `*.sql.go`,
+`*_mock.go`, `openapi.gen.yaml`, `database/gen/*.gen.sql`, generated `docs/` trees, and pin lockfiles
+all have a generator or resolver. Choosing either side can remove the markers and pass review while
+leaving an artifact that cannot be reproduced from its source; a later `gen-*-artifacts-check` then
+fails in someone else's pull request.
+
+**A merge with no markers is not necessarily finished.** `database/gen/*.gen.sql` concatenates DML
+files, so two branches can add separate inputs without a textual conflict and still leave the
+derived output stale. Hand the operation to `resolve-merge`: use the pull request's `baseRefName`,
+merge rather than rebase, and pass the base explicitly during a hotfix.
+
 <!-- sample-api:begin -->
-## 21. `sample-removal-check` fails in CI
+## 99. `sample-removal-check` fails in CI
 
 `scripts/setup/remove-sample-api/sample-manifest.ts` declares every path that `make setup-remove-sample-api` <!-- skill-lint-ignore -->
 deletes when a template user strips the sample APIs. Adding, moving, or renaming files under a sample

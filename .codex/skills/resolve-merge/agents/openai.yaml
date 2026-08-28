@@ -1,0 +1,4 @@
+interface:
+  display_name: "Resolve Merge"
+  short_description: "マージを分類・再生成し、意味的衝突だけを人へ返す"
+  default_prompt: "$resolve-merge を使い、現在のマージを機械的に解決して。"
