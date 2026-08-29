@@ -2,7 +2,6 @@ package stream
 
 import (
 	"context"
-	"strconv"
 	"sync"
 	"time"
 
@@ -17,10 +16,10 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-var _ Streamer = (*Registry)(nil)
-
 // registryLoggerName は、接続の出来事を出すロガーの名前です。
 const registryLoggerName = "realtime-stream"
+
+var _ Streamer = (*Registry)(nil)
 
 // Registry は、この instance が保持している SSE 接続の索引です。確定済みの接続を配信し続ける Streamer
 // であると同時に、fan-out で届いた wakeup / 失効を接続へ渡す受け口（controller/realtime の Waker /
@@ -81,15 +80,15 @@ func (r *Registry) Stream(c *echo.Context, req StreamRequest) error {
 
 	conn, err := r.register(req)
 	if err != nil {
-		r.hintRetryAfter(c)
+		hintRetryAfter(c)
 
 		return err
 	}
-	defer r.unregister(conn)
+	defer r.unregister(ctx, conn)
 
 	// 初回 replay の枠は確定より前に取ります。確定後に待つと「繋がったのに何も来ない」接続になります。
 	if err := r.admit(ctx); err != nil {
-		r.hintRetryAfter(c)
+		hintRetryAfter(c)
 
 		return err
 	}
@@ -139,8 +138,7 @@ func (r *Registry) Revoke(_ context.Context, subject string, destination rt.Stre
 			continue
 		}
 
-		conn.signalControl(stopControl())
-		conn.close(closeReasonRevoked)
+		conn.closeWith(stopControl(), closeReasonRevoked)
 	}
 }
 
@@ -151,8 +149,7 @@ func (r *Registry) Drain(ctx context.Context) error {
 	conns := r.startDraining()
 
 	for _, conn := range conns {
-		conn.signalControl(reconnectControl())
-		conn.close(closeReasonDraining)
+		conn.closeWith(reconnectControl(), closeReasonDraining)
 	}
 
 	budget, cancel := context.WithTimeout(ctx, drainBudget)
@@ -253,7 +250,7 @@ func (r *Registry) register(req StreamRequest) (*connection, error) {
 
 // unregister は、接続を索引から外して容量を返し、drain の待ち手に終わりを知らせます。
 // close / cancel / 異常切断のどれで終わっても必ずここを通ります。
-func (r *Registry) unregister(conn *connection) {
+func (r *Registry) unregister(ctx context.Context, conn *connection) {
 	conn.close(closeReasonCanceled)
 
 	r.mu.Lock()
@@ -262,7 +259,7 @@ func (r *Registry) unregister(conn *connection) {
 	removeIndex(r.bySubject, conn.subject, conn.id)
 	r.mu.Unlock()
 
-	r.logging.Info(context.Background(), "stream connection closed",
+	r.logging.Info(ctx, "stream connection closed",
 		logging.String(logging.StreamIDKey, string(conn.stream)),
 		logging.String(logging.CloseReasonKey, conn.reason))
 
@@ -279,12 +276,6 @@ func (r *Registry) admit(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-// hintRetryAfter は、確定前の拒否に再試行の目安を添えます。control event の retryAfterMs と同じ値で、
-// 単位だけが違います（ヘッダは秒、control はミリ秒）。
-func (r *Registry) hintRetryAfter(c *echo.Context) {
-	c.Response().Header().Set("Retry-After", strconv.Itoa(int(retryAfterHint.Seconds())))
 }
 
 // startDraining は、新規接続の受付を止め、そのとき保持していた接続を返します。

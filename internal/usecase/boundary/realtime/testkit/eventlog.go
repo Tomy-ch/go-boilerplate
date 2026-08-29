@@ -12,13 +12,15 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
-var _ rt.EventLogStore = (*EventLog)(nil)
-
 // defaultReadLimit は、ReadAfterQuery.Limit が 0 以下のときに返す件数の上限です。
 const defaultReadLimit = 32
 
-// errEventLogUnavailable は、SetUnavailable(true) の間に読み書きが返すエラーです。
-var errEventLogUnavailable = xerrors.Wrap(apperror.ErrUnavailable, "testkit: event log is unavailable")
+var (
+	_ rt.EventLogStore = (*EventLog)(nil)
+
+	// errEventLogUnavailable は、SetUnavailable(true) の間に読み書きが返すエラーです。
+	errEventLogUnavailable = xerrors.Wrap(apperror.ErrUnavailable, "testkit: event log is unavailable")
+)
 
 // EventLog は、in-memory の rt.EventLogStore です。読み取りは常に最新の書き込みを反映します
 // （実装は強い一貫性の読み取りとして振る舞います）。
@@ -57,31 +59,17 @@ func (l *EventLog) Hold() func() {
 	l.held = gate
 	l.mu.Unlock()
 
+	var once sync.Once
+
 	return func() {
-		l.mu.Lock()
-		if l.held == gate {
-			l.held = nil
-		}
-		l.mu.Unlock()
-		close(gate)
-	}
-}
-
-// awaitRelease は、Hold が掛かっていれば解けるまで待ちます。
-func (l *EventLog) awaitRelease(ctx context.Context) error {
-	l.mu.Lock()
-	gate := l.held
-	l.mu.Unlock()
-
-	if gate == nil {
-		return nil
-	}
-
-	select {
-	case <-gate:
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
+		once.Do(func() {
+			l.mu.Lock()
+			if l.held == gate {
+				l.held = nil
+			}
+			l.mu.Unlock()
+			close(gate)
+		})
 	}
 }
 
@@ -187,6 +175,24 @@ func (l *EventLog) Find(_ context.Context, streamID rt.StreamID, seq rt.Sequence
 	}
 
 	return rt.DeliveryEvent{}, false, nil
+}
+
+// awaitRelease は、Hold が掛かっていれば解けるまで待ちます。
+func (l *EventLog) awaitRelease(ctx context.Context) error {
+	l.mu.Lock()
+	gate := l.held
+	l.mu.Unlock()
+
+	if gate == nil {
+		return nil
+	}
+
+	select {
+	case <-gate:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 // insert は、sequence 昇順を保ったまま event を差し込みます。同じ位置の event は置き換えます。

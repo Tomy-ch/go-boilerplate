@@ -85,6 +85,15 @@ func tickNameOf(d time.Duration) string {
 	}
 }
 
+// timeoutError は、Timeout() が true を返す net.Error です。
+type timeoutError struct{}
+
+func (timeoutError) Error() string   { return "i/o timeout" }
+func (timeoutError) Timeout() bool   { return true }
+func (timeoutError) Temporary() bool { return true }
+
+var _ net.Error = timeoutError{}
+
 // testConn は、テスト用の接続を 1 本作ります。
 func testConn() *connection {
 	return newConnection(1, "subject-1", "stream-1")
@@ -157,6 +166,40 @@ func Test_connection_close(t *testing.T) {
 			conn.close(closeReasonCanceled)
 
 			assert.Equal(t, closeReasonRevoked, conn.reason, "最初に閉じると決めた理由が残ること")
+		})
+	})
+}
+
+func Test_connection_closeWith(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指示を積んでから閉じ、理由を記録する", func(t *testing.T) {
+			t.Parallel()
+
+			conn := testConn()
+			conn.closeWith(stopControl(), closeReasonRevoked)
+
+			<-conn.quit
+			assert.Equal(t, closeReasonRevoked, conn.reason)
+			got, ok := conn.takeControl()
+			require.True(t, ok)
+			assert.Equal(t, gen.STOP, got.Action)
+		})
+
+		t.Run("既に閉じている接続には何も積まず理由も変えない", func(t *testing.T) {
+			t.Parallel()
+
+			conn := testConn()
+			conn.close(closeReasonCanceled)
+
+			conn.closeWith(stopControl(), closeReasonRevoked)
+
+			assert.Equal(t, closeReasonCanceled, conn.reason)
+			_, ok := conn.takeControl()
+			assert.False(t, ok)
 		})
 	})
 }
@@ -335,15 +378,6 @@ func Test_writeFailureReason(t *testing.T) {
 		})
 	})
 }
-
-// timeoutError は、Timeout() が true を返す net.Error です。
-type timeoutError struct{}
-
-func (timeoutError) Error() string   { return "i/o timeout" }
-func (timeoutError) Timeout() bool   { return true }
-func (timeoutError) Temporary() bool { return true }
-
-var _ net.Error = timeoutError{}
 
 func Test_fetcher_run(t *testing.T) {
 	t.Parallel()

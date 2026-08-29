@@ -30,15 +30,15 @@ import (
 	ucrealtime "go-boilerplate/internal/usecase/realtime"
 )
 
-// sseNow は、EventLog に置く event の発生時刻であり、cursor の失効判定が見る現在時刻でもあります。
-var sseNow = time.Date(2026, time.January, 10, 0, 0, 0, 0, time.UTC)
-
 // 接続の周期処理の待ち時間を見分ける帯の境界。controller/stream の定数は非公開なので、
 // heartbeat(15s) / catch-up(30s + jitter) / lifetime(1h) が分かれる位置に取ります。
 const (
 	sseHeartbeatCeiling = 20 * time.Second
 	sseCatchUpCeiling   = 5 * time.Minute
 )
+
+// sseNow は、EventLog に置く event の発生時刻であり、cursor の失効判定が見る現在時刻でもあります。
+var sseNow = time.Date(2026, time.January, 10, 0, 0, 0, 0, time.UTC)
 
 // sseSleeper は、接続の周期処理を止めておく Sleeper です。catch-up の周期だけテストが名指しで進め、
 // heartbeat と connection lifetime は ctx が終わるまで起きません。実時間には一切依存しません。
@@ -77,6 +77,14 @@ func (s *sseSleeper) tickCatchUp(t *testing.T) {
 	}
 }
 
+// sseFixture は、SSE の scenario を駆動するのに要る一式です。
+type sseFixture struct {
+	srv      *Server
+	log      *rttestkit.EventLog
+	sleeper  *sseSleeper
+	registry *stream.Registry
+}
+
 // sseEvent は、seq の位置の封筒を組み立てます。
 func sseEvent(seq rt.Sequence) rt.DeliveryEvent {
 	return rt.DeliveryEvent{
@@ -98,14 +106,6 @@ func seedEvents(log *rttestkit.EventLog, n int) {
 	}
 
 	log.Seed(events...)
-}
-
-// sseFixture は、SSE の scenario を駆動するのに要る一式です。
-type sseFixture struct {
-	srv      *Server
-	log      *rttestkit.EventLog
-	sleeper  *sseSleeper
-	registry *stream.Registry
 }
 
 // newSSEServer は、stream_auth_test.go と同じ配線に**本物の connection registry** を Streamer として差した

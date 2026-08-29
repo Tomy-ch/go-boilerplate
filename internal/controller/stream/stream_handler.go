@@ -61,6 +61,12 @@ func (s *server) GetStream(c *echo.Context, destination gen.StreamDestinationPar
 		if xerrors.Is(err, ucrealtime.ErrCursorExpired) {
 			return apperror.WithMeta(xerrors.Join(apperror.ErrGone, err), apperror.NewMeta(codeStreamCursorExpired))
 		}
+
+		// EventLog に届かないための拒否も、容量の拒否と同じく再試行できる 503 として返す。
+		if xerrors.Is(err, apperror.ErrUnavailable) {
+			hintRetryAfter(c)
+		}
+
 		return err
 	}
 

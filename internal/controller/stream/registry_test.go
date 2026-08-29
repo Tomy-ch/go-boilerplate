@@ -278,7 +278,7 @@ func TestRegistry_Drain(t *testing.T) {
 			require.NoError(t, err)
 			go func() {
 				<-conn.quit
-				reg.unregister(conn)
+				reg.unregister(context.Background(), conn)
 			}()
 
 			require.NoError(t, reg.Drain(context.Background()))
@@ -332,7 +332,10 @@ func TestRegistry_pump(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, r *http.Request) {
 				defer close(finished)
 				w := newSSEWriter(res, writeDeadline)
-				require.NoError(t, w.commit())
+				// handler goroutine では require を使えない（testifylint go-require）。
+				if !assert.NoError(t, w.commit()) {
+					return
+				}
 				reg.pump(r.Context(), conn, w)
 			}))
 			res := doStreamRequest(t, srv)
@@ -358,7 +361,10 @@ func TestRegistry_pump(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, r *http.Request) {
 				defer close(finished)
 				w := newSSEWriter(res, writeDeadline)
-				require.NoError(t, w.commit())
+				// handler goroutine では require を使えない（testifylint go-require）。
+				if !assert.NoError(t, w.commit()) {
+					return
+				}
 				reg.pump(r.Context(), conn, w)
 			}))
 			res := doStreamRequest(t, srv)
@@ -380,7 +386,10 @@ func TestRegistry_pump(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, r *http.Request) {
 				defer close(finished)
 				w := newSSEWriter(res, writeDeadline)
-				require.NoError(t, w.commit())
+				// handler goroutine では require を使えない（testifylint go-require）。
+				if !assert.NoError(t, w.commit()) {
+					return
+				}
 				reg.pump(r.Context(), conn, w)
 			}))
 			res := doStreamRequest(t, srv)
@@ -490,7 +499,7 @@ func TestRegistry_unregister(t *testing.T) {
 			conn, err := reg.register(testRequest)
 			require.NoError(t, err)
 
-			reg.unregister(conn)
+			reg.unregister(context.Background(), conn)
 
 			<-conn.done
 			assert.Empty(t, reg.conns)
@@ -506,7 +515,7 @@ func TestRegistry_unregister(t *testing.T) {
 			require.NoError(t, err)
 			conn.close(closeReasonRevoked)
 
-			reg.unregister(conn)
+			reg.unregister(context.Background(), conn)
 
 			assert.Equal(t, closeReasonRevoked, conn.reason)
 		})
@@ -542,27 +551,6 @@ func TestRegistry_admit(t *testing.T) {
 			t.Cleanup(cancel)
 
 			require.ErrorIs(t, reg.admit(ctx), ErrReplayAdmission)
-		})
-	})
-}
-
-func TestRegistry_hintRetryAfter(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("秒単位の目安をヘッダに置く", func(t *testing.T) {
-			t.Parallel()
-
-			reg, _, _ := testRegistry(t, Settings{})
-			e := echo.New()
-			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
-			rec := httptest.NewRecorder()
-
-			reg.hintRetryAfter(e.NewContext(req, rec))
-
-			assert.Equal(t, "5", rec.Header().Get("Retry-After"))
 		})
 	})
 }

@@ -65,6 +65,20 @@ type connection struct {
 	reason string
 }
 
+// fetcher は、1 接続ぶんの読み直しを回します。読んだ位置はこの goroutine だけが持つので、
+// 位置の同期は要りません。
+type fetcher struct {
+	conn     *connection
+	replayer ucrealtime.Replayer
+	sem      *semaphore.Weighted
+	sleeper  clock.Sleeper
+	log      logging.Logger
+	// fetched は、buffer へ入れ終えた位置です。次の読み取りはこの後ろから始めます。
+	fetched rt.Sequence
+	// holdsSlot は、初回 replay のために Stream が確保した枠をまだ持っているかどうかです。
+	holdsSlot bool
+}
+
 // newConnection は、subject × stream の接続を生成します。
 func newConnection(id uint64, subject string, stream rt.StreamID) *connection {
 	return &connection{
@@ -87,8 +101,17 @@ func (c *connection) close(reason string) {
 	})
 }
 
+// closeWith は、client へ渡す指示を積んでから接続を閉じます。理由の確定を指示の積載より前に置くので、
+// pump が指示を先に拾って戻り、Stream の後片付けが先に close を呼んでも、記録される理由はこちらのままです。
+func (c *connection) closeWith(ev gen.ControlEvent, reason string) {
+	c.quitOnce.Do(func() {
+		c.reason = reason
+		c.signalControl(ev)
+		close(c.quit)
+	})
+}
+
 // signalControl は、client へ渡す指示を 1 つ積みます。既に積まれていれば捨てます。
-// 呼び出し側は必ずこれを close より前に呼び、pump が quit で起きたときに指示を拾えるようにします。
 func (c *connection) signalControl(ev gen.ControlEvent) {
 	select {
 	case c.control <- ev:
@@ -165,20 +188,6 @@ func writeFailureReason(err error) string {
 	return closeReasonClientGone
 }
 
-// fetcher は、1 接続ぶんの読み直しを回します。読んだ位置はこの goroutine だけが持つので、
-// 位置の同期は要りません。
-type fetcher struct {
-	conn     *connection
-	replayer ucrealtime.Replayer
-	sem      *semaphore.Weighted
-	sleeper  clock.Sleeper
-	log      logging.Logger
-	// fetched は、buffer へ入れ終えた位置です。次の読み取りはこの後ろから始めます。
-	fetched rt.Sequence
-	// holdsSlot は、初回 replay のために Stream が確保した枠をまだ持っているかどうかです。
-	holdsSlot bool
-}
-
 // run は、初回 replay を Stream が確保した枠のまま走らせ、以降は wakeup と周期 catch-up で読み直します。
 func (f *fetcher) run(ctx context.Context) {
 	defer f.releaseSlot()
@@ -239,8 +248,7 @@ func (f *fetcher) drainPages(ctx context.Context) {
 		}
 
 		if events[0].Sequence != f.fetched+1 {
-			f.conn.signalControl(resyncControl())
-			f.conn.close(closeReasonResync)
+			f.conn.closeWith(resyncControl(), closeReasonResync)
 
 			return
 		}
@@ -261,8 +269,7 @@ func (f *fetcher) push(events []rt.DeliveryEvent) bool {
 		case <-f.conn.quit:
 			return false
 		default:
-			f.conn.signalControl(retryLaterControl())
-			f.conn.close(closeReasonSlowClient)
+			f.conn.closeWith(retryLaterControl(), closeReasonSlowClient)
 
 			return false
 		}
