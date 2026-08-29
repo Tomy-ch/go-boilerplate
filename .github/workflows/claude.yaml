@@ -39,7 +39,7 @@ jobs:
       actions: read
     steps:
       - name: Harden the runner
-        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        uses: step-security/harden-runner@05e31511f85b41b11d1cf0ef85d0992719546e2c # v2.21.0
         with:
           egress-policy: block
           allowed-endpoints: >
@@ -83,7 +83,7 @@ jobs:
 
       - name: Run Claude
         if: steps.config.outputs.configured == 'true'
-        uses: anthropics/claude-code-action@be7b93b1907a4abad570368f3c74b6fe3807510b # v1.0.183
+        uses: anthropics/claude-code-action@e5ad3c7725bc2459721893f88879fef9dbcf97b0 # v1.0.202
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_TOKEN }}
           claude_args: "--max-turns 15"
