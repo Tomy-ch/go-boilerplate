@@ -3,8 +3,8 @@
 The seam of Realtime Delivery ([`docs/design/realtime-delivery.md`](../../../../docs/design/realtime-delivery.md)):
 the feature-neutral envelope `DeliveryEvent` and the boundaries implemented by whoever stores and
 delivers it. Usecase code (`internal/usecase/realtime/`, the feature's realtime adapter) depends on
-this package only; the DynamoDB stores and the PostgreSQL sequence allocator (infrastructure)
-implement it. Neither vendor vocabulary (table / partition / TTL) nor feature vocabulary
+this package only; the DynamoDB stores, the PostgreSQL sequence allocator and the SNS / SQS fan-out
+adapter (infrastructure) implement it. Neither vendor vocabulary (table / partition / TTL) nor feature vocabulary
 (conversation / message / operator) appears here.
 
 ```go
@@ -46,7 +46,7 @@ type SecretGenerator interface {
     Generate() (string, error)   // 256-bit opaque ticket value
 }
 
-// The instance's own inbox on the fan-out (one per serve instance, created at start, deleted at stop).
+// The instance's own queue on the fan-out (one per serve instance, created at start, deleted at stop).
 type InstanceSubscription interface {
     Provision(ctx context.Context, id InstanceID) error            // idempotent per id
     Receive(ctx context.Context, limit int) ([]Notification, error) // bounded wait; returns on ctx
@@ -55,7 +55,7 @@ type InstanceSubscription interface {
 }
 
 type Notification struct {            // Kind selects which of the two is populated
-    Kind       NotificationKind      // KindWakeup | KindRevocation
+    Kind       NotificationKind      // KindWakeup | KindRevocation | KindUnknown ("": unreadable; delete it)
     Wakeup     Wakeup                // EventID / StreamID / Sequence — "re-read the stream after your cursor"
     Revocation Revocation            // Subject / Destination — "close that subject's connections"
     Receipt    string                // substrate-specific delete key; opaque here

@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 
-	awssdk "github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/spf13/cobra"
 
 	clirealtimeinit "go-boilerplate/internal/cli/realtimeinit"
@@ -77,7 +75,7 @@ func runRealtimeInit(ctx context.Context) error {
 		return err
 	}
 
-	// topic の作り方（SNS の CreateTopic）は infrastructure 側のクライアントで行い、CLI コアには名前と ARN だけを渡す。
+	// topic の作り方は infrastructure（realtime.EnsureTopic）が持ち、CLI コアには名前と ARN だけを渡す。
 	clients, err := realtimeinfra.NewClients(ctx, realtimeinfra.ClientConfig{
 		Endpoint:        config.NewEndpointConfig(cfg).RealtimePubSub(),
 		Region:          rtCfg.Region(),
@@ -89,13 +87,8 @@ func runRealtimeInit(ctx context.Context) error {
 	}
 
 	ensureTopic := func(ctx context.Context, name string) (string, error) {
-		out, err := clients.SNS.CreateTopic(ctx, &sns.CreateTopicInput{Name: awssdk.String(name)})
-		if err != nil {
-			return "", err
-		}
-
-		return awssdk.ToString(out.TopicArn), nil
+		return realtimeinfra.EnsureTopic(ctx, clients, name)
 	}
 
-	return clirealtimeinit.RunTopic(ctx, rtCfg.TopicARN(), ensureTopic, logger)
+	return clirealtimeinit.RunTopic(ctx, rtCfg.Topic(), ensureTopic, logger)
 }

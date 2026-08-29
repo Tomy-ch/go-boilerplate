@@ -17,14 +17,14 @@ import (
 // ErrTopicARNInvalid は、設定の topic ARN から topic 名を導けないことを示すエラーです。
 var ErrTopicARNInvalid = xerrors.Wrap(
 	apperror.ErrInvalidArgument,
-	"realtime-init: REALTIME_TOPIC_ARN is not a topic arn",
+	"realtime-init: REALTIME_TOPIC is not a topic arn",
 )
 
 // ErrTopicARNMismatch は、作成した topic の ARN が設定の ARN と食い違うことを示すエラーです。
 // 食い違ったまま起動すると publish 先だけが別の topic を指し、配送が黙って途切れるため、ここで止めます。
 var ErrTopicARNMismatch = xerrors.Wrap(
 	apperror.ErrInvalidArgument,
-	"realtime-init: created topic arn does not match REALTIME_TOPIC_ARN",
+	"realtime-init: created topic arn does not match REALTIME_TOPIC",
 )
 
 // Ensurer は、名前で指定した table を実在させる関数型です（実体は cmd 側が infrastructure の
@@ -50,7 +50,7 @@ func TopicName(arn string) (string, error) {
 	return arn[i+1:], nil
 }
 
-// RunTopic は、topicARN（config の REALTIME_TOPIC_ARN）が指す topic を実在させます。作成結果の ARN が食い違えば
+// RunTopic は、topicARN（config の REALTIME_TOPIC）が指す topic を実在させます。作成結果の ARN が食い違えば
 // ErrTopicARNMismatch で止まります（emulator の account / region と config の ARN が合っていない誤設定をここで見つける）。
 func RunTopic(ctx context.Context, topicARN string, ensure TopicEnsurer, logger logging.Logger) error {
 	name, err := TopicName(topicARN)

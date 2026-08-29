@@ -28,22 +28,30 @@ type QueueAttributes interface {
 	Build(queueARN string) (map[string]string, error)
 }
 
-// queueAttributes は、production の全属性です。
-type queueAttributes struct {
-	topicARN string
-	dlqARN   string
+// QueueAttributesInput は、production の属性を組み立てるのに要る deployment 依存の識別子です。
+// 2 つとも自由形式の文字列なので、位置ではなく名前で渡します（docs/rules.md の Function Signature Rules）。
+type QueueAttributesInput struct {
+	// TopicARN は、この queue への送信を許す唯一の topic です（access policy の aws:SourceArn 条件）。
+	TopicARN string
+	// DLQARN は、redrive 先です。空なら RedrivePolicy を付けません。
+	DLQARN string
 }
 
-// NewQueueAttributes は、topicARN からの送信だけを許す policy、dlqARN への redrive（空なら付けない）、
+// queueAttributes は、production の全属性です。
+type queueAttributes struct {
+	in QueueAttributesInput
+}
+
+// NewQueueAttributes は、in.TopicARN からの送信だけを許す policy、in.DLQARN への redrive（空なら付けない）、
 // SQS 管理の暗号化、long polling と visibility timeout を設定する QueueAttributes を返します。
-func NewQueueAttributes(topicARN, dlqARN string) QueueAttributes {
-	return &queueAttributes{topicARN: topicARN, dlqARN: dlqARN}
+func NewQueueAttributes(in QueueAttributesInput) QueueAttributes {
+	return &queueAttributes{in: in}
 }
 
 func (a *queueAttributes) Build(queueARN string) (map[string]string, error) {
 	attrs := TimingAttributes()
 
-	policy, err := queuePolicyDocument(queueARN, a.topicARN)
+	policy, err := queuePolicyDocument(queueARN, a.in.TopicARN)
 	if err != nil {
 		return nil, err
 	}
@@ -51,8 +59,8 @@ func (a *queueAttributes) Build(queueARN string) (map[string]string, error) {
 	attrs[string(sqstypes.QueueAttributeNamePolicy)] = policy
 	attrs[string(sqstypes.QueueAttributeNameSqsManagedSseEnabled)] = "true"
 
-	if a.dlqARN != "" {
-		redrive, err := redrivePolicyDocument(a.dlqARN)
+	if a.in.DLQARN != "" {
+		redrive, err := redrivePolicyDocument(a.in.DLQARN)
 		if err != nil {
 			return nil, err
 		}

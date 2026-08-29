@@ -6,11 +6,12 @@ import (
 	"go-boilerplate/internal/di/lifecycle"
 )
 
-// serve instance のライフサイクルに参加する値の fx group 名。参加者はどれも任意（soft group）で、
+// serve instance のライフサイクルに参加する値の fx group 名。参加者はどれも任意（値が 1 つも無くてもよい value group。
+// fx の `soft` は付けない — これらの型を他から要求する者が居ないため、soft にすると constructor が走らず group が空になる）で、
 // 1 つも無いときの起動・停止は HTTP サーバーだけの従来どおりです。
 const (
-	// ReadinessGroup は、HTTP を listen する前に依存の到達性を確かめる参加者の group です。
-	ReadinessGroup = "serve.readiness"
+	// StartupGroup は、HTTP を listen する前に依存の到達性を確かめる参加者の group です。
+	StartupGroup = "serve.startup"
 	// ProvisionerGroup は、instance 固有の外部 resource を用意し、停止時に片付ける参加者の group です。
 	ProvisionerGroup = "serve.provisioners"
 	// RunnerGroup は、listen 中だけ常駐する背景処理の group です。
@@ -19,9 +20,9 @@ const (
 	DrainerGroup = "serve.drainers"
 )
 
-// ReadinessProbe は、HTTP を listen する前に依存の到達性を確かめる参加者です。失敗は起動失敗です
+// StartupProbe は、HTTP を listen する前に依存の到達性を確かめる参加者です。失敗は起動失敗です
 // （Realtime runtime の起動に不可欠な dependency は startup で fail-fast する — docs/design/realtime-delivery.md §2.6）。
-type ReadinessProbe struct {
+type StartupProbe struct {
 	// Name は、ログに載せる参加者の名前です。
 	Name string
 	// Probe は、依存に到達できるかを確かめます。

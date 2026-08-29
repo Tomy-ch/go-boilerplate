@@ -39,7 +39,8 @@ func newSubscription(t *testing.T) (*subscription, subscriptionMocks) {
 	ctrl := gomock.NewController(t)
 	m := subscriptionMocks{sns: mock_aws.NewMockSNSAPI(ctrl), sqs: mock_aws.NewMockSQSAPI(ctrl)}
 	s, ok := NewInstanceSubscription(
-		m.sns, m.sqs, testTopicARN, "realtime-test", NewQueueAttributes(testTopicARN, ""), observability.NewNoopTracerFactory(t),
+		m.sns, m.sqs, SubscriptionTarget{TopicARN: testTopicARN, QueuePrefix: "realtime-test"},
+		NewQueueAttributes(QueueAttributesInput{TopicARN: testTopicARN}), observability.NewNoopTracerFactory(t),
 	).(*subscription)
 	require.True(t, ok)
 
@@ -255,6 +256,20 @@ func Test_subscription_Provision(t *testing.T) {
 			m.sqs.EXPECT().DeleteQueue(gomock.Any(), gomock.Any()).Return(&sqs.DeleteQueueOutput{}, nil)
 
 			require.ErrorIs(t, s.Provision(t.Context(), "inst-1"), apperror.ErrUnavailable)
+		})
+
+		t.Run("戻し（rollback）にも失敗すれば、その失敗も合流して返す", func(t *testing.T) {
+			t.Parallel()
+
+			s, m := newSubscription(t)
+			m.sqs.EXPECT().CreateQueue(gomock.Any(), gomock.Any()).Return(&sqs.CreateQueueOutput{QueueUrl: awssdk.String(testQueueURL)}, nil)
+			m.sqs.EXPECT().GetQueueAttributes(gomock.Any(), gomock.Any()).Return(&sqs.GetQueueAttributesOutput{Attributes: map[string]string{}}, nil)
+			m.sqs.EXPECT().DeleteQueue(gomock.Any(), gomock.Any()).Return(nil, errSubstrate)
+
+			err := s.Provision(t.Context(), "inst-1")
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			assert.Contains(t, err.Error(), "delete instance queue")
+			assert.Equal(t, testQueueURL, s.queueURL, "消せなかった queue は状態に残る")
 		})
 
 		t.Run("RawMessageDelivery の設定に失敗すれば unsubscribe と queue 削除まで戻す", func(t *testing.T) {

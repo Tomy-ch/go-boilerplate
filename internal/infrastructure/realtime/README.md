@@ -2,22 +2,23 @@
 
 Adapters for the fan-out substrate of Realtime Delivery ([ADR-0073](../../../docs/adr/0073-sns-sqs-instance-fanout.md)):
 the publish side that appends an event to the EventLog and then wakes every serve instance, and the
-receive side that owns one instance's inbox for the lifetime of that instance.
+receive side that owns one instance's queue and subscription for the lifetime of that instance.
 
 ## Role
 
 `realtime.go` is the single place that chooses an implementation; `aws/` holds the SNS / SQS one.
-Vendor vocabulary (topic / queue / subscription / receipt handle / message attribute) stops here —
-the seams above speak of wakeups, revocations and an instance's inbox.
+SDK vocabulary (topic and queue ARNs, queue URLs, receipt handles, message attributes) stops here — the
+port above speaks of an instance subscription, notifications carrying an opaque receipt, wakeups and revocations.
 
 |Path|Role|
 |---|---|
-|`realtime.go`|Chooses the implementation and re-exports what the DI module needs (`NewClients`, `NewPublisher`, `NewRevocationNotifier`, `NewInstanceSubscription`, the two `QueueAttributes` builders)|
+|`realtime.go`|Chooses the implementation and re-exports what the DI module, the CLI and the tests need (`NewClients`, `NewPublisher`, `NewRevocationNotifier`, `NewInstanceSubscription`, `EnsureTopic`, the two `QueueAttributes` builders, the keyed inputs `QueueAttributesInput` / `SubscriptionTarget`)|
 |`aws/client.go`|`NewClients` — one credential resolution (`awsclient.Resolve`), two service clients on one endpoint (SNS and SQS share it; GoAWS and AWS differ only in endpoint and credentials)|
 |`aws/publisher.go`|`boundary/publisher.Publisher` for the `realtime` outbox channel: payload → `DeliveryEvent` → `EventLogStore.Append` → SNS `Publish` of the wakeup|
 |`aws/revocation.go`|`realtime.RevocationNotifier`: the revocation on the same topic, told apart by the message attribute|
 |`aws/subscription.go`|`realtime.InstanceSubscription`: create queue → resolve ARN → set attributes → subscribe → `RawMessageDelivery=true`; long-poll receive; delete; unsubscribe → delete queue|
-|`aws/attributes.go`|`QueueAttributes` — the attribute set an instance queue is created with; the production builder returns all of them|
+|`aws/attributes.go`|`QueueAttributes` — the attribute set an instance queue is created with; the production builder (`NewQueueAttributes(QueueAttributesInput{TopicARN, DLQARN})`) returns all of them|
+|`aws/topic.go`|`EnsureTopic` — idempotent `CreateTopic` returning the ARN, for `realtime-init` and the contract tests (never at application start)|
 |`aws/policy.go`|The queue access policy: `sqs:SendMessage` from `sns.amazonaws.com` only when `aws:SourceArn` is the wakeup topic|
 |`aws/message.go`|The wire form: the wakeup body `{eventId, streamId, sequence}` fixed by ADR-0073, the revocation body `{subject, destination}`, and the `type` message attribute that separates them|
 |`local/attributes.go`|The emulator's attribute set — only what GoAWS accepts (see below)|
@@ -35,8 +36,8 @@ the seams above speak of wakeups, revocations and an instance's inbox.
 | `Teardown()` | `Unsubscribe` → `DeleteQueue`; each step is attempted even when the previous one failed, and failures are joined — whatever survives is the orphan-cleanup job's to reclaim |
 
 Fixed values live in `aws/attributes.go`: visibility timeout 30 s, long polling 20 s, `maxReceiveCount` 5.
-The topic ARN, the queue prefix and the (optional) DLQ ARN are deployment-dependent and come from
-`RealtimeConfig`.
+The topic, the queue prefix and the (optional) DLQ are deployment-dependent and come from
+`RealtimeConfig` (`REALTIME_TOPIC` / `REALTIME_QUEUE_PREFIX` / `REALTIME_DLQ`; the first and last are ARNs on AWS).
 
 ## Error classification
 

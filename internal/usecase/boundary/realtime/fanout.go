@@ -5,6 +5,8 @@ package realtime
 import "context"
 
 const (
+	// KindUnknown は、種別が読めなかった通知です。受け取る側は Delete で取り除きます（残すと再配送され続けるため）。
+	KindUnknown NotificationKind = ""
 	// KindWakeup は「stream を自分の cursor 以降で読み直せ」の合図です。状態は運びません（ADR-0073）。
 	KindWakeup NotificationKind = "wakeup"
 	// KindRevocation は、subject の destination への権利が取り下げられたことの通知です（ADR-0074）。
@@ -42,7 +44,7 @@ type Notification struct {
 }
 
 // InstanceSubscription は、serve instance 固有の受信先の境界です。受信先の作成から削除までを 1 つの instance の
-// 生存期間に閉じ、fan-out の substrate（topic / queue / subscription）の語彙は外に出しません。
+// 生存期間に閉じ、substrate 固有の識別子（ARN / URL / receipt handle の中身）は外に出しません。
 // 失敗は apperror sentinel で返します。
 type InstanceSubscription interface {
 	// Provision は、id の instance 専用の受信先を作り、fan-out 元へ登録します。同じ id で繰り返し呼んでも 1 組に収束します。

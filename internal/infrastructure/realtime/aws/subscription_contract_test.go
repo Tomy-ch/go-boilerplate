@@ -30,16 +30,12 @@ func TestInstanceSubscriptionContract(t *testing.T) {
 			c := testkit.NewTestClients(t)
 			topicARN := testkit.CreateTopic(t, c, testkit.Name(t, "topic"))
 			sub := aws.NewInstanceSubscription(
-				c.SNS,
-				c.SQS,
-				topicARN,
-				testkit.Name(t, "q"),
-				local.NewQueueAttributes(),
-				observability.NewNoopTracerFactory(t),
+				c.SNS, c.SQS, aws.SubscriptionTarget{TopicARN: topicARN, QueuePrefix: testkit.Name(t, "q")},
+				local.NewQueueAttributes(), observability.NewNoopTracerFactory(t),
 			)
 
 			require.NoError(t, sub.Provision(t.Context(), "inst1"))
-			t.Cleanup(func() { _ = sub.Teardown(t.Context()) })
+			testkit.TeardownOnCleanup(t, sub)
 
 			notifier := aws.NewRevocationNotifier(c.SNS, topicARN, observability.NewNoopTracerFactory(t))
 			require.NoError(t, notifier.NotifyRevoked(t.Context(), "subject-1", "stream-1"))

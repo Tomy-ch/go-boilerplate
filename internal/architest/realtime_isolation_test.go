@@ -43,7 +43,7 @@ var instanceLeaseStoreAllowedPrefixes = []string{
 	"internal/usecase/boundary/realtime/",
 	"internal/usecase/realtime/",
 	"internal/infrastructure/instancelease/",
-	"internal/di/module/realtime",
+	"internal/di/module/realtime.go",
 	"internal/controller/job/",
 	"internal/cli/",
 }

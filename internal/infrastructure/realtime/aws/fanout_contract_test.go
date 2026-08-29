@@ -49,15 +49,11 @@ func newFanoutFixture(t *testing.T, instances int) *fanoutFixture {
 	prefix := testkit.Name(t, "inst")
 	for i := range instances {
 		sub := aws.NewInstanceSubscription(
-			clients.SNS,
-			clients.SQS,
-			f.topicARN,
-			prefix,
-			local.NewQueueAttributes(),
-			observability.NewNoopTracerFactory(t),
+			clients.SNS, clients.SQS, aws.SubscriptionTarget{TopicARN: f.topicARN, QueuePrefix: prefix},
+			local.NewQueueAttributes(), observability.NewNoopTracerFactory(t),
 		)
 		require.NoError(t, sub.Provision(t.Context(), rt.InstanceID("i"+strconv.Itoa(i))))
-		t.Cleanup(func() { _ = sub.Teardown(t.Context()) })
+		testkit.TeardownOnCleanup(t, sub)
 		f.subs = append(f.subs, sub)
 	}
 

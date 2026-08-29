@@ -194,14 +194,14 @@ var (
 	expectedObjectStorageMaxUploadBytes    int64 = 5242880
 	expectedObjectStorageMaxUploadBytesStr       = strconv.FormatInt(expectedObjectStorageMaxUploadBytes, 10)
 
-	// realtime（Endpoint は空文字＝SDK 既定解決の意味を持つため空。TopicARN / DLQARN は既定の空値。他は required,notEmpty のため実値）
+	// realtime（Endpoint は空文字＝SDK 既定解決の意味を持つため空。Topic / DLQ は既定の空値。他は required,notEmpty のため実値）
 	expectedEndpointRealtime        = ""
 	expectedEndpointRealtimePubSub  = ""
 	expectedRealtimeRegion          = "us-east-1"
 	expectedRealtimeTableSuffix     = "test"
-	expectedRealtimeTopicARN        = ""
+	expectedRealtimeTopic           = ""
 	expectedRealtimeQueuePrefix     = "realtime-test"
-	expectedRealtimeDLQARN          = ""
+	expectedRealtimeDLQ             = ""
 	expectedRealtimeAccessKeyID     = "test-access-key"
 	expectedRealtimeSecretAccessKey = "test-secret-key"
 )
@@ -340,9 +340,9 @@ func MockConfigForTest(tb testing.TB) *Config {
 		realtime: RealtimeConfig{
 			region:          expectedRealtimeRegion,
 			tableSuffix:     expectedRealtimeTableSuffix,
-			topicARN:        expectedRealtimeTopicARN,
+			topic:           expectedRealtimeTopic,
 			queuePrefix:     expectedRealtimeQueuePrefix,
-			dlqARN:          expectedRealtimeDLQARN,
+			dlq:             expectedRealtimeDLQ,
 			accessKeyID:     expectedRealtimeAccessKeyID,
 			secretAccessKey: expectedRealtimeSecretAccessKey,
 		},
@@ -394,9 +394,9 @@ func mockLoader(tb testing.TB) Loader {
 		Realtime: Realtime{
 			Region:          expectedRealtimeRegion,
 			TableSuffix:     expectedRealtimeTableSuffix,
-			TopicARN:        expectedRealtimeTopicARN,
+			Topic:           expectedRealtimeTopic,
 			QueuePrefix:     expectedRealtimeQueuePrefix,
-			DLQARN:          expectedRealtimeDLQARN,
+			DLQ:             expectedRealtimeDLQ,
 			AccessKeyID:     expectedRealtimeAccessKeyID,
 			SecretAccessKey: expectedRealtimeSecretAccessKey,
 		},
@@ -553,9 +553,9 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // テスト用の環�
 
 	t.Setenv("REALTIME_REGION", expectedRealtimeRegion)
 	t.Setenv("REALTIME_TABLE_SUFFIX", expectedRealtimeTableSuffix)
-	t.Setenv("REALTIME_TOPIC_ARN", expectedRealtimeTopicARN)
+	t.Setenv("REALTIME_TOPIC", expectedRealtimeTopic)
 	t.Setenv("REALTIME_QUEUE_PREFIX", expectedRealtimeQueuePrefix)
-	t.Setenv("REALTIME_DLQ_ARN", expectedRealtimeDLQARN)
+	t.Setenv("REALTIME_DLQ", expectedRealtimeDLQ)
 	t.Setenv("REALTIME_ACCESS_KEY_ID", expectedRealtimeAccessKeyID)
 	t.Setenv("REALTIME_SECRET_ACCESS_KEY", expectedRealtimeSecretAccessKey)
 }

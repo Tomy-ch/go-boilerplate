@@ -1634,13 +1634,13 @@ func TestRealtimeConfig_InstanceLeaseTable(t *testing.T) {
 	})
 }
 
-func TestRealtimeConfig_TopicARN(t *testing.T) {
+func TestRealtimeConfig_Topic(t *testing.T) {
 	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		t.Run("topic の ARN を取得できる", func(t *testing.T) {
+		t.Run("topic の識別子を取得できる", func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, expectedRealtimeTopicARN, MockConfigForTest(t).realtime.TopicARN())
+			assert.Equal(t, expectedRealtimeTopic, MockConfigForTest(t).realtime.Topic())
 		})
 	})
 }
@@ -1656,13 +1656,13 @@ func TestRealtimeConfig_QueuePrefix(t *testing.T) {
 	})
 }
 
-func TestRealtimeConfig_DLQARN(t *testing.T) {
+func TestRealtimeConfig_DLQ(t *testing.T) {
 	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
-		t.Run("DLQ の ARN を取得できる", func(t *testing.T) {
+		t.Run("DLQ の識別子を取得できる", func(t *testing.T) {
 			t.Parallel()
-			assert.Equal(t, expectedRealtimeDLQARN, MockConfigForTest(t).realtime.DLQARN())
+			assert.Equal(t, expectedRealtimeDLQ, MockConfigForTest(t).realtime.DLQ())
 		})
 	})
 }

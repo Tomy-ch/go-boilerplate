@@ -143,9 +143,9 @@ func TestNew(t *testing.T) {
 				realtime: RealtimeConfig{
 					region:          expectedRealtimeRegion,
 					tableSuffix:     expectedRealtimeTableSuffix,
-					topicARN:        expectedRealtimeTopicARN,
+					topic:           expectedRealtimeTopic,
 					queuePrefix:     expectedRealtimeQueuePrefix,
-					dlqARN:          expectedRealtimeDLQARN,
+					dlq:             expectedRealtimeDLQ,
 					accessKeyID:     expectedRealtimeAccessKeyID,
 					secretAccessKey: expectedRealtimeSecretAccessKey,
 				},

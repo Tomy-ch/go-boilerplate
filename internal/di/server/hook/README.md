@@ -15,7 +15,7 @@
 ```mermaid
 flowchart TB
     subgraph "Start Hooks"
-        Probe["readiness probes"] --> Provision["provisioners"] --> RunStart["runners start"] --> HTTP["Echo server start (goroutine)"]
+        Probe["startup probes"] --> Provision["provisioners"] --> RunStart["runners start"] --> HTTP["Echo server start (goroutine)"]
     end
 
     subgraph "Stop Hooks"
@@ -36,7 +36,7 @@ function, so the order below holds no matter how many participants are wired and
 happened to collect them (fx runs `OnStop` hooks in reverse registration order, which is not a contract
 a drain-before-shutdown requirement can rest on).
 
-- **Start**: every `ReadinessProbe` (a failure aborts startup — a dependency the runtime cannot do
+- **Start**: every `StartupProbe` (a failure aborts startup — a dependency the runtime cannot do
   without fails fast, `docs/design/realtime-delivery.md` §2.6) → every `Provisioner.Provision` → every
   `Runner` start → open the listener (a bind failure aborts startup), serve in a goroutine, log port /
   allowed_origins / CIDR / mode. A failure part-way stops the runners and tears down the provisioners
@@ -49,12 +49,12 @@ a drain-before-shutdown requirement can rest on).
 
 ### Participants (`participant.go`)
 
-Participants are values in soft fx groups, so a graph without any of them behaves exactly as an
+Participants are values in ordinary fx value groups (not `,soft` — nothing else consumes these types, so a soft group would stay empty), so a graph without any of them behaves exactly as an
 HTTP-only server; the Realtime DI module contributes them when it is wired.
 
 |Group|Type|Runs|
 |---|---|---|
-|`serve.readiness`|`ReadinessProbe{Name, Probe}`|before anything is created|
+|`serve.startup`|`StartupProbe{Name, Probe}`|before anything is created|
 |`serve.provisioners`|`Provisioner{Name, Provision, Teardown}`|after the probes; torn down in reverse on stop and on a failed start|
 |`serve.runners`|`Runner{Name, Runner lifecycle.SupervisedRunner}`|between provisioning and listen; bound once through `SupervisedRunner.Bind` so the orchestrator owns the order|
 |`serve.drainers`|`Drainer{Name, Drain}`|first thing on stop, before any runner is cancelled and before `Shutdown`|

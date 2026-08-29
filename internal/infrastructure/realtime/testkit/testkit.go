@@ -16,6 +16,7 @@ import (
 
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/realtime/aws"
+	rt "go-boilerplate/internal/usecase/boundary/realtime"
 )
 
 const (
@@ -57,11 +58,8 @@ func Name(t *testing.T, base string) string {
 func CreateTopic(t *testing.T, c aws.Clients, name string) string {
 	t.Helper()
 
-	out, err := c.SNS.CreateTopic(t.Context(), &sns.CreateTopicInput{Name: awssdk.String(name)})
+	arn, err := aws.EnsureTopic(t.Context(), c.SNS, name)
 	require.NoError(t, err)
-
-	arn := awssdk.ToString(out.TopicArn)
-	require.NotEmpty(t, arn)
 
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), deleteTimeout)
@@ -73,4 +71,19 @@ func CreateTopic(t *testing.T, c aws.Clients, name string) string {
 	})
 
 	return arn
+}
+
+// TeardownOnCleanup は、テスト終了時に sub の受信先を片付けます。テストの ctx はその時点で終わっている
+// （t.Context は Cleanup の直前に cancel される）ため、独立の ctx で削除します。
+func TeardownOnCleanup(t *testing.T, sub rt.InstanceSubscription) {
+	t.Helper()
+
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), deleteTimeout)
+		defer cancel()
+
+		if err := sub.Teardown(ctx); err != nil {
+			t.Logf("[testkit] instance subscription の片付けに失敗しました: %v", err)
+		}
+	})
 }

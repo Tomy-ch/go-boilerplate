@@ -16,7 +16,7 @@ import (
 const serveLifecycleLoggerName = "server.Lifecycle"
 
 // HTTPServerHooksIn は、serve instance のライフサイクル hook が受け取る依存です。
-// 参加者はいずれも soft group で、1 つも無ければ HTTP サーバーだけを起動・停止します。
+// 参加者はいずれも任意（値が無くてもよい value group）で、1 つも無ければ HTTP サーバーだけを起動・停止します。
 type HTTPServerHooksIn struct {
 	fx.In
 
@@ -30,10 +30,10 @@ type HTTPServerHooksIn struct {
 	// Applied は、サーバー機能の拡張が適用されたことを示すトークンです。
 	Applied *extension.AppliedServerExtends
 
-	Readiness    []ReadinessProbe `group:"serve.readiness"`
-	Provisioners []Provisioner    `group:"serve.provisioners"`
-	Runners      []Runner         `group:"serve.runners"`
-	Drainers     []Drainer        `group:"serve.drainers"`
+	Startup      []StartupProbe `group:"serve.startup"`
+	Provisioners []Provisioner  `group:"serve.provisioners"`
+	Runners      []Runner       `group:"serve.runners"`
+	Drainers     []Drainer      `group:"serve.drainers"`
 }
 
 // RegisterHTTPServerHooks は、serve instance の起動・停止の順序を 1 箇所で決めて登録します。
@@ -59,7 +59,7 @@ type boundRunner struct {
 // serveLifecycle は、参加者と HTTP サーバーの起動・停止を順序どおりに実行します。
 type serveLifecycle struct {
 	log          logging.Logger
-	readiness    []ReadinessProbe
+	startup      []StartupProbe
 	provisioners []Provisioner
 	runners      []boundRunner
 	drainers     []Drainer
@@ -76,7 +76,7 @@ func newServeLifecycle(in HTTPServerHooksIn) *serveLifecycle {
 
 	return &serveLifecycle{
 		log:          in.Log.Named(serveLifecycleLoggerName).CallerSkip(serverCallerSkip),
-		readiness:    in.Readiness,
+		startup:      in.Startup,
 		provisioners: in.Provisioners,
 		runners:      runners,
 		drainers:     in.Drainers,
@@ -88,9 +88,9 @@ func newServeLifecycle(in HTTPServerHooksIn) *serveLifecycle {
 // start は、到達確認 → resource 作成 → 常駐処理 → HTTP listen の順に起動します。
 // 途中で失敗したら、そこまでに起動・作成したものを逆順に止めて片付けてから失敗を返します。
 func (l *serveLifecycle) start(ctx context.Context) error {
-	for _, p := range l.readiness {
+	for _, p := range l.startup {
 		if err := p.Probe(ctx); err != nil {
-			return xerrors.Wrap(err, "serve readiness probe "+p.Name+" failed")
+			return xerrors.Wrap(err, "serve startup probe "+p.Name+" failed")
 		}
 	}
 
@@ -128,7 +128,8 @@ func (l *serveLifecycle) start(ctx context.Context) error {
 }
 
 // stop は、drain → 常駐処理の停止 → resource の片付け → HTTP shutdown の順に停止します。
-// 参加者の失敗は記録して次へ進み（片付けを途中で止めると resource が残る）、失敗をまとめて返します。
+// 参加者の失敗は記録して次へ進み（片付けを途中で止めると resource が残る）、HTTP shutdown まで終えてから
+// すべての失敗をまとめて返します。
 func (l *serveLifecycle) stop(ctx context.Context) error {
 	var errs []error
 
@@ -144,8 +145,8 @@ func (l *serveLifecycle) stop(ctx context.Context) error {
 		}
 	}
 
-	l.stopRunners(ctx, len(l.runners))
-	l.teardown(ctx, len(l.provisioners))
+	errs = append(errs, l.stopRunners(ctx, len(l.runners))...)
+	errs = append(errs, l.teardown(ctx, len(l.provisioners))...)
 
 	if err := l.httpStop(ctx); err != nil {
 		errs = append(errs, err)
@@ -154,8 +155,10 @@ func (l *serveLifecycle) stop(ctx context.Context) error {
 	return xerrors.Join(errs...)
 }
 
-// stopRunners は、先頭から n 個の常駐処理を逆順に止めます。
-func (l *serveLifecycle) stopRunners(ctx context.Context, n int) {
+// stopRunners は、先頭から n 個の常駐処理を逆順に止め、失敗を記録して返します（止め切るまで途中で止めない）。
+func (l *serveLifecycle) stopRunners(ctx context.Context, n int) []error {
+	var errs []error
+
 	for i := n - 1; i >= 0; i-- {
 		if err := l.runners[i].stop(ctx); err != nil {
 			l.log.Error(
@@ -164,12 +167,17 @@ func (l *serveLifecycle) stopRunners(ctx context.Context, n int) {
 				logging.String("participant", l.runners[i].name),
 				logging.Error(logging.ErrorKey, err),
 			)
+			errs = append(errs, err)
 		}
 	}
+
+	return errs
 }
 
-// teardown は、先頭から n 個の参加者の resource を逆順に片付けます。
-func (l *serveLifecycle) teardown(ctx context.Context, n int) {
+// teardown は、先頭から n 個の参加者の resource を逆順に片付け、失敗を記録して返します（片付け切るまで途中で止めない）。
+func (l *serveLifecycle) teardown(ctx context.Context, n int) []error {
+	var errs []error
+
 	for i := n - 1; i >= 0; i-- {
 		p := l.provisioners[i]
 		if err := p.Teardown(ctx); err != nil {
@@ -179,6 +187,9 @@ func (l *serveLifecycle) teardown(ctx context.Context, n int) {
 				logging.String("participant", p.Name),
 				logging.Error(logging.ErrorKey, err),
 			)
+			errs = append(errs, err)
 		}
 	}
+
+	return errs
 }

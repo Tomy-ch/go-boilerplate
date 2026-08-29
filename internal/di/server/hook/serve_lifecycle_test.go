@@ -13,7 +13,11 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
-var errParticipant = xerrors.New("participant failed")
+var (
+	errParticipant = xerrors.New("participant failed")
+	errTeardown    = xerrors.New("teardown failed")
+	errRunnerStop  = xerrors.New("runner stop failed")
+)
 
 // callLog は、参加者と HTTP の呼び出し順を記録します。
 type callLog struct {
@@ -60,8 +64,8 @@ func newFixture(t *testing.T) *fixture {
 	}
 }
 
-func (f *fixture) probe(name string, err error) ReadinessProbe {
-	return ReadinessProbe{Name: name, Probe: func(context.Context) error { f.log.add("probe." + name); return err }}
+func (f *fixture) probe(name string, err error) StartupProbe {
+	return StartupProbe{Name: name, Probe: func(context.Context) error { f.log.add("probe." + name); return err }}
 }
 
 func (f *fixture) provisioner(name string, provisionErr, teardownErr error) Provisioner {
@@ -99,7 +103,7 @@ func Test_newServeLifecycle(t *testing.T) {
 			in := HTTPServerHooksIn{
 				Log:     log,
 				Runners: []Runner{{Name: "a"}, {Name: "b"}},
-				Readiness: []ReadinessProbe{
+				Startup: []StartupProbe{
 					{Name: "p", Probe: func(context.Context) error { return nil }},
 				},
 			}
@@ -110,7 +114,7 @@ func Test_newServeLifecycle(t *testing.T) {
 			assert.Equal(t, "a", lc.runners[0].name)
 			assert.NotNil(t, lc.runners[0].start)
 			assert.NotNil(t, lc.runners[1].stop)
-			assert.Len(t, lc.readiness, 1)
+			assert.Len(t, lc.startup, 1)
 			assert.NotNil(t, lc.httpStart)
 			assert.NotNil(t, lc.httpStop)
 		})
@@ -127,7 +131,7 @@ func Test_serveLifecycle_start(t *testing.T) {
 			t.Parallel()
 
 			f := newFixture(t)
-			f.lc.readiness = []ReadinessProbe{f.probe("store", nil)}
+			f.lc.startup = []StartupProbe{f.probe("store", nil)}
 			f.lc.provisioners = []Provisioner{f.provisioner("lease", nil, nil), f.provisioner("inbox", nil, nil)}
 			f.lc.runners = []boundRunner{f.runner("consumer")}
 
@@ -155,12 +159,12 @@ func Test_serveLifecycle_start(t *testing.T) {
 			t.Parallel()
 
 			f := newFixture(t)
-			f.lc.readiness = []ReadinessProbe{f.probe("store", errParticipant)}
+			f.lc.startup = []StartupProbe{f.probe("store", errParticipant)}
 			f.lc.provisioners = []Provisioner{f.provisioner("inbox", nil, nil)}
 
 			err := f.lc.start(t.Context())
 			require.ErrorIs(t, err, errParticipant)
-			assert.Contains(t, err.Error(), "readiness probe store")
+			assert.Contains(t, err.Error(), "startup probe store")
 			assert.Equal(t, []string{"probe.store"}, f.log.get())
 		})
 
@@ -250,11 +254,18 @@ func Test_serveLifecycle_stop(t *testing.T) {
 
 			f := newFixture(t)
 			f.lc.drainers = []Drainer{f.drainer("sse", errParticipant)}
-			f.lc.provisioners = []Provisioner{f.provisioner("inbox", nil, errParticipant)}
+			f.lc.provisioners = []Provisioner{f.provisioner("inbox", nil, errTeardown)}
+			f.lc.runners = []boundRunner{{name: "bad", start: func(context.Context) error { return nil }, stop: func(context.Context) error {
+				f.log.add("runner.stop.bad")
+
+				return errRunnerStop
+			}}}
 
 			err := f.lc.stop(t.Context())
 			require.ErrorIs(t, err, errParticipant)
-			assert.Equal(t, []string{"drain.sse", "teardown.inbox", "http.stop"}, f.log.get())
+			require.ErrorIs(t, err, errRunnerStop, "常駐処理の停止失敗も返す")
+			require.ErrorIs(t, err, errTeardown, "片付けの失敗も返す")
+			assert.Equal(t, []string{"drain.sse", "runner.stop.bad", "teardown.inbox", "http.stop"}, f.log.get())
 			assert.Equal(t, 1, f.logCount("serve drainer failed"))
 			assert.Equal(t, 1, f.logCount("serve provisioner failed to tear down"))
 		})
@@ -289,8 +300,9 @@ func Test_serveLifecycle_stopRunners(t *testing.T) {
 		f.lc.runners = []boundRunner{f.runner("a"), failing, f.runner("never")}
 		require.NoError(t, f.lc.runners[0].start(t.Context()))
 
-		f.lc.stopRunners(t.Context(), 2)
+		errs := f.lc.stopRunners(t.Context(), 2)
 
+		require.Len(t, errs, 1)
 		assert.Equal(t, []string{"runner.start.a", "runner.stop.bad", "runner.stop.a"}, f.log.get())
 		assert.Equal(t, 1, f.logCount("serve runner failed to stop"))
 	})
@@ -309,8 +321,9 @@ func Test_serveLifecycle_teardown(t *testing.T) {
 			f.provisioner("never", nil, nil),
 		}
 
-		f.lc.teardown(t.Context(), 2)
+		errs := f.lc.teardown(t.Context(), 2)
 
+		require.Len(t, errs, 1)
 		assert.Equal(t, []string{"teardown.b", "teardown.a"}, f.log.get())
 		assert.Equal(t, 1, f.logCount("serve provisioner failed to tear down"))
 	})

@@ -15,6 +15,7 @@ import (
 
 // SNSAPI は、この package が使う SNS の操作だけを抽象化したものです（*sns.Client が満たします）。
 type SNSAPI interface {
+	CreateTopic(ctx context.Context, in *sns.CreateTopicInput, opts ...func(*sns.Options)) (*sns.CreateTopicOutput, error)
 	Publish(ctx context.Context, in *sns.PublishInput, opts ...func(*sns.Options)) (*sns.PublishOutput, error)
 	Subscribe(ctx context.Context, in *sns.SubscribeInput, opts ...func(*sns.Options)) (*sns.SubscribeOutput, error)
 	SetSubscriptionAttributes(

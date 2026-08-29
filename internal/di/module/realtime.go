@@ -32,15 +32,15 @@ import (
 const (
 	// realtimeParticipantName は、serve lifecycle のログに載せる Realtime Delivery の参加者名です。
 	realtimeParticipantName = "realtime"
-	// readinessProbeStreamID は、起動時に EventLog へ到達できるかを確かめる読み取りに使う stream です。
+	// startupProbeStreamID は、起動時に EventLog へ到達できるかを確かめる読み取りに使う stream です。
 	// 存在しない stream の Latest は「無い」を返すだけで、store に届かなければエラーになります。
-	readinessProbeStreamID rt.StreamID = "_readiness"
+	startupProbeStreamID rt.StreamID = "_readiness"
 )
 
-// ErrRealtimeTopicNotConfigured は、fan-out を配線したのに REALTIME_TOPIC_ARN が空であることを示すエラーです。
+// ErrRealtimeTopicNotConfigured は、fan-out を配線したのに REALTIME_TOPIC が空であることを示すエラーです。
 var ErrRealtimeTopicNotConfigured = xerrors.Wrap(
 	apperror.ErrInvalidArgument,
-	"REALTIME_TOPIC_ARN must be set when the realtime fan-out is wired",
+	"REALTIME_TOPIC must be set when the realtime fan-out is wired",
 )
 
 // realtimeFanout は、fan-out の publish 側と受信側が共有する SNS / SQS クライアントと topic です。
@@ -77,7 +77,7 @@ func realtimeModule() fx.Option {
 			provideLeaseKeeper,
 			provideRealtimeConsumer,
 			provideRealtimeHeartbeat,
-			fx.Annotate(provideRealtimeReadiness, fx.ResultTags(`group:"`+hook.ReadinessGroup+`"`)),
+			fx.Annotate(provideRealtimeStartupProbe, fx.ResultTags(`group:"`+hook.StartupGroup+`"`)),
 			fx.Annotate(provideRealtimeProvisioner, fx.ResultTags(`group:"`+hook.ProvisionerGroup+`"`)),
 			fx.Annotate(provideRealtimeConsumerRunner, fx.ResultTags(`group:"`+hook.RunnerGroup+`"`)),
 			fx.Annotate(provideRealtimeHeartbeatRunner, fx.ResultTags(`group:"`+hook.RunnerGroup+`"`)),
@@ -95,7 +95,7 @@ func provideRealtimeFanout(
 	epCfg *config.EndpointConfig,
 	outbound *observability.OutboundHTTPClient,
 ) (realtimeFanout, error) {
-	return newRealtimeFanout(cfg.TopicARN(), realtimeinfra.ClientConfig{
+	return newRealtimeFanout(cfg.Topic(), realtimeinfra.ClientConfig{
 		Endpoint:        epCfg.RealtimePubSub(),
 		Region:          cfg.Region(),
 		AccessKeyID:     cfg.AccessKeyID(),
@@ -153,7 +153,7 @@ func provideInstanceQueueAttributes(
 	case config.EnvLocal, config.EnvCI, config.EnvTest, config.EnvDast:
 		return realtimeinfra.NewEmulatorQueueAttributes(), nil
 	case config.EnvDevelopment, config.EnvStaging, config.EnvProduction:
-		return realtimeinfra.NewQueueAttributes(cfg.TopicARN(), cfg.DLQARN()), nil
+		return realtimeinfra.NewQueueAttributes(realtimeinfra.QueueAttributesInput{TopicARN: cfg.Topic(), DLQARN: cfg.DLQ()}), nil
 	default:
 		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "no instance queue attribute policy for env "+env)
 	}
@@ -162,7 +162,9 @@ func provideInstanceQueueAttributes(
 func provideInstanceSubscription(
 	f realtimeFanout, cfg *config.RealtimeConfig, attrs realtimeinfra.QueueAttributes, tf observability.TracerFactory,
 ) rt.InstanceSubscription {
-	return realtimeinfra.NewInstanceSubscription(f.clients, f.topicARN, cfg.QueuePrefix(), attrs, tf)
+	return realtimeinfra.NewInstanceSubscription(
+		f.clients, realtimeinfra.SubscriptionTarget{TopicARN: f.topicARN, QueuePrefix: cfg.QueuePrefix()}, attrs, tf,
+	)
 }
 
 func provideLeaseKeeper(
@@ -194,11 +196,11 @@ func provideRealtimeHeartbeat(
 	return ctrlrealtime.NewHeartbeat(keeper, id, sleeper, log, tf)
 }
 
-// provideRealtimeReadiness は、HTTP を listen する前に EventLog へ到達できることを確かめる参加者を返します
+// provideRealtimeStartupProbe は、HTTP を listen する前に EventLog へ到達できることを確かめる参加者を返します
 // （Realtime runtime の起動に不可欠な dependency は startup で fail-fast する — 設計 §2.6）。
-func provideRealtimeReadiness(log rt.EventLogStore) hook.ReadinessProbe {
-	return hook.ReadinessProbe{Name: realtimeParticipantName, Probe: func(ctx context.Context) error {
-		_, _, err := log.Latest(ctx, readinessProbeStreamID)
+func provideRealtimeStartupProbe(log rt.EventLogStore) hook.StartupProbe {
+	return hook.StartupProbe{Name: realtimeParticipantName, Probe: func(ctx context.Context) error {
+		_, _, err := log.Latest(ctx, startupProbeStreamID)
 
 		return err
 	}}
@@ -207,6 +209,8 @@ func provideRealtimeReadiness(log rt.EventLogStore) hook.ReadinessProbe {
 // provideRealtimeProvisioner は、lease の記録と instance の受信先を 1 つの参加者に合成します。
 // 起動は lease → 受信先、片付けは 受信先（unsubscribe → queue 削除）→ lease 削除の順で、
 // fx の group は順序を保証しないため 1 つの参加者の中で固定します（ADR-0073 の回収順と同じ）。
+// lease は受信先の片付けが成功したときだけ消します。lease は orphan cleanup が残った queue / subscription を辿る
+// 唯一の索引なので、片付けに失敗した instance の lease を消すと、その resource は二度と自動回収されません。
 func provideRealtimeProvisioner(
 	sub rt.InstanceSubscription,
 	keeper ucrealtime.LeaseKeeper,
@@ -220,13 +224,21 @@ func provideRealtimeProvisioner(
 			}
 
 			if err := sub.Provision(ctx, id); err != nil {
+				if terr := sub.Teardown(ctx); terr != nil {
+					return xerrors.Join(err, terr) // 受信先が残ったので lease は残す
+				}
+
 				return xerrors.Join(err, keeper.Release(ctx, id))
 			}
 
 			return nil
 		},
 		Teardown: func(ctx context.Context) error {
-			return xerrors.Join(sub.Teardown(ctx), keeper.Release(ctx, id))
+			if err := sub.Teardown(ctx); err != nil {
+				return err // 受信先が残ったので lease は残す
+			}
+
+			return keeper.Release(ctx, id)
 		},
 	}
 }

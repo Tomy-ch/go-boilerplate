@@ -1,6 +1,7 @@
 package module
 
 import (
+	"context"
 	"strings"
 	"testing"
 	"time"
@@ -55,7 +56,12 @@ func TestRealtimeProvisionerContract(t *testing.T) {
 
 	p := provideRealtimeProvisioner(sub, keeper, id)
 	require.NoError(t, p.Provision(t.Context()))
-	t.Cleanup(func() { _ = p.Teardown(t.Context()) })
+	t.Cleanup(func() {
+		// t.Context は Cleanup の直前に cancel されるので、片付けは独立の ctx で行う。
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		_ = p.Teardown(ctx)
+	})
 
 	assert.True(t, leaseExists(t, leases, id), "lease が書かれている")
 	assert.Len(t, queueURLs(t, clients, prefix), 1, "instance queue が 1 つある")

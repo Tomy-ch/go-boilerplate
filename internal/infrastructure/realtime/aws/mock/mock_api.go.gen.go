@@ -42,6 +42,26 @@ func (m *MockSNSAPI) EXPECT() *MockSNSAPIMockRecorder {
 	return m.recorder
 }
 
+// CreateTopic mocks base method.
+func (m *MockSNSAPI) CreateTopic(ctx context.Context, in *sns.CreateTopicInput, opts ...func(*sns.Options)) (*sns.CreateTopicOutput, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, in}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "CreateTopic", varargs...)
+	ret0, _ := ret[0].(*sns.CreateTopicOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateTopic indicates an expected call of CreateTopic.
+func (mr *MockSNSAPIMockRecorder) CreateTopic(ctx, in any, opts ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, in}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateTopic", reflect.TypeOf((*MockSNSAPI)(nil).CreateTopic), varargs...)
+}
+
 // Publish mocks base method.
 func (m *MockSNSAPI) Publish(ctx context.Context, in *sns.PublishInput, opts ...func(*sns.Options)) (*sns.PublishOutput, error) {
 	m.ctrl.T.Helper()

@@ -35,15 +35,23 @@ var queueNameRe = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 
 var _ rt.InstanceSubscription = (*subscription)(nil)
 
+// SubscriptionTarget は、instance の受信先をどの topic に、どの名前で作るかです。
+// 2 つとも自由形式の文字列なので、位置ではなく名前で渡します（docs/rules.md の Function Signature Rules）。
+type SubscriptionTarget struct {
+	// TopicARN は、subscribe する topic です。
+	TopicARN string
+	// QueuePrefix は、instance queue 名の先頭です（名前は <QueuePrefix>-<instance id>）。
+	QueuePrefix string
+}
+
 // subscription は、rt.InstanceSubscription の SNS / SQS 実装です。1 つの instance が 1 組の queue と
 // subscription を持ち、その生存期間に閉じます。
 type subscription struct {
-	sns      SNSAPI
-	sqs      SQSAPI
-	topicARN string
-	prefix   string
-	attrs    QueueAttributes
-	tracer   observability.LayerTracer
+	sns    SNSAPI
+	sqs    SQSAPI
+	target SubscriptionTarget
+	attrs  QueueAttributes
+	tracer observability.LayerTracer
 
 	mu              sync.Mutex
 	instanceID      rt.InstanceID
@@ -52,12 +60,12 @@ type subscription struct {
 	subscriptionARN string
 }
 
-// NewInstanceSubscription は、topicARN の topic に対する instance 固有の受信先を管理する InstanceSubscription を返します。
+// NewInstanceSubscription は、target の topic に対する instance 固有の受信先を管理する InstanceSubscription を返します。
 // queue 名は prefix に instance の識別子を付けた形で、orphan cleanup が lease の識別子だけから queue を辿れます。
 func NewInstanceSubscription(
-	snsAPI SNSAPI, sqsAPI SQSAPI, topicARN, prefix string, attrs QueueAttributes, tf observability.TracerFactory,
+	snsAPI SNSAPI, sqsAPI SQSAPI, target SubscriptionTarget, attrs QueueAttributes, tf observability.TracerFactory,
 ) rt.InstanceSubscription {
-	return &subscription{sns: snsAPI, sqs: sqsAPI, topicARN: topicARN, prefix: prefix, attrs: attrs, tracer: tf.Infra()}
+	return &subscription{sns: snsAPI, sqs: sqsAPI, target: target, attrs: attrs, tracer: tf.Infra()}
 }
 
 // QueueName は、prefix と instance の識別子から instance queue の名前を返します。SQS の制約（使える文字と長さ）を
@@ -88,15 +96,14 @@ func (s *subscription) Provision(ctx context.Context, id rt.InstanceID) error {
 		return xerrors.Wrap(apperror.ErrConflict, "realtime: already provisioned for another instance")
 	}
 
-	name, err := QueueName(s.prefix, id)
+	name, err := QueueName(s.target.QueuePrefix, id)
 	if err != nil {
 		return err
 	}
 
 	if err := s.provision(ctx, name); err != nil {
-		_ = s.teardown(ctx)
-
-		return err
+		// 片付けの失敗も返す。握り潰すと「resource は残っていない」と「消せなかった」を呼び出し側が区別できない。
+		return xerrors.Join(err, s.teardown(ctx))
 	}
 
 	s.instanceID = id
@@ -202,7 +209,7 @@ func (s *subscription) provision(ctx context.Context, name string) error {
 	}
 
 	sub, err := s.sns.Subscribe(ctx, &sns.SubscribeInput{
-		TopicArn:              awssdk.String(s.topicARN),
+		TopicArn:              awssdk.String(s.target.TopicARN),
 		Protocol:              awssdk.String(subscriptionProtocol),
 		Endpoint:              awssdk.String(s.queueARN),
 		ReturnSubscriptionArn: true,

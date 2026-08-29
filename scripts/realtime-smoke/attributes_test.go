@@ -330,6 +330,17 @@ func Test_pubSubSmoke_receiveAfterAttributes(t *testing.T) {
 		assert.Contains(t, f.called(), "DeleteMessage")
 	})
 
+	t.Run("1 件も届かなければ配送停止として非互換", func(t *testing.T) {
+		t.Parallel()
+
+		s, f, _ := prepared(t, 1)
+		f.on("Publish", func(fakeRequest) fakeResponse { return xmlOK("Publish", "<MessageId>m-1</MessageId>") })
+
+		_, err := s.receiveAfterAttributes(t.Context())
+		assert.Equal(t, VerdictIncompatible, classify(err))
+		assert.Contains(t, err.Error(), "配送停止")
+	})
+
 	t.Run("同じ message が繰り返し届けば非互換", func(t *testing.T) {
 		t.Parallel()
 
@@ -396,12 +407,20 @@ func Test_dispatchByType(t *testing.T) {
 		verdict  Verdict
 		contains string
 	}{
-		"1 件ずつ揃えば互換":            {msgs: []sqstypes.Message{msg(typeWakeup, wakeup), msg(typeRevocation, revoked)}, verdict: VerdictCompatible, contains: "wakeup 1 / revocation 1"},
+		"1 件ずつ揃えば互換": {
+			msgs:     []sqstypes.Message{msg(typeWakeup, wakeup), msg(typeRevocation, revoked)},
+			verdict:  VerdictCompatible,
+			contains: "wakeup 1 / revocation 1",
+		},
 		"属性が無ければ非互換":            {msgs: []sqstypes.Message{msg("", wakeup)}, verdict: VerdictIncompatible, contains: "type 属性の無い"},
 		"未知の種別は非互換":             {msgs: []sqstypes.Message{msg("other", wakeup)}, verdict: VerdictIncompatible, contains: "未知の type"},
 		"wakeup の body が違えば非互換": {msgs: []sqstypes.Message{msg(typeWakeup, revoked)}, verdict: VerdictIncompatible, contains: "通知の形でない"},
 		"片方しか届かなければ非互換":         {msgs: []sqstypes.Message{msg(typeWakeup, wakeup)}, verdict: VerdictIncompatible, contains: "revocation 0 件"},
-		"重複すれば非互換":              {msgs: []sqstypes.Message{msg(typeWakeup, wakeup), msg(typeWakeup, wakeup), msg(typeRevocation, revoked)}, verdict: VerdictIncompatible, contains: "wakeup 2 件"},
+		"重複すれば非互換": {
+			msgs:     []sqstypes.Message{msg(typeWakeup, wakeup), msg(typeWakeup, wakeup), msg(typeRevocation, revoked)},
+			verdict:  VerdictIncompatible,
+			contains: "wakeup 2 件",
+		},
 	}
 
 	for name, tt := range tests {

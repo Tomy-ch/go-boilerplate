@@ -163,9 +163,9 @@ func New() (*Config, error) {
 		realtime: RealtimeConfig{
 			region:          cfg.Realtime.Region,
 			tableSuffix:     cfg.Realtime.TableSuffix,
-			topicARN:        cfg.Realtime.TopicARN,
+			topic:           cfg.Realtime.Topic,
 			queuePrefix:     cfg.Realtime.QueuePrefix,
-			dlqARN:          cfg.Realtime.DLQARN,
+			dlq:             cfg.Realtime.DLQ,
 			accessKeyID:     cfg.Realtime.AccessKeyID,
 			secretAccessKey: cfg.Realtime.SecretAccessKey,
 		},

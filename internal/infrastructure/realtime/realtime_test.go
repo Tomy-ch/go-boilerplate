@@ -72,11 +72,8 @@ func TestNewInstanceSubscription(t *testing.T) {
 	assert.NotNil(
 		t,
 		NewInstanceSubscription(
-			testClients(t),
-			testTopicARN,
-			"realtime-test",
-			NewQueueAttributes(testTopicARN, ""),
-			observability.NewNoopTracerFactory(t),
+			testClients(t), SubscriptionTarget{TopicARN: testTopicARN, QueuePrefix: "realtime-test"},
+			NewQueueAttributes(QueueAttributesInput{TopicARN: testTopicARN}), observability.NewNoopTracerFactory(t),
 		),
 	)
 }
@@ -84,7 +81,7 @@ func TestNewInstanceSubscription(t *testing.T) {
 func TestNewQueueAttributes(t *testing.T) {
 	t.Parallel()
 
-	attrs, err := NewQueueAttributes(testTopicARN, "arn:dlq").Build("arn:q")
+	attrs, err := NewQueueAttributes(QueueAttributesInput{TopicARN: testTopicARN, DLQARN: "arn:dlq"}).Build("arn:q")
 	require.NoError(t, err)
 	assert.Contains(t, attrs, "Policy")
 	assert.Contains(t, attrs, "RedrivePolicy")
@@ -97,4 +94,12 @@ func TestNewEmulatorQueueAttributes(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotContains(t, attrs, "Policy")
 	assert.Contains(t, attrs, "VisibilityTimeout")
+}
+
+func TestEnsureTopic(t *testing.T) {
+	t.Parallel()
+
+	// 実 substrate への往復は contract test（testkit.CreateTopic）が担う。ここは facade が aws 側へ渡すことだけを見る。
+	_, err := EnsureTopic(t.Context(), Clients{}, "t")
+	require.Error(t, err, "SNS client が無ければ失敗する")
 }

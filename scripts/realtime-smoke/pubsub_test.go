@@ -111,7 +111,11 @@ func Test_pubSubSmoke_steps(t *testing.T) {
 		halts[st.id] = st.halt
 	}
 
-	assert.Equal(t, []string{"G0", "G1", "G2", "G3", "G4", "G4b", "G5", "G6", "G7", "G8", "G10", "G11", "G12", "G13", "G14", "G15", "G16", "G17"}, ids)
+	assert.Equal(
+		t,
+		[]string{"G0", "G1", "G2", "G3", "G4", "G4b", "G5", "G6", "G7", "G8", "G10", "G11", "G12", "G13", "G14", "G15", "G16", "G17"},
+		ids,
+	)
 	assert.True(t, halts["G0"], "wire protocol が通らなければ全部が実行不能")
 	assert.True(t, halts["G5"], "subscription 無しでは fan-out を検証できない")
 	assert.False(t, halts["G4"], "policy の可否は fan-out の成否と独立")

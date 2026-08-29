@@ -11,12 +11,14 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
 
+	realtimeaws "go-boilerplate/internal/infrastructure/realtime/aws"
 	"go-boilerplate/pkg/xerrors"
 )
 
 const (
 	// attrNotificationType は、wakeup と失効通知を 1 つの topic で見分けるための MessageAttribute 名です。
-	attrNotificationType = "type"
+	// production と同じ定数を参照し、production 側の改名で smoke が旧名を検査し続けないようにします。
+	attrNotificationType = realtimeaws.AttrKind
 	typeWakeup           = "wakeup"
 	typeRevocation       = "revocation"
 
@@ -297,7 +299,11 @@ func (s *pubSubSmoke) receiveAfterAttributes(ctx context.Context) (string, error
 		}
 	}
 
-	if len(msgs) != 1 {
+	switch len(msgs) {
+	case 1:
+	case 0:
+		return "", incompatible("1 件 publish して 1 件も届かない（属性設定後の配送停止）")
+	default:
 		return "", incompatible("1 件 publish して " + strconv.Itoa(len(msgs)) + " 件届いた（属性設定後の重複配送）")
 	}
 

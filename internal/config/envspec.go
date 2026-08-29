@@ -71,13 +71,13 @@ type Realtime struct {
 	Region string `env:"REGION,required,notEmpty"`
 	// TableSuffix は table 名の末尾に付く環境識別子（例 local / ci / prd）。小文字・数字・アンダースコアで書く。
 	TableSuffix string `env:"TABLE_SUFFIX,required,notEmpty"`
-	// TopicARN は wakeup と失効通知を載せる topic の ARN。deployment が用意する resource の識別子で、
+	// Topic は wakeup と失効通知を載せる topic の識別子（AWS では ARN）。deployment が用意する resource で、
 	// 空のまま fan-out を配線すると DI で起動エラーにする（ENDPOINT_OUTBOX と同じ扱い）。
-	TopicARN string `env:"TOPIC_ARN" envDefault:""`
+	Topic string `env:"TOPIC" envDefault:""`
 	// QueuePrefix は instance queue 名の先頭（例 realtime-local）。英数字・`-`・`_` で書く。
 	QueuePrefix string `env:"QUEUE_PREFIX,required,notEmpty"`
-	// DLQARN は instance queue の redrive 先の ARN。空なら RedrivePolicy を付けない。
-	DLQARN string `env:"DLQ_ARN" envDefault:""`
+	// DLQ は instance queue の redrive 先の識別子（AWS では ARN）。空なら RedrivePolicy を付けない。
+	DLQ string `env:"DLQ" envDefault:""`
 	// AccessKeyID / SecretAccessKey は両方空なら SDK 既定の credential chain（IAM ロール等）へ委ねるため、
 	// 未設定を許す（ObjectStorage と同じ既定）。
 	AccessKeyID     string `env:"ACCESS_KEY_ID"     envDefault:""`

@@ -49,9 +49,9 @@ type stubSinks struct{}
 type serveParticipants struct {
 	fx.In
 
-	Readiness    []hook.ReadinessProbe `group:"serve.readiness"`
-	Provisioners []hook.Provisioner    `group:"serve.provisioners"`
-	Runners      []hook.Runner         `group:"serve.runners"`
+	Startup      []hook.StartupProbe `group:"serve.startup"`
+	Provisioners []hook.Provisioner  `group:"serve.provisioners"`
+	Runners      []hook.Runner       `group:"serve.runners"`
 }
 
 // stubStreamer は、graph 検証に要るだけの Streamer です（本物は Phase 6）。
@@ -473,7 +473,7 @@ func Test_provideRealtimeHeartbeat(t *testing.T) {
 	))
 }
 
-func Test_provideRealtimeReadiness(t *testing.T) {
+func Test_provideRealtimeStartupProbe(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -483,9 +483,9 @@ func Test_provideRealtimeReadiness(t *testing.T) {
 			t.Parallel()
 
 			log := mock_rt.NewMockEventLogStore(gomock.NewController(t))
-			log.EXPECT().Latest(gomock.Any(), readinessProbeStreamID).Return(rt.DeliveryEvent{}, false, nil)
+			log.EXPECT().Latest(gomock.Any(), startupProbeStreamID).Return(rt.DeliveryEvent{}, false, nil)
 
-			p := provideRealtimeReadiness(log)
+			p := provideRealtimeStartupProbe(log)
 			assert.Equal(t, realtimeParticipantName, p.Name)
 			require.NoError(t, p.Probe(t.Context()))
 		})
@@ -499,10 +499,10 @@ func Test_provideRealtimeReadiness(t *testing.T) {
 
 			log := mock_rt.NewMockEventLogStore(gomock.NewController(t))
 			log.EXPECT().
-				Latest(gomock.Any(), readinessProbeStreamID).
+				Latest(gomock.Any(), startupProbeStreamID).
 				Return(rt.DeliveryEvent{}, false, apperror.ErrUnavailable)
 
-			require.ErrorIs(t, provideRealtimeReadiness(log).Probe(t.Context()), apperror.ErrUnavailable)
+			require.ErrorIs(t, provideRealtimeStartupProbe(log).Probe(t.Context()), apperror.ErrUnavailable)
 		})
 	})
 }
@@ -549,7 +549,7 @@ func Test_provideRealtimeProvisioner(t *testing.T) {
 			require.ErrorIs(t, provideRealtimeProvisioner(sub, keeper, "inst-1").Provision(t.Context()), errBoom)
 		})
 
-		t.Run("受信先を作れなければ lease を取り消してから失敗する", func(t *testing.T) {
+		t.Run("受信先を作れなければ、片付けてから lease を取り消して失敗する", func(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
@@ -558,24 +558,51 @@ func Test_provideRealtimeProvisioner(t *testing.T) {
 			gomock.InOrder(
 				keeper.EXPECT().Beat(gomock.Any(), gomock.Any()).Return(nil),
 				sub.EXPECT().Provision(gomock.Any(), gomock.Any()).Return(errBoom),
+				sub.EXPECT().Teardown(gomock.Any()).Return(nil),
 				keeper.EXPECT().Release(gomock.Any(), gomock.Any()).Return(nil),
 			)
 
 			require.ErrorIs(t, provideRealtimeProvisioner(sub, keeper, "inst-1").Provision(t.Context()), errBoom)
 		})
 
-		t.Run("片付けは片方が失敗しても両方試み、失敗をまとめて返す", func(t *testing.T) {
+		t.Run("受信先を作れず片付けにも失敗したら lease は残す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			sub := mock_rt.NewMockInstanceSubscription(ctrl)
+			keeper := mock_realtime.NewMockLeaseKeeper(ctrl)
+			gomock.InOrder(
+				keeper.EXPECT().Beat(gomock.Any(), gomock.Any()).Return(nil),
+				sub.EXPECT().Provision(gomock.Any(), gomock.Any()).Return(errBoom),
+				sub.EXPECT().Teardown(gomock.Any()).Return(apperror.ErrUnavailable),
+			)
+
+			err := provideRealtimeProvisioner(sub, keeper, "inst-1").Provision(t.Context())
+			require.ErrorIs(t, err, errBoom)
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+		})
+
+		t.Run("片付けに失敗したら lease は残す（orphan cleanup が辿れるようにする）", func(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
 			sub := mock_rt.NewMockInstanceSubscription(ctrl)
 			keeper := mock_realtime.NewMockLeaseKeeper(ctrl)
 			sub.EXPECT().Teardown(gomock.Any()).Return(errBoom)
+
+			require.ErrorIs(t, provideRealtimeProvisioner(sub, keeper, "inst-1").Teardown(t.Context()), errBoom)
+		})
+
+		t.Run("片付けの後に lease の取り消しが失敗すればその失敗を返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			sub := mock_rt.NewMockInstanceSubscription(ctrl)
+			keeper := mock_realtime.NewMockLeaseKeeper(ctrl)
+			sub.EXPECT().Teardown(gomock.Any()).Return(nil)
 			keeper.EXPECT().Release(gomock.Any(), gomock.Any()).Return(apperror.ErrUnavailable)
 
-			err := provideRealtimeProvisioner(sub, keeper, "inst-1").Teardown(t.Context())
-			require.ErrorIs(t, err, errBoom)
-			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			require.ErrorIs(t, provideRealtimeProvisioner(sub, keeper, "inst-1").Teardown(t.Context()), apperror.ErrUnavailable)
 		})
 	})
 }

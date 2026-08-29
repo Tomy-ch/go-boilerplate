@@ -37,7 +37,7 @@ generated-type ↔ domain-type boundary, and `ctxhelper/` the Echo context acces
 |`job/`|Job controllers invoked from CLI|[README](job/README.md)|
 |`worker/`|Worker engine consuming a pull-ack message queue and dispatching to Usecase|[README](worker/README.md)|
 |`outbox/`|Relay engine that periodically polls the outbox and publishes pending messages|[README](outbox/README.md)|
-|`realtime/`|Consumer engine that receives Realtime Delivery wakeups / revocations from the instance's inbox and hands them to the connection side; the instance-lease heartbeat loop|[README](realtime/README.md)|
+|`realtime/`|Consumer engine that receives Realtime Delivery wakeups / revocations from the instance's own queue and hands them to the connection side; the instance-lease heartbeat loop|[README](realtime/README.md)|
 |`server/`|Echo instance initialization and DI lifecycle integration|[README](server/README.md)|
 |`httpstack/`|Middleware stack (CORS, security, logging, auth, etc.)|[README](httpstack/README.md)|
 |`error/response/`|Unified HTTP error response generation and apperror mapping|[README](error/response/README.md)|

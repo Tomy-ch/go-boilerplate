@@ -4,7 +4,7 @@
 
 - A **consume-driven driving adapter**, on par with the outbox relay and the worker engine — another
   entry point into the mechanism, not a new layer. It is the receive half of the fan-out
-  ([ADR-0073](../../../docs/adr/0073-sns-sqs-instance-fanout.md)): the serve instance's inbox
+  ([ADR-0073](../../../docs/adr/0073-sns-sqs-instance-fanout.md)): the serve instance's own queue
   (`realtime.InstanceSubscription`) is drained here and every notification is handed to the connection
   side.
 - The engine owns only the **loop, the per-batch coalescing and the wait control**. What a wakeup
@@ -20,10 +20,10 @@
 
 - `Engine` — the resident consumer. `NewEngine(sub, wakeups, revocations, sleeper, log, tf, set)`;
   `Run(ctx) error` is the loop body.
-- `Settings` — `BatchSize` (default 10, the inbox's own cap) and `ErrorBackoff` (default 5 s). Zero
+- `Settings` — `BatchSize` (default 10, the queue's own cap) and `ErrorBackoff` (default 5 s). Zero
   values fall back to the defaults; there is no config for them because the receive is a long poll and
   neither value changes per deployment.
-- `WakeupSink.Wake(streamID, upTo)` / `RevocationSink.Revoke(subject, destination)` — the receivers.
+- `WakeupSink.Wake(ctx, streamID, upTo)` / `RevocationSink.Revoke(ctx, subject, destination)` — the receivers.
   Both are called synchronously on the loop, so an implementation only marks or signals; it never waits
   for a replay. Duplicates are normal and must be idempotent.
 - `Heartbeat` — `NewHeartbeat(keeper, id, sleeper, log, tf)`; `Run(ctx)` writes the instance lease at
@@ -50,7 +50,7 @@
 
 ## Test strategy
 
-As for the other loop-driven controllers ([`../README.md`](../README.md)): the inbox and the lease
+As for the other loop-driven controllers ([`../README.md`](../README.md)): the instance subscription and the lease
 keeper are generated mocks, the sleeper is mocked so no test sleeps, and the loop is exercised as a
 loop — one iteration's effect (batch → sinks → deletes, with the coalescing asserted through a
 recording sink), stop semantics (cancel at loop top, inside a receive, inside the backoff), the

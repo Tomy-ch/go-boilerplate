@@ -22,6 +22,12 @@ type Clients = aws.Clients
 // QueueAttributes は、instance queue に設定する属性の集合を組み立てる境界です。
 type QueueAttributes = aws.QueueAttributes
 
+// QueueAttributesInput は、production の属性を組み立てるのに要る deployment 依存の識別子です。
+type QueueAttributesInput = aws.QueueAttributesInput
+
+// SubscriptionTarget は、instance の受信先をどの topic に、どの名前で作るかです。
+type SubscriptionTarget = aws.SubscriptionTarget
+
 // NewClients は、設定から SNS / SQS クライアントを生成します。
 func NewClients(ctx context.Context, cfg ClientConfig) (Clients, error) {
 	return aws.NewClients(ctx, cfg)
@@ -44,14 +50,19 @@ func NewRevocationNotifier(c Clients, topicARN string, tf observability.TracerFa
 
 // NewInstanceSubscription は、instance 固有の受信先（queue + subscription）の lifecycle を持つ InstanceSubscription を返します。
 func NewInstanceSubscription(
-	c Clients, topicARN, queuePrefix string, attrs QueueAttributes, tf observability.TracerFactory,
+	c Clients, target SubscriptionTarget, attrs QueueAttributes, tf observability.TracerFactory,
 ) rt.InstanceSubscription {
-	return aws.NewInstanceSubscription(c.SNS, c.SQS, topicARN, queuePrefix, attrs, tf)
+	return aws.NewInstanceSubscription(c.SNS, c.SQS, target, attrs, tf)
+}
+
+// EnsureTopic は、name の topic を実在させ、その ARN を返します（one-shot の初期化と contract test 用。application の起動時には呼ばない）。
+func EnsureTopic(ctx context.Context, c Clients, name string) (string, error) {
+	return aws.EnsureTopic(ctx, c.SNS, name)
 }
 
 // NewQueueAttributes は、production の instance queue の属性（policy / redrive / 暗号化 / timings）を返します。
-func NewQueueAttributes(topicARN, dlqARN string) QueueAttributes {
-	return aws.NewQueueAttributes(topicARN, dlqARN)
+func NewQueueAttributes(in QueueAttributesInput) QueueAttributes {
+	return aws.NewQueueAttributes(in)
 }
 
 // NewEmulatorQueueAttributes は、emulator が受け付ける属性（timings）だけを返します。

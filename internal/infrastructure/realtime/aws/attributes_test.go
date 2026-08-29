@@ -10,7 +10,7 @@ import (
 func TestNewQueueAttributes(t *testing.T) {
 	t.Parallel()
 
-	assert.NotNil(t, NewQueueAttributes("arn:topic", ""))
+	assert.NotNil(t, NewQueueAttributes(QueueAttributesInput{TopicARN: "arn:topic"}))
 }
 
 func Test_queueAttributes_Build(t *testing.T) {
@@ -22,7 +22,7 @@ func Test_queueAttributes_Build(t *testing.T) {
 		t.Run("DLQ 無しなら policy / 暗号化 / timings の 4 属性", func(t *testing.T) {
 			t.Parallel()
 
-			attrs, err := NewQueueAttributes("arn:aws:sns:r:1:t", "").Build("arn:aws:sqs:r:1:q")
+			attrs, err := NewQueueAttributes(QueueAttributesInput{TopicARN: "arn:aws:sns:r:1:t"}).Build("arn:aws:sqs:r:1:q")
 			require.NoError(t, err)
 
 			assert.Len(t, attrs, 4)
@@ -37,7 +37,9 @@ func Test_queueAttributes_Build(t *testing.T) {
 		t.Run("DLQ ありなら RedrivePolicy（maxReceiveCount=5）が加わる", func(t *testing.T) {
 			t.Parallel()
 
-			attrs, err := NewQueueAttributes("arn:aws:sns:r:1:t", "arn:aws:sqs:r:1:dlq").Build("arn:aws:sqs:r:1:q")
+			attrs, err := NewQueueAttributes(
+				QueueAttributesInput{TopicARN: "arn:aws:sns:r:1:t", DLQARN: "arn:aws:sqs:r:1:dlq"},
+			).Build("arn:aws:sqs:r:1:q")
 			require.NoError(t, err)
 
 			assert.Len(t, attrs, 5)

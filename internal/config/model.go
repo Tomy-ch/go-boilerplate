@@ -192,9 +192,9 @@ type ObjectStorageConfig struct {
 type RealtimeConfig struct {
 	region          string
 	tableSuffix     string
-	topicARN        string
+	topic           string
 	queuePrefix     string
-	dlqARN          string
+	dlq             string
 	accessKeyID     string
 	secretAccessKey string
 }
@@ -615,14 +615,14 @@ func (r *RealtimeConfig) InstanceLeaseTable() string {
 	return realtimeInstanceLeaseTable + "_" + r.tableSuffix
 }
 
-// TopicARN は、wakeup と失効通知を載せる topic の ARN を返します。空なら fan-out の配線は起動できません。
-func (r *RealtimeConfig) TopicARN() string { return r.topicARN }
+// Topic は、wakeup と失効通知を載せる topic の識別子（AWS では ARN）を返します。空なら fan-out の配線は起動できません。
+func (r *RealtimeConfig) Topic() string { return r.topic }
 
 // QueuePrefix は、instance queue 名の先頭を返します。
 func (r *RealtimeConfig) QueuePrefix() string { return r.queuePrefix }
 
-// DLQARN は、instance queue の redrive 先の ARN を返します。空なら RedrivePolicy を付けません。
-func (r *RealtimeConfig) DLQARN() string { return r.dlqARN }
+// DLQ は、instance queue の redrive 先の識別子（AWS では ARN）を返します。空なら RedrivePolicy を付けません。
+func (r *RealtimeConfig) DLQ() string { return r.dlq }
 
 // AccessKeyID は、静的資格情報のアクセスキー ID を返します。
 func (r *RealtimeConfig) AccessKeyID() string { return r.accessKeyID }
