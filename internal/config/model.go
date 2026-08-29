@@ -188,10 +188,13 @@ type ObjectStorageConfig struct {
 	maxUploadBytes  int64
 }
 
-// RealtimeConfig は、Realtime Delivery の store（DynamoDB 互換）の接続設定を保持します。
+// RealtimeConfig は、Realtime Delivery の store（DynamoDB 互換）と fan-out（SNS / SQS 互換）の接続設定を保持します。
 type RealtimeConfig struct {
 	region          string
 	tableSuffix     string
+	topic           string
+	queuePrefix     string
+	dlq             string
 	accessKeyID     string
 	secretAccessKey string
 }
@@ -199,13 +202,14 @@ type RealtimeConfig struct {
 // EndpointConfig は、このアプリが接続する外部サービスの所在を保持します。
 // いずれも空文字を取り得ます。空が何を意味するかは接続先ごとに異なるため、各アクセサに記します。
 type EndpointConfig struct {
-	otlp          string
-	jwks          string
-	objectStorage string
-	realtime      string
-	outbox        string
-	outboxQueue   string
-	consumerQueue string
+	otlp           string
+	jwks           string
+	objectStorage  string
+	realtime       string
+	realtimePubSub string
+	outbox         string
+	outboxQueue    string
+	consumerQueue  string
 	// sample-api:begin
 	exchangeRate string
 	// sample-api:end
@@ -611,6 +615,15 @@ func (r *RealtimeConfig) InstanceLeaseTable() string {
 	return realtimeInstanceLeaseTable + "_" + r.tableSuffix
 }
 
+// Topic は、wakeup と失効通知を載せる topic の識別子（AWS では ARN）を返します。空なら fan-out の配線は起動できません。
+func (r *RealtimeConfig) Topic() string { return r.topic }
+
+// QueuePrefix は、instance queue 名の先頭を返します。
+func (r *RealtimeConfig) QueuePrefix() string { return r.queuePrefix }
+
+// DLQ は、instance queue の redrive 先の識別子（AWS では ARN）を返します。空なら RedrivePolicy を付けません。
+func (r *RealtimeConfig) DLQ() string { return r.dlq }
+
 // AccessKeyID は、静的資格情報のアクセスキー ID を返します。
 func (r *RealtimeConfig) AccessKeyID() string { return r.accessKeyID }
 
@@ -631,6 +644,9 @@ func (e *EndpointConfig) ObjectStorage() string { return e.objectStorage }
 
 // Realtime は、Realtime Delivery の store のエンドポイントを返します。空なら SDK 既定の解決に委ねます。
 func (e *EndpointConfig) Realtime() string { return e.realtime }
+
+// RealtimePubSub は、Realtime Delivery の fan-out（SNS / SQS 互換）のエンドポイントを返します。空なら SDK 既定の解決に委ねます。
+func (e *EndpointConfig) RealtimePubSub() string { return e.realtimePubSub }
 
 // Outbox は、PUBLISHER=http のときの送出先を返します。
 func (e *EndpointConfig) Outbox() string { return e.outbox }

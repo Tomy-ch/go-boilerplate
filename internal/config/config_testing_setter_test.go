@@ -591,3 +591,43 @@ func TestOutboxConfig_SetOutboxQueue(t *testing.T) {
 		})
 	})
 }
+
+func TestRealtimeConfig_SetTopic(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定した topic ARN へ差し替わり、クリーンアップで元の値へ戻る", func(t *testing.T) {
+			t.Parallel()
+			realtime := MockConfigForTest(t).realtime
+
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				realtime.SetTopic(t, "arn:aws:sns:us-east-1:000000000000:realtime-test")
+				assert.Equal(t, "arn:aws:sns:us-east-1:000000000000:realtime-test", realtime.Topic())
+			})
+
+			assert.Equal(t, expectedRealtimeTopic, realtime.Topic())
+		})
+	})
+}
+
+func TestEndpointConfig_SetRealtimePubSub(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("指定した endpoint へ差し替わり、クリーンアップで元の値へ戻る", func(t *testing.T) {
+			t.Parallel()
+			endpoint := MockConfigForTest(t).endpoint
+
+			t.Run("一時的に差し替える", func(t *testing.T) { //nolint:paralleltest // Cleanup 発火後の復元を親で検証するため同期実行する
+				endpoint.SetRealtimePubSub(t, "http://localhost:4100")
+				assert.Equal(t, "http://localhost:4100", endpoint.RealtimePubSub())
+			})
+
+			assert.Equal(t, expectedEndpointRealtimePubSub, endpoint.RealtimePubSub())
+		})
+	})
+}

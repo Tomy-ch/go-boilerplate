@@ -37,17 +37,34 @@ func TestNewOutboxRelayApp(t *testing.T) {
 			// fx.New はコンストラクタ（NewEndpoint 等）を実行しエラーを app.Err() に格納する。
 			require.NoError(t, app.Err())
 		})
+
+		t.Run("realtime チャネルは EventLog へ append する publisher で構築できる", func(t *testing.T) {
+			t.Setenv("REALTIME_TOPIC", "arn:aws:sns:us-east-1:000000000000:realtime-fanout-test")
+			t.Setenv("ENDPOINT_REALTIME_PUBSUB", "http://localhost:4100")
+
+			app := NewOutboxRelayApp(30*time.Second, outboxbndry.ChannelRealtime)
+
+			require.NoError(t, app.Err())
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
-		t.Run("配送できる publisher 実装が無いチャネルは起動時に弾かれる", func(t *testing.T) {
+		t.Run("担当する publisher module が無いチャネルは起動時に弾かれる", func(t *testing.T) {
 			t.Setenv("OUTBOX_PUBLISHER", "http")
 			t.Setenv("ENDPOINT_OUTBOX", "http://localhost:9999")
 
 			// fx.ValidateApp は invoke の本体を実行しないため、ガードの検証は実際の構築で行う。
-			app := NewOutboxRelayApp(30*time.Second, outboxbndry.ChannelRealtime)
+			app := NewOutboxRelayApp(30*time.Second, outboxbndry.Channel("unknown"))
 
 			require.ErrorIs(t, app.Err(), publisher.ErrChannelUnsupported)
+		})
+
+		t.Run("realtime チャネルは REALTIME_TOPIC が空だと起動時に弾かれる", func(t *testing.T) {
+			t.Setenv("REALTIME_TOPIC", "")
+
+			app := NewOutboxRelayApp(30*time.Second, outboxbndry.ChannelRealtime)
+
+			require.ErrorIs(t, app.Err(), module.ErrRealtimeTopicNotConfigured)
 		})
 
 		t.Run("ENDPOINT_OUTBOX が空なら起動時に弾かれる", func(t *testing.T) {

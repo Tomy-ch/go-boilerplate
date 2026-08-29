@@ -134,6 +134,7 @@ flowchart TB
     StreamTicket["streamticket/"]
     InstanceLease["instancelease/"]
     RealtimeSecret["realtimesecret/"]
+    Realtime["realtime/"]
     HTTP["httpclient/"]
     ObjStorage["objectstorage/"]
     Pub["publisher/"]
@@ -153,6 +154,7 @@ flowchart TB
     Root --> StreamTicket
     Root --> InstanceLease
     Root --> RealtimeSecret
+    Root --> Realtime
     Root --> HTTP
     Root --> ObjStorage
     Root --> Pub
@@ -177,6 +179,7 @@ flowchart TB
 |`streamticket/`|Realtime Delivery stream-ticket adapter (DynamoDB impl of `realtime.StreamTicketStore`)|Usecase boundary|[README](streamticket/README.md)|
 |`instancelease/`|Realtime Delivery instance-lease adapter (DynamoDB impl of `realtime.InstanceLeaseStore`)|Usecase boundary|[README](instancelease/README.md)|
 |`realtimesecret/`|Ticket-secret generation from the OS randomness source (impl of `realtime.SecretGenerator`; independent of the sample-only `token/`)|Usecase boundary|[README](realtimesecret/README.md)|
+|`realtime/`|Realtime Delivery fan-out substrate (SNS / SQS impl of the `realtime` channel's `boundary.Publisher`, `realtime.RevocationNotifier` and `realtime.InstanceSubscription`; `local/` for the emulator's queue attributes)|Usecase boundary|[README](realtime/README.md)|
 |`httpclient/`|Resilient HTTP client substrate (retry / circuit breaker / tracing); shared driver-level base consumed by `webapi/` and `publisher/`|— (substrate, no domain/usecase IF)|[README](httpclient/README.md)|
 |`objectstorage/`|Object storage adapter (impl of `boundary.Storage`; endpoint / credential swap connects to Garage / MinIO / production S3)|Usecase boundary|[README](objectstorage/README.md)|
 |`publisher/`|Transactional outbox publish destination (HTTP impl of `boundary.Publisher`)|Usecase boundary|[README](publisher/README.md)|

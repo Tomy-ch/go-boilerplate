@@ -193,7 +193,7 @@ outer module and several expose explicit seams for adding constructors.
 |---|---|---|
 |`module.JobModule()`|Job|`group:"jobs"` registration + Runner + State + hook|
 |`module.WorkerModule()`|Worker|Engine + State + queue-stats collector; registers **zero workers by default** (`provideWorkers` / `provideQueueStatsTargets` are the seams); `ValidateShutdownGrace` fails startup if `WORKER_DRAIN_TIMEOUT >= APP_SHUTDOWN_TIMEOUT`|
-|`module.OutboxRelayModule(channel)`|Outbox Relay|Relay usecase + engine + hook for one delivery channel; also pulls in `outboxPublisherModule()` and refuses to build for a channel no publisher implementation serves|
+|`module.OutboxRelayModule(channel)`|Outbox Relay|Relay usecase + engine + hook for one delivery channel; pulls in the publisher module that channel needs (`outboxPublisherModule()` for `http`, `realtimePublisherModule()` for `realtime`) and refuses to build (`fx.Error`) for a channel no publisher module serves|
 |`shutdowner.Module()`|Job, Worker|Self-stop for one-shot / signalled drives (not needed by Server / Relay)|
 
 `outboxPublisherModule()` is deliberately **not** part of the shared

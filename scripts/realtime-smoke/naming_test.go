@@ -64,3 +64,9 @@ func Test_names_queue(t *testing.T) {
 	assert.Equal(t, "gobp-smoke-0123456789ab-2", n.queue(2))
 	assert.NotEqual(t, n.queue(0), n.queue(1))
 }
+
+func Test_names_dlq(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "gobp-smoke-0123456789ab-dlq", names{runID: "0123456789ab"}.dlq())
+}

@@ -194,10 +194,14 @@ var (
 	expectedObjectStorageMaxUploadBytes    int64 = 5242880
 	expectedObjectStorageMaxUploadBytesStr       = strconv.FormatInt(expectedObjectStorageMaxUploadBytes, 10)
 
-	// realtime（Endpoint は空文字＝SDK 既定解決の意味を持つため空。他は required,notEmpty のため実値）
+	// realtime（Endpoint は空文字＝SDK 既定解決の意味を持つため空。Topic / DLQ は既定の空値。他は required,notEmpty のため実値）
 	expectedEndpointRealtime        = ""
+	expectedEndpointRealtimePubSub  = ""
 	expectedRealtimeRegion          = "us-east-1"
 	expectedRealtimeTableSuffix     = "test"
+	expectedRealtimeTopic           = ""
+	expectedRealtimeQueuePrefix     = "realtime-test"
+	expectedRealtimeDLQ             = ""
 	expectedRealtimeAccessKeyID     = "test-access-key"
 	expectedRealtimeSecretAccessKey = "test-secret-key"
 )
@@ -336,17 +340,21 @@ func MockConfigForTest(tb testing.TB) *Config {
 		realtime: RealtimeConfig{
 			region:          expectedRealtimeRegion,
 			tableSuffix:     expectedRealtimeTableSuffix,
+			topic:           expectedRealtimeTopic,
+			queuePrefix:     expectedRealtimeQueuePrefix,
+			dlq:             expectedRealtimeDLQ,
 			accessKeyID:     expectedRealtimeAccessKeyID,
 			secretAccessKey: expectedRealtimeSecretAccessKey,
 		},
 		endpoint: EndpointConfig{
-			otlp:          expectedEndpointOTLP,
-			jwks:          expectedEndpointJWKS,
-			objectStorage: expectedEndpointObjectStorage,
-			realtime:      expectedEndpointRealtime,
-			outbox:        expectedEndpointOutbox,
-			outboxQueue:   expectedEndpointOutboxQueue,
-			consumerQueue: expectedEndpointConsumerQueue,
+			otlp:           expectedEndpointOTLP,
+			jwks:           expectedEndpointJWKS,
+			objectStorage:  expectedEndpointObjectStorage,
+			realtime:       expectedEndpointRealtime,
+			realtimePubSub: expectedEndpointRealtimePubSub,
+			outbox:         expectedEndpointOutbox,
+			outboxQueue:    expectedEndpointOutboxQueue,
+			consumerQueue:  expectedEndpointConsumerQueue,
 			// sample-api:begin
 			exchangeRate: expectedEndpointExchangeRate,
 			// sample-api:end
@@ -386,17 +394,21 @@ func mockLoader(tb testing.TB) Loader {
 		Realtime: Realtime{
 			Region:          expectedRealtimeRegion,
 			TableSuffix:     expectedRealtimeTableSuffix,
+			Topic:           expectedRealtimeTopic,
+			QueuePrefix:     expectedRealtimeQueuePrefix,
+			DLQ:             expectedRealtimeDLQ,
 			AccessKeyID:     expectedRealtimeAccessKeyID,
 			SecretAccessKey: expectedRealtimeSecretAccessKey,
 		},
 		Endpoint: Endpoint{
-			OTLP:          expectedEndpointOTLP,
-			JWKS:          expectedEndpointJWKS,
-			ObjectStorage: expectedEndpointObjectStorage,
-			Realtime:      expectedEndpointRealtime,
-			Outbox:        expectedEndpointOutbox,
-			OutboxQueue:   expectedEndpointOutboxQueue,
-			ConsumerQueue: expectedEndpointConsumerQueue,
+			OTLP:           expectedEndpointOTLP,
+			JWKS:           expectedEndpointJWKS,
+			ObjectStorage:  expectedEndpointObjectStorage,
+			Realtime:       expectedEndpointRealtime,
+			RealtimePubSub: expectedEndpointRealtimePubSub,
+			Outbox:         expectedEndpointOutbox,
+			OutboxQueue:    expectedEndpointOutboxQueue,
+			ConsumerQueue:  expectedEndpointConsumerQueue,
 			// sample-api:begin
 			ExchangeRate: expectedEndpointExchangeRate,
 			// sample-api:end
@@ -517,6 +529,7 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // テスト用の環�
 	t.Setenv("ENDPOINT_JWKS", expectedEndpointJWKS)
 	t.Setenv("ENDPOINT_OBJECT_STORAGE", expectedEndpointObjectStorage)
 	t.Setenv("ENDPOINT_REALTIME", expectedEndpointRealtime)
+	t.Setenv("ENDPOINT_REALTIME_PUBSUB", expectedEndpointRealtimePubSub)
 	t.Setenv("ENDPOINT_OUTBOX", expectedEndpointOutbox)
 	t.Setenv("ENDPOINT_OUTBOX_QUEUE", expectedEndpointOutboxQueue)
 	t.Setenv("ENDPOINT_CONSUMER_QUEUE", expectedEndpointConsumerQueue)
@@ -540,6 +553,9 @@ func setEnvVarsForTesting(t *testing.T) { //nolint:funlen // テスト用の環�
 
 	t.Setenv("REALTIME_REGION", expectedRealtimeRegion)
 	t.Setenv("REALTIME_TABLE_SUFFIX", expectedRealtimeTableSuffix)
+	t.Setenv("REALTIME_TOPIC", expectedRealtimeTopic)
+	t.Setenv("REALTIME_QUEUE_PREFIX", expectedRealtimeQueuePrefix)
+	t.Setenv("REALTIME_DLQ", expectedRealtimeDLQ)
 	t.Setenv("REALTIME_ACCESS_KEY_ID", expectedRealtimeAccessKeyID)
 	t.Setenv("REALTIME_SECRET_ACCESS_KEY", expectedRealtimeSecretAccessKey)
 }

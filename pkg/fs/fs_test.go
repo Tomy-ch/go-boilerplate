@@ -89,3 +89,37 @@ func TestOS_Glob(t *testing.T) {
 		})
 	})
 }
+
+func TestOS_MkdirAll(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("親ごとディレクトリを作成し、既にあれば何もしない", func(t *testing.T) {
+			t.Parallel()
+
+			path := filepath.Join(t.TempDir(), "a", "b")
+
+			require.NoError(t, OS{}.MkdirAll(path, 0o750))
+			require.NoError(t, OS{}.MkdirAll(path, 0o750))
+
+			info, err := os.Stat(path)
+			require.NoError(t, err)
+			assert.True(t, info.IsDir())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("途中にファイルがあればエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			file := filepath.Join(t.TempDir(), "file")
+			require.NoError(t, OS{}.WriteFile(file, []byte("x"), 0o600))
+
+			require.Error(t, OS{}.MkdirAll(filepath.Join(file, "child"), 0o750))
+		})
+	})
+}

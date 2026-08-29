@@ -52,9 +52,32 @@ func TestRegisterHTTPServerHooks(t *testing.T) {
 
 	_, srv := newTestHTTPServer(t, srvCfg)
 
-	RegisterHTTPServerHooks(srv, mockReg, mockLogger, appCfg, secCfg, srvCfg, osCfg, &extension.AppliedServerExtends{})
-	assert.NotNil(t, startFn)
-	assert.NotNil(t, shutdownFn)
+	mockLogger.EXPECT().Named(serveLifecycleLoggerName).Return(mockLogger)
+	mockLogger.EXPECT().CallerSkip(serverCallerSkip).Return(mockLogger)
+	// 登録された stop を駆動すると HTTP shutdown まで進む。その経路のログは別テストが見る。
+	mockLogger.EXPECT().Named("server.Stop").Return(mockLogger).AnyTimes()
+	mockLogger.EXPECT().CallerSkip(serverCallerSkip).Return(mockLogger).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
+
+	drained := false
+	RegisterHTTPServerHooks(HTTPServerHooksIn{
+		Srv: srv, Reg: mockReg, Log: mockLogger, AppCfg: appCfg, SecCfg: secCfg, SrvCfg: srvCfg, OSCfg: osCfg,
+		Applied: &extension.AppliedServerExtends{},
+		Startup: []StartupProbe{{Name: "store", Probe: func(context.Context) error { return errParticipant }}},
+		Drainers: []Drainer{{Name: "sse", Drain: func(context.Context) error {
+			drained = true
+
+			return nil
+		}}},
+	})
+	require.NotNil(t, startFn)
+	require.NotNil(t, shutdownFn)
+
+	// 登録されたのが参加者を含む serveLifecycle の start / stop であること: start は到達確認の失敗で止まり、
+	// stop は drain を通ってから HTTP shutdown へ進む。
+	require.ErrorIs(t, startFn(t.Context()), errParticipant)
+	require.NoError(t, shutdownFn(t.Context()))
+	assert.True(t, drained)
 }
 
 func Test_newStartServerFunc(t *testing.T) {
@@ -271,7 +294,12 @@ func Test_newStopServerFunc(t *testing.T) {
 			t.Cleanup(func() { close(release) })
 
 			go func() {
-				req, rerr := http.NewRequestWithContext(context.Background(), http.MethodGet, "http://"+ln.Addr().String()+"/block", nil)
+				req, rerr := http.NewRequestWithContext(
+					context.Background(),
+					http.MethodGet,
+					"http://"+ln.Addr().String()+"/block",
+					nil,
+				)
 				if rerr != nil {
 					return
 				}

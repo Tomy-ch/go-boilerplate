@@ -117,7 +117,7 @@ that step (and its undo for drift checks).
 
 | Command | Description | Main Use |
 | --- | --- | --- |
-| `make realtime-init` | Brings up the shared infra, then creates the Realtime Delivery tables (EventLog / StreamTicket / InstanceLease) in DynamoDB Local from inside the app container (`go run ./cmd/ realtime-init`). Idempotent — re-running converges on the same state. | Before the first `make serve` that uses Realtime Delivery, and after `REALTIME_TABLE_SUFFIX` changes |
+| `make realtime-init` | Brings up the shared infra, then creates the Realtime Delivery tables (EventLog / StreamTicket / InstanceLease) in DynamoDB Local and the fan-out topic on GoAWS from inside the app container (`go run ./cmd/ realtime-init`). Idempotent — re-running converges on the same state. | Before the first `make serve` that uses Realtime Delivery, and after `REALTIME_TABLE_SUFFIX` changes |
 | `make realtime-smoke` | Brings up the shared infra, then runs `scripts/realtime-smoke` against DynamoDB Local and GoAWS with the AWS SDK Go v2 and prints one verdict per call (互換 / 非互換 / 未対応 / 検証不能). Resources are created under a per-run random name and deleted afterwards. `ARGS` passes flags through (`-format markdown` / `-subscribers N` / `-keep` / `-strict`). | Confirm the emulators still accept the calls Realtime Delivery makes — e.g. after bumping either image |
 
 ## `.makefiles/database` group

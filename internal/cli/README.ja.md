@@ -20,7 +20,7 @@ OS シグナル / golang-migrate）を結線する composition root は `cmd/`�
 |`merge-dml`|`mergedml/`|`cmd/merge_dml.go`|DML ディレクトリの SQL ファイルを種別ごとにマージ|
 |`worker`|`worker/`|`cmd/worker.go`|登録済み worker を起動（`worker <worker-name> [args...]`）|
 |`outbox-relay`|`outbox/`|`cmd/outbox_relay.go`|outbox relay を起動。`replay` サブコマンドは dead 行を pending へ戻す|
-|`realtime-init`|`realtimeinit/`|`cmd/realtime_init.go`|Realtime Delivery の table（EventLog / StreamTicket / InstanceLease）を DynamoDB 互換 store に作る。冪等な one-shot で、application の起動時には走らない|
+|`realtime-init`|`realtimeinit/`|`cmd/realtime_init.go`|Realtime Delivery の table（EventLog / StreamTicket / InstanceLease）を DynamoDB 互換 store に、fan-out の topic を SNS 互換 broker に作る。冪等な one-shot で、application の起動時には走らない|
 |`db-slot`|`dbslot/`|`cmd/db-slot.go`|共有 worktree プールから DB スロットをリースする（`acquire` / `release` / `heartbeat` / `status` / `env` / `require-owner`）|
 
 ## 構造

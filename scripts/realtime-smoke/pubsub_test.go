@@ -43,7 +43,7 @@ func prepared(t *testing.T, subscribers int) (*pubSubSmoke, *awsFake, *goawsStat
 func Test_runPubSub(t *testing.T) {
 	t.Parallel()
 
-	t.Run("全検査が互換なら G0〜G9 の 11 行", func(t *testing.T) {
+	t.Run("全検査が互換なら G0〜G17 の 19 行", func(t *testing.T) {
 		t.Parallel()
 
 		f := newAWSFake(t)
@@ -53,12 +53,12 @@ func Test_runPubSub(t *testing.T) {
 		rec := &recorder{}
 		runPubSub(t.Context(), c.sns, c.sqs, names{runID: testRunID}, 2, false, rec)
 
-		require.Len(t, rec.results, 11)
+		require.Len(t, rec.results, 19)
 		for _, r := range rec.results {
 			assert.Equal(t, VerdictCompatible, r.Verdict, r.ID+" "+r.Detail)
 		}
 
-		assert.Equal(t, "G9", rec.results[10].ID)
+		assert.Equal(t, "G9", rec.results[18].ID)
 	})
 
 	t.Run("Policy を拒否する emulator では G4 / G4b だけが非互換", func(t *testing.T) {
@@ -92,10 +92,10 @@ func Test_runPubSub(t *testing.T) {
 		rec := &recorder{}
 		runPubSub(t.Context(), c.sns, c.sqs, names{runID: testRunID}, 1, false, rec)
 
-		require.Len(t, rec.results, 11)
+		require.Len(t, rec.results, 19)
 		assert.Equal(t, VerdictUnsupported, rec.results[0].Verdict)
 		assert.Equal(t, VerdictUnverifiable, rec.results[1].Verdict)
-		assert.Contains(t, rec.results[10].Detail, "作成された resource が無い")
+		assert.Contains(t, rec.results[18].Detail, "作成された resource が無い")
 	})
 }
 
@@ -111,7 +111,11 @@ func Test_pubSubSmoke_steps(t *testing.T) {
 		halts[st.id] = st.halt
 	}
 
-	assert.Equal(t, []string{"G0", "G1", "G2", "G3", "G4", "G4b", "G5", "G6", "G7", "G8"}, ids)
+	assert.Equal(
+		t,
+		[]string{"G0", "G1", "G2", "G3", "G4", "G4b", "G5", "G6", "G7", "G8", "G10", "G11", "G12", "G13", "G14", "G15", "G16", "G17"},
+		ids,
+	)
 	assert.True(t, halts["G0"], "wire protocol が通らなければ全部が実行不能")
 	assert.True(t, halts["G5"], "subscription 無しでは fan-out を検証できない")
 	assert.False(t, halts["G4"], "policy の可否は fan-out の成否と独立")
@@ -646,6 +650,19 @@ func Test_pubSubSmoke_teardown(t *testing.T) {
 
 		calls := f.called()
 		assert.Equal(t, []string{"Unsubscribe", "Unsubscribe", "DeleteQueue", "DeleteQueue", "DeleteTopic"}, calls[len(calls)-5:])
+	})
+
+	t.Run("DLQ を作っていればそれも削除する", func(t *testing.T) {
+		t.Parallel()
+
+		s, f, _ := prepared(t, 1)
+		_, err := s.redrive(t.Context())
+		require.NoError(t, err)
+
+		require.NoError(t, s.teardown(t.Context()))
+
+		calls := f.called()
+		assert.Equal(t, []string{"Unsubscribe", "DeleteQueue", "DeleteQueue", "DeleteTopic"}, calls[len(calls)-4:])
 	})
 
 	t.Run("途中で失敗しても残りを試み、失敗をまとめて返す", func(t *testing.T) {

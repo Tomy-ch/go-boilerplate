@@ -4,7 +4,7 @@
 
 ## ラップ対象
 
-- `os.ReadFile` / `os.WriteFile`
+- `os.ReadFile` / `os.WriteFile` / `os.MkdirAll`
 - `path/filepath.Glob`
 
 ## 注意点

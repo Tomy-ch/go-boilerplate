@@ -3,7 +3,7 @@
 Realtime Delivery（[`docs/design/realtime-delivery.ja.md`](../../../../docs/design/realtime-delivery.ja.md)）の seam です。
 feature 中立な封筒 `DeliveryEvent` と、それを保存・配送する側が実装する境界を置きます。usecase 側
 （`internal/usecase/realtime/`、feature の realtime adapter）はこの package にだけ依存し、DynamoDB の
-store と PostgreSQL の sequence allocator（infrastructure）が実装します。vendor の語彙（table /
+store・PostgreSQL の sequence allocator・SNS / SQS の fan-out adapter（infrastructure）が実装します。vendor の語彙（table /
 partition / TTL）も feature の語彙（会話 / メッセージ / operator）もここには現れません。
 
 ```go
@@ -44,6 +44,21 @@ type InstanceLeaseStore interface {
 type SecretGenerator interface {
     Generate() (string, error)   // 256 bit の不透明な ticket 生値
 }
+
+// fan-out 上の instance 自身の queue（serve instance ごとに 1 つ、起動時に作り停止時に消す）。
+type InstanceSubscription interface {
+    Provision(ctx context.Context, id InstanceID) error            // id ごとに冪等
+    Receive(ctx context.Context, limit int) ([]Notification, error) // 有界の待ち。ctx で返る
+    Delete(ctx context.Context, n Notification) error               // 消さなかった通知は再配送される
+    Teardown(ctx context.Context) error                             // 登録解除してから削除。provision していなければ no-op
+}
+
+type Notification struct {            // Kind がどちらに値が入っているかを決める
+    Kind       NotificationKind      // KindWakeup | KindRevocation | KindUnknown（""。読めないので削除する）
+    Wakeup     Wakeup                // EventID / StreamID / Sequence — 「cursor の先から stream を読み直せ」
+    Revocation Revocation            // Subject / Destination — 「その subject の接続を閉じろ」
+    Receipt    string                // substrate 固有の削除キー。ここでは不透明
+}
 ```
 
 ## 境界が担う不変条件
@@ -76,6 +91,7 @@ test できなければならないので、乱数の seam を自前で持ちま
 | `InstanceLeaseStore` | `internal/infrastructure/instancelease/dynamodb/` |
 | `SecretGenerator` | `internal/infrastructure/realtimesecret/` |
 | `SequenceAllocator`（`sequence.go`） | `internal/infrastructure/rdb/system_cqrs/realtime/` |
-| `RevocationNotifier`（`revocation.go`） | SNS fan-out の publisher（Phase 7、#1414）。`usecase/realtime.AccessRevoker` が ticket を無効にした後に呼ぶ |
+| `RevocationNotifier`（`revocation.go`） | `internal/infrastructure/realtime/aws/`（wakeup と同じ topic へ revocation を publish する）。`usecase/realtime.AccessRevoker` が ticket を無効にした後に呼ぶ |
+| `InstanceSubscription`（`fanout.go`） | `internal/infrastructure/realtime/aws/`（instance の SQS queue とその SNS subscription）。`internal/controller/realtime/` の consumer エンジンが駆動する |
 
 mock はファイルごとに `mock/` へ生成します（`go generate ./...`）。

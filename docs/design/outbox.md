@@ -24,6 +24,7 @@ Responsibility split (who owns what):
 | **Engine** (`controller/outbox/relay.go`) | controller | poll-loop orchestration: cadence, sleep/backoff, drain on ctx done, span | claim/publish/mark business (delegated to usecase) |
 | **outbox-gc job** (`controller/job/outboxgc`) | controller | one-shot GC entry point for an external scheduler | the loop (it is a cron, not a daemon) |
 | **httpPublisher** (`infrastructure/publisher`) | infrastructure | `Publisher` HTTP impl: POST + `Idempotency-Key` + non-standard client profile | retry (the poll loop is the retry) |
+| **realtime publisher** (`infrastructure/realtime`) | infrastructure | `Publisher` impl for the `realtime` channel: EventLog append (idempotent on `eventId`) → SNS wakeup publish; permanent on a sequence conflict, retryable on a substrate failure ([Realtime Delivery](realtime-delivery.md)) | retry, the Streamer |
 | **outbox store** (`infrastructure/rdb/system_cqrs/outbox`) | infrastructure | `Store` impl over sqlc gen + `pgerror.NormalizeError` | business decisions |
 | **DI / cli / cmd** | di / cli / cmd(main) | relay-process composition / subcommands / lifecycle | business logic |
 | **OutboxConfig** | config | relay tuning (`OUTBOX_*`) | broker/endpoint internals |

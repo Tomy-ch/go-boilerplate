@@ -4,7 +4,7 @@ Provides a thin wrapper around filesystem operations so callers depend on an int
 
 ## Wraps
 
-- `os.ReadFile` / `os.WriteFile`
+- `os.ReadFile` / `os.WriteFile` / `os.MkdirAll`
 - `path/filepath.Glob`
 
 ## Notes

@@ -3,8 +3,8 @@
 The seam of Realtime Delivery ([`docs/design/realtime-delivery.md`](../../../../docs/design/realtime-delivery.md)):
 the feature-neutral envelope `DeliveryEvent` and the boundaries implemented by whoever stores and
 delivers it. Usecase code (`internal/usecase/realtime/`, the feature's realtime adapter) depends on
-this package only; the DynamoDB stores and the PostgreSQL sequence allocator (infrastructure)
-implement it. Neither vendor vocabulary (table / partition / TTL) nor feature vocabulary
+this package only; the DynamoDB stores, the PostgreSQL sequence allocator and the SNS / SQS fan-out
+adapter (infrastructure) implement it. Neither vendor vocabulary (table / partition / TTL) nor feature vocabulary
 (conversation / message / operator) appears here.
 
 ```go
@@ -45,6 +45,21 @@ type InstanceLeaseStore interface {
 type SecretGenerator interface {
     Generate() (string, error)   // 256-bit opaque ticket value
 }
+
+// The instance's own queue on the fan-out (one per serve instance, created at start, deleted at stop).
+type InstanceSubscription interface {
+    Provision(ctx context.Context, id InstanceID) error            // idempotent per id
+    Receive(ctx context.Context, limit int) ([]Notification, error) // bounded wait; returns on ctx
+    Delete(ctx context.Context, n Notification) error               // undeleted notifications are redelivered
+    Teardown(ctx context.Context) error                             // unregister, then delete; no-op if never provisioned
+}
+
+type Notification struct {            // Kind selects which of the two is populated
+    Kind       NotificationKind      // KindWakeup | KindRevocation | KindUnknown ("": unreadable; delete it)
+    Wakeup     Wakeup                // EventID / StreamID / Sequence — "re-read the stream after your cursor"
+    Revocation Revocation            // Subject / Destination — "close that subject's connections"
+    Receipt    string                // substrate-specific delete key; opaque here
+}
 ```
 
 ## Invariants the boundary carries
@@ -77,6 +92,7 @@ after that removal, so it carries its own randomness seam; the implementation li
 | `InstanceLeaseStore` | `internal/infrastructure/instancelease/dynamodb/` |
 | `SecretGenerator` | `internal/infrastructure/realtimesecret/` |
 | `SequenceAllocator` (`sequence.go`) | `internal/infrastructure/rdb/system_cqrs/realtime/` |
-| `RevocationNotifier` (`revocation.go`) | the SNS fan-out publisher (Phase 7, #1414); called by `usecase/realtime.AccessRevoker` after the tickets are invalidated |
+| `RevocationNotifier` (`revocation.go`) | `internal/infrastructure/realtime/aws/` (publishes the revocation on the same topic as the wakeups); called by `usecase/realtime.AccessRevoker` after the tickets are invalidated |
+| `InstanceSubscription` (`fanout.go`) | `internal/infrastructure/realtime/aws/` (the instance's SQS queue and its SNS subscription); driven by the consumer engine in `internal/controller/realtime/` |
 
 Mocks are generated per file into `mock/` (`go generate ./...`).

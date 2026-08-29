@@ -10,30 +10,12 @@ import (
 	"time"
 
 	"go-boilerplate/internal/config"
-	"go-boilerplate/internal/di/lifecycle"
-	"go-boilerplate/internal/di/server/extension"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/xerrors"
 )
 
 // serverCallerSkip は、fx ライフサイクル経由のクロージャ呼び出しで挟まるフレームを飛ばしログの caller を実呼び出し位置へ合わせる段数です。
 const serverCallerSkip = 3
-
-// RegisterHTTPServerHooks は、HTTPサーバーの起動・停止フックをライフサイクルに登録します。
-func RegisterHTTPServerHooks(
-	srv *http.Server,
-	reg lifecycle.Registrar,
-	log logging.Logger,
-	appCfg *config.ApplicationConfig,
-	secCfg *config.SecurityConfig,
-	srvCfg *config.ServerConfig,
-	osCfg *config.OperatingSystemConfig,
-	// 下記はサーバー機能の拡張が適用されたことを示すトークン
-	_ *extension.AppliedServerExtends,
-) {
-	reg.RegisterStart(newStartServerFunc(srv, log, appCfg, secCfg, srvCfg, osCfg))
-	reg.RegisterStop(newStopServerFunc(srv, log, osCfg))
-}
 
 // newStartServerFunc は、HTTPサーバーを起動する関数を生成します。
 func newStartServerFunc(

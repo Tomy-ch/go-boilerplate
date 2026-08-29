@@ -37,6 +37,7 @@ generated-type ↔ domain-type boundary, and `ctxhelper/` the Echo context acces
 |`job/`|Job controllers invoked from CLI|[README](job/README.md)|
 |`worker/`|Worker engine consuming a pull-ack message queue and dispatching to Usecase|[README](worker/README.md)|
 |`outbox/`|Relay engine that periodically polls the outbox and publishes pending messages|[README](outbox/README.md)|
+|`realtime/`|Consumer engine that receives Realtime Delivery wakeups / revocations from the instance's own queue and hands them to the connection side; the instance-lease heartbeat loop|[README](realtime/README.md)|
 |`server/`|Echo instance initialization and DI lifecycle integration|[README](server/README.md)|
 |`httpstack/`|Middleware stack (CORS, security, logging, auth, etc.)|[README](httpstack/README.md)|
 |`error/response/`|Unified HTTP error response generation and apperror mapping|[README](error/response/README.md)|
@@ -85,9 +86,9 @@ Handler tests mock the usecase and drive the handler through Echo (`testkit/test
 
 Boundary-level HTTP wiring (Router → Middleware → Handler → Presenter) is covered separately by the `internal/integration` HTTP-boundary tests.
 
-### Loop-driven controllers (`outbox/`, `worker/`)
+### Loop-driven controllers (`outbox/`, `worker/`, `realtime/`)
 
-These adapters are driven by a poll / consume loop rather than a request, so nothing above about Echo, binding, or HTTP status applies to them. The usecase and the boundary ports (`usecase/boundary/clock`, `usecase/boundary/worker`) are mocked, the logger is `logging.NewTestLogger`, the tracer is `observability.NewNoopTracerFactory`, and the in-memory fakes under `usecase/boundary/worker/testkit` stand in for a real broker. The loop is what is under test, so exercise it as a loop:
+These adapters are driven by a poll / consume loop rather than a request, so nothing above about Echo, binding, or HTTP status applies to them. The usecase and the boundary ports (`usecase/boundary/clock`, `usecase/boundary/worker`, `usecase/boundary/realtime`) are mocked, the logger is `logging.NewTestLogger`, the tracer is `observability.NewNoopTracerFactory`, and the in-memory fakes under `usecase/boundary/worker/testkit` stand in for a real broker. The loop is what is under test, so exercise it as a loop:
 
 - **One iteration's effect** — a poll that finds work dispatches it; a poll that finds none backs off by the configured interval. Assert through the mocked sleeper, never by sleeping in the test.
 - **Stop semantics** — cancelling the context ends the loop and returns, and an in-flight item finishes or is abandoned according to the drain contract the package documents. This is the branch a `SupervisedRunner`-driven shutdown depends on.

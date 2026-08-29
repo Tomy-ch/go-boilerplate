@@ -23,8 +23,7 @@ type Loader struct {
 }
 
 // Endpoint は、このアプリが接続する外部サービスの所在をまとめて保持する。
-// 「どこへ繋ぐか」はデプロイごとに変わる軸であり、各サブシステムの「どう振る舞うか」とは
-// 直交するため、サブシステム設定から切り離してここへ集める。
+// この軸を分けている理由は env/README.md の "Endpoint" 節にある。
 // 全項目 required だが空文字を許容する。空の意味は接続先ごとに異なるため各フィールドに記す。
 type Endpoint struct {
 	// OTLP は OpenTelemetry Collector の送出先です。空なら送出しません。
@@ -35,6 +34,8 @@ type Endpoint struct {
 	ObjectStorage string `env:"OBJECT_STORAGE,required"`
 	// Realtime は Realtime Delivery の store（DynamoDB 互換）のエンドポイントです。空なら SDK 既定の解決に委ねます（本番 DynamoDB）。
 	Realtime string `env:"REALTIME,required"`
+	// RealtimePubSub は Realtime Delivery の fan-out（SNS / SQS 互換）のエンドポイントです。空なら SDK 既定の解決に委ねます（本番 SNS / SQS）。
+	RealtimePubSub string `env:"REALTIME_PUBSUB,required"`
 	// Outbox は PUBLISHER=http のときの送出先です。空のまま http を選ぶと DI で起動エラーにします。
 	Outbox string `env:"OUTBOX,required"`
 	// OutboxQueue は publish 端の SQS 互換エンドポイントです。空なら SDK 既定の解決に委ねます。
@@ -53,23 +54,31 @@ type ObjectStorage struct {
 	Region string `env:"REGION,required,notEmpty"`
 	Bucket string `env:"BUCKET,required,notEmpty"`
 	// AccessKeyID / SecretAccessKey は両方空なら SDK 既定の credential chain（IAM ロール等）へ委ねるため、
-	// 未設定を許す。ロール運用のデプロイにダミー値の注入を強いないための既定。
+	// 未設定を許す。ロール運用のデプロイにダミー値の注入を強いないための既定。この既定は Realtime /
+	// ConsumerQueue の資格情報にも同じく適用する。
 	AccessKeyID     string `env:"ACCESS_KEY_ID"                      envDefault:""`
 	SecretAccessKey string `env:"SECRET_ACCESS_KEY"                  envDefault:""`
 	UsePathStyle    bool   `env:"USE_PATH_STYLE,required"`
 	MaxUploadBytes  int64  `env:"MAX_UPLOAD_BYTES,required,notEmpty"`
 }
 
-// Realtime は、Realtime Delivery の EventLog / StreamTicket / InstanceLease を置く DynamoDB 互換 store の
-// 接続設定を保持する。中立境界の実装は DynamoDB adapter だが、env 名は vendor 非依存にする。
+// Realtime は、Realtime Delivery の EventLog / StreamTicket / InstanceLease を置く DynamoDB 互換 store と、
+// serve instance への fan-out（SNS / SQS 互換）の接続設定を保持する。中立境界の実装は DynamoDB / SNS / SQS の
+// adapter だが、env 名は vendor 非依存にする。
 // table 名は固定名（realtime_event_log 等）に TableSuffix を付けた形で、環境（と Phase 11 では worktree の
-// slot）ごとに分かれる。
+// slot）ごとに分かれる。instance queue の名前は QueuePrefix に instance の識別子を付けた形で、環境ごとに分かれる。
 type Realtime struct {
 	Region string `env:"REGION,required,notEmpty"`
 	// TableSuffix は table 名の末尾に付く環境識別子（例 local / ci / prd）。小文字・数字・アンダースコアで書く。
 	TableSuffix string `env:"TABLE_SUFFIX,required,notEmpty"`
-	// AccessKeyID / SecretAccessKey は両方空なら SDK 既定の credential chain（IAM ロール等）へ委ねるため、
-	// 未設定を許す（ObjectStorage と同じ既定）。
+	// Topic は wakeup と失効通知を載せる topic の識別子（AWS では ARN）。deployment が用意する resource で、
+	// 空のまま fan-out を配線すると DI で起動エラーにする（ENDPOINT_OUTBOX と同じ扱い）。
+	Topic string `env:"TOPIC" envDefault:""`
+	// QueuePrefix は instance queue 名の先頭（例 realtime-local）。英数字・`-`・`_` で書く。
+	QueuePrefix string `env:"QUEUE_PREFIX,required,notEmpty"`
+	// DLQ は instance queue の redrive 先の識別子（AWS では ARN）。空なら RedrivePolicy を付けない。
+	DLQ string `env:"DLQ" envDefault:""`
+	// AccessKeyID / SecretAccessKey は ObjectStorage と同じ既定（両方空なら未設定を許す）。
 	AccessKeyID     string `env:"ACCESS_KEY_ID"     envDefault:""`
 	SecretAccessKey string `env:"SECRET_ACCESS_KEY" envDefault:""`
 }
@@ -105,7 +114,7 @@ type Outbox struct {
 // ConsumerQueue は worker が consume する broker（SQS 互換）の adapter 設定を保持する。
 // engine-core の Worker は broker 非依存と定めているため、broker 語彙を持つ設定は別軸に置く。
 // publish 端の Outbox.Queue* とは対になる（consume 端がこちら）。
-// 資格情報が両方空なら SDK 既定の credential chain（IAM ロール等）へ委ねる。
+// 資格情報の既定は ObjectStorage と同じ。
 type ConsumerQueue struct {
 	Region          string `env:"REGION"            envDefault:""`
 	URL             string `env:"URL"               envDefault:""`

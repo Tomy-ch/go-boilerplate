@@ -10,6 +10,7 @@ import (
 	"go-boilerplate/internal/infrastructure/dynamodbclient"
 	eventlogdynamo "go-boilerplate/internal/infrastructure/eventlog/dynamodb"
 	instanceleasedynamo "go-boilerplate/internal/infrastructure/instancelease/dynamodb"
+	realtimeinfra "go-boilerplate/internal/infrastructure/realtime"
 	streamticketdynamo "go-boilerplate/internal/infrastructure/streamticket/dynamodb"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/xerrors"
@@ -53,8 +54,7 @@ func runRealtimeInit(ctx context.Context) error {
 		return xerrors.Wrap(err, "failed to build dynamodb client")
 	}
 
-	// table の定義（キー / index / TTL）は各 adapter package が持つ。CLI コアは名前と順序だけを扱うので、
-	// 名前 → 定義の束ね方はこの composition root が持つ。
+	// table の定義（キー / index / TTL）は各 adapter package が持つ。
 	specs := map[string]dynamodbclient.TableSpec{
 		rtCfg.EventLogTable():      eventlogdynamo.TableSpec(rtCfg.EventLogTable()),
 		rtCfg.StreamTicketTable():  streamticketdynamo.TableSpec(rtCfg.StreamTicketTable()),
@@ -70,6 +70,23 @@ func runRealtimeInit(ctx context.Context) error {
 	}
 
 	logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError(), nil)
+	if err := clirealtimeinit.Run(ctx, rtCfg, ensure, logger); err != nil {
+		return err
+	}
 
-	return clirealtimeinit.Run(ctx, rtCfg, ensure, logger)
+	clients, err := realtimeinfra.NewClients(ctx, realtimeinfra.ClientConfig{
+		Endpoint:        config.NewEndpointConfig(cfg).RealtimePubSub(),
+		Region:          rtCfg.Region(),
+		AccessKeyID:     rtCfg.AccessKeyID(),
+		SecretAccessKey: rtCfg.SecretAccessKey(),
+	})
+	if err != nil {
+		return xerrors.Wrap(err, "failed to build sns client")
+	}
+
+	ensureTopic := func(ctx context.Context, name string) (string, error) {
+		return realtimeinfra.EnsureTopic(ctx, clients, name)
+	}
+
+	return clirealtimeinit.RunTopic(ctx, rtCfg.Topic(), ensureTopic, logger)
 }

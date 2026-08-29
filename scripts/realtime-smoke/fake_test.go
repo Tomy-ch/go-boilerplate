@@ -13,14 +13,17 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
 
 const (
-	fakeAccount = "000000000000"
-	fakeTopic   = "arn:aws:sns:us-east-1:" + fakeAccount + ":"
-	fakeQueue   = "arn:aws:sqs:us-east-1:" + fakeAccount + ":"
+	// emptyPollDelay は、inbox が空のときの ReceiveMessage の応答遅延です。
+	emptyPollDelay = 5 * time.Millisecond
+	fakeAccount    = "000000000000"
+	fakeTopic      = "arn:aws:sns:us-east-1:" + fakeAccount + ":"
+	fakeQueue      = "arn:aws:sqs:us-east-1:" + fakeAccount + ":"
 	// fakeErrPolicy は、GoAWS が Policy 属性に返す実際のエラーコードです。
 	fakeErrPolicy = "AWS.SimpleQueueService.InvalidParameterValue"
 	// fakeErrCondition は、DynamoDB が条件式の不成立に返す __type です。
@@ -61,6 +64,7 @@ type goawsState struct {
 	mu           sync.Mutex
 	rejectPolicy bool
 	policies     map[string]string
+	attrs        map[string]map[string]string // queueURL → Policy 以外の属性
 	raw          map[string]bool
 	subs         map[string]string // subscriptionArn → queue name
 	inbox        map[string][]map[string]any
@@ -94,6 +98,10 @@ func (f *awsFake) called() []string {
 func (f *awsFake) serve(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
+		if r.Context().Err() != nil {
+			return // 呼び出し側が窓切れで接続を閉じた。fake の失敗ではない
+		}
+
 		f.t.Errorf("fake: body の読み取りに失敗: %v", err)
 	}
 
@@ -295,6 +303,7 @@ func fakeQuery(req fakeRequest) fakeResponse {
 func installGoAWS(f *awsFake) *goawsState {
 	st := &goawsState{
 		policies: map[string]string{},
+		attrs:    map[string]map[string]string{},
 		raw:      map[string]bool{},
 		subs:     map[string]string{},
 		inbox:    map[string][]map[string]any{},
@@ -315,6 +324,7 @@ func installGoAWS(f *awsFake) *goawsState {
 	f.on("Subscribe", st.subscribe)
 	f.on("SetSubscriptionAttributes", st.setSubscriptionAttributes)
 	f.on("GetSubscriptionAttributes", st.getSubscriptionAttributes)
+	f.on("ListSubscriptionsByTopic", st.listSubscriptionsByTopic)
 	f.on("Publish", st.publish)
 	f.on("Unsubscribe", func(fakeRequest) fakeResponse { return xmlOK("Unsubscribe", "") })
 	f.on("DeleteTopic", func(fakeRequest) fakeResponse { return xmlOK("DeleteTopic", "") })
@@ -358,12 +368,17 @@ func (st *goawsState) getQueueAttributes(req fakeRequest) fakeResponse {
 	defer st.mu.Unlock()
 
 	for _, n := range names {
-		switch n {
+		name, _ := n.(string)
+		switch name {
 		case "QueueArn":
 			attrs["QueueArn"] = fakeQueue + queueName(queueURL)
 		case "Policy":
 			if p, ok := st.policies[queueURL]; ok {
 				attrs["Policy"] = p
+			}
+		default:
+			if v, ok := st.attrs[queueURL][name]; ok {
+				attrs[name] = v
 			}
 		}
 	}
@@ -371,29 +386,66 @@ func (st *goawsState) getQueueAttributes(req fakeRequest) fakeResponse {
 	return jsonOK(map[string]any{"Attributes": attrs})
 }
 
+// setQueueAttributes は、Policy を policies に、それ以外を attrs に保存します。実物の GoAWS と同じく
+// rejectPolicy のときは Policy を拒否します。
 func (st *goawsState) setQueueAttributes(req fakeRequest) fakeResponse {
 	queueURL, _ := req.json["QueueUrl"].(string)
-	if policy, ok := jsonPath(req.json, "Attributes", "Policy").(string); ok {
-		if st.rejectPolicy {
-			return jsonErr(fakeErrPolicy, "An invalid or out-of-range value was supplied for the input parameter.")
+	given, _ := req.json["Attributes"].(map[string]any)
+
+	st.mu.Lock()
+	defer st.mu.Unlock()
+
+	for name, v := range given {
+		value, _ := v.(string)
+		if name == "Policy" {
+			if st.rejectPolicy {
+				return jsonErr(fakeErrPolicy, "An invalid or out-of-range value was supplied for the input parameter.")
+			}
+
+			st.policies[queueURL] = value
+
+			continue
 		}
 
-		st.mu.Lock()
-		st.policies[queueURL] = policy
-		st.mu.Unlock()
+		if st.attrs[queueURL] == nil {
+			st.attrs[queueURL] = map[string]string{}
+		}
+
+		st.attrs[queueURL][name] = value
 	}
 
 	return jsonOK(map[string]any{})
+}
+
+// listSubscriptionsByTopic は、購読中の queue を member として返します（endpoint は queue ARN）。
+func (st *goawsState) listSubscriptionsByTopic(req fakeRequest) fakeResponse {
+	topicArn := req.form.Get("TopicArn")
+
+	st.mu.Lock()
+	defer st.mu.Unlock()
+
+	var members strings.Builder
+	for subArn, name := range st.subs {
+		members.WriteString("<member><SubscriptionArn>" + subArn + "</SubscriptionArn><Protocol>sqs</Protocol><Endpoint>" +
+			fakeQueue + name + "</Endpoint><TopicArn>" + topicArn + "</TopicArn></member>")
+	}
+
+	return xmlOK("ListSubscriptionsByTopic", "<Subscriptions>"+members.String()+"</Subscriptions>")
 }
 
 func (st *goawsState) receiveMessage(req fakeRequest) fakeResponse {
 	queueURL, _ := req.json["QueueUrl"].(string)
 
 	st.mu.Lock()
-	defer st.mu.Unlock()
-
 	msgs := st.inbox[queueURL]
 	st.inbox[queueURL] = nil
+	st.mu.Unlock()
+
+	if len(msgs) == 0 {
+		// 実物は WaitTimeSeconds だけ long polling する。空のときに即応答すると呼び出し側の receive が
+		// 窓いっぱい回り続けるため、短く待って request の頻度を実物に寄せる。
+		time.Sleep(emptyPollDelay)
+	}
 
 	return jsonOK(map[string]any{"Messages": msgs})
 }

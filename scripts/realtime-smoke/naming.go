@@ -14,6 +14,9 @@ const runIDBytes = 6
 
 // names は、1 回の実行が作る resource の名前です。DynamoDB の table 名は小文字（設計正本）、
 // SNS / SQS は `-` 区切りにします。
+// smokePrefix は、smoke が SNS / SQS に作る resource 名の接頭辞です。
+const smokePrefix = "gobp-smoke-"
+
 type names struct {
 	runID string
 }
@@ -30,6 +33,8 @@ func newRunID(random io.Reader) (string, error) {
 
 func (n names) table() string { return "gobp_smoke_" + n.runID }
 
-func (n names) topic() string { return "gobp-smoke-" + n.runID }
+func (n names) topic() string { return smokePrefix + n.runID }
 
-func (n names) queue(i int) string { return "gobp-smoke-" + n.runID + "-" + strconv.Itoa(i) }
+func (n names) queue(i int) string { return smokePrefix + n.runID + "-" + strconv.Itoa(i) }
+
+func (n names) dlq() string { return smokePrefix + n.runID + "-dlq" }

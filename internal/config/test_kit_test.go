@@ -192,7 +192,8 @@ func TestNewRealtimeTestConnection(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Run("未設定なら DynamoDB Local の既定値を返す", func(t *testing.T) {
 			for _, key := range []string{
-				realtimeTestEndpointEnvKey, realtimeTestRegionEnvKey, realtimeTestAccessKeyEnvKey, realtimeTestSecretKeyEnvKey,
+				realtimeTestEndpointEnvKey, realtimeTestPubSubEndpointKey, realtimeTestRegionEnvKey,
+				realtimeTestAccessKeyEnvKey, realtimeTestSecretKeyEnvKey,
 			} {
 				t.Setenv(key, "")
 				require.NoError(t, os.Unsetenv(key))
@@ -200,13 +201,14 @@ func TestNewRealtimeTestConnection(t *testing.T) {
 
 			conn := NewRealtimeTestConnection(t)
 			assert.Equal(t, RealtimeTestConnection{
-				Endpoint: defaultRealtimeTestEndpoint, Region: defaultRealtimeTestRegion,
+				Endpoint: defaultRealtimeTestEndpoint, PubSubEndpoint: defaultRealtimeTestPubSub, Region: defaultRealtimeTestRegion,
 				AccessKeyID: defaultRealtimeTestCredential, SecretAccessKey: defaultRealtimeTestCredential,
 			}, conn)
 		})
 
 		t.Run("空文字で設定した値は既定値に戻らず空のまま（SDK 既定の解決へ委ねる指示）", func(t *testing.T) {
 			t.Setenv(realtimeTestEndpointEnvKey, "")
+			t.Setenv(realtimeTestPubSubEndpointKey, "")
 			t.Setenv(realtimeTestRegionEnvKey, "ap-northeast-1")
 			t.Setenv(realtimeTestAccessKeyEnvKey, "")
 			t.Setenv(realtimeTestSecretKeyEnvKey, "")

@@ -59,7 +59,12 @@ type ticketService struct {
 }
 
 // NewTicketIssuer は、TicketIssuer を生成します。
-func NewTicketIssuer(store rt.StreamTicketStore, secrets rt.SecretGenerator, clk clock.Clock, tf observability.TracerFactory) TicketIssuer {
+func NewTicketIssuer(
+	store rt.StreamTicketStore,
+	secrets rt.SecretGenerator,
+	clk clock.Clock,
+	tf observability.TracerFactory,
+) TicketIssuer {
 	return newTicketService(store, secrets, clk, tf)
 }
 
@@ -68,7 +73,12 @@ func NewTicketVerifier(store rt.StreamTicketStore, clk clock.Clock, tf observabi
 	return newTicketService(store, nil, clk, tf)
 }
 
-func newTicketService(store rt.StreamTicketStore, secrets rt.SecretGenerator, clk clock.Clock, tf observability.TracerFactory) *ticketService {
+func newTicketService(
+	store rt.StreamTicketStore,
+	secrets rt.SecretGenerator,
+	clk clock.Clock,
+	tf observability.TracerFactory,
+) *ticketService {
 	return &ticketService{store: store, secrets: secrets, clock: clk, tracer: tf.Usecase()}
 }
 

@@ -47,9 +47,8 @@ type relayUsecaseIn struct {
 // チャネル隔離と publisher profile の閉じ込めは internal/di/README.md の Optional を参照。
 func OutboxRelayModule(channel outboxbndry.Channel) fx.Option {
 	return fx.Module("outbox-relay",
-		outboxPublisherModule(),
+		publisherModuleFor(channel),
 		fx.Supply(channel),
-		fx.Invoke(publisher.VerifyChannel),
 		fx.Provide(
 			fx.Annotate(
 				observability.NewOutboxMetrics,
@@ -61,6 +60,24 @@ func OutboxRelayModule(channel outboxbndry.Channel) fx.Option {
 		),
 		fx.Invoke(relayhook.RegisterRelayHooks),
 	)
+}
+
+// publisherModuleFor は、channel を配送できる publisher module を返します。対応する module の無い channel は、
+// 担当者の居ない relay を黙って起動させないため構築エラーにします（fail-closed）。
+func publisherModuleFor(channel outboxbndry.Channel) fx.Option {
+	switch channel {
+	case outboxbndry.ChannelHTTP:
+		return fx.Options(outboxPublisherModule(), fx.Invoke(publisher.VerifyChannel))
+	case outboxbndry.ChannelRealtime:
+		return realtimePublisherModule()
+	default:
+		return fx.Error(
+			xerrors.Wrap(
+				publisher.ErrChannelUnsupported,
+				"no publisher module serves delivery channel "+channel.String(),
+			),
+		)
+	}
 }
 
 // provideRelayUsecase は、集約した依存から channel を担う RelayUsecase を生成します。

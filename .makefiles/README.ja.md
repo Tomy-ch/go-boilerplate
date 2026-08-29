@@ -116,7 +116,7 @@ make outbox-relay ARGS="replay --message-id=<id>"
 
 | コマンド | 説明 | 主な用途 |
 | --- | --- | --- |
-| `make realtime-init` | 共有インフラを起動し、app コンテナ内から Realtime Delivery の table（EventLog / StreamTicket / InstanceLease）を DynamoDB Local に作ります（`go run ./cmd/ realtime-init`）。冪等 — 何度実行しても同じ状態に収束します。 | Realtime Delivery を使う最初の `make serve` の前、`REALTIME_TABLE_SUFFIX` を変えた後 |
+| `make realtime-init` | 共有インフラを起動し、app コンテナ内から Realtime Delivery の table（EventLog / StreamTicket / InstanceLease）を DynamoDB Local に、fan-out の topic を GoAWS に作ります（`go run ./cmd/ realtime-init`）。冪等 — 何度実行しても同じ状態に収束します。 | Realtime Delivery を使う最初の `make serve` の前、`REALTIME_TABLE_SUFFIX` を変えた後 |
 | `make realtime-smoke` | 共有インフラを起動し、`scripts/realtime-smoke` を AWS SDK Go v2 で DynamoDB Local / GoAWS に対して実行して、呼び出しごとの判定（互換 / 非互換 / 未対応 / 検証不能）を表にします。resource は実行ごとの乱数名で作り終了時に削除します。`ARGS` で flag を渡します（`-format markdown` / `-subscribers N` / `-keep` / `-strict`）。 | Realtime Delivery が行う呼び出しをエミュレータが今も受け付けるかの確認（image を上げたときなど） |
 
 ## `.makefiles/database` 系

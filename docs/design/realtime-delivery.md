@@ -27,7 +27,8 @@ Responsibility split (who owns what):
 | **realtime relay** (`controller/outbox` + realtime publisher) | controller / infrastructure | claim realtime-channel rows in stream order, append to the EventLog, publish the wakeup | business decisions, retry policy beyond [ADR-0058] |
 | **Streamer** (`controller/stream/`) | controller | connection registry (indexed by subject), capacity gate, replay / catch-up scheduling, heartbeat, backpressure, drain, the control-event protocol | authorization, feature vocabulary |
 | **EventLog / ticket / lease stores** (`infrastructure/eventlog`, `streamticket`, `instancelease`) | infrastructure | DynamoDB implementations of the boundary stores | business decisions |
-| **fan-out substrate** (`infrastructure/realtime/`) | infrastructure | SNS publish, per-instance SQS queue / subscription lifecycle, consumer loop | what a wakeup means |
+| **fan-out substrate** (`infrastructure/realtime/`) | infrastructure | SNS publish (the realtime publisher and the revocation notifier), per-instance SQS queue / subscription lifecycle, receive and delete on the instance's own queue | what a wakeup means |
+| **consumer engine** (`controller/realtime/`) | controller | drain the instance's own queue, coalesce wakeups per batch, hand them and the revocations to the Streamer's sinks; the instance-lease heartbeat loop | what to do with a wakeup (the Streamer's), the transport |
 | **orphan-cleanup job** | controller/job + cli | reclaim a crashed instance's queue / subscription / lease under conditional ownership | scheduling (the scheduler owns it, [ADR-0109 (scheduled-job-concurrency-delegated)](../adr/0109-scheduled-job-concurrency-delegated.md)) |
 | **DI module** | di | wire the runtime only when at least one feature adapter is present | business logic |
 | **RealtimeConfig** | config | deployment-dependent knobs only (§3.3) | fixed protocol values |
@@ -129,7 +130,7 @@ The ticket TTL bounds when a *new* connection may start. An established connecti
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Provisioning: Start — verify EventLog reachable
+    [*] --> Provisioning: Start — verify EventLog reachable → write the instance lease
     Provisioning --> Subscribed: create SQS queue → subscribe to SNS topic → start consumer
     Subscribed --> Ready: HTTP listen; lease heartbeat every 30 s (expiry 2 min)
     Ready --> Draining: Stop — refuse new connections; send SERVER_DRAINING / RECONNECT; drain SSE
@@ -140,7 +141,7 @@ stateDiagram-v2
     Orphaned --> Reclaimed: orphan-cleanup job takes ownership by conditional update<br/>unsubscribe → delete queue → delete lease
 ```
 
-Start order is provisioning → subscription → consumer → HTTP listen / ready; stop order is the reverse with SSE drain **before** the consumer stops and before `http.Server.Shutdown`, so a long-lived connection never blocks shutdown.
+Start order is provisioning → subscription → consumer → HTTP listen / ready, and the instance lease is written **first**, before the queue exists: a queue that outlives a process which died before any lease named it can never be reclaimed, since the orphan-cleanup job reaches resources only through expired leases. Stop order is the reverse — SSE drain **before** the consumer stops and before `http.Server.Shutdown`, so a long-lived connection never blocks shutdown, and the lease is deleted **last**, only after the queue and subscription are gone (a lease deleted ahead of a failed teardown would hide the leftovers from the cleanup job).
 
 ### 2.6 Degraded operation
 
@@ -166,9 +167,10 @@ This section states the **planned** placement. The dependency direction and the 
 | `internal/controller/stream/` | connection registry indexed by subject; capacity gate; initial-replay admission; replay / catch-up semaphore and jittered scheduler; heartbeat; write deadline; buffer and close-on-full; drain; control-event writer; the non-strict SSE handler |
 | `internal/infrastructure/rdb/system_cqrs/realtime/` | the `SequenceAllocator` over a PostgreSQL `system_cqrs` table (`stream_id`, `last_sequence`) — the same category as the outbox and idempotency tables ([ADR-0033 (system-cqrs-dml-category)](../adr/0033-system-cqrs-dml-category.md)) |
 | `internal/infrastructure/eventlog/dynamodb/`, `internal/infrastructure/streamticket/dynamodb/`, `internal/infrastructure/instancelease/dynamodb/` | the DynamoDB stores; idempotent one-shot table initializer (never at application start) |
-| `internal/infrastructure/realtime/aws/` | realtime publisher (EventLog append → SNS publish), per-instance SQS queue / subscription lifecycle, consumer loop; `…/local/` only for an emulator call that proves wire-incompatible |
+| `internal/infrastructure/realtime/aws/` | realtime publisher (EventLog append → SNS publish), the revocation notifier, per-instance SQS queue / subscription lifecycle behind the `InstanceSubscription` port (provision / receive / delete / teardown); `internal/infrastructure/realtime/local/` only for the emulator's queue-attribute set, the one call set that proved wire-incompatible |
+| `internal/controller/realtime/` | the consumer engine that drains the `InstanceSubscription` and hands wakeups / revocations to the sinks `controller/stream` implements (the same driving-adapter shape as `controller/outbox` and `controller/worker`); the lease heartbeat loop |
 | `internal/controller/job/<orphan-cleanup>/` + `internal/cli/` | the cleanup job entry point |
-| `internal/di/module/realtime.go` | wired only when at least one feature adapter is provided |
+| `internal/di/module/realtime.go` | wired only when at least one feature adapter is provided; contributes the serve-lifecycle participants (startup probe, the lease + queue provisioner, the consumer and heartbeat runners) that `internal/di/server/hook` runs in the order of §2.5 |
 | `internal/usecase/<feature>/` | the feature's realtime adapter and ticket-issuing usecase |
 
 ```mermaid
@@ -177,6 +179,8 @@ flowchart LR
   feature --> ucrt
   ucrt["usecase/realtime"] --> boundary
   stream["controller/stream"] --> ucrt
+  consumer["controller/realtime"] --> ucrt
+  consumer --> boundary
   infra["infrastructure/eventlog · streamticket · instancelease · realtime"] --> boundary
   feature -. "never" .-x stream
   stream -. "never" .-x feature
@@ -184,7 +188,7 @@ flowchart LR
 
 Architecture rules (mechanically checked by `internal/architest/realtime_isolation_test.go`):
 
-1. `boundary/realtime`, `usecase/realtime`, `controller/stream`, and the four infrastructure packages import no `internal/domain/<feature>` and no `internal/usecase/<feature>`.
+1. `boundary/realtime`, `usecase/realtime`, `controller/stream`, `controller/realtime`, and the five infrastructure packages import no `internal/domain/<feature>` and no `internal/usecase/<feature>`.
 2. `InstanceLeaseStore` may be imported only by the realtime packages, the realtime DI module, and the orphan-cleanup job entry point.
 
 ### 3.2 Outbox additions this subsystem relies on
@@ -200,8 +204,8 @@ Added by the outbox delivery-channel work, shared by every channel:
 
 | Kind | Values |
 | --- | --- |
-| **Typed config** (deployment-dependent) | EventLog endpoint / region / table; ticket and lease tables; credentials (empty → SDK default chain); SNS topic; SQS resource prefix; **max SSE connections per instance**; **replay / catch-up concurrency** |
-| **Fixed in code** (one canonical definition each) | write deadline 10 s; heartbeat 15 s; per-connection buffer 64; catch-up interval 30 s; jitter ratio; ticket TTL 5 min; maximum connection lifetime 1 h; lease heartbeat 30 s / expiry 2 min / cleanup margin 5 min; payload cap 64 KiB; EventLog retention 7 days; backoff cap 60 s |
+| **Typed config** (deployment-dependent) | EventLog endpoint / region / table; ticket and lease tables; credentials (empty → SDK default chain); fan-out endpoint; SNS topic; SQS resource prefix; DLQ (empty → no redrive); both are ARNs on AWS; **max SSE connections per instance**; **replay / catch-up concurrency** |
+| **Fixed in code** (one canonical definition each) | write deadline 10 s; heartbeat 15 s; per-connection buffer 64; catch-up interval 30 s; jitter ratio; ticket TTL 5 min; maximum connection lifetime 1 h; lease heartbeat 30 s / expiry 2 min / cleanup margin 5 min; payload cap 64 KiB; EventLog retention 7 days; backoff cap 60 s; instance queue visibility timeout 30 s / long polling 20 s / redrive `maxReceiveCount` 5 |
 
 ### 3.4 Observability contract
 
@@ -237,9 +241,9 @@ Traces: command → outbox → relay → EventLog share one trace through the ou
 ### 4.2 On the deployment side
 
 - **DynamoDB**: three tables (EventLog with TTL 7 days on `occurredAt`-derived expiry, StreamTicket with TTL, InstanceLease); partition = stream; encryption at rest; point-in-time recovery, backup, and alarms are provisioned outside this repository ([ADR-0106 (vendor-neutral-deploy-skeleton)](../adr/0106-vendor-neutral-deploy-skeleton.md)). A single hot stream is bounded by one partition and one PostgreSQL row; the mechanism does not shard it.
-- **SNS / SQS**: one topic; per-instance queues with a policy admitting only that topic ARN; `RawMessageDelivery=true`; long polling; visibility timeout; redrive to a DLQ; encryption; the minimal IAM actions for create / subscribe / receive / delete.
+- **SNS / SQS**: one standard topic, provisioned by the deployment and named to the application by `REALTIME_TOPIC` (locally `make realtime-init` creates it). The per-instance standard queues are the only resources the application creates itself, at serve start, as `<REALTIME_QUEUE_PREFIX>-<instance id>`, with: an access policy admitting `sqs:SendMessage` from `sns.amazonaws.com` only when `aws:SourceArn` is that topic; `RawMessageDelivery=true` on the subscription; long polling (`ReceiveMessageWaitTimeSeconds=20`); `VisibilityTimeout=30`; `SqsManagedSseEnabled=true` (a customer-managed KMS key is not a knob the mechanism exposes); and, when `REALTIME_DLQ` is set, a `RedrivePolicy` to that shared DLQ with `maxReceiveCount=5` — the DLQ itself is provisioned by the deployment and is an operational safety net, not a correctness requirement, because a lost wakeup is covered by the periodic catch-up. Minimal IAM: the relay needs `sns:Publish` on the topic; a serve instance needs `sqs:CreateQueue`, `sqs:GetQueueAttributes`, `sqs:SetQueueAttributes`, `sqs:ReceiveMessage`, `sqs:DeleteMessage` and `sqs:DeleteQueue` on `<prefix>-*`, plus `sns:Subscribe`, `sns:SetSubscriptionAttributes` and `sns:Unsubscribe` on the topic, and `sns:Publish` on the topic for revocations; the orphan-cleanup job additionally needs `sns:ListSubscriptionsByTopic`. Nothing needs `sns:CreateTopic`.
 - **Edge**: HTTPS; a fixed CORS origin; the client's CSP `connect-src`; load-balancer / proxy idle timeout above the heartbeat interval and response buffering disabled for the stream path; reconnect rate limiting, if any, at the edge; **query strings excluded or redacted from edge / proxy / load-balancer access logs** on the stream path — the ticket travels as a query parameter, and the in-process excision does not reach logs written outside the process.
-- **Local**: DynamoDB Local and an SNS/SQS emulator in the shared infrastructure profile, tables created by the idempotent initializer, table names prefixed per worktree.
+- **Local**: DynamoDB Local and an SNS/SQS emulator (GoAWS) in the shared infrastructure profile, tables and the topic created by the idempotent initializer, table names prefixed per worktree. GoAWS refuses the queue policy and does not honor the redrive / encryption attributes, so the emulator's queue-attribute set (`infrastructure/realtime/local`) sets only the timing attributes; the DI module selects it for the emulator environments and the full set from `dev` on.
 
 ### 4.3 The client contract
 

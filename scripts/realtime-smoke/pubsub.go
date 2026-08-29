@@ -66,6 +66,7 @@ type pubSubSmoke struct {
 	queueURLs []string
 	queueArns []string
 	subArns   []string
+	dlqURL    string
 	payload   string
 	received  [][]sqstypes.Message
 }
@@ -83,7 +84,7 @@ func runPubSub(ctx context.Context, snsClient *sns.Client, sqsClient *sqs.Client
 }
 
 func (s *pubSubSmoke) steps() []step {
-	return []step{
+	return append([]step{
 		{id: "G0", check: "SQS wire protocol probe（ListQueues, AWS JSON 1.0）", halt: true, fn: s.probeProtocol},
 		{id: "G1", check: "SNS CreateTopic", halt: true, fn: s.createTopic},
 		{id: "G2", check: "SQS CreateQueue × N", halt: true, fn: s.createQueues},
@@ -94,7 +95,7 @@ func (s *pubSubSmoke) steps() []step {
 		{id: "G6", check: "Publish 1 回 → N queue で受信、body が raw payload と一致", fn: s.publishAndReceive},
 		{id: "G7", check: "MessageAttributes の透過（付随情報）", fn: s.messageAttributes},
 		{id: "G8", check: "DeleteMessage（receipt handle）", fn: s.deleteMessages},
-	}
+	}, s.attributeSteps()...)
 }
 
 func (s *pubSubSmoke) probeProtocol(ctx context.Context) (string, error) {
@@ -227,8 +228,8 @@ func (s *pubSubSmoke) queuePolicy(ctx context.Context) (string, error) {
 	return "aws:SourceArn 条件付き policy が保存され読み戻せた", nil
 }
 
-// createQueueWithPolicy は、作成時の Attributes で Policy を渡す経路を検査します。production の
-// instance queue は作成と同時に policy を持つのが自然なので、SetQueueAttributes が通らない場合の代替経路になります。
+// createQueueWithPolicy は、作成時の Attributes で Policy を渡す経路を検査します。SetQueueAttributes
+// （G4）が通らない emulator でも policy を設定できるかを見る代替経路です。
 func (s *pubSubSmoke) createQueueWithPolicy(ctx context.Context) (string, error) {
 	name := s.names.queue(s.n)
 	doc, err := s.policyDocument("arn:aws:sqs:" + defaultRegion + ":000000000000:" + name)
@@ -510,7 +511,12 @@ func (s *pubSubSmoke) teardown(ctx context.Context) error {
 		}
 	}
 
-	for _, url := range s.queueURLs {
+	queues := s.queueURLs
+	if s.dlqURL != "" {
+		queues = append(append([]string(nil), queues...), s.dlqURL)
+	}
+
+	for _, url := range queues {
 		if _, err := s.sqs.DeleteQueue(ctx, &sqs.DeleteQueueInput{QueueUrl: aws.String(url)}); err != nil {
 			errs = append(errs, xerrors.Wrap(err, "delete queue "+url))
 		}

@@ -12,9 +12,7 @@ import (
 //   - OnStop:  実行 context をキャンセルし、Body の完了を stopCtx（grace）の範囲で待ち、
 //     その後 [SupervisedRunner.OnStopAux]（任意）を実行する。
 //
-// Body に渡される実行 context は startCtx とは独立しており、OnStop でのみキャンセルされます。これにより
-//   - OnStart 完了後に fx が startCtx をキャンセルしても Body は巻き込まれず（detached）、
-//   - OnStop の cancel でのみ Body の context が切れて中断できる（停止時キャンセル）。
+// Body に渡される実行 context は startCtx とは独立しており、OnStop でのみキャンセルされます（detached）。
 type SupervisedRunner struct {
 	// Body は、background ループ本体です。渡される context は OnStop でキャンセルされます。
 	// nil の場合は何も起動しません。
@@ -28,11 +26,20 @@ type SupervisedRunner struct {
 
 // Register は、SupervisedRunner を reg のライフサイクルへ登録します。
 func (s SupervisedRunner) Register(reg Registrar) {
+	start, stop := s.Bind()
+	reg.RegisterStart(start)
+	reg.RegisterStop(stop)
+}
+
+// Bind は、SupervisedRunner の start / stop 関数を返します。順序を呼び出し側で決めたいときに使い、
+// Register はこれを 1 組ずつ登録します。1 度の Bind で返る組は 1 つの実行 context を共有するので、
+// start は 1 回だけ呼びます。
+func (s SupervisedRunner) Bind() (func(ctx context.Context) error, func(ctx context.Context) error) {
 	// 実行 context は startCtx に紐づけない（[SupervisedRunner] の detached 契約）。
 	runCtx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 
-	reg.RegisterStart(func(_ context.Context) error {
+	start := func(_ context.Context) error {
 		if s.OnStartAux != nil {
 			s.OnStartAux()
 		}
@@ -43,9 +50,9 @@ func (s SupervisedRunner) Register(reg Registrar) {
 			}
 		}()
 		return nil
-	})
+	}
 
-	reg.RegisterStop(func(stopCtx context.Context) error {
+	stop := func(stopCtx context.Context) error {
 		cancel()
 		select {
 		case <-done: // Body 完了（drain 完了）
@@ -55,5 +62,7 @@ func (s SupervisedRunner) Register(reg Registrar) {
 			s.OnStopAux(stopCtx)
 		}
 		return nil
-	})
+	}
+
+	return start, stop
 }

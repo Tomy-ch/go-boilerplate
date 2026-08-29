@@ -10,6 +10,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	outboxengine "go-boilerplate/internal/controller/outbox"
+	"go-boilerplate/internal/infrastructure/publisher"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
 	clocktestkit "go-boilerplate/internal/usecase/boundary/clock/testkit"
@@ -60,12 +61,32 @@ func TestOutboxRelayModule(t *testing.T) {
 			// publisher は共有 InfrastructureModule には含まれず、本モジュールが持ち込む。
 			var publisher publisherbd.Publisher
 
-			validateGraph(t, append(relayDeps(), OutboxRelayModule(outboxbndry.ChannelHTTP), fx.Populate(&publisher))...)
+			validateGraph(
+				t,
+				append(relayDeps(), OutboxRelayModule(outboxbndry.ChannelHTTP), fx.Populate(&publisher))...)
+		})
+
+		t.Run("realtime channel では EventLog へ append する publisher を配線する", func(t *testing.T) {
+			t.Parallel()
+
+			var publisher publisherbd.Publisher
+
+			validateGraph(
+				t,
+				append(relayDeps(), OutboxRelayModule(outboxbndry.ChannelRealtime), fx.Populate(&publisher))...)
 		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
+
+		t.Run("担当する publisher module が無い channel は構築エラー（fail-closed）", func(t *testing.T) {
+			t.Parallel()
+
+			err := fx.ValidateApp(
+				append(relayDeps(), OutboxRelayModule(outboxbndry.Channel("unknown")), fx.NopLogger)...)
+			require.ErrorIs(t, err, publisher.ErrChannelUnsupported)
+		})
 
 		t.Run("未配線では relay engine が解決できずグラフ検証に失敗する", func(t *testing.T) {
 			t.Parallel()
@@ -107,6 +128,47 @@ func Test_provideRelayUsecase(t *testing.T) {
 
 			require.NotNil(t, uc)
 			require.NoError(t, uc.RecordLag(context.Background()))
+		})
+	})
+}
+
+func Test_publisherModuleFor(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("http は OUTBOX_PUBLISHER で選ぶ publisher module を返す", func(t *testing.T) {
+			t.Parallel()
+
+			var p publisherbd.Publisher
+
+			validateGraph(
+				t,
+				append(
+					commonDeps(),
+					InfrastructureModule(), UsecaseModule(), fx.Supply(outboxbndry.ChannelHTTP),
+					publisherModuleFor(outboxbndry.ChannelHTTP), fx.Populate(&p),
+				)...)
+		})
+
+		t.Run("realtime は EventLog へ append する publisher module を返す", func(t *testing.T) {
+			t.Parallel()
+
+			var p publisherbd.Publisher
+
+			validateGraph(t, append(commonDeps(), publisherModuleFor(outboxbndry.ChannelRealtime), fx.Populate(&p))...)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未知の channel は ErrChannelUnsupported の構築エラーになる", func(t *testing.T) {
+			t.Parallel()
+
+			err := fx.ValidateApp(publisherModuleFor(outboxbndry.Channel("unknown")), fx.NopLogger)
+			require.ErrorIs(t, err, publisher.ErrChannelUnsupported)
 		})
 	})
 }

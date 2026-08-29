@@ -20,7 +20,6 @@ const (
 
 	// EventLogRetention は、event を replay できる期間です。store はこの期間を過ぎた item を掃除してよく、
 	// usecase は OccurredAt がこの期間より古い位置への cursor を失効と判定します（ADR-0072）。
-	// 掃除と判定の両方が同じ値を見るよう、定義はここ 1 箇所です。
 	EventLogRetention = 7 * 24 * time.Hour
 )
 
@@ -88,6 +87,30 @@ func (e DeliveryEvent) MarshalJSON() ([]byte, error) {
 	}
 
 	return b, nil
+}
+
+// ParseDeliveryEvent は、MarshalJSON の形（sequence は 10 進文字列）から封筒を復元します。JSON でないか
+// sequence が 10 進整数でなければ ErrInvalidEvent を返します。復元した封筒が保存・配送できる形かは Validate が別に判定します。
+func ParseDeliveryEvent(b []byte) (DeliveryEvent, error) {
+	var w wireEvent
+	if err := json.Unmarshal(b, &w); err != nil {
+		return DeliveryEvent{}, xerrors.Wrap(ErrInvalidEvent, err.Error())
+	}
+
+	seq, err := strconv.ParseInt(w.Sequence, 10, 64)
+	if err != nil {
+		return DeliveryEvent{}, xerrors.Wrap(ErrInvalidEvent, "sequence must be a decimal integer: "+w.Sequence)
+	}
+
+	return DeliveryEvent{
+		EventID:       w.EventID,
+		StreamID:      w.StreamID,
+		Sequence:      Sequence(seq),
+		Type:          w.Type,
+		OccurredAt:    w.OccurredAt,
+		SchemaVersion: w.SchemaVersion,
+		Payload:       w.Payload,
+	}, nil
 }
 
 // Validate は、封筒が保存・配送できる形かを判定します。emit する側は outbox へ書く前に呼び、

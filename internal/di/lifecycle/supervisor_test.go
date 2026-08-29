@@ -28,6 +28,36 @@ func captureHooks(t *testing.T, runner SupervisedRunner) (func(context.Context) 
 	return start, stop
 }
 
+func TestSupervisedRunner_Bind(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Registrar を介さずに start と stop を取り出せる", func(t *testing.T) {
+			t.Parallel()
+
+			bodyDone := make(chan struct{})
+			start, stop := SupervisedRunner{Body: func(ctx context.Context) {
+				<-ctx.Done()
+				close(bodyDone)
+			}}.Bind()
+
+			require.NoError(t, start(context.Background()))
+			require.NoError(t, stop(context.Background()))
+			<-bodyDone
+		})
+
+		t.Run("Body が nil でも start と stop は成功する", func(t *testing.T) {
+			t.Parallel()
+
+			start, stop := SupervisedRunner{}.Bind()
+			require.NoError(t, start(context.Background()))
+			require.NoError(t, stop(context.Background()))
+		})
+	})
+}
+
 func TestSupervisedRunner_Register(t *testing.T) {
 	t.Parallel()
 

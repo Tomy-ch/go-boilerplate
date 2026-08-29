@@ -131,6 +131,7 @@ flowchart TB
     StreamTicket["streamticket/"]
     InstanceLease["instancelease/"]
     RealtimeSecret["realtimesecret/"]
+    Realtime["realtime/"]
     HTTP["httpclient/"]
     ObjStorage["objectstorage/"]
     Pub["publisher/"]
@@ -150,6 +151,7 @@ flowchart TB
     Root --> StreamTicket
     Root --> InstanceLease
     Root --> RealtimeSecret
+    Root --> Realtime
     Root --> HTTP
     Root --> ObjStorage
     Root --> Pub
@@ -174,6 +176,7 @@ flowchart TB
 |`streamticket/`|Realtime Delivery の stream ticket adapter（`realtime.StreamTicketStore` の DynamoDB 実装）|Usecase boundary|[README](streamticket/README.ja.md)|
 |`instancelease/`|Realtime Delivery の instance lease adapter（`realtime.InstanceLeaseStore` の DynamoDB 実装）|Usecase boundary|[README](instancelease/README.ja.md)|
 |`realtimesecret/`|OS の乱数源による ticket 生値の生成（`realtime.SecretGenerator` の実装。sample 専用の `token/` とは独立）|Usecase boundary|[README](realtimesecret/README.ja.md)|
+|`realtime/`|Realtime Delivery の fan-out 基盤（`realtime` チャネルの `boundary.Publisher`・`realtime.RevocationNotifier`・`realtime.InstanceSubscription` の SNS / SQS 実装。`local/` は emulator 用の queue attribute）|Usecase boundary|[README](realtime/README.ja.md)|
 |`httpclient/`|resilient な HTTP client substrate（retry / circuit breaker / tracing）。`webapi/` と `publisher/` が共用する driver 相当の基盤|—（substrate、domain/usecase IF なし）|[README](httpclient/README.ja.md)|
 |`objectstorage/`|オブジェクトストレージ adapter（`boundary.Storage` 実装。endpoint / 資格情報の差し替えで Garage / MinIO / 本番 S3 に接続）|Usecase boundary|[README](objectstorage/README.md)|
 |`publisher/`|transactional outbox の publish 先（`boundary.Publisher` の HTTP 実装）|Usecase boundary|[README](publisher/README.ja.md)|
