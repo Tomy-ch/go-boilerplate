@@ -57,7 +57,7 @@ Echo サーバ起動時に登録する **HTTP 周りの共通ミドルウェア�
 |`basicauth`|`NewBasicAuthValidator`|メトリクスエンドポイント用 Basic 認証|
 |`ipextractor`|`New`|環境に応じたクライアント IP 抽出|
 |`ops`|`IsOpsPath`|運用系パス（/health, /metrics 等）の判定|
-|`streampath`|`Is`|SSE の stream path（`/v1/streams/…`）の判定|
+|`streampath`|`Is` / `IsCommittedStream`|SSE の stream path の判定と、stream として確定したレスポンスの判定|
 
 ## ミドルウェア登録
 
@@ -113,7 +113,7 @@ func ConfigureHTTP(e *echo.Echo, cfg *config.ApplicationConfig, logger logging.L
 
 - **素通し** — ミドルウェアが介入しないリクエストは変更されずに `next` へ届き、`next` の戻り値がそのまま伝播すること。
 - **運用系パスの除外** — `ops.IsOpsPath` を参照するミドルウェア（`logging` / `redmetrics`、および `oapi/skipper` の skipper）は両側を検証する。運用系パス（`/health`・`/metrics` 等）ではログ／メトリクスが出ず、アプリケーションパスでは出ること。
-- **stream パスの除外** — `streampath.Is` を参照するミドルウェア（`timeout` / `logging` / `redmetrics`）も同じく両側を検証する。`/v1/streams/…` には deadline もログもメトリクスも付かず、アプリケーションパスには 3 つとも付くこと。2 つの除外は意図的に別の述語であり、片方だけを通すテストはもう片方について何も証明しない。また `oapi/skipper` は `streampath.Is` も、stream のリクエストを OpenAPI 検証の外へ逃がす類のものも**一切**参照してはならない。その検証こそが ticket の security scheme を走らせているため。
+- **stream の除外** — タイミングの異なる 2 つの述語なので、別々に検証する。`timeout` が参照するのは `streampath.Is`（path、handler の前）で、`/v1/streams/…` には deadline が付かず、アプリケーションパスには付くこと。`logging` / `redmetrics` が参照するのは `streampath.IsCommittedStream`（レスポンスの content type、handler の後）で、`text/event-stream` として確定したレスポンスにはレスポンスのログもメトリクスも付かず、*同じパス* での拒否には両方とも付くこと。確定した側だけを通すテストは拒否側について何も証明しないが、ticket の総当たりや容量の枯渇が現れるのはその拒否側である。`oapi/skipper` はどちらの述語も**一切**参照してはならない。stream のリクエストを OpenAPI 検証の外へ逃がすことは、その ticket の security scheme を飛ばすことになるため。
 - **`server.ResponseOf` の縮退** — Echo のレスポンスを取り出すミドルウェアは、ライタを unwrap できない場合に単なる素通しへ縮退する。`c.SetResponse(httptest.NewRecorder())` で再現し、失敗もせず何も記録しないことを検証する。この分岐は本番スタック経由では到達しないため、パッケージ単体テストだけが担保となる。
 - **環境依存の分岐** — 設定によって振る舞いが切り替わる場合（`recovery` のスタックサイズ、`ipextractor` の抽出方式）は、config セッタで各モードを網羅する。不明モードのフォールバックも含めること。
 

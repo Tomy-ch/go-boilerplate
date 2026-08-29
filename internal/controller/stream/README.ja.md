@@ -15,7 +15,15 @@ ADR-0074 (query-ticket-stream-authentication)。
 | 2 | `after` / `Last-Event-ID` を spec の pattern で検査する | OpenAPI validator | 400（`BAD_REQUEST`） |
 | 3 | cursor を解決する: `Last-Event-ID` → `after` → ticket の初期位置 | `cursor.go` | 負数・範囲外は 400（`INVALID_STREAM_CURSOR`） |
 | 4 | cursor を replay floor と突き合わせる | `usecase/realtime.CursorValidator` | そこから replay を始められなければ 410（`STREAM_CURSOR_EXPIRED`）、EventLog を読めなければ 503 |
-| 5 | 検証済みの `StreamRequest` を `Streamer` へ渡す | `registry.go` | instance が接続上限に達している・有限の待ち時間内に初回 replay の枠が取れない・drain 中のいずれかなら 503（`SERVICE_UNAVAILABLE`）+ `Retry-After` |
+| 5 | 検証済みの `StreamRequest` を `Streamer` へ渡す。`Streamer` は接続を索引へ載せ、そのうえで ticket を**もう一度**検証する | `registry.go` | instance が接続上限に達している・有限の待ち時間内に初回 replay の枠が取れない・drain 中のいずれかなら 503（`SERVICE_UNAVAILABLE`）+ `Retry-After` |
+
+段 5 の 2 度目の検証があるのは、段 1 と段 4 の間に外部 I/O が挟まるからです。その隙間に届いた失効通知は、
+閉じるべき相手を見つけられません — 接続はまだ registry の索引に無いためです。`AccessRevoker` は通知より先に
+ticket を無効化するので、索引へ載せた後に検証し直せばどちらに転んでも決着します: 無効化より後に検証したなら
+接続は拒否され、前に検証したなら登録も無効化より前なので、後続の失効通知がその接続を拾えます。これが無いと、
+アクセスを取り上げられた subject が接続の寿命が尽きるまで event を受け取り続けます。
+[ADR-0074](../../../docs/adr/0074-query-ticket-stream-authentication.md) はそれを、代替案を却下した理由として
+名指ししています。
 
 拒否はすべて共有のエラーハンドラが返す通常の HTTP エラーで、ここはレスポンス本文を書きません。ticket の生値は
 エラー・ログのフィールド・span の属性のどこにも出ません — `httpstack/redaction` がログに出す前にリクエスト URI と

@@ -12,6 +12,7 @@ boundary interface は持ちません。[`awsclient`](../awsclient/README.ja.md)
 | 資格情報 | `awsclient.Resolve` — 鍵 2 つが空なら SDK 既定の chain（IAM ロール）、両方あれば静的、片方だけなら起動エラー |
 | endpoint | `Config.Endpoint` が非空なら `BaseEndpoint`（DynamoDB Local）、空なら SDK 既定の解決（AWS DynamoDB） |
 | retry | `MaxAttempts = 3`、standard mode、`MaxBackoff = 2s`。SDK 既定とほぼ同じ値だが、ここで宣言することで、不達の store が無制限に retry されず数秒で `ErrUnavailable` として表面化する。次にどうするか（503 + `Retry-After`、outbox の backoff）は呼び出し側が決める |
+| 呼び出しの timeout | `CallTimeout = 10s`。Initialize ステップの middleware が、retry も含めた呼び出し全体に適用する。retry は *失敗した試行* を数える機構なので、そもそも返ってこない試行には発火しない。ほかに上限を与えるものも無い — 注入する HTTP クライアントは `Timeout` を設定せず、SSRF ガードのために差し替えた dialer も持たない。SSE の stream path はリクエストの deadline 予算から外れているため、上位の呼び出し側が与える上限も無い。値は SSE の書き込み deadline に合わせた: store への 1 回の呼び出しが 1 回の書き込みより長く生きる理由は無い |
 | エラー正規化 | `Normalize(err, op)` — context の取り消しは `apperror.ErrCanceled`、それ以外は `apperror.ErrUnavailable`。[`objectstorage`](../objectstorage/README.ja.md) と同じく意図的に粗い: 呼び出し側は sentinel で分岐し、SDK の型は見ない。呼び出し側が区別すべき唯一の失敗 — 条件付き書き込みの拒否 — は `IsConditionalCheckFailed` で正規化の前に判定する |
 | table 作成 | `EnsureTable(ctx, client, TableSpec)` — 冪等: `ResourceInUseException` は成功、次に `TableExists` waiter、TTL は `DescribeTimeToLive` が同じ属性で有効と報告していないときだけ設定。`TableSpec` は各 adapter package が公開し、table の数と名前は `internal/cli/realtimeinit` が持つ |
 
