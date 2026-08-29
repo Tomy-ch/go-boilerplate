@@ -1,0 +1,55 @@
+// Package realtime は、Realtime Delivery の fan-out substrate（wakeup の publish と、serve instance ごとの
+// 受信先）の実装を選ぶ唯一の場所です。背後の substrate を差し替える場合に書き換えるのはこのパッケージだけで、
+// DI はここを通ります。
+package realtime
+
+import (
+	"context"
+
+	"go-boilerplate/internal/infrastructure/realtime/aws"
+	"go-boilerplate/internal/infrastructure/realtime/local"
+	"go-boilerplate/internal/observability"
+	publisherbndry "go-boilerplate/internal/usecase/boundary/publisher"
+	rt "go-boilerplate/internal/usecase/boundary/realtime"
+)
+
+// ClientConfig は、fan-out substrate のクライアント設定です。
+type ClientConfig = aws.ClientConfig
+
+// Clients は、同じ資格情報で組み立てた SNS / SQS クライアントの組です。
+type Clients = aws.Clients
+
+// QueueAttributes は、instance queue に設定する属性の集合を組み立てる境界です。
+type QueueAttributes = aws.QueueAttributes
+
+// NewClients は、設定から SNS / SQS クライアントを生成します。
+func NewClients(ctx context.Context, cfg ClientConfig) (Clients, error) {
+	return aws.NewClients(ctx, cfg)
+}
+
+// NewPublisher は、realtime channel の outbox publisher（EventLog へ append → wakeup を publish）を返します。
+func NewPublisher(log rt.EventLogStore, c Clients, topicARN string, tf observability.TracerFactory) publisherbndry.Publisher {
+	return aws.NewPublisher(log, c.SNS, topicARN, tf)
+}
+
+// NewRevocationNotifier は、失効通知を全 instance へ publish する RevocationNotifier を返します。
+func NewRevocationNotifier(c Clients, topicARN string, tf observability.TracerFactory) rt.RevocationNotifier {
+	return aws.NewRevocationNotifier(c.SNS, topicARN, tf)
+}
+
+// NewInstanceSubscription は、instance 固有の受信先（queue + subscription）の lifecycle を持つ InstanceSubscription を返します。
+func NewInstanceSubscription(
+	c Clients, topicARN, queuePrefix string, attrs QueueAttributes, tf observability.TracerFactory,
+) rt.InstanceSubscription {
+	return aws.NewInstanceSubscription(c.SNS, c.SQS, topicARN, queuePrefix, attrs, tf)
+}
+
+// NewQueueAttributes は、production の instance queue の属性（policy / redrive / 暗号化 / timings）を返します。
+func NewQueueAttributes(topicARN, dlqARN string) QueueAttributes {
+	return aws.NewQueueAttributes(topicARN, dlqARN)
+}
+
+// NewEmulatorQueueAttributes は、emulator が受け付ける属性（timings）だけを返します。
+func NewEmulatorQueueAttributes() QueueAttributes {
+	return local.NewQueueAttributes()
+}
