@@ -265,15 +265,22 @@ func Test_parseTools(t *testing.T) {
 			}
 		})
 
-		// mise はテーブル形式の宣言も受け付ける。1 行を必ずツール宣言として読むと、その行で破綻する。
-		t.Run("tools 内でも宣言の形でない行は拾わずに読み進める", func(t *testing.T) {
+		// mise は tool option 付きの table 形式も受け付ける。version を持つ宣言は形が違ってもゲートに載せ、
+		// version の無い行（option だけの table や別の構造）は拾わずに読み進める。
+		t.Run("version を持つ table 形式の宣言は読み、version の無い行は拾わずに読み進める", func(t *testing.T) {
 			t.Parallel()
 			got, err := parseTools([]byte("[tools]\n" +
 				`node = { version = "24.11.0" }` + "\n" +
+				`"npm:markdownlint-cli2" = { version = "0.23.2", trust_policy_excludes = ["fastq@1.20.2"] }` + "\n" +
+				`"npm:some-tool" = { allow_builds = ["esbuild"] }` + "\n" +
 				`sqlc = "1.31.1"` + "\n"))
 			require.NoError(t, err)
-			require.Len(t, got, 1)
-			assert.Equal(t, "sqlc@1.31.1", got[0].id())
+
+			ids := make([]string, 0, len(got))
+			for _, tool := range got {
+				ids = append(ids, tool.id())
+			}
+			assert.ElementsMatch(t, []string{"node@24.11.0", "npm:markdownlint-cli2@0.23.2", "sqlc@1.31.1"}, ids)
 		})
 	})
 }
