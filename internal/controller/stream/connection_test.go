@@ -30,6 +30,11 @@ const (
 // waitTimeout は、テストが合図を待つ上限です。超えたら実装が動いていないので落とします。
 const waitTimeout = 3 * time.Second
 
+var _ net.Error = timeoutError{}
+
+// timeoutError は、Timeout() が true を返す net.Error です。
+type timeoutError struct{}
+
 // fakeSleeper は、待ち時間ごとにテストの合図を待つ Sleeper です。heartbeat / lifetime / catch-up は
 // 待ち時間が違うので、テストは起こしたい tick だけを名指しで起こせます。実時間は 1 度も進みません。
 type fakeSleeper struct {
@@ -85,14 +90,9 @@ func tickNameOf(d time.Duration) string {
 	}
 }
 
-// timeoutError は、Timeout() が true を返す net.Error です。
-type timeoutError struct{}
-
 func (timeoutError) Error() string   { return "i/o timeout" }
 func (timeoutError) Timeout() bool   { return true }
 func (timeoutError) Temporary() bool { return true }
-
-var _ net.Error = timeoutError{}
 
 // testConn は、テスト用の接続を 1 本作ります。
 func testConn() *connection {

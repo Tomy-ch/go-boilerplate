@@ -46,6 +46,19 @@ type sseSleeper struct {
 	catchUp chan struct{}
 }
 
+// sseFixture は、SSE の scenario を駆動するのに要る一式です。EventLog を cursor 検証用と replay 用に
+// 分けて持つのは、replay の読み取りだけを止めて枠を握らせる scenario があるためです。1 つにすると
+// 確定前の cursor 検証まで止まり、確定前と確定後の区別が付けられません。
+type sseFixture struct {
+	srv *Server
+	// cursorLog は、確定前の cursor 検証が読む EventLog です。
+	cursorLog *rttestkit.EventLog
+	// replayLog は、確定後の replay / catch-up が読む EventLog です。
+	replayLog *rttestkit.EventLog
+	sleeper   *sseSleeper
+	registry  *stream.Registry
+}
+
 func newSSESleeper() *sseSleeper {
 	return &sseSleeper{catchUp: make(chan struct{})}
 }
@@ -75,19 +88,6 @@ func (s *sseSleeper) tickCatchUp(t *testing.T) {
 	case <-time.After(sseReadTimeout):
 		t.Fatal("catch-up の待ちが起きなかった")
 	}
-}
-
-// sseFixture は、SSE の scenario を駆動するのに要る一式です。EventLog を cursor 検証用と replay 用に
-// 分けて持つのは、replay の読み取りだけを止めて枠を握らせる scenario があるためです。1 つにすると
-// 確定前の cursor 検証まで止まり、確定前と確定後の区別が付けられません。
-type sseFixture struct {
-	srv *Server
-	// cursorLog は、確定前の cursor 検証が読む EventLog です。
-	cursorLog *rttestkit.EventLog
-	// replayLog は、確定後の replay / catch-up が読む EventLog です。
-	replayLog *rttestkit.EventLog
-	sleeper   *sseSleeper
-	registry  *stream.Registry
 }
 
 // seed は、1 から n までの連続した event を両方の EventLog に置きます。

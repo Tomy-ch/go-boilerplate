@@ -54,6 +54,7 @@ func serveStream(t *testing.T, reg *Registry) *bufio.Reader {
 	srv := httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, r *http.Request) {
 		defer close(finished)
 		e := echo.New()
+		//nolint:contextcheck // echo.Context が内包する request の context をそのまま運ぶため
 		_ = reg.Stream(e.NewContext(r, res), testRequest)
 	}))
 
