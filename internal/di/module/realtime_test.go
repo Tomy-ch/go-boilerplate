@@ -138,13 +138,16 @@ func Test_realtimeModule(t *testing.T) {
 			probes := collectGroup[hook.StartupProbe](t, `group:"serve.startup"`, deps)
 			provisioners := collectGroup[hook.Provisioner](t, `group:"serve.provisioners"`, deps)
 			runners := collectGroup[hook.Runner](t, `group:"serve.runners"`, deps)
+			drainers := collectGroup[hook.Drainer](t, `group:"serve.drainers"`, deps)
 
 			require.Len(t, probes, 1)
 			require.Len(t, provisioners, 1)
 			require.Len(t, runners, 2)
+			require.Len(t, drainers, 1)
 			assert.Equal(t, realtimeParticipantName, probes[0].Name)
 			assert.Equal(t, realtimeParticipantName, provisioners[0].Name)
 			assert.ElementsMatch(t, []string{"realtime-consumer", "realtime-heartbeat"}, []string{runners[0].Name, runners[1].Name})
+			assert.Equal(t, realtimeParticipantName+"-stream", drainers[0].Name)
 		})
 	})
 
@@ -810,5 +813,5 @@ func Test_provideRealtimeStreamDrainer(t *testing.T) {
 
 	assert.Equal(t, "realtime-stream", d.Name)
 	require.NotNil(t, d.Drain)
-	assert.NoError(t, d.Drain(t.Context()), "接続が 1 本も無ければ drain は即座に終わる")
+	require.NoError(t, d.Drain(t.Context()), "接続が 1 本も無ければ drain は即座に終わる")
 }

@@ -199,6 +199,19 @@ func TestRegistry_Stream(t *testing.T) {
 			assert.Empty(t, reg.conns, "断った接続は索引に残さないこと")
 		})
 
+		t.Run("ヘッダの確定に失敗したら replay の枠を返して終わる", func(t *testing.T) {
+			t.Parallel()
+
+			reg, _, _ := testRegistry(t, Settings{ReplayConcurrency: 1})
+
+			// httptest.ResponseRecorder は Flush も SetWriteDeadline も持たないので commit が必ず失敗する。
+			rec, err := callStream(t, reg)
+
+			require.Error(t, err)
+			assert.Empty(t, rec.Body.String())
+			assert.True(t, reg.sem.TryAcquire(1), "確保した枠を返さないと以後すべての接続が 503 になる")
+		})
+
 		t.Run("停止に入っていれば新規接続を受け付けない", func(t *testing.T) {
 			t.Parallel()
 
@@ -286,7 +299,7 @@ func TestRegistry_Drain(t *testing.T) {
 
 			reg, _, _ := testRegistry(t, Settings{})
 
-			assert.NoError(t, reg.Drain(context.Background()))
+			require.NoError(t, reg.Drain(context.Background()))
 		})
 
 		t.Run("RECONNECT を積んで閉じ、終わるまで待つ", func(t *testing.T) {
@@ -318,7 +331,7 @@ func TestRegistry_Drain(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 			t.Cleanup(cancel)
 
-			assert.NoError(t, reg.Drain(ctx), "閉じ切れなくても HTTP shutdown を待たせないこと")
+			require.NoError(t, reg.Drain(ctx), "閉じ切れなくても HTTP shutdown を待たせないこと")
 		})
 
 		t.Run("停止後は新規接続を受け付けない", func(t *testing.T) {
