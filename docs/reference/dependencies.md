@@ -40,8 +40,8 @@ single responsibility each fulfils. Unlike an ADR, this list is *expected to dri
 | Messaging / worker | `aws/aws-sdk-go-v2` | AWS API client core (shared by the object-storage and queue adapters) |
 | Storage | `aws/aws-sdk-go-v2/service/s3` | S3-compatible object storage client (Garage locally) |
 | Realtime Delivery | `aws/aws-sdk-go-v2/service/dynamodb` | DynamoDB client for the EventLog / StreamTicket / InstanceLease stores (DynamoDB Local locally) |
-| Realtime Delivery | `aws/aws-sdk-go-v2/service/sns` | SNS client; used by `scripts/realtime-smoke` today, by the instance fan-out publisher once Phase 7 of #1187 lands |
-| Messaging / worker | `aws/aws-sdk-go-v2/service/sqs` | SQS client (pull-ack worker). Wired only from the removable sample set — see [ADR-0053 (broker-sdk-isolation-measured-as-coupling)](../adr/0053-broker-sdk-isolation-measured-as-coupling.md) |
+| Realtime Delivery | `aws/aws-sdk-go-v2/service/sns` | SNS client for the instance fan-out (`infrastructure/realtime`: wakeup / revocation publish, per-instance subscriptions) and `scripts/realtime-smoke` |
+| Messaging / worker, Realtime Delivery | `aws/aws-sdk-go-v2/service/sqs` | SQS client: the pull-ack worker adapter (wired only from the removable sample set — see [ADR-0053 (broker-sdk-isolation-measured-as-coupling)](../adr/0053-broker-sdk-isolation-measured-as-coupling.md)) and the per-instance queue of the Realtime Delivery fan-out (`infrastructure/realtime`) |
 | Metrics exposition | `prometheus/client_golang` | Prometheus-format metrics endpoint + custom collectors |
 | Metrics exposition | `prometheus/client_model` | Prometheus metric data model (shared types) |
 | Observability (otel core) | `go.opentelemetry.io/otel` (+ `trace` / `metric`) | OpenTelemetry API |
