@@ -14,23 +14,35 @@ import (
 	mock_realtime "go-boilerplate/internal/usecase/boundary/realtime/mock"
 )
 
-func newReplayer(t *testing.T) (*replayer, *mock_realtime.MockEventLogStore) {
+// newReplayer は、構築子を通して Replayer を組み立てます。struct literal を直に組むと、
+// 「NewReplayer が受け取った store を配線し損ねる」退行をどのケースも踏まなくなります。
+func newReplayer(t *testing.T) (Replayer, *mock_realtime.MockEventLogStore) {
 	t.Helper()
 
 	log := mock_realtime.NewMockEventLogStore(gomock.NewController(t))
 
-	return &replayer{log: log, tracer: observability.NewNoopTracerFactory(t).Usecase()}, log
+	return NewReplayer(log, observability.NewNoopTracerFactory(t)), log
 }
 
 func TestNewReplayer(t *testing.T) {
 	t.Parallel()
 
-	r := NewReplayer(
-		mock_realtime.NewMockEventLogStore(gomock.NewController(t)),
-		observability.NewNoopTracerFactory(t),
-	)
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	assert.NotNil(t, r)
+		t.Run("渡した store を読み取りに使う", func(t *testing.T) {
+			t.Parallel()
+
+			log := mock_realtime.NewMockEventLogStore(gomock.NewController(t))
+			log.EXPECT().ReadAfter(gomock.Any(), gomock.Any()).Return(rt.ReadAfterResult{}, nil)
+
+			r := NewReplayer(log, observability.NewNoopTracerFactory(t))
+
+			require.NotNil(t, r)
+			_, _, err := r.ReadPage(context.Background(), "s", 0)
+			require.NoError(t, err)
+		})
+	})
 }
 
 func Test_replayer_ReadPage(t *testing.T) {

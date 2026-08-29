@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -23,17 +24,12 @@ const sseTestDeadline = 2 * time.Second
 // sseTestOccurredAt は、封筒の発生時刻として使う基準時刻です。
 var sseTestOccurredAt = time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-// sseTestEvent は、seq の位置の business event を組み立てます。
+// sseTestEvent は、payload を持つ business event を組み立てます。封筒の骨は testEvent と共有します。
 func sseTestEvent(seq rt.Sequence) rt.DeliveryEvent {
-	return rt.DeliveryEvent{
-		EventID:       "evt-" + seq.String(),
-		StreamID:      "stream-1",
-		Sequence:      seq,
-		Type:          "sample.thing.created.v1",
-		OccurredAt:    sseTestOccurredAt,
-		SchemaVersion: 1,
-		Payload:       json.RawMessage(`{"k":"v"}`),
-	}
+	e := testEvent(seq)
+	e.Payload = json.RawMessage(`{"k":"v"}`)
+
+	return e
 }
 
 // captureSSE は、実 network 上で body を走らせ、client が受け取った生のバイト列を返します。
@@ -123,12 +119,15 @@ func Test_sseWriter_writeEvent(t *testing.T) {
 			got, err := captureSSE(t, func(w *sseWriter) error { return w.writeEvent(sseTestEvent(42)) })
 
 			require.NoError(t, err)
-			assert.Equal(t,
-				"id: 42\n"+
-					`data: {"eventId":"evt-42","streamId":"stream-1","sequence":"42",`+
+			lines := strings.Split(strings.TrimSuffix(got, "\n\n"), "\n")
+			require.Len(t, lines, 2, "business event は id 行と data 行の 2 行で 1 フレーム")
+			assert.Equal(t, "id: 42", lines[0])
+			// フレーミングと各フィールドは wire 契約だが、JSON のフィールド順は MarshalJSON の実装詳細。
+			assert.JSONEq(t,
+				`{"eventId":"evt-42","streamId":"stream-1","sequence":"42",`+
 					`"type":"sample.thing.created.v1","occurredAt":"2026-01-01T00:00:00Z",`+
-					`"schemaVersion":1,"payload":{"k":"v"}}`+"\n\n",
-				got)
+					`"schemaVersion":1,"payload":{"k":"v"}}`,
+				strings.TrimPrefix(lines[1], "data: "))
 		})
 	})
 
