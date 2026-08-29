@@ -2,12 +2,14 @@
 
 The mechanism-side usecases of Realtime Delivery ([`docs/design/realtime-delivery.md`](../../../docs/design/realtime-delivery.md)):
 what a stream connection needs decided before it is committed — whether the presented cursor can
-still be replayed, and whether the presented ticket is valid — plus the issuing side of the ticket.
+still be replayed, and whether the presented ticket is valid — plus the issuing side of the ticket
+and the read a committed connection repeats for the rest of its life.
 It depends on `boundary/realtime` and `boundary/clock` only and carries no feature vocabulary.
 
 | Usecase | Decides | Errors |
 | --- | --- | --- |
 | `CursorValidator.Validate(streamID, cursor)` | The replay floor, **derived** from the EventLog rather than stored ([ADR-0072](../../../docs/adr/0072-postgres-state-dynamodb-eventlog.md)): one strongly consistent read of the first event after `cursor`: it is `cursor+1` ⇒ replayable unless older than `realtime.EventLogRetention`; it is later than `cursor+1` ⇒ gap; nothing after and the event at a non-initial cursor absent ⇒ gone. A single read, because two reads (`cursor+1`, then latest) would call a normal append that lands between them a gap | `ErrCursorExpired` (the client goes back to the canonical recovery path — History); a store failure passes through as `apperror.ErrUnavailable` so the caller can answer `503 + Retry-After` |
+| `Replayer.ReadPage(streamID, after)` | What a connection has not seen yet: the events after `after`, ascending, at most `ReplayPageLimit` (64). The initial replay after a connection commits and every later re-read (a wakeup, the periodic catch-up) are the same call — only the trigger differs. Contiguity is **not** judged here: whether the returned page continues the caller's own position is the caller's comparison, since only it knows where it is | a store failure passes through as `apperror.ErrUnavailable` |
 | `TicketIssuer.Issue(in)` → `TicketView` | A fresh 256-bit value from `SecretGenerator`, stored as its SHA-256 hash bound to subject / destination / scope / initial cursor, valid for `TicketTTL` (5 min) | store failures pass through |
 | `TicketVerifier.Verify(value, destination)` → `realtime.StreamGrant` | The value's hash exists, is not expired at `clock.Now()`, and is bound to this destination | `ErrTicketInvalid` (wraps `apperror.ErrUnauthenticated`) for every failure — unknown, expired and wrong destination are deliberately indistinguishable: distinguishing them would tell the caller whether a given ticket exists |
 | `LeaseKeeper.Beat(id)` / `Release(id)` | The instance lease ([ADR-0073](../../../docs/adr/0073-sns-sqs-instance-fanout.md)): `Beat` records "alive now" with an expiry of `clock.Now() + LeaseExpiry` (2 min); `Release` deletes the record when the instance has torn its resources down itself. The interval (`LeaseHeartbeatInterval`, 30 s) and the cleanup margin (`LeaseCleanupMargin`, 5 min) are the fixed values the heartbeat loop and the orphan-cleanup job read from here | store failures pass through |
@@ -16,9 +18,10 @@ It depends on `boundary/realtime` and `boundary/clock` only and carries no featu
 `ErrCursorExpired` is a package sentinel rather than an `apperror` entry: this package does not know HTTP.
 The stream handler (`internal/controller/stream`) maps it to `410` by joining `apperror.ErrGone`.
 
-Out of this package: replay reads and catch-up (the stream handler owns them together with the
-connection state), the heartbeat *loop* (`internal/controller/realtime` drives `LeaseKeeper.Beat` on the
-serve lifecycle's schedule), and orphan-cleanup ownership (the cleanup job).
+Out of this package: *when* to replay (the connection registry in `internal/controller/stream` owns the
+schedule and the connection state; this package only performs the read), the heartbeat *loop*
+(`internal/controller/realtime` drives `LeaseKeeper.Beat` on the serve lifecycle's schedule), and
+orphan-cleanup ownership (the cleanup job).
 
 ## Test strategy
 
