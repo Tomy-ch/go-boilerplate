@@ -38,6 +38,10 @@ hosts = [
   "tuf-repo-cdn.sigstore.dev:443",
   "rekor.sigstore.dev:443",
   "fulcio.sigstore.dev:443",
+  # aube（mise 内蔵の npm インストーラ）が依存解決時に問い合わせる supply-chain 情報源。遮断すると解決自体が失敗する
+  "api.npmjs.org:443",
+  "api.osv.dev:443",
+  "npm.jsr.io:443",
 ]
 
 [class.image]

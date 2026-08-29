@@ -61,14 +61,20 @@ func realtimeDeps() []fx.Option {
 	)
 }
 
-// realtimeRunDeps は、constructor を実際に走らせて value group を集めるための依存です。ObservabilityModule と
-// DatabaseModule は global（prometheus の既定 registry）へ触るため並列テストと競合する。realtime が要るのは
-// Logger / TracerFactory / outbound クライアントだけなので、その 3 つを test 用の実装で差し込む。
+// realtimeRunDeps は、constructor を実際に走らせて value group を集めるための依存です。ConfigModule /
+// ObservabilityModule / DatabaseModule は global（設定の読み込みと prometheus の既定 registry）へ触るため、
+// 並列テストと競合する。realtime が要るのは設定 3 つと Logger / TracerFactory / outbound クライアントだけ
+// なので、いずれも test 用の実装を直接差し込む。
 func realtimeRunDeps(t *testing.T) fx.Option {
 	t.Helper()
 
+	cfg := config.MockConfigForTest(t)
+
 	return fx.Options(
-		lifecycle.Module(), ConfigModule(), clockModule(), realtimeModule(),
+		lifecycle.Module(), clockModule(), realtimeModule(),
+		fx.Provide(func() *config.ApplicationConfig { return config.NewApplicationConfig(cfg) }),
+		fx.Provide(func() *config.EndpointConfig { return config.NewEndpointConfig(cfg) }),
+		fx.Provide(func() *config.RealtimeConfig { return config.NewRealtimeConfig(cfg) }),
 		fx.Provide(func() logging.Logger { return logging.NewTestLogger(t) }),
 		fx.Provide(func() observability.TracerFactory { return observability.NewNoopTracerFactory(t) }),
 		fx.Provide(func() *observability.OutboundHTTPClient { return observability.NewDisabledOutboundHTTPClient(true) }),

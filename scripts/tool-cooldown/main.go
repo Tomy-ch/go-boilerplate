@@ -80,6 +80,11 @@ var (
 
 	// toolLineRe は `[tools]` の 1 行を key と version へ割る。key は裸でも引用符付きでもよい。
 	toolLineRe = regexp.MustCompile(`^\s*(?:"([^"]+)"|([A-Za-z0-9_.\-]+))\s*=\s*"([^"]+)"\s*$`)
+	// toolTableLineRe は tool option 付きの 1 行宣言（`key = { version = "...", ... }`）から key と version を読む。
+	// 宣言の形が変わっただけでゲートから外れると、窓の検査が黙って抜ける。
+	toolTableLineRe = regexp.MustCompile(
+		`^\s*(?:"([^"]+)"|([A-Za-z0-9_.\-]+))\s*=\s*\{.*\bversion\s*=\s*"([^"]+)".*\}\s*$`,
+	)
 	// sectionRe は TOML のセクション見出し。
 	sectionRe = regexp.MustCompile(`^\s*\[([^\]]+)\]\s*$`)
 	// extrasRe は extras 表記（`graphifyy[sql]` の `[sql]`）。
@@ -283,6 +288,9 @@ func parseTools(content []byte) ([]tool, error) {
 			continue
 		}
 		m := toolLineRe.FindStringSubmatch(trimmed)
+		if m == nil {
+			m = toolTableLineRe.FindStringSubmatch(trimmed)
+		}
 		if m == nil {
 			continue
 		}

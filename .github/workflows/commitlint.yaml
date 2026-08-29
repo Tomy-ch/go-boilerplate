@@ -74,6 +74,9 @@ jobs:
             tuf-repo-cdn.sigstore.dev:443
             rekor.sigstore.dev:443
             fulcio.sigstore.dev:443
+            api.npmjs.org:443
+            api.osv.dev:443
+            npm.jsr.io:443
 
       # fetch-depth: 0 is required. The default shallow checkout has neither the base branch tip
       # nor the PR's own commits, and both ends of the range resolve to a bad object.
