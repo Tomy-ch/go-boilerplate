@@ -63,12 +63,13 @@ func realtimeDeps() []fx.Option {
 
 // realtimeRunDeps は、constructor を実際に走らせて value group を集めるための依存です。ObservabilityModule と
 // DatabaseModule は global（prometheus の既定 registry）へ触るため並列テストと競合する。realtime が要るのは
-// TracerFactory と outbound クライアントだけなので、その 2 つを test 用の実装で差し込む。
+// Logger / TracerFactory / outbound クライアントだけなので、その 3 つを test 用の実装で差し込む。
 func realtimeRunDeps(t *testing.T) fx.Option {
 	t.Helper()
 
 	return fx.Options(
-		lifecycle.Module(), ConfigModule(), LoggingModule(), SystemModule(), clockModule(), realtimeModule(),
+		lifecycle.Module(), ConfigModule(), clockModule(), realtimeModule(),
+		fx.Provide(func() logging.Logger { return logging.NewTestLogger(t) }),
 		fx.Provide(func() observability.TracerFactory { return observability.NewNoopTracerFactory(t) }),
 		fx.Provide(func() *observability.OutboundHTTPClient { return observability.NewDisabledOutboundHTTPClient(true) }),
 		fx.Provide(echo.New),
