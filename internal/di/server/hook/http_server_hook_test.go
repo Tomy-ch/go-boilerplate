@@ -52,7 +52,13 @@ func TestRegisterHTTPServerHooks(t *testing.T) {
 
 	_, srv := newTestHTTPServer(t, srvCfg)
 
-	RegisterHTTPServerHooks(srv, mockReg, mockLogger, appCfg, secCfg, srvCfg, osCfg, &extension.AppliedServerExtends{})
+	mockLogger.EXPECT().Named(serveLifecycleLoggerName).Return(mockLogger)
+	mockLogger.EXPECT().CallerSkip(serverCallerSkip).Return(mockLogger)
+
+	RegisterHTTPServerHooks(HTTPServerHooksIn{
+		Srv: srv, Reg: mockReg, Log: mockLogger, AppCfg: appCfg, SecCfg: secCfg, SrvCfg: srvCfg, OSCfg: osCfg,
+		Applied: &extension.AppliedServerExtends{},
+	})
 	assert.NotNil(t, startFn)
 	assert.NotNil(t, shutdownFn)
 }
