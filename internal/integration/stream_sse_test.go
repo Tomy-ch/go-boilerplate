@@ -77,12 +77,29 @@ func (s *sseSleeper) tickCatchUp(t *testing.T) {
 	}
 }
 
-// sseFixture は、SSE の scenario を駆動するのに要る一式です。
+// sseFixture は、SSE の scenario を駆動するのに要る一式です。EventLog を cursor 検証用と replay 用に
+// 分けて持つのは、replay の読み取りだけを止めて枠を握らせる scenario があるためです。1 つにすると
+// 確定前の cursor 検証まで止まり、確定前と確定後の区別が付けられません。
 type sseFixture struct {
-	srv      *Server
-	log      *rttestkit.EventLog
-	sleeper  *sseSleeper
-	registry *stream.Registry
+	srv *Server
+	// cursorLog は、確定前の cursor 検証が読む EventLog です。
+	cursorLog *rttestkit.EventLog
+	// replayLog は、確定後の replay / catch-up が読む EventLog です。
+	replayLog *rttestkit.EventLog
+	sleeper   *sseSleeper
+	registry  *stream.Registry
+}
+
+// seed は、1 から n までの連続した event を両方の EventLog に置きます。
+func (f *sseFixture) seed(n int) {
+	seedEvents(f.cursorLog, n)
+	seedEvents(f.replayLog, n)
+}
+
+// add は、後から届いた event を両方の EventLog に置きます。
+func (f *sseFixture) add(events ...rt.DeliveryEvent) {
+	f.cursorLog.Seed(events...)
+	f.replayLog.Seed(events...)
 }
 
 // sseEvent は、seq の位置の封筒を組み立てます。
@@ -123,13 +140,13 @@ func newSSEServer(t *testing.T, set stream.Settings) *sseFixture {
 	)
 	require.NoError(t, err)
 
-	log := rttestkit.NewEventLog()
+	cursorLog, replayLog := rttestkit.NewEventLog(), rttestkit.NewEventLog()
 	sleeper := newSSESleeper()
 	tf := observability.NewNoopTracerFactory(t)
 	logger := logging.NewTestLogger(t)
 
-	cursors := ucrealtime.NewCursorValidator(log, clocktestkit.NewMockClock(t, sseNow), tf)
-	registry := stream.NewRegistry(ucrealtime.NewReplayer(log, tf), sleeper, logger, tf, set)
+	cursors := ucrealtime.NewCursorValidator(cursorLog, clocktestkit.NewMockClock(t, sseNow), tf)
+	registry := stream.NewRegistry(ucrealtime.NewReplayer(replayLog, tf), sleeper, logger, tf, set)
 
 	e := echo.New()
 	UseAppErrorHandlerWithLogger(t, e, logger,
@@ -138,7 +155,9 @@ func newSSEServer(t *testing.T, set stream.Settings) *sseFixture {
 	)
 	stream.BindHandler(e, tf, cursors, registry)
 
-	return &sseFixture{srv: StartServer(t, e), log: log, sleeper: sleeper, registry: registry}
+	return &sseFixture{
+		srv: StartServer(t, e), cursorLog: cursorLog, replayLog: replayLog, sleeper: sleeper, registry: registry,
+	}
 }
 
 // streamPath は、ticket 付きの接続先を組み立てます。
@@ -156,7 +175,7 @@ func TestStreamSSE_Integration(t *testing.T) {
 			t.Parallel()
 
 			f := newSSEServer(t, stream.Settings{})
-			seedEvents(f.log, 3)
+			f.seed(3)
 
 			c, res := connectSSE(t, f.srv, streamPath(1))
 
@@ -171,7 +190,7 @@ func TestStreamSSE_Integration(t *testing.T) {
 			t.Parallel()
 
 			f := newSSEServer(t, stream.Settings{})
-			seedEvents(f.log, 4)
+			f.seed(4)
 
 			byAfter, res := connectSSE(t, f.srv, streamPath(3))
 			require.Equal(t, http.StatusOK, res.StatusCode)
@@ -191,14 +210,14 @@ func TestStreamSSE_Integration(t *testing.T) {
 			t.Parallel()
 
 			f := newSSEServer(t, stream.Settings{})
-			seedEvents(f.log, 1)
+			f.seed(1)
 
 			c, res := connectSSE(t, f.srv, streamPath(0))
 			require.Equal(t, http.StatusOK, res.StatusCode)
 			require.Equal(t, "1", c.next().id)
 
 			// wakeup は一切送らず、後から届いた event を catch-up だけで拾わせる。
-			f.log.Seed(sseEvent(2))
+			f.add(sseEvent(2))
 			f.sleeper.tickCatchUp(t)
 
 			assert.Equal(t, "2", c.next().id)
@@ -208,7 +227,7 @@ func TestStreamSSE_Integration(t *testing.T) {
 			t.Parallel()
 
 			f := newSSEServer(t, stream.Settings{})
-			seedEvents(f.log, 5)
+			f.seed(5)
 
 			first, res := connectSSE(t, f.srv, streamPath(0))
 			require.Equal(t, http.StatusOK, res.StatusCode)
@@ -225,7 +244,7 @@ func TestStreamSSE_Integration(t *testing.T) {
 			t.Parallel()
 
 			f := newSSEServer(t, stream.Settings{})
-			seedEvents(f.log, 1)
+			f.seed(1)
 			c, res := connectSSE(t, f.srv, streamPath(0))
 			require.Equal(t, http.StatusOK, res.StatusCode)
 			require.Equal(t, "1", c.next().id)
@@ -246,7 +265,7 @@ func TestStreamSSE_Integration(t *testing.T) {
 			t.Parallel()
 
 			f := newSSEServer(t, stream.Settings{})
-			seedEvents(f.log, 1)
+			f.seed(1)
 			c, res := connectSSE(t, f.srv, streamPath(0))
 			require.Equal(t, http.StatusOK, res.StatusCode)
 			require.Equal(t, "1", c.next().id)
@@ -267,7 +286,7 @@ func TestStreamSSE_Integration(t *testing.T) {
 
 			f := newSSEServer(t, stream.Settings{})
 			// 1 と 2 が保持期間から落ち、3 だけが残っている状態。
-			f.log.Seed(sseEvent(3))
+			f.add(sseEvent(3))
 
 			_, res := connectSSE(t, f.srv, streamPath(1))
 
@@ -282,7 +301,7 @@ func TestStreamSSE_Integration(t *testing.T) {
 			t.Parallel()
 
 			f := newSSEServer(t, stream.Settings{MaxConnections: 3})
-			seedEvents(f.log, 1)
+			f.seed(1)
 
 			held := make([]*sseClient, 0, 3)
 			for range 3 {
@@ -309,10 +328,10 @@ func TestStreamSSE_Integration(t *testing.T) {
 			t.Parallel()
 
 			f := newSSEServer(t, stream.Settings{ReplayConcurrency: 1})
-			seedEvents(f.log, 1)
+			f.seed(1)
 
 			// 1 本目に枠を握らせたまま初回 replay を終わらせない。
-			release := f.log.Hold()
+			release := f.replayLog.Hold()
 			t.Cleanup(release)
 
 			_, res := connectSSE(t, f.srv, streamPath(0))

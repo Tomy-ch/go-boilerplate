@@ -343,9 +343,10 @@ func TestRegistry_pump(t *testing.T) {
 			r := bufio.NewReader(res.Body)
 
 			assert.Equal(t, "id: 1\n", readLine(t, r))
+			assert.Contains(t, readLine(t, r), `"sequence":"1"`)
+			assert.Equal(t, "\n", readLine(t, r), "フレームは空行で終わること")
 
-			conn.signalControl(stopControl())
-			conn.close(closeReasonRevoked)
+			conn.closeWith(stopControl(), closeReasonRevoked)
 
 			assert.Equal(t, "event: control\n", readLine(t, r))
 			<-finished
