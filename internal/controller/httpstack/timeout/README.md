@@ -8,6 +8,17 @@ Entry point of the **deadline budget**: a single per-request deadline is set onc
 
 To avoid response-writer data races, Echo's race-free `middleware.ContextTimeout` is used as the base (the deprecated `middleware.Timeout` carries such a race). On deadline exceedance the middleware returns `apperror.ErrUnavailable`, so Echo's central unified `HTTPErrorHandler` produces the same error body shape as every other error (HTTP 503).
 
+## The one path with no budget
+
+The SSE stream endpoint (`/v1/streams/{destination}`) is skipped, via `streampath.Is`. A stream is
+expected to stay open for minutes and is bounded to one hour, so a single 60-second budget would not
+limit it — it would end it, at a point unrelated to anything the client or the server decided.
+
+Skipping does not leave the connection unbounded. `controller/stream` replaces the budget with bounds
+that fit a long-lived response: a write deadline reset on every write, a heartbeat that detects a
+dead peer, and the maximum connection lifetime. Everything that endpoint refuses, it refuses before
+the response is committed, while the budget still would have applied to nothing that matters.
+
 ## Notes
 
 - Registered as a **Pre** middleware (priority 2, just after `uri`=1) so the deadline covers all `Use` middleware, validation, handler, and DB — lower priority executes first, so `uri`=1 runs before `timeout`=2. See `internal/di/server/extension/inbound`.

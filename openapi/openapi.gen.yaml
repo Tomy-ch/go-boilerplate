@@ -213,7 +213,9 @@ paths:
         ticket に束縛された destination の event を Server-Sent Events で受信します。接続時に cursor（`Last-Event-ID` → `after` →
         ticket の初期位置の順）を解決し、その位置より後の event を sequence 順に配信したのち、新しい event を届け続けます。
         拒否はすべてレスポンス確定前に行われます（ticket の不備は 401、cursor の形式不正は 400、保持期間外の cursor は 410、
-        受け入れ余力が無いときは 503）。確定後の指示は `event: control` の ControlEvent で伝えます。
+        受け入れ余力が無いときは 503）。503 には再接続までの目安を秒で表す `Retry-After` が伴います（接続数の上限・初回 replay の
+        枠・Realtime 依存の不調のいずれでも）。確定後の指示は `event: control` の ControlEvent で伝え、その `retryAfterMs` は
+        同じ目安をミリ秒で表したものです。
       security:
         - StreamTicket: []
       parameters:

@@ -1,8 +1,9 @@
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 
-// Package realtime は、Realtime Delivery の機構側 usecase — cursor の失効判定と ticket の発行 / 検証 —
-// を提供します。feature の語彙は持たず、boundary/realtime にだけ依存します。replay の読み取りと
-// lease の heartbeat / orphan cleanup の呼び出し側は、それぞれ stream handler と serve lifecycle が持ちます。
+// Package realtime は、Realtime Delivery の機構側 usecase — cursor の失効判定、ticket の発行 / 検証、
+// replay の読み取り — を提供します。feature の語彙は持たず、boundary/realtime にだけ依存します。
+// replay をいつ行うかと lease の heartbeat / orphan cleanup の呼び出し側は、
+// それぞれ connection registry と serve lifecycle が持ちます。
 package realtime
 
 import (

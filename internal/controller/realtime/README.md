@@ -9,8 +9,8 @@
   side.
 - The engine owns only the **loop, the per-batch coalescing and the wait control**. What a wakeup
   *means* — which connections to wake, which to close — belongs to the sinks, which the connection
-  registry in `controller/stream` implements (Phase 6 of #1187). This package declares the sinks it
-  needs and nothing else about connections.
+  registry in `controller/stream` implements. This package declares the sinks it needs and nothing
+  else about connections; the registry is reached only through them, wired in the realtime DI module.
 - Depends only on usecase-layer ports: `realtime.InstanceSubscription`, `ucrealtime.LeaseKeeper`,
   `clock.Sleeper`, `logging.Logger`, and `observability.LayerTracer` (via `TracerFactory.Controller()`).
   It never imports `internal/infrastructure/*` (depguard `maintain_a_sound_controller`) and never names

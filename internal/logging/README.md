@@ -340,6 +340,14 @@ Log keys defined in `const.go`.
 |`ReceiveCountKey`|`receive_count`|
 |`PanicKey`|`panic`|
 
+### Realtime
+
+|Constant|Key|
+|---|---|
+|`StreamIDKey`|`stream_id`|
+|`CloseReasonKey`|`close_reason`|
+|`OpenConnectionsKey`|`open_connections`|
+
 ### Observability
 
 |Constant|Key|

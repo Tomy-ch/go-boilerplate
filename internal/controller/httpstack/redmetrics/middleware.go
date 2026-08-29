@@ -5,14 +5,17 @@ import (
 	"time"
 
 	"go-boilerplate/internal/controller/httpstack/ops"
+	"go-boilerplate/internal/controller/httpstack/streampath"
 	"go-boilerplate/internal/controller/server"
 
 	"github.com/labstack/echo/v5"
 )
 
 // Middleware は、HTTP リクエストの count / duration / status を計測する Echo ミドルウェアを返します。
-// Observe は 1 リクエストにつき厳密に 1 回だけ呼び出されます。/metrics などの運用系パスは計測対象から
-// 除外し、レスポンスを取り出せない場合は計測せず素通しします。After フック方式に起因する既知の限界
+// Observe は 1 リクエストにつき厳密に 1 回だけ呼び出されます。/metrics などの運用系パスと、SSE として
+// 確定した接続は計測対象から除外し（接続の長さを request latency として数えると分布が歪むため）、
+// レスポンスを取り出せない場合は計測せず素通しします。stream endpoint の確定前の拒否は普通の
+// レスポンスなので計測します — ticket 総当たりや容量枯渇はここにしか現れません。After フック方式に起因する既知の限界
 // （ボディ無し応答が計測されない等）は README を参照してください。
 func Middleware(rec Recorder) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -32,6 +35,10 @@ func Middleware(rec Recorder) echo.MiddlewareFunc {
 			var once sync.Once
 			res.After(func() {
 				once.Do(func() {
+					if streampath.IsCommittedStream(res.Header()) {
+						return
+					}
+
 					status := normalizeStatus(res.Status)
 					rec.Observe(method, routeOf(c), status, statusClass(status), time.Since(start))
 				})

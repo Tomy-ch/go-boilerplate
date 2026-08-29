@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	smithymiddleware "github.com/aws/smithy-go/middleware"
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/infrastructure/awsclient"
@@ -25,6 +26,16 @@ const (
 	MaxAttempts = 3
 	// MaxBackoff は、retry 間の待ち時間の上限です。SSE の write deadline（10 秒）の内側に収めます。
 	MaxBackoff = 2 * time.Second
+	// CallTimeout は、1 回の API 呼び出し全体（retry を含む）に与える上限です。
+	//
+	// これが無いと、応答を返さない store に対して呼び出しがいつまでも戻りません。retry は「失敗した
+	// 試行」を数える機構なので返ってこない試行には一度も発火せず、SDK にも HTTP クライアントにも
+	// 別の上限がありません（DI が渡すクライアントは Timeout を持たず、SSRF ガードのために差し替えた
+	// Dialer にも Timeout はありません）。SSE の stream path は request の deadline budget から
+	// 外れているため、上位に頼れる上限も無く、ここが唯一の歯止めになります。
+	//
+	// 値は SSE の write deadline に揃えます。呼び出しが 1 回の書き込みより長く待つ理由がないためです。
+	CallTimeout = 10 * time.Second
 	// tableWaitTimeout は、table が ACTIVE になるのを待つ上限です。
 	tableWaitTimeout = 60 * time.Second
 )
@@ -78,7 +89,29 @@ func New(ctx context.Context, cfg Config) (*dynamodb.Client, error) {
 		if cfg.Endpoint != "" {
 			o.BaseEndpoint = aws.String(cfg.Endpoint)
 		}
+		o.APIOptions = append(o.APIOptions, withCallTimeout(CallTimeout))
 	}), nil
+}
+
+// withCallTimeout は、API 呼び出し 1 回の全体に上限を与える middleware を stack の先頭へ差します。
+// retry の外側に置くので、上限は試行ごとではなく呼び出し全体に掛かります。
+func withCallTimeout(d time.Duration) func(*smithymiddleware.Stack) error {
+	return func(stack *smithymiddleware.Stack) error {
+		return stack.Initialize.Add(
+			smithymiddleware.InitializeMiddlewareFunc(
+				"dynamodbCallTimeout",
+				func(
+					ctx context.Context, in smithymiddleware.InitializeInput, next smithymiddleware.InitializeHandler,
+				) (smithymiddleware.InitializeOutput, smithymiddleware.Metadata, error) {
+					ctx, cancel := context.WithTimeout(ctx, d)
+					defer cancel()
+
+					return next.HandleInitialize(ctx, in)
+				},
+			),
+			smithymiddleware.Before,
+		)
+	}
 }
 
 // IsConditionalCheckFailed は、条件式が成立せず書き込みが拒否されたエラーかを判定します。

@@ -13,6 +13,7 @@ import (
 	"go-boilerplate/internal/controller/ctxhelper"
 	oapiauth "go-boilerplate/internal/controller/httpstack/oapi/auth"
 	ctrlrealtime "go-boilerplate/internal/controller/realtime"
+	mock_ctrlrealtime "go-boilerplate/internal/controller/realtime/mock"
 	"go-boilerplate/internal/controller/stream"
 	streamauth "go-boilerplate/internal/controller/stream/auth"
 	"go-boilerplate/internal/di/lifecycle"
@@ -38,27 +39,10 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-// stubSinks は、graph 検証に要るだけの wakeup / 失効の受け口です（本物は Phase 6 の connection registry）。
-type stubSinks struct{}
-
-// stubStreamer は、graph 検証に要るだけの Streamer です（本物は Phase 6）。
-type stubStreamer struct{}
-
-func (stubStreamer) Stream(*echo.Context, stream.StreamRequest) error { return nil }
-
-func (stubSinks) Wake(context.Context, rt.StreamID, rt.Sequence) {}
-func (stubSinks) Revoke(context.Context, string, rt.StreamID)    {}
-
 // realtimeDeps は、realtime module の graph 検証に要る下位モジュール群です（clock は infrastructure 側の module）。
-// stream handler の登録が要る *echo.Echo と Streamer、consumer engine が要る sink は、server module と Phase 6 の
-// 代わりにここで供給します。
+// stream handler の登録に要る *echo.Echo だけは server module の代わりにここで供給します。
 func realtimeDeps() []fx.Option {
-	return append(commonDeps(), clockModule(), realtimeModule(),
-		fx.Provide(echo.New),
-		fx.Provide(func() stream.Streamer { return stubStreamer{} }),
-		fx.Provide(func() ctrlrealtime.Waker { return stubSinks{} }),
-		fx.Provide(func() ctrlrealtime.Revoker { return stubSinks{} }),
-	)
+	return append(commonDeps(), clockModule(), realtimeModule(), fx.Provide(echo.New))
 }
 
 // realtimeRunDeps は、constructor を実際に走らせて value group を集めるための依存です。ConfigModule /
@@ -79,9 +63,6 @@ func realtimeRunDeps(t *testing.T) fx.Option {
 		fx.Provide(func() observability.TracerFactory { return observability.NewNoopTracerFactory(t) }),
 		fx.Provide(func() *observability.OutboundHTTPClient { return observability.NewDisabledOutboundHTTPClient(true) }),
 		fx.Provide(echo.New),
-		fx.Provide(func() stream.Streamer { return stubStreamer{} }),
-		fx.Provide(func() ctrlrealtime.Waker { return stubSinks{} }),
-		fx.Provide(func() ctrlrealtime.Revoker { return stubSinks{} }),
 		fx.Replace(testFanout(t)),
 	)
 }
@@ -543,7 +524,9 @@ func Test_provideRealtimeConsumer(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	engine := provideRealtimeConsumer(
-		mock_rt.NewMockInstanceSubscription(ctrl), stubSinks{}, stubSinks{}, mock_clock.NewMockSleeper(ctrl),
+		mock_rt.NewMockInstanceSubscription(ctrl),
+		mock_ctrlrealtime.NewMockWaker(ctrl), mock_ctrlrealtime.NewMockRevoker(ctrl),
+		mock_clock.NewMockSleeper(ctrl),
 		logging.NewTestLogger(t), observability.NewNoopTracerFactory(t),
 	)
 	assert.NotNil(t, engine)
@@ -716,8 +699,8 @@ func Test_provideRealtimeConsumerRunner(t *testing.T) {
 		MinTimes(1)
 	engine := provideRealtimeConsumer(
 		sub,
-		stubSinks{},
-		stubSinks{},
+		mock_ctrlrealtime.NewMockWaker(ctrl),
+		mock_ctrlrealtime.NewMockRevoker(ctrl),
 		mock_clock.NewMockSleeper(ctrl),
 		logging.NewTestLogger(t),
 		observability.NewNoopTracerFactory(t),
@@ -765,4 +748,67 @@ func Test_provideRealtimeHeartbeatRunner(t *testing.T) {
 	require.NoError(t, start(t.Context()))
 	<-ran // Body が heartbeat を回している
 	require.NoError(t, stop(t.Context()))
+}
+
+// newTestRegistry は、provider が返す registry を組み立てます（依存はすべて test 用）。
+func newTestRegistry(t *testing.T) *stream.Registry {
+	t.Helper()
+
+	ctrl := gomock.NewController(t)
+
+	return provideConnectionRegistry(
+		mock_realtime.NewMockReplayer(ctrl),
+		mock_clock.NewMockSleeper(ctrl),
+		logging.NewTestLogger(t),
+		observability.NewNoopTracerFactory(t),
+	)
+}
+
+func Test_provideReplayer(t *testing.T) {
+	t.Parallel()
+
+	assert.NotNil(t, provideReplayer(
+		mock_rt.NewMockEventLogStore(gomock.NewController(t)),
+		observability.NewNoopTracerFactory(t),
+	))
+}
+
+func Test_provideConnectionRegistry(t *testing.T) {
+	t.Parallel()
+
+	assert.NotNil(t, newTestRegistry(t))
+}
+
+func Test_provideStreamer(t *testing.T) {
+	t.Parallel()
+
+	registry := newTestRegistry(t)
+
+	assert.Same(t, registry, provideStreamer(registry), "registry がそのまま Streamer として出ること")
+}
+
+func Test_provideWaker(t *testing.T) {
+	t.Parallel()
+
+	registry := newTestRegistry(t)
+
+	assert.Same(t, registry, provideWaker(registry), "Streamer と同じ registry が wakeup の受け口になること")
+}
+
+func Test_provideRevoker(t *testing.T) {
+	t.Parallel()
+
+	registry := newTestRegistry(t)
+
+	assert.Same(t, registry, provideRevoker(registry), "Streamer と同じ registry が失効の受け口になること")
+}
+
+func Test_provideRealtimeStreamDrainer(t *testing.T) {
+	t.Parallel()
+
+	d := provideRealtimeStreamDrainer(newTestRegistry(t))
+
+	assert.Equal(t, "realtime-stream", d.Name)
+	require.NotNil(t, d.Drain)
+	assert.NoError(t, d.Drain(t.Context()), "接続が 1 本も無ければ drain は即座に終わる")
 }

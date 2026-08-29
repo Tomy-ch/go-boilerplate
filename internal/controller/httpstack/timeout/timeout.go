@@ -9,15 +9,20 @@ import (
 	"github.com/labstack/echo/v5/middleware"
 
 	"go-boilerplate/internal/apperror"
+	"go-boilerplate/internal/controller/httpstack/streampath"
 	"go-boilerplate/pkg/xerrors"
 )
 
 // Middleware は、リクエスト context に timeout の deadline を設定するミドルウェアを返します。
 // deadline 超過は apperror.ErrUnavailable(503) へ、それ以外のエラーはそのまま伝播します。
+// SSE stream endpoint だけは deadline を持ちません — 接続は分単位で開き続けるのが正常な状態で、
+// 単一 budget を当てると必ず途中で切れます。接続側の境界（write deadline・heartbeat・
+// connection maximum lifetime）がこの budget の代わりを務めます。
 // 単一 deadline budget の共有と ContextTimeout を基底に選んだ理由は README を参照してください。
 func Middleware(timeout time.Duration) echo.MiddlewareFunc {
 	return middleware.ContextTimeoutWithConfig(middleware.ContextTimeoutConfig{
 		Timeout: timeout,
+		Skipper: func(c *echo.Context) bool { return streampath.Is(c.Request().URL.Path) },
 		ErrorHandler: func(_ *echo.Context, err error) error {
 			if xerrors.Is(err, context.DeadlineExceeded) {
 				return xerrors.Join(apperror.ErrUnavailable, err)

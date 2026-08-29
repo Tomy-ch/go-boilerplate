@@ -17,14 +17,19 @@ import (
 func TestMiddleware(t *testing.T) {
 	t.Parallel()
 
-	exec := func(t *testing.T, timeout time.Duration, handler echo.HandlerFunc) (int, error) {
+	execPath := func(t *testing.T, path string, timeout time.Duration, handler echo.HandlerFunc) (int, error) {
 		t.Helper()
 		e := echo.New()
-		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", nil)
+		req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, path, nil)
 		rec := httptest.NewRecorder()
 		c := e.NewContext(req, rec)
 		err := Middleware(timeout)(handler)(c)
 		return rec.Code, err
+	}
+
+	exec := func(t *testing.T, timeout time.Duration, handler echo.HandlerFunc) (int, error) {
+		t.Helper()
+		return execPath(t, "/", timeout, handler)
 	}
 
 	t.Run("正常系", func(t *testing.T) {
@@ -42,6 +47,20 @@ func TestMiddleware(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, http.StatusOK, code)
 			assert.True(t, deadlineSet, "リクエスト context に deadline が設定されること")
+		})
+
+		t.Run("stream pathには deadline を設定せず素通しする", func(t *testing.T) {
+			t.Parallel()
+
+			var deadlineSet bool
+			code, err := execPath(t, "/v1/streams/destination-1", time.Second, func(c *echo.Context) error {
+				_, deadlineSet = c.Request().Context().Deadline()
+				return c.NoContent(http.StatusOK)
+			})
+
+			require.NoError(t, err)
+			assert.Equal(t, http.StatusOK, code)
+			assert.False(t, deadlineSet, "SSE の接続が単一 budget で切られないこと")
 		})
 	})
 

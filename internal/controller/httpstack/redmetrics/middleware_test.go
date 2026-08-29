@@ -161,6 +161,43 @@ func TestMiddleware(t *testing.T) {
 				})
 			})
 
+			t.Run("SSEとして確定した接続は計測されない", func(t *testing.T) {
+				t.Parallel()
+
+				ctrl := gomock.NewController(t)
+				rec := mock_redmetrics.NewMockRecorder(ctrl)
+				// Observe の EXPECT を設定しない＝呼び出されれば失敗。
+
+				serve(t, rec, serveCfg{
+					registerPath: "/v1/streams/:destination",
+					requestPath:  "/v1/streams/destination-1",
+					handler: func(c *echo.Context) error {
+						c.Response().Header().Set("Content-Type", "text/event-stream")
+						c.Response().WriteHeader(http.StatusOK)
+
+						return nil
+					},
+				})
+			})
+
+			t.Run("stream pathでも確定前の拒否は計測される", func(t *testing.T) {
+				t.Parallel()
+
+				ctrl := gomock.NewController(t)
+				rec := mock_redmetrics.NewMockRecorder(ctrl)
+				rec.EXPECT().
+					Observe(http.MethodGet, "/v1/streams/:destination", http.StatusUnauthorized, "4xx", gomock.Any()).
+					Times(1)
+
+				serve(t, rec, serveCfg{
+					registerPath: "/v1/streams/:destination",
+					requestPath:  "/v1/streams/destination-1",
+					handler: func(c *echo.Context) error {
+						return c.JSON(http.StatusUnauthorized, map[string]string{"code": "UNAUTHORIZED"})
+					},
+				})
+			})
+
 			t.Run("/healthzは計測されない", func(t *testing.T) {
 				t.Parallel()
 

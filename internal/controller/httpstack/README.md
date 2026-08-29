@@ -57,6 +57,7 @@ Each sub-package is split into small responsibilities and combined during applic
 |`basicauth`|`NewBasicAuthValidator`|Basic auth for metrics endpoint|
 |`ipextractor`|`New`|Environment-aware client IP extraction|
 |`ops`|`IsOpsPath`|Identify ops paths (/health, /metrics, etc.)|
+|`streampath`|`Is` / `IsCommittedStream`|Identify the SSE stream path, and a response that committed as a stream|
 
 ## Middleware Registration
 
@@ -112,6 +113,7 @@ The dividing line is whether the sub-package takes a `next`, not which table it 
 
 - **Pass-through** — a request the middleware does not act on reaches `next` unchanged, and `next`'s return value is propagated verbatim.
 - **Ops-path exclusion** — for middleware that consults `ops.IsOpsPath` (`logging` / `redmetrics`, and the `oapi/skipper` skipper), assert both sides: an ops path (`/health`, `/metrics`, …) produces no log / no metric, an application path does.
+- **Stream exclusion** — two predicates with different timing, so assert them separately. `timeout` consults `streampath.Is` (path, before the handler): `/v1/streams/…` gets no deadline, an application path does. `logging` / `redmetrics` consult `streampath.IsCommittedStream` (response content type, after): a committed `text/event-stream` response produces no response log / no metric, while a refusal on the *same path* still produces both. A test that covers only the committed case proves nothing about the refusals, which is where a ticket brute-force or capacity exhaustion would show. `oapi/skipper` must consult **neither** predicate, since letting a stream request past OpenAPI validation skips its ticket security scheme.
 - **`server.ResponseOf` degradation** — middleware that unwraps the Echo response degrades to a plain pass-through when the writer cannot be unwrapped. Reproduce it with `c.SetResponse(httptest.NewRecorder())` and assert the middleware neither fails nor records anything. This branch is unreachable through the production stack, so the package-level test is the only thing holding it.
 - **Environment-dependent branches** — when config selects a variant (`recovery` stack size, `ipextractor` extraction mode), exercise each mode through the config setters, including the unknown-mode fallback.
 

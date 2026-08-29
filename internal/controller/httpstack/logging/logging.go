@@ -7,6 +7,7 @@ import (
 	"go-boilerplate/internal/controller/httpstack/ops"
 	"go-boilerplate/internal/controller/httpstack/redaction"
 	"go-boilerplate/internal/controller/httpstack/requestid"
+	"go-boilerplate/internal/controller/httpstack/streampath"
 	"go-boilerplate/internal/controller/server"
 	"go-boilerplate/internal/logging"
 
@@ -21,7 +22,9 @@ type requestLog struct {
 }
 
 // Middleware は、Echoフレームワークのミドルウェアで、リクエストのログを出力します。
-// ただし /health, /metrics 等の運用系エンドポイントはログ出力をスキップします。
+// ただし /health, /metrics 等の運用系エンドポイントはログ出力をスキップし、SSE として確定した接続は
+// 応答ログだけをスキップします（その 1 行は接続が閉じるまで出ず、duration もリクエストではなく接続の
+// 長さになるため）。確定前の拒否は普通のレスポンスなので、要求ログも応答ログもそのまま出ます。
 // レスポンスを取り出せない場合はログを出さず素通しします。
 // URI と query は red を通してから出すため、query で運ばれる資格情報はログに残りません。
 func Middleware(logger logging.Logger, lf logging.LogFieldBuilder, red redaction.Redactor) echo.MiddlewareFunc {
@@ -50,6 +53,10 @@ func Middleware(logger logging.Logger, lf logging.LogFieldBuilder, red redaction
 			logger.Named("http.request").Info(ctx, "request received", reqFields...)
 
 			res.After(func() {
+				if streampath.IsCommittedStream(res.Header()) {
+					return
+				}
+
 				end := time.Now()
 				latency := end.Sub(start)
 

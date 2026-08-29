@@ -5,10 +5,14 @@ import (
 	"testing"
 
 	rt "go-boilerplate/internal/usecase/boundary/realtime"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// errRevalidated は、再検証手段が呼ばれたことを見分けるための番兵です。
+var errRevalidated = xerrors.New("revalidated")
 
 func newTestStreamGrant() rt.StreamGrant {
 	return rt.StreamGrant{Subject: "subject-1", Destination: "stream-1", Scope: "read", InitialCursor: 7}
@@ -118,6 +122,69 @@ func TestRequireStreamGrant(t *testing.T) {
 			t.Parallel()
 			_, err := RequireStreamGrant(WithStreamGrant(context.Background()))
 			require.ErrorIs(t, err, ErrStreamGrantMissing)
+		})
+	})
+}
+
+func TestSetStreamRevalidator(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("スロットがあれば書き込める", func(t *testing.T) {
+			t.Parallel()
+
+			ctx := WithStreamGrant(context.Background())
+
+			assert.True(t, SetStreamRevalidator(ctx, func(context.Context) error { return nil }))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("スロットが無ければfalseを返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, SetStreamRevalidator(context.Background(), func(context.Context) error { return nil }))
+		})
+	})
+}
+
+func TestGetStreamRevalidator(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("書き込んだ再検証手段を読める", func(t *testing.T) {
+			t.Parallel()
+
+			ctx := WithStreamGrant(context.Background())
+			require.True(t, SetStreamRevalidator(ctx, func(context.Context) error { return errRevalidated }))
+
+			got, ok := GetStreamRevalidator(ctx)
+
+			require.True(t, ok)
+			require.NotNil(t, got)
+			assert.ErrorIs(t, got(ctx), errRevalidated)
+		})
+
+		t.Run("未設定ならok=falseを返す", func(t *testing.T) {
+			t.Parallel()
+
+			_, ok := GetStreamRevalidator(WithStreamGrant(context.Background()))
+
+			assert.False(t, ok)
+		})
+
+		t.Run("スロットが無ければok=falseを返す", func(t *testing.T) {
+			t.Parallel()
+
+			_, ok := GetStreamRevalidator(context.Background())
+
+			assert.False(t, ok)
 		})
 	})
 }

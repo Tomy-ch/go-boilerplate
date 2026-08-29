@@ -1,6 +1,8 @@
 package stream
 
 import (
+	"context"
+
 	rt "go-boilerplate/internal/usecase/boundary/realtime"
 
 	"github.com/labstack/echo/v5"
@@ -16,6 +18,9 @@ type StreamRequest struct {
 	Scope string
 	// Cursor は、この位置より後の event から配信を始めます。replay floor 以上であることは検証済みです。
 	Cursor rt.Sequence
+	// Revalidate は、接続を索引へ載せた後に ticket をもう一度検証し直します。
+	// 検証と登録の間に届いた失効通知は、まだ索引に無いこの接続を取りこぼすためです。nil なら再検証しません。
+	Revalidate func(ctx context.Context) error
 }
 
 // Streamer は、検証を通った接続に対して SSE のレスポンスを確定し、event を書き続ける境界です。

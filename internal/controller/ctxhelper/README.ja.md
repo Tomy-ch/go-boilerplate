@@ -30,6 +30,7 @@ ctxhelperは「contextの利用を制御する境界レイヤ」です。
 - `SetStreamGrant(ctx, grant) bool` — 検証済みの `realtime.StreamGrant` を書き込む。スロットが無ければ `false`
 - `GetStreamGrant(ctx) (realtime.StreamGrant, bool)` — 読む。未設定なら `ok=false`
 - `RequireStreamGrant(ctx) (realtime.StreamGrant, error)` — 読む。未設定なら `ErrStreamGrantMissing` を返す
+- `SetStreamRevalidator(ctx, fn) bool` / `GetStreamRevalidator(ctx) (fn, bool)` — 同じスロットは、*同じ* ticket をもう一度検証する手段も運ぶ。stream 接続の確立は ticket の検証 → 外部 I/O → 登録の順に進み、その間に届いた失効通知はまだ索引に載っていない接続を取りこぼす。登録の後に一度だけ検証し直すことでその窓が閉じる。資格情報そのものは security scheme の中に留まり、渡っていくのは closure だけ
 
 スロットが成功だけでなく失敗も運ぶのは、spec が認証を任意と宣言することがあり、その operation の
 バリデーションは提示された資格情報が拒否されても成功してしまうためです。失敗がスロットに残ることで、
