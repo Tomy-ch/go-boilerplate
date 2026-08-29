@@ -57,6 +57,7 @@ Each sub-package is split into small responsibilities and combined during applic
 |`basicauth`|`NewBasicAuthValidator`|Basic auth for metrics endpoint|
 |`ipextractor`|`New`|Environment-aware client IP extraction|
 |`ops`|`IsOpsPath`|Identify ops paths (/health, /metrics, etc.)|
+|`streampath`|`Is`|Identify the SSE stream path (`/v1/streams/…`)|
 
 ## Middleware Registration
 
@@ -112,6 +113,7 @@ The dividing line is whether the sub-package takes a `next`, not which table it 
 
 - **Pass-through** — a request the middleware does not act on reaches `next` unchanged, and `next`'s return value is propagated verbatim.
 - **Ops-path exclusion** — for middleware that consults `ops.IsOpsPath` (`logging` / `redmetrics`, and the `oapi/skipper` skipper), assert both sides: an ops path (`/health`, `/metrics`, …) produces no log / no metric, an application path does.
+- **Stream-path exclusion** — for middleware that consults `streampath.Is` (`timeout` / `logging` / `redmetrics`), assert both sides the same way: `/v1/streams/…` gets no deadline / no log / no metric, an application path gets all three. The two exclusions are separate predicates on purpose, so a test that only covers one of them proves nothing about the other — and `oapi/skipper` must consult **neither** `streampath.Is` nor anything else that would let a stream request past OpenAPI validation, since that is what runs its ticket security scheme.
 - **`server.ResponseOf` degradation** — middleware that unwraps the Echo response degrades to a plain pass-through when the writer cannot be unwrapped. Reproduce it with `c.SetResponse(httptest.NewRecorder())` and assert the middleware neither fails nor records anything. This branch is unreachable through the production stack, so the package-level test is the only thing holding it.
 - **Environment-dependent branches** — when config selects a variant (`recovery` stack size, `ipextractor` extraction mode), exercise each mode through the config setters, including the unknown-mode fallback.
 

@@ -79,6 +79,29 @@ func TestMiddleware(t *testing.T) {
 
 			assert.Zero(t, observed.Len())
 		})
+
+		t.Run("stream pathではログが出力されない", func(t *testing.T) {
+			t.Parallel()
+			lf := logging.NewTestLogFieldBuilder(t)
+
+			next := func(c *echo.Context) error {
+				return c.String(http.StatusOK, "ok")
+			}
+
+			logger, observed := logging.NewObservedTestLogger(t)
+
+			e := echo.New()
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/v1/streams/destination-1", nil)
+			req.RemoteAddr = "203.0.113.5:45678"
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			handler := Middleware(logger, lf, redaction.Redactor{})(next)
+			require.NoError(t, handler(c))
+
+			assert.Zero(t, observed.Len())
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {

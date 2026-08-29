@@ -161,6 +161,20 @@ func TestMiddleware(t *testing.T) {
 				})
 			})
 
+			t.Run("stream pathは計測されない", func(t *testing.T) {
+				t.Parallel()
+
+				ctrl := gomock.NewController(t)
+				rec := mock_redmetrics.NewMockRecorder(ctrl)
+				// Observe の EXPECT を設定しない＝呼び出されれば失敗。
+
+				serve(t, rec, serveCfg{
+					registerPath: "/v1/streams/:destination",
+					requestPath:  "/v1/streams/destination-1",
+					handler:      okHandler(),
+				})
+			})
+
 			t.Run("/healthzは計測されない", func(t *testing.T) {
 				t.Parallel()
 
