@@ -14,6 +14,7 @@ type FS interface {
 	ReadFile(name string) ([]byte, error)
 	WriteFile(name string, data []byte, perm os.FileMode) error
 	Glob(pattern string) ([]string, error)
+	MkdirAll(path string, perm os.FileMode) error
 }
 
 // OS は、os / path/filepath を用いた FS の実装です。
@@ -33,4 +34,9 @@ func (OS) WriteFile(name string, data []byte, perm os.FileMode) error {
 // Glob は、pattern に一致するファイルパスの一覧を返します。
 func (OS) Glob(pattern string) ([]string, error) {
 	return filepath.Glob(pattern)
+}
+
+// MkdirAll は、path のディレクトリを親ごと作成します。既に存在する場合は何もしません。
+func (OS) MkdirAll(path string, perm os.FileMode) error {
+	return os.MkdirAll(path, perm)
 }

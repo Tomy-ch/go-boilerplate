@@ -55,6 +55,20 @@ func (mr *MockFSMockRecorder) Glob(pattern any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Glob", reflect.TypeOf((*MockFS)(nil).Glob), pattern)
 }
 
+// MkdirAll mocks base method.
+func (m *MockFS) MkdirAll(path string, perm os.FileMode) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MkdirAll", path, perm)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// MkdirAll indicates an expected call of MkdirAll.
+func (mr *MockFSMockRecorder) MkdirAll(path, perm any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MkdirAll", reflect.TypeOf((*MockFS)(nil).MkdirAll), path, perm)
+}
+
 // ReadFile mocks base method.
 func (m *MockFS) ReadFile(name string) ([]byte, error) {
 	m.ctrl.T.Helper()

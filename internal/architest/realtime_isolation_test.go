@@ -12,7 +12,6 @@ package architest
 
 import (
 	"io/fs"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -309,7 +308,7 @@ func Test_walkProductionGoFiles(t *testing.T) {
 
 			dir := t.TempDir()
 			for _, sub := range []string{"mock", "node_modules", "impl"} {
-				require.NoError(t, os.MkdirAll(filepath.Join(dir, sub), 0o750))
+				require.NoError(t, pkgfs.OS{}.MkdirAll(filepath.Join(dir, sub), 0o750))
 				require.NoError(t, pkgfs.OS{}.WriteFile(filepath.Join(dir, sub, "x.go"), []byte("x"), 0o600))
 			}
 
