@@ -127,8 +127,7 @@ func provideAccessRevoker(
 }
 
 // provideInstanceID は、この process の serve instance の識別子を起動ごとに採番します。
-// 再起動した instance は別の識別子になり、前世代が残した resource は orphan として回収されます（hostname を
-// 使うと前世代の lease と衝突し、生きている instance の resource が回収され得る）。
+// 再起動をまたいで安定な値（hostname など）から導いてはいけません（docs/design/realtime-delivery.md §2.5）。
 func provideInstanceID() (rt.InstanceID, error) {
 	id, err := uuid.New()
 	if err != nil {

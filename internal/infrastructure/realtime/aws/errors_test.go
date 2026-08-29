@@ -38,5 +38,12 @@ func Test_normalize(t *testing.T) {
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
 			assert.Contains(t, err.Error(), "boom")
 		})
+
+		t.Run("原因は chain に残る", func(t *testing.T) {
+			t.Parallel()
+
+			cause := xerrors.New("boom")
+			require.ErrorIs(t, normalize(cause, "op"), cause)
+		})
 	})
 }

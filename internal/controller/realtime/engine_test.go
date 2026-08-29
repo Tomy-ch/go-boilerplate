@@ -11,6 +11,7 @@ import (
 	gomock "go.uber.org/mock/gomock"
 
 	"go-boilerplate/internal/apperror"
+	mock_ctrlrealtime "go-boilerplate/internal/controller/realtime/mock"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
 	mock_clock "go-boilerplate/internal/usecase/boundary/clock/mock"
@@ -18,38 +19,22 @@ import (
 	mock_realtime "go-boilerplate/internal/usecase/boundary/realtime/mock"
 )
 
-// recordingSinks は、sink への呼び出しを記録する test double です。
-type recordingSinks struct {
+// sinkRecord は、mock の受け口が受けた呼び出しの記録です。
+type sinkRecord struct {
 	mu          sync.Mutex
 	wakeups     map[rt.StreamID][]rt.Sequence
 	revocations []rt.Revocation
 }
 
-// engineMocks は、engine の依存の test double と、観測したログを数える関数です。
+// engineMocks は、engine の依存の mock と、受け口の記録、観測したログを数える関数です。
 type engineMocks struct {
 	sub     *mock_realtime.MockInstanceSubscription
 	sleeper *mock_clock.MockSleeper
-	sinks   *recordingSinks
+	waker   *mock_ctrlrealtime.MockWaker
+	revoker *mock_ctrlrealtime.MockRevoker
+	sinks   *sinkRecord
 	// logCount は、msg のログの件数を返します（msg が空なら全件）。
 	logCount func(msg string) int
-}
-
-func newRecordingSinks() *recordingSinks {
-	return &recordingSinks{wakeups: map[rt.StreamID][]rt.Sequence{}}
-}
-
-func (s *recordingSinks) Wake(_ context.Context, streamID rt.StreamID, upTo rt.Sequence) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	s.wakeups[streamID] = append(s.wakeups[streamID], upTo)
-}
-
-func (s *recordingSinks) Revoke(_ context.Context, subject string, destination rt.StreamID) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	s.revocations = append(s.revocations, rt.Revocation{Subject: subject, Destination: destination})
 }
 
 func newEngine(t *testing.T, set Settings) (*Engine, engineMocks) {
@@ -57,10 +42,26 @@ func newEngine(t *testing.T, set Settings) (*Engine, engineMocks) {
 
 	ctrl := gomock.NewController(t)
 	m := engineMocks{
-		sub: mock_realtime.NewMockInstanceSubscription(
-			ctrl,
-		), sleeper: mock_clock.NewMockSleeper(ctrl), sinks: newRecordingSinks(),
+		sub:     mock_realtime.NewMockInstanceSubscription(ctrl),
+		sleeper: mock_clock.NewMockSleeper(ctrl),
+		waker:   mock_ctrlrealtime.NewMockWaker(ctrl),
+		revoker: mock_ctrlrealtime.NewMockRevoker(ctrl),
+		sinks:   &sinkRecord{wakeups: map[rt.StreamID][]rt.Sequence{}},
 	}
+	m.waker.EXPECT().Wake(gomock.Any(), gomock.Any(), gomock.Any()).
+		Do(func(_ context.Context, streamID rt.StreamID, upTo rt.Sequence) {
+			m.sinks.mu.Lock()
+			defer m.sinks.mu.Unlock()
+
+			m.sinks.wakeups[streamID] = append(m.sinks.wakeups[streamID], upTo)
+		}).AnyTimes()
+	m.revoker.EXPECT().Revoke(gomock.Any(), gomock.Any(), gomock.Any()).
+		Do(func(_ context.Context, subject string, destination rt.StreamID) {
+			m.sinks.mu.Lock()
+			defer m.sinks.mu.Unlock()
+
+			m.sinks.revocations = append(m.sinks.revocations, rt.Revocation{Subject: subject, Destination: destination})
+		}).AnyTimes()
 
 	log, logs := logging.NewObservedTestLogger(t)
 	m.logCount = func(msg string) int {
@@ -71,7 +72,7 @@ func newEngine(t *testing.T, set Settings) (*Engine, engineMocks) {
 		return logs.FilterMessage(msg).Len()
 	}
 
-	return NewEngine(m.sub, m.sinks, m.sinks, m.sleeper, log, observability.NewNoopTracerFactory(t), set), m
+	return NewEngine(m.sub, m.waker, m.revoker, m.sleeper, log, observability.NewNoopTracerFactory(t), set), m
 }
 
 func wakeup(streamID rt.StreamID, seq rt.Sequence) rt.Notification {
