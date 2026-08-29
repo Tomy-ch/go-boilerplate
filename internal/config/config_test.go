@@ -143,17 +143,21 @@ func TestNew(t *testing.T) {
 				realtime: RealtimeConfig{
 					region:          expectedRealtimeRegion,
 					tableSuffix:     expectedRealtimeTableSuffix,
+					topicARN:        expectedRealtimeTopicARN,
+					queuePrefix:     expectedRealtimeQueuePrefix,
+					dlqARN:          expectedRealtimeDLQARN,
 					accessKeyID:     expectedRealtimeAccessKeyID,
 					secretAccessKey: expectedRealtimeSecretAccessKey,
 				},
 				endpoint: EndpointConfig{
-					otlp:          expectedEndpointOTLP,
-					jwks:          expectedEndpointJWKS,
-					objectStorage: expectedEndpointObjectStorage,
-					realtime:      expectedEndpointRealtime,
-					outbox:        expectedEndpointOutbox,
-					outboxQueue:   expectedEndpointOutboxQueue,
-					consumerQueue: expectedEndpointConsumerQueue,
+					otlp:           expectedEndpointOTLP,
+					jwks:           expectedEndpointJWKS,
+					objectStorage:  expectedEndpointObjectStorage,
+					realtime:       expectedEndpointRealtime,
+					realtimePubSub: expectedEndpointRealtimePubSub,
+					outbox:         expectedEndpointOutbox,
+					outboxQueue:    expectedEndpointOutboxQueue,
+					consumerQueue:  expectedEndpointConsumerQueue,
 					// sample-api:begin
 					exchangeRate: expectedEndpointExchangeRate,
 					// sample-api:end

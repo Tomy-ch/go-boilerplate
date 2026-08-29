@@ -35,6 +35,8 @@ type Endpoint struct {
 	ObjectStorage string `env:"OBJECT_STORAGE,required"`
 	// Realtime は Realtime Delivery の store（DynamoDB 互換）のエンドポイントです。空なら SDK 既定の解決に委ねます（本番 DynamoDB）。
 	Realtime string `env:"REALTIME,required"`
+	// RealtimePubSub は Realtime Delivery の fan-out（SNS / SQS 互換）のエンドポイントです。空なら SDK 既定の解決に委ねます（本番 SNS / SQS）。
+	RealtimePubSub string `env:"REALTIME_PUBSUB,required"`
 	// Outbox は PUBLISHER=http のときの送出先です。空のまま http を選ぶと DI で起動エラーにします。
 	Outbox string `env:"OUTBOX,required"`
 	// OutboxQueue は publish 端の SQS 互換エンドポイントです。空なら SDK 既定の解決に委ねます。
@@ -60,14 +62,22 @@ type ObjectStorage struct {
 	MaxUploadBytes  int64  `env:"MAX_UPLOAD_BYTES,required,notEmpty"`
 }
 
-// Realtime は、Realtime Delivery の EventLog / StreamTicket / InstanceLease を置く DynamoDB 互換 store の
-// 接続設定を保持する。中立境界の実装は DynamoDB adapter だが、env 名は vendor 非依存にする。
+// Realtime は、Realtime Delivery の EventLog / StreamTicket / InstanceLease を置く DynamoDB 互換 store と、
+// serve instance への fan-out（SNS / SQS 互換）の接続設定を保持する。中立境界の実装は DynamoDB / SNS / SQS の
+// adapter だが、env 名は vendor 非依存にする。
 // table 名は固定名（realtime_event_log 等）に TableSuffix を付けた形で、環境（と Phase 11 では worktree の
-// slot）ごとに分かれる。
+// slot）ごとに分かれる。instance queue の名前は QueuePrefix に instance の識別子を付けた形で、環境ごとに分かれる。
 type Realtime struct {
 	Region string `env:"REGION,required,notEmpty"`
 	// TableSuffix は table 名の末尾に付く環境識別子（例 local / ci / prd）。小文字・数字・アンダースコアで書く。
 	TableSuffix string `env:"TABLE_SUFFIX,required,notEmpty"`
+	// TopicARN は wakeup と失効通知を載せる topic の ARN。deployment が用意する resource の識別子で、
+	// 空のまま fan-out を配線すると DI で起動エラーにする（ENDPOINT_OUTBOX と同じ扱い）。
+	TopicARN string `env:"TOPIC_ARN" envDefault:""`
+	// QueuePrefix は instance queue 名の先頭（例 realtime-local）。英数字・`-`・`_` で書く。
+	QueuePrefix string `env:"QUEUE_PREFIX,required,notEmpty"`
+	// DLQARN は instance queue の redrive 先の ARN。空なら RedrivePolicy を付けない。
+	DLQARN string `env:"DLQ_ARN" envDefault:""`
 	// AccessKeyID / SecretAccessKey は両方空なら SDK 既定の credential chain（IAM ロール等）へ委ねるため、
 	// 未設定を許す（ObjectStorage と同じ既定）。
 	AccessKeyID     string `env:"ACCESS_KEY_ID"     envDefault:""`

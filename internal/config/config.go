@@ -163,17 +163,21 @@ func New() (*Config, error) {
 		realtime: RealtimeConfig{
 			region:          cfg.Realtime.Region,
 			tableSuffix:     cfg.Realtime.TableSuffix,
+			topicARN:        cfg.Realtime.TopicARN,
+			queuePrefix:     cfg.Realtime.QueuePrefix,
+			dlqARN:          cfg.Realtime.DLQARN,
 			accessKeyID:     cfg.Realtime.AccessKeyID,
 			secretAccessKey: cfg.Realtime.SecretAccessKey,
 		},
 		endpoint: EndpointConfig{
-			otlp:          cfg.Endpoint.OTLP,
-			jwks:          cfg.Endpoint.JWKS,
-			objectStorage: cfg.Endpoint.ObjectStorage,
-			realtime:      cfg.Endpoint.Realtime,
-			outbox:        cfg.Endpoint.Outbox,
-			outboxQueue:   cfg.Endpoint.OutboxQueue,
-			consumerQueue: cfg.Endpoint.ConsumerQueue,
+			otlp:           cfg.Endpoint.OTLP,
+			jwks:           cfg.Endpoint.JWKS,
+			objectStorage:  cfg.Endpoint.ObjectStorage,
+			realtime:       cfg.Endpoint.Realtime,
+			realtimePubSub: cfg.Endpoint.RealtimePubSub,
+			outbox:         cfg.Endpoint.Outbox,
+			outboxQueue:    cfg.Endpoint.OutboxQueue,
+			consumerQueue:  cfg.Endpoint.ConsumerQueue,
 			// sample-api:begin
 			exchangeRate: cfg.Endpoint.ExchangeRate,
 			// sample-api:end

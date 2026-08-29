@@ -1634,6 +1634,39 @@ func TestRealtimeConfig_InstanceLeaseTable(t *testing.T) {
 	})
 }
 
+func TestRealtimeConfig_TopicARN(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("topic の ARN を取得できる", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, expectedRealtimeTopicARN, MockConfigForTest(t).realtime.TopicARN())
+		})
+	})
+}
+
+func TestRealtimeConfig_QueuePrefix(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("instance queue 名の先頭を取得できる", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, expectedRealtimeQueuePrefix, MockConfigForTest(t).realtime.QueuePrefix())
+		})
+	})
+}
+
+func TestRealtimeConfig_DLQARN(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("DLQ の ARN を取得できる", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, expectedRealtimeDLQARN, MockConfigForTest(t).realtime.DLQARN())
+		})
+	})
+}
+
 func TestRealtimeConfig_AccessKeyID(t *testing.T) {
 	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {
@@ -1663,6 +1696,17 @@ func TestEndpointConfig_Realtime(t *testing.T) {
 		t.Run("Realtime Delivery の store のエンドポイントを取得できる", func(t *testing.T) {
 			t.Parallel()
 			assert.Equal(t, expectedEndpointRealtime, MockConfigForTest(t).endpoint.Realtime())
+		})
+	})
+}
+
+func TestEndpointConfig_RealtimePubSub(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("Realtime Delivery の fan-out のエンドポイントを取得できる", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, expectedEndpointRealtimePubSub, MockConfigForTest(t).endpoint.RealtimePubSub())
 		})
 	})
 }
