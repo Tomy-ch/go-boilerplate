@@ -87,6 +87,8 @@ func (w *sseWriter) write(frame string) error {
 }
 
 // flush は、書いた分を client へ押し出します。proxy と Go の buffer を跨いで即時性を保ちます。
+// echo.Response 経由ではここがエラーを返すことはありません（echo は flush を支えない writer に対して
+// panic し、それ以外の失敗は握り潰すため）。返り値は素の ResponseWriter を渡したときだけ意味を持ちます。
 func (w *sseWriter) flush() error {
 	if err := w.ctrl.Flush(); err != nil {
 		return xerrors.Wrap(err, "flush sse frame")

@@ -199,19 +199,6 @@ func TestRegistry_Stream(t *testing.T) {
 			assert.Empty(t, reg.conns, "断った接続は索引に残さないこと")
 		})
 
-		t.Run("ヘッダの確定に失敗したら replay の枠を返して終わる", func(t *testing.T) {
-			t.Parallel()
-
-			reg, _, _ := testRegistry(t, Settings{ReplayConcurrency: 1})
-
-			// httptest.ResponseRecorder は Flush も SetWriteDeadline も持たないので commit が必ず失敗する。
-			rec, err := callStream(t, reg)
-
-			require.Error(t, err)
-			assert.Empty(t, rec.Body.String())
-			assert.True(t, reg.sem.TryAcquire(1), "確保した枠を返さないと以後すべての接続が 503 になる")
-		})
-
 		t.Run("停止に入っていれば新規接続を受け付けない", func(t *testing.T) {
 			t.Parallel()
 

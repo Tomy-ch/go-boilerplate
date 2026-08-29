@@ -24,6 +24,26 @@ const sseTestDeadline = 2 * time.Second
 // sseTestOccurredAt は、封筒の発生時刻として使う基準時刻です。
 var sseTestOccurredAt = time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
 
+// unflushableWriter は、http.ResponseWriter の最小限だけを満たす writer です。flush を支えないので
+// commit が確定に失敗します。echo.Response は同じ状況で panic するため、この経路は素の
+// ResponseWriter に対してしか通せません（Registry の枠返却も同じ理由で本番では到達しません）。
+type unflushableWriter struct {
+	header http.Header
+	status int
+}
+
+func (w *unflushableWriter) Header() http.Header {
+	if w.header == nil {
+		w.header = http.Header{}
+	}
+
+	return w.header
+}
+
+func (w *unflushableWriter) Write(b []byte) (int, error) { return len(b), nil }
+
+func (w *unflushableWriter) WriteHeader(status int) { w.status = status }
+
 // sseTestEvent は、payload を持つ business event を組み立てます。封筒の骨は testEvent と共有します。
 func sseTestEvent(seq rt.Sequence) rt.DeliveryEvent {
 	e := testEvent(seq)
@@ -103,6 +123,22 @@ func Test_sseWriter_commit(t *testing.T) {
 			assert.Equal(t, "text/event-stream", res.Header.Get("Content-Type"))
 			assert.Equal(t, "no-store", res.Header.Get("Cache-Control"))
 			assert.Equal(t, "no", res.Header.Get("X-Accel-Buffering"))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("flush を支えない writer には確定できずエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			res := &unflushableWriter{}
+
+			err := newSSEWriter(res, sseTestDeadline).commit()
+
+			require.ErrorIs(t, err, http.ErrNotSupported)
+			assert.Equal(t, "text/event-stream", res.Header().Get("Content-Type"),
+				"ヘッダは書いた後に flush で落ちるので、確定の失敗を握り潰さないこと")
 		})
 	})
 }

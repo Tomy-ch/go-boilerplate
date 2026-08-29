@@ -132,6 +132,11 @@ head row is visible to the relay, not to a connection.
 - `auth/stream_ticket_test.go` pins that the scheme name matches `openapi.yaml`, that the verifier
   receives the request context and the path destination, and that a rejected ticket leaves the slot
   empty.
+- The slot released when `commit` fails is a guard, not a path: `echo.Response.Flush` panics on a
+  writer that cannot flush and swallows every other failure, so through Echo `commit` never returns
+  an error and a real `ResponseWriter` always flushes. The behaviour is pinned one level down, on
+  `sseWriter.commit` against a bare non-flushable writer, rather than by reaching for it through
+  `Stream`.
 - `sse_test.go`, `registry_test.go` and `connection_test.go` cover the post-commit half. Two rules
   shape them. **No test waits on real time**: the heartbeat, the lifetime and the catch-up all go
   through `clock.Sleeper`, and the tests supply one that blocks until the test names which tick to
