@@ -145,7 +145,11 @@ func Test_publisherModuleFor(t *testing.T) {
 
 			validateGraph(
 				t,
-				append(commonDeps(), InfrastructureModule(), UsecaseModule(), publisherModuleFor(outboxbndry.ChannelHTTP), fx.Populate(&p))...)
+				append(
+					commonDeps(),
+					InfrastructureModule(), UsecaseModule(), fx.Supply(outboxbndry.ChannelHTTP),
+					publisherModuleFor(outboxbndry.ChannelHTTP), fx.Populate(&p),
+				)...)
 		})
 
 		t.Run("realtime は EventLog へ append する publisher module を返す", func(t *testing.T) {

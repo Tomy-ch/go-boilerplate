@@ -41,15 +41,30 @@ func TestCreateTopic(t *testing.T) {
 	// Cleanup は後に登録したものから走るため、ここで登録した検証は CreateTopic の削除の後に回る。
 	var arn string
 	t.Cleanup(func() {
-		_, err := c.SNS.GetTopicAttributes(context.Background(), &sns.GetTopicAttributesInput{TopicArn: awssdk.String(arn)})
-		assert.Error(t, err, "テスト終了時に topic は削除されている")
+		assert.False(t, topicExists(t, c, arn), "テスト終了時に topic は削除されている")
 	})
 
 	arn = CreateTopic(t, c, Name(t, "create"))
+	assert.True(t, topicExists(t, c, arn))
+}
 
-	got, err := c.SNS.GetTopicAttributes(t.Context(), &sns.GetTopicAttributesInput{TopicArn: awssdk.String(arn)})
-	require.NoError(t, err)
-	assert.Equal(t, arn, got.Attributes["TopicArn"])
+// topicExists は、arn の topic が一覧に載っているかを返します（emulator が GetTopicAttributes を持たないため一覧で見る）。
+func topicExists(t *testing.T, c aws.Clients, arn string) bool {
+	t.Helper()
+
+	p := sns.NewListTopicsPaginator(c.SNS, &sns.ListTopicsInput{})
+	for p.HasMorePages() {
+		page, err := p.NextPage(context.Background())
+		require.NoError(t, err)
+
+		for _, topic := range page.Topics {
+			if awssdk.ToString(topic.TopicArn) == arn {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 func TestTeardownOnCleanup(t *testing.T) {
