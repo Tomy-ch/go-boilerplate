@@ -15,6 +15,7 @@ import (
 	ctrlrealtime "go-boilerplate/internal/controller/realtime"
 	"go-boilerplate/internal/controller/stream"
 	streamauth "go-boilerplate/internal/controller/stream/auth"
+	"go-boilerplate/internal/di/lifecycle"
 	"go-boilerplate/internal/di/server/hook"
 	"go-boilerplate/internal/infrastructure/dynamodbclient/testkit"
 	realtimeinfra "go-boilerplate/internal/infrastructure/realtime"
@@ -57,6 +58,24 @@ func realtimeDeps() []fx.Option {
 		fx.Provide(func() stream.Streamer { return stubStreamer{} }),
 		fx.Provide(func() ctrlrealtime.WakeupSink { return stubSinks{} }),
 		fx.Provide(func() ctrlrealtime.RevocationSink { return stubSinks{} }),
+	)
+}
+
+// realtimeRunDeps は、constructor を実際に走らせて value group を集めるための依存です。ObservabilityModule と
+// DatabaseModule は global（prometheus の既定 registry）へ触るため並列テストと競合する。realtime が要るのは
+// TracerFactory と outbound クライアントだけなので、その 2 つを test 用の実装で差し込む。
+func realtimeRunDeps(t *testing.T) fx.Option {
+	t.Helper()
+
+	return fx.Options(
+		lifecycle.Module(), ConfigModule(), LoggingModule(), SystemModule(), clockModule(), realtimeModule(),
+		fx.Provide(func() observability.TracerFactory { return observability.NewNoopTracerFactory(t) }),
+		fx.Provide(func() *observability.OutboundHTTPClient { return observability.NewDisabledOutboundHTTPClient(true) }),
+		fx.Provide(echo.New),
+		fx.Provide(func() stream.Streamer { return stubStreamer{} }),
+		fx.Provide(func() ctrlrealtime.WakeupSink { return stubSinks{} }),
+		fx.Provide(func() ctrlrealtime.RevocationSink { return stubSinks{} }),
+		fx.Replace(testFanout(t)),
 	)
 }
 
@@ -105,7 +124,7 @@ func Test_realtimeModule(t *testing.T) {
 				)...)
 
 			// value group は空でも解決するため、group への登録は実体を集めて数える。
-			schemes := collectGroup[oapiauth.SchemeAuthenticator](t, `group:"oapi.security.schemes"`, fx.Options(realtimeDeps()...))
+			schemes := collectGroup[oapiauth.SchemeAuthenticator](t, `group:"oapi.security.schemes"`, realtimeRunDeps(t))
 			assert.Len(t, schemes, 1)
 		})
 
@@ -126,9 +145,8 @@ func Test_realtimeModule(t *testing.T) {
 			validateGraph(t, append(realtimeDeps(),
 				fx.Populate(&notifier, &revoker, &id, &attrs, &sub, &keeper, &engine, &heartbeat))...)
 
-			// value group は空でも解決するため、参加者は実体を集めて名前まで見る。テスト設定は topic が空で
-			// fan-out が fail-closed するので、その値だけ差し替えて構築する。
-			deps := fx.Options(append(realtimeDeps(), fx.Replace(testFanout(t)))...)
+			// value group は空でも解決するため、参加者は実体を集めて名前まで見る。
+			deps := realtimeRunDeps(t)
 			probes := collectGroup[hook.StartupProbe](t, `group:"serve.startup"`, deps)
 			provisioners := collectGroup[hook.Provisioner](t, `group:"serve.provisioners"`, deps)
 			runners := collectGroup[hook.Runner](t, `group:"serve.runners"`, deps)
