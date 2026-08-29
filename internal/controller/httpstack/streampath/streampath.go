@@ -20,10 +20,8 @@ func Is(path string) bool {
 }
 
 // IsCommittedStream は、返し終えた応答が SSE として確定したものかを返します。
-//
-// path だけでは足りません。stream endpoint は確定前に 401 / 400 / 410 / 503 を返すことがあり、
-// それらは数ミリ秒で終わる普通のレスポンスです。「接続の長さを request latency として数えると
-// 分布が歪む」という除外の理由は確定した接続にしか当てはまらないので、確定したかどうかで見ます。
+// path で判定してはいけません — 確定前の拒否は数ミリ秒で終わる普通のレスポンスで、除外の対象では
+// ないためです（理由はこのパッケージの README）。
 func IsCommittedStream(h http.Header) bool {
 	return strings.HasPrefix(h.Get("Content-Type"), contentType)
 }

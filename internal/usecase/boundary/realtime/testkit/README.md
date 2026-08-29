@@ -32,3 +32,25 @@ point:
   hold a read *in flight*, which is what a test needs to occupy a replay slot and watch the next
   connection be refused admission. `SetUnavailable` cannot stand in for it: a read that fails
   releases the slot immediately.
+
+## Test Strategy
+
+A fake is production code for the tests that depend on it: when it drifts from the port, every test
+built on it keeps passing while proving something the real store never does. Walking up from here
+reaches `internal/usecase/README.md`, whose Testing Strategy is about interactors — mock the
+boundary, never touch infrastructure — and says nothing about how a boundary's own fake is pinned.
+These are that missing baseline.
+
+- **Every port method against the interface contract** — `Append` (validation, idempotent re-append,
+  conflict on a different `EventID`), `ReadAfter` (ascending order, exclusive `After`, per-stream
+  isolation, `HasMore` when truncated), `Latest`, `Find`. The contract is
+  `boundary/realtime/eventlog.go`, not this implementation.
+- **The default read limit** — `ReadAfter` with no `Limit` truncates at 32 and reports `HasMore`.
+  A fake that silently returns everything makes a caller's paging look correct when it is not.
+- **Each control port on both sides** — `Seed` writes what `Append` refuses (a gap, an invalid
+  envelope); `SetUnavailable` fails every read and write while set and stops when cleared; `Hold`
+  blocks a read until released, and its release is idempotent. A control port that half-works is
+  worse than none, because the scenario it was added for silently stops being reproduced.
+- **Concurrent use** — the README promises the fake is safe for concurrent use, and a fake driven by
+  a replay loop and a wakeup at once is exactly how it will be used. Pin it with a test the race
+  detector can fail on rather than leaving the promise to inspection.

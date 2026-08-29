@@ -104,6 +104,31 @@ func TestMiddleware(t *testing.T) {
 				"ticket 総当たりや容量枯渇はここにしか現れないので落とさないこと")
 		})
 
+		t.Run("204応答はAfterが発火せず応答ログが出ない", func(t *testing.T) {
+			t.Parallel()
+			lf := logging.NewTestLogFieldBuilder(t)
+
+			next := func(c *echo.Context) error {
+				return c.NoContent(http.StatusNoContent)
+			}
+
+			logger, observed := logging.NewObservedTestLogger(t)
+
+			e := echo.New()
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/v1/users", nil)
+			req.RemoteAddr = "203.0.113.5:45678"
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			handler := Middleware(logger, lf, redaction.Redactor{})(next)
+			require.NoError(t, handler(c))
+
+			assert.Zero(t, observed.FilterMessage("request handled").Len(),
+				"After フック方式に起因する既知の観測欠落を、暗黙にせずここで固定する")
+			assert.Equal(t, 1, observed.FilterMessage("request received").Len())
+		})
+
 		t.Run("SSEとして確定した接続は応答ログを出さない", func(t *testing.T) {
 			t.Parallel()
 			lf := logging.NewTestLogFieldBuilder(t)

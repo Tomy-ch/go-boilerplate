@@ -21,10 +21,8 @@ var (
 	ErrDraining = xerrors.Wrap(apperror.ErrUnavailable, "instance is draining")
 )
 
-// hintRetryAfter は、レスポンス確定前の拒否に再試行の目安を添えます。確定前の 503 は接続上限・
-// 初回 replay の枠・依存の不調の 3 系統あり（設計 §2.3 / §2.6）、client 契約はそのどれにも
-// Retry-After を求めます。control event の retryAfterMs と同じ目安で、単位だけが違います
-// （ヘッダは秒、control はミリ秒）。
+// hintRetryAfter は、レスポンス確定前の 503 拒否に Retry-After（秒）の目安を添えます。
+// client 契約は確定前のどの 503 にも Retry-After を求めます（設計 §2.3 / §2.6 / §4.3）。
 func hintRetryAfter(c *echo.Context) {
 	c.Response().Header().Set("Retry-After", strconv.Itoa(int(retryAfterHint.Seconds())))
 }

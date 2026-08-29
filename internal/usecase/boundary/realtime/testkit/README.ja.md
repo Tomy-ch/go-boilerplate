@@ -27,3 +27,23 @@ fake が要るのは、そうではなく「複数回の呼び出しをまたい
 - `Hold() func()` — 返された関数が呼ばれるまで、すべての読み取りをブロックする。読み取りを*実行中のまま*
   留めておく唯一の手段であり、replay の枠を占有して次の接続が admission を拒否されるのを見るテストに必要。
   `SetUnavailable` では代用できない。失敗した読み取りは枠を即座に返してしまうため。
+
+## テスト戦略
+
+fake は、それに依存するテストにとっての production code です。port からドリフトすると、その上に組まれた
+テストは、本物の store が決してしない振る舞いを証明しながら通り続けます。ここから上へ辿ると
+`internal/usecase/README.md` に行き着きますが、その Test戦略が扱うのは interactor — boundary を mock し、
+infrastructure には触れない — であり、boundary 自身の fake をどう固定するかは述べていません。以下がその
+欠けている基準線です。
+
+- **port の全メソッドをインターフェース契約に対して** — `Append`（検証・冪等な再 append・別 `EventID` での
+  conflict）、`ReadAfter`（昇順・`After` の排他・stream ごとの分離・切り詰め時の `HasMore`）、`Latest`、
+  `Find`。契約は `boundary/realtime/eventlog.go` であって、この実装ではない。
+- **デフォルトの読み取り limit** — `Limit` なしの `ReadAfter` は 32 で切り詰めて `HasMore` を報告する。
+  黙って全件を返す fake は、正しくない呼び出し側の paging を正しく見せてしまう。
+- **各 control port を両側から** — `Seed` は `Append` が拒否するもの（gap・不正な封筒）を書く。
+  `SetUnavailable` は設定中すべての読み書きを失敗させ、解除されると止まる。`Hold` は解放されるまで読み取りを
+  ブロックし、その解放は冪等。中途半端に動く control port は無いより悪い。それを追加した理由であるシナリオが、
+  静かに再現されなくなるため。
+- **並行利用** — README は fake が並行利用に安全だと約束しており、replay ループと wakeup から同時に駆動される
+  fake はまさにその使われ方をする。約束を目視に委ねず、race detector が落とせるテストで固定する。

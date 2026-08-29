@@ -34,11 +34,9 @@ func NewCursorValidator(log rt.EventLogStore, clk clock.Clock, tf observability.
 	return &cursorValidator{log: log, clock: clk, tracer: tf.Usecase()}
 }
 
-// Validate は、replay floor を EventLog の状態から導出します。cursor より後ろに現存する最初の event を
-// 1 回の強い一貫性の読み取りで取り、それが cursor+1 なら保持期間内かどうか、cursor+1 より後ろなら gap、
-// 無ければ（初期位置でない限り）cursor 自身の event が残っているかを見ます。「cursor+1 の有無」と
-// 「後ろの event の有無」を別々に読むと、その間に relay が cursor+1 を append しただけで gap に見えるため、
-// 1 回の読み取りにまとめます。
+// Validate は、replay floor を EventLog の状態から導出します（3 分岐は ADR-0072 / package README を参照）。
+// 「cursor+1 の有無」と「後ろの event の有無」を別々に読むと、その間に relay が cursor+1 を
+// append しただけで gap に見えるため、1 回の読み取りにまとめます。
 func (v *cursorValidator) Validate(ctx context.Context, streamID rt.StreamID, cursor rt.Sequence) error {
 	ctx, endSpan := v.tracer.Start(ctx)
 	defer endSpan()
