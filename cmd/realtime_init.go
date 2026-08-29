@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 
+	awssdk "github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/spf13/cobra"
 
 	clirealtimeinit "go-boilerplate/internal/cli/realtimeinit"
@@ -10,6 +12,7 @@ import (
 	"go-boilerplate/internal/infrastructure/dynamodbclient"
 	eventlogdynamo "go-boilerplate/internal/infrastructure/eventlog/dynamodb"
 	instanceleasedynamo "go-boilerplate/internal/infrastructure/instancelease/dynamodb"
+	realtimeinfra "go-boilerplate/internal/infrastructure/realtime"
 	streamticketdynamo "go-boilerplate/internal/infrastructure/streamticket/dynamodb"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/pkg/xerrors"
@@ -70,6 +73,29 @@ func runRealtimeInit(ctx context.Context) error {
 	}
 
 	logger := logging.NewJSONLogger(logging.LevelInfo(), logging.LevelError(), nil)
+	if err := clirealtimeinit.Run(ctx, rtCfg, ensure, logger); err != nil {
+		return err
+	}
 
-	return clirealtimeinit.Run(ctx, rtCfg, ensure, logger)
+	// topic の作り方（SNS の CreateTopic）は infrastructure 側のクライアントで行い、CLI コアには名前と ARN だけを渡す。
+	clients, err := realtimeinfra.NewClients(ctx, realtimeinfra.ClientConfig{
+		Endpoint:        config.NewEndpointConfig(cfg).RealtimePubSub(),
+		Region:          rtCfg.Region(),
+		AccessKeyID:     rtCfg.AccessKeyID(),
+		SecretAccessKey: rtCfg.SecretAccessKey(),
+	})
+	if err != nil {
+		return xerrors.Wrap(err, "failed to build sns client")
+	}
+
+	ensureTopic := func(ctx context.Context, name string) (string, error) {
+		out, err := clients.SNS.CreateTopic(ctx, &sns.CreateTopicInput{Name: awssdk.String(name)})
+		if err != nil {
+			return "", err
+		}
+
+		return awssdk.ToString(out.TopicArn), nil
+	}
+
+	return clirealtimeinit.RunTopic(ctx, rtCfg.TopicARN(), ensureTopic, logger)
 }
