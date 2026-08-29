@@ -17,8 +17,8 @@ import (
 // authIssuerEnvKey は、JWT の issuer を持つ環境変数のキーです。
 const authIssuerEnvKey = "AUTH_ISSUER"
 
-// Realtime Delivery の contract test が繋ぐ先。既定は共有インフラ / CI service の DynamoDB Local で、
-// 環境変数で本番 DynamoDB へ向け直せる（同じテストを両方に対して走らせるため）。
+// Realtime Delivery の contract test が繋ぐ先（DynamoDB Local と GoAWS の既定値、およびその上書きキー）。
+// 解決規則と本番へ向け直す手順は NewRealtimeTestConnection に記します。
 const (
 	realtimeTestEndpointEnvKey    = "REALTIME_TEST_ENDPOINT"
 	realtimeTestPubSubEndpointKey = "REALTIME_TEST_PUBSUB_ENDPOINT"
@@ -126,9 +126,10 @@ func repoRoot(t *testing.T) string {
 	}
 }
 
-// NewRealtimeTestConnection は、contract test の接続先を返します。既定は `http://localhost:8000` の
-// DynamoDB Local（静的資格情報はダミー）。REALTIME_TEST_ENDPOINT を空文字で設定し、REALTIME_TEST_REGION を
-// 与え、資格情報の 2 変数を空文字で設定すると、同じテストが SDK 既定の chain で本番 DynamoDB に対して走ります
+// NewRealtimeTestConnection は、contract test の接続先を返します。既定は DynamoDB Local
+// （`http://localhost:8000`）と GoAWS（`http://localhost:4100`）で、静的資格情報はダミーです。
+// endpoint の 2 変数と資格情報の 2 変数を空文字で設定し REALTIME_TEST_REGION を与えると、
+// 同じテストが SDK 既定の chain で本番 AWS に対して走ります
 // （「未設定」と「空文字」を区別するため LookupEnv で読む）。
 func NewRealtimeTestConnection(t *testing.T) RealtimeTestConnection {
 	t.Helper()

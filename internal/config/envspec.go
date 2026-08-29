@@ -23,8 +23,7 @@ type Loader struct {
 }
 
 // Endpoint は、このアプリが接続する外部サービスの所在をまとめて保持する。
-// 「どこへ繋ぐか」はデプロイごとに変わる軸であり、各サブシステムの「どう振る舞うか」とは
-// 直交するため、サブシステム設定から切り離してここへ集める。
+// この軸を分けている理由は env/README.md の "Endpoint" 節にある。
 // 全項目 required だが空文字を許容する。空の意味は接続先ごとに異なるため各フィールドに記す。
 type Endpoint struct {
 	// OTLP は OpenTelemetry Collector の送出先です。空なら送出しません。
@@ -55,7 +54,8 @@ type ObjectStorage struct {
 	Region string `env:"REGION,required,notEmpty"`
 	Bucket string `env:"BUCKET,required,notEmpty"`
 	// AccessKeyID / SecretAccessKey は両方空なら SDK 既定の credential chain（IAM ロール等）へ委ねるため、
-	// 未設定を許す。ロール運用のデプロイにダミー値の注入を強いないための既定。
+	// 未設定を許す。ロール運用のデプロイにダミー値の注入を強いないための既定。この既定は Realtime /
+	// ConsumerQueue の資格情報にも同じく適用する。
 	AccessKeyID     string `env:"ACCESS_KEY_ID"                      envDefault:""`
 	SecretAccessKey string `env:"SECRET_ACCESS_KEY"                  envDefault:""`
 	UsePathStyle    bool   `env:"USE_PATH_STYLE,required"`
@@ -78,8 +78,7 @@ type Realtime struct {
 	QueuePrefix string `env:"QUEUE_PREFIX,required,notEmpty"`
 	// DLQ は instance queue の redrive 先の識別子（AWS では ARN）。空なら RedrivePolicy を付けない。
 	DLQ string `env:"DLQ" envDefault:""`
-	// AccessKeyID / SecretAccessKey は両方空なら SDK 既定の credential chain（IAM ロール等）へ委ねるため、
-	// 未設定を許す（ObjectStorage と同じ既定）。
+	// AccessKeyID / SecretAccessKey は ObjectStorage と同じ既定（両方空なら未設定を許す）。
 	AccessKeyID     string `env:"ACCESS_KEY_ID"     envDefault:""`
 	SecretAccessKey string `env:"SECRET_ACCESS_KEY" envDefault:""`
 }
@@ -115,7 +114,7 @@ type Outbox struct {
 // ConsumerQueue は worker が consume する broker（SQS 互換）の adapter 設定を保持する。
 // engine-core の Worker は broker 非依存と定めているため、broker 語彙を持つ設定は別軸に置く。
 // publish 端の Outbox.Queue* とは対になる（consume 端がこちら）。
-// 資格情報が両方空なら SDK 既定の credential chain（IAM ロール等）へ委ねる。
+// 資格情報の既定は ObjectStorage と同じ。
 type ConsumerQueue struct {
 	Region          string `env:"REGION"            envDefault:""`
 	URL             string `env:"URL"               envDefault:""`

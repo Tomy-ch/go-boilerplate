@@ -17,7 +17,7 @@ const (
 type NotificationKind string
 
 // Wakeup は、EventLog に event が 1 件増えたことを全 instance へ伝える通知です。
-// 重複して届いても同じ読み直しに畳まれ、欠落は periodic catch-up が覆うので、受け取る側は冪等でなければなりません。
+// 重複・欠落しうるので受け取る側は冪等でなければなりません（ADR-0073）。
 type Wakeup struct {
 	// EventID は、増えた event の識別子です（outbox の message_id と同じ）。
 	EventID string
@@ -34,7 +34,7 @@ type Revocation struct {
 }
 
 // Notification は、instance の受信先から取り出した 1 件です。Kind に応じて Wakeup か Revocation のどちらかが埋まります。
-// 種別が読めない通知は Kind が空のまま返り、受け取る側が Delete で取り除きます（残すと再配送され続けるため）。
+// 種別が読めない通知は Kind が KindUnknown（空文字）のまま返ります。
 // Receipt は受信先固有の削除鍵で、機構は中身を解釈しません。
 type Notification struct {
 	Kind       NotificationKind

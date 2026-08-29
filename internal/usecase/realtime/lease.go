@@ -11,7 +11,7 @@ import (
 	rt "go-boilerplate/internal/usecase/boundary/realtime"
 )
 
-// instance lease の固定値（ADR-0073）。deployment で変える理由が無いので config ではなく code に置きます。
+// instance lease の固定値（ADR-0073 / docs/design/realtime-delivery.md §3.3）。
 const (
 	// LeaseHeartbeatInterval は、serve instance が生存を記録し直す間隔です。
 	LeaseHeartbeatInterval = 30 * time.Second
@@ -22,7 +22,7 @@ const (
 )
 
 // LeaseKeeper は、serve instance の生存記録を書き、正常終了時に取り消す seam です。
-// 記録は crash した instance の resource を後から回収するためだけにあり、lock でも leader election でもありません。
+// 記録は crash した instance の resource を後から回収するためだけにあります（ADR-0073）。
 type LeaseKeeper interface {
 	// Beat は、id の instance が今生きていることを記録します。期限は今から LeaseExpiry 後です。
 	Beat(ctx context.Context, id rt.InstanceID) error

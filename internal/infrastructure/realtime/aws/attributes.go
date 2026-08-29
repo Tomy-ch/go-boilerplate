@@ -10,7 +10,7 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
-// instance queue に設定する固定値。deployment で変える理由が無いので config ではなく code に置きます。
+// instance queue に設定する固定値です（deployment 依存の値は RealtimeConfig 側）。
 const (
 	// visibilityTimeout は、受信した通知を他の受信から隠す秒数です。consumer は受信後すぐ削除するので短くて足ります。
 	visibilityTimeout = 30
@@ -27,15 +27,14 @@ type redrivePolicy struct {
 }
 
 // QueueAttributes は、instance queue に設定する属性の集合を組み立てる境界です。
-// production は全属性（policy / redrive / 暗号化 / timings）を返し、emulator 向けの実装は
-// emulator が受け付けない属性を間引きます。間引くのは実装側の責務で、production 側で失敗を握り潰しません。
+// production は全属性（policy / redrive / 暗号化 / timings）を返し、間引きは emulator 向けの
+// 実装側が行います（README の Emulator compatibility）。
 type QueueAttributes interface {
 	// Build は、queueARN の queue に設定する属性を返します。空なら何も設定しません。
 	Build(queueARN string) (map[string]string, error)
 }
 
 // QueueAttributesInput は、production の属性を組み立てるのに要る deployment 依存の識別子です。
-// 2 つとも自由形式の文字列なので、位置ではなく名前で渡します（docs/rules.md の Function Signature Rules）。
 type QueueAttributesInput struct {
 	// TopicARN は、この queue への送信を許す唯一の topic です（access policy の aws:SourceArn 条件）。
 	TopicARN string
@@ -77,8 +76,7 @@ func (a *queueAttributes) Build(queueARN string) (map[string]string, error) {
 	return attrs, nil
 }
 
-// TimingAttributes は、long polling と visibility timeout の属性を返します。emulator 向けの実装も
-// この 2 つは設定します（受信の振る舞いを production と揃えるため）。
+// TimingAttributes は、long polling と visibility timeout の属性を返します。
 func TimingAttributes() map[string]string {
 	return map[string]string{
 		string(sqstypes.QueueAttributeNameVisibilityTimeout):             strconv.Itoa(visibilityTimeout),

@@ -16,7 +16,6 @@ import (
 const serveLifecycleLoggerName = "server.Lifecycle"
 
 // HTTPServerHooksIn は、serve instance のライフサイクル hook が受け取る依存です。
-// 参加者はいずれも任意（値が無くてもよい value group）で、1 つも無ければ HTTP サーバーだけを起動・停止します。
 type HTTPServerHooksIn struct {
 	fx.In
 
@@ -61,6 +60,9 @@ type serveLifecycle struct {
 //
 // fx の OnStop は登録の逆順で走るため、順序を hook の登録順に委ねず、start / stop 各 1 本の中で明示的に
 // 呼びます（参加者が増減しても順序が変わらず、drain が HTTP shutdown より前に完了することを固定する）。
+// Start は途中で失敗したら、そこまでに起動・作成したものを逆順に止めて片付けてから失敗を返します。
+// Stop は参加者が失敗しても記録して次へ進み（途中で止めると resource が残る）、HTTP shutdown まで
+// 終えてからすべての失敗をまとめて返します。
 func RegisterHTTPServerHooks(in HTTPServerHooksIn) {
 	lc := newServeLifecycle(in)
 	in.Reg.RegisterStart(lc.start)
@@ -85,8 +87,7 @@ func newServeLifecycle(in HTTPServerHooksIn) *serveLifecycle {
 	}
 }
 
-// start は、到達確認 → resource 作成 → 常駐処理 → HTTP listen の順に起動します。
-// 途中で失敗したら、そこまでに起動・作成したものを逆順に止めて片付けてから失敗を返します。
+// start は、[RegisterHTTPServerHooks] が定める Start 順で起動し、失敗したら逆順に巻き戻します。
 func (l *serveLifecycle) start(ctx context.Context) error {
 	for _, p := range l.startup {
 		if err := p.Probe(ctx); err != nil {
@@ -127,9 +128,7 @@ func (l *serveLifecycle) start(ctx context.Context) error {
 	return nil
 }
 
-// stop は、drain → 常駐処理の停止 → resource の片付け → HTTP shutdown の順に停止します。
-// 参加者の失敗は記録して次へ進み（片付けを途中で止めると resource が残る）、HTTP shutdown まで終えてから
-// すべての失敗をまとめて返します。
+// stop は、[RegisterHTTPServerHooks] が定める Stop 順で停止し、失敗をまとめて返します。
 func (l *serveLifecycle) stop(ctx context.Context) error {
 	var errs []error
 
@@ -155,7 +154,7 @@ func (l *serveLifecycle) stop(ctx context.Context) error {
 	return xerrors.Join(errs...)
 }
 
-// stopRunners は、先頭から n 個の常駐処理を逆順に止め、失敗を記録して返します（止め切るまで途中で止めない）。
+// stopRunners は、先頭から n 個の常駐処理を逆順に止め、失敗を記録して返します。
 func (l *serveLifecycle) stopRunners(ctx context.Context, n int) []error {
 	var errs []error
 
@@ -174,7 +173,7 @@ func (l *serveLifecycle) stopRunners(ctx context.Context, n int) []error {
 	return errs
 }
 
-// teardown は、先頭から n 個の参加者の resource を逆順に片付け、失敗を記録して返します（片付け切るまで途中で止めない）。
+// teardown は、先頭から n 個の参加者の resource を逆順に片付け、失敗を記録して返します。
 func (l *serveLifecycle) teardown(ctx context.Context, n int) []error {
 	var errs []error
 

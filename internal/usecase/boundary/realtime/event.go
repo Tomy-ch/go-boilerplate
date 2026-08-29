@@ -20,7 +20,6 @@ const (
 
 	// EventLogRetention は、event を replay できる期間です。store はこの期間を過ぎた item を掃除してよく、
 	// usecase は OccurredAt がこの期間より古い位置への cursor を失効と判定します（ADR-0072）。
-	// 掃除と判定の両方が同じ値を見るよう、定義はここ 1 箇所です。
 	EventLogRetention = 7 * 24 * time.Hour
 )
 

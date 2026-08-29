@@ -54,8 +54,7 @@ func runRealtimeInit(ctx context.Context) error {
 		return xerrors.Wrap(err, "failed to build dynamodb client")
 	}
 
-	// table の定義（キー / index / TTL）は各 adapter package が持つ。CLI コアは名前と順序だけを扱うので、
-	// 名前 → 定義の束ね方はこの composition root が持つ。
+	// table の定義（キー / index / TTL）は各 adapter package が持つ。
 	specs := map[string]dynamodbclient.TableSpec{
 		rtCfg.EventLogTable():      eventlogdynamo.TableSpec(rtCfg.EventLogTable()),
 		rtCfg.StreamTicketTable():  streamticketdynamo.TableSpec(rtCfg.StreamTicketTable()),
@@ -75,7 +74,6 @@ func runRealtimeInit(ctx context.Context) error {
 		return err
 	}
 
-	// topic の作り方は infrastructure（realtime.EnsureTopic）が持ち、CLI コアには名前と ARN だけを渡す。
 	clients, err := realtimeinfra.NewClients(ctx, realtimeinfra.ClientConfig{
 		Endpoint:        config.NewEndpointConfig(cfg).RealtimePubSub(),
 		Region:          rtCfg.Region(),

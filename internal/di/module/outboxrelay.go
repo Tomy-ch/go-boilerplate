@@ -62,10 +62,8 @@ func OutboxRelayModule(channel outboxbndry.Channel) fx.Option {
 	)
 }
 
-// publisherModuleFor は、channel を配送できる publisher module を返します。HTTP channel は判別子
-// （OUTBOX_PUBLISHER）で HTTP / SQS 互換ブローカーを選ぶ従来の module、realtime channel は EventLog へ
-// append してから wakeup を publish する module です。対応する case が無い channel は、担当者の居ない
-// relay を黙って起動させないため構築エラーにします（fail-closed）。
+// publisherModuleFor は、channel を配送できる publisher module を返します。対応する module の無い channel は、
+// 担当者の居ない relay を黙って起動させないため構築エラーにします（fail-closed）。
 func publisherModuleFor(channel outboxbndry.Channel) fx.Option {
 	switch channel {
 	case outboxbndry.ChannelHTTP:

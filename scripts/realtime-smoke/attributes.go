@@ -16,17 +16,18 @@ import (
 )
 
 const (
-	// attrNotificationType は、wakeup と失効通知を 1 つの topic で見分けるための MessageAttribute 名です。
-	// production と同じ定数を参照し、production 側の改名で smoke が旧名を検査し続けないようにします。
+	// attrNotificationType は、literal ではなく production の定数を参照します。改名が smoke に伝わらず
+	// 旧名を検査し続けるのを防ぐためです。
 	attrNotificationType = realtimeaws.AttrKind
 	typeWakeup           = "wakeup"
 	typeRevocation       = "revocation"
 
-	// 以下は production が instance queue に設定する値と同じです。emulator が受理し読み戻せるかを見ます。
+	// 以下 3 つは production が instance queue に設定する値と同じです。emulator が受理し読み戻せるかを見ます。
 	queueVisibilityTimeout = "30"
 	queueReceiveWait       = "20"
 	redriveMaxReceiveCount = "5"
-	kmsKeyAlias            = "alias/aws/sqs"
+
+	kmsKeyAlias = "alias/aws/sqs"
 )
 
 // redrivePolicy は、SQS の RedrivePolicy 属性の JSON です。
@@ -263,9 +264,8 @@ func (s *pubSubSmoke) notificationTypes(ctx context.Context) (string, error) {
 	return strconv.Itoa(len(msgs)) + " 件を type 属性で振り分けた（" + seen + "）", nil
 }
 
-// receiveAfterAttributes は、queue 属性（VisibilityTimeout / ReceiveMessageWaitTimeSeconds）を設定した後に
-// 1 件 publish し、先頭 queue で 1 件だけ届くことを確かめます。long polling を queue 属性で有効にした
-// emulator が同じ message を繰り返し返すと、consumer 側の重複が queue 属性の有無で変わるためです。
+// receiveAfterAttributes は、直前の属性設定の後に 1 件 publish し、先頭 queue に 1 件だけ届いて
+// それを削除できることを確かめます。属性の受理と配送・削除の振る舞いが連動する emulator があるためです。
 func (s *pubSubSmoke) receiveAfterAttributes(ctx context.Context) (string, error) {
 	url, err := s.firstQueue()
 	if err != nil {

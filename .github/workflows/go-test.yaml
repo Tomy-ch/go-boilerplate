@@ -89,8 +89,9 @@ jobs:
           --health-retries=5
           --health-start-period=20s
       dynamodb_local:
-        # Realtime Delivery の store の contract test が繋ぐ DynamoDB Local。docker-compose.yaml の
-        # dynamodb_local と同じ版。service には command を渡せないため image 既定の -inMemory で動く。
+        # DynamoDB Local, the store the Realtime Delivery contract tests connect to. Same version as the
+        # dynamodb_local service in docker-compose.yaml. A service container takes no command, so it runs
+        # on the image default (-inMemory).
         image: amazon/dynamodb-local:3.3.1
         ports:
           - "8000:8000"
@@ -101,10 +102,9 @@ jobs:
           --health-retries=10
           --health-start-period=10s
       goaws:
-        # SNS / SQS emulator the Realtime Delivery fan-out contract tests connect to. Same version as the
-        # goaws service in docker-compose.yaml. A service container takes no config file, so it runs on the
-        # image defaults and its account id is 100010001000 (compose uses 000000000000); the tests therefore
-        # take every ARN from API responses instead of assembling one.
+        # SNS / SQS emulator for the Realtime Delivery fan-out contract tests. Same version as the goaws
+        # service in docker-compose.yaml. A service container takes no config file, so it runs on the image
+        # defaults and its account id is 100010001000, not the 000000000000 compose uses.
         image: admiralpiett/goaws:v0.5.4@sha256:18589afe16517751cc981354536c148854157a718bee9059494d6cdee3dc4e2d
         ports:
           - "4100:4100"
@@ -198,14 +198,13 @@ jobs:
       - name: Materialize ci env for embedding
         run: make materialize-env
 
+      # shellcheck: mise.toml holds the pinned version actions-shellcheck's tests are checked
+      # against, so the runner's own build is not enough (.makefiles/README.md, make test-scripts).
       - name: Setup mise and required tools
         uses: ./.github/actions/setup-mise
         with:
           tools: shellcheck
           github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      # actions-shellcheck's tests shell out to the real shellcheck. The runner ships one of its
-      # own, but mise.toml holds the pinned version the tool is checked against.
 
       - name: Run scripts tool tests
         id: scripts-test

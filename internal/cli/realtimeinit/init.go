@@ -27,11 +27,10 @@ var ErrTopicARNMismatch = xerrors.Wrap(
 	"realtime-init: created topic arn does not match REALTIME_TOPIC",
 )
 
-// Ensurer は、名前で指定した table を実在させる関数型です（実体は cmd 側が infrastructure の
-// TableSpec に束ねて渡します）。
+// Ensurer は、名前で指定した table を実在させる関数型です。
 type Ensurer func(ctx context.Context, table string) error
 
-// TopicEnsurer は、名前で指定した topic を実在させ、その ARN を返す関数型です（実体は cmd 側が SNS クライアントに束ねて渡します）。
+// TopicEnsurer は、名前で指定した topic を実在させ、その ARN を返す関数型です。
 type TopicEnsurer func(ctx context.Context, name string) (arn string, err error)
 
 // TableNames は、config が指す 3 table の名前を作成順に返します。
@@ -72,8 +71,7 @@ func RunTopic(ctx context.Context, topicARN string, ensure TopicEnsurer, logger 
 	return nil
 }
 
-// Run は、3 table を順に実在させます。1 つでも失敗したらその table 名を添えて止まります
-// （残りを続けても中途半端な状態を増やすだけで、再実行すれば冪等に続きから収束するため）。
+// Run は、3 table を順に実在させます。1 つでも失敗したらその table 名を添えて止まります。
 func Run(ctx context.Context, cfg *config.RealtimeConfig, ensure Ensurer, logger logging.Logger) error {
 	for _, table := range TableNames(cfg) {
 		if err := ensure(ctx, table); err != nil {

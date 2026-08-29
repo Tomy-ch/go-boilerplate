@@ -10,10 +10,9 @@ import (
 var ErrChannelUnsupported = xerrors.Wrap(apperror.ErrInvalidArgument, "unsupported outbox delivery channel")
 
 // VerifyChannel は、この package が提供する publish 実装が channel を配送できるかを検査します。
-// 配送できない channel は起動時に落とします（fail-closed の理由は README の Design Policy を参照）。
+// 配送できない channel は起動時に落とします（fail-closed の理由と channel ごとの担当は
+// README の Design Policy を参照）。
 // 現在の実装（HTTP / SQS 互換ブローカー）はいずれも順序を持たない HTTP チャネルの配送先です。
-// realtime channel は別の package（infrastructure/realtime）が担い、channel ごとの module の選択と
-// 未知の channel の拒否は DI（OutboxRelayModule）が行います。
 func VerifyChannel(channel outboxbndry.Channel) error {
 	if channel == outboxbndry.ChannelHTTP {
 		return nil

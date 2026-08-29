@@ -21,8 +21,8 @@ type ClientConfig struct {
 	// credential chain へ委ねます。詳細は awsclient.Resolve を参照。
 	AccessKeyID     string
 	SecretAccessKey string
-	// HTTPClient は、SDK が API 呼び出しに使う HTTP クライアントです。SSRF ガード付きの実装を DI が
-	// 注入します。nil を渡すと SDK 既定のトランスポートになり、ガードを素通りします。
+	// HTTPClient は、SDK が API 呼び出しに使う HTTP クライアントです。nil を渡すと SDK 既定の
+	// トランスポートになり、SSRF ガードを素通りします。
 	HTTPClient awssdk.HTTPClient
 }
 

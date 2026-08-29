@@ -36,7 +36,6 @@ var queueNameRe = regexp.MustCompile(`^[A-Za-z0-9_-]+$`)
 var _ rt.InstanceSubscription = (*subscription)(nil)
 
 // SubscriptionTarget は、instance の受信先をどの topic に、どの名前で作るかです。
-// 2 つとも自由形式の文字列なので、位置ではなく名前で渡します（docs/rules.md の Function Signature Rules）。
 type SubscriptionTarget struct {
 	// TopicARN は、subscribe する topic です。
 	TopicARN string
@@ -61,7 +60,6 @@ type subscription struct {
 }
 
 // NewInstanceSubscription は、target の topic に対する instance 固有の受信先を管理する InstanceSubscription を返します。
-// queue 名は prefix に instance の識別子を付けた形で、orphan cleanup が lease の識別子だけから queue を辿れます。
 func NewInstanceSubscription(
 	snsAPI SNSAPI, sqsAPI SQSAPI, target SubscriptionTarget, attrs QueueAttributes, tf observability.TracerFactory,
 ) rt.InstanceSubscription {
@@ -111,7 +109,7 @@ func (s *subscription) Provision(ctx context.Context, id rt.InstanceID) error {
 	return nil
 }
 
-// Receive は、long polling で最大 limit 件（SQS の上限 10 件まで）を受け取り、Notification へ復元して返します。
+// Receive は、long polling で最大 limit 件（0 以下と 10 超は SQS の上限 10 件）を受け取り、Notification へ復元して返します。
 func (s *subscription) Receive(ctx context.Context, limit int) ([]rt.Notification, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()

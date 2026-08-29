@@ -10,9 +10,8 @@ import (
 )
 
 // realtimePublisherModule は、realtime channel の relay が使う publish 先（EventLog へ append → wakeup を publish）を
-// 提供する fx.Module です。OutboxRelayModule が channel=realtime のときだけ束ねます。
-// EventLog の store と fan-out のクライアントは realtimeModule() と同じ構築子を共有しますが、stream handler の
-// 登録は relay process に無関係なので realtimeModule() 自体は束ねません（serve と relay は別 process）。
+// 提供する fx.Module です。EventLog の store と fan-out のクライアントは realtimeModule() と同じ構築子を共有しますが、
+// stream handler の登録は relay process に無関係なので realtimeModule() 自体は束ねません（serve と relay は別 process）。
 func realtimePublisherModule() fx.Option {
 	return fx.Module("realtime_publisher",
 		fx.Provide(

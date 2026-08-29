@@ -228,8 +228,8 @@ func (s *pubSubSmoke) queuePolicy(ctx context.Context) (string, error) {
 	return "aws:SourceArn 条件付き policy が保存され読み戻せた", nil
 }
 
-// createQueueWithPolicy は、作成時の Attributes で Policy を渡す経路を検査します。production の
-// instance queue は作成と同時に policy を持つのが自然なので、SetQueueAttributes が通らない場合の代替経路になります。
+// createQueueWithPolicy は、作成時の Attributes で Policy を渡す経路を検査します。SetQueueAttributes
+// （G4）が通らない emulator でも policy を設定できるかを見る代替経路です。
 func (s *pubSubSmoke) createQueueWithPolicy(ctx context.Context) (string, error) {
 	name := s.names.queue(s.n)
 	doc, err := s.policyDocument("arn:aws:sqs:" + defaultRegion + ":000000000000:" + name)

@@ -23,7 +23,7 @@ const (
 type Settings struct {
 	// BatchSize は、1 回の受信で取り出す通知の上限です。
 	BatchSize int
-	// ErrorBackoff は、受信に失敗した後に待つ時間です。受信自体が long polling なので、成功時の待機はありません。
+	// ErrorBackoff は、受信に失敗した後に待つ時間です。
 	ErrorBackoff time.Duration
 }
 
@@ -62,8 +62,7 @@ func NewEngine(
 }
 
 // Run は、受信ループ本体です。ctx 完了まで常駐し、完了時に nil を返します。
-// 受信に失敗したら ErrorBackoff だけ待って続けます。受け取った通知は sink へ渡してから削除し、
-// 削除に失敗した通知は再配送されます（重複は sink の冪等性が吸収する）。
+// loop の意味論（受信失敗時の待機・削除順序・重複の扱い）は README の "Loop semantics (Run)" を参照。
 func (e *Engine) Run(ctx context.Context) error {
 	ctx, endSpan := e.tracer.Start(ctx)
 	defer endSpan()
@@ -119,9 +118,8 @@ func (e *Engine) dispatch(ctx context.Context, log logging.Logger, batch []rt.No
 	}
 }
 
-// coalesce は、1 回の受信分を種別ごとにまとめます。同じ stream の wakeup は最大の sequence 1 件に畳み
-// （どれも「cursor 以降を読み直せ」の合図で、位置が進んだ 1 件で足りる）、失効通知はそのまま並べ、
-// 種別の無い通知は数だけ返します。受信をまたぐ畳み込みは sink 側（registry）の責務です。
+// coalesce は、1 回の受信分を種別ごとにまとめます。同じ stream の wakeup は最大の sequence 1 件に畳み、
+// 失効通知はそのまま並べ、種別の無い通知は数だけ返します。
 func coalesce(batch []rt.Notification) (map[rt.StreamID]rt.Sequence, []rt.Revocation, int) {
 	wakeups := map[rt.StreamID]rt.Sequence{}
 	revocations := make([]rt.Revocation, 0, len(batch))

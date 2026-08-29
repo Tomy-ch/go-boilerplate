@@ -31,10 +31,7 @@ type publisher struct {
 }
 
 // NewPublisher は、log へ append し topicARN へ wakeup を publish する Publisher を返します。
-//
-// 二重配送の根拠は 2 つです。append は同じ EventID の再実行を成功として返す（冪等）ので、SNS の後に mark が
-// 失敗して同じ message が再び claim されても EventLog に 2 件目は入りません。wakeup は本文を運ばず
-// 「読み直せ」の合図なので、2 度届いても client には EventLog の 1 件が 1 度だけ配られます（ADR-0073）。
+// append は同じ EventID なら冪等に成功するので、再送で EventLog に 2 件目は入りません（ADR-0073）。
 func NewPublisher(
 	log rt.EventLogStore,
 	snsAPI SNSAPI,

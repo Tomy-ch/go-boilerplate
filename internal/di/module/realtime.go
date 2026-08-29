@@ -49,13 +49,10 @@ type realtimeFanout struct {
 	topicARN string
 }
 
-// realtimeModule は、Realtime Delivery の store（EventLog / StreamTicket / InstanceLease / SecretGenerator）と
-// 機構側 usecase（CursorValidator / TicketIssuer / TicketVerifier / AccessRevoker / LeaseKeeper）、StreamTicket
-// securityScheme の認証器、fan-out の publish 側（RevocationNotifier）と受信側（instance の受信先・consumer engine・
-// lease heartbeat）を提供し、SSE の stream handler を Echo に登録し、serve lifecycle の参加者を group へ出す fx.Module です。
-// InfrastructureModule() には束ねず、feature の realtime adapter が現れたときに app graph へ組み込みます
-// （docs/design/realtime-delivery.md §3.1）。wakeup / 失効の受け口（WakeupSink / RevocationSink）は connection
-// registry（Phase 6）が提供します。
+// realtimeModule は、Realtime Delivery の store・機構側 usecase・fan-out・SSE の stream handler・serve lifecycle の
+// 参加者を提供する fx.Module です。InfrastructureModule() には束ねず serve profile にだけ配線します
+// （内訳は internal/di/module/README.md「Design Policy」、配線条件は docs/design/realtime-delivery.md §3.1）。
+// WakeupSink / RevocationSink は connection registry（controller/stream）が provide します。
 func realtimeModule() fx.Option {
 	return fx.Module("realtime",
 		fx.Provide(
@@ -142,9 +139,8 @@ func provideInstanceID() (rt.InstanceID, error) {
 }
 
 // provideInstanceQueueAttributes は、instance queue に設定する属性の組み立て手を環境で選びます。
-// emulator（GoAWS）は queue policy を拒み、redrive / 暗号化の属性を保存しない（#1409 / #1414 の互換 smoke）ため、
-// emulator を使う環境だけ属性を間引いた実装を使います。production の実装は失敗を握り潰しません（間引きは
-// emulator 向け実装の責務）。名指ししない環境は起動エラーにします（fail-closed）。
+// emulator（GoAWS）が受け付けない属性と、どの環境がどちらの実装を使うかは
+// internal/infrastructure/realtime/README.md「Emulator compatibility」を参照。
 func provideInstanceQueueAttributes(
 	appCfg *config.ApplicationConfig,
 	cfg *config.RealtimeConfig,
@@ -196,8 +192,8 @@ func provideRealtimeHeartbeat(
 	return ctrlrealtime.NewHeartbeat(keeper, id, sleeper, log, tf)
 }
 
-// provideRealtimeStartupProbe は、HTTP を listen する前に EventLog へ到達できることを確かめる参加者を返します
-// （Realtime runtime の起動に不可欠な dependency は startup で fail-fast する — 設計 §2.6）。
+// provideRealtimeStartupProbe は、HTTP を listen する前に EventLog へ到達できることを確かめる
+// [hook.StartupProbe] を返します。
 func provideRealtimeStartupProbe(log rt.EventLogStore) hook.StartupProbe {
 	return hook.StartupProbe{Name: realtimeParticipantName, Probe: func(ctx context.Context) error {
 		_, _, err := log.Latest(ctx, startupProbeStreamID)
@@ -206,11 +202,9 @@ func provideRealtimeStartupProbe(log rt.EventLogStore) hook.StartupProbe {
 	}}
 }
 
-// provideRealtimeProvisioner は、lease の記録と instance の受信先を 1 つの参加者に合成します。
-// 起動は lease → 受信先、片付けは 受信先（unsubscribe → queue 削除）→ lease 削除の順で、
-// fx の group は順序を保証しないため 1 つの参加者の中で固定します（ADR-0073 の回収順と同じ）。
-// lease は受信先の片付けが成功したときだけ消します。lease は orphan cleanup が残った queue / subscription を辿る
-// 唯一の索引なので、片付けに失敗した instance の lease を消すと、その resource は二度と自動回収されません。
+// provideRealtimeProvisioner は、lease の記録と instance の受信先を 1 つの参加者に合成し、
+// 起動は lease → 受信先、片付けは 受信先 → lease の順に固定します
+// （fx の value group は順序を保証しない。順序そのものの根拠は docs/design/realtime-delivery.md §2.5）。
 func provideRealtimeProvisioner(
 	sub rt.InstanceSubscription,
 	keeper ucrealtime.LeaseKeeper,
@@ -255,7 +249,7 @@ func provideRealtimeHeartbeatRunner(heartbeat *ctrlrealtime.Heartbeat) hook.Runn
 	}}
 }
 
-// provideRealtimeClient は、3 つの store が共有する DynamoDB クライアントを組み立てます。
+// provideRealtimeClient は、Realtime Delivery の store が共有する DynamoDB クライアントを組み立てます。
 // 資格情報を解決できない場合はエラーを返し、app.Start を失敗させます。
 func provideRealtimeClient(
 	cfg *config.RealtimeConfig,

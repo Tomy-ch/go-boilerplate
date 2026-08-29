@@ -13,7 +13,7 @@ import (
 const heartbeatLoggerName = "realtime-heartbeat"
 
 // Heartbeat は、instance lease を LeaseHeartbeatInterval ごとに書き直す常駐 loop です。
-// 1 回の失敗では止まらず次の周期で書き直します（失敗が LeaseExpiry を超えて続けば orphan として回収される）。
+// 1 回の失敗では止まらず次の周期で書き直します。
 type Heartbeat struct {
 	keeper  ucrealtime.LeaseKeeper
 	id      rt.InstanceID
