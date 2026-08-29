@@ -33,3 +33,6 @@ func (n names) table() string { return "gobp_smoke_" + n.runID }
 func (n names) topic() string { return "gobp-smoke-" + n.runID }
 
 func (n names) queue(i int) string { return "gobp-smoke-" + n.runID + "-" + strconv.Itoa(i) }
+
+// dlq は、RedrivePolicy の検査で DLQ に指定する queue 名です。
+func (n names) dlq() string { return "gobp-smoke-" + n.runID + "-dlq" }
