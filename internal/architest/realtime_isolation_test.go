@@ -3,7 +3,7 @@ package architest
 // Realtime Delivery の隔離規約（docs/design/realtime-delivery.md §3.1「Architecture rules (mechanically checked)」）を
 // 機械的に検査する。
 //
-//  1. 機構側の package（boundary/realtime、usecase/realtime、infrastructure の 4 package、controller/stream）は
+//  1. 機構側の package（boundary/realtime、usecase/realtime、infrastructure の 5 package、controller/stream、controller/realtime）は
 //     feature の domain / usecase を import しない。
 //  2. InstanceLeaseStore を使ってよいのは realtime の package 群、realtime の DI module、orphan cleanup の
 //     job / CLI だけ。
@@ -32,7 +32,9 @@ var realtimeMechanismDirs = []string{
 	"internal/infrastructure/streamticket",
 	"internal/infrastructure/instancelease",
 	"internal/infrastructure/realtimesecret",
+	"internal/infrastructure/realtime",
 	"internal/controller/stream",
+	"internal/controller/realtime",
 }
 
 // instanceLeaseStoreAllowedPrefixes は、規約 2 で InstanceLeaseStore を参照してよいパス（repo root 相対）の
