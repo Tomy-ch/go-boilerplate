@@ -1,9 +1,9 @@
 # stream
 
-The handler for the generic SSE endpoint `GET /v1/streams/{destination}` — the part of the Realtime
-Delivery transport that decides **before the response is committed** whether a connection may start.
-The part that runs after commit (the connection registry, admission, replay, heartbeat, control
-events) is the `Streamer` seam this package declares and Phase 6 implements.
+The generic SSE endpoint `GET /v1/streams/{destination}` — the whole Realtime Delivery transport:
+the handler that decides **before the response is committed** whether a connection may start, and the
+connection registry that runs everything after commit (admission, replay, catch-up, heartbeat,
+control events, drain).
 
 Design reference: `docs/design/realtime-delivery.md` §2.3 (connection lifecycle) and §3.1 (package
 placement); ADR-0074 (query-ticket-stream-authentication).
@@ -16,7 +16,7 @@ placement); ADR-0074 (query-ticket-stream-authentication).
 | 2 | `after` / `Last-Event-ID` are checked against the spec pattern | OpenAPI validator | 400 (`BAD_REQUEST`) |
 | 3 | The cursor is resolved: `Last-Event-ID` → `after` → the ticket's initial cursor | `cursor.go` | 400 (`INVALID_STREAM_CURSOR`) for a negative or out-of-range value |
 | 4 | The cursor is checked against the replay floor | `usecase/realtime.CursorValidator` | 410 (`STREAM_CURSOR_EXPIRED`) when replay can no longer start there; 503 when the EventLog cannot be read |
-| 5 | The verified `StreamRequest` is handed to `Streamer` | Phase 6 | — |
+| 5 | The verified `StreamRequest` is handed to `Streamer` | `registry.go` | 503 (`SERVICE_UNAVAILABLE`) + `Retry-After` when the instance is at its connection cap, has no initial-replay slot within the bounded wait, or is draining |
 
 Every refusal is an ordinary HTTP error answered by the shared error handler; nothing here writes a
 response body. The ticket's raw value never appears in an error, a log field or a span attribute —
@@ -35,15 +35,76 @@ This is the one exception the design reference names.
 The package lives beside `handler/`, not under it: it is transport for a mechanism, not a feature
 resource, and `internal/architest/realtime_isolation_test.go` forbids it from importing any
 `internal/domain/<feature>` or `internal/usecase/<feature>`. `BindHandler` is registered by the
-Realtime DI module (`internal/di/module/realtime.go`), never in `di/module/controller.go`; the module joins the
-serve graph when the `Streamer` and a feature adapter exist (Phase 6).
+Realtime DI module (`internal/di/module/realtime.go`), never in `di/module/controller.go`. That module is
+not in the serve graph yet: it joins once a feature adapter needs it, which is #1416 and #1417.
 
-## What Phase 6 must settle before the handler is wired
+## Runtime: what one connection does after commit
 
-- **The Realtime DI module (`realtimeModule()`) registers `BindHandler`, but that module is not in the serve graph yet**, so on every environment the operation answers 401 (`ErrUnauthorizedSchemeUnsupported`) until Phase 6 provides the `Streamer` and a feature adapter binds the module. `TestBindHandlerDIParity` covers this package (declared ⇔ invoked in `realtime.go`), so a `BindHandler` left out of the module is red; the module itself being out of the app graph is the documented Phase 5 boundary.
-- **The shared request timeout and write timeout cut a stream**: `timeout.Middleware` (Pre priority 2) applies `SERVER_REQUEST_TIMEOUT` (60s by default) to every request and `http.Server.WriteTimeout` (65s) closes the connection after that. Neither has a per-path exclusion today; the design's "stream path is excluded from the request timeout" has to be built before an SSE response can outlive a minute.
-- **The fan-out hands its notifications to sinks this package's connection registry has to implement** (Phase 7, #1414): `controller/realtime.Waker.Wake(ctx, streamID, upTo)` — wake the connections on that stream whose cursor is below `upTo` (idempotent; duplicates are normal, and coalescing across receive batches is the registry's) — and `controller/realtime.Revoker.Revoke(ctx, subject, destination)` — close that subject's connections with `STOP`. Both are called synchronously on the consumer loop, so they only mark or signal. The serve lifecycle stops in the order drain → consumer stop → instance-queue teardown → HTTP shutdown (`internal/di/server/hook`), and the registry supplies the drain as a `hook.Drainer` participant (refuse new connections, send `RECONNECT` / `SERVER_DRAINING`, wait for the connections to close) from the realtime DI module.
-- **410 is not in `OBS_TARGET_STATUS_CODES`** in any environment, so a `STREAM_CURSOR_EXPIRED` refusal reaches the client but no log — adding it is an env-policy decision (`env/README.md`).
+`Registry` is the instance's index of live connections. One value serves four callers, because all
+four read the same index and splitting them would mean keeping separate locks in step: the `Streamer`
+the handler calls, the `Waker` and `Revoker` the consumer engine (`controller/realtime`) hands
+notifications to, and the `hook.Drainer` the serve lifecycle runs before HTTP shutdown. The index is
+kept twice — by stream, because a wakeup names a stream, and by subject, because a revocation names a
+subject. Neither is a feature word: the mechanism never learns which subject is a user and which is an
+operator.
+
+Each committed connection runs two goroutines that share nothing but channels:
+
+| Goroutine | Owns | Does |
+| --- | --- | --- |
+| **fetcher** | the position read so far | initial replay, then re-reads on a wakeup or the jittered 30 s catch-up, taking a slot from the shared replay semaphore each time |
+| **pump** (the handler's own goroutine) | the wire | writes events, control events and the 15 s heartbeat, resetting the write deadline before each write |
+
+Three consequences worth knowing before changing any of it:
+
+- **The initial-replay slot is taken before the response is committed**, and the fetcher keeps holding
+  it through the first read. Waiting after commit would produce a connection that opened and then sat
+  silent, which reads to a client as a hang rather than as backpressure.
+- **A full send buffer closes the connection instead of dropping an event.** The buffer is one replay
+  page (`ucrealtime.ReplayPageLimit`), and the events are still in the EventLog, so a reconnect replays
+  from the client's own `Last-Event-ID`. Dropping instead would break the contiguous-prefix invariant
+  the whole ordering chain rests on.
+- **A read failure does not close the connection.** When the EventLog is unreachable the fetcher logs
+  and waits for the next catch-up (design §2.6). Closing every connection on a dependency blip turns
+  the recovery into a reconnect storm.
+
+The `pump` takes a queued control event ahead of any buffered event, so a `STOP` never waits behind a
+full buffer. Control events carry no SSE `id`, which is what keeps `Last-Event-ID` a pure function of
+the business event stream.
+
+### Stop-time budget
+
+`Drain` refuses new connections, sends `RECONNECT` / `SERVER_DRAINING` to every open one, closes them,
+and waits — for the shorter of the stop context and a fixed **10 seconds**. The work it waits on is one
+control frame plus a close per connection, each already bounded by the 10 s write deadline, so the
+budget is generous for what it covers. It is fixed rather than configurable because the rest of
+`SHUTDOWN_TIMEOUT` belongs to the steps behind it: the consumer stop, the instance queue and
+subscription teardown, and the HTTP shutdown. A drain that spent the whole budget would leave the queue
+and lease behind for the orphan-cleanup job, which is the outcome the stop order exists to avoid
+(design §2.5). This settles the open question handed over from #1414.
+
+### Reason codes this package sends
+
+`SERVER_DRAINING` (`RECONNECT`), `TEMPORARILY_OVERLOADED` (`RETRY_LATER`, best effort as the buffer
+overflows), `AUTH_REFRESH_REQUIRED` (`REAUTHENTICATE`, at the 1 h lifetime), `AUTHORIZATION_REVOKED`
+(`STOP`), and `CURSOR_TOO_OLD` (`RESYNC`, when a re-read comes back discontinuous).
+
+`STREAM_RECOVERY_FAILED` is declared in the contract but **reserved** — this package never sends it. A
+running connection survives an unreachable EventLog rather than failing, and a stream blocked by a dead
+head row is visible to the relay, not to a connection.
+
+## What is still elsewhere
+
+- **Typed config.** `MaxConnections` and `ReplayConcurrency` are `Settings` fields whose zero values
+  fall back to defaults, the same shape as `realtime.Settings` on the consumer engine. Exposing them as
+  environment variables, and syncing `env/**`, is #1417.
+- **Metrics.** Every close records a reason (`close_reason`) in a structured log, and the branches are
+  separated so a counter can be attached to each. Registering the `realtime_*` metrics, the label rules
+  and their architecture test is #1417, which also owns the span links — neither the delivery envelope
+  nor the wakeup notification carries an origin trace today.
+- **`OBS_TARGET_STATUS_CODES`.** 410 is present in `env/.env`, `.env.ci`, `.env.dast`, `.env.dev` and
+  `.env.stg`, and absent only from `.env.prd`, so a `STREAM_CURSOR_EXPIRED` refusal is logged everywhere
+  except production. Whether production should join them is an env-policy decision (`env/README.md`).
 
 ## Sub-packages
 
@@ -62,5 +123,20 @@ serve graph when the `Streamer` and a feature adapter exist (Phase 6).
 - `auth/stream_ticket_test.go` pins that the scheme name matches `openapi.yaml`, that the verifier
   receives the request context and the path destination, and that a rejected ticket leaves the slot
   empty.
-- `internal/integration` drives the real validator → scheme → handler chain over HTTP for 401 / 400
-  / 410 / 200.
+- `sse_test.go`, `registry_test.go` and `connection_test.go` cover the post-commit half. Two rules
+  shape them. **No test waits on real time**: the heartbeat, the lifetime and the catch-up all go
+  through `clock.Sleeper`, and the tests supply one that blocks until the test names which tick to
+  release, so a scheduling decision is asserted rather than timed. **Anything that flushes or sets a
+  write deadline runs over `httptest.Server`**: `httptest.ResponseRecorder` implements neither, so a
+  recorder-based test of the writer would assert against a writer the production path never uses.
+- `internal/integration` drives the real validator → scheme → handler → registry chain over HTTP:
+  401 / 400 / 410 / 200 for the pre-commit refusals, and for the connection itself the capacity cap,
+  initial-replay saturation, resume by both `after` and `Last-Event-ID`, delivery by catch-up with no
+  wakeup, revocation, and drain. `sse_client_test.go` is the Go reference client the design asks for —
+  test-only, never a shipped SDK — and it is what pins the client contract: control events leave
+  `Last-Event-ID` untouched, and `STOP` / `REAUTHENTICATE` / `RESYNC` make the client close before the
+  server's EOF.
+- Acceptance criterion 9 is split deliberately. That a saturated connection **closes** is pinned in
+  `connection_test.go`, where the buffer can be filled deterministically; that **no event is lost** is
+  pinned in `internal/integration`, by reconnecting and receiving what the first connection never read.
+  Filling a real socket buffer over the loopback interface would make the first half a timing test.

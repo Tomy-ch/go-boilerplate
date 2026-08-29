@@ -323,6 +323,14 @@ logging.NewTestLogFieldBuilder(t)
 |`ReceiveCountKey`|`receive_count`|
 |`PanicKey`|`panic`|
 
+### Realtime
+
+|定数|キー|
+|---|---|
+|`StreamIDKey`|`stream_id`|
+|`CloseReasonKey`|`close_reason`|
+|`OpenConnectionsKey`|`open_connections`|
+
 ### Observability
 
 |定数|キー|

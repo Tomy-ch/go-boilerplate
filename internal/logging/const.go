@@ -108,6 +108,15 @@ const (
 	// PanicKey は、recover した panic 値を表すログフィールドのキーです。
 	PanicKey = "panic"
 
+	// realtime 系ログのキー
+
+	// StreamIDKey は、Realtime Delivery の stream を表すログフィールドのキーです。
+	StreamIDKey = "stream_id"
+	// CloseReasonKey は、SSE 接続が閉じた理由を表すログフィールドのキーです。
+	CloseReasonKey = "close_reason"
+	// OpenConnectionsKey は、まだ開いている SSE 接続の数を表すログフィールドのキーです。
+	OpenConnectionsKey = "open_connections"
+
 	// 可観測系ログのキー
 
 	// TraceIDKey は、トレースIDを表すログフィールドのキーです。
