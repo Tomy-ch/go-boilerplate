@@ -21,10 +21,12 @@ const authIssuerEnvKey = "AUTH_ISSUER"
 // 環境変数で本番 DynamoDB へ向け直せる（同じテストを両方に対して走らせるため）。
 const (
 	realtimeTestEndpointEnvKey    = "REALTIME_TEST_ENDPOINT"
+	realtimeTestPubSubEndpointKey = "REALTIME_TEST_PUBSUB_ENDPOINT"
 	realtimeTestRegionEnvKey      = "REALTIME_TEST_REGION"
 	realtimeTestAccessKeyEnvKey   = "REALTIME_TEST_ACCESS_KEY_ID"
 	realtimeTestSecretKeyEnvKey   = "REALTIME_TEST_SECRET_ACCESS_KEY"
 	defaultRealtimeTestEndpoint   = "http://localhost:8000"
+	defaultRealtimeTestPubSub     = "http://localhost:4100"
 	defaultRealtimeTestRegion     = "us-east-1"
 	defaultRealtimeTestCredential = "test"
 )
@@ -33,6 +35,8 @@ const (
 type RealtimeTestConnection struct {
 	// Endpoint は、DynamoDB 互換エンドポイントです。空なら SDK 既定の解決（本番 DynamoDB）です。
 	Endpoint string
+	// PubSubEndpoint は、SNS / SQS 互換エンドポイントです。空なら SDK 既定の解決（本番 SNS / SQS）です。
+	PubSubEndpoint string
 	// Region は、署名に用いるリージョンです。
 	Region string
 	// AccessKeyID / SecretAccessKey は、静的資格情報です。両方空なら SDK 既定の chain に委ねます。
@@ -139,6 +143,7 @@ func NewRealtimeTestConnection(t *testing.T) RealtimeTestConnection {
 
 	return RealtimeTestConnection{
 		Endpoint:        lookup(realtimeTestEndpointEnvKey, defaultRealtimeTestEndpoint),
+		PubSubEndpoint:  lookup(realtimeTestPubSubEndpointKey, defaultRealtimeTestPubSub),
 		Region:          lookup(realtimeTestRegionEnvKey, defaultRealtimeTestRegion),
 		AccessKeyID:     lookup(realtimeTestAccessKeyEnvKey, defaultRealtimeTestCredential),
 		SecretAccessKey: lookup(realtimeTestSecretKeyEnvKey, defaultRealtimeTestCredential),

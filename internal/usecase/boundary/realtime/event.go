@@ -90,6 +90,32 @@ func (e DeliveryEvent) MarshalJSON() ([]byte, error) {
 	return b, nil
 }
 
+// UnmarshalJSON は、MarshalJSON の形（sequence は 10 進文字列）から復元します。sequence が 10 進整数でなければ
+// ErrInvalidEvent を返します。復元した封筒が保存・配送できる形かは Validate が別に判定します。
+func (e *DeliveryEvent) UnmarshalJSON(b []byte) error {
+	var w wireEvent
+	if err := json.Unmarshal(b, &w); err != nil {
+		return xerrors.Wrap(ErrInvalidEvent, err.Error())
+	}
+
+	seq, err := strconv.ParseInt(w.Sequence, 10, 64)
+	if err != nil {
+		return xerrors.Wrap(ErrInvalidEvent, "sequence must be a decimal integer: "+w.Sequence)
+	}
+
+	*e = DeliveryEvent{
+		EventID:       w.EventID,
+		StreamID:      w.StreamID,
+		Sequence:      Sequence(seq),
+		Type:          w.Type,
+		OccurredAt:    w.OccurredAt,
+		SchemaVersion: w.SchemaVersion,
+		Payload:       w.Payload,
+	}
+
+	return nil
+}
+
 // Validate は、封筒が保存・配送できる形かを判定します。emit する側は outbox へ書く前に呼び、
 // store の実装は Append 前に呼びます。必須項目の欠落は ErrInvalidEvent、直列化後の大きさが
 // MaxSerializedBytes を超えるものは ErrPayloadTooLarge を返します。

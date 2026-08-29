@@ -49,6 +49,46 @@ func TestSequence_String(t *testing.T) {
 	assert.Equal(t, "9223372036854775807", Sequence(math.MaxInt64).String(), "ゼロ埋めなしの 10 進")
 }
 
+func TestDeliveryEvent_UnmarshalJSON(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("MarshalJSON の出力から同じ封筒へ戻る", func(t *testing.T) {
+			t.Parallel()
+
+			want := validEvent()
+			b, err := want.MarshalJSON()
+			require.NoError(t, err)
+
+			var got DeliveryEvent
+			require.NoError(t, json.Unmarshal(b, &got))
+			assert.Equal(t, want, got)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("JSON でなければ ErrInvalidEvent を返す", func(t *testing.T) {
+			t.Parallel()
+
+			var got DeliveryEvent
+			require.ErrorIs(t, json.Unmarshal([]byte("not json"), &got), ErrInvalidEvent)
+		})
+
+		t.Run("sequence が 10 進整数でなければ ErrInvalidEvent を返す", func(t *testing.T) {
+			t.Parallel()
+
+			var got DeliveryEvent
+			err := json.Unmarshal([]byte(`{"eventId":"e","streamId":"s","sequence":"seven"}`), &got)
+			require.ErrorIs(t, err, ErrInvalidEvent)
+			assert.Contains(t, err.Error(), "decimal")
+		})
+	})
+}
+
 func TestDeliveryEvent_MarshalJSON(t *testing.T) {
 	t.Parallel()
 
