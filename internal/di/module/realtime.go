@@ -38,7 +38,16 @@ const (
 )
 
 // ErrRealtimeTopicNotConfigured は、fan-out を配線したのに REALTIME_TOPIC_ARN が空であることを示すエラーです。
-var ErrRealtimeTopicNotConfigured = xerrors.Wrap(apperror.ErrInvalidArgument, "REALTIME_TOPIC_ARN must be set when the realtime fan-out is wired")
+var ErrRealtimeTopicNotConfigured = xerrors.Wrap(
+	apperror.ErrInvalidArgument,
+	"REALTIME_TOPIC_ARN must be set when the realtime fan-out is wired",
+)
+
+// realtimeFanout は、fan-out の publish 側と受信側が共有する SNS / SQS クライアントと topic です。
+type realtimeFanout struct {
+	clients  realtimeinfra.Clients
+	topicARN string
+}
 
 // realtimeModule は、Realtime Delivery の store（EventLog / StreamTicket / InstanceLease / SecretGenerator）と
 // 機構側 usecase（CursorValidator / TicketIssuer / TicketVerifier / AccessRevoker / LeaseKeeper）、StreamTicket
@@ -79,12 +88,6 @@ func realtimeModule() fx.Option {
 	)
 }
 
-// realtimeFanout は、fan-out の publish 側と受信側が共有する SNS / SQS クライアントと topic です。
-type realtimeFanout struct {
-	clients  realtimeinfra.Clients
-	topicARN string
-}
-
 // provideRealtimeFanout は、fan-out のクライアントを組み立てます。topic の ARN が空なら起動を失敗させます
 // （publish 先の無い fan-out を黙って起動させない。ENDPOINT_OUTBOX と同じ扱い）。
 func provideRealtimeFanout(
@@ -118,7 +121,11 @@ func provideRevocationNotifier(f realtimeFanout, tf observability.TracerFactory)
 	return realtimeinfra.NewRevocationNotifier(f.clients, f.topicARN, tf)
 }
 
-func provideAccessRevoker(tickets rt.StreamTicketStore, notifier rt.RevocationNotifier, tf observability.TracerFactory) ucrealtime.AccessRevoker {
+func provideAccessRevoker(
+	tickets rt.StreamTicketStore,
+	notifier rt.RevocationNotifier,
+	tf observability.TracerFactory,
+) ucrealtime.AccessRevoker {
 	return ucrealtime.NewAccessRevoker(tickets, notifier, tf)
 }
 
@@ -138,7 +145,10 @@ func provideInstanceID() (rt.InstanceID, error) {
 // emulator（GoAWS）は queue policy を拒み、redrive / 暗号化の属性を保存しない（#1409 / #1414 の互換 smoke）ため、
 // emulator を使う環境だけ属性を間引いた実装を使います。production の実装は失敗を握り潰しません（間引きは
 // emulator 向け実装の責務）。名指ししない環境は起動エラーにします（fail-closed）。
-func provideInstanceQueueAttributes(appCfg *config.ApplicationConfig, cfg *config.RealtimeConfig) (realtimeinfra.QueueAttributes, error) {
+func provideInstanceQueueAttributes(
+	appCfg *config.ApplicationConfig,
+	cfg *config.RealtimeConfig,
+) (realtimeinfra.QueueAttributes, error) {
 	switch env := appCfg.Env(); env {
 	case config.EnvLocal, config.EnvCI, config.EnvTest, config.EnvDast:
 		return realtimeinfra.NewEmulatorQueueAttributes(), nil
@@ -155,7 +165,11 @@ func provideInstanceSubscription(
 	return realtimeinfra.NewInstanceSubscription(f.clients, f.topicARN, cfg.QueuePrefix(), attrs, tf)
 }
 
-func provideLeaseKeeper(store rt.InstanceLeaseStore, clk clock.Clock, tf observability.TracerFactory) ucrealtime.LeaseKeeper {
+func provideLeaseKeeper(
+	store rt.InstanceLeaseStore,
+	clk clock.Clock,
+	tf observability.TracerFactory,
+) ucrealtime.LeaseKeeper {
 	return ucrealtime.NewLeaseKeeper(store, clk, tf)
 }
 
@@ -171,7 +185,11 @@ func provideRealtimeConsumer(
 }
 
 func provideRealtimeHeartbeat(
-	keeper ucrealtime.LeaseKeeper, id rt.InstanceID, sleeper clock.Sleeper, log logging.Logger, tf observability.TracerFactory,
+	keeper ucrealtime.LeaseKeeper,
+	id rt.InstanceID,
+	sleeper clock.Sleeper,
+	log logging.Logger,
+	tf observability.TracerFactory,
 ) *ctrlrealtime.Heartbeat {
 	return ctrlrealtime.NewHeartbeat(keeper, id, sleeper, log, tf)
 }
@@ -189,7 +207,11 @@ func provideRealtimeReadiness(log rt.EventLogStore) hook.ReadinessProbe {
 // provideRealtimeProvisioner は、lease の記録と instance の受信先を 1 つの参加者に合成します。
 // 起動は lease → 受信先、片付けは 受信先（unsubscribe → queue 削除）→ lease 削除の順で、
 // fx の group は順序を保証しないため 1 つの参加者の中で固定します（ADR-0073 の回収順と同じ）。
-func provideRealtimeProvisioner(sub rt.InstanceSubscription, keeper ucrealtime.LeaseKeeper, id rt.InstanceID) hook.Provisioner {
+func provideRealtimeProvisioner(
+	sub rt.InstanceSubscription,
+	keeper ucrealtime.LeaseKeeper,
+	id rt.InstanceID,
+) hook.Provisioner {
 	return hook.Provisioner{
 		Name: realtimeParticipantName,
 		Provision: func(ctx context.Context) error {
@@ -237,15 +259,27 @@ func provideRealtimeClient(
 	})
 }
 
-func provideEventLogStore(c *awsdynamodb.Client, cfg *config.RealtimeConfig, tf observability.TracerFactory) rt.EventLogStore {
+func provideEventLogStore(
+	c *awsdynamodb.Client,
+	cfg *config.RealtimeConfig,
+	tf observability.TracerFactory,
+) rt.EventLogStore {
 	return eventlog.New(c, cfg.EventLogTable(), tf)
 }
 
-func provideStreamTicketStore(c *awsdynamodb.Client, cfg *config.RealtimeConfig, tf observability.TracerFactory) rt.StreamTicketStore {
+func provideStreamTicketStore(
+	c *awsdynamodb.Client,
+	cfg *config.RealtimeConfig,
+	tf observability.TracerFactory,
+) rt.StreamTicketStore {
 	return streamticket.New(c, cfg.StreamTicketTable(), tf)
 }
 
-func provideInstanceLeaseStore(c *awsdynamodb.Client, cfg *config.RealtimeConfig, tf observability.TracerFactory) rt.InstanceLeaseStore {
+func provideInstanceLeaseStore(
+	c *awsdynamodb.Client,
+	cfg *config.RealtimeConfig,
+	tf observability.TracerFactory,
+) rt.InstanceLeaseStore {
 	return instancelease.New(c, cfg.InstanceLeaseTable(), tf)
 }
 
@@ -253,7 +287,11 @@ func provideRealtimeSecretGenerator() rt.SecretGenerator {
 	return realtimesecret.New()
 }
 
-func provideCursorValidator(log rt.EventLogStore, clk clock.Clock, tf observability.TracerFactory) ucrealtime.CursorValidator {
+func provideCursorValidator(
+	log rt.EventLogStore,
+	clk clock.Clock,
+	tf observability.TracerFactory,
+) ucrealtime.CursorValidator {
 	return ucrealtime.NewCursorValidator(log, clk, tf)
 }
 
@@ -263,7 +301,11 @@ func provideTicketIssuer(
 	return ucrealtime.NewTicketIssuer(store, secrets, clk, tf)
 }
 
-func provideTicketVerifier(store rt.StreamTicketStore, clk clock.Clock, tf observability.TracerFactory) ucrealtime.TicketVerifier {
+func provideTicketVerifier(
+	store rt.StreamTicketStore,
+	clk clock.Clock,
+	tf observability.TracerFactory,
+) ucrealtime.TicketVerifier {
 	return ucrealtime.NewTicketVerifier(store, clk, tf)
 }
 

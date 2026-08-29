@@ -28,7 +28,12 @@ func NewClients(ctx context.Context, cfg ClientConfig) (Clients, error) {
 }
 
 // NewPublisher は、realtime channel の outbox publisher（EventLog へ append → wakeup を publish）を返します。
-func NewPublisher(log rt.EventLogStore, c Clients, topicARN string, tf observability.TracerFactory) publisherbndry.Publisher {
+func NewPublisher(
+	log rt.EventLogStore,
+	c Clients,
+	topicARN string,
+	tf observability.TracerFactory,
+) publisherbndry.Publisher {
 	return aws.NewPublisher(log, c.SNS, topicARN, tf)
 }
 

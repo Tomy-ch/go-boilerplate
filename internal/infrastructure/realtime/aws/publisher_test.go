@@ -38,7 +38,16 @@ func outboxMessage(t *testing.T, eventID string) (publisherbndry.Message, rt.Del
 
 	event := rt.DeliveryEvent{
 		EventID: eventID, StreamID: "stream-1", Sequence: 7, Type: "inquiry.message.appended.v1",
-		OccurredAt: time.Date(2026, time.August, 29, 1, 2, 3, 0, time.UTC), SchemaVersion: 1, Payload: []byte(`{"body":"hi"}`),
+		OccurredAt: time.Date(
+			2026,
+			time.August,
+			29,
+			1,
+			2,
+			3,
+			0,
+			time.UTC,
+		), SchemaVersion: 1, Payload: []byte(`{"body":"hi"}`),
 	}
 	payload, err := event.MarshalJSON()
 	require.NoError(t, err)
@@ -73,7 +82,11 @@ func Test_publisher_Publish(t *testing.T) {
 				snsAPI.EXPECT().Publish(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(_ any, in *sns.PublishInput, _ ...func(*sns.Options)) (*sns.PublishOutput, error) {
 						assert.Equal(t, testTopicARN, awssdk.ToString(in.TopicArn))
-						assert.JSONEq(t, `{"eventId":"`+want.EventID+`","streamId":"stream-1","sequence":"7"}`, awssdk.ToString(in.Message))
+						assert.JSONEq(
+							t,
+							`{"eventId":"`+want.EventID+`","streamId":"stream-1","sequence":"7"}`,
+							awssdk.ToString(in.Message),
+						)
 						assert.Equal(t, "wakeup", awssdk.ToString(in.MessageAttributes[AttrKind].StringValue))
 
 						return &sns.PublishOutput{}, nil

@@ -104,6 +104,69 @@ func (s *subscription) Provision(ctx context.Context, id rt.InstanceID) error {
 	return nil
 }
 
+// Receive は、long polling で最大 limit 件（SQS の上限 10 件まで）を受け取り、Notification へ復元して返します。
+func (s *subscription) Receive(ctx context.Context, limit int) ([]rt.Notification, error) {
+	ctx, endSpan := s.tracer.Start(ctx)
+	defer endSpan()
+
+	queueURL, err := s.currentQueueURL()
+	if err != nil {
+		return nil, err
+	}
+
+	if limit <= 0 || limit > maxReceiveBatch {
+		limit = maxReceiveBatch
+	}
+
+	out, err := s.sqs.ReceiveMessage(ctx, &sqs.ReceiveMessageInput{
+		QueueUrl:              awssdk.String(queueURL),
+		MaxNumberOfMessages:   int32(limit),
+		WaitTimeSeconds:       receiveWaitSeconds,
+		MessageAttributeNames: []string{"All"},
+	})
+	if err != nil {
+		return nil, normalize(err, "receive notifications")
+	}
+
+	notifications := make([]rt.Notification, 0, len(out.Messages))
+	for _, m := range out.Messages {
+		notifications = append(notifications, decodeNotification(m))
+	}
+
+	return notifications, nil
+}
+
+// Delete は、処理済みの通知を queue から取り除きます。
+func (s *subscription) Delete(ctx context.Context, n rt.Notification) error {
+	ctx, endSpan := s.tracer.Start(ctx)
+	defer endSpan()
+
+	queueURL, err := s.currentQueueURL()
+	if err != nil {
+		return err
+	}
+
+	if _, err := s.sqs.DeleteMessage(ctx, &sqs.DeleteMessageInput{
+		QueueUrl: awssdk.String(queueURL), ReceiptHandle: awssdk.String(n.Receipt),
+	}); err != nil {
+		return normalize(err, "delete notification")
+	}
+
+	return nil
+}
+
+// Teardown は、unsubscribe → queue 削除の順に片付けます。片方が失敗しても残りを試み、失敗をまとめて返します
+// （残った resource は orphan cleanup が lease から辿って回収する）。Provision していなければ何もしません。
+func (s *subscription) Teardown(ctx context.Context) error {
+	ctx, endSpan := s.tracer.Start(ctx)
+	defer endSpan()
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.teardown(ctx)
+}
+
 func (s *subscription) provision(ctx context.Context, name string) error {
 	created, err := s.sqs.CreateQueue(ctx, &sqs.CreateQueueInput{QueueName: awssdk.String(name)})
 	if err != nil {
@@ -162,69 +225,6 @@ func (s *subscription) provision(ctx context.Context, name string) error {
 	}
 
 	return nil
-}
-
-// Receive は、long polling で最大 limit 件（SQS の上限 10 件まで）を受け取り、Notification へ復元して返します。
-func (s *subscription) Receive(ctx context.Context, limit int) ([]rt.Notification, error) {
-	ctx, endSpan := s.tracer.Start(ctx)
-	defer endSpan()
-
-	queueURL, err := s.currentQueueURL()
-	if err != nil {
-		return nil, err
-	}
-
-	if limit <= 0 || limit > maxReceiveBatch {
-		limit = maxReceiveBatch
-	}
-
-	out, err := s.sqs.ReceiveMessage(ctx, &sqs.ReceiveMessageInput{
-		QueueUrl:              awssdk.String(queueURL),
-		MaxNumberOfMessages:   int32(limit), //nolint:gosec // 1..maxReceiveBatch に丸めた後なので int32 に収まる
-		WaitTimeSeconds:       receiveWaitSeconds,
-		MessageAttributeNames: []string{"All"},
-	})
-	if err != nil {
-		return nil, normalize(err, "receive notifications")
-	}
-
-	notifications := make([]rt.Notification, 0, len(out.Messages))
-	for _, m := range out.Messages {
-		notifications = append(notifications, decodeNotification(m))
-	}
-
-	return notifications, nil
-}
-
-// Delete は、処理済みの通知を queue から取り除きます。
-func (s *subscription) Delete(ctx context.Context, n rt.Notification) error {
-	ctx, endSpan := s.tracer.Start(ctx)
-	defer endSpan()
-
-	queueURL, err := s.currentQueueURL()
-	if err != nil {
-		return err
-	}
-
-	if _, err := s.sqs.DeleteMessage(ctx, &sqs.DeleteMessageInput{
-		QueueUrl: awssdk.String(queueURL), ReceiptHandle: awssdk.String(n.Receipt),
-	}); err != nil {
-		return normalize(err, "delete notification")
-	}
-
-	return nil
-}
-
-// Teardown は、unsubscribe → queue 削除の順に片付けます。片方が失敗しても残りを試み、失敗をまとめて返します
-// （残った resource は orphan cleanup が lease から辿って回収する）。Provision していなければ何もしません。
-func (s *subscription) Teardown(ctx context.Context) error {
-	ctx, endSpan := s.tracer.Start(ctx)
-	defer endSpan()
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	return s.teardown(ctx)
 }
 
 func (s *subscription) teardown(ctx context.Context) error {

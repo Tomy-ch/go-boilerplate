@@ -81,7 +81,11 @@ func Test_authModule(t *testing.T) {
 			t.Parallel()
 
 			// required だけ寄与して profile を欠くと registry 構築が起動時に失敗する。
-			profiles := collectGroup[httpclient.DownstreamProfile](t, `group:"httpclient_profiles"`, moduleWithConfig(t))
+			profiles := collectGroup[httpclient.DownstreamProfile](
+				t,
+				`group:"httpclient_profiles"`,
+				moduleWithConfig(t),
+			)
 			required := collectGroup[httpclient.Downstream](t, `group:"required_downstreams"`, moduleWithConfig(t))
 
 			assert.Empty(t, httpclient.MissingDownstreams(profiles, required))

@@ -277,7 +277,12 @@ func Test_newStopServerFunc(t *testing.T) {
 			t.Cleanup(func() { close(release) })
 
 			go func() {
-				req, rerr := http.NewRequestWithContext(context.Background(), http.MethodGet, "http://"+ln.Addr().String()+"/block", nil)
+				req, rerr := http.NewRequestWithContext(
+					context.Background(),
+					http.MethodGet,
+					"http://"+ln.Addr().String()+"/block",
+					nil,
+				)
 				if rerr != nil {
 					return
 				}

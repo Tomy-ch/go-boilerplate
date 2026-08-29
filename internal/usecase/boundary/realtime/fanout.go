@@ -4,15 +4,15 @@ package realtime
 
 import "context"
 
-// NotificationKind は、instance の受信先に届く通知の種別です。
-type NotificationKind string
-
 const (
 	// KindWakeup は「stream を自分の cursor 以降で読み直せ」の合図です。状態は運びません（ADR-0073）。
 	KindWakeup NotificationKind = "wakeup"
 	// KindRevocation は、subject の destination への権利が取り下げられたことの通知です（ADR-0074）。
 	KindRevocation NotificationKind = "revocation"
 )
+
+// NotificationKind は、instance の受信先に届く通知の種別です。
+type NotificationKind string
 
 // Wakeup は、EventLog に event が 1 件増えたことを全 instance へ伝える通知です。
 // 重複して届いても同じ読み直しに畳まれ、欠落は periodic catch-up が覆うので、受け取る側は冪等でなければなりません。

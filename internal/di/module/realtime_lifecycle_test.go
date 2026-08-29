@@ -40,7 +40,12 @@ func TestRealtimeProvisionerContract(t *testing.T) {
 	clients := testkit.NewTestClients(t)
 	topicARN := testkit.CreateTopic(t, clients, testkit.Name(t, "lifecycle"))
 	cfg := config.NewRealtimeConfig(config.MockConfigForTest(t))
-	sub := provideInstanceSubscription(realtimeFanout{clients: clients, topicARN: topicARN}, cfg, realtimeinfra.NewEmulatorQueueAttributes(), tf)
+	sub := provideInstanceSubscription(
+		realtimeFanout{clients: clients, topicARN: topicARN},
+		cfg,
+		realtimeinfra.NewEmulatorQueueAttributes(),
+		tf,
+	)
 
 	id, err := provideInstanceID()
 	require.NoError(t, err)

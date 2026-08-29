@@ -30,7 +30,12 @@ func TestInstanceSubscriptionContract(t *testing.T) {
 			c := testkit.NewTestClients(t)
 			topicARN := testkit.CreateTopic(t, c, testkit.Name(t, "topic"))
 			sub := aws.NewInstanceSubscription(
-				c.SNS, c.SQS, topicARN, testkit.Name(t, "q"), local.NewQueueAttributes(), observability.NewNoopTracerFactory(t),
+				c.SNS,
+				c.SQS,
+				topicARN,
+				testkit.Name(t, "q"),
+				local.NewQueueAttributes(),
+				observability.NewNoopTracerFactory(t),
 			)
 
 			require.NoError(t, sub.Provision(t.Context(), "inst1"))
@@ -67,7 +72,11 @@ func TestInstanceSubscriptionContract(t *testing.T) {
 			}
 
 			assert.Equal(t, rt.Wakeup{EventID: "e1", StreamID: "stream-1", Sequence: 5}, kinds[rt.KindWakeup].Wakeup)
-			assert.Equal(t, rt.Revocation{Subject: "subject-1", Destination: "stream-1"}, kinds[rt.KindRevocation].Revocation)
+			assert.Equal(
+				t,
+				rt.Revocation{Subject: "subject-1", Destination: "stream-1"},
+				kinds[rt.KindRevocation].Revocation,
+			)
 
 			require.NoError(t, sub.Teardown(t.Context()))
 			require.NoError(t, sub.Teardown(t.Context()), "2 度目は何もしない")

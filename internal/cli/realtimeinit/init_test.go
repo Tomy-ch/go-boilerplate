@@ -19,7 +19,11 @@ func TestTableNames(t *testing.T) {
 
 	names := TableNames(config.NewRealtimeConfig(config.MockConfigForTest(t)))
 
-	assert.Equal(t, []string{"realtime_event_log_test", "realtime_stream_ticket_test", "realtime_instance_lease_test"}, names)
+	assert.Equal(
+		t,
+		[]string{"realtime_event_log_test", "realtime_stream_ticket_test", "realtime_instance_lease_test"},
+		names,
+	)
 }
 
 func TestRun(t *testing.T) {

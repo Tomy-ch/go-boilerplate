@@ -17,14 +17,20 @@ import (
 // errNotifyOff は、通知側の失敗を store 側の失敗（errStoreOff）と区別するための sentinel です。
 var errNotifyOff = xerrors.Wrap(apperror.ErrUnavailable, "notify off")
 
-func newRevoker(t *testing.T) (*accessRevoker, *mock_realtime.MockStreamTicketStore, *mock_realtime.MockRevocationNotifier) {
+func newRevoker(
+	t *testing.T,
+) (*accessRevoker, *mock_realtime.MockStreamTicketStore, *mock_realtime.MockRevocationNotifier) {
 	t.Helper()
 
 	ctrl := gomock.NewController(t)
 	tickets := mock_realtime.NewMockStreamTicketStore(ctrl)
 	notifier := mock_realtime.NewMockRevocationNotifier(ctrl)
 
-	return &accessRevoker{tickets: tickets, notifier: notifier, tracer: observability.NewNoopTracerFactory(t).Usecase()}, tickets, notifier
+	return &accessRevoker{
+		tickets:  tickets,
+		notifier: notifier,
+		tracer:   observability.NewNoopTracerFactory(t).Usecase(),
+	}, tickets, notifier
 }
 
 func TestNewAccessRevoker(t *testing.T) {

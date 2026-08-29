@@ -40,7 +40,10 @@ func provideWithdrawalArchiveQueue(
 	}
 	// region は SigV4 署名に必須で、空のまま送ると署名不一致として受信時に落ちる。
 	if cfg.Region() == "" {
-		return withdrawalArchiveQueue{}, xerrors.Wrap(ErrInvalidConsumerQueue, "CONSUMER_QUEUE_REGION must not be empty")
+		return withdrawalArchiveQueue{}, xerrors.Wrap(
+			ErrInvalidConsumerQueue,
+			"CONSUMER_QUEUE_REGION must not be empty",
+		)
 	}
 
 	api, err := sqs.NewClient(context.Background(), sqs.ClientConfig{

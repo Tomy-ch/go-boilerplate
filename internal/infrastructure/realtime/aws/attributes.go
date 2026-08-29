@@ -79,7 +79,9 @@ type redrivePolicy struct {
 }
 
 func redrivePolicyDocument(dlqARN string) (string, error) {
-	doc, err := json.Marshal(redrivePolicy{DeadLetterTargetArn: dlqARN, MaxReceiveCount: strconv.Itoa(redriveMaxReceiveCount)})
+	doc, err := json.Marshal(
+		redrivePolicy{DeadLetterTargetArn: dlqARN, MaxReceiveCount: strconv.Itoa(redriveMaxReceiveCount)},
+	)
 	if err != nil {
 		return "", xerrors.Wrap(apperror.ErrInternal, "encode redrive policy: "+err.Error())
 	}

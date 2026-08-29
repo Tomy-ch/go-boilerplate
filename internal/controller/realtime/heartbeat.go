@@ -24,7 +24,11 @@ type Heartbeat struct {
 
 // NewHeartbeat は、id の instance の heartbeat loop を生成します。
 func NewHeartbeat(
-	keeper ucrealtime.LeaseKeeper, id rt.InstanceID, sleeper clock.Sleeper, log logging.Logger, tf observability.TracerFactory,
+	keeper ucrealtime.LeaseKeeper,
+	id rt.InstanceID,
+	sleeper clock.Sleeper,
+	log logging.Logger,
+	tf observability.TracerFactory,
 ) *Heartbeat {
 	return &Heartbeat{keeper: keeper, id: id, sleeper: sleeper, logging: log, tracer: tf.Controller()}
 }

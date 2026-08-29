@@ -61,7 +61,9 @@ func TestOutboxRelayModule(t *testing.T) {
 			// publisher は共有 InfrastructureModule には含まれず、本モジュールが持ち込む。
 			var publisher publisherbd.Publisher
 
-			validateGraph(t, append(relayDeps(), OutboxRelayModule(outboxbndry.ChannelHTTP), fx.Populate(&publisher))...)
+			validateGraph(
+				t,
+				append(relayDeps(), OutboxRelayModule(outboxbndry.ChannelHTTP), fx.Populate(&publisher))...)
 		})
 	})
 
@@ -73,7 +75,9 @@ func TestOutboxRelayModule(t *testing.T) {
 
 			var publisher publisherbd.Publisher
 
-			validateGraph(t, append(relayDeps(), OutboxRelayModule(outboxbndry.ChannelRealtime), fx.Populate(&publisher))...)
+			validateGraph(
+				t,
+				append(relayDeps(), OutboxRelayModule(outboxbndry.ChannelRealtime), fx.Populate(&publisher))...)
 		})
 	})
 
@@ -83,7 +87,8 @@ func TestOutboxRelayModule(t *testing.T) {
 		t.Run("担当する publisher module が無い channel は構築エラー（fail-closed）", func(t *testing.T) {
 			t.Parallel()
 
-			err := fx.ValidateApp(append(relayDeps(), OutboxRelayModule(outboxbndry.Channel("unknown")), fx.NopLogger)...)
+			err := fx.ValidateApp(
+				append(relayDeps(), OutboxRelayModule(outboxbndry.Channel("unknown")), fx.NopLogger)...)
 			require.ErrorIs(t, err, publisher.ErrChannelUnsupported)
 		})
 

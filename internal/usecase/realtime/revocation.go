@@ -25,7 +25,11 @@ type accessRevoker struct {
 }
 
 // NewAccessRevoker は、AccessRevoker を生成します。
-func NewAccessRevoker(tickets rt.StreamTicketStore, notifier rt.RevocationNotifier, tf observability.TracerFactory) AccessRevoker {
+func NewAccessRevoker(
+	tickets rt.StreamTicketStore,
+	notifier rt.RevocationNotifier,
+	tf observability.TracerFactory,
+) AccessRevoker {
 	return &accessRevoker{tickets: tickets, notifier: notifier, tracer: tf.Usecase()}
 }
 

@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	gomock "go.uber.org/mock/gomock"
-	"go.uber.org/zap/zaptest/observer"
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/logging"
@@ -24,6 +23,15 @@ type recordingSinks struct {
 	mu          sync.Mutex
 	wakeups     map[rt.StreamID][]rt.Sequence
 	revocations []rt.Revocation
+}
+
+// engineMocks は、engine の依存の test double と、観測したログを数える関数です。
+type engineMocks struct {
+	sub     *mock_realtime.MockInstanceSubscription
+	sleeper *mock_clock.MockSleeper
+	sinks   *recordingSinks
+	// logCount は、msg のログの件数を返します（msg が空なら全件）。
+	logCount func(msg string) int
 }
 
 func newRecordingSinks() *recordingSinks {
@@ -44,33 +52,42 @@ func (s *recordingSinks) Revoke(_ context.Context, subject string, destination r
 	s.revocations = append(s.revocations, rt.Revocation{Subject: subject, Destination: destination})
 }
 
-type engineMocks struct {
-	sub     *mock_realtime.MockInstanceSubscription
-	sleeper *mock_clock.MockSleeper
-	sinks   *recordingSinks
-	logs    *observer.ObservedLogs
-}
-
 func newEngine(t *testing.T, set Settings) (*Engine, engineMocks) {
 	t.Helper()
 
 	ctrl := gomock.NewController(t)
 	m := engineMocks{
-		sub: mock_realtime.NewMockInstanceSubscription(ctrl), sleeper: mock_clock.NewMockSleeper(ctrl), sinks: newRecordingSinks(),
+		sub: mock_realtime.NewMockInstanceSubscription(
+			ctrl,
+		), sleeper: mock_clock.NewMockSleeper(ctrl), sinks: newRecordingSinks(),
 	}
 
 	log, logs := logging.NewObservedTestLogger(t)
-	m.logs = logs
+	m.logCount = func(msg string) int {
+		if msg == "" {
+			return logs.Len()
+		}
+
+		return logs.FilterMessage(msg).Len()
+	}
 
 	return NewEngine(m.sub, m.sinks, m.sinks, m.sleeper, log, observability.NewNoopTracerFactory(t), set), m
 }
 
 func wakeup(streamID rt.StreamID, seq rt.Sequence) rt.Notification {
-	return rt.Notification{Kind: rt.KindWakeup, Wakeup: rt.Wakeup{EventID: "e", StreamID: streamID, Sequence: seq}, Receipt: "r-" + string(streamID)}
+	return rt.Notification{
+		Kind:    rt.KindWakeup,
+		Wakeup:  rt.Wakeup{EventID: "e", StreamID: streamID, Sequence: seq},
+		Receipt: "r-" + string(streamID),
+	}
 }
 
 func revocation(subject string, destination rt.StreamID) rt.Notification {
-	return rt.Notification{Kind: rt.KindRevocation, Revocation: rt.Revocation{Subject: subject, Destination: destination}, Receipt: "r-" + subject}
+	return rt.Notification{
+		Kind:       rt.KindRevocation,
+		Revocation: rt.Revocation{Subject: subject, Destination: destination},
+		Receipt:    "r-" + subject,
+	}
 }
 
 func TestNewEngine(t *testing.T) {
@@ -140,11 +157,13 @@ func TestEngine_Run(t *testing.T) {
 			ctx, cancel := context.WithCancel(t.Context())
 			gomock.InOrder(
 				m.sub.EXPECT().Receive(gomock.Any(), DefaultBatchSize).Return(nil, nil),
-				m.sub.EXPECT().Receive(gomock.Any(), DefaultBatchSize).DoAndReturn(func(context.Context, int) ([]rt.Notification, error) {
-					cancel()
+				m.sub.EXPECT().
+					Receive(gomock.Any(), DefaultBatchSize).
+					DoAndReturn(func(context.Context, int) ([]rt.Notification, error) {
+						cancel()
 
-					return nil, nil
-				}),
+						return nil, nil
+					}),
 			)
 
 			require.NoError(t, e.Run(ctx))
@@ -163,15 +182,17 @@ func TestEngine_Run(t *testing.T) {
 			gomock.InOrder(
 				m.sub.EXPECT().Receive(gomock.Any(), gomock.Any()).Return(nil, apperror.ErrUnavailable),
 				m.sleeper.EXPECT().Sleep(gomock.Any(), 7*time.Second).Return(nil),
-				m.sub.EXPECT().Receive(gomock.Any(), gomock.Any()).DoAndReturn(func(context.Context, int) ([]rt.Notification, error) {
-					cancel()
+				m.sub.EXPECT().
+					Receive(gomock.Any(), gomock.Any()).
+					DoAndReturn(func(context.Context, int) ([]rt.Notification, error) {
+						cancel()
 
-					return nil, nil
-				}),
+						return nil, nil
+					}),
 			)
 
 			require.NoError(t, e.Run(ctx))
-			assert.Equal(t, 1, m.logs.FilterMessage("failed to receive realtime notifications").Len())
+			assert.Equal(t, 1, m.logCount("failed to receive realtime notifications"))
 		})
 
 		t.Run("backoff 中に ctx が完了すれば nil を返す", func(t *testing.T) {
@@ -189,14 +210,16 @@ func TestEngine_Run(t *testing.T) {
 
 			e, m := newEngine(t, Settings{})
 			ctx, cancel := context.WithCancel(t.Context())
-			m.sub.EXPECT().Receive(gomock.Any(), gomock.Any()).DoAndReturn(func(context.Context, int) ([]rt.Notification, error) {
-				cancel()
+			m.sub.EXPECT().
+				Receive(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(context.Context, int) ([]rt.Notification, error) {
+					cancel()
 
-				return nil, apperror.ErrCanceled
-			})
+					return nil, apperror.ErrCanceled
+				})
 
 			require.NoError(t, e.Run(ctx))
-			assert.Equal(t, 0, m.logs.Len())
+			assert.Equal(t, 0, m.logCount(""))
 		})
 	})
 }
@@ -216,7 +239,7 @@ func TestEngine_dispatch(t *testing.T) {
 
 			e.dispatch(t.Context(), e.logging, []rt.Notification{unknown})
 
-			assert.Equal(t, 1, m.logs.FilterMessage("discarding realtime notifications of unknown kind").Len())
+			assert.Equal(t, 1, m.logCount("discarding realtime notifications of unknown kind"))
 			assert.Empty(t, m.sinks.wakeups)
 		})
 
@@ -226,7 +249,7 @@ func TestEngine_dispatch(t *testing.T) {
 			e, m := newEngine(t, Settings{})
 			e.dispatch(t.Context(), e.logging, nil)
 
-			assert.Equal(t, 0, m.logs.Len())
+			assert.Equal(t, 0, m.logCount(""))
 		})
 	})
 
@@ -244,7 +267,7 @@ func TestEngine_dispatch(t *testing.T) {
 			e.dispatch(t.Context(), e.logging, batch)
 
 			assert.Len(t, m.sinks.wakeups, 2)
-			assert.Equal(t, 1, m.logs.FilterMessage("failed to delete realtime notification").Len())
+			assert.Equal(t, 1, m.logCount("failed to delete realtime notification"))
 		})
 	})
 }
@@ -255,10 +278,15 @@ func Test_coalesce(t *testing.T) {
 	wakeups, revocations, unknown := coalesce([]rt.Notification{
 		wakeup("s1", 3), wakeup("s2", 1), wakeup("s1", 9), wakeup("s1", 4),
 		revocation("u1", "s1"), revocation("u2", "s2"),
-		{Receipt: "r-unknown"}, {Kind: "other", Receipt: "r-other"},
+		{Receipt: "r-unknown"},
+		{Kind: "other", Receipt: "r-other"},
 	})
 
 	assert.Equal(t, map[rt.StreamID]rt.Sequence{"s1": 9, "s2": 1}, wakeups, "stream ごとに最大の sequence")
-	assert.Equal(t, []rt.Revocation{{Subject: "u1", Destination: "s1"}, {Subject: "u2", Destination: "s2"}}, revocations)
+	assert.Equal(
+		t,
+		[]rt.Revocation{{Subject: "u1", Destination: "s1"}, {Subject: "u2", Destination: "s2"}},
+		revocations,
+	)
 	assert.Equal(t, 2, unknown)
 }

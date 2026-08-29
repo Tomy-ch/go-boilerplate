@@ -134,7 +134,12 @@ func (l *serveLifecycle) stop(ctx context.Context) error {
 
 	for _, d := range l.drainers {
 		if err := d.Drain(ctx); err != nil {
-			l.log.Error(ctx, "serve drainer failed", logging.String("participant", d.Name), logging.Error(logging.ErrorKey, err))
+			l.log.Error(
+				ctx,
+				"serve drainer failed",
+				logging.String("participant", d.Name),
+				logging.Error(logging.ErrorKey, err),
+			)
 			errs = append(errs, err)
 		}
 	}
@@ -153,7 +158,12 @@ func (l *serveLifecycle) stop(ctx context.Context) error {
 func (l *serveLifecycle) stopRunners(ctx context.Context, n int) {
 	for i := n - 1; i >= 0; i-- {
 		if err := l.runners[i].stop(ctx); err != nil {
-			l.log.Error(ctx, "serve runner failed to stop", logging.String("participant", l.runners[i].name), logging.Error(logging.ErrorKey, err))
+			l.log.Error(
+				ctx,
+				"serve runner failed to stop",
+				logging.String("participant", l.runners[i].name),
+				logging.Error(logging.ErrorKey, err),
+			)
 		}
 	}
 }
@@ -163,7 +173,12 @@ func (l *serveLifecycle) teardown(ctx context.Context, n int) {
 	for i := n - 1; i >= 0; i-- {
 		p := l.provisioners[i]
 		if err := p.Teardown(ctx); err != nil {
-			l.log.Error(ctx, "serve provisioner failed to tear down", logging.String("participant", p.Name), logging.Error(logging.ErrorKey, err))
+			l.log.Error(
+				ctx,
+				"serve provisioner failed to tear down",
+				logging.String("participant", p.Name),
+				logging.Error(logging.ErrorKey, err),
+			)
 		}
 	}
 }

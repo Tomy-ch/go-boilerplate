@@ -77,7 +77,11 @@ func Test_provideRedactor(t *testing.T) {
 			spec, err := validator.GetValidator()
 			require.NoError(t, err)
 			r := provideRedactor(spec)
-			assert.Equal(t, map[string][]string{"ticket": {redaction.RedactedValue}}, r.QueryParams(map[string][]string{"ticket": {"raw"}}))
+			assert.Equal(
+				t,
+				map[string][]string{"ticket": {redaction.RedactedValue}},
+				r.QueryParams(map[string][]string{"ticket": {"raw"}}),
+			)
 		})
 	})
 }

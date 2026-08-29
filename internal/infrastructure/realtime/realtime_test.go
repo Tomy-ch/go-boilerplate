@@ -17,7 +17,10 @@ const testTopicARN = "arn:aws:sns:us-east-1:000000000000:topic"
 func testClients(t *testing.T) Clients {
 	t.Helper()
 
-	c, err := NewClients(t.Context(), ClientConfig{Endpoint: "http://localhost:4100", Region: "us-east-1", AccessKeyID: "k", SecretAccessKey: "s"})
+	c, err := NewClients(
+		t.Context(),
+		ClientConfig{Endpoint: "http://localhost:4100", Region: "us-east-1", AccessKeyID: "k", SecretAccessKey: "s"},
+	)
 	require.NoError(t, err)
 
 	return c
@@ -46,7 +49,15 @@ func TestNewPublisher(t *testing.T) {
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)
-	assert.NotNil(t, NewPublisher(mock_realtime.NewMockEventLogStore(ctrl), testClients(t), testTopicARN, observability.NewNoopTracerFactory(t)))
+	assert.NotNil(
+		t,
+		NewPublisher(
+			mock_realtime.NewMockEventLogStore(ctrl),
+			testClients(t),
+			testTopicARN,
+			observability.NewNoopTracerFactory(t),
+		),
+	)
 }
 
 func TestNewRevocationNotifier(t *testing.T) {
@@ -58,7 +69,16 @@ func TestNewRevocationNotifier(t *testing.T) {
 func TestNewInstanceSubscription(t *testing.T) {
 	t.Parallel()
 
-	assert.NotNil(t, NewInstanceSubscription(testClients(t), testTopicARN, "realtime-test", NewQueueAttributes(testTopicARN, ""), observability.NewNoopTracerFactory(t)))
+	assert.NotNil(
+		t,
+		NewInstanceSubscription(
+			testClients(t),
+			testTopicARN,
+			"realtime-test",
+			NewQueueAttributes(testTopicARN, ""),
+			observability.NewNoopTracerFactory(t),
+		),
+	)
 }
 
 func TestNewQueueAttributes(t *testing.T) {

@@ -24,6 +24,10 @@ func realtimePublisherModule() fx.Option {
 	)
 }
 
-func provideRealtimePublisher(log rt.EventLogStore, f realtimeFanout, tf observability.TracerFactory) publisherbndry.Publisher {
+func provideRealtimePublisher(
+	log rt.EventLogStore,
+	f realtimeFanout,
+	tf observability.TracerFactory,
+) publisherbndry.Publisher {
 	return realtimeinfra.NewPublisher(log, f.clients, f.topicARN, tf)
 }

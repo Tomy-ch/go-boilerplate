@@ -73,7 +73,12 @@ func publisherModuleFor(channel outboxbndry.Channel) fx.Option {
 	case outboxbndry.ChannelRealtime:
 		return realtimePublisherModule()
 	default:
-		return fx.Error(xerrors.Wrap(publisher.ErrChannelUnsupported, "no publisher module serves delivery channel "+channel.String()))
+		return fx.Error(
+			xerrors.Wrap(
+				publisher.ErrChannelUnsupported,
+				"no publisher module serves delivery channel "+channel.String(),
+			),
+		)
 	}
 }
 

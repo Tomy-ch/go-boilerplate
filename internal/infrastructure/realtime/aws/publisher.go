@@ -2,7 +2,6 @@ package aws
 
 import (
 	"context"
-	"encoding/json"
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
@@ -16,7 +15,10 @@ import (
 
 // ErrEventIDMismatch は、payload の eventId が outbox の message_id と食い違うことを示すエラーです。
 // eventId は message_id と同じ値で冪等性を決めるので、食い違いは emit 側の誤りであり retry では直りません。
-var ErrEventIDMismatch = xerrors.Wrap(apperror.ErrPermanent, "realtime: payload eventId does not match the outbox message id")
+var ErrEventIDMismatch = xerrors.Wrap(
+	apperror.ErrPermanent,
+	"realtime: payload eventId does not match the outbox message id",
+)
 
 var _ publisherbndry.Publisher = (*publisher)(nil)
 
@@ -33,7 +35,12 @@ type publisher struct {
 // 二重配送の根拠は 2 つです。append は同じ EventID の再実行を成功として返す（冪等）ので、SNS の後に mark が
 // 失敗して同じ message が再び claim されても EventLog に 2 件目は入りません。wakeup は本文を運ばず
 // 「読み直せ」の合図なので、2 度届いても client には EventLog の 1 件が 1 度だけ配られます（ADR-0073）。
-func NewPublisher(log rt.EventLogStore, snsAPI SNSAPI, topicARN string, tf observability.TracerFactory) publisherbndry.Publisher {
+func NewPublisher(
+	log rt.EventLogStore,
+	snsAPI SNSAPI,
+	topicARN string,
+	tf observability.TracerFactory,
+) publisherbndry.Publisher {
 	return &publisher{log: log, sns: snsAPI, topicARN: topicARN, tracer: tf.Infra()}
 }
 
@@ -53,7 +60,9 @@ func (p *publisher) Publish(ctx context.Context, m publisherbndry.Message) error
 		return classifyAppend(err)
 	}
 
-	body, attrs, err := encodeWakeup(rt.Wakeup{EventID: event.EventID, StreamID: event.StreamID, Sequence: event.Sequence})
+	body, attrs, err := encodeWakeup(
+		rt.Wakeup{EventID: event.EventID, StreamID: event.StreamID, Sequence: event.Sequence},
+	)
 	if err != nil {
 		return xerrors.Join(apperror.ErrPermanent, err)
 	}
@@ -72,8 +81,8 @@ func (p *publisher) Publish(ctx context.Context, m publisherbndry.Message) error
 // decodeEvent は、payload を DeliveryEvent へ復元します。eventId が空なら outbox の message_id で埋め、
 // 入っていて食い違えば ErrEventIDMismatch です。
 func decodeEvent(m publisherbndry.Message) (rt.DeliveryEvent, error) {
-	var event rt.DeliveryEvent
-	if err := json.Unmarshal(m.Payload, &event); err != nil {
+	event, err := rt.ParseDeliveryEvent(m.Payload)
+	if err != nil {
 		return rt.DeliveryEvent{}, xerrors.Join(apperror.ErrPermanent, err)
 	}
 
@@ -96,7 +105,8 @@ func decodeEvent(m publisherbndry.Message) (rt.DeliveryEvent, error) {
 // classifyAppend は、append の失敗を relay の分類へ写します。位置の衝突と不正な封筒は permanent、
 // それ以外（store に届かない・書けない）は retryable です。
 func classifyAppend(err error) error {
-	if xerrors.Is(err, rt.ErrSequenceConflict) || xerrors.Is(err, rt.ErrInvalidEvent) || xerrors.Is(err, rt.ErrPayloadTooLarge) {
+	if xerrors.Is(err, rt.ErrSequenceConflict) || xerrors.Is(err, rt.ErrInvalidEvent) ||
+		xerrors.Is(err, rt.ErrPayloadTooLarge) {
 		return xerrors.Join(apperror.ErrPermanent, err)
 	}
 

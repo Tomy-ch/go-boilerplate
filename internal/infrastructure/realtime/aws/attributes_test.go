@@ -41,7 +41,11 @@ func Test_queueAttributes_Build(t *testing.T) {
 			require.NoError(t, err)
 
 			assert.Len(t, attrs, 5)
-			assert.JSONEq(t, `{"deadLetterTargetArn":"arn:aws:sqs:r:1:dlq","maxReceiveCount":"5"}`, attrs["RedrivePolicy"])
+			assert.JSONEq(
+				t,
+				`{"deadLetterTargetArn":"arn:aws:sqs:r:1:dlq","maxReceiveCount":"5"}`,
+				attrs["RedrivePolicy"],
+			)
 		})
 	})
 }
@@ -49,7 +53,11 @@ func Test_queueAttributes_Build(t *testing.T) {
 func TestTimingAttributes(t *testing.T) {
 	t.Parallel()
 
-	assert.Equal(t, map[string]string{"VisibilityTimeout": "30", "ReceiveMessageWaitTimeSeconds": "20"}, TimingAttributes())
+	assert.Equal(
+		t,
+		map[string]string{"VisibilityTimeout": "30", "ReceiveMessageWaitTimeSeconds": "20"},
+		TimingAttributes(),
+	)
 }
 
 func Test_redrivePolicyDocument(t *testing.T) {

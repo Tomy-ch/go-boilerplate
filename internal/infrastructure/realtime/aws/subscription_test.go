@@ -50,13 +50,19 @@ func newSubscription(t *testing.T) (*subscription, subscriptionMocks) {
 func expectProvision(m subscriptionMocks) {
 	m.sqs.EXPECT().CreateQueue(gomock.Any(), gomock.AssignableToTypeOf(&sqs.CreateQueueInput{})).
 		DoAndReturn(func(_ any, in *sqs.CreateQueueInput, _ ...func(*sqs.Options)) (*sqs.CreateQueueOutput, error) {
-			return &sqs.CreateQueueOutput{QueueUrl: awssdk.String("http://localhost:4100/000000000000/" + awssdk.ToString(in.QueueName))}, nil
+			return &sqs.CreateQueueOutput{
+				QueueUrl: awssdk.String("http://localhost:4100/000000000000/" + awssdk.ToString(in.QueueName)),
+			}, nil
 		})
 	m.sqs.EXPECT().GetQueueAttributes(gomock.Any(), gomock.Any()).
 		Return(&sqs.GetQueueAttributesOutput{Attributes: map[string]string{"QueueArn": testQueueARN}}, nil)
 	m.sqs.EXPECT().SetQueueAttributes(gomock.Any(), gomock.Any()).Return(&sqs.SetQueueAttributesOutput{}, nil)
-	m.sns.EXPECT().Subscribe(gomock.Any(), gomock.Any()).Return(&sns.SubscribeOutput{SubscriptionArn: awssdk.String(testSubARN)}, nil)
-	m.sns.EXPECT().SetSubscriptionAttributes(gomock.Any(), gomock.Any()).Return(&sns.SetSubscriptionAttributesOutput{}, nil)
+	m.sns.EXPECT().
+		Subscribe(gomock.Any(), gomock.Any()).
+		Return(&sns.SubscribeOutput{SubscriptionArn: awssdk.String(testSubARN)}, nil)
+	m.sns.EXPECT().
+		SetSubscriptionAttributes(gomock.Any(), gomock.Any()).
+		Return(&sns.SetSubscriptionAttributesOutput{}, nil)
 }
 
 func TestNewInstanceSubscription(t *testing.T) {
@@ -173,11 +179,17 @@ func Test_subscription_Provision(t *testing.T) {
 
 			s, m := newSubscription(t)
 			s.attrs = emptyAttributes{}
-			m.sqs.EXPECT().CreateQueue(gomock.Any(), gomock.Any()).Return(&sqs.CreateQueueOutput{QueueUrl: awssdk.String(testQueueURL)}, nil)
+			m.sqs.EXPECT().
+				CreateQueue(gomock.Any(), gomock.Any()).
+				Return(&sqs.CreateQueueOutput{QueueUrl: awssdk.String(testQueueURL)}, nil)
 			m.sqs.EXPECT().GetQueueAttributes(gomock.Any(), gomock.Any()).
 				Return(&sqs.GetQueueAttributesOutput{Attributes: map[string]string{"QueueArn": testQueueARN}}, nil)
-			m.sns.EXPECT().Subscribe(gomock.Any(), gomock.Any()).Return(&sns.SubscribeOutput{SubscriptionArn: awssdk.String(testSubARN)}, nil)
-			m.sns.EXPECT().SetSubscriptionAttributes(gomock.Any(), gomock.Any()).Return(&sns.SetSubscriptionAttributesOutput{}, nil)
+			m.sns.EXPECT().
+				Subscribe(gomock.Any(), gomock.Any()).
+				Return(&sns.SubscribeOutput{SubscriptionArn: awssdk.String(testSubARN)}, nil)
+			m.sns.EXPECT().
+				SetSubscriptionAttributes(gomock.Any(), gomock.Any()).
+				Return(&sns.SetSubscriptionAttributesOutput{}, nil)
 
 			require.NoError(t, s.Provision(t.Context(), "inst-1"))
 		})
@@ -217,8 +229,12 @@ func Test_subscription_Provision(t *testing.T) {
 			t.Parallel()
 
 			s, m := newSubscription(t)
-			m.sqs.EXPECT().CreateQueue(gomock.Any(), gomock.Any()).Return(&sqs.CreateQueueOutput{QueueUrl: awssdk.String(testQueueURL)}, nil)
-			m.sqs.EXPECT().GetQueueAttributes(gomock.Any(), gomock.Any()).Return(&sqs.GetQueueAttributesOutput{Attributes: map[string]string{}}, nil)
+			m.sqs.EXPECT().
+				CreateQueue(gomock.Any(), gomock.Any()).
+				Return(&sqs.CreateQueueOutput{QueueUrl: awssdk.String(testQueueURL)}, nil)
+			m.sqs.EXPECT().
+				GetQueueAttributes(gomock.Any(), gomock.Any()).
+				Return(&sqs.GetQueueAttributesOutput{Attributes: map[string]string{}}, nil)
 			m.sqs.EXPECT().DeleteQueue(gomock.Any(), gomock.Any()).Return(&sqs.DeleteQueueOutput{}, nil)
 
 			require.ErrorIs(t, s.Provision(t.Context(), "inst-1"), apperror.ErrUnavailable)
@@ -229,7 +245,9 @@ func Test_subscription_Provision(t *testing.T) {
 			t.Parallel()
 
 			s, m := newSubscription(t)
-			m.sqs.EXPECT().CreateQueue(gomock.Any(), gomock.Any()).Return(&sqs.CreateQueueOutput{QueueUrl: awssdk.String(testQueueURL)}, nil)
+			m.sqs.EXPECT().
+				CreateQueue(gomock.Any(), gomock.Any()).
+				Return(&sqs.CreateQueueOutput{QueueUrl: awssdk.String(testQueueURL)}, nil)
 			m.sqs.EXPECT().GetQueueAttributes(gomock.Any(), gomock.Any()).
 				Return(&sqs.GetQueueAttributesOutput{Attributes: map[string]string{"QueueArn": testQueueARN}}, nil)
 			m.sqs.EXPECT().SetQueueAttributes(gomock.Any(), gomock.Any()).Return(&sqs.SetQueueAttributesOutput{}, nil)
@@ -243,11 +261,15 @@ func Test_subscription_Provision(t *testing.T) {
 			t.Parallel()
 
 			s, m := newSubscription(t)
-			m.sqs.EXPECT().CreateQueue(gomock.Any(), gomock.Any()).Return(&sqs.CreateQueueOutput{QueueUrl: awssdk.String(testQueueURL)}, nil)
+			m.sqs.EXPECT().
+				CreateQueue(gomock.Any(), gomock.Any()).
+				Return(&sqs.CreateQueueOutput{QueueUrl: awssdk.String(testQueueURL)}, nil)
 			m.sqs.EXPECT().GetQueueAttributes(gomock.Any(), gomock.Any()).
 				Return(&sqs.GetQueueAttributesOutput{Attributes: map[string]string{"QueueArn": testQueueARN}}, nil)
 			m.sqs.EXPECT().SetQueueAttributes(gomock.Any(), gomock.Any()).Return(&sqs.SetQueueAttributesOutput{}, nil)
-			m.sns.EXPECT().Subscribe(gomock.Any(), gomock.Any()).Return(&sns.SubscribeOutput{SubscriptionArn: awssdk.String(testSubARN)}, nil)
+			m.sns.EXPECT().
+				Subscribe(gomock.Any(), gomock.Any()).
+				Return(&sns.SubscribeOutput{SubscriptionArn: awssdk.String(testSubARN)}, nil)
 			m.sns.EXPECT().SetSubscriptionAttributes(gomock.Any(), gomock.Any()).Return(nil, errSubstrate)
 			m.sns.EXPECT().Unsubscribe(gomock.Any(), gomock.Any()).Return(&sns.UnsubscribeOutput{}, nil)
 			m.sqs.EXPECT().DeleteQueue(gomock.Any(), gomock.Any()).Return(&sqs.DeleteQueueOutput{}, nil)
@@ -261,7 +283,7 @@ func Test_subscription_Provision(t *testing.T) {
 // emptyAttributes は、属性を 1 つも設定しない QueueAttributes です。
 type emptyAttributes struct{}
 
-func (emptyAttributes) Build(string) (map[string]string, error) { return nil, nil }
+func (emptyAttributes) Build(string) (map[string]string, error) { return map[string]string{}, nil }
 
 func Test_subscription_Receive(t *testing.T) {
 	t.Parallel()
@@ -310,7 +332,8 @@ func Test_subscription_Receive(t *testing.T) {
 					assert.Equal(t, int32(10), in.MaxNumberOfMessages)
 
 					return &sqs.ReceiveMessageOutput{}, nil
-				}).Times(2)
+				}).
+				Times(2)
 
 			_, err := s.Receive(t.Context(), 100)
 			require.NoError(t, err)

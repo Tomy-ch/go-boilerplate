@@ -90,20 +90,20 @@ func (e DeliveryEvent) MarshalJSON() ([]byte, error) {
 	return b, nil
 }
 
-// UnmarshalJSON は、MarshalJSON の形（sequence は 10 進文字列）から復元します。sequence が 10 進整数でなければ
-// ErrInvalidEvent を返します。復元した封筒が保存・配送できる形かは Validate が別に判定します。
-func (e *DeliveryEvent) UnmarshalJSON(b []byte) error {
+// ParseDeliveryEvent は、MarshalJSON の形（sequence は 10 進文字列）から封筒を復元します。JSON でないか
+// sequence が 10 進整数でなければ ErrInvalidEvent を返します。復元した封筒が保存・配送できる形かは Validate が別に判定します。
+func ParseDeliveryEvent(b []byte) (DeliveryEvent, error) {
 	var w wireEvent
 	if err := json.Unmarshal(b, &w); err != nil {
-		return xerrors.Wrap(ErrInvalidEvent, err.Error())
+		return DeliveryEvent{}, xerrors.Wrap(ErrInvalidEvent, err.Error())
 	}
 
 	seq, err := strconv.ParseInt(w.Sequence, 10, 64)
 	if err != nil {
-		return xerrors.Wrap(ErrInvalidEvent, "sequence must be a decimal integer: "+w.Sequence)
+		return DeliveryEvent{}, xerrors.Wrap(ErrInvalidEvent, "sequence must be a decimal integer: "+w.Sequence)
 	}
 
-	*e = DeliveryEvent{
+	return DeliveryEvent{
 		EventID:       w.EventID,
 		StreamID:      w.StreamID,
 		Sequence:      Sequence(seq),
@@ -111,9 +111,7 @@ func (e *DeliveryEvent) UnmarshalJSON(b []byte) error {
 		OccurredAt:    w.OccurredAt,
 		SchemaVersion: w.SchemaVersion,
 		Payload:       w.Payload,
-	}
-
-	return nil
+	}, nil
 }
 
 // Validate は、封筒が保存・配送できる形かを判定します。emit する側は outbox へ書く前に呼び、

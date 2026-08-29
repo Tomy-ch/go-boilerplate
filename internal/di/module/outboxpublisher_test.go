@@ -41,7 +41,11 @@ func Test_outboxPublisherModule(t *testing.T) {
 			t.Parallel()
 
 			// required だけ寄与して profile を欠くと registry 構築が起動時に失敗する。
-			profiles := collectGroup[httpclient.DownstreamProfile](t, `group:"httpclient_profiles"`, outboxPublisherModule())
+			profiles := collectGroup[httpclient.DownstreamProfile](
+				t,
+				`group:"httpclient_profiles"`,
+				outboxPublisherModule(),
+			)
 			required := collectGroup[httpclient.Downstream](t, `group:"required_downstreams"`, outboxPublisherModule())
 
 			assert.Equal(t, []httpclient.Downstream{outboxpublisher.RequiredDownstream()}, required)

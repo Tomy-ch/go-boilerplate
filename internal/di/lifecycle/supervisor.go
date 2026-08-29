@@ -37,12 +37,12 @@ func (s SupervisedRunner) Register(reg Registrar) {
 // （複数の runner を 1 つの hook の中で起動・停止する serve lifecycle）が使い、Register はこれを
 // そのまま 1 組ずつ登録します。1 度の Bind で返る組は 1 つの実行 context を共有するので、
 // start は 1 回だけ呼びます。
-func (s SupervisedRunner) Bind() (start, stop func(ctx context.Context) error) {
+func (s SupervisedRunner) Bind() (func(ctx context.Context) error, func(ctx context.Context) error) {
 	// 実行 context は startCtx に紐づけない（[SupervisedRunner] の detached 契約）。
 	runCtx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 
-	start = func(_ context.Context) error {
+	start := func(_ context.Context) error {
 		if s.OnStartAux != nil {
 			s.OnStartAux()
 		}
@@ -55,7 +55,7 @@ func (s SupervisedRunner) Bind() (start, stop func(ctx context.Context) error) {
 		return nil
 	}
 
-	stop = func(stopCtx context.Context) error {
+	stop := func(stopCtx context.Context) error {
 		cancel()
 		select {
 		case <-done: // Body 完了（drain 完了）

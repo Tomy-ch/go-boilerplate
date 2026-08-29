@@ -22,12 +22,20 @@ type SNSAPI interface {
 		in *sns.SetSubscriptionAttributesInput,
 		opts ...func(*sns.Options),
 	) (*sns.SetSubscriptionAttributesOutput, error)
-	Unsubscribe(ctx context.Context, in *sns.UnsubscribeInput, opts ...func(*sns.Options)) (*sns.UnsubscribeOutput, error)
+	Unsubscribe(
+		ctx context.Context,
+		in *sns.UnsubscribeInput,
+		opts ...func(*sns.Options),
+	) (*sns.UnsubscribeOutput, error)
 }
 
 // SQSAPI は、この package が使う SQS の操作だけを抽象化したものです（*sqs.Client が満たします）。
 type SQSAPI interface {
-	CreateQueue(ctx context.Context, in *sqs.CreateQueueInput, opts ...func(*sqs.Options)) (*sqs.CreateQueueOutput, error)
+	CreateQueue(
+		ctx context.Context,
+		in *sqs.CreateQueueInput,
+		opts ...func(*sqs.Options),
+	) (*sqs.CreateQueueOutput, error)
 	GetQueueAttributes(
 		ctx context.Context,
 		in *sqs.GetQueueAttributesInput,
@@ -38,7 +46,19 @@ type SQSAPI interface {
 		in *sqs.SetQueueAttributesInput,
 		opts ...func(*sqs.Options),
 	) (*sqs.SetQueueAttributesOutput, error)
-	ReceiveMessage(ctx context.Context, in *sqs.ReceiveMessageInput, opts ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error)
-	DeleteMessage(ctx context.Context, in *sqs.DeleteMessageInput, opts ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error)
-	DeleteQueue(ctx context.Context, in *sqs.DeleteQueueInput, opts ...func(*sqs.Options)) (*sqs.DeleteQueueOutput, error)
+	ReceiveMessage(
+		ctx context.Context,
+		in *sqs.ReceiveMessageInput,
+		opts ...func(*sqs.Options),
+	) (*sqs.ReceiveMessageOutput, error)
+	DeleteMessage(
+		ctx context.Context,
+		in *sqs.DeleteMessageInput,
+		opts ...func(*sqs.Options),
+	) (*sqs.DeleteMessageOutput, error)
+	DeleteQueue(
+		ctx context.Context,
+		in *sqs.DeleteQueueInput,
+		opts ...func(*sqs.Options),
+	) (*sqs.DeleteQueueOutput, error)
 }

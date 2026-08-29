@@ -22,7 +22,14 @@ var (
 )
 
 func eventAt(seq rt.Sequence, occurredAt time.Time) rt.DeliveryEvent {
-	return rt.DeliveryEvent{EventID: "evt-" + seq.String(), StreamID: "s", Sequence: seq, Type: "t", OccurredAt: occurredAt, SchemaVersion: 1}
+	return rt.DeliveryEvent{
+		EventID:       "evt-" + seq.String(),
+		StreamID:      "s",
+		Sequence:      seq,
+		Type:          "t",
+		OccurredAt:    occurredAt,
+		SchemaVersion: 1,
+	}
 }
 
 func newValidator(t *testing.T) (*cursorValidator, *mock_realtime.MockEventLogStore) {
@@ -40,7 +47,11 @@ func TestNewCursorValidator(t *testing.T) {
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)
-	v := NewCursorValidator(mock_realtime.NewMockEventLogStore(ctrl), mock_clock.NewMockClock(ctrl), observability.NewNoopTracerFactory(t))
+	v := NewCursorValidator(
+		mock_realtime.NewMockEventLogStore(ctrl),
+		mock_clock.NewMockClock(ctrl),
+		observability.NewNoopTracerFactory(t),
+	)
 	assert.NotNil(t, v)
 }
 
@@ -153,7 +164,9 @@ func Test_cursorValidator_Validate(t *testing.T) {
 
 			v, log := newValidator(t)
 			log.EXPECT().ReadAfter(gomock.Any(), readAfter(3)).Return(rt.ReadAfterResult{}, nil)
-			log.EXPECT().Find(gomock.Any(), rt.StreamID("s"), rt.Sequence(3)).Return(rt.DeliveryEvent{}, false, errStoreOff)
+			log.EXPECT().
+				Find(gomock.Any(), rt.StreamID("s"), rt.Sequence(3)).
+				Return(rt.DeliveryEvent{}, false, errStoreOff)
 
 			require.ErrorIs(t, v.Validate(t.Context(), "s", 3), apperror.ErrUnavailable)
 		})

@@ -48,7 +48,14 @@ func newFanoutFixture(t *testing.T, instances int) *fanoutFixture {
 
 	prefix := testkit.Name(t, "inst")
 	for i := range instances {
-		sub := aws.NewInstanceSubscription(clients.SNS, clients.SQS, f.topicARN, prefix, local.NewQueueAttributes(), observability.NewNoopTracerFactory(t))
+		sub := aws.NewInstanceSubscription(
+			clients.SNS,
+			clients.SQS,
+			f.topicARN,
+			prefix,
+			local.NewQueueAttributes(),
+			observability.NewNoopTracerFactory(t),
+		)
 		require.NoError(t, sub.Provision(t.Context(), rt.InstanceID("i"+strconv.Itoa(i))))
 		t.Cleanup(func() { _ = sub.Teardown(t.Context()) })
 		f.subs = append(f.subs, sub)
@@ -63,8 +70,12 @@ func (f *fanoutFixture) publisher(t *testing.T, topicARN string) publisherbndry.
 	return aws.NewPublisher(f.log, f.clients.SNS, topicARN, observability.NewNoopTracerFactory(t))
 }
 
-// message は、stream の seq 位置の event を payload に持つ outbox message を返します。
-func (f *fanoutFixture) message(t *testing.T, stream rt.StreamID, seq rt.Sequence) publisherbndry.Message {
+// message は、stream の先頭位置（sequence 1）の event を payload に持つ outbox message を返します。
+func (f *fanoutFixture) message(t *testing.T, stream rt.StreamID) publisherbndry.Message {
+	t.Helper()
+
+	const seq rt.Sequence = 1
+
 	t.Helper()
 
 	id, err := uuid.New()
@@ -105,7 +116,7 @@ func TestFanoutContract(t *testing.T) {
 			t.Parallel()
 
 			f := newFanoutFixture(t, 3)
-			m := f.message(t, "stream-1", 1)
+			m := f.message(t, "stream-1")
 			require.NoError(t, f.publisher(t, f.topicARN).Publish(t.Context(), m))
 
 			for i, sub := range f.subs {
@@ -138,7 +149,7 @@ func TestPublishRetryContract(t *testing.T) {
 
 			f := newFanoutFixture(t, 1)
 			p := f.publisher(t, f.topicARN)
-			m := f.message(t, "stream-1", 1)
+			m := f.message(t, "stream-1")
 
 			require.NoError(t, p.Publish(t.Context(), m))
 			require.NoError(t, p.Publish(t.Context(), m), "再 claim: append は冪等に成功し、wakeup が再び publish される")
@@ -159,7 +170,7 @@ func TestPublishRetryContract(t *testing.T) {
 			t.Parallel()
 
 			f := newFanoutFixture(t, 1)
-			m := f.message(t, "stream-2", 1)
+			m := f.message(t, "stream-2")
 
 			err := f.publisher(t, "arn:aws:sns:us-east-1:000000000000:does-not-exist").Publish(t.Context(), m)
 			require.ErrorIs(t, err, apperror.ErrRetryable)
@@ -188,8 +199,8 @@ func TestPublishRetryContract(t *testing.T) {
 
 			f := newFanoutFixture(t, 1)
 			p := f.publisher(t, f.topicARN)
-			first := f.message(t, "stream-3", 1)
-			second := f.message(t, "stream-3", 1)
+			first := f.message(t, "stream-3")
+			second := f.message(t, "stream-3")
 
 			require.NoError(t, p.Publish(t.Context(), first))
 

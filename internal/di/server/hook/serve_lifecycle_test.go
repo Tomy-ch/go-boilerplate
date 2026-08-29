@@ -7,7 +7,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap/zaptest/observer"
 
 	"go-boilerplate/internal/di/lifecycle"
 	"go-boilerplate/internal/logging"
@@ -38,9 +37,10 @@ func (c *callLog) get() []string {
 
 // fixture は、記録する参加者と HTTP の start / stop を持つ serveLifecycle を組み立てます。
 type fixture struct {
-	lc   *serveLifecycle
-	log  *callLog
-	logs *observer.ObservedLogs
+	lc  *serveLifecycle
+	log *callLog
+	// logCount は、msg のログの件数を返します。
+	logCount func(msg string) int
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -55,8 +55,8 @@ func newFixture(t *testing.T) *fixture {
 			httpStart: func(context.Context) error { calls.add("http.start"); return nil },
 			httpStop:  func(context.Context) error { calls.add("http.stop"); return nil },
 		},
-		log:  calls,
-		logs: logs,
+		log:      calls,
+		logCount: func(msg string) int { return logs.FilterMessage(msg).Len() },
 	}
 }
 
@@ -132,7 +132,11 @@ func Test_serveLifecycle_start(t *testing.T) {
 			f.lc.runners = []boundRunner{f.runner("consumer")}
 
 			require.NoError(t, f.lc.start(t.Context()))
-			assert.Equal(t, []string{"probe.store", "provision.lease", "provision.inbox", "runner.start.consumer", "http.start"}, f.log.get())
+			assert.Equal(
+				t,
+				[]string{"probe.store", "provision.lease", "provision.inbox", "runner.start.consumer", "http.start"},
+				f.log.get(),
+			)
 		})
 
 		t.Run("参加者がゼロなら HTTP listen だけ", func(t *testing.T) {
@@ -165,7 +169,11 @@ func Test_serveLifecycle_start(t *testing.T) {
 
 			f := newFixture(t)
 			f.lc.provisioners = []Provisioner{
-				f.provisioner("lease", nil, nil), f.provisioner("inbox", errParticipant, nil), f.provisioner("never", nil, nil),
+				f.provisioner(
+					"lease",
+					nil,
+					nil,
+				), f.provisioner("inbox", errParticipant, nil), f.provisioner("never", nil, nil),
 			}
 
 			err := f.lc.start(t.Context())
@@ -247,8 +255,8 @@ func Test_serveLifecycle_stop(t *testing.T) {
 			err := f.lc.stop(t.Context())
 			require.ErrorIs(t, err, errParticipant)
 			assert.Equal(t, []string{"drain.sse", "teardown.inbox", "http.stop"}, f.log.get())
-			assert.Equal(t, 1, f.logs.FilterMessage("serve drainer failed").Len())
-			assert.Equal(t, 1, f.logs.FilterMessage("serve provisioner failed to tear down").Len())
+			assert.Equal(t, 1, f.logCount("serve drainer failed"))
+			assert.Equal(t, 1, f.logCount("serve provisioner failed to tear down"))
 		})
 
 		t.Run("HTTP shutdown の失敗は返す", func(t *testing.T) {
@@ -269,18 +277,22 @@ func Test_serveLifecycle_stopRunners(t *testing.T) {
 		t.Parallel()
 
 		f := newFixture(t)
-		failing := boundRunner{name: "bad", start: func(context.Context) error { return nil }, stop: func(context.Context) error {
-			f.log.add("runner.stop.bad")
+		failing := boundRunner{
+			name:  "bad",
+			start: func(context.Context) error { return nil },
+			stop: func(context.Context) error {
+				f.log.add("runner.stop.bad")
 
-			return errParticipant
-		}}
+				return errParticipant
+			},
+		}
 		f.lc.runners = []boundRunner{f.runner("a"), failing, f.runner("never")}
 		require.NoError(t, f.lc.runners[0].start(t.Context()))
 
 		f.lc.stopRunners(t.Context(), 2)
 
 		assert.Equal(t, []string{"runner.start.a", "runner.stop.bad", "runner.stop.a"}, f.log.get())
-		assert.Equal(t, 1, f.logs.FilterMessage("serve runner failed to stop").Len())
+		assert.Equal(t, 1, f.logCount("serve runner failed to stop"))
 	})
 }
 
@@ -291,11 +303,15 @@ func Test_serveLifecycle_teardown(t *testing.T) {
 		t.Parallel()
 
 		f := newFixture(t)
-		f.lc.provisioners = []Provisioner{f.provisioner("a", nil, errParticipant), f.provisioner("b", nil, nil), f.provisioner("never", nil, nil)}
+		f.lc.provisioners = []Provisioner{
+			f.provisioner("a", nil, errParticipant),
+			f.provisioner("b", nil, nil),
+			f.provisioner("never", nil, nil),
+		}
 
 		f.lc.teardown(t.Context(), 2)
 
 		assert.Equal(t, []string{"teardown.b", "teardown.a"}, f.log.get())
-		assert.Equal(t, 1, f.logs.FilterMessage("serve provisioner failed to tear down").Len())
+		assert.Equal(t, 1, f.logCount("serve provisioner failed to tear down"))
 	})
 }

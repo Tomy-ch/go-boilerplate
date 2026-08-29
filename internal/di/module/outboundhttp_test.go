@@ -66,12 +66,18 @@ func Test_provideOutboundHTTPClient(t *testing.T) {
 			// dial 時のガードが発火しない。方針ごとに transport を分けて判定する。
 			localErr := getWith(
 				t,
-				provideOutboundHTTPClient(observability.NewGuardedHTTPClientTransport(t), newAppCfgForEnv(t, config.EnvLocal)),
+				provideOutboundHTTPClient(
+					observability.NewGuardedHTTPClientTransport(t),
+					newAppCfgForEnv(t, config.EnvLocal),
+				),
 				srv.URL,
 			)
 			prdErr := getWith(
 				t,
-				provideOutboundHTTPClient(observability.NewGuardedHTTPClientTransport(t), newAppCfgForEnv(t, config.EnvProduction)),
+				provideOutboundHTTPClient(
+					observability.NewGuardedHTTPClientTransport(t),
+					newAppCfgForEnv(t, config.EnvProduction),
+				),
 				srv.URL,
 			)
 

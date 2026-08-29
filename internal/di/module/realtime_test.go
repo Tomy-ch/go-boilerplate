@@ -42,16 +42,8 @@ type securitySchemes struct {
 	Schemes []oapiauth.SchemeAuthenticator `group:"oapi.security.schemes"`
 }
 
-// stubStreamer は、graph 検証に要るだけの Streamer です（本物は Phase 6）。
-type stubStreamer struct{}
-
-func (stubStreamer) Stream(*echo.Context, stream.StreamRequest) error { return nil }
-
 // stubSinks は、graph 検証に要るだけの wakeup / 失効の受け口です（本物は Phase 6 の connection registry）。
 type stubSinks struct{}
-
-func (stubSinks) Wake(context.Context, rt.StreamID, rt.Sequence) {}
-func (stubSinks) Revoke(context.Context, string, rt.StreamID)    {}
 
 // serveParticipants は、serve lifecycle の group に出された参加者を受け取る fx パラメータです。
 type serveParticipants struct {
@@ -61,6 +53,14 @@ type serveParticipants struct {
 	Provisioners []hook.Provisioner    `group:"serve.provisioners"`
 	Runners      []hook.Runner         `group:"serve.runners"`
 }
+
+// stubStreamer は、graph 検証に要るだけの Streamer です（本物は Phase 6）。
+type stubStreamer struct{}
+
+func (stubStreamer) Stream(*echo.Context, stream.StreamRequest) error { return nil }
+
+func (stubSinks) Wake(context.Context, rt.StreamID, rt.Sequence) {}
+func (stubSinks) Revoke(context.Context, string, rt.StreamID)    {}
 
 // realtimeDeps は、realtime module の graph 検証に要る下位モジュール群です（clock は infrastructure 側の module）。
 // stream handler の登録が要る *echo.Echo と Streamer、consumer engine が要る sink は、server module と Phase 6 の
@@ -112,7 +112,12 @@ func Test_realtimeModule(t *testing.T) {
 				schemes  securitySchemes
 			)
 
-			validateGraph(t, append(realtimeDeps(), fx.Populate(&log, &tickets, &leases, &secrets, &cursor, &issuer, &verifier, &schemes))...)
+			validateGraph(
+				t,
+				append(
+					realtimeDeps(),
+					fx.Populate(&log, &tickets, &leases, &secrets, &cursor, &issuer, &verifier, &schemes),
+				)...)
 		})
 
 		t.Run("fan-out の publish 側・受信側・lifecycle の参加者を提供する", func(t *testing.T) {
@@ -160,7 +165,12 @@ func Test_provideRealtimeClient(t *testing.T) {
 
 			mock := config.MockConfigForTest(t)
 			c, err := provideRealtimeClient(
-				config.NewRealtimeConfig(mock), config.NewEndpointConfig(mock), observability.NewDisabledOutboundHTTPClient(true))
+				config.NewRealtimeConfig(
+					mock,
+				),
+				config.NewEndpointConfig(mock),
+				observability.NewDisabledOutboundHTTPClient(true),
+			)
 			require.NoError(t, err)
 			assert.Nil(t, c.Options().BaseEndpoint, "テスト設定の endpoint は空＝SDK 既定の解決")
 			assert.Equal(t, config.NewRealtimeConfig(mock).Region(), c.Options().Region)
@@ -200,7 +210,14 @@ func Test_provideCursorValidator(t *testing.T) {
 
 	cfg := config.NewRealtimeConfig(config.MockConfigForTest(t))
 	log := provideEventLogStore(testkit.NewTestClient(t), cfg, observability.NewNoopTracerFactory(t))
-	assert.NotNil(t, provideCursorValidator(log, mock_clock.NewMockClock(gomock.NewController(t)), observability.NewNoopTracerFactory(t)))
+	assert.NotNil(
+		t,
+		provideCursorValidator(
+			log,
+			mock_clock.NewMockClock(gomock.NewController(t)),
+			observability.NewNoopTracerFactory(t),
+		),
+	)
 }
 
 func Test_provideTicketIssuer(t *testing.T) {
@@ -209,7 +226,10 @@ func Test_provideTicketIssuer(t *testing.T) {
 	cfg := config.NewRealtimeConfig(config.MockConfigForTest(t))
 	store := provideStreamTicketStore(testkit.NewTestClient(t), cfg, observability.NewNoopTracerFactory(t))
 	clk := mock_clock.NewMockClock(gomock.NewController(t))
-	assert.NotNil(t, provideTicketIssuer(store, provideRealtimeSecretGenerator(), clk, observability.NewNoopTracerFactory(t)))
+	assert.NotNil(
+		t,
+		provideTicketIssuer(store, provideRealtimeSecretGenerator(), clk, observability.NewNoopTracerFactory(t)),
+	)
 }
 
 func Test_provideTicketVerifier(t *testing.T) {
@@ -217,7 +237,14 @@ func Test_provideTicketVerifier(t *testing.T) {
 
 	cfg := config.NewRealtimeConfig(config.MockConfigForTest(t))
 	store := provideStreamTicketStore(testkit.NewTestClient(t), cfg, observability.NewNoopTracerFactory(t))
-	assert.NotNil(t, provideTicketVerifier(store, mock_clock.NewMockClock(gomock.NewController(t)), observability.NewNoopTracerFactory(t)))
+	assert.NotNil(
+		t,
+		provideTicketVerifier(
+			store,
+			mock_clock.NewMockClock(gomock.NewController(t)),
+			observability.NewNoopTracerFactory(t),
+		),
+	)
 }
 
 func Test_provideStreamTicketScheme(t *testing.T) {
@@ -240,9 +267,12 @@ func Test_provideStreamTicketScheme(t *testing.T) {
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/v1/streams/d?ticket=raw", nil)
 			req = req.WithContext(ctxhelper.WithStreamGrant(req.Context()))
 			in := &openapi3filter.AuthenticationInput{
-				RequestValidationInput: &openapi3filter.RequestValidationInput{Request: req, PathParams: map[string]string{"destination": "d"}},
-				SecuritySchemeName:     streamauth.SchemeName,
-				SecurityScheme:         &openapi3.SecurityScheme{Type: "apiKey", In: "query", Name: "ticket"},
+				RequestValidationInput: &openapi3filter.RequestValidationInput{
+					Request:    req,
+					PathParams: map[string]string{"destination": "d"},
+				},
+				SecuritySchemeName: streamauth.SchemeName,
+				SecurityScheme:     &openapi3.SecurityScheme{Type: "apiKey", In: "query", Name: "ticket"},
 			}
 			require.NoError(t, s.Authenticate(context.Background(), in))
 		})
@@ -259,7 +289,11 @@ func Test_provideRealtimeFanout(t *testing.T) {
 			t.Parallel()
 
 			mock := config.MockConfigForTest(t)
-			_, err := provideRealtimeFanout(config.NewRealtimeConfig(mock), config.NewEndpointConfig(mock), observability.NewDisabledOutboundHTTPClient(true))
+			_, err := provideRealtimeFanout(
+				config.NewRealtimeConfig(mock),
+				config.NewEndpointConfig(mock),
+				observability.NewDisabledOutboundHTTPClient(true),
+			)
 			require.ErrorIs(t, err, ErrRealtimeTopicNotConfigured)
 		})
 	})
@@ -313,7 +347,14 @@ func Test_provideAccessRevoker(t *testing.T) {
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)
-	assert.NotNil(t, provideAccessRevoker(mock_rt.NewMockStreamTicketStore(ctrl), mock_rt.NewMockRevocationNotifier(ctrl), observability.NewNoopTracerFactory(t)))
+	assert.NotNil(
+		t,
+		provideAccessRevoker(
+			mock_rt.NewMockStreamTicketStore(ctrl),
+			mock_rt.NewMockRevocationNotifier(ctrl),
+			observability.NewNoopTracerFactory(t),
+		),
+	)
 }
 
 func Test_provideInstanceID(t *testing.T) {
@@ -381,14 +422,29 @@ func Test_provideInstanceSubscription(t *testing.T) {
 	t.Parallel()
 
 	cfg := config.NewRealtimeConfig(config.MockConfigForTest(t))
-	assert.NotNil(t, provideInstanceSubscription(testFanout(t), cfg, realtimeinfra.NewEmulatorQueueAttributes(), observability.NewNoopTracerFactory(t)))
+	assert.NotNil(
+		t,
+		provideInstanceSubscription(
+			testFanout(t),
+			cfg,
+			realtimeinfra.NewEmulatorQueueAttributes(),
+			observability.NewNoopTracerFactory(t),
+		),
+	)
 }
 
 func Test_provideLeaseKeeper(t *testing.T) {
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)
-	assert.NotNil(t, provideLeaseKeeper(mock_rt.NewMockInstanceLeaseStore(ctrl), mock_clock.NewMockClock(ctrl), observability.NewNoopTracerFactory(t)))
+	assert.NotNil(
+		t,
+		provideLeaseKeeper(
+			mock_rt.NewMockInstanceLeaseStore(ctrl),
+			mock_clock.NewMockClock(ctrl),
+			observability.NewNoopTracerFactory(t),
+		),
+	)
 }
 
 func Test_provideRealtimeConsumer(t *testing.T) {
@@ -407,7 +463,13 @@ func Test_provideRealtimeHeartbeat(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	assert.NotNil(t, provideRealtimeHeartbeat(
-		mock_realtime.NewMockLeaseKeeper(ctrl), "inst-1", mock_clock.NewMockSleeper(ctrl), logging.NewTestLogger(t), observability.NewNoopTracerFactory(t),
+		mock_realtime.NewMockLeaseKeeper(
+			ctrl,
+		),
+		"inst-1",
+		mock_clock.NewMockSleeper(ctrl),
+		logging.NewTestLogger(t),
+		observability.NewNoopTracerFactory(t),
 	))
 }
 
@@ -436,7 +498,9 @@ func Test_provideRealtimeReadiness(t *testing.T) {
 			t.Parallel()
 
 			log := mock_rt.NewMockEventLogStore(gomock.NewController(t))
-			log.EXPECT().Latest(gomock.Any(), readinessProbeStreamID).Return(rt.DeliveryEvent{}, false, apperror.ErrUnavailable)
+			log.EXPECT().
+				Latest(gomock.Any(), readinessProbeStreamID).
+				Return(rt.DeliveryEvent{}, false, apperror.ErrUnavailable)
 
 			require.ErrorIs(t, provideRealtimeReadiness(log).Probe(t.Context()), apperror.ErrUnavailable)
 		})
@@ -521,12 +585,22 @@ func Test_provideRealtimeConsumerRunner(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	sub := mock_rt.NewMockInstanceSubscription(ctrl)
-	sub.EXPECT().Receive(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, _ int) ([]rt.Notification, error) {
-		<-ctx.Done()
+	sub.EXPECT().
+		Receive(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, _ int) ([]rt.Notification, error) {
+			<-ctx.Done()
 
-		return nil, ctx.Err()
-	}).AnyTimes()
-	engine := provideRealtimeConsumer(sub, stubSinks{}, stubSinks{}, mock_clock.NewMockSleeper(ctrl), logging.NewTestLogger(t), observability.NewNoopTracerFactory(t))
+			return nil, ctx.Err()
+		}).
+		AnyTimes()
+	engine := provideRealtimeConsumer(
+		sub,
+		stubSinks{},
+		stubSinks{},
+		mock_clock.NewMockSleeper(ctrl),
+		logging.NewTestLogger(t),
+		observability.NewNoopTracerFactory(t),
+	)
 
 	r := provideRealtimeConsumerRunner(engine)
 	assert.Equal(t, "realtime-consumer", r.Name)
@@ -548,7 +622,13 @@ func Test_provideRealtimeHeartbeatRunner(t *testing.T) {
 
 		return ctx.Err()
 	}).AnyTimes()
-	heartbeat := provideRealtimeHeartbeat(keeper, "inst-1", sleeper, logging.NewTestLogger(t), observability.NewNoopTracerFactory(t))
+	heartbeat := provideRealtimeHeartbeat(
+		keeper,
+		"inst-1",
+		sleeper,
+		logging.NewTestLogger(t),
+		observability.NewNoopTracerFactory(t),
+	)
 
 	r := provideRealtimeHeartbeatRunner(heartbeat)
 	assert.Equal(t, "realtime-heartbeat", r.Name)

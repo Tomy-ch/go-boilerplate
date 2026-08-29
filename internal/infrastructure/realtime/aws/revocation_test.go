@@ -18,7 +18,10 @@ func TestNewRevocationNotifier(t *testing.T) {
 	t.Parallel()
 
 	ctrl := gomock.NewController(t)
-	assert.NotNil(t, NewRevocationNotifier(mock_aws.NewMockSNSAPI(ctrl), testTopicARN, observability.NewNoopTracerFactory(t)))
+	assert.NotNil(
+		t,
+		NewRevocationNotifier(mock_aws.NewMockSNSAPI(ctrl), testTopicARN, observability.NewNoopTracerFactory(t)),
+	)
 }
 
 func Test_notifier_NotifyRevoked(t *testing.T) {

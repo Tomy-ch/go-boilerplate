@@ -173,7 +173,11 @@ func Test_provideAuthenticator(t *testing.T) {
 			la := local.New()
 			assert.Equal(t, la, authenticator)
 			// スタブ配線時に WARN で注意喚起されること。
-			assert.Len(t, logs.FilterMessage("Local authenticator wired: authentication is stubbed (non-production only)").All(), 1)
+			assert.Len(
+				t,
+				logs.FilterMessage("Local authenticator wired: authentication is stubbed (non-production only)").All(),
+				1,
+			)
 		})
 
 		t.Run("テスト環境では local.Authenticator が提供される", func(t *testing.T) {
