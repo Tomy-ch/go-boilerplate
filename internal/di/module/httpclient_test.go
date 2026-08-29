@@ -140,18 +140,14 @@ func Test_provideHTTPClientProfiles(t *testing.T) {
 		t.Run("渡した全コンストラクタの Profile が httpclient_profiles グループへ集まる", func(t *testing.T) {
 			t.Parallel()
 
-			got := collectGroup[httpclient.DownstreamProfile](
-				t,
-				`group:"httpclient_profiles"`,
-				provideHTTPClientProfiles(
-					func() httpclient.DownstreamProfile {
-						return httpclient.DownstreamProfile{Name: "a", Profile: httpclient.DefaultProfile()}
-					},
-					func() httpclient.DownstreamProfile {
-						return httpclient.DownstreamProfile{Name: "b", Profile: httpclient.DefaultProfile()}
-					},
-				),
-			)
+			got := collectGroup[httpclient.DownstreamProfile](t, `group:"httpclient_profiles"`, provideHTTPClientProfiles(
+				func() httpclient.DownstreamProfile {
+					return httpclient.DownstreamProfile{Name: "a", Profile: httpclient.DefaultProfile()}
+				},
+				func() httpclient.DownstreamProfile {
+					return httpclient.DownstreamProfile{Name: "b", Profile: httpclient.DefaultProfile()}
+				},
+			))
 
 			names := make([]httpclient.Downstream, 0, len(got))
 			for _, p := range got {
@@ -163,14 +159,7 @@ func Test_provideHTTPClientProfiles(t *testing.T) {
 		t.Run("コンストラクタが 0 個の場合は何も登録しない", func(t *testing.T) {
 			t.Parallel()
 
-			assert.Empty(
-				t,
-				collectGroup[httpclient.DownstreamProfile](
-					t,
-					`group:"httpclient_profiles"`,
-					provideHTTPClientProfiles(),
-				),
-			)
+			assert.Empty(t, collectGroup[httpclient.DownstreamProfile](t, `group:"httpclient_profiles"`, provideHTTPClientProfiles()))
 		})
 	})
 }
@@ -195,10 +184,7 @@ func Test_provideRequiredDownstreams(t *testing.T) {
 		t.Run("コンストラクタが 0 個の場合は何も登録しない", func(t *testing.T) {
 			t.Parallel()
 
-			assert.Empty(
-				t,
-				collectGroup[httpclient.Downstream](t, `group:"required_downstreams"`, provideRequiredDownstreams()),
-			)
+			assert.Empty(t, collectGroup[httpclient.Downstream](t, `group:"required_downstreams"`, provideRequiredDownstreams()))
 		})
 	})
 }

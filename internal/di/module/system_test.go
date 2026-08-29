@@ -30,9 +30,7 @@ func TestSystemModule_ProvidesBuildInfo(t *testing.T) {
 				SystemModule(),
 				// logBuildInfo の Invoke が logging.Logger と ApplicationConfig を要求するため供給する。
 				fx.Provide(func() logging.Logger { return logging.NewTestLogger(t) }),
-				fx.Provide(
-					func() *config.ApplicationConfig { return config.NewApplicationConfig(config.MockConfigForTest(t)) },
-				),
+				fx.Provide(func() *config.ApplicationConfig { return config.NewApplicationConfig(config.MockConfigForTest(t)) }),
 				fx.Populate(&bi),
 				fx.NopLogger,
 			)

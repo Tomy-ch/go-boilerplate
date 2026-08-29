@@ -36,12 +36,7 @@ func Test_provideCachedExchangeRateGateway(t *testing.T) {
 			tf := observability.NewNoopTracerFactory(t)
 			clk := infrasystem.NewClock()
 
-			got := provideCachedExchangeRateGateway(
-				exchangerateext.NewEndpoint(config.NewEndpointConfig(config.MockConfigForTest(t))),
-				nil,
-				tf,
-				clk,
-			)
+			got := provideCachedExchangeRateGateway(exchangerateext.NewEndpoint(config.NewEndpointConfig(config.MockConfigForTest(t))), nil, tf, clk)
 
 			// 素の gateway ではなく TTL キャッシュ decorator で包まれていることを型で確認する。
 			assert.IsType(t, exchangerateext.NewCache(nil, clk), got)

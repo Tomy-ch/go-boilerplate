@@ -121,10 +121,7 @@ func Test_provideQueueStatsTargets(t *testing.T) {
 		t.Run("コンストラクタが 0 個の場合は何も登録しない", func(t *testing.T) {
 			t.Parallel()
 
-			assert.Empty(
-				t,
-				collectGroup[queuemetrics.Target](t, `group:"worker.queue_stats_targets"`, provideQueueStatsTargets()),
-			)
+			assert.Empty(t, collectGroup[queuemetrics.Target](t, `group:"worker.queue_stats_targets"`, provideQueueStatsTargets()))
 		})
 	})
 }

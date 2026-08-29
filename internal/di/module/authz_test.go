@@ -50,9 +50,7 @@ func Test_provideAuthorizer(t *testing.T) {
 			logger, logs := logging.NewObservedTestLogger(t)
 			roleRepo := mock_user.NewMockRoleRepository(gomock.NewController(t))
 
-			authorizer, err := provideAuthorizer(
-				authorizerParams{AppCfg: newAppCfg(t, config.EnvLocal), Logger: logger, RoleRepo: roleRepo},
-			)
+			authorizer, err := provideAuthorizer(authorizerParams{AppCfg: newAppCfg(t, config.EnvLocal), Logger: logger, RoleRepo: roleRepo})
 			require.NoError(t, err)
 			assert.Equal(t, userrole.New(roleRepo), authorizer)
 			// サンプル在時は local も実 authN と対で user_roles ベース authZ を配線し INFO を出す。
@@ -78,9 +76,7 @@ func Test_provideAuthorizer(t *testing.T) {
 			logger, logs := logging.NewObservedTestLogger(t)
 			roleRepo := mock_user.NewMockRoleRepository(gomock.NewController(t))
 
-			authorizer, err := provideAuthorizer(
-				authorizerParams{AppCfg: newAppCfg(t, config.EnvDast), Logger: logger, RoleRepo: roleRepo},
-			)
+			authorizer, err := provideAuthorizer(authorizerParams{AppCfg: newAppCfg(t, config.EnvDast), Logger: logger, RoleRepo: roleRepo})
 			require.NoError(t, err)
 			assert.Equal(t, userrole.New(roleRepo), authorizer)
 			assert.Len(t, logs.FilterMessage("user_roles-based authorizer wired").All(), 1)
@@ -108,12 +104,7 @@ func Test_provideAuthorizer(t *testing.T) {
 			expected, err := allowall.New(newAppCfg(t, config.EnvCI))
 			require.NoError(t, err)
 			assert.Equal(t, expected, authorizer)
-			assert.Len(
-				t,
-				logs.FilterMessage("Allow-all authorizer wired: every request is permitted (non-production only)").
-					All(),
-				1,
-			)
+			assert.Len(t, logs.FilterMessage("Allow-all authorizer wired: every request is permitted (non-production only)").All(), 1)
 		})
 
 		t.Run("テスト環境では全許可Authorizerが提供されWARNが出る", func(t *testing.T) {
@@ -126,12 +117,7 @@ func Test_provideAuthorizer(t *testing.T) {
 			expected, err := allowall.New(newAppCfg(t, config.EnvTest))
 			require.NoError(t, err)
 			assert.Equal(t, expected, authorizer)
-			assert.Len(
-				t,
-				logs.FilterMessage("Allow-all authorizer wired: every request is permitted (non-production only)").
-					All(),
-				1,
-			)
+			assert.Len(t, logs.FilterMessage("Allow-all authorizer wired: every request is permitted (non-production only)").All(), 1)
 		})
 
 		// sample-api:begin
@@ -141,9 +127,7 @@ func Test_provideAuthorizer(t *testing.T) {
 			logger, logs := logging.NewObservedTestLogger(t)
 			roleRepo := mock_user.NewMockRoleRepository(gomock.NewController(t))
 
-			authorizer, err := provideAuthorizer(
-				authorizerParams{AppCfg: newAppCfg(t, config.EnvProduction), Logger: logger, RoleRepo: roleRepo},
-			)
+			authorizer, err := provideAuthorizer(authorizerParams{AppCfg: newAppCfg(t, config.EnvProduction), Logger: logger, RoleRepo: roleRepo})
 			require.NoError(t, err)
 			assert.Equal(t, userrole.New(roleRepo), authorizer)
 			assert.Len(t, logs.FilterMessage("user_roles-based authorizer wired").All(), 1)
