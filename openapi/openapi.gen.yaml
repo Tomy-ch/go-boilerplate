@@ -244,7 +244,22 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError500'
         '503':
-          $ref: '#/components/responses/ServiceUnavailable503'
+          description: |
+            接続を受け入れる余力がありません。instance あたりの同時接続数の上限に達したか、初回 replay の枠が
+            有界待ちの間に空かなかった場合です。`Retry-After` を尊重して再接続してください。
+          headers:
+            Retry-After:
+              description: 再接続までの目安（秒）。確定後に送られる ControlEvent の `retryAfterMs` と同じ目安で、単位だけが異なります。
+              required: true
+              schema:
+                type: integer
+                format: int32
+                minimum: 1
+                example: 5
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /v1/users:
     get:
       operationId: GetUsers
@@ -4456,14 +4471,14 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
-    ServiceUnavailable503:
-      description: サービスが一時的に利用できません。
+    Forbidden403:
+      description: 権限が必要です。
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
-    Forbidden403:
-      description: 権限が必要です。
+    ServiceUnavailable503:
+      description: サービスが一時的に利用できません。
       content:
         application/json:
           schema:
