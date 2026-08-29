@@ -10,6 +10,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	outboxengine "go-boilerplate/internal/controller/outbox"
+	"go-boilerplate/internal/infrastructure/publisher"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
 	clocktestkit "go-boilerplate/internal/usecase/boundary/clock/testkit"
@@ -64,8 +65,27 @@ func TestOutboxRelayModule(t *testing.T) {
 		})
 	})
 
+	t.Run("正常系_realtime", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("realtime channel では EventLog へ append する publisher を配線する", func(t *testing.T) {
+			t.Parallel()
+
+			var publisher publisherbd.Publisher
+
+			validateGraph(t, append(relayDeps(), OutboxRelayModule(outboxbndry.ChannelRealtime), fx.Populate(&publisher))...)
+		})
+	})
+
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
+
+		t.Run("担当する publisher module が無い channel は構築エラー（fail-closed）", func(t *testing.T) {
+			t.Parallel()
+
+			err := fx.ValidateApp(append(relayDeps(), OutboxRelayModule(outboxbndry.Channel("unknown")), fx.NopLogger)...)
+			require.ErrorIs(t, err, publisher.ErrChannelUnsupported)
+		})
 
 		t.Run("未配線では relay engine が解決できずグラフ検証に失敗する", func(t *testing.T) {
 			t.Parallel()

@@ -6,26 +6,47 @@ import (
 	awsdynamodb "github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"go.uber.org/fx"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/config"
 	oapiauth "go-boilerplate/internal/controller/httpstack/oapi/auth"
+	ctrlrealtime "go-boilerplate/internal/controller/realtime"
 	"go-boilerplate/internal/controller/stream"
 	streamauth "go-boilerplate/internal/controller/stream/auth"
+	"go-boilerplate/internal/di/lifecycle"
+	"go-boilerplate/internal/di/server/hook"
 	"go-boilerplate/internal/infrastructure/dynamodbclient"
 	"go-boilerplate/internal/infrastructure/eventlog"
 	"go-boilerplate/internal/infrastructure/instancelease"
+	realtimeinfra "go-boilerplate/internal/infrastructure/realtime"
 	"go-boilerplate/internal/infrastructure/realtimesecret"
 	"go-boilerplate/internal/infrastructure/streamticket"
+	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/clock"
 	rt "go-boilerplate/internal/usecase/boundary/realtime"
 	ucrealtime "go-boilerplate/internal/usecase/realtime"
+	"go-boilerplate/pkg/uuid"
+	"go-boilerplate/pkg/xerrors"
 )
 
+const (
+	// realtimeParticipantName は、serve lifecycle のログに載せる Realtime Delivery の参加者名です。
+	realtimeParticipantName = "realtime"
+	// readinessProbeStreamID は、起動時に EventLog へ到達できるかを確かめる読み取りに使う stream です。
+	// 存在しない stream の Latest は「無い」を返すだけで、store に届かなければエラーになります。
+	readinessProbeStreamID rt.StreamID = "_readiness"
+)
+
+// ErrRealtimeTopicNotConfigured は、fan-out を配線したのに REALTIME_TOPIC_ARN が空であることを示すエラーです。
+var ErrRealtimeTopicNotConfigured = xerrors.Wrap(apperror.ErrInvalidArgument, "REALTIME_TOPIC_ARN must be set when the realtime fan-out is wired")
+
 // realtimeModule は、Realtime Delivery の store（EventLog / StreamTicket / InstanceLease / SecretGenerator）と
-// 機構側 usecase（CursorValidator / TicketIssuer / TicketVerifier）、StreamTicket securityScheme の認証器を提供し、
-// SSE の stream handler を Echo に登録する fx.Module です。
+// 機構側 usecase（CursorValidator / TicketIssuer / TicketVerifier / AccessRevoker / LeaseKeeper）、StreamTicket
+// securityScheme の認証器、fan-out の publish 側（RevocationNotifier）と受信側（instance の受信先・consumer engine・
+// lease heartbeat）を提供し、SSE の stream handler を Echo に登録し、serve lifecycle の参加者を group へ出す fx.Module です。
 // InfrastructureModule() には束ねず、feature の realtime adapter が現れたときに app graph へ組み込みます
-// （docs/design/realtime-delivery.md §3.1）。
+// （docs/design/realtime-delivery.md §3.1）。wakeup / 失効の受け口（WakeupSink / RevocationSink）は connection
+// registry（Phase 6）が提供します。
 func realtimeModule() fx.Option {
 	return fx.Module("realtime",
 		fx.Provide(
@@ -38,11 +59,166 @@ func realtimeModule() fx.Option {
 			provideTicketIssuer,
 			provideTicketVerifier,
 			fx.Annotate(provideStreamTicketScheme, fx.ResultTags(`group:"`+oapiauth.SchemeGroup+`"`)),
+			provideRealtimeFanout,
+			provideRevocationNotifier,
+			provideAccessRevoker,
+			provideInstanceID,
+			provideInstanceQueueAttributes,
+			provideInstanceSubscription,
+			provideLeaseKeeper,
+			provideRealtimeConsumer,
+			provideRealtimeHeartbeat,
+			fx.Annotate(provideRealtimeReadiness, fx.ResultTags(`group:"`+hook.ReadinessGroup+`"`)),
+			fx.Annotate(provideRealtimeProvisioner, fx.ResultTags(`group:"`+hook.ProvisionerGroup+`"`)),
+			fx.Annotate(provideRealtimeConsumerRunner, fx.ResultTags(`group:"`+hook.RunnerGroup+`"`)),
+			fx.Annotate(provideRealtimeHeartbeatRunner, fx.ResultTags(`group:"`+hook.RunnerGroup+`"`)),
 		),
 		fx.Invoke(
 			stream.BindHandler,
 		),
 	)
+}
+
+// realtimeFanout は、fan-out の publish 側と受信側が共有する SNS / SQS クライアントと topic です。
+type realtimeFanout struct {
+	clients  realtimeinfra.Clients
+	topicARN string
+}
+
+// provideRealtimeFanout は、fan-out のクライアントを組み立てます。topic の ARN が空なら起動を失敗させます
+// （publish 先の無い fan-out を黙って起動させない。ENDPOINT_OUTBOX と同じ扱い）。
+func provideRealtimeFanout(
+	cfg *config.RealtimeConfig,
+	epCfg *config.EndpointConfig,
+	outbound *observability.OutboundHTTPClient,
+) (realtimeFanout, error) {
+	return newRealtimeFanout(cfg.TopicARN(), realtimeinfra.ClientConfig{
+		Endpoint:        epCfg.RealtimePubSub(),
+		Region:          cfg.Region(),
+		AccessKeyID:     cfg.AccessKeyID(),
+		SecretAccessKey: cfg.SecretAccessKey(),
+		HTTPClient:      outbound,
+	})
+}
+
+func newRealtimeFanout(topicARN string, cc realtimeinfra.ClientConfig) (realtimeFanout, error) {
+	if topicARN == "" {
+		return realtimeFanout{}, ErrRealtimeTopicNotConfigured
+	}
+
+	clients, err := realtimeinfra.NewClients(context.Background(), cc)
+	if err != nil {
+		return realtimeFanout{}, err
+	}
+
+	return realtimeFanout{clients: clients, topicARN: topicARN}, nil
+}
+
+func provideRevocationNotifier(f realtimeFanout, tf observability.TracerFactory) rt.RevocationNotifier {
+	return realtimeinfra.NewRevocationNotifier(f.clients, f.topicARN, tf)
+}
+
+func provideAccessRevoker(tickets rt.StreamTicketStore, notifier rt.RevocationNotifier, tf observability.TracerFactory) ucrealtime.AccessRevoker {
+	return ucrealtime.NewAccessRevoker(tickets, notifier, tf)
+}
+
+// provideInstanceID は、この process の serve instance の識別子を起動ごとに採番します。
+// 再起動した instance は別の識別子になり、前世代が残した resource は orphan として回収されます（hostname を
+// 使うと前世代の lease と衝突し、生きている instance の resource が回収され得る）。
+func provideInstanceID() (rt.InstanceID, error) {
+	id, err := uuid.New()
+	if err != nil {
+		return "", xerrors.Wrap(err, "generate realtime instance id")
+	}
+
+	return rt.InstanceID(id.String()), nil
+}
+
+// provideInstanceQueueAttributes は、instance queue に設定する属性の組み立て手を環境で選びます。
+// emulator（GoAWS）は queue policy を拒み、redrive / 暗号化の属性を保存しない（#1409 / #1414 の互換 smoke）ため、
+// emulator を使う環境だけ属性を間引いた実装を使います。production の実装は失敗を握り潰しません（間引きは
+// emulator 向け実装の責務）。名指ししない環境は起動エラーにします（fail-closed）。
+func provideInstanceQueueAttributes(appCfg *config.ApplicationConfig, cfg *config.RealtimeConfig) (realtimeinfra.QueueAttributes, error) {
+	switch env := appCfg.Env(); env {
+	case config.EnvLocal, config.EnvCI, config.EnvTest, config.EnvDast:
+		return realtimeinfra.NewEmulatorQueueAttributes(), nil
+	case config.EnvDevelopment, config.EnvStaging, config.EnvProduction:
+		return realtimeinfra.NewQueueAttributes(cfg.TopicARN(), cfg.DLQARN()), nil
+	default:
+		return nil, xerrors.Wrap(apperror.ErrInvalidArgument, "no instance queue attribute policy for env "+env)
+	}
+}
+
+func provideInstanceSubscription(
+	f realtimeFanout, cfg *config.RealtimeConfig, attrs realtimeinfra.QueueAttributes, tf observability.TracerFactory,
+) rt.InstanceSubscription {
+	return realtimeinfra.NewInstanceSubscription(f.clients, f.topicARN, cfg.QueuePrefix(), attrs, tf)
+}
+
+func provideLeaseKeeper(store rt.InstanceLeaseStore, clk clock.Clock, tf observability.TracerFactory) ucrealtime.LeaseKeeper {
+	return ucrealtime.NewLeaseKeeper(store, clk, tf)
+}
+
+func provideRealtimeConsumer(
+	sub rt.InstanceSubscription,
+	wakeups ctrlrealtime.WakeupSink,
+	revocations ctrlrealtime.RevocationSink,
+	sleeper clock.Sleeper,
+	log logging.Logger,
+	tf observability.TracerFactory,
+) *ctrlrealtime.Engine {
+	return ctrlrealtime.NewEngine(sub, wakeups, revocations, sleeper, log, tf, ctrlrealtime.Settings{})
+}
+
+func provideRealtimeHeartbeat(
+	keeper ucrealtime.LeaseKeeper, id rt.InstanceID, sleeper clock.Sleeper, log logging.Logger, tf observability.TracerFactory,
+) *ctrlrealtime.Heartbeat {
+	return ctrlrealtime.NewHeartbeat(keeper, id, sleeper, log, tf)
+}
+
+// provideRealtimeReadiness は、HTTP を listen する前に EventLog へ到達できることを確かめる参加者を返します
+// （Realtime runtime の起動に不可欠な dependency は startup で fail-fast する — 設計 §2.6）。
+func provideRealtimeReadiness(log rt.EventLogStore) hook.ReadinessProbe {
+	return hook.ReadinessProbe{Name: realtimeParticipantName, Probe: func(ctx context.Context) error {
+		_, _, err := log.Latest(ctx, readinessProbeStreamID)
+
+		return err
+	}}
+}
+
+// provideRealtimeProvisioner は、lease の記録と instance の受信先を 1 つの参加者に合成します。
+// 起動は lease → 受信先、片付けは 受信先（unsubscribe → queue 削除）→ lease 削除の順で、
+// fx の group は順序を保証しないため 1 つの参加者の中で固定します（ADR-0073 の回収順と同じ）。
+func provideRealtimeProvisioner(sub rt.InstanceSubscription, keeper ucrealtime.LeaseKeeper, id rt.InstanceID) hook.Provisioner {
+	return hook.Provisioner{
+		Name: realtimeParticipantName,
+		Provision: func(ctx context.Context) error {
+			if err := keeper.Beat(ctx, id); err != nil {
+				return err
+			}
+
+			if err := sub.Provision(ctx, id); err != nil {
+				return xerrors.Join(err, keeper.Release(ctx, id))
+			}
+
+			return nil
+		},
+		Teardown: func(ctx context.Context) error {
+			return xerrors.Join(sub.Teardown(ctx), keeper.Release(ctx, id))
+		},
+	}
+}
+
+func provideRealtimeConsumerRunner(engine *ctrlrealtime.Engine) hook.Runner {
+	return hook.Runner{Name: realtimeParticipantName + "-consumer", Runner: lifecycle.SupervisedRunner{
+		Body: func(ctx context.Context) { _ = engine.Run(ctx) },
+	}}
+}
+
+func provideRealtimeHeartbeatRunner(heartbeat *ctrlrealtime.Heartbeat) hook.Runner {
+	return hook.Runner{Name: realtimeParticipantName + "-heartbeat", Runner: lifecycle.SupervisedRunner{
+		Body: func(ctx context.Context) { _ = heartbeat.Run(ctx) },
+	}}
 }
 
 // provideRealtimeClient は、3 つの store が共有する DynamoDB クライアントを組み立てます。

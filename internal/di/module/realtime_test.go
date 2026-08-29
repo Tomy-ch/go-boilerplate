@@ -5,18 +5,26 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/controller/ctxhelper"
 	oapiauth "go-boilerplate/internal/controller/httpstack/oapi/auth"
+	ctrlrealtime "go-boilerplate/internal/controller/realtime"
 	"go-boilerplate/internal/controller/stream"
 	streamauth "go-boilerplate/internal/controller/stream/auth"
+	"go-boilerplate/internal/di/server/hook"
 	"go-boilerplate/internal/infrastructure/dynamodbclient/testkit"
+	realtimeinfra "go-boilerplate/internal/infrastructure/realtime"
+	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
 	mock_clock "go-boilerplate/internal/usecase/boundary/clock/mock"
 	rt "go-boilerplate/internal/usecase/boundary/realtime"
+	mock_rt "go-boilerplate/internal/usecase/boundary/realtime/mock"
 	ucrealtime "go-boilerplate/internal/usecase/realtime"
 	mock_realtime "go-boilerplate/internal/usecase/realtime/mock"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
@@ -39,13 +47,43 @@ type stubStreamer struct{}
 
 func (stubStreamer) Stream(*echo.Context, stream.StreamRequest) error { return nil }
 
+// stubSinks は、graph 検証に要るだけの wakeup / 失効の受け口です（本物は Phase 6 の connection registry）。
+type stubSinks struct{}
+
+func (stubSinks) Wake(context.Context, rt.StreamID, rt.Sequence) {}
+func (stubSinks) Revoke(context.Context, string, rt.StreamID)    {}
+
+// serveParticipants は、serve lifecycle の group に出された参加者を受け取る fx パラメータです。
+type serveParticipants struct {
+	fx.In
+
+	Readiness    []hook.ReadinessProbe `group:"serve.readiness"`
+	Provisioners []hook.Provisioner    `group:"serve.provisioners"`
+	Runners      []hook.Runner         `group:"serve.runners"`
+}
+
 // realtimeDeps は、realtime module の graph 検証に要る下位モジュール群です（clock は infrastructure 側の module）。
-// stream handler の登録が要る *echo.Echo と Streamer は、server module と Phase 6 の代わりにここで供給します。
+// stream handler の登録が要る *echo.Echo と Streamer、consumer engine が要る sink は、server module と Phase 6 の
+// 代わりにここで供給します。
 func realtimeDeps() []fx.Option {
 	return append(commonDeps(), clockModule(), realtimeModule(),
 		fx.Provide(echo.New),
 		fx.Provide(func() stream.Streamer { return stubStreamer{} }),
+		fx.Provide(func() ctrlrealtime.WakeupSink { return stubSinks{} }),
+		fx.Provide(func() ctrlrealtime.RevocationSink { return stubSinks{} }),
 	)
+}
+
+// testFanout は、emulator の endpoint を向いた fan-out の依存を返します（接続はしない）。
+func testFanout(t *testing.T) realtimeFanout {
+	t.Helper()
+
+	clients, err := realtimeinfra.NewClients(t.Context(), realtimeinfra.ClientConfig{
+		Endpoint: "http://localhost:4100", Region: "us-east-1", AccessKeyID: "k", SecretAccessKey: "s",
+	})
+	require.NoError(t, err)
+
+	return realtimeFanout{clients: clients, topicARN: "arn:aws:sns:us-east-1:000000000000:realtime-test"}
 }
 
 func Test_realtimeModule_GraphIsValid(t *testing.T) {
@@ -75,6 +113,25 @@ func Test_realtimeModule(t *testing.T) {
 			)
 
 			validateGraph(t, append(realtimeDeps(), fx.Populate(&log, &tickets, &leases, &secrets, &cursor, &issuer, &verifier, &schemes))...)
+		})
+
+		t.Run("fan-out の publish 側・受信側・lifecycle の参加者を提供する", func(t *testing.T) {
+			t.Parallel()
+
+			var (
+				notifier     rt.RevocationNotifier
+				revoker      ucrealtime.AccessRevoker
+				id           rt.InstanceID
+				attrs        realtimeinfra.QueueAttributes
+				sub          rt.InstanceSubscription
+				keeper       ucrealtime.LeaseKeeper
+				engine       *ctrlrealtime.Engine
+				heartbeat    *ctrlrealtime.Heartbeat
+				participants serveParticipants
+			)
+
+			validateGraph(t, append(realtimeDeps(),
+				fx.Populate(&notifier, &revoker, &id, &attrs, &sub, &keeper, &engine, &heartbeat, &participants))...)
 		})
 	})
 
@@ -190,4 +247,313 @@ func Test_provideStreamTicketScheme(t *testing.T) {
 			require.NoError(t, s.Authenticate(context.Background(), in))
 		})
 	})
+}
+
+func Test_provideRealtimeFanout(t *testing.T) {
+	t.Parallel()
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("テスト設定は topic の ARN が空なので ErrRealtimeTopicNotConfigured（fail-closed）", func(t *testing.T) {
+			t.Parallel()
+
+			mock := config.MockConfigForTest(t)
+			_, err := provideRealtimeFanout(config.NewRealtimeConfig(mock), config.NewEndpointConfig(mock), observability.NewDisabledOutboundHTTPClient(true))
+			require.ErrorIs(t, err, ErrRealtimeTopicNotConfigured)
+		})
+	})
+}
+
+func Test_newRealtimeFanout(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("topic の ARN と接続設定からクライアントを組み立てる", func(t *testing.T) {
+			t.Parallel()
+
+			f, err := newRealtimeFanout("arn:aws:sns:us-east-1:000000000000:realtime-test", realtimeinfra.ClientConfig{
+				Endpoint: "http://localhost:4100", Region: "us-east-1", AccessKeyID: "k", SecretAccessKey: "s",
+			})
+			require.NoError(t, err)
+			assert.Equal(t, "arn:aws:sns:us-east-1:000000000000:realtime-test", f.topicARN)
+			assert.NotNil(t, f.clients.SNS)
+			assert.NotNil(t, f.clients.SQS)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("topic の ARN が空なら ErrRealtimeTopicNotConfigured", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := newRealtimeFanout("", realtimeinfra.ClientConfig{Region: "us-east-1"})
+			require.ErrorIs(t, err, ErrRealtimeTopicNotConfigured)
+		})
+
+		t.Run("資格情報が片方だけなら構築に失敗する", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := newRealtimeFanout("arn:topic", realtimeinfra.ClientConfig{Region: "us-east-1", AccessKeyID: "k"})
+			require.Error(t, err)
+		})
+	})
+}
+
+func Test_provideRevocationNotifier(t *testing.T) {
+	t.Parallel()
+
+	assert.NotNil(t, provideRevocationNotifier(testFanout(t), observability.NewNoopTracerFactory(t)))
+}
+
+func Test_provideAccessRevoker(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	assert.NotNil(t, provideAccessRevoker(mock_rt.NewMockStreamTicketStore(ctrl), mock_rt.NewMockRevocationNotifier(ctrl), observability.NewNoopTracerFactory(t)))
+}
+
+func Test_provideInstanceID(t *testing.T) {
+	t.Parallel()
+
+	a, err := provideInstanceID()
+	require.NoError(t, err)
+	b, err := provideInstanceID()
+	require.NoError(t, err)
+
+	assert.Regexp(t, `^[0-9a-f-]{36}$`, string(a))
+	assert.NotEqual(t, a, b, "起動ごとに別の識別子")
+}
+
+func Test_provideInstanceQueueAttributes(t *testing.T) {
+	t.Parallel()
+
+	cfg := config.NewRealtimeConfig(config.MockConfigForTest(t))
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("emulator を使う環境は timings だけの属性", func(t *testing.T) {
+			t.Parallel()
+
+			for _, env := range []string{config.EnvLocal, config.EnvCI, config.EnvTest, config.EnvDast} {
+				attrs, err := provideInstanceQueueAttributes(newAppCfgForEnv(t, env), cfg)
+				require.NoError(t, err, env)
+
+				built, err := attrs.Build("arn:q")
+				require.NoError(t, err)
+				assert.NotContains(t, built, "Policy", env)
+				assert.Contains(t, built, "VisibilityTimeout", env)
+			}
+		})
+
+		t.Run("deploy 環境は policy を含む全属性", func(t *testing.T) {
+			t.Parallel()
+
+			for _, env := range []string{config.EnvDevelopment, config.EnvStaging, config.EnvProduction} {
+				attrs, err := provideInstanceQueueAttributes(newAppCfgForEnv(t, env), cfg)
+				require.NoError(t, err, env)
+
+				built, err := attrs.Build("arn:q")
+				require.NoError(t, err)
+				assert.Contains(t, built, "Policy", env)
+				assert.Contains(t, built, "SqsManagedSseEnabled", env)
+			}
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("名指ししない環境は ErrInvalidArgument", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := provideInstanceQueueAttributes(newAppCfgForEnv(t, "unknown"), cfg)
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+		})
+	})
+}
+
+func Test_provideInstanceSubscription(t *testing.T) {
+	t.Parallel()
+
+	cfg := config.NewRealtimeConfig(config.MockConfigForTest(t))
+	assert.NotNil(t, provideInstanceSubscription(testFanout(t), cfg, realtimeinfra.NewEmulatorQueueAttributes(), observability.NewNoopTracerFactory(t)))
+}
+
+func Test_provideLeaseKeeper(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	assert.NotNil(t, provideLeaseKeeper(mock_rt.NewMockInstanceLeaseStore(ctrl), mock_clock.NewMockClock(ctrl), observability.NewNoopTracerFactory(t)))
+}
+
+func Test_provideRealtimeConsumer(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	engine := provideRealtimeConsumer(
+		mock_rt.NewMockInstanceSubscription(ctrl), stubSinks{}, stubSinks{}, mock_clock.NewMockSleeper(ctrl),
+		logging.NewTestLogger(t), observability.NewNoopTracerFactory(t),
+	)
+	assert.NotNil(t, engine)
+}
+
+func Test_provideRealtimeHeartbeat(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	assert.NotNil(t, provideRealtimeHeartbeat(
+		mock_realtime.NewMockLeaseKeeper(ctrl), "inst-1", mock_clock.NewMockSleeper(ctrl), logging.NewTestLogger(t), observability.NewNoopTracerFactory(t),
+	))
+}
+
+func Test_provideRealtimeReadiness(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("EventLog の読み取りが通れば到達可能", func(t *testing.T) {
+			t.Parallel()
+
+			log := mock_rt.NewMockEventLogStore(gomock.NewController(t))
+			log.EXPECT().Latest(gomock.Any(), readinessProbeStreamID).Return(rt.DeliveryEvent{}, false, nil)
+
+			p := provideRealtimeReadiness(log)
+			assert.Equal(t, realtimeParticipantName, p.Name)
+			require.NoError(t, p.Probe(t.Context()))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("store に届かなければその失敗を返す", func(t *testing.T) {
+			t.Parallel()
+
+			log := mock_rt.NewMockEventLogStore(gomock.NewController(t))
+			log.EXPECT().Latest(gomock.Any(), readinessProbeStreamID).Return(rt.DeliveryEvent{}, false, apperror.ErrUnavailable)
+
+			require.ErrorIs(t, provideRealtimeReadiness(log).Probe(t.Context()), apperror.ErrUnavailable)
+		})
+	})
+}
+
+func Test_provideRealtimeProvisioner(t *testing.T) {
+	t.Parallel()
+
+	errBoom := xerrors.New("boom")
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("起動は lease → 受信先、片付けは 受信先 → lease の順", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			sub := mock_rt.NewMockInstanceSubscription(ctrl)
+			keeper := mock_realtime.NewMockLeaseKeeper(ctrl)
+			gomock.InOrder(
+				keeper.EXPECT().Beat(gomock.Any(), rt.InstanceID("inst-1")).Return(nil),
+				sub.EXPECT().Provision(gomock.Any(), rt.InstanceID("inst-1")).Return(nil),
+				sub.EXPECT().Teardown(gomock.Any()).Return(nil),
+				keeper.EXPECT().Release(gomock.Any(), rt.InstanceID("inst-1")).Return(nil),
+			)
+
+			p := provideRealtimeProvisioner(sub, keeper, "inst-1")
+			assert.Equal(t, realtimeParticipantName, p.Name)
+			require.NoError(t, p.Provision(t.Context()))
+			require.NoError(t, p.Teardown(t.Context()))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("lease が書けなければ受信先を作らない", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			sub := mock_rt.NewMockInstanceSubscription(ctrl)
+			keeper := mock_realtime.NewMockLeaseKeeper(ctrl)
+			keeper.EXPECT().Beat(gomock.Any(), gomock.Any()).Return(errBoom)
+
+			require.ErrorIs(t, provideRealtimeProvisioner(sub, keeper, "inst-1").Provision(t.Context()), errBoom)
+		})
+
+		t.Run("受信先を作れなければ lease を取り消してから失敗する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			sub := mock_rt.NewMockInstanceSubscription(ctrl)
+			keeper := mock_realtime.NewMockLeaseKeeper(ctrl)
+			gomock.InOrder(
+				keeper.EXPECT().Beat(gomock.Any(), gomock.Any()).Return(nil),
+				sub.EXPECT().Provision(gomock.Any(), gomock.Any()).Return(errBoom),
+				keeper.EXPECT().Release(gomock.Any(), gomock.Any()).Return(nil),
+			)
+
+			require.ErrorIs(t, provideRealtimeProvisioner(sub, keeper, "inst-1").Provision(t.Context()), errBoom)
+		})
+
+		t.Run("片付けは片方が失敗しても両方試み、失敗をまとめて返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			sub := mock_rt.NewMockInstanceSubscription(ctrl)
+			keeper := mock_realtime.NewMockLeaseKeeper(ctrl)
+			sub.EXPECT().Teardown(gomock.Any()).Return(errBoom)
+			keeper.EXPECT().Release(gomock.Any(), gomock.Any()).Return(apperror.ErrUnavailable)
+
+			err := provideRealtimeProvisioner(sub, keeper, "inst-1").Teardown(t.Context())
+			require.ErrorIs(t, err, errBoom)
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+		})
+	})
+}
+
+func Test_provideRealtimeConsumerRunner(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	sub := mock_rt.NewMockInstanceSubscription(ctrl)
+	sub.EXPECT().Receive(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, _ int) ([]rt.Notification, error) {
+		<-ctx.Done()
+
+		return nil, ctx.Err()
+	}).AnyTimes()
+	engine := provideRealtimeConsumer(sub, stubSinks{}, stubSinks{}, mock_clock.NewMockSleeper(ctrl), logging.NewTestLogger(t), observability.NewNoopTracerFactory(t))
+
+	r := provideRealtimeConsumerRunner(engine)
+	assert.Equal(t, "realtime-consumer", r.Name)
+
+	start, stop := r.Runner.Bind()
+	require.NoError(t, start(t.Context()))
+	require.NoError(t, stop(t.Context()))
+}
+
+func Test_provideRealtimeHeartbeatRunner(t *testing.T) {
+	t.Parallel()
+
+	ctrl := gomock.NewController(t)
+	keeper := mock_realtime.NewMockLeaseKeeper(ctrl)
+	keeper.EXPECT().Beat(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	sleeper := mock_clock.NewMockSleeper(ctrl)
+	sleeper.EXPECT().Sleep(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, _ time.Duration) error {
+		<-ctx.Done()
+
+		return ctx.Err()
+	}).AnyTimes()
+	heartbeat := provideRealtimeHeartbeat(keeper, "inst-1", sleeper, logging.NewTestLogger(t), observability.NewNoopTracerFactory(t))
+
+	r := provideRealtimeHeartbeatRunner(heartbeat)
+	assert.Equal(t, "realtime-heartbeat", r.Name)
+
+	start, stop := r.Runner.Bind()
+	require.NoError(t, start(t.Context()))
+	require.NoError(t, stop(t.Context()))
 }
