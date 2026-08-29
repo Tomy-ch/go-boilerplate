@@ -40,6 +40,13 @@ func (c *callLog) add(name string) {
 	c.calls = append(c.calls, name)
 }
 
+func (c *callLog) reset() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.calls = nil
+}
+
 func (c *callLog) get() []string {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -96,25 +103,32 @@ func Test_newServeLifecycle(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("Runner は Bind 済みの start / stop になり、参加者は渡した順に並ぶ", func(t *testing.T) {
+		t.Run("参加者は種類ごとに渡した順で引き継がれ、Runner は自分の Bind 済み start / stop を持つ", func(t *testing.T) {
 			t.Parallel()
 
 			log, _ := logging.NewObservedTestLogger(t)
+			started := []string{}
 			in := HTTPServerHooksIn{
-				Log:     log,
-				Runners: []Runner{{Name: "a"}, {Name: "b"}},
-				Startup: []StartupProbe{
-					{Name: "p", Probe: func(context.Context) error { return nil }},
+				Log: log,
+				Runners: []Runner{
+					{Name: "a", Runner: lifecycle.SupervisedRunner{OnStartAux: func() { started = append(started, "a") }}},
+					{Name: "b", Runner: lifecycle.SupervisedRunner{OnStartAux: func() { started = append(started, "b") }}},
 				},
+				Startup:      []StartupProbe{{Name: "p", Probe: func(context.Context) error { return nil }}},
+				Provisioners: []Provisioner{{Name: "lease"}, {Name: "inbox"}},
+				Drainers:     []Drainer{{Name: "sse"}},
 			}
 			// newStartServerFunc / newStopServerFunc は nil の *http.Server でもクロージャを作るだけなので、ここでは呼ばない。
 			lc := newServeLifecycle(in)
 
 			require.Len(t, lc.runners, 2)
 			assert.Equal(t, "a", lc.runners[0].name)
-			assert.NotNil(t, lc.runners[0].start)
-			assert.NotNil(t, lc.runners[1].stop)
+			require.NoError(t, lc.runners[1].start(t.Context()))
+			require.NoError(t, lc.runners[1].stop(t.Context()))
+			assert.Equal(t, []string{"b"}, started, "runners[1] の start は b の Runner に結び付いている")
 			assert.Len(t, lc.startup, 1)
+			assert.Equal(t, []string{"lease", "inbox"}, []string{lc.provisioners[0].Name, lc.provisioners[1].Name})
+			assert.Equal(t, "sse", lc.drainers[0].Name)
 			assert.NotNil(t, lc.httpStart)
 			assert.NotNil(t, lc.httpStop)
 		})
@@ -185,6 +199,27 @@ func Test_serveLifecycle_start(t *testing.T) {
 			assert.Equal(t, []string{"provision.lease", "provision.inbox", "teardown.lease"}, f.log.get())
 		})
 
+		t.Run("常駐処理の起動失敗は起動済みの常駐処理と resource を逆順に片付けてから失敗する", func(t *testing.T) {
+			t.Parallel()
+
+			f := newFixture(t)
+			f.lc.provisioners = []Provisioner{f.provisioner("lease", nil, nil), f.provisioner("inbox", nil, nil)}
+			bad := boundRunner{
+				name:  "consumer",
+				start: func(context.Context) error { f.log.add("runner.start.consumer"); return errParticipant },
+				stop:  func(context.Context) error { f.log.add("runner.stop.consumer"); return nil },
+			}
+			f.lc.runners = []boundRunner{f.runner("heartbeat"), bad, f.runner("never")}
+
+			err := f.lc.start(t.Context())
+			require.ErrorIs(t, err, errParticipant)
+			assert.Contains(t, err.Error(), "serve runner consumer failed to start")
+			assert.Equal(t, []string{
+				"provision.lease", "provision.inbox", "runner.start.heartbeat", "runner.start.consumer",
+				"runner.stop.heartbeat", "teardown.inbox", "teardown.lease",
+			}, f.log.get())
+		})
+
 		t.Run("HTTP listen の失敗は常駐処理を止め resource を片付けてから失敗する", func(t *testing.T) {
 			t.Parallel()
 
@@ -229,7 +264,7 @@ func Test_serveLifecycle_stop(t *testing.T) {
 			f.lc.provisioners = []Provisioner{f.provisioner("lease", nil, nil), f.provisioner("inbox", nil, nil)}
 			f.lc.runners = []boundRunner{f.runner("heartbeat"), f.runner("consumer")}
 			require.NoError(t, f.lc.start(t.Context()))
-			f.log.calls = nil
+			f.log.reset()
 
 			require.NoError(t, f.lc.stop(t.Context()))
 			assert.Equal(t, []string{
@@ -305,7 +340,7 @@ func Test_serveLifecycle_stopRunners(t *testing.T) {
 
 			errs := f.lc.stopRunners(t.Context(), 2)
 
-			require.Len(t, errs, 1)
+			assert.Len(t, errs, 1)
 			assert.Equal(t, []string{"runner.start.a", "runner.stop.bad", "runner.stop.a"}, f.log.get())
 			assert.Equal(t, 1, f.logCount("serve runner failed to stop"))
 		})
@@ -330,7 +365,7 @@ func Test_serveLifecycle_teardown(t *testing.T) {
 
 			errs := f.lc.teardown(t.Context(), 2)
 
-			require.Len(t, errs, 1)
+			assert.Len(t, errs, 1)
 			assert.Equal(t, []string{"teardown.b", "teardown.a"}, f.log.get())
 			assert.Equal(t, 1, f.logCount("serve provisioner failed to tear down"))
 		})

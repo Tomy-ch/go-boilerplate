@@ -12,6 +12,7 @@ package architest
 
 import (
 	"io/fs"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -54,10 +55,30 @@ var internalImportRe = regexp.MustCompile(`"(go-boilerplate/internal/[^"]+)"`)
 func TestRealtimeDeliveryImportsNoFeature(t *testing.T) {
 	t.Parallel()
 
-	violations, err := collectRealtimeFeatureImports(moduleRoot(t), realtimeMechanismDirs)
-	require.NoError(t, err)
-	assert.Empty(t, violations,
-		"Realtime Delivery の機構側 package が feature の domain / usecase を import している（設計正本 §3.1 規約 1）")
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("機構側 package は feature の domain / usecase を import しない", func(t *testing.T) {
+			t.Parallel()
+
+			violations, err := collectRealtimeFeatureImports(moduleRoot(t), realtimeMechanismDirs)
+			require.NoError(t, err)
+			assert.Empty(t, violations,
+				"Realtime Delivery の機構側 package が feature の domain / usecase を import している（設計正本 §3.1 規約 1）")
+		})
+
+		t.Run("宣言した機構側 package はすべて実在する", func(t *testing.T) {
+			t.Parallel()
+
+			// 走査は無いディレクトリを黙って飛ばすため、package の移動で規約 1 の検査対象が空になっても気づけない。
+			// 一覧の側で実在を主張して、縮退をここで止める。
+			for _, dir := range realtimeMechanismDirs {
+				matches, err := pkgfs.OS{}.Glob(filepath.Join(moduleRoot(t), dir))
+				require.NoError(t, err)
+				assert.NotEmpty(t, matches, "%s が無い。realtimeMechanismDirs の宣言を疑う", dir)
+			}
+		})
+	})
 }
 
 func TestInstanceLeaseStoreImportAllowlist(t *testing.T) {
@@ -281,6 +302,22 @@ func Test_walkProductionGoFiles(t *testing.T) {
 
 			missing := filepath.Join(t.TempDir(), "missing")
 			require.NoError(t, walkProductionGoFiles(missing, func(string, []byte) { t.Fatal("must not be called") }))
+		})
+
+		t.Run("mock と node_modules は丸ごと飛ばす", func(t *testing.T) {
+			t.Parallel()
+
+			dir := t.TempDir()
+			for _, sub := range []string{"mock", "node_modules", "impl"} {
+				require.NoError(t, os.MkdirAll(filepath.Join(dir, sub), 0o750))
+				require.NoError(t, pkgfs.OS{}.WriteFile(filepath.Join(dir, sub, "x.go"), []byte("x"), 0o600))
+			}
+
+			var seen []string
+			require.NoError(t, walkProductionGoFiles(dir, func(path string, _ []byte) {
+				seen = append(seen, filepath.Base(filepath.Dir(path)))
+			}))
+			assert.Equal(t, []string{"impl"}, seen)
 		})
 	})
 }

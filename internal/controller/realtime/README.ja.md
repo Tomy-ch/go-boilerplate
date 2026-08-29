@@ -19,7 +19,7 @@
 
 - `Engine` — 常駐 consumer。`NewEngine(sub, wakeups, revocations, sleeper, log, tf, set)`。
   `Run(ctx) error` が loop 本体。
-- `Settings` — `BatchSize`（既定 10。queue 自身の上限）と `ErrorBackoff`（既定 5 秒）。ゼロ値は既定へ
+- `Settings` — `BatchSize`（既定 10。queue 自身の上限）と `ErrorBackoff`（既定 5 秒）。ゼロ値と負値は既定へ
   フォールバックする。receive が long poll であり、どちらの値もデプロイ先で変わらないため config は無い。
 - `WakeupSink.Wake(ctx, streamID, upTo)` / `RevocationSink.Revoke(ctx, subject, destination)` — 受け手。どちらも
   loop 上で同期的に呼ばれるので、実装は印を付けるか通知するだけで、replay を待ってはならない。重複は
@@ -43,7 +43,8 @@
 - kind を読めなかった通知（`Kind == ""`）は計数し、warn でログに出して削除する。誰も対処できず、放置
   すれば永遠に再配送されるため。
 - **削除は受け渡しの後**。削除の失敗はログに出して loop を続ける。通知は戻ってくるが、sink の冪等性が
-  吸収する。より悪い失敗は wakeup を失うことであり、それすら定期 catch-up が補う。
+  吸収する。 停止中に失敗した削除はログに出さない（原因は取り消しであり substrate ではない）。heartbeat も
+  停止中に失敗した `Beat` を同じに扱う。より悪い失敗は wakeup を失うことであり、それすら定期 catch-up が補う。
 
 ## テスト戦略
 

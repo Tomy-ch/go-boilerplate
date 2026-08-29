@@ -34,7 +34,7 @@ func TestSupervisedRunner_Bind(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("Registrar を介さずに start と stop を取り出せ、順序は呼び出し側が決められる", func(t *testing.T) {
+		t.Run("Registrar を介さずに start と stop を取り出せる", func(t *testing.T) {
 			t.Parallel()
 
 			bodyDone := make(chan struct{})

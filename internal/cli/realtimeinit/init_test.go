@@ -91,14 +91,26 @@ func TestTopicName(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		for name, arn := range map[string]string{"空": "", "区切りが無い": "topic", "末尾が空": "arn:aws:sns:r:1:"} {
-			t.Run(name+"なら ErrTopicARNInvalid", func(t *testing.T) {
-				t.Parallel()
+		t.Run("空なら ErrTopicARNInvalid", func(t *testing.T) {
+			t.Parallel()
 
-				_, err := TopicName(arn)
-				require.ErrorIs(t, err, ErrTopicARNInvalid)
-			})
-		}
+			_, err := TopicName("")
+			require.ErrorIs(t, err, ErrTopicARNInvalid)
+		})
+
+		t.Run("区切りが無ければ ErrTopicARNInvalid", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := TopicName("topic")
+			require.ErrorIs(t, err, ErrTopicARNInvalid)
+		})
+
+		t.Run("末尾が空なら ErrTopicARNInvalid", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := TopicName("arn:aws:sns:r:1:")
+			require.ErrorIs(t, err, ErrTopicARNInvalid)
+		})
 	})
 }
 

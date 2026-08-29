@@ -36,10 +36,10 @@ type subscriptionMocks struct {
 // emptyAttributes は、属性を 1 つも設定しない QueueAttributes です。
 type emptyAttributes struct{}
 
-func (emptyAttributes) Build(string) (map[string]string, error) { return map[string]string{}, nil }
-
 // failingAttributes は、属性の組み立てに失敗する QueueAttributes です。
 type failingAttributes struct{}
+
+func (emptyAttributes) Build(string) (map[string]string, error) { return map[string]string{}, nil }
 
 func (failingAttributes) Build(string) (map[string]string, error) { return nil, errSubstrate }
 

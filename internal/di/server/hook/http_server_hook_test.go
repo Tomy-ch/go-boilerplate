@@ -54,13 +54,30 @@ func TestRegisterHTTPServerHooks(t *testing.T) {
 
 	mockLogger.EXPECT().Named(serveLifecycleLoggerName).Return(mockLogger)
 	mockLogger.EXPECT().CallerSkip(serverCallerSkip).Return(mockLogger)
+	// 登録された stop を駆動すると HTTP shutdown まで進む。その経路のログは別テストが見る。
+	mockLogger.EXPECT().Named("server.Stop").Return(mockLogger).AnyTimes()
+	mockLogger.EXPECT().CallerSkip(serverCallerSkip).Return(mockLogger).AnyTimes()
+	mockLogger.EXPECT().Info(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes()
 
+	drained := false
 	RegisterHTTPServerHooks(HTTPServerHooksIn{
 		Srv: srv, Reg: mockReg, Log: mockLogger, AppCfg: appCfg, SecCfg: secCfg, SrvCfg: srvCfg, OSCfg: osCfg,
 		Applied: &extension.AppliedServerExtends{},
+		Startup: []StartupProbe{{Name: "store", Probe: func(context.Context) error { return errParticipant }}},
+		Drainers: []Drainer{{Name: "sse", Drain: func(context.Context) error {
+			drained = true
+
+			return nil
+		}}},
 	})
-	assert.NotNil(t, startFn)
-	assert.NotNil(t, shutdownFn)
+	require.NotNil(t, startFn)
+	require.NotNil(t, shutdownFn)
+
+	// 登録されたのが参加者を含む serveLifecycle の start / stop であること: start は到達確認の失敗で止まり、
+	// stop は drain を通ってから HTTP shutdown へ進む。
+	require.ErrorIs(t, startFn(t.Context()), errParticipant)
+	require.NoError(t, shutdownFn(t.Context()))
+	assert.True(t, drained)
 }
 
 func Test_newStartServerFunc(t *testing.T) {

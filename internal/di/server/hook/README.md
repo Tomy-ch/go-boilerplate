@@ -89,7 +89,7 @@ Hooks are tested by **capturing the registered closures and calling them**, neve
 
 The logger is the generated `logging.Logger` mock with the expected `Named(...)` / `CallerSkip(...)` chain, so log identity (name, message) is part of the asserted contract, not incidental output.
 
-`serveLifecycle` (the orchestrator behind `RegisterHTTPServerHooks`) is tested with recording participants and fake HTTP start / stop functions: the happy-path order on both sides, the zero-participant case (HTTP only), and each failure direction — a probe failure creates nothing, a provisioner failure tears down what was created, a listen failure stops the runners and tears down, and on stop a participant failure is logged, joined and never skips `Shutdown`. The assertion that matters most is that `Drain` has completed before `Shutdown` is called.
+`serveLifecycle` (the orchestrator behind `RegisterHTTPServerHooks`) is tested with recording participants and fake HTTP start / stop functions: the happy-path order on both sides, the zero-participant case (HTTP only), and each failure direction — a probe failure creates nothing, a provisioner failure tears down what was created, a runner start failure stops the runners already started and tears down, a listen failure stops the runners and tears down, and on stop a participant failure is logged, joined and never skips `Shutdown`. The assertion that matters most is that `Drain` has completed before `Shutdown` is called.
 
 The HTTP half (`newStartServerFunc` / `newStopServerFunc`) has three paths, and each needs its own case because they fail in different directions:
 

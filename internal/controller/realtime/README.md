@@ -21,7 +21,7 @@
 - `Engine` — the resident consumer. `NewEngine(sub, wakeups, revocations, sleeper, log, tf, set)`;
   `Run(ctx) error` is the loop body.
 - `Settings` — `BatchSize` (default 10, the queue's own cap) and `ErrorBackoff` (default 5 s). Zero
-  values fall back to the defaults; there is no config for them because the receive is a long poll and
+  or negative values fall back to the defaults; there is no config for them because the receive is a long poll and
   neither value changes per deployment.
 - `WakeupSink.Wake(ctx, streamID, upTo)` / `RevocationSink.Revoke(ctx, subject, destination)` — the receivers.
   Both are called synchronously on the loop, so an implementation only marks or signals; it never waits
@@ -45,7 +45,9 @@
 - A notification whose kind could not be read (`Kind == ""`) is counted, logged at warn, and deleted —
   nobody can act on it and leaving it would redeliver it forever.
 - **Delete after hand-off.** A failed delete is logged and the loop continues; the notification comes
-  back and the sink's idempotency absorbs it. Losing a wakeup is the worse failure, and the periodic
+  back and the sink's idempotency absorbs it. A delete that fails because the engine is stopping is not
+  logged — the cancellation is the cause, not the substrate — and the heartbeat treats a `Beat` that
+  fails during stop the same way. Losing a wakeup is the worse failure, and the periodic
   catch-up covers even that.
 
 ## Test strategy

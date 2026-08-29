@@ -109,6 +109,13 @@ func TestNewEngine(t *testing.T) {
 			e, _ := newEngine(t, Settings{BatchSize: 3, ErrorBackoff: time.Second})
 			assert.Equal(t, Settings{BatchSize: 3, ErrorBackoff: time.Second}, e.set)
 		})
+
+		t.Run("負の設定値も既定値に寄せる", func(t *testing.T) {
+			t.Parallel()
+
+			e, _ := newEngine(t, Settings{BatchSize: -1, ErrorBackoff: -time.Second})
+			assert.Equal(t, Settings{BatchSize: DefaultBatchSize, ErrorBackoff: DefaultErrorBackoff}, e.set)
+		})
 	})
 }
 
@@ -268,6 +275,24 @@ func TestEngine_dispatch(t *testing.T) {
 
 			assert.Len(t, m.sinks.wakeups, 2)
 			assert.Equal(t, 1, m.logCount("failed to delete realtime notification"))
+		})
+
+		t.Run("停止中の削除失敗は記録しない", func(t *testing.T) {
+			t.Parallel()
+
+			e, m := newEngine(t, Settings{})
+			batch := []rt.Notification{wakeup("s1", 1)}
+			ctx, cancel := context.WithCancel(t.Context())
+			m.sub.EXPECT().Delete(gomock.Any(), batch[0]).DoAndReturn(func(context.Context, rt.Notification) error {
+				cancel()
+
+				return apperror.ErrCanceled
+			})
+
+			e.dispatch(ctx, e.logging, batch)
+
+			assert.Len(t, m.sinks.wakeups, 1)
+			assert.Equal(t, 0, m.logCount("failed to delete realtime notification"))
 		})
 	})
 }
