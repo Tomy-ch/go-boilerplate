@@ -37,24 +37,8 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
-// securitySchemes は、oapi/auth の scheme group に出された認証器を受け取る fx パラメータです。
-type securitySchemes struct {
-	fx.In
-
-	Schemes []oapiauth.SchemeAuthenticator `group:"oapi.security.schemes"`
-}
-
 // stubSinks は、graph 検証に要るだけの wakeup / 失効の受け口です（本物は Phase 6 の connection registry）。
 type stubSinks struct{}
-
-// serveParticipants は、serve lifecycle の group に出された参加者を受け取る fx パラメータです。
-type serveParticipants struct {
-	fx.In
-
-	Startup      []hook.StartupProbe `group:"serve.startup"`
-	Provisioners []hook.Provisioner  `group:"serve.provisioners"`
-	Runners      []hook.Runner       `group:"serve.runners"`
-}
 
 // stubStreamer は、graph 検証に要るだけの Streamer です（本物は Phase 6）。
 type stubStreamer struct{}

@@ -7,6 +7,8 @@ import (
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"go-boilerplate/pkg/xerrors"
 )
 
 func Test_pubSubSmoke_attributeSteps(t *testing.T) {
@@ -106,7 +108,9 @@ func Test_pubSubSmoke_setAndReadBack(t *testing.T) {
 
 			var api apiError
 			require.ErrorAs(t, err, &api)
-			assert.NotEqual(t, VerdictIncompatible, classify(err))
+
+			var inc *incompatibleError
+			assert.False(t, xerrors.As(err, &inc), "事後条件の不成立としては扱わない")
 		})
 	})
 }
@@ -411,7 +415,9 @@ func Test_pubSubSmoke_notificationTypes(t *testing.T) {
 
 			var api apiError
 			require.ErrorAs(t, err, &api)
-			assert.NotEqual(t, VerdictIncompatible, classify(err))
+
+			var inc *incompatibleError
+			assert.False(t, xerrors.As(err, &inc), "事後条件の不成立としては扱わない")
 		})
 	})
 }
