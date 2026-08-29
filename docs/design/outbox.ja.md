@@ -24,6 +24,7 @@ transactional outbox は **dual-write 異常の排除** のために存在しま
 | **Engine**（`controller/outbox/relay.go`） | controller | poll ループの統括: 周期・sleep/backoff・ctx 完了での drain・span | claim/publish/mark の業務（usecase へ委譲） |
 | **outbox-gc job**（`controller/job/outboxgc`） | controller | 外部スケジューラ向けの one-shot GC 入口 | ループ自体（daemon ではなく cron） |
 | **httpPublisher**（`infrastructure/publisher`） | infrastructure | `Publisher` の HTTP 実装: POST + `Idempotency-Key` + 非標準 client profile | retry（poll ループが retry 本体） |
+| **realtime publisher**（`infrastructure/realtime`） | infrastructure | `realtime` チャネル向けの `Publisher` 実装: EventLog への append（`eventId` で冪等）→ SNS への wakeup publish。sequence の衝突なら恒久、基盤の障害なら一時と分類する（[Realtime Delivery](realtime-delivery.ja.md)） | retry・Streamer |
 | **outbox store**（`infrastructure/rdb/system_cqrs/outbox`） | infrastructure | sqlc gen + `pgerror.NormalizeError` 上の `Store` 実装 | 業務判断 |
 | **DI / cli / cmd** | di / cli / cmd(main) | relay プロセスの合成 / サブコマンド / ライフサイクル | 業務ロジック |
 | **OutboxConfig** | config | relay チューニング（`OUTBOX_*`） | broker/endpoint の内部 |

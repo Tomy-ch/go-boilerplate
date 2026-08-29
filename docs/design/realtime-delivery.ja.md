@@ -27,7 +27,8 @@ Realtime Delivery は、**feature が commit 済みの event を、それを待�
 | **realtime relay**（`controller/outbox` + realtime publisher） | controller / infrastructure | realtime channel の行を stream 順に claim し、EventLog へ append し、wakeup を publish する | 業務判断、[ADR-0058] を超える retry 方針 |
 | **Streamer**（`controller/stream/`） | controller | connection registry（subject で索引）、capacity gate、replay / catch-up のスケジューリング、heartbeat、backpressure、drain、control-event protocol | 認可、feature の語彙 |
 | **EventLog / ticket / lease store**（`infrastructure/eventlog`、`streamticket`、`instancelease`） | infrastructure | boundary store の DynamoDB 実装 | 業務判断 |
-| **fan-out substrate**（`infrastructure/realtime/`） | infrastructure | SNS publish、instance ごとの SQS queue / subscription の lifecycle、consumer loop | wakeup の意味 |
+| **fan-out substrate**（`infrastructure/realtime/`） | infrastructure | SNS publish（realtime publisher と revocation notifier）、instance ごとの SQS queue / subscription の lifecycle、instance の inbox に対する receive と delete | wakeup の意味 |
+| **consumer engine**（`controller/realtime/`） | controller | instance の inbox を drain し、batch ごとに wakeup を coalesce して、それと revocation を Streamer の sink へ渡す。instance lease の heartbeat loop | wakeup をどう扱うか（Streamer が持つ）・transport |
 | **orphan-cleanup job** | controller/job + cli | crash した instance の queue / subscription / lease を conditional な所有権の下で回収する | スケジューリング（scheduler が持つ。[ADR-0109 (scheduled-job-concurrency-delegated)](../adr/0109-scheduled-job-concurrency-delegated.ja.md)） |
 | **DI module** | di | feature adapter が 1 つ以上あるときだけ runtime を結線する | 業務ロジック |
 | **RealtimeConfig** | config | deployment 依存の knob のみ（§3.3） | 固定の protocol 値 |
@@ -166,9 +167,10 @@ stateDiagram-v2
 | `internal/controller/stream/` | subject で索引する connection registry、capacity gate、初回 replay の admission、replay / catch-up の semaphore と jitter 付き scheduler、heartbeat、write deadline、buffer と満杯時 close、drain、control-event writer、非 strict の SSE handler |
 | `internal/infrastructure/rdb/system_cqrs/realtime/` | PostgreSQL の `system_cqrs` table（`stream_id`、`last_sequence`）上の `SequenceAllocator`——outbox / idempotency の table と同じ区分（[ADR-0033 (system-cqrs-dml-category)](../adr/0033-system-cqrs-dml-category.ja.md)） |
 | `internal/infrastructure/eventlog/dynamodb/`、`internal/infrastructure/streamticket/dynamodb/`、`internal/infrastructure/instancelease/dynamodb/` | DynamoDB の store。idempotent な one-shot table initializer（application 起動時には作らない） |
-| `internal/infrastructure/realtime/aws/` | realtime publisher（EventLog append → SNS publish）、instance ごとの SQS queue / subscription の lifecycle、consumer loop。`…/local/` は emulator の wire 非互換が判明した呼び出しだけ |
+| `internal/infrastructure/realtime/aws/` | realtime publisher（EventLog append → SNS publish）、revocation notifier、`InstanceSubscription` port（provision / receive / delete / teardown）の背後にある instance ごとの SQS queue / subscription の lifecycle。`internal/infrastructure/realtime/local/` は emulator の queue attribute の集合だけ——wire 非互換が判明した唯一の呼び出しの組 |
+| `internal/controller/realtime/` | `InstanceSubscription` を drain し、wakeup / revocation を `controller/stream` が実装する sink へ渡す consumer engine（`controller/outbox` や `controller/worker` と同じ driving adapter の形）。lease の heartbeat loop |
 | `internal/controller/job/<orphan-cleanup>/` + `internal/cli/` | cleanup job の入口 |
-| `internal/di/module/realtime.go` | feature adapter が 1 つ以上 provide されたときだけ結線する |
+| `internal/di/module/realtime.go` | feature adapter が 1 つ以上 provide されたときだけ結線する。`internal/di/server/hook` が §2.5 の順序で走らせる serve lifecycle の participant（readiness probe、lease と inbox の provisioner、consumer と heartbeat の runner）を提供する |
 | `internal/usecase/<feature>/` | feature の realtime adapter と ticket 発行 usecase |
 
 ```mermaid
@@ -177,6 +179,8 @@ flowchart LR
   feature --> ucrt
   ucrt["usecase/realtime"] --> boundary
   stream["controller/stream"] --> ucrt
+  consumer["controller/realtime"] --> ucrt
+  consumer --> boundary
   infra["infrastructure/eventlog · streamticket · instancelease · realtime"] --> boundary
   feature -. "never" .-x stream
   stream -. "never" .-x feature
@@ -184,7 +188,7 @@ flowchart LR
 
 architecture rule（`internal/architest/realtime_isolation_test.go` が機械的に検査する）:
 
-1. `boundary/realtime`、`usecase/realtime`、`controller/stream`、4 つの infrastructure package は `internal/domain/<feature>` も `internal/usecase/<feature>` も import しない。
+1. `boundary/realtime`、`usecase/realtime`、`controller/stream`、`controller/realtime`、5 つの infrastructure package は `internal/domain/<feature>` も `internal/usecase/<feature>` も import しない。
 2. `InstanceLeaseStore` を import できるのは realtime package 群、realtime DI module、orphan-cleanup job の入口だけ。
 
 ### 3.2 このサブシステムが依拠する outbox の追加
@@ -200,8 +204,8 @@ outbox の delivery-channel の作業で追加され、全 channel で共有さ�
 
 | 種別 | 値 |
 | --- | --- |
-| **typed config**（deployment 依存） | EventLog endpoint / region / table、ticket と lease の table、credentials（空 → SDK default chain）、SNS topic、SQS resource prefix、**instance あたりの最大 SSE 接続数**、**replay / catch-up の並行数** |
-| **code 上の固定値**（それぞれ単一の正規定義） | write deadline 10 s、heartbeat 15 s、connection ごとの buffer 64、catch-up 間隔 30 s、jitter 比率、ticket TTL 5 分、maximum connection lifetime 1 時間、lease heartbeat 30 s / expiry 2 分 / cleanup margin 5 分、payload 上限 64 KiB、EventLog 保持 7 日、backoff 上限 60 s |
+| **typed config**（deployment 依存） | EventLog endpoint / region / table、ticket と lease の table、credentials（空 → SDK default chain）、fan-out endpoint、SNS topic ARN、SQS resource prefix、DLQ ARN（空 → redrive しない）、**instance あたりの最大 SSE 接続数**、**replay / catch-up の並行数** |
+| **code 上の固定値**（それぞれ単一の正規定義） | write deadline 10 s、heartbeat 15 s、connection ごとの buffer 64、catch-up 間隔 30 s、jitter 比率、ticket TTL 5 分、maximum connection lifetime 1 時間、lease heartbeat 30 s / expiry 2 分 / cleanup margin 5 分、payload 上限 64 KiB、EventLog 保持 7 日、backoff 上限 60 s、instance queue の visibility timeout 30 s / long polling 20 s / redrive の `maxReceiveCount` 5 |
 
 ### 3.4 observability の契約
 
@@ -237,9 +241,9 @@ trace: command → outbox → relay → EventLog は outbox header を通じて 
 ### 4.2 deployment 側
 
 - **DynamoDB**: 3 table（`occurredAt` 由来の失効で TTL 7 日の EventLog、TTL 付きの StreamTicket、InstanceLease）。partition = stream。at-rest 暗号化。point-in-time recovery、backup、alarm はこの repository の外で provisioning する（[ADR-0106 (vendor-neutral-deploy-skeleton)](../adr/0106-vendor-neutral-deploy-skeleton.ja.md)）。単一の hot stream は 1 partition と 1 PostgreSQL 行で有界であり、機構はそれを shard しない。
-- **SNS / SQS**: 1 topic。その topic ARN だけを許可する policy を持つ instance ごとの queue。`RawMessageDelivery=true`。long polling。visibility timeout。DLQ への redrive。暗号化。create / subscribe / receive / delete の最小 IAM action。
+- **SNS / SQS**: standard topic を 1 つ。deployment が provisioning し、`REALTIME_TOPIC_ARN` でアプリケーションに名前を渡す（ローカルでは `make realtime-init` が作る）。アプリケーション自身が作る resource は instance ごとの standard queue だけで、serve 起動時に `<REALTIME_QUEUE_PREFIX>-<instance id>` として作る。属性は次のとおり: `aws:SourceArn` がその topic のときに限り `sns.amazonaws.com` からの `sqs:SendMessage` を許可する access policy、subscription の `RawMessageDelivery=true`、long polling（`ReceiveMessageWaitTimeSeconds=20`）、`VisibilityTimeout=30`、`SqsManagedSseEnabled=true`（customer-managed な KMS 鍵は機構が公開する調整点ではない）、そして `REALTIME_DLQ_ARN` が設定されているときは共有 DLQ への `maxReceiveCount=5` の `RedrivePolicy`——DLQ 自体は deployment が provisioning するものであり、wakeup を 1 つ失っても定期 catch-up が拾うので、正しさの要件ではなく運用上の安全網である。最小 IAM: relay は topic への `sns:Publish`。serve instance は `<prefix>-*` への `sqs:CreateQueue` / `sqs:GetQueueAttributes` / `sqs:SetQueueAttributes` / `sqs:ReceiveMessage` / `sqs:DeleteMessage` / `sqs:DeleteQueue` と、topic への `sns:Subscribe` / `sns:SetSubscriptionAttributes` / `sns:Unsubscribe`、および revocation のための topic への `sns:Publish`。orphan-cleanup job はこれに加えて `sns:ListSubscriptionsByTopic`。`sns:CreateTopic` はどこも必要としない。
 - **edge**: HTTPS。固定の CORS origin。クライアントの CSP `connect-src`。load balancer / proxy の idle timeout は heartbeat 間隔より長く、stream path では response buffering を無効化。reconnect の rate limiting があるなら edge で。**stream path の query string を edge / proxy / load balancer の access log から除外または redact する**——ticket は query parameter で運ばれ、プロセス内の除去はプロセス外で書かれる log には届かない。
-- **local**: shared infrastructure profile の DynamoDB Local と SNS/SQS emulator。table は idempotent な initializer が作り、table 名は worktree ごとに prefix する。
+- **local**: shared infrastructure profile の DynamoDB Local と SNS/SQS emulator（GoAWS）。table と topic は idempotent な initializer が作り、table 名は worktree ごとに prefix する。GoAWS は queue policy を受け付けず、redrive / 暗号化の属性も尊重しないため、emulator 用の queue attribute の集合（`infrastructure/realtime/local`）は timing の属性だけを設定する。DI module は emulator の環境ではこちらを、`dev` 以降では完全な集合を選ぶ。
 
 ### 4.3 クライアントの契約
 

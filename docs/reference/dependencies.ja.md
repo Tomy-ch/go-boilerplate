@@ -40,8 +40,8 @@
 | Messaging / worker | `aws/aws-sdk-go-v2` | AWS API クライアントコア（object storage / queue の両 adapter が共有） |
 | Storage | `aws/aws-sdk-go-v2/service/s3` | S3 互換オブジェクトストレージのクライアント（ローカルは Garage） |
 | Realtime Delivery | `aws/aws-sdk-go-v2/service/dynamodb` | EventLog / StreamTicket / InstanceLease の store の DynamoDB クライアント（ローカルは DynamoDB Local） |
-| Realtime Delivery | `aws/aws-sdk-go-v2/service/sns` | SNS クライアント。現在は `scripts/realtime-smoke` が使い、#1187 の Phase 7 で instance fan-out の publisher が使う |
-| Messaging / worker | `aws/aws-sdk-go-v2/service/sqs` | SQS クライアント（pull-ack worker）。配線は削除可能なサンプル群からのみ — [ADR-0053](../adr/0053-broker-sdk-isolation-measured-as-coupling.ja.md) 参照 |
+| Realtime Delivery | `aws/aws-sdk-go-v2/service/sns` | instance fan-out（`infrastructure/realtime`: wakeup / revocation の publish、instance ごとの subscription）と `scripts/realtime-smoke` のための SNS クライアント |
+| Messaging / worker, Realtime Delivery | `aws/aws-sdk-go-v2/service/sqs` | SQS クライアント。pull-ack worker のアダプタ（配線は削除可能なサンプル群からのみ — [ADR-0053](../adr/0053-broker-sdk-isolation-measured-as-coupling.ja.md) 参照）と、Realtime Delivery の fan-out における instance ごとの queue（`infrastructure/realtime`） |
 | Metrics exposition | `prometheus/client_golang` | Prometheus 形式メトリクスエンドポイント + カスタムコレクタ |
 | Metrics exposition | `prometheus/client_model` | Prometheus メトリクスデータモデル（共有型） |
 | Observability (otel core) | `go.opentelemetry.io/otel`（+ `trace` / `metric`） | OpenTelemetry API |

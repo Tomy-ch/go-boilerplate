@@ -200,7 +200,7 @@ case config.EnvLocal:
 |---|---|---|
 |`module.JobModule()`|Job|`group:"jobs"` 登録 + Runner + State + hook|
 |`module.WorkerModule()`|Worker|Engine + State + queue-stats collector。**既定では worker を1つも登録しない**（`provideWorkers` / `provideQueueStatsTargets` が seam）。`ValidateShutdownGrace` は `WORKER_DRAIN_TIMEOUT >= APP_SHUTDOWN_TIMEOUT` なら起動を失敗させる|
-|`module.OutboxRelayModule(channel)`|Outbox Relay|1 つの配送チャネル向けの Relay usecase + engine + hook。`outboxPublisherModule()` も取り込み、配送できる publisher 実装が無いチャネルでは構築を拒否する|
+|`module.OutboxRelayModule(channel)`|Outbox Relay|1 つの配送チャネル向けの Relay usecase + engine + hook。そのチャネルが必要とする publisher モジュール（`http` なら `outboxPublisherModule()`、`realtime` なら `realtimePublisherModule()`）を取り込み、配送できる publisher モジュールが無いチャネルでは構築を拒否する（`fx.Error`）|
 |`shutdowner.Module()`|Job, Worker|ワンショット / シグナル駆動の自己停止用（Server / Relay では不要）|
 
 `outboxPublisherModule()` はあえて共有の `InfrastructureModule()` に **含めません**。

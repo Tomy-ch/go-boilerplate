@@ -44,6 +44,21 @@ type InstanceLeaseStore interface {
 type SecretGenerator interface {
     Generate() (string, error)   // 256 bit の不透明な ticket 生値
 }
+
+// fan-out 上の instance 自身の inbox（serve instance ごとに 1 つ、起動時に作り停止時に消す）。
+type InstanceSubscription interface {
+    Provision(ctx context.Context, id InstanceID) error            // id ごとに冪等
+    Receive(ctx context.Context, limit int) ([]Notification, error) // 有界の待ち。ctx で返る
+    Delete(ctx context.Context, n Notification) error               // 消さなかった通知は再配送される
+    Teardown(ctx context.Context) error                             // 登録解除してから削除。provision していなければ no-op
+}
+
+type Notification struct {            // Kind がどちらに値が入っているかを決める
+    Kind       NotificationKind      // KindWakeup | KindRevocation
+    Wakeup     Wakeup                // EventID / StreamID / Sequence — 「cursor の先から stream を読み直せ」
+    Revocation Revocation            // Subject / Destination — 「その subject の接続を閉じろ」
+    Receipt    string                // substrate 固有の削除キー。ここでは不透明
+}
 ```
 
 ## 境界が担う不変条件
@@ -76,6 +91,7 @@ test できなければならないので、乱数の seam を自前で持ちま
 | `InstanceLeaseStore` | `internal/infrastructure/instancelease/dynamodb/` |
 | `SecretGenerator` | `internal/infrastructure/realtimesecret/` |
 | `SequenceAllocator`（`sequence.go`） | `internal/infrastructure/rdb/system_cqrs/realtime/` |
-| `RevocationNotifier`（`revocation.go`） | SNS fan-out の publisher（Phase 7、#1414）。`usecase/realtime.AccessRevoker` が ticket を無効にした後に呼ぶ |
+| `RevocationNotifier`（`revocation.go`） | `internal/infrastructure/realtime/aws/`（wakeup と同じ topic へ revocation を publish する）。`usecase/realtime.AccessRevoker` が ticket を無効にした後に呼ぶ |
+| `InstanceSubscription`（`fanout.go`） | `internal/infrastructure/realtime/aws/`（instance の SQS queue とその SNS subscription）。`internal/controller/realtime/` の consumer エンジンが駆動する |
 
 mock はファイルごとに `mock/` へ生成します（`go generate ./...`）。
