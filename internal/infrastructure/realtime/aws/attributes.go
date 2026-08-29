@@ -20,6 +20,12 @@ const (
 	redriveMaxReceiveCount = 5
 )
 
+// redrivePolicy は、SQS の RedrivePolicy 属性の JSON です。
+type redrivePolicy struct {
+	DeadLetterTargetArn string `json:"deadLetterTargetArn"`
+	MaxReceiveCount     string `json:"maxReceiveCount"`
+}
+
 // QueueAttributes は、instance queue に設定する属性の集合を組み立てる境界です。
 // production は全属性（policy / redrive / 暗号化 / timings）を返し、emulator 向けの実装は
 // emulator が受け付けない属性を間引きます。間引くのは実装側の責務で、production 側で失敗を握り潰しません。
@@ -78,12 +84,6 @@ func TimingAttributes() map[string]string {
 		string(sqstypes.QueueAttributeNameVisibilityTimeout):             strconv.Itoa(visibilityTimeout),
 		string(sqstypes.QueueAttributeNameReceiveMessageWaitTimeSeconds): strconv.Itoa(receiveWaitSeconds),
 	}
-}
-
-// redrivePolicy は、SQS の RedrivePolicy 属性の JSON です。
-type redrivePolicy struct {
-	DeadLetterTargetArn string `json:"deadLetterTargetArn"`
-	MaxReceiveCount     string `json:"maxReceiveCount"`
 }
 
 func redrivePolicyDocument(dlqARN string) (string, error) {

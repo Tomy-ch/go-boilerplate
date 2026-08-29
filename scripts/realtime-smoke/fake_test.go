@@ -13,14 +13,17 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
 
 const (
-	fakeAccount = "000000000000"
-	fakeTopic   = "arn:aws:sns:us-east-1:" + fakeAccount + ":"
-	fakeQueue   = "arn:aws:sqs:us-east-1:" + fakeAccount + ":"
+	// emptyPollDelay は、inbox が空のときの ReceiveMessage の応答遅延です。
+	emptyPollDelay = 5 * time.Millisecond
+	fakeAccount    = "000000000000"
+	fakeTopic      = "arn:aws:sns:us-east-1:" + fakeAccount + ":"
+	fakeQueue      = "arn:aws:sqs:us-east-1:" + fakeAccount + ":"
 	// fakeErrPolicy は、GoAWS が Policy 属性に返す実際のエラーコードです。
 	fakeErrPolicy = "AWS.SimpleQueueService.InvalidParameterValue"
 	// fakeErrCondition は、DynamoDB が条件式の不成立に返す __type です。
@@ -95,6 +98,10 @@ func (f *awsFake) called() []string {
 func (f *awsFake) serve(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
+		if r.Context().Err() != nil {
+			return // 呼び出し側が窓切れで接続を閉じた。fake の失敗ではない
+		}
+
 		f.t.Errorf("fake: body の読み取りに失敗: %v", err)
 	}
 
@@ -434,6 +441,12 @@ func (st *goawsState) receiveMessage(req fakeRequest) fakeResponse {
 
 	msgs := st.inbox[queueURL]
 	st.inbox[queueURL] = nil
+
+	if len(msgs) == 0 {
+		// 実物は WaitTimeSeconds だけ long polling する。空のときに即応答すると呼び出し側の receive が
+		// 窓いっぱい回り続けるため、短く待って request の頻度を実物に寄せる。
+		time.Sleep(emptyPollDelay)
+	}
 
 	return jsonOK(map[string]any{"Messages": msgs})
 }

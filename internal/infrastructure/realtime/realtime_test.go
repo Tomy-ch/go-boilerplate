@@ -1,12 +1,14 @@
 package realtime
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	gomock "go.uber.org/mock/gomock"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/infrastructure/awsclient"
 	"go-boilerplate/internal/observability"
 	mock_realtime "go-boilerplate/internal/usecase/boundary/realtime/mock"
@@ -99,7 +101,11 @@ func TestNewEmulatorQueueAttributes(t *testing.T) {
 func TestEnsureTopic(t *testing.T) {
 	t.Parallel()
 
-	// 実 substrate への往復は contract test（testkit.CreateTopic）が担う。ここは facade が aws 側へ渡すことだけを見る。
-	_, err := EnsureTopic(t.Context(), Clients{}, "t")
-	require.Error(t, err, "SNS client が無ければ失敗する")
+	// 実 substrate への往復は contract test（testkit.CreateTopic）が担う。ここは facade が ctx と client を aws 側へ渡し、
+	// その失敗が正規化されて戻ることだけを見る。
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	_, err := EnsureTopic(ctx, testClients(t), "t")
+	require.ErrorIs(t, err, apperror.ErrCanceled)
 }

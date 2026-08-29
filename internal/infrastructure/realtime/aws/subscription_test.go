@@ -33,6 +33,16 @@ type subscriptionMocks struct {
 	sqs *mock_aws.MockSQSAPI
 }
 
+// emptyAttributes は、属性を 1 つも設定しない QueueAttributes です。
+type emptyAttributes struct{}
+
+func (emptyAttributes) Build(string) (map[string]string, error) { return map[string]string{}, nil }
+
+// failingAttributes は、属性の組み立てに失敗する QueueAttributes です。
+type failingAttributes struct{}
+
+func (failingAttributes) Build(string) (map[string]string, error) { return nil, errSubstrate }
+
 func newSubscription(t *testing.T) (*subscription, subscriptionMocks) {
 	t.Helper()
 
@@ -295,11 +305,6 @@ func Test_subscription_Provision(t *testing.T) {
 	})
 }
 
-// emptyAttributes は、属性を 1 つも設定しない QueueAttributes です。
-type emptyAttributes struct{}
-
-func (emptyAttributes) Build(string) (map[string]string, error) { return map[string]string{}, nil }
-
 func Test_subscription_Receive(t *testing.T) {
 	t.Parallel()
 
@@ -552,11 +557,6 @@ func Test_subscription_provision(t *testing.T) {
 		})
 	})
 }
-
-// failingAttributes は、属性の組み立てに失敗する QueueAttributes です。
-type failingAttributes struct{}
-
-func (failingAttributes) Build(string) (map[string]string, error) { return nil, errSubstrate }
 
 func Test_subscription_teardown(t *testing.T) {
 	t.Parallel()
