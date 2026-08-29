@@ -143,6 +143,8 @@ stateDiagram-v2
 
 Start order is provisioning → subscription → consumer → HTTP listen / ready, and the instance lease is written **first**, before the queue exists: a queue that outlives a process which died before any lease named it can never be reclaimed, since the orphan-cleanup job reaches resources only through expired leases. Stop order is the reverse — SSE drain **before** the consumer stops and before `http.Server.Shutdown`, so a long-lived connection never blocks shutdown, and the lease is deleted **last**, only after the queue and subscription are gone (a lease deleted ahead of a failed teardown would hide the leftovers from the cleanup job).
 
+The instance identifier is minted afresh at each process start and never derived from a value that survives a restart (a hostname, a pod name). The per-instance queue is named `<prefix>-<instance id>` and the lease is keyed by the same identifier, so a restarted process reusing its predecessor's identifier would heartbeat the previous generation's lease and tear down the queue a still-live process may be consuming from. A new identifier per start turns the previous generation's leftovers into plain orphans, which is the only state the cleanup job can reclaim.
+
 ### 2.6 Degraded operation
 
 | Condition | Effect on new SSE connections | Effect on open connections | Effect on `/ready` |

@@ -143,6 +143,8 @@ stateDiagram-v2
 
 起動順は provisioning → subscription → consumer → HTTP listen / ready であり、instance lease は queue が存在するより**先**に書く。lease に名指される前に死んだプロセスが queue を残した場合、orphan-cleanup job は期限切れの lease 経由でしか resource に辿り着けないため、その queue は二度と回収できないからである。停止はその逆順で、SSE の drain を consumer 停止と `http.Server.Shutdown` の**前**に行うため、長寿命接続が shutdown を塞ぐことはない。そして lease は queue と subscription が消えた後に**最後**に削除する（teardown に失敗しているのに lease を先に消すと、残骸が cleanup job から見えなくなる）。
 
+instance の識別子はプロセス起動ごとに新しく採番し、再起動をまたいで残る値（hostname や pod 名）から導かない。instance ごとの queue 名は `<prefix>-<instance id>`、lease も同じ識別子をキーにするため、再起動したプロセスが前世代の識別子を使い回すと、前世代の lease を heartbeat で延命しつつ、まだ生きているプロセスが consume 中の queue を片付けてしまう。起動ごとの新しい識別子は前世代の残骸をただの orphan にし、cleanup job が回収できる唯一の状態へ倒す。
+
 ### 2.6 degraded 時の動作
 
 | 条件 | 新規 SSE 接続への影響 | 既存接続への影響 | `/ready` への影響 |

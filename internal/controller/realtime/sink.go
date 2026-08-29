@@ -1,3 +1,5 @@
+//go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
+
 // Package realtime は、serve instance の受信先に届く通知（wakeup / 失効）を受け取って接続側へ渡す consumer engine と、
 // instance lease の heartbeat loop を提供します。engine 自体は loop と待機制御だけを担い、通知の意味
 // （どの接続を起こすか・閉じるか）は sink の実装が持ちます。

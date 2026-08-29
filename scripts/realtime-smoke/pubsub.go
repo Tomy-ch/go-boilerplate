@@ -24,7 +24,7 @@ const (
 
 	// receiveWindow は、publish 後に各 queue で配送を待つ上限です。long polling を複数回繰り返します。
 	receiveWindow = 20 * time.Second
-	// receiveWait は、ReceiveMessage の WaitTimeSeconds です（production と同じ long polling）。
+	// receiveWait は、ReceiveMessage の WaitTimeSeconds です。receiveWindow の中で複数回 poll するため production（20 秒）より短くします。
 	receiveWait = 5
 	// receiveBatch は、1 回の ReceiveMessage で受け取る最大件数です。重複配送を検出するため 1 より大きくします。
 	receiveBatch = 10

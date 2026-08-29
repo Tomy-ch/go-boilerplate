@@ -26,22 +26,15 @@ const (
 	testSubARN   = testTopicARN + ":sub-1"
 )
 
-var errSubstrate = xerrors.New("substrate failed")
+var (
+	errSubstrate = xerrors.New("substrate failed")
+	errRollback  = xerrors.New("rollback failed")
+)
 
 type subscriptionMocks struct {
 	sns *mock_aws.MockSNSAPI
 	sqs *mock_aws.MockSQSAPI
 }
-
-// emptyAttributes は、属性を 1 つも設定しない AttributesBuilder です。
-type emptyAttributes struct{}
-
-// failingAttributes は、属性の組み立てに失敗する AttributesBuilder です。
-type failingAttributes struct{}
-
-func (emptyAttributes) Build(string) (map[string]string, error) { return map[string]string{}, nil }
-
-func (failingAttributes) Build(string) (map[string]string, error) { return nil, errSubstrate }
 
 func newSubscription(t *testing.T) (*subscription, subscriptionMocks) {
 	t.Helper()
@@ -55,6 +48,16 @@ func newSubscription(t *testing.T) (*subscription, subscriptionMocks) {
 	require.True(t, ok)
 
 	return s, m
+}
+
+// attributesBuilderMock は、Build の結果を固定した AttributesBuilder の mock です。
+func attributesBuilderMock(t *testing.T, attrs map[string]string, err error) AttributesBuilder {
+	t.Helper()
+
+	m := mock_aws.NewMockAttributesBuilder(gomock.NewController(t))
+	m.EXPECT().Build(gomock.Any()).Return(attrs, err).AnyTimes()
+
+	return m
 }
 
 // expectProvision は、Provision が成功する呼び出し列を期待します。
@@ -189,7 +192,7 @@ func Test_subscription_Provision(t *testing.T) {
 			t.Parallel()
 
 			s, m := newSubscription(t)
-			s.attrs = emptyAttributes{}
+			s.attrs = attributesBuilderMock(t, map[string]string{}, nil)
 			m.sqs.EXPECT().
 				CreateQueue(gomock.Any(), gomock.Any()).
 				Return(&sqs.CreateQueueOutput{QueueUrl: awssdk.String(testQueueURL)}, nil)
@@ -274,11 +277,11 @@ func Test_subscription_Provision(t *testing.T) {
 			s, m := newSubscription(t)
 			m.sqs.EXPECT().CreateQueue(gomock.Any(), gomock.Any()).Return(&sqs.CreateQueueOutput{QueueUrl: awssdk.String(testQueueURL)}, nil)
 			m.sqs.EXPECT().GetQueueAttributes(gomock.Any(), gomock.Any()).Return(&sqs.GetQueueAttributesOutput{Attributes: map[string]string{}}, nil)
-			m.sqs.EXPECT().DeleteQueue(gomock.Any(), gomock.Any()).Return(nil, errSubstrate)
+			m.sqs.EXPECT().DeleteQueue(gomock.Any(), gomock.Any()).Return(nil, errRollback)
 
 			err := s.Provision(t.Context(), "inst-1")
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
-			assert.Contains(t, err.Error(), "delete instance queue")
+			require.ErrorIs(t, err, errRollback, "戻しの失敗も chain に残る")
 			assert.Equal(t, testQueueURL, s.queueURL, "消せなかった queue は状態に残る")
 		})
 
@@ -560,7 +563,7 @@ func Test_subscription_provision(t *testing.T) {
 			t.Parallel()
 
 			s, m := newSubscription(t)
-			s.attrs = failingAttributes{}
+			s.attrs = attributesBuilderMock(t, nil, errSubstrate)
 			m.sqs.EXPECT().CreateQueue(gomock.Any(), gomock.Any()).Return(&sqs.CreateQueueOutput{QueueUrl: awssdk.String(testQueueURL)}, nil)
 			m.sqs.EXPECT().GetQueueAttributes(gomock.Any(), gomock.Any()).
 				Return(&sqs.GetQueueAttributesOutput{Attributes: map[string]string{"QueueArn": testQueueARN}}, nil)

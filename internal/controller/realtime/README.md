@@ -54,6 +54,6 @@
 
 As for the other loop-driven controllers ([`../README.md`](../README.md)): the instance subscription and the lease
 keeper are generated mocks, the sleeper is mocked so no test sleeps, and the loop is exercised as a
-loop — one iteration's effect (batch → sinks → deletes, with the coalescing asserted through a
-recording sink), stop semantics (cancel at loop top, inside a receive, inside the backoff), the
+loop — one iteration's effect (batch → sinks → deletes, with the coalescing asserted
+through the generated `Waker` / `Revoker` mocks recording what they received), stop semantics (cancel at loop top, inside a receive, inside the backoff), the
 per-iteration error path (backoff and continue, delete failure logged), and the settings defaults.
