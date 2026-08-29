@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -26,6 +27,7 @@ import (
 	mock_realtime "go-boilerplate/internal/usecase/realtime/mock"
 	"go-boilerplate/pkg/xerrors"
 
+	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/labstack/echo/v5"
@@ -109,34 +111,50 @@ func Test_realtimeModule(t *testing.T) {
 				cursor   ucrealtime.CursorValidator
 				issuer   ucrealtime.TicketIssuer
 				verifier ucrealtime.TicketVerifier
-				schemes  securitySchemes
 			)
 
 			validateGraph(
 				t,
 				append(
 					realtimeDeps(),
-					fx.Populate(&log, &tickets, &leases, &secrets, &cursor, &issuer, &verifier, &schemes),
+					fx.Populate(&log, &tickets, &leases, &secrets, &cursor, &issuer, &verifier),
 				)...)
+
+			// value group は空でも解決するため、group への登録は実体を集めて数える。
+			schemes := collectGroup[oapiauth.SchemeAuthenticator](t, `group:"oapi.security.schemes"`, fx.Options(realtimeDeps()...))
+			assert.Len(t, schemes, 1)
 		})
 
 		t.Run("fan-out の publish 側・受信側・lifecycle の参加者を提供する", func(t *testing.T) {
 			t.Parallel()
 
 			var (
-				notifier     rt.RevocationNotifier
-				revoker      ucrealtime.AccessRevoker
-				id           rt.InstanceID
-				attrs        realtimeinfra.QueueAttributes
-				sub          rt.InstanceSubscription
-				keeper       ucrealtime.LeaseKeeper
-				engine       *ctrlrealtime.Engine
-				heartbeat    *ctrlrealtime.Heartbeat
-				participants serveParticipants
+				notifier  rt.RevocationNotifier
+				revoker   ucrealtime.AccessRevoker
+				id        rt.InstanceID
+				attrs     realtimeinfra.QueueAttributes
+				sub       rt.InstanceSubscription
+				keeper    ucrealtime.LeaseKeeper
+				engine    *ctrlrealtime.Engine
+				heartbeat *ctrlrealtime.Heartbeat
 			)
 
 			validateGraph(t, append(realtimeDeps(),
-				fx.Populate(&notifier, &revoker, &id, &attrs, &sub, &keeper, &engine, &heartbeat, &participants))...)
+				fx.Populate(&notifier, &revoker, &id, &attrs, &sub, &keeper, &engine, &heartbeat))...)
+
+			// value group は空でも解決するため、参加者は実体を集めて名前まで見る。テスト設定は topic が空で
+			// fan-out が fail-closed するので、その値だけ差し替えて構築する。
+			deps := fx.Options(append(realtimeDeps(), fx.Replace(testFanout(t)))...)
+			probes := collectGroup[hook.StartupProbe](t, `group:"serve.startup"`, deps)
+			provisioners := collectGroup[hook.Provisioner](t, `group:"serve.provisioners"`, deps)
+			runners := collectGroup[hook.Runner](t, `group:"serve.runners"`, deps)
+
+			require.Len(t, probes, 1)
+			require.Len(t, provisioners, 1)
+			require.Len(t, runners, 2)
+			assert.Equal(t, realtimeParticipantName, probes[0].Name)
+			assert.Equal(t, realtimeParticipantName, provisioners[0].Name)
+			assert.ElementsMatch(t, []string{"realtime-consumer", "realtime-heartbeat"}, []string{runners[0].Name, runners[1].Name})
 		})
 	})
 
@@ -282,6 +300,29 @@ func Test_provideStreamTicketScheme(t *testing.T) {
 func Test_provideRealtimeFanout(t *testing.T) {
 	t.Parallel()
 
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("topic の ARN と SNS / SQS の endpoint を設定から写し、SDK は outbound クライアントで呼ぶ", func(t *testing.T) {
+			t.Parallel()
+
+			mock := config.MockConfigForTest(t)
+			cfg := config.NewRealtimeConfig(mock)
+			epCfg := config.NewEndpointConfig(mock)
+			cfg.SetTopic(t, "arn:aws:sns:us-east-1:000000000000:realtime")
+			epCfg.SetRealtimePubSub(t, "http://localhost:4100")
+			outbound := observability.NewDisabledOutboundHTTPClient(true)
+
+			f, err := provideRealtimeFanout(cfg, epCfg, outbound)
+			require.NoError(t, err)
+			assert.Equal(t, "arn:aws:sns:us-east-1:000000000000:realtime", f.topicARN)
+			assert.Equal(t, "http://localhost:4100", awssdk.ToString(f.clients.SNS.Options().BaseEndpoint))
+			assert.Equal(t, "http://localhost:4100", awssdk.ToString(f.clients.SQS.Options().BaseEndpoint))
+			assert.Equal(t, cfg.Region(), f.clients.SNS.Options().Region)
+			assert.Same(t, outbound, f.clients.SNS.Options().HTTPClient)
+		})
+	})
+
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
@@ -377,32 +418,73 @@ func Test_provideInstanceQueueAttributes(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("emulator を使う環境は timings だけの属性", func(t *testing.T) {
+		// buildFor は、env の実装が組み立てる属性を返す。
+		buildFor := func(t *testing.T, env string) map[string]string {
+			t.Helper()
+
+			attrs, err := provideInstanceQueueAttributes(newAppCfgForEnv(t, env), cfg)
+			require.NoError(t, err)
+
+			built, err := attrs.Build("arn:q")
+			require.NoError(t, err)
+
+			return built
+		}
+
+		t.Run("local は timings だけの属性", func(t *testing.T) {
 			t.Parallel()
 
-			for _, env := range []string{config.EnvLocal, config.EnvCI, config.EnvTest, config.EnvDast} {
-				attrs, err := provideInstanceQueueAttributes(newAppCfgForEnv(t, env), cfg)
-				require.NoError(t, err, env)
-
-				built, err := attrs.Build("arn:q")
-				require.NoError(t, err)
-				assert.NotContains(t, built, "Policy", env)
-				assert.Contains(t, built, "VisibilityTimeout", env)
-			}
+			built := buildFor(t, config.EnvLocal)
+			assert.NotContains(t, built, "Policy")
+			assert.Contains(t, built, "VisibilityTimeout")
 		})
 
-		t.Run("deploy 環境は policy を含む全属性", func(t *testing.T) {
+		t.Run("ci は timings だけの属性", func(t *testing.T) {
 			t.Parallel()
 
-			for _, env := range []string{config.EnvDevelopment, config.EnvStaging, config.EnvProduction} {
-				attrs, err := provideInstanceQueueAttributes(newAppCfgForEnv(t, env), cfg)
-				require.NoError(t, err, env)
+			built := buildFor(t, config.EnvCI)
+			assert.NotContains(t, built, "Policy")
+			assert.Contains(t, built, "VisibilityTimeout")
+		})
 
-				built, err := attrs.Build("arn:q")
-				require.NoError(t, err)
-				assert.Contains(t, built, "Policy", env)
-				assert.Contains(t, built, "SqsManagedSseEnabled", env)
-			}
+		t.Run("test は timings だけの属性", func(t *testing.T) {
+			t.Parallel()
+
+			built := buildFor(t, config.EnvTest)
+			assert.NotContains(t, built, "Policy")
+			assert.Contains(t, built, "VisibilityTimeout")
+		})
+
+		t.Run("dast は timings だけの属性", func(t *testing.T) {
+			t.Parallel()
+
+			built := buildFor(t, config.EnvDast)
+			assert.NotContains(t, built, "Policy")
+			assert.Contains(t, built, "VisibilityTimeout")
+		})
+
+		t.Run("dev は policy を含む全属性", func(t *testing.T) {
+			t.Parallel()
+
+			built := buildFor(t, config.EnvDevelopment)
+			assert.Contains(t, built, "Policy")
+			assert.Contains(t, built, "SqsManagedSseEnabled")
+		})
+
+		t.Run("stg は policy を含む全属性", func(t *testing.T) {
+			t.Parallel()
+
+			built := buildFor(t, config.EnvStaging)
+			assert.Contains(t, built, "Policy")
+			assert.Contains(t, built, "SqsManagedSseEnabled")
+		})
+
+		t.Run("prd は policy を含む全属性", func(t *testing.T) {
+			t.Parallel()
+
+			built := buildFor(t, config.EnvProduction)
+			assert.Contains(t, built, "Policy")
+			assert.Contains(t, built, "SqsManagedSseEnabled")
 		})
 	})
 
@@ -612,14 +694,17 @@ func Test_provideRealtimeConsumerRunner(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	sub := mock_rt.NewMockInstanceSubscription(ctrl)
+	ran := make(chan struct{})
+	var once sync.Once
 	sub.EXPECT().
 		Receive(gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, _ int) ([]rt.Notification, error) {
+			once.Do(func() { close(ran) })
 			<-ctx.Done()
 
 			return nil, ctx.Err()
 		}).
-		AnyTimes()
+		MinTimes(1)
 	engine := provideRealtimeConsumer(
 		sub,
 		stubSinks{},
@@ -634,6 +719,7 @@ func Test_provideRealtimeConsumerRunner(t *testing.T) {
 
 	start, stop := r.Runner.Bind()
 	require.NoError(t, start(t.Context()))
+	<-ran // Body が engine を回している
 	require.NoError(t, stop(t.Context()))
 }
 
@@ -642,7 +728,13 @@ func Test_provideRealtimeHeartbeatRunner(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	keeper := mock_realtime.NewMockLeaseKeeper(ctrl)
-	keeper.EXPECT().Beat(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	ran := make(chan struct{})
+	var once sync.Once
+	keeper.EXPECT().Beat(gomock.Any(), gomock.Any()).DoAndReturn(func(context.Context, rt.InstanceID) error {
+		once.Do(func() { close(ran) })
+
+		return nil
+	}).MinTimes(1)
 	sleeper := mock_clock.NewMockSleeper(ctrl)
 	sleeper.EXPECT().Sleep(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, _ time.Duration) error {
 		<-ctx.Done()
@@ -662,5 +754,6 @@ func Test_provideRealtimeHeartbeatRunner(t *testing.T) {
 
 	start, stop := r.Runner.Bind()
 	require.NoError(t, start(t.Context()))
+	<-ran // Body が heartbeat を回している
 	require.NoError(t, stop(t.Context()))
 }

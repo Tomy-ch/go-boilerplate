@@ -87,7 +87,7 @@ fx.Invoke(
 
 ロガーは生成された `logging.Logger` のモックを使い、`Named(...)` / `CallerSkip(...)` の連鎖を期待値として置く。ログの同定情報（名前・メッセージ）は付随的な出力ではなく検証対象の契約とする。
 
-`serveLifecycle`（`RegisterHTTPServerHooks` の背後にいるオーケストレータ）は、記録用の participant と HTTP の start / stop の fake 関数でテストする。両側の正常経路の順序、participant がゼロの場合（HTTP のみ）、そして失敗の向きごと —— probe の失敗では何も作られない、provisioner の失敗では作られた分が teardown される、listen の失敗では runner が止まり teardown される、停止時は participant の失敗をログに出して束ね `Shutdown` を飛ばさない。最も重要な検証は、`Shutdown` が呼ばれる前に `Drain` が完了していることである。
+`serveLifecycle`（`RegisterHTTPServerHooks` の背後にいるオーケストレータ）は、記録用の participant と HTTP の start / stop の fake 関数でテストする。両側の正常経路の順序、participant がゼロの場合（HTTP のみ）、そして失敗の向きごと —— probe の失敗では何も作られない、provisioner の失敗では作られた分が teardown される、runner の起動失敗では起動済みの runner が止まり teardown される、listen の失敗では runner が止まり teardown される、停止時は participant の失敗をログに出して束ね `Shutdown` を飛ばさない。最も重要な検証は、`Shutdown` が呼ばれる前に `Drain` が完了していることである。
 
 HTTP 側（`newStartServerFunc` / `newStopServerFunc`）には 3 つの経路があり、失敗の向きが異なるためそれぞれ独立したケースが要る。
 

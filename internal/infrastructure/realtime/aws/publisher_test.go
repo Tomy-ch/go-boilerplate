@@ -119,7 +119,9 @@ func Test_publisher_Publish(t *testing.T) {
 			m, _ := outboxMessage(t, "")
 			m.Payload = []byte("not json")
 
-			require.ErrorIs(t, p.Publish(t.Context(), m), apperror.ErrPermanent)
+			err := p.Publish(t.Context(), m)
+			require.ErrorIs(t, err, apperror.ErrPermanent)
+			require.ErrorIs(t, err, rt.ErrInvalidEvent)
 		})
 
 		t.Run("payload の eventId が message_id と食い違えば ErrEventIDMismatch（permanent）", func(t *testing.T) {
@@ -140,7 +142,9 @@ func Test_publisher_Publish(t *testing.T) {
 			m, _ := outboxMessage(t, "")
 			m.Payload = []byte(`{"eventId":"","streamId":"","sequence":"1"}`)
 
-			require.ErrorIs(t, p.Publish(t.Context(), m), apperror.ErrPermanent)
+			err := p.Publish(t.Context(), m)
+			require.ErrorIs(t, err, apperror.ErrPermanent)
+			require.ErrorIs(t, err, rt.ErrInvalidEvent)
 		})
 
 		t.Run("同じ位置に別の event があれば ErrPermanent で、publish しない", func(t *testing.T) {
@@ -205,27 +209,39 @@ func Test_decodeEvent(t *testing.T) {
 func Test_classifyAppend(t *testing.T) {
 	t.Parallel()
 
-	tests := map[string]struct {
-		err       error
-		permanent bool
-	}{
-		"位置の衝突は permanent":     {err: rt.ErrSequenceConflict, permanent: true},
-		"不正な封筒は permanent":     {err: rt.ErrInvalidEvent, permanent: true},
-		"大きすぎる封筒は permanent":   {err: rt.ErrPayloadTooLarge, permanent: true},
-		"store の不通は retryable": {err: apperror.ErrUnavailable, permanent: false},
-	}
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
 
-	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
+		t.Run("位置の衝突は permanent", func(t *testing.T) {
 			t.Parallel()
 
-			err := classifyAppend(tt.err)
-			require.ErrorIs(t, err, tt.err)
-			if tt.permanent {
-				require.ErrorIs(t, err, apperror.ErrPermanent)
-			} else {
-				require.ErrorIs(t, err, apperror.ErrRetryable)
-			}
+			err := classifyAppend(rt.ErrSequenceConflict)
+			require.ErrorIs(t, err, rt.ErrSequenceConflict)
+			require.ErrorIs(t, err, apperror.ErrPermanent)
 		})
-	}
+
+		t.Run("不正な封筒は permanent", func(t *testing.T) {
+			t.Parallel()
+
+			err := classifyAppend(rt.ErrInvalidEvent)
+			require.ErrorIs(t, err, rt.ErrInvalidEvent)
+			require.ErrorIs(t, err, apperror.ErrPermanent)
+		})
+
+		t.Run("大きすぎる封筒は permanent", func(t *testing.T) {
+			t.Parallel()
+
+			err := classifyAppend(rt.ErrPayloadTooLarge)
+			require.ErrorIs(t, err, rt.ErrPayloadTooLarge)
+			require.ErrorIs(t, err, apperror.ErrPermanent)
+		})
+
+		t.Run("store の不通は retryable", func(t *testing.T) {
+			t.Parallel()
+
+			err := classifyAppend(apperror.ErrUnavailable)
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			require.ErrorIs(t, err, apperror.ErrRetryable)
+		})
+	})
 }

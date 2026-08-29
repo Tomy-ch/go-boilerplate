@@ -93,21 +93,36 @@ func Test_decodeNotification(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		tests := map[string]sqstypes.Message{
-			"種別属性が無い":                  message("", `{"eventId":"e1","streamId":"s1","sequence":"42"}`),
-			"未知の種別":                    message("other", `{}`),
-			"wakeup の本文が JSON でない":     message("wakeup", "not json"),
-			"wakeup の sequence が整数でない": message("wakeup", `{"eventId":"e1","streamId":"s1","sequence":"x"}`),
-			"revocation の本文が JSON でない": message("revocation", "not json"),
-		}
+		unread := rt.Notification{Receipt: "receipt-1"}
 
-		for name, m := range tests {
-			t.Run(name+"なら Kind は空で Receipt だけ載る", func(t *testing.T) {
-				t.Parallel()
+		t.Run("種別属性が無ければ Kind は空で Receipt だけ載る", func(t *testing.T) {
+			t.Parallel()
 
-				n := decodeNotification(m)
-				assert.Equal(t, rt.Notification{Receipt: "receipt-1"}, n)
-			})
-		}
+			assert.Equal(t, unread, decodeNotification(message("", `{"eventId":"e1","streamId":"s1","sequence":"42"}`)))
+		})
+
+		t.Run("未知の種別なら Kind は空で Receipt だけ載る", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, unread, decodeNotification(message("other", `{}`)))
+		})
+
+		t.Run("wakeup の本文が JSON でなければ Kind は空で Receipt だけ載る", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, unread, decodeNotification(message("wakeup", "not json")))
+		})
+
+		t.Run("wakeup の sequence が整数でなければ Kind は空で Receipt だけ載る", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, unread, decodeNotification(message("wakeup", `{"eventId":"e1","streamId":"s1","sequence":"x"}`)))
+		})
+
+		t.Run("revocation の本文が JSON でなければ Kind は空で Receipt だけ載る", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, unread, decodeNotification(message("revocation", "not json")))
+		})
 	})
 }

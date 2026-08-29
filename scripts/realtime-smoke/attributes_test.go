@@ -28,363 +28,471 @@ func Test_pubSubSmoke_setAndReadBack(t *testing.T) {
 
 	attrs := map[sqstypes.QueueAttributeName]string{sqstypes.QueueAttributeNameVisibilityTimeout: "30"}
 
-	t.Run("同じ値が読み戻れば nil", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		s, _, _ := prepared(t, 1)
-		require.NoError(t, s.setAndReadBack(t.Context(), s.queueURLs[0], attrs))
-	})
+		t.Run("同じ値が読み戻れば nil", func(t *testing.T) {
+			t.Parallel()
 
-	t.Run("JSON 属性は整形差を無視して比較する", func(t *testing.T) {
-		t.Parallel()
-
-		s, f, st := prepared(t, 1)
-		f.on("SetQueueAttributes", func(fakeRequest) fakeResponse {
-			st.attrs[s.queueURLs[0]] = map[string]string{"RedrivePolicy": `{"maxReceiveCount": "5", "deadLetterTargetArn": "a"}`}
-
-			return jsonOK(map[string]any{})
+			s, _, _ := prepared(t, 1)
+			require.NoError(t, s.setAndReadBack(t.Context(), s.queueURLs[0], attrs))
 		})
 
-		require.NoError(t, s.setAndReadBack(t.Context(), s.queueURLs[0], map[sqstypes.QueueAttributeName]string{
-			sqstypes.QueueAttributeNameRedrivePolicy: `{"deadLetterTargetArn":"a","maxReceiveCount":"5"}`,
-		}))
+		t.Run("JSON 属性は整形差を無視して比較する", func(t *testing.T) {
+			t.Parallel()
+
+			s, f, st := prepared(t, 1)
+			f.on("SetQueueAttributes", func(fakeRequest) fakeResponse {
+				st.attrs[s.queueURLs[0]] = map[string]string{"RedrivePolicy": `{"maxReceiveCount": "5", "deadLetterTargetArn": "a"}`}
+
+				return jsonOK(map[string]any{})
+			})
+
+			require.NoError(t, s.setAndReadBack(t.Context(), s.queueURLs[0], map[sqstypes.QueueAttributeName]string{
+				sqstypes.QueueAttributeNameRedrivePolicy: `{"deadLetterTargetArn":"a","maxReceiveCount":"5"}`,
+			}))
+		})
 	})
 
-	t.Run("読み戻せなければ silent drop として非互換", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		s, f, _ := prepared(t, 1)
-		f.on("SetQueueAttributes", func(fakeRequest) fakeResponse { return jsonOK(map[string]any{}) })
+		t.Run("読み戻せなければ silent drop として非互換", func(t *testing.T) {
+			t.Parallel()
 
-		err := s.setAndReadBack(t.Context(), s.queueURLs[0], attrs)
-		assert.Equal(t, VerdictIncompatible, classify(err))
-		assert.Contains(t, err.Error(), "silent drop")
-	})
+			s, f, _ := prepared(t, 1)
+			f.on("SetQueueAttributes", func(fakeRequest) fakeResponse { return jsonOK(map[string]any{}) })
 
-	t.Run("値が違えば非互換", func(t *testing.T) {
-		t.Parallel()
-
-		s, f, st := prepared(t, 1)
-		f.on("SetQueueAttributes", func(fakeRequest) fakeResponse {
-			st.attrs[s.queueURLs[0]] = map[string]string{"VisibilityTimeout": "31"}
-
-			return jsonOK(map[string]any{})
+			err := s.setAndReadBack(t.Context(), s.queueURLs[0], attrs)
+			assert.Equal(t, VerdictIncompatible, classify(err))
+			assert.Contains(t, err.Error(), "silent drop")
 		})
 
-		err := s.setAndReadBack(t.Context(), s.queueURLs[0], attrs)
-		assert.Equal(t, VerdictIncompatible, classify(err))
-		assert.Contains(t, err.Error(), "異なる")
-	})
+		t.Run("値が違えば非互換", func(t *testing.T) {
+			t.Parallel()
 
-	t.Run("拒否されれば API エラーをそのまま返す", func(t *testing.T) {
-		t.Parallel()
+			s, f, st := prepared(t, 1)
+			f.on("SetQueueAttributes", func(fakeRequest) fakeResponse {
+				st.attrs[s.queueURLs[0]] = map[string]string{"VisibilityTimeout": "31"}
 
-		s, f, _ := prepared(t, 1)
-		f.on("SetQueueAttributes", func(fakeRequest) fakeResponse { return jsonErr(fakeErrPolicy, "invalid") })
+				return jsonOK(map[string]any{})
+			})
 
-		err := s.setAndReadBack(t.Context(), s.queueURLs[0], attrs)
+			err := s.setAndReadBack(t.Context(), s.queueURLs[0], attrs)
+			assert.Equal(t, VerdictIncompatible, classify(err))
+			assert.Contains(t, err.Error(), "異なる")
+		})
 
-		var api apiError
-		require.ErrorAs(t, err, &api)
-		assert.Equal(t, fakeErrPolicy, api.ErrorCode())
+		t.Run("拒否されれば API エラーをそのまま返す", func(t *testing.T) {
+			t.Parallel()
+
+			s, f, _ := prepared(t, 1)
+			f.on("SetQueueAttributes", func(fakeRequest) fakeResponse { return jsonErr(fakeErrPolicy, "invalid") })
+
+			err := s.setAndReadBack(t.Context(), s.queueURLs[0], attrs)
+
+			var api apiError
+			require.ErrorAs(t, err, &api)
+			assert.Equal(t, fakeErrPolicy, api.ErrorCode())
+		})
+
+		t.Run("読み戻しの API が拒否されれば非互換ではなく API エラーとして返す", func(t *testing.T) {
+			t.Parallel()
+
+			s, f, _ := prepared(t, 1)
+			f.on("GetQueueAttributes", func(fakeRequest) fakeResponse { return jsonErr(fakeErrPolicy, "invalid") })
+
+			err := s.setAndReadBack(t.Context(), s.queueURLs[0], attrs)
+
+			var api apiError
+			require.ErrorAs(t, err, &api)
+			assert.NotEqual(t, VerdictIncompatible, classify(err))
+		})
 	})
 }
 
 func Test_pubSubSmoke_firstQueue(t *testing.T) {
 	t.Parallel()
 
-	t.Run("先頭の queue URL を返す", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		url, err := (&pubSubSmoke{queueURLs: []string{"a", "b"}}).firstQueue()
-		require.NoError(t, err)
-		assert.Equal(t, "a", url)
+		t.Run("先頭の queue URL を返す", func(t *testing.T) {
+			t.Parallel()
+
+			url, err := (&pubSubSmoke{queueURLs: []string{"a", "b"}}).firstQueue()
+			require.NoError(t, err)
+			assert.Equal(t, "a", url)
+		})
 	})
 
-	t.Run("queue が無ければ非互換", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := (&pubSubSmoke{}).firstQueue()
-		assert.Equal(t, VerdictIncompatible, classify(err))
+		t.Run("queue が無ければ非互換", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := (&pubSubSmoke{}).firstQueue()
+			assert.Equal(t, VerdictIncompatible, classify(err))
+		})
 	})
 }
 
 func Test_pubSubSmoke_queueTimings(t *testing.T) {
 	t.Parallel()
 
-	t.Run("2 属性が読み戻れば互換", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		s, _, st := prepared(t, 1)
-		detail, err := s.queueTimings(t.Context())
+		t.Run("2 属性が読み戻れば互換", func(t *testing.T) {
+			t.Parallel()
 
-		require.NoError(t, err)
-		assert.Contains(t, detail, "VisibilityTimeout=30")
-		assert.Equal(t, "20", st.attrs[s.queueURLs[0]]["ReceiveMessageWaitTimeSeconds"])
+			s, _, st := prepared(t, 1)
+			detail, err := s.queueTimings(t.Context())
+
+			require.NoError(t, err)
+			assert.Contains(t, detail, "VisibilityTimeout=30")
+			assert.Equal(t, "20", st.attrs[s.queueURLs[0]]["ReceiveMessageWaitTimeSeconds"])
+		})
 	})
 
-	t.Run("queue が無ければ非互換", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := (&pubSubSmoke{}).queueTimings(t.Context())
-		assert.Equal(t, VerdictIncompatible, classify(err))
+		t.Run("queue が無ければ非互換", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := (&pubSubSmoke{}).queueTimings(t.Context())
+			assert.Equal(t, VerdictIncompatible, classify(err))
+		})
 	})
 }
 
 func Test_pubSubSmoke_redrive(t *testing.T) {
 	t.Parallel()
 
-	t.Run("DLQ を作り、その ARN を含む RedrivePolicy が読み戻れば互換", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		s, _, st := prepared(t, 1)
-		detail, err := s.redrive(t.Context())
+		t.Run("DLQ を作り、その ARN を含む RedrivePolicy が読み戻れば互換", func(t *testing.T) {
+			t.Parallel()
 
-		require.NoError(t, err)
-		assert.Contains(t, detail, "maxReceiveCount=5")
-		assert.Equal(t, st.queueURL(s.names.dlq()), s.dlqURL, "後片付けのために DLQ の URL を保持する")
-		assert.Contains(t, st.attrs[s.queueURLs[0]]["RedrivePolicy"], fakeQueue+s.names.dlq())
+			s, _, st := prepared(t, 1)
+			detail, err := s.redrive(t.Context())
+
+			require.NoError(t, err)
+			assert.Contains(t, detail, "maxReceiveCount=5")
+			assert.Equal(t, st.queueURL(s.names.dlq()), s.dlqURL, "後片付けのために DLQ の URL を保持する")
+			assert.Contains(t, st.attrs[s.queueURLs[0]]["RedrivePolicy"], fakeQueue+s.names.dlq())
+		})
 	})
 
-	t.Run("DLQ の作成が拒否されればそのまま返す", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		s, f, _ := prepared(t, 1)
-		f.on("CreateQueue", func(fakeRequest) fakeResponse { return jsonErr("QueueNameExists", "dup") })
+		t.Run("DLQ の作成が拒否されればそのまま返す", func(t *testing.T) {
+			t.Parallel()
 
-		_, err := s.redrive(t.Context())
+			s, f, _ := prepared(t, 1)
+			f.on("CreateQueue", func(fakeRequest) fakeResponse { return jsonErr("QueueNameExists", "dup") })
 
-		var api apiError
-		require.ErrorAs(t, err, &api)
-		assert.Empty(t, s.dlqURL)
-	})
+			_, err := s.redrive(t.Context())
 
-	t.Run("queue が無ければ非互換", func(t *testing.T) {
-		t.Parallel()
+			var api apiError
+			require.ErrorAs(t, err, &api)
+			assert.Empty(t, s.dlqURL)
+		})
 
-		_, err := (&pubSubSmoke{}).redrive(t.Context())
-		assert.Equal(t, VerdictIncompatible, classify(err))
+		t.Run("queue が無ければ非互換", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := (&pubSubSmoke{}).redrive(t.Context())
+			assert.Equal(t, VerdictIncompatible, classify(err))
+		})
+
+		t.Run("DLQ の QueueArn が空で返れば非互換", func(t *testing.T) {
+			t.Parallel()
+
+			s, f, _ := prepared(t, 1)
+			f.on("GetQueueAttributes", func(fakeRequest) fakeResponse { return jsonOK(map[string]any{"Attributes": map[string]any{}}) })
+
+			_, err := s.redrive(t.Context())
+			assert.Equal(t, VerdictIncompatible, classify(err))
+		})
 	})
 }
 
 func Test_pubSubSmoke_managedSSE(t *testing.T) {
 	t.Parallel()
 
-	t.Run("true が読み戻れば互換", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		s, _, _ := prepared(t, 1)
-		detail, err := s.managedSSE(t.Context())
+		t.Run("true が読み戻れば互換", func(t *testing.T) {
+			t.Parallel()
 
-		require.NoError(t, err)
-		assert.Contains(t, detail, "SqsManagedSseEnabled=true")
+			s, _, _ := prepared(t, 1)
+			detail, err := s.managedSSE(t.Context())
+
+			require.NoError(t, err)
+			assert.Contains(t, detail, "SqsManagedSseEnabled=true")
+		})
 	})
 
-	t.Run("queue が無ければ非互換", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := (&pubSubSmoke{}).managedSSE(t.Context())
-		assert.Equal(t, VerdictIncompatible, classify(err))
+		t.Run("queue が無ければ非互換", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := (&pubSubSmoke{}).managedSSE(t.Context())
+			assert.Equal(t, VerdictIncompatible, classify(err))
+		})
 	})
 }
 
 func Test_pubSubSmoke_kmsKey(t *testing.T) {
 	t.Parallel()
 
-	t.Run("alias が読み戻れば互換", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		s, _, _ := prepared(t, 1)
-		detail, err := s.kmsKey(t.Context())
+		t.Run("alias が読み戻れば互換", func(t *testing.T) {
+			t.Parallel()
 
-		require.NoError(t, err)
-		assert.Contains(t, detail, kmsKeyAlias)
+			s, _, _ := prepared(t, 1)
+			detail, err := s.kmsKey(t.Context())
+
+			require.NoError(t, err)
+			assert.Contains(t, detail, kmsKeyAlias)
+		})
 	})
 
-	t.Run("queue が無ければ非互換", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := (&pubSubSmoke{}).kmsKey(t.Context())
-		assert.Equal(t, VerdictIncompatible, classify(err))
+		t.Run("queue が無ければ非互換", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := (&pubSubSmoke{}).kmsKey(t.Context())
+			assert.Equal(t, VerdictIncompatible, classify(err))
+		})
 	})
 }
 
 func Test_pubSubSmoke_listSubscriptions(t *testing.T) {
 	t.Parallel()
 
-	t.Run("queue ARN から Subscribe と同じ ARN が引ければ互換", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		s, _, _ := prepared(t, 2)
-		detail, err := s.listSubscriptions(t.Context())
+		t.Run("queue ARN から Subscribe と同じ ARN が引ければ互換", func(t *testing.T) {
+			t.Parallel()
 
-		require.NoError(t, err)
-		assert.Contains(t, detail, s.subArns[0])
+			s, _, _ := prepared(t, 2)
+			detail, err := s.listSubscriptions(t.Context())
+
+			require.NoError(t, err)
+			assert.Contains(t, detail, s.subArns[0])
+		})
 	})
 
-	t.Run("一覧に無ければ非互換", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		s, _, st := prepared(t, 1)
-		for arn := range st.subs {
-			delete(st.subs, arn)
-		}
+		t.Run("一覧に無ければ非互換", func(t *testing.T) {
+			t.Parallel()
 
-		_, err := s.listSubscriptions(t.Context())
-		assert.Equal(t, VerdictIncompatible, classify(err))
-		assert.Contains(t, err.Error(), "一覧に無い")
-	})
+			s, _, st := prepared(t, 1)
+			for arn := range st.subs {
+				delete(st.subs, arn)
+			}
 
-	t.Run("ARN が Subscribe の戻り値と違えば非互換", func(t *testing.T) {
-		t.Parallel()
+			_, err := s.listSubscriptions(t.Context())
+			assert.Equal(t, VerdictIncompatible, classify(err))
+			assert.Contains(t, err.Error(), "一覧に無い")
+		})
 
-		s, _, _ := prepared(t, 1)
-		s.subArns[0] = "arn:other"
+		t.Run("ARN が Subscribe の戻り値と違えば非互換", func(t *testing.T) {
+			t.Parallel()
 
-		_, err := s.listSubscriptions(t.Context())
-		assert.Equal(t, VerdictIncompatible, classify(err))
-		assert.Contains(t, err.Error(), "異なる")
-	})
+			s, _, _ := prepared(t, 1)
+			s.subArns[0] = "arn:other"
 
-	t.Run("先行検査を通っていなければ非互換", func(t *testing.T) {
-		t.Parallel()
+			_, err := s.listSubscriptions(t.Context())
+			assert.Equal(t, VerdictIncompatible, classify(err))
+			assert.Contains(t, err.Error(), "異なる")
+		})
 
-		_, err := (&pubSubSmoke{}).listSubscriptions(t.Context())
-		assert.Equal(t, VerdictIncompatible, classify(err))
-	})
+		t.Run("先行検査を通っていなければ非互換", func(t *testing.T) {
+			t.Parallel()
 
-	t.Run("一覧の取得失敗はそのまま返す", func(t *testing.T) {
-		t.Parallel()
+			_, err := (&pubSubSmoke{}).listSubscriptions(t.Context())
+			assert.Equal(t, VerdictIncompatible, classify(err))
+		})
 
-		s, f, _ := prepared(t, 1)
-		f.on("ListSubscriptionsByTopic", func(fakeRequest) fakeResponse { return xmlErr("NotFound", "topic") })
+		t.Run("一覧の取得失敗はそのまま返す", func(t *testing.T) {
+			t.Parallel()
 
-		_, err := s.listSubscriptions(t.Context())
+			s, f, _ := prepared(t, 1)
+			f.on("ListSubscriptionsByTopic", func(fakeRequest) fakeResponse { return xmlErr("NotFound", "topic") })
 
-		var api apiError
-		require.ErrorAs(t, err, &api)
+			_, err := s.listSubscriptions(t.Context())
+
+			var api apiError
+			require.ErrorAs(t, err, &api)
+		})
 	})
 }
 
 func Test_pubSubSmoke_notificationTypes(t *testing.T) {
 	t.Parallel()
 
-	t.Run("wakeup と revocation が 1 件ずつ属性で振り分けられ、削除まで行えば互換", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		s, f, _ := prepared(t, 1)
-		detail, err := s.notificationTypes(t.Context())
+		t.Run("wakeup と revocation が 1 件ずつ属性で振り分けられ、削除まで行えば互換", func(t *testing.T) {
+			t.Parallel()
 
-		require.NoError(t, err)
-		assert.Equal(t, "2 件を type 属性で振り分けた（wakeup 1 / revocation 1）", detail)
-		assert.Contains(t, f.called(), "DeleteMessage")
+			s, f, _ := prepared(t, 1)
+			detail, err := s.notificationTypes(t.Context())
+
+			require.NoError(t, err)
+			assert.Equal(t, "2 件を type 属性で振り分けた（wakeup 1 / revocation 1）", detail)
+			assert.Contains(t, f.called(), "DeleteMessage")
+		})
 	})
 
-	t.Run("属性が落ちれば非互換", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		s, f, st := prepared(t, 1)
-		publish := st.publish
-		f.on("Publish", func(req fakeRequest) fakeResponse {
-			req.form.Del("MessageAttributes.entry.1.Name")
+		t.Run("属性が落ちれば非互換", func(t *testing.T) {
+			t.Parallel()
 
-			return publish(req)
+			s, f, st := prepared(t, 1)
+			publish := st.publish
+			f.on("Publish", func(req fakeRequest) fakeResponse {
+				req.form.Del("MessageAttributes.entry.1.Name")
+
+				return publish(req)
+			})
+
+			_, err := s.notificationTypes(t.Context())
+			assert.Equal(t, VerdictIncompatible, classify(err))
+			assert.Contains(t, err.Error(), "type 属性の無い")
 		})
 
-		_, err := s.notificationTypes(t.Context())
-		assert.Equal(t, VerdictIncompatible, classify(err))
-		assert.Contains(t, err.Error(), "type 属性の無い")
-	})
+		t.Run("Publish の失敗はそのまま返す", func(t *testing.T) {
+			t.Parallel()
 
-	t.Run("Publish の失敗はそのまま返す", func(t *testing.T) {
-		t.Parallel()
+			s, f, _ := prepared(t, 1)
+			f.on("Publish", func(fakeRequest) fakeResponse { return xmlErr("NotFound", "topic") })
 
-		s, f, _ := prepared(t, 1)
-		f.on("Publish", func(fakeRequest) fakeResponse { return xmlErr("NotFound", "topic") })
+			_, err := s.notificationTypes(t.Context())
 
-		_, err := s.notificationTypes(t.Context())
+			var api apiError
+			require.ErrorAs(t, err, &api)
+		})
 
-		var api apiError
-		require.ErrorAs(t, err, &api)
-	})
+		t.Run("queue が無ければ非互換", func(t *testing.T) {
+			t.Parallel()
 
-	t.Run("queue が無ければ非互換", func(t *testing.T) {
-		t.Parallel()
+			_, err := (&pubSubSmoke{}).notificationTypes(t.Context())
+			assert.Equal(t, VerdictIncompatible, classify(err))
+		})
 
-		_, err := (&pubSubSmoke{}).notificationTypes(t.Context())
-		assert.Equal(t, VerdictIncompatible, classify(err))
+		t.Run("削除の拒否は非互換ではなく API エラーとして返す", func(t *testing.T) {
+			t.Parallel()
+
+			s, f, _ := prepared(t, 1)
+			f.on("DeleteMessage", func(fakeRequest) fakeResponse { return jsonErr("QueueExists", "not in queue") })
+
+			_, err := s.notificationTypes(t.Context())
+
+			var api apiError
+			require.ErrorAs(t, err, &api)
+			assert.NotEqual(t, VerdictIncompatible, classify(err))
+		})
 	})
 }
 
 func Test_pubSubSmoke_receiveAfterAttributes(t *testing.T) {
 	t.Parallel()
 
-	t.Run("1 件だけ届き削除まで行えば互換", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		s, f, _ := prepared(t, 1)
-		detail, err := s.receiveAfterAttributes(t.Context())
+		t.Run("1 件だけ届き削除まで行えば互換", func(t *testing.T) {
+			t.Parallel()
 
-		require.NoError(t, err)
-		assert.Equal(t, "属性設定後も 1 件だけ届いた", detail)
-		assert.Contains(t, f.called(), "DeleteMessage")
+			s, f, _ := prepared(t, 1)
+			detail, err := s.receiveAfterAttributes(t.Context())
+
+			require.NoError(t, err)
+			assert.Equal(t, "属性設定後も 1 件だけ届いた", detail)
+			assert.Contains(t, f.called(), "DeleteMessage")
+		})
 	})
 
-	t.Run("1 件も届かなければ配送停止として非互換", func(t *testing.T) {
+	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		s, f, _ := prepared(t, 1)
-		f.on("Publish", func(fakeRequest) fakeResponse { return xmlOK("Publish", "<MessageId>m-1</MessageId>") })
+		t.Run("1 件も届かなければ配送停止として非互換", func(t *testing.T) {
+			t.Parallel()
 
-		_, err := s.receiveAfterAttributes(t.Context())
-		assert.Equal(t, VerdictIncompatible, classify(err))
-		assert.Contains(t, err.Error(), "配送停止")
-	})
+			s, f, _ := prepared(t, 1)
+			f.on("Publish", func(fakeRequest) fakeResponse { return xmlOK("Publish", "<MessageId>m-1</MessageId>") })
 
-	t.Run("同じ message が繰り返し届けば非互換", func(t *testing.T) {
-		t.Parallel()
-
-		s, f, st := prepared(t, 1)
-		publish := st.publish
-		f.on("Publish", func(req fakeRequest) fakeResponse {
-			publish(req)
-
-			return publish(req)
+			_, err := s.receiveAfterAttributes(t.Context())
+			assert.Equal(t, VerdictIncompatible, classify(err))
+			assert.Contains(t, err.Error(), "配送停止")
 		})
 
-		_, err := s.receiveAfterAttributes(t.Context())
-		assert.Equal(t, VerdictIncompatible, classify(err))
-		assert.Contains(t, err.Error(), "重複配送")
-	})
+		t.Run("同じ message が繰り返し届けば非互換", func(t *testing.T) {
+			t.Parallel()
 
-	t.Run("受信した message の削除が拒否されれば非互換", func(t *testing.T) {
-		t.Parallel()
+			s, f, st := prepared(t, 1)
+			publish := st.publish
+			f.on("Publish", func(req fakeRequest) fakeResponse {
+				publish(req)
 
-		s, f, _ := prepared(t, 1)
-		f.on("DeleteMessage", func(fakeRequest) fakeResponse { return jsonErr("QueueExists", "not in queue") })
+				return publish(req)
+			})
 
-		_, err := s.receiveAfterAttributes(t.Context())
-		assert.Equal(t, VerdictIncompatible, classify(err))
-		assert.Contains(t, err.Error(), "削除できない")
-	})
+			_, err := s.receiveAfterAttributes(t.Context())
+			assert.Equal(t, VerdictIncompatible, classify(err))
+			assert.Contains(t, err.Error(), "重複配送")
+		})
 
-	t.Run("Publish の失敗はそのまま返す", func(t *testing.T) {
-		t.Parallel()
+		t.Run("受信した message の削除が拒否されれば非互換", func(t *testing.T) {
+			t.Parallel()
 
-		s, f, _ := prepared(t, 1)
-		f.on("Publish", func(fakeRequest) fakeResponse { return xmlErr("NotFound", "topic") })
+			s, f, _ := prepared(t, 1)
+			f.on("DeleteMessage", func(fakeRequest) fakeResponse { return jsonErr("QueueExists", "not in queue") })
 
-		_, err := s.receiveAfterAttributes(t.Context())
+			_, err := s.receiveAfterAttributes(t.Context())
+			assert.Equal(t, VerdictIncompatible, classify(err))
+			assert.Contains(t, err.Error(), "削除できない")
+		})
 
-		var api apiError
-		require.ErrorAs(t, err, &api)
-	})
+		t.Run("Publish の失敗はそのまま返す", func(t *testing.T) {
+			t.Parallel()
 
-	t.Run("queue が無ければ非互換", func(t *testing.T) {
-		t.Parallel()
+			s, f, _ := prepared(t, 1)
+			f.on("Publish", func(fakeRequest) fakeResponse { return xmlErr("NotFound", "topic") })
 
-		_, err := (&pubSubSmoke{}).receiveAfterAttributes(t.Context())
-		assert.Equal(t, VerdictIncompatible, classify(err))
+			_, err := s.receiveAfterAttributes(t.Context())
+
+			var api apiError
+			require.ErrorAs(t, err, &api)
+		})
+
+		t.Run("queue が無ければ非互換", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := (&pubSubSmoke{}).receiveAfterAttributes(t.Context())
+			assert.Equal(t, VerdictIncompatible, classify(err))
+		})
 	})
 }
 
@@ -402,41 +510,60 @@ func Test_dispatchByType(t *testing.T) {
 	wakeup := `{"eventId":"e","streamId":"s","sequence":"2"}`
 	revoked := `{"subject":"u","destination":"s"}`
 
-	tests := map[string]struct {
-		msgs     []sqstypes.Message
-		verdict  Verdict
-		contains string
-	}{
-		"1 件ずつ揃えば互換": {
-			msgs:     []sqstypes.Message{msg(typeWakeup, wakeup), msg(typeRevocation, revoked)},
-			verdict:  VerdictCompatible,
-			contains: "wakeup 1 / revocation 1",
-		},
-		"属性が無ければ非互換":            {msgs: []sqstypes.Message{msg("", wakeup)}, verdict: VerdictIncompatible, contains: "type 属性の無い"},
-		"未知の種別は非互換":             {msgs: []sqstypes.Message{msg("other", wakeup)}, verdict: VerdictIncompatible, contains: "未知の type"},
-		"wakeup の body が違えば非互換": {msgs: []sqstypes.Message{msg(typeWakeup, revoked)}, verdict: VerdictIncompatible, contains: "通知の形でない"},
-		"片方しか届かなければ非互換":         {msgs: []sqstypes.Message{msg(typeWakeup, wakeup)}, verdict: VerdictIncompatible, contains: "revocation 0 件"},
-		"重複すれば非互換": {
-			msgs:     []sqstypes.Message{msg(typeWakeup, wakeup), msg(typeWakeup, wakeup), msg(typeRevocation, revoked)},
-			verdict:  VerdictIncompatible,
-			contains: "wakeup 2 件",
-		},
+	// incompatibleWith は、msgs が非互換と判定され、その理由に contains が載ることを確かめる。
+	incompatibleWith := func(t *testing.T, msgs []sqstypes.Message, contains string) {
+		t.Helper()
+
+		_, err := dispatchByType(msgs)
+		assert.Equal(t, VerdictIncompatible, classify(err))
+		assert.Contains(t, err.Error(), contains)
 	}
 
-	for name, tt := range tests {
-		t.Run(name, func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("1 件ずつ揃えば互換", func(t *testing.T) {
 			t.Parallel()
 
-			detail, err := dispatchByType(tt.msgs)
-
-			assert.Equal(t, tt.verdict, classify(err))
-			if err != nil {
-				assert.Contains(t, err.Error(), tt.contains)
-			} else {
-				assert.Contains(t, detail, tt.contains)
-			}
+			detail, err := dispatchByType([]sqstypes.Message{msg(typeWakeup, wakeup), msg(typeRevocation, revoked)})
+			require.NoError(t, err)
+			assert.Contains(t, detail, "wakeup 1 / revocation 1")
 		})
-	}
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("属性が無ければ非互換", func(t *testing.T) {
+			t.Parallel()
+
+			incompatibleWith(t, []sqstypes.Message{msg("", wakeup)}, "type 属性の無い")
+		})
+
+		t.Run("未知の種別は非互換", func(t *testing.T) {
+			t.Parallel()
+
+			incompatibleWith(t, []sqstypes.Message{msg("other", wakeup)}, "未知の type")
+		})
+
+		t.Run("wakeup の body が違えば非互換", func(t *testing.T) {
+			t.Parallel()
+
+			incompatibleWith(t, []sqstypes.Message{msg(typeWakeup, revoked)}, "通知の形でない")
+		})
+
+		t.Run("片方しか届かなければ非互換", func(t *testing.T) {
+			t.Parallel()
+
+			incompatibleWith(t, []sqstypes.Message{msg(typeWakeup, wakeup)}, "revocation 0 件")
+		})
+
+		t.Run("重複すれば非互換", func(t *testing.T) {
+			t.Parallel()
+
+			incompatibleWith(t, []sqstypes.Message{msg(typeWakeup, wakeup), msg(typeWakeup, wakeup), msg(typeRevocation, revoked)}, "wakeup 2 件")
+		})
+	})
 }
 
 func Test_isNotification(t *testing.T) {

@@ -302,6 +302,32 @@ func Test_subscription_Provision(t *testing.T) {
 			require.ErrorIs(t, s.Provision(t.Context(), "inst-1"), apperror.ErrUnavailable)
 			assert.Empty(t, s.subscriptionARN)
 		})
+
+		t.Run("ARN の解決が拒否されれば ErrUnavailable で、作った queue は削除する", func(t *testing.T) {
+			t.Parallel()
+
+			s, m := newSubscription(t)
+			m.sqs.EXPECT().CreateQueue(gomock.Any(), gomock.Any()).Return(&sqs.CreateQueueOutput{QueueUrl: awssdk.String(testQueueURL)}, nil)
+			m.sqs.EXPECT().GetQueueAttributes(gomock.Any(), gomock.Any()).Return(nil, errSubstrate)
+			m.sqs.EXPECT().DeleteQueue(gomock.Any(), gomock.Any()).Return(&sqs.DeleteQueueOutput{}, nil)
+
+			require.ErrorIs(t, s.Provision(t.Context(), "inst-1"), apperror.ErrUnavailable)
+			assert.Empty(t, s.queueURL)
+		})
+
+		t.Run("属性設定が拒否されれば ErrUnavailable で、作った queue は削除する", func(t *testing.T) {
+			t.Parallel()
+
+			s, m := newSubscription(t)
+			m.sqs.EXPECT().CreateQueue(gomock.Any(), gomock.Any()).Return(&sqs.CreateQueueOutput{QueueUrl: awssdk.String(testQueueURL)}, nil)
+			m.sqs.EXPECT().GetQueueAttributes(gomock.Any(), gomock.Any()).
+				Return(&sqs.GetQueueAttributesOutput{Attributes: map[string]string{"QueueArn": testQueueARN}}, nil)
+			m.sqs.EXPECT().SetQueueAttributes(gomock.Any(), gomock.Any()).Return(nil, errSubstrate)
+			m.sqs.EXPECT().DeleteQueue(gomock.Any(), gomock.Any()).Return(&sqs.DeleteQueueOutput{}, nil)
+
+			require.ErrorIs(t, s.Provision(t.Context(), "inst-1"), apperror.ErrUnavailable)
+			assert.Empty(t, s.queueURL)
+		})
 	})
 }
 

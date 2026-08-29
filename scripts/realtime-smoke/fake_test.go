@@ -437,10 +437,9 @@ func (st *goawsState) receiveMessage(req fakeRequest) fakeResponse {
 	queueURL, _ := req.json["QueueUrl"].(string)
 
 	st.mu.Lock()
-	defer st.mu.Unlock()
-
 	msgs := st.inbox[queueURL]
 	st.inbox[queueURL] = nil
+	st.mu.Unlock()
 
 	if len(msgs) == 0 {
 		// 実物は WaitTimeSeconds だけ long polling する。空のときに即応答すると呼び出し側の receive が

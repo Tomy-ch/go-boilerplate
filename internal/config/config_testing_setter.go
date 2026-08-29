@@ -299,3 +299,23 @@ func (e *EndpointConfig) SetEndpointOutbox(tb testing.TB, val string) {
 	e.outbox = val
 	tb.Cleanup(func() { e.outbox = prev })
 }
+
+// SetTopic は、テスト用に Realtime Delivery の topic ARN を設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (r *RealtimeConfig) SetTopic(tb testing.TB, topic string) {
+	tb.Helper()
+	prev := r.Topic()
+	r.topic = topic
+	tb.Cleanup(func() { r.topic = prev })
+}
+
+// SetRealtimePubSub は、テスト用に Realtime Delivery の SNS / SQS endpoint を設定します。
+//
+// 実行後は、元の値に戻すためのクリーンアップ関数が登録されます。
+func (e *EndpointConfig) SetRealtimePubSub(tb testing.TB, endpoint string) {
+	tb.Helper()
+	prev := e.RealtimePubSub()
+	e.realtimePubSub = endpoint
+	tb.Cleanup(func() { e.realtimePubSub = prev })
+}

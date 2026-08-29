@@ -76,5 +76,5 @@ inherited from [`internal/infrastructure/README.md`](../README.md):
   (`REALTIME_TEST_PUBSUB_ENDPOINT` for this substrate). There is no skip: if the emulator is absent the
   test fails, the same rule the DynamoDB stores follow.
 - The N-subscriber fan-out and the "mark failure after publish does not deliver twice" scenarios are
-  integration tests in `internal/integration/`, because they need the relay and the EventLog store
-  together.
+  contract tests as well (`aws/fanout_contract_test.go`): they need the publisher and the EventLog store
+  together, so they run against DynamoDB Local and GoAWS side by side, with the same no-skip rule.

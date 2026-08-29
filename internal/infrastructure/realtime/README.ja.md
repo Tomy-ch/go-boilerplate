@@ -76,5 +76,6 @@ GoAWS v0.5.4 に対する `make realtime-smoke`（`scripts/realtime-smoke`）で
   実行ごとの topic と queue prefix で走らせる。AWS へ向けるのは `REALTIME_TEST_*`（この基盤では
   `REALTIME_TEST_PUBSUB_ENDPOINT`）の問題でしかない。skip は無い: emulator が居なければテストは失敗する
   — DynamoDB の store と同じ規則。
-- N 個の subscriber への fan-out と「publish 後の mark 失敗で二重配送しない」シナリオは、relay と
-  EventLog store の両方が要るため `internal/integration/` の統合テストにある。
+- N 個の subscriber への fan-out と「publish 後の mark 失敗で二重配送しない」シナリオも contract test
+  （`aws/fanout_contract_test.go`）にある。publisher と EventLog store の両方が要るため DynamoDB Local と
+  GoAWS を並べて走らせる。skip しない規則は同じ。
