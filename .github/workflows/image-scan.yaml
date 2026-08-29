@@ -64,6 +64,9 @@ jobs:
             tuf-repo-cdn.sigstore.dev:443
             rekor.sigstore.dev:443
             fulcio.sigstore.dev:443
+            api.npmjs.org:443
+            api.osv.dev:443
+            npm.jsr.io:443
             docker.io:443
             index.docker.io:443
             registry-1.docker.io:443

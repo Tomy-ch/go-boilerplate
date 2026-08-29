@@ -62,6 +62,9 @@ jobs:
             tuf-repo-cdn.sigstore.dev:443
             rekor.sigstore.dev:443
             fulcio.sigstore.dev:443
+            api.npmjs.org:443
+            api.osv.dev:443
+            npm.jsr.io:443
             api.anthropic.com:443
             *.anthropic.com:443
             statsig.anthropic.com:443
