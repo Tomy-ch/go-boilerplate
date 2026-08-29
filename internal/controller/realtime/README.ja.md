@@ -8,8 +8,8 @@
   （`realtime.InstanceSubscription`）をここで drain し、すべての通知を接続側へ渡す。
 - engine が担うのは **loop と batch ごとの coalescing と待機制御だけ**。wakeup が*何を意味するか* —
   どの接続を起こし、どれを閉じるか — は sink の責務であり、`controller/stream` の connection registry が
-  実装する（#1187 の Phase 6）。本 package が宣言するのは必要な sink だけで、接続についてそれ以上は
-  知らない。
+  実装する。本 package が宣言するのは必要な sink だけで、接続についてそれ以上は知らない。registry へは
+  sink 越しにしか届かず、その結線は realtime の DI module が行う。
 - 依存は usecase 層の port のみ: `realtime.InstanceSubscription`・`ucrealtime.LeaseKeeper`・
   `clock.Sleeper`・`logging.Logger`・`observability.LayerTracer`（`TracerFactory.Controller()` 経由）。
   `internal/infrastructure/*` は import せず（depguard `maintain_a_sound_controller`）、

@@ -52,7 +52,8 @@ type realtimeFanout struct {
 // realtimeModule は、Realtime Delivery の store・機構側 usecase・fan-out・SSE の stream handler・serve lifecycle の
 // 参加者を提供する fx.Module です。InfrastructureModule() には束ねず serve profile にだけ配線します
 // （内訳は internal/di/module/README.md「Design Policy」、配線条件は docs/design/realtime-delivery.md §3.1）。
-// Waker / Revoker は connection registry（controller/stream）が provide します。
+// Waker / Revoker / Streamer と drain の参加者は、どれも connection registry（controller/stream）
+// という 1 つの値です。
 func realtimeModule() fx.Option {
 	return fx.Module("realtime",
 		fx.Provide(
@@ -62,6 +63,11 @@ func realtimeModule() fx.Option {
 			provideInstanceLeaseStore,
 			provideRealtimeSecretGenerator,
 			provideCursorValidator,
+			provideReplayer,
+			provideConnectionRegistry,
+			provideStreamer,
+			provideWaker,
+			provideRevoker,
 			provideTicketIssuer,
 			provideTicketVerifier,
 			fx.Annotate(provideStreamTicketScheme, fx.ResultTags(`group:"`+oapiauth.SchemeGroup+`"`)),
@@ -78,6 +84,7 @@ func realtimeModule() fx.Option {
 			fx.Annotate(provideRealtimeProvisioner, fx.ResultTags(`group:"`+hook.ProvisionerGroup+`"`)),
 			fx.Annotate(provideRealtimeConsumerRunner, fx.ResultTags(`group:"`+hook.RunnerGroup+`"`)),
 			fx.Annotate(provideRealtimeHeartbeatRunner, fx.ResultTags(`group:"`+hook.RunnerGroup+`"`)),
+			fx.Annotate(provideRealtimeStreamDrainer, fx.ResultTags(`group:"`+hook.DrainerGroup+`"`)),
 		),
 		fx.Invoke(
 			stream.BindHandler,
@@ -290,6 +297,37 @@ func provideInstanceLeaseStore(
 
 func provideRealtimeSecretGenerator() rt.SecretGenerator {
 	return realtimesecret.New()
+}
+
+// provideConnectionRegistry は、この instance が保持する SSE 接続の索引を組み立てます。
+// 設定はゼロ値（= 既定値）で、typed config への露出は #1417 の範囲です。
+func provideConnectionRegistry(
+	replayer ucrealtime.Replayer,
+	sleeper clock.Sleeper,
+	log logging.Logger,
+	tf observability.TracerFactory,
+) *stream.Registry {
+	return stream.NewRegistry(replayer, sleeper, log, tf, stream.Settings{})
+}
+
+// provideStreamer / provideWaker / provideRevoker は、同じ registry を 3 つの受け口として graph へ出します。
+// 受け口ごとに型が違うのは呼ぶ側の関心が違うからで、実体を分ける理由にはなりません。
+func provideStreamer(registry *stream.Registry) stream.Streamer { return registry }
+
+func provideWaker(registry *stream.Registry) ctrlrealtime.Waker { return registry }
+
+func provideRevoker(registry *stream.Registry) ctrlrealtime.Revoker { return registry }
+
+// provideRealtimeStreamDrainer は、HTTP shutdown より前に SSE 接続を閉じ切る [hook.Drainer] を返します。
+// 停止順（drain → 常駐処理の停止 → instance resource の片付け → HTTP shutdown）は
+// RegisterHTTPServerHooks が固定しており、drain がここに居ることで長寿命レスポンスが shutdown を塞ぎません。
+func provideRealtimeStreamDrainer(registry *stream.Registry) hook.Drainer {
+	return hook.Drainer{Name: realtimeParticipantName + "-stream", Drain: registry.Drain}
+}
+
+// provideReplayer は、接続が cursor より後ろを読むための Replayer を組み立てます。
+func provideReplayer(log rt.EventLogStore, tf observability.TracerFactory) ucrealtime.Replayer {
+	return ucrealtime.NewReplayer(log, tf)
 }
 
 func provideCursorValidator(
