@@ -286,7 +286,7 @@ func TestRegistry_Drain(t *testing.T) {
 
 			reg, _, _ := testRegistry(t, Settings{})
 
-			assert.NoError(t, reg.Drain(context.Background()))
+			require.NoError(t, reg.Drain(context.Background()))
 		})
 
 		t.Run("RECONNECT を積んで閉じ、終わるまで待つ", func(t *testing.T) {
@@ -318,7 +318,7 @@ func TestRegistry_Drain(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 			t.Cleanup(cancel)
 
-			assert.NoError(t, reg.Drain(ctx), "閉じ切れなくても HTTP shutdown を待たせないこと")
+			require.NoError(t, reg.Drain(ctx), "閉じ切れなくても HTTP shutdown を待たせないこと")
 		})
 
 		t.Run("停止後は新規接続を受け付けない", func(t *testing.T) {

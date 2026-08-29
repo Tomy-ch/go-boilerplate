@@ -123,6 +123,12 @@ func TestRequireStreamGrant(t *testing.T) {
 			_, err := RequireStreamGrant(WithStreamGrant(context.Background()))
 			require.ErrorIs(t, err, ErrStreamGrantMissing)
 		})
+
+		t.Run("スロット未仕込みでもErrStreamGrantMissingを返す", func(t *testing.T) {
+			t.Parallel()
+			_, err := RequireStreamGrant(context.Background())
+			require.ErrorIs(t, err, ErrStreamGrantMissing)
+		})
 	})
 }
 
@@ -168,7 +174,7 @@ func TestGetStreamRevalidator(t *testing.T) {
 
 			require.True(t, ok)
 			require.NotNil(t, got)
-			assert.ErrorIs(t, got(ctx), errRevalidated)
+			require.ErrorIs(t, got(ctx), errRevalidated)
 		})
 
 		t.Run("未設定ならok=falseを返す", func(t *testing.T) {

@@ -25,8 +25,8 @@ var (
 // EventLog は、in-memory の rt.EventLogStore です。読み取りは常に最新の書き込みを反映します
 // （実装は強い一貫性の読み取りとして振る舞います）。
 //
-// テストが再現したい異常は 2 つあり、それぞれ専用の口を持ちます。到達できない位置は Seed で
-// 飛び番を直接置いて作り、依存の不調は SetUnavailable で切り替えます。
+// 正規の Append では作れない状態を組み立てる専用の口（Seed / SetUnavailable / Hold）を持ちます。
+// 各口の使い分けは README を参照してください。
 type EventLog struct {
 	mu          sync.Mutex
 	streams     map[rt.StreamID][]rt.DeliveryEvent
@@ -51,8 +51,8 @@ func (l *EventLog) Seed(events ...rt.DeliveryEvent) {
 	}
 }
 
-// Hold は、以降の読み取りを、返った関数が呼ばれるまで待たせます。読み取りが進行中である状態
-// （replay の枠を握ったまま終わらない接続）を作るための口です。
+// Hold は、以降の読み取りを、返った関数が呼ばれるまで待たせます。読み取りが進行中である状態を
+// テストが作るための口です。
 func (l *EventLog) Hold() func() {
 	l.mu.Lock()
 	gate := make(chan struct{})

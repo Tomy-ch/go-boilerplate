@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -23,17 +24,32 @@ const sseTestDeadline = 2 * time.Second
 // sseTestOccurredAt は、封筒の発生時刻として使う基準時刻です。
 var sseTestOccurredAt = time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-// sseTestEvent は、seq の位置の business event を組み立てます。
-func sseTestEvent(seq rt.Sequence) rt.DeliveryEvent {
-	return rt.DeliveryEvent{
-		EventID:       "evt-" + seq.String(),
-		StreamID:      "stream-1",
-		Sequence:      seq,
-		Type:          "sample.thing.created.v1",
-		OccurredAt:    sseTestOccurredAt,
-		SchemaVersion: 1,
-		Payload:       json.RawMessage(`{"k":"v"}`),
+// unflushableWriter は、http.ResponseWriter の最小限だけを満たす writer です。flush を支えないので
+// commit が確定に失敗します。echo.Response は同じ状況で panic するため、この経路は素の
+// ResponseWriter に対してしか通せません（Registry の枠返却も同じ理由で本番では到達しません）。
+type unflushableWriter struct {
+	header http.Header
+	status int
+}
+
+func (w *unflushableWriter) Header() http.Header {
+	if w.header == nil {
+		w.header = http.Header{}
 	}
+
+	return w.header
+}
+
+func (w *unflushableWriter) Write(b []byte) (int, error) { return len(b), nil }
+
+func (w *unflushableWriter) WriteHeader(status int) { w.status = status }
+
+// sseTestEvent は、payload を持つ business event を組み立てます。封筒の骨は testEvent と共有します。
+func sseTestEvent(seq rt.Sequence) rt.DeliveryEvent {
+	e := testEvent(seq)
+	e.Payload = json.RawMessage(`{"k":"v"}`)
+
+	return e
 }
 
 // captureSSE は、実 network 上で body を走らせ、client が受け取った生のバイト列を返します。
@@ -109,6 +125,22 @@ func Test_sseWriter_commit(t *testing.T) {
 			assert.Equal(t, "no", res.Header.Get("X-Accel-Buffering"))
 		})
 	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("flush を支えない writer には確定できずエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			res := &unflushableWriter{}
+
+			err := newSSEWriter(res, sseTestDeadline).commit()
+
+			require.ErrorIs(t, err, http.ErrNotSupported)
+			assert.Equal(t, "text/event-stream", res.Header().Get("Content-Type"),
+				"ヘッダは書いた後に flush で落ちるので、確定の失敗を握り潰さないこと")
+		})
+	})
 }
 
 func Test_sseWriter_writeEvent(t *testing.T) {
@@ -123,12 +155,15 @@ func Test_sseWriter_writeEvent(t *testing.T) {
 			got, err := captureSSE(t, func(w *sseWriter) error { return w.writeEvent(sseTestEvent(42)) })
 
 			require.NoError(t, err)
-			assert.Equal(t,
-				"id: 42\n"+
-					`data: {"eventId":"evt-42","streamId":"stream-1","sequence":"42",`+
+			lines := strings.Split(strings.TrimSuffix(got, "\n\n"), "\n")
+			require.Len(t, lines, 2, "business event は id 行と data 行の 2 行で 1 フレーム")
+			assert.Equal(t, "id: 42", lines[0])
+			// フレーミングと各フィールドは wire 契約だが、JSON のフィールド順は MarshalJSON の実装詳細。
+			assert.JSONEq(t,
+				`{"eventId":"evt-42","streamId":"stream-1","sequence":"42",`+
 					`"type":"sample.thing.created.v1","occurredAt":"2026-01-01T00:00:00Z",`+
-					`"schemaVersion":1,"payload":{"k":"v"}}`+"\n\n",
-				got)
+					`"schemaVersion":1,"payload":{"k":"v"}}`,
+				strings.TrimPrefix(lines[1], "data: "))
 		})
 	})
 

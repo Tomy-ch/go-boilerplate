@@ -117,6 +117,10 @@ EventLog に届かなくても失敗せずに生き延びますし、先頭行�
   許すので overflow に到達できる。
 - `auth/stream_ticket_test.go` は scheme 名が `openapi.yaml` と一致すること、verifier がリクエストの context と path の
   destination を受け取ること、拒否された ticket がスロットを空のまま残すことを固定する。
+- `commit` が失敗したときに枠を解放する分岐は path ではなく guard: `echo.Response.Flush` は flush できない writer に
+  対して panic し、それ以外のあらゆる失敗を握り潰すので、Echo 経由では `commit` がエラーを返すことはなく、本物の
+  `ResponseWriter` は必ず flush できる。この振る舞いは `Stream` 越しに到達して確かめるのではなく、1 段下の
+  `sseWriter.commit` を素の flush できない writer に対して当てて固定している。
 - `sse_test.go`・`registry_test.go`・`connection_test.go` は確定後の半分を覆う。これらを形づくる規則が 2 つある。
   **どのテストも実時間を待たない**: heartbeat も寿命も catch-up もすべて `clock.Sleeper` を通し、テストは「どの tick を
   解放するか」をテスト側が指名するまでブロックする Sleeper を渡す。時間を測るのではなくスケジュールの判断を検証する

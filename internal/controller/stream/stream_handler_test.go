@@ -23,7 +23,11 @@ import (
 
 const targetPath = "/v1/streams/:destination"
 
-var errStreamClosed = xerrors.New("stream closed")
+var (
+	errStreamClosed = xerrors.New("stream closed")
+	// errRevalidated は、handler が載せた再検証の手段が実際に呼ばれたことを見分ける番兵です。
+	errRevalidated = xerrors.New("revalidated")
+)
 
 // stubStreamer は、handler が渡した StreamRequest を捕まえる Streamer です。
 type stubStreamer struct {
@@ -100,6 +104,23 @@ func Test_server_GetStream(t *testing.T) {
 			// handler が張った span 付きの context が request に据え直され、その request が Streamer に渡ること。
 			assert.NotEqual(t, original, streamer.gotReq.Context())
 			assert.Equal(t, c.Request().Context(), streamer.gotReq.Context())
+		})
+
+		t.Run("スロットの再検証手段をStreamRequestへ載せてStreamerへ渡す", func(t *testing.T) {
+			t.Parallel()
+			s, cursors, streamer := newServer(t)
+			cursors.EXPECT().Validate(gomock.Any(), rt.StreamID("stream-1"), rt.Sequence(3)).Return(nil)
+
+			c := newContext(t, "/v1/streams/stream-1", grantFor())
+			require.True(t, ctxhelper.SetStreamRevalidator(
+				c.Request().Context(), func(context.Context) error { return errRevalidated },
+			))
+
+			require.NoError(t, s.GetStream(c, "stream-1", gen.GetStreamParams{}))
+
+			require.NotNil(t, streamer.got)
+			require.NotNil(t, streamer.got.Revalidate, "登録直後の再検証は Streamer が呼ぶので、結線が切れると失効が取りこぼされる")
+			require.ErrorIs(t, streamer.got.Revalidate(c.Request().Context()), errRevalidated)
 		})
 
 		t.Run("afterだけならその位置を使う", func(t *testing.T) {

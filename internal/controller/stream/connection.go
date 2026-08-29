@@ -290,8 +290,7 @@ func (f *fetcher) releaseSlot() {
 
 // control 指示の構築子。action と reason の対応はここが唯一の定義で、client 契約
 // （docs/design/realtime-delivery.md §4.3）の reason code に 1 対 1 で対応します。
-// STREAM_RECOVERY_FAILED はここに現れません — 稼働中に EventLog が読めないときは接続を保って
-// catch-up に委ねるので、接続側からその状態を送る先がないためです。
+// STREAM_RECOVERY_FAILED は意図的に現れません（README「Reason codes this package sends」参照）。
 
 // reconnectControl は、instance が停止に入ったので繋ぎ直すよう伝えます。
 func reconnectControl() gen.ControlEvent {

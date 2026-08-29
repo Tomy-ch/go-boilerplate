@@ -36,5 +36,12 @@ func TestNew(t *testing.T) {
 			t.Parallel()
 			assert.False(t, exec(t, "/v1/users"))
 		})
+
+		t.Run("streampathの場合もfalseを返す", func(t *testing.T) {
+			t.Parallel()
+			// SSE は長寿命なので timeout / logging / redmetrics からは外すが、ここで外すと
+			// OpenAPI validator が走らず ticket の security scheme ごと素通りする。
+			assert.False(t, exec(t, "/v1/streams/destination-1"))
+		})
 	})
 }

@@ -3,6 +3,8 @@ package testkit
 import (
 	"context"
 	"encoding/json"
+	"strconv"
+	"sync"
 	"testing"
 	"time"
 
@@ -132,7 +134,7 @@ func TestEventLog_Hold(t *testing.T) {
 	})
 }
 
-func Test_EventLog_awaitRelease(t *testing.T) {
+func TestEventLog_awaitRelease(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -141,7 +143,7 @@ func Test_EventLog_awaitRelease(t *testing.T) {
 		t.Run("関門が無ければ待たずに返る", func(t *testing.T) {
 			t.Parallel()
 
-			assert.NoError(t, NewEventLog().awaitRelease(context.Background()))
+			require.NoError(t, NewEventLog().awaitRelease(context.Background()))
 		})
 	})
 
@@ -225,7 +227,7 @@ func TestEventLog_Append(t *testing.T) {
 			l := NewEventLog()
 			require.NoError(t, l.Append(context.Background(), event(1, "e1")))
 
-			assert.NoError(t, l.Append(context.Background(), event(1, "e1")))
+			require.NoError(t, l.Append(context.Background(), event(1, "e1")))
 		})
 	})
 
@@ -282,6 +284,24 @@ func TestEventLog_ReadAfter(t *testing.T) {
 			require.Len(t, res.Events, 2)
 			assert.Equal(t, rt.Sequence(2), res.Events[0].Sequence)
 			assert.False(t, res.HasMore)
+		})
+
+		t.Run("Limit 未指定なら既定の上限で打ち切る", func(t *testing.T) {
+			t.Parallel()
+
+			l := NewEventLog()
+			events := make([]rt.DeliveryEvent, 0, defaultReadLimit+1)
+			for i := 1; i <= defaultReadLimit+1; i++ {
+				events = append(events, event(rt.Sequence(i), "e"+strconv.Itoa(i)))
+			}
+			l.Seed(events...)
+
+			res, err := l.ReadAfter(context.Background(), rt.ReadAfterQuery{StreamID: testStream})
+
+			require.NoError(t, err)
+			// 全件返す fake は、呼び出し側の paging を「正しく見える」ようにしてしまう。
+			assert.Len(t, res.Events, defaultReadLimit)
+			assert.True(t, res.HasMore)
 		})
 
 		t.Run("Limit を超えると HasMore が true になる", func(t *testing.T) {
@@ -444,6 +464,41 @@ func Test_insert(t *testing.T) {
 
 			require.Len(t, got, 1)
 			assert.Equal(t, "replaced", got[0].EventID)
+		})
+	})
+}
+
+func TestEventLog_concurrentUse(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("書き込みと読み取りが同時に走っても壊れない", func(t *testing.T) {
+			t.Parallel()
+
+			// README が「並行して使える」と約束している。replay の loop と wakeup が同時に触るのが
+			// 実際の使われ方なので、-race が落とせる形で固定する。
+			l := NewEventLog()
+			ctx := context.Background()
+
+			var wg sync.WaitGroup
+			for i := 1; i <= 20; i++ {
+				wg.Add(2)
+				go func() {
+					defer wg.Done()
+					_ = l.Append(ctx, event(rt.Sequence(i), "e"+strconv.Itoa(i)))
+				}()
+				go func() {
+					defer wg.Done()
+					_, _ = l.ReadAfter(ctx, rt.ReadAfterQuery{StreamID: testStream})
+				}()
+			}
+			wg.Wait()
+
+			res, err := l.ReadAfter(ctx, rt.ReadAfterQuery{StreamID: testStream, Limit: 64})
+			require.NoError(t, err)
+			assert.Len(t, res.Events, 20)
 		})
 	})
 }

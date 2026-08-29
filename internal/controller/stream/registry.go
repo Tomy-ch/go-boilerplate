@@ -21,13 +21,9 @@ const registryLoggerName = "realtime-stream"
 
 var _ Streamer = (*Registry)(nil)
 
-// Registry は、この instance が保持している SSE 接続の索引です。確定済みの接続を配信し続ける Streamer
-// であると同時に、fan-out で届いた wakeup / 失効を接続へ渡す受け口（controller/realtime の Waker /
-// Revoker）と、停止時に接続を閉じ切る drain を兼ねます。3 つの入口はどれも同じ索引を見るので、
-// 型を分けると lock を跨いだ整合が要り、分けない理由がそのまま責務になります。
-//
-// 索引は 2 本あります。wakeup は stream 単位、失効は subject 単位で接続を引くためで、
-// どちらも Realtime Delivery 中立の語彙です（誰が user で誰が operator かは知りません）。
+// Registry は、この instance が保持している SSE 接続の索引です。Streamer・（controller/realtime の）
+// Waker / Revoker・停止時の drain がすべて同じ 1 つの索引を共有します。型を分けない理由と、
+// 索引を stream 単位 / subject 単位の 2 本持つ理由は README「Runtime」を参照。
 type Registry struct {
 	replayer ucrealtime.Replayer
 	sleeper  clock.Sleeper

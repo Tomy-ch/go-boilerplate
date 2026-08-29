@@ -115,7 +115,7 @@ func testFetcher(t *testing.T, conn *connection, from rt.Sequence) (*fetcher, *m
 	}, replayer
 }
 
-// testEvent は、seq の位置の最小限の封筒です。
+// testEvent は、seq の位置の最小限の封筒です。payload を持つ形は sseTestEvent が返します。
 func testEvent(seq rt.Sequence) rt.DeliveryEvent {
 	return rt.DeliveryEvent{
 		EventID: "evt-" + seq.String(), StreamID: "stream-1", Sequence: seq,
@@ -284,7 +284,7 @@ func Test_connection_wake(t *testing.T) {
 			assert.Equal(t, int64(9), conn.pending.Load())
 		})
 
-		t.Run("合図が溜まっていても重複した通知で詰まらない", func(t *testing.T) {
+		t.Run("重複した通知は合図 1 つへ畳まれ、送信側は詰まらない", func(t *testing.T) {
 			t.Parallel()
 
 			conn := testConn()
@@ -293,6 +293,14 @@ func Test_connection_wake(t *testing.T) {
 			conn.wake(3)
 
 			assert.Equal(t, int64(3), conn.pending.Load(), "batch を跨いだ通知が最大値へ畳まれること")
+
+			// 合図は cap 1 で、溢れた分は捨てる。queue されると engine の loop が詰まる。
+			<-conn.signal
+			select {
+			case <-conn.signal:
+				t.Fatal("合図が queue されている")
+			default:
+			}
 		})
 	})
 }
@@ -342,15 +350,20 @@ func Test_jitteredCatchUp(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("固定周期以上、jitter の幅までに収まる", func(t *testing.T) {
+		t.Run("固定周期以上、jitter の幅までに収まり、毎回同じ値にはならない", func(t *testing.T) {
 			t.Parallel()
 
+			seen := map[time.Duration]struct{}{}
 			for range 50 {
 				got := jitteredCatchUp()
 
 				require.GreaterOrEqual(t, got, catchUpInterval)
 				require.LessOrEqual(t, got, catchUpInterval+catchUpJitter)
+				seen[got] = struct{}{}
 			}
+
+			// 揺らぎが消えると全接続が同時刻に EventLog を読みに行く。範囲だけでは退化を検出できない。
+			assert.Greater(t, len(seen), 1, "50 標本がすべて同値になる確率は事実上ゼロ")
 		})
 	})
 }
@@ -405,6 +418,39 @@ func Test_fetcher_run(t *testing.T) {
 			case <-time.After(waitTimeout):
 				t.Fatal("初回 replay が届かなかった")
 			}
+		})
+
+		t.Run("初回 replay を終えたら枠を返し、周期 catch-up で読み直して また返す", func(t *testing.T) {
+			t.Parallel()
+
+			conn := testConn()
+			f, replayer := testFetcher(t, conn, 0)
+			sleeper := newFakeSleeper()
+			f.sleeper = sleeper
+			require.NoError(t, f.sem.Acquire(context.Background(), 1))
+			f.holdsSlot = true
+			gomock.InOrder(
+				replayer.EXPECT().ReadPage(gomock.Any(), gomock.Any(), rt.Sequence(0)).
+					Return([]rt.DeliveryEvent{testEvent(1)}, false, nil),
+				replayer.EXPECT().ReadPage(gomock.Any(), gomock.Any(), rt.Sequence(1)).
+					Return([]rt.DeliveryEvent{testEvent(2)}, false, nil),
+			)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			t.Cleanup(cancel)
+			go f.run(ctx)
+
+			require.Equal(t, rt.Sequence(1), (<-conn.events).Sequence)
+			// 初回 replay の枠は読み終えた時点で返る（defer だけに退行すると寿命いっぱい握られる）。
+			require.Eventually(t, func() bool { return f.sem.TryAcquire(1) }, waitTimeout, 5*time.Millisecond,
+				"初回 replay 直後に枠が返ること")
+			f.sem.Release(1)
+
+			sleeper.tick(t, tickCatchUp)
+
+			assert.Equal(t, rt.Sequence(2), (<-conn.events).Sequence)
+			assert.Eventually(t, func() bool { return f.sem.TryAcquire(1) }, waitTimeout, 5*time.Millisecond,
+				"catch-up が取った枠も返ること")
 		})
 	})
 }
