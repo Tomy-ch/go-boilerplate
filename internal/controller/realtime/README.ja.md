@@ -50,6 +50,6 @@
 
 他のループ駆動 controller と同じ（[`../README.ja.md`](../README.ja.md)）: instance subscription と lease
 keeper は生成 mock、sleeper も mock にしてテストは一切 sleep せず、loop は loop として駆動する — 1 反復の効果
-（batch → sink → 削除。coalescing は記録用 sink で検証する）、停止の意味論（loop 先頭・receive 中・
+（batch → sink → 削除。coalescing は生成した `Waker` / `Revoker` の mock が受けた呼び出しで検証する）、停止の意味論（loop 先頭・receive 中・
 backoff 中での cancel）、反復ごとのエラー経路（backoff して継続、削除失敗のログ）、そして settings の
 既定値。
