@@ -2,22 +2,23 @@
 
 Realtime Delivery の fan-out 基盤（[ADR-0073](../../../docs/adr/0073-sns-sqs-instance-fanout.ja.md)）の
 adapter 群です。event を EventLog へ append してから全 serve インスタンスを起こす publish 側と、1 つの
-インスタンスの inbox をそのインスタンスが生きている間だけ所有する receive 側を持ちます。
+インスタンスの queue と subscription をそのインスタンスが生きている間だけ所有する receive 側を持ちます。
 
 ## 役割
 
-`realtime.go` が実装を選ぶ唯一の場所で、`aws/` が SNS / SQS 実装を持ちます。vendor の語彙（topic /
-queue / subscription / receipt handle / message attribute）はここで止まり、上の seam は wakeup・
-revocation・インスタンスの inbox だけを語ります。
+`realtime.go` が実装を選ぶ唯一の場所で、`aws/` が SNS / SQS 実装を持ちます。SDK の語彙（topic と queue の
+ARN、queue URL、receipt handle、message attribute）はここで止まり、上の port が語るのは instance
+subscription・不透明な receipt を伴う通知・wakeup・revocation だけです。
 
 |パス|役割|
 |---|---|
-|`realtime.go`|実装を選び、DI module が必要とするもの（`NewClients`・`NewPublisher`・`NewRevocationNotifier`・`NewInstanceSubscription`・2 つの `QueueAttributes` builder）を再 export する|
+|`realtime.go`|実装を選び、DI module・CLI・テストが必要とするもの（`NewClients`・`NewPublisher`・`NewRevocationNotifier`・`NewInstanceSubscription`・`EnsureTopic`・2 つの `QueueAttributes` builder、キー付き入力 `QueueAttributesInput` / `SubscriptionTarget`）を再 export する|
 |`aws/client.go`|`NewClients` — 資格情報の解決は 1 回（`awsclient.Resolve`）、1 つの endpoint 上に 2 つのサービスクライアント（SNS と SQS は endpoint を共有する。GoAWS と AWS の違いは endpoint と資格情報だけ）|
 |`aws/publisher.go`|`realtime` outbox チャネル向けの `boundary/publisher.Publisher`: payload → `DeliveryEvent` → `EventLogStore.Append` → wakeup の SNS `Publish`|
 |`aws/revocation.go`|`realtime.RevocationNotifier`: 同じ topic への revocation。message attribute で区別する|
 |`aws/subscription.go`|`realtime.InstanceSubscription`: queue 作成 → ARN 解決 → 属性設定 → subscribe → `RawMessageDelivery=true`。long poll の receive、delete、unsubscribe → queue 削除|
-|`aws/attributes.go`|`QueueAttributes` — インスタンス queue を作るときの属性集合。production の builder は全部を返す|
+|`aws/attributes.go`|`QueueAttributes` — インスタンス queue を作るときの属性集合。production の builder（`NewQueueAttributes(QueueAttributesInput{TopicARN, DLQARN})`）は全部を返す|
+|`aws/topic.go`|`EnsureTopic` — ARN を返す冪等な `CreateTopic`。`realtime-init` と contract test 用（アプリケーションの起動時には決して呼ばない）|
 |`aws/policy.go`|queue の access policy: `aws:SourceArn` が wakeup topic のときに限り `sns.amazonaws.com` からの `sqs:SendMessage` を許可する|
 |`aws/message.go`|wire 形式: ADR-0073 が定める wakeup の body `{eventId, streamId, sequence}`、revocation の body `{subject, destination}`、および両者を分ける `type` message attribute|
 |`local/attributes.go`|emulator 用の属性集合 — GoAWS が受け付けるものだけ（後述）|
@@ -35,8 +36,8 @@ revocation・インスタンスの inbox だけを語ります。
 | `Teardown()` | `Unsubscribe` → `DeleteQueue`。前段が失敗しても各段を試み、失敗は束ねる — 残ったものは orphan-cleanup job が回収する |
 
 固定値は `aws/attributes.go` にあります: visibility timeout 30 秒、long polling 20 秒、
-`maxReceiveCount` 5。topic ARN・queue prefix・（任意の）DLQ ARN はデプロイ先依存で、`RealtimeConfig`
-から来ます。
+`maxReceiveCount` 5。topic・queue prefix・（任意の）DLQ はデプロイ先依存で、`RealtimeConfig`
+（`REALTIME_TOPIC` / `REALTIME_QUEUE_PREFIX` / `REALTIME_DLQ`。最初と最後は AWS では ARN）から来ます。
 
 ## エラーの分類
 

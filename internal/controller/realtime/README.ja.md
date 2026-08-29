@@ -4,7 +4,7 @@
 
 - outbox relay や worker engine と同格の **consume 駆動 driving adapter**。新しい層ではなく、機構への
   もう 1 つの入口。fan-out の受信側にあたる
-  （[ADR-0073](../../../docs/adr/0073-sns-sqs-instance-fanout.ja.md)）: serve インスタンスの inbox
+  （[ADR-0073](../../../docs/adr/0073-sns-sqs-instance-fanout.ja.md)）: serve インスタンス自身の queue
   （`realtime.InstanceSubscription`）をここで drain し、すべての通知を接続側へ渡す。
 - engine が担うのは **loop と batch ごとの coalescing と待機制御だけ**。wakeup が*何を意味するか* —
   どの接続を起こし、どれを閉じるか — は sink の責務であり、`controller/stream` の connection registry が
@@ -19,9 +19,9 @@
 
 - `Engine` — 常駐 consumer。`NewEngine(sub, wakeups, revocations, sleeper, log, tf, set)`。
   `Run(ctx) error` が loop 本体。
-- `Settings` — `BatchSize`（既定 10。inbox 自身の上限）と `ErrorBackoff`（既定 5 秒）。ゼロ値は既定へ
+- `Settings` — `BatchSize`（既定 10。queue 自身の上限）と `ErrorBackoff`（既定 5 秒）。ゼロ値は既定へ
   フォールバックする。receive が long poll であり、どちらの値もデプロイ先で変わらないため config は無い。
-- `WakeupSink.Wake(streamID, upTo)` / `RevocationSink.Revoke(subject, destination)` — 受け手。どちらも
+- `WakeupSink.Wake(ctx, streamID, upTo)` / `RevocationSink.Revoke(ctx, subject, destination)` — 受け手。どちらも
   loop 上で同期的に呼ばれるので、実装は印を付けるか通知するだけで、replay を待ってはならない。重複は
   正常であり、冪等でなければならない。
 - `Heartbeat` — `NewHeartbeat(keeper, id, sleeper, log, tf)`。`Run(ctx)` は instance lease を直ちに書き、
@@ -47,8 +47,8 @@
 
 ## テスト戦略
 
-他のループ駆動 controller と同じ（[`../README.ja.md`](../README.ja.md)）: inbox と lease keeper は生成
-mock、sleeper も mock にしてテストは一切 sleep せず、loop は loop として駆動する — 1 反復の効果
+他のループ駆動 controller と同じ（[`../README.ja.md`](../README.ja.md)）: instance subscription と lease
+keeper は生成 mock、sleeper も mock にしてテストは一切 sleep せず、loop は loop として駆動する — 1 反復の効果
 （batch → sink → 削除。coalescing は記録用 sink で検証する）、停止の意味論（loop 先頭・receive 中・
 backoff 中での cancel）、反復ごとのエラー経路（backoff して継続、削除失敗のログ）、そして settings の
 既定値。

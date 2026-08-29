@@ -25,6 +25,14 @@ type callLog struct {
 	calls []string
 }
 
+// fixture は、記録する参加者と HTTP の start / stop を持つ serveLifecycle を組み立てます。
+type fixture struct {
+	lc  *serveLifecycle
+	log *callLog
+	// logCount は、msg のログの件数を返します。
+	logCount func(msg string) int
+}
+
 func (c *callLog) add(name string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -37,14 +45,6 @@ func (c *callLog) get() []string {
 	defer c.mu.Unlock()
 
 	return append([]string(nil), c.calls...)
-}
-
-// fixture は、記録する参加者と HTTP の start / stop を持つ serveLifecycle を組み立てます。
-type fixture struct {
-	lc  *serveLifecycle
-	log *callLog
-	// logCount は、msg のログの件数を返します。
-	logCount func(msg string) int
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -284,47 +284,55 @@ func Test_serveLifecycle_stop(t *testing.T) {
 func Test_serveLifecycle_stopRunners(t *testing.T) {
 	t.Parallel()
 
-	t.Run("先頭 n 個を逆順に止め、失敗は記録する", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		f := newFixture(t)
-		failing := boundRunner{
-			name:  "bad",
-			start: func(context.Context) error { return nil },
-			stop: func(context.Context) error {
-				f.log.add("runner.stop.bad")
+		t.Run("先頭 n 個を逆順に止め、失敗は記録する", func(t *testing.T) {
+			t.Parallel()
 
-				return errParticipant
-			},
-		}
-		f.lc.runners = []boundRunner{f.runner("a"), failing, f.runner("never")}
-		require.NoError(t, f.lc.runners[0].start(t.Context()))
+			f := newFixture(t)
+			failing := boundRunner{
+				name:  "bad",
+				start: func(context.Context) error { return nil },
+				stop: func(context.Context) error {
+					f.log.add("runner.stop.bad")
 
-		errs := f.lc.stopRunners(t.Context(), 2)
+					return errParticipant
+				},
+			}
+			f.lc.runners = []boundRunner{f.runner("a"), failing, f.runner("never")}
+			require.NoError(t, f.lc.runners[0].start(t.Context()))
 
-		require.Len(t, errs, 1)
-		assert.Equal(t, []string{"runner.start.a", "runner.stop.bad", "runner.stop.a"}, f.log.get())
-		assert.Equal(t, 1, f.logCount("serve runner failed to stop"))
+			errs := f.lc.stopRunners(t.Context(), 2)
+
+			require.Len(t, errs, 1)
+			assert.Equal(t, []string{"runner.start.a", "runner.stop.bad", "runner.stop.a"}, f.log.get())
+			assert.Equal(t, 1, f.logCount("serve runner failed to stop"))
+		})
 	})
 }
 
 func Test_serveLifecycle_teardown(t *testing.T) {
 	t.Parallel()
 
-	t.Run("先頭 n 個を逆順に片付け、失敗は記録する", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		f := newFixture(t)
-		f.lc.provisioners = []Provisioner{
-			f.provisioner("a", nil, errParticipant),
-			f.provisioner("b", nil, nil),
-			f.provisioner("never", nil, nil),
-		}
+		t.Run("先頭 n 個を逆順に片付け、失敗は記録する", func(t *testing.T) {
+			t.Parallel()
 
-		errs := f.lc.teardown(t.Context(), 2)
+			f := newFixture(t)
+			f.lc.provisioners = []Provisioner{
+				f.provisioner("a", nil, errParticipant),
+				f.provisioner("b", nil, nil),
+				f.provisioner("never", nil, nil),
+			}
 
-		require.Len(t, errs, 1)
-		assert.Equal(t, []string{"teardown.b", "teardown.a"}, f.log.get())
-		assert.Equal(t, 1, f.logCount("serve provisioner failed to tear down"))
+			errs := f.lc.teardown(t.Context(), 2)
+
+			require.Len(t, errs, 1)
+			assert.Equal(t, []string{"teardown.b", "teardown.a"}, f.log.get())
+			assert.Equal(t, 1, f.logCount("serve provisioner failed to tear down"))
+		})
 	})
 }

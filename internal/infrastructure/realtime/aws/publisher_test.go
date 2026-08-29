@@ -185,16 +185,20 @@ func Test_publisher_Publish(t *testing.T) {
 func Test_decodeEvent(t *testing.T) {
 	t.Parallel()
 
-	t.Run("eventId が message_id と一致すればそのまま通る", func(t *testing.T) {
+	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		m, _ := outboxMessage(t, "")
-		m2, _ := outboxMessage(t, m.MessageID.String())
-		m2.MessageID = m.MessageID
+		t.Run("eventId が message_id と一致すればそのまま通る", func(t *testing.T) {
+			t.Parallel()
 
-		got, err := decodeEvent(m2)
-		require.NoError(t, err)
-		assert.Equal(t, m.MessageID.String(), got.EventID)
+			m, _ := outboxMessage(t, "")
+			m2, _ := outboxMessage(t, m.MessageID.String())
+			m2.MessageID = m.MessageID
+
+			got, err := decodeEvent(m2)
+			require.NoError(t, err)
+			assert.Equal(t, m.MessageID.String(), got.EventID)
+		})
 	})
 }
 

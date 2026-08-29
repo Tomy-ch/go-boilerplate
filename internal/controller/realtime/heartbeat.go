@@ -44,7 +44,11 @@ func (h *Heartbeat) Run(ctx context.Context) error {
 			return nil
 		}
 
-		if err := h.keeper.Beat(ctx, h.id); err != nil && ctx.Err() == nil {
+		if err := h.keeper.Beat(ctx, h.id); err != nil {
+			if ctx.Err() != nil {
+				return nil
+			}
+
 			log.Error(ctx, "failed to heartbeat instance lease", logging.Error(logging.ErrorKey, err))
 		}
 

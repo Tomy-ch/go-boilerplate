@@ -36,7 +36,7 @@
 |`job/`|CLI から起動されるジョブのコントローラ|[README](job/README.ja.md)|
 |`worker/`|pull-ack メッセージキューを消費し Usecase へディスパッチするワーカーエンジン|[README](worker/README.ja.md)|
 |`outbox/`|outbox を周期的に poll し未 publish メッセージを送るリレーエンジン|[README](outbox/README.ja.md)|
-|`realtime/`|instance の inbox から Realtime Delivery の wakeup / revocation を受け取り、接続側へ渡す consumer エンジン。instance lease の heartbeat ループ|[README](realtime/README.ja.md)|
+|`realtime/`|instance 自身の queue から Realtime Delivery の wakeup / revocation を受け取り、接続側へ渡す consumer エンジン。instance lease の heartbeat ループ|[README](realtime/README.ja.md)|
 |`server/`|Echo インスタンスの初期化と DI ライフサイクルへの統合|[README](server/README.ja.md)|
 |`httpstack/`|ミドルウェア群（CORS, セキュリティ, ログ, 認証等）|[README](httpstack/README.ja.md)|
 |`error/response/`|統一的な HTTP エラーレスポンスの生成と apperror マッピング|[README](error/response/README.ja.md)|

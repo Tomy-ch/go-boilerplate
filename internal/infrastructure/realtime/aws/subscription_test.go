@@ -502,3 +502,100 @@ func Test_subscription_currentQueueURL(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, testQueueURL, url)
 }
+
+func Test_subscription_provision(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("queue の URL と ARN と subscription の ARN を状態に保持する", func(t *testing.T) {
+			t.Parallel()
+
+			s, m := newSubscription(t)
+			expectProvision(m)
+
+			require.NoError(t, s.provision(t.Context(), "realtime-test-inst-1"))
+			assert.Equal(t, "http://localhost:4100/000000000000/realtime-test-inst-1", s.queueURL)
+			assert.Equal(t, testQueueARN, s.queueARN)
+			assert.Equal(t, testSubARN, s.subscriptionARN)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("属性の組み立てに失敗すればその失敗を返し、queue の状態は残る", func(t *testing.T) {
+			t.Parallel()
+
+			s, m := newSubscription(t)
+			s.attrs = failingAttributes{}
+			m.sqs.EXPECT().CreateQueue(gomock.Any(), gomock.Any()).Return(&sqs.CreateQueueOutput{QueueUrl: awssdk.String(testQueueURL)}, nil)
+			m.sqs.EXPECT().GetQueueAttributes(gomock.Any(), gomock.Any()).
+				Return(&sqs.GetQueueAttributesOutput{Attributes: map[string]string{"QueueArn": testQueueARN}}, nil)
+
+			require.ErrorIs(t, s.provision(t.Context(), "realtime-test-inst-1"), errSubstrate)
+			assert.Equal(t, testQueueURL, s.queueURL)
+		})
+
+		t.Run("subscribe が空の ARN を返せば ErrUnavailable", func(t *testing.T) {
+			t.Parallel()
+
+			s, m := newSubscription(t)
+			m.sqs.EXPECT().CreateQueue(gomock.Any(), gomock.Any()).Return(&sqs.CreateQueueOutput{QueueUrl: awssdk.String(testQueueURL)}, nil)
+			m.sqs.EXPECT().GetQueueAttributes(gomock.Any(), gomock.Any()).
+				Return(&sqs.GetQueueAttributesOutput{Attributes: map[string]string{"QueueArn": testQueueARN}}, nil)
+			m.sqs.EXPECT().SetQueueAttributes(gomock.Any(), gomock.Any()).Return(&sqs.SetQueueAttributesOutput{}, nil)
+			m.sns.EXPECT().Subscribe(gomock.Any(), gomock.Any()).Return(&sns.SubscribeOutput{}, nil)
+
+			require.ErrorIs(t, s.provision(t.Context(), "realtime-test-inst-1"), apperror.ErrUnavailable)
+		})
+	})
+}
+
+// failingAttributes は、属性の組み立てに失敗する QueueAttributes です。
+type failingAttributes struct{}
+
+func (failingAttributes) Build(string) (map[string]string, error) { return nil, errSubstrate }
+
+func Test_subscription_teardown(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("何も作っていなければ substrate を叩かずに nil", func(t *testing.T) {
+			t.Parallel()
+
+			s, _ := newSubscription(t)
+			require.NoError(t, s.teardown(t.Context()))
+		})
+
+		t.Run("queue だけ残っていれば削除だけ行う", func(t *testing.T) {
+			t.Parallel()
+
+			s, m := newSubscription(t)
+			s.queueURL, s.queueARN = testQueueURL, testQueueARN
+			m.sqs.EXPECT().DeleteQueue(gomock.Any(), gomock.Any()).Return(&sqs.DeleteQueueOutput{}, nil)
+
+			require.NoError(t, s.teardown(t.Context()))
+			assert.Empty(t, s.queueURL)
+			assert.Empty(t, s.queueARN)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("queue の削除に失敗すれば URL を残して ErrUnavailable", func(t *testing.T) {
+			t.Parallel()
+
+			s, m := newSubscription(t)
+			s.queueURL = testQueueURL
+			m.sqs.EXPECT().DeleteQueue(gomock.Any(), gomock.Any()).Return(nil, errSubstrate)
+
+			require.ErrorIs(t, s.teardown(t.Context()), apperror.ErrUnavailable)
+			assert.Equal(t, testQueueURL, s.queueURL)
+		})
+	})
+}

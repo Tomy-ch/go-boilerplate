@@ -36,19 +36,6 @@ type HTTPServerHooksIn struct {
 	Drainers     []Drainer      `group:"serve.drainers"`
 }
 
-// RegisterHTTPServerHooks は、serve instance の起動・停止の順序を 1 箇所で決めて登録します。
-//
-//	Start: 依存の到達確認 → 受信 resource の作成 → 常駐処理の開始 → HTTP listen
-//	Stop:  drain（新規接続の拒否を含む）→ 常駐処理の停止 → 受信 resource の片付け → HTTP shutdown
-//
-// fx の OnStop は登録の逆順で走るため、順序を hook の登録順に委ねず、start / stop 各 1 本の中で明示的に
-// 呼びます（参加者が増減しても順序が変わらず、drain が HTTP shutdown より前に完了することを固定する）。
-func RegisterHTTPServerHooks(in HTTPServerHooksIn) {
-	lc := newServeLifecycle(in)
-	in.Reg.RegisterStart(lc.start)
-	in.Reg.RegisterStop(lc.stop)
-}
-
 // boundRunner は、Bind 済みの常駐処理です。
 type boundRunner struct {
 	name  string
@@ -65,6 +52,19 @@ type serveLifecycle struct {
 	drainers     []Drainer
 	httpStart    func(ctx context.Context) error
 	httpStop     func(ctx context.Context) error
+}
+
+// RegisterHTTPServerHooks は、serve instance の起動・停止の順序を 1 箇所で決めて登録します。
+//
+//	Start: 依存の到達確認 → 受信 resource の作成 → 常駐処理の開始 → HTTP listen
+//	Stop:  drain（新規接続の拒否を含む）→ 常駐処理の停止 → 受信 resource の片付け → HTTP shutdown
+//
+// fx の OnStop は登録の逆順で走るため、順序を hook の登録順に委ねず、start / stop 各 1 本の中で明示的に
+// 呼びます（参加者が増減しても順序が変わらず、drain が HTTP shutdown より前に完了することを固定する）。
+func RegisterHTTPServerHooks(in HTTPServerHooksIn) {
+	lc := newServeLifecycle(in)
+	in.Reg.RegisterStart(lc.start)
+	in.Reg.RegisterStop(lc.stop)
 }
 
 func newServeLifecycle(in HTTPServerHooksIn) *serveLifecycle {

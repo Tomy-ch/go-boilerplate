@@ -6,7 +6,7 @@
 
 |関数|Start|Stop|説明|
 |---|---|---|---|
-|`RegisterHTTPServerHooks`|readiness probe → provisioner → runner → Echo サーバーの listen|drainer → runner 停止 → provisioner の teardown → Graceful Shutdown|serve インスタンスのライフサイクル。HTTP と登録された全 participant を 1 つの固定順で扱う|
+|`RegisterHTTPServerHooks`|startup probe → provisioner → runner → Echo サーバーの listen|drainer → runner 停止 → provisioner の teardown → Graceful Shutdown|serve インスタンスのライフサイクル。HTTP と登録された全 participant を 1 つの固定順で扱う|
 |`RegisterDBCloseHooks`|—|DB 接続クローズ|シャットダウン時に DB コネクションを安全に閉じる|
 |`RegisterObservabilityShutdownHooks`|—|TracerProvider / MeterProvider のシャットダウン|シャットダウン時に OpenTelemetry プロバイダを flush して解放する|
 
@@ -15,7 +15,7 @@
 ```mermaid
 flowchart TB
     subgraph "Start フック"
-        Probe["readiness probe"] --> Provision["provisioner"] --> RunStart["runner 起動"] --> HTTP["Echo サーバー起動（goroutine）"]
+        Probe["startup probe"] --> Provision["provisioner"] --> RunStart["runner 起動"] --> HTTP["Echo サーバー起動（goroutine）"]
     end
 
     subgraph "Stop フック"
@@ -35,7 +35,7 @@ serve インスタンスの起動・停止を `lifecycle.Registrar` に登録し
 participant がいくつ結線されようと、fx がそれらをどの順で集めようと、以下の順序が保たれます（fx は `OnStop`
 フックを登録の逆順で走らせますが、それは shutdown 前の drain という要件が乗れる契約ではありません）。
 
-- **Start**: すべての `ReadinessProbe`（失敗は起動を中断 — ランタイムが欠かせない依存は fail fast する。
+- **Start**: すべての `StartupProbe`（失敗は起動を中断 — ランタイムが欠かせない依存は fail fast する。
   `docs/design/realtime-delivery.ja.md` §2.6）→ すべての `Provisioner.Provision` → すべての `Runner` の起動 →
   リスナを開き（bind 失敗は起動を中断）、goroutine で待ち受けを開始し、起動ログにポート / allowed_origins /
   CIDR / モードを出力。途中で失敗した場合は、エラーを返す前に、そこまでに起動した runner を止め provisioner を
@@ -47,12 +47,12 @@ participant がいくつ結線されようと、fx がそれらをどの順で�
 
 ### participant（`participant.go`）
 
-participant は soft な fx group の値なので、1 つも存在しない graph は HTTP のみのサーバーとまったく同じ挙動に
+participant は通常の fx value group の値（`,soft` ではない — これらの型は他に誰も消費しないので、soft group では空のままになる）なので、1 つも存在しない graph は HTTP のみのサーバーとまったく同じ挙動に
 なります。Realtime の DI モジュールは、結線されたときにこれらを提供します。
 
 |group|型|走るタイミング|
 |---|---|---|
-|`serve.readiness`|`ReadinessProbe{Name, Probe}`|何かが作られる前|
+|`serve.startup`|`StartupProbe{Name, Probe}`|何かが作られる前|
 |`serve.provisioners`|`Provisioner{Name, Provision, Teardown}`|probe の後。停止時と起動失敗時には逆順で teardown|
 |`serve.runners`|`Runner{Name, Runner lifecycle.SupervisedRunner}`|provisioning と listen の間。`SupervisedRunner.Bind` で一度だけ束ね、順序はオーケストレータが持つ|
 |`serve.drainers`|`Drainer{Name, Drain}`|停止時の最初。runner の cancel より前、`Shutdown` より前|

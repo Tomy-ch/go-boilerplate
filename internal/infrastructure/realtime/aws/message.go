@@ -92,6 +92,7 @@ func decodeNotification(m sqstypes.Message) rt.Notification {
 
 		n.Kind = kind
 		n.Revocation = rt.Revocation{Subject: r.Subject, Destination: rt.StreamID(r.Destination)}
+	case rt.KindUnknown:
 	}
 
 	return n

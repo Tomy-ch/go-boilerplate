@@ -6,7 +6,7 @@
 
 |Function|Start|Stop|Description|
 |---|---|---|---|
-|`RegisterHTTPServerHooks`|Readiness probes → provisioners → runners → Echo server listen|Drainers → runners stop → provisioners teardown → graceful Shutdown|The serve instance's lifecycle: HTTP plus every registered participant, in one fixed order|
+|`RegisterHTTPServerHooks`|Startup probes → provisioners → runners → Echo server listen|Drainers → runners stop → provisioners teardown → graceful Shutdown|The serve instance's lifecycle: HTTP plus every registered participant, in one fixed order|
 |`RegisterDBCloseHooks`|—|Close DB connection|Safely close DB connection on shutdown|
 |`RegisterObservabilityShutdownHooks`|—|Shut down TracerProvider / MeterProvider|Flush and release OpenTelemetry providers on shutdown|
 
