@@ -80,19 +80,19 @@ func TestMiddleware(t *testing.T) {
 			assert.Zero(t, observed.Len())
 		})
 
-		t.Run("stream pathではログが出力されない", func(t *testing.T) {
+		t.Run("stream pathの確定前の拒否はログに出る", func(t *testing.T) {
 			t.Parallel()
 			lf := logging.NewTestLogFieldBuilder(t)
 
 			next := func(c *echo.Context) error {
-				return c.String(http.StatusOK, "ok")
+				return c.JSON(http.StatusUnauthorized, map[string]string{"code": "UNAUTHORIZED"})
 			}
 
 			logger, observed := logging.NewObservedTestLogger(t)
 
 			e := echo.New()
 			ctx := context.Background()
-			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/v1/streams/destination-1", nil)
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/v1/streams/destination-1?ticket=x", nil)
 			req.RemoteAddr = "203.0.113.5:45678"
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
@@ -100,7 +100,36 @@ func TestMiddleware(t *testing.T) {
 			handler := Middleware(logger, lf, redaction.Redactor{})(next)
 			require.NoError(t, handler(c))
 
-			assert.Zero(t, observed.Len())
+			assert.Equal(t, 1, observed.FilterMessage("request handled").Len(),
+				"ticket 総当たりや容量枯渇はここにしか現れないので落とさないこと")
+		})
+
+		t.Run("SSEとして確定した接続は応答ログを出さない", func(t *testing.T) {
+			t.Parallel()
+			lf := logging.NewTestLogFieldBuilder(t)
+
+			next := func(c *echo.Context) error {
+				c.Response().Header().Set("Content-Type", "text/event-stream")
+				c.Response().WriteHeader(http.StatusOK)
+				return nil
+			}
+
+			logger, observed := logging.NewObservedTestLogger(t)
+
+			e := echo.New()
+			ctx := context.Background()
+			req := httptest.NewRequestWithContext(ctx, http.MethodGet, "/v1/streams/destination-1?ticket=x", nil)
+			req.RemoteAddr = "203.0.113.5:45678"
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+
+			handler := Middleware(logger, lf, redaction.Redactor{})(next)
+			require.NoError(t, handler(c))
+
+			assert.Zero(t, observed.FilterMessage("request handled").Len(),
+				"接続が閉じるまで出ず duration も接続の長さになる 1 行を落とすこと")
+			assert.Equal(t, 1, observed.FilterMessage("request received").Len(),
+				"接続の試み自体は記録に残すこと")
 		})
 	})
 

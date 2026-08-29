@@ -22,14 +22,15 @@ type requestLog struct {
 }
 
 // Middleware は、Echoフレームワークのミドルウェアで、リクエストのログを出力します。
-// ただし /health, /metrics 等の運用系エンドポイントと SSE stream endpoint はログ出力をスキップします
-// （stream の 1 行は接続が閉じるまで出ず、duration もリクエストではなく接続の長さになるため）。
+// ただし /health, /metrics 等の運用系エンドポイントはログ出力をスキップし、SSE として確定した接続は
+// 応答ログだけをスキップします（その 1 行は接続が閉じるまで出ず、duration もリクエストではなく接続の
+// 長さになるため）。確定前の拒否は普通のレスポンスなので、要求ログも応答ログもそのまま出ます。
 // レスポンスを取り出せない場合はログを出さず素通しします。
 // URI と query は red を通してから出すため、query で運ばれる資格情報はログに残りません。
 func Middleware(logger logging.Logger, lf logging.LogFieldBuilder, red redaction.Redactor) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c *echo.Context) error {
-			if path := c.Request().URL.Path; ops.IsOpsPath(path) || streampath.Is(path) {
+			if ops.IsOpsPath(c.Request().URL.Path) {
 				return next(c)
 			}
 
@@ -52,6 +53,10 @@ func Middleware(logger logging.Logger, lf logging.LogFieldBuilder, red redaction
 			logger.Named("http.request").Info(ctx, "request received", reqFields...)
 
 			res.After(func() {
+				if streampath.IsCommittedStream(res.Header()) {
+					return
+				}
+
 				end := time.Now()
 				latency := end.Sub(start)
 

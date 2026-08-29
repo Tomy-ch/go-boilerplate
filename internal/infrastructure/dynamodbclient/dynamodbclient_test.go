@@ -5,10 +5,12 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
+	smithymiddleware "github.com/aws/smithy-go/middleware"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -284,6 +286,45 @@ func TestNumberAttr(t *testing.T) {
 
 			_, err := NumberAttr(map[string]types.AttributeValue{"n": &types.AttributeValueMemberN{Value: "1.5"}}, "n", "test")
 			require.ErrorIs(t, err, apperror.ErrInternal)
+		})
+	})
+}
+
+func Test_withCallTimeout(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("呼び出しの context に上限を与える", func(t *testing.T) {
+			t.Parallel()
+
+			stack := smithymiddleware.NewStack("test", func() any { return nil })
+			require.NoError(t, withCallTimeout(CallTimeout)(stack))
+
+			var got time.Duration
+			require.NoError(t, stack.Initialize.Add(
+				smithymiddleware.InitializeMiddlewareFunc("probe", func(
+					ctx context.Context, _ smithymiddleware.InitializeInput, _ smithymiddleware.InitializeHandler,
+				) (smithymiddleware.InitializeOutput, smithymiddleware.Metadata, error) {
+					deadline, ok := ctx.Deadline()
+					if ok {
+						got = time.Until(deadline)
+					}
+
+					return smithymiddleware.InitializeOutput{}, smithymiddleware.Metadata{}, nil
+				}),
+				smithymiddleware.After,
+			))
+
+			_, _, err := stack.HandleMiddleware(context.Background(), nil,
+				smithymiddleware.HandlerFunc(func(context.Context, any) (any, smithymiddleware.Metadata, error) {
+					return nil, smithymiddleware.Metadata{}, nil
+				}))
+
+			require.NoError(t, err)
+			assert.Positive(t, got, "deadline が設定されていること")
+			assert.LessOrEqual(t, got, CallTimeout)
 		})
 	})
 }

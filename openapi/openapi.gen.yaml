@@ -213,7 +213,9 @@ paths:
         ticket に束縛された destination の event を Server-Sent Events で受信します。接続時に cursor（`Last-Event-ID` → `after` →
         ticket の初期位置の順）を解決し、その位置より後の event を sequence 順に配信したのち、新しい event を届け続けます。
         拒否はすべてレスポンス確定前に行われます（ticket の不備は 401、cursor の形式不正は 400、保持期間外の cursor は 410、
-        受け入れ余力が無いときは 503）。確定後の指示は `event: control` の ControlEvent で伝えます。
+        受け入れ余力が無いときは 503）。503 には再接続までの目安を秒で表す `Retry-After` が伴います（接続数の上限・初回 replay の
+        枠・Realtime 依存の不調のいずれでも）。確定後の指示は `event: control` の ControlEvent で伝え、その `retryAfterMs` は
+        同じ目安をミリ秒で表したものです。
       security:
         - StreamTicket: []
       parameters:
@@ -244,22 +246,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError500'
         '503':
-          description: |
-            接続を受け入れる余力がありません。instance あたりの同時接続数の上限に達したか、初回 replay の枠が
-            有界待ちの間に空かなかった場合です。`Retry-After` を尊重して再接続してください。
-          headers:
-            Retry-After:
-              description: 再接続までの目安（秒）。確定後に送られる ControlEvent の `retryAfterMs` と同じ目安で、単位だけが異なります。
-              required: true
-              schema:
-                type: integer
-                format: int32
-                minimum: 1
-                example: 5
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          $ref: '#/components/responses/ServiceUnavailable503'
   /v1/users:
     get:
       operationId: GetUsers
@@ -4471,14 +4458,14 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
-    Forbidden403:
-      description: 権限が必要です。
+    ServiceUnavailable503:
+      description: サービスが一時的に利用できません。
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
-    ServiceUnavailable503:
-      description: サービスが一時的に利用できません。
+    Forbidden403:
+      description: 権限が必要です。
       content:
         application/json:
           schema:
