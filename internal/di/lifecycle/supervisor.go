@@ -28,11 +28,21 @@ type SupervisedRunner struct {
 
 // Register は、SupervisedRunner を reg のライフサイクルへ登録します。
 func (s SupervisedRunner) Register(reg Registrar) {
+	start, stop := s.Bind()
+	reg.RegisterStart(start)
+	reg.RegisterStop(stop)
+}
+
+// Bind は、SupervisedRunner の start / stop 関数を返します。順序を自分で決める呼び出し側
+// （複数の runner を 1 つの hook の中で起動・停止する serve lifecycle）が使い、Register はこれを
+// そのまま 1 組ずつ登録します。1 度の Bind で返る組は 1 つの実行 context を共有するので、
+// start は 1 回だけ呼びます。
+func (s SupervisedRunner) Bind() (start, stop func(ctx context.Context) error) {
 	// 実行 context は startCtx に紐づけない（[SupervisedRunner] の detached 契約）。
 	runCtx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
 
-	reg.RegisterStart(func(_ context.Context) error {
+	start = func(_ context.Context) error {
 		if s.OnStartAux != nil {
 			s.OnStartAux()
 		}
@@ -43,9 +53,9 @@ func (s SupervisedRunner) Register(reg Registrar) {
 			}
 		}()
 		return nil
-	})
+	}
 
-	reg.RegisterStop(func(stopCtx context.Context) error {
+	stop = func(stopCtx context.Context) error {
 		cancel()
 		select {
 		case <-done: // Body 完了（drain 完了）
@@ -55,5 +65,7 @@ func (s SupervisedRunner) Register(reg Registrar) {
 			s.OnStopAux(stopCtx)
 		}
 		return nil
-	})
+	}
+
+	return start, stop
 }
