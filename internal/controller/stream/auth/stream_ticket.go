@@ -45,7 +45,8 @@ func (s *streamTicket) Scheme() string {
 }
 
 // Authenticate は、scheme が宣言した query パラメータの ticket を path の destination に対して検証し、
-// 通れば束縛を StreamGrant スロットへ書き込みます。ticket の生値はエラーにも context にも残しません。
+// 通れば束縛を StreamGrant スロットへ書き込みます。ticket の生値はエラーにも context にも残しません
+// — 後段が受け取るのは、同じ ticket をもう一度検証する関数値だけです。
 func (s *streamTicket) Authenticate(_ context.Context, input *openapi3filter.AuthenticationInput) error {
 	if input.SecurityScheme == nil || input.SecurityScheme.Name == "" {
 		return ErrSchemeDeclarationMissing
@@ -67,6 +68,15 @@ func (s *streamTicket) Authenticate(_ context.Context, input *openapi3filter.Aut
 
 	//nolint:contextcheck // input が内包する request の context のスロットへ書き戻すため
 	if !ctxhelper.SetStreamGrant(ctx, grant) {
+		return ErrStreamGrantSlotNotFound
+	}
+
+	//nolint:contextcheck // 同上
+	if !ctxhelper.SetStreamRevalidator(ctx, func(ctx context.Context) error {
+		_, err := s.verifier.Verify(ctx, value, destination)
+
+		return err
+	}) {
 		return ErrStreamGrantSlotNotFound
 	}
 

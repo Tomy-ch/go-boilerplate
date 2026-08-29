@@ -86,6 +86,14 @@ func (r *Registry) Stream(c *echo.Context, req StreamRequest) error {
 	}
 	defer r.unregister(ctx, conn)
 
+	// 索引へ載せた直後に ticket を検証し直します。ここより前に無効化されていれば拒否になり、
+	// 後に無効化されるなら接続は既に索引に居るので失効通知が拾えます（ADR-0074）。
+	if req.Revalidate != nil {
+		if err := req.Revalidate(ctx); err != nil {
+			return err
+		}
+	}
+
 	// 初回 replay の枠は確定より前に取ります。確定後に待つと「繋がったのに何も来ない」接続になります。
 	if err := r.admit(ctx); err != nil {
 		hintRetryAfter(c)

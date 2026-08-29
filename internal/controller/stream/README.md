@@ -16,7 +16,16 @@ placement); ADR-0074 (query-ticket-stream-authentication).
 | 2 | `after` / `Last-Event-ID` are checked against the spec pattern | OpenAPI validator | 400 (`BAD_REQUEST`) |
 | 3 | The cursor is resolved: `Last-Event-ID` → `after` → the ticket's initial cursor | `cursor.go` | 400 (`INVALID_STREAM_CURSOR`) for a negative or out-of-range value |
 | 4 | The cursor is checked against the replay floor | `usecase/realtime.CursorValidator` | 410 (`STREAM_CURSOR_EXPIRED`) when replay can no longer start there; 503 when the EventLog cannot be read |
-| 5 | The verified `StreamRequest` is handed to `Streamer` | `registry.go` | 503 (`SERVICE_UNAVAILABLE`) + `Retry-After` when the instance is at its connection cap, has no initial-replay slot within the bounded wait, or is draining |
+| 5 | The verified `StreamRequest` is handed to `Streamer`, which indexes the connection and then verifies the ticket **once more** | `registry.go` | 503 (`SERVICE_UNAVAILABLE`) + `Retry-After` when the instance is at its connection cap, has no initial-replay slot within the bounded wait, or is draining |
+
+Step 5's second verification exists because steps 1 and 4 are separated by external I/O. A revocation
+that lands in that gap finds nothing to close — the connection is not in the registry's index yet —
+and `AccessRevoker` invalidates tickets before it notifies, so re-checking after indexing settles it
+either way: verified after the invalidation, the connection is refused; verified before it, the
+connection was indexed before it too, and the notification finds it. Without this, a subject whose
+access was withdrawn keeps receiving events until the connection lifetime expires, which
+[ADR-0074](../../../docs/adr/0074-query-ticket-stream-authentication.md) names as a reason for
+rejecting an alternative design.
 
 Every refusal is an ordinary HTTP error answered by the shared error handler; nothing here writes a
 response body. The ticket's raw value never appears in an error, a log field or a span attribute —

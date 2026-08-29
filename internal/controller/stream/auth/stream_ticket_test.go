@@ -177,3 +177,28 @@ func Test_streamTicket_Authenticate(t *testing.T) {
 		})
 	})
 }
+
+func Test_streamTicket_revalidator(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("同じ生値とdestinationで検証し直す手段をスロットへ置く", func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			v := mock_realtime.NewMockTicketVerifier(ctrl)
+			v.EXPECT().Verify(gomock.Any(), "raw-ticket", rt.StreamID("stream-1")).
+				Return(rt.StreamGrant{Subject: "subject-1"}, nil).Times(2)
+
+			in := newInput(t, "/v1/streams/stream-1?ticket=raw-ticket", apiKeyScheme, true)
+			require.NoError(t, New(v).Authenticate(context.Background(), in))
+			ctx := in.RequestValidationInput.Request.Context()
+
+			revalidate, ok := ctxhelper.GetStreamRevalidator(ctx)
+
+			require.True(t, ok, "再検証の手段が置かれること")
+			assert.NoError(t, revalidate(ctx), "生値を持ち出さずに同じ検証を繰り返せること")
+		})
+	})
+}

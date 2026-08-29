@@ -30,6 +30,7 @@ Hand-written (`stream_grant.go`) — the `StreamGrant` slot, filled by the `Stre
 - `SetStreamGrant(ctx, grant) bool` — write the verified `realtime.StreamGrant`; `false` when no slot is present
 - `GetStreamGrant(ctx) (realtime.StreamGrant, bool)` — read; `ok=false` when unset
 - `RequireStreamGrant(ctx) (realtime.StreamGrant, error)` — read, returning `ErrStreamGrantMissing` when unset
+- `SetStreamRevalidator(ctx, fn) bool` / `GetStreamRevalidator(ctx) (fn, bool)` — the same slot also carries a way to verify the *same* ticket again. Establishing a stream connection runs ticket verification, then external I/O, then registration, and a revocation arriving in between misses a connection that is not indexed yet; re-verifying once after registration closes that window. The credential itself stays inside the security scheme — what travels is the closure
 
 The slot carries failures as well as successes because a spec may declare authentication
 optional, and validation of such an operation succeeds even when a presented credential was

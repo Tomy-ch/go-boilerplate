@@ -16,6 +16,7 @@ import (
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
 	rt "go-boilerplate/internal/usecase/boundary/realtime"
+	ucrealtime "go-boilerplate/internal/usecase/realtime"
 	mock_ucrealtime "go-boilerplate/internal/usecase/realtime/mock"
 )
 
@@ -178,6 +179,23 @@ func TestRegistry_Stream(t *testing.T) {
 
 			require.ErrorIs(t, err, ErrReplayAdmission)
 			assert.Equal(t, "5", rec.Header().Get("Retry-After"))
+		})
+
+		t.Run("登録の直後に ticket が無効なら確定前に断る", func(t *testing.T) {
+			t.Parallel()
+
+			reg, _, _ := testRegistry(t, Settings{})
+			e := echo.New()
+			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/v1/streams/stream-1", nil)
+			rec := httptest.NewRecorder()
+			in := testRequest
+			in.Revalidate = func(context.Context) error { return ucrealtime.ErrTicketInvalid }
+
+			err := reg.Stream(e.NewContext(req, rec), in)
+
+			require.ErrorIs(t, err, ucrealtime.ErrTicketInvalid)
+			assert.Empty(t, rec.Body.String(), "レスポンスを確定していないこと")
+			assert.Empty(t, reg.conns, "断った接続は索引に残さないこと")
 		})
 
 		t.Run("停止に入っていれば新規接続を受け付けない", func(t *testing.T) {
