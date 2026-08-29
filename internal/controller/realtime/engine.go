@@ -30,8 +30,8 @@ type Settings struct {
 // Engine は、instance の受信先から通知を取り出し、種別ごとに sink へ渡して削除する常駐 engine です。
 type Engine struct {
 	sub         rt.InstanceSubscription
-	wakeups     WakeupSink
-	revocations RevocationSink
+	wakeups     Waker
+	revocations Revoker
 	sleeper     clock.Sleeper
 	logging     logging.Logger
 	tracer      observability.LayerTracer
@@ -41,8 +41,8 @@ type Engine struct {
 // NewEngine は、consumer engine を生成します。
 func NewEngine(
 	sub rt.InstanceSubscription,
-	wakeups WakeupSink,
-	revocations RevocationSink,
+	wakeups Waker,
+	revocations Revoker,
 	sleeper clock.Sleeper,
 	log logging.Logger,
 	tf observability.TracerFactory,

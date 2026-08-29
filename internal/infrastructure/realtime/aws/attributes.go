@@ -26,10 +26,10 @@ type redrivePolicy struct {
 	MaxReceiveCount     string `json:"maxReceiveCount"`
 }
 
-// QueueAttributes は、instance queue に設定する属性の集合を組み立てる境界です。
+// AttributesBuilder は、instance queue に設定する属性の集合を組み立てる境界です。
 // production は全属性（policy / redrive / 暗号化 / timings）を返し、間引きは emulator 向けの
 // 実装側が行います（README の Emulator compatibility）。
-type QueueAttributes interface {
+type AttributesBuilder interface {
 	// Build は、queueARN の queue に設定する属性を返します。空なら何も設定しません。
 	Build(queueARN string) (map[string]string, error)
 }
@@ -48,8 +48,8 @@ type queueAttributes struct {
 }
 
 // NewQueueAttributes は、in.TopicARN からの送信だけを許す policy、in.DLQARN への redrive（空なら付けない）、
-// SQS 管理の暗号化、long polling と visibility timeout を設定する QueueAttributes を返します。
-func NewQueueAttributes(in QueueAttributesInput) QueueAttributes {
+// SQS 管理の暗号化、long polling と visibility timeout を設定する AttributesBuilder を返します。
+func NewQueueAttributes(in QueueAttributesInput) AttributesBuilder {
 	return &queueAttributes{in: in}
 }
 

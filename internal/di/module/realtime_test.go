@@ -56,8 +56,8 @@ func realtimeDeps() []fx.Option {
 	return append(commonDeps(), clockModule(), realtimeModule(),
 		fx.Provide(echo.New),
 		fx.Provide(func() stream.Streamer { return stubStreamer{} }),
-		fx.Provide(func() ctrlrealtime.WakeupSink { return stubSinks{} }),
-		fx.Provide(func() ctrlrealtime.RevocationSink { return stubSinks{} }),
+		fx.Provide(func() ctrlrealtime.Waker { return stubSinks{} }),
+		fx.Provide(func() ctrlrealtime.Revoker { return stubSinks{} }),
 	)
 }
 
@@ -74,8 +74,8 @@ func realtimeRunDeps(t *testing.T) fx.Option {
 		fx.Provide(func() *observability.OutboundHTTPClient { return observability.NewDisabledOutboundHTTPClient(true) }),
 		fx.Provide(echo.New),
 		fx.Provide(func() stream.Streamer { return stubStreamer{} }),
-		fx.Provide(func() ctrlrealtime.WakeupSink { return stubSinks{} }),
-		fx.Provide(func() ctrlrealtime.RevocationSink { return stubSinks{} }),
+		fx.Provide(func() ctrlrealtime.Waker { return stubSinks{} }),
+		fx.Provide(func() ctrlrealtime.Revoker { return stubSinks{} }),
 		fx.Replace(testFanout(t)),
 	)
 }
@@ -136,7 +136,7 @@ func Test_realtimeModule(t *testing.T) {
 				notifier  rt.RevocationNotifier
 				revoker   ucrealtime.AccessRevoker
 				id        rt.InstanceID
-				attrs     realtimeinfra.QueueAttributes
+				attrs     realtimeinfra.AttributesBuilder
 				sub       rt.InstanceSubscription
 				keeper    ucrealtime.LeaseKeeper
 				engine    *ctrlrealtime.Engine

@@ -12,12 +12,12 @@ subscription・不透明な receipt を伴う通知・wakeup・revocation だけ
 
 |パス|役割|
 |---|---|
-|`realtime.go`|実装を選び、DI module・CLI・テストが必要とするもの（`NewClients`・`NewPublisher`・`NewRevocationNotifier`・`NewInstanceSubscription`・`EnsureTopic`・2 つの `QueueAttributes` builder、キー付き入力 `QueueAttributesInput` / `SubscriptionTarget`）を再 export する|
+|`realtime.go`|実装を選び、DI module・CLI・テストが必要とするもの（`NewClients`・`NewPublisher`・`NewRevocationNotifier`・`NewInstanceSubscription`・`EnsureTopic`・2 つの `AttributesBuilder` builder、キー付き入力 `QueueAttributesInput` / `SubscriptionTarget`）を再 export する|
 |`aws/client.go`|`NewClients` — 資格情報の解決は 1 回（`awsclient.Resolve`）、1 つの endpoint 上に 2 つのサービスクライアント（SNS と SQS は endpoint を共有する。GoAWS と AWS の違いは endpoint と資格情報だけ）|
 |`aws/publisher.go`|`realtime` outbox チャネル向けの `boundary/publisher.Publisher`: payload → `DeliveryEvent` → `EventLogStore.Append` → wakeup の SNS `Publish`|
 |`aws/revocation.go`|`realtime.RevocationNotifier`: 同じ topic への revocation。message attribute で区別する|
 |`aws/subscription.go`|`realtime.InstanceSubscription`: queue 作成 → ARN 解決 → 属性設定 → subscribe → `RawMessageDelivery=true`。long poll の receive、delete、unsubscribe → queue 削除|
-|`aws/attributes.go`|`QueueAttributes` — インスタンス queue を作るときの属性集合。production の builder（`NewQueueAttributes(QueueAttributesInput{TopicARN, DLQARN})`）は全部を返す|
+|`aws/attributes.go`|`AttributesBuilder` — インスタンス queue を作るときの属性集合。production の builder（`NewQueueAttributes(QueueAttributesInput{TopicARN, DLQARN})`）は全部を返す|
 |`aws/topic.go`|`EnsureTopic` — ARN を返す冪等な `CreateTopic`。`realtime-init` と contract test 用（アプリケーションの起動時には決して呼ばない）|
 |`aws/policy.go`|queue の access policy: `aws:SourceArn` が wakeup topic のときに限り `sns.amazonaws.com` からの `sqs:SendMessage` を許可する|
 |`aws/message.go`|wire 形式: ADR-0073 が定める wakeup の body `{eventId, streamId, sequence}`、revocation の body `{subject, destination}`、および両者を分ける `type` message attribute|
@@ -30,7 +30,7 @@ subscription・不透明な receipt を伴う通知・wakeup・revocation だけ
 | --- | --- |
 | wakeup | topic へ body `{"eventId","streamId","sequence"}`（sequence は 10 進文字列）と message attribute `type=wakeup` で `Publish`。body は payload を運ばない: client は必ず EventLog から供給されるので、wakeup が重複しても同じ catch-up 読み出しになる |
 | revocation | 同じ topic へ body `{"subject","destination"}` と `type=revocation` で `Publish` |
-| `Provision(id)` | `CreateQueue(<prefix>-<id>)` → `GetQueueAttributes(QueueArn)` → `SetQueueAttributes`（`QueueAttributes` の集合）→ `Subscribe(protocol=sqs, endpoint=queue ARN)` → `SetSubscriptionAttributes(RawMessageDelivery=true)`。同じ `id` に対して冪等で、2 つ目の `id` は `ErrConflict`。途中で失敗した場合は作った分を teardown するので、起動に失敗しても何も残らない。queue 名は決定的なので、orphan-cleanup job は lease だけから queue に辿り着ける。subscription は `ListSubscriptionsByTopic` から queue ARN で探す |
+| `Provision(id)` | `CreateQueue(<prefix>-<id>)` → `GetQueueAttributes(QueueArn)` → `SetQueueAttributes`（`AttributesBuilder` の集合）→ `Subscribe(protocol=sqs, endpoint=queue ARN)` → `SetSubscriptionAttributes(RawMessageDelivery=true)`。同じ `id` に対して冪等で、2 つ目の `id` は `ErrConflict`。途中で失敗した場合は作った分を teardown するので、起動に失敗しても何も残らない。queue 名は決定的なので、orphan-cleanup job は lease だけから queue に辿り着ける。subscription は `ListSubscriptionsByTopic` から queue ARN で探す |
 | `Receive(limit)` | `WaitTimeSeconds=20`・`MaxNumberOfMessages=min(limit,10)`・`MessageAttributeNames=[All]` の `ReceiveMessage`。`type` を読めないメッセージは `Kind` が空のまま receipt 付きで返るので、consumer は永遠に再配送させる代わりに削除できる |
 | `Delete(n)` | receipt handle による `DeleteMessage` |
 | `Teardown()` | `Unsubscribe` → `DeleteQueue`。前段が失敗しても各段を試み、失敗は束ねる — 残ったものは orphan-cleanup job が回収する |

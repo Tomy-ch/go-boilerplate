@@ -52,7 +52,7 @@ type realtimeFanout struct {
 // realtimeModule は、Realtime Delivery の store・機構側 usecase・fan-out・SSE の stream handler・serve lifecycle の
 // 参加者を提供する fx.Module です。InfrastructureModule() には束ねず serve profile にだけ配線します
 // （内訳は internal/di/module/README.md「Design Policy」、配線条件は docs/design/realtime-delivery.md §3.1）。
-// WakeupSink / RevocationSink は connection registry（controller/stream）が provide します。
+// Waker / Revoker は connection registry（controller/stream）が provide します。
 func realtimeModule() fx.Option {
 	return fx.Module("realtime",
 		fx.Provide(
@@ -144,7 +144,7 @@ func provideInstanceID() (rt.InstanceID, error) {
 func provideInstanceQueueAttributes(
 	appCfg *config.ApplicationConfig,
 	cfg *config.RealtimeConfig,
-) (realtimeinfra.QueueAttributes, error) {
+) (realtimeinfra.AttributesBuilder, error) {
 	switch env := appCfg.Env(); env {
 	case config.EnvLocal, config.EnvCI, config.EnvTest, config.EnvDast:
 		return realtimeinfra.NewEmulatorQueueAttributes(), nil
@@ -156,7 +156,7 @@ func provideInstanceQueueAttributes(
 }
 
 func provideInstanceSubscription(
-	f realtimeFanout, cfg *config.RealtimeConfig, attrs realtimeinfra.QueueAttributes, tf observability.TracerFactory,
+	f realtimeFanout, cfg *config.RealtimeConfig, attrs realtimeinfra.AttributesBuilder, tf observability.TracerFactory,
 ) rt.InstanceSubscription {
 	return realtimeinfra.NewInstanceSubscription(
 		f.clients, realtimeinfra.SubscriptionTarget{TopicARN: f.topicARN, QueuePrefix: cfg.QueuePrefix()}, attrs, tf,
@@ -173,8 +173,8 @@ func provideLeaseKeeper(
 
 func provideRealtimeConsumer(
 	sub rt.InstanceSubscription,
-	wakeups ctrlrealtime.WakeupSink,
-	revocations ctrlrealtime.RevocationSink,
+	wakeups ctrlrealtime.Waker,
+	revocations ctrlrealtime.Revoker,
 	sleeper clock.Sleeper,
 	log logging.Logger,
 	tf observability.TracerFactory,

@@ -12,12 +12,12 @@ port above speaks of an instance subscription, notifications carrying an opaque 
 
 |Path|Role|
 |---|---|
-|`realtime.go`|Chooses the implementation and re-exports what the DI module, the CLI and the tests need (`NewClients`, `NewPublisher`, `NewRevocationNotifier`, `NewInstanceSubscription`, `EnsureTopic`, the two `QueueAttributes` builders, the keyed inputs `QueueAttributesInput` / `SubscriptionTarget`)|
+|`realtime.go`|Chooses the implementation and re-exports what the DI module, the CLI and the tests need (`NewClients`, `NewPublisher`, `NewRevocationNotifier`, `NewInstanceSubscription`, `EnsureTopic`, the two `AttributesBuilder` builders, the keyed inputs `QueueAttributesInput` / `SubscriptionTarget`)|
 |`aws/client.go`|`NewClients` — one credential resolution (`awsclient.Resolve`), two service clients on one endpoint (SNS and SQS share it; GoAWS and AWS differ only in endpoint and credentials)|
 |`aws/publisher.go`|`boundary/publisher.Publisher` for the `realtime` outbox channel: payload → `DeliveryEvent` → `EventLogStore.Append` → SNS `Publish` of the wakeup|
 |`aws/revocation.go`|`realtime.RevocationNotifier`: the revocation on the same topic, told apart by the message attribute|
 |`aws/subscription.go`|`realtime.InstanceSubscription`: create queue → resolve ARN → set attributes → subscribe → `RawMessageDelivery=true`; long-poll receive; delete; unsubscribe → delete queue|
-|`aws/attributes.go`|`QueueAttributes` — the attribute set an instance queue is created with; the production builder (`NewQueueAttributes(QueueAttributesInput{TopicARN, DLQARN})`) returns all of them|
+|`aws/attributes.go`|`AttributesBuilder` — the attribute set an instance queue is created with; the production builder (`NewQueueAttributes(QueueAttributesInput{TopicARN, DLQARN})`) returns all of them|
 |`aws/topic.go`|`EnsureTopic` — idempotent `CreateTopic` returning the ARN, for `realtime-init` and the contract tests (never at application start)|
 |`aws/policy.go`|The queue access policy: `sqs:SendMessage` from `sns.amazonaws.com` only when `aws:SourceArn` is the wakeup topic|
 |`aws/message.go`|The wire form: the wakeup body `{eventId, streamId, sequence}` fixed by ADR-0073, the revocation body `{subject, destination}`, and the `type` message attribute that separates them|
@@ -30,7 +30,7 @@ port above speaks of an instance subscription, notifications carrying an opaque 
 | --- | --- |
 | wakeup | `Publish` to the topic with body `{"eventId","streamId","sequence"}` (sequence as a decimal string) and message attribute `type=wakeup`. The body carries no payload: a client is only ever served from the EventLog, so a duplicate wakeup is the same catch-up read |
 | revocation | `Publish` to the same topic with body `{"subject","destination"}` and `type=revocation` |
-| `Provision(id)` | `CreateQueue(<prefix>-<id>)` → `GetQueueAttributes(QueueArn)` → `SetQueueAttributes` (the `QueueAttributes` set) → `Subscribe(protocol=sqs, endpoint=queue ARN)` → `SetSubscriptionAttributes(RawMessageDelivery=true)`. Idempotent for the same `id`; a second `id` is `ErrConflict`. A failure part-way tears down what was created so a failed start leaves nothing behind. The queue name is deterministic so the orphan-cleanup job can reach the queue from the lease alone; the subscription is found through `ListSubscriptionsByTopic` by queue ARN |
+| `Provision(id)` | `CreateQueue(<prefix>-<id>)` → `GetQueueAttributes(QueueArn)` → `SetQueueAttributes` (the `AttributesBuilder` set) → `Subscribe(protocol=sqs, endpoint=queue ARN)` → `SetSubscriptionAttributes(RawMessageDelivery=true)`. Idempotent for the same `id`; a second `id` is `ErrConflict`. A failure part-way tears down what was created so a failed start leaves nothing behind. The queue name is deterministic so the orphan-cleanup job can reach the queue from the lease alone; the subscription is found through `ListSubscriptionsByTopic` by queue ARN |
 | `Receive(limit)` | `ReceiveMessage` with `WaitTimeSeconds=20`, `MaxNumberOfMessages=min(limit,10)`, `MessageAttributeNames=[All]`. A message without a readable `type` comes back with an empty `Kind` and its receipt, so the consumer can delete it instead of letting it redeliver forever |
 | `Delete(n)` | `DeleteMessage` by receipt handle |
 | `Teardown()` | `Unsubscribe` → `DeleteQueue`; each step is attempted even when the previous one failed, and failures are joined — whatever survives is the orphan-cleanup job's to reclaim |

@@ -23,7 +23,7 @@
 - `Settings` — `BatchSize` (default 10, the queue's own cap) and `ErrorBackoff` (default 5 s). Zero
   or negative values fall back to the defaults; there is no config for them because the receive is a long poll and
   neither value changes per deployment.
-- `WakeupSink.Wake(ctx, streamID, upTo)` / `RevocationSink.Revoke(ctx, subject, destination)` — the receivers.
+- `Waker.Wake(ctx, streamID, upTo)` / `Revoker.Revoke(ctx, subject, destination)` — the receivers.
   Both are called synchronously on the loop, so an implementation only marks or signals; it never waits
   for a replay. Duplicates are normal and must be idempotent.
 - `Heartbeat` — `NewHeartbeat(keeper, id, sleeper, log, tf)`; `Run(ctx)` writes the instance lease at

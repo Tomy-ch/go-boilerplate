@@ -21,7 +21,7 @@
   `Run(ctx) error` が loop 本体。
 - `Settings` — `BatchSize`（既定 10。queue 自身の上限）と `ErrorBackoff`（既定 5 秒）。ゼロ値と負値は既定へ
   フォールバックする。receive が long poll であり、どちらの値もデプロイ先で変わらないため config は無い。
-- `WakeupSink.Wake(ctx, streamID, upTo)` / `RevocationSink.Revoke(ctx, subject, destination)` — 受け手。どちらも
+- `Waker.Wake(ctx, streamID, upTo)` / `Revoker.Revoke(ctx, subject, destination)` — 受け手。どちらも
   loop 上で同期的に呼ばれるので、実装は印を付けるか通知するだけで、replay を待ってはならない。重複は
   正常であり、冪等でなければならない。
 - `Heartbeat` — `NewHeartbeat(keeper, id, sleeper, log, tf)`。`Run(ctx)` は instance lease を直ちに書き、

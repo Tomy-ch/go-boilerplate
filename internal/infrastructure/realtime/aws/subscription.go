@@ -49,7 +49,7 @@ type subscription struct {
 	sns    SNSAPI
 	sqs    SQSAPI
 	target SubscriptionTarget
-	attrs  QueueAttributes
+	attrs  AttributesBuilder
 	tracer observability.LayerTracer
 
 	mu              sync.Mutex
@@ -61,7 +61,7 @@ type subscription struct {
 
 // NewInstanceSubscription は、target の topic に対する instance 固有の受信先を管理する InstanceSubscription を返します。
 func NewInstanceSubscription(
-	snsAPI SNSAPI, sqsAPI SQSAPI, target SubscriptionTarget, attrs QueueAttributes, tf observability.TracerFactory,
+	snsAPI SNSAPI, sqsAPI SQSAPI, target SubscriptionTarget, attrs AttributesBuilder, tf observability.TracerFactory,
 ) rt.InstanceSubscription {
 	return &subscription{sns: snsAPI, sqs: sqsAPI, target: target, attrs: attrs, tracer: tf.Infra()}
 }

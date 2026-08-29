@@ -10,11 +10,11 @@ import (
 // queueAttributes は、emulator が受け付ける属性だけを返します。
 type queueAttributes struct{}
 
-// NewQueueAttributes は、long polling と visibility timeout だけを設定する QueueAttributes を返します。
+// NewQueueAttributes は、long polling と visibility timeout だけを設定する AttributesBuilder を返します。
 // GoAWS v0.5.4 に対する `make realtime-smoke` の実測で、Policy は InvalidParameterValue で拒否され（G4 / G4b）、
 // RedrivePolicy は受理後に受信した message を削除できなくなり（G15）、SqsManagedSseEnabled と KmsMasterKeyId は
 // 受理されるが保存されない（G16 / G17）ため、この 4 つを間引きます。production の実装は間引きません。
-func NewQueueAttributes() realtimeaws.QueueAttributes {
+func NewQueueAttributes() realtimeaws.AttributesBuilder {
 	return queueAttributes{}
 }
 

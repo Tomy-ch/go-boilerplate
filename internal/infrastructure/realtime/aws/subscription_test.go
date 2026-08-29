@@ -33,10 +33,10 @@ type subscriptionMocks struct {
 	sqs *mock_aws.MockSQSAPI
 }
 
-// emptyAttributes は、属性を 1 つも設定しない QueueAttributes です。
+// emptyAttributes は、属性を 1 つも設定しない AttributesBuilder です。
 type emptyAttributes struct{}
 
-// failingAttributes は、属性の組み立てに失敗する QueueAttributes です。
+// failingAttributes は、属性の組み立てに失敗する AttributesBuilder です。
 type failingAttributes struct{}
 
 func (emptyAttributes) Build(string) (map[string]string, error) { return map[string]string{}, nil }

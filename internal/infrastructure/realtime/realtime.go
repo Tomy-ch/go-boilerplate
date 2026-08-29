@@ -19,8 +19,8 @@ type ClientConfig = aws.ClientConfig
 // Clients は、同じ資格情報で組み立てた SNS / SQS クライアントの組です。
 type Clients = aws.Clients
 
-// QueueAttributes は、instance queue に設定する属性の集合を組み立てる境界です。
-type QueueAttributes = aws.QueueAttributes
+// AttributesBuilder は、instance queue に設定する属性の集合を組み立てる境界です。
+type AttributesBuilder = aws.AttributesBuilder
 
 // QueueAttributesInput は、production の属性を組み立てるのに要る deployment 依存の識別子です。
 type QueueAttributesInput = aws.QueueAttributesInput
@@ -50,7 +50,7 @@ func NewRevocationNotifier(c Clients, topicARN string, tf observability.TracerFa
 
 // NewInstanceSubscription は、instance 固有の受信先（queue + subscription）の lifecycle を持つ InstanceSubscription を返します。
 func NewInstanceSubscription(
-	c Clients, target SubscriptionTarget, attrs QueueAttributes, tf observability.TracerFactory,
+	c Clients, target SubscriptionTarget, attrs AttributesBuilder, tf observability.TracerFactory,
 ) rt.InstanceSubscription {
 	return aws.NewInstanceSubscription(c.SNS, c.SQS, target, attrs, tf)
 }
@@ -61,11 +61,11 @@ func EnsureTopic(ctx context.Context, c Clients, name string) (string, error) {
 }
 
 // NewQueueAttributes は、production の instance queue の属性（policy / redrive / 暗号化 / timings）を返します。
-func NewQueueAttributes(in QueueAttributesInput) QueueAttributes {
+func NewQueueAttributes(in QueueAttributesInput) AttributesBuilder {
 	return aws.NewQueueAttributes(in)
 }
 
 // NewEmulatorQueueAttributes は、emulator が受け付ける属性（timings）だけを返します。
-func NewEmulatorQueueAttributes() QueueAttributes {
+func NewEmulatorQueueAttributes() AttributesBuilder {
 	return local.NewQueueAttributes()
 }

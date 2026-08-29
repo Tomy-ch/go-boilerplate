@@ -50,7 +50,7 @@ var (
 	errSubscribers = xerrors.New("-subscribers は 1 以上を指定してください")
 	errFormat      = xerrors.New("-format は markdown か text を指定してください")
 	errNotReady    = xerrors.New("endpoint が ready にならず、検査を 1 件も実行していません")
-	errEndpoint    = xerrors.New("endpoint は scheme 付きの URL（http://host:port）で指定してください")
+	errEndpoint    = xerrors.New("endpoint は scheme 付きの URL（scheme://host:port）で指定してください")
 )
 
 // options は、コマンドラインで決まる実行条件です。
