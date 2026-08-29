@@ -383,7 +383,7 @@ export const DOC_REPLACEMENTS: readonly DocReplacement[] = [
     ["grep -ril 'boilerplate' README.md README.ja.md", "grep -ril 'boilerplate' README.md"],
   ]),
   ...forFile(".gitleaksignore", [
-    ["env/README.ja.md:generic-api-key:253\n"],
+    ["env/README.ja.md:generic-api-key:256\n"],
     ["env/README.ja.md:generic-api-key:217\n"],
   ]),
   // gitleaks のフィンガープリントは行番号を含むので、畳んで行が動けば無視が外れて検出が復活する。
@@ -391,7 +391,7 @@ export const DOC_REPLACEMENTS: readonly DocReplacement[] = [
   ...forFile(
     ".gitleaksignore",
     [
-      ["env/README.md:generic-api-key:255", "env/README.md:generic-api-key:254"],
+      ["env/README.md:generic-api-key:258", "env/README.md:generic-api-key:257"],
       ["env/README.md:generic-api-key:219", "env/README.md:generic-api-key:218"],
     ],
     "en",
@@ -399,7 +399,7 @@ export const DOC_REPLACEMENTS: readonly DocReplacement[] = [
   ...forFile(
     ".gitleaksignore",
     [
-      ["env/README.md:generic-api-key:255", "env/README.md:generic-api-key:252"],
+      ["env/README.md:generic-api-key:258", "env/README.md:generic-api-key:255"],
       ["env/README.md:generic-api-key:219", "env/README.md:generic-api-key:216"],
     ],
     "ja",
