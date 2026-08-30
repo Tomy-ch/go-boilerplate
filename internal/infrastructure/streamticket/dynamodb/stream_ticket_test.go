@@ -42,7 +42,7 @@ func ticket(hash realtime.TicketHash, subject string, destination realtime.Strea
 }
 
 // waitIndexed は、GSI（結果整合）に item が載るのを短く待ちます。
-func waitIndexed(t *testing.T, s *store, subject string, destination realtime.StreamID) {
+func waitIndexed(t *testing.T, s *store, subject string, destination realtime.StreamID, want int) {
 	t.Helper()
 
 	require.Eventually(t, func() bool {
@@ -56,7 +56,9 @@ func waitIndexed(t *testing.T, s *store, subject string, destination realtime.St
 			},
 		})
 
-		return err == nil && len(out.Items) > 0
+		// 1 件でも見えた時点で打ち切ると、同じ subject × destination の残りが索引に載る前に
+		// Invalidate が走り、取りこぼした ticket が生き残る。期待件数まで待つ。
+		return err == nil && len(out.Items) >= want
 	}, 5*time.Second, 50*time.Millisecond)
 }
 
@@ -185,7 +187,7 @@ func Test_store_Invalidate(t *testing.T) {
 			require.NoError(t, s.Save(t.Context(), ticket("h2", "alice", "stream-a")))
 			require.NoError(t, s.Save(t.Context(), ticket("h3", "alice", "stream-b")))
 			require.NoError(t, s.Save(t.Context(), ticket("h4", "bob", "stream-a")))
-			waitIndexed(t, s, "alice", "stream-a")
+			waitIndexed(t, s, "alice", "stream-a", 2)
 
 			require.NoError(t, s.Invalidate(t.Context(), "alice", "stream-a"))
 
