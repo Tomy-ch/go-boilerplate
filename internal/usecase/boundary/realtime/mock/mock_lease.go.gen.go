@@ -99,3 +99,18 @@ func (mr *MockInstanceLeaseStoreMockRecorder) ListExpired(ctx, asOf any) *gomock
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListExpired", reflect.TypeOf((*MockInstanceLeaseStore)(nil).ListExpired), ctx, asOf)
 }
+
+// ReleaseCleanup mocks base method.
+func (m *MockInstanceLeaseStore) ReleaseCleanup(ctx context.Context, release realtime.CleanupRelease) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReleaseCleanup", ctx, release)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ReleaseCleanup indicates an expected call of ReleaseCleanup.
+func (mr *MockInstanceLeaseStoreMockRecorder) ReleaseCleanup(ctx, release any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReleaseCleanup", reflect.TypeOf((*MockInstanceLeaseStore)(nil).ReleaseCleanup), ctx, release)
+}
