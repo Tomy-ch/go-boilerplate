@@ -130,7 +130,7 @@ func (s *subscription) Receive(ctx context.Context, limit int) ([]rt.Notificatio
 		MessageAttributeNames: []string{"All"},
 	})
 	if err != nil {
-		return nil, normalize(err, "receive notifications")
+		return nil, s.classifyReceivingEnd(err, "receive notifications")
 	}
 
 	notifications := make([]rt.Notification, 0, len(out.Messages))
@@ -154,10 +154,33 @@ func (s *subscription) Delete(ctx context.Context, n rt.Notification) error {
 	if _, err := s.sqs.DeleteMessage(ctx, &sqs.DeleteMessageInput{
 		QueueUrl: awssdk.String(queueURL), ReceiptHandle: awssdk.String(n.Receipt),
 	}); err != nil {
-		return normalize(err, "delete notification")
+		return s.classifyReceivingEnd(err, "delete notification")
 	}
 
 	return nil
+}
+
+// classifyReceivingEnd は、受信の失敗を分類します。受信先がもう無いなら、キャッシュした識別子を捨てて
+// ErrReceivingEndGone を返します。作り直しはここでは行いません — 順序を持つ呼び出し側の役割です
+// （package README の Port mapping / docs/design/realtime-delivery.md §2.5）。
+func (s *subscription) classifyReceivingEnd(cause error, op string) error {
+	if !queueGone(cause) {
+		return normalize(cause, op)
+	}
+
+	s.invalidate()
+
+	return xerrors.Join(rt.ErrReceivingEndGone, normalize(cause, op))
+}
+
+// invalidate は、キャッシュした受信先の識別子を捨てます。Provision は subscription の ARN が残っていると
+// 早期に返るため、作り直しを受け付ける状態へ戻すにはこれが要ります。捨てるのは受信先の識別子だけで、
+// どの instance のものかという帰属は失われていません。
+func (s *subscription) invalidate() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.queueURL, s.queueARN, s.subscriptionARN = "", "", ""
 }
 
 // Teardown は、unsubscribe → queue 削除の順に片付けます。片方が失敗しても残りを試み、失敗をまとめて返します
@@ -258,13 +281,14 @@ func (s *subscription) teardown(ctx context.Context) error {
 	return xerrors.Join(errs...)
 }
 
-// currentQueueURL は、Provision 済みの queue URL を返します。未 provision なら ErrUnavailable です。
+// currentQueueURL は、Provision 済みの queue URL を返します。未 provision なら ErrReceivingEndGone です。
 func (s *subscription) currentQueueURL() (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	if s.queueURL == "" {
-		return "", xerrors.Wrap(apperror.ErrUnavailable, "realtime: instance queue is not provisioned")
+		// 未 provision も同じ sentinel に畳む — 分けると復旧経路が割れる（README の Port mapping）。
+		return "", rt.ErrReceivingEndGone
 	}
 
 	return s.queueURL, nil

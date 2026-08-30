@@ -109,3 +109,15 @@ func TestEnsureTopic(t *testing.T) {
 	_, err := EnsureTopic(ctx, testClients(t), "t")
 	require.ErrorIs(t, err, apperror.ErrCanceled)
 }
+
+func TestNewOrphanReclaimer(t *testing.T) {
+	t.Parallel()
+
+	assert.NotNil(
+		t,
+		NewOrphanReclaimer(
+			testClients(t), SubscriptionTarget{TopicARN: testTopicARN, QueuePrefix: "realtime-test"},
+			observability.NewNoopTracerFactory(t),
+		),
+	)
+}
