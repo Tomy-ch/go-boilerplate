@@ -13,6 +13,28 @@ import (
 	"go-boilerplate/internal/infrastructure/awsclient"
 )
 
+const (
+	// CallTimeout は、1 回の API 呼び出し全体（retry を含む）に与える上限です。
+	//
+	// これが無いと、応答を返さない substrate に対して呼び出しがいつまでも戻りません。SDK にも HTTP
+	// クライアントにも別の上限がなく（DI が渡すクライアントは Timeout を持たず、SSRF ガードのために
+	// 差し替えた Dialer にも Timeout はありません）、awsclient.Resolve の上限は起動時の資格情報解決
+	// 1 回にしか掛かりません。one-shot の job は既定で全体のタイムアウトを持たないため、1 呼び出しが
+	// 戻らないとジョブごと戻らなくなります。
+	//
+	// 値は dynamodbclient.CallTimeout に揃えます。同じ機構が使う 2 つの substrate で、1 呼び出しに
+	// 与える猶予を変える理由がないためです。
+	CallTimeout = 10 * time.Second
+	// receiveCallTimeout は、long polling する受信にだけ与える上限です。受信は receiveWaitSeconds
+	// （20 秒）まで意図的に待つので、CallTimeout を当てると毎回 deadline で落ちて loop が回りません。
+	// 待ち時間そのものではなく「待ち切ってなお戻らない」ことを捕まえる値にします。
+	receiveCallTimeout = (receiveWaitSeconds + receiveTimeoutMargin) * time.Second
+	// receiveTimeoutMargin は、long polling の待ち時間に足す余裕（秒）です。
+	receiveTimeoutMargin = 10
+	// receiveOperation は、long polling する操作の名前です（smithy が middleware へ渡す値）。
+	receiveOperation = "ReceiveMessage"
+)
+
 // ClientConfig は、SNS / SQS クライアントの接続設定です。1 つの endpoint が両方の API を受けます
 // （GoAWS も本番も同じ組み立てで、差は endpoint と資格情報だけ）。
 type ClientConfig struct {
@@ -37,26 +59,8 @@ type Clients struct {
 
 // NewClients は、設定から SNS / SQS クライアントを生成します。資格情報の解決は 1 回で、失敗すれば
 // エラーを返し、認証エラーが最初の publish / receive まで隠れないようにします。
-const (
-	// CallTimeout は、1 回の API 呼び出し全体（retry を含む）に与える上限です。
-	//
-	// これが無いと、応答を返さない substrate に対して呼び出しがいつまでも戻りません。SDK にも HTTP
-	// クライアントにも別の上限がなく（DI が渡すクライアントは Timeout を持たず、SSRF ガードのために
-	// 差し替えた Dialer にも Timeout はありません）、awsclient.Resolve の上限は起動時の資格情報解決
-	// 1 回にしか掛かりません。one-shot の job は既定で全体のタイムアウトを持たないため、1 呼び出しが
-	// 戻らないとジョブごと戻らなくなります。
-	//
-	// 値は dynamodbclient.CallTimeout に揃えます。同じ機構が使う 2 つの substrate で、1 呼び出しに
-	// 与える猶予を変える理由がないためです。
-	CallTimeout = 10 * time.Second
-	// receiveCallTimeout は、long polling する受信にだけ与える上限です。受信は receiveWaitSeconds
-	// （20 秒）まで意図的に待つので、CallTimeout を当てると毎回 deadline で落ちて loop が回りません。
-	// 待ち時間そのものではなく「待ち切ってなお戻らない」ことを捕まえる値にします。
-	receiveCallTimeout = (receiveWaitSeconds + 10) * time.Second
-	// receiveOperation は、long polling する操作の名前です（smithy が middleware へ渡す値）。
-	receiveOperation = "ReceiveMessage"
-)
-
+// NewClients は、設定から SNS / SQS クライアントを生成します。資格情報の解決は 1 回で、失敗すれば
+// エラーを返し、認証エラーが最初の publish / receive まで隠れないようにします。
 func NewClients(ctx context.Context, cfg ClientConfig) (Clients, error) {
 	awsCfg, err := awsclient.Resolve(ctx, awsclient.Config{
 		Region:          cfg.Region,
