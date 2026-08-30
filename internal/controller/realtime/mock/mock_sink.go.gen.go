@@ -88,3 +88,41 @@ func (mr *MockRevokerMockRecorder) Revoke(ctx, subject, destination any) *gomock
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Revoke", reflect.TypeOf((*MockRevoker)(nil).Revoke), ctx, subject, destination)
 }
+
+// MockReprovisioner is a mock of Reprovisioner interface.
+type MockReprovisioner struct {
+	ctrl     *gomock.Controller
+	recorder *MockReprovisionerMockRecorder
+	isgomock struct{}
+}
+
+// MockReprovisionerMockRecorder is the mock recorder for MockReprovisioner.
+type MockReprovisionerMockRecorder struct {
+	mock *MockReprovisioner
+}
+
+// NewMockReprovisioner creates a new mock instance.
+func NewMockReprovisioner(ctrl *gomock.Controller) *MockReprovisioner {
+	mock := &MockReprovisioner{ctrl: ctrl}
+	mock.recorder = &MockReprovisionerMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockReprovisioner) EXPECT() *MockReprovisionerMockRecorder {
+	return m.recorder
+}
+
+// Reprovision mocks base method.
+func (m *MockReprovisioner) Reprovision(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Reprovision", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Reprovision indicates an expected call of Reprovision.
+func (mr *MockReprovisionerMockRecorder) Reprovision(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Reprovision", reflect.TypeOf((*MockReprovisioner)(nil).Reprovision), ctx)
+}
