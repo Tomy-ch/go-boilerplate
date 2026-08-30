@@ -160,6 +160,18 @@ func (s *subscription) Delete(ctx context.Context, n rt.Notification) error {
 	return nil
 }
 
+// Teardown は、unsubscribe → queue 削除の順に片付けます。片方が失敗しても残りを試み、失敗をまとめて返します
+// （残った resource は orphan cleanup が lease から辿って回収する）。Provision していなければ何もしません。
+func (s *subscription) Teardown(ctx context.Context) error {
+	ctx, endSpan := s.tracer.Start(ctx)
+	defer endSpan()
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.teardown(ctx)
+}
+
 // classifyReceivingEnd は、受信の失敗を分類します。受信先がもう無いなら、キャッシュした識別子を捨てて
 // ErrReceivingEndGone を返します。作り直しはここでは行いません — 順序を持つ呼び出し側の役割です
 // （package README の Port mapping / docs/design/realtime-delivery.md §2.5）。
@@ -181,18 +193,6 @@ func (s *subscription) invalidate() {
 	defer s.mu.Unlock()
 
 	s.queueURL, s.queueARN, s.subscriptionARN = "", "", ""
-}
-
-// Teardown は、unsubscribe → queue 削除の順に片付けます。片方が失敗しても残りを試み、失敗をまとめて返します
-// （残った resource は orphan cleanup が lease から辿って回収する）。Provision していなければ何もしません。
-func (s *subscription) Teardown(ctx context.Context) error {
-	ctx, endSpan := s.tracer.Start(ctx)
-	defer endSpan()
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	return s.teardown(ctx)
 }
 
 func (s *subscription) provision(ctx context.Context, name string) error {

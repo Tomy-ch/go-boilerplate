@@ -100,7 +100,7 @@ func provideRealtimeFanout(
 	epCfg *config.EndpointConfig,
 	outbound *observability.OutboundHTTPClient,
 ) (realtimeFanout, error) {
-	return newRealtimeFanout(cfg.Topic(), realtimeinfra.ClientConfig{
+	return newRealtimeFanout(context.Background(), cfg.Topic(), realtimeinfra.ClientConfig{
 		Endpoint:        epCfg.RealtimePubSub(),
 		Region:          cfg.Region(),
 		AccessKeyID:     cfg.AccessKeyID(),
@@ -109,12 +109,12 @@ func provideRealtimeFanout(
 	})
 }
 
-func newRealtimeFanout(topicARN string, cc realtimeinfra.ClientConfig) (realtimeFanout, error) {
+func newRealtimeFanout(ctx context.Context, topicARN string, cc realtimeinfra.ClientConfig) (realtimeFanout, error) {
 	if topicARN == "" {
 		return realtimeFanout{}, ErrRealtimeTopicNotConfigured
 	}
 
-	clients, err := realtimeinfra.NewClients(context.Background(), cc)
+	clients, err := realtimeinfra.NewClients(ctx, cc)
 	if err != nil {
 		return realtimeFanout{}, err
 	}

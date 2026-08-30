@@ -661,7 +661,7 @@ func Test_subscription_classifyReceivingEnd(t *testing.T) {
 
 			err := s.classifyReceivingEnd(errSubstrate, "receive notifications")
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
-			assert.NotErrorIs(t, err, rt.ErrReceivingEndGone)
+			require.NotErrorIs(t, err, rt.ErrReceivingEndGone)
 			assert.Equal(t, testQueueURL, s.queueURL)
 		})
 	})

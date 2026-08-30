@@ -50,7 +50,7 @@ func provideOrphanSweeperFactory(
 			return nil, err
 		}
 
-		fanout, err := newRealtimeFanout(cfg.Topic(), realtimeinfra.ClientConfig{
+		fanout, err := newRealtimeFanout(ctx, cfg.Topic(), realtimeinfra.ClientConfig{
 			Endpoint:        epCfg.RealtimePubSub(),
 			Region:          cfg.Region(),
 			AccessKeyID:     cfg.AccessKeyID(),

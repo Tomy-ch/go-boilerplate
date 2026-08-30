@@ -2,7 +2,6 @@ package realtime
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -362,7 +361,7 @@ func TestEngine_repairIfGone(t *testing.T) {
 			e.reprovision = reprovisioner
 
 			log, logs := logging.NewObservedTestLogger(t)
-			e.repairIfGone(t.Context(), log, xerrors.Join(rt.ErrReceivingEndGone, errors.New("gone")))
+			e.repairIfGone(t.Context(), log, xerrors.Join(rt.ErrReceivingEndGone, xerrors.New("gone")))
 
 			assert.Equal(t, 1, logs.FilterMessage("reprovisioned the realtime receiving end").Len())
 		})
@@ -376,7 +375,7 @@ func TestEngine_repairIfGone(t *testing.T) {
 			e.reprovision = reprovisioner
 
 			log, logs := logging.NewObservedTestLogger(t)
-			e.repairIfGone(t.Context(), log, errors.New("transient"))
+			e.repairIfGone(t.Context(), log, xerrors.New("transient"))
 
 			assert.Equal(t, 0, logs.Len())
 		})
@@ -398,11 +397,11 @@ func TestEngine_repairIfGone(t *testing.T) {
 				DoAndReturn(func(context.Context) error {
 					cancel()
 
-					return errors.New("stopping")
+					return xerrors.New("stopping")
 				})
 
 			log, logs := logging.NewObservedTestLogger(t)
-			e.repairIfGone(ctx, log, xerrors.Join(rt.ErrReceivingEndGone, errors.New("gone")))
+			e.repairIfGone(ctx, log, xerrors.Join(rt.ErrReceivingEndGone, xerrors.New("gone")))
 
 			assert.Equal(t, 0, logs.Len())
 		})
@@ -413,11 +412,11 @@ func TestEngine_repairIfGone(t *testing.T) {
 			e, _ := newEngine(t, Settings{})
 			ctrl := gomock.NewController(t)
 			reprovisioner := mock_ctrlrealtime.NewMockReprovisioner(ctrl)
-			reprovisioner.EXPECT().Reprovision(gomock.Any()).Return(errors.New("still deleting")).Times(1)
+			reprovisioner.EXPECT().Reprovision(gomock.Any()).Return(xerrors.New("still deleting")).Times(1)
 			e.reprovision = reprovisioner
 
 			log, logs := logging.NewObservedTestLogger(t)
-			e.repairIfGone(t.Context(), log, xerrors.Join(rt.ErrReceivingEndGone, errors.New("gone")))
+			e.repairIfGone(t.Context(), log, xerrors.Join(rt.ErrReceivingEndGone, xerrors.New("gone")))
 
 			assert.Equal(t, 1, logs.FilterMessage("failed to reprovision the realtime receiving end").Len())
 		})

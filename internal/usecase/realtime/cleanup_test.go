@@ -55,8 +55,11 @@ func expectListExpired(
 func TestNewOrphanSweeper(t *testing.T) {
 	t.Parallel()
 
-	s, _, _, _ := newOrphanSweeper(t)
+	s, leases, reclaimer, clk := newOrphanSweeper(t)
 	assert.NotNil(t, s)
+	assert.NotNil(t, leases)
+	assert.NotNil(t, reclaimer)
+	assert.NotNil(t, clk)
 }
 
 // Test_orphanSweeper_Sweep は、列挙の基準時刻と、複数件にまたがる集計・エラーの束ね方を固定する。
@@ -93,7 +96,6 @@ func Test_orphanSweeper_Sweep(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, SweepResult{Detected: 3, Claimed: 2, Reclaimed: 2, Skipped: 1}, got)
 		})
-
 	})
 
 	t.Run("異常系", func(t *testing.T) {

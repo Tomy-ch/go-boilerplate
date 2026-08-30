@@ -101,7 +101,6 @@ func Test_reclaimer_Reclaim(t *testing.T) {
 
 			require.NoError(t, r.Reclaim(t.Context(), "inst-1"))
 		})
-
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -258,7 +257,7 @@ func Test_reclaimer_unsubscribeAll(t *testing.T) {
 			found, err := r.unsubscribeAll(t.Context(), "inst-1")
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
 			// 先行ページの解除失敗を捨てず、見つけた受信先も返す（どちらも回収の続行に要る）。
-			assert.ErrorIs(t, err, errSubstrate)
+			require.ErrorIs(t, err, errSubstrate)
 			assert.Equal(t, []string{orphanQueueName}, found)
 		})
 	})

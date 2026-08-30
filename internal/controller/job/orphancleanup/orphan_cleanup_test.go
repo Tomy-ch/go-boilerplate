@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
-	"go.uber.org/zap/zaptest/observer"
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/logging"
@@ -16,25 +15,30 @@ import (
 	mock_realtime "go-boilerplate/internal/usecase/realtime/mock"
 )
 
-func newJob(t *testing.T) (*jobImpl, *mock_realtime.MockOrphanSweeper, *observer.ObservedLogs) {
+// newSweeperMock は、掃除役の mock と、それを返すファクトリを組みます。
+func newSweeperMock(t *testing.T) (*mock_realtime.MockOrphanSweeper, SweeperFactory) {
 	t.Helper()
 
-	ctrl := gomock.NewController(t)
-	sweeper := mock_realtime.NewMockOrphanSweeper(ctrl)
-	log, logs := logging.NewObservedTestLogger(t)
+	sweeper := mock_realtime.NewMockOrphanSweeper(gomock.NewController(t))
 
-	factory := func(context.Context) (ucrealtime.OrphanSweeper, error) { return sweeper, nil }
+	return sweeper, func(context.Context) (ucrealtime.OrphanSweeper, error) { return sweeper, nil }
+}
 
+// newJob は、観測用 Logger を差した job と、その掃除役の mock を返します。
+func newJob(t *testing.T, log logging.Logger) (*jobImpl, *mock_realtime.MockOrphanSweeper) {
+	t.Helper()
+
+	sweeper, factory := newSweeperMock(t)
 	j, ok := New(log, observability.NewNoopTracerFactory(t), factory).(*jobImpl)
 	require.True(t, ok)
 
-	return j, sweeper, logs
+	return j, sweeper
 }
 
 func TestNew(t *testing.T) {
 	t.Parallel()
 
-	j, _, _ := newJob(t)
+	j, _ := newJob(t, logging.NewTestLogger(t))
 	assert.NotNil(t, j)
 }
 
@@ -53,7 +57,8 @@ func Test_jobImpl_Execute(t *testing.T) {
 		t.Run("掃除を 1 度だけ実行し、内訳を出力する", func(t *testing.T) {
 			t.Parallel()
 
-			j, sweeper, logs := newJob(t)
+			observedLog, logs := logging.NewObservedTestLogger(t)
+			j, sweeper := newJob(t, observedLog)
 			sweeper.EXPECT().Sweep(gomock.Any()).Return(ucrealtime.SweepResult{Detected: 2, Reclaimed: 2}, nil)
 
 			require.NoError(t, j.Execute(t.Context(), nil))
@@ -71,7 +76,7 @@ func Test_jobImpl_Execute(t *testing.T) {
 		t.Run("引数を受け取ったら掃除せずに止まる", func(t *testing.T) {
 			t.Parallel()
 
-			j, _, _ := newJob(t)
+			j, _ := newJob(t, logging.NewTestLogger(t))
 
 			require.ErrorIs(t, j.Execute(t.Context(), []string{"--unknown"}), errUnknownFlag)
 		})
@@ -90,7 +95,8 @@ func Test_jobImpl_Execute(t *testing.T) {
 		t.Run("掃除が失敗しても、確定した内訳を出力してからエラーを返す", func(t *testing.T) {
 			t.Parallel()
 
-			j, sweeper, logs := newJob(t)
+			observedLog, logs := logging.NewObservedTestLogger(t)
+			j, sweeper := newJob(t, observedLog)
 			sweeper.EXPECT().Sweep(gomock.Any()).
 				Return(ucrealtime.SweepResult{Detected: 2, Reclaimed: 1, Failed: 1}, apperror.ErrUnavailable)
 

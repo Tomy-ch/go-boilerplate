@@ -339,7 +339,7 @@ func Test_newRealtimeFanout(t *testing.T) {
 		t.Run("topic の ARN と接続設定からクライアントを組み立てる", func(t *testing.T) {
 			t.Parallel()
 
-			f, err := newRealtimeFanout("arn:aws:sns:us-east-1:000000000000:realtime-test", realtimeinfra.ClientConfig{
+			f, err := newRealtimeFanout(t.Context(), "arn:aws:sns:us-east-1:000000000000:realtime-test", realtimeinfra.ClientConfig{
 				Endpoint: "http://localhost:4100", Region: "us-east-1", AccessKeyID: "k", SecretAccessKey: "s",
 			})
 			require.NoError(t, err)
@@ -355,14 +355,14 @@ func Test_newRealtimeFanout(t *testing.T) {
 		t.Run("topic の ARN が空なら ErrRealtimeTopicNotConfigured", func(t *testing.T) {
 			t.Parallel()
 
-			_, err := newRealtimeFanout("", realtimeinfra.ClientConfig{Region: "us-east-1"})
+			_, err := newRealtimeFanout(t.Context(), "", realtimeinfra.ClientConfig{Region: "us-east-1"})
 			require.ErrorIs(t, err, ErrRealtimeTopicNotConfigured)
 		})
 
 		t.Run("資格情報が片方だけなら構築に失敗する", func(t *testing.T) {
 			t.Parallel()
 
-			_, err := newRealtimeFanout("arn:topic", realtimeinfra.ClientConfig{Region: "us-east-1", AccessKeyID: "k"})
+			_, err := newRealtimeFanout(t.Context(), "arn:topic", realtimeinfra.ClientConfig{Region: "us-east-1", AccessKeyID: "k"})
 			require.Error(t, err)
 		})
 	})
