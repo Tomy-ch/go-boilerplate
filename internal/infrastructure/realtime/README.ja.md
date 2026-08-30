@@ -34,6 +34,16 @@ subscription・不透明な receipt を伴う通知・wakeup・revocation だけ
 | `Receive(limit)` | `WaitTimeSeconds=20`・`MaxNumberOfMessages=min(limit,10)`・`MessageAttributeNames=[All]` の `ReceiveMessage`。`type` を読めないメッセージは `Kind` が空のまま receipt 付きで返るので、consumer は永遠に再配送させる代わりに削除できる |
 | `Delete(n)` | receipt handle による `DeleteMessage` |
 | `Teardown()` | `Unsubscribe` → `DeleteQueue`。前段が失敗しても各段を試み、失敗は束ねる — 残ったものは orphan-cleanup job が回収する |
+| `Reclaim(id)` | `ListSubscriptionsByTopic`（ページを辿る）→ `Unsubscribe` → `GetQueueUrl` → `DeleteQueue`。順序が `Teardown` と同じ理由も同じで、違うのは instance 自身の状態ではなく識別子から辿る点。削除する queue の名前は、一覧が返した endpoint が持つ実際の名前と、現在の `QueuePrefix` から導ける名前の両方。lease は queue への参照を持たないため、設定から導くだけでは prefix を変えた後に旧世代の残骸へ届かず、しかも「無いものは成功」なので回収は成功を報告し、残骸を辿る唯一の索引である lease が消えてしまう。既に無いものは成功として扱うので、繰り返しても同じ状態に収束する。確認待ちの subscription は ARN の代わりに `PendingConfirmation` を持つため触らない |
+
+`Receive` と `Delete` は「受信先が無い」を通常の失敗と区別します。キャッシュした識別子を捨てて
+`ErrReceivingEndGone` を返し（`currentQueueURL` も未 provision のとき同じ sentinel を返します）、**作り直しはしません**。
+作り直しは受信先より先に lease を書く順序でなければならず（lease に指されない queue は誰にも回収できない。設計 §2.5）、
+その順序を持つのはこの package ではなく両者を合成する側だからです。`internal/controller/realtime` の受信ループがこの
+エラーで `Reprovisioner` に依頼し、DI module がそれを `LeaseKeeper.Beat` → `Provision` の順で組み立てます。
+「まだ作っていない」を同じ sentinel に畳んでいるのが、ループを修復可能に保つ要点です。作り直しに失敗すると
+（AWS は queue の削除から同名 queue の作成まで 60 秒を要求します）手元の状態は空のまま残るので、次の周回が別のエラーへ
+落ちて誰も対処しない形にならないよう、同じ修復へ届く必要があります。
 
 固定値は `aws/attributes.go` にあります: visibility timeout 30 秒、long polling 20 秒、
 `maxReceiveCount` 5。topic・queue prefix・（任意の）DLQ はデプロイ先依存で、`RealtimeConfig`
@@ -79,3 +89,8 @@ GoAWS v0.5.4 に対する `make realtime-smoke`（`scripts/realtime-smoke`）で
 - N 個の subscriber への fan-out と「publish 後の mark 失敗で二重配送しない」シナリオも contract test
   （`aws/fanout_contract_test.go`）にある。publisher と EventLog store の両方が要るため DynamoDB Local と
   GoAWS を並べて走らせる。skip しない規則は同じ。
+- 回収も同じ理由で contract test（`aws/cleanup_contract_test.go`）。fan-out の隣に lease store が要るため、
+  ここでも DynamoDB Local と GoAWS を並べて走らせる。`TestOrphanCleanupContract` が crash した instance の
+  往復・2 つの掃除役が見る競合・繰り返し実行の収束を、`TestReceivingEndGoneContract` が作り直しの経路が
+  依存するエラー分類を固定する — mock は `QueueDoesNotExist` を返すよう指示できてしまうので、実際に返すか
+  どうかは emulator にしか答えられない。

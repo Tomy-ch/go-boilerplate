@@ -145,6 +145,15 @@ stateDiagram-v2
 
 instance の識別子はプロセス起動ごとに新しく採番し、再起動をまたいで残る値（hostname や pod 名）から導かない。instance ごとの queue 名は `<prefix>-<instance id>`、lease も同じ識別子をキーにするため、再起動したプロセスが前世代の識別子を使い回すと、前世代の lease を heartbeat で延命しつつ、まだ生きているプロセスが consume 中の queue を片付けてしまう。起動ごとの新しい識別子は前世代の残骸をただの orphan にし、cleanup job が回収できる唯一の状態へ倒す。
 
+instance は生きたまま受信先を失うこともある。cleanup の安全余裕はこれを起こりにくくするだけで、無くしはしない
+——停滞した instance の lease を引き受けた回収は、後で再開するプロセスの queue を消す。subscription は、消えた
+queue への受信も、まだ作っていない受信先への受信も、同じ `ErrReceivingEndGone` として報告する。どちらも復旧が
+同一だからであり、分けると作り直しに失敗した次の周回が復旧の対象から外れる。consumer の loop はこれを受けて
+作り直しを依頼し、順序は上の起動順序と同じく lease が先である。理由も起動順序と同じ。その順序は lease と
+subscription が出会う場所——DI module——で合成する。subscription 自身は lease を知らないので、そこには置かない。
+作り直しの失敗はその場で再試行しない。次の受信が同じように失敗して再び依頼するので、AWS が queue の削除から
+同名 queue の作成まで要求する 60 秒は、その繰り返しが越える。
+
 ### 2.6 degraded 時の動作
 
 | 条件 | 新規 SSE 接続への影響 | 既存接続への影響 | `/ready` への影響 |
@@ -243,7 +252,7 @@ trace: command → outbox → relay → EventLog は outbox header を通じて 
 ### 4.2 deployment 側
 
 - **DynamoDB**: 3 table（`occurredAt` 由来の失効で TTL 7 日の EventLog、TTL 付きの StreamTicket、InstanceLease）。partition = stream。at-rest 暗号化。point-in-time recovery、backup、alarm はこの repository の外で provisioning する（[ADR-0106 (vendor-neutral-deploy-skeleton)](../adr/0106-vendor-neutral-deploy-skeleton.ja.md)）。単一の hot stream は 1 partition と 1 PostgreSQL 行で有界であり、機構はそれを shard しない。
-- **SNS / SQS**: standard topic を 1 つ。deployment が provisioning し、`REALTIME_TOPIC` でアプリケーションに名前を渡す（ローカルでは `make realtime-init` が作る）。アプリケーション自身が作る resource は instance ごとの standard queue だけで、serve 起動時に `<REALTIME_QUEUE_PREFIX>-<instance id>` として作る。属性は次のとおり: `aws:SourceArn` がその topic のときに限り `sns.amazonaws.com` からの `sqs:SendMessage` を許可する access policy、subscription の `RawMessageDelivery=true`、long polling（`ReceiveMessageWaitTimeSeconds=20`）、`VisibilityTimeout=30`、`SqsManagedSseEnabled=true`（customer-managed な KMS 鍵は機構が公開する調整点ではない）、そして `REALTIME_DLQ` が設定されているときは共有 DLQ への `maxReceiveCount=5` の `RedrivePolicy`——DLQ 自体は deployment が provisioning するものであり、wakeup を 1 つ失っても定期 catch-up が拾うので、正しさの要件ではなく運用上の安全網である。最小 IAM: relay は topic への `sns:Publish`。serve instance は `<prefix>-*` への `sqs:CreateQueue` / `sqs:GetQueueAttributes` / `sqs:SetQueueAttributes` / `sqs:ReceiveMessage` / `sqs:DeleteMessage` / `sqs:DeleteQueue` と、topic への `sns:Subscribe` / `sns:SetSubscriptionAttributes` / `sns:Unsubscribe`、および revocation のための topic への `sns:Publish`。orphan-cleanup job はこれに加えて `sns:ListSubscriptionsByTopic`。`sns:CreateTopic` はどこも必要としない。
+- **SNS / SQS**: standard topic を 1 つ。deployment が provisioning し、`REALTIME_TOPIC` でアプリケーションに名前を渡す（ローカルでは `make realtime-init` が作る）。アプリケーション自身が作る resource は instance ごとの standard queue だけで、serve 起動時に `<REALTIME_QUEUE_PREFIX>-<instance id>` として作る。属性は次のとおり: `aws:SourceArn` がその topic のときに限り `sns.amazonaws.com` からの `sqs:SendMessage` を許可する access policy、subscription の `RawMessageDelivery=true`、long polling（`ReceiveMessageWaitTimeSeconds=20`）、`VisibilityTimeout=30`、`SqsManagedSseEnabled=true`（customer-managed な KMS 鍵は機構が公開する調整点ではない）、そして `REALTIME_DLQ` が設定されているときは共有 DLQ への `maxReceiveCount=5` の `RedrivePolicy`——DLQ 自体は deployment が provisioning するものであり、wakeup を 1 つ失っても定期 catch-up が拾うので、正しさの要件ではなく運用上の安全網である。最小 IAM: relay は topic への `sns:Publish`。serve instance は `<prefix>-*` への `sqs:CreateQueue` / `sqs:GetQueueAttributes` / `sqs:SetQueueAttributes` / `sqs:ReceiveMessage` / `sqs:DeleteMessage` / `sqs:DeleteQueue` と、topic への `sns:Subscribe` / `sns:SetSubscriptionAttributes` / `sns:Unsubscribe`、および revocation のための topic への `sns:Publish`。orphan-cleanup job はこれに加えて、topic への `sns:ListSubscriptionsByTopic` と `<prefix>-*` への `sqs:GetQueueUrl` が要る——死んだ instance の queue へは、キャッシュした URL ではなく名前から辿るためで、そこでの拒否は「既に無い」と区別が付かないため、queue が残ったまま job が毎回失敗し続ける。`sns:CreateTopic` はどこも必要としない。
 - **edge**: HTTPS。固定の CORS origin。クライアントの CSP `connect-src`。load balancer / proxy の idle timeout は heartbeat 間隔より長く、stream path では response buffering を無効化。reconnect の rate limiting があるなら edge で。**stream path の query string を edge / proxy / load balancer の access log から除外または redact する**——ticket は query parameter で運ばれ、プロセス内の除去はプロセス外で書かれる log には届かない。
 - **local**: shared infrastructure profile の DynamoDB Local と SNS/SQS emulator（GoAWS）。table と topic は idempotent な initializer が作り、table 名は worktree ごとに prefix する。GoAWS は queue policy を受け付けず、redrive / 暗号化の属性も尊重しないため、emulator 用の queue attribute の集合（`infrastructure/realtime/local`）は timing の属性だけを設定する。DI module は emulator の環境ではこちらを、`dev` 以降では完全な集合を選ぶ。
 

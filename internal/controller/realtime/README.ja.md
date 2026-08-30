@@ -17,13 +17,18 @@
 
 ## 公開 API
 
-- `Engine` — 常駐 consumer。`NewEngine(sub, wakeups, revocations, sleeper, log, tf, set)`。
+- `Engine` — 常駐 consumer。`NewEngine(sub, reprovision, wakeups, revocations, sleeper, log, tf, set)`。
   `Run(ctx) error` が loop 本体。
 - `Settings` — `BatchSize`（既定 10。queue 自身の上限）と `ErrorBackoff`（既定 5 秒）。ゼロ値と負値は既定へ
   フォールバックする。receive が long poll であり、どちらの値もデプロイ先で変わらないため config は無い。
 - `Waker.Wake(ctx, streamID, upTo)` / `Revoker.Revoke(ctx, subject, destination)` — 受け手。どちらも
   loop 上で同期的に呼ばれるので、実装は印を付けるか通知するだけで、replay を待ってはならない。重複は
   正常であり、冪等でなければならない。
+- `Reprovisioner.Reprovision(ctx) error` — 受信が `realtime.ErrReceivingEndGone` で失敗したときに loop が
+  依頼する受け手。受信先を作り直す前に lease を書き直す順序が要り、その順序を知っているのは両者を合成する
+  側だけなので、loop は自分で作り直さず委ねる
+  （[`docs/design/realtime-delivery.ja.md`](../../../docs/design/realtime-delivery.ja.md) §2.5）。
+  `ReprovisionFunc` が関数をこれに適合させる。
 - `Heartbeat` — `NewHeartbeat(keeper, id, sleeper, log, tf)`。`Run(ctx)` は instance lease を直ちに書き、
   以後 `ucrealtime.LeaseHeartbeatInterval` ごとに書く。単発の失敗はログに出して次の tick で再試行する。
   instance が orphan になるのは `LeaseExpiry` より長く沈黙したときだけ。
@@ -52,4 +57,7 @@
 keeper は生成 mock、sleeper も mock にしてテストは一切 sleep せず、loop は loop として駆動する — 1 反復の効果
 （batch → sink → 削除。coalescing は生成した `Waker` / `Revoker` の mock が受けた呼び出しで検証する）、停止の意味論（loop 先頭・receive 中・
 backoff 中での cancel）、反復ごとのエラー経路（backoff して継続、削除失敗のログ）、そして settings の
-既定値。
+既定値。作り直しの経路も単独ではなく loop の一部として固定する — 受信が
+`realtime.ErrReceivingEndGone` で失敗した周回は `Reprovisioner` に 1 度依頼してから backoff する、という
+形なので、harness は既定で作り直しを呼ばせず、必要なテストが個別に宣言する。非公開ヘルパーを直接呼ぶ
+テストだけで済ませると、`Run` 側の呼び出し箇所を削除しても気づけない。

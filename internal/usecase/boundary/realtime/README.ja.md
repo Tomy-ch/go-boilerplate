@@ -39,6 +39,12 @@ type InstanceLeaseStore interface {
     Delete(ctx context.Context, id InstanceID) error
     ListExpired(ctx context.Context, asOf time.Time) ([]InstanceLease, error)
     AcquireCleanup(ctx context.Context, claim CleanupClaim) (bool, error)         // 条件付き。false = 他者が引き受け済み
+    ReleaseCleanup(ctx context.Context, release CleanupRelease) (bool, error)     // 条件付き。false = 引き受けが他へ移ったか instance が復帰した
+}
+
+// 死んだ instance が残したものを、所有ではなく識別子から辿って片付ける。
+type OrphanReclaimer interface {
+    Reclaim(ctx context.Context, id InstanceID) error   // 登録を解除してから削除。対象が無いことは成功
 }
 
 type SecretGenerator interface {
@@ -70,6 +76,7 @@ type Notification struct {            // Kind がどちらに値が入ってい�
 | 同じ位置への同じ `EventID` の再 append は成功、異なる `EventID` は `ErrSequenceConflict` | `EventLogStore.Append`（outbox relay は特別扱い無しで retry できる） |
 | cursor は ticket 自身の `Destination` に対してだけ意味を持つ | `StreamTicket.Destination`。stream handler が比較する |
 | 期限の判定は呼び出し側の時計（`asOf`）で行い、store の掃除を正本にしない | `StreamTicketStore.Find`、`InstanceLeaseStore.ListExpired` / `AcquireCleanup` |
+| 回収を引き受けた主体が閉じてよいのは、まだ期限切れのままの lease だけ。`Heartbeat` は `CleanupOwner` に触れないため、引き受けの記録だけでは死んだ instance と復帰した instance を見分けられない | `InstanceLeaseStore.ReleaseCleanup` が同じ条件式で `ExpiredBefore` を再確認する |
 
 `EventLogRetention`（7 日）は store（item の掃除）と usecase（replay floor の導出）の両方が読むためここに
 定義します。ticket TTL、lease の heartbeat / expiry / cleanup margin は `internal/usecase/realtime/` が持ち、
@@ -93,5 +100,6 @@ test できなければならないので、乱数の seam を自前で持ちま
 | `SequenceAllocator`（`sequence.go`） | `internal/infrastructure/rdb/system_cqrs/realtime/` |
 | `RevocationNotifier`（`revocation.go`） | `internal/infrastructure/realtime/aws/`（wakeup と同じ topic へ revocation を publish する）。`usecase/realtime.AccessRevoker` が ticket を無効にした後に呼ぶ |
 | `InstanceSubscription`（`fanout.go`） | `internal/infrastructure/realtime/aws/`（instance の SQS queue とその SNS subscription）。`internal/controller/realtime/` の consumer エンジンが駆動する |
+| `OrphanReclaimer`（`cleanup.go`） | `internal/infrastructure/realtime/aws/`（subscription は ARN を組み立てず `ListSubscriptionsByTopic` から引き当てる）。`usecase/realtime.OrphanSweeper` が呼ぶ |
 
 mock はファイルごとに `mock/` へ生成します（`go generate ./...`）。

@@ -19,6 +19,7 @@ Timestamps are stored as epoch nanoseconds (`N`) so the store can compare them i
 | `Heartbeat` | `UpdateItem` `SET heartbeat_at, expires_at` — creates the item when absent and never touches the cleanup fields, so a heartbeat racing a cleanup claim cannot erase the claim |
 | `Delete` | `DeleteItem`; an absent lease is success |
 | `ListExpired(asOf)` | `Scan` with `expires_at < :asOf`, `ConsistentRead`, paginated. The population is the number of serve instances, so a scan is the right shape |
+| `ReleaseCleanup(release)` | `DeleteItem` under `attribute_exists(instance_id) AND cleanup_owner = :o AND expires_at < :before`. Both terms are load-bearing: the first keeps a lease closable only by whoever claimed it, and the second refuses to close one whose instance has come back — `Heartbeat` rewrites `expires_at` without touching `cleanup_owner`, so ownership alone cannot tell the two apart. A refused condition is `false, nil` |
 | `AcquireCleanup(claim)` | `UpdateItem` `SET cleanup_owner, cleanup_owner_until` under `attribute_exists(instance_id) AND expires_at < :before AND (attribute_not_exists(cleanup_owner) OR cleanup_owner_until < :now)`. A refused condition is `false, nil` — someone else owns the cleanup, or there is nothing to clean — never an error. The margin between expiry and `:before` is the caller's (`internal/usecase/realtime`) |
 
 ## Error normalization
