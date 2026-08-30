@@ -102,8 +102,10 @@ func (r *reclaimer) unsubscribeAll(ctx context.Context, id rt.InstanceID) ([]str
 			}
 		}
 
+		// 続きが無いことを空の token でも表す substrate がある（GoAWS は空文字への非 nil ポインタを返す）。
+		// nil だけを終端と見なすと、同じページを取り続けて戻らない。
 		token = out.NextToken
-		if token == nil {
+		if awssdk.ToString(token) == "" {
 			return found, xerrors.Join(errs...)
 		}
 	}

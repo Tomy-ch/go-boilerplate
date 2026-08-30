@@ -186,6 +186,20 @@ func Test_reclaimer_unsubscribeAll(t *testing.T) {
 			assert.Equal(t, []string{orphanQueueName}, found)
 		})
 
+		t.Run("空の NextToken も終端として扱う", func(t *testing.T) {
+			t.Parallel()
+
+			// GoAWS は続きが無いとき nil ではなく空文字への非 nil ポインタを返す。nil だけを終端と
+			// 見なすと同じページを取り続けて戻らない（実基盤で無限ループを踏んだ）。
+			r, m := newReclaimer(t)
+			empty := &sns.ListSubscriptionsByTopicOutput{NextToken: awssdk.String("")}
+			m.sns.EXPECT().ListSubscriptionsByTopic(gomock.Any(), gomock.Any()).Return(empty, nil).Times(1)
+
+			found, err := r.unsubscribeAll(t.Context(), "inst-1")
+			require.NoError(t, err)
+			assert.Empty(t, found)
+		})
+
 		t.Run("確認待ちの登録は解除を試みない", func(t *testing.T) {
 			t.Parallel()
 
