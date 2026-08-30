@@ -139,6 +139,38 @@ func (s *store) AcquireCleanup(ctx context.Context, claim realtime.CleanupClaim)
 	return false, dynamodbclient.Normalize(err, "acquire cleanup")
 }
 
+// ReleaseCleanup は、引き受けが owner のままで、かつ lease がまだ期限切れのときだけ削除します。
+// 期限の再確認が要るのは、Heartbeat が cleanup_owner に触れないため、引き受けている間に instance が
+// 復帰しても引き受けの記録だけでは見分けられないからです。
+func (s *store) ReleaseCleanup(ctx context.Context, release realtime.CleanupRelease) (bool, error) {
+	ctx, endSpan := s.tracer.Start(ctx)
+	defer endSpan()
+
+	if release.Owner == "" {
+		return false, xerrors.Wrap(apperror.ErrInvalidArgument, "release cleanup: owner is empty")
+	}
+
+	_, err := s.c.DeleteItem(ctx, &dynamodb.DeleteItemInput{
+		TableName: aws.String(s.table),
+		Key:       key(release.InstanceID),
+		ConditionExpression: aws.String("attribute_exists(" + attrInstanceID + ") AND " +
+			attrCleanupOwner + " = :o AND " + attrExpiresAt + " < :before"),
+		ExpressionAttributeValues: map[string]types.AttributeValue{
+			":o":      &types.AttributeValueMemberS{Value: release.Owner},
+			":before": nano(release.ExpiredBefore),
+		},
+	})
+	if err == nil {
+		return true, nil
+	}
+
+	if dynamodbclient.IsConditionalCheckFailed(err) {
+		return false, nil
+	}
+
+	return false, dynamodbclient.Normalize(err, "release cleanup")
+}
+
 func key(id realtime.InstanceID) map[string]types.AttributeValue {
 	return map[string]types.AttributeValue{attrInstanceID: &types.AttributeValueMemberS{Value: string(id)}}
 }

@@ -355,3 +355,106 @@ func TestTableSpec(t *testing.T) {
 	assert.Empty(t, spec.TTLAttribute, "lease は TTL で消えてはならない")
 	assert.Equal(t, attrInstanceID, aws.ToString(spec.KeySchema[0].AttributeName))
 }
+
+// releaseAt は、asOf 時点で id の回収を owner が終える要求です（claimAt と同じ締切を使います）。
+func releaseAt(id realtime.InstanceID, owner string, asOf time.Time) realtime.CleanupRelease {
+	return realtime.CleanupRelease{InstanceID: id, Owner: owner, ExpiredBefore: asOf.Add(-margin)}
+}
+
+func Test_store_ReleaseCleanup(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("引き受けた主体は lease を閉じられる", func(t *testing.T) {
+			t.Parallel()
+
+			s := newStore(t)
+			require.NoError(t, s.Heartbeat(t.Context(), leaseOK))
+			asOf := expiry.Add(margin + time.Second)
+			ok, err := s.AcquireCleanup(t.Context(), claimAt("i-1", "job-a", asOf))
+			require.NoError(t, err)
+			require.True(t, ok)
+
+			released, err := s.ReleaseCleanup(t.Context(), releaseAt("i-1", "job-a", asOf))
+			require.NoError(t, err)
+			assert.True(t, released)
+
+			expired, err := s.ListExpired(t.Context(), asOf)
+			require.NoError(t, err)
+			assert.Empty(t, expired)
+		})
+
+		t.Run("引き受けていない主体は閉じられない", func(t *testing.T) {
+			t.Parallel()
+
+			s := newStore(t)
+			require.NoError(t, s.Heartbeat(t.Context(), leaseOK))
+			asOf := expiry.Add(margin + time.Second)
+			ok, err := s.AcquireCleanup(t.Context(), claimAt("i-1", "job-a", asOf))
+			require.NoError(t, err)
+			require.True(t, ok)
+
+			released, err := s.ReleaseCleanup(t.Context(), releaseAt("i-1", "job-b", asOf))
+			require.NoError(t, err)
+			assert.False(t, released)
+
+			expired, err := s.ListExpired(t.Context(), asOf)
+			require.NoError(t, err)
+			assert.Len(t, expired, 1)
+		})
+
+		t.Run("引き受けている間に instance が復帰していれば閉じない", func(t *testing.T) {
+			t.Parallel()
+
+			s := newStore(t)
+			require.NoError(t, s.Heartbeat(t.Context(), leaseOK))
+			asOf := expiry.Add(margin + time.Second)
+			ok, err := s.AcquireCleanup(t.Context(), claimAt("i-1", "job-a", asOf))
+			require.NoError(t, err)
+			require.True(t, ok)
+
+			// Heartbeat は cleanup_owner に触れないため、引き受けの記録だけでは復帰を見分けられない。
+			// 期限を見ているからこそ、生きている instance の lease を消さずに済む。
+			revived := realtime.InstanceLease{InstanceID: "i-1", HeartbeatAt: asOf, ExpiresAt: asOf.Add(2 * time.Minute)}
+			require.NoError(t, s.Heartbeat(t.Context(), revived))
+
+			released, err := s.ReleaseCleanup(t.Context(), releaseAt("i-1", "job-a", asOf))
+			require.NoError(t, err)
+			assert.False(t, released)
+		})
+
+		t.Run("lease が無ければ閉じるものが無い", func(t *testing.T) {
+			t.Parallel()
+
+			s := newStore(t)
+
+			released, err := s.ReleaseCleanup(t.Context(), releaseAt("i-missing", "job-a", now))
+			require.NoError(t, err)
+			assert.False(t, released)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("引き受けた主体が空なら store を呼ばずに止まる", func(t *testing.T) {
+			t.Parallel()
+
+			s := newStore(t)
+
+			_, err := s.ReleaseCleanup(t.Context(), releaseAt("i-1", "", now))
+			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
+		})
+
+		t.Run("table が無ければ ErrUnavailable", func(t *testing.T) {
+			t.Parallel()
+
+			s := missingStore(t)
+
+			_, err := s.ReleaseCleanup(t.Context(), releaseAt("i-1", "job-a", now))
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+		})
+	})
+}
