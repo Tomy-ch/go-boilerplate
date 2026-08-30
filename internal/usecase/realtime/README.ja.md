@@ -12,6 +12,7 @@ stream 接続を commit する前に決めるべきこと — 提示された cu
 | `TicketIssuer.Issue(in)` → `TicketView` | `SecretGenerator` の新しい 256 bit の値。SHA-256 の hash を subject / destination / scope / initial cursor に束ねて保存し、`TicketTTL`（5 分）だけ有効 | store の失敗はそのまま通す |
 | `TicketVerifier.Verify(value, destination)` → `realtime.StreamGrant` | 値の hash が存在し、`clock.Now()` で期限内で、この destination に束ねられていること | すべての失敗が `ErrTicketInvalid`（`apperror.ErrUnauthenticated` を包む）— 未知・期限切れ・destination 違いはわざと区別しない。区別すると、その ticket が存在するかどうかを呼び出し側に教えてしまうため |
 | `LeaseKeeper.Beat(id)` / `Release(id)` | instance lease（[ADR-0073](../../../docs/adr/0073-sns-sqs-instance-fanout.ja.md)）: `Beat` は「今生きている」ことを `clock.Now() + LeaseExpiry`（2 分）の期限付きで記録し、`Release` は instance が自分でリソースを片付けたときに記録を削除する。間隔（`LeaseHeartbeatInterval`、30 秒）と cleanup の余裕（`LeaseCleanupMargin`、5 分）は、heartbeat loop と orphan cleanup job がここから読む固定値 | store の失敗はそのまま通す |
+| `OrphanSweeper.Sweep()` → `SweepResult` | どの死んだ instance を誰が回収してよいか: 期限切れが `LeaseCleanupMargin`（5 分）を過ぎた lease を条件付き書き込みで引き受け、`OrphanReclaimer` で受信先を片付け、そのうえで lease を閉じる。閉じる側も条件付きなのは、`Heartbeat` が引き受けの記録に触れないため、復帰した instance の生きた lease を消してしまうから。順序は固定で、lease が受信先を辿る唯一の索引である以上、先に閉じると片付けに失敗した残骸を誰も見つけられなくなる。1 件の失敗では止まらず、内訳と束ねたエラーの両方を返す | store と reclaimer の失敗はそのまま通し、束ねて返す |
 | `AccessRevoker.Revoke(subject, destination)` | feature が subject の destination への権利を取り下げるときに呼ぶ失効の seam（[ADR-0074](../../../docs/adr/0074-query-ticket-stream-authentication.ja.md)）。その組の ticket を**先に**すべて無効にし（`StreamTicketStore.Invalidate` — 無効化された ticket は `Verify` を通らないので、`STOP` を無視した client も再接続できない）、そのうえで `RevocationNotifier` を通じて各 serve instance に該当接続を閉じさせる。通知に失敗しても無効化は成立している | store と notifier の失敗はそのまま通す |
 
 `ErrCursorExpired` を `apperror` に足さず package の sentinel にしているのは、本 package が HTTP を知らないため。
@@ -19,7 +20,8 @@ stream 接続を commit する前に決めるべきこと — 提示された cu
 
 本 package の外: *いつ* replay するか（`internal/controller/stream` の connection registry がスケジュールと接続状態を
 持ち、本 package は読み取りを実行するだけ）、heartbeat の*ループ*（`internal/controller/realtime` が serve lifecycle の
-スケジュールで `LeaseKeeper.Beat` を駆動する）、orphan cleanup の引き受け（cleanup job）。
+スケジュールで `LeaseKeeper.Beat` を駆動する）、*いつ*掃除するか（scheduler が `cmd job orphan-cleanup` を起動する。
+`internal/controller/job/orphancleanup` は内訳を報告するだけ）。
 
 ## テスト戦略
 

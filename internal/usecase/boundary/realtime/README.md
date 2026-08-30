@@ -40,6 +40,12 @@ type InstanceLeaseStore interface {
     Delete(ctx context.Context, id InstanceID) error
     ListExpired(ctx context.Context, asOf time.Time) ([]InstanceLease, error)
     AcquireCleanup(ctx context.Context, claim CleanupClaim) (bool, error)         // conditional; false = someone else owns it
+    ReleaseCleanup(ctx context.Context, release CleanupRelease) (bool, error)     // conditional; false = ownership moved, or the instance came back
+}
+
+// Reclaims what a dead instance left behind, reached by its identifier rather than by owning it.
+type OrphanReclaimer interface {
+    Reclaim(ctx context.Context, id InstanceID) error   // unregister, then delete; absent resources are success
 }
 
 type SecretGenerator interface {
@@ -71,6 +77,7 @@ type Notification struct {            // Kind selects which of the two is popula
 | Re-appending the same `EventID` at the same position succeeds; a different `EventID` there is `ErrSequenceConflict` | `EventLogStore.Append` (the outbox relay retries without a special case) |
 | A cursor is only meaningful for the ticket's own `Destination` | `StreamTicket.Destination`; the stream handler compares them |
 | Expiry is decided by the caller's clock (`asOf`), never by the store's clean-up | `StreamTicketStore.Find`, `InstanceLeaseStore.ListExpired` / `AcquireCleanup` |
+| A cleanup owner may close only a lease that is still expired — `Heartbeat` leaves `CleanupOwner` untouched, so ownership alone cannot tell a dead instance from one that came back | `InstanceLeaseStore.ReleaseCleanup` re-checks `ExpiredBefore` in the same condition |
 
 `EventLogRetention` (7 days) is defined here because both sides read it — the store to expire items, the
 usecase to derive the replay floor. Ticket TTL and lease heartbeat / expiry / cleanup margin are owned by
@@ -94,5 +101,6 @@ after that removal, so it carries its own randomness seam; the implementation li
 | `SequenceAllocator` (`sequence.go`) | `internal/infrastructure/rdb/system_cqrs/realtime/` |
 | `RevocationNotifier` (`revocation.go`) | `internal/infrastructure/realtime/aws/` (publishes the revocation on the same topic as the wakeups); called by `usecase/realtime.AccessRevoker` after the tickets are invalidated |
 | `InstanceSubscription` (`fanout.go`) | `internal/infrastructure/realtime/aws/` (the instance's SQS queue and its SNS subscription); driven by the consumer engine in `internal/controller/realtime/` |
+| `OrphanReclaimer` (`cleanup.go`) | `internal/infrastructure/realtime/aws/` (finds the subscription through `ListSubscriptionsByTopic` rather than composing an ARN); called by `usecase/realtime.OrphanSweeper` |
 
 Mocks are generated per file into `mock/` (`go generate ./...`).

@@ -44,6 +44,7 @@ var instanceLeaseStoreAllowedPrefixes = []string{
 	"internal/usecase/realtime/",
 	"internal/infrastructure/instancelease/",
 	"internal/di/module/realtime.go",
+	"internal/di/module/realtimecleanup.go",
 	"internal/controller/job/",
 	"internal/cli/",
 }
@@ -273,6 +274,7 @@ func Test_isInstanceLeaseStoreAllowed(t *testing.T) {
 	assert.True(t, isInstanceLeaseStoreAllowed("internal/usecase/boundary/realtime/lease.go"))
 	assert.True(t, isInstanceLeaseStoreAllowed("internal/di/module/realtime.go"))
 	assert.True(t, isInstanceLeaseStoreAllowed("internal/controller/job/orphancleanup/job.go"))
+	assert.True(t, isInstanceLeaseStoreAllowed("internal/di/module/realtimecleanup.go"))
 	assert.False(t, isInstanceLeaseStoreAllowed("internal/usecase/inquiry/feed.go"))
 	assert.False(t, isInstanceLeaseStoreAllowed("internal/di/module/infrastructure.go"))
 }

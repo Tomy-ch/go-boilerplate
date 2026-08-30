@@ -8,6 +8,7 @@ import (
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/clock"
 	rt "go-boilerplate/internal/usecase/boundary/realtime"
+	"go-boilerplate/pkg/xerrors"
 )
 
 const (
@@ -30,6 +31,7 @@ type Settings struct {
 // Engine は、instance の受信先から通知を取り出し、種別ごとに sink へ渡して削除する常駐 engine です。
 type Engine struct {
 	sub         rt.InstanceSubscription
+	reprovision Reprovisioner
 	wakeups     Waker
 	revocations Revoker
 	sleeper     clock.Sleeper
@@ -41,6 +43,7 @@ type Engine struct {
 // NewEngine は、consumer engine を生成します。
 func NewEngine(
 	sub rt.InstanceSubscription,
+	reprovision Reprovisioner,
 	wakeups Waker,
 	revocations Revoker,
 	sleeper clock.Sleeper,
@@ -57,7 +60,8 @@ func NewEngine(
 	}
 
 	return &Engine{
-		sub: sub, wakeups: wakeups, revocations: revocations, sleeper: sleeper, logging: log, tracer: tf.Controller(), set: set,
+		sub: sub, reprovision: reprovision, wakeups: wakeups, revocations: revocations,
+		sleeper: sleeper, logging: log, tracer: tf.Controller(), set: set,
 	}
 }
 
@@ -80,6 +84,7 @@ func (e *Engine) Run(ctx context.Context) error {
 			}
 
 			log.Error(ctx, "failed to receive realtime notifications", logging.Error(logging.ErrorKey, err))
+			e.repairIfGone(ctx, log, err)
 			if e.sleeper.Sleep(ctx, e.set.ErrorBackoff) != nil {
 				return nil
 			}
@@ -89,6 +94,27 @@ func (e *Engine) Run(ctx context.Context) error {
 
 		e.dispatch(ctx, log, batch)
 	}
+}
+
+// repairIfGone は、受信先が使えないことを示す失敗なら作り直しを 1 度試みます。失敗しても次の周回で同じ
+// 失敗を踏んで再び試みるので、ここで諦めても復旧の機会は失われません（AWS は queue の削除から同名 queue の
+// 作成まで 60 秒を要求するため、最初の数周は失敗するのが正常）。
+func (e *Engine) repairIfGone(ctx context.Context, log logging.Logger, cause error) {
+	if !xerrors.Is(cause, rt.ErrReceivingEndGone) {
+		return
+	}
+
+	if err := e.reprovision.Reprovision(ctx); err != nil {
+		if ctx.Err() != nil {
+			return
+		}
+
+		log.Error(ctx, "failed to reprovision the realtime receiving end", logging.Error(logging.ErrorKey, err))
+
+		return
+	}
+
+	log.Info(ctx, "reprovisioned the realtime receiving end")
 }
 
 // dispatch は、1 回の受信分を種別ごとに sink へ渡し、渡し終えた通知を削除します。

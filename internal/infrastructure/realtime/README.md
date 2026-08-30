@@ -34,6 +34,18 @@ port above speaks of an instance subscription, notifications carrying an opaque 
 | `Receive(limit)` | `ReceiveMessage` with `WaitTimeSeconds=20`, `MaxNumberOfMessages=min(limit,10)`, `MessageAttributeNames=[All]`. A message without a readable `type` comes back with an empty `Kind` and its receipt, so the consumer can delete it instead of letting it redeliver forever |
 | `Delete(n)` | `DeleteMessage` by receipt handle |
 | `Teardown()` | `Unsubscribe` → `DeleteQueue`; each step is attempted even when the previous one failed, and failures are joined — whatever survives is the orphan-cleanup job's to reclaim |
+| `Reclaim(id)` | `ListSubscriptionsByTopic` (paged) → `Unsubscribe` → `GetQueueUrl` → `DeleteQueue`. Same order as `Teardown` for the same reason, but reached from an identifier rather than from the instance's own state. The queue names come from the endpoints the listing returned, plus the one the current `QueuePrefix` derives: the lease records no reference to the queue, so deriving the name from configuration alone would miss an earlier generation's leftovers after the prefix changed — and since an absent resource counts as success, the reclaim would report success and the lease, the only index into those leftovers, would be deleted. A resource that is already gone is success, so a repeated reclaim converges. Subscriptions still awaiting confirmation carry `PendingConfirmation` instead of an ARN and are left alone |
+
+`Receive` and `Delete` distinguish "the receiving end is gone" from an ordinary failure: they drop the
+cached identifiers and return `ErrReceivingEndGone`, which `currentQueueURL` also returns when nothing
+is provisioned yet. They do **not** re-provision. Re-provisioning has to write the lease before the
+queue — a queue no lease names can never be reclaimed (design §2.5) — and the order belongs to
+whoever composes the two, not to this package: `internal/controller/realtime`'s consumer loop asks its
+`Reprovisioner` on that error, and the DI module builds that from `LeaseKeeper.Beat` followed by
+`Provision`. Collapsing "not yet provisioned" into the same sentinel is what keeps the loop repairable:
+a re-provision that fails (AWS requires 60 s between deleting a queue and creating one with the same
+name) leaves the local state empty, and the next round has to reach the same repair rather than a
+different error nobody acts on.
 
 Fixed values live in `aws/attributes.go`: visibility timeout 30 s, long polling 20 s, `maxReceiveCount` 5.
 The topic, the queue prefix and the (optional) DLQ are deployment-dependent and come from
@@ -78,3 +90,9 @@ inherited from [`internal/infrastructure/README.md`](../README.md):
 - The N-subscriber fan-out and the "mark failure after publish does not deliver twice" scenarios are
   contract tests as well (`aws/fanout_contract_test.go`): they need the publisher and the EventLog store
   together, so they run against DynamoDB Local and GoAWS side by side, with the same no-skip rule.
+- Reclamation is a contract test for the same reason (`aws/cleanup_contract_test.go`): it needs the lease
+  store beside the fan-out, so DynamoDB Local and GoAWS again run side by side.
+  `TestOrphanCleanupContract` covers the crashed instance's round trip, the contention two sweepers see,
+  and convergence on a repeat run; `TestReceivingEndGoneContract` pins the error classification that the
+  repair path depends on — a mock can be told to return `QueueDoesNotExist`, so only the emulator can
+  answer whether it actually does.

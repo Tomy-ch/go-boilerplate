@@ -17,6 +17,7 @@ import (
 	mock_clock "go-boilerplate/internal/usecase/boundary/clock/mock"
 	rt "go-boilerplate/internal/usecase/boundary/realtime"
 	mock_realtime "go-boilerplate/internal/usecase/boundary/realtime/mock"
+	"go-boilerplate/pkg/xerrors"
 )
 
 // sinkRecord は、mock の受け口が受けた呼び出しの記録です。
@@ -28,11 +29,12 @@ type sinkRecord struct {
 
 // engineMocks は、engine の依存の mock と、受け口の記録、観測したログを数える関数です。
 type engineMocks struct {
-	sub     *mock_realtime.MockInstanceSubscription
-	sleeper *mock_clock.MockSleeper
-	waker   *mock_ctrlrealtime.MockWaker
-	revoker *mock_ctrlrealtime.MockRevoker
-	sinks   *sinkRecord
+	sub           *mock_realtime.MockInstanceSubscription
+	reprovisioner *mock_ctrlrealtime.MockReprovisioner
+	sleeper       *mock_clock.MockSleeper
+	waker         *mock_ctrlrealtime.MockWaker
+	revoker       *mock_ctrlrealtime.MockRevoker
+	sinks         *sinkRecord
 	// logCount は、msg のログの件数を返します（msg が空なら全件）。
 	logCount func(msg string) int
 }
@@ -42,12 +44,15 @@ func newEngine(t *testing.T, set Settings) (*Engine, engineMocks) {
 
 	ctrl := gomock.NewController(t)
 	m := engineMocks{
-		sub:     mock_realtime.NewMockInstanceSubscription(ctrl),
-		sleeper: mock_clock.NewMockSleeper(ctrl),
-		waker:   mock_ctrlrealtime.NewMockWaker(ctrl),
-		revoker: mock_ctrlrealtime.NewMockRevoker(ctrl),
-		sinks:   &sinkRecord{wakeups: map[rt.StreamID][]rt.Sequence{}},
+		sub:           mock_realtime.NewMockInstanceSubscription(ctrl),
+		reprovisioner: mock_ctrlrealtime.NewMockReprovisioner(ctrl),
+		sleeper:       mock_clock.NewMockSleeper(ctrl),
+		waker:         mock_ctrlrealtime.NewMockWaker(ctrl),
+		revoker:       mock_ctrlrealtime.NewMockRevoker(ctrl),
+		sinks:         &sinkRecord{wakeups: map[rt.StreamID][]rt.Sequence{}},
 	}
+	// 既定では作り直しを呼ばせない。AnyTimes で吸収すると、Run から repairIfGone の呼び出しを
+	// 削除する変更が全テスト緑のまま通ってしまう。呼ばれる想定のテストが個別に EXPECT を置く。
 	m.waker.EXPECT().Wake(gomock.Any(), gomock.Any(), gomock.Any()).
 		Do(func(_ context.Context, streamID rt.StreamID, upTo rt.Sequence) {
 			m.sinks.mu.Lock()
@@ -72,7 +77,7 @@ func newEngine(t *testing.T, set Settings) (*Engine, engineMocks) {
 		return logs.FilterMessage(msg).Len()
 	}
 
-	return NewEngine(m.sub, m.waker, m.revoker, m.sleeper, log, observability.NewNoopTracerFactory(t), set), m
+	return NewEngine(m.sub, m.reprovisioner, m.waker, m.revoker, m.sleeper, log, observability.NewNoopTracerFactory(t), set), m
 }
 
 func wakeup(streamID rt.StreamID, seq rt.Sequence) rt.Notification {
@@ -203,6 +208,29 @@ func TestEngine_Run(t *testing.T) {
 			assert.Equal(t, 1, m.logCount("failed to receive realtime notifications"))
 		})
 
+		t.Run("受信先の消失なら backoff の前に作り直しを試みる", func(t *testing.T) {
+			t.Parallel()
+
+			e, m := newEngine(t, Settings{ErrorBackoff: 7 * time.Second})
+			ctx, cancel := context.WithCancel(t.Context())
+			gone := xerrors.Join(rt.ErrReceivingEndGone, apperror.ErrUnavailable)
+			gomock.InOrder(
+				m.sub.EXPECT().Receive(gomock.Any(), gomock.Any()).Return(nil, gone),
+				m.reprovisioner.EXPECT().Reprovision(gomock.Any()).Return(nil),
+				m.sleeper.EXPECT().Sleep(gomock.Any(), 7*time.Second).Return(nil),
+				m.sub.EXPECT().
+					Receive(gomock.Any(), gomock.Any()).
+					DoAndReturn(func(context.Context, int) ([]rt.Notification, error) {
+						cancel()
+
+						return nil, nil
+					}),
+			)
+
+			require.NoError(t, e.Run(ctx))
+			assert.Equal(t, 1, m.logCount("reprovisioned the realtime receiving end"))
+		})
+
 		t.Run("backoff 中に ctx が完了すれば nil を返す", func(t *testing.T) {
 			t.Parallel()
 
@@ -315,4 +343,96 @@ func Test_coalesce(t *testing.T) {
 		revocations,
 	)
 	assert.Equal(t, 2, unknown)
+}
+
+func TestEngine_repairIfGone(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("受信先の消失なら作り直しを 1 度だけ試みる", func(t *testing.T) {
+			t.Parallel()
+
+			e, _ := newEngine(t, Settings{})
+			ctrl := gomock.NewController(t)
+			reprovisioner := mock_ctrlrealtime.NewMockReprovisioner(ctrl)
+			reprovisioner.EXPECT().Reprovision(gomock.Any()).Return(nil).Times(1)
+			e.reprovision = reprovisioner
+
+			log, logs := logging.NewObservedTestLogger(t)
+			e.repairIfGone(t.Context(), log, xerrors.Join(rt.ErrReceivingEndGone, xerrors.New("gone")))
+
+			assert.Equal(t, 1, logs.FilterMessage("reprovisioned the realtime receiving end").Len())
+		})
+
+		t.Run("受信先の消失でなければ作り直さない", func(t *testing.T) {
+			t.Parallel()
+
+			e, _ := newEngine(t, Settings{})
+			ctrl := gomock.NewController(t)
+			reprovisioner := mock_ctrlrealtime.NewMockReprovisioner(ctrl)
+			e.reprovision = reprovisioner
+
+			log, logs := logging.NewObservedTestLogger(t)
+			e.repairIfGone(t.Context(), log, xerrors.New("transient"))
+
+			assert.Equal(t, 0, logs.Len())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("停止中の作り直し失敗は記録しない", func(t *testing.T) {
+			t.Parallel()
+
+			e, _ := newEngine(t, Settings{})
+			ctrl := gomock.NewController(t)
+			reprovisioner := mock_ctrlrealtime.NewMockReprovisioner(ctrl)
+			e.reprovision = reprovisioner
+
+			ctx, cancel := context.WithCancel(t.Context())
+			reprovisioner.EXPECT().Reprovision(gomock.Any()).
+				DoAndReturn(func(context.Context) error {
+					cancel()
+
+					return xerrors.New("stopping")
+				})
+
+			log, logs := logging.NewObservedTestLogger(t)
+			e.repairIfGone(ctx, log, xerrors.Join(rt.ErrReceivingEndGone, xerrors.New("gone")))
+
+			assert.Equal(t, 0, logs.Len())
+		})
+
+		t.Run("作り直しに失敗しても止まらない（次の周回で再び試みる）", func(t *testing.T) {
+			t.Parallel()
+
+			e, _ := newEngine(t, Settings{})
+			ctrl := gomock.NewController(t)
+			reprovisioner := mock_ctrlrealtime.NewMockReprovisioner(ctrl)
+			reprovisioner.EXPECT().Reprovision(gomock.Any()).Return(xerrors.New("still deleting")).Times(1)
+			e.reprovision = reprovisioner
+
+			log, logs := logging.NewObservedTestLogger(t)
+			e.repairIfGone(t.Context(), log, xerrors.Join(rt.ErrReceivingEndGone, xerrors.New("gone")))
+
+			assert.Equal(t, 1, logs.FilterMessage("failed to reprovision the realtime receiving end").Len())
+		})
+	})
+}
+
+func TestReprovisionFunc_Reprovision(t *testing.T) {
+	t.Parallel()
+
+	called := false
+	var f Reprovisioner = ReprovisionFunc(func(context.Context) error {
+		called = true
+
+		return nil
+	})
+
+	require.NoError(t, f.Reprovision(t.Context()))
+	assert.True(t, called)
 }

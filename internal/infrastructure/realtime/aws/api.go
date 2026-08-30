@@ -28,6 +28,11 @@ type SNSAPI interface {
 		in *sns.UnsubscribeInput,
 		opts ...func(*sns.Options),
 	) (*sns.UnsubscribeOutput, error)
+	ListSubscriptionsByTopic(
+		ctx context.Context,
+		in *sns.ListSubscriptionsByTopicInput,
+		opts ...func(*sns.Options),
+	) (*sns.ListSubscriptionsByTopicOutput, error)
 }
 
 // SQSAPI は、この package が使う SQS の操作だけを抽象化したものです（*sqs.Client が満たします）。
@@ -62,4 +67,9 @@ type SQSAPI interface {
 		in *sqs.DeleteQueueInput,
 		opts ...func(*sqs.Options),
 	) (*sqs.DeleteQueueOutput, error)
+	GetQueueUrl(
+		ctx context.Context,
+		in *sqs.GetQueueUrlInput,
+		opts ...func(*sqs.Options),
+	) (*sqs.GetQueueUrlOutput, error)
 }

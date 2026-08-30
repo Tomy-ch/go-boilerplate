@@ -13,6 +13,7 @@ It depends on `boundary/realtime` and `boundary/clock` only and carries no featu
 | `TicketIssuer.Issue(in)` → `TicketView` | A fresh 256-bit value from `SecretGenerator`, stored as its SHA-256 hash bound to subject / destination / scope / initial cursor, valid for `TicketTTL` (5 min) | store failures pass through |
 | `TicketVerifier.Verify(value, destination)` → `realtime.StreamGrant` | The value's hash exists, is not expired at `clock.Now()`, and is bound to this destination | `ErrTicketInvalid` (wraps `apperror.ErrUnauthenticated`) for every failure — unknown, expired and wrong destination are deliberately indistinguishable: distinguishing them would tell the caller whether a given ticket exists |
 | `LeaseKeeper.Beat(id)` / `Release(id)` | The instance lease ([ADR-0073](../../../docs/adr/0073-sns-sqs-instance-fanout.md)): `Beat` records "alive now" with an expiry of `clock.Now() + LeaseExpiry` (2 min); `Release` deletes the record when the instance has torn its resources down itself. The interval (`LeaseHeartbeatInterval`, 30 s) and the cleanup margin (`LeaseCleanupMargin`, 5 min) are the fixed values the heartbeat loop and the orphan-cleanup job read from here | store failures pass through |
+| `OrphanSweeper.Sweep()` → `SweepResult` | Which dead instances may be reclaimed and by whom: a lease whose expiry is older than `LeaseCleanupMargin` (5 min) is claimed with a conditional write, its receiving end is reclaimed through `OrphanReclaimer`, and only then is the lease closed — conditionally again, because `Heartbeat` leaves the ownership record untouched and an instance that came back would otherwise lose a live lease. The order is fixed: the lease is the only index into the resources, so closing it before the reclaim would strand whatever the reclaim failed to delete. One failure does not stop the pass; the counts and the joined error both come back | store and reclaimer failures pass through, joined |
 | `AccessRevoker.Revoke(subject, destination)` | The revocation seam a feature calls when it withdraws a subject's access to a destination ([ADR-0074](../../../docs/adr/0074-query-ticket-stream-authentication.md)): every ticket of that pair is invalidated **first** (`StreamTicketStore.Invalidate` — a revoked ticket then fails `Verify`, so a client that ignores `STOP` cannot reconnect), and only then every serve instance is told through `RevocationNotifier` to close the matching connections. An invalidated ticket stays invalidated even when the notification fails | store and notifier failures pass through |
 
 `ErrCursorExpired` is a package sentinel rather than an `apperror` entry: this package does not know HTTP.
@@ -21,7 +22,8 @@ The stream handler (`internal/controller/stream`) maps it to `410` by joining `a
 Out of this package: *when* to replay (the connection registry in `internal/controller/stream` owns the
 schedule and the connection state; this package only performs the read), the heartbeat *loop*
 (`internal/controller/realtime` drives `LeaseKeeper.Beat` on the serve lifecycle's schedule), and
-orphan-cleanup ownership (the cleanup job).
+*when* to sweep (the scheduler starts `cmd job orphan-cleanup`; `internal/controller/job/orphancleanup`
+only reports the counts).
 
 ## Test strategy
 

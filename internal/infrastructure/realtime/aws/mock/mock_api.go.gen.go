@@ -62,6 +62,26 @@ func (mr *MockSNSAPIMockRecorder) CreateTopic(ctx, in any, opts ...any) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateTopic", reflect.TypeOf((*MockSNSAPI)(nil).CreateTopic), varargs...)
 }
 
+// ListSubscriptionsByTopic mocks base method.
+func (m *MockSNSAPI) ListSubscriptionsByTopic(ctx context.Context, in *sns.ListSubscriptionsByTopicInput, opts ...func(*sns.Options)) (*sns.ListSubscriptionsByTopicOutput, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, in}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "ListSubscriptionsByTopic", varargs...)
+	ret0, _ := ret[0].(*sns.ListSubscriptionsByTopicOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListSubscriptionsByTopic indicates an expected call of ListSubscriptionsByTopic.
+func (mr *MockSNSAPIMockRecorder) ListSubscriptionsByTopic(ctx, in any, opts ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, in}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSubscriptionsByTopic", reflect.TypeOf((*MockSNSAPI)(nil).ListSubscriptionsByTopic), varargs...)
+}
+
 // Publish mocks base method.
 func (m *MockSNSAPI) Publish(ctx context.Context, in *sns.PublishInput, opts ...func(*sns.Options)) (*sns.PublishOutput, error) {
 	m.ctrl.T.Helper()
@@ -244,6 +264,26 @@ func (mr *MockSQSAPIMockRecorder) GetQueueAttributes(ctx, in any, opts ...any) *
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{ctx, in}, opts...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetQueueAttributes", reflect.TypeOf((*MockSQSAPI)(nil).GetQueueAttributes), varargs...)
+}
+
+// GetQueueUrl mocks base method.
+func (m *MockSQSAPI) GetQueueUrl(ctx context.Context, in *sqs.GetQueueUrlInput, opts ...func(*sqs.Options)) (*sqs.GetQueueUrlOutput, error) {
+	m.ctrl.T.Helper()
+	varargs := []any{ctx, in}
+	for _, a := range opts {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetQueueUrl", varargs...)
+	ret0, _ := ret[0].(*sqs.GetQueueUrlOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetQueueUrl indicates an expected call of GetQueueUrl.
+func (mr *MockSQSAPIMockRecorder) GetQueueUrl(ctx, in any, opts ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{ctx, in}, opts...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetQueueUrl", reflect.TypeOf((*MockSQSAPI)(nil).GetQueueUrl), varargs...)
 }
 
 // ReceiveMessage mocks base method.

@@ -19,6 +19,7 @@ fan-out の resource を回収できるよう持つ生存記録（[ADR-0073](../
 | `Heartbeat` | `UpdateItem` `SET heartbeat_at, expires_at` — 無ければ作り、回収の項目には触れないので、heartbeat と回収の引き受けが競合しても引き受けを消さない |
 | `Delete` | `DeleteItem`。無い lease は成功 |
 | `ListExpired(asOf)` | `expires_at < :asOf` の `Scan`、`ConsistentRead`、ページ送り。母数は serve instance の数なので scan が正しい形 |
+| `ReleaseCleanup(release)` | `attribute_exists(instance_id) AND cleanup_owner = :o AND expires_at < :before` の下で `DeleteItem`。2 項とも効いている: 前者は引き受けた主体だけが閉じられるようにし、後者は instance が復帰した lease を閉じさせない — `Heartbeat` は `cleanup_owner` に触れずに `expires_at` だけ書き換えるため、引き受けの記録だけでは両者を見分けられない。条件不成立は `false, nil` |
 | `AcquireCleanup(claim)` | `attribute_exists(instance_id) AND expires_at < :before AND (attribute_not_exists(cleanup_owner) OR cleanup_owner_until < :now)` の下で `UpdateItem` `SET cleanup_owner, cleanup_owner_until`。条件不成立は `false, nil` — 他者が引き受け済みか回収対象が無い — でエラーではない。expiry と `:before` の margin は呼び出し側（`internal/usecase/realtime`）のもの |
 
 ## エラー正規化

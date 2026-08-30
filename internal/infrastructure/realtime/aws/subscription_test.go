@@ -394,12 +394,14 @@ func Test_subscription_Receive(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("未 provision なら ErrUnavailable", func(t *testing.T) {
+		t.Run("未 provision なら ErrReceivingEndGone（作り直しの対象になる）", func(t *testing.T) {
 			t.Parallel()
 
 			s, _ := newSubscription(t)
 			_, err := s.Receive(t.Context(), 1)
-			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			// 素の ErrUnavailable へ退行すると engine の repairIfGone が発火せず、
+			// 作り直しに失敗した次の周回が復旧の対象から外れて受信が永久に止まる。
+			require.ErrorIs(t, err, rt.ErrReceivingEndGone)
 		})
 
 		t.Run("substrate の失敗は ErrUnavailable", func(t *testing.T) {
@@ -443,11 +445,11 @@ func Test_subscription_Delete(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("未 provision なら ErrUnavailable", func(t *testing.T) {
+		t.Run("未 provision なら ErrReceivingEndGone（作り直しの対象になる）", func(t *testing.T) {
 			t.Parallel()
 
 			s, _ := newSubscription(t)
-			require.ErrorIs(t, s.Delete(t.Context(), rt.Notification{Receipt: "r"}), apperror.ErrUnavailable)
+			require.ErrorIs(t, s.Delete(t.Context(), rt.Notification{Receipt: "r"}), rt.ErrReceivingEndGone)
 		})
 
 		t.Run("substrate の失敗は ErrUnavailable", func(t *testing.T) {
@@ -529,7 +531,8 @@ func Test_subscription_currentQueueURL(t *testing.T) {
 
 	s, _ := newSubscription(t)
 	_, err := s.currentQueueURL()
-	require.ErrorIs(t, err, apperror.ErrUnavailable)
+	// 「まだ作っていない」と「作った後に消された」を同じ sentinel に畳むのが、ループを修復可能に保つ要点。
+	require.ErrorIs(t, err, rt.ErrReceivingEndGone)
 
 	s.queueURL = testQueueURL
 	url, err := s.currentQueueURL()
@@ -625,6 +628,64 @@ func Test_subscription_teardown(t *testing.T) {
 
 			require.ErrorIs(t, s.teardown(t.Context()), apperror.ErrUnavailable)
 			assert.Equal(t, testQueueURL, s.queueURL)
+		})
+	})
+}
+
+func Test_subscription_classifyReceivingEnd(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("受信先が消えていればキャッシュを捨てて ErrReceivingEndGone を返す", func(t *testing.T) {
+			t.Parallel()
+
+			s, m := newSubscription(t)
+			expectProvision(m)
+			require.NoError(t, s.Provision(t.Context(), "inst-1"))
+
+			err := s.classifyReceivingEnd(&sqstypes.QueueDoesNotExist{}, "receive notifications")
+			require.ErrorIs(t, err, rt.ErrReceivingEndGone)
+			// Provision は subscription の ARN が残っていると早期に返るため、捨てられていないと作り直せない。
+			assert.Empty(t, s.queueURL)
+			assert.Empty(t, s.subscriptionARN)
+		})
+
+		t.Run("受信先の消失でない失敗ではキャッシュを残す", func(t *testing.T) {
+			t.Parallel()
+
+			s, m := newSubscription(t)
+			expectProvision(m)
+			require.NoError(t, s.Provision(t.Context(), "inst-1"))
+
+			err := s.classifyReceivingEnd(errSubstrate, "receive notifications")
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			require.NotErrorIs(t, err, rt.ErrReceivingEndGone)
+			assert.Equal(t, testQueueURL, s.queueURL)
+		})
+	})
+}
+
+func Test_subscription_invalidate(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("受信先の識別子だけを捨て、作り直す相手は覚えている", func(t *testing.T) {
+			t.Parallel()
+
+			s, m := newSubscription(t)
+			expectProvision(m)
+			require.NoError(t, s.Provision(t.Context(), "inst-1"))
+
+			s.invalidate()
+
+			assert.Empty(t, s.queueURL)
+			assert.Empty(t, s.queueARN)
+			assert.Empty(t, s.subscriptionARN)
+			assert.Equal(t, rt.InstanceID("inst-1"), s.instanceID)
 		})
 	})
 }

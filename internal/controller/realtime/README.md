@@ -18,7 +18,7 @@
 
 ## Public API
 
-- `Engine` — the resident consumer. `NewEngine(sub, wakeups, revocations, sleeper, log, tf, set)`;
+- `Engine` — the resident consumer. `NewEngine(sub, reprovision, wakeups, revocations, sleeper, log, tf, set)`;
   `Run(ctx) error` is the loop body.
 - `Settings` — `BatchSize` (default 10, the queue's own cap) and `ErrorBackoff` (default 5 s). Zero
   or negative values fall back to the defaults; there is no config for them because the receive is a long poll and
@@ -26,6 +26,11 @@
 - `Waker.Wake(ctx, streamID, upTo)` / `Revoker.Revoke(ctx, subject, destination)` — the receivers.
   Both are called synchronously on the loop, so an implementation only marks or signals; it never waits
   for a replay. Duplicates are normal and must be idempotent.
+- `Reprovisioner.Reprovision(ctx) error` — the receiver the loop asks when a receive fails with
+  `realtime.ErrReceivingEndGone`. The lease has to be rewritten before the queue is recreated, and only
+  whoever composes the two knows that order, so the loop delegates rather than re-provisioning itself
+  ([`docs/design/realtime-delivery.md`](../../../docs/design/realtime-delivery.md) §2.5). `ReprovisionFunc`
+  adapts a function to it.
 - `Heartbeat` — `NewHeartbeat(keeper, id, sleeper, log, tf)`; `Run(ctx)` writes the instance lease at
   once and then every `ucrealtime.LeaseHeartbeatInterval`. A single failure is logged and retried on
   the next tick; only a silence longer than `LeaseExpiry` makes the instance an orphan.
@@ -57,3 +62,7 @@ keeper are generated mocks, the sleeper is mocked so no test sleeps, and the loo
 loop — one iteration's effect (batch → sinks → deletes, with the coalescing asserted
 through the generated `Waker` / `Revoker` mocks recording what they received), stop semantics (cancel at loop top, inside a receive, inside the backoff), the
 per-iteration error path (backoff and continue, delete failure logged), and the settings defaults.
+The repair path is pinned as part of the loop rather than on its own: a receive that fails with
+`realtime.ErrReceivingEndGone` must ask the `Reprovisioner` once and then back off, so the harness
+expects no reprovision by default and each case that wants one says so. Asserting it only through a
+direct call to the private helper would leave the call site in `Run` free to be deleted.

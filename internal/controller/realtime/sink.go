@@ -24,3 +24,16 @@ type Revoker interface {
 	// Revoke は、subject の destination への権利が取り下げられたことを伝えます。
 	Revoke(ctx context.Context, subject string, destination rt.StreamID)
 }
+
+// Reprovisioner は、消えた受信先を作り直す受け口です。lease と受信先の順序は
+// DI で両者を合成する側が与えます（docs/design/realtime-delivery.md §2.5）。
+type Reprovisioner interface {
+	// Reprovision は、lease を書き直してから受信先を作り直します。何度呼んでも同じ状態に収束します。
+	Reprovision(ctx context.Context) error
+}
+
+// ReprovisionFunc は、関数を Reprovisioner として使うためのアダプタです。
+type ReprovisionFunc func(ctx context.Context) error
+
+// Reprovision は、f を呼びます。
+func (f ReprovisionFunc) Reprovision(ctx context.Context) error { return f(ctx) }

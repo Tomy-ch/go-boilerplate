@@ -442,6 +442,7 @@ Points:
 ### Rules for AI/Developers
 
 - When adding a Job, add it to `provideJobs(...)` in `module/job.go`
+- A job belonging to a mechanism that is wired into only some profiles registers itself from that mechanism's own module instead, so `module/job.go` keeps no dependency the shared job profile does not already have. `orphancleanup` is registered this way by `module/realtimecleanup.go`; the registration helper is the same `provideJobs(...)`
 - Do not bypass DI to instantiate with new
 - Always receive dependencies via constructor
 

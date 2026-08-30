@@ -55,6 +55,11 @@ func NewInstanceSubscription(
 	return aws.NewInstanceSubscription(c.SNS, c.SQS, target, attrs, tf)
 }
 
+// NewOrphanReclaimer は、死んだ instance が残した受信先を識別子から辿って片付ける OrphanReclaimer を返します。
+func NewOrphanReclaimer(c Clients, target SubscriptionTarget, tf observability.TracerFactory) rt.OrphanReclaimer {
+	return aws.NewOrphanReclaimer(c.SNS, c.SQS, target, tf)
+}
+
 // EnsureTopic は、name の topic を実在させ、その ARN を返します（one-shot の初期化と contract test 用。application の起動時には呼ばない）。
 func EnsureTopic(ctx context.Context, c Clients, name string) (string, error) {
 	return aws.EnsureTopic(ctx, c.SNS, name)

@@ -442,6 +442,7 @@ func New(
 ### AI/開発者向けルール
 
 - Job を追加する場合は `module/job.go` の `provideJobs(...)` に追加すること
+- 一部のプロファイルにしか結線されない機構に属する Job は、代わりにその機構自身の module から自分を登録すること。`module/job.go` に、共有のジョブプロファイルが本来持たない依存を持ち込まないため。`orphancleanup` は `module/realtimecleanup.go` がこの形で登録している（登録に使うヘルパーは同じ `provideJobs(...)`）
 - DI をバイパスして new しないこと
 - 依存は必ず constructor 経由で受け取ること
 

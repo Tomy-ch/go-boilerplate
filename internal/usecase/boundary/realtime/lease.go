@@ -40,6 +40,17 @@ type CleanupClaim struct {
 	OwnerUntil time.Time
 }
 
+// CleanupRelease は、回収を終えた lease を閉じる要求です。
+type CleanupRelease struct {
+	// InstanceID は、閉じる対象です。
+	InstanceID InstanceID
+	// Owner は、回収を引き受けていた主体の識別子です。
+	Owner string
+	// ExpiredBefore は、lease の ExpiresAt がこの時刻より前であるときだけ閉じます。引き受けている間に
+	// instance が heartbeat を再開していれば、その lease はもう回収対象ではないので閉じません。
+	ExpiredBefore time.Time
+}
+
 // InstanceLeaseStore は、instance lease の保存境界です。失敗は apperror sentinel で返します。
 type InstanceLeaseStore interface {
 	// Heartbeat は、lease を作成または更新します（HeartbeatAt / ExpiresAt を書き換える）。
@@ -51,4 +62,8 @@ type InstanceLeaseStore interface {
 	// AcquireCleanup は、claim の条件（期限切れ、かつ未回収か引き受けが失効）を満たすときだけ
 	// 引き受けを記録して true を返します。他の主体が先に引き受けていれば false を返します。
 	AcquireCleanup(ctx context.Context, claim CleanupClaim) (bool, error)
+	// ReleaseCleanup は、release の条件（引き受けが owner のままで、かつ lease がまだ期限切れ）を
+	// 満たすときだけ lease を削除して true を返します。引き受けが他へ移った、instance が heartbeat を
+	// 再開した、lease が既に無い、のいずれでも false を返します。
+	ReleaseCleanup(ctx context.Context, release CleanupRelease) (bool, error)
 }
