@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
+	"github.com/aws/smithy-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	gomock "go.uber.org/mock/gomock"
@@ -131,8 +132,16 @@ func (f *cleanupFixture) queueExists(t *testing.T, id rt.InstanceID) bool {
 		return true
 	}
 
+	// 判定は production の queueGone と揃える。型付きのエラーだけを見ると、旧来のエラーコードで
+	// 「無い」を返す substrate（GoAWS）で、消えたことを確かめられない。
 	var gone *sqstypes.QueueDoesNotExist
-	require.True(t, xerrors.As(err, &gone), "queue の存在確認が想定外の失敗をしました: %v", err)
+	if xerrors.As(err, &gone) {
+		return false
+	}
+
+	var api smithy.APIError
+	require.True(t, xerrors.As(err, &api) && api.ErrorCode() == "AWS.SimpleQueueService.NonExistentQueue",
+		"queue の存在確認が想定外の失敗をしました: %v", err)
 
 	return false
 }

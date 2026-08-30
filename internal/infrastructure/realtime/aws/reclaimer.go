@@ -9,11 +9,16 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
+	"github.com/aws/smithy-go"
 
 	"go-boilerplate/internal/observability"
 	rt "go-boilerplate/internal/usecase/boundary/realtime"
 	"go-boilerplate/pkg/xerrors"
 )
+
+// nonExistentQueueCode は、受信先が無いことを表す旧来のエラーコードです。SDK はこれを型付きの
+// QueueDoesNotExist へ写像しません。
+const nonExistentQueueCode = "AWS.SimpleQueueService.NonExistentQueue"
 
 var _ rt.OrphanReclaimer = (*reclaimer)(nil)
 
@@ -165,8 +170,17 @@ func isUnsubscribable(arn string) bool {
 }
 
 // queueGone は、受信先が既に無いことを示す失敗かを返します。成功と扱うか作り直しの契機と扱うかは呼び出し側が決めます。
+//
+// 型付きのエラーだけでは足りません。SDK が *QueueDoesNotExist を組み立てるのは応答のエラーコードが
+// "QueueDoesNotExist" のときだけで、同じ意味を旧来のコード "AWS.SimpleQueueService.NonExistentQueue" で
+// 返す substrate があります（GoAWS が該当）。コードも見ないと、受信先の消失が通常の一時障害に化けます。
 func queueGone(err error) bool {
 	var notExist *sqstypes.QueueDoesNotExist
+	if xerrors.As(err, &notExist) {
+		return true
+	}
 
-	return xerrors.As(err, &notExist)
+	var api smithy.APIError
+
+	return xerrors.As(err, &api) && api.ErrorCode() == nonExistentQueueCode
 }
