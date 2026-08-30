@@ -78,6 +78,7 @@ func realtimeModule() fx.Option {
 			provideInstanceQueueAttributes,
 			provideInstanceSubscription,
 			provideLeaseKeeper,
+			provideRealtimeReprovisioner,
 			provideRealtimeConsumer,
 			provideRealtimeHeartbeat,
 			fx.Annotate(provideRealtimeStartupProbe, fx.ResultTags(`group:"`+hook.StartupGroup+`"`)),
@@ -179,13 +180,30 @@ func provideLeaseKeeper(
 
 func provideRealtimeConsumer(
 	sub rt.InstanceSubscription,
+	reprovision ctrlrealtime.Reprovisioner,
 	wakeups ctrlrealtime.Waker,
 	revocations ctrlrealtime.Revoker,
 	sleeper clock.Sleeper,
 	log logging.Logger,
 	tf observability.TracerFactory,
 ) *ctrlrealtime.Engine {
-	return ctrlrealtime.NewEngine(sub, wakeups, revocations, sleeper, log, tf, ctrlrealtime.Settings{})
+	return ctrlrealtime.NewEngine(sub, reprovision, wakeups, revocations, sleeper, log, tf, ctrlrealtime.Settings{})
+}
+
+// provideRealtimeReprovisioner は、消えた受信先の作り直しを、起動時の participant（provideRealtimeProvisioner）と
+// 同じ順序（lease → 受信先）で合成します（順序の根拠は docs/design/realtime-delivery.md §2.5）。
+func provideRealtimeReprovisioner(
+	sub rt.InstanceSubscription,
+	keeper ucrealtime.LeaseKeeper,
+	id rt.InstanceID,
+) ctrlrealtime.Reprovisioner {
+	return ctrlrealtime.ReprovisionFunc(func(ctx context.Context) error {
+		if err := keeper.Beat(ctx, id); err != nil {
+			return err
+		}
+
+		return sub.Provision(ctx, id)
+	})
 }
 
 func provideRealtimeHeartbeat(

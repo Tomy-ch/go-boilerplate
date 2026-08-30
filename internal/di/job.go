@@ -54,6 +54,8 @@ func NewJobCore() fx.Option {
 		module.UsecaseModule(),
 		// Job Module
 		module.JobModule(),
+		// Realtime Delivery の機構 job。Realtime を落とす場合はこの 1 行を外す。
+		module.RealtimeCleanupModule(),
 	)
 }
 

@@ -525,6 +525,7 @@ func Test_provideRealtimeConsumer(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	engine := provideRealtimeConsumer(
 		mock_rt.NewMockInstanceSubscription(ctrl),
+		mock_ctrlrealtime.NewMockReprovisioner(ctrl),
 		mock_ctrlrealtime.NewMockWaker(ctrl), mock_ctrlrealtime.NewMockRevoker(ctrl),
 		mock_clock.NewMockSleeper(ctrl),
 		logging.NewTestLogger(t), observability.NewNoopTracerFactory(t),
@@ -699,6 +700,7 @@ func Test_provideRealtimeConsumerRunner(t *testing.T) {
 		MinTimes(1)
 	engine := provideRealtimeConsumer(
 		sub,
+		mock_ctrlrealtime.NewMockReprovisioner(ctrl),
 		mock_ctrlrealtime.NewMockWaker(ctrl),
 		mock_ctrlrealtime.NewMockRevoker(ctrl),
 		mock_clock.NewMockSleeper(ctrl),
@@ -811,4 +813,44 @@ func Test_provideRealtimeStreamDrainer(t *testing.T) {
 	assert.Equal(t, "realtime-stream", d.Name)
 	require.NotNil(t, d.Drain)
 	assert.NoError(t, d.Drain(t.Context()), "接続が 1 本も無ければ drain は即座に終わる")
+}
+
+func Test_provideRealtimeReprovisioner(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("lease を書き直してから受信先を作り直す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			sub := mock_rt.NewMockInstanceSubscription(ctrl)
+			keeper := mock_realtime.NewMockLeaseKeeper(ctrl)
+
+			// この順序が逆になると、lease に指されない queue ができて orphan cleanup から辿れなくなる。
+			gomock.InOrder(
+				keeper.EXPECT().Beat(gomock.Any(), rt.InstanceID("inst-1")).Return(nil),
+				sub.EXPECT().Provision(gomock.Any(), rt.InstanceID("inst-1")).Return(nil),
+			)
+
+			require.NoError(t, provideRealtimeReprovisioner(sub, keeper, "inst-1").Reprovision(t.Context()))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("lease を書き直せなければ受信先を作らない", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			sub := mock_rt.NewMockInstanceSubscription(ctrl)
+			keeper := mock_realtime.NewMockLeaseKeeper(ctrl)
+			keeper.EXPECT().Beat(gomock.Any(), gomock.Any()).Return(apperror.ErrUnavailable)
+
+			err := provideRealtimeReprovisioner(sub, keeper, "inst-1").Reprovision(t.Context())
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+		})
+	})
 }
