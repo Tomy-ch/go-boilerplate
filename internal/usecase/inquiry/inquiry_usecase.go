@@ -23,8 +23,7 @@ import (
 )
 
 // feedStreamID は、運営の一覧画面が購読する組織 feed の stream です。
-// 単一組織を前提とした固定値で、組織が複数になれば一覧と feed ticket に組織の軸が入ります
-// （docs/spec/inquiry/usecase.md の placeholder）。環境で変わる値ではないため config には置きません。
+// 単一組織を前提とした固定値です（docs/spec/inquiry/usecase.md の placeholder）。
 const feedStreamID rt.StreamID = "inquiry-feed"
 
 // Usecase は、問い合わせのユースケースです。
@@ -66,8 +65,6 @@ type usecase struct {
 }
 
 // New は、問い合わせユースケースを生成します。
-// 依存はすべて異なる型なので、他のユースケースと同じく個別の引数で受けます
-// （構造体で束ねると DI コンテナが「解決すべき 1 つの型」として扱い、結線が解けません）。
 func New(
 	txm tx.Manager,
 	clk clock.Clock,

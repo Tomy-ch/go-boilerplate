@@ -5,7 +5,6 @@ const (
 	minBodyLength = 1
 
 	// maxBodyLength は、本文の最大文字数（rune 数）です。
-	// UTF-8 で最大 3 バイト × この値としても、Realtime Delivery の payload 上限 64 KiB を
-	// event の封筒と送り手を足しても超えません。
+	// 上限の根拠は docs/spec/inquiry/domain.md の Notes（placeholder 定数）。
 	maxBodyLength = 4000
 )

@@ -418,9 +418,8 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       // spec
       "docs/spec/inquiry",
 
-      // internal/di/module/realtimeadapter.go は対象外。Realtime Delivery の機構側であり、
-      // realtimeModule() が合成しているため撤去すると機構が壊れる。serve への結線だけが
-      // sample-api:line マーカーで落ちる（設計正本の "Zero adapters, zero runtime"）。
+      // internal/di/module/realtimeadapter.go は対象外（機構側。理由は internal/di/module/README.md の
+      // RealtimeAdapterModule() 項）。serve への結線だけが sample-api:line マーカーで落ちる。
     ],
   },
 

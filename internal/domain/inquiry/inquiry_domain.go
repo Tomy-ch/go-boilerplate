@@ -49,7 +49,7 @@ type ListParams struct {
 	Limit int
 }
 
-// New は、問い合わせを生成します。最初の投稿時に、active な問い合わせが無い場合だけ呼ばれます。
+// New は、問い合わせを生成します。
 // id が未設定なら ErrInvalidID を、UserID が未設定なら ErrInvalidUserID を返します。
 func New(id uuid.UUID, attrs Attributes) (*Inquiry, error) {
 	return newInquiry(id, attrs)

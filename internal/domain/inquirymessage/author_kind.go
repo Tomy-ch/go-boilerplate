@@ -29,7 +29,6 @@ func NewAuthorKind(value string) (AuthorKind, error) {
 func (k AuthorKind) String() string { return string(k) }
 
 // valid は、既知の種別かどうかを返します。
-// 複合リテラルは生成関数を経ずに組み立てられるため、値を受け取る側はこれで拒否できます。
 func (k AuthorKind) valid() bool {
 	return k == AuthorKindUser || k == AuthorKindOperator
 }

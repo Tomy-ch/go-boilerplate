@@ -11,8 +11,8 @@ import (
 
 // appendMessage は、投稿と回答が共有する 1 トランザクション分の追加処理です。
 //
-// 順序は固定です: 会話 stream の採番 → メッセージの追加 → 問い合わせの更新日時 → feed stream の採番 →
-// 2 行の emit。採番の行ロックが commit まで保持されるため、同一 stream への並行追加はここで直列化されます。
+// 呼び出しの順序を入れ替えてはなりません。同一 stream への並行追加は先頭の採番で直列化されます
+// （docs/spec/inquiry/usecase.md の AppendMessage）。
 func (u *usecase) appendMessage(
 	ctx context.Context,
 	i *inquiry.Inquiry,
@@ -56,7 +56,7 @@ func (u *usecase) appendMessage(
 	}
 
 	// 作成日時は DB の既定値が刻むため、書き込んだ行を読み直してから event と応答を組み立てます。
-	// 読み直しは書き込みの検証も兼ねます（internal/domain/README.md の
+	// 読み直しは書き込みの検証も兼ねます（internal/usecase/README.md の
 	// Verifying infrastructure against the domain）。
 	stored, err := u.readBackMessage(ctx, i.ID(), int64(sequence))
 	if err != nil {

@@ -19,9 +19,7 @@ type Repository interface {
 
 	// Create は、問い合わせを新規登録します。
 	// 同じ利用者の active な問い合わせが既にある場合は Conflict を返します。
-	//
-	// この Conflict は同一 tx の中で読み直して解決できません。一意制約違反は PostgreSQL の
-	// transaction 自体を中断させるため、呼び出し側は tx を丸ごとやり直します
+	// この Conflict は同一 tx の中で読み直して解決できないため、呼び出し側は tx をやり直します
 	// （docs/spec/inquiry/usecase.md の AppendMessage）。
 	Create(ctx context.Context, inquiry *Inquiry) error
 
@@ -30,8 +28,5 @@ type Repository interface {
 
 	// ListForOperator は、運営向けに問い合わせを更新日時の新しい順（updatedAt desc, id desc）で
 	// keyset ページネーションして取得します。読み取り専用です。
-	//
-	// メッセージ本文は含みません。一覧は問い合わせの行だけで組み立てます
-	// （最新メッセージの要約は運営 feed の event が運びます）。
 	ListForOperator(ctx context.Context, params ListParams) ([]*Inquiry, error)
 }

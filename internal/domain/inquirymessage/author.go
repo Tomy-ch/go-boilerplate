@@ -23,7 +23,6 @@ func NewAuthor(kind AuthorKind, subjectID uuid.UUID) (Author, error) {
 }
 
 // validateAuthor は、送り手が満たすべき条件を検証します。
-// メッセージの生成でも、生成関数を経ていない Author を拒否するために使います。
 func validateAuthor(kind AuthorKind, subjectID uuid.UUID) error {
 	if !kind.valid() {
 		return xerrors.Wrap(ErrInvalidAuthorKind, "author kind is required")

@@ -92,7 +92,7 @@ func (r *repository) Touch(ctx context.Context, id uuid.UUID, now time.Time) err
 }
 
 // ListForOperator は、運営向けに問い合わせを更新日時の新しい順で 1 ページ分再構築して返します。
-// cursor の有無で先頭ページと続きのページの問い合わせを切り替えます。
+// cursor が nil のときは先頭ページ、それ以外は cursor の続きを返します。
 func (r *repository) ListForOperator(
 	ctx context.Context,
 	params inquiry.ListParams,

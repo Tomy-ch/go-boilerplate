@@ -15,7 +15,6 @@ INSERT INTO inquiries (
 -- === source: database/dml/repository/inquiry/select_inquiries_for_operator.sql ===
 -- name: ListInquiriesForOperatorFirst :many
 -- 運営向けに問い合わせを (updated_at DESC, id DESC) の安定順で先頭ページ取得する。
--- 本文は含めない（一覧は問い合わせの行だけで組み立てる。最新メッセージの要約は feed の event が運ぶ）。
 SELECT sqlc.embed(i)
 FROM inquiries AS i
 ORDER BY i.updated_at DESC, i.id DESC

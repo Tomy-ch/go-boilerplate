@@ -37,7 +37,6 @@ func (u *usecase) ListInquiries(
 		return nil, err
 	}
 
-	// 次ページの有無は 1 件多く読んで判定します。
 	limit := params.Cursor.Limit()
 	inquiries, err := u.repo.ListForOperator(ctx, inquiry.ListParams{Cursor: boundary, Limit: limit + 1})
 	if err != nil {

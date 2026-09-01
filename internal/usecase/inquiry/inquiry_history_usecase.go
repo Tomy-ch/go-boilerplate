@@ -41,10 +41,9 @@ func (u *usecase) GetHistory(ctx context.Context, params HistoryParams) (*Histor
 
 // historyOf は、現在位置を先に読み、その位置までのメッセージを 1 ページ読み出します。
 //
-// 現在位置を先に読み、それを上限にしてメッセージを読むのが要点です。採番の行ロックが commit まで
-// 保持されるため、位置 c を読めた時点で c 以下のメッセージはすべて commit 済みであり、c より大きい
-// ものを除外すれば「現在位置とメッセージを同じ snapshot で読んだ」のと等価になります。分離レベルを
-// 上げる必要も、1 本の SQL にまとめる必要もありません（docs/spec/inquiry/usecase.md の streamCursor と snapshot）。
+// この順序は入れ替えてはなりません。現在位置を先に読み、それを上限にすることで
+// 「現在位置とメッセージを同じ snapshot で読んだ」のと等価になります
+// （docs/spec/inquiry/usecase.md の streamCursor と snapshot）。
 func (u *usecase) historyOf(
 	ctx context.Context,
 	i *inquiry.Inquiry,
@@ -61,7 +60,6 @@ func (u *usecase) historyOf(
 		return &HistoryView{InquiryID: i.ID(), Messages: []MessageView{}}, nil
 	}
 
-	// 次ページの有無は 1 件多く読んで判定します。
 	messages, err := u.msgRepo.ListByInquiry(ctx, i.ID(), inquirymessage.HistoryParams{
 		AfterSequence: afterSequence,
 		UpToSequence:  int64(cursor),

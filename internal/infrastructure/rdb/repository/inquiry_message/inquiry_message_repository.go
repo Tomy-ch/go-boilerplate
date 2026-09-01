@@ -90,7 +90,6 @@ func (r *repository) ListByInquiry(
 }
 
 // reconstruct は、行をドメイン集約へ写します。
-// 送り手は列の 2 つ組から値オブジェクトへ組み直すため、種別の検証もここを通ります。
 func reconstruct(row gen.InquiryMessages) (*inquirymessage.Message, error) {
 	kind, err := inquirymessage.NewAuthorKind(row.AuthorKind)
 	if err != nil {

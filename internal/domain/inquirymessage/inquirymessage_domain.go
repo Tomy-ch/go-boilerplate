@@ -44,7 +44,7 @@ type Attributes struct {
 	CreatedAt time.Time
 }
 
-// New は、メッセージを生成します。投稿時と回答時に usecase が呼びます。
+// New は、メッセージを生成します。
 func New(id uuid.UUID, attrs Attributes) (*Message, error) {
 	return newMessage(id, attrs)
 }
@@ -85,8 +85,7 @@ func newMessage(id uuid.UUID, attrs Attributes) (*Message, error) {
 	}, nil
 }
 
-// validateBody は、本文が空でなく上限文字数以下であることを検証します。
-// 長さは rune 数で数えます（バイト数で数えるとマルチバイト文字の本文を早すぎる時点で拒否します）。
+// validateBody は、本文が空でなく maxBodyLength（rune 数）以下であることを検証します。
 func validateBody(body string) error {
 	if body == "" {
 		return xerrors.Wrap(ErrEmptyBody, "body is required")
@@ -116,7 +115,6 @@ func (m *Message) Sequence() int64 { return m.sequence }
 func (m *Message) CreatedAt() time.Time { return m.createdAt }
 
 // IsFrom は、送り手が指定の種別・主体であるかを返します。
-// 履歴の表示や event の送り手の導出に使う純粋な述語で、状態を変えません。
 func (m *Message) IsFrom(kind AuthorKind, subjectID uuid.UUID) bool {
 	return m.author.kind == kind && m.author.subjectID == subjectID
 }

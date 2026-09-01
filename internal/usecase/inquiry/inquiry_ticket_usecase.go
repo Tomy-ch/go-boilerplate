@@ -48,8 +48,8 @@ func (u *usecase) IssueFeedTicket(ctx context.Context, authn *authbd.Authn) (Tic
 // issueTicket は、認可済みの subject × stream に対して ticket を発行します。
 //
 // 開始位置には stream の現在位置を渡します。cursor を持たずに接続した client へ、履歴 API が担う
-// 過去分を購読側から再生し直さないためです。これは認可の下限ではないので、client は replay の
-// 保持範囲であればより前の位置から再開できます（docs/design/realtime-delivery.md §2.3）。
+// 過去分を購読側から再生し直さないためです（開始位置は認可の下限ではありません:
+// docs/design/realtime-delivery.md §2.3）。
 func (u *usecase) issueTicket(
 	ctx context.Context,
 	subject string,

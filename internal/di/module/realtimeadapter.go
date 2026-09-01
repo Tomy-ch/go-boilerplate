@@ -16,18 +16,10 @@ import (
 	ucrealtime "go-boilerplate/internal/usecase/realtime"
 )
 
-// RealtimeAdapterModule は、feature の realtime adapter が要る最小の seam を提供する fx.Module です。
-// ticket を発行するまでの経路（DynamoDB クライアント・ticket store・生値の生成・発行の usecase）だけを
-// 持ち、SSE の受信側（stream handler・consumer・fan-out・起動 probe・lease heartbeat）は持ちません。
-//
-// 分けてあるのは、設計正本 docs/design/realtime-delivery.md の「Zero adapters, zero runtime」を
-// 構造で表すためです。feature adapter を 1 つも持たない graph はこの module 自体を結線せず、
-// adapter を持つ graph は runtime を伴わずにこれだけを結線できます。runtime が要る graph は
-// realtimeModule() を選び、そちらがこの module を合成します——両方を同時に結線してはいけません
-// （fx は module を重複排除しないため、同じ型の二重提供になります）。
-//
-// 採番境界（realtime.SequenceAllocator）はここにはありません。PostgreSQL 実装であり
-// persistenceModule() が既に提供しています。
+// RealtimeAdapterModule は、feature の realtime adapter が要る最小の seam——ticket を発行するまでの
+// 経路——を提供する fx.Module です。SSE の受信側は持ちません。realtimeModule() がこの module を
+// 合成するので、両方を同じ graph に結線してはいけません。
+// 内訳・分割の理由・採番境界の所在は internal/di/module/README.md の Module List を参照。
 func RealtimeAdapterModule() fx.Option {
 	return fx.Module("realtime_adapter",
 		fx.Provide(
