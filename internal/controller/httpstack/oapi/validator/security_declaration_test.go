@@ -47,6 +47,7 @@ var publicOperations = map[string]string{
 	"GET /v1/products/statuses":         "商品ステータスマスタの公開 API",
 	"GET /v1/products/categories":       "商品カテゴリマスタの公開 API",
 	"GET /v1/products/ranking/quantity": "商品の販売数量ランキングの公開 API",
+	"GET /v1/purchases/statuses":        "購入ステータスマスタの公開 API",
 	"GET /v1/exchange-rates":            "為替レート換算の公開 API",
 	"GET /v1/addresses":                 "郵便番号からの住所補完の公開 API",
 	// sample-api:end

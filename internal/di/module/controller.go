@@ -26,6 +26,7 @@ import (
 	purchasespayhandler "go-boilerplate/internal/controller/handler/v1/purchases/detail/pay"         // sample-api:line
 	purchasesshiphandler "go-boilerplate/internal/controller/handler/v1/purchases/detail/ship"       // sample-api:line
 	purchasesshippablehandler "go-boilerplate/internal/controller/handler/v1/purchases/shippable"    // sample-api:line
+	purchasestatuseshandler "go-boilerplate/internal/controller/handler/v1/purchases/statuses"       // sample-api:line
 	"go-boilerplate/internal/controller/handler/v1/users"                                            // sample-api:line
 	"go-boilerplate/internal/controller/handler/v1/users/detail"                                     // sample-api:line
 	"go-boilerplate/internal/controller/handler/v1/users/feed"                                       // sample-api:line
@@ -47,7 +48,6 @@ func ControllerModule() fx.Option {
 			version.BindHandler,
 			metrics.BindHandler,
 			// sample-api:begin
-			// サンプルのハンドラー
 			users.BindHandler,
 			detail.BindHandler,
 			feed.BindHandler,
@@ -64,6 +64,7 @@ func ControllerModule() fx.Option {
 			productsdetailhandler.BindHandler,
 			productsrankinghandler.BindHandler,
 			productslowstockhandler.BindHandler,
+			purchasestatuseshandler.BindHandler,
 			purchaseshandler.BindHandler,
 			purchasesdetailhandler.BindHandler,
 			purchasescancelhandler.BindHandler,

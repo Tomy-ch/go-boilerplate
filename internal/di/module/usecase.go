@@ -24,6 +24,7 @@ import (
 	rankinguc "go-boilerplate/internal/usecase/product/ranking"          // sample-api:line
 	statusuc "go-boilerplate/internal/usecase/product/status"            // sample-api:line
 	purchaseuc "go-boilerplate/internal/usecase/purchase"                // sample-api:line
+	purchasestatusuc "go-boilerplate/internal/usecase/purchase/status"   // sample-api:line
 	purchasesummaryuc "go-boilerplate/internal/usecase/purchase/summary" // sample-api:line
 	"go-boilerplate/internal/usecase/user"                               // sample-api:line
 	userroleuc "go-boilerplate/internal/usecase/user/role"               // sample-api:line
@@ -48,7 +49,6 @@ func UsecaseModule() fx.Option {
 			outbox.NewGC,
 			outbox.NewReplay,
 			// sample-api:begin
-			// サンプルのユースケース
 			user.New,
 			user.NewPurge,
 			user.NewArchive,
@@ -63,6 +63,7 @@ func UsecaseModule() fx.Option {
 			provideProductUsecase,
 			productuc.NewImageGC,
 			purchaseuc.New,
+			purchasestatusuc.New,
 			cartuc.New,
 			checkoutuc.New,
 			purchasesummaryuc.New,

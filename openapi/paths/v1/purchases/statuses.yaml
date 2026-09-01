@@ -1,0 +1,22 @@
+get:
+  operationId: GetPurchaseStatuses
+  tags:
+    - v1/purchases/statuses
+  summary: 購入ステータスマスタ一覧の取得
+  description: |
+    購入ステータスマスタの全件を sortKey（表示順）昇順で返します。
+    認証不要の公開エンドポイントであり、ページネーションは行いません（全 9 件を返します）。
+  security: []
+  responses:
+    '200':
+      description: 購入ステータスマスタの一覧（sortKey 昇順）
+      content:
+        application/json:
+          schema:
+            $ref: '../../../components/responses/purchases/status/PurchasesStatusesResponse.yaml'
+    '405':
+      $ref: '../../../components/schemas/errors/MethodNotAllowed405.yaml'
+    '500':
+      $ref: '../../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../../components/schemas/errors/ServiceUnavailable503.yaml'
