@@ -46,6 +46,7 @@ func applicationCoreOptions() []fx.Option {
 		module.SystemModule(),
 		// DDD Modules
 		module.InfrastructureModule(),
+		module.RealtimeAdapterModule(), // sample-api:line
 		module.UsecaseModule(),
 		module.ControllerModule(),
 		// Server Module
