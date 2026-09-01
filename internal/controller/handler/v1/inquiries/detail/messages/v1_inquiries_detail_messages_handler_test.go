@@ -162,6 +162,21 @@ func Test_server_PostInquiriesDetailMessages(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
+		t.Run("認証されていなければユースケースを呼ばない", func(t *testing.T) {
+			t.Parallel()
+			uc := mock_inquiryuc.NewMockUsecase(gomock.NewController(t))
+			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc, idem: idempotency.Deps{}}
+
+			_, err := s.PostInquiriesDetailMessages(
+				context.Background(),
+				gen.PostInquiriesDetailMessagesRequestObject{
+					Body: &gen.InquiryMessagePostRequest{Body: "確認します"},
+				},
+			)
+
+			require.Error(t, err)
+		})
+
 		t.Run("ユースケースの失敗をそのまま返す", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)

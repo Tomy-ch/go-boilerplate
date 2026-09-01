@@ -4,6 +4,7 @@ import (
 	"context"
 	"math"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,27 +14,25 @@ import (
 	domainmessage "go-boilerplate/internal/domain/inquirymessage"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	inquiryrepo "go-boilerplate/internal/infrastructure/rdb/repository/inquiry"
+	"go-boilerplate/internal/infrastructure/rdb/sqlc/gen"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
 )
 
-// 既存 seed のユーザー。inquiries.user_id は UNIQUE のため、並行するケースは別々の利用者を使います
-// （問い合わせ側のテストが使う利用者とも重ねません）。
-const (
-	seedUserA    = "101caa1e-84e7-4ceb-9108-50d40b6be1a3"
-	seedUserB    = "c23845a3-1bd6-5cc9-9aec-c6e824c65a17"
-	seedUserC    = "65ecbae0-cab1-57c0-9cd0-34699624342e"
-	seedUserD    = "08787d6f-9a19-46ad-aaa1-da3e369c343b"
-	seedUserE    = "3c6b7ebc-983e-518a-bbb9-4e287e18c84e"
-	seedOperator = "d647fc85-ff46-4530-88cb-198f4a68a9d7"
-)
-
-func mustParse(t *testing.T, s string) uuid.UUID {
+// takeSeedUser は、seed 済みの利用者を ID 順で index 番目に選びます。
+//
+// seed の SQL から ID を書き写すと、その利用者が実際に投入されているかは環境によって変わり、
+// 外部キー違反で落ちます。並び順で取ることで、どの環境でも実在する利用者だけを使います。
+// 問い合わせは利用者ごとに 1 件しか持てないため、並行するケースには別の index を渡します。
+func takeSeedUser(ctx context.Context, t *testing.T, testDB driver.DatabaseDriver, index int) uuid.UUID {
 	t.Helper()
-	id, err := uuid.Parse(s)
-	require.NoError(t, err)
+	var id uuid.UUID
+	err := driver.New(ctx, testDB).
+		QueryRow(ctx, "SELECT id FROM users ORDER BY id LIMIT 1 OFFSET $1", index).
+		Scan(&id)
+	require.NoError(t, err, "seed 済みの利用者が %d 人未満です", index+1)
 	return id
 }
 
@@ -45,19 +44,20 @@ func mustNewUUID(t *testing.T) uuid.UUID {
 }
 
 // createInquiry は、メッセージの FK を満たす問い合わせを 1 件登録し、その ID を返します。
-func createInquiry(ctx context.Context, t *testing.T, testDB driver.DatabaseDriver, seedUser string) uuid.UUID {
+func createInquiry(ctx context.Context, t *testing.T, testDB driver.DatabaseDriver, userIndex int) (uuid.UUID, uuid.UUID) {
 	t.Helper()
 	repo := inquiryrepo.New(testDB, observability.NewNoopTracerFactory(t))
-	i, err := domaininquiry.New(mustNewUUID(t), domaininquiry.Attributes{UserID: mustParse(t, seedUser)})
+	userID := takeSeedUser(ctx, t, testDB, userIndex)
+	i, err := domaininquiry.New(mustNewUUID(t), domaininquiry.Attributes{UserID: userID})
 	require.NoError(t, err)
 	require.NoError(t, repo.Create(ctx, i))
-	return i.ID()
+	return i.ID(), userID
 }
 
 // newMessage は、指定した位置のメッセージを組み立てます。
-func newMessage(t *testing.T, inquiryID uuid.UUID, kind domainmessage.AuthorKind, subject string, seq int64) *domainmessage.Message {
+func newMessage(t *testing.T, inquiryID uuid.UUID, kind domainmessage.AuthorKind, subject uuid.UUID, seq int64) *domainmessage.Message {
 	t.Helper()
-	author, err := domainmessage.NewAuthor(kind, mustParse(t, subject))
+	author, err := domainmessage.NewAuthor(kind, subject)
 	require.NoError(t, err)
 	m, err := domainmessage.New(mustNewUUID(t), domainmessage.Attributes{
 		InquiryID: inquiryID,
@@ -93,8 +93,8 @@ func Test_repository_Create(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				inquiryID := createInquiry(ctx, t, testDB, seedUserA)
-				m := newMessage(t, inquiryID, domainmessage.AuthorKindUser, seedUserA, 1)
+				inquiryID, userID := createInquiry(ctx, t, testDB, 0)
+				m := newMessage(t, inquiryID, domainmessage.AuthorKindUser, userID, 1)
 
 				require.NoError(t, repo.Create(ctx, m))
 
@@ -103,7 +103,7 @@ func Test_repository_Create(t *testing.T) {
 				require.Len(t, got, 1)
 				assert.Equal(t, m.ID(), got[0].ID())
 				assert.Equal(t, domainmessage.AuthorKindUser, got[0].Author().Kind())
-				assert.Equal(t, mustParse(t, seedUserA), got[0].Author().SubjectID())
+				assert.Equal(t, userID, got[0].Author().SubjectID())
 				assert.Equal(t, int64(1), got[0].Sequence())
 			})
 		})
@@ -112,8 +112,8 @@ func Test_repository_Create(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				inquiryID := createInquiry(ctx, t, testDB, seedUserB)
-				m := newMessage(t, inquiryID, domainmessage.AuthorKindOperator, seedOperator, 1)
+				inquiryID, userID := createInquiry(ctx, t, testDB, 1)
+				m := newMessage(t, inquiryID, domainmessage.AuthorKindOperator, userID, 1)
 
 				require.NoError(t, repo.Create(ctx, m))
 
@@ -132,10 +132,10 @@ func Test_repository_Create(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				inquiryID := createInquiry(ctx, t, testDB, seedUserC)
-				require.NoError(t, repo.Create(ctx, newMessage(t, inquiryID, domainmessage.AuthorKindUser, seedUserC, 1)))
+				inquiryID, userID := createInquiry(ctx, t, testDB, 2)
+				require.NoError(t, repo.Create(ctx, newMessage(t, inquiryID, domainmessage.AuthorKindUser, userID, 1)))
 
-				err := repo.Create(ctx, newMessage(t, inquiryID, domainmessage.AuthorKindUser, seedUserC, 1))
+				err := repo.Create(ctx, newMessage(t, inquiryID, domainmessage.AuthorKindUser, userID, 1))
 				require.ErrorIs(t, err, apperror.ErrConflict)
 			})
 		})
@@ -156,9 +156,9 @@ func Test_repository_ListByInquiry(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				inquiryID := createInquiry(ctx, t, testDB, seedUserD)
+				inquiryID, userID := createInquiry(ctx, t, testDB, 3)
 				for seq := int64(1); seq <= 3; seq++ {
-					require.NoError(t, repo.Create(ctx, newMessage(t, inquiryID, domainmessage.AuthorKindUser, seedUserD, seq)))
+					require.NoError(t, repo.Create(ctx, newMessage(t, inquiryID, domainmessage.AuthorKindUser, userID, seq)))
 				}
 
 				got, err := repo.ListByInquiry(ctx, inquiryID, domainmessage.HistoryParams{UpToSequence: 2, Limit: 10})
@@ -173,9 +173,9 @@ func Test_repository_ListByInquiry(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				inquiryID := createInquiry(ctx, t, testDB, seedUserE)
+				inquiryID, userID := createInquiry(ctx, t, testDB, 4)
 				for seq := int64(1); seq <= 3; seq++ {
-					require.NoError(t, repo.Create(ctx, newMessage(t, inquiryID, domainmessage.AuthorKindUser, seedUserE, seq)))
+					require.NoError(t, repo.Create(ctx, newMessage(t, inquiryID, domainmessage.AuthorKindUser, userID, seq)))
 				}
 
 				got, err := repo.ListByInquiry(ctx, inquiryID, domainmessage.HistoryParams{
@@ -210,6 +210,78 @@ func Test_repository_ListByInquiry(t *testing.T) {
 				})
 				require.Error(t, err)
 			})
+		})
+	})
+}
+
+func Test_reconstruct(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("送り手を列の2つ組から値オブジェクトへ組み直す", func(t *testing.T) {
+			t.Parallel()
+			id, inquiryID, subjectID := mustNewUUID(t), mustNewUUID(t), mustNewUUID(t)
+			createdAt := time.Date(2026, time.September, 1, 10, 0, 0, 0, time.UTC)
+
+			got, err := reconstruct(gen.InquiryMessages{
+				ID:              id,
+				InquiryID:       inquiryID,
+				AuthorKind:      "operator",
+				AuthorSubjectID: subjectID,
+				Body:            "本文",
+				Sequence:        3,
+				CreatedAt:       createdAt,
+			})
+
+			require.NoError(t, err)
+			assert.Equal(t, id, got.ID())
+			assert.Equal(t, inquiryID, got.InquiryID())
+			assert.Equal(t, domainmessage.AuthorKindOperator, got.Author().Kind())
+			assert.Equal(t, subjectID, got.Author().SubjectID())
+			assert.Equal(t, int64(3), got.Sequence())
+			assert.Equal(t, createdAt, got.CreatedAt())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		// 表の CHECK 制約と NOT NULL がある限り到達しないが、種別の検証はこの関数が
+		// 担う境界なので、壊れた行を渡したときに集約を組み立てないことを固定する。
+		t.Run("既知でない種別の行はErrInvalidAuthorKindを返す", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := reconstruct(gen.InquiryMessages{
+				ID: mustNewUUID(t), InquiryID: mustNewUUID(t),
+				AuthorKind: "admin", AuthorSubjectID: mustNewUUID(t),
+				Body: "本文", Sequence: 1,
+			})
+
+			require.ErrorIs(t, err, domainmessage.ErrInvalidAuthorKind)
+		})
+
+		t.Run("送り手が未設定の行はErrInvalidAuthorSubjectを返す", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := reconstruct(gen.InquiryMessages{
+				ID: mustNewUUID(t), InquiryID: mustNewUUID(t),
+				AuthorKind: "user", Body: "本文", Sequence: 1,
+			})
+
+			require.ErrorIs(t, err, domainmessage.ErrInvalidAuthorSubject)
+		})
+
+		t.Run("位置が0の行はErrInvalidSequenceを返す", func(t *testing.T) {
+			t.Parallel()
+
+			_, err := reconstruct(gen.InquiryMessages{
+				ID: mustNewUUID(t), InquiryID: mustNewUUID(t),
+				AuthorKind: "user", AuthorSubjectID: mustNewUUID(t), Body: "本文",
+			})
+
+			require.ErrorIs(t, err, domainmessage.ErrInvalidSequence)
 		})
 	})
 }

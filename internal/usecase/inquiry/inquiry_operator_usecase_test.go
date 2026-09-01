@@ -18,6 +18,7 @@ import (
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
+	"go-boilerplate/pkg/xerrors"
 )
 
 // newTestCursor は、指定の位置を指す不透明カーソルを組み立てます。
@@ -122,6 +123,21 @@ func Test_usecase_ListInquiries(t *testing.T) {
 			})
 
 			require.ErrorIs(t, err, apperror.ErrPermissionDenied)
+		})
+
+		t.Run("読み出しの失敗をそのまま返す", func(t *testing.T) {
+			t.Parallel()
+			u, d := newTestUsecase(t)
+			wantErr := xerrors.New("list failed")
+
+			d.authz.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			d.repo.EXPECT().ListForOperator(gomock.Any(), gomock.Any()).Return(nil, wantErr)
+
+			_, err := u.ListInquiries(context.Background(), newTestAuthn(t), ListInquiriesParams{
+				Cursor: newFirstPageCursor(t, 10),
+			})
+
+			require.ErrorIs(t, err, wantErr)
 		})
 	})
 }

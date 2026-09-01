@@ -59,6 +59,9 @@ func Test_usecase_emitDelivery(t *testing.T) {
 			assert.Equal(t, event.TypeThreadUpdated, emitted[1].EventType)
 			assert.Equal(t, aggregateType, emitted[0].AggregateType)
 			assert.Equal(t, i.ID().String(), emitted[0].AggregateID)
+			// feed 側も同じ集約を指す。ここを見ないと、片方だけ別 ID へ差し替えても緑のまま通る。
+			assert.Equal(t, aggregateType, emitted[1].AggregateType)
+			assert.Equal(t, i.ID().String(), emitted[1].AggregateID)
 		})
 
 		t.Run("feedのeventは本文を持たない", func(t *testing.T) {

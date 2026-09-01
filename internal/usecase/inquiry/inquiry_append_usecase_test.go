@@ -3,12 +3,14 @@ package inquiry
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
 	"go-boilerplate/internal/apperror"
+	domaininquiry "go-boilerplate/internal/domain/inquiry"
 	domainmessage "go-boilerplate/internal/domain/inquirymessage"
 	"go-boilerplate/internal/usecase/boundary/outbox"
 	rt "go-boilerplate/internal/usecase/boundary/realtime"
@@ -115,6 +117,61 @@ func Test_usecase_appendMessage(t *testing.T) {
 			_, err := u.appendMessage(context.Background(), i, newTestUserAuthor(t), "")
 
 			require.ErrorIs(t, err, domainmessage.ErrEmptyBody)
+		})
+
+		t.Run("メッセージの追加に失敗したら更新日時へ進まない", func(t *testing.T) {
+			t.Parallel()
+			u, d := newTestUsecase(t)
+			i := newTestInquiry(t, uuidtestkit.NewTestFromSalt(t, "user"))
+			wantErr := xerrors.New("create failed")
+
+			// 後続（Touch / feed 採番 / 読み直し / emit）を EXPECT しないことが、
+			// それらが呼ばれないことの assert になる。
+			d.sequences.EXPECT().Allocate(gomock.Any(), gomock.Any()).Return(rt.Sequence(1), nil)
+			d.messages.EXPECT().Create(gomock.Any(), gomock.Any()).Return(wantErr)
+
+			_, err := u.appendMessage(context.Background(), i, newTestUserAuthor(t), "本文")
+
+			require.ErrorIs(t, err, wantErr)
+			assert.True(t, i.UpdatedAt().Before(baseTime))
+		})
+
+		t.Run("更新日時が巻き戻る時刻ならErrInvalidTimeを返しemitしない", func(t *testing.T) {
+			t.Parallel()
+			u, d := newTestUsecase(t)
+			// 時計より後の更新日時を持つ問い合わせを渡すと、Touch の単調性ガードに当たる。
+			future, err := domaininquiry.Reconstruct(
+				uuidtestkit.NewTestFromSalt(t, "inquiry"),
+				domaininquiry.Attributes{
+					UserID:    uuidtestkit.NewTestFromSalt(t, "user"),
+					CreatedAt: baseTime,
+					UpdatedAt: baseTime.Add(time.Hour),
+				},
+			)
+			require.NoError(t, err)
+
+			d.sequences.EXPECT().Allocate(gomock.Any(), gomock.Any()).Return(rt.Sequence(1), nil)
+			d.messages.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
+
+			_, err = u.appendMessage(context.Background(), future, newTestUserAuthor(t), "本文")
+
+			require.ErrorIs(t, err, domaininquiry.ErrInvalidTime)
+			assert.Equal(t, baseTime.Add(time.Hour), future.UpdatedAt())
+		})
+
+		t.Run("更新日時の永続化に失敗したらemitしない", func(t *testing.T) {
+			t.Parallel()
+			u, d := newTestUsecase(t)
+			i := newTestInquiry(t, uuidtestkit.NewTestFromSalt(t, "user"))
+			wantErr := xerrors.New("touch failed")
+
+			d.sequences.EXPECT().Allocate(gomock.Any(), gomock.Any()).Return(rt.Sequence(1), nil)
+			d.messages.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
+			d.repo.EXPECT().Touch(gomock.Any(), gomock.Any(), gomock.Any()).Return(wantErr)
+
+			_, err := u.appendMessage(context.Background(), i, newTestUserAuthor(t), "本文")
+
+			require.ErrorIs(t, err, wantErr)
 		})
 
 		t.Run("feed streamの採番に失敗したらemitしない", func(t *testing.T) {

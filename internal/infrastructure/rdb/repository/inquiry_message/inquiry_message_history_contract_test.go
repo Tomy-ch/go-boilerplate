@@ -15,12 +15,6 @@ import (
 	"go-boilerplate/pkg/ptr"
 )
 
-// 履歴の同時性契約が使う seed 利用者。inquiries.user_id は UNIQUE のため他のケースと重ねません。
-const (
-	seedRaceUserA = "058026a6-82d9-4538-9f45-e18a3cd8c99a"
-	seedRaceUserB = "0775fe11-df27-4488-92de-018b4fae66b1"
-)
-
 // TestHistoryCursorContract は、履歴の取得と購読の開始の間に追加された 1 通が失われないことを、
 // 実データベース上で確かめます。
 //
@@ -43,7 +37,7 @@ func TestHistoryCursorContract(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				inquiryID := createInquiry(ctx, t, testDB, seedRaceUserA)
+				inquiryID, userID := createInquiry(ctx, t, testDB, 5)
 				stream := rt.StreamID(inquiryID.String())
 
 				// 履歴に載るべき 2 通。
@@ -51,7 +45,7 @@ func TestHistoryCursorContract(t *testing.T) {
 					seq, err := sequences.Allocate(ctx, stream)
 					require.NoError(t, err)
 					require.NoError(t, repo.Create(ctx, newMessage(
-						t, inquiryID, domainmessage.AuthorKindUser, seedRaceUserA, int64(seq),
+						t, inquiryID, domainmessage.AuthorKindUser, userID, int64(seq),
 					)))
 				}
 
@@ -65,7 +59,7 @@ func TestHistoryCursorContract(t *testing.T) {
 				raced, err := sequences.Allocate(ctx, stream)
 				require.NoError(t, err)
 				require.NoError(t, repo.Create(ctx, newMessage(
-					t, inquiryID, domainmessage.AuthorKindUser, seedRaceUserA, int64(raced),
+					t, inquiryID, domainmessage.AuthorKindUser, userID, int64(raced),
 				)))
 
 				got, err := repo.ListByInquiry(ctx, inquiryID, domainmessage.HistoryParams{
@@ -94,7 +88,7 @@ func TestHistoryCursorContract(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				inquiryID := createInquiry(ctx, t, testDB, seedRaceUserB)
+				inquiryID, _ := createInquiry(ctx, t, testDB, 6)
 				stream := rt.StreamID(inquiryID.String())
 
 				allocated := make([]int64, 0, 3)

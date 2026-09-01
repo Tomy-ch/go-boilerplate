@@ -19,6 +19,7 @@ import (
 	"go-boilerplate/internal/usecase/boundary/auth"
 	inquiryuc "go-boilerplate/internal/usecase/inquiry"
 	mock_inquiryuc "go-boilerplate/internal/usecase/inquiry/mock"
+	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/pkg/uuid"
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 )
@@ -81,7 +82,11 @@ func Test_server_GetInquiries(t *testing.T) {
 		t.Run("カーソルと件数をユースケースへ渡す", func(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
-			after, first := "MjAyNg", 3
+			after := paging.EncodeCursor(
+				time.Date(2026, time.September, 1, 10, 0, 0, 0, time.UTC).Format(time.RFC3339Nano),
+				uuidtestkit.NewTestFromSalt(t, "boundary").String(),
+			)
+			first := 3
 
 			var captured inquiryuc.ListInquiriesParams
 			uc := mock_inquiryuc.NewMockUsecase(ctrl)
