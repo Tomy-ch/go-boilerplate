@@ -1,0 +1,14 @@
+type: object
+description: 問い合わせへ追加する 1 通。
+required:
+  - body
+properties:
+  body:
+    type: string
+    minLength: 1
+    maxLength: 4000
+    description: |
+      本文。長さは文字数（Unicode コードポイント）で数える。
+      上限はドメインの上限と一致させてあり、境界の所有については
+      openapi/boundary-ownership.md を参照。
+    example: "注文した商品がまだ届きません。"

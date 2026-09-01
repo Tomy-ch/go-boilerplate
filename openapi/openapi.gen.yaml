@@ -97,6 +97,16 @@ tags:
     description: カート明細の設定と削除（任意認証・自然キー upsert による冪等サンプル・Idempotency-Key を要さない）。
   - name: v1/carts/merge
     description: ログイン時のカート引き継ぎ（認証必須・所有権の遷移サンプル・Idempotency-Key を採る）。
+  - name: v1/inquiries
+    description: 問い合わせ一覧（admin のみ・keyset ページング・本文を持たない要約）。
+  - name: v1/inquiries/me/messages
+    description: 自分の問い合わせの履歴と投稿（認証必須・append-only・購読の開始位置を返す）。
+  - name: v1/inquiries/me/stream-ticket
+    description: 自分の問い合わせを購読する ticket の発行（認証必須・生値は応答のみ）。
+  - name: v1/inquiries/detail/messages
+    description: 任意の問い合わせの履歴と回答（admin のみ・append-only）。
+  - name: v1/inquiries/feed/stream-ticket
+    description: 問い合わせ更新フィードを購読する ticket の発行（admin のみ）。
   - name: internal/types/error-response
     description: （内部用）型生成専用のタグ。実エンドポイントではない。
 paths:
@@ -1840,6 +1850,290 @@ paths:
           $ref: '#/components/responses/InternalServerError500'
         '503':
           $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/inquiries:
+    get:
+      operationId: GetInquiries
+      tags:
+        - v1/inquiries
+      summary: 問い合わせ一覧の取得（運営）
+      description: |
+        問い合わせを更新日時の新しい順に 1 ページ取得します。**管理者ロールが必要です**。
+        本文は含めません。一覧は問い合わせの行だけで組み立て、最新メッセージの内容は履歴か feed の
+        購読で受け取ります。
+        ページングは keyset で、応答の nextCursor をそのまま after に渡して続きを取得します。
+        一覧画面を購読で更新する場合は POST /v1/inquiries/feed/stream-ticket を使います。
+        本 op 自体は DB の SELECT のみで外部依存を持ちませんが、認証段（外部 IdP の JWKS 参照）の
+        一時障害で応答不能となり得るため、認証を伴う op の先例に倣い 503 を宣言します。
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CursorAfterParam'
+        - $ref: '#/components/parameters/CursorFirstParam'
+      responses:
+        '200':
+          description: 一覧の取得に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InquiryListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '403':
+          $ref: '#/components/responses/Forbidden403'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/inquiries/me/messages:
+    get:
+      operationId: GetInquiriesMeMessages
+      tags:
+        - v1/inquiries/me/messages
+      summary: 自分の問い合わせ履歴の取得
+      description: |
+        呼び出し主体自身の問い合わせについて、メッセージを位置の昇順で 1 ページ取得します。
+        パスに他者の識別子を持たないため、他人の問い合わせは取得できません。
+        **応答の streamCursor を購読の開始位置に渡してください**。このページを読んだ時点の stream の
+        現在位置を返し、messages はその位置以下だけを含むため、履歴の取得と購読の開始の間に追加された
+        メッセージを取りこぼしません。
+        まだ問い合わせを持たない主体には、空の messages と streamCursor = 0 を 200 で返します
+        （問い合わせが無いことは誤りではありません）。
+        本 op 自体は DB の SELECT のみで外部依存を持ちませんが、認証段（外部 IdP の JWKS 参照）の
+        一時障害で応答不能となり得るため、認証を伴う op の先例に倣い 503 を宣言します。
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AfterSequenceParam'
+        - $ref: '#/components/parameters/CursorFirstParam'
+      responses:
+        '200':
+          description: 履歴の取得に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InquiryHistoryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
+    post:
+      operationId: PostInquiriesMeMessages
+      tags:
+        - v1/inquiries/me/messages
+      summary: 自分の問い合わせへの投稿
+      description: |
+        呼び出し主体自身の問い合わせへメッセージを 1 通追加します。
+        **問い合わせは最初の投稿で作られます**。利用者ごとに 1 件だけ持ち、作成のための API は設けません。
+        追加は append-only で、編集も取り消しもできません。
+        **Idempotency-Key を受け付けます**。同一キーの再送は初回の結果をそのまま返すため、
+        timeout 後の再送でメッセージが二重に生まれません。同一キーを内容の異なる要求で使い回した場合は
+        422 で拒否します。
+        最初の投稿が並行した場合、サーバは内部で 1 度だけやり直します。それでも解けない場合のみ 409 を返します。
+        本 op 自体は DB の SELECT / INSERT / UPDATE のみで外部依存を持ちませんが、認証段（外部 IdP の
+        JWKS 参照）の一時障害で応答不能となり得るため、認証を伴う op の先例に倣い 503 を宣言します。
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKeyParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InquiryMessagePostRequest'
+      responses:
+        '201':
+          description: 投稿に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InquiryMessageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
+        '409':
+          $ref: '#/components/responses/Conflict409'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType415'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity422'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/inquiries/me/stream-ticket:
+    post:
+      operationId: PostInquiriesMeStreamTicket
+      tags:
+        - v1/inquiries/me/stream-ticket
+      summary: 自分の問い合わせを購読する ticket の発行
+      description: |
+        呼び出し主体自身の問い合わせについて、購読に使う 1 回限りの ticket を発行します。
+        応答の streamId を GET /v1/streams/{destination} の destination に渡して接続します。
+        **生値はこの応答にしか現れません**。サーバは hash しか保存しないため、失った場合は再発行します。
+        **開始位置には発行時点の stream の現在位置を束ねます**。cursor を持たずに接続した client へ
+        履歴を再生し直さないためで、これは認可の下限ではありません（保持範囲であればより前から再開できます）。
+        購読する問い合わせを持たない主体には 404 を返します。
+        GET ではなく POST なのは、この操作が ticket という状態を作るためです。
+        本 op は DB の SELECT と ticket store への書き込みを行います。認証段（外部 IdP の JWKS 参照）や
+        ticket store の一時障害で応答不能となり得るため 503 を宣言します。
+      security:
+        - BearerAuth: []
+      responses:
+        '201':
+          description: ticket の発行に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InquiryStreamTicketResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '404':
+          $ref: '#/components/responses/NotFound404'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/inquiries/feed/stream-ticket:
+    post:
+      operationId: PostInquiriesFeedStreamTicket
+      tags:
+        - v1/inquiries/feed/stream-ticket
+      summary: 問い合わせ更新フィードを購読する ticket の発行（運営）
+      description: |
+        一覧画面を更新するための feed を購読する ticket を発行します。**管理者ロールが必要です**。
+        feed が運ぶのは「どの問い合わせがどこまで進んだか」だけで、本文は含みません。
+        本文が要る場合は履歴を取得してください。
+        応答の形と生値の扱いは自分の問い合わせの ticket（POST /v1/inquiries/me/stream-ticket）と同じです。
+        本 op は ticket store への書き込みを行います。認証段（外部 IdP の JWKS 参照）や ticket store の
+        一時障害で応答不能となり得るため 503 を宣言します。
+      security:
+        - BearerAuth: []
+      responses:
+        '201':
+          description: ticket の発行に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InquiryStreamTicketResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '403':
+          $ref: '#/components/responses/Forbidden403'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/inquiries/{inquiryId}/messages:
+    get:
+      operationId: GetInquiriesDetailMessages
+      tags:
+        - v1/inquiries/detail/messages
+      summary: 任意の問い合わせ履歴の取得（運営）
+      description: |
+        指定した問い合わせのメッセージを位置の昇順で 1 ページ取得します。**管理者ロールが必要です**。
+        応答の形と streamCursor の使い方は自分の履歴（GET /v1/inquiries/me/messages）と同じです。
+        存在しない問い合わせには 404 を返します。
+        本 op 自体は DB の SELECT のみで外部依存を持ちませんが、認証段（外部 IdP の JWKS 参照）の
+        一時障害で応答不能となり得るため、認証を伴う op の先例に倣い 503 を宣言します。
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/InquiryIdParam'
+        - $ref: '#/components/parameters/AfterSequenceParam'
+        - $ref: '#/components/parameters/CursorFirstParam'
+      responses:
+        '200':
+          description: 履歴の取得に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InquiryHistoryResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '403':
+          $ref: '#/components/responses/Forbidden403'
+        '404':
+          $ref: '#/components/responses/NotFound404'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
+    post:
+      operationId: PostInquiriesDetailMessages
+      tags:
+        - v1/inquiries/detail/messages
+      summary: 問い合わせへの回答（運営）
+      description: |
+        指定した問い合わせへ回答を 1 通追加します。**管理者ロールが必要です**。
+        追加の扱いは利用者の投稿と同じで、append-only であり編集も取り消しもできません。
+        送り手の種別は operator として記録されます。
+        **Idempotency-Key を受け付けます**。同一キーの再送は初回の結果をそのまま返すため、
+        timeout 後の再送で回答が二重に生まれません。
+        存在しない問い合わせには 404 を返します。
+        本 op 自体は DB の SELECT / INSERT / UPDATE のみで外部依存を持ちませんが、認証段（外部 IdP の
+        JWKS 参照）の一時障害で応答不能となり得るため、認証を伴う op の先例に倣い 503 を宣言します。
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/InquiryIdParam'
+        - $ref: '#/components/parameters/IdempotencyKeyParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InquiryMessagePostRequest'
+      responses:
+        '201':
+          description: 回答に成功しました
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InquiryMessageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest400'
+        '401':
+          $ref: '#/components/responses/Unauthorized401'
+        '403':
+          $ref: '#/components/responses/Forbidden403'
+        '404':
+          $ref: '#/components/responses/NotFound404'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType415'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity422'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
 components:
   parameters:
     PageParam:
@@ -2292,6 +2586,27 @@ components:
         minLength: 43
         maxLength: 43
         example: b3JnLWV4YW1wbGUtc2Vzc2lvbi10b2tlbi1zYW1wbGU
+    AfterSequenceParam:
+      name: afterSequence
+      in: query
+      description: |
+        取得を開始する位置。この位置より後ろのメッセージを返す。先頭から取得する場合は省略する。
+        不透明カーソルではなく位置そのものを使うのは、この値が購読の再開位置と同じ意味を持つため。
+      required: false
+      schema:
+        type: integer
+        format: int64
+        minimum: 0
+        example: 12
+    InquiryIdParam:
+      name: inquiryId
+      in: path
+      required: true
+      description: 問い合わせ ID
+      schema:
+        type: string
+        format: uuid
+        example: 0198a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a60
   securitySchemes:
     BearerAuth:
       type: http
@@ -4427,6 +4742,175 @@ components:
             type: string
             format: uuid
           example: []
+    InquirySummary:
+      type: object
+      description: |
+        運営向け一覧の 1 件。本文は含めない（一覧は問い合わせの行だけで組み立てる）。
+      required:
+        - id
+        - userId
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: 問い合わせ ID。
+          example: 0198a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a60
+        userId:
+          type: string
+          format: uuid
+          description: 問い合わせを開始した利用者の ID。
+          example: 550e8400-e29b-41d4-a716-446655440000
+        createdAt:
+          type: string
+          format: date-time
+          description: 作成日時。
+          example: '2026-09-01T10:00:00Z'
+        updatedAt:
+          type: string
+          format: date-time
+          description: 最後にメッセージが追加された日時。一覧の並び順の基準。
+          example: '2026-09-01T12:34:56.789Z'
+    InquiryListResponse:
+      type: object
+      description: 運営向け一覧 1 ページ。更新日時の新しい順。
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InquirySummary'
+        nextCursor:
+          type: string
+          nullable: true
+          description: 次ページ取得用の不透明カーソル。次ページが無ければ null。
+          example: MjAyNi0wOS0wMVQxMjozNDo1Ni43ODlaCjAxOThhMWIy
+    InquiryMessage:
+      type: object
+      description: |
+        問い合わせメッセージ 1 通。作成後に編集も取り消しもされない。
+        sequence はこの問い合わせの中での位置であり、購読の再開位置としてそのまま使える。
+      required:
+        - id
+        - inquiryId
+        - authorKind
+        - body
+        - sequence
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: メッセージ ID。
+          example: 0198a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b
+        inquiryId:
+          type: string
+          format: uuid
+          description: 所属する問い合わせの ID。
+          example: 0198a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a60
+        authorKind:
+          type: string
+          enum:
+            - user
+            - operator
+          description: 送り手の種別。利用者か回答者かのみを示し、主体の識別子は含めない。
+          example: user
+        body:
+          type: string
+          description: 本文。
+          example: 注文した商品がまだ届きません。
+        sequence:
+          type: integer
+          format: int64
+          minimum: 1
+          description: 問い合わせ内の位置（1 起算、欠番なし）。
+          example: 3
+        createdAt:
+          type: string
+          format: date-time
+          description: 作成日時。
+          example: '2026-09-01T12:34:56.789Z'
+    InquiryHistoryResponse:
+      type: object
+      description: |
+        問い合わせの履歴 1 ページ。
+        streamCursor はこのページを読んだ時点の stream の現在位置で、messages はこれ以下の位置だけを含む。
+        購読を始めるときにこの値を開始位置として渡せば、履歴の取得と購読の間の event を取りこぼさない。
+      required:
+        - messages
+        - streamCursor
+      properties:
+        inquiryId:
+          type: string
+          format: uuid
+          nullable: true
+          description: 対象の問い合わせ。まだ問い合わせを持たない利用者では null。
+          example: 0198a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a60
+        messages:
+          type: array
+          description: 位置の昇順に並んだメッセージ。
+          items:
+            $ref: '#/components/schemas/InquiryMessage'
+        nextAfterSequence:
+          type: integer
+          format: int64
+          nullable: true
+          description: 次ページの開始位置。次ページが無ければ null。
+          example: 20
+        streamCursor:
+          type: integer
+          format: int64
+          minimum: 0
+          description: このページを読んだ時点の stream の現在位置。まだ 1 通も無ければ 0。
+          example: 12
+    InquiryMessagePostRequest:
+      type: object
+      description: 問い合わせへ追加する 1 通。
+      required:
+        - body
+      properties:
+        body:
+          type: string
+          minLength: 1
+          maxLength: 4000
+          description: |
+            本文。長さは文字数（Unicode コードポイント）で数える。
+            上限はドメインの上限と一致させてあり、境界の所有については
+            openapi/boundary-ownership.md を参照。
+          example: 注文した商品がまだ届きません。
+    InquiryMessageResponse:
+      type: object
+      description: 追加したメッセージ 1 通。
+      required:
+        - message
+      properties:
+        message:
+          $ref: '#/components/schemas/InquiryMessage'
+    InquiryStreamTicketResponse:
+      type: object
+      description: |
+        購読に使う 1 回限りの ticket。生値はこの応答にしか現れず、サーバは hash しか保存しない。
+        接続は GET /v1/streams/{destination} に streamId を渡して開始する。
+      required:
+        - ticket
+        - streamId
+        - expiresAt
+      properties:
+        ticket:
+          type: string
+          description: ticket の生値。log や URL に残さないこと。
+          example: 0oXk1c5t8Yb1yq3aB7pQwR2sT4uV6wX8
+        streamId:
+          type: string
+          description: 接続先の stream。GET /v1/streams/{destination} の destination に渡す。
+          example: 0198a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a60
+        expiresAt:
+          type: string
+          format: date-time
+          description: この ticket で新しい接続を始められる期限。確立済みの接続は別に最大接続時間で区切られる。
+          example: '2026-09-01T12:39:56Z'
   responses:
     MethodNotAllowed405:
       description: 許可されていないリクエスト方法です。

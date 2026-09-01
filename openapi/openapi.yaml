@@ -105,6 +105,16 @@ tags:
     description: カート明細の設定と削除（任意認証・自然キー upsert による冪等サンプル・Idempotency-Key を要さない）。
   - name: v1/carts/merge
     description: ログイン時のカート引き継ぎ（認証必須・所有権の遷移サンプル・Idempotency-Key を採る）。
+  - name: v1/inquiries
+    description: 問い合わせ一覧（admin のみ・keyset ページング・本文を持たない要約）。
+  - name: v1/inquiries/me/messages
+    description: 自分の問い合わせの履歴と投稿（認証必須・append-only・購読の開始位置を返す）。
+  - name: v1/inquiries/me/stream-ticket
+    description: 自分の問い合わせを購読する ticket の発行（認証必須・生値は応答のみ）。
+  - name: v1/inquiries/detail/messages
+    description: 任意の問い合わせの履歴と回答（admin のみ・append-only）。
+  - name: v1/inquiries/feed/stream-ticket
+    description: 問い合わせ更新フィードを購読する ticket の発行（admin のみ）。
   # sample-api:end
   - name: internal/types/error-response
     description: （内部用）型生成専用のタグ。実エンドポイントではない。
@@ -187,6 +197,16 @@ paths:
     $ref: './paths/v1/carts/me/items/productId.yaml'
   /v1/carts/me/merge:
     $ref: './paths/v1/carts/me/merge.yaml'
+  /v1/inquiries:
+    $ref: './paths/v1/inquiries.yaml'
+  /v1/inquiries/me/messages:
+    $ref: './paths/v1/inquiries/me/messages.yaml'
+  /v1/inquiries/me/stream-ticket:
+    $ref: './paths/v1/inquiries/me/stream-ticket.yaml'
+  /v1/inquiries/feed/stream-ticket:
+    $ref: './paths/v1/inquiries/feed/stream-ticket.yaml'
+  /v1/inquiries/{inquiryId}/messages:
+    $ref: './paths/v1/inquiries/inquiryId/messages.yaml'
   # sample-api:end
 components:
   parameters:

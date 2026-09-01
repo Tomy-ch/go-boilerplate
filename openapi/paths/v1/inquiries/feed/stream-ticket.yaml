@@ -1,0 +1,33 @@
+post:
+  operationId: PostInquiriesFeedStreamTicket
+  tags:
+    - v1/inquiries/feed/stream-ticket
+  summary: 問い合わせ更新フィードを購読する ticket の発行（運営）
+  description: |
+    一覧画面を更新するための feed を購読する ticket を発行します。**管理者ロールが必要です**。
+    feed が運ぶのは「どの問い合わせがどこまで進んだか」だけで、本文は含みません。
+    本文が要る場合は履歴を取得してください。
+    応答の形と生値の扱いは自分の問い合わせの ticket（POST /v1/inquiries/me/stream-ticket）と同じです。
+    本 op は ticket store への書き込みを行います。認証段（外部 IdP の JWKS 参照）や ticket store の
+    一時障害で応答不能となり得るため 503 を宣言します。
+  security:
+    - BearerAuth: []
+  responses:
+    '201':
+      description: ticket の発行に成功しました
+      content:
+        application/json:
+          schema:
+            $ref: '../../../../components/responses/inquiries/InquiryStreamTicketResponse.yaml'
+    '400':
+      $ref: '../../../../components/schemas/errors/BadRequest400.yaml'
+    '401':
+      $ref: '../../../../components/schemas/errors/Unauthorized401.yaml'
+    '403':
+      $ref: '../../../../components/schemas/errors/Forbidden403.yaml'
+    '405':
+      $ref: '../../../../components/schemas/errors/MethodNotAllowed405.yaml'
+    '500':
+      $ref: '../../../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../../../components/schemas/errors/ServiceUnavailable503.yaml'

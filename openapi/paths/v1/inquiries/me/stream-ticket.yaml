@@ -1,0 +1,36 @@
+post:
+  operationId: PostInquiriesMeStreamTicket
+  tags:
+    - v1/inquiries/me/stream-ticket
+  summary: 自分の問い合わせを購読する ticket の発行
+  description: |
+    呼び出し主体自身の問い合わせについて、購読に使う 1 回限りの ticket を発行します。
+    応答の streamId を GET /v1/streams/{destination} の destination に渡して接続します。
+    **生値はこの応答にしか現れません**。サーバは hash しか保存しないため、失った場合は再発行します。
+    **開始位置には発行時点の stream の現在位置を束ねます**。cursor を持たずに接続した client へ
+    履歴を再生し直さないためで、これは認可の下限ではありません（保持範囲であればより前から再開できます）。
+    購読する問い合わせを持たない主体には 404 を返します。
+    GET ではなく POST なのは、この操作が ticket という状態を作るためです。
+    本 op は DB の SELECT と ticket store への書き込みを行います。認証段（外部 IdP の JWKS 参照）や
+    ticket store の一時障害で応答不能となり得るため 503 を宣言します。
+  security:
+    - BearerAuth: []
+  responses:
+    '201':
+      description: ticket の発行に成功しました
+      content:
+        application/json:
+          schema:
+            $ref: '../../../../components/responses/inquiries/InquiryStreamTicketResponse.yaml'
+    '400':
+      $ref: '../../../../components/schemas/errors/BadRequest400.yaml'
+    '401':
+      $ref: '../../../../components/schemas/errors/Unauthorized401.yaml'
+    '404':
+      $ref: '../../../../components/schemas/errors/NotFound404.yaml'
+    '405':
+      $ref: '../../../../components/schemas/errors/MethodNotAllowed405.yaml'
+    '500':
+      $ref: '../../../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../../../components/schemas/errors/ServiceUnavailable503.yaml'

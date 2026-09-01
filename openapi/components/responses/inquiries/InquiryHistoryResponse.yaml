@@ -1,0 +1,32 @@
+type: object
+description: |
+  問い合わせの履歴 1 ページ。
+  streamCursor はこのページを読んだ時点の stream の現在位置で、messages はこれ以下の位置だけを含む。
+  購読を始めるときにこの値を開始位置として渡せば、履歴の取得と購読の間の event を取りこぼさない。
+required:
+  - messages
+  - streamCursor
+properties:
+  inquiryId:
+    type: string
+    format: uuid
+    nullable: true
+    description: 対象の問い合わせ。まだ問い合わせを持たない利用者では null。
+    example: "0198a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a60"
+  messages:
+    type: array
+    description: 位置の昇順に並んだメッセージ。
+    items:
+      $ref: '../../schemas/inquiries/InquiryMessage.yaml'
+  nextAfterSequence:
+    type: integer
+    format: int64
+    nullable: true
+    description: 次ページの開始位置。次ページが無ければ null。
+    example: 20
+  streamCursor:
+    type: integer
+    format: int64
+    minimum: 0
+    description: このページを読んだ時点の stream の現在位置。まだ 1 通も無ければ 0。
+    example: 12

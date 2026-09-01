@@ -1,0 +1,22 @@
+type: object
+description: |
+  購読に使う 1 回限りの ticket。生値はこの応答にしか現れず、サーバは hash しか保存しない。
+  接続は GET /v1/streams/{destination} に streamId を渡して開始する。
+required:
+  - ticket
+  - streamId
+  - expiresAt
+properties:
+  ticket:
+    type: string
+    description: ticket の生値。log や URL に残さないこと。
+    example: "0oXk1c5t8Yb1yq3aB7pQwR2sT4uV6wX8"
+  streamId:
+    type: string
+    description: 接続先の stream。GET /v1/streams/{destination} の destination に渡す。
+    example: "0198a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a60"
+  expiresAt:
+    type: string
+    format: date-time
+    description: この ticket で新しい接続を始められる期限。確立済みの接続は別に最大接続時間で区切られる。
+    example: "2026-09-01T12:39:56Z"

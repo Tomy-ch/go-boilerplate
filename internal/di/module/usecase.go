@@ -17,6 +17,7 @@ import (
 	exchangerateuc "go-boilerplate/internal/usecase/exchangerate"            // sample-api:line
 	"go-boilerplate/internal/usecase/healthcheck"
 	"go-boilerplate/internal/usecase/idempotency"
+	inquiryuc "go-boilerplate/internal/usecase/inquiry" // sample-api:line
 	"go-boilerplate/internal/usecase/outbox"
 	prefectureuc "go-boilerplate/internal/usecase/prefecture"            // sample-api:line
 	productuc "go-boilerplate/internal/usecase/product"                  // sample-api:line
@@ -64,6 +65,7 @@ func UsecaseModule() fx.Option {
 			productuc.NewImageGC,
 			purchaseuc.New,
 			cartuc.New,
+			inquiryuc.New, // sample-api:line
 			checkoutuc.New,
 			purchasesummaryuc.New,
 			dashboarduc.New,

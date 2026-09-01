@@ -1,0 +1,42 @@
+type: object
+description: |
+  問い合わせメッセージ 1 通。作成後に編集も取り消しもされない。
+  sequence はこの問い合わせの中での位置であり、購読の再開位置としてそのまま使える。
+required:
+  - id
+  - inquiryId
+  - authorKind
+  - body
+  - sequence
+  - createdAt
+properties:
+  id:
+    type: string
+    format: uuid
+    description: メッセージ ID。
+    example: "0198a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"
+  inquiryId:
+    type: string
+    format: uuid
+    description: 所属する問い合わせの ID。
+    example: "0198a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a60"
+  authorKind:
+    type: string
+    enum: [user, operator]
+    description: 送り手の種別。利用者か回答者かのみを示し、主体の識別子は含めない。
+    example: "user"
+  body:
+    type: string
+    description: 本文。
+    example: "注文した商品がまだ届きません。"
+  sequence:
+    type: integer
+    format: int64
+    minimum: 1
+    description: 問い合わせ内の位置（1 起算、欠番なし）。
+    example: 3
+  createdAt:
+    type: string
+    format: date-time
+    description: 作成日時。
+    example: "2026-09-01T12:34:56.789Z"

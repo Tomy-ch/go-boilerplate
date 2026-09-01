@@ -1,0 +1,11 @@
+name: afterSequence
+in: query
+description: |
+  取得を開始する位置。この位置より後ろのメッセージを返す。先頭から取得する場合は省略する。
+  不透明カーソルではなく位置そのものを使うのは、この値が購読の再開位置と同じ意味を持つため。
+required: false
+schema:
+  type: integer
+  format: int64
+  minimum: 0
+  example: 12
