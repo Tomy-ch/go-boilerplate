@@ -77,6 +77,8 @@ tags:
     description: 郵便番号→住所補完（外部 gateway 利用サンプル・degrade）。
   - name: v1/purchases
     description: 購入作成（CommandService 正例・原子性/売り越し禁止・冪等）。
+  - name: v1/purchases/statuses
+    description: 購入ステータスマスタ一覧（認証不要の参照系サンプル）。
   - name: v1/purchases/shippable
     description: 発送待ち購入のまとめ発送一覧（admin のみ・単一集約 Domain Service サンプル・非 admin は 403）。
   - name: v1/purchases/detail
@@ -1344,6 +1346,29 @@ paths:
           $ref: '#/components/responses/Conflict409'
         '422':
           $ref: '#/components/responses/UnprocessableEntity422'
+        '500':
+          $ref: '#/components/responses/InternalServerError500'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable503'
+  /v1/purchases/statuses:
+    get:
+      operationId: GetPurchaseStatuses
+      tags:
+        - v1/purchases/statuses
+      summary: 購入ステータスマスタ一覧の取得
+      description: |
+        購入ステータスマスタの全件を sortKey（表示順）昇順で返します。
+        認証不要の公開エンドポイントであり、ページネーションは行いません（全 9 件を返します）。
+      security: []
+      responses:
+        '200':
+          description: 購入ステータスマスタの一覧（sortKey 昇順）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PurchasesStatusesResponse'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed405'
         '500':
           $ref: '#/components/responses/InternalServerError500'
         '503':
@@ -3331,6 +3356,8 @@ components:
           type: string
           description: 購入ステータス名
           example: 完了
+    ResponseV1PurchasesStatuses:
+      $ref: '#/components/schemas/PurchasesStatusesResponse'
     PurchaseSummaryResponse:
       type: object
       description: |
@@ -4444,6 +4471,11 @@ components:
             空配列・重複はドメインで検証し 422 を返します（スキーマでは制約せず単一の検証責務に集約）。
           items:
             $ref: '#/components/schemas/PurchaseDetailInput'
+    PurchasesStatusesResponse:
+      type: array
+      description: 購入ステータスマスタの一覧。マスタが定める表示順で並べて全件を返し、ページネーションは行いません。
+      items:
+        $ref: '#/components/schemas/PurchaseStatusRef'
     PurchaseShippableItemResponse:
       type: object
       description: |
