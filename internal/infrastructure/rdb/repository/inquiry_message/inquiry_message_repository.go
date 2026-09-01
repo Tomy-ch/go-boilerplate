@@ -44,7 +44,7 @@ func (r *repository) Create(ctx context.Context, m *inquirymessage.Message) erro
 		AuthorKind:      m.Author().Kind().String(),
 		AuthorSubjectID: m.Author().SubjectID(),
 		Body:            m.Body(),
-		Sequence:        m.Sequence(),
+		StreamSequence:  m.Sequence(),
 	})
 	if err != nil {
 		return pgerror.NormalizeError(err)
@@ -104,7 +104,7 @@ func reconstruct(row gen.InquiryMessages) (*inquirymessage.Message, error) {
 		InquiryID: row.InquiryID,
 		Author:    author,
 		Body:      row.Body,
-		Sequence:  row.Sequence,
+		Sequence:  row.StreamSequence,
 		CreatedAt: row.CreatedAt,
 	})
 }

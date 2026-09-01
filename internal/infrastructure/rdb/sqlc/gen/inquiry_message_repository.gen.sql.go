@@ -18,7 +18,7 @@ INSERT INTO inquiry_messages (
     author_kind,
     author_subject_id,
     body,
-    sequence
+    stream_sequence
 ) VALUES
 (
     $1,
@@ -36,11 +36,11 @@ type CreateInquiryMessageParams struct {
 	AuthorKind      string
 	AuthorSubjectID uuid.UUID
 	Body            string
-	Sequence        int64
+	StreamSequence  int64
 }
 
 // === source: database/dml/repository/inquiry_message/insert_inquiry_message.sql ===
-// メッセージを 1 件追加する。(inquiry_id, sequence) の一意制約違反は呼び出し側が衝突として扱う
+// メッセージを 1 件追加する。(inquiry_id, stream_sequence) の一意制約違反は呼び出し側が衝突として扱う
 // （採番と同一 tx で呼ぶ限り到達しない防御）。
 //
 //	INSERT INTO inquiry_messages (
@@ -49,7 +49,7 @@ type CreateInquiryMessageParams struct {
 //	    author_kind,
 //	    author_subject_id,
 //	    body,
-//	    sequence
+//	    stream_sequence
 //	) VALUES
 //	(
 //	    $1,
@@ -66,21 +66,21 @@ func (q *Queries) CreateInquiryMessage(ctx context.Context, arg *CreateInquiryMe
 		arg.AuthorKind,
 		arg.AuthorSubjectID,
 		arg.Body,
-		arg.Sequence,
+		arg.StreamSequence,
 	)
 	return err
 }
 
 const listInquiryMessages = `-- name: ListInquiryMessages :many
-SELECT m.id, m.inquiry_id, m.author_kind, m.author_subject_id, m.body, m.sequence, m.created_at
+SELECT m.id, m.inquiry_id, m.author_kind, m.author_subject_id, m.body, m.stream_sequence, m.created_at
 FROM inquiry_messages AS m
 WHERE m.inquiry_id = $1
 AND (
-    m.sequence > $2
+    m.stream_sequence > $2
     OR $2 IS NULL
 )
-AND m.sequence <= $3
-ORDER BY m.sequence ASC
+AND m.stream_sequence <= $3
+ORDER BY m.stream_sequence ASC
 LIMIT $4
 `
 
@@ -96,19 +96,19 @@ type ListInquiryMessagesRow struct {
 }
 
 // === source: database/dml/repository/inquiry_message/select_inquiry_messages.sql ===
-// 問い合わせのメッセージを sequence 昇順で取得する。
+// 問い合わせのメッセージを stream_sequence 昇順で取得する。
 // after_sequence より大きく up_to_sequence 以下の行に限ること（上限は usecase が先に読んだ stream の
 // 現在位置。論拠は docs/spec/inquiry/usecase.md の「streamCursor と snapshot」）。
 //
-//	SELECT m.id, m.inquiry_id, m.author_kind, m.author_subject_id, m.body, m.sequence, m.created_at
+//	SELECT m.id, m.inquiry_id, m.author_kind, m.author_subject_id, m.body, m.stream_sequence, m.created_at
 //	FROM inquiry_messages AS m
 //	WHERE m.inquiry_id = $1
 //	AND (
-//	    m.sequence > $2
+//	    m.stream_sequence > $2
 //	    OR $2 IS NULL
 //	)
-//	AND m.sequence <= $3
-//	ORDER BY m.sequence ASC
+//	AND m.stream_sequence <= $3
+//	ORDER BY m.stream_sequence ASC
 //	LIMIT $4
 func (q *Queries) ListInquiryMessages(ctx context.Context, arg *ListInquiryMessagesParams) ([]*ListInquiryMessagesRow, error) {
 	rows, err := q.db.Query(ctx, listInquiryMessages,
@@ -130,7 +130,7 @@ func (q *Queries) ListInquiryMessages(ctx context.Context, arg *ListInquiryMessa
 			&i.InquiryMessages.AuthorKind,
 			&i.InquiryMessages.AuthorSubjectID,
 			&i.InquiryMessages.Body,
-			&i.InquiryMessages.Sequence,
+			&i.InquiryMessages.StreamSequence,
 			&i.InquiryMessages.CreatedAt,
 		); err != nil {
 			return nil, err

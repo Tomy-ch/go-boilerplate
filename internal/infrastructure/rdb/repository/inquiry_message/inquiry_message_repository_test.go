@@ -231,7 +231,7 @@ func Test_reconstruct(t *testing.T) {
 				AuthorKind:      "operator",
 				AuthorSubjectID: subjectID,
 				Body:            "本文",
-				Sequence:        3,
+				StreamSequence:  3,
 				CreatedAt:       createdAt,
 			})
 
@@ -256,7 +256,7 @@ func Test_reconstruct(t *testing.T) {
 			_, err := reconstruct(gen.InquiryMessages{
 				ID: mustNewUUID(t), InquiryID: mustNewUUID(t),
 				AuthorKind: "admin", AuthorSubjectID: mustNewUUID(t),
-				Body: "本文", Sequence: 1,
+				Body: "本文", StreamSequence: 1,
 			})
 
 			require.ErrorIs(t, err, domainmessage.ErrInvalidAuthorKind)
@@ -267,7 +267,7 @@ func Test_reconstruct(t *testing.T) {
 
 			_, err := reconstruct(gen.InquiryMessages{
 				ID: mustNewUUID(t), InquiryID: mustNewUUID(t),
-				AuthorKind: "user", Body: "本文", Sequence: 1,
+				AuthorKind: "user", Body: "本文", StreamSequence: 1,
 			})
 
 			require.ErrorIs(t, err, domainmessage.ErrInvalidAuthorSubject)

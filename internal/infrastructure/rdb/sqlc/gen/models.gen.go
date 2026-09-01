@@ -100,7 +100,7 @@ type InquiryMessages struct {
 	// 本文
 	Body string
 	// 問い合わせ内の位置（1 起算）
-	Sequence int64
+	StreamSequence int64
 	// 作成日時
 	CreatedAt time.Time
 }

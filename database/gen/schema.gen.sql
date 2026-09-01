@@ -220,10 +220,10 @@ CREATE TABLE public.inquiry_messages (
     author_kind text NOT NULL,
     author_subject_id uuid NOT NULL,
     body text NOT NULL,
-    sequence bigint NOT NULL,
+    stream_sequence bigint NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT inquiry_messages_author_kind_check CHECK ((author_kind = ANY (ARRAY['user'::text, 'operator'::text]))),
-    CONSTRAINT inquiry_messages_sequence_positive CHECK ((sequence >= 1))
+    CONSTRAINT inquiry_messages_stream_sequence_positive CHECK ((stream_sequence >= 1))
 );
 --
 -- Name: TABLE inquiry_messages; Type: COMMENT; Schema: public; Owner: -
@@ -250,9 +250,9 @@ COMMENT ON COLUMN public.inquiry_messages.author_subject_id IS '送り手のユ�
 --
 COMMENT ON COLUMN public.inquiry_messages.body IS '本文';
 --
--- Name: COLUMN inquiry_messages.sequence; Type: COMMENT; Schema: public; Owner: -
+-- Name: COLUMN inquiry_messages.stream_sequence; Type: COMMENT; Schema: public; Owner: -
 --
-COMMENT ON COLUMN public.inquiry_messages.sequence IS '問い合わせ内の位置（1 起算）';
+COMMENT ON COLUMN public.inquiry_messages.stream_sequence IS '問い合わせ内の位置（1 起算）';
 --
 -- Name: COLUMN inquiry_messages.created_at; Type: COMMENT; Schema: public; Owner: -
 --
@@ -1021,10 +1021,10 @@ ALTER TABLE ONLY public.inquiries
 ALTER TABLE ONLY public.inquiry_messages
     ADD CONSTRAINT inquiry_messages_id_primary PRIMARY KEY (id);
 --
--- Name: inquiry_messages inquiry_messages_inquiry_id_sequence_unique; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: inquiry_messages inquiry_messages_inquiry_id_stream_sequence_unique; Type: CONSTRAINT; Schema: public; Owner: -
 --
 ALTER TABLE ONLY public.inquiry_messages
-    ADD CONSTRAINT inquiry_messages_inquiry_id_sequence_unique UNIQUE (inquiry_id, sequence);
+    ADD CONSTRAINT inquiry_messages_inquiry_id_stream_sequence_unique UNIQUE (inquiry_id, stream_sequence);
 --
 -- Name: outbox outbox_id_primary; Type: CONSTRAINT; Schema: public; Owner: -
 --
