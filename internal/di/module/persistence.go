@@ -13,6 +13,7 @@ import (
 	productcategory "go-boilerplate/internal/infrastructure/rdb/repository/product_category"      // sample-api:line
 	productstatusrepo "go-boilerplate/internal/infrastructure/rdb/repository/productstatus"       // sample-api:line
 	purchaserepo "go-boilerplate/internal/infrastructure/rdb/repository/purchase"                 // sample-api:line
+	purchasestatusrepo "go-boilerplate/internal/infrastructure/rdb/repository/purchasestatus"     // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/repository/user"                                  // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/system_cqrs/healthcheck"
 	idempotencysq "go-boilerplate/internal/infrastructure/rdb/system_cqrs/idempotency"
@@ -37,6 +38,7 @@ func persistenceModule() fx.Option {
 				productcategory.New,
 				product.New,
 				purchaserepo.New,
+				purchasestatusrepo.New,
 				cartrepo.New,
 				// sample-api:end
 			),

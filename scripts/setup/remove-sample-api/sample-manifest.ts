@@ -248,7 +248,7 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
   },
 
   order: {
-    description: "サンプル 購入 API（POST /v1/purchases・CommandService 正例 / GET /v1/purchases/shippable・単一集約 Domain Service 正例。フルスタック）",
+    description: "サンプル 購入 API（POST /v1/purchases・CommandService 正例 / GET /v1/purchases/shippable・単一集約 Domain Service 正例 / GET /v1/purchases/statuses 購入ステータスマスタ一覧。フルスタック）",
     paths: [
       // DB スキーマ
       "database/migrations/000012_create_purchase_statuses.up.sql",
@@ -285,6 +285,7 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "internal/usecase/checkout",
       "internal/infrastructure/rdb/command_service/purchase",
       "internal/infrastructure/rdb/repository/purchase",
+      "internal/infrastructure/rdb/repository/purchasestatus",
       "internal/infrastructure/rdb/query_service/purchase",
       "internal/controller/handler/v1/purchases",
       "internal/integration/v1_purchases_test.go",
@@ -295,18 +296,22 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "internal/integration/v1_purchases_ship_test.go",
       "internal/integration/v1_purchases_deliver_test.go",
       "internal/integration/v1_purchases_shippable_test.go",
+      "internal/integration/v1_purchases_statuses_test.go",
       "internal/integration/v1_purchases_code_contract_test.go",
       "internal/integration/v1_users_me_purchases_summary_test.go",
       // DML
       "database/dml/command_service/purchase",
       "database/dml/repository/purchase",
+      "database/dml/repository/purchase_status",
       "database/dml/query_service/purchase",
       // 生成物（sqlc。openapi.yaml / DI 各ファイルの登録はマーカーで除去される）
       "internal/infrastructure/rdb/sqlc/gen/purchase_command_service.gen.sql.go",
       "internal/infrastructure/rdb/sqlc/gen/purchase_repository.gen.sql.go",
+      "internal/infrastructure/rdb/sqlc/gen/purchase_status_repository.gen.sql.go",
       "internal/infrastructure/rdb/sqlc/gen/purchase_query_service.gen.sql.go",
       "database/gen/purchase_command_service.gen.sql",
       "database/gen/purchase_repository.gen.sql",
+      "database/gen/purchase_status_repository.gen.sql",
       "database/gen/purchase_query_service.gen.sql",
       // OpenAPI
       "openapi/paths/v1/purchases.yaml",
@@ -336,6 +341,7 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "openapi/components/schemas/PurchaseSubGroupResponse.yaml",
       // spec
       "docs/spec/purchase",
+      "docs/spec/purchase-status",
     ],
   },
 
