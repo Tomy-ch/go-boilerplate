@@ -28,10 +28,10 @@ INSERT INTO inquiry_messages (
 SELECT sqlc.embed(m)
 FROM inquiry_messages AS m
 WHERE m.inquiry_id = sqlc.arg('inquiry_id')
-AND (
-    m.stream_sequence > sqlc.narg('after_sequence')
-    OR sqlc.narg('after_sequence') IS NULL
-)
-AND m.stream_sequence <= sqlc.arg('up_to_sequence')
+    AND (
+        m.stream_sequence > sqlc.narg('after_sequence')
+        OR sqlc.narg('after_sequence') IS NULL
+    )
+    AND m.stream_sequence <= sqlc.arg('up_to_sequence')
 ORDER BY m.stream_sequence ASC
 LIMIT sqlc.arg('page_size');

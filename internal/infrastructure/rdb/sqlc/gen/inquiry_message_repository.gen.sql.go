@@ -75,11 +75,11 @@ const listInquiryMessages = `-- name: ListInquiryMessages :many
 SELECT m.id, m.inquiry_id, m.author_kind, m.author_subject_id, m.body, m.stream_sequence, m.created_at
 FROM inquiry_messages AS m
 WHERE m.inquiry_id = $1
-AND (
-    m.stream_sequence > $2
-    OR $2 IS NULL
-)
-AND m.stream_sequence <= $3
+    AND (
+        m.stream_sequence > $2
+        OR $2 IS NULL
+    )
+    AND m.stream_sequence <= $3
 ORDER BY m.stream_sequence ASC
 LIMIT $4
 `
@@ -103,11 +103,11 @@ type ListInquiryMessagesRow struct {
 //	SELECT m.id, m.inquiry_id, m.author_kind, m.author_subject_id, m.body, m.stream_sequence, m.created_at
 //	FROM inquiry_messages AS m
 //	WHERE m.inquiry_id = $1
-//	AND (
-//	    m.stream_sequence > $2
-//	    OR $2 IS NULL
-//	)
-//	AND m.stream_sequence <= $3
+//	    AND (
+//	        m.stream_sequence > $2
+//	        OR $2 IS NULL
+//	    )
+//	    AND m.stream_sequence <= $3
 //	ORDER BY m.stream_sequence ASC
 //	LIMIT $4
 func (q *Queries) ListInquiryMessages(ctx context.Context, arg *ListInquiryMessagesParams) ([]*ListInquiryMessagesRow, error) {
