@@ -4868,6 +4868,7 @@ components:
     InquiryMessagePostRequest:
       type: object
       description: 問い合わせへ追加する 1 通。
+      additionalProperties: false
       required:
         - body
       properties:
