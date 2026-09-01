@@ -49,7 +49,6 @@ func UsecaseModule() fx.Option {
 			outbox.NewGC,
 			outbox.NewReplay,
 			// sample-api:begin
-			// サンプルのユースケース
 			user.New,
 			user.NewPurge,
 			user.NewArchive,

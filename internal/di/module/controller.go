@@ -48,7 +48,6 @@ func ControllerModule() fx.Option {
 			version.BindHandler,
 			metrics.BindHandler,
 			// sample-api:begin
-			// サンプルのハンドラー
 			users.BindHandler,
 			detail.BindHandler,
 			feed.BindHandler,
