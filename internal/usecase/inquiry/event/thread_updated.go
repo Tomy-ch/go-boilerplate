@@ -1,0 +1,36 @@
+package event
+
+import (
+	"encoding/json"
+	"time"
+
+	"go-boilerplate/internal/domain/inquiry"
+	"go-boilerplate/pkg/xerrors"
+)
+
+// TypeThreadUpdated は、問い合わせ更新の outbox イベント種別（version 込み）です。
+const TypeThreadUpdated = "inquiry.thread.updated.v1"
+
+// threadUpdated は、inquiry.thread.updated.v1 の自己完結 snapshot payload です。
+// 一覧画面の更新に要るものだけを載せ、本文は持ちません。
+type threadUpdated struct {
+	InquiryID string `json:"inquiryId"`
+	UserID    string `json:"userId"`
+	Sequence  int64  `json:"sequence"`
+	UpdatedAt string `json:"updatedAt"`
+}
+
+// BuildThreadUpdated は、問い合わせ集約から inquiry.thread.updated.v1 の payload を marshal します。
+// sequence は会話 stream 側で採番された位置で、一覧が「どこまで進んだか」を判断するために載せます。
+func BuildThreadUpdated(i *inquiry.Inquiry, sequence int64) ([]byte, error) {
+	payload, err := json.Marshal(threadUpdated{
+		InquiryID: i.ID().String(),
+		UserID:    i.UserID().String(),
+		Sequence:  sequence,
+		UpdatedAt: i.UpdatedAt().Format(time.RFC3339Nano),
+	})
+	if err != nil {
+		return nil, xerrors.Wrap(err, "failed to encode inquiry.thread.updated payload")
+	}
+	return payload, nil
+}

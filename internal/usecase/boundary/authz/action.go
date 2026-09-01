@@ -34,6 +34,14 @@ const (
 	ActionPurchaseDeliver Action = "purchase:deliver"
 	// ActionDashboardRead は、ダッシュボード集計の参照操作（admin）を表します。
 	ActionDashboardRead Action = "dashboard:read"
+	// ActionInquiryList は、問い合わせの列挙操作（admin）を表します。
+	ActionInquiryList Action = "inquiry:list"
+	// ActionInquiryReadAll は、利用者を問わない問い合わせの参照操作（admin）を表します。
+	ActionInquiryReadAll Action = "inquiry:read-all"
+	// ActionInquiryReply は、問い合わせへの回答操作（admin）を表します。
+	ActionInquiryReply Action = "inquiry:reply"
+	// ActionInquiryFeedSubscribe は、問い合わせ更新フィードの購読操作（admin）を表します。
+	ActionInquiryFeedSubscribe Action = "inquiry-feed:subscribe"
 )
 
 // sample-api:end
