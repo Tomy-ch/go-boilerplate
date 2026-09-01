@@ -180,11 +180,22 @@ fields:
 - **2 つの集約と、同一 tx の中身。** Message は問い合わせを経由せず一覧される（History）ため独立した集約とする
   （[`internal/domain/README.md`](../../../internal/domain/README.md) の基準「自分のアクセス経路を持つ型は別 aggregate」）。
   投稿 1 回の transaction で書かれるのは Message 1 集約 + 機構の行（sequence 行、outbox 行）+ Inquiry の `updatedAt`（`Touch`）
-  であり、[ADR-0034 (commandservice-atomicity-criterion)] の「複数集約への書き込みの原子性」に当たる相手は無い——sequence 行と
-  outbox 行はどの集約にも属さない機構の状態で、ADR-0034 の worked instance（outbox insert は CommandService を正当化しない）と
-  同型である。`Touch` は Inquiry の状態遷移ではあるが、失敗しても Message と食い違う不変条件が無い（`updatedAt` は表示用の
-  最終更新時刻）ため、原子性の要求（分岐 3）にも、読んだ条件が commit まで保たれる要求（分岐 2。問い合わせは close / reopen も
-  削除も持たない）にも当たらず、通常の usecase が tx を所有する。
+  である。sequence 行と outbox 行はどの集約にも属さない機構の状態で、[ADR-0034 (commandservice-atomicity-criterion)] の
+  worked instance（outbox insert は CommandService を正当化しない）と同型であり、ここは問題にならない。
+
+  **残るのは `Touch` の 1 点であり、これは裁定である。** `Touch` は Inquiry の状態遷移であって別集約への書き込みなので、
+  [`internal/domain/README.md`](../../../internal/domain/README.md) の Aggregate Boundary が認める 2 つの逸脱
+  （分岐 2 = 相手集約を観測するが変更しない guard / 分岐 3 = 原子性が要る multi-aggregate write）のどちらにも当たらない。
+  同節は「それ以外はすべて分解する（without exception）」と閉じており、ADR-0034 は分解を「単一集約への書き込み + 結果整合の
+  cascade」＝別 transaction と定めているので、**規約どおりなら `Touch` は同一 tx から外れるはずである**。それでも同一 tx に
+  置くのは、`updatedAt` が表示用の最終更新時刻にすぎず、失敗しても Message と食い違う不変条件が生じないためだが、
+  この判断は統べる文書からの導出ではない。**これは裁定であり、親 issue の Phase 1 で owner が確定した。**
+
+  この裁定を引き継ぐ者へ: 覆す場合の選択肢は 3 つある。(1) `updatedAt` を
+  [`internal/domain/README.md`](../../../internal/domain/README.md) の *Not every DB column is an entity field* が
+  認める audit 列へ降格し、`Touch` と単調性の不変条件を落とす。(2) `inquiry.thread.updated.v1` を購読する worker で
+  非同期に反映し、ADR-0034 の既定（分解）へ戻す。(3) `internal/domain/README.md` と ADR-0034 に第三の分岐を明記して、
+  逸脱を規約側で受け入れる。いずれもアーキテクトの判断であり、この spec の記述だけで動かしてはならない。
 - **連番はドメインが持たない。** 以前の案では Inquiry に `lastSequence` を持たせ Repository で採番していたが、それは機構語彙を
   ドメインへ持ち込み、Repository に不変条件の保証を負わせ、Root ではない行（feed）を Inquiry の Repository が操作する形に
   なっていた。採番は Realtime Delivery の `SequenceAllocator`（usecase boundary。`boundary/outbox` と同型、table は `system_cqrs`
@@ -195,8 +206,8 @@ fields:
 - **エラー写像。** `ErrEmptyBody` / `ErrBodyTooLong` / `ErrInvalidAuthorKind` → 422、`apperror.ErrNotFound` → 404、
   `apperror.ErrConflict`（active な問い合わせの二重作成）→ 409、他者の問い合わせへのアクセス → 403（usecase 側の認可）。
 - **撤去範囲。** `docs/spec/inquiry/**`、`internal/domain/inquiry`、`internal/domain/inquirymessage`、対応する migration / DML /
-  usecase / handler は `sample-api` の撤去対象。`scripts/setup/remove-sample-api/sample-manifest.ts` への登録は実コードが揃う
-  Phase 9（feature adapter と最小 API）で行う——現時点では spec だけが先行しており、manifest は未登録。Realtime Delivery 本体は
+  usecase / handler は `sample-api` の撤去対象。`scripts/setup/remove-sample-api/sample-manifest.ts` への登録は Phase 9（feature adapter と最小 API）で
+  実施済み。Realtime Delivery 本体は
   残る（親 issue「sample 削除後の残存」）。
 
 [ADR-0034 (commandservice-atomicity-criterion)]: ../../adr/0034-commandservice-atomicity-criterion.md
