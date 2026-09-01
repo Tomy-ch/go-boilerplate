@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
@@ -96,7 +97,10 @@ func TestV1InquiriesDetailMessages_Integration(t *testing.T) {
 			)
 
 			require.Equal(t, http.StatusCreated, actual.StatusCode)
-			AssertJSONResponseType[gen.InquiryMessageResponse](t, actual)
+
+			var body gen.InquiryMessageResponse
+			require.NoError(t, json.NewDecoder(actual.Body).Decode(&body))
+			assert.Equal(t, "operator", string(body.Message.AuthorKind))
 			assert.Equal(t, inquiryID, captured.InquiryID)
 			assert.Equal(t, operatorID, captured.OperatorID)
 			assert.Equal(t, "確認します", captured.Body)

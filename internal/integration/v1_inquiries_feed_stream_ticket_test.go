@@ -1,11 +1,13 @@
 package integration
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 	"time"
 
 	"github.com/labstack/echo/v5"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -45,7 +47,10 @@ func TestV1InquiriesFeedStreamTicket_Integration(t *testing.T) {
 			actual := StartServer(t, e).DoJSON(http.MethodPost, inquiryFeedStreamTicketPath, nil, headers)
 
 			require.Equal(t, http.StatusCreated, actual.StatusCode)
-			AssertJSONResponseType[gen.InquiryStreamTicketResponse](t, actual)
+
+			var body gen.InquiryStreamTicketResponse
+			require.NoError(t, json.NewDecoder(actual.Body).Decode(&body))
+			assert.Equal(t, "inquiry-feed", body.StreamId)
 		})
 	})
 

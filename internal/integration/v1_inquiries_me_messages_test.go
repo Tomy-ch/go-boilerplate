@@ -2,6 +2,7 @@ package integration
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"testing"
 	"time"
@@ -91,7 +92,10 @@ func TestV1InquiriesMeMessages_Integration(t *testing.T) {
 			)
 
 			require.Equal(t, http.StatusCreated, actual.StatusCode)
-			AssertJSONResponseType[gen.InquiryMessageResponse](t, actual)
+
+			var body gen.InquiryMessageResponse
+			require.NoError(t, json.NewDecoder(actual.Body).Decode(&body))
+			assert.Equal(t, "user", string(body.Message.AuthorKind))
 			assert.Equal(t, "届きません", captured.Body)
 			assert.Equal(t, userID, captured.UserID)
 			assert.NotEmpty(t, captured.Subject)

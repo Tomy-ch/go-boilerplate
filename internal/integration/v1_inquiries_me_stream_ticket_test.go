@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 	"time"
@@ -46,8 +47,12 @@ func TestV1InquiriesMeStreamTicket_Integration(t *testing.T) {
 			actual := StartServer(t, e).DoJSON(http.MethodPost, meInquiryStreamTicketPath, nil, headers)
 
 			require.Equal(t, http.StatusCreated, actual.StatusCode)
-			AssertJSONResponseType[gen.InquiryStreamTicketResponse](t, actual)
-			assert.NotContains(t, actual.Header.Get("Location"), "0oXk1c5t8Yb1yq3aB7pQwR2sT4uV6wX8")
+
+			var body gen.InquiryStreamTicketResponse
+			require.NoError(t, json.NewDecoder(actual.Body).Decode(&body))
+			assert.Equal(t, "0oXk1c5t8Yb1yq3aB7pQwR2sT4uV6wX8", body.Ticket)
+			// 生値は応答本文にしか現れない。ヘッダへ漏らさないことを併せて確かめる。
+			assert.NotContains(t, actual.Header.Get("Location"), body.Ticket)
 		})
 	})
 
