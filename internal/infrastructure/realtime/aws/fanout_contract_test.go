@@ -63,7 +63,8 @@ func newFanoutFixture(t *testing.T, instances int) *fanoutFixture {
 func (f *fanoutFixture) publisher(t *testing.T, topicARN string) publisherbndry.Publisher {
 	t.Helper()
 
-	return aws.NewPublisher(f.log, f.clients.SNS, topicARN, observability.NewNoopTracerFactory(t))
+	return aws.NewPublisher(f.log, f.clients.SNS, topicARN,
+		observability.NewNoopTracerFactory(t), observability.NewNoopRealtimeMetrics(t))
 }
 
 // message は、stream の先頭位置（sequence 1）の event を payload に持つ outbox message を返します。

@@ -26,7 +26,7 @@ func newPublisher(t *testing.T) (publisherbndry.Publisher, *mock_realtime.MockEv
 	log := mock_realtime.NewMockEventLogStore(ctrl)
 	snsAPI := mock_aws.NewMockSNSAPI(ctrl)
 
-	return NewPublisher(log, snsAPI, testTopicARN, observability.NewNoopTracerFactory(t)), log, snsAPI
+	return NewPublisher(log, snsAPI, testTopicARN, observability.NewNoopTracerFactory(t), observability.NewNoopRealtimeMetrics(t)), log, snsAPI
 }
 
 // outboxMessage は、eventID の event を payload に持つ outbox message を返します。eventID が空なら payload の eventId を省きます。

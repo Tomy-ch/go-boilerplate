@@ -21,7 +21,8 @@ SELECT
     o.event_type,
     o.payload,
     o.headers,
-    o.attempts
+    o.attempts,
+    o.created_at
 FROM outbox AS o
 WHERE o.status = 'pending'
     AND o.delivery_channel = $1
@@ -52,6 +53,7 @@ type ClaimPendingOutboxRow struct {
 	Payload       []byte
 	Headers       []byte
 	Attempts      int32
+	CreatedAt     time.Time
 }
 
 // === source: database/dml/system_cqrs/outbox/claim_pending_outbox.sql ===
@@ -68,7 +70,8 @@ type ClaimPendingOutboxRow struct {
 //	    o.event_type,
 //	    o.payload,
 //	    o.headers,
-//	    o.attempts
+//	    o.attempts,
+//	    o.created_at
 //	FROM outbox AS o
 //	WHERE o.status = 'pending'
 //	    AND o.delivery_channel = $1
@@ -101,6 +104,7 @@ func (q *Queries) ClaimPendingOutbox(ctx context.Context, arg *ClaimPendingOutbo
 			&i.Payload,
 			&i.Headers,
 			&i.Attempts,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}

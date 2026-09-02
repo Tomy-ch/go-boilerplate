@@ -45,6 +45,8 @@ type PendingMessage struct {
 	Headers []byte
 	// Attempts は現時点の publish 試行回数です（診断とバックオフ幅の算出に使い、dead 判定には使いません）。
 	Attempts int32
+	// CreatedAt は、業務 tx が outbox へ記録した時刻です。publish 先に届くまでの遅れの起点になります。
+	CreatedAt time.Time
 }
 
 // Store は、outbox の永続化境界です。
