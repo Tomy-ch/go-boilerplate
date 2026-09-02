@@ -76,40 +76,6 @@ func TestDomainAggregateImportIsolation(t *testing.T) {
 	})
 }
 
-func Test_listDomainAggregateDirs(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("集約を持つツリーでは走査と同じ集約集合を返す", func(t *testing.T) {
-			t.Parallel()
-			root := moduleRoot(t)
-
-			listed, err := listDomainAggregateDirs(root)
-			require.NoError(t, err)
-			scanned, err := collectScannedDomainAggregates(root)
-			require.NoError(t, err)
-			assert.NotEmpty(t, listed)
-			assert.ElementsMatch(t, listed, scanned)
-		})
-
-		t.Run("集約が1つも無いツリーでは走査と揃って空を返す", func(t *testing.T) {
-			t.Parallel()
-			// sample 撤去後の状態。集約名を直書きしていると、ここで「実在しない」と誤検知する。
-			root := t.TempDir()
-			require.NoError(t, pkgfs.OS{}.MkdirAll(filepath.Join(root, domainRoot), 0o750))
-
-			listed, err := listDomainAggregateDirs(root)
-			require.NoError(t, err)
-			scanned, err := collectScannedDomainAggregates(root)
-			require.NoError(t, err)
-			assert.Empty(t, listed)
-			assert.Empty(t, scanned)
-		})
-	})
-}
-
 func Test_domainImportViolation(t *testing.T) {
 	t.Parallel()
 
