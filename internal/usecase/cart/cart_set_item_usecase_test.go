@@ -86,6 +86,7 @@ func Test_usecase_SetItem(t *testing.T) {
 			cartRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 
 			productRepo := mock_product.NewMockRepository(ctrl)
+			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			productRepo.EXPECT().FindPublishedByID(gomock.Any(), productID).
 				Return(newTestProduct(t, productID, "10.00", 5), nil)
 			productRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{productID}).
@@ -121,6 +122,7 @@ func Test_usecase_SetItem(t *testing.T) {
 			)
 
 			productRepo := mock_product.NewMockRepository(ctrl)
+			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			productRepo.EXPECT().FindPublishedByID(gomock.Any(), productID).
 				Return(newTestProduct(t, productID, "10.00", 5), nil)
 			productRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{productID}).
@@ -153,7 +155,9 @@ func Test_usecase_SetItem(t *testing.T) {
 				Return(xerrors.Wrap(apperror.ErrConflict, "duplicate key")).Times(maxSetItemAttempts)
 			cartRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Times(0)
 
-			uc := newSetItemUsecase(t, cartRepo, mock_product.NewMockRepository(ctrl), nil, now)
+			inlineProductRepo := mock_product.NewMockRepository(ctrl)
+			inlineProductRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+			uc := newSetItemUsecase(t, cartRepo, inlineProductRepo, nil, now)
 
 			_, err := uc.SetItem(t.Context(), SetItemParams{
 				Subject: Subject{UserID: &userID}, ProductID: productID, Quantity: 1,
@@ -170,7 +174,9 @@ func Test_usecase_SetItem(t *testing.T) {
 			cartRepo.EXPECT().FindByOwnerID(gomock.Any(), userID).
 				Return(nil, xerrors.Wrap(apperror.ErrInternal, "connection reset")).Times(1)
 
-			uc := newSetItemUsecase(t, cartRepo, mock_product.NewMockRepository(ctrl), nil, now)
+			inlineProductRepo := mock_product.NewMockRepository(ctrl)
+			inlineProductRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+			uc := newSetItemUsecase(t, cartRepo, inlineProductRepo, nil, now)
 
 			_, err := uc.SetItem(t.Context(), SetItemParams{
 				Subject: Subject{UserID: &userID}, ProductID: productID, Quantity: 1,
@@ -194,7 +200,9 @@ func Test_usecase_SetItem(t *testing.T) {
 			cartRepo := mock_cart.NewMockRepository(ctrl)
 			cartRepo.EXPECT().FindByOwnerID(gomock.Any(), gomock.Any()).Times(0)
 
-			uc := newSetItemUsecase(t, cartRepo, mock_product.NewMockRepository(ctrl), nil, now)
+			inlineProductRepo := mock_product.NewMockRepository(ctrl)
+			inlineProductRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+			uc := newSetItemUsecase(t, cartRepo, inlineProductRepo, nil, now)
 			uc.txm = txm
 
 			_, err := uc.SetItem(t.Context(), SetItemParams{
@@ -231,6 +239,7 @@ func Test_usecase_setItem(t *testing.T) {
 			cartRepo.EXPECT().Update(gomock.Any(), c).Return(nil).Times(2)
 
 			productRepo := mock_product.NewMockRepository(ctrl)
+			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			productRepo.EXPECT().FindPublishedByID(gomock.Any(), productID).
 				Return(newTestProduct(t, productID, "10.00", 5), nil).Times(2)
 			productRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{productID}).
@@ -261,6 +270,7 @@ func Test_usecase_setItem(t *testing.T) {
 			cartRepo.EXPECT().Update(gomock.Any(), c).Return(nil)
 
 			productRepo := mock_product.NewMockRepository(ctrl)
+			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			productRepo.EXPECT().FindPublishedByID(gomock.Any(), productID).
 				Return(newTestProduct(t, productID, "10.00", 5), nil)
 			productRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{productID}).
@@ -292,6 +302,7 @@ func Test_usecase_setItem(t *testing.T) {
 			cartRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Times(0)
 
 			productRepo := mock_product.NewMockRepository(ctrl)
+			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			productRepo.EXPECT().FindPublishedByID(gomock.Any(), productID).
 				Return(nil, xerrors.Wrap(apperror.ErrNotFound, "not found"))
 
@@ -317,6 +328,7 @@ func Test_usecase_setItem(t *testing.T) {
 			cartRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Times(0)
 
 			productRepo := mock_product.NewMockRepository(ctrl)
+			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			productRepo.EXPECT().FindPublishedByID(gomock.Any(), productID).
 				Return(newTestProduct(t, productID, "10.00", 5), nil)
 
@@ -344,6 +356,7 @@ func Test_usecase_setItem(t *testing.T) {
 			cartRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Times(0)
 
 			productRepo := mock_product.NewMockRepository(ctrl)
+			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			productRepo.EXPECT().FindPublishedByID(gomock.Any(), productID).
 				Return(newTestProduct(t, productID, maxUnitPrice, 5), nil)
 			productRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Return(product.Products{
@@ -374,6 +387,7 @@ func Test_usecase_setItem(t *testing.T) {
 			cartRepo.EXPECT().Update(gomock.Any(), c).Return(expectedErr)
 
 			productRepo := mock_product.NewMockRepository(ctrl)
+			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			productRepo.EXPECT().FindPublishedByID(gomock.Any(), productID).
 				Return(newTestProduct(t, productID, "10.00", 5), nil)
 			productRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{productID}).
@@ -403,6 +417,7 @@ func Test_usecase_ensureProductAvailable(t *testing.T) {
 
 			ctrl := gomock.NewController(t)
 			productRepo := mock_product.NewMockRepository(ctrl)
+			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			productRepo.EXPECT().FindPublishedByID(gomock.Any(), productID).
 				Return(newTestProduct(t, productID, "10.00", 5), nil)
 
@@ -419,6 +434,7 @@ func Test_usecase_ensureProductAvailable(t *testing.T) {
 
 			ctrl := gomock.NewController(t)
 			productRepo := mock_product.NewMockRepository(ctrl)
+			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			productRepo.EXPECT().FindPublishedByID(gomock.Any(), productID).
 				Return(nil, xerrors.Wrap(apperror.ErrNotFound, "not found"))
 
@@ -432,6 +448,7 @@ func Test_usecase_ensureProductAvailable(t *testing.T) {
 
 			ctrl := gomock.NewController(t)
 			productRepo := mock_product.NewMockRepository(ctrl)
+			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			productRepo.EXPECT().FindPublishedByID(gomock.Any(), productID).
 				Return(nil, xerrors.Wrap(apperror.ErrInternal, "connection reset"))
 

@@ -58,7 +58,6 @@ type Purchase struct {
 	taxAmount      int
 	shippingFee    int
 	totalAmount    int
-	details        []PurchaseDetail
 	orderedAt      time.Time
 	paidAt         *time.Time
 	canceledAt     *time.Time
@@ -86,7 +85,6 @@ type Attributes struct {
 	TaxAmount      int
 	ShippingFee    int
 	TotalAmount    int
-	Details        []PurchaseDetail
 	OrderedAt      time.Time
 	PaidAt         *time.Time
 	CanceledAt     *time.Time
@@ -109,33 +107,6 @@ func NewPurchaseDetail(id uuid.UUID, attrs PurchaseDetailAttributes) PurchaseDet
 		quantity:  attrs.Quantity,
 		unitPrice: attrs.UnitPrice,
 	}
-}
-
-// validateDetails は、購入集約が保持する明細の集合が満たすべき不変条件を検証します。
-// 明細 ID / 商品 ID が未設定、数量が最小値未満の場合はそれぞれ ErrInvalidID / ErrInvalidQuantity を、
-// 同一商品 ID が重複する場合は ErrDuplicateProductID を返します。
-// 空の集合は呼び出し元が ErrEmptyDetails で扱うため、ここでは許容します。
-func validateDetails(details []PurchaseDetail) error {
-	seen := make(map[uuid.UUID]struct{}, len(details))
-	for _, d := range details {
-		if d.id.IsNil() {
-			return xerrors.Wrap(ErrInvalidID, "detail id is required")
-		}
-		if d.productID.IsNil() {
-			return xerrors.Wrap(ErrInvalidID, "detail product id is required")
-		}
-		if d.quantity < minQuantity {
-			return xerrors.Wrap(
-				ErrInvalidQuantity, fmt.Sprintf("quantity must be %d or greater, got %d", minQuantity, d.quantity),
-			)
-		}
-		if _, dup := seen[d.productID]; dup {
-			return xerrors.Wrap(ErrDuplicateProductID, fmt.Sprintf("product %s appears more than once", d.productID))
-		}
-		seen[d.productID] = struct{}{}
-	}
-
-	return nil
 }
 
 // buildDetails は、明細の入力をロック済み在庫と突き合わせて購入明細を組み立て、単価スナップショットに
@@ -208,38 +179,42 @@ func resolveLocked(
 // 検証エラー（422）を返し、要求数量がロック済み在庫を超える場合は ErrInsufficientStock（409）を返します。
 // 単価は対応するロック済み商品の価格スナップショットとし、金額（小計・税・送料・合計）を整数で計算します
 // （税・送料の丸めは切り捨てで本メソッド内 1 箇所に集約）。ステータスは「未処理」で生成します。
+//
+// 明細は集約が抱えず、鋳造した集合を返り値で呼び出し側へ渡します。金額の導出と重複検査は生成時の
+// 入力として必要なだけで、生成後の購入が状態として持つ必要はありません（明細は生成後に増減せず、
+// 状態遷移のどれもこれを参照しません）。読み出しは Repository.ListDetails が担います。
 func New(
 	id uuid.UUID,
 	code string,
 	userID uuid.UUID,
 	inputs []DetailInput,
 	locked []LockedProduct,
-) (*Purchase, error) {
+) (*Purchase, []PurchaseDetail, error) {
 	if id.IsNil() {
-		return nil, xerrors.Wrap(ErrInvalidID, "id is required")
+		return nil, nil, xerrors.Wrap(ErrInvalidID, "id is required")
 	}
 	if code == "" {
-		return nil, xerrors.Wrap(ErrInvalidCode, "code is required")
+		return nil, nil, xerrors.Wrap(ErrInvalidCode, "code is required")
 	}
 	if userID.IsNil() {
-		return nil, xerrors.Wrap(ErrInvalidUserID, "userID is required")
+		return nil, nil, xerrors.Wrap(ErrInvalidUserID, "userID is required")
 	}
 	if len(inputs) == 0 {
-		return nil, ErrEmptyDetails
+		return nil, nil, ErrEmptyDetails
 	}
 
 	details, subtotalDollars, err := buildDetails(inputs, locked)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// 価格スケール→決済スケールの丸め（切り捨て）。以降は整数セントで計算する（ADR-0038 (two-scale-quantity-model)）。
 	subtotalCents, err := subtotalDollars.Truncate(minorUnitDigits).ToScaledInt64(minorUnitDigits)
 	if err != nil {
-		return nil, xerrors.Join(ErrInvalidAmount, xerrors.Wrap(err, "subtotal exceeds the settlement range"))
+		return nil, nil, xerrors.Join(ErrInvalidAmount, xerrors.Wrap(err, "subtotal exceeds the settlement range"))
 	}
 	if subtotalCents > maxSubtotalCents {
-		return nil, xerrors.Wrap(
+		return nil, nil, xerrors.Wrap(
 			ErrInvalidAmount,
 			fmt.Sprintf("subtotal %d exceeds the maximum that can carry tax and shipping (%d)", subtotalCents, maxSubtotalCents),
 		)
@@ -258,16 +233,14 @@ func New(
 		taxAmount:      tax,
 		shippingFee:    shipping,
 		totalAmount:    total,
-		details:        details,
-	}, nil
+	}, details, nil
 }
 
 // Reconstruct は、永続化済みの購入を再構築します（Repository の読み出し・書き込み後の再検証で使用）。
 // attrs.StatusCode は購入ステータスマスタで解決した現在状態、PaidAt / CanceledAt / ShippedAt / DeliveredAt
 // は各イベントの発生日時（未発生は nil）です。ID / Code / UserID / StatusID が nil、StatusCode が不正、
-// 金額が負、明細が空の場合は検証エラーを返します。StatusCode と timestamps の組み合わせが状態遷移では
+// 金額が負の場合は検証エラーを返します。StatusCode と timestamps の組み合わせが状態遷移では
 // 到達し得ないもの（発送後のキャンセル、発送を伴わない配達 等）の場合も ErrInvalidStatusID を返します。
-// 明細は New と同じ不変条件（ID / 商品 ID が設定済み、数量が最小値以上、同一商品 ID が重複しない）を課します。
 func Reconstruct(id uuid.UUID, attrs Attributes) (*Purchase, error) {
 	if id.IsNil() {
 		return nil, xerrors.Wrap(ErrInvalidID, "id is required")
@@ -293,16 +266,6 @@ func Reconstruct(id uuid.UUID, attrs Attributes) (*Purchase, error) {
 	if attrs.SubtotalAmount < 0 || attrs.TaxAmount < 0 || attrs.ShippingFee < 0 || attrs.TotalAmount < 0 {
 		return nil, xerrors.Wrap(ErrInvalidAmount, "amounts must not be negative")
 	}
-	if len(attrs.Details) == 0 {
-		return nil, ErrEmptyDetails
-	}
-
-	copied := make([]PurchaseDetail, len(attrs.Details))
-	copy(copied, attrs.Details)
-	if err := validateDetails(copied); err != nil {
-		return nil, err
-	}
-
 	return &Purchase{
 		id:             id,
 		code:           attrs.Code,
@@ -313,7 +276,6 @@ func Reconstruct(id uuid.UUID, attrs Attributes) (*Purchase, error) {
 		taxAmount:      attrs.TaxAmount,
 		shippingFee:    attrs.ShippingFee,
 		totalAmount:    attrs.TotalAmount,
-		details:        copied,
 		orderedAt:      attrs.OrderedAt,
 		paidAt:         ptr.Copy(attrs.PaidAt),
 		canceledAt:     ptr.Copy(attrs.CanceledAt),
@@ -513,8 +475,3 @@ func (p *Purchase) Deliver(now time.Time) (Event, error) {
 }
 
 // Details は、購入明細のスライスを返します（内部スライスの変更を防ぐためコピーを返します）。
-func (p *Purchase) Details() []PurchaseDetail {
-	copied := make([]PurchaseDetail, len(p.details))
-	copy(copied, p.details)
-	return copied
-}

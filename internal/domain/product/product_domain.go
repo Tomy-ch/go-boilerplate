@@ -5,7 +5,6 @@ package product
 
 import (
 	"fmt"
-	"slices"
 	"time"
 
 	"go-boilerplate/internal/domain/lexicon/money"
@@ -29,7 +28,6 @@ type Product struct {
 	status                StatusRef
 	category              CategoryRef
 	publishedAt           *time.Time
-	images                []Image
 	createdAt             time.Time
 	version               int
 }
@@ -54,33 +52,33 @@ type Attributes struct {
 // id が nil、Name が長さ制約外、Status / Category がゼロ値の場合はそれぞれ検証エラーを返します。
 // createdAt は商品が登録された日時で、ゼロ値は検証エラーです。
 // 生成直後のバージョンは initialVersion です。
-func New(id uuid.UUID, attrs Attributes, createdAt time.Time) (*Product, error) {
+func New(id uuid.UUID, attrs Attributes, createdAt time.Time) (*Product, []Image, error) {
 	return newProduct(id, attrs, initialVersion, createdAt)
 }
 
 // Reconstruct は、永続化済みの商品を再構築します。
 // version は永続化されている楽観ロックのバージョンで、initialVersion 未満の場合は検証エラーを返します。
 // createdAt は永続化されている登録日時です。その他の検証は New と同一です。
-func Reconstruct(id uuid.UUID, attrs Attributes, version int, createdAt time.Time) (*Product, error) {
+func Reconstruct(id uuid.UUID, attrs Attributes, version int, createdAt time.Time) (*Product, []Image, error) {
 	return newProduct(id, attrs, version, createdAt)
 }
 
 // newProduct は、生成・再構築に共通の検証を行い商品エンティティを構築します。
-func newProduct(id uuid.UUID, attrs Attributes, version int, createdAt time.Time) (*Product, error) {
+func newProduct(id uuid.UUID, attrs Attributes, version int, createdAt time.Time) (*Product, []Image, error) {
 	if id.IsNil() {
-		return nil, xerrors.Wrap(ErrInvalidID, "id is required")
+		return nil, nil, xerrors.Wrap(ErrInvalidID, "id is required")
 	}
 	if err := validateAttributes(attrs); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if version < initialVersion {
-		return nil, xerrors.Wrap(
+		return nil, nil, xerrors.Wrap(
 			ErrInvalidVersion,
 			fmt.Sprintf("version must be %d or greater, got %d", initialVersion, version),
 		)
 	}
 	if createdAt.IsZero() {
-		return nil, xerrors.Wrap(ErrInvalidCreatedAt, "createdAt is required")
+		return nil, nil, xerrors.Wrap(ErrInvalidCreatedAt, "createdAt is required")
 	}
 
 	return &Product{
@@ -93,10 +91,9 @@ func newProduct(id uuid.UUID, attrs Attributes, version int, createdAt time.Time
 		status:                attrs.Status,
 		category:              attrs.Category,
 		publishedAt:           ptr.Copy(attrs.PublishedAt),
-		images:                sortImagesByDisplaySort(attrs.Images),
 		createdAt:             createdAt,
 		version:               version,
-	}, nil
+	}, sortImagesByDisplaySort(attrs.Images), nil
 }
 
 // validateAttributes は、商品属性の不変条件を検証します。生成時と更新時で同一の条件を課します。
@@ -122,9 +119,9 @@ func validateAttributes(attrs Attributes) error {
 // Update は、商品の属性を更新します。生成時と同一の不変条件を課し、違反する場合はエンティティを
 // 変更せずに検証エラーを返します。attrs は部分更新を解決した後の確定値であり、据え置く属性には現在値が渡されます。
 // バージョンは永続化の成否に依存するためここでは進めません（採番は Repository の条件付き更新が行います）。
-func (p *Product) Update(attrs Attributes) error {
+func (p *Product) Update(attrs Attributes) ([]Image, error) {
 	if err := validateAttributes(attrs); err != nil {
-		return err
+		return nil, err
 	}
 
 	p.name = attrs.Name
@@ -135,9 +132,8 @@ func (p *Product) Update(attrs Attributes) error {
 	p.status = attrs.Status
 	p.category = attrs.Category
 	p.publishedAt = ptr.Copy(attrs.PublishedAt)
-	p.images = sortImagesByDisplaySort(attrs.Images)
 
-	return nil
+	return sortImagesByDisplaySort(attrs.Images), nil
 }
 
 // AdjustStock は、在庫数を delta の分だけ増減します。delta は正で補充、負で差し引きを表します。
@@ -224,17 +220,18 @@ func (p *Product) PublishedAt() *time.Time { return ptr.Copy(p.publishedAt) }
 // CreatedAt は、商品が登録された日時を返します。
 func (p *Product) CreatedAt() time.Time { return p.createdAt }
 
-// Images は、商品画像を表示順の昇順で返します。画像未設定の場合は空です。
-func (p *Product) Images() []Image { return slices.Clone(p.images) }
-
 // PrimaryImage は、商品を 1 枚で表すときに使う代表画像と、それを持つかどうかを返します。
 // 画像を持たない商品は代表画像を持たないため、ok は false です。
 // 何を代表とするかは docs/spec/product/domain.md の PrimaryImage が定めます。
-func (p *Product) PrimaryImage() (Image, bool) {
-	if len(p.images) == 0 {
+//
+// 集約は画像を抱えないため、エンティティのメソッドではなく値に対する関数として公開します
+// （IsPublished と同じ理由。集約を再構築しない読み取りにも同じ定義を当てられる）。
+// 引数は表示順の昇順に整列済みであることを前提とします。
+func PrimaryImage(images []Image) (Image, bool) {
+	if len(images) == 0 {
 		return Image{}, false
 	}
-	return p.images[0], true
+	return images[0], true
 }
 
 // Version は、並行更新による上書き（lost update）を防ぐ楽観ロックのバージョンを返します。

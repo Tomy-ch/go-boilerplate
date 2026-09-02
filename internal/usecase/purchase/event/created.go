@@ -33,9 +33,9 @@ type createdDetail struct {
 	UnitPrice string `json:"unitPrice"`
 }
 
-// BuildCreated は、購入集約から purchase.created.v1 の自己完結 snapshot payload を marshal します。
-func BuildCreated(p *purchase.Purchase) ([]byte, error) {
-	src := p.Details()
+// BuildCreated は、購入と明細から purchase.created.v1 の自己完結 snapshot payload を marshal します。
+// 明細は集約が抱えないため引数で受け取ります。
+func BuildCreated(p *purchase.Purchase, src []purchase.PurchaseDetail) ([]byte, error) {
 	details := make([]createdDetail, len(src))
 	for i, d := range src {
 		details[i] = createdDetail{
