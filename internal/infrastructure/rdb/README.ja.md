@@ -328,8 +328,8 @@ CommandService テストは加えて次を検証します:
 |`repository/product/product_repository.go`|`Update`|`safecast.IntToInt32(p.Quantity())` のエラー|同上|
 |`repository/product/product_repository.go`|`Update`|`safecast.IntPtrToInt32Ptr(p.StockWarningThreshold())` のエラー|同上|
 |`repository/product/product_repository.go`|`UpdateStock`|`safecast.IntToInt32(p.Quantity())` のエラー|同上|
-|`repository/product/product_repository.go`|`insertImages`|`safecast.IntToInt16(img.SortKey())` のエラー|`product` が `sortKey` を `[1, math.MaxInt16]` に検証済み|
-|`repository/product/product_repository.go`|`syncImages`|`safecast.IntToInt16(img.SortKey())` のエラー|同上|
+|`repository/product/product_repository.go`|`insertImages`|`safecast.IntToInt16(img.DisplaySort())` のエラー|`product` が `displaySort` を `[1, math.MaxInt16]` に検証済み|
+|`repository/product/product_repository.go`|`syncImages`|`safecast.IntToInt16(img.DisplaySort())` のエラー|同上|
 <!-- sample-api:replace-with -->
 <!-- = |ファイル|関数|未被覆の分岐|到達不能な理由| -->
 <!-- = |---|---|---|---| -->

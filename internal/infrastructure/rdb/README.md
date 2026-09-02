@@ -330,8 +330,8 @@ than covered with a contrived test.
 |`repository/product/product_repository.go`|`Update`|`safecast.IntToInt32(p.Quantity())` error|同上|
 |`repository/product/product_repository.go`|`Update`|`safecast.IntPtrToInt32Ptr(p.StockWarningThreshold())` error|同上|
 |`repository/product/product_repository.go`|`UpdateStock`|`safecast.IntToInt32(p.Quantity())` error|同上|
-|`repository/product/product_repository.go`|`insertImages`|`safecast.IntToInt16(img.SortKey())` error|`product` validates `sortKey` into `[1, math.MaxInt16]`|
-|`repository/product/product_repository.go`|`syncImages`|`safecast.IntToInt16(img.SortKey())` error|同上|
+|`repository/product/product_repository.go`|`insertImages`|`safecast.IntToInt16(img.DisplaySort())` error|`product` validates `displaySort` into `[1, math.MaxInt16]`|
+|`repository/product/product_repository.go`|`syncImages`|`safecast.IntToInt16(img.DisplaySort())` error|同上|
 <!-- sample-api:replace-with -->
 <!-- = |File|Function|Uncovered branch|Why unreachable| -->
 <!-- = |---|---|---|---| -->

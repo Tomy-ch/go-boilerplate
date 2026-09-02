@@ -217,6 +217,18 @@ func TestNew(t *testing.T) {
 			assert.Equal(t, "0", actual.Price().String())
 			assert.Equal(t, minQuantity, actual.Quantity())
 		})
+
+		t.Run("画像の枚数がちょうど上限の場合、Productエンティティが生成される", func(t *testing.T) {
+			t.Parallel()
+
+			atLimit := attrs
+			atLimit.Images = imagesOfCount(t, maxImages)
+
+			actual, err := New(id, atLimit, testCreatedAt)
+
+			require.NoError(t, err)
+			assert.Len(t, actual.Images(), maxImages)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -359,6 +371,17 @@ func TestReconstruct(t *testing.T) {
 			assert.Equal(t, version, actual.Version())
 		})
 
+		t.Run("永続化済みの画像がちょうど上限の場合、Productエンティティが再構築される", func(t *testing.T) {
+			t.Parallel()
+
+			atLimit := attrs
+			atLimit.Images = imagesOfCount(t, maxImages)
+
+			actual, err := Reconstruct(id, atLimit, initialVersion, testCreatedAt)
+
+			require.NoError(t, err)
+			assert.Len(t, actual.Images(), maxImages)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -621,6 +644,17 @@ func TestProduct_Update(t *testing.T) {
 			assert.Equal(t, initialVersion, p.Version())
 		})
 
+		t.Run("画像の枚数がちょうど上限の場合、更新される", func(t *testing.T) {
+			t.Parallel()
+
+			p := newTestProduct(t)
+			attrs := updatedProductAttributes(t)
+			attrs.Images = imagesOfCount(t, maxImages)
+
+			require.NoError(t, p.Update(attrs))
+			assert.Len(t, p.Images(), maxImages)
+		})
+
 		t.Run("description・stockWarningThreshold・publishedAtをnil、画像を空で更新した場合、未設定になる", func(t *testing.T) {
 			t.Parallel()
 
@@ -680,14 +714,16 @@ func TestProduct_Update(t *testing.T) {
 			assert.Equal(t, snapshot, *p)
 		})
 
-		t.Run("nameが最大長を超える場合、ErrInvalidNameを返す", func(t *testing.T) {
+		t.Run("nameが最大長を超える場合、ErrInvalidNameを返しエンティティを一切変更しない", func(t *testing.T) {
 			t.Parallel()
 
 			p := newTestProduct(t)
+			snapshot := *p
 			attrs := updatedProductAttributes(t)
 			attrs.Name = strings.Repeat("あ", maxNameLength+1)
 
 			require.ErrorIs(t, p.Update(attrs), ErrInvalidName)
+			assert.Equal(t, snapshot, *p)
 		})
 
 		t.Run("画像の枚数が上限を超える場合、ErrTooManyImagesを返しエンティティを一切変更しない", func(t *testing.T) {

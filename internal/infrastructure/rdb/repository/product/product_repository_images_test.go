@@ -121,6 +121,28 @@ func Test_repository_findImagesByProductIDs(t *testing.T) {
 			})
 		})
 
+		t.Run("複数商品が存在する場合、指定したIDの画像だけを返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				idA := uuidtestkit.NewTestFromSalt(t, "find_images_isolation_a")
+				idB := uuidtestkit.NewTestFromSalt(t, "find_images_isolation_b")
+				require.NoError(t, repo.Create(ctx, newProductWithImages(t, idA, []domainproduct.Image{
+					newImage(t, "find_images_isolation_a_1", "products/a.png", 1),
+				})))
+				require.NoError(t, repo.Create(ctx, newProductWithImages(t, idB, []domainproduct.Image{
+					newImage(t, "find_images_isolation_b_1", "products/b.png", 1),
+				})))
+
+				got, err := repo.findImagesByProductIDs(ctx, []uuid.UUID{idA})
+
+				require.NoError(t, err)
+				require.Len(t, got[idA], 1)
+				assert.Equal(t, "products/a.png", got[idA][0].ImagePath())
+				assert.NotContains(t, got, idB)
+			})
+		})
+
 		t.Run("論理削除された画像は返さない", func(t *testing.T) {
 			t.Parallel()
 
@@ -514,6 +536,10 @@ func Test_productImagesMaxPerProduct(t *testing.T) {
 				require.NoError(t, err)
 
 				require.NoError(t, insertImageRow(ctx, id, "max_images_reuse_extra", 1))
+
+				live, deleted := countProductImages(ctx, t, repo.db, id)
+				assert.Equal(t, maxProductImages, live)
+				assert.Equal(t, 1, deleted)
 			})
 		})
 	})

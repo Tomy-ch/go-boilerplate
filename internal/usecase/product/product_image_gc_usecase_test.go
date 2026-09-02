@@ -25,7 +25,7 @@ func TestNewImageGC(t *testing.T) {
 
 	uc := NewImageGC(tf, clocktest.NewMockClock(t, time.Time{}),
 		mock_objectstorage.NewMockStorage(ctrl), mock_productquery.NewMockProductImageQueryService(ctrl))
-	require.NotNil(t, uc)
+	assert.NotNil(t, uc)
 }
 
 func Test_imageGCUsecase_SweepOrphans(t *testing.T) {
