@@ -15,7 +15,6 @@ package architest
 // ファイルの import も拾うため過大近似になるが、禁止規則としては安全側に倒れる。
 
 import (
-	"io/fs"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -60,19 +59,23 @@ func TestDomainAggregateImportIsolation(t *testing.T) {
 					"（internal/domain/README.md の Cross-aggregate reference）")
 		})
 
-		t.Run("走査が domain 配下の集約を取りこぼしていない", func(t *testing.T) {
+		t.Run("既知の違反を含むツリーを渡すと検出する", func(t *testing.T) {
 			t.Parallel()
 
-			// 走査が空になっても Empty は通ってしまうため、別の機構（Glob）で数えた集約集合と
-			// 突き合わせて縮退を止める。集約名を直書きしないのは、どの集約が実在するかが
-			// sample 撤去後に変わるためで、撤去後は双方とも空になって一致する。
-			root := moduleRoot(t)
-			scanned, err := collectScannedDomainAggregates(root)
+			// 走査が黙って空になっても上の Empty は通ってしまうため、陽性対照を置く。
+			// 実ツリーの中身に依存しないので、sample 撤去の前後どちらでも同じように効く。
+			root := t.TempDir()
+			dir := filepath.Join(root, domainRoot, "alpha")
+			require.NoError(t, pkgfs.OS{}.MkdirAll(dir, 0o750))
+			require.NoError(t, pkgfs.OS{}.WriteFile(
+				filepath.Join(dir, "alpha.go"),
+				[]byte("package alpha\n\nimport \"go-boilerplate/internal/domain/beta\"\n"),
+				0o600,
+			))
+
+			violations, err := collectDomainAggregateViolations(root)
 			require.NoError(t, err)
-			listed, err := listDomainAggregateDirs(root)
-			require.NoError(t, err)
-			assert.ElementsMatch(t, listed, scanned,
-				"internal/domain 直下のディレクトリと走査が見ている集約が食い違う。走査の縮退を疑う")
+			assert.Equal(t, []string{"internal/domain/alpha/alpha.go -> go-boilerplate/internal/domain/beta"}, violations)
 		})
 	})
 }
@@ -176,64 +179,6 @@ func collectDomainAggregateViolations(root string) ([]string, error) {
 	}
 
 	return violations, nil
-}
-
-// collectScannedDomainAggregates は、走査が実際に触れた集約名を返す。
-func collectScannedDomainAggregates(root string) ([]string, error) {
-	seen := map[string]struct{}{}
-
-	err := walkProductionGoFiles(filepath.Join(root, domainRoot), func(path string, _ []byte) {
-		rel, _ := filepath.Rel(root, path)
-		if aggregate := aggregateOfDomainPath(filepath.ToSlash(rel)); aggregate != "" {
-			seen[aggregate] = struct{}{}
-		}
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	out := make([]string, 0, len(seen))
-	for name := range seen {
-		out = append(out, name)
-	}
-
-	return out, nil
-}
-
-// listDomainAggregateDirs は、internal/domain 直下のディレクトリ名を返す。
-// 「One package per aggregate」（internal/domain/README.md）により、これがそのまま集約の一覧になる。
-//
-// 走査（collectScannedDomainAggregates）がファイルから数えるのに対し、こちらはディレクトリから
-// 数える。探索の機構が違うことに意味があり、両者の一致が走査の健全性を主張する。ファイル探索を
-// 並行実装しないので、ネストの深さにも walkProductionGoFiles の除外条件にも依存しない。
-// 撤去後は domain 配下に集約が残らず、双方とも空になって一致する。
-func listDomainAggregateDirs(root string) ([]string, error) {
-	dir := filepath.Join(root, domainRoot)
-
-	matches, err := pkgfs.OS{}.Glob(dir)
-	if err != nil || len(matches) == 0 {
-		return nil, err
-	}
-
-	var out []string
-	err = filepath.WalkDir(dir, func(path string, d fs.DirEntry, werr error) error {
-		if werr != nil {
-			return werr
-		}
-		if path == dir || !d.IsDir() {
-			return nil
-		}
-
-		out = append(out, d.Name())
-
-		// 直下だけを見るので、集約の中は降りない。
-		return filepath.SkipDir
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return out, nil
 }
 
 // domainImportViolation は、aggregate に属するファイルからの imp が規約違反かを返す。
