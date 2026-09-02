@@ -20,6 +20,7 @@ type Heartbeat struct {
 	sleeper clock.Sleeper
 	logging logging.Logger
 	tracer  observability.LayerTracer
+	metrics *observability.RealtimeMetrics
 }
 
 // NewHeartbeat は、id の instance の heartbeat loop を生成します。
@@ -29,8 +30,11 @@ func NewHeartbeat(
 	sleeper clock.Sleeper,
 	log logging.Logger,
 	tf observability.TracerFactory,
+	metrics *observability.RealtimeMetrics,
 ) *Heartbeat {
-	return &Heartbeat{keeper: keeper, id: id, sleeper: sleeper, logging: log, tracer: tf.Controller()}
+	return &Heartbeat{
+		keeper: keeper, id: id, sleeper: sleeper, logging: log, tracer: tf.Controller(), metrics: metrics,
+	}
 }
 
 // Run は、最初の 1 回を即座に書き、以後 LeaseHeartbeatInterval ごとに書き直します。ctx 完了で nil を返します。
@@ -50,6 +54,7 @@ func (h *Heartbeat) Run(ctx context.Context) error {
 			}
 
 			log.Error(ctx, "failed to heartbeat instance lease", logging.Error(logging.ErrorKey, err))
+			h.metrics.LeaseHeartbeatFailed(ctx)
 		}
 
 		if h.sleeper.Sleep(ctx, ucrealtime.LeaseHeartbeatInterval) != nil {

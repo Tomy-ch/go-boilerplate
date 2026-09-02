@@ -89,6 +89,42 @@ func (mr *MockRevokerMockRecorder) Revoke(ctx, subject, destination any) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Revoke", reflect.TypeOf((*MockRevoker)(nil).Revoke), ctx, subject, destination)
 }
 
+// MockFanoutObserver is a mock of FanoutObserver interface.
+type MockFanoutObserver struct {
+	ctrl     *gomock.Controller
+	recorder *MockFanoutObserverMockRecorder
+	isgomock struct{}
+}
+
+// MockFanoutObserverMockRecorder is the mock recorder for MockFanoutObserver.
+type MockFanoutObserverMockRecorder struct {
+	mock *MockFanoutObserver
+}
+
+// NewMockFanoutObserver creates a new mock instance.
+func NewMockFanoutObserver(ctrl *gomock.Controller) *MockFanoutObserver {
+	mock := &MockFanoutObserver{ctrl: ctrl}
+	mock.recorder = &MockFanoutObserverMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockFanoutObserver) EXPECT() *MockFanoutObserverMockRecorder {
+	return m.recorder
+}
+
+// ObserveFanout mocks base method.
+func (m *MockFanoutObserver) ObserveFanout(err error) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "ObserveFanout", err)
+}
+
+// ObserveFanout indicates an expected call of ObserveFanout.
+func (mr *MockFanoutObserverMockRecorder) ObserveFanout(err any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ObserveFanout", reflect.TypeOf((*MockFanoutObserver)(nil).ObserveFanout), err)
+}
+
 // MockReprovisioner is a mock of Reprovisioner interface.
 type MockReprovisioner struct {
 	ctrl     *gomock.Controller
