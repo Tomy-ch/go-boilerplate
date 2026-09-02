@@ -93,17 +93,17 @@ The estimate is the work. 「三つとも回しますか」 is not a question; i
 unpriced. Say which pass you expect to pay off, which you expect to return nothing, and why.
 
 The three are **peers, and none of them invokes another.** Each is asked for, decided, and run beside
-the others — one subject to one skill, and that skill is the only place its subject is audited.
+the others — one subject to one skill, and that skill is the only place its subject is audited. So
+`/impl-review` audits the change and nothing else, owning no test lens and no comment lens; the other
+two are invoked in their own right, whether or not it runs.
 
-A skill that offers to run the next one reads as convenience, and it costs more than it saves: the
-subjects stop being independently answerable, a drift in the entry skill's question silently removes
-the other two from every flow that went through it, and the user's decision about one subject arrives
-buried inside a run they started for another. Keep the coupling in the *asking*, where this protocol
-puts it, and out of the skills.
+Chaining them would look like convenience and cost more than it saves: the subjects stop being
+independently answerable, and a drift in the entry skill's question silently drops the other two from
+every flow that went through it. The coupling belongs in the *asking*, not in the skills.
 
-So `/impl-review` audits the change and nothing else — it owns no test lens and no comment lens, and
-it hands nothing off. `/test-review` and `/comment-sweep` are invoked in their own right, whether or
-not `/impl-review` runs.
+**This holds inside a pipeline too.** A skill that drives an issue to a merged PR reaches a review
+phase like any other flow, so it asks these three questions there rather than choosing for the user —
+and never on the assumption that running one of them brings the others along.
 <!-- boilerplate-only:end -->
 
 ## Layer Rules (hard constraints — enforced by `golangci-lint` depguard)
