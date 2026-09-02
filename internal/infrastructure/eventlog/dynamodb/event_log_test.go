@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,6 +18,11 @@ import (
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/realtime"
 )
+
+// この table は expires_at（= OccurredAt + 保持期間）に TTL を張っている（TableSpec）。
+// 固定日時を使うと保持期間の経過後に fixture が期限切れになり、DynamoDB Local の掃除が assert より
+// 先に走るようになる。したがって OccurredAt は実行時刻を基準にする。
+var occurredAt = time.Now().UTC().Truncate(time.Millisecond)
 
 // newStore は、実行ごとに一意な table を DynamoDB Local に作り、それを指す store を返します。
 func newStore(t *testing.T) *store {
@@ -36,7 +42,7 @@ func event(stream realtime.StreamID, seq realtime.Sequence, id string) realtime.
 		StreamID:      stream,
 		Sequence:      seq,
 		Type:          "inquiry.message.appended.v1",
-		OccurredAt:    time.Date(2026, time.August, 29, 1, 2, 3, 456000000, time.UTC),
+		OccurredAt:    occurredAt,
 		SchemaVersion: 1,
 		Payload:       json.RawMessage(`{"seq":` + seq.String() + `}`),
 	}
@@ -190,10 +196,22 @@ func Test_store_ReadAfter(t *testing.T) {
 			s := newStore(t)
 			old := event("s", 1, "evt-old")
 			old.OccurredAt = time.Now().UTC().Add(-2 * realtime.EventLogRetention).Truncate(time.Millisecond)
-			require.NoError(t, s.Append(t.Context(), old))
 
-			res, err := s.ReadAfter(t.Context(), realtime.ReadAfterQuery{StreamID: "s"})
+			// toItem は expires_at を OccurredAt + 保持期間で決めるため、Append で書くと行が
+			// 期限切れのまま保存され、TTL の掃除が assert より先に走り得る。ここで確かめたいのは
+			// 「store が失効で絞り込まない」ことであって TTL の挙動ではないので、expires_at だけ
+			// 未来へ置き換えて直接書き込む。
+			item := toItem(old)
+			item[attrExpiresAt] = &types.AttributeValueMemberN{
+				Value: strconv.FormatInt(time.Now().Add(time.Hour).Unix(), 10),
+			}
+			_, err := s.c.PutItem(t.Context(), &dynamodb.PutItemInput{
+				TableName: aws.String(s.table), Item: item,
+			})
 			require.NoError(t, err)
+
+			res, rerr := s.ReadAfter(t.Context(), realtime.ReadAfterQuery{StreamID: "s"})
+			require.NoError(t, rerr)
 			require.Len(t, res.Events, 1)
 			assert.True(t, res.Events[0].OccurredAt.Equal(old.OccurredAt))
 		})
@@ -314,6 +332,9 @@ func Test_toItem(t *testing.T) {
 			t.Parallel()
 
 			e := event("s", 7, "evt-7")
+			// 書式（RFC3339・ミリ秒・Z）を literal で固定したいので、ここだけ日時を据える。
+			// toItem は純粋関数で DynamoDB に触れないため、TTL の影響を受けない。
+			e.OccurredAt = time.Date(2026, time.August, 29, 1, 2, 3, 456000000, time.UTC)
 			item := toItem(e)
 
 			assert.Equal(t, &types.AttributeValueMemberS{Value: "evt-7"}, item[attrEventID])

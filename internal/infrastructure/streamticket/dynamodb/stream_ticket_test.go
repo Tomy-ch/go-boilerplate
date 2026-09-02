@@ -18,9 +18,13 @@ import (
 	"go-boilerplate/internal/usecase/boundary/realtime"
 )
 
+// この table は expires_at に TTL を張っている（TableSpec）。過ぎた期限で item を保存すると
+// DynamoDB Local の掃除が assert より先に走り、消してはいけない ticket まで消える。したがって
+// fixture の期限は固定日時ではなく、実行時刻を基準にした未来にする。
+// 期限そのものの判定は Find の asOf 引数で行うため、この値が動いても検証は変わらない。
 var (
-	issuedAt = time.Date(2026, time.August, 29, 1, 0, 0, 0, time.UTC)
-	expires  = issuedAt.Add(5 * time.Minute)
+	issuedAt = time.Now().UTC().Truncate(time.Second)
+	expires  = issuedAt.Add(1 * time.Hour)
 )
 
 func newStore(t *testing.T) *store {
