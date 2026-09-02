@@ -359,17 +359,6 @@ func TestReconstruct(t *testing.T) {
 			assert.Equal(t, version, actual.Version())
 		})
 
-		t.Run("永続化済みの画像が枚数の上限を超えていても再構築できる", func(t *testing.T) {
-			t.Parallel()
-
-			over := attrs
-			over.Images = imagesOfCount(t, maxImages+1)
-
-			actual, err := Reconstruct(id, over, initialVersion, testCreatedAt)
-
-			require.NoError(t, err)
-			assert.Len(t, actual.Images(), maxImages+1)
-		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
@@ -388,6 +377,15 @@ func TestReconstruct(t *testing.T) {
 			actual, err := Reconstruct(id, attrs, initialVersion, time.Time{})
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidCreatedAt)
+		})
+
+		t.Run("永続化済みの画像が枚数の上限を超える場合、ErrTooManyImagesを返す", func(t *testing.T) {
+			t.Parallel()
+			over := attrs
+			over.Images = imagesOfCount(t, maxImages+1)
+			actual, err := Reconstruct(id, over, initialVersion, testCreatedAt)
+			assert.Nil(t, actual)
+			require.ErrorIs(t, err, ErrTooManyImages)
 		})
 	})
 }

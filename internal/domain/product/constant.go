@@ -13,8 +13,8 @@ const (
 	// maxThreshold は、在庫警告閾値の上限です。閾値は在庫数と突き合わせる値であり、在庫数と同じ
 	// 32bit 整数幅で表現します。
 	maxThreshold = math.MaxInt32
-	// maxImages は、1 商品が保持できる画像の枚数の上限です。生成・更新でのみ課し、
-	// 永続化済みの商品の再構築では課しません（理由は Reconstruct の doc コメント）。
+	// maxImages は、1 商品が保持できる画像の枚数の上限です。sample の placeholder で、
+	// 実要件が立った時点で改めます。
 	maxImages = 20
 	// minImageDisplaySort は、商品画像の表示順の下限です。表示順は 1 から数えます。
 	minImageDisplaySort = 1

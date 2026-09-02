@@ -43,10 +43,12 @@ func (i Image) ImagePath() string { return i.imagePath }
 // DisplaySort は、同一商品内での表示順を返します。
 func (i Image) DisplaySort() int { return i.displaySort }
 
-// validateImageCount は、画像の枚数が maxImages に収まっていることを検証します。
-// 超える場合は ErrTooManyImages を返します。
-// 集合を確定させる書き込み経路（New / Update）だけが呼び、再構築の経路では呼びません。
-func validateImageCount(images []Image) error {
+// validateImages は、商品が保持する画像の集合が満たすべき不変条件を検証します。
+// 枚数が maxImages を超える場合は ErrTooManyImages を、ID が未設定、画像パスが空、表示順が保持できる
+// 範囲外の場合はそれぞれ ErrInvalidID / ErrInvalidImagePath / ErrInvalidImageDisplaySort を、
+// 同一商品内で表示順が重複する場合は ErrDuplicateImageDisplaySort を返します。
+// 画像を持たない商品は許容します。
+func validateImages(images []Image) error {
 	if len(images) > maxImages {
 		return xerrors.Wrap(
 			ErrTooManyImages,
@@ -54,14 +56,6 @@ func validateImageCount(images []Image) error {
 		)
 	}
 
-	return nil
-}
-
-// validateImages は、商品が保持する画像の集合が満たすべき不変条件を検証します。
-// ID が未設定、画像パスが空、表示順が保持できる範囲外の場合はそれぞれ ErrInvalidID /
-// ErrInvalidImagePath / ErrInvalidImageDisplaySort を、同一商品内で表示順が重複する場合は
-// ErrDuplicateImageDisplaySort を返します。画像を持たない商品は許容します。
-func validateImages(images []Image) error {
 	seen := make(map[int]struct{}, len(images))
 	for _, img := range images {
 		if img.id.IsNil() {

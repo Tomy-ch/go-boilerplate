@@ -56,22 +56,13 @@ type Attributes struct {
 // createdAt は商品が登録された日時で、ゼロ値は検証エラーです。
 // 生成直後のバージョンは initialVersion です。
 func New(id uuid.UUID, attrs Attributes, createdAt time.Time) (*Product, error) {
-	if err := validateImageCount(attrs.Images); err != nil {
-		return nil, err
-	}
-
 	return newProduct(id, attrs, initialVersion, createdAt)
 }
 
 // Reconstruct は、永続化済みの商品を再構築します。
 // version は永続化されている楽観ロックのバージョンで、initialVersion 未満の場合は検証エラーを返します。
-// createdAt は永続化されている登録日時です。
-//
-// 画像の枚数上限（maxImages）だけは New と異なり課しません。上限は集合を確定させる書き込みが守る
-// 不変条件であり、既に永続化されている集合に課しても読み出しを拒む以外の効果を持たないためです
-// （docs/spec/product/domain.md の Cross-field Invariants）。上限を破る行が入らないことは
-// product_images のトリガ product_images_max_per_product が担保します。
-// その他の検証は New と同一です。
+// createdAt は永続化されている登録日時です。その他の検証は New と同一です。
+// 保存済みデータのための緩和経路はありません。
 func Reconstruct(id uuid.UUID, attrs Attributes, version int, createdAt time.Time) (*Product, error) {
 	return newProduct(id, attrs, version, createdAt)
 }
@@ -135,9 +126,6 @@ func validateAttributes(attrs Attributes) error {
 // Images は集合ごとの置き換えで、maxImages を超える場合は ErrTooManyImages を返します。
 // バージョンは永続化の成否に依存するためここでは進めません（採番は Repository の条件付き更新が行います）。
 func (p *Product) Update(attrs Attributes) error {
-	if err := validateImageCount(attrs.Images); err != nil {
-		return err
-	}
 	if err := validateAttributes(attrs); err != nil {
 		return err
 	}

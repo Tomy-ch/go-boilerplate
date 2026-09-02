@@ -25,6 +25,7 @@ COMMENT ON EXTENSION pg_trgm IS 'text similarity measurement and index searching
 --
 CREATE FUNCTION public.product_images_assert_max_per_product() RETURNS trigger
     LANGUAGE plpgsql
+    SET search_path TO 'pg_catalog', 'public'
     AS $$
 DECLARE
     live_count INTEGER;

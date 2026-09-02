@@ -18,8 +18,9 @@ CREATE UNIQUE INDEX product_images_product_id_display_sort_unique ON product_ima
 WHERE deleted_at IS NULL;
 
 -- 1 商品が保持できる生存画像の枚数に上限を課す。
--- 上限値の正本は internal/domain/product の maxImages で、ここはその不変条件をアプリケーション経路の
--- 外（手作業の INSERT、別クライアント、データ移行）からも破れないようにするための担保である。
+-- 上限値の正本は internal/domain/product の maxImages で、そちらは New / Reconstruct / Update が
+-- 共有する検証ゲートで同じ上限を課す。ここはアプリケーションを経由しない書き込み（手作業の INSERT、
+-- 別クライアント、データ移行）に対する多重防御であり、値を変えるときは両方を揃える。
 --
 -- 件数は行の述語として書けず CHECK では表現できないためトリガで数える。数えるのは生存行だけなので、
 -- 置き換えに伴う論理削除のように枚数が下がる更新は素通りする。
@@ -27,6 +28,9 @@ WHERE deleted_at IS NULL;
 -- 同時実行の 2 トランザクションが互いの未コミット行を見ずに合計で上限を超える余地は、件数を数える方式で
 -- ある以上は原理的に残る。商品画像の書き込みは集約 Root を経由し products 行の条件付き更新
 -- （database/dml/repository/product/update_product.sql）で直列化されるため、この経路では到達しない。
+--
+-- search_path を固定するのは、非修飾の product_images が探索パス次第で別スキーマの同名テーブルに
+-- 解決されうるため（PostgreSQL の関数ハードニングの定石）。
 --
 -- 以下 2 箇所で抑止している CP03 は組み込み関数の大文字化を課す規則で、ユーザー定義関数の
 -- 識別子にも当たってしまう。識別子は他のスキーマ要素と揃えて snake_case を保つ。
@@ -54,7 +58,7 @@ BEGIN
 
     RETURN NULL;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = pg_catalog, public;
 
 -- 枚数を増やし得るのは行の追加と、product_id の付け替え・論理削除の取り消しだけなので、その 3 つに絞る。
 CREATE TRIGGER product_images_max_per_product
