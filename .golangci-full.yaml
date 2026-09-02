@@ -318,17 +318,12 @@ linters:
             # 両ルールが同じファイルに当たると、こちらの集約間 deny が例外を打ち消してしまう。
             - "!**/internal/domain/service/**.go"
           list-mode: lax
-          allow:
-            # 集約横断で共有する業務 VO の置き場。ここだけは domain 間の import を許可する。
-            # 器としての正確な十進量は pkg/decimal だが、通貨・非負・最小単位といった業務意味論は
-            # pkg に置けないため domain に置く（ADR-0039 (domain-lexicon)）。
-            - go-boilerplate/internal/domain/lexicon
           deny:
-            # 集約間の直接結合を禁止する。集約横断で共有したい業務 VO は internal/domain/lexicon
-            # に置くこと（上の allow）。ある集約が別集約の内部型へ依存すると境界が崩れる。
-            - pkg: go-boilerplate/internal/domain/
-              desc: "domain層で他の集約を直接参照することは禁止です。集約横断で共有する業務 VO は
-                internal/domain/lexicon へ置いてください。"
+            # 集約間の直接結合の禁止は、ここではなく internal/architest の
+            # TestDomainAggregateImportIsolation が受け持つ。depguard は importer を files でしか
+            # 見られず allow / deny は imported しか見ないため、「自分の集約の internal/ 配下だけは
+            # 許す」という 2 端点の関係を 1 本のルールで書けない（sub-entity のパッケージが
+            # 書けなくなる）。規約の本文は internal/domain/README.md の Cross-aggregate reference。
             - pkg: net/http
               desc: "Domain層でhttpパッケージを直接使用しないでください。
                 handler層にて処理して、DTOなどを介して値を受け渡してください。"
