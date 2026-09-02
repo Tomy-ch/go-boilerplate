@@ -119,16 +119,24 @@ type Repository interface {
 	// （不存在の検証は呼び出し側の責務です）。
 	LockByIDs(ctx context.Context, ids []uuid.UUID) (Products, error)
 	// Create は、商品を新規登録します。p が保持する画像も併せて登録します。
-	Create(ctx context.Context, p *Product) error
+	Create(ctx context.Context, p *Product, images []Image) error
 	// Update は、p が保持するバージョンを条件に商品を更新し、採番後のバージョンを返します。
 	// 画像は p が保持する集合へ ID で一致させます（同一性の定義は [Image] を参照）。集合から外れた画像は
 	// 論理削除として残り、現在の参照からは外れます。
 	// 読み込み後に他者が更新しておりバージョンが一致しない場合は ErrVersionConflict を返し、画像には
 	// 触れません。
-	Update(ctx context.Context, p *Product) (int, error)
+	Update(ctx context.Context, p *Product, images []Image) (int, error)
 	// UpdateStock は、p が保持するバージョンを条件に在庫数を更新し、採番後のバージョンを返します。
 	// 読み込み後に他者が更新しておりバージョンが一致しない場合は ErrVersionConflict を返します。
 	UpdateStock(ctx context.Context, p *Product) (int, error)
+	// ListImages は、商品の画像を表示順の昇順で読み出します。画像は集約が抱えないため、
+	// 必要とする経路（DTO・部分更新の据え置き・カートの代表画像）がここから引きます。
+	ListImages(ctx context.Context, productID uuid.UUID) ([]Image, error)
+
+	// ListImagesByProductIDs は、複数商品の画像をまとめて読み出します。一覧が商品ごとに引くこと
+	// （N+1）を避けるための入口です。
+	ListImagesByProductIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID][]Image, error)
+
 	// Count は、登録商品の総数と、そのうち公開済みの件数を返します。商品が 1 件もない場合はゼロ値を返します。
 	Count(ctx context.Context) (Counts, error)
 }

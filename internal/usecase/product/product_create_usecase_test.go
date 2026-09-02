@@ -92,7 +92,7 @@ func Test_usecase_CreateProduct(t *testing.T) {
 			authorizer := mock_authz.NewMockAuthorizer(ctrl)
 			authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), authz.ActionProductCreate, gomock.Any()).Return(nil)
 			repo := mock_product.NewMockRepository(ctrl)
-			repo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
+			repo.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 
 			u := &usecase{
 				tracer: lt, txm: txm, repo: repo, categoryRepo: categoryRepo, statusRepo: statusRepo,
@@ -138,7 +138,7 @@ func Test_usecase_CreateProduct(t *testing.T) {
 			authorizer := mock_authz.NewMockAuthorizer(ctrl)
 			authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), authz.ActionProductCreate, gomock.Any()).Return(nil)
 			repo := mock_product.NewMockRepository(ctrl)
-			repo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
+			repo.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 
 			u := &usecase{
 				tracer: lt, txm: txm, repo: repo, categoryRepo: categoryRepo, statusRepo: statusRepo,
@@ -166,7 +166,7 @@ func Test_usecase_CreateProduct(t *testing.T) {
 			categoryRepo := mock_category.NewMockRepository(ctrl)
 			categoryRepo.EXPECT().FindByID(gomock.Any(), categoryID).Return(mustCategory(t, categoryID), nil)
 			repo := mock_product.NewMockRepository(ctrl)
-			repo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
+			repo.EXPECT().Create(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 			authorizer := mock_authz.NewMockAuthorizer(ctrl)
 			authorizer.EXPECT().
 				Authorize(gomock.Any(), gomock.Any(), authz.ActionProductCreate, authz.NewResource("product", nil)).

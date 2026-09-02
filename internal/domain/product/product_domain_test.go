@@ -110,7 +110,7 @@ func updatedProductAttributes(t *testing.T) Attributes {
 func newTestProduct(t *testing.T) *Product {
 	t.Helper()
 	id, attrs := validProductArgs(t)
-	p, err := New(id, attrs, testCreatedAt)
+	p, _, err := New(id, attrs, testCreatedAt)
 	require.NoError(t, err)
 	return p
 }
@@ -126,7 +126,7 @@ func TestNew(t *testing.T) {
 		t.Run("全フィールドが有効な場合、Productエンティティが生成される", func(t *testing.T) {
 			t.Parallel()
 
-			actual, err := New(id, attrs, testCreatedAt)
+			actual, images, err := New(id, attrs, testCreatedAt)
 			require.NoError(t, err)
 			assert.Equal(t, id, actual.ID())
 			assert.Equal(t, attrs.Name, actual.Name())
@@ -137,7 +137,7 @@ func TestNew(t *testing.T) {
 			assert.Equal(t, attrs.Status, actual.Status())
 			assert.Equal(t, attrs.Category, actual.Category())
 			assert.Equal(t, attrs.PublishedAt, actual.PublishedAt())
-			assert.Equal(t, attrs.Images, actual.Images())
+			assert.Equal(t, attrs.Images, images)
 			assert.Equal(t, initialVersion, actual.Version())
 
 			mutatedDescription := actual.Description()
@@ -154,10 +154,6 @@ func TestNew(t *testing.T) {
 			*mutatedPublishedAt = time.Time{}
 			require.NotNil(t, actual.PublishedAt())
 			assert.Equal(t, *attrs.PublishedAt, *actual.PublishedAt())
-
-			mutatedImages := actual.Images()
-			mutatedImages[0] = mustImage(t, "mutated_image_id", "products/mutated.png", 9)
-			assert.Equal(t, attrs.Images, actual.Images())
 		})
 
 		t.Run("生成後に引数のポインタを書き換えてもエンティティ内部は変わらない", func(t *testing.T) {
@@ -166,7 +162,7 @@ func TestNew(t *testing.T) {
 			// 他の並列サブテストとポインタを共有しないよう作り直す。
 			localID, localAttrs := validProductArgs(t)
 
-			actual, err := New(localID, localAttrs, testCreatedAt)
+			actual, images, err := New(localID, localAttrs, testCreatedAt)
 			require.NoError(t, err)
 
 			expectedDescription, expectedThreshold := *localAttrs.Description, *localAttrs.StockWarningThreshold
@@ -184,7 +180,7 @@ func TestNew(t *testing.T) {
 			assert.Equal(t, expectedThreshold, *actual.StockWarningThreshold())
 			require.NotNil(t, actual.PublishedAt())
 			assert.Equal(t, expectedPublishedAt, *actual.PublishedAt())
-			assert.Equal(t, expectedImages, actual.Images())
+			assert.Equal(t, expectedImages, images)
 		})
 
 		t.Run("description・stockWarningThreshold・publishedAtがnilで画像が空でも生成される", func(t *testing.T) {
@@ -196,12 +192,12 @@ func TestNew(t *testing.T) {
 			cleared.PublishedAt = nil
 			cleared.Images = nil
 
-			actual, err := New(id, cleared, testCreatedAt)
+			actual, images, err := New(id, cleared, testCreatedAt)
 			require.NoError(t, err)
 			assert.Nil(t, actual.Description())
 			assert.Nil(t, actual.StockWarningThreshold())
 			assert.Nil(t, actual.PublishedAt())
-			assert.Empty(t, actual.Images())
+			assert.Empty(t, images)
 		})
 
 		t.Run("priceとquantityが0でも生成される", func(t *testing.T) {
@@ -212,7 +208,7 @@ func TestNew(t *testing.T) {
 			minimal.Quantity = minQuantity
 			minimal.StockWarningThreshold = ptr.To(minThreshold)
 
-			actual, err := New(id, minimal, testCreatedAt)
+			actual, _, err := New(id, minimal, testCreatedAt)
 			require.NoError(t, err)
 			assert.Equal(t, "0", actual.Price().String())
 			assert.Equal(t, minQuantity, actual.Quantity())
@@ -224,10 +220,11 @@ func TestNew(t *testing.T) {
 			atLimit := attrs
 			atLimit.Images = imagesOfCount(t, maxImages)
 
-			actual, err := New(id, atLimit, testCreatedAt)
+			actual, images, err := New(id, atLimit, testCreatedAt)
 
 			require.NoError(t, err)
-			assert.Len(t, actual.Images(), maxImages)
+			assert.NotNil(t, actual)
+			assert.Len(t, images, maxImages)
 		})
 	})
 
@@ -236,14 +233,14 @@ func TestNew(t *testing.T) {
 
 		t.Run("IDがゼロ値の場合、ErrInvalidIDを返す", func(t *testing.T) {
 			t.Parallel()
-			actual, err := New(uuid.UUID{}, attrs, testCreatedAt)
+			actual, _, err := New(uuid.UUID{}, attrs, testCreatedAt)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidID)
 		})
 
 		t.Run("createdAtがゼロ値の場合、ErrInvalidCreatedAtを返す", func(t *testing.T) {
 			t.Parallel()
-			actual, err := New(id, attrs, time.Time{})
+			actual, _, err := New(id, attrs, time.Time{})
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidCreatedAt)
 		})
@@ -252,7 +249,7 @@ func TestNew(t *testing.T) {
 			t.Parallel()
 			invalid := attrs
 			invalid.Name = ""
-			actual, err := New(id, invalid, testCreatedAt)
+			actual, _, err := New(id, invalid, testCreatedAt)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidName)
 		})
@@ -261,7 +258,7 @@ func TestNew(t *testing.T) {
 			t.Parallel()
 			invalid := attrs
 			invalid.Name = strings.Repeat("あ", maxNameLength+1)
-			actual, err := New(id, invalid, testCreatedAt)
+			actual, _, err := New(id, invalid, testCreatedAt)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidName)
 		})
@@ -270,7 +267,7 @@ func TestNew(t *testing.T) {
 			t.Parallel()
 			invalid := attrs
 			invalid.Quantity = minQuantity - 1
-			actual, err := New(id, invalid, testCreatedAt)
+			actual, _, err := New(id, invalid, testCreatedAt)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidQuantity)
 		})
@@ -279,7 +276,7 @@ func TestNew(t *testing.T) {
 			t.Parallel()
 			invalid := attrs
 			invalid.StockWarningThreshold = ptr.To(minThreshold - 1)
-			actual, err := New(id, invalid, testCreatedAt)
+			actual, _, err := New(id, invalid, testCreatedAt)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidStockWarningThreshold)
 		})
@@ -289,7 +286,7 @@ func TestNew(t *testing.T) {
 			invalid := attrs
 			invalid.StockWarningThreshold = ptr.To(maxThreshold)
 			*invalid.StockWarningThreshold++
-			actual, err := New(id, invalid, testCreatedAt)
+			actual, _, err := New(id, invalid, testCreatedAt)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidStockWarningThreshold)
 		})
@@ -298,7 +295,7 @@ func TestNew(t *testing.T) {
 			t.Parallel()
 			invalid := attrs
 			invalid.Status = StatusRef{}
-			actual, err := New(id, invalid, testCreatedAt)
+			actual, _, err := New(id, invalid, testCreatedAt)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidStatusID)
 		})
@@ -307,7 +304,7 @@ func TestNew(t *testing.T) {
 			t.Parallel()
 			invalid := attrs
 			invalid.Category = CategoryRef{}
-			actual, err := New(id, invalid, testCreatedAt)
+			actual, _, err := New(id, invalid, testCreatedAt)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidCategoryID)
 		})
@@ -319,7 +316,7 @@ func TestNew(t *testing.T) {
 				mustImage(t, "duplicated_image_1", "products/a.png", 1),
 				mustImage(t, "duplicated_image_2", "products/b.png", 1),
 			}
-			actual, err := New(id, invalid, testCreatedAt)
+			actual, _, err := New(id, invalid, testCreatedAt)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrDuplicateImageDisplaySort)
 		})
@@ -328,7 +325,7 @@ func TestNew(t *testing.T) {
 			t.Parallel()
 			invalid := attrs
 			invalid.Images = []Image{mustImage(t, "empty_path_image", "", 1)}
-			actual, err := New(id, invalid, testCreatedAt)
+			actual, _, err := New(id, invalid, testCreatedAt)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidImagePath)
 		})
@@ -337,8 +334,9 @@ func TestNew(t *testing.T) {
 			t.Parallel()
 			invalid := attrs
 			invalid.Images = imagesOfCount(t, maxImages+1)
-			actual, err := New(id, invalid, testCreatedAt)
+			actual, images, err := New(id, invalid, testCreatedAt)
 			assert.Nil(t, actual)
+			assert.Nil(t, images)
 			require.ErrorIs(t, err, ErrTooManyImages)
 		})
 	})
@@ -356,7 +354,7 @@ func TestReconstruct(t *testing.T) {
 			t.Parallel()
 
 			version := initialVersion + 1
-			actual, err := Reconstruct(id, attrs, version, testCreatedAt)
+			actual, images, err := Reconstruct(id, attrs, version, testCreatedAt)
 			require.NoError(t, err)
 			assert.Equal(t, id, actual.ID())
 			assert.Equal(t, attrs.Name, actual.Name())
@@ -367,7 +365,7 @@ func TestReconstruct(t *testing.T) {
 			assert.Equal(t, attrs.Status, actual.Status())
 			assert.Equal(t, attrs.Category, actual.Category())
 			assert.Equal(t, attrs.PublishedAt, actual.PublishedAt())
-			assert.Equal(t, attrs.Images, actual.Images())
+			assert.Equal(t, attrs.Images, images)
 			assert.Equal(t, version, actual.Version())
 		})
 
@@ -377,10 +375,11 @@ func TestReconstruct(t *testing.T) {
 			atLimit := attrs
 			atLimit.Images = imagesOfCount(t, maxImages)
 
-			actual, err := Reconstruct(id, atLimit, initialVersion, testCreatedAt)
+			actual, images, err := Reconstruct(id, atLimit, initialVersion, testCreatedAt)
 
 			require.NoError(t, err)
-			assert.Len(t, actual.Images(), maxImages)
+			assert.NotNil(t, actual)
+			assert.Len(t, images, maxImages)
 		})
 	})
 
@@ -390,14 +389,14 @@ func TestReconstruct(t *testing.T) {
 		t.Run("versionがinitialVersion未満の場合、ErrInvalidVersionを返す", func(t *testing.T) {
 			t.Parallel()
 
-			actual, err := Reconstruct(id, attrs, initialVersion-1, testCreatedAt)
+			actual, _, err := Reconstruct(id, attrs, initialVersion-1, testCreatedAt)
 			require.ErrorIs(t, err, ErrInvalidVersion)
 			assert.Nil(t, actual)
 		})
 
 		t.Run("createdAtがゼロ値の場合、ErrInvalidCreatedAtを返す", func(t *testing.T) {
 			t.Parallel()
-			actual, err := Reconstruct(id, attrs, initialVersion, time.Time{})
+			actual, _, err := Reconstruct(id, attrs, initialVersion, time.Time{})
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidCreatedAt)
 		})
@@ -406,8 +405,9 @@ func TestReconstruct(t *testing.T) {
 			t.Parallel()
 			over := attrs
 			over.Images = imagesOfCount(t, maxImages+1)
-			actual, err := Reconstruct(id, over, initialVersion, testCreatedAt)
+			actual, images, err := Reconstruct(id, over, initialVersion, testCreatedAt)
 			assert.Nil(t, actual)
+			assert.Nil(t, images)
 			require.ErrorIs(t, err, ErrTooManyImages)
 		})
 	})
@@ -424,7 +424,7 @@ func Test_newProduct(t *testing.T) {
 		t.Run("versionがinitialVersionと等しい場合、そのバージョンで生成される", func(t *testing.T) {
 			t.Parallel()
 
-			actual, err := newProduct(id, attrs, initialVersion, testCreatedAt)
+			actual, _, err := newProduct(id, attrs, initialVersion, testCreatedAt)
 			require.NoError(t, err)
 			assert.Equal(t, initialVersion, actual.Version())
 		})
@@ -436,7 +436,7 @@ func Test_newProduct(t *testing.T) {
 		t.Run("versionがinitialVersion未満の場合、ErrInvalidVersionを返す", func(t *testing.T) {
 			t.Parallel()
 
-			actual, err := newProduct(id, attrs, initialVersion-1, testCreatedAt)
+			actual, _, err := newProduct(id, attrs, initialVersion-1, testCreatedAt)
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidVersion)
 		})
@@ -631,7 +631,8 @@ func TestProduct_Update(t *testing.T) {
 			p := newTestProduct(t)
 			attrs := updatedProductAttributes(t)
 
-			require.NoError(t, p.Update(attrs))
+			images, err := p.Update(attrs)
+			require.NoError(t, err)
 			assert.Equal(t, attrs.Name, p.Name())
 			assert.Equal(t, attrs.Description, p.Description())
 			assert.Equal(t, attrs.Price, p.Price())
@@ -640,7 +641,7 @@ func TestProduct_Update(t *testing.T) {
 			assert.Equal(t, attrs.Status, p.Status())
 			assert.Equal(t, attrs.Category, p.Category())
 			assert.Equal(t, attrs.PublishedAt, p.PublishedAt())
-			assert.Equal(t, attrs.Images, p.Images())
+			assert.Equal(t, attrs.Images, images)
 			assert.Equal(t, initialVersion, p.Version())
 		})
 
@@ -651,8 +652,10 @@ func TestProduct_Update(t *testing.T) {
 			attrs := updatedProductAttributes(t)
 			attrs.Images = imagesOfCount(t, maxImages)
 
-			require.NoError(t, p.Update(attrs))
-			assert.Len(t, p.Images(), maxImages)
+			images, err := p.Update(attrs)
+
+			require.NoError(t, err)
+			assert.Len(t, images, maxImages)
 		})
 
 		t.Run("description・stockWarningThreshold・publishedAtをnil、画像を空で更新した場合、未設定になる", func(t *testing.T) {
@@ -665,11 +668,12 @@ func TestProduct_Update(t *testing.T) {
 			attrs.PublishedAt = nil
 			attrs.Images = nil
 
-			require.NoError(t, p.Update(attrs))
+			images, err := p.Update(attrs)
+			require.NoError(t, err)
 			assert.Nil(t, p.Description())
 			assert.Nil(t, p.StockWarningThreshold())
 			assert.Nil(t, p.PublishedAt())
-			assert.Empty(t, p.Images())
+			assert.Empty(t, images)
 		})
 
 		t.Run("更新後に引数のポインタを書き換えてもエンティティ内部は変わらない", func(t *testing.T) {
@@ -678,7 +682,8 @@ func TestProduct_Update(t *testing.T) {
 			p := newTestProduct(t)
 			attrs := updatedProductAttributes(t)
 
-			require.NoError(t, p.Update(attrs))
+			images, err := p.Update(attrs)
+			require.NoError(t, err)
 
 			expectedDescription, expectedThreshold := *attrs.Description, *attrs.StockWarningThreshold
 			expectedPublishedAt := *attrs.PublishedAt
@@ -695,7 +700,7 @@ func TestProduct_Update(t *testing.T) {
 			assert.Equal(t, expectedThreshold, *p.StockWarningThreshold())
 			require.NotNil(t, p.PublishedAt())
 			assert.Equal(t, expectedPublishedAt, *p.PublishedAt())
-			assert.Equal(t, expectedImages, p.Images())
+			assert.Equal(t, expectedImages, images)
 		})
 	})
 
@@ -710,7 +715,8 @@ func TestProduct_Update(t *testing.T) {
 			attrs := updatedProductAttributes(t)
 			attrs.Quantity = minQuantity - 1
 
-			require.ErrorIs(t, p.Update(attrs), ErrInvalidQuantity)
+			_, updateErr := p.Update(attrs)
+			require.ErrorIs(t, updateErr, ErrInvalidQuantity)
 			assert.Equal(t, snapshot, *p)
 		})
 
@@ -722,7 +728,8 @@ func TestProduct_Update(t *testing.T) {
 			attrs := updatedProductAttributes(t)
 			attrs.Name = strings.Repeat("あ", maxNameLength+1)
 
-			require.ErrorIs(t, p.Update(attrs), ErrInvalidName)
+			_, updateErr := p.Update(attrs)
+			require.ErrorIs(t, updateErr, ErrInvalidName)
 			assert.Equal(t, snapshot, *p)
 		})
 
@@ -734,7 +741,8 @@ func TestProduct_Update(t *testing.T) {
 			attrs := updatedProductAttributes(t)
 			attrs.Images = imagesOfCount(t, maxImages+1)
 
-			require.ErrorIs(t, p.Update(attrs), ErrTooManyImages)
+			_, updateErr := p.Update(attrs)
+			require.ErrorIs(t, updateErr, ErrTooManyImages)
 			assert.Equal(t, snapshot, *p)
 		})
 	})
@@ -859,7 +867,7 @@ func TestProduct_EnsureVersion(t *testing.T) {
 		t.Run("期待バージョンが現在のバージョンと一致しない場合、Conflictに分類されるErrVersionConflictを返す", func(t *testing.T) {
 			t.Parallel()
 
-			p, err := Reconstruct(id, attrs, initialVersion+1, testCreatedAt)
+			p, _, err := Reconstruct(id, attrs, initialVersion+1, testCreatedAt)
 			require.NoError(t, err)
 
 			err = p.EnsureVersion(initialVersion)
@@ -881,7 +889,7 @@ func TestProduct_Price(t *testing.T) {
 			id, attrs := validProductArgs(t)
 			attrs.Price = mustPrice(t, "19.995")
 
-			p, err := New(id, attrs, testCreatedAt)
+			p, _, err := New(id, attrs, testCreatedAt)
 			require.NoError(t, err)
 			assert.Equal(t, "19.995", p.Price().String())
 			assert.True(t, p.Price().Decimal().Equal(decimaltestkit.MustParse(t, "19.995")))
@@ -899,7 +907,7 @@ func TestProduct_Version(t *testing.T) {
 			t.Parallel()
 
 			id, attrs := validProductArgs(t)
-			p, err := Reconstruct(id, attrs, initialVersion+2, testCreatedAt)
+			p, _, err := Reconstruct(id, attrs, initialVersion+2, testCreatedAt)
 			require.NoError(t, err)
 			assert.Equal(t, initialVersion+2, p.Version())
 		})
@@ -916,7 +924,7 @@ func TestProduct_Category(t *testing.T) {
 			t.Parallel()
 
 			id, attrs := validProductArgs(t)
-			p, err := New(id, attrs, testCreatedAt)
+			p, _, err := New(id, attrs, testCreatedAt)
 			require.NoError(t, err)
 
 			assert.Equal(t, attrs.Category, p.Category())
@@ -935,7 +943,7 @@ func TestProduct_Description(t *testing.T) {
 			t.Parallel()
 
 			id, attrs := validProductArgs(t)
-			p, err := New(id, attrs, testCreatedAt)
+			p, _, err := New(id, attrs, testCreatedAt)
 			require.NoError(t, err)
 
 			require.NotNil(t, p.Description())
@@ -947,7 +955,7 @@ func TestProduct_Description(t *testing.T) {
 
 			id, attrs := validProductArgs(t)
 			attrs.Description = nil
-			p, err := New(id, attrs, testCreatedAt)
+			p, _, err := New(id, attrs, testCreatedAt)
 			require.NoError(t, err)
 
 			assert.Nil(t, p.Description())
@@ -957,7 +965,7 @@ func TestProduct_Description(t *testing.T) {
 			t.Parallel()
 
 			id, attrs := validProductArgs(t)
-			p, err := New(id, attrs, testCreatedAt)
+			p, _, err := New(id, attrs, testCreatedAt)
 			require.NoError(t, err)
 
 			got := p.Description()
@@ -980,75 +988,10 @@ func TestProduct_ID(t *testing.T) {
 			t.Parallel()
 
 			id, attrs := validProductArgs(t)
-			p, err := New(id, attrs, testCreatedAt)
+			p, _, err := New(id, attrs, testCreatedAt)
 			require.NoError(t, err)
 
 			assert.Equal(t, id, p.ID())
-		})
-	})
-}
-
-func TestProduct_Images(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("生成時の画像を表示順の昇順で返す", func(t *testing.T) {
-			t.Parallel()
-
-			id, attrs := validProductArgs(t)
-			p, err := New(id, attrs, testCreatedAt)
-			require.NoError(t, err)
-
-			images := p.Images()
-			require.Len(t, images, 2)
-			assert.Equal(t, "products/earphone.png", images[0].ImagePath())
-			assert.Equal(t, 1, images[0].DisplaySort())
-			assert.Equal(t, "products/earphone-sub.png", images[1].ImagePath())
-			assert.Equal(t, 2, images[1].DisplaySort())
-		})
-
-		t.Run("表示順が降順で渡された場合でも昇順に並べ替えて返す", func(t *testing.T) {
-			t.Parallel()
-
-			id, attrs := validProductArgs(t)
-			attrs.Images = []Image{
-				mustImage(t, "product_image_id_2", "products/earphone-sub.png", 2),
-				mustImage(t, "product_image_id_1", "products/earphone.png", 1),
-			}
-			p, err := New(id, attrs, testCreatedAt)
-			require.NoError(t, err)
-
-			images := p.Images()
-			require.Len(t, images, 2)
-			assert.Equal(t, 1, images[0].DisplaySort())
-			assert.Equal(t, 2, images[1].DisplaySort())
-		})
-
-		t.Run("未設定の場合、空を返す", func(t *testing.T) {
-			t.Parallel()
-
-			id, attrs := validProductArgs(t)
-			attrs.Images = nil
-			p, err := New(id, attrs, testCreatedAt)
-			require.NoError(t, err)
-
-			assert.Empty(t, p.Images())
-		})
-
-		t.Run("返り値のスライスを書き換えてもエンティティ内部は変わらない", func(t *testing.T) {
-			t.Parallel()
-
-			id, attrs := validProductArgs(t)
-			p, err := New(id, attrs, testCreatedAt)
-			require.NoError(t, err)
-
-			got := p.Images()
-			got[0] = mustImage(t, "mutated_image_id", "products/mutated.png", 9)
-
-			require.Len(t, p.Images(), 2)
-			assert.Equal(t, "products/earphone.png", p.Images()[0].ImagePath())
 		})
 	})
 }
@@ -1063,7 +1006,7 @@ func TestProduct_Name(t *testing.T) {
 			t.Parallel()
 
 			id, attrs := validProductArgs(t)
-			p, err := New(id, attrs, testCreatedAt)
+			p, _, err := New(id, attrs, testCreatedAt)
 			require.NoError(t, err)
 
 			assert.Equal(t, "ワイヤレスイヤホン", p.Name())
@@ -1081,7 +1024,7 @@ func TestProduct_CreatedAt(t *testing.T) {
 			t.Parallel()
 
 			id, attrs := validProductArgs(t)
-			p, err := New(id, attrs, testCreatedAt)
+			p, _, err := New(id, attrs, testCreatedAt)
 			require.NoError(t, err)
 
 			assert.Equal(t, testCreatedAt, p.CreatedAt())
@@ -1091,7 +1034,7 @@ func TestProduct_CreatedAt(t *testing.T) {
 			t.Parallel()
 
 			id, attrs := validProductArgs(t)
-			p, err := New(id, attrs, testCreatedAt)
+			p, _, err := New(id, attrs, testCreatedAt)
 			require.NoError(t, err)
 
 			require.NotNil(t, p.PublishedAt())
@@ -1103,7 +1046,7 @@ func TestProduct_CreatedAt(t *testing.T) {
 
 			id, attrs := validProductArgs(t)
 			persisted := time.Date(2024, time.June, 1, 12, 0, 0, 0, time.UTC)
-			p, err := Reconstruct(id, attrs, initialVersion, persisted)
+			p, _, err := Reconstruct(id, attrs, initialVersion, persisted)
 			require.NoError(t, err)
 
 			assert.Equal(t, persisted, p.CreatedAt())
@@ -1123,7 +1066,7 @@ func TestProduct_PublishedAt(t *testing.T) {
 			t.Parallel()
 
 			id, attrs := validProductArgs(t)
-			p, err := New(id, attrs, testCreatedAt)
+			p, _, err := New(id, attrs, testCreatedAt)
 			require.NoError(t, err)
 
 			require.NotNil(t, p.PublishedAt())
@@ -1135,7 +1078,7 @@ func TestProduct_PublishedAt(t *testing.T) {
 
 			id, attrs := validProductArgs(t)
 			attrs.PublishedAt = nil
-			p, err := New(id, attrs, testCreatedAt)
+			p, _, err := New(id, attrs, testCreatedAt)
 			require.NoError(t, err)
 
 			assert.Nil(t, p.PublishedAt())
@@ -1145,7 +1088,7 @@ func TestProduct_PublishedAt(t *testing.T) {
 			t.Parallel()
 
 			id, attrs := validProductArgs(t)
-			p, err := New(id, attrs, testCreatedAt)
+			p, _, err := New(id, attrs, testCreatedAt)
 			require.NoError(t, err)
 
 			got := p.PublishedAt()
@@ -1168,7 +1111,7 @@ func TestProduct_Quantity(t *testing.T) {
 			t.Parallel()
 
 			id, attrs := validProductArgs(t)
-			p, err := New(id, attrs, testCreatedAt)
+			p, _, err := New(id, attrs, testCreatedAt)
 			require.NoError(t, err)
 
 			assert.Equal(t, 100, p.Quantity())
@@ -1179,7 +1122,7 @@ func TestProduct_Quantity(t *testing.T) {
 
 			id, attrs := validProductArgs(t)
 			attrs.Quantity = minQuantity
-			p, err := New(id, attrs, testCreatedAt)
+			p, _, err := New(id, attrs, testCreatedAt)
 			require.NoError(t, err)
 
 			assert.Equal(t, minQuantity, p.Quantity())
@@ -1197,7 +1140,7 @@ func TestProduct_Status(t *testing.T) {
 			t.Parallel()
 
 			id, attrs := validProductArgs(t)
-			p, err := New(id, attrs, testCreatedAt)
+			p, _, err := New(id, attrs, testCreatedAt)
 			require.NoError(t, err)
 
 			assert.Equal(t, attrs.Status, p.Status())
@@ -1216,7 +1159,7 @@ func TestProduct_StockWarningThreshold(t *testing.T) {
 			t.Parallel()
 
 			id, attrs := validProductArgs(t)
-			p, err := New(id, attrs, testCreatedAt)
+			p, _, err := New(id, attrs, testCreatedAt)
 			require.NoError(t, err)
 
 			require.NotNil(t, p.StockWarningThreshold())
@@ -1228,7 +1171,7 @@ func TestProduct_StockWarningThreshold(t *testing.T) {
 
 			id, attrs := validProductArgs(t)
 			attrs.StockWarningThreshold = nil
-			p, err := New(id, attrs, testCreatedAt)
+			p, _, err := New(id, attrs, testCreatedAt)
 			require.NoError(t, err)
 
 			assert.Nil(t, p.StockWarningThreshold())
@@ -1238,7 +1181,7 @@ func TestProduct_StockWarningThreshold(t *testing.T) {
 			t.Parallel()
 
 			id, attrs := validProductArgs(t)
-			p, err := New(id, attrs, testCreatedAt)
+			p, _, err := New(id, attrs, testCreatedAt)
 			require.NoError(t, err)
 
 			got := p.StockWarningThreshold()
@@ -1261,7 +1204,7 @@ func TestProduct_IsPublished(t *testing.T) {
 			t.Parallel()
 
 			id, attrs := validProductArgs(t)
-			p, err := New(id, attrs, testCreatedAt)
+			p, _, err := New(id, attrs, testCreatedAt)
 			require.NoError(t, err)
 
 			assert.True(t, p.IsPublished())
@@ -1272,7 +1215,7 @@ func TestProduct_IsPublished(t *testing.T) {
 
 			id, attrs := validProductArgs(t)
 			attrs.PublishedAt = nil
-			p, err := New(id, attrs, testCreatedAt)
+			p, _, err := New(id, attrs, testCreatedAt)
 			require.NoError(t, err)
 
 			assert.False(t, p.IsPublished())
@@ -1300,7 +1243,7 @@ func TestIsPublished(t *testing.T) {
 	})
 }
 
-func TestProduct_PrimaryImage(t *testing.T) {
+func TestPrimaryImage(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -1314,10 +1257,10 @@ func TestProduct_PrimaryImage(t *testing.T) {
 				mustImage(t, "primary_image_second", "products/second.png", 2),
 				mustImage(t, "primary_image_first", "products/first.png", 1),
 			}
-			p, err := New(id, attrs, testCreatedAt)
+			_, images, err := New(id, attrs, testCreatedAt)
 			require.NoError(t, err)
 
-			actual, ok := p.PrimaryImage()
+			actual, ok := PrimaryImage(images)
 
 			require.True(t, ok)
 			assert.Equal(t, "products/first.png", actual.ImagePath())
@@ -1328,10 +1271,10 @@ func TestProduct_PrimaryImage(t *testing.T) {
 
 			id, attrs := validProductArgs(t)
 			attrs.Images = nil
-			p, err := New(id, attrs, testCreatedAt)
+			_, images, err := New(id, attrs, testCreatedAt)
 			require.NoError(t, err)
 
-			actual, ok := p.PrimaryImage()
+			actual, ok := PrimaryImage(images)
 
 			assert.False(t, ok)
 			assert.Empty(t, actual.ImagePath())
@@ -1351,7 +1294,7 @@ func TestProduct_IsLowStock(t *testing.T) {
 			id, attrs := validProductArgs(t)
 			attrs.StockWarningThreshold = ptr.To(10)
 			attrs.Quantity = 9
-			p, err := New(id, attrs, testCreatedAt)
+			p, _, err := New(id, attrs, testCreatedAt)
 			require.NoError(t, err)
 
 			assert.True(t, p.IsLowStock())
@@ -1363,7 +1306,7 @@ func TestProduct_IsLowStock(t *testing.T) {
 			id, attrs := validProductArgs(t)
 			attrs.StockWarningThreshold = ptr.To(10)
 			attrs.Quantity = 10
-			p, err := New(id, attrs, testCreatedAt)
+			p, _, err := New(id, attrs, testCreatedAt)
 			require.NoError(t, err)
 
 			assert.True(t, p.IsLowStock())
@@ -1375,7 +1318,7 @@ func TestProduct_IsLowStock(t *testing.T) {
 			id, attrs := validProductArgs(t)
 			attrs.StockWarningThreshold = ptr.To(10)
 			attrs.Quantity = 11
-			p, err := New(id, attrs, testCreatedAt)
+			p, _, err := New(id, attrs, testCreatedAt)
 			require.NoError(t, err)
 
 			assert.False(t, p.IsLowStock())
@@ -1387,7 +1330,7 @@ func TestProduct_IsLowStock(t *testing.T) {
 			id, attrs := validProductArgs(t)
 			attrs.StockWarningThreshold = nil
 			attrs.Quantity = 0
-			p, err := New(id, attrs, testCreatedAt)
+			p, _, err := New(id, attrs, testCreatedAt)
 			require.NoError(t, err)
 
 			assert.False(t, p.IsLowStock())

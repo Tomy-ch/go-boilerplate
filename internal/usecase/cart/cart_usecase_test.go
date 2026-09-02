@@ -50,7 +50,7 @@ func newTestProduct(t *testing.T, id uuid.UUID, amount string, quantity int, ima
 	category, err := product.NewCategoryRef(uuidtestkit.NewTestFromSalt(t, "cart_category"), "家具")
 	require.NoError(t, err)
 
-	p, err := product.New(id, product.Attributes{
+	p, _, err := product.New(id, product.Attributes{
 		Name:        "テスト商品",
 		Price:       newPrice(t, amount),
 		Quantity:    quantity,
@@ -119,6 +119,8 @@ func TestNew(t *testing.T) {
 			txm := mock_tx.NewMockManager(ctrl)
 			cartRepo := mock_cart.NewMockRepository(ctrl)
 			productRepo := mock_product.NewMockRepository(ctrl)
+			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			tokenGen := mock_token.NewMockGenerator(ctrl)
 			clk := clocktestkit.NewMockClock(t, time.Time{})
 
@@ -172,7 +174,7 @@ func Test_evaluateItem(t *testing.T) {
 			seen := newPrice(t, "10.00")
 			item := newTestCartItem(t, "cart_eval_delegate", productID, 3, &seen)
 
-			actual := evaluateItem(item, newTestProduct(t, productID, "12.00", 1))
+			actual := evaluateItem(item, newTestProduct(t, productID, "12.00", 1), nil)
 
 			assert.Equal(t, []ItemIssue{ItemIssueInsufficientStock, ItemIssuePriceIncreased}, actual.Issues)
 			require.NotNil(t, actual.AvailableQuantity)
@@ -190,7 +192,7 @@ func Test_evaluateItem(t *testing.T) {
 
 			item := newTestCartItem(t, "cart_eval_notfound", productID, 2, nil)
 
-			actual := evaluateItem(item, nil)
+			actual := evaluateItem(item, nil, nil)
 
 			assert.Equal(t, []ItemIssue{ItemIssueNotFound}, actual.Issues)
 			assert.Nil(t, actual.ProductName)
@@ -204,7 +206,7 @@ func Test_evaluateItem(t *testing.T) {
 
 			item := newTestCartItem(t, "cart_eval_no_image", productID, 1, nil)
 
-			actual := evaluateItem(item, newTestProduct(t, productID, "10.00", 5))
+			actual := evaluateItem(item, newTestProduct(t, productID, "10.00", 5), nil)
 
 			require.NotNil(t, actual.ProductName)
 			assert.Nil(t, actual.ImagePath)
@@ -214,11 +216,10 @@ func Test_evaluateItem(t *testing.T) {
 			t.Parallel()
 
 			item := newTestCartItem(t, "cart_eval_images", productID, 1, nil)
-			p := newTestProduct(t, productID, "10.00", 5,
-				newTestProductImage(t, "cart_eval_image_first", "products/first.png", 1),
-			)
+			firstImage := newTestProductImage(t, "cart_eval_image_first", "products/first.png", 1)
+			p := newTestProduct(t, productID, "10.00", 5, firstImage)
 
-			actual := evaluateItem(item, p)
+			actual := evaluateItem(item, p, []product.Image{firstImage})
 
 			require.NotNil(t, actual.ImagePath)
 			assert.Equal(t, "products/first.png", *actual.ImagePath)
@@ -229,7 +230,7 @@ func Test_evaluateItem(t *testing.T) {
 
 			item := newTestCartItem(t, "cart_eval_ok", productID, 1, nil)
 
-			actual := evaluateItem(item, newTestProduct(t, productID, "10.00", 5))
+			actual := evaluateItem(item, newTestProduct(t, productID, "10.00", 5), nil)
 
 			assert.NotNil(t, actual.Issues)
 			assert.Empty(t, actual.Issues)
@@ -342,7 +343,7 @@ func Test_evaluateItems(t *testing.T) {
 				foundID: newTestProduct(t, foundID, "10.00", 5),
 			}
 
-			views, seen := evaluateItems(items, products)
+			views, seen := evaluateItems(items, products, nil)
 
 			assert.Len(t, views, 2)
 			// 引けなかった明細を表へ入れると、その明細の提示価格が MarkSeen で消される。
@@ -354,7 +355,7 @@ func Test_evaluateItems(t *testing.T) {
 		t.Run("明細が無い場合は空のViewと空の表を返す", func(t *testing.T) {
 			t.Parallel()
 
-			views, seen := evaluateItems(nil, nil)
+			views, seen := evaluateItems(nil, nil, nil)
 
 			assert.NotNil(t, views)
 			assert.Empty(t, views)
@@ -476,6 +477,8 @@ func Test_usecase_findProducts(t *testing.T) {
 			expected := newTestProduct(t, productID, "10.00", 5)
 
 			productRepo := mock_product.NewMockRepository(ctrl)
+			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			productRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{productID}).
 				Return(product.Products{expected}, nil)
 
@@ -492,6 +495,8 @@ func Test_usecase_findProducts(t *testing.T) {
 
 			ctrl := gomock.NewController(t)
 			productRepo := mock_product.NewMockRepository(ctrl)
+			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			productRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Times(0)
 
 			actual, err := newTestUsecase(t, nil, productRepo).findProducts(t.Context(), nil)
@@ -511,6 +516,8 @@ func Test_usecase_findProducts(t *testing.T) {
 			expectedErr := xerrors.New("failed to find products")
 
 			productRepo := mock_product.NewMockRepository(ctrl)
+			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			productRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Return(nil, expectedErr)
 
 			items := []cart.CartItem{newTestCartItem(t, "cart_findproducts_err", productID, 1, nil)}
@@ -635,6 +642,8 @@ func Test_usecase_buildView(t *testing.T) {
 				newTestCartItem(t, "build_view_item", productID, 2, &seen))
 
 			productRepo := mock_product.NewMockRepository(ctrl)
+			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			productRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{productID}).
 				Return(product.Products{newTestProduct(t, productID, "12.50", 5)}, nil)
 
@@ -658,6 +667,8 @@ func Test_usecase_buildView(t *testing.T) {
 				newTestCartItem(t, "build_view_ok", productID, 3, &seen))
 
 			productRepo := mock_product.NewMockRepository(ctrl)
+			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			productRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{productID}).
 				Return(product.Products{newTestProduct(t, productID, "10.00", 5)}, nil)
 
@@ -682,6 +693,8 @@ func Test_usecase_buildView(t *testing.T) {
 				newTestCartItem(t, "build_view_fail", productID, 1, nil))
 
 			productRepo := mock_product.NewMockRepository(ctrl)
+			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
+			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			productRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Return(nil, expectedErr)
 
 			_, err := newTestUsecase(t, nil, productRepo).buildView(t.Context(), c, now)

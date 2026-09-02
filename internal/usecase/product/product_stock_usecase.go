@@ -56,7 +56,12 @@ func (u *usecase) UpdateProductStock(
 		return ProductView{}, err
 	}
 
-	view := toProductView(entity)
+	images, ierr := u.repo.ListImages(ctx, entity.ID())
+	if ierr != nil {
+		return ProductView{}, ierr
+	}
+
+	view := toProductView(entity, images)
 	// バージョンの採番は永続化時に DB が行うため、エンティティが保持する読み込み時点の値を採番後の値で置き換えます。
 	view.Version = updatedVersion
 

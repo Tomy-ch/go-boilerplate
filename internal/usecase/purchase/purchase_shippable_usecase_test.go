@@ -6,14 +6,12 @@ import (
 	"time"
 
 	"go-boilerplate/internal/apperror"
-	"go-boilerplate/internal/domain/lexicon/money"
 	domainpurchase "go-boilerplate/internal/domain/purchase"
 	mock_purchase "go-boilerplate/internal/domain/purchase/mock"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/internal/usecase/boundary/authz"
 	mock_authz "go-boilerplate/internal/usecase/boundary/authz/mock"
-	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/uuid"
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
@@ -63,25 +61,12 @@ func newPurchaseWithStatus(
 ) *domainpurchase.Purchase {
 	t.Helper()
 
-	unitPrice, err := money.NewPrice(decimaltestkit.MustParse(t, "500"))
-	require.NoError(t, err)
-
 	paidAt := orderedAt.Add(time.Minute)
 	attrs := domainpurchase.Attributes{
-		Code:       "code-" + salt,
-		UserID:     userID,
-		StatusID:   uuidtestkit.NewTestFromSalt(t, "shippable_status"),
-		StatusCode: status.Code(),
-		Details: []domainpurchase.PurchaseDetail{
-			domainpurchase.NewPurchaseDetail(
-				uuidtestkit.NewTestFromSalt(t, salt+"_detail"),
-				domainpurchase.PurchaseDetailAttributes{
-					ProductID: uuidtestkit.NewTestFromSalt(t, "shippable_product"),
-					Quantity:  1,
-					UnitPrice: unitPrice,
-				},
-			),
-		},
+		Code:           "code-" + salt,
+		UserID:         userID,
+		StatusID:       uuidtestkit.NewTestFromSalt(t, "shippable_status"),
+		StatusCode:     status.Code(),
 		SubtotalAmount: 50000,
 		TaxAmount:      5000,
 		ShippingFee:    500,

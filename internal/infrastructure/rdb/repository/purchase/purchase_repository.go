@@ -44,16 +44,6 @@ func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*purchase.Purc
 		return nil, pgerror.NormalizeError(err)
 	}
 
-	detailRows, err := db.ListPurchaseDetailsByPurchaseID(ctx, id)
-	if err != nil {
-		return nil, pgerror.NormalizeError(err)
-	}
-
-	details, err := toPurchaseDetails(detailRows)
-	if err != nil {
-		return nil, err
-	}
-
 	p := row.Purchases
 	entity, err := purchase.Reconstruct(p.ID, purchase.Attributes{
 		Code:           p.Code,
@@ -64,7 +54,6 @@ func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*purchase.Purc
 		TaxAmount:      int(p.TaxAmount),
 		ShippingFee:    int(p.ShippingFee),
 		TotalAmount:    int(p.TotalAmount),
-		Details:        details,
 		OrderedAt:      p.OrderedAt,
 		PaidAt:         p.PaidAt,
 		CanceledAt:     p.CanceledAt,
@@ -75,6 +64,21 @@ func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*purchase.Purc
 		return nil, pgerror.NormalizeReconstructError(err)
 	}
 	return entity, nil
+}
+
+// ListDetails は、購入の明細を登録順で読み出します。
+func (r *repository) ListDetails(ctx context.Context, purchaseID uuid.UUID) ([]purchase.PurchaseDetail, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, r.db))
+
+	rows, err := db.ListPurchaseDetailsByPurchaseID(ctx, purchaseID)
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
+	}
+
+	return toPurchaseDetails(rows)
 }
 
 // LockByCode は、購入コードで引いた購入行のみ悲観ロック（FOR UPDATE OF p）して明細込みで再構築し返します。
@@ -91,16 +95,6 @@ func (r *repository) LockByCode(ctx context.Context, code string) (*purchase.Pur
 		return nil, pgerror.NormalizeError(err)
 	}
 
-	detailRows, err := db.ListPurchaseDetailsByPurchaseID(ctx, row.Purchases.ID)
-	if err != nil {
-		return nil, pgerror.NormalizeError(err)
-	}
-
-	details, err := toPurchaseDetails(detailRows)
-	if err != nil {
-		return nil, err
-	}
-
 	p := row.Purchases
 	entity, err := purchase.Reconstruct(p.ID, purchase.Attributes{
 		Code:           p.Code,
@@ -111,7 +105,6 @@ func (r *repository) LockByCode(ctx context.Context, code string) (*purchase.Pur
 		TaxAmount:      int(p.TaxAmount),
 		ShippingFee:    int(p.ShippingFee),
 		TotalAmount:    int(p.TotalAmount),
-		Details:        details,
 		OrderedAt:      p.OrderedAt,
 		PaidAt:         p.PaidAt,
 		CanceledAt:     p.CanceledAt,
@@ -222,16 +215,6 @@ func (r *repository) FindShippable(ctx context.Context, limit int32) (purchase.P
 		ids[i] = row.Purchases.ID
 	}
 
-	detailRows, err := db.ListPurchaseDetailsByPurchaseIDs(ctx, ids)
-	if err != nil {
-		return nil, pgerror.NormalizeError(err)
-	}
-
-	detailsByPurchaseID, err := groupPurchaseDetails(detailRows)
-	if err != nil {
-		return nil, err
-	}
-
 	purchases := make(purchase.Purchases, len(rows))
 	for i, row := range rows {
 		p := row.Purchases
@@ -244,7 +227,6 @@ func (r *repository) FindShippable(ctx context.Context, limit int32) (purchase.P
 			TaxAmount:      int(p.TaxAmount),
 			ShippingFee:    int(p.ShippingFee),
 			TotalAmount:    int(p.TotalAmount),
-			Details:        detailsByPurchaseID[p.ID],
 			OrderedAt:      p.OrderedAt,
 			PaidAt:         p.PaidAt,
 			CanceledAt:     p.CanceledAt,
@@ -289,12 +271,8 @@ func (r *repository) FindDetailByID(ctx context.Context, id uuid.UUID) (*purchas
 		return nil, pgerror.NormalizeError(err)
 	}
 
-	detailRows, err := db.ListPurchaseDetailsByPurchaseID(ctx, id)
-	if err != nil {
-		return nil, pgerror.NormalizeError(err)
-	}
-
-	details, err := toPurchaseDetails(detailRows)
+	// Detail は読み取りモデルであり、集約とは別に明細を伴う。
+	details, err := r.ListDetails(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -310,12 +288,12 @@ func (r *repository) FindDetailByID(ctx context.Context, id uuid.UUID) (*purchas
 		TaxAmount:      int(row.TaxAmount),
 		ShippingFee:    int(row.ShippingFee),
 		TotalAmount:    int(row.TotalAmount),
-		Details:        details,
 		OrderedAt:      row.OrderedAt,
 		PaidAt:         row.PaidAt,
 		CanceledAt:     row.CanceledAt,
 		ShippedAt:      row.ShippedAt,
 		DeliveredAt:    row.DeliveredAt,
+		Details:        details,
 	}, nil
 }
 
