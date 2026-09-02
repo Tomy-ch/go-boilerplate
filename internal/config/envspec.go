@@ -81,6 +81,10 @@ type Realtime struct {
 	// AccessKeyID / SecretAccessKey は ObjectStorage と同じ既定（両方空なら未設定を許す）。
 	AccessKeyID     string `env:"ACCESS_KEY_ID"     envDefault:""`
 	SecretAccessKey string `env:"SECRET_ACCESS_KEY" envDefault:""`
+	// MaxConnections は 1 instance が同時に保持する SSE 接続数の上限。負荷と機材で決まるため配備ごとに変わる。
+	MaxConnections int `env:"MAX_CONNECTIONS" envDefault:"1000"`
+	// ReplayConcurrency は replay と catch-up が 1 instance で同時に走る本数の上限。
+	ReplayConcurrency int `env:"REPLAY_CONCURRENCY" envDefault:"16"`
 }
 
 // Auth は access token（JWT）検証の設定を保持する。

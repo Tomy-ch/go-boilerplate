@@ -204,6 +204,9 @@ var (
 	expectedRealtimeDLQ             = ""
 	expectedRealtimeAccessKeyID     = "test-access-key"
 	expectedRealtimeSecretAccessKey = "test-secret-key"
+	// MaxConnections / ReplayConcurrency は env ファイルに書かない Code default。
+	expectedRealtimeMaxConnections    = 1000
+	expectedRealtimeReplayConcurrency = 16
 )
 
 // MockConfigForTest は、テスト用のConfigを返します。
@@ -338,13 +341,15 @@ func MockConfigForTest(tb testing.TB) *Config {
 			maxUploadBytes:  expectedObjectStorageMaxUploadBytes,
 		},
 		realtime: RealtimeConfig{
-			region:          expectedRealtimeRegion,
-			tableSuffix:     expectedRealtimeTableSuffix,
-			topic:           expectedRealtimeTopic,
-			queuePrefix:     expectedRealtimeQueuePrefix,
-			dlq:             expectedRealtimeDLQ,
-			accessKeyID:     expectedRealtimeAccessKeyID,
-			secretAccessKey: expectedRealtimeSecretAccessKey,
+			region:            expectedRealtimeRegion,
+			tableSuffix:       expectedRealtimeTableSuffix,
+			topic:             expectedRealtimeTopic,
+			queuePrefix:       expectedRealtimeQueuePrefix,
+			dlq:               expectedRealtimeDLQ,
+			accessKeyID:       expectedRealtimeAccessKeyID,
+			secretAccessKey:   expectedRealtimeSecretAccessKey,
+			maxConnections:    expectedRealtimeMaxConnections,
+			replayConcurrency: expectedRealtimeReplayConcurrency,
 		},
 		endpoint: EndpointConfig{
 			otlp:           expectedEndpointOTLP,
@@ -392,13 +397,15 @@ func mockLoader(tb testing.TB) Loader {
 			TargetStatusCodes: expectedObservabilityTargetStatusCodes,
 		},
 		Realtime: Realtime{
-			Region:          expectedRealtimeRegion,
-			TableSuffix:     expectedRealtimeTableSuffix,
-			Topic:           expectedRealtimeTopic,
-			QueuePrefix:     expectedRealtimeQueuePrefix,
-			DLQ:             expectedRealtimeDLQ,
-			AccessKeyID:     expectedRealtimeAccessKeyID,
-			SecretAccessKey: expectedRealtimeSecretAccessKey,
+			Region:            expectedRealtimeRegion,
+			TableSuffix:       expectedRealtimeTableSuffix,
+			Topic:             expectedRealtimeTopic,
+			QueuePrefix:       expectedRealtimeQueuePrefix,
+			DLQ:               expectedRealtimeDLQ,
+			AccessKeyID:       expectedRealtimeAccessKeyID,
+			SecretAccessKey:   expectedRealtimeSecretAccessKey,
+			MaxConnections:    expectedRealtimeMaxConnections,
+			ReplayConcurrency: expectedRealtimeReplayConcurrency,
 		},
 		Endpoint: Endpoint{
 			OTLP:           expectedEndpointOTLP,

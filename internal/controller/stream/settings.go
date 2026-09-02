@@ -7,7 +7,7 @@ import (
 )
 
 // Settings のゼロ値に充てる既定値。どちらも instance あたりの上限で、負荷と機材で決まるため
-// 配備ごとに変わりえます（typed config への露出は #1417）。
+// 配備ごとに変わりえます（REALTIME_MAX_CONNECTIONS / REALTIME_REPLAY_CONCURRENCY）。
 const (
 	// DefaultMaxConnections は、1 instance が同時に保持する SSE 接続数の上限です。
 	DefaultMaxConnections = 1000
