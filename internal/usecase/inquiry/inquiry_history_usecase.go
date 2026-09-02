@@ -2,12 +2,12 @@ package inquiry
 
 import (
 	"context"
-	"go-boilerplate/pkg/uuid"
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/inquiry"
 	"go-boilerplate/internal/usecase/boundary/tx"
 	"go-boilerplate/internal/usecase/tools/paging"
+	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
 )
 

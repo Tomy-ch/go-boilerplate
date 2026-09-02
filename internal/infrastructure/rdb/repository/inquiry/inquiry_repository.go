@@ -123,36 +123,6 @@ func (r *repository) ListForOperator(
 	return inquiries, nil
 }
 
-// listRows は、cursor の有無で 2 つのクエリを選び、行を同じ型で返します。
-func (r *repository) listRows(
-	ctx context.Context,
-	db *gen.Queries,
-	cursor *inquiry.Cursor,
-	pageSize int32,
-) ([]gen.Inquiries, error) {
-	if cursor == nil {
-		rows, err := db.ListInquiriesForOperatorFirst(ctx, pageSize)
-		if err != nil {
-			return nil, err
-		}
-		return flatten(rows, func(row *gen.ListInquiriesForOperatorFirstRow) gen.Inquiries {
-			return row.Inquiries
-		}), nil
-	}
-
-	rows, err := db.ListInquiriesForOperatorAfter(ctx, &gen.ListInquiriesForOperatorAfterParams{
-		CursorUpdatedAt: cursor.UpdatedAt,
-		CursorID:        cursor.ID,
-		PageSize:        pageSize,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return flatten(rows, func(row *gen.ListInquiriesForOperatorAfterRow) gen.Inquiries {
-		return row.Inquiries
-	}), nil
-}
-
 // CreateMessage は、問い合わせへメッセージを 1 件登録します。
 // 問い合わせ内の位置が重複した場合は一意制約違反を Conflict として返します。
 func (r *repository) CreateMessage(
@@ -214,6 +184,36 @@ func (r *repository) ListMessages(
 		messages = append(messages, entity)
 	}
 	return messages, nil
+}
+
+// listRows は、cursor の有無で 2 つのクエリを選び、行を同じ型で返します。
+func (r *repository) listRows(
+	ctx context.Context,
+	db *gen.Queries,
+	cursor *inquiry.Cursor,
+	pageSize int32,
+) ([]gen.Inquiries, error) {
+	if cursor == nil {
+		rows, err := db.ListInquiriesForOperatorFirst(ctx, pageSize)
+		if err != nil {
+			return nil, err
+		}
+		return flatten(rows, func(row *gen.ListInquiriesForOperatorFirstRow) gen.Inquiries {
+			return row.Inquiries
+		}), nil
+	}
+
+	rows, err := db.ListInquiriesForOperatorAfter(ctx, &gen.ListInquiriesForOperatorAfterParams{
+		CursorUpdatedAt: cursor.UpdatedAt,
+		CursorID:        cursor.ID,
+		PageSize:        pageSize,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return flatten(rows, func(row *gen.ListInquiriesForOperatorAfterRow) gen.Inquiries {
+		return row.Inquiries
+	}), nil
 }
 
 // flatten は、埋め込み行の集合から表の行だけを取り出します。

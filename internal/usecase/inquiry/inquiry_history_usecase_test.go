@@ -2,8 +2,9 @@ package inquiry
 
 import (
 	"context"
-	domaininquiry "go-boilerplate/internal/domain/inquiry"
 	"testing"
+
+	domaininquiry "go-boilerplate/internal/domain/inquiry"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

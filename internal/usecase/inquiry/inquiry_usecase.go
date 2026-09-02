@@ -9,7 +9,6 @@ package inquiry
 
 import (
 	"context"
-	"go-boilerplate/pkg/uuid"
 
 	"go-boilerplate/internal/domain/inquiry"
 	"go-boilerplate/internal/observability"
@@ -20,6 +19,7 @@ import (
 	"go-boilerplate/internal/usecase/boundary/tx"
 	"go-boilerplate/internal/usecase/outbox"
 	ucrealtime "go-boilerplate/internal/usecase/realtime"
+	"go-boilerplate/pkg/uuid"
 )
 
 // feedStreamID は、運営の一覧画面が購読する組織 feed の stream です。

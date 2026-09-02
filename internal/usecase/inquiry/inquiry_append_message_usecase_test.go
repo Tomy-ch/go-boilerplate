@@ -17,7 +17,7 @@ import (
 )
 
 // expectAppendSucceeds は、問い合わせが決まった後の追加経路が成功する期待を並べます。
-func expectAppendSucceeds(t *testing.T, d deps, inquiryID uuid.UUID) {
+func expectAppendSucceeds(t *testing.T, d deps) {
 	t.Helper()
 	d.sequences.EXPECT().Allocate(gomock.Any(), gomock.Any()).Return(rt.Sequence(1), nil).Times(2)
 	d.repo.EXPECT().CreateMessage(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
@@ -40,7 +40,7 @@ func Test_usecase_AppendMessage(t *testing.T) {
 			i := newTestInquiry(t, userID)
 
 			d.repo.EXPECT().FindActiveByUserID(gomock.Any(), userID).Return(i, nil)
-			expectAppendSucceeds(t, d, i.ID())
+			expectAppendSucceeds(t, d)
 
 			view, err := u.AppendMessage(context.Background(), AppendMessageParams{
 				UserID: userID, Subject: "user-john-doe", Body: "本文",
@@ -61,7 +61,7 @@ func Test_usecase_AppendMessage(t *testing.T) {
 				d.repo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(apperror.ErrConflict),
 				d.repo.EXPECT().FindActiveByUserID(gomock.Any(), userID).Return(i, nil),
 			)
-			expectAppendSucceeds(t, d, i.ID())
+			expectAppendSucceeds(t, d)
 
 			_, err := u.AppendMessage(context.Background(), AppendMessageParams{
 				UserID: userID, Subject: "user-john-doe", Body: "本文",

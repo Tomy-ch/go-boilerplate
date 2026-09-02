@@ -347,7 +347,11 @@ func TestInquiry_AppendMessage(t *testing.T) {
 			t.Parallel()
 			i := newTestInquiry(t)
 
-			_, err := i.AppendMessage(uuid.UUID{}, newTestMessageAttributes(t), time.Now())
+			_, err := i.AppendMessage(
+				uuid.UUID{},
+				newTestMessageAttributes(t),
+				time.Date(2026, time.September, 1, 10, 0, 0, 0, time.UTC),
+			)
 			require.ErrorIs(t, err, ErrInvalidMessageID)
 		})
 	})

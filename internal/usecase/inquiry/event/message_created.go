@@ -4,9 +4,9 @@ package event
 
 import (
 	"encoding/json"
-	"go-boilerplate/internal/domain/inquiry"
 	"time"
 
+	"go-boilerplate/internal/domain/inquiry"
 	"go-boilerplate/pkg/xerrors"
 )
 
