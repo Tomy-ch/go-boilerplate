@@ -1183,43 +1183,6 @@ func (q *Queries) ListAllProductsDescFirst(ctx context.Context, arg *ListAllProd
 	return items, nil
 }
 
-const listExistingProductImagePaths = `-- name: ListExistingProductImagePaths :many
-SELECT DISTINCT pi.image_path
-FROM product_images AS pi
-WHERE pi.image_path = ANY($1::TEXT[])
-    AND pi.deleted_at IS NULL
-`
-
-// === source: database/dml/repository/product/select_existing_image_paths.sql ===
-// 与えた画像パスのうち、いずれかの商品が実際に参照しているものを返す。
-// 未参照オブジェクトの回収（product-image-gc）で「消してよいか」を判定する取得元で、
-// ここに現れなかったパスが孤児にあたる。
-// 論理削除された画像は差し替え履歴であって現在の参照ではないため、生存行だけを参照元として数える。
-//
-//	SELECT DISTINCT pi.image_path
-//	FROM product_images AS pi
-//	WHERE pi.image_path = ANY($1::TEXT[])
-//	    AND pi.deleted_at IS NULL
-func (q *Queries) ListExistingProductImagePaths(ctx context.Context, imagePaths []string) ([]string, error) {
-	rows, err := q.db.Query(ctx, listExistingProductImagePaths, imagePaths)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []string
-	for rows.Next() {
-		var image_path string
-		if err := rows.Scan(&image_path); err != nil {
-			return nil, err
-		}
-		items = append(items, image_path)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listLowStockProducts = `-- name: ListLowStockProducts :many
 SELECT
     ps.name AS status_name,

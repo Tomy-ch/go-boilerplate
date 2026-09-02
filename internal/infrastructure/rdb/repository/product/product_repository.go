@@ -506,25 +506,6 @@ func (r *repository) Count(ctx context.Context) (product.Counts, error) {
 	return product.Counts{Total: row.TotalCount, Published: row.PublishedCount}, nil
 }
 
-// FilterExistingImagePaths は、paths のうち商品が現在の画像として参照しているものを重複排除して返します。
-// 返らなかったパスは、どの商品からも参照されていないことを意味します。
-func (r *repository) FilterExistingImagePaths(ctx context.Context, paths []string) ([]string, error) {
-	ctx, endSpan := r.tracer.Start(ctx)
-	defer endSpan()
-
-	if len(paths) == 0 {
-		return nil, nil
-	}
-
-	db := gen.New(driver.New(ctx, r.db))
-	existing, err := db.ListExistingProductImagePaths(ctx, paths)
-	if err != nil {
-		return nil, pgerror.NormalizeError(err)
-	}
-
-	return existing, nil
-}
-
 // insertImages は、p が保持する画像を登録します。
 func (r *repository) insertImages(ctx context.Context, db *gen.Queries, p *product.Product) error {
 	for _, img := range p.Images() {
