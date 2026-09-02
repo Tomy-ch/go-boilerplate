@@ -24,6 +24,7 @@ import (
 	"go-boilerplate/internal/usecase/tools/paging"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/ptr"
+	"go-boilerplate/pkg/uuid"
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
 	"github.com/stretchr/testify/assert"
@@ -48,7 +49,7 @@ func newTestProduct(t *testing.T, salt string, publishedAt time.Time) *domainpro
 	require.NoError(t, err)
 	category, err := domainproduct.NewCategoryRef(uuidtestkit.NewTestFromSalt(t, salt+"_category"), "電子機器")
 	require.NoError(t, err)
-	p, err := domainproduct.New(uuidtestkit.NewTestFromSalt(t, salt), domainproduct.Attributes{
+	p, _, err := domainproduct.New(uuidtestkit.NewTestFromSalt(t, salt), domainproduct.Attributes{
 		Name:                  "商品-" + salt,
 		Description:           ptr.To("説明-" + salt),
 		Price:                 mustPrice(t, "10.00"),
@@ -70,7 +71,7 @@ func newTestUnpublishedProduct(t *testing.T, salt string, createdAt time.Time) *
 	require.NoError(t, err)
 	category, err := domainproduct.NewCategoryRef(uuidtestkit.NewTestFromSalt(t, salt+"_category"), "電子機器")
 	require.NoError(t, err)
-	p, err := domainproduct.New(uuidtestkit.NewTestFromSalt(t, salt), domainproduct.Attributes{
+	p, _, err := domainproduct.New(uuidtestkit.NewTestFromSalt(t, salt), domainproduct.Attributes{
 		Name:                  "未公開商品-" + salt,
 		Description:           ptr.To("説明-" + salt),
 		Price:                 mustPrice(t, "10.00"),
@@ -664,6 +665,7 @@ func Test_usecase_ListProducts(t *testing.T) {
 					assert.Equal(t, int32(3), params.Limit)
 					return domainproduct.Products{p1, p2, p3}, nil
 				})
+			repo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil)
 
 			u := &usecase{tracer: lt, repo: repo}
 			actual, err := u.ListProducts(ctx, nil, ListProductsParams{Cursor: newDefaultCursor(t)})
@@ -695,6 +697,7 @@ func Test_usecase_ListProducts(t *testing.T) {
 			repo.EXPECT().FindPublishedList(gomock.Any(), gomock.Any()).Times(0)
 			repo.EXPECT().FindAllList(gomock.Any(), gomock.Any()).
 				Return(domainproduct.Products{unpublished}, nil)
+			repo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil)
 
 			u := &usecase{
 				tracer: observability.NewMockUsecaseLayerTracer(t), repo: repo, authorizer: authorizer,
@@ -721,6 +724,7 @@ func Test_usecase_ListProducts(t *testing.T) {
 			repo := mock_product.NewMockRepository(ctrl)
 			repo.EXPECT().FindAllList(gomock.Any(), gomock.Any()).
 				Return(domainproduct.Products{p1, p2, p3}, nil)
+			repo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil)
 
 			u := &usecase{
 				tracer: observability.NewMockUsecaseLayerTracer(t), repo: repo, authorizer: authorizer,
@@ -747,6 +751,7 @@ func Test_usecase_ListProducts(t *testing.T) {
 
 			p1 := newTestProduct(t, "single_p1", base)
 			repo.EXPECT().FindPublishedList(gomock.Any(), gomock.Any()).Return(domainproduct.Products{p1}, nil)
+			repo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil)
 
 			u := &usecase{tracer: lt, repo: repo}
 			actual, err := u.ListProducts(ctx, nil, ListProductsParams{Cursor: newDefaultCursor(t)})
@@ -978,6 +983,7 @@ func Test_usecase_GetProduct(t *testing.T) {
 
 			p := newTestProduct(t, "get_product", published)
 			repo.EXPECT().FindPublishedByID(gomock.Any(), p.ID()).Return(p, nil)
+			repo.EXPECT().ListImages(gomock.Any(), p.ID()).Return(nil, nil)
 
 			u := &usecase{tracer: lt, repo: repo}
 			actual, err := u.GetProduct(context.Background(), nil, GetProductParams{ID: p.ID()})
@@ -1008,6 +1014,7 @@ func Test_usecase_GetProduct(t *testing.T) {
 			repo := mock_product.NewMockRepository(ctrl)
 			repo.EXPECT().FindPublishedByID(gomock.Any(), gomock.Any()).Times(0)
 			repo.EXPECT().FindByID(gomock.Any(), unpublished.ID()).Return(unpublished, nil)
+			repo.EXPECT().ListImages(gomock.Any(), unpublished.ID()).Return(nil, nil)
 
 			u := &usecase{
 				tracer: observability.NewMockUsecaseLayerTracer(t), repo: repo, authorizer: authorizer,
@@ -1074,7 +1081,7 @@ func Test_toProductView(t *testing.T) {
 			require.NoError(t, err)
 			category, err := domainproduct.NewCategoryRef(uuidtestkit.NewTestFromSalt(t, "to_view_category"), "電子機器")
 			require.NoError(t, err)
-			p, err := domainproduct.Reconstruct(uuidtestkit.NewTestFromSalt(t, "to_view"), domainproduct.Attributes{
+			p, images, err := domainproduct.Reconstruct(uuidtestkit.NewTestFromSalt(t, "to_view"), domainproduct.Attributes{
 				Name:                  "商品-to_view",
 				Description:           ptr.To("説明-to_view"),
 				Price:                 mustPrice(t, "12.34"),
@@ -1092,7 +1099,7 @@ func Test_toProductView(t *testing.T) {
 			}, 7, testCreatedAt)
 			require.NoError(t, err)
 
-			actual := toProductView(p)
+			actual := toProductView(p, images)
 
 			assert.Equal(t, p.ID(), actual.ID)
 			assert.Equal(t, "商品-to_view", actual.Name)
@@ -1121,7 +1128,7 @@ func Test_toProductView(t *testing.T) {
 			require.NoError(t, err)
 			category, err := domainproduct.NewCategoryRef(uuidtestkit.NewTestFromSalt(t, "to_view_nil_category"), "書籍")
 			require.NoError(t, err)
-			p, err := domainproduct.New(uuidtestkit.NewTestFromSalt(t, "to_view_nil"), domainproduct.Attributes{
+			p, _, err := domainproduct.New(uuidtestkit.NewTestFromSalt(t, "to_view_nil"), domainproduct.Attributes{
 				Name:     "商品-to_view_nil",
 				Price:    mustPrice(t, "0.00"),
 				Quantity: 0,
@@ -1130,7 +1137,7 @@ func Test_toProductView(t *testing.T) {
 			}, testCreatedAt)
 			require.NoError(t, err)
 
-			actual := toProductView(p)
+			actual := toProductView(p, nil)
 
 			assert.Nil(t, actual.Description)
 			assert.Nil(t, actual.StockWarningThreshold)
@@ -1148,7 +1155,7 @@ func newUnpublishedTestProduct(t *testing.T, salt string) *domainproduct.Product
 	require.NoError(t, err)
 	category, err := domainproduct.NewCategoryRef(uuidtestkit.NewTestFromSalt(t, salt+"_category"), "電子機器")
 	require.NoError(t, err)
-	p, err := domainproduct.New(uuidtestkit.NewTestFromSalt(t, salt), domainproduct.Attributes{
+	p, _, err := domainproduct.New(uuidtestkit.NewTestFromSalt(t, salt), domainproduct.Attributes{
 		Name:                  "商品-" + salt,
 		Description:           ptr.To("説明-" + salt),
 		Price:                 mustPrice(t, "10.00"),
@@ -1567,6 +1574,119 @@ func Test_usecase_findAllPage(t *testing.T) {
 			_, findErr := u.findAllPage(
 				context.Background(), ListProductsParams{Cursor: cursor}, productListRange{})
 			require.ErrorIs(t, findErr, apperror.ErrInvalidArgument)
+		})
+	})
+}
+
+func Test_usecase_toProductViews(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("商品ごとの画像を振り分けて出力DTOへ写す", func(t *testing.T) {
+			t.Parallel()
+
+			base := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
+			p1 := newTestProduct(t, "views_p1", base)
+			p2 := newTestProduct(t, "views_p2", base)
+			image := domainproduct.NewImage(
+				uuidtestkit.NewTestFromSalt(t, "views_image"),
+				domainproduct.ImageAttributes{ImagePath: "products/v.png", DisplaySort: 1},
+			)
+
+			repo := mock_product.NewMockRepository(gomock.NewController(t))
+			repo.EXPECT().ListImagesByProductIDs(gomock.Any(), []uuid.UUID{p1.ID(), p2.ID()}).
+				Return(map[uuid.UUID][]domainproduct.Image{p1.ID(): {image}}, nil)
+
+			u := &usecase{repo: repo}
+			actual, err := u.toProductViews(context.Background(), domainproduct.Products{p1, p2})
+
+			require.NoError(t, err)
+			require.Len(t, actual, 2)
+			require.Len(t, actual[0].Images, 1)
+			assert.Equal(t, "products/v.png", actual[0].Images[0].Path)
+			assert.Empty(t, actual[1].Images)
+		})
+
+		t.Run("商品が空の場合、Repositoryを呼ばず空を返す", func(t *testing.T) {
+			t.Parallel()
+
+			repo := mock_product.NewMockRepository(gomock.NewController(t))
+			repo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Times(0)
+
+			u := &usecase{repo: repo}
+			actual, err := u.toProductViews(context.Background(), nil)
+
+			require.NoError(t, err)
+			assert.Empty(t, actual)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("画像の読み出しに失敗した場合、エラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			base := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
+			repo := mock_product.NewMockRepository(gomock.NewController(t))
+			repo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).
+				Return(nil, apperror.ErrInternal)
+
+			u := &usecase{repo: repo}
+			_, err := u.toProductViews(
+				context.Background(), domainproduct.Products{newTestProduct(t, "views_err", base)})
+
+			require.ErrorIs(t, err, apperror.ErrInternal)
+		})
+	})
+}
+
+func Test_usecase_toProductViewWithImages(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("その商品の画像を引いたうえで出力DTOへ写す", func(t *testing.T) {
+			t.Parallel()
+
+			base := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
+			p := newTestProduct(t, "view_images_ok", base)
+			image := domainproduct.NewImage(
+				uuidtestkit.NewTestFromSalt(t, "view_image"),
+				domainproduct.ImageAttributes{ImagePath: "products/w.png", DisplaySort: 1},
+			)
+
+			repo := mock_product.NewMockRepository(gomock.NewController(t))
+			repo.EXPECT().ListImages(gomock.Any(), p.ID()).Return([]domainproduct.Image{image}, nil)
+
+			u := &usecase{repo: repo}
+			actual, err := u.toProductViewWithImages(context.Background(), p)
+
+			require.NoError(t, err)
+			assert.Equal(t, p.ID(), actual.ID)
+			require.Len(t, actual.Images, 1)
+			assert.Equal(t, "products/w.png", actual.Images[0].Path)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("画像の読み出しに失敗した場合、エラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			base := time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC)
+			repo := mock_product.NewMockRepository(gomock.NewController(t))
+			repo.EXPECT().ListImages(gomock.Any(), gomock.Any()).Return(nil, apperror.ErrInternal)
+
+			u := &usecase{repo: repo}
+			_, err := u.toProductViewWithImages(
+				context.Background(), newTestProduct(t, "view_images_err", base))
+
+			require.ErrorIs(t, err, apperror.ErrInternal)
 		})
 	})
 }

@@ -86,6 +86,17 @@ func insertProductAt(
 	require.NoError(t, err)
 }
 
+// mustProductImages は、集約が抱えなくなった画像を Repository から引くテストヘルパーです。
+func mustProductImages(
+	t *testing.T, ctx context.Context, repo *repository, id uuid.UUID,
+) []domainproduct.Image {
+	t.Helper()
+	images, err := repo.ListImages(ctx, id)
+	require.NoError(t, err)
+
+	return images
+}
+
 func mustParse(t *testing.T, s string) uuid.UUID {
 	t.Helper()
 	id, err := uuid.Parse(s)
@@ -946,13 +957,7 @@ func Test_rowToProduct(t *testing.T) {
 				LockVersion:           3,
 				CreatedAt:             testCreatedAt,
 			}
-			images := []domainproduct.Image{
-				domainproduct.NewImage(
-					uuidtestkit.NewTestFromSalt(t, "row_image"),
-					domainproduct.ImageAttributes{ImagePath: "products/earphone.png", DisplaySort: 1},
-				),
-			}
-			got, err := rowToProduct(productRow{p: row, statusName: "在庫あり", categoryName: "電子機器"}, images)
+			got, err := rowToProduct(productRow{p: row, statusName: "在庫あり", categoryName: "電子機器"})
 			require.NoError(t, err)
 			assert.Equal(t, id, got.ID())
 			assert.Equal(t, "商品", got.Name())
@@ -968,8 +973,6 @@ func Test_rowToProduct(t *testing.T) {
 			assert.Equal(t, publishedAt, *got.PublishedAt())
 			require.NotNil(t, got.Description())
 			assert.Equal(t, "説明", *got.Description())
-			require.Len(t, got.Images(), 1)
-			assert.Equal(t, "products/earphone.png", got.Images()[0].ImagePath())
 			assert.Equal(t, 3, got.Version())
 		})
 	})
@@ -989,7 +992,7 @@ func Test_rowToProduct(t *testing.T) {
 				PublishedAt: ptr.To(publishedAt),
 				CreatedAt:   testCreatedAt,
 			}
-			got, err := rowToProduct(productRow{p: row, statusName: "在庫あり", categoryName: "電子機器"}, nil)
+			got, err := rowToProduct(productRow{p: row, statusName: "在庫あり", categoryName: "電子機器"})
 			assert.Nil(t, got)
 			require.ErrorIs(t, err, apperror.ErrInternal)
 		})
@@ -1006,7 +1009,7 @@ func Test_rowToProduct(t *testing.T) {
 				PublishedAt: ptr.To(publishedAt),
 				CreatedAt:   testCreatedAt,
 			}
-			got, err := rowToProduct(productRow{p: row, statusName: "", categoryName: "電子機器"}, nil)
+			got, err := rowToProduct(productRow{p: row, statusName: "", categoryName: "電子機器"})
 			assert.Nil(t, got)
 			require.ErrorIs(t, err, apperror.ErrInternal)
 		})
@@ -1023,7 +1026,7 @@ func Test_rowToProduct(t *testing.T) {
 				PublishedAt: ptr.To(publishedAt),
 				CreatedAt:   testCreatedAt,
 			}
-			got, err := rowToProduct(productRow{p: row, statusName: "在庫あり", categoryName: ""}, nil)
+			got, err := rowToProduct(productRow{p: row, statusName: "在庫あり", categoryName: ""})
 			assert.Nil(t, got)
 			require.ErrorIs(t, err, apperror.ErrInternal)
 		})
@@ -1041,7 +1044,7 @@ func Test_rowToProduct(t *testing.T) {
 				LockVersion: 0,
 				CreatedAt:   testCreatedAt,
 			}
-			got, err := rowToProduct(productRow{p: row, statusName: "在庫あり", categoryName: "電子機器"}, nil)
+			got, err := rowToProduct(productRow{p: row, statusName: "在庫あり", categoryName: "電子機器"})
 			assert.Nil(t, got)
 			require.ErrorIs(t, err, apperror.ErrInternal)
 			require.NotErrorIs(t, err, domainproduct.ErrInvalidVersion)
@@ -1073,7 +1076,7 @@ func Test_repository_Create(t *testing.T) {
 				require.NoError(t, err)
 				price, err := money.NewPrice(decimal.FromInt(1999))
 				require.NoError(t, err)
-				entity, err := domainproduct.New(id, domainproduct.Attributes{
+				entity, entityImages, err := domainproduct.New(id, domainproduct.Attributes{
 					Name:                  "作成商品",
 					Description:           ptr.To("<p>リッチテキスト説明</p>"),
 					Price:                 price,
@@ -1095,18 +1098,18 @@ func Test_repository_Create(t *testing.T) {
 				}, testCreatedAt)
 				require.NoError(t, err)
 
-				require.NoError(t, repo.Create(ctx, entity))
+				require.NoError(t, repo.Create(ctx, entity, entityImages))
 
 				got, err := repo.FindPublishedByID(ctx, id)
 				require.NoError(t, err)
 				assert.Equal(t, "作成商品", got.Name())
 				require.NotNil(t, got.Description())
 				assert.Equal(t, "<p>リッチテキスト説明</p>", *got.Description())
-				require.Len(t, got.Images(), 2)
-				assert.Equal(t, "products/created.png", got.Images()[0].ImagePath())
-				assert.Equal(t, 1, got.Images()[0].DisplaySort())
-				assert.Equal(t, "products/created-sub.png", got.Images()[1].ImagePath())
-				assert.Equal(t, 2, got.Images()[1].DisplaySort())
+				require.Len(t, mustProductImages(t, ctx, repo, got.ID()), 2)
+				assert.Equal(t, "products/created.png", mustProductImages(t, ctx, repo, got.ID())[0].ImagePath())
+				assert.Equal(t, 1, mustProductImages(t, ctx, repo, got.ID())[0].DisplaySort())
+				assert.Equal(t, "products/created-sub.png", mustProductImages(t, ctx, repo, got.ID())[1].ImagePath())
+				assert.Equal(t, 2, mustProductImages(t, ctx, repo, got.ID())[1].DisplaySort())
 				require.NotNil(t, got.PublishedAt())
 				assert.True(t, publishedAt.Equal(*got.PublishedAt()))
 			})
@@ -1123,7 +1126,7 @@ func Test_repository_Create(t *testing.T) {
 				require.NoError(t, err)
 				price, err := money.NewPrice(decimal.FromInt(500))
 				require.NoError(t, err)
-				entity, err := domainproduct.New(id, domainproduct.Attributes{
+				entity, entityImages, err := domainproduct.New(id, domainproduct.Attributes{
 					Name:     "未公開商品",
 					Price:    price,
 					Quantity: 0,
@@ -1132,7 +1135,7 @@ func Test_repository_Create(t *testing.T) {
 				}, testCreatedAt)
 				require.NoError(t, err)
 
-				require.NoError(t, repo.Create(ctx, entity))
+				require.NoError(t, repo.Create(ctx, entity, entityImages))
 
 				// 公開述語(published_at IS NOT NULL)で除外されるため FindPublishedByID では読み戻せない。
 				// 実際に NULL 列として書き込まれたことを生 SQL で直接検証する。
@@ -1166,7 +1169,7 @@ func Test_repository_Create(t *testing.T) {
 			require.NoError(t, err)
 			price, err := money.NewPrice(decimal.FromInt(100))
 			require.NoError(t, err)
-			entity, err := domainproduct.New(id, domainproduct.Attributes{
+			entity, entityImages, err := domainproduct.New(id, domainproduct.Attributes{
 				Name:     "キャンセル商品",
 				Price:    price,
 				Quantity: 1,
@@ -1179,7 +1182,7 @@ func Test_repository_Create(t *testing.T) {
 			cancel()
 
 			// db.CreateProduct が context.Canceled を返し、pgerror.NormalizeError が ErrCanceled へ正規化する。
-			err = repo.Create(ctx, entity)
+			err = repo.Create(ctx, entity, entityImages)
 			require.ErrorIs(t, err, apperror.ErrCanceled)
 		})
 	})
@@ -1284,7 +1287,7 @@ func Test_repository_Update(t *testing.T) {
 				price, err := money.NewPrice(decimal.FromInt(2500))
 				require.NoError(t, err)
 				publishedAt := base.Add(24 * time.Hour)
-				require.NoError(t, entity.Update(domainproduct.Attributes{
+				updatedImages, updErr := entity.Update(domainproduct.Attributes{
 					Name:                  "更新後商品",
 					Description:           ptr.To("更新後の説明"),
 					Price:                 price,
@@ -1293,9 +1296,10 @@ func Test_repository_Update(t *testing.T) {
 					Status:                statusRef,
 					Category:              categoryRef,
 					PublishedAt:           ptr.To(publishedAt),
-				}))
+				})
+				require.NoError(t, updErr)
 
-				version, err := repo.Update(ctx, entity)
+				version, err := repo.Update(ctx, entity, updatedImages)
 				require.NoError(t, err)
 				assert.Equal(t, 2, version)
 
@@ -1327,7 +1331,7 @@ func Test_repository_Update(t *testing.T) {
 				require.NoError(t, err)
 				price, err := money.NewPrice(decimal.FromInt(1999))
 				require.NoError(t, err)
-				entity, err := domainproduct.New(id, domainproduct.Attributes{
+				entity, entityImages, err := domainproduct.New(id, domainproduct.Attributes{
 					Name:                  "クリア対象商品",
 					Description:           ptr.To("<p>クリア前の説明</p>"),
 					Price:                 price,
@@ -1338,7 +1342,7 @@ func Test_repository_Update(t *testing.T) {
 					PublishedAt:           ptr.To(base),
 				}, testCreatedAt)
 				require.NoError(t, err)
-				require.NoError(t, repo.Create(ctx, entity))
+				require.NoError(t, repo.Create(ctx, entity, entityImages))
 
 				loaded, err := repo.FindByID(ctx, id)
 				require.NoError(t, err)
@@ -1347,15 +1351,16 @@ func Test_repository_Update(t *testing.T) {
 				require.NotNil(t, loaded.StockWarningThreshold())
 				require.NotNil(t, loaded.PublishedAt())
 
-				require.NoError(t, loaded.Update(domainproduct.Attributes{
+				_, updErr := loaded.Update(domainproduct.Attributes{
 					Name:     loaded.Name(),
 					Price:    loaded.Price(),
 					Quantity: loaded.Quantity(),
 					Status:   loaded.Status(),
 					Category: loaded.Category(),
-				}))
+				})
+				require.NoError(t, updErr)
 
-				version, err := repo.Update(ctx, loaded)
+				version, err := repo.Update(ctx, loaded, nil)
 				require.NoError(t, err)
 				assert.Equal(t, 2, version)
 
@@ -1373,13 +1378,15 @@ func Test_repository_Update(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				id := uuidtestkit.NewTestFromSalt(t, "update_images_id")
-				require.NoError(t, repo.Create(ctx, newProductWithImages(t, id, []domainproduct.Image{
+				imgsX1 := []domainproduct.Image{
 					newImage(t, "update_images_before", "products/before.png", 1),
-				})))
+				}
+				pX1, _ := newProductWithImages(t, id, imgsX1)
+				require.NoError(t, repo.Create(ctx, pX1, imgsX1))
 
 				loaded, err := repo.FindByID(ctx, id)
 				require.NoError(t, err)
-				require.NoError(t, loaded.Update(domainproduct.Attributes{
+				afterImages, updErr := loaded.Update(domainproduct.Attributes{
 					Name:     loaded.Name(),
 					Price:    loaded.Price(),
 					Quantity: loaded.Quantity(),
@@ -1388,16 +1395,17 @@ func Test_repository_Update(t *testing.T) {
 					Images: []domainproduct.Image{
 						newImage(t, "update_images_after", "products/after.png", 1),
 					},
-				}))
+				})
+				require.NoError(t, updErr)
 
-				version, err := repo.Update(ctx, loaded)
+				version, err := repo.Update(ctx, loaded, afterImages)
 				require.NoError(t, err)
 				assert.Equal(t, 2, version)
 
 				got, err := repo.FindByID(ctx, id)
 				require.NoError(t, err)
-				require.Len(t, got.Images(), 1)
-				assert.Equal(t, "products/after.png", got.Images()[0].ImagePath())
+				require.Len(t, mustProductImages(t, ctx, repo, got.ID()), 1)
+				assert.Equal(t, "products/after.png", mustProductImages(t, ctx, repo, got.ID())[0].ImagePath())
 			})
 		})
 	})
@@ -1410,9 +1418,11 @@ func Test_repository_Update(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				id := uuidtestkit.NewTestFromSalt(t, "update_images_conflict_id")
-				require.NoError(t, repo.Create(ctx, newProductWithImages(t, id, []domainproduct.Image{
+				imgsX2 := []domainproduct.Image{
 					newImage(t, "update_images_conflict", "products/kept.png", 1),
-				})))
+				}
+				pX2, _ := newProductWithImages(t, id, imgsX2)
+				require.NoError(t, repo.Create(ctx, pX2, imgsX2))
 
 				stale, err := repo.FindByID(ctx, id)
 				require.NoError(t, err)
@@ -1421,7 +1431,7 @@ func Test_repository_Update(t *testing.T) {
 				_, err = drv.Exec(ctx, "UPDATE products SET lock_version = lock_version + 1 WHERE id = $1", id)
 				require.NoError(t, err)
 
-				require.NoError(t, stale.Update(domainproduct.Attributes{
+				_, updErr := stale.Update(domainproduct.Attributes{
 					Name:     stale.Name(),
 					Price:    stale.Price(),
 					Quantity: stale.Quantity(),
@@ -1430,9 +1440,10 @@ func Test_repository_Update(t *testing.T) {
 					Images: []domainproduct.Image{
 						newImage(t, "update_images_conflict_new", "products/rejected.png", 1),
 					},
-				}))
+				})
+				require.NoError(t, updErr)
 
-				_, err = repo.Update(ctx, stale)
+				_, err = repo.Update(ctx, stale, nil)
 				require.ErrorIs(t, err, domainproduct.ErrVersionConflict)
 
 				live, deleted := countProductImages(ctx, t, drv, id)
@@ -1441,8 +1452,8 @@ func Test_repository_Update(t *testing.T) {
 
 				got, err := repo.FindByID(ctx, id)
 				require.NoError(t, err)
-				require.Len(t, got.Images(), 1)
-				assert.Equal(t, "products/kept.png", got.Images()[0].ImagePath())
+				require.Len(t, mustProductImages(t, ctx, repo, got.ID()), 1)
+				assert.Equal(t, "products/kept.png", mustProductImages(t, ctx, repo, got.ID())[0].ImagePath())
 			})
 		})
 
@@ -1463,7 +1474,7 @@ func Test_repository_Update(t *testing.T) {
 				)
 				require.NoError(t, err)
 
-				require.NoError(t, stale.Update(domainproduct.Attributes{
+				_, updErr := stale.Update(domainproduct.Attributes{
 					Name:                  "衝突する更新",
 					Description:           stale.Description(),
 					Price:                 stale.Price(),
@@ -1472,10 +1483,11 @@ func Test_repository_Update(t *testing.T) {
 					Status:                stale.Status(),
 					Category:              stale.Category(),
 					PublishedAt:           stale.PublishedAt(),
-					Images:                stale.Images(),
-				}))
+					Images:                mustProductImages(t, ctx, repo, stale.ID()),
+				})
+				require.NoError(t, updErr)
 
-				version, err := repo.Update(ctx, stale)
+				version, err := repo.Update(ctx, stale, nil)
 				require.ErrorIs(t, err, domainproduct.ErrVersionConflict)
 				assert.Equal(t, 0, version)
 
@@ -1496,7 +1508,7 @@ func Test_repository_Update(t *testing.T) {
 			require.NoError(t, err)
 			price, err := money.NewPrice(decimal.FromInt(100))
 			require.NoError(t, err)
-			entity, err := domainproduct.New(id, domainproduct.Attributes{
+			entity, entityImages, err := domainproduct.New(id, domainproduct.Attributes{
 				Name:     "キャンセル商品",
 				Price:    price,
 				Quantity: 1,
@@ -1508,7 +1520,7 @@ func Test_repository_Update(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			cancel()
 
-			version, err := repo.Update(ctx, entity)
+			version, err := repo.Update(ctx, entity, entityImages)
 			assert.Equal(t, 0, version)
 			require.ErrorIs(t, err, apperror.ErrCanceled)
 			require.NotErrorIs(t, err, domainproduct.ErrVersionConflict)
@@ -1519,7 +1531,7 @@ func Test_repository_Update(t *testing.T) {
 
 			entity := reconstructWithVersion(t, "update_version_overflow_id", math.MaxInt32+1)
 
-			version, err := repo.Update(context.Background(), entity)
+			version, err := repo.Update(context.Background(), entity, nil)
 			assert.Equal(t, 0, version)
 			require.ErrorIs(t, err, safecast.ErrOverflow)
 		})
@@ -1537,7 +1549,7 @@ func reconstructWithVersion(t *testing.T, salt string, version int) *domainprodu
 	price, err := money.NewPrice(decimal.FromInt(100))
 	require.NoError(t, err)
 
-	entity, err := domainproduct.Reconstruct(uuidtestkit.NewTestFromSalt(t, salt), domainproduct.Attributes{
+	entity, _, err := domainproduct.Reconstruct(uuidtestkit.NewTestFromSalt(t, salt), domainproduct.Attributes{
 		Name:     "バージョン過大商品",
 		Price:    price,
 		Quantity: 1,
@@ -1869,7 +1881,7 @@ func Test_repository_UpdateStock(t *testing.T) {
 			require.NoError(t, err)
 			price, err := money.NewPrice(decimal.FromInt(100))
 			require.NoError(t, err)
-			entity, err := domainproduct.New(id, domainproduct.Attributes{
+			entity, _, err := domainproduct.New(id, domainproduct.Attributes{
 				Name:     "キャンセル商品",
 				Price:    price,
 				Quantity: 1,

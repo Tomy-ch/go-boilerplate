@@ -70,14 +70,17 @@ func (u *usecase) CreateProduct(ctx context.Context, authn *auth.Authn, params C
 		return ProductView{}, err
 	}
 
-	var entity *product.Product
+	var (
+		entity  *product.Product
+		created []product.Image
+	)
 	err = u.txm.Do(ctx, func(ctx context.Context) error {
 		statusRef, categoryRef, err := u.resolveRefs(ctx, params.StatusID, params.CategoryID)
 		if err != nil {
 			return err
 		}
 
-		entity, err = product.New(id, product.Attributes{
+		entity, created, err = product.New(id, product.Attributes{
 			Name:                  params.Name,
 			Description:           params.Description,
 			Price:                 productPrice,
@@ -92,13 +95,13 @@ func (u *usecase) CreateProduct(ctx context.Context, authn *auth.Authn, params C
 			return err
 		}
 
-		return u.repo.Create(ctx, entity)
+		return u.repo.Create(ctx, entity, created)
 	})
 	if err != nil {
 		return ProductView{}, err
 	}
 
-	return toProductView(entity), nil
+	return toProductView(entity, created), nil
 }
 
 // buildImages は、入力の商品画像へ ID を採番してドメインの値へ変換します。

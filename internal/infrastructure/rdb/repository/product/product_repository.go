@@ -411,7 +411,7 @@ func (r *repository) UpdateStock(ctx context.Context, p *product.Product) (int, 
 }
 
 // Create は、商品を新規登録します。p が保持する画像も併せて登録します。
-func (r *repository) Create(ctx context.Context, p *product.Product) error {
+func (r *repository) Create(ctx context.Context, p *product.Product, images []product.Image) error {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
@@ -441,12 +441,12 @@ func (r *repository) Create(ctx context.Context, p *product.Product) error {
 		return pgerror.NormalizeError(err)
 	}
 
-	return r.insertImages(ctx, db, p)
+	return r.insertImages(ctx, db, p, images)
 }
 
 // Update は、p が保持するバージョンを条件に商品を更新し、採番後のバージョンを返します。
 // 画像も p が保持する集合へ一致させます。
-func (r *repository) Update(ctx context.Context, p *product.Product) (int, error) {
+func (r *repository) Update(ctx context.Context, p *product.Product, images []product.Image) (int, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
@@ -485,7 +485,7 @@ func (r *repository) Update(ctx context.Context, p *product.Product) (int, error
 		return 0, pgerror.NormalizeError(err)
 	}
 
-	if err = r.syncImages(ctx, db, p); err != nil {
+	if err = r.syncImages(ctx, db, p, images); err != nil {
 		return 0, err
 	}
 
@@ -525,9 +525,35 @@ func (r *repository) FilterExistingImagePaths(ctx context.Context, paths []strin
 	return existing, nil
 }
 
+// ListImages は、商品の画像を表示順の昇順で読み出します。
+func (r *repository) ListImages(ctx context.Context, productID uuid.UUID) ([]product.Image, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	byProductID, err := r.ListImagesByProductIDs(ctx, []uuid.UUID{productID})
+	if err != nil {
+		return nil, err
+	}
+
+	return byProductID[productID], nil
+}
+
+// ListImagesByProductIDs は、複数商品の画像を 1 度の問い合わせでまとめて読み出します。
+// 一覧が商品ごとに引くこと（N+1）を避けるための入口です。
+func (r *repository) ListImagesByProductIDs(
+	ctx context.Context, ids []uuid.UUID,
+) (map[uuid.UUID][]product.Image, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	return r.findImagesByProductIDs(ctx, ids)
+}
+
 // insertImages は、p が保持する画像を登録します。
-func (r *repository) insertImages(ctx context.Context, db *gen.Queries, p *product.Product) error {
-	for _, img := range p.Images() {
+func (r *repository) insertImages(
+	ctx context.Context, db *gen.Queries, p *product.Product, images []product.Image,
+) error {
+	for _, img := range images {
 		displaySort, err := safecast.IntToInt16(img.DisplaySort())
 		if err != nil {
 			return xerrors.Wrap(err, "invalid product image displaySort")
@@ -549,8 +575,9 @@ func (r *repository) insertImages(ctx context.Context, db *gen.Queries, p *produ
 // syncImages は、商品が現在参照している画像を p が保持する集合へ一致させます。
 // 集合から外れた行を論理削除してから、まだ無い行を登録します。生存行の (product_id, display_sort) は部分
 // UNIQUE インデックスが一意に保つため、この順序でなければ表示順を使い回した登録が 23505 で失敗します。
-func (r *repository) syncImages(ctx context.Context, db *gen.Queries, p *product.Product) error {
-	images := p.Images()
+func (r *repository) syncImages(
+	ctx context.Context, db *gen.Queries, p *product.Product, images []product.Image,
+) error {
 	ids := make([]uuid.UUID, len(images))
 	paths := make([]string, len(images))
 	displaySorts := make([]int16, len(images))
@@ -611,21 +638,12 @@ func (r *repository) findImagesByProductIDs(
 	return images, nil
 }
 
-// buildProducts は、商品行の集合を画像込みのドメインエンティティ列へ変換します。
-// 画像は行数によらず 1 度の問い合わせでまとめて取得します。
-func (r *repository) buildProducts(ctx context.Context, rows []productRow) (product.Products, error) {
-	ids := make([]uuid.UUID, len(rows))
-	for i, row := range rows {
-		ids[i] = row.p.ID
-	}
-	imagesByProductID, err := r.findImagesByProductIDs(ctx, ids)
-	if err != nil {
-		return nil, err
-	}
-
+// buildProducts は、商品行の集合をドメインエンティティ列へ変換します。
+// 画像は集約が抱えないため引きません（読みは ListImagesByProductIDs）。
+func (r *repository) buildProducts(_ context.Context, rows []productRow) (product.Products, error) {
 	products := make(product.Products, len(rows))
 	for i, row := range rows {
-		p, perr := rowToProduct(row, imagesByProductID[row.p.ID])
+		p, perr := rowToProduct(row)
 		if perr != nil {
 			return nil, perr
 		}
@@ -635,7 +653,7 @@ func (r *repository) buildProducts(ctx context.Context, rows []productRow) (prod
 	return products, nil
 }
 
-// buildProduct は、単一の商品行を画像込みのドメインエンティティへ変換します。
+// buildProduct は、単一の商品行をドメインエンティティへ変換します。
 func (r *repository) buildProduct(ctx context.Context, row productRow) (*product.Product, error) {
 	products, err := r.buildProducts(ctx, []productRow{row})
 	if err != nil {
@@ -646,7 +664,7 @@ func (r *repository) buildProduct(ctx context.Context, row productRow) (*product
 }
 
 // rowToProduct は、sqlc が返す商品行（マスタ JOIN 込み）と画像をドメインエンティティへ変換します。
-func rowToProduct(row productRow, images []product.Image) (*product.Product, error) {
+func rowToProduct(row productRow) (*product.Product, error) {
 	price, err := money.NewPrice(row.p.Price)
 	if err != nil {
 		return nil, pgerror.NormalizeReconstructError(err)
@@ -660,7 +678,7 @@ func rowToProduct(row productRow, images []product.Image) (*product.Product, err
 		return nil, pgerror.NormalizeReconstructError(err)
 	}
 
-	entity, err := product.Reconstruct(row.p.ID, product.Attributes{
+	entity, _, err := product.Reconstruct(row.p.ID, product.Attributes{
 		Name:                  row.p.Name,
 		Description:           row.p.Description,
 		Price:                 price,
@@ -669,7 +687,6 @@ func rowToProduct(row productRow, images []product.Image) (*product.Product, err
 		Status:                status,
 		Category:              category,
 		PublishedAt:           row.p.PublishedAt,
-		Images:                images,
 	}, int(row.p.LockVersion), row.p.CreatedAt)
 	if err != nil {
 		return nil, pgerror.NormalizeReconstructError(err)

@@ -259,7 +259,17 @@ func (u *usecase) buildView(ctx context.Context, c *cart.Cart, now time.Time) (C
 		return CartView{}, err
 	}
 
-	views, seen := evaluateItems(items, products)
+	// 代表画像は集約が抱えないため、明細ぶんをまとめて引く（1 回の問い合わせで N+1 を避ける）。
+	productIDs := make([]uuid.UUID, 0, len(products))
+	for id := range products {
+		productIDs = append(productIDs, id)
+	}
+	imagesByProductID, ierr := u.productRepo.ListImagesByProductIDs(ctx, productIDs)
+	if ierr != nil {
+		return CartView{}, ierr
+	}
+
+	views, seen := evaluateItems(items, products, imagesByProductID)
 	subtotal, serr := c.Subtotal(toSnapshots(products))
 	if serr != nil {
 		return CartView{}, serr
@@ -275,14 +285,16 @@ func (u *usecase) buildView(ctx context.Context, c *cart.Cart, now time.Time) (C
 // evaluateItems は、明細を商品の現在値と突き合わせ、明細ごとの View と、提示した価格の表を返します。
 // 価格の表には引けた商品のぶんだけが入ります（引けなかった明細の提示価格は据え置かれます）。
 func evaluateItems(
-	items []cart.CartItem, products map[uuid.UUID]*product.Product,
+	items []cart.CartItem,
+	products map[uuid.UUID]*product.Product,
+	imagesByProductID map[uuid.UUID][]product.Image,
 ) ([]CartItemView, map[uuid.UUID]money.Price) {
 	views := make([]CartItemView, 0, len(items))
 	seen := make(map[uuid.UUID]money.Price, len(items))
 
 	for _, item := range items {
 		p := products[item.ProductID()]
-		views = append(views, evaluateItem(item, p))
+		views = append(views, evaluateItem(item, p, imagesByProductID[item.ProductID()]))
 		if p != nil {
 			seen[p.ID()] = p.Price()
 		}
@@ -303,14 +315,14 @@ func toSnapshots(products map[uuid.UUID]*product.Product) map[uuid.UUID]cart.Pro
 }
 
 // evaluateItem は、明細 1 件の再評価を cart.CartItem.Evaluate へ委ね、結果を出力 DTO の語彙へ写します。
-func evaluateItem(item cart.CartItem, p *product.Product) CartItemView {
+func evaluateItem(item cart.CartItem, p *product.Product, images []product.Image) CartItemView {
 	view := CartItemView{ProductID: item.ProductID(), Quantity: item.Quantity()}
 
 	var snapshot *cart.ProductSnapshot
 	if p != nil {
 		name, price := p.Name(), p.Price().Decimal()
 		view.ProductName, view.UnitPrice = &name, &price
-		if image, ok := p.PrimaryImage(); ok {
+		if image, ok := product.PrimaryImage(images); ok {
 			imagePath := image.ImagePath()
 			view.ImagePath = &imagePath
 		}

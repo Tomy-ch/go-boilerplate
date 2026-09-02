@@ -69,8 +69,11 @@ func (u *usecase) UpdateProduct(
 		return ProductView{}, err
 	}
 
-	var entity *product.Product
-	var updatedVersion int
+	var (
+		entity         *product.Product
+		updated        []product.Image
+		updatedVersion int
+	)
 	err = u.txm.Do(ctx, func(ctx context.Context) error {
 		loaded, err := u.repo.FindByID(ctx, id)
 		if err != nil {
@@ -87,7 +90,14 @@ func (u *usecase) UpdateProduct(
 			return err
 		}
 
-		if err = entity.Update(product.Attributes{
+		// 画像が未送信なら現在値を据え置く。集約が抱えないため読み直す。
+		current, cerr := u.repo.ListImages(ctx, entity.ID())
+		if cerr != nil {
+			return cerr
+		}
+
+		var uerr error
+		updated, uerr = entity.Update(product.Attributes{
 			Name:                  ptr.Deref(params.Name, entity.Name()),
 			Description:           params.Description.Resolve(entity.Description()),
 			Price:                 ptr.Deref(price, entity.Price()),
@@ -96,12 +106,13 @@ func (u *usecase) UpdateProduct(
 			Status:                statusRef,
 			Category:              categoryRef,
 			PublishedAt:           params.PublishedAt.Resolve(entity.PublishedAt()),
-			Images:                ptr.Deref(images, entity.Images()),
-		}); err != nil {
-			return err
+			Images:                ptr.Deref(images, current),
+		})
+		if uerr != nil {
+			return uerr
 		}
 
-		updatedVersion, err = u.repo.Update(ctx, entity)
+		updatedVersion, err = u.repo.Update(ctx, entity, updated)
 
 		return err
 	})
@@ -109,7 +120,7 @@ func (u *usecase) UpdateProduct(
 		return ProductView{}, err
 	}
 
-	view := toProductView(entity)
+	view := toProductView(entity, updated)
 	// バージョンの採番は永続化時に DB が行うため、エンティティが保持する読み込み時点の値を採番後の値で置き換えます。
 	view.Version = updatedVersion
 
