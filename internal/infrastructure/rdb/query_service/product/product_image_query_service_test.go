@@ -95,7 +95,6 @@ func Test_service_FilterExistingImagePaths(t *testing.T) {
 		t.Run("どの商品も参照していなければ空を返す", func(t *testing.T) {
 			t.Parallel()
 
-			// ここが「参照あり」に倒れると、生きている画像を孤児と誤判定して不可逆に消すことになる。
 			txm.WithinTx(func(ctx context.Context) {
 				got, err := svc.FilterExistingImagePaths(ctx, []string{orphan})
 
@@ -136,7 +135,6 @@ func Test_service_FilterExistingImagePaths(t *testing.T) {
 		t.Run("論理削除された画像のパスは参照とみなさない", func(t *testing.T) {
 			t.Parallel()
 
-			// ここが「参照あり」に倒れると、差し替えで外れた画像がストレージに残り続けて回収されない。
 			txm.WithinTx(func(ctx context.Context) {
 				drv := driver.New(ctx, testDB)
 				deletedAt := time.Now()

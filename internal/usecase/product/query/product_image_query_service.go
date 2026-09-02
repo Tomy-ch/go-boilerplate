@@ -1,9 +1,7 @@
 //go:generate mockgen -source=$GOFILE -destination=mock/mock_$GOFILE.gen.go -package=mock_$GOPACKAGE
 
 // Package query は、商品の読み取り専用クエリ（QueryService）のインターフェースを提供します。
-// 画像パスの参照有無は商品を経由せず product_images を横断して引く読みで、分解すると必要としない
-// 商品を全件 materialize することになるため QueryService として定義します
-// （docs/design/data-access-pattern.md の §3.3）。
+// 置き場を Repository ではなく QueryService とする判定基準は docs/design/data-access-pattern.md の §3.3。
 package query
 
 import "context"
