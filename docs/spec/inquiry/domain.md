@@ -140,7 +140,6 @@ fields:
 ## Repository Methods
 
 ```yaml
-# internal/domain/inquiry
 - name: FindByID
   signature: FindByID(ctx context.Context, id uuid.UUID) (*Inquiry, error)
   behavior: 問い合わせを 1 件読み出す。存在しなければ apperror.ErrNotFound。
