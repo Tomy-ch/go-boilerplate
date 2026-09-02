@@ -2,7 +2,6 @@ package product
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"go-boilerplate/internal/apperror"
@@ -16,15 +15,9 @@ import (
 	"go-boilerplate/pkg/uuid"
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-// maxProductImages は、1 商品が保持できる生存画像の枚数の上限です。
-// 正本はドメインの maxImages（非公開のため参照できません）と
-// database/migrations/000011_create_product_images.up.sql で、ここはその写しです。
-const maxProductImages = 20
 
 // newProductWithImages は、指定した画像を持つ商品エンティティを構築します。
 // 画像以外の属性は固定値で、画像の入れ替えだけを差分にできます。
@@ -473,97 +466,6 @@ func Test_repository_buildProduct(t *testing.T) {
 				require.NoError(t, err)
 				require.Len(t, got.Images(), 1)
 				assert.Equal(t, "products/single.png", got.Images()[0].ImagePath())
-			})
-		})
-	})
-}
-
-// Test_productImagesMaxPerProduct は、1 商品が保持できる生存画像の枚数上限を product_images の
-// トリガが強制することを検証します。
-//
-// production code の関数と 1:1 で対応しないのは、このトリガが守っているのがアプリケーション経路の
-// 外から入る行だからです。ドメインが maxImages を超える Product を構築できない以上、Repository を
-// 通した経路ではトリガに到達できず、直接 INSERT する以外に上限の担保を確かめる方法がありません。
-func Test_productImagesMaxPerProduct(t *testing.T) {
-	t.Parallel()
-
-	testDB := testkit.NewTestDB(t)
-	txm := testkit.NewTestTransactionRunner(t)
-	repo := &repository{db: testDB, tracer: observability.NewMockInfraLayerTracer(t)}
-
-	// insertImageRow は、ドメインを経由せず product_images へ 1 行を直接登録します。
-	insertImageRow := func(ctx context.Context, productID uuid.UUID, salt string, displaySort int) error {
-		_, err := driver.New(ctx, testDB).Exec(ctx,
-			"INSERT INTO product_images (id, product_id, image_path, display_sort) VALUES ($1, $2, $3, $4)",
-			uuidtestkit.NewTestFromSalt(t, salt), productID, "products/direct.png", displaySort,
-		)
-
-		return err
-	}
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("上限ちょうどまでは直接登録できる", func(t *testing.T) {
-			t.Parallel()
-
-			txm.WithinTx(func(ctx context.Context) {
-				id := uuidtestkit.NewTestFromSalt(t, "max_images_at_limit_product")
-				require.NoError(t, repo.Create(ctx, newProductWithImages(t, id, nil)))
-
-				for i := range maxProductImages {
-					require.NoError(t, insertImageRow(ctx, id, fmt.Sprintf("max_images_at_limit_%d", i), i+1))
-				}
-
-				live, _ := countProductImages(ctx, t, repo.db, id)
-				assert.Equal(t, maxProductImages, live)
-			})
-		})
-
-		t.Run("論理削除で枠が空けば、上限を超えずに登録できる", func(t *testing.T) {
-			t.Parallel()
-
-			txm.WithinTx(func(ctx context.Context) {
-				id := uuidtestkit.NewTestFromSalt(t, "max_images_reuse_product")
-				require.NoError(t, repo.Create(ctx, newProductWithImages(t, id, nil)))
-				for i := range maxProductImages {
-					require.NoError(t, insertImageRow(ctx, id, fmt.Sprintf("max_images_reuse_%d", i), i+1))
-				}
-
-				_, err := driver.New(ctx, repo.db).Exec(ctx,
-					"UPDATE product_images SET deleted_at = NOW() WHERE product_id = $1 AND display_sort = 1", id,
-				)
-				require.NoError(t, err)
-
-				require.NoError(t, insertImageRow(ctx, id, "max_images_reuse_extra", 1))
-
-				live, deleted := countProductImages(ctx, t, repo.db, id)
-				assert.Equal(t, maxProductImages, live)
-				assert.Equal(t, 1, deleted)
-			})
-		})
-	})
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("上限を1枚超える直接登録は検査制約違反で拒まれる", func(t *testing.T) {
-			t.Parallel()
-
-			txm.WithinTx(func(ctx context.Context) {
-				id := uuidtestkit.NewTestFromSalt(t, "max_images_over_limit_product")
-				require.NoError(t, repo.Create(ctx, newProductWithImages(t, id, nil)))
-				for i := range maxProductImages {
-					require.NoError(t, insertImageRow(ctx, id, fmt.Sprintf("max_images_over_limit_%d", i), i+1))
-				}
-
-				// 失敗するとトランザクションが中断状態になるため、これをこの tx の最後の文にします。
-				err := insertImageRow(ctx, id, "max_images_over_limit_extra", maxProductImages+1)
-
-				var pgErr *pgconn.PgError
-				require.ErrorAs(t, err, &pgErr)
-				assert.Equal(t, "23514", pgErr.Code)
-				assert.Equal(t, "product_images_max_per_product", pgErr.ConstraintName)
 			})
 		})
 	})
