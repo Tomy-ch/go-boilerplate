@@ -117,6 +117,21 @@ func (mr *MockRepositoryMockRecorder) FindUserIDsWithPurchases(ctx, userIDs any)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindUserIDsWithPurchases", reflect.TypeOf((*MockRepository)(nil).FindUserIDsWithPurchases), ctx, userIDs)
 }
 
+// ListDetails mocks base method.
+func (m *MockRepository) ListDetails(ctx context.Context, purchaseID uuid.UUID) ([]purchase.PurchaseDetail, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListDetails", ctx, purchaseID)
+	ret0, _ := ret[0].([]purchase.PurchaseDetail)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListDetails indicates an expected call of ListDetails.
+func (mr *MockRepositoryMockRecorder) ListDetails(ctx, purchaseID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListDetails", reflect.TypeOf((*MockRepository)(nil).ListDetails), ctx, purchaseID)
+}
+
 // LockByCode mocks base method.
 func (m *MockRepository) LockByCode(ctx context.Context, code string) (*purchase.Purchase, error) {
 	m.ctrl.T.Helper()

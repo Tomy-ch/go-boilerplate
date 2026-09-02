@@ -120,9 +120,12 @@ func Test_repository_FindByID(t *testing.T) {
 				assert.Equal(t, mustParse(t, seedUnprocessedSID), got.StatusID())
 				assert.Equal(t, 176500, got.TotalAmount())
 				assert.Nil(t, got.PaidAt())
-				require.Len(t, got.Details(), 1)
-				assert.Equal(t, productID, got.Details()[0].ProductID())
-				assert.Equal(t, "80000", got.Details()[0].UnitPrice().String())
+				// 集約は明細を抱えないため ListDetails で引く。
+				details, derr := repo.ListDetails(ctx, purchaseID)
+				require.NoError(t, derr)
+				require.Len(t, details, 1)
+				assert.Equal(t, productID, details[0].ProductID())
+				assert.Equal(t, "80000", details[0].UnitPrice().String())
 			})
 		})
 	})
@@ -168,49 +171,6 @@ func Test_repository_FindByID(t *testing.T) {
 				_, err = drv.Exec(ctx,
 					"INSERT INTO purchase_details (id, purchase_id, product_id, quantity, unit_price) VALUES ($1,$2,$3,$4,$5)",
 					detailID, purchaseID, productID, 2, 80000,
-				)
-				require.NoError(t, err)
-
-				_, ferr := repo.FindByID(ctx, purchaseID)
-				require.ErrorIs(t, ferr, apperror.ErrInternal)
-			})
-		})
-
-		t.Run("明細の単価が負値の場合はErrInternalへ正規化する", func(t *testing.T) {
-			t.Parallel()
-
-			txm.WithinTx(func(ctx context.Context) {
-				drv := driver.New(ctx, testDB)
-				productID := mustParse(t, "d3000000-0000-4000-8000-000000000001")
-				_, err := drv.Exec(
-					ctx,
-					"INSERT INTO products (id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at) "+
-						"VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW())",
-					productID,
-					"purchase-repo-negprice",
-					nil,
-					80000,
-					20,
-					nil,
-					seedStatusInStock,
-					seedCategory,
-				)
-				require.NoError(t, err)
-
-				purchaseID, err := uuid.New()
-				require.NoError(t, err)
-				_, err = drv.Exec(ctx,
-					"INSERT INTO purchases (id, code, user_id, status_id, subtotal_amount, tax_amount, shipping_fee, total_amount) "+
-						"VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
-					purchaseID, "repo-negprice", mustParse(t, seedUserID), mustParse(t, seedUnprocessedSID), 160000, 16000, 500, 176500,
-				)
-				require.NoError(t, err)
-				detailID, err := uuid.New()
-				require.NoError(t, err)
-				// unit_price=-1 は money.Price の非負不変条件（ErrNegativePrice）に違反する破損行。
-				_, err = drv.Exec(ctx,
-					"INSERT INTO purchase_details (id, purchase_id, product_id, quantity, unit_price) VALUES ($1,$2,$3,$4,$5::numeric)",
-					detailID, purchaseID, productID, 2, "-1",
 				)
 				require.NoError(t, err)
 
@@ -303,6 +263,90 @@ func insertPaidPurchase(ctx context.Context, t *testing.T, db driver.DBTX, seed 
 	return purchaseID, purchaseCode
 }
 
+func Test_repository_ListDetails(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	txm := testkit.NewTestTransactionRunner(t)
+	repo := &repository{tracer: observability.NewMockInfraLayerTracer(t), db: testDB}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("購入の明細を単価と数量ごと返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				purchaseID, _, productID := insertPurchaseWithDetail(ctx, t, drv, "f2000000-0000-4000-8000-000000000001")
+
+				got, err := repo.ListDetails(ctx, purchaseID)
+				require.NoError(t, err)
+				require.Len(t, got, 1)
+				assert.Equal(t, productID, got[0].ProductID())
+				assert.Equal(t, 2, got[0].Quantity())
+				assert.Equal(t, "80000", got[0].UnitPrice().String())
+			})
+		})
+
+		t.Run("明細の単価が負値の場合はErrInternalへ正規化する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				productID := mustParse(t, "d3000000-0000-4000-8000-000000000001")
+				_, err := drv.Exec(
+					ctx,
+					"INSERT INTO products (id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at) "+
+						"VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW())",
+					productID,
+					"purchase-repo-negprice",
+					nil,
+					80000,
+					20,
+					nil,
+					seedStatusInStock,
+					seedCategory,
+				)
+				require.NoError(t, err)
+
+				purchaseID, err := uuid.New()
+				require.NoError(t, err)
+				_, err = drv.Exec(ctx,
+					"INSERT INTO purchases (id, code, user_id, status_id, subtotal_amount, tax_amount, shipping_fee, total_amount) "+
+						"VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
+					purchaseID, "repo-negprice", mustParse(t, seedUserID), mustParse(t, seedUnprocessedSID), 160000, 16000, 500, 176500,
+				)
+				require.NoError(t, err)
+				detailID, err := uuid.New()
+				require.NoError(t, err)
+				// unit_price=-1 は money.Price の非負不変条件（ErrNegativePrice）に違反する破損行。
+				_, err = drv.Exec(ctx,
+					"INSERT INTO purchase_details (id, purchase_id, product_id, quantity, unit_price) VALUES ($1,$2,$3,$4,$5::numeric)",
+					detailID, purchaseID, productID, 2, "-1",
+				)
+				require.NoError(t, err)
+
+				_, ferr := repo.ListDetails(ctx, purchaseID)
+				require.ErrorIs(t, ferr, apperror.ErrInternal)
+			})
+		})
+
+		t.Run("明細を持たないIDでは空を返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				absent, uerr := uuid.New()
+				require.NoError(t, uerr)
+
+				got, err := repo.ListDetails(ctx, absent)
+				require.NoError(t, err)
+				assert.Empty(t, got)
+			})
+		})
+	})
+}
+
 func Test_repository_LockByCode(t *testing.T) {
 	t.Parallel()
 
@@ -327,8 +371,10 @@ func Test_repository_LockByCode(t *testing.T) {
 				assert.Equal(t, mustParse(t, seedUserID), got.UserID())
 				assert.Equal(t, domainpurchase.StatusUnprocessed.Code(), got.StatusCode())
 				assert.Nil(t, got.PaidAt())
-				require.Len(t, got.Details(), 1)
-				assert.Equal(t, productID, got.Details()[0].ProductID())
+				lockedDetails, lderr := repo.ListDetails(ctx, purchaseID)
+				require.NoError(t, lderr)
+				require.Len(t, lockedDetails, 1)
+				assert.Equal(t, productID, lockedDetails[0].ProductID())
 			})
 		})
 
@@ -506,7 +552,6 @@ func Test_repository_UpdateShipped(t *testing.T) {
 					TaxAmount:      locked.TaxAmount(),
 					ShippingFee:    locked.ShippingFee(),
 					TotalAmount:    locked.TotalAmount(),
-					Details:        locked.Details(),
 					OrderedAt:      locked.OrderedAt(),
 				})
 				require.ErrorIs(t, err, domainpurchase.ErrInvalidStatusID)
@@ -621,7 +666,6 @@ func Test_repository_UpdateDelivered(t *testing.T) {
 					TaxAmount:      locked.TaxAmount(),
 					ShippingFee:    locked.ShippingFee(),
 					TotalAmount:    locked.TotalAmount(),
-					Details:        locked.Details(),
 					OrderedAt:      locked.OrderedAt(),
 				})
 				require.ErrorIs(t, err, domainpurchase.ErrInvalidStatusID)

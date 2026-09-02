@@ -42,31 +42,31 @@ func (m *MockCommandService) EXPECT() *MockCommandServiceMockRecorder {
 }
 
 // CancelPurchase mocks base method.
-func (m *MockCommandService) CancelPurchase(ctx context.Context, p *purchase.Purchase) error {
+func (m *MockCommandService) CancelPurchase(ctx context.Context, p *purchase.Purchase, details []purchase.PurchaseDetail) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CancelPurchase", ctx, p)
+	ret := m.ctrl.Call(m, "CancelPurchase", ctx, p, details)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CancelPurchase indicates an expected call of CancelPurchase.
-func (mr *MockCommandServiceMockRecorder) CancelPurchase(ctx, p any) *gomock.Call {
+func (mr *MockCommandServiceMockRecorder) CancelPurchase(ctx, p, details any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancelPurchase", reflect.TypeOf((*MockCommandService)(nil).CancelPurchase), ctx, p)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CancelPurchase", reflect.TypeOf((*MockCommandService)(nil).CancelPurchase), ctx, p, details)
 }
 
 // CreatePurchase mocks base method.
-func (m *MockCommandService) CreatePurchase(ctx context.Context, p *purchase.Purchase) error {
+func (m *MockCommandService) CreatePurchase(ctx context.Context, p *purchase.Purchase, details []purchase.PurchaseDetail) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreatePurchase", ctx, p)
+	ret := m.ctrl.Call(m, "CreatePurchase", ctx, p, details)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreatePurchase indicates an expected call of CreatePurchase.
-func (mr *MockCommandServiceMockRecorder) CreatePurchase(ctx, p any) *gomock.Call {
+func (mr *MockCommandServiceMockRecorder) CreatePurchase(ctx, p, details any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePurchase", reflect.TypeOf((*MockCommandService)(nil).CreatePurchase), ctx, p)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePurchase", reflect.TypeOf((*MockCommandService)(nil).CreatePurchase), ctx, p, details)
 }
 
 // LockPurchase mocks base method.
