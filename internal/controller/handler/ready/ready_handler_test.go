@@ -84,7 +84,7 @@ func Test_server_GetReady(t *testing.T) {
 			require.True(t, ok)
 
 			expected := gen.GetReady200JSONResponse(gen.ReadyResponse{
-				Status:          gen.Ok,
+				Status:          gen.ReadyResponseStatusOk,
 				ApplicationTime: appTime,
 				DbLatencyMs:     1,
 				DbRespondedAt:   dbResAt,
