@@ -48,6 +48,13 @@ type DeliveryEvent struct {
 	SchemaVersion int
 	// Payload は、feature が定義する JSON です。機構は中身を解釈しません。
 	Payload json.RawMessage
+	// Origin は、この event を生んだ command の trace を指す不透明な carrier です。
+	// 中身の項目名は observability だけが知り、機構は解釈せず運ぶだけです
+	// （outbox の Message.Headers と同じ扱い）。client には届きません（直列化形に含めない）。
+	// 配送と replay の span がここへ link を張り、起点の command から
+	// 「この event がいつ誰に届いたか」を辿れるようにします。
+	// nil でも構いません — 伝搬が途切れた event は link の無い span になるだけです。
+	Origin map[string]string
 }
 
 // wireEvent は、DeliveryEvent の直列化形（client に届く JSON）です。

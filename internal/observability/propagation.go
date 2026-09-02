@@ -37,6 +37,36 @@ func extractFromCarrier(ctx context.Context, attrs map[string]string, prop propa
 	return prop.Extract(ctx, mapCarrier(attrs))
 }
 
+// maxTraceStateBytes は、持ち回る tracestate の上限です（W3C の推奨上限）。
+// tracestate は client が任意に注入でき、32 member × 512 バイトまで文法上は通ります。
+// link を張るのに必要なのは traceparent だけなので、超えた分は運ばずに捨てます。
+const maxTraceStateBytes = 512
+
+// TraceContextFromCarrier は、attrs から trace context の項目だけを取り出した carrier を返します。
+// 非同期のホップで起点 trace を持ち回るとき、運ぶ側が項目名を知らずに済むようにするためのものです。
+// 該当が無ければ nil を返します。
+func TraceContextFromCarrier(attrs map[string]string) map[string]string {
+	if len(attrs) == 0 {
+		return nil
+	}
+
+	out := map[string]string{}
+	for _, key := range traceContextPropagator.Fields() {
+		value, ok := attrs[key]
+		if !ok || value == "" || len(value) > maxTraceStateBytes {
+			continue
+		}
+
+		out[key] = value
+	}
+
+	if len(out) == 0 {
+		return nil
+	}
+
+	return out
+}
+
 // InjectTraceContextToCarrier は、現在の ctx の trace context（traceparent 等）のみを attrs へ書き込みます。
 // outbox emit 時に traceparent を headers へ載せ、後続の relay→受信側を起点 trace に繋ぐための公開ヘルパです。
 // グローバル伝播器（Baggage を含みうる）ではなく TraceContext 限定で inject することで、インバウンド由来の

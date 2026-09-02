@@ -2,6 +2,7 @@ package observability
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -244,6 +245,66 @@ func Test_mapCarrier_Set(t *testing.T) {
 
 			assert.Equal(t, "v2", c.Get("traceparent"))
 			assert.Len(t, c.Keys(), 1)
+		})
+	})
+}
+
+func TestTraceContextFromCarrier(t *testing.T) {
+	t.Parallel()
+
+	const traceParent = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("trace context の項目だけを取り出す", func(t *testing.T) {
+			t.Parallel()
+
+			got := TraceContextFromCarrier(map[string]string{
+				"traceparent":     traceParent,
+				"tracestate":      "vendor=1",
+				"Idempotency-Key": "must-not-be-carried",
+			})
+
+			// 運ぶのは trace の再構成に要る分だけ。carrier を丸ごと持ち回ると、
+			// 無関係なヘッダまで EventLog の item に残ってしまう。
+			assert.Equal(t, map[string]string{"traceparent": traceParent, "tracestate": "vendor=1"}, got)
+		})
+
+		t.Run("取り出した carrier から SpanContext を復元できる", func(t *testing.T) {
+			t.Parallel()
+
+			got := TraceContextFromCarrier(map[string]string{"traceparent": traceParent})
+			sc := trace.SpanContextFromContext(
+				extractFromCarrier(context.Background(), got, traceContextPropagator),
+			)
+
+			require.True(t, sc.IsValid())
+			assert.Equal(t, "4bf92f3577b34da6a3ce929d0e0e4736", sc.TraceID().String())
+		})
+
+		t.Run("長すぎる tracestate は運ばない", func(t *testing.T) {
+			t.Parallel()
+
+			// tracestate は client が任意に注入できる。上限を置かないと 1 event あたり
+			// 16 KiB 近くまで膨らみ、封筒の直列化上限の外側で item を太らせる。
+			long := strings.Repeat("a", maxTraceStateBytes+1)
+
+			got := TraceContextFromCarrier(map[string]string{"traceparent": traceParent, "tracestate": long})
+
+			assert.Equal(t, map[string]string{"traceparent": traceParent}, got)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("trace context が無ければ nil を返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Nil(t, TraceContextFromCarrier(nil))
+			assert.Nil(t, TraceContextFromCarrier(map[string]string{"Idempotency-Key": "k"}))
+			assert.Nil(t, TraceContextFromCarrier(map[string]string{"traceparent": ""}))
 		})
 	})
 }

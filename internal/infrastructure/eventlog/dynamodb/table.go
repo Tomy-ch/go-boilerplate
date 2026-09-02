@@ -20,6 +20,7 @@ const (
 	attrSchemaVersion = "schema_version"
 	attrPayload       = "payload"
 	attrExpiresAt     = "expires_at"
+	attrOrigin        = "origin"
 )
 
 // TableSpec は、EventLog table の定義を返します（one-shot の初期化と contract test が使います）。

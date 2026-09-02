@@ -266,3 +266,62 @@ func TestLayerTracer_startSpan(t *testing.T) {
 		})
 	})
 }
+
+func TestLayerTracer_StartWithLink(t *testing.T) {
+	t.Parallel()
+
+	// 起点となる trace の識別子。W3C の traceparent 形式（version-traceid-spanid-flags）。
+	const originTraceID = "4bf92f3577b34da6a3ce929d0e0e4736"
+	const originCarrier = "00-" + originTraceID + "-00f067aa0ba902b7-01"
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("carrier が指す trace への link を持つ span を開く", func(t *testing.T) {
+			t.Parallel()
+
+			tp, recorded := NewRecordingTracerProvider(t)
+			lt := NewTracerFactory(tp).Controller()
+
+			_, endSpan := lt.StartWithLink(context.Background(), map[string]string{"traceparent": originCarrier})
+			endSpan()
+
+			spans := recorded()
+			require.Len(t, spans, 1)
+			require.Len(t, spans[0].Links(), 1, "起点 trace への link が 1 本張られること")
+			assert.Equal(t, originTraceID, spans[0].Links()[0].SpanContext.TraceID().String())
+		})
+
+		t.Run("link を張っても親は呼び出し側の trace のまま", func(t *testing.T) {
+			t.Parallel()
+
+			tp, recorded := NewRecordingTracerProvider(t)
+			lt := NewTracerFactory(tp).Controller()
+
+			parentCtx, endParent := lt.Start(context.Background())
+			_, endChild := lt.StartWithLink(parentCtx, map[string]string{"traceparent": originCarrier})
+			endChild()
+			endParent()
+
+			spans := recorded()
+			require.Len(t, spans, 2)
+			// 起点 trace の子にしてしまうと、接続が続く限り起点の trace が閉じない。
+			assert.NotEqual(t, originTraceID, spans[0].SpanContext().TraceID().String())
+			assert.Equal(t, spans[1].SpanContext().TraceID(), spans[0].SpanContext().TraceID())
+		})
+
+		t.Run("carrier が空なら link 無しの span を開く", func(t *testing.T) {
+			t.Parallel()
+
+			tp, recorded := NewRecordingTracerProvider(t)
+			lt := NewTracerFactory(tp).Controller()
+
+			_, endSpan := lt.StartWithLink(context.Background(), map[string]string{"traceparent": ""})
+			endSpan()
+
+			spans := recorded()
+			require.Len(t, spans, 1)
+			assert.Empty(t, spans[0].Links(), "伝搬が途切れた event は link 無しで済ませること")
+		})
+	})
+}
