@@ -15,6 +15,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// 既存 seed の FK 対象（products の status_id / category_id）。
+const (
+	seedStatusInStock = "093170fb-83a2-4864-a2b3-53236eaf3597"
+	seedCategory      = "5dd52d84-78eb-4a52-ba0b-2e11c95c2af2"
+)
+
 // insertProductWithImage は、画像を持つ商品を挿入するヘルパーです。imagePath=nil で画像なしになります。
 // deletedAt に値を渡すと、その画像は論理削除済みとして挿入されます。
 func insertProductWithImage(
@@ -25,7 +31,7 @@ func insertProductWithImage(
 		"INSERT INTO products "+
 			"(id, name, description, price, quantity, stock_warning_threshold, status_id, category_id) "+
 			"VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
-		id, name, nil, 100, 10, nil, statusInStock, categoryElectronics,
+		id, name, nil, 100, 10, nil, seedStatusInStock, seedCategory,
 	)
 	require.NoError(t, err)
 
@@ -40,12 +46,31 @@ func insertProductWithImage(
 	require.NoError(t, err)
 }
 
-func Test_repository_FilterExistingImagePaths(t *testing.T) {
+func TestNew(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("依存を注入したクエリサービス実装を生成する", func(t *testing.T) {
+			t.Parallel()
+
+			testDB := testkit.NewTestDB(t)
+
+			svc, ok := New(testDB, observability.NewNoopTracerFactory(t)).(*service)
+			require.True(t, ok)
+			assert.Equal(t, testDB, svc.db)
+			assert.NotNil(t, svc.tracer)
+		})
+	})
+}
+
+func Test_service_FilterExistingImagePaths(t *testing.T) {
 	t.Parallel()
 
 	testDB := testkit.NewTestDB(t)
 	txm := testkit.NewTestTransactionRunner(t)
-	repo := &repository{db: testDB, tracer: observability.NewMockInfraLayerTracer(t)}
+	svc := &service{db: testDB, tracer: observability.NewMockInfraLayerTracer(t)}
 
 	referenced := "products/f0000000-0000-4000-8000-000000000001.png"
 	orphan := "products/f0000000-0000-4000-8000-000000000002.png"
@@ -60,7 +85,7 @@ func Test_repository_FilterExistingImagePaths(t *testing.T) {
 				drv := driver.New(ctx, testDB)
 				insertProductWithImage(ctx, t, drv, "f1000000-0000-4000-8000-000000000001", "画像あり商品", &referenced, nil)
 
-				got, err := repo.FilterExistingImagePaths(ctx, []string{referenced, orphan})
+				got, err := svc.FilterExistingImagePaths(ctx, []string{referenced, orphan})
 
 				require.NoError(t, err)
 				assert.Equal(t, []string{referenced}, got)
@@ -72,7 +97,7 @@ func Test_repository_FilterExistingImagePaths(t *testing.T) {
 
 			// ここが「参照あり」に倒れると、生きている画像を孤児と誤判定して不可逆に消すことになる。
 			txm.WithinTx(func(ctx context.Context) {
-				got, err := repo.FilterExistingImagePaths(ctx, []string{orphan})
+				got, err := svc.FilterExistingImagePaths(ctx, []string{orphan})
 
 				require.NoError(t, err)
 				assert.Empty(t, got)
@@ -87,7 +112,7 @@ func Test_repository_FilterExistingImagePaths(t *testing.T) {
 				insertProductWithImage(ctx, t, drv, "f1000000-0000-4000-8000-000000000002", "同一画像A", &referenced, nil)
 				insertProductWithImage(ctx, t, drv, "f1000000-0000-4000-8000-000000000003", "同一画像B", &referenced, nil)
 
-				got, err := repo.FilterExistingImagePaths(ctx, []string{referenced})
+				got, err := svc.FilterExistingImagePaths(ctx, []string{referenced})
 
 				require.NoError(t, err)
 				assert.Equal(t, []string{referenced}, got)
@@ -101,7 +126,7 @@ func Test_repository_FilterExistingImagePaths(t *testing.T) {
 				drv := driver.New(ctx, testDB)
 				insertProductWithImage(ctx, t, drv, "f1000000-0000-4000-8000-000000000004", "画像なし商品", nil, nil)
 
-				got, err := repo.FilterExistingImagePaths(ctx, []string{orphan})
+				got, err := svc.FilterExistingImagePaths(ctx, []string{orphan})
 
 				require.NoError(t, err)
 				assert.Empty(t, got)
@@ -119,7 +144,7 @@ func Test_repository_FilterExistingImagePaths(t *testing.T) {
 					ctx, t, drv, "f1000000-0000-4000-8000-000000000005", "差し替え済み商品", &orphan, &deletedAt,
 				)
 
-				got, err := repo.FilterExistingImagePaths(ctx, []string{orphan})
+				got, err := svc.FilterExistingImagePaths(ctx, []string{orphan})
 
 				require.NoError(t, err)
 				assert.Empty(t, got)
@@ -130,7 +155,7 @@ func Test_repository_FilterExistingImagePaths(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				got, err := repo.FilterExistingImagePaths(ctx, nil)
+				got, err := svc.FilterExistingImagePaths(ctx, nil)
 
 				require.NoError(t, err)
 				assert.Empty(t, got)
@@ -147,7 +172,7 @@ func Test_repository_FilterExistingImagePaths(t *testing.T) {
 			ctx, cancel := context.WithCancel(t.Context())
 			cancel()
 
-			got, err := repo.FilterExistingImagePaths(ctx, []string{orphan})
+			got, err := svc.FilterExistingImagePaths(ctx, []string{orphan})
 
 			assert.Nil(t, got)
 			require.ErrorIs(t, err, apperror.ErrCanceled)

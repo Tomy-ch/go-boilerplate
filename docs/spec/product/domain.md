@@ -271,17 +271,6 @@ fields:
     LockByID で取得した行に対して呼ぶ前提であり、その経路では条件が外れることはない。
     ロックを取らずに呼ばれた場合の 0 行は ErrVersionConflict（409）として返し、在庫の上書きを防ぐ。
 
-# 未参照画像の回収ジョブ向け（追記分）
-- name: FilterExistingImagePaths
-  signature: FilterExistingImagePaths(ctx context.Context, paths []string) ([]string, error)
-  behavior: |
-    paths のうち、いずれかの商品が現在の画像として参照しているものを重複排除して返す。
-    論理削除された画像は現在の参照ではないため、生存行だけを参照元として数える。
-    順序は保証せず、paths が空なら問い合わせずに空を返す。返らなかったパスは
-    「どの商品からも参照されていない」＝孤児であることを意味する。
-    products は論理削除列を持たないため、生存行だけが参照元になる。
-    エンティティを再構築せずパス文字列だけを返すのは、後続がオブジェクトの削除可否しか見ないため。
-
 # SearchFilter（一覧と一致件数が共有する検索条件。ページング・並び順は持たない）
 - struct: SearchFilter
   fields:

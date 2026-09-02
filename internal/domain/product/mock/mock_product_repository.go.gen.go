@@ -101,21 +101,6 @@ func (mr *MockRepositoryMockRecorder) Create(ctx, p any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockRepository)(nil).Create), ctx, p)
 }
 
-// FilterExistingImagePaths mocks base method.
-func (m *MockRepository) FilterExistingImagePaths(ctx context.Context, paths []string) ([]string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FilterExistingImagePaths", ctx, paths)
-	ret0, _ := ret[0].([]string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// FilterExistingImagePaths indicates an expected call of FilterExistingImagePaths.
-func (mr *MockRepositoryMockRecorder) FilterExistingImagePaths(ctx, paths any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FilterExistingImagePaths", reflect.TypeOf((*MockRepository)(nil).FilterExistingImagePaths), ctx, paths)
-}
-
 // FindAllList mocks base method.
 func (m *MockRepository) FindAllList(ctx context.Context, params product.AllListParams) (product.Products, error) {
 	m.ctrl.T.Helper()

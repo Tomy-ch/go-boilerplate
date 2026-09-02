@@ -224,6 +224,7 @@ methods:
 - category_repository # domain/product/category.Repository（FindByID でカテゴリ名称を解決）
 - status_repository   # domain/product/status.Repository（FindByID でステータス名称を解決）
 - authorizer          # boundary/authz.Authorizer（CreateProduct / UpdateProduct / UpdateProductStock / ListLowStockProducts の admin 認可）
+- product_image_query_service # usecase/product/query.ProductImageQueryService（SweepOrphans の参照照合。商品を経由しない横断読みのため QueryService。docs/design/data-access-pattern.md §3.3）
 ```
 
 ## Workflow
@@ -434,7 +435,7 @@ steps:
       - object_storage.List で prefix="products/" のオブジェクトを最大 batchSize 件取得する
       - 接頭辞が products/ で、かつ ModifiedAt が cutoff より前のキーだけを候補に絞る（検査件数へ計上）
       - 候補が 0 件ならそのページは照合も削除も行わない
-      - product_repository.FilterExistingImagePaths で参照済みのパスを特定し、候補から除外する
+      - product_image_query_service.FilterExistingImagePaths で参照済みのパスを特定し、候補から除外する
         （論理削除された画像は現在の参照ではないため、差し替えで外れた画像はここで孤児になる）
       - dryRun でなければ object_storage.Delete で残りを削除し、削除件数を加算（dryRun では対象件数のみ加算）
       - NextCursor が空なら終了。非空なら次ページへ
@@ -442,7 +443,7 @@ steps:
 calls:
   - clock.Now
   - object_storage.List
-  - product_repository.FilterExistingImagePaths
+  - product_image_query_service.FilterExistingImagePaths
   - object_storage.Delete
 errors:
   - 各依存のエラーを伝播。削除済みのオブジェクトは復元できないため、エラー時もそこまでの累計を

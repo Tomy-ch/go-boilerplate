@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	mock_product "go-boilerplate/internal/domain/product/mock"
 	"go-boilerplate/internal/observability"
 	clocktest "go-boilerplate/internal/usecase/boundary/clock/testkit"
 	"go-boilerplate/internal/usecase/boundary/objectstorage"
 	mock_objectstorage "go-boilerplate/internal/usecase/boundary/objectstorage/mock"
+	mock_productquery "go-boilerplate/internal/usecase/product/query/mock"
 	"go-boilerplate/internal/usecase/testkit"
 
 	"github.com/stretchr/testify/assert"
@@ -24,7 +24,7 @@ func TestNewImageGC(t *testing.T) {
 	tf := observability.NewNoopTracerFactory(t)
 
 	uc := NewImageGC(tf, clocktest.NewMockClock(t, time.Time{}),
-		mock_objectstorage.NewMockStorage(ctrl), mock_product.NewMockRepository(ctrl))
+		mock_objectstorage.NewMockStorage(ctrl), mock_productquery.NewMockProductImageQueryService(ctrl))
 	require.NotNil(t, uc)
 }
 
@@ -39,16 +39,16 @@ func Test_imageGCUsecase_SweepOrphans(t *testing.T) {
 	fresh := cutoff.Add(time.Minute) // 猶予期間内
 
 	newUsecase := func(t *testing.T, ctrl *gomock.Controller) (
-		*imageGCUsecase, *mock_objectstorage.MockStorage, *mock_product.MockRepository,
+		*imageGCUsecase, *mock_objectstorage.MockStorage, *mock_productquery.MockProductImageQueryService,
 	) {
 		t.Helper()
 		storage := mock_objectstorage.NewMockStorage(ctrl)
-		repo := mock_product.NewMockRepository(ctrl)
+		repo := mock_productquery.NewMockProductImageQueryService(ctrl)
 		return &imageGCUsecase{
-			tracer:      observability.NewNoopTracerFactory(t).Usecase(),
-			clock:       clocktest.NewMockClock(t, now),
-			storage:     storage,
-			productRepo: repo,
+			tracer:  observability.NewNoopTracerFactory(t).Usecase(),
+			clock:   clocktest.NewMockClock(t, now),
+			storage: storage,
+			images:  repo,
 		}, storage, repo
 	}
 
@@ -353,16 +353,16 @@ func Test_imageGCUsecase_sweepPage(t *testing.T) {
 	aged := cutoff.Add(-time.Minute)
 
 	newUsecase := func(t *testing.T, ctrl *gomock.Controller) (
-		*imageGCUsecase, *mock_objectstorage.MockStorage, *mock_product.MockRepository,
+		*imageGCUsecase, *mock_objectstorage.MockStorage, *mock_productquery.MockProductImageQueryService,
 	) {
 		t.Helper()
 		storage := mock_objectstorage.NewMockStorage(ctrl)
-		repo := mock_product.NewMockRepository(ctrl)
+		repo := mock_productquery.NewMockProductImageQueryService(ctrl)
 		return &imageGCUsecase{
-			tracer:      observability.NewNoopTracerFactory(t).Usecase(),
-			clock:       clocktest.NewMockClock(t, cutoff),
-			storage:     storage,
-			productRepo: repo,
+			tracer:  observability.NewNoopTracerFactory(t).Usecase(),
+			clock:   clocktest.NewMockClock(t, cutoff),
+			storage: storage,
+			images:  repo,
 		}, storage, repo
 	}
 

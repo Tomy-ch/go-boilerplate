@@ -132,9 +132,4 @@ type Repository interface {
 	UpdateStock(ctx context.Context, p *Product) (int, error)
 	// Count は、登録商品の総数と、そのうち公開済みの件数を返します。商品が 1 件もない場合はゼロ値を返します。
 	Count(ctx context.Context) (Counts, error)
-	// FilterExistingImagePaths は、paths のうち、いずれかの商品が現在の画像として参照しているものを返します。
-	// 重複は取り除き、順序は保証しません。paths が空の場合は空を返します。
-	// 返らなかったパスは、どの商品からも参照されていないことを意味します。
-	// 置き換えで論理削除された画像は現在の参照ではないため、参照元として数えません。
-	FilterExistingImagePaths(ctx context.Context, paths []string) ([]string, error)
 }

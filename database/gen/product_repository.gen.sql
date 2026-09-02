@@ -303,17 +303,6 @@ WHERE (sqlc.narg('category_id')::UUID IS NULL OR p.category_id = sqlc.narg('cate
 ORDER BY p.created_at ASC, p.id ASC
 LIMIT sqlc.arg('limit_param');
 
--- === source: database/dml/repository/product/select_existing_image_paths.sql ===
--- name: ListExistingProductImagePaths :many
--- 与えた画像パスのうち、いずれかの商品が実際に参照しているものを返す。
--- 未参照オブジェクトの回収（product-image-gc）で「消してよいか」を判定する取得元で、
--- ここに現れなかったパスが孤児にあたる。
--- 論理削除された画像は差し替え履歴であって現在の参照ではないため、生存行だけを参照元として数える。
-SELECT DISTINCT pi.image_path
-FROM product_images AS pi
-WHERE pi.image_path = ANY(sqlc.arg('image_paths')::TEXT[])
-    AND pi.deleted_at IS NULL;
-
 -- === source: database/dml/repository/product/select_low_stock_products.sql ===
 -- name: ListLowStockProducts :many
 -- 在庫が警告閾値以下の商品を、在庫の少ない順（同数は ID 昇順）で最大 limit 件取得します。
