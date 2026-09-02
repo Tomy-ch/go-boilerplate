@@ -56,6 +56,12 @@ func BindHandler(
 | `ApplicationTime` | チェック時点の `clock.Now()` |
 | `DbLatencyMs` | DB ヘルスチェックの往復レイテンシ（ミリ秒） |
 | `DbRespondedAt` | DB が最後に正常応答した時刻 |
+| `Dependencies` | usecase が probe した縮退しうる依存の一覧。1 つも結線されていなければ項目ごと現れない |
+
+probe に失敗した依存があると `Status` は `degraded` になりますが、応答は `200` のままです。
+instance は通常の HTTP をまだ返せるので、`503` を返すと健全なトラフィックごと
+load balancer から外れてしまいます。エラーになるのはデータベースが応答しないときだけで、
+共有の `apperror` の写像がそれを `503` に変えます。
 
 `Status` は `ReadyResponseStatus` enum で、そのメンバー（`ok`・`degraded`・
 `unhealthy`）は usecase のステータス定数に対応します。

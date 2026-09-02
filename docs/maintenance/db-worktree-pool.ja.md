@@ -207,8 +207,15 @@ make slot-release    # app 停止+イメージ削除 → スロット解放 → 
 - **Realtime Delivery のエミュレータも共有だが、共有のされ方が 2 つで違う。** `dynamodb_local` は `-sharedDb` で
   動くため全 checkout が同じ table 群を見る。worktree 毎の table prefix が予定している隔離で、まだ入っていない。
   `goaws` は topic / queue を実行時に作る（`docker/goaws/goaws.yaml` は何も宣言しない）ので、`elasticmq` と違い
-  名前だけでブランチを隔離でき、conf の変更も `infra-down` も要らない。`make realtime-smoke` はまさにそれに
-  依存していて、実行ごとの乱数名で resource を作り終了時に削除するため、複数 worktree から同時に走っても衝突しない。
+  名前だけでブランチを隔離でき、conf の変更も `infra-down` も要らない。`docker-compose.attach.yaml` がまさにそれを
+  していて、`REALTIME_TOPIC` と `REALTIME_QUEUE_PREFIX` にスロットを付けるため、各 worktree の serve は自分の topic を
+  購読する。付けないと隔離は一般にではなく 1 点で破れる — 知らない stream への wakeup は no-op だが、失効通知は
+  `(subject, destination)` で照合され、どの worktree の DB も同じ fixture から seed されて subject が一致するので、
+  ある窓で ticket を失効させると別の窓の同じ subject の接続が閉じてしまう。`make realtime-smoke` も同じ形で、
+  実行ごとの乱数名で resource を作り終了時に削除する。
+
+  table のほうはまだ分かれていないので、ある worktree が書いた stream は別の worktree からも見える。こちらは
+  上の段落が「予定」と呼ぶ per-slot の `REALTIME_TABLE_SUFFIX` 待ちである。
 - `sql_editor` / `docs_server` / `er_diagram_generator` / `mock_auth_server` は、いずれも自前のデファクト
   ポートを持たないため `2000` 番台に置いている。規則とその帯が安全な理由は
   [`local-environment.ja.md`](local-environment.ja.md) にある。

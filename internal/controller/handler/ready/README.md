@@ -57,6 +57,12 @@ Because the handler propagates the request context into the usecase, it re-binds
 | `ApplicationTime` | `clock.Now()` at check time |
 | `DbLatencyMs` | DB health-check round-trip latency (ms) |
 | `DbRespondedAt` | time the DB last responded successfully |
+| `Dependencies` | one entry per degradable dependency the usecase probed; omitted entirely when none is wired |
+
+A dependency that fails its probe makes `Status` `degraded` while the response stays
+`200`: the instance can still serve ordinary HTTP, and answering `503` would remove it
+from the load balancer along with the traffic that is still healthy. Only the database
+failing produces an error, which the shared `apperror` mapping turns into `503`.
 
 `Status` is the `ReadyResponseStatus` enum; its members (`ok`, `degraded`,
 `unhealthy`) mirror the usecase's status constants.

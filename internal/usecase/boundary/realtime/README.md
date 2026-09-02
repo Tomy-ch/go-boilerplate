@@ -17,6 +17,7 @@ type DeliveryEvent struct {
     OccurredAt    time.Time
     SchemaVersion int
     Payload       json.RawMessage
+    Origin        map[string]string // opaque carrier of the originating command's trace
 }
 
 func (e DeliveryEvent) Validate() error          // ErrInvalidEvent / ErrPayloadTooLarge (64 KiB serialized)

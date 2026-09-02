@@ -87,8 +87,11 @@ compose のサービスは 2 層に分かれており、主 checkout と任意�
 | `er_diagram_generator` | infra | `schemaspy/schemaspy` | `2002:3000` | ER 図生成 |
 | `go_tool_runner` / `node_tool_runner` / `python_tool_runner` | infra | build `docker/tools/Dockerfile`（各 target） | なし（run/exec 実行） | コード生成・lint 等のツールボックス。**`user: root`**・profile: `generate`・リポジトリを `.:/app` にバインド |
 
-Realtime Delivery の table はエミュレータも application も作りません。checkout ごとに 1 回（`REALTIME_TABLE_SUFFIX` を
-変えた後にもう 1 回）`make realtime-init` を実行します — 冪等です。DynamoDB adapter の contract test
+Realtime Delivery の table と fan-out の topic は、エミュレータも application も作りません。`make serve` が用意します
+（`realtime-provision`。`infra-up` と app コンテナの間、garage のバケットを用意するのと同じ位置で走ります）。serve は
+listen の前に EventLog へ到達できるかを確かめ instance の受信先を subscribe するので、資源が無いと起動しません。
+app を起動せずに用意したいときのために `make realtime-init` も残しています。どちらも冪等で、これは見た目より重要です —
+GoAWS は volume を持たないので `infra-down` のたびに topic が消え、作り直しが要ります（DynamoDB の table は残ります）。DynamoDB adapter の contract test
 （`internal/infrastructure/{eventlog,streamticket,instancelease}`）は一意な名前の table を自分で作り、`dynamodb_local` が
 上がっていることを前提にします（`make infra-up` が保証します）。
 
