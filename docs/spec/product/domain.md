@@ -58,6 +58,7 @@ fields:
   - name: images
     type: "[]Image"
     required: false         # 空許容（画像未設定）。表示順の昇順で保持し、構築時に並べ替える
+                            # 枚数は maxImages 以下。超過は ErrTooManyImages（下記 Notes）
   - name: createdAt
     type: time.Time
     required: true          # ゼロ値は ErrInvalidCreatedAt。未公開を含む一覧の keyset 第 1 キー
@@ -103,7 +104,19 @@ fields:
 
 ## Cross-field Invariants
 
-- なし（各フィールドの単独制約のみ）。
+- `len(images) <= maxImages`。超過は `ErrTooManyImages`（422）。画像は商品の読み出しごとに集約へ
+  materialize され、一覧では商品数 × 枚数だけ行が載るため、集約を小さく保つ目的で上限を置く
+  （[`internal/domain/README.md`](../../../internal/domain/README.md) の Aggregate Boundary）。
+  枚数は `New` と `Update` の双方で検証する——`Update` は集合ごとの置き換えなので、生成時だけの
+  検証では上限が守られない。
+
+## Notes
+
+- **placeholder 定数。** `maxImages = 20`。20 は商品ギャラリーとして十分広く、100 件の一覧でも画像行を
+  2000 行に収める値として選んでいる。**枚数の業務要件が立てばこの spec で改める。**
+  OpenAPI の request 側にも同じ値を `maxItems` として置き、上限超過はドメインへ届く前に 400 で弾く
+  （[`openapi/boundary-ownership.md`](../../../openapi/boundary-ownership.md) の direction invariant:
+  request ⊆ domain）。response 側には上限を置かない——domain が出せる値を必ず包含する必要があるため。
 
 ## Behavior Methods
 

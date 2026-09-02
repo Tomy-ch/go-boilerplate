@@ -4254,6 +4254,7 @@ components:
         images:
           type: array
           description: 商品画像。未指定の場合は画像を持たない商品として作成します。 同じ商品の中で displaySort が重複する場合は業務不変条件違反として 422 を返します。
+          maxItems: 20
           items:
             $ref: '#/components/schemas/ProductImageInput'
     ProductPatchRequest:
@@ -4338,6 +4339,7 @@ components:
           type: array
           nullable: true
           description: 商品画像。送ると集合ごと置き換えます（差分更新ではありません）。null を指定すると画像を全て取り除きます。 同じ商品の中で displaySort が重複する場合は業務不変条件違反として 422 を返します。 置き換えで外れた画像は、猶予期間の経過後に未参照オブジェクトの回収（product-image-gc）が ストレージから削除します。
+          maxItems: 20
           items:
             $ref: '#/components/schemas/ProductImageInput'
           x-go-type: nullable.Nullable[[]ProductImageInput]
