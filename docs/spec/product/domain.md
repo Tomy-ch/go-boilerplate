@@ -108,6 +108,12 @@ fields:
   （`internal/domain/README.md` の Aggregate Design / Why validate here）。
   加えて `product_images` のトリガ `product_images_max_per_product` が、アプリケーションを経由しない
   書き込み（手作業の INSERT、別クライアント、データ移行）に対する多重防御として同じ上限を課す。
+  ただしトリガは件数を数える方式なので、それ単体ではレースを閉じない — 同時実行の 2 トランザクションが
+  互いの未コミット行を見ずに合計で上限を超える余地が原理的に残る。商品画像の書き込みは必ず products 行の
+  楽観ロック付き更新（`internal/infrastructure/rdb/repository/product` の `Update`）を経由し、同一商品への
+  同時更新は行ロックと `lock_version` 不一致による `ErrVersionConflict` で直列化されるため、この経路では
+  到達しない（集約経由の一貫性は `internal/domain/README.md` の Aggregate Design、直列化の一般原則は
+  ADR-0036 (ordered-pessimistic-row-locks)）。
   `maxImages` は sample の placeholder で、実要件が立った時点で改める。
 
 ## Behavior Methods

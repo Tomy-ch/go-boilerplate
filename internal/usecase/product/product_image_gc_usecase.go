@@ -40,7 +40,6 @@ type ImageGCUsecase interface {
 	SweepOrphans(ctx context.Context, grace time.Duration, batchSize int32, dryRun bool) (ImageGCResult, error)
 }
 
-// imageGCUsecase は、未参照の商品画像オブジェクトを回収するユースケースを提供します。
 type imageGCUsecase struct {
 	tracer  observability.LayerTracer
 	clock   clock.Clock

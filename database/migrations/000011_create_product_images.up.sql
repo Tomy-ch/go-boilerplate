@@ -17,17 +17,14 @@ CREATE UNIQUE INDEX product_images_product_id_display_sort_unique ON product_ima
 )
 WHERE deleted_at IS NULL;
 
--- 1 商品が保持できる生存画像の枚数に上限を課す。
--- 上限値の正本は internal/domain/product の maxImages で、そちらは New / Reconstruct / Update が
--- 共有する検証ゲートで同じ上限を課す。ここはアプリケーションを経由しない書き込み（手作業の INSERT、
--- 別クライアント、データ移行）に対する多重防御であり、値を変えるときは両方を揃える。
+-- 1 商品が保持できる生存画像の枚数に上限を課す。多重防御としての位置づけと、下記のレースがなぜ
+-- 到達しないかは docs/spec/product/domain.md の Cross-field Invariants を参照。
+-- 値を変えるときは internal/domain/product の maxImages と両方を揃える。
 --
 -- 件数は行の述語として書けず CHECK では表現できないためトリガで数える。数えるのは生存行だけなので、
 -- 置き換えに伴う論理削除のように枚数が下がる更新は素通りする。
 --
--- 同時実行の 2 トランザクションが互いの未コミット行を見ずに合計で上限を超える余地は、件数を数える方式で
--- ある以上は原理的に残る。商品画像の書き込みは集約 Root を経由し products 行の条件付き更新
--- （database/dml/repository/product/update_product.sql）で直列化されるため、この経路では到達しない。
+-- このトリガ単体はレースを閉じない。安全性は書き込み経路の直列化に依存する。
 --
 -- search_path を固定するのは、非修飾の product_images が探索パス次第で別スキーマの同名テーブルに
 -- 解決されうるため（PostgreSQL の関数ハードニングの定石）。

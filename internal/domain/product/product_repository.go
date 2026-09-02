@@ -121,9 +121,8 @@ type Repository interface {
 	// Create は、商品を新規登録します。p が保持する画像も併せて登録します。
 	Create(ctx context.Context, p *Product) error
 	// Update は、p が保持するバージョンを条件に商品を更新し、採番後のバージョンを返します。
-	// 画像は p が保持する集合へ ID で一致させます。集合から外れた画像は論理削除として残り、現在の参照
-	// からは外れます。同じ ID の画像はそのまま生存し続けるため、内容の差し替えは新しい ID の画像として
-	// 表現します。
+	// 画像は p が保持する集合へ ID で一致させます（同一性の定義は [Image] を参照）。集合から外れた画像は
+	// 論理削除として残り、現在の参照からは外れます。
 	// 読み込み後に他者が更新しておりバージョンが一致しない場合は ErrVersionConflict を返し、画像には
 	// 触れません。
 	Update(ctx context.Context, p *Product) (int, error)
