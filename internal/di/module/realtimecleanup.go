@@ -24,7 +24,11 @@ import (
 // （eager に載せてはならない理由は internal/di/module/README.md「Design Policy」）。
 func RealtimeCleanupModule() fx.Option {
 	return fx.Module("realtime-cleanup",
-		fx.Provide(provideOrphanSweeperFactory),
+		fx.Provide(
+			// 計装は MeterProvider だけを要求するので、Realtime の substrate を graph に載せません。
+			observability.NewRealtimeMetrics,
+			provideOrphanSweeperFactory,
+		),
 		provideJobs(orphancleanup.New),
 	)
 }

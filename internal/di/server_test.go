@@ -9,6 +9,8 @@ import (
 	config "go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	mock_driver "go-boilerplate/internal/infrastructure/rdb/driver/mock"
+	rt "go-boilerplate/internal/usecase/boundary/realtime"
+	mock_realtime "go-boilerplate/internal/usecase/boundary/realtime/mock"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v5"
@@ -46,6 +48,7 @@ func TestNewApplicationCore(t *testing.T) {
 
 			app := NewApplicationCore(
 				fx.Replace(fx.Annotate(mockDB, fx.As(new(driver.DatabaseDriver)))),
+				realtimeSubstrate(t, ctrl),
 				fx.Decorate(func(s *config.ServerConfig) *config.ServerConfig {
 					s.SetServerPort(t, 0)
 					return s
@@ -66,7 +69,80 @@ func TestNewApplicationCore(t *testing.T) {
 			// Close が呼ばれた＝モックがグラフに組み込まれ、実 DB(NewDB の Ping)が使われていないことの証左。
 			assert.True(t, closeCalled, "db close hook がモックドライバの Close を呼ぶこと")
 		})
+
+		//nolint:paralleltest // EnsureRepoRootAndEnv が t.Setenv/t.Chdir を使用するため並列化不可
+		t.Run("Realtime を結線しない graph も起動・停止する", func(t *testing.T) {
+			// feature の realtime adapter を消した後の形。Realtime の substrate を 1 つも
+			// 差し替えずに起動できることが、"Zero adapters, zero runtime" が成立している証左。
+			config.EnsureRepoRootAndEnv(t, config.TestingEnvValue)
+
+			ctrl := gomock.NewController(t)
+			mockDB := mock_driver.NewMockDatabaseDriver(ctrl)
+			mockDB.EXPECT().Close().Return(nil).AnyTimes()
+			mockDB.EXPECT().Stats().Return(&pgxpool.Stat{}).AnyTimes()
+			mockDB.EXPECT().Ping(gomock.Any()).Return(nil).AnyTimes()
+
+			opts := append(serveBaseOptions(),
+				fx.Replace(fx.Annotate(mockDB, fx.As(new(driver.DatabaseDriver)))),
+				fx.Decorate(func(s *config.ServerConfig) *config.ServerConfig {
+					s.SetServerPort(t, 0)
+					return s
+				}),
+				fx.NopLogger,
+			)
+
+			start, stop := NewApplicationServer(fx.New(opts...))
+
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			require.NoError(t, start(ctx))
+
+			stopCtx, stopCancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer stopCancel()
+			require.NoError(t, stop(stopCtx))
+		})
 	})
+}
+
+// realtimeSubstrate は、Realtime Delivery の外部依存を IF レベルで差し替えます。
+// serve lifecycle（起動時の probe → 受信先の用意 → 常駐処理 → drain → 片付け）は本物のまま、
+// DynamoDB と SNS / SQS へ出ていく往復だけが止まります。
+//
+// 差し替えた型の構築子とその上流（DynamoDB クライアント・fan-out の組み立て）は走りません。
+// fx の decorator は元の構築子を呼ばないためで、REALTIME_TOPIC 未設定のような
+// 「app.Start より前に落ちる」分岐はここでは露見せず、app-di-startup-check が受け持ちます。
+func realtimeSubstrate(t *testing.T, ctrl *gomock.Controller) fx.Option {
+	t.Helper()
+
+	eventLog := mock_realtime.NewMockEventLogStore(ctrl)
+	eventLog.EXPECT().Latest(gomock.Any(), gomock.Any()).Return(rt.DeliveryEvent{}, false, nil).AnyTimes()
+
+	tickets := mock_realtime.NewMockStreamTicketStore(ctrl)
+
+	leases := mock_realtime.NewMockInstanceLeaseStore(ctrl)
+	leases.EXPECT().Heartbeat(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	leases.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
+	sub := mock_realtime.NewMockInstanceSubscription(ctrl)
+	sub.EXPECT().Provision(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	sub.EXPECT().Teardown(gomock.Any()).Return(nil).AnyTimes()
+	// 空を即座に返すと consumer の loop が待たずに回り続けるので、停止まで待たせる。
+	sub.EXPECT().Receive(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, _ int) ([]rt.Notification, error) {
+			<-ctx.Done()
+
+			return nil, ctx.Err()
+		}).AnyTimes()
+
+	notifier := mock_realtime.NewMockRevocationNotifier(ctrl)
+
+	return fx.Replace(
+		fx.Annotate(eventLog, fx.As(new(rt.EventLogStore))),
+		fx.Annotate(tickets, fx.As(new(rt.StreamTicketStore))),
+		fx.Annotate(leases, fx.As(new(rt.InstanceLeaseStore))),
+		fx.Annotate(sub, fx.As(new(rt.InstanceSubscription))),
+		fx.Annotate(notifier, fx.As(new(rt.RevocationNotifier))),
+	)
 }
 
 func TestNewApplicationServer(t *testing.T) {

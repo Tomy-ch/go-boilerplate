@@ -529,9 +529,11 @@ func Test_provideRealtimeConsumer(t *testing.T) {
 	engine := provideRealtimeConsumer(
 		mock_rt.NewMockInstanceSubscription(ctrl),
 		mock_ctrlrealtime.NewMockReprovisioner(ctrl),
+		mock_ctrlrealtime.NewMockFanoutObserver(ctrl),
 		mock_ctrlrealtime.NewMockWaker(ctrl), mock_ctrlrealtime.NewMockRevoker(ctrl),
 		mock_clock.NewMockSleeper(ctrl),
 		logging.NewTestLogger(t), observability.NewNoopTracerFactory(t),
+		observability.NewNoopRealtimeMetrics(t),
 	)
 	assert.NotNil(t, engine)
 }
@@ -548,6 +550,7 @@ func Test_provideRealtimeHeartbeat(t *testing.T) {
 		mock_clock.NewMockSleeper(ctrl),
 		logging.NewTestLogger(t),
 		observability.NewNoopTracerFactory(t),
+		observability.NewNoopRealtimeMetrics(t),
 	))
 }
 
@@ -561,9 +564,9 @@ func Test_provideRealtimeStartupProbe(t *testing.T) {
 			t.Parallel()
 
 			log := mock_rt.NewMockEventLogStore(gomock.NewController(t))
-			log.EXPECT().Latest(gomock.Any(), startupProbeStreamID).Return(rt.DeliveryEvent{}, false, nil)
+			log.EXPECT().Latest(gomock.Any(), gomock.Any()).Return(rt.DeliveryEvent{}, false, nil)
 
-			p := provideRealtimeStartupProbe(log)
+			p := provideRealtimeStartupProbe(provideRealtimeHealth(log))
 			assert.Equal(t, realtimeParticipantName, p.Name)
 			require.NoError(t, p.Probe(t.Context()))
 		})
@@ -577,10 +580,12 @@ func Test_provideRealtimeStartupProbe(t *testing.T) {
 
 			log := mock_rt.NewMockEventLogStore(gomock.NewController(t))
 			log.EXPECT().
-				Latest(gomock.Any(), startupProbeStreamID).
+				Latest(gomock.Any(), gomock.Any()).
 				Return(rt.DeliveryEvent{}, false, apperror.ErrUnavailable)
 
-			require.ErrorIs(t, provideRealtimeStartupProbe(log).Probe(t.Context()), apperror.ErrUnavailable)
+			probe := provideRealtimeStartupProbe(provideRealtimeHealth(log))
+
+			require.ErrorIs(t, probe.Probe(t.Context()), apperror.ErrUnavailable)
 		})
 	})
 }
@@ -704,11 +709,13 @@ func Test_provideRealtimeConsumerRunner(t *testing.T) {
 	engine := provideRealtimeConsumer(
 		sub,
 		mock_ctrlrealtime.NewMockReprovisioner(ctrl),
+		mock_ctrlrealtime.NewMockFanoutObserver(ctrl),
 		mock_ctrlrealtime.NewMockWaker(ctrl),
 		mock_ctrlrealtime.NewMockRevoker(ctrl),
 		mock_clock.NewMockSleeper(ctrl),
 		logging.NewTestLogger(t),
 		observability.NewNoopTracerFactory(t),
+		observability.NewNoopRealtimeMetrics(t),
 	)
 
 	r := provideRealtimeConsumerRunner(engine)
@@ -744,6 +751,7 @@ func Test_provideRealtimeHeartbeatRunner(t *testing.T) {
 		sleeper,
 		logging.NewTestLogger(t),
 		observability.NewNoopTracerFactory(t),
+		observability.NewNoopRealtimeMetrics(t),
 	)
 
 	r := provideRealtimeHeartbeatRunner(heartbeat)
@@ -762,11 +770,35 @@ func newTestRegistry(t *testing.T) *stream.Registry {
 	ctrl := gomock.NewController(t)
 
 	return provideConnectionRegistry(
+		config.NewRealtimeConfig(config.MockConfigForTest(t)),
 		mock_realtime.NewMockReplayer(ctrl),
 		mock_clock.NewMockSleeper(ctrl),
 		logging.NewTestLogger(t),
 		observability.NewNoopTracerFactory(t),
+		observability.NewNoopRealtimeMetrics(t),
+		provideRealtimeHealth(mock_rt.NewMockEventLogStore(ctrl)),
 	)
+}
+
+func Test_newStreamSettings(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("接続数上限と replay 同時実行数がそれぞれの設定へ写る", func(t *testing.T) {
+			t.Parallel()
+
+			cfg := config.NewRealtimeConfig(config.MockConfigForTest(t))
+			// 2 つの値が違うことが、取り違えを検出できる前提そのもの。
+			require.NotEqual(t, cfg.MaxConnections(), cfg.ReplayConcurrency())
+
+			set := newStreamSettings(cfg)
+
+			assert.Equal(t, cfg.MaxConnections(), set.MaxConnections)
+			assert.Equal(t, cfg.ReplayConcurrency(), set.ReplayConcurrency)
+		})
+	})
 }
 
 func Test_provideReplayer(t *testing.T) {

@@ -27,6 +27,23 @@ func NewApplicationServer(app *fx.App) (func(context.Context) error, func(contex
 
 // applicationCoreOptions は、アプリケーションコアを構成する fx.Option 群を返します。
 func applicationCoreOptions() []fx.Option {
+	return append(serveBaseOptions(), serveRealtimeOptions()...)
+}
+
+// serveRealtimeOptions は、Realtime Delivery の受信側 runtime を結線します。
+// feature の realtime adapter を消すと結線の 1 行も消えて空を返すようになり、serve graph から
+// Realtime と AWS / DynamoDB のクライアントが丸ごと外れます
+// （"Zero adapters, zero runtime"。docs/design/realtime-delivery.md §3.1）。
+// append で書くのは、マーカー行が落ちた後も関数がそのまま成り立つようにするためです。
+func serveRealtimeOptions() []fx.Option {
+	var opts []fx.Option
+	opts = append(opts, module.ServeRealtimeModule()) // sample-api:line
+
+	return opts
+}
+
+// serveBaseOptions は、Realtime Delivery を含まないアプリケーションコアです。
+func serveBaseOptions() []fx.Option {
 	return []fx.Option{
 		// Lifecycle Module
 		lifecycle.Module(),
@@ -46,7 +63,6 @@ func applicationCoreOptions() []fx.Option {
 		module.SystemModule(),
 		// DDD Modules
 		module.InfrastructureModule(),
-		module.RealtimeAdapterModule(), // sample-api:line
 		module.UsecaseModule(),
 		module.ControllerModule(),
 		// Server Module
