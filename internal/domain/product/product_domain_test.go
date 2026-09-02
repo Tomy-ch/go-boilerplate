@@ -138,7 +138,6 @@ func TestNew(t *testing.T) {
 			*mutatedPublishedAt = time.Time{}
 			require.NotNil(t, actual.PublishedAt())
 			assert.Equal(t, *attrs.PublishedAt, *actual.PublishedAt())
-
 		})
 
 		t.Run("生成後に引数のポインタを書き換えてもエンティティ内部は変わらない", func(t *testing.T) {
