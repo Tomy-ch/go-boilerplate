@@ -29,7 +29,7 @@ func newJob(t *testing.T, log logging.Logger) (*jobImpl, *mock_realtime.MockOrph
 	t.Helper()
 
 	sweeper, factory := newSweeperMock(t)
-	j, ok := New(log, observability.NewNoopTracerFactory(t), factory).(*jobImpl)
+	j, ok := New(log, observability.NewNoopTracerFactory(t), observability.NewNoopRealtimeMetrics(t), factory).(*jobImpl)
 	require.True(t, ok)
 
 	return j, sweeper
@@ -86,7 +86,8 @@ func Test_jobImpl_Execute(t *testing.T) {
 
 			// Realtime を配線していない環境ではここで初めて失敗し、他のジョブは影響を受けない。
 			factory := func(context.Context) (ucrealtime.OrphanSweeper, error) { return nil, apperror.ErrInvalidArgument }
-			j, ok := New(logging.NewTestLogger(t), observability.NewNoopTracerFactory(t), factory).(*jobImpl)
+			j, ok := New(logging.NewTestLogger(t), observability.NewNoopTracerFactory(t),
+				observability.NewNoopRealtimeMetrics(t), factory).(*jobImpl)
 			require.True(t, ok)
 
 			require.ErrorIs(t, j.Execute(t.Context(), nil), apperror.ErrInvalidArgument)
