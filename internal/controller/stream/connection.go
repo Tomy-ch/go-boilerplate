@@ -11,6 +11,7 @@ import (
 
 	"go-boilerplate/internal/controller/stream/gen"
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/clock"
 	rt "go-boilerplate/internal/usecase/boundary/realtime"
 	ucrealtime "go-boilerplate/internal/usecase/realtime"
@@ -18,7 +19,7 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
-// 接続が閉じた理由。構造化ログに載せる安定値で、lifecycle metrics（#1417）はこの分岐を数えます。
+// 接続が閉じた理由。構造化ログの値であり、realtime.connections.closed の reason label でもあります。
 const (
 	// closeReasonClientGone は、client 側が読むのをやめた（切断・EOF）ことを表します。
 	closeReasonClientGone = "client_gone"
@@ -34,6 +35,12 @@ const (
 	closeReasonResync = "resync"
 	// closeReasonCanceled は、request context が終わった（client 切断か shutdown）ことを表します。
 	closeReasonCanceled = "canceled"
+	// closeReasonCommitFailed は、レスポンスを確定できずに終わったことを表します。
+	closeReasonCommitFailed = "commit_failed"
+	// closeReasonRevalidationFailed は、索引へ載せた直後の ticket 再検証が通らなかったことを表します。
+	// closeReasonRevoked と分けるのは、こちらが「確定前に断った」であり、failure が
+	// 失効とは限らない（store に届かない場合も含む）ためです。
+	closeReasonRevalidationFailed = "revalidation_failed"
 )
 
 // connection は、確定済みの 1 本の SSE 接続です。読む側（fetcher）と書く側（pump）の 2 つの goroutine が
@@ -45,6 +52,8 @@ type connection struct {
 	subject string
 	// stream は、この接続が配信する stream です。wakeup はこれで接続を引きます。
 	stream rt.StreamID
+	// openedAt は、索引に載った時刻です。閉じるときに滞在時間へ変えます。
+	openedAt time.Time
 
 	// events は、読んだ event を送出まで待たせる buffer です。溢れたら接続を閉じます。
 	events chan rt.DeliveryEvent
@@ -65,6 +74,27 @@ type connection struct {
 	reason string
 }
 
+// 確定前に接続を断った理由。realtime.connections.rejected の reason label に載る安定値です。
+// 停止中の拒否は closeReasonDraining と同じ語を使います（同じ事情の別の現れ方のため）。
+const (
+	// rejectReasonCapacity は、この instance の接続数が上限に達していたことを表します。
+	rejectReasonCapacity = "capacity"
+	// rejectReasonAdmission は、初回 replay の枠が空くのを待ち切れなかったことを表します。
+	rejectReasonAdmission = "admission"
+	// rejectReasonDegraded は、Realtime の依存が不調で新規接続を受けられないことを表します。
+	rejectReasonDegraded = "degraded"
+)
+
+// 読み進めを起こした契機。realtime.replay.* の trigger label に載る安定値です。
+const (
+	// triggerInitial は、接続を確定する前の初回 replay です。
+	triggerInitial = "initial"
+	// triggerWakeup は、fan-out で届いた通知です。
+	triggerWakeup = "wakeup"
+	// triggerCatchUp は、通知の欠落を埋める周期の読み直しです。
+	triggerCatchUp = "catchup"
+)
+
 // fetcher は、1 接続ぶんの読み直しを回します。読んだ位置はこの goroutine だけが持つので、
 // 位置の同期は要りません。
 type fetcher struct {
@@ -73,6 +103,7 @@ type fetcher struct {
 	sem      *semaphore.Weighted
 	sleeper  clock.Sleeper
 	log      logging.Logger
+	metrics  *observability.RealtimeMetrics
 	// fetched は、buffer へ入れ終えた位置です。次の読み取りはこの後ろから始めます。
 	fetched rt.Sequence
 	// holdsSlot は、初回 replay のために Stream が確保した枠をまだ持っているかどうかです。
@@ -82,14 +113,15 @@ type fetcher struct {
 // newConnection は、subject × stream の接続を生成します。
 func newConnection(id uint64, subject string, stream rt.StreamID) *connection {
 	return &connection{
-		id:      id,
-		subject: subject,
-		stream:  stream,
-		events:  make(chan rt.DeliveryEvent, connectionBuffer),
-		control: make(chan gen.ControlEvent, 1),
-		signal:  make(chan struct{}, 1),
-		quit:    make(chan struct{}),
-		done:    make(chan struct{}),
+		id:       id,
+		subject:  subject,
+		stream:   stream,
+		openedAt: time.Now(),
+		events:   make(chan rt.DeliveryEvent, connectionBuffer),
+		control:  make(chan gen.ControlEvent, 1),
+		signal:   make(chan struct{}, 1),
+		quit:     make(chan struct{}),
+		done:     make(chan struct{}),
 	}
 }
 
@@ -192,45 +224,64 @@ func writeFailureReason(err error) string {
 func (f *fetcher) run(ctx context.Context) {
 	defer f.releaseSlot()
 
-	f.drainPages(ctx)
+	f.drainPages(ctx, triggerInitial)
 	f.releaseSlot()
 
 	catchUp := startTicker(ctx, f.sleeper, jitteredCatchUp)
 	for {
-		if !f.awaitTrigger(ctx, catchUp) {
+		trigger, ok := f.awaitTrigger(ctx, catchUp)
+		if !ok {
 			return
 		}
+
+		// 計測は枠を取る前から始めます。枠待ちこそ client から見た遅れであり、
+		// 設計 §2.6 が縮退の一形態として挙げているのもその待ちだからです。
+		startedAt := time.Now()
 
 		if err := f.sem.Acquire(ctx, 1); err != nil {
 			return
 		}
 
-		f.drainPages(ctx)
+		f.drainPages(ctx, trigger)
 		f.sem.Release(1)
+
+		// 通知を受けてから追いつき終わるまでが、client から見た遅れです。
+		if trigger == triggerWakeup {
+			f.metrics.CatchUpLag(ctx, float64(time.Since(startedAt).Milliseconds()))
+		}
 	}
 }
 
-// awaitTrigger は、次に読み直す契機を待ちます。接続が終わるなら false を返します。
+// awaitTrigger は、次に読み直す契機を待ち、その契機を返します。接続が終わるなら false を返します。
 // wakeup は既に追いついていれば読み直さず、周期 catch-up は通知の欠落を埋めるため常に読みます。
-func (f *fetcher) awaitTrigger(ctx context.Context, catchUp <-chan struct{}) bool {
+func (f *fetcher) awaitTrigger(ctx context.Context, catchUp <-chan struct{}) (string, bool) {
 	for {
 		select {
 		case <-ctx.Done():
-			return false
+			return "", false
 		case <-f.conn.quit:
-			return false
+			return "", false
 		case <-catchUp:
-			return true
+			return triggerCatchUp, true
 		case <-f.conn.signal:
 			if f.conn.pending.Load() > int64(f.fetched) {
-				return true
+				return triggerWakeup, true
 			}
 		}
 	}
 }
 
 // drainPages は、追いつくまで EventLog を読み進めます。semaphore の枠を持った状態で呼びます。
-func (f *fetcher) drainPages(ctx context.Context) {
+// trigger は、この読み進めを起こした契機です。
+func (f *fetcher) drainPages(ctx context.Context, trigger string) {
+	f.metrics.ReplayStarted(ctx)
+
+	var replayed int64
+	defer func() {
+		f.metrics.ReplayFinished(ctx)
+		f.metrics.ReplayExecuted(ctx, trigger, replayed)
+	}()
+
 	for {
 		events, hasMore, err := f.replayer.ReadPage(ctx, f.conn.stream, f.fetched)
 		if err != nil {
@@ -239,6 +290,7 @@ func (f *fetcher) drainPages(ctx context.Context) {
 			f.log.Warn(ctx, "failed to read the event log for a stream connection",
 				logging.String(logging.StreamIDKey, string(f.conn.stream)),
 				logging.Error(logging.ErrorKey, err))
+			f.metrics.ReplayFailed(ctx)
 
 			return
 		}
@@ -253,29 +305,33 @@ func (f *fetcher) drainPages(ctx context.Context) {
 			return
 		}
 
-		if !f.push(events) || !hasMore {
+		pushed := f.push(events)
+		replayed += int64(pushed)
+
+		if pushed < len(events) || !hasMore {
 			return
 		}
 	}
 }
 
-// push は、読んだ event を送出 buffer へ入れます。満杯なら RETRY_LATER を試みて接続を閉じます。
-// event 自体は EventLog に残るので失われず、再接続時の replay が回収します。
-func (f *fetcher) push(events []rt.DeliveryEvent) bool {
-	for _, e := range events {
+// push は、読んだ event を送出 buffer へ入れ、入れられた件数を返します。
+// 満杯なら RETRY_LATER を試みて接続を閉じます。event 自体は EventLog に残るので失われず、
+// 再接続時の replay が回収します。
+func (f *fetcher) push(events []rt.DeliveryEvent) int {
+	for i, e := range events {
 		select {
 		case f.conn.events <- e:
 			f.fetched = e.Sequence
 		case <-f.conn.quit:
-			return false
+			return i
 		default:
 			f.conn.closeWith(retryLaterControl(), closeReasonSlowClient)
 
-			return false
+			return i
 		}
 	}
 
-	return true
+	return len(events)
 }
 
 // releaseSlot は、初回 replay の枠を返します。2 度目以降は何もしません。

@@ -5,6 +5,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -23,15 +24,33 @@ import (
 // testRequest は、検証を通った接続の要求です。
 var testRequest = StreamRequest{Subject: "subject-1", Destination: "stream-1", Scope: "read", Cursor: 0}
 
+// fakeFanoutHealth は、fan-out の縮退を試験から切り替えるための受け口です。
+type fakeFanoutHealth struct{ degraded atomic.Bool }
+
+func (f *fakeFanoutHealth) FanoutDegraded() bool { return f.degraded.Load() }
+
 // testRegistry は、mock の Replayer と合図待ちの Sleeper を持つ registry を作ります。
 func testRegistry(t *testing.T, set Settings) (*Registry, *mock_ucrealtime.MockReplayer, *fakeSleeper) {
 	t.Helper()
 
-	replayer := mock_ucrealtime.NewMockReplayer(gomock.NewController(t))
-	sleeper := newFakeSleeper()
-	reg := NewRegistry(replayer, sleeper, logging.NewTestLogger(t), observability.NewNoopTracerFactory(t), set)
+	reg, replayer, sleeper, _ := testRegistryWithHealth(t, set)
 
 	return reg, replayer, sleeper
+}
+
+// testRegistryWithHealth は、fan-out の縮退を切り替えられる registry を作ります。
+func testRegistryWithHealth(
+	t *testing.T, set Settings,
+) (*Registry, *mock_ucrealtime.MockReplayer, *fakeSleeper, *fakeFanoutHealth) {
+	t.Helper()
+
+	replayer := mock_ucrealtime.NewMockReplayer(gomock.NewController(t))
+	sleeper := newFakeSleeper()
+	health := &fakeFanoutHealth{}
+	reg := NewRegistry(replayer, sleeper, logging.NewTestLogger(t), observability.NewNoopTracerFactory(t),
+		observability.NewNoopRealtimeMetrics(t), health, set)
+
+	return reg, replayer, sleeper, health
 }
 
 // callStream は、Stream を直接呼びます。確定前に断られる経路の検証に使います。
@@ -182,6 +201,25 @@ func TestRegistry_Stream(t *testing.T) {
 			assert.Equal(t, "5", rec.Header().Get("Retry-After"))
 		})
 
+		t.Run("確定前に断った接続を client 切断として記録しない", func(t *testing.T) {
+			t.Parallel()
+
+			// 索引へ載せた後に断つ経路で理由を置かないと unregister の既定が勝ち、
+			// closed{reason=canceled} が本物の client 切断と混ざって区別できなくなる。
+			log, logs := logging.NewObservedTestLogger(t)
+			replayer := mock_ucrealtime.NewMockReplayer(gomock.NewController(t))
+			reg := NewRegistry(replayer, newFakeSleeper(), log, observability.NewNoopTracerFactory(t),
+				observability.NewNoopRealtimeMetrics(t), &fakeFanoutHealth{}, Settings{ReplayConcurrency: 1})
+			require.True(t, reg.sem.TryAcquire(1))
+
+			_, err := callStream(t, reg)
+			require.ErrorIs(t, err, ErrReplayAdmission)
+
+			entries := logs.FilterMessage("stream connection closed").All()
+			require.Len(t, entries, 1)
+			assert.Equal(t, rejectReasonAdmission, entries[0].ContextMap()[logging.CloseReasonKey])
+		})
+
 		t.Run("登録の直後に ticket が無効なら確定前に断る", func(t *testing.T) {
 			t.Parallel()
 
@@ -208,6 +246,36 @@ func TestRegistry_Stream(t *testing.T) {
 			_, err := callStream(t, reg)
 
 			require.ErrorIs(t, err, ErrDraining)
+		})
+
+		t.Run("fan-out が不調なら確定前に断り Retry-After を返す", func(t *testing.T) {
+			t.Parallel()
+
+			reg, _, _, health := testRegistryWithHealth(t, Settings{})
+			health.degraded.Store(true)
+
+			rec, err := callStream(t, reg)
+
+			require.ErrorIs(t, err, ErrDegraded)
+			assert.Equal(t, "5", rec.Header().Get("Retry-After"))
+			assert.Empty(t, rec.Body.String(), "レスポンスを確定していないこと")
+		})
+
+		t.Run("fan-out が健全へ戻れば再び受け付ける", func(t *testing.T) {
+			t.Parallel()
+
+			reg, _, _, health := testRegistryWithHealth(t, Settings{})
+			health.degraded.Store(true)
+			_, err := reg.register(testRequest)
+			require.ErrorIs(t, err, ErrDegraded)
+
+			// 縮退が片道だと、一時的な不調のあと接続を受け付けられないままになる。
+			health.degraded.Store(false)
+
+			conn, err := reg.register(testRequest)
+
+			require.NoError(t, err)
+			assert.NotNil(t, conn)
 		})
 	})
 }

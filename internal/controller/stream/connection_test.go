@@ -15,6 +15,7 @@ import (
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/controller/stream/gen"
 	"go-boilerplate/internal/logging"
+	"go-boilerplate/internal/observability"
 	rt "go-boilerplate/internal/usecase/boundary/realtime"
 	mock_ucrealtime "go-boilerplate/internal/usecase/realtime/mock"
 	"go-boilerplate/pkg/xerrors"
@@ -111,6 +112,7 @@ func testFetcher(t *testing.T, conn *connection, from rt.Sequence) (*fetcher, *m
 		sem:      semaphore.NewWeighted(1),
 		sleeper:  newFakeSleeper(),
 		log:      logging.NewTestLogger(t),
+		metrics:  observability.NewNoopRealtimeMetrics(t),
 		fetched:  from,
 	}, replayer
 }
@@ -468,7 +470,10 @@ func Test_fetcher_awaitTrigger(t *testing.T) {
 			catchUp := make(chan struct{}, 1)
 			catchUp <- struct{}{}
 
-			assert.True(t, f.awaitTrigger(context.Background(), catchUp))
+			trigger, ok := f.awaitTrigger(context.Background(), catchUp)
+
+			assert.True(t, ok)
+			assert.Equal(t, triggerCatchUp, trigger)
 		})
 
 		t.Run("追いついている wakeup では読み直さない", func(t *testing.T) {
@@ -482,7 +487,9 @@ func Test_fetcher_awaitTrigger(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 			t.Cleanup(cancel)
 
-			assert.False(t, f.awaitTrigger(ctx, nil))
+			_, ok := f.awaitTrigger(ctx, nil)
+
+			assert.False(t, ok)
 		})
 
 		t.Run("追いついていない wakeup では読み直す", func(t *testing.T) {
@@ -492,7 +499,10 @@ func Test_fetcher_awaitTrigger(t *testing.T) {
 			f, _ := testFetcher(t, conn, 5)
 			conn.wake(6)
 
-			assert.True(t, f.awaitTrigger(context.Background(), nil))
+			trigger, ok := f.awaitTrigger(context.Background(), nil)
+
+			assert.True(t, ok)
+			assert.Equal(t, triggerWakeup, trigger)
 		})
 	})
 
@@ -506,7 +516,9 @@ func Test_fetcher_awaitTrigger(t *testing.T) {
 			f, _ := testFetcher(t, conn, 5)
 			conn.close(closeReasonDraining)
 
-			assert.False(t, f.awaitTrigger(context.Background(), nil))
+			_, ok := f.awaitTrigger(context.Background(), nil)
+
+			assert.False(t, ok)
 		})
 	})
 }
@@ -529,7 +541,7 @@ func Test_fetcher_drainPages(t *testing.T) {
 					Return([]rt.DeliveryEvent{testEvent(2)}, false, nil),
 			)
 
-			f.drainPages(context.Background())
+			f.drainPages(context.Background(), triggerCatchUp)
 
 			assert.Equal(t, rt.Sequence(2), f.fetched)
 			assert.Len(t, conn.events, 2)
@@ -542,7 +554,7 @@ func Test_fetcher_drainPages(t *testing.T) {
 			f, replayer := testFetcher(t, conn, 3)
 			replayer.EXPECT().ReadPage(gomock.Any(), gomock.Any(), rt.Sequence(3)).Return(nil, false, nil)
 
-			f.drainPages(context.Background())
+			f.drainPages(context.Background(), triggerCatchUp)
 
 			assert.Equal(t, rt.Sequence(3), f.fetched)
 			assert.Empty(t, conn.events)
@@ -560,7 +572,7 @@ func Test_fetcher_drainPages(t *testing.T) {
 			replayer.EXPECT().ReadPage(gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(nil, false, xerrors.Wrap(apperror.ErrUnavailable, "store off"))
 
-			f.drainPages(context.Background())
+			f.drainPages(context.Background(), triggerCatchUp)
 
 			select {
 			case <-conn.quit:
@@ -577,7 +589,7 @@ func Test_fetcher_drainPages(t *testing.T) {
 			replayer.EXPECT().ReadPage(gomock.Any(), gomock.Any(), rt.Sequence(3)).
 				Return([]rt.DeliveryEvent{testEvent(9)}, false, nil)
 
-			f.drainPages(context.Background())
+			f.drainPages(context.Background(), triggerCatchUp)
 
 			<-conn.quit
 			assert.Equal(t, closeReasonResync, conn.reason)
@@ -601,7 +613,7 @@ func Test_fetcher_push(t *testing.T) {
 			conn := testConn()
 			f, _ := testFetcher(t, conn, 0)
 
-			assert.True(t, f.push([]rt.DeliveryEvent{testEvent(1), testEvent(2)}))
+			assert.Equal(t, 2, f.push([]rt.DeliveryEvent{testEvent(1), testEvent(2)}))
 			assert.Equal(t, rt.Sequence(2), f.fetched)
 		})
 	})
@@ -619,7 +631,7 @@ func Test_fetcher_push(t *testing.T) {
 				events = append(events, testEvent(rt.Sequence(i+1)))
 			}
 
-			assert.False(t, f.push(events))
+			assert.Less(t, f.push(events), len(events))
 
 			<-conn.quit
 			assert.Equal(t, closeReasonSlowClient, conn.reason)
@@ -638,7 +650,7 @@ func Test_fetcher_push(t *testing.T) {
 				conn.events <- testEvent(1)
 			}
 
-			assert.False(t, f.push([]rt.DeliveryEvent{testEvent(1)}))
+			assert.Equal(t, 0, f.push([]rt.DeliveryEvent{testEvent(1)}))
 			assert.Equal(t, closeReasonDraining, conn.reason, "閉じた理由が上書きされないこと")
 		})
 	})

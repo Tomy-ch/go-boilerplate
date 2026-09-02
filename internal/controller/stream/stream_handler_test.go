@@ -100,7 +100,9 @@ func Test_server_GetStream(t *testing.T) {
 
 			require.NoError(t, err)
 			require.NotNil(t, streamer.got)
-			assert.Equal(t, StreamRequest{Subject: "subject-1", Destination: "stream-1", Scope: "read", Cursor: 12}, *streamer.got)
+			assert.Equal(t, StreamRequest{
+				Subject: "subject-1", Destination: "stream-1", Scope: "read", Cursor: 12, Resumed: true,
+			}, *streamer.got)
 			// handler が張った span 付きの context が request に据え直され、その request が Streamer に渡ること。
 			assert.NotEqual(t, original, streamer.gotReq.Context())
 			assert.Equal(t, c.Request().Context(), streamer.gotReq.Context())
@@ -142,6 +144,8 @@ func Test_server_GetStream(t *testing.T) {
 			require.NoError(t, s.GetStream(newContext(t, "/v1/streams/stream-1", grantFor()), "stream-1", gen.GetStreamParams{}))
 
 			assert.Equal(t, rt.Sequence(3), streamer.got.Cursor)
+			// 位置を省いた接続にも ticket の初期位置が入るので、Cursor からは張り直しか判別できない。
+			assert.False(t, streamer.got.Resumed, "位置を指定しない接続は張り直しとして数えないこと")
 		})
 	})
 

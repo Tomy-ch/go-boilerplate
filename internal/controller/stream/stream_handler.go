@@ -76,6 +76,7 @@ func (s *server) GetStream(c *echo.Context, destination gen.StreamDestinationPar
 
 	return s.streamer.Stream(c, StreamRequest{
 		Subject: grant.Subject, Destination: grant.Destination, Scope: grant.Scope, Cursor: cursor,
+		Resumed:    params.LastEventID != nil || params.After != nil,
 		Revalidate: revalidate,
 	})
 }

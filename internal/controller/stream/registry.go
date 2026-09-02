@@ -12,6 +12,7 @@ import (
 	"go-boilerplate/internal/usecase/boundary/clock"
 	rt "go-boilerplate/internal/usecase/boundary/realtime"
 	ucrealtime "go-boilerplate/internal/usecase/realtime"
+	"go-boilerplate/pkg/xerrors"
 
 	"github.com/labstack/echo/v5"
 )
@@ -29,6 +30,8 @@ type Registry struct {
 	sleeper  clock.Sleeper
 	logging  logging.Logger
 	tracer   observability.LayerTracer
+	metrics  *observability.RealtimeMetrics
+	health   FanoutHealth
 	set      Settings
 	// sem は、初回 replay と catch-up が共有する同時実行数の枠です。
 	sem *semaphore.Weighted
@@ -51,6 +54,8 @@ func NewRegistry(
 	sleeper clock.Sleeper,
 	log logging.Logger,
 	tf observability.TracerFactory,
+	metrics *observability.RealtimeMetrics,
+	health FanoutHealth,
 	set Settings,
 ) *Registry {
 	set = set.withDefaults()
@@ -60,6 +65,8 @@ func NewRegistry(
 		sleeper:   sleeper,
 		logging:   log.Named(registryLoggerName),
 		tracer:    tf.Controller(),
+		metrics:   metrics,
+		health:    health,
 		set:       set,
 		sem:       semaphore.NewWeighted(int64(set.ReplayConcurrency)),
 		conns:     map[uint64]*connection{},
@@ -76,22 +83,32 @@ func (r *Registry) Stream(c *echo.Context, req StreamRequest) error {
 
 	conn, err := r.register(req)
 	if err != nil {
+		r.metrics.ConnectionRejected(ctx, rejectionReason(err))
 		hintRetryAfter(c)
 
 		return err
 	}
+	r.metrics.ConnectionRegistered(ctx)
+
 	defer r.unregister(ctx, conn)
 
 	// 索引へ載せた直後に ticket を検証し直します。ここより前に無効化されていれば拒否になり、
 	// 後に無効化されるなら接続は既に索引に居るので失効通知が拾えます（ADR-0074）。
 	if req.Revalidate != nil {
 		if err := req.Revalidate(ctx); err != nil {
+			// 索引に載った後に断るので、閉じる理由をここで確定させます。置かないと
+			// unregister の既定（client の切断）が理由になり、拒否と切断が同じ値で混ざります。
+			conn.close(closeReasonRevalidationFailed)
+
 			return err
 		}
 	}
 
 	// 初回 replay の枠は確定より前に取ります。確定後に待つと「繋がったのに何も来ない」接続になります。
 	if err := r.admit(ctx); err != nil {
+		conn.close(rejectReasonAdmission)
+		r.metrics.ReplayAdmissionTimedOut(ctx)
+		r.metrics.ConnectionRejected(ctx, rejectionReason(err))
 		hintRetryAfter(c)
 
 		return err
@@ -99,17 +116,20 @@ func (r *Registry) Stream(c *echo.Context, req StreamRequest) error {
 
 	w := newSSEWriter(c.Response(), writeDeadline)
 	if err := w.commit(); err != nil {
+		conn.close(closeReasonCommitFailed)
 		r.sem.Release(1)
 
 		return err
 	}
+
+	r.metrics.ConnectionEstablished(ctx, req.Resumed)
 
 	connCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	go (&fetcher{
 		conn: conn, replayer: r.replayer, sem: r.sem, sleeper: r.sleeper,
-		log: r.logging, fetched: req.Cursor, holdsSlot: true,
+		log: r.logging, metrics: r.metrics, fetched: req.Cursor, holdsSlot: true,
 	}).run(connCtx)
 
 	r.pump(connCtx, conn, w)
@@ -192,7 +212,7 @@ func (r *Registry) pump(ctx context.Context, conn *connection, w *sseWriter) {
 
 			return
 		case e := <-conn.events:
-			if !r.writeOrClose(conn, w.writeEvent(e)) {
+			if !r.deliver(ctx, conn, w, e) {
 				return
 			}
 		case <-heartbeat:
@@ -218,6 +238,23 @@ func (r *Registry) pump(ctx context.Context, conn *connection, w *sseWriter) {
 	}
 }
 
+// deliver は、1 件の event を short span で包んで書き出します。span の親はこの接続で、
+// event を生んだ command の trace へは link を張ります（長寿命の接続をその子にしないため。
+// docs/design/realtime-delivery.md §3.4）。
+func (r *Registry) deliver(ctx context.Context, conn *connection, w *sseWriter, e rt.DeliveryEvent) bool {
+	ctx, endSpan := r.tracer.StartWithLink(ctx, e.Origin)
+	defer endSpan()
+
+	if !r.writeOrClose(conn, w.writeEvent(e)) {
+		return false
+	}
+
+	// 発生から書き終わりまで。2 つの instance をまたぐので時計のずれを含みます。
+	r.metrics.DeliveryLatency(ctx, float64(time.Since(e.OccurredAt).Milliseconds()))
+
+	return true
+}
+
 // writeOrClose は、書き込みの結果を接続の継続可否に変えます。失敗は client 側の事情なので、
 // 期限切れか切断かだけを記録して閉じます。
 func (r *Registry) writeOrClose(conn *connection, err error) bool {
@@ -230,6 +267,20 @@ func (r *Registry) writeOrClose(conn *connection, err error) bool {
 	return false
 }
 
+// rejectionReason は、確定前の拒否を realtime.connections.rejected の reason へ写します。
+func rejectionReason(err error) string {
+	switch {
+	case xerrors.Is(err, ErrDraining):
+		return closeReasonDraining
+	case xerrors.Is(err, ErrDegraded):
+		return rejectReasonDegraded
+	case xerrors.Is(err, ErrReplayAdmission):
+		return rejectReasonAdmission
+	default:
+		return rejectReasonCapacity
+	}
+}
+
 // register は、接続を索引に加えます。停止中と上限到達は、レスポンス確定前に返せる唯一の機会です。
 func (r *Registry) register(req StreamRequest) (*connection, error) {
 	r.mu.Lock()
@@ -237,6 +288,10 @@ func (r *Registry) register(req StreamRequest) (*connection, error) {
 
 	if r.draining {
 		return nil, ErrDraining
+	}
+
+	if r.health.FanoutDegraded() {
+		return nil, ErrDegraded
 	}
 
 	if len(r.conns) >= r.set.MaxConnections {
@@ -266,6 +321,7 @@ func (r *Registry) unregister(ctx context.Context, conn *connection) {
 	r.logging.Info(ctx, "stream connection closed",
 		logging.String(logging.StreamIDKey, string(conn.stream)),
 		logging.String(logging.CloseReasonKey, conn.reason))
+	r.metrics.ConnectionClosed(ctx, conn.reason, float64(time.Since(conn.openedAt).Milliseconds()))
 
 	close(conn.done)
 }
