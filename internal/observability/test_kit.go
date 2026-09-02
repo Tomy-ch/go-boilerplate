@@ -162,6 +162,16 @@ func NewNoopOutboxMetrics(t *testing.T) *OutboxMetrics {
 	return om
 }
 
+// NewNoopRealtimeMetrics は、テスト用に no-op の MeterProvider から RealtimeMetrics を生成します。
+func NewNoopRealtimeMetrics(t *testing.T) *RealtimeMetrics {
+	t.Helper()
+	rm, err := NewRealtimeMetrics(metricnoop.NewMeterProvider())
+	if err != nil {
+		t.Fatalf("failed to build noop realtime metrics: %v", err)
+	}
+	return rm
+}
+
 // NewNoopHTTPClientTransport は、テスト用に no-op TracerProvider と実 propagator から HTTPClientTransport を
 // 生成します。SSRF ガードは無効化（loopback/httptest 宛てを許可）します。
 func NewNoopHTTPClientTransport(t *testing.T) *HTTPClientTransport {
