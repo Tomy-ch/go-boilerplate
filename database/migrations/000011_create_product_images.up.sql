@@ -17,6 +17,51 @@ CREATE UNIQUE INDEX product_images_product_id_display_sort_unique ON product_ima
 )
 WHERE deleted_at IS NULL;
 
+-- 1 商品が保持できる生存画像の枚数に上限を課す。
+-- 上限値の正本は internal/domain/product の maxImages で、ここはその不変条件をアプリケーション経路の
+-- 外（手作業の INSERT、別クライアント、データ移行）からも破れないようにするための担保である。
+--
+-- 件数は行の述語として書けず CHECK では表現できないためトリガで数える。数えるのは生存行だけなので、
+-- 置き換えに伴う論理削除のように枚数が下がる更新は素通りする。
+--
+-- 同時実行の 2 トランザクションが互いの未コミット行を見ずに合計で上限を超える余地は、件数を数える方式で
+-- ある以上は原理的に残る。商品画像の書き込みは集約 Root を経由し products 行の条件付き更新
+-- （database/dml/repository/product/update_product.sql）で直列化されるため、この経路では到達しない。
+--
+-- 以下 2 箇所で抑止している CP03 は組み込み関数の大文字化を課す規則で、ユーザー定義関数の
+-- 識別子にも当たってしまう。識別子は他のスキーマ要素と揃えて snake_case を保つ。
+CREATE OR REPLACE FUNCTION product_images_assert_max_per_product()  -- noqa: CP03
+RETURNS TRIGGER AS $$
+DECLARE
+    live_count INTEGER;
+BEGIN
+    -- 論理削除された行は枚数を増やさない。
+    IF NEW.deleted_at IS NOT NULL THEN
+        RETURN NULL;
+    END IF;
+
+    SELECT COUNT(*) INTO live_count
+    FROM product_images AS pi
+    WHERE pi.product_id = NEW.product_id
+        AND pi.deleted_at IS NULL;
+
+    IF live_count > 20 THEN
+        RAISE EXCEPTION 'product % holds % live images, which exceeds the maximum of 20',
+            NEW.product_id, live_count
+            USING ERRCODE = 'check_violation',
+                  CONSTRAINT = 'product_images_max_per_product';
+    END IF;
+
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 枚数を増やし得るのは行の追加と、product_id の付け替え・論理削除の取り消しだけなので、その 3 つに絞る。
+CREATE TRIGGER product_images_max_per_product
+AFTER INSERT OR UPDATE OF product_id, deleted_at ON product_images
+FOR EACH ROW
+EXECUTE FUNCTION product_images_assert_max_per_product();  -- noqa: CP03
+
 COMMENT ON TABLE product_images IS '商品画像';
 COMMENT ON COLUMN product_images.id IS 'ID';
 COMMENT ON COLUMN product_images.product_id IS '商品ID';

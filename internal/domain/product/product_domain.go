@@ -51,16 +51,27 @@ type Attributes struct {
 // New は、商品エンティティの検証と生成を行います。Price は非負の money.Price（非負検証は Price VO が担保）、
 // Quantity と StockWarningThreshold（指定時）は、いずれも在庫が保持できる範囲に収まる必要があります。
 // PublishedAt は nil（未公開）を許容し、Images は空（画像未設定）を許容します。
+// Images が maxImages を超える場合は ErrTooManyImages を返します。
 // id が nil、Name が長さ制約外、Status / Category がゼロ値の場合はそれぞれ検証エラーを返します。
 // createdAt は商品が登録された日時で、ゼロ値は検証エラーです。
 // 生成直後のバージョンは initialVersion です。
 func New(id uuid.UUID, attrs Attributes, createdAt time.Time) (*Product, error) {
+	if err := validateImageCount(attrs.Images); err != nil {
+		return nil, err
+	}
+
 	return newProduct(id, attrs, initialVersion, createdAt)
 }
 
 // Reconstruct は、永続化済みの商品を再構築します。
 // version は永続化されている楽観ロックのバージョンで、initialVersion 未満の場合は検証エラーを返します。
-// createdAt は永続化されている登録日時です。その他の検証は New と同一です。
+// createdAt は永続化されている登録日時です。
+//
+// 画像の枚数上限（maxImages）だけは New と異なり課しません。上限は集合を確定させる書き込みが守る
+// 不変条件であり、既に永続化されている集合に課しても読み出しを拒む以外の効果を持たないためです
+// （docs/spec/product/domain.md の Cross-field Invariants）。上限を破る行が入らないことは
+// product_images のトリガ product_images_max_per_product が担保します。
+// その他の検証は New と同一です。
 func Reconstruct(id uuid.UUID, attrs Attributes, version int, createdAt time.Time) (*Product, error) {
 	return newProduct(id, attrs, version, createdAt)
 }
@@ -121,8 +132,12 @@ func validateAttributes(attrs Attributes) error {
 
 // Update は、商品の属性を更新します。生成時と同一の不変条件を課し、違反する場合はエンティティを
 // 変更せずに検証エラーを返します。attrs は部分更新を解決した後の確定値であり、据え置く属性には現在値が渡されます。
+// Images は集合ごとの置き換えで、maxImages を超える場合は ErrTooManyImages を返します。
 // バージョンは永続化の成否に依存するためここでは進めません（採番は Repository の条件付き更新が行います）。
 func (p *Product) Update(attrs Attributes) error {
+	if err := validateImageCount(attrs.Images); err != nil {
+		return err
+	}
 	if err := validateAttributes(attrs); err != nil {
 		return err
 	}

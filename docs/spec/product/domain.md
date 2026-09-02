@@ -103,7 +103,14 @@ fields:
 
 ## Cross-field Invariants
 
-- なし（各フィールドの単独制約のみ）。
+- `len(images) <= maxImages`（`maxImages = 20`。超過は `ErrTooManyImages` → 422）。
+  ただしこの 1 件だけは**書き込み経路（`New` / `Update`）でのみ課し、`Reconstruct` では課さない**。
+  枚数は集合を確定させる書き込みが守る不変条件であり、既に永続化されている集合に対して課しても
+  読み出しを拒む以外の効果を持たない。上限の引き下げやアプリケーション経路の外から入った行によって
+  商品が読み出せなくなると、是正するための取得すら出来ない状態に倒れる。
+  上限を破る行が入らないことは `product_images` のトリガ（`product_images_max_per_product`）が担保し、
+  ドメインの検証はその手前で 422 として返すためにある。
+  `maxImages` は sample の placeholder で、実要件が立った時点で改める。
 
 ## Behavior Methods
 

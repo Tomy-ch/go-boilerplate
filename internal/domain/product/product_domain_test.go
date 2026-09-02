@@ -1,6 +1,7 @@
 package product
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -48,6 +49,21 @@ func mustCategoryRef(t *testing.T, salt, name string) CategoryRef {
 func mustImage(t *testing.T, salt, path string, displaySort int) Image {
 	t.Helper()
 	return NewImage(uuidtestkit.NewTestFromSalt(t, salt), ImageAttributes{ImagePath: path, DisplaySort: displaySort})
+}
+
+// imagesOfCount は、表示順が 1 から連番で重複しない画像を count 枚組み立てます。
+func imagesOfCount(t *testing.T, count int) []Image {
+	t.Helper()
+	images := make([]Image, 0, count)
+	for i := range count {
+		images = append(images, mustImage(
+			t,
+			fmt.Sprintf("product_image_id_seq_%d", i),
+			fmt.Sprintf("products/seq_%d.png", i),
+			minImageDisplaySort+i,
+		))
+	}
+	return images
 }
 
 // validProductArgs は、テスト用に有効な商品 ID と属性一式を構築します。
@@ -304,6 +320,15 @@ func TestNew(t *testing.T) {
 			assert.Nil(t, actual)
 			require.ErrorIs(t, err, ErrInvalidImagePath)
 		})
+
+		t.Run("画像の枚数が上限を超える場合、ErrTooManyImagesを返す", func(t *testing.T) {
+			t.Parallel()
+			invalid := attrs
+			invalid.Images = imagesOfCount(t, maxImages+1)
+			actual, err := New(id, invalid, testCreatedAt)
+			assert.Nil(t, actual)
+			require.ErrorIs(t, err, ErrTooManyImages)
+		})
 	})
 }
 
@@ -332,6 +357,18 @@ func TestReconstruct(t *testing.T) {
 			assert.Equal(t, attrs.PublishedAt, actual.PublishedAt())
 			assert.Equal(t, attrs.Images, actual.Images())
 			assert.Equal(t, version, actual.Version())
+		})
+
+		t.Run("永続化済みの画像が枚数の上限を超えていても再構築できる", func(t *testing.T) {
+			t.Parallel()
+
+			over := attrs
+			over.Images = imagesOfCount(t, maxImages+1)
+
+			actual, err := Reconstruct(id, over, initialVersion, testCreatedAt)
+
+			require.NoError(t, err)
+			assert.Len(t, actual.Images(), maxImages+1)
 		})
 	})
 
@@ -653,6 +690,18 @@ func TestProduct_Update(t *testing.T) {
 			attrs.Name = strings.Repeat("あ", maxNameLength+1)
 
 			require.ErrorIs(t, p.Update(attrs), ErrInvalidName)
+		})
+
+		t.Run("画像の枚数が上限を超える場合、ErrTooManyImagesを返しエンティティを一切変更しない", func(t *testing.T) {
+			t.Parallel()
+
+			p := newTestProduct(t)
+			snapshot := *p
+			attrs := updatedProductAttributes(t)
+			attrs.Images = imagesOfCount(t, maxImages+1)
+
+			require.ErrorIs(t, p.Update(attrs), ErrTooManyImages)
+			assert.Equal(t, snapshot, *p)
 		})
 	})
 }

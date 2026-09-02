@@ -20,6 +20,32 @@ CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
 -- Name: EXTENSION pg_trgm; Type: COMMENT; Schema: -; Owner: -
 --
 COMMENT ON EXTENSION pg_trgm IS 'text similarity measurement and index searching based on trigrams';
+--
+-- Name: product_images_assert_max_per_product(); Type: FUNCTION; Schema: public; Owner: -
+--
+CREATE FUNCTION public.product_images_assert_max_per_product() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    live_count INTEGER;
+BEGIN
+    -- 論理削除された行は枚数を増やさない。
+    IF NEW.deleted_at IS NOT NULL THEN
+        RETURN NULL;
+    END IF;
+    SELECT COUNT(*) INTO live_count
+    FROM product_images AS pi
+    WHERE pi.product_id = NEW.product_id
+        AND pi.deleted_at IS NULL;
+    IF live_count > 20 THEN
+        RAISE EXCEPTION 'product % holds % live images, which exceeds the maximum of 20',
+            NEW.product_id, live_count
+            USING ERRCODE = 'check_violation',
+                  CONSTRAINT = 'product_images_max_per_product';
+    END IF;
+    RETURN NULL;
+END;
+$$;
 SET default_tablespace = '';
 SET default_table_access_method = heap;
 --
@@ -1276,6 +1302,10 @@ CREATE INDEX purchases_user_id_ordered_at_id_idx ON public.purchases USING btree
 -- Name: users_search_text_trgm_idx; Type: INDEX; Schema: public; Owner: -
 --
 CREATE INDEX users_search_text_trgm_idx ON public.users USING gin (search_text public.gin_trgm_ops);
+--
+-- Name: product_images product_images_max_per_product; Type: TRIGGER; Schema: public; Owner: -
+--
+CREATE TRIGGER product_images_max_per_product AFTER INSERT OR UPDATE OF product_id, deleted_at ON public.product_images FOR EACH ROW EXECUTE FUNCTION public.product_images_assert_max_per_product();
 --
 -- Name: cart_items cart_items_cart_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
 --

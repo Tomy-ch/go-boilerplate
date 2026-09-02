@@ -248,7 +248,7 @@ type ProductsPostRequest struct {
 	// Example: <p>ノイズキャンセリング対応の Bluetooth イヤホン</p>
 	Description *string `json:"description,omitempty"`
 
-	// Images 商品画像。未指定の場合は画像を持たない商品として作成します。 同じ商品の中で displaySort が重複する場合は業務不変条件違反として 422 を返します。
+	// Images 商品画像。未指定の場合は画像を持たない商品として作成します。1 商品あたり 20 枚までです。 同じ商品の中で displaySort が重複する場合は業務不変条件違反として 422 を返します。
 	Images *[]ProductImageInput `json:"images,omitempty"`
 
 	// Name 商品名
