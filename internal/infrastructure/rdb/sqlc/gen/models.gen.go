@@ -75,6 +75,36 @@ type IdempotencyKeys struct {
 	ExpiresAt time.Time
 }
 
+// 問い合わせ
+type Inquiries struct {
+	// ID
+	ID uuid.UUID
+	// 問い合わせを開始した利用者のユーザーID
+	UserID uuid.UUID
+	// 作成日時
+	CreatedAt time.Time
+	// 最後にメッセージが追加された日時
+	UpdatedAt time.Time
+}
+
+// 問い合わせメッセージ
+type InquiryMessages struct {
+	// ID
+	ID uuid.UUID
+	// 所属する問い合わせのID
+	InquiryID uuid.UUID
+	// 送り手の種別（user / operator）
+	AuthorKind string
+	// 送り手のユーザーID
+	AuthorSubjectID uuid.UUID
+	// 本文
+	Body string
+	// 問い合わせ内の位置（1 起算）
+	StreamSequence int64
+	// 作成日時
+	CreatedAt time.Time
+}
+
 // トランザクショナル outbox（ドメインイベントの信頼 publish）
 type Outbox struct {
 	// ID

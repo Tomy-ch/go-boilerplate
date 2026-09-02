@@ -13,9 +13,14 @@
 「最後にいつ動いたか」だけで、それ以外の状態遷移を持たない。
 
 **問い合わせメッセージ（Message）** は、問い合わせの中で一方（利用者または回答者）が相手に送る 1 通で、append-only —
-作成後に編集も取り消しもされない。メッセージは問い合わせを経由せず一覧・ページングされる（History API）ため、問い合わせの
-sub-entity ではなく独立した集約であり、問い合わせへは識別子（`inquiryID`）だけで参照する
-（[`internal/domain/README.md`](../../../internal/domain/README.md) § aggregate 境界の基準）。
+作成後に編集も取り消しもされない。メッセージは自身の ID で取得されることも問い合わせを経由せず一覧されることもなく、
+到達経路は常に問い合わせを解決した後の `ListMessages` である。したがって独立した集約ではなく問い合わせの **sub-entity** で、
+親への逆参照を持たない（[`internal/domain/README.md`](../../../internal/domain/README.md) § Cross-aggregate reference
+「a type reachable only through its parent is a sub-entity of that aggregate」および「Never give a sub-entity a
+back-reference to its parent」）。追加は必ず Root の `AppendMessage` を通る（§ Aggregate consistency）。
+
+集約が肥大しないのは、Root がメッセージの集合を保持しないためである。追加は 1 通を鋳造するだけで既存を読まず、
+メッセージ間にまたがる不変条件は存在しない——連番は機構が採番するので、Root が集合に対して守るべきものが無い。
 
 メッセージが持つ `sequence` は「その問い合わせの何通目か」を表す値であり、配送順序の基準として Realtime Delivery が要求する。
 値そのものは機構が採番し（usecase spec の `realtime.SequenceAllocator`）、ドメインは「正の整数である」ことだけを検証する。
@@ -45,18 +50,15 @@ fields:
 ```
 
 ```yaml
-package: internal/domain/inquirymessage
+package: internal/domain/inquiry     # Root と同じパッケージの sub-entity（cart / cart_item と同じ形）
 struct: Message
 constructors:
-  - name: New            # 投稿 / 回答時に usecase が作る
-  - name: Reconstruct    # 永続化済みの再構築
+  - name: Inquiry.AppendMessage   # 投稿 / 回答時に Root が鋳造する（唯一の追加入口）
+  - name: ReconstructMessage      # 永続化済みの再構築
 fields:
   - name: id
     type: uuid.UUID
-    required: true          # IsNil の場合は ErrInvalidID
-  - name: inquiryID
-    type: uuid.UUID
-    required: true          # 所属する問い合わせ。IsNil の場合は ErrInvalidInquiryID。集約跨ぎの参照は識別子のみ
+    required: true          # IsNil の場合は ErrInvalidMessageID
   - name: author
     type: Author            # 値オブジェクト。誰が送ったか（利用者 / 回答者）
   - name: body
@@ -83,14 +85,16 @@ fields:
 ## Behavior Methods
 
 ```yaml
-- name: Touch
-  signature: Touch(now time.Time) error
+- name: AppendMessage
+  signature: AppendMessage(id uuid.UUID, attrs MessageAttributes, now time.Time) (*Message, error)
   behavior: |
-    メッセージが追加されたことを問い合わせに記録し updatedAt を now へ進める。now が既存の updatedAt より前なら
-    ErrInvalidTime を返す（時刻は clock 境界から供給される）。問い合わせの業務状態はこれ以外に遷移しない
-    （close / reopen は範囲外）。
+    問い合わせへ 1 通追加し、updatedAt を now へ進める。メッセージの生成入口はここだけで、Root を経由しない生成経路は
+    持たない（internal/domain/README.md § Aggregate consistency）。now が既存の updatedAt より前なら ErrInvalidTime を、
+    メッセージの検証に失敗すればその検証エラーを返し、いずれの場合も updatedAt は進めない。連番（sequence）は機構が
+    採番した値を呼び出し側が渡す。
   invariants:
     - updatedAt は単調に進む
+    - メッセージの検証を通らない限り updatedAt は進まない
 ```
 
 ```yaml
@@ -103,9 +107,8 @@ fields:
 
 ## Domain Service
 
-問い合わせと問い合わせメッセージは別の集約だが、「この利用者の投稿はこの問い合わせに属してよいか」は問い合わせ 1 件の
-`userID` と投稿者の照合であり、集合についての問いではない。したがって Domain Service は置かず、照合は usecase が
-`Inquiry` を読んだうえで行う。
+「この利用者の投稿はこの問い合わせに属してよいか」は問い合わせ 1 件の `userID` と投稿者の照合であり、集合についての
+問いではない。したがって Domain Service は置かず、照合は usecase が `Inquiry` を読んだうえで行う。
 
 ## Value Objects
 
@@ -137,7 +140,6 @@ fields:
 ## Repository Methods
 
 ```yaml
-# internal/domain/inquiry
 - name: FindByID
   signature: FindByID(ctx context.Context, id uuid.UUID) (*Inquiry, error)
   behavior: 問い合わせを 1 件読み出す。存在しなければ apperror.ErrNotFound。
@@ -150,25 +152,24 @@ fields:
     問い合わせを作成する。同じ利用者の active な問い合わせが既にあれば UNIQUE 違反を apperror.ErrConflict に正規化して返す
     （最初の投稿の競合）。UNIQUE 違反は transaction 自体を中断させるため、呼び出し側は同じ transaction の中で読み直せない
     （usecase spec の AppendMessage を参照。`docs/spec/cart/usecase.md` の SetItem と同じ扱い）。
-- name: Touch
-  signature: Touch(ctx context.Context, id uuid.UUID, now time.Time) error
-  behavior: updatedAt を now へ更新する（Inquiry.Touch の永続化）。
+- name: Update
+  signature: Update(ctx context.Context, inquiry *Inquiry) error
+  behavior: updatedAt を永続化する（AppendMessage が進めた値）。
 - name: ListForOperator
   signature: ListForOperator(ctx context.Context, params ListParams) ([]*Inquiry, error)
   behavior: |
     運営側の一覧（更新日時の新しい順、keyset ページネーション: updatedAt desc, id desc）。読み取り専用。
     一覧は問い合わせ集約の行だけで組み立て、メッセージ本文は含めない（最新メッセージの要約は operator feed の event が運ぶ）。
-```
 
-```yaml
-# internal/domain/inquirymessage
-- name: Create
-  signature: Create(ctx context.Context, message *Message) error
+# メッセージは集約の内側にあるため、その読み書きも同じ Repository が担う。
+# メッセージが親への逆参照を持たない結果として、inquiryID は引数で受け取る。
+- name: CreateMessage
+  signature: CreateMessage(ctx context.Context, inquiryID uuid.UUID, message *Message) error
   behavior: |
     メッセージを追加する。(inquiryID, sequence) の UNIQUE 違反は apperror.ErrConflict（採番と同一 tx で呼ぶ限り到達しない
     防御）。業務 tx の中から、機構の採番の後に呼ぶ。
-- name: ListByInquiry
-  signature: ListByInquiry(ctx context.Context, inquiryID uuid.UUID, params HistoryParams) ([]*Message, error)
+- name: ListMessages
+  signature: ListMessages(ctx context.Context, inquiryID uuid.UUID, params HistoryParams) ([]*Message, error)
   behavior: |
     問い合わせのメッセージを sequence 昇順で keyset ページネーションして読み出す（cursor = sequence。afterSequence より大きく
     **upToSequence 以下** の行を limit 件）。History API の本体。upToSequence は usecase が先に読んだ streamCursor で、
@@ -177,14 +178,18 @@ fields:
 
 ## Notes
 
-- **2 つの集約と、同一 tx の中身。** Message は問い合わせを経由せず一覧される（History）ため独立した集約とする
-  （[`internal/domain/README.md`](../../../internal/domain/README.md) の基準「自分のアクセス経路を持つ型は別 aggregate」）。
-  投稿 1 回の transaction で書かれるのは Message 1 集約 + 機構の行（sequence 行、outbox 行）+ Inquiry の `updatedAt`（`Touch`）
-  であり、[ADR-0034 (commandservice-atomicity-criterion)] の「複数集約への書き込みの原子性」に当たる相手は無い——sequence 行と
-  outbox 行はどの集約にも属さない機構の状態で、ADR-0034 の worked instance（outbox insert は CommandService を正当化しない）と
-  同型である。`Touch` は Inquiry の状態遷移ではあるが、失敗しても Message と食い違う不変条件が無い（`updatedAt` は表示用の
-  最終更新時刻）ため、原子性の要求（分岐 3）にも、読んだ条件が commit まで保たれる要求（分岐 2。問い合わせは close / reopen も
-  削除も持たない）にも当たらず、通常の usecase が tx を所有する。
+- **1 集約と、同一 tx の中身。** Message は問い合わせを経由してしか到達しない（自身の ID で取得する経路も、問い合わせを
+  経由しない一覧も持たない）ため、[`internal/domain/README.md`](../../../internal/domain/README.md) の基準どおり
+  sub-entity であり、問い合わせと合わせて 1 集約である。したがって投稿 1 回の transaction で書かれるのは
+  **問い合わせ集約 1 件**（`inquiry_messages` の 1 行と `inquiries.updated_at`）+ 機構の行（sequence 行、outbox 行）だけで、
+  [ADR-0034 (commandservice-atomicity-criterion)] の逸脱には当たらない。sequence 行と outbox 行はどの集約にも属さない機構の
+  状態で、同 ADR の worked instance（outbox insert は CommandService を正当化しない）と同型である。
+
+  この形は `cart` / `cart_item` と同じで、Root と同じパッケージに sub-entity を置き、Repository は Root の 1 本だけを持つ。
+  Message を独立した集約にすると `inquiries.updated_at` の更新が集約跨ぎの書き込みになり、ADR-0034 が認める 2 つの逸脱の
+  どちらにも当たらないまま同一 tx に入ることになる——それが避けられている理由は、境界の引き方が
+  「到達経路」という基準に従っているからである。
+
 - **連番はドメインが持たない。** 以前の案では Inquiry に `lastSequence` を持たせ Repository で採番していたが、それは機構語彙を
   ドメインへ持ち込み、Repository に不変条件の保証を負わせ、Root ではない行（feed）を Inquiry の Repository が操作する形に
   なっていた。採番は Realtime Delivery の `SequenceAllocator`（usecase boundary。`boundary/outbox` と同型、table は `system_cqrs`
@@ -194,9 +199,9 @@ fields:
   こと（UTF-8 最大 12 KiB）。文字数の業務要件が立てばこの spec で改める。
 - **エラー写像。** `ErrEmptyBody` / `ErrBodyTooLong` / `ErrInvalidAuthorKind` → 422、`apperror.ErrNotFound` → 404、
   `apperror.ErrConflict`（active な問い合わせの二重作成）→ 409、他者の問い合わせへのアクセス → 403（usecase 側の認可）。
-- **撤去範囲。** `docs/spec/inquiry/**`、`internal/domain/inquiry`、`internal/domain/inquirymessage`、対応する migration / DML /
-  usecase / handler は `sample-api` の撤去対象。`scripts/setup/remove-sample-api/sample-manifest.ts` への登録は実コードが揃う
-  Phase 9（feature adapter と最小 API）で行う——現時点では spec だけが先行しており、manifest は未登録。Realtime Delivery 本体は
+- **撤去範囲。** `docs/spec/inquiry/**`、`internal/domain/inquiry`、対応する migration / DML /
+  usecase / handler は `sample-api` の撤去対象。`scripts/setup/remove-sample-api/sample-manifest.ts` への登録は Phase 9（feature adapter と最小 API）で
+  実施済み。Realtime Delivery 本体は
   残る（親 issue「sample 削除後の残存」）。
 
 [ADR-0034 (commandservice-atomicity-criterion)]: ../../adr/0034-commandservice-atomicity-criterion.md

@@ -1,0 +1,85 @@
+get:
+  operationId: GetInquiriesMeMessages
+  tags:
+    - v1/inquiries/me/messages
+  summary: 自分の問い合わせ履歴の取得
+  description: |
+    呼び出し主体自身の問い合わせについて、メッセージを位置の昇順で 1 ページ取得します。
+    パスに他者の識別子を持たないため、他人の問い合わせは取得できません。
+    **応答の streamCursor を購読の開始位置に渡してください**。このページを読んだ時点の stream の
+    現在位置を返し、messages はその位置以下だけを含むため、履歴の取得と購読の開始の間に追加された
+    メッセージを取りこぼしません。
+    まだ問い合わせを持たない主体には、空の messages と streamCursor = 0 を 200 で返します
+    （問い合わせが無いことは誤りではありません）。
+    本 op 自体は DB の SELECT のみで外部依存を持ちませんが、認証段（外部 IdP の JWKS 参照）の
+    一時障害で応答不能となり得るため、認証を伴う op の先例に倣い 503 を宣言します。
+  security:
+    - BearerAuth: []
+  parameters:
+    - $ref: '../../../../components/parameters/inquiry/AfterSequenceParam.yaml'
+    - $ref: '../../../../components/parameters/pagination/CursorFirstParam.yaml'
+  responses:
+    '200':
+      description: 履歴の取得に成功しました
+      content:
+        application/json:
+          schema:
+            $ref: '../../../../components/responses/inquiries/InquiryHistoryResponse.yaml'
+    '400':
+      $ref: '../../../../components/schemas/errors/BadRequest400.yaml'
+    '401':
+      $ref: '../../../../components/schemas/errors/Unauthorized401.yaml'
+    '405':
+      $ref: '../../../../components/schemas/errors/MethodNotAllowed405.yaml'
+    '500':
+      $ref: '../../../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../../../components/schemas/errors/ServiceUnavailable503.yaml'
+post:
+  operationId: PostInquiriesMeMessages
+  tags:
+    - v1/inquiries/me/messages
+  summary: 自分の問い合わせへの投稿
+  description: |
+    呼び出し主体自身の問い合わせへメッセージを 1 通追加します。
+    **問い合わせは最初の投稿で作られます**。利用者ごとに 1 件だけ持ち、作成のための API は設けません。
+    追加は append-only で、編集も取り消しもできません。
+    **Idempotency-Key を受け付けます**。同一キーの再送は初回の結果をそのまま返すため、
+    timeout 後の再送でメッセージが二重に生まれません。同一キーを内容の異なる要求で使い回した場合は
+    422 で拒否します。
+    最初の投稿が並行した場合、サーバは内部で 1 度だけやり直します。それでも解けない場合のみ 409 を返します。
+    本 op 自体は DB の SELECT / INSERT / UPDATE のみで外部依存を持ちませんが、認証段（外部 IdP の
+    JWKS 参照）の一時障害で応答不能となり得るため、認証を伴う op の先例に倣い 503 を宣言します。
+  security:
+    - BearerAuth: []
+  parameters:
+    - $ref: '../../../../components/parameters/idempotency/IdempotencyKeyParam.yaml'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../../../../components/requests/inquiries/InquiryMessagePostRequest.yaml'
+  responses:
+    '201':
+      description: 投稿に成功しました
+      content:
+        application/json:
+          schema:
+            $ref: '../../../../components/responses/inquiries/InquiryMessageResponse.yaml'
+    '400':
+      $ref: '../../../../components/schemas/errors/BadRequest400.yaml'
+    '401':
+      $ref: '../../../../components/schemas/errors/Unauthorized401.yaml'
+    '405':
+      $ref: '../../../../components/schemas/errors/MethodNotAllowed405.yaml'
+    '409':
+      $ref: '../../../../components/schemas/errors/Conflict409.yaml'
+    '415':
+      $ref: '../../../../components/schemas/errors/UnsupportedMediaType415.yaml'
+    '422':
+      $ref: '../../../../components/schemas/errors/UnprocessableEntity422.yaml'
+    '500':
+      $ref: '../../../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../../../components/schemas/errors/ServiceUnavailable503.yaml'

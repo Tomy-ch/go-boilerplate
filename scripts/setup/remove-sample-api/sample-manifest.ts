@@ -381,6 +381,48 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
     ],
   },
 
+  inquiry: {
+    description:
+      "サンプル 問い合わせ API（/v1/inquiries・Realtime Delivery の最初の consumer / append-only / 2 destination へ emit）",
+    paths: [
+      "database/migrations/000021_create_inquiries.up.sql",
+      "database/migrations/000021_create_inquiries.down.sql",
+      "database/migrations/000022_create_inquiry_messages.up.sql",
+      "database/migrations/000022_create_inquiry_messages.down.sql",
+
+      "internal/domain/inquiry",
+      "internal/infrastructure/rdb/repository/inquiry",
+      "database/dml/repository/inquiry",
+      "database/dml/repository/inquiry_message",
+      "database/gen/inquiry_repository.gen.sql",
+      "database/gen/inquiry_message_repository.gen.sql",
+      "internal/infrastructure/rdb/sqlc/gen/inquiry_repository.gen.sql.go",
+      "internal/infrastructure/rdb/sqlc/gen/inquiry_message_repository.gen.sql.go",
+
+      // OpenAPI（components/ 直下は個別列挙。理由は userRole エントリの RoleRef.yaml 注記を参照）
+      "openapi/paths/v1/inquiries.yaml",
+      "openapi/paths/v1/inquiries",
+      "openapi/components/parameters/inquiry",
+      "openapi/components/requests/inquiries",
+      "openapi/components/responses/inquiries",
+      "openapi/components/schemas/inquiries",
+
+      "internal/usecase/inquiry",
+      "internal/controller/handler/v1/inquiries",
+      "internal/integration/v1_inquiries_test.go",
+      "internal/integration/v1_inquiries_me_messages_test.go",
+      "internal/integration/v1_inquiries_me_stream_ticket_test.go",
+      "internal/integration/v1_inquiries_detail_messages_test.go",
+      "internal/integration/v1_inquiries_feed_stream_ticket_test.go",
+
+      // spec
+      "docs/spec/inquiry",
+
+      // internal/di/module/realtimeadapter.go は対象外（機構側。理由は internal/di/module/README.md の
+      // RealtimeAdapterModule() 項）。serve への結線だけが sample-api:line マーカーで落ちる。
+    ],
+  },
+
   exchangeRate: {
     description: "サンプル 為替レート換算 API（GET /v1/exchange-rates。外部 gateway + TTL キャッシュ decorator + reference_amount + degrade）",
     paths: [

@@ -1,0 +1,14 @@
+type: object
+description: 運営向け一覧 1 ページ。更新日時の新しい順。
+required:
+  - items
+properties:
+  items:
+    type: array
+    items:
+      $ref: '../../schemas/inquiries/InquirySummary.yaml'
+  nextCursor:
+    type: string
+    nullable: true
+    description: 次ページ取得用の不透明カーソル。次ページが無ければ null。
+    example: "MjAyNi0wOS0wMVQxMjozNDo1Ni43ODlaCjAxOThhMWIy"

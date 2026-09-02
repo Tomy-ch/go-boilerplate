@@ -1,0 +1,37 @@
+get:
+  operationId: GetInquiries
+  tags:
+    - v1/inquiries
+  summary: 問い合わせ一覧の取得（運営）
+  description: |
+    問い合わせを更新日時の新しい順に 1 ページ取得します。**管理者ロールが必要です**。
+    本文は含めません。一覧は問い合わせの行だけで組み立て、最新メッセージの内容は履歴か feed の
+    購読で受け取ります。
+    ページングは keyset で、応答の nextCursor をそのまま after に渡して続きを取得します。
+    一覧画面を購読で更新する場合は POST /v1/inquiries/feed/stream-ticket を使います。
+    本 op 自体は DB の SELECT のみで外部依存を持ちませんが、認証段（外部 IdP の JWKS 参照）の
+    一時障害で応答不能となり得るため、認証を伴う op の先例に倣い 503 を宣言します。
+  security:
+    - BearerAuth: []
+  parameters:
+    - $ref: '../../components/parameters/pagination/CursorAfterParam.yaml'
+    - $ref: '../../components/parameters/pagination/CursorFirstParam.yaml'
+  responses:
+    '200':
+      description: 一覧の取得に成功しました
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/responses/inquiries/InquiryListResponse.yaml'
+    '400':
+      $ref: '../../components/schemas/errors/BadRequest400.yaml'
+    '401':
+      $ref: '../../components/schemas/errors/Unauthorized401.yaml'
+    '403':
+      $ref: '../../components/schemas/errors/Forbidden403.yaml'
+    '405':
+      $ref: '../../components/schemas/errors/MethodNotAllowed405.yaml'
+    '500':
+      $ref: '../../components/schemas/errors/InternalServerError500.yaml'
+    '503':
+      $ref: '../../components/schemas/errors/ServiceUnavailable503.yaml'

@@ -16,6 +16,7 @@
 |`LoggingModule()`|`logging.go`|Logger + LogFieldBuilder|
 |`ObservabilityModule()`|`observability.go`|TracerProvider + TracerFactory|
 |`OutboxRelayModule()`|`outboxrelay.go`|outbox relay engine + `provideRelaySettings` + `NewRelay` usecase + `OutboxMetrics` + Hook（`RegisterRelayHooks`）。チャネルが必要とする publisher モジュール — `http` なら `outboxPublisherModule()`、`realtime` なら `realtimePublisherModule()`（`realtimepublisher.go`: EventLog append → wakeup publish）— を内包し、それ以外のチャネルでは構築に失敗する。relay 専用プロセス（`cmd outbox-relay`）のみで使用|
+|`RealtimeAdapterModule()`|`realtimeadapter.go`|feature の realtime adapter が要る最小の Realtime seam。DynamoDB クライアント・stream ticket の store・ticket 生値の生成・`TicketIssuer` ユースケース——ticket を発行するまでの経路だけを持ち、受信側は持たない。feature adapter はあるが Realtime runtime が要らない graph 向けに **serve プロファイル**へ結線する。`realtimeModule()` がこれを合成するため、両者を 1 つの graph へ結線してはならない（fx は module を重複排除しないので共有する型が二重提供になる。`realtimeadapter_test.go` が固定している）。分けてあるのは設計正本 （`docs/design/realtime-delivery.md`）の "Zero adapters, zero runtime" を規約ではなく構造で表すため。採番境界はここには無い——PostgreSQL 実装であり `persistenceModule()` が既に提供している|
 |`RealtimeCleanupModule()`|`realtimecleanup.go`|orphan cleanup ジョブ。`group:"jobs"` への登録を `JobModule()` ではなくこの module が行う。Realtime の依存は graph に載せず、実行時に組み立てるファクトリをジョブへ渡す。job プロファイル専用（`cmd job`）|
 |`SystemModule()`|`system.go`|BuildInfo（バージョン / リビジョン / ビルド日時）|
 |`UsecaseModule()`|`usecase.go`|ユースケース実装の登録|

@@ -14,12 +14,9 @@ import (
 	streamauth "go-boilerplate/internal/controller/stream/auth"
 	"go-boilerplate/internal/di/lifecycle"
 	"go-boilerplate/internal/di/server/hook"
-	"go-boilerplate/internal/infrastructure/dynamodbclient"
 	"go-boilerplate/internal/infrastructure/eventlog"
 	"go-boilerplate/internal/infrastructure/instancelease"
 	realtimeinfra "go-boilerplate/internal/infrastructure/realtime"
-	"go-boilerplate/internal/infrastructure/realtimesecret"
-	"go-boilerplate/internal/infrastructure/streamticket"
 	"go-boilerplate/internal/logging"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/clock"
@@ -56,19 +53,16 @@ type realtimeFanout struct {
 // という 1 つの値です。
 func realtimeModule() fx.Option {
 	return fx.Module("realtime",
+		RealtimeAdapterModule(),
 		fx.Provide(
-			provideRealtimeClient,
 			provideEventLogStore,
-			provideStreamTicketStore,
 			provideInstanceLeaseStore,
-			provideRealtimeSecretGenerator,
 			provideCursorValidator,
 			provideReplayer,
 			provideConnectionRegistry,
 			provideStreamer,
 			provideWaker,
 			provideRevoker,
-			provideTicketIssuer,
 			provideTicketVerifier,
 			fx.Annotate(provideStreamTicketScheme, fx.ResultTags(`group:"`+oapiauth.SchemeGroup+`"`)),
 			provideRealtimeFanout,
@@ -273,22 +267,6 @@ func provideRealtimeHeartbeatRunner(heartbeat *ctrlrealtime.Heartbeat) hook.Runn
 	}}
 }
 
-// provideRealtimeClient は、Realtime Delivery の store が共有する DynamoDB クライアントを組み立てます。
-// 資格情報を解決できない場合はエラーを返し、app.Start を失敗させます。
-func provideRealtimeClient(
-	cfg *config.RealtimeConfig,
-	epCfg *config.EndpointConfig,
-	outbound *observability.OutboundHTTPClient,
-) (*awsdynamodb.Client, error) {
-	return dynamodbclient.New(context.Background(), dynamodbclient.Config{
-		Endpoint:        epCfg.Realtime(),
-		Region:          cfg.Region(),
-		AccessKeyID:     cfg.AccessKeyID(),
-		SecretAccessKey: cfg.SecretAccessKey(),
-		HTTPClient:      outbound,
-	})
-}
-
 func provideEventLogStore(
 	c *awsdynamodb.Client,
 	cfg *config.RealtimeConfig,
@@ -297,24 +275,12 @@ func provideEventLogStore(
 	return eventlog.New(c, cfg.EventLogTable(), tf)
 }
 
-func provideStreamTicketStore(
-	c *awsdynamodb.Client,
-	cfg *config.RealtimeConfig,
-	tf observability.TracerFactory,
-) rt.StreamTicketStore {
-	return streamticket.New(c, cfg.StreamTicketTable(), tf)
-}
-
 func provideInstanceLeaseStore(
 	c *awsdynamodb.Client,
 	cfg *config.RealtimeConfig,
 	tf observability.TracerFactory,
 ) rt.InstanceLeaseStore {
 	return instancelease.New(c, cfg.InstanceLeaseTable(), tf)
-}
-
-func provideRealtimeSecretGenerator() rt.SecretGenerator {
-	return realtimesecret.New()
 }
 
 // provideConnectionRegistry は、この instance が保持する SSE 接続の索引を組み立てます。
@@ -354,12 +320,6 @@ func provideCursorValidator(
 	tf observability.TracerFactory,
 ) ucrealtime.CursorValidator {
 	return ucrealtime.NewCursorValidator(log, clk, tf)
-}
-
-func provideTicketIssuer(
-	store rt.StreamTicketStore, secrets rt.SecretGenerator, clk clock.Clock, tf observability.TracerFactory,
-) ucrealtime.TicketIssuer {
-	return ucrealtime.NewTicketIssuer(store, secrets, clk, tf)
 }
 
 func provideTicketVerifier(

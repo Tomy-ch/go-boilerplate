@@ -1,0 +1,29 @@
+type: object
+description: |
+  運営向け一覧の 1 件。本文は含めない（一覧は問い合わせの行だけで組み立てる）。
+required:
+  - id
+  - userId
+  - createdAt
+  - updatedAt
+properties:
+  id:
+    type: string
+    format: uuid
+    description: 問い合わせ ID。
+    example: "0198a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a60"
+  userId:
+    type: string
+    format: uuid
+    description: 問い合わせを開始した利用者の ID。
+    example: "550e8400-e29b-41d4-a716-446655440000"
+  createdAt:
+    type: string
+    format: date-time
+    description: 作成日時。
+    example: "2026-09-01T10:00:00Z"
+  updatedAt:
+    type: string
+    format: date-time
+    description: 最後にメッセージが追加された日時。一覧の並び順の基準。
+    example: "2026-09-01T12:34:56.789Z"

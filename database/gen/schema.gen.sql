@@ -183,6 +183,81 @@ COMMENT ON COLUMN public.idempotency_keys.completed_at IS '完了日時';
 --
 COMMENT ON COLUMN public.idempotency_keys.expires_at IS '有効期限（TTL）';
 --
+-- Name: inquiries; Type: TABLE; Schema: public; Owner: -
+--
+CREATE TABLE public.inquiries (
+    id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+--
+-- Name: TABLE inquiries; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON TABLE public.inquiries IS '問い合わせ';
+--
+-- Name: COLUMN inquiries.id; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.inquiries.id IS 'ID';
+--
+-- Name: COLUMN inquiries.user_id; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.inquiries.user_id IS '問い合わせを開始した利用者のユーザーID';
+--
+-- Name: COLUMN inquiries.created_at; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.inquiries.created_at IS '作成日時';
+--
+-- Name: COLUMN inquiries.updated_at; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.inquiries.updated_at IS '最後にメッセージが追加された日時';
+--
+-- Name: inquiry_messages; Type: TABLE; Schema: public; Owner: -
+--
+CREATE TABLE public.inquiry_messages (
+    id uuid NOT NULL,
+    inquiry_id uuid NOT NULL,
+    author_kind text NOT NULL,
+    author_subject_id uuid NOT NULL,
+    body text NOT NULL,
+    stream_sequence bigint NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT inquiry_messages_author_kind_check CHECK ((author_kind = ANY (ARRAY['user'::text, 'operator'::text]))),
+    CONSTRAINT inquiry_messages_stream_sequence_positive CHECK ((stream_sequence >= 1))
+);
+--
+-- Name: TABLE inquiry_messages; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON TABLE public.inquiry_messages IS '問い合わせメッセージ';
+--
+-- Name: COLUMN inquiry_messages.id; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.inquiry_messages.id IS 'ID';
+--
+-- Name: COLUMN inquiry_messages.inquiry_id; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.inquiry_messages.inquiry_id IS '所属する問い合わせのID';
+--
+-- Name: COLUMN inquiry_messages.author_kind; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.inquiry_messages.author_kind IS '送り手の種別（user / operator）';
+--
+-- Name: COLUMN inquiry_messages.author_subject_id; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.inquiry_messages.author_subject_id IS '送り手のユーザーID';
+--
+-- Name: COLUMN inquiry_messages.body; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.inquiry_messages.body IS '本文';
+--
+-- Name: COLUMN inquiry_messages.stream_sequence; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.inquiry_messages.stream_sequence IS '問い合わせ内の位置（1 起算）';
+--
+-- Name: COLUMN inquiry_messages.created_at; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.inquiry_messages.created_at IS '作成日時';
+--
 -- Name: outbox; Type: TABLE; Schema: public; Owner: -
 --
 CREATE TABLE public.outbox (
@@ -931,6 +1006,26 @@ ALTER TABLE ONLY public.idempotency_keys
 ALTER TABLE ONLY public.idempotency_keys
     ADD CONSTRAINT idempotency_keys_scope_key_unique UNIQUE (scope, idempotency_key);
 --
+-- Name: inquiries inquiries_id_primary; Type: CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.inquiries
+    ADD CONSTRAINT inquiries_id_primary PRIMARY KEY (id);
+--
+-- Name: inquiries inquiries_user_id_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.inquiries
+    ADD CONSTRAINT inquiries_user_id_unique UNIQUE (user_id);
+--
+-- Name: inquiry_messages inquiry_messages_id_primary; Type: CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.inquiry_messages
+    ADD CONSTRAINT inquiry_messages_id_primary PRIMARY KEY (id);
+--
+-- Name: inquiry_messages inquiry_messages_inquiry_id_stream_sequence_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.inquiry_messages
+    ADD CONSTRAINT inquiry_messages_inquiry_id_stream_sequence_unique UNIQUE (inquiry_id, stream_sequence);
+--
 -- Name: outbox outbox_id_primary; Type: CONSTRAINT; Schema: public; Owner: -
 --
 ALTER TABLE ONLY public.outbox
@@ -1114,6 +1209,10 @@ CREATE INDEX carts_expires_at_index ON public.carts USING btree (expires_at);
 --
 CREATE INDEX idempotency_keys_expires_at_idx ON public.idempotency_keys USING btree (expires_at);
 --
+-- Name: inquiries_updated_at_id_index; Type: INDEX; Schema: public; Owner: -
+--
+CREATE INDEX inquiries_updated_at_id_index ON public.inquiries USING btree (updated_at DESC, id DESC);
+--
 -- Name: outbox_dead_idx; Type: INDEX; Schema: public; Owner: -
 --
 CREATE INDEX outbox_dead_idx ON public.outbox USING btree (id) WHERE (status = 'dead'::text);
@@ -1192,6 +1291,21 @@ ALTER TABLE ONLY public.cart_items
 --
 ALTER TABLE ONLY public.carts
     ADD CONSTRAINT carts_user_id_foreign FOREIGN KEY (user_id) REFERENCES public.users(id);
+--
+-- Name: inquiries inquiries_user_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.inquiries
+    ADD CONSTRAINT inquiries_user_id_foreign FOREIGN KEY (user_id) REFERENCES public.users(id);
+--
+-- Name: inquiry_messages inquiry_messages_author_subject_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.inquiry_messages
+    ADD CONSTRAINT inquiry_messages_author_subject_id_foreign FOREIGN KEY (author_subject_id) REFERENCES public.users(id);
+--
+-- Name: inquiry_messages inquiry_messages_inquiry_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+ALTER TABLE ONLY public.inquiry_messages
+    ADD CONSTRAINT inquiry_messages_inquiry_id_foreign FOREIGN KEY (inquiry_id) REFERENCES public.inquiries(id) ON DELETE CASCADE;
 --
 -- Name: product_images product_images_product_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: -
 --

@@ -1,0 +1,7 @@
+type: object
+description: 追加したメッセージ 1 通。
+required:
+  - message
+properties:
+  message:
+    $ref: '../../schemas/inquiries/InquiryMessage.yaml'

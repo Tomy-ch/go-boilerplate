@@ -19,7 +19,7 @@ func TestControllerModule_GraphIsValid(t *testing.T) {
 	opts := append(commonDeps(),
 		core.ValidatorModule(), core.RedactionModule(), core.SecurityCookieModule(),
 		core.AuthnModule(), core.BasicAuthModule(), core.SkipperModule(),
-		InfrastructureModule(), UsecaseModule(),
+		InfrastructureModule(), RealtimeAdapterModule(), UsecaseModule(),
 		server.MiddlewareModule(), server.Module(), server.HookModule(),
 		ControllerModule(),
 	)
