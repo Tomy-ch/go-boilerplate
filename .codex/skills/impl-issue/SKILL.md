@@ -1,22 +1,19 @@
 ---
 name: impl-issue
 description: >-
-  Drive a GitHub issue from environment setup to a merged PR as a semi-automatic pipeline that stops at every decision the human owns. Use whenever the user hands over an issue URL or number to be worked end-to-end ("この issue やって", "wt 上で解決しよう", "着手して PR まで"), or asks to resume such a run. It owns three things — progress orchestration, reconciling the approved plan against what was actually built, and mechanically detecting the moments needing a human call — and no implementation judgment: the work is delegated to `commit` / `submit-pr` / `impl-review` / `test-review`, and design decisions are surfaced, never taken. It sets up an isolated worktree and DB slot, has a different model draft a written plan the user approves before coding, then watches five mechanical trip-wires so drift becomes visible instead of silent. Runtime verification (`make serve` + curl + LGTM traces) runs after the PR is opened and gates the merge; green CI is not a substitute. Three modes are confirmed once: review mode, issue mode, and flow mode. Do NOT use for a change with no issue behind it (`commit` + `submit-pr`), for reviewing an existing diff (`impl-review` / `test-review`), or for authoring skills (`manage-skill`).
-argument-hint: '<issue-url-or-number> [--review-mode=all|harmful|issues] [--issue-mode=search|file] [--flow=interactive|delegated]'
+  Drive a GitHub issue from environment setup to a merged PR as a semi-automatic pipeline whose stopping points are enumerated rather than judged. Use whenever the user hands over an issue URL or number to be worked end-to-end ("この issue やって", "wt 上で解決しよう", "着手して PR まで"), or asks to resume such a run. It owns three things — progress orchestration, reconciling the approved plan against what was actually built, and mechanically detecting the moments needing a human call — and no implementation judgment: the work is delegated to `commit` / `submit-pr` and to the three peer review skills `impl-review` / `test-review` / `comment-sweep`, and design decisions are surfaced, never taken. It sets up an isolated worktree and DB slot, has a different model draft a written plan the user approves before coding, then watches five mechanical trip-wires so drift becomes visible instead of silent. The plan's approval covers the whole run, and the skill carries a closed list of the five places it may stop — everywhere else it continues and records the call for the PR. Runtime verification (`make serve` + curl + LGTM traces) runs after the PR is opened and gates the merge; green CI is not a substitute. Three modes are confirmed once: review mode, issue mode, and flow mode. Do NOT use for a change with no issue behind it (`commit` + `submit-pr`), for reviewing an existing diff (`impl-review` / `test-review` / `comment-sweep`), or for authoring skills (`manage-skill`).
+argument-hint: '<issue-url-or-number> [--review-mode=all|harmful|issues] [--issue-mode=search|file] [--flow=record-on-tripwire|halt-on-tripwire]'
 ---
 
 # Impl Issue
 
 Semi-automatic issue → PR pipeline. The machine handles progression, bookkeeping, and detection; the
-human keeps every judgment call. The point is not speed — it is that a long autonomous run stops
-being a black box, because each place where the work departed from the approved plan surfaces when it
-happens rather than at the end.
+human keeps every judgment call. A long autonomous run stops being a black box because each departure
+from the approved plan surfaces when it happens rather than at the end.
 
-This file is self-contained on purpose. Anyone should be able to reproduce the same run on a
-different machine from this file alone, so the concrete commands live here rather than in local
-notes. Repository detail that genuinely does drift stays behind pointers: `.makefiles/README.md`
-(full target registry), `docs/maintenance/db-worktree-pool.md` (slot pool), `docs/development-flow.md`
-(per-change-type flows).
+The commands live here so a run is reproducible from this file alone. Detail that drives itself stays
+behind pointers: `.makefiles/README.md` (target registry), `docs/maintenance/db-worktree-pool.md`
+(slot pool), `docs/development-flow.md` (per-change-type flows).
 
 A Japanese reference translation lives at `SKILL.ja.md` in this directory (for human reference only;
 not loaded as a skill).
@@ -27,7 +24,8 @@ not loaded as a skill).
 - The user asks to resume a run that stopped at a decision point.
 
 Do NOT use it for a change with no issue behind it (`commit` + `submit-pr` directly), for reviewing an
-existing diff (`impl-review` / `test-review`), or for authoring skills (`manage-skill`).
+existing diff (`impl-review` / `test-review` / `comment-sweep`), or for authoring skills
+(`manage-skill`).
 
 ## Contract
 
@@ -36,7 +34,32 @@ existing diff (`impl-review` / `test-review`), or for authoring skills (`manage-
 | **Owns** | Progressing the issue → merged PR pipeline, reconciling the approved plan with the implementation, and mechanically detecting when human judgment is required |
 | **Never** | Fill in unresolved design decisions independently / make implementation judgments (delegatees own them) |
 | **Starts when** | An accepted issue is presented |
-| **Stops when** | Any of the five trip-wires fires, or runtime verification does not pass |
+| **Stops when** | Only at the five places listed below; everywhere else it continues and records the call for the PR comment |
+
+## Stopping — the complete list
+
+Where this pipeline stops is a specification, not a judgment. It stops here and nowhere else:
+
+| # | Where | What is decided |
+| --- | --- | --- |
+| 1 | Step 0 | The three modes, in one call, before anything else |
+| 2 | Step 3 | Approval of the written plan |
+| 3 | Step 4 | A trip-wire whose row says halt |
+| 4 | Step 7 | Which of the three peer review skills to run, each with its estimated return |
+| 5 | Step 8 | Runtime verification failed; and the merge itself |
+
+Three moments look like stopping points and are not. Each is where an unlisted stop otherwise creeps
+in:
+
+- **A phase boundary.** The Step 3 approval covers Steps 4–9, because the plan enumerates the whole
+  run and that is what was approved. A phase ending is not an event.
+- **A delegated agent's completion notification.** Reviews and audits fan out; a report arriving is
+  where work resumes, not where it pauses.
+- **A mode settled in Step 0.** That is spent authority. Re-confirming a fix which review mode already
+  authorized asks the user to approve the same thing twice.
+
+Asked one at a time, a stop always looks cheap while its cost is diffuse, so "ask" wins every
+individual judgment. That is why the list above is closed rather than advisory.
 
 ## What this skill does NOT do
 
@@ -47,9 +70,12 @@ right, or whether a finding deserves an issue. It routes those to the user and r
 | --- | --- |
 | Commit splitting and execution | `commit` |
 | Push + PR create/update | `submit-pr` |
-| Adversarial code review | `impl-review` |
-| Test-quality review | `test-review` (chained by `impl-review`) |
+| Review of the change itself | `impl-review` |
+| Review of the tests | `test-review` |
+| Review of the comment stock | `comment-sweep` |
 | The implementation itself | you, following the approved plan |
+
+The three review skills are peers: none invokes another, and each is asked for separately (Step 7).
 
 ## AI Modification Scope
 
@@ -67,8 +93,8 @@ The relaxation is bounded, and the bound is the plan:
   implied by a glob.
 - Say so when presenting the plan. The user approves the sensitive paths knowingly, not by discovering
   them in the diff — a plan that quietly widens the scope is the failure this clause exists to prevent.
-- Reaching a sensitive path the plan does not list is trip-wire 1 (Step 4). Stop and ask; do not widen
-  the surface and report it afterwards.
+- Reaching a sensitive path the plan does not list halts under either flow mode (trip-wire 1′,
+  Step 4). Ask; do not widen the surface and report it afterwards.
 
 Hard-protected even during this skill (never touch, regardless of what the issue asks):
 
@@ -104,15 +130,20 @@ separate questions.
 `issues` × `file` produces the most new issues of any combination. Before executing it, show the count
 and confirm — a review easily yields a dozen findings, and a dozen new issues is itself noise.
 
-**Flow mode** — what a trip-wire does.
+**Flow mode** — what a trip-wire does. The names carry their trigger because this mode governs
+trip-wires only; it is not a posture for the run, and it reaches none of the other four stopping
+points.
 
 | Mode | Behavior |
 | --- | --- |
-| `interactive` *(default)* | Stop and ask |
-| `delegated` | Record the call and continue; surface all recorded calls in a PR comment at the end |
+| `record-on-tripwire` *(default)* | Record the call and continue; surface every recorded call in one PR comment at the end |
+| `halt-on-tripwire` | Stop at that trip-wire and ask |
 
-`delegated` is for when the user has handed over full authority *and* will be away — stopping for
-permission nobody is there to grant kills the run. It is not a speed setting.
+**Neither mode reaches the trip-wires marked halt in Step 4.** Those are architecture, domain and
+policy decisions, which `AGENTS.md` keeps behind a human gate unconditionally. The mode decides only
+what happens at the remaining rows: `record-on-tripwire` continues and records them,
+`halt-on-tripwire` asks about them too — worth picking when the user is present and wants scope
+growth surfaced as it happens rather than at the end.
 
 ## Step 1 — Kickoff
 
@@ -172,12 +203,11 @@ each linked worktree as untracked. Never run `git clean -fdx` in the parent chec
 these worktrees. The repository's local-safety rule forbids `git clean`; do not request an exception
 to clean this directory.
 
-`make base-branch` reads `origin`'s live state. Use nothing else for this: the local
-`refs/remotes/origin/HEAD` is set once at clone time and `git fetch` never updates it, the GitHub
-default branch stays on an earlier release line, and an agent- or environment-supplied “main branch”
-hint can report that stale local symref. All three answer without warning, and branching from a
-generation-old base is not visible until an agent reports that files everyone expects are missing —
-by which point the work on that branch is wasted.
+`make base-branch` reads `origin`'s live state. Use nothing else: the local `refs/remotes/origin/HEAD`
+is fixed at clone time and `git fetch` never updates it, the GitHub default branch can stay on an
+earlier release line, and an agent- or environment-supplied “main branch” hint can report that stale
+local symref. All three answer without warning, so a branch cut from a generation-old base can appear
+valid while expected files are missing.
 
 If `slot-acquire` reports failure, run `make slot-status` before retrying — the lease often succeeded
 even when the command errored.
@@ -211,6 +241,9 @@ the operator prefers). It must contain:
 
 Present the plan and **wait for approval. Do not implement before it.**
 
+**That approval covers Steps 4–9.** The plan enumerates the whole run, so no phase inside it needs
+approving again; the run continues to the next stopping point on its own.
+
 ## Step 4 — Implement, watching five trip-wires
 
 The plan is approved and implementation begins — the boundary between deciding and building, which
@@ -224,16 +257,19 @@ only this skill knows:
 Follow the approved plan. These triggers are deliberately mechanical — relying on you to *notice* that
 a decision was significant is exactly how drift goes unreported.
 
-| # | Trip-wire | Why it is a human call |
-| --- | --- | --- |
-| 1 | Touching a file the plan does not list | Scope grew; the user approved a different shape |
-| 2 | Choosing an option the plan rejected, or a third one | The rejection had a reason; overriding it silently discards that reasoning |
-| 3 | A lint/CI failure rooted in an architecture rule (`interfacebloat`, `gocognit`, `depguard`, architest, …) | These are not formatting — satisfying them changes the design |
-| 4 | Rejecting a reviewer's finding, or applying a different fix than proposed | A finding can be correct while its proposed fix is harmful; that judgment is not yours alone |
-| 5 | Skipping any gate | See Step 6 |
+| # | Trip-wire | Default | Why |
+| --- | --- | --- | --- |
+| 1 | Touching a file the plan does not list, **inside** the four default directories | Record | Scope grew, but within the surface `AGENTS.md` already permits |
+| 1′ | The same, **outside** them (`docker/`, `scripts/`, `.github/`, `docs/`, `.makefiles/`, root dotfiles) | **Halt** | The plan is the permitted surface; widening it is the user's call |
+| 2 | Choosing an option the plan rejected, or a third one | **Halt** | The rejection had a reason; overriding it silently discards that reasoning |
+| 3 | A lint/CI failure rooted in an architecture rule (`interfacebloat`, `gocognit`, `depguard`, architest, …) | **Halt** | These are not formatting — satisfying them changes the design |
+| 4 | Rejecting a reviewer's finding, or applying a different fix than proposed | **Halt** | A finding can be correct while its proposed fix is harmful; that judgment is not yours alone |
+| 5 | Skipping a gate | Record | Step 6 already requires stating it in the PR |
 
-On a trip-wire: `interactive` → stop and present the situation with your recommendation.
-`delegated` → record it and continue, then surface every recorded call in one PR comment at the end.
+**Halt rows halt under either flow mode** — they are the human gate `AGENTS.md` places on architecture,
+domain and policy decisions. When one fires, present the situation with your recommendation.
+`halt-on-tripwire` extends that treatment to the Record rows; `record-on-tripwire` logs them and
+continues, and Step 9 surfaces every recorded call in one PR comment.
 
 ### When code generation is blocked
 
@@ -250,10 +286,10 @@ cd <pkg> && mockgen -source=<f>.go -destination=mock/mock_<f>.go.gen.go -package
 
 Only `make dump-schema` truly needs the container, and only when a migration was added.
 
-Two traps: `merge-dml-ci` runs `go run ./cmd/`, so adding a Repository method before its query exists
-deadlocks the build — stub the implementation for the duration of generation, then restore (back the
-file up with `cp` first). And the embedded-spec generator's `//go:generate` line points at a container
-path, so `go generate` cannot run it; invoke it with the real path:
+Two traps. `merge-dml-ci` runs `go run ./cmd/`, so adding a Repository method before its query exists
+deadlocks the build — stub the implementation for the duration of generation, then restore it (`cp`
+the file first). The embedded-spec generator's `//go:generate` line points at a container path, so
+invoke it with the real path:
 
 ```bash
 cd internal/controller/httpstack/oapi/validator \
@@ -276,24 +312,33 @@ nothing drifted, say so in one line and move on.
 
 ## Step 6 — Local gates
 
-`make fix`, then `make lint` / `make test`. When many worktrees are active these may be delegated to
-CI — that is a documented trade-off — but **say in the PR that they were not run locally**. Silence
-reads as "verified".
+`make fix`, then `make lint` / `make test`. When many worktrees are active these may be left to CI,
+but **say in the PR that they were not run locally**. Silence reads as "verified".
 
 Runtime verification is deliberately *not* here. It belongs after the PR exists (Step 8), so CI runs
 in parallel with it instead of after it.
 
 ## Step 7 — Review
 
-Run `impl-review` (which chains `test-review`). Handle findings per the review mode from Step 0.
+A completed change has three review subjects, each owned by one skill: `impl-review` (the change),
+`test-review` (the tests), `comment-sweep` (the comment stock of the touched files). They are peers —
+none invokes another — so this step must not silently pick one.
 
-Auto-application is confined to things whose correctness is machine-checkable: formatting, lint fixes,
-comment-quality findings, regenerated artifacts. **A fix that changes the design is always a decision
-point**, even under review mode `all` — `all` authorizes a large rewrite, not an unreviewed one. This
-mirrors why `impl-review` keeps its five code lenses report-only.
+Follow the Review Phase Protocol in `AGENTS.md`: **estimate each skill's return from the context this
+run already holds** — which layers the change touched, whether tests or comments moved at all, what an
+earlier pass already covered — then ask the user per skill, stating that estimate and its reason, and
+run what they approve. "Shall I run all three?" is not a question; it hands the cost back unpriced.
 
-Then present every trip-wire and deferred judgment together, in one place. Batching beats trickling:
-the user sees the shape of the whole run at once.
+This step is where the estimate is cheapest to make: the plan, the diff, and the Step 5 reconciliation
+are already in hand.
+
+Handle findings per the review mode from Step 0. Auto-application is confined to what is
+machine-checkable — formatting, lint fixes, comment-quality findings, regenerated artifacts. **A fix
+that changes the design is always a decision point**, even under review mode `all`: `all` authorizes a
+large rewrite, not an unreviewed one.
+
+Then present every recorded trip-wire and deferred judgment together, in one place. Batching beats
+trickling: the user sees the shape of the whole run at once.
 
 ## Step 8 — PR, then runtime verification, then merge
 
@@ -336,9 +381,9 @@ the path you expect** (controller → usecase → infrastructure, with the SQL y
 code alone does not prove the request reached the layer you changed; a wrong-but-plausible route
 produces the right status for the wrong reason.
 
-**Green CI is not a substitute for this.** Review lenses and CI checks are static analysis or tests
-that stop at the database layer, so a documented status code that the middleware never lets the
-request reach passes all of them. One real HTTP request settles it.
+**Green CI is not a substitute.** Review lenses and CI checks are static analysis or tests that stop
+at the database layer, so a documented status code that the middleware never lets the request reach
+passes all of them. One real HTTP request settles it.
 
 When runtime verification cannot run at all, there are two honest options and no third:
 
@@ -383,19 +428,24 @@ the one being read (middleware, DI wiring, the database) already handles the cas
 stage is usually enough to check.
 
 Finally, record in a PR comment any call not already visible in a commit message or the PR
-description. In `delegated` mode this is where the recorded trip-wires land.
+description. Every trip-wire recorded rather than halted on lands here.
 
 ## Delegating without double-asking
 
 Sub-skills ask their own questions. Since this skill already settled them with the user, pass the
-answers as a payload so the sub-skill skips its own gate — the way `impl-review` hands `scope` /
-`base_ref` / `reviewer_model` / `skip_verifier` to `test-review`.
+answers as a payload so the sub-skill skips its own gate.
 
 | Sub-skill | Pass through | Suppresses |
 | --- | --- | --- |
 | `commit` | The grouping you already presented | Its grouping-approval question |
-| `submit-pr` | That review already ran; the flow-mode push decision | Its Phase 0 review prompt and push confirmation |
-| `impl-review` | Scope, reviewer model, test-delegation choice | Its Step 0 |
+| `submit-pr` | That a review already ran; the push decision | Its Phase 0 review prompt and push confirmation |
+| `impl-review` | Scope, reviewer model | Its Step 0 |
+| `test-review` | Scope, reviewer model | Its scope question |
+| `comment-sweep` | Scope **and apply mode** | Its scope and apply-mode questions |
+
+**Every row is required, because a missing one reinstates a gate this skill already settled.** A
+sub-skill whose default is to confirm per item — `comment-sweep` is the one to watch — will do exactly
+that when its apply mode does not arrive, and the omission is invisible until the questions start.
 
 Asking the user the same thing twice trains them to approve without reading, which defeats the
 decision points this skill exists to create.
@@ -406,12 +456,16 @@ decision points this skill exists to create.
 - ✅ Verify the issue's claims against the actual base, and put the discrepancies in the kickoff comment.
 - ✅ Get the plan approved before implementing, and keep it as a file so Step 5 can diff against it.
 - ✅ Treat the five trip-wires as mechanical triggers, not as things to notice.
+- ✅ Stop only at the five listed places; record every other call for the PR comment.
+- ✅ Pass every sub-skill its settled answers, apply mode included.
 - ✅ Say explicitly which gates ran and which did not.
 - ✅ Read the traces, not just the status code.
 - ✅ Verify a finding at runtime before filing an issue for it.
 - ❌ Merge a change to implementation code that has never been exercised over HTTP.
 - ❌ Present green CI as runtime verification.
 - ❌ Auto-apply a fix that changes the design, in any mode.
+- ❌ Ask for approval at a phase boundary, or treat a delegated agent's completion as one.
+- ❌ Pick which review skills run, or run one on the assumption another chains it.
 - ❌ File an issue without checking for an existing one, unless issue mode says to.
 - ❌ Release the DB slot, or ask about releasing it, unprompted.
 - ❌ Poll CI in a foreground sleep loop.
@@ -422,10 +476,12 @@ decision points this skill exists to create.
 - [ ] Kickoff comment posted, including issue-vs-base discrepancies.
 - [ ] Worktree created from a freshly fetched base; DB slot leased only when DB work begins; `go mod vendor` run when needed.
 - [ ] Plan drafted by a different model, all four sections present, approved before implementation.
-- [ ] Trip-wires handled per flow mode; nothing silently absorbed.
+- [ ] Trip-wires handled per their row's default and the flow mode; nothing silently absorbed.
+- [ ] No stop outside the five listed places.
 - [ ] Plan reconciled against the actual diff.
 - [ ] Local gates run, or their delegation to CI stated in the PR.
-- [ ] Review run; auto-application confined to machine-checkable fixes.
+- [ ] The three review skills each estimated and put to the user; the approved ones run with their
+      answers passed through. Auto-application confined to machine-checkable fixes.
 - [ ] Decision points presented together.
 - [ ] PR opened, then runtime verification (curl + traces) completed — or its absence stated together
       with which of the two options was taken — before merging.
