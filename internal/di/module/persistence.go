@@ -9,7 +9,6 @@ import (
 	purchasesummaryqs "go-boilerplate/internal/infrastructure/rdb/query_service/purchase/summary" // sample-api:line
 	cartrepo "go-boilerplate/internal/infrastructure/rdb/repository/cart"                         // sample-api:line
 	inquiryrepo "go-boilerplate/internal/infrastructure/rdb/repository/inquiry"                   // sample-api:line
-	inquirymessagerepo "go-boilerplate/internal/infrastructure/rdb/repository/inquiry_message"    // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/repository/prefecture"                            // sample-api:line
 	"go-boilerplate/internal/infrastructure/rdb/repository/product"                               // sample-api:line
 	productcategory "go-boilerplate/internal/infrastructure/rdb/repository/product_category"      // sample-api:line
@@ -42,8 +41,7 @@ func persistenceModule() fx.Option {
 				purchaserepo.New,
 				purchasestatusrepo.New,
 				cartrepo.New,
-				inquiryrepo.New,        // sample-api:line
-				inquirymessagerepo.New, // sample-api:line
+				inquiryrepo.New, // sample-api:line
 				// sample-api:end
 			),
 		),

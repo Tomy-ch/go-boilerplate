@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"go-boilerplate/internal/domain/inquiry"
-	"go-boilerplate/internal/domain/inquirymessage"
 	"go-boilerplate/internal/usecase/boundary/outbox"
 	rt "go-boilerplate/internal/usecase/boundary/realtime"
 	"go-boilerplate/internal/usecase/inquiry/event"
@@ -23,10 +22,10 @@ func conversationStreamID(inquiryID string) rt.StreamID { return rt.StreamID(inq
 func (u *usecase) emitDelivery(
 	ctx context.Context,
 	i *inquiry.Inquiry,
-	m *inquirymessage.Message,
+	m *inquiry.Message,
 	feedSequence int64,
 ) error {
-	messagePayload, err := event.BuildMessageCreated(m)
+	messagePayload, err := event.BuildMessageCreated(i, m)
 	if err != nil {
 		return err
 	}

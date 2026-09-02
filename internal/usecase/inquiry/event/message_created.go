@@ -4,9 +4,9 @@ package event
 
 import (
 	"encoding/json"
+	"go-boilerplate/internal/domain/inquiry"
 	"time"
 
-	"go-boilerplate/internal/domain/inquirymessage"
 	"go-boilerplate/pkg/xerrors"
 )
 
@@ -29,11 +29,12 @@ type messageCreated struct {
 	CreatedAt string        `json:"createdAt"`
 }
 
-// BuildMessageCreated は、メッセージ集約から inquiry.message.created.v1 の payload を marshal します。
-func BuildMessageCreated(m *inquirymessage.Message) ([]byte, error) {
+// BuildMessageCreated は、問い合わせとメッセージから inquiry.message.created.v1 の payload を
+// marshal します。メッセージは親への逆参照を持たないため、問い合わせを併せて受け取ります。
+func BuildMessageCreated(i *inquiry.Inquiry, m *inquiry.Message) ([]byte, error) {
 	payload, err := json.Marshal(messageCreated{
 		MessageID: m.ID().String(),
-		InquiryID: m.InquiryID().String(),
+		InquiryID: i.ID().String(),
 		Author:    messageAuthor{Kind: m.Author().Kind().String()},
 		Body:      m.Body(),
 		Sequence:  m.Sequence(),

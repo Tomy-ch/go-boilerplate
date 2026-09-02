@@ -9,9 +9,9 @@ package inquiry
 
 import (
 	"context"
+	"go-boilerplate/pkg/uuid"
 
 	"go-boilerplate/internal/domain/inquiry"
-	"go-boilerplate/internal/domain/inquirymessage"
 	"go-boilerplate/internal/observability"
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/internal/usecase/boundary/authz"
@@ -56,7 +56,6 @@ type usecase struct {
 	txm        tx.Manager
 	clock      clock.Clock
 	repo       inquiry.Repository
-	msgRepo    inquirymessage.Repository
 	sequences  rt.SequenceAllocator
 	emit       outbox.EmitUsecase
 	tickets    ucrealtime.TicketIssuer
@@ -69,7 +68,6 @@ func New(
 	txm tx.Manager,
 	clk clock.Clock,
 	repo inquiry.Repository,
-	msgRepo inquirymessage.Repository,
 	sequences rt.SequenceAllocator,
 	emit outbox.EmitUsecase,
 	tickets ucrealtime.TicketIssuer,
@@ -80,7 +78,6 @@ func New(
 		txm:        txm,
 		clock:      clk,
 		repo:       repo,
-		msgRepo:    msgRepo,
 		sequences:  sequences,
 		emit:       emit,
 		tickets:    tickets,
@@ -89,11 +86,12 @@ func New(
 	}
 }
 
-// toMessageView は、メッセージ集約を出力 DTO へ写します。
-func toMessageView(m *inquirymessage.Message) MessageView {
+// toMessageView は、メッセージを出力 DTO へ写します。
+// メッセージは親への逆参照を持たないため、所属する問い合わせを併せて受け取ります。
+func toMessageView(inquiryID uuid.UUID, m *inquiry.Message) MessageView {
 	return MessageView{
 		ID:         m.ID(),
-		InquiryID:  m.InquiryID(),
+		InquiryID:  inquiryID,
 		AuthorKind: m.Author().Kind().String(),
 		Body:       m.Body(),
 		Sequence:   m.Sequence(),

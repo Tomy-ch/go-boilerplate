@@ -11,7 +11,6 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	domaininquiry "go-boilerplate/internal/domain/inquiry"
-	domainmessage "go-boilerplate/internal/domain/inquirymessage"
 	"go-boilerplate/internal/usecase/boundary/authz"
 	rt "go-boilerplate/internal/usecase/boundary/realtime"
 	"go-boilerplate/internal/usecase/tools/paging"
@@ -156,8 +155,8 @@ func Test_usecase_GetInquiryHistory(t *testing.T) {
 			d.authz.EXPECT().Authorize(gomock.Any(), gomock.Any(), authz.ActionInquiryReadAll, gomock.Any()).Return(nil)
 			d.repo.EXPECT().FindByID(gomock.Any(), i.ID()).Return(i, nil)
 			d.sequences.EXPECT().Current(gomock.Any(), gomock.Any()).Return(rt.Sequence(1), true, nil)
-			d.messages.EXPECT().ListByInquiry(gomock.Any(), i.ID(), gomock.Any()).
-				Return([]*domainmessage.Message{newTestMessage(t, i.ID(), domainmessage.AuthorKindOperator, 1)}, nil)
+			d.repo.EXPECT().ListMessages(gomock.Any(), i.ID(), gomock.Any()).
+				Return([]*domaininquiry.Message{newTestMessage(t, domaininquiry.AuthorKindOperator, 1)}, nil)
 
 			view, err := u.GetInquiryHistory(context.Background(), newTestAuthn(t), OperatorHistoryParams{
 				InquiryID: i.ID(),
@@ -212,16 +211,16 @@ func Test_usecase_Reply(t *testing.T) {
 			i := newTestInquiry(t, uuidtestkit.NewTestFromSalt(t, "user"))
 			operatorID := uuidtestkit.NewTestFromSalt(t, "operator")
 
-			var created *domainmessage.Message
+			var created *domaininquiry.Message
 			d.authz.EXPECT().Authorize(gomock.Any(), gomock.Any(), authz.ActionInquiryReply, gomock.Any()).Return(nil)
 			d.repo.EXPECT().FindByID(gomock.Any(), i.ID()).Return(i, nil)
 			d.sequences.EXPECT().Allocate(gomock.Any(), gomock.Any()).Return(rt.Sequence(2), nil).Times(2)
-			d.messages.EXPECT().Create(gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ context.Context, m *domainmessage.Message) error { created = m; return nil },
+			d.repo.EXPECT().CreateMessage(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, _ uuid.UUID, m *domaininquiry.Message) error { created = m; return nil },
 			)
-			d.repo.EXPECT().Touch(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
-			d.messages.EXPECT().ListByInquiry(gomock.Any(), gomock.Any(), gomock.Any()).
-				Return([]*domainmessage.Message{newTestMessage(t, i.ID(), domainmessage.AuthorKindOperator, 2)}, nil)
+			d.repo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+			d.repo.EXPECT().ListMessages(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return([]*domaininquiry.Message{newTestMessage(t, domaininquiry.AuthorKindOperator, 2)}, nil)
 			d.emit.EXPECT().Emit(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, nil).Times(2)
 
 			view, err := u.Reply(context.Background(), newTestAuthn(t), ReplyParams{
@@ -258,7 +257,7 @@ func Test_usecase_Reply(t *testing.T) {
 
 			_, err := u.Reply(context.Background(), newTestAuthn(t), ReplyParams{Body: "確認します"})
 
-			require.ErrorIs(t, err, domainmessage.ErrInvalidAuthorSubject)
+			require.ErrorIs(t, err, domaininquiry.ErrInvalidAuthorSubject)
 		})
 	})
 }

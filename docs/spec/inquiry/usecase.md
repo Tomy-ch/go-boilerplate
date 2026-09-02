@@ -136,8 +136,7 @@ output:
 ```yaml
 - name: tx.Manager                        # 投稿 / 回答の業務 tx（採番 + 追加 + emit）。履歴も同じ tx 境界で読む
 - name: clock                             # boundary.Clock（updatedAt / createdAt）
-- name: inquiry.Repository                # FindByID / FindActiveByUserID / Create / Touch / ListForOperator
-- name: inquirymessage.Repository         # Create / ListByInquiry
+- name: inquiry.Repository                # FindByID / FindActiveByUserID / Create / Update / CreateMessage / ListMessages / ListForOperator
 - name: realtime.SequenceAllocator        # boundary/realtime。Allocate(streamID)（行ロックを commit まで保持）/ Current(streamID)（現在位置の読み出し）
 - name: outbox.EmitUsecase                # 2 行 emit（realtime channel、ordering_key / ordering_sequence 付き）
 - name: realtime.TicketIssuer             # internal/usecase/realtime（機構の usecase）。subject × destination × scope × expiry に bind した ticket を発行し boundary/realtime.StreamTicketStore へ保存する
@@ -157,8 +156,8 @@ output:
     - "ErrConflict のときだけ txm.Do をもう 1 回（Create を試みず FindActiveByUserID から）やり直す。2 回目も見つからなければ ErrConflict を返す"
     - "取得または作成した問い合わせに対して、同じ txm.Do 内で:"
     - "  ① seq = seqAlloc.Allocate(inquiry.ID)（会話 stream の連番。行ロックは commit まで保持。同一問い合わせへの並行投稿はここで直列化）"
-    - "  ② inquirymessage.New(id, inquiry.ID, NewAuthor(user, UserID), Body, seq) で検証し msgRepo.Create"
-    - "  ③ inquiry.Touch(now) → inquiryRepo.Touch"
+    - "  ② inquiry.AppendMessage(id, {NewAuthor(user, UserID), Body, seq}, now) で鋳造し repo.CreateMessage / repo.Update"
+    - "  ③ AppendMessage が進めた updatedAt を repo.Update で永続化"
     - "  ④ feedSeq = seqAlloc.Allocate(feedID)（feed stream の連番。組織全体の投稿・回答はここで直列化する）"
     - "  ⑤ emit.Emit(inquiry.message.created.v1; channel=realtime, ordering_key=inquiry.ID, ordering_sequence=seq, payload={messageId, inquiryId, author{kind}, body, sequence, createdAt})"
     - "  ⑥ emit.Emit(inquiry.thread.updated.v1; channel=realtime, ordering_key=feedID, ordering_sequence=feedSeq, payload={inquiryId, userId, sequence=seq, updatedAt})"
@@ -169,10 +168,9 @@ output:
     - inquiry.New
     - inquiry.Repository.Create
     - realtime.SequenceAllocator.Allocate
-    - inquirymessage.New
-    - inquirymessage.Repository.Create
-    - inquiry.Touch
-    - inquiry.Repository.Touch
+    - inquiry.Inquiry.AppendMessage
+    - inquiry.Repository.CreateMessage
+    - inquiry.Repository.Update
     - outbox.EmitUsecase.Emit
     - clock.Now
   errors:
@@ -185,14 +183,14 @@ output:
     - "txm.Do 内で（読み取りのみ）:"
     - "  ① inquiryRepo.FindActiveByUserID(UserID)。無ければ空の HistoryView（InquiryID ゼロ値、StreamCursor 0）を返す"
     - "  ② cursor = seqAlloc.Current(inquiry.ID)（会話 stream の現在位置）"
-    - "  ③ msgRepo.ListByInquiry(inquiry.ID, AfterSequence, upTo=cursor, Limit+1)"
+    - "  ③ repo.ListMessages(inquiry.ID, AfterSequence, upTo=cursor, Limit+1)"
     - "  ④ StreamCursor = cursor"
     - Limit を超えた分で NextAfterSequence を決め、HistoryView へ写像して返す
   calls:
     - tx.Manager.Do
     - inquiry.Repository.FindActiveByUserID
     - realtime.SequenceAllocator.Current
-    - inquirymessage.Repository.ListByInquiry
+    - inquiry.Repository.ListMessages
   errors:
     - なし（自分の問い合わせしか読めない構造のため 403 は生じない）
 
@@ -224,14 +222,14 @@ output:
   tx_required: true          # 読み取りのみの tx（GetHistory と同じ手順）
   steps:
     - "authz.Authorize(authn, admin)"
-    - "txm.Do 内で inquiryRepo.FindByID(InquiryID) → cursor = seqAlloc.Current(InquiryID) → msgRepo.ListByInquiry(InquiryID, AfterSequence, upTo=cursor, Limit+1) → StreamCursor = cursor"
+    - "txm.Do 内で repo.FindByID(InquiryID) → cursor = seqAlloc.Current(InquiryID) → repo.ListMessages(InquiryID, AfterSequence, upTo=cursor, Limit+1) → StreamCursor = cursor"
     - HistoryView へ写像して返す
   calls:
     - authz.Authorizer.Authorize
     - tx.Manager.Do
     - inquiry.Repository.FindByID
     - realtime.SequenceAllocator.Current
-    - inquirymessage.Repository.ListByInquiry
+    - inquiry.Repository.ListMessages
   errors:
     - ErrPermissionDenied → 403
     - ErrNotFound → 404
@@ -241,17 +239,16 @@ output:
   steps:
     - "authz.Authorize(authn, admin)"
     - "message id を UUIDv7 で採番する"
-    - "txm.Do 内で: inquiryRepo.FindByID(InquiryID) → seq = seqAlloc.Allocate(InquiryID) → inquirymessage.New(author=NewAuthor(operator, OperatorID)) → msgRepo.Create → Touch → feedSeq = seqAlloc.Allocate(feedID) → 2 行 emit（AppendMessage の ⑤⑥ と同じ）"
+    - "txm.Do 内で: repo.FindByID(InquiryID) → seq = seqAlloc.Allocate(InquiryID) → inquiry.AppendMessage(author=NewAuthor(operator, OperatorID)) → repo.CreateMessage → repo.Update → feedSeq = seqAlloc.Allocate(feedID) → 2 行 emit（AppendMessage の ⑤⑥ と同じ）"
     - MessageView へ写像して返す
   calls:
     - authz.Authorizer.Authorize
     - tx.Manager.Do
     - inquiry.Repository.FindByID
     - realtime.SequenceAllocator.Allocate
-    - inquirymessage.New
-    - inquirymessage.Repository.Create
-    - inquiry.Touch
-    - inquiry.Repository.Touch
+    - inquiry.Inquiry.AppendMessage
+    - inquiry.Repository.CreateMessage
+    - inquiry.Repository.Update
     - outbox.EmitUsecase.Emit
     - clock.Now
   errors:

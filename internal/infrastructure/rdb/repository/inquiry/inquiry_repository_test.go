@@ -49,6 +49,22 @@ func createInquiry(ctx context.Context, t *testing.T, repo *repository, testDB d
 	return i
 }
 
+// updateUpdatedAt は、更新日時だけを差し替えて永続化します。
+// 更新日時を進める入口はドメインでは AppendMessage だけなので、時刻を直接指定したい検証では
+// 再構築した集約を Update へ渡します。
+func updateUpdatedAt(
+	ctx context.Context,
+	t *testing.T,
+	repo *repository,
+	i *domaininquiry.Inquiry,
+	now time.Time,
+) {
+	t.Helper()
+	updated, err := domaininquiry.Reconstruct(i.ID(), domaininquiry.Attributes{UserID: i.UserID(), UpdatedAt: now})
+	require.NoError(t, err)
+	require.NoError(t, repo.Update(ctx, updated))
+}
+
 func TestNew(t *testing.T) {
 	t.Parallel()
 
@@ -190,7 +206,7 @@ func Test_repository_FindActiveByUserID(t *testing.T) {
 	})
 }
 
-func Test_repository_Touch(t *testing.T) {
+func Test_repository_Update(t *testing.T) {
 	t.Parallel()
 
 	testDB := testkit.NewTestDB(t)
@@ -209,7 +225,7 @@ func Test_repository_Touch(t *testing.T) {
 				require.NoError(t, err)
 				now := stored.UpdatedAt().Add(time.Hour).Truncate(time.Microsecond)
 
-				require.NoError(t, repo.Touch(ctx, i.ID(), now))
+				updateUpdatedAt(ctx, t, repo, i, now)
 
 				got, err := repo.FindByID(ctx, i.ID())
 				require.NoError(t, err)
@@ -221,7 +237,11 @@ func Test_repository_Touch(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				require.NoError(t, repo.Touch(ctx, mustNewUUID(t), time.Now().UTC()))
+				absent, rerr := domaininquiry.Reconstruct(mustNewUUID(t), domaininquiry.Attributes{
+					UserID: takeSeedUser(ctx, t, testDB, 0), UpdatedAt: time.Now().UTC(),
+				})
+				require.NoError(t, rerr)
+				require.NoError(t, repo.Update(ctx, absent))
 			})
 		})
 	})
@@ -244,7 +264,7 @@ func Test_repository_ListForOperator(t *testing.T) {
 				older := createInquiry(ctx, t, repo, testDB, 6)
 				base := time.Now().UTC().Truncate(time.Microsecond)
 				// 作成日時より前へ動かすと読み直しが不変条件で落ちる（表に CHECK 制約が無く書けてしまう)。
-				require.NoError(t, repo.Touch(ctx, older.ID(), base.Add(2*time.Hour)))
+				updateUpdatedAt(ctx, t, repo, older, base.Add(2*time.Hour))
 
 				got, err := repo.ListForOperator(ctx, domaininquiry.ListParams{Limit: 100})
 				require.NoError(t, err)

@@ -10,7 +10,6 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	domaininquiry "go-boilerplate/internal/domain/inquiry"
-	domainmessage "go-boilerplate/internal/domain/inquirymessage"
 	rt "go-boilerplate/internal/usecase/boundary/realtime"
 	"go-boilerplate/pkg/uuid"
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
@@ -21,10 +20,10 @@ import (
 func expectAppendSucceeds(t *testing.T, d deps, inquiryID uuid.UUID) {
 	t.Helper()
 	d.sequences.EXPECT().Allocate(gomock.Any(), gomock.Any()).Return(rt.Sequence(1), nil).Times(2)
-	d.messages.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
-	d.repo.EXPECT().Touch(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
-	d.messages.EXPECT().ListByInquiry(gomock.Any(), gomock.Any(), gomock.Any()).
-		Return([]*domainmessage.Message{newTestMessage(t, inquiryID, domainmessage.AuthorKindUser, 1)}, nil)
+	d.repo.EXPECT().CreateMessage(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+	d.repo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+	d.repo.EXPECT().ListMessages(gomock.Any(), gomock.Any(), gomock.Any()).
+		Return([]*domaininquiry.Message{newTestMessage(t, domaininquiry.AuthorKindUser, 1)}, nil)
 	d.emit.EXPECT().Emit(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, nil).Times(2)
 }
 
@@ -123,14 +122,14 @@ func Test_usecase_appendForUser(t *testing.T) {
 			i := newTestInquiry(t, userID)
 
 			d.repo.EXPECT().FindActiveByUserID(gomock.Any(), userID).Return(i, nil)
-			var created *domainmessage.Message
+			var created *domaininquiry.Message
 			d.sequences.EXPECT().Allocate(gomock.Any(), gomock.Any()).Return(rt.Sequence(1), nil).Times(2)
-			d.messages.EXPECT().Create(gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ context.Context, m *domainmessage.Message) error { created = m; return nil },
+			d.repo.EXPECT().CreateMessage(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, _ uuid.UUID, m *domaininquiry.Message) error { created = m; return nil },
 			)
-			d.repo.EXPECT().Touch(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
-			d.messages.EXPECT().ListByInquiry(gomock.Any(), gomock.Any(), gomock.Any()).
-				Return([]*domainmessage.Message{newTestMessage(t, i.ID(), domainmessage.AuthorKindUser, 1)}, nil)
+			d.repo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+			d.repo.EXPECT().ListMessages(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return([]*domaininquiry.Message{newTestMessage(t, domaininquiry.AuthorKindUser, 1)}, nil)
 			d.emit.EXPECT().Emit(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, nil).Times(2)
 
 			_, err := u.appendForUser(context.Background(), AppendMessageParams{
@@ -139,7 +138,7 @@ func Test_usecase_appendForUser(t *testing.T) {
 
 			require.NoError(t, err)
 			require.NotNil(t, created)
-			assert.Equal(t, domainmessage.AuthorKindUser, created.Author().Kind())
+			assert.Equal(t, domaininquiry.AuthorKindUser, created.Author().Kind())
 			assert.Equal(t, userID, created.Author().SubjectID())
 		})
 	})

@@ -1,4 +1,4 @@
-package inquirymessage
+package inquiry
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	domainmessage "go-boilerplate/internal/domain/inquirymessage"
+	domaininquiry "go-boilerplate/internal/domain/inquiry"
 	realtimesq "go-boilerplate/internal/infrastructure/rdb/system_cqrs/realtime"
 	"go-boilerplate/internal/infrastructure/rdb/testkit"
 	"go-boilerplate/internal/observability"
@@ -37,16 +37,14 @@ func TestHistoryCursorContract(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				inquiryID, userID := createInquiry(ctx, t, testDB, 5)
-				stream := rt.StreamID(inquiryID.String())
+				i := createInquiry(ctx, t, repo, testDB, 7)
+				stream := rt.StreamID(i.ID().String())
 
 				// 履歴に載るべき 2 通。
 				for range 2 {
 					seq, err := sequences.Allocate(ctx, stream)
 					require.NoError(t, err)
-					require.NoError(t, repo.Create(ctx, newMessage(
-						t, inquiryID, domainmessage.AuthorKindUser, userID, int64(seq),
-					)))
+					require.NoError(t, repo.CreateMessage(ctx, i.ID(), newMessage(t, domaininquiry.AuthorKindUser, i.UserID(), int64(seq))))
 				}
 
 				// 履歴はまずここで現在位置を読む。
@@ -58,11 +56,9 @@ func TestHistoryCursorContract(t *testing.T) {
 				// 現在位置を読んだ後、メッセージを読む前に 1 通増える（取りこぼしが起きるとしたらこの窓）。
 				raced, err := sequences.Allocate(ctx, stream)
 				require.NoError(t, err)
-				require.NoError(t, repo.Create(ctx, newMessage(
-					t, inquiryID, domainmessage.AuthorKindUser, userID, int64(raced),
-				)))
+				require.NoError(t, repo.CreateMessage(ctx, i.ID(), newMessage(t, domaininquiry.AuthorKindUser, i.UserID(), int64(raced))))
 
-				got, err := repo.ListByInquiry(ctx, inquiryID, domainmessage.HistoryParams{
+				got, err := repo.ListMessages(ctx, i.ID(), domaininquiry.HistoryParams{
 					UpToSequence: int64(cursor), Limit: 100,
 				})
 				require.NoError(t, err)
@@ -75,7 +71,7 @@ func TestHistoryCursorContract(t *testing.T) {
 				// その 1 通は現在位置より後ろにあるため、client が現在位置から購読を始めれば届く。
 				assert.Greater(t, int64(raced), int64(cursor))
 
-				resumed, err := repo.ListByInquiry(ctx, inquiryID, domainmessage.HistoryParams{
+				resumed, err := repo.ListMessages(ctx, i.ID(), domaininquiry.HistoryParams{
 					AfterSequence: ptr.To(int64(cursor)), UpToSequence: int64(raced), Limit: 100,
 				})
 				require.NoError(t, err)
@@ -88,8 +84,8 @@ func TestHistoryCursorContract(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
-				inquiryID, _ := createInquiry(ctx, t, testDB, 6)
-				stream := rt.StreamID(inquiryID.String())
+				i := createInquiry(ctx, t, repo, testDB, 8)
+				stream := rt.StreamID(i.ID().String())
 
 				allocated := make([]int64, 0, 3)
 				for range 3 {

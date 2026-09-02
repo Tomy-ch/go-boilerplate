@@ -1,9 +1,9 @@
 // Package inquiry は、問い合わせリポジトリ（inquiry.Repository）の RDB 実装を提供します。
+// メッセージは問い合わせ集約の内側にあるため、その読み書きもこのパッケージが担います。
 package inquiry
 
 import (
 	"context"
-	"time"
 
 	"go-boilerplate/internal/domain/inquiry"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
@@ -77,14 +77,14 @@ func (r *repository) Create(ctx context.Context, i *inquiry.Inquiry) error {
 	return nil
 }
 
-// Touch は、最後にメッセージが追加された日時を更新します。
-func (r *repository) Touch(ctx context.Context, id uuid.UUID, now time.Time) error {
+// Update は、問い合わせの更新日時を永続化します。
+func (r *repository) Update(ctx context.Context, i *inquiry.Inquiry) error {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
 	db := gen.New(driver.New(ctx, r.db))
 
-	err := db.TouchInquiry(ctx, &gen.TouchInquiryParams{ID: id, UpdatedAt: now})
+	err := db.TouchInquiry(ctx, &gen.TouchInquiryParams{ID: i.ID(), UpdatedAt: i.UpdatedAt()})
 	if err != nil {
 		return pgerror.NormalizeError(err)
 	}
@@ -153,6 +153,69 @@ func (r *repository) listRows(
 	}), nil
 }
 
+// CreateMessage は、問い合わせへメッセージを 1 件登録します。
+// 問い合わせ内の位置が重複した場合は一意制約違反を Conflict として返します。
+func (r *repository) CreateMessage(
+	ctx context.Context,
+	inquiryID uuid.UUID,
+	m *inquiry.Message,
+) error {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, r.db))
+
+	err := db.CreateInquiryMessage(ctx, &gen.CreateInquiryMessageParams{
+		ID:              m.ID(),
+		InquiryID:       inquiryID,
+		AuthorKind:      m.Author().Kind().String(),
+		AuthorSubjectID: m.Author().SubjectID(),
+		Body:            m.Body(),
+		StreamSequence:  m.Sequence(),
+	})
+	if err != nil {
+		return pgerror.NormalizeError(err)
+	}
+	return nil
+}
+
+// ListMessages は、問い合わせのメッセージを位置の昇順で 1 ページ分再構築して返します。
+func (r *repository) ListMessages(
+	ctx context.Context,
+	inquiryID uuid.UUID,
+	params inquiry.HistoryParams,
+) ([]*inquiry.Message, error) {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	db := gen.New(driver.New(ctx, r.db))
+
+	pageSize, err := safecast.IntToInt32(params.Limit)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := db.ListInquiryMessages(ctx, &gen.ListInquiryMessagesParams{
+		InquiryID:     inquiryID,
+		AfterSequence: params.AfterSequence,
+		UpToSequence:  params.UpToSequence,
+		PageSize:      pageSize,
+	})
+	if err != nil {
+		return nil, pgerror.NormalizeError(err)
+	}
+
+	messages := make([]*inquiry.Message, 0, len(rows))
+	for _, row := range rows {
+		entity, rerr := reconstructMessage(row.InquiryMessages)
+		if rerr != nil {
+			return nil, rerr
+		}
+		messages = append(messages, entity)
+	}
+	return messages, nil
+}
+
 // flatten は、埋め込み行の集合から表の行だけを取り出します。
 func flatten[T any](rows []*T, pick func(*T) gen.Inquiries) []gen.Inquiries {
 	out := make([]gen.Inquiries, 0, len(rows))
@@ -168,5 +231,24 @@ func reconstruct(row gen.Inquiries) (*inquiry.Inquiry, error) {
 		UserID:    row.UserID,
 		CreatedAt: row.CreatedAt,
 		UpdatedAt: row.UpdatedAt,
+	})
+}
+
+// reconstructMessage は、行をメッセージへ写します。
+func reconstructMessage(row gen.InquiryMessages) (*inquiry.Message, error) {
+	kind, err := inquiry.NewAuthorKind(row.AuthorKind)
+	if err != nil {
+		return nil, err
+	}
+	author, err := inquiry.NewAuthor(kind, row.AuthorSubjectID)
+	if err != nil {
+		return nil, err
+	}
+
+	return inquiry.ReconstructMessage(row.ID, inquiry.MessageAttributes{
+		Author:    author,
+		Body:      row.Body,
+		Sequence:  row.StreamSequence,
+		CreatedAt: row.CreatedAt,
 	})
 }

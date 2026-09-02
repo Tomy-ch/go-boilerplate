@@ -14,7 +14,7 @@ import (
 
 	messages "go-boilerplate/internal/controller/handler/v1/inquiries/me/messages"
 	"go-boilerplate/internal/controller/handler/v1/inquiries/me/messages/gen"
-	"go-boilerplate/internal/domain/inquirymessage"
+	"go-boilerplate/internal/domain/inquiry"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/idempotency"
 	inquiryuc "go-boilerplate/internal/usecase/inquiry"
@@ -125,7 +125,7 @@ func TestV1InquiriesMeMessages_Integration(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			uc := mock_inquiryuc.NewMockUsecase(ctrl)
 			uc.EXPECT().AppendMessage(gomock.Any(), gomock.Any()).
-				Return(inquiryuc.MessageView{}, inquirymessage.ErrEmptyBody)
+				Return(inquiryuc.MessageView{}, inquiry.ErrEmptyBody)
 
 			messages.BindHandler(e, observability.NewNoopTracerFactory(t), uc, idempotency.Deps{})
 			UseAppErrorHandler(t, e)

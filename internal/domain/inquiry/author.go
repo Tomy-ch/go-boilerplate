@@ -1,4 +1,4 @@
-package inquirymessage
+package inquiry
 
 import (
 	"go-boilerplate/pkg/uuid"

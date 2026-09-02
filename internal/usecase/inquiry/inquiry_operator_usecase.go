@@ -7,7 +7,6 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/inquiry"
-	"go-boilerplate/internal/domain/inquirymessage"
 	authbd "go-boilerplate/internal/usecase/boundary/auth"
 	"go-boilerplate/internal/usecase/boundary/authz"
 	"go-boilerplate/internal/usecase/boundary/tx"
@@ -100,7 +99,7 @@ func (u *usecase) Reply(
 		return MessageView{}, err
 	}
 
-	author, err := inquirymessage.NewAuthor(inquirymessage.AuthorKindOperator, params.OperatorID)
+	author, err := inquiry.NewAuthor(inquiry.AuthorKindOperator, params.OperatorID)
 	if err != nil {
 		return MessageView{}, err
 	}

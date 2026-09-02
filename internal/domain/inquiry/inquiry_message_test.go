@@ -1,4 +1,4 @@
-package inquirymessage
+package inquiry
 
 import (
 	"strings"
@@ -12,143 +12,23 @@ import (
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 )
 
-func newTestAttributes(t *testing.T) Attributes {
+func newTestMessageAttributes(t *testing.T) MessageAttributes {
 	t.Helper()
-	return Attributes{
-		InquiryID: uuidtestkit.NewTestFromSalt(t, "inquiry"),
-		Author:    newTestAuthor(t),
-		Body:      "問い合わせ本文",
-		Sequence:  1,
+	return MessageAttributes{
+		Author:   newTestAuthor(t),
+		Body:     "問い合わせ本文",
+		Sequence: 1,
 	}
 }
 
 func newTestMessage(t *testing.T) *Message {
 	t.Helper()
-	m, err := New(uuidtestkit.NewTestFromSalt(t, "message"), newTestAttributes(t))
+	m, err := ReconstructMessage(uuidtestkit.NewTestFromSalt(t, "message"), newTestMessageAttributes(t))
 	require.NoError(t, err)
 	return m
 }
 
-func TestNew(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("有効な属性でメッセージを生成する", func(t *testing.T) {
-			t.Parallel()
-			id := uuidtestkit.NewTestFromSalt(t, "message")
-			attrs := newTestAttributes(t)
-
-			m, err := New(id, attrs)
-			require.NoError(t, err)
-			assert.Equal(t, id, m.ID())
-			assert.Equal(t, attrs.InquiryID, m.InquiryID())
-			assert.Equal(t, attrs.Author, m.Author())
-			assert.Equal(t, attrs.Body, m.Body())
-			assert.Equal(t, attrs.Sequence, m.Sequence())
-		})
-
-		t.Run("生成直後は作成日時がゼロ値になる", func(t *testing.T) {
-			t.Parallel()
-			assert.True(t, newTestMessage(t).CreatedAt().IsZero())
-		})
-
-		t.Run("本文が上限文字数ちょうどなら受け入れる", func(t *testing.T) {
-			t.Parallel()
-			attrs := newTestAttributes(t)
-			attrs.Body = strings.Repeat("a", maxBodyLength)
-
-			_, err := New(uuidtestkit.NewTestFromSalt(t, "message"), attrs)
-			require.NoError(t, err)
-		})
-
-		t.Run("本文がマルチバイト文字で上限文字数ちょうどならバイト数が上限を超えても受け入れる", func(t *testing.T) {
-			t.Parallel()
-			attrs := newTestAttributes(t)
-			attrs.Body = strings.Repeat("あ", maxBodyLength)
-			require.Greater(t, len(attrs.Body), maxBodyLength)
-
-			_, err := New(uuidtestkit.NewTestFromSalt(t, "message"), attrs)
-			require.NoError(t, err)
-		})
-
-		t.Run("位置が下限なら受け入れる", func(t *testing.T) {
-			t.Parallel()
-			attrs := newTestAttributes(t)
-			attrs.Sequence = 1
-
-			_, err := New(uuidtestkit.NewTestFromSalt(t, "message"), attrs)
-			require.NoError(t, err)
-		})
-	})
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("IDが未設定ならErrInvalidIDを返す", func(t *testing.T) {
-			t.Parallel()
-			_, err := New(uuid.UUID{}, newTestAttributes(t))
-			require.ErrorIs(t, err, ErrInvalidID)
-		})
-
-		t.Run("問い合わせが未設定ならErrInvalidInquiryIDを返す", func(t *testing.T) {
-			t.Parallel()
-			attrs := newTestAttributes(t)
-			attrs.InquiryID = uuid.UUID{}
-
-			_, err := New(uuidtestkit.NewTestFromSalt(t, "message"), attrs)
-			require.ErrorIs(t, err, ErrInvalidInquiryID)
-		})
-
-		t.Run("生成関数を経ていない送り手を渡すとErrInvalidAuthorKindを返す", func(t *testing.T) {
-			t.Parallel()
-			attrs := newTestAttributes(t)
-			attrs.Author = Author{}
-
-			_, err := New(uuidtestkit.NewTestFromSalt(t, "message"), attrs)
-			require.ErrorIs(t, err, ErrInvalidAuthorKind)
-		})
-
-		t.Run("本文が空ならErrEmptyBodyを返す", func(t *testing.T) {
-			t.Parallel()
-			attrs := newTestAttributes(t)
-			attrs.Body = ""
-
-			_, err := New(uuidtestkit.NewTestFromSalt(t, "message"), attrs)
-			require.ErrorIs(t, err, ErrEmptyBody)
-		})
-
-		t.Run("本文が上限文字数を1文字超えるとErrBodyTooLongを返す", func(t *testing.T) {
-			t.Parallel()
-			attrs := newTestAttributes(t)
-			attrs.Body = strings.Repeat("a", maxBodyLength+1)
-
-			_, err := New(uuidtestkit.NewTestFromSalt(t, "message"), attrs)
-			require.ErrorIs(t, err, ErrBodyTooLong)
-		})
-
-		t.Run("位置が0ならErrInvalidSequenceを返す", func(t *testing.T) {
-			t.Parallel()
-			attrs := newTestAttributes(t)
-			attrs.Sequence = 0
-
-			_, err := New(uuidtestkit.NewTestFromSalt(t, "message"), attrs)
-			require.ErrorIs(t, err, ErrInvalidSequence)
-		})
-
-		t.Run("位置が負ならErrInvalidSequenceを返す", func(t *testing.T) {
-			t.Parallel()
-			attrs := newTestAttributes(t)
-			attrs.Sequence = -1
-
-			_, err := New(uuidtestkit.NewTestFromSalt(t, "message"), attrs)
-			require.ErrorIs(t, err, ErrInvalidSequence)
-		})
-	})
-}
-
-func TestReconstruct(t *testing.T) {
+func TestReconstructMessage(t *testing.T) {
 	t.Parallel()
 
 	t.Run("正常系", func(t *testing.T) {
@@ -157,14 +37,13 @@ func TestReconstruct(t *testing.T) {
 		t.Run("作成日時を含めて全属性を保持して再構築する", func(t *testing.T) {
 			t.Parallel()
 			id := uuidtestkit.NewTestFromSalt(t, "message")
-			attrs := newTestAttributes(t)
+			attrs := newTestMessageAttributes(t)
 			attrs.Sequence = 7
 			attrs.CreatedAt = time.Date(2026, time.September, 1, 10, 0, 0, 0, time.UTC)
 
-			m, err := Reconstruct(id, attrs)
+			m, err := ReconstructMessage(id, attrs)
 			require.NoError(t, err)
 			assert.Equal(t, id, m.ID())
-			assert.Equal(t, attrs.InquiryID, m.InquiryID())
 			assert.Equal(t, attrs.Author, m.Author())
 			assert.Equal(t, attrs.Body, m.Body())
 			assert.Equal(t, attrs.Sequence, m.Sequence())
@@ -177,11 +56,11 @@ func TestReconstruct(t *testing.T) {
 
 		t.Run("保存済みでも不変条件を緩めずErrInvalidSequenceを返す", func(t *testing.T) {
 			t.Parallel()
-			attrs := newTestAttributes(t)
+			attrs := newTestMessageAttributes(t)
 			attrs.Sequence = 0
 			attrs.CreatedAt = time.Date(2026, time.September, 1, 10, 0, 0, 0, time.UTC)
 
-			_, err := Reconstruct(uuidtestkit.NewTestFromSalt(t, "message"), attrs)
+			_, err := ReconstructMessage(uuidtestkit.NewTestFromSalt(t, "message"), attrs)
 			require.ErrorIs(t, err, ErrInvalidSequence)
 		})
 	})
@@ -196,7 +75,7 @@ func Test_newMessage(t *testing.T) {
 		t.Run("2つの入口が共有する検証を通ると属性を保持した集約を返す", func(t *testing.T) {
 			t.Parallel()
 			id := uuidtestkit.NewTestFromSalt(t, "message")
-			attrs := newTestAttributes(t)
+			attrs := newTestMessageAttributes(t)
 
 			m, err := newMessage(id, attrs)
 			require.NoError(t, err)
@@ -208,15 +87,15 @@ func Test_newMessage(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("IDが未設定ならErrInvalidIDを返す", func(t *testing.T) {
+		t.Run("IDが未設定ならErrInvalidMessageIDを返す", func(t *testing.T) {
 			t.Parallel()
-			_, err := newMessage(uuid.UUID{}, newTestAttributes(t))
-			require.ErrorIs(t, err, ErrInvalidID)
+			_, err := newMessage(uuid.UUID{}, newTestMessageAttributes(t))
+			require.ErrorIs(t, err, ErrInvalidMessageID)
 		})
 
 		t.Run("送り手の主体が未設定ならErrInvalidAuthorSubjectを返す", func(t *testing.T) {
 			t.Parallel()
-			attrs := newTestAttributes(t)
+			attrs := newTestMessageAttributes(t)
 			attrs.Author = Author{kind: AuthorKindUser}
 
 			_, err := newMessage(uuidtestkit.NewTestFromSalt(t, "message"), attrs)
@@ -270,19 +149,6 @@ func TestMessage_ID(t *testing.T) {
 	})
 }
 
-func TestMessage_InquiryID(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("生成に用いた問い合わせを返す", func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, uuidtestkit.NewTestFromSalt(t, "inquiry"), newTestMessage(t).InquiryID())
-		})
-	})
-}
-
 func TestMessage_Author(t *testing.T) {
 	t.Parallel()
 
@@ -328,17 +194,17 @@ func TestMessage_CreatedAt(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("生成直後はゼロ値を返す", func(t *testing.T) {
+		t.Run("作成日時を渡さずに組み立てるとゼロ値を返す", func(t *testing.T) {
 			t.Parallel()
 			assert.True(t, newTestMessage(t).CreatedAt().IsZero())
 		})
 
 		t.Run("再構築時に設定した作成日時を返す", func(t *testing.T) {
 			t.Parallel()
-			attrs := newTestAttributes(t)
+			attrs := newTestMessageAttributes(t)
 			attrs.CreatedAt = time.Date(2026, time.September, 1, 10, 0, 0, 0, time.UTC)
 
-			m, err := Reconstruct(uuidtestkit.NewTestFromSalt(t, "message"), attrs)
+			m, err := ReconstructMessage(uuidtestkit.NewTestFromSalt(t, "message"), attrs)
 			require.NoError(t, err)
 			assert.Equal(t, attrs.CreatedAt, m.CreatedAt())
 		})

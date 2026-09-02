@@ -14,7 +14,6 @@ import (
 	inquiry "go-boilerplate/internal/domain/inquiry"
 	uuid "go-boilerplate/pkg/uuid"
 	reflect "reflect"
-	time "time"
 
 	gomock "go.uber.org/mock/gomock"
 )
@@ -55,6 +54,20 @@ func (m *MockRepository) Create(ctx context.Context, arg1 *inquiry.Inquiry) erro
 func (mr *MockRepositoryMockRecorder) Create(ctx, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockRepository)(nil).Create), ctx, arg1)
+}
+
+// CreateMessage mocks base method.
+func (m *MockRepository) CreateMessage(ctx context.Context, inquiryID uuid.UUID, message *inquiry.Message) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateMessage", ctx, inquiryID, message)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// CreateMessage indicates an expected call of CreateMessage.
+func (mr *MockRepositoryMockRecorder) CreateMessage(ctx, inquiryID, message any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateMessage", reflect.TypeOf((*MockRepository)(nil).CreateMessage), ctx, inquiryID, message)
 }
 
 // FindActiveByUserID mocks base method.
@@ -102,16 +115,31 @@ func (mr *MockRepositoryMockRecorder) ListForOperator(ctx, params any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListForOperator", reflect.TypeOf((*MockRepository)(nil).ListForOperator), ctx, params)
 }
 
-// Touch mocks base method.
-func (m *MockRepository) Touch(ctx context.Context, id uuid.UUID, now time.Time) error {
+// ListMessages mocks base method.
+func (m *MockRepository) ListMessages(ctx context.Context, inquiryID uuid.UUID, params inquiry.HistoryParams) ([]*inquiry.Message, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Touch", ctx, id, now)
+	ret := m.ctrl.Call(m, "ListMessages", ctx, inquiryID, params)
+	ret0, _ := ret[0].([]*inquiry.Message)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListMessages indicates an expected call of ListMessages.
+func (mr *MockRepositoryMockRecorder) ListMessages(ctx, inquiryID, params any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMessages", reflect.TypeOf((*MockRepository)(nil).ListMessages), ctx, inquiryID, params)
+}
+
+// Update mocks base method.
+func (m *MockRepository) Update(ctx context.Context, arg1 *inquiry.Inquiry) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Update", ctx, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// Touch indicates an expected call of Touch.
-func (mr *MockRepositoryMockRecorder) Touch(ctx, id, now any) *gomock.Call {
+// Update indicates an expected call of Update.
+func (mr *MockRepositoryMockRecorder) Update(ctx, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Touch", reflect.TypeOf((*MockRepository)(nil).Touch), ctx, id, now)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockRepository)(nil).Update), ctx, arg1)
 }

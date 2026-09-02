@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"go-boilerplate/internal/domain/inquiry"
-	"go-boilerplate/internal/domain/inquirymessage"
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
 )
@@ -16,7 +15,7 @@ import (
 func (u *usecase) appendMessage(
 	ctx context.Context,
 	i *inquiry.Inquiry,
-	author inquirymessage.Author,
+	author inquiry.Author,
 	body string,
 ) (MessageView, error) {
 	sequence, err := u.sequences.Allocate(ctx, conversationStreamID(i.ID().String()))
@@ -29,25 +28,19 @@ func (u *usecase) appendMessage(
 		return MessageView{}, xerrors.Wrap(err, "failed to generate inquiry message id")
 	}
 
-	m, err := inquirymessage.New(messageID, inquirymessage.Attributes{
-		InquiryID: i.ID(),
-		Author:    author,
-		Body:      body,
-		Sequence:  int64(sequence),
-	})
+	m, err := i.AppendMessage(messageID, inquiry.MessageAttributes{
+		Author:   author,
+		Body:     body,
+		Sequence: int64(sequence),
+	}, u.clock.Now())
 	if err != nil {
 		return MessageView{}, err
 	}
-	if cerr := u.msgRepo.Create(ctx, m); cerr != nil {
+	if cerr := u.repo.CreateMessage(ctx, i.ID(), m); cerr != nil {
 		return MessageView{}, cerr
 	}
-
-	now := u.clock.Now()
-	if terr := i.Touch(now); terr != nil {
-		return MessageView{}, terr
-	}
-	if terr := u.repo.Touch(ctx, i.ID(), now); terr != nil {
-		return MessageView{}, terr
+	if uerr := u.repo.Update(ctx, i); uerr != nil {
+		return MessageView{}, uerr
 	}
 
 	feedSequence, err := u.sequences.Allocate(ctx, feedStreamID)
@@ -67,7 +60,7 @@ func (u *usecase) appendMessage(
 		return MessageView{}, eerr
 	}
 
-	return toMessageView(stored), nil
+	return toMessageView(i.ID(), stored), nil
 }
 
 // readBackMessage は、いま追加した 1 通を読み直します。
@@ -75,9 +68,9 @@ func (u *usecase) readBackMessage(
 	ctx context.Context,
 	inquiryID uuid.UUID,
 	sequence int64,
-) (*inquirymessage.Message, error) {
+) (*inquiry.Message, error) {
 	previous := sequence - 1
-	messages, err := u.msgRepo.ListByInquiry(ctx, inquiryID, inquirymessage.HistoryParams{
+	messages, err := u.repo.ListMessages(ctx, inquiryID, inquiry.HistoryParams{
 		AfterSequence: &previous,
 		UpToSequence:  sequence,
 		Limit:         1,

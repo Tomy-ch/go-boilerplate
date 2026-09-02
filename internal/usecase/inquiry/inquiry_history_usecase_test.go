@@ -2,6 +2,7 @@ package inquiry
 
 import (
 	"context"
+	domaininquiry "go-boilerplate/internal/domain/inquiry"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -9,7 +10,6 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"go-boilerplate/internal/apperror"
-	domainmessage "go-boilerplate/internal/domain/inquirymessage"
 	rt "go-boilerplate/internal/usecase/boundary/realtime"
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
@@ -32,8 +32,8 @@ func Test_usecase_GetHistory(t *testing.T) {
 			d.repo.EXPECT().FindActiveByUserID(gomock.Any(), userID).Return(i, nil)
 			d.sequences.EXPECT().Current(gomock.Any(), rt.StreamID(i.ID().String())).
 				Return(rt.Sequence(2), true, nil)
-			d.messages.EXPECT().ListByInquiry(gomock.Any(), i.ID(), gomock.Any()).
-				Return([]*domainmessage.Message{newTestMessage(t, i.ID(), domainmessage.AuthorKindUser, 1)}, nil)
+			d.repo.EXPECT().ListMessages(gomock.Any(), i.ID(), gomock.Any()).
+				Return([]*domaininquiry.Message{newTestMessage(t, domaininquiry.AuthorKindUser, 1)}, nil)
 
 			view, err := u.GetHistory(context.Background(), HistoryParams{UserID: userID})
 
@@ -89,14 +89,14 @@ func Test_usecase_historyOf(t *testing.T) {
 			u, d := newTestUsecase(t)
 			i := newTestInquiry(t, uuidtestkit.NewTestFromSalt(t, "user"))
 
-			var captured domainmessage.HistoryParams
+			var captured domaininquiry.HistoryParams
 			d.sequences.EXPECT().Current(gomock.Any(), gomock.Any()).Return(rt.Sequence(9), true, nil)
-			d.messages.EXPECT().ListByInquiry(gomock.Any(), i.ID(), gomock.Any()).DoAndReturn(
-				func(_ context.Context, _ uuid.UUID, params domainmessage.HistoryParams) ([]*domainmessage.Message, error) {
+			d.repo.EXPECT().ListMessages(gomock.Any(), i.ID(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, _ uuid.UUID, params domaininquiry.HistoryParams) ([]*domaininquiry.Message, error) {
 					captured = params
-					return []*domainmessage.Message{
-						newTestMessage(t, i.ID(), domainmessage.AuthorKindUser, 1),
-						newTestMessage(t, i.ID(), domainmessage.AuthorKindUser, 2),
+					return []*domaininquiry.Message{
+						newTestMessage(t, domaininquiry.AuthorKindUser, 1),
+						newTestMessage(t, domaininquiry.AuthorKindUser, 2),
 					}, nil
 				},
 			)
@@ -149,7 +149,7 @@ func Test_usecase_historyOf(t *testing.T) {
 			wantErr := xerrors.New("list failed")
 
 			d.sequences.EXPECT().Current(gomock.Any(), gomock.Any()).Return(rt.Sequence(1), true, nil)
-			d.messages.EXPECT().ListByInquiry(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, wantErr)
+			d.repo.EXPECT().ListMessages(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, wantErr)
 
 			_, err := u.historyOf(context.Background(), i, nil, nil)
 
@@ -168,9 +168,9 @@ func Test_pageOf(t *testing.T) {
 
 		t.Run("上限以下なら全件を返し次ページを示さない", func(t *testing.T) {
 			t.Parallel()
-			messages := []*domainmessage.Message{newTestMessage(t, inquiryID, domainmessage.AuthorKindUser, 1)}
+			messages := []*domaininquiry.Message{newTestMessage(t, domaininquiry.AuthorKindUser, 1)}
 
-			views, next := pageOf(messages, 2)
+			views, next := pageOf(inquiryID, messages, 2)
 
 			assert.Len(t, views, 1)
 			assert.Nil(t, next)
@@ -178,12 +178,12 @@ func Test_pageOf(t *testing.T) {
 
 		t.Run("上限を超えたら切り詰め末尾の位置を次ページとして返す", func(t *testing.T) {
 			t.Parallel()
-			messages := []*domainmessage.Message{
-				newTestMessage(t, inquiryID, domainmessage.AuthorKindUser, 1),
-				newTestMessage(t, inquiryID, domainmessage.AuthorKindUser, 2),
+			messages := []*domaininquiry.Message{
+				newTestMessage(t, domaininquiry.AuthorKindUser, 1),
+				newTestMessage(t, domaininquiry.AuthorKindUser, 2),
 			}
 
-			views, next := pageOf(messages, 1)
+			views, next := pageOf(inquiryID, messages, 1)
 
 			assert.Len(t, views, 1)
 			require.NotNil(t, next)
@@ -193,7 +193,7 @@ func Test_pageOf(t *testing.T) {
 		t.Run("空なら空の配列を返す", func(t *testing.T) {
 			t.Parallel()
 
-			views, next := pageOf(nil, 10)
+			views, next := pageOf(inquiryID, nil, 10)
 
 			assert.Empty(t, views)
 			assert.NotNil(t, views)

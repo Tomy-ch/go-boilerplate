@@ -2,10 +2,10 @@ package inquiry
 
 import (
 	"context"
+	"go-boilerplate/pkg/uuid"
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/inquiry"
-	"go-boilerplate/internal/domain/inquirymessage"
 	"go-boilerplate/internal/usecase/boundary/tx"
 	"go-boilerplate/internal/usecase/tools/paging"
 	"go-boilerplate/pkg/xerrors"
@@ -60,7 +60,7 @@ func (u *usecase) historyOf(
 		return &HistoryView{InquiryID: i.ID(), Messages: []MessageView{}}, nil
 	}
 
-	messages, err := u.msgRepo.ListByInquiry(ctx, i.ID(), inquirymessage.HistoryParams{
+	messages, err := u.repo.ListMessages(ctx, i.ID(), inquiry.HistoryParams{
 		AfterSequence: afterSequence,
 		UpToSequence:  int64(cursor),
 		Limit:         limit + 1,
@@ -69,7 +69,7 @@ func (u *usecase) historyOf(
 		return nil, err
 	}
 
-	views, next := pageOf(messages, limit)
+	views, next := pageOf(i.ID(), messages, limit)
 	return &HistoryView{
 		InquiryID:         i.ID(),
 		Messages:          views,
@@ -79,7 +79,7 @@ func (u *usecase) historyOf(
 }
 
 // pageOf は、1 件多く読んだ結果を 1 ページ分の DTO と次ページの開始位置へ分けます。
-func pageOf(messages []*inquirymessage.Message, limit int) ([]MessageView, *int64) {
+func pageOf(inquiryID uuid.UUID, messages []*inquiry.Message, limit int) ([]MessageView, *int64) {
 	var next *int64
 	if len(messages) > limit {
 		messages = messages[:limit]
@@ -89,7 +89,7 @@ func pageOf(messages []*inquirymessage.Message, limit int) ([]MessageView, *int6
 
 	views := make([]MessageView, 0, len(messages))
 	for _, m := range messages {
-		views = append(views, toMessageView(m))
+		views = append(views, toMessageView(inquiryID, m))
 	}
 	return views, next
 }

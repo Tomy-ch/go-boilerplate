@@ -237,11 +237,30 @@ func TestInquiry_UpdatedAt(t *testing.T) {
 	})
 }
 
-func TestInquiry_Touch(t *testing.T) {
+func TestInquiry_AppendMessage(t *testing.T) {
 	t.Parallel()
+
+	appendTo := func(t *testing.T, i *Inquiry, now time.Time) (*Message, error) {
+		t.Helper()
+		return i.AppendMessage(uuidtestkit.NewTestFromSalt(t, "message"), newTestMessageAttributes(t), now)
+	}
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
+
+		t.Run("属性を保持したメッセージを返す", func(t *testing.T) {
+			t.Parallel()
+			i := newTestInquiry(t)
+			id := uuidtestkit.NewTestFromSalt(t, "message")
+			attrs := newTestMessageAttributes(t)
+
+			m, err := i.AppendMessage(id, attrs, time.Date(2026, time.September, 1, 10, 0, 0, 0, time.UTC))
+			require.NoError(t, err)
+			assert.Equal(t, id, m.ID())
+			assert.Equal(t, attrs.Author, m.Author())
+			assert.Equal(t, attrs.Body, m.Body())
+			assert.Equal(t, attrs.Sequence, m.Sequence())
+		})
 
 		t.Run("現在の更新日時より後の時刻を渡すと更新日時が進む", func(t *testing.T) {
 			t.Parallel()
@@ -252,7 +271,8 @@ func TestInquiry_Touch(t *testing.T) {
 			require.NoError(t, err)
 			now := createdAt.Add(time.Hour)
 
-			require.NoError(t, i.Touch(now))
+			_, err = appendTo(t, i, now)
+			require.NoError(t, err)
 			assert.Equal(t, now, i.UpdatedAt())
 		})
 
@@ -265,7 +285,8 @@ func TestInquiry_Touch(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			require.NoError(t, i.Touch(at))
+			_, err = appendTo(t, i, at)
+			require.NoError(t, err)
 			assert.Equal(t, at, i.UpdatedAt())
 		})
 
@@ -274,7 +295,8 @@ func TestInquiry_Touch(t *testing.T) {
 			i := newTestInquiry(t)
 			now := time.Date(2026, time.September, 1, 10, 0, 0, 0, time.UTC)
 
-			require.NoError(t, i.Touch(now))
+			_, err := appendTo(t, i, now)
+			require.NoError(t, err)
 			assert.Equal(t, now, i.UpdatedAt())
 		})
 
@@ -284,8 +306,10 @@ func TestInquiry_Touch(t *testing.T) {
 			first := time.Date(2026, time.September, 1, 10, 0, 0, 0, time.UTC)
 			second := first.Add(time.Minute)
 
-			require.NoError(t, i.Touch(first))
-			require.NoError(t, i.Touch(second))
+			_, err := appendTo(t, i, first)
+			require.NoError(t, err)
+			_, err = appendTo(t, i, second)
+			require.NoError(t, err)
 			assert.Equal(t, second, i.UpdatedAt())
 		})
 	})
@@ -302,8 +326,29 @@ func TestInquiry_Touch(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			require.ErrorIs(t, i.Touch(at.Add(-time.Nanosecond)), ErrInvalidTime)
+			_, err = appendTo(t, i, at.Add(-time.Second))
+			require.ErrorIs(t, err, ErrInvalidTime)
 			assert.Equal(t, at, i.UpdatedAt())
+		})
+
+		t.Run("メッセージの検証に失敗すると更新日時は進まない", func(t *testing.T) {
+			t.Parallel()
+			i := newTestInquiry(t)
+			attrs := newTestMessageAttributes(t)
+			attrs.Body = ""
+			now := time.Date(2026, time.September, 1, 10, 0, 0, 0, time.UTC)
+
+			_, err := i.AppendMessage(uuidtestkit.NewTestFromSalt(t, "message"), attrs, now)
+			require.ErrorIs(t, err, ErrEmptyBody)
+			assert.True(t, i.UpdatedAt().IsZero())
+		})
+
+		t.Run("メッセージIDが未設定ならErrInvalidMessageIDを返す", func(t *testing.T) {
+			t.Parallel()
+			i := newTestInquiry(t)
+
+			_, err := i.AppendMessage(uuid.UUID{}, newTestMessageAttributes(t), time.Now())
+			require.ErrorIs(t, err, ErrInvalidMessageID)
 		})
 	})
 }

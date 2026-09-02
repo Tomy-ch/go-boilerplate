@@ -391,9 +391,7 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "database/migrations/000022_create_inquiry_messages.down.sql",
 
       "internal/domain/inquiry",
-      "internal/domain/inquirymessage",
       "internal/infrastructure/rdb/repository/inquiry",
-      "internal/infrastructure/rdb/repository/inquiry_message",
       "database/dml/repository/inquiry",
       "database/dml/repository/inquiry_message",
       "database/gen/inquiry_repository.gen.sql",

@@ -5,7 +5,6 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/inquiry"
-	"go-boilerplate/internal/domain/inquirymessage"
 	"go-boilerplate/internal/usecase/boundary/tx"
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
@@ -50,7 +49,7 @@ func (u *usecase) appendForUser(
 		return MessageView{}, err
 	}
 
-	author, err := inquirymessage.NewAuthor(inquirymessage.AuthorKindUser, params.UserID)
+	author, err := inquiry.NewAuthor(inquiry.AuthorKindUser, params.UserID)
 	if err != nil {
 		return MessageView{}, err
 	}

@@ -11,7 +11,6 @@ import (
 
 	"go-boilerplate/internal/apperror"
 	domaininquiry "go-boilerplate/internal/domain/inquiry"
-	domainmessage "go-boilerplate/internal/domain/inquirymessage"
 	"go-boilerplate/internal/usecase/boundary/outbox"
 	rt "go-boilerplate/internal/usecase/boundary/realtime"
 	ucoutbox "go-boilerplate/internal/usecase/outbox"
@@ -21,10 +20,10 @@ import (
 )
 
 // newTestUserAuthor は、利用者としての送り手を組み立てます。
-func newTestUserAuthor(t *testing.T) domainmessage.Author {
+func newTestUserAuthor(t *testing.T) domaininquiry.Author {
 	t.Helper()
-	author, err := domainmessage.NewAuthor(
-		domainmessage.AuthorKindUser, uuidtestkit.NewTestFromSalt(t, "subject"),
+	author, err := domaininquiry.NewAuthor(
+		domaininquiry.AuthorKindUser, uuidtestkit.NewTestFromSalt(t, "subject"),
 	)
 	require.NoError(t, err)
 	return author
@@ -40,16 +39,16 @@ func Test_usecase_appendMessage(t *testing.T) {
 			t.Parallel()
 			u, d := newTestUsecase(t)
 			i := newTestInquiry(t, uuidtestkit.NewTestFromSalt(t, "user"))
-			stored := newTestMessage(t, i.ID(), domainmessage.AuthorKindUser, 3)
+			stored := newTestMessage(t, domaininquiry.AuthorKindUser, 3)
 
 			var emitted []ucoutbox.EmitInput
 			gomock.InOrder(
 				d.sequences.EXPECT().Allocate(gomock.Any(), rt.StreamID(i.ID().String())).Return(rt.Sequence(3), nil),
-				d.messages.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil),
-				d.repo.EXPECT().Touch(gomock.Any(), i.ID(), baseTime).Return(nil),
+				d.repo.EXPECT().CreateMessage(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil),
+				d.repo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil),
 				d.sequences.EXPECT().Allocate(gomock.Any(), feedStreamID).Return(rt.Sequence(9), nil),
-				d.messages.EXPECT().ListByInquiry(gomock.Any(), i.ID(), gomock.Any()).
-					Return([]*domainmessage.Message{stored}, nil),
+				d.repo.EXPECT().ListMessages(gomock.Any(), i.ID(), gomock.Any()).
+					Return([]*domaininquiry.Message{stored}, nil),
 			)
 			d.emit.EXPECT().Emit(gomock.Any(), gomock.Any()).DoAndReturn(
 				func(_ context.Context, in ucoutbox.EmitInput) (uuid.UUID, error) {
@@ -75,13 +74,13 @@ func Test_usecase_appendMessage(t *testing.T) {
 			t.Parallel()
 			u, d := newTestUsecase(t)
 			i := newTestInquiry(t, uuidtestkit.NewTestFromSalt(t, "user"))
-			stored := newTestMessage(t, i.ID(), domainmessage.AuthorKindUser, 1)
+			stored := newTestMessage(t, domaininquiry.AuthorKindUser, 1)
 
 			d.sequences.EXPECT().Allocate(gomock.Any(), gomock.Any()).Return(rt.Sequence(1), nil).Times(2)
-			d.messages.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
-			d.repo.EXPECT().Touch(gomock.Any(), i.ID(), baseTime).Return(nil)
-			d.messages.EXPECT().ListByInquiry(gomock.Any(), gomock.Any(), gomock.Any()).
-				Return([]*domainmessage.Message{stored}, nil)
+			d.repo.EXPECT().CreateMessage(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			d.repo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
+			d.repo.EXPECT().ListMessages(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return([]*domaininquiry.Message{stored}, nil)
 			d.emit.EXPECT().Emit(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, nil).Times(2)
 
 			_, err := u.appendMessage(context.Background(), i, newTestUserAuthor(t), "本文")
@@ -116,30 +115,30 @@ func Test_usecase_appendMessage(t *testing.T) {
 
 			_, err := u.appendMessage(context.Background(), i, newTestUserAuthor(t), "")
 
-			require.ErrorIs(t, err, domainmessage.ErrEmptyBody)
+			require.ErrorIs(t, err, domaininquiry.ErrEmptyBody)
 		})
 
-		t.Run("メッセージの追加に失敗したら更新日時へ進まない", func(t *testing.T) {
+		t.Run("メッセージの追加に失敗したら更新日時を永続化せずemitしない", func(t *testing.T) {
 			t.Parallel()
 			u, d := newTestUsecase(t)
 			i := newTestInquiry(t, uuidtestkit.NewTestFromSalt(t, "user"))
 			wantErr := xerrors.New("create failed")
 
-			// 後続（Touch / feed 採番 / 読み直し / emit）を EXPECT しないことが、
-			// それらが呼ばれないことの assert になる。
+			// 後続（Update / feed 採番 / 読み直し / emit）を EXPECT しないことが、
+			// それらが呼ばれないことの assert になる。集約はメモリ上で更新日時を進めているが、
+			// 永続化されないまま tx ごと巻き戻る。
 			d.sequences.EXPECT().Allocate(gomock.Any(), gomock.Any()).Return(rt.Sequence(1), nil)
-			d.messages.EXPECT().Create(gomock.Any(), gomock.Any()).Return(wantErr)
+			d.repo.EXPECT().CreateMessage(gomock.Any(), gomock.Any(), gomock.Any()).Return(wantErr)
 
 			_, err := u.appendMessage(context.Background(), i, newTestUserAuthor(t), "本文")
 
 			require.ErrorIs(t, err, wantErr)
-			assert.True(t, i.UpdatedAt().Before(baseTime))
 		})
 
 		t.Run("更新日時が巻き戻る時刻ならErrInvalidTimeを返しemitしない", func(t *testing.T) {
 			t.Parallel()
 			u, d := newTestUsecase(t)
-			// 時計より後の更新日時を持つ問い合わせを渡すと、Touch の単調性ガードに当たる。
+			// 時計より後の更新日時を持つ問い合わせを渡すと、AppendMessage の単調性ガードに当たる。
 			future, err := domaininquiry.Reconstruct(
 				uuidtestkit.NewTestFromSalt(t, "inquiry"),
 				domaininquiry.Attributes{
@@ -150,8 +149,8 @@ func Test_usecase_appendMessage(t *testing.T) {
 			)
 			require.NoError(t, err)
 
+			// 追加が単調性で弾かれるため、永続化は 1 度も呼ばれない。
 			d.sequences.EXPECT().Allocate(gomock.Any(), gomock.Any()).Return(rt.Sequence(1), nil)
-			d.messages.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
 
 			_, err = u.appendMessage(context.Background(), future, newTestUserAuthor(t), "本文")
 
@@ -166,8 +165,8 @@ func Test_usecase_appendMessage(t *testing.T) {
 			wantErr := xerrors.New("touch failed")
 
 			d.sequences.EXPECT().Allocate(gomock.Any(), gomock.Any()).Return(rt.Sequence(1), nil)
-			d.messages.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
-			d.repo.EXPECT().Touch(gomock.Any(), gomock.Any(), gomock.Any()).Return(wantErr)
+			d.repo.EXPECT().CreateMessage(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			d.repo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(wantErr)
 
 			_, err := u.appendMessage(context.Background(), i, newTestUserAuthor(t), "本文")
 
@@ -181,8 +180,8 @@ func Test_usecase_appendMessage(t *testing.T) {
 			wantErr := xerrors.New("feed allocate failed")
 
 			d.sequences.EXPECT().Allocate(gomock.Any(), rt.StreamID(i.ID().String())).Return(rt.Sequence(1), nil)
-			d.messages.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
-			d.repo.EXPECT().Touch(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			d.repo.EXPECT().CreateMessage(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+			d.repo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 			d.sequences.EXPECT().Allocate(gomock.Any(), feedStreamID).Return(rt.Sequence(0), wantErr)
 
 			_, err := u.appendMessage(context.Background(), i, newTestUserAuthor(t), "本文")
@@ -202,13 +201,13 @@ func Test_usecase_readBackMessage(t *testing.T) {
 			t.Parallel()
 			u, d := newTestUsecase(t)
 			inquiryID := uuidtestkit.NewTestFromSalt(t, "inquiry")
-			stored := newTestMessage(t, inquiryID, domainmessage.AuthorKindUser, 5)
+			stored := newTestMessage(t, domaininquiry.AuthorKindUser, 5)
 
-			var captured domainmessage.HistoryParams
-			d.messages.EXPECT().ListByInquiry(gomock.Any(), inquiryID, gomock.Any()).DoAndReturn(
-				func(_ context.Context, _ uuid.UUID, params domainmessage.HistoryParams) ([]*domainmessage.Message, error) {
+			var captured domaininquiry.HistoryParams
+			d.repo.EXPECT().ListMessages(gomock.Any(), inquiryID, gomock.Any()).DoAndReturn(
+				func(_ context.Context, _ uuid.UUID, params domaininquiry.HistoryParams) ([]*domaininquiry.Message, error) {
 					captured = params
-					return []*domainmessage.Message{stored}, nil
+					return []*domaininquiry.Message{stored}, nil
 				},
 			)
 
@@ -230,8 +229,8 @@ func Test_usecase_readBackMessage(t *testing.T) {
 			t.Parallel()
 			u, d := newTestUsecase(t)
 
-			d.messages.EXPECT().ListByInquiry(gomock.Any(), gomock.Any(), gomock.Any()).
-				Return([]*domainmessage.Message{}, nil)
+			d.repo.EXPECT().ListMessages(gomock.Any(), gomock.Any(), gomock.Any()).
+				Return([]*domaininquiry.Message{}, nil)
 
 			_, err := u.readBackMessage(context.Background(), uuidtestkit.NewTestFromSalt(t, "inquiry"), 1)
 
@@ -243,7 +242,7 @@ func Test_usecase_readBackMessage(t *testing.T) {
 			u, d := newTestUsecase(t)
 			wantErr := xerrors.New("list failed")
 
-			d.messages.EXPECT().ListByInquiry(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, wantErr)
+			d.repo.EXPECT().ListMessages(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, wantErr)
 
 			_, err := u.readBackMessage(context.Background(), uuidtestkit.NewTestFromSalt(t, "inquiry"), 1)
 

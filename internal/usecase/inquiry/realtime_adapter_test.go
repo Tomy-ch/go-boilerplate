@@ -3,13 +3,13 @@ package inquiry
 import (
 	"context"
 	"encoding/json"
+	domaininquiry "go-boilerplate/internal/domain/inquiry"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
-	domainmessage "go-boilerplate/internal/domain/inquirymessage"
 	"go-boilerplate/internal/usecase/inquiry/event"
 	ucoutbox "go-boilerplate/internal/usecase/outbox"
 	"go-boilerplate/pkg/uuid"
@@ -42,7 +42,7 @@ func Test_usecase_emitDelivery(t *testing.T) {
 			t.Parallel()
 			u, d := newTestUsecase(t)
 			i := newTestInquiry(t, uuidtestkit.NewTestFromSalt(t, "user"))
-			m := newTestMessage(t, i.ID(), domainmessage.AuthorKindUser, 3)
+			m := newTestMessage(t, domaininquiry.AuthorKindUser, 3)
 
 			var emitted []ucoutbox.EmitInput
 			d.emit.EXPECT().Emit(gomock.Any(), gomock.Any()).DoAndReturn(
@@ -68,7 +68,7 @@ func Test_usecase_emitDelivery(t *testing.T) {
 			t.Parallel()
 			u, d := newTestUsecase(t)
 			i := newTestInquiry(t, uuidtestkit.NewTestFromSalt(t, "user"))
-			m := newTestMessage(t, i.ID(), domainmessage.AuthorKindUser, 3)
+			m := newTestMessage(t, domaininquiry.AuthorKindUser, 3)
 
 			var payloads [][]byte
 			d.emit.EXPECT().Emit(gomock.Any(), gomock.Any()).DoAndReturn(
@@ -95,7 +95,7 @@ func Test_usecase_emitDelivery(t *testing.T) {
 			t.Parallel()
 			u, d := newTestUsecase(t)
 			i := newTestInquiry(t, uuidtestkit.NewTestFromSalt(t, "user"))
-			m := newTestMessage(t, i.ID(), domainmessage.AuthorKindUser, 1)
+			m := newTestMessage(t, domaininquiry.AuthorKindUser, 1)
 			wantErr := xerrors.New("emit failed")
 
 			d.emit.EXPECT().Emit(gomock.Any(), gomock.Any()).Return(uuid.UUID{}, wantErr)
@@ -107,7 +107,7 @@ func Test_usecase_emitDelivery(t *testing.T) {
 			t.Parallel()
 			u, d := newTestUsecase(t)
 			i := newTestInquiry(t, uuidtestkit.NewTestFromSalt(t, "user"))
-			m := newTestMessage(t, i.ID(), domainmessage.AuthorKindUser, 1)
+			m := newTestMessage(t, domaininquiry.AuthorKindUser, 1)
 			wantErr := xerrors.New("feed emit failed")
 
 			gomock.InOrder(

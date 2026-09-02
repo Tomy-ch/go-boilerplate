@@ -1,9 +1,13 @@
 // Package inquiry は、問い合わせドメインを定義します。利用者が運営に対して開始する一連のやり取りを
 // 表し、利用者 1 人につき 1 件という制約と、最終更新時刻の単調性を不変条件として保持します。
 //
-// 問い合わせが持つ状態は「誰が始めたか」と「最後にいつ動いたか」だけです。close / reopen のような
-// 状態遷移は持ちません。やり取りの中身は問い合わせメッセージ（internal/domain/inquirymessage）が
-// 独立した集約として持ちます。
+// やり取りの中身は Message が sub-entity として表します。Message は自身の ID で取得されることも
+// 問い合わせを経由せず一覧されることもないため、独立した集約ではありません
+// （internal/domain/README.md の Cross-aggregate reference）。追加は必ず AppendMessage を通り、
+// 親への逆参照は持ちません。
+//
+// 問い合わせ自身が持つ状態は「誰が始めたか」と「最後にいつ動いたか」だけで、close / reopen のような
+// 状態遷移は持ちません。
 package inquiry
 
 import (
@@ -99,12 +103,19 @@ func (i *Inquiry) CreatedAt() time.Time { return i.createdAt }
 // 再構築時に設定されます。
 func (i *Inquiry) UpdatedAt() time.Time { return i.updatedAt }
 
-// Touch は、メッセージが追加されたことを記録し、更新日時を now へ進めます。
+// AppendMessage は、この問い合わせへ 1 通追加し、更新日時を now へ進めます。
+// メッセージの生成は必ずこの入口を通ります（internal/domain/README.md の Aggregate consistency）。
+//
 // now が現在の更新日時より前なら ErrInvalidTime を返します（更新日時は単調に進みます）。
-func (i *Inquiry) Touch(now time.Time) error {
+// 位置（sequence）は機構が採番した値を呼び出し側が渡します。
+func (i *Inquiry) AppendMessage(id uuid.UUID, attrs MessageAttributes, now time.Time) (*Message, error) {
 	if now.Before(i.updatedAt) {
-		return xerrors.Wrap(ErrInvalidTime, "now must be at or after updatedAt")
+		return nil, xerrors.Wrap(ErrInvalidTime, "now must be at or after updatedAt")
+	}
+	m, err := newMessage(id, attrs)
+	if err != nil {
+		return nil, err
 	}
 	i.updatedAt = now
-	return nil
+	return m, nil
 }
