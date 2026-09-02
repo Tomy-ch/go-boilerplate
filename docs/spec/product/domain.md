@@ -106,10 +106,10 @@ fields:
 - `len(images) <= maxImages`（`maxImages = 20`。超過は `ErrTooManyImages` → 422）。
   `New` / `Reconstruct` / `Update` が共有する検証ゲートで課す。保存済みデータのための緩和経路はない
   （`internal/domain/README.md` の Aggregate Design / Why validate here）。
-  DB 側に上限を持たせることは検討したうえで採らない。件数の上限は宣言的な制約では書けずトリガが要り、
-  トリガは業務意図をドメインから DB へ移してしまう（ADR-0036 (ordered-pessimistic-row-locks) が
-  同じ理由で却下している）。上限はドメインが全経路で課し、保存済みの違反行はロード時のエラーとして
-  表面化させる。
+  DB 側のトリガによる多重防御は採らない。業務語彙で名前を持つ条件はドメインが述語として持ち、SQL は
+  それを実行してよいが著作してはならない（`docs/rules.md` の Domain Layer Constraints /
+  `internal/domain/README.md` の Query and Aggregate）。
+  保存済みの違反行はロード時のエラーとして表面化する。
   `maxImages` は sample の placeholder で、実要件が立った時点で改める。
 
 ## Behavior Methods
