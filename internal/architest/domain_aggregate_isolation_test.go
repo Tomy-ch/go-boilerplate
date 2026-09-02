@@ -15,6 +15,7 @@ package architest
 // ファイルの import も拾うため過大近似になるが、禁止規則としては安全側に倒れる。
 
 import (
+	"io/fs"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -71,7 +72,7 @@ func TestDomainAggregateImportIsolation(t *testing.T) {
 			listed, err := listDomainAggregateDirs(root)
 			require.NoError(t, err)
 			assert.ElementsMatch(t, listed, scanned,
-				"Glob で見えている集約と走査が見ている集約が食い違う。走査の縮退を疑う")
+				"internal/domain 直下のディレクトリと走査が見ている集約が食い違う。走査の縮退を疑う")
 		})
 	})
 }
@@ -199,33 +200,37 @@ func collectScannedDomainAggregates(root string) ([]string, error) {
 	return out, nil
 }
 
-// listDomainAggregateDirs は、domain 配下で production の .go を持つ集約名を Glob で数えて返す。
-// 走査（collectScannedDomainAggregates）とは別の機構で数えることに意味があり、両者の一致が
-// 走査の健全性を主張する。
+// listDomainAggregateDirs は、internal/domain 直下のディレクトリ名を返す。
+// 「One package per aggregate」（internal/domain/README.md）により、これがそのまま集約の一覧になる。
+//
+// 走査（collectScannedDomainAggregates）がファイルから数えるのに対し、こちらはディレクトリから
+// 数える。探索の機構が違うことに意味があり、両者の一致が走査の健全性を主張する。ファイル探索を
+// 並行実装しないので、ネストの深さにも walkProductionGoFiles の除外条件にも依存しない。
+// 撤去後は domain 配下に集約が残らず、双方とも空になって一致する。
 func listDomainAggregateDirs(root string) ([]string, error) {
-	seen := map[string]struct{}{}
+	dir := filepath.Join(root, domainRoot)
 
-	for _, depth := range []string{"*/*.go", "*/*/*.go", "*/*/*/*.go"} {
-		matches, err := pkgfs.OS{}.Glob(filepath.Join(root, domainRoot, depth))
-		if err != nil {
-			return nil, err
-		}
-
-		for _, match := range matches {
-			rel, _ := filepath.Rel(root, match)
-			rel = filepath.ToSlash(rel)
-			if strings.HasSuffix(rel, "_test.go") || strings.Contains(rel, "/mock/") {
-				continue
-			}
-			if name := aggregateOfDomainPath(rel); name != "" {
-				seen[name] = struct{}{}
-			}
-		}
+	matches, err := pkgfs.OS{}.Glob(dir)
+	if err != nil || len(matches) == 0 {
+		return nil, err
 	}
 
-	out := make([]string, 0, len(seen))
-	for name := range seen {
-		out = append(out, name)
+	var out []string
+	err = filepath.WalkDir(dir, func(path string, d fs.DirEntry, werr error) error {
+		if werr != nil {
+			return werr
+		}
+		if path == dir || !d.IsDir() {
+			return nil
+		}
+
+		out = append(out, d.Name())
+
+		// 直下だけを見るので、集約の中は降りない。
+		return filepath.SkipDir
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return out, nil
