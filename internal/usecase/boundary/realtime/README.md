@@ -73,7 +73,7 @@ type Notification struct {            // Kind selects which of the two is popula
 
 | Invariant | Where it is enforced |
 | --- | --- |
-| A serialized event is at most `MaxSerializedBytes` (64 KiB) — the whole envelope, not the payload alone | `DeliveryEvent.Validate`, called by the emitting adapter before the outbox row is written and by every `EventLogStore.Append` before it stores |
+| A serialized event is at most `MaxSerializedBytes` (64 KiB) — the whole envelope, not the payload alone | `DeliveryEvent.Validate`, called by the publisher once the outbox's `message_id` has filled `EventID` in, and by every `EventLogStore.Append` before it stores |
 | `Sequence` is decimal on the wire, gap-free in a stream, and its zero value carries no meaning — "not yet allocated" is the `ok` of `SequenceAllocator.Current`, never a sentinel value | `Sequence.String`; the allocator and ADR-0072 |
 | Re-appending the same `EventID` at the same position succeeds; a different `EventID` there is `ErrSequenceConflict` | `EventLogStore.Append` (the outbox relay retries without a special case) |
 | A cursor is only meaningful for the ticket's own `Destination` | `StreamTicket.Destination`; the stream handler compares them |

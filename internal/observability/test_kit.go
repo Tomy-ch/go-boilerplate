@@ -122,7 +122,6 @@ func NewObservedRealtimeMetrics(t *testing.T) *ObservedRealtimeMetrics {
 
 // CounterValue は、metricName の counter のうち labelKey=labelValue の点の値を返します。
 // 該当する点が無ければ -1 を返します（0 は「0 が計上された」であり、両者は区別すべき別の事実です）。
-// label を問わない合計が欲しい場合は labelKey に空文字を渡します。
 func (o *ObservedRealtimeMetrics) CounterValue(t *testing.T, metricName, labelKey, labelValue string) int64 {
 	t.Helper()
 
@@ -163,12 +162,8 @@ func findMetric(rm metricdata.ResourceMetrics, metricName string) (metricdata.Me
 	return metricdata.Metrics{}, false
 }
 
-// matchesLabel は、データポイントが labelKey=labelValue を持つかを返します（labelKey が空なら常に真）。
+// matchesLabel は、データポイントが labelKey=labelValue を持つかを返します。
 func matchesLabel(attrs attribute.Set, labelKey, labelValue string) bool {
-	if labelKey == "" {
-		return true
-	}
-
 	v, found := attrs.Value(attribute.Key(labelKey))
 
 	return found && v.AsString() == labelValue
@@ -342,8 +337,6 @@ func NewRecordingTracerProvider(t *testing.T) (trace.TracerProvider, func() []sd
 }
 
 // NewRecordingTracerFactory は、記録した span を読み戻せる TracerFactory と、その span を返す関数を返します。
-// otel の型は depguard により observability の外で名指しできないため、呼び出し元が
-// TracerProvider を経由せずに span を検証できるようにする入口です。
 func NewRecordingTracerFactory(t *testing.T) (TracerFactory, func() []sdktrace.ReadOnlySpan) {
 	t.Helper()
 

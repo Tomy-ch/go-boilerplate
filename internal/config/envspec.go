@@ -65,8 +65,8 @@ type ObjectStorage struct {
 // Realtime は、Realtime Delivery の EventLog / StreamTicket / InstanceLease を置く DynamoDB 互換 store と、
 // serve instance への fan-out（SNS / SQS 互換）の接続設定を保持する。中立境界の実装は DynamoDB / SNS / SQS の
 // adapter だが、env 名は vendor 非依存にする。
-// table 名は固定名（realtime_event_log 等）に TableSuffix を付けた形で、環境（と Phase 11 では worktree の
-// slot）ごとに分かれる。instance queue の名前は QueuePrefix に instance の識別子を付けた形で、環境ごとに分かれる。
+// table 名は固定名（realtime_event_log 等）に TableSuffix を付けた形で、queue 名は QueuePrefix に instance の
+// 識別子を付けた形で、どちらも環境ごとに分かれる。
 type Realtime struct {
 	Region string `env:"REGION,required,notEmpty"`
 	// TableSuffix は table 名の末尾に付く環境識別子（例 local / ci / prd）。小文字・数字・アンダースコアで書く。

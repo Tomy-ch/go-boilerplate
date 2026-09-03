@@ -166,7 +166,6 @@ type OutboxConfig struct {
 }
 
 // AuthConfig は、access token（JWT）検証の設定を保持します。
-// Issuer / Audience / JWKSURL が空の環境では実 JWT authenticator ではなくスタブが使われます。
 type AuthConfig struct {
 	issuer             string
 	audience           string

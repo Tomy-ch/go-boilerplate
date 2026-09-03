@@ -120,9 +120,8 @@ func ParseDeliveryEvent(b []byte) (DeliveryEvent, error) {
 	}, nil
 }
 
-// Validate は、封筒が保存・配送できる形かを判定します。emit する側は outbox へ書く前に呼び、
-// store の実装は Append 前に呼びます。必須項目の欠落は ErrInvalidEvent、直列化後の大きさが
-// MaxSerializedBytes を超えるものは ErrPayloadTooLarge を返します。
+// Validate は、封筒が保存・配送できる形かを判定します。必須項目の欠落は ErrInvalidEvent、
+// 直列化後の大きさが MaxSerializedBytes を超えるものは ErrPayloadTooLarge を返します。
 func (e DeliveryEvent) Validate() error {
 	switch {
 	case e.EventID == "":

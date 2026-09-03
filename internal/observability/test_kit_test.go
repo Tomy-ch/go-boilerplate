@@ -701,12 +701,6 @@ func Test_matchesLabel(t *testing.T) {
 			assert.True(t, matchesLabel(attrs, "reason", "capacity"))
 		})
 
-		t.Run("キーが空なら label を問わない", func(t *testing.T) {
-			t.Parallel()
-
-			assert.True(t, matchesLabel(attrs, "", ""))
-		})
-
 		t.Run("キーが無い・値が違えば偽", func(t *testing.T) {
 			t.Parallel()
 

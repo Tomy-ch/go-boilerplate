@@ -281,7 +281,7 @@ func rejectionReason(err error) string {
 	}
 }
 
-// register は、接続を索引に加えます。停止中と上限到達は、レスポンス確定前に返せる唯一の機会です。
+// register は、接続を索引に加えます。停止中・縮退中・上限到達はここで断ります。
 func (r *Registry) register(req StreamRequest) (*connection, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

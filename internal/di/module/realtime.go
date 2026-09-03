@@ -47,7 +47,7 @@ type realtimeFanout struct {
 
 // ServeRealtimeModule は、Realtime Delivery の受信側 runtime を serve profile へ結線する入口です。
 // feature の realtime adapter が在る間だけ呼ばれ、adapter が消えれば呼び出し側の 1 行ごと消えます
-// （"Zero adapters, zero runtime" を規約ではなく構造で表す。docs/design/realtime-delivery.md §3.1）。
+// （"Zero adapters, zero runtime" を規約ではなく構造で表す。docs/design/realtime-delivery.md §1）。
 //
 // RealtimeAdapterModule() は realtimeModule() が合成するので、両方を同じ graph へ結線してはいけません。
 func ServeRealtimeModule() fx.Option {
@@ -56,7 +56,7 @@ func ServeRealtimeModule() fx.Option {
 
 // realtimeModule は、Realtime Delivery の store・機構側 usecase・fan-out・SSE の stream handler・serve lifecycle の
 // 参加者を提供する fx.Module です。InfrastructureModule() には束ねず serve profile にだけ配線します
-// （内訳は internal/di/module/README.md「Design Policy」、配線条件は docs/design/realtime-delivery.md §3.1）。
+// （内訳は internal/di/module/README.md「Design Policy」、配線条件は docs/design/realtime-delivery.md §1）。
 // Waker / Revoker / Streamer と drain の参加者は、どれも connection registry（controller/stream）
 // という 1 つの値です。
 func realtimeModule() fx.Option {
