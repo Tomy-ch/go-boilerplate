@@ -67,10 +67,9 @@ func TraceContextFromCarrier(attrs map[string]string) map[string]string {
 	return out
 }
 
-// InjectTraceContextToCarrier は、現在の ctx の trace context（traceparent 等）のみを attrs へ書き込みます。
-// outbox emit 時に traceparent を headers へ載せ、後続の relay→受信側を起点 trace に繋ぐための公開ヘルパです。
-// グローバル伝播器（Baggage を含みうる）ではなく TraceContext 限定で inject することで、インバウンド由来の
-// 任意 baggage が outbox 経由で外部エンドポイントへ転送される経路を断ちます。
+// InjectTraceContextToCarrier は、現在の ctx の trace context（traceparent / tracestate）だけを attrs へ書き込みます。
+// グローバル伝播器ではなく TraceContext 限定なのは意図したもので、インバウンド由来の baggage を
+// 外部へ運ばないためです（README「Trace Context Propagation」）。
 func InjectTraceContextToCarrier(ctx context.Context, attrs map[string]string) {
 	injectToCarrier(ctx, attrs, traceContextPropagator)
 }

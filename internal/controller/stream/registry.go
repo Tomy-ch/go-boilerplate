@@ -92,8 +92,8 @@ func (r *Registry) Stream(c *echo.Context, req StreamRequest) error {
 
 	defer r.unregister(ctx, conn)
 
-	// 索引へ載せた直後に ticket を検証し直します。ここより前に無効化されていれば拒否になり、
-	// 後に無効化されるなら接続は既に索引に居るので失効通知が拾えます（ADR-0074）。
+	// 索引へ載せた直後に ticket を検証し直します。索引より前に動かさないこと
+	// （README「What happens on connect」step 5 / ADR-0074）。
 	if req.Revalidate != nil {
 		if err := req.Revalidate(ctx); err != nil {
 			// 索引に載った後に断るので、閉じる理由をここで確定させます。置かないと
@@ -104,7 +104,7 @@ func (r *Registry) Stream(c *echo.Context, req StreamRequest) error {
 		}
 	}
 
-	// 初回 replay の枠は確定より前に取ります。確定後に待つと「繋がったのに何も来ない」接続になります。
+	// 初回 replay の枠は確定より前に取ります（README「Runtime」）。
 	if err := r.admit(ctx); err != nil {
 		conn.close(rejectReasonAdmission)
 		r.metrics.ReplayAdmissionTimedOut(ctx)
@@ -167,8 +167,7 @@ func (r *Registry) Revoke(_ context.Context, subject string, destination rt.Stre
 }
 
 // Drain は、新規接続を止め、確定済みの接続に RECONNECT を送って閉じ切るまで待ちます。
-// 待つのは停止 ctx の残りと drainBudget の短いほうで、超えた分は諦めます — ここで粘ると、
-// 常駐処理の停止と instance resource の片付けに残す時間が無くなります。
+// 待つのは停止 ctx の残りと drainBudget の短いほうで、超えた分は諦めます（README「Stop-time budget」）。
 func (r *Registry) Drain(ctx context.Context) error {
 	conns := r.startDraining()
 
@@ -194,7 +193,7 @@ func (r *Registry) Drain(ctx context.Context) error {
 }
 
 // pump は、確定済みの接続へ書き続けます。戻るときが接続の終わりです。
-// 指示は event より先に届けます — STOP が buffer に溜まった 64 件の後ろで待つ状態を作らないためです。
+// 指示は event より先に届けます — STOP が満杯の buffer の後ろで待つ状態を作らないためです。
 func (r *Registry) pump(ctx context.Context, conn *connection, w *sseWriter) {
 	heartbeat := startTicker(ctx, r.sleeper, func() time.Duration { return heartbeatInterval })
 	lifetime := startTicker(ctx, r.sleeper, func() time.Duration { return maxConnectionLifetime })

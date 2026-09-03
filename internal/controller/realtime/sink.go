@@ -25,8 +25,7 @@ type Revoker interface {
 	Revoke(ctx context.Context, subject string, destination rt.StreamID)
 }
 
-// FanoutObserver は、受信を試みた結果を受け取る受け口です。readiness の縮退表現がこれを読みます。
-// 受信できているかは受信を試みた側にしか分からないので、engine が観測して外へ渡します。
+// FanoutObserver は、受信を試みた結果を受け取る受け口です（設計は README「Public API」）。
 type FanoutObserver interface {
 	// ObserveFanout は、1 回の受信の結果を伝えます。err が nil なら受け取れています。
 	ObserveFanout(err error)

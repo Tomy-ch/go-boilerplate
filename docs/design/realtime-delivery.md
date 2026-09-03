@@ -222,7 +222,7 @@ Added by the outbox delivery-channel work, shared by every channel:
 
 ### 3.4 Observability contract
 
-Metrics are feature-neutral (`realtime_*`) and carry **no** subject, user, stream, destination, event, message, trace, or ticket identifier as a label; per-item correlation goes through traces and structured logs.
+Metrics are feature-neutral (`realtime_*`) and carry **no** subject, user, stream, destination, event, message, trace, or ticket identifier as a label; per-item correlation goes through traces and structured logs. An identifier's value set is unbounded, so every new value opens a time series that is never retired; the label keys are therefore fixed to `reason` / `trigger` / `result` / `outcome`, and `internal/architest/realtime_metrics_test.go` fails any key outside that set.
 
 | Group | Metrics |
 | --- | --- |

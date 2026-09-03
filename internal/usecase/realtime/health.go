@@ -11,18 +11,13 @@ import (
 // 存在しない stream の Latest は「無い」を返すだけなので、返るエラーは到達できないことだけを意味します。
 const healthProbeStreamID rt.StreamID = "_readiness"
 
-// SubsystemName は、この subsystem の名前です。/ready の依存一覧にも serve lifecycle の
-// ログにも同じ値が載ります（同じものを 2 つの名前で呼ばないため）。
+// SubsystemName は、この subsystem の名前です。名乗る場所が違っても同じ値を使います。
 const SubsystemName = "realtime"
 
-// Health は、Realtime Delivery が稼働中に配信を続けられる状態かを答えます。
-//
-// 2 つの依存を別々の方法で見ます。EventLog は読みに行けば分かるので都度確かめ、fan-out は
-// 「受信できているか」でしか分からないので consumer が観測した結果を持ち回ります
-// （/ready のたびに受信を試すと consumer と取り合いになります）。
-//
-// ここが答えるのは degraded かどうかだけで、instance を落とすかどうかではありません。
-// Realtime が不調でも通常の HTTP は健全なまま続きます（docs/design/realtime-delivery.md §2.6）。
+// Health は、Realtime Delivery が稼働中に配信を続けられる状態かを答えます。EventLog は Check のたびに
+// 読んで確かめ、fan-out は consumer が ObserveFanout で報告した直近の結果を使います — Check 自身が
+// 受信を試みてはなりません（consumer と取り合いになります）。答えるのは degraded かどうかだけで、
+// instance を落とすかどうかではありません（README の Health 行、docs/design/realtime-delivery.md §2.6）。
 type Health struct {
 	log rt.EventLogStore
 	// fanoutDegraded は、consumer が最後に観測した受信の可否です。
@@ -39,9 +34,8 @@ func (h *Health) ObserveFanout(err error) {
 	h.fanoutDegraded.Store(err != nil)
 }
 
-// FanoutDegraded は、fan-out が不調と観測されているかを返します。
-// 新規接続を受けてよいかの判断に使います — 受信できない instance に繋いだ client は、
-// 周期の catch-up でしか event を受け取れません。
+// FanoutDegraded は、fan-out が不調と観測されているかを返します
+// （新規接続の受け入れ判断に使う縮退の扱いは docs/design/realtime-delivery.md §2.6）。
 func (h *Health) FanoutDegraded() bool {
 	return h.fanoutDegraded.Load()
 }

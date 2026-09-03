@@ -22,16 +22,18 @@ const (
 	Unhealthy = "unhealthy"
 )
 
-// probeTimeout は、依存 1 つの検査に与える上限です。load balancer の probe timeout より
-// 十分短く取り、遅い依存が応答時間の側で instance を落とさないようにします。
+// probeTimeout は、依存 1 つの検査に与える上限です。load balancer の probe timeout
+// （ALB 既定 5 秒、Kubernetes readinessProbe 既定 1 秒）より短く取ります — 縮退を 200 で返しても、
+// これを超えて黙れば instance は応答時間の側で結局 load balancer から外れ、Probe の前提が崩れます。
 const probeTimeout = 1 * time.Second
 
 // Probe は、readiness に加わる依存 1 つ分の到達性検査です。
 // 名前は /ready の応答にそのまま載るので、subsystem の名前（realtime 等）を与えます。
 //
-// 検査の失敗は degraded であって unhealthy ではありません。ここに並ぶのは、
-// 落ちていても通常の HTTP 応答は続けられる依存だけです
-// （不可欠な依存は起動時の fail-fast が受け持ちます。docs/design/realtime-delivery.md §2.6）。
+// ここに並ぶのは、落ちていても通常の HTTP 応答を続けられる依存だけで、その失敗は degraded であって
+// エラー（503）ではありません — 503 は instance を load balancer から外し、健全な HTTP まで止めます。
+// 不可欠な依存は起動時の fail-fast が受け持ちます（README「Degradable dependencies」、
+// docs/design/realtime-delivery.md §2.6）。
 type Probe struct {
 	// Name は、応答に載せる依存の名前です。
 	Name string
@@ -70,7 +72,7 @@ type Usecase interface {
 }
 
 // New は、システムの健全性チェックに関するユースケースを初期化します。
-// probes は、落ちていても通常の HTTP 応答を続けられる依存の検査です（空でも構いません）。
+// probes は、Probe の検査です（空でも構いません）。
 func New(dbsq query.DBSystemCqrs, tf observability.TracerFactory, clock clock.Clock, probes []Probe) Usecase {
 	return &usecase{
 		tracer:       tf.Usecase(),
@@ -101,8 +103,7 @@ func (u *usecase) CheckHealth(ctx context.Context) (*DTO, error) {
 }
 
 // checkDependencies は、各 probe を検査して状態の一覧と総合ステータスを返します。
-// 1 つでも落ちていれば degraded ですが、エラーにはしません — ここで 503 を返すと、
-// Realtime だけが落ちた instance が load balancer から外れ、通常の HTTP まで止まります。
+// 1 つでも落ちていれば degraded で、エラーにはしません（理由は Probe を参照）。
 func (u *usecase) checkDependencies(ctx context.Context) ([]DependencyStatus, string) {
 	if len(u.probes) == 0 {
 		return nil, Ok
@@ -123,12 +124,8 @@ func (u *usecase) checkDependencies(ctx context.Context) ([]DependencyStatus, st
 	return deps, status
 }
 
-// checkProbe は、1 つの probe を有界時間で検査します。超過は degraded として扱います。
-//
-// 上限が要るのは、応答しない依存が status ではなく**応答時間**の側から要件を破るためです。
-// 縮退を 200 で返しても、load balancer の probe timeout（ALB 既定 5 秒、Kubernetes の
-// readinessProbe 既定 1 秒）を超えて黙っていれば instance は結局そこから外れ、
-// 「Realtime だけの不調で通常の HTTP を止めない」が成り立ちません。
+// checkProbe は、1 つの probe を probeTimeout で有界に検査します。超過は degraded として扱います
+// （上限の根拠は probeTimeout を参照）。
 func (u *usecase) checkProbe(ctx context.Context, p Probe) error {
 	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
 	defer cancel()

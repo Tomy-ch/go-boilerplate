@@ -92,11 +92,9 @@ func (u *usecase) emitDelivery(
 	return nil
 }
 
-// envelope は、feature の event を配送封筒へ翻訳して直列化します。
-//
-// outbox に載せるのはこの封筒であり、feature の payload そのものではありません。機構は
-// destination も schema 版も event の発生時刻も知らないので、それらを与えられるのは
-// 語彙を持つこちら側だけです（docs/spec/inquiry/usecase.md Notes「realtime adapter の置き場所」）。
+// envelope は、feature の event を配送封筒へ翻訳して直列化します。outbox の Payload に載せるのはこの
+// 封筒であり、feature の payload そのものではありません（翻訳をこの package が担う理由は
+// docs/spec/inquiry/usecase.md Notes「realtime adapter の置き場所」）。
 //
 // EventID は空のままにします。値は outbox が採番する message_id と同じでなければならず、
 // それが決まるのは Emit の後だからです。publish 側が message_id で埋めてから検証します。

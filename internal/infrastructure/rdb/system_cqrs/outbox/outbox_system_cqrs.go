@@ -32,7 +32,8 @@ func New(
 	}
 }
 
-// Insert は、業務 tx 内で outbox 行を 1 行 INSERT し、採番された message_id を返します。
+// Insert は、outbox 行を 1 行 INSERT して採番された message_id を返します。Headers が空なら '{}'、
+// OrderingKey が空なら ordering_key / ordering_sequence を NULL で書きます。
 func (s *store) Insert(ctx context.Context, p outboxbndry.EmitParams) (uuid.UUID, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
@@ -66,8 +67,8 @@ func (s *store) Insert(ctx context.Context, p outboxbndry.EmitParams) (uuid.UUID
 	return row.MessageID, nil
 }
 
-// ClaimPending は、指定チャネルの claim 可能な pending 行を最大 limit 件ロックして返します。
-// 並行ワーカーが同一行を取得せず、先行 sequence が未 publish の行も返しません（順序保証は SQL 側の述語）。
+// ClaimPending は、channel の pending 行のうち next_attempt_at が到来し、同じ ordering_key に未 publish の
+// 先行 ordering_sequence が無い行を id 順に最大 limit 件、FOR UPDATE SKIP LOCKED で取得します。
 func (s *store) ClaimPending(
 	ctx context.Context,
 	channel outboxbndry.Channel,
@@ -100,7 +101,8 @@ func (s *store) ClaimPending(
 	return messages, nil
 }
 
-// MarkPublished は、publish 成功行を published へ遷移します。
+// MarkPublished は、status = 'pending' の行だけを published へ遷移し published_at を NOW() にします。
+// pending でなければ 0 行更新で成功します。
 func (s *store) MarkPublished(ctx context.Context, id int64) error {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
@@ -112,8 +114,8 @@ func (s *store) MarkPublished(ctx context.Context, id int64) error {
 	return nil
 }
 
-// MarkFailed は、last_error を記録し、次に claim してよい時刻を nextAttemptAt へ進めます。
-// 行は pending のまま残ります。既に pending でない（並行処理で遷移済み）場合は何もしません。
+// MarkFailed は、status = 'pending' の行だけ attempts を +1 し、last_error と next_attempt_at を書き換えます。
+// pending でなければ 0 行更新で成功します。
 func (s *store) MarkFailed(ctx context.Context, id int64, lastErr string, nextAttemptAt time.Time) error {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
@@ -129,7 +131,7 @@ func (s *store) MarkFailed(ctx context.Context, id int64, lastErr string, nextAt
 	return nil
 }
 
-// MarkDead は、行を dead へ遷移します。
+// MarkDead は、status = 'pending' の行だけを dead へ遷移します。pending でなければ 0 行更新で成功します。
 func (s *store) MarkDead(ctx context.Context, id int64) error {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
@@ -141,7 +143,8 @@ func (s *store) MarkDead(ctx context.Context, id int64) error {
 	return nil
 }
 
-// ReplayDead は、dead 行を pending へ戻し、戻した件数を返します（messageID が nil なら全 dead 行）。
+// ReplayDead は、dead 行を pending へ戻して attempts = 0、last_error = NULL、next_attempt_at = NOW() にし、
+// 更新件数を返します。messageID が nil なら全 dead 行が対象です。
 func (s *store) ReplayDead(ctx context.Context, messageID *uuid.UUID) (int64, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
@@ -154,7 +157,8 @@ func (s *store) ReplayDead(ctx context.Context, messageID *uuid.UUID) (int64, er
 	return affected, nil
 }
 
-// DeletePublished は、published_at が cutoff より古い行を limit 件まで削除し、削除件数を返します（GC）。
+// DeletePublished は、published_at が cutoff より古い published 行を published_at の古い順に limit 件まで
+// 削除し、削除件数を返します。
 func (s *store) DeletePublished(ctx context.Context, cutoff time.Time, limit int32) (int64, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
@@ -170,7 +174,8 @@ func (s *store) DeletePublished(ctx context.Context, cutoff time.Time, limit int
 	return affected, nil
 }
 
-// OldestPendingCreatedAt は、指定チャネルの最古 pending 行の created_at を返します（SLI=outbox lag 用）。
+// OldestPendingCreatedAt は、channel の pending 行を id 順に 1 件読んで created_at を返します。
+// pgx.ErrNoRows は ok=false に写します。バックオフ中の行も含みます。
 func (s *store) OldestPendingCreatedAt(
 	ctx context.Context,
 	channel outboxbndry.Channel,
@@ -189,7 +194,8 @@ func (s *store) OldestPendingCreatedAt(
 	return createdAt, true, nil
 }
 
-// CountBlockedStreams は、先頭行が dead であるストリームの数を返します。
+// CountBlockedStreams は、channel の未 publish 行を ordering_key ごとに ordering_sequence 最小の 1 行
+// （DISTINCT ON）に絞り、その status が dead の ordering_key を数えます。
 func (s *store) CountBlockedStreams(ctx context.Context, channel outboxbndry.Channel) (int64, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()

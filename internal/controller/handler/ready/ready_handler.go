@@ -27,7 +27,6 @@ func BindHandler(e *echo.Echo, tf observability.TracerFactory, healthUsecase hea
 	}, nil))
 }
 
-// GetReady は、サーバーのレディネスチェックを行います。
 func (s *server) GetReady(
 	ctx context.Context, _ gen.GetReadyRequestObject,
 ) (gen.GetReadyResponseObject, error) {

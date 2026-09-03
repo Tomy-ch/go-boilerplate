@@ -46,8 +46,8 @@ type realtimeFanout struct {
 }
 
 // ServeRealtimeModule は、Realtime Delivery の受信側 runtime を serve profile へ結線する入口です。
-// feature の realtime adapter が在る間だけ呼ばれ、adapter が消えれば呼び出し側の 1 行ごと消えます
-// （"Zero adapters, zero runtime" を規約ではなく構造で表す。docs/design/realtime-delivery.md §1）。
+// 呼び出しは feature の realtime adapter と同じ sample-api マーカー行にだけ載せます
+// （adapter と一緒に消える理由は internal/di/module/README.md「Module List」ServeRealtimeModule()）。
 //
 // RealtimeAdapterModule() は realtimeModule() が合成するので、両方を同じ graph へ結線してはいけません。
 func ServeRealtimeModule() fx.Option {
@@ -57,8 +57,7 @@ func ServeRealtimeModule() fx.Option {
 // realtimeModule は、Realtime Delivery の store・機構側 usecase・fan-out・SSE の stream handler・serve lifecycle の
 // 参加者を提供する fx.Module です。InfrastructureModule() には束ねず serve profile にだけ配線します
 // （内訳は internal/di/module/README.md「Design Policy」、配線条件は docs/design/realtime-delivery.md §1）。
-// Waker / Revoker / Streamer と drain の参加者は、どれも connection registry（controller/stream）
-// という 1 つの値です。
+// registry を複数の受け口へ出す配線は provideStreamer を参照。
 func realtimeModule() fx.Option {
 	return fx.Module("realtime",
 		RealtimeAdapterModule(),
@@ -228,24 +227,24 @@ func provideRealtimeHeartbeat(
 }
 
 // provideRealtimeStartupProbe は、HTTP を listen する前に依存へ到達できることを確かめる
-// [hook.StartupProbe] を返します。稼働中の readiness と同じ判定（[ucrealtime.Health.Check]）を使うので、
-// 「到達できる」の意味が起動時と稼働中でずれません。
+// [hook.StartupProbe] を返します。判定は provideRealtimeHealth の Health を共有します。
 func provideRealtimeStartupProbe(health *ucrealtime.Health) hook.StartupProbe {
 	return hook.StartupProbe{Name: realtimeParticipantName, Probe: health.Check}
 }
 
 // provideRealtimeHealth は、Realtime Delivery の縮退を答える値を組み立てます。
-// 起動時の probe・稼働中の readiness・新規接続の可否が、すべてこの 1 つの値を見ます。
+// 起動時の probe（provideRealtimeStartupProbe）・/ready の readiness（provideRealtimeReadinessProbe）・
+// consumer engine の受信可否（provideFanoutObserver）・新規接続の可否（provideConnectionRegistry）が
+// すべてこの 1 つの値を見るので、「到達できる」の意味が起動時と稼働中でずれません。
 func provideRealtimeHealth(log rt.EventLogStore) *ucrealtime.Health {
 	return ucrealtime.NewHealth(log)
 }
 
-// provideFanoutObserver / provideRealtimeReadinessProbe は、同じ Health を consumer engine と
-// /ready の 2 つの受け口として graph へ出します。
+// provideFanoutObserver は、provideRealtimeHealth の Health を consumer engine の受け口として graph へ出します。
 func provideFanoutObserver(health *ucrealtime.Health) ctrlrealtime.FanoutObserver { return health }
 
-// provideRealtimeReadinessProbe は、Realtime の到達性を /ready の依存一覧へ加えます。
-// healthcheck は Realtime を知らず、両者を結ぶのはここだけです（層規約と realtime の隔離検査による）。
+// provideRealtimeReadinessProbe は、provideRealtimeHealth の Health を /ready の依存一覧へ加えます
+// （healthcheck 側が Realtime を知らない理由は internal/usecase/healthcheck/README.md「Degradable dependencies」）。
 func provideRealtimeReadinessProbe(health *ucrealtime.Health) healthcheck.Probe {
 	return healthcheck.Probe{Name: ucrealtime.SubsystemName, Check: health.Check}
 }
@@ -337,7 +336,8 @@ func newStreamSettings(cfg *config.RealtimeConfig) stream.Settings {
 }
 
 // provideStreamer / provideWaker / provideRevoker は、同じ registry を 3 つの受け口として graph へ出します。
-// 受け口ごとに型が違うのは呼ぶ側の関心が違うからで、実体を分ける理由にはなりません。
+// drain の参加者（provideRealtimeStreamDrainer）も同じ値です。1 つの値で足りる理由は
+// internal/controller/stream/README.md「Runtime: what one connection does after commit」。
 func provideStreamer(registry *stream.Registry) stream.Streamer { return registry }
 
 func provideWaker(registry *stream.Registry) ctrlrealtime.Waker { return registry }
@@ -345,8 +345,6 @@ func provideWaker(registry *stream.Registry) ctrlrealtime.Waker { return registr
 func provideRevoker(registry *stream.Registry) ctrlrealtime.Revoker { return registry }
 
 // provideRealtimeStreamDrainer は、HTTP shutdown より前に SSE 接続を閉じ切る [hook.Drainer] を返します。
-// 停止順（drain → 常駐処理の停止 → instance resource の片付け → HTTP shutdown）は
-// RegisterHTTPServerHooks が固定しており、drain がここに居ることで長寿命レスポンスが shutdown を塞ぎません。
 func provideRealtimeStreamDrainer(registry *stream.Registry) hook.Drainer {
 	return hook.Drainer{Name: realtimeParticipantName + "-stream", Drain: registry.Drain}
 }

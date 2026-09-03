@@ -358,6 +358,8 @@ Available test tracers
 |`NewStubSpanContext`|Generate Context with a valid Span|
 |`NewRecordingTracerProvider`|A `TracerProvider` that keeps every ended span, plus a function returning them — for asserting what an instrumentation put on a span|
 |`InstallRecordingTracerProvider`|The same provider installed as the otel global for the test's lifetime (restored on cleanup) — for instrumentation that takes its tracer from the global, such as the HTTP OTel middleware|
+|`NewRecordingTracerFactory`|`NewRecordingTracerProvider` wrapped as a `TracerFactory`, for a caller that needs a `LayerTracer` and the recorded spans together|
+|`SpanAttributeValues`|Every value of one attribute across the recorded spans, for asserting that a value never reached a span|
 
 ### StubSpanContext
 
@@ -383,6 +385,8 @@ a no-op `MeterProvider` / `TracerProvider` are provided.
 |`NewNoopHTTPClientTransport`|`HTTPClientTransport` with the SSRF guard disabled (allows loopback / httptest targets)|
 |`NewGuardedHTTPClientTransport`|`HTTPClientTransport` with the SSRF guard left **enabled**, for tests that assert the guard itself|
 |`NewObservedHTTPClientMetrics`|`HTTPClientMetrics` whose recorded values can be read back via `LabelValues`|
+|`NewNoopRealtimeMetrics`|`RealtimeMetrics` on a no-op meter|
+|`NewObservedRealtimeMetrics`|`RealtimeMetrics` whose recorded values can be read back via `CounterValue` / `HistogramCount`|
 
 ## Design Policy
 
@@ -545,5 +549,7 @@ Telemetry has no user-visible behavior, so "it did not crash" is not a result. T
 - **Attribute cardinality is part of the contract** — where the design bounds a label set, assert that an unbounded input (a raw path, an ID) does not reach the attribute. A cardinality regression is invisible locally and expensive in production.
 - **Redaction vs propagation** — the outbound HTTP transport redacts secrets from the span while leaving the actual request untouched. Assert **both** halves in the same test; asserting only the redaction cannot distinguish it from having mangled the request.
 - **Conditional propagator** — the two directions are not symmetric, and the asymmetry is the contract: `Inject` branches on the flag (suppressed only when it is explicitly false) and needs both sides asserted, because the suppressed branch is the one that silently drops trace continuity; `Extract` delegates unconditionally, so assert the delegation rather than inventing a second branch for it.
+
+- **Where an instrumentation is *called* is the caller's test, not this package's** — this package owns that an instrument exists, is named correctly, and carries the right attribute set. Whether a given call site records at the right moment, with the right label, and not at all on the paths that must stay silent is a contract of the layer holding the call, so it is asserted there with `NewObservedRealtimeMetrics` / `NewObservedHTTPClientMetrics` rather than deferred to an integration test. An integration test observes the aggregate and cannot distinguish a missing call from one made with the wrong label.
 
 Two neighbouring sections govern the rest and must not be duplicated here: the helpers this package offers other layers are in [Test Support](#test-support), and the approved uncovered branches — plus the sign-off rule for adding one — are in [Test coverage exception (extraordinary measure)](#test-coverage-exception-extraordinary-measure).

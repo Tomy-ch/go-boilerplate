@@ -49,13 +49,12 @@ type Endpoint struct {
 }
 
 // ObjectStorage は、画像等を格納する S3 互換オブジェクトストレージ（ローカルは Garage）の接続設定と
-// アップロード上限を保持する。中立境界の実装は S3 アダプタだが、env 名は vendor 非依存にする。
+// アップロード上限を保持する。env 名は vendor 非依存にする（env/README.md「Object Storage」）。
 type ObjectStorage struct {
 	Region string `env:"REGION,required,notEmpty"`
 	Bucket string `env:"BUCKET,required,notEmpty"`
 	// AccessKeyID / SecretAccessKey は両方空なら SDK 既定の credential chain（IAM ロール等）へ委ねるため、
-	// 未設定を許す。ロール運用のデプロイにダミー値の注入を強いないための既定。この既定は Realtime /
-	// ConsumerQueue の資格情報にも同じく適用する。
+	// 未設定を許す（ロール運用との関係は env/README.md「Object Storage」）。
 	AccessKeyID     string `env:"ACCESS_KEY_ID"                      envDefault:""`
 	SecretAccessKey string `env:"SECRET_ACCESS_KEY"                  envDefault:""`
 	UsePathStyle    bool   `env:"USE_PATH_STYLE,required"`
@@ -115,9 +114,8 @@ type Outbox struct {
 	QueueSecretAccessKey string `env:"QUEUE_SECRET_ACCESS_KEY" envDefault:""`
 }
 
-// ConsumerQueue は worker が consume する broker（SQS 互換）の adapter 設定を保持する。
-// engine-core の Worker は broker 非依存と定めているため、broker 語彙を持つ設定は別軸に置く。
-// publish 端の Outbox.Queue* とは対になる（consume 端がこちら）。
+// ConsumerQueue は worker が consume する broker（SQS 互換）の adapter 設定を保持する。Worker とは別軸で、
+// publish 端の Outbox.Queue* と対になる（軸を分ける理由は env/README.md「Consumer Queue」）。
 // 資格情報の既定は ObjectStorage と同じ。
 type ConsumerQueue struct {
 	Region          string `env:"REGION"            envDefault:""`
