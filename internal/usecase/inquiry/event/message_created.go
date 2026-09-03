@@ -13,6 +13,10 @@ import (
 // TypeMessageCreated は、問い合わせメッセージ追加の outbox イベント種別（version 込み）です。
 const TypeMessageCreated = "inquiry.message.created.v1"
 
+// SchemaVersionMessageCreated は、messageCreated payload の schema 版です。
+// 種別名の末尾 v1 と同じものを、封筒が読める形で持ちます。
+const SchemaVersionMessageCreated = 1
+
 // messageAuthor は、送り手のうち購読側へ出す部分です。主体 ID は出しません
 // （会話画面は「利用者か回答者か」だけを必要とし、ID を配ると宛先の識別子が stream の外へ広がります）。
 type messageAuthor struct {

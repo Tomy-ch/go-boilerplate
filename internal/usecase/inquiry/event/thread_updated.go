@@ -11,6 +11,9 @@ import (
 // TypeThreadUpdated は、問い合わせ更新の outbox イベント種別（version 込み）です。
 const TypeThreadUpdated = "inquiry.thread.updated.v1"
 
+// SchemaVersionThreadUpdated は、threadUpdated payload の schema 版です。
+const SchemaVersionThreadUpdated = 1
+
 // threadUpdated は、inquiry.thread.updated.v1 の自己完結 snapshot payload です。
 // 一覧画面の更新に要るものだけを載せ、本文は持ちません。
 type threadUpdated struct {
