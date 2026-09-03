@@ -33,6 +33,11 @@ services:
       # スロット未取得なら既定の名前のまま（単一 checkout では衝突相手が居ない）。
       REALTIME_TOPIC: arn:aws:sns:us-east-1:000000000000:realtime-fanout-local${SLOT:+-wt$SLOT}
       REALTIME_QUEUE_PREFIX: realtime-local${SLOT:+-wt$SLOT}
+      # store も 1 つの DynamoDB Local を全 worktree で共有する（-sharedDb）ので、table 名も同じくスロットで分ける。
+      # 分けないと片方の窓が書いた stream がもう片方から見える。区切りが topic / queue の `-` でなく `_` なのは、
+      # suffix に使える文字が小文字・数字・アンダースコアに限られるため（env/README.md の REALTIME_TABLE_SUFFIX 行）。
+      # table を作るのは make realtime-init だが、serve と同じ経路でこの値を読むので宣言はここ 1 箇所で足りる。
+      REALTIME_TABLE_SUFFIX: local${SLOT:+_wt$SLOT}
       # token の iss は mock 認証サーバーのホスト公開 URL（Host ヘッダ由来）。スロット毎にポートが
       # ずれるため追従させる。mock 側は iss を保持しないので、追従先はここ 1 箇所で足りる。
       AUTH_ISSUER: http://localhost:${MOCK_AUTH_HOST_PORT:-2010}/default

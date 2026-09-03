@@ -204,18 +204,23 @@ make slot-release    # app 停止+イメージ削除 → スロット解放 → 
   止めることになる。スロット毎のキューを事前宣言していないのは、プールのサイズが可変
   （`GOBP_DB_POOL_MAX`）で、conf 側の静的な一覧はその値が変わった時点で黙ってプールを覆わなくなる
   ためである。
-- **Realtime Delivery のエミュレータも共有だが、共有のされ方が 2 つで違う。** `dynamodb_local` は `-sharedDb` で
-  動くため全 checkout が同じ table 群を見る。worktree 毎の table prefix が予定している隔離で、まだ入っていない。
-  `goaws` は topic / queue を実行時に作る（`docker/goaws/goaws.yaml` は何も宣言しない）ので、`elasticmq` と違い
-  名前だけでブランチを隔離でき、conf の変更も `infra-down` も要らない。`docker-compose.attach.yaml` がまさにそれを
-  していて、`REALTIME_TOPIC` と `REALTIME_QUEUE_PREFIX` にスロットを付けるため、各 worktree の serve は自分の topic を
-  購読する。付けないと隔離は一般にではなく 1 点で破れる — 知らない stream への wakeup は no-op だが、失効通知は
-  `(subject, destination)` で照合され、どの worktree の DB も同じ fixture から seed されて subject が一致するので、
-  ある窓で ticket を失効させると別の窓の同じ subject の接続が閉じてしまう。`make realtime-smoke` も同じ形で、
-  実行ごとの乱数名で resource を作り終了時に削除する。
+- **Realtime Delivery のエミュレータは共有インスタンスで、名前によって隔離される。** どちらも 2 つの checkout を
+  分けるのに conf の変更も `infra-down` も要らない点で、上の `elasticmq` とは異なる。`dynamodb_local` は
+  `-sharedDb` で動くため単一の table namespace を全員が使い、`goaws` は topic / queue を実行時に作る
+  （`docker/goaws/goaws.yaml` は何も宣言しない）。どちらの場合もブランチは別々の名前を選ぶことで自分を
+  隔離でき、`docker-compose.attach.yaml` がその名前を選ぶ役を担う。`REALTIME_TOPIC`・`REALTIME_QUEUE_PREFIX`・
+  `REALTIME_TABLE_SUFFIX` にスロットを付けるため、各 worktree の serve は自分の topic を購読し、自分の
+  table を読む（`realtime_event_log_local_wt<N>` とその他 2 つの table。`make realtime-init` が同じ値から
+  作成する）。スロットを持たない checkout は suffix なしの名前のままなので、メイン checkout は影響を受けない。
+  table の suffix だけ topic / queue が使う `-` でなく `_` で結合されるのは、`REALTIME_TABLE_SUFFIX` が
+  小文字・数字・アンダースコアしか受け付けないためである。
 
-  table のほうはまだ分かれていないので、ある worktree が書いた stream は別の worktree からも見える。こちらは
-  上の段落が「予定」と呼ぶ per-slot の `REALTIME_TABLE_SUFFIX` 待ちである。
+  両方とも欠かせず、無い場合の壊れ方は異なる。table の suffix が無いと、ある worktree が書いた stream が
+  別の worktree からも見えてしまう。topic の suffix が無い場合はより限定的だがより意外な壊れ方をする —
+  知らない stream への wakeup は no-op だが、失効通知は `(subject, destination)` で照合され、どの worktree
+  の DB も同じ fixture から seed されて subject が一致するので、ある窓で ticket を失効させると別の窓の
+  同じ subject の接続が閉じてしまう。`make realtime-smoke` も同じ形で、実行ごとの乱数名で resource を作り
+  終了時に削除する。
 - `sql_editor` / `docs_server` / `er_diagram_generator` / `mock_auth_server` は、いずれも自前のデファクト
   ポートを持たないため `2000` 番台に置いている。規則とその帯が安全な理由は
   [`local-environment.ja.md`](local-environment.ja.md) にある。

@@ -80,7 +80,7 @@ compose のサービスは 2 層に分かれており、主 checkout と任意�
 | `garage_init` | infra | build `docker/garage/Dockerfile` | なし（one-shot） | garage のレイアウト / バケット / アクセスキー / 公開配信の許可の冪等プロビジョニング |
 | `elasticmq` | infra | `softwaremill/elasticmq-native` | `9324`（SQS API） | 開発用の SQS 互換ブローカー（テストは in-process の fake）。全 checkout で共有され、スロット単位に隔離**できない** — [`db-worktree-pool.ja.md`](db-worktree-pool.ja.md) 参照 |
 | `dynamodb_init` | infra | `amazon/dynamodb-local` | なし（one-shot） | `dynamodb_data` volume の所有者を合わせ、`dynamodb_local` を非 root で動かす（冪等。`depends_on` で順序付け） |
-| `dynamodb_local` | infra | `amazon/dynamodb-local` | `8000`（DynamoDB API） | Realtime Delivery（EventLog / StreamTicket / InstanceLease）向けの DynamoDB 互換ストア。`-sharedDb`、`dynamodb_data` volume に永続化。全 checkout で共有され、スロット単位の隔離はまだ無い — [`db-worktree-pool.ja.md`](db-worktree-pool.ja.md) 参照 |
+| `dynamodb_local` | infra | `amazon/dynamodb-local` | `8000`（DynamoDB API） | Realtime Delivery（EventLog / StreamTicket / InstanceLease）向けの DynamoDB 互換ストア。`-sharedDb`、`dynamodb_data` volume に永続化。全 checkout で共有され、名前で隔離される — スロットを持つ側の table には `_wt<N>` の suffix（`REALTIME_TABLE_SUFFIX`）が付く — [`db-worktree-pool.ja.md`](db-worktree-pool.ja.md) 参照 |
 | `goaws` | infra | `admiralpiett/goaws`（設定: `docker/goaws/goaws.yaml`） | `4100`（SNS / SQS API） | Realtime Delivery の instance fan-out 用の SNS / SQS エミュレータ。Worker 側の outbox queue は `elasticmq` のまま。`make realtime-smoke` が両エミュレータを Realtime Delivery の呼び出しで検証する — [`docker/README.ja.md`](../../docker/README.ja.md) 参照 |
 | `docs_server` | infra | build `docker/document/Dockerfile` | `2001:80` | 開発時に `docs/` を配信する |
 | `sql_editor` | infra | `sosedoff/pgweb` | `2000:8081` | ブラウザ DB クライアント |
