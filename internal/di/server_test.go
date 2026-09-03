@@ -69,38 +69,6 @@ func TestNewApplicationCore(t *testing.T) {
 			// Close が呼ばれた＝モックがグラフに組み込まれ、実 DB(NewDB の Ping)が使われていないことの証左。
 			assert.True(t, closeCalled, "db close hook がモックドライバの Close を呼ぶこと")
 		})
-
-		//nolint:paralleltest // EnsureRepoRootAndEnv が t.Setenv/t.Chdir を使用するため並列化不可
-		t.Run("Realtime を結線しない graph も起動・停止する", func(t *testing.T) {
-			// feature の realtime adapter を消した後の形。Realtime の substrate を 1 つも
-			// 差し替えずに起動できることが、"Zero adapters, zero runtime" が成立している証左。
-			config.EnsureRepoRootAndEnv(t, config.TestingEnvValue)
-
-			ctrl := gomock.NewController(t)
-			mockDB := mock_driver.NewMockDatabaseDriver(ctrl)
-			mockDB.EXPECT().Close().Return(nil).AnyTimes()
-			mockDB.EXPECT().Stats().Return(&pgxpool.Stat{}).AnyTimes()
-			mockDB.EXPECT().Ping(gomock.Any()).Return(nil).AnyTimes()
-
-			opts := append(serveBaseOptions(),
-				fx.Replace(fx.Annotate(mockDB, fx.As(new(driver.DatabaseDriver)))),
-				fx.Decorate(func(s *config.ServerConfig) *config.ServerConfig {
-					s.SetServerPort(t, 0)
-					return s
-				}),
-				fx.NopLogger,
-			)
-
-			start, stop := NewApplicationServer(fx.New(opts...))
-
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-			defer cancel()
-			require.NoError(t, start(ctx))
-
-			stopCtx, stopCancel := context.WithTimeout(context.Background(), 10*time.Second)
-			defer stopCancel()
-			require.NoError(t, stop(stopCtx))
-		})
 	})
 }
 
@@ -115,17 +83,20 @@ func realtimeSubstrate(t *testing.T, ctrl *gomock.Controller) fx.Option {
 	t.Helper()
 
 	eventLog := mock_realtime.NewMockEventLogStore(ctrl)
-	eventLog.EXPECT().Latest(gomock.Any(), gomock.Any()).Return(rt.DeliveryEvent{}, false, nil).AnyTimes()
+	// 起動時の probe が listen より前に走ることを、呼ばれた事実で固定します。
+	eventLog.EXPECT().Latest(gomock.Any(), gomock.Any()).Return(rt.DeliveryEvent{}, false, nil).MinTimes(1)
 
 	tickets := mock_realtime.NewMockStreamTicketStore(ctrl)
 
 	leases := mock_realtime.NewMockInstanceLeaseStore(ctrl)
 	leases.EXPECT().Heartbeat(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	leases.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	// 片付けで lease を閉じるところまでが serve lifecycle の終わりです。
+	leases.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(nil).Times(1)
 
 	sub := mock_realtime.NewMockInstanceSubscription(ctrl)
-	sub.EXPECT().Provision(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	sub.EXPECT().Teardown(gomock.Any()).Return(nil).AnyTimes()
+	// 起動と片付けの参加者が登録から落ちても graph は解決するので、回数で固定します。
+	sub.EXPECT().Provision(gomock.Any(), gomock.Any()).Return(nil).Times(1)
+	sub.EXPECT().Teardown(gomock.Any()).Return(nil).Times(1)
 	// 空を即座に返すと consumer の loop が待たずに回り続けるので、停止まで待たせる。
 	sub.EXPECT().Receive(gomock.Any(), gomock.Any()).
 		DoAndReturn(func(ctx context.Context, _ int) ([]rt.Notification, error) {
@@ -143,6 +114,40 @@ func realtimeSubstrate(t *testing.T, ctrl *gomock.Controller) fx.Option {
 		fx.Annotate(sub, fx.As(new(rt.InstanceSubscription))),
 		fx.Annotate(notifier, fx.As(new(rt.RevocationNotifier))),
 	)
+}
+
+func Test_serveRealtimeOptions(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Realtime の runtime を 1 つだけ返す", func(t *testing.T) {
+			t.Parallel()
+
+			// sample の realtime adapter を消すとマーカー行ごと消えて空になります。
+			// ここが 1 であることが、いま runtime が serve に載っている唯一の根拠です。
+			assert.Len(t, serveRealtimeOptions(), 1)
+		})
+	})
+}
+
+func Test_serveBaseOptions(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("アプリケーションコアは base と Realtime の連結である", func(t *testing.T) {
+			t.Parallel()
+
+			// base だけで fx を組めるのは sample 撤去後だけ（撤去前は feature が realtime adapter を要る）なので、
+			// 撤去後の graph が起動することは sample-removal-check が受け持ちます。ここで固定するのは
+			// 「2 つの差が serveRealtimeOptions だけである」という分割の形です。
+			assert.NotEmpty(t, serveBaseOptions())
+			assert.Len(t, applicationCoreOptions(), len(serveBaseOptions())+len(serveRealtimeOptions()))
+		})
+	})
 }
 
 func TestNewApplicationServer(t *testing.T) {

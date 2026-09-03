@@ -19,6 +19,7 @@ import (
 	rt "go-boilerplate/internal/usecase/boundary/realtime"
 	ucrealtime "go-boilerplate/internal/usecase/realtime"
 	mock_ucrealtime "go-boilerplate/internal/usecase/realtime/mock"
+	"go-boilerplate/pkg/xerrors"
 )
 
 // testRequest は、検証を通った接続の要求です。
@@ -733,6 +734,121 @@ func Test_removeIndex(t *testing.T) {
 			m := map[rt.StreamID]map[uint64]*connection{}
 
 			assert.NotPanics(t, func() { removeIndex(m, "stream-unknown", 1) })
+		})
+	})
+}
+
+func Test_rejectionReason(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("停止中は draining として断る", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, closeReasonDraining, rejectionReason(ErrDraining))
+		})
+
+		t.Run("fan-out の不調は degraded として断る", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, rejectReasonDegraded, rejectionReason(ErrDegraded))
+		})
+
+		t.Run("枠待ち切れは admission として断る", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, rejectReasonAdmission, rejectionReason(ErrReplayAdmission))
+		})
+
+		t.Run("上限到達とそれ以外は capacity に落ちる", func(t *testing.T) {
+			t.Parallel()
+
+			// 既定を capacity にしているので、分類し忘れた拒否は容量として現れます。
+			// 新しい拒否理由を足したらここへ 1 行増やすこと。
+			assert.Equal(t, rejectReasonCapacity, rejectionReason(ErrConnectionCapacity))
+			assert.Equal(t, rejectReasonCapacity, rejectionReason(xerrors.New("unclassified")))
+		})
+	})
+}
+
+func TestRegistry_deliver(t *testing.T) {
+	t.Parallel()
+
+	const originTrace = "4bf92f3577b34da6a3ce929d0e0e4736"
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("書き出せたら継続し、起点 trace への link を持つ span を残す", func(t *testing.T) {
+			t.Parallel()
+
+			tf, recorded := observability.NewRecordingTracerFactory(t)
+			reg := NewRegistry(
+				mock_ucrealtime.NewMockReplayer(gomock.NewController(t)), newFakeSleeper(),
+				logging.NewTestLogger(t), tf,
+				observability.NewNoopRealtimeMetrics(t), &fakeFanoutHealth{}, Settings{},
+			)
+			conn := testConn()
+			e := testEvent(1)
+			e.Origin = map[string]string{"traceparent": "00-" + originTrace + "-00f067aa0ba902b7-01"}
+
+			var got bool
+			// ResponseRecorder は SetWriteDeadline を持たず書き込み前に失敗するため、実サーバーで走らせます。
+			_, err := captureSSE(t, func(w *sseWriter) error {
+				require.NoError(t, w.commit())
+				got = reg.deliver(context.Background(), conn, w, e)
+
+				return nil
+			})
+			require.NoError(t, err)
+			assert.True(t, got)
+
+			spans := recorded()
+			require.Len(t, spans, 1)
+			require.Len(t, spans[0].Links(), 1, "起点 command の trace へ link を張ること")
+			assert.Equal(t, originTrace, spans[0].Links()[0].SpanContext.TraceID().String())
+		})
+
+		t.Run("起点 trace を持たない event は link 無しで配る", func(t *testing.T) {
+			t.Parallel()
+
+			tf, recorded := observability.NewRecordingTracerFactory(t)
+			reg := NewRegistry(
+				mock_ucrealtime.NewMockReplayer(gomock.NewController(t)), newFakeSleeper(),
+				logging.NewTestLogger(t), tf,
+				observability.NewNoopRealtimeMetrics(t), &fakeFanoutHealth{}, Settings{},
+			)
+
+			_, err := captureSSE(t, func(w *sseWriter) error {
+				require.NoError(t, w.commit())
+				assert.True(t, reg.deliver(context.Background(), testConn(), w, testEvent(1)))
+
+				return nil
+			})
+			require.NoError(t, err)
+
+			spans := recorded()
+			require.Len(t, spans, 1)
+			assert.Empty(t, spans[0].Links(), "伝搬が途切れた event は link 無しで済ませること")
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("書き出せなければ接続を閉じて継続しない", func(t *testing.T) {
+			t.Parallel()
+
+			reg, _, _ := testRegistry(t, Settings{})
+			conn := testConn()
+
+			// ResponseRecorder は SetWriteDeadline を持たないので、書き込みが必ず失敗します。
+			assert.False(t, reg.deliver(
+				context.Background(), conn, newSSEWriter(httptest.NewRecorder(), writeDeadline), testEvent(1),
+			))
+			assert.NotEmpty(t, conn.reason)
 		})
 	})
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+	"time"
 
 	domaininquiry "go-boilerplate/internal/domain/inquiry"
 
@@ -159,6 +160,37 @@ func Test_usecase_emitDelivery(t *testing.T) {
 			)
 
 			require.ErrorIs(t, u.emitDelivery(context.Background(), i, m, 9), wantErr)
+		})
+	})
+}
+
+func Test_envelope(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("機構が読み戻せる直列化形を返す", func(t *testing.T) {
+			t.Parallel()
+
+			occurred := time.Date(2026, time.September, 3, 1, 2, 3, 0, time.UTC)
+			b, err := envelope(rt.DeliveryEvent{
+				StreamID: "stream-1", Sequence: 7, Type: "inquiry.message.created.v1",
+				OccurredAt: occurred, SchemaVersion: 1, Payload: []byte(`{"k":"v"}`),
+			})
+			require.NoError(t, err)
+
+			// publish 側が ParseDeliveryEvent で読む形であることが、両者を繋ぐ唯一の契約。
+			got, err := rt.ParseDeliveryEvent(b)
+			require.NoError(t, err)
+			assert.Equal(t, rt.StreamID("stream-1"), got.StreamID)
+			assert.Equal(t, rt.Sequence(7), got.Sequence)
+			assert.Equal(t, "inquiry.message.created.v1", got.Type)
+			assert.True(t, occurred.Equal(got.OccurredAt))
+			assert.Equal(t, 1, got.SchemaVersion)
+			assert.JSONEq(t, `{"k":"v"}`, string(got.Payload))
+			// EventID は outbox が採番する message_id と等しくなければならず、決まるのは Emit の後。
+			assert.Empty(t, got.EventID)
 		})
 	})
 }

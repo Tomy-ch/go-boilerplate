@@ -64,6 +64,9 @@ func realtimeRunDeps(t *testing.T) fx.Option {
 		fx.Provide(func() *observability.OutboundHTTPClient { return observability.NewDisabledOutboundHTTPClient(true) }),
 		fx.Provide(echo.New),
 		fx.Replace(testFanout(t)),
+		// 計装は MeterProvider を要るが、ObservabilityModule は global の registry を触るため
+		// 並列テストと競合する。noop の実体で差し替えて構築子ごと迂回する。
+		fx.Replace(observability.NewNoopRealtimeMetrics(t)),
 	)
 }
 
@@ -706,10 +709,14 @@ func Test_provideRealtimeConsumerRunner(t *testing.T) {
 			return nil, ctx.Err()
 		}).
 		MinTimes(1)
+	fanout := mock_ctrlrealtime.NewMockFanoutObserver(ctrl)
+	// runner は engine を実際に回すので、受信のたびに観測が届きます（値の検証は engine 側のテスト）。
+	fanout.EXPECT().ObserveFanout(gomock.Any()).AnyTimes()
+
 	engine := provideRealtimeConsumer(
 		sub,
 		mock_ctrlrealtime.NewMockReprovisioner(ctrl),
-		mock_ctrlrealtime.NewMockFanoutObserver(ctrl),
+		fanout,
 		mock_ctrlrealtime.NewMockWaker(ctrl),
 		mock_ctrlrealtime.NewMockRevoker(ctrl),
 		mock_clock.NewMockSleeper(ctrl),
@@ -886,6 +893,80 @@ func Test_provideRealtimeReprovisioner(t *testing.T) {
 
 			err := provideRealtimeReprovisioner(sub, keeper, "inst-1").Reprovision(t.Context())
 			require.ErrorIs(t, err, apperror.ErrUnavailable)
+		})
+	})
+}
+
+func TestServeRealtimeModule(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("serve から呼ぶ入口が realtime module の graph を返す", func(t *testing.T) {
+			t.Parallel()
+
+			validateGraph(t, append(commonDeps(),
+				clockModule(), ServeRealtimeModule(), fx.Provide(echo.New),
+			)...)
+		})
+	})
+}
+
+func Test_provideRealtimeHealth(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("fan-out は健全な状態から始まる", func(t *testing.T) {
+			t.Parallel()
+
+			health := provideRealtimeHealth(mock_rt.NewMockEventLogStore(gomock.NewController(t)))
+
+			require.NotNil(t, health)
+			// 起動直後に縮退を名乗ると、consumer が最初の受信を終えるまで新規接続を全部断ってしまう。
+			assert.False(t, health.FanoutDegraded())
+		})
+	})
+}
+
+func Test_provideFanoutObserver(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("consumer の観測が同じ Health へ届く", func(t *testing.T) {
+			t.Parallel()
+
+			health := provideRealtimeHealth(mock_rt.NewMockEventLogStore(gomock.NewController(t)))
+
+			provideFanoutObserver(health).ObserveFanout(xerrors.New("receive failed"))
+
+			// 別の実体を返すと、engine が観測しても /ready と SSE の判定が変わらない。
+			assert.True(t, health.FanoutDegraded())
+		})
+	})
+}
+
+func Test_provideRealtimeReadinessProbe(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("subsystem 名で Health の判定を /ready へ出す", func(t *testing.T) {
+			t.Parallel()
+
+			log := mock_rt.NewMockEventLogStore(gomock.NewController(t))
+			log.EXPECT().Latest(gomock.Any(), gomock.Any()).Return(rt.DeliveryEvent{}, false, apperror.ErrUnavailable)
+
+			probe := provideRealtimeReadinessProbe(provideRealtimeHealth(log))
+
+			assert.Equal(t, ucrealtime.SubsystemName, probe.Name)
+			// 別の判定を渡すと、起動時 probe と /ready で「到達できる」の意味がずれる。
+			require.ErrorIs(t, probe.Check(t.Context()), apperror.ErrUnavailable)
 		})
 	})
 }

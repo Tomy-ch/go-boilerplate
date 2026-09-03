@@ -325,3 +325,40 @@ func TestLayerTracer_StartWithLink(t *testing.T) {
 		})
 	})
 }
+
+func Test_linkFromCarrier(t *testing.T) {
+	t.Parallel()
+
+	const originCarrier = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("carrier の trace context を link に変える", func(t *testing.T) {
+			t.Parallel()
+
+			link, ok := linkFromCarrier(map[string]string{"traceparent": originCarrier})
+
+			require.True(t, ok)
+			assert.Equal(t, "4bf92f3577b34da6a3ce929d0e0e4736", link.SpanContext.TraceID().String())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("読めない carrier では link を作らない", func(t *testing.T) {
+			t.Parallel()
+
+			// 空だけでなく「形が崩れている」も link 無しに落ちること。doc が両方を約束している。
+			for _, carrier := range []map[string]string{
+				nil,
+				{"traceparent": ""},
+				{"traceparent": "garbage"},
+			} {
+				_, ok := linkFromCarrier(carrier)
+				assert.False(t, ok)
+			}
+		})
+	})
+}

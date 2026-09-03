@@ -18,7 +18,6 @@ package architest
 // キーを直接書く形はすべて拾うが、この 1 形だけは人手のレビューが受け持つ。
 
 import (
-	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -212,7 +211,7 @@ func TestRealtimeMeterIsDeclaredInOnePlace(t *testing.T) {
 					continue
 				}
 
-				b, err := os.ReadFile(path) //nolint:gosec // 走査対象は repo 内の固定ディレクトリ
+				b, err := pkgfs.OS{}.ReadFile(path)
 				require.NoError(t, err)
 
 				if strings.Contains(string(b), realtimeMeterNameLiteral) {
@@ -233,7 +232,7 @@ func TestRealtimeMeterIsDeclaredInOnePlace(t *testing.T) {
 func readRealtimeMetricsSource(t *testing.T) string {
 	t.Helper()
 
-	b, err := os.ReadFile(filepath.Join(moduleRoot(t), realtimeMetricsFile))
+	b, err := pkgfs.OS{}.ReadFile(filepath.Join(moduleRoot(t), realtimeMetricsFile))
 	require.NoErrorf(t, err, "%s が読めない。ファイルを移動したら宣言も直すこと", realtimeMetricsFile)
 
 	return string(b)
@@ -241,7 +240,9 @@ func readRealtimeMetricsSource(t *testing.T) string {
 
 // realtimeInstrumentNames は、ソースから instrument 名を宣言順に拾い、
 // 名前を静的に読み取れなかった呼び出しを違反として返します。
-func realtimeInstrumentNames(src string) (names, violations []string) {
+func realtimeInstrumentNames(src string) ([]string, []string) {
+	var names, violations []string
+
 	for _, m := range instrumentCallRe.FindAllStringSubmatch(src, -1) {
 		arg := strings.TrimSpace(m[1])
 
@@ -261,7 +262,9 @@ func realtimeInstrumentNames(src string) (names, violations []string) {
 // realtimeLabelKeys は、ソースから label のキーの実値を重複なく拾い、
 // 実値を静的に読み取れなかった呼び出しを違反として返します。
 // 引数はリテラルか、このソース内で宣言された定数のどちらかでなければなりません。
-func realtimeLabelKeys(src string) (keys, violations []string) {
+func realtimeLabelKeys(src string) ([]string, []string) {
+	var keys, violations []string
+
 	values := map[string]string{}
 	for _, m := range labelConstRe.FindAllStringSubmatch(src, -1) {
 		values[m[1]] = m[2]

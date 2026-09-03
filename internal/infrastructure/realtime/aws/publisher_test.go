@@ -245,3 +245,25 @@ func Test_classifyAppend(t *testing.T) {
 		})
 	})
 }
+
+func Test_appendResult(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("位置の衝突は conflict として数える", func(t *testing.T) {
+			t.Parallel()
+
+			// 「既に誰かが書いた」を substrate の失敗と混ぜると、再送の冪等成功が障害に見える。
+			assert.Equal(t, observability.RealtimeResultConflict, appendResult(rt.ErrSequenceConflict))
+		})
+
+		t.Run("それ以外の失敗は error として数える", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, observability.RealtimeResultError, appendResult(rt.ErrInvalidEvent))
+			assert.Equal(t, observability.RealtimeResultError, appendResult(apperror.ErrUnavailable))
+		})
+	})
+}

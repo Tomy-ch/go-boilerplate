@@ -165,3 +165,78 @@ func Test_usecase_CheckHealth(t *testing.T) {
 		})
 	})
 }
+
+func Test_usecase_checkDependencies(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("probe が無ければ依存を並べず ok を返す", func(t *testing.T) {
+			t.Parallel()
+
+			deps, status := (&usecase{}).checkDependencies(context.Background())
+
+			assert.Nil(t, deps)
+			assert.Equal(t, Ok, status)
+		})
+
+		t.Run("1 つでも落ちれば総合は degraded になる", func(t *testing.T) {
+			t.Parallel()
+
+			u := &usecase{probes: []Probe{
+				{Name: "healthy", Check: func(context.Context) error { return nil }},
+				{Name: "broken", Check: func(context.Context) error { return errProbe }},
+			}}
+
+			deps, status := u.checkDependencies(context.Background())
+
+			assert.Equal(t, Degraded, status)
+			assert.Equal(t, []DependencyStatus{
+				{Name: "healthy", Status: Ok},
+				{Name: "broken", Status: Degraded},
+			}, deps)
+		})
+	})
+}
+
+func Test_usecase_checkProbe(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("probe には期限付きの ctx を渡す", func(t *testing.T) {
+			t.Parallel()
+
+			var deadline time.Time
+			var ok bool
+			err := (&usecase{}).checkProbe(context.Background(), Probe{Check: func(ctx context.Context) error {
+				deadline, ok = ctx.Deadline()
+
+				return nil
+			}})
+
+			require.NoError(t, err)
+			// 上限が外れると、応答しない依存が status ではなく応答時間の側から instance を落とす。
+			require.True(t, ok, "probe に渡る ctx へ期限が付いていること")
+			assert.LessOrEqual(t, time.Until(deadline), probeTimeout)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("上限を超えて返らない probe は打ち切る", func(t *testing.T) {
+			t.Parallel()
+
+			err := (&usecase{}).checkProbe(context.Background(), Probe{Check: func(ctx context.Context) error {
+				<-ctx.Done()
+
+				return ctx.Err()
+			}})
+
+			require.ErrorIs(t, err, context.DeadlineExceeded)
+		})
+	})
+}
