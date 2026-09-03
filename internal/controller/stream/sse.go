@@ -10,7 +10,7 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
-// SSE のフレーム区切りと、business event 以外が id を持たないことを表す接頭辞。
+// SSE のフレーム区切りとフィールド接頭辞。
 const (
 	frameEnd        = "\n\n"
 	idField         = "id: "
@@ -22,7 +22,7 @@ const (
 // sseWriter は、確定済みのレスポンスへ SSE のフレームを 1 つずつ書きます。
 // 書き込みのたびに write deadline を張り直すので、接続そのものは maximum lifetime まで生き続け、
 // 止まった peer だけが deadline で切れます（http.Server の WriteTimeout はレスポンス単位なので、
-// 張り直さなければ 1 分あまりで stream 全体が切れます）。
+// 張り直さなければ server の WriteTimeout で stream 全体が切れます）。
 type sseWriter struct {
 	res      http.ResponseWriter
 	ctrl     *http.ResponseController
@@ -46,8 +46,8 @@ func (w *sseWriter) commit() error {
 	return w.flush()
 }
 
-// writeEvent は、business event を 1 フレーム書きます。SSE の id は sequence で、client の
-// Last-Event-ID はこの値だけで進みます。
+// writeEvent は、business event を 1 フレーム書きます。SSE の id は sequence です（id を持つフレームは
+// これだけ — writeControl 参照）。
 func (w *sseWriter) writeEvent(e rt.DeliveryEvent) error {
 	body, err := e.MarshalJSON()
 	if err != nil {
@@ -57,8 +57,9 @@ func (w *sseWriter) writeEvent(e rt.DeliveryEvent) error {
 	return w.write(idField + e.Sequence.String() + "\n" + dataField + string(body) + frameEnd)
 }
 
-// writeControl は、control event を 1 フレーム書きます。**id を持ちません** — 持たせると
-// client の Last-Event-ID が制御指示で上書きされ、再接続の位置が business event の列から外れます。
+// writeControl は、control event を 1 フレーム書きます。id を持ちません — id を持つのは business event
+// （writeEvent）だけで、持たせると client の Last-Event-ID が制御指示で上書きされ、再接続の位置が
+// business event の列から外れます（設計 §4.3）。heartbeat も同じ理由で id を持ちません。
 func (w *sseWriter) writeControl(ev gen.ControlEvent) error {
 	body, err := json.Marshal(ev)
 	if err != nil {
@@ -68,7 +69,7 @@ func (w *sseWriter) writeControl(ev gen.ControlEvent) error {
 	return w.write(controlPreamble + dataField + string(body) + frameEnd)
 }
 
-// writeHeartbeat は、id を持たない comment を 1 フレーム書きます。到達しない peer をここで検出します。
+// writeHeartbeat は、comment を 1 フレーム書きます（id を持たない理由は writeControl 参照）。到達しない peer をここで検出します。
 func (w *sseWriter) writeHeartbeat() error {
 	return w.write(heartbeatFrame)
 }

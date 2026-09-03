@@ -102,9 +102,8 @@ func (e *Engine) Run(ctx context.Context) error {
 	}
 }
 
-// repairIfGone は、受信先が使えないことを示す失敗なら作り直しを 1 度試みます。失敗しても次の周回で同じ
-// 失敗を踏んで再び試みるので、ここで諦めても復旧の機会は失われません（AWS は queue の削除から同名 queue の
-// 作成まで 60 秒を要求するため、最初の数周は失敗するのが正常）。
+// repairIfGone は、受信先が使えないことを示す失敗なら作り直しを 1 度だけ試みます。ここでは再試行せず、
+// 次の周回の受信失敗が再び呼びます（docs/design/realtime-delivery.md §2.5）。
 func (e *Engine) repairIfGone(ctx context.Context, log logging.Logger, cause error) {
 	if !xerrors.Is(cause, rt.ErrReceivingEndGone) {
 		return

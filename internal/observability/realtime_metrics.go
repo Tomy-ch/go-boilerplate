@@ -10,10 +10,8 @@ import (
 // realtimeMeterName は、Realtime Delivery 計装の meter 名です。
 const realtimeMeterName = "go-boilerplate/realtime"
 
-// Realtime Delivery の計装が使う属性キー。ここに無いキーは付けません。
-// 主体（subject / stream / destination / event / message / ticket / instance）の識別子は
-// どれも取り得る値が有界でなく、時系列の本数を際限なく増やすので label にしません
-// （相関は trace と構造化ログが担います。docs/design/realtime-delivery.md §3.4）。
+// Realtime Delivery の計装が使う属性キー。ここに無いキーは付けず、主体の識別子は label にしない
+// （docs/design/realtime-delivery.md §3.4。internal/architest/realtime_metrics_test.go が検査する）。
 const (
 	// attrReason は、接続を受け付けなかった・閉じた理由です。
 	attrReason = "reason"
@@ -36,9 +34,7 @@ const (
 )
 
 // RealtimeMetrics は、Realtime Delivery の lifecycle 計装一式です。
-// serve（接続・replay・配送）、relay（EventLog への追記）、cleanup job（lease の回収）の
-// 3 つの process が同じ meter を共有します。同じ graph には同居しないので、
-// 提供するのはそれぞれの process の module です。
+// serve（接続・replay・配送）・relay（EventLog への追記）・cleanup job（lease の回収）が同じ meter を共有します。
 type RealtimeMetrics struct {
 	connectionsActive     metric.Int64UpDownCounter
 	connectionsAccepted   metric.Int64Counter

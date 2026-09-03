@@ -66,8 +66,7 @@ func (j *jobImpl) Name() string {
 }
 
 // Execute は、回収できる instance をすべて処理します。引数は取りません。
-// 一部が失敗した場合も、確定した内訳を出力してからエラーを返します。個々の失敗はそのエラーの chain に
-// 残るため、内訳には失敗の件数を載せません。
+// 一部が失敗した場合も、確定した内訳を出力してからエラーを返します（内訳に載せる項目は README「Result counts」）。
 func (j *jobImpl) Execute(ctx context.Context, args []string) error {
 	ctx, endSpan := j.tracer.Start(ctx)
 	defer endSpan()
@@ -100,9 +99,8 @@ func (j *jobImpl) Execute(ctx context.Context, args []string) error {
 	return nil
 }
 
-// recordOutcomes は、掃除の内訳を instance 数の metric へ写します。
-// ログに載せていない Claimed / Failed もここでは数えます — ログは 1 回の実行の要約で、
-// 失敗の詳細は返却エラーの chain が持ちますが、時系列としては失敗の推移こそ見たいためです。
+// recordOutcomes は、掃除の内訳を instance 数の metric へ写します。ログに載せない Claimed / Failed も
+// 数えます（理由は README「Result counts」）。
 func (j *jobImpl) recordOutcomes(ctx context.Context, r ucrealtime.SweepResult) {
 	for outcome, n := range map[string]int{
 		outcomeDetected:  r.Detected,

@@ -24,17 +24,13 @@ const (
 )
 
 // ObservedHTTPClientMetrics は、計上内容を読み出せる HTTPClientMetrics です。
-// HTTPClientMetrics をそのまま埋め込むため、被験側へは埋め込みフィールドを渡して通常どおり計上させます。
 type ObservedHTTPClientMetrics struct {
 	*HTTPClientMetrics
 
 	reader *sdkmetric.ManualReader
 }
 
-// ObservedRealtimeMetrics は、計上内容を読み出せる RealtimeMetrics です。
-// Realtime Delivery の計装は「どこで呼ぶか」が契約なので、呼び出し元のテストが label と値を
-// 読み戻せないと、記録位置の退行（拒否理由の取り違え、0 件の系列化、契機ラベルの誤り）を
-// どのテストも検出できません。
+// ObservedRealtimeMetrics は、計上内容（label と値）を読み出せる RealtimeMetrics です。
 type ObservedRealtimeMetrics struct {
 	*RealtimeMetrics
 

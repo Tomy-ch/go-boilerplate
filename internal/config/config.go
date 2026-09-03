@@ -27,8 +27,7 @@ func New() (*Config, error) {
 		return nil, err
 	}
 
-	// CIDR は解析が検証を兼ねる（parse, don't validate）。値が必要な New で
-	// 一度だけ解析し、検証済みの *net.IPNet を直接 Config へ格納する。
+	// CIDR の検証は parseCIDR が兼ねる。
 	cidr, err := parseCIDR(cfg.Security.CIDR)
 	if err != nil {
 		return nil, err
@@ -220,10 +219,9 @@ func validateConfig(cfg Loader) error {
 	return nil
 }
 
-// validateEmbeddedEnv は、production モードでバイナリに焼き込まれた env の素性を検証します。
-// 実効モードが production かつ埋め込み env の APP_ENV が非本番（deny-list）の場合、
-// materialize-env 忘れによりローカル値が本番へ紛れ込んでいるとみなしエラーを返します。
-// deny 型のため、未知の新環境ラベルには寛容です。development モードは実行時注入を優先する設計思想により全て許容します。
+// validateEmbeddedEnv は、production モードで、バイナリに焼き込まれた env の APP_ENV が非本番なら
+// ErrEmbeddedEnvMismatch を返します。deny 型なので未知の環境ラベルは通し、development モードは検査しません
+// （何を防ぐ検査かは env/README.md「Notes」の Embedded-env provenance guard）。
 func validateEmbeddedEnv(appCfg Application) error {
 	if appCfg.Mode != ProductionMode {
 		return nil
@@ -348,7 +346,7 @@ func validateDBConnectionConfig(dbConnCfg DBConnection) error {
 }
 
 // validateSecurityConfig は、セキュリティ設定を検証します。
-// CIDR は解析が検証を兼ねるため、ここでは扱わず New の parseCIDR に委ねる。
+// CIDR は parseCIDR に委ねる。
 func validateSecurityConfig(secCfg Security) error {
 	if len(secCfg.AllowedOrigins) == 0 {
 		return ErrEmptyAllowedOrigins
@@ -369,7 +367,8 @@ func validateSecurityConfig(secCfg Security) error {
 	return nil
 }
 
-// parseCIDR は、CIDR 文字列を *net.IPNet へ解析します。
+// parseCIDR は、CIDR 文字列を *net.IPNet へ解析します。解析が検証を兼ねる（parse, don't validate）ので
+// validateConfig には CIDR の検査を置かず、値が要る New が一度だけ呼んで結果を Config へ格納します。
 func parseCIDR(s string) (*net.IPNet, error) {
 	_, cidr, err := net.ParseCIDR(s)
 	if err != nil {

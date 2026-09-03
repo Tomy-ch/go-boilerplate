@@ -46,8 +46,7 @@ func (lt LayerTracer) Start(
 	return lt.startSpan(ctx, "", opts...)
 }
 
-// StartWithSuffix は、新しい span を開始し、span を含む新しい Context と、span を終了するための endSpan 関数を返す。
-// optionalName が空でない場合は span 名のサフィックスとして付与される。
+// StartWithSuffix は、Start と同じく span を開始し、optionalName が空でなければ span 名の末尾に付与する。
 func (lt LayerTracer) StartWithSuffix(
 	ctx context.Context,
 	optionalName string,
@@ -62,9 +61,8 @@ func (lt LayerTracer) StartWithSuffix(
 }
 
 // StartWithLink は、新しい span を開始し、carrier が指す trace への link を張ります。
-// 親はあくまで ctx で、carrier は link にしかなりません — 起点の command から見て配送は
-// いつ起きるか分からない別の営みなので、長寿命の接続をその子 span にすると trace が閉じません
-// （docs/design/realtime-delivery.md §3.4）。carrier が空か読めなければ link 無しの span になります。
+// 親は ctx の span のままで、carrier は link にしかなりません — 起点の trace とは時も場所も
+// 異なる作業を、その子にせず繋ぐためのものです。carrier が空か読めなければ link 無しの span になります。
 func (lt LayerTracer) StartWithLink(
 	ctx context.Context,
 	carrier map[string]string,
@@ -95,8 +93,6 @@ func linkFromCarrier(carrier map[string]string) (trace.Link, bool) {
 }
 
 // RunWithSpan は、指定された関数 fn を新しい span 内で実行し、結果を返す。
-//
-// 呼び出し元は、関数 fn の実行結果とエラーを受け取ることができる。
 //
 // 典型的な呼び出し方:
 //
@@ -133,11 +129,7 @@ func (lt LayerTracer) makeSpanName(optionalName string) string {
 	return fullName
 }
 
-// startSpan は、新しい span を開始し、span を含む新しい Context と、span を終了するための endSpan 関数を返す。
-//
-// optionalName を指定することで、span 名に追加情報を付与できる。
-//
-// 呼び出し元は処理完了時に endSpan を呼び出すことで span を確実に終了させることを想定している。
+// startSpan は、Start / StartWithSuffix / StartWithLink の共通実装で、makeSpanName(optionalName) の名前で span を開始する。
 func (lt LayerTracer) startSpan(
 	parentCtx context.Context,
 	optionalName string,

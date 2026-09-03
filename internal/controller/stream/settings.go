@@ -31,8 +31,8 @@ const (
 	maxConnectionLifetime = time.Hour
 	// admissionWait は、初回 replay の枠が空くのを待つ上限です。超えたらレスポンス確定前に 503 を返します。
 	admissionWait = 2 * time.Second
-	// drainBudget は、停止時に接続を閉じ切るのを待つ上限です。停止 ctx の残りとこの値の短いほうを使い、
-	// 残りを常駐処理の停止・instance resource の片付け・HTTP shutdown に残します。
+	// drainBudget は、停止時に接続を閉じ切るのを待つ上限です。固定値で、停止 ctx の残りと短いほうを使います
+	// （README「Stop-time budget」）。
 	drainBudget = 10 * time.Second
 	// retryAfterHint は、503 の Retry-After（秒）と RETRY_LATER の retryAfterMs に共用する目安です。
 	retryAfterHint = 5 * time.Second

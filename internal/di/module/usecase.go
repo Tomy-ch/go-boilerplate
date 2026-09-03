@@ -34,9 +34,8 @@ import (
 	"go.uber.org/fx"
 )
 
-// readinessProbeGroup は、/ready が状態を並べる依存の検査（healthcheck.Probe）の value group です。
-// 落ちていても通常の HTTP 応答を続けられる依存だけがここへ入り、空でも構いません
-// （不可欠な依存は起動時の fail-fast が受け持ちます）。
+// readinessProbeGroup は、/ready が状態を並べる依存の検査（[healthcheck.Probe]）の value group です。
+// 空でも構いません。入れてよい依存の条件は [healthcheck.Probe] が定めます。
 const readinessProbeGroup = "readiness.probes"
 
 // UsecaseModule は、ユースケース層の依存関係を提供するfx.Moduleです。

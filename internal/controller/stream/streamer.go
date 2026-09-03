@@ -21,8 +21,8 @@ type StreamRequest struct {
 	// Resumed は、client が位置を指定して繋ぎ直したかどうかです（Last-Event-ID か after を伴う接続）。
 	// Cursor から導けません — 位置を省いた接続にも ticket 発行時の初期位置が入るためです。
 	Resumed bool
-	// Revalidate は、接続を索引へ載せた後に ticket をもう一度検証し直します。
-	// 検証と登録の間に届いた失効通知は、まだ索引に無いこの接続を取りこぼすためです。nil なら再検証しません。
+	// Revalidate は、接続を索引へ載せた後に ticket をもう一度検証し直します（README「What happens on connect」step 5）。
+	// nil なら再検証しません。
 	Revalidate func(ctx context.Context) error
 }
 

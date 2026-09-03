@@ -65,7 +65,7 @@ const (
 )
 
 // connection は、確定済みの 1 本の SSE 接続です。読む側（fetcher）と書く側（pump）の 2 つの goroutine が
-// channel だけで繋がり、位置を表す値はそれぞれの持ち主が 1 つずつ持ちます。
+// channel だけで繋がります（README「Runtime」）。
 type connection struct {
 	// id は、registry の索引に使う instance 内で一意な番号です。
 	id uint64
@@ -182,8 +182,7 @@ func (c *connection) wake(upTo rt.Sequence) {
 }
 
 // startTicker は、sleeper で interval() ごとに tick を送る goroutine を起こします。
-// tick は cap 1 の channel へ非ブロッキングに送るので、受け手が遅れても goroutine は詰まりません。
-// ctx が終わると goroutine も終わります。
+// 受け手が遅れた分の tick は畳まれ、goroutine は詰まりません。ctx が終わると goroutine も終わります。
 func startTicker(ctx context.Context, sleeper clock.Sleeper, interval func() time.Duration) <-chan struct{} {
 	ch := make(chan struct{}, 1)
 
@@ -234,8 +233,8 @@ func (f *fetcher) run(ctx context.Context) {
 			return
 		}
 
-		// 計測は枠を取る前から始めます。枠待ちこそ client から見た遅れであり、
-		// 設計 §2.6 が縮退の一形態として挙げているのもその待ちだからです。
+		// CatchUpLag は通知を受けてから追いつき終わるまで — client から見た遅れ — なので、計測は枠を取る前から
+		// 始めます。枠待ちも設計 §2.6 が縮退の一形態として挙げる遅れです。
 		startedAt := time.Now()
 
 		if err := f.sem.Acquire(ctx, 1); err != nil {
@@ -245,7 +244,6 @@ func (f *fetcher) run(ctx context.Context) {
 		f.drainPages(ctx, trigger)
 		f.sem.Release(1)
 
-		// 通知を受けてから追いつき終わるまでが、client から見た遅れです。
 		if trigger == triggerWakeup {
 			f.metrics.CatchUpLag(ctx, float64(time.Since(startedAt).Milliseconds()))
 		}
@@ -285,8 +283,7 @@ func (f *fetcher) drainPages(ctx context.Context, trigger string) {
 	for {
 		events, hasMore, err := f.replayer.ReadPage(ctx, f.conn.stream, f.fetched)
 		if err != nil {
-			// 依存の不調でこの接続は閉じません。一斉に閉じると回復が再接続の嵐になるため、
-			// 次の catch-up に委ねます（docs/design/realtime-delivery.md §2.6）。
+			// 依存の不調でこの接続は閉じず、次の catch-up に委ねます（docs/design/realtime-delivery.md §2.6）。
 			f.log.Warn(ctx, "failed to read the event log for a stream connection",
 				logging.String(logging.StreamIDKey, string(f.conn.stream)),
 				logging.Error(logging.ErrorKey, err))
@@ -315,8 +312,7 @@ func (f *fetcher) drainPages(ctx context.Context, trigger string) {
 }
 
 // push は、読んだ event を送出 buffer へ入れ、入れられた件数を返します。
-// 満杯なら RETRY_LATER を試みて接続を閉じます。event 自体は EventLog に残るので失われず、
-// 再接続時の replay が回収します。
+// 満杯なら event を捨てずに RETRY_LATER を試みて接続を閉じます（README「Runtime」）。
 func (f *fetcher) push(events []rt.DeliveryEvent) int {
 	for i, e := range events {
 		select {

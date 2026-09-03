@@ -275,6 +275,8 @@ output:
   `SequenceAllocator` からの採番、ordering_key / ordering_sequence の付与）は `internal/usecase/inquiry/` 内の adapter が担う。
   Realtime Delivery 側の package は `inquiry` を import しない（architecture test で強制。
   [ADR-0071 (realtime-delivery-driving-mechanism)]）。
+- **author に主体 ID を載せない。** `inquiry.message.created.v1` の `author` は `kind` だけを持つ。会話画面は
+  「利用者か回答者か」しか必要とせず、主体 ID を配ると宛先の識別子が stream の外へ広がる。
 - **2 つの destination。** 会話画面は問い合わせ stream（`streamId` = 問い合わせ ID）、一覧画面は組織 feed stream（`streamId` =
   feed ID、単一組織のため固定値 1 つ）を購読する。1 event = 1 stream を守るため 2 行 emit し、連番は `SequenceAllocator` の
   stream ごとの行から採番する。feed の行は組織で 1 つなので、feed の採番は組織内のあらゆる投稿・回答を直列化する

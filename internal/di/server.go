@@ -30,11 +30,9 @@ func applicationCoreOptions() []fx.Option {
 	return append(serveBaseOptions(), serveRealtimeOptions()...)
 }
 
-// serveRealtimeOptions は、Realtime Delivery の受信側 runtime を結線します。
-// feature の realtime adapter を消すと結線の 1 行も消えて空を返すようになり、serve graph から
-// Realtime と AWS / DynamoDB のクライアントが丸ごと外れます
-// （"Zero adapters, zero runtime"。docs/design/realtime-delivery.md §1）。
-// append で書くのは、マーカー行が落ちた後も関数がそのまま成り立つようにするためです。
+// serveRealtimeOptions は、Realtime Delivery の受信側 runtime を結線します。結線は sample-api:line の
+// マーカー 1 行だけで行い、その行が落ちても関数が成り立つよう append で書きます
+// （その 1 行で何が外れるかは internal/di/module/README.md「Design Policy」）。
 func serveRealtimeOptions() []fx.Option {
 	opts := make([]fx.Option, 0, 1)
 	opts = append(opts, module.ServeRealtimeModule()) // sample-api:line

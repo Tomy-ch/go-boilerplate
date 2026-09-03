@@ -14,8 +14,7 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
-// ErrEventIDMismatch は、payload の eventId が outbox の message_id と食い違うことを示すエラーです。
-// eventId は message_id と同じ値で冪等性を決めるので、食い違いは emit 側の誤りであり retry では直りません。
+// ErrEventIDMismatch は、payload の eventId が outbox の message_id と食い違うことを示すエラーです（分類は Publish の doc）。
 var ErrEventIDMismatch = xerrors.Wrap(
 	apperror.ErrPermanent,
 	"realtime: payload eventId does not match the outbox message id",
@@ -33,7 +32,6 @@ type publisher struct {
 }
 
 // NewPublisher は、log へ append し topicARN へ wakeup を publish する Publisher を返します。
-// append は同じ EventID なら冪等に成功するので、再送で EventLog に 2 件目は入りません（ADR-0073）。
 func NewPublisher(
 	log rt.EventLogStore,
 	snsAPI SNSAPI,
@@ -45,8 +43,9 @@ func NewPublisher(
 }
 
 // Publish は、m の payload を DeliveryEvent として復元し、EventLog へ append してから wakeup を publish します。
-// 復元できない payload と、同じ位置に別の event がある衝突（ErrSequenceConflict）は retry で直らないので
-// ErrPermanent で返し、relay がその stream を先頭で止めます。substrate の失敗は ErrRetryable です。
+// 復元できない payload・eventId の不一致（ErrEventIDMismatch）・位置の衝突（ErrSequenceConflict）は retry で
+// 直らないので ErrPermanent で返し、relay がその stream を先頭で止めます。EventLog と SNS の失敗は ErrRetryable
+// です（分類表は README「Error classification」）。
 func (p *publisher) Publish(ctx context.Context, m publisherbndry.Message) error {
 	// 起点の command が headers に載せた trace を継いでから span を開きます。これをしないと
 	// append が relay の trace にぶら下がり、command → outbox → relay → EventLog が 1 本になりません。
@@ -60,8 +59,6 @@ func (p *publisher) Publish(ctx context.Context, m publisherbndry.Message) error
 		return err
 	}
 
-	// 封筒にも起点 trace を載せます。配送は別の instance の別の時刻に起きるので、
-	// 受け取る側は EventLog の item からしか起点を知れません。
 	event.Origin = observability.TraceContextFromCarrier(m.Headers)
 
 	if err := p.log.Append(ctx, event); err != nil {
@@ -132,8 +129,7 @@ func appendResult(err error) string {
 	return observability.RealtimeResultError
 }
 
-// classifyAppend は、append の失敗を relay の分類へ写します。位置の衝突と不正な封筒は permanent、
-// それ以外（store に届かない・書けない）は retryable です。
+// classifyAppend は、append の失敗を relay の分類（Publish の doc）へ写します。
 func classifyAppend(err error) error {
 	if xerrors.Is(err, rt.ErrSequenceConflict) || xerrors.Is(err, rt.ErrInvalidEvent) ||
 		xerrors.Is(err, rt.ErrPayloadTooLarge) {
