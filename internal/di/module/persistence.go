@@ -62,6 +62,12 @@ func persistenceModule() fx.Option {
 				// sample-api:end
 			),
 		),
+		fx.Module("command_service",
+			// このサブモジュールは意図的に空です。集約横断の書き込みを 1 件も持たない
+			// システムには登録するものが無く、空であること自体は欠陥ではありません
+			// （ADR-0032 (lightweight-cqrs) § Implementation status）。
+			fx.Provide(),
+		),
 		fx.Module("system_cqrs",
 			fx.Provide(
 				healthcheck.New,
