@@ -454,6 +454,36 @@ linters:
             - pkg: go-boilerplate/internal/domain/
               desc: "汎用 substrate である outbound HTTP client は domain 層に依存してはいけません。
                 domain 概念を扱うのは external gateway / repository 実装の責務です。"
+        # Realtime Delivery は「どの feature でも使える配送機構」であって特定の feature の一部ではありません。
+        # 機構側が feature の domain / usecase を参照した時点で中立性が失われ、feature を 1 つ増やすたびに
+        # 機構へ手が入る構造になります。docs/design/realtime-delivery.md §1 と ADR-0071 が depguard と
+        # architecture test の両方で検査すると宣言しており、これはその depguard 側です。同じ規約は
+        # internal/architest/realtime_isolation_test.go でも検査します（build 時に落とすのがこちら、
+        # test で落とすのが向こう）。InstanceLeaseStore の allowlist（規約②）はシンボル単位の制約で、
+        # package 単位の depguard では表現できないため architest にのみ存在します。
+        maintain_realtime_feature_neutrality:
+          files:
+            - "**/internal/usecase/boundary/realtime/**.go"
+            - "**/internal/usecase/realtime/**.go"
+            - "**/internal/infrastructure/eventlog/**.go"
+            - "**/internal/infrastructure/streamticket/**.go"
+            - "**/internal/infrastructure/instancelease/**.go"
+            - "**/internal/infrastructure/realtimesecret/**.go"
+            - "**/internal/infrastructure/realtime/**.go"
+            - "**/internal/controller/stream/**.go"
+            - "**/internal/controller/realtime/**.go"
+          list-mode: lax
+          # lax では deny より長い prefix の allow が勝つため、機構自身の 2 package はここで戻します。
+          allow:
+            - go-boilerplate/internal/usecase/boundary/
+            - go-boilerplate/internal/usecase/realtime
+          deny:
+            - pkg: go-boilerplate/internal/domain/
+              desc: "Realtime Delivery の機構側から feature の domain を参照することは禁止です。
+                配送機構は feature に対して中立でなければなりません。"
+            - pkg: go-boilerplate/internal/usecase/
+              desc: "Realtime Delivery の機構側から feature の usecase を参照することは禁止です。
+                機構が使ってよいのは usecase/boundary 配下と usecase/realtime だけです。"
         # diコンテナのcontroller層の設定ファイルでは、internal/controller/handler配下で定義されたもののみをimport可能とします。
         configure_only_the_controller_layer:
           files:
