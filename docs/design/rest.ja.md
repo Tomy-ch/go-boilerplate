@@ -51,6 +51,18 @@ stateDiagram-v2
     end note
 ```
 
+Realtime Delivery はこの lifecycle を置き換えるのではなく拡張する。feature adapter が 1 つ以上
+結線されていると、その DI module が serve lifecycle の participant——startup probe、lease と queue
+の provisioner、consumer と heartbeat の runner、そして drainer——を提供し、
+`internal/di/server/hook` が上記のフェーズの中でそれらを走らせる
+（[realtime-delivery.ja.md §2.5](realtime-delivery.ja.md#25-serve-instance-の-lifecycle-と-instance-lease)）。
+REST にとって重要な帰結が 2 つある。`Draining` は閉じるべき長寿命の SSE 応答を抱えるようになったため、
+切断してタイムアウトを待つのではなく、クライアントへ他所への再接続を促す control event を送る。そして
+Realtime の基盤に到達できなくても REST を道連れにせず `/ready` だけが degrade する——このサブシステムは
+別個の driving mechanism であるため、stream 側が degraded を報告している間も通常のリクエスト処理は続く
+（[§2.6](realtime-delivery.ja.md#26-degraded-時の動作)）。feature adapter が 1 つも結線されていなければ
+これらは何一つ存在せず、lifecycle は上の図そのままである。
+
 ### 2.2 リクエスト 1 件の流れ（middleware 順 → handler → usecase → present）
 
 ```mermaid
