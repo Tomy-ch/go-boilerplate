@@ -282,8 +282,18 @@ formatters:
       local-prefixes:
         - "go-boilerplate"
     gofumpt:
+      # extra 規則は 3 つとも有効にする。旧 extra-rules: true が意味していたのは
+      # 「既定で無効な追加規則を使う」ことで、規則が個別キーへ分割された後もその意図は
+      # 変わらない。1 つだけ落とすと、なぜそれが外れているのかを読み手が推測することになる。
       module-path: "go-boilerplate"
-      extra-rules: true
+      extra:
+        # 同じ型で隣接する引数をまとめる（a int, b int → a, b int）。
+        group-params: true
+        # 開き括弧が行末で終わる複数行の呼び出しで、閉じ括弧を独立行に置く。
+        # 引数を足し引きしても差分が 1 行で済む。
+        balance-calls: true
+        # 名前付き返り値を持つ関数の裸の return に値を書き出す（return → return err）。
+        clothe-returns: true
     golines:
       max-len: 150
       tab-len: 4
