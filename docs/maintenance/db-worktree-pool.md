@@ -233,9 +233,16 @@ not passed. Run by mistake in the main checkout, it exits with an error without 
   `-sharedDb`, so every checkout sees one set of tables; per-worktree table prefixes are the planned
   isolation and are not in place yet. `goaws` creates topics and queues at runtime
   (`docker/goaws/goaws.yaml` declares none), so unlike `elasticmq` a branch can isolate itself by naming
-  alone, with no conf change and no `infra-down`. `make realtime-smoke` relies on exactly that: it
-  creates its resources under a per-run random name and deletes them on exit, so concurrent runs from
-  several worktrees do not collide.
+  alone, with no conf change and no `infra-down`. `docker-compose.attach.yaml` does exactly that: it
+  suffixes `REALTIME_TOPIC` and `REALTIME_QUEUE_PREFIX` with the slot, so each worktree's serve
+  subscribes to its own topic. Without that the isolation fails in one specific way rather than
+  generally — a wakeup for an unknown stream is a no-op, but a revocation is matched on
+  `(subject, destination)`, and every worktree's database is seeded from the same fixtures, so revoking
+  a ticket in one window would close another window's connection for the same subject. `make
+  realtime-smoke` isolates itself the same way, under a per-run random name it deletes on exit.
+
+  The tables are **not** split yet, so a stream written from one worktree is visible to another; that
+  half waits on the per-slot `REALTIME_TABLE_SUFFIX` the paragraph above calls planned.
 - `sql_editor` / `docs_server` / `er_diagram_generator` / `mock_auth_server` sit in the `2000` range
   because none of them has a de-facto port of its own. The rule, and why that range is safe, are in
   [`local-environment.md`](local-environment.md).

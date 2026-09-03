@@ -14,6 +14,7 @@ type Message struct {
     EventType string
     Payload   []byte
     Headers   map[string]string
+    CreatedAt time.Time
 }
 ```
 

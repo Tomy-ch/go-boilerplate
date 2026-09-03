@@ -19,11 +19,13 @@ partition key / `ConsistentRead` / `LastEvaluatedKey`）はここで止まり、
 
 | seam | DynamoDB |
 | --- | --- |
-| item | partition key `stream_id`（S）、sort key `sequence`（N、10 進）。`event_id`、`event_type`、`occurred_at`（RFC 3339 nano、UTC）、`schema_version`（N）、`payload`（B、空なら属性無し）、`expires_at`（N、epoch 秒 = `occurred_at` + `realtime.EventLogRetention`） |
+| item | partition key `stream_id`（S）、sort key `sequence`（N、10 進）。`event_id`、`event_type`、`occurred_at`（RFC 3339 nano、UTC）、`schema_version`（N）、`payload`（B、空なら属性無し）、`expires_at`（N、epoch 秒 = `occurred_at` + `realtime.EventLogRetention`）、`origin`（M、起点 command の trace carrier。空なら属性無し） |
 | `Append` | `attribute_not_exists(stream_id)` 付きの `PutItem`。`ConditionalCheckFailedException` なら既存 item を `ConsistentRead` で読み戻して `event_id` を比較: 同じなら成功（outbox relay の retry は特別扱い無しで冪等）、違えば `ErrSequenceConflict`。先に `event.Validate()` を通すので不正な封筒は保存されない |
 | `ReadAfter` | `Query` `stream_id = :s AND sequence > :after`、`ConsistentRead`、昇順、`Limit`（既定 100、上限 1000）。`HasMore` は `LastEvaluatedKey != nil` — `len == Limit` ではない。DynamoDB は 1 MiB でも打ち切るため。続きは最後の event の sequence から読む。sequence は gap 無しなので不透明な cursor を seam に通さない |
 | `Latest` | 降順 `Limit: 1` の `Query`、`ConsistentRead` |
 | `Find` | `ConsistentRead` の `GetItem` |
+
+`origin` は、その event を生んだ command の trace context を持ちます。数分後に別の instance で起きる配送からでも起点へ link を張れるようにするためで、伝搬ではなく保存にしてあるのは読む側が別プロセス・別時刻だからです。client には届きません — 封筒の直列化形に含まれないので、64 KiB の上限にも影響しません。store は carrier の中身を読まずにそのまま書きます — どのキーが何を意味するかは `internal/observability` の持ち物です。
 
 `expires_at` は TTL の掃除にしか使いません。cursor がまだ replay できるかは `internal/usecase/realtime` が
 `OccurredAt` と `realtime.EventLogRetention` から判定し、store は age で filter しないので、両者が数値で

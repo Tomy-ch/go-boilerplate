@@ -5,6 +5,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -18,20 +19,39 @@ import (
 	rt "go-boilerplate/internal/usecase/boundary/realtime"
 	ucrealtime "go-boilerplate/internal/usecase/realtime"
 	mock_ucrealtime "go-boilerplate/internal/usecase/realtime/mock"
+	"go-boilerplate/pkg/xerrors"
 )
 
 // testRequest は、検証を通った接続の要求です。
 var testRequest = StreamRequest{Subject: "subject-1", Destination: "stream-1", Scope: "read", Cursor: 0}
 
+// fakeFanoutHealth は、fan-out の縮退を試験から切り替えるための受け口です。
+type fakeFanoutHealth struct{ degraded atomic.Bool }
+
+func (f *fakeFanoutHealth) FanoutDegraded() bool { return f.degraded.Load() }
+
 // testRegistry は、mock の Replayer と合図待ちの Sleeper を持つ registry を作ります。
 func testRegistry(t *testing.T, set Settings) (*Registry, *mock_ucrealtime.MockReplayer, *fakeSleeper) {
 	t.Helper()
 
-	replayer := mock_ucrealtime.NewMockReplayer(gomock.NewController(t))
-	sleeper := newFakeSleeper()
-	reg := NewRegistry(replayer, sleeper, logging.NewTestLogger(t), observability.NewNoopTracerFactory(t), set)
+	reg, replayer, sleeper, _ := testRegistryWithHealth(t, set)
 
 	return reg, replayer, sleeper
+}
+
+// testRegistryWithHealth は、fan-out の縮退を切り替えられる registry を作ります。
+func testRegistryWithHealth(
+	t *testing.T, set Settings,
+) (*Registry, *mock_ucrealtime.MockReplayer, *fakeSleeper, *fakeFanoutHealth) {
+	t.Helper()
+
+	replayer := mock_ucrealtime.NewMockReplayer(gomock.NewController(t))
+	sleeper := newFakeSleeper()
+	health := &fakeFanoutHealth{}
+	reg := NewRegistry(replayer, sleeper, logging.NewTestLogger(t), observability.NewNoopTracerFactory(t),
+		observability.NewNoopRealtimeMetrics(t), health, set)
+
+	return reg, replayer, sleeper, health
 }
 
 // callStream は、Stream を直接呼びます。確定前に断られる経路の検証に使います。
@@ -182,6 +202,25 @@ func TestRegistry_Stream(t *testing.T) {
 			assert.Equal(t, "5", rec.Header().Get("Retry-After"))
 		})
 
+		t.Run("確定前に断った接続を client 切断として記録しない", func(t *testing.T) {
+			t.Parallel()
+
+			// 索引へ載せた後に断つ経路で理由を置かないと unregister の既定が勝ち、
+			// closed{reason=canceled} が本物の client 切断と混ざって区別できなくなる。
+			log, logs := logging.NewObservedTestLogger(t)
+			replayer := mock_ucrealtime.NewMockReplayer(gomock.NewController(t))
+			reg := NewRegistry(replayer, newFakeSleeper(), log, observability.NewNoopTracerFactory(t),
+				observability.NewNoopRealtimeMetrics(t), &fakeFanoutHealth{}, Settings{ReplayConcurrency: 1})
+			require.True(t, reg.sem.TryAcquire(1))
+
+			_, err := callStream(t, reg)
+			require.ErrorIs(t, err, ErrReplayAdmission)
+
+			entries := logs.FilterMessage("stream connection closed").All()
+			require.Len(t, entries, 1)
+			assert.Equal(t, rejectReasonAdmission, entries[0].ContextMap()[logging.CloseReasonKey])
+		})
+
 		t.Run("登録の直後に ticket が無効なら確定前に断る", func(t *testing.T) {
 			t.Parallel()
 
@@ -208,6 +247,36 @@ func TestRegistry_Stream(t *testing.T) {
 			_, err := callStream(t, reg)
 
 			require.ErrorIs(t, err, ErrDraining)
+		})
+
+		t.Run("fan-out が不調なら確定前に断り Retry-After を返す", func(t *testing.T) {
+			t.Parallel()
+
+			reg, _, _, health := testRegistryWithHealth(t, Settings{})
+			health.degraded.Store(true)
+
+			rec, err := callStream(t, reg)
+
+			require.ErrorIs(t, err, ErrDegraded)
+			assert.Equal(t, "5", rec.Header().Get("Retry-After"))
+			assert.Empty(t, rec.Body.String(), "レスポンスを確定していないこと")
+		})
+
+		t.Run("fan-out が健全へ戻れば再び受け付ける", func(t *testing.T) {
+			t.Parallel()
+
+			reg, _, _, health := testRegistryWithHealth(t, Settings{})
+			health.degraded.Store(true)
+			_, err := reg.register(testRequest)
+			require.ErrorIs(t, err, ErrDegraded)
+
+			// 縮退が片道だと、一時的な不調のあと接続を受け付けられないままになる。
+			health.degraded.Store(false)
+
+			conn, err := reg.register(testRequest)
+
+			require.NoError(t, err)
+			assert.NotNil(t, conn)
 		})
 	})
 }
@@ -665,6 +734,121 @@ func Test_removeIndex(t *testing.T) {
 			m := map[rt.StreamID]map[uint64]*connection{}
 
 			assert.NotPanics(t, func() { removeIndex(m, "stream-unknown", 1) })
+		})
+	})
+}
+
+func Test_rejectionReason(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("停止中は draining として断る", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, closeReasonDraining, rejectionReason(ErrDraining))
+		})
+
+		t.Run("fan-out の不調は degraded として断る", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, rejectReasonDegraded, rejectionReason(ErrDegraded))
+		})
+
+		t.Run("枠待ち切れは admission として断る", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, rejectReasonAdmission, rejectionReason(ErrReplayAdmission))
+		})
+
+		t.Run("上限到達とそれ以外は capacity に落ちる", func(t *testing.T) {
+			t.Parallel()
+
+			// 既定を capacity にしているので、分類し忘れた拒否は容量として現れます。
+			// 新しい拒否理由を足したらここへ 1 行増やすこと。
+			assert.Equal(t, rejectReasonCapacity, rejectionReason(ErrConnectionCapacity))
+			assert.Equal(t, rejectReasonCapacity, rejectionReason(xerrors.New("unclassified")))
+		})
+	})
+}
+
+func TestRegistry_deliver(t *testing.T) {
+	t.Parallel()
+
+	const originTrace = "4bf92f3577b34da6a3ce929d0e0e4736"
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("書き出せたら継続し、起点 trace への link を持つ span を残す", func(t *testing.T) {
+			t.Parallel()
+
+			tf, recorded := observability.NewRecordingTracerFactory(t)
+			reg := NewRegistry(
+				mock_ucrealtime.NewMockReplayer(gomock.NewController(t)), newFakeSleeper(),
+				logging.NewTestLogger(t), tf,
+				observability.NewNoopRealtimeMetrics(t), &fakeFanoutHealth{}, Settings{},
+			)
+			conn := testConn()
+			e := testEvent(1)
+			e.Origin = map[string]string{"traceparent": "00-" + originTrace + "-00f067aa0ba902b7-01"}
+
+			var got bool
+			// ResponseRecorder は SetWriteDeadline を持たず書き込み前に失敗するため、実サーバーで走らせます。
+			_, err := captureSSE(t, func(w *sseWriter) error {
+				require.NoError(t, w.commit())
+				got = reg.deliver(context.Background(), conn, w, e)
+
+				return nil
+			})
+			require.NoError(t, err)
+			assert.True(t, got)
+
+			spans := recorded()
+			require.Len(t, spans, 1)
+			require.Len(t, spans[0].Links(), 1, "起点 command の trace へ link を張ること")
+			assert.Equal(t, originTrace, spans[0].Links()[0].SpanContext.TraceID().String())
+		})
+
+		t.Run("起点 trace を持たない event は link 無しで配る", func(t *testing.T) {
+			t.Parallel()
+
+			tf, recorded := observability.NewRecordingTracerFactory(t)
+			reg := NewRegistry(
+				mock_ucrealtime.NewMockReplayer(gomock.NewController(t)), newFakeSleeper(),
+				logging.NewTestLogger(t), tf,
+				observability.NewNoopRealtimeMetrics(t), &fakeFanoutHealth{}, Settings{},
+			)
+
+			_, err := captureSSE(t, func(w *sseWriter) error {
+				require.NoError(t, w.commit())
+				assert.True(t, reg.deliver(context.Background(), testConn(), w, testEvent(1)))
+
+				return nil
+			})
+			require.NoError(t, err)
+
+			spans := recorded()
+			require.Len(t, spans, 1)
+			assert.Empty(t, spans[0].Links(), "伝搬が途切れた event は link 無しで済ませること")
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("書き出せなければ接続を閉じて継続しない", func(t *testing.T) {
+			t.Parallel()
+
+			reg, _, _ := testRegistry(t, Settings{})
+			conn := testConn()
+
+			// ResponseRecorder は SetWriteDeadline を持たないので、書き込みが必ず失敗します。
+			assert.False(t, reg.deliver(
+				context.Background(), conn, newSSEWriter(httptest.NewRecorder(), writeDeadline), testEvent(1),
+			))
+			assert.NotEmpty(t, conn.reason)
 		})
 	})
 }

@@ -61,6 +61,39 @@ func (lt LayerTracer) StartWithSuffix(
 	return lt.startSpan(ctx, optionalName, opts...)
 }
 
+// StartWithLink は、新しい span を開始し、carrier が指す trace への link を張ります。
+// 親はあくまで ctx で、carrier は link にしかなりません — 起点の command から見て配送は
+// いつ起きるか分からない別の営みなので、長寿命の接続をその子 span にすると trace が閉じません
+// （docs/design/realtime-delivery.md §3.4）。carrier が空か読めなければ link 無しの span になります。
+func (lt LayerTracer) StartWithLink(
+	ctx context.Context,
+	carrier map[string]string,
+	opts ...trace.SpanStartOption,
+) (context.Context, func()) {
+	if lt.funcName == "" {
+		full := getCallerFullName()
+		lt.funcName = fnmeta.ExtractFunctionName(full)
+	}
+
+	if link, ok := linkFromCarrier(carrier); ok {
+		opts = append(opts, trace.WithLinks(link))
+	}
+
+	return lt.startSpan(ctx, "", opts...)
+}
+
+// linkFromCarrier は、carrier の trace context を span link に変えます。
+func linkFromCarrier(carrier map[string]string) (trace.Link, bool) {
+	sc := trace.SpanContextFromContext(
+		extractFromCarrier(context.Background(), carrier, traceContextPropagator),
+	)
+	if !sc.IsValid() {
+		return trace.Link{}, false
+	}
+
+	return trace.Link{SpanContext: sc}, true
+}
+
 // RunWithSpan は、指定された関数 fn を新しい span 内で実行し、結果を返す。
 //
 // 呼び出し元は、関数 fn の実行結果とエラーを受け取ることができる。

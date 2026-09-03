@@ -22,6 +22,15 @@ const (
 	abortedMessage = "Result: orphan cleanup incomplete, the reported counts are already applied"
 )
 
+// 掃除の対象 1 件がどう処理されたか。realtime.cleanup.instances の outcome label に載る安定値です。
+const (
+	outcomeDetected  = "detected"
+	outcomeClaimed   = "claimed"
+	outcomeReclaimed = "reclaimed"
+	outcomeSkipped   = "skipped"
+	outcomeFailed    = "failed"
+)
+
 // errUnknownFlag は、未知のフラグが指定された場合のエラーです。
 var errUnknownFlag = xerrors.New("unknown flag")
 
@@ -32,6 +41,7 @@ type SweeperFactory func(ctx context.Context) (ucrealtime.OrphanSweeper, error)
 type jobImpl struct {
 	logging    logging.Logger
 	tracer     observability.LayerTracer
+	metrics    *observability.RealtimeMetrics
 	newSweeper SweeperFactory
 }
 
@@ -39,11 +49,13 @@ type jobImpl struct {
 func New(
 	logging logging.Logger,
 	tf observability.TracerFactory,
+	metrics *observability.RealtimeMetrics,
 	newSweeper SweeperFactory,
 ) job.Job {
 	return &jobImpl{
 		logging:    logging,
 		tracer:     tf.Controller(),
+		metrics:    metrics,
 		newSweeper: newSweeper,
 	}
 }
@@ -66,19 +78,43 @@ func (j *jobImpl) Execute(ctx context.Context, args []string) error {
 
 	sweeper, err := j.newSweeper(ctx)
 	if err != nil {
+		j.metrics.CleanupExecuted(ctx, observability.RealtimeResultError)
+
 		return err
 	}
 
 	result, err := sweeper.Sweep(ctx)
+	// 内訳は成否によらず確定しているので、先に計上します。
+	j.recordOutcomes(ctx, result)
+
 	if err != nil {
 		j.logging.Named(jobName).Warn(ctx, abortedMessage, resultFields(result)...)
+		j.metrics.CleanupExecuted(ctx, observability.RealtimeResultError)
 
 		return err
 	}
 
 	j.logging.Named(jobName).Info(ctx, resultMessage, resultFields(result)...)
+	j.metrics.CleanupExecuted(ctx, observability.RealtimeResultOK)
 
 	return nil
+}
+
+// recordOutcomes は、掃除の内訳を instance 数の metric へ写します。
+// ログに載せていない Claimed / Failed もここでは数えます — ログは 1 回の実行の要約で、
+// 失敗の詳細は返却エラーの chain が持ちますが、時系列としては失敗の推移こそ見たいためです。
+func (j *jobImpl) recordOutcomes(ctx context.Context, r ucrealtime.SweepResult) {
+	for outcome, n := range map[string]int{
+		outcomeDetected:  r.Detected,
+		outcomeClaimed:   r.Claimed,
+		outcomeReclaimed: r.Reclaimed,
+		outcomeSkipped:   r.Skipped,
+		outcomeFailed:    r.Failed,
+	} {
+		if n > 0 {
+			j.metrics.CleanupInstances(ctx, outcome, int64(n))
+		}
+	}
 }
 
 // resultFields は、掃除の内訳をジョブ共通のログフィールドへ写します。

@@ -13,7 +13,8 @@ SELECT
     o.event_type,
     o.payload,
     o.headers,
-    o.attempts
+    o.attempts,
+    o.created_at
 FROM outbox AS o
 WHERE o.status = 'pending'
     AND o.delivery_channel = $1

@@ -9,6 +9,8 @@ import (
 	config "go-boilerplate/internal/config"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	mock_driver "go-boilerplate/internal/infrastructure/rdb/driver/mock"
+	rt "go-boilerplate/internal/usecase/boundary/realtime"
+	mock_realtime "go-boilerplate/internal/usecase/boundary/realtime/mock"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/labstack/echo/v5"
@@ -46,6 +48,7 @@ func TestNewApplicationCore(t *testing.T) {
 
 			app := NewApplicationCore(
 				fx.Replace(fx.Annotate(mockDB, fx.As(new(driver.DatabaseDriver)))),
+				realtimeSubstrate(t, ctrl),
 				fx.Decorate(func(s *config.ServerConfig) *config.ServerConfig {
 					s.SetServerPort(t, 0)
 					return s
@@ -65,6 +68,85 @@ func TestNewApplicationCore(t *testing.T) {
 
 			// Close が呼ばれた＝モックがグラフに組み込まれ、実 DB(NewDB の Ping)が使われていないことの証左。
 			assert.True(t, closeCalled, "db close hook がモックドライバの Close を呼ぶこと")
+		})
+	})
+}
+
+// realtimeSubstrate は、Realtime Delivery の外部依存を IF レベルで差し替えます。
+// serve lifecycle（起動時の probe → 受信先の用意 → 常駐処理 → drain → 片付け）は本物のまま、
+// DynamoDB と SNS / SQS へ出ていく往復だけが止まります。
+//
+// 差し替えた型の構築子とその上流（DynamoDB クライアント・fan-out の組み立て）は走りません。
+// fx の decorator は元の構築子を呼ばないためで、REALTIME_TOPIC 未設定のような
+// 「app.Start より前に落ちる」分岐はここでは露見せず、app-di-startup-check が受け持ちます。
+//
+// 期待は回数で縛らず AnyTimes にします。sample の realtime adapter を消すと runtime ごと
+// graph から外れて 1 度も呼ばれなくなるため、回数を固定すると撤去後の世界で落ちます。
+// 参加者が実際に走る順序と回数は internal/di/module/realtime_test.go が固定しています。
+func realtimeSubstrate(t *testing.T, ctrl *gomock.Controller) fx.Option {
+	t.Helper()
+
+	eventLog := mock_realtime.NewMockEventLogStore(ctrl)
+	eventLog.EXPECT().Latest(gomock.Any(), gomock.Any()).Return(rt.DeliveryEvent{}, false, nil).AnyTimes()
+
+	tickets := mock_realtime.NewMockStreamTicketStore(ctrl)
+
+	leases := mock_realtime.NewMockInstanceLeaseStore(ctrl)
+	leases.EXPECT().Heartbeat(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	leases.EXPECT().Delete(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
+	sub := mock_realtime.NewMockInstanceSubscription(ctrl)
+	sub.EXPECT().Provision(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	sub.EXPECT().Teardown(gomock.Any()).Return(nil).AnyTimes()
+	// 空を即座に返すと consumer の loop が待たずに回り続けるので、停止まで待たせる。
+	sub.EXPECT().Receive(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, _ int) ([]rt.Notification, error) {
+			<-ctx.Done()
+
+			return nil, ctx.Err()
+		}).AnyTimes()
+
+	notifier := mock_realtime.NewMockRevocationNotifier(ctrl)
+
+	return fx.Replace(
+		fx.Annotate(eventLog, fx.As(new(rt.EventLogStore))),
+		fx.Annotate(tickets, fx.As(new(rt.StreamTicketStore))),
+		fx.Annotate(leases, fx.As(new(rt.InstanceLeaseStore))),
+		fx.Annotate(sub, fx.As(new(rt.InstanceSubscription))),
+		fx.Annotate(notifier, fx.As(new(rt.RevocationNotifier))),
+	)
+}
+
+func Test_serveRealtimeOptions(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("結線はマーカー行 1 本に閉じている", func(t *testing.T) {
+			t.Parallel()
+
+			// sample の realtime adapter が在れば 1、消えれば 0。撤去後も成り立つ主張にするため
+			// 上限で縛ります。ここが 2 以上になるのは、マーカーの外に結線が漏れたときです。
+			assert.LessOrEqual(t, len(serveRealtimeOptions()), 1)
+		})
+	})
+}
+
+func Test_serveBaseOptions(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("アプリケーションコアは base と Realtime の連結である", func(t *testing.T) {
+			t.Parallel()
+
+			// base だけで fx を組めるのは sample 撤去後だけ（撤去前は feature が realtime adapter を要る）なので、
+			// 撤去後の graph が起動することは sample-removal-check が受け持ちます。ここで固定するのは
+			// 「2 つの差が serveRealtimeOptions だけである」という分割の形です。
+			assert.NotEmpty(t, serveBaseOptions())
+			assert.Len(t, applicationCoreOptions(), len(serveBaseOptions())+len(serveRealtimeOptions()))
 		})
 	})
 }

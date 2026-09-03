@@ -43,5 +43,21 @@ func (s *server) GetReady(
 		ApplicationTime: res.ApplicationTime,
 		DbLatencyMs:     res.DBHealthCheck.Latency.Milliseconds(),
 		DbRespondedAt:   res.DBHealthCheck.RespondedAt,
+		Dependencies:    toDependencies(res.Dependencies),
 	}), nil
+}
+
+// toDependencies は、依存の状態をレスポンスの表現へ写します。
+// 依存が 1 つも無ければ項目そのものを出しません（結線されていない環境で空配列を見せないため）。
+func toDependencies(deps []healthcheckuc.DependencyStatus) *[]gen.ReadyDependency {
+	if len(deps) == 0 {
+		return nil
+	}
+
+	out := make([]gen.ReadyDependency, 0, len(deps))
+	for _, d := range deps {
+		out = append(out, gen.ReadyDependency{Name: d.Name, Status: gen.ReadyDependencyStatus(d.Status)})
+	}
+
+	return &out
 }

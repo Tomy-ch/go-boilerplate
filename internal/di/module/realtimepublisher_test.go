@@ -51,5 +51,6 @@ func Test_provideRealtimePublisher(t *testing.T) {
 	t.Parallel()
 
 	log := mock_realtime.NewMockEventLogStore(gomock.NewController(t))
-	assert.NotNil(t, provideRealtimePublisher(log, testFanout(t), observability.NewNoopTracerFactory(t)))
+	assert.NotNil(t, provideRealtimePublisher(log, testFanout(t),
+		observability.NewNoopTracerFactory(t), observability.NewNoopRealtimeMetrics(t)))
 }

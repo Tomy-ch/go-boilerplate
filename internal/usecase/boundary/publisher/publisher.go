@@ -7,6 +7,7 @@ package publisher
 
 import (
 	"context"
+	"time"
 
 	"go-boilerplate/pkg/uuid"
 )
@@ -22,6 +23,8 @@ type Message struct {
 	Payload []byte
 	// Headers は publish 時に伝搬するヘッダ（traceparent 等）です。engine が解釈せず素通しします。
 	Headers map[string]string
+	// CreatedAt は、業務 tx が outbox へ記録した時刻です。publish 側が遅れを測るのに使います。
+	CreatedAt time.Time
 }
 
 // Publisher は、メッセージを publish 先へ送る境界です。

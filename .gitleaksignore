@@ -12,8 +12,8 @@
 # ポート以降の文字列が generic-api-key の keyword+entropy 条件に当たる誤検知。
 # env/README の既定値表は同じ URL を載せるため同じ検出になる。
 env/.env:generic-api-key:96
-env/README.md:generic-api-key:258
-env/README.ja.md:generic-api-key:256
+env/README.md:generic-api-key:260
+env/README.ja.md:generic-api-key:258
 # ローカル開発用の固定値。Garage の開発用資格情報と、JWKS ローテーションテストが所有する署名鍵。
 env/.env:generic-api-key:63
 docker/garage/garage.toml:generic-api-key:12

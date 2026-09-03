@@ -1,6 +1,6 @@
 package architest
 
-// Realtime Delivery の隔離規約（docs/design/realtime-delivery.md §3.1「Architecture rules (mechanically checked)」）を
+// Realtime Delivery の隔離規約（docs/design/realtime-delivery.md §1「Architecture rules (mechanically checked)」）を
 // 機械的に検査する。
 //
 //  1. 機構側の package（boundary/realtime、usecase/realtime、infrastructure の 5 package、controller/stream、controller/realtime）は

@@ -12,4 +12,7 @@ var (
 	// ErrTicketInvalid は、提示された ticket が無い・期限切れ・destination 違いのいずれかであることを示します。
 	// 認証の失敗として扱われます。
 	ErrTicketInvalid = xerrors.Wrap(apperror.ErrUnauthenticated, "realtime: ticket invalid")
+	// ErrFanoutUnreachable は、fan-out から通知を受け取れていないことを示します。
+	// 稼働中の縮退を表すもので、既存の接続は周期の catch-up で配信を続けます。
+	ErrFanoutUnreachable = xerrors.Wrap(apperror.ErrUnavailable, "realtime: fan-out unreachable")
 )

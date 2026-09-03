@@ -31,6 +31,7 @@ type sinkRecord struct {
 type engineMocks struct {
 	sub           *mock_realtime.MockInstanceSubscription
 	reprovisioner *mock_ctrlrealtime.MockReprovisioner
+	fanout        *mock_ctrlrealtime.MockFanoutObserver
 	sleeper       *mock_clock.MockSleeper
 	waker         *mock_ctrlrealtime.MockWaker
 	revoker       *mock_ctrlrealtime.MockRevoker
@@ -46,6 +47,7 @@ func newEngine(t *testing.T, set Settings) (*Engine, engineMocks) {
 	m := engineMocks{
 		sub:           mock_realtime.NewMockInstanceSubscription(ctrl),
 		reprovisioner: mock_ctrlrealtime.NewMockReprovisioner(ctrl),
+		fanout:        mock_ctrlrealtime.NewMockFanoutObserver(ctrl),
 		sleeper:       mock_clock.NewMockSleeper(ctrl),
 		waker:         mock_ctrlrealtime.NewMockWaker(ctrl),
 		revoker:       mock_ctrlrealtime.NewMockRevoker(ctrl),
@@ -68,6 +70,8 @@ func newEngine(t *testing.T, set Settings) (*Engine, engineMocks) {
 			m.sinks.revocations = append(m.sinks.revocations, rt.Revocation{Subject: subject, Destination: destination})
 		}).AnyTimes()
 
+	m.fanout.EXPECT().ObserveFanout(gomock.Any()).AnyTimes()
+
 	log, logs := logging.NewObservedTestLogger(t)
 	m.logCount = func(msg string) int {
 		if msg == "" {
@@ -77,7 +81,8 @@ func newEngine(t *testing.T, set Settings) (*Engine, engineMocks) {
 		return logs.FilterMessage(msg).Len()
 	}
 
-	return NewEngine(m.sub, m.reprovisioner, m.waker, m.revoker, m.sleeper, log, observability.NewNoopTracerFactory(t), set), m
+	return NewEngine(m.sub, m.reprovisioner, m.fanout, m.waker, m.revoker, m.sleeper, log,
+		observability.NewNoopTracerFactory(t), observability.NewNoopRealtimeMetrics(t), set), m
 }
 
 func wakeup(streamID rt.StreamID, seq rt.Sequence) rt.Notification {

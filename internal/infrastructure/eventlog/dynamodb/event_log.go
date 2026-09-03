@@ -177,6 +177,23 @@ func (s *store) Find(ctx context.Context, streamID realtime.StreamID, seq realti
 	return e, true, nil
 }
 
+// originAttr は、起点 trace の carrier を item から復元します。無ければ nil です。
+func originAttr(item map[string]types.AttributeValue) map[string]string {
+	m, ok := item[attrOrigin].(*types.AttributeValueMemberM)
+	if !ok || len(m.Value) == 0 {
+		return nil
+	}
+
+	origin := make(map[string]string, len(m.Value))
+	for k, v := range m.Value {
+		if s, ok := v.(*types.AttributeValueMemberS); ok {
+			origin[k] = s.Value
+		}
+	}
+
+	return origin
+}
+
 // key は、(stream, sequence) の主キーを返します。
 func key(streamID realtime.StreamID, seq realtime.Sequence) map[string]types.AttributeValue {
 	return map[string]types.AttributeValue{
@@ -196,6 +213,16 @@ func toItem(e realtime.DeliveryEvent) map[string]types.AttributeValue {
 	item[attrExpiresAt] = &types.AttributeValueMemberN{Value: strconv.FormatInt(e.OccurredAt.Add(realtime.EventLogRetention).Unix(), 10)}
 	if len(e.Payload) > 0 {
 		item[attrPayload] = &types.AttributeValueMemberB{Value: e.Payload}
+	}
+
+	// 起点 trace は無いことがあるので、空の属性を書かずに省きます。
+	if len(e.Origin) > 0 {
+		origin := make(map[string]types.AttributeValue, len(e.Origin))
+		for k, v := range e.Origin {
+			origin[k] = &types.AttributeValueMemberS{Value: v}
+		}
+
+		item[attrOrigin] = &types.AttributeValueMemberM{Value: origin}
 	}
 
 	return item
@@ -235,5 +262,6 @@ func fromItem(item map[string]types.AttributeValue) (realtime.DeliveryEvent, err
 		OccurredAt:    occurredAt,
 		SchemaVersion: int(version),
 		Payload:       payload,
+		Origin:        originAttr(item),
 	}, nil
 }

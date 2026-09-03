@@ -90,9 +90,13 @@ worktrees can `make serve` at the same time. The variables below are defined in
 | `er_diagram_generator` | infra | `schemaspy/schemaspy` | `2002:3000` | ER diagram generation |
 | `go_tool_runner` / `node_tool_runner` / `python_tool_runner` | infra | build `docker/tools/Dockerfile` (per target) | none (run/exec) | Toolboxes for code generation / lint. **`user: root`**, profile: `generate`, repo bind-mounted at `.:/app` |
 
-The Realtime Delivery tables are not created by the emulator or by the application. Run
-`make realtime-init` once per checkout (and again after changing `REALTIME_TABLE_SUFFIX`) — it is
-idempotent. The contract tests of the DynamoDB adapters (`internal/infrastructure/{eventlog,streamticket,instancelease}`)
+The Realtime Delivery tables and the fan-out topic are created by neither the emulator nor the
+application. `make serve` provisions them for you (`realtime-provision`, run between `infra-up` and the
+app containers, the same place the garage bucket is provisioned): serve now fails to start without them,
+because it probes the EventLog and subscribes its instance queue before it listens. `make realtime-init`
+remains for provisioning without starting the app. Both are idempotent, which matters more than it
+sounds — GoAWS keeps no volume, so the topic disappears on every `infra-down` and has to be recreated,
+while the DynamoDB tables persist. The contract tests of the DynamoDB adapters (`internal/infrastructure/{eventlog,streamticket,instancelease}`)
 create their own uniquely named tables and need `dynamodb_local` up, which `make infra-up` guarantees.
 
 ### Host port allocation

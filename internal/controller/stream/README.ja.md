@@ -15,7 +15,7 @@ ADR-0074 (query-ticket-stream-authentication)。
 | 2 | `after` / `Last-Event-ID` を spec の pattern で検査する | OpenAPI validator | 400（`BAD_REQUEST`） |
 | 3 | cursor を解決する: `Last-Event-ID` → `after` → ticket の初期位置 | `cursor.go` | 負数・範囲外は 400（`INVALID_STREAM_CURSOR`） |
 | 4 | cursor を replay floor と突き合わせる | `usecase/realtime.CursorValidator` | そこから replay を始められなければ 410（`STREAM_CURSOR_EXPIRED`）、EventLog を読めなければ 503 |
-| 5 | 検証済みの `StreamRequest` を `Streamer` へ渡す。`Streamer` は接続を索引へ載せ、そのうえで ticket を**もう一度**検証する | `registry.go` | instance が接続上限に達している・有限の待ち時間内に初回 replay の枠が取れない・drain 中のいずれかなら 503（`SERVICE_UNAVAILABLE`）+ `Retry-After` |
+| 5 | 検証済みの `StreamRequest` を `Streamer` へ渡す。`Streamer` は接続を索引へ載せ、そのうえで ticket を**もう一度**検証する | `registry.go` | instance が接続上限に達している・有限の待ち時間内に初回 replay の枠が取れない・drain 中・fan-out の通知を受け取れていない、のいずれかなら 503（`SERVICE_UNAVAILABLE`）+ `Retry-After` |
 
 段 5 の 2 度目の検証があるのは、段 1 と段 4 の間に外部 I/O が挟まるからです。その隙間に届いた失効通知は、
 閉じるべき相手を見つけられません — 接続はまだ registry の索引に無いためです。`AccessRevoker` は通知より先に
@@ -41,7 +41,8 @@ event を書き続ける長寿命の stream で、1 つの返り値を持ちま�
 この package は `handler/` の下ではなく隣に置きます。feature のリソースではなく機構の transport であり、
 `internal/architest/realtime_isolation_test.go` が `internal/domain/<feature>` と `internal/usecase/<feature>` の import を
 禁じています。`BindHandler` は Realtime の DI module（`internal/di/module/realtime.go`）が登録し、`di/module/controller.go` には載せません。
-その module はまだ serve graph に入っていません。加わるのは feature adapter が必要としたとき、つまり #1416 と #1417 です。
+その module は `module.ServeRealtimeModule()` を通じて serve プロファイルへ結線され、呼び出し行は
+`sample-api:line` マーカーを持ちます — sample feature の realtime adapter を消すと runtime ごと外れます。
 
 ## 実行時: 確定後に 1 本の接続がすること
 
@@ -91,16 +92,36 @@ commit された接続はそれぞれ、channel 以外は何も共有しない 2
 `STREAM_RECOVERY_FAILED` は契約には宣言されていますが**予約**で、この package は送りません。走っている接続は
 EventLog に届かなくても失敗せずに生き延びますし、先頭行が死んで詰まった stream は接続ではなく relay から見えるものです。
 
+## チューニングと計装
+
+`Settings.MaxConnections` と `Settings.ReplayConcurrency` は `REALTIME_MAX_CONNECTIONS` /
+`REALTIME_REPLAY_CONCURRENCY` から来ます。どちらも Code default で、`env` ファイルには書きません
+（`env/README.md`）。0 以下の値は既定値へ落ちるので、`Settings` を自前で組む graph でも上限は必ず有界です。
+
+このパッケージは `observability.RealtimeMetrics` の接続・replay・配送の面を記録します
+（`realtime.connections.*` / `realtime.replay.*` / `realtime.delivery.latency_ms`）。似て見える 2 つの数は
+意図して分けてあります: `active` は索引の在籍、`accepted` は**レスポンスを確定した接続だけ**です — 索引に載った
+直後に replay の枠が空かず断られる経路があるので、まとめるとどちらかの数が嘘になります。識別子は決して label に
+しません。相関は構造化ログの `stream_id` と trace が担います。
+
+client へ書き出す 1 件ごとに short span を開き、親はこの接続、**link** は封筒の不透明な `Origin` が指す
+起点 command の trace にします。向きが要点で、配送を起点 command の子にすると、その trace が接続の寿命だけ
+開いたままになります（[設計 §3.4](../../../docs/design/realtime-delivery.ja.md)）。
+
+## 縮退時の動作
+
+通知が届いているかを答えるのが `FanoutHealth` で、届いていない間 registry は新規接続を `ErrDegraded` で
+断ります。既存の接続には手を触れません — 一斉に閉じると回復が再接続の嵐になります — し、依存が戻れば
+周期の catch-up が配信を再開します（[設計 §2.6](../../../docs/design/realtime-delivery.ja.md)）。
+判定そのものは `usecase/realtime.Health` が持ち、このパッケージは読むだけです。
+
 ## まだ別の場所にあるもの
 
-- **型付き config。** `MaxConnections` と `ReplayConcurrency` は `Settings` のフィールドで、ゼロ値は既定値に落ちます。
-  consumer エンジンの `realtime.Settings` と同じ形です。これらを環境変数として公開し `env/**` を同期させるのは #1417。
-- **メトリクス。** close はすべて理由（`close_reason`）を構造化ログに記録し、分岐はそれぞれに counter を付けられる形に
-  分けてあります。`realtime_*` メトリクスの登録・label 規則・その architecture test は #1417 で、span link も同じく
-  #1417 が持ちます — 配送の封筒も wakeup の通知も、今は起点の trace を運んでいません。
-- **`OBS_TARGET_STATUS_CODES`。** 410 は `env/.env`・`.env.ci`・`.env.dast`・`.env.dev`・`.env.stg` にあり、
-  `.env.prd` にだけありません。つまり `STREAM_CURSOR_EXPIRED` の拒否は production を除くすべてでログに出ます。
-  production も揃えるかどうかは env のポリシー判断（`env/README.md`）。
+- **`OBS_TARGET_STATUS_CODES`。** 410 は `.env.prd` にありません。つまり `STREAM_CURSOR_EXPIRED` の拒否は
+  production ではログに出ません。これは取りこぼしではなく宣言済みのポリシーで、
+  `internal/architest/env_consistency_test.go` の `targetStatusCodesPolicy` が「production は 1 つ上の段から
+  403 / 404 / 405 / 410 を落とす」と宣言し、環境が宣言と食い違えばテストが落ちます。変えるなら env の
+  ポリシー判断（`env/README.md`）として、この宣言も併せて動かすことになります。
 
 ## サブパッケージ
 

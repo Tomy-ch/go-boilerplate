@@ -31,6 +31,16 @@ type ObservedHTTPClientMetrics struct {
 	reader *sdkmetric.ManualReader
 }
 
+// ObservedRealtimeMetrics は、計上内容を読み出せる RealtimeMetrics です。
+// Realtime Delivery の計装は「どこで呼ぶか」が契約なので、呼び出し元のテストが label と値を
+// 読み戻せないと、記録位置の退行（拒否理由の取り違え、0 件の系列化、契機ラベルの誤り）を
+// どのテストも検出できません。
+type ObservedRealtimeMetrics struct {
+	*RealtimeMetrics
+
+	reader *sdkmetric.ManualReader
+}
+
 // spanRecorder は、終了した span をそのまま保持する同期 exporter です。
 type spanRecorder struct {
 	mu    sync.Mutex
@@ -94,6 +104,105 @@ func NewNoopHTTPClientMetrics(t *testing.T) *HTTPClientMetrics {
 		t.Fatalf("failed to build noop http client metrics: %v", err)
 	}
 	return hm
+}
+
+// NewObservedRealtimeMetrics は、計上内容を読み出せる RealtimeMetrics を返します。
+// 計上先の label と値を検証したい呼び出し元テストで使用します。
+func NewObservedRealtimeMetrics(t *testing.T) *ObservedRealtimeMetrics {
+	t.Helper()
+
+	reader := sdkmetric.NewManualReader()
+	rm, err := NewRealtimeMetrics(sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader)))
+	if err != nil {
+		t.Fatalf("failed to build observed realtime metrics: %v", err)
+	}
+
+	return &ObservedRealtimeMetrics{RealtimeMetrics: rm, reader: reader}
+}
+
+// CounterValue は、metricName の counter のうち labelKey=labelValue の点の値を返します。
+// 該当する点が無ければ -1 を返します（0 は「0 が計上された」であり、両者は区別すべき別の事実です）。
+func (o *ObservedRealtimeMetrics) CounterValue(t *testing.T, metricName, labelKey, labelValue string) int64 {
+	t.Helper()
+
+	var rm metricdata.ResourceMetrics
+	if err := o.reader.Collect(context.Background(), &rm); err != nil {
+		t.Fatalf("failed to collect realtime metrics: %v", err)
+	}
+
+	m, found := findMetric(rm, metricName)
+	if !found {
+		return -1
+	}
+
+	sum, ok := m.Data.(metricdata.Sum[int64])
+	if !ok {
+		t.Fatalf("metric %s is not an int64 counter", metricName)
+	}
+
+	for _, dp := range sum.DataPoints {
+		if matchesLabel(dp.Attributes, labelKey, labelValue) {
+			return dp.Value
+		}
+	}
+
+	return -1
+}
+
+// findMetric は、収集結果から名前が一致する metric を 1 件返します。
+func findMetric(rm metricdata.ResourceMetrics, metricName string) (metricdata.Metrics, bool) {
+	for _, sm := range rm.ScopeMetrics {
+		for _, m := range sm.Metrics {
+			if m.Name == metricName {
+				return m, true
+			}
+		}
+	}
+
+	return metricdata.Metrics{}, false
+}
+
+// matchesLabel は、データポイントが labelKey=labelValue を持つかを返します。
+func matchesLabel(attrs attribute.Set, labelKey, labelValue string) bool {
+	v, found := attrs.Value(attribute.Key(labelKey))
+
+	return found && v.AsString() == labelValue
+}
+
+// HistogramCount は、metricName の histogram に記録された点の数を返します（未記録なら 0）。
+func (o *ObservedRealtimeMetrics) HistogramCount(t *testing.T, metricName string) uint64 {
+	t.Helper()
+
+	var rm metricdata.ResourceMetrics
+	if err := o.reader.Collect(context.Background(), &rm); err != nil {
+		t.Fatalf("failed to collect realtime metrics: %v", err)
+	}
+
+	m, found := findMetric(rm, metricName)
+	if !found {
+		return 0
+	}
+
+	switch h := m.Data.(type) {
+	case metricdata.Histogram[float64]:
+		return totalHistogramCount(h.DataPoints)
+	case metricdata.Histogram[int64]:
+		return totalHistogramCount(h.DataPoints)
+	default:
+		t.Fatalf("metric %s is not a histogram", metricName)
+
+		return 0
+	}
+}
+
+// totalHistogramCount は、全データポイントの記録回数を合計します。
+func totalHistogramCount[N int64 | float64](points []metricdata.HistogramDataPoint[N]) uint64 {
+	var total uint64
+	for _, dp := range points {
+		total += dp.Count
+	}
+
+	return total
 }
 
 // NewObservedHTTPClientMetrics は、計上内容を読み出せる HTTPClientMetrics を返します。
@@ -162,6 +271,16 @@ func NewNoopOutboxMetrics(t *testing.T) *OutboxMetrics {
 	return om
 }
 
+// NewNoopRealtimeMetrics は、テスト用に no-op の MeterProvider から RealtimeMetrics を生成します。
+func NewNoopRealtimeMetrics(t *testing.T) *RealtimeMetrics {
+	t.Helper()
+	rm, err := NewRealtimeMetrics(metricnoop.NewMeterProvider())
+	if err != nil {
+		t.Fatalf("failed to build noop realtime metrics: %v", err)
+	}
+	return rm
+}
+
 // NewNoopHTTPClientTransport は、テスト用に no-op TracerProvider と実 propagator から HTTPClientTransport を
 // 生成します。SSRF ガードは無効化（loopback/httptest 宛てを許可）します。
 func NewNoopHTTPClientTransport(t *testing.T) *HTTPClientTransport {
@@ -215,6 +334,15 @@ func NewRecordingTracerProvider(t *testing.T) (trace.TracerProvider, func() []sd
 		defer rec.mu.Unlock()
 		return append([]sdktrace.ReadOnlySpan(nil), rec.spans...)
 	}
+}
+
+// NewRecordingTracerFactory は、記録した span を読み戻せる TracerFactory と、その span を返す関数を返します。
+func NewRecordingTracerFactory(t *testing.T) (TracerFactory, func() []sdktrace.ReadOnlySpan) {
+	t.Helper()
+
+	tp, recorded := NewRecordingTracerProvider(t)
+
+	return NewTracerFactory(tp), recorded
 }
 
 // InstallRecordingTracerProvider は、NewRecordingTracerProvider の provider をプロセス全体の既定（otel の global）に

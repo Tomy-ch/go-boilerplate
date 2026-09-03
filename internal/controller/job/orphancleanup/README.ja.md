@@ -9,7 +9,7 @@
 
 ## 公開 API
 
-- `New(logging logging.Logger, tf observability.TracerFactory, newSweeper SweeperFactory) job.Job` — DI コンストラクタ。Controller 層のトレーサを `tf.Controller()` で取得します。`group:"jobs"` への登録は `JobModule()` ではなく `internal/di/module/realtimecleanup.go` が行うため、共有のジョブモジュールは Realtime への依存を持ちません（[`internal/di/module/README.ja.md`](../../../di/module/README.ja.md) 参照）。
+- `New(logging logging.Logger, tf observability.TracerFactory, metrics *observability.RealtimeMetrics, newSweeper SweeperFactory) job.Job` — DI コンストラクタ。Controller 層のトレーサを `tf.Controller()` で取得します。`group:"jobs"` への登録は `JobModule()` ではなく `internal/di/module/realtimecleanup.go` が行うため、共有のジョブモジュールは Realtime への依存を持ちません（[`internal/di/module/README.ja.md`](../../../di/module/README.ja.md) 参照）。
 - `SweeperFactory` — `func(ctx) (realtime.OrphanSweeper, error)`。掃除役そのものではなくファクトリを受け取るのは、fx が `Runner` を組むために登録済みジョブの constructor をすべて実行するためです。掃除役を graph に載せると、Realtime を設定していない環境で無関係なジョブ（`outbox-gc` ほか）まで起動できなくなります。ここで組み立てれば、`REALTIME_TOPIC` の欠落はこのジョブが実行されたときにこのジョブだけを失敗させます。
 - `job.Job` インターフェース（`internal/usecase/boundary/job`）を実装します:
   - `Name() string` — ジョブキー `"orphan-cleanup"` を返します。
@@ -44,7 +44,7 @@ Realtime 固有のキーではなくジョブ共通のログキーで報告し�
 | 回収 | `logging.JobResultKey` | 受信先を片付け、lease まで閉じられたもの |
 | 見送り | `logging.JobSkippedKey` | 他の掃除役が引き受けていた、または lease を閉じる前に instance が復帰した |
 
-instance ごとの失敗件数はログに載せません。返すエラーが原因を 1 件ずつ包んで運んでおり、ここで数えるとエラーチェーンの言い直しになるためです。これらの内訳を metric にするのは可観測性のフェーズの仕事で、ここではありません。
+instance ごとの失敗件数はログに載せません。返すエラーが原因を 1 件ずつ包んで運んでおり、ここで数えるとエラーチェーンの言い直しになるためです。metric の側では 5 つすべてを `realtime.cleanup.instances{outcome}` に数えます。ログが落とした 2 つを含めるのは、失敗の推移こそエラーチェーンには表せないものだからです。
 
 ## 補足
 

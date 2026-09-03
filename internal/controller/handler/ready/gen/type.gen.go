@@ -7,21 +7,39 @@ import (
 	"time"
 )
 
+// Defines values for ReadyDependencyStatus.
+const (
+	ReadyDependencyStatusDegraded ReadyDependencyStatus = "degraded"
+	ReadyDependencyStatusOk       ReadyDependencyStatus = "ok"
+)
+
+// Valid indicates whether the value is a known member of the ReadyDependencyStatus enum.
+func (e ReadyDependencyStatus) Valid() bool {
+	switch e {
+	case ReadyDependencyStatusDegraded:
+		return true
+	case ReadyDependencyStatusOk:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ReadyResponseStatus.
 const (
-	Degraded  ReadyResponseStatus = "degraded"
-	Ok        ReadyResponseStatus = "ok"
-	Unhealthy ReadyResponseStatus = "unhealthy"
+	ReadyResponseStatusDegraded  ReadyResponseStatus = "degraded"
+	ReadyResponseStatusOk        ReadyResponseStatus = "ok"
+	ReadyResponseStatusUnhealthy ReadyResponseStatus = "unhealthy"
 )
 
 // Valid indicates whether the value is a known member of the ReadyResponseStatus enum.
 func (e ReadyResponseStatus) Valid() bool {
 	switch e {
-	case Degraded:
+	case ReadyResponseStatusDegraded:
 		return true
-	case Ok:
+	case ReadyResponseStatusOk:
 		return true
-	case Unhealthy:
+	case ReadyResponseStatusUnhealthy:
 		return true
 	default:
 		return false
@@ -46,6 +64,24 @@ type ErrorResponse struct {
 	RequestId string `json:"requestId"`
 }
 
+// ReadyDependency readiness に加わる依存 1 つの状態です。ここに並ぶのは、落ちていても通常の HTTP 応答を続けられる 依存だけで、不可欠な依存は起動時に fail-fast します。
+type ReadyDependency struct {
+	// Name 依存する subsystem の名前
+	//
+	// Example: realtime
+	Name string `json:"name"`
+
+	// Status その subsystem の状態
+	//
+	// Example: ok
+	Status ReadyDependencyStatus `json:"status"`
+}
+
+// ReadyDependencyStatus その subsystem の状態
+//
+// Example: ok
+type ReadyDependencyStatus string
+
 // ReadyResponse サーバーのレディネスチェック用のレスポンスです。
 type ReadyResponse struct {
 	// ApplicationTime アプリケーションサーバーの現在時刻
@@ -62,6 +98,9 @@ type ReadyResponse struct {
 	//
 	// Example: 2024-06-01T12:00:00Z
 	DbRespondedAt time.Time `json:"dbRespondedAt"`
+
+	// Dependencies 通常の HTTP 応答は続けられるが、落ちていれば縮退する依存の状態です。 該当する依存が結線されていなければ現れません。
+	Dependencies *[]ReadyDependency `json:"dependencies,omitempty"`
 
 	// Status サーバーのレディネス状態
 	//

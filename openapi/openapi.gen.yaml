@@ -2683,6 +2683,24 @@ components:
       $ref: '#/components/schemas/ReadyResponse'
     ResponseVersion:
       $ref: '#/components/schemas/VersionResponse'
+    ReadyDependency:
+      type: object
+      description: readiness に加わる依存 1 つの状態です。ここに並ぶのは、落ちていても通常の HTTP 応答を続けられる 依存だけで、不可欠な依存は起動時に fail-fast します。
+      required:
+        - name
+        - status
+      properties:
+        name:
+          type: string
+          description: 依存する subsystem の名前
+          example: realtime
+        status:
+          type: string
+          enum:
+            - ok
+            - degraded
+          description: その subsystem の状態
+          example: ok
     StreamCursor:
       type: string
       description: |
@@ -3913,6 +3931,11 @@ components:
           format: int64
           description: データベース応答までの時間（ミリ秒）
           example: 8
+        dependencies:
+          type: array
+          description: 通常の HTTP 応答は続けられるが、落ちていれば縮退する依存の状態です。 該当する依存が結線されていなければ現れません。
+          items:
+            $ref: '#/components/schemas/ReadyDependency'
     VersionResponse:
       type: object
       description: サーバーのバージョン情報用のレスポンスです。

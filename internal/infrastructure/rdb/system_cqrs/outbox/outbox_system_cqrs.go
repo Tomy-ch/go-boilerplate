@@ -94,6 +94,7 @@ func (s *store) ClaimPending(
 			Payload:   row.Payload,
 			Headers:   row.Headers,
 			Attempts:  row.Attempts,
+			CreatedAt: row.CreatedAt,
 		})
 	}
 	return messages, nil

@@ -9,7 +9,7 @@
 
 ## Public API
 
-- `New(logging logging.Logger, tf observability.TracerFactory, newSweeper SweeperFactory) job.Job` — the DI constructor. Obtains the Controller-layer tracer via `tf.Controller()`. Registered under `group:"jobs"` by `internal/di/module/realtimecleanup.go` rather than by `JobModule()`, so the shared job module carries no Realtime dependency (see [`internal/di/module/README.md`](../../../di/module/README.md)).
+- `New(logging logging.Logger, tf observability.TracerFactory, metrics *observability.RealtimeMetrics, newSweeper SweeperFactory) job.Job` — the DI constructor. Obtains the Controller-layer tracer via `tf.Controller()`. Registered under `group:"jobs"` by `internal/di/module/realtimecleanup.go` rather than by `JobModule()`, so the shared job module carries no Realtime dependency (see [`internal/di/module/README.md`](../../../di/module/README.md)).
 - `SweeperFactory` — `func(ctx) (realtime.OrphanSweeper, error)`. The job takes a factory rather than the sweeper itself because fx executes every registered job's constructor to assemble the `Runner`: a sweeper built on the graph would make every unrelated job (`outbox-gc` and the rest) fail to start wherever Realtime is not configured. Building it here means a missing `REALTIME_TOPIC` fails this job, when it runs, and nothing else.
 - Implements the `job.Job` interface (`internal/usecase/boundary/job`):
   - `Name() string` — returns the job key `"orphan-cleanup"`.
@@ -44,7 +44,7 @@ Reported under the job-generic log keys, not under Realtime-specific ones — th
 | reclaimed | `logging.JobResultKey` | receiving ends reclaimed and leases closed |
 | skipped | `logging.JobSkippedKey` | another sweeper held the claim, or the instance came back before the lease was closed |
 
-The per-instance failures are not counted in the log because the returned error already carries one wrapped cause each; counting them here would restate the error chain. Turning these counts into metrics belongs to the observability phase, not here.
+The per-instance failures are not counted in the log because the returned error already carries one wrapped cause each; counting them here would restate the error chain. The metrics do count them: `realtime.cleanup.instances{outcome}` records all five, including the two the log leaves out, because a time series of failures is exactly what the error chain cannot show.
 
 ## Notes
 
