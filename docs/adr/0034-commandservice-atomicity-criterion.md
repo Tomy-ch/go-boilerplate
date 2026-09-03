@@ -22,9 +22,9 @@ warrant a CommandService instead of a regular usecase composed of Repository cal
 
 Without such a criterion, the placement of multi-aggregate write operations falls back to
 implementer judgment about inter-aggregate semantics, and decisions vary by implementer. The
-naive heuristic — "it touches more than one aggregate, so it needs a CommandService" — pulls
-work that could be eventually consistent into synchronous transactions, contradicting this
-project's outbox-first design ([ADR-0054](0054-transactional-outbox.md)). A related ambiguity
+naive heuristic — "it touches more than one aggregate, so it needs a CommandService" — widens the
+aggregate boundary whenever that is convenient, and a boundary that widens on convenience
+constrains nothing. A related ambiguity
 exists in ADR-0032 itself: its consequences note that CommandService "can freely optimize
 flexible updates, deletes", which could be misread as write-shape flexibility or performance
 being sufficient grounds for introducing one.
@@ -240,9 +240,12 @@ evidence that the criterion is not grounded in requirements. Rejected.
 
 ### Classifying every multi-aggregate write as CommandService
 
-Simpler to decide, but it creates an incentive to pull work that could be eventually
-consistent into synchronous transactions, contradicting this project's outbox-first design
-([ADR-0054](0054-transactional-outbox.md)). Rejected.
+Simpler to decide, but the count of aggregates a write touches says nothing about whether the
+write decomposes. Purchase creation touches three and still decomposes, because its target rows
+are named by identity and can be locked; what forbids decomposition is a target set defined by a
+predicate, which can be neither enumerated nor locked. Classifying by count would therefore admit
+a CommandService wherever widening the boundary is convenient, and a boundary that widens on
+convenience constrains nothing (§ Departure from "1 Aggregate = 1 Transaction Boundary"). Rejected.
 
 ### Treating a cross-aggregate read as needing no mechanism
 
@@ -301,6 +304,8 @@ Rejected for now; not excluded as a future evolution.
 <!-- sample-api:replace-end -->
 - Related: [ADR-0033](0033-system-cqrs-dml-category.md) (`system_cqrs` category that carries
   the outbox DML, outside the CQRS split); [ADR-0054](0054-transactional-outbox.md) (the
-  outbox pattern that the default decomposition path relies on);
+  outbox pattern, which addresses the dual-write anomaly between the database and an external
+  endpoint — it is how a decomposed cascade is *delivered*, not what makes decomposition
+  correct inside one database);
   [ADR-0035](0035-transaction-retry-idempotent-callers.md) (retry semantics of the single
   transaction an atomic write runs in).
