@@ -1788,3 +1788,178 @@ func Test_toDeliverPurchaseView(t *testing.T) {
 		})
 	})
 }
+
+func Test_detailProductIDs(t *testing.T) {
+	t.Parallel()
+
+	productX := uuidtestkit.NewTestFromSalt(t, "detail_ids_x")
+	productY := uuidtestkit.NewTestFromSalt(t, "detail_ids_y")
+	detail := func(salt string, productID uuid.UUID) domainpurchase.PurchaseDetail {
+		return domainpurchase.NewPurchaseDetail(
+			uuidtestkit.NewTestFromSalt(t, salt),
+			domainpurchase.PurchaseDetailAttributes{ProductID: productID, Quantity: 1, UnitPrice: mustPrice(t, "800")},
+		)
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("明細の順序を保って商品IDを返す", func(t *testing.T) {
+			t.Parallel()
+
+			got := detailProductIDs([]domainpurchase.PurchaseDetail{detail("d1", productX), detail("d2", productY)})
+
+			assert.Equal(t, []uuid.UUID{productX, productY}, got)
+		})
+
+		t.Run("同一商品を参照する明細が複数あっても商品IDは1つに畳む", func(t *testing.T) {
+			t.Parallel()
+
+			got := detailProductIDs([]domainpurchase.PurchaseDetail{detail("d1", productX), detail("d2", productX)})
+
+			assert.Equal(t, []uuid.UUID{productX}, got)
+		})
+
+		t.Run("明細が無い場合は空を返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Empty(t, detailProductIDs(nil))
+		})
+	})
+}
+
+func Test_usecase_applyStockDelta(t *testing.T) {
+	t.Parallel()
+
+	productID := uuidtestkit.NewTestFromSalt(t, "apply_delta_product")
+	details := []domainpurchase.PurchaseDetail{
+		domainpurchase.NewPurchaseDetail(
+			uuidtestkit.NewTestFromSalt(t, "apply_delta_detail"),
+			domainpurchase.PurchaseDetailAttributes{ProductID: productID, Quantity: 3, UnitPrice: mustPrice(t, "800")},
+		),
+	}
+
+	newUC := func(t *testing.T, productRepo *mock_product.MockRepository) *usecase {
+		t.Helper()
+		return &usecase{tracer: observability.NewNoopTracerFactory(t).Usecase(), productRepo: productRepo}
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("符号が負の場合、明細の数量だけ在庫を減らして永続化する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			productRepo := mock_product.NewMockRepository(ctrl)
+			products := lockedProducts(t, productID, 10)
+			productRepo.EXPECT().UpdateStock(gomock.Any(), products[0]).Return(2, nil)
+
+			require.NoError(t, newUC(t, productRepo).applyStockDelta(context.Background(), products, details, -1))
+			assert.Equal(t, 7, products[0].Quantity())
+		})
+
+		t.Run("符号が正の場合、明細の数量だけ在庫を戻して永続化する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			productRepo := mock_product.NewMockRepository(ctrl)
+			products := lockedProducts(t, productID, 10)
+			productRepo.EXPECT().UpdateStock(gomock.Any(), products[0]).Return(2, nil)
+
+			require.NoError(t, newUC(t, productRepo).applyStockDelta(context.Background(), products, details, 1))
+			assert.Equal(t, 13, products[0].Quantity())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("明細が参照する商品がロック結果に無い場合、ErrNotFoundを返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			productRepo := mock_product.NewMockRepository(ctrl)
+			other := lockedProducts(t, uuidtestkit.NewTestFromSalt(t, "apply_delta_other"), 10)
+
+			err := newUC(t, productRepo).applyStockDelta(context.Background(), other, details, -1)
+
+			require.ErrorIs(t, err, apperror.ErrNotFound)
+		})
+
+		t.Run("在庫が不足して範囲外になる場合、ドメインのエラーを伝播し永続化しない", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			productRepo := mock_product.NewMockRepository(ctrl)
+			products := lockedProducts(t, productID, 1)
+
+			err := newUC(t, productRepo).applyStockDelta(context.Background(), products, details, -1)
+
+			require.ErrorIs(t, err, domainproduct.ErrInvalidQuantity)
+		})
+
+		t.Run("在庫の永続化が失敗した場合はエラーを伝播する", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			productRepo := mock_product.NewMockRepository(ctrl)
+			products := lockedProducts(t, productID, 10)
+			productRepo.EXPECT().UpdateStock(gomock.Any(), gomock.Any()).Return(0, apperror.ErrConflict)
+
+			err := newUC(t, productRepo).applyStockDelta(context.Background(), products, details, -1)
+
+			require.ErrorIs(t, err, apperror.ErrConflict)
+		})
+	})
+}
+
+func Test_usecase_restoreStock(t *testing.T) {
+	t.Parallel()
+
+	productID := uuidtestkit.NewTestFromSalt(t, "restore_stock_product")
+	details := []domainpurchase.PurchaseDetail{
+		domainpurchase.NewPurchaseDetail(
+			uuidtestkit.NewTestFromSalt(t, "restore_stock_detail"),
+			domainpurchase.PurchaseDetailAttributes{ProductID: productID, Quantity: 3, UnitPrice: mustPrice(t, "800")},
+		),
+	}
+
+	newUC := func(t *testing.T, productRepo *mock_product.MockRepository) *usecase {
+		t.Helper()
+		return &usecase{tracer: observability.NewNoopTracerFactory(t).Usecase(), productRepo: productRepo}
+	}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("対象商品をロックしてから明細の数量だけ在庫を戻す", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			productRepo := mock_product.NewMockRepository(ctrl)
+			products := lockedProducts(t, productID, 10)
+			productRepo.EXPECT().LockByIDs(gomock.Any(), []uuid.UUID{productID}).Return(products, nil)
+			productRepo.EXPECT().UpdateStock(gomock.Any(), products[0]).Return(2, nil)
+
+			require.NoError(t, newUC(t, productRepo).restoreStock(context.Background(), details))
+			assert.Equal(t, 13, products[0].Quantity())
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("ロックが失敗した場合はエラーを伝播し在庫を書き換えない", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			productRepo := mock_product.NewMockRepository(ctrl)
+			productRepo.EXPECT().LockByIDs(gomock.Any(), gomock.Any()).Return(nil, apperror.ErrUnavailable)
+
+			err := newUC(t, productRepo).restoreStock(context.Background(), details)
+
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+		})
+	})
+}

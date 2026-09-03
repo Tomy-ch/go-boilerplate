@@ -40,22 +40,12 @@ func mustParse(t *testing.T, s string) uuid.UUID {
 func insertPurchaseWithDetail(ctx context.Context, t *testing.T, db driver.DBTX, seed string) (uuid.UUID, string, uuid.UUID) {
 	t.Helper()
 	productID := mustParse(t, seed)
-	_, err := db.Exec(ctx,
-		"INSERT INTO products (id, name, description, price, quantity, stock_warning_threshold, status_id, category_id, published_at) "+
-			"VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW())",
-		productID, "purchase-repo-test-"+seed, nil, 80000, 20, nil, seedStatusInStock, seedCategory,
-	)
-	require.NoError(t, err)
+	insertProductRow(ctx, t, db, productID, "purchase-repo-test-"+seed, 20)
 
 	purchaseID, err := uuid.New()
 	require.NoError(t, err)
 	purchaseCode := "repo-code-" + seed
-	_, err = db.Exec(ctx,
-		"INSERT INTO purchases (id, code, user_id, status_id, subtotal_amount, tax_amount, shipping_fee, total_amount) "+
-			"VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
-		purchaseID, purchaseCode, mustParse(t, seedUserID), mustParse(t, seedUnprocessedSID), 160000, 16000, 500, 176500,
-	)
-	require.NoError(t, err)
+	insertPurchaseRow(ctx, t, db, purchaseID, purchaseCode, mustParse(t, seedUserID), 160000, 16000, 500, 176500)
 
 	detailID, err := uuid.New()
 	require.NoError(t, err)
@@ -625,6 +615,63 @@ func Test_repository_UpdateDelivered(t *testing.T) {
 					OrderedAt:      locked.OrderedAt(),
 				})
 				require.ErrorIs(t, err, domainpurchase.ErrInvalidStatusID)
+			})
+		})
+	})
+}
+
+func Test_repository_UpdateCancelled(t *testing.T) {
+	t.Parallel()
+
+	testDB := testkit.NewTestDB(t)
+	txm := testkit.NewTestTransactionRunner(t)
+	repo := &repository{tracer: observability.NewMockInfraLayerTracer(t), db: testDB}
+	now := time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC)
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("status_idをキャンセルへ更新しcanceled_atをセットする", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				_, purchaseCode, _ := insertPurchaseWithDetail(ctx, t, drv, "f6000000-0000-4000-8000-000000000001")
+
+				locked, err := repo.LockByCode(ctx, purchaseCode)
+				require.NoError(t, err)
+				_, err = locked.Cancel(now)
+				require.NoError(t, err)
+
+				require.NoError(t, repo.UpdateCancelled(ctx, locked))
+
+				reread, err := repo.LockByCode(ctx, purchaseCode)
+				require.NoError(t, err)
+				assert.Equal(t, domainpurchase.StatusCanceled.Code(), reread.StatusCode())
+				require.NotNil(t, reread.CanceledAt())
+				assert.Equal(t, now, reread.CanceledAt().UTC())
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キャンセル済みコンテキストではErrCanceledへ正規化して返す", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				_, purchaseCode, _ := insertPurchaseWithDetail(ctx, t, drv, "f6000000-0000-4000-8000-000000000002")
+				locked, err := repo.LockByCode(ctx, purchaseCode)
+				require.NoError(t, err)
+				_, err = locked.Cancel(now)
+				require.NoError(t, err)
+
+				canceledCtx, cancel := context.WithCancel(ctx)
+				cancel()
+
+				require.ErrorIs(t, repo.UpdateCancelled(canceledCtx, locked), apperror.ErrCanceled)
 			})
 		})
 	})
