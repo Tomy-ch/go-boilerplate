@@ -74,7 +74,7 @@ func TestEvent_Type(t *testing.T) {
 
 			now := time.Date(2026, time.July, 25, 0, 0, 0, 0, time.UTC)
 			id, code, userID, inputs, locked := validNewArgs(t)
-			p, _, err := New(id, code, userID, inputs, locked)
+			p, err := New(id, code, userID, inputs, locked)
 			require.NoError(t, err)
 
 			ev, cerr := p.Cancel(now)
@@ -95,7 +95,7 @@ func TestEvent_PurchaseID(t *testing.T) {
 
 			now := time.Date(2026, time.July, 25, 0, 0, 0, 0, time.UTC)
 			id, code, userID, inputs, locked := validNewArgs(t)
-			p, _, err := New(id, code, userID, inputs, locked)
+			p, err := New(id, code, userID, inputs, locked)
 			require.NoError(t, err)
 
 			ev, perr := p.Pay(now)
@@ -116,7 +116,7 @@ func TestEvent_OccurredAt(t *testing.T) {
 
 			now := time.Date(2026, time.July, 25, 9, 30, 0, 0, time.UTC)
 			id, code, userID, inputs, locked := validNewArgs(t)
-			p, _, err := New(id, code, userID, inputs, locked)
+			p, err := New(id, code, userID, inputs, locked)
 			require.NoError(t, err)
 
 			ev, perr := p.Pay(now)

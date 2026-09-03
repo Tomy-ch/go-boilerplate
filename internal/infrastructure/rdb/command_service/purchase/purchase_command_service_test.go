@@ -79,8 +79,8 @@ func Test_commandService_CreatePurchase(t *testing.T) {
 
 				locked := []domainpurchase.LockedProduct{domainpurchase.NewLockedProduct(pid, mustPrice(t, "80000"), 20)}
 
-				entity, details := newPurchase(t, userID, pid, 2, locked)
-				require.NoError(t, svc.CreatePurchase(ctx, entity, details))
+				entity := newPurchase(t, userID, pid, 2, locked)
+				require.NoError(t, svc.CreatePurchase(ctx, entity))
 
 				var quantity int
 				require.NoError(t, drv.QueryRow(ctx, "SELECT quantity FROM products WHERE id=$1", pid).Scan(&quantity))
@@ -129,8 +129,8 @@ func Test_commandService_CreatePurchase(t *testing.T) {
 				insertTestProduct(ctx, t, drv, pid, 80000, 1)
 				stale := []domainpurchase.LockedProduct{domainpurchase.NewLockedProduct(pid, mustPrice(t, "80000"), 20)}
 
-				entity, details := newPurchase(t, userID, pid, 2, stale)
-				err := svc.CreatePurchase(ctx, entity, details)
+				entity := newPurchase(t, userID, pid, 2, stale)
+				err := svc.CreatePurchase(ctx, entity)
 				require.ErrorIs(t, err, domainpurchase.ErrInsufficientStock)
 
 				var quantity int
@@ -162,13 +162,13 @@ func Test_commandService_CreatePurchase(t *testing.T) {
 					domainpurchase.NewLockedProduct(pid1, mustPrice(t, "80000"), 20),
 					domainpurchase.NewLockedProduct(pid2, mustPrice(t, "1500"), 20),
 				}
-				entity, details, err := domainpurchase.New(id, code.String(), userID, []domainpurchase.DetailInput{
+				entity, err := domainpurchase.New(id, code.String(), userID, []domainpurchase.DetailInput{
 					{ID: d1, ProductID: pid1, Quantity: 1},
 					{ID: d2, ProductID: pid2, Quantity: 2},
 				}, stale)
 				require.NoError(t, err)
 
-				require.ErrorIs(t, svc.CreatePurchase(ctx, entity, details), domainpurchase.ErrInsufficientStock)
+				require.ErrorIs(t, svc.CreatePurchase(ctx, entity), domainpurchase.ErrInsufficientStock)
 			})
 		})
 
@@ -182,27 +182,25 @@ func Test_commandService_CreatePurchase(t *testing.T) {
 
 				missingUser := mustParse(t, "c5000000-0000-4000-8000-0000000000ff")
 				locked := []domainpurchase.LockedProduct{domainpurchase.NewLockedProduct(pid, mustPrice(t, "80000"), 20)}
-				entity, details := newPurchase(t, missingUser, pid, 1, locked)
+				entity := newPurchase(t, missingUser, pid, 1, locked)
 
-				require.ErrorIs(t, svc.CreatePurchase(ctx, entity, details), apperror.ErrInvalidArgument)
+				require.ErrorIs(t, svc.CreatePurchase(ctx, entity), apperror.ErrInvalidArgument)
 			})
 		})
 
 		t.Run("明細数量がINTEGER列に収まらない場合、クエリを発行せずオーバーフローエラーを返す", func(t *testing.T) {
 			t.Parallel()
 
-			entity, details := reconstructPurchase(t, "create_quantity_overflow",
+			entity := reconstructPurchase(t, "create_quantity_overflow",
 				domainpurchase.StatusUnprocessed.Code(), math.MaxInt32+1)
-			require.ErrorIs(t, svc.CreatePurchase(context.Background(), entity, details), safecast.ErrOverflow)
+			require.ErrorIs(t, svc.CreatePurchase(context.Background(), entity), safecast.ErrOverflow)
 		})
 	})
 }
 
 // reconstructPurchase は、指定ステータスコードと明細数量で購入集約を再構築するテストヘルパーです。
 // 生成経路（New）の検証を通らない極端な値を作るため Reconstruct を使います。
-func reconstructPurchase(
-	t *testing.T, salt string, statusCode, quantity int,
-) (*domainpurchase.Purchase, []domainpurchase.PurchaseDetail) {
+func reconstructPurchase(t *testing.T, salt string, statusCode, quantity int) *domainpurchase.Purchase {
 	t.Helper()
 
 	detail := domainpurchase.NewPurchaseDetail(
@@ -223,17 +221,16 @@ func reconstructPurchase(
 			StatusCode:     statusCode,
 			SubtotalAmount: 800,
 			TotalAmount:    800,
+			Details:        []domainpurchase.PurchaseDetail{detail},
 			OrderedAt:      time.Date(2026, time.July, 25, 12, 0, 0, 0, time.UTC),
 		},
 	)
 	require.NoError(t, err)
-	return entity, []domainpurchase.PurchaseDetail{detail}
+	return entity
 }
 
 // newPurchase は、単一明細の購入集約を生成するテストヘルパーです。
-func newPurchase(
-	t *testing.T, userID, productID uuid.UUID, quantity int, locked []domainpurchase.LockedProduct,
-) (*domainpurchase.Purchase, []domainpurchase.PurchaseDetail) {
+func newPurchase(t *testing.T, userID, productID uuid.UUID, quantity int, locked []domainpurchase.LockedProduct) *domainpurchase.Purchase {
 	t.Helper()
 	id, err := uuid.New()
 	require.NoError(t, err)
@@ -242,13 +239,13 @@ func newPurchase(
 	detailID, err := uuid.New()
 	require.NoError(t, err)
 
-	entity, details, err := domainpurchase.New(
+	entity, err := domainpurchase.New(
 		id, code.String(), userID,
 		[]domainpurchase.DetailInput{{ID: detailID, ProductID: productID, Quantity: quantity}},
 		locked,
 	)
 	require.NoError(t, err)
-	return entity, details
+	return entity
 }
 
 func Test_commandService_LockPurchase(t *testing.T) {
@@ -271,8 +268,8 @@ func Test_commandService_LockPurchase(t *testing.T) {
 				pid := mustParse(t, "d1000000-0000-4000-8000-000000000001")
 				insertTestProduct(ctx, t, drv, pid, 80000, 20)
 				locked := []domainpurchase.LockedProduct{domainpurchase.NewLockedProduct(pid, mustPrice(t, "80000"), 20)}
-				created, createdDetails := newPurchase(t, userID, pid, 2, locked)
-				require.NoError(t, svc.CreatePurchase(ctx, created, createdDetails))
+				created := newPurchase(t, userID, pid, 2, locked)
+				require.NoError(t, svc.CreatePurchase(ctx, created))
 
 				actual, err := svc.LockPurchase(ctx, created.Code())
 				require.NoError(t, err)
@@ -281,7 +278,8 @@ func Test_commandService_LockPurchase(t *testing.T) {
 				assert.Equal(t, domainpurchase.StatusUnprocessed.Code(), actual.StatusCode())
 				assert.Nil(t, actual.PaidAt())
 				assert.Nil(t, actual.CanceledAt())
-				// 明細は集約が抱えないため LockPurchase の戻りには含まれない。
+				require.Len(t, actual.Details(), 1)
+				assert.Equal(t, pid, actual.Details()[0].ProductID())
 			})
 		})
 	})
@@ -349,8 +347,8 @@ func Test_commandService_CancelPurchase(t *testing.T) {
 				pid := mustParse(t, "d2000000-0000-4000-8000-000000000001")
 				insertTestProduct(ctx, t, drv, pid, 80000, 20)
 				locked := []domainpurchase.LockedProduct{domainpurchase.NewLockedProduct(pid, mustPrice(t, "80000"), 20)}
-				created, createdDetails := newPurchase(t, userID, pid, 2, locked)
-				require.NoError(t, svc.CreatePurchase(ctx, created, createdDetails)) // 在庫 20 → 18
+				created := newPurchase(t, userID, pid, 2, locked)
+				require.NoError(t, svc.CreatePurchase(ctx, created)) // 在庫 20 → 18
 
 				var afterCreate int
 				require.NoError(t, drv.QueryRow(ctx, "SELECT quantity FROM products WHERE id=$1", pid).Scan(&afterCreate))
@@ -360,7 +358,7 @@ func Test_commandService_CancelPurchase(t *testing.T) {
 				require.NoError(t, err)
 				_, err = lockedPurchase.Cancel(now)
 				require.NoError(t, err)
-				require.NoError(t, svc.CancelPurchase(ctx, lockedPurchase, createdDetails))
+				require.NoError(t, svc.CancelPurchase(ctx, lockedPurchase))
 
 				// 在庫が明細分（2）復元される（減算の対称）。
 				var restored int
@@ -401,18 +399,18 @@ func Test_commandService_CancelPurchase(t *testing.T) {
 				require.NoError(t, err)
 				d2, err := uuid.New()
 				require.NoError(t, err)
-				created, createdDetails, err := domainpurchase.New(id, code.String(), userID, []domainpurchase.DetailInput{
+				created, err := domainpurchase.New(id, code.String(), userID, []domainpurchase.DetailInput{
 					{ID: d1, ProductID: pid1, Quantity: 3},
 					{ID: d2, ProductID: pid2, Quantity: 4},
 				}, locked)
 				require.NoError(t, err)
-				require.NoError(t, svc.CreatePurchase(ctx, created, createdDetails)) // 20→17, 10→6
+				require.NoError(t, svc.CreatePurchase(ctx, created)) // 20→17, 10→6
 
 				lockedPurchase, err := svc.LockPurchase(ctx, created.Code())
 				require.NoError(t, err)
 				_, err = lockedPurchase.Cancel(now)
 				require.NoError(t, err)
-				require.NoError(t, svc.CancelPurchase(ctx, lockedPurchase, createdDetails))
+				require.NoError(t, svc.CancelPurchase(ctx, lockedPurchase))
 
 				var q1, q2 int
 				require.NoError(t, drv.QueryRow(ctx, "SELECT quantity FROM products WHERE id=$1", pid1).Scan(&q1))
@@ -429,9 +427,9 @@ func Test_commandService_CancelPurchase(t *testing.T) {
 		t.Run("明細数量がINTEGER列に収まらない場合、クエリを発行せずオーバーフローエラーを返す", func(t *testing.T) {
 			t.Parallel()
 
-			entity, details := reconstructPurchase(t, "cancel_quantity_overflow",
+			entity := reconstructPurchase(t, "cancel_quantity_overflow",
 				domainpurchase.StatusUnprocessed.Code(), math.MaxInt32+1)
-			require.ErrorIs(t, svc.CancelPurchase(context.Background(), entity, details), safecast.ErrOverflow)
+			require.ErrorIs(t, svc.CancelPurchase(context.Background(), entity), safecast.ErrOverflow)
 		})
 	})
 }

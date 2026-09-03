@@ -11,10 +11,6 @@ import (
 type Repository interface {
 	// FindByID は、ID から購入を明細込みで取得します。存在しない場合は NotFound を返します。
 	FindByID(ctx context.Context, id uuid.UUID) (*Purchase, error)
-
-	// ListDetails は、購入の明細を登録順で読み出します。明細は集約が抱えないため、
-	// 必要とする経路（キャンセルの在庫復元・詳細の DTO・生成 event）がここから引きます。
-	ListDetails(ctx context.Context, purchaseID uuid.UUID) ([]PurchaseDetail, error)
 	// LockByCode は、購入コードから対象の購入のみを悲観ロックして明細込みで再構築し返します。
 	// 状態遷移の競合（同一購入への並行更新）をこのロックで直列化します。
 	// 存在しない場合は NotFound を返します。

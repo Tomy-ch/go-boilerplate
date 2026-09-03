@@ -36,13 +36,12 @@ func New(
 // 在庫減算は防御的に売り越しを弾き、更新 0 行の場合は domain の sentinel をそのまま用いた
 // ErrInsufficientStock（409）を返します。防御の位置づけは
 // internal/infrastructure/rdb/README.md § command_service（Conditions are derived, never authored）を参照。
-func (c *commandService) CreatePurchase(
-	ctx context.Context, p *purchase.Purchase, details []purchase.PurchaseDetail,
-) error {
+func (c *commandService) CreatePurchase(ctx context.Context, p *purchase.Purchase) error {
 	ctx, endSpan := c.tracer.Start(ctx)
 	defer endSpan()
 
 	db := gen.New(driver.New(ctx, c.db))
+	details := p.Details()
 
 	quantities, err := toDetailQuantities(details)
 	if err != nil {
@@ -136,6 +135,7 @@ func (c *commandService) LockPurchase(ctx context.Context, code string) (*purcha
 		TaxAmount:      int(p.TaxAmount),
 		ShippingFee:    int(p.ShippingFee),
 		TotalAmount:    int(p.TotalAmount),
+		Details:        details,
 		OrderedAt:      p.OrderedAt,
 		PaidAt:         p.PaidAt,
 		CanceledAt:     p.CanceledAt,
@@ -150,13 +150,12 @@ func (c *commandService) LockPurchase(ctx context.Context, code string) (*purcha
 
 // CancelPurchase は、キャンセルに伴う在庫復元（明細分の加算）と購入の状態更新（status_id / canceled_at）を
 // 渡された tx 内で原子的に実行します。在庫加算は相対更新で売り越しを生まないため在庫不足ガードは不要です。
-func (c *commandService) CancelPurchase(
-	ctx context.Context, p *purchase.Purchase, details []purchase.PurchaseDetail,
-) error {
+func (c *commandService) CancelPurchase(ctx context.Context, p *purchase.Purchase) error {
 	ctx, endSpan := c.tracer.Start(ctx)
 	defer endSpan()
 
 	db := gen.New(driver.New(ctx, c.db))
+	details := p.Details()
 
 	quantities, err := toDetailQuantities(details)
 	if err != nil {

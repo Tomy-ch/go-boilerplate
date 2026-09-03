@@ -278,10 +278,7 @@ func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParam
 		return PurchaseView{}, err
 	}
 
-	var (
-		created        *purchase.Purchase
-		createdDetails []purchase.PurchaseDetail
-	)
+	var created *purchase.Purchase
 	// nested で最外 tx に乗る（tx 所有については docs/spec/purchase/usecase.md 冒頭を参照）。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
 		// ロック順序（ユーザー行 → 商品行、id 昇順）は docs/spec/purchase/usecase.md の Workflow を参照。
@@ -299,16 +296,16 @@ func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParam
 			locked[i] = purchase.NewLockedProduct(p.ID(), p.Price(), p.Quantity())
 		}
 
-		entity, details, nerr := purchase.New(draft.purchaseID, draft.code, params.UserID, draft.inputs, locked)
+		entity, nerr := purchase.New(draft.purchaseID, draft.code, params.UserID, draft.inputs, locked)
 		if nerr != nil {
 			return nerr
 		}
 
-		if cerr := u.cmd.CreatePurchase(ctx, entity, details); cerr != nil {
+		if cerr := u.cmd.CreatePurchase(ctx, entity); cerr != nil {
 			return cerr
 		}
 
-		payload, perr := event.BuildCreated(entity, details)
+		payload, perr := event.BuildCreated(entity)
 		if perr != nil {
 			return perr
 		}
@@ -323,22 +320,17 @@ func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParam
 		}
 
 		// 書き込み後、Repository 経由で再検証する（README の Verifying infrastructure against the domain）。
-		// 明細は集約が抱えないため別に読み直す。
 		reread, rerr := u.repo.FindByID(ctx, draft.purchaseID)
 		if rerr != nil {
 			return rerr
 		}
-		storedDetails, derr := u.repo.ListDetails(ctx, draft.purchaseID)
-		if derr != nil {
-			return derr
-		}
-		created, createdDetails = reread, storedDetails
+		created = reread
 		return nil
 	}); txErr != nil {
 		return PurchaseView{}, txErr
 	}
 
-	return toPurchaseView(created, createdDetails), nil
+	return toPurchaseView(created), nil
 }
 
 func (u *usecase) CancelPurchase(ctx context.Context, params CancelPurchaseParams) (CancelPurchaseView, error) {
@@ -366,13 +358,7 @@ func (u *usecase) CancelPurchase(ctx context.Context, params CancelPurchaseParam
 			return cerr
 		}
 
-		// 在庫の復元に明細の数量が要る。集約が抱えないため、ここで読む。
-		details, derr := u.repo.ListDetails(ctx, locked.ID())
-		if derr != nil {
-			return derr
-		}
-
-		if perr := u.cmd.CancelPurchase(ctx, locked, details); perr != nil {
+		if perr := u.cmd.CancelPurchase(ctx, locked); perr != nil {
 			return perr
 		}
 
@@ -615,7 +601,8 @@ func (u *usecase) ensurePurchaserActive(ctx context.Context, userID uuid.UUID) e
 	return membership.EnsurePurchasable(purchaser)
 }
 
-func toPurchaseView(p *purchase.Purchase, details []purchase.PurchaseDetail) PurchaseView {
+func toPurchaseView(p *purchase.Purchase) PurchaseView {
+	details := p.Details()
 	views := make([]PurchaseDetailView, len(details))
 	for i, d := range details {
 		views[i] = PurchaseDetailView{

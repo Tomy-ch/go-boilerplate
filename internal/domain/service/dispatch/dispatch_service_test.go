@@ -4,7 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"go-boilerplate/internal/domain/lexicon/money"
 	"go-boilerplate/internal/domain/purchase"
+	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
 	"go-boilerplate/pkg/uuid"
 	uuidtestkit "go-boilerplate/pkg/uuid/testkit"
 
@@ -20,12 +22,25 @@ var baseTime = time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC)
 func newShippablePurchase(t *testing.T, idSalt string, userID uuid.UUID, orderedAt time.Time) *purchase.Purchase {
 	t.Helper()
 
+	unitPrice, err := money.NewPrice(decimaltestkit.MustParse(t, "800"))
+	require.NoError(t, err)
+
 	paidAt := orderedAt.Add(time.Minute)
 	p, err := purchase.Reconstruct(uuidtestkit.NewTestFromSalt(t, idSalt), purchase.Attributes{
-		Code:           idSalt,
-		UserID:         userID,
-		StatusID:       uuidtestkit.NewTestFromSalt(t, "dispatch_status"),
-		StatusCode:     purchase.StatusPaid.Code(),
+		Code:       idSalt,
+		UserID:     userID,
+		StatusID:   uuidtestkit.NewTestFromSalt(t, "dispatch_status"),
+		StatusCode: purchase.StatusPaid.Code(),
+		Details: []purchase.PurchaseDetail{
+			purchase.NewPurchaseDetail(
+				uuidtestkit.NewTestFromSalt(t, idSalt+"_detail"),
+				purchase.PurchaseDetailAttributes{
+					ProductID: uuidtestkit.NewTestFromSalt(t, "dispatch_product"),
+					Quantity:  1,
+					UnitPrice: unitPrice,
+				},
+			),
+		},
 		SubtotalAmount: 80000,
 		TaxAmount:      8000,
 		ShippingFee:    500,
