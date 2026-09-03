@@ -7,6 +7,11 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 )
 
+// maxTraceStateBytes は、持ち回る tracestate の上限です（W3C の推奨上限）。
+// tracestate は client が任意に注入でき、32 member × 512 バイトまで文法上は通ります。
+// link を張るのに必要なのは traceparent だけなので、超えた分は運ばずに捨てます。
+const maxTraceStateBytes = 512
+
 // traceContextPropagator は、traceparent/tracestate のみを伝搬する propagator です（Baggage を含まない）。
 var traceContextPropagator propagation.TextMapPropagator = propagation.TraceContext{}
 
@@ -36,11 +41,6 @@ func extractFromCarrier(ctx context.Context, attrs map[string]string, prop propa
 	}
 	return prop.Extract(ctx, mapCarrier(attrs))
 }
-
-// maxTraceStateBytes は、持ち回る tracestate の上限です（W3C の推奨上限）。
-// tracestate は client が任意に注入でき、32 member × 512 バイトまで文法上は通ります。
-// link を張るのに必要なのは traceparent だけなので、超えた分は運ばずに捨てます。
-const maxTraceStateBytes = 512
 
 // TraceContextFromCarrier は、attrs から trace context の項目だけを取り出した carrier を返します。
 // 非同期のホップで起点 trace を持ち回るとき、運ぶ側が項目名を知らずに済むようにするためのものです。

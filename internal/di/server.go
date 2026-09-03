@@ -36,7 +36,7 @@ func applicationCoreOptions() []fx.Option {
 // （"Zero adapters, zero runtime"。docs/design/realtime-delivery.md §3.1）。
 // append で書くのは、マーカー行が落ちた後も関数がそのまま成り立つようにするためです。
 func serveRealtimeOptions() []fx.Option {
-	var opts []fx.Option
+	opts := make([]fx.Option, 0, 1)
 	opts = append(opts, module.ServeRealtimeModule()) // sample-api:line
 
 	return opts

@@ -22,6 +22,10 @@ const (
 	Unhealthy = "unhealthy"
 )
 
+// probeTimeout は、依存 1 つの検査に与える上限です。load balancer の probe timeout より
+// 十分短く取り、遅い依存が応答時間の側で instance を落とさないようにします。
+const probeTimeout = 1 * time.Second
+
 // Probe は、readiness に加わる依存 1 つ分の到達性検査です。
 // 名前は /ready の応答にそのまま載るので、subsystem の名前（realtime 等）を与えます。
 //
@@ -42,10 +46,6 @@ type DependencyStatus struct {
 	// Status は、Ok か Degraded のどちらかです。
 	Status string
 }
-
-// probeTimeout は、依存 1 つの検査に与える上限です。load balancer の probe timeout より
-// 十分短く取り、遅い依存が応答時間の側で instance を落とさないようにします。
-const probeTimeout = 1 * time.Second
 
 // DTO は、システムの健全性に関するデータ転送用のオブジェクトです。
 type DTO struct {

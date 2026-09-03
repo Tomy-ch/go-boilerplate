@@ -43,6 +43,27 @@ const (
 	closeReasonRevalidationFailed = "revalidation_failed"
 )
 
+// 確定前に接続を断った理由。realtime.connections.rejected の reason label に載る安定値です。
+// 停止中の拒否は closeReasonDraining と同じ語を使います（同じ事情の別の現れ方のため）。
+const (
+	// rejectReasonCapacity は、この instance の接続数が上限に達していたことを表します。
+	rejectReasonCapacity = "capacity"
+	// rejectReasonAdmission は、初回 replay の枠が空くのを待ち切れなかったことを表します。
+	rejectReasonAdmission = "admission"
+	// rejectReasonDegraded は、Realtime の依存が不調で新規接続を受けられないことを表します。
+	rejectReasonDegraded = "degraded"
+)
+
+// 読み進めを起こした契機。realtime.replay.* の trigger label に載る安定値です。
+const (
+	// triggerInitial は、接続を確定する前の初回 replay です。
+	triggerInitial = "initial"
+	// triggerWakeup は、fan-out で届いた通知です。
+	triggerWakeup = "wakeup"
+	// triggerCatchUp は、通知の欠落を埋める周期の読み直しです。
+	triggerCatchUp = "catchup"
+)
+
 // connection は、確定済みの 1 本の SSE 接続です。読む側（fetcher）と書く側（pump）の 2 つの goroutine が
 // channel だけで繋がり、位置を表す値はそれぞれの持ち主が 1 つずつ持ちます。
 type connection struct {
@@ -73,27 +94,6 @@ type connection struct {
 	// reason は、最初に close を呼んだ側が記録した理由です。quitOnce の完了後にだけ読みます。
 	reason string
 }
-
-// 確定前に接続を断った理由。realtime.connections.rejected の reason label に載る安定値です。
-// 停止中の拒否は closeReasonDraining と同じ語を使います（同じ事情の別の現れ方のため）。
-const (
-	// rejectReasonCapacity は、この instance の接続数が上限に達していたことを表します。
-	rejectReasonCapacity = "capacity"
-	// rejectReasonAdmission は、初回 replay の枠が空くのを待ち切れなかったことを表します。
-	rejectReasonAdmission = "admission"
-	// rejectReasonDegraded は、Realtime の依存が不調で新規接続を受けられないことを表します。
-	rejectReasonDegraded = "degraded"
-)
-
-// 読み進めを起こした契機。realtime.replay.* の trigger label に載る安定値です。
-const (
-	// triggerInitial は、接続を確定する前の初回 replay です。
-	triggerInitial = "initial"
-	// triggerWakeup は、fan-out で届いた通知です。
-	triggerWakeup = "wakeup"
-	// triggerCatchUp は、通知の欠落を埋める周期の読み直しです。
-	triggerCatchUp = "catchup"
-)
 
 // fetcher は、1 接続ぶんの読み直しを回します。読んだ位置はこの goroutine だけが持つので、
 // 位置の同期は要りません。

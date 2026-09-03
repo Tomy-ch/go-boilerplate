@@ -11,6 +11,10 @@ import (
 // 存在しない stream の Latest は「無い」を返すだけなので、返るエラーは到達できないことだけを意味します。
 const healthProbeStreamID rt.StreamID = "_readiness"
 
+// SubsystemName は、この subsystem の名前です。/ready の依存一覧にも serve lifecycle の
+// ログにも同じ値が載ります（同じものを 2 つの名前で呼ばないため）。
+const SubsystemName = "realtime"
+
 // Health は、Realtime Delivery が稼働中に配信を続けられる状態かを答えます。
 //
 // 2 つの依存を別々の方法で見ます。EventLog は読みに行けば分かるので都度確かめ、fan-out は
@@ -55,7 +59,3 @@ func (h *Health) Check(ctx context.Context) error {
 
 	return nil
 }
-
-// SubsystemName は、この subsystem の名前です。/ready の依存一覧にも serve lifecycle の
-// ログにも同じ値が載ります（同じものを 2 つの名前で呼ばないため）。
-const SubsystemName = "realtime"
