@@ -34,11 +34,19 @@ import (
 	"go.uber.org/fx"
 )
 
+// readinessProbeGroup は、/ready が状態を並べる依存の検査（healthcheck.Probe）の value group です。
+// 落ちていても通常の HTTP 応答を続けられる依存だけがここへ入り、空でも構いません
+// （不可欠な依存は起動時の fail-fast が受け持ちます）。
+const readinessProbeGroup = "readiness.probes"
+
 // UsecaseModule は、ユースケース層の依存関係を提供するfx.Moduleです。
 func UsecaseModule() fx.Option {
 	return fx.Module("usecase",
 		fx.Provide(
-			healthcheck.New,
+			fx.Annotate(
+				healthcheck.New,
+				fx.ParamTags(``, ``, ``, `group:"`+readinessProbeGroup+`"`),
+			),
 			fx.Annotate(
 				observability.NewIdempotencyMetrics,
 				fx.As(new(idempotency.Metrics)),

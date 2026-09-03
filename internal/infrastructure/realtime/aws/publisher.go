@@ -2,6 +2,7 @@ package aws
 
 import (
 	"context"
+	"time"
 
 	awssdk "github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
@@ -28,6 +29,7 @@ type publisher struct {
 	sns      SNSAPI
 	topicARN string
 	tracer   observability.LayerTracer
+	metrics  *observability.RealtimeMetrics
 }
 
 // NewPublisher は、log へ append し topicARN へ wakeup を publish する Publisher を返します。
@@ -37,14 +39,19 @@ func NewPublisher(
 	snsAPI SNSAPI,
 	topicARN string,
 	tf observability.TracerFactory,
+	metrics *observability.RealtimeMetrics,
 ) publisherbndry.Publisher {
-	return &publisher{log: log, sns: snsAPI, topicARN: topicARN, tracer: tf.Infra()}
+	return &publisher{log: log, sns: snsAPI, topicARN: topicARN, tracer: tf.Infra(), metrics: metrics}
 }
 
 // Publish は、m の payload を DeliveryEvent として復元し、EventLog へ append してから wakeup を publish します。
 // 復元できない payload と、同じ位置に別の event がある衝突（ErrSequenceConflict）は retry で直らないので
 // ErrPermanent で返し、relay がその stream を先頭で止めます。substrate の失敗は ErrRetryable です。
 func (p *publisher) Publish(ctx context.Context, m publisherbndry.Message) error {
+	// 起点の command が headers に載せた trace を継いでから span を開きます。これをしないと
+	// append が relay の trace にぶら下がり、command → outbox → relay → EventLog が 1 本になりません。
+	ctx = observability.ExtractFromCarrier(ctx, m.Headers)
+
 	ctx, endSpan := p.tracer.Start(ctx)
 	defer endSpan()
 
@@ -53,8 +60,22 @@ func (p *publisher) Publish(ctx context.Context, m publisherbndry.Message) error
 		return err
 	}
 
+	// 封筒にも起点 trace を載せます。配送は別の instance の別の時刻に起きるので、
+	// 受け取る側は EventLog の item からしか起点を知れません。
+	event.Origin = observability.TraceContextFromCarrier(m.Headers)
+
 	if err := p.log.Append(ctx, event); err != nil {
+		p.metrics.EventLogAppended(ctx, appendResult(err))
+
 		return classifyAppend(err)
+	}
+
+	p.metrics.EventLogAppended(ctx, observability.RealtimeResultOK)
+
+	// outbox に記録されてから EventLog に載るまでが、この経路の遅れです。
+	// 起点を持たない封筒（relay 以外の呼び出し元）は、ゼロ値の差で histogram を壊すので数えません。
+	if !m.CreatedAt.IsZero() {
+		p.metrics.EventLogLag(ctx, float64(time.Since(m.CreatedAt).Milliseconds()))
 	}
 
 	body, attrs, err := encodeWakeup(
@@ -69,6 +90,8 @@ func (p *publisher) Publish(ctx context.Context, m publisherbndry.Message) error
 		Message:           awssdk.String(body),
 		MessageAttributes: attrs,
 	}); err != nil {
+		p.metrics.WakeupPublishFailed(ctx)
+
 		return xerrors.Join(apperror.ErrRetryable, normalize(err, "publish wakeup"))
 	}
 
@@ -97,6 +120,16 @@ func decodeEvent(m publisherbndry.Message) (rt.DeliveryEvent, error) {
 	}
 
 	return event, nil
+}
+
+// appendResult は、append の失敗を realtime.eventlog.appends の result へ写します。
+// 位置の衝突だけは「既に誰かが書いた」ことを表すので、substrate の失敗と分けて数えます。
+func appendResult(err error) string {
+	if xerrors.Is(err, rt.ErrSequenceConflict) {
+		return observability.RealtimeResultConflict
+	}
+
+	return observability.RealtimeResultError
 }
 
 // classifyAppend は、append の失敗を relay の分類へ写します。位置の衝突と不正な封筒は permanent、

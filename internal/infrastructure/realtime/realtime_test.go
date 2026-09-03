@@ -58,6 +58,7 @@ func TestNewPublisher(t *testing.T) {
 			testClients(t),
 			testTopicARN,
 			observability.NewNoopTracerFactory(t),
+			observability.NewNoopRealtimeMetrics(t),
 		),
 	)
 }

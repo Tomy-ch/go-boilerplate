@@ -1689,6 +1689,28 @@ func TestRealtimeConfig_SecretAccessKey(t *testing.T) {
 	})
 }
 
+func TestRealtimeConfig_MaxConnections(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("1 instance が同時に保持する SSE 接続数の上限を取得できる", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, expectedRealtimeMaxConnections, MockConfigForTest(t).realtime.MaxConnections())
+		})
+	})
+}
+
+func TestRealtimeConfig_ReplayConcurrency(t *testing.T) {
+	t.Parallel()
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+		t.Run("replay と catch-up が同時に走る本数の上限を取得できる", func(t *testing.T) {
+			t.Parallel()
+			assert.Equal(t, expectedRealtimeReplayConcurrency, MockConfigForTest(t).realtime.ReplayConcurrency())
+		})
+	})
+}
+
 func TestEndpointConfig_Realtime(t *testing.T) {
 	t.Parallel()
 	t.Run("正常系", func(t *testing.T) {

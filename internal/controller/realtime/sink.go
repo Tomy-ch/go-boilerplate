@@ -25,6 +25,13 @@ type Revoker interface {
 	Revoke(ctx context.Context, subject string, destination rt.StreamID)
 }
 
+// FanoutObserver は、受信を試みた結果を受け取る受け口です。readiness の縮退表現がこれを読みます。
+// 受信できているかは受信を試みた側にしか分からないので、engine が観測して外へ渡します。
+type FanoutObserver interface {
+	// ObserveFanout は、1 回の受信の結果を伝えます。err が nil なら受け取れています。
+	ObserveFanout(err error)
+}
+
 // Reprovisioner は、消えた受信先を作り直す受け口です。lease と受信先の順序は
 // DI で両者を合成する側が与えます（docs/design/realtime-delivery.md §2.5）。
 type Reprovisioner interface {

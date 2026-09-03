@@ -146,7 +146,8 @@ func newSSEServer(t *testing.T, set stream.Settings) *sseFixture {
 	logger := logging.NewTestLogger(t)
 
 	cursors := ucrealtime.NewCursorValidator(cursorLog, clocktestkit.NewMockClock(t, sseNow), tf)
-	registry := stream.NewRegistry(ucrealtime.NewReplayer(replayLog, tf), sleeper, logger, tf, set)
+	registry := stream.NewRegistry(ucrealtime.NewReplayer(replayLog, tf), sleeper, logger, tf,
+		observability.NewNoopRealtimeMetrics(t), ucrealtime.NewHealth(replayLog), set)
 
 	e := echo.New()
 	UseAppErrorHandlerWithLogger(t, e, logger,

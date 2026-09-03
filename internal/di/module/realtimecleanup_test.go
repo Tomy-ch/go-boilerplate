@@ -34,6 +34,7 @@ func realtimeCleanupRunDeps(t *testing.T) fx.Option {
 		fx.Provide(func() logging.Logger { return logging.NewTestLogger(t) }),
 		fx.Provide(func() observability.TracerFactory { return observability.NewNoopTracerFactory(t) }),
 		fx.Provide(func() *observability.OutboundHTTPClient { return observability.NewDisabledOutboundHTTPClient(true) }),
+		fx.Replace(observability.NewNoopRealtimeMetrics(t)),
 	)
 }
 

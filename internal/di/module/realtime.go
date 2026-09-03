@@ -21,6 +21,7 @@ import (
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/clock"
 	rt "go-boilerplate/internal/usecase/boundary/realtime"
+	"go-boilerplate/internal/usecase/healthcheck"
 	ucrealtime "go-boilerplate/internal/usecase/realtime"
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
@@ -28,10 +29,8 @@ import (
 
 const (
 	// realtimeParticipantName は、serve lifecycle のログに載せる Realtime Delivery の参加者名です。
-	realtimeParticipantName = "realtime"
-	// startupProbeStreamID は、起動時に EventLog へ到達できるかを確かめる読み取りに使う stream です。
-	// 存在しない stream の Latest は「無い」を返すだけで、store に届かなければエラーになります。
-	startupProbeStreamID rt.StreamID = "_readiness"
+	// /ready に出る依存名と同じ値を使います（同じ subsystem を 2 つの名前で呼ばないため）。
+	realtimeParticipantName = ucrealtime.SubsystemName
 )
 
 // ErrRealtimeTopicNotConfigured は、fan-out を配線したのに REALTIME_TOPIC が空であることを示すエラーです。
@@ -46,19 +45,32 @@ type realtimeFanout struct {
 	topicARN string
 }
 
+// ServeRealtimeModule は、Realtime Delivery の受信側 runtime を serve profile へ結線する入口です。
+// feature の realtime adapter が在る間だけ呼ばれ、adapter が消えれば呼び出し側の 1 行ごと消えます
+// （"Zero adapters, zero runtime" を規約ではなく構造で表す。docs/design/realtime-delivery.md §1）。
+//
+// RealtimeAdapterModule() は realtimeModule() が合成するので、両方を同じ graph へ結線してはいけません。
+func ServeRealtimeModule() fx.Option {
+	return realtimeModule()
+}
+
 // realtimeModule は、Realtime Delivery の store・機構側 usecase・fan-out・SSE の stream handler・serve lifecycle の
 // 参加者を提供する fx.Module です。InfrastructureModule() には束ねず serve profile にだけ配線します
-// （内訳は internal/di/module/README.md「Design Policy」、配線条件は docs/design/realtime-delivery.md §3.1）。
+// （内訳は internal/di/module/README.md「Design Policy」、配線条件は docs/design/realtime-delivery.md §1）。
 // Waker / Revoker / Streamer と drain の参加者は、どれも connection registry（controller/stream）
 // という 1 つの値です。
 func realtimeModule() fx.Option {
 	return fx.Module("realtime",
 		RealtimeAdapterModule(),
 		fx.Provide(
+			observability.NewRealtimeMetrics,
 			provideEventLogStore,
 			provideInstanceLeaseStore,
 			provideCursorValidator,
 			provideReplayer,
+			provideRealtimeHealth,
+			provideFanoutObserver,
+			fx.Annotate(provideRealtimeReadinessProbe, fx.ResultTags(`group:"`+readinessProbeGroup+`"`)),
 			provideConnectionRegistry,
 			provideStreamer,
 			provideWaker,
@@ -175,13 +187,17 @@ func provideLeaseKeeper(
 func provideRealtimeConsumer(
 	sub rt.InstanceSubscription,
 	reprovision ctrlrealtime.Reprovisioner,
+	fanout ctrlrealtime.FanoutObserver,
 	wakeups ctrlrealtime.Waker,
 	revocations ctrlrealtime.Revoker,
 	sleeper clock.Sleeper,
 	log logging.Logger,
 	tf observability.TracerFactory,
+	metrics *observability.RealtimeMetrics,
 ) *ctrlrealtime.Engine {
-	return ctrlrealtime.NewEngine(sub, reprovision, wakeups, revocations, sleeper, log, tf, ctrlrealtime.Settings{})
+	return ctrlrealtime.NewEngine(
+		sub, reprovision, fanout, wakeups, revocations, sleeper, log, tf, metrics, ctrlrealtime.Settings{},
+	)
 }
 
 // provideRealtimeReprovisioner は、消えた受信先の作り直しを、起動時の participant（provideRealtimeProvisioner）と
@@ -206,18 +222,32 @@ func provideRealtimeHeartbeat(
 	sleeper clock.Sleeper,
 	log logging.Logger,
 	tf observability.TracerFactory,
+	metrics *observability.RealtimeMetrics,
 ) *ctrlrealtime.Heartbeat {
-	return ctrlrealtime.NewHeartbeat(keeper, id, sleeper, log, tf)
+	return ctrlrealtime.NewHeartbeat(keeper, id, sleeper, log, tf, metrics)
 }
 
-// provideRealtimeStartupProbe は、HTTP を listen する前に EventLog へ到達できることを確かめる
-// [hook.StartupProbe] を返します。
-func provideRealtimeStartupProbe(log rt.EventLogStore) hook.StartupProbe {
-	return hook.StartupProbe{Name: realtimeParticipantName, Probe: func(ctx context.Context) error {
-		_, _, err := log.Latest(ctx, startupProbeStreamID)
+// provideRealtimeStartupProbe は、HTTP を listen する前に依存へ到達できることを確かめる
+// [hook.StartupProbe] を返します。稼働中の readiness と同じ判定（[ucrealtime.Health.Check]）を使うので、
+// 「到達できる」の意味が起動時と稼働中でずれません。
+func provideRealtimeStartupProbe(health *ucrealtime.Health) hook.StartupProbe {
+	return hook.StartupProbe{Name: realtimeParticipantName, Probe: health.Check}
+}
 
-		return err
-	}}
+// provideRealtimeHealth は、Realtime Delivery の縮退を答える値を組み立てます。
+// 起動時の probe・稼働中の readiness・新規接続の可否が、すべてこの 1 つの値を見ます。
+func provideRealtimeHealth(log rt.EventLogStore) *ucrealtime.Health {
+	return ucrealtime.NewHealth(log)
+}
+
+// provideFanoutObserver / provideRealtimeReadinessProbe は、同じ Health を consumer engine と
+// /ready の 2 つの受け口として graph へ出します。
+func provideFanoutObserver(health *ucrealtime.Health) ctrlrealtime.FanoutObserver { return health }
+
+// provideRealtimeReadinessProbe は、Realtime の到達性を /ready の依存一覧へ加えます。
+// healthcheck は Realtime を知らず、両者を結ぶのはここだけです（層規約と realtime の隔離検査による）。
+func provideRealtimeReadinessProbe(health *ucrealtime.Health) healthcheck.Probe {
+	return healthcheck.Probe{Name: ucrealtime.SubsystemName, Check: health.Check}
 }
 
 // provideRealtimeProvisioner は、lease の記録と instance の受信先を 1 つの参加者に合成し、
@@ -284,14 +314,26 @@ func provideInstanceLeaseStore(
 }
 
 // provideConnectionRegistry は、この instance が保持する SSE 接続の索引を組み立てます。
-// 設定はゼロ値（= 既定値）で、typed config への露出は #1417 の範囲です。
+// 上限値は typed config から取り、0 以下は Settings 側で既定値へ寄ります。
 func provideConnectionRegistry(
+	cfg *config.RealtimeConfig,
 	replayer ucrealtime.Replayer,
 	sleeper clock.Sleeper,
 	log logging.Logger,
 	tf observability.TracerFactory,
+	metrics *observability.RealtimeMetrics,
+	health *ucrealtime.Health,
 ) *stream.Registry {
-	return stream.NewRegistry(replayer, sleeper, log, tf, stream.Settings{})
+	return stream.NewRegistry(replayer, sleeper, log, tf, metrics, health, newStreamSettings(cfg))
+}
+
+// newStreamSettings は、typed config を Streamer のチューニング値へ写します。
+// 2 つとも int なので、取り違えても型では気づけません。写像はここだけに置きます。
+func newStreamSettings(cfg *config.RealtimeConfig) stream.Settings {
+	return stream.Settings{
+		MaxConnections:    cfg.MaxConnections(),
+		ReplayConcurrency: cfg.ReplayConcurrency(),
+	}
 }
 
 // provideStreamer / provideWaker / provideRevoker は、同じ registry を 3 つの受け口として graph へ出します。

@@ -182,6 +182,7 @@ func (u *relayUsecase) deliver(ctx context.Context, m outboxbndry.PendingMessage
 		EventType: m.EventType,
 		Payload:   m.Payload,
 		Headers:   decodeHeaders(m.Headers),
+		CreatedAt: m.CreatedAt,
 	})
 	if perr == nil {
 		return true, u.store.MarkPublished(ctx, m.ID)

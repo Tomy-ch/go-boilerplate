@@ -36,6 +36,19 @@ func (b *meterBuilder) histogram(name, desc string) metric.Float64Histogram {
 	return h
 }
 
+// countHistogram は、時間ではなく個数の分布を取る histogram を生成します（単位は無次元の "1"）。
+func (b *meterBuilder) countHistogram(name, desc string) metric.Int64Histogram {
+	if b.err != nil {
+		return nil
+	}
+	h, err := b.m.Int64Histogram(name, metric.WithDescription(desc), metric.WithUnit("1"))
+	if err != nil {
+		b.err = xerrors.Wrap(err, name)
+		return nil
+	}
+	return h
+}
+
 func (b *meterBuilder) upDownCounter(name, desc string) metric.Int64UpDownCounter {
 	if b.err != nil {
 		return nil

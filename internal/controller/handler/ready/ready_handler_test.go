@@ -84,7 +84,7 @@ func Test_server_GetReady(t *testing.T) {
 			require.True(t, ok)
 
 			expected := gen.GetReady200JSONResponse(gen.ReadyResponse{
-				Status:          gen.Ok,
+				Status:          gen.ReadyResponseStatusOk,
 				ApplicationTime: appTime,
 				DbLatencyMs:     1,
 				DbRespondedAt:   dbResAt,
@@ -116,6 +116,34 @@ func Test_server_GetReady(t *testing.T) {
 			res, err := s.GetReady(ctx, gen.GetReadyRequestObject{})
 			require.Nil(t, res)
 			require.ErrorIs(t, err, expectedErr)
+		})
+	})
+}
+
+func Test_toDependencies(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("名前と状態を応答の enum へ写す", func(t *testing.T) {
+			t.Parallel()
+
+			got := toDependencies([]healthcheckuc.DependencyStatus{
+				{Name: "realtime", Status: healthcheckuc.Degraded},
+			})
+
+			require.NotNil(t, got)
+			assert.Equal(t, []gen.ReadyDependency{
+				{Name: "realtime", Status: gen.ReadyDependencyStatusDegraded},
+			}, *got)
+		})
+
+		t.Run("依存が無ければ項目そのものを出さない", func(t *testing.T) {
+			t.Parallel()
+
+			// 空配列を返すと、結線されていない環境が「依存はあるが空」に見える。
+			assert.Nil(t, toDependencies(nil))
 		})
 	})
 }

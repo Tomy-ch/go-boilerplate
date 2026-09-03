@@ -32,11 +32,13 @@ type Settings struct {
 type Engine struct {
 	sub         rt.InstanceSubscription
 	reprovision Reprovisioner
+	fanout      FanoutObserver
 	wakeups     Waker
 	revocations Revoker
 	sleeper     clock.Sleeper
 	logging     logging.Logger
 	tracer      observability.LayerTracer
+	metrics     *observability.RealtimeMetrics
 	set         Settings
 }
 
@@ -44,11 +46,13 @@ type Engine struct {
 func NewEngine(
 	sub rt.InstanceSubscription,
 	reprovision Reprovisioner,
+	fanout FanoutObserver,
 	wakeups Waker,
 	revocations Revoker,
 	sleeper clock.Sleeper,
 	log logging.Logger,
 	tf observability.TracerFactory,
+	metrics *observability.RealtimeMetrics,
 	set Settings,
 ) *Engine {
 	if set.BatchSize <= 0 {
@@ -60,8 +64,8 @@ func NewEngine(
 	}
 
 	return &Engine{
-		sub: sub, reprovision: reprovision, wakeups: wakeups, revocations: revocations,
-		sleeper: sleeper, logging: log, tracer: tf.Controller(), set: set,
+		sub: sub, reprovision: reprovision, fanout: fanout, wakeups: wakeups, revocations: revocations,
+		sleeper: sleeper, logging: log, tracer: tf.Controller(), metrics: metrics, set: set,
 	}
 }
 
@@ -78,6 +82,8 @@ func (e *Engine) Run(ctx context.Context) error {
 		}
 
 		batch, err := e.sub.Receive(ctx, e.set.BatchSize)
+		e.fanout.ObserveFanout(err)
+
 		if err != nil {
 			if ctx.Err() != nil {
 				return nil
@@ -110,11 +116,13 @@ func (e *Engine) repairIfGone(ctx context.Context, log logging.Logger, cause err
 		}
 
 		log.Error(ctx, "failed to reprovision the realtime receiving end", logging.Error(logging.ErrorKey, err))
+		e.metrics.RecoveryExecuted(ctx, observability.RealtimeResultError)
 
 		return
 	}
 
 	log.Info(ctx, "reprovisioned the realtime receiving end")
+	e.metrics.RecoveryExecuted(ctx, observability.RealtimeResultOK)
 }
 
 // dispatch は、1 回の受信分を種別ごとに sink へ渡し、渡し終えた通知を削除します。

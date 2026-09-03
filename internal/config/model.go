@@ -166,7 +166,6 @@ type OutboxConfig struct {
 }
 
 // AuthConfig は、access token（JWT）検証の設定を保持します。
-// Issuer / Audience / JWKSURL が空の環境では実 JWT authenticator ではなくスタブが使われます。
 type AuthConfig struct {
 	issuer             string
 	audience           string
@@ -190,13 +189,15 @@ type ObjectStorageConfig struct {
 
 // RealtimeConfig は、Realtime Delivery の store（DynamoDB 互換）と fan-out（SNS / SQS 互換）の接続設定を保持します。
 type RealtimeConfig struct {
-	region          string
-	tableSuffix     string
-	topic           string
-	queuePrefix     string
-	dlq             string
-	accessKeyID     string
-	secretAccessKey string
+	region            string
+	tableSuffix       string
+	topic             string
+	queuePrefix       string
+	dlq               string
+	accessKeyID       string
+	secretAccessKey   string
+	maxConnections    int
+	replayConcurrency int
 }
 
 // EndpointConfig は、このアプリが接続する外部サービスの所在を保持します。
@@ -629,6 +630,12 @@ func (r *RealtimeConfig) AccessKeyID() string { return r.accessKeyID }
 
 // SecretAccessKey は、静的資格情報のシークレットアクセスキーを返します。
 func (r *RealtimeConfig) SecretAccessKey() string { return r.secretAccessKey }
+
+// MaxConnections は、1 instance が同時に保持する SSE 接続数の上限を返します。
+func (r *RealtimeConfig) MaxConnections() int { return r.maxConnections }
+
+// ReplayConcurrency は、replay と catch-up が 1 instance で同時に走る本数の上限を返します。
+func (r *RealtimeConfig) ReplayConcurrency() int { return r.replayConcurrency }
 
 // NewEndpointConfig は、接続先の設定を返します。
 func NewEndpointConfig(cfg *Config) *EndpointConfig { return &cfg.endpoint }

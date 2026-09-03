@@ -84,6 +84,32 @@ jobs:
           --health-timeout=5s
           --health-retries=5
           --health-start-period=20s
+      dynamodb_local:
+        # DynamoDB Local, the Realtime Delivery store the server reaches at startup. Same version as the
+        # dynamodb_local service in docker-compose.yaml. A service container takes no command, so it runs
+        # on the image default (-inMemory).
+        image: amazon/dynamodb-local:3.3.1@sha256:ff89bd48ff32cd8d9be5fee8873b65b8854dc408f1afe881be6eb00247bc0dab
+        ports:
+          - "8000:8000"
+        options: >-
+          --health-cmd="curl -s -o /dev/null http://localhost:8000"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+          --health-start-period=10s
+      goaws:
+        # SNS / SQS emulator for the Realtime Delivery fan-out. Same version as the goaws service in
+        # docker-compose.yaml. A service container takes no config file, so it runs on the image defaults
+        # and its account id is 100010001000, not the 000000000000 compose uses.
+        image: admiralpiett/goaws:v0.5.4@sha256:18589afe16517751cc981354536c148854157a718bee9059494d6cdee3dc4e2d
+        ports:
+          - "4100:4100"
+        options: >-
+          --health-cmd="nc -z localhost 4100"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+          --health-start-period=5s
 
     steps:
       - name: Harden the runner
@@ -271,6 +297,11 @@ jobs:
           cat exchange-rate-stub.log || true
           exit 1
       # sample-api:end
+
+      # The Realtime Delivery tables and topic are created by a one-shot, never at application start,
+      # so the server's startup probe has nothing to reach without this.
+      - name: Initialize the Realtime Delivery store and topic
+        run: go run ./cmd/ realtime-init
 
       - name: Start server
         run: |

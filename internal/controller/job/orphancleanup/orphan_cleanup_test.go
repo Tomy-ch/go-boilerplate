@@ -29,7 +29,7 @@ func newJob(t *testing.T, log logging.Logger) (*jobImpl, *mock_realtime.MockOrph
 	t.Helper()
 
 	sweeper, factory := newSweeperMock(t)
-	j, ok := New(log, observability.NewNoopTracerFactory(t), factory).(*jobImpl)
+	j, ok := New(log, observability.NewNoopTracerFactory(t), observability.NewNoopRealtimeMetrics(t), factory).(*jobImpl)
 	require.True(t, ok)
 
 	return j, sweeper
@@ -86,7 +86,8 @@ func Test_jobImpl_Execute(t *testing.T) {
 
 			// Realtime を配線していない環境ではここで初めて失敗し、他のジョブは影響を受けない。
 			factory := func(context.Context) (ucrealtime.OrphanSweeper, error) { return nil, apperror.ErrInvalidArgument }
-			j, ok := New(logging.NewTestLogger(t), observability.NewNoopTracerFactory(t), factory).(*jobImpl)
+			j, ok := New(logging.NewTestLogger(t), observability.NewNoopTracerFactory(t),
+				observability.NewNoopRealtimeMetrics(t), factory).(*jobImpl)
 			require.True(t, ok)
 
 			require.ErrorIs(t, j.Execute(t.Context(), nil), apperror.ErrInvalidArgument)
@@ -131,6 +132,33 @@ func Test_resultFields(t *testing.T) {
 				logging.JobResultKey:  int64(3),
 				logging.JobSkippedKey: int64(2),
 			}, entries[0].ContextMap())
+		})
+	})
+}
+
+func Test_jobImpl_recordOutcomes(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("内訳を outcome 別に計上し 0 件は記録しない", func(t *testing.T) {
+			t.Parallel()
+
+			metrics := observability.NewObservedRealtimeMetrics(t)
+			j := &jobImpl{metrics: metrics.RealtimeMetrics}
+
+			j.recordOutcomes(context.Background(), ucrealtime.SweepResult{
+				Detected: 3, Claimed: 2, Reclaimed: 1, Skipped: 1, Failed: 0,
+			})
+
+			const metric = "realtime.cleanup.instances"
+			assert.Equal(t, int64(3), metrics.CounterValue(t, metric, "outcome", outcomeDetected))
+			assert.Equal(t, int64(2), metrics.CounterValue(t, metric, "outcome", outcomeClaimed))
+			assert.Equal(t, int64(1), metrics.CounterValue(t, metric, "outcome", outcomeReclaimed))
+			assert.Equal(t, int64(1), metrics.CounterValue(t, metric, "outcome", outcomeSkipped))
+			// 0 件の系列を出すと「失敗が 0 件あった」と「失敗を観測していない」が区別できなくなる。
+			assert.Equal(t, int64(-1), metrics.CounterValue(t, metric, "outcome", outcomeFailed))
 		})
 	})
 }

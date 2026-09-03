@@ -16,7 +16,7 @@ placement); ADR-0074 (query-ticket-stream-authentication).
 | 2 | `after` / `Last-Event-ID` are checked against the spec pattern | OpenAPI validator | 400 (`BAD_REQUEST`) |
 | 3 | The cursor is resolved: `Last-Event-ID` → `after` → the ticket's initial cursor | `cursor.go` | 400 (`INVALID_STREAM_CURSOR`) for a negative or out-of-range value |
 | 4 | The cursor is checked against the replay floor | `usecase/realtime.CursorValidator` | 410 (`STREAM_CURSOR_EXPIRED`) when replay can no longer start there; 503 when the EventLog cannot be read |
-| 5 | The verified `StreamRequest` is handed to `Streamer`, which indexes the connection and then verifies the ticket **once more** | `registry.go` | 503 (`SERVICE_UNAVAILABLE`) + `Retry-After` when the instance is at its connection cap, has no initial-replay slot within the bounded wait, or is draining |
+| 5 | The verified `StreamRequest` is handed to `Streamer`, which indexes the connection and then verifies the ticket **once more** | `registry.go` | 503 (`SERVICE_UNAVAILABLE`) + `Retry-After` when the instance is at its connection cap, has no initial-replay slot within the bounded wait, is draining, or is not receiving fan-out notifications |
 
 Step 5's second verification exists because steps 1 and 4 are separated by external I/O. A revocation
 that lands in that gap finds nothing to close — the connection is not in the registry's index yet —
@@ -45,7 +45,8 @@ The package lives beside `handler/`, not under it: it is transport for a mechani
 resource, and `internal/architest/realtime_isolation_test.go` forbids it from importing any
 `internal/domain/<feature>` or `internal/usecase/<feature>`. `BindHandler` is registered by the
 Realtime DI module (`internal/di/module/realtime.go`), never in `di/module/controller.go`. That module is
-not in the serve graph yet: it joins once a feature adapter needs it, which is #1416 and #1417.
+wired into the serve profile through `module.ServeRealtimeModule()`, on a line carrying the
+`sample-api:line` marker — removing the sample feature's realtime adapter removes the runtime with it.
 
 ## Runtime: what one connection does after commit
 
@@ -102,18 +103,40 @@ overflows), `AUTH_REFRESH_REQUIRED` (`REAUTHENTICATE`, at the 1 h lifetime), `AU
 running connection survives an unreachable EventLog rather than failing, and a stream blocked by a dead
 head row is visible to the relay, not to a connection.
 
+## Tuning and instrumentation
+
+`Settings.MaxConnections` and `Settings.ReplayConcurrency` come from `REALTIME_MAX_CONNECTIONS` and
+`REALTIME_REPLAY_CONCURRENCY`, both code defaults that no `env` file carries (`env/README.md`). A zero or
+negative value falls back to the default, so a graph that builds `Settings` itself still gets a bounded
+instance.
+
+The package records the connection, replay and delivery halves of `observability.RealtimeMetrics`
+(`realtime.connections.*`, `realtime.replay.*`, `realtime.delivery.latency_ms`). Two counts that look
+interchangeable are deliberately separate: `active` follows membership of the index, while `accepted`
+counts only connections whose response was committed — a connection can enter the index and still be
+refused a moment later when no replay slot frees up, and collapsing the two would make either number lie.
+No identifier is ever a label; correlation goes through the structured log's `stream_id` and through traces.
+
+Each event written to a client gets a short span whose parent is the connection and whose **link** is the
+trace of the command that produced the event, read from the envelope's opaque `Origin` carrier. The link direction
+is the point: making the delivery a child of the originating command would keep that trace open for as
+long as the connection lives ([design §3.4](../../../docs/design/realtime-delivery.md)).
+
+## Degraded operation
+
+`FanoutHealth` answers whether notifications are arriving; the registry refuses new connections with
+`ErrDegraded` while they are not. Open connections are left alone — closing them all at once turns a
+recovery into a reconnect storm — and their periodic catch-up resumes delivery when the dependency
+returns ([design §2.6](../../../docs/design/realtime-delivery.md)). The judgement itself belongs to
+`usecase/realtime.Health`; this package only reads it.
+
 ## What is still elsewhere
 
-- **Typed config.** `MaxConnections` and `ReplayConcurrency` are `Settings` fields whose zero values
-  fall back to defaults, the same shape as `realtime.Settings` on the consumer engine. Exposing them as
-  environment variables, and syncing `env/**`, is #1417.
-- **Metrics.** Every close records a reason (`close_reason`) in a structured log, and the branches are
-  separated so a counter can be attached to each. Registering the `realtime_*` metrics, the label rules
-  and their architecture test is #1417, which also owns the span links — neither the delivery envelope
-  nor the wakeup notification carries an origin trace today.
-- **`OBS_TARGET_STATUS_CODES`.** 410 is present in `env/.env`, `.env.ci`, `.env.dast`, `.env.dev` and
-  `.env.stg`, and absent only from `.env.prd`, so a `STREAM_CURSOR_EXPIRED` refusal is logged everywhere
-  except production. Whether production should join them is an env-policy decision (`env/README.md`).
+- **`OBS_TARGET_STATUS_CODES`.** 410 is absent from `.env.prd`, so a `STREAM_CURSOR_EXPIRED` refusal is
+  not logged in production. That is a declared policy rather than an omission: `targetStatusCodesPolicy`
+  in `internal/architest/env_consistency_test.go` states that production drops 403 / 404 / 405 / 410 from
+  the tier above it, and the test fails if an environment stops matching. Changing it is an env-policy
+  decision (`env/README.md`) that has to move the declaration too.
 
 ## Sub-packages
 

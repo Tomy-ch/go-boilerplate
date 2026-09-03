@@ -19,6 +19,9 @@ var (
 	ErrReplayAdmission = xerrors.Wrap(apperror.ErrUnavailable, "initial replay admission timed out")
 	// ErrDraining は、instance が停止に入っており新規接続を受け付けないことを示します。
 	ErrDraining = xerrors.Wrap(apperror.ErrUnavailable, "instance is draining")
+	// ErrDegraded は、fan-out から通知を受け取れておらず、新規接続に配信を約束できないことを示します。
+	// 既存の接続は閉じません — 一斉に閉じると回復が再接続の嵐になります（設計正本 §2.6）。
+	ErrDegraded = xerrors.Wrap(apperror.ErrUnavailable, "realtime fan-out is degraded")
 )
 
 // hintRetryAfter は、レスポンス確定前の 503 拒否に Retry-After（秒）の目安を添えます。

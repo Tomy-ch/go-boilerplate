@@ -39,8 +39,9 @@ func NewPublisher(
 	c Clients,
 	topicARN string,
 	tf observability.TracerFactory,
+	metrics *observability.RealtimeMetrics,
 ) publisherbndry.Publisher {
-	return aws.NewPublisher(log, c.SNS, topicARN, tf)
+	return aws.NewPublisher(log, c.SNS, topicARN, tf, metrics)
 }
 
 // NewRevocationNotifier は、失効通知を全 instance へ publish する RevocationNotifier を返します。

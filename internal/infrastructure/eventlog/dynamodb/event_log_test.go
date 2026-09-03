@@ -425,3 +425,54 @@ func TestTableSpec(t *testing.T) {
 	assert.Equal(t, types.KeyTypeRange, spec.KeySchema[1].KeyType)
 	assert.Equal(t, attrSequence, aws.ToString(spec.KeySchema[1].AttributeName))
 }
+
+func Test_originAttr(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("Map 属性の文字列要素を carrier へ戻す", func(t *testing.T) {
+			t.Parallel()
+
+			got := originAttr(map[string]types.AttributeValue{
+				attrOrigin: &types.AttributeValueMemberM{Value: map[string]types.AttributeValue{
+					"traceparent": &types.AttributeValueMemberS{Value: "00-t-s-01"},
+				}},
+			})
+
+			assert.Equal(t, map[string]string{"traceparent": "00-t-s-01"}, got)
+		})
+
+		t.Run("文字列でない要素は落とす", func(t *testing.T) {
+			t.Parallel()
+
+			// item の形が契約と違っても復元を失敗させません。link が 1 本欠けるだけで、
+			// 配送そのものは続けるべきだからです。
+			got := originAttr(map[string]types.AttributeValue{
+				attrOrigin: &types.AttributeValueMemberM{Value: map[string]types.AttributeValue{
+					"traceparent": &types.AttributeValueMemberS{Value: "00-t-s-01"},
+					"bogus":       &types.AttributeValueMemberN{Value: "1"},
+				}},
+			})
+
+			assert.Equal(t, map[string]string{"traceparent": "00-t-s-01"}, got)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("属性が無い・型が違う・空なら nil を返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Nil(t, originAttr(map[string]types.AttributeValue{}))
+			assert.Nil(t, originAttr(map[string]types.AttributeValue{
+				attrOrigin: &types.AttributeValueMemberS{Value: "not a map"},
+			}))
+			assert.Nil(t, originAttr(map[string]types.AttributeValue{
+				attrOrigin: &types.AttributeValueMemberM{Value: map[string]types.AttributeValue{}},
+			}))
+		})
+	})
+}

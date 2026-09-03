@@ -75,6 +75,7 @@ LayerTracer --> ApplicationCode
 |`shutdown.go`|`ProviderShutdowner`（otel 非依存の後始末ハンドル）+ `NewProviderShutdowner`。di の shutdown hook が利用|
 |`ProvideTracerProvider` / `ProvideMeterProvider`|具象プロバイダを `trace.TracerProvider` / `metric.MeterProvider` IF として公開するアダプタ（`provider.go` 内）|
 |`NewPgxTracer`|接続情報を抑止した `otelpgx` トレーサ（DB span + metric、`pgx_tracer.go` 内）|
+|`LayerTracer.StartWithLink`|親は呼び出し側のまま、**link** だけを `map[string]string` の trace context へ張る span。起因となった trace より後・別の場所で起きる処理向け（SSE の配送・replay）|
 |`NewHTTPClientTransport` / `NewHTTPClientMetrics`|SSRF ガード付き・計装済み外向き HTTP トランスポート + その RED メトリクス（`http_client_transport.go` / `http_client_metrics.go` 内）|
 |`propagation.go`|サービス跨ぎ / キャリア跨ぎのトレース伝播（`ExtractFromCarrier` / `InjectTraceContextToCarrier`）|
 |`TracerFactory`|レイヤー別トレーサ生成|
@@ -478,6 +479,7 @@ OTLP 送出）と **Prometheus collector**（プロセスから scrape）の双�
 |`/worker`|`received` / `processed` / `failed` / `retried` / `dlq` / poll・extend errors（counter）, latency（histogram）, in-flight（up-down）|worker engine（broker 非依存）|
 |`/idempotency`|`requests` / `failures` / `expiredCleanup`（counter）。ラベルは `operation_id` / `result` / `phase` / `job` に限定|冪等性サブシステム|
 |`/httpclient`|RED（`requests` / `errors`, latency histogram）+ `retries`, in-flight, `breakerState` gauge|外向き HTTP client substrate|
+|`/realtime`|接続（active / accepted / reconnects / rejected / closed / duration）、replay と catch-up（executions / events / depth / failures / in-flight / admission timeouts / lag）、配送（latency、EventLog の appends と lag、wakeup publish failures、recovery）、cleanup（lease heartbeat failures / executions / instances）。label は `reason` / `trigger` / `result` / `outcome` に限る|Realtime Delivery（serve・relay・cleanup ジョブが meter を共有し、提供は各 process の DI module）|
 
 DB span / metric は `NewPgxTracer`（`otelpgx`）が追加で送出し、Go **ランタイムメトリクス**は
 `MetricsEnabled()` のとき収集されます。

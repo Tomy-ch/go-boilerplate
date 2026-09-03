@@ -278,6 +278,8 @@ components:
       $ref: './components/responses/health-check/ReadyResponse.yaml'
     ResponseVersion:
       $ref: './components/responses/version/VersionResponse.yaml'
+    ReadyDependency:
+      $ref: './components/schemas/ReadyDependency.yaml'
     StreamCursor:
       $ref: './components/schemas/StreamCursor.yaml'
     DeliveryEvent:

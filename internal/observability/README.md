@@ -77,6 +77,7 @@ Roles of each component:
 |`shutdown.go`|`ProviderShutdowner` (otel-agnostic shutdown handle) + `NewProviderShutdowner`, consumed by the DI shutdown hook|
 |`ProvideTracerProvider` / `ProvideMeterProvider`|Adapters exposing the concrete providers as the `trace.TracerProvider` / `metric.MeterProvider` interfaces (in `provider.go`)|
 |`NewPgxTracer`|`otelpgx` tracer for DB spans + metrics, with connection details suppressed (in `pgx_tracer.go`)|
+|`LayerTracer.StartWithLink`|A span whose parent is the caller but whose **link** is the trace carried in a `map[string]string`; for work that happens later and elsewhere than the trace that caused it (SSE delivery, replay)|
 |`NewHTTPClientTransport` / `NewHTTPClientMetrics`|SSRF-guarded, instrumented outbound HTTP transport + its RED metrics (in `http_client_transport.go` / `http_client_metrics.go`)|
 |`propagation.go`|Cross-service / cross-carrier trace propagation (`ExtractFromCarrier` / `InjectTraceContextToCarrier`)|
 |`TracerFactory`|Generate tracers per layer|
@@ -489,6 +490,7 @@ Each subsystem owns its meter and instruments, constructed from the injected
 |`/worker`|`received` / `processed` / `failed` / `retried` / `dlq` / poll & extend errors (counters), latency (histogram), in-flight (up-down)|worker engine (broker-agnostic)|
 |`/idempotency`|`requests` / `failures` / `expiredCleanup` (counters); labels limited to `operation_id` / `result` / `phase` / `job`|idempotency subsystem|
 |`/httpclient`|RED (`requests` / `errors`, latency histogram) + `retries`, in-flight, `breakerState` gauge|outbound HTTP client substrate|
+|`/realtime`|connection (active / accepted / reconnects / rejected / closed / duration), replay & catch-up (executions / events / depth / failures / in-flight / admission timeouts / lag), delivery (latency, EventLog appends & lag, wakeup publish failures, recovery), cleanup (lease heartbeat failures, executions, instances); labels limited to `reason` / `trigger` / `result` / `outcome`|Realtime Delivery (serve, relay and the cleanup job share the meter; each process's DI module provides it)|
 
 DB spans and metrics are additionally emitted by `NewPgxTracer` (`otelpgx`), and Go
 **runtime metrics** are collected when `MetricsEnabled()`.

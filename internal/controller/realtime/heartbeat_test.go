@@ -39,7 +39,8 @@ func newHeartbeat(t *testing.T) (*Heartbeat, heartbeatMocks) {
 		return logs.FilterMessage(msg).Len()
 	}
 
-	return NewHeartbeat(m.keeper, "inst-1", m.sleeper, log, observability.NewNoopTracerFactory(t)), m
+	return NewHeartbeat(m.keeper, "inst-1", m.sleeper, log,
+		observability.NewNoopTracerFactory(t), observability.NewNoopRealtimeMetrics(t)), m
 }
 
 func TestNewHeartbeat(t *testing.T) {

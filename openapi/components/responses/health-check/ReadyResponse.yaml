@@ -26,3 +26,10 @@ properties:
     format: int64
     description: データベース応答までの時間（ミリ秒）
     example: 8
+  dependencies:
+    type: array
+    description: >-
+      通常の HTTP 応答は続けられるが、落ちていれば縮退する依存の状態です。
+      該当する依存が結線されていなければ現れません。
+    items:
+      $ref: '../../schemas/ReadyDependency.yaml'

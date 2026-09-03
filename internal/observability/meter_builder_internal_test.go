@@ -151,3 +151,37 @@ func Test_meterBuilder_gauge(t *testing.T) {
 		})
 	})
 }
+
+func Test_meterBuilder_countHistogram(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("エラー未発生なら個数の histogram を生成して返す", func(t *testing.T) {
+			t.Parallel()
+
+			b := newNoopMeterBuilder(t)
+
+			h := b.countHistogram("test.depth", "desc")
+
+			assert.NotNil(t, h)
+			require.NoError(t, b.err)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("既にエラーがある場合は生成せず nil を返す", func(t *testing.T) {
+			t.Parallel()
+
+			b := newNoopMeterBuilder(t)
+			b.err = xerrors.New("prior")
+
+			h := b.countHistogram("test.depth", "desc")
+
+			assert.Nil(t, h)
+		})
+	})
+}

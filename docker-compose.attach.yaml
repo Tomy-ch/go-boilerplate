@@ -24,6 +24,15 @@ services:
       ENDPOINT_CONSUMER_QUEUE: http://host.docker.internal:9324
       # Realtime Delivery の store（dynamodb_local）も共有インフラ側。ポート 8000 は固定でスロットとは無関係。
       ENDPOINT_REALTIME: http://host.docker.internal:8000
+      # fan-out（goaws）も同じく共有インフラ側。store と別に要る — SNS / SQS は別のホストに載り得るため
+      # 接続先が 2 本に分かれており、片方だけ差し替えるとコンテナ名 goaws の解決に落ちる。
+      ENDPOINT_REALTIME_PUBSUB: http://host.docker.internal:4100
+      # fan-out は 1 つの GoAWS を全 worktree で共有するので、topic と queue をスロットで分ける。
+      # 分けないと失効通知が worktree を越えて届き、別の窓の SSE 接続が閉じられる — 通知は
+      # (subject, destination) で照合され、どの窓の DB も同じ seed から作られて subject が一致するため。
+      # スロット未取得なら既定の名前のまま（単一 checkout では衝突相手が居ない）。
+      REALTIME_TOPIC: arn:aws:sns:us-east-1:000000000000:realtime-fanout-local${SLOT:+-wt$SLOT}
+      REALTIME_QUEUE_PREFIX: realtime-local${SLOT:+-wt$SLOT}
       # token の iss は mock 認証サーバーのホスト公開 URL（Host ヘッダ由来）。スロット毎にポートが
       # ずれるため追従させる。mock 側は iss を保持しないので、追従先はここ 1 箇所で足りる。
       AUTH_ISSUER: http://localhost:${MOCK_AUTH_HOST_PORT:-2010}/default
