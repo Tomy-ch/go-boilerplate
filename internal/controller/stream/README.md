@@ -166,6 +166,13 @@ returns ([design §2.6](../../../docs/design/realtime-delivery.md)). The judgeme
   release, so a scheduling decision is asserted rather than timed. **Anything that flushes or sets a
   write deadline runs over `httptest.Server`**: `httptest.ResponseRecorder` implements neither, so a
   recorder-based test of the writer would assert against a writer the production path never uses.
+- **The instrumentation call sites are pinned here, not left to an integration test.** This package
+  decides *when* a Realtime metric is recorded and *with which* label — the refusal reason, the
+  replay trigger, the connection counted at registration versus at commit — and those are contracts
+  of this layer. `observability.NewObservedRealtimeMetrics` reads the recorded values back, so a
+  subtest asserts the label and the count directly; `CounterValue` returns `-1` for an absent series
+  so "never recorded" stays distinguishable from "recorded zero". An integration test sees only the
+  aggregate and cannot tell a missing call from one made with the wrong reason.
 - `internal/integration` drives the real validator → scheme → handler → registry chain over HTTP:
   401 / 400 / 410 / 200 for the pre-commit refusals, and for the connection itself the capacity cap,
   initial-replay saturation, resume by both `after` and `Last-Event-ID`, delivery by catch-up with no

@@ -296,7 +296,6 @@ func NewAWSConfig(cfg *Config) *AWSConfig {
 |`SetConsumerQueue`|`ConsumerQueueConfig`|
 |`SetAuthIssuer`|`AuthConfig`|
 |`SetAuthAudience`|`AuthConfig`|
-|`SetAuthJWKSURL`|`AuthConfig`|
 |`SetSameSite`|`SecureCookieConfig`|
 |`SetDomain`|`SecureCookieConfig`|
 

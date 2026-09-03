@@ -295,7 +295,6 @@ Methods defined in `config_testing_setter.go` allow temporarily modifying SubCon
 |`SetConsumerQueue`|`ConsumerQueueConfig`|
 |`SetAuthIssuer`|`AuthConfig`|
 |`SetAuthAudience`|`AuthConfig`|
-|`SetAuthJWKSURL`|`AuthConfig`|
 |`SetSameSite`|`SecureCookieConfig`|
 |`SetDomain`|`SecureCookieConfig`|
 

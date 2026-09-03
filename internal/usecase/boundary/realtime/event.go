@@ -1,7 +1,6 @@
 // Package realtime は、Realtime Delivery（docs/design/realtime-delivery.md）の seam を定義します。
 // feature 中立な封筒 DeliveryEvent と、それを保存・配送する側が実装する境界
-// （EventLogStore / StreamTicketStore / InstanceLeaseStore / SecretGenerator、および #1410 の
-// SequenceAllocator）を置きます。DynamoDB / AWS の語彙（table / partition / TTL 等）はこの
+// （EventLogStore / StreamTicketStore / InstanceLeaseStore / SecretGenerator / SequenceAllocator）を置きます。DynamoDB / AWS の語彙（table / partition / TTL 等）はこの
 // package に現れません。feature の語彙（会話・メッセージ等）も現れません。
 package realtime
 
@@ -26,9 +25,8 @@ const (
 // StreamID は、event が属する stream（= 配送先 destination）の識別子です。
 type StreamID string
 
-// Sequence は、stream 内の位置です。1 から始まり gap 無く増え、0 値は「位置を持たない」ことを
-// 意味しません（未採番かどうかは SequenceAllocator.Current の ok で表します）。
-// int64 なのは allocator の PostgreSQL BIGINT と同じ幅にするためで、非負性は採番側が保証します。
+// Sequence は、stream 内の位置です。1 から始まり gap 無く増えます。0 値は番兵ではなく、
+// 未採番かどうかは SequenceAllocator.Current の ok で表します。
 type Sequence int64
 
 // DeliveryEvent は、feature 中立な配送封筒です。EventID は outbox の message_id と同じ値で、
@@ -48,12 +46,10 @@ type DeliveryEvent struct {
 	SchemaVersion int
 	// Payload は、feature が定義する JSON です。機構は中身を解釈しません。
 	Payload json.RawMessage
-	// Origin は、この event を生んだ command の trace を指す不透明な carrier です。
-	// 中身の項目名は observability だけが知り、機構は解釈せず運ぶだけです
-	// （outbox の Message.Headers と同じ扱い）。client には届きません（直列化形に含めない）。
-	// 配送と replay の span がここへ link を張り、起点の command から
-	// 「この event がいつ誰に届いたか」を辿れるようにします。
-	// nil でも構いません — 伝搬が途切れた event は link の無い span になるだけです。
+	// Origin は、この event を生んだ command の trace を運ぶ不透明な carrier です。項目名は observability
+	// だけが知り、機構は解釈せず運ぶだけです（outbox の Message.Headers と同じ扱い）。client には届きません
+	// （直列化形に含めない）。nil でも構いません — link の無い span になるだけです
+	// （配送・replay の span がここへ link を張る契約は docs/design/realtime-delivery.md §3.4）。
 	Origin map[string]string
 }
 
