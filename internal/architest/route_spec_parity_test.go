@@ -40,7 +40,8 @@ var (
 	// あるため、第 1 引数が HTTP メソッドか echo.Route リテラルであることを要求して区別します。
 	opaqueAddCallRe = regexp.MustCompile(
 		`\.Add\(\s*(?:"(?:GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS|CONNECT|TRACE|QUERY)"` +
-			`|http\.Method\w+|(?:echo\.)?Route\{)`)
+			`|http\.Method\w+|(?:echo\.)?Route\{)`,
+	)
 	// specParamRe は、OpenAPI のパスパラメータ表記 {name} を捕捉します。
 	specParamRe = regexp.MustCompile(`\{(\w+)\}`)
 )
@@ -129,7 +130,8 @@ func Test_scanEchoRouteRegistrations(t *testing.T) {
 			t.Parallel()
 
 			scan, found := scanEchoRouteRegistrations(
-				echoFuncSource("\trouter.PATCH(options.BaseURL+\"/v1/users/:userId\", wrapper.PatchUsersDetail)"))
+				echoFuncSource("\trouter.PATCH(options.BaseURL+\"/v1/users/:userId\", wrapper.PatchUsersDetail)"),
+			)
 
 			assert.True(t, found)
 			assert.Equal(t, []routeRegistration{{method: "PATCH", path: "/v1/users/:userId"}}, scan.routes)
@@ -154,7 +156,8 @@ func Test_scanEchoRouteRegistrations(t *testing.T) {
 
 			// 生成コードの EchoRouter インターフェース宣言がこの形に当たる。
 			scan, found := scanEchoRouteRegistrations(
-				echoSource("type EchoRouter interface {\n\tGET(path string, h echo.HandlerFunc) echo.RouteInfo\n}"))
+				echoSource("type EchoRouter interface {\n\tGET(path string, h echo.HandlerFunc) echo.RouteInfo\n}"),
+			)
 
 			assert.True(t, found)
 			assert.Empty(t, scan.routes)
@@ -165,7 +168,8 @@ func Test_scanEchoRouteRegistrations(t *testing.T) {
 			t.Parallel()
 
 			scan, found := scanEchoRouteRegistrations(
-				echoFuncSource("\treq.Header.Add(k, v)\n\tq.Add(p.Name, p.Value)"))
+				echoFuncSource("\treq.Header.Add(k, v)\n\tq.Add(p.Name, p.Value)"),
+			)
 
 			assert.True(t, found)
 			assert.Empty(t, scan.routes)

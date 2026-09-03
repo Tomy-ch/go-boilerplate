@@ -105,12 +105,14 @@ func TestV1ProductsRankingQuantity_Integration(t *testing.T) {
 					require.NotNil(t, params.Window.After())
 					assert.True(t, time.Date(2026, time.January, 21, 0, 0, 0, 0, time.UTC).Equal(*params.Window.After()))
 					return sampleView(t), nil
-				})
+				},
+			)
 
 			productsrankinghandler.BindHandler(e, tf, mockUC)
 
 			actual := StartServer(t, e).DoJSON(
-				http.MethodGet, "/v1/products/ranking/quantity?orderedAfter=2026-01-21T00:00:00Z&limit=3", nil, nil)
+				http.MethodGet, "/v1/products/ranking/quantity?orderedAfter=2026-01-21T00:00:00Z&limit=3", nil, nil,
+			)
 			AssertJSONResponseType[gen.ProductQuantityRankingResponse](t, actual)
 		})
 
@@ -127,7 +129,8 @@ func TestV1ProductsRankingQuantity_Integration(t *testing.T) {
 					assert.Nil(t, params.Window.After())
 					assert.Nil(t, params.Window.Before())
 					return sampleView(t), nil
-				})
+				},
+			)
 
 			productsrankinghandler.BindHandler(e, tf, mockUC)
 			useOpenAPIValidation(t, e)

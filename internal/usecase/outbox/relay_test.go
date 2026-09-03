@@ -30,7 +30,8 @@ func passthroughManager(t *testing.T, ctrl *gomock.Controller) tx.Manager {
 	t.Helper()
 	m := mock_tx.NewMockManager(ctrl)
 	m.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
-		func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) }).Times(1)
+		func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) },
+	).Times(1)
 	return m
 }
 
@@ -138,7 +139,8 @@ func Test_relayUsecase_RelayBatch(t *testing.T) {
 					assert.Equal(t, msg.EventType, m.EventType)
 					assert.Equal(t, msg.Payload, m.Payload)
 					return nil
-				})
+				},
+			)
 			store.EXPECT().MarkPublished(gomock.Any(), msg.ID).Return(nil)
 
 			got, err := newRelay(t, passthroughManager(t, ctrl), store, pub).
@@ -238,7 +240,8 @@ func Test_relayUsecase_RelayBatch(t *testing.T) {
 				func(_ context.Context, m publisher.Message) error {
 					assert.Equal(t, map[string]string{"traceparent": "00-x"}, m.Headers)
 					return nil
-				})
+				},
+			)
 			store.EXPECT().MarkPublished(gomock.Any(), msg.ID).Return(nil)
 
 			_, err := newRelay(t, passthroughManager(t, ctrl), store, pub).
@@ -260,7 +263,8 @@ func Test_relayUsecase_RelayBatch(t *testing.T) {
 				func(_ context.Context, m publisher.Message) error {
 					assert.Nil(t, m.Headers)
 					return nil
-				})
+				},
+			)
 			store.EXPECT().MarkPublished(gomock.Any(), msg.ID).Return(nil)
 
 			_, err := newRelay(t, passthroughManager(t, ctrl), store, pub).
@@ -406,7 +410,8 @@ func Test_relayUsecase_RecordLag(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		return outbox.NewRelay(
 			relayDeps(t, mock_tx.NewMockManager(ctrl), store, mock_publisher.NewMockPublisher(ctrl), metrics, now),
-			outboxbndry.ChannelHTTP)
+			outboxbndry.ChannelHTTP,
+		)
 	}
 
 	t.Run("正常系", func(t *testing.T) {
@@ -471,7 +476,8 @@ func Test_relayUsecase_RecordBlockedStreams(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		return outbox.NewRelay(
 			relayDeps(t, mock_tx.NewMockManager(ctrl), store, mock_publisher.NewMockPublisher(ctrl), metrics, time.Time{}),
-			outboxbndry.ChannelHTTP)
+			outboxbndry.ChannelHTTP,
+		)
 	}
 
 	t.Run("正常系", func(t *testing.T) {

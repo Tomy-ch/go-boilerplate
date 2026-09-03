@@ -55,7 +55,8 @@ func Test_gateway_GetRate(t *testing.T) {
 					assert.Contains(t, req.URL(), "base=USD")
 					assert.Contains(t, req.URL(), "quote=JPY")
 					return &httpclient.Response{StatusCode: 200, Body: []byte(`{"rate":150.5,"date":"2026-07-21"}`)}, nil
-				})
+				},
+			)
 
 			gw := exchangerate.New(testEndpoint, client, observability.NewNoopTracerFactory(t))
 			rate, err := gw.GetRate(context.Background(), "USD", "JPY")

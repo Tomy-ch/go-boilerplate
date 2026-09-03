@@ -80,7 +80,8 @@ func Test_usecase_UpdateProductStock(t *testing.T) {
 				func(_ context.Context, p *domainproduct.Product) (int, error) {
 					captured = p
 					return nextVersion, nil
-				})
+				},
+			)
 
 			actual, err := u.UpdateProductStock(context.Background(), &auth.Authn{}, entity.ID(),
 				UpdateProductStockParams{Delta: 10})

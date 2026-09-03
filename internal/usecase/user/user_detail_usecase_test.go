@@ -493,12 +493,14 @@ func Test_usecase_DeleteUser(t *testing.T) {
 				func(_ context.Context, in outbox.EmitInput) (uuid.UUID, error) {
 					emitted = in
 					return uuid.UUID{}, nil
-				})
+				},
+			)
 
 			// 論理削除とイベント発行を別々の tx に分けると退会だけが残るため、tx は 1 回に固定する。
 			singleTx := mock_tx.NewMockManager(ctrl)
 			singleTx.EXPECT().Do(gomock.Any(), gomock.Any()).Times(1).DoAndReturn(
-				func(ctx context.Context, fn func(ctx context.Context) error) error { return fn(ctx) })
+				func(ctx context.Context, fn func(ctx context.Context) error) error { return fn(ctx) },
+			)
 
 			uc := &usecase{
 				tracer: lt, txm: singleTx, clock: clock, authorizer: allowAuthorizer(ctrl),

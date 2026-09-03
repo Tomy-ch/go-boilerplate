@@ -126,7 +126,8 @@ func Test_statsProvider_QueueStats(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			api := mock_sqs.NewMockAPI(ctrl)
 			api.EXPECT().GetQueueAttributes(gomock.Any(), gomock.Any()).Return(
-				&awssqs.GetQueueAttributesOutput{Attributes: map[string]string{}}, nil)
+				&awssqs.GetQueueAttributesOutput{Attributes: map[string]string{}}, nil,
+			)
 
 			stats, err := newStatsProvider(t, api, Config{QueueURL: "q"}).QueueStats(context.Background())
 

@@ -107,7 +107,8 @@ func TestV1Users_Integration(t *testing.T) {
 			store.EXPECT().Complete(gomock.Any(), gomock.Any()).Return(nil)
 			txm := mock_tx.NewMockManager(ctrl)
 			txm.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
-				func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) })
+				func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) },
+			)
 			clk := clocktest.NewMockClock(t, time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC))
 
 			v1users.BindHandler(e, tf, mockApp, idempotency.Deps{Txm: txm, Store: store, Clock: clk})

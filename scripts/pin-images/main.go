@@ -74,7 +74,8 @@ var (
 	// false を返して固定対象から静かに外れ、可動タグのまま CI で走る。一致しない形は
 	// detectLooseRefs が拾って fail-close する。
 	usesDockerRe = regexp.MustCompile(
-		`(?m)^([ \t]*(?:-[ \t]*)?uses:[ \t]*docker://)((?:[^\s@]+/)?[^\s@/:]+:[^\s@/]+(?:@\S+)?)([ \t]*(?:#.*)?)$`)
+		`(?m)^([ \t]*(?:-[ \t]*)?uses:[ \t]*docker://)((?:[^\s@]+/)?[^\s@/:]+:[^\s@/]+(?:@\S+)?)([ \t]*(?:#.*)?)$`,
+	)
 	// usesDockerRe の取りこぼしを拾う緩いパターン。引用符付き・flow mapping・tag 無しのいずれも
 	// ここへ落ちる。owner/repo 形式の uses: には反応しない（pin-actions の担当）。
 	looseDockerUsesRe = regexp.MustCompile(`\buses[ \t]*:[ \t]*["']?docker://`)
@@ -387,7 +388,8 @@ func resolve(root string, targets []target, minAgeDays int) error {
 
 		return xerrors.Wrap(errNoStepBack, fmt.Sprintf(
 			"%d 日未満・既存ピン無し。aged 後に再実行するか、緊急時のみ --min-age-days=0 で明示採用してください: %s",
-			minAgeDays, strings.Join(skipped, ", ")))
+			minAgeDays, strings.Join(skipped, ", "),
+		))
 	}
 
 	return nil

@@ -188,14 +188,16 @@ func Test_handle(t *testing.T) {
 			txm := mock_tx.NewMockManager(ctrl)
 			clk := clocktest.NewMockClock(t, time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC))
 			txm.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
-				func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) })
+				func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) },
+			)
 
 			var got idempotencybndry.ClaimParams
 			store.EXPECT().Claim(gomock.Any(), gomock.Any()).DoAndReturn(
 				func(_ context.Context, p idempotencybndry.ClaimParams) (bool, error) {
 					got = p
 					return true, nil
-				})
+				},
+			)
 			store.EXPECT().Complete(gomock.Any(), gomock.Any()).Return(nil)
 
 			deps := idempotencyuc.Deps{Txm: txm, Store: store, Clock: clk}
@@ -388,13 +390,15 @@ func TestMiddleware(t *testing.T) {
 			clk := clocktest.NewMockClock(t, time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC))
 			metrics := mock_idempotencyuc.NewMockMetrics(ctrl)
 			txm.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
-				func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) })
+				func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) },
+			)
 			store.EXPECT().Claim(gomock.Any(), gomock.Any()).Return(true, nil)
 			store.EXPECT().Complete(gomock.Any(), gomock.Any()).Return(nil)
 
 			var gotOperationID string
 			metrics.EXPECT().IncMiss(gomock.Any(), gomock.Any()).Do(
-				func(_ context.Context, operationID string) { gotOperationID = operationID })
+				func(_ context.Context, operationID string) { gotOperationID = operationID },
+			)
 
 			deps := idempotencyuc.Deps{Txm: txm, Store: store, Clock: clk, Metrics: metrics}
 			_, _, runErr := idempotencyuc.Run(ec.Request().Context(), deps, 201,

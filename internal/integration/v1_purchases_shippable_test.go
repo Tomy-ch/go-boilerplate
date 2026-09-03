@@ -94,7 +94,8 @@ func TestV1PurchasesShippable_Integration(t *testing.T) {
 				) (purchaseuc.PurchaseShippableListView, error) {
 					captured = params
 					return shippableView(t), nil
-				})
+				},
+			)
 
 			purchasesshippablehandler.BindHandler(e, tf, uc)
 

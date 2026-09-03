@@ -154,7 +154,8 @@ func Test_usecase_ListShippablePurchases(t *testing.T) {
 					capturedAction = action
 					capturedResource = resource
 					return nil
-				})
+				},
+			)
 			deps.repo.EXPECT().FindShippable(gomock.Any(), gomock.Any()).Return(domainpurchase.Purchases{}, nil)
 
 			_, err := u.ListShippablePurchases(context.Background(), &auth.Authn{}, ListShippablePurchasesParams{})
@@ -176,7 +177,8 @@ func Test_usecase_ListShippablePurchases(t *testing.T) {
 				func(_ context.Context, limit int32) (domainpurchase.Purchases, error) {
 					capturedLimit = limit
 					return domainpurchase.Purchases{}, nil
-				})
+				},
+			)
 
 			_, err := u.ListShippablePurchases(
 				context.Background(), &auth.Authn{}, ListShippablePurchasesParams{Limit: 0},
@@ -196,7 +198,8 @@ func Test_usecase_ListShippablePurchases(t *testing.T) {
 				func(_ context.Context, limit int32) (domainpurchase.Purchases, error) {
 					capturedLimit = limit
 					return domainpurchase.Purchases{}, nil
-				})
+				},
+			)
 
 			_, err := u.ListShippablePurchases(
 				context.Background(), &auth.Authn{}, ListShippablePurchasesParams{Limit: 1000},

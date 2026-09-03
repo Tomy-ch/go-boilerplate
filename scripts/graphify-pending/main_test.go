@@ -76,7 +76,8 @@ func Test_run(t *testing.T) {
 		"graphify-out/manifest.json": fmt.Sprintf(
 			`{"README.md":{"ast_hash":"%[1]s","semantic_hash":"%[1]s"},`+
 				`"docs/architecture.md":{"ast_hash":"%[1]s","semantic_hash":"%[1]s"}}`,
-			digest(extracted)),
+			digest(extracted),
+		),
 		"README.md":            edited,
 		"docs/architecture.md": extracted,
 		".graphifyignore":      "",
@@ -98,7 +99,8 @@ func Test_run(t *testing.T) {
 			buffer := captureLog(t)
 			clean := map[string]string{
 				"graphify-out/manifest.json": fmt.Sprintf(
-					`{"README.md":{"ast_hash":"%[1]s","semantic_hash":"%[1]s"}}`, digest(extracted)),
+					`{"README.md":{"ast_hash":"%[1]s","semantic_hash":"%[1]s"}}`, digest(extracted),
+				),
 				"README.md":       extracted,
 				".graphifyignore": "",
 			}

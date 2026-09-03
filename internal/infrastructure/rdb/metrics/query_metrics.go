@@ -82,7 +82,8 @@ func registerOrExisting[T prometheus.Collector](reg prometheus.Registerer, c T) 
 			collectorFQNames(c), alreadyRegisteredErr.ExistingCollector)))
 	}
 	panic(xerrors.Wrap(err, fmt.Sprintf(
-		"registerOrExisting: failed to register collector [%s]", collectorFQNames(c))))
+		"registerOrExisting: failed to register collector [%s]", collectorFQNames(c),
+	)))
 }
 
 // collectorFQNames は、panic メッセージ用にコレクタの descriptor（FQName 含む）を文字列化します。

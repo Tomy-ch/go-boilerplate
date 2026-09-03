@@ -19,7 +19,8 @@ func passthroughManager(t *testing.T) tx.Manager {
 	t.Helper()
 	m := mock_tx.NewMockManager(gomock.NewController(t))
 	m.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
-		func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) })
+		func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) },
+	)
 	return m
 }
 
@@ -33,7 +34,8 @@ func afterErrManager(t *testing.T, afterErr error) tx.Manager {
 				return err
 			}
 			return afterErr
-		})
+		},
+	)
 	return m
 }
 
@@ -49,7 +51,8 @@ func recoveringManager(t *testing.T) tx.Manager {
 				}
 			}()
 			return fn(ctx)
-		})
+		},
+	)
 	return m
 }
 

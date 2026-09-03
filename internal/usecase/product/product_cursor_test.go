@@ -161,7 +161,8 @@ func Test_decodeAllProductCursor(t *testing.T) {
 		t.Run("有効な3キーのカーソルはallProductCursorへ復号される", func(t *testing.T) {
 			t.Parallel()
 			encoded := paging.EncodeCursor(
-				allProductCursorTag, validTime.Format(time.RFC3339Nano), validID.String())
+				allProductCursorTag, validTime.Format(time.RFC3339Nano), validID.String(),
+			)
 			cursor, err := paging.NewCursor(&encoded, nil)
 			require.NoError(t, err)
 
@@ -223,7 +224,8 @@ func Test_decodeAllProductCursor(t *testing.T) {
 		t.Run("idがUUIDでない場合はErrInvalidArgumentを返す", func(t *testing.T) {
 			t.Parallel()
 			encoded := paging.EncodeCursor(
-				allProductCursorTag, validTime.Format(time.RFC3339Nano), "not-a-uuid")
+				allProductCursorTag, validTime.Format(time.RFC3339Nano), "not-a-uuid",
+			)
 			cursor, err := paging.NewCursor(&encoded, nil)
 			require.NoError(t, err)
 

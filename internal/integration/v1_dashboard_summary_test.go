@@ -70,7 +70,8 @@ func TestV1DashboardSummary_Integration(t *testing.T) {
 				func(_ context.Context, _ *auth.Authn, w timewindow.Window) (dashboarduc.SummaryView, error) {
 					captured = w
 					return dashboarduc.SummaryView{}, nil
-				})
+				},
+			)
 
 			dashboardhandler.BindHandler(e, tf, uc)
 
@@ -98,7 +99,8 @@ func TestV1DashboardSummary_Integration(t *testing.T) {
 				func(_ context.Context, _ *auth.Authn, w timewindow.Window) (dashboarduc.SummaryView, error) {
 					captured = w
 					return dashboarduc.SummaryView{}, nil
-				})
+				},
+			)
 
 			dashboardhandler.BindHandler(e, tf, uc)
 

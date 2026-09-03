@@ -172,7 +172,8 @@ func TestV1PurchasesGet_Integration(t *testing.T) {
 			headers := availablePurchaseUser(t, e)
 			actual := StartServer(t, e).DoJSON(
 				http.MethodGet,
-				"/v1/purchases?orderedAfter=2026-01-21T00:00:00Z&orderedBefore=2026-02-01T00:00:00Z", nil, headers)
+				"/v1/purchases?orderedAfter=2026-01-21T00:00:00Z&orderedBefore=2026-02-01T00:00:00Z", nil, headers,
+			)
 			require.Equal(t, http.StatusOK, actual.StatusCode)
 
 			require.NotNil(t, captured.After())
@@ -205,7 +206,8 @@ func TestV1PurchasesGet_Integration(t *testing.T) {
 			after := paging.EncodeCursor("2026-07-23T00:00:00Z", uuidtestkit.NewTestFromSalt(t, "int_both").String())
 			actual := StartServer(t, e).DoJSON(
 				http.MethodGet,
-				"/v1/purchases?after="+after+"&orderedAfter=2026-01-21T00:00:00Z", nil, headers)
+				"/v1/purchases?after="+after+"&orderedAfter=2026-01-21T00:00:00Z", nil, headers,
+			)
 			require.Equal(t, http.StatusOK, actual.StatusCode)
 
 			require.NotNil(t, capturedCursor)
@@ -236,7 +238,8 @@ func TestV1PurchasesGet_Integration(t *testing.T) {
 			// 同じ名前を繰り返す形（explode）で複数のステータスを渡す。
 			actual := StartServer(t, e).DoJSON(
 				http.MethodGet,
-				"/v1/purchases?statusCodes=7&statusCodes=8&includeOtherUsers=true", nil, headers)
+				"/v1/purchases?statusCodes=7&statusCodes=8&includeOtherUsers=true", nil, headers,
+			)
 			require.Equal(t, http.StatusOK, actual.StatusCode)
 
 			assert.Equal(t, []int16{7, 8}, captured.StatusCodes)

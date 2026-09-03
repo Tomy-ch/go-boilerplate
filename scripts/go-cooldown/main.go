@@ -67,7 +67,8 @@ var (
 	// bypassLineRe は `"module@version" = { expires = 2026-11-06, issue = 123, reason = "..." }` を読む。
 	// module / version に空白を許さないので、値が改行でログ行やエントリを偽造することはできない。
 	bypassLineRe = regexp.MustCompile(
-		`^"([^"]+)"\s*=\s*\{\s*expires\s*=\s*(\d{4}-\d{2}-\d{2})\s*,\s*issue\s*=\s*(\d+)\s*,\s*reason\s*=\s*"([^"]*)"\s*\}$`)
+		`^"([^"]+)"\s*=\s*\{\s*expires\s*=\s*(\d{4}-\d{2}-\d{2})\s*,\s*issue\s*=\s*(\d+)\s*,\s*reason\s*=\s*"([^"]*)"\s*\}$`,
+	)
 )
 
 // requirement は go.mod の require 1 行。
@@ -398,7 +399,8 @@ func readBypasses(path string) (map[string]bypass, error) {
 		m := bypassLineRe.FindStringSubmatch(line)
 		if m == nil {
 			return nil, xerrors.Wrap(errBypassInvalidLine, fmt.Sprintf(
-				`%d 行目: %q（形式は "<module>@<version>" = { expires = YYYY-MM-DD, issue = <N>, reason = "..." }）`, lineNo, line))
+				`%d 行目: %q（形式は "<module>@<version>" = { expires = YYYY-MM-DD, issue = <N>, reason = "..." }）`, lineNo, line,
+			))
 		}
 		if _, dup := out[m[1]]; dup {
 			return nil, xerrors.Wrap(errBypassDuplicateKey, fmt.Sprintf("%d 行目: %q", lineNo, m[1]))
@@ -439,18 +441,21 @@ func validateBypasses(bypasses map[string]bypass, current []requirement, today t
 			invalid[key] = struct{}{}
 			violations = append(violations, fmt.Sprintf(
 				"%s:%d %s の期限 %s が切れています。窓明けの版へ更新してエントリを消すか、期限を延ばす判断を #%d で記録してください",
-				bypassFile, b.line, key, b.expires.Format(time.DateOnly), b.issue))
+				bypassFile, b.line, key, b.expires.Format(time.DateOnly), b.issue,
+			))
 		case b.expires.After(limit):
 			invalid[key] = struct{}{}
 			violations = append(violations, fmt.Sprintf(
 				"%s:%d %s の期限 %s が上限（%s から %d ヶ月 = %s）を越えています。恒久 allowlist にしないための上限です",
 				bypassFile, b.line, key, b.expires.Format(time.DateOnly),
-				today.Format(time.DateOnly), maxBypassMonths, limit.Format(time.DateOnly)))
+				today.Format(time.DateOnly), maxBypassMonths, limit.Format(time.DateOnly),
+			))
 		default:
 			if _, ok := inGoMod[key]; !ok {
 				violations = append(violations, fmt.Sprintf(
 					"%s:%d %s は go.mod に存在しません。不要になったエントリは消してください",
-					bypassFile, b.line, key))
+					bypassFile, b.line, key,
+				))
 			}
 		}
 	}

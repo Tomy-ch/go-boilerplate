@@ -159,7 +159,8 @@ func writeBypass(t *testing.T, body string) string {
 func releasedOn(t *testing.T, publishedOn string) *http.Client {
 	t.Helper()
 	return fakeUpstream(t, respondJSON(
-		"/repos/owner/repo/releases/tags/v1.2.3", `{"published_at":"`+publishedOn+`T00:00:00Z"}`))
+		"/repos/owner/repo/releases/tags/v1.2.3", `{"published_at":"`+publishedOn+`T00:00:00Z"}`,
+	))
 }
 
 // useMiseWorkTree は mise.toml だけを持つ作業ディレクトリを作り、そこへ移動します。パスを返すのは
@@ -1276,7 +1277,8 @@ func Test_inspect(t *testing.T) {
 	released := func(t *testing.T, repo, version, publishedOn string) *http.Client {
 		t.Helper()
 		return fakeUpstream(t, respondJSON(
-			"/repos/"+repo+"/releases/tags/v"+version, `{"published_at":"`+publishedOn+`T00:00:00Z"}`))
+			"/repos/"+repo+"/releases/tags/v"+version, `{"published_at":"`+publishedOn+`T00:00:00Z"}`,
+		))
 	}
 
 	t.Run("正常系", func(t *testing.T) {

@@ -55,7 +55,8 @@ func Test_ContentLines(t *testing.T) {
 		t.Run("複数のブロックをそれぞれ独立に扱う", func(t *testing.T) {
 			t.Parallel()
 			got := yamlblock.ContentLines(lines(
-				"  - run: |", "      echo one", "  - name: X", "  - run: |", "      echo two"))
+				"  - run: |", "      echo one", "  - name: X", "  - run: |", "      echo two",
+			))
 			assert.Equal(t, map[int]bool{2: true, 5: true}, got)
 		})
 	})

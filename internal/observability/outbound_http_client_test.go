@@ -111,7 +111,8 @@ func Test_policyStampingRoundTripper_RoundTrip(t *testing.T) {
 				inner := &capturingRoundTripper{}
 				rt := policyStampingRoundTripper{inner: inner, allowPrivateNetwork: allowed}
 				req, err := http.NewRequestWithContext(
-					context.Background(), http.MethodGet, "http://example.com", nil)
+					context.Background(), http.MethodGet, "http://example.com", nil,
+				)
 				require.NoError(t, err)
 
 				_, err = rt.RoundTrip(req)

@@ -92,7 +92,8 @@ func TestV1ProductsLowStock_Integration(t *testing.T) {
 				) (productuc.ProductLowStockListView, error) {
 					captured = params
 					return lowStockView(t), nil
-				})
+				},
+			)
 
 			productslowstockhandler.BindHandler(e, tf, uc)
 

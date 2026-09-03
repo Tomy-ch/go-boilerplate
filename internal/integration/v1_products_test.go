@@ -125,12 +125,14 @@ func TestV1Products_Integration(t *testing.T) {
 				) (productuc.ProductListView, error) {
 					assert.True(t, params.IncludeUnpublished)
 					return productuc.ProductListView{Items: []productuc.ProductView{sampleView(t)}}, nil
-				})
+				},
+			)
 
 			productshandler.BindHandler(e, tf, mockUC)
 
 			actual := StartServer(t, e).DoJSON(
-				http.MethodGet, "/v1/products?includeUnpublished=true", nil, nil)
+				http.MethodGet, "/v1/products?includeUnpublished=true", nil, nil,
+			)
 			assert.Equal(t, http.StatusOK, actual.StatusCode)
 		})
 
@@ -147,7 +149,8 @@ func TestV1Products_Integration(t *testing.T) {
 				) (productuc.ProductListView, error) {
 					assert.False(t, params.IncludeUnpublished)
 					return productuc.ProductListView{Items: []productuc.ProductView{sampleView(t)}}, nil
-				})
+				},
+			)
 
 			productshandler.BindHandler(e, tf, mockUC)
 
@@ -421,7 +424,8 @@ func TestV1Products_Integration(t *testing.T) {
 			productshandler.BindHandler(e, tf, mockUC)
 
 			actual := StartServer(t, e).DoJSON(
-				http.MethodGet, "/v1/products?includeUnpublished=true", nil, nil)
+				http.MethodGet, "/v1/products?includeUnpublished=true", nil, nil,
+			)
 			assert.Equal(t, http.StatusUnauthorized, actual.StatusCode)
 		})
 
@@ -440,7 +444,8 @@ func TestV1Products_Integration(t *testing.T) {
 			productshandler.BindHandler(e, tf, mockUC)
 
 			actual := StartServer(t, e).DoJSON(
-				http.MethodGet, "/v1/products?includeUnpublished=true", nil, nil)
+				http.MethodGet, "/v1/products?includeUnpublished=true", nil, nil,
+			)
 			assert.Equal(t, http.StatusForbidden, actual.StatusCode)
 		})
 

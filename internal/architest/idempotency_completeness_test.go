@@ -161,7 +161,8 @@ func Test_collectMarkedParams(t *testing.T) {
 		t.Run("IdempotencyKeyを持つParams構造体のOpを収集する", func(t *testing.T) {
 			t.Parallel()
 			lines := strings.Split(
-				"package gen\n\ntype CreateOrderParams struct {\n\tIdempotencyKey string\n}\n", "\n")
+				"package gen\n\ntype CreateOrderParams struct {\n\tIdempotencyKey string\n}\n", "\n",
+			)
 
 			marked := map[string]string{}
 			seen := collectMarkedParams(lines, "gen.go", marked)
@@ -173,7 +174,8 @@ func Test_collectMarkedParams(t *testing.T) {
 		t.Run("IdempotencyKeyを持たないParams構造体は件数だけ数えて収集しない", func(t *testing.T) {
 			t.Parallel()
 			lines := strings.Split(
-				"package gen\n\ntype ListOrdersParams struct {\n\tLimit int\n}\n", "\n")
+				"package gen\n\ntype ListOrdersParams struct {\n\tLimit int\n}\n", "\n",
+			)
 
 			marked := map[string]string{}
 			seen := collectMarkedParams(lines, "gen.go", marked)
@@ -187,7 +189,8 @@ func Test_collectMarkedParams(t *testing.T) {
 			lines := strings.Split(
 				"package gen\n\ntype CreateOrderParams struct {\n\tIdempotencyKey string\n}\n\n"+
 					"type ListOrdersParams struct {\n\tLimit int\n}\n\n"+
-					"type PayOrderParams struct {\n\tIdempotencyKey string\n}\n", "\n")
+					"type PayOrderParams struct {\n\tIdempotencyKey string\n}\n", "\n",
+			)
 
 			marked := map[string]string{}
 			seen := collectMarkedParams(lines, "gen.go", marked)
@@ -200,7 +203,8 @@ func Test_collectMarkedParams(t *testing.T) {
 			t.Parallel()
 			lines := strings.Split(
 				"package gen\n\ntype ListOrdersParams struct {\n\tLimit int\n}\n\n"+
-					"type CreateOrderParams struct {\n\tIdempotencyKey string\n}\n", "\n")
+					"type CreateOrderParams struct {\n\tIdempotencyKey string\n}\n", "\n",
+			)
 
 			marked := map[string]string{}
 			collectMarkedParams(lines, "gen.go", marked)
@@ -211,7 +215,8 @@ func Test_collectMarkedParams(t *testing.T) {
 		t.Run("Params以外の構造体は対象にしない", func(t *testing.T) {
 			t.Parallel()
 			lines := strings.Split(
-				"package gen\n\ntype CreateOrderRequest struct {\n\tIdempotencyKey string\n}\n", "\n")
+				"package gen\n\ntype CreateOrderRequest struct {\n\tIdempotencyKey string\n}\n", "\n",
+			)
 
 			marked := map[string]string{}
 			seen := collectMarkedParams(lines, "gen.go", marked)
@@ -232,7 +237,8 @@ func Test_collectRunWrapped(t *testing.T) {
 			t.Parallel()
 			lines := strings.Split(
 				"package handler\n\nfunc (s *server) CreateOrder(ctx context.Context) error {\n"+
-					"\treturn idempotency.Run(ctx, key, fn)\n}\n", "\n")
+					"\treturn idempotency.Run(ctx, key, fn)\n}\n", "\n",
+			)
 
 			wrapped := map[string]struct{}{}
 			collectRunWrapped(lines, wrapped)
@@ -244,7 +250,8 @@ func Test_collectRunWrapped(t *testing.T) {
 			t.Parallel()
 			lines := strings.Split(
 				"package handler\n\nfunc (s *server) ListOrders(ctx context.Context) error {\n"+
-					"\treturn s.uc.List(ctx)\n}\n", "\n")
+					"\treturn s.uc.List(ctx)\n}\n", "\n",
+			)
 
 			wrapped := map[string]struct{}{}
 			collectRunWrapped(lines, wrapped)
@@ -257,7 +264,8 @@ func Test_collectRunWrapped(t *testing.T) {
 			lines := strings.Split(
 				"package handler\n\nfunc (s *server) ListOrders(ctx context.Context) error {\n"+
 					"\treturn s.uc.List(ctx)\n}\n\n"+
-					"func helper() error {\n\treturn idempotency.Run(ctx, key, fn)\n}\n", "\n")
+					"func helper() error {\n\treturn idempotency.Run(ctx, key, fn)\n}\n", "\n",
+			)
 
 			wrapped := map[string]struct{}{}
 			collectRunWrapped(lines, wrapped)
@@ -270,7 +278,8 @@ func Test_collectRunWrapped(t *testing.T) {
 			lines := strings.Split(
 				"package handler\n\nfunc (s *server) CreateOrder(ctx context.Context) error {\n"+
 					"\treturn idempotency.Run(ctx, key, fn)\n}\n\n"+
-					"func (s *server) ListOrders(ctx context.Context) error {\n\treturn s.uc.List(ctx)\n}\n", "\n")
+					"func (s *server) ListOrders(ctx context.Context) error {\n\treturn s.uc.List(ctx)\n}\n", "\n",
+			)
 
 			wrapped := map[string]struct{}{}
 			collectRunWrapped(lines, wrapped)
@@ -290,7 +299,8 @@ func Test_collectUnwrappedOperations(t *testing.T) {
 			t.Parallel()
 
 			violations := collectUnwrappedOperations(
-				map[string]string{"CreateOrder": "gen.go"}, map[string]struct{}{})
+				map[string]string{"CreateOrder": "gen.go"}, map[string]struct{}{},
+			)
 
 			assert.Equal(t, []string{"CreateOrder（gen.go）"}, violations)
 		})
@@ -299,7 +309,8 @@ func Test_collectUnwrappedOperations(t *testing.T) {
 			t.Parallel()
 
 			violations := collectUnwrappedOperations(
-				map[string]string{"CreateOrder": "gen.go"}, map[string]struct{}{"CreateOrder": {}})
+				map[string]string{"CreateOrder": "gen.go"}, map[string]struct{}{"CreateOrder": {}},
+			)
 
 			assert.Empty(t, violations)
 		})

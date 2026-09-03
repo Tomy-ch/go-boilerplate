@@ -272,14 +272,16 @@ func Test_queryTracer_endFields_Mask(t *testing.T) {
 			qtMasked.maskArgs = true
 			qtMasked.slowThreshold = time.Second
 			qtMasked.TraceQueryEnd(
-				context.WithValue(context.Background(), queryLogKey{}, ld), nil, pgx.TraceQueryEndData{})
+				context.WithValue(context.Background(), queryLogKey{}, ld), nil, pgx.TraceQueryEndData{},
+			)
 
 			plainLogger, plainLogs := logging.NewObservedTestLogger(t)
 			qtPlain := newObservedQueryTracer(t, plainLogger)
 			qtPlain.maskArgs = false
 			qtPlain.slowThreshold = time.Second
 			qtPlain.TraceQueryEnd(
-				context.WithValue(context.Background(), queryLogKey{}, ld), nil, pgx.TraceQueryEndData{})
+				context.WithValue(context.Background(), queryLogKey{}, ld), nil, pgx.TraceQueryEndData{},
+			)
 
 			maskedEntries := maskedLogs.FilterMessage("DB query completed").All()
 			require.Len(t, maskedEntries, 1)

@@ -74,7 +74,8 @@ func Test_usecase_GetQuantityRanking(t *testing.T) {
 							SoldQuantity: 8,
 						},
 					}, nil
-				})
+				},
+			)
 
 			got, err := u.GetQuantityRanking(context.Background(), GetRankingParams{Window: window, Limit: 0})
 			require.NoError(t, err)
@@ -94,7 +95,8 @@ func Test_usecase_GetQuantityRanking(t *testing.T) {
 				func(_ context.Context, params query.RankingQueryParams) ([]query.QuantityRankingResult, error) {
 					assert.Equal(t, maxLimit, params.Limit)
 					return []query.QuantityRankingResult{}, nil
-				})
+				},
+			)
 
 			_, err := u.GetQuantityRanking(context.Background(), GetRankingParams{Limit: 1000})
 			require.NoError(t, err)
@@ -187,7 +189,8 @@ func Test_usecase_GetAmountRanking(t *testing.T) {
 							SalesAmount: decimaltestkit.MustParse(t, "59.985"),
 						},
 					}, nil
-				})
+				},
+			)
 
 			got, err := u.GetAmountRanking(context.Background(), GetRankingParams{Limit: 0})
 			require.NoError(t, err)

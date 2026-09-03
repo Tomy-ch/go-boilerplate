@@ -554,7 +554,8 @@ func Test_usecase_CountProducts(t *testing.T) {
 					require.NotNil(t, params.MaxQuantity)
 					assert.Equal(t, int32(20), *params.MaxQuantity)
 					return 7, nil
-				})
+				},
+			)
 
 			u := &usecase{tracer: observability.NewMockUsecaseLayerTracer(t), repo: repo}
 			actual, err := u.CountProducts(context.Background(), nil, CountProductsParams{SearchFilter: SearchFilter{
@@ -1394,7 +1395,8 @@ func Test_usecase_authorizeUnpublishedRead(t *testing.T) {
 					assert.Equal(t, authz.ActionProductReadUnpublished, action)
 					assert.Equal(t, authz.NewResource("product", nil), resource)
 					return nil
-				})
+				},
+			)
 
 			u := &usecase{authorizer: authorizer}
 			require.NoError(t, u.authorizeUnpublishedRead(context.Background(), &auth.Authn{}, true))
@@ -1454,11 +1456,13 @@ func Test_usecase_findPublishedPage(t *testing.T) {
 					assert.Equal(t, p1.ID(), *params.AfterID)
 					assert.Equal(t, int32(3), params.Limit)
 					return domainproduct.Products{p1}, nil
-				})
+				},
+			)
 
 			u := &usecase{repo: repo}
 			actual, findErr := u.findPublishedPage(
-				context.Background(), ListProductsParams{Cursor: cursor}, productListRange{})
+				context.Background(), ListProductsParams{Cursor: cursor}, productListRange{},
+			)
 			require.NoError(t, findErr)
 			assert.Equal(t, domainproduct.Products{p1}, actual)
 		})
@@ -1480,7 +1484,8 @@ func Test_usecase_findPublishedPage(t *testing.T) {
 
 			u := &usecase{repo: repo}
 			_, findErr := u.findPublishedPage(
-				context.Background(), ListProductsParams{Cursor: cursor}, productListRange{})
+				context.Background(), ListProductsParams{Cursor: cursor}, productListRange{},
+			)
 			require.ErrorIs(t, findErr, apperror.ErrInvalidArgument)
 		})
 
@@ -1497,7 +1502,8 @@ func Test_usecase_findPublishedPage(t *testing.T) {
 
 			u := &usecase{repo: repo}
 			_, findErr := u.findPublishedPage(
-				context.Background(), ListProductsParams{Cursor: cursor}, productListRange{})
+				context.Background(), ListProductsParams{Cursor: cursor}, productListRange{},
+			)
 			require.ErrorIs(t, findErr, apperror.ErrInternal)
 		})
 	})
@@ -1528,11 +1534,13 @@ func Test_usecase_findAllPage(t *testing.T) {
 					assert.Equal(t, p1.ID(), *params.AfterID)
 					assert.Equal(t, int32(3), params.Limit)
 					return domainproduct.Products{p1}, nil
-				})
+				},
+			)
 
 			u := &usecase{repo: repo}
 			actual, findErr := u.findAllPage(
-				context.Background(), ListProductsParams{Cursor: cursor}, productListRange{})
+				context.Background(), ListProductsParams{Cursor: cursor}, productListRange{},
+			)
 			require.NoError(t, findErr)
 			assert.Equal(t, domainproduct.Products{p1}, actual)
 		})
@@ -1549,7 +1557,8 @@ func Test_usecase_findAllPage(t *testing.T) {
 
 			u := &usecase{repo: repo}
 			actual, findErr := u.findAllPage(
-				context.Background(), ListProductsParams{Cursor: newDefaultCursor(t)}, productListRange{})
+				context.Background(), ListProductsParams{Cursor: newDefaultCursor(t)}, productListRange{},
+			)
 			require.NoError(t, findErr)
 			require.Len(t, actual, 1)
 			assert.Nil(t, actual[0].PublishedAt())
@@ -1572,7 +1581,8 @@ func Test_usecase_findAllPage(t *testing.T) {
 
 			u := &usecase{repo: repo}
 			_, findErr := u.findAllPage(
-				context.Background(), ListProductsParams{Cursor: cursor}, productListRange{})
+				context.Background(), ListProductsParams{Cursor: cursor}, productListRange{},
+			)
 			require.ErrorIs(t, findErr, apperror.ErrInvalidArgument)
 		})
 	})
@@ -1636,7 +1646,8 @@ func Test_usecase_toProductViews(t *testing.T) {
 
 			u := &usecase{repo: repo}
 			_, err := u.toProductViews(
-				context.Background(), domainproduct.Products{newTestProduct(t, "views_err", base)})
+				context.Background(), domainproduct.Products{newTestProduct(t, "views_err", base)},
+			)
 
 			require.ErrorIs(t, err, apperror.ErrInternal)
 		})
@@ -1684,7 +1695,8 @@ func Test_usecase_toProductViewWithImages(t *testing.T) {
 
 			u := &usecase{repo: repo}
 			_, err := u.toProductViewWithImages(
-				context.Background(), newTestProduct(t, "view_images_err", base))
+				context.Background(), newTestProduct(t, "view_images_err", base),
+			)
 
 			require.ErrorIs(t, err, apperror.ErrInternal)
 		})

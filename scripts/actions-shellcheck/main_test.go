@@ -986,7 +986,8 @@ func Test_check(t *testing.T) {
 			t.Parallel()
 			requireShellcheck(t)
 			steps, err := parseAction("action.yaml", []byte(strings.Replace(
-				compositeAction, "        echo world\n", "        x=\"a b\"; echo $x\n", 1)))
+				compositeAction, "        echo world\n", "        x=\"a b\"; echo $x\n", 1,
+			)))
 			require.NoError(t, err)
 			res, err := check(t.Context(), steps)
 			require.NoError(t, err)

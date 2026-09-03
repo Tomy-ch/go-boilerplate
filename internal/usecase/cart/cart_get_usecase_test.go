@@ -110,7 +110,8 @@ func Test_usecase_GetCart(t *testing.T) {
 				func(_ context.Context, updated *cart.Cart) error {
 					saved = updated
 					return nil
-				})
+				},
+			)
 
 			productRepo := mock_product.NewMockRepository(ctrl)
 			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
@@ -142,7 +143,8 @@ func Test_usecase_GetCart(t *testing.T) {
 				func(_ context.Context, updated *cart.Cart) error {
 					saved = updated
 					return nil
-				})
+				},
+			)
 
 			productRepo := mock_product.NewMockRepository(ctrl)
 			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
@@ -176,7 +178,8 @@ func Test_usecase_GetCart(t *testing.T) {
 				func(_ context.Context, updated *cart.Cart) error {
 					saved = updated
 					return nil
-				})
+				},
+			)
 
 			productRepo := mock_product.NewMockRepository(ctrl)
 			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()

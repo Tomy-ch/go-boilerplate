@@ -65,7 +65,8 @@ func Test_httpPublisher_Publish(t *testing.T) {
 					assert.Equal(t, []string{"application/json"}, req.Header()["Content-Type"])
 					assert.Equal(t, []string{"00-x"}, req.Header()["traceparent"])
 					return &httpclient.Response{StatusCode: 200}, nil
-				})
+				},
+			)
 
 			err := publisher.NewHTTP(publisher.Endpoint(testEndpoint), client, observability.NewNoopTracerFactory(t)).
 				Publish(context.Background(), pubbndry.Message{
@@ -94,7 +95,8 @@ func Test_httpPublisher_Publish(t *testing.T) {
 					assert.NotContains(t, req.Header(), spacedAuthorization)
 					assert.Equal(t, []string{"00-x"}, req.Header()["traceparent"])
 					return &httpclient.Response{StatusCode: 200}, nil
-				})
+				},
+			)
 
 			headers := map[string]string{
 				"traceparent":         "00-x",

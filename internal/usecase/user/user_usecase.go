@@ -522,7 +522,8 @@ func (u *usecase) toUserViews(ctx context.Context, us user.Users) ([]UserView, e
 			}
 
 			return prefectureMap, nil
-		})
+		},
+	)
 	if err != nil {
 		return nil, err
 	}

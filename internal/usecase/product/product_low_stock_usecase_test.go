@@ -114,7 +114,8 @@ func Test_usecase_ListLowStockProducts(t *testing.T) {
 					capturedAction = action
 					capturedResource = resource
 					return nil
-				})
+				},
+			)
 			deps.repo.EXPECT().FindAllLowStock(gomock.Any(), gomock.Any()).Return(domainproduct.Products{}, nil)
 
 			_, err := u.ListLowStockProducts(context.Background(), &auth.Authn{}, ListLowStockProductsParams{})
@@ -136,7 +137,8 @@ func Test_usecase_ListLowStockProducts(t *testing.T) {
 				func(_ context.Context, limit int32) (domainproduct.Products, error) {
 					capturedLimit = limit
 					return domainproduct.Products{}, nil
-				})
+				},
+			)
 
 			_, err := u.ListLowStockProducts(context.Background(), &auth.Authn{}, ListLowStockProductsParams{Limit: 0})
 			require.NoError(t, err)
@@ -154,7 +156,8 @@ func Test_usecase_ListLowStockProducts(t *testing.T) {
 				func(_ context.Context, limit int32) (domainproduct.Products, error) {
 					capturedLimit = limit
 					return domainproduct.Products{}, nil
-				})
+				},
+			)
 
 			_, err := u.ListLowStockProducts(context.Background(), &auth.Authn{}, ListLowStockProductsParams{Limit: 1000})
 			require.NoError(t, err)

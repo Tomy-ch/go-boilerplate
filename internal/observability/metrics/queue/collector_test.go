@@ -132,7 +132,8 @@ worker_queue_depth{adapter="sqs",queue="source",state="delayed",worker="w"} 0
 					_, ok := ctx.Deadline()
 					assert.True(t, ok)
 					return worker.QueueStats{Source: worker.QueueDepth{Visible: 1}}, nil
-				})
+				},
+			)
 
 			c := queuemetrics.NewStatsCollector([]queuemetrics.Target{
 				{WorkerName: "w", Adapter: "sqs", Provider: provider},
@@ -157,13 +158,15 @@ worker_queue_depth{adapter="sqs",queue="source",state="delayed",worker="w"} 0
 					case <-ctx.Done():
 						return worker.QueueStats{}, ctx.Err()
 					}
-				})
+				},
+			)
 			fast := mock_worker.NewMockQueueStatsProvider(ctrl)
 			fast.EXPECT().QueueStats(gomock.Any()).DoAndReturn(
 				func(context.Context) (worker.QueueStats, error) {
 					close(fastCalled)
 					return worker.QueueStats{Source: worker.QueueDepth{Visible: 2}}, nil
-				})
+				},
+			)
 
 			c := queuemetrics.NewStatsCollector([]queuemetrics.Target{
 				{WorkerName: "slow", Adapter: "sqs", Provider: slow},

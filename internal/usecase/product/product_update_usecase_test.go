@@ -122,7 +122,8 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 				*captured = p
 				*capturedImages = images
 				return nextVersion, nil
-			})
+			},
+		)
 	}
 
 	t.Run("正常系", func(t *testing.T) {

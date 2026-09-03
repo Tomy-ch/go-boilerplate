@@ -192,7 +192,8 @@ func (u *usecase) toSearchResults(ctx context.Context, us user.Users) (UserSearc
 			}
 
 			return prefectureMap, nil
-		})
+		},
+	)
 	if err != nil {
 		return nil, err
 	}

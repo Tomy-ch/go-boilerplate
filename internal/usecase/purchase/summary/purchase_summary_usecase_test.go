@@ -179,7 +179,8 @@ func Test_usecase_GetPurchaseSummary(t *testing.T) {
 				[]query.PurchaseItemSummaryReadModel{
 					{CategoryName: "電子機器", ProductID: uuidtestkit.NewTestFromSalt(t, "sm_p1"), ProductName: "ノートPC", ItemsTotal: dec(t, "980.00")},
 					{CategoryName: "書籍", ProductID: uuidtestkit.NewTestFromSalt(t, "sm_p2"), ProductName: "技術書", ItemsTotal: dec(t, "20.50")},
-				}, nil)
+				}, nil,
+			)
 
 			actual, err := newUsecase(t, qs).GetPurchaseSummary(t.Context(), newAuthn(t, userID), GetSummaryParams{
 				GroupBy: []GroupKind{GroupByCategory},
@@ -605,10 +606,12 @@ func Test_usecase_summarizeItems(t *testing.T) {
 			qs.EXPECT().SummarizeItemsByProductByUserID(gomock.Any(), userID, gomock.Any()).Return(
 				[]query.PurchaseItemSummaryReadModel{
 					{CategoryName: "書籍", ProductID: uuidtestkit.NewTestFromSalt(t, "si_book"), ProductName: "技術書", ItemsTotal: dec(t, "20.50")},
-				}, nil)
+				}, nil,
+			)
 
 			total, groups, err := newUsecase(t, qs).summarizeItems(
-				t.Context(), userID, timewindow.Window{}, []GroupKind{GroupByCategory})
+				t.Context(), userID, timewindow.Window{}, []GroupKind{GroupByCategory},
+			)
 			require.NoError(t, err)
 			assert.Equal(t, "20.5", total.String())
 			require.Len(t, groups, 1)
@@ -637,7 +640,8 @@ func Test_usecase_summarizeItems(t *testing.T) {
 			qs.EXPECT().SummarizeItemsByProductByUserID(gomock.Any(), userID, gomock.Any()).Return(nil, apperror.ErrInternal)
 
 			_, groups, err := newUsecase(t, qs).summarizeItems(
-				t.Context(), userID, timewindow.Window{}, []GroupKind{GroupByCategory})
+				t.Context(), userID, timewindow.Window{}, []GroupKind{GroupByCategory},
+			)
 			require.ErrorIs(t, err, apperror.ErrInternal)
 			assert.Nil(t, groups)
 		})

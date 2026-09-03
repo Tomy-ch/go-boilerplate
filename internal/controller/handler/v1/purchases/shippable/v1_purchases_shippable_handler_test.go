@@ -186,7 +186,8 @@ func Test_server_GetPurchasesShippable(t *testing.T) {
 					require.NoError(t, uerr)
 					assert.Equal(t, userID, uid)
 					return purchaseuc.PurchaseShippableListView{}, nil
-				})
+				},
+			)
 
 			_, err := s.GetPurchasesShippable(
 				authnContext(t, userID),
@@ -210,7 +211,8 @@ func Test_server_GetPurchasesShippable(t *testing.T) {
 				) (purchaseuc.PurchaseShippableListView, error) {
 					captured = params
 					return purchaseuc.PurchaseShippableListView{}, nil
-				})
+				},
+			)
 
 			_, err := s.GetPurchasesShippable(
 				authnContext(t, uuidtestkit.NewTestFromSalt(t, "h_nolimit_admin")),

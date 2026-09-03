@@ -141,11 +141,14 @@ func (c *StatsCollector) Collect(ch chan<- prometheus.Metric) {
 // collectDepth は、1 queue の滞留量を state 別の gauge として出力します。
 func (c *StatsCollector) collectDepth(ch chan<- prometheus.Metric, t Target, queue string, d worker.QueueDepth) {
 	ch <- prometheus.MustNewConstMetric(
-		c.depthDesc, prometheus.GaugeValue, float64(d.Visible), t.WorkerName, t.Adapter, queue, stateVisible)
+		c.depthDesc, prometheus.GaugeValue, float64(d.Visible), t.WorkerName, t.Adapter, queue, stateVisible,
+	)
 	ch <- prometheus.MustNewConstMetric(
-		c.depthDesc, prometheus.GaugeValue, float64(d.InFlight), t.WorkerName, t.Adapter, queue, stateNotVisible)
+		c.depthDesc, prometheus.GaugeValue, float64(d.InFlight), t.WorkerName, t.Adapter, queue, stateNotVisible,
+	)
 	ch <- prometheus.MustNewConstMetric(
-		c.depthDesc, prometheus.GaugeValue, float64(d.Delayed), t.WorkerName, t.Adapter, queue, stateDelayed)
+		c.depthDesc, prometheus.GaugeValue, float64(d.Delayed), t.WorkerName, t.Adapter, queue, stateDelayed,
+	)
 }
 
 // recordFailure は、収集失敗の累積回数を増やします。
@@ -174,7 +177,8 @@ func (c *StatsCollector) emitFailures(ch chan<- prometheus.Metric) {
 
 	for _, s := range snapshot {
 		ch <- prometheus.MustNewConstMetric(
-			c.failureDesc, prometheus.CounterValue, float64(s.v), s.key.worker, s.key.adapter, s.key.queue)
+			c.failureDesc, prometheus.CounterValue, float64(s.v), s.key.worker, s.key.adapter, s.key.queue,
+		)
 	}
 }
 

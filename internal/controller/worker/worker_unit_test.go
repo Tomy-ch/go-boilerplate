@@ -1180,7 +1180,8 @@ func Test_run_loop(t *testing.T) {
 						<-ctx.Done() // 以降は intake を止め、ctx キャンセルで loop を終了させる
 						return nil, ctx.Err()
 					}
-				})
+				},
+			)
 
 			acked := make(chan string, 1)
 			mc.EXPECT().Ack(gomock.Any(), gomock.Any()).AnyTimes().DoAndReturn(
@@ -1190,7 +1191,8 @@ func Test_run_loop(t *testing.T) {
 					default:
 					}
 					return nil
-				})
+				},
+			)
 
 			set := baseSettings()
 			set.Concurrency = 1
