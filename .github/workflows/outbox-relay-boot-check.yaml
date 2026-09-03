@@ -1,0 +1,182 @@
+name: Outbox Relay Boot Check
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/outbox-relay-boot-check.yaml'
+      - 'cmd/**.go'
+      - 'internal/**.go'
+      - 'env/.env.ci'
+      - 'env/.env'
+      - 'go.mod'
+      - 'go.sum'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  outbox-relay-boot-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      ENV: ci
+    services:
+      database:
+        image: postgres:18.4-trixie@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres-password
+          POSTGRES_DB: test
+          POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+          TZ: Asia/Tokyo
+          PGTZ: Asia/Tokyo
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd="pg_isready -U postgres -d test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+          --health-start-period=20s
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+            api.npmjs.org:443
+            api.osv.dev:443
+            npm.jsr.io:443
+            docker.io:443
+            index.docker.io:443
+            registry-1.docker.io:443
+            auth.docker.io:443
+            *.docker.io:443
+            production.cloudflare.docker.com:443
+            production.cloudfront.docker.com:443
+            mirror.gcr.io:443
+            ghcr.io:443
+            pkg-containers.githubusercontent.com:443
+            dl-cdn.alpinelinux.org:443
+            dl-cdn.alpinelinux.org:80
+            deb.debian.org:443
+            deb.debian.org:80
+            security.debian.org:443
+            security.debian.org:80
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Materialize ci env for embedding
+        run: make materialize-env
+
+      - name: Build relay
+        run: go build -o ./bin/relay ./cmd/
+
+      # The relay is a daemon: it has no "unknown name" path to exit through the way the job and worker
+      # entrypoints do, so booting it means starting it, watching for the lifecycle to come up, and
+      # stopping it again. The sentinels are the fx event logger's (internal/di/fx_event_logger.go);
+      # reaching "Application started" means the whole graph constructed and every OnStart hook ran.
+      #
+      # `realtime` is the channel under test because it is the one this repository wires in ci: the http
+      # channel needs ENDPOINT_OUTBOX, which env/.env.ci leaves empty on purpose.
+      - name: Boot the realtime relay and expect a clean lifecycle
+        run: |
+          set -uo pipefail
+
+          ./bin/relay outbox-relay --channel=realtime > relay.log 2>&1 &
+          relay_pid=$!
+
+          started=0
+          for i in {1..45}; do
+            if grep -q "Application started" relay.log 2>/dev/null; then
+              started=1
+              break
+            fi
+            if ! kill -0 "${relay_pid}" 2>/dev/null; then
+              echo "FAIL: the relay exited before the lifecycle started"
+              echo "----- relay output -----"
+              cat relay.log || true
+              echo "------------------------"
+              exit 1
+            fi
+            echo "Waiting for the relay lifecycle... ($i)"
+            sleep 2
+          done
+
+          if [ "${started}" -ne 1 ]; then
+            echo "FAIL: 'Application started' never appeared (DI construction or an OnStart hook is stuck)"
+            echo "----- relay output -----"
+            cat relay.log || true
+            echo "------------------------"
+            kill "${relay_pid}" 2>/dev/null || true
+            exit 1
+          fi
+
+          # A relay that starts but cannot stop is also broken: the drain path is part of the contract.
+          kill -TERM "${relay_pid}" 2>/dev/null || true
+          wait "${relay_pid}"
+          stop_code=$?
+
+          echo "----- relay output -----"
+          cat relay.log || true
+          echo "------------------------"
+
+          if ! grep -q "Application stopped" relay.log; then
+            echo "FAIL: the relay did not shut down through the fx lifecycle"
+            exit 1
+          fi
+
+          if [ "${stop_code}" -ne 0 ]; then
+            echo "FAIL: the relay exited ${stop_code} on SIGTERM"
+            exit 1
+          fi
+
+          echo "OK: the realtime relay booted (DI / DB constructed) and shut down cleanly"

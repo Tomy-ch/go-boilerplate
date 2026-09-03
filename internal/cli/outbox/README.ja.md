@@ -47,3 +47,4 @@ outbox-relay replay [flags]
 - `replay` は `dead` 行を `pending` へ戻し、再 publish の対象に復帰させます。
 - `--message-id` は有効な UUID である必要があり、不正な値の場合は replay を実行する前にパースエラーを返します。
 - `replay` は `pending` へ戻した行数を出力します。
+- CI はアプリケーションコードに触れるすべてのプルリクエストでこのエントリポイントを起動します（`.github/workflows/outbox-relay-boot-check.yaml`、[ADR-0091](../../../docs/adr/0091-ci-real-graph-boot-check.ja.md)）。`realtime` チャネルで relay を起動し、fx event logger からの `Application started` と `Application stopped` の両方を要求するため、グラフは組み立つが drain できない relay はこのチェックに失敗します。

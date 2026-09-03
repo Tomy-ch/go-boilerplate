@@ -57,7 +57,8 @@ OS シグナル / golang-migrate）を結線する composition root は `cmd/`�
   —— [`dbslot/`](dbslot/README.ja.md) を参照。
 - **薄い `cmd/` 殻はカバレッジゲートから除外**（`gen|cmd|mock|apperror|scripts`）。その実行時の正しさは
   CI boot チェックで担保: `app-di-startup-check`（serve → `/ready`）、`job-boot-check`（job dispatch）、
-  `worker-boot-check`（worker dispatch）、`migration-check`（up/down 往復）、`gen-*-artifacts-check`
+  `worker-boot-check`（worker dispatch）、`outbox-relay-boot-check`（relay の起動と drain）、
+  `migration-check`（up/down 往復）、`gen-*-artifacts-check`
   （codegen の dogfooding）——いずれも実 Postgres。
   DB アクセス挙動は実 Postgres に当てた repository テスト（`internal/infrastructure/rdb/testkit`）で担保。
 

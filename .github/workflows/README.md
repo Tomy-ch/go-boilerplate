@@ -87,6 +87,7 @@ All three rules live in one check rather than three, because they are not three 
 |App Boot Check|`app-di-startup-check.yaml`|Verify the application server starts successfully with DB|
 |Job Boot Check|`job-boot-check.yaml`|Verify the job entrypoint boots and rejects an unknown job|
 |Worker Boot Check|`worker-boot-check.yaml`|Verify the worker entrypoint boots (DI / DB) and rejects an unknown worker|
+|Outbox Relay Boot Check|`outbox-relay-boot-check.yaml`|Verify the outbox relay boots (DI / DB) on the realtime channel and shuts down cleanly|
 |Dockerfile Lint|`docker-lint.yaml`|Run hadolint on Dockerfiles (via go_tool_runner)|
 |Markdown Lint|`md-lint.yaml`|Lint Markdown shape with markdownlint, validate every ` ```mermaid ` fence with the real parser, and check the `.claude/**` skill / agent definitions against reality and their `.codex/**` counterparts|
 |Commitlint|`commitlint.yaml`|Lint every commit message the PR adds to the base branch — the route the `commit-msg` hook cannot cover|
