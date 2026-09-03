@@ -20,7 +20,6 @@ import (
 	outboxbndry "go-boilerplate/internal/usecase/boundary/outbox"
 	"go-boilerplate/internal/usecase/boundary/tx"
 	"go-boilerplate/internal/usecase/outbox"
-	"go-boilerplate/internal/usecase/purchase/command"
 	"go-boilerplate/internal/usecase/purchase/event"
 	"go-boilerplate/internal/usecase/purchase/query"
 	"go-boilerplate/pkg/decimal"
@@ -192,7 +191,6 @@ type Usecase interface {
 type usecase struct {
 	tracer      observability.LayerTracer
 	txm         tx.Manager
-	cmd         command.CommandService
 	repo        purchase.Repository
 	productRepo product.Repository
 	userLock    user.LockRepository
@@ -214,7 +212,6 @@ type purchaseDraft struct {
 // New は、購入ユースケースを生成します。
 func New(
 	txm tx.Manager,
-	cmd command.CommandService,
 	repo purchase.Repository,
 	productRepo product.Repository,
 	userLock user.LockRepository,
@@ -228,7 +225,6 @@ func New(
 	return &usecase{
 		tracer:      tf.Usecase(),
 		txm:         txm,
-		cmd:         cmd,
 		repo:        repo,
 		productRepo: productRepo,
 		userLock:    userLock,
@@ -238,6 +234,21 @@ func New(
 		clock:       clock,
 		authorizer:  authorizer,
 	}
+}
+
+// detailProductIDs は、明細が参照する商品 ID を重複なく返します。
+func detailProductIDs(details []purchase.PurchaseDetail) []uuid.UUID {
+	seen := make(map[uuid.UUID]struct{}, len(details))
+	ids := make([]uuid.UUID, 0, len(details))
+	for _, d := range details {
+		if _, ok := seen[d.ProductID()]; ok {
+			continue
+		}
+		seen[d.ProductID()] = struct{}{}
+		ids = append(ids, d.ProductID())
+	}
+
+	return ids
 }
 
 // newPurchaseDraft は、購入・購入コード・各明細の ID を採番し、ドメイン入力と商品 ID 列を組み立てます。
@@ -278,10 +289,7 @@ func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParam
 		return PurchaseView{}, err
 	}
 
-	var (
-		created        *purchase.Purchase
-		createdDetails []purchase.PurchaseDetail
-	)
+	var created *purchase.Purchase
 	// nested で最外 tx に乗る（tx 所有については docs/spec/purchase/usecase.md 冒頭を参照）。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
 		// ロック順序（ユーザー行 → 商品行、id 昇順）は docs/spec/purchase/usecase.md の Workflow を参照。
@@ -289,7 +297,6 @@ func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParam
 			return uerr
 		}
 
-		// 在庫ロックは商品集約の読み取りなので、購入の書き込みポートではなく商品 Repository を通す。
 		products, lerr := u.productRepo.LockByIDs(ctx, draft.productIDs)
 		if lerr != nil {
 			return lerr
@@ -299,16 +306,21 @@ func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParam
 			locked[i] = purchase.NewLockedProduct(p.ID(), p.Price(), p.Quantity())
 		}
 
-		entity, details, nerr := purchase.New(draft.purchaseID, draft.code, params.UserID, draft.inputs, locked)
+		entity, nerr := purchase.New(draft.purchaseID, draft.code, params.UserID, draft.inputs, locked)
 		if nerr != nil {
 			return nerr
 		}
 
-		if cerr := u.cmd.CreatePurchase(ctx, entity, details); cerr != nil {
+		// 充足（在庫超過が無いこと）は直前の purchase.New が locked と突き合わせて検証済み。
+		if serr := u.applyStockDelta(ctx, products, entity.Details(), -1); serr != nil {
+			return serr
+		}
+
+		if cerr := u.repo.Create(ctx, entity); cerr != nil {
 			return cerr
 		}
 
-		payload, perr := event.BuildCreated(entity, details)
+		payload, perr := event.BuildCreated(entity)
 		if perr != nil {
 			return perr
 		}
@@ -323,22 +335,17 @@ func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParam
 		}
 
 		// 書き込み後、Repository 経由で再検証する（README の Verifying infrastructure against the domain）。
-		// 明細は集約が抱えないため別に読み直す。
 		reread, rerr := u.repo.FindByID(ctx, draft.purchaseID)
 		if rerr != nil {
 			return rerr
 		}
-		storedDetails, derr := u.repo.ListDetails(ctx, draft.purchaseID)
-		if derr != nil {
-			return derr
-		}
-		created, createdDetails = reread, storedDetails
+		created = reread
 		return nil
 	}); txErr != nil {
 		return PurchaseView{}, txErr
 	}
 
-	return toPurchaseView(created, createdDetails), nil
+	return toPurchaseView(created), nil
 }
 
 func (u *usecase) CancelPurchase(ctx context.Context, params CancelPurchaseParams) (CancelPurchaseView, error) {
@@ -348,10 +355,10 @@ func (u *usecase) CancelPurchase(ctx context.Context, params CancelPurchaseParam
 	now := u.clock.Now()
 
 	var detail *purchase.Detail
-	// tx 境界は PayPurchase のコメントを参照。CommandService（cmd）を使う理由・二重キャンセル対策は
+	// tx 境界は PayPurchase のコメントを参照。二重キャンセル対策は
 	// docs/spec/purchase/usecase.md § PATCH キャンセル を参照。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
-		locked, lerr := u.cmd.LockPurchase(ctx, params.PurchaseCode)
+		locked, lerr := u.repo.LockByCode(ctx, params.PurchaseCode)
 		if lerr != nil {
 			return lerr
 		}
@@ -366,13 +373,11 @@ func (u *usecase) CancelPurchase(ctx context.Context, params CancelPurchaseParam
 			return cerr
 		}
 
-		// 在庫の復元に明細の数量が要る。集約が抱えないため、ここで読む。
-		details, derr := u.repo.ListDetails(ctx, locked.ID())
-		if derr != nil {
-			return derr
+		if serr := u.restoreStock(ctx, locked.Details()); serr != nil {
+			return serr
 		}
 
-		if perr := u.cmd.CancelPurchase(ctx, locked, details); perr != nil {
+		if perr := u.repo.UpdateCancelled(ctx, locked); perr != nil {
 			return perr
 		}
 
@@ -414,7 +419,7 @@ func (u *usecase) PayPurchase(ctx context.Context, params PayPurchaseParams) (Pa
 	now := u.clock.Now()
 
 	var detail *purchase.Detail
-	// この Do が最外 tx（本経路は Idempotency-Key を配線しない）。CommandService を使わない理由・
+	// この Do が最外 tx（本経路は Idempotency-Key を配線しない）。
 	// 二重支払い対策は docs/spec/purchase/usecase.md § PATCH 支払い を参照。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
 		locked, lerr := u.repo.LockByCode(ctx, params.PurchaseCode)
@@ -486,7 +491,7 @@ func (u *usecase) ShipPurchase(
 	now := u.clock.Now()
 
 	var detail *purchase.Detail
-	// tx 境界・ADR-0034 の根拠は PayPurchase のコメントを参照。二重発送対策は
+	// tx 境界は PayPurchase のコメントを参照。二重発送対策は
 	// docs/spec/purchase/usecase.md § PATCH 発送 を参照。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
 		locked, lerr := u.repo.LockByCode(ctx, purchaseCode)
@@ -553,7 +558,7 @@ func (u *usecase) DeliverPurchase(
 	now := u.clock.Now()
 
 	var detail *purchase.Detail
-	// tx 境界・ADR-0034 の根拠は PayPurchase のコメントを参照。二重配達対策は
+	// tx 境界は PayPurchase のコメントを参照。二重配達対策は
 	// docs/spec/purchase/usecase.md § PATCH 配達完了 を参照。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
 		locked, lerr := u.repo.LockByCode(ctx, purchaseCode)
@@ -615,7 +620,8 @@ func (u *usecase) ensurePurchaserActive(ctx context.Context, userID uuid.UUID) e
 	return membership.EnsurePurchasable(purchaser)
 }
 
-func toPurchaseView(p *purchase.Purchase, details []purchase.PurchaseDetail) PurchaseView {
+func toPurchaseView(p *purchase.Purchase) PurchaseView {
+	details := p.Details()
 	views := make([]PurchaseDetailView, len(details))
 	for i, d := range details {
 		views[i] = PurchaseDetailView{
@@ -735,4 +741,43 @@ func toPayPurchaseView(d *purchase.Detail) PayPurchaseView {
 		OrderedAt:      d.OrderedAt,
 		PaidAt:         d.PaidAt,
 	}
+}
+
+// restoreStock は、キャンセルした明細ぶんの在庫を対象商品へ戻します。
+// 対象商品をロックしてからドメインで適用します。順序（id 昇順）は LockByIDs が担保します
+// （ADR-0036 (ordered-pessimistic-row-locks)）。
+func (u *usecase) restoreStock(ctx context.Context, details []purchase.PurchaseDetail) error {
+	products, err := u.productRepo.LockByIDs(ctx, detailProductIDs(details))
+	if err != nil {
+		return err
+	}
+
+	return u.applyStockDelta(ctx, products, details, 1)
+}
+
+// applyStockDelta は、明細の数量 × sign を対象商品の在庫へ適用して永続化します。
+// sign は購入時に -1、キャンセルによる復元時に 1 を取ります。products はロック済みである必要があり、
+// 在庫の範囲判定は商品集約の AdjustStock が行います。
+func (u *usecase) applyStockDelta(
+	ctx context.Context, products product.Products, details []purchase.PurchaseDetail, sign int,
+) error {
+	byID := make(map[uuid.UUID]*product.Product, len(products))
+	for _, p := range products {
+		byID[p.ID()] = p
+	}
+
+	for _, d := range details {
+		p, ok := byID[d.ProductID()]
+		if !ok {
+			return xerrors.Wrap(apperror.ErrNotFound, "product not found for purchase detail")
+		}
+		if aerr := p.AdjustStock(sign * d.Quantity()); aerr != nil {
+			return aerr
+		}
+		if _, uerr := u.productRepo.UpdateStock(ctx, p); uerr != nil {
+			return uerr
+		}
+	}
+
+	return nil
 }

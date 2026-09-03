@@ -19,6 +19,13 @@ func TestBuildPaid(t *testing.T) {
 	// unprocessed は、未処理ステータスの再構築済み購入を salt から生成するローカルヘルパーです。
 	unprocessed := func(t *testing.T, salt string) *domainpurchase.Purchase {
 		t.Helper()
+		details := []domainpurchase.PurchaseDetail{
+			domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, salt+"_d"), domainpurchase.PurchaseDetailAttributes{
+				ProductID: uuidtestkit.NewTestFromSalt(t, salt+"_product"),
+				Quantity:  2,
+				UnitPrice: mustPrice(t, "800"),
+			}),
+		}
 		entity, err := domainpurchase.Reconstruct(uuidtestkit.NewTestFromSalt(t, salt+"_id"), domainpurchase.Attributes{
 			Code:           salt + "-code",
 			UserID:         uuidtestkit.NewTestFromSalt(t, salt+"_user"),
@@ -28,6 +35,7 @@ func TestBuildPaid(t *testing.T) {
 			TaxAmount:      16000,
 			ShippingFee:    500,
 			TotalAmount:    176500,
+			Details:        details,
 			OrderedAt:      time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 			PaidAt:         nil,
 			CanceledAt:     nil,

@@ -69,11 +69,10 @@ func Test_usecase_UpdateProductStock(t *testing.T) {
 		t.Run("正のdeltaを指定した場合、在庫が加算され採番後のバージョンが返る", func(t *testing.T) {
 			t.Parallel()
 
-			entity, currentImages := newUpdateTarget(t, currentVersion)
+			entity := newUpdateTarget(t, currentVersion)
 			before := entity.Quantity()
 			u, deps := newStockTestUsecase(t)
 			expectAuthorizedLock(deps, entity)
-			deps.repo.EXPECT().ListImages(gomock.Any(), entity.ID()).Return(currentImages, nil)
 
 			var captured *domainproduct.Product
 			deps.repo.EXPECT().UpdateStock(gomock.Any(), gomock.Any()).DoAndReturn(
@@ -94,11 +93,10 @@ func Test_usecase_UpdateProductStock(t *testing.T) {
 		t.Run("負のdeltaを指定した場合、在庫が減算される", func(t *testing.T) {
 			t.Parallel()
 
-			entity, currentImages := newUpdateTarget(t, currentVersion)
+			entity := newUpdateTarget(t, currentVersion)
 			before := entity.Quantity()
 			u, deps := newStockTestUsecase(t)
 			expectAuthorizedLock(deps, entity)
-			deps.repo.EXPECT().ListImages(gomock.Any(), entity.ID()).Return(currentImages, nil)
 			deps.repo.EXPECT().UpdateStock(gomock.Any(), gomock.Any()).Return(nextVersion, nil)
 
 			actual, err := u.UpdateProductStock(context.Background(), &auth.Authn{}, entity.ID(),
@@ -110,10 +108,9 @@ func Test_usecase_UpdateProductStock(t *testing.T) {
 		t.Run("名称・ステータス・カテゴリ・公開日時は取得時の値がそのまま返る", func(t *testing.T) {
 			t.Parallel()
 
-			entity, currentImages := newUpdateTarget(t, currentVersion)
+			entity := newUpdateTarget(t, currentVersion)
 			u, deps := newStockTestUsecase(t)
 			expectAuthorizedLock(deps, entity)
-			deps.repo.EXPECT().ListImages(gomock.Any(), entity.ID()).Return(currentImages, nil)
 			deps.repo.EXPECT().UpdateStock(gomock.Any(), gomock.Any()).Return(nextVersion, nil)
 
 			actual, err := u.UpdateProductStock(context.Background(), &auth.Authn{}, entity.ID(),
@@ -129,7 +126,7 @@ func Test_usecase_UpdateProductStock(t *testing.T) {
 		t.Run("在庫更新を所有者なしリソースとして認可する", func(t *testing.T) {
 			t.Parallel()
 
-			entity, currentImages := newUpdateTarget(t, currentVersion)
+			entity := newUpdateTarget(t, currentVersion)
 			u, deps := newStockTestUsecase(t)
 
 			deps.authorizer.EXPECT().
@@ -138,7 +135,6 @@ func Test_usecase_UpdateProductStock(t *testing.T) {
 			deps.txm.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(runInTx)
 			deps.repo.EXPECT().LockByID(gomock.Any(), entity.ID()).Return(entity, nil)
 			deps.repo.EXPECT().UpdateStock(gomock.Any(), gomock.Any()).Return(nextVersion, nil)
-			deps.repo.EXPECT().ListImages(gomock.Any(), entity.ID()).Return(currentImages, nil)
 
 			_, err := u.UpdateProductStock(context.Background(), &auth.Authn{}, entity.ID(),
 				UpdateProductStockParams{Delta: 1})
@@ -197,7 +193,7 @@ func Test_usecase_UpdateProductStock(t *testing.T) {
 		t.Run("減算後の在庫が負になる場合、ErrValidation(422)を返し更新を実行しない", func(t *testing.T) {
 			t.Parallel()
 
-			entity, _ := newUpdateTarget(t, currentVersion)
+			entity := newUpdateTarget(t, currentVersion)
 			u, deps := newStockTestUsecase(t)
 			expectAuthorizedLock(deps, entity)
 			deps.repo.EXPECT().UpdateStock(gomock.Any(), gomock.Any()).Times(0)
@@ -208,25 +204,10 @@ func Test_usecase_UpdateProductStock(t *testing.T) {
 			assert.Equal(t, ProductView{}, actual)
 		})
 
-		t.Run("在庫更新後の画像の読み出しに失敗した場合、エラーを返す", func(t *testing.T) {
-			t.Parallel()
-
-			entity, _ := newUpdateTarget(t, currentVersion)
-			u, deps := newStockTestUsecase(t)
-			expectAuthorizedLock(deps, entity)
-			deps.repo.EXPECT().UpdateStock(gomock.Any(), gomock.Any()).Return(nextVersion, nil)
-			deps.repo.EXPECT().ListImages(gomock.Any(), entity.ID()).Return(nil, apperror.ErrUnavailable)
-
-			actual, err := u.UpdateProductStock(context.Background(), &auth.Authn{}, entity.ID(),
-				UpdateProductStockParams{Delta: 1})
-			require.ErrorIs(t, err, apperror.ErrUnavailable)
-			assert.Equal(t, ProductView{}, actual)
-		})
-
 		t.Run("在庫の更新に失敗した場合、エラーを返す", func(t *testing.T) {
 			t.Parallel()
 
-			entity, _ := newUpdateTarget(t, currentVersion)
+			entity := newUpdateTarget(t, currentVersion)
 			u, deps := newStockTestUsecase(t)
 			expectAuthorizedLock(deps, entity)
 			deps.repo.EXPECT().UpdateStock(gomock.Any(), gomock.Any()).Return(0, apperror.ErrUnavailable)

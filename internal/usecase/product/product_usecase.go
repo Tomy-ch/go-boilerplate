@@ -311,9 +311,9 @@ func (u *usecase) ListProducts(
 		products = products[:limit]
 	}
 
-	items, ierr := u.toProductViews(ctx, products)
-	if ierr != nil {
-		return ProductListView{}, ierr
+	items := make([]ProductView, len(products))
+	for i, p := range products {
+		items[i] = toProductView(p)
 	}
 
 	var nextCursor *string
@@ -393,7 +393,7 @@ func (u *usecase) GetProduct(
 			return ProductView{}, err
 		}
 
-		return u.toProductViewWithImages(ctx, p)
+		return toProductView(p), nil
 	}
 
 	p, err := u.repo.FindPublishedByID(ctx, params.ID)
@@ -404,7 +404,7 @@ func (u *usecase) GetProduct(
 		return ProductView{}, err
 	}
 
-	return u.toProductViewWithImages(ctx, p)
+	return toProductView(p), nil
 }
 
 // authorizeUnpublishedRead は、未公開商品を含む参照の可否を判定します。
@@ -491,7 +491,7 @@ func ensurePublished(products product.Products) error {
 	return nil
 }
 
-func toProductView(p *product.Product, images []product.Image) ProductView {
+func toProductView(p *product.Product) ProductView {
 	return ProductView{
 		ID:                    p.ID(),
 		Name:                  p.Name(),
@@ -504,43 +504,9 @@ func toProductView(p *product.Product, images []product.Image) ProductView {
 		CategoryID:            p.Category().ID(),
 		CategoryName:          p.Category().Name(),
 		PublishedAt:           p.PublishedAt(),
-		Images:                toProductImageItemViews(images),
+		Images:                toProductImageItemViews(p.Images()),
 		Version:               p.Version(),
 	}
-}
-
-// toProductViews は、商品列を出力 DTO へ写します。画像は集約が抱えないため 1 度でまとめて引きます。
-func (u *usecase) toProductViews(ctx context.Context, products product.Products) ([]ProductView, error) {
-	if len(products) == 0 {
-		return []ProductView{}, nil
-	}
-
-	ids := make([]uuid.UUID, len(products))
-	for i, p := range products {
-		ids[i] = p.ID()
-	}
-
-	imagesByProductID, err := u.repo.ListImagesByProductIDs(ctx, ids)
-	if err != nil {
-		return nil, err
-	}
-
-	items := make([]ProductView, len(products))
-	for i, p := range products {
-		items[i] = toProductView(p, imagesByProductID[p.ID()])
-	}
-
-	return items, nil
-}
-
-// toProductViewWithImages は、商品 1 件を画像を引いたうえで出力 DTO へ写します。
-func (u *usecase) toProductViewWithImages(ctx context.Context, p *product.Product) (ProductView, error) {
-	images, err := u.repo.ListImages(ctx, p.ID())
-	if err != nil {
-		return ProductView{}, err
-	}
-
-	return toProductView(p, images), nil
 }
 
 // toProductImageItemViews は、商品画像を出力 DTO へ変換します。並びは集約が保持する表示順のままです。

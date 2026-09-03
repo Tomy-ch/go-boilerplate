@@ -1,6 +1,6 @@
 # Purchase — Domain Spec
 
-> `POST /v1/purchases`（購入作成・CommandService 正例・原子性/売り越し禁止）のドメイン spec。
+> `POST /v1/purchases`（購入作成・原子性/売り越し禁止）のドメイン spec。
 > 決済通貨は USD のみで、決済スケールの金額はすべて USD セント単位の整数で保持・計算する（float 不使用）。
 > 単価は価格スケール（サブセント可の decimal）で保持し、決済スケールへの変換は最小単位 2 桁（セント）で
 > **切り捨て**、ドメイン内 1 箇所に集約する。2 スケールの型分けそのものは [ADR-0038 (two-scale-quantity-model)]。
@@ -11,7 +11,7 @@
 
 購入集約（Purchase）は、購入コード・購入者・初期ステータス・金額（小計 / 税 / 送料 / 合計）と明細（PurchaseDetail）を保持するドメイン集約。生成時に「明細が 1 件以上」「同一 productID の重複なし」「数量が 1 以上」「要求数量がロック済み在庫以下（売り越し禁止）」の不変条件を検証し、違反する `Purchase` は構築できない。
 
-明細の `unitPrice` は在庫ロック取得直後の `products.price` スナップショットであり、購入成立後の価格改定に不変（CommandService 正例の本質＝価格の一貫性）。金額計算（`subtotal = Σ unitPrice × quantity` / `tax = subtotal × taxRate` / `shippingFee = 定数` / `total = subtotal + tax + shippingFee`）はドメイン内で完結し、税・送料の丸めは切り捨てで 1 箇所に集約する。
+明細の `unitPrice` は在庫ロック取得直後の `products.price` スナップショットであり、購入成立後の価格改定に不変（価格の一貫性）。金額計算（`subtotal = Σ unitPrice × quantity` / `tax = subtotal × taxRate` / `shippingFee = 定数` / `total = subtotal + tax + shippingFee`）はドメイン内で完結し、税・送料の丸めは切り捨てで 1 箇所に集約する。
 
 初期ステータスは「未処理」（`purchase_statuses.code = 1`）。ドメインは code（安定した業務キー）を定数として持ち、`purchase_statuses` の UUID は焼き込まない（seed との二重管理を避けるため、UUID 解決は永続化時の infra 責務）。`id` / `code` は UUIDv7（[ADR-0037 (uuidv7-identifiers)]）で、生成は usecase 層が行いドメインへ渡す（ドメインは乱数・時刻に直接依存しない）。
 
@@ -209,6 +209,13 @@ fields:
 ## Repository Methods
 
 ```yaml
+- name: Create
+  signature: Create(ctx context.Context, p *Purchase) error
+  behavior: |
+    購入を新規登録する。集約が保持する明細（PurchaseDetail）も同じ tx 内で併せて登録する。
+    在庫の減算は商品集約の書き込みであり、呼び出し側が同一 tx 内で product.Repository を通して行う
+    （対象行を identity で名指しできるため分解でき、CommandService は要さない
+    ／[ADR-0034 (commandservice-atomicity-criterion)] の判定軸）。購入コードの重複は Conflict。
 - name: FindByID
   signature: FindByID(ctx context.Context, id uuid.UUID) (*Purchase, error)
   behavior: |
@@ -220,7 +227,7 @@ fields:
     購入コードから購入を購入行のみ悲観ロック（SELECT FOR UPDATE OF p）して明細込みで再構築する。存在しない場合は NotFound。
     公開識別子が code であるため、外部から指定された購入を引く入口はここに揃える（内部再読込は FindByID / FindDetailByID）。
     支払いの状態遷移の競合（同一購入への並行支払い）を購入行ロックで直列化する。擬似決済は単一集約書き込みのため
-    CommandService ではなく Repository が担う（[ADR-0034 (commandservice-atomicity-criterion)] の判定軸）。
+    Repository が担う（[ADR-0034 (commandservice-atomicity-criterion)] の判定軸）。
 - name: UpdatePaid
   signature: UpdatePaid(ctx context.Context, p *Purchase) error
   behavior: |
@@ -236,6 +243,12 @@ fields:
   behavior: |
     購入の状態更新（status_id は code から解決 / delivered_at）を渡された ctx の tx 内で実行する。配達確認の証跡を扱わないため
     単一集約（purchases）のみを更新し在庫操作は伴わない。対象行は LockByCode で取得・検証済み（遷移可否ガードは付けない）。
+- name: UpdateCancelled
+  signature: UpdateCancelled(ctx context.Context, p *Purchase) error
+  behavior: |
+    購入の状態更新（status_id は code から解決）を渡された ctx の tx 内で実行する。対象行は LockByCode で
+    取得・検証済み（遷移可否ガードは付けない）。在庫の復元は商品集約の書き込みであり、Create と同じく
+    呼び出し側が同一 tx 内で product.Repository を通して行う。
 - name: FindDetailByID
   signature: FindDetailByID(ctx context.Context, id uuid.UUID) (*Detail, error)
   behavior: |
@@ -270,8 +283,8 @@ fields:
 
 なお、状態遷移に伴う購入行の悲観ロック（`FOR UPDATE`）は、書き込みが集約を跨ぐかで担い手が分かれる（[ADR-0034 (commandservice-atomicity-criterion)] の判定軸）:
 
-- **キャンセル**は在庫復元（`products`）+ 購入更新（`purchases`）の**複数集約への原子的書き込み**のため CommandService（`LockPurchase` / `CancelPurchase`）が担う（[ADR-0032 (lightweight-cqrs)] / [ADR-0034 (commandservice-atomicity-criterion)]）。
-- **支払い**は `purchases` の status/paid_at のみの**単一集約書き込み**（在庫操作なし）のため、CommandService ではなく **Repository（`LockByCode` / `UpdatePaid`）**が担う。行ロックは並行制御（二重支払い防止）であって集約横断の原子性ではない。
+- **キャンセル**は在庫復元（`products`）+ 購入更新（`purchases`）の複数集約への書き込みだが、対象行を identity で名指しできるため分解できる。商品を `product.Repository.LockByIDs` でロックしてから `product.AdjustStock` で戻し、購入は `purchase.Repository`（`LockByCode` / `UpdateCancelled`）が担う（判定軸は [ADR-0034 (commandservice-atomicity-criterion)]）。
+- **支払い**は `purchases` の status/paid_at のみの**単一集約書き込み**（在庫操作なし）で、**Repository（`LockByCode` / `UpdatePaid`）**が担う。行ロックは並行制御（二重支払い防止）であって集約横断の原子性ではない。
 - **発送**も `purchases` の status/shipped_at のみの単一集約書き込みのため、支払いと同じく **Repository（`LockByCode` / `UpdateShipped`）**が担う。
 - **配達完了**も `purchases` の status/delivered_at のみの単一集約書き込みのため、同じく **Repository（`LockByCode` / `UpdateDelivered`）**が担う。
 

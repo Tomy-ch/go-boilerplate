@@ -42,6 +42,20 @@ func (m *MockRepository) EXPECT() *MockRepositoryMockRecorder {
 	return m.recorder
 }
 
+// Create mocks base method.
+func (m *MockRepository) Create(ctx context.Context, p *purchase.Purchase) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Create", ctx, p)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Create indicates an expected call of Create.
+func (mr *MockRepositoryMockRecorder) Create(ctx, p any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockRepository)(nil).Create), ctx, p)
+}
+
 // FindByID mocks base method.
 func (m *MockRepository) FindByID(ctx context.Context, id uuid.UUID) (*purchase.Purchase, error) {
 	m.ctrl.T.Helper()
@@ -117,21 +131,6 @@ func (mr *MockRepositoryMockRecorder) FindUserIDsWithPurchases(ctx, userIDs any)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindUserIDsWithPurchases", reflect.TypeOf((*MockRepository)(nil).FindUserIDsWithPurchases), ctx, userIDs)
 }
 
-// ListDetails mocks base method.
-func (m *MockRepository) ListDetails(ctx context.Context, purchaseID uuid.UUID) ([]purchase.PurchaseDetail, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListDetails", ctx, purchaseID)
-	ret0, _ := ret[0].([]purchase.PurchaseDetail)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ListDetails indicates an expected call of ListDetails.
-func (mr *MockRepositoryMockRecorder) ListDetails(ctx, purchaseID any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListDetails", reflect.TypeOf((*MockRepository)(nil).ListDetails), ctx, purchaseID)
-}
-
 // LockByCode mocks base method.
 func (m *MockRepository) LockByCode(ctx context.Context, code string) (*purchase.Purchase, error) {
 	m.ctrl.T.Helper()
@@ -145,6 +144,20 @@ func (m *MockRepository) LockByCode(ctx context.Context, code string) (*purchase
 func (mr *MockRepositoryMockRecorder) LockByCode(ctx, code any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LockByCode", reflect.TypeOf((*MockRepository)(nil).LockByCode), ctx, code)
+}
+
+// UpdateCancelled mocks base method.
+func (m *MockRepository) UpdateCancelled(ctx context.Context, p *purchase.Purchase) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateCancelled", ctx, p)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateCancelled indicates an expected call of UpdateCancelled.
+func (mr *MockRepositoryMockRecorder) UpdateCancelled(ctx, p any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateCancelled", reflect.TypeOf((*MockRepository)(nil).UpdateCancelled), ctx, p)
 }
 
 // UpdateDelivered mocks base method.

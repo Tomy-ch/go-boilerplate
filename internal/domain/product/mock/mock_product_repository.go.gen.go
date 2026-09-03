@@ -88,32 +88,17 @@ func (mr *MockRepositoryMockRecorder) CountPublished(ctx, filter any) *gomock.Ca
 }
 
 // Create mocks base method.
-func (m *MockRepository) Create(ctx context.Context, p *product.Product, images []product.Image) error {
+func (m *MockRepository) Create(ctx context.Context, p *product.Product) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Create", ctx, p, images)
+	ret := m.ctrl.Call(m, "Create", ctx, p)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Create indicates an expected call of Create.
-func (mr *MockRepositoryMockRecorder) Create(ctx, p, images any) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) Create(ctx, p any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockRepository)(nil).Create), ctx, p, images)
-}
-
-// FilterExistingImagePaths mocks base method.
-func (m *MockRepository) FilterExistingImagePaths(ctx context.Context, paths []string) ([]string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FilterExistingImagePaths", ctx, paths)
-	ret0, _ := ret[0].([]string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// FilterExistingImagePaths indicates an expected call of FilterExistingImagePaths.
-func (mr *MockRepositoryMockRecorder) FilterExistingImagePaths(ctx, paths any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FilterExistingImagePaths", reflect.TypeOf((*MockRepository)(nil).FilterExistingImagePaths), ctx, paths)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockRepository)(nil).Create), ctx, p)
 }
 
 // FindAllList mocks base method.
@@ -206,36 +191,6 @@ func (mr *MockRepositoryMockRecorder) FindPublishedList(ctx, params any) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindPublishedList", reflect.TypeOf((*MockRepository)(nil).FindPublishedList), ctx, params)
 }
 
-// ListImages mocks base method.
-func (m *MockRepository) ListImages(ctx context.Context, productID uuid.UUID) ([]product.Image, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListImages", ctx, productID)
-	ret0, _ := ret[0].([]product.Image)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ListImages indicates an expected call of ListImages.
-func (mr *MockRepositoryMockRecorder) ListImages(ctx, productID any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListImages", reflect.TypeOf((*MockRepository)(nil).ListImages), ctx, productID)
-}
-
-// ListImagesByProductIDs mocks base method.
-func (m *MockRepository) ListImagesByProductIDs(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID][]product.Image, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListImagesByProductIDs", ctx, ids)
-	ret0, _ := ret[0].(map[uuid.UUID][]product.Image)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ListImagesByProductIDs indicates an expected call of ListImagesByProductIDs.
-func (mr *MockRepositoryMockRecorder) ListImagesByProductIDs(ctx, ids any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListImagesByProductIDs", reflect.TypeOf((*MockRepository)(nil).ListImagesByProductIDs), ctx, ids)
-}
-
 // LockByID mocks base method.
 func (m *MockRepository) LockByID(ctx context.Context, id uuid.UUID) (*product.Product, error) {
 	m.ctrl.T.Helper()
@@ -267,18 +222,18 @@ func (mr *MockRepositoryMockRecorder) LockByIDs(ctx, ids any) *gomock.Call {
 }
 
 // Update mocks base method.
-func (m *MockRepository) Update(ctx context.Context, p *product.Product, images []product.Image) (int, error) {
+func (m *MockRepository) Update(ctx context.Context, p *product.Product) (int, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Update", ctx, p, images)
+	ret := m.ctrl.Call(m, "Update", ctx, p)
 	ret0, _ := ret[0].(int)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Update indicates an expected call of Update.
-func (mr *MockRepositoryMockRecorder) Update(ctx, p, images any) *gomock.Call {
+func (mr *MockRepositoryMockRecorder) Update(ctx, p any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockRepository)(nil).Update), ctx, p, images)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockRepository)(nil).Update), ctx, p)
 }
 
 // UpdateStock mocks base method.

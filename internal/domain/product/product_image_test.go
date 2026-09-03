@@ -111,10 +111,25 @@ func Test_validateImages(t *testing.T) {
 
 			require.NoError(t, validateImages(nil))
 		})
+
+		t.Run("枚数が上限ちょうどなら検証を通る", func(t *testing.T) {
+			t.Parallel()
+
+			require.NoError(t, validateImages(imagesOfCount(t, maxImages)))
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
+
+		t.Run("枚数が上限を1枚超える場合、ErrTooManyImagesを返す", func(t *testing.T) {
+			t.Parallel()
+
+			err := validateImages(imagesOfCount(t, maxImages+1))
+
+			require.ErrorIs(t, err, ErrTooManyImages)
+			require.ErrorIs(t, err, apperror.ErrValidation)
+		})
 
 		t.Run("IDが未設定の場合、ErrInvalidIDを返す", func(t *testing.T) {
 			t.Parallel()

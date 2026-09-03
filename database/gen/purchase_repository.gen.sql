@@ -1,4 +1,48 @@
 
+-- === source: database/dml/repository/purchase/insert_purchase.sql ===
+-- name: InsertPurchase :exec
+-- 購入を 1 行 INSERT する。status_id は code から解決する（理由は docs/spec/purchase/domain.md の Notes）。
+-- ordered_at / created_at / updated_at は DB 既定（NOW()）に委ねる。
+INSERT INTO purchases (
+    id,
+    code,
+    user_id,
+    status_id,
+    subtotal_amount,
+    tax_amount,
+    shipping_fee,
+    total_amount
+) VALUES (
+    @id,
+    @code,
+    @user_id,
+    (
+        SELECT ps.id FROM purchase_statuses AS ps
+        WHERE ps.code = @status_code
+    ),
+    @subtotal_amount,
+    @tax_amount,
+    @shipping_fee,
+    @total_amount
+);
+
+-- === source: database/dml/repository/purchase/insert_purchase_detail.sql ===
+-- name: InsertPurchaseDetail :exec
+-- 購入明細を 1 行 INSERT する。unit_price は購入時点の単価スナップショット（USD セント整数）。
+INSERT INTO purchase_details (
+    id,
+    purchase_id,
+    product_id,
+    quantity,
+    unit_price
+) VALUES (
+    @id,
+    @purchase_id,
+    @product_id,
+    @quantity,
+    @unit_price
+);
+
 -- === source: database/dml/repository/purchase/lock_purchase_by_code.sql ===
 -- name: LockPurchaseByCode :one
 -- 購入コードから購入を 1 件、購入行のみ悲観ロック（FOR UPDATE OF p）して取得する。支払いの状態遷移の
@@ -102,6 +146,21 @@ ORDER BY d.purchase_id, d.id;
 SELECT DISTINCT user_id
 FROM purchases
 WHERE user_id = ANY(sqlc.arg('user_ids')::UUID[]);
+
+-- === source: database/dml/repository/purchase/update_purchase_canceled.sql ===
+-- name: UpdatePurchaseCanceled :exec
+-- 購入をキャンセル状態へ更新する。status_id は code から解決する。canceled_at はドメインが決定した
+-- 時刻（引数）を書き込み、イベント payload・レスポンスと同一時刻に揃える。
+-- 遷移可否ガードは付けない（理由は docs/spec/purchase/domain.md の Repository Methods）。
+UPDATE purchases
+SET
+    status_id = (
+        SELECT ps.id FROM purchase_statuses AS ps
+        WHERE ps.code = @status_code
+    ),
+    canceled_at = @canceled_at,
+    updated_at = NOW()
+WHERE purchases.id = @id;
 
 -- === source: database/dml/repository/purchase/update_purchase_delivered.sql ===
 -- name: UpdatePurchaseDelivered :exec

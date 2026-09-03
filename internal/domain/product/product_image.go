@@ -44,10 +44,18 @@ func (i Image) ImagePath() string { return i.imagePath }
 func (i Image) DisplaySort() int { return i.displaySort }
 
 // validateImages は、商品が保持する画像の集合が満たすべき不変条件を検証します。
-// ID が未設定、画像パスが空、表示順が保持できる範囲外の場合はそれぞれ ErrInvalidID /
-// ErrInvalidImagePath / ErrInvalidImageDisplaySort を、同一商品内で表示順が重複する場合は
-// ErrDuplicateImageDisplaySort を返します。画像を持たない商品は許容します。
+// 枚数が maxImages を超える場合は ErrTooManyImages を、ID が未設定、画像パスが空、表示順が保持できる
+// 範囲外の場合はそれぞれ ErrInvalidID / ErrInvalidImagePath / ErrInvalidImageDisplaySort を、
+// 同一商品内で表示順が重複する場合は ErrDuplicateImageDisplaySort を返します。
+// 画像を持たない商品は許容します。
 func validateImages(images []Image) error {
+	if len(images) > maxImages {
+		return xerrors.Wrap(
+			ErrTooManyImages,
+			fmt.Sprintf("images must be %d or fewer, got %d", maxImages, len(images)),
+		)
+	}
+
 	seen := make(map[int]struct{}, len(images))
 	for _, img := range images {
 		if img.id.IsNil() {

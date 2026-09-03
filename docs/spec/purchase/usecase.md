@@ -1,12 +1,12 @@
 # Purchase — Usecase Spec
 
-> `POST /v1/purchases`（購入作成）の usecase spec。本リポジトリ初の CommandService（[ADR-0032 (lightweight-cqrs)]）を消費し、
+> `POST /v1/purchases`（購入作成）の usecase spec。在庫の引当と購入の成立を単一 tx で原子的に行い、
 > 在庫減算・購入作成・明細作成・outbox 発行を単一トランザクションで原子的に行う。最外 tx は `idempotency.Run` が所有し、
 > 本 usecase は nested（`tx.Manager.Do`）で同一 tx に乗る（[ADR-0034 (commandservice-atomicity-criterion)]）。
 
 ## Overview
 
-購入作成ユースケースは、認証済みの内部ユーザー ID と購入明細（`productID` + 数量）を受け取り、購入を作成して DTO を返す。CommandService（infra）は「決定済みの書き込みの実行」のみを担い（Repository の write 側対称物）、outbox 発行（`purchase.created.v1`）は usecase の責務（[ADR-0033 (system-cqrs-dml-category)] の system_cqrs 区分）。`displayCurrency` 指定時のみ合計金額の参考換算額（`referenceAmount`）を tx 外で付与し、為替障害時は null で degrade する。
+購入作成ユースケースは、認証済みの内部ユーザー ID と購入明細（`productID` + 数量）を受け取り、購入を作成して DTO を返す。対象商品は先に悲観ロックするため書き込み対象の行を identity で名指しでき、在庫の減算は商品集約の振る舞いと `product.Repository` で、購入と明細の登録は `purchase.Repository` で行う（CommandService は用いない。判定は [ADR-0034 (commandservice-atomicity-criterion)]）。outbox 発行（`purchase.created.v1`）は usecase の責務（[ADR-0033 (system-cqrs-dml-category)] の system_cqrs 区分）。`displayCurrency` 指定時のみ合計金額の参考換算額（`referenceAmount`）を tx 外で付与し、為替障害時は null で degrade する。
 
 ## Interface
 
@@ -70,9 +70,8 @@ output:
 
 ```yaml
 - name: tx.Manager                       # nested で最外 idempotency tx に乗る
-- name: command.CommandService           # CreatePurchase（infra 実装）
-- name: purchase.Repository              # FindByID（書き込み後の再検証・DTO 取得元）
-- name: product.Repository               # LockByIDs（在庫行の悲観ロック）
+- name: purchase.Repository              # Create（購入 + 明細の登録）/ FindByID（書き込み後の再検証・DTO 取得元）
+- name: product.Repository               # LockByIDs（在庫行の悲観ロック）/ UpdateStock（減算の永続化）
 - name: user.LockRepository              # LockShareByID（購入者の共有ロック取得。退会との直列化。[ADR-0036 (ordered-pessimistic-row-locks)]）
 - name: domain/service/membership        # EnsurePurchasable（在籍の判定）
 - name: outbox.EmitUsecase               # purchase.created.v1 の emit（同一 tx）
@@ -92,9 +91,10 @@ output:
     - "  ⓪ userLock.LockShareByID で購入者を共有ロック付きで読み出し、membership.EnsurePurchasable で在籍を判定する（退会と直列化。[ADR-0036 (ordered-pessimistic-row-locks)]）"
     - "  ① productRepo.LockByIDs(productID 昇順) で在庫行をロックし price/quantity を得る"
     - "  ② purchase.New で入力検証・売り越し検証・金額計算・snapshot・未処理ステータスを行う"
-    - "  ③ cmd.CreatePurchase で在庫減算 + purchases/purchase_details を書き込む"
-    - "  ④ emit.Emit(purchase.created.v1) を同一 tx で発行する（自己完結 snapshot payload）"
-    - "  ⑤ repo.FindByID で再検証しレスポンスの取得元とする"
+    - "  ③ ロック済み商品へ product.AdjustStock で在庫を減算し productRepo.UpdateStock で永続化する"
+    - "  ④ repo.Create で purchases + purchase_details を書き込む"
+    - "  ⑤ emit.Emit(purchase.created.v1) を同一 tx で発行する（自己完結 snapshot payload）"
+    - "  ⑥ repo.FindByID で再検証しレスポンスの取得元とする"
     - tx 外で DisplayCurrency 指定時のみ referenceAmount を付与（xr.Convert / 障害時 nil degrade）
     - PurchaseView へ写像して返す（ドメインエンティティを外へ出さない）
   errors:
@@ -256,7 +256,7 @@ workflow:
 配置判断は ADR-0032 (lightweight-cqrs) + `docs/rules.md` § Repository / QueryService Rules で既に固定化されているため**新規 ADR は発行しない**。
 所有権は QS の `WHERE p.user_id = @user_id` で担保し、パスに他者識別子を持たないため所有権チェックは不要。書き込みを伴わないため tx は不要。
 
-ユースケースは `internal/usecase/purchase/purchase_usecase.go`（tx / CommandService / outbox を持つ書き込み中心の集約）ではなく、
+ユースケースは `internal/usecase/purchase/purchase_usecase.go`（tx / outbox を持つ書き込み中心の集約）ではなく、
 読み取り専用の別パッケージ `internal/usecase/purchase/summary` に置く（`product/ranking` と同じ集計 read の形。
 `purchase.PurchaseSummaryView` は一覧要素の DTO 名として既に使われており、集計 DTO と名前空間が衝突する点も理由）。
 
@@ -322,7 +322,7 @@ workflow:
 
 `PATCH /v1/purchases/{purchaseCode}/cancel`。本人の購入をキャンセルする状態遷移経路。状態機械の source of truth は
 `status_id`（現在状態）で、timestamps（`canceled_at` / `shipped_at` / `delivered_at`）はイベント発生の監査記録として併用する。
-在庫復元は `POST /v1/purchases` の在庫減算と対称な同一 tx 強整合で、[ADR-0032 (lightweight-cqrs)] の CommandService に対称実装する（原子性方式は [ADR-0034 (commandservice-atomicity-criterion)]）。
+在庫復元は `POST /v1/purchases` の在庫減算と対称な同一 tx 強整合で、対象商品を悲観ロックしてから商品集約の振る舞いで適用する（置き場の判定は [ADR-0034 (commandservice-atomicity-criterion)]）。
 キャンセル後の状態名解決は詳細読み取りモデル（`purchase.Detail`、GET 詳細で再利用可能な Repository read）で JOIN 解決する。
 
 ```yaml
@@ -353,20 +353,20 @@ output:
 dependencies:
   - clock.Clock                     # Cancel(now) へ供給する時刻境界（ドメインの時刻直依存を避ける）
   - tx.Manager                      # 最外 tx（本経路は Idempotency-Key 冪等化を配線しない）
-  - command.CommandService          # LockPurchase（FOR UPDATE）/ CancelPurchase（在庫加算 + status/canceled_at 更新）
-  - purchase.Repository             # FindDetailByID（書き込み後の状態名解決・DTO 取得元）
+  - purchase.Repository             # LockByCode（FOR UPDATE）/ UpdateCancelled（status/canceled_at 更新）/ FindDetailByID（書き込み後の状態名解決・DTO 取得元）
   - outbox.EmitUsecase              # purchase.canceled.v1 の emit（同一 tx）
 
 workflow:
   tx_required: true
   steps:
     - "txm.Do 内で:"
-    - "  ① cmd.LockPurchase で購入行を FOR UPDATE ロックし明細込みで再構築（並行キャンセルを直列化）"
+    - "  ① repo.LockByCode で購入行を FOR UPDATE ロックし明細込みで再構築（並行キャンセルを直列化）"
     - "  ② purchase.UserID() != params.UserID なら NotFound へ畳む（存在秘匿）"
     - "  ③ purchase.Cancel(now) で遷移可否検証 + status/canceled_at を同時更新（ドメイン不変条件）"
-    - "  ④ cmd.CancelPurchase で明細分の在庫加算 + purchases の status_id/canceled_at 更新"
-    - "  ⑤ emit.Emit(purchase.canceled.v1) を同一 tx で発行する"
-    - "  ⑥ repo.FindDetailByID で状態名を解決しレスポンスの取得元とする"
+    - "  ④ productRepo.LockByIDs で対象商品をロックし product.AdjustStock + productRepo.UpdateStock で在庫を戻す"
+    - "  ⑤ repo.UpdateCancelled で purchases の status_id/canceled_at を更新する"
+    - "  ⑥ emit.Emit(purchase.canceled.v1) を同一 tx で発行する"
+    - "  ⑦ repo.FindDetailByID で状態名を解決しレスポンスの取得元とする"
     - CancelPurchaseView へ写像して返す（ドメインエンティティを外へ出さない）
   errors:
     - ErrAlreadyCanceled → 409（二重キャンセル）
@@ -379,8 +379,8 @@ workflow:
 
 `PATCH /v1/purchases/{purchaseCode}/pay`。本人の購入を支払い済みへ遷移させる状態遷移経路（擬似決済）。
 決済 SDK / PSP 連携・金額検証は行わず、`paid_at` のセットと `status_id` の「支払い済み」への更新のみを担う。在庫操作は伴わない。
-**単一集約（`purchases`）のみを更新するため、複数集約の原子性を要する CommandService（[ADR-0034 (commandservice-atomicity-criterion)]）ではなく通常 usecase + Repository で完結する**
-（cancel は在庫復元を伴う複数集約書き込みのため CommandService を用いる。判定軸は「集約を跨ぐ書き込みの原子性が要るか」）。
+**単一集約（`purchases`）のみを更新するため、通常 usecase + Repository で完結する**
+（cancel は在庫復元を伴い複数集約へ書くが、対象行を名指しできるため同じく usecase + Repository で分解できる。判定軸は [ADR-0034 (commandservice-atomicity-criterion)]）。
 状態機械の source of truth はキャンセルと統一で `status_id`（現在状態）、timestamps は監査記録として併用する。二重支払いは
 購入行ロック（`repo.LockByCode` の FOR UPDATE・並行制御であって集約横断ではない）+ ドメインの状態チェック（`ErrAlreadyPaid`）で防ぐ。
 支払い後の状態名解決は詳細読み取りモデル（`purchase.Detail`）で JOIN 解決する。
@@ -438,7 +438,7 @@ workflow:
 
 `PATCH /v1/purchases/{purchaseCode}/ship`。購入を発送済みへ遷移させる状態遷移経路。`shipped_at` のセットと `status_id` の
 「発送済み」への更新のみを担い、配送追跡（追跡番号 / 配送業者 / 追跡 URL）と在庫操作は伴わない。支払いと同じく
-**単一集約（`purchases`）のみを更新するため CommandService ではなく Repository で完結する**（[ADR-0034 (commandservice-atomicity-criterion)] の判定軸）。
+**単一集約（`purchases`）のみを更新するため Repository で完結する**（[ADR-0034 (commandservice-atomicity-criterion)] の判定軸）。
 二重発送は購入行ロック（`repo.LockByCode` の FOR UPDATE）+ ドメインの状態チェック（`ErrAlreadyShipped`）で防ぐ。
 
 支払い・キャンセルと異なり **admin 専用の運用操作**であり、認可の扱いが 3 点で異なる:
@@ -504,7 +504,7 @@ workflow:
 
 `PATCH /v1/purchases/{purchaseCode}/deliver`。購入を配達済みへ遷移させる状態遷移経路。`delivered_at` のセットと `status_id` の
 「配達済み」への更新のみを担い、配達確認の証跡（署名 / 受領写真 / GPS 位置）と在庫操作は伴わない。発送と同じく
-**単一集約（`purchases`）のみを更新するため CommandService ではなく Repository で完結する**（[ADR-0034 (commandservice-atomicity-criterion)] の判定軸）。
+**単一集約（`purchases`）のみを更新するため Repository で完結する**（[ADR-0034 (commandservice-atomicity-criterion)] の判定軸）。
 二重配達は購入行ロック（`repo.LockByCode` の FOR UPDATE）+ ドメインの状態チェック（`ErrAlreadyDelivered`）で防ぐ。
 
 発送と同じ **admin 専用の運用操作**であり、認可の扱いも同じ 3 点で支払い・キャンセルと異なる:

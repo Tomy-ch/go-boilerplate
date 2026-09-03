@@ -103,7 +103,14 @@ fields:
 
 ## Cross-field Invariants
 
-- なし（各フィールドの単独制約のみ）。
+- `len(images) <= maxImages`（`maxImages = 20`。超過は `ErrTooManyImages` → 422）。
+  `New` / `Reconstruct` / `Update` が共有する検証ゲートで課す。保存済みデータのための緩和経路はない
+  （`internal/domain/README.md` の Aggregate Design / Why validate here）。
+  DB 側のトリガによる多重防御は採らない。業務語彙で名前を持つ条件はドメインが述語として持ち、SQL は
+  それを実行してよいが著作してはならない（`docs/rules.md` の Domain Layer Constraints /
+  `internal/domain/README.md` の Query and Aggregate）。
+  保存済みの違反行はロード時のエラーとして表面化する。
+  `maxImages` は sample の placeholder で、実要件が立った時点で改める。
 
 ## Behavior Methods
 
@@ -270,17 +277,6 @@ fields:
     上書きできず 0 行で弾かれる（悲観ロックと楽観ロックが同じ行で噛み合う）。
     LockByID で取得した行に対して呼ぶ前提であり、その経路では条件が外れることはない。
     ロックを取らずに呼ばれた場合の 0 行は ErrVersionConflict（409）として返し、在庫の上書きを防ぐ。
-
-# 未参照画像の回収ジョブ向け（追記分）
-- name: FilterExistingImagePaths
-  signature: FilterExistingImagePaths(ctx context.Context, paths []string) ([]string, error)
-  behavior: |
-    paths のうち、いずれかの商品が現在の画像として参照しているものを重複排除して返す。
-    論理削除された画像は現在の参照ではないため、生存行だけを参照元として数える。
-    順序は保証せず、paths が空なら問い合わせずに空を返す。返らなかったパスは
-    「どの商品からも参照されていない」＝孤児であることを意味する。
-    products は論理削除列を持たないため、生存行だけが参照元になる。
-    エンティティを再構築せずパス文字列だけを返すのは、後続がオブジェクトの削除可否しか見ないため。
 
 # SearchFilter（一覧と一致件数が共有する検索条件。ページング・並び順は持たない）
 - struct: SearchFilter

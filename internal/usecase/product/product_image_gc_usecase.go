@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"go-boilerplate/internal/domain/product"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/clock"
 	"go-boilerplate/internal/usecase/boundary/objectstorage"
+	"go-boilerplate/internal/usecase/product/query"
 )
 
 const (
@@ -40,12 +40,11 @@ type ImageGCUsecase interface {
 	SweepOrphans(ctx context.Context, grace time.Duration, batchSize int32, dryRun bool) (ImageGCResult, error)
 }
 
-// imageGCUsecase は、未参照の商品画像オブジェクトを回収するユースケースを提供します。
 type imageGCUsecase struct {
-	tracer      observability.LayerTracer
-	clock       clock.Clock
-	storage     objectstorage.Storage
-	productRepo product.Repository
+	tracer  observability.LayerTracer
+	clock   clock.Clock
+	storage objectstorage.Storage
+	images  query.ProductImageQueryService
 }
 
 // imageGCPageResult は、1 ページ分の回収結果です。
@@ -63,13 +62,13 @@ func NewImageGC(
 	tf observability.TracerFactory,
 	clk clock.Clock,
 	storage objectstorage.Storage,
-	productRepo product.Repository,
+	images query.ProductImageQueryService,
 ) ImageGCUsecase {
 	return &imageGCUsecase{
-		tracer:      tf.Usecase(),
-		clock:       clk,
-		storage:     storage,
-		productRepo: productRepo,
+		tracer:  tf.Usecase(),
+		clock:   clk,
+		storage: storage,
+		images:  images,
 	}
 }
 
@@ -128,7 +127,7 @@ func (u *imageGCUsecase) sweepPage(
 
 	// 参照照合の失敗はそのまま伝播し、このページの削除は行わない（fail-open 禁止。理由は
 	// docs/spec/product/usecase.md の SweepOrphans notes）。
-	referenced, err := u.productRepo.FilterExistingImagePaths(ctx, candidates)
+	referenced, err := u.images.FilterExistingImagePaths(ctx, candidates)
 	if err != nil {
 		return imageGCPageResult{}, err
 	}

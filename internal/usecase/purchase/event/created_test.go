@@ -15,6 +15,8 @@ import (
 )
 
 // mustPrice は、テスト用に十進文字列（ドル）から非負の money.Price を構築します。
+//
+//nolint:unparam // テスト補助ヘルパー。現行の呼び出しは同一値だが用途は可変
 func mustPrice(t *testing.T, s string) money.Price {
 	t.Helper()
 	p, err := money.NewPrice(decimaltestkit.MustParse(t, s))
@@ -32,7 +34,7 @@ func TestBuildCreated(t *testing.T) {
 			t.Parallel()
 
 			productA := uuidtestkit.NewTestFromSalt(t, "bp_product")
-			entity, details, err := domainpurchase.New(
+			entity, err := domainpurchase.New(
 				uuidtestkit.NewTestFromSalt(t, "bp_id"),
 				"bp-code",
 				uuidtestkit.NewTestFromSalt(t, "bp_user"),
@@ -41,7 +43,7 @@ func TestBuildCreated(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			payload, perr := event.BuildCreated(entity, details)
+			payload, perr := event.BuildCreated(entity)
 			require.NoError(t, perr)
 
 			var decoded struct {

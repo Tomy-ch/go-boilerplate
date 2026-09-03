@@ -9,6 +9,7 @@ import (
 	"context"
 	"time"
 
+	decimal "go-boilerplate/pkg/decimal"
 	uuid "go-boilerplate/pkg/uuid"
 )
 
@@ -148,6 +149,133 @@ func (q *Queries) GetPurchaseDetailByID(ctx context.Context, id uuid.UUID) (*Get
 		&i.DeliveredAt,
 	)
 	return &i, err
+}
+
+const insertPurchase = `-- name: InsertPurchase :exec
+INSERT INTO purchases (
+    id,
+    code,
+    user_id,
+    status_id,
+    subtotal_amount,
+    tax_amount,
+    shipping_fee,
+    total_amount
+) VALUES (
+    $1,
+    $2,
+    $3,
+    (
+        SELECT ps.id FROM purchase_statuses AS ps
+        WHERE ps.code = $4
+    ),
+    $5,
+    $6,
+    $7,
+    $8
+)
+`
+
+type InsertPurchaseParams struct {
+	ID             uuid.UUID
+	Code           string
+	UserID         uuid.UUID
+	StatusCode     int16
+	SubtotalAmount int64
+	TaxAmount      int64
+	ShippingFee    int64
+	TotalAmount    int64
+}
+
+// === source: database/dml/repository/purchase/insert_purchase.sql ===
+// 購入を 1 行 INSERT する。status_id は code から解決する（理由は docs/spec/purchase/domain.md の Notes）。
+// ordered_at / created_at / updated_at は DB 既定（NOW()）に委ねる。
+//
+//	INSERT INTO purchases (
+//	    id,
+//	    code,
+//	    user_id,
+//	    status_id,
+//	    subtotal_amount,
+//	    tax_amount,
+//	    shipping_fee,
+//	    total_amount
+//	) VALUES (
+//	    $1,
+//	    $2,
+//	    $3,
+//	    (
+//	        SELECT ps.id FROM purchase_statuses AS ps
+//	        WHERE ps.code = $4
+//	    ),
+//	    $5,
+//	    $6,
+//	    $7,
+//	    $8
+//	)
+func (q *Queries) InsertPurchase(ctx context.Context, arg *InsertPurchaseParams) error {
+	_, err := q.db.Exec(ctx, insertPurchase,
+		arg.ID,
+		arg.Code,
+		arg.UserID,
+		arg.StatusCode,
+		arg.SubtotalAmount,
+		arg.TaxAmount,
+		arg.ShippingFee,
+		arg.TotalAmount,
+	)
+	return err
+}
+
+const insertPurchaseDetail = `-- name: InsertPurchaseDetail :exec
+INSERT INTO purchase_details (
+    id,
+    purchase_id,
+    product_id,
+    quantity,
+    unit_price
+) VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5
+)
+`
+
+type InsertPurchaseDetailParams struct {
+	ID         uuid.UUID
+	PurchaseID uuid.UUID
+	ProductID  uuid.UUID
+	Quantity   int32
+	UnitPrice  decimal.Decimal
+}
+
+// === source: database/dml/repository/purchase/insert_purchase_detail.sql ===
+// 購入明細を 1 行 INSERT する。unit_price は購入時点の単価スナップショット（USD セント整数）。
+//
+//	INSERT INTO purchase_details (
+//	    id,
+//	    purchase_id,
+//	    product_id,
+//	    quantity,
+//	    unit_price
+//	) VALUES (
+//	    $1,
+//	    $2,
+//	    $3,
+//	    $4,
+//	    $5
+//	)
+func (q *Queries) InsertPurchaseDetail(ctx context.Context, arg *InsertPurchaseDetailParams) error {
+	_, err := q.db.Exec(ctx, insertPurchaseDetail,
+		arg.ID,
+		arg.PurchaseID,
+		arg.ProductID,
+		arg.Quantity,
+		arg.UnitPrice,
+	)
+	return err
 }
 
 const listPurchaseDetailsByPurchaseID = `-- name: ListPurchaseDetailsByPurchaseID :many
@@ -435,6 +563,43 @@ func (q *Queries) SelectPurchaseStatusCodesByUserID(ctx context.Context, userID 
 		return nil, err
 	}
 	return items, nil
+}
+
+const updatePurchaseCanceled = `-- name: UpdatePurchaseCanceled :exec
+UPDATE purchases
+SET
+    status_id = (
+        SELECT ps.id FROM purchase_statuses AS ps
+        WHERE ps.code = $1
+    ),
+    canceled_at = $2,
+    updated_at = NOW()
+WHERE purchases.id = $3
+`
+
+type UpdatePurchaseCanceledParams struct {
+	StatusCode int16
+	CanceledAt *time.Time
+	ID         uuid.UUID
+}
+
+// === source: database/dml/repository/purchase/update_purchase_canceled.sql ===
+// 購入をキャンセル状態へ更新する。status_id は code から解決する。canceled_at はドメインが決定した
+// 時刻（引数）を書き込み、イベント payload・レスポンスと同一時刻に揃える。
+// 遷移可否ガードは付けない（理由は docs/spec/purchase/domain.md の Repository Methods）。
+//
+//	UPDATE purchases
+//	SET
+//	    status_id = (
+//	        SELECT ps.id FROM purchase_statuses AS ps
+//	        WHERE ps.code = $1
+//	    ),
+//	    canceled_at = $2,
+//	    updated_at = NOW()
+//	WHERE purchases.id = $3
+func (q *Queries) UpdatePurchaseCanceled(ctx context.Context, arg *UpdatePurchaseCanceledParams) error {
+	_, err := q.db.Exec(ctx, updatePurchaseCanceled, arg.StatusCode, arg.CanceledAt, arg.ID)
+	return err
 }
 
 const updatePurchaseDelivered = `-- name: UpdatePurchaseDelivered :exec

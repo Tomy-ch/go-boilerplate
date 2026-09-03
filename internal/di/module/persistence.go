@@ -1,8 +1,8 @@
 package module
 
 import (
-	purchasecmd "go-boilerplate/internal/infrastructure/rdb/command_service/purchase"             // sample-api:line
 	dashboardqs "go-boilerplate/internal/infrastructure/rdb/query_service/dashboard"              // sample-api:line
+	productimageqs "go-boilerplate/internal/infrastructure/rdb/query_service/product"             // sample-api:line
 	productrankingqs "go-boilerplate/internal/infrastructure/rdb/query_service/product/ranking"   // sample-api:line
 	purchasedetailqs "go-boilerplate/internal/infrastructure/rdb/query_service/purchase"          // sample-api:line
 	purchasefeedqs "go-boilerplate/internal/infrastructure/rdb/query_service/purchase/feed"       // sample-api:line
@@ -48,6 +48,8 @@ func persistenceModule() fx.Option {
 		fx.Module("query_service",
 			fx.Provide(
 				// sample-api:begin
+				// productimageqs: 商品を経由しない画像パスの参照照合（docs/spec/product/usecase.md § SweepOrphans）
+				productimageqs.New,
 				// productrankingqs: 商品売上ランキング（docs/spec/product-ranking/usecase.md § Overview）
 				productrankingqs.New,
 				// purchasedetailqs / purchasefeedqs: 集約跨ぎ read 投影（docs/spec/purchase/usecase.md § GET 詳細 / GET 一覧）
@@ -61,12 +63,10 @@ func persistenceModule() fx.Option {
 			),
 		),
 		fx.Module("command_service",
-			fx.Provide(
-				// sample-api:begin
-				// purchasecmd: 購入の原子的書き込み（docs/spec/purchase/usecase.md 冒頭ノート）
-				purchasecmd.New,
-				// sample-api:end
-			),
+			// このサブモジュールは意図的に空です。集約横断の書き込みを 1 件も持たない
+			// システムには登録するものが無く、空であること自体は欠陥ではありません
+			// （ADR-0032 (lightweight-cqrs) § Implementation status）。
+			fx.Provide(),
 		),
 		fx.Module("system_cqrs",
 			fx.Provide(
