@@ -19,7 +19,7 @@
     "js-yaml": "4.3.1",
     "linkedom": "0.18.13",
     "mermaid": "11.16.1",
-    "orval": "7.21.0",
+    "orval": "8.26.0",
     "zod": "4.4.3"
   },
   "devDependencies": {
