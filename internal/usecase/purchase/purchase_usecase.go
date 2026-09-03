@@ -297,7 +297,6 @@ func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParam
 			return uerr
 		}
 
-		// 在庫ロックは商品集約の読み取りなので、購入の書き込みポートではなく商品 Repository を通す。
 		products, lerr := u.productRepo.LockByIDs(ctx, draft.productIDs)
 		if lerr != nil {
 			return lerr
@@ -312,8 +311,7 @@ func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParam
 			return nerr
 		}
 
-		// 在庫の減算は商品集約の変更なので、ロック済みのエンティティへドメインで適用してから
-		// 商品 Repository で書く。充足は purchase.New が locked と突き合わせて検証済み。
+		// 充足（在庫超過が無いこと）は直前の purchase.New が locked と突き合わせて検証済み。
 		if serr := u.applyStockDelta(ctx, products, entity.Details(), -1); serr != nil {
 			return serr
 		}
@@ -493,7 +491,7 @@ func (u *usecase) ShipPurchase(
 	now := u.clock.Now()
 
 	var detail *purchase.Detail
-	// tx 境界・ADR-0034 の根拠は PayPurchase のコメントを参照。二重発送対策は
+	// tx 境界は PayPurchase のコメントを参照。二重発送対策は
 	// docs/spec/purchase/usecase.md § PATCH 発送 を参照。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
 		locked, lerr := u.repo.LockByCode(ctx, purchaseCode)
@@ -560,7 +558,7 @@ func (u *usecase) DeliverPurchase(
 	now := u.clock.Now()
 
 	var detail *purchase.Detail
-	// tx 境界・ADR-0034 の根拠は PayPurchase のコメントを参照。二重配達対策は
+	// tx 境界は PayPurchase のコメントを参照。二重配達対策は
 	// docs/spec/purchase/usecase.md § PATCH 配達完了 を参照。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
 		locked, lerr := u.repo.LockByCode(ctx, purchaseCode)

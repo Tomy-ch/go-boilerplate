@@ -91,9 +91,10 @@ output:
     - "  ⓪ userLock.LockShareByID で購入者を共有ロック付きで読み出し、membership.EnsurePurchasable で在籍を判定する（退会と直列化。[ADR-0036 (ordered-pessimistic-row-locks)]）"
     - "  ① productRepo.LockByIDs(productID 昇順) で在庫行をロックし price/quantity を得る"
     - "  ② purchase.New で入力検証・売り越し検証・金額計算・snapshot・未処理ステータスを行う"
-    - "  ③ cmd.CreatePurchase で在庫減算 + purchases/purchase_details を書き込む"
-    - "  ④ emit.Emit(purchase.created.v1) を同一 tx で発行する（自己完結 snapshot payload）"
-    - "  ⑤ repo.FindByID で再検証しレスポンスの取得元とする"
+    - "  ③ ロック済み商品へ product.AdjustStock で在庫を減算し productRepo.UpdateStock で永続化する"
+    - "  ④ repo.Create で purchases + purchase_details を書き込む"
+    - "  ⑤ emit.Emit(purchase.created.v1) を同一 tx で発行する（自己完結 snapshot payload）"
+    - "  ⑥ repo.FindByID で再検証しレスポンスの取得元とする"
     - tx 外で DisplayCurrency 指定時のみ referenceAmount を付与（xr.Convert / 障害時 nil degrade）
     - PurchaseView へ写像して返す（ドメインエンティティを外へ出さない）
   errors:
@@ -359,12 +360,13 @@ workflow:
   tx_required: true
   steps:
     - "txm.Do 内で:"
-    - "  ① cmd.LockPurchase で購入行を FOR UPDATE ロックし明細込みで再構築（並行キャンセルを直列化）"
+    - "  ① repo.LockByCode で購入行を FOR UPDATE ロックし明細込みで再構築（並行キャンセルを直列化）"
     - "  ② purchase.UserID() != params.UserID なら NotFound へ畳む（存在秘匿）"
     - "  ③ purchase.Cancel(now) で遷移可否検証 + status/canceled_at を同時更新（ドメイン不変条件）"
-    - "  ④ cmd.CancelPurchase で明細分の在庫加算 + purchases の status_id/canceled_at 更新"
-    - "  ⑤ emit.Emit(purchase.canceled.v1) を同一 tx で発行する"
-    - "  ⑥ repo.FindDetailByID で状態名を解決しレスポンスの取得元とする"
+    - "  ④ productRepo.LockByIDs で対象商品をロックし product.AdjustStock + productRepo.UpdateStock で在庫を戻す"
+    - "  ⑤ repo.UpdateCancelled で purchases の status_id/canceled_at を更新する"
+    - "  ⑥ emit.Emit(purchase.canceled.v1) を同一 tx で発行する"
+    - "  ⑦ repo.FindDetailByID で状態名を解決しレスポンスの取得元とする"
     - CancelPurchaseView へ写像して返す（ドメインエンティティを外へ出さない）
   errors:
     - ErrAlreadyCanceled → 409（二重キャンセル）

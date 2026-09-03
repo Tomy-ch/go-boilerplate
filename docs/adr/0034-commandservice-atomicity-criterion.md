@@ -124,18 +124,19 @@ than left implicit:
      書き方: 自分の書き込み操作から分岐 1 / 2 / 3 に当たる例を 1 件ずつ挙げ、それぞれ
              『何が同時に書かれるか』『途中状態が観測されてよいか』を明記する。 -->
 <!-- sample-api:replace-begin -->
-- **Purchase creation — branch 2 and branch 3 together.** Stock validation and decrement must be
-  atomic with purchase confirmation: a state where "a purchase succeeded without stock" must never
-  be observable, even momentarily (no overselling). The writes across the aggregates involved
-  (written together: `purchases`, `purchase_details`, `products`)
-  therefore require single-transaction atomicity (branch 3), and the outbox insert joins
-  that same transaction as usual per [ADR-0054](0054-transactional-outbox.md). The outbox insert is
-  not what justifies the CommandService — a regular usecase also writes the outbox in its own
-  transaction; the justification is the stock/purchase atomicity. Independently, the same
-  transaction guards on the purchaser still being a member, and that condition can be invalidated by
-  a concurrent withdrawal, so the user row is locked first (branch 2). The transaction consequently
-  spans three aggregates — user, product, purchase — for two different reasons, which is why the two
-  branches are asked separately. Specified in `docs/spec/purchase/usecase.md`.
+- **Purchase creation — branch 2 for the guard, and a write that still decomposes.** Stock validation
+  and decrement must be atomic with purchase confirmation: a state where "a purchase succeeded
+  without stock" must never be observable, even momentarily (no overselling). That atomicity is
+  supplied by the transaction the usecase already owns, not by a CommandService — the rows to be
+  written are named by identity (the products the details reference), so they are locked in id order
+  first and the write decomposes into `product.Repository.UpdateStock` plus
+  `purchase.Repository.Create`. This is the instance to read against the one below: three aggregates
+  are touched and the count still decides nothing. Independently, the same transaction guards on the
+  purchaser still being a member, and that condition can be invalidated by a concurrent withdrawal,
+  so the user row is locked first (branch 2). The outbox insert joins the same transaction as usual
+  per [ADR-0054](0054-transactional-outbox.md), and never justifies a CommandService — a regular
+  usecase writes the outbox in its own transaction too. Specified in
+  `docs/spec/purchase/usecase.md`.
 - **User withdrawal — branch 2 for the guard, branch 1 for the cascade.** The core of withdrawal is
   a single-aggregate write to `users.deleted_at`. The cascade — cancelling pending purchases and
   restoring stock — requires no immediacy and is eventually consistent via outbox events (branch 1).
