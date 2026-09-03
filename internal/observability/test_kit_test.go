@@ -530,3 +530,188 @@ func Test_hasAttribute(t *testing.T) {
 		})
 	})
 }
+
+func TestNewNoopRealtimeMetrics(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("no-op MeterProvider から RealtimeMetrics を生成する", func(t *testing.T) {
+			t.Parallel()
+
+			assert.NotNil(t, NewNoopRealtimeMetrics(t))
+		})
+	})
+}
+
+func TestNewRecordingTracerFactory(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("生成した span を読み戻せる TracerFactory を返す", func(t *testing.T) {
+			t.Parallel()
+
+			tf, recorded := NewRecordingTracerFactory(t)
+
+			_, endSpan := tf.Controller().Start(context.Background())
+			endSpan()
+
+			assert.Len(t, recorded(), 1)
+		})
+	})
+}
+
+func TestNewObservedRealtimeMetrics(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("計上した値を読み戻せる RealtimeMetrics を返す", func(t *testing.T) {
+			t.Parallel()
+
+			o := NewObservedRealtimeMetrics(t)
+
+			o.ConnectionRejected(context.Background(), "capacity")
+
+			assert.Equal(t, int64(1), o.CounterValue(t, "realtime.connections.rejected", "reason", "capacity"))
+		})
+	})
+}
+
+func TestObservedRealtimeMetrics_CounterValue(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("label が一致する点の値を返す", func(t *testing.T) {
+			t.Parallel()
+
+			o := NewObservedRealtimeMetrics(t)
+			o.CleanupInstances(context.Background(), "detected", 3)
+
+			assert.Equal(t, int64(3), o.CounterValue(t, "realtime.cleanup.instances", "outcome", "detected"))
+		})
+
+		t.Run("一致する点が無ければ -1 を返す", func(t *testing.T) {
+			t.Parallel()
+
+			// 0 は「0 が計上された」なので、未計上と同じ値にしてはいけません。
+			o := NewObservedRealtimeMetrics(t)
+
+			assert.Equal(t, int64(-1), o.CounterValue(t, "realtime.cleanup.instances", "outcome", "failed"))
+		})
+	})
+}
+
+func TestObservedRealtimeMetrics_HistogramCount(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("記録した点の数を返す", func(t *testing.T) {
+			t.Parallel()
+
+			o := NewObservedRealtimeMetrics(t)
+			o.DeliveryLatency(context.Background(), 12)
+			o.DeliveryLatency(context.Background(), 34)
+
+			assert.Equal(t, uint64(2), o.HistogramCount(t, "realtime.delivery.latency_ms"))
+		})
+
+		t.Run("未記録なら 0 を返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, uint64(0), NewObservedRealtimeMetrics(t).HistogramCount(t, "realtime.catchup.lag_ms"))
+		})
+	})
+}
+
+func Test_totalHistogramCount(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("全データポイントの記録回数を合計する", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, uint64(5), totalHistogramCount([]metricdata.HistogramDataPoint[int64]{
+				{Count: 2}, {Count: 3},
+			}))
+		})
+
+		t.Run("データポイントが無ければ 0 を返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Equal(t, uint64(0), totalHistogramCount([]metricdata.HistogramDataPoint[float64]{}))
+		})
+	})
+}
+
+func Test_findMetric(t *testing.T) {
+	t.Parallel()
+
+	rm := metricdata.ResourceMetrics{ScopeMetrics: []metricdata.ScopeMetrics{
+		{Metrics: []metricdata.Metrics{{Name: "a"}, {Name: "b"}}},
+	}}
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("名前が一致する metric を返す", func(t *testing.T) {
+			t.Parallel()
+
+			got, found := findMetric(rm, "b")
+
+			require.True(t, found)
+			assert.Equal(t, "b", got.Name)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("一致が無ければ見つからないことを返す", func(t *testing.T) {
+			t.Parallel()
+
+			_, found := findMetric(rm, "missing")
+
+			assert.False(t, found)
+		})
+	})
+}
+
+func Test_matchesLabel(t *testing.T) {
+	t.Parallel()
+
+	attrs := attribute.NewSet(attribute.String("reason", "capacity"))
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("キーと値が一致すれば真", func(t *testing.T) {
+			t.Parallel()
+
+			assert.True(t, matchesLabel(attrs, "reason", "capacity"))
+		})
+
+		t.Run("キーが空なら label を問わない", func(t *testing.T) {
+			t.Parallel()
+
+			assert.True(t, matchesLabel(attrs, "", ""))
+		})
+
+		t.Run("キーが無い・値が違えば偽", func(t *testing.T) {
+			t.Parallel()
+
+			assert.False(t, matchesLabel(attrs, "trigger", "capacity"))
+			assert.False(t, matchesLabel(attrs, "reason", "degraded"))
+		})
+	})
+}
