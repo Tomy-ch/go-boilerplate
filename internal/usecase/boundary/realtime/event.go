@@ -1,6 +1,7 @@
 // Package realtime は、Realtime Delivery（docs/design/realtime-delivery.md）の seam を定義します。
 // feature 中立な封筒 DeliveryEvent と、それを保存・配送する側が実装する境界
-// （EventLogStore / StreamTicketStore / InstanceLeaseStore / SecretGenerator / SequenceAllocator）を置きます。DynamoDB / AWS の語彙（table / partition / TTL 等）はこの
+// （EventLogStore / StreamTicketStore / InstanceLeaseStore / SecretGenerator / SequenceAllocator）を置きます。
+// DynamoDB / AWS の語彙（table / partition / TTL 等）はこの
 // package に現れません。feature の語彙（会話・メッセージ等）も現れません。
 package realtime
 
