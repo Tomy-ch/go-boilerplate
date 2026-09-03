@@ -31,6 +31,34 @@ func New(
 	}
 }
 
+// Create は、購入本体を登録してから明細を 1 件ずつ登録します。明細は購入行の外部キー先なので
+// この順序でなければ 23503 で失敗します。
+func (r *repository) Create(ctx context.Context, p *purchase.Purchase) error {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	statusCode, err := safecast.IntToInt16(p.StatusCode())
+	if err != nil {
+		return xerrors.Wrap(err, "invalid purchase status code")
+	}
+
+	db := gen.New(driver.New(ctx, r.db))
+	if err := db.InsertPurchase(ctx, &gen.InsertPurchaseParams{
+		ID:             p.ID(),
+		Code:           p.Code(),
+		UserID:         p.UserID(),
+		StatusCode:     statusCode,
+		SubtotalAmount: int64(p.SubtotalAmount()),
+		TaxAmount:      int64(p.TaxAmount()),
+		ShippingFee:    int64(p.ShippingFee()),
+		TotalAmount:    int64(p.TotalAmount()),
+	}); err != nil {
+		return pgerror.NormalizeError(err)
+	}
+
+	return r.insertDetails(ctx, db, p)
+}
+
 // FindByID は、購入本体と明細の 2 クエリでロックを取らずに読み出し、集約として再構築します
 // （ロックを取る LockByCode との対）。存在しない場合は NotFound を返します。
 func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*purchase.Purchase, error) {
@@ -185,6 +213,28 @@ func (r *repository) UpdateDelivered(ctx context.Context, p *purchase.Purchase) 
 		StatusCode:  statusCode,
 		DeliveredAt: p.DeliveredAt(),
 		ID:          p.ID(),
+	}); err != nil {
+		return pgerror.NormalizeError(err)
+	}
+	return nil
+}
+
+// UpdateCancelled は、購入の状態更新（status_id / canceled_at）を渡された tx 内で実行します。
+// status_id の解決方針・遷移ガードの扱いは UpdateShipped を参照。
+func (r *repository) UpdateCancelled(ctx context.Context, p *purchase.Purchase) error {
+	ctx, endSpan := r.tracer.Start(ctx)
+	defer endSpan()
+
+	statusCode, err := safecast.IntToInt16(p.StatusCode())
+	if err != nil {
+		return xerrors.Wrap(err, "invalid purchase status code")
+	}
+
+	db := gen.New(driver.New(ctx, r.db))
+	if err := db.UpdatePurchaseCanceled(ctx, &gen.UpdatePurchaseCanceledParams{
+		StatusCode: statusCode,
+		CanceledAt: p.CanceledAt(),
+		ID:         p.ID(),
 	}); err != nil {
 		return pgerror.NormalizeError(err)
 	}
@@ -380,4 +430,26 @@ func (r *repository) FindUserIDsWithPurchases(ctx context.Context, userIDs []uui
 		return nil, pgerror.NormalizeError(err)
 	}
 	return ids, nil
+}
+
+// insertDetails は、p が保持する明細を登録します。
+func (r *repository) insertDetails(ctx context.Context, db *gen.Queries, p *purchase.Purchase) error {
+	for _, d := range p.Details() {
+		quantity, err := safecast.IntToInt32(d.Quantity())
+		if err != nil {
+			return xerrors.Wrap(err, "invalid purchase detail quantity")
+		}
+
+		if err := db.InsertPurchaseDetail(ctx, &gen.InsertPurchaseDetailParams{
+			ID:         d.ID(),
+			PurchaseID: p.ID(),
+			ProductID:  d.ProductID(),
+			Quantity:   quantity,
+			UnitPrice:  d.UnitPrice().Decimal(),
+		}); err != nil {
+			return pgerror.NormalizeError(err)
+		}
+	}
+
+	return nil
 }

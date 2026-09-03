@@ -1,7 +1,6 @@
 package module
 
 import (
-	purchasecmd "go-boilerplate/internal/infrastructure/rdb/command_service/purchase"             // sample-api:line
 	dashboardqs "go-boilerplate/internal/infrastructure/rdb/query_service/dashboard"              // sample-api:line
 	productimageqs "go-boilerplate/internal/infrastructure/rdb/query_service/product"             // sample-api:line
 	productrankingqs "go-boilerplate/internal/infrastructure/rdb/query_service/product/ranking"   // sample-api:line
@@ -60,14 +59,6 @@ func persistenceModule() fx.Option {
 				purchasesummaryqs.New,
 				// dashboardqs: 購入・商品横断の admin 集計（docs/spec/dashboard/usecase.md § Overview）
 				dashboardqs.New,
-				// sample-api:end
-			),
-		),
-		fx.Module("command_service",
-			fx.Provide(
-				// sample-api:begin
-				// purchasecmd: 購入の原子的書き込み（docs/spec/purchase/usecase.md 冒頭ノート）
-				purchasecmd.New,
 				// sample-api:end
 			),
 		),

@@ -200,13 +200,17 @@ See details below.
 `command_service` implements a **CommandService** — the write-side counterpart of QueryService
 (interface in the Usecase layer alongside QueryService, implementation here). It is reserved for multi-aggregate writes
 that require single-transaction atomicity (see [ADR-0032 (lightweight-cqrs)](../../../docs/adr/0032-lightweight-cqrs.md)
-/ [ADR-0034 (commandservice-atomicity-criterion)](../../../docs/adr/0034-commandservice-atomicity-criterion.md)); the first implementation
+/ [ADR-0034 (commandservice-atomicity-criterion)](../../../docs/adr/0034-commandservice-atomicity-criterion.md)),
+and the write ordering follows
+[ADR-0036 (ordered-pessimistic-row-locks)](../../../docs/adr/0036-ordered-pessimistic-row-locks.md).
+
 <!-- sample-api:replace-begin -->
-is `command_service/purchase` (stock decrement + purchase / detail INSERT — see
-[ADR-0036 (ordered-pessimistic-row-locks)](../../../docs/adr/0036-ordered-pessimistic-row-locks.md)).
+The category currently carries no implementation. A write whose target rows can be named by identity
+is lockable and therefore decomposes into a usecase composed of Repository calls, which is why the
+purchase flow does not use one; what the category is waiting for is a write whose target set is
+defined by a predicate. See [issue #1461](https://github.com/Tomy-ch/go-boilerplate/issues/1461).
 <!-- sample-api:replace-with -->
-<!-- = and the write ordering follows -->
-<!-- = [ADR-0036 (ordered-pessimistic-row-locks)](../../../docs/adr/0036-ordered-pessimistic-row-locks.md). -->
+<!-- = The category carries no implementation until a write meets the criterion. -->
 <!-- sample-api:replace-end -->
 
 A CommandService executes writes on the transaction supplied via the `ctx` (it never opens its own —

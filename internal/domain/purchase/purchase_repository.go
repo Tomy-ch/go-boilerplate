@@ -8,7 +8,13 @@ import (
 )
 
 // Repository は、購入の永続化操作を定義するドメインリポジトリインターフェースです。
+//
+//nolint:interfacebloat // 集約の永続化契約は 1 本に保つ（ADR-0032 (lightweight-cqrs)）。呼び出し側ごとに分割すると同一集約の契約が複数箇所へ散る
 type Repository interface {
+	// Create は、購入を新規登録します。p が保持する明細も併せて登録します。
+	// 在庫の減算は商品集約の書き込みであり、呼び出し側が同一トランザクション内で
+	// product.Repository を通して行います。
+	Create(ctx context.Context, p *Purchase) error
 	// FindByID は、ID から購入を明細込みで取得します。存在しない場合は NotFound を返します。
 	FindByID(ctx context.Context, id uuid.UUID) (*Purchase, error)
 	// LockByCode は、購入コードから対象の購入のみを悲観ロックして明細込みで再構築し返します。
@@ -24,6 +30,10 @@ type Repository interface {
 	// UpdateDelivered は、購入の状態遷移（→ 配達済み）を、渡された ctx のトランザクション内で実行します。
 	// 対象は LockByCode で取得・検証済みです。
 	UpdateDelivered(ctx context.Context, p *Purchase) error
+	// UpdateCancelled は、購入の状態遷移（→ キャンセル）を、渡された ctx のトランザクション内で実行します。
+	// 対象は LockByCode で取得・検証済みです。明細ぶんの在庫復元は商品集約の書き込みであり、
+	// 呼び出し側が同一トランザクション内で product.Repository を通して行います。
+	UpdateCancelled(ctx context.Context, p *Purchase) error
 	// FindShippable は、発送可能な購入を注文日時の古い順（同時刻は ID 昇順）で明細込みに最大 limit 件
 	// 取得します。該当が無い場合は空を返します。絞り込みは Purchase.IsShippable の定義と一致させること。
 	FindShippable(ctx context.Context, limit int32) (Purchases, error)

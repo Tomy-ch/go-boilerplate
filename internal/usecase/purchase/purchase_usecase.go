@@ -20,7 +20,6 @@ import (
 	outboxbndry "go-boilerplate/internal/usecase/boundary/outbox"
 	"go-boilerplate/internal/usecase/boundary/tx"
 	"go-boilerplate/internal/usecase/outbox"
-	"go-boilerplate/internal/usecase/purchase/command"
 	"go-boilerplate/internal/usecase/purchase/event"
 	"go-boilerplate/internal/usecase/purchase/query"
 	"go-boilerplate/pkg/decimal"
@@ -192,7 +191,6 @@ type Usecase interface {
 type usecase struct {
 	tracer      observability.LayerTracer
 	txm         tx.Manager
-	cmd         command.CommandService
 	repo        purchase.Repository
 	productRepo product.Repository
 	userLock    user.LockRepository
@@ -214,7 +212,6 @@ type purchaseDraft struct {
 // New は、購入ユースケースを生成します。
 func New(
 	txm tx.Manager,
-	cmd command.CommandService,
 	repo purchase.Repository,
 	productRepo product.Repository,
 	userLock user.LockRepository,
@@ -228,7 +225,6 @@ func New(
 	return &usecase{
 		tracer:      tf.Usecase(),
 		txm:         txm,
-		cmd:         cmd,
 		repo:        repo,
 		productRepo: productRepo,
 		userLock:    userLock,
@@ -238,6 +234,21 @@ func New(
 		clock:       clock,
 		authorizer:  authorizer,
 	}
+}
+
+// detailProductIDs は、明細が参照する商品 ID を重複なく返します。
+func detailProductIDs(details []purchase.PurchaseDetail) []uuid.UUID {
+	seen := make(map[uuid.UUID]struct{}, len(details))
+	ids := make([]uuid.UUID, 0, len(details))
+	for _, d := range details {
+		if _, ok := seen[d.ProductID()]; ok {
+			continue
+		}
+		seen[d.ProductID()] = struct{}{}
+		ids = append(ids, d.ProductID())
+	}
+
+	return ids
 }
 
 // newPurchaseDraft は、購入・購入コード・各明細の ID を採番し、ドメイン入力と商品 ID 列を組み立てます。
@@ -301,7 +312,13 @@ func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParam
 			return nerr
 		}
 
-		if cerr := u.cmd.CreatePurchase(ctx, entity); cerr != nil {
+		// 在庫の減算は商品集約の変更なので、ロック済みのエンティティへドメインで適用してから
+		// 商品 Repository で書く。充足は purchase.New が locked と突き合わせて検証済み。
+		if serr := u.applyStockDelta(ctx, products, entity.Details(), -1); serr != nil {
+			return serr
+		}
+
+		if cerr := u.repo.Create(ctx, entity); cerr != nil {
 			return cerr
 		}
 
@@ -340,10 +357,10 @@ func (u *usecase) CancelPurchase(ctx context.Context, params CancelPurchaseParam
 	now := u.clock.Now()
 
 	var detail *purchase.Detail
-	// tx 境界は PayPurchase のコメントを参照。CommandService（cmd）を使う理由・二重キャンセル対策は
+	// tx 境界は PayPurchase のコメントを参照。二重キャンセル対策は
 	// docs/spec/purchase/usecase.md § PATCH キャンセル を参照。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
-		locked, lerr := u.cmd.LockPurchase(ctx, params.PurchaseCode)
+		locked, lerr := u.repo.LockByCode(ctx, params.PurchaseCode)
 		if lerr != nil {
 			return lerr
 		}
@@ -358,7 +375,11 @@ func (u *usecase) CancelPurchase(ctx context.Context, params CancelPurchaseParam
 			return cerr
 		}
 
-		if perr := u.cmd.CancelPurchase(ctx, locked); perr != nil {
+		if serr := u.restoreStock(ctx, locked.Details()); serr != nil {
+			return serr
+		}
+
+		if perr := u.repo.UpdateCancelled(ctx, locked); perr != nil {
 			return perr
 		}
 
@@ -400,7 +421,7 @@ func (u *usecase) PayPurchase(ctx context.Context, params PayPurchaseParams) (Pa
 	now := u.clock.Now()
 
 	var detail *purchase.Detail
-	// この Do が最外 tx（本経路は Idempotency-Key を配線しない）。CommandService を使わない理由・
+	// この Do が最外 tx（本経路は Idempotency-Key を配線しない）。
 	// 二重支払い対策は docs/spec/purchase/usecase.md § PATCH 支払い を参照。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
 		locked, lerr := u.repo.LockByCode(ctx, params.PurchaseCode)
@@ -722,4 +743,43 @@ func toPayPurchaseView(d *purchase.Detail) PayPurchaseView {
 		OrderedAt:      d.OrderedAt,
 		PaidAt:         d.PaidAt,
 	}
+}
+
+// restoreStock は、キャンセルした明細ぶんの在庫を対象商品へ戻します。
+// 対象商品をロックしてからドメインで適用します。順序（id 昇順）は LockByIDs が担保します
+// （ADR-0036 (ordered-pessimistic-row-locks)）。
+func (u *usecase) restoreStock(ctx context.Context, details []purchase.PurchaseDetail) error {
+	products, err := u.productRepo.LockByIDs(ctx, detailProductIDs(details))
+	if err != nil {
+		return err
+	}
+
+	return u.applyStockDelta(ctx, products, details, 1)
+}
+
+// applyStockDelta は、明細の数量 × sign を対象商品の在庫へ適用して永続化します。
+// sign は購入時に -1、キャンセルによる復元時に 1 を取ります。products はロック済みである必要があり、
+// 在庫の範囲判定は商品集約の AdjustStock が行います。
+func (u *usecase) applyStockDelta(
+	ctx context.Context, products product.Products, details []purchase.PurchaseDetail, sign int,
+) error {
+	byID := make(map[uuid.UUID]*product.Product, len(products))
+	for _, p := range products {
+		byID[p.ID()] = p
+	}
+
+	for _, d := range details {
+		p, ok := byID[d.ProductID()]
+		if !ok {
+			return xerrors.Wrap(apperror.ErrNotFound, "product not found for purchase detail")
+		}
+		if aerr := p.AdjustStock(sign * d.Quantity()); aerr != nil {
+			return aerr
+		}
+		if _, uerr := u.productRepo.UpdateStock(ctx, p); uerr != nil {
+			return uerr
+		}
+	}
+
+	return nil
 }
