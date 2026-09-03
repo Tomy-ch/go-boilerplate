@@ -68,9 +68,9 @@ func (u *usecase) ListLowStockProducts(
 		}
 	}
 
-	items, err := u.toProductViews(ctx, products)
-	if err != nil {
-		return ProductLowStockListView{}, err
+	items := make([]ProductView, len(products))
+	for i, p := range products {
+		items[i] = toProductView(p)
 	}
 
 	return ProductLowStockListView{Items: items}, nil

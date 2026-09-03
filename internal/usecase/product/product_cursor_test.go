@@ -101,7 +101,7 @@ func Test_encodeProductCursor(t *testing.T) {
 			require.NoError(t, err)
 			category, err := product.NewCategoryRef(uuidtestkit.NewTestFromSalt(t, "encode_category"), "電子機器")
 			require.NoError(t, err)
-			last, _, err := product.New(id, product.Attributes{
+			last, err := product.New(id, product.Attributes{
 				Name:                  "商品名",
 				Description:           ptr.To("説明"),
 				Price:                 mustPrice(t, "5.00"),
@@ -243,7 +243,7 @@ func Test_encodeAllProductCursor(t *testing.T) {
 		t.Run("識別子と登録日時とIDの3キーへ符号化される", func(t *testing.T) {
 			t.Parallel()
 			id, attrs := validCursorProductArgs(t)
-			p, _, err := product.Reconstruct(id, attrs, 1, testCreatedAt)
+			p, err := product.Reconstruct(id, attrs, 1, testCreatedAt)
 			require.NoError(t, err)
 
 			encoded := encodeAllProductCursor(p)
@@ -258,7 +258,7 @@ func Test_encodeAllProductCursor(t *testing.T) {
 		t.Run("符号化したカーソルは既定の可視範囲では復号できない", func(t *testing.T) {
 			t.Parallel()
 			id, attrs := validCursorProductArgs(t)
-			p, _, err := product.Reconstruct(id, attrs, 1, testCreatedAt)
+			p, err := product.Reconstruct(id, attrs, 1, testCreatedAt)
 			require.NoError(t, err)
 
 			encoded := encodeAllProductCursor(p)

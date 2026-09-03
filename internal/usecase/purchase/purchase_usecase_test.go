@@ -88,7 +88,7 @@ func lockedProducts(t *testing.T, id uuid.UUID, quantity int) domainproduct.Prod
 	require.NoError(t, err)
 	category, err := domainproduct.NewCategoryRef(uuidtestkit.NewTestFromSalt(t, "locked_category"), "電子機器")
 	require.NoError(t, err)
-	p, _, err := domainproduct.New(id, domainproduct.Attributes{
+	p, err := domainproduct.New(id, domainproduct.Attributes{
 		Name:     "ロック対象商品",
 		Price:    mustPrice(t, "800"),
 		Quantity: quantity,
