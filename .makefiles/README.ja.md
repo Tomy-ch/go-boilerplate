@@ -23,7 +23,7 @@ Make ターゲットは主に以下の単位で整理されています。
 
 - ターゲット名はハイフン区切りの小文字（`make new-migrate-<name>`、`make gen-api`）
 - ターゲットは 2 種類:
-  - **通常ターゲット**: 開発者がローカルで呼ぶ。再現性のため Docker コンテナ経由で実行。ただし一部はホスト上のツールを解決する（`lint` / `fix` の `golangci-lint`、`actions-zizmor` の `zizmor`、`go-cooldown-gate` / `go-cooldown-audit`、`tool-cooldown-gate` / `tool-cooldown-audit`）。tool-runner が Alpine であり、上流が musl ビルドを配布していないためである。これは規約の例外ではなく [ツールチェイン実行ルール](../docs/rules.ja.md#ツールチェイン実行ルール) が定める最終手段であり、供給は `make install-tools` が担い、イメージが担うはずだった再現性は `mise.toml` のピンが引き受ける
+  - **通常ターゲット**: 開発者がローカルで呼ぶ。再現性のため Docker コンテナ経由で実行。ただし一部はホスト上のツールを解決する（`lint` / `fix` の `golangci-lint`、`actions-zizmor` の `zizmor`、`go-cooldown-gate` / `go-cooldown-audit`、`tool-cooldown-gate` / `tool-cooldown-audit`、`pnpm-cooldown-check`）。tool-runner が Alpine であり、上流が musl ビルドを配布していないためである。これは規約の例外ではなく [ツールチェイン実行ルール](../docs/rules.ja.md#ツールチェイン実行ルール) が定める最終手段であり、供給は `make install-tools` が担い、イメージが担うはずだった再現性は `mise.toml` のピンが引き受ける
   - **`-ci` ターゲット**: CI ランナー、またはツールをローカルインストール済みの開発者向け低レベルコマンド
 - すべて `.PHONY` 指定し、末尾 `##` コメントで `make help` 出力に載せること
 
@@ -281,6 +281,7 @@ CI のセキュリティ指摘をローカルで再現するためのスキャ�
 | `make go-cooldown-audit` | `go.mod` のうち窓の内側で公開されたものを報告し、期限切れ・3 ヶ月超・対象不在のバイパスエントリがあれば失敗します。 | ホスト上で実行。窓そのものではここで落ちません（既存依存は grandfather）が、失効したバイパスでは落ちます。期限は `go.mod` が変わらなくても訪れるためです。 |
 | `make tool-cooldown-gate BASE=<ref>` | `BASE` との宣言差分（`mise.toml` と `python/*.in`）が、backend の窓（GitHub リリース 14 日 / パッケージレジストリ 7 日）の内側で公開されたツール版を pin している場合に失敗します。`python/*.in` の宣言と `python/*.txt` の lockfile が別の版を指している場合にも失敗します。 | ホスト上で実行。短縮名の backend 解決に `mise` を、未認証では 1 回の実行を賄えない GitHub API のために `GITHUB_TOKEN` を使います。言語ランタイムは受容したリスクとして対象外です。 |
 | `make tool-cooldown-audit` | 宣言しているツールのうち窓の内側で公開されたものを報告し、期限切れ・3 ヶ月超・対象不在のバイパスエントリがあれば失敗します。 | ホスト上で実行。grandfather と失効バイパスでの失敗は Go 版と同じです。 |
+| `make pnpm-cooldown-check` | `minimumReleaseAgeExclude` のエントリのうち、期限が切れている・上限の 3 ヶ月を越えている・機械可読な `expires` / `issue` が欠けている・対になる `pnpm-lock.yaml` がもう解決していない版を名指ししている、のいずれかがあれば失敗します。 | ホスト上で実行。`gate` の相方が無いのは、窓そのものは pnpm の解決器が install のたびに強制しているためです。ここが見るのは免除のほうで、その期限は宣言が変わらなくても訪れます。 |
 | `make actions-zizmor` | ワークフロー / composite action の定義を zizmor で監査し、`high` の指摘で失敗します。 | ホスト上で実行。`--offline` なので pre-commit フックはネットワークも `GH_TOKEN` も不要で、オンライン監査は CI に委ねます。例外設定は `.github/zizmor.yml`。 |
 | `make actions-zizmor-sarif-ci` | zizmor の全指摘を SARIF として標準出力へ書き出します。 | CI 用ターゲット。severity で絞らないため code scanning には全体像が残ります。`make -s` で呼ぶこと。 |
 | `make actions-zizmor-gate-ci` | zizmor の `high` の指摘で失敗します。 | CI 用ターゲット。ゲート条件は `actions-zizmor` と同じで、`GH_TOKEN` を要するオンライン監査が加わります。 |

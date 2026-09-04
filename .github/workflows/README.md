@@ -360,6 +360,8 @@ reason the Go and Tool cooldowns carry one. The lockfiles sit in the trigger pat
 exclusion whose version has dropped out of the resolution is dead weight and should surface when the
 resolution moves.
 
+#### Go Cooldown
+
 Go has no counterpart to `min-release-age`: nothing lets `go get` refuse a version for being too new. That inverts the relationship between tool and guard: pnpm refuses a too-new version at resolution time, so the resolver is the guard; here the check **is** the guard, and reporting alone would leave the window existing nowhere.
 
 `go-cooldown.yaml` therefore gates on a pull request, and only over the requirements the change adds or upgrades — everything already in `go.mod` is grandfathered, so the window applies going forward instead of holding every branch hostage to the state it inherited. Only **direct** requirements fail it. An indirect version is chosen by MVS and can sit above a direct dependency's own lower bound, where lowering it is not something the pull request can do; failing there would produce a red with no remedy, so those are reported.

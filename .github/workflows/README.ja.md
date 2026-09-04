@@ -129,6 +129,7 @@
 |OpenSSF Scorecard|`scorecard.yaml`|リポジトリのセキュリティ姿勢のスコアリングと結果の公開|
 |Go Cooldown|`go-cooldown.yaml`|cooldown 窓の内側で公開された direct Go モジュールを足す / 上げる PR をゲート|
 |Tool Cooldown|`tool-cooldown.yaml`|cooldown 窓の内側で公開された CLI ツール版（`mise.toml` / `python/*.in` の宣言）を pin する PR をゲート|
+|Pnpm Cooldown|`pnpm-cooldown.yaml`|期限が切れた・3 ヶ月を越えた・lockfile ともう一致しない `minimumReleaseAgeExclude` エントリを失敗させる|
 |Config Scan|`trivy-config.yaml`|Trivy による Dockerfile の設定不備スキャン（HIGH 以上でゲート）|
 |Checkov Scan|`checkov.yaml`|zizmor も Trivy も持たないルールセットによる、ワークフロー定義と Dockerfile への Checkov ポリシースキャン（報告専用）|
 |SAST|`opengrep.yaml`|Opengrep（Semgrep 互換）による自前の Go / TypeScript ソースの解析（taint 追跡あり）|
@@ -184,7 +185,7 @@
 | OWASP ZAP（DAST） | `zap-api-scan.yaml` / `.github/zap/**` 変更時 | `develop` / `staging` / `production` / `release/*` | 週次 |
 | trustabl（エージェント設定） | — | — | 週次 |
 
-週次実行は月曜未明（UTC）に **15 分刻み**で 1 スロット 1 本ずつずらしています。同一時刻に全スキャナが並ぶのを避けるためです。スロットの割り当ては `00:00` Trivy FS、`00:15` govulncheck、`00:30` TruffleHog、`00:45` OSV-Scanner、`01:00` Scorecard、`01:15` CodeQL、`01:30` Image Scan、`01:45` gitleaks（全履歴）、`02:00` zizmor（オンライン監査）、`02:15` Go cooldown、`02:30` Opengrep、`02:45` fuzz、`03:00` ZAP（DAST）、`03:15` Grype、`03:30` DevSkim、`03:45` ESLint、`04:00` Bearer、`04:15` Checkov、`04:30` trustabl、`04:45` tool cooldown、`05:15` Closed Loop Weekly。
+週次実行は月曜未明（UTC）に **15 分刻み**で 1 スロット 1 本ずつずらしています。同一時刻に全スキャナが並ぶのを避けるためです。スロットの割り当ては `00:00` Trivy FS、`00:15` govulncheck、`00:30` TruffleHog、`00:45` OSV-Scanner、`01:00` Scorecard、`01:15` CodeQL、`01:30` Image Scan、`01:45` gitleaks（全履歴）、`02:00` zizmor（オンライン監査）、`02:15` Go cooldown、`02:30` Opengrep、`02:45` fuzz、`03:00` ZAP（DAST）、`03:15` Grype、`03:30` DevSkim、`03:45` ESLint、`04:00` Bearer、`04:15` Checkov、`04:30` trustabl、`04:45` tool cooldown、`05:00` pnpm cooldown、`05:15` Closed Loop Weekly。
 
 刻みが 1 時間でなく 15 分なのは、対象が 21 本まで増えたためです。1 時間刻みだと最後の 1 本が翌日の夜まで始まらず、並べて読むべき検出どうしが 1 日離れてしまいます。定期実行のワークフローを追加するときは次の空きスロットを取ります。2 本が同じスロットを共有しているのは好みの問題ではなく欠陥です。順序には意図があるので、追加は末尾ではなく相応しい位置へ入れます。
 
@@ -335,6 +336,14 @@ OSV ゲートの深刻度は advisory 自身の評価を使い、無ければ os
 各トリガーの `push` 側は `paths:` をそのまま持っています。そちらは context を報告しないので、絞っても何もブロックしません。
 
 `make required-check-lint` は、required context がちょうど 1 つの job から宣言されていること、およびその workflow の `pull_request` トリガーがフィルタを持たないことを検査します。**デッドロックを塞いでいるのは後半で**、これが検査できるのは条件が 1 箇所にしか書かれていないからです。フィルタとその反転に分けて書くと、不変条件は 2 つのリストの一致という、ここでは誰も比較できないものへ移ります。そして食い違いは、片側に足し忘れたパスを変更した pull request でだけ表面化します。
+
+#### pnpm の cooldown 例外
+
+pnpm は、Go と Tool の cooldown が番人との間に持つ関係を反転させています。解決器自身が公開直後の版を拒否し、しかも解決時だけでなく install のたびに lockfile 全体を照らし直す——`--frozen-lockfile` も含めて——ので、ここでの窓はパッケージマネージャが強制しており、記録されずに迂回することはできません。したがって `pnpm-cooldown.yaml` は窓の番人ではありません。
+
+番人が居なかったのは逃げ道のほうです。[`minimumReleaseAgeExclude`](../../scripts/pnpm-workspace.yaml) は特定の 1 バージョンについて窓を外すもので、その期限は誰も読まない散文コメントにしかありませんでした。兄弟のバイパスファイルが `expires` を持つのは、誰も見直さない免除が静かに恒久 allowlist へ変わるのを防ぐためであり、pnpm の例外は同じ債務を日付なしで抱えていました。このワークフローがそれを与えます。エントリは `expires: YYYY-MM-DD` と `issue: <N>`、加えて理由を持つ必要があり、期限が切れている・3 ヶ月より先を指している・lockfile がもう解決していない版を名指ししている場合に失敗します。
+
+期限は `pnpm-workspace.yaml` が変わらなくても訪れるため、スケジュールが必要になります——Go と Tool の cooldown がスケジュールを持つのと同じ理由です。lockfile もトリガーのパスに入れてあります。解決から外れた版を指す例外は残骸であり、解決が動いた時点で表に出すべきだからです。
 
 #### Go モジュールの cooldown
 

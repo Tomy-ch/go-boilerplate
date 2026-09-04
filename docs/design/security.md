@@ -212,8 +212,10 @@ Verified behaviour, not inference:
 | `--frozen-lockfile` replaying an in-window entry that no exclusion covers | Rejected (`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`) |
 | Any `pnpm run` after a policy setting changed | Rejected (`ERR_PNPM_VERIFY_DEPS_BEFORE_RUN`) until `pnpm install` re-records the settings |
 
-Three consequences follow, and together they are why no after-the-fact audit exists: there is
-nothing to detect, because nothing gets through unrecorded.
+Three consequences follow. The first two are why no after-the-fact audit exists for the override
+*reaching* the tree: there is nothing to detect, because nothing gets through unrecorded. The third
+is where that argument stops — an exemption that entered under review can still outlive its date,
+and being reviewed once says nothing about being revisited.
 
 **An override cannot be silent.** Taking an in-window version requires a
 `minimumReleaseAgeExclude` entry, and without one every later install fails — CI included, since
@@ -229,7 +231,17 @@ Strict mode turns that into a stop, on the same reasoning that puts install-shap
 **An exclusion is dated debt whose removal date is load-bearing in both directions.** Deleting the
 entry before the window opens breaks every install; once the version ages past the cutoff the entry
 is redundant and the lockfile passes without it. Each entry therefore records what it exempts, why,
-where that package runs, and the date it becomes deletable.
+where that package runs, and the date it becomes deletable — and that date is machine-readable
+rather than prose, because a date only a human reads is a date nobody re-reads.
+[`scripts/pnpm-cooldown`](../../scripts/pnpm-cooldown) (`make pnpm-cooldown-check`) requires
+`expires: YYYY-MM-DD` and `issue: <N>` in the entry's trailing comment, and fails on one that has
+expired, reaches beyond three months, or names a version the lockfile no longer resolves — the same
+three failures the `go-cooldown` / `tool-cooldown` bypass files carry, for the same reason: an
+exemption nobody revisits stops being temporary and becomes a permanent allowlist. It runs on a
+schedule as well as on the pull request, because the deadline arrives without `pnpm-workspace.yaml`
+changing. This is the one check pnpm needed of its own — the resolver guards the window, nothing
+guarded the exemption, and two entries sat 23 and 27 days past their stated removal date before the
+gate existed.
 
 An exclusion names `<package>@<version>`, never a bare package name: a name-only exemption would
 excuse every future publish of that package, which is exactly what the window exists to catch. The
