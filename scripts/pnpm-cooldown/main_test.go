@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
 // today は判定の基準日。期限の前後を跨ぐ値を固定して、実行日に依存しないようにする。
@@ -54,37 +56,81 @@ func bypassLine(spec, expires string) string {
 	return `"` + spec + `" = { expires = ` + expires + `, issue = 1479, reason = "テストの理由" }` + "\n"
 }
 
+// tooLongLine は bufio.Scanner の上限を超える 1 行を返す。
+func tooLongLine() string {
+	return strings.Repeat("x", bufio.MaxScanTokenSize+1) + "\n"
+}
+
+// wantOneExclusion は 1 件の例外を読み出せたことを確かめる。書式ごとのケースが共有する終端。
+func wantOneExclusion(t *testing.T, root string) {
+	t.Helper()
+
+	got, err := parseWorkspace(root, "app/"+workspaceFile)
+
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	assert.Equal(t, "a@1", got[0].spec)
+}
+
 func Test_parseWorkspace(t *testing.T) {
 	t.Parallel()
-
-	// pnpm が honor する書き方はどれも読めなければならない。ここを取りこぼすと、期限の無い
-	// 例外が「例外ゼロ」として通り、ゲートがゲートでなくなる。
-	forms := map[string]string{
-		"ブロックシーケンス":        "minimumReleaseAgeExclude:\n  - a@1\n",
-		"キーと同じ桁のブロックシーケンス": "minimumReleaseAgeExclude:\n- a@1\n",
-		"フロー形式":            "minimumReleaseAgeExclude: [a@1]\n",
-		"コロン前に空白":          "minimumReleaseAgeExclude :\n  - a@1\n",
-		"単一引用符":            "minimumReleaseAgeExclude:\n  - 'a@1'\n",
-		"二重引用符":            "minimumReleaseAgeExclude:\n  - \"a@1\"\n",
-	}
 
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		for name, content := range forms {
-			t.Run(name+"を読み出す", func(t *testing.T) {
-				t.Parallel()
+		t.Run("pnpm が honor するブロックシーケンスを読み落とさない", func(t *testing.T) {
+			t.Parallel()
 
-				root := t.TempDir()
-				writeFile(t, root, filepath.Join("app", workspaceFile), content)
+			root := t.TempDir()
+			writeFile(t, root, filepath.Join("app", workspaceFile), "minimumReleaseAgeExclude:\n  - a@1\n")
 
-				got, err := parseWorkspace(root, "app/"+workspaceFile)
+			wantOneExclusion(t, root)
+		})
 
-				require.NoError(t, err)
-				require.Len(t, got, 1)
-				assert.Equal(t, "a@1", got[0].spec)
-			})
-		}
+		t.Run("pnpm が honor するキーと同じ桁のシーケンスを読み落とさない", func(t *testing.T) {
+			t.Parallel()
+
+			root := t.TempDir()
+			writeFile(t, root, filepath.Join("app", workspaceFile), "minimumReleaseAgeExclude:\n- a@1\n")
+
+			wantOneExclusion(t, root)
+		})
+
+		t.Run("pnpm が honor するフロー形式を読み落とさない", func(t *testing.T) {
+			t.Parallel()
+
+			root := t.TempDir()
+			writeFile(t, root, filepath.Join("app", workspaceFile), "minimumReleaseAgeExclude: [a@1]\n")
+
+			wantOneExclusion(t, root)
+		})
+
+		t.Run("pnpm が honor するコロン前に空白のあるキーを読み落とさない", func(t *testing.T) {
+			t.Parallel()
+
+			root := t.TempDir()
+			writeFile(t, root, filepath.Join("app", workspaceFile), "minimumReleaseAgeExclude :\n  - a@1\n")
+
+			wantOneExclusion(t, root)
+		})
+
+		t.Run("pnpm が honor する単一引用符つきの項目を読み落とさない", func(t *testing.T) {
+			t.Parallel()
+
+			root := t.TempDir()
+			writeFile(t, root, filepath.Join("app", workspaceFile), "minimumReleaseAgeExclude:\n  - 'a@1'\n")
+
+			wantOneExclusion(t, root)
+		})
+
+		t.Run("pnpm が honor する二重引用符つきの項目を読み落とさない", func(t *testing.T) {
+			t.Parallel()
+
+			root := t.TempDir()
+			writeFile(t, root, filepath.Join("app", workspaceFile), "minimumReleaseAgeExclude:\n  - \"a@1\"\n")
+
+			wantOneExclusion(t, root)
+		})
 
 		t.Run("空リストの明示はエントリゼロとして読む", func(t *testing.T) {
 			t.Parallel()
@@ -121,7 +167,8 @@ func Test_parseWorkspace(t *testing.T) {
 
 			require.NoError(t, err)
 			require.Len(t, got, 2)
-			assert.Equal(t, got[0].line+1, got[1].line)
+			assert.Equal(t, 2, got[0].line)
+			assert.Equal(t, 3, got[1].line)
 		})
 	})
 
@@ -152,47 +199,67 @@ func Test_parseWorkspace(t *testing.T) {
 func Test_findExcludeSequence(t *testing.T) {
 	t.Parallel()
 
+	// node は YAML を 1 つのノード木へ読み、findExcludeSequence へ直接渡せる形にする。
+	node := func(t *testing.T, src string) *yaml.Node {
+		t.Helper()
+
+		var doc yaml.Node
+		require.NoError(t, yaml.Unmarshal([]byte(src), &doc))
+
+		return &doc
+	}
+
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("シーケンスを返す", func(t *testing.T) {
+		t.Run("シーケンスノードを中身ごと返す", func(t *testing.T) {
 			t.Parallel()
 
-			root := t.TempDir()
-			writeFile(t, root, filepath.Join("app", workspaceFile), "minimumReleaseAgeExclude:\n  - a@1\n")
+			got := findExcludeSequence(node(t, "minimumReleaseAgeExclude:\n  - a@1\n  - b@2\n"))
 
-			got, err := parseWorkspace(root, "app/"+workspaceFile)
+			require.NotNil(t, got)
+			require.Len(t, got.Content, 2)
+			assert.Equal(t, "a@1", got.Content[0].Value)
+			assert.Equal(t, "b@2", got.Content[1].Value)
+		})
 
-			require.NoError(t, err)
-			assert.Len(t, got, 1)
+		t.Run("他のキーが並んでいても該当キーを選ぶ", func(t *testing.T) {
+			t.Parallel()
+
+			got := findExcludeSequence(node(t,
+				"minimumReleaseAge: 10080\nminimumReleaseAgeExclude:\n  - a@1\nminimumReleaseAgeStrict: true\n"))
+
+			require.NotNil(t, got)
+			require.Len(t, got.Content, 1)
+			assert.Equal(t, "a@1", got.Content[0].Value)
 		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("値がシーケンスでない場合はエントリゼロにする", func(t *testing.T) {
+		t.Run("キーが無ければ nil を返す", func(t *testing.T) {
 			t.Parallel()
 
-			root := t.TempDir()
-			writeFile(t, root, filepath.Join("app", workspaceFile), "minimumReleaseAgeExclude: a@1\n")
-
-			got, err := parseWorkspace(root, "app/"+workspaceFile)
-
-			require.NoError(t, err)
-			assert.Empty(t, got)
+			assert.Nil(t, findExcludeSequence(node(t, "minimumReleaseAge: 10080\n")))
 		})
 
-		t.Run("空ファイルでもエラーにしない", func(t *testing.T) {
+		t.Run("値がシーケンスでなければ nil を返す", func(t *testing.T) {
 			t.Parallel()
 
-			root := t.TempDir()
-			writeFile(t, root, filepath.Join("app", workspaceFile), "")
+			assert.Nil(t, findExcludeSequence(node(t, "minimumReleaseAgeExclude: a@1\n")))
+		})
 
-			got, err := parseWorkspace(root, "app/"+workspaceFile)
+		t.Run("トップレベルがマッピングでなければ nil を返す", func(t *testing.T) {
+			t.Parallel()
 
-			require.NoError(t, err)
-			assert.Empty(t, got)
+			assert.Nil(t, findExcludeSequence(node(t, "- a\n- b\n")))
+		})
+
+		t.Run("空の文書では nil を返す", func(t *testing.T) {
+			t.Parallel()
+
+			assert.Nil(t, findExcludeSequence(node(t, "")))
 		})
 	})
 }
@@ -246,6 +313,17 @@ func Test_lockedSpecs(t *testing.T) {
 			_, err := lockedSpecs(filepath.Join(t.TempDir(), "missing.yaml"))
 
 			require.Error(t, err)
+		})
+
+		t.Run("行が長すぎて走査できない場合はエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			root := t.TempDir()
+			writeFile(t, root, "l.yaml", tooLongLine())
+
+			_, err := lockedSpecs(filepath.Join(root, "l.yaml"))
+
+			require.Error(t, err, "走査の失敗を握り潰すと解決キーが空のまま残骸判定が狂う")
 		})
 	})
 }
@@ -306,9 +384,10 @@ func Test_parseBypasses(t *testing.T) {
 			got, err := parseBypasses(root)
 
 			require.NoError(t, err)
-			require.Len(t, got, 1)
+			assert.Len(t, got, 1)
 			assert.Equal(t, 1479, got["a@1"].issue)
 			assert.Equal(t, "テストの理由", got["a@1"].reason)
+			assert.Equal(t, 3, got["a@1"].line)
 		})
 
 		t.Run("ファイルが無ければ空とする", func(t *testing.T) {
@@ -332,7 +411,7 @@ func Test_parseBypasses(t *testing.T) {
 
 			_, err := parseBypasses(root)
 
-			require.Error(t, err, "読み飛ばすと書き損じが期限なしではなく無検査になる")
+			require.ErrorIs(t, err, errBypassInvalidLine, "読み飛ばすと書き損じが期限なしではなく無検査になる")
 		})
 
 		t.Run("キーの重複はエラーにする", func(t *testing.T) {
@@ -340,6 +419,30 @@ func Test_parseBypasses(t *testing.T) {
 
 			root := t.TempDir()
 			writeFile(t, root, bypassFile, bypassLine("a@1", "2026-09-30")+bypassLine("a@1", "2026-10-30"))
+
+			_, err := parseBypasses(root)
+
+			require.ErrorIs(t, err, errBypassDuplicateKey)
+		})
+
+		t.Run("不在以外の理由で開けない場合はエラーにする", func(t *testing.T) {
+			t.Parallel()
+
+			// .github をディレクトリではなくファイルにすると、その下を開く試みは ENOTDIR で失敗する。
+			root := t.TempDir()
+			writeFile(t, root, ".github", "")
+
+			_, err := parseBypasses(root)
+
+			require.Error(t, err, "読めない理由を一緒くたに空へ丸めると、例外ゼロと報告したまま素通りする")
+			assert.NotErrorIs(t, err, os.ErrNotExist)
+		})
+
+		t.Run("行が長すぎて走査できない場合はエラーにする", func(t *testing.T) {
+			t.Parallel()
+
+			root := t.TempDir()
+			writeFile(t, root, bypassFile, tooLongLine())
 
 			_, err := parseBypasses(root)
 
@@ -362,6 +465,8 @@ func Test_parseBypassLine(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, "a@1", key)
 			assert.Equal(t, 9, got.line)
+			assert.Equal(t, 1479, got.issue)
+			assert.Equal(t, "テストの理由", got.reason)
 			assert.Equal(t, time.Date(2026, time.September, 30, 0, 0, 0, 0, time.UTC), got.expires)
 		})
 	})
@@ -374,7 +479,7 @@ func Test_parseBypassLine(t *testing.T) {
 
 			_, _, err := parseBypassLine(`"a@1" = { expires = 2026-09-30, issue = 1 }`, 9)
 
-			require.Error(t, err)
+			require.ErrorIs(t, err, errBypassInvalidLine)
 		})
 
 		t.Run("読めない日付はエラーにする", func(t *testing.T) {
@@ -384,6 +489,17 @@ func Test_parseBypassLine(t *testing.T) {
 
 			require.Error(t, err)
 		})
+
+		t.Run("issue が数値範囲を超える場合はエラーにする", func(t *testing.T) {
+			t.Parallel()
+
+			_, _, err := parseBypassLine(
+				`"a@1" = { expires = 2026-09-30, issue = 99999999999999999999999999, reason = "x" }`, 9,
+			)
+
+			require.Error(t, err, "正規表現は桁数を制限しないので、この経路は到達可能")
+			assert.Contains(t, err.Error(), "の issue")
+		})
 	})
 }
 
@@ -392,6 +508,16 @@ func Test_validate(t *testing.T) {
 
 	excl := []exclusion{{file: "app/" + workspaceFile, line: 9, spec: "a@1"}}
 
+	// bypassesOf はバイパス lockfile を書いて読み直した結果を返す。
+	bypassesOf := func(t *testing.T, root string) map[string]bypass {
+		t.Helper()
+
+		got, err := parseBypasses(root)
+		require.NoError(t, err)
+
+		return got
+	}
+
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
@@ -399,10 +525,8 @@ func Test_validate(t *testing.T) {
 			t.Parallel()
 
 			root := setup(t, "", lockWith("a@1"), bypassLine("a@1", "2026-09-30"))
-			bp, err := parseBypasses(root)
-			require.NoError(t, err)
 
-			assert.Empty(t, validate(root, excl, bp, today))
+			assert.Empty(t, validate(root, excl, bypassesOf(t, root), today))
 		})
 
 		t.Run("例外もバイパスも無ければ違反ゼロ", func(t *testing.T) {
@@ -415,10 +539,16 @@ func Test_validate(t *testing.T) {
 			t.Parallel()
 
 			root := setup(t, "", lockWith("a@1"), bypassLine("a@1", "2026-09-05"))
-			bp, err := parseBypasses(root)
-			require.NoError(t, err)
 
-			assert.Empty(t, validate(root, excl, bp, today))
+			assert.Empty(t, validate(root, excl, bypassesOf(t, root), today))
+		})
+
+		t.Run("期限が上限ちょうどなら越えていない", func(t *testing.T) {
+			t.Parallel()
+
+			root := setup(t, "", lockWith("a@1"), bypassLine("a@1", "2026-12-05"))
+
+			assert.Empty(t, validate(root, excl, bypassesOf(t, root), today))
 		})
 	})
 
@@ -440,10 +570,8 @@ func Test_validate(t *testing.T) {
 			t.Parallel()
 
 			root := setup(t, "", lockWith("a@1"), bypassLine("a@1", "2026-09-04"))
-			bp, err := parseBypasses(root)
-			require.NoError(t, err)
 
-			got := validate(root, excl, bp, today)
+			got := validate(root, excl, bypassesOf(t, root), today)
 
 			require.Len(t, got, 1)
 			assert.Contains(t, got[0], "切れています")
@@ -454,10 +582,8 @@ func Test_validate(t *testing.T) {
 			t.Parallel()
 
 			root := setup(t, "", lockWith("a@1"), bypassLine("a@1", "2026-12-06"))
-			bp, err := parseBypasses(root)
-			require.NoError(t, err)
 
-			got := validate(root, excl, bp, today)
+			got := validate(root, excl, bypassesOf(t, root), today)
 
 			require.Len(t, got, 1)
 			assert.Contains(t, got[0], "上限")
@@ -467,10 +593,8 @@ func Test_validate(t *testing.T) {
 			t.Parallel()
 
 			root := setup(t, "", lockWith("a@1"), bypassLine("z@9", "2026-09-30"))
-			bp, err := parseBypasses(root)
-			require.NoError(t, err)
 
-			got := validate(root, nil, bp, today)
+			got := validate(root, nil, bypassesOf(t, root), today)
 
 			require.Len(t, got, 1)
 			assert.Contains(t, got[0], "にもありません")
@@ -480,12 +604,10 @@ func Test_validate(t *testing.T) {
 			t.Parallel()
 
 			root := setup(t, "", lockWith("other@1"), bypassLine("a@1", "2026-09-04"))
-			bp, err := parseBypasses(root)
-			require.NoError(t, err)
 
-			got := validate(root, excl, bp, today)
+			got := validate(root, excl, bypassesOf(t, root), today)
 
-			require.Len(t, got, 2, "片方ずつ直させると往復が増える")
+			assert.Len(t, got, 2, "片方ずつ直させると往復が増える")
 		})
 	})
 }
@@ -522,6 +644,20 @@ func Test_checkExclusion(t *testing.T) {
 
 			require.Len(t, got, 1)
 			assert.Contains(t, got[0], "expires = YYYY-MM-DD")
+		})
+
+		t.Run("期限は有効だが解決していない版は残骸だけを違反にする", func(t *testing.T) {
+			t.Parallel()
+
+			root := setup(t, "", lockWith("other@1"), bypassLine("a@1", "2026-09-30"))
+			bp, err := parseBypasses(root)
+			require.NoError(t, err)
+
+			got := checkExclusion(root, e, bp, today, limit)
+
+			require.Len(t, got, 1)
+			assert.Contains(t, got[0], "解決していません")
+			assert.NotContains(t, got[0], "期限", "期限判定と解決判定が結合してはいけない")
 		})
 	})
 }
@@ -621,7 +757,7 @@ func Test_run(t *testing.T) {
 			var out bytes.Buffer
 			err := run(root, &out, today)
 
-			require.Error(t, err, "行走査だとここが例外ゼロとして通っていた")
+			require.ErrorIs(t, err, errViolations, "行走査だとここが例外ゼロとして通っていた")
 			assert.Contains(t, out.String(), "期限がありません")
 		})
 
@@ -633,7 +769,29 @@ func Test_run(t *testing.T) {
 			var out bytes.Buffer
 			err := run(root, &out, today)
 
-			require.Error(t, err)
+			require.ErrorIs(t, err, errBypassInvalidLine)
+		})
+
+		t.Run("走査できない root ではエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			var out bytes.Buffer
+			err := run(filepath.Join(t.TempDir(), "missing"), &out, today)
+
+			require.Error(t, err, "握り潰すと workspace 0 件のまま違反なしを報告してしまう")
+			assert.NotContains(t, out.String(), "違反なし")
+		})
+
+		t.Run("宣言ファイルが壊れていればエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			root := setup(t, "a:\n- b\n  c: [\n", lockWith("a@1"), "")
+
+			var out bytes.Buffer
+			err := run(root, &out, today)
+
+			require.Error(t, err, "握り潰すと隠れた例外が無視されたまま通る")
+			assert.NotContains(t, out.String(), "違反なし")
 		})
 	})
 }
