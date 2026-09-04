@@ -519,16 +519,13 @@ func Test_validateDiscontinuedAt(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("廃番かつ公開の場合、ErrDiscontinuedCannotBePublishedを返す", func(t *testing.T) {
-			t.Parallel()
-			require.ErrorIs(t, validateDiscontinuedAt(discontinuedAt, publishedAt), ErrDiscontinuedCannotBePublished)
-		})
-
-		t.Run("違反したフィールドとしてpublishedAtを報告する", func(t *testing.T) {
+		t.Run("廃番かつ公開の場合、ErrDiscontinuedCannotBePublishedを返し違反フィールドとしてpublishedAtを報告する", func(t *testing.T) {
 			t.Parallel()
 
-			meta, ok := apperror.MetaFrom(validateDiscontinuedAt(discontinuedAt, publishedAt))
+			err := validateDiscontinuedAt(discontinuedAt, publishedAt)
 
+			require.ErrorIs(t, err, ErrDiscontinuedCannotBePublished)
+			meta, ok := apperror.MetaFrom(err)
 			require.True(t, ok)
 			assert.Equal(t, []string{FieldPublishedAt}, meta.Details())
 		})
@@ -702,6 +699,21 @@ func TestProduct_Update(t *testing.T) {
 			assert.Equal(t, attrs.PublishedAt, p.PublishedAt())
 			assert.Equal(t, attrs.Images, p.Images())
 			assert.Equal(t, initialVersion, p.Version())
+		})
+
+		t.Run("廃番日時を設定した場合、エンティティへ反映される", func(t *testing.T) {
+			t.Parallel()
+
+			p := newTestProduct(t)
+			attrs := updatedProductAttributes(t)
+			attrs.PublishedAt = nil
+			attrs.DiscontinuedAt = ptr.To(testCreatedAt)
+
+			require.NoError(t, p.Update(attrs))
+
+			require.NotNil(t, p.DiscontinuedAt())
+			assert.Equal(t, testCreatedAt, *p.DiscontinuedAt())
+			assert.True(t, p.IsDiscontinued())
 		})
 
 		t.Run("画像の枚数がちょうど上限の場合、更新される", func(t *testing.T) {
@@ -1440,6 +1452,23 @@ func TestProduct_DiscontinuedAt(t *testing.T) {
 			require.NoError(t, err)
 
 			assert.Nil(t, p.DiscontinuedAt())
+		})
+
+		t.Run("返り値のポインタを書き換えてもエンティティ内部は変わらない", func(t *testing.T) {
+			t.Parallel()
+
+			id, attrs := validProductArgs(t)
+			attrs.PublishedAt = nil
+			attrs.DiscontinuedAt = ptr.To(testCreatedAt)
+			p, err := New(id, attrs, testCreatedAt)
+			require.NoError(t, err)
+
+			got := p.DiscontinuedAt()
+			*got = time.Date(2030, time.December, 31, 0, 0, 0, 0, time.UTC)
+
+			require.NotNil(t, p.DiscontinuedAt())
+			assert.NotEqual(t, *got, *p.DiscontinuedAt())
+			assert.Equal(t, testCreatedAt, *p.DiscontinuedAt())
 		})
 	})
 }

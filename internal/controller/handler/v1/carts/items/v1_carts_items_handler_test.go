@@ -572,6 +572,7 @@ func Test_toCartItemIssues(t *testing.T) {
 			actual := toCartItemIssues([]cartuc.ItemIssue{
 				cartuc.ItemIssueNotFound,
 				cartuc.ItemIssueUnpublished,
+				cartuc.ItemIssueDiscontinued,
 				cartuc.ItemIssueOutOfStock,
 				cartuc.ItemIssueInsufficientStock,
 				cartuc.ItemIssuePriceIncreased,
@@ -582,6 +583,7 @@ func Test_toCartItemIssues(t *testing.T) {
 			assert.Equal(t, []gen.CartItemIssue{
 				gen.NotFound,
 				gen.Unpublished,
+				gen.Discontinued,
 				gen.OutOfStock,
 				gen.InsufficientStock,
 				gen.PriceIncreased,
