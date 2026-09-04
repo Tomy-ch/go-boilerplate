@@ -24,6 +24,7 @@ func NewStreamTicketStore() *StreamTicketStore {
 	return &StreamTicketStore{tickets: map[rt.TicketHash]rt.StreamTicket{}}
 }
 
+// Save は、ticket を保存します。同じ Hash への再保存は上書きです。
 func (s *StreamTicketStore) Save(_ context.Context, ticket rt.StreamTicket) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -33,6 +34,8 @@ func (s *StreamTicketStore) Save(_ context.Context, ticket rt.StreamTicket) erro
 	return nil
 }
 
+// Find は、hash に対応する ticket を返します。無い、または asOf 時点で ExpiresAt に達しているものは
+// ok=false を返します。
 func (s *StreamTicketStore) Find(_ context.Context, hash rt.TicketHash, asOf time.Time) (rt.StreamTicket, bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -45,6 +48,7 @@ func (s *StreamTicketStore) Find(_ context.Context, hash rt.TicketHash, asOf tim
 	return ticket, true, nil
 }
 
+// Invalidate は、subject × destination に発行された ticket をすべて落とします。該当が無くてもエラーになりません。
 func (s *StreamTicketStore) Invalidate(_ context.Context, subject string, destination rt.StreamID) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
