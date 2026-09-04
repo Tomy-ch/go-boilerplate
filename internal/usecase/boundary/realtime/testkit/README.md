@@ -54,3 +54,20 @@ These are that missing baseline.
 - **Concurrent use** — the README promises the fake is safe for concurrent use, and a fake driven by
   a replay loop and a wakeup at once is exactly how it will be used. Pin it with a test the race
   detector can fail on rather than leaving the promise to inspection.
+
+## `StreamTicketStore`
+
+`NewStreamTicketStore() *StreamTicketStore` is an in-memory `rt.StreamTicketStore`. It exists for the
+one contract the generated mock cannot express: revocation is only real when *invalidation and
+notification both happen*, so a test has to observe a store that a later `Find` reads back. Verifying
+that a revoked ticket cannot reconnect needs the issuer, the verifier and `AccessRevoker` over one
+store, not a call-expectation script.
+
+- `Save(ctx, ticket)` — re-saving the same `Hash` overwrites, as the port specifies.
+- `Find(ctx, hash, asOf)` — returns `ok=false` for an unknown hash and for one that has reached
+  `ExpiresAt`. Expiry is decided here rather than by a sweep, which is the same split the real store
+  makes.
+- `Invalidate(ctx, subject, destination)` — drops every ticket bound to that pair and succeeds when
+  none match.
+- `Len()` — how many tickets are held, so a test can assert that invalidation removed them rather
+  than merely hid them from `Find`.

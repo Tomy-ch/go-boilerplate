@@ -47,3 +47,17 @@ infrastructure には触れない — であり、boundary 自身の fake をど
   静かに再現されなくなるため。
 - **並行利用** — README は fake が並行利用に安全だと約束しており、replay ループと wakeup から同時に駆動される
   fake はまさにその使われ方をする。約束を目視に委ねず、race detector が落とせるテストで固定する。
+
+## `StreamTicketStore`
+
+`NewStreamTicketStore() *StreamTicketStore` は in-memory の `rt.StreamTicketStore` です。生成 mock では
+表せない契約が 1 つあるために存在します——失効は**無効化と通知の両方が起きて初めて成立する**ので、
+テストは後続の `Find` が読み戻せる store を観測する必要があります。失効した ticket で繋ぎ直せないことの
+検証には、issuer・verifier・`AccessRevoker` が同じ store を共有している必要があり、呼び出し期待の
+台本では足りません。
+
+- `Save(ctx, ticket)` — 同じ `Hash` への再保存は境界の定義どおり上書きです。
+- `Find(ctx, hash, asOf)` — 知らない hash と、`ExpiresAt` に達したものは `ok=false` を返します。期限切れの
+  判定は掃除ではなくここで行い、本物の store と同じ切り分けにしています。
+- `Invalidate(ctx, subject, destination)` — その組に束縛された ticket をすべて落とし、該当が無くても成功します。
+- `Len()` — 保持件数。無効化が `Find` から隠しただけでなく実際に消したことを表明できます。
