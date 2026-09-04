@@ -28,19 +28,19 @@ const (
 	// cartTTL は、Cart.Touch へ供給する有効期限の長さです（docs/spec/domain/cart.md の Touch）。
 	cartTTL = 30 * 24 * time.Hour
 
-	// ItemIssueNotFound は、商品を引けなかったことを表します。
+	// ItemIssueNotFound は、cart.IssueNotFound に対応します。
 	ItemIssueNotFound ItemIssue = "notFound"
-	// ItemIssueUnpublished は、商品が非公開であることを表します。
+	// ItemIssueUnpublished は、cart.IssueUnpublished に対応します。
 	ItemIssueUnpublished ItemIssue = "unpublished"
-	// ItemIssueDiscontinued は、商品が廃番になったことを表します。
+	// ItemIssueDiscontinued は、cart.IssueDiscontinued に対応します。
 	ItemIssueDiscontinued ItemIssue = "discontinued"
-	// ItemIssueOutOfStock は、在庫が無いことを表します。
+	// ItemIssueOutOfStock は、cart.IssueOutOfStock に対応します。
 	ItemIssueOutOfStock ItemIssue = "outOfStock"
-	// ItemIssueInsufficientStock は、在庫が要求数量に満たないことを表します。
+	// ItemIssueInsufficientStock は、cart.IssueInsufficientStock に対応します。
 	ItemIssueInsufficientStock ItemIssue = "insufficientStock"
-	// ItemIssuePriceIncreased は、前回提示した価格より高いことを表します。
+	// ItemIssuePriceIncreased は、cart.IssuePriceIncreased に対応します。
 	ItemIssuePriceIncreased ItemIssue = "priceIncreased"
-	// ItemIssuePriceDecreased は、前回提示した価格より安いことを表します。
+	// ItemIssuePriceDecreased は、cart.IssuePriceDecreased に対応します。
 	ItemIssuePriceDecreased ItemIssue = "priceDecreased"
 )
 
@@ -50,6 +50,8 @@ const (
 var ErrUnavailableProduct = xerrors.Wrap(apperror.ErrValidation, "product is unavailable for the cart")
 
 // ItemIssue は、明細ごとの再評価結果です。値は外部向けの安定コードで、表示ではなく分岐に用います。
+// 各値の意味は対応する cart.Issue が定義し、ここでは再定義しません
+// （docs/spec/domain/cart.md の Issue）。
 type ItemIssue string
 
 // Subject は、カートの主体です。認証済みユーザーとゲストセッションのうち高々一方が設定され、
