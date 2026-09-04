@@ -1,0 +1,20 @@
+# pnpm-workspace.yaml の minimumReleaseAgeExclude に置いた例外の期限（SSOT）。
+# make pnpm-cooldown-check と .github/workflows/pnpm-cooldown.yaml が読む。
+#
+# 1 行 1 エントリ。形式は以下で、3 つのキーは順序も含めてすべて必須。
+# key は minimumReleaseAgeExclude に書いたまま（<name>@<version>）。
+#
+#   "<name>@<version>" = { expires = YYYY-MM-DD, issue = <N>, reason = "..." }
+#
+# 窓そのものは pnpm の resolver が install のたびに強制しており、例外を書かずに窓内の版を
+# 採ることはできない。このファイルが受け持つのはその先で、例外が期限を越えて残り続けるのを
+# 防ぐこと。expires は必ず置く。期限切れ・上限（今日から 3 ヶ月）超過・pnpm-workspace.yaml
+# に無いエントリ、そして逆に期限の書かれていない例外は、いずれも検査が失敗する。
+# 期限を持たせるのは、外したまま放置された例外を恒久 allowlist と区別できるようにするため。
+# 上限を置くのは、期限を遠い未来へ置くだけで同じ状態を作れてしまうため。
+#
+# 期限は pnpm-workspace.yaml が変わらなくても訪れるので、回収はスケジュール実行が担う。
+#
+# 同じ <name>@<version> を複数の workspace が除外している場合でも、エントリは 1 つで足りる。
+# その場合は reason にそれぞれの実行場所を書く（tool-runner 内のビルド時か、配布物に同梱されて
+# 利用者の環境で動くのかで、免除の重みが変わるため）。

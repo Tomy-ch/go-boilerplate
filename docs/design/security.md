@@ -233,15 +233,17 @@ entry before the window opens breaks every install; once the version ages past t
 is redundant and the lockfile passes without it. Each entry therefore records what it exempts, why,
 where that package runs, and the date it becomes deletable — and that date is machine-readable
 rather than prose, because a date only a human reads is a date nobody re-reads.
-[`scripts/pnpm-cooldown`](../../scripts/pnpm-cooldown) (`make pnpm-cooldown-check`) requires
-`expires: YYYY-MM-DD` and `issue: <N>` in the entry's trailing comment, and fails on one that has
-expired, reaches beyond three months, or names a version the lockfile no longer resolves — the same
-three failures the `go-cooldown` / `tool-cooldown` bypass files carry, for the same reason: an
-exemption nobody revisits stops being temporary and becomes a permanent allowlist. It runs on a
-schedule as well as on the pull request, because the deadline arrives without `pnpm-workspace.yaml`
-changing. This is the one check pnpm needed of its own — the resolver guards the window, nothing
-guarded the exemption, and two entries sat 23 and 27 days past their stated removal date before the
-gate existed.
+It lives in [`.github/pnpm-cooldown-bypass.toml`](../../.github/pnpm-cooldown-bypass.toml), the same
+shape as the `go-cooldown` / `tool-cooldown` bypass files, and
+[`scripts/pnpm-cooldown`](../../scripts/pnpm-cooldown) (`make pnpm-cooldown-check`) fails on an
+exclusion with no entry, an entry that has expired or reaches beyond three months, an entry matching
+no exclusion, and an exclusion naming a version the lockfile no longer resolves. The deadline is kept
+out of `pnpm-workspace.yaml` deliberately: it means nothing to pnpm, so it has no claim on the file
+pnpm reads, and a check that had to read it there would be parsing comments — where a form pnpm
+honours but the parser misses lets an undated exemption pass as no exemption at all. It runs on a
+schedule as well as on the pull request, because the deadline arrives without either file changing.
+This is the one check pnpm needed of its own — the resolver guards the window, nothing guarded the
+exemption, and two entries sat 23 and 27 days past their stated removal date before the gate existed.
 
 An exclusion names `<package>@<version>`, never a bare package name: a name-only exemption would
 excuse every future publish of that package, which is exactly what the window exists to catch. The

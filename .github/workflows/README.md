@@ -351,9 +351,12 @@ What had no guard is the escape hatch. [`minimumReleaseAgeExclude`](../../script
 lifts the window for one exact version, and its deadline lived only in a prose comment that nothing
 read. The sibling bypass files spend an `expires` field precisely so an exemption nobody revisits
 cannot quietly become a permanent allowlist; pnpm's exclusions had the same debt without the date.
-This workflow supplies it: an entry is required to carry `expires: YYYY-MM-DD` and `issue: <N>` plus a
-reason, and it fails when the deadline has passed, reaches further than three months out, or names a
-version the lockfile no longer resolves.
+This workflow supplies it, in a file of the same shape: [`pnpm-cooldown-bypass.toml`](../pnpm-cooldown-bypass.toml)
+carries `expires` / `issue` / `reason` per exclusion. The deadline stays out of `pnpm-workspace.yaml`
+because it means nothing to pnpm and so has no claim on the file pnpm reads — and because a check that
+had to read it there would be parsing comments, where a form pnpm honours but the parser misses lets an
+undated exemption through. The check fails on an exclusion with no entry, an expired or over-long
+deadline, an entry matching no exclusion, and a version the lockfile no longer resolves.
 
 A deadline arrives without `pnpm-workspace.yaml` changing, which is why the schedule exists — the same
 reason the Go and Tool cooldowns carry one. The lockfiles sit in the trigger paths too, because an

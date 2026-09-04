@@ -8,7 +8,10 @@ name: Pnpm Cooldown
 # What has no guard is the escape hatch. `minimumReleaseAgeExclude` lifts the window for one
 # version, and until now its deadline lived only in a prose comment that nothing read. An
 # exemption nobody revisits stops being temporary and becomes a permanent allowlist, which is
-# exactly the state the sibling bypass files spend an `expires` field to avoid.
+# exactly the state the sibling bypass files spend an `expires` field to avoid — so the deadline
+# lives in one of those too, `.github/pnpm-cooldown-bypass.toml`, rather than riding along in the
+# declaration pnpm reads. Keeping it out of the YAML also keeps the check off the comment-parsing
+# path, where a form pnpm honours but a reader misses would let an undated exemption through.
 #
 # A deadline arrives without `pnpm-workspace.yaml` changing, so the pull-request trigger alone
 # would never notice one expiring — the schedule is what collects them. The lockfiles are in the
@@ -20,6 +23,7 @@ on:
     paths:
       - '**/pnpm-workspace.yaml'
       - '**/pnpm-lock.yaml'
+      - '.github/pnpm-cooldown-bypass.toml'
       - 'scripts/pnpm-cooldown/**'
       - '.github/workflows/pnpm-cooldown.yaml'
   schedule:

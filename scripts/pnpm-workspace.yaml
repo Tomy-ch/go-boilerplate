@@ -8,9 +8,9 @@ packages:
 # 公開直後の版を解決対象から外す（pnpm は分指定。7 日 = 10080 分）。窓の設計は docs/design/security.md。
 minimumReleaseAge: 10080
 # 緊急のセキュリティ修正は特定バージョンだけを一時的に例外化する（package@version 必須。パッケージ名だけの例外は禁止）。
-# 形式は `- <name>@<version> # expires: YYYY-MM-DD issue: <N> <理由>` で、3 つとも必須。期限切れ・上限
-# 3 ヶ月超過・lockfile が解決していない版は make pnpm-cooldown-check が落とす。期限を持たせるのは、
-# 外したまま放置された例外を恒久 allowlist と区別できるようにするため。
+# 期限は .github/pnpm-cooldown-bypass.toml が持つ。ここへ足したら向こうにも expires / issue / reason を
+# 書くこと。期限の無い例外・期限切れ・上限 3 ヶ月超過・lockfile が解決していない版は
+# make pnpm-cooldown-check が落とす。
 minimumReleaseAgeExclude: []
 # 冷却期間を満たす版が無ければ解決を失敗させる。
 minimumReleaseAgeStrict: true
