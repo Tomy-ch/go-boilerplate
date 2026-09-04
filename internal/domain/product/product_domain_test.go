@@ -491,6 +491,50 @@ func Test_validateQuantity(t *testing.T) {
 	})
 }
 
+func Test_validateDiscontinuedAt(t *testing.T) {
+	t.Parallel()
+
+	discontinuedAt := ptr.To(time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC))
+	publishedAt := ptr.To(time.Date(2026, time.January, 2, 3, 4, 5, 0, time.UTC))
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("廃番でも公開でもない場合、エラーを返さない", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, validateDiscontinuedAt(nil, nil))
+		})
+
+		t.Run("公開のみの場合、エラーを返さない", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, validateDiscontinuedAt(nil, publishedAt))
+		})
+
+		t.Run("廃番のみの場合、エラーを返さない", func(t *testing.T) {
+			t.Parallel()
+			require.NoError(t, validateDiscontinuedAt(discontinuedAt, nil))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("廃番かつ公開の場合、ErrDiscontinuedCannotBePublishedを返す", func(t *testing.T) {
+			t.Parallel()
+			require.ErrorIs(t, validateDiscontinuedAt(discontinuedAt, publishedAt), ErrDiscontinuedCannotBePublished)
+		})
+
+		t.Run("違反したフィールドとしてpublishedAtを報告する", func(t *testing.T) {
+			t.Parallel()
+
+			meta, ok := apperror.MetaFrom(validateDiscontinuedAt(discontinuedAt, publishedAt))
+
+			require.True(t, ok)
+			assert.Equal(t, []string{FieldPublishedAt}, meta.Details())
+		})
+	})
+}
+
 func Test_validateStockWarningThreshold(t *testing.T) {
 	t.Parallel()
 
