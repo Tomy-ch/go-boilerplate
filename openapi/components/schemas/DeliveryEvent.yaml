@@ -19,13 +19,13 @@ properties:
   streamId:
     type: string
     description: この event が属する stream の識別子。接続先の destination と一致します。
-    example: "inquiry-thread-8f3c"
+    example: "resource-8f3c"
   sequence:
     $ref: './StreamCursor.yaml'
   type:
     type: string
     description: feature が定める event 種別。末尾の `.vN` で契約の世代を表します。
-    example: "inquiry.message.created.v1"
+    example: "resource.updated.v1"
   occurredAt:
     type: string
     format: date-time

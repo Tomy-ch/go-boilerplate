@@ -184,9 +184,6 @@ type Unauthorized401 = ErrorResponse
 // UnprocessableEntity422 詳細識別子付きエラーレスポンススキーマ。 この schema を error レスポンスに宣言したエンドポイントだけが details を返せる（opt-in）。 未宣言のエンドポイントでは errorhandler が details を fail-closed で落とす。
 type UnprocessableEntity422 = ErrorResponseWithDetails
 
-// UnsupportedMediaType415 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。
-type UnsupportedMediaType415 = ErrorResponse
-
 // GetInquiriesDetailMessagesParams defines parameters for GetInquiriesDetailMessages.
 type GetInquiriesDetailMessagesParams struct {
 	// AfterSequence 取得を開始する位置。この位置より後ろのメッセージを返す。先頭から取得する場合は省略する。
