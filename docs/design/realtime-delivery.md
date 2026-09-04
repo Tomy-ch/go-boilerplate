@@ -202,11 +202,11 @@ flowchart LR
 Architecture rules, both mechanically checked:
 
 1. `boundary/realtime`, `usecase/realtime`, `controller/stream`, `controller/realtime`, and the five infrastructure packages import no `internal/domain/<feature>` and no `internal/usecase/<feature>`.
-2. `InstanceLeaseStore` may be imported only by the realtime packages, the realtime DI module, and the orphan-cleanup job entry point.
+2. `InstanceLeaseStore` may be imported only by the realtime mechanism packages and the DI modules that wire them. The orphan-cleanup job reaches the lease through `OrphanSweeper`, so its entry point needs no access to the store.
 
 Rule 1 is checked twice, deliberately: by `depguard` (`maintain_realtime_feature_neutrality`, declared in `.golangci-full.yaml` — the config `make lint` and CI actually run — and mirrored into `.golangci.yaml` so editors surface it too, per [ADR-0088 (two-layer-golangci-config)](../adr/0088-two-layer-golangci-config.md)), which fails at lint time next to the other layer rules, and by `internal/architest/realtime_isolation_test.go`, which fails at test time and additionally asserts that the package list it scans still exists — a rule whose subject has been renamed away is the one failure a linter cannot report. Rule 2 lives only in the architecture test: it constrains a single **symbol**, and `depguard` denies whole packages, so expressing it there would also reject the legitimate `EventLogStore` and `StreamTicketStore` imports from the same package.
 
-The redundancy has one known gap. `depguard` matches an import path by plain prefix, so the `allow` entry that returns `usecase/realtime` to the mechanism also returns any future sibling whose name merely starts with those characters, and `isFeatureImport` in the architecture test derives its verdict the same way — the two checks share the flaw rather than covering for each other. Nothing named that way exists today; the constraint is that `internal/usecase/` must not gain a package whose name begins with `realtime` but which is a feature rather than this mechanism.
+`depguard` matches an import path by plain prefix, so the `allow` entry that returns `usecase/realtime` to the mechanism also returns any sibling whose name merely starts with those characters. That cannot be expressed away in `depguard`, so the architecture test carries the difference: `isFeatureImport` matches the mechanism exactly or under a trailing slash, and a separate check reserves the name — `internal/usecase/` may hold no package whose name begins with `realtime` other than the mechanism itself. Adding one fails both checks, which is what makes the redundancy real rather than nominal.
 
 ### 3.2 Outbox additions this subsystem relies on
 
