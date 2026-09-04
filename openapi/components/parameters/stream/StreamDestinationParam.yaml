@@ -6,4 +6,4 @@ schema:
   type: string
   pattern: '^[A-Za-z0-9._:-]{1,128}$'
   maxLength: 128
-  example: "inquiry-thread-8f3c"
+  example: "resource-8f3c"
