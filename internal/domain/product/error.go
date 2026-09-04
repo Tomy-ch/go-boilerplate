@@ -35,6 +35,9 @@ var (
 	ErrInvalidCreatedAt = xerrors.Wrap(errInvalid, "createdAt failed")
 	// ErrInvalidVersion は、楽観ロックのバージョンの検証に失敗した場合のエラーです。
 	ErrInvalidVersion = xerrors.Wrap(errInvalid, "version failed")
+	// ErrDiscontinuedCannotBePublished は、廃番の商品に公開日時が設定されている場合のエラーです。
+	// 廃番は取り消せないため、同じ内容の再送でも時間の経過でも解消しません。
+	ErrDiscontinuedCannotBePublished = xerrors.Wrap(errInvalid, "discontinued product cannot be published")
 	// ErrVersionConflict は、読み込み後に他者が更新しており、楽観ロックのバージョンが一致しない場合のエラーです。
 	// 同じ内容の再送では解消しないため、呼び出し元は最新を取得し直したうえでやり直す必要があります。
 	ErrVersionConflict = xerrors.Wrap(apperror.ErrConflict, "product version conflict")

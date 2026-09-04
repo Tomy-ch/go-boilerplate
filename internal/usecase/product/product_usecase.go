@@ -44,6 +44,7 @@ type ProductView struct {
 	CategoryID            uuid.UUID
 	CategoryName          string
 	PublishedAt           *time.Time
+	DiscontinuedAt        *time.Time
 	// Images は、商品画像を表示順の昇順で並べたものです。画像未設定の場合は空です。
 	Images []ProductImageItemView
 	// Version は、楽観ロックのバージョンです。部分更新の要求へそのまま渡すことで競合を検出できます。
@@ -504,6 +505,7 @@ func toProductView(p *product.Product) ProductView {
 		CategoryID:            p.Category().ID(),
 		CategoryName:          p.Category().Name(),
 		PublishedAt:           p.PublishedAt(),
+		DiscontinuedAt:        p.DiscontinuedAt(),
 		Images:                toProductImageItemViews(p.Images()),
 		Version:               p.Version(),
 	}

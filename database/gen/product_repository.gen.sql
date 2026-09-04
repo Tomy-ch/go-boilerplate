@@ -82,6 +82,7 @@ INSERT INTO products (
     status_id,
     category_id,
     published_at,
+    discontinued_at,
     created_at
 ) VALUES
 (
@@ -94,6 +95,7 @@ INSERT INTO products (
     sqlc.arg('status_id'),
     sqlc.arg('category_id'),
     sqlc.arg('published_at'),
+    sqlc.arg('discontinued_at'),
     sqlc.arg('created_at')
 );
 
@@ -662,6 +664,7 @@ SET
     status_id = sqlc.arg('status_id'),
     category_id = sqlc.arg('category_id'),
     published_at = sqlc.arg('published_at'),
+    discontinued_at = sqlc.arg('discontinued_at'),
     lock_version = products.lock_version + 1,
     updated_at = NOW()
 WHERE products.id = sqlc.arg('id')

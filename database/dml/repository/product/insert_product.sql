@@ -9,6 +9,7 @@ INSERT INTO products (
     status_id,
     category_id,
     published_at,
+    discontinued_at,
     created_at
 ) VALUES
 (
@@ -21,5 +22,6 @@ INSERT INTO products (
     sqlc.arg('status_id'),
     sqlc.arg('category_id'),
     sqlc.arg('published_at'),
+    sqlc.arg('discontinued_at'),
     sqlc.arg('created_at')
 );

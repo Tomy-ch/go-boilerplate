@@ -179,6 +179,11 @@ type ProductResponse struct {
 	// Example: ノイズキャンセリング対応の Bluetooth イヤホン
 	Description *string `json:"description"`
 
+	// DiscontinuedAt 廃番日時。廃番でない場合は null です。廃番は取り消せず、廃番の商品は公開日時を持てません （publishedAt は必ず null になります）。 廃番にする操作は日時を受け取らずサーバーの時刻で確定するため、**未来の日時にはなりません**。 したがって廃番かどうかは現在時刻との比較ではなく null かどうかで判定できます。
+	//
+	// Example: 2026-01-01T00:00:00Z
+	DiscontinuedAt *time.Time `json:"discontinuedAt"`
+
 	// Id 商品ID
 	//
 	// Example: b1d4e0f2-3c5a-4b6d-8e7f-1a2b3c4d5e6f

@@ -219,7 +219,7 @@ fields:
       returns: string
 
 - name: ProductSnapshot
-  underlying_type: struct    # quantity int / price money.Price / published bool
+  underlying_type: struct    # quantity int / price money.Price / published bool / discontinued bool
   validation: |
     検証しない。再評価した時点で観測した商品の値をそのまま運ぶ値であり、正しさは観測元（商品集約）が
     既に保証している。カートはこれを保持せず、判定のたびに受け取って捨てる。
@@ -249,7 +249,8 @@ fields:
 enum: Issue                  # 明細を商品の観測値と突き合わせた結果
 values:
   - notFound                 # 商品が引けない。単独で立ち、他の issue は併記しない
-  - unpublished              # 非公開化された
+  - unpublished              # 非公開化された。discontinued とは排他
+  - discontinued             # 廃番になった。非公開を伴うが、より具体的なこちらだけを立てる
   - outOfStock               # 在庫 0。insufficientStock とは排他
   - insufficientStock        # 在庫 < 要求数量（AvailableQuantity に上限を添える）
   - priceIncreased           # lastSeenPrice より高い

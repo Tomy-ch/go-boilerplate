@@ -435,6 +435,7 @@ func (r *repository) Create(ctx context.Context, p *product.Product) error {
 		StatusID:              p.Status().ID(),
 		CategoryID:            p.Category().ID(),
 		PublishedAt:           p.PublishedAt(),
+		DiscontinuedAt:        p.DiscontinuedAt(),
 		CreatedAt:             p.CreatedAt(),
 	})
 	if err != nil {
@@ -473,6 +474,7 @@ func (r *repository) Update(ctx context.Context, p *product.Product) (int, error
 		StatusID:              p.Status().ID(),
 		CategoryID:            p.Category().ID(),
 		PublishedAt:           p.PublishedAt(),
+		DiscontinuedAt:        p.DiscontinuedAt(),
 		ID:                    p.ID(),
 		CurrentVersion:        currentVersion,
 	})
@@ -650,6 +652,7 @@ func rowToProduct(row productRow, images []product.Image) (*product.Product, err
 		Status:                status,
 		Category:              category,
 		PublishedAt:           row.p.PublishedAt,
+		DiscontinuedAt:        row.p.DiscontinuedAt,
 		Images:                images,
 	}, int(row.p.LockVersion), row.p.CreatedAt)
 	if err != nil {

@@ -230,6 +230,7 @@ INSERT INTO products (
     status_id,
     category_id,
     published_at,
+    discontinued_at,
     created_at
 ) VALUES
 (
@@ -242,7 +243,8 @@ INSERT INTO products (
     $7,
     $8,
     $9,
-    $10
+    $10,
+    $11
 )
 `
 
@@ -256,6 +258,7 @@ type CreateProductParams struct {
 	StatusID              uuid.UUID
 	CategoryID            uuid.UUID
 	PublishedAt           *time.Time
+	DiscontinuedAt        *time.Time
 	CreatedAt             time.Time
 }
 
@@ -271,6 +274,7 @@ type CreateProductParams struct {
 //	    status_id,
 //	    category_id,
 //	    published_at,
+//	    discontinued_at,
 //	    created_at
 //	) VALUES
 //	(
@@ -283,7 +287,8 @@ type CreateProductParams struct {
 //	    $7,
 //	    $8,
 //	    $9,
-//	    $10
+//	    $10,
+//	    $11
 //	)
 func (q *Queries) CreateProduct(ctx context.Context, arg *CreateProductParams) error {
 	_, err := q.db.Exec(ctx, createProduct,
@@ -296,6 +301,7 @@ func (q *Queries) CreateProduct(ctx context.Context, arg *CreateProductParams) e
 		arg.StatusID,
 		arg.CategoryID,
 		arg.PublishedAt,
+		arg.DiscontinuedAt,
 		arg.CreatedAt,
 	)
 	return err
@@ -412,7 +418,7 @@ const getProductByID = `-- name: GetProductByID :one
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
-    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at, p.discontinued_at
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -435,7 +441,7 @@ type GetProductByIDRow struct {
 //	SELECT
 //	    ps.name AS status_name,
 //	    pc.name AS category_name,
-//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at, p.discontinued_at
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -458,6 +464,7 @@ func (q *Queries) GetProductByID(ctx context.Context, productIDParam uuid.UUID) 
 		&i.Products.LockVersion,
 		&i.Products.CreatedAt,
 		&i.Products.UpdatedAt,
+		&i.Products.DiscontinuedAt,
 	)
 	return &i, err
 }
@@ -466,7 +473,7 @@ const getProductByIDForUpdate = `-- name: GetProductByIDForUpdate :one
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
-    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at, p.discontinued_at
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -490,7 +497,7 @@ type GetProductByIDForUpdateRow struct {
 //	SELECT
 //	    ps.name AS status_name,
 //	    pc.name AS category_name,
-//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at, p.discontinued_at
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -514,6 +521,7 @@ func (q *Queries) GetProductByIDForUpdate(ctx context.Context, productIDParam uu
 		&i.Products.LockVersion,
 		&i.Products.CreatedAt,
 		&i.Products.UpdatedAt,
+		&i.Products.DiscontinuedAt,
 	)
 	return &i, err
 }
@@ -522,7 +530,7 @@ const getPublishedProductByID = `-- name: GetPublishedProductByID :one
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
-    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at, p.discontinued_at
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -546,7 +554,7 @@ type GetPublishedProductByIDRow struct {
 //	SELECT
 //	    ps.name AS status_name,
 //	    pc.name AS category_name,
-//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at, p.discontinued_at
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -570,6 +578,7 @@ func (q *Queries) GetPublishedProductByID(ctx context.Context, productIDParam uu
 		&i.Products.LockVersion,
 		&i.Products.CreatedAt,
 		&i.Products.UpdatedAt,
+		&i.Products.DiscontinuedAt,
 	)
 	return &i, err
 }
@@ -578,7 +587,7 @@ const listAllProductsAscAfter = `-- name: ListAllProductsAscAfter :many
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
-    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at, p.discontinued_at
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -649,7 +658,7 @@ type ListAllProductsAscAfterRow struct {
 //	SELECT
 //	    ps.name AS status_name,
 //	    pc.name AS category_name,
-//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at, p.discontinued_at
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -721,6 +730,7 @@ func (q *Queries) ListAllProductsAscAfter(ctx context.Context, arg *ListAllProdu
 			&i.Products.LockVersion,
 			&i.Products.CreatedAt,
 			&i.Products.UpdatedAt,
+			&i.Products.DiscontinuedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -736,7 +746,7 @@ const listAllProductsAscFirst = `-- name: ListAllProductsAscFirst :many
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
-    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at, p.discontinued_at
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -801,7 +811,7 @@ type ListAllProductsAscFirstRow struct {
 //	SELECT
 //	    ps.name AS status_name,
 //	    pc.name AS category_name,
-//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at, p.discontinued_at
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -867,6 +877,7 @@ func (q *Queries) ListAllProductsAscFirst(ctx context.Context, arg *ListAllProdu
 			&i.Products.LockVersion,
 			&i.Products.CreatedAt,
 			&i.Products.UpdatedAt,
+			&i.Products.DiscontinuedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -882,7 +893,7 @@ const listAllProductsDescAfter = `-- name: ListAllProductsDescAfter :many
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
-    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at, p.discontinued_at
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -953,7 +964,7 @@ type ListAllProductsDescAfterRow struct {
 //	SELECT
 //	    ps.name AS status_name,
 //	    pc.name AS category_name,
-//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at, p.discontinued_at
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -1025,6 +1036,7 @@ func (q *Queries) ListAllProductsDescAfter(ctx context.Context, arg *ListAllProd
 			&i.Products.LockVersion,
 			&i.Products.CreatedAt,
 			&i.Products.UpdatedAt,
+			&i.Products.DiscontinuedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1040,7 +1052,7 @@ const listAllProductsDescFirst = `-- name: ListAllProductsDescFirst :many
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
-    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at, p.discontinued_at
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -1106,7 +1118,7 @@ type ListAllProductsDescFirstRow struct {
 //	SELECT
 //	    ps.name AS status_name,
 //	    pc.name AS category_name,
-//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at, p.discontinued_at
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -1172,6 +1184,7 @@ func (q *Queries) ListAllProductsDescFirst(ctx context.Context, arg *ListAllProd
 			&i.Products.LockVersion,
 			&i.Products.CreatedAt,
 			&i.Products.UpdatedAt,
+			&i.Products.DiscontinuedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1187,7 +1200,7 @@ const listLowStockProducts = `-- name: ListLowStockProducts :many
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
-    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at, p.discontinued_at
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -1214,7 +1227,7 @@ type ListLowStockProductsRow struct {
 //	SELECT
 //	    ps.name AS status_name,
 //	    pc.name AS category_name,
-//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at, p.discontinued_at
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -1246,6 +1259,7 @@ func (q *Queries) ListLowStockProducts(ctx context.Context, limitParam int32) ([
 			&i.Products.LockVersion,
 			&i.Products.CreatedAt,
 			&i.Products.UpdatedAt,
+			&i.Products.DiscontinuedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1311,7 +1325,7 @@ const listProductsByIDs = `-- name: ListProductsByIDs :many
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
-    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at, p.discontinued_at
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -1336,7 +1350,7 @@ type ListProductsByIDsRow struct {
 //	SELECT
 //	    ps.name AS status_name,
 //	    pc.name AS category_name,
-//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at, p.discontinued_at
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -1366,6 +1380,7 @@ func (q *Queries) ListProductsByIDs(ctx context.Context, productIdsParam []uuid.
 			&i.Products.LockVersion,
 			&i.Products.CreatedAt,
 			&i.Products.UpdatedAt,
+			&i.Products.DiscontinuedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1381,7 +1396,7 @@ const listProductsByIDsForUpdate = `-- name: ListProductsByIDsForUpdate :many
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
-    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at, p.discontinued_at
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -1407,7 +1422,7 @@ type ListProductsByIDsForUpdateRow struct {
 //	SELECT
 //	    ps.name AS status_name,
 //	    pc.name AS category_name,
-//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at, p.discontinued_at
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -1438,6 +1453,7 @@ func (q *Queries) ListProductsByIDsForUpdate(ctx context.Context, productIdsPara
 			&i.Products.LockVersion,
 			&i.Products.CreatedAt,
 			&i.Products.UpdatedAt,
+			&i.Products.DiscontinuedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1453,7 +1469,7 @@ const listPublishedProductsAscAfter = `-- name: ListPublishedProductsAscAfter :m
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
-    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at, p.discontinued_at
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -1524,7 +1540,7 @@ type ListPublishedProductsAscAfterRow struct {
 //	SELECT
 //	    ps.name AS status_name,
 //	    pc.name AS category_name,
-//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at, p.discontinued_at
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -1597,6 +1613,7 @@ func (q *Queries) ListPublishedProductsAscAfter(ctx context.Context, arg *ListPu
 			&i.Products.LockVersion,
 			&i.Products.CreatedAt,
 			&i.Products.UpdatedAt,
+			&i.Products.DiscontinuedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1612,7 +1629,7 @@ const listPublishedProductsAscFirst = `-- name: ListPublishedProductsAscFirst :m
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
-    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at, p.discontinued_at
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -1677,7 +1694,7 @@ type ListPublishedProductsAscFirstRow struct {
 //	SELECT
 //	    ps.name AS status_name,
 //	    pc.name AS category_name,
-//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at, p.discontinued_at
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -1744,6 +1761,7 @@ func (q *Queries) ListPublishedProductsAscFirst(ctx context.Context, arg *ListPu
 			&i.Products.LockVersion,
 			&i.Products.CreatedAt,
 			&i.Products.UpdatedAt,
+			&i.Products.DiscontinuedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1759,7 +1777,7 @@ const listPublishedProductsDescAfter = `-- name: ListPublishedProductsDescAfter 
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
-    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at, p.discontinued_at
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -1830,7 +1848,7 @@ type ListPublishedProductsDescAfterRow struct {
 //	SELECT
 //	    ps.name AS status_name,
 //	    pc.name AS category_name,
-//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at, p.discontinued_at
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -1903,6 +1921,7 @@ func (q *Queries) ListPublishedProductsDescAfter(ctx context.Context, arg *ListP
 			&i.Products.LockVersion,
 			&i.Products.CreatedAt,
 			&i.Products.UpdatedAt,
+			&i.Products.DiscontinuedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -1918,7 +1937,7 @@ const listPublishedProductsDescFirst = `-- name: ListPublishedProductsDescFirst 
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,
-    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at, p.discontinued_at
 FROM products AS p
 INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -1984,7 +2003,7 @@ type ListPublishedProductsDescFirstRow struct {
 //	SELECT
 //	    ps.name AS status_name,
 //	    pc.name AS category_name,
-//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at
+//	    p.id, p.name, p.description, p.price, p.quantity, p.stock_warning_threshold, p.status_id, p.category_id, p.published_at, p.lock_version, p.created_at, p.updated_at, p.discontinued_at
 //	FROM products AS p
 //	INNER JOIN product_statuses AS ps ON p.status_id = ps.id
 //	INNER JOIN product_categories AS pc ON p.category_id = pc.id
@@ -2051,6 +2070,7 @@ func (q *Queries) ListPublishedProductsDescFirst(ctx context.Context, arg *ListP
 			&i.Products.LockVersion,
 			&i.Products.CreatedAt,
 			&i.Products.UpdatedAt,
+			&i.Products.DiscontinuedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -2106,10 +2126,11 @@ SET
     status_id = $6,
     category_id = $7,
     published_at = $8,
+    discontinued_at = $9,
     lock_version = products.lock_version + 1,
     updated_at = NOW()
-WHERE products.id = $9
-    AND products.lock_version = $10
+WHERE products.id = $10
+    AND products.lock_version = $11
 RETURNING products.lock_version
 `
 
@@ -2122,6 +2143,7 @@ type UpdateProductParams struct {
 	StatusID              uuid.UUID
 	CategoryID            uuid.UUID
 	PublishedAt           *time.Time
+	DiscontinuedAt        *time.Time
 	ID                    uuid.UUID
 	CurrentVersion        int32
 }
@@ -2142,10 +2164,11 @@ type UpdateProductParams struct {
 //	    status_id = $6,
 //	    category_id = $7,
 //	    published_at = $8,
+//	    discontinued_at = $9,
 //	    lock_version = products.lock_version + 1,
 //	    updated_at = NOW()
-//	WHERE products.id = $9
-//	    AND products.lock_version = $10
+//	WHERE products.id = $10
+//	    AND products.lock_version = $11
 //	RETURNING products.lock_version
 func (q *Queries) UpdateProduct(ctx context.Context, arg *UpdateProductParams) (int32, error) {
 	row := q.db.QueryRow(ctx, updateProduct,
@@ -2157,6 +2180,7 @@ func (q *Queries) UpdateProduct(ctx context.Context, arg *UpdateProductParams) (
 		arg.StatusID,
 		arg.CategoryID,
 		arg.PublishedAt,
+		arg.DiscontinuedAt,
 		arg.ID,
 		arg.CurrentVersion,
 	)

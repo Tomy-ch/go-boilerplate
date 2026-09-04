@@ -32,6 +32,8 @@ const (
 	ItemIssueNotFound ItemIssue = "notFound"
 	// ItemIssueUnpublished は、商品が非公開であることを表します。
 	ItemIssueUnpublished ItemIssue = "unpublished"
+	// ItemIssueDiscontinued は、商品が廃番になったことを表します。
+	ItemIssueDiscontinued ItemIssue = "discontinued"
 	// ItemIssueOutOfStock は、在庫が無いことを表します。
 	ItemIssueOutOfStock ItemIssue = "outOfStock"
 	// ItemIssueInsufficientStock は、在庫が要求数量に満たないことを表します。
@@ -296,7 +298,12 @@ func evaluateItems(
 func toSnapshots(products map[uuid.UUID]*product.Product) map[uuid.UUID]cart.ProductSnapshot {
 	snapshots := make(map[uuid.UUID]cart.ProductSnapshot, len(products))
 	for id, p := range products {
-		snapshots[id] = cart.NewProductSnapshot(p.Quantity(), p.Price(), p.IsPublished())
+		snapshots[id] = cart.NewProductSnapshot(cart.ProductSnapshotAttributes{
+			Quantity:     p.Quantity(),
+			Price:        p.Price(),
+			Published:    p.IsPublished(),
+			Discontinued: p.IsDiscontinued(),
+		})
 	}
 
 	return snapshots
@@ -314,7 +321,12 @@ func evaluateItem(item cart.CartItem, p *product.Product) CartItemView {
 			imagePath := image.ImagePath()
 			view.ImagePath = &imagePath
 		}
-		s := cart.NewProductSnapshot(p.Quantity(), p.Price(), p.IsPublished())
+		s := cart.NewProductSnapshot(cart.ProductSnapshotAttributes{
+			Quantity:     p.Quantity(),
+			Price:        p.Price(),
+			Published:    p.IsPublished(),
+			Discontinued: p.IsDiscontinued(),
+		})
 		snapshot = &s
 	}
 
@@ -342,6 +354,8 @@ func toItemIssue(issue cart.Issue) ItemIssue {
 		return ItemIssueNotFound
 	case cart.IssueUnpublished:
 		return ItemIssueUnpublished
+	case cart.IssueDiscontinued:
+		return ItemIssueDiscontinued
 	case cart.IssueOutOfStock:
 		return ItemIssueOutOfStock
 	case cart.IssueInsufficientStock:
