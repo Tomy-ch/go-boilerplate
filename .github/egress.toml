@@ -197,6 +197,9 @@ classes = ["image"]
 [job."go-cooldown.yaml:go-cooldown"]
 classes = ["mise"]
 
+[job."pnpm-cooldown.yaml:pnpm-cooldown"]
+classes = ["mise"]
+
 [job."go-lint.yaml:changes"]
 classes = []
 
