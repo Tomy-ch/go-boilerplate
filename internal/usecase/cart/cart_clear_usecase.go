@@ -9,7 +9,7 @@ import (
 
 // ClearCart は、再評価を行いません。応答は本文を持たず価格を 1 つも提示していないため、
 // 提示価格を記録すると、次の取得で立つはずの priceIncreased を消してしまいます
-// （docs/spec/cart/usecase.md の ClearCart）。
+// （docs/spec/usecase/cart.md の ClearCart）。
 //
 // カートの行は消しません。消すと直後の操作でセッショントークンが発行し直され、利用者の
 // 同一性が切れます。

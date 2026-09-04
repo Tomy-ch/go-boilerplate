@@ -7,11 +7,11 @@
 ## 使うとき
 
 - 新規 feature 開始で domain 層 spec テンプレが欲しい
-- 既存 feature ディレクトリに domain spec だけ追加（他層は既存）
+- usecase spec が既にある feature に domain spec だけ追加
 
 以下の用途には使いません:
 
-- 既存 `domain.md` の編集 — エディタで直接
+- 既存 domain spec の編集 — エディタで直接
 - spec から Go コード生成 — `scaffold-domain`
 - spec 整合性検証 — `verify-spec`
 - 2 層 (domain + usecase) を一括作成 — 統合 `new-spec`（lean A: controller / infra は OpenAPI gen + sqlc gen から導出されるため spec 不要）
@@ -21,28 +21,30 @@
 **読み込み（常時）**:
 
 - `.codex/scaffold-spec/domain-spec.md` — domain 層の canonical 節リスト
-- `docs/spec/<feature>/` — `domain.md` 既存確認
+- `docs/spec/domain/<pkgpath>.md` — 既存確認
 - `docs/spec/glossary.md` — 業務語彙の統括 spec。集約名を突き合わせる
 
 **書き込み（承認後）**:
 
-- `docs/spec/<feature>/domain.md` — テンプレートファイル
+- `docs/spec/domain/<pkgpath>.md` — テンプレートファイル
 - `docs/spec/glossary.md` — 集約 1 行のみ。ユーザーが承認したときだけ
 
 **触らない**:
 
-- 既存 `domain.md`（あれば中断）
+- 当該パスの既存 domain spec（あれば中断）
 - 他層の spec ファイル
 - 追加する 1 行以外の用語表の行
 
 ## 最初のステップ: identity 確認
 
+spec の同一性は**パッケージパス**である: `docs/spec/domain/<rest>.md` は `internal/domain/<rest>` に対応し、Entity YAML の `package:` は同じパスを宣言する。したがってこのスキルが集めるのはパッケージパスであり、それがファイルの置き場所を決める。
+
 `ask the user explicitly` を起動直後（`new-spec` 統合から context 提供時は除く）に使う:
 
-1. **feature 名** — フリーテキスト、kebab-case。`^[a-z][a-z0-9-]*$` 検証
+1. **domain パッケージパス** — フリーテキスト、`internal/domain/` 以下のパス（例: `cart`, `product/category`）。`^[a-z][a-z0-9]*(/[a-z][a-z0-9]*)*$` 検証 — Go のパッケージ名にハイフンは無いので `product-category` はパッケージパスではなく、入れ子の `product/category` がそれにあたる
 2. **aggregate 名** — フリーテキスト、PascalCase（例: `User`, `Order`）。Go struct 名になる
 
-`docs/spec/<feature>/domain.md` 既存なら中断。未存在なら `docs/spec/<feature>/` を作成。
+`docs/spec/domain/<pkgpath>.md` 既存なら中断。未存在なら親ディレクトリを作成。
 
 ## Step 1. 節定義の読み込み
 
@@ -59,10 +61,10 @@
 
 ## Step 2. テンプレ生成
 
-H1 `<FeatureName Display> — Domain Spec`、続けて各節:
+H1 `<Aggregate Display> — Domain Spec`、続けて各節:
 
 - Overview: `TODO:` 1 行
-- Entity: YAML（`package` / `struct` / `fields` プレースホルダ 1 件）
+- Entity: YAML（`package` / `struct` / `fields` プレースホルダ 1 件）。`package:` は必ず `internal/domain/<pkgpath>` — ファイルが置かれるパスと同じで、`verify-spec` がこれを assert する
 - Cross-field Invariants: bullet + `TODO:`
 - Behavior Methods: YAML プレースホルダ
 - Value Objects: YAML + 注「利用しない場合は節ごと削除」
@@ -74,10 +76,10 @@ H1 `<FeatureName Display> — Domain Spec`、続けて各節:
 
 提案パス + テンプレ冒頭 20 行を表示し、以下を尋ねる:
 
-- 「以下の内容で `docs/spec/<feature>/domain.md` を作成しますか？」
+- 「以下の内容で `docs/spec/domain/<pkgpath>.md` を作成しますか？」
 - 選択肢: 「作成する」 / 「キャンセル」
 
-承認時は `mkdir -p docs/spec/<feature>` + `Write`。
+承認時はファイルの親ディレクトリ（`docs/spec/domain/<pkgpath>` から末尾セグメントを除いたもの）を `mkdir -p` して `Write`。
 
 ## Step 4. 集約を用語表へ登録する
 
@@ -89,19 +91,24 @@ H1 `<FeatureName Display> — Domain Spec`、続けて各節:
 - **同じ所有 feature で既出** — することは無い。その旨を述べる
 - **未登録** — 1 行を提案し、その定義が草案であることを明言してから、追加するか今回は見送るかを `ask the user explicitly` で尋ねる
 
+所有列に書くのはパッケージパスではなく kebab-case の **feature 名**である。パッケージパスの `/` を `-`
+に置き換えたもの（`product/category` → `product-category`）を既定値とし、編集可能な形で提示すること。
+両者は常に一致するわけではなく（`exchangerate` の所有は `exchange-rate`）、業務がその feature を
+どう呼ぶかはジェネレータが決めることではない。
+
 定義文は feature 名と aggregate 名から草案を起こす。誰も編集していない定義は誰も合意していない定義であり、もっともらしく誤っている行より空の行のほうが価値がある。
 
 <!-- sample-api:begin -->
 feature がサンプル由来なら行を `sample-api:begin` / `sample-api:end` の内側へ、そうでなければ外側へ置く。マーカーの反対側に置かれた行は、サンプルと共に消えるか、サンプルより長生きするかのどちらかになる。
 
 <!-- sample-api:end -->
-この責務は、domain 層が用語を導入する場合にだけ成り立つ。aggregate も `domain.md` もなく、QueryService
+この責務は、domain 層が用語を導入する場合にだけ成り立つ。aggregate も domain spec も無く、QueryService
 だけの projection-only feature では、read-side の語を導入する者がいなくなるため、その場合は `/glossary` が担う。このスキルは aggregate を作るときにだけ動くので、projection まで対象を広げると `/glossary` の責務と重複する。
 
 ## Step 5. クロージング
 
 ```text
-docs/spec/<feature>/domain.md を作成しました。次は editor で TODO を埋めてください。
+docs/spec/domain/<pkgpath>.md を作成しました。次は editor で TODO を埋めてください。
 用語表には集約名だけを登録しました。TODO を埋めると値オブジェクトや状態の語が現れるので、
 そのときは /glossary で用語表へ反映してください（新出用語・orphan・同音異義を出します）。
 usecase spec も必要なら new-spec-usecase または統合 new-spec を使ってください
@@ -112,29 +119,30 @@ usecase spec も必要なら new-spec-usecase または統合 new-spec を使っ
 
 ## AI 修正スコープ
 
-- 書き込み: `docs/spec/<feature>/` 配下の新規ファイルと、`docs/spec/glossary.md` への 1 行追記
-- `domain.md` 既存時は中断
+- 書き込み: `docs/spec/domain/` 配下の新規ファイルと、`docs/spec/glossary.md` への 1 行追記
+- 当該パスの domain spec 既存時は中断
 
 ## 制約事項
 
-- ❌ 既存 `domain.md` の上書き
+- ❌ 既存 domain spec の上書き
 - ❌ 業務内容（フィールド / メソッド）を発明
 - ❌ 節リストをハードコード（必ず `.codex/scaffold-spec/domain-spec.md` から読む）
 - ❌ identity `ask the user explicitly` をスキップ
-- ❌ `domain.md` 以外の layer に触る
+- ❌ `docs/spec/domain/` 以外のツリーに触る
 - ❌ 用語表の同音異義を解決する / どちらの名前が勝つかを決める
 - ❌ 集約名以外を登録する（他はまだ TODO）
 - ❌ 草案であると述べずに定義文を書く
 - ✅ ユーザー向け出力は日本語
-- ✅ feature 名 kebab-case + aggregate 名 PascalCase を検証
+- ✅ パッケージパス（小文字・`/` 区切り・ハイフン無し）+ aggregate 名 PascalCase を検証
 
 ## チェックリスト
 
-- [ ] feature 名 + aggregate 名を `ask the user explicitly` で確認
+- [ ] domain パッケージパス + aggregate 名を `ask the user explicitly` で確認
 - [ ] `.codex/scaffold-spec/domain-spec.md` を読んで現行節リスト取得
-- [ ] `domain.md` 未存在（あれば中断）
+- [ ] 当該パスの domain spec 未存在（あれば中断）
+- [ ] Entity YAML の `package:` がファイルのパスと一致
 - [ ] H2 節 + YAML コードブロック + TODO でテンプレを書き出し
 - [ ] 集約名を `docs/spec/glossary.md` と突き合わせ（同音異義なら報告して停止）
 - [ ] 用語表への追記は `ask the user explicitly` の後、サンプルマーカーの正しい側へ
 - [ ] 最終サマリは日本語で、残りの用語を `/glossary` へ引き継ぐ
-- [ ] `docs/spec/<feature>/domain.md` と用語表 1 行のみ書き込み
+- [ ] `docs/spec/domain/<pkgpath>.md` と用語表 1 行のみ書き込み

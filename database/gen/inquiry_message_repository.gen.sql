@@ -24,7 +24,7 @@ INSERT INTO inquiry_messages (
 -- name: ListInquiryMessages :many
 -- 問い合わせのメッセージを stream_sequence 昇順で取得する。
 -- after_sequence より大きく up_to_sequence 以下の行に限ること（上限は usecase が先に読んだ stream の
--- 現在位置。論拠は docs/spec/inquiry/usecase.md の「streamCursor と snapshot」）。
+-- 現在位置。論拠は docs/spec/usecase/inquiry.md の「streamCursor と snapshot」）。
 SELECT sqlc.embed(m)
 FROM inquiry_messages AS m
 WHERE m.inquiry_id = sqlc.arg('inquiry_id')

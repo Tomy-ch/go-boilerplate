@@ -9,7 +9,7 @@ import (
 
 // RemoveItem は、再評価を行いません。応答は本文を持たず価格を 1 つも提示していないため、
 // 提示価格を記録すると、次の取得で立つはずの priceIncreased を消してしまいます
-// （docs/spec/cart/usecase.md の RemoveItem）。
+// （docs/spec/usecase/cart.md の RemoveItem）。
 //
 // nil の商品 ID は、カートへ届く前に「該当する明細が無い」として扱います。カート内の明細が
 // nil の商品 ID を持つことは構造上あり得ないため、これは削除の冪等の一部です。

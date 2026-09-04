@@ -2,7 +2,7 @@
 
 # Scaffold Usecase
 
-`docs/spec/<feature>/usecase.md` を入力に、1 feature の usecase 層を 1 パスで生成するスキル。interface / struct / constructor / methods / DTOs / tests / DI 登録を生成する。
+`docs/spec/usecase/<pkgpath>.md`（`<pkgpath>` は `internal/usecase/` 以下のパッケージパス）を入力に、1 feature の usecase 層を 1 パスで生成するスキル。interface / struct / constructor / methods / DTOs / tests / DI 登録を生成する。
 
 ## 使うとき
 
@@ -20,7 +20,7 @@
 
 **読み込み（常時）**:
 
-- `docs/spec/<feature>/usecase.md` — single source of truth
+- `docs/spec/usecase/<pkgpath>.md` — single source of truth
 - `internal/usecase/README.md` — layer 規約
 - `internal/usecase/boundary/README.md` — boundary 規約
 - `internal/usecase/<sibling>/<sibling>_usecase.go` — **二次** 参照（README の Implementation Example が canonical、既存コードは観察のみ）
@@ -50,7 +50,7 @@
 
 書き込み前に確認:
 
-1. `docs/spec/<feature>/usecase.md` 存在 + パース可
+1. `docs/spec/usecase/<pkgpath>.md` 存在 + パース可
 2. spec の各 `calls:` 参照:
    - `<aggregate>.Repository.<Method>` → domain Repository IF に存在
    - `<aggregate>.<BehaviorMethod>` or `<aggregate>.New` → domain に存在
@@ -63,14 +63,14 @@
 
 `ask the user explicitly` 起動直後（`scaffold-endpoint` から context 提供時は除く）:
 
-- 質問: 「対象 feature 名 (kebab-case)」
-- フリーテキスト。`docs/spec/<feature>/usecase.md` として解決
+- 質問: 「対象 usecase パッケージパス（`internal/usecase/` 以下。例: `address`, `product/ranking`, `user/search`）」
+- フリーテキスト。`docs/spec/usecase/<pkgpath>.md` として解決 — spec のツリーはパッケージのツリーを写すので、対象パッケージと spec パスは同じ 1 つの回答である
 
 スタンドアロン代替: `--spec=<path>`
 
 ## Step 1. spec + 参考 context 読み込み
 
-1. `usecase.md` YAML を inventory にパース:
+1. usecase spec の YAML を inventory にパース:
    - `interface`: package, name, methods (name + signature)
    - `dtos`: (name, fields) リスト
    - `dependencies`: (name, type) リスト — boundary + Repository IF

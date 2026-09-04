@@ -28,7 +28,7 @@ const (
 type Issue string
 
 // ProductSnapshot は、再評価した時点で観測した商品の値です（設計意図は
-// docs/spec/cart/domain.md の Overview を参照）。
+// docs/spec/domain/cart.md の Overview を参照）。
 type ProductSnapshot struct {
 	quantity  int
 	price     money.Price

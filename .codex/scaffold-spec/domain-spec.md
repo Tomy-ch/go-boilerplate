@@ -1,6 +1,6 @@
 # Domain Spec Format
 
-`docs/spec/<feature>/domain.md` の節構成と自動派生ルール。
+`docs/spec/domain/<pkgpath>.md` の節構成と自動派生ルール。`<pkgpath>` は `internal/domain/` 以下の Go パッケージパスで、Entity YAML の `package:` 宣言と一致する（入れ子パッケージも同じ: `internal/domain/<agg>/<sub>` の spec は `docs/spec/domain/<agg>/<sub>.md`）。
 
 ## 節構成
 

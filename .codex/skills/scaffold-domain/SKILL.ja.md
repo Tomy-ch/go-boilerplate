@@ -2,11 +2,11 @@
 
 # Scaffold Domain
 
-`docs/spec/<feature>/domain.md` を入力に、1 feature の domain 層を 1 パスで生成するスキル。entity / Repository IF / VO / constant / error / getter / test を生成する。
+`docs/spec/domain/<pkgpath>.md`（`<pkgpath>` は `internal/domain/` 以下のパッケージパス）を入力に、1 feature の domain 層を 1 パスで生成するスキル。entity / Repository IF / VO / constant / error / getter / test を生成する。
 
 ## 使うとき
 
-- `new-spec` または手書きで `domain.md` が完成し、検証も済んだ後
+- `new-spec` または手書きで domain spec が完成し、検証も済んだ後
 - `scaffold-endpoint` の最初のステップ（自動 chain）
 - domain 層だけを scaffold したい単独利用
 
@@ -20,7 +20,7 @@
 
 **読み込み（常時）**:
 
-- `docs/spec/<feature>/domain.md` — single source of truth
+- `docs/spec/domain/<pkgpath>.md` — single source of truth
 - `internal/domain/README.md` — layer 規約
 - 既存の sibling aggregate package 1〜2 件（`internal/domain/<sibling>/`）— 構造 template
 - `internal/domain/<aggregate>/` — 既存確認（あれば中断）
@@ -48,10 +48,10 @@
 
 ## 最初のステップ: spec パス解決
 
-`ask the user explicitly` を起動直後に呼ぶ（`scaffold-endpoint` から呼ばれて context にある場合は除く）:
+`ask the user explicitly` を起動直後に呼ぶ（`scaffold-endpoint` から呼ばれて context にパッケージパスがある場合は除く）:
 
-- 質問: 「対象 feature 名 (kebab-case)」
-- フリーテキスト。`docs/spec/<feature>/domain.md` として解決
+- 質問: 「対象 domain パッケージパス（`internal/domain/` 以下。例: `cart`, `product/category`）」
+- フリーテキスト。`docs/spec/domain/<pkgpath>.md` として解決 — spec のツリーはパッケージのツリーを写すので、対象パッケージと spec パスは同じ 1 つの回答である
 
 スタンドアロン代替: `--spec=<path>` 引数で規約外パスを指定可能。
 
@@ -60,7 +60,7 @@ spec ファイルが無ければ中断し、`/new-spec` を案内する。
 
 ## Step 1. spec + README context 読み込み
 
-1. `docs/spec/<feature>/domain.md` を全文読み込み。YAML コードブロックを inventory にパース:
+1. `docs/spec/domain/<pkgpath>.md` を全文読み込み。YAML コードブロックを inventory にパース:
    - `entity`: package, struct, fields（name, type, required, min/max 等）
    - `cross_field_invariants`: 制約式リスト
    - `behavior_methods`: (name, signature, description) リスト

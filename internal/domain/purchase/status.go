@@ -19,7 +19,7 @@ const (
 	statusCodeDelivered   = 9
 )
 
-// 既知のステータス（UUID はここに焼き込まない。docs/spec/purchase/domain.md Overview 参照）。
+// 既知のステータス（UUID はここに焼き込まない。docs/spec/domain/purchase.md Overview 参照）。
 var (
 	// StatusUnprocessed は、購入作成直後に設定される「未処理」です。
 	StatusUnprocessed = Status{code: statusCodeUnprocessed, name: "unprocessed"}

@@ -325,15 +325,15 @@ func Reconstruct(id uuid.UUID, attrs Attributes) (*Purchase, error) {
 // validateStatusTimestamps は、statusCode と各イベント日時の組み合わせの到達可能性を検証します
 // （個々の理由は各分岐のコメント、契約は Reconstruct を参照）。
 func validateStatusTimestamps(status Status, paidAt, canceledAt, shippedAt, deliveredAt *time.Time) error {
-	// キャンセルと canceledAt は同時セット（双条件。docs/spec/purchase/domain.md Cancel invariants）。
+	// キャンセルと canceledAt は同時セット（双条件。docs/spec/domain/purchase.md Cancel invariants）。
 	if (status == StatusCanceled) != (canceledAt != nil) {
 		return xerrors.Wrap(ErrInvalidStatusID, "canceled status and canceledAt must be consistent")
 	}
-	// 支払い済みは paidAt 必須（一方向。docs/spec/purchase/domain.md Pay invariants）。
+	// 支払い済みは paidAt 必須（一方向。docs/spec/domain/purchase.md Pay invariants）。
 	if status == StatusPaid && paidAt == nil {
 		return xerrors.Wrap(ErrInvalidStatusID, "paid status requires paidAt")
 	}
-	// 発送済みは shippedAt 必須（一方向。docs/spec/purchase/domain.md Ship invariants）。
+	// 発送済みは shippedAt 必須（一方向。docs/spec/domain/purchase.md Ship invariants）。
 	if status == StatusShipped && shippedAt == nil {
 		return xerrors.Wrap(ErrInvalidStatusID, "shipped status requires shippedAt")
 	}
@@ -351,7 +351,7 @@ func validateStatusTimestamps(status Status, paidAt, canceledAt, shippedAt, deli
 	if deliveredAt != nil && shippedAt == nil {
 		return xerrors.Wrap(ErrInvalidStatusID, "deliveredAt requires shippedAt")
 	}
-	// 配達済みと deliveredAt は同時セット（双条件。docs/spec/purchase/domain.md Deliver invariants）。
+	// 配達済みと deliveredAt は同時セット（双条件。docs/spec/domain/purchase.md Deliver invariants）。
 	if (status == StatusDelivered) != (deliveredAt != nil) {
 		return xerrors.Wrap(ErrInvalidStatusID, "delivered status and deliveredAt must be consistent")
 	}
@@ -469,7 +469,7 @@ func (p *Purchase) Pay(now time.Time) (Event, error) {
 	if !p.status.CanTransitionTo(StatusPaid) || p.shippedAt != nil {
 		return Event{}, ErrPayNotAllowed
 	}
-	// 記録済みの paidAt を上書きしないためのガード（二重支払い防止。docs/spec/purchase/domain.md Pay invariants）。
+	// 記録済みの paidAt を上書きしないためのガード（二重支払い防止。docs/spec/domain/purchase.md Pay invariants）。
 	if p.paidAt != nil {
 		return Event{}, ErrAlreadyPaid
 	}

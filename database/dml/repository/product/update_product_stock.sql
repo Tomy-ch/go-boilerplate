@@ -1,6 +1,6 @@
 -- name: UpdateProductStock :one
 -- 在庫数を更新し、採番後のバージョンを返します。
--- lock_version の加算は SQL 側で行う（採番の権威の置き場所は docs/spec/product/domain.md の
+-- lock_version の加算は SQL 側で行う（採番の権威の置き場所は docs/spec/domain/product.md の
 -- Product.Update を参照）。
 -- 在庫更新でもバージョンを進めることで、更新前のバージョンを条件とする部分更新（UpdateProduct）が
 -- 在庫の変化を上書きせずに 0 行で弾かれます。

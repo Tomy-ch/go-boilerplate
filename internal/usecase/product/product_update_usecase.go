@@ -45,7 +45,7 @@ type UpdateProductParams struct {
 // UpdateProduct は、読み込みから更新までを 1 つのトランザクションで行い、読み込み時点のバージョンを
 // 条件に更新することで並行編集による上書き（lost update）を防ぎます。
 // バージョン不一致の 409 は tx.Manager の透過リトライでは解消しないため、リトライ対象と混同されては
-// なりません（クライアントの再試行手順は docs/spec/product/usecase.md の UpdateProduct）。
+// なりません（クライアントの再試行手順は docs/spec/usecase/product.md の UpdateProduct）。
 func (u *usecase) UpdateProduct(
 	ctx context.Context, authn *auth.Authn, id uuid.UUID, params UpdateProductParams,
 ) (ProductView, error) {

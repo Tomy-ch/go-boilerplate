@@ -198,7 +198,8 @@ invariant cannot justify deciding on its own.
 <!-- sample-api:replace-begin -->
 - Which rows a given workflow locks, and which business rule each lock protects, is feature content
   rather than an architectural decision, so it is specified with the feature. In this repository
-  that means the removable sample set (`docs/spec/purchase/`, `docs/spec/user/`) — referenced by
+  that means the removable sample set (`docs/spec/usecase/purchase.md`,
+  `docs/spec/usecase/user.md`) — referenced by
   path rather than linked, because those files are deleted by `make setup-remove-sample-api` while
   this ADR stays.
 <!-- sample-api:replace-with -->

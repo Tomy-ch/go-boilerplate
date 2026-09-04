@@ -11,7 +11,7 @@ import (
 // appendMessage は、投稿と回答が共有する 1 トランザクション分の追加処理です。
 //
 // 呼び出しの順序を入れ替えてはなりません。同一 stream への並行追加は先頭の採番で直列化されます
-// （docs/spec/inquiry/usecase.md の AppendMessage）。
+// （docs/spec/usecase/inquiry.md の AppendMessage）。
 func (u *usecase) appendMessage(
 	ctx context.Context,
 	i *inquiry.Inquiry,

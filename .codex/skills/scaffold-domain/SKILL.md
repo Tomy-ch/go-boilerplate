@@ -1,18 +1,18 @@
 ---
 name: scaffold-domain
 description: >-
-  Implement the domain layer (entity / Repository interface / constants / errors / value objects / tests) for one feature, driven by `docs/spec/<feature>/domain.md`. The skill reads the spec, references `internal/domain/README.md` (layer-wide convention: principles, naming, getter style, error wrapping, file separation) plus existing sibling aggregates as a secondary structural template, invokes a test-perspective subagent to define the layer's test viewpoints (invariant preservation, state-transition correctness, value object boundary checks) BEFORE writing code, then generates: entity struct + constructor with invariant checks, unexported fields with auto-generated getters (using `ptr.Copy` for pointer types), constants (`min<Field>Length` / `max<Field>Length` etc. derived from spec field constraints), errors (`ErrInvalid<Field>` derived from field names + invariants), Repository interface with `//go:generate mockgen` directive, value objects, and a test file covering invariants + behavior methods + VO boundary cases. Runs `make gen-api` to regenerate mocks. On failure, leaves TODO comments at the problem location plus a final FB summary; no auto-rollback. The skill does NOT invent fields, methods, or business logic beyond what the spec declares — spec is the single source of truth. Standalone-callable; when chained from `scaffold-endpoint`, runs as the first scaffold step.
+  Implement the domain layer (entity / Repository interface / constants / errors / value objects / tests) for one feature, driven by `docs/spec/domain/<pkgpath>.md` (`<pkgpath>` = the package path under `internal/domain/`). The skill reads the spec, references `internal/domain/README.md` (layer-wide convention: principles, naming, getter style, error wrapping, file separation) plus existing sibling aggregates as a secondary structural template, invokes a test-perspective subagent to define the layer's test viewpoints (invariant preservation, state-transition correctness, value object boundary checks) BEFORE writing code, then generates: entity struct + constructor with invariant checks, unexported fields with auto-generated getters (using `ptr.Copy` for pointer types), constants (`min<Field>Length` / `max<Field>Length` etc. derived from spec field constraints), errors (`ErrInvalid<Field>` derived from field names + invariants), Repository interface with `//go:generate mockgen` directive, value objects, and a test file covering invariants + behavior methods + VO boundary cases. Runs `make gen-api` to regenerate mocks. On failure, leaves TODO comments at the problem location plus a final FB summary; no auto-rollback. The skill does NOT invent fields, methods, or business logic beyond what the spec declares — spec is the single source of truth. Standalone-callable; when chained from `scaffold-endpoint`, runs as the first scaffold step.
 ---
 
 # Scaffold Domain
 
-Generate the domain layer for a feature based on `docs/spec/<feature>/domain.md`. Produces the entity, Repository interface, value objects, constants, errors, getters, and tests in a single pass.
+Generate the domain layer for a feature based on `docs/spec/domain/<pkgpath>.md`. Produces the entity, Repository interface, value objects, constants, errors, getters, and tests in a single pass.
 
 A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
 
 ## When to Use
 
-- After `new-spec` / human-written `domain.md` is complete and verified.
+- After the domain spec — `new-spec`-scaffolded or hand-written — is complete and verified.
 - As the first step of `scaffold-endpoint` (auto-chained).
 - Standalone when only the domain layer needs scaffolding.
 
@@ -26,7 +26,7 @@ Do NOT use this skill for:
 
 **Reads (always)**:
 
-- `docs/spec/<feature>/domain.md` — single source of truth for what gets generated.
+- `docs/spec/domain/<pkgpath>.md` — single source of truth for what gets generated.
 - `internal/domain/README.md` — layer-wide convention (principles, naming, getter style, `ptr.Copy` usage, error wrapping, file separation). **Canonical**: README wins on any conflict with sibling code.
 - Existing sibling aggregates under `internal/domain/<sibling>/` — secondary structural template for imports, file layout, formatting style.
 - `internal/domain/<aggregate>/` — to verify the directory does not already exist (abort if it does).
@@ -54,10 +54,10 @@ Do NOT use this skill for:
 
 ## First Step: Resolve Spec Path
 
-This skill **MUST call `ask the user explicitly` immediately after invocation** (unless invoked from `scaffold-endpoint` with the feature name already in context):
+This skill **MUST call `ask the user explicitly` immediately after invocation** (unless invoked from `scaffold-endpoint` with the package path already in context):
 
-- Question: 「対象 feature 名 (kebab-case)」
-- Free-text. The skill then resolves spec path as `docs/spec/<feature>/domain.md`.
+- Question: 「対象 domain パッケージパス（`internal/domain/` 以下。例: `cart`, `product/category`）」
+- Free-text. The skill then resolves the spec path as `docs/spec/domain/<pkgpath>.md` — the spec tree mirrors the package tree, so the target package and the spec path are the same answer.
 
 Standalone alternative: accept an explicit `--spec=<path>` argument so the user can point at a spec outside the convention.
 
@@ -66,7 +66,7 @@ If `internal/domain/<aggregate>/` already exists → abort to avoid clobbering h
 
 ## Step 1. Read Spec + README Context
 
-1. Read `docs/spec/<feature>/domain.md` in full. Parse every YAML code block into in-memory inventory:
+1. Read `docs/spec/domain/<pkgpath>.md` in full. Parse every YAML code block into in-memory inventory:
    - `entity`: package, struct, fields (each with name, type, required, min/max, etc.)
    - `cross_field_invariants`: list of constraint expressions
    - `behavior_methods`: list of (name, signature, description)

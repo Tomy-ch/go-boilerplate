@@ -11,7 +11,7 @@ import (
 )
 
 // maxAppendAttempts は、問い合わせの作成が競合したときにトランザクションごとやり直す上限です
-// （docs/spec/inquiry/usecase.md の AppendMessage）。
+// （docs/spec/usecase/inquiry.md の AppendMessage）。
 const maxAppendAttempts = 2
 
 // AppendMessage は、利用者の投稿を追加します。
@@ -60,7 +60,7 @@ func (u *usecase) appendForUser(
 // resolveOrCreateInquiry は、利用者の問い合わせを取得し、無ければ作成します。
 //
 // 作成が一意制約に当たった場合はやり直しを求めます。一意制約違反はトランザクション自体を中断させ、
-// 同じトランザクションの中では読み直せないためです（docs/spec/inquiry/usecase.md の AppendMessage）。
+// 同じトランザクションの中では読み直せないためです（docs/spec/usecase/inquiry.md の AppendMessage）。
 func (u *usecase) resolveOrCreateInquiry(
 	ctx context.Context,
 	userID uuid.UUID,

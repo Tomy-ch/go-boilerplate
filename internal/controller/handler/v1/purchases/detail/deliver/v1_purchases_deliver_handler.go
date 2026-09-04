@@ -33,7 +33,7 @@ func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc purchaseuc.Use
 }
 
 // PatchPurchasesDeliver は、購入を配達済みへ遷移させます。認証必須・admin 限定（非 admin は 403）。404: 不存在。409: 不正遷移
-// （詳細は docs/spec/purchase/usecase.md § PATCH 配達完了 を参照）。
+// （詳細は docs/spec/usecase/purchase.md § PATCH 配達完了 を参照）。
 func (s *server) PatchPurchasesDeliver(
 	ctx context.Context,
 	request gen.PatchPurchasesDeliverRequestObject,

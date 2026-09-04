@@ -134,7 +134,7 @@ func newCart(id uuid.UUID, attrs Attributes) (*Cart, error) {
 }
 
 // validateOwnership は、所有者とセッショントークンがちょうど一方だけ設定されていることを検証します。
-// どちらの側も構築を許しません（排他の理由: docs/spec/cart/domain.md の Cross-field Invariants）。
+// どちらの側も構築を許しません（排他の理由: docs/spec/domain/cart.md の Cross-field Invariants）。
 func validateOwnership(ownerID *uuid.UUID, token *SessionToken) error {
 	if (ownerID == nil) == (token == nil) {
 		return ErrInvalidOwner
@@ -256,7 +256,7 @@ func (c *Cart) Clear() { c.items = nil }
 // 上限を超える分は追加が新しいものから切り捨てます（先に入っていたものを優先して残す）。
 // 失われた分は戻り値で報告されます。
 //
-// error を返しません（理由: docs/spec/cart/domain.md の Behavior Methods の Merge）。
+// error を返しません（理由: docs/spec/domain/cart.md の Behavior Methods の Merge）。
 // 取り込み元は変更しません。
 func (c *Cart) Merge(other *Cart, now time.Time) MergeResult {
 	if other == nil {
@@ -306,7 +306,7 @@ func (c *Cart) Touch(now time.Time, ttl time.Duration) {
 // prices に現れない商品の明細は変更しません（非公開化などで価格を引けなかった場合）。
 //
 // ここに記録される値は表示の履歴であって約束ではありません
-// （詳細: docs/spec/cart/domain.md の Behavior Methods の MarkSeen）。
+// （詳細: docs/spec/domain/cart.md の Behavior Methods の MarkSeen）。
 func (c *Cart) MarkSeen(prices map[uuid.UUID]money.Price) {
 	for idx := range c.items {
 		price, ok := prices[c.items[idx].productID]

@@ -107,7 +107,7 @@ The classification decides what counts as an answer, and — more importantly �
 | Rule — what should be done here | the governing document | **the rule may be undefined** — a finding in its own right, but only once Step 2 has exhausted the owning index |
 | Rationale — why is it this way | `docs/adr/`, `docs/design/` | the decision was made implicitly and never recorded |
 | Procedure — how is it done here | `.makefiles/**`, `.lefthook.yaml`, `.github/workflows/`, `docs/maintenance/` | **no canonical procedure may exist** — same bar; never invent a command to close the gap |
-| Vocabulary — what does this term mean | `docs/spec/glossary.md`, `docs/spec/<feature>/` | the term is not business vocabulary, or it has leaked without registration |
+| Vocabulary — what does this term mean | `docs/spec/glossary.md`, `docs/spec/{domain,usecase}/` | the term is not business vocabulary, or it has leaked without registration |
 | History — when and why did it change | `git log`, merged PRs | — |
 
 A question often carries an unstated assumption about which kind it is. "How do I run only the
@@ -137,7 +137,7 @@ Read the indexes and pick entries by *what concern they own*, not by keyword mat
 | `docs/design/README.md` | how a subsystem or cross-cutting concern works |
 | `.makefiles/README.md` | every make target, grouped by area |
 | the README chain from the path in question up to its layer root | responsibilities, prohibitions, design intent — 150 of them, but only the chain matters |
-| `docs/spec/glossary.md`, `docs/spec/<feature>/` | business vocabulary and per-feature behavior |
+| `docs/spec/glossary.md`, `docs/spec/{domain,usecase}/` | business vocabulary and per-feature behavior |
 
 `.claude/skills/repo-ops/SKILL.md` section 0, *Finding the authoritative source*, is the canonical
 answer-target → source table and carries the noise-free search invocation plus the list of files that

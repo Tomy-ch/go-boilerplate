@@ -2,7 +2,7 @@
 
 > 既存実装（`internal/usecase/user/search`）を spec 化したもの。手書き実装から逆生成した現状仕様。
 > user 集約に対する読み取り専用ユースケース。固有の集約を持たないため domain.md は独立させず、
-> 参照する集約の spec（`docs/spec/user/domain.md`）を見る。
+> 参照する集約の spec（`docs/spec/domain/user.md`）を見る。
 
 ## Overview
 

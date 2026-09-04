@@ -52,8 +52,9 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "database/seed/000001_users.sql",
       "database/seed/000002_users_additional.sql",
 
-      "docs/spec/user",
-      "docs/spec/user-search",
+      "docs/spec/domain/user.md",
+      "docs/spec/usecase/user.md",
+      "docs/spec/usecase/user/search.md",
 
       // User 機能を 0 から組み立てる手順書。規則を述べる散文ではなくこのサンプルの写しなので、
       // サンプルが消えれば指し先が丸ごと無くなる。ポータルの `tutorial` セクション宣言は
@@ -123,9 +124,10 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "database/migrations/000003_create_prefectures.up.sql",
       "database/migrations/000003_create_prefectures.down.sql",
 
-      // ディレクトリで挙げる。ファイルを 1 本ずつ列挙すると、同じ spec に層を足したときに
-      // 漏れる（`domain.md` が実際に取り残されていた）。
-      "docs/spec/prefecture",
+      // spec は層ごとのツリーに分かれ、1 feature を丸ごと指すディレクトリが無い。
+      // 層を足したらここへ 1 行足す。落とすとその層の spec だけが取り残される。
+      "docs/spec/domain/prefecture.md",
+      "docs/spec/usecase/prefecture.md",
     ],
   },
 
@@ -152,8 +154,8 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "openapi/components/schemas/ProductStatusResponse.yaml",
       "openapi/components/schemas/ProductStatusRef.yaml",
 
-      "docs/spec/product-status/domain.md",
-      "docs/spec/product-status/usecase.md",
+      "docs/spec/domain/product/status.md",
+      "docs/spec/usecase/product/status.md",
 
       "internal/domain/product/category",
       "internal/usecase/product/category",
@@ -170,8 +172,8 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "openapi/components/schemas/ProductCategoryResponse.yaml",
       "openapi/components/schemas/ProductCategoryRef.yaml",
 
-      "docs/spec/product-category/domain.md",
-      "docs/spec/product-category/usecase.md",
+      "docs/spec/domain/product/category.md",
+      "docs/spec/usecase/product/category.md",
 
       "internal/domain/product",
       "internal/usecase/product",
@@ -210,8 +212,9 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "openapi/components/schemas/ProductImageResponse.yaml",
       "openapi/components/schemas/ProductImageInput.yaml",
 
-      "docs/spec/product",
-      "docs/spec/product-ranking",
+      "docs/spec/domain/product.md",
+      "docs/spec/usecase/product.md",
+      "docs/spec/usecase/product/ranking.md",
 
       "database/migrations/000008_create_product_statuses.up.sql",
       "database/migrations/000008_create_product_statuses.down.sql",
@@ -333,8 +336,10 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "openapi/components/schemas/PurchaseStatusBreakdownResponse.yaml",
       "openapi/components/schemas/PurchaseGroupResponse.yaml",
       "openapi/components/schemas/PurchaseSubGroupResponse.yaml",
-      "docs/spec/purchase",
-      "docs/spec/purchase-status",
+      "docs/spec/domain/purchase.md",
+      "docs/spec/usecase/purchase.md",
+      "docs/spec/domain/purchase/status.md",
+      "docs/spec/usecase/purchase/status.md",
     ],
   },
 
@@ -373,7 +378,8 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "internal/integration/v1_carts_items_test.go",
       "internal/integration/v1_carts_merge_test.go",
 
-      "docs/spec/cart",
+      "docs/spec/domain/cart.md",
+      "docs/spec/usecase/cart.md",
     ],
   },
 
@@ -412,7 +418,8 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "internal/integration/v1_inquiries_feed_stream_ticket_test.go",
 
       // spec
-      "docs/spec/inquiry",
+      "docs/spec/domain/inquiry.md",
+      "docs/spec/usecase/inquiry.md",
 
       // internal/di/module/realtimeadapter.go は対象外（機構側。理由は internal/di/module/README.md の
       // RealtimeAdapterModule() 項）。serve への結線だけが sample-api:line マーカーで落ちる。
@@ -439,7 +446,7 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       // internal/usecase/tools/money は対象外（後続 purchases も再利用する恒久ヘルパ。
       // 汎用ツールの扱いは冒頭参照）。
 
-      "docs/spec/exchange-rate",
+      "docs/spec/usecase/exchangerate.md",
     ],
   },
 
@@ -457,7 +464,7 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "openapi/components/responses/addresses",
       "openapi/components/schemas/addresses",
 
-      "docs/spec/address/usecase.md",
+      "docs/spec/usecase/address.md",
     ],
   },
 
@@ -478,7 +485,7 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "openapi/components/responses/dashboard",
       "openapi/components/schemas/dashboard",
 
-      "docs/spec/dashboard",
+      "docs/spec/usecase/dashboard.md",
     ],
   },
 

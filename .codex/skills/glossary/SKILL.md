@@ -30,7 +30,7 @@ across packages; a prefix match would suppress `DetailInput` merely because `Det
 
 Read `.codex/scaffold-spec/domain-spec.md` at runtime to learn the domain-spec YAML shape; do not assume its sections stay fixed. Extract five inventories:
 
-- `package:` and `struct:` declarations from the YAML in `docs/spec/*/domain.md`, restricted to the selected feature when applicable;
+- `package:` and `struct:` declarations from the YAML in `docs/spec/domain/**/*.md`, restricted to the selected feature when applicable;
 - exported `type X struct` and `type X interface` declarations in `internal/domain/**`, excluding `_test.go` and `mock/`;
 - exported behaviours in `internal/domain/**`, excluding `_test.go` and `mock/`:
 
@@ -62,13 +62,16 @@ Read `.codex/scaffold-spec/domain-spec.md` at runtime to learn the domain-spec Y
   This inventory fills only the glossary's last column; it produces no findings. Schemas can be
   nested, and a published name can be a response-body property rather than an independent schema.
 
-Resolve feature packages from their declarations, never from a directory-name glob:
+Resolve feature packages from their declarations:
 
 ```sh
-grep -n '^package:' docs/spec/*/domain.md docs/spec/*/usecase.md
+grep -rn '^package:' docs/spec/domain docs/spec/usecase --include='*.md'
 ```
 
-A kebab-case feature may map to one concatenated package or a nested package; the spec says which.
+The spec tree carries the package path in its own layout — `docs/spec/<layer>/<rest>.md` is
+`internal/<layer>/<rest>` — and the `package:` declaration says the same thing. Read the declaration
+anyway: it is the half that can be checked, and a disagreement between the two is a finding
+(`verify-spec` owns it).
 
 Do not mechanically discard constructors. `New` is Go's word for construction; if the business calls
 the same action something else, that mismatch is a finding. Genuine construction mechanisms belong
@@ -78,14 +81,21 @@ Treat verbs as seriously as nouns. A noun-only vocabulary says what the business
 happens to it; rules live in what happens. An inventory drawn only from types can appear complete
 while missing that entire side of the business.
 
-Treat a term's owner as the feature directory plus its declared aggregate. Do not reconcile two owners: that condition is a finding.
+Treat a term's owner as the feature the spec belongs to — read from the spec's package path — plus its declared aggregate. Do not reconcile two owners: that condition is a finding.
 
 ### Read-side boundary
 
-Read-side concepts are an inventory source only for features with no
-`docs/spec/<feature>/domain.md`: a projection without an aggregate has no other place to introduce
-its business words. Resolve those packages from the spec declarations; do not assume a fixed path.
-For a feature with an aggregate, read models only restate its terms and are not candidate rows.
+Read-side concepts are an inventory source only for the usecase packages that no domain spec
+introduces the words for: a projection without an aggregate has no other place to introduce its
+business words. Decide that per usecase spec by resolving its Repository dependencies — read its
+`## Dependencies`, take the domain package path each one names (`internal/domain/<X>`, from the entry
+or its trailing comment), and look for `docs/spec/domain/<X>.md`. Never derive it from the usecase
+spec's own path: `internal/usecase/user/search` is spec'd under `docs/spec/usecase/` at the path mirroring its own package and
+depends on `internal/domain/user`, so a same-path lookup would declare an aggregate-backed search a
+projection. The spec's path gives you its own package and nothing more, so walk the directories
+under it rather than fixing one path — a `query/` sub-package and a boundary port live nowhere near
+each other. For a feature with an aggregate, read models only restate its terms and are not
+candidate rows.
 This boundary outranks the orphan rule: a read model located in `internal/domain/**` can qualify by
 location but still be a restatement by nature; classify it as mechanism vocabulary, not a candidate.
 
@@ -155,7 +165,7 @@ Close in Japanese with the rows added, orphan classifications, unresolved refere
 - [ ] Extract spec YAML, exported domain types, behaviours, package values, read-side concepts, and published OpenAPI names at runtime.
 - [ ] Resolve packages from the specs' `package:` declarations, rather than directory names.
 - [ ] Subtract accessors by reading the receiver struct and judging whether the body reaches and returns one field.
-- [ ] Limit read-side concepts to aggregate-free features; suppress restatements before the orphan rule.
+- [ ] Limit read-side concepts to usecases whose Dependencies resolve to no domain spec; suppress restatements before the orphan rule.
 - [ ] Verify the glossary code-symbol column with `grep`, along with spec `package` / `struct` declarations.
 - [ ] Subtract Mechanism vocabulary from orphans.
 - [ ] Report the four finding kinds independently and leave naming/synonym decisions to a person.

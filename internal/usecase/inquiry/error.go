@@ -11,5 +11,5 @@ var errMessageNotStored = xerrors.Wrap(apperror.ErrInternal, "appended inquiry m
 
 // errInquiryCreationRace は、問い合わせを作ろうとして他の要求に先を越されたことを表します。
 // やり直しても解けなかった場合はこのまま外へ出るため、409 へ写る apperror.ErrConflict を根に持ちます
-// （docs/spec/inquiry/usecase.md の AppendMessage）。
+// （docs/spec/usecase/inquiry.md の AppendMessage）。
 var errInquiryCreationRace = xerrors.Wrap(apperror.ErrConflict, "inquiry creation lost a race")

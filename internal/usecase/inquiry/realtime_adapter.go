@@ -20,7 +20,7 @@ func conversationStreamID(inquiryID string) rt.StreamID { return rt.StreamID(inq
 
 // emitDelivery は、1 通の追加を会話 stream と feed stream の 2 つの event として出します。
 //
-// 2 つを 1 つの event にまとめてはなりません（docs/spec/inquiry/usecase.md の 2 つの destination）。
+// 2 つを 1 つの event にまとめてはなりません（docs/spec/usecase/inquiry.md の 2 つの destination）。
 func (u *usecase) emitDelivery(
 	ctx context.Context,
 	i *inquiry.Inquiry,
@@ -94,7 +94,7 @@ func (u *usecase) emitDelivery(
 
 // envelope は、feature の event を配送封筒へ翻訳して直列化します。outbox の Payload に載せるのはこの
 // 封筒であり、feature の payload そのものではありません（翻訳をこの package が担う理由は
-// docs/spec/inquiry/usecase.md Notes「realtime adapter の置き場所」）。
+// docs/spec/usecase/inquiry.md Notes「realtime adapter の置き場所」）。
 //
 // EventID は空のままにします。値は outbox が採番する message_id と同じでなければならず、
 // それが決まるのは Emit の後だからです。publish 側が message_id で埋めてから検証します。

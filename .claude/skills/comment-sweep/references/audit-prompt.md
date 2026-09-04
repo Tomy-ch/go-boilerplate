@@ -191,7 +191,7 @@ Your final message **is** the data the orchestrator consumes. No preamble.
 - 対象コメント: `実際のコメント文言`（複数行は要約せず全文）
 - 判定: 維持 / 短縮 / 削除 / 移設
 - 根拠: なぜその判定か。移設なら「この判断を覆す人が更新を義務づけられる文書」を名指しする
-- 移設先: docs/adr/NNNN-....md の <節> / docs/design/<name>.md / docs/spec/<feature>/ / <pkg>/README.md
+- 移設先: docs/adr/NNNN-....md の <節> / docs/design/<name>.md / docs/spec/domain/<pkgpath>.md / docs/spec/usecase/<pkgpath>.md / <pkg>/README.md
   - 追記する文面: （実際の文章）
 - 着地形（変更前 → 変更後）:
   ```go

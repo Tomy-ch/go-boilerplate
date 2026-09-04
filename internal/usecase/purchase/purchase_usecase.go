@@ -290,9 +290,9 @@ func (u *usecase) CreatePurchase(ctx context.Context, params CreatePurchaseParam
 	}
 
 	var created *purchase.Purchase
-	// nested で最外 tx に乗る（tx 所有については docs/spec/purchase/usecase.md 冒頭を参照）。
+	// nested で最外 tx に乗る（tx 所有については docs/spec/usecase/purchase.md 冒頭を参照）。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
-		// ロック順序（ユーザー行 → 商品行、id 昇順）は docs/spec/purchase/usecase.md の Workflow を参照。
+		// ロック順序（ユーザー行 → 商品行、id 昇順）は docs/spec/usecase/purchase.md の Workflow を参照。
 		if uerr := u.ensurePurchaserActive(ctx, params.UserID); uerr != nil {
 			return uerr
 		}
@@ -356,7 +356,7 @@ func (u *usecase) CancelPurchase(ctx context.Context, params CancelPurchaseParam
 
 	var detail *purchase.Detail
 	// tx 境界は PayPurchase のコメントを参照。二重キャンセル対策は
-	// docs/spec/purchase/usecase.md § PATCH キャンセル を参照。
+	// docs/spec/usecase/purchase.md § PATCH キャンセル を参照。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
 		locked, lerr := u.repo.LockByCode(ctx, params.PurchaseCode)
 		if lerr != nil {
@@ -420,7 +420,7 @@ func (u *usecase) PayPurchase(ctx context.Context, params PayPurchaseParams) (Pa
 
 	var detail *purchase.Detail
 	// この Do が最外 tx（本経路は Idempotency-Key を配線しない）。
-	// 二重支払い対策は docs/spec/purchase/usecase.md § PATCH 支払い を参照。
+	// 二重支払い対策は docs/spec/usecase/purchase.md § PATCH 支払い を参照。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
 		locked, lerr := u.repo.LockByCode(ctx, params.PurchaseCode)
 		if lerr != nil {
@@ -492,7 +492,7 @@ func (u *usecase) ShipPurchase(
 
 	var detail *purchase.Detail
 	// tx 境界は PayPurchase のコメントを参照。二重発送対策は
-	// docs/spec/purchase/usecase.md § PATCH 発送 を参照。
+	// docs/spec/usecase/purchase.md § PATCH 発送 を参照。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
 		locked, lerr := u.repo.LockByCode(ctx, purchaseCode)
 		if lerr != nil {
@@ -559,7 +559,7 @@ func (u *usecase) DeliverPurchase(
 
 	var detail *purchase.Detail
 	// tx 境界は PayPurchase のコメントを参照。二重配達対策は
-	// docs/spec/purchase/usecase.md § PATCH 配達完了 を参照。
+	// docs/spec/usecase/purchase.md § PATCH 配達完了 を参照。
 	if txErr := u.txm.Do(ctx, func(ctx context.Context) error {
 		locked, lerr := u.repo.LockByCode(ctx, purchaseCode)
 		if lerr != nil {
@@ -608,7 +608,7 @@ func (u *usecase) DeliverPurchase(
 
 // ensurePurchaserActive は、購入者を共有ロック付きで読み出し、購入してよい状態かの判定を
 // ドメインサービスへ委ねます。退会（排他ロック）と直列化されるため、確認を通った購入者は
-// tx の終了まで退会できません。エラー方針は docs/spec/purchase/usecase.md の Workflow を参照。
+// tx の終了まで退会できません。エラー方針は docs/spec/usecase/purchase.md の Workflow を参照。
 func (u *usecase) ensurePurchaserActive(ctx context.Context, userID uuid.UUID) error {
 	purchaser, err := u.userLock.LockShareByID(ctx, userID)
 	if err != nil {

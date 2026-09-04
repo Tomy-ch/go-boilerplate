@@ -94,7 +94,7 @@ Graphify の広い発火条件はこの振り分けに優先しません。Graph
 | Rule | 統治文書 | 規則が未定義の可能性があるが、所有索引を尽くした後に限る |
 | Rationale | `docs/adr/`、`docs/design/` | 決定が記録されていない可能性がある |
 | Procedure | `.makefiles/**`、`.lefthook.yaml`、`.github/workflows/`、`docs/maintenance/` | 正規手順がない可能性がある。発明しない |
-| Vocabulary | `docs/spec/glossary.md`、`docs/spec/<feature>/` | 未登録か、業務用語ではない可能性がある |
+| Vocabulary | `docs/spec/glossary.md`、`docs/spec/{domain,usecase}/` | 未登録か、業務用語ではない可能性がある |
 | History | `git log`、merge 済み pull request | 到達できる履歴を報告する |
 
 表面的な語彙で種別を決めません。たとえば integration test の実行方法は Procedure、DB slot が
@@ -116,7 +116,7 @@ Graphify の広い発火条件はこの振り分けに優先しません。Graph
 | `docs/design/README.md` | サブシステムと横断的設計 |
 | `.makefiles/README.md` | 関心事ごとに分類された全 make target |
 | 対象パスから layer root までの README 連鎖 | パッケージ責務、禁止事項、設計意図 |
-| `docs/spec/glossary.md`、`docs/spec/<feature>/` | 業務語彙と feature の振る舞い |
+| `docs/spec/glossary.md`、`docs/spec/{domain,usecase}/` | 業務語彙と feature の振る舞い |
 
 実行時に `.codex/skills/repo-ops/SKILL.md` の §0 **Finding the authoritative source** を読みます。
 ここが回答対象から出典への正本対応表とノイズ除外検索の正本であり、ここには複製しません。

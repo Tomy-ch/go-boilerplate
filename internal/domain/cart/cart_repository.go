@@ -10,11 +10,11 @@ import (
 
 // Repository は、カート集約の永続化を抽象化します。書き込みは集約単位で Create と Update の
 // 2 つに閉じ、明細だけを対象とする操作は持ちません
-// （理由: docs/spec/cart/domain.md の Repository Methods の Update）。
+// （理由: docs/spec/domain/cart.md の Repository Methods の Update）。
 type Repository interface {
 	// FindBySessionToken は、セッショントークンからカートを明細込みで取得します。
 	// 存在しない場合は NotFound を返します。所有者が確定したカートは引けません
-	// （理由: docs/spec/cart/domain.md の Repository Methods の FindBySessionToken）。
+	// （理由: docs/spec/domain/cart.md の Repository Methods の FindBySessionToken）。
 	FindBySessionToken(ctx context.Context, token SessionToken) (*Cart, error)
 
 	// FindByOwnerID は、所有者からカートを明細込みで取得します。

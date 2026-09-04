@@ -3,7 +3,7 @@
 -- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
 -- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 -- 公開中のみを返す GetPublishedProductByID とは可視範囲が異なり、未公開商品も返します
--- （用途は docs/spec/product/domain.md の Product.FindByID を参照）。
+-- （用途は docs/spec/domain/product.md の Product.FindByID を参照）。
 SELECT
     ps.name AS status_name,
     pc.name AS category_name,

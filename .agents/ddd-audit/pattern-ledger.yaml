@@ -137,7 +137,7 @@ corpus:
 # `docs/spec/**` glob would drag twelve features' worth of demo vocabulary into every sweep.
 #
 # That exclusion used to cost `ubiquitous-language` its auditability: the only document that could
-# host the Ubiquitous Language was `docs/spec/<feature>/domain.md`, which the audit cannot read, so
+# host the Ubiquitous Language was `docs/spec/domain/<pkgpath>.md`, which the audit cannot read, so
 # the verdict rested on the ABSENCE of a cross-cutting home rather than on a reading of one.
 #
 # `docs/spec/glossary.md` is that home, and it is listed above as a single path — never as a
