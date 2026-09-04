@@ -75,8 +75,6 @@ post:
       $ref: '../../../../components/schemas/errors/MethodNotAllowed405.yaml'
     '409':
       $ref: '../../../../components/schemas/errors/Conflict409.yaml'
-    '415':
-      $ref: '../../../../components/schemas/errors/UnsupportedMediaType415.yaml'
     '422':
       $ref: '../../../../components/schemas/errors/UnprocessableEntity422.yaml'
     '500':
