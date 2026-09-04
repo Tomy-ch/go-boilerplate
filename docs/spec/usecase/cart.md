@@ -10,7 +10,7 @@
 カートユースケースは、主体（確定済みユーザー ID またはゲストのセッショントークン）からカートを解決し、
 明細の設定・削除・マージ・期限切れ回収を行う。表示のたびに商品の現在値を突き合わせる再評価で
 **この層が担うのは、商品の取得・観測値の切り出し・結果の DTO への写像だけ**であり、判定そのものは
-ドメインの `CartItem.Evaluate` が持つ（[`domain.md`](./domain.md)）。
+ドメインの `CartItem.Evaluate` が持つ（[`domain.md`](../domain/cart.md)）。
 
 **再評価は失敗ではない。** 在庫不足・非公開化・値上がりのいずれも、カート取得を 4xx にはしない。カートを
 見る操作は成功しており、問題があるのは明細であって要求ではないため、200 のまま明細ごとに `issues` を添えて
@@ -123,7 +123,7 @@ values:
   - priceDecreased         # lastSeenPrice より安い（値下がりも知らせる。買い時の情報であり、隠す理由がない）
 ```
 
-判定の意味は [`domain.md`](./domain.md) の `Issue` が定義する。ここに別の型を置くのは DTO 境界の
+判定の意味は [`domain.md`](../domain/cart.md) の `Issue` が定義する。ここに別の型を置くのは DTO 境界の
 規約であり、ドメインの値をそのまま外へ出さないため。写像は網羅的で、対応を持たない値は写像せず
 panic する（黙って既定値へ倒すと、ドメインに値が増えたとき応答だけが静かに嘘になる）。
 
@@ -344,7 +344,7 @@ errors:
   明細を読み、purchase へ渡し、成立後に同一 tx でカートを空にして `cart.checkedOut.v1` を outbox へ発行する
   （その Workflow は checkout 側の spec が持つ）。cart usecase は自分から購入を知らない。
 - **カートは在庫を押さえない。** 売り越しの禁止は購入成立時に商品行を悲観ロックして行われる
-  （[`docs/spec/domain/purchase.md`](../purchase/domain.md)）。本 usecase の再評価は拘束力を持たず、
+  （[`docs/spec/domain/purchase.md`](../domain/purchase.md)）。本 usecase の再評価は拘束力を持たず、
   表示から購入までの間に在庫が尽きることは正常な結末として扱う。
 - **`token.Generator` は新規の boundary。** ゲストトークンは推測不能である必要があるため UUIDv7 では
   代替できず、暗号論的乱数を境界越しに供給する（clock と同じ理由で、usecase が乱数へ直接依存しない）。

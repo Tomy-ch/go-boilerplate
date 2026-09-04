@@ -109,7 +109,7 @@ output:
 
 購入者の在籍判定は、退会（`DELETE /v1/users/{userId}`）の「進行中の購入が残っていれば拒否」と
 **対になる 1 つの業務ルール**である。片方だけを読んでも全体は分からないため、もう一方は
-[`docs/spec/usecase/user.md`](../user/usecase.md) の `DeleteUser` に記述してある。購入側は共有ロックで
+[`docs/spec/usecase/user.md`](./user.md) の `DeleteUser` に記述してある。購入側は共有ロックで
 在籍を観測し、退会側は同じ行を排他ロックで押さえる。共有ロック同士は衝突しないため、同一ユーザーの
 並行購入は互いに直列化されず、退会とだけ直列化される。退会済みユーザーによる購入は 409（`ErrConflict`）で、
 退会側の拒否と同じステータスに揃えてある。
@@ -619,7 +619,7 @@ workflow:
 - `referenceAmount` は非永続・参考表示専用。丸めは half-up で、決済額（切り捨て）とは目的が異なるため規則が分かれる
   （決済額は課金される権威的な値、`referenceAmount` は表示のみの参考値）。丸め方式と最小単位桁数は方式そのものが
   policy であり、汎用の decimal 機構には焼き込まない（[ADR-0038 (two-scale-quantity-model)]）。換算側の仕様は
-  [`docs/spec/usecase/exchangerate.md`](../exchange-rate/usecase.md)。
+  [`docs/spec/usecase/exchangerate.md`](./exchangerate.md)。
 - 購入集計（`GET /v1/users/me/purchases/summary`）の `WHERE user_id = $1` は、購入履歴一覧用の複合インデックス
   `purchases (user_id, ordered_at DESC, id DESC)`（migration 000012）の先頭列で解決できるため、集計専用のインデックス追加は不要。
 

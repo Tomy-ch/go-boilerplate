@@ -35,7 +35,7 @@ address（外部不通でも `200 + 空候補 + IsFallback: true` へ倒す）�
 表示通貨の最小単位桁数（`minorUnitDigits`）は **usecase が持つ policy** であり、汎用の decimal 機構
 （`pkg/decimal.ToScaledInt64`）には焼き込まない（[ADR-0038 (two-scale-quantity-model)]）。現状の表示通貨は JPY のみで
 `displayMinorUnitDigits = 0`（1 円 = 小数 0 桁）。JPY はあくまで**参考表示**として現れるだけで、決済通貨は
-USD のみである（決済スケールの仕様は [`docs/spec/domain/purchase.md`](../purchase/domain.md)）。多通貨決済は
+USD のみである（決済スケールの仕様は [`docs/spec/domain/purchase.md`](../domain/purchase.md)）。多通貨決済は
 スコープ外。
 
 `original` / `converted` / `rate` はいずれもワイヤ上で**十進文字列**として扱う。JSON number は一般的な
@@ -174,7 +174,7 @@ responses: [400, 405, 500, 503]
 - 換算ヘルパ: `internal/usecase/tools/money`（`ApplyRateHalfUp`）。汎用の十進機構は `pkg/decimal`。
 - 参考額の組み立ては `exchangerate.BuildReferenceAmount` の 1 箇所に集約し、後続 API（購入作成の
   `referenceAmount`）も同じ関数を再利用する。
-- 決済スケール（USD セント整数）の仕様は [`docs/spec/domain/purchase.md`](../purchase/domain.md)。
+- 決済スケール（USD セント整数）の仕様は [`docs/spec/domain/purchase.md`](../domain/purchase.md)。
 
 [ADR-0038 (two-scale-quantity-model)]: ../../adr/0038-two-scale-quantity-model.md
 [ADR-0098 (lean-a-spec-scaffold)]: ../../adr/0098-lean-a-spec-scaffold.md
