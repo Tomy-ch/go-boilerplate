@@ -1,17 +1,8 @@
 name: Pnpm Cooldown
 
-# pnpm is the one ecosystem here whose resolver enforces the cooldown itself, and it re-verifies
-# the whole lockfile on every install rather than only while resolving — `--frozen-lockfile`
-# included. So unlike Go Cooldown and Tool Cooldown, this workflow is not the guard for the
-# window: that guard already exists and cannot be bypassed unrecorded.
-#
-# What has no guard is the escape hatch. `minimumReleaseAgeExclude` lifts the window for one
-# version, and until now its deadline lived only in a prose comment that nothing read. An
-# exemption nobody revisits stops being temporary and becomes a permanent allowlist, which is
-# exactly the state the sibling bypass files spend an `expires` field to avoid — so the deadline
-# lives in one of those too, `.github/pnpm-cooldown-bypass.toml`, rather than riding along in the
-# declaration pnpm reads. Keeping it out of the YAML also keeps the check off the comment-parsing
-# path, where a form pnpm honours but a reader misses would let an undated exemption through.
+# pnpm's resolver already guards the window on every install, so this workflow guards only the
+# escape hatch's deadline (`minimumReleaseAgeExclude` / `.github/pnpm-cooldown-bypass.toml`).
+# Why it splits that way: README.md § Pnpm Cooldown, and `docs/design/security.md` § pnpm.
 #
 # A deadline arrives without `pnpm-workspace.yaml` changing, so the pull-request trigger alone
 # would never notice one expiring — the schedule is what collects them. The lockfiles are in the

@@ -6,9 +6,9 @@
 #
 #   "<name>@<version>" = { expires = YYYY-MM-DD, issue = <N>, reason = "..." }
 #
-# 窓そのものは pnpm の resolver が install のたびに強制しており、例外を書かずに窓内の版を
-# 採ることはできない。このファイルが受け持つのはその先で、例外が期限を越えて残り続けるのを
-# 防ぐこと。expires は必ず置く。期限切れ・上限（今日から 3 ヶ月）超過・pnpm-workspace.yaml
+# このファイルが持つのは窓自体ではなく例外の期限。窓が resolver 側で強制される理由は
+# docs/design/security.md の pnpm 節と .github/workflows/README.md の Pnpm Cooldown 節。
+# expires は必ず置く。期限切れ・上限（今日から 3 ヶ月）超過・pnpm-workspace.yaml
 # に無いエントリ、そして逆に期限の書かれていない例外は、いずれも検査が失敗する。
 # 期限を持たせるのは、外したまま放置された例外を恒久 allowlist と区別できるようにするため。
 # 上限を置くのは、期限を遠い未来へ置くだけで同じ状態を作れてしまうため。

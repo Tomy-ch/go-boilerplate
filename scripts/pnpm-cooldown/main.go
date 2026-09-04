@@ -49,8 +49,7 @@ const (
 	excludeKey    = "minimumReleaseAgeExclude"
 	bypassFile    = ".github/pnpm-cooldown-bypass.toml" //nolint:gosec // 資格情報ではなくバイパス lockfile のパス
 
-	// maxBypassMonths は例外の期限に許す最大の先送り幅。上限を置くのは、期限を遠い未来へ置く
-	// だけで恒久 allowlist と同じ状態を作れてしまうため（go-cooldown / tool-cooldown と同値）。
+	// maxBypassMonths は例外の期限に許す最大の先送り幅。
 	maxBypassMonths = 3
 )
 
