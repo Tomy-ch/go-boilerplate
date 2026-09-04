@@ -130,6 +130,7 @@ takes the corresponding decision.
 |OpenSSF Scorecard|`scorecard.yaml`|Score the repository's security posture and publish the result|
 |Go Cooldown|`go-cooldown.yaml`|Gate a PR that adds or upgrades a direct Go module published inside the cooldown window|
 |Tool Cooldown|`tool-cooldown.yaml`|Gate a PR that pins a CLI tool version — declared in `mise.toml` or `python/*.in` — published inside the cooldown window|
+|Pnpm Cooldown|`pnpm-cooldown.yaml`|Fail a `minimumReleaseAgeExclude` entry whose deadline has passed, reaches beyond three months, or no longer matches the lockfile|
 |Config Scan|`trivy-config.yaml`|Trivy misconfiguration scan of the Dockerfiles, gating at HIGH|
 |Checkov Scan|`checkov.yaml`|Checkov policy scan of the workflow definitions and the Dockerfiles, against a rule set neither zizmor nor Trivy ships (report-only)|
 |SAST|`opengrep.yaml`|Opengrep (Semgrep-compatible) scan of first-party Go and TypeScript source with taint tracking|
@@ -185,7 +186,7 @@ Each tool runs where its findings can actually change: a PR surfaces the risk th
 | OWASP ZAP (DAST) | when `zap-api-scan.yaml` or `.github/zap/**` changes | `develop` / `staging` / `production` / `release/*` | weekly |
 | trustabl (agent config) | — | — | weekly |
 
-Weekly runs are staggered across Monday morning UTC in **15-minute steps**, one workflow per slot, so a single moment does not queue every scanner at once: `00:00` Trivy FS, `00:15` govulncheck, `00:30` TruffleHog, `00:45` OSV-Scanner, `01:00` Scorecard, `01:15` CodeQL, `01:30` Image Scan, `01:45` gitleaks (full-history), `02:00` zizmor (online audits), `02:15` Go cooldown, `02:30` Opengrep, `02:45` fuzz, `03:00` ZAP (DAST), `03:15` Grype, `03:30` DevSkim, `03:45` ESLint, `04:00` Bearer, `04:15` Checkov, `04:30` trustabl, `04:45` tool cooldown, `05:15` Closed Loop Weekly.
+Weekly runs are staggered across Monday morning UTC in **15-minute steps**, one workflow per slot, so a single moment does not queue every scanner at once: `00:00` Trivy FS, `00:15` govulncheck, `00:30` TruffleHog, `00:45` OSV-Scanner, `01:00` Scorecard, `01:15` CodeQL, `01:30` Image Scan, `01:45` gitleaks (full-history), `02:00` zizmor (online audits), `02:15` Go cooldown, `02:30` Opengrep, `02:45` fuzz, `03:00` ZAP (DAST), `03:15` Grype, `03:30` DevSkim, `03:45` ESLint, `04:00` Bearer, `04:15` Checkov, `04:30` trustabl, `04:45` tool cooldown, `05:00` pnpm cooldown, `05:15` Closed Loop Weekly.
 
 The step is 15 minutes rather than an hour because the set has grown to 21: at hourly spacing the last one would not start until the following evening, which puts a scanner's findings a day away from the ones it should be read beside. A new scheduled workflow takes the next free slot; two sharing one is a defect, not a preference. The order encodes intent, so a new entry goes where it belongs rather than at the end.
 
@@ -338,6 +339,29 @@ The gate is written to **fail open**:
 The `push` half of each trigger keeps its own `paths:`. That half reports no context, so filtering it blocks nothing.
 
 `make required-check-lint` verifies that every required context is declared by exactly one job, and that its workflow's `pull_request` trigger carries no filter. **The second half is what keeps the deadlock closed**, and it is checkable only because the condition is stated once. Split it across a filter and its inverse and the invariant moves into the agreement between two lists, which nothing here can compare — and the disagreement surfaces on exactly the pull requests that touch the path someone forgot to add on the other side.
+
+#### Pnpm Cooldown
+
+pnpm inverts the relationship the Go and Tool cooldowns have with their guard. Its resolver refuses a
+too-new version itself, and re-verifies the whole lockfile on every install rather than only while
+resolving — `--frozen-lockfile` included — so the window here is enforced by the package manager and
+cannot be bypassed unrecorded. `pnpm-cooldown.yaml` is therefore not the guard for the window.
+
+What had no guard is the escape hatch. [`minimumReleaseAgeExclude`](../../scripts/pnpm-workspace.yaml)
+lifts the window for one exact version, and its deadline lived only in a prose comment that nothing
+read. The sibling bypass files spend an `expires` field precisely so an exemption nobody revisits
+cannot quietly become a permanent allowlist; pnpm's exclusions had the same debt without the date.
+This workflow supplies it, in a file of the same shape: [`pnpm-cooldown-bypass.toml`](../pnpm-cooldown-bypass.toml)
+carries `expires` / `issue` / `reason` per exclusion. The deadline stays out of `pnpm-workspace.yaml`
+because it means nothing to pnpm and so has no claim on the file pnpm reads — and because a check that
+had to read it there would be parsing comments, where a form pnpm honours but the parser misses lets an
+undated exemption through. The check fails on an exclusion with no entry, an expired or over-long
+deadline, an entry matching no exclusion, and a version the lockfile no longer resolves.
+
+A deadline arrives without `pnpm-workspace.yaml` changing, which is why the schedule exists — the same
+reason the Go and Tool cooldowns carry one. The lockfiles sit in the trigger paths too, because an
+exclusion whose version has dropped out of the resolution is dead weight and should surface when the
+resolution moves.
 
 #### Go Cooldown
 

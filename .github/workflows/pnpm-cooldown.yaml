@@ -1,0 +1,94 @@
+name: Pnpm Cooldown
+
+# pnpm's resolver already guards the window on every install, so this workflow guards only the
+# escape hatch's deadline (`minimumReleaseAgeExclude` / `.github/pnpm-cooldown-bypass.toml`).
+# Why it splits that way: README.md § Pnpm Cooldown, and `docs/design/security.md` § pnpm.
+#
+# A deadline arrives without `pnpm-workspace.yaml` changing, so the pull-request trigger alone
+# would never notice one expiring — the schedule is what collects them. The lockfiles are in the
+# trigger paths too, because an exclusion whose version the lockfile no longer resolves is dead
+# weight and should be reported when the resolution moves.
+
+on:
+  pull_request:
+    paths:
+      - '**/pnpm-workspace.yaml'
+      - '**/pnpm-lock.yaml'
+      - '.github/pnpm-cooldown-bypass.toml'
+      - 'scripts/pnpm-cooldown/**'
+      - '.github/workflows/pnpm-cooldown.yaml'
+  schedule:
+    - cron: '0 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pnpm-cooldown:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Harden the runner
+        uses: step-security/harden-runner@b09bb98e06d4d774595224525879c09bc6e98c40 # v2.20.1
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            agent.api.stepsecurity.io:443
+            api.github.com:443
+            github.com:443
+            codeload.github.com:443
+            objects.githubusercontent.com:443
+            raw.githubusercontent.com:443
+            release-assets.githubusercontent.com:443
+            *.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            mise.jdx.dev:443
+            mise-versions.jdx.dev:443
+            mise.run:443
+            mise.en.dev:443
+            aquaproj.github.io:443
+            proxy.golang.org:443
+            sum.golang.org:443
+            index.golang.org:443
+            storage.googleapis.com:443
+            dl.google.com:443
+            go.dev:443
+            golang.org:443
+            downloads.sqlc.dev:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            get.pnpm.io:443
+            astral.sh:443
+            pypi.org:443
+            files.pythonhosted.org:443
+            tuf-repo-cdn.sigstore.dev:443
+            rekor.sigstore.dev:443
+            fulcio.sigstore.dev:443
+            api.npmjs.org:443
+            api.osv.dev:443
+            npm.jsr.io:443
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # The check reads only files in the tree, so it needs no network of its own and no base
+      # ref: an exclusion entry is valid or not on its own terms, and its deadline does not
+      # depend on what the branch changed.
+      - name: Check pnpm cooldown exclusions
+        run: make pnpm-cooldown-check
