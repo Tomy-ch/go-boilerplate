@@ -12,3 +12,4 @@
 # 同じ状態を作れてしまうため。運用は .github/zizmor.yml と同じで、解決したらエントリを消す。
 #
 # 期限切れは mise.toml が変わらなくても訪れるので、回収はスケジュール実行が担う。
+"go:github.com/google/capslock/cmd/capslock@0.3.3" = { expires = 2026-09-12, issue = 1479, reason = "Go 1.27 で x/tools v0.43.0 の SSA ビルダが panic するため 0.3.3 が必須。supply-chain-triage 0/12 LOW（差分は go.mod と go.sum のみ・module zip が VCS タグと完全一致・新規依存ゼロ）。窓明けは 2026-09-08、撤去は #1479" }

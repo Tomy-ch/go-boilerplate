@@ -11,7 +11,6 @@ import (
 	"go-boilerplate/internal/config"
 	"go-boilerplate/internal/controller/ctxhelper"
 	"go-boilerplate/internal/controller/error/response"
-	"go-boilerplate/internal/controller/error/response/gen"
 	"go-boilerplate/internal/controller/handler/testkit/testspan"
 	"go-boilerplate/internal/controller/httpstack/redaction"
 	"go-boilerplate/internal/logging"
@@ -173,8 +172,8 @@ func Test_writeErrorResponse(t *testing.T) {
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
 			he := &response.HTTPErrorResponse{
-				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{Code: "GONE", Message: "m", RequestId: "rid"},
-				HTTPStatus:               http.StatusGone,
+				Code: "GONE", Message: "m", RequestId: "rid",
+				HTTPStatus: http.StatusGone,
 			}
 
 			require.NoError(t, writeErrorResponse(c, he, true))
@@ -193,11 +192,9 @@ func Test_writeErrorResponse(t *testing.T) {
 			c := e.NewContext(req, rec)
 
 			he := &response.HTTPErrorResponse{
-				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{
-					Code:      "E_TEST",
-					Message:   "test message",
-					RequestId: "req-xyz",
-				},
+				Code:       "E_TEST",
+				Message:    "test message",
+				RequestId:  "req-xyz",
 				HTTPStatus: http.StatusTeapot,
 			}
 
@@ -223,9 +220,7 @@ func Test_writeErrorResponse(t *testing.T) {
 			c := e.NewContext(req, rec)
 
 			he := &response.HTTPErrorResponse{
-				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{
-					Code: "E_TEST", Message: "m", RequestId: "r", Details: new([]string{"firstName"}),
-				},
+				Code: "E_TEST", Message: "m", RequestId: "r", Details: new([]string{"firstName"}),
 				HTTPStatus: http.StatusUnprocessableEntity,
 			}
 
@@ -248,9 +243,7 @@ func Test_writeErrorResponse(t *testing.T) {
 			c := e.NewContext(req, rec)
 
 			he := &response.HTTPErrorResponse{
-				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{
-					Code: "E_TEST", Message: "m", RequestId: "r", Details: new([]string{"firstName"}),
-				},
+				Code: "E_TEST", Message: "m", RequestId: "r", Details: new([]string{"firstName"}),
 				HTTPStatus: http.StatusUnprocessableEntity,
 			}
 
@@ -644,10 +637,8 @@ func Test_normalizeHTTPError(t *testing.T) {
 
 			internalErr := apperror.WithDetails(xerrors.Wrap(apperror.ErrValidation, "invalid"), "firstName")
 			unknownError := &response.HTTPErrorResponse{
-				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{
-					Code:    "E_RAW",
-					Message: "raw message",
-				},
+				Code:       "E_RAW",
+				Message:    "raw message",
 				HTTPStatus: http.StatusContinue,
 				Internal:   internalErr,
 			}
@@ -667,12 +658,10 @@ func Test_normalizeHTTPError(t *testing.T) {
 			t.Parallel()
 
 			he := &response.HTTPErrorResponse{
-				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{
-					Code:      "E_ERR",
-					Message:   "err",
-					Details:   nil,
-					RequestId: "",
-				},
+				Code:       "E_ERR",
+				Message:    "err",
+				Details:    nil,
+				RequestId:  "",
 				HTTPStatus: http.StatusBadRequest,
 				Internal:   xerrors.New("inner"),
 			}
@@ -788,11 +777,9 @@ func Test_logHTTPError(t *testing.T) {
 			defer end()
 
 			he := &response.HTTPErrorResponse{
-				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{
-					Code:      "C302",
-					Message:   "M302",
-					RequestId: "r302",
-				},
+				Code:       "C302",
+				Message:    "M302",
+				RequestId:  "r302",
 				HTTPStatus: http.StatusFound,
 			}
 
@@ -809,11 +796,9 @@ func Test_logHTTPError(t *testing.T) {
 			defer end()
 
 			he := &response.HTTPErrorResponse{
-				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{
-					Code:      "C500",
-					Message:   "M500",
-					RequestId: "r500",
-				},
+				Code:       "C500",
+				Message:    "M500",
+				RequestId:  "r500",
 				HTTPStatus: http.StatusInternalServerError,
 			}
 
@@ -833,11 +818,9 @@ func Test_logHTTPError(t *testing.T) {
 			defer end()
 
 			he := &response.HTTPErrorResponse{
-				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{
-					Code:      "C503",
-					Message:   "M503",
-					RequestId: "r503",
-				},
+				Code:       "C503",
+				Message:    "M503",
+				RequestId:  "r503",
 				HTTPStatus: http.StatusServiceUnavailable,
 			}
 
@@ -855,11 +838,9 @@ func Test_logHTTPError(t *testing.T) {
 			defer end()
 
 			he := &response.HTTPErrorResponse{
-				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{
-					Code:      "C404",
-					Message:   "M404",
-					RequestId: "r404",
-				},
+				Code:       "C404",
+				Message:    "M404",
+				RequestId:  "r404",
 				HTTPStatus: http.StatusNotFound,
 			}
 
@@ -923,11 +904,9 @@ func Test_httpErrorField(t *testing.T) {
 
 			c := newEchoCtx(t)
 			he := &response.HTTPErrorResponse{
-				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{
-					Code:      "E_TEST",
-					Message:   "m",
-					RequestId: "rid",
-				},
+				Code:       "E_TEST",
+				Message:    "m",
+				RequestId:  "rid",
 				HTTPStatus: http.StatusBadRequest,
 			}
 
@@ -947,12 +926,10 @@ func Test_httpErrorField(t *testing.T) {
 			details := []string{"d1", "d2"}
 			internalErr := xerrors.New("internal err")
 			he := &response.HTTPErrorResponse{
-				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{
-					Code:      "E_INT",
-					Message:   "m2",
-					Details:   &details,
-					RequestId: "rid2",
-				},
+				Code:       "E_INT",
+				Message:    "m2",
+				Details:    &details,
+				RequestId:  "rid2",
 				HTTPStatus: http.StatusInternalServerError,
 				Internal:   internalErr,
 			}
@@ -971,8 +948,8 @@ func Test_httpErrorField(t *testing.T) {
 			req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/v1/streams/s?ticket=raw-secret", nil)
 			c := e.NewContext(req, httptest.NewRecorder())
 			he := &response.HTTPErrorResponse{
-				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{Code: "UNAUTHORIZED", Message: "m", RequestId: "rid"},
-				HTTPStatus:               http.StatusUnauthorized,
+				Code: "UNAUTHORIZED", Message: "m", RequestId: "rid",
+				HTTPStatus: http.StatusUnauthorized,
 			}
 
 			fields := httpErrorField(c, lf, redaction.New([]string{"ticket"}), he)
@@ -989,11 +966,9 @@ func Test_httpErrorField(t *testing.T) {
 			c := newEchoCtx(t)
 			details := []string{"d1", "d2"}
 			he := &response.HTTPErrorResponse{
-				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{
-					Code:      "E_DETAILS",
-					Message:   "m3",
-					RequestId: "rid3",
-				},
+				Code:       "E_DETAILS",
+				Message:    "m3",
+				RequestId:  "rid3",
 				HTTPStatus: http.StatusBadRequest,
 			}
 
@@ -1012,11 +987,9 @@ func Test_httpErrorField(t *testing.T) {
 			c := newEchoCtx(t)
 			internalErr := xerrors.New("internal err")
 			he := &response.HTTPErrorResponse{
-				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{
-					Code:      "E_INTERNAL",
-					Message:   "m4",
-					RequestId: "rid4",
-				},
+				Code:       "E_INTERNAL",
+				Message:    "m4",
+				RequestId:  "rid4",
 				HTTPStatus: http.StatusInternalServerError,
 			}
 

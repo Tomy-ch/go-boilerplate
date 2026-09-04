@@ -71,11 +71,9 @@ func newHTTPErrorFromMeta(meta httpErrorMeta, details ...string) *HTTPErrorRespo
 		detailsPtr = new(details)
 	}
 	return &HTTPErrorResponse{
-		ErrorResponseWithDetails: gen.ErrorResponseWithDetails{
-			Code:    meta.Code,
-			Message: meta.Message,
-			Details: detailsPtr,
-		},
+		Code:       meta.Code,
+		Message:    meta.Message,
+		Details:    detailsPtr,
 		HTTPStatus: meta.Status,
 	}
 }

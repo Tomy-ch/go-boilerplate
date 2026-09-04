@@ -264,16 +264,6 @@ linters:
       locale: US
       ignore-rules:
         - "importas"
-    modernize:
-      disable:
-        # 埋め込みフィールドの型指定を省く書き換え（Go 1.27 の新機能）は、この repo が
-        # 「基底 + 別軸」の構成を表すために使っている埋め込みを、呼び出し側から見えなくする。
-        # user.Attributes は Profile に監査時刻を足した集合で Profile は検証へ値として渡る
-        # 単位であり、response.HTTPErrorResponse は生成型 gen.ErrorResponseWithDetails に
-        # 転送用フィールドを足したものなので、平坦化すると契約が決めたフィールドと手書きの
-        # フィールドが呼び出し側で区別できなくなる。modernize は構文が使えるかを見るもので、
-        # 埋め込まれた型が名前を持った概念かどうかは知らない。
-        - embedlit
     nolintlint:
       require-explanation: true
       require-specific: true

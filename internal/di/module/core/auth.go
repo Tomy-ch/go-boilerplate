@@ -107,14 +107,12 @@ func allowInsecureJWKSURL(env string) bool {
 // 取得はリクエストから切り離して走るため、停止時に取り残さないよう完了待ちを lifecycle へ登録します（遅延取得）。
 func provideJWKSAuthenticator(p authenticatorParams, logger logging.Logger) (authbd.Authenticator, error) {
 	authenticator, err := jwt.NewJWKS(jwt.JWKSParams{
-		Params: jwt.Params{
-			Issuer:       p.AuthCfg.Issuer(),
-			Audience:     p.AuthCfg.Audience(),
-			AllowedAlgs:  p.AuthCfg.AllowedAlgorithms(),
-			Leeway:       p.AuthCfg.ClockSkew(),
-			ExpectedType: accessTokenType,
-			Clock:        p.Clock,
-		},
+		Issuer:             p.AuthCfg.Issuer(),
+		Audience:           p.AuthCfg.Audience(),
+		AllowedAlgs:        p.AuthCfg.AllowedAlgorithms(),
+		Leeway:             p.AuthCfg.ClockSkew(),
+		ExpectedType:       accessTokenType,
+		Clock:              p.Clock,
 		JWKSURL:            p.EndpointCfg.JWKS(),
 		CacheTTL:           p.AuthCfg.JWKSCacheTTL(),
 		DiscoveryTTL:       p.AuthCfg.DiscoveryTTL(),

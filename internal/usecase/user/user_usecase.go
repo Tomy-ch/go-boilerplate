@@ -193,19 +193,17 @@ func (u *usecase) CreateUser(ctx context.Context, dto *CreateParamsDTO) (UserVie
 		pftName = pftDomain.Name()
 
 		userEntity, err = user.New(dto.UserID, user.Attributes{
-			Profile: user.Profile{
-				FirstName:    dto.FirstName,
-				LastName:     dto.LastName,
-				Email:        dto.Email,
-				Phone:        dto.Phone,
-				PrefectureID: pftDomain.ID(),
-				City:         dto.City,
-				Street:       dto.Street,
-				Building:     dto.Building,
-				PostalCode:   dto.PostalCode,
-			},
-			CreatedAt: now,
-			UpdatedAt: now,
+			FirstName:    dto.FirstName,
+			LastName:     dto.LastName,
+			Email:        dto.Email,
+			Phone:        dto.Phone,
+			PrefectureID: pftDomain.ID(),
+			City:         dto.City,
+			Street:       dto.Street,
+			Building:     dto.Building,
+			PostalCode:   dto.PostalCode,
+			CreatedAt:    now,
+			UpdatedAt:    now,
 		})
 		if err != nil {
 			return err

@@ -82,18 +82,16 @@ func (s *server) PostUsers(ctx context.Context, request gen.PostUsersRequestObje
 	}
 
 	createParams := &user.CreateParamsDTO{
-		UserID: userID,
-		UpdateProfileParams: user.UpdateProfileParams{
-			FirstName:      request.Body.FirstName,
-			LastName:       request.Body.LastName,
-			Email:          conv.Email(request.Body.Email),
-			Phone:          request.Body.Phone,
-			PostalCode:     request.Body.PostalCode,
-			PrefectureName: request.Body.Prefecture,
-			City:           request.Body.City,
-			Street:         request.Body.Street,
-			Building:       request.Body.Building,
-		},
+		UserID:         userID,
+		FirstName:      request.Body.FirstName,
+		LastName:       request.Body.LastName,
+		Email:          conv.Email(request.Body.Email),
+		Phone:          request.Body.Phone,
+		PostalCode:     request.Body.PostalCode,
+		PrefectureName: request.Body.Prefecture,
+		City:           request.Body.City,
+		Street:         request.Body.Street,
+		Building:       request.Body.Building,
 	}
 
 	dto, _, err := idempotency.Run(ctx, s.idem, http.StatusCreated, func(ctx context.Context) (user.UserView, error) {
