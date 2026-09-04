@@ -229,20 +229,24 @@ not passed. Run by mistake in the main checkout, it exits with an error without 
   checkout. Per-slot queues are not pre-declared because the pool size is configurable
   (`GOBP_DB_POOL_MAX`), and a static list in the conf would silently stop covering the pool as soon as
   that value changed.
-- **The Realtime Delivery emulators are shared too, in two different ways.** `dynamodb_local` runs
-  `-sharedDb`, so every checkout sees one set of tables; per-worktree table prefixes are the planned
-  isolation and are not in place yet. `goaws` creates topics and queues at runtime
-  (`docker/goaws/goaws.yaml` declares none), so unlike `elasticmq` a branch can isolate itself by naming
-  alone, with no conf change and no `infra-down`. `docker-compose.attach.yaml` does exactly that: it
-  suffixes `REALTIME_TOPIC` and `REALTIME_QUEUE_PREFIX` with the slot, so each worktree's serve
-  subscribes to its own topic. Without that the isolation fails in one specific way rather than
-  generally — a wakeup for an unknown stream is a no-op, but a revocation is matched on
-  `(subject, destination)`, and every worktree's database is seeded from the same fixtures, so revoking
-  a ticket in one window would close another window's connection for the same subject. `make
-  realtime-smoke` isolates itself the same way, under a per-run random name it deletes on exit.
+- **The Realtime Delivery emulators are shared instances that isolate by name.** Neither one needs a
+  conf change or an `infra-down` to separate two checkouts, which is what distinguishes them from
+  `elasticmq` above: `dynamodb_local` runs `-sharedDb`, so a single table namespace serves everyone,
+  and `goaws` creates topics and queues at runtime (`docker/goaws/goaws.yaml` declares none). In both
+  cases a branch isolates itself by choosing different names, and `docker-compose.attach.yaml` chooses
+  them: it suffixes `REALTIME_TOPIC`, `REALTIME_QUEUE_PREFIX` and `REALTIME_TABLE_SUFFIX` with the
+  slot, so each worktree's serve subscribes to its own topic and reads its own tables
+  (`realtime_event_log_local_wt<N>` and its two siblings, created by `make realtime-init` from the same
+  value). A checkout holding no slot keeps the unsuffixed names, so the main checkout is unaffected.
+  The table suffix is joined with `_` rather than the `-` the topic and queue use, because
+  `REALTIME_TABLE_SUFFIX` admits only lowercase letters, digits and underscores.
 
-  The tables are **not** split yet, so a stream written from one worktree is visible to another; that
-  half waits on the per-slot `REALTIME_TABLE_SUFFIX` the paragraph above calls planned.
+  Both halves matter, and they fail differently when absent. Unsuffixed **tables** let one worktree
+  read a stream another wrote. An unsuffixed **topic** fails more narrowly but more surprisingly: a
+  wakeup for an unknown stream is a no-op, whereas a revocation is matched on `(subject, destination)`
+  and every worktree's database is seeded from the same fixtures, so revoking a ticket in one window
+  would close another window's connection for the same subject. `make realtime-smoke` isolates itself
+  the same way, under a per-run random name it deletes on exit.
 - `sql_editor` / `docs_server` / `er_diagram_generator` / `mock_auth_server` sit in the `2000` range
   because none of them has a de-facto port of its own. The rule, and why that range is safe, are in
   [`local-environment.md`](local-environment.md).

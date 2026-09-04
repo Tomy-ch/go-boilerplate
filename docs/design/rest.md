@@ -51,6 +51,17 @@ stateDiagram-v2
     end note
 ```
 
+Realtime Delivery extends this lifecycle rather than replacing it. When at least one feature adapter
+is wired, its DI module contributes serve-lifecycle participants — a startup probe, the lease and
+queue provisioner, the consumer and heartbeat runners, and a drainer — which `internal/di/server/hook`
+runs in the phases above ([realtime-delivery.md §2.5](realtime-delivery.md#25-serve-instance-lifecycle-and-the-instance-lease)).
+Two consequences matter to REST. `Draining` now has long-lived SSE responses to close, so it sends the
+control events that tell clients to reconnect elsewhere instead of severing them and waiting for the
+timeout. And a Realtime substrate that is unreachable degrades `/ready` without taking REST down: the
+subsystem is a separate driving mechanism, so ordinary request serving continues while the stream half
+reports itself unhealthy ([§2.6](realtime-delivery.md#26-degraded-operation)). With no feature adapter
+wired, none of this exists and the lifecycle is exactly the diagram above.
+
 ### 2.2 per-request flow (middleware order → handler → usecase → present)
 
 ```mermaid

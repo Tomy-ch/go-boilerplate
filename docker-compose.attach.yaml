@@ -1,18 +1,17 @@
-# app 層の override（全 checkout / worktree 共通）。api_server / mock_auth_server だけを checkout 毎の
-# compose プロジェクトへ起動し、固定ポートを持つ共有インフラ（database / observability / garage /
-# elasticmq）は gobp-shared の 1 インスタンスを host-gateway 経由で参照する。ホスト公開ポートは DB スロット保持時に
-# 8080+N / 2010+N へずれ、未取得なら既定値のままなので main checkout も同じ経路で起動できる。
+# app 層の override（全 checkout / worktree 共通）。常に重ねて適用される。
+# 層の分け方・共有インフラへの差し替え・スロット番号とホスト公開ポートの関係は
+# docs/maintenance/local-environment.md「Compose layering (infra / app)」を参照。
 services:
   api_server:
     ports: !override
       - "${API_HOST_PORT:-8080}:8080" # APIポート
       - "${DLV_HOST_PORT:-2345}:2345" # デバッグ(dlv)ポート
       - "${PPROF_HOST_PORT:-6060}:6060" # メトリクス(pprof)ポート
-    depends_on: !override # 共有インフラは infra 層で起動済みのため app 層では待たない
+    depends_on: !override # 共有インフラは infra 層が先に起動済み（上記参照）
       mock_auth_server:
         condition: service_healthy
-    # 共有インフラへの接続先。loader.go は実行時 env を env/.env より優先するため、
-    # コンテナ名前提の既定値（database / observability / garage）をホスト公開ポート経由に差し替える。
+    # 共有インフラへの接続先。実行時 env が env/.env より優先されることを利用して、
+    # コンテナ名前提の既定値をホスト公開ポート経由へ差し替える。
     environment:
       DB_HOST: host.docker.internal
       DB_NAME: ${DB_NAME_LOCAL:-local}
@@ -27,12 +26,14 @@ services:
       # fan-out（goaws）も同じく共有インフラ側。store と別に要る — SNS / SQS は別のホストに載り得るため
       # 接続先が 2 本に分かれており、片方だけ差し替えるとコンテナ名 goaws の解決に落ちる。
       ENDPOINT_REALTIME_PUBSUB: http://host.docker.internal:4100
-      # fan-out は 1 つの GoAWS を全 worktree で共有するので、topic と queue をスロットで分ける。
-      # 分けないと失効通知が worktree を越えて届き、別の窓の SSE 接続が閉じられる — 通知は
-      # (subject, destination) で照合され、どの窓の DB も同じ seed から作られて subject が一致するため。
-      # スロット未取得なら既定の名前のまま（単一 checkout では衝突相手が居ない）。
+      # GoAWS と DynamoDB Local は 1 インスタンスを全 worktree で共有するため、fan-out と store の
+      # 名前空間をスロットで分ける。分けないと失効通知が窓を越えて別の窓の SSE 接続を閉じ、
+      # 片方の窓が書いた stream がもう片方から見える。スロット未取得なら既定の名前のまま。
+      # 区切りが table だけ `_` なのは suffix の使用可能文字による。
+      # 詳細: docs/maintenance/db-worktree-pool.md「Realtime Delivery emulators are shared instances」
       REALTIME_TOPIC: arn:aws:sns:us-east-1:000000000000:realtime-fanout-local${SLOT:+-wt$SLOT}
       REALTIME_QUEUE_PREFIX: realtime-local${SLOT:+-wt$SLOT}
+      REALTIME_TABLE_SUFFIX: local${SLOT:+_wt$SLOT}
       # token の iss は mock 認証サーバーのホスト公開 URL（Host ヘッダ由来）。スロット毎にポートが
       # ずれるため追従させる。mock 側は iss を保持しないので、追従先はここ 1 箇所で足りる。
       AUTH_ISSUER: http://localhost:${MOCK_AUTH_HOST_PORT:-2010}/default

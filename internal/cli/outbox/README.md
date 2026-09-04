@@ -47,3 +47,4 @@ outbox-relay replay [flags]
 - `replay` moves `dead` rows back to `pending` so they become eligible for re-publishing.
 - `--message-id` must be a valid UUID; an invalid value returns a parse error before any replay runs.
 - `replay` prints the number of rows it returned to `pending`.
+- CI boots this entrypoint on every pull request that touches application code (`.github/workflows/outbox-relay-boot-check.yaml`, [ADR-0091](../../../docs/adr/0091-ci-real-graph-boot-check.md)). It starts the relay on the `realtime` channel and requires both `Application started` and `Application stopped` from the fx event logger, so a graph that assembles but cannot drain fails the check.

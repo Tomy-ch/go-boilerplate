@@ -31,6 +31,15 @@
 - **Split-horizon。** `issuer`（token の `iss`、ホスト/ブラウザ解決可能）と **JWKS 取得 URL**（コンテナ内部）を分離する。`ENDPOINT_JWKS` を内部 URL に設定し、`iss` はホスト解決可能なまま鍵取得はコンテナ名を使う。
 - **Provider は dev 限定。** compose の `development` / `auth` プロファイル経由でしか到達できず、デプロイされる環境には決して含まれない。
 - **契約であって実装ではない。** RS が依存するのは JWKS の形と access token の claim 形状（`typ=at+jwt` / `iss` / `aud` / `sub` / `exp`）で、それを `docker/mock-auth-server/config.json` が固定する。この契約さえ満たせば実 IdP を含め何でも **config 変更のみ**で差し替わる — Go 変更不要。
+- **ストリームには第二の authenticator が存在する。** 長寿命の SSE 接続は `EventSource` 経由では
+  `Authorization` ヘッダを運べないため、Realtime Delivery はクエリパラメータとして渡す短命・単一目的の
+  **stream ticket** でこれを認証し、JWT とは別の security scheme として登録する
+  （[ADR-0074 (query-ticket-stream-authentication)](../adr/0074-query-ticket-stream-authentication.ja.md)、
+  [realtime-delivery.ja.md §2.4](realtime-delivery.ja.md#24-ticket-の-lifecycle)）。これは JWT を提示する
+  もう1つの手段ではない — このフィーチャーはまず上記の通常のトークン経路で subject を宛先へ認可し、その
+  あとで初めて ticket を要求する。したがって認可はここで決まったままであり、ticket はその判断をヘッダを
+  持てない transport へ運ぶだけである。失効は明示的 — ticket を無効化しすべての instance へ通知する —
+  であり、それを生んだ認可より長生きする資格情報こそ、§2 の失格ルールが防ごうとしているものだからである。
 
 ---
 

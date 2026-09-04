@@ -105,7 +105,7 @@ linters:
       disable-dec-order-check: false
       disable-init-func-first-check: false
     depguard:
-      # 外部ライブラリがシステムの根幹に関わることを避けるために、pkgディレクトリで薄いラッパー作成し使用することを推奨します。
+      # pkg/ の薄いラッパー経由での利用を強制する規則群（方針の理由: ADR-0001 (avoid-lock-in)）。
       rules:
         only_the_original_error_is_permitted:
           files:
@@ -345,17 +345,10 @@ linters:
               desc: "domain層で外部プロセス実行を行わないでください。プロセス実行は外側の層の責務です。"
             - pkg: go-boilerplate/pkg/envutil
               desc: "環境変数の書き換えは外側の層の責務です。本層からの参照は禁止です。"
-        # ドメインサービス（internal/domain/service/<name>）だけは集約の import を許可します。
-        # どのエンティティ・値オブジェクトの自然な責務でもない規則は集約の外に置きますが、集約をまたぐ
-        # 規則の場合、置き場所を変えても相手の集約を参照できなければ規則は書けません。そのための例外です。
-        # 許可であって要求ではないため、単一集約に閉じたサービスも同じくここに置きます。
-        #
-        # 抜け道にしないための歯止めは 2 つです。ひとつは、ここが緩めるのは domain 間の import
-        # だけで、層をまたぐ deny（usecase / controller / infrastructure / net/http / echo /
-        # database/sql / fs / exec / envutil）は maintain_a_sound_domain と同一のまま再掲していること。
-        # もうひとつは、この置き場への入場条件（どのエンティティ・値オブジェクトの自然な責務でもなく、
-        # 状態を持たない）が internal/domain/README.md に明文化されていること。単に 2 つの
-        # 集約を読みたいだけの処理は Usecase の仕事であり、ここへ移してはいけません。
+        # internal/domain/service/<name> だけは集約間の import を許可する例外。
+        # 緩めるのは domain 間の import だけで、層をまたぐ deny は maintain_a_sound_domain と
+        # 同一のまま再掲すること（ここを削ると例外が抜け道になる）。
+        # 置き場と入場条件: internal/domain/README.md「Where a Domain Service lives」
         maintain_a_sound_domain_service:
           files:
             - "**/internal/domain/service/**.go"
@@ -454,6 +447,33 @@ linters:
             - pkg: go-boilerplate/internal/domain/
               desc: "汎用 substrate である outbound HTTP client は domain 層に依存してはいけません。
                 domain 概念を扱うのは external gateway / repository 実装の責務です。"
+        # Realtime Delivery の feature 中立性（規約①）の depguard 側。architest 側は
+        # internal/architest/realtime_isolation_test.go で、両方を維持することが二重検査の前提。
+        # 規約②（InstanceLeaseStore の allowlist）はシンボル単位のためここには置けない。
+        # 設計理由と二重検査の意図: docs/design/realtime-delivery.md §3.1
+        maintain_realtime_feature_neutrality:
+          files:
+            - "**/internal/usecase/boundary/realtime/**.go"
+            - "**/internal/usecase/realtime/**.go"
+            - "**/internal/infrastructure/eventlog/**.go"
+            - "**/internal/infrastructure/streamticket/**.go"
+            - "**/internal/infrastructure/instancelease/**.go"
+            - "**/internal/infrastructure/realtimesecret/**.go"
+            - "**/internal/infrastructure/realtime/**.go"
+            - "**/internal/controller/stream/**.go"
+            - "**/internal/controller/realtime/**.go"
+          list-mode: lax
+          # lax では deny より長い prefix の allow が勝つため、機構自身の 2 package はここで戻します。
+          allow:
+            - go-boilerplate/internal/usecase/boundary/
+            - go-boilerplate/internal/usecase/realtime
+          deny:
+            - pkg: go-boilerplate/internal/domain/
+              desc: "Realtime Delivery の機構側から feature の domain を参照することは禁止です。
+                配送機構は feature に対して中立でなければなりません。"
+            - pkg: go-boilerplate/internal/usecase/
+              desc: "Realtime Delivery の機構側から feature の usecase を参照することは禁止です。
+                機構が使ってよいのは usecase/boundary 配下と usecase/realtime だけです。"
         # diコンテナのcontroller層の設定ファイルでは、internal/controller/handler配下で定義されたもののみをimport可能とします。
         configure_only_the_controller_layer:
           files:
@@ -491,8 +511,6 @@ linters:
             - pkg: ".*"
               desc: "usecase用DIでは internal/usecase 配下のみ import 可能です"
     dupl:
-      # 重複コードの検出を行います。
-      # 約300トークン以上の重複を検出します。
       threshold: 300
     exhaustive:
       # default節で残りのケースを処理している場合は網羅とみなします。
@@ -527,7 +545,6 @@ linters:
       struct-method: true
       alphabetical: false
     funlen:
-      # 関数の長さを制限して、冗長性と複雑さを減らします。
       # 関数内の行数チェックは無効にします。
       lines: -1
       # 関数内のステートメント数を制限します。
@@ -594,9 +611,8 @@ linters:
         text: 'time\.Now'
 
 run:
-  # 固定 timeout は持たない（0 = 無効）。所要はリポジトリ規模と有効 linter 数で単調に伸びるため、
-  # 固定秒数を置くと再発する。予算はローカルが make の GOLANGCI_LINT_TIMEOUT、
-  # CI が go-lint ジョブの timeout-minutes で持つ。
+  # 固定 timeout なし（0=無効）。予算は呼び出し元が持つ（make の GOLANGCI_LINT_TIMEOUT / CI の
+  # timeout-minutes）。ここに固定秒数を置いてはいけない理由は ADR-0088 (two-layer-golangci-config)。
   timeout: "0s"
   issues-exit-code: 1
   tests: true

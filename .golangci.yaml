@@ -128,7 +128,7 @@ linters:
       disable-dec-order-check: false
       disable-init-func-first-check: false
     depguard:
-      # 外部ライブラリがシステムの根幹に関わることを避けるために、pkgディレクトリで薄いラッパー作成し使用することを推奨します。
+      # pkg/ の薄いラッパー経由での利用を強制する規則群（方針の理由: ADR-0001 (avoid-lock-in)）。
       rules:
         only_the_original_error_is_permitted:
           files:
@@ -211,12 +211,38 @@ linters:
           deny:
             - pkg: go-boilerplate/internal/controller/
               desc: "infrastructure層でcontroller層を参照することは禁止です。"
+        # Realtime Delivery の feature 中立性（規約①）の depguard 側。architest 側は
+        # internal/architest/realtime_isolation_test.go で、両方を維持することが二重検査の前提。
+        # 規約②（InstanceLeaseStore の allowlist）はシンボル単位のためここには置けない。
+        # 設計理由と二重検査の意図: docs/design/realtime-delivery.md §3.1
+        maintain_realtime_feature_neutrality:
+          files:
+            - "**/internal/usecase/boundary/realtime/**.go"
+            - "**/internal/usecase/realtime/**.go"
+            - "**/internal/infrastructure/eventlog/**.go"
+            - "**/internal/infrastructure/streamticket/**.go"
+            - "**/internal/infrastructure/instancelease/**.go"
+            - "**/internal/infrastructure/realtimesecret/**.go"
+            - "**/internal/infrastructure/realtime/**.go"
+            - "**/internal/controller/stream/**.go"
+            - "**/internal/controller/realtime/**.go"
+          list-mode: lax
+          # lax では deny より長い prefix の allow が勝つため、機構自身の 2 package はここで戻します。
+          allow:
+            - go-boilerplate/internal/usecase/boundary/
+            - go-boilerplate/internal/usecase/realtime
+          deny:
+            - pkg: go-boilerplate/internal/domain/
+              desc: "Realtime Delivery の機構側から feature の domain を参照することは禁止です。
+                配送機構は feature に対して中立でなければなりません。"
+            - pkg: go-boilerplate/internal/usecase/
+              desc: "Realtime Delivery の機構側から feature の usecase を参照することは禁止です。
+                機構が使ってよいのは usecase/boundary 配下と usecase/realtime だけです。"
     funcorder:
       constructor: true
       struct-method: true
       alphabetical: false
     funlen:
-      # 関数の長さを制限して、冗長性と複雑さを減らします。
       # 関数内の行数チェックは無効にします。
       lines: -1
       # 関数内のステートメント数を制限します。

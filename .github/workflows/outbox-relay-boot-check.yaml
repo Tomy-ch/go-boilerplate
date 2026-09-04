@@ -1,9 +1,9 @@
-name: Worker Boot Check
+name: Outbox Relay Boot Check
 
 on:
   pull_request:
     paths:
-      - '.github/workflows/worker-boot-check.yaml'
+      - '.github/workflows/outbox-relay-boot-check.yaml'
       - 'cmd/**.go'
       - 'internal/**.go'
       - 'env/.env.ci'
@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  worker-boot-check:
+  outbox-relay-boot-check:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -117,28 +117,62 @@ jobs:
       - name: Materialize ci env for embedding
         run: make materialize-env
 
-      # Pass a non-existent worker name and verify it exits with an "unknown worker" error
-      # (confirms the boot path including DI construction and DB connection works; a DB / DI failure would not produce this output).
-      - name: Boot worker entrypoint and expect "unknown worker"
+      - name: Build relay
+        run: go build -o ./bin/relay ./cmd/
+
+      # The sentinels below are the fx event logger's (internal/di/fx_event_logger.go) — rename those log
+      # messages and this check silently weakens into "the process stayed alive". Why this entrypoint's
+      # check is shaped differently from the job / worker ones, and why the `realtime` channel is the one
+      # under test: ADR-0091 (ci-real-graph-boot-check).
+      - name: Boot the realtime relay and expect a clean lifecycle
         run: |
           set -uo pipefail
-          set +e
-          output="$(go run ./cmd/ worker __ci_boot_check_no_such_worker__ 2>&1)"
-          code=$?
-          set -e
 
-          echo "----- worker output -----"
-          echo "${output}"
-          echo "-------------------------"
+          ./bin/relay outbox-relay --channel=realtime > relay.log 2>&1 &
+          relay_pid=$!
 
-          if [ "${code}" -eq 0 ]; then
-            echo "FAIL: exit 0 returned for an unknown worker (dispatch may not be working)"
+          started=0
+          for i in {1..45}; do
+            if grep -q "Application started" relay.log 2>/dev/null; then
+              started=1
+              break
+            fi
+            if ! kill -0 "${relay_pid}" 2>/dev/null; then
+              echo "FAIL: the relay exited before the lifecycle started"
+              echo "----- relay output -----"
+              cat relay.log || true
+              echo "------------------------"
+              exit 1
+            fi
+            echo "Waiting for the relay lifecycle... ($i)"
+            sleep 2
+          done
+
+          if [ "${started}" -ne 1 ]; then
+            echo "FAIL: 'Application started' never appeared (DI construction or an OnStart hook is stuck)"
+            echo "----- relay output -----"
+            cat relay.log || true
+            echo "------------------------"
+            kill "${relay_pid}" 2>/dev/null || true
             exit 1
           fi
 
-          if ! echo "${output}" | grep -q "unknown worker"; then
-            echo "FAIL: non-zero exit but not via the 'unknown worker' path (boot / DI / DB connection may have failed)"
+          kill -TERM "${relay_pid}" 2>/dev/null || true
+          wait "${relay_pid}"
+          stop_code=$?
+
+          echo "----- relay output -----"
+          cat relay.log || true
+          echo "------------------------"
+
+          if ! grep -q "Application stopped" relay.log; then
+            echo "FAIL: the relay did not shut down through the fx lifecycle"
             exit 1
           fi
 
-          echo "OK: the worker entrypoint booted (DI / DB constructed) and correctly rejected an unknown worker"
+          if [ "${stop_code}" -ne 0 ]; then
+            echo "FAIL: the relay exited ${stop_code} on SIGTERM"
+            exit 1
+          fi
+
+          echo "OK: the realtime relay booted (DI / DB constructed) and shut down cleanly"

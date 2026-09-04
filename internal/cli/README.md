@@ -59,7 +59,8 @@ pushed out to `cmd/`. The package boundary equals the test boundary.
   its own README — see [`dbslot/`](dbslot/README.md).
 - **The thin `cmd/` shells are excluded** from the coverage gate (`gen|cmd|mock|apperror|scripts`).
   Their runtime correctness is covered by CI boot checks: `app-di-startup-check` (serve → `/ready`),
-  `job-boot-check` (job dispatch), `worker-boot-check` (worker dispatch), `migration-check`
+  `job-boot-check` (job dispatch), `worker-boot-check` (worker dispatch),
+  `outbox-relay-boot-check` (relay start and drain), `migration-check`
   (up/down round-trip), `gen-*-artifacts-check` (codegen dogfooding) — all against a real Postgres
   service. DB access behaviour is covered by
   repository tests against a real Postgres (`internal/infrastructure/rdb/testkit`).
