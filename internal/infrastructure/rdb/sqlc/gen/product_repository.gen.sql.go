@@ -2150,9 +2150,7 @@ type UpdateProductParams struct {
 
 // === source: database/dml/repository/product/update_product.sql ===
 // 楽観ロック条件付きで商品を更新し、採番後のバージョンを返します。
-// lock_version の加算は DB が行い、採番の権威を単一箇所に置きます。
-// WHERE の lock_version 一致が並行更新による lost update を防ぐ本体で、読み込み後に他トランザクションが
-// 更新していた場合は該当行なし（0 行）で返り、呼び出し側が衝突として扱います。
+// 挙動の詳細は docs/spec/domain/product.md の Product.Update を参照。
 //
 //	UPDATE products
 //	SET
