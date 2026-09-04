@@ -193,8 +193,8 @@ So take the read side as a source, **bounded to the usecase packages that no dom
 the words for.** Decide that per usecase spec by resolving its Repository dependencies: read its
 `## Dependencies`, take the domain package path each one names (`internal/domain/<X>`, from the entry
 or its trailing comment), and look for `docs/spec/domain/<X>.md`. **Never derive it from the usecase
-spec's own path** — `internal/usecase/user/search` is spec'd at `docs/spec/usecase/user/search.md`
-and depends on `internal/domain/user`, so the paths do not coincide and a same-path lookup would
+spec's own path** — `internal/usecase/user/search` is spec'd under `docs/spec/usecase/` at the path
+mirroring its own package, and depends on `internal/domain/user`, so the paths do not coincide and a same-path lookup would
 declare an aggregate-backed search a projection. Where an aggregate does exist, its read models
 restate what the aggregate already introduced, and proposing them again produces a second row for one
 concept — the exact failure this page exists to catch.

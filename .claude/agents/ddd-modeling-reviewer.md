@@ -30,8 +30,8 @@ Read these at runtime, every run. They are the standard; you hold no policy of y
   (ordered-pessimistic-row-locks), ADR-0039 (domain-lexicon)
 - `docs/spec/glossary.md` — the business vocabulary
 - `docs/spec/domain/<pkgpath>.md` / `docs/spec/usecase/<pkgpath>.md` when the changed package has a
-  spec — the spec path mirrors the Go package path (`internal/domain/product/category` ⇔
-  `docs/spec/domain/product/category.md`)
+  spec — the spec path mirrors the Go package path (`internal/domain/<agg>/<sub>` ⇔
+  `docs/spec/domain/<agg>/<sub>.md`)
 
 **Never judge against Evans directly.** This repository departs from Evans deliberately and says so
 in writing — it does not reify criteria, it does not wrap every attribute in a value object, it

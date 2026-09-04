@@ -63,7 +63,7 @@ spec のツリーはその配置自体がパッケージパスを担っており
 
 ### 読み取り側の境界
 
-読み取り側の概念は、語を導入する domain spec を持たない usecase パッケージに限って在庫に入れます。集約を持たない投影には業務語を導入するほかの場所がないためです。判定は usecase spec ごとに Repository 依存を解決して行います。`## Dependencies` を読み、各依存が名指しする domain パッケージパス（`internal/domain/<X>`。項目そのものか行末コメントから読む）を取り、`docs/spec/domain/<X>.md` を探します。usecase spec 自身のパスからは導出しません。`internal/usecase/user/search` は `docs/spec/usecase/user/search.md` に spec があり、依存先は `internal/domain/user` であってパスは一致せず、同一パスで引けば集約に支えられた検索を投影と判定してしまいます。spec のパスが与えるのは自身のパッケージだけなので、パスを 1 つに固定せず spec のパッケージの下をディレクトリで走査します。集約を持つ feature の read model は用語の言い直しであり、候補行ではありません。この境界は orphan 規則より優先します。`internal/domain/**` に置かれた read model であっても、性質が言い直しなら候補行ではなく Mechanism vocabulary として扱います。
+読み取り側の概念は、語を導入する domain spec を持たない usecase パッケージに限って在庫に入れます。集約を持たない投影には業務語を導入するほかの場所がないためです。判定は usecase spec ごとに Repository 依存を解決して行います。`## Dependencies` を読み、各依存が名指しする domain パッケージパス（`internal/domain/<X>`。項目そのものか行末コメントから読む）を取り、`docs/spec/domain/<X>.md` を探します。usecase spec 自身のパスからは導出しません。`internal/usecase/user/search` の spec は自身のパッケージパスを写した `docs/spec/usecase/` 配下にあり、依存先は `internal/domain/user` であってパスは一致せず、同一パスで引けば集約に支えられた検索を投影と判定してしまいます。spec のパスが与えるのは自身のパッケージだけなので、パスを 1 つに固定せず spec のパッケージの下をディレクトリで走査します。集約を持つ feature の read model は用語の言い直しであり、候補行ではありません。この境界は orphan 規則より優先します。`internal/domain/**` に置かれた read model であっても、性質が言い直しなら候補行ではなく Mechanism vocabulary として扱います。
 
 読み取り側の名前を判定する前に、`Result`、`ReadModel`、`View`、`Input`、`Params`、`Cursor`、`Summary`、`Breakdown`、`Item`、`List`、`Count`、`DTO` という機構サフィックスを落とします。この一覧は出発点であって閉じた集合ではありません。同じ役割を果たすものは何であれ落とし、何を落としたかを報告します。名前全体が `Usecase`、`Gateway`、`QueryService`、`Repository` である port は落とします。
 

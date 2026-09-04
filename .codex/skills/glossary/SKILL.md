@@ -90,7 +90,7 @@ introduces the words for: a projection without an aggregate has no other place t
 business words. Decide that per usecase spec by resolving its Repository dependencies — read its
 `## Dependencies`, take the domain package path each one names (`internal/domain/<X>`, from the entry
 or its trailing comment), and look for `docs/spec/domain/<X>.md`. Never derive it from the usecase
-spec's own path: `internal/usecase/user/search` is spec'd at `docs/spec/usecase/user/search.md` and
+spec's own path: `internal/usecase/user/search` is spec'd under `docs/spec/usecase/` at the path mirroring its own package and
 depends on `internal/domain/user`, so a same-path lookup would declare an aggregate-backed search a
 projection. The spec's path gives you its own package and nothing more, so walk the directories
 under it rather than fixing one path — a `query/` sub-package and a boundary port live nowhere near

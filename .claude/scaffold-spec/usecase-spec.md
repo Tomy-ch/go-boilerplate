@@ -1,6 +1,6 @@
 # Usecase Spec Format
 
-`docs/spec/usecase/<pkgpath>.md` の節構成と自動派生ルール。`<pkgpath>` は `internal/usecase/` 以下の Go パッケージパスで、Interface YAML の `package:` 宣言と一致する（例: `docs/spec/usecase/user/search.md` ⇔ `internal/usecase/user/search`）。
+`docs/spec/usecase/<pkgpath>.md` の節構成と自動派生ルール。`<pkgpath>` は `internal/usecase/` 以下の Go パッケージパスで、Interface YAML の `package:` 宣言と一致する（入れ子パッケージも同じ: `internal/usecase/<pkg>/<sub>` の spec は `docs/spec/usecase/<pkg>/<sub>.md`）。
 
 ## 節構成
 

@@ -175,7 +175,7 @@ spec のツリーはその配置自体がパッケージパスを担っている
 パッケージに限る。** その判定は usecase spec ごとに、Repository 依存を解決して行う——`## Dependencies`
 を読み、各依存が名指しする domain パッケージパス（`internal/domain/<X>`。項目そのものか行末コメントから
 読む）を取り、`docs/spec/domain/<X>.md` を探す。**usecase spec 自身のパスから導出してはならない**——
-`internal/usecase/user/search` は `docs/spec/usecase/user/search.md` に spec があり、依存先は
+`internal/usecase/user/search` の spec は自身のパッケージパスを写した `docs/spec/usecase/` 配下にあり、依存先は
 `internal/domain/user` であって、パスは一致しない。同一パスで引けば、集約に支えられた検索を投影と
 判定してしまう。集約が在る場合、その read model は集約が既に導入したものを言い直しているだけで、
 再度提案すれば 1 概念に 2 行ができる——このページが捕まえるために在る失敗そのものである。
