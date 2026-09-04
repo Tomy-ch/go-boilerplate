@@ -123,7 +123,7 @@ jobs:
       # The sentinels below are the fx event logger's (internal/di/fx_event_logger.go) — rename those log
       # messages and this check silently weakens into "the process stayed alive". Why this entrypoint's
       # check is shaped differently from the job / worker ones, and why the `realtime` channel is the one
-      # under test: ADR-0091 (docs/adr/0091-ci-real-graph-boot-check.md).
+      # under test: ADR-0091 (ci-real-graph-boot-check).
       - name: Boot the realtime relay and expect a clean lifecycle
         run: |
           set -uo pipefail

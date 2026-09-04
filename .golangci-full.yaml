@@ -105,7 +105,7 @@ linters:
       disable-dec-order-check: false
       disable-init-func-first-check: false
     depguard:
-      # pkg/ の薄いラッパー経由での利用を強制する規則群（方針の理由: ADR-0001 avoid-lock-in）。
+      # pkg/ の薄いラッパー経由での利用を強制する規則群（方針の理由: ADR-0001 (avoid-lock-in)）。
       rules:
         only_the_original_error_is_permitted:
           files:
@@ -612,7 +612,7 @@ linters:
 
 run:
   # 固定 timeout なし（0=無効）。予算は呼び出し元が持つ（make の GOLANGCI_LINT_TIMEOUT / CI の
-  # timeout-minutes）。ここに固定秒数を置いてはいけない理由は ADR-0088。
+  # timeout-minutes）。ここに固定秒数を置いてはいけない理由は ADR-0088 (two-layer-golangci-config)。
   timeout: "0s"
   issues-exit-code: 1
   tests: true

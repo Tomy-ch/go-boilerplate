@@ -128,7 +128,7 @@ linters:
       disable-dec-order-check: false
       disable-init-func-first-check: false
     depguard:
-      # pkg/ の薄いラッパー経由での利用を強制する規則群（方針の理由: ADR-0001 avoid-lock-in）。
+      # pkg/ の薄いラッパー経由での利用を強制する規則群（方針の理由: ADR-0001 (avoid-lock-in)）。
       rules:
         only_the_original_error_is_permitted:
           files:
