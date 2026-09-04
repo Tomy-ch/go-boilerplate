@@ -144,12 +144,10 @@ func mintRotToken(t *testing.T, key *rsa.PrivateKey, kid string, clk *rotClock) 
 func startRotationServer(t *testing.T, src httpclient.Client, clk *rotClock) *Server {
 	t.Helper()
 	authenticator, err := authjwt.NewJWKS(authjwt.JWKSParams{
-		Params: authjwt.Params{
-			Issuer:       jwtTestIssuer,
-			Audience:     jwtTestAudience,
-			ExpectedType: jwtAccessTokenType,
-			Clock:        clk,
-		},
+		Issuer:           jwtTestIssuer,
+		Audience:         jwtTestAudience,
+		ExpectedType:     jwtAccessTokenType,
+		Clock:            clk,
 		JWKSURL:          "http://mock-auth.example.test/jwks.json",
 		AllowInsecureURL: true,
 	}, src)

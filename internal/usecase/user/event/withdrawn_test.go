@@ -24,18 +24,16 @@ func TestParseWithdrawn(t *testing.T) {
 			t.Parallel()
 			createdAt := time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC)
 			entity, err := domainuser.New(uuidtestkit.NewTestFromSalt(t, "pw_id"), domainuser.Attributes{
-				Profile: domainuser.Profile{
-					FirstName:    "first_name",
-					LastName:     "last_name",
-					Email:        "pw@example.com",
-					Phone:        "09000000000",
-					PrefectureID: uuidtestkit.NewTestFromSalt(t, "pw_prefecture"),
-					City:         "city_name",
-					Street:       "town_address",
-					PostalCode:   "150-0001",
-				},
-				CreatedAt: createdAt,
-				UpdatedAt: createdAt,
+				FirstName:    "first_name",
+				LastName:     "last_name",
+				Email:        "pw@example.com",
+				Phone:        "09000000000",
+				PrefectureID: uuidtestkit.NewTestFromSalt(t, "pw_prefecture"),
+				City:         "city_name",
+				Street:       "town_address",
+				PostalCode:   "150-0001",
+				CreatedAt:    createdAt,
+				UpdatedAt:    createdAt,
 			})
 			require.NoError(t, err)
 			deletedAt := time.Date(2026, time.July, 29, 12, 0, 0, 0, time.UTC)
@@ -91,18 +89,16 @@ func TestBuildWithdrawn(t *testing.T) {
 	active := func(t *testing.T, salt string) *domainuser.User {
 		t.Helper()
 		entity, err := domainuser.New(uuidtestkit.NewTestFromSalt(t, salt+"_id"), domainuser.Attributes{
-			Profile: domainuser.Profile{
-				FirstName:    "first_name",
-				LastName:     "last_name",
-				Email:        salt + "@example.com",
-				Phone:        "09000000000",
-				PrefectureID: uuidtestkit.NewTestFromSalt(t, salt+"_prefecture"),
-				City:         "city_name",
-				Street:       "town_address",
-				PostalCode:   "150-0001",
-			},
-			CreatedAt: createdAt,
-			UpdatedAt: createdAt,
+			FirstName:    "first_name",
+			LastName:     "last_name",
+			Email:        salt + "@example.com",
+			Phone:        "09000000000",
+			PrefectureID: uuidtestkit.NewTestFromSalt(t, salt+"_prefecture"),
+			City:         "city_name",
+			Street:       "town_address",
+			PostalCode:   "150-0001",
+			CreatedAt:    createdAt,
+			UpdatedAt:    createdAt,
 		})
 		require.NoError(t, err)
 		return entity

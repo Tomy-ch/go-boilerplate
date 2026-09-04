@@ -141,15 +141,13 @@ func Test_repository_FindPublishedList(t *testing.T) {
 
 				// 先頭ページ(limit=2): 公開日時降順・id降順で tieHigh, tieLow。
 				firstPage, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-					SearchFilter: domainproduct.SearchFilter{
-						Keyword:     ptr.To(probeKeyword),
-						MinPrice:    &price,
-						MaxPrice:    &price,
-						MinQuantity: &quantity,
-						MaxQuantity: &quantity,
-					},
-					Limit:     2,
-					Ascending: false,
+					Keyword:     ptr.To(probeKeyword),
+					MinPrice:    &price,
+					MaxPrice:    &price,
+					MinQuantity: &quantity,
+					MaxQuantity: &quantity,
+					Limit:       2,
+					Ascending:   false,
 				})
 				require.NoError(t, err)
 				require.Len(t, firstPage, 2)
@@ -159,13 +157,11 @@ func Test_repository_FindPublishedList(t *testing.T) {
 				// 次ページ: 末尾行(tieLow)を境界に keyset を進めると mid → old。
 				last := firstPage[len(firstPage)-1]
 				secondPage, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-					SearchFilter: domainproduct.SearchFilter{
-						Keyword:     ptr.To(probeKeyword),
-						MinPrice:    &price,
-						MaxPrice:    &price,
-						MinQuantity: &quantity,
-						MaxQuantity: &quantity,
-					},
+					Keyword:          ptr.To(probeKeyword),
+					MinPrice:         &price,
+					MaxPrice:         &price,
+					MinQuantity:      &quantity,
+					MaxQuantity:      &quantity,
 					Limit:            2,
 					Ascending:        false,
 					AfterPublishedAt: last.PublishedAt(),
@@ -178,9 +174,9 @@ func Test_repository_FindPublishedList(t *testing.T) {
 
 				// 未公開(NULL)行はどのページにも現れない。
 				all, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-					SearchFilter: domainproduct.SearchFilter{Keyword: ptr.To(probeKeyword)},
-					Limit:        100,
-					Ascending:    false,
+					Keyword:   ptr.To(probeKeyword),
+					Limit:     100,
+					Ascending: false,
 				})
 				require.NoError(t, err)
 				for _, p := range all {
@@ -199,15 +195,13 @@ func Test_repository_FindPublishedList(t *testing.T) {
 				quantity := int32(10)
 
 				firstPage, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-					SearchFilter: domainproduct.SearchFilter{
-						Keyword:     ptr.To(probeKeyword),
-						MinPrice:    &price,
-						MaxPrice:    &price,
-						MinQuantity: &quantity,
-						MaxQuantity: &quantity,
-					},
-					Limit:     2,
-					Ascending: true,
+					Keyword:     ptr.To(probeKeyword),
+					MinPrice:    &price,
+					MaxPrice:    &price,
+					MinQuantity: &quantity,
+					MaxQuantity: &quantity,
+					Limit:       2,
+					Ascending:   true,
 				})
 				require.NoError(t, err)
 				require.Len(t, firstPage, 2)
@@ -216,13 +210,11 @@ func Test_repository_FindPublishedList(t *testing.T) {
 
 				last := firstPage[len(firstPage)-1]
 				secondPage, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-					SearchFilter: domainproduct.SearchFilter{
-						Keyword:     ptr.To(probeKeyword),
-						MinPrice:    &price,
-						MaxPrice:    &price,
-						MinQuantity: &quantity,
-						MaxQuantity: &quantity,
-					},
+					Keyword:          ptr.To(probeKeyword),
+					MinPrice:         &price,
+					MaxPrice:         &price,
+					MinQuantity:      &quantity,
+					MaxQuantity:      &quantity,
 					Limit:            2,
 					Ascending:        true,
 					AfterPublishedAt: last.PublishedAt(),
@@ -246,9 +238,9 @@ func Test_repository_FindPublishedList(t *testing.T) {
 
 				categoryID := mustParse(t, categoryBooks)
 				page, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-					SearchFilter: domainproduct.SearchFilter{Keyword: ptr.To(probeKeyword), CategoryID: &categoryID},
-					Limit:        10,
-					Ascending:    false,
+					Keyword: ptr.To(probeKeyword), CategoryID: &categoryID,
+					Limit:     10,
+					Ascending: false,
 				})
 				require.NoError(t, err)
 				require.Len(t, page, 1)
@@ -268,12 +260,10 @@ func Test_repository_FindPublishedList(t *testing.T) {
 				insertProduct(ctx, t, drv, clothesID, probeKeyword+"-CC", nil, 1000, statusInStock, categoryClothes, ptr.To(base))
 
 				page, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-					SearchFilter: domainproduct.SearchFilter{
-						Keyword:       ptr.To(probeKeyword),
-						CategoryCodes: []int16{categoryCodeElectronics, categoryCodeBooks},
-					},
-					Limit:     10,
-					Ascending: false,
+					Keyword:       ptr.To(probeKeyword),
+					CategoryCodes: []int16{categoryCodeElectronics, categoryCodeBooks},
+					Limit:         10,
+					Ascending:     false,
 				})
 				require.NoError(t, err)
 				require.Len(t, page, 2)
@@ -292,12 +282,10 @@ func Test_repository_FindPublishedList(t *testing.T) {
 
 				// 非 nil の空スライスは「未指定」であり「どのコードにも一致しない」ではない。
 				page, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-					SearchFilter: domainproduct.SearchFilter{
-						Keyword:       ptr.To(probeKeyword),
-						CategoryCodes: []int16{},
-					},
-					Limit:     10,
-					Ascending: false,
+					Keyword:       ptr.To(probeKeyword),
+					CategoryCodes: []int16{},
+					Limit:         10,
+					Ascending:     false,
 				})
 				require.NoError(t, err)
 				require.Len(t, page, 1)
@@ -313,12 +301,10 @@ func Test_repository_FindPublishedList(t *testing.T) {
 				insertProduct(ctx, t, drv, tieHigh, probeKeyword+"-CN", nil, 1000, statusInStock, categoryElectronics, ptr.To(base))
 
 				page, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-					SearchFilter: domainproduct.SearchFilter{
-						Keyword:       ptr.To(probeKeyword),
-						CategoryCodes: []int16{maxCategoryCode},
-					},
-					Limit:     10,
-					Ascending: false,
+					Keyword:       ptr.To(probeKeyword),
+					CategoryCodes: []int16{maxCategoryCode},
+					Limit:         10,
+					Ascending:     false,
 				})
 				require.NoError(t, err)
 				assert.Empty(t, page)
@@ -335,12 +321,10 @@ func Test_repository_FindPublishedList(t *testing.T) {
 				insertProduct(ctx, t, drv, outID, probeKeyword+"-SO", nil, 1000, statusOutOfStock, categoryElectronics, ptr.To(base))
 
 				page, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-					SearchFilter: domainproduct.SearchFilter{
-						Keyword:     ptr.To(probeKeyword),
-						StatusCodes: []int16{statusCodeInStock, statusCodeOutOfStock},
-					},
-					Limit:     10,
-					Ascending: false,
+					Keyword:     ptr.To(probeKeyword),
+					StatusCodes: []int16{statusCodeInStock, statusCodeOutOfStock},
+					Limit:       10,
+					Ascending:   false,
 				})
 				require.NoError(t, err)
 				require.Len(t, page, 2)
@@ -360,12 +344,10 @@ func Test_repository_FindPublishedList(t *testing.T) {
 				insertProduct(ctx, t, drv, outID, probeKeyword+"-SY", nil, 1000, statusOutOfStock, categoryElectronics, ptr.To(base))
 
 				page, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-					SearchFilter: domainproduct.SearchFilter{
-						Keyword:     ptr.To(probeKeyword),
-						StatusCodes: []int16{statusCodeOutOfStock},
-					},
-					Limit:     10,
-					Ascending: false,
+					Keyword:     ptr.To(probeKeyword),
+					StatusCodes: []int16{statusCodeOutOfStock},
+					Limit:       10,
+					Ascending:   false,
 				})
 				require.NoError(t, err)
 				require.Len(t, page, 1)
@@ -420,9 +402,9 @@ func Test_repository_FindPublishedList(t *testing.T) {
 
 				statusID := mustParse(t, statusOutOfStock)
 				page, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-					SearchFilter: domainproduct.SearchFilter{Keyword: ptr.To(probeKeyword), StatusID: &statusID},
-					Limit:        10,
-					Ascending:    false,
+					Keyword: ptr.To(probeKeyword), StatusID: &statusID,
+					Limit:     10,
+					Ascending: false,
 				})
 				require.NoError(t, err)
 				require.Len(t, page, 1)
@@ -454,9 +436,9 @@ func Test_repository_FindPublishedList(t *testing.T) {
 				)
 
 				page, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-					SearchFilter: domainproduct.SearchFilter{Keyword: ptr.To(probeKeyword)},
-					Limit:        10,
-					Ascending:    false,
+					Keyword:   ptr.To(probeKeyword),
+					Limit:     10,
+					Ascending: false,
 				})
 				require.NoError(t, err)
 				require.Len(t, page, 2)
@@ -499,15 +481,13 @@ func Test_repository_FindPublishedList(t *testing.T) {
 				price := mustPriceFilter(t)
 				quantity := int32(10)
 				page, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-					SearchFilter: domainproduct.SearchFilter{
-						Keyword:     ptr.To(probeKeyword + "-RANGE"),
-						MinPrice:    &price,
-						MaxPrice:    &price,
-						MinQuantity: &quantity,
-						MaxQuantity: &quantity,
-					},
-					Limit:     10,
-					Ascending: false,
+					Keyword:     ptr.To(probeKeyword + "-RANGE"),
+					MinPrice:    &price,
+					MaxPrice:    &price,
+					MinQuantity: &quantity,
+					MaxQuantity: &quantity,
+					Limit:       10,
+					Ascending:   false,
 				})
 				require.NoError(t, err)
 				require.Len(t, page, 1)
@@ -539,9 +519,9 @@ func Test_repository_FindPublishedList(t *testing.T) {
 				insertProduct(ctx, t, drv, invalidID, probeKeyword+"-BADPRICE", nil, -1, statusInStock, categoryElectronics, ptr.To(base))
 
 				actual, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-					SearchFilter: domainproduct.SearchFilter{Keyword: ptr.To(probeKeyword)},
-					Limit:        10,
-					Ascending:    false,
+					Keyword:   ptr.To(probeKeyword),
+					Limit:     10,
+					Ascending: false,
 				})
 				assert.Nil(t, actual)
 				require.ErrorIs(t, err, apperror.ErrInternal)
@@ -800,9 +780,9 @@ func Test_repository_CountPublished(t *testing.T) {
 
 				categoryID := ptr.To(mustParse(t, categoryElectronics))
 				page, err := repo.FindPublishedList(ctx, domainproduct.ListParams{
-					SearchFilter: domainproduct.SearchFilter{CategoryID: categoryID, Keyword: &keyword},
-					Limit:        100,
-					Ascending:    false,
+					CategoryID: categoryID, Keyword: &keyword,
+					Limit:     100,
+					Ascending: false,
 				})
 				require.NoError(t, err)
 				count, err := repo.CountPublished(ctx, domainproduct.SearchFilter{

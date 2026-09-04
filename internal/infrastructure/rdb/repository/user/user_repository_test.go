@@ -334,19 +334,17 @@ func Test_repository_Create(t *testing.T) {
 				require.NoError(t, err)
 
 				userEntity, err := user.New(userID, user.Attributes{
-					Profile: user.Profile{
-						FirstName:    "Alice",
-						LastName:     "Smith",
-						Email:        "alice.smith@example.com",
-						Phone:        "5555555555",
-						PrefectureID: prefectureID,
-						City:         "新宿区",
-						Street:       "5-5-5",
-						Building:     new("Building X"),
-						PostalCode:   "160-0022",
-					},
-					CreatedAt: now,
-					UpdatedAt: now,
+					FirstName:    "Alice",
+					LastName:     "Smith",
+					Email:        "alice.smith@example.com",
+					Phone:        "5555555555",
+					PrefectureID: prefectureID,
+					City:         "新宿区",
+					Street:       "5-5-5",
+					Building:     new("Building X"),
+					PostalCode:   "160-0022",
+					CreatedAt:    now,
+					UpdatedAt:    now,
 				})
 				require.NoError(t, err)
 
@@ -385,19 +383,17 @@ func Test_repository_Create(t *testing.T) {
 				require.NoError(t, err)
 
 				userEntity, err := user.New(userID, user.Attributes{
-					Profile: user.Profile{
-						FirstName:    "John",
-						LastName:     "Doe",
-						Email:        "john.doe@example.com",
-						Phone:        "5555555555",
-						PrefectureID: prefectureID,
-						City:         "新宿区",
-						Street:       "5-5-5",
-						Building:     new("Building X"),
-						PostalCode:   "160-0022",
-					},
-					CreatedAt: now,
-					UpdatedAt: now,
+					FirstName:    "John",
+					LastName:     "Doe",
+					Email:        "john.doe@example.com",
+					Phone:        "5555555555",
+					PrefectureID: prefectureID,
+					City:         "新宿区",
+					Street:       "5-5-5",
+					Building:     new("Building X"),
+					PostalCode:   "160-0022",
+					CreatedAt:    now,
+					UpdatedAt:    now,
 				})
 				require.NoError(t, err)
 

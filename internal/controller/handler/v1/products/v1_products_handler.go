@@ -57,17 +57,15 @@ func (s *server) GetProducts(ctx context.Context, request gen.GetProductsRequest
 	}
 
 	list, err := s.uc.ListProducts(ctx, ctxhelper.OptionalAuthn(ctx), productuc.ListProductsParams{
-		SearchFilter: productuc.SearchFilter{
-			CategoryID:    conv.UUIDPtr(request.Params.CategoryId),
-			StatusID:      conv.UUIDPtr(request.Params.StatusId),
-			CategoryCodes: categoryCodes,
-			StatusCodes:   statusCodes,
-			Keyword:       request.Params.Keyword,
-			MinPrice:      request.Params.MinPrice,
-			MaxPrice:      request.Params.MaxPrice,
-			MinQuantity:   request.Params.MinQuantity,
-			MaxQuantity:   request.Params.MaxQuantity,
-		},
+		CategoryID:         conv.UUIDPtr(request.Params.CategoryId),
+		StatusID:           conv.UUIDPtr(request.Params.StatusId),
+		CategoryCodes:      categoryCodes,
+		StatusCodes:        statusCodes,
+		Keyword:            request.Params.Keyword,
+		MinPrice:           request.Params.MinPrice,
+		MaxPrice:           request.Params.MaxPrice,
+		MinQuantity:        request.Params.MinQuantity,
+		MaxQuantity:        request.Params.MaxQuantity,
 		Cursor:             cursor,
 		Ascending:          isAscending(request.Params.Sort),
 		IncludeUnpublished: ptr.Deref(request.Params.IncludeUnpublished, false),

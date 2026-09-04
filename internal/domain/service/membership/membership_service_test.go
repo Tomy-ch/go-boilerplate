@@ -21,18 +21,16 @@ func newActiveUser(t *testing.T) *user.User {
 	t.Helper()
 
 	u, err := user.New(uuidtestkit.NewTestFromSalt(t, "membership_user"), user.Attributes{
-		Profile: user.Profile{
-			FirstName:    "John",
-			LastName:     "Doe",
-			Email:        "john.doe@example.com",
-			Phone:        "1234567890",
-			PrefectureID: uuidtestkit.NewTestFromSalt(t, "membership_prefecture"),
-			City:         "Shibuya",
-			Street:       "1-2-3",
-			PostalCode:   "150-0001",
-		},
-		CreatedAt: baseTime,
-		UpdatedAt: baseTime,
+		FirstName:    "John",
+		LastName:     "Doe",
+		Email:        "john.doe@example.com",
+		Phone:        "1234567890",
+		PrefectureID: uuidtestkit.NewTestFromSalt(t, "membership_prefecture"),
+		City:         "Shibuya",
+		Street:       "1-2-3",
+		PostalCode:   "150-0001",
+		CreatedAt:    baseTime,
+		UpdatedAt:    baseTime,
 	})
 	require.NoError(t, err)
 	return u

@@ -557,11 +557,11 @@ func Test_usecase_CountProducts(t *testing.T) {
 			)
 
 			u := &usecase{tracer: observability.NewMockUsecaseLayerTracer(t), repo: repo}
-			actual, err := u.CountProducts(context.Background(), nil, CountProductsParams{SearchFilter: SearchFilter{
+			actual, err := u.CountProducts(context.Background(), nil, CountProductsParams{
 				CategoryID: &categoryID, StatusID: &statusID, Keyword: ptr.To("イヤホン"),
 				MinPrice: ptr.To("10.50"), MaxPrice: ptr.To("99.99"),
 				MinQuantity: ptr.To[int32](2), MaxQuantity: ptr.To[int32](20),
-			}})
+			})
 
 			require.NoError(t, err)
 			assert.Equal(t, ProductCountView{Count: 7}, actual)
@@ -615,9 +615,9 @@ func Test_usecase_CountProducts(t *testing.T) {
 				tracer: observability.NewMockUsecaseLayerTracer(t),
 				repo:   mock_product.NewMockRepository(gomock.NewController(t)),
 			}
-			actual, err := u.CountProducts(context.Background(), nil, CountProductsParams{SearchFilter: SearchFilter{
+			actual, err := u.CountProducts(context.Background(), nil, CountProductsParams{
 				MinPrice: ptr.To("20"), MaxPrice: ptr.To("10"),
-			}})
+			})
 
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)
 			assert.Empty(t, actual)
@@ -824,17 +824,15 @@ func Test_usecase_ListProducts(t *testing.T) {
 
 			u := &usecase{tracer: lt, repo: repo}
 			_, err = u.ListProducts(ctx, nil, ListProductsParams{
-				SearchFilter: SearchFilter{
-					CategoryID:  &categoryID,
-					StatusID:    &statusID,
-					Keyword:     &keyword,
-					MinPrice:    &minPrice,
-					MaxPrice:    &maxPrice,
-					MinQuantity: &minQuantity,
-					MaxQuantity: &maxQuantity,
-				},
-				Cursor:    cursor,
-				Ascending: true,
+				CategoryID:  &categoryID,
+				StatusID:    &statusID,
+				Keyword:     &keyword,
+				MinPrice:    &minPrice,
+				MaxPrice:    &maxPrice,
+				MinQuantity: &minQuantity,
+				MaxQuantity: &maxQuantity,
+				Cursor:      cursor,
+				Ascending:   true,
 			})
 			require.NoError(t, err)
 
@@ -922,8 +920,8 @@ func Test_usecase_ListProducts(t *testing.T) {
 				repo:   mock_product.NewMockRepository(gomock.NewController(t)),
 			}
 			actual, err := u.ListProducts(context.Background(), nil, ListProductsParams{
-				SearchFilter: SearchFilter{MinPrice: ptr.To("20"), MaxPrice: ptr.To("10")},
-				Cursor:       newDefaultCursor(t),
+				MinPrice: ptr.To("20"), MaxPrice: ptr.To("10"),
+				Cursor: newDefaultCursor(t),
 			})
 			assert.Empty(t, actual)
 			require.ErrorIs(t, err, apperror.ErrInvalidArgument)

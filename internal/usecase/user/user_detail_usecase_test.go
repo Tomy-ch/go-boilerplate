@@ -57,19 +57,17 @@ func newTestAuthn(t *testing.T) *authbd.Authn {
 func newActiveUser(t *testing.T, id, prefID uuid.UUID, ts time.Time) *user.User {
 	t.Helper()
 	u, err := user.New(id, user.Attributes{
-		Profile: user.Profile{
-			FirstName:    "John",
-			LastName:     "Doe",
-			Email:        "john@example.com",
-			Phone:        "1234567890",
-			PrefectureID: prefID,
-			City:         "Shibuya",
-			Street:       "1-2-3",
-			Building:     new("Building A"),
-			PostalCode:   "150-0001",
-		},
-		CreatedAt: ts,
-		UpdatedAt: ts,
+		FirstName:    "John",
+		LastName:     "Doe",
+		Email:        "john@example.com",
+		Phone:        "1234567890",
+		PrefectureID: prefID,
+		City:         "Shibuya",
+		Street:       "1-2-3",
+		Building:     new("Building A"),
+		PostalCode:   "150-0001",
+		CreatedAt:    ts,
+		UpdatedAt:    ts,
 	})
 	require.NoError(t, err)
 	return u
@@ -687,20 +685,18 @@ func Test_usecase_DeleteUser(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			userLock := mock_user.NewMockLockRepository(ctrl)
 			deletedUser, err := user.New(id, user.Attributes{
-				Profile: user.Profile{
-					FirstName:    "John",
-					LastName:     "Doe",
-					Email:        "john@example.com",
-					Phone:        "1234567890",
-					PrefectureID: prefID,
-					City:         "Shibuya",
-					Street:       "1-2-3",
-					Building:     new("Building A"),
-					PostalCode:   "150-0001",
-				},
-				CreatedAt: now,
-				UpdatedAt: now,
-				DeletedAt: new(now),
+				FirstName:    "John",
+				LastName:     "Doe",
+				Email:        "john@example.com",
+				Phone:        "1234567890",
+				PrefectureID: prefID,
+				City:         "Shibuya",
+				Street:       "1-2-3",
+				Building:     new("Building A"),
+				PostalCode:   "150-0001",
+				CreatedAt:    now,
+				UpdatedAt:    now,
+				DeletedAt:    new(now),
 			})
 			require.NoError(t, err)
 

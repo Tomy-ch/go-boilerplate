@@ -55,18 +55,16 @@ func mustPrice(t *testing.T, s string) money.Price {
 func activePurchaser(t *testing.T, id uuid.UUID) *domainuser.User {
 	t.Helper()
 	u, err := domainuser.New(id, domainuser.Attributes{
-		Profile: domainuser.Profile{
-			FirstName:    "John",
-			LastName:     "Doe",
-			Email:        "john.doe@example.com",
-			Phone:        "1234567890",
-			PrefectureID: uuidtestkit.NewTestFromSalt(t, "purchaser_prefecture"),
-			City:         "Shibuya",
-			Street:       "1-2-3",
-			PostalCode:   "150-0001",
-		},
-		CreatedAt: purchaserBaseTime,
-		UpdatedAt: purchaserBaseTime,
+		FirstName:    "John",
+		LastName:     "Doe",
+		Email:        "john.doe@example.com",
+		Phone:        "1234567890",
+		PrefectureID: uuidtestkit.NewTestFromSalt(t, "purchaser_prefecture"),
+		City:         "Shibuya",
+		Street:       "1-2-3",
+		PostalCode:   "150-0001",
+		CreatedAt:    purchaserBaseTime,
+		UpdatedAt:    purchaserBaseTime,
 	})
 	require.NoError(t, err)
 	return u
