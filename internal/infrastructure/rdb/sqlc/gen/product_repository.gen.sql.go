@@ -430,7 +430,7 @@ type GetProductByIDRow struct {
 // status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
 // internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
 // 公開中のみを返す GetPublishedProductByID とは可視範囲が異なり、未公開商品も返します
-// （用途は docs/spec/product/domain.md の Product.FindByID を参照）。
+// （用途は docs/spec/domain/product.md の Product.FindByID を参照）。
 //
 //	SELECT
 //	    ps.name AS status_name,
@@ -1183,43 +1183,6 @@ func (q *Queries) ListAllProductsDescFirst(ctx context.Context, arg *ListAllProd
 	return items, nil
 }
 
-const listExistingProductImagePaths = `-- name: ListExistingProductImagePaths :many
-SELECT DISTINCT pi.image_path
-FROM product_images AS pi
-WHERE pi.image_path = ANY($1::TEXT[])
-    AND pi.deleted_at IS NULL
-`
-
-// === source: database/dml/repository/product/select_existing_image_paths.sql ===
-// 与えた画像パスのうち、いずれかの商品が実際に参照しているものを返す。
-// 未参照オブジェクトの回収（product-image-gc）で「消してよいか」を判定する取得元で、
-// ここに現れなかったパスが孤児にあたる。
-// 論理削除された画像は差し替え履歴であって現在の参照ではないため、生存行だけを参照元として数える。
-//
-//	SELECT DISTINCT pi.image_path
-//	FROM product_images AS pi
-//	WHERE pi.image_path = ANY($1::TEXT[])
-//	    AND pi.deleted_at IS NULL
-func (q *Queries) ListExistingProductImagePaths(ctx context.Context, imagePaths []string) ([]string, error) {
-	rows, err := q.db.Query(ctx, listExistingProductImagePaths, imagePaths)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []string
-	for rows.Next() {
-		var image_path string
-		if err := rows.Scan(&image_path); err != nil {
-			return nil, err
-		}
-		items = append(items, image_path)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listLowStockProducts = `-- name: ListLowStockProducts :many
 SELECT
     ps.name AS status_name,
@@ -1244,7 +1207,7 @@ type ListLowStockProductsRow struct {
 // 在庫が警告閾値以下の商品を、在庫の少ない順（同数は ID 昇順）で最大 limit 件取得します。
 // status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
 // internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
-// 閾値未設定（NULL）の商品は WHERE で明示的に除外する（意味は docs/spec/product/domain.md の
+// 閾値未設定（NULL）の商品は WHERE で明示的に除外する（意味は docs/spec/domain/product.md の
 // Product.FindAllLowStock を参照）。
 // 「在庫僅少」を定義するのは Product.IsLowStock で、以下の条件はその実行形です。片方だけ変更しないこと。
 //
@@ -1309,7 +1272,7 @@ type ListProductImagesByProductIDsRow struct {
 // === source: database/dml/repository/product/select_product_images.sql ===
 // 複数の商品 ID から画像をまとめて取得する。商品 1 件ずつの取得を件数分繰り返さないための一括版で、
 // 並びは商品 ID 昇順・同一商品内は表示順（display_sort）昇順。product_ids が空の場合は 0 行。
-// 生存行だけを返す（論理削除の意味は docs/spec/product/domain.md の Image 節を参照）。
+// 生存行だけを返す（論理削除の意味は docs/spec/domain/product.md の Image 節を参照）。
 //
 //	SELECT pi.id, pi.product_id, pi.image_path, pi.display_sort, pi.deleted_at, pi.created_at, pi.updated_at
 //	FROM product_images AS pi
@@ -1364,7 +1327,7 @@ type ListProductsByIDsRow struct {
 
 // === source: database/dml/repository/product/select_products_by_ids.sql ===
 // ID の集合から公開状態を問わない商品群を取得します。
-// 行はロックしません（カートは在庫を押さえない — docs/spec/cart/domain.md の Notes）。
+// 行はロックしません（カートは在庫を押さえない — docs/spec/domain/cart.md の Notes）。
 // 不存在の ID は結果に現れないため、返る件数は引数より少なくなり得ます。
 // 公開状態で絞らないのは、非公開化された明細に unpublished を立てる判定材料が要るためです。
 // status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
@@ -2221,7 +2184,7 @@ type UpdateProductStockParams struct {
 
 // === source: database/dml/repository/product/update_product_stock.sql ===
 // 在庫数を更新し、採番後のバージョンを返します。
-// lock_version の加算は SQL 側で行う（採番の権威の置き場所は docs/spec/product/domain.md の
+// lock_version の加算は SQL 側で行う（採番の権威の置き場所は docs/spec/domain/product.md の
 // Product.Update を参照）。
 // 在庫更新でもバージョンを進めることで、更新前のバージョンを条件とする部分更新（UpdateProduct）が
 // 在庫の変化を上書きせずに 0 行で弾かれます。

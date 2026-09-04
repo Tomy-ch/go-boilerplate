@@ -121,21 +121,22 @@ This repository ships a sample feature set that is developed, harvested, and the
 statements elsewhere borrow their force from it. A created repository has no sample set, so what it inherits is the
 rule, never the illustration.
 
-### Sample occupants kept to make a rule legible
+### A category kept with no occupant
 
-The only provider in `internal/infrastructure/rdb/command_service/` belongs to the sample purchase
-feature, and it is the sole registration in the `command_service` sub-module of `persistenceModule`
-(`internal/di/module/persistence.go`). Removing the samples empties the sub-module and leaves
-[ADR-0032 (lightweight-cqrs)](../adr/0032-lightweight-cqrs.md)'s CommandService section describing an intended design
-with no occupant — which is the state a created repository starts from.
+`internal/infrastructure/rdb/command_service/` currently holds no provider, and the
+`command_service` sub-module of `persistenceModule` (`internal/di/module/persistence.go`) has no
+registration. The sample purchase feature used to occupy it, and no longer does: its target rows are
+named by identity, so they can be locked and the write decomposes into Repository calls — which is
+the answer [ADR-0034 (commandservice-atomicity-criterion)](../adr/0034-commandservice-atomicity-criterion.md)
+gives, not a gap.
 
-The upstream keeps that occupant deliberately: the eligibility bar ADR-0032 (lightweight-cqrs) states (which writes
-deserve a CommandService) is only legible against a concrete case that meets it, so the sample
-carries the bar's reading.
+The eligibility bar is therefore read from that ADR's worked instances rather than from a live
+implementation, and the category is kept scaffolded so the shape stays visible. An occupant that
+actually meets the bar is planned — a write whose target set is defined by a predicate, which can be
+neither enumerated nor locked.
 
-**This deviation does not transfer.** In a project built from the template, what goes into
-`command_service` is decided by that project's requirements. Zero occupants is not a defect, and
-"keep an implementation so the bar can be read" is not a reason that project holds.
+**Nothing here transfers.** In a project built from the template, what goes into `command_service` is
+decided by that project's requirements, and zero occupants is not a defect.
 
 ### The sample API moves the authorization gate's boundary
 

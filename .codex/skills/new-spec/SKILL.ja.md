@@ -2,12 +2,12 @@
 
 # New Spec
 
-1 feature の 2 layer spec テンプレートセット（lean A: `domain.md` + `usecase.md`）を作成する統合スキル。
+1 feature の 2 layer spec テンプレートセット（lean A: domain spec 1 本 + usecase spec 1 本）を作成する統合スキル。
 
 ## 使うとき
 
 - 新規 feature 開始で 2 layer 分の spec テンプレを 1 つの chain flow で作成
-- 既存 feature ディレクトリに片方の spec が無い状態で、欠落 layer を埋める
+- 2 本のうち片方の spec が既にある feature で、欠落 layer を埋める
 
 以下の用途には使いません:
 
@@ -27,30 +27,49 @@ controller / infra layer は spec 駆動ではなく、OpenAPI gen と sqlc gen 
 
 - 実行時に対応する `.codex/scaffold-spec/<layer>-spec.md` を読んで節リスト取得
 - 自身の `ask the user explicitly` で layer 固有 identity 収集
-- `docs/spec/<feature>/` 配下に Markdown ファイル 1 つを書き込み
+- `docs/spec/domain/` または `docs/spec/usecase/` 配下に Markdown ファイル 1 つを書き込み
 
-本 skill は orchestration のみ: feature 名 + layer 選択を確認、依存順で per-layer skill を起動。
+本 skill は orchestration のみ: feature 名 + layer 選択 + layer ごとのパッケージパスを確認し、依存順で per-layer skill を起動。
+
+**feature は束ねかたであってディレクトリではない。** spec のツリーはパッケージパスで引かれる
+（`docs/spec/<layer>/<rest>.md` ⇔ `internal/<layer>/<rest>`）ので、1 feature の 2 spec は別々の
+ツリーに置かれ、パスが一致する必要はない — `internal/usecase/user/search` は `internal/domain/user`
+と同じ feature である。ここで集める feature 名は束ねのラベルであり、用語表の所有列を埋めるもので、
+ファイルの置き場所は決めない。
 
 ## 最初のステップ: feature と layer 選択の確認
 
-`ask the user explicitly` を 1 回の batched call で 2 質問:
+まず `ask the user explicitly` を 1 回の batched call で 2 質問:
 
 ### Question 1: feature 名
 
 - フリーテキスト: 「feature 名（kebab-case）。例: `user-management`, `order-fulfillment`」
 - `^[a-z][a-z0-9-]*$` を検証。無効なら再質問
+- これは束ねのラベル — レポートと用語表の所有列で feature を指す名前であり、**パスではない**
 
 ### Question 2: scaffold する layer
 
 - multi-select、2 択:
   - 「domain」
   - 「usecase」
-- 既定: 両方。一部 deselect 可（例: `domain` 既存で `usecase` のみ）
+- 既定: 両方。一部 deselect 可（例: domain spec 既存で usecase のみ）
+
+### 続けて: 選択した layer ごとのパッケージパス
+
+2 回目の batched `ask the user explicitly`。選択した layer ごとにフリーテキスト 1 問。skip 判定が必要とするのは
+パスであり、feature 名からは導出できないため:
+
+- domain: 「domain パッケージパス（`internal/domain/` 以下）。例: `cart`, `product/category`」
+- usecase: 「usecase パッケージパス（`internal/usecase/` 以下）。例: `address`, `product/ranking`, `user/search`」
+
+いずれも `^[a-z][a-z0-9]*(/[a-z][a-z0-9]*)*$` を検証 — Go のパッケージ名にハイフンは無いので、
+kebab-case の feature 名はたいてい妥当なパッケージパス**ではない**。feature 名の `-` を `/` に
+置き換えたものを既定値として提示し、ユーザーに直させる。
 
 回答後:
 
-1. 作業計画作成: feature 名 + scaffold 対象 layer 順序リスト（依存順 `domain` → `usecase`）
-2. 各選択 layer について `docs/spec/<feature>/<layer>.md` 既存確認。存在すれば chain 失敗ではなく **skip** マーク
+1. 作業計画作成: feature 名 + scaffold 対象の (layer, パッケージパス) 順序リスト（依存順 `domain` → `usecase`）
+2. 各選択 layer について `docs/spec/<layer>/<pkgpath>.md` 既存確認。存在すれば chain 失敗ではなく **skip** マーク
 3. 計画を日本語で skip マーク付きで表示、`ask the user explicitly` で確認:
    - 質問: 「以下の順番で per-layer skill を chain します。進めますか？」
    - 選択肢: 「進める」 / 「キャンセル」
@@ -66,11 +85,11 @@ skip 適用後に実行対象が空なら報告して停止:
 計画の各 layer について（依存順 `domain` → `usecase`）:
 
 1. `Skill` tool で `new-spec-<layer>` を起動
-2. chain context として feature 名を渡し、child の feature 名 `ask the user explicitly` をスキップ可能にする — layer 固有 identity（aggregate / package / interface 名）のみ child が質問
+2. chain context として feature 名**とその layer のパッケージパス**を渡し、child のパス `ask the user explicitly` をスキップ可能にする — layer 固有 identity（aggregate 名 / interface 名）のみ child が質問
 3. child が自身の確認を実施しファイルを書き込む
 4. child が失敗報告（user キャンセル等）したら chain 停止 + ステータス surface、書き込み済み layer の自動 rollback はしない
 
-各 per-layer skill は独立 — feature 名と layer 実行順序のみ共有、aggregate / interface 名は skill 間で受け渡さない。
+各 per-layer skill は独立 — feature 名と layer 実行順序のみ共有。パッケージパスは layer ごとに別の回答であり、aggregate / interface 名も skill 間で受け渡さない。
 
 ## Step 2. クロージングレポート
 
@@ -78,8 +97,8 @@ skip 適用後に実行対象が空なら報告して停止:
 
 ```text
 new-spec 完了（feature: <feature>）。
-  ✓ domain   : 作成済み (docs/spec/<feature>/domain.md)
-  ✓ usecase  : 作成済み (docs/spec/<feature>/usecase.md)
+  ✓ domain   : 作成済み (docs/spec/domain/<domainPkgPath>.md)
+  ✓ usecase  : 作成済み (docs/spec/usecase/<usecasePkgPath>.md)
 
 次のアクション:
   - editor で TODO を埋める
@@ -98,7 +117,7 @@ commit しない。scaffold skill 自動起動しない。
 
 ## AI 修正スコープ
 
-本 skill 自体はファイル書き込みなし。全 write スコープは per-layer skill に委譲、各 `docs/spec/<feature>/<layer>.md` にスコープ。
+本 skill 自体はファイル書き込みなし。全 write スコープは per-layer skill に委譲、各 `docs/spec/<layer>/<pkgpath>.md` にスコープ。
 
 ## 制約事項
 
@@ -107,6 +126,7 @@ commit しない。scaffold skill 自動起動しない。
 - ❌ 1 layer の既存ファイル理由で chain 全体中断 — skip マークして継続
 - ❌ 後段失敗時に earlier layer 自動 rollback
 - ❌ feature 確認 `ask the user explicitly` をスキップ
+- ❌ layer のパッケージパスを尋ねずに feature 名から導出（kebab-case はパッケージパスではなく、2 layer のパスは食い違う）
 - ❌ per-layer skill を依存順以外で起動
 - ❌ controller / infra を spec 選択肢として提示（lean A: 両層は導出、spec 駆動ではない）
 - ✅ ユーザー向け出力は日本語
@@ -116,7 +136,7 @@ commit しない。scaffold skill 自動起動しない。
 
 ## チェックリスト
 
-- [ ] feature 名 + layer 選択を `ask the user explicitly` で確認
+- [ ] feature 名 + layer 選択 + layer ごとのパッケージパスを `ask the user explicitly` で確認
 - [ ] 既存 layer ファイルを skip マーク（失敗扱いにしない）
 - [ ] per-layer skill を依存順で起動
 - [ ] 各 per-layer skill が自身の identity `ask the user explicitly` を実施

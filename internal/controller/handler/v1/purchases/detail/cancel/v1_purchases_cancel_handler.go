@@ -33,7 +33,7 @@ func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc purchaseuc.Use
 }
 
 // PatchPurchasesCancel は、本人の購入をキャンセルします。認証必須。404: 不存在 / 他人の購入。409: 不正遷移
-// （詳細は docs/spec/purchase/usecase.md § PATCH キャンセル を参照）。
+// （詳細は docs/spec/usecase/purchase.md § PATCH キャンセル を参照）。
 func (s *server) PatchPurchasesCancel(
 	ctx context.Context,
 	request gen.PatchPurchasesCancelRequestObject,

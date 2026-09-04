@@ -35,8 +35,8 @@ This repository follows a **lean A** spec policy. Only two layers are spec-drive
 
 |Layer|Source of truth|
 |---|---|
-|domain|`docs/spec/<feature>/domain.md`|
-|usecase|`docs/spec/<feature>/usecase.md`|
+|domain|`docs/spec/domain/<package path>.md`|
+|usecase|`docs/spec/usecase/<package path>.md`|
 |infrastructure|**derived** from the domain Repository interface + sqlc gen (no spec file)|
 |controller|**derived** from the OpenAPI-generated `ServerInterface` + usecase interface (no spec file)|
 
@@ -95,7 +95,7 @@ make setup-remove-sample-api
 `repository/user`, `internal/controller/handler/v1/users`,
 `internal/controller/job/usercount`, the three `internal/integration/v1_users*_test.go`
 files, the User OpenAPI paths/components, the User DML + migrations + seed, and
-`docs/spec/user`.
+`docs/spec/{domain,usecase}/user.md`.
 
 > **Caveat:** the script also removes the `product` / `order` DB stubs (they share the
 > "sample" manifest). That is fine for a User-only rebuild — they are unused migrations — but
@@ -121,10 +121,10 @@ files. These are the human-authored intent the inner layers will implement.
 
 **Files:**
 
-- `docs/spec/user/domain.md` — Overview / Entity / Cross-field Invariants / Behavior
+- `docs/spec/domain/user.md` — Overview / Entity / Cross-field Invariants / Behavior
   Methods / Value Objects / Repository Methods.
-- `docs/spec/user/usecase.md` — Overview / Interface / DTOs / Dependencies / Workflow.
-- `docs/spec/user-search/usecase.md` — the read-only keyword-search service (its own spec
+- `docs/spec/usecase/user.md` — Overview / Interface / DTOs / Dependencies / Workflow.
+- `docs/spec/usecase/user/search.md` — the read-only keyword-search service (its own spec
   because it is a separate query-side use case).
 
 **Why first:** in lean A the domain and usecase implementations are validated against these
@@ -219,7 +219,7 @@ editing the output.
 
 ## Step 4 — Domain layer
 
-**Goal:** implement the aggregate from `domain.md`: the entity, its invariants, behavior
+**Goal:** implement the aggregate from `docs/spec/domain/user.md`: the entity, its invariants, behavior
 methods, value objects, sentinel errors, constants, and the Repository interface.
 
 **Files (in `internal/domain/user/`):**
@@ -324,7 +324,7 @@ go test ./internal/infrastructure/rdb/repository/user/...
 
 ## Step 6 — Usecase layer
 
-**Goal:** implement the application service from `usecase.md`: orchestrate domain + repository +
+**Goal:** implement the application service from `docs/spec/usecase/user.md`: orchestrate domain + repository +
 boundaries, and return DTOs. No business *rules* are invented here — this layer coordinates.
 
 **Files (in `internal/usecase/user/`):**
@@ -533,7 +533,7 @@ the Definition of Done, not an optional polish.
 |Step|Layer|Key files|The "why" in one line|Verify|
 |---|---|---|---|---|
 |0|reset|`make setup-remove-sample-api`|The manifest is the feature's table of contents|tree compiles without User|
-|1|spec|`docs/spec/user/{domain,usecase}.md`|lean A: only the inner two layers are spec-driven|`/verify-spec user`|
+|1|spec|`docs/spec/{domain,usecase}/user.md`|lean A: only the inner two layers are spec-driven|`/verify-spec user`|
 |2|contracts|`openapi/**`, `database/migrations/**`, `database/dml/**`|OpenAPI-first + append-only migrations|`make db-*-migrate-up`|
 |3|generate|`make gen-api` / `make gen-query`|Change the contract, never the generated output|files appear under `gen/`|
 |4|domain|`internal/domain/user/**`|Unexported fields + `ptr.Copy` + sentinel errors + purity|`go test ./internal/domain/user/...`|

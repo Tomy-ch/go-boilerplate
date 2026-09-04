@@ -310,6 +310,9 @@ extra = [
   "osv-vulnerabilities.storage.googleapis.com:443",
 ]
 
+[job."outbox-relay-boot-check.yaml:outbox-relay-boot-check"]
+classes = ["image"]
+
 [job."pin-actions-check.yaml:pin-actions-check"]
 classes = ["image"]
 

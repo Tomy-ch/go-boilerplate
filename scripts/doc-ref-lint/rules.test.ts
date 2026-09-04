@@ -162,14 +162,14 @@ describe("expectedTranslation", () => {
       expect(expectedTranslation("docs/design/worker.txt")).toBeNull();
       expect(expectedTranslation("docs/adr/0001-a.md")).toBeNull();
       expect(expectedTranslation("docs/godoc/a.md")).toBeNull();
-      expect(expectedTranslation("docs/spec/user/domain.md")).toBeNull();
+      expect(expectedTranslation("docs/spec/domain/user.md")).toBeNull();
     });
   });
 });
 
 describe("translationExclusion", () => {
   describe("正常系", () => {
-    it("意図的に英語のみの仕様領域の理由を返す", () => expect(translationExclusion("docs/spec/user/domain.md")).toContain("English-only"));
+    it("意図的に英語のみの仕様領域の理由を返す", () => expect(translationExclusion("docs/spec/domain/user.md")).toContain("English-only"));
   });
   describe("異常系", () => {
     it("対象外の文書には除外理由を返さない", () => expect(translationExclusion("docs/design/worker.md")).toBeNull());
@@ -192,7 +192,7 @@ describe("checkTranslations", () => {
 
 describe("checkTranslationExclusions", () => {
   describe("正常系", () => {
-    it("根拠のある現役の除外を通す", () => expect(checkTranslationExclusions(["docs/spec/user/domain.md"])).toEqual([]));
+    it("根拠のある現役の除外を通す", () => expect(checkTranslationExclusions(["docs/spec/domain/user.md"])).toEqual([]));
   });
   describe("異常系", () => {
     it("対象がない除外を古い設定として報告する", () => expect(checkTranslationExclusions([])[0].message).toBe("stale translation exclusion"));

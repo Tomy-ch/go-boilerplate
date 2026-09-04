@@ -670,6 +670,7 @@ func Test_normalizeHTTPError(t *testing.T) {
 				ErrorResponseWithDetails: gen.ErrorResponseWithDetails{
 					Code:      "E_ERR",
 					Message:   "err",
+					Details:   nil,
 					RequestId: "",
 				},
 				HTTPStatus: http.StatusBadRequest,

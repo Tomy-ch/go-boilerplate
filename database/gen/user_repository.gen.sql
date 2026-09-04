@@ -57,7 +57,7 @@ WHERE user_id IN (
 
 -- name: DeleteUsersByIDs :execrows
 -- 削除件数を返す。従属行の削除後に呼ぶこと（参照の残存はここでは検査しない）。
--- 論理削除済みを永続化側でも検査する理由は docs/spec/user/domain.md の PurgeByIDs を参照。
+-- 論理削除済みを永続化側でも検査する理由は docs/spec/domain/user.md の PurgeByIDs を参照。
 DELETE FROM users
 WHERE id = ANY(sqlc.arg('ids')::UUID[])
     AND deleted_at IS NOT NULL;
@@ -97,7 +97,7 @@ INSERT INTO users (
 -- name: LockUserByID :one
 -- ID から未削除のユーザーを 1 件、悲観ロック（FOR UPDATE）して取得する。
 -- 論理削除済み・不存在はいずれも 0 行（NotFound）。
--- 取得位置の不変条件は docs/spec/user/usecase.md の DeleteUser を参照（ADR-0036 (ordered-pessimistic-row-locks)）。
+-- 取得位置の不変条件は docs/spec/usecase/user.md の DeleteUser を参照（ADR-0036 (ordered-pessimistic-row-locks)）。
 SELECT sqlc.embed(u)
 FROM users AS u
 WHERE u.id = sqlc.arg('user_id_param')
@@ -108,7 +108,7 @@ FOR UPDATE;
 -- name: LockUserShareByID :one
 -- ID からユーザーを 1 件、悲観ロック（FOR SHARE）して取得する。不存在は 0 行（NotFound）。
 -- 退会済みを除外しないこと — ロックは機構で、在籍かどうかの判定はドメイン（User.IsActive）が持つ。
--- 退会との直列化は docs/spec/purchase/usecase.md の CreatePurchase を参照。
+-- 退会との直列化は docs/spec/usecase/purchase.md の CreatePurchase を参照。
 -- ADR-0036 (ordered-pessimistic-row-locks)。
 SELECT sqlc.embed(u)
 FROM users AS u
@@ -127,7 +127,7 @@ LIMIT sqlc.arg('limit_param');
 
 -- name: ListPurgeCandidateUserIDsAfter :many
 -- 論理削除日時が cutoff より古いユーザーの ID を、ID 昇順の keyset で最大 limit_param 件取得する（after_id 以降）。
--- 境界を offset でなく ID で受け取る理由は docs/spec/user/domain.md の FindDeletedBefore を参照。
+-- 境界を offset でなく ID で受け取る理由は docs/spec/domain/user.md の FindDeletedBefore を参照。
 SELECT id
 FROM users
 WHERE deleted_at IS NOT NULL

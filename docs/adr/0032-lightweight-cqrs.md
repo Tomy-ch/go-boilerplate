@@ -73,8 +73,8 @@ three responsibilities:
   the invariants of user, product and purchase at once, so "the aggregate whose invariant it enforces"
   is a relation, not a function. A transaction, by contrast, always has exactly one initiator, and
   [`docs/rules.md`](../rules.md) already gives the usecase layer ownership of transaction boundaries.
-  `internal/usecase/purchase/command/` names a workflow, not an aggregate, so "why purchase and not
-  product?" does not arise.
+  A path like `internal/usecase/<workflow>/command/` therefore names the workflow, not an aggregate,
+  and "why this aggregate and not that one?" does not arise.
 <!-- sample-api:replace-with -->
 <!-- =   pick an owning aggregate does not generalize: one real write can enforce the invariants of several -->
 <!-- =   aggregates at once, so "the aggregate whose invariant it enforces" is a relation, not a function. -->

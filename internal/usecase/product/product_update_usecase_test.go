@@ -40,7 +40,7 @@ type updateTestDeps struct {
 // newUpdateTarget は、部分更新の対象として読み込み済みの商品エンティティを構築します。
 // クリア可能な 4 フィールド（説明・在庫警告閾値・公開日時・画像）はいずれも値を持ち、
 // status / category の名称はマスタ再解決との差分が判別できるよう現行値であることが分かる名称にしています。
-func newUpdateTarget(t *testing.T, version int) (*domainproduct.Product, []domainproduct.Image) {
+func newUpdateTarget(t *testing.T, version int) *domainproduct.Product {
 	t.Helper()
 
 	statusRef, err := domainproduct.NewStatusRef(uuidtestkit.NewTestFromSalt(t, "update_current_status"), "現行ステータス")
@@ -48,7 +48,7 @@ func newUpdateTarget(t *testing.T, version int) (*domainproduct.Product, []domai
 	categoryRef, err := domainproduct.NewCategoryRef(uuidtestkit.NewTestFromSalt(t, "update_current_category"), "現行カテゴリ")
 	require.NoError(t, err)
 
-	p, images, err := domainproduct.Reconstruct(uuidtestkit.NewTestFromSalt(t, "update_product"), domainproduct.Attributes{
+	p, err := domainproduct.Reconstruct(uuidtestkit.NewTestFromSalt(t, "update_product"), domainproduct.Attributes{
 		Name:                  "現行商品名",
 		Description:           ptr.To("現行説明"),
 		Price:                 mustPrice(t, "10.5"),
@@ -66,7 +66,7 @@ func newUpdateTarget(t *testing.T, version int) (*domainproduct.Product, []domai
 	}, version, testCreatedAt)
 	require.NoError(t, err)
 
-	return p, images
+	return p
 }
 
 // newUpdateTestUsecase は、モック依存のみで構成した usecase とそのモック一式を返します。
@@ -102,11 +102,6 @@ func expectAuthorizedLoad(deps *updateTestDeps, entity *domainproduct.Product) {
 	deps.repo.EXPECT().FindByID(gomock.Any(), entity.ID()).Return(entity, nil)
 }
 
-// expectCurrentImages は、集約が抱えない現在の画像を Repository から読み直す期待を設定します。
-func expectCurrentImages(deps *updateTestDeps, entity *domainproduct.Product, images []domainproduct.Image) {
-	deps.repo.EXPECT().ListImages(gomock.Any(), entity.ID()).Return(images, nil)
-}
-
 func Test_usecase_UpdateProduct(t *testing.T) {
 	t.Parallel()
 
@@ -115,12 +110,11 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 		nextVersion    = 4
 	)
 
-	// captureUpdate は、repo.Update へ渡されたエンティティと画像を捕捉し、採番後のバージョンを返させます。
-	captureUpdate := func(deps *updateTestDeps, captured **domainproduct.Product, capturedImages *[]domainproduct.Image) {
-		deps.repo.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
-			func(_ context.Context, p *domainproduct.Product, images []domainproduct.Image) (int, error) {
+	// captureUpdate は、repo.Update へ渡されたエンティティを捕捉し、採番後のバージョンを返させます。
+	captureUpdate := func(deps *updateTestDeps, captured **domainproduct.Product) {
+		deps.repo.EXPECT().Update(gomock.Any(), gomock.Any()).DoAndReturn(
+			func(_ context.Context, p *domainproduct.Product) (int, error) {
 				*captured = p
-				*capturedImages = images
 				return nextVersion, nil
 			},
 		)
@@ -133,15 +127,11 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			t.Parallel()
 
 			u, deps := newUpdateTestUsecase(t)
-			entity, currentImages := newUpdateTarget(t, currentVersion)
+			entity := newUpdateTarget(t, currentVersion)
 			expectAuthorizedLoad(deps, entity)
-			expectCurrentImages(deps, entity, currentImages)
 
-			var (
-				captured       *domainproduct.Product
-				capturedImages []domainproduct.Image
-			)
-			captureUpdate(deps, &captured, &capturedImages)
+			var captured *domainproduct.Product
+			captureUpdate(deps, &captured)
 
 			actual, err := u.UpdateProduct(context.Background(), &auth.Authn{}, entity.ID(), UpdateProductParams{
 				Version:  currentVersion,
@@ -160,6 +150,8 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			assert.Equal(t, 2, *captured.StockWarningThreshold())
 			require.NotNil(t, captured.PublishedAt())
 			assert.Equal(t, updateBasePublishedAt, *captured.PublishedAt())
+			require.Len(t, captured.Images(), 1)
+			assert.Equal(t, "products/current.png", captured.Images()[0].ImagePath())
 			assert.Equal(t, "現行ステータス", captured.Status().Name())
 			assert.Equal(t, "現行カテゴリ", captured.Category().Name())
 
@@ -171,15 +163,11 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			t.Parallel()
 
 			u, deps := newUpdateTestUsecase(t)
-			entity, currentImages := newUpdateTarget(t, currentVersion)
+			entity := newUpdateTarget(t, currentVersion)
 			expectAuthorizedLoad(deps, entity)
-			expectCurrentImages(deps, entity, currentImages)
 
-			var (
-				captured       *domainproduct.Product
-				capturedImages []domainproduct.Image
-			)
-			captureUpdate(deps, &captured, &capturedImages)
+			var captured *domainproduct.Product
+			captureUpdate(deps, &captured)
 
 			actual, err := u.UpdateProduct(context.Background(), &auth.Authn{}, entity.ID(), UpdateProductParams{
 				Version:               currentVersion,
@@ -194,6 +182,7 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			assert.Nil(t, captured.Description())
 			assert.Nil(t, captured.StockWarningThreshold())
 			assert.Nil(t, captured.PublishedAt())
+			assert.Empty(t, captured.Images())
 
 			assert.Nil(t, actual.Description)
 			assert.Nil(t, actual.PublishedAt)
@@ -204,15 +193,11 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			t.Parallel()
 
 			u, deps := newUpdateTestUsecase(t)
-			entity, currentImages := newUpdateTarget(t, currentVersion)
+			entity := newUpdateTarget(t, currentVersion)
 			expectAuthorizedLoad(deps, entity)
-			expectCurrentImages(deps, entity, currentImages)
 
-			var (
-				captured       *domainproduct.Product
-				capturedImages []domainproduct.Image
-			)
-			captureUpdate(deps, &captured, &capturedImages)
+			var captured *domainproduct.Product
+			captureUpdate(deps, &captured)
 
 			publishedAt := updateBasePublishedAt.Add(24 * time.Hour)
 			actual, err := u.UpdateProduct(context.Background(), &auth.Authn{}, entity.ID(), UpdateProductParams{
@@ -235,6 +220,8 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			assert.Equal(t, 7, *captured.StockWarningThreshold())
 			require.NotNil(t, captured.PublishedAt())
 			assert.Equal(t, publishedAt, *captured.PublishedAt())
+			require.Len(t, captured.Images(), 1)
+			assert.Equal(t, "products/updated.png", captured.Images()[0].ImagePath())
 
 			assert.Equal(t, "29.95", actual.Price.String())
 		})
@@ -243,15 +230,11 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			t.Parallel()
 
 			u, deps := newUpdateTestUsecase(t)
-			entity, currentImages := newUpdateTarget(t, currentVersion)
+			entity := newUpdateTarget(t, currentVersion)
 			expectAuthorizedLoad(deps, entity)
-			expectCurrentImages(deps, entity, currentImages)
 
-			var (
-				captured       *domainproduct.Product
-				capturedImages []domainproduct.Image
-			)
-			captureUpdate(deps, &captured, &capturedImages)
+			var captured *domainproduct.Product
+			captureUpdate(deps, &captured)
 
 			actual, err := u.UpdateProduct(context.Background(), &auth.Authn{}, entity.ID(), UpdateProductParams{
 				Version: currentVersion,
@@ -260,6 +243,8 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, captured)
 
+			require.Len(t, captured.Images(), 1)
+			assert.Equal(t, "products/current.png", captured.Images()[0].ImagePath())
 			require.Len(t, actual.Images, 1)
 			assert.Equal(t, "products/current.png", actual.Images[0].Path)
 		})
@@ -268,9 +253,8 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			t.Parallel()
 
 			u, deps := newUpdateTestUsecase(t)
-			entity, currentImages := newUpdateTarget(t, currentVersion)
+			entity := newUpdateTarget(t, currentVersion)
 			expectAuthorizedLoad(deps, entity)
-			expectCurrentImages(deps, entity, currentImages)
 
 			newStatusID := uuidtestkit.NewTestFromSalt(t, "update_new_status")
 			deps.statusRepo.EXPECT().FindByID(gomock.Any(), newStatusID).Return(mustStatus(t, newStatusID), nil)
@@ -278,11 +262,8 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 				FindByID(gomock.Any(), entity.Category().ID()).
 				Return(mustCategory(t, entity.Category().ID()), nil)
 
-			var (
-				captured       *domainproduct.Product
-				capturedImages []domainproduct.Image
-			)
-			captureUpdate(deps, &captured, &capturedImages)
+			var captured *domainproduct.Product
+			captureUpdate(deps, &captured)
 
 			actual, err := u.UpdateProduct(context.Background(), &auth.Authn{}, entity.ID(), UpdateProductParams{
 				Version:  currentVersion,
@@ -301,15 +282,11 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			t.Parallel()
 
 			u, deps := newUpdateTestUsecase(t)
-			entity, currentImages := newUpdateTarget(t, currentVersion)
+			entity := newUpdateTarget(t, currentVersion)
 			expectAuthorizedLoad(deps, entity)
-			expectCurrentImages(deps, entity, currentImages)
 
-			var (
-				captured       *domainproduct.Product
-				capturedImages []domainproduct.Image
-			)
-			captureUpdate(deps, &captured, &capturedImages)
+			var captured *domainproduct.Product
+			captureUpdate(deps, &captured)
 
 			actual, err := u.UpdateProduct(context.Background(), &auth.Authn{}, entity.ID(), UpdateProductParams{
 				Version: currentVersion,
@@ -326,20 +303,16 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			t.Parallel()
 
 			u, deps := newUpdateTestUsecase(t)
-			entity, currentImages := newUpdateTarget(t, currentVersion)
+			entity := newUpdateTarget(t, currentVersion)
 
 			deps.authorizer.EXPECT().
 				Authorize(gomock.Any(), gomock.Any(), authz.ActionProductUpdate, authz.NewResource("product", nil)).
 				Return(nil)
 			deps.txm.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(runInTx)
 			deps.repo.EXPECT().FindByID(gomock.Any(), entity.ID()).Return(entity, nil)
-			expectCurrentImages(deps, entity, currentImages)
 
-			var (
-				captured       *domainproduct.Product
-				capturedImages []domainproduct.Image
-			)
-			captureUpdate(deps, &captured, &capturedImages)
+			var captured *domainproduct.Product
+			captureUpdate(deps, &captured)
 
 			_, err := u.UpdateProduct(context.Background(), &auth.Authn{}, entity.ID(), UpdateProductParams{
 				Version: currentVersion,
@@ -381,12 +354,12 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 		t.Run("statusIdに対応するマスタが存在しない場合、整合性異常(500)を返し更新を実行しない", func(t *testing.T) {
 			t.Parallel()
 
-			entity, _ := newUpdateTarget(t, currentVersion)
+			entity := newUpdateTarget(t, currentVersion)
 			u, deps := newUpdateTestUsecase(t)
 			expectAuthorizedLoad(deps, entity)
 			newStatusID := uuidtestkit.NewTestFromSalt(t, "update_missing_status")
 			deps.statusRepo.EXPECT().FindByID(gomock.Any(), newStatusID).Return(nil, apperror.ErrNotFound)
-			deps.repo.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			deps.repo.EXPECT().Update(gomock.Any(), gomock.Any()).Times(0)
 
 			actual, err := u.UpdateProduct(context.Background(), &auth.Authn{}, entity.ID(),
 				UpdateProductParams{Version: currentVersion, StatusID: &newStatusID})
@@ -449,9 +422,9 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			t.Parallel()
 
 			u, deps := newUpdateTestUsecase(t)
-			entity, _ := newUpdateTarget(t, currentVersion)
+			entity := newUpdateTarget(t, currentVersion)
 			expectAuthorizedLoad(deps, entity)
-			deps.repo.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			deps.repo.EXPECT().Update(gomock.Any(), gomock.Any()).Times(0)
 
 			actual, err := u.UpdateProduct(context.Background(), &auth.Authn{}, entity.ID(), UpdateProductParams{
 				Version: currentVersion - 1,
@@ -466,10 +439,9 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			t.Parallel()
 
 			u, deps := newUpdateTestUsecase(t)
-			entity, currentImages := newUpdateTarget(t, currentVersion)
+			entity := newUpdateTarget(t, currentVersion)
 			expectAuthorizedLoad(deps, entity)
-			expectCurrentImages(deps, entity, currentImages)
-			deps.repo.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+			deps.repo.EXPECT().Update(gomock.Any(), gomock.Any()).Times(0)
 
 			_, err := u.UpdateProduct(context.Background(), &auth.Authn{}, entity.ID(), UpdateProductParams{
 				Version:  currentVersion,
@@ -482,10 +454,9 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			t.Parallel()
 
 			u, deps := newUpdateTestUsecase(t)
-			entity, currentImages := newUpdateTarget(t, currentVersion)
+			entity := newUpdateTarget(t, currentVersion)
 			expectAuthorizedLoad(deps, entity)
-			expectCurrentImages(deps, entity, currentImages)
-			deps.repo.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any()).Return(0, domainproduct.ErrVersionConflict)
+			deps.repo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(0, domainproduct.ErrVersionConflict)
 
 			actual, err := u.UpdateProduct(context.Background(), &auth.Authn{}, entity.ID(), UpdateProductParams{
 				Version: currentVersion,
@@ -512,7 +483,7 @@ func Test_usecase_resolveUpdatedRefs(t *testing.T) {
 		t.Run("statusId/categoryIdがいずれも未指定の場合、マスタを再解決せず現在の参照を返す", func(t *testing.T) {
 			t.Parallel()
 
-			entity, _ := newUpdateTarget(t, 1)
+			entity := newUpdateTarget(t, 1)
 			statusRepo, categoryRepo := newRefRepos(t)
 			statusRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Times(0)
 			categoryRepo.EXPECT().FindByID(gomock.Any(), gomock.Any()).Times(0)
@@ -527,7 +498,7 @@ func Test_usecase_resolveUpdatedRefs(t *testing.T) {
 		t.Run("statusIdのみ指定の場合、categoryは現在のIDで再解決される", func(t *testing.T) {
 			t.Parallel()
 
-			entity, _ := newUpdateTarget(t, 1)
+			entity := newUpdateTarget(t, 1)
 			newStatusID := uuidtestkit.NewTestFromSalt(t, "resolve_updated_status")
 			statusRepo, categoryRepo := newRefRepos(t)
 			statusRepo.EXPECT().FindByID(gomock.Any(), newStatusID).Return(mustStatus(t, newStatusID), nil)
@@ -548,7 +519,7 @@ func Test_usecase_resolveUpdatedRefs(t *testing.T) {
 		t.Run("categoryIdのみ指定の場合、statusは現在のIDで再解決される", func(t *testing.T) {
 			t.Parallel()
 
-			entity, _ := newUpdateTarget(t, 1)
+			entity := newUpdateTarget(t, 1)
 			newCategoryID := uuidtestkit.NewTestFromSalt(t, "resolve_updated_category")
 			statusRepo, categoryRepo := newRefRepos(t)
 			statusRepo.EXPECT().
@@ -573,7 +544,7 @@ func Test_usecase_resolveUpdatedRefs(t *testing.T) {
 		t.Run("マスタの再解決に失敗した場合、ゼロ値の参照とエラーを返す", func(t *testing.T) {
 			t.Parallel()
 
-			entity, _ := newUpdateTarget(t, 1)
+			entity := newUpdateTarget(t, 1)
 			newStatusID := uuidtestkit.NewTestFromSalt(t, "resolve_updated_missing_status")
 			statusRepo, categoryRepo := newRefRepos(t)
 			statusRepo.EXPECT().FindByID(gomock.Any(), newStatusID).Return(nil, apperror.ErrNotFound)

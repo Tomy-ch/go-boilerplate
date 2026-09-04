@@ -8,7 +8,7 @@ feature を「今いる地点」— ラフなアイデアでも、書き上げ�
 
 ## 使うとき
 
-- 新規 feature / endpoint を end-to-end で立ち上げる — アイデアしか無くても、2 spec（`domain.md` + `usecase.md`）+ OpenAPI YAML + SQL が用意済みでも。
+- 新規 feature / endpoint を end-to-end で立ち上げる — アイデアしか無くても、2 spec（domain + usecase）+ OpenAPI YAML + SQL が用意済みでも。
 - コードを書く*前*に上流の設計フェーズ（曖昧点の明確化 → 既存パターンの探索 → アプローチの比較）を回したい。
 - 全層を同じ規約で構築し 1 つの統合レポートを得た上で、`impl-review` / `arch-check` / `test-review` でレビューしたい。
 
@@ -22,8 +22,8 @@ feature を「今いる地点」— ラフなアイデアでも、書き上げ�
 
 | モード | トリガ | 上流フェーズ (Phase 1–4) | コア (Phase 5–7) |
 | --- | --- | --- | --- |
-| **A. idea-first** | アイデア / 要件から開始。`docs/spec/<feature>/` が無い、または `domain.md`/`usecase.md` を欠く | **実行** — 明確化 → 探索 → 設計 → 入力ドラフト | 実行 |
-| **B. specs-ready** | `docs/spec/<feature>/{domain,usecase}.md` + OpenAPI gen + sqlc gen が既に存在 | **スキップ**（fast path） | 実行 |
+| **A. idea-first** | アイデア / 要件から開始。domain spec または usecase spec がそれぞれのツリーに無い | **実行** — 明確化 → 探索 → 設計 → 入力ドラフト | 実行 |
+| **B. specs-ready** | `docs/spec/domain/<domainPkg>.md` + `docs/spec/usecase/<usecasePkg>.md` + OpenAPI gen + sqlc gen が既に存在 | **スキップ**（fast path） | 実行 |
 
 有効な入力を既に持つユーザーに上流フェーズを強制しない — 検出してスキップする。逆に、spec がまだ無いのに `verify-spec` へ直行してはいけない — そこが上流フェーズの埋める穴。
 
@@ -31,7 +31,7 @@ feature を「今いる地点」— ラフなアイデアでも、書き上げ�
 
 **読み込み（常時）**:
 
-- `docs/spec/<feature>/{domain,usecase}.md`（child skill 経由、lean A: 2 spec のみ）。
+- `docs/spec/domain/<domainPkg>.md` + `docs/spec/usecase/<usecasePkg>.md`（child skill 経由、lean A: 2 spec のみ）。
 - OpenAPI gen + sqlc gen + domain Repository IF — controller / infra の導出元（spec なし）。
 - `.codex/scaffold-spec/lifecycle.md` — canonical workflow / scaffold execution order。
 - layer `README.md` + `docs/` を実行時に参照（上流フェーズは既存パターンの真の出所として読む。drift する設計ルールをハードコードしない）。
@@ -39,7 +39,7 @@ feature を「今いる地点」— ラフなアイデアでも、書き上げ�
 **書き込み**:
 
 - **モード B**: 直接はなし。全書き込みは child skill 内、各自のスコープ内で発生。
-- **モード A（上流フェーズ、Phase 4 のみ）**: ユーザーレビュー用の*ドラフト*入力アーティファクト — `openapi/**`（OpenAPI YAML）、`database/migrations/**`（新規ファイルのみ）+ `database/dml/**`（SQL）、`docs/spec/<feature>/{domain,usecase}.md`（`new-spec` 経由 → 記入）。いずれも `AGENTS.md` の AI 修正スコープ内。上流フェーズは Go ソースを書かない — それはコアの child skill の担当。
+- **モード A（上流フェーズ、Phase 4 のみ）**: ユーザーレビュー用の*ドラフト*入力アーティファクト — `openapi/**`（OpenAPI YAML）、`database/migrations/**`（新規ファイルのみ）+ `database/dml/**`（SQL）、`docs/spec/domain/<domainPkg>.md` + `docs/spec/usecase/<usecasePkg>.md`（`new-spec` 経由 → 記入）。いずれも `AGENTS.md` の AI 修正スコープ内。上流フェーズは Go ソースを書かない — それはコアの child skill の担当。
 
 ## コア（Phase 5+）の前提条件
 
@@ -47,7 +47,7 @@ feature を「今いる地点」— ラフなアイデアでも、書き上げ�
 
 | # | 前提 | 検証者 |
 | --- | --- | --- |
-| 1 | `domain.md` + `usecase.md` が `docs/spec/<feature>/` 配下に存在（lean A: 2 spec のみ） | verify-spec |
+| 1 | domain spec と usecase spec がそれぞれのツリーに存在（lean A: 2 spec のみ） | verify-spec |
 | 2 | spec format 有効 + cross-spec 参照整合 + 命名規約充足 | verify-spec |
 | 3 | OpenAPI YAML 書き込み済み + `make gen-api` で `internal/controller/handler/<path>/gen/` 生成済み | scaffold-controller 前提 |
 | 4 | `database/dml/...` 配下に SQL 書き込み済み + `make gen-query` で sqlc gen 生成済み | scaffold-infra-db 前提 |
@@ -64,15 +64,18 @@ feature を「今いる地点」— ラフなアイデアでも、書き上げ�
 
 ## Phase 0. feature 確認 + モード判定
 
-**起動直後に必ず `ask the user explicitly` を呼ぶ**:
+**起動直後に必ず `ask the user explicitly` を呼ぶ**（1 回の batched call）:
 
-- 質問: 「対象 feature 名 (kebab-case)」
-- フリーテキスト。
+- 「対象 feature 名 (kebab-case)」 — フリーテキスト。レポートで使う束ねのラベルであり、パスではない
+- 「domain パッケージパス（`internal/domain/` 以下。例: `cart`, `product/category`）」 — フリーテキスト
+- 「usecase パッケージパス（`internal/usecase/` 以下。例: `address`, `product/ranking`, `user/search`）」 — フリーテキスト
 
-続いてエントリモードを判定:
+2 つのパッケージパスは別々の回答であり、互いにも feature 名とも日常的に食い違う: spec のツリーはパッケージパスで引かれ（`docs/spec/<layer>/<rest>.md` ⇔ `internal/<layer>/<rest>`）、Go のパッケージ名にハイフンは無く、usecase パッケージは依存先の集約の下には無い（`internal/usecase/user/search` → `internal/domain/user`）。feature 名の `-` を `/` に置き換えたものを既定値とし、ユーザーに直させる。
 
-- `docs/spec/<feature>/` を確認。`domain.md` と `usecase.md` の両方があり**かつ**ユーザーの依頼が「用意済み spec からの scaffold」と読めるなら、**モード B** を選び Phase 5 へ直行。
-- それ以外は**モード A** を選び上流フェーズ（Phase 1–4）を回す。ディレクトリごと無い場合は通常の idea-first 開始 — エラー扱いしない。
+続いてエントリモードを判定 — **ツリーごとに 1 回、計 2 回の存在確認**:
+
+- `docs/spec/domain/<domainPkg>.md` と `docs/spec/usecase/<usecasePkg>.md` を確認。**両方**があり**かつ**ユーザーの依頼が「用意済み spec からの scaffold」と読めるなら、**モード B** を選び Phase 5 へ直行。
+- それ以外は**モード A** を選び上流フェーズ（Phase 1–4）を回す。どちらかが無いのは通常の idea-first 開始 — エラー扱いしない。
 
 モードが曖昧（spec はあるがユーザーはまだ設計中）なら、推測せずどちらか尋ねる。
 
@@ -111,7 +114,7 @@ feature を「今いる地点」— ラフなアイデアでも、書き上げ�
 **`Plan`** エージェント（1〜3 観点。例: 最小変更 / クリーン境界 / 実利バランス）で候補案を出す。**全案を固定アーキテクチャに拘束する** — 設計空間はレールの*内側*であり、外側は不可:
 
 - オニオン層: `controller → usecase → domain`; infrastructure が domain interface を実装; 層迂回なし（depguard で強制）。
-- lean A 憲法: spec 駆動は `domain.md` + `usecase.md` のみ; controller は OpenAPI gen、infra は sqlc gen から導出。
+- lean A 憲法: spec 駆動は domain 層と usecase 層のみ; controller は OpenAPI gen、infra は sqlc gen から導出。
 - HTTP 契約は OpenAPI-first; クエリは sqlc; 新フレームワーク・新アーキパターンなし（`AGENTS.md` 準拠）。
 
 したがって各案は*リポジトリ内で合法な*軸で差が出る — 計算値の置き場（domain メソッド vs VO）、読みパスの repository vs query-service、同期 write vs outbox、ページング方式、不変条件の強制方法など — フレームワークレベルの選択ではない。各案の trade-off と推奨を提示し、**`ask the user explicitly` でどの案を採るか**尋ねる。
@@ -122,7 +125,7 @@ feature を「今いる地点」— ラフなアイデアでも、書き上げ�
 
 選択した案に沿って:
 
-1. `new-spec` を連鎖して `domain.md` + `usecase.md` テンプレートを起こし、設計内容を**記入する**（entity/不変条件/behavior/VO/Repository メソッド; usecase interface/DTO/依存/workflow）。`new-spec` は identity レベルのテンプレートしか作らない — 設計内容は Phase 1–3 由来。
+1. `new-spec` を連鎖して domain + usecase の spec テンプレートを起こし、設計内容を**記入する**（entity/不変条件/behavior/VO/Repository メソッド; usecase interface/DTO/依存/workflow）。`new-spec` は identity レベルのテンプレートしか作らない — 設計内容は Phase 1–3 由来。
 2. **OpenAPI YAML** を `openapi/**`（OpenAPI-first）、**SQL** を `database/dml/**` + **新規** migration を `database/migrations/**`（新規ファイルのみ — 既存 migration は編集しない）にドラフト。
 3. **ドラフトをユーザーレビューに出す**（`ask the user explicitly`: 「このドラフトで生成に進みますか？」 / 修正指摘 / キャンセル）。これはドラフト — ユーザーが author-of-record であり、生成前に承認が要る。
 4. 承認後、`make gen-api` + `make gen-query` を実行（DB 起動必須 — 環境注記参照）し、コア向けに生成 `gen/` + sqlc ファイルを揃える。
@@ -137,7 +140,7 @@ Phase 4 完了時に Phase 5+ の前提が成立し、（無改変の）コア�
 
 ### Phase 5. spec 検証（自動 chain）
 
-`verify-spec` skill を feature 名指定で起動。`verify-spec` が `violations > 0` を報告したら chain 中断:
+`verify-spec` skill を Phase 0 で収集した 2 つのパッケージパス指定で起動。`verify-spec` が `violations > 0` を報告したら chain 中断:
 
 ```text
 scaffold can not safely proceed: verify-spec で <N> 件の違反が検出されました。
@@ -148,7 +151,7 @@ warning のみなら継続（warning は block しない）。
 
 ### Phase 6. 依存順序で child skill chain
 
-各 child skill を順に起動、feature 名を context として渡し各 child が spec パスを自動解決できるように:
+各 child skill を順に起動、その層のパッケージパスを context として渡し各 child がそこから spec パスを解決できるように（feature 名は spec パスを決めない）:
 
 1. **`scaffold-domain`** — entity + Repository IF + VOs + constants + errors + tests（+ mock 用 `make gen-api`）。
 2. **`scaffold-infra-db`** — sqlc gen ラップの Repository 実装（事前 `make gen-query` 実行済みを内部検証）。
@@ -248,7 +251,7 @@ commit しない。push しない。
 ## AI 修正スコープ
 
 - **モード B**: 本 skill 自体はファイルを書かない。全スコープは child skill に委譲（各 SKILL.md の constraint 参照）。
-- **モード A**: 加えて上流フェーズが Phase 4 で入力アーティファクトをドラフトする — `openapi/**`、`database/dml/**`、`database/migrations/**`（新規ファイルのみ）、`docs/spec/<feature>/**`（いずれも `AGENTS.md` の AI 修正スコープ内）に限る。Go ソースは書かず、生成ファイルにも触れない。
+- **モード A**: 加えて上流フェーズが Phase 4 で入力アーティファクトをドラフトする — `openapi/**`、`database/dml/**`、`database/migrations/**`（新規ファイルのみ）、`docs/spec/domain/**` / `docs/spec/usecase/**`（いずれも `AGENTS.md` の AI 修正スコープ内）に限る。Go ソースは書かず、生成ファイルにも触れない。
 
 ## 制約事項
 

@@ -64,13 +64,13 @@ exclusion ADR は `setup-review` タグを持ち、リポジトリセットア�
 
 本リポジトリはサンプル機能群を同梱し、実装し、知見を収穫し、最後に削除する。他所の記述のいくつかは、その存在から論拠を借りている。作成先にサンプル機能群は無いので、継承されるのは規則のほうであって、例示ではない。
 
-### 規則を読ませるために残しているサンプルの占有者
+### 占有者を持たないまま残しているカテゴリ
 
-`internal/infrastructure/rdb/command_service/` の唯一の provider はサンプルの purchase 機能に属し、`persistenceModule`（`internal/di/module/persistence.go`）の `command_service` サブモジュールを占める唯一の登録である。サンプルを撤去すればこのサブモジュールは空になり、[ADR-0032](../adr/0032-lightweight-cqrs.ja.md) の CommandService 節は占有者のいない設計を記述するだけになる。それが作成先の出発点の状態である。
+`internal/infrastructure/rdb/command_service/` には現在 provider が無く、`persistenceModule`（`internal/di/module/persistence.go`）の `command_service` サブモジュールにも登録が無い。かつてはサンプルの purchase 機能が占めていたが、いまは占めていない。その書き込みは対象行を identity で名指しできるためロックでき、Repository 呼び出しへ分解できる — これは欠落ではなく [ADR-0034](../adr/0034-commandservice-atomicity-criterion.ja.md) が出す答えそのものである。
 
-上流はこの占有者を意図的に残している。ADR-0032 が定める適格性のバー（どの書き込みが CommandService に値するか）は、それを満たす具体例と並べて初めて読めるためで、サンプルは教材としてバーの読み方を支えている。
+したがって適格性のバーは、生きた実装ではなく同 ADR の適用例から読む。カテゴリは形が見えるように足場だけ残してある。バーを実際に満たす占有者は別途予定している — 対象集合が述語でしか決まらず、列挙もロックもできない書き込みである。
 
-**この逸脱は継承されない。** テンプレートから作られたプロジェクトでは、`command_service` に何が入るかは自分の業務要件が決める。占有者がゼロであることは欠陥ではなく、「バーを読ませるために実装を置く」という上流の理由はそこでは成り立たない。
+**ここに書いたことは継承されない。** テンプレートから作られたプロジェクトでは、`command_service` に何が入るかは自分の業務要件が決め、占有者がゼロであることは欠陥ではない。
 
 ### サンプル API が認可ゲートの境界を動かす
 

@@ -11,7 +11,7 @@ import (
 )
 
 // PurchaseFeedQueryService は、購入履歴一覧の集約跨ぎ read 投影を提供する QueryService です
-// （配置根拠: docs/spec/purchase/usecase.md § GET 一覧）。
+// （配置根拠: docs/spec/usecase/purchase.md § GET 一覧）。
 type PurchaseFeedQueryService interface {
 	// FindFeedByUserID は、指定ユーザーの購入履歴を注文日時の降順（同時刻は ID 降順）の安定順で
 	// keyset ページネーション取得します。ステータスは購入ステータスマスタ、明細の要約は商品との

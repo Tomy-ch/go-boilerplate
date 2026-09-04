@@ -52,7 +52,7 @@ func newLowStockProduct(t *testing.T, salt string, quantity int) *domainproduct.
 	categoryRef, err := domainproduct.NewCategoryRef(uuidtestkit.NewTestFromSalt(t, salt+"_category"), "電子機器")
 	require.NoError(t, err)
 
-	p, _, err := domainproduct.Reconstruct(uuidtestkit.NewTestFromSalt(t, salt), domainproduct.Attributes{
+	p, err := domainproduct.Reconstruct(uuidtestkit.NewTestFromSalt(t, salt), domainproduct.Attributes{
 		Name:                  "商品-" + salt,
 		Description:           ptr.To("説明-" + salt),
 		Price:                 mustPrice(t, "10.5"),
@@ -89,7 +89,6 @@ func Test_usecase_ListLowStockProducts(t *testing.T) {
 			deps.authorizer.EXPECT().Authorize(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 			deps.repo.EXPECT().FindAllLowStock(gomock.Any(), gomock.Any()).
 				Return(domainproduct.Products{first, second}, nil)
-			deps.repo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil)
 
 			actual, err := u.ListLowStockProducts(context.Background(), &auth.Authn{}, ListLowStockProductsParams{Limit: 20})
 			require.NoError(t, err)

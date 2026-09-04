@@ -5,6 +5,6 @@ const (
 	minBodyLength = 1
 
 	// maxBodyLength は、メッセージ本文の最大文字数（rune 数）です。
-	// 上限の根拠は docs/spec/inquiry/domain.md の Notes（placeholder 定数）。
+	// 上限の根拠は docs/spec/domain/inquiry.md の Notes（placeholder 定数）。
 	maxBodyLength = 4000
 )

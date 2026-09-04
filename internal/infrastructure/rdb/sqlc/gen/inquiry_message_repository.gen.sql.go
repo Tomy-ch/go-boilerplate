@@ -98,7 +98,7 @@ type ListInquiryMessagesRow struct {
 // === source: database/dml/repository/inquiry_message/select_inquiry_messages.sql ===
 // 問い合わせのメッセージを stream_sequence 昇順で取得する。
 // after_sequence より大きく up_to_sequence 以下の行に限ること（上限は usecase が先に読んだ stream の
-// 現在位置。論拠は docs/spec/inquiry/usecase.md の「streamCursor と snapshot」）。
+// 現在位置。論拠は docs/spec/usecase/inquiry.md の「streamCursor と snapshot」）。
 //
 //	SELECT m.id, m.inquiry_id, m.author_kind, m.author_subject_id, m.body, m.stream_sequence, m.created_at
 //	FROM inquiry_messages AS m

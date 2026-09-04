@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	// cartTTL は、Cart.Touch へ供給する有効期限の長さです（docs/spec/cart/domain.md の Touch）。
+	// cartTTL は、Cart.Touch へ供給する有効期限の長さです（docs/spec/domain/cart.md の Touch）。
 	cartTTL = 30 * 24 * time.Hour
 
 	// ItemIssueNotFound は、商品を引けなかったことを表します。
@@ -44,7 +44,7 @@ const (
 
 // ErrUnavailableProduct は、カートへ入れられない商品を指定した場合のエラーです（422）。
 // 不存在の商品と非公開の商品のどちらもこれになります（区別しない理由と、明細に立つ issue との
-// 違いは docs/spec/cart/usecase.md の SetItem）。
+// 違いは docs/spec/usecase/cart.md の SetItem）。
 var ErrUnavailableProduct = xerrors.Wrap(apperror.ErrValidation, "product is unavailable for the cart")
 
 // ItemIssue は、明細ごとの再評価結果です。値は外部向けの安定コードで、表示ではなく分岐に用います。
@@ -152,7 +152,7 @@ type Usecase interface {
 	// 引き継ぎ元を引けない場合（引き継ぎ済み・期限切れ・未知のトークン）も成功し、失われた分は空になります。
 	// 形式が不正なトークンはエラーを返しますが、それ以外の理由で引き継ぎが失敗することはありません。
 	// 数量や明細数が上限を超える分は調整され、失われた分は戻り値で報告します
-	// （切り捨ての優先順位は docs/spec/cart/domain.md の Merge）。
+	// （切り捨ての優先順位は docs/spec/domain/cart.md の Merge）。
 	MergeOnLogin(ctx context.Context, params MergeOnLoginParams) (MergeCartResult, error)
 }
 
@@ -249,7 +249,7 @@ func (u *usecase) findProducts(
 // buildView は、明細を再評価して出力 DTO を組み立て、あわせてカートの状態を進めます。
 // 提示した価格の記録と有効期限の延長までを含むため、呼び出し側は戻り値を返す前にカートを保存します。
 //
-// 判定も合算も提示価格を書き換える前に済ませます（docs/spec/cart/domain.md の Cart.Subtotal）。
+// 判定も合算も提示価格を書き換える前に済ませます（docs/spec/domain/cart.md の Cart.Subtotal）。
 //
 // SessionToken は埋めません。トークンを新しく発行したかどうかを知るのはカートを解決した側だけです。
 func (u *usecase) buildView(ctx context.Context, c *cart.Cart, now time.Time) (CartView, error) {
@@ -259,17 +259,7 @@ func (u *usecase) buildView(ctx context.Context, c *cart.Cart, now time.Time) (C
 		return CartView{}, err
 	}
 
-	// 代表画像は集約が抱えないため、明細ぶんをまとめて引く（1 回の問い合わせで N+1 を避ける）。
-	productIDs := make([]uuid.UUID, 0, len(products))
-	for id := range products {
-		productIDs = append(productIDs, id)
-	}
-	imagesByProductID, ierr := u.productRepo.ListImagesByProductIDs(ctx, productIDs)
-	if ierr != nil {
-		return CartView{}, ierr
-	}
-
-	views, seen := evaluateItems(items, products, imagesByProductID)
+	views, seen := evaluateItems(items, products)
 	subtotal, serr := c.Subtotal(toSnapshots(products))
 	if serr != nil {
 		return CartView{}, serr
@@ -285,16 +275,14 @@ func (u *usecase) buildView(ctx context.Context, c *cart.Cart, now time.Time) (C
 // evaluateItems は、明細を商品の現在値と突き合わせ、明細ごとの View と、提示した価格の表を返します。
 // 価格の表には引けた商品のぶんだけが入ります（引けなかった明細の提示価格は据え置かれます）。
 func evaluateItems(
-	items []cart.CartItem,
-	products map[uuid.UUID]*product.Product,
-	imagesByProductID map[uuid.UUID][]product.Image,
+	items []cart.CartItem, products map[uuid.UUID]*product.Product,
 ) ([]CartItemView, map[uuid.UUID]money.Price) {
 	views := make([]CartItemView, 0, len(items))
 	seen := make(map[uuid.UUID]money.Price, len(items))
 
 	for _, item := range items {
 		p := products[item.ProductID()]
-		views = append(views, evaluateItem(item, p, imagesByProductID[item.ProductID()]))
+		views = append(views, evaluateItem(item, p))
 		if p != nil {
 			seen[p.ID()] = p.Price()
 		}
@@ -304,7 +292,7 @@ func evaluateItems(
 }
 
 // toSnapshots は、引けた商品を再評価用の観測値へ切り出します。
-// 引けなかった商品は含めません（この表に無い明細の扱いは docs/spec/cart/domain.md の Cart.Subtotal）。
+// 引けなかった商品は含めません（この表に無い明細の扱いは docs/spec/domain/cart.md の Cart.Subtotal）。
 func toSnapshots(products map[uuid.UUID]*product.Product) map[uuid.UUID]cart.ProductSnapshot {
 	snapshots := make(map[uuid.UUID]cart.ProductSnapshot, len(products))
 	for id, p := range products {
@@ -315,14 +303,14 @@ func toSnapshots(products map[uuid.UUID]*product.Product) map[uuid.UUID]cart.Pro
 }
 
 // evaluateItem は、明細 1 件の再評価を cart.CartItem.Evaluate へ委ね、結果を出力 DTO の語彙へ写します。
-func evaluateItem(item cart.CartItem, p *product.Product, images []product.Image) CartItemView {
+func evaluateItem(item cart.CartItem, p *product.Product) CartItemView {
 	view := CartItemView{ProductID: item.ProductID(), Quantity: item.Quantity()}
 
 	var snapshot *cart.ProductSnapshot
 	if p != nil {
 		name, price := p.Name(), p.Price().Decimal()
 		view.ProductName, view.UnitPrice = &name, &price
-		if image, ok := product.PrimaryImage(images); ok {
+		if image, ok := p.PrimaryImage(); ok {
 			imagePath := image.ImagePath()
 			view.ImagePath = &imagePath
 		}

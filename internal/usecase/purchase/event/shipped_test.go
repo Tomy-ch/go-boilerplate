@@ -19,6 +19,13 @@ func TestBuildShipped(t *testing.T) {
 	// paid は、支払い済みステータスの再構築済み購入を salt から生成するローカルヘルパーです。
 	paid := func(t *testing.T, salt string) *domainpurchase.Purchase {
 		t.Helper()
+		details := []domainpurchase.PurchaseDetail{
+			domainpurchase.NewPurchaseDetail(uuidtestkit.NewTestFromSalt(t, salt+"_d"), domainpurchase.PurchaseDetailAttributes{
+				ProductID: uuidtestkit.NewTestFromSalt(t, salt+"_product"),
+				Quantity:  2,
+				UnitPrice: mustPrice(t, "800"),
+			}),
+		}
 		paidAt := time.Date(2026, time.July, 25, 0, 0, 0, 0, time.UTC)
 		entity, err := domainpurchase.Reconstruct(uuidtestkit.NewTestFromSalt(t, salt+"_id"), domainpurchase.Attributes{
 			Code:           salt + "-code",
@@ -29,6 +36,7 @@ func TestBuildShipped(t *testing.T) {
 			TaxAmount:      16000,
 			ShippingFee:    500,
 			TotalAmount:    176500,
+			Details:        details,
 			OrderedAt:      time.Date(2026, time.July, 23, 0, 0, 0, 0, time.UTC),
 			PaidAt:         &paidAt,
 			CanceledAt:     nil,

@@ -199,10 +199,14 @@ flowchart LR
   stream -. "never" .-x feature
 ```
 
-Architecture rules (mechanically checked by `internal/architest/realtime_isolation_test.go`):
+Architecture rules, both mechanically checked:
 
 1. `boundary/realtime`, `usecase/realtime`, `controller/stream`, `controller/realtime`, and the five infrastructure packages import no `internal/domain/<feature>` and no `internal/usecase/<feature>`.
 2. `InstanceLeaseStore` may be imported only by the realtime packages, the realtime DI module, and the orphan-cleanup job entry point.
+
+Rule 1 is checked twice, deliberately: by `depguard` (`maintain_realtime_feature_neutrality`, declared in `.golangci-full.yaml` — the config `make lint` and CI actually run — and mirrored into `.golangci.yaml` so editors surface it too, per [ADR-0088 (two-layer-golangci-config)](../adr/0088-two-layer-golangci-config.md)), which fails at lint time next to the other layer rules, and by `internal/architest/realtime_isolation_test.go`, which fails at test time and additionally asserts that the package list it scans still exists — a rule whose subject has been renamed away is the one failure a linter cannot report. Rule 2 lives only in the architecture test: it constrains a single **symbol**, and `depguard` denies whole packages, so expressing it there would also reject the legitimate `EventLogStore` and `StreamTicketStore` imports from the same package.
+
+The redundancy has one known gap. `depguard` matches an import path by plain prefix, so the `allow` entry that returns `usecase/realtime` to the mechanism also returns any future sibling whose name merely starts with those characters, and `isFeatureImport` in the architecture test derives its verdict the same way — the two checks share the flaw rather than covering for each other. Nothing named that way exists today; the constraint is that `internal/usecase/` must not gain a package whose name begins with `realtime` but which is a feature rather than this mechanism.
 
 ### 3.2 Outbox additions this subsystem relies on
 
@@ -256,7 +260,26 @@ Traces: command → outbox → relay → EventLog share one trace through the ou
 - **DynamoDB**: three tables (EventLog with TTL 7 days on `occurredAt`-derived expiry, StreamTicket with TTL, InstanceLease); partition = stream; encryption at rest; point-in-time recovery, backup, and alarms are provisioned outside this repository ([ADR-0106 (vendor-neutral-deploy-skeleton)](../adr/0106-vendor-neutral-deploy-skeleton.md)). A single hot stream is bounded by one partition and one PostgreSQL row; the mechanism does not shard it.
 - **SNS / SQS**: one standard topic, provisioned by the deployment and named to the application by `REALTIME_TOPIC` (locally `make realtime-init` creates it). The per-instance standard queues are the only resources the application creates itself, at serve start, as `<REALTIME_QUEUE_PREFIX>-<instance id>`, with: an access policy admitting `sqs:SendMessage` from `sns.amazonaws.com` only when `aws:SourceArn` is that topic; `RawMessageDelivery=true` on the subscription; long polling (`ReceiveMessageWaitTimeSeconds=20`); `VisibilityTimeout=30`; `SqsManagedSseEnabled=true` (a customer-managed KMS key is not a knob the mechanism exposes); and, when `REALTIME_DLQ` is set, a `RedrivePolicy` to that shared DLQ with `maxReceiveCount=5` — the DLQ itself is provisioned by the deployment and is an operational safety net, not a correctness requirement, because a lost wakeup is covered by the periodic catch-up. Minimal IAM: the relay needs `sns:Publish` on the topic; a serve instance needs `sqs:CreateQueue`, `sqs:GetQueueAttributes`, `sqs:SetQueueAttributes`, `sqs:ReceiveMessage`, `sqs:DeleteMessage` and `sqs:DeleteQueue` on `<prefix>-*`, plus `sns:Subscribe`, `sns:SetSubscriptionAttributes` and `sns:Unsubscribe` on the topic, and `sns:Publish` on the topic for revocations; the orphan-cleanup job additionally needs `sns:ListSubscriptionsByTopic` on the topic and `sqs:GetQueueUrl` on `<prefix>-*` — it reaches a dead instance's queue by name rather than from a cached URL, and a denial there is indistinguishable from "already gone", so the job would fail every run while the queue survived. Nothing needs `sns:CreateTopic`.
 - **Edge**: HTTPS; a fixed CORS origin; the client's CSP `connect-src`; load-balancer / proxy idle timeout above the heartbeat interval and response buffering disabled for the stream path; reconnect rate limiting, if any, at the edge; **query strings excluded or redacted from edge / proxy / load-balancer access logs** on the stream path — the ticket travels as a query parameter, and the in-process excision does not reach logs written outside the process.
-- **Local**: DynamoDB Local and an SNS/SQS emulator (GoAWS) in the shared infrastructure profile, tables and the topic created by the idempotent initializer, table names prefixed per worktree. GoAWS refuses the queue policy and does not honor the redrive / encryption attributes, so the emulator's queue-attribute set (`infrastructure/realtime/local`) sets only the timing attributes; the DI module selects it for the emulator environments and the full set from `dev` on.
+- **Local**: DynamoDB Local and an SNS/SQS emulator (GoAWS) in the shared infrastructure profile, tables and the topic created by the idempotent initializer, with the table names, the topic and the queue prefix all suffixed per worktree slot so checkouts sharing the emulators do not share state. GoAWS refuses the queue policy and does not honor the redrive / encryption attributes, so the emulator's queue-attribute set (`infrastructure/realtime/local`) sets only the timing attributes; the DI module selects it for the emulator environments and the full set from `dev` on.
+
+**Operate.** The deployment owns the thresholds — they follow the traffic, the instance count and the
+retention the business needs, none of which this repository knows — but it does not own *what to
+watch*, because that follows from the mechanism. Every signal below is a metric group from §3.4; a
+deployment that provisions the resources above without wiring these is running the subsystem blind.
+
+| Signal | What it means | First runbook action |
+| --- | --- | --- |
+| **blocked streams** (head dead) | The ordering chain has halted on a stream: a terminal failure stopped it rather than skipping a sequence, so nothing after the dead head is delivered. The one alert that never auto-resolves. | Find the dead outbox row, fix or discard the cause, then `outbox-relay replay --message-id=<uuid>`. Until it moves, that stream is stopped for every client. |
+| **EventLog lag** (outbox `created_at` → append) | The relay is behind. Clients see committed changes late, and the gap grows until the relay catches up. | Check the relay is running (`outbox-relay --channel=realtime`) and that DynamoDB is accepting appends; a relay that died shows as lag, not as an error. |
+| **delivery latency** (`occurredAt` → SSE write) | Rising while EventLog lag is flat means the stream half is the bottleneck, not the relay: replay saturation, slow clients, or an instance at capacity. | Compare replay concurrency saturation and rejected-connection counts before scaling; a slow-client problem is not fixed by more instances. |
+| **rejected connections** (capacity) | Instances are at `REALTIME_MAX_CONNECTIONS`. Clients are being turned away with `503`, and the edge's reconnect policy decides how hard they retry. | Add instances, or raise the per-instance cap if the process has the memory and file descriptors for it (§3.3). |
+| **heartbeat failures / expired instances** | Leases are not being renewed. An instance that dies leaves its queue and subscription behind, which cost money and receive messages nobody reads. | Confirm the orphan-cleanup job is scheduled and succeeding; a rising expired count with no cleanup executions means the job is not running. |
+| **cleanup failures** | The job is running but cannot reclaim. Usually IAM: it needs `sns:ListSubscriptionsByTopic` and `sqs:GetQueueUrl` on `<prefix>-*`, and a denial is indistinguishable from "already gone". | Check the job's permissions before its logic — this is the failure the IAM list above exists to prevent. |
+| **append failures / recovery failures** | The EventLog itself is rejecting writes: throttling, or a table that no longer matches what the code expects. | Check DynamoDB capacity and that the table's key schema and TTL are what the initializer creates. |
+
+A DLQ that is filling is not on this list because it is not a correctness signal: a lost wakeup is
+covered by the periodic catch-up. Treat it as evidence about the fan-out's health, not as delivery
+that must be replayed.
 
 ### 4.3 The client contract
 

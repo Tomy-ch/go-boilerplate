@@ -31,7 +31,7 @@ type Repository interface {
 	// Create は、問い合わせを新規登録します。
 	// 同じ利用者の active な問い合わせが既にある場合は Conflict を返します。
 	// この Conflict は同一 tx の中で読み直して解決できないため、呼び出し側は tx をやり直します
-	// （docs/spec/inquiry/usecase.md の AppendMessage）。
+	// （docs/spec/usecase/inquiry.md の AppendMessage）。
 	Create(ctx context.Context, inquiry *Inquiry) error
 
 	// Update は、問い合わせの更新日時を永続化します（AppendMessage が進めた値）。

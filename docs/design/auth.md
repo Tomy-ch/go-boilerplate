@@ -31,6 +31,16 @@ Design principles (invariants):
 - **Split-horizon.** The `issuer` (the token's `iss`, host/browser-resolvable) is separated from the **JWKS fetch URL** (container-internal). `ENDPOINT_JWKS` is set to the internal URL so `iss` stays host-resolvable while key fetching uses the container hostname.
 - **Provider is dev-only.** It is reachable only through the `development` / `auth` compose profiles and is never part of a deployed environment.
 - **Contract, not implementation.** What the RS depends on is the JWKS shape and the access-token claim shape (`typ=at+jwt` / `iss` / `aud` / `sub` / `exp`), which `docker/mock-auth-server/config.json` pins. Anything satisfying that contract — including a real IdP — drops in with **config changes only**, no Go change.
+- **A second authenticator exists for streams.** A long-lived SSE connection cannot carry an
+`Authorization` header through `EventSource`, so Realtime Delivery authenticates it with a
+short-lived, single-purpose **stream ticket** carried as a query parameter, registered as its own
+security scheme beside the JWT one ([ADR-0074 (query-ticket-stream-authentication)](../adr/0074-query-ticket-stream-authentication.md),
+[realtime-delivery.md §2.4](realtime-delivery.md#24-ticket-lifecycle)). It is not a second way to
+present a JWT: the feature authorizes the subject for a destination *first*, using the ordinary token
+path above, and only then asks for a ticket. Authorization is therefore still decided here, and the
+ticket only carries that decision to a transport that cannot hold a header. Revocation is explicit —
+invalidating the tickets and notifying every instance — because a credential that outlives the
+authorization that produced it is exactly what the deactivation rules in §2 exist to prevent.
 
 ---
 

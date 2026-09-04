@@ -1,18 +1,18 @@
 ---
 name: new-spec
-description: Integrator skill that creates the 2-layer spec set under `docs/spec/<feature>/` by chaining per-layer skills (`new-spec-domain` / `new-spec-usecase`). lean A 構成では controller / infra に spec を持たず OpenAPI + sqlc gen + 命名規約から導出するため、spec は domain + usecase の 2 ファイルだけ。Confirms feature name (kebab-case) once via `ask the user explicitly`, then asks which layers to scaffold (multi-select, default both) and chains the selected per-layer skills in dependency order (`domain` → `usecase`). Each per-layer skill still collects its own layer-specific identity (aggregate / package / interface name) and writes a Markdown file with YAML code-block placeholders and TODO markers. Skips layers whose target file already exists rather than aborting the chain. Use a per-layer skill (`new-spec-<layer>`) directly when scaffolding a single layer template. Does not invent business content — gathers identity only. All structural section definitions are read from `.codex/scaffold-spec/<layer>-spec.md` at runtime by each per-layer skill, so spec format changes propagate automatically.
+description: Integrator skill that creates the 2-layer spec set for one feature — `docs/spec/domain/<pkgpath>.md` + `docs/spec/usecase/<pkgpath>.md` — by chaining per-layer skills (`new-spec-domain` / `new-spec-usecase`). lean A 構成では controller / infra に spec を持たず OpenAPI + sqlc gen + 命名規約から導出するため、spec は domain + usecase の 2 ファイルだけ。Confirms feature name (kebab-case, the bundle label) once via `ask the user explicitly`, then asks which layers to scaffold (multi-select, default both) and the per-layer package path each spec is filed under — the two paths are independent, since a usecase package and the aggregate it depends on rarely share a path — and chains the selected per-layer skills in dependency order (`domain` → `usecase`). Each per-layer skill still collects its own layer-specific identity (aggregate / interface name) and writes a Markdown file with YAML code-block placeholders and TODO markers. Skips layers whose target file already exists rather than aborting the chain. Use a per-layer skill (`new-spec-<layer>`) directly when scaffolding a single layer template. Does not invent business content — gathers identity only. All structural section definitions are read from `.codex/scaffold-spec/<layer>-spec.md` at runtime by each per-layer skill, so spec format changes propagate automatically.
 ---
 
 # New Spec
 
-Integrator for creating the 2-layer spec template set for one feature (lean A: `domain.md` + `usecase.md`).
+Integrator for creating the 2-layer spec template set for one feature (lean A: one domain spec + one usecase spec).
 
 A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
 
 ## When to Use
 
 - Starting a brand-new feature and want both spec templates created in one chained flow.
-- A feature directory exists with one spec and you want to add the missing one.
+- A feature already has one of its two specs and you want to add the missing one.
 
 Do NOT use this skill for:
 
@@ -32,30 +32,42 @@ This skill itself **does not read or write spec files directly**. All structural
 
 - Reads its matching `.codex/scaffold-spec/<layer>-spec.md` at runtime for the section list.
 - Asks for layer-specific identity via its own `ask the user explicitly`.
-- Writes one Markdown file under `docs/spec/<feature>/`.
+- Writes one Markdown file under `docs/spec/domain/` or `docs/spec/usecase/`.
 
-This skill is purely orchestration: it confirms feature name + layer selection, then invokes per-layer skills in dependency order.
+This skill is purely orchestration: it confirms the feature name, the layer selection and the per-layer package paths, then invokes per-layer skills in dependency order.
+
+**A feature is a bundle, not a directory.** The spec tree is keyed by package path (`docs/spec/<layer>/<rest>.md` ⇔ `internal/<layer>/<rest>`), so the two specs of one feature sit in two different trees and need not share a path — `internal/usecase/user/search` is one feature with `internal/domain/user`. The feature name this skill collects labels the bundle and fills the glossary's Owner column; it never decides a file location.
 
 ## First Step: Confirm Feature and Layer Selection
 
-This skill **MUST call `ask the user explicitly` immediately after invocation**. Use a single batched call with two questions:
+This skill **MUST call `ask the user explicitly` immediately after invocation**. Start with one batched call carrying these two questions:
 
 ### Question 1: Feature name
 
 - Free-text: 「feature 名（kebab-case）。例: `user-management`, `order-fulfillment`」
 - Validate `^[a-z][a-z0-9-]*$`. Re-ask on invalid input.
+- This is the bundle label — it names the feature in the report and in the glossary's Owner column. It is **not** a path.
 
 ### Question 2: Layers to scaffold
 
 - Multi-select, 2 options:
   - 「domain」
   - 「usecase」
-- Default: both. The user may deselect either (e.g., `domain` already exists and only `usecase` is needed).
+- Default: both. The user may deselect either (e.g., the domain spec already exists and only the usecase one is needed).
+
+### Then: the package path per selected layer
+
+A second batched `ask the user explicitly`, one free-text question per selected layer, because the paths are what the skip check needs and they are not derivable from the feature name:
+
+- domain: 「domain パッケージパス（`internal/domain/` 以下）。例: `cart`, `product/category`」
+- usecase: 「usecase パッケージパス（`internal/usecase/` 以下）。例: `address`, `product/ranking`, `user/search`」
+
+Validate each with `^[a-z][a-z0-9]*(/[a-z][a-z0-9]*)*$` — Go package names carry no hyphens, so the kebab-case feature name is usually **not** a valid package path. Default each to the feature name with `-` replaced by `/` and let the user correct it.
 
 After the answers come back:
 
-1. Build the work plan: feature name + ordered list of layers to scaffold (dependency order: `domain` → `usecase`).
-2. For each selected layer, check whether `docs/spec/<feature>/<layer>.md` already exists. If it does, mark it as **skip** rather than failing the entire chain.
+1. Build the work plan: feature name + ordered list of (layer, package path) pairs to scaffold (dependency order: `domain` → `usecase`).
+2. For each selected layer, check whether `docs/spec/<layer>/<pkgpath>.md` already exists. If it does, mark it as **skip** rather than failing the entire chain.
 3. Show the plan in Japanese with skip markers, then confirm via `ask the user explicitly`:
    - Question: 「以下の順番で per-layer skill を chain します。進めますか？」
    - Options: 「進める」 / 「キャンセル」
@@ -71,11 +83,11 @@ If after applying skips the executable list is empty, report it and stop:
 For each layer remaining in the plan (in order `domain` → `usecase`):
 
 1. Invoke the matching skill: `new-spec-<layer>` via the `Skill` tool.
-2. Pass the feature name in the chain context so the child skill can skip its own feature-name `ask the user explicitly` and only ask for layer-specific identity (aggregate / package / interface name).
+2. Pass the feature name **and that layer's package path** in the chain context so the child skill can skip its own path `ask the user explicitly` and only ask for layer-specific identity (aggregate name / interface name).
 3. The child still asks the user to confirm and writes its own file.
 4. If the child reports failure (e.g., user cancels the per-layer confirmation), stop the chain and surface the status; do NOT auto-rollback already-written layers.
 
-Each per-layer skill is independent — they only share the feature name and the layer-execution order. They do not pass aggregate or interface names between each other.
+Each per-layer skill is independent — they only share the feature name and the layer-execution order. Their package paths are separate answers, and they do not pass aggregate or interface names between each other.
 
 ## Step 2. Closing Report
 
@@ -83,8 +95,8 @@ After all selected layers have been processed (chain completed or stopped early)
 
 ```text
 new-spec 完了（feature: <feature>）。
-  ✓ domain   : 作成済み (docs/spec/<feature>/domain.md)
-  ✓ usecase  : 作成済み (docs/spec/<feature>/usecase.md)
+  ✓ domain   : 作成済み (docs/spec/domain/<domainPkgPath>.md)
+  ✓ usecase  : 作成済み (docs/spec/usecase/<usecasePkgPath>.md)
 
 次のアクション:
   - editor で TODO を埋める
@@ -103,7 +115,7 @@ Do NOT commit. Do NOT trigger any scaffold skill automatically.
 
 ## AI Modification Scope
 
-This skill itself writes no files. All write scope is delegated to per-layer skills, each scoped to `docs/spec/<feature>/<layer>.md`.
+This skill itself writes no files. All write scope is delegated to per-layer skills, each scoped to `docs/spec/<layer>/<pkgpath>.md`.
 
 ## Constraints
 
@@ -112,6 +124,7 @@ This skill itself writes no files. All write scope is delegated to per-layer ski
 - ❌ Abort the entire chain because one layer's file already exists — mark as skip and continue
 - ❌ Auto-rollback earlier created layers if a later layer fails
 - ❌ Skip the feature-confirmation `ask the user explicitly`
+- ❌ Derive a layer's package path from the feature name without asking (kebab-case is not a package path, and the two layers' paths differ)
 - ❌ Run per-layer skills out of dependency order
 - ❌ Offer controller / infra as spec options (lean A: those layers are derived, not spec-driven)
 - ✅ Japanese user-facing output
@@ -121,7 +134,7 @@ This skill itself writes no files. All write scope is delegated to per-layer ski
 
 ## Checklist
 
-- [ ] Feature name + layer selection confirmed via `ask the user explicitly`
+- [ ] Feature name + layer selection + per-layer package path confirmed via `ask the user explicitly`
 - [ ] Existing layer files marked as skip (not failure)
 - [ ] Per-layer skills invoked in dependency order
 - [ ] Each per-layer skill ran its own identity `ask the user explicitly`

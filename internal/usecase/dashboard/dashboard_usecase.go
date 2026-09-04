@@ -81,7 +81,7 @@ func (u *usecase) GetDashboardSummary(
 	if authn == nil {
 		return SummaryView{}, xerrors.Wrap(apperror.ErrUnauthenticated, "requires authenticated user")
 	}
-	// 所有者なしリソースとして認可する（docs/spec/dashboard/usecase.md 参照）。
+	// 所有者なしリソースとして認可する（docs/spec/usecase/dashboard.md 参照）。
 	if err := u.authorizer.Authorize(
 		ctx, authn, authz.ActionDashboardRead, authz.NewResource(resourceKindDashboard, nil),
 	); err != nil {
@@ -96,7 +96,7 @@ func (u *usecase) GetDashboardSummary(
 	if err != nil {
 		return SummaryView{}, err
 	}
-	// 商品数は Repository から取得する（配置根拠は docs/spec/dashboard/usecase.md 参照）。
+	// 商品数は Repository から取得する（配置根拠は docs/spec/usecase/dashboard.md 参照）。
 	productCounts, err := u.productRepo.Count(ctx)
 	if err != nil {
 		return SummaryView{}, err

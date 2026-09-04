@@ -22,10 +22,12 @@ accepted
 
 ## 決定
 
-スキャフォールドツールは**リーン A 構成**に従う: `docs/spec/<feature>/` 配下には `domain.md` と `usecase.md` スペックファイルのみが必要である。コントローラーとインフラストラクチャのレイヤーは生成コードと命名規則から導出される — `controller.md` や `infra.md` スペックファイルは存在しない。
+スキャフォールドツールは**リーン A 構成**に従う: 必要なスペックファイルはドメインとユースケースの 2 つだけである。コントローラーとインフラストラクチャのレイヤーは生成コードと命名規則から導出される — コントローラーやインフラのスペックファイルは存在しない。
 
-- `scaffold-domain` は `domain.md`（セクション: 概要、エンティティ、クロスフィールド不変条件、振る舞いメソッド、バリューオブジェクト、Repository メソッド）を消費し、エンティティ、バリューオブジェクト、定数、エラー、Repository インターフェースを生成する。
-- `scaffold-usecase` は `usecase.md`（セクション: 概要、インターフェース、DTO、依存関係、ワークフロー）を消費し、アプリケーションサービス、DTO、バウンダリーワイヤリングを生成する。
+スペックはレイヤー別に配置し、レイヤー内ではスペックのパスが対象パッケージを写す: `docs/spec/<layer>/<rest>.md` ⇔ `internal/<layer>/<rest>`。`internal/domain/product/category` のドメインスペックは `docs/spec/domain/product/category.md`、`internal/usecase/user/search` のユースケーススペックは `docs/spec/usecase/user/search.md` である。各スペック冒頭の `package:` 宣言が同じ対象を再掲するため、この対応は規約ではなく検証可能な不変条件になる。`docs/spec/glossary.md` はどのパッケージも指定しないためルート直下に置く。
+
+- `scaffold-domain` はドメインスペック（セクション: 概要、エンティティ、クロスフィールド不変条件、振る舞いメソッド、バリューオブジェクト、Repository メソッド）を消費し、エンティティ、バリューオブジェクト、定数、エラー、Repository インターフェースを生成する。
+- `scaffold-usecase` はユースケーススペック（セクション: 概要、インターフェース、DTO、依存関係、ワークフロー）を消費し、アプリケーションサービス、DTO、バウンダリーワイヤリングを生成する。
 - `scaffold-controller` は OpenAPI 生成の `ServerInterface` とユースケースインターフェースから名前マッチヒューリスティックでハンドラーを導出する。`operationId` をユースケースメソッドにマッピングできない場合は、自動解決なしでハンドオフメッセージとともに停止する。
 - `scaffold-infra-db` は、ドメイン Repository インターフェースと sqlc 生成関数から名前マッチヒューリスティックで Repository を導出する。マッピングできないメソッドには停止する代わりに TODO スタブを出力する。部分的な Repository のコンパイルは有効なままであるためである。
 - `scaffold-endpoint` は `verify-spec` が 2 つのスペックファイルを検証した後、依存関係の順序に従ってすべての 4 つをオーケストレートする。
@@ -60,6 +62,6 @@ accepted
 ## 補足
 
 - ソース: `.claude/scaffold-spec/lifecycle.md`（§"なぜ 2 spec か"）、`.claude/skills/scaffold-endpoint/SKILL.md`、`.claude/skills/scaffold-controller/SKILL.md`、`.claude/skills/scaffold-infra-db/SKILL.md`、`.claude/scaffold-spec/domain-spec.md`、`.claude/scaffold-spec/usecase-spec.md`。
-- スペックファイルは `docs/spec/<feature>/` の下に永続的な設計成果物としてリポジトリにコミットされる。スキャフォールド完了後も残り、PR とともにレビューされる。
+- スペックファイルは `docs/spec/domain/` と `docs/spec/usecase/` の下に永続的な設計成果物としてリポジトリにコミットされる。スキャフォールド完了後も残り、PR とともにレビューされる。
 - コントローラーとインフラの命名規則適用は `arch-check` が管理する。その基礎となるレイヤー依存性と純粋性ルールについては [`docs/rules.md`](../rules.ja.md) を参照。
 - コントローラーの導出はマッピングできない `operationId` で停止する。インフラの導出は TODO スタブで続行する。この非対称性は、部分的なインフラ実装はコンパイルできるが、部分的なハンドラー実装は生成された `ServerInterface` に違反するためである。

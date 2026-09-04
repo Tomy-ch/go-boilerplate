@@ -23,7 +23,7 @@ import (
 )
 
 // feedStreamID は、運営の一覧画面が購読する組織 feed の stream です。
-// 単一組織を前提とした固定値です（docs/spec/inquiry/usecase.md の placeholder）。
+// 単一組織を前提とした固定値です（docs/spec/usecase/inquiry.md の placeholder）。
 const feedStreamID rt.StreamID = "inquiry-feed"
 
 // Usecase は、問い合わせのユースケースです。

@@ -75,7 +75,6 @@ func Test_usecase_GetCart(t *testing.T) {
 			cartRepo.EXPECT().Update(gomock.Any(), c).Return(nil)
 
 			productRepo := mock_product.NewMockRepository(ctrl)
-			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			productRepo.EXPECT().FindByIDs(gomock.Any(), []uuid.UUID{productID}).
 				Return(product.Products{newTestProduct(t, productID, "12.50", 5)}, nil)
 
@@ -114,7 +113,6 @@ func Test_usecase_GetCart(t *testing.T) {
 			)
 
 			productRepo := mock_product.NewMockRepository(ctrl)
-			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			productRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Return(product.Products{p}, nil)
 
 			uc := newGetUsecase(t, newPassthroughTx(t), cartRepo, productRepo, clocktestkit.NewMockClock(t, now))
@@ -147,7 +145,6 @@ func Test_usecase_GetCart(t *testing.T) {
 			)
 
 			productRepo := mock_product.NewMockRepository(ctrl)
-			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			productRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Times(0)
 
 			uc := newGetUsecase(t, newPassthroughTx(t), cartRepo, productRepo, clocktestkit.NewMockClock(t, now))
@@ -182,7 +179,6 @@ func Test_usecase_GetCart(t *testing.T) {
 			)
 
 			productRepo := mock_product.NewMockRepository(ctrl)
-			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			productRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Times(0)
 
 			uc := newGetUsecase(t, newPassthroughTx(t), cartRepo, productRepo, clocktestkit.NewMockClock(t, now))
@@ -208,10 +204,8 @@ func Test_usecase_GetCart(t *testing.T) {
 				Return(nil, xerrors.Wrap(apperror.ErrNotFound, "cart not found"))
 			cartRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Times(0)
 
-			inlineProductRepo := mock_product.NewMockRepository(ctrl)
-			inlineProductRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			uc := newGetUsecase(t, newPassthroughTx(t), cartRepo,
-				inlineProductRepo, clocktestkit.NewMockClock(t, now))
+				mock_product.NewMockRepository(ctrl), clocktestkit.NewMockClock(t, now))
 
 			actual, err := uc.GetCart(t.Context(), Subject{UserID: &userID})
 			require.NoError(t, err)
@@ -230,10 +224,8 @@ func Test_usecase_GetCart(t *testing.T) {
 			cartRepo.EXPECT().Create(gomock.Any(), gomock.Any()).Times(0)
 			cartRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Times(0)
 
-			inlineProductRepo := mock_product.NewMockRepository(ctrl)
-			inlineProductRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			uc := newGetUsecase(t, newPassthroughTx(t), cartRepo,
-				inlineProductRepo, clocktestkit.NewMockClock(t, now))
+				mock_product.NewMockRepository(ctrl), clocktestkit.NewMockClock(t, now))
 
 			actual, err := uc.GetCart(t.Context(), Subject{})
 			require.NoError(t, err)
@@ -253,10 +245,8 @@ func Test_usecase_GetCart(t *testing.T) {
 			cartRepo.EXPECT().Create(gomock.Any(), gomock.Any()).Times(0)
 			cartRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Times(0)
 
-			inlineProductRepo := mock_product.NewMockRepository(ctrl)
-			inlineProductRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			uc := newGetUsecase(t, newPassthroughTx(t), cartRepo,
-				inlineProductRepo, clocktestkit.NewMockClock(t, now))
+				mock_product.NewMockRepository(ctrl), clocktestkit.NewMockClock(t, now))
 
 			actual, err := uc.GetCart(t.Context(), Subject{UserID: &userID})
 			require.NoError(t, err)
@@ -273,10 +263,8 @@ func Test_usecase_GetCart(t *testing.T) {
 			cartRepo.EXPECT().FindByOwnerID(gomock.Any(), userID).Return(newGuestCart(t, now.Add(-time.Hour)), nil)
 			cartRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Times(0)
 
-			inlineProductRepo := mock_product.NewMockRepository(ctrl)
-			inlineProductRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			uc := newGetUsecase(t, newPassthroughTx(t), cartRepo,
-				inlineProductRepo, clocktestkit.NewMockClock(t, now))
+				mock_product.NewMockRepository(ctrl), clocktestkit.NewMockClock(t, now))
 
 			actual, err := uc.GetCart(t.Context(), Subject{UserID: &userID})
 			require.NoError(t, err)
@@ -298,10 +286,8 @@ func Test_usecase_GetCart(t *testing.T) {
 			cartRepo.EXPECT().LockByID(gomock.Any(), c.ID()).Return(c, nil)
 			cartRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(nil)
 
-			inlineProductRepo := mock_product.NewMockRepository(ctrl)
-			inlineProductRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			uc := newGetUsecase(t, newPassthroughTx(t), cartRepo,
-				inlineProductRepo, clocktestkit.NewMockClock(t, now))
+				mock_product.NewMockRepository(ctrl), clocktestkit.NewMockClock(t, now))
 
 			actual, err := uc.GetCart(t.Context(), Subject{SessionToken: ptr.To(testSessionToken)})
 			require.NoError(t, err)
@@ -323,10 +309,8 @@ func Test_usecase_GetCart(t *testing.T) {
 			cartRepo.EXPECT().FindByOwnerID(gomock.Any(), userID).Return(nil, expectedErr)
 			cartRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Times(0)
 
-			inlineProductRepo := mock_product.NewMockRepository(ctrl)
-			inlineProductRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			uc := newGetUsecase(t, newPassthroughTx(t), cartRepo,
-				inlineProductRepo, clocktestkit.NewMockClock(t, now))
+				mock_product.NewMockRepository(ctrl), clocktestkit.NewMockClock(t, now))
 
 			_, err := uc.GetCart(t.Context(), Subject{UserID: &userID})
 
@@ -346,7 +330,6 @@ func Test_usecase_GetCart(t *testing.T) {
 			cartRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Times(0)
 
 			productRepo := mock_product.NewMockRepository(ctrl)
-			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			productRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Return(nil, expectedErr)
 
 			uc := newGetUsecase(t, newPassthroughTx(t), cartRepo, productRepo, clocktestkit.NewMockClock(t, now))
@@ -368,10 +351,8 @@ func Test_usecase_GetCart(t *testing.T) {
 			cartRepo.EXPECT().LockByID(gomock.Any(), c.ID()).Return(c, nil)
 			cartRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Return(expectedErr)
 
-			inlineProductRepo := mock_product.NewMockRepository(ctrl)
-			inlineProductRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			uc := newGetUsecase(t, newPassthroughTx(t), cartRepo,
-				inlineProductRepo, clocktestkit.NewMockClock(t, now))
+				mock_product.NewMockRepository(ctrl), clocktestkit.NewMockClock(t, now))
 
 			_, err := uc.GetCart(t.Context(), Subject{UserID: &userID})
 
@@ -390,10 +371,8 @@ func Test_usecase_GetCart(t *testing.T) {
 			cartRepo := mock_cart.NewMockRepository(ctrl)
 			cartRepo.EXPECT().FindByOwnerID(gomock.Any(), gomock.Any()).Times(0)
 
-			inlineProductRepo := mock_product.NewMockRepository(ctrl)
-			inlineProductRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			uc := newGetUsecase(t, txm, cartRepo,
-				inlineProductRepo, clocktestkit.NewMockClock(t, now))
+				mock_product.NewMockRepository(ctrl), clocktestkit.NewMockClock(t, now))
 
 			_, err := uc.GetCart(t.Context(), Subject{UserID: &userID})
 
@@ -417,7 +396,6 @@ func Test_usecase_GetCart(t *testing.T) {
 			cartRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Times(0)
 
 			productRepo := mock_product.NewMockRepository(ctrl)
-			productRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			productRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Return(product.Products{
 				newTestProduct(t, productID, "92233720368547758.07", 5),
 				newTestProduct(t, otherID, "92233720368547758.07", 5),
@@ -439,10 +417,8 @@ func Test_usecase_GetCart(t *testing.T) {
 			cartRepo := mock_cart.NewMockRepository(ctrl)
 			cartRepo.EXPECT().FindBySessionToken(gomock.Any(), gomock.Any()).Times(0)
 
-			inlineProductRepo := mock_product.NewMockRepository(ctrl)
-			inlineProductRepo.EXPECT().ListImagesByProductIDs(gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 			uc := newGetUsecase(t, newPassthroughTx(t), cartRepo,
-				inlineProductRepo, clocktestkit.NewMockClock(t, now))
+				mock_product.NewMockRepository(ctrl), clocktestkit.NewMockClock(t, now))
 
 			_, err := uc.GetCart(t.Context(), Subject{SessionToken: ptr.To("too-short")})
 

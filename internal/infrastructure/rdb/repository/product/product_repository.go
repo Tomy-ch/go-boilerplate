@@ -411,7 +411,7 @@ func (r *repository) UpdateStock(ctx context.Context, p *product.Product) (int, 
 }
 
 // Create は、商品を新規登録します。p が保持する画像も併せて登録します。
-func (r *repository) Create(ctx context.Context, p *product.Product, images []product.Image) error {
+func (r *repository) Create(ctx context.Context, p *product.Product) error {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
@@ -441,12 +441,12 @@ func (r *repository) Create(ctx context.Context, p *product.Product, images []pr
 		return pgerror.NormalizeError(err)
 	}
 
-	return r.insertImages(ctx, db, p, images)
+	return r.insertImages(ctx, db, p)
 }
 
 // Update は、p が保持するバージョンを条件に商品を更新し、採番後のバージョンを返します。
 // 画像も p が保持する集合へ一致させます。
-func (r *repository) Update(ctx context.Context, p *product.Product, images []product.Image) (int, error) {
+func (r *repository) Update(ctx context.Context, p *product.Product) (int, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
@@ -485,7 +485,7 @@ func (r *repository) Update(ctx context.Context, p *product.Product, images []pr
 		return 0, pgerror.NormalizeError(err)
 	}
 
-	if err = r.syncImages(ctx, db, p, images); err != nil {
+	if err = r.syncImages(ctx, db, p); err != nil {
 		return 0, err
 	}
 
@@ -506,54 +506,9 @@ func (r *repository) Count(ctx context.Context) (product.Counts, error) {
 	return product.Counts{Total: row.TotalCount, Published: row.PublishedCount}, nil
 }
 
-// FilterExistingImagePaths は、paths のうち商品が現在の画像として参照しているものを重複排除して返します。
-// 返らなかったパスは、どの商品からも参照されていないことを意味します。
-func (r *repository) FilterExistingImagePaths(ctx context.Context, paths []string) ([]string, error) {
-	ctx, endSpan := r.tracer.Start(ctx)
-	defer endSpan()
-
-	if len(paths) == 0 {
-		return nil, nil
-	}
-
-	db := gen.New(driver.New(ctx, r.db))
-	existing, err := db.ListExistingProductImagePaths(ctx, paths)
-	if err != nil {
-		return nil, pgerror.NormalizeError(err)
-	}
-
-	return existing, nil
-}
-
-// ListImages は、商品の画像を表示順の昇順で読み出します。
-func (r *repository) ListImages(ctx context.Context, productID uuid.UUID) ([]product.Image, error) {
-	ctx, endSpan := r.tracer.Start(ctx)
-	defer endSpan()
-
-	byProductID, err := r.ListImagesByProductIDs(ctx, []uuid.UUID{productID})
-	if err != nil {
-		return nil, err
-	}
-
-	return byProductID[productID], nil
-}
-
-// ListImagesByProductIDs は、複数商品の画像を 1 度の問い合わせでまとめて読み出します。
-// 一覧が商品ごとに引くこと（N+1）を避けるための入口です。
-func (r *repository) ListImagesByProductIDs(
-	ctx context.Context, ids []uuid.UUID,
-) (map[uuid.UUID][]product.Image, error) {
-	ctx, endSpan := r.tracer.Start(ctx)
-	defer endSpan()
-
-	return r.findImagesByProductIDs(ctx, ids)
-}
-
 // insertImages は、p が保持する画像を登録します。
-func (r *repository) insertImages(
-	ctx context.Context, db *gen.Queries, p *product.Product, images []product.Image,
-) error {
-	for _, img := range images {
+func (r *repository) insertImages(ctx context.Context, db *gen.Queries, p *product.Product) error {
+	for _, img := range p.Images() {
 		displaySort, err := safecast.IntToInt16(img.DisplaySort())
 		if err != nil {
 			return xerrors.Wrap(err, "invalid product image displaySort")
@@ -575,9 +530,8 @@ func (r *repository) insertImages(
 // syncImages は、商品が現在参照している画像を p が保持する集合へ一致させます。
 // 集合から外れた行を論理削除してから、まだ無い行を登録します。生存行の (product_id, display_sort) は部分
 // UNIQUE インデックスが一意に保つため、この順序でなければ表示順を使い回した登録が 23505 で失敗します。
-func (r *repository) syncImages(
-	ctx context.Context, db *gen.Queries, p *product.Product, images []product.Image,
-) error {
+func (r *repository) syncImages(ctx context.Context, db *gen.Queries, p *product.Product) error {
+	images := p.Images()
 	ids := make([]uuid.UUID, len(images))
 	paths := make([]string, len(images))
 	displaySorts := make([]int16, len(images))
@@ -638,12 +592,21 @@ func (r *repository) findImagesByProductIDs(
 	return images, nil
 }
 
-// buildProducts は、商品行の集合をドメインエンティティ列へ変換します。
-// 画像は集約が抱えないため引きません（読みは ListImagesByProductIDs）。
-func (r *repository) buildProducts(_ context.Context, rows []productRow) (product.Products, error) {
+// buildProducts は、商品行の集合を画像込みのドメインエンティティ列へ変換します。
+// 画像は行数によらず 1 度の問い合わせでまとめて取得します。
+func (r *repository) buildProducts(ctx context.Context, rows []productRow) (product.Products, error) {
+	ids := make([]uuid.UUID, len(rows))
+	for i, row := range rows {
+		ids[i] = row.p.ID
+	}
+	imagesByProductID, err := r.findImagesByProductIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+
 	products := make(product.Products, len(rows))
 	for i, row := range rows {
-		p, perr := rowToProduct(row)
+		p, perr := rowToProduct(row, imagesByProductID[row.p.ID])
 		if perr != nil {
 			return nil, perr
 		}
@@ -653,7 +616,7 @@ func (r *repository) buildProducts(_ context.Context, rows []productRow) (produc
 	return products, nil
 }
 
-// buildProduct は、単一の商品行をドメインエンティティへ変換します。
+// buildProduct は、単一の商品行を画像込みのドメインエンティティへ変換します。
 func (r *repository) buildProduct(ctx context.Context, row productRow) (*product.Product, error) {
 	products, err := r.buildProducts(ctx, []productRow{row})
 	if err != nil {
@@ -664,7 +627,7 @@ func (r *repository) buildProduct(ctx context.Context, row productRow) (*product
 }
 
 // rowToProduct は、sqlc が返す商品行（マスタ JOIN 込み）と画像をドメインエンティティへ変換します。
-func rowToProduct(row productRow) (*product.Product, error) {
+func rowToProduct(row productRow, images []product.Image) (*product.Product, error) {
 	price, err := money.NewPrice(row.p.Price)
 	if err != nil {
 		return nil, pgerror.NormalizeReconstructError(err)
@@ -678,7 +641,7 @@ func rowToProduct(row productRow) (*product.Product, error) {
 		return nil, pgerror.NormalizeReconstructError(err)
 	}
 
-	entity, _, err := product.Reconstruct(row.p.ID, product.Attributes{
+	entity, err := product.Reconstruct(row.p.ID, product.Attributes{
 		Name:                  row.p.Name,
 		Description:           row.p.Description,
 		Price:                 price,
@@ -687,6 +650,7 @@ func rowToProduct(row productRow) (*product.Product, error) {
 		Status:                status,
 		Category:              category,
 		PublishedAt:           row.p.PublishedAt,
+		Images:                images,
 	}, int(row.p.LockVersion), row.p.CreatedAt)
 	if err != nil {
 		return nil, pgerror.NormalizeReconstructError(err)

@@ -142,14 +142,9 @@ func Test_repository_FindShippable(t *testing.T) {
 				require.Len(t, got, 2)
 				assert.Equal(t, mustParse(older), got[0].ID())
 				assert.Equal(t, mustParse(newer), got[1].ID())
-				// 明細は購入ごとに正しく振り分けられる（取り違えを弾く）。集約は明細を抱えないため
-				// ListDetails で引く。
-				olderDetails, oderr := repo.ListDetails(ctx, got[0].ID())
-				require.NoError(t, oderr)
-				newerDetails, nderr := repo.ListDetails(ctx, got[1].ID())
-				require.NoError(t, nderr)
-				assert.Len(t, olderDetails, 2)
-				assert.Len(t, newerDetails, 1)
+				// 明細は購入ごとに正しく振り分けられる（一括取得の取り違えを弾く）。
+				assert.Len(t, got[0].Details(), 2)
+				assert.Len(t, got[1].Details(), 1)
 				// 返した行は発送可能の述語を満たす。
 				assert.True(t, got[0].IsShippable())
 				assert.True(t, got[1].IsShippable())

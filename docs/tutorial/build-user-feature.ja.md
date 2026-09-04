@@ -35,8 +35,8 @@
 
 |レイヤー|真実の源|
 |---|---|
-|domain|`docs/spec/<feature>/domain.md`|
-|usecase|`docs/spec/<feature>/usecase.md`|
+|domain|`docs/spec/domain/<パッケージパス>.md`|
+|usecase|`docs/spec/usecase/<パッケージパス>.md`|
 |infrastructure|domain の Repository インターフェース + sqlc gen から **導出**（spec ファイルなし）|
 |controller|OpenAPI 生成の `ServerInterface` + usecase インターフェースから **導出**（spec ファイルなし）|
 
@@ -92,7 +92,7 @@ make setup-remove-sample-api
 **何を削除するか**（このマニフェストが本チュートリアル残り全体の目次になる）:
 `internal/domain/user`、`internal/usecase/user`、`repository/user` 配下の infra パッケージ、`internal/controller/handler/v1/users`、`internal/controller/job/usercount`、
 3 つの `internal/integration/v1_users*_test.go`、User の OpenAPI paths/components、User の DML +
-migration + seed、そして `docs/spec/user`。
+migration + seed、そして `docs/spec/{domain,usecase}/user.md`。
 
 > **注意:** このスクリプトは `product` / `order` の DB スタブも削除する（同じ「サンプル」マニフェスト
 > を共有しているため）。User のみの再構築ではこれで問題ない —— それらは未使用のマイグレーションである
@@ -118,10 +118,10 @@ make gen-query
 
 **ファイル:**
 
-- `docs/spec/user/domain.md` —— Overview / Entity / Cross-field Invariants / Behavior
+- `docs/spec/domain/user.md` —— Overview / Entity / Cross-field Invariants / Behavior
   Methods / Value Objects / Repository Methods。
-- `docs/spec/user/usecase.md` —— Overview / Interface / DTOs / Dependencies / Workflow。
-- `docs/spec/user-search/usecase.md` —— 読み取り専用のキーワード検索サービス（クエリ側の別ユース
+- `docs/spec/usecase/user.md` —— Overview / Interface / DTOs / Dependencies / Workflow。
+- `docs/spec/usecase/user/search.md` —— 読み取り専用のキーワード検索サービス（クエリ側の別ユース
   ケースなので独自の spec を持つ）。
 
 **なぜ最初か:** lean A では domain と usecase の実装はこれらの spec に対して検証され（`/verify-spec`）、
@@ -212,7 +212,7 @@ make gen-query   # スキーマをダンプ → DML をマージ → sqlc genera
 
 ## Step 4 —— domain レイヤー
 
-**目的:** `domain.md` から集約を実装する: エンティティ、不変条件、振る舞いメソッド、値オブジェクト、
+**目的:** `docs/spec/domain/user.md` から集約を実装する: エンティティ、不変条件、振る舞いメソッド、値オブジェクト、
 sentinel エラー、定数、そして Repository インターフェース。
 
 **ファイル（`internal/domain/user/` 内）:**
@@ -313,7 +313,7 @@ go test ./internal/infrastructure/rdb/repository/user/...
 
 ## Step 6 —— usecase レイヤー
 
-**目的:** `usecase.md` からアプリケーションサービスを実装する: domain + repository + boundary を
+**目的:** `docs/spec/usecase/user.md` からアプリケーションサービスを実装する: domain + repository + boundary を
 オーケストレーションし、DTO を返す。ここでは業務 *ルール* を一切発明しない —— このレイヤーは調整役で
 ある。
 
@@ -516,7 +516,7 @@ of Done の一部であり、任意の仕上げではない。
 |Step|レイヤー|主なファイル|一言での「なぜ」|検証|
 |---|---|---|---|---|
 |0|reset|`make setup-remove-sample-api`|マニフェストが機能の目次|User なしでツリーがコンパイル|
-|1|spec|`docs/spec/user/{domain,usecase}.md`|lean A: 内側の 2 レイヤーのみ spec 駆動|`/verify-spec user`|
+|1|spec|`docs/spec/{domain,usecase}/user.md`|lean A: 内側の 2 レイヤーのみ spec 駆動|`/verify-spec user`|
 |2|contracts|`openapi/**`、`database/migrations/**`、`database/dml/**`|OpenAPI-first + 追記専用マイグレーション|`make db-*-migrate-up`|
 |3|generate|`make gen-api` / `make gen-query`|契約を変え、生成物は変えない|`gen/` 下にファイルが現れる|
 |4|domain|`internal/domain/user/**`|非公開フィールド + `ptr.Copy` + sentinel エラー + 純粋性|`go test ./internal/domain/user/...`|

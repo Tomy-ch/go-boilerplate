@@ -1,7 +1,7 @@
 ---
 name: scaffold-endpoint
 description: >-
-  End-to-end orchestrator that builds a complete onion-architecture endpoint (domain + infra-db + usecase + controller) for one feature — and, when you start from a rough idea instead of finished specs, first drives the feature-dev-style upstream design phases that turn that idea into the input artifacts the deterministic scaffold core needs. Two entry modes, auto-detected: (A) **idea-first** — Discovery + Clarifying Questions (ask the user explicitly) → parallel Codebase Exploration (Explore agents) → Architecture Design (Plan agent, constrained to the lean A / onion / OpenAPI-first / sqlc rails) → draft the OpenAPI YAML + SQL migration + domain.md + usecase.md for user review, then run `make gen-api` / `make gen-query`; (B) **specs-ready** — jump straight to the core when `docs/spec/<feature>/{domain,usecase}.md` + OpenAPI + SQL already exist. The deterministic core is unchanged: `verify-spec` → `scaffold-domain` → `scaffold-infra-db` → `scaffold-usecase` → `scaffold-controller` → `make fix`/`make test` → runtime curl + o11y. Closes with a Quality Review that reuses the repo's own review skills (`impl-review` + `arch-check` + `test-review`) rather than a generic reviewer. Use when starting a new feature / endpoint end-to-end, when you have only an idea or a requirement and no specs yet, when you want the whole controller→usecase→domain→infra stack built consistently with one consolidated report, or when you want the upstream design phases (clarify → explore → design) before implementing. Do NOT use for modifying a single existing layer (run the specific `scaffold-<layer>` standalone), for a pure spec-template scaffold (`new-spec`), or for a review-only pass (`impl-review` / `arch-check` / `test-review`). Halts (never auto-rollbacks) on any failing phase; each layer keeps its own human-in-the-loop confirmation.
+  End-to-end orchestrator that builds a complete onion-architecture endpoint (domain + infra-db + usecase + controller) for one feature — and, when you start from a rough idea instead of finished specs, first drives the feature-dev-style upstream design phases that turn that idea into the input artifacts the deterministic scaffold core needs. Two entry modes, auto-detected: (A) **idea-first** — Discovery + Clarifying Questions (ask the user explicitly) → parallel Codebase Exploration (Explore agents) → Architecture Design (Plan agent, constrained to the lean A / onion / OpenAPI-first / sqlc rails) → draft the OpenAPI YAML + SQL migration + the domain and usecase specs for user review, then run `make gen-api` / `make gen-query`; (B) **specs-ready** — jump straight to the core when `docs/spec/domain/<domainPkg>.md` + `docs/spec/usecase/<usecasePkg>.md` + OpenAPI + SQL already exist. The deterministic core is unchanged: `verify-spec` → `scaffold-domain` → `scaffold-infra-db` → `scaffold-usecase` → `scaffold-controller` → `make fix`/`make test` → runtime curl + o11y. Closes with a Quality Review that reuses the repo's own review skills (`impl-review` + `arch-check` + `test-review`) rather than a generic reviewer. Use when starting a new feature / endpoint end-to-end, when you have only an idea or a requirement and no specs yet, when you want the whole controller→usecase→domain→infra stack built consistently with one consolidated report, or when you want the upstream design phases (clarify → explore → design) before implementing. Do NOT use for modifying a single existing layer (run the specific `scaffold-<layer>` standalone), for a pure spec-template scaffold (`new-spec`), or for a review-only pass (`impl-review` / `arch-check` / `test-review`). Halts (never auto-rollbacks) on any failing phase; each layer keeps its own human-in-the-loop confirmation.
 ---
 
 # Scaffold Endpoint
@@ -14,7 +14,7 @@ A Japanese reference translation of this skill is available at `SKILL.ja.md` in 
 
 ## When to Use
 
-- Starting a new feature / endpoint end-to-end — whether you have only an idea, or the 2 specs (`domain.md` + `usecase.md`) + OpenAPI YAML + SQL are already prepared.
+- Starting a new feature / endpoint end-to-end — whether you have only an idea, or the 2 specs (domain + usecase) + OpenAPI YAML + SQL are already prepared.
 - You want the upstream design phases (clarify ambiguities → explore existing patterns → weigh approaches) *before* any code is written.
 - You want all layers built with the same conventions and one consolidated report, then reviewed by `impl-review` / `arch-check` / `test-review`.
 
@@ -28,8 +28,8 @@ Do NOT use this skill for:
 
 | Mode | Trigger | Upstream phases (1–4) | Core (Phases 5–7) |
 | --- | --- | --- | --- |
-| **A. idea-first** | User starts from an idea / requirement; `docs/spec/<feature>/` is missing or lacks `domain.md`/`usecase.md` | **runs** — clarify → explore → design → draft inputs | runs |
-| **B. specs-ready** | `docs/spec/<feature>/{domain,usecase}.md` + OpenAPI gen + sqlc gen already exist | **skipped** (fast path) | runs |
+| **A. idea-first** | User starts from an idea / requirement; the domain or the usecase spec is missing from its tree | **runs** — clarify → explore → design → draft inputs | runs |
+| **B. specs-ready** | `docs/spec/domain/<domainPkg>.md` + `docs/spec/usecase/<usecasePkg>.md` + OpenAPI gen + sqlc gen already exist | **skipped** (fast path) | runs |
 
 Never force the upstream phases on a user who already has valid inputs; detect and skip. Conversely, never skip straight to `verify-spec` when the specs don't exist yet — that is the gap the upstream phases fill.
 
@@ -37,7 +37,7 @@ Never force the upstream phases on a user who already has valid inputs; detect a
 
 **Reads (always)**:
 
-- `docs/spec/<feature>/{domain,usecase}.md` — via child skills (lean A: 2 spec files only).
+- `docs/spec/domain/<domainPkg>.md` + `docs/spec/usecase/<usecasePkg>.md` — via child skills (lean A: 2 spec files only).
 - OpenAPI gen + sqlc gen + domain Repository IF — derivation sources for controller / infra (no spec).
 - `.codex/scaffold-spec/lifecycle.md` — for the canonical workflow / scaffold execution order.
 - Layer `README.md` + `docs/` at runtime (the upstream phases read them as the source of truth for existing patterns; does not hardcode design rules that would drift).
@@ -45,7 +45,7 @@ Never force the upstream phases on a user who already has valid inputs; detect a
 **Writes**:
 
 - **Mode B**: nothing directly. All writes happen inside the chained child skills, each within its own scope.
-- **Mode A (upstream phases, Phase 4 only)**: *draft* input artifacts for user review — `openapi/**` (OpenAPI YAML), `database/migrations/**` (new files only) + `database/dml/**` (SQL), `docs/spec/<feature>/{domain,usecase}.md` (via `new-spec`, then filled). These are all inside the AI modification scope in `AGENTS.md`. These upstream phases never write Go source; that stays with the core's child skills.
+- **Mode A (upstream phases, Phase 4 only)**: *draft* input artifacts for user review — `openapi/**` (OpenAPI YAML), `database/migrations/**` (new files only) + `database/dml/**` (SQL), `docs/spec/domain/<domainPkg>.md` + `docs/spec/usecase/<usecasePkg>.md` (via `new-spec`, then filled). These are all inside the AI modification scope in `AGENTS.md`. These upstream phases never write Go source; that stays with the core's child skills.
 
 ## Preconditions for the core (Phases 5+)
 
@@ -53,7 +53,7 @@ These must be true before the **core** runs. In Mode A they are the *output* of 
 
 | # | Precondition | Verifier |
 | --- | --- | --- |
-| 1 | `domain.md` + `usecase.md` exist under `docs/spec/<feature>/` (lean A: 2 spec files only) | verify-spec |
+| 1 | The domain spec and the usecase spec exist in their trees (lean A: 2 spec files only) | verify-spec |
 | 2 | Spec format valid + cross-spec references consistent + naming convention satisfied | verify-spec |
 | 3 | OpenAPI YAML written and `make gen-api` produced `internal/controller/handler/<path>/gen/` | scaffold-controller precondition |
 | 4 | SQL files under `database/dml/...` written and `make gen-query` produced sqlc gen files | scaffold-infra-db precondition |
@@ -70,15 +70,18 @@ If any precondition fails when the core starts, the relevant child skill will su
 
 ## Phase 0. Confirm Feature + Detect Mode
 
-**MUST call `ask the user explicitly` immediately after invocation**:
+**MUST call `ask the user explicitly` immediately after invocation**, one batched call:
 
-- Question: 「対象 feature 名 (kebab-case)」
-- Free-text.
+- 「対象 feature 名 (kebab-case)」 — free-text. The bundle label used in the report; not a path.
+- 「domain パッケージパス（`internal/domain/` 以下。例: `cart`, `product/category`）」 — free-text.
+- 「usecase パッケージパス（`internal/usecase/` 以下。例: `address`, `product/ranking`, `user/search`）」 — free-text.
 
-Then detect the entry mode:
+The two package paths are separate answers and routinely differ from each other and from the feature name: the spec tree is keyed by package path (`docs/spec/<layer>/<rest>.md` ⇔ `internal/<layer>/<rest>`), Go package names carry no hyphens, and a usecase package does not sit under the aggregate it depends on (`internal/usecase/user/search` → `internal/domain/user`). Default each to the feature name with `-` replaced by `/` and let the user correct it.
 
-- Check `docs/spec/<feature>/`. If it contains both `domain.md` and `usecase.md` **and** the user's request reads as "scaffold from my ready specs", choose **Mode B** and go straight to Phase 5.
-- Otherwise choose **Mode A** and run the upstream phases (Phases 1–4). If the directory is missing entirely, that is the normal idea-first start — do not treat it as an error.
+Then detect the entry mode — **two lookups, one per tree**:
+
+- Check `docs/spec/domain/<domainPkg>.md` and `docs/spec/usecase/<usecasePkg>.md`. If **both** exist **and** the user's request reads as "scaffold from my ready specs", choose **Mode B** and go straight to Phase 5.
+- Otherwise choose **Mode A** and run the upstream phases (Phases 1–4). Either file being absent is the normal idea-first start — do not treat it as an error.
 
 If the mode is ambiguous (specs exist but the user is clearly still designing), ask which they want rather than guessing.
 
@@ -117,7 +120,7 @@ When the agents return, **read the key files they surface** to build first-hand 
 Launch the **`Plan`** agent (1–3 focuses, e.g. minimal-change / clean-boundaries / pragmatic) to produce candidate approaches. **Constrain every approach to the fixed architecture** — the design space is *within* these rails, never around them:
 
 - Onion layering: `controller → usecase → domain`; infrastructure implements domain interfaces; no layer bypass (enforced by depguard).
-- lean A constitution: only `domain.md` + `usecase.md` are spec-driven; controller is derived from OpenAPI gen, infra from sqlc gen.
+- lean A constitution: only the domain and usecase layers are spec-driven; controller is derived from OpenAPI gen, infra from sqlc gen.
 - OpenAPI-first for the HTTP contract; sqlc for queries; no new frameworks or architectural patterns (per `AGENTS.md`).
 
 So the approaches differ on *repo-legal* axes — e.g. where a computed value lives (domain method vs VO), repository vs query-service for a read path, synchronous write vs outbox, pagination style, how invariants are enforced — not on framework-level choices. Present each approach's trade-offs plus your recommendation, then **`ask the user explicitly` for which approach to use**.
@@ -128,7 +131,7 @@ So the approaches differ on *repo-legal* axes — e.g. where a computed value li
 
 Following the chosen approach:
 
-1. Chain `new-spec` to scaffold the `domain.md` + `usecase.md` templates, then **fill them** with the designed content (entities/invariants/behaviors/VOs/Repository methods; usecase interface/DTOs/dependencies/workflow). `new-spec` only creates identity-level templates — the design content comes from Phases 1–3.
+1. Chain `new-spec` to scaffold the domain + usecase spec templates, then **fill them** with the designed content (entities/invariants/behaviors/VOs/Repository methods; usecase interface/DTOs/dependencies/workflow). `new-spec` only creates identity-level templates — the design content comes from Phases 1–3.
 2. Draft the **OpenAPI YAML** under `openapi/**` (OpenAPI-first) and the **SQL** under `database/dml/**` + a **new** migration under `database/migrations/**` (new files only — never edit an existing migration).
 3. **Present the drafts to the user for review** (`ask the user explicitly`: 「このドラフトで生成に進みますか？」 / 修正指摘 / キャンセル). These are drafts — the user is the author-of-record and must approve before generation.
 4. After approval, run `make gen-api` + `make gen-query` (DB must be up — see the environment note) so the generated `gen/` + sqlc files exist for the core.
@@ -143,7 +146,7 @@ When Phase 4 completes, the Phase-5+ preconditions hold and the flow continues i
 
 ### Phase 5. Verify Specs (auto-chain)
 
-Invoke the `verify-spec` skill with the feature name. If `verify-spec` reports `violations > 0`, abort the chain:
+Invoke the `verify-spec` skill with the two package paths collected in Phase 0. If `verify-spec` reports `violations > 0`, abort the chain:
 
 ```text
 scaffold can not safely proceed: verify-spec で <N> 件の違反が検出されました。
@@ -154,7 +157,7 @@ If only warnings are reported, continue (warnings do not block).
 
 ### Phase 6. Chain Child Skills in Dependency Order
 
-Invoke each child skill in turn, passing the feature name in context so each child can resolve its spec path automatically:
+Invoke each child skill in turn, passing that layer's package path in context so each child resolves its spec path from it — the feature name does not determine a spec path:
 
 1. **`scaffold-domain`** — entity + Repository IF + VOs + constants + errors + tests (+ `make gen-api` for mock).
 2. **`scaffold-infra-db`** — Repository impl wrapping sqlc gen (requires `make gen-query` already run, verified internally).
@@ -254,7 +257,7 @@ Do NOT commit. Do NOT push.
 ## AI Modification Scope
 
 - **Mode B**: this skill writes no files. All scope is delegated to child skills, each within their own constraints (see their SKILL.md).
-- **Mode A**: additionally, the upstream phases draft input artifacts in Phase 4 — only under `openapi/**`, `database/dml/**`, `database/migrations/**` (new files only), and `docs/spec/<feature>/**` (all inside the `AGENTS.md` AI modification scope). It never writes Go source and never touches generated files.
+- **Mode A**: additionally, the upstream phases draft input artifacts in Phase 4 — only under `openapi/**`, `database/dml/**`, `database/migrations/**` (new files only), and `docs/spec/domain/**` / `docs/spec/usecase/**` (all inside the `AGENTS.md` AI modification scope). It never writes Go source and never touches generated files.
 
 ## Constraints
 

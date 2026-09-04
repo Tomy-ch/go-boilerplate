@@ -110,7 +110,7 @@ type ProductPatchRequest struct {
 	// Example: <p>ノイズキャンセリング対応の Bluetooth イヤホン</p>
 	Description nullable.Nullable[string] `json:"description,omitempty"`
 
-	// Images 商品画像。送ると集合ごと置き換えます（差分更新ではありません）。null を指定すると画像を全て取り除きます。 同じ商品の中で displaySort が重複する場合は業務不変条件違反として 422 を返します。 置き換えで外れた画像は、猶予期間の経過後に未参照オブジェクトの回収（product-image-gc）が ストレージから削除します。
+	// Images 商品画像。送ると集合ごと置き換えます（差分更新ではありません）。null を指定すると画像を全て取り除きます。 置き換え後の枚数は 1 商品あたり 20 枚までです。 同じ商品の中で displaySort が重複する場合は業務不変条件違反として 422 を返します。 置き換えで外れた画像は、猶予期間の経過後に未参照オブジェクトの回収（product-image-gc）が ストレージから削除します。
 	Images nullable.Nullable[[]ProductImageInput] `json:"images,omitempty"`
 
 	// Name 商品名

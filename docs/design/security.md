@@ -345,6 +345,19 @@ unprotected no matter how the handler is written, and no amount of Go review wil
 Business-validity rules are deliberately *not* here: the domain layer is their sole authority
 ([ADR-0017 (validation-value-authority)](../adr/0017-validation-value-authority.md)), so the two never drift into each other.
 
+**A credential in a URL is a logging problem, not only a transport one.** Realtime Delivery
+authenticates its SSE stream with a ticket carried as a **query parameter**, because `EventSource`
+cannot send an `Authorization` header ([ADR-0074 (query-ticket-stream-authentication)](../adr/0074-query-ticket-stream-authentication.md)).
+That choice moves a credential into the one part of a request that infrastructure copies by default.
+The in-process answer is to excise it from logs and span attributes, but that reaches only what this
+process writes: the load balancer, the proxy and the CDN each log the query string on their own, so
+the deployment must exclude or redact it on the stream path ([realtime-delivery.md §4.2](realtime-delivery.md#42-on-the-deployment-side)).
+The mitigations that make this acceptable are that the ticket is short-lived, bound to a single
+destination, single-purpose — it authenticates a stream and authorizes nothing — and explicitly
+revocable. Note also that the stream's security scheme is a second authenticator in the OpenAPI
+document, so the rule above holds for it too: an operation that omits its `security` requirement is
+unprotected, and reviewing the spec diff is how that is caught.
+
 **Escape hatches are named, narrow, and greppable.** `ContextWithAllowPrivateNetwork`, the
 `details` property that opts an error schema into detail exposure, and `/metrics` as a declared
 auth exception ([ADR-0020 (metrics-endpoint-auth-exception)](../adr/0020-metrics-endpoint-auth-exception.md)) are each a specific

@@ -67,12 +67,12 @@ func (u *usecase) LookupByPostalCode(ctx context.Context, postalCode string) (*R
 
 	candidates, err := u.gateway.Lookup(ctx, postalCode)
 	if err != nil {
-		// 外部 lookup 障害時は degrade する（docs/spec/address/usecase.md）。
+		// 外部 lookup 障害時は degrade する（docs/spec/usecase/address.md）。
 		return &Result{Candidates: []*CandidateView{}, IsFallback: true}, nil
 	}
 
 	// 県名は同一郵便番号でほぼ単一のため memo 化して FindByName 呼び出しを最小化する
-	// （degrade の範囲は docs/spec/address/usecase.md）。
+	// （degrade の範囲は docs/spec/usecase/address.md）。
 	resolved := make(map[string]*uuid.UUID, 1)
 	views := make([]*CandidateView, 0, len(candidates))
 	for _, c := range candidates {

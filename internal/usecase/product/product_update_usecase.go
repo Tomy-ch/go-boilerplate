@@ -45,7 +45,7 @@ type UpdateProductParams struct {
 // UpdateProduct は、読み込みから更新までを 1 つのトランザクションで行い、読み込み時点のバージョンを
 // 条件に更新することで並行編集による上書き（lost update）を防ぎます。
 // バージョン不一致の 409 は tx.Manager の透過リトライでは解消しないため、リトライ対象と混同されては
-// なりません（クライアントの再試行手順は docs/spec/product/usecase.md の UpdateProduct）。
+// なりません（クライアントの再試行手順は docs/spec/usecase/product.md の UpdateProduct）。
 func (u *usecase) UpdateProduct(
 	ctx context.Context, authn *auth.Authn, id uuid.UUID, params UpdateProductParams,
 ) (ProductView, error) {
@@ -69,11 +69,8 @@ func (u *usecase) UpdateProduct(
 		return ProductView{}, err
 	}
 
-	var (
-		entity         *product.Product
-		updated        []product.Image
-		updatedVersion int
-	)
+	var entity *product.Product
+	var updatedVersion int
 	err = u.txm.Do(ctx, func(ctx context.Context) error {
 		loaded, err := u.repo.FindByID(ctx, id)
 		if err != nil {
@@ -90,14 +87,7 @@ func (u *usecase) UpdateProduct(
 			return err
 		}
 
-		// 画像が未送信なら現在値を据え置く。集約が抱えないため読み直す。
-		current, cerr := u.repo.ListImages(ctx, entity.ID())
-		if cerr != nil {
-			return cerr
-		}
-
-		var uerr error
-		updated, uerr = entity.Update(product.Attributes{
+		if err = entity.Update(product.Attributes{
 			Name:                  ptr.Deref(params.Name, entity.Name()),
 			Description:           params.Description.Resolve(entity.Description()),
 			Price:                 ptr.Deref(price, entity.Price()),
@@ -106,13 +96,12 @@ func (u *usecase) UpdateProduct(
 			Status:                statusRef,
 			Category:              categoryRef,
 			PublishedAt:           params.PublishedAt.Resolve(entity.PublishedAt()),
-			Images:                ptr.Deref(images, current),
-		})
-		if uerr != nil {
-			return uerr
+			Images:                ptr.Deref(images, entity.Images()),
+		}); err != nil {
+			return err
 		}
 
-		updatedVersion, err = u.repo.Update(ctx, entity, updated)
+		updatedVersion, err = u.repo.Update(ctx, entity)
 
 		return err
 	})
@@ -120,7 +109,7 @@ func (u *usecase) UpdateProduct(
 		return ProductView{}, err
 	}
 
-	view := toProductView(entity, updated)
+	view := toProductView(entity)
 	// バージョンの採番は永続化時に DB が行うため、エンティティが保持する読み込み時点の値を採番後の値で置き換えます。
 	view.Version = updatedVersion
 

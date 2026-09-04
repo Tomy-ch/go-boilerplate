@@ -19,6 +19,8 @@ var (
 	ErrInvalidImagePath = xerrors.Wrap(errInvalid, "imagePath failed")
 	// ErrInvalidImageDisplaySort は、商品画像の表示順の検証に失敗した場合のエラーです。
 	ErrInvalidImageDisplaySort = xerrors.Wrap(errInvalid, "imageDisplaySort failed")
+	// ErrTooManyImages は、商品が保持する画像の枚数が上限を超える場合のエラーです。
+	ErrTooManyImages = xerrors.Wrap(errInvalid, "too many images")
 	// ErrDuplicateImageDisplaySort は、同一商品内で商品画像の表示順が重複している場合のエラーです。
 	ErrDuplicateImageDisplaySort = xerrors.Wrap(errInvalid, "duplicate imageDisplaySort")
 	// ErrInvalidStatusID は、商品ステータス ID の検証に失敗した場合のエラーです。

@@ -32,15 +32,21 @@ given the generated code and naming convention.
 
 ## Decision
 
-The spec scaffolding follows a **lean-A constitution**: only `domain.md` and `usecase.md`
-spec files are required under `docs/spec/<feature>/`. Controller and infrastructure layers
-are derived from generated code and naming conventions — no `controller.md` or `infra.md`
-spec files exist.
+The spec scaffolding follows a **lean-A constitution**: only domain and usecase spec files
+are required. Controller and infrastructure layers are derived from generated code and
+naming conventions — no controller or infra spec files exist.
 
-- `scaffold-domain` consumes `domain.md` (sections: Overview, Entity, Cross-field
+Specs are filed by layer, and within a layer a spec's path mirrors the package it specifies:
+`docs/spec/<layer>/<rest>.md` ⇔ `internal/<layer>/<rest>`. The domain spec for
+`internal/domain/product/category` is `docs/spec/domain/product/category.md`; the usecase spec
+for `internal/usecase/user/search` is `docs/spec/usecase/user/search.md`. Each spec's own
+`package:` declaration restates that target, which makes the correspondence checkable rather
+than conventional. `docs/spec/glossary.md` specifies no package and stays at the root.
+
+- `scaffold-domain` consumes the domain spec (sections: Overview, Entity, Cross-field
   Invariants, Behavior Methods, Value Objects, Repository Methods) to generate the entity,
   value objects, constants, errors, and Repository interface.
-- `scaffold-usecase` consumes `usecase.md` (sections: Overview, Interface, DTOs,
+- `scaffold-usecase` consumes the usecase spec (sections: Overview, Interface, DTOs,
   Dependencies, Workflow) to generate the Application Service, DTOs, and boundary wiring.
 - `scaffold-controller` derives the handler from the OpenAPI-generated `ServerInterface`
   and the usecase Interface via name-match heuristic. It halts with a hand-off message if
@@ -102,8 +108,9 @@ genuinely non-derivable from the generated artifacts.
   `.claude/skills/scaffold-infra-db/SKILL.md`,
   `.claude/scaffold-spec/domain-spec.md`,
   `.claude/scaffold-spec/usecase-spec.md`.
-- Spec files are committed to the repository under `docs/spec/<feature>/` as permanent
-  design artifacts; they remain after scaffold completes and are reviewed alongside the PR.
+- Spec files are committed to the repository under `docs/spec/domain/` and
+  `docs/spec/usecase/` as permanent design artifacts; they remain after scaffold completes
+  and are reviewed alongside the PR.
 - Naming convention enforcement for controller and infra is governed by `arch-check`; see
   [`docs/rules.md`](../rules.md) for the layer dependency and purity rules that underpin it.
 - Controller derivation halts on unmapped `operationId`; infra derivation continues with

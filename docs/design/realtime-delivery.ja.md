@@ -197,10 +197,14 @@ flowchart LR
   stream -. "never" .-x feature
 ```
 
-architecture rule（`internal/architest/realtime_isolation_test.go` が機械的に検査する）:
+architecture rule（いずれも機械的に検査される）:
 
 1. `boundary/realtime`、`usecase/realtime`、`controller/stream`、`controller/realtime`、5 つの infrastructure package は `internal/domain/<feature>` も `internal/usecase/<feature>` も import しない。
 2. `InstanceLeaseStore` を import できるのは realtime package 群、realtime DI module、orphan-cleanup job の入口だけ。
+
+規約 1 は意図的に二重で検査される: `depguard`（`maintain_realtime_feature_neutrality`、`.golangci-full.yaml`——`make lint` と CI が実際に走らせる config——に宣言され、editor でも表示されるよう `.golangci.yaml` にも複製されている。[ADR-0088 (two-layer-golangci-config)](../adr/0088-two-layer-golangci-config.ja.md)）が他の layer rule と並んで lint 時点で落とし、`internal/architest/realtime_isolation_test.go` が test 時点で落とすのに加えて、走査対象の package 一覧が今も存在することまで assert する——対象がリネームで消えたルールは、linter には報告できない唯一の失敗である。規約 2 は architecture test にしか存在しない: これは単一の**シンボル**を制約するものであり、`depguard` は package 丸ごとしか拒否できないため、そこで表現すると同じ package からの正当な `EventLogStore` / `StreamTicketStore` の import まで拒否してしまう。
+
+この二重検査には既知の穴が 1 つある。`depguard` は import path を素の prefix で照合するため、`usecase/realtime` を機構へ戻す `allow` 記述は、その文字列で始まるだけの将来の兄弟 package まで通してしまう。architecture test の `isFeatureImport` も同じ導出をしているため、二つの検査は互いを補えず同じ弱点を共有している。現時点でそのような package は存在しない——制約は、`internal/usecase/` に `realtime` で始まる名前の feature package を作らないことである。
 
 ### 3.2 このサブシステムが依拠する outbox の追加
 
@@ -254,7 +258,21 @@ trace: command → outbox → relay → EventLog は outbox header を通じて 
 - **DynamoDB**: 3 table（`occurredAt` 由来の失効で TTL 7 日の EventLog、TTL 付きの StreamTicket、InstanceLease）。partition = stream。at-rest 暗号化。point-in-time recovery、backup、alarm はこの repository の外で provisioning する（[ADR-0106 (vendor-neutral-deploy-skeleton)](../adr/0106-vendor-neutral-deploy-skeleton.ja.md)）。単一の hot stream は 1 partition と 1 PostgreSQL 行で有界であり、機構はそれを shard しない。
 - **SNS / SQS**: standard topic を 1 つ。deployment が provisioning し、`REALTIME_TOPIC` でアプリケーションに名前を渡す（ローカルでは `make realtime-init` が作る）。アプリケーション自身が作る resource は instance ごとの standard queue だけで、serve 起動時に `<REALTIME_QUEUE_PREFIX>-<instance id>` として作る。属性は次のとおり: `aws:SourceArn` がその topic のときに限り `sns.amazonaws.com` からの `sqs:SendMessage` を許可する access policy、subscription の `RawMessageDelivery=true`、long polling（`ReceiveMessageWaitTimeSeconds=20`）、`VisibilityTimeout=30`、`SqsManagedSseEnabled=true`（customer-managed な KMS 鍵は機構が公開する調整点ではない）、そして `REALTIME_DLQ` が設定されているときは共有 DLQ への `maxReceiveCount=5` の `RedrivePolicy`——DLQ 自体は deployment が provisioning するものであり、wakeup を 1 つ失っても定期 catch-up が拾うので、正しさの要件ではなく運用上の安全網である。最小 IAM: relay は topic への `sns:Publish`。serve instance は `<prefix>-*` への `sqs:CreateQueue` / `sqs:GetQueueAttributes` / `sqs:SetQueueAttributes` / `sqs:ReceiveMessage` / `sqs:DeleteMessage` / `sqs:DeleteQueue` と、topic への `sns:Subscribe` / `sns:SetSubscriptionAttributes` / `sns:Unsubscribe`、および revocation のための topic への `sns:Publish`。orphan-cleanup job はこれに加えて、topic への `sns:ListSubscriptionsByTopic` と `<prefix>-*` への `sqs:GetQueueUrl` が要る——死んだ instance の queue へは、キャッシュした URL ではなく名前から辿るためで、そこでの拒否は「既に無い」と区別が付かないため、queue が残ったまま job が毎回失敗し続ける。`sns:CreateTopic` はどこも必要としない。
 - **edge**: HTTPS。固定の CORS origin。クライアントの CSP `connect-src`。load balancer / proxy の idle timeout は heartbeat 間隔より長く、stream path では response buffering を無効化。reconnect の rate limiting があるなら edge で。**stream path の query string を edge / proxy / load balancer の access log から除外または redact する**——ticket は query parameter で運ばれ、プロセス内の除去はプロセス外で書かれる log には届かない。
-- **local**: shared infrastructure profile の DynamoDB Local と SNS/SQS emulator（GoAWS）。table と topic は idempotent な initializer が作り、table 名は worktree ごとに prefix する。GoAWS は queue policy を受け付けず、redrive / 暗号化の属性も尊重しないため、emulator 用の queue attribute の集合（`infrastructure/realtime/local`）は timing の属性だけを設定する。DI module は emulator の環境ではこちらを、`dev` 以降では完全な集合を選ぶ。
+- **local**: shared infrastructure profile の DynamoDB Local と SNS/SQS emulator（GoAWS）。table と topic は idempotent な initializer が作り、table 名・topic・queue prefix のすべてに worktree slot ごとの suffix を付ける——emulator を共有する checkout どうしが状態を共有しないようにするためである。GoAWS は queue policy を受け付けず、redrive / 暗号化の属性も尊重しないため、emulator 用の queue attribute の集合（`infrastructure/realtime/local`）は timing の属性だけを設定する。DI module は emulator の環境ではこちらを、`dev` 以降では完全な集合を選ぶ。
+
+**Operate.** threshold は deployment が持つ——これらは traffic、instance 数、business が必要とする retention に従うものであり、いずれもこの repository の知るところではない——しかし*何を見るか*は deployment の持ち物ではない。それは機構から導かれるからである。以下の signal はいずれも §3.4 の metric 群である。上記の resource を provisioning しても、これらを配線しない deployment はサブシステムを盲目のまま運用することになる。
+
+| signal | 意味 | 最初の runbook 対応 |
+| --- | --- | --- |
+| **blocked stream**（先頭が dead） | ordering chain が stream 上で停止している: sequence を skip したのではなく terminal failure が止めたので、dead な先頭より後は何も配送されない。自動では解消しない唯一の alert。 | dead な outbox 行を見つけ、原因を修正するか破棄したうえで `outbox-relay replay --message-id=<uuid>` を実行する。動くまではその stream は全クライアントに対して止まったままになる。 |
+| **EventLog lag**（outbox `created_at` → append） | relay が遅れている。クライアントには commit 済みの変更が遅れて見え、relay が追いつくまで gap が広がり続ける。 | relay が動いているか（`outbox-relay --channel=realtime`）、DynamoDB が append を受け付けているかを確認する。死んだ relay は error ではなく lag として現れる。 |
+| **delivery latency**（`occurredAt` → SSE write） | EventLog lag が横ばいのまま上昇しているなら、ボトルネックは relay ではなく stream 側にある: replay の飽和、slow client、または instance が capacity 上限に達している、のいずれか。 | scale する前に replay の並行数の飽和と rejected connection 数を比較する。slow client の問題は instance を増やしても直らない。 |
+| **rejected connection**（capacity） | instance が `REALTIME_MAX_CONNECTIONS` に達している。クライアントは `503` で追い返され、どれだけ強く retry するかは edge の reconnect policy が決める。 | instance を追加するか、process に memory と file descriptor の余裕があれば instance あたりの上限を引き上げる（§3.3）。 |
+| **heartbeat 失敗 / expired instance** | lease が更新されていない。死んだ instance は queue と subscription を残したままになり、費用がかかるうえ誰も読まない message を受信し続ける。 | orphan-cleanup job が scheduled され成功しているか確認する。cleanup の実行が無いまま expired 件数が増えているなら、job が動いていないということである。 |
+| **cleanup 失敗** | job は動いているが回収できていない。多くは IAM が原因: `<prefix>-*` への `sns:ListSubscriptionsByTopic` と `sqs:GetQueueUrl` が要り、拒否は「既に無い」と区別が付かない。 | ロジックより先に job の permission を確認する——これは上の IAM の一覧がまさに防ごうとしている失敗である。 |
+| **append 失敗 / recovery 失敗** | EventLog 自体が書き込みを拒否している: throttling か、table がコードの想定と一致しなくなっている。 | DynamoDB の capacity と、table の key schema・TTL が initializer が作るものと一致しているかを確認する。 |
+
+DLQ が溜まっていくことはこの一覧に含めていない。それは正しさの signal ではないからである: wakeup を 1 つ失っても定期 catch-up が拾う。replay しなければならない配送としてではなく、fan-out の健全性についての証拠として扱う。
 
 ### 4.3 クライアントの契約
 

@@ -19,9 +19,9 @@ real infrastructure. A missing `fx.Provide`, a misconfigured database connection
 wiring error in `internal/di` can pass all unit tests yet fail at runtime with an opaque
 panic or fatal log.
 
-The project has three distinct entrypoints — HTTP server, background worker, and one-off
-job — each with its own DI graph. All three must be verified on every pull request that
-touches application code.
+The project has four distinct entrypoints — HTTP server, background worker, one-off job,
+and the outbox relay — each with its own DI graph. All four must be verified on every pull
+request that touches application code.
 
 Historically, DI wiring bugs are discovered late: after deployment to staging, or during
 manual testing. Catching them in CI on every PR requires a lightweight check that
@@ -29,9 +29,9 @@ exercises the real startup path without needing a running broker or full seed da
 
 ## Decision
 
-Introduce three dedicated CI workflow jobs that each boot the real fx graph against a
-real Postgres container and verify that the graph assembled and the entrypoint reached
-its dispatch logic:
+Introduce one dedicated CI workflow job per entrypoint, each booting the real fx graph
+against a real Postgres container and verifying that the graph assembled and the entrypoint
+reached its dispatch logic:
 
 **Server boot check** (`app-di-startup-check.yaml`):
 Build the server binary, start it in the background, then poll `GET /ready` up to 30
@@ -50,7 +50,16 @@ be a hard failure, not just an unknown worker.
 Same pattern as the worker check but for the job entrypoint: pass
 `__ci_boot_check_no_such_job__`, expect a non-zero exit containing `"unknown job"`.
 
-All three jobs spin up a real Postgres 18 container via the `services:` block and run
+**Outbox relay boot check** (`outbox-relay-boot-check.yaml`):
+The relay is a daemon, so it has no unknown-name path to exit through. Start
+`outbox-relay --channel=realtime`, poll its output for the fx event logger's
+`"Application started"`, then send SIGTERM and require `"Application stopped"` and a zero
+exit. Booting and draining are both part of the contract, so a relay that starts but cannot
+shut down fails the check. The `realtime` channel is the one under test because it is the
+one wired in CI; the `http` channel needs `ENDPOINT_OUTBOX`, which `env/.env.ci` leaves
+empty deliberately.
+
+All four jobs spin up a real Postgres 18 container via the `services:` block and run
 `make materialize-env` to embed the CI environment configuration before executing.
 
 ## Consequences
@@ -87,15 +96,19 @@ rather than being contained to the PR.
 
 ### Single combined entrypoint check
 
-A single job could sequentially boot all three entrypoints. Chosen against in favour of
-three independent jobs so that a failure in one does not mask the others and CI reports
-are clearly attributed.
+A single job could sequentially boot every entrypoint. Chosen against in favour of one
+independent job per entrypoint so that a failure in one does not mask the others and CI
+reports are clearly attributed. The same reasoning keeps each new entrypoint's check in its
+own workflow file rather than as an extra job inside an existing one.
 
 ## Notes
 
 - Sources: `.github/workflows/app-di-startup-check.yaml`,
   `.github/workflows/worker-boot-check.yaml`,
-  `.github/workflows/job-boot-check.yaml`.
+  `.github/workflows/job-boot-check.yaml`,
+  `.github/workflows/outbox-relay-boot-check.yaml`.
+- The relay check's sentinels come from `internal/di/fx_event_logger.go`; renaming those log
+  messages silently weakens it into a check that only proves the process stayed alive.
 - Related: [ADR-0040](0040-uber-fx-di.md) — the Uber fx DI container whose graph this
   check exercises.
 - Related: [ADR-0050](0050-broker-agnostic-worker-scaffold.md) — the worker subsystem

@@ -22,9 +22,9 @@ warrant a CommandService instead of a regular usecase composed of Repository cal
 
 Without such a criterion, the placement of multi-aggregate write operations falls back to
 implementer judgment about inter-aggregate semantics, and decisions vary by implementer. The
-naive heuristic — "it touches more than one aggregate, so it needs a CommandService" — pulls
-work that could be eventually consistent into synchronous transactions, contradicting this
-project's outbox-first design ([ADR-0054](0054-transactional-outbox.md)). A related ambiguity
+naive heuristic — "it touches more than one aggregate, so it needs a CommandService" — widens the
+aggregate boundary whenever that is convenient, and a boundary that widens on convenience
+constrains nothing. A related ambiguity
 exists in ADR-0032 itself: its consequences note that CommandService "can freely optimize
 flexible updates, deletes", which could be misread as write-shape flexibility or performance
 being sufficient grounds for introducing one.
@@ -124,18 +124,19 @@ than left implicit:
      書き方: 自分の書き込み操作から分岐 1 / 2 / 3 に当たる例を 1 件ずつ挙げ、それぞれ
              『何が同時に書かれるか』『途中状態が観測されてよいか』を明記する。 -->
 <!-- sample-api:replace-begin -->
-- **Purchase creation — branch 2 and branch 3 together.** Stock validation and decrement must be
-  atomic with purchase confirmation: a state where "a purchase succeeded without stock" must never
-  be observable, even momentarily (no overselling). The writes across the aggregates involved
-  (written together: `purchases`, `purchase_details`, `products`)
-  therefore require single-transaction atomicity (branch 3), and the outbox insert joins
-  that same transaction as usual per [ADR-0054](0054-transactional-outbox.md). The outbox insert is
-  not what justifies the CommandService — a regular usecase also writes the outbox in its own
-  transaction; the justification is the stock/purchase atomicity. Independently, the same
-  transaction guards on the purchaser still being a member, and that condition can be invalidated by
-  a concurrent withdrawal, so the user row is locked first (branch 2). The transaction consequently
-  spans three aggregates — user, product, purchase — for two different reasons, which is why the two
-  branches are asked separately. Specified in `docs/spec/purchase/usecase.md`.
+- **Purchase creation — branch 2 for the guard, and a write that still decomposes.** Stock validation
+  and decrement must be atomic with purchase confirmation: a state where "a purchase succeeded
+  without stock" must never be observable, even momentarily (no overselling). That atomicity is
+  supplied by the transaction the usecase already owns, not by a CommandService — the rows to be
+  written are named by identity (the products the details reference), so they are locked in id order
+  first and the write decomposes into `product.Repository.UpdateStock` plus
+  `purchase.Repository.Create`. This is the instance to read against the one below: three aggregates
+  are touched and the count still decides nothing. Independently, the same transaction guards on the
+  purchaser still being a member, and that condition can be invalidated by a concurrent withdrawal,
+  so the user row is locked first (branch 2). The outbox insert joins the same transaction as usual
+  per [ADR-0054](0054-transactional-outbox.md), and never justifies a CommandService — a regular
+  usecase writes the outbox in its own transaction too. Specified in
+  `docs/spec/usecase/purchase.md`.
 - **User withdrawal — branch 2 for the guard, branch 1 for the cascade.** The core of withdrawal is
   a single-aggregate write to `users.deleted_at`. The cascade — cancelling pending purchases and
   restoring stock — requires no immediacy and is eventually consistent via outbox events (branch 1).
@@ -143,7 +144,7 @@ than left implicit:
   does not apply and the operation stays a usecase; but a concurrent purchase creation would
   invalidate it, so branch 2 does apply and the user row is locked exclusively before the check.
   This is the shape the two-way procedure could not describe: a usecase that nonetheless takes a
-  lock. Specified in `docs/spec/user/usecase.md`.
+  lock. Specified in `docs/spec/usecase/user.md`.
 - **Product unpublication — branch 1, with no guard at all.** Clearing a product's publication date
   is a single-aggregate write, and the cross-aggregate condition it might appear to threaten — the
   in-progress purchases that reference the product — is deliberately not guarded. A purchase records
@@ -151,7 +152,7 @@ than left implicit:
   publication state, so the product going unpublished cannot make the purchase wrong. The condition
   is therefore allowed to go stale, and the update takes no lock on any purchase row. This is the
   contrasting instance to the withdrawal guard: same shape (one aggregate's write, another
-  aggregate's state), opposite answer to question 1. Specified in `docs/spec/purchase/usecase.md`.
+  aggregate's state), opposite answer to question 1. Specified in `docs/spec/usecase/purchase.md`.
 <!-- sample-api:replace-with -->
 <!-- = No instance has been recorded for this project yet. -->
 <!-- sample-api:replace-end -->
@@ -240,9 +241,12 @@ evidence that the criterion is not grounded in requirements. Rejected.
 
 ### Classifying every multi-aggregate write as CommandService
 
-Simpler to decide, but it creates an incentive to pull work that could be eventually
-consistent into synchronous transactions, contradicting this project's outbox-first design
-([ADR-0054](0054-transactional-outbox.md)). Rejected.
+Simpler to decide, but the count of aggregates a write touches says nothing about whether the
+write decomposes. Purchase creation touches three and still decomposes, because its target rows
+are named by identity and can be locked; what forbids decomposition is a target set defined by a
+predicate, which can be neither enumerated nor locked. Classifying by count would therefore admit
+a CommandService wherever widening the boundary is convenient, and a boundary that widens on
+convenience constrains nothing (§ Departure from "1 Aggregate = 1 Transaction Boundary"). Rejected.
 
 ### Treating a cross-aggregate read as needing no mechanism
 
@@ -293,7 +297,7 @@ Rejected for now; not excluded as a future evolution.
 <!-- sample-api:replace-begin -->
 - Which rows a given workflow locks, and which business rule each lock protects, is feature content
   rather than an architectural decision, so it is specified with the feature — in this repository the
-  removable sample set (`docs/spec/purchase/`, `docs/spec/user/`), referenced by path rather than
+  removable sample set (`docs/spec/usecase/purchase.md`, `docs/spec/usecase/user.md`), referenced by path rather than
   linked, because those files are deleted by `make setup-remove-sample-api` while this ADR stays.
 <!-- sample-api:replace-with -->
 <!-- = - Which rows a given workflow locks, and which business rule each lock protects, is feature content -->
@@ -301,6 +305,8 @@ Rejected for now; not excluded as a future evolution.
 <!-- sample-api:replace-end -->
 - Related: [ADR-0033](0033-system-cqrs-dml-category.md) (`system_cqrs` category that carries
   the outbox DML, outside the CQRS split); [ADR-0054](0054-transactional-outbox.md) (the
-  outbox pattern that the default decomposition path relies on);
+  outbox pattern, which addresses the dual-write anomaly between the database and an external
+  endpoint — it is how a decomposed cascade is *delivered*, not what makes decomposition
+  correct inside one database);
   [ADR-0035](0035-transaction-retry-idempotent-callers.md) (retry semantics of the single
   transaction an atomic write runs in).

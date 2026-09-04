@@ -59,9 +59,11 @@ does the fully-qualified code symbol: prose names a package, not a type.
 **The aggregate identifier in the Owner column is the high-signal probe.** Search for it in the
 shapes prose actually uses, in this order:
 
-1. **As a path segment** — `internal/domain/<agg>`, `internal/usecase/<agg>`, `docs/spec/<agg>/`,
-   `repository/<agg>`, `command_service/<agg>`. Highest signal and no collisions: `production` and
-   "the product" cannot match a path.
+1. **As a path segment** — `internal/domain/<agg>`, `internal/usecase/<agg>`,
+   `docs/spec/domain/<agg>`, `docs/spec/usecase/<agg>`, `repository/<agg>`, `command_service/<agg>`.
+   Highest signal and no collisions: `production` and "the product" cannot match a path. The spec
+   tree mirrors the package path, so a nested aggregate is `product/category`, not one hyphenated
+   segment — probe the segment the packages actually use.
 2. **As a package qualifier** — `<agg>.` as a prefix, so `<agg>.Anything` is caught rather than only
    the one type the table recorded.
 3. **As the Public name, word-bounded and capitalised** — `<Aggregate>`, `<Aggregate><Part>`,
