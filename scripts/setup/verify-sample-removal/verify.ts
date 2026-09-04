@@ -7,7 +7,7 @@ import path from "node:path";
 
 /** 残留サンプル参照の検出条件。生成物とテストは CI で regen を省くため除外する。 */
 export const DANGLING_PATTERN =
-  "usercount|userpurge|productimagegc|withdrawalarchive|user_roles|prefecture";
+  "usercount|userpurge|productimagegc|withdrawalarchive|user_roles|prefecture|inquiry";
 export const DANGLING_EXCLUDE = "_test\\.go|\\.gen\\.go";
 
 /** サンプル削除を起動する make ターゲット。`.mk` のマーカー除去で消えるべきもの。 */

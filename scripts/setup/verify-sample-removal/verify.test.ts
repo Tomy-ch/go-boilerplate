@@ -206,6 +206,7 @@ describe("buildDanglingCommand", () => {
         "withdrawalarchive",
         "user_roles",
         "prefecture",
+        "inquiry",
       ]) {
         expect(buildDanglingCommand()).toContain(token);
       }
