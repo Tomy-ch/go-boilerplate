@@ -54,7 +54,7 @@ gitleaks = "8.30.1"
 "go:golang.org/x/tools/cmd/godoc" = "0.1.0-deprecated"
 "go:codeberg.org/tslocum/godoc-static" = "1.0.1"
 # 最新は v0.3.3 だが公開 9 日でクールダウン 14 日に満たないため 1 つ前を採る。
-"go:github.com/google/capslock/cmd/capslock" = "0.3.2"
+"go:github.com/google/capslock/cmd/capslock" = "0.3.3"
 
 # Rust ベース（backend 明示）
 # 最新は v1.30.0 だが公開 3 日でクールダウン 14 日に満たないため 1 つ前を採る。
