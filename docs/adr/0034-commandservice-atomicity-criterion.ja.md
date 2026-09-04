@@ -135,7 +135,7 @@ CommandService が必要になるのは、非機能要件がその分解を禁�
   並行する退会によって無効化され得るため、先にユーザー行をロックする（分岐 2）。
   outbox への挿入は [ADR-0054](0054-transactional-outbox.ja.md) のとおり同一トランザクションに
   参加するが、CommandService を正当化することはない — 通常の usecase も自身のトランザクション内で
-  outbox に書き込む。仕様は `docs/spec/purchase/usecase.md`。
+  outbox に書き込む。仕様は `docs/spec/usecase/purchase.md`。
 - **ユーザー退会 — ガードは分岐 2、カスケードは分岐 1。** 退会の中核は
   `users.deleted_at` への単一集約書き込みである。カスケード — 進行中の購入のキャンセルと
   在庫の復元 — は即時性を要さず、outbox イベント経由の結果整合とする（分岐 1）。
@@ -143,7 +143,7 @@ CommandService が必要になるのは、非機能要件がその分解を禁�
   分岐 3 は当たらず、操作は usecase のままである。しかし並行する購入作成がそれを
   無効化するため分岐 2 が当たり、判定より前にユーザー行を排他ロックする。これが
   2 分岐の手順では記述できなかった形 — ロックを取る usecase — である。仕様は
-  `docs/spec/user/usecase.md`。
+  `docs/spec/usecase/user.md`。
 - **商品の非公開化 — 分岐 1。ガードは一切置かない。** 商品の公開日時をクリアする操作は
   単一集約書き込みであり、脅かすように見える集約横断の条件 — その商品を参照する進行中の
   購入 — は意図的にガードしない。購入は作成時に単価スナップショットを記録し、その
@@ -151,7 +151,7 @@ CommandService が必要になるのは、非機能要件がその分解を禁�
   購入が誤りになることはない。したがってこの条件は陳腐化してよく、更新はどの購入行にも
   ロックを取らない。これは退会のガードに対する対照例である。形は同じ（一方の集約の
   書き込みと他方の集約の状態）で、問い 1 への答えが逆になる。仕様は
-  `docs/spec/purchase/usecase.md`。
+  `docs/spec/usecase/purchase.md`。
 <!-- sample-api:replace-with -->
 <!-- = このプロジェクトの適用例はまだ記録されていない。 -->
 <!-- sample-api:replace-end -->
@@ -291,7 +291,7 @@ failure として顕在化させて操作ごとの判断を不要にする案。
 <!-- sample-api:replace-begin -->
 - どのワークフローがどの行をロックし、各ロックがどの業務ルールを守るのかは、アーキテクチャ
   上の決定ではなく機能の内容であり、機能とともに記述する。本リポジトリではそれは削除可能な
-  サンプル群（`docs/spec/purchase/` / `docs/spec/user/`）を指す。`make setup-remove-sample-api`
+  サンプル群（`docs/spec/usecase/purchase.md` / `docs/spec/usecase/user.md`）を指す。`make setup-remove-sample-api`
   で削除される一方で本 ADR は残るため、リンクではなくパスで示す。
 <!-- sample-api:replace-with -->
 <!-- = - どのワークフローがどの行をロックし、各ロックがどの業務ルールを守るのかは、アーキテクチャ -->

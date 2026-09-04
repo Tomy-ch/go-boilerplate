@@ -151,7 +151,7 @@ fields:
   behavior: |
     問い合わせを作成する。同じ利用者の active な問い合わせが既にあれば UNIQUE 違反を apperror.ErrConflict に正規化して返す
     （最初の投稿の競合）。UNIQUE 違反は transaction 自体を中断させるため、呼び出し側は同じ transaction の中で読み直せない
-    （usecase spec の AppendMessage を参照。`docs/spec/cart/usecase.md` の SetItem と同じ扱い）。
+    （usecase spec の AppendMessage を参照。`docs/spec/usecase/cart.md` の SetItem と同じ扱い）。
 - name: Update
   signature: Update(ctx context.Context, inquiry *Inquiry) error
   behavior: updatedAt を永続化する（AppendMessage が進めた値）。
@@ -199,7 +199,7 @@ fields:
   こと（UTF-8 最大 12 KiB）。文字数の業務要件が立てばこの spec で改める。
 - **エラー写像。** `ErrEmptyBody` / `ErrBodyTooLong` / `ErrInvalidAuthorKind` → 422、`apperror.ErrNotFound` → 404、
   `apperror.ErrConflict`（active な問い合わせの二重作成）→ 409、他者の問い合わせへのアクセス → 403（usecase 側の認可）。
-- **撤去範囲。** `docs/spec/inquiry/**`、`internal/domain/inquiry`、対応する migration / DML /
+- **撤去範囲。** `docs/spec/{domain,usecase}/inquiry.md`、`internal/domain/inquiry`、対応する migration / DML /
   usecase / handler は `sample-api` の撤去対象。`scripts/setup/remove-sample-api/sample-manifest.ts` への登録は Phase 9（feature adapter と最小 API）で
   実施済み。Realtime Delivery 本体は
   残る（親 issue「sample 削除後の残存」）。

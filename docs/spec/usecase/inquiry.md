@@ -152,7 +152,7 @@ output:
   tx_required: true
   steps:
     - "message id を UUIDv7 で採番する"
-    - "txm.Do（1 回目）内で: inquiryRepo.FindActiveByUserID(UserID)。無ければ inquiry.New で作成し inquiryRepo.Create。Create が ErrConflict（最初の投稿の競合）なら fn からそのまま返して tx を rollback する — UNIQUE 違反は tx を中断させるため同じ tx の中では読み直せない（docs/spec/cart/usecase.md の SetItem と同じ）"
+    - "txm.Do（1 回目）内で: inquiryRepo.FindActiveByUserID(UserID)。無ければ inquiry.New で作成し inquiryRepo.Create。Create が ErrConflict（最初の投稿の競合）なら fn からそのまま返して tx を rollback する — UNIQUE 違反は tx を中断させるため同じ tx の中では読み直せない（docs/spec/usecase/cart.md の SetItem と同じ）"
     - "ErrConflict のときだけ txm.Do をもう 1 回（Create を試みず FindActiveByUserID から）やり直す。2 回目も見つからなければ ErrConflict を返す"
     - "取得または作成した問い合わせに対して、同じ txm.Do 内で:"
     - "  ① seq = seqAlloc.Allocate(inquiry.ID)（会話 stream の連番。行ロックは commit まで保持。同一問い合わせへの並行投稿はここで直列化）"
@@ -284,7 +284,7 @@ output:
   sample の規模では見えない制約で、feed をシャーディングする設計はこの spec の範囲外）。feed の event は本文を持たない軽量なもの
   （`inquiryId / userId / sequence / updatedAt`）。
 - **最初の投稿の競合。** 同じ利用者の初回投稿が並行すると片方の `Create` が UNIQUE 違反になる。UNIQUE 違反は PostgreSQL の
-  tx を中断させるため同じ tx の中では読み直せず、usecase は tx を丸ごと 1 回だけやり直す（`docs/spec/cart/usecase.md` の
+  tx を中断させるため同じ tx の中では読み直せず、usecase は tx を丸ごと 1 回だけやり直す（`docs/spec/usecase/cart.md` の
   SetItem / MergeOnLogin と同じ扱い。`tx.Manager.Do` の自動 retry は serialization failure / deadlock だけが対象で、UNIQUE 違反は
   対象外）。
 - **streamCursor と snapshot。** History は先に `SequenceAllocator.Current` で stream の現在位置（cursor）を読み、次に
@@ -295,7 +295,7 @@ output:
 - **認可の場所。** 利用者は `UserID` で自分の問い合わせに閉じ（構造的に他者の問い合わせへ到達しない）、運営は `authz` で
   admin ロールを判定する。ticket 発行時に認可した subject × destination を Realtime Delivery が保持し、Streamer は認可を
   行わない（[ADR-0074 (query-ticket-stream-authentication)]）。
-- **失効の呼び出し。** 利用者の退会（`docs/spec/user/usecase.md` の `DeleteUser`）は、soft-delete と同じ tx の後に
+- **失効の呼び出し。** 利用者の退会（`docs/spec/usecase/user.md` の `DeleteUser`）は、soft-delete と同じ tx の後に
   `realtime` の失効 seam を subject × 問い合わせ stream で呼ぶ義務を負う。これは当該 feature の spec 側に書く義務であり、
   本 spec は責務の所在だけを記す。`user/usecase.md` への追記と実装は Phase 9（inquiry feature）で行う。運営の admin ロールを
   剥奪する書き込み経路は現時点で存在しない（`internal/usecase/user/role` は読み取りのみ）ため呼び出し元も存在しない。

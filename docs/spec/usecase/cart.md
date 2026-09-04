@@ -344,7 +344,7 @@ errors:
   明細を読み、purchase へ渡し、成立後に同一 tx でカートを空にして `cart.checkedOut.v1` を outbox へ発行する
   （その Workflow は checkout 側の spec が持つ）。cart usecase は自分から購入を知らない。
 - **カートは在庫を押さえない。** 売り越しの禁止は購入成立時に商品行を悲観ロックして行われる
-  （[`docs/spec/purchase/domain.md`](../purchase/domain.md)）。本 usecase の再評価は拘束力を持たず、
+  （[`docs/spec/domain/purchase.md`](../purchase/domain.md)）。本 usecase の再評価は拘束力を持たず、
   表示から購入までの間に在庫が尽きることは正常な結末として扱う。
 - **`token.Generator` は新規の boundary。** ゲストトークンは推測不能である必要があるため UUIDv7 では
   代替できず、暗号論的乱数を境界越しに供給する（clock と同じ理由で、usecase が乱数へ直接依存しない）。

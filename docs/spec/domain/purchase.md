@@ -5,7 +5,7 @@
 > 単価は価格スケール（サブセント可の decimal）で保持し、決済スケールへの変換は最小単位 2 桁（セント）で
 > **切り捨て**、ドメイン内 1 箇所に集約する。2 スケールの型分けそのものは [ADR-0038 (two-scale-quantity-model)]。
 > `referenceAmount`（JPY 参考換算）はドメインの関心ではなく usecase 層の関心であり、切り捨てではなく
-> half-up で丸める（非永続の参考表示のため。[`docs/spec/exchange-rate/usecase.md`](../exchange-rate/usecase.md)）。
+> half-up で丸める（非永続の参考表示のため。[`docs/spec/usecase/exchangerate.md`](../exchange-rate/usecase.md)）。
 
 ## Overview
 

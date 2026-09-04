@@ -153,8 +153,8 @@ mechanism instead of through the layer that owns the policy.
 <!-- sample-api:replace-begin -->
 - Which quantities occupy which scale, the concrete minor-unit digit counts, the rounding mode
   chosen for each figure, and the settlement currency are feature content, specified with the
-  feature. In this repository that means the removable sample set (`docs/spec/purchase/`,
-  `docs/spec/exchange-rate/`) — referenced by path rather than linked, because those files are
+  feature. In this repository that means the removable sample set (`docs/spec/domain/purchase.md`,
+  `docs/spec/usecase/exchangerate.md`) — referenced by path rather than linked, because those files are
   deleted by `make setup-remove-sample-api` while this ADR stays.
 <!-- sample-api:replace-with -->
 <!-- = - Which quantities occupy which scale, the concrete minor-unit digit counts, the rounding mode -->

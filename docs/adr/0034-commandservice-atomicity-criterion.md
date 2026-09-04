@@ -136,7 +136,7 @@ than left implicit:
   so the user row is locked first (branch 2). The outbox insert joins the same transaction as usual
   per [ADR-0054](0054-transactional-outbox.md), and never justifies a CommandService — a regular
   usecase writes the outbox in its own transaction too. Specified in
-  `docs/spec/purchase/usecase.md`.
+  `docs/spec/usecase/purchase.md`.
 - **User withdrawal — branch 2 for the guard, branch 1 for the cascade.** The core of withdrawal is
   a single-aggregate write to `users.deleted_at`. The cascade — cancelling pending purchases and
   restoring stock — requires no immediacy and is eventually consistent via outbox events (branch 1).
@@ -144,7 +144,7 @@ than left implicit:
   does not apply and the operation stays a usecase; but a concurrent purchase creation would
   invalidate it, so branch 2 does apply and the user row is locked exclusively before the check.
   This is the shape the two-way procedure could not describe: a usecase that nonetheless takes a
-  lock. Specified in `docs/spec/user/usecase.md`.
+  lock. Specified in `docs/spec/usecase/user.md`.
 - **Product unpublication — branch 1, with no guard at all.** Clearing a product's publication date
   is a single-aggregate write, and the cross-aggregate condition it might appear to threaten — the
   in-progress purchases that reference the product — is deliberately not guarded. A purchase records
@@ -152,7 +152,7 @@ than left implicit:
   publication state, so the product going unpublished cannot make the purchase wrong. The condition
   is therefore allowed to go stale, and the update takes no lock on any purchase row. This is the
   contrasting instance to the withdrawal guard: same shape (one aggregate's write, another
-  aggregate's state), opposite answer to question 1. Specified in `docs/spec/purchase/usecase.md`.
+  aggregate's state), opposite answer to question 1. Specified in `docs/spec/usecase/purchase.md`.
 <!-- sample-api:replace-with -->
 <!-- = No instance has been recorded for this project yet. -->
 <!-- sample-api:replace-end -->
@@ -297,7 +297,7 @@ Rejected for now; not excluded as a future evolution.
 <!-- sample-api:replace-begin -->
 - Which rows a given workflow locks, and which business rule each lock protects, is feature content
   rather than an architectural decision, so it is specified with the feature — in this repository the
-  removable sample set (`docs/spec/purchase/`, `docs/spec/user/`), referenced by path rather than
+  removable sample set (`docs/spec/usecase/purchase.md`, `docs/spec/usecase/user.md`), referenced by path rather than
   linked, because those files are deleted by `make setup-remove-sample-api` while this ADR stays.
 <!-- sample-api:replace-with -->
 <!-- = - Which rows a given workflow locks, and which business rule each lock protects, is feature content -->
