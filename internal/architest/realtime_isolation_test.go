@@ -5,13 +5,13 @@ package architest
 //
 //  1. 機構側の package（boundary/realtime、usecase/realtime、infrastructure の 5 package、controller/stream、controller/realtime）は
 //     feature の domain / usecase を import しない。
-//  2. InstanceLeaseStore を使ってよいのは realtime の package 群、realtime の DI module、orphan cleanup の
-//     job / CLI だけ。
+//  2. InstanceLeaseStore を使ってよいのは realtime の機構側 package と、realtime を結線する DI module だけ。
 //
 // import は正規表現で拾う（go/ 配下の package は application code から使わない方針のため）。
 
 import (
 	"io/fs"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -35,18 +35,6 @@ var realtimeMechanismDirs = []string{
 	"internal/infrastructure/realtime",
 	"internal/controller/stream",
 	"internal/controller/realtime",
-}
-
-// instanceLeaseStoreAllowedPrefixes は、規約 2 で InstanceLeaseStore を参照してよいパス（repo root 相対）の
-// prefix。
-var instanceLeaseStoreAllowedPrefixes = []string{
-	"internal/usecase/boundary/realtime/",
-	"internal/usecase/realtime/",
-	"internal/infrastructure/instancelease/",
-	"internal/di/module/realtime.go",
-	"internal/di/module/realtimecleanup.go",
-	"internal/controller/job/",
-	"internal/cli/",
 }
 
 // internalImportRe は、import 節の `"go-boilerplate/internal/..."` を捕捉する。
@@ -76,6 +64,29 @@ func TestRealtimeDeliveryImportsNoFeature(t *testing.T) {
 				matches, err := pkgfs.OS{}.Glob(filepath.Join(moduleRoot(t), dir))
 				require.NoError(t, err)
 				assert.NotEmpty(t, matches, "%s が無い。realtimeMechanismDirs の宣言を疑う", dir)
+			}
+		})
+	})
+}
+
+func TestRealtimeUsecaseNamespaceIsReserved(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("usecase 直下に realtime で始まる別名の package が無い", func(t *testing.T) {
+			t.Parallel()
+
+			// depguard の pkg は前方一致で、機構側を許可する allow が realtime で始まる別名にも当たってしまう。
+			// depguard 側は塞げないので、その名前を feature に使わせないことをここで固定する
+			// （設計正本 §3.1 が散文で述べている制約の機械化）。
+			dirs, err := pkgfs.OS{}.Glob(filepath.Join(moduleRoot(t), "internal", "usecase", "realtime*"))
+			require.NoError(t, err)
+
+			for _, dir := range dirs {
+				assert.Equal(t, "realtime", filepath.Base(dir),
+					"internal/usecase/ に realtime で始まる別名の package を置くと、depguard の allow が前方一致で通してしまう")
 			}
 		})
 	})
@@ -135,7 +146,8 @@ func isFeatureImport(imp string) bool {
 		return true
 	case strings.HasPrefix(imp, "go-boilerplate/internal/usecase/boundary/"):
 		return false
-	case strings.HasPrefix(imp, "go-boilerplate/internal/usecase/realtime"):
+	case imp == "go-boilerplate/internal/usecase/realtime",
+		strings.HasPrefix(imp, "go-boilerplate/internal/usecase/realtime/"):
 		return false
 	case strings.HasPrefix(imp, "go-boilerplate/internal/usecase/"):
 		return true
@@ -164,14 +176,24 @@ func usesInstanceLeaseStore(content []byte) bool {
 }
 
 // isInstanceLeaseStoreAllowed は、rel（repo root 相対）が InstanceLeaseStore を参照してよい場所かを判定する。
+// 許可は列挙せず、規約 1 が宣言する機構側 package と、その機構を結線する DI module という構造から導く
+// （allowlist それ自体がドリフト源になるため。方針は internal/architest/README.md）。
 func isInstanceLeaseStoreAllowed(rel string) bool {
-	for _, p := range instanceLeaseStoreAllowedPrefixes {
-		if strings.HasPrefix(rel, p) {
+	for _, dir := range realtimeMechanismDirs {
+		if strings.HasPrefix(rel, dir+"/") {
 			return true
 		}
 	}
 
-	return false
+	return isRealtimeDIModule(rel)
+}
+
+// isRealtimeDIModule は、rel が Realtime を結線する DI module かを判定する。
+// module ファイルは結線する機構の名前を持つので、その命名が carve-out の構造そのものになる。
+func isRealtimeDIModule(rel string) bool {
+	dir, file := path.Split(rel)
+
+	return dir == "internal/di/module/" && strings.HasPrefix(file, "realtime")
 }
 
 // walkProductionGoFiles は、dir 配下の production code（テスト・生成物・mock を除く .go）を fn へ渡す。
@@ -246,6 +268,9 @@ func Test_isFeatureImport(t *testing.T) {
 	assert.False(t, isFeatureImport("go-boilerplate/internal/usecase/boundary/realtime"))
 	assert.False(t, isFeatureImport("go-boilerplate/internal/usecase/boundary/clock"))
 	assert.False(t, isFeatureImport("go-boilerplate/internal/usecase/realtime"))
+	assert.False(t, isFeatureImport("go-boilerplate/internal/usecase/realtime/mock"))
+	// 前方一致のままだと機構側と誤判定される別名。depguard 側で塞げない穴の対照。
+	assert.True(t, isFeatureImport("go-boilerplate/internal/usecase/realtimeanalytics"))
 	assert.False(t, isFeatureImport("go-boilerplate/internal/observability"))
 }
 
@@ -272,11 +297,15 @@ func Test_isInstanceLeaseStoreAllowed(t *testing.T) {
 	t.Parallel()
 
 	assert.True(t, isInstanceLeaseStoreAllowed("internal/usecase/boundary/realtime/lease.go"))
+	assert.True(t, isInstanceLeaseStoreAllowed("internal/usecase/realtime/lease.go"))
+	assert.True(t, isInstanceLeaseStoreAllowed("internal/infrastructure/instancelease/instancelease.go"))
 	assert.True(t, isInstanceLeaseStoreAllowed("internal/di/module/realtime.go"))
-	assert.True(t, isInstanceLeaseStoreAllowed("internal/controller/job/orphancleanup/job.go"))
 	assert.True(t, isInstanceLeaseStoreAllowed("internal/di/module/realtimecleanup.go"))
 	assert.False(t, isInstanceLeaseStoreAllowed("internal/usecase/inquiry/feed.go"))
 	assert.False(t, isInstanceLeaseStoreAllowed("internal/di/module/infrastructure.go"))
+	// 機構の外へ持ち出す経路。job / CLI は Sweeper 越しに使うので store は要らない。
+	assert.False(t, isInstanceLeaseStoreAllowed("internal/controller/job/orphancleanup/job.go"))
+	assert.False(t, isInstanceLeaseStoreAllowed("internal/cli/realtimeinit/init.go"))
 }
 
 func Test_walkProductionGoFiles(t *testing.T) {
