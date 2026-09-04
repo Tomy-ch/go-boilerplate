@@ -120,13 +120,10 @@ jobs:
       - name: Build relay
         run: go build -o ./bin/relay ./cmd/
 
-      # The relay is a daemon: it has no "unknown name" path to exit through the way the job and worker
-      # entrypoints do, so booting it means starting it, watching for the lifecycle to come up, and
-      # stopping it again. The sentinels are the fx event logger's (internal/di/fx_event_logger.go);
-      # reaching "Application started" means the whole graph constructed and every OnStart hook ran.
-      #
-      # `realtime` is the channel under test because it is the one this repository wires in ci: the http
-      # channel needs ENDPOINT_OUTBOX, which env/.env.ci leaves empty on purpose.
+      # The sentinels below are the fx event logger's (internal/di/fx_event_logger.go) — rename those log
+      # messages and this check silently weakens into "the process stayed alive". Why this entrypoint's
+      # check is shaped differently from the job / worker ones, and why the `realtime` channel is the one
+      # under test: ADR-0091 (docs/adr/0091-ci-real-graph-boot-check.md).
       - name: Boot the realtime relay and expect a clean lifecycle
         run: |
           set -uo pipefail
@@ -160,7 +157,6 @@ jobs:
             exit 1
           fi
 
-          # A relay that starts but cannot stop is also broken: the drain path is part of the contract.
           kill -TERM "${relay_pid}" 2>/dev/null || true
           wait "${relay_pid}"
           stop_code=$?

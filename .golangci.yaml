@@ -128,7 +128,7 @@ linters:
       disable-dec-order-check: false
       disable-init-func-first-check: false
     depguard:
-      # 外部ライブラリがシステムの根幹に関わることを避けるために、pkgディレクトリで薄いラッパー作成し使用することを推奨します。
+      # pkg/ の薄いラッパー経由での利用を強制する規則群（方針の理由: ADR-0001 avoid-lock-in）。
       rules:
         only_the_original_error_is_permitted:
           files:
@@ -211,13 +211,10 @@ linters:
           deny:
             - pkg: go-boilerplate/internal/controller/
               desc: "infrastructure層でcontroller層を参照することは禁止です。"
-        # Realtime Delivery は「どの feature でも使える配送機構」であって特定の feature の一部ではありません。
-        # 機構側が feature の domain / usecase を参照した時点で中立性が失われ、feature を 1 つ増やすたびに
-        # 機構へ手が入る構造になります。docs/design/realtime-delivery.md §1 と ADR-0071 が depguard と
-        # architecture test の両方で検査すると宣言しており、これはその depguard 側です。同じ規約は
-        # internal/architest/realtime_isolation_test.go でも検査します（build 時に落とすのがこちら、
-        # test で落とすのが向こう）。InstanceLeaseStore の allowlist（規約②）はシンボル単位の制約で、
-        # package 単位の depguard では表現できないため architest にのみ存在します。
+        # Realtime Delivery の feature 中立性（規約①）の depguard 側。architest 側は
+        # internal/architest/realtime_isolation_test.go で、両方を維持することが二重検査の前提。
+        # 規約②（InstanceLeaseStore の allowlist）はシンボル単位のためここには置けない。
+        # 設計理由と二重検査の意図: docs/design/realtime-delivery.md §3.1
         maintain_realtime_feature_neutrality:
           files:
             - "**/internal/usecase/boundary/realtime/**.go"
@@ -246,7 +243,6 @@ linters:
       struct-method: true
       alphabetical: false
     funlen:
-      # 関数の長さを制限して、冗長性と複雑さを減らします。
       # 関数内の行数チェックは無効にします。
       lines: -1
       # 関数内のステートメント数を制限します。

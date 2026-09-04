@@ -41,9 +41,7 @@ jobs:
           --health-retries=5
           --health-start-period=20s
       dynamodb_local:
-        # DynamoDB Local, the store the Realtime Delivery contract tests connect to. Same version as the
-        # dynamodb_local service in docker-compose.yaml. A service container takes no command, so it runs
-        # on the image default (-inMemory).
+        # DynamoDB Local, the Realtime Delivery store. Service-container defaults: README.md § Notes.
         image: amazon/dynamodb-local:3.3.1@sha256:ff89bd48ff32cd8d9be5fee8873b65b8854dc408f1afe881be6eb00247bc0dab
         ports:
           - "8000:8000"
@@ -54,9 +52,7 @@ jobs:
           --health-retries=10
           --health-start-period=10s
       goaws:
-        # SNS / SQS emulator for the Realtime Delivery fan-out contract tests. Same version as the goaws
-        # service in docker-compose.yaml. A service container takes no config file, so it runs on the image
-        # defaults and its account id is 100010001000, not the 000000000000 compose uses.
+        # SNS / SQS emulator for the Realtime Delivery fan-out. Service-container defaults: README.md § Notes.
         image: admiralpiett/goaws:v0.5.4@sha256:18589afe16517751cc981354536c148854157a718bee9059494d6cdee3dc4e2d
         ports:
           - "4100:4100"

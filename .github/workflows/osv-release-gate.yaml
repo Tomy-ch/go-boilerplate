@@ -33,11 +33,7 @@ concurrency:
 
 jobs:
   osv-release:
-    # The pull-request half of this workflow's trigger, moved out of `on:` and into the job. A
-    # `branches:` filter that excludes a pull request starts no run at all, and a required context
-    # that is never reported is not read as "not applicable" — the merge waits with nothing to wait
-    # for. A job the condition skips reports `skipped` instead, which a required check counts as
-    # success. The `push` filter above is left where it is: that half reports no context.
+    # Why the trigger condition lives in a job: README.md § Required checks report on every pull request.
     if: ${{ github.event_name != 'pull_request' || contains(fromJSON('["develop", "staging", "production"]'), github.base_ref) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15

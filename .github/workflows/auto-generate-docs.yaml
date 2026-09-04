@@ -228,10 +228,7 @@ jobs:
             echo 'configured=false' >> "${GITHUB_OUTPUT}"
           fi
 
-      # A pull request opened with GITHUB_TOKEN starts no workflow run at all — GitHub suppresses
-      # the events that token raises, to stop a workflow from triggering itself — so every required
-      # context stays unreported and the merge blocks with nothing to wait for. An app token is a
-      # separate identity, and the events it raises are ordinary ones.
+      # Why an app token rather than GITHUB_TOKEN: README.md § Notes.
       - name: Mint the auto-PR app token
         id: app-token
         if: steps.diff.outputs.has_diff == 'true' && steps.app-config.outputs.configured == 'true'
