@@ -42,6 +42,7 @@ linters:
     - gocognit # 人間の理解難度を測る指標として、関数・メソッドの認知的複雑度を算出します
     - gocritic # Goコードの高級な静的解析を行います
     - gocyclo # 関数単位での複雑度を計算します
+    - godoclint # godocの記法・作法をチェックします
     - goprintffuncname # Printfライクな引数を取る関数が「f」で終わる名前になっているかをチェックします
     - gosec # セキュリティ上の脆弱性を検出します
     - grouper # const/var/import等のグループ化スタイルをチェックします
