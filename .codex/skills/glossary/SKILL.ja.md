@@ -23,7 +23,7 @@ Mechanism vocabulary は抑制チャネルです。**報告前にすべての or
 
 ドメイン spec YAML の形は `.codex/scaffold-spec/domain-spec.md` を実行時に読んで把握し、節が固定であると仮定しません。次の 5 つのインベントリを抽出します。
 
-- `docs/spec/*/domain.md` の YAML にある `package:` と `struct:` の宣言（対象を絞る場合は選択された feature のみ）。
+- `docs/spec/domain/**/*.md` の YAML にある `package:` と `struct:` の宣言（対象を絞る場合は選択された feature のみ）。
 - `_test.go` と `mock/` を除く `internal/domain/**` にある、export された `type X struct` と `type X interface` の宣言。
 - `_test.go` と `mock/` を除く `internal/domain/**` にある export 済みの振る舞い。たとえば次で抽出します。
 
@@ -47,23 +47,23 @@ Mechanism vocabulary は抑制チャネルです。**報告前にすべての or
 
   この在庫は用語表の最後の列だけを埋め、findings は生みません。schema は入れ子になり、公開名は独立した schema ではなくレスポンス本体のプロパティであることがあります。
 
-feature のパッケージはディレクトリ名の glob ではなく、宣言から解決します。
+feature のパッケージは宣言から解決します。
 
 ```sh
-grep -n '^package:' docs/spec/*/domain.md docs/spec/*/usecase.md
+grep -rn '^package:' docs/spec/domain docs/spec/usecase --include='*.md'
 ```
 
-kebab-case の feature は 1 語に連結されたパッケージにも親の下の入れ子にもなり得るため、どちらかは spec が述べます。
+spec のツリーはその配置自体がパッケージパスを担っており（`docs/spec/<layer>/<rest>.md` は `internal/<layer>/<rest>`）、`package:` 宣言も同じことを述べます。それでも宣言は読みます。検査できるのはそちらであり、両者の食い違いはそれ自体が finding です（担当は `verify-spec`）。
 
 構築子を機械的に除外しません。`New` は Go における構築の語であり、同じ行為を業務が別の名前で呼ぶなら、その不一致は finding です。本当に構築機構であるものは Mechanism vocabulary に記録し、以後は Step 1 が差し引きます。
 
 動詞を名詞と同じだけ重く扱います。名詞だけの語彙は業務が何を持つかは言えても、それに何が起きるかを言えず、規則は起きることに宿ります。型だけの在庫は完全に見えても、この側面を丸ごと落とします。
 
-用語の所有者は feature ディレクトリと、その feature が宣言する集約の組とします。2 つの所有者を調停せず、その状態自体を finding とします。
+用語の所有者は spec が属する feature と、その feature が宣言する集約の組とします。feature は spec のパッケージパスから読みます。2 つの所有者を調停せず、その状態自体を finding とします。
 
 ### 読み取り側の境界
 
-読み取り側の概念は、`docs/spec/<feature>/domain.md` を持たない feature に限って在庫に入れます。集約を持たない投影には業務語を導入するほかの場所がないためです。パッケージは spec の宣言から解決し、固定パスを仮定しません。集約を持つ feature の read model は用語の言い直しであり、候補行ではありません。この境界は orphan 規則より優先します。`internal/domain/**` に置かれた read model であっても、性質が言い直しなら候補行ではなく Mechanism vocabulary として扱います。
+読み取り側の概念は、語を導入する domain spec を持たない usecase パッケージに限って在庫に入れます。集約を持たない投影には業務語を導入するほかの場所がないためです。判定は usecase spec ごとに Repository 依存を解決して行います。`## Dependencies` を読み、各依存が名指しする domain パッケージパス（`internal/domain/<X>`。項目そのものか行末コメントから読む）を取り、`docs/spec/domain/<X>.md` を探します。usecase spec 自身のパスからは導出しません。`internal/usecase/user/search` は `docs/spec/usecase/user/search.md` に spec があり、依存先は `internal/domain/user` であってパスは一致せず、同一パスで引けば集約に支えられた検索を投影と判定してしまいます。spec のパスが与えるのは自身のパッケージだけなので、パスを 1 つに固定せず spec のパッケージの下をディレクトリで走査します。集約を持つ feature の read model は用語の言い直しであり、候補行ではありません。この境界は orphan 規則より優先します。`internal/domain/**` に置かれた read model であっても、性質が言い直しなら候補行ではなく Mechanism vocabulary として扱います。
 
 読み取り側の名前を判定する前に、`Result`、`ReadModel`、`View`、`Input`、`Params`、`Cursor`、`Summary`、`Breakdown`、`Item`、`List`、`Count`、`DTO` という機構サフィックスを落とします。この一覧は出発点であって閉じた集合ではありません。同じ役割を果たすものは何であれ落とし、何を落としたかを報告します。名前全体が `Usecase`、`Gateway`、`QueryService`、`Repository` である port は落とします。
 
@@ -116,7 +116,7 @@ kebab-case の feature は 1 語に連結されたパッケージにも親の下
 - [ ] spec YAML・domain 公開型・公開振る舞い・公開パッケージ値・読み取り側の概念・OpenAPI 公開名を実行時に抽出する。
 - [ ] ディレクトリ名ではなく spec の `package:` 宣言からパッケージを解決する。
 - [ ] レシーバの struct を読み、本体が 1 フィールドに到達して返すアクセサを振る舞いから差し引く。
-- [ ] 読み取り側の概念は集約を持たない feature に限定し、言い直しは orphan 規則より先に抑止する。
+- [ ] 読み取り側の概念は Dependencies が domain spec に解決しない usecase に限定し、言い直しは orphan 規則より先に抑止する。
 - [ ] spec の `package` / `struct` とともに、用語集のコードシンボル列を `grep` で解決確認する。
 - [ ] orphan から Mechanism vocabulary を差し引く。
 - [ ] 4 種の finding を独立して報告し、命名・同義の判断を人に残す。

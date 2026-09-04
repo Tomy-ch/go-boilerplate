@@ -75,7 +75,7 @@ Mechanism 節は抑止のチャネルである。**orphan の集合を報告す�
 
 ```sh
 # spec が宣言している用語
-grep -n '^package:\|^struct:' docs/spec/*/domain.md
+grep -rn '^package:\|^struct:' docs/spec/domain --include='*.md'
 
 # domain の公開型 — 名詞
 grep -rn '^type [A-Z][A-Za-z0-9]* ' internal/domain --include='*.go'
@@ -123,11 +123,12 @@ grep -rn '' openapi --include='*.yaml' -l
 feature のパッケージは、spec 自身が宣言しているものから解決する。
 
 ```sh
-grep -n '^package:' docs/spec/*/domain.md docs/spec/*/usecase.md
+grep -rn '^package:' docs/spec/domain docs/spec/usecase --include='*.md'
 ```
 
-ディレクトリ名からの推測は外れる——kebab-case の feature は 1 語に連結されたパッケージのことも、
-親の下に入れ子のこともあり、どちらであるかは spec が述べている。
+spec のツリーはその配置自体がパッケージパスを担っている——`docs/spec/<layer>/<rest>.md` は
+`internal/<layer>/<rest>` である——し、`package:` 宣言も同じことを述べている。それでも宣言は読むこと。
+検査できるのはそちらであり、両者の食い違いはそれ自体が finding である（担当は `verify-spec`）。
 
 **そのうえでディレクトリも走査すること。** 宣言は 3 つの意味で完全ではない。
 
@@ -135,8 +136,9 @@ grep -n '^package:' docs/spec/*/domain.md docs/spec/*/usecase.md
   feature が読み取りに使う boundary port も、どこにも宣言されていない
 - 宣言は古びうる。存在しないディレクトリを指しているなら、それ自体が finding であり——そのうえで
   本物のパッケージを見つけないと掃き出しが先へ進まない
-- そもそも spec を持たないパッケージがある。feature の集合を `docs/spec/*/` だけから作れば見えず、
-  **誰も spec を書かなかった語彙こそ、正しい見込みが最も薄い語彙である**
+- そもそも spec を持たないパッケージがある。パッケージの集合を `docs/spec/domain/**/*.md` +
+  `docs/spec/usecase/**/*.md` だけから作れば見えず、**誰も spec を書かなかった語彙こそ、正しい
+  見込みが最も薄い語彙である**
 
 宣言はそれが覆う範囲を解決するために使い、それが落としているものはディレクトリの一覧で見つける。
 どちらか一方ではすべてに届かない。
@@ -165,12 +167,17 @@ grep -n '^package:' docs/spec/*/domain.md docs/spec/*/usecase.md
 
 このリポジトリの他の場所にある規則は「ドメイン層が用語を導入し、usecase 層はそれを使うだけ」である。
 **その規則はドメイン層が在ることを前提にしている。** 本リポジトリが敷く軽量 CQRS のもとでは、
-いくつかの feature は純粋な投影であり——集約も `domain.md` も無く、あるのは QueryService だけ——
+いくつかの feature は純粋な投影であり——集約も domain spec も無く、あるのは QueryService だけ——
 それらについては、語を導入する集約がそもそも現れない。売上・ランキング・郵便番号からの住所引き。
 業務はそのすべてを話す。それらを欠いた語彙は、他の何であれ業務の語彙ではない。
 
-したがって読み取り側を一次情報として扱う。ただし **`docs/spec/<feature>/domain.md` を持たない
-feature に限る。** 集約が在る場合、その read model は集約が既に導入したものを言い直しているだけで、
+したがって読み取り側を一次情報として扱う。ただし **語を導入する domain spec を持たない usecase
+パッケージに限る。** その判定は usecase spec ごとに、Repository 依存を解決して行う——`## Dependencies`
+を読み、各依存が名指しする domain パッケージパス（`internal/domain/<X>`。項目そのものか行末コメントから
+読む）を取り、`docs/spec/domain/<X>.md` を探す。**usecase spec 自身のパスから導出してはならない**——
+`internal/usecase/user/search` は `docs/spec/usecase/user/search.md` に spec があり、依存先は
+`internal/domain/user` であって、パスは一致しない。同一パスで引けば、集約に支えられた検索を投影と
+判定してしまう。集約が在る場合、その read model は集約が既に導入したものを言い直しているだけで、
 再度提案すれば 1 概念に 2 行ができる——このページが捕まえるために在る失敗そのものである。
 
 **この境界は、ぶつかった相手が何であれ優先する**——orphan の規則にも、新出用語の規則にも。read model
@@ -183,11 +190,11 @@ feature が集約を持たないからといって弱まらない——投影が
 区分）は、まさにダッシュボードが語られるときに使われる語である。そこで型だけを読むのは、この節が
 正すために書かれた誤りを 1 層上で繰り返すことになる。
 
-該当 feature のパッケージは、固定パスではなく名前から解決する。DB を読む投影は `query/` パッケージに
-型を置き、外部システムを呼ぶ投影は boundary の port の裏に置く。両者は互いにまったく別の場所にある。
-**片方の形に狙いを定めた glob はもう片方に対して 0 件を返し、それは語彙を持たない feature と
-見分けがつかない。** ディレクトリ名が spec のディレクトリ名と違うことも織り込むこと——kebab-case の
-feature は通常 1 語に連結されたパッケージで、親の下に入れ子になっていることもある。
+spec のパスが与えるのは自身のパッケージだけであり、それ以上ではない。DB を読む投影は `query/`
+サブパッケージに型を置き、外部システムを呼ぶ投影は boundary の port の裏に置く。両者は互いにまったく
+別の場所にあり、どちらも spec は名指ししていない。**片方の形に狙いを定めた glob はもう片方に対して
+0 件を返し、それは語彙を持たない feature と見分けがつかない。** パスを 1 つに固定せず、spec の
+パッケージの下をディレクトリで走査すること。
 
 名前を判定する前に機構サフィックスを落とす。`Result`・`ReadModel`・`View`・`Input`・`Params`・
 `Cursor`・`Summary`・`Breakdown`・`Item`・`List`・`Count`・`DTO` が述べているのは問い合わせの答えや
@@ -198,8 +205,9 @@ DTO の形であって、業務が持っているものではない。この一�
 port は丸ごと落とす。`Usecase`・`Gateway`・`QueryService`・`Repository` そのものである名前は
 アーキテクチャの継ぎ目を指しており、サフィックスを落とすと何も残らない——それが見分けである。
 
-用語の所有は、spec が置かれている feature ディレクトリと、そこが宣言する集約である。**投影は集約を
-持たないので、所有は feature だけになる**——これは半分が欠けているのではなく、集約を持たない語とは
+用語の所有は、spec が属する feature と、そこが宣言する集約である。feature は spec のパッケージパス
+——spec ツリーの配置が担うようになったもの——から読む。**投影は集約を持たないので、所有は feature
+だけになる**——これは半分が欠けているのではなく、集約を持たない語とは
 そういう形をしているということであり、無理に埋めれば、その語を定義していないモデルに帰属させることに
 なる。1 つの用語に所有が 2 つあるのは、突き合わせて直すデータ上の問題ではない。それが findings である。
 
@@ -318,7 +326,7 @@ feature spec・README・ADR・DDD 台帳・ソースには触れない。コー�
 - [ ] spec YAML / domain 公開型 / 公開振る舞い / 公開パッケージ値 / 読み取り側 / OpenAPI から実行時に抽出
 - [ ] パッケージの所在は spec の `package:` 宣言で解決し、宣言に無いもの（`query/`・boundary port）はディレクトリ走査で補う
 - [ ] orphan から Mechanism vocabulary・Watch list・自動派生の族を差し引く
-- [ ] 読み取り側は domain.md を持たない feature に限定し、機構サフィックスを落とす
+- [ ] 読み取り側は Dependencies が domain spec に解決しない usecase に限定し、機構サフィックスを落とす
 - [ ] レシーバの struct を読み、フィールドを 1 つ返すだけの振る舞い（アクセサ）を差し引く
 - [ ] 用語表のコードシンボル列を grep で解決確認
 - [ ] 4 種の findings を分けて報告する

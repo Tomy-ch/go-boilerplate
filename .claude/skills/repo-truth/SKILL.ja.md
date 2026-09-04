@@ -89,7 +89,7 @@ checkout には `graphify-out/` があるので、その主張は常に成立し
 | 規則 — ここでは何をすべきか | 統べる文書 | **規則が未定義かもしれない** —— それ自体 findings だが、Step 2 が所有索引を尽くした後に限る |
 | 根拠 — なぜこうなっているか | `docs/adr/`、`docs/design/` | 決定が暗黙に行われ、記録されなかった |
 | 手順 — ここではどうやるか | `.makefiles/**`、`.lefthook.yaml`、`.github/workflows/`、`docs/maintenance/` | **正規手順が存在しないかもしれない** —— 同じ基準。穴を埋めるためにコマンドを発明しない |
-| 語彙 — この用語の意味は | `docs/spec/glossary.md`、`docs/spec/<feature>/` | 業務語彙でないか、登録されないまま漏れ出している |
+| 語彙 — この用語の意味は | `docs/spec/glossary.md`、`docs/spec/{domain,usecase}/` | 業務語彙でないか、登録されないまま漏れ出している |
 | 履歴 — いつ・なぜ変わったか | `git log`、マージ済み PR | — |
 
 問いはしばしば、どの種類なのかについて言われざる前提を抱えている。「統合テストだけ回すには？」は 手順 の問い、
@@ -118,7 +118,7 @@ grep はこれを救わない。`AGENTS.md` がその理由をそのまま書い
 | `docs/design/README.md` | サブシステムや横断的関心事がどう動くか |
 | `.makefiles/README.md` | 全 make target、領域ごと |
 | 対象パスから層のルートまでの README 連鎖 | 責務・禁止事項・設計意図 —— 150 件あるが、効くのは連鎖だけ |
-| `docs/spec/glossary.md`、`docs/spec/<feature>/` | 業務語彙と機能ごとの挙動 |
+| `docs/spec/glossary.md`、`docs/spec/{domain,usecase}/` | 業務語彙と機能ごとの挙動 |
 
 `.claude/skills/repo-ops/SKILL.md` の §0「正本の見つけ方」が、答えの対象 → 出典の正本表であり、ノイズを
 除いた検索の呼び出しと「権威に見えるが違う」ファイルの一覧も持っている。実行時に読むこと。ここへ複製しない —

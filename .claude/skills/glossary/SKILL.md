@@ -1,7 +1,7 @@
 ---
 name: glossary
 description: >-
-  Draft and maintain the business-vocabulary spec at `docs/spec/glossary.md` — the cross-cutting Ubiquitous Language page that per-feature specs cannot be, because one word meaning two things and two words meaning one only happen across features. Extracts a term inventory deterministically from the YAML in `docs/spec/*/domain.md`, the exported types AND the exported behaviours under `internal/domain/**` (accessors subtracted, so the verbs a noun-only sweep would lose survive), the read-side concepts under the usecase packages of the projection-only features that have no aggregate to introduce their words, and the published names in `openapi/`, then reports four findings a machine can settle — terms with no row, orphan code symbols the specs never mention, declared code symbols that no longer resolve (both the specs' `package` / `struct` and the glossary's own code-symbol column, which nothing else verifies), and one identifier defined in two features — and asks a human to decide each. Use it when adding a feature and its new terms need registering, when someone asks what a business word means or whether two words are the same thing, when the glossary looks stale against the code, or for a periodic vocabulary sweep. Japanese triggers apply too — 「用語集を作って」「新出用語を登録」「この語の定義は」「orphan を出して」「語彙の棚卸し」. It never chooses the canonical name and never declares two words synonymous: identifier collision is mechanical, but whether two definitions actually differ is a reading and which name wins is a decision. Do NOT use it to write a feature's own spec (`new-spec` / `new-spec-domain`), to validate spec format (`verify-spec`), to audit DDD patterns against Evans (`ddd-audit`), or to detect business vocabulary that leaked into READMEs and ADRs (that is `back-prop`'s glossary detector).
+  Draft and maintain the business-vocabulary spec at `docs/spec/glossary.md` — the cross-cutting Ubiquitous Language page that per-feature specs cannot be, because one word meaning two things and two words meaning one only happen across features. Extracts a term inventory deterministically from the YAML in `docs/spec/domain/**/*.md`, the exported types AND the exported behaviours under `internal/domain/**` (accessors subtracted, so the verbs a noun-only sweep would lose survive), the read-side concepts under the usecase packages of the projection-only features that have no aggregate to introduce their words, and the published names in `openapi/`, then reports four findings a machine can settle — terms with no row, orphan code symbols the specs never mention, declared code symbols that no longer resolve (both the specs' `package` / `struct` and the glossary's own code-symbol column, which nothing else verifies), and one identifier defined in two features — and asks a human to decide each. Use it when adding a feature and its new terms need registering, when someone asks what a business word means or whether two words are the same thing, when the glossary looks stale against the code, or for a periodic vocabulary sweep. Japanese triggers apply too — 「用語集を作って」「新出用語を登録」「この語の定義は」「orphan を出して」「語彙の棚卸し」. It never chooses the canonical name and never declares two words synonymous: identifier collision is mechanical, but whether two definitions actually differ is a reading and which name wins is a decision. Do NOT use it to write a feature's own spec (`new-spec` / `new-spec-domain`), to validate spec format (`verify-spec`), to audit DDD patterns against Evans (`ddd-audit`), or to detect business vocabulary that leaked into READMEs and ADRs (that is `back-prop`'s glossary detector).
 argument-hint: '[--feature <name>]'
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion
 ---
@@ -88,7 +88,7 @@ Read every one of these at runtime:
 
 ```sh
 # terms declared by the specs
-grep -n '^package:\|^struct:' docs/spec/*/domain.md
+grep -rn '^package:\|^struct:' docs/spec/domain --include='*.md'
 
 # exported types in the domain — the nouns
 grep -rn '^type [A-Z][A-Za-z0-9]* ' internal/domain --include='*.go'
@@ -137,11 +137,13 @@ give.
 Resolve each feature's packages from what the spec itself declares:
 
 ```sh
-grep -n '^package:' docs/spec/*/domain.md docs/spec/*/usecase.md
+grep -rn '^package:' docs/spec/domain docs/spec/usecase --include='*.md'
 ```
 
-Guessing from the directory name fails — a kebab-case feature is sometimes one concatenated package
-and sometimes nested under a parent, and the spec states which.
+The spec tree carries the package path in its own layout — `docs/spec/<layer>/<rest>.md` is
+`internal/<layer>/<rest>` — and the `package:` declaration says the same thing. Read the declaration
+anyway: it is the half that can be checked, and a disagreement between the two is a finding
+(`verify-spec` owns it).
 
 **Then walk the directories anyway**, because the declaration is not complete, in three ways.
 
@@ -149,8 +151,9 @@ and sometimes nested under a parent, and the spec states which.
   feature reads through are declared nowhere.
 - A declaration can be stale. When it points at a directory that does not exist, that is a finding
   in its own right — and the real package still has to be found before the sweep can go on.
-- A package can have no spec at all. Build the feature set from `docs/spec/*/` alone and it is
-  invisible, and **vocabulary nobody wrote a spec for is the vocabulary least likely to be right.**
+- A package can have no spec at all. Build the package set from `docs/spec/domain/**/*.md` +
+  `docs/spec/usecase/**/*.md` alone and it is invisible, and **vocabulary nobody wrote a spec for is
+  the vocabulary least likely to be right.**
 
 Use the declaration to resolve what it covers and a directory listing to find what it omits;
 neither alone reaches everything.
@@ -181,15 +184,20 @@ to nothing.
 
 The rule elsewhere in this repo is that the domain layer introduces terms and the usecase layer only
 uses them. **That rule assumes a domain layer exists.** Under the lightweight CQRS this repo runs,
-several features are pure projections — no aggregate, no `domain.md`, nothing but a QueryService —
+several features are pure projections — no aggregate, no domain spec, nothing but a QueryService —
 and for those, no aggregate is ever going to introduce the word. Sales, ranking, a postal-code
 lookup: the business says all of them, and a vocabulary that omits them is not the vocabulary of the
 business, whatever else it is.
 
-So take the read side as a source, **bounded to the features that have no `docs/spec/<feature>/domain.md`.**
-Where an aggregate does exist, its read models restate what the aggregate already introduced, and
-proposing them again produces a second row for one concept — the exact failure this page exists to
-catch.
+So take the read side as a source, **bounded to the usecase packages that no domain spec introduces
+the words for.** Decide that per usecase spec by resolving its Repository dependencies: read its
+`## Dependencies`, take the domain package path each one names (`internal/domain/<X>`, from the entry
+or its trailing comment), and look for `docs/spec/domain/<X>.md`. **Never derive it from the usecase
+spec's own path** — `internal/usecase/user/search` is spec'd at `docs/spec/usecase/user/search.md`
+and depends on `internal/domain/user`, so the paths do not coincide and a same-path lookup would
+declare an aggregate-backed search a projection. Where an aggregate does exist, its read models
+restate what the aggregate already introduced, and proposing them again produces a second row for one
+concept — the exact failure this page exists to catch.
 
 **This bound outranks whichever rule it meets** — the orphan rule and the new-term rule alike. A
 read model can sit inside `internal/domain/**`, and be named in a spec's own section list, and so
@@ -202,12 +210,11 @@ named states (`Ok`, `Degraded`, the period kinds) are exactly the words a dashbo
 in. Reading only the types there would repeat, one layer over, the mistake this section was written
 to correct.
 
-Resolve each such feature's packages by name rather than by a fixed path. A projection that reads
-the database puts its types under a `query/` package; one that calls an external system puts them
-behind a boundary port, and the two live nowhere near each other. **A glob aimed at one of those
-shapes returns nothing for the other and looks exactly like a feature with no vocabulary.** Expect
-the directory name to differ from the spec directory too — a kebab-case feature is usually one
-concatenated package, sometimes nested under its parent.
+The spec's path gives you its own package, and nothing more. A projection that reads the database
+puts its types under a `query/` sub-package; one that calls an external system puts them behind a
+boundary port, and the two live nowhere near each other — neither is named by the spec. **A glob
+aimed at one of those shapes returns nothing for the other and looks exactly like a feature with no
+vocabulary.** Walk the directories under the spec's package rather than fixing one path.
 
 Strip the mechanism suffix before judging the name: `Result`, `ReadModel`, `View`, `Input`,
 `Params`, `Cursor`, `Summary`, `Breakdown`, `Item`, `List`, `Count`, `DTO` describe the shape of a
@@ -218,8 +225,9 @@ candidate, and the suffix itself belongs in Mechanism vocabulary.
 Drop the ports outright. A name that *is* `Usecase`, `Gateway`, `QueryService` or `Repository`
 names a seam in the architecture; strip its suffix and nothing is left, which is the tell.
 
-A term's owner is the feature directory the spec lives in plus the aggregate it declares. **A
-projection has no aggregate, so its owner is the feature alone** — that is not a missing half, it is
+A term's owner is the feature the spec belongs to plus the aggregate it declares — read the feature
+from the spec's package path, which is what the spec tree's layout now encodes. **A projection has no
+aggregate, so its owner is the feature alone** — that is not a missing half, it is
 what a term with no aggregate looks like, and forcing one in would attribute the word to a model
 that does not define it. Two owners for one term is not a data problem to reconcile; it is the
 finding.
@@ -345,7 +353,7 @@ the follow-ups that belong to other skills and stop there. No commit, no push.
 - [ ] spec YAML / domain 公開型 / 公開振る舞い / 公開パッケージ値 / 読み取り側 / OpenAPI から実行時に抽出
 - [ ] パッケージの所在は spec の `package:` 宣言で解決し、宣言に無いもの（`query/`・boundary port）はディレクトリ走査で補う
 - [ ] orphan から Mechanism vocabulary・Watch list・自動派生の族を差し引く
-- [ ] 読み取り側は domain.md を持たない feature に限定し、機構サフィックスを落とす
+- [ ] 読み取り側は Dependencies が domain spec に解決しない usecase に限定し、機構サフィックスを落とす
 - [ ] レシーバの struct を読み、フィールドを 1 つ返すだけの振る舞い（アクセサ）を差し引く
 - [ ] 用語表のコードシンボル列を grep で解決確認
 - [ ] 4 種の findings を分けて報告する

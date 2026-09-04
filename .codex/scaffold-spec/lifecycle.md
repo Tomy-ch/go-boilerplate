@@ -13,8 +13,8 @@
 
 | layer | spec の必要性 | 理由 |
 | --- | --- | --- |
-| domain | ◎ `domain.md` 必須 | invariants / behavior methods / VO は SQL から導出不可、設計議論の本体 |
-| usecase | ◎ `usecase.md` 必須 | Workflow（処理の中身、tx 境界、orchestration）は spec でしか表現できない |
+| domain | ◎ domain spec 必須 | invariants / behavior methods / VO は SQL から導出不可、設計議論の本体 |
+| usecase | ◎ usecase spec 必須 | Workflow（処理の中身、tx 境界、orchestration）は spec でしか表現できない |
 | controller | × spec 不要 | handler は OpenAPI operationId + 命名規約から導出可能（pure template） |
 | infra | × spec 不要 | Repository 実装は domain IF + sqlc gen 関数名マッピングから導出可能（pure template） |
 
@@ -41,12 +41,12 @@ controller / infra の "規約通り" は `arch-check`（controller / infra 監�
 ## 統合 skill の実行順序
 
 ```text
-1. (前提: SQL / migration / OpenAPI YAML / domain.md / usecase.md は人間が用意済み)
+1. (前提: SQL / migration / OpenAPI YAML / domain spec / usecase spec は人間が用意済み)
 2. verify-spec              (format / 派生元 / cross-layer 整合性チェック、失敗時は中断)
 3. scaffold-domain          (entity + Repository IF + constant + error)
 4. (前提: make gen-query が済んで sqlc 生成物がある)
 5. scaffold-infra-db        (domain Repository IF + sqlc gen から Repository 実装を導出)
-6. scaffold-usecase         (domain entity + repository IF + usecase.md Workflow から実装)
+6. scaffold-usecase         (domain entity + repository IF + usecase spec の Workflow から実装)
 7. scaffold-controller      (OpenAPI gen + usecase IF から handler を導出)
 8. arch-check               (全 layer の規約適合性チェック)
 9. make test                (build / test の cross-layer 整合性確認)
@@ -63,13 +63,17 @@ controller / infra の "規約通り" は `arch-check`（controller / infra 監�
 ## spec パス規約
 
 ```text
-docs/spec/<feature>/
-  ├── domain.md
-  └── usecase.md
+docs/spec/
+  ├── glossary.md                 # 業務語彙。層のツリーには入らない
+  ├── domain/<pkgpath>.md         # 例: cart.md / product/category.md
+  └── usecase/<pkgpath>.md        # 例: address.md / product/ranking.md / user/search.md
 ```
 
-- `<feature>` は **lowercase kebab-case**（例: `user-management`）
-- 統合 skill (`scaffold-endpoint`) には `<feature>` 名のみ渡す。各 layer の spec は規約上のパスから探す
+- `<pkgpath>` は `internal/domain/` / `internal/usecase/` 以下の **Go パッケージパス**
+- **不変条件**: `docs/spec/<layer>/<rest>.md` ⇔ `internal/<layer>/<rest>`。spec 冒頭の `package:` 宣言と必ず一致する
+- spec の列挙は `docs/spec/domain/**/*.md` / `docs/spec/usecase/**/*.md`。`glossary.md` は `docs/spec/` 直下なのでどちらにも入らない
+- 統合 skill (`scaffold-endpoint`) には `<pkgpath>` を渡す。各 layer の spec は規約上のパスから探す
+- 1 つの業務機能（feature）は domain / usecase の 2 ツリーに 1 本ずつ spec を持つのが基本形。ただし 1:1 とは限らない — 集約を持たない usecase（投影・検索）は domain 側に対応する spec を持たず、参照先の domain spec は usecase spec の `Dependencies` から解決する
 - 単独 skill にはファイルパスを直接渡す（standalone 実行可）
 
 ## spec format
@@ -85,7 +89,7 @@ docs/spec/<feature>/
 
 **A. 残す（commit する）** を採用:
 
-- `docs/spec/<feature>/` は git commit してリポジトリに残す
+- `docs/spec/domain/**` / `docs/spec/usecase/**` は git commit してリポジトリに残す
 - PR レビュー時に spec も一緒にレビュー可能
 - spec ↔ コードの drift は人間の PR レビューで catch（自動 drift 検出は当面導入しない）
 - spec は scaffold の input であると同時に **設計議論の永続的なアーティファクト**
@@ -95,7 +99,7 @@ docs/spec/<feature>/
 すべての scaffold-X skill は以下の手順で動く:
 
 1. **入力読み込み**
-    - `scaffold-domain` / `scaffold-usecase`: `docs/spec/<feature>/<layer>.md`
+    - `scaffold-domain` / `scaffold-usecase`: `docs/spec/<layer>/<pkgpath>.md`
     - `scaffold-controller`: OpenAPI gen (`internal/controller/handler/<path>/gen/server.gen.go`) + usecase IF
     - `scaffold-infra-db`: domain Repository IF + sqlc gen (`internal/infrastructure/rdb/sqlc/gen/*.gen.go`)
 2. **README 参照** — 該当 layer README + 1〜2 個の近接 README（handler / boundary / repository 等）。既存規約に揃えるための template として利用
@@ -109,7 +113,7 @@ docs/spec/<feature>/
 
 - 例 1: domain は手書き完成済み、usecase だけ scaffold したい → `scaffold-usecase` 単独起動
 - 例 2: 全部一気に → `scaffold-endpoint` 経由（verify-spec も自動 chain）
-- 単独実行時は spec ファイルパス or 派生元入力を直接指定。統合 skill 経由なら feature 名から自動解決
+- 単独実行時は spec ファイルパス or 派生元入力を直接指定。統合 skill 経由ならパッケージパスから自動解決
 
 ## 失敗時の挙動
 

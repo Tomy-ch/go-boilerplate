@@ -1,12 +1,12 @@
 ---
 name: scaffold-usecase
 description: >-
-  Implement the usecase (Application Service) layer for one feature, driven by `docs/spec/<feature>/usecase.md`. The skill reads the spec + `internal/usecase/README.md` + `internal/usecase/boundary/README.md` + an existing usecase package as structural template, then invokes a test-perspective subagent to enumerate usecase-layer test viewpoints (workflow ordering, mock strategy for repository/boundary, transaction-boundary correctness, error propagation, DTO conversion) BEFORE writing code. Generates: Usecase interface with `//go:generate mockgen` directive, `usecase` struct with all dependencies injected, `New(...)` constructor, per-method body with tracer span / boundary calls / domain calls / repository calls / DTO mapping per the spec's Workflow section, DTO struct definitions, and a test file using gomock-based mocks for repository + boundaries with real domain entities. Runs `make gen-api` to regenerate the Usecase mock, then updates `internal/di/module/usecase.go` to register the new provider. Verifies with `make fix` + `make test`, target 100% coverage for the package. On failure leaves TODO + FB; no auto-rollback. Prerequisites: the domain layer's Repository interface + entity exist, and the boundary interfaces the spec depends on (clock, tx, security, etc.) are already defined under `internal/usecase/boundary/`. Standalone-callable; when chained from `scaffold-endpoint`, runs as the third scaffold step.
+  Implement the usecase (Application Service) layer for one feature, driven by `docs/spec/usecase/<pkgpath>.md` (`<pkgpath>` = the package path under `internal/usecase/`). The skill reads the spec + `internal/usecase/README.md` + `internal/usecase/boundary/README.md` + an existing usecase package as structural template, then invokes a test-perspective subagent to enumerate usecase-layer test viewpoints (workflow ordering, mock strategy for repository/boundary, transaction-boundary correctness, error propagation, DTO conversion) BEFORE writing code. Generates: Usecase interface with `//go:generate mockgen` directive, `usecase` struct with all dependencies injected, `New(...)` constructor, per-method body with tracer span / boundary calls / domain calls / repository calls / DTO mapping per the spec's Workflow section, DTO struct definitions, and a test file using gomock-based mocks for repository + boundaries with real domain entities. Runs `make gen-api` to regenerate the Usecase mock, then updates `internal/di/module/usecase.go` to register the new provider. Verifies with `make fix` + `make test`, target 100% coverage for the package. On failure leaves TODO + FB; no auto-rollback. Prerequisites: the domain layer's Repository interface + entity exist, and the boundary interfaces the spec depends on (clock, tx, security, etc.) are already defined under `internal/usecase/boundary/`. Standalone-callable; when chained from `scaffold-endpoint`, runs as the third scaffold step.
 ---
 
 # Scaffold Usecase
 
-Generate the application service (usecase) layer for a feature based on `docs/spec/<feature>/usecase.md`. Produces the interface, struct, constructor, methods with workflow body, DTOs, tests, and DI registration in a single pass.
+Generate the application service (usecase) layer for a feature based on `docs/spec/usecase/<pkgpath>.md`. Produces the interface, struct, constructor, methods with workflow body, DTOs, tests, and DI registration in a single pass.
 
 A Japanese reference translation of this skill is available at `SKILL.ja.md` in the same directory (not loaded as a skill; for human reference only).
 
@@ -26,7 +26,7 @@ Do NOT use this skill for:
 
 **Reads (always)**:
 
-- `docs/spec/<feature>/usecase.md` — single source of truth for what gets generated.
+- `docs/spec/usecase/<pkgpath>.md` — single source of truth for what gets generated.
 - `internal/usecase/README.md` — layer convention (Application Service Pattern, Tx boundary, Application Policy, etc.).
 - `internal/usecase/boundary/README.md` — boundary conventions.
 - `internal/usecase/<sibling>/<sibling>_usecase.go` — **secondary** reference (README has the canonical Implementation Example; existing code is observed but not authoritative).
@@ -56,7 +56,7 @@ Do NOT use this skill for:
 
 The skill verifies before any write:
 
-1. `docs/spec/<feature>/usecase.md` exists and parses.
+1. `docs/spec/usecase/<pkgpath>.md` exists and parses.
 2. For every `calls:` reference in spec:
    - `<aggregate>.Repository.<Method>` → exists in domain Repository IF.
    - `<aggregate>.<BehaviorMethod>` or `<aggregate>.New` → exists in domain.
@@ -67,16 +67,16 @@ If any precondition fails, abort with a clear corrective pointer (`/scaffold-dom
 
 ## First Step: Resolve Spec Path
 
-This skill **MUST call `AskUserQuestion` immediately after invocation** (unless invoked from `scaffold-endpoint` with the feature name in context):
+This skill **MUST call `AskUserQuestion` immediately after invocation** (unless invoked from `scaffold-endpoint` with the package path in context):
 
-- Question: 「対象 feature 名 (kebab-case)」
-- Free-text. Resolves to `docs/spec/<feature>/usecase.md`.
+- Question: 「対象 usecase パッケージパス（`internal/usecase/` 以下。例: `address`, `product/ranking`, `user/search`）」
+- Free-text. Resolves to `docs/spec/usecase/<pkgpath>.md` — the spec tree mirrors the package tree, so the target package and the spec path are the same answer.
 
 Standalone alternative: `--spec=<path>`.
 
 ## Step 1. Read Spec + Reference Context
 
-1. Parse `usecase.md` YAML into inventory:
+1. Parse the usecase spec's YAML into inventory:
    - `interface`: package, name, methods (name + signature)
    - `dtos`: list of (name, fields)
    - `dependencies`: list of (name, type) — boundaries + Repository IFs

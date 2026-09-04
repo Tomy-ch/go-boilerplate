@@ -100,7 +100,7 @@ Classify before searching because the kind determines which corpus governs and w
 | Rule | governing document | the rule may be undefined, but only after exhausting the owning index |
 | Rationale | `docs/adr/`, `docs/design/` | the decision may never have been recorded |
 | Procedure | `.makefiles/**`, `.lefthook.yaml`, `.github/workflows/`, `docs/maintenance/` | there may be no canonical procedure; never invent one |
-| Vocabulary | `docs/spec/glossary.md`, `docs/spec/<feature>/` | the term may be unregistered or not business vocabulary |
+| Vocabulary | `docs/spec/glossary.md`, `docs/spec/{domain,usecase}/` | the term may be unregistered or not business vocabulary |
 | History | `git log`, merged pull requests | report the reachable history |
 
 Do not let surface vocabulary pick the kind. For example, running integration tests is a Procedure
@@ -124,7 +124,7 @@ word in the question:
 | `docs/design/README.md` | subsystem and cross-cutting design |
 | `.makefiles/README.md` | all make targets grouped by concern |
 | README chain from the path to its layer root | package responsibilities, prohibitions, and design intent |
-| `docs/spec/glossary.md`, `docs/spec/<feature>/` | business vocabulary and feature behavior |
+| `docs/spec/glossary.md`, `docs/spec/{domain,usecase}/` | business vocabulary and feature behavior |
 
 At runtime, read §0, **Finding the authoritative source**, in
 `.codex/skills/repo-ops/SKILL.md`. That section is the canonical answer-target-to-source lookup and

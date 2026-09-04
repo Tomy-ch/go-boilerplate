@@ -112,13 +112,13 @@ skills:
     opportunity_predicate: null
   - skill: new-spec
     usage_class: situational
-    opportunity_predicate: "`docs/spec/<feature>/` が存在しない新機能に着手した"
+    opportunity_predicate: "`docs/spec/{domain,usecase}/<pkgpath>.md` が存在しない新機能に着手した"
   - skill: new-spec-domain
     usage_class: situational
-    opportunity_predicate: "`docs/spec/<feature>/domain.md` が存在しない新機能に着手した"
+    opportunity_predicate: "`docs/spec/domain/<pkgpath>.md` が存在しない新機能に着手した"
   - skill: new-spec-usecase
     usage_class: situational
-    opportunity_predicate: "`docs/spec/<feature>/usecase.md` が存在しない新機能に着手した"
+    opportunity_predicate: "`docs/spec/usecase/<pkgpath>.md` が存在しない新機能に着手した"
   - skill: portal-manifest-sync
     usage_class: situational
     opportunity_predicate: "`README.md` が追加・削除されたのに `docs/portal/manifest.yaml` が変更されていない"
@@ -187,4 +187,4 @@ skills:
     opportunity_predicate: "`mise.toml` のツールに新版が出た"
   - skill: verify-spec
     usage_class: situational
-    opportunity_predicate: "`docs/spec/<feature>/` が変更された"
+    opportunity_predicate: "`docs/spec/<layer>/<pkgpath>.md` が変更された"
