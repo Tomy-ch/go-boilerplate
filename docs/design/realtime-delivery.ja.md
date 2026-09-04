@@ -1,6 +1,6 @@
 # Realtime Delivery サブシステム設計リファレンス
 
-本書は Realtime Delivery サブシステムの**役割理論・状態遷移・実装位置・integrator が実装すべきもの・用語集**を 1 つのリファレンスに統合したものである。このディレクトリの他の設計リファレンスと違い、**実装より前に**書かれた。実装がこれに合わせて作られる設計であり、§3 は既存コードの読解ではなく配置の計画を記す。本書がシンボル名・既定値・手順の順序を挙げている箇所は意図された具体として扱い、それが属する機構——ordering chain、connection の状態機械、ticket の契約——が統べる。採択の根拠は realtime の ADR 4 本: [ADR-0071 (realtime-delivery-driving-mechanism)](../adr/0071-realtime-delivery-driving-mechanism.ja.md)、[ADR-0072 (postgres-state-dynamodb-eventlog)](../adr/0072-postgres-state-dynamodb-eventlog.ja.md)、[ADR-0073 (sns-sqs-instance-fanout)](../adr/0073-sns-sqs-instance-fanout.ja.md)、[ADR-0074 (query-ticket-stream-authentication)](../adr/0074-query-ticket-stream-authentication.ja.md)。outbox 行が dead になる条件は [ADR-0058 (outbox-dead-on-permanent-error)](../adr/0058-outbox-dead-on-permanent-error.ja.md)。
+本書は Realtime Delivery サブシステムの**役割理論・状態遷移・実装位置・integrator が実装すべきもの・用語集**を 1 つのリファレンスに統合したものである。実装がこれに合わせて作られる設計であり、§3 は現在のコードの読解である。本書がシンボル名・既定値・手順の順序を挙げている箇所は意図された具体として扱い、それが属する機構——ordering chain、connection の状態機械、ticket の契約——が統べる。採択の根拠は realtime の ADR 4 本: [ADR-0071 (realtime-delivery-driving-mechanism)](../adr/0071-realtime-delivery-driving-mechanism.ja.md)、[ADR-0072 (postgres-state-dynamodb-eventlog)](../adr/0072-postgres-state-dynamodb-eventlog.ja.md)、[ADR-0073 (sns-sqs-instance-fanout)](../adr/0073-sns-sqs-instance-fanout.ja.md)、[ADR-0074 (query-ticket-stream-authentication)](../adr/0074-query-ticket-stream-authentication.ja.md)。outbox 行が dead になる条件は [ADR-0058 (outbox-dead-on-permanent-error)](../adr/0058-outbox-dead-on-permanent-error.ja.md)。
 
 ---
 
@@ -165,7 +165,7 @@ subscription が出会う場所——DI module——で合成する。subscripti
 
 ---
 
-## 3. 実装位置（どこに置く予定か）
+## 3. 実装位置（どこに在るか）
 
 本節は**計画された**配置を述べる。依存方向と allowlist が統べる部分で、package 名は意図された具体である。
 
@@ -219,20 +219,22 @@ outbox の delivery-channel の作業で追加され、全 channel で共有さ�
 
 | 種別 | 値 |
 | --- | --- |
-| **typed config**（deployment 依存） | EventLog endpoint / region / table、ticket と lease の table、credentials（空 → SDK default chain）、fan-out endpoint、SNS topic、SQS resource prefix、DLQ（空 → redrive しない）、いずれも AWS では ARN、**instance あたりの最大 SSE 接続数**、**replay / catch-up の並行数** |
-| **code 上の固定値**（それぞれ単一の正規定義） | write deadline 10 s、heartbeat 15 s、connection ごとの buffer 64、catch-up 間隔 30 s、jitter 比率、ticket TTL 5 分、maximum connection lifetime 1 時間、lease heartbeat 30 s / expiry 2 分 / cleanup margin 5 分、payload 上限 64 KiB、EventLog 保持 7 日、backoff 上限 60 s、instance queue の visibility timeout 30 s / long polling 20 s / redrive の `maxReceiveCount` 5 |
+| **typed config**（deployment 依存） | EventLog endpoint / region、各 store の table 名を導く table suffix（`<store>_<suffix>`。並行する checkout が 1 つの DynamoDB を共有できるのはこれによる）、credentials（空 → SDK default chain）、fan-out endpoint、SNS topic、SQS resource prefix、DLQ（空 → redrive しない）、いずれも AWS では ARN、**instance あたりの最大 SSE 接続数**、**replay / catch-up の並行数** |
+| **code 上の固定値**（それぞれ単一の正規定義） | write deadline 10 s、heartbeat 15 s、connection ごとの buffer = replay 1 ページ分（64。1 ページが buffer を溢れさせないため）、catch-up 間隔 30 s、jitter 比率（間隔の 5 分の 1）、初回 replay の枠を待つ上限 2 s、drain の予算 10 s、503 の `Retry-After` と `retryAfterMs` が共用する目安 5 s、ticket TTL 5 分、maximum connection lifetime 1 時間、lease heartbeat 30 s / expiry 2 分 / cleanup margin 5 分、payload 上限 64 KiB、EventLog 保持 7 日、backoff 上限 60 s、instance queue の visibility timeout 30 s / long polling 20 s / redrive の `maxReceiveCount` 5 |
 
 ### 3.4 observability の契約
 
-metric は feature 非依存（`realtime_*`）で、subject / user / stream / destination / event / message / trace / ticket の識別子を label に**持たない**。個別の相関は trace と structured log で行う。
+metric は feature 非依存（`realtime.*` という名前で、Prometheus exporter が `realtime_*` として出す）で、subject / user / stream / destination / event / message / trace / ticket の識別子を label に**持たない**。個別の相関は trace と structured log で行う。
 
-| 群 | metric |
+close は閉じ方ごとに metric を分けず、`reason` を持つ 1 本で表す——遅い client も通常の EOF も、その label で読み分ける同じ系列である。`result` と `outcome` も同様で、実行とその成功は別々の counter ではない。
+
+| 群 | metric（`internal/observability/realtime_metrics.go`） |
 | --- | --- |
-| connection | active、accepted、rejected（capacity）、reconnect（`Last-Event-ID` または `after` を伴う接続）、duration、slow-client disconnect（通常の close と区別） |
-| replay / catch-up | replay 実行数、replay した event 数、replay depth、catch-up 実行数、catch-up lag、並行数の飽和 |
-| delivery | EventLog append 数、append 失敗数、**delivery latency** = `occurredAt` → SSE write 成功（2 つの instance を跨ぐため clock skew を含む。構造上の近似値）、**EventLog lag** = outbox `created_at` → append、delivery 失敗、recovery の成功 / 失敗、**blocked stream**（先頭が dead） |
-| cleanup | heartbeat 失敗、expired instance の検出、cleanup 実行、成功 / 失敗 |
-| outbox | delivery channel ごとの lag、channel ごとの最古 pending 行の age（attempt 回数に代わる alert。[ADR-0058]） |
+| connection | `connections.active`、`connections.accepted`、`connections.rejected`（`reason`: capacity / degraded / draining）、`connections.closed`（`reason`。遅い client はここに計上される）、`connections.reconnects`（`Last-Event-ID` または `after` を伴う接続）、`connections.duration_ms` |
+| replay / catch-up | `replay.executions`（`trigger`）、`replay.events`、`replay.depth`、`replay.failures`、`replay.in_flight`（並行数の枠の占有）、`replay.admission_timeouts`（上限内に枠を取れなかった回数）、`catchup.lag_ms` |
+| delivery | `eventlog.appends`（`result`）、**`delivery.latency_ms`** = `occurredAt` → SSE write 成功（2 つの instance を跨ぐため clock skew を含む。構造上の近似値）、**`eventlog.lag_ms`** = outbox `created_at` → append、`wakeup.publish_failures`、`recovery.executions`（`result`） |
+| cleanup | `lease.heartbeat_failures`、`cleanup.executions`（`result`）、`cleanup.instances`（`outcome`） |
+| outbox | delivery channel ごとの lag、channel ごとの最古 pending 行の age（attempt 回数に代わる alert。[ADR-0058]）。これらは realtime ではなく outbox の meter に載る——**blocked stream**（先頭が dead）もそこから読む |
 
 trace: command → outbox → relay → EventLog は outbox header を通じて 1 つの trace を共有する。長寿命接続は元の command の child span にはならない。各 delivery / replay 操作は短い span で、event の origin trace へ span link を張る。公式の OpenTelemetry semantic convention のみを使う（[ADR-0077 (official-otel-semconv)](../adr/0077-official-otel-semconv.ja.md)）。payload、ticket、query credential は span attribute にも log field にも決して現れない。
 

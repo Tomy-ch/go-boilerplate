@@ -1,6 +1,6 @@
 # Realtime Delivery Subsystem Design Reference
 
-This document consolidates the Realtime Delivery subsystem's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference. Unlike the other design references in this directory, it was written **before the implementation**: it is the design the implementation is built to, and §3 describes the planned placement rather than a reading of existing code. Where a statement here names a symbol, a default value, or a step order, treat it as the intended particular; the mechanism it belongs to — the ordering chain, the connection state machine, the ticket contract — governs. For the adoption rationale see the four realtime ADRs: [ADR-0071 (realtime-delivery-driving-mechanism)](../adr/0071-realtime-delivery-driving-mechanism.md), [ADR-0072 (postgres-state-dynamodb-eventlog)](../adr/0072-postgres-state-dynamodb-eventlog.md), [ADR-0073 (sns-sqs-instance-fanout)](../adr/0073-sns-sqs-instance-fanout.md), [ADR-0074 (query-ticket-stream-authentication)](../adr/0074-query-ticket-stream-authentication.md); and, for how an outbox row dies, [ADR-0058 (outbox-dead-on-permanent-error)](../adr/0058-outbox-dead-on-permanent-error.md).
+This document consolidates the Realtime Delivery subsystem's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference. It is the design the implementation is built to, and §3 is a reading of the code as it stands. Where a statement here names a symbol, a default value, or a step order, treat it as the intended particular; the mechanism it belongs to — the ordering chain, the connection state machine, the ticket contract — governs. For the adoption rationale see the four realtime ADRs: [ADR-0071 (realtime-delivery-driving-mechanism)](../adr/0071-realtime-delivery-driving-mechanism.md), [ADR-0072 (postgres-state-dynamodb-eventlog)](../adr/0072-postgres-state-dynamodb-eventlog.md), [ADR-0073 (sns-sqs-instance-fanout)](../adr/0073-sns-sqs-instance-fanout.md), [ADR-0074 (query-ticket-stream-authentication)](../adr/0074-query-ticket-stream-authentication.md); and, for how an outbox row dies, [ADR-0058 (outbox-dead-on-permanent-error)](../adr/0058-outbox-dead-on-permanent-error.md).
 
 ---
 
@@ -167,7 +167,7 @@ the 60 s AWS enforces between deleting a queue and creating one with that name.
 
 ---
 
-## 3. Implementation locations (where it will live)
+## 3. Implementation locations (where it lives)
 
 This section states the **planned** placement. The dependency direction and the allowlist are the governing part; package names are the intended particulars.
 
@@ -221,20 +221,22 @@ Added by the outbox delivery-channel work, shared by every channel:
 
 | Kind | Values |
 | --- | --- |
-| **Typed config** (deployment-dependent) | EventLog endpoint / region / table; ticket and lease tables; credentials (empty → SDK default chain); fan-out endpoint; SNS topic; SQS resource prefix; DLQ (empty → no redrive); both are ARNs on AWS; **max SSE connections per instance**; **replay / catch-up concurrency** |
-| **Fixed in code** (one canonical definition each) | write deadline 10 s; heartbeat 15 s; per-connection buffer 64; catch-up interval 30 s; jitter ratio; ticket TTL 5 min; maximum connection lifetime 1 h; lease heartbeat 30 s / expiry 2 min / cleanup margin 5 min; payload cap 64 KiB; EventLog retention 7 days; backoff cap 60 s; instance queue visibility timeout 30 s / long polling 20 s / redrive `maxReceiveCount` 5 |
+| **Typed config** (deployment-dependent) | EventLog endpoint / region; the table suffix every store's table name is derived from (`<store>_<suffix>`, which is what lets parallel checkouts share one DynamoDB); credentials (empty → SDK default chain); fan-out endpoint; SNS topic; SQS resource prefix; DLQ (empty → no redrive); both are ARNs on AWS; **max SSE connections per instance**; **replay / catch-up concurrency** |
+| **Fixed in code** (one canonical definition each) | write deadline 10 s; heartbeat 15 s; per-connection buffer = one replay page (64), so a page can never overflow it; catch-up interval 30 s; jitter ratio (a fifth of the interval); initial-replay admission wait 2 s; drain budget 10 s; the `Retry-After` hint 5 s, shared by the 503 header and `retryAfterMs`; ticket TTL 5 min; maximum connection lifetime 1 h; lease heartbeat 30 s / expiry 2 min / cleanup margin 5 min; payload cap 64 KiB; EventLog retention 7 days; backoff cap 60 s; instance queue visibility timeout 30 s / long polling 20 s / redrive `maxReceiveCount` 5 |
 
 ### 3.4 Observability contract
 
-Metrics are feature-neutral (`realtime_*`) and carry **no** subject, user, stream, destination, event, message, trace, or ticket identifier as a label; per-item correlation goes through traces and structured logs. An identifier's value set is unbounded, so every new value opens a time series that is never retired; the label keys are therefore fixed to `reason` / `trigger` / `result` / `outcome`, and `internal/architest/realtime_metrics_test.go` fails any key outside that set.
+Metrics are feature-neutral (named `realtime.*`, which the Prometheus exporter renders as `realtime_*`) and carry **no** subject, user, stream, destination, event, message, trace, or ticket identifier as a label; per-item correlation goes through traces and structured logs. An identifier's value set is unbounded, so every new value opens a time series that is never retired; the label keys are therefore fixed to `reason` / `trigger` / `result` / `outcome`, and `internal/architest/realtime_metrics_test.go` fails any key outside that set.
 
-| Group | Metrics |
+A close is one metric carrying `reason`, not one metric per way of closing — a slow client and an ordinary EOF are the same series read through that label. The same holds for `result` and `outcome`: an execution and its success are not separate counters.
+
+| Group | Metrics (`internal/observability/realtime_metrics.go`) |
 | --- | --- |
-| connection | active; accepted; rejected (capacity); reconnects (a connect carrying `Last-Event-ID` or `after`); duration; slow-client disconnects (distinct from ordinary close) |
-| replay / catch-up | replay executions; replayed events; replay depth; catch-up executions; catch-up lag; concurrency saturation |
-| delivery | EventLog appends; append failures; **delivery latency** = `occurredAt` → successful SSE write (spans two instances, so clock skew is included; an approximation by construction); **EventLog lag** = outbox `created_at` → append; delivery failures; recovery success / failure; **blocked streams** (head dead) |
-| cleanup | heartbeat failures; expired instances detected; cleanup executions; success / failure |
-| outbox | lag per delivery channel; age of the oldest pending row per channel (the alert that replaces the attempt count, [ADR-0058]) |
+| connection | `connections.active`; `connections.accepted`; `connections.rejected` (`reason`: capacity, degraded, draining); `connections.closed` (`reason`, which is where a slow client is counted); `connections.reconnects` (a connect carrying `Last-Event-ID` or `after`); `connections.duration_ms` |
+| replay / catch-up | `replay.executions` (`trigger`); `replay.events`; `replay.depth`; `replay.failures`; `replay.in_flight` (the concurrency gate's occupancy); `replay.admission_timeouts` (a slot not won within the bounded wait); `catchup.lag_ms` |
+| delivery | `eventlog.appends` (`result`); **`delivery.latency_ms`** = `occurredAt` → successful SSE write (spans two instances, so clock skew is included; an approximation by construction); **`eventlog.lag_ms`** = outbox `created_at` → append; `wakeup.publish_failures`; `recovery.executions` (`result`) |
+| cleanup | `lease.heartbeat_failures`; `cleanup.executions` (`result`); `cleanup.instances` (`outcome`) |
+| outbox | lag per delivery channel; age of the oldest pending row per channel (the alert that replaces the attempt count, [ADR-0058]). These live on the outbox meter, not the realtime one — **blocked streams** (head dead) is read from there |
 
 Traces: command → outbox → relay → EventLog share one trace through the outbox headers. A long-lived connection is never a child span of the originating command; each delivery or replay operation is a short span with a span link to the event's origin trace. Only official OpenTelemetry semantic conventions are used ([ADR-0077 (official-otel-semconv)](../adr/0077-official-otel-semconv.md)). Payloads, tickets, and query credentials never appear in span attributes or log fields.
 
