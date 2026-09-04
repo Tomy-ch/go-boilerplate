@@ -98,7 +98,8 @@ var (
 	pyNameSepRe = regexp.MustCompile(`[-_.]+`)
 	// bypassLineRe は `"key@version" = { expires = ..., issue = ..., reason = "..." }` を読む。
 	bypassLineRe = regexp.MustCompile(
-		`^"([^"]+)"\s*=\s*\{\s*expires\s*=\s*(\d{4}-\d{2}-\d{2})\s*,\s*issue\s*=\s*(\d+)\s*,\s*reason\s*=\s*"([^"]*)"\s*\}$`)
+		`^"([^"]+)"\s*=\s*\{\s*expires\s*=\s*(\d{4}-\d{2}-\d{2})\s*,\s*issue\s*=\s*(\d+)\s*,\s*reason\s*=\s*"([^"]*)"\s*\}$`,
+	)
 )
 
 // tool は宣言の 1 行。backend は解決後の値で、短縮名なら mise registry が決める。
@@ -521,20 +522,23 @@ func verifyLocks(declared []tool) []violation {
 		content, err := os.ReadFile(lockPath) //nolint:gosec // 宣言ファイルのパスから決まる
 		if err != nil {
 			violations = append(violations, violation{file: t.file, msg: fmt.Sprintf(
-				"%s を読めません（%v）。`make py-lock` で生成してください", lockPath, err)})
+				"%s を読めません（%v）。`make py-lock` で生成してください", lockPath, err,
+			)})
 			continue
 		}
 		name := pyPackageName(t.key)
 		locked, ok := lockedVersion(content, name)
 		if !ok {
 			violations = append(violations, violation{file: t.file, msg: fmt.Sprintf(
-				"%s が宣言する %s が %s にありません。`make py-lock` で再生成してください", t.file, t.id(), lockPath)})
+				"%s が宣言する %s が %s にありません。`make py-lock` で再生成してください", t.file, t.id(), lockPath,
+			)})
 			continue
 		}
 		if locked != t.version {
 			violations = append(violations, violation{file: t.file, msg: fmt.Sprintf(
 				"%s の宣言は %s ですが %s が固定しているのは %s です。`make py-lock` で再生成してください",
-				t.file, t.id(), lockPath, name+"=="+locked)})
+				t.file, t.id(), lockPath, name+"=="+locked,
+			)})
 		}
 	}
 	return violations
@@ -756,7 +760,8 @@ func readBypasses(path string) (map[string]bypass, error) {
 		m := bypassLineRe.FindStringSubmatch(line)
 		if m == nil {
 			return nil, xerrors.Wrap(errBypassInvalidLine, fmt.Sprintf(
-				`%d 行目: %q（形式は "<key>@<version>" = { expires = YYYY-MM-DD, issue = <N>, reason = "..." }）`, lineNo, line))
+				`%d 行目: %q（形式は "<key>@<version>" = { expires = YYYY-MM-DD, issue = <N>, reason = "..." }）`, lineNo, line,
+			))
 		}
 		if _, dup := out[m[1]]; dup {
 			return nil, xerrors.Wrap(errBypassDuplicateKey, fmt.Sprintf("%d 行目: %q", lineNo, m[1]))
@@ -793,18 +798,21 @@ func validateBypasses(bypasses map[string]bypass, declared []tool, today time.Ti
 			invalid[key] = struct{}{}
 			violations = append(violations, violation{file: bypassFile, msg: fmt.Sprintf(
 				"%s:%d %s の期限 %s が切れています。窓明けの版へ更新してエントリを消すか、期限を延ばす判断を #%d で記録してください",
-				bypassFile, b.line, key, b.expires.Format(time.DateOnly), b.issue)})
+				bypassFile, b.line, key, b.expires.Format(time.DateOnly), b.issue,
+			)})
 		case b.expires.After(limit):
 			invalid[key] = struct{}{}
 			violations = append(violations, violation{file: bypassFile, msg: fmt.Sprintf(
 				"%s:%d %s の期限 %s が上限（%s から %d ヶ月 = %s）を越えています。恒久 allowlist にしないための上限です",
 				bypassFile, b.line, key, b.expires.Format(time.DateOnly),
-				today.Format(time.DateOnly), maxBypassMonths, limit.Format(time.DateOnly))})
+				today.Format(time.DateOnly), maxBypassMonths, limit.Format(time.DateOnly),
+			)})
 		default:
 			if _, ok := inDeclarations[key]; !ok {
 				violations = append(violations, violation{file: bypassFile, msg: fmt.Sprintf(
 					"%s:%d %s は %s / %s のどちらにも存在しません。不要になったエントリは消してください",
-					bypassFile, b.line, key, miseFile, pyRequirementsGlob)})
+					bypassFile, b.line, key, miseFile, pyRequirementsGlob,
+				)})
 			}
 		}
 	}

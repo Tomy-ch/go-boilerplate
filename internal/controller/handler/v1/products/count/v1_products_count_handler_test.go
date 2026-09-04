@@ -66,7 +66,8 @@ func Test_server_GetProductsCount(t *testing.T) {
 					require.NotNil(t, params.MaxQuantity)
 					assert.Equal(t, int32(20), *params.MaxQuantity)
 					return productuc.ProductCountView{Count: 4}, nil
-				})
+				},
+			)
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: mockUC}
 
 			resp, err := s.GetProductsCount(context.Background(), gen.GetProductsCountRequestObject{

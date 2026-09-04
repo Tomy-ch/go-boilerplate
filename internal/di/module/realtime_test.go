@@ -112,7 +112,8 @@ func Test_realtimeModule(t *testing.T) {
 				append(
 					realtimeDeps(),
 					fx.Populate(&log, &tickets, &leases, &secrets, &cursor, &issuer, &verifier),
-				)...)
+				)...,
+			)
 
 			// value group は空でも解決するため、group への登録は実体を集めて数える。
 			schemes := collectGroup[oapiauth.SchemeAuthenticator](t, `group:"oapi.security.schemes"`, realtimeRunDeps(t))

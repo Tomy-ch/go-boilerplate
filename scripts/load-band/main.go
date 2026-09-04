@@ -314,7 +314,8 @@ func advice(b band) string {
 	case bandLow:
 		return fmt.Sprintf(
 			"💡 窓が多いため低負荷モードです。重いゲートは CPU share %d に絞り、逐次で走ります。\n"+
-				"   さらに窓を増やすなら CI へ委ねる方が速く確実です: GOBP_LOAD=ci-first\n", b.share)
+				"   さらに窓を増やすなら CI へ委ねる方が速く確実です: GOBP_LOAD=ci-first\n", b.share,
+		)
 	default:
 		return "💡 窓が少ないためホスト全体を使います（従来どおり）。\n"
 	}

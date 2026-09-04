@@ -456,7 +456,8 @@ func Test_client_recordOutcome(t *testing.T) {
 			c, obs := newRecordingClient(t)
 
 			c.recordOutcome(
-				context.Background(), "acct", &Response{StatusCode: http.StatusServiceUnavailable}, apperror.ErrUnavailable)
+				context.Background(), "acct", &Response{StatusCode: http.StatusServiceUnavailable}, apperror.ErrUnavailable,
+			)
 
 			assert.Equal(t, []string{"http_5xx"}, obs.LabelValues(t, "httpclient.errors", "reason"))
 		})
@@ -548,7 +549,8 @@ func Test_noFollowRedirect(t *testing.T) {
 			t.Parallel()
 
 			req, err := http.NewRequestWithContext(
-				context.Background(), http.MethodGet, "https://example.com/redirected", nil)
+				context.Background(), http.MethodGet, "https://example.com/redirected", nil,
+			)
 			require.NoError(t, err)
 
 			require.ErrorIs(t, noFollowRedirect(req, []*http.Request{req}), http.ErrUseLastResponse)

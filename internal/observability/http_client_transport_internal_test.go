@@ -313,7 +313,8 @@ func Test_spanURLRedactingRoundTripper_RoundTrip(t *testing.T) {
 			captured := &captureRoundTripper{}
 			rt := spanURLRedactingRoundTripper{inner: captured}
 			req, err := http.NewRequestWithContext(
-				context.Background(), http.MethodGet, "https://example.com/search?token=secret&postalCode=1000001#sess=abc", nil)
+				context.Background(), http.MethodGet, "https://example.com/search?token=secret&postalCode=1000001#sess=abc", nil,
+			)
 			require.NoError(t, err)
 
 			_, err = rt.RoundTrip(req)
@@ -338,7 +339,8 @@ func Test_spanURLRedactingRoundTripper_RoundTrip(t *testing.T) {
 			captured := &captureRoundTripper{}
 			rt := spanURLRedactingRoundTripper{inner: captured}
 			req, err := http.NewRequestWithContext(
-				context.Background(), http.MethodGet, "https://example.com/search", nil)
+				context.Background(), http.MethodGet, "https://example.com/search", nil,
+			)
 			require.NoError(t, err)
 
 			_, err = rt.RoundTrip(req)
@@ -372,7 +374,8 @@ func Test_spanURLRedactingRoundTripper_RoundTrip(t *testing.T) {
 			captured := &captureRoundTripper{err: wantErr}
 			rt := spanURLRedactingRoundTripper{inner: captured}
 			req, err := http.NewRequestWithContext(
-				context.Background(), http.MethodGet, "https://example.com/search?token=secret", nil)
+				context.Background(), http.MethodGet, "https://example.com/search?token=secret", nil,
+			)
 			require.NoError(t, err)
 
 			resp, err := rt.RoundTrip(req)
@@ -412,7 +415,8 @@ func Test_urlSecretRestoringRoundTripper_RoundTrip(t *testing.T) {
 			captured := &captureRoundTripper{}
 			rt := urlSecretRestoringRoundTripper{base: captured}
 			req, err := http.NewRequestWithContext(
-				context.Background(), http.MethodGet, "https://example.com/search", nil)
+				context.Background(), http.MethodGet, "https://example.com/search", nil,
+			)
 			require.NoError(t, err)
 
 			_, err = rt.RoundTrip(req)
@@ -446,7 +450,8 @@ func Test_urlSecretRestoringRoundTripper_RoundTrip(t *testing.T) {
 			captured := &captureRoundTripper{err: wantErr}
 			rt := urlSecretRestoringRoundTripper{base: captured}
 			req, err := http.NewRequestWithContext(
-				context.Background(), http.MethodGet, "https://example.com/search", nil)
+				context.Background(), http.MethodGet, "https://example.com/search", nil,
+			)
 			require.NoError(t, err)
 
 			resp, err := rt.RoundTrip(req)
@@ -535,7 +540,8 @@ func Test_newHTTPClientTransport_redactsQueryFromSpanButPreservesRequest(t *test
 			httpClient := &http.Client{Transport: transport.RoundTripper()}
 
 			req, err := http.NewRequestWithContext(
-				context.Background(), http.MethodGet, srv.URL+"/search?token=secret&postalCode=1000001#sess=abc", nil)
+				context.Background(), http.MethodGet, srv.URL+"/search?token=secret&postalCode=1000001#sess=abc", nil,
+			)
 			require.NoError(t, err)
 
 			resp, err := httpClient.Do(req)
@@ -577,7 +583,8 @@ func Test_newHTTPClientTransport_redactsQueryFromSpanButPreservesRequest(t *test
 			httpClient := &http.Client{Transport: transport.RoundTripper()}
 
 			req, err := http.NewRequestWithContext(
-				context.Background(), http.MethodGet, "http://"+addr+"/search?token=secret&postalCode=1000001", nil)
+				context.Background(), http.MethodGet, "http://"+addr+"/search?token=secret&postalCode=1000001", nil,
+			)
 			require.NoError(t, err)
 
 			resp, err := httpClient.Do(req)

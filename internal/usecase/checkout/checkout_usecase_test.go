@@ -181,7 +181,8 @@ func Test_usecase_referenceAmount(t *testing.T) {
 							RateDate: "2026-07-21",
 						},
 					}, nil
-				})
+				},
+			)
 
 			u := &usecase{tracer: observability.NewNoopTracerFactory(t).Usecase(), xr: xr}
 			actual := u.referenceAmount(context.Background(), 10000, "JPY")

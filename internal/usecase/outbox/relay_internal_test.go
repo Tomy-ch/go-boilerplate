@@ -115,7 +115,8 @@ func Test_relayUsecase_deliver(t *testing.T) {
 					assert.Equal(t, msg.EventType, m.EventType)
 					assert.Equal(t, msg.Payload, m.Payload)
 					return nil
-				})
+				},
+			)
 			store.EXPECT().MarkPublished(gomock.Any(), msg.ID).Return(nil)
 
 			u := newDeliverUsecase(t, store, pub, observability.NewNoopOutboxMetrics(t))
@@ -141,7 +142,8 @@ func Test_relayUsecase_deliver(t *testing.T) {
 					assert.False(t, nextAttemptAt.Before(deliverNow))
 					assert.False(t, nextAttemptAt.After(deliverNow.Add(retryInitialInterval)))
 					return nil
-				})
+				},
+			)
 
 			u := newDeliverUsecase(t, store, pub, metrics)
 			published, err := u.deliver(context.Background(), msg)
@@ -193,7 +195,8 @@ func Test_relayUsecase_deliver(t *testing.T) {
 						advanced = true
 					}
 					return nil
-				}).Times(attempts)
+				},
+			).Times(attempts)
 
 			u := newDeliverUsecase(t, store, pub, observability.NewNoopOutboxMetrics(t))
 			for range attempts {

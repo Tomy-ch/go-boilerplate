@@ -84,12 +84,14 @@ func TestNewAuthenticator(t *testing.T) {
 					assert.Equal(t, req.Context(), ctx)
 					assert.NotEqual(t, validatorCtx, ctx)
 					return want, nil
-				})
+				},
+			)
 			mr.EXPECT().Resolve(gomock.Any(), gomock.Any()).DoAndReturn(
 				func(ctx context.Context, _ *authbd.Authn) (*authbd.Authn, error) {
 					assert.Equal(t, req.Context(), ctx)
 					return want, nil
-				})
+				},
+			)
 
 			fn, err := NewAuthenticator(m, mr, nil)
 			require.NoError(t, err)

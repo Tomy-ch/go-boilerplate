@@ -109,7 +109,8 @@ func jwksClientReturning(t *testing.T, bodies ...[]byte) httpclient.Client {
 			b := bodies[min(call, len(bodies)-1)]
 			call++
 			return &httpclient.Response{StatusCode: 200, Body: b}, nil
-		}).AnyTimes()
+		},
+	).AnyTimes()
 	return client
 }
 
@@ -1289,7 +1290,8 @@ func newBlockedFetch(t *testing.T, client *mock_httpclient.MockClient, pub *rsa.
 			case <-b.release:
 				return &httpclient.Response{StatusCode: 200, Body: body}, nil
 			}
-		}).Times(1)
+		},
+	).Times(1)
 	return b
 }
 

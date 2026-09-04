@@ -109,7 +109,8 @@ func Test_usecase_GetCart(t *testing.T) {
 				func(_ context.Context, updated *cart.Cart) error {
 					saved = updated
 					return nil
-				})
+				},
+			)
 
 			productRepo := mock_product.NewMockRepository(ctrl)
 			productRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Return(product.Products{p}, nil)
@@ -140,7 +141,8 @@ func Test_usecase_GetCart(t *testing.T) {
 				func(_ context.Context, updated *cart.Cart) error {
 					saved = updated
 					return nil
-				})
+				},
+			)
 
 			productRepo := mock_product.NewMockRepository(ctrl)
 			productRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Times(0)
@@ -173,7 +175,8 @@ func Test_usecase_GetCart(t *testing.T) {
 				func(_ context.Context, updated *cart.Cart) error {
 					saved = updated
 					return nil
-				})
+				},
+			)
 
 			productRepo := mock_product.NewMockRepository(ctrl)
 			productRepo.EXPECT().FindByIDs(gomock.Any(), gomock.Any()).Times(0)

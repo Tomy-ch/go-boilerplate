@@ -121,13 +121,15 @@ func TestNew(t *testing.T) {
 			ts, _, _ := newFakeS3(t)
 
 			allowed := newStorageWithOutbound(
-				t, ts.URL, testBucket, observability.NewDisabledOutboundHTTPClient(true))
+				t, ts.URL, testBucket, observability.NewDisabledOutboundHTTPClient(true),
+			)
 			_, allowedErr := allowed.Put(context.Background(), boundary.PutObject{
 				Key: "guard-allowed.txt", Body: []byte("x"), ContentType: "text/plain",
 			})
 
 			denied := newStorageWithOutbound(
-				t, ts.URL, testBucket, observability.NewDisabledOutboundHTTPClient(false))
+				t, ts.URL, testBucket, observability.NewDisabledOutboundHTTPClient(false),
+			)
 			_, deniedErr := denied.Put(context.Background(), boundary.PutObject{
 				Key: "guard-denied.txt", Body: []byte("x"), ContentType: "text/plain",
 			})

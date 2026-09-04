@@ -109,7 +109,8 @@ func TestV1UsersMePurchasesSummary_Integration(t *testing.T) {
 				purchaseSummaryPath+
 					"?orderedAfter=2026-01-21T00:00:00Z&orderedBefore=2026-02-01T00:00:00Z"+
 					"&groupBy=category&groupBy=product",
-				nil, headers)
+				nil, headers,
+			)
 			assert.Equal(t, http.StatusOK, actual.StatusCode)
 
 			require.NotNil(t, captured.Window.After())
@@ -147,7 +148,8 @@ func TestV1UsersMePurchasesSummary_Integration(t *testing.T) {
 
 			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "int_sm_groups"))
 			actual := StartServer(t, e).DoJSON(
-				http.MethodGet, purchaseSummaryPath+"?groupBy=category&groupBy=product", nil, headers)
+				http.MethodGet, purchaseSummaryPath+"?groupBy=category&groupBy=product", nil, headers,
+			)
 			assert.Equal(t, http.StatusOK, actual.StatusCode)
 
 			resBody, err := io.ReadAll(actual.Body)

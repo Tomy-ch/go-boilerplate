@@ -178,7 +178,8 @@ func Test_usecase_GetPurchases(t *testing.T) {
 			lt := observability.NewMockUsecaseLayerTracer(t)
 			feedQS := mock_query.NewMockPurchaseFeedQueryService(gomock.NewController(t))
 			feedQS.EXPECT().FindFeedByUserID(gomock.Any(), gomock.Any(), gomock.Any()).Return(
-				[]query.PurchaseFeedReadModel{feedItem(t, "a", base)}, nil)
+				[]query.PurchaseFeedReadModel{feedItem(t, "a", base)}, nil,
+			)
 
 			u := &usecase{tracer: lt, feedQS: feedQS}
 			got, err := u.GetPurchases(

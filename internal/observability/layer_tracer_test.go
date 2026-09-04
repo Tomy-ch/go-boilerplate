@@ -151,7 +151,8 @@ func TestRunWithSpan(t *testing.T) {
 				context.Background(), lt, Usecase, "pkg", "Func",
 				func(_ context.Context) (string, error) {
 					return "ok", nil
-				})
+				},
+			)
 			require.NoError(t, err)
 			assert.Equal(t, "ok", v)
 			require.NotNil(t, ctx)
@@ -173,7 +174,8 @@ func TestRunWithSpan(t *testing.T) {
 				context.Background(), lt, Usecase, "pkg", "Func",
 				func(_ context.Context) (string, error) {
 					return "", xerrors.New("failure")
-				})
+				},
+			)
 
 			require.Error(t, err)
 			assert.Empty(t, v)

@@ -8,9 +8,7 @@ packages:
 # 公開直後の版を解決対象から外す（pnpm は分指定。7 日 = 10080 分）。窓の設計は docs/design/security.md。
 minimumReleaseAge: 10080
 # 緊急のセキュリティ修正は特定バージョンだけを一時的に例外化する（package@version 必須。パッケージ名だけの例外は禁止）。
-minimumReleaseAgeExclude:
-  - js-yaml@4.3.1 # 2026-08-08 02:40 JST 以降に削除する。GHSA-5p4m-2wfm-xmqj の修正版で、tool-runner 内のビルド時にのみ動く。
-  - mermaid@11.16.1 # 2026-08-12 00:09 JST 以降に削除する。CVE-2026-50159 / 71436 / 71437 / 71438 / 71439 の修正版で、tool-runner 内のビルド時にのみ動く。
+minimumReleaseAgeExclude: []
 # 冷却期間を満たす版が無ければ解決を失敗させる。
 minimumReleaseAgeStrict: true
 # 公開日時を返さないレジストリの依存は解決を失敗させる。
@@ -55,7 +53,10 @@ overrides:
   # v1 系のみ DoS 修正版を下限にする。1.1.17 は中間配列の膨張（CVE-2026-69152）が残る。
   "brace-expansion@1": ">=1.1.18 <2"
   "lodash@<4.18.0": 4.18.0
-  # authority の backslash を経路区切りと読む実装差（CVE-2026-18446）を塞ぐ。
-  "fast-uri@<3.1.5": ">=3.1.5 <4"
+  # authority の backslash を経路区切りと読む実装差（CVE-2026-18446）に加え、IDN 正規化の
+  # スキップと percent-encode されたスキームによる host 混同、および malformed / 反復
+  # authority を経由した SSRF（GHSA-5jgf-p345-68v8 / f65p-4m7j-42xc / fph4-wmhf-6fwf /
+  # jqff-g426-hqxp）を塞ぐ。
+  "fast-uri@<3.1.6": ">=3.1.6 <4"
   # IN_PLACE hook 除去後に切り離された部分木が実行可能なまま残る（GHSA-55q2-fjhq-7xh7）。
   "dompurify@<3.4.13": ">=3.4.13 <4"

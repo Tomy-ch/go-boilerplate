@@ -148,12 +148,14 @@ func Test_usecase_GetDashboardSummary(t *testing.T) {
 				func(_ context.Context, w timewindow.Window) (query.SalesResult, error) {
 					salesWindow = w
 					return query.SalesResult{}, nil
-				})
+				},
+			)
 			d.qs.EXPECT().CountPurchasesByStatus(gomock.Any(), gomock.Any()).DoAndReturn(
 				func(_ context.Context, w timewindow.Window) ([]query.PurchaseStatusCountResult, error) {
 					statusWindow = w
 					return nil, nil
-				})
+				},
+			)
 			d.productRepo.EXPECT().Count(gomock.Any()).Return(product.Counts{}, nil)
 
 			_, err := u.GetDashboardSummary(context.Background(), &auth.Authn{}, window)
@@ -175,7 +177,8 @@ func Test_usecase_GetDashboardSummary(t *testing.T) {
 				func(_ context.Context, w timewindow.Window) (query.SalesResult, error) {
 					salesWindow = w
 					return query.SalesResult{}, nil
-				})
+				},
+			)
 			d.qs.EXPECT().CountPurchasesByStatus(gomock.Any(), gomock.Any()).Return(nil, nil)
 			d.productRepo.EXPECT().Count(gomock.Any()).Return(product.Counts{}, nil)
 

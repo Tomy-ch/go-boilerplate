@@ -42,7 +42,8 @@ func ValidateShutdownGrace(appCfg *config.ApplicationConfig, workerCfg *config.W
 func validateShutdownGrace(drain, grace time.Duration) error {
 	if drain >= grace {
 		return xerrors.Wrap(ErrInvalidShutdownGrace, fmt.Sprintf(
-			"WORKER_DRAIN_TIMEOUT (%s) must be shorter than APP_SHUTDOWN_TIMEOUT (%s)", drain, grace))
+			"WORKER_DRAIN_TIMEOUT (%s) must be shorter than APP_SHUTDOWN_TIMEOUT (%s)", drain, grace,
+		))
 	}
 	return nil
 }

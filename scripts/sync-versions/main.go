@@ -288,7 +288,8 @@ func validateRules(rules []rule, root string) []string {
 	for _, r := range rules {
 		if _, err := os.Stat(filepath.Join(root, r.file)); err != nil {
 			errs = append(errs, fmt.Sprintf(
-				"%s: %s が見つかりません", r.label, r.file))
+				"%s: %s が見つかりません", r.label, r.file,
+			))
 		}
 	}
 	return errs
@@ -313,7 +314,8 @@ func computeChanges(rules []rule, root string) (map[string]*fileState, []string)
 		if len(matches) < r.expectedCount {
 			errs = append(errs, fmt.Sprintf(
 				"%s: マッチ件数 %d が期待値 %d 未満（regex: %s）",
-				r.label, len(matches), r.expectedCount, r.re))
+				r.label, len(matches), r.expectedCount, r.re,
+			))
 			continue
 		}
 		st.current = r.re.ReplaceAllStringFunc(st.current, r.replace)

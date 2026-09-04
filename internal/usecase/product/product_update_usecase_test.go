@@ -116,7 +116,8 @@ func Test_usecase_UpdateProduct(t *testing.T) {
 			func(_ context.Context, p *domainproduct.Product) (int, error) {
 				*captured = p
 				return nextVersion, nil
-			})
+			},
+		)
 	}
 
 	t.Run("正常系", func(t *testing.T) {

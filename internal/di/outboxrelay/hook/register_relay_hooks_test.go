@@ -38,7 +38,8 @@ func TestRegisterRelayHooks(t *testing.T) {
 				func(ctx context.Context, _ time.Duration) error {
 					<-ctx.Done()
 					return ctx.Err()
-				}).AnyTimes()
+				},
+			).AnyTimes()
 
 			engine := outboxengine.NewEngine(uc, sleeper, logging.NewTestLogger(t),
 				observability.NewNoopTracerFactory(t),

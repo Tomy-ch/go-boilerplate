@@ -39,7 +39,8 @@ func TestV1Inquiries_Integration(t *testing.T) {
 					UserID:    uuidtestkit.NewTestFromSalt(t, "int_inq_user"),
 					CreatedAt: time.Date(2026, time.September, 1, 10, 0, 0, 0, time.UTC),
 					UpdatedAt: time.Date(2026, time.September, 1, 11, 0, 0, 0, time.UTC),
-				}}}, nil)
+				}}}, nil,
+			)
 
 			inquiries.BindHandler(e, observability.NewNoopTracerFactory(t), uc)
 

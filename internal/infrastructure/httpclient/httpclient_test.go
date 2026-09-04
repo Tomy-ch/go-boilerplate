@@ -263,7 +263,8 @@ func TestWithHeader(t *testing.T) {
 
 			header := httpclient.Header{"X-Api-Key": {"k1"}, "Accept": {"application/json"}}
 			req := httpclient.NewRequest(
-				httpclient.MethodGet(), "rates", "https://example.com/rates", httpclient.WithHeader(header))
+				httpclient.MethodGet(), "rates", "https://example.com/rates", httpclient.WithHeader(header),
+			)
 
 			assert.Equal(t, header, req.Header())
 		})
@@ -293,7 +294,8 @@ func TestWithBody(t *testing.T) {
 
 			req := httpclient.NewRequest(
 				httpclient.MethodPost(), "pay", "https://example.com/charge",
-				httpclient.WithBody([]byte(`{"amount":100}`)))
+				httpclient.WithBody([]byte(`{"amount":100}`)),
+			)
 
 			assert.Equal(t, []byte(`{"amount":100}`), req.Body())
 		})
@@ -302,7 +304,8 @@ func TestWithBody(t *testing.T) {
 			t.Parallel()
 
 			req := httpclient.NewRequest(
-				httpclient.MethodPost(), "pay", "https://example.com/charge", httpclient.WithBody([]byte("x")))
+				httpclient.MethodPost(), "pay", "https://example.com/charge", httpclient.WithBody([]byte("x")),
+			)
 
 			assert.Empty(t, req.IdempotencyKey())
 			assert.False(t, req.AllowRetry())
@@ -321,7 +324,8 @@ func TestWithIdempotencyKey(t *testing.T) {
 
 			req := httpclient.NewRequest(
 				httpclient.MethodPost(), "pay", "https://example.com/charge",
-				httpclient.WithIdempotencyKey("key-1"))
+				httpclient.WithIdempotencyKey("key-1"),
+			)
 
 			assert.Equal(t, "key-1", req.IdempotencyKey())
 			assert.False(t, req.AllowRetry())
@@ -339,7 +343,8 @@ func TestWithRetry(t *testing.T) {
 			t.Parallel()
 
 			req := httpclient.NewRequest(
-				httpclient.MethodPost(), "pay", "https://example.com/charge", httpclient.WithRetry("key-2"))
+				httpclient.MethodPost(), "pay", "https://example.com/charge", httpclient.WithRetry("key-2"),
+			)
 
 			assert.True(t, req.AllowRetry())
 			assert.Equal(t, "key-2", req.IdempotencyKey())
@@ -349,7 +354,8 @@ func TestWithRetry(t *testing.T) {
 			t.Parallel()
 
 			req := httpclient.NewRequest(
-				httpclient.MethodPost(), "pay", "https://example.com/charge", httpclient.WithRetry(""))
+				httpclient.MethodPost(), "pay", "https://example.com/charge", httpclient.WithRetry(""),
+			)
 
 			assert.True(t, req.AllowRetry())
 			assert.Empty(t, req.IdempotencyKey())
@@ -416,7 +422,8 @@ func TestRequest_Header(t *testing.T) {
 
 			req := httpclient.NewRequest(
 				httpclient.MethodGet(), "rates", "https://example.com/rates",
-				httpclient.WithHeader(httpclient.Header{"X-Api-Key": {"k1"}}))
+				httpclient.WithHeader(httpclient.Header{"X-Api-Key": {"k1"}}),
+			)
 
 			assert.Equal(t, []string{"k1"}, req.Header()["X-Api-Key"])
 		})
@@ -434,7 +441,8 @@ func TestRequest_Header(t *testing.T) {
 
 			req := httpclient.NewRequest(
 				httpclient.MethodGet(), "rates", "https://example.com/rates",
-				httpclient.WithHeader(httpclient.Header{"X-Api-Key": {"k1"}}))
+				httpclient.WithHeader(httpclient.Header{"X-Api-Key": {"k1"}}),
+			)
 
 			got := req.Header()
 			got["X-Api-Key"][0] = "tampered"
@@ -457,7 +465,8 @@ func TestRequest_Body(t *testing.T) {
 
 			req := httpclient.NewRequest(
 				httpclient.MethodPost(), "pay", "https://example.com/charge",
-				httpclient.WithBody([]byte("original")))
+				httpclient.WithBody([]byte("original")),
+			)
 
 			assert.Equal(t, []byte("original"), req.Body())
 		})
@@ -475,7 +484,8 @@ func TestRequest_Body(t *testing.T) {
 
 			req := httpclient.NewRequest(
 				httpclient.MethodPost(), "pay", "https://example.com/charge",
-				httpclient.WithBody([]byte("original")))
+				httpclient.WithBody([]byte("original")),
+			)
 
 			body := req.Body()
 			body[0] = 'X'
@@ -496,7 +506,8 @@ func TestRequest_IdempotencyKey(t *testing.T) {
 
 			req := httpclient.NewRequest(
 				httpclient.MethodPost(), "pay", "https://example.com/charge",
-				httpclient.WithIdempotencyKey("key-1"))
+				httpclient.WithIdempotencyKey("key-1"),
+			)
 
 			assert.Equal(t, "key-1", req.IdempotencyKey())
 		})
@@ -521,7 +532,8 @@ func TestRequest_AllowRetry(t *testing.T) {
 			t.Parallel()
 
 			req := httpclient.NewRequest(
-				httpclient.MethodPost(), "pay", "https://example.com/charge", httpclient.WithRetry("key-2"))
+				httpclient.MethodPost(), "pay", "https://example.com/charge", httpclient.WithRetry("key-2"),
+			)
 
 			assert.True(t, req.AllowRetry())
 		})
@@ -531,7 +543,8 @@ func TestRequest_AllowRetry(t *testing.T) {
 
 			req := httpclient.NewRequest(
 				httpclient.MethodPost(), "pay", "https://example.com/charge",
-				httpclient.WithIdempotencyKey("key-1"))
+				httpclient.WithIdempotencyKey("key-1"),
+			)
 
 			assert.False(t, req.AllowRetry())
 		})

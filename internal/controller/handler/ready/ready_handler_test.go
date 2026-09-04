@@ -70,7 +70,8 @@ func Test_server_GetReady(t *testing.T) {
 						Latency:     1500 * time.Microsecond,
 						RespondedAt: dbResAt,
 					},
-				}, nil)
+				}, nil,
+			)
 
 			s := &server{
 				tracer:        observability.NewMockControllerLayerTracer(t),

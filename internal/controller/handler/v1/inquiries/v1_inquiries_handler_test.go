@@ -66,7 +66,8 @@ func Test_server_GetInquiries(t *testing.T) {
 					UserID:    uuidtestkit.NewTestFromSalt(t, "user"),
 					CreatedAt: time.Date(2026, time.September, 1, 9, 0, 0, 0, time.UTC),
 					UpdatedAt: time.Date(2026, time.September, 1, 10, 0, 0, 0, time.UTC),
-				}}}, nil)
+				}}}, nil,
+			)
 
 			s := &server{tracer: observability.NewMockControllerLayerTracer(t), uc: uc}
 			ctx := authnContext(t, uuidtestkit.NewTestFromSalt(t, "admin"))

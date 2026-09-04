@@ -34,7 +34,8 @@ func TestV1ProductsCount_Integration(t *testing.T) {
 					assert.Equal(t, "10.50", *params.MinPrice)
 					assert.Equal(t, int32(2), *params.MinQuantity)
 					return productuc.ProductCountView{Count: 3}, nil
-				})
+				},
+			)
 			productscounthandler.BindHandler(e, observability.NewNoopTracerFactory(t), mockUC)
 
 			actual := StartServer(t, e).DoJSON(

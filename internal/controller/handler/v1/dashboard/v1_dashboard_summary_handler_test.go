@@ -97,7 +97,8 @@ func Test_server_GetDashboardSummary(t *testing.T) {
 					require.NoError(t, uerr)
 					assert.Equal(t, userID, uid)
 					return view, nil
-				})
+				},
+			)
 
 			resp, err := s.GetDashboardSummary(authnContext(t, userID), gen.GetDashboardSummaryRequestObject{})
 			require.NoError(t, err)
@@ -128,7 +129,8 @@ func Test_server_GetDashboardSummary(t *testing.T) {
 				func(_ context.Context, _ *auth.Authn, w timewindow.Window) (dashboarduc.SummaryView, error) {
 					captured = w
 					return dashboarduc.SummaryView{}, nil
-				})
+				},
+			)
 
 			_, err := s.GetDashboardSummary(
 				authnContext(t, uuidtestkit.NewTestFromSalt(t, "hd_params")),
@@ -156,7 +158,8 @@ func Test_server_GetDashboardSummary(t *testing.T) {
 				func(_ context.Context, _ *auth.Authn, w timewindow.Window) (dashboarduc.SummaryView, error) {
 					captured = w
 					return dashboarduc.SummaryView{}, nil
-				})
+				},
+			)
 
 			_, err := s.GetDashboardSummary(
 				authnContext(t, uuidtestkit.NewTestFromSalt(t, "hd_noparams")),

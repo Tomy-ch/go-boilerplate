@@ -78,7 +78,8 @@ func TestEngine_Run(t *testing.T) {
 
 			gomock.InOrder(
 				uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).Return(
-					outboxuc.RelayResult{Claimed: int(testBatchSize), Published: int(testBatchSize)}, nil),
+					outboxuc.RelayResult{Claimed: int(testBatchSize), Published: int(testBatchSize)}, nil,
+				),
 				uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).Return(outboxuc.RelayResult{}, nil),
 			)
 			sleeper.EXPECT().Sleep(gomock.Any(), testPollInterval).Return(context.Canceled).Times(1)
@@ -95,7 +96,8 @@ func TestEngine_Run(t *testing.T) {
 			sleeper := mock_clock.NewMockSleeper(ctrl)
 
 			uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).Return(
-				outboxuc.RelayResult{Claimed: int(testBatchSize), Published: 0}, nil)
+				outboxuc.RelayResult{Claimed: int(testBatchSize), Published: 0}, nil,
+			)
 			sleeper.EXPECT().Sleep(gomock.Any(), testPollInterval).Return(context.Canceled).Times(1)
 
 			require.NoError(t, newEngine(t, uc, sleeper).Run(context.Background()))
@@ -109,7 +111,8 @@ func TestEngine_Run(t *testing.T) {
 			sleeper := mock_clock.NewMockSleeper(ctrl)
 
 			uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).Return(
-				outboxuc.RelayResult{}, xerrors.New("batch failed"))
+				outboxuc.RelayResult{}, xerrors.New("batch failed"),
+			)
 			sleeper.EXPECT().Sleep(gomock.Any(), testErrorBackoff).Return(context.Canceled)
 
 			require.NoError(t, newEngine(t, uc, sleeper).Run(context.Background()))
@@ -154,7 +157,8 @@ func TestEngine_Run(t *testing.T) {
 				func(_ context.Context, _ int32) (outboxuc.RelayResult, error) {
 					cancel()
 					return outboxuc.RelayResult{}, xerrors.New("batch failed")
-				})
+				},
+			)
 
 			// ctx 完了済みのため Sleep は呼ばれない。
 			require.NoError(t, newEngine(t, uc, sleeper).Run(ctx))
@@ -172,7 +176,8 @@ func TestEngine_Run(t *testing.T) {
 				func(_ context.Context, _ int32) (outboxuc.RelayResult, error) {
 					cancel()
 					return outboxuc.RelayResult{}, nil
-				})
+				},
+			)
 			sleeper.EXPECT().Sleep(gomock.Any(), testPollInterval).Return(context.Canceled)
 
 			require.NoError(t, newEngine(t, uc, sleeper).Run(ctx))
@@ -196,7 +201,8 @@ func TestEngine_Run(t *testing.T) {
 					func(_ context.Context, _ int32) (outboxuc.RelayResult, error) {
 						cancel()
 						return outboxuc.RelayResult{}, xerrors.New("batch failed")
-					}),
+					},
+				),
 			)
 
 			require.NoError(t, newEngine(t, uc, sleeper).Run(ctx))
@@ -214,14 +220,16 @@ func TestEngine_Run(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			gomock.InOrder(
 				uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).Return(
-					outboxuc.RelayResult{}, xerrors.New("batch failed")),
+					outboxuc.RelayResult{}, xerrors.New("batch failed"),
+				),
 				// ErrorBackoff の Sleep が nil（待機完了）を返すと continue し、次 poll を実行する。
 				sleeper.EXPECT().Sleep(gomock.Any(), testErrorBackoff).Return(nil),
 				uc.EXPECT().RelayBatch(gomock.Any(), testBatchSize).DoAndReturn(
 					func(_ context.Context, _ int32) (outboxuc.RelayResult, error) {
 						cancel()
 						return outboxuc.RelayResult{}, nil
-					}),
+					},
+				),
 				sleeper.EXPECT().Sleep(gomock.Any(), testPollInterval).Return(context.Canceled),
 			)
 

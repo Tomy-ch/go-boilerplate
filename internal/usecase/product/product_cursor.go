@@ -101,5 +101,6 @@ func decodeAllProductCursor(cursor *paging.Cursor) (*allProductCursor, error) {
 // 生成します。既定の一覧のカーソルと取り違えられないよう、先頭に識別子を置きます。
 func encodeAllProductCursor(last *product.Product) string {
 	return paging.EncodeCursor(
-		allProductCursorTag, last.CreatedAt().Format(time.RFC3339Nano), last.ID().String())
+		allProductCursorTag, last.CreatedAt().Format(time.RFC3339Nano), last.ID().String(),
+	)
 }

@@ -190,7 +190,8 @@ func Test_registerOrExisting(t *testing.T) {
 
 			reg := prometheus.NewRegistry()
 			counter := prometheus.NewCounterVec(
-				prometheus.CounterOpts{Name: "register_or_existing_fresh", Help: "h"}, []string{"l"})
+				prometheus.CounterOpts{Name: "register_or_existing_fresh", Help: "h"}, []string{"l"},
+			)
 
 			got := registerOrExisting(reg, counter)
 			assert.Same(t, counter, got)
@@ -243,7 +244,8 @@ func Test_registerOrExisting(t *testing.T) {
 
 			// 同名だが help 文字列が異なるため dimHash が衝突し、AlreadyRegistered ではない登録エラーになる。
 			require.NoError(t, reg.Register(
-				prometheus.NewCounterVec(prometheus.CounterOpts{Name: name, Help: "h1"}, []string{"l"})))
+				prometheus.NewCounterVec(prometheus.CounterOpts{Name: name, Help: "h1"}, []string{"l"}),
+			))
 
 			conflict := prometheus.NewCounterVec(prometheus.CounterOpts{Name: name, Help: "h2"}, []string{"l"})
 			var recovered any

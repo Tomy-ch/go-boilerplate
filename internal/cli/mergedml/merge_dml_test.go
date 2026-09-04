@@ -98,7 +98,8 @@ func TestGenerator_buildCategorySQLFile(t *testing.T) {
 				func(_ string, data []byte, _ os.FileMode) error {
 					written = data
 					return nil
-				})
+				},
+			)
 
 			g := newTestGenerator(t, fs)
 			require.NoError(t, g.buildCategorySQLFile(context.Background(), "user", "repository"))

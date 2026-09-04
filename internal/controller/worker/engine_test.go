@@ -617,7 +617,8 @@ func engineRunExtendErrorAfterStopSuppressed(t *testing.T) {
 			close(entered)
 			<-ctx.Done() // 停止指示が来るまで待ってから失敗させる
 			return xerrors.New("extend boom")
-		})
+		},
+	)
 
 	logger, observed := logging.NewObservedTestLogger(t)
 	set := baseSettings()

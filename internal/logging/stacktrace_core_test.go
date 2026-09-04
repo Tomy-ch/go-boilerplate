@@ -81,7 +81,8 @@ func Test_stacktraceArrayCore_Check(t *testing.T) {
 			encCfg := zap.NewProductionEncoderConfig()
 			enc := zapcore.NewJSONEncoder(encCfg)
 			wrapped := wrapStacktraceCore(
-				zapcore.NewCore(enc, zapcore.AddSync(&buf), zapcore.InfoLevel), "stacktrace")
+				zapcore.NewCore(enc, zapcore.AddSync(&buf), zapcore.InfoLevel), "stacktrace",
+			)
 
 			zl := zap.New(wrapped)
 			zl.Info("hello")
@@ -102,7 +103,8 @@ func Test_stacktraceArrayCore_Check(t *testing.T) {
 			// wrapped は Error 以上のみ有効。Debug core との Tee により Info でも Check は
 			// 呼ばれるが、wrapped 側は無効レベルとして ce を素通し（未登録）する。
 			wrapped := wrapStacktraceCore(
-				zapcore.NewCore(enc, zapcore.AddSync(&wrappedBuf), zapcore.ErrorLevel), "stacktrace")
+				zapcore.NewCore(enc, zapcore.AddSync(&wrappedBuf), zapcore.ErrorLevel), "stacktrace",
+			)
 			debugCore := zapcore.NewCore(enc, zapcore.AddSync(&teeBuf), zapcore.DebugLevel)
 
 			zl := zap.New(zapcore.NewTee(debugCore, wrapped))

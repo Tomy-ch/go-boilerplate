@@ -194,7 +194,8 @@ func Test_server_GetProductsLowStock(t *testing.T) {
 					require.NoError(t, uerr)
 					assert.Equal(t, userID, uid)
 					return productuc.ProductLowStockListView{}, nil
-				})
+				},
+			)
 
 			_, err := s.GetProductsLowStock(
 				authnContext(t, userID),
@@ -216,7 +217,8 @@ func Test_server_GetProductsLowStock(t *testing.T) {
 				) (productuc.ProductLowStockListView, error) {
 					captured = params
 					return productuc.ProductLowStockListView{}, nil
-				})
+				},
+			)
 
 			_, err := s.GetProductsLowStock(
 				authnContext(t, uuidtestkit.NewTestFromSalt(t, "lowstock_h_nolimit_user")),

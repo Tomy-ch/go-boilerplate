@@ -139,7 +139,8 @@ func Test_collectHandlerImports(t *testing.T) {
 			t.Parallel()
 
 			imports := collectHandlerImports(controllerModuleSource(
-				"\tprefectureshandler \""+handlerImportPrefix+"/handler/v1/prefectures\"", ""), nil)
+				"\tprefectureshandler \""+handlerImportPrefix+"/handler/v1/prefectures\"", "",
+			), nil)
 
 			assert.Equal(t,
 				map[string]string{"prefectureshandler": handlerTreeDir + "/v1/prefectures"},
@@ -154,7 +155,8 @@ func Test_collectHandlerImports(t *testing.T) {
 			// 正しく配線されたハンドラを解決できず落とすため、宣言名の優先をここで固定する。
 			imports := collectHandlerImports(
 				controllerModuleSource("\t\""+handlerImportPrefix+"/handler/v1/products/categories\"", ""),
-				map[string]string{handlerTreeDir + "/v1/products/categories": "productcategories"})
+				map[string]string{handlerTreeDir + "/v1/products/categories": "productcategories"},
+			)
 
 			assert.Equal(t,
 				map[string]string{"productcategories": handlerTreeDir + "/v1/products/categories"},
@@ -165,7 +167,8 @@ func Test_collectHandlerImports(t *testing.T) {
 			t.Parallel()
 
 			imports := collectHandlerImports(controllerModuleSource(
-				"\t\""+handlerImportPrefix+"/handler/v1/users/detail\"", ""), nil)
+				"\t\""+handlerImportPrefix+"/handler/v1/users/detail\"", "",
+			), nil)
 
 			assert.Equal(t, map[string]string{"detail": handlerTreeDir + "/v1/users/detail"}, imports)
 		})
@@ -174,7 +177,8 @@ func Test_collectHandlerImports(t *testing.T) {
 			t.Parallel()
 
 			imports := collectHandlerImports(controllerModuleSource(
-				"\tdashboardhandler \""+handlerImportPrefix+"/handler/v1/dashboard\" // sample-api:line", ""), nil)
+				"\tdashboardhandler \""+handlerImportPrefix+"/handler/v1/dashboard\" // sample-api:line", "",
+			), nil)
 
 			assert.Equal(t,
 				map[string]string{"dashboardhandler": handlerTreeDir + "/v1/dashboard"},
@@ -186,7 +190,8 @@ func Test_collectHandlerImports(t *testing.T) {
 
 			imports := collectHandlerImports(
 				controllerModuleSource("\t\""+handlerImportPrefix+"/stream\"", ""),
-				map[string]string{streamTreeDir: "stream"})
+				map[string]string{streamTreeDir: "stream"},
+			)
 
 			assert.Equal(t, map[string]string{"stream": streamTreeDir}, imports)
 		})
@@ -195,7 +200,8 @@ func Test_collectHandlerImports(t *testing.T) {
 			t.Parallel()
 
 			imports := collectHandlerImports(controllerModuleSource(
-				"\toapiauth \""+handlerImportPrefix+"/httpstack/oapi/auth\"", ""), nil)
+				"\toapiauth \""+handlerImportPrefix+"/httpstack/oapi/auth\"", "",
+			), nil)
 
 			assert.Equal(t, map[string]string{"oapiauth": controllerTreeDir + "/httpstack/oapi/auth"}, imports)
 		})
@@ -204,7 +210,8 @@ func Test_collectHandlerImports(t *testing.T) {
 			t.Parallel()
 
 			imports := collectHandlerImports(controllerModuleSource(
-				"\t\"go-boilerplate/internal/usecase/user\"", ""), nil)
+				"\t\"go-boilerplate/internal/usecase/user\"", "",
+			), nil)
 
 			assert.Empty(t, imports)
 		})
@@ -213,7 +220,8 @@ func Test_collectHandlerImports(t *testing.T) {
 			t.Parallel()
 
 			imports := collectHandlerImports(controllerModuleSource(
-				"\t\""+handlerImportPrefix+"util\"", ""), nil)
+				"\t\""+handlerImportPrefix+"util\"", "",
+			), nil)
 
 			assert.Empty(t, imports)
 		})
@@ -263,7 +271,8 @@ func Test_collectInvokedBindHandlers(t *testing.T) {
 			t.Parallel()
 
 			invoked, unresolved := collectInvokedBindHandlers(
-				controllerModuleSource("", "\t\t\thealth.BindHandler,\n\t\t\tdetail.BindHandler,"), imports)
+				controllerModuleSource("", "\t\t\thealth.BindHandler,\n\t\t\tdetail.BindHandler,"), imports,
+			)
 
 			assert.Equal(t, map[string]struct{}{
 				handlerTreeDir + "/health":          {},
@@ -276,7 +285,8 @@ func Test_collectInvokedBindHandlers(t *testing.T) {
 			t.Parallel()
 
 			invoked, unresolved := collectInvokedBindHandlers(
-				controllerModuleSource("", "\t\t\t// health.BindHandler,"), imports)
+				controllerModuleSource("", "\t\t\t// health.BindHandler,"), imports,
+			)
 
 			assert.Empty(t, invoked)
 			assert.Empty(t, unresolved)
@@ -286,7 +296,8 @@ func Test_collectInvokedBindHandlers(t *testing.T) {
 			t.Parallel()
 
 			invoked, unresolved := collectInvokedBindHandlers(
-				controllerModuleSource("", "\t\t\thealth.BindMiddleware,"), imports)
+				controllerModuleSource("", "\t\t\thealth.BindMiddleware,"), imports,
+			)
 
 			assert.Empty(t, invoked)
 			assert.Empty(t, unresolved)
@@ -300,7 +311,8 @@ func Test_collectInvokedBindHandlers(t *testing.T) {
 			t.Parallel()
 
 			invoked, unresolved := collectInvokedBindHandlers(
-				controllerModuleSource("", "\t\t\tzhandler.BindHandler,\n\t\t\tahandler.BindHandler,"), imports)
+				controllerModuleSource("", "\t\t\tzhandler.BindHandler,\n\t\t\tahandler.BindHandler,"), imports,
+			)
 
 			assert.Empty(t, invoked)
 			assert.Equal(t, []string{"ahandler.BindHandler,", "zhandler.BindHandler,"}, unresolved)
@@ -437,7 +449,8 @@ func Test_handlerTreeIndex_missingFromDI(t *testing.T) {
 			t.Parallel()
 
 			assert.Empty(t, idx.missingFromDI(dirSetOf(
-				handlerTreeDir+"/health", handlerTreeDir+"/v1/users", handlerTreeDir+"/v1/dashboard")))
+				handlerTreeDir+"/health", handlerTreeDir+"/v1/users", handlerTreeDir+"/v1/dashboard",
+			)))
 		})
 	})
 
@@ -484,7 +497,8 @@ func Test_handlerTreeIndex_unknownInvocations(t *testing.T) {
 				handlerTreeDir + "/metrics",
 				handlerTreeDir + "/version",
 			}, idx.unknownInvocations(dirSetOf(
-				handlerTreeDir+"/health", handlerTreeDir+"/version", handlerTreeDir+"/metrics")))
+				handlerTreeDir+"/health", handlerTreeDir+"/version", handlerTreeDir+"/metrics",
+			)))
 		})
 	})
 }

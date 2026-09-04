@@ -207,7 +207,8 @@ func Test_reclaimer_unsubscribeAll(t *testing.T) {
 				&sns.ListSubscriptionsByTopicOutput{Subscriptions: []snstypes.Subscription{{
 					Endpoint:        awssdk.String(testQueueARN),
 					SubscriptionArn: awssdk.String("PendingConfirmation"),
-				}}}, nil)
+				}}}, nil,
+			)
 
 			found, err := r.unsubscribeAll(t.Context(), "inst-1")
 			require.NoError(t, err)

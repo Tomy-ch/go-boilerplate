@@ -46,7 +46,8 @@ var realtimeAllowedLabelKeys = []string{"outcome", "reason", "result", "trigger"
 // instrumentCallRe は、meterBuilder の生成呼び出しから第 1 引数をそのまま捕捉する。
 // レシーバ名を固定しないのは、`b` 以外の名前に変えるだけで検査を外せてしまうため。
 var instrumentCallRe = regexp.MustCompile(
-	`\.(?:counter|gauge|histogram|countHistogram|upDownCounter)\(\s*([^,]+),`)
+	`\.(?:counter|gauge|histogram|countHistogram|upDownCounter)\(\s*([^,]+),`,
+)
 
 // rawInstrumentCallRe は、meterBuilder を迂回して OTel の生成子を直接呼ぶ形を捕捉する。
 // 迂回されると instrumentCallRe が何も拾わず、名前の検査が丸ごと空振りする。
@@ -55,7 +56,8 @@ var rawInstrumentCallRe = regexp.MustCompile(`\.(?:Int64|Float64)(?:Counter|Hist
 // attributeCallRe は、label のキーを与える呼び出しの第 1 引数を捕捉する。
 // `String` だけに絞ると、同じ package の既存作法である `attribute.Int` / リテラル引数が素通りする。
 var attributeCallRe = regexp.MustCompile(
-	`attribute\.(?:String|Int|Int64|Float64|Bool|StringSlice|IntSlice|Stringer|Key)\(\s*([^,)]+)[,)]`)
+	`attribute\.(?:String|Int|Int64|Float64|Bool|StringSlice|IntSlice|Stringer|Key)\(\s*([^,)]+)[,)]`,
+)
 
 // attributeStructKeyRe は、`attribute.KeyValue{Key: …}` の形でキーを与える書き方を捕捉する。
 var attributeStructKeyRe = regexp.MustCompile(`attribute\.KeyValue\{\s*Key:\s*([^,}]+)`)
@@ -68,7 +70,8 @@ var stringLiteralRe = regexp.MustCompile(`^"([^"]*)"$`)
 
 // idLikeLabelRe は、主体の識別子とみなす label のキー。
 var idLikeLabelRe = regexp.MustCompile(
-	`(?i)(^id$|_id$|^id_|stream|subject|destination|ticket|trace|span|event|message|user|instance|connection)`)
+	`(?i)(^id$|_id$|^id_|stream|subject|destination|ticket|trace|span|event|message|user|instance|connection)`,
+)
 
 func TestRealtimeMetricNamesAreFeatureNeutral(t *testing.T) {
 	t.Parallel()

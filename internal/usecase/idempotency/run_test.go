@@ -46,7 +46,8 @@ func newDeps(t *testing.T, store idempotencybndry.Store) idempotency.Deps {
 	t.Helper()
 	txm := mock_tx.NewMockManager(gomock.NewController(t))
 	txm.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(
-		func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) }).Times(1)
+		func(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) },
+	).Times(1)
 
 	return idempotency.Deps{
 		Txm:   txm,
@@ -145,7 +146,8 @@ func TestRun(t *testing.T) {
 					assert.Equal(t, int32(statusCreated), p.ResponseStatus)
 					assert.JSONEq(t, string(wantJSON), string(p.ResponsePayload))
 					return nil
-				})
+				},
+			)
 
 			res, replayed, err := idempotency.Run(reqCtx([]byte("fp")), newDeps(t, store), statusCreated,
 				func(context.Context) (payload, error) { return want, nil })
@@ -193,7 +195,8 @@ func TestRun(t *testing.T) {
 				func(_ context.Context, p idempotencybndry.CompleteParams) error {
 					stored = p.ResponsePayload
 					return nil
-				})
+				},
+			)
 
 			_, _, err := idempotency.Run(reqCtx(fp), newDeps(t, store), statusCreated,
 				func(context.Context) (uuidPayload, error) { return want, nil })

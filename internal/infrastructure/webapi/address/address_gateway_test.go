@@ -60,7 +60,8 @@ func Test_gateway_Lookup(t *testing.T) {
 							`{"address1":"東京都","address2":"千代田区","address3":"千代田"},` +
 							`{"address1":"東京都","address2":"千代田区","address3":"大手町"}]}`,
 					)}, nil
-				})
+				},
+			)
 
 			gw := address.New(testEndpoint, client, observability.NewNoopTracerFactory(t))
 			candidates, err := gw.Lookup(context.Background(), "1000001")

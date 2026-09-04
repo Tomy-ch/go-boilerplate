@@ -100,7 +100,8 @@ func Test_server_GetProductsRankingQuantity(t *testing.T) {
 					assert.Nil(t, params.Window.Before())
 					assert.Equal(t, 0, params.Limit)
 					return rankinguc.QuantityRankingView{Rankings: []rankinguc.QuantityRankingItemView{}}, nil
-				})
+				},
+			)
 
 			resp, err := s.GetProductsRankingQuantity(context.Background(), gen.GetProductsRankingQuantityRequestObject{
 				Params: gen.GetProductsRankingQuantityParams{},
@@ -125,7 +126,8 @@ func Test_server_GetProductsRankingQuantity(t *testing.T) {
 					assert.Equal(t, after, *params.Window.After())
 					assert.Equal(t, before, *params.Window.Before())
 					return rankinguc.QuantityRankingView{Rankings: []rankinguc.QuantityRankingItemView{}}, nil
-				})
+				},
+			)
 
 			_, err := s.GetProductsRankingQuantity(context.Background(), gen.GetProductsRankingQuantityRequestObject{
 				Params: gen.GetProductsRankingQuantityParams{OrderedAfter: &after, OrderedBefore: &before},
@@ -213,7 +215,8 @@ func Test_server_GetProductsRankingAmount(t *testing.T) {
 					assert.Nil(t, params.Window.Before())
 					assert.Equal(t, 0, params.Limit)
 					return rankinguc.AmountRankingView{Rankings: []rankinguc.AmountRankingItemView{}}, nil
-				})
+				},
+			)
 
 			_, err := s.GetProductsRankingAmount(context.Background(), gen.GetProductsRankingAmountRequestObject{
 				Params: gen.GetProductsRankingAmountParams{},
@@ -233,7 +236,8 @@ func Test_server_GetProductsRankingAmount(t *testing.T) {
 					assert.Equal(t, after, *params.Window.After())
 					assert.Equal(t, before, *params.Window.Before())
 					return rankinguc.AmountRankingView{Rankings: []rankinguc.AmountRankingItemView{}}, nil
-				})
+				},
+			)
 
 			_, err := s.GetProductsRankingAmount(context.Background(), gen.GetProductsRankingAmountRequestObject{
 				Params: gen.GetProductsRankingAmountParams{OrderedAfter: &after, OrderedBefore: &before},

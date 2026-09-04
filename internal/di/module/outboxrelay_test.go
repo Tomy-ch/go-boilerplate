@@ -63,7 +63,8 @@ func TestOutboxRelayModule(t *testing.T) {
 
 			validateGraph(
 				t,
-				append(relayDeps(), OutboxRelayModule(outboxbndry.ChannelHTTP), fx.Populate(&publisher))...)
+				append(relayDeps(), OutboxRelayModule(outboxbndry.ChannelHTTP), fx.Populate(&publisher))...,
+			)
 		})
 
 		t.Run("realtime channel では EventLog へ append する publisher を配線する", func(t *testing.T) {
@@ -73,7 +74,8 @@ func TestOutboxRelayModule(t *testing.T) {
 
 			validateGraph(
 				t,
-				append(relayDeps(), OutboxRelayModule(outboxbndry.ChannelRealtime), fx.Populate(&publisher))...)
+				append(relayDeps(), OutboxRelayModule(outboxbndry.ChannelRealtime), fx.Populate(&publisher))...,
+			)
 		})
 	})
 
@@ -84,7 +86,8 @@ func TestOutboxRelayModule(t *testing.T) {
 			t.Parallel()
 
 			err := fx.ValidateApp(
-				append(relayDeps(), OutboxRelayModule(outboxbndry.Channel("unknown")), fx.NopLogger)...)
+				append(relayDeps(), OutboxRelayModule(outboxbndry.Channel("unknown")), fx.NopLogger)...,
+			)
 			require.ErrorIs(t, err, publisher.ErrChannelUnsupported)
 		})
 
@@ -149,7 +152,8 @@ func Test_publisherModuleFor(t *testing.T) {
 					commonDeps(),
 					InfrastructureModule(), UsecaseModule(), fx.Supply(outboxbndry.ChannelHTTP),
 					publisherModuleFor(outboxbndry.ChannelHTTP), fx.Populate(&p),
-				)...)
+				)...,
+			)
 		})
 
 		t.Run("realtime は EventLog へ append する publisher module を返す", func(t *testing.T) {

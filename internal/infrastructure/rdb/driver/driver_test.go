@@ -44,7 +44,8 @@ func sharedTestDriver(t *testing.T) DatabaseDriver {
 		dbCfg := config.NewDatabaseConfig(cfg)
 		dbCfg.SetDatabaseHost(t, "localhost")
 		sharedDriver, errSharedDriverInit = NewDB(
-			dbCfg, config.NewOperatingSystemConfig(cfg), config.NewDBConnectionConfig(cfg))
+			dbCfg, config.NewOperatingSystemConfig(cfg), config.NewDBConnectionConfig(cfg),
+		)
 	})
 
 	require.NoError(t, errSharedDriverInit)

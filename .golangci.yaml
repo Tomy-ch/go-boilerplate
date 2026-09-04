@@ -11,11 +11,13 @@ linters:
     - unused
 
     # Disabled by Default
+    # - arangolint # ArangoDBクライアントの推奨される使い方をチェックします
     # - asasalint # ユニバーサルインターフェースを扱うときの潜在的なバグを防ぐチェックです
     # - asciicheck # ASCII以外の文字を変数名などで使用しているかをチェックします
     # - bidichk # バイディレクショナルテキストのチェックをします
     # - bodyclose # HTTPレスポンスのボディが閉じられているかをチェックします
     # - canonicalheader # HTTPヘッダーの正規化をチェックします
+    # - clickhouselint # ClickHouseのネイティブGoドライバAPIの典型的な誤用を検出します
     # - containedctx # context.Contextが構造体に含まれているかをチェックします
     # - contextcheck # context.Contextの伝播が破棄されていないかをチェックします
     # - copyloopvar # ループ変数のコピーをチェックします
@@ -32,14 +34,14 @@ linters:
     # - errname # エラー名の命名規則をチェックします
     # - errorlint # エラー内容の検証(As/Is)のベストプラクティスをチェックします
     # - exhaustive # enum型の全ての値を網羅しているかをチェックします
-    # - exhaustruct # 構造体のフィールドが全て使用されているかをチェックします
+    # - exhaustruct_v5 # 構造体のフィールドが全て初期化されているかをチェックします
     # - exptostd # 標準ライブラリの使用を推奨します
     # - fatcontext # context.Contextがループで設定されているかをチェックします
     # - forbidigo # 識別子の使用禁止ルールを設定します
     # - forcetypeassert # 型アサーションの強制をチェックします
     - funcorder # 構造体に関連する関数・メソッドの配置順序をチェックします
     - funlen # 関数の長さを制限して、冗長性と複雑さを減らします
-    # - ginkgolinter　# Ginkgo/Gomegaのテストのベストプラクティスをチェックします
+    # - ginkgolinter # Ginkgo/Gomegaのテストのベストプラクティスをチェックします
     - gocheckcompilerdirectives # コンパイラディレクティブのチェックを行います
     # - gochecknoglobals # グローバル変数の使用をチェックします
     # - gochecknoinits # init() 関数が存在しないかを検出する
@@ -48,11 +50,12 @@ linters:
     # - goconst # 定数の使用を推奨します
     - gocritic # Goコードの高級な静的解析を行います
     # - gocyclo # 関数単位での複雑度を計算します
+    # - godoclint # godocの記法・作法をチェックします
     # - godot # Goのコメント末尾に必ずピリオドをつけるスタイルをチェックする静的解析ツール
     - godox # 特定のコメントキーワード（たとえば TODO, FIXME, BUG, OPTIMIZE など）を検出します
     # - goheader # Goファイルのヘッダーコメントをチェックします
     # - gomoddirectives # go.modファイルのディレクティブをチェックします
-    # - gomodguard # go.modファイルの依存関係の整合性をチェックします
+    # - gomodguard_v2 # go.modの直接依存に対する許可・禁止リストをチェックします
     # - goprintffuncname # Printfライクな引数を取る関数が「f」で終わる名前になっているかをチェックします
     - gosec # セキュリティ上の脆弱性を検出します
     # - gosmopolitan # i18n（国際化）やlocale（地域対応）の落とし穴になりやすいアンチパターンを検出します
@@ -62,6 +65,7 @@ linters:
     # - inamedparam # インターフェースのメソッド定義において「名前なしパラメータ」が使われていないかを検出します
     # - interfacebloat # 1つのインターフェースにメソッドが多すぎる場合に警告を出します
     # - intrange # 書き換えられる“for”ループ構造を検出し、最適な書き方を提案します
+    # - iotamixing # constブロック内でiotaと非iota宣言が混在していないかをチェックします
     # - ireturn # 関数がインターフェースを返していないかを検出します
     - lll # 行の長さを制限します
     # - loggercheck # ログ呼び出しでキーと値の奇数組合せを静的に検出し、もし不一致があれば警告を出します
@@ -105,6 +109,7 @@ linters:
     # - tparallel # テスト関数が並列実行されることを確認します
     # - unconvert # 型が既に同じなのに再度キャストしている冗長コードを検出します
     # - unparam # 使用されていない関数のパラメータを検出します
+    # - unqueryvet # SQLクエリ/ビルダー内のSELECT *を検出し、明示的なカラム指定を促します
     # - usestdlibvars # 標準ライブラリの変数を使用しているかをチェックします
     # - usetesting # テストコードで誤った標準ライブラリの関数を使っていないかを検出します
     # - varnamelen # 変数名の長さを制限します
@@ -259,6 +264,16 @@ linters:
       locale: US
       ignore-rules:
         - "importas"
+    modernize:
+      disable:
+        # 埋め込みフィールドの型指定を省く書き換え（Go 1.27 の新機能）は、この repo が
+        # 「基底 + 別軸」の構成を表すために使っている埋め込みを、呼び出し側から見えなくする。
+        # user.Attributes は Profile に監査時刻を足した集合で Profile は検証へ値として渡る
+        # 単位であり、response.HTTPErrorResponse は生成型 gen.ErrorResponseWithDetails に
+        # 転送用フィールドを足したものなので、平坦化すると契約が決めたフィールドと手書きの
+        # フィールドが呼び出し側で区別できなくなる。modernize は構文が使えるかを見るもので、
+        # 埋め込まれた型が名前を持った概念かどうかは知らない。
+        - embedlit
     nolintlint:
       require-explanation: true
       require-specific: true
@@ -308,8 +323,18 @@ formatters:
       local-prefixes:
         - "go-boilerplate"
     gofumpt:
+      # extra 規則は 3 つとも有効にする。旧 extra-rules: true が意味していたのは
+      # 「既定で無効な追加規則を使う」ことで、規則が個別キーへ分割された後もその意図は
+      # 変わらない。1 つだけ落とすと、なぜそれが外れているのかを読み手が推測することになる。
       module-path: "go-boilerplate"
-      extra-rules: true
+      extra:
+        # 同じ型で隣接する引数をまとめる（a int, b int → a, b int）。
+        group-params: true
+        # 開き括弧が行末で終わる複数行の呼び出しで、閉じ括弧を独立行に置く。
+        # 引数を足し引きしても差分が 1 行で済む。
+        balance-calls: true
+        # 名前付き返り値を持つ関数の裸の return に値を書き出す（return → return err）。
+        clothe-returns: true
     golines:
       max-len: 150
       tab-len: 4

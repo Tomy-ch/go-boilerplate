@@ -228,7 +228,8 @@ func (p *Pool) writeSlotFile(slot int) error {
 			"COMPOSE_PROJECT_NAME=%s\nSERVE_PROJECT=%s\n",
 		slot, dbLocal(slot), dbTest(slot),
 		p.cfg.APIBasePort+slot, p.cfg.MockAuthBase+slot, p.cfg.DlvBase+slot, p.cfg.PprofBase+slot,
-		p.cfg.SharedProject, serveProject(slot))
+		p.cfg.SharedProject, serveProject(slot),
+	)
 	if err := os.WriteFile(p.slotFilePath(), []byte(content), filePerm); err != nil {
 		return xerrors.Wrap(err, "failed to write .gobp-db-slot")
 	}

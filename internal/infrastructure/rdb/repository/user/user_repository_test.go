@@ -525,7 +525,8 @@ func Test_fetchListUsersRowsByActive(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				got, err := fetchListUsersRowsByActive(
-					ctx, queries(ctx), &gen.ListActiveUsersParams{LimitParam: 100, OffsetParam: 0})
+					ctx, queries(ctx), &gen.ListActiveUsersParams{LimitParam: 100, OffsetParam: 0},
+				)
 
 				require.NoError(t, err)
 				require.NotEmpty(t, got)
@@ -567,7 +568,8 @@ func Test_fetchListUsersRowsByDeleted(t *testing.T) {
 
 			txm.WithinTx(func(ctx context.Context) {
 				got, err := fetchListUsersRowsByDeleted(
-					ctx, queries(ctx), &gen.ListDeletedUsersParams{LimitParam: 100, OffsetParam: 0})
+					ctx, queries(ctx), &gen.ListDeletedUsersParams{LimitParam: 100, OffsetParam: 0},
+				)
 
 				require.NoError(t, err)
 				require.NotEmpty(t, got)

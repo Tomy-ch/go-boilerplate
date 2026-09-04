@@ -176,7 +176,8 @@ func Test_usecase_CreatePurchase(t *testing.T) {
 		r.EXPECT().LockShareByID(gomock.Any(), gomock.Any()).DoAndReturn(
 			func(_ context.Context, id uuid.UUID) (*domainuser.User, error) {
 				return activePurchaser(t, id), nil
-			})
+			},
+		)
 		return r
 	}
 	// newUsecase は、指定 mock を注入した usecase を生成するローカルヘルパーです。
@@ -1522,7 +1523,8 @@ func Test_usecase_DeliverPurchase(t *testing.T) {
 			// 更新と emit が 1 つのトランザクションに収まることを、Do の呼び出し回数で固定する。
 			singleTx := mock_tx.NewMockManager(ctrl)
 			singleTx.EXPECT().Do(gomock.Any(), gomock.Any()).Times(1).DoAndReturn(
-				func(ctx context.Context, fn func(ctx context.Context) error) error { return fn(ctx) })
+				func(ctx context.Context, fn func(ctx context.Context) error) error { return fn(ctx) },
+			)
 
 			u := newUC(t, repo, emit, authorizer)
 			u.txm = singleTx
