@@ -131,12 +131,12 @@ type DeliveryEvent struct {
 
 	// StreamId この event が属する stream の識別子。接続先の destination と一致します。
 	//
-	// Example: inquiry-thread-8f3c
+	// Example: resource-8f3c
 	StreamId string `json:"streamId"`
 
 	// Type feature が定める event 種別。末尾の `.vN` で契約の世代を表します。
 	//
-	// Example: inquiry.message.created.v1
+	// Example: resource.updated.v1
 	Type string `json:"type"`
 }
 
@@ -176,7 +176,7 @@ type LastEventIdParam = StreamCursor
 // Example: 1001
 type StreamAfterParam = StreamCursor
 
-// StreamDestinationParam Example: inquiry-thread-8f3c
+// StreamDestinationParam Example: resource-8f3c
 type StreamDestinationParam = string
 
 // BadRequest400 エラーレスポンスの共通スキーマ（base）。 details は返さない。details を返すエンドポイントは ErrorResponseWithDetails を参照する。

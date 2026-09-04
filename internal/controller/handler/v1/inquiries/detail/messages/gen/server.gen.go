@@ -165,8 +165,6 @@ type Unauthorized401JSONResponse ErrorResponse
 
 type UnprocessableEntity422JSONResponse ErrorResponseWithDetails
 
-type UnsupportedMediaType415JSONResponse ErrorResponse
-
 type GetInquiriesDetailMessagesRequestObject struct {
 	InquiryId InquiryIdParam `json:"inquiryId"`
 	Params    GetInquiriesDetailMessagesParams
@@ -386,22 +384,6 @@ func (response PostInquiriesDetailMessages405JSONResponse) VisitPostInquiriesDet
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(405)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PostInquiriesDetailMessages415JSONResponse struct {
-	UnsupportedMediaType415JSONResponse
-}
-
-func (response PostInquiriesDetailMessages415JSONResponse) VisitPostInquiriesDetailMessagesResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(415)
 	_, err := buf.WriteTo(w)
 	return err
 }
