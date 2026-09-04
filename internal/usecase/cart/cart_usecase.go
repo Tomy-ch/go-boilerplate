@@ -28,17 +28,19 @@ const (
 	// cartTTL は、Cart.Touch へ供給する有効期限の長さです（docs/spec/domain/cart.md の Touch）。
 	cartTTL = 30 * 24 * time.Hour
 
-	// ItemIssueNotFound は、商品を引けなかったことを表します。
+	// ItemIssueNotFound は、cart.IssueNotFound に対応します。
 	ItemIssueNotFound ItemIssue = "notFound"
-	// ItemIssueUnpublished は、商品が非公開であることを表します。
+	// ItemIssueUnpublished は、cart.IssueUnpublished に対応します。
 	ItemIssueUnpublished ItemIssue = "unpublished"
-	// ItemIssueOutOfStock は、在庫が無いことを表します。
+	// ItemIssueDiscontinued は、cart.IssueDiscontinued に対応します。
+	ItemIssueDiscontinued ItemIssue = "discontinued"
+	// ItemIssueOutOfStock は、cart.IssueOutOfStock に対応します。
 	ItemIssueOutOfStock ItemIssue = "outOfStock"
-	// ItemIssueInsufficientStock は、在庫が要求数量に満たないことを表します。
+	// ItemIssueInsufficientStock は、cart.IssueInsufficientStock に対応します。
 	ItemIssueInsufficientStock ItemIssue = "insufficientStock"
-	// ItemIssuePriceIncreased は、前回提示した価格より高いことを表します。
+	// ItemIssuePriceIncreased は、cart.IssuePriceIncreased に対応します。
 	ItemIssuePriceIncreased ItemIssue = "priceIncreased"
-	// ItemIssuePriceDecreased は、前回提示した価格より安いことを表します。
+	// ItemIssuePriceDecreased は、cart.IssuePriceDecreased に対応します。
 	ItemIssuePriceDecreased ItemIssue = "priceDecreased"
 )
 
@@ -48,6 +50,8 @@ const (
 var ErrUnavailableProduct = xerrors.Wrap(apperror.ErrValidation, "product is unavailable for the cart")
 
 // ItemIssue は、明細ごとの再評価結果です。値は外部向けの安定コードで、表示ではなく分岐に用います。
+// 各値の意味は対応する cart.Issue が定義し、ここでは再定義しません
+// （docs/spec/domain/cart.md の Issue）。
 type ItemIssue string
 
 // Subject は、カートの主体です。認証済みユーザーとゲストセッションのうち高々一方が設定され、
@@ -296,7 +300,12 @@ func evaluateItems(
 func toSnapshots(products map[uuid.UUID]*product.Product) map[uuid.UUID]cart.ProductSnapshot {
 	snapshots := make(map[uuid.UUID]cart.ProductSnapshot, len(products))
 	for id, p := range products {
-		snapshots[id] = cart.NewProductSnapshot(p.Quantity(), p.Price(), p.IsPublished())
+		snapshots[id] = cart.NewProductSnapshot(cart.ProductSnapshotAttributes{
+			Quantity:     p.Quantity(),
+			Price:        p.Price(),
+			Published:    p.IsPublished(),
+			Discontinued: p.IsDiscontinued(),
+		})
 	}
 
 	return snapshots
@@ -314,7 +323,12 @@ func evaluateItem(item cart.CartItem, p *product.Product) CartItemView {
 			imagePath := image.ImagePath()
 			view.ImagePath = &imagePath
 		}
-		s := cart.NewProductSnapshot(p.Quantity(), p.Price(), p.IsPublished())
+		s := cart.NewProductSnapshot(cart.ProductSnapshotAttributes{
+			Quantity:     p.Quantity(),
+			Price:        p.Price(),
+			Published:    p.IsPublished(),
+			Discontinued: p.IsDiscontinued(),
+		})
 		snapshot = &s
 	}
 
@@ -335,13 +349,15 @@ func toItemIssues(issues []cart.Issue) []ItemIssue {
 }
 
 // toItemIssue は、再評価結果 1 件を出力 DTO の語彙へ写します。
-// 対応を持たない値は写像できないため、黙って既定値へ倒さず panic で異常を知らせます。
+// 網羅的な写像を意図し、対応を持たない値は panic します（理由は docs/spec/usecase/cart.md の Notes）。
 func toItemIssue(issue cart.Issue) ItemIssue {
 	switch issue {
 	case cart.IssueNotFound:
 		return ItemIssueNotFound
 	case cart.IssueUnpublished:
 		return ItemIssueUnpublished
+	case cart.IssueDiscontinued:
+		return ItemIssueDiscontinued
 	case cart.IssueOutOfStock:
 		return ItemIssueOutOfStock
 	case cart.IssueInsufficientStock:
@@ -356,7 +372,6 @@ func toItemIssue(issue cart.Issue) ItemIssue {
 }
 
 // emptyCartView は、表示するカートが無いときの応答です。
-// 明細は空スライスで、有効期限は行が存在しないため nil です。
 func emptyCartView() CartView {
 	return CartView{Items: []CartItemView{}}
 }

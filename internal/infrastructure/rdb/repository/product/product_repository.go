@@ -399,8 +399,8 @@ func (r *repository) UpdateStock(ctx context.Context, p *product.Product) (int, 
 		CurrentVersion: currentVersion,
 	})
 	if err != nil {
-		// 対象行なしは衝突として返します。行ロックを取っている経路では起こりませんが、ロックなしで
-		// 呼ばれた場合に在庫を上書きしないための二重防御なので、到達しないからと外してはなりません。
+		// ロックなしで呼ばれた場合の二重防御です。到達しないからと外してはなりません
+		// （詳細: docs/spec/domain/product.md の Product.UpdateStock）。
 		if pgerror.IsNoRows(err) {
 			return 0, xerrors.Wrap(product.ErrVersionConflict, "product was updated by another transaction")
 		}
@@ -435,6 +435,7 @@ func (r *repository) Create(ctx context.Context, p *product.Product) error {
 		StatusID:              p.Status().ID(),
 		CategoryID:            p.Category().ID(),
 		PublishedAt:           p.PublishedAt(),
+		DiscontinuedAt:        p.DiscontinuedAt(),
 		CreatedAt:             p.CreatedAt(),
 	})
 	if err != nil {
@@ -473,12 +474,13 @@ func (r *repository) Update(ctx context.Context, p *product.Product) (int, error
 		StatusID:              p.Status().ID(),
 		CategoryID:            p.Category().ID(),
 		PublishedAt:           p.PublishedAt(),
+		DiscontinuedAt:        p.DiscontinuedAt(),
 		ID:                    p.ID(),
 		CurrentVersion:        currentVersion,
 	})
 	if err != nil {
-		// 対象行なしは衝突として返します。tx.Manager が透過リトライする一時障害と異なり同じ内容の
-		// 再送では解消しないため、リトライ対象と混同されてはなりません。
+		// 対象行なしはリトライ対象と混同してはなりません
+		// （詳細: docs/spec/domain/product.md の Product.Update）。
 		if pgerror.IsNoRows(err) {
 			return 0, xerrors.Wrap(product.ErrVersionConflict, "product was updated by another transaction")
 		}
@@ -650,6 +652,7 @@ func rowToProduct(row productRow, images []product.Image) (*product.Product, err
 		Status:                status,
 		Category:              category,
 		PublishedAt:           row.p.PublishedAt,
+		DiscontinuedAt:        row.p.DiscontinuedAt,
 		Images:                images,
 	}, int(row.p.LockVersion), row.p.CreatedAt)
 	if err != nil {

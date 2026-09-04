@@ -33,7 +33,22 @@ func newEvalItem(t *testing.T, salt string, quantity int, lastSeen *money.Price)
 
 func newEvalSnapshot(t *testing.T, amount string, stock int, published bool) *ProductSnapshot {
 	t.Helper()
-	s := NewProductSnapshot(stock, newEvalPrice(t, amount), published)
+	s := NewProductSnapshot(ProductSnapshotAttributes{
+		Quantity:  stock,
+		Price:     newEvalPrice(t, amount),
+		Published: published,
+	})
+	return &s
+}
+
+func newDiscontinuedEvalSnapshot(t *testing.T, amount string, stock int) *ProductSnapshot {
+	t.Helper()
+	s := NewProductSnapshot(ProductSnapshotAttributes{
+		Quantity:     stock,
+		Price:        newEvalPrice(t, amount),
+		Published:    false,
+		Discontinued: true,
+	})
 	return &s
 }
 
@@ -48,7 +63,7 @@ func TestNewProductSnapshot(t *testing.T) {
 
 			price := newEvalPrice(t, "19.99")
 
-			actual := NewProductSnapshot(5, price, true)
+			actual := NewProductSnapshot(ProductSnapshotAttributes{Quantity: 5, Price: price, Published: true})
 
 			assert.Equal(t, price, actual.Price())
 		})
@@ -64,7 +79,13 @@ func TestProductSnapshot_Price(t *testing.T) {
 		t.Run("観測した単価を返す", func(t *testing.T) {
 			t.Parallel()
 
-			assert.Equal(t, "19.99", NewProductSnapshot(1, newEvalPrice(t, "19.99"), true).Price().String())
+			snapshot := NewProductSnapshot(ProductSnapshotAttributes{
+				Quantity:  1,
+				Price:     newEvalPrice(t, "19.99"),
+				Published: true,
+			})
+
+			assert.Equal(t, "19.99", snapshot.Price().String())
 		})
 	})
 }
@@ -222,6 +243,24 @@ func TestCartItem_Evaluate(t *testing.T) {
 			actual := newEvalItem(t, "ev_unpub", 2, &seen).Evaluate(newEvalSnapshot(t, "12.00", 0, false))
 
 			assert.Equal(t, []Issue{IssueUnpublished, IssueOutOfStock, IssuePriceIncreased}, actual.Issues())
+		})
+
+		t.Run("廃番の商品は discontinued を立て unpublished を立てない", func(t *testing.T) {
+			t.Parallel()
+
+			actual := newEvalItem(t, "ev_disc", 2, nil).Evaluate(newDiscontinuedEvalSnapshot(t, "12.00", 5))
+
+			assert.Equal(t, []Issue{IssueDiscontinued}, actual.Issues())
+		})
+
+		t.Run("廃番の商品も在庫と価格は独立に判定する", func(t *testing.T) {
+			t.Parallel()
+
+			seen := newEvalPrice(t, "10.00")
+
+			actual := newEvalItem(t, "ev_disc_all", 2, &seen).Evaluate(newDiscontinuedEvalSnapshot(t, "12.00", 0))
+
+			assert.Equal(t, []Issue{IssueDiscontinued, IssueOutOfStock, IssuePriceIncreased}, actual.Issues())
 		})
 
 		t.Run("在庫 0 は outOfStock のみで insufficientStock を立てない", func(t *testing.T) {

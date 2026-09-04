@@ -116,7 +116,8 @@ output:
 enum: ItemIssue            # 出力 DTO 側の再評価結果。ドメインの cart.Issue と 1:1 に対応する
 values:
   - notFound               # 商品が存在しない（削除された）。単独で立ち、他の issue は併記しない
-  - unpublished            # 非公開化された
+  - unpublished            # 非公開化された。discontinued とは排他
+  - discontinued           # 廃番になった。非公開を伴うが、より具体的なこちらだけを立てる
   - outOfStock             # 在庫 0。insufficientStock とは排他
   - insufficientStock      # 在庫 < 要求数量（AvailableQuantity に上限を添える）
   - priceIncreased         # lastSeenPrice より高い

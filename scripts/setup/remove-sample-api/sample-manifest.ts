@@ -226,6 +226,8 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "database/migrations/000011_create_product_images.down.sql",
       "database/migrations/000018_add_products_keyword_search_index.up.sql",
       "database/migrations/000018_add_products_keyword_search_index.down.sql",
+      "database/migrations/000023_add_products_discontinued_at_column.up.sql",
+      "database/migrations/000023_add_products_discontinued_at_column.down.sql",
       "database/migrations/000019_add_products_created_at_id_index.up.sql",
       "database/migrations/000019_add_products_created_at_id_index.down.sql",
       "database/seed/000007_products_electronic_equipment_01.sql",
@@ -513,7 +515,6 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
   },
 };
 
-// サンプル行が残す行と混在するため、行単位でマーカー除去する共有ファイル。
 /**
  * 走査から外すディレクトリ名。依存の取得物と VCS の内部。
  *
@@ -543,12 +544,8 @@ export const EXCLUDED_PATH_PREFIXES: readonly string[] = [
  * マーカー文字列を「データ・散文」として持つファイル。走査の対象から外す。
  *
  * @remarks
- * `sample-api` は、`boilerplate-only` と違って**マーカーの形そのものを教材・フィクスチャ・
- * 規約説明が本文に持っている**ため、素朴に走査すると、マーカーではないものをマーカーとして
- * 刈り取ってしまいます。そのため対象ファイルの一覧ではなく、この逆向きの除外宣言を使います。
- *
- * 宣言し忘れたファイルは内容が壊れ、`sample-removal-check.yaml` の `make test` /
- * `md-markdownlint-ci` / `go build` が落ちます。
+ * 宣言し忘れたファイルは内容が壊れます。逆向きの除外宣言である理由は
+ * scripts/README.md の sample-api ブロックを参照してください。
  */
 export const MARKER_LITERAL_FILES: readonly string[] = [
   // マーカー除去そのもののテスト。入力として `# sample-api:begin` を持つ。

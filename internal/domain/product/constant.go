@@ -27,3 +27,9 @@ const (
 	// initialVersion は、生成直後の商品が持つ楽観ロックのバージョンです。
 	initialVersion = 1
 )
+
+// 商品フィールドの識別子。API リクエストのプロパティ名と一致させ、どの項目が不正かを呼び出し側へ返します。
+const (
+	// FieldPublishedAt は、公開日時フィールドの識別子です。
+	FieldPublishedAt = "publishedAt"
+)

@@ -8,6 +8,7 @@ import (
 	"slices"
 	"time"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/lexicon/money"
 	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/stringkit"
@@ -29,6 +30,7 @@ type Product struct {
 	status                StatusRef
 	category              CategoryRef
 	publishedAt           *time.Time
+	discontinuedAt        *time.Time
 	images                []Image
 	createdAt             time.Time
 	version               int
@@ -45,6 +47,7 @@ type Attributes struct {
 	Status                StatusRef
 	Category              CategoryRef
 	PublishedAt           *time.Time
+	DiscontinuedAt        *time.Time
 	Images                []Image
 }
 
@@ -95,6 +98,7 @@ func newProduct(id uuid.UUID, attrs Attributes, version int, createdAt time.Time
 		status:                attrs.Status,
 		category:              attrs.Category,
 		publishedAt:           ptr.Copy(attrs.PublishedAt),
+		discontinuedAt:        ptr.Copy(attrs.DiscontinuedAt),
 		images:                sortImagesByDisplaySort(attrs.Images),
 		createdAt:             createdAt,
 		version:               version,
@@ -118,6 +122,9 @@ func validateAttributes(attrs Attributes) error {
 	if attrs.Category.id.IsNil() {
 		return xerrors.Wrap(ErrInvalidCategoryID, "category is required")
 	}
+	if err := validateDiscontinuedAt(attrs.DiscontinuedAt, attrs.PublishedAt); err != nil {
+		return err
+	}
 	return validateImages(attrs.Images)
 }
 
@@ -138,6 +145,7 @@ func (p *Product) Update(attrs Attributes) error {
 	p.status = attrs.Status
 	p.category = attrs.Category
 	p.publishedAt = ptr.Copy(attrs.PublishedAt)
+	p.discontinuedAt = ptr.Copy(attrs.DiscontinuedAt)
 	p.images = sortImagesByDisplaySort(attrs.Images)
 
 	return nil
@@ -224,6 +232,9 @@ func (p *Product) Category() CategoryRef { return p.category }
 // PublishedAt は、公開日時を返します。未公開の場合は nil です。
 func (p *Product) PublishedAt() *time.Time { return ptr.Copy(p.publishedAt) }
 
+// DiscontinuedAt は、廃番日時を返します。廃番でない場合は nil です。
+func (p *Product) DiscontinuedAt() *time.Time { return ptr.Copy(p.discontinuedAt) }
+
 // CreatedAt は、商品が登録された日時を返します。
 func (p *Product) CreatedAt() time.Time { return p.createdAt }
 
@@ -253,6 +264,27 @@ func (p *Product) IsPublished() bool { return IsPublished(p.publishedAt) }
 // 「公開中」の定義はここ 1 箇所にあります。集約を再構築しない読み取り——集計や射影を返す経路——にも
 // 同じ定義を当てられるよう、エンティティのメソッドとは別に値に対する形でも公開します。
 func IsPublished(publishedAt *time.Time) bool { return publishedAt != nil }
+
+// IsDiscontinued は、商品が廃番かどうかを返します。廃番とは廃番日時が設定されていることを指します。
+func (p *Product) IsDiscontinued() bool { return IsDiscontinued(p.discontinuedAt) }
+
+// IsDiscontinued は、廃番日時から商品が廃番かどうかを判定します。
+//
+// 「廃番」の定義はここ 1 箇所にあります。値に対する形でも公開する理由は [IsPublished] と同じです。
+func IsDiscontinued(discontinuedAt *time.Time) bool { return discontinuedAt != nil }
+
+// validateDiscontinuedAt は、廃番と公開が同時に成り立たないことを検証します。
+// 違反したフィールドとして publishedAt を報告します。理由は docs/spec/domain/product.md の
+// Cross-field Invariants を参照してください。
+func validateDiscontinuedAt(discontinuedAt, publishedAt *time.Time) error {
+	if IsDiscontinued(discontinuedAt) && IsPublished(publishedAt) {
+		return apperror.WithDetails(
+			xerrors.Wrap(ErrDiscontinuedCannotBePublished, "publishedAt must be nil for a discontinued product"),
+			FieldPublishedAt,
+		)
+	}
+	return nil
+}
 
 // IsLowStock は、商品の在庫が補充を要する水準まで減っているかどうかを返します。
 // 在庫警告閾値が未設定の商品は警告対象を持たないため、常に false です。

@@ -26,8 +26,7 @@ import (
 
 const maxProductPriceFilterLength = 40
 
-// errUnpublishedInPublishedRead は、公開中として取得した読み取りに未公開の商品が混じっていた場合のエラーです。
-// 絞り込みを実行する SQL と、公開中を定義する Product.IsPublished が食い違ったことを意味します。
+// errUnpublishedInPublishedRead は、公開中として取得した読み取りに未公開の商品が混じっていた場合のエラーです（ensurePublished 参照）。
 var errUnpublishedInPublishedRead = xerrors.Wrap(apperror.ErrInternal, "unpublished product in published read")
 
 // ProductView は、商品 1 件分のユースケース出力 DTO です。Price はサブセント精度を保持する価格スケールの十進量です。
@@ -44,6 +43,7 @@ type ProductView struct {
 	CategoryID            uuid.UUID
 	CategoryName          string
 	PublishedAt           *time.Time
+	DiscontinuedAt        *time.Time
 	// Images は、商品画像を表示順の昇順で並べたものです。画像未設定の場合は空です。
 	Images []ProductImageItemView
 	// Version は、楽観ロックのバージョンです。部分更新の要求へそのまま渡すことで競合を検出できます。
@@ -480,7 +480,8 @@ func (u *usecase) findAllPage(
 	return u.repo.FindAllList(ctx, domainParams)
 }
 
-// ensurePublished は、Repository が公開中として返した商品がドメイン定義でも公開中であることを確かめます。
+// ensurePublished は、Repository が公開中として返した商品がドメイン定義でも公開中であることを確かめ、
+// 絞り込みを実行する SQL と Product.IsPublished が食い違っていれば errUnpublishedInPublishedRead を返します。
 // 背景: internal/usecase/README.md § Verifying infrastructure against the domain.
 func ensurePublished(products product.Products) error {
 	for _, p := range products {
@@ -504,6 +505,7 @@ func toProductView(p *product.Product) ProductView {
 		CategoryID:            p.Category().ID(),
 		CategoryName:          p.Category().Name(),
 		PublishedAt:           p.PublishedAt(),
+		DiscontinuedAt:        p.DiscontinuedAt(),
 		Images:                toProductImageItemViews(p.Images()),
 		Version:               p.Version(),
 	}

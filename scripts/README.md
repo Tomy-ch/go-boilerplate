@@ -219,6 +219,12 @@ Adding or removing a marker line moves the count `scripts/marker-baseline/baseli
 regenerate it (`tsx scripts/marker-baseline --write`) in the same change. A file that carries the
 marker form as *data* rather than as an instruction goes in `MARKER_LITERAL_FILES` instead — but only
 a file with no real markers of its own, since that declaration removes it from the scan entirely.
+
+`sample-api` needs that reverse declaration in a way `boilerplate-only` does not: tutorials, fixtures
+and the convention write-ups carry the `sample-api` marker form in their own prose, so a naive scan
+would harvest text that was never an instruction. Declaring the file is therefore the exception that
+keeps the scan honest, and forgetting one corrupts that file — `sample-removal-check.yaml` catches it
+as a failing `make test` / `md-markdownlint-ci` / `go build`.
 <!-- sample-api:end -->
 
 ## Test Strategy

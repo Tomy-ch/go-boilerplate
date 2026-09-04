@@ -10,6 +10,7 @@ required:
   - status
   - category
   - publishedAt
+  - discontinuedAt
   - images
   - version
 properties:
@@ -55,6 +56,16 @@ properties:
     format: date-time
     nullable: true
     description: 公開日時。未公開の場合は null です。
+    example: "2026-01-01T00:00:00Z"
+  discontinuedAt:
+    type: string
+    format: date-time
+    nullable: true
+    description: >-
+      廃番日時。廃番でない場合は null です。廃番は取り消せず、廃番の商品は公開日時を持てません
+      （publishedAt は必ず null になります）。
+      廃番にする操作は日時を受け取らずサーバーの時刻で確定するため、**未来の日時にはなりません**。
+      したがって廃番かどうかは現在時刻との比較ではなく null かどうかで判定できます。
     example: "2026-01-01T00:00:00Z"
   images:
     type: array

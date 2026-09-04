@@ -133,9 +133,10 @@ func toProductResponse(dto productuc.ProductView) (gen.ProductResponse, error) {
 			Id:   dto.CategoryID.ToPrimitive(),
 			Name: dto.CategoryName,
 		},
-		PublishedAt: dto.PublishedAt,
-		Images:      images,
-		Version:     version,
+		PublishedAt:    dto.PublishedAt,
+		DiscontinuedAt: dto.DiscontinuedAt,
+		Images:         images,
+		Version:        version,
 	}, nil
 }
 

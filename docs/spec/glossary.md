@@ -57,6 +57,7 @@ findings** — 業務が使っていてモデルが使っていない語は、�
 | 商品カテゴリ | 顧客が商品を探すときの分類。商品はちょうど 1 つに属する | product-category / ProductCategory | `category.Category` | `ProductCategoryResponse` |
 | 商品ステータス | 商品を今どう取り扱っているかの区分 | product-status / ProductStatus | `status.Status` | `ProductStatusResponse` |
 | 公開中 | 顧客がその商品を見つけて購入できる状態 | product / Product | `product.IsPublished` | — |
+| 廃番 | その商品の取り扱いを終えた状態。取り消せず、廃番の商品は公開中になれない | product / Product | `product.IsDiscontinued` | `discontinuedAt` |
 | 在庫僅少 | 補充しなければ品切れが近い水準まで在庫が減っている状態 | product / Product | `product.Product.IsLowStock` | — |
 | 代表画像 | 商品を 1 枚で表すときに使う画像。出品者が並べた表示順の先頭がこれにあたる | product / Product | `product.Product.PrimaryImage` | `imagePath` |
 | 購入 | 顧客が商品を買った事実。何をいくらで買ったかが確定している | purchase / Purchase | `purchase.Purchase` | `PurchaseResponse` |
@@ -208,7 +209,17 @@ findings** — 業務が使っていてモデルが使っていない語は、�
 ### 行にするかが未決
 
 <!-- sample-api:replace-begin -->
-同義は現在エントリなし。以下は**行にするかどうかが未決**の語である。
+以下は**同義かどうかが未決**の語である。
+
+- **廃番 / 廃盤 / 販売終了** — 「廃番」は商品集約が持つ状態（`product.IsDiscontinued`、`discontinuedAt`
+  由来）で、不変条件と述語を持つ。「廃盤」と「販売終了」は商品ステータスマスタの行
+  （`database/migrations/000008_create_product_statuses.up.sql` の code 7 / code 4）で、
+  業務規則を一切持たない表示専用のラベルである。**同じ事柄を指す 3 語なのか、取り扱いの終了
+  （状態）と表示上の区分（ラベル）という別の物なのかは決めていない。** 廃番の実装はマスタの行を
+  書き換えないため、現状は独立に併存する。3 語を統合するか、マスタ側の 2 行を廃番へ連動させるか、
+  別概念として残すかは、業務がどう話すかの決定である
+
+以下は**行にするかどうかが未決**の語である。
 
 - **購入の成立** — 支払い・発送・配達・キャンセルは行為の側が行を得たが、購入そのものの成立だけ
   行が無い。構築子（`purchase.New`）は担い手になれない——名前が規約であり、集約によって新規発生と

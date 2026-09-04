@@ -536,7 +536,8 @@ CREATE TABLE public.products (
     published_at timestamp with time zone,
     lock_version integer DEFAULT 1 NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    discontinued_at timestamp with time zone
 );
 --
 -- Name: TABLE products; Type: COMMENT; Schema: public; Owner: -
@@ -590,6 +591,10 @@ COMMENT ON COLUMN public.products.created_at IS '作成日時';
 -- Name: COLUMN products.updated_at; Type: COMMENT; Schema: public; Owner: -
 --
 COMMENT ON COLUMN public.products.updated_at IS '更新日時';
+--
+-- Name: COLUMN products.discontinued_at; Type: COMMENT; Schema: public; Owner: -
+--
+COMMENT ON COLUMN public.products.discontinued_at IS '廃番日時';
 --
 -- Name: purchase_details; Type: TABLE; Schema: public; Owner: -
 --
@@ -1248,6 +1253,10 @@ CREATE INDEX products_created_at_id_idx ON public.products USING btree (created_
 -- Name: products_description_trgm_idx; Type: INDEX; Schema: public; Owner: -
 --
 CREATE INDEX products_description_trgm_idx ON public.products USING gin (description public.gin_trgm_ops);
+--
+-- Name: products_discontinued_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+CREATE INDEX products_discontinued_at_idx ON public.products USING btree (discontinued_at) WHERE (discontinued_at IS NOT NULL);
 --
 -- Name: products_low_stock_quantity_id_idx; Type: INDEX; Schema: public; Owner: -
 --

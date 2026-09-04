@@ -917,6 +917,9 @@ paths:
         公開日時そのものを更新対象とするため、取得系と異なり未公開商品も更新できます。
         version が DB の現在値と一致しない場合は他者の更新と競合したものとして 409 を返します。
         409 は再送では解消しないため、クライアントは再取得してから送り直してください。
+        **廃番の商品に公開日時を設定することはできません**（422、details に publishedAt）。
+        廃番は取り消せないため、この 422 は再取得しても再送しても解消しません。
+        409 と違い他者の更新との競合ではないので、両者は取り違えられません。
       security:
         - BearerAuth: []
       parameters:
@@ -3071,6 +3074,7 @@ components:
         - status
         - category
         - publishedAt
+        - discontinuedAt
         - images
         - version
       properties:
@@ -3114,6 +3118,12 @@ components:
           format: date-time
           nullable: true
           description: 公開日時。未公開の場合は null です。
+          example: '2026-01-01T00:00:00Z'
+        discontinuedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: 廃番日時。廃番でない場合は null です。廃番は取り消せず、廃番の商品は公開日時を持てません （publishedAt は必ず null になります）。 廃番にする操作は日時を受け取らずサーバーの時刻で確定するため、**未来の日時にはなりません**。 したがって廃番かどうかは現在時刻との比較ではなく null かどうかで判定できます。
           example: '2026-01-01T00:00:00Z'
         images:
           type: array
@@ -3779,10 +3789,13 @@ components:
         カート明細の再評価結果。取得のたびに商品の現在値と突き合わせて判定される。
         1 つの明細に複数同時に立ちうるが、notFound は単独で立ち（商品が引けない以上、在庫も価格も
         判定材料が無い）、outOfStock と insufficientStock は排他（在庫 0 は「不足」ではなく「無い」）。
+        discontinued と unpublished も排他で、廃番の明細には discontinued だけが立つ
+        （廃番は非公開を伴うが、より具体的なほうだけを立てる）。
         いずれの値もカートの取得を失敗にしない。買えない明細があることは要求の不正ではないため。
       enum:
         - notFound
         - unpublished
+        - discontinued
         - outOfStock
         - insufficientStock
         - priceIncreased

@@ -96,7 +96,9 @@ func (u *usecase) UpdateProduct(
 			Status:                statusRef,
 			Category:              categoryRef,
 			PublishedAt:           params.PublishedAt.Resolve(entity.PublishedAt()),
-			Images:                ptr.Deref(images, entity.Images()),
+			// DiscontinuedAt は UpdateProductParams が持たないため、現在値を据え置きます。
+			DiscontinuedAt: entity.DiscontinuedAt(),
+			Images:         ptr.Deref(images, entity.Images()),
 		}); err != nil {
 			return err
 		}

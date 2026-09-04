@@ -55,6 +55,9 @@ fields:
   - name: publishedAt
     type: "*time.Time"
     required: false         # nil 許容（未公開）。一覧取得は published_at 非 NULL のみを返すため一覧経由では常に非 nil
+  - name: discontinuedAt
+    type: "*time.Time"
+    required: false         # nil 許容（廃番でない）。廃番は取り消せず、設定後に nil へ戻らない
   - name: images
     type: "[]Image"
     required: false         # 空許容（画像未設定）。表示順の昇順で保持し、構築時に並べ替える
@@ -102,6 +105,12 @@ fields:
 > 論理削除か物理削除か、`deleted_at` か `is_deleted` かといった選択は本 boilerplate が規定するものではない。
 
 ## Cross-field Invariants
+
+- `discontinuedAt != nil` ならば `publishedAt == nil`（違反は `ErrDiscontinuedCannotBePublished` → 422、
+  `details` に `publishedAt`）。廃番は商品が売られなくなったことを表すため、廃番でありながら公開されて
+  いる状態は存在しない。`New` / `Reconstruct` / `Update` が共有する検証ゲートで課す。
+  違反したフィールドとして `publishedAt` を報告するのは、廃番が取り消せず解消できるのが公開日時の側
+  だけだからである。「廃番」の定義は `IsDiscontinued` が持つ（`IsPublished` と同じく値に対する形でも公開する）。
 
 - `len(images) <= maxImages`（`maxImages = 20`。超過は `ErrTooManyImages` → 422）。
   `New` / `Reconstruct` / `Update` が共有する検証ゲートで課す。保存済みデータのための緩和経路はない

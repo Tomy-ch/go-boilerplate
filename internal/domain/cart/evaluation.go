@@ -6,7 +6,8 @@ import (
 )
 
 // maxIssuesPerItem は、1 明細に同時に立ちうる issue の最大数です。
-// 公開状態・在庫・価格差はそれぞれ独立に判定されるため 3 つまで重なります。
+// 公開状態・在庫・価格差の 3 軸はそれぞれ独立に判定され、軸内の値（廃番と非公開、在庫切れと
+// 在庫不足）は排他なので、各軸から立つ issue は高々 1 つ、合計で 3 つまでです。
 const maxIssuesPerItem = 3
 
 const (
@@ -14,6 +15,8 @@ const (
 	IssueNotFound Issue = "notFound"
 	// IssueUnpublished は、商品が非公開であることを表します。
 	IssueUnpublished Issue = "unpublished"
+	// IssueDiscontinued は、商品が廃番になったことを表します。
+	IssueDiscontinued Issue = "discontinued"
 	// IssueOutOfStock は、在庫が無いことを表します。
 	IssueOutOfStock Issue = "outOfStock"
 	// IssueInsufficientStock は、在庫が要求数量に満たないことを表します。
@@ -30,9 +33,10 @@ type Issue string
 // ProductSnapshot は、再評価した時点で観測した商品の値です（設計意図は
 // docs/spec/domain/cart.md の Overview を参照）。
 type ProductSnapshot struct {
-	quantity  int
-	price     money.Price
-	published bool
+	quantity     int
+	price        money.Price
+	published    bool
+	discontinued bool
 }
 
 // Evaluation は、明細 1 件の再評価結果です。
@@ -41,15 +45,29 @@ type Evaluation struct {
 	availableQuantity *int
 }
 
+// ProductSnapshotAttributes は、商品の観測値一式です。published と discontinued が同型のため
+// 構造体で受けます（基準は docs/rules.md の Function Signature Rules）。
+type ProductSnapshotAttributes struct {
+	Quantity     int
+	Price        money.Price
+	Published    bool
+	Discontinued bool
+}
+
 // NewProductSnapshot は、商品の観測値を組み立てます。
-func NewProductSnapshot(quantity int, price money.Price, published bool) ProductSnapshot {
-	return ProductSnapshot{quantity: quantity, price: price, published: published}
+func NewProductSnapshot(attrs ProductSnapshotAttributes) ProductSnapshot {
+	return ProductSnapshot{
+		quantity:     attrs.Quantity,
+		price:        attrs.Price,
+		published:    attrs.Published,
+		discontinued: attrs.Discontinued,
+	}
 }
 
 // Price は、観測した単価を返します。
 func (s ProductSnapshot) Price() money.Price { return s.price }
 
-// Issues は、立った issue を返します。空なら現時点で購入可能です。
+// Issues は、立った issue を返します。空なら issue が 1 つも立っていません。
 func (e Evaluation) Issues() []Issue {
 	copied := make([]Issue, len(e.issues))
 	copy(copied, e.issues)
@@ -63,9 +81,9 @@ func (e Evaluation) AvailableQuantity() *int { return ptr.Copy(e.availableQuanti
 // hasNoIssue は、突き合わせで issue が 1 つも立たなかったかどうかを返します。
 // 「購入可能」は在籍に基づく別の判定を指す語なので用いません（docs/spec/glossary.md）。
 //
-// ゼロ値は「まだ突き合わせていない」であって「問題が無い」ではないため false を返します。
-// Evaluate は必ず非 nil の issues を返すので、nil であることがゼロ値の印になります。
-// 合算に入れるかどうかがこれで決まるため、判らないものを問題無しへ倒しません。
+// ゼロ値（issues == nil）は「まだ突き合わせていない」を表すため false を返します。nil の判定を
+// 落として len(e.issues) == 0 だけにしてはなりません（設計意図は docs/spec/domain/cart.md の
+// Value Objects の Evaluation）。
 func (e Evaluation) hasNoIssue() bool { return e.issues != nil && len(e.issues) == 0 }
 
 // Evaluate は、明細を商品の観測値と突き合わせて再評価結果を返します。
@@ -76,7 +94,10 @@ func (i CartItem) Evaluate(snapshot *ProductSnapshot) Evaluation {
 	}
 
 	issues := make([]Issue, 0, maxIssuesPerItem)
-	if !snapshot.published {
+	switch {
+	case snapshot.discontinued:
+		issues = append(issues, IssueDiscontinued)
+	case !snapshot.published:
 		issues = append(issues, IssueUnpublished)
 	}
 

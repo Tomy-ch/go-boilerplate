@@ -233,6 +233,8 @@ type Products struct {
 	CreatedAt time.Time
 	// 更新日時
 	UpdatedAt time.Time
+	// 廃番日時
+	DiscontinuedAt *time.Time
 }
 
 // 購入詳細
