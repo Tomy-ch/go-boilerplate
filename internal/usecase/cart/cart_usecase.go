@@ -347,7 +347,7 @@ func toItemIssues(issues []cart.Issue) []ItemIssue {
 }
 
 // toItemIssue は、再評価結果 1 件を出力 DTO の語彙へ写します。
-// 対応を持たない値は写像できないため、黙って既定値へ倒さず panic で異常を知らせます。
+// 網羅的な写像を意図し、対応を持たない値は panic します（理由は docs/spec/usecase/cart.md の Notes）。
 func toItemIssue(issue cart.Issue) ItemIssue {
 	switch issue {
 	case cart.IssueNotFound:
@@ -370,7 +370,6 @@ func toItemIssue(issue cart.Issue) ItemIssue {
 }
 
 // emptyCartView は、表示するカートが無いときの応答です。
-// 明細は空スライスで、有効期限は行が存在しないため nil です。
 func emptyCartView() CartView {
 	return CartView{Items: []CartItemView{}}
 }

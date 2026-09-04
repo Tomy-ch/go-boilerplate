@@ -274,10 +274,8 @@ func (p *Product) IsDiscontinued() bool { return IsDiscontinued(p.discontinuedAt
 func IsDiscontinued(discontinuedAt *time.Time) bool { return discontinuedAt != nil }
 
 // validateDiscontinuedAt は、廃番と公開が同時に成り立たないことを検証します。
-// 廃番は商品が売られなくなったことを表すため、廃番でありながら公開されている状態は存在しません。
-//
-// 違反したフィールドとして publishedAt を報告します。廃番は取り消せず、解消できるのは公開日時の側だけ
-// だからです（Details はレスポンスの details として公開されます）。
+// 違反したフィールドとして publishedAt を報告します。理由は docs/spec/domain/product.md の
+// Cross-field Invariants を参照してください。
 func validateDiscontinuedAt(discontinuedAt, publishedAt *time.Time) error {
 	if IsDiscontinued(discontinuedAt) && IsPublished(publishedAt) {
 		return apperror.WithDetails(

@@ -96,7 +96,7 @@ func (u *usecase) UpdateProduct(
 			Status:                statusRef,
 			Category:              categoryRef,
 			PublishedAt:           params.PublishedAt.Resolve(entity.PublishedAt()),
-			// 廃番は本 op の更新対象ではないため現在値を据え置きます。廃番にする操作は専用の口が持ちます。
+			// DiscontinuedAt は UpdateProductParams が持たないため、現在値を据え置きます。
 			DiscontinuedAt: entity.DiscontinuedAt(),
 			Images:         ptr.Deref(images, entity.Images()),
 		}); err != nil {
