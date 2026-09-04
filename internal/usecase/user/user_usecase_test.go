@@ -72,18 +72,16 @@ func Test_usecase_ListUsers(t *testing.T) {
 	prefectureID := uuidtestkit.NewTestFromSalt(t, "prefecture_domain")
 
 	userDomain, err := user.New(uuidtestkit.NewTestFromSalt(t, "user_domain"), user.Attributes{
-		Profile: user.Profile{
-			FirstName:    "first_name",
-			LastName:     "last_name",
-			Email:        "user@example.com",
-			Phone:        "phone_number",
-			PrefectureID: prefectureID,
-			City:         "city_name",
-			Street:       "town_address",
-			PostalCode:   "150-0001",
-		},
-		CreatedAt: now,
-		UpdatedAt: now,
+		FirstName:    "first_name",
+		LastName:     "last_name",
+		Email:        "user@example.com",
+		Phone:        "phone_number",
+		PrefectureID: prefectureID,
+		City:         "city_name",
+		Street:       "town_address",
+		PostalCode:   "150-0001",
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	})
 	require.NoError(t, err)
 
@@ -264,18 +262,16 @@ func Test_usecase_CreateUser(t *testing.T) {
 	prefectureID := uuidtestkit.NewTestFromSalt(t, "prefecture_domain")
 
 	userDomain, err := user.New(uuidtestkit.NewTestFromSalt(t, "user_domain"), user.Attributes{
-		Profile: user.Profile{
-			FirstName:    "first_name",
-			LastName:     "last_name",
-			Email:        "user@example.com",
-			Phone:        "phone_number",
-			PrefectureID: prefectureID,
-			City:         "city_name",
-			Street:       "town_address",
-			PostalCode:   "150-0001",
-		},
-		CreatedAt: now,
-		UpdatedAt: now,
+		FirstName:    "first_name",
+		LastName:     "last_name",
+		Email:        "user@example.com",
+		Phone:        "phone_number",
+		PrefectureID: prefectureID,
+		City:         "city_name",
+		Street:       "town_address",
+		PostalCode:   "150-0001",
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	})
 	require.NoError(t, err)
 
@@ -502,18 +498,16 @@ func Test_usecase_ListUsersWithTotal(t *testing.T) {
 
 	prefectureID := uuidtestkit.NewTestFromSalt(t, "prefecture_domain")
 	userDomain, err := user.New(uuidtestkit.NewTestFromSalt(t, "user_domain"), user.Attributes{
-		Profile: user.Profile{
-			FirstName:    "first_name",
-			LastName:     "last_name",
-			Email:        "user@example.com",
-			Phone:        "phone_number",
-			PrefectureID: prefectureID,
-			City:         "city_name",
-			Street:       "town_address",
-			PostalCode:   "150-0001",
-		},
-		CreatedAt: now,
-		UpdatedAt: now,
+		FirstName:    "first_name",
+		LastName:     "last_name",
+		Email:        "user@example.com",
+		Phone:        "phone_number",
+		PrefectureID: prefectureID,
+		City:         "city_name",
+		Street:       "town_address",
+		PostalCode:   "150-0001",
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	})
 	require.NoError(t, err)
 	prefectureDomain, err := prefecture.New(prefectureID, "prefecture_name", 1)
@@ -688,18 +682,16 @@ func Test_usecase_ListUsersFeed(t *testing.T) {
 	// newFeedUser は、作成日時違いのフィードユーザーを生成するヘルパーです。
 	newFeedUser := func(salt string, createdAt time.Time) *user.User {
 		u, uErr := user.New(uuidtestkit.NewTestFromSalt(t, salt), user.Attributes{
-			Profile: user.Profile{
-				FirstName:    "first_name",
-				LastName:     "last_name",
-				Email:        "user@example.com",
-				Phone:        "phone_number",
-				PrefectureID: prefectureID,
-				City:         "city_name",
-				Street:       "town_address",
-				PostalCode:   "150-0001",
-			},
-			CreatedAt: createdAt,
-			UpdatedAt: createdAt,
+			FirstName:    "first_name",
+			LastName:     "last_name",
+			Email:        "user@example.com",
+			Phone:        "phone_number",
+			PrefectureID: prefectureID,
+			City:         "city_name",
+			Street:       "town_address",
+			PostalCode:   "150-0001",
+			CreatedAt:    createdAt,
+			UpdatedAt:    createdAt,
 		})
 		require.NoError(t, uErr)
 		return u
@@ -1110,18 +1102,16 @@ func Test_usecase_toUserViews(t *testing.T) {
 	prefectureID := uuidtestkit.NewTestFromSalt(t, "to_user_views_prefecture")
 
 	userDomain, err := user.New(uuidtestkit.NewTestFromSalt(t, "to_user_views_user"), user.Attributes{
-		Profile: user.Profile{
-			FirstName:    "first_name",
-			LastName:     "last_name",
-			Email:        "user@example.com",
-			Phone:        "phone_number",
-			PrefectureID: prefectureID,
-			City:         "city_name",
-			Street:       "town_address",
-			PostalCode:   "150-0001",
-		},
-		CreatedAt: now,
-		UpdatedAt: now,
+		FirstName:    "first_name",
+		LastName:     "last_name",
+		Email:        "user@example.com",
+		Phone:        "phone_number",
+		PrefectureID: prefectureID,
+		City:         "city_name",
+		Street:       "town_address",
+		PostalCode:   "150-0001",
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	})
 	require.NoError(t, err)
 
@@ -1194,18 +1184,16 @@ func Test_usecase_toUserViews(t *testing.T) {
 // newCreateDTO は、テスト用のCreateParamsDTOを生成するヘルパー関数です。
 func newCreateDTO(u *user.User, pName string) *CreateParamsDTO {
 	return &CreateParamsDTO{
-		UserID: u.ID(),
-		UpdateProfileParams: UpdateProfileParams{
-			FirstName:      u.FirstName(),
-			LastName:       u.LastName(),
-			Email:          u.Email(),
-			Phone:          u.Phone(),
-			PostalCode:     u.PostalCode(),
-			PrefectureName: pName,
-			City:           u.City(),
-			Street:         u.Street(),
-			Building:       u.Building(),
-		},
+		UserID:         u.ID(),
+		FirstName:      u.FirstName(),
+		LastName:       u.LastName(),
+		Email:          u.Email(),
+		Phone:          u.Phone(),
+		PostalCode:     u.PostalCode(),
+		PrefectureName: pName,
+		City:           u.City(),
+		Street:         u.Street(),
+		Building:       u.Building(),
 	}
 }
 
@@ -1222,19 +1210,17 @@ func Test_toUserView(t *testing.T) {
 			t.Parallel()
 
 			u, err := user.New(uuidtestkit.NewTestFromSalt(t, "to_user_view_user"), user.Attributes{
-				Profile: user.Profile{
-					FirstName:    "first_name",
-					LastName:     "last_name",
-					Email:        "user@example.com",
-					Phone:        "phone_number",
-					PrefectureID: uuidtestkit.NewTestFromSalt(t, "to_user_view_prefecture"),
-					City:         "city_name",
-					Street:       "town_address",
-					Building:     &building,
-					PostalCode:   "150-0001",
-				},
-				CreatedAt: now,
-				UpdatedAt: now,
+				FirstName:    "first_name",
+				LastName:     "last_name",
+				Email:        "user@example.com",
+				Phone:        "phone_number",
+				PrefectureID: uuidtestkit.NewTestFromSalt(t, "to_user_view_prefecture"),
+				City:         "city_name",
+				Street:       "town_address",
+				Building:     &building,
+				PostalCode:   "150-0001",
+				CreatedAt:    now,
+				UpdatedAt:    now,
 			})
 			require.NoError(t, err)
 
@@ -1259,19 +1245,17 @@ func Test_toUserView(t *testing.T) {
 
 			deletedAt := now.Add(24 * time.Hour)
 			u, err := user.New(uuidtestkit.NewTestFromSalt(t, "to_user_view_deleted"), user.Attributes{
-				Profile: user.Profile{
-					FirstName:    "first_name",
-					LastName:     "last_name",
-					Email:        "deleted@example.com",
-					Phone:        "phone_number",
-					PrefectureID: uuidtestkit.NewTestFromSalt(t, "to_user_view_prefecture"),
-					City:         "city_name",
-					Street:       "town_address",
-					PostalCode:   "150-0001",
-				},
-				CreatedAt: now,
-				UpdatedAt: now,
-				DeletedAt: &deletedAt,
+				FirstName:    "first_name",
+				LastName:     "last_name",
+				Email:        "deleted@example.com",
+				Phone:        "phone_number",
+				PrefectureID: uuidtestkit.NewTestFromSalt(t, "to_user_view_prefecture"),
+				City:         "city_name",
+				Street:       "town_address",
+				PostalCode:   "150-0001",
+				CreatedAt:    now,
+				UpdatedAt:    now,
+				DeletedAt:    &deletedAt,
 			})
 			require.NoError(t, err)
 

@@ -45,17 +45,15 @@ func (s *server) GetProductsCount(
 	}
 
 	view, err := s.uc.CountProducts(ctx, ctxhelper.OptionalAuthn(ctx), productuc.CountProductsParams{
-		SearchFilter: productuc.SearchFilter{
-			CategoryID:    conv.UUIDPtr(request.Params.CategoryId),
-			StatusID:      conv.UUIDPtr(request.Params.StatusId),
-			CategoryCodes: categoryCodes,
-			StatusCodes:   statusCodes,
-			Keyword:       request.Params.Keyword,
-			MinPrice:      request.Params.MinPrice,
-			MaxPrice:      request.Params.MaxPrice,
-			MinQuantity:   request.Params.MinQuantity,
-			MaxQuantity:   request.Params.MaxQuantity,
-		},
+		CategoryID:         conv.UUIDPtr(request.Params.CategoryId),
+		StatusID:           conv.UUIDPtr(request.Params.StatusId),
+		CategoryCodes:      categoryCodes,
+		StatusCodes:        statusCodes,
+		Keyword:            request.Params.Keyword,
+		MinPrice:           request.Params.MinPrice,
+		MaxPrice:           request.Params.MaxPrice,
+		MinQuantity:        request.Params.MinQuantity,
+		MaxQuantity:        request.Params.MaxQuantity,
 		IncludeUnpublished: ptr.Deref(request.Params.IncludeUnpublished, false),
 	})
 	if err != nil {

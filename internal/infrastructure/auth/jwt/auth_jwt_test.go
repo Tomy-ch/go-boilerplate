@@ -632,7 +632,7 @@ func Test_buildJWKSURLProvider(t *testing.T) {
 			t.Parallel()
 			client := jwksClientReturning(t, discoveryDoc(t, testIssuer, testIssuer+"/keys.json"))
 			fn, err := buildJWKSURLProvider(JWKSParams{
-				Params: Params{Issuer: testIssuer, Clock: testkit.NewMockClock(t, fixedNow)},
+				Issuer: testIssuer, Clock: testkit.NewMockClock(t, fixedNow),
 			}, client)
 			require.NoError(t, err)
 
@@ -662,7 +662,7 @@ func Test_buildJWKSURLProvider(t *testing.T) {
 		t.Run("discovery(issuer=http) かつ AllowInsecureURL=false なら設定エラーになる", func(t *testing.T) {
 			t.Parallel()
 			fn, err := buildJWKSURLProvider(JWKSParams{
-				Params: Params{Issuer: "http://issuer.example.test", Clock: testkit.NewMockClock(t, fixedNow)},
+				Issuer: "http://issuer.example.test", Clock: testkit.NewMockClock(t, fixedNow),
 			}, stubJWKSClient(t, nil))
 			assert.Nil(t, fn)
 			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidParams)

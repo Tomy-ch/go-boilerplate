@@ -159,11 +159,9 @@ func staticURL(u string) func(context.Context) (string, error) {
 func newJWKSAuthenticator(t *testing.T, jwks []byte) authbd.Authenticator {
 	t.Helper()
 	a, err := NewJWKS(JWKSParams{
-		Params: Params{
-			Issuer:   testIssuer,
-			Audience: testAudience,
-			Clock:    testkit.NewMockClock(t, fixedNow),
-		},
+		Issuer:           testIssuer,
+		Audience:         testAudience,
+		Clock:            testkit.NewMockClock(t, fixedNow),
 		JWKSURL:          "http://jwks.example.test/keys.json",
 		AllowInsecureURL: true,
 	}, stubJWKSClient(t, jwks))
@@ -376,12 +374,10 @@ func TestNewJWKS(t *testing.T) {
 		t.Run("JWKSParams の AllowedAlgs / UnknownKidCooldown が resolver へ反映される", func(t *testing.T) {
 			t.Parallel()
 			a, err := NewJWKS(JWKSParams{
-				Params: Params{
-					Issuer:      testIssuer,
-					Audience:    testAudience,
-					AllowedAlgs: []string{"PS256"},
-					Clock:       testkit.NewMockClock(t, fixedNow),
-				},
+				Issuer:             testIssuer,
+				Audience:           testAudience,
+				AllowedAlgs:        []string{"PS256"},
+				Clock:              testkit.NewMockClock(t, fixedNow),
 				JWKSURL:            "https://idp.example.test/keys.json",
 				UnknownKidCooldown: 30 * time.Second,
 			}, stubJWKSClient(t, nil))
@@ -403,7 +399,7 @@ func TestNewJWKS(t *testing.T) {
 				jwksPublicJSON(t, &key.PublicKey),
 			)
 			a, err := NewJWKS(JWKSParams{
-				Params: Params{Issuer: testIssuer, Audience: testAudience, Clock: testkit.NewMockClock(t, fixedNow)},
+				Issuer: testIssuer, Audience: testAudience, Clock: testkit.NewMockClock(t, fixedNow),
 			}, client)
 			require.NoError(t, err)
 
@@ -420,11 +416,9 @@ func TestNewJWKS(t *testing.T) {
 		t.Run("JWKS URL と issuer の両方が空の場合は設定エラーになる", func(t *testing.T) {
 			t.Parallel()
 			a, err := NewJWKS(JWKSParams{
-				Params: Params{
-					Audience: testAudience,
-					Clock:    testkit.NewMockClock(t, fixedNow),
-				},
-				JWKSURL: "",
+				Audience: testAudience,
+				Clock:    testkit.NewMockClock(t, fixedNow),
+				JWKSURL:  "",
 			}, stubJWKSClient(t, nil))
 			assert.Nil(t, a)
 			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidParams)
@@ -433,12 +427,10 @@ func TestNewJWKS(t *testing.T) {
 		t.Run("http client が nil の場合は設定エラーになる", func(t *testing.T) {
 			t.Parallel()
 			a, err := NewJWKS(JWKSParams{
-				Params: Params{
-					Issuer:   testIssuer,
-					Audience: testAudience,
-					Clock:    testkit.NewMockClock(t, fixedNow),
-				},
-				JWKSURL: "http://jwks.example.test/keys.json",
+				Issuer:   testIssuer,
+				Audience: testAudience,
+				Clock:    testkit.NewMockClock(t, fixedNow),
+				JWKSURL:  "http://jwks.example.test/keys.json",
 			}, nil)
 			assert.Nil(t, a)
 			require.ErrorIs(t, err, ErrJWTAuthenticatorInvalidParams)
@@ -450,7 +442,7 @@ func TestNewJWKS(t *testing.T) {
 			// discovery 応答の issuer 不一致 → 解決失敗。
 			client := jwksClientReturning(t, discoveryDoc(t, "https://evil.example.test", testIssuer+"/keys.json"))
 			a, err := NewJWKS(JWKSParams{
-				Params: Params{Issuer: testIssuer, Audience: testAudience, Clock: testkit.NewMockClock(t, fixedNow)},
+				Issuer: testIssuer, Audience: testAudience, Clock: testkit.NewMockClock(t, fixedNow),
 			}, client)
 			require.NoError(t, err)
 

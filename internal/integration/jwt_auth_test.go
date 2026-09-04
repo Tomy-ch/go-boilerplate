@@ -128,12 +128,10 @@ func startJWTAuthServer(t *testing.T, key *rsa.PrivateKey) *Server {
 		Return(&httpclient.Response{StatusCode: 200, Body: jwksJSON(t, &key.PublicKey, jwtTestKID)}, nil).AnyTimes()
 
 	authenticator, err := authjwt.NewJWKS(authjwt.JWKSParams{
-		Params: authjwt.Params{
-			Issuer:       jwtTestIssuer,
-			Audience:     jwtTestAudience,
-			ExpectedType: jwtAccessTokenType,
-			Clock:        system.NewClock(),
-		},
+		Issuer:           jwtTestIssuer,
+		Audience:         jwtTestAudience,
+		ExpectedType:     jwtAccessTokenType,
+		Clock:            system.NewClock(),
 		JWKSURL:          "http://jwks.example.test/keys.json",
 		AllowInsecureURL: true,
 	}, client)

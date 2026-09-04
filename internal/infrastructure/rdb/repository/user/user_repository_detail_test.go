@@ -145,18 +145,16 @@ func Test_repository_Update(t *testing.T) {
 
 				// DB に存在しない ID のエンティティ
 				u, err := user.New(uuidtestkit.NewTestFromSalt(t, "missing-update"), user.Attributes{
-					Profile: user.Profile{
-						FirstName:    "X",
-						LastName:     "Y",
-						Email:        "missing-update@example.com",
-						Phone:        "09000000000",
-						PrefectureID: prefID,
-						City:         "City",
-						Street:       "Street",
-						PostalCode:   "100-0001",
-					},
-					CreatedAt: now,
-					UpdatedAt: now,
+					FirstName:    "X",
+					LastName:     "Y",
+					Email:        "missing-update@example.com",
+					Phone:        "09000000000",
+					PrefectureID: prefID,
+					City:         "City",
+					Street:       "Street",
+					PostalCode:   "100-0001",
+					CreatedAt:    now,
+					UpdatedAt:    now,
 				})
 				require.NoError(t, err)
 

@@ -50,18 +50,16 @@ func newTestAuthn(t *testing.T) *authbd.Authn {
 func newSearchTestUser(t *testing.T, prefectureID uuid.UUID, createdAt time.Time) *user.User {
 	t.Helper()
 	u, err := user.New(uuidtestkit.NewTestFromSalt(t, "search_user_domain"), user.Attributes{
-		Profile: user.Profile{
-			FirstName:    "Grace",
-			LastName:     "Lee",
-			Email:        "grace.lee@example.com",
-			Phone:        "09012345678",
-			PrefectureID: prefectureID,
-			City:         "city_name",
-			Street:       "town_address",
-			PostalCode:   "150-0001",
-		},
-		CreatedAt: createdAt,
-		UpdatedAt: createdAt,
+		FirstName:    "Grace",
+		LastName:     "Lee",
+		Email:        "grace.lee@example.com",
+		Phone:        "09012345678",
+		PrefectureID: prefectureID,
+		City:         "city_name",
+		Street:       "town_address",
+		PostalCode:   "150-0001",
+		CreatedAt:    createdAt,
+		UpdatedAt:    createdAt,
 	})
 	require.NoError(t, err)
 	return u
@@ -609,19 +607,17 @@ func Test_toSearchResult(t *testing.T) {
 			t.Parallel()
 
 			u, err := user.New(uuidtestkit.NewTestFromSalt(t, "to_search_result_user"), user.Attributes{
-				Profile: user.Profile{
-					FirstName:    "Grace",
-					LastName:     "Lee",
-					Email:        "grace.lee@example.com",
-					Phone:        "09012345678",
-					PrefectureID: uuidtestkit.NewTestFromSalt(t, "to_search_result_prefecture"),
-					City:         "city_name",
-					Street:       "town_address",
-					Building:     &building,
-					PostalCode:   "150-0001",
-				},
-				CreatedAt: createdAt,
-				UpdatedAt: updatedAt,
+				FirstName:    "Grace",
+				LastName:     "Lee",
+				Email:        "grace.lee@example.com",
+				Phone:        "09012345678",
+				PrefectureID: uuidtestkit.NewTestFromSalt(t, "to_search_result_prefecture"),
+				City:         "city_name",
+				Street:       "town_address",
+				Building:     &building,
+				PostalCode:   "150-0001",
+				CreatedAt:    createdAt,
+				UpdatedAt:    updatedAt,
 			})
 			require.NoError(t, err)
 
@@ -648,19 +644,17 @@ func Test_toSearchResult(t *testing.T) {
 
 			deletedAt := updatedAt.Add(time.Hour)
 			u, err := user.New(uuidtestkit.NewTestFromSalt(t, "to_search_result_deleted"), user.Attributes{
-				Profile: user.Profile{
-					FirstName:    "Grace",
-					LastName:     "Lee",
-					Email:        "deleted@example.com",
-					Phone:        "09012345678",
-					PrefectureID: uuidtestkit.NewTestFromSalt(t, "to_search_result_prefecture"),
-					City:         "city_name",
-					Street:       "town_address",
-					PostalCode:   "150-0001",
-				},
-				CreatedAt: createdAt,
-				UpdatedAt: updatedAt,
-				DeletedAt: &deletedAt,
+				FirstName:    "Grace",
+				LastName:     "Lee",
+				Email:        "deleted@example.com",
+				Phone:        "09012345678",
+				PrefectureID: uuidtestkit.NewTestFromSalt(t, "to_search_result_prefecture"),
+				City:         "city_name",
+				Street:       "town_address",
+				PostalCode:   "150-0001",
+				CreatedAt:    createdAt,
+				UpdatedAt:    updatedAt,
+				DeletedAt:    &deletedAt,
 			})
 			require.NoError(t, err)
 

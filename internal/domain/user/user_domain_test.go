@@ -37,20 +37,18 @@ func TestNew(t *testing.T) {
 			t.Parallel()
 
 			actual, err := New(id, Attributes{
-				Profile: Profile{
-					FirstName:    firstName,
-					LastName:     lastName,
-					Email:        email,
-					Phone:        phone,
-					PrefectureID: prefectureID,
-					City:         city,
-					Street:       street,
-					Building:     building,
-					PostalCode:   postalCode,
-				},
-				CreatedAt: createdAt,
-				UpdatedAt: updatedAt,
-				DeletedAt: deletedAt,
+				FirstName:    firstName,
+				LastName:     lastName,
+				Email:        email,
+				Phone:        phone,
+				PrefectureID: prefectureID,
+				City:         city,
+				Street:       street,
+				Building:     building,
+				PostalCode:   postalCode,
+				CreatedAt:    createdAt,
+				UpdatedAt:    updatedAt,
+				DeletedAt:    deletedAt,
 			})
 
 			require.NoError(t, err)
@@ -73,19 +71,17 @@ func TestNew(t *testing.T) {
 			t.Parallel()
 
 			actual, err := New(id, Attributes{
-				Profile: Profile{
-					FirstName:    firstName,
-					LastName:     lastName,
-					Email:        email,
-					Phone:        phone,
-					PrefectureID: prefectureID,
-					City:         city,
-					Street:       street,
-					PostalCode:   postalCode,
-				},
-				CreatedAt: createdAt,
-				UpdatedAt: updatedAt,
-				DeletedAt: deletedAt,
+				FirstName:    firstName,
+				LastName:     lastName,
+				Email:        email,
+				Phone:        phone,
+				PrefectureID: prefectureID,
+				City:         city,
+				Street:       street,
+				PostalCode:   postalCode,
+				CreatedAt:    createdAt,
+				UpdatedAt:    updatedAt,
+				DeletedAt:    deletedAt,
 			})
 
 			require.NoError(t, err)
@@ -98,20 +94,18 @@ func TestNew(t *testing.T) {
 		t.Run("IDがゼロ値の場合、エラーを返す", func(t *testing.T) {
 			t.Parallel()
 			actual, err := New(uuid.UUID{}, Attributes{
-				Profile: Profile{
-					FirstName:    firstName,
-					LastName:     lastName,
-					Email:        email,
-					Phone:        phone,
-					PrefectureID: prefectureID,
-					City:         city,
-					Street:       street,
-					Building:     building,
-					PostalCode:   postalCode,
-				},
-				CreatedAt: createdAt,
-				UpdatedAt: updatedAt,
-				DeletedAt: deletedAt,
+				FirstName:    firstName,
+				LastName:     lastName,
+				Email:        email,
+				Phone:        phone,
+				PrefectureID: prefectureID,
+				City:         city,
+				Street:       street,
+				Building:     building,
+				PostalCode:   postalCode,
+				CreatedAt:    createdAt,
+				UpdatedAt:    updatedAt,
+				DeletedAt:    deletedAt,
 			})
 
 			assert.Nil(t, actual)
@@ -124,20 +118,18 @@ func TestNew(t *testing.T) {
 			t.Run("firstNameの文字数が最小値未満の場合、エラーを返す", func(t *testing.T) {
 				t.Parallel()
 				actual, err := New(id, Attributes{
-					Profile: Profile{
-						FirstName:    strings.Repeat("名", minLength-1),
-						LastName:     lastName,
-						Email:        email,
-						Phone:        phone,
-						PrefectureID: prefectureID,
-						City:         city,
-						Street:       street,
-						Building:     building,
-						PostalCode:   postalCode,
-					},
-					CreatedAt: createdAt,
-					UpdatedAt: updatedAt,
-					DeletedAt: deletedAt,
+					FirstName:    strings.Repeat("名", minLength-1),
+					LastName:     lastName,
+					Email:        email,
+					Phone:        phone,
+					PrefectureID: prefectureID,
+					City:         city,
+					Street:       street,
+					Building:     building,
+					PostalCode:   postalCode,
+					CreatedAt:    createdAt,
+					UpdatedAt:    updatedAt,
+					DeletedAt:    deletedAt,
 				})
 
 				assert.Nil(t, actual)
@@ -147,20 +139,18 @@ func TestNew(t *testing.T) {
 			t.Run("firstNameの文字数が最大値を超える場合、エラーを返す", func(t *testing.T) {
 				t.Parallel()
 				actual, err := New(id, Attributes{
-					Profile: Profile{
-						FirstName:    strings.Repeat("名", maxFirstNameLength+1),
-						LastName:     lastName,
-						Email:        email,
-						Phone:        phone,
-						PrefectureID: prefectureID,
-						City:         city,
-						Street:       street,
-						Building:     building,
-						PostalCode:   postalCode,
-					},
-					CreatedAt: createdAt,
-					UpdatedAt: updatedAt,
-					DeletedAt: deletedAt,
+					FirstName:    strings.Repeat("名", maxFirstNameLength+1),
+					LastName:     lastName,
+					Email:        email,
+					Phone:        phone,
+					PrefectureID: prefectureID,
+					City:         city,
+					Street:       street,
+					Building:     building,
+					PostalCode:   postalCode,
+					CreatedAt:    createdAt,
+					UpdatedAt:    updatedAt,
+					DeletedAt:    deletedAt,
 				})
 
 				assert.Nil(t, actual)
@@ -174,20 +164,18 @@ func TestNew(t *testing.T) {
 			t.Run("lastNameの文字数が最小値未満の場合、エラーを返す", func(t *testing.T) {
 				t.Parallel()
 				actual, err := New(id, Attributes{
-					Profile: Profile{
-						FirstName:    firstName,
-						LastName:     strings.Repeat("姓", minLength-1),
-						Email:        email,
-						Phone:        phone,
-						PrefectureID: prefectureID,
-						City:         city,
-						Street:       street,
-						Building:     building,
-						PostalCode:   postalCode,
-					},
-					CreatedAt: createdAt,
-					UpdatedAt: updatedAt,
-					DeletedAt: deletedAt,
+					FirstName:    firstName,
+					LastName:     strings.Repeat("姓", minLength-1),
+					Email:        email,
+					Phone:        phone,
+					PrefectureID: prefectureID,
+					City:         city,
+					Street:       street,
+					Building:     building,
+					PostalCode:   postalCode,
+					CreatedAt:    createdAt,
+					UpdatedAt:    updatedAt,
+					DeletedAt:    deletedAt,
 				})
 
 				assert.Nil(t, actual)
@@ -197,20 +185,18 @@ func TestNew(t *testing.T) {
 			t.Run("lastNameの文字数が最大値を超える場合、エラーを返す", func(t *testing.T) {
 				t.Parallel()
 				actual, err := New(id, Attributes{
-					Profile: Profile{
-						FirstName:    firstName,
-						LastName:     strings.Repeat("姓", maxLastNameLength+1),
-						Email:        email,
-						Phone:        phone,
-						PrefectureID: prefectureID,
-						City:         city,
-						Street:       street,
-						Building:     building,
-						PostalCode:   postalCode,
-					},
-					CreatedAt: createdAt,
-					UpdatedAt: updatedAt,
-					DeletedAt: deletedAt,
+					FirstName:    firstName,
+					LastName:     strings.Repeat("姓", maxLastNameLength+1),
+					Email:        email,
+					Phone:        phone,
+					PrefectureID: prefectureID,
+					City:         city,
+					Street:       street,
+					Building:     building,
+					PostalCode:   postalCode,
+					CreatedAt:    createdAt,
+					UpdatedAt:    updatedAt,
+					DeletedAt:    deletedAt,
 				})
 
 				assert.Nil(t, actual)
@@ -223,20 +209,18 @@ func TestNew(t *testing.T) {
 			t.Run("emailの文字数が最小値未満の場合、エラーを返す", func(t *testing.T) {
 				t.Parallel()
 				actual, err := New(id, Attributes{
-					Profile: Profile{
-						FirstName:    firstName,
-						LastName:     lastName,
-						Email:        strings.Repeat("a", minLength-1),
-						Phone:        phone,
-						PrefectureID: prefectureID,
-						City:         city,
-						Street:       street,
-						Building:     building,
-						PostalCode:   postalCode,
-					},
-					CreatedAt: createdAt,
-					UpdatedAt: updatedAt,
-					DeletedAt: deletedAt,
+					FirstName:    firstName,
+					LastName:     lastName,
+					Email:        strings.Repeat("a", minLength-1),
+					Phone:        phone,
+					PrefectureID: prefectureID,
+					City:         city,
+					Street:       street,
+					Building:     building,
+					PostalCode:   postalCode,
+					CreatedAt:    createdAt,
+					UpdatedAt:    updatedAt,
+					DeletedAt:    deletedAt,
 				})
 
 				assert.Nil(t, actual)
@@ -246,20 +230,18 @@ func TestNew(t *testing.T) {
 			t.Run("emailの文字数が最大値を超える場合、エラーを返す", func(t *testing.T) {
 				t.Parallel()
 				actual, err := New(id, Attributes{
-					Profile: Profile{
-						FirstName:    firstName,
-						LastName:     lastName,
-						Email:        strings.Repeat("a", maxEmailLength+1),
-						Phone:        phone,
-						PrefectureID: prefectureID,
-						City:         city,
-						Street:       street,
-						Building:     building,
-						PostalCode:   postalCode,
-					},
-					CreatedAt: createdAt,
-					UpdatedAt: updatedAt,
-					DeletedAt: deletedAt,
+					FirstName:    firstName,
+					LastName:     lastName,
+					Email:        strings.Repeat("a", maxEmailLength+1),
+					Phone:        phone,
+					PrefectureID: prefectureID,
+					City:         city,
+					Street:       street,
+					Building:     building,
+					PostalCode:   postalCode,
+					CreatedAt:    createdAt,
+					UpdatedAt:    updatedAt,
+					DeletedAt:    deletedAt,
 				})
 
 				assert.Nil(t, actual)
@@ -269,20 +251,18 @@ func TestNew(t *testing.T) {
 			t.Run("emailの形式が不正な場合、エラーを返す", func(t *testing.T) {
 				t.Parallel()
 				actual, err := New(id, Attributes{
-					Profile: Profile{
-						FirstName:    firstName,
-						LastName:     lastName,
-						Email:        "not-an-email",
-						Phone:        phone,
-						PrefectureID: prefectureID,
-						City:         city,
-						Street:       street,
-						Building:     building,
-						PostalCode:   postalCode,
-					},
-					CreatedAt: createdAt,
-					UpdatedAt: updatedAt,
-					DeletedAt: deletedAt,
+					FirstName:    firstName,
+					LastName:     lastName,
+					Email:        "not-an-email",
+					Phone:        phone,
+					PrefectureID: prefectureID,
+					City:         city,
+					Street:       street,
+					Building:     building,
+					PostalCode:   postalCode,
+					CreatedAt:    createdAt,
+					UpdatedAt:    updatedAt,
+					DeletedAt:    deletedAt,
 				})
 
 				assert.Nil(t, actual)
@@ -296,20 +276,18 @@ func TestNew(t *testing.T) {
 			t.Run("phoneの文字数が最小値未満の場合、エラーを返す", func(t *testing.T) {
 				t.Parallel()
 				actual, err := New(id, Attributes{
-					Profile: Profile{
-						FirstName:    firstName,
-						LastName:     lastName,
-						Email:        email,
-						Phone:        strings.Repeat("1", minLength-1),
-						PrefectureID: prefectureID,
-						City:         city,
-						Street:       street,
-						Building:     building,
-						PostalCode:   postalCode,
-					},
-					CreatedAt: createdAt,
-					UpdatedAt: updatedAt,
-					DeletedAt: deletedAt,
+					FirstName:    firstName,
+					LastName:     lastName,
+					Email:        email,
+					Phone:        strings.Repeat("1", minLength-1),
+					PrefectureID: prefectureID,
+					City:         city,
+					Street:       street,
+					Building:     building,
+					PostalCode:   postalCode,
+					CreatedAt:    createdAt,
+					UpdatedAt:    updatedAt,
+					DeletedAt:    deletedAt,
 				})
 
 				assert.Nil(t, actual)
@@ -319,20 +297,18 @@ func TestNew(t *testing.T) {
 			t.Run("phoneの文字数が最大値を超える場合、エラーを返す", func(t *testing.T) {
 				t.Parallel()
 				actual, err := New(id, Attributes{
-					Profile: Profile{
-						FirstName:    firstName,
-						LastName:     lastName,
-						Email:        email,
-						Phone:        strings.Repeat("1", maxPhoneLength+1),
-						PrefectureID: prefectureID,
-						City:         city,
-						Street:       street,
-						Building:     building,
-						PostalCode:   postalCode,
-					},
-					CreatedAt: createdAt,
-					UpdatedAt: updatedAt,
-					DeletedAt: deletedAt,
+					FirstName:    firstName,
+					LastName:     lastName,
+					Email:        email,
+					Phone:        strings.Repeat("1", maxPhoneLength+1),
+					PrefectureID: prefectureID,
+					City:         city,
+					Street:       street,
+					Building:     building,
+					PostalCode:   postalCode,
+					CreatedAt:    createdAt,
+					UpdatedAt:    updatedAt,
+					DeletedAt:    deletedAt,
 				})
 
 				assert.Nil(t, actual)
@@ -346,20 +322,18 @@ func TestNew(t *testing.T) {
 			t.Run("cityの文字数が最小値未満の場合、エラーを返す", func(t *testing.T) {
 				t.Parallel()
 				actual, err := New(id, Attributes{
-					Profile: Profile{
-						FirstName:    firstName,
-						LastName:     lastName,
-						Email:        email,
-						Phone:        phone,
-						PrefectureID: prefectureID,
-						City:         strings.Repeat("市", minLength-1),
-						Street:       street,
-						Building:     building,
-						PostalCode:   postalCode,
-					},
-					CreatedAt: createdAt,
-					UpdatedAt: updatedAt,
-					DeletedAt: deletedAt,
+					FirstName:    firstName,
+					LastName:     lastName,
+					Email:        email,
+					Phone:        phone,
+					PrefectureID: prefectureID,
+					City:         strings.Repeat("市", minLength-1),
+					Street:       street,
+					Building:     building,
+					PostalCode:   postalCode,
+					CreatedAt:    createdAt,
+					UpdatedAt:    updatedAt,
+					DeletedAt:    deletedAt,
 				})
 
 				assert.Nil(t, actual)
@@ -369,20 +343,18 @@ func TestNew(t *testing.T) {
 			t.Run("cityの文字数が最大値を超える場合、エラーを返す", func(t *testing.T) {
 				t.Parallel()
 				actual, err := New(id, Attributes{
-					Profile: Profile{
-						FirstName:    firstName,
-						LastName:     lastName,
-						Email:        email,
-						Phone:        phone,
-						PrefectureID: prefectureID,
-						City:         strings.Repeat("市", maxCityLength+1),
-						Street:       street,
-						Building:     building,
-						PostalCode:   postalCode,
-					},
-					CreatedAt: createdAt,
-					UpdatedAt: updatedAt,
-					DeletedAt: deletedAt,
+					FirstName:    firstName,
+					LastName:     lastName,
+					Email:        email,
+					Phone:        phone,
+					PrefectureID: prefectureID,
+					City:         strings.Repeat("市", maxCityLength+1),
+					Street:       street,
+					Building:     building,
+					PostalCode:   postalCode,
+					CreatedAt:    createdAt,
+					UpdatedAt:    updatedAt,
+					DeletedAt:    deletedAt,
 				})
 
 				assert.Nil(t, actual)
@@ -396,20 +368,18 @@ func TestNew(t *testing.T) {
 			t.Run("streetの文字数が最小値未満の場合、エラーを返す", func(t *testing.T) {
 				t.Parallel()
 				actual, err := New(id, Attributes{
-					Profile: Profile{
-						FirstName:    firstName,
-						LastName:     lastName,
-						Email:        email,
-						Phone:        phone,
-						PrefectureID: prefectureID,
-						City:         city,
-						Street:       strings.Repeat("番", minLength-1),
-						Building:     building,
-						PostalCode:   postalCode,
-					},
-					CreatedAt: createdAt,
-					UpdatedAt: updatedAt,
-					DeletedAt: deletedAt,
+					FirstName:    firstName,
+					LastName:     lastName,
+					Email:        email,
+					Phone:        phone,
+					PrefectureID: prefectureID,
+					City:         city,
+					Street:       strings.Repeat("番", minLength-1),
+					Building:     building,
+					PostalCode:   postalCode,
+					CreatedAt:    createdAt,
+					UpdatedAt:    updatedAt,
+					DeletedAt:    deletedAt,
 				})
 
 				assert.Nil(t, actual)
@@ -419,20 +389,18 @@ func TestNew(t *testing.T) {
 			t.Run("streetの文字数が最大値を超える場合、エラーを返す", func(t *testing.T) {
 				t.Parallel()
 				actual, err := New(id, Attributes{
-					Profile: Profile{
-						FirstName:    firstName,
-						LastName:     lastName,
-						Email:        email,
-						Phone:        phone,
-						PrefectureID: prefectureID,
-						City:         city,
-						Street:       strings.Repeat("番", maxStreetLength+1),
-						Building:     building,
-						PostalCode:   postalCode,
-					},
-					CreatedAt: createdAt,
-					UpdatedAt: updatedAt,
-					DeletedAt: deletedAt,
+					FirstName:    firstName,
+					LastName:     lastName,
+					Email:        email,
+					Phone:        phone,
+					PrefectureID: prefectureID,
+					City:         city,
+					Street:       strings.Repeat("番", maxStreetLength+1),
+					Building:     building,
+					PostalCode:   postalCode,
+					CreatedAt:    createdAt,
+					UpdatedAt:    updatedAt,
+					DeletedAt:    deletedAt,
 				})
 
 				assert.Nil(t, actual)
@@ -446,20 +414,18 @@ func TestNew(t *testing.T) {
 			t.Run("buildingの文字数が最小値未満の場合、エラーを返す", func(t *testing.T) {
 				t.Parallel()
 				actual, err := New(id, Attributes{
-					Profile: Profile{
-						FirstName:    firstName,
-						LastName:     lastName,
-						Email:        email,
-						Phone:        phone,
-						PrefectureID: prefectureID,
-						City:         city,
-						Street:       street,
-						Building:     new(strings.Repeat("建", minLength-1)),
-						PostalCode:   postalCode,
-					},
-					CreatedAt: createdAt,
-					UpdatedAt: updatedAt,
-					DeletedAt: deletedAt,
+					FirstName:    firstName,
+					LastName:     lastName,
+					Email:        email,
+					Phone:        phone,
+					PrefectureID: prefectureID,
+					City:         city,
+					Street:       street,
+					Building:     new(strings.Repeat("建", minLength-1)),
+					PostalCode:   postalCode,
+					CreatedAt:    createdAt,
+					UpdatedAt:    updatedAt,
+					DeletedAt:    deletedAt,
 				})
 
 				assert.Nil(t, actual)
@@ -469,20 +435,18 @@ func TestNew(t *testing.T) {
 			t.Run("buildingの文字数が最大値を超える場合、エラーを返す", func(t *testing.T) {
 				t.Parallel()
 				actual, err := New(id, Attributes{
-					Profile: Profile{
-						FirstName:    firstName,
-						LastName:     lastName,
-						Email:        email,
-						Phone:        phone,
-						PrefectureID: prefectureID,
-						City:         city,
-						Street:       street,
-						Building:     new(strings.Repeat("建", maxBuildingLength+1)),
-						PostalCode:   postalCode,
-					},
-					CreatedAt: createdAt,
-					UpdatedAt: updatedAt,
-					DeletedAt: deletedAt,
+					FirstName:    firstName,
+					LastName:     lastName,
+					Email:        email,
+					Phone:        phone,
+					PrefectureID: prefectureID,
+					City:         city,
+					Street:       street,
+					Building:     new(strings.Repeat("建", maxBuildingLength+1)),
+					PostalCode:   postalCode,
+					CreatedAt:    createdAt,
+					UpdatedAt:    updatedAt,
+					DeletedAt:    deletedAt,
 				})
 
 				assert.Nil(t, actual)
@@ -496,20 +460,18 @@ func TestNew(t *testing.T) {
 			t.Run("postalCodeが空文字の場合、エラーを返す", func(t *testing.T) {
 				t.Parallel()
 				actual, err := New(id, Attributes{
-					Profile: Profile{
-						FirstName:    firstName,
-						LastName:     lastName,
-						Email:        email,
-						Phone:        phone,
-						PrefectureID: prefectureID,
-						City:         city,
-						Street:       street,
-						Building:     building,
-						PostalCode:   "",
-					},
-					CreatedAt: createdAt,
-					UpdatedAt: updatedAt,
-					DeletedAt: deletedAt,
+					FirstName:    firstName,
+					LastName:     lastName,
+					Email:        email,
+					Phone:        phone,
+					PrefectureID: prefectureID,
+					City:         city,
+					Street:       street,
+					Building:     building,
+					PostalCode:   "",
+					CreatedAt:    createdAt,
+					UpdatedAt:    updatedAt,
+					DeletedAt:    deletedAt,
 				})
 
 				assert.Nil(t, actual)
@@ -519,20 +481,18 @@ func TestNew(t *testing.T) {
 			t.Run("postalCodeがハイフン無しの場合、エラーを返す", func(t *testing.T) {
 				t.Parallel()
 				actual, err := New(id, Attributes{
-					Profile: Profile{
-						FirstName:    firstName,
-						LastName:     lastName,
-						Email:        email,
-						Phone:        phone,
-						PrefectureID: prefectureID,
-						City:         city,
-						Street:       street,
-						Building:     building,
-						PostalCode:   "1500001",
-					},
-					CreatedAt: createdAt,
-					UpdatedAt: updatedAt,
-					DeletedAt: deletedAt,
+					FirstName:    firstName,
+					LastName:     lastName,
+					Email:        email,
+					Phone:        phone,
+					PrefectureID: prefectureID,
+					City:         city,
+					Street:       street,
+					Building:     building,
+					PostalCode:   "1500001",
+					CreatedAt:    createdAt,
+					UpdatedAt:    updatedAt,
+					DeletedAt:    deletedAt,
 				})
 
 				assert.Nil(t, actual)
@@ -543,20 +503,18 @@ func TestNew(t *testing.T) {
 		t.Run("prefectureIDがゼロ値の場合、エラーを返す", func(t *testing.T) {
 			t.Parallel()
 			actual, err := New(id, Attributes{
-				Profile: Profile{
-					FirstName:    firstName,
-					LastName:     lastName,
-					Email:        email,
-					Phone:        phone,
-					PrefectureID: uuid.UUID{},
-					City:         city,
-					Street:       street,
-					Building:     building,
-					PostalCode:   postalCode,
-				},
-				CreatedAt: createdAt,
-				UpdatedAt: updatedAt,
-				DeletedAt: deletedAt,
+				FirstName:    firstName,
+				LastName:     lastName,
+				Email:        email,
+				Phone:        phone,
+				PrefectureID: uuid.UUID{},
+				City:         city,
+				Street:       street,
+				Building:     building,
+				PostalCode:   postalCode,
+				CreatedAt:    createdAt,
+				UpdatedAt:    updatedAt,
+				DeletedAt:    deletedAt,
 			})
 
 			assert.Nil(t, actual)
@@ -566,20 +524,18 @@ func TestNew(t *testing.T) {
 		t.Run("updatedAtがcreatedAtより前の場合、エラーを返す", func(t *testing.T) {
 			t.Parallel()
 			actual, err := New(id, Attributes{
-				Profile: Profile{
-					FirstName:    firstName,
-					LastName:     lastName,
-					Email:        email,
-					Phone:        phone,
-					PrefectureID: prefectureID,
-					City:         city,
-					Street:       street,
-					Building:     building,
-					PostalCode:   postalCode,
-				},
-				CreatedAt: createdAt,
-				UpdatedAt: createdAt.Add(-time.Minute),
-				DeletedAt: deletedAt,
+				FirstName:    firstName,
+				LastName:     lastName,
+				Email:        email,
+				Phone:        phone,
+				PrefectureID: prefectureID,
+				City:         city,
+				Street:       street,
+				Building:     building,
+				PostalCode:   postalCode,
+				CreatedAt:    createdAt,
+				UpdatedAt:    createdAt.Add(-time.Minute),
+				DeletedAt:    deletedAt,
 			})
 
 			assert.Nil(t, actual)
@@ -592,20 +548,18 @@ func TestNew(t *testing.T) {
 			t.Run("deletedAtがcreatedAtより前の場合、エラーを返す", func(t *testing.T) {
 				t.Parallel()
 				actual, err := New(id, Attributes{
-					Profile: Profile{
-						FirstName:    firstName,
-						LastName:     lastName,
-						Email:        email,
-						Phone:        phone,
-						PrefectureID: prefectureID,
-						City:         city,
-						Street:       street,
-						Building:     building,
-						PostalCode:   postalCode,
-					},
-					CreatedAt: createdAt,
-					UpdatedAt: updatedAt,
-					DeletedAt: new(createdAt.Add(-time.Minute)),
+					FirstName:    firstName,
+					LastName:     lastName,
+					Email:        email,
+					Phone:        phone,
+					PrefectureID: prefectureID,
+					City:         city,
+					Street:       street,
+					Building:     building,
+					PostalCode:   postalCode,
+					CreatedAt:    createdAt,
+					UpdatedAt:    updatedAt,
+					DeletedAt:    new(createdAt.Add(-time.Minute)),
 				})
 
 				assert.Nil(t, actual)
@@ -615,20 +569,18 @@ func TestNew(t *testing.T) {
 			t.Run("deletedAtがupdatedAtより前の場合、エラーを返す", func(t *testing.T) {
 				t.Parallel()
 				actual, err := New(id, Attributes{
-					Profile: Profile{
-						FirstName:    firstName,
-						LastName:     lastName,
-						Email:        email,
-						Phone:        phone,
-						PrefectureID: prefectureID,
-						City:         city,
-						Street:       street,
-						Building:     building,
-						PostalCode:   postalCode,
-					},
-					CreatedAt: createdAt,
-					UpdatedAt: updatedAt,
-					DeletedAt: new(updatedAt.Add(-time.Minute)),
+					FirstName:    firstName,
+					LastName:     lastName,
+					Email:        email,
+					Phone:        phone,
+					PrefectureID: prefectureID,
+					City:         city,
+					Street:       street,
+					Building:     building,
+					PostalCode:   postalCode,
+					CreatedAt:    createdAt,
+					UpdatedAt:    updatedAt,
+					DeletedAt:    new(updatedAt.Add(-time.Minute)),
 				})
 
 				assert.Nil(t, actual)
@@ -644,20 +596,18 @@ func newAccessorUser(t *testing.T) *User {
 	t.Helper()
 	baseTime := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 	u, err := New(uuidtestkit.NewTestFromSalt(t, "user"), Attributes{
-		Profile: Profile{
-			FirstName:    "John",
-			LastName:     "Doe",
-			Email:        "john.doe@example.com",
-			Phone:        "1234567890",
-			PrefectureID: uuidtestkit.NewTestFromSalt(t, "prefecture"),
-			City:         "Shibuya",
-			Street:       "1-2-3",
-			Building:     new("Building A"),
-			PostalCode:   "150-0001",
-		},
-		CreatedAt: baseTime,
-		UpdatedAt: baseTime.Add(time.Hour),
-		DeletedAt: new(baseTime.Add(time.Hour).Add(time.Minute)),
+		FirstName:    "John",
+		LastName:     "Doe",
+		Email:        "john.doe@example.com",
+		Phone:        "1234567890",
+		PrefectureID: uuidtestkit.NewTestFromSalt(t, "prefecture"),
+		City:         "Shibuya",
+		Street:       "1-2-3",
+		Building:     new("Building A"),
+		PostalCode:   "150-0001",
+		CreatedAt:    baseTime,
+		UpdatedAt:    baseTime.Add(time.Hour),
+		DeletedAt:    new(baseTime.Add(time.Hour).Add(time.Minute)),
 	})
 	require.NoError(t, err)
 	return u
@@ -800,18 +750,16 @@ func TestUser_Building(t *testing.T) {
 			t.Parallel()
 			baseTime := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 			u, err := New(uuidtestkit.NewTestFromSalt(t, "user"), Attributes{
-				Profile: Profile{
-					FirstName:    "John",
-					LastName:     "Doe",
-					Email:        "john.doe@example.com",
-					Phone:        "1234567890",
-					PrefectureID: uuidtestkit.NewTestFromSalt(t, "prefecture"),
-					City:         "Shibuya",
-					Street:       "1-2-3",
-					PostalCode:   "150-0001",
-				},
-				CreatedAt: baseTime,
-				UpdatedAt: baseTime.Add(time.Hour),
+				FirstName:    "John",
+				LastName:     "Doe",
+				Email:        "john.doe@example.com",
+				Phone:        "1234567890",
+				PrefectureID: uuidtestkit.NewTestFromSalt(t, "prefecture"),
+				City:         "Shibuya",
+				Street:       "1-2-3",
+				PostalCode:   "150-0001",
+				CreatedAt:    baseTime,
+				UpdatedAt:    baseTime.Add(time.Hour),
 			})
 			require.NoError(t, err)
 
@@ -824,20 +772,18 @@ func TestUser_Building(t *testing.T) {
 			baseTime := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 			building := new("Building A")
 			user, err := New(uuidtestkit.NewTestFromSalt(t, "user"), Attributes{
-				Profile: Profile{
-					FirstName:    "John",
-					LastName:     "Doe",
-					Email:        "john.doe@example.com",
-					Phone:        "1234567890",
-					PrefectureID: uuidtestkit.NewTestFromSalt(t, "prefecture"),
-					City:         "Shibuya",
-					Street:       "1-2-3",
-					Building:     building,
-					PostalCode:   "150-0001",
-				},
-				CreatedAt: baseTime,
-				UpdatedAt: baseTime.Add(time.Hour),
-				DeletedAt: new(baseTime.Add(time.Hour).Add(time.Minute)),
+				FirstName:    "John",
+				LastName:     "Doe",
+				Email:        "john.doe@example.com",
+				Phone:        "1234567890",
+				PrefectureID: uuidtestkit.NewTestFromSalt(t, "prefecture"),
+				City:         "Shibuya",
+				Street:       "1-2-3",
+				Building:     building,
+				PostalCode:   "150-0001",
+				CreatedAt:    baseTime,
+				UpdatedAt:    baseTime.Add(time.Hour),
+				DeletedAt:    new(baseTime.Add(time.Hour).Add(time.Minute)),
 			})
 			require.NoError(t, err)
 
@@ -899,18 +845,16 @@ func TestUser_DeletedAt(t *testing.T) {
 			t.Parallel()
 			baseTime := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 			u, err := New(uuidtestkit.NewTestFromSalt(t, "user"), Attributes{
-				Profile: Profile{
-					FirstName:    "John",
-					LastName:     "Doe",
-					Email:        "john.doe@example.com",
-					Phone:        "1234567890",
-					PrefectureID: uuidtestkit.NewTestFromSalt(t, "prefecture"),
-					City:         "Shibuya",
-					Street:       "1-2-3",
-					PostalCode:   "150-0001",
-				},
-				CreatedAt: baseTime,
-				UpdatedAt: baseTime.Add(time.Hour),
+				FirstName:    "John",
+				LastName:     "Doe",
+				Email:        "john.doe@example.com",
+				Phone:        "1234567890",
+				PrefectureID: uuidtestkit.NewTestFromSalt(t, "prefecture"),
+				City:         "Shibuya",
+				Street:       "1-2-3",
+				PostalCode:   "150-0001",
+				CreatedAt:    baseTime,
+				UpdatedAt:    baseTime.Add(time.Hour),
 			})
 			require.NoError(t, err)
 
@@ -923,20 +867,18 @@ func TestUser_DeletedAt(t *testing.T) {
 			baseTime := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 			deletedAt := new(baseTime.Add(time.Hour).Add(time.Minute))
 			user, err := New(uuidtestkit.NewTestFromSalt(t, "user"), Attributes{
-				Profile: Profile{
-					FirstName:    "John",
-					LastName:     "Doe",
-					Email:        "john.doe@example.com",
-					Phone:        "1234567890",
-					PrefectureID: uuidtestkit.NewTestFromSalt(t, "prefecture"),
-					City:         "Shibuya",
-					Street:       "1-2-3",
-					Building:     new("Building A"),
-					PostalCode:   "150-0001",
-				},
-				CreatedAt: baseTime,
-				UpdatedAt: baseTime.Add(time.Hour),
-				DeletedAt: deletedAt,
+				FirstName:    "John",
+				LastName:     "Doe",
+				Email:        "john.doe@example.com",
+				Phone:        "1234567890",
+				PrefectureID: uuidtestkit.NewTestFromSalt(t, "prefecture"),
+				City:         "Shibuya",
+				Street:       "1-2-3",
+				Building:     new("Building A"),
+				PostalCode:   "150-0001",
+				CreatedAt:    baseTime,
+				UpdatedAt:    baseTime.Add(time.Hour),
+				DeletedAt:    deletedAt,
 			})
 			require.NoError(t, err)
 
@@ -1033,19 +975,17 @@ func newValidUser(t *testing.T) (*User, time.Time) {
 	t.Helper()
 	base := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 	u, err := New(uuidtestkit.NewTestFromSalt(t, "user"), Attributes{
-		Profile: Profile{
-			FirstName:    "John",
-			LastName:     "Doe",
-			Email:        "john@example.com",
-			Phone:        "1234567890",
-			PrefectureID: uuidtestkit.NewTestFromSalt(t, "prefecture"),
-			City:         "Shibuya",
-			Street:       "1-2-3",
-			Building:     new("Building A"),
-			PostalCode:   "150-0001",
-		},
-		CreatedAt: base,
-		UpdatedAt: base,
+		FirstName:    "John",
+		LastName:     "Doe",
+		Email:        "john@example.com",
+		Phone:        "1234567890",
+		PrefectureID: uuidtestkit.NewTestFromSalt(t, "prefecture"),
+		City:         "Shibuya",
+		Street:       "1-2-3",
+		Building:     new("Building A"),
+		PostalCode:   "150-0001",
+		CreatedAt:    base,
+		UpdatedAt:    base,
 	})
 	require.NoError(t, err)
 	return u, base
@@ -1056,19 +996,17 @@ func newUserWithUpdatedAt(t *testing.T, offset time.Duration) (*User, time.Time)
 	t.Helper()
 	base := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 	u, err := New(uuidtestkit.NewTestFromSalt(t, "user"), Attributes{
-		Profile: Profile{
-			FirstName:    "John",
-			LastName:     "Doe",
-			Email:        "john@example.com",
-			Phone:        "1234567890",
-			PrefectureID: uuidtestkit.NewTestFromSalt(t, "prefecture"),
-			City:         "Shibuya",
-			Street:       "1-2-3",
-			Building:     new("Building A"),
-			PostalCode:   "150-0001",
-		},
-		CreatedAt: base,
-		UpdatedAt: base.Add(offset),
+		FirstName:    "John",
+		LastName:     "Doe",
+		Email:        "john@example.com",
+		Phone:        "1234567890",
+		PrefectureID: uuidtestkit.NewTestFromSalt(t, "prefecture"),
+		City:         "Shibuya",
+		Street:       "1-2-3",
+		Building:     new("Building A"),
+		PostalCode:   "150-0001",
+		CreatedAt:    base,
+		UpdatedAt:    base.Add(offset),
 	})
 	require.NoError(t, err)
 	return u, base
@@ -1492,19 +1430,17 @@ func TestUser_MarkAsDeleted(t *testing.T) {
 			t.Parallel()
 			base := time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC)
 			u, err := New(uuidtestkit.NewTestFromSalt(t, "user"), Attributes{
-				Profile: Profile{
-					FirstName:    "John",
-					LastName:     "Doe",
-					Email:        "john@example.com",
-					Phone:        "1234567890",
-					PrefectureID: uuidtestkit.NewTestFromSalt(t, "prefecture"),
-					City:         "Shibuya",
-					Street:       "1-2-3",
-					Building:     new("Building A"),
-					PostalCode:   "150-0001",
-				},
-				CreatedAt: base,
-				UpdatedAt: base.Add(2 * time.Hour),
+				FirstName:    "John",
+				LastName:     "Doe",
+				Email:        "john@example.com",
+				Phone:        "1234567890",
+				PrefectureID: uuidtestkit.NewTestFromSalt(t, "prefecture"),
+				City:         "Shibuya",
+				Street:       "1-2-3",
+				Building:     new("Building A"),
+				PostalCode:   "150-0001",
+				CreatedAt:    base,
+				UpdatedAt:    base.Add(2 * time.Hour),
 			})
 			require.NoError(t, err)
 

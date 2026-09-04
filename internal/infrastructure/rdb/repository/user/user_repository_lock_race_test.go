@@ -64,18 +64,16 @@ func Test_lockSerializesWithdrawalAgainstPurchase(t *testing.T) {
 	require.NoError(t, err)
 
 	target, err := user.New(targetID, user.Attributes{
-		Profile: user.Profile{
-			FirstName:    "Race",
-			LastName:     "Target",
-			Email:        "race.target@example.com",
-			Phone:        "7777777777",
-			PrefectureID: prefectureID,
-			City:         "新宿区",
-			Street:       "9-9-9",
-			PostalCode:   "160-0009",
-		},
-		CreatedAt: now,
-		UpdatedAt: now,
+		FirstName:    "Race",
+		LastName:     "Target",
+		Email:        "race.target@example.com",
+		Phone:        "7777777777",
+		PrefectureID: prefectureID,
+		City:         "新宿区",
+		Street:       "9-9-9",
+		PostalCode:   "160-0009",
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	})
 	require.NoError(t, err)
 
