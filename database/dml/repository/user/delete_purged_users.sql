@@ -22,7 +22,7 @@ WHERE user_id IN (
 
 -- name: DeleteUsersByIDs :execrows
 -- 削除件数を返す。従属行の削除後に呼ぶこと（参照の残存はここでは検査しない）。
--- 論理削除済みを永続化側でも検査する理由は docs/spec/user/domain.md の PurgeByIDs を参照。
+-- 論理削除済みを永続化側でも検査する理由は docs/spec/domain/user.md の PurgeByIDs を参照。
 DELETE FROM users
 WHERE id = ANY(sqlc.arg('ids')::UUID[])
     AND deleted_at IS NOT NULL;

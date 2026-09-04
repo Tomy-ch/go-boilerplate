@@ -31,7 +31,7 @@ func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc purchaseuc.Use
 }
 
 // GetPurchasesDetail は、本人の購入 1 件を明細込みで取得します。認証必須。404: 不存在 / 他人の購入
-// （理由は docs/spec/purchase/usecase.md § GET 詳細（購入詳細・集約跨ぎ QS）を参照）。
+// （理由は docs/spec/usecase/purchase.md § GET 詳細（購入詳細・集約跨ぎ QS）を参照）。
 func (s *server) GetPurchasesDetail(
 	ctx context.Context,
 	request gen.GetPurchasesDetailRequestObject,

@@ -232,7 +232,7 @@ func (p *Product) Images() []Image { return slices.Clone(p.images) }
 
 // PrimaryImage は、商品を 1 枚で表すときに使う代表画像と、それを持つかどうかを返します。
 // 画像を持たない商品は代表画像を持たないため、ok は false です。
-// 何を代表とするかは docs/spec/product/domain.md の PrimaryImage が定めます。
+// 何を代表とするかは docs/spec/domain/product.md の PrimaryImage が定めます。
 func (p *Product) PrimaryImage() (Image, bool) {
 	if len(p.images) == 0 {
 		return Image{}, false

@@ -48,16 +48,16 @@ func persistenceModule() fx.Option {
 		fx.Module("query_service",
 			fx.Provide(
 				// sample-api:begin
-				// productimageqs: 商品を経由しない画像パスの参照照合（docs/spec/product/usecase.md § SweepOrphans）
+				// productimageqs: 商品を経由しない画像パスの参照照合（docs/spec/usecase/product.md § SweepOrphans）
 				productimageqs.New,
-				// productrankingqs: 商品売上ランキング（docs/spec/product-ranking/usecase.md § Overview）
+				// productrankingqs: 商品売上ランキング（docs/spec/usecase/product/ranking.md § Overview）
 				productrankingqs.New,
-				// purchasedetailqs / purchasefeedqs: 集約跨ぎ read 投影（docs/spec/purchase/usecase.md § GET 詳細 / GET 一覧）
+				// purchasedetailqs / purchasefeedqs: 集約跨ぎ read 投影（docs/spec/usecase/purchase.md § GET 詳細 / GET 一覧）
 				purchasedetailqs.New,
 				purchasefeedqs.New,
-				// purchasesummaryqs: 認証主体自身の購入集計（docs/spec/purchase/usecase.md § GET 集計）
+				// purchasesummaryqs: 認証主体自身の購入集計（docs/spec/usecase/purchase.md § GET 集計）
 				purchasesummaryqs.New,
-				// dashboardqs: 購入・商品横断の admin 集計（docs/spec/dashboard/usecase.md § Overview）
+				// dashboardqs: 購入・商品横断の admin 集計（docs/spec/usecase/dashboard.md § Overview）
 				dashboardqs.New,
 				// sample-api:end
 			),

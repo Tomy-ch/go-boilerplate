@@ -33,7 +33,7 @@ func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc purchaseuc.Use
 }
 
 // PatchPurchasesPay は、本人の購入を支払い済みへ遷移させます。認証必須。404: 不存在 / 他人の購入。409: 不正遷移
-// （詳細は docs/spec/purchase/usecase.md § PATCH 支払い を参照）。
+// （詳細は docs/spec/usecase/purchase.md § PATCH 支払い を参照）。
 func (s *server) PatchPurchasesPay(
 	ctx context.Context,
 	request gen.PatchPurchasesPayRequestObject,

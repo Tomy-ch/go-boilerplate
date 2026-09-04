@@ -1,6 +1,6 @@
 -- name: GetPurchaseByID :one
 -- ID から購入を 1 件取得する。現在状態は購入ステータスマスタとの結合で code を解決する
--- （code が状態機械の業務キーである根拠は Purchase 集約の定義。docs/spec/purchase/domain.md 参照）。
+-- （code が状態機械の業務キーである根拠は Purchase 集約の定義。docs/spec/domain/purchase.md 参照）。
 -- 存在しない場合は 0 行（NotFound）。
 SELECT
     ps.code AS status_code,

@@ -14,7 +14,7 @@ import (
 )
 
 // displayMinorUnitDigits は、参考換算額を表示通貨の最小単位へ丸める際の小数桁数です。
-// 通貨ごとの具体値・丸め方針の根拠は docs/spec/exchange-rate/usecase.md を参照。
+// 通貨ごとの具体値・丸め方針の根拠は docs/spec/usecase/exchangerate.md を参照。
 const displayMinorUnitDigits = 0
 
 // Usecase は、為替換算ユースケースを表します。
@@ -82,7 +82,7 @@ func (u *usecase) Convert(ctx context.Context, in ConvertInput) (*ConvertResult,
 
 	result := &ConvertResult{Converted: in.Amount.Mul(rate.Value)}
 
-	// degrade 方針は docs/spec/exchange-rate/usecase.md を参照。
+	// degrade 方針は docs/spec/usecase/exchangerate.md を参照。
 	if in.DisplayCurrency != nil {
 		refRate, refErr := u.gateway.GetRate(ctx, in.Base, *in.DisplayCurrency)
 		switch {

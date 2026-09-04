@@ -2,7 +2,7 @@
 -- 指定ユーザーの購入履歴を (ordered_at DESC, id DESC) の安定順で先頭ページ取得する。
 -- ページを CTE で先に閉じてから結合するのは、明細の要約を解決する LATERAL が LIMIT 前の候補行すべてに
 -- 対して評価されるのを防ぐため。
--- 明細 1 件以上は Purchase 集約の生成不変条件（docs/spec/purchase/domain.md）のため、LATERAL は INNER で結合する。
+-- 明細 1 件以上は Purchase 集約の生成不変条件（docs/spec/domain/purchase.md）のため、LATERAL は INNER で結合する。
 -- 注文日時は半開区間 [ordered_after, ordered_before)（internal/usecase/tools/timewindow/README.md）で絞り込む。
 WITH page AS (
     SELECT

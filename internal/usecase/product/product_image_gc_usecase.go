@@ -17,7 +17,7 @@ const (
 	// DefaultImageGCBatchSize は、1 バッチあたりのオブジェクト列挙件数の既定値です。
 	DefaultImageGCBatchSize int32 = 1_000
 	// DefaultImageGCGrace は、アップロードされた画像を未参照でも回収しない既定の猶予期間です。
-	// 猶予が要る理由は docs/spec/product/usecase.md の SweepOrphans notes を参照。
+	// 猶予が要る理由は docs/spec/usecase/product.md の SweepOrphans notes を参照。
 	DefaultImageGCGrace = 24 * time.Hour
 )
 
@@ -36,7 +36,7 @@ type ImageGCUsecase interface {
 	// dryRun が true の場合は削除を行わず、削除対象となった件数だけを結果に返します。
 	// grace / batchSize が 0 以下の場合は、それぞれ既定値を用います。
 	// エラーを返す場合も、失敗したページより前に削除済みの累計を結果に含めます
-	// （理由は docs/spec/product/usecase.md の SweepOrphans errors）。
+	// （理由は docs/spec/usecase/product.md の SweepOrphans errors）。
 	SweepOrphans(ctx context.Context, grace time.Duration, batchSize int32, dryRun bool) (ImageGCResult, error)
 }
 
@@ -126,7 +126,7 @@ func (u *imageGCUsecase) sweepPage(
 	page.scanned = int64(len(candidates))
 
 	// 参照照合の失敗はそのまま伝播し、このページの削除は行わない（fail-open 禁止。理由は
-	// docs/spec/product/usecase.md の SweepOrphans notes）。
+	// docs/spec/usecase/product.md の SweepOrphans notes）。
 	referenced, err := u.images.FilterExistingImagePaths(ctx, candidates)
 	if err != nil {
 		return imageGCPageResult{}, err
@@ -149,7 +149,7 @@ func (u *imageGCUsecase) sweepPage(
 }
 
 // agedImageKeys は、猶予期間を過ぎた商品画像オブジェクトのキーを返します。接頭辞を再検査する理由は
-// docs/spec/product/usecase.md の SweepOrphans notes を参照。
+// docs/spec/usecase/product.md の SweepOrphans notes を参照。
 func agedImageKeys(objects []objectstorage.Object, cutoff time.Time) []string {
 	keys := make([]string, 0, len(objects))
 	for _, o := range objects {

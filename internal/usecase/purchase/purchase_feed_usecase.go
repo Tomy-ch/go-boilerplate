@@ -132,7 +132,7 @@ func (u *usecase) GetPurchases(
 
 // findFeedPage は、可視範囲に応じた読み取りでフィードの 1 ページを取得します。既定（自分の購入のみ）は
 // 認証済みであること以上を要求せず、他ユーザーを含める指定のときだけ admin の能力を要求します
-// （設計意図: docs/spec/purchase/usecase.md § GET 一覧）。
+// （設計意図: docs/spec/usecase/purchase.md § GET 一覧）。
 func (u *usecase) findFeedPage(
 	ctx context.Context, authn *auth.Authn, includeOtherUsers bool, params query.ListFeedParams,
 ) ([]query.PurchaseFeedReadModel, error) {

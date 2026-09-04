@@ -43,7 +43,7 @@ func (u *usecase) GetHistory(ctx context.Context, params HistoryParams) (*Histor
 //
 // この順序は入れ替えてはなりません。現在位置を先に読み、それを上限にすることで
 // 「現在位置とメッセージを同じ snapshot で読んだ」のと等価になります
-// （docs/spec/inquiry/usecase.md の streamCursor と snapshot）。
+// （docs/spec/usecase/inquiry.md の streamCursor と snapshot）。
 func (u *usecase) historyOf(
 	ctx context.Context,
 	i *inquiry.Inquiry,

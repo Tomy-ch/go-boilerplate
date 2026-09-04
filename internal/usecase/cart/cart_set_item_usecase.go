@@ -12,14 +12,14 @@ import (
 )
 
 // maxSetItemAttempts は、カートの作成が競合したときに解決からやり直す上限です
-// （docs/spec/cart/usecase.md の SetItem）。
+// （docs/spec/usecase/cart.md の SetItem）。
 const maxSetItemAttempts = 2
 
 // errCartCreationRace は、カートを作ろうとして他の要求に先を越されたことを表します。
 // この層の中だけで使い、外へは apperror.ErrConflict として出ます。
 var errCartCreationRace = xerrors.New("cart creation lost a race")
 
-// SetItem は、作成の衝突をトランザクションごとやり直します（docs/spec/cart/usecase.md の SetItem）。
+// SetItem は、作成の衝突をトランザクションごとやり直します（docs/spec/usecase/cart.md の SetItem）。
 //
 // この本体に外部副作用を足してはなりません。やり直しで二重に実行されます
 // （ADR-0035 (transaction-retry-idempotent-callers)）。
@@ -90,7 +90,7 @@ func (u *usecase) ensureProductAvailable(ctx context.Context, productID uuid.UUI
 }
 
 // resolveOrCreateCart は、主体のカートを永続化済みの状態で返します。カートを持たない主体には作ります。
-// 有効期限を過ぎたカートは明細を捨てて空から始めます（docs/spec/cart/usecase.md の SetItem）。
+// 有効期限を過ぎたカートは明細を捨てて空から始めます（docs/spec/usecase/cart.md の SetItem）。
 //
 // 2 つ目の戻り値は、このときゲストトークンを新しく発行した場合だけ非 nil です。
 func (u *usecase) resolveOrCreateCart(
@@ -104,7 +104,7 @@ func (u *usecase) resolveOrCreateCart(
 
 // resolveOwnerCart は、所有者が確定したカートを解決します。
 // ユーザー 1 人につきカートは高々 1 件のため、期限切れでも作り直せません
-// （docs/spec/cart/usecase.md の SetItem）。
+// （docs/spec/usecase/cart.md の SetItem）。
 //
 // 解決とロックの間にカートが消えていた場合は、引けなかった場合と同じく作り直します。
 // この op は 404 を宣言していません。
@@ -134,7 +134,7 @@ func (u *usecase) resolveOwnerCart(
 
 // resolveGuestCart は、ゲストのカートを解決します。
 // 提示されたトークンで引けなかった場合と、引けたが期限切れだった場合は、どちらも採番し直します
-// （docs/spec/cart/usecase.md の SetItem）。
+// （docs/spec/usecase/cart.md の SetItem）。
 //
 // 解決とロックの間にカートが消えていた場合も同じく採番し直します。引き継ぎ（MergeOnLogin）が
 // ゲストカートを行ごと消すため、この窓は実際に開きます。この op は 404 を宣言していません。

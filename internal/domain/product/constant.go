@@ -14,7 +14,7 @@ const (
 	// 32bit 整数幅で表現します。
 	maxThreshold = math.MaxInt32
 	// maxImages は、1 商品が保持できる画像の枚数の上限です。
-	// placeholder の根拠は docs/spec/product/domain.md の Cross-field Invariants を参照してください。
+	// placeholder の根拠は docs/spec/domain/product.md の Cross-field Invariants を参照してください。
 	maxImages = 20
 	// minImageDisplaySort は、商品画像の表示順の下限です。表示順は 1 から数えます。
 	minImageDisplaySort = 1

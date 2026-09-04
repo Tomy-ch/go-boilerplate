@@ -1,7 +1,7 @@
 -- name: ListAllPurchasesFeedFirst :many
 -- 購入者を問わず購入履歴を (ordered_at DESC, id DESC) の安定順で先頭ページ取得する（admin の可視範囲）。
 -- 所有権で閉じる ListPurchasesFeedFirst と母集団だけが異なり、並び順・要約の解決・期間とステータスの
--- 絞り込みは同一である。母集団ごとにクエリを分ける理由は docs/spec/purchase/usecase.md GET 一覧 を参照。
+-- 絞り込みは同一である。母集団ごとにクエリを分ける理由は docs/spec/usecase/purchase.md GET 一覧 を参照。
 -- ページを CTE で先に閉じてから結合する理由、LATERAL を INNER で結合する理由は
 -- database/dml/query_service/purchase/select_purchases_feed.sql と同じ。
 WITH page AS (

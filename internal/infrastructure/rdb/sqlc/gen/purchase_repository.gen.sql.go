@@ -29,7 +29,7 @@ type GetPurchaseByIDRow struct {
 
 // === source: database/dml/repository/purchase/select_purchase_by_id.sql ===
 // ID から購入を 1 件取得する。現在状態は購入ステータスマスタとの結合で code を解決する
-// （code が状態機械の業務キーである根拠は Purchase 集約の定義。docs/spec/purchase/domain.md 参照）。
+// （code が状態機械の業務キーである根拠は Purchase 集約の定義。docs/spec/domain/purchase.md 参照）。
 // 存在しない場合は 0 行（NotFound）。
 //
 //	SELECT
@@ -188,7 +188,7 @@ type InsertPurchaseParams struct {
 }
 
 // === source: database/dml/repository/purchase/insert_purchase.sql ===
-// 購入を 1 行 INSERT する。status_id は code から解決する（理由は docs/spec/purchase/domain.md の Notes）。
+// 購入を 1 行 INSERT する。status_id は code から解決する（理由は docs/spec/domain/purchase.md の Notes）。
 // ordered_at / created_at / updated_at は DB 既定（NOW()）に委ねる。
 //
 //	INSERT INTO purchases (
@@ -586,7 +586,7 @@ type UpdatePurchaseCanceledParams struct {
 // === source: database/dml/repository/purchase/update_purchase_canceled.sql ===
 // 購入をキャンセル状態へ更新する。status_id は code から解決する。canceled_at はドメインが決定した
 // 時刻（引数）を書き込み、イベント payload・レスポンスと同一時刻に揃える。
-// 遷移可否ガードは付けない（理由は docs/spec/purchase/domain.md の Repository Methods）。
+// 遷移可否ガードは付けない（理由は docs/spec/domain/purchase.md の Repository Methods）。
 //
 //	UPDATE purchases
 //	SET
@@ -623,7 +623,7 @@ type UpdatePurchaseDeliveredParams struct {
 // === source: database/dml/repository/purchase/update_purchase_delivered.sql ===
 // 購入を配達済み状態へ更新する。status_id は code から解決する。delivered_at はドメインが決定した時刻（引数）を
 // 書き込み、イベント payload・レスポンスと同一時刻に揃える。
-// 遷移可否ガードは付けない（理由は docs/spec/purchase/domain.md の Repository Methods）。
+// 遷移可否ガードは付けない（理由は docs/spec/domain/purchase.md の Repository Methods）。
 //
 //	UPDATE purchases
 //	SET
@@ -660,7 +660,7 @@ type UpdatePurchasePaidParams struct {
 // === source: database/dml/repository/purchase/update_purchase_paid.sql ===
 // 購入を支払い済み状態へ更新する。status_id は code から解決する。paid_at はドメインが決定した時刻（引数）を
 // 書き込み、イベント payload・レスポンスと同一時刻に揃える。
-// 遷移可否ガードは付けない（理由は docs/spec/purchase/domain.md の Repository Methods）。
+// 遷移可否ガードは付けない（理由は docs/spec/domain/purchase.md の Repository Methods）。
 //
 //	UPDATE purchases
 //	SET
@@ -697,7 +697,7 @@ type UpdatePurchaseShippedParams struct {
 // === source: database/dml/repository/purchase/update_purchase_shipped.sql ===
 // 購入を発送済み状態へ更新する。status_id は code から解決する。shipped_at はドメインが決定した時刻（引数）を
 // 書き込み、イベント payload・レスポンスと同一時刻に揃える。
-// 遷移可否ガードは付けない（理由は docs/spec/purchase/domain.md の Repository Methods）。
+// 遷移可否ガードは付けない（理由は docs/spec/domain/purchase.md の Repository Methods）。
 //
 //	UPDATE purchases
 //	SET

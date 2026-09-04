@@ -33,7 +33,7 @@ func BindHandler(e *echo.Echo, tf observability.TracerFactory, uc purchaseuc.Use
 }
 
 // PatchPurchasesShip は、購入を発送済みへ遷移させます。認証必須・admin 限定（非 admin は 403）。404: 不存在。409: 不正遷移
-// （admin 限定の理由・存在を秘匿しない理由は docs/spec/purchase/usecase.md § PATCH 発送 を参照）。
+// （admin 限定の理由・存在を秘匿しない理由は docs/spec/usecase/purchase.md § PATCH 発送 を参照）。
 func (s *server) PatchPurchasesShip(
 	ctx context.Context,
 	request gen.PatchPurchasesShipRequestObject,

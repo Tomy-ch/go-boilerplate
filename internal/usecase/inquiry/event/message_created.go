@@ -18,7 +18,7 @@ const TypeMessageCreated = "inquiry.message.created.v1"
 const SchemaVersionMessageCreated = 1
 
 // messageAuthor は、送り手のうち購読側へ出す部分です。主体 ID は出しません
-// （docs/spec/inquiry/usecase.md Notes「author に主体 ID を載せない」）。
+// （docs/spec/usecase/inquiry.md Notes「author に主体 ID を載せない」）。
 type messageAuthor struct {
 	Kind string `json:"kind"`
 }
