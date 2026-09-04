@@ -46,9 +46,10 @@ var (
 	// errViolations は、解消すべき違反が残っていることを表すエラー。
 	errViolations = xerrors.New("pnpm cooldown exclusion violations")
 
-	// entryRe は `  - <spec> # <メタ>` の 1 エントリを読む。メタが無い行も捕らえて違反にするため、
-	// コメント部分は省略可能にしてある。
-	entryRe = regexp.MustCompile(`^\s+-\s+(\S+)\s*(?:#\s*(.*))?$`)
+	// entryRe は `- <spec> # <メタ>` の 1 エントリを読む。メタが無い行も捕らえて違反にするため、
+	// コメント部分は省略可能にしてある。インデントを要求しないのは、YAML がキーと同じ桁に置く
+	// ブロックシーケンスも許すため。そこを読み落とすと、期限の無い例外が「例外ゼロ」として通る。
+	entryRe = regexp.MustCompile(`^\s*-\s+(\S+)\s*(?:#\s*(.*))?$`)
 	// specRe は name@version を分ける。@scope/name@version も 1 つ目の @ を名前側に残す。
 	specRe = regexp.MustCompile(`^(@?[^@]+)@([^@]+)$`)
 	// expiresRe / issueRe はメタから機械可読な 2 項目を拾う。
@@ -184,18 +185,25 @@ func parseWorkspace(root, rel string) ([]exclusion, error) {
 		if !inBlock {
 			continue
 		}
-		// インデントされたリスト項目とコメント行だけがブロックの続き。それ以外で抜ける。
-		if trimmed := strings.TrimSpace(line); trimmed == "" || !strings.HasPrefix(line, " ") {
-			inBlock = false
+		// ブロックが続いているかはインデントではなく行の形で判定する。YAML はキーと同じ桁の
+		// ブロックシーケンスも許すので、インデントを条件にすると妥当な宣言を読み落とす。
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
 			continue
 		}
-		if strings.HasPrefix(strings.TrimSpace(line), "#") {
+		if !strings.HasPrefix(trimmed, "-") {
+			// 次のキーへ移った。
+			inBlock = false
 			continue
 		}
 
 		m := entryRe.FindStringSubmatch(line)
 		if m == nil {
-			inBlock = false
+			// `- ` で始まるのに読めない行は、読み落としではなく形式違反として残す。
+			out = append(out, exclusion{
+				file: rel, line: lineNo, spec: trimmed,
+				malformed: "リスト項目として解釈できません",
+			})
 			continue
 		}
 		out = append(out, newExclusion(rel, lineNo, m[1], m[2]))

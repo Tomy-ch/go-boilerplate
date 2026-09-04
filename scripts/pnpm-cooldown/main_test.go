@@ -278,6 +278,33 @@ func Test_parseWorkspace(t *testing.T) {
 			assert.Equal(t, "a@1", got[0].spec)
 		})
 
+		t.Run("キーと同じ桁のブロックシーケンスも読み落とさない", func(t *testing.T) {
+			t.Parallel()
+
+			root := t.TempDir()
+			content := "minimumReleaseAgeExclude:\n- a@1 # expires: 2026-09-30 issue: 1 理由\n"
+			rel := writeWorkspace(t, root, "app", content)
+
+			got, err := parseWorkspace(root, rel)
+
+			require.NoError(t, err)
+			require.Len(t, got, 1, "インデントを条件にすると期限の無い例外が例外ゼロとして通る")
+			assert.Equal(t, "a@1", got[0].spec)
+		})
+
+		t.Run("ブロック内の空行でブロックを終えない", func(t *testing.T) {
+			t.Parallel()
+
+			root := t.TempDir()
+			content := "minimumReleaseAgeExclude:\n  - a@1 # expires: 2026-09-30 issue: 1 理由\n\n  - b@2 # expires: 2026-09-30 issue: 2 理由\n"
+			rel := writeWorkspace(t, root, "app", content)
+
+			got, err := parseWorkspace(root, rel)
+
+			require.NoError(t, err)
+			assert.Len(t, got, 2)
+		})
+
 		t.Run("コメントの無いエントリも読み出して形式違反にする", func(t *testing.T) {
 			t.Parallel()
 
@@ -294,6 +321,20 @@ func Test_parseWorkspace(t *testing.T) {
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
+
+		t.Run("リスト項目として読めない行を読み飛ばさず形式違反にする", func(t *testing.T) {
+			t.Parallel()
+
+			root := t.TempDir()
+			content := "minimumReleaseAgeExclude:\n  -\n"
+			rel := writeWorkspace(t, root, "app", content)
+
+			got, err := parseWorkspace(root, rel)
+
+			require.NoError(t, err)
+			require.Len(t, got, 1)
+			assert.NotEmpty(t, got[0].malformed)
+		})
 
 		t.Run("宣言ファイルが読めない場合はエラーを返す", func(t *testing.T) {
 			t.Parallel()
