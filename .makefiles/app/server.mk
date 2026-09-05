@@ -45,11 +45,15 @@ serve: require-db-owner
 	@go run ./cmd/ db-slot heartbeat
 	@$(LOAD_SLOT); $(DB_SLOT_ENV); echo "✅ 開発環境の起動が完了しました。API: http://localhost:$${API_HOST_PORT:-8080} (project=$$APP_PROJECT)"
 
+# realtime-provision は api_server イメージの中で go run するため、ビルドより先に置くと
+# 古いイメージで走る。イメージが陳腐化しているときこそ serve-build が呼ばれるので、
+# その順序では自力で回復できなくなる（serve-build-clean と同じ順序に揃えている）。
 serve-build: require-db-owner
 	@echo "🧰 ビルド後、開発環境を起動します。"
+	@$(COMPOSE_APP) build $(APP_SERVICES)
 	@$(MAKE) infra-up
 	@$(MAKE) realtime-provision
-	@$(COMPOSE_APP) up -d --build $(APP_SERVICES)
+	@$(COMPOSE_APP) up -d $(APP_SERVICES)
 	@$(LOAD_SLOT); echo "✅ 開発環境の起動が完了しました。API: http://localhost:$${API_HOST_PORT:-8080}"
 
 serve-build-clean: require-db-owner
