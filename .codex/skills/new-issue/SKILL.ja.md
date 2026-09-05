@@ -121,13 +121,17 @@ middleware は最も飛ばされやすく、最も決定的な区間である。
 ```bash
 make slot-acquire && make serve            # API は 8080+N、mock-auth は 2010+N
 
-TOKEN=$(curl -s -X POST http://localhost:201N/bypass/token \
-  -H 'Content-Type: application/json' \
-  -d '{"subject":"<seeded-subject>","profile":"valid"}' \
+TOKEN=$(curl -fsS -X POST http://localhost:201N/default/token \
+  -d 'grant_type=password' \
+  -d 'client_id=go-boilerplate-client' \
+  -d 'password=unused' \
+  --data-urlencode 'username=<seeded-subject>' \
   | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
 
 curl -s -o /dev/null -w '%{http_code}\n' -H "Authorization: Bearer $TOKEN" http://localhost:808N/v1/...
 ```
+
+そのトークンエンドポイントの正本は `docs/design/auth.md` —— テスト用のハッチではなく、標準エンドポイントに対するブラウザ無しの password grant である。この抜粋と同文書が食い違うときは、文書の側が正しい。
 
 token の subject は seed が登録した identity の `subject` 文字列でなければならない。内部の UUID ではない —— シードの UUID 行はスロットのポートが発行する issuer とは別の issuer に属するため、UUID を渡すと紛らわしい 401 になる。
 
