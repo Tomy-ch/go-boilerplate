@@ -30,6 +30,7 @@ var (
 type EventLog struct {
 	mu          sync.Mutex
 	streams     map[rt.StreamID][]rt.DeliveryEvent
+	appended    map[rt.StreamID]rt.Sequence
 	unavailable bool
 	// held は、閉じられるまで読み取りを待たせる関門です。nil のときは待たせません。
 	held chan struct{}
@@ -37,7 +38,10 @@ type EventLog struct {
 
 // NewEventLog は、空の EventLog を生成します。
 func NewEventLog() *EventLog {
-	return &EventLog{streams: map[rt.StreamID][]rt.DeliveryEvent{}}
+	return &EventLog{
+		streams:  map[rt.StreamID][]rt.DeliveryEvent{},
+		appended: map[rt.StreamID]rt.Sequence{},
+	}
 }
 
 // Seed は、Validate も冪等判定も通さずに event を置きます。飛び番や保持期間外の位置など、
@@ -106,8 +110,32 @@ func (l *EventLog) Append(_ context.Context, event rt.DeliveryEvent) error {
 	}
 
 	l.streams[event.StreamID] = insert(l.streams[event.StreamID], event)
+	if event.Sequence > l.appended[event.StreamID] {
+		l.appended[event.StreamID] = event.Sequence
+	}
 
 	return nil
+}
+
+// AppendedThrough は、Append で書いた最大の位置を返します。Seed は正規の追記ではないので数えません。
+func (l *EventLog) AppendedThrough(_ context.Context, streamID rt.StreamID) (rt.Sequence, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	if l.unavailable {
+		return 0, errEventLogUnavailable
+	}
+
+	return l.appended[streamID], nil
+}
+
+// SeedAppendedThrough は、Append を経ずに追記済みの位置を置きます。保持期間で event が消えたあとの
+// 状態など、正規の Append では作れない状態をテストが直接組み立てるための口です。
+func (l *EventLog) SeedAppendedThrough(streamID rt.StreamID, seq rt.Sequence) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	l.appended[streamID] = seq
 }
 
 // ReadAfter は、q.After より後ろの event を sequence 昇順に最大 q.Limit 件返します。

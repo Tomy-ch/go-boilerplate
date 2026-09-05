@@ -149,8 +149,6 @@ type Unauthorized401JSONResponse ErrorResponse
 
 type UnprocessableEntity422JSONResponse ErrorResponseWithDetails
 
-type UnsupportedMediaType415JSONResponse ErrorResponse
-
 type GetInquiriesMeMessagesRequestObject struct {
 	Params GetInquiriesMeMessagesParams
 }
@@ -326,22 +324,6 @@ func (response PostInquiriesMeMessages409JSONResponse) VisitPostInquiriesMeMessa
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(409)
-	_, err := buf.WriteTo(w)
-	return err
-}
-
-type PostInquiriesMeMessages415JSONResponse struct {
-	UnsupportedMediaType415JSONResponse
-}
-
-func (response PostInquiriesMeMessages415JSONResponse) VisitPostInquiriesMeMessagesResponse(w http.ResponseWriter) error {
-
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(response); err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(415)
 	_, err := buf.WriteTo(w)
 	return err
 }

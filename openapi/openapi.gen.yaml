@@ -2075,7 +2075,7 @@ paths:
         **Idempotency-Key を受け付けます**。同一キーの再送は初回の結果をそのまま返すため、
         timeout 後の再送でメッセージが二重に生まれません。同一キーを内容の異なる要求で使い回した場合は
         422 で拒否します。
-        最初の投稿が並行した場合、サーバは内部で 1 度だけやり直します。それでも解けない場合のみ 409 を返します。
+        最初の投稿が並行した場合、サーバは先に作られた問い合わせへ追加するため、どちらの投稿も成功します。
         本 op 自体は DB の SELECT / INSERT / UPDATE のみで外部依存を持ちませんが、認証段（外部 IdP の
         JWKS 参照）の一時障害で応答不能となり得るため、認証を伴う op の先例に倣い 503 を宣言します。
       security:
@@ -2103,8 +2103,6 @@ paths:
           $ref: '#/components/responses/MethodNotAllowed405'
         '409':
           $ref: '#/components/responses/Conflict409'
-        '415':
-          $ref: '#/components/responses/UnsupportedMediaType415'
         '422':
           $ref: '#/components/responses/UnprocessableEntity422'
         '500':
@@ -2263,8 +2261,6 @@ paths:
           $ref: '#/components/responses/NotFound404'
         '405':
           $ref: '#/components/responses/MethodNotAllowed405'
-        '415':
-          $ref: '#/components/responses/UnsupportedMediaType415'
         '422':
           $ref: '#/components/responses/UnprocessableEntity422'
         '500':
@@ -2338,7 +2334,7 @@ components:
         type: string
         pattern: ^[A-Za-z0-9._:-]{1,128}$
         maxLength: 128
-        example: inquiry-thread-8f3c
+        example: resource-8f3c
     StreamAfterParam:
       name: after
       in: query
@@ -2869,13 +2865,13 @@ components:
         streamId:
           type: string
           description: この event が属する stream の識別子。接続先の destination と一致します。
-          example: inquiry-thread-8f3c
+          example: resource-8f3c
         sequence:
           $ref: '#/components/schemas/StreamCursor'
         type:
           type: string
           description: feature が定める event 種別。末尾の `.vN` で契約の世代を表します。
-          example: inquiry.message.created.v1
+          example: resource.updated.v1
         occurredAt:
           type: string
           format: date-time

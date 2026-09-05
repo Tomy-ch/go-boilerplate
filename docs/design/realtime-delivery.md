@@ -1,6 +1,6 @@
 # Realtime Delivery Subsystem Design Reference
 
-This document consolidates the Realtime Delivery subsystem's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference. Unlike the other design references in this directory, it was written **before the implementation**: it is the design the implementation is built to, and §3 describes the planned placement rather than a reading of existing code. Where a statement here names a symbol, a default value, or a step order, treat it as the intended particular; the mechanism it belongs to — the ordering chain, the connection state machine, the ticket contract — governs. For the adoption rationale see the four realtime ADRs: [ADR-0071 (realtime-delivery-driving-mechanism)](../adr/0071-realtime-delivery-driving-mechanism.md), [ADR-0072 (postgres-state-dynamodb-eventlog)](../adr/0072-postgres-state-dynamodb-eventlog.md), [ADR-0073 (sns-sqs-instance-fanout)](../adr/0073-sns-sqs-instance-fanout.md), [ADR-0074 (query-ticket-stream-authentication)](../adr/0074-query-ticket-stream-authentication.md); and, for how an outbox row dies, [ADR-0058 (outbox-dead-on-permanent-error)](../adr/0058-outbox-dead-on-permanent-error.md).
+This document consolidates the Realtime Delivery subsystem's **role theory, state transitions, implementation locations, what an integrator must implement, and glossary** into a single reference. It is the design the implementation is built to, and §3 is a reading of the code as it stands. Where a statement here names a symbol, a default value, or a step order, treat it as the intended particular; the mechanism it belongs to — the ordering chain, the connection state machine, the ticket contract — governs. For the adoption rationale see the four realtime ADRs: [ADR-0071 (realtime-delivery-driving-mechanism)](../adr/0071-realtime-delivery-driving-mechanism.md), [ADR-0072 (postgres-state-dynamodb-eventlog)](../adr/0072-postgres-state-dynamodb-eventlog.md), [ADR-0073 (sns-sqs-instance-fanout)](../adr/0073-sns-sqs-instance-fanout.md), [ADR-0074 (query-ticket-stream-authentication)](../adr/0074-query-ticket-stream-authentication.md); and, for how an outbox row dies, [ADR-0058 (outbox-dead-on-permanent-error)](../adr/0058-outbox-dead-on-permanent-error.md).
 
 ---
 
@@ -167,7 +167,7 @@ the 60 s AWS enforces between deleting a queue and creating one with that name.
 
 ---
 
-## 3. Implementation locations (where it will live)
+## 3. Implementation locations (where it lives)
 
 This section states the **planned** placement. The dependency direction and the allowlist are the governing part; package names are the intended particulars.
 
@@ -202,11 +202,11 @@ flowchart LR
 Architecture rules, both mechanically checked:
 
 1. `boundary/realtime`, `usecase/realtime`, `controller/stream`, `controller/realtime`, and the five infrastructure packages import no `internal/domain/<feature>` and no `internal/usecase/<feature>`.
-2. `InstanceLeaseStore` may be imported only by the realtime packages, the realtime DI module, and the orphan-cleanup job entry point.
+2. `InstanceLeaseStore` may be imported only by the realtime mechanism packages and the DI modules that wire them. The orphan-cleanup job reaches the lease through `OrphanSweeper`, so its entry point needs no access to the store.
 
 Rule 1 is checked twice, deliberately: by `depguard` (`maintain_realtime_feature_neutrality`, declared in `.golangci-full.yaml` — the config `make lint` and CI actually run — and mirrored into `.golangci.yaml` so editors surface it too, per [ADR-0088 (two-layer-golangci-config)](../adr/0088-two-layer-golangci-config.md)), which fails at lint time next to the other layer rules, and by `internal/architest/realtime_isolation_test.go`, which fails at test time and additionally asserts that the package list it scans still exists — a rule whose subject has been renamed away is the one failure a linter cannot report. Rule 2 lives only in the architecture test: it constrains a single **symbol**, and `depguard` denies whole packages, so expressing it there would also reject the legitimate `EventLogStore` and `StreamTicketStore` imports from the same package.
 
-The redundancy has one known gap. `depguard` matches an import path by plain prefix, so the `allow` entry that returns `usecase/realtime` to the mechanism also returns any future sibling whose name merely starts with those characters, and `isFeatureImport` in the architecture test derives its verdict the same way — the two checks share the flaw rather than covering for each other. Nothing named that way exists today; the constraint is that `internal/usecase/` must not gain a package whose name begins with `realtime` but which is a feature rather than this mechanism.
+`depguard` matches an import path by plain prefix, so the `allow` entry that returns `usecase/realtime` to the mechanism also returns any sibling whose name merely starts with those characters. That cannot be expressed away in `depguard`, so the architecture test carries the difference: `isFeatureImport` matches the mechanism exactly or under a trailing slash, and a separate check reserves the name — `internal/usecase/` may hold no package whose name begins with `realtime` other than the mechanism itself. Adding one fails both checks, which is what makes the redundancy real rather than nominal.
 
 ### 3.2 Outbox additions this subsystem relies on
 
@@ -221,20 +221,22 @@ Added by the outbox delivery-channel work, shared by every channel:
 
 | Kind | Values |
 | --- | --- |
-| **Typed config** (deployment-dependent) | EventLog endpoint / region / table; ticket and lease tables; credentials (empty → SDK default chain); fan-out endpoint; SNS topic; SQS resource prefix; DLQ (empty → no redrive); both are ARNs on AWS; **max SSE connections per instance**; **replay / catch-up concurrency** |
-| **Fixed in code** (one canonical definition each) | write deadline 10 s; heartbeat 15 s; per-connection buffer 64; catch-up interval 30 s; jitter ratio; ticket TTL 5 min; maximum connection lifetime 1 h; lease heartbeat 30 s / expiry 2 min / cleanup margin 5 min; payload cap 64 KiB; EventLog retention 7 days; backoff cap 60 s; instance queue visibility timeout 30 s / long polling 20 s / redrive `maxReceiveCount` 5 |
+| **Typed config** (deployment-dependent) | EventLog endpoint / region; the table suffix every store's table name is derived from (`<store>_<suffix>`, which is what lets parallel checkouts share one DynamoDB); credentials (empty → SDK default chain); fan-out endpoint; SNS topic; SQS resource prefix; DLQ (empty → no redrive); both are ARNs on AWS; **max SSE connections per instance**; **replay / catch-up concurrency** |
+| **Fixed in code** (one canonical definition each) | write deadline 10 s; heartbeat 15 s; per-connection buffer = one replay page (64), so a page can never overflow it; catch-up interval 30 s; jitter ratio (a fifth of the interval); initial-replay admission wait 2 s; drain budget 10 s; the `Retry-After` hint 5 s, shared by the 503 header and `retryAfterMs`; ticket TTL 5 min; maximum connection lifetime 1 h; lease heartbeat 30 s / expiry 2 min / cleanup margin 5 min; payload cap 64 KiB; EventLog retention 7 days; backoff cap 60 s; instance queue visibility timeout 30 s / long polling 20 s / redrive `maxReceiveCount` 5 |
 
 ### 3.4 Observability contract
 
-Metrics are feature-neutral (`realtime_*`) and carry **no** subject, user, stream, destination, event, message, trace, or ticket identifier as a label; per-item correlation goes through traces and structured logs. An identifier's value set is unbounded, so every new value opens a time series that is never retired; the label keys are therefore fixed to `reason` / `trigger` / `result` / `outcome`, and `internal/architest/realtime_metrics_test.go` fails any key outside that set.
+Metrics are feature-neutral (named `realtime.*`, which the Prometheus exporter renders as `realtime_*`) and carry **no** subject, user, stream, destination, event, message, trace, or ticket identifier as a label; per-item correlation goes through traces and structured logs. An identifier's value set is unbounded, so every new value opens a time series that is never retired; the label keys are therefore fixed to `reason` / `trigger` / `result` / `outcome`, and `internal/architest/realtime_metrics_test.go` fails any key outside that set.
 
-| Group | Metrics |
+A close is one metric carrying `reason`, not one metric per way of closing — a slow client and an ordinary EOF are the same series read through that label. The same holds for `result` and `outcome`: an execution and its success are not separate counters.
+
+| Group | Metrics (`internal/observability/realtime_metrics.go`) |
 | --- | --- |
-| connection | active; accepted; rejected (capacity); reconnects (a connect carrying `Last-Event-ID` or `after`); duration; slow-client disconnects (distinct from ordinary close) |
-| replay / catch-up | replay executions; replayed events; replay depth; catch-up executions; catch-up lag; concurrency saturation |
-| delivery | EventLog appends; append failures; **delivery latency** = `occurredAt` → successful SSE write (spans two instances, so clock skew is included; an approximation by construction); **EventLog lag** = outbox `created_at` → append; delivery failures; recovery success / failure; **blocked streams** (head dead) |
-| cleanup | heartbeat failures; expired instances detected; cleanup executions; success / failure |
-| outbox | lag per delivery channel; age of the oldest pending row per channel (the alert that replaces the attempt count, [ADR-0058]) |
+| connection | `connections.active`; `connections.accepted`; `connections.rejected` (`reason`: capacity, degraded, draining); `connections.closed` (`reason`, which is where a slow client is counted); `connections.reconnects` (a connect carrying `Last-Event-ID` or `after`); `connections.duration_ms` |
+| replay / catch-up | `replay.executions` (`trigger`); `replay.events`; `replay.depth`; `replay.failures`; `replay.in_flight` (the concurrency gate's occupancy); `replay.admission_timeouts` (a slot not won within the bounded wait); `catchup.lag_ms` |
+| delivery | `eventlog.appends` (`result`); **`delivery.latency_ms`** = `occurredAt` → successful SSE write (spans two instances, so clock skew is included; an approximation by construction); **`eventlog.lag_ms`** = outbox `created_at` → append; `wakeup.publish_failures`; `recovery.executions` (`result`) |
+| cleanup | `lease.heartbeat_failures`; `cleanup.executions` (`result`); `cleanup.instances` (`outcome`) |
+| outbox | lag per delivery channel; age of the oldest pending row per channel (the alert that replaces the attempt count, [ADR-0058]). These live on the outbox meter, not the realtime one — **blocked streams** (head dead) is read from there |
 
 Traces: command → outbox → relay → EventLog share one trace through the outbox headers. A long-lived connection is never a child span of the originating command; each delivery or replay operation is a short span with a span link to the event's origin trace. Only official OpenTelemetry semantic conventions are used ([ADR-0077 (official-otel-semconv)](../adr/0077-official-otel-semconv.md)). Payloads, tickets, and query credentials never appear in span attributes or log fields.
 
@@ -329,7 +331,8 @@ stateDiagram-v2
 | **cursor** | A sequence a client has seen; `Last-Event-ID` on browser reconnect, `after` on explicit resume. |
 | **replay** | Reading the EventLog after a cursor when a connection opens. |
 | **catch-up** | Reading the EventLog after the current cursor because of a wakeup or on the periodic (30 s, jittered) schedule. |
-| **replay floor** | The oldest sequence still replayable. Derived, not stored: `cursor + 1` absent while a later item exists, or present but older than retention, or the item at the cursor itself absent (cursor not initial) → `410`. |
+| **replay floor** | The oldest sequence still replayable. Derived, not stored: `cursor + 1` absent while a later item exists, or present but older than retention, or the item at the cursor itself absent **at or below the append watermark** (cursor not initial) → `410`. A cursor *above* the watermark is not expired: the relay has simply not written that far yet, and refusing it would be unrecoverable, because re-reading the canonical state returns the same cursor. |
+| **append watermark** | The highest sequence the relay has written to a stream's EventLog. Kept per stream and never rolled back, so it outlives the events themselves — which is what separates "gone with the retention" from "not written yet" once an item is missing. |
 | **wakeup** | The SNS → SQS notification "re-read stream S after your cursor". Stateless; duplicates coalesce; loss is covered by catch-up. |
 | **blocked stream** | A stream whose head row is dead; halted until replayed; counted by `realtime_blocked_streams`. |
 | **ticket** | The opaque 256-bit credential presented on connect, stored hashed, bound to subject / destination / scope / expiry, reusable for its 5-minute TTL. |

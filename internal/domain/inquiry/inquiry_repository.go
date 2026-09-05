@@ -28,11 +28,10 @@ type Repository interface {
 	// 利用者 1 人につき高々 1 件です。存在しない場合は NotFound を返します。
 	FindActiveByUserID(ctx context.Context, userID uuid.UUID) (*Inquiry, error)
 
-	// Create は、問い合わせを新規登録します。
-	// 同じ利用者の active な問い合わせが既にある場合は Conflict を返します。
-	// この Conflict は同一 tx の中で読み直して解決できないため、呼び出し側は tx をやり直します
-	// （docs/spec/usecase/inquiry.md の AppendMessage）。
-	Create(ctx context.Context, inquiry *Inquiry) error
+	// CreateIfAbsent は、利用者の active な問い合わせが無ければ作り、確定した問い合わせを返します。
+	// 既にある場合は衝突として扱わず、既存の問い合わせがそのまま返ります。
+	// 並行して作成が競合した場合も、勝ったほうの問い合わせが返ります。
+	CreateIfAbsent(ctx context.Context, inquiry *Inquiry) (*Inquiry, error)
 
 	// Update は、問い合わせの更新日時を永続化します（AppendMessage が進めた値）。
 	Update(ctx context.Context, inquiry *Inquiry) error
