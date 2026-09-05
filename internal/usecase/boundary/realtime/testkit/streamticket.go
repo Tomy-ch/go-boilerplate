@@ -11,9 +11,6 @@ import (
 var _ rt.StreamTicketStore = (*StreamTicketStore)(nil)
 
 // StreamTicketStore は、in-memory の rt.StreamTicketStore です。読み取りは常に最新の書き込みを反映します。
-//
-// 失効の検証に要るのは「Invalidate した subject × destination の ticket が Find から消える」ことだけなので、
-// 期限切れの掃除は持たず、判定は Find の asOf で行います（本物の store と同じ切り分け）。
 type StreamTicketStore struct {
 	mu      sync.Mutex
 	tickets map[rt.TicketHash]rt.StreamTicket
@@ -62,7 +59,7 @@ func (s *StreamTicketStore) Invalidate(_ context.Context, subject string, destin
 	return nil
 }
 
-// Len は、保持している ticket の件数を返します。失効が「消した」ことを件数でも確かめるための口です。
+// Len は、保持している ticket の件数を返します。
 func (s *StreamTicketStore) Len() int {
 	s.mu.Lock()
 	defer s.mu.Unlock()
