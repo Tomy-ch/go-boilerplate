@@ -177,8 +177,8 @@ TOKEN=$(curl -fsS -X POST http://localhost:201N/default/token \
 curl -s -o /dev/null -w '%{http_code}\n' -H "Authorization: Bearer $TOKEN" http://localhost:808N/v1/...
 ```
 
-`docs/design/auth.md` is canonical for that token endpoint — a browserless password grant on
-the standard endpoint, not a test hatch. Where this snippet and that document disagree, the
+`docs/design/auth.md` is canonical for this — the mock provider's standard token endpoint,
+minting a token without a browser. Where this snippet and that document disagree, the
 document decides.
 
 The token subject must be the identity `subject` string the seed registered, not an internal

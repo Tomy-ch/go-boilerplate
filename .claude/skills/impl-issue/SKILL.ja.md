@@ -286,7 +286,7 @@ TOKEN=$(curl -fsS -X POST http://localhost:201N/default/token \
 curl -s -o /dev/null -w '%{http_code}\n' -H "Authorization: Bearer $TOKEN" http://localhost:808N/v1/...
 ```
 
-そのトークンエンドポイントの正本は `docs/design/auth.md` —— テスト用のハッチではなく、標準エンドポイントに対するブラウザ無しの password grant である。この抜粋と同文書が食い違うときは、文書の側が正しい。
+この手順の正本は `docs/design/auth.md` —— mock provider の標準トークンエンドポイントで、ブラウザを介さずにトークンを発行する。この抜粋と同文書が食い違うときは、文書の側が正しい。
 
 token の subject は seed が登録した identity の `subject` 文字列でなければならない。内部の UUID ではない — シードの UUID 行はスロットのポートが発行する issuer とは別の issuer に属するため、UUID を渡すと紛らわしい 401 になる。実在する subject は DB から引く:
 
