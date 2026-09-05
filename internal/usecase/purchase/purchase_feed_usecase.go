@@ -56,6 +56,8 @@ type ListPurchasesParams struct {
 	Window timewindow.Window
 	// StatusCodes は、購入ステータスの業務キーによる絞り込みです。空の場合は全ステータスが対象です。
 	StatusCodes []int16
+	// ProductID は、指定商品を含む購入だけに絞る条件です。nil の場合は絞り込みません。
+	ProductID *uuid.UUID
 	// IncludeOtherUsers は、他ユーザーの購入も母集団に含める場合に true です。指定は admin のみが通ります。
 	IncludeOtherUsers bool
 }
@@ -88,6 +90,7 @@ func (u *usecase) GetPurchases(
 		Limit:       cursor.Limit32() + 1,
 		Window:      params.Window,
 		StatusCodes: params.StatusCodes,
+		ProductID:   params.ProductID,
 	}
 	if after != nil {
 		feedParams.AfterOrderedAt = &after.orderedAt

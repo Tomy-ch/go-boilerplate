@@ -81,6 +81,7 @@ func (s *server) GetPurchases(ctx context.Context, request gen.GetPurchasesReque
 		Cursor:            cursor,
 		Window:            window,
 		StatusCodes:       statusCodes,
+		ProductID:         conv.UUIDPtr(request.Params.ProductId),
 		IncludeOtherUsers: ptr.Deref(request.Params.IncludeOtherUsers, false),
 	})
 	if err != nil {

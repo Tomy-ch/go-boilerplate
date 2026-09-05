@@ -37,9 +37,13 @@ WHERE ($1::UUID IS NULL OR p.category_id = $1)
     AND ($7::INTEGER IS NULL OR p.quantity >= $7)
     AND ($8::INTEGER IS NULL OR p.quantity <= $8)
     AND (
-        $9::TEXT IS NULL
-        OR p.name ILIKE '%' || $9 || '%'
-        OR p.description ILIKE '%' || $9 || '%'
+        $9::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = $9
+    )
+    AND (
+        $10::TEXT IS NULL
+        OR p.name ILIKE '%' || $10 || '%'
+        OR p.description ILIKE '%' || $10 || '%'
     )
 `
 
@@ -52,6 +56,7 @@ type CountAllProductsByFilterParams struct {
 	MaxPrice      *decimal.Decimal
 	MinQuantity   *int32
 	MaxQuantity   *int32
+	Discontinued  *bool
 	Keyword       *string
 }
 
@@ -81,9 +86,13 @@ type CountAllProductsByFilterParams struct {
 //	    AND ($7::INTEGER IS NULL OR p.quantity >= $7)
 //	    AND ($8::INTEGER IS NULL OR p.quantity <= $8)
 //	    AND (
-//	        $9::TEXT IS NULL
-//	        OR p.name ILIKE '%' || $9 || '%'
-//	        OR p.description ILIKE '%' || $9 || '%'
+//	        $9::BOOLEAN IS NULL
+//	        OR (p.discontinued_at IS NOT NULL) = $9
+//	    )
+//	    AND (
+//	        $10::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $10 || '%'
+//	        OR p.description ILIKE '%' || $10 || '%'
 //	    )
 func (q *Queries) CountAllProductsByFilter(ctx context.Context, arg *CountAllProductsByFilterParams) (int64, error) {
 	row := q.db.QueryRow(ctx, countAllProductsByFilter,
@@ -95,6 +104,7 @@ func (q *Queries) CountAllProductsByFilter(ctx context.Context, arg *CountAllPro
 		arg.MaxPrice,
 		arg.MinQuantity,
 		arg.MaxQuantity,
+		arg.Discontinued,
 		arg.Keyword,
 	)
 	var count int64
@@ -154,9 +164,13 @@ WHERE p.published_at IS NOT NULL
     AND ($7::INTEGER IS NULL OR p.quantity >= $7)
     AND ($8::INTEGER IS NULL OR p.quantity <= $8)
     AND (
-        $9::TEXT IS NULL
-        OR p.name ILIKE '%' || $9 || '%'
-        OR p.description ILIKE '%' || $9 || '%'
+        $9::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = $9
+    )
+    AND (
+        $10::TEXT IS NULL
+        OR p.name ILIKE '%' || $10 || '%'
+        OR p.description ILIKE '%' || $10 || '%'
     )
 `
 
@@ -169,6 +183,7 @@ type CountPublishedProductsByFilterParams struct {
 	MaxPrice      *decimal.Decimal
 	MinQuantity   *int32
 	MaxQuantity   *int32
+	Discontinued  *bool
 	Keyword       *string
 }
 
@@ -198,9 +213,13 @@ type CountPublishedProductsByFilterParams struct {
 //	    AND ($7::INTEGER IS NULL OR p.quantity >= $7)
 //	    AND ($8::INTEGER IS NULL OR p.quantity <= $8)
 //	    AND (
-//	        $9::TEXT IS NULL
-//	        OR p.name ILIKE '%' || $9 || '%'
-//	        OR p.description ILIKE '%' || $9 || '%'
+//	        $9::BOOLEAN IS NULL
+//	        OR (p.discontinued_at IS NOT NULL) = $9
+//	    )
+//	    AND (
+//	        $10::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $10 || '%'
+//	        OR p.description ILIKE '%' || $10 || '%'
 //	    )
 func (q *Queries) CountPublishedProductsByFilter(ctx context.Context, arg *CountPublishedProductsByFilterParams) (int64, error) {
 	row := q.db.QueryRow(ctx, countPublishedProductsByFilter,
@@ -212,6 +231,7 @@ func (q *Queries) CountPublishedProductsByFilter(ctx context.Context, arg *Count
 		arg.MaxPrice,
 		arg.MinQuantity,
 		arg.MaxQuantity,
+		arg.Discontinued,
 		arg.Keyword,
 	)
 	var count int64
@@ -612,16 +632,20 @@ WHERE ($1::UUID IS NULL OR p.category_id = $1)
     AND ($7::INTEGER IS NULL OR p.quantity >= $7)
     AND ($8::INTEGER IS NULL OR p.quantity <= $8)
     AND (
-        $9::TEXT IS NULL
-        OR p.name ILIKE '%' || $9 || '%'
-        OR p.description ILIKE '%' || $9 || '%'
+        $9::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = $9
     )
     AND (
-        p.created_at > $10
-        OR (p.created_at = $10 AND p.id > $11)
+        $10::TEXT IS NULL
+        OR p.name ILIKE '%' || $10 || '%'
+        OR p.description ILIKE '%' || $10 || '%'
+    )
+    AND (
+        p.created_at > $11
+        OR (p.created_at = $11 AND p.id > $12)
     )
 ORDER BY p.created_at ASC, p.id ASC
-LIMIT $12
+LIMIT $13
 `
 
 type ListAllProductsAscAfterParams struct {
@@ -633,6 +657,7 @@ type ListAllProductsAscAfterParams struct {
 	MaxPrice       *decimal.Decimal
 	MinQuantity    *int32
 	MaxQuantity    *int32
+	Discontinued   *bool
 	Keyword        *string
 	AfterCreatedAt time.Time
 	AfterID        uuid.UUID
@@ -683,16 +708,20 @@ type ListAllProductsAscAfterRow struct {
 //	    AND ($7::INTEGER IS NULL OR p.quantity >= $7)
 //	    AND ($8::INTEGER IS NULL OR p.quantity <= $8)
 //	    AND (
-//	        $9::TEXT IS NULL
-//	        OR p.name ILIKE '%' || $9 || '%'
-//	        OR p.description ILIKE '%' || $9 || '%'
+//	        $9::BOOLEAN IS NULL
+//	        OR (p.discontinued_at IS NOT NULL) = $9
 //	    )
 //	    AND (
-//	        p.created_at > $10
-//	        OR (p.created_at = $10 AND p.id > $11)
+//	        $10::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $10 || '%'
+//	        OR p.description ILIKE '%' || $10 || '%'
+//	    )
+//	    AND (
+//	        p.created_at > $11
+//	        OR (p.created_at = $11 AND p.id > $12)
 //	    )
 //	ORDER BY p.created_at ASC, p.id ASC
-//	LIMIT $12
+//	LIMIT $13
 func (q *Queries) ListAllProductsAscAfter(ctx context.Context, arg *ListAllProductsAscAfterParams) ([]*ListAllProductsAscAfterRow, error) {
 	rows, err := q.db.Query(ctx, listAllProductsAscAfter,
 		arg.CategoryID,
@@ -703,6 +732,7 @@ func (q *Queries) ListAllProductsAscAfter(ctx context.Context, arg *ListAllProdu
 		arg.MaxPrice,
 		arg.MinQuantity,
 		arg.MaxQuantity,
+		arg.Discontinued,
 		arg.Keyword,
 		arg.AfterCreatedAt,
 		arg.AfterID,
@@ -771,12 +801,16 @@ WHERE ($1::UUID IS NULL OR p.category_id = $1)
     AND ($7::INTEGER IS NULL OR p.quantity >= $7)
     AND ($8::INTEGER IS NULL OR p.quantity <= $8)
     AND (
-        $9::TEXT IS NULL
-        OR p.name ILIKE '%' || $9 || '%'
-        OR p.description ILIKE '%' || $9 || '%'
+        $9::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = $9
+    )
+    AND (
+        $10::TEXT IS NULL
+        OR p.name ILIKE '%' || $10 || '%'
+        OR p.description ILIKE '%' || $10 || '%'
     )
 ORDER BY p.created_at ASC, p.id ASC
-LIMIT $10
+LIMIT $11
 `
 
 type ListAllProductsAscFirstParams struct {
@@ -788,6 +822,7 @@ type ListAllProductsAscFirstParams struct {
 	MaxPrice      *decimal.Decimal
 	MinQuantity   *int32
 	MaxQuantity   *int32
+	Discontinued  *bool
 	Keyword       *string
 	LimitParam    int32
 }
@@ -836,12 +871,16 @@ type ListAllProductsAscFirstRow struct {
 //	    AND ($7::INTEGER IS NULL OR p.quantity >= $7)
 //	    AND ($8::INTEGER IS NULL OR p.quantity <= $8)
 //	    AND (
-//	        $9::TEXT IS NULL
-//	        OR p.name ILIKE '%' || $9 || '%'
-//	        OR p.description ILIKE '%' || $9 || '%'
+//	        $9::BOOLEAN IS NULL
+//	        OR (p.discontinued_at IS NOT NULL) = $9
+//	    )
+//	    AND (
+//	        $10::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $10 || '%'
+//	        OR p.description ILIKE '%' || $10 || '%'
 //	    )
 //	ORDER BY p.created_at ASC, p.id ASC
-//	LIMIT $10
+//	LIMIT $11
 func (q *Queries) ListAllProductsAscFirst(ctx context.Context, arg *ListAllProductsAscFirstParams) ([]*ListAllProductsAscFirstRow, error) {
 	rows, err := q.db.Query(ctx, listAllProductsAscFirst,
 		arg.CategoryID,
@@ -852,6 +891,7 @@ func (q *Queries) ListAllProductsAscFirst(ctx context.Context, arg *ListAllProdu
 		arg.MaxPrice,
 		arg.MinQuantity,
 		arg.MaxQuantity,
+		arg.Discontinued,
 		arg.Keyword,
 		arg.LimitParam,
 	)
@@ -918,16 +958,20 @@ WHERE ($1::UUID IS NULL OR p.category_id = $1)
     AND ($7::INTEGER IS NULL OR p.quantity >= $7)
     AND ($8::INTEGER IS NULL OR p.quantity <= $8)
     AND (
-        $9::TEXT IS NULL
-        OR p.name ILIKE '%' || $9 || '%'
-        OR p.description ILIKE '%' || $9 || '%'
+        $9::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = $9
     )
     AND (
-        p.created_at < $10
-        OR (p.created_at = $10 AND p.id < $11)
+        $10::TEXT IS NULL
+        OR p.name ILIKE '%' || $10 || '%'
+        OR p.description ILIKE '%' || $10 || '%'
+    )
+    AND (
+        p.created_at < $11
+        OR (p.created_at = $11 AND p.id < $12)
     )
 ORDER BY p.created_at DESC, p.id DESC
-LIMIT $12
+LIMIT $13
 `
 
 type ListAllProductsDescAfterParams struct {
@@ -939,6 +983,7 @@ type ListAllProductsDescAfterParams struct {
 	MaxPrice       *decimal.Decimal
 	MinQuantity    *int32
 	MaxQuantity    *int32
+	Discontinued   *bool
 	Keyword        *string
 	AfterCreatedAt time.Time
 	AfterID        uuid.UUID
@@ -989,16 +1034,20 @@ type ListAllProductsDescAfterRow struct {
 //	    AND ($7::INTEGER IS NULL OR p.quantity >= $7)
 //	    AND ($8::INTEGER IS NULL OR p.quantity <= $8)
 //	    AND (
-//	        $9::TEXT IS NULL
-//	        OR p.name ILIKE '%' || $9 || '%'
-//	        OR p.description ILIKE '%' || $9 || '%'
+//	        $9::BOOLEAN IS NULL
+//	        OR (p.discontinued_at IS NOT NULL) = $9
 //	    )
 //	    AND (
-//	        p.created_at < $10
-//	        OR (p.created_at = $10 AND p.id < $11)
+//	        $10::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $10 || '%'
+//	        OR p.description ILIKE '%' || $10 || '%'
+//	    )
+//	    AND (
+//	        p.created_at < $11
+//	        OR (p.created_at = $11 AND p.id < $12)
 //	    )
 //	ORDER BY p.created_at DESC, p.id DESC
-//	LIMIT $12
+//	LIMIT $13
 func (q *Queries) ListAllProductsDescAfter(ctx context.Context, arg *ListAllProductsDescAfterParams) ([]*ListAllProductsDescAfterRow, error) {
 	rows, err := q.db.Query(ctx, listAllProductsDescAfter,
 		arg.CategoryID,
@@ -1009,6 +1058,7 @@ func (q *Queries) ListAllProductsDescAfter(ctx context.Context, arg *ListAllProd
 		arg.MaxPrice,
 		arg.MinQuantity,
 		arg.MaxQuantity,
+		arg.Discontinued,
 		arg.Keyword,
 		arg.AfterCreatedAt,
 		arg.AfterID,
@@ -1077,12 +1127,16 @@ WHERE ($1::UUID IS NULL OR p.category_id = $1)
     AND ($7::INTEGER IS NULL OR p.quantity >= $7)
     AND ($8::INTEGER IS NULL OR p.quantity <= $8)
     AND (
-        $9::TEXT IS NULL
-        OR p.name ILIKE '%' || $9 || '%'
-        OR p.description ILIKE '%' || $9 || '%'
+        $9::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = $9
+    )
+    AND (
+        $10::TEXT IS NULL
+        OR p.name ILIKE '%' || $10 || '%'
+        OR p.description ILIKE '%' || $10 || '%'
     )
 ORDER BY p.created_at DESC, p.id DESC
-LIMIT $10
+LIMIT $11
 `
 
 type ListAllProductsDescFirstParams struct {
@@ -1094,6 +1148,7 @@ type ListAllProductsDescFirstParams struct {
 	MaxPrice      *decimal.Decimal
 	MinQuantity   *int32
 	MaxQuantity   *int32
+	Discontinued  *bool
 	Keyword       *string
 	LimitParam    int32
 }
@@ -1143,12 +1198,16 @@ type ListAllProductsDescFirstRow struct {
 //	    AND ($7::INTEGER IS NULL OR p.quantity >= $7)
 //	    AND ($8::INTEGER IS NULL OR p.quantity <= $8)
 //	    AND (
-//	        $9::TEXT IS NULL
-//	        OR p.name ILIKE '%' || $9 || '%'
-//	        OR p.description ILIKE '%' || $9 || '%'
+//	        $9::BOOLEAN IS NULL
+//	        OR (p.discontinued_at IS NOT NULL) = $9
+//	    )
+//	    AND (
+//	        $10::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $10 || '%'
+//	        OR p.description ILIKE '%' || $10 || '%'
 //	    )
 //	ORDER BY p.created_at DESC, p.id DESC
-//	LIMIT $10
+//	LIMIT $11
 func (q *Queries) ListAllProductsDescFirst(ctx context.Context, arg *ListAllProductsDescFirstParams) ([]*ListAllProductsDescFirstRow, error) {
 	rows, err := q.db.Query(ctx, listAllProductsDescFirst,
 		arg.CategoryID,
@@ -1159,6 +1218,7 @@ func (q *Queries) ListAllProductsDescFirst(ctx context.Context, arg *ListAllProd
 		arg.MaxPrice,
 		arg.MinQuantity,
 		arg.MaxQuantity,
+		arg.Discontinued,
 		arg.Keyword,
 		arg.LimitParam,
 	)
@@ -1495,16 +1555,20 @@ WHERE p.published_at IS NOT NULL
     AND ($7::INTEGER IS NULL OR p.quantity >= $7)
     AND ($8::INTEGER IS NULL OR p.quantity <= $8)
     AND (
-        $9::TEXT IS NULL
-        OR p.name ILIKE '%' || $9 || '%'
-        OR p.description ILIKE '%' || $9 || '%'
+        $9::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = $9
     )
     AND (
-        p.published_at > $10
-        OR (p.published_at = $10 AND p.id > $11)
+        $10::TEXT IS NULL
+        OR p.name ILIKE '%' || $10 || '%'
+        OR p.description ILIKE '%' || $10 || '%'
+    )
+    AND (
+        p.published_at > $11
+        OR (p.published_at = $11 AND p.id > $12)
     )
 ORDER BY p.published_at ASC, p.id ASC
-LIMIT $12
+LIMIT $13
 `
 
 type ListPublishedProductsAscAfterParams struct {
@@ -1516,6 +1580,7 @@ type ListPublishedProductsAscAfterParams struct {
 	MaxPrice         *decimal.Decimal
 	MinQuantity      *int32
 	MaxQuantity      *int32
+	Discontinued     *bool
 	Keyword          *string
 	AfterPublishedAt *time.Time
 	AfterID          uuid.UUID
@@ -1566,16 +1631,20 @@ type ListPublishedProductsAscAfterRow struct {
 //	    AND ($7::INTEGER IS NULL OR p.quantity >= $7)
 //	    AND ($8::INTEGER IS NULL OR p.quantity <= $8)
 //	    AND (
-//	        $9::TEXT IS NULL
-//	        OR p.name ILIKE '%' || $9 || '%'
-//	        OR p.description ILIKE '%' || $9 || '%'
+//	        $9::BOOLEAN IS NULL
+//	        OR (p.discontinued_at IS NOT NULL) = $9
 //	    )
 //	    AND (
-//	        p.published_at > $10
-//	        OR (p.published_at = $10 AND p.id > $11)
+//	        $10::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $10 || '%'
+//	        OR p.description ILIKE '%' || $10 || '%'
+//	    )
+//	    AND (
+//	        p.published_at > $11
+//	        OR (p.published_at = $11 AND p.id > $12)
 //	    )
 //	ORDER BY p.published_at ASC, p.id ASC
-//	LIMIT $12
+//	LIMIT $13
 func (q *Queries) ListPublishedProductsAscAfter(ctx context.Context, arg *ListPublishedProductsAscAfterParams) ([]*ListPublishedProductsAscAfterRow, error) {
 	rows, err := q.db.Query(ctx, listPublishedProductsAscAfter,
 		arg.CategoryID,
@@ -1586,6 +1655,7 @@ func (q *Queries) ListPublishedProductsAscAfter(ctx context.Context, arg *ListPu
 		arg.MaxPrice,
 		arg.MinQuantity,
 		arg.MaxQuantity,
+		arg.Discontinued,
 		arg.Keyword,
 		arg.AfterPublishedAt,
 		arg.AfterID,
@@ -1655,12 +1725,16 @@ WHERE p.published_at IS NOT NULL
     AND ($7::INTEGER IS NULL OR p.quantity >= $7)
     AND ($8::INTEGER IS NULL OR p.quantity <= $8)
     AND (
-        $9::TEXT IS NULL
-        OR p.name ILIKE '%' || $9 || '%'
-        OR p.description ILIKE '%' || $9 || '%'
+        $9::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = $9
+    )
+    AND (
+        $10::TEXT IS NULL
+        OR p.name ILIKE '%' || $10 || '%'
+        OR p.description ILIKE '%' || $10 || '%'
     )
 ORDER BY p.published_at ASC, p.id ASC
-LIMIT $10
+LIMIT $11
 `
 
 type ListPublishedProductsAscFirstParams struct {
@@ -1672,6 +1746,7 @@ type ListPublishedProductsAscFirstParams struct {
 	MaxPrice      *decimal.Decimal
 	MinQuantity   *int32
 	MaxQuantity   *int32
+	Discontinued  *bool
 	Keyword       *string
 	LimitParam    int32
 }
@@ -1720,12 +1795,16 @@ type ListPublishedProductsAscFirstRow struct {
 //	    AND ($7::INTEGER IS NULL OR p.quantity >= $7)
 //	    AND ($8::INTEGER IS NULL OR p.quantity <= $8)
 //	    AND (
-//	        $9::TEXT IS NULL
-//	        OR p.name ILIKE '%' || $9 || '%'
-//	        OR p.description ILIKE '%' || $9 || '%'
+//	        $9::BOOLEAN IS NULL
+//	        OR (p.discontinued_at IS NOT NULL) = $9
+//	    )
+//	    AND (
+//	        $10::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $10 || '%'
+//	        OR p.description ILIKE '%' || $10 || '%'
 //	    )
 //	ORDER BY p.published_at ASC, p.id ASC
-//	LIMIT $10
+//	LIMIT $11
 func (q *Queries) ListPublishedProductsAscFirst(ctx context.Context, arg *ListPublishedProductsAscFirstParams) ([]*ListPublishedProductsAscFirstRow, error) {
 	rows, err := q.db.Query(ctx, listPublishedProductsAscFirst,
 		arg.CategoryID,
@@ -1736,6 +1815,7 @@ func (q *Queries) ListPublishedProductsAscFirst(ctx context.Context, arg *ListPu
 		arg.MaxPrice,
 		arg.MinQuantity,
 		arg.MaxQuantity,
+		arg.Discontinued,
 		arg.Keyword,
 		arg.LimitParam,
 	)
@@ -1803,16 +1883,20 @@ WHERE p.published_at IS NOT NULL
     AND ($7::INTEGER IS NULL OR p.quantity >= $7)
     AND ($8::INTEGER IS NULL OR p.quantity <= $8)
     AND (
-        $9::TEXT IS NULL
-        OR p.name ILIKE '%' || $9 || '%'
-        OR p.description ILIKE '%' || $9 || '%'
+        $9::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = $9
     )
     AND (
-        p.published_at < $10
-        OR (p.published_at = $10 AND p.id < $11)
+        $10::TEXT IS NULL
+        OR p.name ILIKE '%' || $10 || '%'
+        OR p.description ILIKE '%' || $10 || '%'
+    )
+    AND (
+        p.published_at < $11
+        OR (p.published_at = $11 AND p.id < $12)
     )
 ORDER BY p.published_at DESC, p.id DESC
-LIMIT $12
+LIMIT $13
 `
 
 type ListPublishedProductsDescAfterParams struct {
@@ -1824,6 +1908,7 @@ type ListPublishedProductsDescAfterParams struct {
 	MaxPrice         *decimal.Decimal
 	MinQuantity      *int32
 	MaxQuantity      *int32
+	Discontinued     *bool
 	Keyword          *string
 	AfterPublishedAt *time.Time
 	AfterID          uuid.UUID
@@ -1874,16 +1959,20 @@ type ListPublishedProductsDescAfterRow struct {
 //	    AND ($7::INTEGER IS NULL OR p.quantity >= $7)
 //	    AND ($8::INTEGER IS NULL OR p.quantity <= $8)
 //	    AND (
-//	        $9::TEXT IS NULL
-//	        OR p.name ILIKE '%' || $9 || '%'
-//	        OR p.description ILIKE '%' || $9 || '%'
+//	        $9::BOOLEAN IS NULL
+//	        OR (p.discontinued_at IS NOT NULL) = $9
 //	    )
 //	    AND (
-//	        p.published_at < $10
-//	        OR (p.published_at = $10 AND p.id < $11)
+//	        $10::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $10 || '%'
+//	        OR p.description ILIKE '%' || $10 || '%'
+//	    )
+//	    AND (
+//	        p.published_at < $11
+//	        OR (p.published_at = $11 AND p.id < $12)
 //	    )
 //	ORDER BY p.published_at DESC, p.id DESC
-//	LIMIT $12
+//	LIMIT $13
 func (q *Queries) ListPublishedProductsDescAfter(ctx context.Context, arg *ListPublishedProductsDescAfterParams) ([]*ListPublishedProductsDescAfterRow, error) {
 	rows, err := q.db.Query(ctx, listPublishedProductsDescAfter,
 		arg.CategoryID,
@@ -1894,6 +1983,7 @@ func (q *Queries) ListPublishedProductsDescAfter(ctx context.Context, arg *ListP
 		arg.MaxPrice,
 		arg.MinQuantity,
 		arg.MaxQuantity,
+		arg.Discontinued,
 		arg.Keyword,
 		arg.AfterPublishedAt,
 		arg.AfterID,
@@ -1963,12 +2053,16 @@ WHERE p.published_at IS NOT NULL
     AND ($7::INTEGER IS NULL OR p.quantity >= $7)
     AND ($8::INTEGER IS NULL OR p.quantity <= $8)
     AND (
-        $9::TEXT IS NULL
-        OR p.name ILIKE '%' || $9 || '%'
-        OR p.description ILIKE '%' || $9 || '%'
+        $9::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = $9
+    )
+    AND (
+        $10::TEXT IS NULL
+        OR p.name ILIKE '%' || $10 || '%'
+        OR p.description ILIKE '%' || $10 || '%'
     )
 ORDER BY p.published_at DESC, p.id DESC
-LIMIT $10
+LIMIT $11
 `
 
 type ListPublishedProductsDescFirstParams struct {
@@ -1980,6 +2074,7 @@ type ListPublishedProductsDescFirstParams struct {
 	MaxPrice      *decimal.Decimal
 	MinQuantity   *int32
 	MaxQuantity   *int32
+	Discontinued  *bool
 	Keyword       *string
 	LimitParam    int32
 }
@@ -2029,12 +2124,16 @@ type ListPublishedProductsDescFirstRow struct {
 //	    AND ($7::INTEGER IS NULL OR p.quantity >= $7)
 //	    AND ($8::INTEGER IS NULL OR p.quantity <= $8)
 //	    AND (
-//	        $9::TEXT IS NULL
-//	        OR p.name ILIKE '%' || $9 || '%'
-//	        OR p.description ILIKE '%' || $9 || '%'
+//	        $9::BOOLEAN IS NULL
+//	        OR (p.discontinued_at IS NOT NULL) = $9
+//	    )
+//	    AND (
+//	        $10::TEXT IS NULL
+//	        OR p.name ILIKE '%' || $10 || '%'
+//	        OR p.description ILIKE '%' || $10 || '%'
 //	    )
 //	ORDER BY p.published_at DESC, p.id DESC
-//	LIMIT $10
+//	LIMIT $11
 func (q *Queries) ListPublishedProductsDescFirst(ctx context.Context, arg *ListPublishedProductsDescFirstParams) ([]*ListPublishedProductsDescFirstRow, error) {
 	rows, err := q.db.Query(ctx, listPublishedProductsDescFirst,
 		arg.CategoryID,
@@ -2045,6 +2144,7 @@ func (q *Queries) ListPublishedProductsDescFirst(ctx context.Context, arg *ListP
 		arg.MaxPrice,
 		arg.MinQuantity,
 		arg.MaxQuantity,
+		arg.Discontinued,
 		arg.Keyword,
 		arg.LimitParam,
 	)

@@ -34,6 +34,10 @@ WHERE p.published_at IS NOT NULL
     AND (sqlc.narg('min_quantity')::INTEGER IS NULL OR p.quantity >= sqlc.narg('min_quantity'))
     AND (sqlc.narg('max_quantity')::INTEGER IS NULL OR p.quantity <= sqlc.narg('max_quantity'))
     AND (
+        sqlc.narg('discontinued')::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = sqlc.narg('discontinued')
+    )
+    AND (
         sqlc.narg('keyword')::TEXT IS NULL
         OR p.name ILIKE '%' || sqlc.narg('keyword') || '%'
         OR p.description ILIKE '%' || sqlc.narg('keyword') || '%'
@@ -64,6 +68,10 @@ WHERE (sqlc.narg('category_id')::UUID IS NULL OR p.category_id = sqlc.narg('cate
     AND (sqlc.narg('max_price')::NUMERIC IS NULL OR p.price <= sqlc.narg('max_price'))
     AND (sqlc.narg('min_quantity')::INTEGER IS NULL OR p.quantity >= sqlc.narg('min_quantity'))
     AND (sqlc.narg('max_quantity')::INTEGER IS NULL OR p.quantity <= sqlc.narg('max_quantity'))
+    AND (
+        sqlc.narg('discontinued')::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = sqlc.narg('discontinued')
+    )
     AND (
         sqlc.narg('keyword')::TEXT IS NULL
         OR p.name ILIKE '%' || sqlc.narg('keyword') || '%'
@@ -155,6 +163,10 @@ WHERE (sqlc.narg('category_id')::UUID IS NULL OR p.category_id = sqlc.narg('cate
     AND (sqlc.narg('min_quantity')::INTEGER IS NULL OR p.quantity >= sqlc.narg('min_quantity'))
     AND (sqlc.narg('max_quantity')::INTEGER IS NULL OR p.quantity <= sqlc.narg('max_quantity'))
     AND (
+        sqlc.narg('discontinued')::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = sqlc.narg('discontinued')
+    )
+    AND (
         sqlc.narg('keyword')::TEXT IS NULL
         OR p.name ILIKE '%' || sqlc.narg('keyword') || '%'
         OR p.description ILIKE '%' || sqlc.narg('keyword') || '%'
@@ -199,6 +211,10 @@ WHERE (sqlc.narg('category_id')::UUID IS NULL OR p.category_id = sqlc.narg('cate
     AND (sqlc.narg('max_price')::NUMERIC IS NULL OR p.price <= sqlc.narg('max_price'))
     AND (sqlc.narg('min_quantity')::INTEGER IS NULL OR p.quantity >= sqlc.narg('min_quantity'))
     AND (sqlc.narg('max_quantity')::INTEGER IS NULL OR p.quantity <= sqlc.narg('max_quantity'))
+    AND (
+        sqlc.narg('discontinued')::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = sqlc.narg('discontinued')
+    )
     AND (
         sqlc.narg('keyword')::TEXT IS NULL
         OR p.name ILIKE '%' || sqlc.narg('keyword') || '%'
@@ -249,6 +265,10 @@ WHERE (sqlc.narg('category_id')::UUID IS NULL OR p.category_id = sqlc.narg('cate
     AND (sqlc.narg('min_quantity')::INTEGER IS NULL OR p.quantity >= sqlc.narg('min_quantity'))
     AND (sqlc.narg('max_quantity')::INTEGER IS NULL OR p.quantity <= sqlc.narg('max_quantity'))
     AND (
+        sqlc.narg('discontinued')::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = sqlc.narg('discontinued')
+    )
+    AND (
         sqlc.narg('keyword')::TEXT IS NULL
         OR p.name ILIKE '%' || sqlc.narg('keyword') || '%'
         OR p.description ILIKE '%' || sqlc.narg('keyword') || '%'
@@ -293,6 +313,10 @@ WHERE (sqlc.narg('category_id')::UUID IS NULL OR p.category_id = sqlc.narg('cate
     AND (sqlc.narg('max_price')::NUMERIC IS NULL OR p.price <= sqlc.narg('max_price'))
     AND (sqlc.narg('min_quantity')::INTEGER IS NULL OR p.quantity >= sqlc.narg('min_quantity'))
     AND (sqlc.narg('max_quantity')::INTEGER IS NULL OR p.quantity <= sqlc.narg('max_quantity'))
+    AND (
+        sqlc.narg('discontinued')::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = sqlc.narg('discontinued')
+    )
     AND (
         sqlc.narg('keyword')::TEXT IS NULL
         OR p.name ILIKE '%' || sqlc.narg('keyword') || '%'
@@ -408,6 +432,10 @@ WHERE p.published_at IS NOT NULL
     AND (sqlc.narg('min_quantity')::INTEGER IS NULL OR p.quantity >= sqlc.narg('min_quantity'))
     AND (sqlc.narg('max_quantity')::INTEGER IS NULL OR p.quantity <= sqlc.narg('max_quantity'))
     AND (
+        sqlc.narg('discontinued')::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = sqlc.narg('discontinued')
+    )
+    AND (
         sqlc.narg('keyword')::TEXT IS NULL
         OR p.name ILIKE '%' || sqlc.narg('keyword') || '%'
         OR p.description ILIKE '%' || sqlc.narg('keyword') || '%'
@@ -452,6 +480,10 @@ WHERE p.published_at IS NOT NULL
     AND (sqlc.narg('max_price')::NUMERIC IS NULL OR p.price <= sqlc.narg('max_price'))
     AND (sqlc.narg('min_quantity')::INTEGER IS NULL OR p.quantity >= sqlc.narg('min_quantity'))
     AND (sqlc.narg('max_quantity')::INTEGER IS NULL OR p.quantity <= sqlc.narg('max_quantity'))
+    AND (
+        sqlc.narg('discontinued')::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = sqlc.narg('discontinued')
+    )
     AND (
         sqlc.narg('keyword')::TEXT IS NULL
         OR p.name ILIKE '%' || sqlc.narg('keyword') || '%'
@@ -502,6 +534,10 @@ WHERE p.published_at IS NOT NULL
     AND (sqlc.narg('min_quantity')::INTEGER IS NULL OR p.quantity >= sqlc.narg('min_quantity'))
     AND (sqlc.narg('max_quantity')::INTEGER IS NULL OR p.quantity <= sqlc.narg('max_quantity'))
     AND (
+        sqlc.narg('discontinued')::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = sqlc.narg('discontinued')
+    )
+    AND (
         sqlc.narg('keyword')::TEXT IS NULL
         OR p.name ILIKE '%' || sqlc.narg('keyword') || '%'
         OR p.description ILIKE '%' || sqlc.narg('keyword') || '%'
@@ -546,6 +582,10 @@ WHERE p.published_at IS NOT NULL
     AND (sqlc.narg('max_price')::NUMERIC IS NULL OR p.price <= sqlc.narg('max_price'))
     AND (sqlc.narg('min_quantity')::INTEGER IS NULL OR p.quantity >= sqlc.narg('min_quantity'))
     AND (sqlc.narg('max_quantity')::INTEGER IS NULL OR p.quantity <= sqlc.narg('max_quantity'))
+    AND (
+        sqlc.narg('discontinued')::BOOLEAN IS NULL
+        OR (p.discontinued_at IS NOT NULL) = sqlc.narg('discontinued')
+    )
     AND (
         sqlc.narg('keyword')::TEXT IS NULL
         OR p.name ILIKE '%' || sqlc.narg('keyword') || '%'

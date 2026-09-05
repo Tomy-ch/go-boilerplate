@@ -60,6 +60,7 @@ func (s *service) FindFeedByUserID(
 			OrderedAfter:  params.Window.After(),
 			OrderedBefore: params.Window.Before(),
 			StatusCodes:   params.StatusCodes,
+			ProductID:     params.ProductID,
 			LimitParam:    params.Limit,
 		})
 		if err != nil {
@@ -81,6 +82,7 @@ func (s *service) FindFeedByUserID(
 		OrderedAfter:   params.Window.After(),
 		OrderedBefore:  params.Window.Before(),
 		StatusCodes:    params.StatusCodes,
+		ProductID:      params.ProductID,
 		LimitParam:     params.Limit,
 	})
 	if err != nil {
@@ -109,6 +111,7 @@ func (s *service) FindFeedAll(
 			OrderedAfter:  params.Window.After(),
 			OrderedBefore: params.Window.Before(),
 			StatusCodes:   params.StatusCodes,
+			ProductID:     params.ProductID,
 			LimitParam:    params.Limit,
 		})
 		if err != nil {
@@ -129,6 +132,7 @@ func (s *service) FindFeedAll(
 		OrderedAfter:   params.Window.After(),
 		OrderedBefore:  params.Window.Before(),
 		StatusCodes:    params.StatusCodes,
+		ProductID:      params.ProductID,
 		LimitParam:     params.Limit,
 	})
 	if err != nil {

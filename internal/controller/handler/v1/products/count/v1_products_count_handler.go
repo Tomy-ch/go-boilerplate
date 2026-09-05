@@ -54,6 +54,7 @@ func (s *server) GetProductsCount(
 		MaxPrice:           request.Params.MaxPrice,
 		MinQuantity:        request.Params.MinQuantity,
 		MaxQuantity:        request.Params.MaxQuantity,
+		Discontinued:       request.Params.Discontinued,
 		IncludeUnpublished: ptr.Deref(request.Params.IncludeUnpublished, false),
 	})
 	if err != nil {

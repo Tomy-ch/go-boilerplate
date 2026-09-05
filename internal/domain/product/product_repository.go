@@ -66,6 +66,9 @@ type SearchFilter struct {
 	// MinQuantity / MaxQuantity は、在庫数の包含下限／包含上限です。nil の側は制限しません。
 	MinQuantity *int32
 	MaxQuantity *int32
+	// Discontinued は、廃番かどうかによる絞り込みです。nil の場合は絞り込みません。
+	// 廃番の商品は非公開になるため、この軸が意味を持つのは未公開を含む母集団だけです。
+	Discontinued *bool
 }
 
 // Counts は、商品の登録件数の集計です。

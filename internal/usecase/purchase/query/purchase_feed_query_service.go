@@ -39,6 +39,9 @@ type ListFeedParams struct {
 	// StatusCodes は、購入ステータスの業務キーによる絞り込みです。いずれかに一致する購入を対象とし、
 	// 空の場合は全ステータスを対象とします。既知でないコードは 0 件として扱います。
 	StatusCodes []int16
+	// ProductID は、指定商品を含む購入だけに絞る条件です。nil の場合は絞り込みません。
+	// 廃番が進行中の購入を理由に拒まれたとき、どの購入が残っているのかを辿るために用います。
+	ProductID *uuid.UUID
 }
 
 // PurchaseFeedReadModel は、購入履歴一覧の 1 件分の読み取りモデルです。

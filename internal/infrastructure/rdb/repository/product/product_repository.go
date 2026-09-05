@@ -65,6 +65,7 @@ func (r *repository) FindPublishedList(ctx context.Context, params product.ListP
 			MaxPrice:         ptr.Map(params.MaxPrice, money.Price.Decimal),
 			MinQuantity:      params.MinQuantity,
 			MaxQuantity:      params.MaxQuantity,
+			Discontinued:     params.Discontinued,
 			AfterPublishedAt: params.AfterPublishedAt,
 			AfterID:          *params.AfterID,
 			LimitParam:       params.Limit,
@@ -86,6 +87,7 @@ func (r *repository) FindPublishedList(ctx context.Context, params product.ListP
 			MaxPrice:      ptr.Map(params.MaxPrice, money.Price.Decimal),
 			MinQuantity:   params.MinQuantity,
 			MaxQuantity:   params.MaxQuantity,
+			Discontinued:  params.Discontinued,
 			LimitParam:    params.Limit,
 		})
 		if err != nil {
@@ -105,6 +107,7 @@ func (r *repository) FindPublishedList(ctx context.Context, params product.ListP
 			MaxPrice:         ptr.Map(params.MaxPrice, money.Price.Decimal),
 			MinQuantity:      params.MinQuantity,
 			MaxQuantity:      params.MaxQuantity,
+			Discontinued:     params.Discontinued,
 			AfterPublishedAt: params.AfterPublishedAt,
 			AfterID:          *params.AfterID,
 			LimitParam:       params.Limit,
@@ -126,6 +129,7 @@ func (r *repository) FindPublishedList(ctx context.Context, params product.ListP
 			MaxPrice:      ptr.Map(params.MaxPrice, money.Price.Decimal),
 			MinQuantity:   params.MinQuantity,
 			MaxQuantity:   params.MaxQuantity,
+			Discontinued:  params.Discontinued,
 			LimitParam:    params.Limit,
 		})
 		if err != nil {
@@ -152,6 +156,7 @@ func (r *repository) CountPublished(ctx context.Context, filter product.SearchFi
 		MaxPrice:      ptr.Map(filter.MaxPrice, money.Price.Decimal),
 		MinQuantity:   filter.MinQuantity,
 		MaxQuantity:   filter.MaxQuantity,
+		Discontinued:  filter.Discontinued,
 		Keyword:       filter.Keyword,
 	})
 	if err != nil {
@@ -187,6 +192,7 @@ func (r *repository) FindAllList(ctx context.Context, params product.AllListPara
 			MaxPrice:       ptr.Map(params.MaxPrice, money.Price.Decimal),
 			MinQuantity:    params.MinQuantity,
 			MaxQuantity:    params.MaxQuantity,
+			Discontinued:   params.Discontinued,
 			AfterCreatedAt: *params.AfterCreatedAt,
 			AfterID:        *params.AfterID,
 			LimitParam:     params.Limit,
@@ -208,6 +214,7 @@ func (r *repository) FindAllList(ctx context.Context, params product.AllListPara
 			MaxPrice:      ptr.Map(params.MaxPrice, money.Price.Decimal),
 			MinQuantity:   params.MinQuantity,
 			MaxQuantity:   params.MaxQuantity,
+			Discontinued:  params.Discontinued,
 			LimitParam:    params.Limit,
 		})
 		if err != nil {
@@ -227,6 +234,7 @@ func (r *repository) FindAllList(ctx context.Context, params product.AllListPara
 			MaxPrice:       ptr.Map(params.MaxPrice, money.Price.Decimal),
 			MinQuantity:    params.MinQuantity,
 			MaxQuantity:    params.MaxQuantity,
+			Discontinued:   params.Discontinued,
 			AfterCreatedAt: *params.AfterCreatedAt,
 			AfterID:        *params.AfterID,
 			LimitParam:     params.Limit,
@@ -248,6 +256,7 @@ func (r *repository) FindAllList(ctx context.Context, params product.AllListPara
 			MaxPrice:      ptr.Map(params.MaxPrice, money.Price.Decimal),
 			MinQuantity:   params.MinQuantity,
 			MaxQuantity:   params.MaxQuantity,
+			Discontinued:  params.Discontinued,
 			LimitParam:    params.Limit,
 		})
 		if err != nil {
@@ -274,6 +283,7 @@ func (r *repository) CountAll(ctx context.Context, filter product.SearchFilter) 
 		MaxPrice:      ptr.Map(filter.MaxPrice, money.Price.Decimal),
 		MinQuantity:   filter.MinQuantity,
 		MaxQuantity:   filter.MaxQuantity,
+		Discontinued:  filter.Discontinued,
 		Keyword:       filter.Keyword,
 	})
 	if err != nil {

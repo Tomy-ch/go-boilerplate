@@ -124,6 +124,8 @@ type SearchFilter struct {
 	// MinQuantity / MaxQuantity は、在庫数の包含下限／包含上限です。nil の側は制限しません。
 	MinQuantity *int32
 	MaxQuantity *int32
+	// Discontinued は、廃番かどうかによる絞り込みです。nil の場合は絞り込みません。
+	Discontinued *bool
 }
 
 // ProductCountView は、公開商品検索の一致件数です。
@@ -396,6 +398,7 @@ func toDomainSearchFilter(filter SearchFilter, r productListRange) product.Searc
 		MaxPrice:      r.maxPrice,
 		MinQuantity:   r.minQuantity,
 		MaxQuantity:   r.maxQuantity,
+		Discontinued:  filter.Discontinued,
 	}
 }
 
