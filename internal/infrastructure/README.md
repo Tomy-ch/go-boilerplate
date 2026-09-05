@@ -115,11 +115,16 @@ repeats it has leaked the layer; see
 
 The converse is the failure mode to watch for here. Because the inward interface states the guarantee
 in application vocabulary, an implementation doc that only paraphrases that interface adds **nothing**
-— it is a duplicate that rots in two places. So an implementation doc must either **name the
-mechanism** (`FindByID` reads without taking a lock, unlike `LockByID`; `SearchByKeyword` dispatches to
-one of three fixed queries on the `active` filter; `Update` normalizes zero affected rows to NotFound)
-or be **omitted** — the Repository type is unexported, so `revive`'s `exported` rule does not require
-one. Paraphrasing the interface is the one option that is never right.
+— it is a duplicate that rots in two places. Deleting it is not the remedy: Go does not carry an
+interface's doc to its implementations, so a bare method body leaves whoever maintains the SQL with
+less than the caller has, and the guarantee they are about to change is nowhere in sight.
+
+So an implementation doc **states the guarantee through the mechanism that carries it** (`FindByID`
+reads without taking a lock, unlike `LockByID`; `SearchByKeyword` dispatches to one of three fixed
+queries on the `active` filter; `Update` normalizes zero affected rows to NotFound). Each of those
+says what the interface says *and* how this implementation gets there, in one breath — which is why
+it neither duplicates nor omits. Paraphrasing the interface and leaving the body bare are the two
+options that are never right.
 
 ## Directory Structure
 

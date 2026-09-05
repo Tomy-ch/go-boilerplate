@@ -9,7 +9,7 @@ import "context"
 // 失敗は apperror sentinel（読めない・書けないは ErrUnavailable）で返します。
 type EventLogStore interface {
 	// Append は、event を (StreamID, Sequence) の位置へ 1 度だけ書きます。
-	// 同じ位置に同じ EventID の event が既にあれば成功として返します（outbox の retry に対して冪等）。
+	// 同じ位置に同じ EventID の event が既にあれば成功として返します。
 	// 同じ位置に異なる EventID の event があれば ErrSequenceConflict を返します。
 	// 実装は書く前に event.Validate() を呼び、不正な封筒を保存しません。
 	Append(ctx context.Context, event DeliveryEvent) error
@@ -21,9 +21,8 @@ type EventLogStore interface {
 	Latest(ctx context.Context, streamID StreamID) (DeliveryEvent, bool, error)
 	// Find は、stream の指定 sequence の event を返します。無ければ ok=false を返します。
 	Find(ctx context.Context, streamID StreamID, seq Sequence) (DeliveryEvent, bool, error)
-	// AppendedThrough は、この stream へ追記した最大の位置を返します。1 度も追記していなければ 0 です。
-	// 保持期間で event が消えても後戻りしません。ある位置の event が無いとき、それが「まだ来ていない」のか
-	// 「もう無い」のかは、この値と比べて初めて決まります。
+	// AppendedThrough は、この stream へ追記した最大の位置を返します。1 度も追記していなければ 0 です
+	// （この値の使い方は docs/design/realtime-delivery.md の Glossary「append watermark」）。
 	AppendedThrough(ctx context.Context, streamID StreamID) (Sequence, error)
 }
 

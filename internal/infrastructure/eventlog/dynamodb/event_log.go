@@ -79,7 +79,8 @@ func (s *store) Append(ctx context.Context, event realtime.DeliveryEvent) error 
 	return s.advanceWatermark(ctx, event.StreamID, event.Sequence)
 }
 
-// AppendedThrough は、この stream へ追記した最大の位置を返します。1 度も追記していなければ 0 です。
+// AppendedThrough は、watermark item を強い一貫性で 1 件引きます。item が無い（1 度も追記して
+// いない）ときは 0 を返します。この item は TTL を持たないので、event が消えても残ります。
 func (s *store) AppendedThrough(ctx context.Context, streamID realtime.StreamID) (realtime.Sequence, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
@@ -105,7 +106,8 @@ func (s *store) AppendedThrough(ctx context.Context, streamID realtime.StreamID)
 	return realtime.Sequence(seq), nil
 }
 
-// ReadAfter は、cursor より後ろを昇順に強い一貫性で読みます。
+// ReadAfter は、cursor より後ろを昇順に強い一貫性で読みます。件数は Limit で切りますが、
+// DynamoDB は 1 MiB でも打ち切るため、続きの有無は LastEvaluatedKey で判断します。
 func (s *store) ReadAfter(ctx context.Context, q realtime.ReadAfterQuery) (realtime.ReadAfterResult, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()
@@ -248,7 +250,6 @@ func (s *store) advanceWatermark(ctx context.Context, streamID realtime.StreamID
 	return nil
 }
 
-// key は、(stream, sequence) の主キーを返します。
 func key(streamID realtime.StreamID, seq realtime.Sequence) map[string]types.AttributeValue {
 	return map[string]types.AttributeValue{
 		attrStreamID: &types.AttributeValueMemberS{Value: string(streamID)},
@@ -256,8 +257,7 @@ func key(streamID realtime.StreamID, seq realtime.Sequence) map[string]types.Att
 	}
 }
 
-// toItem は、封筒を item に写します。expires_at は OccurredAt + EventLogRetention（epoch 秒）で、
-// TTL による掃除にだけ使います。
+// toItem は、封筒を item に写します。
 func toItem(e realtime.DeliveryEvent) map[string]types.AttributeValue {
 	item := key(e.StreamID, e.Sequence)
 	item[attrEventID] = &types.AttributeValueMemberS{Value: e.EventID}
@@ -269,7 +269,6 @@ func toItem(e realtime.DeliveryEvent) map[string]types.AttributeValue {
 		item[attrPayload] = &types.AttributeValueMemberB{Value: e.Payload}
 	}
 
-	// 起点 trace は無いことがあるので、空の属性を書かずに省きます。
 	if len(e.Origin) > 0 {
 		origin := make(map[string]types.AttributeValue, len(e.Origin))
 		for k, v := range e.Origin {
@@ -282,7 +281,7 @@ func toItem(e realtime.DeliveryEvent) map[string]types.AttributeValue {
 	return item
 }
 
-// fromItem は、item を封筒に戻します。形が崩れていれば ErrInternal（store の中身が契約と違う）です。
+// fromItem は、item を封筒に戻します。
 func fromItem(item map[string]types.AttributeValue) (realtime.DeliveryEvent, error) {
 	seq, err := dynamodbclient.NumberAttr(item, attrSequence, itemKind)
 	if err != nil {

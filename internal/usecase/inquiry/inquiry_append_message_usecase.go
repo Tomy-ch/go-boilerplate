@@ -10,11 +10,11 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
-// AppendMessage は、利用者の投稿を追加します。
-// active な問い合わせが無ければ作成します。
+// AppendMessage は、問い合わせの確保から採番・追加・更新までを 1 つの tx に収めます。
+// 問い合わせが無ければ CreateIfAbsent が単一文で確保するので、並行しても衝突しません。
 //
-// この本体に外部副作用を足してはなりません。tx がやり直されると二重に実行されます
-// （ADR-0035 (transaction-retry-idempotent-callers)）。
+// この本体に外部副作用を足してはなりません（tx.Manager.Do の冪等性契約、
+// ADR-0035 (transaction-retry-idempotent-callers)）。
 func (u *usecase) AppendMessage(ctx context.Context, params AppendMessageParams) (MessageView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
@@ -24,7 +24,6 @@ func (u *usecase) AppendMessage(ctx context.Context, params AppendMessageParams)
 	})
 }
 
-// appendForUser は、1 トランザクション分の投稿処理です。
 func (u *usecase) appendForUser(ctx context.Context, params AppendMessageParams) (MessageView, error) {
 	i, err := u.resolveOrCreateInquiry(ctx, params.UserID)
 	if err != nil {
@@ -39,7 +38,6 @@ func (u *usecase) appendForUser(ctx context.Context, params AppendMessageParams)
 	return u.appendMessage(ctx, i, author, params.Body)
 }
 
-// resolveOrCreateInquiry は、利用者の問い合わせを取得し、無ければ作成します。
 func (u *usecase) resolveOrCreateInquiry(
 	ctx context.Context,
 	userID uuid.UUID,

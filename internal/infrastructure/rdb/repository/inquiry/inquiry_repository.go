@@ -30,7 +30,7 @@ func New(
 	}
 }
 
-// FindByID は、問い合わせを 1 件再構築して返します。存在しない場合は NotFound を返します。
+// FindByID は、ロックを取らずに 1 行読み、行が無いことを pgerror が NotFound へ正規化します。
 func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*inquiry.Inquiry, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
@@ -44,8 +44,7 @@ func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*inquiry.Inqui
 	return reconstruct(row.Inquiries)
 }
 
-// FindActiveByUserID は、利用者の問い合わせを再構築して返します。
-// 存在しない場合は NotFound を返します。
+// FindActiveByUserID は、user_id の一意索引で 1 行引き、行が無いことを pgerror が NotFound へ正規化します。
 func (r *repository) FindActiveByUserID(ctx context.Context, userID uuid.UUID) (*inquiry.Inquiry, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
@@ -59,7 +58,8 @@ func (r *repository) FindActiveByUserID(ctx context.Context, userID uuid.UUID) (
 	return reconstruct(row.Inquiries)
 }
 
-// CreateIfAbsent は、利用者の問い合わせが無ければ 1 件登録し、確定した問い合わせを返します。
+// CreateIfAbsent は、一意索引に単一文で裁定させ、挿入した行か既にあった行かを問わず
+// RETURNING で受けた行を返します。競合しても一意制約違反を上げません。
 func (r *repository) CreateIfAbsent(ctx context.Context, i *inquiry.Inquiry) (*inquiry.Inquiry, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
@@ -76,7 +76,7 @@ func (r *repository) CreateIfAbsent(ctx context.Context, i *inquiry.Inquiry) (*i
 	return reconstruct(row.Inquiries)
 }
 
-// Update は、問い合わせの更新日時を永続化します。
+// Update は、更新日時だけを書き戻します。行の有無は問わず、影響 0 行でもエラーにしません。
 func (r *repository) Update(ctx context.Context, i *inquiry.Inquiry) error {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
@@ -148,7 +148,8 @@ func (r *repository) CreateMessage(
 	return nil
 }
 
-// ListMessages は、問い合わせのメッセージを位置の昇順で 1 ページ分再構築して返します。
+// ListMessages は、位置の昇順に 1 ページ分を keyset で引きます。上限位置は呼び出し側が
+// 渡した cursor で、それより後ろは同じ snapshot の外として除きます。
 func (r *repository) ListMessages(
 	ctx context.Context,
 	inquiryID uuid.UUID,
@@ -224,7 +225,6 @@ func flatten[T any](rows []*T, pick func(*T) gen.Inquiries) []gen.Inquiries {
 	return out
 }
 
-// reconstruct は、行をドメイン集約へ写します。
 func reconstruct(row gen.Inquiries) (*inquiry.Inquiry, error) {
 	return inquiry.Reconstruct(row.ID, inquiry.Attributes{
 		UserID:    row.UserID,
@@ -233,7 +233,6 @@ func reconstruct(row gen.Inquiries) (*inquiry.Inquiry, error) {
 	})
 }
 
-// reconstructMessage は、行をメッセージへ写します。
 func reconstructMessage(row gen.InquiryMessages) (*inquiry.Message, error) {
 	kind, err := inquiry.NewAuthorKind(row.AuthorKind)
 	if err != nil {

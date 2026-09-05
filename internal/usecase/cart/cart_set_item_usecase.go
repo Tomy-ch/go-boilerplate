@@ -13,8 +13,8 @@ import (
 
 // SetItem は、カートへ明細を 1 件置きます。
 //
-// この本体に外部副作用を足してはなりません。tx がやり直されると二重に実行されます
-// （ADR-0035 (transaction-retry-idempotent-callers)）。
+// この本体に外部副作用を足してはなりません（tx.Manager.Do の冪等性契約、
+// ADR-0035 (transaction-retry-idempotent-callers)）。
 func (u *usecase) SetItem(ctx context.Context, params SetItemParams) (CartView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
@@ -24,7 +24,6 @@ func (u *usecase) SetItem(ctx context.Context, params SetItemParams) (CartView, 
 	})
 }
 
-// setItem は、1 トランザクション分の処理です。
 func (u *usecase) setItem(ctx context.Context, params SetItemParams) (CartView, error) {
 	now := u.clock.Now()
 
@@ -61,7 +60,6 @@ func (u *usecase) setItem(ctx context.Context, params SetItemParams) (CartView, 
 	return view, nil
 }
 
-// ensureProductAvailable は、商品がカートへ入れられる状態にあることを確かめます。
 func (u *usecase) ensureProductAvailable(ctx context.Context, productID uuid.UUID) error {
 	if _, err := u.productRepo.FindPublishedByID(ctx, productID); err != nil {
 		if xerrors.Is(err, apperror.ErrNotFound) {
@@ -89,8 +87,8 @@ func (u *usecase) resolveOrCreateCart(
 // ユーザー 1 人につきカートは高々 1 件のため、期限切れでも作り直せません
 // （docs/spec/usecase/cart.md の SetItem）。
 //
-// 解決とロックの間にカートが消えていた場合は、引けなかった場合と同じく確保し直します。
-// この op は 404 を宣言していません。
+// 解決とロックの間にカートが消えていた場合は、引けなかった場合と同じく確保し直します
+// （docs/spec/usecase/cart.md の SetItem）。
 func (u *usecase) resolveOwnerCart(
 	ctx context.Context, userID uuid.UUID, now time.Time,
 ) (*cart.Cart, *string, error) {
@@ -119,8 +117,8 @@ func (u *usecase) resolveOwnerCart(
 // 提示されたトークンで引けなかった場合と、引けたが期限切れだった場合は、どちらも採番し直します
 // （docs/spec/usecase/cart.md の SetItem）。
 //
-// 解決とロックの間にカートが消えていた場合も同じく採番し直します。引き継ぎ（MergeOnLogin）が
-// ゲストカートを行ごと消すため、この窓は実際に開きます。この op は 404 を宣言していません。
+// 解決とロックの間にカートが消えていた場合も同じく採番し直します
+// （docs/spec/usecase/cart.md の SetItem）。
 func (u *usecase) resolveGuestCart(
 	ctx context.Context, presented *string, now time.Time,
 ) (*cart.Cart, *string, error) {
@@ -154,10 +152,8 @@ func (u *usecase) resolveGuestCart(
 	return c, nil, nil
 }
 
-// createOwnerCart は、所有者が確定した空のカートを確保します。
-// 一意インデックスが単一文の中で裁定するため、並行して作成が競合しても一意制約違反を上げず、
-// 勝ったほうのカートが返ります（MergeOnLogin の引き継ぎ先の確保と同じ扱い）。
-// 返った行はその文がロックを取っているので、ここで LockByID は要りません
+// createOwnerCart は、一意索引に単一文で裁定させて空のカートを確保し、競合しても勝ったほうを
+// 返します。返った行はその文がロックを取っているので、ここで LockByID を足してはなりません
 // （database/dml/repository/cart/insert_owner_cart_if_absent.sql）。
 func (u *usecase) createOwnerCart(
 	ctx context.Context, userID uuid.UUID, now time.Time,
