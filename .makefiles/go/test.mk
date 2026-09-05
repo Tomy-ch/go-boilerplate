@@ -49,7 +49,7 @@ gen-test-repo: require-db-owner
 		| grep -Ev '$(GO_TEST_EXCLUDE)' \
 		| tr '\n' ',' \
 		| sed 's/,$$//')"; \
-	go test $$TGT_PKGS -coverpkg=$$COVER_PKGS -coverprofile=docs/coverage/coverage.out -covermode=set  >/dev/null 2>&1
+	go test $$TGT_PKGS -coverpkg=$$COVER_PKGS -coverprofile=docs/coverage/coverage.out -covermode=set
 	go tool cover -html=docs/coverage/coverage.out -o docs/coverage/index.html
 	rm -f docs/coverage/coverage.out
 	@echo "✅ テストレポートの生成が完了しました。"
@@ -87,8 +87,12 @@ cover-gate:
 # scripts 配下の計測は本体とはプロファイルを分ける。合流させると片方の劣化がもう片方の
 # 合否を動かすため、下限割れは -warn で警告に留める（CI では GITHUB_ACTIONS が立つので
 # ::warning:: アノテーションとして差分ビューに出る）。
+#
+# go test の出力は捨てないこと。-coverprofile はファイルへ書くため、標準出力に残るのは
+# サマリ行と、失敗したときのテスト名・差分だけで、後者はこのターゲットが落ちた理由を示す
+# 唯一の手掛かりになる。
 cover-scripts:
-	@$(LOAD_BAND); $$GOBP_NICE go test ./scripts/... -coverprofile=coverage-scripts.out -covermode=atomic -count=1 $$GO_TEST_P_FLAG > /dev/null
+	@$(LOAD_BAND); $$GOBP_NICE go test ./scripts/... -coverprofile=coverage-scripts.out -covermode=atomic -count=1 $$GO_TEST_P_FLAG
 	@go run ./scripts/cover-gate -profile coverage-scripts.out -threshold $(SCRIPTS_COVERAGE_THRESHOLD) \
 		-warn $(if $(GITHUB_ACTIONS),-github,)
 	@rm -f coverage-scripts.out
