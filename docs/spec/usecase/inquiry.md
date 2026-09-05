@@ -152,8 +152,9 @@ output:
   tx_required: true
   steps:
     - "message id を UUIDv7 で採番する"
-    - "txm.Do（1 回目）内で: inquiryRepo.FindActiveByUserID(UserID)。無ければ inquiry.New で作成し inquiryRepo.Create。Create が ErrConflict（最初の投稿の競合）なら fn からそのまま返して tx を rollback する — UNIQUE 違反は tx を中断させるため同じ tx の中では読み直せない（docs/spec/usecase/cart.md の SetItem と同じ）"
-    - "ErrConflict のときだけ txm.Do をもう 1 回（Create を試みず FindActiveByUserID から）やり直す。2 回目も見つからなければ ErrConflict を返す"
+    - "txm.Do 内で: inquiryRepo.FindActiveByUserID(UserID)。無ければ inquiry.New で作成し inquiryRepo.Create"
+    - "Create は行が既にあれば何もせず ErrConflict を返す（UNIQUE 違反を送出しないので tx は中断しない）。そのときは同じ tx のまま FindActiveByUserID をもう 1 度引き、先に作られた問い合わせへ追加する"
+    - "読み直しでも見つからなければ ErrConflict を返す（READ COMMITTED では起こらないが、tx が後続のコミットを見ない分離レベルで開かれた場合の逃げ道）"
     - "取得または作成した問い合わせに対して、同じ txm.Do 内で:"
     - "  ① seq = seqAlloc.Allocate(inquiry.ID)（会話 stream の連番。行ロックは commit まで保持。同一問い合わせへの並行投稿はここで直列化）"
     - "  ② inquiry.AppendMessage(id, {NewAuthor(user, UserID), Body, seq}, now) で鋳造し repo.CreateMessage / repo.Update"
@@ -283,10 +284,12 @@ output:
   （[ADR-0072 (postgres-state-dynamodb-eventlog)] の「1 stream の書き込みは 1 行で直列化する」がそのまま feed に当たる。
   sample の規模では見えない制約で、feed をシャーディングする設計はこの spec の範囲外）。feed の event は本文を持たない軽量なもの
   （`inquiryId / userId / sequence / updatedAt`）。
-- **最初の投稿の競合。** 同じ利用者の初回投稿が並行すると片方の `Create` が UNIQUE 違反になる。UNIQUE 違反は PostgreSQL の
-  tx を中断させるため同じ tx の中では読み直せず、usecase は tx を丸ごと 1 回だけやり直す（`docs/spec/usecase/cart.md` の
-  SetItem / MergeOnLogin と同じ扱い。`tx.Manager.Do` の自動 retry は serialization failure / deadlock だけが対象で、UNIQUE 違反は
-  対象外）。
+- **最初の投稿の競合。** 同じ利用者の初回投稿が並行しても、`Create` は `ON CONFLICT DO NOTHING` なので UNIQUE 違反を
+  送出しない。tx が中断しないため、負けた側は同じ tx のまま先に作られた問い合わせを読み直して追加でき、どちらの投稿も
+  成功する。読み直しが効くのは既定の READ COMMITTED が文ごとに snapshot を取るためで、usecase 側の tx やり直しは要らない
+  （`tx.Manager.Do` の自動 retry は serialization failure / deadlock だけが対象で、UNIQUE 違反は対象外。
+  `idempotency.Run` の内側では `Manager.Do` が外側の tx を再利用するため、usecase が自前で tx をやり直しても新しい tx は
+  取れない — この経路で UNIQUE 違反に頼る設計を採ってはならない）。
 - **streamCursor と snapshot。** History は先に `SequenceAllocator.Current` で stream の現在位置（cursor）を読み、次に
   `sequence <= cursor` で messages を読む。採番の行ロックが commit まで保持されるため、cursor = c を読めた時点で sequence ≤ c の
   message はすべて commit 済みであり、c より大きいものは除外する——既定の READ COMMITTED（文ごとに snapshot）のままで
