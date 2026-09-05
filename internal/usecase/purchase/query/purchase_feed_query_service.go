@@ -40,7 +40,6 @@ type ListFeedParams struct {
 	// 空の場合は全ステータスを対象とします。既知でないコードは 0 件として扱います。
 	StatusCodes []int16
 	// ProductID は、指定商品を含む購入だけに絞る条件です。nil の場合は絞り込みません。
-	// 廃番が進行中の購入を理由に拒まれたとき、どの購入が残っているのかを辿るために用います。
 	ProductID *uuid.UUID
 }
 
