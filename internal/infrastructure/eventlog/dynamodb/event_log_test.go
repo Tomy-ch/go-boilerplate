@@ -476,3 +476,99 @@ func Test_originAttr(t *testing.T) {
 		})
 	})
 }
+
+func Test_store_AppendedThrough(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("1 度も追記していなければ 0 を返す", func(t *testing.T) {
+			t.Parallel()
+
+			s := newStore(t)
+
+			got, err := s.AppendedThrough(t.Context(), "s")
+			require.NoError(t, err)
+			assert.Equal(t, realtime.Sequence(0), got)
+		})
+
+		t.Run("追記した最大の位置を返す", func(t *testing.T) {
+			t.Parallel()
+
+			s := newStore(t)
+			seed(t, s, "s", 3)
+
+			got, err := s.AppendedThrough(t.Context(), "s")
+			require.NoError(t, err)
+			assert.Equal(t, realtime.Sequence(3), got)
+		})
+
+		t.Run("後ろの位置を書いた後に前の位置を書いても後戻りしない", func(t *testing.T) {
+			t.Parallel()
+
+			s := newStore(t)
+			require.NoError(t, s.Append(t.Context(), event("s", 5, "evt-5")))
+			require.NoError(t, s.Append(t.Context(), event("s", 2, "evt-2")))
+
+			got, err := s.AppendedThrough(t.Context(), "s")
+			require.NoError(t, err)
+			assert.Equal(t, realtime.Sequence(5), got)
+		})
+
+		t.Run("同じ event の再 append でも位置は変わらない", func(t *testing.T) {
+			t.Parallel()
+
+			s := newStore(t)
+			require.NoError(t, s.Append(t.Context(), event("s", 4, "evt-4")))
+			require.NoError(t, s.Append(t.Context(), event("s", 4, "evt-4")))
+
+			got, err := s.AppendedThrough(t.Context(), "s")
+			require.NoError(t, err)
+			assert.Equal(t, realtime.Sequence(4), got)
+		})
+
+		t.Run("stream ごとに独立している", func(t *testing.T) {
+			t.Parallel()
+
+			s := newStore(t)
+			seed(t, s, "a", 2)
+
+			got, err := s.AppendedThrough(t.Context(), "b")
+			require.NoError(t, err)
+			assert.Equal(t, realtime.Sequence(0), got)
+		})
+	})
+}
+
+func Test_store_watermarkIsNotAnEvent(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("event が無い stream の Latest は watermark を返さない", func(t *testing.T) {
+			t.Parallel()
+
+			s := newStore(t)
+			require.NoError(t, s.Append(t.Context(), event("s", 1, "evt-1")))
+			require.NoError(t, s.deleteEventForTest(t.Context(), "s", 1))
+
+			_, ok, err := s.Latest(t.Context(), "s")
+			require.NoError(t, err)
+			assert.False(t, ok)
+		})
+
+		t.Run("初期位置からの ReadAfter は watermark を返さない", func(t *testing.T) {
+			t.Parallel()
+
+			s := newStore(t)
+			seed(t, s, "s", 2)
+
+			res, err := s.ReadAfter(t.Context(), realtime.ReadAfterQuery{StreamID: "s", After: 0, Limit: 10})
+			require.NoError(t, err)
+			require.Len(t, res.Events, 2)
+			assert.Equal(t, realtime.Sequence(1), res.Events[0].Sequence)
+		})
+	})
+}

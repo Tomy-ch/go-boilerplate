@@ -34,9 +34,13 @@ func NewCursorValidator(log rt.EventLogStore, clk clock.Clock, tf observability.
 	return &cursorValidator{log: log, clock: clk, tracer: tf.Usecase()}
 }
 
-// Validate は、replay floor を EventLog の状態から導出します（3 分岐は ADR-0072 / package README を参照）。
+// Validate は、replay floor を EventLog の状態から導出します（ADR-0072 / package README を参照）。
 // 「cursor+1 の有無」と「後ろの event の有無」を別々に読むと、その間に relay が cursor+1 を
 // append しただけで gap に見えるため、1 回の読み取りにまとめます。
+//
+// cursor の位置に event が無いことは、それだけでは失効を意味しません。まだ relay が書いていない
+// 位置も同じ形になり、そちらを失効として断ると、正本を読み直しても同じ cursor が返るため
+// 回復手順が収束しません。追記済みの位置（AppendedThrough）と比べて切り分けます。
 func (v *cursorValidator) Validate(ctx context.Context, streamID rt.StreamID, cursor rt.Sequence) error {
 	ctx, endSpan := v.tracer.Start(ctx)
 	defer endSpan()
@@ -68,9 +72,20 @@ func (v *cursorValidator) Validate(ctx context.Context, streamID rt.StreamID, cu
 		return err
 	}
 
-	if !ok {
-		return xerrors.Wrap(ErrCursorExpired, "the event at the cursor is gone")
+	if ok {
+		return nil
 	}
 
-	return nil
+	// cursor の位置に event が無く、後ろにも無い。追記済みの位置と比べて初めて、これが
+	// 「保持期間を過ぎて消えた」のか「relay がまだ書いていない」のかが決まります。
+	appended, err := v.log.AppendedThrough(ctx, streamID)
+	if err != nil {
+		return err
+	}
+
+	if cursor > appended {
+		return nil
+	}
+
+	return xerrors.Wrap(ErrCursorExpired, "the event at the cursor is gone")
 }
