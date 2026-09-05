@@ -5,6 +5,7 @@ package inquiry
 import (
 	"context"
 
+	"go-boilerplate/internal/apperror"
 	"go-boilerplate/internal/domain/inquiry"
 	"go-boilerplate/internal/infrastructure/rdb/driver"
 	"go-boilerplate/internal/infrastructure/rdb/pgerror"
@@ -12,6 +13,7 @@ import (
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/pkg/safecast"
 	"go-boilerplate/pkg/uuid"
+	"go-boilerplate/pkg/xerrors"
 )
 
 type repository struct {
@@ -60,19 +62,22 @@ func (r *repository) FindActiveByUserID(ctx context.Context, userID uuid.UUID) (
 }
 
 // Create は、問い合わせを 1 件登録します。
-// 同じ利用者の問い合わせが既にある場合は一意制約違反を Conflict として返します。
+// 同じ利用者の問い合わせが既にある場合は、行を足さずに Conflict を返します。
 func (r *repository) Create(ctx context.Context, i *inquiry.Inquiry) error {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
 
 	db := gen.New(driver.New(ctx, r.db))
 
-	err := db.CreateInquiry(ctx, &gen.CreateInquiryParams{
+	affected, err := db.CreateInquiry(ctx, &gen.CreateInquiryParams{
 		ID:     i.ID(),
 		UserID: i.UserID(),
 	})
 	if err != nil {
 		return pgerror.NormalizeError(err)
+	}
+	if affected == 0 {
+		return xerrors.Wrap(apperror.ErrConflict, "inquiry already exists for the user")
 	}
 	return nil
 }

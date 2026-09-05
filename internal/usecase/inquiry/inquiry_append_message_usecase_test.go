@@ -50,7 +50,7 @@ func Test_usecase_AppendMessage(t *testing.T) {
 			assert.Equal(t, int64(1), view.Sequence)
 		})
 
-		t.Run("作成が競合しても2回目で解決すれば成功する", func(t *testing.T) {
+		t.Run("作成が競合しても先に作られた問い合わせへ追加する", func(t *testing.T) {
 			t.Parallel()
 			u, d := newTestUsecase(t)
 			userID := uuidtestkit.NewTestFromSalt(t, "user")
@@ -74,7 +74,7 @@ func Test_usecase_AppendMessage(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("やり直しても問い合わせを決められなければConflictを返す", func(t *testing.T) {
+		t.Run("競合した相手の問い合わせが見えなければConflictを返す", func(t *testing.T) {
 			t.Parallel()
 			u, d := newTestUsecase(t)
 			userID := uuidtestkit.NewTestFromSalt(t, "user")
@@ -92,7 +92,7 @@ func Test_usecase_AppendMessage(t *testing.T) {
 			require.ErrorIs(t, err, apperror.ErrConflict)
 		})
 
-		t.Run("競合以外の失敗はやり直さずそのまま返す", func(t *testing.T) {
+		t.Run("競合以外の失敗はそのまま返す", func(t *testing.T) {
 			t.Parallel()
 			u, d := newTestUsecase(t)
 			userID := uuidtestkit.NewTestFromSalt(t, "user")
@@ -134,7 +134,7 @@ func Test_usecase_appendForUser(t *testing.T) {
 
 			_, err := u.appendForUser(context.Background(), AppendMessageParams{
 				UserID: userID, Subject: "user-john-doe", Body: "本文",
-			}, true)
+			})
 
 			require.NoError(t, err)
 			require.NotNil(t, created)
@@ -150,12 +150,13 @@ func Test_usecase_appendForUser(t *testing.T) {
 			t.Parallel()
 			u, d := newTestUsecase(t)
 			userID := uuidtestkit.NewTestFromSalt(t, "user")
+			wantErr := xerrors.New("find failed")
 
-			d.repo.EXPECT().FindActiveByUserID(gomock.Any(), userID).Return(nil, apperror.ErrNotFound)
+			d.repo.EXPECT().FindActiveByUserID(gomock.Any(), userID).Return(nil, wantErr)
 
-			_, err := u.appendForUser(context.Background(), AppendMessageParams{UserID: userID, Body: "本文"}, false)
+			_, err := u.appendForUser(context.Background(), AppendMessageParams{UserID: userID, Body: "本文"})
 
-			require.ErrorIs(t, err, errInquiryCreationRace)
+			require.ErrorIs(t, err, wantErr)
 		})
 	})
 }
@@ -174,7 +175,7 @@ func Test_usecase_resolveOrCreateInquiry(t *testing.T) {
 
 			d.repo.EXPECT().FindActiveByUserID(gomock.Any(), userID).Return(i, nil)
 
-			got, err := u.resolveOrCreateInquiry(context.Background(), userID, true)
+			got, err := u.resolveOrCreateInquiry(context.Background(), userID)
 
 			require.NoError(t, err)
 			assert.Equal(t, i, got)
@@ -191,41 +192,34 @@ func Test_usecase_resolveOrCreateInquiry(t *testing.T) {
 				func(_ context.Context, i *domaininquiry.Inquiry) error { created = i; return nil },
 			)
 
-			got, err := u.resolveOrCreateInquiry(context.Background(), userID, true)
+			got, err := u.resolveOrCreateInquiry(context.Background(), userID)
 
 			require.NoError(t, err)
 			assert.Equal(t, created, got)
 			assert.Equal(t, userID, got.UserID())
 		})
+
+		t.Run("作成が競合したら先に作られたものを返す", func(t *testing.T) {
+			t.Parallel()
+			u, d := newTestUsecase(t)
+			userID := uuidtestkit.NewTestFromSalt(t, "user")
+			i := newTestInquiry(t, userID)
+
+			gomock.InOrder(
+				d.repo.EXPECT().FindActiveByUserID(gomock.Any(), userID).Return(nil, apperror.ErrNotFound),
+				d.repo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(apperror.ErrConflict),
+				d.repo.EXPECT().FindActiveByUserID(gomock.Any(), userID).Return(i, nil),
+			)
+
+			got, err := u.resolveOrCreateInquiry(context.Background(), userID)
+
+			require.NoError(t, err)
+			assert.Equal(t, i, got)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
-
-		t.Run("作成が許されていなければやり直しを求める", func(t *testing.T) {
-			t.Parallel()
-			u, d := newTestUsecase(t)
-			userID := uuidtestkit.NewTestFromSalt(t, "user")
-
-			d.repo.EXPECT().FindActiveByUserID(gomock.Any(), userID).Return(nil, apperror.ErrNotFound)
-
-			_, err := u.resolveOrCreateInquiry(context.Background(), userID, false)
-
-			require.ErrorIs(t, err, errInquiryCreationRace)
-		})
-
-		t.Run("作成が競合したらやり直しを求める", func(t *testing.T) {
-			t.Parallel()
-			u, d := newTestUsecase(t)
-			userID := uuidtestkit.NewTestFromSalt(t, "user")
-
-			d.repo.EXPECT().FindActiveByUserID(gomock.Any(), userID).Return(nil, apperror.ErrNotFound)
-			d.repo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(apperror.ErrConflict)
-
-			_, err := u.resolveOrCreateInquiry(context.Background(), userID, true)
-
-			require.ErrorIs(t, err, errInquiryCreationRace)
-		})
 
 		t.Run("競合以外の作成失敗はそのまま返す", func(t *testing.T) {
 			t.Parallel()
@@ -236,7 +230,59 @@ func Test_usecase_resolveOrCreateInquiry(t *testing.T) {
 			d.repo.EXPECT().FindActiveByUserID(gomock.Any(), userID).Return(nil, apperror.ErrNotFound)
 			d.repo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(wantErr)
 
-			_, err := u.resolveOrCreateInquiry(context.Background(), userID, true)
+			_, err := u.resolveOrCreateInquiry(context.Background(), userID)
+
+			require.ErrorIs(t, err, wantErr)
+		})
+	})
+}
+
+func Test_usecase_findRaceWinner(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("相手が作った問い合わせを返す", func(t *testing.T) {
+			t.Parallel()
+			u, d := newTestUsecase(t)
+			userID := uuidtestkit.NewTestFromSalt(t, "user")
+			i := newTestInquiry(t, userID)
+
+			d.repo.EXPECT().FindActiveByUserID(gomock.Any(), userID).Return(i, nil)
+
+			got, err := u.findRaceWinner(context.Background(), userID)
+
+			require.NoError(t, err)
+			assert.Equal(t, i, got)
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("相手が見えなければ競合として返す", func(t *testing.T) {
+			t.Parallel()
+			u, d := newTestUsecase(t)
+			userID := uuidtestkit.NewTestFromSalt(t, "user")
+
+			d.repo.EXPECT().FindActiveByUserID(gomock.Any(), userID).Return(nil, apperror.ErrNotFound)
+
+			_, err := u.findRaceWinner(context.Background(), userID)
+
+			require.ErrorIs(t, err, errInquiryCreationRace)
+			require.ErrorIs(t, err, apperror.ErrConflict)
+		})
+
+		t.Run("読み直しの失敗はそのまま返す", func(t *testing.T) {
+			t.Parallel()
+			u, d := newTestUsecase(t)
+			userID := uuidtestkit.NewTestFromSalt(t, "user")
+			wantErr := xerrors.New("find failed")
+
+			d.repo.EXPECT().FindActiveByUserID(gomock.Any(), userID).Return(nil, wantErr)
+
+			_, err := u.findRaceWinner(context.Background(), userID)
 
 			require.ErrorIs(t, err, wantErr)
 		})

@@ -12,7 +12,7 @@ import (
 	uuid "go-boilerplate/pkg/uuid"
 )
 
-const createInquiry = `-- name: CreateInquiry :exec
+const createInquiry = `-- name: CreateInquiry :execrows
 INSERT INTO inquiries (
     id,
     user_id
@@ -21,6 +21,7 @@ INSERT INTO inquiries (
     $1,
     $2
 )
+ON CONFLICT ON CONSTRAINT inquiries_user_id_unique DO NOTHING
 `
 
 type CreateInquiryParams struct {
@@ -29,8 +30,9 @@ type CreateInquiryParams struct {
 }
 
 // === source: database/dml/repository/inquiry/insert_inquiry.sql ===
-// 問い合わせを新規登録する。利用者の一意制約違反は呼び出し側が衝突として扱う
+// 問い合わせを新規登録する。利用者の問い合わせが既にあれば何もせず 0 行を返す
 // （inquiries_user_id_unique。最初の投稿が並行したときに片方が当たる）。
+// UNIQUE 違反を送出しないので、呼び出し側は同じトランザクションのまま先に作られた行を読み直せる。
 //
 //	INSERT INTO inquiries (
 //	    id,
@@ -40,9 +42,13 @@ type CreateInquiryParams struct {
 //	    $1,
 //	    $2
 //	)
-func (q *Queries) CreateInquiry(ctx context.Context, arg *CreateInquiryParams) error {
-	_, err := q.db.Exec(ctx, createInquiry, arg.ID, arg.UserID)
-	return err
+//	ON CONFLICT ON CONSTRAINT inquiries_user_id_unique DO NOTHING
+func (q *Queries) CreateInquiry(ctx context.Context, arg *CreateInquiryParams) (int64, error) {
+	result, err := q.db.Exec(ctx, createInquiry, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getInquiryByID = `-- name: GetInquiryByID :one

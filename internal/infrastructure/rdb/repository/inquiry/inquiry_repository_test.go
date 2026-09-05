@@ -110,6 +110,24 @@ func Test_repository_Create(t *testing.T) {
 				assert.False(t, got.UpdatedAt().IsZero())
 			})
 		})
+
+		t.Run("競合しても同じトランザクションで先に作られた問い合わせを読み直せる", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				first := createInquiry(ctx, t, repo, testDB, 3)
+				second, err := domaininquiry.New(
+					mustNewUUID(t), domaininquiry.Attributes{UserID: first.UserID()},
+				)
+				require.NoError(t, err)
+
+				require.ErrorIs(t, repo.Create(ctx, second), apperror.ErrConflict)
+
+				got, ferr := repo.FindActiveByUserID(ctx, first.UserID())
+				require.NoError(t, ferr)
+				assert.Equal(t, first.ID(), got.ID())
+			})
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
