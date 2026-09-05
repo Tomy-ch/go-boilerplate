@@ -92,6 +92,47 @@ func Test_server_GetReady(t *testing.T) {
 			})
 			assert.Equal(t, expected, actual)
 		})
+
+		t.Run("Realtimeがdegradedでも200を返す", func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			ctrl := gomock.NewController(t)
+
+			appTime := time.Date(2024, time.June, 1, 12, 0, 1, 0, loc)
+			dbResAt := time.Date(2024, time.June, 1, 12, 0, 2, 0, loc)
+
+			uc := mock_healthcheckuc.NewMockUsecase(ctrl)
+			uc.EXPECT().CheckHealth(gomock.Any()).Return(
+				&healthcheckuc.DTO{
+					Status:          healthcheckuc.Degraded,
+					ApplicationTime: appTime,
+					DBHealthCheck: query.DBHealth{
+						Latency:     1500 * time.Microsecond,
+						RespondedAt: dbResAt,
+					},
+					Dependencies: []healthcheckuc.DependencyStatus{
+						{Name: "realtime", Status: healthcheckuc.Degraded},
+					},
+				}, nil,
+			)
+
+			s := &server{
+				tracer:        observability.NewMockControllerLayerTracer(t),
+				healthUsecase: uc,
+			}
+
+			resp, err := s.GetReady(ctx, gen.GetReadyRequestObject{})
+			require.NoError(t, err)
+
+			actual, ok := resp.(gen.GetReady200JSONResponse)
+			require.True(t, ok)
+			assert.Equal(t, gen.ReadyResponseStatusDegraded, actual.Status)
+			require.NotNil(t, actual.Dependencies)
+			assert.Equal(t, []gen.ReadyDependency{
+				{Name: "realtime", Status: gen.ReadyDependencyStatusDegraded},
+			}, *actual.Dependencies)
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
