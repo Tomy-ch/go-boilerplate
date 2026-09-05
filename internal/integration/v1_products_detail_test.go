@@ -14,6 +14,7 @@ import (
 	domainproduct "go-boilerplate/internal/domain/product"
 	"go-boilerplate/internal/observability"
 	"go-boilerplate/internal/usecase/boundary/auth"
+	"go-boilerplate/internal/usecase/idempotency"
 	productuc "go-boilerplate/internal/usecase/product"
 	mock_product "go-boilerplate/internal/usecase/product/mock"
 	decimaltestkit "go-boilerplate/pkg/decimal/testkit"
@@ -83,7 +84,7 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 			mockUC := mock_product.NewMockUsecase(ctrl)
 			mockUC.EXPECT().GetProduct(gomock.Any(), gomock.Any(), gomock.Any()).Return(sampleView(t), nil)
 
-			productsdetail.BindHandler(e, tf, mockUC)
+			productsdetail.BindHandler(e, tf, mockUC, idempotency.Deps{})
 
 			actual := StartServer(t, e).DoJSON(http.MethodGet, productDetailExistingPath, nil, nil)
 			assert.Equal(t, http.StatusOK, actual.StatusCode)
@@ -106,7 +107,7 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 				},
 			)
 
-			productsdetail.BindHandler(e, tf, mockUC)
+			productsdetail.BindHandler(e, tf, mockUC, idempotency.Deps{})
 
 			headers := availableAdmin(t, e)
 			body := &productsdetailgen.PatchProductsDetailJSONRequestBody{
@@ -145,7 +146,7 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 				},
 			)
 
-			productsdetail.BindHandler(e, tf, mockUC)
+			productsdetail.BindHandler(e, tf, mockUC, idempotency.Deps{})
 
 			headers := availableAdmin(t, e)
 			body := &productsdetailgen.PatchProductsDetailJSONRequestBody{
@@ -190,7 +191,7 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 				},
 			)
 
-			productsdetail.BindHandler(e, tf, mockUC)
+			productsdetail.BindHandler(e, tf, mockUC, idempotency.Deps{})
 
 			headers := availableAdmin(t, e)
 			body := &productsdetailgen.PatchProductsDetailJSONRequestBody{
@@ -237,7 +238,7 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 				},
 			)
 
-			productsdetail.BindHandler(e, tf, mockUC)
+			productsdetail.BindHandler(e, tf, mockUC, idempotency.Deps{})
 
 			headers := availableAdmin(t, e)
 			body := &productsdetailgen.PatchProductsDetailJSONRequestBody{
@@ -273,7 +274,7 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 			mockUC := mock_product.NewMockUsecase(ctrl)
 			mockUC.EXPECT().GetProduct(gomock.Any(), gomock.Any(), gomock.Any()).Return(productuc.ProductView{}, apperror.ErrNotFound)
 
-			productsdetail.BindHandler(e, tf, mockUC)
+			productsdetail.BindHandler(e, tf, mockUC, idempotency.Deps{})
 
 			actual := StartServer(t, e).DoJSON(http.MethodGet, productDetailMissingPath, nil, nil)
 			AssertErrorResponse(t, actual, http.StatusNotFound)
@@ -304,7 +305,7 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 			mockUC := mock_product.NewMockUsecase(ctrl)
 			mockUC.EXPECT().GetProduct(gomock.Any(), gomock.Any(), gomock.Any()).Return(productuc.ProductView{}, apperror.ErrInternal)
 
-			productsdetail.BindHandler(e, tf, mockUC)
+			productsdetail.BindHandler(e, tf, mockUC, idempotency.Deps{})
 
 			actual := StartServer(t, e).DoJSON(http.MethodGet, productDetailMissingPath, nil, nil)
 			AssertErrorResponse(t, actual, http.StatusInternalServerError)
@@ -321,7 +322,7 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 			mockUC := mock_product.NewMockUsecase(ctrl)
 			mockUC.EXPECT().UpdateProduct(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
-			productsdetail.BindHandler(e, tf, mockUC)
+			productsdetail.BindHandler(e, tf, mockUC, idempotency.Deps{})
 
 			body := &productsdetailgen.PatchProductsDetailJSONRequestBody{Version: 1, Name: ptr.To("更新後の商品")}
 			actual := StartServer(t, e).DoJSON(http.MethodPatch, productDetailExistingPath, body, nil)
@@ -335,7 +336,7 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 			UseAppErrorHandler(t, e)
 			mockUC := mock_product.NewMockUsecase(gomock.NewController(t))
 			mockUC.EXPECT().UpdateProduct(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
-			productsdetail.BindHandler(e, observability.NewNoopTracerFactory(t), mockUC)
+			productsdetail.BindHandler(e, observability.NewNoopTracerFactory(t), mockUC, idempotency.Deps{})
 			headers := availableAdmin(t, e)
 			useOpenAPIValidation(t, e)
 
@@ -377,7 +378,7 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 			mockUC.EXPECT().UpdateProduct(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(productuc.ProductView{}, apperror.ErrPermissionDenied)
 
-			productsdetail.BindHandler(e, tf, mockUC)
+			productsdetail.BindHandler(e, tf, mockUC, idempotency.Deps{})
 
 			headers := MakeAvailableUserID(t, e, uuidtestkit.NewTestFromSalt(t, "integration_detail_member"))
 			body := &productsdetailgen.PatchProductsDetailJSONRequestBody{Version: 1, Name: ptr.To("更新後の商品")}
@@ -397,7 +398,7 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 			mockUC.EXPECT().UpdateProduct(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(productuc.ProductView{}, apperror.ErrNotFound)
 
-			productsdetail.BindHandler(e, tf, mockUC)
+			productsdetail.BindHandler(e, tf, mockUC, idempotency.Deps{})
 
 			headers := availableAdmin(t, e)
 			body := &productsdetailgen.PatchProductsDetailJSONRequestBody{Version: 1, Name: ptr.To("更新後の商品")}
@@ -417,7 +418,7 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 			mockUC.EXPECT().UpdateProduct(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(productuc.ProductView{}, apperror.ErrValidation)
 
-			productsdetail.BindHandler(e, tf, mockUC)
+			productsdetail.BindHandler(e, tf, mockUC, idempotency.Deps{})
 
 			headers := availableAdmin(t, e)
 			body := &productsdetailgen.PatchProductsDetailJSONRequestBody{
@@ -445,7 +446,7 @@ func TestV1ProductsDetail_Integration(t *testing.T) {
 					Return(productuc.ProductView{}, domainproduct.ErrVersionConflict),
 			)
 
-			productsdetail.BindHandler(e, tf, mockUC)
+			productsdetail.BindHandler(e, tf, mockUC, idempotency.Deps{})
 
 			headers := availableAdmin(t, e)
 			srv := StartServer(t, e)
@@ -476,7 +477,7 @@ func doNotFoundProductDetail(t *testing.T, path string) responsegen.ErrorRespons
 	mockUC := mock_product.NewMockUsecase(ctrl)
 	mockUC.EXPECT().GetProduct(gomock.Any(), gomock.Any(), gomock.Any()).Return(productuc.ProductView{}, apperror.ErrNotFound)
 
-	productsdetail.BindHandler(e, tf, mockUC)
+	productsdetail.BindHandler(e, tf, mockUC, idempotency.Deps{})
 
 	actual := StartServer(t, e).DoJSON(http.MethodGet, path, nil, nil)
 	return AssertErrorResponseBody(t, actual, http.StatusNotFound)

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"go-boilerplate/internal/apperror"
-	mock_coupon "go-boilerplate/internal/domain/coupon/mock"
 	"go-boilerplate/internal/domain/lexicon/money"
 	domainproduct "go-boilerplate/internal/domain/product"
 	mock_category "go-boilerplate/internal/domain/product/category/mock"
@@ -113,7 +112,6 @@ func TestNew(t *testing.T) {
 		authorizer := mock_authz.NewMockAuthorizer(ctrl)
 		clk := mock_clock.NewMockClock(ctrl)
 		purchaseRepo := mock_purchase.NewMockRepository(ctrl)
-		couponRepo := mock_coupon.NewMockRepository(ctrl)
 		discontinueCmd := mock_command.NewMockCommandService(ctrl)
 		impactQuery := mock_query.NewMockDiscontinueImpactQueryService(ctrl)
 
@@ -128,13 +126,12 @@ func TestNew(t *testing.T) {
 			clock:                  clk,
 			maxUploadBytes:         5242880,
 			purchaseRepo:           purchaseRepo,
-			couponRepo:             couponRepo,
 			discontinueCmd:         discontinueCmd,
 			discontinueImpactQuery: impactQuery,
 		}
 		actual := New(
 			txm, repo, categoryRepo, statusRepo, storage, authorizer, clk, 5242880,
-			purchaseRepo, couponRepo, discontinueCmd, impactQuery, tf,
+			purchaseRepo, discontinueCmd, impactQuery, tf,
 		)
 
 		assert.Equal(t, expected, actual)

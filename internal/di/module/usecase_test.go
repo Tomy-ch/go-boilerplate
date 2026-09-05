@@ -12,6 +12,7 @@ import (
 	mock_category "go-boilerplate/internal/domain/product/category/mock"             // sample-api:line
 	mock_product "go-boilerplate/internal/domain/product/mock"                       // sample-api:line
 	mock_status "go-boilerplate/internal/domain/product/status/mock"                 // sample-api:line
+	mock_purchase "go-boilerplate/internal/domain/purchase/mock"                     // sample-api:line
 	"go-boilerplate/internal/observability"                                          // sample-api:line
 	mock_authz "go-boilerplate/internal/usecase/boundary/authz/mock"                 // sample-api:line
 	mock_clock "go-boilerplate/internal/usecase/boundary/clock/mock"                 // sample-api:line
@@ -20,7 +21,9 @@ import (
 	"go-boilerplate/internal/usecase/healthcheck"
 	"go-boilerplate/internal/usecase/idempotency"
 	"go-boilerplate/internal/usecase/outbox"
-	productuc "go-boilerplate/internal/usecase/product" // sample-api:line
+	productuc "go-boilerplate/internal/usecase/product"                 // sample-api:line
+	mock_command "go-boilerplate/internal/usecase/product/command/mock" // sample-api:line
+	mock_query "go-boilerplate/internal/usecase/product/query/mock"     // sample-api:line
 )
 
 func TestUsecaseModule_GraphIsValid(t *testing.T) {
@@ -87,11 +90,15 @@ func Test_provideProductUsecase(t *testing.T) {
 			cfg := config.NewObjectStorageConfig(config.MockConfigForTest(t))
 			tf := observability.NewNoopTracerFactory(t)
 			clk := mock_clock.NewMockClock(ctrl)
+			purchaseRepo := mock_purchase.NewMockRepository(ctrl)
+			discontinueCmd := mock_command.NewMockCommandService(ctrl)
+			impactQuery := mock_query.NewMockDiscontinueImpactQueryService(ctrl)
 
-			got := provideProductUsecase(txm, repo, categoryRepo, statusRepo, storage, authorizer, clk, cfg, tf)
+			got := provideProductUsecase(txm, repo, categoryRepo, statusRepo, storage, authorizer, clk, cfg,
+				purchaseRepo, discontinueCmd, impactQuery, tf)
 
 			assert.Equal(t, productuc.New(txm, repo, categoryRepo, statusRepo, storage, authorizer, clk,
-				cfg.MaxUploadBytes(), tf), got)
+				cfg.MaxUploadBytes(), purchaseRepo, discontinueCmd, impactQuery, tf), got)
 		})
 	})
 }

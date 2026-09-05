@@ -5,7 +5,6 @@ import (
 	"time"
 
 	domaincoupon "go-boilerplate/internal/domain/coupon"
-	mock_coupon "go-boilerplate/internal/domain/coupon/mock"
 	domainproduct "go-boilerplate/internal/domain/product"
 	mock_product "go-boilerplate/internal/domain/product/mock"
 	domainpurchase "go-boilerplate/internal/domain/purchase"
@@ -33,7 +32,6 @@ type discontinueTestDeps struct {
 	txm          *mock_tx.MockManager
 	repo         *mock_product.MockRepository
 	purchaseRepo *mock_purchase.MockRepository
-	couponRepo   *mock_coupon.MockRepository
 	cmd          *mock_command.MockCommandService
 	impactQuery  *mock_query.MockDiscontinueImpactQueryService
 	authorizer   *mock_authz.MockAuthorizer
@@ -48,7 +46,6 @@ func newDiscontinueTestUsecase(t *testing.T) (*usecase, *discontinueTestDeps) {
 		txm:          mock_tx.NewMockManager(ctrl),
 		repo:         mock_product.NewMockRepository(ctrl),
 		purchaseRepo: mock_purchase.NewMockRepository(ctrl),
-		couponRepo:   mock_coupon.NewMockRepository(ctrl),
 		cmd:          mock_command.NewMockCommandService(ctrl),
 		impactQuery:  mock_query.NewMockDiscontinueImpactQueryService(ctrl),
 		authorizer:   mock_authz.NewMockAuthorizer(ctrl),
@@ -61,7 +58,6 @@ func newDiscontinueTestUsecase(t *testing.T) (*usecase, *discontinueTestDeps) {
 		authorizer:             deps.authorizer,
 		clock:                  deps.clock,
 		purchaseRepo:           deps.purchaseRepo,
-		couponRepo:             deps.couponRepo,
 		discontinueCmd:         deps.cmd,
 		discontinueImpactQuery: deps.impactQuery,
 	}
@@ -156,14 +152,14 @@ func Test_usecase_DiscontinueProduct(t *testing.T) {
 			deps.clock.EXPECT().Now().Return(now)
 			deps.txm.EXPECT().Do(gomock.Any(), gomock.Any()).DoAndReturn(runInTx)
 			deps.repo.EXPECT().LockByID(gomock.Any(), entity.ID()).Return(entity, nil)
-			deps.couponRepo.EXPECT().CountByScopeTargetProductID(gomock.Any(), entity.ID()).Return(9, nil)
 			// 発行も更新も行わないことを、EXPECT を置かないことで表す。
 
 			actual, err := u.DiscontinueProduct(t.Context(), &auth.Authn{}, entity.ID(), params)
 
 			require.NoError(t, err)
 			assert.Equal(t, now, actual.DiscontinuedAt)
-			assert.Equal(t, int64(9), actual.IssuedCouponCount)
+			assert.Zero(t, actual.IssuedCouponCount)
+			assert.Zero(t, actual.AffectedCartCount)
 			assert.Zero(t, actual.AffectedUserCount)
 		})
 	})
