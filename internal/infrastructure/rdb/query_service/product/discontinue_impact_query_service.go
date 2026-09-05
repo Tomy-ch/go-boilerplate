@@ -30,8 +30,8 @@ func NewDiscontinueImpactQueryService(
 }
 
 // EstimateDiscontinueImpact は、商品を廃番にした場合の影響を件数で取得します。
-// 3 つの件数は母集団が異なるため独立した問い合わせで数えます。実行側の書き込みと条件を
-// 1 対 1 で対応させてあり、片方だけを変えると見積もりと実行が食い違います。
+// 3 つの件数は母集団が異なるため独立した問い合わせで数えます。実行側との対応関係は
+// [query.DiscontinueImpactQueryService.EstimateDiscontinueImpact] を参照。
 func (s *discontinueImpactService) EstimateDiscontinueImpact(
 	ctx context.Context,
 	productID uuid.UUID,

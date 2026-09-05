@@ -226,11 +226,8 @@ WHERE user_id IN (
     )
 `
 
-// users より先に呼ぶこと（FK 違反を避ける）。論理削除済みに限る理由は
-// DeleteUserIdentitiesByUserIDs と同じ。
-// 物理削除の対象は購入を 1 件も持たない利用者に限られる。控えが存在しないため、
-// 「値引きの理由を控えとの結合で解決する」という保持の根拠がこの対象には届かない
-// （docs/spec/domain/coupon.md の Notes）。
+// 順序制約と論理削除条件の理由は DeleteUserIdentitiesByUserIDs を参照。
+// クーポンを残さない理由は docs/spec/domain/coupon.md の Notes を参照。
 //
 //	DELETE FROM coupons
 //	WHERE user_id IN (
@@ -255,8 +252,9 @@ WHERE user_id IN (
 `
 
 // === source: database/dml/repository/user/delete_purged_users.sql ===
-// users より先に呼ぶこと（FK 違反を避ける）。論理削除済みに限る条件は DeleteUsersByIDs の
-// WHERE と揃えること — ずれると、削除されないユーザーの従属行だけが失われる。
+// users より先に呼ぶこと（FK 違反を避ける）。同じ順序制約は本ファイルの DeleteUserRolesByUserIDs /
+// DeleteCouponsByUserIDs も持つ。論理削除済みに限る条件は DeleteUsersByIDs の WHERE と揃えること
+// — ずれると、削除されないユーザーの従属行だけが失われる。
 //
 //	DELETE FROM user_identities
 //	WHERE user_id IN (
@@ -280,8 +278,7 @@ WHERE user_id IN (
     )
 `
 
-// users より先に呼ぶこと（FK 違反を避ける）。論理削除済みに限る理由は
-// DeleteUserIdentitiesByUserIDs と同じ。
+// 順序制約と論理削除条件の理由は DeleteUserIdentitiesByUserIDs を参照。
 //
 //	DELETE FROM user_roles
 //	WHERE user_id IN (

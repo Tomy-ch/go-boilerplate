@@ -7,7 +7,7 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
-// 既知の値引き種別の業務キー（大小は優劣を意味しません）。
+// 既知の値引き種別の業務キー。順序を持たない理由は [DiscountKind] を参照。
 const (
 	discountKindFlat = 1
 	discountKindRate = 2
@@ -27,8 +27,7 @@ var (
 // DiscountKind は、値引きの決まり方を表す値オブジェクトです。
 //
 // 内側に持つ code は永続化と外部公開のための業務キーであり、種別の間に順序はありません。
-// マスタ表を持たないのは、種別が業務の語彙であってデータではないためです
-// （purchase.Status と同じ理由。docs/spec/domain/coupon.md の Overview）。
+// マスタ表を持たない理由は docs/spec/domain/coupon.md の Overview を参照してください。
 type DiscountKind struct {
 	code int
 	name string

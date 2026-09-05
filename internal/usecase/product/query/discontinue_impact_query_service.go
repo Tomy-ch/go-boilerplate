@@ -28,7 +28,8 @@ type DiscontinueImpactQueryService interface {
 	// **行をロックしません。** 返した値は返した瞬間から古くなり、実行時の件数と一致する保証はありません。
 	// 押す前に規模を見せるための読み取りであり、可否の判定そのものは実行時のトランザクションが持ちます。
 	//
-	// 各件数の母集団は CommandService 側の書き込みと 1 対 1 で対応します。片方だけを変えると、
-	// 見積もりと実行が食い違って押す前に見せた数字の意味が失われます。
+	// カート数と受給者数の母集団は CommandService 側の書き込みと対で、進行中購入数は実行時の
+	// 可否判定と対です。対の片方だけを変えると、見積もりと実行が食い違って押す前に見せた数字の
+	// 意味が失われます。
 	EstimateDiscontinueImpact(ctx context.Context, productID uuid.UUID) (DiscontinueImpactReadModel, error)
 }

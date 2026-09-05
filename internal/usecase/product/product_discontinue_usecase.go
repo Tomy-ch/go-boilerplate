@@ -13,9 +13,8 @@ import (
 	"go-boilerplate/pkg/uuid"
 )
 
-// DiscontinueProductParams は、商品を廃番にする要求の入力です。
-// 代替クーポンの条件を要求で受けるのは、何をどれだけ補償するかが業務の判断であり、
-// この操作はその判断を実行するだけだからです。
+// DiscontinueProductParams は、商品を廃番にする要求の入力です。要求で条件を受ける理由は
+// docs/spec/usecase/product.md の Workflow — DiscontinueProduct の notes を参照。
 type DiscontinueProductParams struct {
 	// CouponDiscountRate は、代替クーポンの値引き率です。0 より大きく 1 以下である必要があります。
 	CouponDiscountRate decimal.Decimal
@@ -46,16 +45,9 @@ type DiscontinueImpactView struct {
 }
 
 // DiscontinueProduct は、admin が商品を廃番にし、何が起きたかを件数で返します。
-//
-// 商品の非公開化と代替クーポンの一括発行を同一トランザクションで行います。クーポンだけが配られて
-// 商品がまだ買える状態は observable になりません（ADR-0034 の branch 3）。
-//
-// 進行中の購入がある商品は拒否します（409）。この判定は商品行をロックしたうえで行うため、
-// 購入作成が同じ商品行を id 順にロックする経路と直列化され、判定から commit まで覆りません
-// （ADR-0034 の branch 2 / ADR-0036）。
-//
-// 既に廃番の商品への再実行は、新たな発行を伴わずに現在の状態と発行済みの枚数を返します。
-// 明細を取り除かない設計のため、毎回発行すると同じ母集団へ重複して配ることになるためです。
+// 非公開化・進行中購入の判定・代替クーポンの一括発行を 1 トランザクションで行います。
+// 分岐の判別根拠は ADR-0034 (commandservice-atomicity-criterion) の Worked instances、
+// ロック順序と再実行時の規律は docs/spec/usecase/product.md の Workflow — DiscontinueProduct を参照。
 func (u *usecase) DiscontinueProduct(
 	ctx context.Context,
 	authn *auth.Authn,
@@ -139,8 +131,6 @@ func (u *usecase) DiscontinueProduct(
 	return view, nil
 }
 
-// GetDiscontinueImpact は、admin が商品を廃番にした場合の影響を実行前に件数で取得します。
-// 行をロックしないため、返した値は実行時の件数と一致する保証を持ちません。
 func (u *usecase) GetDiscontinueImpact(
 	ctx context.Context,
 	authn *auth.Authn,

@@ -49,13 +49,8 @@ type CommandService interface {
 	// IssueDiscontinuationCoupons は、params.ProductID の明細を持つカートの所有者のうち退会していない
 	// ユーザーへ、同一条件のクーポンを 1 枚ずつ発行します。渡された ctx のトランザクション内で実行します。
 	//
-	// 受給者は述語（cart_items への結合と退会の除外）でしか決まらず、件数に上限もないため、
-	// 呼び出し側が集約を組み立てて渡すことはできません。そのため引数は発行条件で、個々の Coupon は
-	// 受給者を読んだあとにこのメソッドが組み立てます。組み立てはドメインのコンストラクタを通すので、
-	// 書き込まれる行は必ず集約の不変条件を満たします（data-access-pattern.md §6 の shape rule が
-	// 要求する「決まった集約を書く」性質は、集約を受け取る代わりにここで満たします）。
-	//
-	// 往復は受給者の取得と挿入の 2 回で、発行枚数に比例して増えません。集約の構築はインメモリなので
-	// 往復を増やしません。
+	// 集約ではなく発行条件を受け取る理由と、往復数が母集団に比例しない根拠は
+	// ADR-0034 (commandservice-atomicity-criterion) の Worked instances を参照。
+	// 個々の Coupon は受給者を読んだあとにドメインのコンストラクタを通して組み立てます。
 	IssueDiscontinuationCoupons(ctx context.Context, params IssueDiscontinuationCouponsParams) (IssueDiscontinuationCouponsResult, error)
 }

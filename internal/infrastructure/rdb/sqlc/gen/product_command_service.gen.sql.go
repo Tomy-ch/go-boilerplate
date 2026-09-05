@@ -20,9 +20,8 @@ WHERE ci.product_id = $1
 `
 
 // === source: database/dml/command_service/product/count_discontinue_affected_carts.sql ===
-// 廃番対象の商品を明細に持つカートの件数を返す。所有者が確定していないゲストのカートも数える。
-// 受給者の抽出（SelectDiscontinueCouponRecipients）と母集団が異なるのは意図で、
-// ゲストのカートは影響を受けるが受給者にならないため 2 つの数は一致しない。
+// 廃番対象の商品を明細に持つカートの件数を返す。所有者が確定していないゲストのカートも数える
+// （受給者との母集団差は docs/spec/usecase/product.md の Workflow — DiscontinueProduct を参照）。
 //
 //	SELECT COUNT(*)
 //	FROM cart_items AS ci
@@ -76,10 +75,8 @@ type InsertDiscontinueCouponsParams struct {
 }
 
 // === source: database/dml/command_service/product/insert_discontinue_coupons.sql ===
-// 採番済みの id と受給者 user_id を 1 対 1 で zip し、同じ条件のクーポンを一括発行する。
-// 発行枚数は受給者の数で決まり、往復はこの 1 文だけ（件数に比例して増えない）。
-// id をドメイン層で採番するのは ADR-0037 (uuidv7-identifiers) の要請であり、そのため
-// 受給者の取得とこの挿入は 2 文に分かれる。分かれても往復は件数に依存しない。
+// 採番済みの id と受給者 user_id を 1 対 1 で zip し、同じ条件のクーポンを一括発行する
+// （2 文に分かれる理由と往復コストは ADR-0034 の Worked instances を参照）。
 // 2 つの配列は WITH ORDINALITY の行番号で突き合わせる（sqlc が 2 引数形の unnest を解決できない）。
 // 長さが食い違うと内部結合で余った側が落ちるため、呼び出し側が必ず同じ長さで渡す。
 //
@@ -138,9 +135,8 @@ WHERE ci.product_id = $1
 
 // === source: database/dml/command_service/product/select_discontinue_coupon_recipients.sql ===
 // 廃番対象の商品を明細に持つカートのうち、所有者が確定していて退会もしていないユーザーを重複なく返す。
-// ゲストのカート（user_id が NULL）は所有者が居ないため受給者にならない。
-// 母集団はこの問い合わせが走った時点で確定し、以降にカートへ投入した利用者は含まれない
-// （理由は docs/spec/usecase/product.md の廃番）。
+// 絞り込みの理由と母集団が確定する時点は docs/spec/usecase/product.md の
+// Workflow — DiscontinueProduct の invariants を参照。
 //
 //	SELECT DISTINCT c.user_id::UUID AS user_id
 //	FROM cart_items AS ci

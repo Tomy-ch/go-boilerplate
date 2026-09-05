@@ -87,7 +87,8 @@ func UsecaseModule() fx.Option {
 
 // sample-api:begin
 // provideProductUsecase は、商品ユースケースを tx / マスタ Repository / object storage / authz /
-// アップロード上限（config 由来）とともに構築します。
+// アップロード上限（config 由来）/ 購入 Repository / 廃番の CommandService・QueryService とともに
+// 構築します。
 func provideProductUsecase(
 	txm txbd.Manager,
 	repo domainproduct.Repository,

@@ -278,7 +278,7 @@ func (s *server) PostProductsDiscontinue(
 }
 
 // GetProductsDiscontinueImpact は、廃番にした場合の影響の見積もりを返します。admin のみ実行できます。
-// 行をロックしない読み取りのため、返す件数は実行時のものと一致するとは限りません。
+// 返す値の鮮度は openapi/paths/v1/products/productId/discontinue-impact.yaml の description を参照。
 func (s *server) GetProductsDiscontinueImpact(
 	ctx context.Context,
 	request gen.GetProductsDiscontinueImpactRequestObject,

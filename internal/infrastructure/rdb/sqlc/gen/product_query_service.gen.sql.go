@@ -23,7 +23,7 @@ WHERE ci.product_id = $1
 // 廃番の影響を受けるカートの件数を返す。ゲストのカートも数える。
 // 実行側の CountDiscontinueAffectedCarts と同じ条件を持つ。片方だけを変えてはならない
 // （見積もりと実行が食い違うと、押す前に見せた数字の意味が失われる）。
-// 行はロックしないため、返した値は返した瞬間から古くなる。
+// 見積もりの古さは docs/spec/usecase/product.md の GetDiscontinueImpact を参照。
 //
 //	SELECT COUNT(*)
 //	FROM cart_items AS ci
@@ -51,9 +51,9 @@ type CountDiscontinueImpactInProgressPurchasesParams struct {
 
 // === source: database/dml/query_service/product/count_discontinue_impact_in_progress_purchases.sql ===
 // 廃番を阻む進行中の購入の件数を返す。
-// 「進行中」は購入集約が定義する（Status.IsTerminal の否定）ため、終端のステータス code を
-// 呼び出し側から受け取り、SQL 側に規則を書き写さない。
-// 行はロックしないため、返した値は返した瞬間から古くなる。実行時に改めて判定される。
+// 終端のステータス code を呼び出し側から受け取る（進行中の定義は
+// docs/spec/domain/purchase.md の FindStatusesByProductID を参照）。
+// 見積もりの古さは docs/spec/usecase/product.md の GetDiscontinueImpact を参照。
 //
 //	SELECT COUNT(DISTINCT p.id)
 //	FROM purchases AS p
@@ -80,8 +80,7 @@ WHERE ci.product_id = $1
 // === source: database/dml/query_service/product/count_discontinue_impact_users.sql ===
 // クーポンの受給対象になる確定済みユーザーの数を返す。
 // 実行側の SelectDiscontinueCouponRecipients と同じ条件を持つ。片方だけを変えてはならない。
-// ゲストのカートと退会済みユーザーを除くため、CountDiscontinueImpactCarts 以下になる。
-// 行はロックしないため、返した値は返した瞬間から古くなる。
+// 除外対象と見積もりの古さは docs/spec/usecase/product.md の GetDiscontinueImpact を参照。
 //
 //	SELECT COUNT(DISTINCT c.user_id)
 //	FROM cart_items AS ci

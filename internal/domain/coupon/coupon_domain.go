@@ -19,10 +19,8 @@ import (
 // Coupons は、Coupon エンティティのスライス型です。
 type Coupons []*Coupon
 
-// Coupon は、クーポンを表すドメインエンティティです。
-//
-// 受給者は発行時に確定し、以後移りません。譲渡を表さないのは、クーポンが特定の利用者に生じた事情への
-// 補償として発行されるためです。
+// Coupon は、クーポンを表すドメインエンティティです。受給者は発行時に確定し、以後移りません。
+// 譲渡を表さない理由は docs/spec/domain/coupon.md の Overview を参照してください。
 type Coupon struct {
 	id        uuid.UUID
 	userID    uuid.UUID
@@ -50,7 +48,8 @@ type Attributes struct {
 
 // New は、クーポンエンティティの検証と生成を行います。生成直後は未使用です。
 // id・UserID が未設定、Discount・Scope が未設定、ExpiresAt・IssuedAt がゼロ値の場合は検証エラーを返します。
-// 有効期限が発行日時以前の場合も検証エラーです（発行した時点で使えないクーポンは発行の意味を持たないため）。
+// 有効期限は発行日時より後である必要があります（理由は docs/spec/domain/coupon.md の
+// Cross-field Invariants を参照）。
 func New(id uuid.UUID, attrs Attributes) (*Coupon, error) {
 	return newCoupon(id, attrs, nil)
 }
@@ -122,8 +121,6 @@ func (c *Coupon) UsedAt() *time.Time { return ptr.Copy(c.usedAt) }
 // IsUsed は、クーポンが使用済みかどうかを返します。
 func (c *Coupon) IsUsed() bool { return c.usedAt != nil }
 
-// IsExpired は、渡された時点でクーポンが失効しているかどうかを返します。
-//
-// 「失効」の定義はこのメソッドが持ちます。失効を一括更新する機構は持たず、判定のたびに現在時刻と
-// 突き合わせます（カートの期限切れと同じ形）。時刻はドメインの外から渡します。
+// IsExpired は、渡された時点でクーポンが失効しているかどうかを返します。有効期限ちょうども
+// 失効として扱います。判定の設計は docs/spec/domain/coupon.md の Behavior Methods を参照してください。
 func (c *Coupon) IsExpired(now time.Time) bool { return !now.Before(c.expiresAt) }

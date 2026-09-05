@@ -268,9 +268,8 @@ func (p *Product) IsPublished() bool { return IsPublished(p.publishedAt) }
 // 同じ定義を当てられるよう、エンティティのメソッドとは別に値に対する形でも公開します。
 func IsPublished(publishedAt *time.Time) bool { return publishedAt != nil }
 
-// Discontinue は、商品を廃番にします。廃番は取り扱いの終了なので、同時に公開を取り下げます。
-// 既に廃番の商品は状態が変わらず、エラーも返しません（廃番は取り消せないため、二度目の要求は
-// 一度目と同じ状態を指しています）。
+// Discontinue は、商品を廃番にします。同時に公開を取り下げます。既に廃番の商品は状態が変わらず、
+// エラーも返しません（理由は docs/spec/domain/product.md の Cross-field Invariants を参照）。
 //
 // 日時は引数で受け取ります。ドメインは時刻へ直接依存せず、時刻境界から供給された now を使うためです。
 // now がゼロ値の場合は ErrInvalidDiscontinuedAt を返します。
@@ -320,9 +319,9 @@ func (p *Product) IsLowStock() bool {
 	return p.quantity <= *p.stockWarningThreshold
 }
 
-// ensureDiscontinuationKept は、廃番の取り消しを拒みます。廃番は取り扱いの終了であり、
-// 一度きりの遷移です。属性の一括置換は現在値を見ないため、この検証だけがレシーバの現在値と
-// 引数を突き合わせます（[Product.EnsureVersion] と同じ形）。
+// ensureDiscontinuationKept は、廃番の取り消しを拒みます。属性の一括置換は現在値を見ないため、
+// この検証だけがレシーバの現在値と引数を突き合わせます（[Product.EnsureVersion] と同じ形）。
+// 拒む理由は docs/spec/domain/product.md の Cross-field Invariants を参照してください。
 //
 // 未廃番から廃番への向きは拒みません。その向きの検証は [Product.Discontinue] が持ちます。
 func (p *Product) ensureDiscontinuationKept(next *time.Time) error {
