@@ -16,6 +16,9 @@ import (
 )
 
 // seedGeneralRoleID は、既存 seed の一般ロール ID です（user_roles の FK を満たすために使います）。
+// seedPurgeCategoryID は、クーポンの適用範囲が指す既存 seed の商品カテゴリです。
+const seedPurgeCategoryID = "5dd52d84-78eb-4a52-ba0b-2e11c95c2af2"
+
 const seedGeneralRoleID = "a1b2c3d4-0000-4000-8000-000000000002"
 
 // purgeCutoff は、物理削除候補の判定に用いる打ち切り時刻です。seed の論理削除済みユーザー
@@ -59,6 +62,22 @@ func insertPurgeUserDependents(ctx context.Context, t *testing.T, db driver.DBTX
 	_, err = db.Exec(ctx,
 		"INSERT INTO user_roles (user_id, role_id) VALUES ($1,$2)",
 		userID, seedGeneralRoleID,
+	)
+	require.NoError(t, err)
+
+	insertPurgeUserCoupon(ctx, t, db, userID, "eeeeeeee-3333-4000-8000-"+identityID[len(identityID)-12:])
+}
+
+// insertPurgeUserCoupon は、指定ユーザーへ廃番の代替クーポンを 1 枚持たせます。
+// クーポンは users を参照する FK を持ち、かつアプリに行を消す経路が無いため、purge が
+// 先に消さないと物理削除そのものが FK 違反で止まります。
+func insertPurgeUserCoupon(ctx context.Context, t *testing.T, db driver.DBTX, userID uuid.UUID, couponID string) {
+	t.Helper()
+	_, err := db.Exec(ctx,
+		"INSERT INTO coupons "+
+			"(id, user_id, discount_kind, discount_value, scope_kind, scope_target_id, expires_at, issued_at) "+
+			"VALUES ($1,$2,$3,$4,$5,$6,NOW() + INTERVAL '30 days',NOW())",
+		couponID, userID, 2, "0.10", 2, seedPurgeCategoryID,
 	)
 	require.NoError(t, err)
 }
@@ -220,6 +239,7 @@ func Test_repository_PurgeByIDs(t *testing.T) {
 		countIdentities = "SELECT COUNT(*) FROM user_identities WHERE user_id = $1"
 		countRoles      = "SELECT COUNT(*) FROM user_roles WHERE user_id = $1"
 		countUsers      = "SELECT COUNT(*) FROM users WHERE id = $1"
+		countCoupons    = "SELECT COUNT(*) FROM coupons WHERE user_id = $1"
 	)
 
 	target := "eeeeeeee-1111-4000-8000-000000000001"
@@ -244,6 +264,7 @@ func Test_repository_PurgeByIDs(t *testing.T) {
 				assert.Equal(t, int64(1), got)
 				assert.Equal(t, int64(0), countPurgeRows(ctx, t, drv, countIdentities, targetID))
 				assert.Equal(t, int64(0), countPurgeRows(ctx, t, drv, countRoles, targetID))
+				assert.Equal(t, int64(0), countPurgeRows(ctx, t, drv, countCoupons, targetID))
 				assert.Equal(t, int64(0), countPurgeRows(ctx, t, drv, countUsers, targetID))
 			})
 		})
@@ -263,6 +284,7 @@ func Test_repository_PurgeByIDs(t *testing.T) {
 
 				assert.Equal(t, int64(1), countPurgeRows(ctx, t, drv, countIdentities, survivorID))
 				assert.Equal(t, int64(1), countPurgeRows(ctx, t, drv, countRoles, survivorID))
+				assert.Equal(t, int64(1), countPurgeRows(ctx, t, drv, countCoupons, survivorID))
 				assert.Equal(t, int64(1), countPurgeRows(ctx, t, drv, countUsers, survivorID))
 			})
 		})

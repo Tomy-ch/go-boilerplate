@@ -216,6 +216,34 @@ func (q *Queries) CreateUser(ctx context.Context, arg *CreateUserParams) error {
 	return err
 }
 
+const deleteCouponsByUserIDs = `-- name: DeleteCouponsByUserIDs :exec
+DELETE FROM coupons
+WHERE user_id IN (
+        SELECT u.id
+        FROM users AS u
+        WHERE u.id = ANY($1::UUID[])
+            AND u.deleted_at IS NOT NULL
+    )
+`
+
+// users より先に呼ぶこと（FK 違反を避ける）。論理削除済みに限る理由は
+// DeleteUserIdentitiesByUserIDs と同じ。
+// 物理削除の対象は購入を 1 件も持たない利用者に限られる。控えが存在しないため、
+// 「値引きの理由を控えとの結合で解決する」という保持の根拠がこの対象には届かない
+// （docs/spec/domain/coupon.md の Notes）。
+//
+//	DELETE FROM coupons
+//	WHERE user_id IN (
+//	        SELECT u.id
+//	        FROM users AS u
+//	        WHERE u.id = ANY($1::UUID[])
+//	            AND u.deleted_at IS NOT NULL
+//	    )
+func (q *Queries) DeleteCouponsByUserIDs(ctx context.Context, userIds []uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteCouponsByUserIDs, userIds)
+	return err
+}
+
 const deleteUserIdentitiesByUserIDs = `-- name: DeleteUserIdentitiesByUserIDs :exec
 DELETE FROM user_identities
 WHERE user_id IN (
