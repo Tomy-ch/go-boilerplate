@@ -85,14 +85,25 @@ func Test_cursorValidator_Validate(t *testing.T) {
 			require.NoError(t, v.Validate(t.Context(), "s", 3))
 		})
 
-		t.Run("cursor が stream の先頭（最新）にあれば replay するものが無く成功する", func(t *testing.T) {
+		t.Run("cursor が追記済みの位置に並んでいれば replay するものが無く成功する", func(t *testing.T) {
 			t.Parallel()
 
 			v, log := newValidator(t)
 			log.EXPECT().ReadAfter(gomock.Any(), readAfter(3)).Return(rt.ReadAfterResult{}, nil)
-			log.EXPECT().Find(gomock.Any(), rt.StreamID("s"), rt.Sequence(3)).Return(eventAt(3, now), true, nil)
+			log.EXPECT().AppendedThrough(gomock.Any(), rt.StreamID("s")).Return(rt.Sequence(3), nil)
 
 			require.NoError(t, v.Validate(t.Context(), "s", 3))
+		})
+
+		t.Run("最後の event が保持期間で消えていても、そこまでしか追記されていなければ成功する", func(t *testing.T) {
+			t.Parallel()
+
+			// 休眠した stream を開き直す経路。ここで断ると正本は同じ cursor を返し、回復が収束しない。
+			v, log := newValidator(t)
+			log.EXPECT().ReadAfter(gomock.Any(), readAfter(5)).Return(rt.ReadAfterResult{}, nil)
+			log.EXPECT().AppendedThrough(gomock.Any(), rt.StreamID("s")).Return(rt.Sequence(5), nil)
+
+			require.NoError(t, v.Validate(t.Context(), "s", 5))
 		})
 
 		t.Run("追記済みの位置より先の cursor は失効ではない（relay がまだ書いていない）", func(t *testing.T) {
@@ -100,28 +111,17 @@ func Test_cursorValidator_Validate(t *testing.T) {
 
 			v, log := newValidator(t)
 			log.EXPECT().ReadAfter(gomock.Any(), readAfter(3)).Return(rt.ReadAfterResult{}, nil)
-			log.EXPECT().Find(gomock.Any(), rt.StreamID("s"), rt.Sequence(3)).Return(rt.DeliveryEvent{}, false, nil)
 			log.EXPECT().AppendedThrough(gomock.Any(), rt.StreamID("s")).Return(rt.Sequence(2), nil)
 
 			require.NoError(t, v.Validate(t.Context(), "s", 3))
 		})
 
-		t.Run("1 度も追記していない stream への cursor も失効ではない", func(t *testing.T) {
-			t.Parallel()
-
-			v, log := newValidator(t)
-			log.EXPECT().ReadAfter(gomock.Any(), readAfter(1)).Return(rt.ReadAfterResult{}, nil)
-			log.EXPECT().Find(gomock.Any(), rt.StreamID("s"), rt.Sequence(1)).Return(rt.DeliveryEvent{}, false, nil)
-			log.EXPECT().AppendedThrough(gomock.Any(), rt.StreamID("s")).Return(rt.Sequence(0), nil)
-
-			require.NoError(t, v.Validate(t.Context(), "s", 1))
-		})
-
-		t.Run("初期位置で stream が空なら成功する", func(t *testing.T) {
+		t.Run("初期位置で 1 度も追記していない stream なら成功する", func(t *testing.T) {
 			t.Parallel()
 
 			v, log := newValidator(t)
 			log.EXPECT().ReadAfter(gomock.Any(), readAfter(0)).Return(rt.ReadAfterResult{}, nil)
+			log.EXPECT().AppendedThrough(gomock.Any(), rt.StreamID("s")).Return(rt.Sequence(0), nil)
 
 			require.NoError(t, v.Validate(t.Context(), "s", 0))
 		})
@@ -150,38 +150,24 @@ func Test_cursorValidator_Validate(t *testing.T) {
 			require.ErrorIs(t, v.Validate(t.Context(), "s", 3), ErrCursorExpired)
 		})
 
-		t.Run("初期位置で先頭の event が消えていれば ErrCursorExpired", func(t *testing.T) {
-			t.Parallel()
-
-			v, log := newValidator(t)
-			log.EXPECT().ReadAfter(gomock.Any(), readAfter(0)).
-				Return(rt.ReadAfterResult{Events: []rt.DeliveryEvent{eventAt(5, now)}}, nil)
-
-			require.ErrorIs(t, v.Validate(t.Context(), "s", 0), ErrCursorExpired)
-		})
-
-		t.Run("追記済みの位置以下なのに cursor の event が無ければ（消えた）ErrCursorExpired", func(t *testing.T) {
+		t.Run("cursor より後ろに追記されたものが消えていれば ErrCursorExpired", func(t *testing.T) {
 			t.Parallel()
 
 			v, log := newValidator(t)
 			log.EXPECT().ReadAfter(gomock.Any(), readAfter(3)).Return(rt.ReadAfterResult{}, nil)
-			log.EXPECT().Find(gomock.Any(), rt.StreamID("s"), rt.Sequence(3)).Return(rt.DeliveryEvent{}, false, nil)
 			log.EXPECT().AppendedThrough(gomock.Any(), rt.StreamID("s")).Return(rt.Sequence(9), nil)
 
 			require.ErrorIs(t, v.Validate(t.Context(), "s", 3), ErrCursorExpired)
 		})
 
-		t.Run("追記済みの位置が読めなければ store のエラーをそのまま返す", func(t *testing.T) {
+		t.Run("初期位置でも、追記されたものがすべて消えていれば ErrCursorExpired", func(t *testing.T) {
 			t.Parallel()
 
 			v, log := newValidator(t)
-			log.EXPECT().ReadAfter(gomock.Any(), readAfter(3)).Return(rt.ReadAfterResult{}, nil)
-			log.EXPECT().Find(gomock.Any(), rt.StreamID("s"), rt.Sequence(3)).Return(rt.DeliveryEvent{}, false, nil)
-			log.EXPECT().AppendedThrough(gomock.Any(), rt.StreamID("s")).Return(rt.Sequence(0), errStoreOff)
+			log.EXPECT().ReadAfter(gomock.Any(), readAfter(0)).Return(rt.ReadAfterResult{}, nil)
+			log.EXPECT().AppendedThrough(gomock.Any(), rt.StreamID("s")).Return(rt.Sequence(5), nil)
 
-			err := v.Validate(t.Context(), "s", 3)
-			require.ErrorIs(t, err, apperror.ErrUnavailable)
-			require.NotErrorIs(t, err, ErrCursorExpired)
+			require.ErrorIs(t, v.Validate(t.Context(), "s", 0), ErrCursorExpired)
 		})
 
 		t.Run("EventLog が読めなければ store のエラー（ErrUnavailable）をそのまま返す", func(t *testing.T) {
@@ -195,16 +181,16 @@ func Test_cursorValidator_Validate(t *testing.T) {
 			require.NotErrorIs(t, err, ErrCursorExpired)
 		})
 
-		t.Run("cursor 自身の読み取りに失敗すれば store のエラーをそのまま返す", func(t *testing.T) {
+		t.Run("追記済みの位置が読めなければ store のエラーをそのまま返す", func(t *testing.T) {
 			t.Parallel()
 
 			v, log := newValidator(t)
 			log.EXPECT().ReadAfter(gomock.Any(), readAfter(3)).Return(rt.ReadAfterResult{}, nil)
-			log.EXPECT().
-				Find(gomock.Any(), rt.StreamID("s"), rt.Sequence(3)).
-				Return(rt.DeliveryEvent{}, false, errStoreOff)
+			log.EXPECT().AppendedThrough(gomock.Any(), rt.StreamID("s")).Return(rt.Sequence(0), errStoreOff)
 
-			require.ErrorIs(t, v.Validate(t.Context(), "s", 3), apperror.ErrUnavailable)
+			err := v.Validate(t.Context(), "s", 3)
+			require.ErrorIs(t, err, apperror.ErrUnavailable)
+			require.NotErrorIs(t, err, ErrCursorExpired)
 		})
 	})
 }
