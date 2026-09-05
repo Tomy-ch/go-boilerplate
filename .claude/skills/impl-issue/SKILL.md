@@ -363,13 +363,19 @@ Exercise the real HTTP path against the running system. No mode relaxes this.
 ```bash
 make serve                                    # API on 8080+N, mock-auth on 2010+N
 
-TOKEN=$(curl -s -X POST http://localhost:201N/bypass/token \
-  -H 'Content-Type: application/json' \
-  -d '{"subject":"<seeded-subject>","profile":"valid"}' \
+TOKEN=$(curl -fsS -X POST http://localhost:201N/default/token \
+  -d 'grant_type=password' \
+  -d 'client_id=go-boilerplate-client' \
+  -d 'password=unused' \
+  --data-urlencode 'username=<seeded-subject>' \
   | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
 
 curl -s -o /dev/null -w '%{http_code}\n' -H "Authorization: Bearer $TOKEN" http://localhost:808N/v1/...
 ```
+
+`docs/design/auth.md` is canonical for this — the mock provider's standard token endpoint,
+minting a token without a browser. Where this snippet and that document disagree, the
+document decides.
 
 The token subject must be the identity `subject` string the seed registered, not an internal UUID —
 the seeded UUID rows belong to a different issuer than the one the slot's port produces, so a UUID
@@ -377,7 +383,7 @@ yields a confusing 401. Resolve real subjects from the identity table when unsur
 
 ```bash
 docker exec gobp-shared-database-1 psql -U postgres -d wt<N>_local -c \
-  "select subject from <identity table> where issuer = 'http://localhost:201N';"
+  "select subject from <identity table> where issuer = 'http://localhost:201N/default';"
 ```
 
 Check the happy path, the error paths the change introduces, and — for a protected operation — that
