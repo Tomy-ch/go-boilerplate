@@ -240,6 +240,8 @@ func Test_allocator_Allocate_concurrentSerialization(t *testing.T) {
 // ことを固定します。Current が未コミットの採番まで返すと、cursor 以下に未コミットの位置が混じり、
 // after=cursor で繋ぎ直した接続がその位置を取りこぼします
 // （親 issue の受入基準「History 取得と SSE 接続の間の event を取りこぼさない」の前半）。
+//
+//nolint:paralleltest // commit した fixture が他テストと衝突しないよう非並列にする
 func Test_allocator_Current_excludesUncommittedAllocation(t *testing.T) {
 	testDB := testkit.NewTestDB(t)
 	a := &allocator{tracer: observability.NewMockInfraLayerTracer(t), db: testDB}
