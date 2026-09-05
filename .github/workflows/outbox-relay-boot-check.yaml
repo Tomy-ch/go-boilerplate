@@ -25,8 +25,22 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+    strategy:
+      # One channel's failure must not hide the other's (ADR-0091).
+      fail-fast: false
+      matrix:
+        include:
+          - channel: realtime
+            endpoint_outbox: ''
+          - channel: http
+            # The http publisher only parses this URL at construction; nothing dials it during boot,
+            # so an unroutable address is enough to assemble the graph. `Load` does not overwrite a
+            # variable the process already has, so this wins over the empty value in env/.env.ci.
+            endpoint_outbox: 'http://127.0.0.1:9/outbox'
+    name: outbox-relay-boot-check (${{ matrix.channel }})
     env:
       ENV: ci
+      ENDPOINT_OUTBOX: ${{ matrix.endpoint_outbox }}
     services:
       database:
         image: postgres:18.4-trixie@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636
@@ -122,13 +136,13 @@ jobs:
 
       # The sentinels below are the fx event logger's (internal/di/fx_event_logger.go) — rename those log
       # messages and this check silently weakens into "the process stayed alive". Why this entrypoint's
-      # check is shaped differently from the job / worker ones, and why the `realtime` channel is the one
-      # under test: ADR-0091 (ci-real-graph-boot-check).
-      - name: Boot the realtime relay and expect a clean lifecycle
+      # check is shaped differently from the job / worker ones, and why every channel is covered rather
+      # than one: ADR-0091 (ci-real-graph-boot-check).
+      - name: Boot the ${{ matrix.channel }} relay and expect a clean lifecycle
         run: |
           set -uo pipefail
 
-          ./bin/relay outbox-relay --channel=realtime > relay.log 2>&1 &
+          ./bin/relay outbox-relay --channel='${{ matrix.channel }}' > relay.log 2>&1 &
           relay_pid=$!
 
           started=0
@@ -175,4 +189,4 @@ jobs:
             exit 1
           fi
 
-          echo "OK: the realtime relay booted (DI / DB constructed) and shut down cleanly"
+          echo "OK: the ${{ matrix.channel }} relay booted (DI / DB constructed) and shut down cleanly"

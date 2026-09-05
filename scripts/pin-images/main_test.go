@@ -259,16 +259,23 @@ func Test_targetFiles(t *testing.T) {
 			assert.Empty(t, targets)
 		})
 
-		t.Run("workflow には uses: docker:// の正規表現を割り当てる", func(t *testing.T) {
+		t.Run("workflow には uses: docker:// と service の image の 2 つを割り当てる", func(t *testing.T) {
 			t.Parallel()
 			root := t.TempDir()
 			writeFile(t, filepath.Join(root, ".github", "workflows", "ci.yaml"), "jobs:\n")
 
 			targets, err := targetFiles(root)
 			require.NoError(t, err)
-			require.Len(t, targets, 1)
-			assert.Same(t, usesDockerRe, targets[0].re)
-			assert.Same(t, looseDockerUsesRe, targets[0].loose)
+			require.Len(t, targets, 2)
+
+			// target は 1 つにつき 1 つの正規表現しか持てないため、同じファイルを 2 度登録する。
+			res := []*regexp.Regexp{targets[0].re, targets[1].re}
+			assert.Contains(t, res, usesDockerRe)
+			assert.Contains(t, res, serviceImageRe)
+
+			looses := []*regexp.Regexp{targets[0].loose, targets[1].loose}
+			assert.Contains(t, looses, looseDockerUsesRe)
+			assert.Contains(t, looses, serviceImageLoose)
 		})
 
 		t.Run("workflow 定義と入れ子の composite action 定義を集める", func(t *testing.T) {
@@ -285,9 +292,13 @@ func Test_targetFiles(t *testing.T) {
 			for _, tg := range targets {
 				paths = append(paths, tg.path)
 			}
+			// workflow / composite action は 2 つの正規表現で 2 度ずつ登録される。
 			assert.Equal(t, []string{
 				filepath.Join(root, ".github", "actions", "g", "setup", "action.yml"),
+				filepath.Join(root, ".github", "actions", "g", "setup", "action.yml"),
 				filepath.Join(root, ".github", "workflows", "ci.yaml"),
+				filepath.Join(root, ".github", "workflows", "ci.yaml"),
+				filepath.Join(root, ".github", "workflows", "lint.yml"),
 				filepath.Join(root, ".github", "workflows", "lint.yml"),
 			}, paths)
 		})
@@ -301,7 +312,8 @@ func Test_targetFiles(t *testing.T) {
 
 			targets, err := targetFiles(root)
 			require.NoError(t, err)
-			require.Len(t, targets, 3)
+			// Dockerfile / compose が 1 つずつ、workflow が 2 つ。
+			require.Len(t, targets, 4)
 			for _, tg := range targets {
 				assert.NotNil(t, tg.loose, tg.path)
 			}
@@ -390,6 +402,69 @@ func Test_usesDockerRe(t *testing.T) {
 			t.Parallel()
 			assert.Nil(t, usesDockerRe.FindStringSubmatch("      - uses: actions/checkout@v7\n"))
 		})
+	})
+}
+
+func Test_serviceImageRe(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		cases := map[string]struct {
+			line   string
+			prefix string
+			ref    string
+			suffix string
+		}{
+			"service の image 行を接頭辞・参照・接尾辞へ割る": {
+				line:   "        image: postgres:18.4-trixie # 補助\n",
+				prefix: "        image: ",
+				ref:    "postgres:18.4-trixie",
+				suffix: " # 補助",
+			},
+			"digest を参照側へ取り込み接尾辞へ残さない": {
+				line:   "        image: postgres:18.4-trixie@" + digestUnreg + "\n",
+				prefix: "        image: ",
+				ref:    "postgres:18.4-trixie@" + digestUnreg,
+				suffix: "",
+			},
+			"registry を含む参照をそのまま取り出す": {
+				line:   "        image: amazon/dynamodb-local:3.3.1\n",
+				prefix: "        image: ",
+				ref:    "amazon/dynamodb-local:3.3.1",
+				suffix: "",
+			},
+		}
+
+		for name, c := range cases {
+			t.Run(name, func(t *testing.T) {
+				t.Parallel()
+				m := serviceImageRe.FindStringSubmatch(c.line)
+				require.NotNil(t, m)
+				assert.Equal(t, c.prefix, m[1])
+				assert.Equal(t, c.ref, m[2])
+				assert.Equal(t, c.suffix, m[3])
+			})
+		}
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		// 式で組み立てた image は step の with: 配下に現れる。固定のしようがないので走査から外す。
+		cases := map[string]string{
+			"式で組み立てた image に一致しない": "          image: ${{ steps.meta.outputs.image }}\n",
+			"式を後ろに含む image に一致しない": "          image: reg/app@${{ steps.build.outputs.digest }}\n",
+			"行頭の image に一致しない":     "image: postgres:18.4-trixie\n",
+		}
+
+		for name, line := range cases {
+			t.Run(name, func(t *testing.T) {
+				t.Parallel()
+				assert.Nil(t, serviceImageRe.FindStringSubmatch(line))
+			})
+		}
 	})
 }
 
