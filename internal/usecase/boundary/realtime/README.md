@@ -28,6 +28,7 @@ type EventLogStore interface {
     ReadAfter(ctx context.Context, q ReadAfterQuery) (ReadAfterResult, error)     // strongly consistent, ascending, HasMore
     Latest(ctx context.Context, streamID StreamID) (DeliveryEvent, bool, error)
     Find(ctx context.Context, streamID StreamID, seq Sequence) (DeliveryEvent, bool, error)
+    AppendedThrough(ctx context.Context, streamID StreamID) (Sequence, error)         // survives the retention
 }
 
 type StreamTicketStore interface {

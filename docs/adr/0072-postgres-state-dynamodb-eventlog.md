@@ -30,6 +30,14 @@ client's cursor moves to 6 and sequence 5 is never delivered — the catch-up qu
 *after* the cursor, and the mechanism deliberately tolerates no signal a client could use to notice
 the hole.
 
+Visibility has a second trap, symmetric to the first. The cursor a feature hands out — a History
+`streamCursor` — is the stream's committed position in PostgreSQL, while the store that validates it
+is filled by the relay asynchronously. Committed is not the same as appended. A validation that
+reads "not here" as "gone" refuses a cursor the relay has simply not reached, and sends the client to
+a recovery path that hands back the same cursor: a loop with no exit. The same loop opens from the
+other side once retention has removed the last event of an idle stream — the client that saw that
+event has lost nothing, yet the item at its cursor is absent.
+
 ## Decision
 
 **PostgreSQL remains the sole source of truth for current domain state.** A DynamoDB table — the
@@ -67,21 +75,38 @@ classes: the substrate is unreachable (all events fail together), a conditional 
 "One event permanently failing while the next succeeds" has no source, so the rule almost never
 engages, and when it does the cause is systemic and the stall is the correct signal.
 
-### What the invariant makes unnecessary
+### What the invariant makes unnecessary, and the one thing it does not
 
-With no gaps and a contiguous prefix, the store needs no replay metadata — no per-stream
-`latest` / `floor` / `version` item and no job to advance it:
+With no gaps and a contiguous prefix, the store needs no replay *floor* — no per-stream `floor` /
+`version` item and no job to advance one. Everything about what is still replayable is derivable
+from the log itself.
 
-- the latest sequence is the first item of a descending read;
-- a cursor is expired when the item at `cursor + 1` is absent while a later one exists, or when it
-  exists with an `occurredAt` older than the retention window — DynamoDB's asynchronous TTL
-  deletion is never the authority for "expired";
-- a cursor is also expired when **the item at the cursor itself is absent** and the cursor is not
-  the stream's initial position. A cursor names an event the client received (or a History
-  `streamCursor`, which likewise names a committed event), so its item missing means the cursor
-  predates retention — and so does everything appended after it that has since expired. This is
-  the case a stream that went idle and aged out entirely would otherwise hide as "caught up";
-- an unreadable EventLog is a retryable server error, never a guess about the cursor.
+What is **not** derivable from the log is where the log *ends*. Retention deletes items without
+trace, so an absent item at position `n` reads the same whether `n` was appended and has since
+expired or the relay has not written `n` yet — and a cursor may legitimately name the latter. The
+EventLog therefore keeps one piece of metadata per stream: the **append watermark**, the highest
+sequence ever appended, advanced by the append itself, never rolled back, and exempt from the TTL.
+It is a fact about the log, recorded by the log — not a copy of the outbox's status — and it is the
+shape every retained log exposes (a partition's end offset, a stream's last generated id) so that
+"before the beginning" and "past the end" stay distinguishable after trimming. It clamps nothing and
+orders nothing; the claim predicate still does both.
+
+Cursor validity is then one strongly consistent read after the cursor and, when that read is empty,
+one read of the watermark:
+
+- the first item after `cursor` is `cursor + 1` and within retention ⇒ replayable;
+- it is later than `cursor + 1`, or older than retention ⇒ expired;
+- nothing after `cursor` and `cursor >= watermark` ⇒ replayable. Nothing the client has not seen was
+  ever appended: either it is caught up, or the relay has not reached `cursor` yet and the
+  connection waits for it;
+- nothing after `cursor` and `cursor < watermark` ⇒ expired. Events after the cursor were appended
+  and have since aged out — the case a stream that went idle and expired entirely would otherwise
+  hide as "caught up";
+- DynamoDB's asynchronous TTL deletion is never the authority for "expired", and an unreadable
+  EventLog is a retryable server error, never a guess about the cursor.
+
+Whether the item *at* the cursor still exists plays no part, and the initial position is not a
+special case: it is the cursor `0` against a watermark that is `0` until the first append.
 
 ## Consequences
 
@@ -93,8 +118,9 @@ With no gaps and a contiguous prefix, the store needs no replay metadata — no 
   and an outbox row, not a rewrite.
 - Resume is exact: `Last-Event-ID` or `after` names a point in a gap-free, contiguous sequence,
   and the client cannot be handed a later event while an earlier one is still in flight.
-- The absence of replay metadata removes a table, a job, and a class of inconsistency between two
-  records of the same fact.
+- The only replay metadata is one item per stream in the same table, advanced in-line by the append
+  that makes it true — no separate table, no job, and no second record of anything the outbox
+  already records.
 
 ### Negative Consequences
 
@@ -121,12 +147,15 @@ application.
 Rejected. It shares the pool with REST. The reconnect storm the mechanism must survive is the
 exact load that would exhaust that pool.
 
-### Contiguous watermark instead of head-of-line blocking
+### A contiguous watermark instead of head-of-line blocking
 
-A per-stream "highest contiguous sequence appended" kept in the EventLog and used to clamp what
-clients may see. Rejected: it lets later events be appended while earlier ones are stuck, but an
-appended-yet-invisible event has no value, and the watermark is a second state that can disagree
-with the outbox's own status column.
+A per-stream "highest contiguous sequence appended" kept in the EventLog and used to **clamp what
+clients may see**, so that later events could be appended while an earlier one is stuck. Rejected as
+an ordering mechanism: an appended-yet-invisible event has no value, and a visibility clamp is a
+second state that can disagree with the outbox's own status column. The append watermark this
+decision keeps is not that — it clamps nothing, the claim predicate still holds the order, and it
+only records where the log ends so that an absent item can be classified after retention has removed
+it.
 
 ### Checking the predecessor at append time (publisher-side ordering)
 
@@ -144,7 +173,30 @@ fails identically.
 
 Rejected as redundant once sequences are gap-free: everything the metadata would record is
 derivable from the log itself, and a job that scans every stream to advance a floor is a cost with
-no information in it.
+no information in it. The end of the log is the one value the log cannot derive once retention has
+run, and it is advanced by the append itself, not by a job.
+
+### Deriving the History cursor from the EventLog
+
+Have History report the relay's position instead of the committed one, so that a cursor is
+replayable by construction. Rejected. It puts a feature's canonical read path on the delivery
+buffer's availability, contradicting "History is a PostgreSQL projection"; and the rows and the
+cursor then disagree — either History withholds committed rows, so the caller's own write is missing
+from its next read, or the stream re-delivers what History already returned.
+
+### Accepting any cursor past the end
+
+Admit a cursor with nothing after it and let the continuity check at delivery time raise `RESYNC`.
+Rejected. That check fires only when the next event arrives; on a stream that went idle and expired
+entirely, a client holding an older cursor is told nothing and believes it is caught up. The
+retention-window resynchronization obligation would exist only on paper.
+
+### Reading the relay's position from the outbox
+
+Derive "relayed through" from the outbox — the earliest unpublished sequence on the key, else the
+allocator's current position — at connect time. Rejected. It puts PostgreSQL on the reconnect path
+in exactly the branch a mass reconnect to idle streams takes, and it couples cursor validation to
+the claim predicate's head-of-line semantics: the two things the rest of this decision keeps apart.
 
 ## Notes
 

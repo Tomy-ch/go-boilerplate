@@ -25,7 +25,8 @@ var (
 // EventLog は、in-memory の rt.EventLogStore です。読み取りは常に最新の書き込みを反映します
 // （実装は強い一貫性の読み取りとして振る舞います）。
 //
-// 正規の Append では作れない状態を組み立てる専用の口（Seed / SetUnavailable / Hold）を持ちます。
+// 正規の Append では作れない状態を組み立てる専用の口（Seed / SetUnavailable / Hold /
+// SeedAppendedThrough）を持ちます。
 // 各口の使い分けは README を参照してください。
 type EventLog struct {
 	mu          sync.Mutex

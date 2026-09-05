@@ -19,11 +19,12 @@ above speaks of streams, sequences and envelopes.
 
 | seam | DynamoDB |
 | --- | --- |
-| item | partition key `stream_id` (S), sort key `sequence` (N, decimal); `event_id`, `event_type`, `occurred_at` (RFC 3339 nano, UTC), `schema_version` (N), `payload` (B, absent when empty), `expires_at` (N, epoch seconds = `occurred_at` + `realtime.EventLogRetention`), `origin` (M, the originating command's trace carrier, absent when empty) |
+| item | partition key `stream_id` (S), sort key `sequence` (N, decimal); `event_id`, `event_type`, `occurred_at` (RFC 3339 nano, UTC), `schema_version` (N), `payload` (B, absent when empty), `expires_at` (N, epoch seconds = `occurred_at` + `realtime.EventLogRetention`), `origin` (M, the originating command's trace carrier, absent when empty). One further item per stream carries the append watermark at sort key `0` — `appended_through` (N) and **no `expires_at`**, so it outlives the events it describes; sequences start at 1, so it never collides with one |
 | `Append` | `PutItem` with `attribute_not_exists(stream_id)`. On `ConditionalCheckFailedException` the existing item is read back with `ConsistentRead` and its `event_id` compared: equal ⇒ success (the outbox relay's retry is idempotent without a special case), different ⇒ `ErrSequenceConflict`. `event.Validate()` runs first, so nothing invalid is stored |
 | `ReadAfter` | `Query` `stream_id = :s AND sequence > :after`, `ConsistentRead`, ascending, `Limit` (default 100, capped at 1000). `HasMore` is `LastEvaluatedKey != nil` — not `len == Limit`, because DynamoDB also stops at 1 MiB. The caller continues from the last event's sequence; no opaque cursor crosses the seam, since sequences are gap-free |
-| `Latest` | `Query` descending with `Limit: 1`, `ConsistentRead` |
+| `Latest` | `Query` descending with `Limit: 1`, `ConsistentRead`, `sequence > 0` so the watermark item is not read back as an event |
 | `Find` | `GetItem` with `ConsistentRead` |
+| `AppendedThrough` | `GetItem` on the watermark item with `ConsistentRead`; absent ⇒ `0`. `Append` advances it with `UpdateItem` guarded by `attribute_not_exists(appended_through) OR appended_through < :seq`, after the event is written — so a failure there leaves the watermark behind the log, never ahead, and the relay's retry closes it |
 
 `origin` carries the trace context of the command that produced the event, so a delivery happening
 minutes later on another instance can still link back to it. It is stored rather than propagated because

@@ -19,7 +19,7 @@ a client reconnecting and resuming.
 - `ReadAfter(ctx, q)` / `Latest(ctx, streamID)` / `Find(ctx, streamID, seq)` — as the port defines
   them. `ReadAfter` falls back to a limit of 32 when the query does not set one.
 
-Two states a real store reaches cannot be produced through `Append`, so each has its own entry
+Some states a real store reaches cannot be produced through `Append`, so each has its own entry
 point:
 
 - `Seed(events…)` — writes without validation or the idempotency check, which is how a test builds a
@@ -32,6 +32,10 @@ point:
   hold a read *in flight*, which is what a test needs to occupy a replay slot and watch the next
   connection be refused admission. `SetUnavailable` cannot stand in for it: a read that fails
   releases the slot immediately.
+- `SeedAppendedThrough(streamID, seq)` — sets the append watermark without appending, which is how a
+  test reaches the state retention leaves behind: the events are gone while the log still knows how
+  far it was written. `Append` maintains the watermark on its own, so this is only for the states
+  `Append` cannot reach.
 
 ## Test Strategy
 
@@ -48,7 +52,8 @@ These are that missing baseline.
 - **The default read limit** — `ReadAfter` with no `Limit` truncates at 32 and reports `HasMore`.
   A fake that silently returns everything makes a caller's paging look correct when it is not.
 - **Each control port on both sides** — `Seed` writes what `Append` refuses (a gap, an invalid
-  envelope); `SetUnavailable` fails every read and write while set and stops when cleared; `Hold`
+  envelope); `SeedAppendedThrough` moves the watermark without an append; `SetUnavailable` fails
+  every read and write while set and stops when cleared; `Hold`
   blocks a read until released, and its release is idempotent. A control port that half-works is
   worse than none, because the scenario it was added for silently stops being reproduced.
 - **Concurrent use** — the README promises the fake is safe for concurrent use, and a fake driven by
