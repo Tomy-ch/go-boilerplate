@@ -153,6 +153,24 @@ than left implicit:
   is therefore allowed to go stale, and the update takes no lock on any purchase row. This is the
   contrasting instance to the withdrawal guard: same shape (one aggregate's write, another
   aggregate's state), opposite answer to question 1. Specified in `docs/spec/usecase/purchase.md`.
+- **Product discontinuation — branch 3, and the only instance that reaches it.** Discontinuing a
+  product unpublishes it and issues a compensating coupon to everyone who was holding it in a cart.
+  The recipients are defined by a predicate — a join through `cart_items` to `carts`, excluding
+  withdrawn users — so they cannot be named by identity, cannot be locked, and have no upper bound.
+  Decomposing the write would mean reconstructing one `Coupon` aggregate per recipient, which is the
+  write-side mirror of `docs/design/data-access-pattern.md` §3.3. The requirement that settles it is
+  that "coupons handed out while the product is still purchasable" must never be observable: the
+  coupon is compensation for losing the product, so a window in which someone holds both is wrong.
+  The product write and the bulk issuance therefore share one transaction through a CommandService.
+  **Read this against purchase creation above:** that operation also touches three aggregates and
+  still decomposes, because its rows are named by identity. The count is the same; the answer is not.
+  Two things this instance is deliberately *not*. The cart items are **not** removed — an item that
+  stays with a `discontinued` issue keeps the reason visible, and unpublication alone is branch 1 by
+  the instance above, so removal would carry no part of the argument. And the two statements the
+  implementation uses (select recipients, then bulk insert) are **not** a departure: the criterion for
+  a set operation is that round trips do not grow with the population, not that there is exactly one
+  statement. Splitting is forced by [ADR-0037](0037-uuidv7-identifiers.md), which puts key generation
+  in the domain. Specified in `docs/spec/usecase/product.md`.
 <!-- sample-api:replace-with -->
 <!-- = No instance has been recorded for this project yet. -->
 <!-- sample-api:replace-end -->

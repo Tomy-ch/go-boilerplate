@@ -228,6 +228,28 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "database/migrations/000018_add_products_keyword_search_index.down.sql",
       "database/migrations/000023_add_products_discontinued_at_column.up.sql",
       "database/migrations/000023_add_products_discontinued_at_column.down.sql",
+
+      // 廃番ジャーニー。CommandService の実例そのものなので、商品と生死を共にする。
+      "openapi/paths/v1/products/productId/discontinue.yaml",
+      "openapi/paths/v1/products/productId/discontinue-impact.yaml",
+      "openapi/components/requests/products/ProductDiscontinuePostRequest.yaml",
+      "openapi/components/responses/products/ProductDiscontinueResponse.yaml",
+      "openapi/components/responses/products/ProductDiscontinueImpactResponse.yaml",
+      "openapi/components/parameters/product/DiscontinuedParam.yaml",
+      "internal/domain/service/discontinuation",
+      "internal/usecase/product/command",
+      "internal/usecase/product/product_discontinue_usecase.go",
+      "internal/usecase/product/product_discontinue_usecase_test.go",
+      "internal/usecase/product/query/discontinue_impact_query_service.go",
+      "internal/usecase/product/query/mock/mock_discontinue_impact_query_service.go.gen.go",
+      "internal/infrastructure/rdb/command_service/product",
+      "internal/infrastructure/rdb/query_service/product/discontinue_impact_query_service.go",
+      "database/dml/command_service/product",
+      "database/dml/query_service/product/count_discontinue_impact_carts.sql",
+      "database/dml/query_service/product/count_discontinue_impact_users.sql",
+      "database/dml/query_service/product/count_discontinue_impact_in_progress_purchases.sql",
+      "database/gen/product_command_service.gen.sql",
+      "internal/infrastructure/rdb/sqlc/gen/product_command_service.gen.sql.go",
       "database/migrations/000019_add_products_created_at_id_index.up.sql",
       "database/migrations/000019_add_products_created_at_id_index.down.sql",
       "database/seed/000007_products_electronic_equipment_01.sql",
@@ -342,6 +364,26 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "docs/spec/usecase/purchase.md",
       "docs/spec/domain/purchase/status.md",
       "docs/spec/usecase/purchase/status.md",
+    ],
+  },
+
+  coupon: {
+    description:
+      "サンプル クーポン集約（廃番の代替として一括発行される。値引きと適用範囲を直交する 2 つの値オブジェクトで表す）",
+    paths: [
+      "database/migrations/000024_create_coupons.up.sql",
+      "database/migrations/000024_create_coupons.down.sql",
+
+      "internal/domain/coupon",
+      "internal/infrastructure/rdb/repository/coupon",
+      "database/dml/repository/coupon",
+      "database/gen/coupon_repository.gen.sql",
+      "internal/infrastructure/rdb/sqlc/gen/coupon_repository.gen.sql.go",
+
+      "database/seed/000041_coupons.sql",
+
+      "docs/spec/domain/coupon.md",
+      "docs/spec/usecase/coupon.md",
     ],
   },
 
