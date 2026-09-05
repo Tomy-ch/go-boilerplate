@@ -65,6 +65,8 @@ func (s *service) FindDetailByUserAndCode(ctx context.Context, userID uuid.UUID,
 		StatusCode:     int(row.StatusCode),
 		StatusName:     row.StatusName,
 		SubtotalAmount: row.SubtotalAmount,
+		DiscountAmount: row.DiscountAmount,
+		AppliedCoupon:  toAppliedCoupon(row),
 		TaxAmount:      row.TaxAmount,
 		ShippingFee:    row.ShippingFee,
 		TotalAmount:    row.TotalAmount,
@@ -73,6 +75,22 @@ func (s *service) FindDetailByUserAndCode(ctx context.Context, userID uuid.UUID,
 		PaidAt:         row.PaidAt,
 		CanceledAt:     row.CanceledAt,
 	}, nil
+}
+
+// toAppliedCoupon は、結合で解決したクーポンの 2 軸を読み取りモデルへ写します。
+// クーポンを適用していない購入は結合先が無いため nil を返します。
+func toAppliedCoupon(row *gen.GetPurchaseDetailForUserRow) *query.AppliedCouponReadModel {
+	if row.CouponID == nil {
+		return nil
+	}
+
+	return &query.AppliedCouponReadModel{
+		ID:            *row.CouponID,
+		DiscountKind:  int(*row.CouponDiscountKind),
+		DiscountValue: *row.CouponDiscountValue,
+		ScopeKind:     int(*row.CouponScopeKind),
+		ScopeTargetID: row.CouponScopeTargetID,
+	}
 }
 
 // toPurchaseDetailItems は、明細行を読み取りモデルへ変換します。単価は価格スケール（ドル decimal）で、
