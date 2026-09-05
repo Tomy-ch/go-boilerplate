@@ -11,34 +11,17 @@ import (
 	"go-boilerplate/pkg/xerrors"
 )
 
-// maxSetItemAttempts は、カートの作成が競合したときに解決からやり直す上限です
-// （docs/spec/usecase/cart.md の SetItem）。
-const maxSetItemAttempts = 2
-
-// errCartCreationRace は、カートを作ろうとして他の要求に先を越されたことを表します。
-// この層の中だけで使い、外へは apperror.ErrConflict として出ます。
-var errCartCreationRace = xerrors.New("cart creation lost a race")
-
-// SetItem は、作成の衝突をトランザクションごとやり直します（docs/spec/usecase/cart.md の SetItem）。
+// SetItem は、カートへ明細を 1 件置きます。
 //
-// この本体に外部副作用を足してはなりません。やり直しで二重に実行されます
+// この本体に外部副作用を足してはなりません。tx がやり直されると二重に実行されます
 // （ADR-0035 (transaction-retry-idempotent-callers)）。
 func (u *usecase) SetItem(ctx context.Context, params SetItemParams) (CartView, error) {
 	ctx, endSpan := u.tracer.Start(ctx)
 	defer endSpan()
 
-	var raced error
-	for range maxSetItemAttempts {
-		view, err := tx.DoWithResult(ctx, u.txm, func(ctx context.Context) (CartView, error) {
-			return u.setItem(ctx, params)
-		})
-		if !xerrors.Is(err, errCartCreationRace) {
-			return view, err
-		}
-		raced = err
-	}
-
-	return CartView{}, xerrors.Wrap(raced, "cart creation kept losing the race")
+	return tx.DoWithResult(ctx, u.txm, func(ctx context.Context) (CartView, error) {
+		return u.setItem(ctx, params)
+	})
 }
 
 // setItem は、1 トランザクション分の処理です。
@@ -106,7 +89,7 @@ func (u *usecase) resolveOrCreateCart(
 // ユーザー 1 人につきカートは高々 1 件のため、期限切れでも作り直せません
 // （docs/spec/usecase/cart.md の SetItem）。
 //
-// 解決とロックの間にカートが消えていた場合は、引けなかった場合と同じく作り直します。
+// 解決とロックの間にカートが消えていた場合は、引けなかった場合と同じく確保し直します。
 // この op は 404 を宣言していません。
 func (u *usecase) resolveOwnerCart(
 	ctx context.Context, userID uuid.UUID, now time.Time,
@@ -171,7 +154,11 @@ func (u *usecase) resolveGuestCart(
 	return c, nil, nil
 }
 
-// createOwnerCart は、所有者が確定した空のカートを作ります。
+// createOwnerCart は、所有者が確定した空のカートを確保します。
+// 一意インデックスが単一文の中で裁定するため、並行して作成が競合しても一意制約違反を上げず、
+// 勝ったほうのカートが返ります（MergeOnLogin の引き継ぎ先の確保と同じ扱い）。
+// 返った行はその文がロックを取っているので、ここで LockByID は要りません
+// （database/dml/repository/cart/insert_owner_cart_if_absent.sql）。
 func (u *usecase) createOwnerCart(
 	ctx context.Context, userID uuid.UUID, now time.Time,
 ) (*cart.Cart, *string, error) {
@@ -180,12 +167,17 @@ func (u *usecase) createOwnerCart(
 		return nil, nil, xerrors.Wrap(err, "failed to generate cart id")
 	}
 
-	c, nerr := cart.NewForOwner(id, cart.Attributes{OwnerID: &userID, ExpiresAt: now.Add(cartTTL)})
+	candidate, nerr := cart.NewForOwner(id, cart.Attributes{OwnerID: &userID, ExpiresAt: now.Add(cartTTL)})
 	if nerr != nil {
 		return nil, nil, nerr
 	}
-	if cerr := u.cartRepo.Create(ctx, c); cerr != nil {
-		return nil, nil, markCreationRace(cerr)
+
+	c, cerr := u.cartRepo.CreateOwnerIfAbsent(ctx, candidate)
+	if cerr != nil {
+		return nil, nil, cerr
+	}
+	if c.IsExpired(now) {
+		c.Clear()
 	}
 	return c, nil, nil
 }
@@ -212,16 +204,7 @@ func (u *usecase) createGuestCart(ctx context.Context, now time.Time) (*cart.Car
 		return nil, nil, nerr
 	}
 	if cerr := u.cartRepo.Create(ctx, c); cerr != nil {
-		return nil, nil, markCreationRace(cerr)
+		return nil, nil, cerr
 	}
 	return c, &raw, nil
-}
-
-// markCreationRace は、カート作成の衝突だけをやり直しの対象として印を付けます。
-// 衝突を一律にやり直すと、やり直しても解消しない要求までもう一度走らせることになります。
-func markCreationRace(err error) error {
-	if xerrors.Is(err, apperror.ErrConflict) {
-		return xerrors.Join(errCartCreationRace, err)
-	}
-	return err
 }

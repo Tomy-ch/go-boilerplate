@@ -1,6 +1,7 @@
 package cart
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -103,7 +104,7 @@ func Test_usecase_SetItem(t *testing.T) {
 			assert.Equal(t, int64(2000), actual.SubtotalAmount)
 		})
 
-		t.Run("作成が競合しても、やり直して勝った側のカートへ設定する", func(t *testing.T) {
+		t.Run("作成が競合しても勝った側のカートへ設定する", func(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
@@ -113,10 +114,7 @@ func Test_usecase_SetItem(t *testing.T) {
 			gomock.InOrder(
 				cartRepo.EXPECT().FindByOwnerID(gomock.Any(), userID).
 					Return(nil, xerrors.Wrap(apperror.ErrNotFound, "not found")),
-				cartRepo.EXPECT().Create(gomock.Any(), gomock.Any()).
-					Return(xerrors.Wrap(apperror.ErrConflict, "duplicate key")),
-				cartRepo.EXPECT().FindByOwnerID(gomock.Any(), userID).Return(winner, nil),
-				cartRepo.EXPECT().LockByID(gomock.Any(), winner.ID()).Return(winner, nil),
+				cartRepo.EXPECT().CreateOwnerIfAbsent(gomock.Any(), gomock.Any()).Return(winner, nil),
 				cartRepo.EXPECT().Update(gomock.Any(), winner).Return(nil),
 			)
 
@@ -142,15 +140,15 @@ func Test_usecase_SetItem(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("やり直しても作成に負け続けるなら衝突として返す", func(t *testing.T) {
+		t.Run("カートの確保に失敗したら明細を置かない", func(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
 			cartRepo := mock_cart.NewMockRepository(ctrl)
 			cartRepo.EXPECT().FindByOwnerID(gomock.Any(), userID).
-				Return(nil, xerrors.Wrap(apperror.ErrNotFound, "not found")).Times(maxSetItemAttempts)
-			cartRepo.EXPECT().Create(gomock.Any(), gomock.Any()).
-				Return(xerrors.Wrap(apperror.ErrConflict, "duplicate key")).Times(maxSetItemAttempts)
+				Return(nil, xerrors.Wrap(apperror.ErrNotFound, "not found"))
+			cartRepo.EXPECT().CreateOwnerIfAbsent(gomock.Any(), gomock.Any()).
+				Return(nil, xerrors.Wrap(apperror.ErrInternal, "connection reset"))
 			cartRepo.EXPECT().Update(gomock.Any(), gomock.Any()).Times(0)
 
 			uc := newSetItemUsecase(t, cartRepo, mock_product.NewMockRepository(ctrl), nil, now)
@@ -159,10 +157,10 @@ func Test_usecase_SetItem(t *testing.T) {
 				Subject: Subject{UserID: &userID}, ProductID: productID, Quantity: 1,
 			})
 
-			require.ErrorIs(t, err, apperror.ErrConflict)
+			require.ErrorIs(t, err, apperror.ErrInternal)
 		})
 
-		t.Run("作成の衝突でない失敗はやり直さない", func(t *testing.T) {
+		t.Run("カートの解決に失敗したらそのまま返す", func(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
@@ -552,7 +550,9 @@ func Test_usecase_resolveOwnerCart(t *testing.T) {
 			cartRepo := mock_cart.NewMockRepository(ctrl)
 			cartRepo.EXPECT().FindByOwnerID(gomock.Any(), userID).
 				Return(nil, xerrors.Wrap(apperror.ErrNotFound, "not found"))
-			cartRepo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
+			cartRepo.EXPECT().CreateOwnerIfAbsent(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, c *cart.Cart) (*cart.Cart, error) { return c, nil },
+			)
 
 			actual, issued, err := newSetItemUsecase(t, cartRepo, nil, nil, now).
 				resolveOwnerCart(t.Context(), userID, now)
@@ -572,7 +572,9 @@ func Test_usecase_resolveOwnerCart(t *testing.T) {
 			cartRepo.EXPECT().FindByOwnerID(gomock.Any(), userID).Return(c, nil)
 			cartRepo.EXPECT().LockByID(gomock.Any(), c.ID()).
 				Return(nil, xerrors.Wrap(apperror.ErrNotFound, "not found"))
-			cartRepo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
+			cartRepo.EXPECT().CreateOwnerIfAbsent(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, created *cart.Cart) (*cart.Cart, error) { return created, nil },
+			)
 
 			actual, _, err := newSetItemUsecase(t, cartRepo, nil, nil, now).
 				resolveOwnerCart(t.Context(), userID, now)
@@ -806,7 +808,9 @@ func Test_usecase_createOwnerCart(t *testing.T) {
 
 			ctrl := gomock.NewController(t)
 			cartRepo := mock_cart.NewMockRepository(ctrl)
-			cartRepo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil)
+			cartRepo.EXPECT().CreateOwnerIfAbsent(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, c *cart.Cart) (*cart.Cart, error) { return c, nil },
+			)
 
 			actual, issued, err := newSetItemUsecase(t, cartRepo, nil, nil, now).
 				createOwnerCart(t.Context(), userID, now)
@@ -817,23 +821,39 @@ func Test_usecase_createOwnerCart(t *testing.T) {
 			assert.Empty(t, actual.Items())
 			assert.Nil(t, issued)
 		})
+
+		t.Run("競合して既存のカートが返り、それが期限切れなら空にする", func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			expired := newOwnerCart(t, userID, now.Add(-time.Hour), newTestCartItem(t, "expired_item", uuidtestkit.NewTestFromSalt(t, "expired_product"), 1, nil))
+
+			cartRepo := mock_cart.NewMockRepository(ctrl)
+			cartRepo.EXPECT().CreateOwnerIfAbsent(gomock.Any(), gomock.Any()).Return(expired, nil)
+
+			actual, _, err := newSetItemUsecase(t, cartRepo, nil, nil, now).
+				createOwnerCart(t.Context(), userID, now)
+			require.NoError(t, err)
+
+			assert.Empty(t, actual.Items())
+		})
 	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("一意制約違反はやり直しの対象として印が付く", func(t *testing.T) {
+		t.Run("確保に失敗すればそのまま返す", func(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
 			cartRepo := mock_cart.NewMockRepository(ctrl)
-			cartRepo.EXPECT().Create(gomock.Any(), gomock.Any()).
-				Return(xerrors.Wrap(apperror.ErrConflict, "duplicate key"))
+			cartRepo.EXPECT().CreateOwnerIfAbsent(gomock.Any(), gomock.Any()).
+				Return(nil, xerrors.Wrap(apperror.ErrInternal, "connection reset"))
 
 			_, _, err := newSetItemUsecase(t, cartRepo, nil, nil, now).
 				createOwnerCart(t.Context(), userID, now)
 
-			require.ErrorIs(t, err, errCartCreationRace)
+			require.ErrorIs(t, err, apperror.ErrInternal)
 		})
 	})
 }
@@ -884,7 +904,7 @@ func Test_usecase_createGuestCart(t *testing.T) {
 			require.ErrorIs(t, err, expectedErr)
 		})
 
-		t.Run("作成が競合したらやり直しの対象として印が付く", func(t *testing.T) {
+		t.Run("採番したトークンが既に使われていれば衝突として返す", func(t *testing.T) {
 			t.Parallel()
 
 			ctrl := gomock.NewController(t)
@@ -895,7 +915,7 @@ func Test_usecase_createGuestCart(t *testing.T) {
 			_, _, err := newSetItemUsecase(t, cartRepo, nil, newIssuingTokenGen(t), now).
 				createGuestCart(t.Context(), now)
 
-			require.ErrorIs(t, err, errCartCreationRace)
+			require.ErrorIs(t, err, apperror.ErrConflict)
 		})
 
 		t.Run("採番した値の形式が不正ならカートを作らない", func(t *testing.T) {
@@ -911,33 +931,6 @@ func Test_usecase_createGuestCart(t *testing.T) {
 			_, _, err := newSetItemUsecase(t, cartRepo, nil, gen, now).createGuestCart(t.Context(), now)
 
 			require.ErrorIs(t, err, cart.ErrInvalidSessionToken)
-		})
-	})
-}
-
-func Test_markCreationRace(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("衝突にはやり直しの印を付ける", func(t *testing.T) {
-			t.Parallel()
-
-			actual := markCreationRace(xerrors.Wrap(apperror.ErrConflict, "duplicate key"))
-
-			require.ErrorIs(t, actual, errCartCreationRace)
-			// 元の衝突も残す。やり直しが尽きたときに 409 として返るのはこちら。
-			require.ErrorIs(t, actual, apperror.ErrConflict)
-		})
-
-		t.Run("衝突でない失敗には印を付けない", func(t *testing.T) {
-			t.Parallel()
-
-			actual := markCreationRace(xerrors.Wrap(apperror.ErrInternal, "connection reset"))
-
-			require.NotErrorIs(t, actual, errCartCreationRace)
-			require.ErrorIs(t, actual, apperror.ErrInternal)
 		})
 	})
 }
