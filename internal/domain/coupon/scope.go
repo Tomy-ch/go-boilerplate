@@ -3,6 +3,7 @@ package coupon
 import (
 	"fmt"
 
+	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
 )
@@ -116,13 +117,7 @@ func ReconstructScope(kind ScopeKind, targetID *uuid.UUID) (Scope, error) {
 func (s Scope) Kind() ScopeKind { return s.kind }
 
 // TargetID は、範囲を絞る対象の識別子を返します。全体の適用範囲では nil です。
-func (s Scope) TargetID() *uuid.UUID {
-	if s.targetID == nil {
-		return nil
-	}
-	target := *s.targetID
-	return &target
-}
+func (s Scope) TargetID() *uuid.UUID { return ptr.Copy(s.targetID) }
 
 // IsZero は、未設定の適用範囲かどうかを返します。
 func (s Scope) IsZero() bool { return s.kind.IsZero() }

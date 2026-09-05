@@ -1653,3 +1653,56 @@ func TestProduct_IsLowStock(t *testing.T) {
 		})
 	})
 }
+
+func TestProduct_ensureDiscontinuationKept(t *testing.T) {
+	t.Parallel()
+
+	t.Run("正常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("未廃番の商品は廃番日時が nil のままでも通る", func(t *testing.T) {
+			t.Parallel()
+
+			p := newTestProduct(t)
+
+			require.NoError(t, p.ensureDiscontinuationKept(nil))
+		})
+
+		t.Run("未廃番から廃番への向きは拒まない", func(t *testing.T) {
+			t.Parallel()
+
+			p := newTestProduct(t)
+
+			require.NoError(t, p.ensureDiscontinuationKept(ptr.To(testCreatedAt)))
+		})
+
+		t.Run("廃番済みの商品が廃番日時を保ったままなら通る", func(t *testing.T) {
+			t.Parallel()
+
+			p := newTestProduct(t)
+			require.NoError(t, p.Discontinue(testCreatedAt))
+
+			require.NoError(t, p.ensureDiscontinuationKept(p.DiscontinuedAt()))
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("廃番済みの商品を未廃番へ戻そうとした場合、取り消し不可のエラーを返す", func(t *testing.T) {
+			t.Parallel()
+
+			p := newTestProduct(t)
+			require.NoError(t, p.Discontinue(testCreatedAt))
+
+			err := p.ensureDiscontinuationKept(nil)
+
+			require.ErrorIs(t, err, ErrDiscontinuationIrreversible)
+			require.ErrorIs(t, err, apperror.ErrValidation)
+
+			meta, ok := apperror.MetaFrom(err)
+			require.True(t, ok)
+			assert.Equal(t, []string{FieldDiscontinuedAt}, meta.Details())
+		})
+	})
+}

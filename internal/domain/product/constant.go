@@ -32,4 +32,6 @@ const (
 const (
 	// FieldPublishedAt は、公開日時フィールドの識別子です。
 	FieldPublishedAt = "publishedAt"
+	// FieldDiscontinuedAt は、廃番日時フィールドの識別子です。
+	FieldDiscontinuedAt = "discontinuedAt"
 )

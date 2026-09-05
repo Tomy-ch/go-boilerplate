@@ -136,6 +136,9 @@ func (p *Product) Update(attrs Attributes) error {
 	if err := validateAttributes(attrs); err != nil {
 		return err
 	}
+	if err := p.ensureDiscontinuationKept(attrs.DiscontinuedAt); err != nil {
+		return err
+	}
 
 	p.name = attrs.Name
 	p.description = ptr.Copy(attrs.Description)
@@ -315,4 +318,19 @@ func (p *Product) IsLowStock() bool {
 		return false
 	}
 	return p.quantity <= *p.stockWarningThreshold
+}
+
+// ensureDiscontinuationKept は、廃番の取り消しを拒みます。廃番は取り扱いの終了であり、
+// 一度きりの遷移です。属性の一括置換は現在値を見ないため、この検証だけがレシーバの現在値と
+// 引数を突き合わせます（[Product.EnsureVersion] と同じ形）。
+//
+// 未廃番から廃番への向きは拒みません。その向きの検証は [Product.Discontinue] が持ちます。
+func (p *Product) ensureDiscontinuationKept(next *time.Time) error {
+	if p.IsDiscontinued() && !IsDiscontinued(next) {
+		return apperror.WithDetails(
+			xerrors.Wrap(ErrDiscontinuationIrreversible, "discontinuedAt must not be cleared"),
+			FieldDiscontinuedAt,
+		)
+	}
+	return nil
 }

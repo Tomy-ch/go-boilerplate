@@ -1,5 +1,5 @@
 // Package coupon は、クーポンドメインを定義します。値引き（Discount）と適用範囲（Scope）という
-// 直交する 2 つの値オブジェクトを持つ Coupon エンティティと、Repository インターフェースを提供します。
+// 直交する 2 つの値オブジェクトを持つ Coupon エンティティを提供します。
 //
 // 種別はマスタ表ではなくドメインが閉じた集合として持ち切ります。「定額か定率か」「全体かカテゴリか商品か」は
 // 業務の語彙であってデータではなく、行として編集できることに意味がないためです（purchase.Status と同じ形）。
@@ -11,6 +11,7 @@ package coupon
 import (
 	"time"
 
+	"go-boilerplate/pkg/ptr"
 	"go-boilerplate/pkg/uuid"
 	"go-boilerplate/pkg/xerrors"
 )
@@ -84,11 +85,7 @@ func newCoupon(id uuid.UUID, attrs Attributes, usedAt *time.Time) (*Coupon, erro
 		return nil, xerrors.Wrap(ErrInvalidExpiresAt, "expiresAt must be after issuedAt")
 	}
 
-	var used *time.Time
-	if usedAt != nil {
-		u := *usedAt
-		used = &u
-	}
+	used := ptr.Copy(usedAt)
 
 	return &Coupon{
 		id:        id,
@@ -120,13 +117,7 @@ func (c *Coupon) ExpiresAt() time.Time { return c.expiresAt }
 func (c *Coupon) IssuedAt() time.Time { return c.issuedAt }
 
 // UsedAt は、使用日時を返します。未使用の場合は nil です。
-func (c *Coupon) UsedAt() *time.Time {
-	if c.usedAt == nil {
-		return nil
-	}
-	used := *c.usedAt
-	return &used
-}
+func (c *Coupon) UsedAt() *time.Time { return ptr.Copy(c.usedAt) }
 
 // IsUsed は、クーポンが使用済みかどうかを返します。
 func (c *Coupon) IsUsed() bool { return c.usedAt != nil }

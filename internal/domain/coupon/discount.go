@@ -19,6 +19,9 @@ var (
 	DiscountKindFlat = DiscountKind{code: discountKindFlat, name: "flat"}
 	// DiscountKindRate は、対象額に率を掛けて差し引く「定率」です。
 	DiscountKindRate = DiscountKind{code: discountKindRate, name: "rate"}
+
+	// maxDiscountRate は、定率の値引きが取りうる上限です。decimal は const にできないため var で置きます。
+	maxDiscountRate = decimal.FromInt(1)
 )
 
 // DiscountKind は、値引きの決まり方を表す値オブジェクトです。
@@ -80,7 +83,7 @@ func NewFlatDiscount(amount decimal.Decimal) (Discount, error) {
 // 範囲外は ErrInvalidDiscountValue を返します。1 を超える率は対象額より多く差し引くことになり、
 // 値引きの意味を失うため許しません。
 func NewRateDiscount(rate decimal.Decimal) (Discount, error) {
-	if rate.Sign() <= 0 || rate.Cmp(decimal.FromInt(1)) > 0 {
+	if rate.Sign() <= 0 || rate.Cmp(maxDiscountRate) > 0 {
 		return Discount{}, xerrors.Wrap(ErrInvalidDiscountValue, "rate discount must be within (0, 1]")
 	}
 	return Discount{kind: DiscountKindRate, value: rate}, nil
