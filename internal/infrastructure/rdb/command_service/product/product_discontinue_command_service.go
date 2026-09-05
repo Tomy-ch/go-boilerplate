@@ -36,6 +36,9 @@ func New(
 // 必要があり、1 文にはできません。ただし往復は発行枚数に依存せず 2 回で固定なので、集合演算として
 // 満たすべき性質（N 非依存）は保たれます。
 //
+// 挿入する行は必ず coupon.New を通して組み立てます。集合演算で書くことと、書く 1 行 1 行が集約の
+// 不変条件を満たすことは両立します。列へ展開するのは検証を終えた集約からで、素の値からではありません。
+//
 // 受給者が 0 人の場合は挿入を行いません。空配列を unnest しても 0 行ですが、無駄な往復を避けます。
 func (s *commandService) IssueDiscontinuationCoupons(
 	ctx context.Context,
@@ -59,22 +62,38 @@ func (s *commandService) IssueDiscontinuationCoupons(
 		return command.IssueDiscontinuationCouponsResult{AffectedCartCount: affectedCarts}, nil
 	}
 
+	coupons := make(coupon.Coupons, len(recipients))
 	ids := make([]uuid.UUID, len(recipients))
-	for i := range recipients {
+	for i, recipient := range recipients {
 		id, ierr := uuid.New()
 		if ierr != nil {
 			return command.IssueDiscontinuationCouponsResult{}, ierr
 		}
-		ids[i] = id
+
+		issuedCoupon, cerr := coupon.New(id, coupon.Attributes{
+			UserID:    recipient,
+			Discount:  params.Discount,
+			Scope:     params.Scope,
+			ExpiresAt: params.ExpiresAt,
+			IssuedAt:  params.IssuedAt,
+		})
+		if cerr != nil {
+			return command.IssueDiscontinuationCouponsResult{}, cerr
+		}
+
+		coupons[i] = issuedCoupon
+		ids[i] = issuedCoupon.ID()
 	}
 
-	discountKind, err := safecast.IntToInt16(params.Discount.Kind().Code())
+	// 全員に同じ条件で配るため、共有の列は先頭の集約から取ります。素の params ではなく検証を
+	// 通った集約を出所にすることで、書き込む値と検証した値が同じであることが保証されます。
+	template := coupons[0]
+
+	discountKind, err := safecast.IntToInt16(template.Discount().Kind().Code())
 	if err != nil {
 		return command.IssueDiscontinuationCouponsResult{}, err
 	}
-	// 適用範囲は廃番商品のカテゴリで固定です。廃番商品自身を範囲にすると買えない商品にしか
-	// 使えないため、この journey が配るクーポンの範囲は 1 つに決まっています。
-	scopeKind, err := safecast.IntToInt16(coupon.ScopeKindCategory.Code())
+	scopeKind, err := safecast.IntToInt16(template.Scope().Kind().Code())
 	if err != nil {
 		return command.IssueDiscontinuationCouponsResult{}, err
 	}
@@ -83,11 +102,11 @@ func (s *commandService) IssueDiscontinuationCoupons(
 		Ids:           ids,
 		UserIds:       recipients,
 		DiscountKind:  discountKind,
-		DiscountValue: params.Discount.Value(),
+		DiscountValue: template.Discount().Value(),
 		ScopeKind:     scopeKind,
-		ScopeTargetID: &params.CategoryID,
-		ExpiresAt:     params.ExpiresAt,
-		IssuedAt:      params.IssuedAt,
+		ScopeTargetID: template.Scope().TargetID(),
+		ExpiresAt:     template.ExpiresAt(),
+		IssuedAt:      template.IssuedAt(),
 	})
 	if err != nil {
 		return command.IssueDiscontinuationCouponsResult{}, pgerror.NormalizeError(err)

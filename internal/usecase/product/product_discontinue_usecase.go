@@ -105,12 +105,19 @@ func (u *usecase) DiscontinueProduct(
 			return uerr
 		}
 
+		// 適用範囲は廃番商品のカテゴリで固定です。廃番商品自身を範囲にすると買えない商品にしか
+		// 使えないため、この journey が配るクーポンの範囲は 1 つに決まっています。
+		scope, serr := coupon.NewCategoryScope(entity.Category().ID())
+		if serr != nil {
+			return serr
+		}
+
 		result, ierr := u.discontinueCmd.IssueDiscontinuationCoupons(ctx, command.IssueDiscontinuationCouponsParams{
-			ProductID:  id,
-			CategoryID: entity.Category().ID(),
-			Discount:   discount,
-			ExpiresAt:  now.Add(params.CouponValidity),
-			IssuedAt:   now,
+			ProductID: id,
+			Scope:     scope,
+			Discount:  discount,
+			ExpiresAt: now.Add(params.CouponValidity),
+			IssuedAt:  now,
 		})
 		if ierr != nil {
 			return ierr

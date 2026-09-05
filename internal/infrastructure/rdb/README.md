@@ -205,10 +205,19 @@ and the write ordering follows
 [ADR-0036 (ordered-pessimistic-row-locks)](../../../docs/adr/0036-ordered-pessimistic-row-locks.md).
 
 <!-- sample-api:replace-begin -->
-The category currently carries no implementation. A write whose target rows can be named by identity
-is lockable and therefore decomposes into a usecase composed of Repository calls, which is why the
-purchase flow does not use one; what the category is waiting for is a write whose target set is
-defined by a predicate. See [issue #1461](https://github.com/Tomy-ch/go-boilerplate/issues/1461).
+The category carries one implementation, `command_service/product`, which issues replacement coupons
+when a product is discontinued. A write whose target rows can be named by identity is lockable and
+therefore decomposes into a usecase composed of Repository calls, which is why the purchase flow does
+not use one; the recipients here are defined by a predicate over cart rows, cannot be enumerated
+before the write, and have no upper bound, so the write is a set operation rather than a sequence of
+per-aggregate saves. It is the worked instance of branch 3 in
+[ADR-0034 (commandservice-atomicity-criterion)](../../../docs/adr/0034-commandservice-atomicity-criterion.md).
+
+Its parameters are the issuing conditions rather than a decided aggregate, because the aggregates
+cannot exist before the recipients are read. The rule the shape rule protects is kept all the same:
+the method reads the recipients and then builds every row through the Domain constructor, so no row
+reaches the database without satisfying the aggregate's invariants. Round trips stay at two and do
+not grow with the number of coupons.
 <!-- sample-api:replace-with -->
 <!-- = The category carries no implementation until a write meets the criterion. -->
 <!-- sample-api:replace-end -->

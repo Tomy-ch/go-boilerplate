@@ -118,7 +118,8 @@ func Test_usecase_DiscontinueProduct(t *testing.T) {
 				IssueDiscontinuationCoupons(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(_ any, p command.IssueDiscontinuationCouponsParams) (command.IssueDiscontinuationCouponsResult, error) {
 					assert.Equal(t, entity.ID(), p.ProductID)
-					assert.Equal(t, entity.Category().ID(), p.CategoryID)
+					assert.Equal(t, entity.Category().ID(), *p.Scope.TargetID())
+					assert.Equal(t, domaincoupon.ScopeKindCategory, p.Scope.Kind())
 					assert.Equal(t, domaincoupon.DiscountKindRate, p.Discount.Kind())
 					assert.Equal(t, now.Add(30*24*time.Hour), p.ExpiresAt)
 					assert.Equal(t, now, p.IssuedAt)

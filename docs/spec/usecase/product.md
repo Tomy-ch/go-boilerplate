@@ -465,9 +465,9 @@ notes:
   calls:
     - authz.Authorize             # ActionProductDiscontinue（admin のみ）
     - coupon.NewRateDiscount      # 要求の率を検証。範囲外はここで 422
+    - coupon.NewCategoryScope     # 適用範囲を検証。廃番商品のカテゴリで固定
     - clock.Now
     - product.Repository.LockByID
-    - coupon.Repository.CountByScopeTargetProductID   # 既に廃番のときだけ
     - purchase.Repository.FindStatusesByProductID
     - discontinuation.EnsureDiscontinuable
     - product.Product.Discontinue

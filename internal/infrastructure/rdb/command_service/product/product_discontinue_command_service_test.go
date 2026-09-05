@@ -89,15 +89,17 @@ func newIssueParams(t *testing.T, productID uuid.UUID) command.IssueDiscontinuat
 
 	categoryID, err := uuid.Parse(seedCategory)
 	require.NoError(t, err)
+	scope, err := coupon.NewCategoryScope(categoryID)
+	require.NoError(t, err)
 
 	issuedAt := time.Now()
 
 	return command.IssueDiscontinuationCouponsParams{
-		ProductID:  productID,
-		CategoryID: categoryID,
-		Discount:   discount,
-		ExpiresAt:  issuedAt.Add(30 * 24 * time.Hour),
-		IssuedAt:   issuedAt,
+		ProductID: productID,
+		Scope:     scope,
+		Discount:  discount,
+		ExpiresAt: issuedAt.Add(30 * 24 * time.Hour),
+		IssuedAt:  issuedAt,
 	}
 }
 
@@ -160,7 +162,7 @@ func Test_commandService_IssueDiscontinuationCoupons(t *testing.T) {
 				assert.Equal(t, int64(2), got.AffectedCartCount)
 				assert.Equal(t, int64(2), got.AffectedUserCount)
 				assert.Equal(t, int64(2), got.IssuedCouponCount)
-				assert.Equal(t, 2, countCoupons(ctx, t, drv, params.CategoryID))
+				assert.Equal(t, 2, countCoupons(ctx, t, drv, *params.Scope.TargetID()))
 			})
 		})
 
@@ -187,13 +189,13 @@ func Test_commandService_IssueDiscontinuationCoupons(t *testing.T) {
 				)
 				row := drv.QueryRow(ctx,
 					"SELECT discount_kind, scope_kind, scope_target_id, user_id FROM coupons WHERE scope_target_id = $1",
-					params.CategoryID,
+					*params.Scope.TargetID(),
 				)
 				require.NoError(t, row.Scan(&discountKind, &scopeKind, &target, &owner))
 
 				assert.Equal(t, coupon.DiscountKindRate.Code(), int(discountKind))
 				assert.Equal(t, coupon.ScopeKindCategory.Code(), int(scopeKind))
-				assert.Equal(t, params.CategoryID, target)
+				assert.Equal(t, *params.Scope.TargetID(), target)
 				assert.Equal(t, userID, owner)
 			})
 		})
@@ -214,7 +216,7 @@ func Test_commandService_IssueDiscontinuationCoupons(t *testing.T) {
 				assert.Equal(t, int64(1), got.AffectedCartCount)
 				assert.Zero(t, got.AffectedUserCount)
 				assert.Zero(t, got.IssuedCouponCount)
-				assert.Equal(t, 0, countCoupons(ctx, t, drv, params.CategoryID))
+				assert.Equal(t, 0, countCoupons(ctx, t, drv, *params.Scope.TargetID()))
 			})
 		})
 
@@ -260,6 +262,32 @@ func Test_commandService_IssueDiscontinuationCoupons(t *testing.T) {
 			})
 		})
 
+		t.Run("同じ受給者でも1枚ずつ別のidを採番する", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				productID := uuidtestkit.NewTestFromSalt(t, "cs_ids_product")
+				userA := uuidtestkit.NewTestFromSalt(t, "cs_ids_user_a")
+				userB := uuidtestkit.NewTestFromSalt(t, "cs_ids_user_b")
+				insertDiscontinuedProduct(ctx, t, drv, productID)
+				insertRecipientUser(ctx, t, drv, userA, false)
+				insertRecipientUser(ctx, t, drv, userB, false)
+				insertCartWithItem(ctx, t, drv, uuidtestkit.NewTestFromSalt(t, "cs_ids_cart_a"), productID, &userA)
+				insertCartWithItem(ctx, t, drv, uuidtestkit.NewTestFromSalt(t, "cs_ids_cart_b"), productID, &userB)
+
+				params := newIssueParams(t, productID)
+				_, err := svc.IssueDiscontinuationCoupons(ctx, params)
+				require.NoError(t, err)
+
+				var distinct int
+				row := drv.QueryRow(ctx,
+					"SELECT COUNT(DISTINCT id) FROM coupons WHERE scope_target_id = $1", *params.Scope.TargetID())
+				require.NoError(t, row.Scan(&distinct))
+				assert.Equal(t, 2, distinct)
+			})
+		})
+
 		t.Run("どのカートにも入っていない商品は発行を行わない", func(t *testing.T) {
 			t.Parallel()
 
@@ -275,6 +303,31 @@ func Test_commandService_IssueDiscontinuationCoupons(t *testing.T) {
 				assert.Zero(t, got.AffectedCartCount)
 				assert.Zero(t, got.AffectedUserCount)
 				assert.Zero(t, got.IssuedCouponCount)
+			})
+		})
+	})
+
+	t.Run("異常系", func(t *testing.T) {
+		t.Parallel()
+
+		t.Run("有効期限が発行日時以前の場合、集約の検証で弾き1行も挿入しない", func(t *testing.T) {
+			t.Parallel()
+
+			txm.WithinTx(func(ctx context.Context) {
+				drv := driver.New(ctx, testDB)
+				productID := uuidtestkit.NewTestFromSalt(t, "cs_invalid_product")
+				userID := uuidtestkit.NewTestFromSalt(t, "cs_invalid_user")
+				insertDiscontinuedProduct(ctx, t, drv, productID)
+				insertRecipientUser(ctx, t, drv, userID, false)
+				insertCartWithItem(ctx, t, drv, uuidtestkit.NewTestFromSalt(t, "cs_invalid_cart"), productID, &userID)
+
+				params := newIssueParams(t, productID)
+				params.ExpiresAt = params.IssuedAt
+
+				_, err := svc.IssueDiscontinuationCoupons(ctx, params)
+
+				require.ErrorIs(t, err, coupon.ErrInvalidExpiresAt)
+				assert.Equal(t, 0, countCoupons(ctx, t, drv, *params.Scope.TargetID()))
 			})
 		})
 	})

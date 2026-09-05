@@ -20,9 +20,9 @@ import (
 type IssueDiscontinuationCouponsParams struct {
 	// ProductID は、廃番の対象です。受給者はこの商品を明細に持つカートから決まります。
 	ProductID uuid.UUID
-	// CategoryID は、発行するクーポンの適用範囲が指す商品カテゴリです。
-	// 廃番商品自身を範囲にすると買えない商品にしか使えないため、そのカテゴリを範囲にします。
-	CategoryID uuid.UUID
+	// Scope は、発行するクーポンの適用範囲です。検証済みの値オブジェクトを受け取ります。
+	// どの範囲を配るかは業務の判断なので、決めるのも組み立てるのも呼び出し側です。
+	Scope coupon.Scope
 	// Discount は、発行するクーポンの値引きです。全員に同じ条件で配ります。
 	Discount coupon.Discount
 	// ExpiresAt は、発行するクーポンの有効期限です。
@@ -50,10 +50,12 @@ type CommandService interface {
 	// ユーザーへ、同一条件のクーポンを 1 枚ずつ発行します。渡された ctx のトランザクション内で実行します。
 	//
 	// 受給者は述語（cart_items への結合と退会の除外）でしか決まらず、件数に上限もないため、
-	// 呼び出し側が集約を組み立てて渡すことはできません。そのため引数は「決まった集約」ではなく
-	// 発行条件のテンプレートで、個々の Coupon はこのメソッドの中で採番されます
-	// （data-access-pattern.md §6 の shape rule が想定する「手元の集約をバラして渡す」形とは別物です）。
+	// 呼び出し側が集約を組み立てて渡すことはできません。そのため引数は発行条件で、個々の Coupon は
+	// 受給者を読んだあとにこのメソッドが組み立てます。組み立てはドメインのコンストラクタを通すので、
+	// 書き込まれる行は必ず集約の不変条件を満たします（data-access-pattern.md §6 の shape rule が
+	// 要求する「決まった集約を書く」性質は、集約を受け取る代わりにここで満たします）。
 	//
-	// 往復は受給者の取得と挿入の 2 回で、発行枚数に比例して増えません。
+	// 往復は受給者の取得と挿入の 2 回で、発行枚数に比例して増えません。集約の構築はインメモリなので
+	// 往復を増やしません。
 	IssueDiscontinuationCoupons(ctx context.Context, params IssueDiscontinuationCouponsParams) (IssueDiscontinuationCouponsResult, error)
 }
