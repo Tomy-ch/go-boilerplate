@@ -270,11 +270,11 @@ func New(
 // 課税の基礎は値引き後の額です。値引いた分にまで課税しないためで、この規則の所在はここ 1 箇所です
 // （docs/spec/domain/purchase.md の Cross-field Invariants）。
 // 生成時と値引きの適用時が同じ関数を通るので、両者で式がずれません。
-func settle(subtotal, discount int) (tax, shipping, total int) {
+func settle(subtotal, discount int) (int, int, int) {
 	taxable := subtotal - discount
-	tax = taxable * taxRatePercent / percentDivisor
-	shipping = shippingFeeCents
-	total = taxable + tax + shipping
+	tax := taxable * taxRatePercent / percentDivisor
+	shipping := shippingFeeCents
+	total := taxable + tax + shipping
 
 	return tax, shipping, total
 }
