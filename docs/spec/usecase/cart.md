@@ -185,18 +185,20 @@ errors:
 ```yaml
 tx_required: true
 steps:
-  - subject からカートを解決する。無ければ作成する
-      （UserID あり → NewForOwner / ゲスト → token.Generator で採番して NewForGuest）
+  - subject からカートを解決する。無ければ確保する
+      （UserID あり → NewForOwner を CreateOwnerIfAbsent へ渡す / ゲスト → token.Generator で採番して NewForGuest）
   - 既存カートは LockByID で悲観ロックする
-      （解決とロックの間に消えていた場合は、引けなかった場合と同じく作成へ倒す。
+      （解決とロックの間に消えていた場合は、引けなかった場合と同じく確保へ倒す。
         MergeOnLogin がゲストカートを行ごと消すため、この窓は実際に開く）
+  - CreateOwnerIfAbsent が返したカートは、その文が行ロックを取っているので LockByID は要らない。
+      競合に負けて既存カートを受け取り、それが期限切れなら空にしてから使う
   - product_repository.FindPublishedByID で商品を引く
       （非公開・不存在の商品はカートへ入れさせない。再評価と違い、投入は要求そのものが不正なため 422。
         両者を区別しないのは、未ログインの呼び出し元へ非公開商品の存在を漏らさないため）
   - cart.SetItem（数量の設定。上限超過は ErrTooManyItems）
   - GetCart と同じ再評価を行い、その後 Update する
 calls:
-  - cart_repository.FindByOwnerID / FindBySessionToken / LockByID / Create / Update
+  - cart_repository.FindByOwnerID / FindBySessionToken / LockByID / CreateOwnerIfAbsent / Create / Update
   - product_repository.FindPublishedByID / FindByIDs
   - token_generator.Generate
   - clock.Now
@@ -216,10 +218,16 @@ errors:
 `SessionToken` に載せて返す。ゲストカートへ到達できるかはトークンの秘匿だけが決めているため、その値を
 クライアントに選ばせると、推測できないことの保証が丸ごと迂回される。
 
-**作成の衝突はトランザクションごとやり直す。** カートを持たない同一主体からの並行要求は、片方が
-一意制約に当たる。一意制約違反はトランザクション自体を中断させるため、同じトランザクションの中では
-解決からやり直せない。やり直しは 1 回で、そこでは勝った側の行が見える（READ COMMITTED）。
-やり直しても作れなかった場合だけ 409 を返す。
+**所有者のカートは「無ければ作る」で確保する。** カートを持たない同一主体からの並行要求でも、
+一意インデックスが単一文の中で裁定するため一意制約違反は起きず、負けた側には勝った行がそのまま返る
+（`MergeOnLogin` の引き継ぎ先の確保と同じ扱い。存在確認と作成を分けると、その間に他の要求が作った場合に
+トランザクションごと中断してしまう）。`ON CONFLICT DO UPDATE` は衝突した行にロックを取るので、
+返ったカートはそのトランザクションが握っており、呼び出し側は別途ロックを取らずに触ってよい。
+負けた側が受け取ったカートが期限切れであれば、引けた場合と同じく空にしてから使う。
+やり直しの機構はどこにも要らない。
+
+ゲストカートにはこの競合が無い。到達不能なトークンを毎回採番するため、並行しても別々のカートになる。
+採番した値が既に使われていた場合は衝突として返す — やり直しても解けない、生成器の異常である。
 
 **数量の範囲外は 400 であって 422 ではない。** OpenAPI が `minimum` / `maximum` を宣言しているため、
 範囲外はミドルウェアがドメインより手前で落とす（ADR-0016・リクエスト境界の権威は spec）。
