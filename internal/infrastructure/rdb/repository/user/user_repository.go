@@ -56,8 +56,7 @@ func (r *repository) FindByActive(ctx context.Context, active *bool, limit, offs
 	}
 }
 
-// FindFeed は、未削除ユーザーを (created_at DESC, id DESC) の安定順で keyset ページネーション取得します。
-// after=nil の場合は先頭ページ、それ以外は after が表す境界より後ろ（より過去）の行を返します。
+// FindFeed は、(created_at DESC, id DESC) の keyset で取得します。
 func (r *repository) FindFeed(ctx context.Context, after *user.FeedCursor, limit int32) (user.Users, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
@@ -208,7 +207,6 @@ func fetchListUsersRowsByDeleted(
 	return rowsToUsers(rows, func(r *gen.ListDeletedUsersRow) gen.Users { return r.Users })
 }
 
-// Create は、ユーザーを作成します。
 func (r *repository) Create(ctx context.Context, u *user.User) error {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()
@@ -359,8 +357,6 @@ func (r *repository) PurgeByIDs(ctx context.Context, ids []uuid.UUID) (int64, er
 	return purged, nil
 }
 
-// CountByKeyword は、検索テキストがいずれかのキーワードに部分一致するユーザーの総件数を返します。
-// active / keywords の意味は SearchByKeyword と同じです。
 func (r *repository) CountByKeyword(ctx context.Context, keywords []string, active *bool) (int64, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()

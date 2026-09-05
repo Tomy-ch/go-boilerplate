@@ -57,8 +57,8 @@ FROM (
     SELECT
         i.id,
         u.user_id
-    FROM unnest($7::UUID[]) WITH ORDINALITY AS i(id, ord)
-    INNER JOIN unnest($8::UUID[]) WITH ORDINALITY AS u(user_id, ord)
+    FROM UNNEST($7::UUID[]) WITH ORDINALITY AS i (id, ord)
+    INNER JOIN UNNEST($8::UUID[]) WITH ORDINALITY AS u (user_id, ord)
         ON i.ord = u.ord
 ) AS ids
 `
@@ -103,8 +103,8 @@ type InsertDiscontinueCouponsParams struct {
 //	    SELECT
 //	        i.id,
 //	        u.user_id
-//	    FROM unnest($7::UUID[]) WITH ORDINALITY AS i(id, ord)
-//	    INNER JOIN unnest($8::UUID[]) WITH ORDINALITY AS u(user_id, ord)
+//	    FROM UNNEST($7::UUID[]) WITH ORDINALITY AS i (id, ord)
+//	    INNER JOIN UNNEST($8::UUID[]) WITH ORDINALITY AS u (user_id, ord)
 //	        ON i.ord = u.ord
 //	) AS ids
 func (q *Queries) InsertDiscontinueCoupons(ctx context.Context, arg *InsertDiscontinueCouponsParams) (int64, error) {
@@ -127,8 +127,8 @@ func (q *Queries) InsertDiscontinueCoupons(ctx context.Context, arg *InsertDisco
 const selectDiscontinueCouponRecipients = `-- name: SelectDiscontinueCouponRecipients :many
 SELECT DISTINCT c.user_id::UUID AS user_id
 FROM cart_items AS ci
-INNER JOIN carts AS c ON c.id = ci.cart_id
-INNER JOIN users AS u ON u.id = c.user_id
+INNER JOIN carts AS c ON ci.cart_id = c.id
+INNER JOIN users AS u ON c.user_id = u.id
 WHERE ci.product_id = $1
     AND u.deleted_at IS NULL
 `
@@ -140,8 +140,8 @@ WHERE ci.product_id = $1
 //
 //	SELECT DISTINCT c.user_id::UUID AS user_id
 //	FROM cart_items AS ci
-//	INNER JOIN carts AS c ON c.id = ci.cart_id
-//	INNER JOIN users AS u ON u.id = c.user_id
+//	INNER JOIN carts AS c ON ci.cart_id = c.id
+//	INNER JOIN users AS u ON c.user_id = u.id
 //	WHERE ci.product_id = $1
 //	    AND u.deleted_at IS NULL
 func (q *Queries) SelectDiscontinueCouponRecipients(ctx context.Context, productID uuid.UUID) ([]uuid.UUID, error) {

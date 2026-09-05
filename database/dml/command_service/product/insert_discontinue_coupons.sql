@@ -26,7 +26,7 @@ FROM (
     SELECT
         i.id,
         u.user_id
-    FROM unnest(sqlc.arg('ids')::UUID[]) WITH ORDINALITY AS i(id, ord)
-    INNER JOIN unnest(sqlc.arg('user_ids')::UUID[]) WITH ORDINALITY AS u(user_id, ord)
+    FROM UNNEST(sqlc.arg('ids')::UUID[]) WITH ORDINALITY AS i (id, ord)
+    INNER JOIN UNNEST(sqlc.arg('user_ids')::UUID[]) WITH ORDINALITY AS u (user_id, ord)
         ON i.ord = u.ord
 ) AS ids;

@@ -38,8 +38,8 @@ func (q *Queries) CountDiscontinueImpactCarts(ctx context.Context, productID uui
 const countDiscontinueImpactInProgressPurchases = `-- name: CountDiscontinueImpactInProgressPurchases :one
 SELECT COUNT(DISTINCT p.id)
 FROM purchases AS p
-INNER JOIN purchase_details AS pd ON pd.purchase_id = p.id
-INNER JOIN purchase_statuses AS ps ON ps.id = p.status_id
+INNER JOIN purchase_details AS pd ON p.id = pd.purchase_id
+INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
 WHERE pd.product_id = $1
     AND NOT (ps.code = ANY($2::SMALLINT[]))
 `
@@ -57,8 +57,8 @@ type CountDiscontinueImpactInProgressPurchasesParams struct {
 //
 //	SELECT COUNT(DISTINCT p.id)
 //	FROM purchases AS p
-//	INNER JOIN purchase_details AS pd ON pd.purchase_id = p.id
-//	INNER JOIN purchase_statuses AS ps ON ps.id = p.status_id
+//	INNER JOIN purchase_details AS pd ON p.id = pd.purchase_id
+//	INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
 //	WHERE pd.product_id = $1
 //	    AND NOT (ps.code = ANY($2::SMALLINT[]))
 func (q *Queries) CountDiscontinueImpactInProgressPurchases(ctx context.Context, arg *CountDiscontinueImpactInProgressPurchasesParams) (int64, error) {
@@ -71,8 +71,8 @@ func (q *Queries) CountDiscontinueImpactInProgressPurchases(ctx context.Context,
 const countDiscontinueImpactUsers = `-- name: CountDiscontinueImpactUsers :one
 SELECT COUNT(DISTINCT c.user_id)
 FROM cart_items AS ci
-INNER JOIN carts AS c ON c.id = ci.cart_id
-INNER JOIN users AS u ON u.id = c.user_id
+INNER JOIN carts AS c ON ci.cart_id = c.id
+INNER JOIN users AS u ON c.user_id = u.id
 WHERE ci.product_id = $1
     AND u.deleted_at IS NULL
 `
@@ -84,8 +84,8 @@ WHERE ci.product_id = $1
 //
 //	SELECT COUNT(DISTINCT c.user_id)
 //	FROM cart_items AS ci
-//	INNER JOIN carts AS c ON c.id = ci.cart_id
-//	INNER JOIN users AS u ON u.id = c.user_id
+//	INNER JOIN carts AS c ON ci.cart_id = c.id
+//	INNER JOIN users AS u ON c.user_id = u.id
 //	WHERE ci.product_id = $1
 //	    AND u.deleted_at IS NULL
 func (q *Queries) CountDiscontinueImpactUsers(ctx context.Context, productID uuid.UUID) (int64, error) {

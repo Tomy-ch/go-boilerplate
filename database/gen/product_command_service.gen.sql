@@ -36,8 +36,8 @@ FROM (
     SELECT
         i.id,
         u.user_id
-    FROM unnest(sqlc.arg('ids')::UUID[]) WITH ORDINALITY AS i(id, ord)
-    INNER JOIN unnest(sqlc.arg('user_ids')::UUID[]) WITH ORDINALITY AS u(user_id, ord)
+    FROM UNNEST(sqlc.arg('ids')::UUID[]) WITH ORDINALITY AS i (id, ord)
+    INNER JOIN UNNEST(sqlc.arg('user_ids')::UUID[]) WITH ORDINALITY AS u (user_id, ord)
         ON i.ord = u.ord
 ) AS ids;
 
@@ -48,7 +48,7 @@ FROM (
 -- Workflow — DiscontinueProduct の invariants を参照。
 SELECT DISTINCT c.user_id::UUID AS user_id
 FROM cart_items AS ci
-INNER JOIN carts AS c ON c.id = ci.cart_id
-INNER JOIN users AS u ON u.id = c.user_id
+INNER JOIN carts AS c ON ci.cart_id = c.id
+INNER JOIN users AS u ON c.user_id = u.id
 WHERE ci.product_id = sqlc.arg('product_id')
     AND u.deleted_at IS NULL;

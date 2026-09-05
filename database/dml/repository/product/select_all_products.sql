@@ -1,12 +1,7 @@
 -- name: ListAllProductsDescFirst :many
 -- 公開状態を問わない商品を (created_at DESC, id DESC) の安定順で keyset ページネーション取得します。
--- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
--- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
--- category_id / status_id / category_codes / status_codes / keyword / price・quantity の上下限は
--- 指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは
--- usecase の validateMasterFilter が拒否します。
--- 並び順が公開日時でなく登録日時なのは、未公開商品が published_at を持たないためです。
--- 絞り込みの条件は対の ListPublishedProducts* と逐語的に同一に保ちます。母集団の差は公開状態だけです。
+-- 条件と注意点は ListAllProductsDescFirst を参照。
+-- 本ファイルの他 3 本も、ソート軸とページ方向以外はこの条件と注意点を共有します。
 -- 先頭ページを返します。カーソル以降は対の After クエリが担います。
 SELECT
     ps.name AS status_name,
@@ -49,13 +44,7 @@ LIMIT sqlc.arg('limit_param');
 
 -- name: ListAllProductsDescAfter :many
 -- 公開状態を問わない商品を (created_at DESC, id DESC) の安定順で keyset ページネーション取得します。
--- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
--- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
--- category_id / status_id / category_codes / status_codes / keyword / price・quantity の上下限は
--- 指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは
--- usecase の validateMasterFilter が拒否します。
--- 並び順が公開日時でなく登録日時なのは、未公開商品が published_at を持たないためです。
--- 絞り込みの条件は対の ListPublishedProducts* と逐語的に同一に保ちます。母集団の差は公開状態だけです。
+-- 条件と注意点は ListAllProductsDescFirst を参照。
 -- カーソル以降のページを返します。先頭ページは対の First クエリが担います。
 SELECT
     ps.name AS status_name,
@@ -102,13 +91,7 @@ LIMIT sqlc.arg('limit_param');
 
 -- name: ListAllProductsAscFirst :many
 -- 公開状態を問わない商品を (created_at ASC, id ASC) の安定順で keyset ページネーション取得します。
--- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
--- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
--- category_id / status_id / category_codes / status_codes / keyword / price・quantity の上下限は
--- 指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは
--- usecase の validateMasterFilter が拒否します。
--- 並び順が公開日時でなく登録日時なのは、未公開商品が published_at を持たないためです。
--- 絞り込みの条件は対の ListPublishedProducts* と逐語的に同一に保ちます。母集団の差は公開状態だけです。
+-- 条件と注意点は ListAllProductsDescFirst を参照。
 -- 先頭ページを返します。カーソル以降は対の After クエリが担います。
 SELECT
     ps.name AS status_name,
@@ -151,13 +134,7 @@ LIMIT sqlc.arg('limit_param');
 
 -- name: ListAllProductsAscAfter :many
 -- 公開状態を問わない商品を (created_at ASC, id ASC) の安定順で keyset ページネーション取得します。
--- status_name / category_name は固定参照マスタの解決値（JOIN の許容範囲は
--- internal/infrastructure/rdb/repository/README.md の Reference-master exception）。
--- category_id / status_id / category_codes / status_codes / keyword / price・quantity の上下限は
--- 指定時のみ絞り込みます。id 版と code 版は併存し、同一条件に両方を渡す組み合わせは
--- usecase の validateMasterFilter が拒否します。
--- 並び順が公開日時でなく登録日時なのは、未公開商品が published_at を持たないためです。
--- 絞り込みの条件は対の ListPublishedProducts* と逐語的に同一に保ちます。母集団の差は公開状態だけです。
+-- 条件と注意点は ListAllProductsDescFirst を参照。
 -- カーソル以降のページを返します。先頭ページは対の First クエリが担います。
 SELECT
     ps.name AS status_name,

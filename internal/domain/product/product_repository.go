@@ -118,8 +118,7 @@ type Repository interface {
 	LockByID(ctx context.Context, id uuid.UUID) (*Product, error)
 	// LockByIDs は、更新のために ID の集合から公開状態を問わない商品群を、ID 昇順にまとめて取得します
 	// （順序を固定する理由は ADR-0036 (ordered-pessimistic-row-locks)）。
-	// 不存在の ID はロックできず結果に現れないため、要素数は ids より少なくなり得ます
-	// （不存在の検証は呼び出し側の責務です）。
+	// 不存在の ID の扱いは [Repository.FindByIDs] と同じです。
 	LockByIDs(ctx context.Context, ids []uuid.UUID) (Products, error)
 	// Create は、商品を新規登録します。p が保持する画像も併せて登録します。
 	Create(ctx context.Context, p *Product) error

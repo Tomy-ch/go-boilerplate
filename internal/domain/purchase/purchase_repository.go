@@ -8,6 +8,8 @@ import (
 )
 
 // Repository は、購入の永続化操作を定義するドメインリポジトリインターフェースです。
+// 状態遷移の Update 系（UpdatePaid / UpdateShipped / UpdateDelivered / UpdateCancelled）は、
+// いずれも LockByCode で取得・検証済みの対象に対し、渡された ctx のトランザクション内で実行します。
 //
 //nolint:interfacebloat // 集約の永続化契約は 1 本に保つ（ADR-0032 (lightweight-cqrs)）。呼び出し側ごとに分割すると同一集約の契約が複数箇所へ散る
 type Repository interface {
@@ -21,17 +23,14 @@ type Repository interface {
 	// 状態遷移の競合（同一購入への並行更新）をこのロックで直列化します。
 	// 存在しない場合は NotFound を返します。
 	LockByCode(ctx context.Context, code string) (*Purchase, error)
-	// UpdatePaid は、購入の状態遷移（→ 支払い済み）を、渡された ctx のトランザクション内で実行します。
-	// 対象は LockByCode で取得・検証済みです。
+	// UpdatePaid は、購入の状態遷移（→ 支払い済み）を実行します。
 	UpdatePaid(ctx context.Context, p *Purchase) error
-	// UpdateShipped は、購入の状態遷移（→ 発送済み）を、渡された ctx のトランザクション内で実行します。
-	// 対象は LockByCode で取得・検証済みです。
+	// UpdateShipped は、購入の状態遷移（→ 発送済み）を実行します。
 	UpdateShipped(ctx context.Context, p *Purchase) error
-	// UpdateDelivered は、購入の状態遷移（→ 配達済み）を、渡された ctx のトランザクション内で実行します。
-	// 対象は LockByCode で取得・検証済みです。
+	// UpdateDelivered は、購入の状態遷移（→ 配達済み）を実行します。
 	UpdateDelivered(ctx context.Context, p *Purchase) error
-	// UpdateCancelled は、購入の状態遷移（→ キャンセル）を、渡された ctx のトランザクション内で実行します。
-	// 対象は LockByCode で取得・検証済みです。在庫復元と product.Repository の扱いは Create を参照。
+	// UpdateCancelled は、購入の状態遷移（→ キャンセル）を実行します。
+	// 在庫復元と product.Repository の扱いは Create を参照。
 	UpdateCancelled(ctx context.Context, p *Purchase) error
 	// FindShippable は、発送可能な購入を注文日時の古い順（同時刻は ID 昇順）で明細込みに最大 limit 件
 	// 取得します。該当が無い場合は空を返します。絞り込みは Purchase.IsShippable の定義と一致させること。

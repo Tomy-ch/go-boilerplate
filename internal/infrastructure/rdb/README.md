@@ -227,6 +227,14 @@ the Usecase owns the boundary, nested under `idempotency.Run`) and does **not** 
 (that is a Usecase responsibility, `system_cqrs` category). Its methods take the decided Domain
 aggregate and normalize every sqlc error with `pgerror.NormalizeError`.
 
+**One exception to "take the decided aggregate", and only this one.** When the rows to write are
+defined by a predicate with no upper bound, the aggregates cannot exist before the write reads which
+ones to build — so the method takes the issuing conditions instead, and builds every aggregate
+through its Domain constructor after reading them. What the shape rule protects is that no row
+reaches the database unvalidated, and that is what the constructor call preserves; taking the
+aggregate is the usual way to get it, not the property itself. A method that could name its rows by
+identity does not qualify — it decomposes into Repository calls and never reaches this package.
+
 **What may live here.** Only a write that cannot be expressed as loading an aggregate and saving it:
 a relative update, a set-based operation, or one that obtains atomicity without taking a lock.
 Anything that can be read-modify-saved belongs on the Repository. Without that line this package
@@ -345,6 +353,9 @@ than covered with a contrived test.
 |`repository/product/product_repository.go`|`UpdateStock`|`safecast.IntToInt32(p.Quantity())` error|同上|
 |`repository/product/product_repository.go`|`insertImages`|`safecast.IntToInt16(img.DisplaySort())` error|`product` validates `displaySort` into `[1, math.MaxInt16]`|
 |`repository/product/product_repository.go`|`syncImages`|`safecast.IntToInt16(img.DisplaySort())` error|同上|
+|`command_service/product/product_discontinue_command_service.go`|`IssueDiscontinuationCoupons`|`uuid.New()` error|`crypto/rand` failure only|
+|`command_service/product/product_discontinue_command_service.go`|`IssueDiscontinuationCoupons`|`safecast.IntToInt16(...Kind().Code())` error|`DiscountKind` / `ScopeKind` are closed sets whose codes are single digits|
+|`command_service/product/product_discontinue_command_service.go`|`IssueDiscontinuationCoupons`|FK 23503 normalization|recipients come from an inner join on `users`, so the reference cannot be missing within the same transaction|
 <!-- sample-api:replace-with -->
 <!-- = |File|Function|Uncovered branch|Why unreachable| -->
 <!-- = |---|---|---|---| -->

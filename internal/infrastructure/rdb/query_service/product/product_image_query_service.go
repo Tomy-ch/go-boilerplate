@@ -27,8 +27,6 @@ func New(
 	}
 }
 
-// FilterExistingImagePaths は、paths のうち商品が現在の画像として参照しているものを重複排除して返します。
-// 返らなかったパスは、どの商品からも参照されていないことを意味します。
 func (s *service) FilterExistingImagePaths(ctx context.Context, paths []string) ([]string, error) {
 	ctx, endSpan := s.tracer.Start(ctx)
 	defer endSpan()

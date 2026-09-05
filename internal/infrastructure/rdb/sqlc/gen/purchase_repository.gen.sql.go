@@ -530,8 +530,8 @@ func (q *Queries) LockPurchaseByCode(ctx context.Context, code string) (*LockPur
 const selectPurchaseStatusCodesByProductID = `-- name: SelectPurchaseStatusCodesByProductID :many
 SELECT DISTINCT ps.code
 FROM purchases AS p
-INNER JOIN purchase_details AS pd ON pd.purchase_id = p.id
-INNER JOIN purchase_statuses AS ps ON ps.id = p.status_id
+INNER JOIN purchase_details AS pd ON p.id = pd.purchase_id
+INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
 WHERE pd.product_id = $1
 `
 
@@ -542,8 +542,8 @@ WHERE pd.product_id = $1
 //
 //	SELECT DISTINCT ps.code
 //	FROM purchases AS p
-//	INNER JOIN purchase_details AS pd ON pd.purchase_id = p.id
-//	INNER JOIN purchase_statuses AS ps ON ps.id = p.status_id
+//	INNER JOIN purchase_details AS pd ON p.id = pd.purchase_id
+//	INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
 //	WHERE pd.product_id = $1
 func (q *Queries) SelectPurchaseStatusCodesByProductID(ctx context.Context, productID uuid.UUID) ([]int16, error) {
 	rows, err := q.db.Query(ctx, selectPurchaseStatusCodesByProductID, productID)

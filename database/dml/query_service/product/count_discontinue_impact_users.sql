@@ -4,7 +4,7 @@
 -- 除外対象と見積もりの古さは docs/spec/usecase/product.md の GetDiscontinueImpact を参照。
 SELECT COUNT(DISTINCT c.user_id)
 FROM cart_items AS ci
-INNER JOIN carts AS c ON c.id = ci.cart_id
-INNER JOIN users AS u ON u.id = c.user_id
+INNER JOIN carts AS c ON ci.cart_id = c.id
+INNER JOIN users AS u ON c.user_id = u.id
 WHERE ci.product_id = sqlc.arg('product_id')
     AND u.deleted_at IS NULL;

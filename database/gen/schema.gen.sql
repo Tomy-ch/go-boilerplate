@@ -1279,10 +1279,6 @@ ALTER TABLE ONLY public.users
 --
 CREATE INDEX carts_expires_at_index ON public.carts USING btree (expires_at);
 --
--- Name: coupons_scope_target_id_idx; Type: INDEX; Schema: public; Owner: -
---
-CREATE INDEX coupons_scope_target_id_idx ON public.coupons USING btree (scope_target_id) WHERE (scope_target_id IS NOT NULL);
---
 -- Name: coupons_user_id_idx; Type: INDEX; Schema: public; Owner: -
 --
 CREATE INDEX coupons_user_id_idx ON public.coupons USING btree (user_id);

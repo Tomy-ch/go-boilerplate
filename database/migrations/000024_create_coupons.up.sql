@@ -27,10 +27,6 @@ COMMENT ON COLUMN coupons.issued_at IS '発行日時';
 COMMENT ON COLUMN coupons.created_at IS '作成日時';
 COMMENT ON COLUMN coupons.updated_at IS '更新日時';
 
--- 保有クーポンの一覧が引く。受給者は発行時に確定し以後移らないため、user_id 単独で足りる。
+-- 保有クーポンの一覧と、利用者の物理削除に伴う削除が引く。受給者は発行後に移らない
+-- （docs/spec/domain/coupon.md の Overview）ため user_id 単独で足りる。
 CREATE INDEX coupons_user_id_idx ON coupons (user_id);
-
--- 廃番を再実行したときに、その商品を根拠に発行済みの枚数を数える経路が引く。
--- 対象を持たない適用範囲（全体）は数えないため、部分索引で NULL の行を載せない。
-CREATE INDEX coupons_scope_target_id_idx ON coupons (scope_target_id)
-WHERE scope_target_id IS NOT NULL;

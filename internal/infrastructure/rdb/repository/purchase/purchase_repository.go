@@ -326,8 +326,7 @@ func groupPurchaseDetails(
 	return grouped, nil
 }
 
-// FindDetailByID は、ID から購入詳細（読み取りモデル）を明細込みで取得します。ステータス名は
-// 購入ステータスマスタとの結合で解決します。存在しない場合は NotFound を返します。
+// FindDetailByID は、購入ステータスマスタとの結合でステータス名を解決します。
 func (r *repository) FindDetailByID(ctx context.Context, id uuid.UUID) (*purchase.Detail, error) {
 	ctx, endSpan := r.tracer.Start(ctx)
 	defer endSpan()

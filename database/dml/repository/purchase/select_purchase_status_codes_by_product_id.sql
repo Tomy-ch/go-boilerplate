@@ -4,6 +4,6 @@
 -- SQL 側に同じ規則を書き写さない（理由は docs/spec/domain/purchase.md の FindStatusesByProductID）。
 SELECT DISTINCT ps.code
 FROM purchases AS p
-INNER JOIN purchase_details AS pd ON pd.purchase_id = p.id
-INNER JOIN purchase_statuses AS ps ON ps.id = p.status_id
+INNER JOIN purchase_details AS pd ON p.id = pd.purchase_id
+INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
 WHERE pd.product_id = sqlc.arg('product_id');

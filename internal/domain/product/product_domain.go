@@ -129,9 +129,9 @@ func validateAttributes(attrs Attributes) error {
 }
 
 // Update は、商品の属性を更新します。生成時と同一の不変条件を課し、違反する場合はエンティティを
-// 変更せずに検証エラーを返します。attrs は部分更新を解決した後の確定値であり、据え置く属性には現在値が渡されます。
-// Images は集合ごとの置き換えで、maxImages を超える場合は ErrTooManyImages を返します。
-// バージョンは永続化の成否に依存するためここでは進めません（採番は Repository の条件付き更新が行います）。
+// 変更せずに検証エラーを返します。attrs は部分更新を解決した後の確定値であり、据え置く属性には
+// 現在値が渡されます。Images は集合ごとの置き換えです。バージョンはここでは進めません
+// （詳細は docs/spec/domain/product.md の Behavior Methods を参照）。
 func (p *Product) Update(attrs Attributes) error {
 	if err := validateAttributes(attrs); err != nil {
 		return err

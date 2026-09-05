@@ -17,8 +17,8 @@ WHERE ci.product_id = sqlc.arg('product_id');
 -- 見積もりの古さは docs/spec/usecase/product.md の GetDiscontinueImpact を参照。
 SELECT COUNT(DISTINCT p.id)
 FROM purchases AS p
-INNER JOIN purchase_details AS pd ON pd.purchase_id = p.id
-INNER JOIN purchase_statuses AS ps ON ps.id = p.status_id
+INNER JOIN purchase_details AS pd ON p.id = pd.purchase_id
+INNER JOIN purchase_statuses AS ps ON p.status_id = ps.id
 WHERE pd.product_id = sqlc.arg('product_id')
     AND NOT (ps.code = ANY(sqlc.arg('terminal_status_codes')::SMALLINT[]));
 
@@ -29,8 +29,8 @@ WHERE pd.product_id = sqlc.arg('product_id')
 -- 除外対象と見積もりの古さは docs/spec/usecase/product.md の GetDiscontinueImpact を参照。
 SELECT COUNT(DISTINCT c.user_id)
 FROM cart_items AS ci
-INNER JOIN carts AS c ON c.id = ci.cart_id
-INNER JOIN users AS u ON u.id = c.user_id
+INNER JOIN carts AS c ON ci.cart_id = c.id
+INNER JOIN users AS u ON c.user_id = u.id
 WHERE ci.product_id = sqlc.arg('product_id')
     AND u.deleted_at IS NULL;
 
