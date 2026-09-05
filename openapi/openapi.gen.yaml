@@ -978,7 +978,8 @@ paths:
         廃番は取り消せません。廃番の商品に公開日時を設定する部分更新は 422 で拒まれます。
         **Idempotency-Key を受け付けます**。同一キーの再送は初回の結果をそのまま返し、クーポンが二重に
         発行されることはありません。
-        既に廃番の商品への再実行は、新たな発行を行わずに現在の状態と発行済みの枚数を 200 で返します。
+        既に廃番の商品への再実行は、新たな発行を行わずに 200 を返します。3 つの件数はいずれも
+        「その実行が起こしたこと」を表すため、何も起こさない再実行では 0 になります。
         本 op は DB の SELECT / INSERT / UPDATE のみで外部依存を持ちませんが、認証段（外部 IdP の JWKS 参照）の
         一時障害で応答不能となり得るため、認証を伴う op の先例に倣い 503 を宣言します。
       security:
@@ -4561,17 +4562,17 @@ components:
         affectedCartCount:
           type: integer
           format: int64
-          description: この商品の明細を持っていたカートの件数。所有者が確定していないゲストのカートも含みます。 明細は取り除かれず、以降の取得で discontinued の issue が立ちます。
+          description: この実行で影響を受けたカートの件数。所有者が確定していないゲストのカートも含みます。 明細は取り除かれず、以降の取得で discontinued の issue が立ちます。
           example: 12
         affectedUserCount:
           type: integer
           format: int64
-          description: クーポンの受給対象になった確定済みユーザーの数。ゲストのカートと退会済みユーザーは含みません。 そのため affectedCartCount 以下になります。
+          description: この実行でクーポンの受給対象になった確定済みユーザーの数。ゲストのカートと退会済みユーザーは 含みません。そのため affectedCartCount 以下になります。
           example: 9
         issuedCouponCount:
           type: integer
           format: int64
-          description: 実際に発行したクーポンの枚数。受給者 1 人につき 1 枚です。
+          description: この実行で発行したクーポンの枚数。受給者 1 人につき 1 枚です。 既に廃番の商品への再実行では新たな発行を行わないため 0 になります（過去の発行実績ではありません）。
           example: 9
     ProductDiscontinueImpactResponse:
       type: object

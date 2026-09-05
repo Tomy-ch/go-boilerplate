@@ -138,18 +138,14 @@ fields:
 
 ## Repository Methods
 
-```yaml
-- name: CountByScopeTargetProductID
-  signature: CountByScopeTargetProductID(ctx context.Context, productID uuid.UUID) (int, error)
-  behavior: |
-    指定商品を適用範囲の対象として発行されたクーポンの枚数を返す。
-    廃番を再実行したときに、新たな発行を伴わずに実績を返すために用いる。
-```
+**この集約は Repository を持たない。** 廃番ジャーニーが必要とする書き込みは述語で決まる一括発行だけで、
+それは CommandService が担う（判定基準は [ADR-0034](../../adr/0034-commandservice-atomicity-criterion.md)、
+実例は [`docs/spec/usecase/product.md`](../usecase/product.md) の廃番）。集約を 1 件ずつ読み書きする
+経路は引き換え（#1473）が最初の読み手になるため、そのとき必要なメソッドとともに導入する。
 
-**廃番に伴う一括発行は Repository に持たない。** 発行対象が述語でしか決まらず件数に上限も無いため、
-集約を 1 件ずつ構築して書く形に分解できない。その書き込みは CommandService が担う
-（判定基準は [ADR-0034](../../adr/0034-commandservice-atomicity-criterion.md)、
-実例は [`docs/spec/usecase/product.md`](../usecase/product.md) の廃番）。
+**発行事由は保持しない。** 「どの商品の廃番が配ったクーポンか」は適用範囲からは辿れない
+（範囲は廃番商品ではなくそのカテゴリで固定されるため）。廃番の再実行は過去の発行実績を返さず、
+その実行が起こしたことだけを返す設計なので、事由を持つ動機が無い。
 
 ## Notes
 

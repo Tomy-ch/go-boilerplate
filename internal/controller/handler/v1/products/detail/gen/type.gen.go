@@ -107,12 +107,12 @@ type ProductDiscontinuePostRequest struct {
 // affectedCartCount と affectedUserCount は一致しません。カートは所有者が確定していなくても持てるため、
 // ゲストのカートは影響を受けますがクーポンの受給者にはなりません。退会済みユーザーも対象外です。
 type ProductDiscontinueResponse struct {
-	// AffectedCartCount この商品の明細を持っていたカートの件数。所有者が確定していないゲストのカートも含みます。 明細は取り除かれず、以降の取得で discontinued の issue が立ちます。
+	// AffectedCartCount この実行で影響を受けたカートの件数。所有者が確定していないゲストのカートも含みます。 明細は取り除かれず、以降の取得で discontinued の issue が立ちます。
 	//
 	// Example: 12
 	AffectedCartCount int64 `json:"affectedCartCount"`
 
-	// AffectedUserCount クーポンの受給対象になった確定済みユーザーの数。ゲストのカートと退会済みユーザーは含みません。 そのため affectedCartCount 以下になります。
+	// AffectedUserCount この実行でクーポンの受給対象になった確定済みユーザーの数。ゲストのカートと退会済みユーザーは 含みません。そのため affectedCartCount 以下になります。
 	//
 	// Example: 9
 	AffectedUserCount int64 `json:"affectedUserCount"`
@@ -122,7 +122,7 @@ type ProductDiscontinueResponse struct {
 	// Example: 2026-09-05T00:00:00Z
 	DiscontinuedAt time.Time `json:"discontinuedAt"`
 
-	// IssuedCouponCount 実際に発行したクーポンの枚数。受給者 1 人につき 1 枚です。
+	// IssuedCouponCount この実行で発行したクーポンの枚数。受給者 1 人につき 1 枚です。 既に廃番の商品への再実行では新たな発行を行わないため 0 になります（過去の発行実績ではありません）。
 	//
 	// Example: 9
 	IssuedCouponCount int64 `json:"issuedCouponCount"`

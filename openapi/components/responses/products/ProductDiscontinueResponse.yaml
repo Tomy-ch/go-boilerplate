@@ -18,18 +18,20 @@ properties:
     type: integer
     format: int64
     description: >-
-      この商品の明細を持っていたカートの件数。所有者が確定していないゲストのカートも含みます。
+      この実行で影響を受けたカートの件数。所有者が確定していないゲストのカートも含みます。
       明細は取り除かれず、以降の取得で discontinued の issue が立ちます。
     example: 12
   affectedUserCount:
     type: integer
     format: int64
     description: >-
-      クーポンの受給対象になった確定済みユーザーの数。ゲストのカートと退会済みユーザーは含みません。
-      そのため affectedCartCount 以下になります。
+      この実行でクーポンの受給対象になった確定済みユーザーの数。ゲストのカートと退会済みユーザーは
+      含みません。そのため affectedCartCount 以下になります。
     example: 9
   issuedCouponCount:
     type: integer
     format: int64
-    description: 実際に発行したクーポンの枚数。受給者 1 人につき 1 枚です。
+    description: >-
+      この実行で発行したクーポンの枚数。受給者 1 人につき 1 枚です。
+      既に廃番の商品への再実行では新たな発行を行わないため 0 になります（過去の発行実績ではありません）。
     example: 9

@@ -2,7 +2,6 @@ package module
 
 import (
 	"go-boilerplate/internal/config"                                 // sample-api:line
-	domaincoupon "go-boilerplate/internal/domain/coupon"             // sample-api:line
 	domainproduct "go-boilerplate/internal/domain/product"           // sample-api:line
 	domaincategory "go-boilerplate/internal/domain/product/category" // sample-api:line
 	domainstatus "go-boilerplate/internal/domain/product/status"     // sample-api:line
@@ -99,14 +98,13 @@ func provideProductUsecase(
 	clk clockbd.Clock,
 	cfg *config.ObjectStorageConfig,
 	purchaseRepo domainpurchase.Repository,
-	couponRepo domaincoupon.Repository,
 	discontinueCmd productcommand.CommandService,
 	discontinueImpactQuery productquery.DiscontinueImpactQueryService,
 	tf observability.TracerFactory,
 ) productuc.Usecase {
 	return productuc.New(
 		txm, repo, categoryRepo, statusRepo, storage, authorizer, clk, cfg.MaxUploadBytes(),
-		purchaseRepo, couponRepo, discontinueCmd, discontinueImpactQuery, tf,
+		purchaseRepo, discontinueCmd, discontinueImpactQuery, tf,
 	)
 }
 

@@ -84,14 +84,8 @@ func (u *usecase) DiscontinueProduct(
 		}
 
 		if entity.IsDiscontinued() {
-			issued, cerr := u.couponRepo.CountByScopeTargetProductID(ctx, id)
-			if cerr != nil {
-				return cerr
-			}
-			view = DiscontinueProductView{
-				DiscontinuedAt:    *entity.DiscontinuedAt(),
-				IssuedCouponCount: int64(issued),
-			}
+			// 件数はいずれもこの実行が起こしたことを表すため、何も起こさない再実行では 0 のままにします。
+			view = DiscontinueProductView{DiscontinuedAt: *entity.DiscontinuedAt()}
 
 			return nil
 		}

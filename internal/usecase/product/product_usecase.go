@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"go-boilerplate/internal/apperror"
-	"go-boilerplate/internal/domain/coupon"
 	"go-boilerplate/internal/domain/lexicon/money"
 	"go-boilerplate/internal/domain/product"
 	"go-boilerplate/internal/domain/product/category"
@@ -196,7 +195,6 @@ type usecase struct {
 
 	// 廃番のジャーニーが跨ぐ依存。購入は進行中の判定に、クーポンは再実行時の実績に用います。
 	purchaseRepo           purchase.Repository
-	couponRepo             coupon.Repository
 	discontinueCmd         command.CommandService
 	discontinueImpactQuery query.DiscontinueImpactQueryService
 }
@@ -212,7 +210,6 @@ func New(
 	clk clock.Clock,
 	maxUploadBytes int64,
 	purchaseRepo purchase.Repository,
-	couponRepo coupon.Repository,
 	discontinueCmd command.CommandService,
 	discontinueImpactQuery query.DiscontinueImpactQueryService,
 	tf observability.TracerFactory,
@@ -228,7 +225,6 @@ func New(
 		clock:                  clk,
 		maxUploadBytes:         maxUploadBytes,
 		purchaseRepo:           purchaseRepo,
-		couponRepo:             couponRepo,
 		discontinueCmd:         discontinueCmd,
 		discontinueImpactQuery: discontinueImpactQuery,
 	}

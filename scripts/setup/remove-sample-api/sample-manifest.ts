@@ -375,10 +375,6 @@ export const SAMPLE_DOMAINS: Readonly<Record<string, SampleDomain>> = {
       "database/migrations/000024_create_coupons.down.sql",
 
       "internal/domain/coupon",
-      "internal/infrastructure/rdb/repository/coupon",
-      "database/dml/repository/coupon",
-      "database/gen/coupon_repository.gen.sql",
-      "internal/infrastructure/rdb/sqlc/gen/coupon_repository.gen.sql.go",
 
       "database/seed/000041_coupons.sql",
 
