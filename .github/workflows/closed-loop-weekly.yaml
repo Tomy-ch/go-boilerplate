@@ -122,7 +122,7 @@ jobs:
             printf '%*s' "$len" '' | tr ' ' '\140'
           }
 
-          pnpm --dir scripts exec tsx scripts/closed-loop/weekly \
+          pnpm --dir scripts run tsx scripts/closed-loop/weekly \
             ${FROM:+--from "${FROM}"} ${TO:+--to "${TO}"} > weekly.txt
 
           FENCE="$(fence_for weekly.txt)"
