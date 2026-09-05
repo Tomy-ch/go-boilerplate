@@ -21,7 +21,7 @@ const (
 	attrPayload       = "payload"
 	attrExpiresAt     = "expires_at"
 	attrOrigin        = "origin"
-	// attrAppendedThrough は、watermark item だけが持つ「この stream へ追記した最大の位置」です。
+	// attrAppendedThrough は、watermark item だけが持つ属性です（意味は設計正本の Glossary）。
 	attrAppendedThrough = "appended_through"
 )
 
@@ -29,7 +29,7 @@ const (
 // この item は attrExpiresAt を持たないため、保持期間で event が消えても残ります。
 const watermarkSequence = 0
 
-// TableSpec は、EventLog table の定義を返します（one-shot の初期化と contract test が使います）。
+// TableSpec は、EventLog table の定義を返します。
 func TableSpec(name string) dynamodbclient.TableSpec {
 	return dynamodbclient.TableSpec{
 		Name: name,

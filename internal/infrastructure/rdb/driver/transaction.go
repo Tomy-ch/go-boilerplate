@@ -30,7 +30,6 @@ const (
 	txBackoffMultiplier = 2
 )
 
-// txManager は、トランザクションの管理を行います。
 type txManager struct {
 	db          DatabaseDriver
 	logger      logging.Logger
@@ -39,11 +38,8 @@ type txManager struct {
 	backoff     backoff.Exponential
 }
 
-// NewTransactionManager は、トランザクションマネージャを初期化します。
-//
-// serialization failure / deadlock 検出時に fn を有限回まで再試行します。
-// リトライ上限・backoff は config（DB_TX_MAX_RETRIES / DB_TX_RETRY_BASE_BACKOFF /
-// DB_TX_RETRY_MAX_BACKOFF）から取得します。0 以下の場合は既定値にフォールバックします。
+// NewTransactionManager は、リトライ上限と backoff を config から読んで組み立てます。
+// 0 以下の値は既定値へ倒します（リトライ方針そのものは ADR-0035）。
 func NewTransactionManager(
 	db DatabaseDriver, dbCfg *config.DatabaseConfig, logger logging.Logger, sleeper clock.Sleeper,
 ) tx.Manager {
@@ -73,11 +69,9 @@ func NewTransactionManager(
 	}
 }
 
-// Do は、トランザクションを開始し、引数で渡された fn を実行します。
-//
-// serialization failure / deadlock を検出した場合、有限回（maxAttempts）まで tx 全体を
-// 再試行します（指数 backoff + full jitter、pkg/retry）。fn の冪等性契約は tx.Manager
-// （internal/usecase/boundary/tx）の doc を参照。nested（既存 tx 再利用）経路はリトライ対象外（1 回）。
+// Do は、pkg/retry で tx 全体を包み、指数 backoff + full jitter で有限回まで再試行します。
+// 何を再試行の対象とするか、fn に課される冪等性契約、nested が 1 回だけであることは
+// tx.Manager（internal/usecase/boundary/tx）の doc が述べています。
 func (t *txManager) Do(ctx context.Context, fn func(ctx context.Context) error) error {
 	if _, ok := ctx.Value(txKey{}).(pgx.Tx); ok {
 		return fn(ctx) // nested: 外側の tx をそのまま使い 1 回だけ実行する（ADR-0035）
@@ -111,10 +105,9 @@ func normalizeTxResult(err error) error {
 
 // doOnce は、1 回分のトランザクション（begin → fn → commit / rollback）を実行します。
 //
-// エラーは正規化せず**生のまま**返します。fn 内の repository は NormalizeError 済みのエラーを返しますが、
-// それは xerrors.Join で元の PgError を chain に保持するため、IsRetryableTxError は正規化後でも
-// 生 SQLSTATE（40001/40P01）を errors.As で参照でき、fn 内の serialization failure / deadlock も
-// リトライ対象になります。最終的な apperror への写像は呼出元 Do がリトライ後に 1 度だけ行います。
+// エラーは正規化せず生のまま返します。IsRetryableTxError が生 SQLSTATE を errors.As で
+// 参照できる必要があるためで、apperror への写像は呼出元 Do がリトライ後に 1 度だけ行います
+// （chain に PgError が残る理由は ADR-0035）。
 func (t *txManager) doOnce(ctx context.Context, fn func(ctx context.Context) error) error {
 	tx, err := t.db.Begin(ctx)
 	if err != nil {
@@ -164,7 +157,6 @@ func (t *txManager) rollback(ctx context.Context, tx pgx.Tx, fields ...*logging.
 	}
 }
 
-// withTx は、context.Contextにトランザクションを設定します。
 func withTx(ctx context.Context, tx pgx.Tx) context.Context {
 	return context.WithValue(ctx, txKey{}, tx)
 }
