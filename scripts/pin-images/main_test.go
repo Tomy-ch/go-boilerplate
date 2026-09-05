@@ -411,48 +411,60 @@ func Test_serviceImageRe(t *testing.T) {
 	t.Run("正常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("service の image 行を接頭辞・参照・接尾辞へ割る", func(t *testing.T) {
-			t.Parallel()
-			m := serviceImageRe.FindStringSubmatch("        image: postgres:18.4-trixie # 補助\n")
-			require.NotNil(t, m)
-			assert.Equal(t, "        image: ", m[1])
-			assert.Equal(t, "postgres:18.4-trixie", m[2])
-			assert.Equal(t, " # 補助", m[3])
-		})
+		cases := map[string]struct {
+			line   string
+			prefix string
+			ref    string
+			suffix string
+		}{
+			"service の image 行を接頭辞・参照・接尾辞へ割る": {
+				line:   "        image: postgres:18.4-trixie # 補助\n",
+				prefix: "        image: ",
+				ref:    "postgres:18.4-trixie",
+				suffix: " # 補助",
+			},
+			"digest を参照側へ取り込み接尾辞へ残さない": {
+				line:   "        image: postgres:18.4-trixie@" + digestUnreg + "\n",
+				prefix: "        image: ",
+				ref:    "postgres:18.4-trixie@" + digestUnreg,
+				suffix: "",
+			},
+			"registry を含む参照をそのまま取り出す": {
+				line:   "        image: amazon/dynamodb-local:3.3.1\n",
+				prefix: "        image: ",
+				ref:    "amazon/dynamodb-local:3.3.1",
+				suffix: "",
+			},
+		}
 
-		t.Run("digest を参照側へ取り込み接尾辞へ残さない", func(t *testing.T) {
-			t.Parallel()
-			m := serviceImageRe.FindStringSubmatch("        image: postgres:18.4-trixie@" + digestUnreg + "\n")
-			require.NotNil(t, m)
-			assert.Equal(t, "postgres:18.4-trixie@"+digestUnreg, m[2])
-		})
-
-		t.Run("registry を含む参照をそのまま取り出す", func(t *testing.T) {
-			t.Parallel()
-			m := serviceImageRe.FindStringSubmatch("        image: amazon/dynamodb-local:3.3.1\n")
-			require.NotNil(t, m)
-			assert.Equal(t, "amazon/dynamodb-local:3.3.1", m[2])
-		})
+		for name, c := range cases {
+			t.Run(name, func(t *testing.T) {
+				t.Parallel()
+				m := serviceImageRe.FindStringSubmatch(c.line)
+				require.NotNil(t, m)
+				assert.Equal(t, c.prefix, m[1])
+				assert.Equal(t, c.ref, m[2])
+				assert.Equal(t, c.suffix, m[3])
+			})
+		}
 	})
 
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("式で組み立てた image に一致しない", func(t *testing.T) {
-			t.Parallel()
-			// step の with: 配下に現れる形。固定のしようがないので走査から外す。
-			assert.Nil(t, serviceImageRe.FindStringSubmatch("          image: ${{ steps.meta.outputs.image }}\n"))
-		})
+		// 式で組み立てた image は step の with: 配下に現れる。固定のしようがないので走査から外す。
+		cases := map[string]string{
+			"式で組み立てた image に一致しない": "          image: ${{ steps.meta.outputs.image }}\n",
+			"式を後ろに含む image に一致しない": "          image: reg/app@${{ steps.build.outputs.digest }}\n",
+			"行頭の image に一致しない":     "image: postgres:18.4-trixie\n",
+		}
 
-		t.Run("式を後ろに含む image にも一致しない", func(t *testing.T) {
-			t.Parallel()
-			assert.Nil(t, serviceImageRe.FindStringSubmatch("          image: reg/app@${{ steps.build.outputs.digest }}\n"))
-		})
-
-		t.Run("行頭の image に一致しない", func(t *testing.T) {
-			t.Parallel()
-			assert.Nil(t, serviceImageRe.FindStringSubmatch("image: postgres:18.4-trixie\n"))
-		})
+		for name, line := range cases {
+			t.Run(name, func(t *testing.T) {
+				t.Parallel()
+				assert.Nil(t, serviceImageRe.FindStringSubmatch(line))
+			})
+		}
 	})
 }
 
