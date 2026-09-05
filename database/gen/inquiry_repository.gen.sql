@@ -1,9 +1,11 @@
 
 -- === source: database/dml/repository/inquiry/insert_inquiry.sql ===
--- name: CreateInquiry :execrows
--- 問い合わせを新規登録する。利用者の問い合わせが既にあれば何もせず 0 行を返す
--- （inquiries_user_id_unique。最初の投稿が並行したときに片方が当たる）。
--- UNIQUE 違反を送出しないので、呼び出し側は同じトランザクションのまま先に作られた行を読み直せる。
+-- name: CreateInquiryIfAbsent :one
+-- 利用者の問い合わせが無ければ 1 件登録し、既にあればその行をそのまま返す。
+-- 一意インデックス（inquiries_user_id_unique）が単一文の中で裁定するため、同一利用者への並行した
+-- 作成が競合しても一意制約違反を上げない。存在確認と作成を分けると、その間に他の要求が作った場合に
+-- 23505 でトランザクションごと中断してしまい、同じトランザクションの中では続けられなくなる。
+-- 衝突時に user_id を同じ値で書き戻すのは、DO NOTHING では RETURNING が行を返さないため。
 INSERT INTO inquiries (
     id,
     user_id
@@ -12,7 +14,10 @@ INSERT INTO inquiries (
     sqlc.arg('id'),
     sqlc.arg('user_id')
 )
-ON CONFLICT ON CONSTRAINT inquiries_user_id_unique DO NOTHING;
+ON CONFLICT ON CONSTRAINT inquiries_user_id_unique DO UPDATE
+    SET
+        user_id = excluded.user_id
+RETURNING sqlc.embed(inquiries);
 
 -- === source: database/dml/repository/inquiry/select_inquiries_for_operator.sql ===
 -- name: ListInquiriesForOperatorFirst :many

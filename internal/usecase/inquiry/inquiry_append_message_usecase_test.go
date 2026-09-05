@@ -56,11 +56,8 @@ func Test_usecase_AppendMessage(t *testing.T) {
 			userID := uuidtestkit.NewTestFromSalt(t, "user")
 			i := newTestInquiry(t, userID)
 
-			gomock.InOrder(
-				d.repo.EXPECT().FindActiveByUserID(gomock.Any(), userID).Return(nil, apperror.ErrNotFound),
-				d.repo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(apperror.ErrConflict),
-				d.repo.EXPECT().FindActiveByUserID(gomock.Any(), userID).Return(i, nil),
-			)
+			d.repo.EXPECT().FindActiveByUserID(gomock.Any(), userID).Return(nil, apperror.ErrNotFound)
+			d.repo.EXPECT().CreateIfAbsent(gomock.Any(), gomock.Any()).Return(i, nil)
 			expectAppendSucceeds(t, d)
 
 			_, err := u.AppendMessage(context.Background(), AppendMessageParams{
@@ -74,25 +71,23 @@ func Test_usecase_AppendMessage(t *testing.T) {
 	t.Run("異常系", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("競合した相手の問い合わせが見えなければConflictを返す", func(t *testing.T) {
+		t.Run("作成に失敗したら追加しない", func(t *testing.T) {
 			t.Parallel()
 			u, d := newTestUsecase(t)
 			userID := uuidtestkit.NewTestFromSalt(t, "user")
+			wantErr := xerrors.New("create failed")
 
-			gomock.InOrder(
-				d.repo.EXPECT().FindActiveByUserID(gomock.Any(), userID).Return(nil, apperror.ErrNotFound),
-				d.repo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(apperror.ErrConflict),
-				d.repo.EXPECT().FindActiveByUserID(gomock.Any(), userID).Return(nil, apperror.ErrNotFound),
-			)
+			d.repo.EXPECT().FindActiveByUserID(gomock.Any(), userID).Return(nil, apperror.ErrNotFound)
+			d.repo.EXPECT().CreateIfAbsent(gomock.Any(), gomock.Any()).Return(nil, wantErr)
 
 			_, err := u.AppendMessage(context.Background(), AppendMessageParams{
 				UserID: userID, Subject: "user-john-doe", Body: "本文",
 			})
 
-			require.ErrorIs(t, err, apperror.ErrConflict)
+			require.ErrorIs(t, err, wantErr)
 		})
 
-		t.Run("競合以外の失敗はそのまま返す", func(t *testing.T) {
+		t.Run("問い合わせの取得に失敗したらそのまま返す", func(t *testing.T) {
 			t.Parallel()
 			u, d := newTestUsecase(t)
 			userID := uuidtestkit.NewTestFromSalt(t, "user")
@@ -188,8 +183,11 @@ func Test_usecase_resolveOrCreateInquiry(t *testing.T) {
 
 			var created *domaininquiry.Inquiry
 			d.repo.EXPECT().FindActiveByUserID(gomock.Any(), userID).Return(nil, apperror.ErrNotFound)
-			d.repo.EXPECT().Create(gomock.Any(), gomock.Any()).DoAndReturn(
-				func(_ context.Context, i *domaininquiry.Inquiry) error { created = i; return nil },
+			d.repo.EXPECT().CreateIfAbsent(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(_ context.Context, i *domaininquiry.Inquiry) (*domaininquiry.Inquiry, error) {
+					created = i
+					return i, nil
+				},
 			)
 
 			got, err := u.resolveOrCreateInquiry(context.Background(), userID)
@@ -199,17 +197,14 @@ func Test_usecase_resolveOrCreateInquiry(t *testing.T) {
 			assert.Equal(t, userID, got.UserID())
 		})
 
-		t.Run("作成が競合したら先に作られたものを返す", func(t *testing.T) {
+		t.Run("作成が競合したら先に作られたものが返る", func(t *testing.T) {
 			t.Parallel()
 			u, d := newTestUsecase(t)
 			userID := uuidtestkit.NewTestFromSalt(t, "user")
 			i := newTestInquiry(t, userID)
 
-			gomock.InOrder(
-				d.repo.EXPECT().FindActiveByUserID(gomock.Any(), userID).Return(nil, apperror.ErrNotFound),
-				d.repo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(apperror.ErrConflict),
-				d.repo.EXPECT().FindActiveByUserID(gomock.Any(), userID).Return(i, nil),
-			)
+			d.repo.EXPECT().FindActiveByUserID(gomock.Any(), userID).Return(nil, apperror.ErrNotFound)
+			d.repo.EXPECT().CreateIfAbsent(gomock.Any(), gomock.Any()).Return(i, nil)
 
 			got, err := u.resolveOrCreateInquiry(context.Background(), userID)
 
@@ -228,61 +223,9 @@ func Test_usecase_resolveOrCreateInquiry(t *testing.T) {
 			wantErr := xerrors.New("create failed")
 
 			d.repo.EXPECT().FindActiveByUserID(gomock.Any(), userID).Return(nil, apperror.ErrNotFound)
-			d.repo.EXPECT().Create(gomock.Any(), gomock.Any()).Return(wantErr)
+			d.repo.EXPECT().CreateIfAbsent(gomock.Any(), gomock.Any()).Return(nil, wantErr)
 
 			_, err := u.resolveOrCreateInquiry(context.Background(), userID)
-
-			require.ErrorIs(t, err, wantErr)
-		})
-	})
-}
-
-func Test_usecase_findRaceWinner(t *testing.T) {
-	t.Parallel()
-
-	t.Run("正常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("相手が作った問い合わせを返す", func(t *testing.T) {
-			t.Parallel()
-			u, d := newTestUsecase(t)
-			userID := uuidtestkit.NewTestFromSalt(t, "user")
-			i := newTestInquiry(t, userID)
-
-			d.repo.EXPECT().FindActiveByUserID(gomock.Any(), userID).Return(i, nil)
-
-			got, err := u.findRaceWinner(context.Background(), userID)
-
-			require.NoError(t, err)
-			assert.Equal(t, i, got)
-		})
-	})
-
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("相手が見えなければ競合として返す", func(t *testing.T) {
-			t.Parallel()
-			u, d := newTestUsecase(t)
-			userID := uuidtestkit.NewTestFromSalt(t, "user")
-
-			d.repo.EXPECT().FindActiveByUserID(gomock.Any(), userID).Return(nil, apperror.ErrNotFound)
-
-			_, err := u.findRaceWinner(context.Background(), userID)
-
-			require.ErrorIs(t, err, errInquiryCreationRace)
-			require.ErrorIs(t, err, apperror.ErrConflict)
-		})
-
-		t.Run("読み直しの失敗はそのまま返す", func(t *testing.T) {
-			t.Parallel()
-			u, d := newTestUsecase(t)
-			userID := uuidtestkit.NewTestFromSalt(t, "user")
-			wantErr := xerrors.New("find failed")
-
-			d.repo.EXPECT().FindActiveByUserID(gomock.Any(), userID).Return(nil, wantErr)
-
-			_, err := u.findRaceWinner(context.Background(), userID)
 
 			require.ErrorIs(t, err, wantErr)
 		})

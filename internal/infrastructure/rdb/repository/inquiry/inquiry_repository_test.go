@@ -45,8 +45,9 @@ func createInquiry(ctx context.Context, t *testing.T, repo *repository, testDB d
 	t.Helper()
 	i, err := domaininquiry.New(mustNewUUID(t), domaininquiry.Attributes{UserID: takeSeedUser(ctx, t, testDB, userIndex)})
 	require.NoError(t, err)
-	require.NoError(t, repo.Create(ctx, i))
-	return i
+	created, cerr := repo.CreateIfAbsent(ctx, i)
+	require.NoError(t, cerr)
+	return created
 }
 
 // updateUpdatedAt は、更新日時だけを差し替えて永続化します。
@@ -75,7 +76,7 @@ func TestNew(t *testing.T) {
 	assert.Equal(t, expected, New(testDB, tf))
 }
 
-func Test_repository_Create(t *testing.T) {
+func Test_repository_CreateIfAbsent(t *testing.T) {
 	t.Parallel()
 
 	testDB := testkit.NewTestDB(t)
@@ -111,39 +112,39 @@ func Test_repository_Create(t *testing.T) {
 			})
 		})
 
-		t.Run("競合しても同じトランザクションで先に作られた問い合わせを読み直せる", func(t *testing.T) {
+		t.Run("競合しても同じトランザクションを続けられる", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
 				first := createInquiry(ctx, t, repo, testDB, 3)
-				second, err := domaininquiry.New(
+				candidate, err := domaininquiry.New(
 					mustNewUUID(t), domaininquiry.Attributes{UserID: first.UserID()},
 				)
 				require.NoError(t, err)
 
-				require.ErrorIs(t, repo.Create(ctx, second), apperror.ErrConflict)
+				_, cerr := repo.CreateIfAbsent(ctx, candidate)
+				require.NoError(t, cerr)
 
 				got, ferr := repo.FindActiveByUserID(ctx, first.UserID())
 				require.NoError(t, ferr)
 				assert.Equal(t, first.ID(), got.ID())
 			})
 		})
-	})
 
-	t.Run("異常系", func(t *testing.T) {
-		t.Parallel()
-
-		t.Run("同じ利用者の問い合わせが既にあればConflictを返す", func(t *testing.T) {
+		t.Run("同じ利用者の問い合わせが既にあれば既存のものを返す", func(t *testing.T) {
 			t.Parallel()
 
 			txm.WithinTx(func(ctx context.Context) {
 				first := createInquiry(ctx, t, repo, testDB, 2)
-				second, err := domaininquiry.New(
+				candidate, err := domaininquiry.New(
 					mustNewUUID(t), domaininquiry.Attributes{UserID: first.UserID()},
 				)
 				require.NoError(t, err)
 
-				require.ErrorIs(t, repo.Create(ctx, second), apperror.ErrConflict)
+				got, cerr := repo.CreateIfAbsent(ctx, candidate)
+
+				require.NoError(t, cerr)
+				assert.Equal(t, first.ID(), got.ID())
 			})
 		})
 	})

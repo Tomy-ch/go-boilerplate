@@ -152,9 +152,8 @@ output:
   tx_required: true
   steps:
     - "message id を UUIDv7 で採番する"
-    - "txm.Do 内で: inquiryRepo.FindActiveByUserID(UserID)。無ければ inquiry.New で作成し inquiryRepo.Create"
-    - "Create は行が既にあれば何もせず ErrConflict を返す（UNIQUE 違反を送出しないので tx は中断しない）。そのときは同じ tx のまま FindActiveByUserID をもう 1 度引き、先に作られた問い合わせへ追加する"
-    - "読み直しでも見つからなければ ErrConflict を返す（READ COMMITTED では起こらないが、tx が後続のコミットを見ない分離レベルで開かれた場合の逃げ道）"
+    - "txm.Do 内で: inquiryRepo.FindActiveByUserID(UserID)。無ければ inquiry.New で候補を鋳造し inquiryRepo.CreateIfAbsent"
+    - "CreateIfAbsent は一意インデックスが単一文の中で裁定するため、作成が並行して競合しても一意制約違反を上げず、勝ったほうの問い合わせを返す（docs/spec/usecase/cart.md の MergeOnLogin と同じ扱い）"
     - "取得または作成した問い合わせに対して、同じ txm.Do 内で:"
     - "  ① seq = seqAlloc.Allocate(inquiry.ID)（会話 stream の連番。行ロックは commit まで保持。同一問い合わせへの並行投稿はここで直列化）"
     - "  ② inquiry.AppendMessage(id, {NewAuthor(user, UserID), Body, seq}, now) で鋳造し repo.CreateMessage / repo.Update"
@@ -167,7 +166,7 @@ output:
     - tx.Manager.Do
     - inquiry.Repository.FindActiveByUserID
     - inquiry.New
-    - inquiry.Repository.Create
+    - inquiry.Repository.CreateIfAbsent
     - realtime.SequenceAllocator.Allocate
     - inquiry.Inquiry.AppendMessage
     - inquiry.Repository.CreateMessage
@@ -284,12 +283,13 @@ output:
   （[ADR-0072 (postgres-state-dynamodb-eventlog)] の「1 stream の書き込みは 1 行で直列化する」がそのまま feed に当たる。
   sample の規模では見えない制約で、feed をシャーディングする設計はこの spec の範囲外）。feed の event は本文を持たない軽量なもの
   （`inquiryId / userId / sequence / updatedAt`）。
-- **最初の投稿の競合。** 同じ利用者の初回投稿が並行しても、`Create` は `ON CONFLICT DO NOTHING` なので UNIQUE 違反を
-  送出しない。tx が中断しないため、負けた側は同じ tx のまま先に作られた問い合わせを読み直して追加でき、どちらの投稿も
-  成功する。読み直しが効くのは既定の READ COMMITTED が文ごとに snapshot を取るためで、usecase 側の tx やり直しは要らない
-  （`tx.Manager.Do` の自動 retry は serialization failure / deadlock だけが対象で、UNIQUE 違反は対象外。
-  `idempotency.Run` の内側では `Manager.Do` が外側の tx を再利用するため、usecase が自前で tx をやり直しても新しい tx は
-  取れない — この経路で UNIQUE 違反に頼る設計を採ってはならない）。
+- **最初の投稿の競合。** 同じ利用者の初回投稿が並行しても、`CreateIfAbsent` は一意インデックスが単一文の中で裁定する
+  形なので一意制約違反を上げない。負けた側にはその文が勝ったほうの行を返すため、トランザクションは中断せず、
+  どちらの投稿も成功する（`docs/spec/usecase/cart.md` の「引き継ぎ先を『無ければ作る』で確保する」と同じ。存在確認と
+  作成を分けると、その間に他の要求が作った場合に 23505 でトランザクションごと中断してしまう）。
+  `tx.Manager.Do` の自動 retry は serialization failure / deadlock だけが対象で UNIQUE 違反は対象外であり、
+  さらに `idempotency.Run` の内側では `Manager.Do` が外側の tx を再利用するため、usecase が自前で tx をやり直しても
+  新しい tx は取れない。この経路で UNIQUE 違反に頼る設計を採ってはならない。
 - **streamCursor と snapshot。** History は先に `SequenceAllocator.Current` で stream の現在位置（cursor）を読み、次に
   `sequence <= cursor` で messages を読む。採番の行ロックが commit まで保持されるため、cursor = c を読めた時点で sequence ≤ c の
   message はすべて commit 済みであり、c より大きいものは除外する——既定の READ COMMITTED（文ごとに snapshot）のままで
